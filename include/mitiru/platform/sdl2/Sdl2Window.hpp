@@ -143,6 +143,53 @@ public:
 		m_shouldClose = true;
 	}
 
+	/// @brief ウィンドウサイズを変更する
+	/// @param width 新しい幅
+	/// @param height 新しい高さ
+	void resize(int width, int height)
+	{
+		if (m_window)
+		{
+			SDL_SetWindowSize(m_window, width, height);
+			m_width = width;
+			m_height = height;
+		}
+	}
+
+	/// @brief フルスクリーンモードを切り替える
+	/// @param fullscreen フルスクリーンにする場合true
+	/// @param borderless ボーダーレスフルスクリーンを使用する場合true
+	void setFullscreen(bool fullscreen, bool borderless = true)
+	{
+		if (!m_window)
+		{
+			return;
+		}
+
+		Uint32 flags = 0;
+		if (fullscreen)
+		{
+			flags = borderless
+				? SDL_WINDOW_FULLSCREEN_DESKTOP
+				: SDL_WINDOW_FULLSCREEN;
+		}
+		SDL_SetWindowFullscreen(m_window, flags);
+		m_fullscreen = fullscreen;
+
+		/// フルスクリーン解除時にサイズを更新する
+		if (!fullscreen)
+		{
+			SDL_GetWindowSize(m_window, &m_width, &m_height);
+		}
+	}
+
+	/// @brief フルスクリーン状態を取得する
+	/// @return フルスクリーンならtrue
+	[[nodiscard]] bool isFullscreen() const noexcept
+	{
+		return m_fullscreen;
+	}
+
 	/// @brief ネイティブSDL_Windowを取得する
 	/// @return SDL_Windowポインタ（Vulkanサーフェス生成に使用）
 	[[nodiscard]] SDL_Window* nativeWindow() const noexcept
@@ -170,6 +217,7 @@ private:
 	int m_width = 0;                  ///< クライアント領域の幅
 	int m_height = 0;                 ///< クライアント領域の高さ
 	bool m_shouldClose = false;       ///< 閉じ要求フラグ
+	bool m_fullscreen = false;        ///< フルスクリーンフラグ
 };
 
 } // namespace mitiru

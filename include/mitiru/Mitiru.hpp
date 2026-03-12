@@ -136,6 +136,16 @@
 #include <mitiru/debug/NullDebugOverlay.hpp>
 #include <mitiru/debug/DebugPanel.hpp>
 #include <mitiru/debug/ImGuiOverlay.hpp>
+#include <mitiru/debug/ProfilerOverlay.hpp>
+#include <mitiru/debug/GpuProfiler.hpp>
+
+// ImGui
+#include <mitiru/imgui/ImGuiBackend.hpp>
+
+// Editor
+#include <mitiru/editor/EntityInspector.hpp>
+#include <mitiru/editor/SceneView.hpp>
+#include <mitiru/editor/AssetBrowser.hpp>
 
 // Bridge
 #include <mitiru/bridge/SgcBridge.hpp>

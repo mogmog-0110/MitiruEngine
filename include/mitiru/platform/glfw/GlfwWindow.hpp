@@ -129,9 +129,66 @@ public:
 
 	/// @brief ネイティブGLFWwindowを取得する
 	/// @return GLFWwindowポインタ（Vulkanサーフェス生成に使用）
+	/// @note GlfwInput、GlfwVulkanSurfaceと組み合わせて使用する。
+	///       GlfwInputはこのウィンドウにコールバックを登録する。
+	///       GlfwVulkanSurfaceはこのウィンドウからVkSurfaceKHRを生成する。
 	[[nodiscard]] GLFWwindow* nativeWindow() const noexcept
 	{
 		return m_window;
+	}
+
+	/// @brief ウィンドウサイズを変更する
+	/// @param width 新しい幅
+	/// @param height 新しい高さ
+	void resize(int width, int height)
+	{
+		if (m_window)
+		{
+			glfwSetWindowSize(m_window, width, height);
+			m_width = width;
+			m_height = height;
+		}
+	}
+
+	/// @brief フルスクリーンモードを切り替える
+	/// @param fullscreen フルスクリーンにする場合true
+	void setFullscreen(bool fullscreen)
+	{
+		if (!m_window)
+		{
+			return;
+		}
+
+		if (fullscreen)
+		{
+			/// 現在のウィンドウ位置とサイズを保存する
+			glfwGetWindowPos(m_window, &m_windowedPosX, &m_windowedPosY);
+			m_windowedWidth = m_width;
+			m_windowedHeight = m_height;
+
+			/// プライマリモニターのビデオモードを取得する
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			glfwSetWindowMonitor(
+				m_window, monitor,
+				0, 0, mode->width, mode->height, mode->refreshRate);
+		}
+		else
+		{
+			/// ウィンドウモードに戻す
+			glfwSetWindowMonitor(
+				m_window, nullptr,
+				m_windowedPosX, m_windowedPosY,
+				m_windowedWidth, m_windowedHeight, 0);
+		}
+		m_fullscreen = fullscreen;
+	}
+
+	/// @brief フルスクリーン状態を取得する
+	/// @return フルスクリーンならtrue
+	[[nodiscard]] bool isFullscreen() const noexcept
+	{
+		return m_fullscreen;
 	}
 
 private:
@@ -154,6 +211,11 @@ private:
 	GLFWwindow* m_window = nullptr;   ///< GLFWウィンドウハンドル
 	int m_width = 0;                  ///< クライアント領域の幅
 	int m_height = 0;                 ///< クライアント領域の高さ
+	bool m_fullscreen = false;        ///< フルスクリーンフラグ
+	int m_windowedPosX = 0;           ///< ウィンドウモード時のX位置
+	int m_windowedPosY = 0;           ///< ウィンドウモード時のY位置
+	int m_windowedWidth = 0;          ///< ウィンドウモード時の幅
+	int m_windowedHeight = 0;         ///< ウィンドウモード時の高さ
 };
 
 } // namespace mitiru

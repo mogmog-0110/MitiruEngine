@@ -29,6 +29,16 @@ add_executable(mitiru_tests
 	mitiru/TestObjLoader.cpp
 	mitiru/TestScriptEnhanced.cpp
 	mitiru/TestTcpTransport.cpp
+	mitiru/TestImGuiBackend.cpp
+	mitiru/TestEntityInspector.cpp
+	mitiru/TestSceneView.cpp
+	mitiru/TestAssetBrowser.cpp
+	mitiru/TestProfilerOverlay.cpp
+	mitiru/TestGpuProfiler.cpp
+	mitiru/TestVulkanConfig.cpp
+	mitiru/TestSdl2Config.cpp
+	mitiru/TestGlfwConfig.cpp
+	mitiru/TestPlatformInfo.cpp
 )
 
 target_link_libraries(mitiru_tests PRIVATE

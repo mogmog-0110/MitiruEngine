@@ -92,6 +92,13 @@ public:
 ///          現時点ではNullDeviceと同等のスタブ実装。
 ///          将来のフェーズでVulkan SDKを使用した実装に置き換える。
 ///
+/// @note 関連ヘッダー:
+///   - VulkanInstance.hpp: VkInstanceラッパーとバリデーションレイヤー管理
+///   - VulkanPhysicalDevice.hpp: 物理デバイス選択とキューファミリ探索
+///   - VulkanRenderPass.hpp: レンダーパス設定
+///   - VulkanPipeline.hpp: グラフィックスパイプライン設定
+///   - VulkanSwapChain.hpp: スワップチェーン管理
+///
 /// @code
 /// auto device = std::make_unique<VulkanDevice>();
 /// device->beginFrame();
