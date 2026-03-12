@@ -56,6 +56,11 @@ add_executable(mitiru_tests
 	mitiru/TestAssetRegistry.cpp
 	mitiru/TestMeshCache.cpp
 	mitiru/TestSystemRunner.cpp
+	mitiru/TestAIBridge.cpp
+	mitiru/TestPhysicsBridge.cpp
+	mitiru/TestSceneSerializer2.cpp
+	mitiru/TestAsteroidGame.cpp
+	mitiru/TestDataDriven.cpp
 )
 
 target_link_libraries(mitiru_tests PRIVATE
