@@ -1,0 +1,66 @@
+# Doxyfile for MitiruEngine
+# AI-first C++20 game engine built on ShiggyGameCore
+
+# ── プロジェクト設定 ──────────────────────────────
+PROJECT_NAME           = "MitiruEngine"
+PROJECT_NUMBER         = 0.1.0
+PROJECT_BRIEF          = "AI-first C++20 game engine built on ShiggyGameCore"
+OUTPUT_DIRECTORY       = docs
+OUTPUT_LANGUAGE        = Japanese
+
+# ── 入力設定 ──────────────────────────────────────
+INPUT                  = include/mitiru
+RECURSIVE              = YES
+FILE_PATTERNS          = *.hpp
+INPUT_ENCODING         = UTF-8
+
+# ── 抽出設定 ──────────────────────────────────────
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_CLASSES  = YES
+EXTRACT_ANON_NSPACES   = NO
+
+# ── ソースコード表示 ──────────────────────────────
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+STRIP_CODE_COMMENTS    = NO
+
+# ── HTML出力 ──────────────────────────────────────
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_COLORSTYLE        = LIGHT
+SEARCHENGINE           = YES
+
+# ── LaTeX出力（無効） ─────────────────────────────
+GENERATE_LATEX         = NO
+
+# ── メインページ ──────────────────────────────────
+USE_MDFILE_AS_MAINPAGE =
+
+# ── グラフ設定 ─────────────────────────────────────
+HAVE_DOT               = NO
+DOT_GRAPH_MAX_NODES    = 100
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+
+# ── 警告設定 ──────────────────────────────────────
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = NO
+
+# ── 前処理 ────────────────────────────────────────
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = NO
+PREDEFINED             =
+
+# ── その他 ────────────────────────────────────────
+QUIET                  = NO
+GENERATE_TREEVIEW      = YES
+FULL_PATH_NAMES        = NO
+STRIP_FROM_PATH        = include
+SORT_MEMBER_DOCS       = YES
+SORT_BRIEF_DOCS        = YES
