@@ -137,3 +137,9 @@
 
 // Bridge
 #include <mitiru/bridge/SgcBridge.hpp>
+#include <mitiru/bridge/AnimationBridge.hpp>
+#include <mitiru/bridge/DialogueBridge.hpp>
+#include <mitiru/bridge/EventBridge.hpp>
+#include <mitiru/bridge/ParticleBridge.hpp>
+#include <mitiru/bridge/SaveBridge.hpp>
+#include <mitiru/bridge/TransitionBridge.hpp>

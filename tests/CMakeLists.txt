@@ -23,6 +23,7 @@ add_executable(mitiru_tests
 	mitiru/TestNetwork.cpp
 	mitiru/TestScripting.cpp
 	mitiru/TestRender3D.cpp
+	mitiru/TestBridges.cpp
 )
 
 target_link_libraries(mitiru_tests PRIVATE
