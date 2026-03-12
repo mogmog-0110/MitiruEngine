@@ -1,0 +1,49 @@
+# Build
+build/
+out/
+cmake-build-*/
+
+# IDE / Editor
+.vs/
+.vscode/
+.idea/
+.claude/
+.takt/
+*.sln
+*.vcxproj*
+*.user
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Dependencies
+_deps/
+
+# Compiled
+*.obj
+*.o
+*.a
+*.lib
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+*.ilk
+*.exp
+
+# Package
+*.zip
+*.tar.gz
+
+# Local config
+.local/
+tasks/
+
+# Misc
+*.log
+*.tmp
+*.md
+.env
