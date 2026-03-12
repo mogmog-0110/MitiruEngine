@@ -3,221 +3,285 @@
 /// @file SceneGraph.hpp
 /// @brief 階層的トランスフォームグラフ
 /// @details エンティティの親子関係を管理し、ワールド変換行列を
-///          親チェーンから計算する。
+///          親チェーンから計算する。世代付きNodeIdで安全なハンドルを提供。
 
+#include <cstdint>
+#include <functional>
+#include <optional>
+#include <queue>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
-#include <sgc/ecs/Entity.hpp>
 #include <sgc/math/Mat4.hpp>
 
 namespace mitiru::scene
 {
 
+/// @brief ノード識別子（インデックス＋世代で安全性を確保）
+struct NodeId
+{
+	uint32_t value{0xFFFFFFFF};  ///< パック値（上位16bit: 世代、下位16bit: インデックス）
+
+	/// @brief インデックスを取得する
+	[[nodiscard]] uint16_t index() const noexcept { return static_cast<uint16_t>(value & 0xFFFF); }
+
+	/// @brief 世代を取得する
+	[[nodiscard]] uint16_t generation() const noexcept { return static_cast<uint16_t>(value >> 16); }
+
+	/// @brief 有効なIDか
+	[[nodiscard]] bool isValid() const noexcept { return value != 0xFFFFFFFF; }
+
+	/// @brief 等値比較
+	bool operator==(const NodeId& other) const noexcept { return value == other.value; }
+	bool operator!=(const NodeId& other) const noexcept { return value != other.value; }
+
+	/// @brief インデックスと世代からNodeIdを作成する
+	[[nodiscard]] static NodeId make(uint16_t idx, uint16_t gen) noexcept
+	{
+		return NodeId{static_cast<uint32_t>(gen) << 16 | idx};
+	}
+
+	/// @brief 無効なNodeId
+	[[nodiscard]] static NodeId invalid() noexcept { return NodeId{0xFFFFFFFF}; }
+};
+
 /// @brief シーンノード
-/// @details エンティティに対応するトランスフォームノード。
-///          ローカル変換行列と親子関係を保持する。
 struct SceneNode
 {
-	sgc::ecs::Entity entity;                          ///< 対応エンティティ
-	sgc::Mat4f localTransform = sgc::Mat4f::identity();  ///< ローカル変換行列
-	sgc::ecs::EntityId parentId = sgc::ecs::INVALID_ENTITY_ID;  ///< 親ノードのエンティティID
-	std::vector<sgc::ecs::EntityId> childIds;         ///< 子ノードのエンティティID群
+	std::string name;                        ///< ノード名
+	sgc::Mat4f localTransform = sgc::Mat4f::identity(); ///< ローカル変換行列
+	NodeId parent = NodeId::invalid();       ///< 親ノード
+	std::vector<NodeId> children;            ///< 子ノードリスト
+};
+
+/// @brief 走査順序
+enum class TraversalOrder
+{
+	DepthFirst,    ///< 深さ優先
+	BreadthFirst   ///< 幅優先
 };
 
 /// @brief シーングラフ（階層的トランスフォーム）
-/// @details エンティティの親子関係を管理し、
-///          ワールド変換行列を親チェーンから再帰的に計算する。
-///
-/// @code
-/// mitiru::scene::SceneGraph graph;
-/// auto parent = world.createEntity();
-/// auto child = world.createEntity();
-/// graph.addNode(parent);
-/// graph.addNode(child, parent);
-/// graph.setLocalTransform(child, Mat4f::translation({10, 0, 0}));
-/// auto worldMat = graph.worldTransform(child);
-/// @endcode
 class SceneGraph
 {
 public:
-	/// @brief ノードを追加する
-	/// @param entity 対象エンティティ
-	/// @param parent 親エンティティ（ルートノードの場合は無効Entity）
-	void addNode(sgc::ecs::Entity entity,
-	             sgc::ecs::Entity parent = sgc::ecs::Entity{})
+	/// @brief ノードを作成する
+	/// @param name ノード名
+	/// @return 新規ノードID
+	[[nodiscard]] NodeId createNode(const std::string& name = "")
 	{
-		SceneNode node;
-		node.entity = entity;
-		node.localTransform = sgc::Mat4f::identity();
-
-		if (parent.isValid())
+		uint16_t idx;
+		if (!m_freeList.empty())
 		{
-			node.parentId = parent.id;
-			/// 親ノードの子リストに追加
-			auto parentIt = m_nodes.find(parent.id);
-			if (parentIt != m_nodes.end())
-			{
-				parentIt->second.childIds.push_back(entity.id);
-			}
+			idx = m_freeList.back();
+			m_freeList.pop_back();
+		}
+		else
+		{
+			idx = static_cast<uint16_t>(m_nodes.size());
+			m_nodes.emplace_back();
+			m_generations.push_back(0);
+			m_alive.push_back(false);
 		}
 
-		m_nodes[entity.id] = std::move(node);
+		m_generations[idx]++;
+		m_alive[idx] = true;
+		m_nodes[idx] = SceneNode{};
+		m_nodes[idx].name = name;
+
+		return NodeId::make(idx, m_generations[idx]);
 	}
 
-	/// @brief ノードを削除する（子ノードも再帰的に削除）
-	/// @param entity 削除するエンティティ
-	void removeNode(sgc::ecs::Entity entity)
+	/// @brief ノードを破棄する（子ノードも再帰的に破棄）
+	/// @param id 破棄するノードID
+	void destroyNode(NodeId id)
 	{
-		const auto it = m_nodes.find(entity.id);
-		if (it == m_nodes.end())
+		if (!isValid(id)) return;
+		const auto idx = id.index();
+
+		/// 子ノードを先に再帰削除
+		auto childrenCopy = m_nodes[idx].children;
+		for (const auto& childId : childrenCopy)
 		{
-			return;
+			destroyNode(childId);
 		}
 
-		/// 親の子リストから削除
-		if (it->second.parentId != sgc::ecs::INVALID_ENTITY_ID)
+		/// 親の子リストから自分を除去
+		if (m_nodes[idx].parent.isValid())
 		{
-			auto parentIt = m_nodes.find(it->second.parentId);
-			if (parentIt != m_nodes.end())
+			const auto parentIdx = m_nodes[idx].parent.index();
+			if (parentIdx < m_alive.size() && m_alive[parentIdx])
 			{
-				auto& siblings = parentIt->second.childIds;
+				auto& siblings = m_nodes[parentIdx].children;
 				siblings.erase(
-					std::remove(siblings.begin(), siblings.end(), entity.id),
+					std::remove(siblings.begin(), siblings.end(), id),
 					siblings.end());
 			}
 		}
 
-		/// 子ノードを再帰的に削除
-		auto childIds = it->second.childIds;
-		for (const auto childId : childIds)
-		{
-			const auto childIt = m_nodes.find(childId);
-			if (childIt != m_nodes.end())
-			{
-				removeNode(childIt->second.entity);
-			}
-		}
-
-		m_nodes.erase(entity.id);
+		m_alive[idx] = false;
+		m_freeList.push_back(idx);
 	}
 
-	/// @brief ローカル変換行列を設定する
-	/// @param entity 対象エンティティ
-	/// @param transform ローカル変換行列
-	void setLocalTransform(sgc::ecs::Entity entity, const sgc::Mat4f& transform)
+	/// @brief ノードが有効か
+	[[nodiscard]] bool isValid(NodeId id) const noexcept
 	{
-		const auto it = m_nodes.find(entity.id);
-		if (it != m_nodes.end())
-		{
-			it->second.localTransform = transform;
-		}
+		if (!id.isValid()) return false;
+		const auto idx = id.index();
+		if (idx >= m_nodes.size()) return false;
+		return m_alive[idx] && m_generations[idx] == id.generation();
 	}
 
-	/// @brief ローカル変換行列を取得する
-	/// @param entity 対象エンティティ
-	/// @return ローカル変換行列（未登録の場合は単位行列）
-	[[nodiscard]] sgc::Mat4f localTransform(sgc::ecs::Entity entity) const
+	/// @brief ノード数を返す
+	[[nodiscard]] size_t nodeCount() const noexcept
 	{
-		const auto it = m_nodes.find(entity.id);
-		if (it == m_nodes.end())
-		{
-			return sgc::Mat4f::identity();
-		}
-		return it->second.localTransform;
+		size_t count = 0;
+		for (bool a : m_alive) { if (a) ++count; }
+		return count;
 	}
 
-	/// @brief ワールド変換行列を計算する（親チェーンをたどる）
-	/// @param entity 対象エンティティ
-	/// @return ワールド変換行列
-	[[nodiscard]] sgc::Mat4f worldTransform(sgc::ecs::Entity entity) const
+	/// @brief ノードを取得する
+	/// @param id ノードID
+	/// @return ノードへのポインタ（無効なら nullptr）
+	[[nodiscard]] SceneNode* getNode(NodeId id) noexcept
 	{
-		const auto it = m_nodes.find(entity.id);
-		if (it == m_nodes.end())
+		if (!isValid(id)) return nullptr;
+		return &m_nodes[id.index()];
+	}
+
+	/// @brief ノードを取得する（const版）
+	[[nodiscard]] const SceneNode* getNode(NodeId id) const noexcept
+	{
+		if (!isValid(id)) return nullptr;
+		return &m_nodes[id.index()];
+	}
+
+	/// @brief 親を変更する（循環参照チェック付き）
+	/// @param child 子ノード
+	/// @param newParent 新しい親ノード
+	void reparent(NodeId child, NodeId newParent)
+	{
+		if (!isValid(child) || !isValid(newParent)) return;
+		if (child == newParent) return;
+
+		/// 循環参照チェック
+		if (isAncestor(child, newParent)) return;
+
+		auto& childNode = m_nodes[child.index()];
+
+		/// 旧親から除去
+		if (childNode.parent.isValid() && isValid(childNode.parent))
 		{
-			return sgc::Mat4f::identity();
+			auto& siblings = m_nodes[childNode.parent.index()].children;
+			siblings.erase(
+				std::remove(siblings.begin(), siblings.end(), child),
+				siblings.end());
 		}
 
-		sgc::Mat4f result = it->second.localTransform;
-		auto parentId = it->second.parentId;
+		/// 新親に追加
+		childNode.parent = newParent;
+		m_nodes[newParent.index()].children.push_back(child);
+	}
 
-		/// 親チェーンをたどってワールド変換を累積
-		while (parentId != sgc::ecs::INVALID_ENTITY_ID)
+	/// @brief ワールド変換行列を取得する（親チェーンを辿る）
+	[[nodiscard]] sgc::Mat4f getWorldTransform(NodeId id) const
+	{
+		if (!isValid(id)) return sgc::Mat4f::identity();
+
+		sgc::Mat4f result = m_nodes[id.index()].localTransform;
+		auto parentId = m_nodes[id.index()].parent;
+
+		while (isValid(parentId))
 		{
-			const auto parentIt = m_nodes.find(parentId);
-			if (parentIt == m_nodes.end())
-			{
-				break;
-			}
-			result = parentIt->second.localTransform * result;
-			parentId = parentIt->second.parentId;
+			result = m_nodes[parentId.index()].localTransform * result;
+			parentId = m_nodes[parentId.index()].parent;
 		}
 
 		return result;
 	}
 
-	/// @brief 子エンティティ一覧を取得する
-	/// @param entity 親エンティティ
-	/// @return 子エンティティIDのベクタ
-	[[nodiscard]] std::vector<sgc::ecs::EntityId> children(
-		sgc::ecs::Entity entity) const
+	/// @brief 名前でノードを検索する
+	[[nodiscard]] std::optional<NodeId> findByName(const std::string& name) const
 	{
-		const auto it = m_nodes.find(entity.id);
-		if (it == m_nodes.end())
+		for (size_t i = 0; i < m_nodes.size(); ++i)
 		{
-			return {};
-		}
-		return it->second.childIds;
-	}
-
-	/// @brief ルートノード一覧を取得する
-	/// @return ルートノードのエンティティIDベクタ
-	[[nodiscard]] std::vector<sgc::ecs::EntityId> rootNodes() const
-	{
-		std::vector<sgc::ecs::EntityId> roots;
-		for (const auto& [id, node] : m_nodes)
-		{
-			if (node.parentId == sgc::ecs::INVALID_ENTITY_ID)
+			if (m_alive[i] && m_nodes[i].name == name)
 			{
-				roots.push_back(id);
+				return NodeId::make(static_cast<uint16_t>(i), m_generations[i]);
 			}
 		}
-		return roots;
+		return std::nullopt;
 	}
 
-	/// @brief ノード数を取得する
-	/// @return 登録ノード数
-	[[nodiscard]] std::size_t nodeCount() const noexcept
+	/// @brief ノードを走査する
+	/// @param root 開始ノード
+	/// @param order 走査順序
+	/// @param visitor 訪問関数
+	void traverse(NodeId root, TraversalOrder order,
+		const std::function<void(const SceneNode&)>& visitor) const
 	{
-		return m_nodes.size();
-	}
+		if (!isValid(root)) return;
 
-	/// @brief グラフ情報をJSON文字列として返す
-	/// @return JSON形式の文字列
-	[[nodiscard]] std::string toJson() const
-	{
-		std::string json;
-		json += "{";
-		json += "\"nodeCount\":" + std::to_string(m_nodes.size()) + ",";
-		json += "\"roots\":[";
-		const auto roots = rootNodes();
-		for (std::size_t i = 0; i < roots.size(); ++i)
+		if (order == TraversalOrder::DepthFirst)
 		{
-			if (i > 0)
-			{
-				json += ",";
-			}
-			json += std::to_string(roots[i]);
+			traverseDepthFirst(root, visitor);
 		}
-		json += "]";
-		json += "}";
-		return json;
+		else
+		{
+			traverseBreadthFirst(root, visitor);
+		}
 	}
 
 private:
-	/// @brief エンティティID → シーンノード
-	std::unordered_map<sgc::ecs::EntityId, SceneNode> m_nodes;
+	/// @brief nodeAがnodeBの祖先かどうか
+	[[nodiscard]] bool isAncestor(NodeId ancestor, NodeId descendant) const
+	{
+		auto current = descendant;
+		while (isValid(current))
+		{
+			if (current == ancestor) return true;
+			current = m_nodes[current.index()].parent;
+		}
+		return false;
+	}
+
+	/// @brief 深さ優先走査
+	void traverseDepthFirst(NodeId id,
+		const std::function<void(const SceneNode&)>& visitor) const
+	{
+		if (!isValid(id)) return;
+		visitor(m_nodes[id.index()]);
+		for (const auto& childId : m_nodes[id.index()].children)
+		{
+			traverseDepthFirst(childId, visitor);
+		}
+	}
+
+	/// @brief 幅優先走査
+	void traverseBreadthFirst(NodeId id,
+		const std::function<void(const SceneNode&)>& visitor) const
+	{
+		std::queue<NodeId> queue;
+		queue.push(id);
+
+		while (!queue.empty())
+		{
+			auto current = queue.front();
+			queue.pop();
+			if (!isValid(current)) continue;
+
+			visitor(m_nodes[current.index()]);
+			for (const auto& childId : m_nodes[current.index()].children)
+			{
+				queue.push(childId);
+			}
+		}
+	}
+
+	std::vector<SceneNode> m_nodes;         ///< ノード配列
+	std::vector<uint16_t> m_generations;    ///< 世代カウンタ
+	std::vector<bool> m_alive;              ///< 生存フラグ
+	std::vector<uint16_t> m_freeList;       ///< 再利用可能インデックス
 };
 
 } // namespace mitiru::scene

@@ -39,6 +39,23 @@ add_executable(mitiru_tests
 	mitiru/TestSdl2Config.cpp
 	mitiru/TestGlfwConfig.cpp
 	mitiru/TestPlatformInfo.cpp
+	mitiru/TestFrameTimer.cpp
+	mitiru/TestMitiruApp.cpp
+	mitiru/TestGameLoop.cpp
+	mitiru/TestServiceRegistry.cpp
+	mitiru/TestDx12Config.cpp
+	mitiru/TestWin32InputConfig.cpp
+	mitiru/TestGamepadConfig.cpp
+	mitiru/TestInputMapper.cpp
+	mitiru/TestWin32AudioConfig.cpp
+	mitiru/TestCamera3D.cpp
+	mitiru/TestRenderState3D.cpp
+	mitiru/TestRenderer3DConfig.cpp
+	mitiru/TestSceneGraph.cpp
+	mitiru/TestGameWorld.cpp
+	mitiru/TestAssetRegistry.cpp
+	mitiru/TestMeshCache.cpp
+	mitiru/TestSystemRunner.cpp
 )
 
 target_link_libraries(mitiru_tests PRIVATE
@@ -47,7 +64,7 @@ target_link_libraries(mitiru_tests PRIVATE
 )
 
 if(WIN32)
-	target_link_libraries(mitiru_tests PRIVATE d3d11.lib dxgi.lib ws2_32.lib)
+	target_link_libraries(mitiru_tests PRIVATE d3d11.lib d3d12.lib dxgi.lib d3dcompiler.lib ws2_32.lib winmm.lib xinput.lib)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)

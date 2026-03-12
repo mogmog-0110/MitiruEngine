@@ -151,6 +151,98 @@ public:
 		return sgc::Mat4f::perspective(m_fov, m_aspectRatio, m_nearClip, m_farClip);
 	}
 
+	/// @brief ビュー×射影行列を計算する
+	/// @return ビュー射影合成行列
+	[[nodiscard]] sgc::Mat4f viewProjectionMatrix() const noexcept
+	{
+		return projectionMatrix() * viewMatrix();
+	}
+
+	// ── 方向ベクトル取得 ──────────────────────────────────
+
+	/// @brief カメラの前方向ベクトルを取得する（正規化済み）
+	/// @return 注視点方向の単位ベクトル
+	[[nodiscard]] sgc::Vec3f forwardDirection() const noexcept
+	{
+		return (m_target - m_position).normalized();
+	}
+
+	/// @brief カメラの右方向ベクトルを取得する（正規化済み）
+	/// @return カメラのローカル右方向の単位ベクトル
+	[[nodiscard]] sgc::Vec3f rightDirection() const noexcept
+	{
+		return forwardDirection().cross(m_up).normalized();
+	}
+
+	/// @brief カメラの上方向ベクトルを取得する（正規化済み）
+	/// @return カメラのローカル上方向の単位ベクトル
+	[[nodiscard]] sgc::Vec3f upDirection() const noexcept
+	{
+		const auto fwd = forwardDirection();
+		const auto right = fwd.cross(m_up).normalized();
+		return right.cross(fwd).normalized();
+	}
+
+	// ── カメラ操作ヘルパー ────────────────────────────────
+
+	/// @brief 注視点を中心としたオービットカメラを設定する
+	/// @param orbitTarget オービット中心点
+	/// @param yawRadians ヨー角（Y軸回転、ラジアン）
+	/// @param pitchRadians ピッチ角（X軸回転、ラジアン、-PI/2〜PI/2）
+	/// @param distance 中心点からの距離
+	/// @details 球面座標系でカメラ位置を計算し、注視点を設定する。
+	void orbitAround(const sgc::Vec3f& orbitTarget,
+	                 float yawRadians,
+	                 float pitchRadians,
+	                 float distance) noexcept
+	{
+		/// ピッチを-89度〜89度にクランプ（ジンバルロック防止）
+		constexpr float MAX_PITCH = 1.553343f;  ///< ~89度
+		if (pitchRadians > MAX_PITCH) pitchRadians = MAX_PITCH;
+		if (pitchRadians < -MAX_PITCH) pitchRadians = -MAX_PITCH;
+
+		const float cosPitch = std::cos(pitchRadians);
+		const float sinPitch = std::sin(pitchRadians);
+		const float cosYaw = std::cos(yawRadians);
+		const float sinYaw = std::sin(yawRadians);
+
+		/// 球面座標から直交座標へ変換する
+		const sgc::Vec3f offset{
+			distance * cosPitch * sinYaw,
+			distance * sinPitch,
+			distance * cosPitch * cosYaw
+		};
+
+		m_position = orbitTarget + offset;
+		m_target = orbitTarget;
+	}
+
+	/// @brief FPSカメラのようにヨー・ピッチから注視方向を設定する
+	/// @param yawRadians ヨー角（Y軸回転、ラジアン）
+	/// @param pitchRadians ピッチ角（X軸回転、ラジアン、-PI/2〜PI/2）
+	/// @details カメラ位置はそのまま、注視点のみを更新する。
+	void lookDirection(float yawRadians, float pitchRadians) noexcept
+	{
+		/// ピッチを-89度〜89度にクランプする
+		constexpr float MAX_PITCH = 1.553343f;  ///< ~89度
+		if (pitchRadians > MAX_PITCH) pitchRadians = MAX_PITCH;
+		if (pitchRadians < -MAX_PITCH) pitchRadians = -MAX_PITCH;
+
+		const float cosPitch = std::cos(pitchRadians);
+		const float sinPitch = std::sin(pitchRadians);
+		const float cosYaw = std::cos(yawRadians);
+		const float sinYaw = std::sin(yawRadians);
+
+		/// 方向ベクトルを計算する
+		const sgc::Vec3f direction{
+			cosPitch * sinYaw,
+			sinPitch,
+			cosPitch * cosYaw
+		};
+
+		m_target = m_position + direction;
+	}
+
 private:
 	sgc::Vec3f m_position{0.0f, 0.0f, -5.0f};  ///< カメラ位置
 	sgc::Vec3f m_target{0.0f, 0.0f, 0.0f};      ///< 注視点
