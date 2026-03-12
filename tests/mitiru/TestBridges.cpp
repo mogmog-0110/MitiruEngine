@@ -2,11 +2,17 @@
 #include <catch2/catch_approx.hpp>
 
 #include <mitiru/bridge/AnimationBridge.hpp>
+#include <mitiru/bridge/DebugDrawBridge.hpp>
 #include <mitiru/bridge/DialogueBridge.hpp>
 #include <mitiru/bridge/EventBridge.hpp>
+#include <mitiru/bridge/I18nBridge.hpp>
 #include <mitiru/bridge/ParticleBridge.hpp>
+#include <mitiru/bridge/ProceduralBridge.hpp>
 #include <mitiru/bridge/SaveBridge.hpp>
+#include <mitiru/bridge/SteeringBridge.hpp>
+#include <mitiru/bridge/TilemapBridge.hpp>
 #include <mitiru/bridge/TransitionBridge.hpp>
+#include <mitiru/bridge/VNBridge.hpp>
 
 // ── AnimationBridge ─────────────────────────────────────────
 
@@ -371,4 +377,382 @@ TEST_CASE("SaveBridge toJson contains slot info", "[bridge][save]")
 	const auto json = save.toJson();
 	REQUIRE(json.find("\"slotCount\":1") != std::string::npos);
 	REQUIRE(json.find("\"slot_1\"") != std::string::npos);
+}
+
+// ── VNBridge ────────────────────────────────────────────────
+
+TEST_CASE("VNBridge load scene and start", "[bridge][vn]")
+{
+	mitiru::bridge::VNBridge vn;
+
+	REQUIRE(vn.isFinished());
+	REQUIRE(vn.phase() == sgc::vn::VNPhase::Idle);
+
+	sgc::vn::VNScene scene;
+	scene.addCommand({sgc::vn::VNCommand::Type::Say, "npc", "Hello!", ""});
+	vn.loadScene(std::move(scene));
+	vn.start();
+
+	REQUIRE_FALSE(vn.isFinished());
+	REQUIRE(vn.phase() == sgc::vn::VNPhase::Displaying);
+	REQUIRE(vn.currentText() == "Hello!");
+	REQUIRE(vn.currentSpeaker() == "npc");
+}
+
+TEST_CASE("VNBridge update advances text", "[bridge][vn]")
+{
+	mitiru::bridge::VNBridge vn;
+
+	sgc::vn::VNScene scene;
+	scene.addCommand({sgc::vn::VNCommand::Type::Say, "npc", "Hi", ""});
+	vn.loadScene(std::move(scene));
+	vn.start();
+
+	// Skip to show all text
+	vn.update(0.0f, false, true);
+	REQUIRE(vn.phase() == sgc::vn::VNPhase::WaitingInput);
+
+	// Advance past the text
+	vn.update(0.0f, true, false);
+	REQUIRE(vn.isFinished());
+}
+
+TEST_CASE("VNBridge selectChoice works", "[bridge][vn]")
+{
+	mitiru::bridge::VNBridge vn;
+
+	sgc::vn::VNScene scene;
+	scene.addCommand({sgc::vn::VNCommand::Type::Choice, "", "", "",
+		sgc::vn::CharacterPosition::Center, 0.0f,
+		{{"Yes", "y"}, {"No", "n"}}});
+	vn.loadScene(std::move(scene));
+	vn.start();
+
+	REQUIRE(vn.hasChoices());
+	vn.selectChoice(0);
+	REQUIRE(vn.isFinished());
+}
+
+TEST_CASE("VNBridge parseEffects parses tags", "[bridge][vn]")
+{
+	mitiru::bridge::VNBridge vn;
+	auto segments = vn.parseEffects("{shake}Quake{/shake} Normal");
+	REQUIRE(segments.size() == 2);
+	REQUIRE(segments[0].text == "Quake");
+	REQUIRE(segments[0].effect == sgc::vn::TextEffect::Shake);
+	REQUIRE(segments[1].text == " Normal");
+	REQUIRE(segments[1].effect == sgc::vn::TextEffect::None);
+}
+
+TEST_CASE("VNBridge toJson contains state", "[bridge][vn]")
+{
+	mitiru::bridge::VNBridge vn;
+
+	sgc::vn::VNScene scene;
+	scene.addCommand({sgc::vn::VNCommand::Type::Say, "npc", "Test", ""});
+	vn.loadScene(std::move(scene));
+	vn.start();
+
+	const auto json = vn.toJson();
+	REQUIRE(json.find("\"hasScene\":true") != std::string::npos);
+	REQUIRE(json.find("\"phase\":\"Displaying\"") != std::string::npos);
+}
+
+// ── SteeringBridge ──────────────────────────────────────────
+
+TEST_CASE("SteeringBridge add agent and seek", "[bridge][steering]")
+{
+	mitiru::bridge::SteeringBridge steering;
+
+	sgc::ai::SteeringAgent<float> agent;
+	agent.position = {0.0f, 0.0f};
+	agent.velocity = {0.0f, 0.0f};
+	agent.maxSpeed = 100.0f;
+	agent.maxForce = 50.0f;
+	steering.addAgent("player", agent);
+
+	REQUIRE(steering.agentCount() == 1);
+	REQUIRE(steering.getAgent("player") != nullptr);
+
+	const auto force = steering.seek("player", {100.0f, 0.0f});
+	REQUIRE(force.x > 0.0f);
+}
+
+TEST_CASE("SteeringBridge apply force updates position", "[bridge][steering]")
+{
+	mitiru::bridge::SteeringBridge steering;
+
+	sgc::ai::SteeringAgent<float> agent;
+	agent.position = {0.0f, 0.0f};
+	agent.maxSpeed = 100.0f;
+	agent.maxForce = 50.0f;
+	steering.addAgent("mover", agent);
+
+	const auto force = steering.seek("mover", {100.0f, 0.0f});
+	steering.applySteering("mover", force, 1.0f);
+
+	const auto* updated = steering.getAgent("mover");
+	REQUIRE(updated != nullptr);
+	REQUIRE(updated->position.x > 0.0f);
+}
+
+TEST_CASE("SteeringBridge flee returns opposite direction", "[bridge][steering]")
+{
+	mitiru::bridge::SteeringBridge steering;
+
+	sgc::ai::SteeringAgent<float> agent;
+	agent.position = {50.0f, 0.0f};
+	agent.maxSpeed = 100.0f;
+	agent.maxForce = 50.0f;
+	steering.addAgent("runner", agent);
+
+	const auto force = steering.flee("runner", {0.0f, 0.0f});
+	REQUIRE(force.x > 0.0f);  // Fleeing away from origin
+}
+
+TEST_CASE("SteeringBridge toJson contains agent data", "[bridge][steering]")
+{
+	mitiru::bridge::SteeringBridge steering;
+
+	sgc::ai::SteeringAgent<float> agent;
+	steering.addAgent("a1", agent);
+
+	const auto json = steering.toJson();
+	REQUIRE(json.find("\"agentCount\":1") != std::string::npos);
+	REQUIRE(json.find("\"a1\"") != std::string::npos);
+}
+
+// ── TilemapBridge ───────────────────────────────────────────
+
+TEST_CASE("TilemapBridge create and set tile", "[bridge][tilemap]")
+{
+	mitiru::bridge::TilemapBridge tilemap;
+
+	tilemap.create("world", 16, 16, 32);
+	REQUIRE(tilemap.tilemapCount() == 1);
+
+	tilemap.setTile("world", 3, 4, 5);
+	REQUIRE(tilemap.getTile("world", 3, 4) == 5);
+}
+
+TEST_CASE("TilemapBridge getTile returns 0 for empty", "[bridge][tilemap]")
+{
+	mitiru::bridge::TilemapBridge tilemap;
+
+	tilemap.create("test", 8, 8, 16);
+	REQUIRE(tilemap.getTile("test", 0, 0) == 0);  // empty tile
+}
+
+TEST_CASE("TilemapBridge removeTilemap", "[bridge][tilemap]")
+{
+	mitiru::bridge::TilemapBridge tilemap;
+
+	tilemap.create("temp", 4, 4, 16);
+	REQUIRE(tilemap.tilemapCount() == 1);
+
+	tilemap.removeTilemap("temp");
+	REQUIRE(tilemap.tilemapCount() == 0);
+}
+
+TEST_CASE("TilemapBridge toJson contains tilemap info", "[bridge][tilemap]")
+{
+	mitiru::bridge::TilemapBridge tilemap;
+
+	tilemap.create("level", 10, 10, 32);
+
+	const auto json = tilemap.toJson();
+	REQUIRE(json.find("\"tilemapCount\":1") != std::string::npos);
+	REQUIRE(json.find("\"level\"") != std::string::npos);
+}
+
+// ── I18nBridge ──────────────────────────────────────────────
+
+TEST_CASE("I18nBridge load language and translate", "[bridge][i18n]")
+{
+	mitiru::bridge::I18nBridge i18n;
+
+	sgc::i18n::StringTable en;
+	en.addEntry("greeting", "Hello!");
+	i18n.loadLanguage("en", std::move(en));
+
+	sgc::i18n::StringTable ja;
+	ja.addEntry("greeting", "Konnichiwa!");
+	i18n.loadLanguage("ja", std::move(ja));
+
+	i18n.setCurrentLanguage("en");
+	REQUIRE(i18n.translate("greeting") == "Hello!");
+
+	i18n.setCurrentLanguage("ja");
+	REQUIRE(i18n.translate("greeting") == "Konnichiwa!");
+}
+
+TEST_CASE("I18nBridge currentLanguage and availableLanguages", "[bridge][i18n]")
+{
+	mitiru::bridge::I18nBridge i18n;
+
+	sgc::i18n::StringTable en;
+	en.addEntry("test", "Test");
+	i18n.loadLanguage("en", std::move(en));
+
+	i18n.setCurrentLanguage("en");
+	REQUIRE(i18n.currentLanguage() == "en");
+
+	const auto langs = i18n.availableLanguages();
+	REQUIRE(langs.size() == 1);
+}
+
+TEST_CASE("I18nBridge translate missing key returns MISSING", "[bridge][i18n]")
+{
+	mitiru::bridge::I18nBridge i18n;
+
+	sgc::i18n::StringTable en;
+	i18n.loadLanguage("en", std::move(en));
+	i18n.setCurrentLanguage("en");
+
+	REQUIRE(i18n.translate("nonexistent") == "[MISSING]");
+}
+
+TEST_CASE("I18nBridge toJson contains language info", "[bridge][i18n]")
+{
+	mitiru::bridge::I18nBridge i18n;
+
+	sgc::i18n::StringTable en;
+	i18n.loadLanguage("en", std::move(en));
+	i18n.setCurrentLanguage("en");
+
+	const auto json = i18n.toJson();
+	REQUIRE(json.find("\"currentLanguage\":\"en\"") != std::string::npos);
+	REQUIRE(json.find("\"languageCount\":1") != std::string::npos);
+}
+
+// ── DebugDrawBridge ─────────────────────────────────────────
+
+TEST_CASE("DebugDrawBridge draw rect adds to pending", "[bridge][debugdraw]")
+{
+	mitiru::bridge::DebugDrawBridge debug;
+
+	REQUIRE(debug.pendingCount() == 0);
+
+	debug.drawRect({{0.0f, 0.0f}, {100.0f, 50.0f}}, {1.0f, 0.0f, 0.0f, 1.0f});
+	REQUIRE(debug.pendingCount() == 1);
+
+	debug.drawCircle({50.0f, 50.0f}, 25.0f, {0.0f, 1.0f, 0.0f, 1.0f});
+	REQUIRE(debug.pendingCount() == 2);
+}
+
+TEST_CASE("DebugDrawBridge setEnabled toggles state", "[bridge][debugdraw]")
+{
+	mitiru::bridge::DebugDrawBridge debug;
+
+	REQUIRE(debug.isEnabled());
+
+	debug.setEnabled(false);
+	REQUIRE_FALSE(debug.isEnabled());
+
+	debug.setEnabled(true);
+	REQUIRE(debug.isEnabled());
+}
+
+TEST_CASE("DebugDrawBridge drawLine and drawArrow add commands", "[bridge][debugdraw]")
+{
+	mitiru::bridge::DebugDrawBridge debug;
+
+	debug.drawLine({0.0f, 0.0f}, {100.0f, 100.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
+	debug.drawArrow({0.0f, 0.0f}, {50.0f, 50.0f}, {1.0f, 1.0f, 0.0f, 1.0f});
+	REQUIRE(debug.pendingCount() == 2);
+}
+
+TEST_CASE("DebugDrawBridge toJson contains state", "[bridge][debugdraw]")
+{
+	mitiru::bridge::DebugDrawBridge debug;
+
+	debug.drawRect({{0.0f, 0.0f}, {10.0f, 10.0f}}, {1.0f, 1.0f, 1.0f, 1.0f});
+
+	const auto json = debug.toJson();
+	REQUIRE(json.find("\"enabled\":true") != std::string::npos);
+	REQUIRE(json.find("\"pendingCount\":1") != std::string::npos);
+}
+
+// ── ProceduralBridge ────────────────────────────────────────
+
+TEST_CASE("ProceduralBridge generateDungeon produces rooms", "[bridge][procedural]")
+{
+	mitiru::bridge::ProceduralBridge proc;
+
+	sgc::procedural::DungeonConfig config;
+	config.mapWidth = 40;
+	config.mapHeight = 30;
+	config.maxDepth = 3;
+
+	const auto result = proc.generateDungeon(config, 42);
+	REQUIRE(result.width == 40);
+	REQUIRE(result.height == 30);
+	REQUIRE_FALSE(result.rooms.empty());
+}
+
+TEST_CASE("ProceduralBridge generateTerrain produces heightmap", "[bridge][procedural]")
+{
+	mitiru::bridge::ProceduralBridge proc;
+
+	sgc::procedural::TerrainConfig config;
+	config.width = 16;
+	config.height = 16;
+
+	const auto result = proc.generateTerrain(config, 0);
+	REQUIRE(result.width == 16);
+	REQUIRE(result.height == 16);
+	REQUIRE(result.heightmap.size() == 16);
+	REQUIRE(result.biomes.size() == 16);
+}
+
+TEST_CASE("ProceduralBridge solveWFC with simple rules", "[bridge][procedural]")
+{
+	mitiru::bridge::ProceduralBridge proc;
+
+	sgc::procedural::WFCConfig config;
+	config.width = 3;
+	config.height = 3;
+	config.tileSet = {0, 1};
+	// Allow all adjacencies
+	for (int dir = 0; dir < 4; ++dir)
+	{
+		config.rules.push_back({0, 0, dir});
+		config.rules.push_back({0, 1, dir});
+		config.rules.push_back({1, 0, dir});
+		config.rules.push_back({1, 1, dir});
+	}
+
+	const auto result = proc.solveWFC(config);
+	REQUIRE(result.success);
+	REQUIRE(result.grid.size() == 9);
+}
+
+TEST_CASE("ProceduralBridge generateLSystem produces string", "[bridge][procedural]")
+{
+	mitiru::bridge::ProceduralBridge proc;
+
+	sgc::procedural::LSystemConfig config;
+	config.axiom = "F";
+	config.rules = {{'F', "F+F"}};
+	config.iterations = 2;
+
+	const auto lString = proc.generateLSystem(config);
+	REQUIRE_FALSE(lString.empty());
+	REQUIRE(lString.find('F') != std::string::npos);
+	REQUIRE(lString.find('+') != std::string::npos);
+}
+
+TEST_CASE("ProceduralBridge interpretTurtle generates segments", "[bridge][procedural]")
+{
+	mitiru::bridge::ProceduralBridge proc;
+
+	const auto result = proc.interpretTurtle("F+F", {});
+	REQUIRE(result.segments.size() == 2);
+}
+
+TEST_CASE("ProceduralBridge toJson returns valid JSON", "[bridge][procedural]")
+{
+	mitiru::bridge::ProceduralBridge proc;
+	const auto json = proc.toJson();
+	REQUIRE(json.find("\"type\":\"ProceduralBridge\"") != std::string::npos);
 }

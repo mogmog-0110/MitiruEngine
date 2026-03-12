@@ -27,7 +27,9 @@
 #include <mitiru/gfx/GfxTypes.hpp>
 #include <mitiru/gfx/IBuffer.hpp>
 #include <mitiru/gfx/ICommandList.hpp>
+#include <mitiru/gfx/IDescriptorHeap.hpp>
 #include <mitiru/gfx/IDevice.hpp>
+#include <mitiru/gfx/IGpuFence.hpp>
 #include <mitiru/gfx/IPipeline.hpp>
 #include <mitiru/gfx/IRenderTarget.hpp>
 #include <mitiru/gfx/IShader.hpp>
@@ -138,8 +140,14 @@
 // Bridge
 #include <mitiru/bridge/SgcBridge.hpp>
 #include <mitiru/bridge/AnimationBridge.hpp>
+#include <mitiru/bridge/DebugDrawBridge.hpp>
 #include <mitiru/bridge/DialogueBridge.hpp>
 #include <mitiru/bridge/EventBridge.hpp>
+#include <mitiru/bridge/I18nBridge.hpp>
 #include <mitiru/bridge/ParticleBridge.hpp>
+#include <mitiru/bridge/ProceduralBridge.hpp>
 #include <mitiru/bridge/SaveBridge.hpp>
+#include <mitiru/bridge/SteeringBridge.hpp>
+#include <mitiru/bridge/TilemapBridge.hpp>
 #include <mitiru/bridge/TransitionBridge.hpp>
+#include <mitiru/bridge/VNBridge.hpp>

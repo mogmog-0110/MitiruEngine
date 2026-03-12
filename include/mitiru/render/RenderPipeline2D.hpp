@@ -91,6 +91,12 @@ public:
 			return;
 		}
 
+		if (m_useGenericPath)
+		{
+			submitBatchGeneric(vertices, indices);
+			return;
+		}
+
 #ifdef _WIN32
 		submitBatchDx11(vertices, indices);
 #endif
@@ -104,14 +110,73 @@ public:
 		m_screenWidth = width;
 		m_screenHeight = height;
 
+		if (m_useGenericPath && m_genConstBuffer)
+		{
+			const auto ortho = OrthoMatrix::create(width, height);
+			m_genConstBuffer->update(ortho.m, sizeof(ortho.m));
+		}
+
 #ifdef _WIN32
-		if (m_dx11Context && m_constantBuffer)
+		if (!m_useGenericPath && m_dx11Context && m_constantBuffer)
 		{
 			const auto ortho = OrthoMatrix::create(width, height);
 			m_constantBuffer->update(
 				m_dx11Context, ortho.m, sizeof(ortho.m));
 		}
 #endif
+	}
+
+	/// @brief 抽象IDeviceから2Dパイプラインを構築する
+	/// @details D3D12やVulkan等、DX11以外のバックエンドで使用する。
+	/// @param device GPUデバイス
+	/// @param screenWidth スクリーン幅
+	/// @param screenHeight スクリーン高さ
+	/// @return 構築されたパイプライン
+	[[nodiscard]] static RenderPipeline2D createFromDevice(
+		gfx::IDevice* device,
+		float screenWidth,
+		float screenHeight)
+	{
+		if (!device)
+		{
+			return {};
+		}
+
+		RenderPipeline2D pipeline;
+		pipeline.m_screenWidth = screenWidth;
+		pipeline.m_screenHeight = screenHeight;
+		pipeline.m_useGenericPath = true;
+		pipeline.m_genDevice = device;
+
+		/// 定数バッファ（正射影行列）を生成する
+		const auto ortho = OrthoMatrix::create(screenWidth, screenHeight);
+		pipeline.m_genConstBuffer = device->createBuffer(
+			gfx::BufferType::Constant,
+			sizeof(ortho.m),
+			true,
+			ortho.m);
+
+		/// 動的頂点バッファを生成する（初期サイズ64KB）
+		constexpr std::uint32_t INITIAL_VB_SIZE = 65536;
+		pipeline.m_genVertexBuffer = device->createBuffer(
+			gfx::BufferType::Vertex,
+			INITIAL_VB_SIZE,
+			true);
+		pipeline.m_genVbCapacity = INITIAL_VB_SIZE;
+
+		/// 動的インデックスバッファを生成する（初期サイズ32KB）
+		constexpr std::uint32_t INITIAL_IB_SIZE = 32768;
+		pipeline.m_genIndexBuffer = device->createBuffer(
+			gfx::BufferType::Index,
+			INITIAL_IB_SIZE,
+			true);
+		pipeline.m_genIbCapacity = INITIAL_IB_SIZE;
+
+		/// コマンドリストを生成する
+		pipeline.m_genCommandList = device->createCommandList();
+
+		pipeline.m_valid = true;
+		return pipeline;
 	}
 
 #ifdef _WIN32
@@ -188,6 +253,66 @@ public:
 #endif
 
 private:
+	/// @brief 抽象インターフェース経由でバッチ描画を実行する
+	/// @param vertices 頂点配列
+	/// @param indices インデックス配列
+	void submitBatchGeneric(
+		const std::vector<Vertex2D>& vertices,
+		const std::vector<std::uint32_t>& indices)
+	{
+		if (!m_genDevice || !m_genCommandList)
+		{
+			return;
+		}
+
+		const auto vbSize = static_cast<std::uint32_t>(
+			vertices.size() * sizeof(Vertex2D));
+		const auto ibSize = static_cast<std::uint32_t>(
+			indices.size() * sizeof(std::uint32_t));
+
+		/// バッファサイズが不足していたら再生成する
+		if (vbSize > m_genVbCapacity)
+		{
+			const auto newCapacity = std::max(
+				vbSize, m_genVbCapacity * 2);
+			m_genVertexBuffer = m_genDevice->createBuffer(
+				gfx::BufferType::Vertex, newCapacity, true);
+			m_genVbCapacity = newCapacity;
+		}
+
+		if (ibSize > m_genIbCapacity)
+		{
+			const auto newCapacity = std::max(
+				ibSize, m_genIbCapacity * 2);
+			m_genIndexBuffer = m_genDevice->createBuffer(
+				gfx::BufferType::Index, newCapacity, true);
+			m_genIbCapacity = newCapacity;
+		}
+
+		/// バッファを更新する
+		m_genVertexBuffer->update(vertices.data(), vbSize);
+		m_genIndexBuffer->update(indices.data(), ibSize);
+
+		/// 描画コマンドを発行する
+		m_genCommandList->begin();
+		m_genCommandList->setViewport(m_screenWidth, m_screenHeight);
+		m_genCommandList->setVertexBuffer(m_genVertexBuffer.get());
+		m_genCommandList->setIndexBuffer(m_genIndexBuffer.get());
+		m_genCommandList->drawIndexed(
+			static_cast<std::uint32_t>(indices.size()), 0, 0);
+		m_genCommandList->end();
+	}
+
+	/// ── 汎用バックエンド用メンバ ──────────────────────────
+	gfx::IDevice* m_genDevice = nullptr;                    ///< GPUデバイス（非所有）
+	std::unique_ptr<gfx::IBuffer> m_genConstBuffer;         ///< 定数バッファ
+	std::unique_ptr<gfx::IBuffer> m_genVertexBuffer;        ///< 動的頂点バッファ
+	std::unique_ptr<gfx::IBuffer> m_genIndexBuffer;         ///< 動的インデックスバッファ
+	std::unique_ptr<gfx::ICommandList> m_genCommandList;    ///< コマンドリスト
+	std::uint32_t m_genVbCapacity = 0;                      ///< VB容量（バイト）
+	std::uint32_t m_genIbCapacity = 0;                      ///< IB容量（バイト）
+	bool m_useGenericPath = false;                           ///< 汎用パス使用フラグ
+
 #ifdef _WIN32
 	/// @brief DX11でバッチ描画を実行する
 	/// @param vertices 頂点配列

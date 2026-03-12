@@ -8,12 +8,16 @@
 
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/gfx/GfxTypes.hpp>
+
 namespace mitiru::gfx
 {
 
 class IRenderTarget;
 class IPipeline;
 class IBuffer;
+class ITexture;
+class IDescriptorHeap;
 
 /// @brief コマンドリストの抽象インターフェース
 /// @details 描画コマンドを記録し、GPUに送信するためのインターフェース。
@@ -82,6 +86,75 @@ public:
 		/// デフォルト実装（何もしない）
 		static_cast<void>(width);
 		static_cast<void>(height);
+	}
+
+	/// @brief コマンドリストをリセットする（D3D12用）
+	/// @details D3D12ではフレーム毎にコマンドリストのリセットが必要。
+	///          DX11/Null等のバックエンドでは何もしない。
+	virtual void reset() {}
+
+	/// @brief コマンドリストを閉じる（D3D12用）
+	/// @details D3D12ではコマンドリストを実行前にクローズする必要がある。
+	///          DX11/Null等のバックエンドでは何もしない。
+	virtual void close() {}
+
+	/// @brief リソースバリアを発行する
+	/// @param resource バリア対象のテクスチャリソース
+	/// @param before 遷移前のリソース状態
+	/// @param after 遷移後のリソース状態
+	/// @details D3D12のリソースステート遷移バリアを発行する。
+	///          DX11/Null等のバックエンドでは何もしない。
+	virtual void resourceBarrier(
+		ITexture* resource, ResourceState before, ResourceState after)
+	{
+		static_cast<void>(resource);
+		static_cast<void>(before);
+		static_cast<void>(after);
+	}
+
+	/// @brief ルートシグネチャを設定する（D3D12用）
+	/// @param rootSignature ルートシグネチャのネイティブポインタ
+	/// @details D3D12のID3D12RootSignatureを設定する。
+	///          DX11/Null等のバックエンドでは何もしない。
+	virtual void setRootSignature(void* rootSignature)
+	{
+		static_cast<void>(rootSignature);
+	}
+
+	/// @brief デスクリプタヒープを設定する（D3D12用）
+	/// @param heaps デスクリプタヒープの配列
+	/// @param count ヒープ数
+	/// @details D3D12のSetDescriptorHeapsに対応する。
+	///          DX11/Null等のバックエンドでは何もしない。
+	virtual void setDescriptorHeaps(
+		IDescriptorHeap* const* heaps, uint32_t count)
+	{
+		static_cast<void>(heaps);
+		static_cast<void>(count);
+	}
+
+	/// @brief ルートデスクリプタテーブルを設定する（D3D12用）
+	/// @param paramIndex ルートパラメータインデックス
+	/// @param handle GPUデスクリプタハンドル
+	/// @details D3D12のSetGraphicsRootDescriptorTableに対応する。
+	///          DX11/Null等のバックエンドでは何もしない。
+	virtual void setGraphicsRootDescriptorTable(
+		uint32_t paramIndex, GpuDescriptorHandle handle)
+	{
+		static_cast<void>(paramIndex);
+		static_cast<void>(handle);
+	}
+
+	/// @brief ルート定数バッファビューを設定する（D3D12用）
+	/// @param paramIndex ルートパラメータインデックス
+	/// @param gpuVirtualAddress GPUバッファの仮想アドレス
+	/// @details D3D12のSetGraphicsRootConstantBufferViewに対応する。
+	///          DX11/Null等のバックエンドでは何もしない。
+	virtual void setGraphicsRootCBV(
+		uint32_t paramIndex, uint64_t gpuVirtualAddress)
+	{
+		static_cast<void>(paramIndex);
+		static_cast<void>(gpuVirtualAddress);
 	}
 };
 

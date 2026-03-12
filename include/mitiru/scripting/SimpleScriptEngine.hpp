@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <functional>
 #include <random>
 #include <sstream>
@@ -47,6 +48,8 @@ enum class TokenType
 	RParen,	///< )
 	Comma,		///< ,
 	Semicolon,	///< ;
+	LBrace,		///< {
+	RBrace,		///< }
 	Eof,		///< 入力終端
 };
 
@@ -96,11 +99,13 @@ public:
 		try
 		{
 			m_lastError.clear();
+			m_hasReturned = false;
+			m_returnValue = 0.0;
 			auto tokens = tokenize(script);
 			m_pos = 0;
 			m_tokens = std::move(tokens);
 
-			while (m_pos < m_tokens.size() && m_tokens[m_pos].type != TokenType::Eof)
+			while (m_pos < m_tokens.size() && m_tokens[m_pos].type != TokenType::Eof && !m_hasReturned)
 			{
 				parseStatement();
 				// セミコロンがあればスキップ
@@ -118,13 +123,22 @@ public:
 		}
 	}
 
-	/// @brief ファイルからスクリプトを実行する（未サポート）
+	/// @brief ファイルからスクリプトを実行する
 	/// @param path ファイルパス
-	/// @return 常に false
-	bool executeFile(std::string_view /*path*/) override
+	/// @return 成功なら true
+	bool executeFile(std::string_view path) override
 	{
-		m_lastError = "SimpleScriptEngine does not support file execution";
-		return false;
+		const std::string filePath{path};
+		std::ifstream file(filePath);
+		if (!file.is_open())
+		{
+			m_lastError = "Cannot open file: " + filePath;
+			return false;
+		}
+		const std::string content{
+			std::istreambuf_iterator<char>(file),
+			std::istreambuf_iterator<char>()};
+		return execute(content);
 	}
 
 	/// @brief グローバル数値変数を設定する
@@ -238,13 +252,23 @@ public:
 	}
 
 private:
+	/// @brief ユーザー定義関数
+	struct UserFunction
+	{
+		std::vector<std::string> params;   ///< パラメータ名
+		std::vector<Token> body;           ///< 関数本体トークン列
+	};
+
 	std::unordered_map<std::string, double> m_numVars;			///< 数値変数ストレージ
 	std::unordered_map<std::string, std::string> m_strVars;		///< 文字列変数ストレージ
 	std::unordered_map<std::string, NativeFunction> m_functions;///< 登録関数
+	std::unordered_map<std::string, UserFunction> m_userFuncs;	///< ユーザー定義関数
 	std::string m_lastError;									///< 最後のエラー
 	std::vector<Token> m_tokens;								///< 現在のトークン列
 	size_t m_pos = 0;											///< 現在の読み取り位置
 	std::mt19937 m_rng{std::random_device{}()};					///< 乱数生成器
+	double m_returnValue = 0.0;									///< return文の値
+	bool m_hasReturned = false;									///< return発生フラグ
 
 	/// @brief 組み込み関数を登録する
 	void registerBuiltins()
@@ -401,6 +425,8 @@ private:
 			case ')': tokens.push_back({TokenType::RParen, ")", 0.0}); break;
 			case ',': tokens.push_back({TokenType::Comma, ",", 0.0}); break;
 			case ';': tokens.push_back({TokenType::Semicolon, ";", 0.0}); break;
+			case '{': tokens.push_back({TokenType::LBrace, "{", 0.0}); break;
+			case '}': tokens.push_back({TokenType::RBrace, "}", 0.0}); break;
 			default:
 				throw std::runtime_error("Unexpected character: " + std::string(1, source[i]));
 			}
@@ -449,10 +475,52 @@ private:
 	/// @brief 文を解析・実行する
 	void parseStatement()
 	{
+		if (m_hasReturned)
+		{
+			return;
+		}
+
+		// ブロック文 { ... }
+		if (current().type == TokenType::LBrace)
+		{
+			parseBlock();
+			return;
+		}
+
 		// if/then/else 文
 		if (current().type == TokenType::Identifier && current().text == "if")
 		{
 			parseIfStatement();
+			return;
+		}
+
+		// while文
+		if (current().type == TokenType::Identifier && current().text == "while")
+		{
+			parseWhileStatement();
+			return;
+		}
+
+		// for文
+		if (current().type == TokenType::Identifier && current().text == "for")
+		{
+			parseForStatement();
+			return;
+		}
+
+		// function定義
+		if (current().type == TokenType::Identifier && current().text == "function")
+		{
+			parseFunctionDef();
+			return;
+		}
+
+		// return文
+		if (current().type == TokenType::Identifier && current().text == "return")
+		{
+			advance();
+			m_returnValue = parseExpression();
+			m_hasReturned = true;
 			return;
 		}
 
@@ -477,6 +545,266 @@ private:
 
 		// 式文（副作用のある式）
 		parseExpression();
+	}
+
+	/// @brief ブロック { ... } を解析・実行する
+	void parseBlock()
+	{
+		expect(TokenType::LBrace);
+		while (current().type != TokenType::RBrace &&
+			current().type != TokenType::Eof &&
+			!m_hasReturned)
+		{
+			parseStatement();
+			if (current().type == TokenType::Semicolon)
+			{
+				advance();
+			}
+		}
+		if (current().type == TokenType::RBrace)
+		{
+			advance();
+		}
+	}
+
+	/// @brief while文を解析・実行する
+	void parseWhileStatement()
+	{
+		advance(); // 'while' をスキップ
+
+		/// ループ開始位置を記憶する
+		const size_t condStart = m_pos;
+
+		/// 最大反復回数（無限ループ防止）
+		constexpr int MAX_ITERATIONS = 100000;
+		int iterations = 0;
+
+		while (iterations < MAX_ITERATIONS && !m_hasReturned)
+		{
+			/// 条件式を評価する
+			m_pos = condStart;
+			expect(TokenType::LParen);
+			double condition = parseExpression();
+			expect(TokenType::RParen);
+
+			if (condition == 0.0)
+			{
+				/// 条件が偽ならブロックをスキップして終了
+				skipBlock();
+				break;
+			}
+
+			/// ブロックを実行する
+			parseBlock();
+			++iterations;
+		}
+
+		if (iterations >= MAX_ITERATIONS)
+		{
+			throw std::runtime_error("While loop exceeded maximum iterations");
+		}
+	}
+
+	/// @brief for文を解析・実行する
+	/// @details for (init; condition; step) { body }
+	void parseForStatement()
+	{
+		advance(); // 'for' をスキップ
+		expect(TokenType::LParen);
+
+		/// 初期化
+		parseStatement();
+		expect(TokenType::Semicolon);
+
+		/// 条件式の位置を記憶する
+		const size_t condStart = m_pos;
+
+		/// まず条件を評価してbodyとstepの位置を特定する
+		double condition = parseExpression();
+		expect(TokenType::Semicolon);
+		const size_t stepStart = m_pos;
+
+		/// stepを一旦スキップして ) の位置を見つける
+		int parenDepth = 1;
+		while (m_pos < m_tokens.size() && parenDepth > 0)
+		{
+			if (current().type == TokenType::LParen)
+			{
+				++parenDepth;
+			}
+			else if (current().type == TokenType::RParen)
+			{
+				--parenDepth;
+			}
+			if (parenDepth > 0)
+			{
+				advance();
+			}
+		}
+		expect(TokenType::RParen);
+		const size_t bodyStart = m_pos;
+
+		constexpr int MAX_ITERATIONS = 100000;
+		int iterations = 0;
+
+		/// 最初の条件チェック
+		if (condition == 0.0)
+		{
+			skipBlock();
+			return;
+		}
+
+		while (iterations < MAX_ITERATIONS && !m_hasReturned)
+		{
+			/// ブロックを実行する
+			m_pos = bodyStart;
+			parseBlock();
+
+			/// ステップを実行する
+			m_pos = stepStart;
+			parseStatement();
+
+			/// 条件を再評価する
+			m_pos = condStart;
+			condition = parseExpression();
+
+			if (condition == 0.0)
+			{
+				break;
+			}
+			++iterations;
+		}
+
+		/// bodyの後に戻る
+		m_pos = bodyStart;
+		skipBlock();
+	}
+
+	/// @brief function定義を解析する
+	/// @details function name(a, b) { body }
+	void parseFunctionDef()
+	{
+		advance(); // 'function' をスキップ
+		const std::string funcName = expect(TokenType::Identifier).text;
+
+		expect(TokenType::LParen);
+		std::vector<std::string> params;
+		if (current().type != TokenType::RParen)
+		{
+			params.push_back(expect(TokenType::Identifier).text);
+			while (current().type == TokenType::Comma)
+			{
+				advance();
+				params.push_back(expect(TokenType::Identifier).text);
+			}
+		}
+		expect(TokenType::RParen);
+
+		/// ブロック本体のトークンを収集する
+		if (current().type != TokenType::LBrace)
+		{
+			throw std::runtime_error("Expected '{' in function body");
+		}
+
+		std::vector<Token> bodyTokens;
+		int braceDepth = 0;
+		do
+		{
+			if (current().type == TokenType::LBrace) ++braceDepth;
+			if (current().type == TokenType::RBrace) --braceDepth;
+			bodyTokens.push_back(current());
+			advance();
+		} while (braceDepth > 0 && current().type != TokenType::Eof);
+
+		/// ユーザー定義関数を登録する
+		UserFunction uf;
+		uf.params = std::move(params);
+		uf.body = std::move(bodyTokens);
+		m_userFuncs[funcName] = std::move(uf);
+
+		/// ネイティブ関数としてラッパーを登録する
+		m_functions[funcName] = [this, funcName](
+			const std::vector<double>& args) -> double
+		{
+			auto it = m_userFuncs.find(funcName);
+			if (it == m_userFuncs.end())
+			{
+				return 0.0;
+			}
+			return callUserFunction(it->second, args);
+		};
+	}
+
+	/// @brief ユーザー定義関数を呼び出す
+	/// @param func 関数定義
+	/// @param args 引数
+	/// @return 戻り値
+	double callUserFunction(const UserFunction& func,
+		const std::vector<double>& args)
+	{
+		/// 現在の状態を保存する
+		const auto savedTokens = m_tokens;
+		const auto savedPos = m_pos;
+		const auto savedReturn = m_hasReturned;
+		const auto savedReturnVal = m_returnValue;
+
+		/// パラメータを変数に代入する（元の値を保存）
+		std::vector<std::pair<std::string, double>> savedVars;
+		for (size_t i = 0; i < func.params.size(); ++i)
+		{
+			const auto& name = func.params[i];
+			auto varIt = m_numVars.find(name);
+			if (varIt != m_numVars.end())
+			{
+				savedVars.push_back({name, varIt->second});
+			}
+			else
+			{
+				savedVars.push_back({name, 0.0});
+			}
+			m_numVars[name] = (i < args.size()) ? args[i] : 0.0;
+		}
+
+		/// 関数本体を実行する
+		m_tokens = func.body;
+		m_tokens.push_back({TokenType::Eof, "", 0.0});
+		m_pos = 0;
+		m_hasReturned = false;
+		m_returnValue = 0.0;
+
+		parseBlock();
+
+		const double result = m_returnValue;
+
+		/// パラメータを復元する
+		for (const auto& [name, val] : savedVars)
+		{
+			m_numVars[name] = val;
+		}
+
+		/// 状態を復元する
+		m_tokens = savedTokens;
+		m_pos = savedPos;
+		m_hasReturned = savedReturn;
+		m_returnValue = savedReturnVal;
+
+		return result;
+	}
+
+	/// @brief ブロック { ... } をスキップする
+	void skipBlock()
+	{
+		if (current().type != TokenType::LBrace)
+		{
+			return;
+		}
+		int depth = 0;
+		do
+		{
+			if (current().type == TokenType::LBrace) ++depth;
+			if (current().type == TokenType::RBrace) --depth;
+			advance();
+		} while (depth > 0 && current().type != TokenType::Eof);
 	}
 
 	/// @brief if/then/else 文を解析・実行する

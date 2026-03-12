@@ -24,6 +24,11 @@ add_executable(mitiru_tests
 	mitiru/TestScripting.cpp
 	mitiru/TestRender3D.cpp
 	mitiru/TestBridges.cpp
+	mitiru/TestAudioMixer.cpp
+	mitiru/TestShaders3D.cpp
+	mitiru/TestObjLoader.cpp
+	mitiru/TestScriptEnhanced.cpp
+	mitiru/TestTcpTransport.cpp
 )
 
 target_link_libraries(mitiru_tests PRIVATE

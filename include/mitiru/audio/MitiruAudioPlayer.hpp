@@ -10,6 +10,7 @@
 
 #include <sgc/audio/IAudioPlayer.hpp>
 #include <mitiru/audio/AudioEngine.hpp>
+#include <mitiru/audio/AudioMixer.hpp>
 
 namespace mitiru::audio
 {
@@ -28,8 +29,11 @@ class MitiruAudioPlayer : public sgc::IAudioPlayer
 public:
 	/// @brief コンストラクタ
 	/// @param engine Mitiruオーディオエンジンへのポインタ（所有権は移転しない）
-	explicit MitiruAudioPlayer(IAudioEngine* engine) noexcept
+	/// @param mixer オーディオミキサーへのポインタ（nullptr可、ハンドル管理が有効になる）
+	explicit MitiruAudioPlayer(IAudioEngine* engine,
+		AudioMixer* mixer = nullptr) noexcept
 		: m_engine(engine)
+		, m_mixer(mixer)
 	{
 	}
 
@@ -40,7 +44,14 @@ public:
 	/// @param volume 再生ボリューム [0.0, 1.0]
 	void playBgm(std::string_view path, float volume) override
 	{
-		if (m_engine)
+		m_currentBgmId = std::string(path);
+		if (m_mixer)
+		{
+			m_bgmHandle = m_mixer->play(
+				path, SoundCategory::Bgm, true, volume);
+			m_bgmPlaying = true;
+		}
+		else if (m_engine)
 		{
 			m_engine->setVolume(volume);
 			m_engine->playMusic(path);
@@ -49,21 +60,38 @@ public:
 	}
 
 	/// @brief BGMを停止する
-	/// @param fadeOutSeconds フェードアウト時間（現在は無視）
+	/// @param fadeOutSeconds フェードアウト時間（0でも即停止）
 	void stopBgm(float fadeOutSeconds) override
 	{
-		static_cast<void>(fadeOutSeconds);
-		if (m_engine)
+		if (m_mixer && m_bgmHandle >= 0)
+		{
+			if (fadeOutSeconds > 0.0f)
+			{
+				m_mixer->fadeOut(m_bgmHandle, fadeOutSeconds);
+			}
+			else
+			{
+				m_mixer->stop(m_bgmHandle);
+			}
+			m_bgmHandle = -1;
+		}
+		else if (m_engine)
 		{
 			m_engine->stopMusic();
-			m_bgmPlaying = false;
 		}
+		m_bgmPlaying = false;
+		m_bgmPaused = false;
 	}
 
 	/// @brief BGMを一時停止する
 	void pauseBgm() override
 	{
-		if (m_engine)
+		if (m_mixer && m_bgmHandle >= 0)
+		{
+			m_mixer->pause(m_bgmHandle);
+			m_bgmPaused = true;
+		}
+		else if (m_engine)
 		{
 			m_engine->stopMusic();
 			m_bgmPaused = true;
@@ -73,10 +101,17 @@ public:
 	/// @brief 一時停止中のBGMを再開する
 	void resumeBgm() override
 	{
-		if (m_engine && m_bgmPaused)
+		if (m_bgmPaused)
 		{
+			if (m_mixer && m_bgmHandle >= 0)
+			{
+				m_mixer->resume(m_bgmHandle);
+			}
+			else if (m_engine && !m_currentBgmId.empty())
+			{
+				m_engine->playMusic(m_currentBgmId);
+			}
 			m_bgmPaused = false;
-			/// スタブ: 再開ロジックは将来実装
 		}
 	}
 
@@ -105,7 +140,10 @@ public:
 	/// @return SE再生ハンドル
 	int playSe(std::string_view path, float volume) override
 	{
-		static_cast<void>(volume);
+		if (m_mixer)
+		{
+			return m_mixer->play(path, SoundCategory::Se, false, volume);
+		}
 		if (m_engine)
 		{
 			m_engine->playSound(path);
@@ -117,22 +155,29 @@ public:
 	/// @param handle SE再生ハンドル
 	void stopSe(int handle) override
 	{
-		static_cast<void>(handle);
-		/// スタブ: ハンドルベースの停止は将来実装
+		if (m_mixer)
+		{
+			m_mixer->stop(handle);
+		}
 	}
 
 	/// @brief 全SEを停止する
 	void stopAllSe() override
 	{
-		/// スタブ: 将来実装
+		if (m_mixer)
+		{
+			m_mixer->stopByCategory(SoundCategory::Se);
+		}
 	}
 
-	/// @brief SEのボリュームを設定する
+	/// @brief SEのカテゴリボリュームを設定する
 	/// @param volume ボリューム [0.0, 1.0]
 	void setSeVolume(float volume) override
 	{
-		static_cast<void>(volume);
-		/// スタブ: SE個別ボリューム制御は将来実装
+		if (m_mixer)
+		{
+			m_mixer->setCategoryVolume(SoundCategory::Se, volume);
+		}
 	}
 
 	// ── マスター ─────────────────────────────────────────
@@ -149,9 +194,12 @@ public:
 
 private:
 	IAudioEngine* m_engine = nullptr;   ///< オーディオエンジン（非所有）
+	AudioMixer* m_mixer = nullptr;      ///< オーディオミキサー（非所有、nullptr可）
+	std::string m_currentBgmId;         ///< 現在のBGM ID（再開用）
+	int m_bgmHandle = -1;              ///< ミキサー上のBGMハンドル
 	bool m_bgmPlaying = false;          ///< BGM再生中フラグ
 	bool m_bgmPaused = false;           ///< BGM一時停止フラグ
-	int m_nextSeHandle = 0;             ///< 次のSEハンドル
+	int m_nextSeHandle = 0;             ///< 次のSEハンドル（ミキサーなし時のフォールバック）
 };
 
 } // namespace mitiru::audio

@@ -14,6 +14,7 @@
 
 #ifdef _WIN32
 #include <mitiru/gfx/dx11/Dx11Device.hpp>
+#include <mitiru/gfx/dx12/Dx12Device.hpp>
 #include <mitiru/platform/win32/Win32Window.hpp>
 #endif
 
@@ -73,8 +74,20 @@ namespace mitiru::gfx
 #endif
 
 	case Backend::Dx12:
+#ifdef _WIN32
+	{
+		auto* win32Window = dynamic_cast<Win32Window*>(window);
+		if (!win32Window)
+		{
+			/// Win32ウィンドウなしの場合はNullにフォールバック
+			return std::make_unique<NullDevice>();
+		}
+		return std::make_unique<Dx12Device>(win32Window);
+	}
+#else
 		throw std::runtime_error(
-			"Dx12 backend is not yet implemented");
+			"Dx12 backend is only available on Windows");
+#endif
 
 	case Backend::Vulkan:
 #ifdef MITIRU_HAS_VULKAN

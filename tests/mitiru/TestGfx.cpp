@@ -201,11 +201,12 @@ TEST_CASE("GfxFactory - createDevice with Dx11 backend throws", "[gfx]")
 		std::runtime_error);
 }
 
-TEST_CASE("GfxFactory - createDevice with Dx12 backend throws", "[gfx]")
+TEST_CASE("GfxFactory - createDevice with Dx12 backend returns NullDevice stub", "[gfx]")
 {
-	REQUIRE_THROWS_AS(
-		mitiru::gfx::createDevice(mitiru::gfx::Backend::Dx12),
-		std::runtime_error);
+	/// D3D12バックエンドは暫定的にNullDeviceを返す（スタブ）
+	auto device = mitiru::gfx::createDevice(mitiru::gfx::Backend::Dx12);
+	REQUIRE(device != nullptr);
+	REQUIRE(device->backend() == mitiru::gfx::Backend::Null);
 }
 
 TEST_CASE("GfxFactory - createDevice with Vulkan backend throws", "[gfx]")

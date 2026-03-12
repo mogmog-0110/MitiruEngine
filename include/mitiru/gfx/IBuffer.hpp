@@ -39,6 +39,23 @@ public:
 	{
 		return size() > 0;
 	}
+
+	/// @brief バッファデータを更新する
+	/// @param data 書き込むデータへのポインタ
+	/// @param sizeBytes 書き込みサイズ（バイト）
+	/// @details バックエンド固有の更新処理を行う。
+	///          デフォルト実装はノーオペレーション。
+	virtual void update(const void* data, std::uint32_t sizeBytes)
+	{
+		static_cast<void>(data);
+		static_cast<void>(sizeBytes);
+	}
+
+	/// @brief GPU仮想アドレスを取得する（D3D12用）
+	/// @return バッファのGPU仮想アドレス（未対応バックエンドでは0）
+	/// @details D3D12のID3D12Resource::GetGPUVirtualAddressに対応する。
+	///          DX11/Null等のバックエンドでは0を返す。
+	[[nodiscard]] virtual uint64_t gpuVirtualAddress() const { return 0; }
 };
 
 } // namespace mitiru::gfx

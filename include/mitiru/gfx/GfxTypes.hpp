@@ -64,4 +64,49 @@ struct BufferDesc
 	bool dynamic = false;              ///< 動的更新が必要か
 };
 
+/// @brief リソース状態（D3D12バリア用）
+enum class ResourceState : uint32_t
+{
+	Common = 0,       ///< 共通状態
+	RenderTarget,     ///< レンダーターゲット
+	Present,          ///< プレゼント
+	ShaderResource,   ///< シェーダーリソース
+	DepthWrite,       ///< 深度書き込み
+	CopyDest,         ///< コピー先
+	CopySrc,          ///< コピー元
+	UnorderedAccess,  ///< アンオーダードアクセス
+};
+
+/// @brief デスクリプタヒープ種別
+enum class DescriptorHeapType : uint8_t
+{
+	CbvSrvUav,  ///< CBV/SRV/UAV
+	Rtv,        ///< レンダーターゲットビュー
+	Dsv,        ///< 深度ステンシルビュー
+	Sampler,    ///< サンプラー
+};
+
+/// @brief GPUデスクリプタハンドル
+struct GpuDescriptorHandle
+{
+	uint64_t ptr = 0;  ///< GPUアドレス
+
+	/// @brief ハンドルが有効かどうかを判定する
+	/// @return ptrが0以外ならtrue
+	[[nodiscard]] constexpr bool isValid() const noexcept { return ptr != 0; }
+};
+
+/// @brief CPUデスクリプタハンドル
+struct CpuDescriptorHandle
+{
+	uint64_t ptr = 0;  ///< CPUアドレス
+
+	/// @brief ハンドルが有効かどうかを判定する
+	/// @return ptrが0以外ならtrue
+	[[nodiscard]] constexpr bool isValid() const noexcept { return ptr != 0; }
+};
+
+/// @brief フェンス値
+using FenceValue = uint64_t;
+
 } // namespace mitiru::gfx
