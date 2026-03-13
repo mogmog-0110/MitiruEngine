@@ -61,6 +61,7 @@ add_executable(mitiru_tests
 	mitiru/TestSceneSerializer2.cpp
 	mitiru/TestAsteroidGame.cpp
 	mitiru/TestDataDriven.cpp
+	mitiru/TestSvgGenerator.cpp
 )
 
 target_link_libraries(mitiru_tests PRIVATE
