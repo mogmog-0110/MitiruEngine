@@ -62,6 +62,11 @@ add_executable(mitiru_tests
 	mitiru/TestAsteroidGame.cpp
 	mitiru/TestDataDriven.cpp
 	mitiru/TestSvgGenerator.cpp
+	mitiru/TestGWCore.cpp
+	mitiru/TestGWObjects.cpp
+	mitiru/TestGWFormula.cpp
+	mitiru/TestGWManagers.cpp
+	mitiru/TestGWGame.cpp
 )
 
 target_link_libraries(mitiru_tests PRIVATE
