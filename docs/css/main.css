@@ -1761,3 +1761,295 @@ body.search-open {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   Round 34 — home redesign: big hero + polished cards
+   ============================================================ */
+
+/* ── 巨大ヒーロー ─────────────────────────────────── */
+.home-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 5rem 0 6.5rem;
+  text-align: center;
+  color: var(--c-fg);
+  isolation: isolate;
+}
+
+.home-hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(99, 102, 241, 0.22), transparent 45%),
+    radial-gradient(circle at 84% 18%, rgba(236, 72, 153, 0.18), transparent 50%),
+    radial-gradient(circle at 50% 110%, rgba(14, 165, 233, 0.20), transparent 60%),
+    linear-gradient(180deg, #fafbff 0%, #f1f5fb 100%);
+}
+
+[data-theme="dark"] .home-hero__bg {
+  background:
+    radial-gradient(circle at 18% 10%, rgba(99, 102, 241, 0.28), transparent 45%),
+    radial-gradient(circle at 84% 18%, rgba(236, 72, 153, 0.20), transparent 50%),
+    radial-gradient(circle at 50% 110%, rgba(14, 165, 233, 0.22), transparent 60%),
+    linear-gradient(180deg, #0c1020 0%, #131a2d 100%);
+}
+
+.home-hero__inner {
+  position: relative;
+}
+
+.home-hero__title {
+  margin: 0 auto;
+  font-size: clamp(3.5rem, 11vw, 8rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.0;
+  background: linear-gradient(135deg, #1c2330 0%, #2563eb 45%, #ec4899 100%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .home-hero__title {
+  background: linear-gradient(135deg, #f0f3f9 0%, #60a5fa 45%, #f9a8d4 100%);
+  -webkit-background-clip: text;
+          background-clip: text;
+}
+
+.home-hero__sub {
+  margin: 1.4rem auto 2.4rem;
+  max-width: 640px;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  line-height: 1.7;
+  color: var(--c-fg-soft);
+}
+
+.home-hero__cta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+/* ── 大きめボタン + ゴーストボタン ─────────────────── */
+.btn--lg {
+  padding: 0.85rem 1.6rem;
+  font-size: 1rem;
+  border-radius: 10px;
+  box-shadow: var(--c-shadow);
+}
+.btn--lg.btn--primary {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 12px 28px rgba(37, 99, 235, 0.28);
+}
+.btn--lg.btn--primary:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 16px 32px rgba(37, 99, 235, 0.35);
+}
+.btn--ghost {
+  background: transparent;
+  color: var(--c-fg);
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(0, 0, 0, 0.18);
+}
+.btn--ghost:hover {
+  text-decoration-color: var(--c-fg);
+  background: rgba(0, 0, 0, 0.04);
+}
+[data-theme="dark"] .btn--ghost {
+  color: var(--c-fg);
+  text-decoration-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme="dark"] .btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  text-decoration-color: rgba(255, 255, 255, 0.45);
+}
+
+/* ── home リード文 ───────────────────────────────── */
+.home__lead {
+  max-width: 780px;
+  margin: 2.5rem auto 0;
+  padding: 0 1.2rem;
+  font-size: 1.15rem;
+  line-height: 1.85;
+  color: var(--c-fg-soft);
+  text-align: center;
+}
+
+/* ── 3 分でわかる ────────────────────────────────── */
+.three-min { padding: 5rem 0; background: var(--c-bg-alt); }
+.three-min .container { max-width: 980px; }
+.three-min__lede {
+  max-width: 720px;
+  margin: 0.4rem auto 2rem;
+  font-size: 1.05rem;
+  line-height: 1.85;
+  color: var(--c-fg-soft);
+}
+.three-min__code {
+  margin: 0 auto 2.4rem;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(20, 25, 35, 0.10);
+  border: 1px solid var(--c-border);
+}
+.three-min__code pre {
+  margin: 0;
+  padding: 1.1rem 1.4rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  background: var(--c-bg-code) !important;
+  color: #f0f3f9;
+  overflow-x: auto;
+}
+
+.three-min__nextsteps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.three-min__step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.4rem 1.3rem;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  color: var(--c-fg);
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-shadow: var(--c-shadow);
+}
+.three-min__step:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 36px rgba(20, 25, 35, 0.12);
+  border-color: rgba(99, 102, 241, 0.55);
+  text-decoration: none;
+}
+.three-min__step-num {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: var(--c-accent);
+  letter-spacing: 0.18em;
+}
+.three-min__step strong {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.three-min__step span {
+  color: var(--c-fg-soft);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .three-min__nextsteps { grid-template-columns: 1fr; }
+}
+
+/* ── feature-card に絵文字アイコン ─────────────────── */
+.feature-card {
+  position: relative;
+  padding: 1.6rem 1.4rem 1.4rem;
+}
+.feature-card__icon {
+  font-size: 1.8rem;
+  margin-bottom: 0.6rem;
+  line-height: 1;
+}
+.feature-card h3 { font-size: 1.08rem; }
+.feature-card p { font-size: 0.95rem; line-height: 1.75; }
+
+/* ── ヒーロー画像をやさしく演出 ────────────────────── */
+.hero-image {
+  margin: 4rem auto;
+  max-width: 1100px;
+}
+.hero-image__link {
+  display: block;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow:
+    0 30px 60px -20px rgba(20, 25, 35, 0.25),
+    0 0 0 1px var(--c-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hero-image__link:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 40px 70px -22px rgba(20, 25, 35, 0.30),
+    0 0 0 1px rgba(99, 102, 241, 0.45);
+}
+.hero-image__caption {
+  margin-top: 0.9rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--c-fg-soft);
+  line-height: 1.7;
+}
+
+/* ── tutorial cards (チュートリアル一覧) ─────────────── */
+.tutorials-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1.4rem 0 2rem;
+}
+@media (min-width: 780px) {
+  .tutorials-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.tutorial-card {
+  display: block;
+  padding: 1.6rem 1.4rem;
+  background: var(--c-bg-elev);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  color: var(--c-fg);
+  text-decoration: none;
+  box-shadow: var(--c-shadow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.tutorial-card:hover:not(.tutorial-card--coming) {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 36px rgba(20, 25, 35, 0.12);
+  border-color: rgba(99, 102, 241, 0.45);
+  text-decoration: none;
+}
+.tutorial-card--coming {
+  opacity: 0.55;
+  cursor: default;
+}
+.tutorial-card__num {
+  display: inline-block;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  color: var(--c-accent);
+  margin-bottom: 0.5rem;
+}
+.tutorial-card h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.tutorial-card__time {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--c-fg-mute);
+}
+.tutorial-card__desc {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: var(--c-fg-soft);
+}
+
+/* ── 旧 hero (legacy) を home では使わない場合の保険 ── */
+.home-hero + .hero { display: none; }

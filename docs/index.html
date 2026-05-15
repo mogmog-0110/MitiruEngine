@@ -106,7 +106,6 @@
       <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
       <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/adr/">設計の記録</a>
       
 <button type="button"
         class="search-trigger"
@@ -362,17 +361,17 @@
 
   <main class="site-main" data-pagefind-body>
     
-
-
-<section class="hero">
-  <div class="container">
-    <p class="hero__eyebrow">MitiruEngine</p>
-    <h1 class="hero__title">C&#43;&#43; でゲームを書くための、ふだん使いのエンジン</h1>
-    <p class="hero__sub">ヘッダだけで動く C&#43;&#43;20 のゲームエンジン。ゲームのロジックは C&#43;&#43;、UI まわりは HTML/CSS で組めます。</p>
-    <div class="hero__cta">
-      <a class="btn btn--primary" href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめての MitiruEngine →</a>
-      <a class="btn btn--secondary" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
-      <a class="btn btn--ghost" href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧</a>
+<section class="home-hero">
+  <div class="home-hero__bg" aria-hidden="true"></div>
+  <div class="home-hero__inner container">
+    <h1 class="home-hero__title">MitiruEngine</h1>
+    <p class="home-hero__sub">
+      ゲームの中身は C++、画面は HTML/CSS でつくる、C++20 のゲームエンジン。
+    </p>
+    <div class="home-hero__cta">
+      <a class="btn btn--primary btn--lg" href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめての MitiruEngine →</a>
+      <a class="btn btn--secondary btn--lg" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a class="btn btn--ghost btn--lg" href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧</a>
     </div>
   </div>
 </section>
@@ -496,60 +495,69 @@
 
 <section class="features">
   <div class="container">
-    <h2 class="section-title">中身の話</h2>
+    <h2 class="section-title">できること</h2>
+
     <div class="features__grid">
 
       <div class="feature-card">
-        <h3>ヘッダだけで動く</h3>
+        <div class="feature-card__icon" aria-hidden="true">🖼️</div>
+        <h3>HTML/CSS で UI をつくる</h3>
         <p>
-          47 個の名前空間で構成されたヘッダ群を、CMake の FetchContent で取り込んで
-          1 つのターゲットに <code>link</code> するだけ。プリビルドされた .lib や .dll を
-          配って回る必要はありません。
+          ふだん Web で書いている要領で、ゲームの画面まわりをつくれます。
+          フォント、影、グラデーション、アニメーション、レイアウト ——
+          Web で表現できるものはほぼそのまま使えます。
+          コード書き換えのたびに保存するだけで、画面に反映されます。
         </p>
       </div>
 
       <div class="feature-card">
-        <h3>グラフィックスの裏側を選べる</h3>
+        <div class="feature-card__icon" aria-hidden="true">⚙️</div>
+        <h3>ゲームの中身は C++ で書く</h3>
         <p>
-          DX11 / DX12 / Vulkan / OpenGL / WebGL / Null を同じ <code>IDevice</code> で扱います。
-          開発機では DX12、CI のヘッドレス環境では Null に自動で切り替わるので、
-          機械を選ばずビルドが通ります。
+          キャラを動かす、シナリオを進める、当たり判定、AI ——
+          こういう「動き」の部分は C++ で書きます。
+          1 フレームに何が起きたか、どの値がどう変わったかを
+          デバッガで止めて、プロファイラで測って、テストで守れます。
         </p>
       </div>
 
       <div class="feature-card">
-        <h3>Tracy ですぐ測れる</h3>
+        <div class="feature-card__icon" aria-hidden="true">🎮</div>
+        <h3>ノベルゲームの部品が入っている</h3>
         <p>
-          Tracy プロファイラがあらかじめ繋がっています。
-          フレームのどこに時間がかかっているか、GPU タイムラインも含めて、
-          ほぼコードを書かずに見られます。
+          シナリオを JSON で書いて、台詞・分岐・立ち絵・BGM を扱う部品が
+          最初から入っています。「ゼロからノベルエンジンを作る」必要がなくて、
+          すぐに自分のシナリオを動かせます。
         </p>
       </div>
 
       <div class="feature-card">
+        <div class="feature-card__icon" aria-hidden="true">💾</div>
         <h3>セーブデータが壊れにくい</h3>
         <p>
-          JSON ベースのセーブとマイグレーション API がついています。
-          スキーマを変えても、古いセーブが読み込めるしくみが用意されているので、
-          リリース後の更新で「ロード不能」になる事故を避けられます。
+          リリースのあとでセーブの形を変えても、古いセーブが壊れない。
+          スキーマのバージョンを上げるしくみが用意されているので、
+          「アップデートでセーブが読めなくなった」事故を避けられます。
         </p>
       </div>
 
       <div class="feature-card">
-        <h3>データは JSON Schema で守られる</h3>
+        <div class="feature-card__icon" aria-hidden="true">🪟</div>
+        <h3>Windows でビルドが通る</h3>
         <p>
-          ノベルスクリプト、ローカライズ、バランス調整表、アートバイブル。
-          ゲームに食わせる前に Schema で検証されるので、
-          形が違うデータが入り込んで沈黙バグになる事故が減ります。
+          Visual Studio 2022 を入れて、CMake を叩くだけ。
+          Linux / macOS でも動きますが、いちばん踏み固められているのは Windows です。
+          DX11 / DX12 / Vulkan / OpenGL を自動で選びます。
         </p>
       </div>
 
       <div class="feature-card">
-        <h3>テストの土台が用意されている</h3>
+        <div class="feature-card__icon" aria-hidden="true">🆓</div>
+        <h3>MIT ライセンス</h3>
         <p>
-          Catch2 ベースの単体・統合テストがすでに動いています。
-          ブラウザを必要とする検証は Playwright と Chrome DevTools MCP を併用するので、
-          UI が壊れた瞬間に気付けます。
+          商用・非商用ともに、ご自由にどうぞ。
+          つくったゲームのソースを公開する必要もありません。
+          クレジット表記も不要ですが、書いてもらえると喜びます。
         </p>
       </div>
 
