@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VN Hello World | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Smallest possible visual-novel sample (G-09). ScenarioScript DSL through ScenarioExecutor, ScenarioCallback events to stdout.">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/vn_hello_world/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/">
+
+<link rel="alternate" hreflang="en" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/vn_hello_world/">
+
+
+  
+    
+<link rel="alternate" hreflang="x-default" href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/">
+    
+  
+    
+  
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="VN Hello World | MitiruEngine">
+<meta property="og:description" content="Smallest possible visual-novel sample (G-09). ScenarioScript DSL through ScenarioExecutor, ScenarioCallback events to stdout.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/en/examples/vn_hello_world/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="VN Hello World | MitiruEngine">
+<meta name="twitter:description" content="Smallest possible visual-novel sample (G-09). ScenarioScript DSL through ScenarioExecutor, ScenarioCallback events to stdout.">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/en/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="Menu"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/">Home</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">Get Started</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/examples/">Examples</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/docs">Docs</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/">API Reference</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="Search this site"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">Search this site</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">Search this site</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "Search documentation…",
+      clear_search:      "Clear",
+      load_more:         "Load more",
+      search_label:      "Search this site",
+      filters_label:     "Filters",
+      zero_results:      "No results found for [SEARCH_TERM]",
+      many_results:      "[COUNT] results for [SEARCH_TERM]",
+      one_result:        "[COUNT] result for [SEARCH_TERM]",
+      alt_search:        "Showing results for [DISPLAY_QUERY] instead",
+      search_suggestion: "No results for [SEARCH_TERM]. Try [DISPLAY_QUERY]",
+      searching:         "Searching…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+        <span class="site-nav__lang">
+          
+            
+              <a href="https://mogmog-0110.github.io/MitiruEngine/ja/">日本語</a>
+            
+          
+            
+              <strong>English</strong>
+            
+          
+        </span>
+      
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="Toggle dark mode">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+
+
+
+<article class="example-detail container">
+  <header class="example-detail__header">
+    <p class="example-detail__eyebrow">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/examples/">Back to Examples</a>
+       <span class="example-detail__kind example-detail__kind--headless">headless</span>
+    </p>
+    <h1>VN Hello World</h1>
+    <p class="example-detail__lede">Smallest possible visual-novel sample (G-09). ScenarioScript DSL through ScenarioExecutor, ScenarioCallback events to stdout.</p>
+  </header>
+
+  <figure class="example-detail__shot">
+    <img src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_hello_world.png" alt="VN Hello World screenshot"
+         onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';">
+  </figure>
+
+  
+  <aside class="example-detail__apis">
+    <h2>Key APIs</h2>
+    <ul>
+      <li><code>mitiru::vn::ScenarioExecutor</code></li><li><code>ScenarioExecutor::loadFromSource</code></li><li><code>ScenarioCallback subclass (onScene, onBackground, onCharacter, onDialogue, onChoice, onLabel, onJump)</code></li><li><code>ScenarioScript DSL: @scene / @bg / @char / @choice / @label / @jump</code></li>
+    </ul>
+  </aside>
+  
+
+  <div class="example-detail__body">
+    <p>Smallest possible visual-novel sample. Loads a short ScenarioScript DSL
+source from a <code>constexpr</code> string, runs it through
+<code>mitiru::vn::ScenarioExecutor</code>, and prints each event via a
+<code>ScenarioCallback</code> subclass. Headless — no GPU, no font, no window.</p>
+<p>Use this as the starting point for VN-style games where the engine&rsquo;s
+scenario / flag manager / VN flow run in <strong>C++</strong> (pick <code>cef_minimal</code>
+instead if all gameplay should live in JS).</p>
+<h2 id="what-youll-see">What you&rsquo;ll see</h2>
+<ul>
+<li><code>[scene]    prologue</code></li>
+<li><code>[bg]       file=classroom.png ...</code></li>
+<li><code>[char]     name=sakura ...</code></li>
+<li>Dialogue lines printed as <code>[dialogue] sakura: ...</code> or <code>[narration] ...</code></li>
+<li>A <code>[choice]</code> with two options, auto-picking index 0 (<code>&quot;Sure, sounds good!&quot;</code>)</li>
+<li><code>[label] agree</code> → dialogue → <code>[jump] -&gt; ending</code> → final narration</li>
+<li><code>=== end ===</code> and exit <code>0</code></li>
+</ul>
+<p>The <code>onChoice</code> callback always returns <code>0</code> so the run is non-interactive
+and reproducible.</p>
+<h2 id="build-and-run">Build and run</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target mitiru_vn_hello_world
+</span></span><span class="line"><span class="cl">./build/examples/vn_hello_world/Debug/mitiru_vn_hello_world
+</span></span></code></pre></div><h2 id="known-issues">Known issues</h2>
+<p><code>@if</code>/<code>@endif</code> branching is not used here because the parser currently
+drops <code>@endif</code> as an unknown command (G-08). Branching is implemented via
+<code>@choice</code> → <code>@label</code> instead. See <code>vn_game_hybrid</code> for a C++-level
+branching pattern that sidesteps this.</p>
+<!-- Screenshot pending; run tools/site/capture_examples.py to generate -->
+
+  </div>
+
+  
+  <p class="example-detail__source">
+    <a class="link-arrow" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/vn_hello_world">Source on GitHub &rarr;</a>
+  </p>
+  
+</article>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">MitiruEngine</p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">License</h2>
+      <p>Permissive open-source. See <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a>.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">Project Status</h2>
+      <p>Header-only. 2254 Catch2 tests green.</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

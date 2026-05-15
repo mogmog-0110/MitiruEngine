@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::animation | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Animation system: clip definitions, blend trees, state machines, and the per-entity animation controller that drives skeletal and sprite-sheet animations.">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-animation/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/">
+
+<link rel="alternate" hreflang="en" href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-animation/">
+
+
+  
+    
+<link rel="alternate" hreflang="x-default" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/">
+    
+  
+    
+  
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::animation | MitiruEngine">
+<meta property="og:description" content="Animation system: clip definitions, blend trees, state machines, and the per-entity animation controller that drives skeletal and sprite-sheet animations.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-animation/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::animation | MitiruEngine">
+<meta name="twitter:description" content="Animation system: clip definitions, blend trees, state machines, and the per-entity animation controller that drives skeletal and sprite-sheet animations.">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/en/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="Menu"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/">Home</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">Get Started</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/examples/">Examples</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/docs">Docs</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/">API Reference</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="Search this site"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">Search this site</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">Search this site</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "Search documentation…",
+      clear_search:      "Clear",
+      load_more:         "Load more",
+      search_label:      "Search this site",
+      filters_label:     "Filters",
+      zero_results:      "No results found for [SEARCH_TERM]",
+      many_results:      "[COUNT] results for [SEARCH_TERM]",
+      one_result:        "[COUNT] result for [SEARCH_TERM]",
+      alt_search:        "Showing results for [DISPLAY_QUERY] instead",
+      search_suggestion: "No results for [SEARCH_TERM]. Try [DISPLAY_QUERY]",
+      searching:         "Searching…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+        <span class="site-nav__lang">
+          
+            
+              <a href="https://mogmog-0110.github.io/MitiruEngine/ja/">日本語</a>
+            
+          
+            
+              <strong>English</strong>
+            
+          
+        </span>
+      
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="Toggle dark mode">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<div class="api-page container">
+  <aside class="api-sidebar" aria-label="Namespaces">
+  <details class="api-sidebar__collapsible" open>
+    <summary>Namespaces</summary>
+    <nav>
+      <ul>
+        
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru/"
+               >
+              mitiru
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-adapter/"
+               >
+              mitiru::adapter
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-animation/"
+               aria-current="page" class="is-active">
+              mitiru::animation
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-asset/"
+               >
+              mitiru::asset
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-assets/"
+               >
+              mitiru::assets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-audio/"
+               >
+              mitiru::audio
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-bridge/"
+               >
+              mitiru::bridge
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-bridge-detail/"
+               >
+              mitiru::bridge::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-cef/"
+               >
+              mitiru::cef
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-cef-bridges/"
+               >
+              mitiru::cef::bridges
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-control/"
+               >
+              mitiru::control
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-core/"
+               >
+              mitiru::core
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-data/"
+               >
+              mitiru::data
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-debug/"
+               >
+              mitiru::debug
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-ecs/"
+               >
+              mitiru::ecs
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-effects/"
+               >
+              mitiru::effects
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-fsm/"
+               >
+              mitiru::fsm
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-game/"
+               >
+              mitiru::game
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-gfx/"
+               >
+              mitiru::gfx
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-gfx-dx12/"
+               >
+              mitiru::gfx::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-i18n/"
+               >
+              mitiru::i18n
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-input/"
+               >
+              mitiru::input
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-live2d/"
+               >
+              mitiru::live2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-math/"
+               >
+              mitiru::math
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-narrative/"
+               >
+              mitiru::narrative
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-network/"
+               >
+              mitiru::network
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-observe/"
+               >
+              mitiru::observe
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-physics/"
+               >
+              mitiru::physics
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-physics2d/"
+               >
+              mitiru::physics2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-physics3d/"
+               >
+              mitiru::physics3d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-platform/"
+               >
+              mitiru::platform
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-render/"
+               >
+              mitiru::render
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-render-dx12/"
+               >
+              mitiru::render::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-resource/"
+               >
+              mitiru::resource
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-scene/"
+               >
+              mitiru::scene
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-screen_detail/"
+               >
+              mitiru::screen_detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-server/"
+               >
+              mitiru::server
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-server-detail/"
+               >
+              mitiru::server::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-sprite/"
+               >
+              mitiru::sprite
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-time/"
+               >
+              mitiru::time
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-time-detail/"
+               >
+              mitiru::time::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-ui/"
+               >
+              mitiru::ui
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-ui-layoutpresets/"
+               >
+              mitiru::ui::LayoutPresets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-util/"
+               >
+              mitiru::util
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-validate/"
+               >
+              mitiru::validate
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-vn/"
+               >
+              mitiru::vn
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-world/"
+               >
+              mitiru::world
+            </a>
+          </li>
+        
+      </ul>
+    </nav>
+  </details>
+</aside>
+
+  <article class="api-page__article">
+    <header>
+      <h1>mitiru::animation</h1>
+      <p class="api-page__description">Animation system: clip definitions, blend trees, state machines, and the per-entity animation controller that drives skeletal and sprite-sheet animations.</p>
+    </header>
+    <div class="api-page__content">
+      <p class="api-namespace__lede">Animation system: clip definitions, blend trees, state machines, and the per-entity animation controller that drives skeletal and sprite-sheet animations.</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#struct-keyframe"><code>Keyframe</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-animtrack"><code>AnimTrack</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-animation"><code>Animation</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-animationplayer"><code>AnimationPlayer</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#struct-joint"><code>Joint</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-ikchain"><code>IKChain</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-fabriksolver"><code>FABRIKSolver</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-iblendnode"><code>IBlendNode</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#class-clipnode"><code>ClipNode</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-blendnode"><code>BlendNode</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-animationstatemachine"><code>AnimationStateMachine</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#struct-mat4"><code>Mat4</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#class-ozzskeleton"><code>OzzSkeleton</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#class-ozzanimation"><code>OzzAnimation</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-iozzanimationsampler"><code>IOzzAnimationSampler</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-ozzanimationsampler"><code>OzzAnimationSampler</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#class-nullozzanimationsampler"><code>NullOzzAnimationSampler</code></a></td><td>class</td><td>22</td></tr>
+<tr><td><a href="#struct-tween"><code>Tween</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#class-tweenmanager"><code>TweenManager</code></a></td><td>class</td><td>6</td></tr>
+</tbody></table>
+<details class="api-class" id="struct-keyframe" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Keyframe</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float time</code></div>
+<div class="api-method"><code>float value</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animtrack" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimTrack</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string property</code></div>
+<div class="api-method"><code>std::vector&lt;Keyframe&gt; keys</code></div>
+<div class="api-method"><code>std::function&lt;void(float)&gt; setter</code></div>
+<div class="api-method"><code>[[nodiscard]] float evaluate(float t) const</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animation" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Animation</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>float duration = 1.0f</code></div>
+<div class="api-method"><code>bool loop = false</code></div>
+<div class="api-method"><code>std::vector&lt;AnimTrack&gt; tracks</code></div>
+</div>
+</details>
+<details class="api-class" id="class-animationplayer" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AnimationPlayer</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void addAnimation(const Animation&amp; anim)</code></div>
+<div class="api-method"><code>void play(const std::string&amp; name)</code></div>
+<div class="api-method"><code>void stop()</code></div>
+<div class="api-method"><code>void update(float dt)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isPlaying() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float currentTime() const noexcept</code></div>
+<div class="api-method"><code>void setSpeed(float s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float speed() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string currentAnimation() const</code></div>
+<div class="api-method"><code>[[nodiscard]] int animationCount() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-joint" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Joint</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float length = 1.0f</code></div>
+<div class="api-method"><code>int parentIndex = -1</code></div>
+<div class="api-method"><code>std::string name</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ikchain" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">IKChain</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;int&gt; jointIndices</code></div>
+<div class="api-method"><code>float tolerance = 0.01f</code></div>
+<div class="api-method"><code>int maxIterations = 20</code></div>
+</div>
+</details>
+<details class="api-class" id="class-fabriksolver">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">FABRIKSolver</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void setJoints(std::vector&lt;Joint&gt; joints)</code></div>
+<div class="api-method"><code>bool solve(const IKChain&amp; chain)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;Joint&gt;&amp; joints() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;Joint&gt;&amp; joints() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-iblendnode">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IBlendNode</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IBlendNode() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual float evaluate(float time) const = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual const char* typeName() const noexcept = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-clipnode">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ClipNode</code> <span class="api-class__extra">: public IBlendNode</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit ClipNode(std::string clipName, float duration = 1.0f)</code></div>
+<div class="api-method"><code>[[nodiscard]] float evaluate(float time) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] const char* typeName() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; clipName() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-blendnode">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BlendNode</code> <span class="api-class__extra">: public IBlendNode</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BlendNode(std::unique_ptr&lt;IBlendNode&gt; a, std::unique_ptr&lt;IBlendNode&gt; b, float weight = 0.5f)</code></div>
+<div class="api-method"><code>[[nodiscard]] float evaluate(float time) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] const char* typeName() const noexcept override</code></div>
+<div class="api-method"><code>void setWeight(float w) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-animationstatemachine">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AnimationStateMachine</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void addState(const std::string&amp; name, std::unique_ptr&lt;IBlendNode&gt; node)</code></div>
+<div class="api-method"><code>void addTransition(Transition t)</code></div>
+<div class="api-method"><code>void update(float dt)</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; currentState() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float currentTime() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] size_t stateCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IOzzAnimationSampler&gt; createAnimationSampler()</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-mat4">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Mat4</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static constexpr Mat4 identity() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-ozzskeleton">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OzzSkeleton</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool loadFromFile([[maybe_unused]] std::string_view path)</code></div>
+<div class="api-method"><code>[[nodiscard]] int jointCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string jointName([[maybe_unused]] int index) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isLoaded() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const ozz::animation::Skeleton&amp; raw() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-ozzanimation">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OzzAnimation</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool loadFromFile([[maybe_unused]] std::string_view path)</code></div>
+<div class="api-method"><code>[[nodiscard]] float duration() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isLoaded() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const ozz::animation::Animation&amp; raw() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-iozzanimationsampler">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IOzzAnimationSampler</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IOzzAnimationSampler() = default</code></div>
+<div class="api-method"><code>virtual void setSkeleton(std::shared_ptr&lt;OzzSkeleton&gt; skeleton) = 0</code></div>
+<div class="api-method"><code>virtual void play(std::shared_ptr&lt;OzzAnimation&gt; animation) = 0</code></div>
+<div class="api-method"><code>virtual void stop() = 0</code></div>
+<div class="api-method"><code>virtual void update(float dt) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::vector&lt;Mat4&gt; getLocalTransforms() const = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::vector&lt;Mat4&gt; getWorldTransforms() const = 0</code></div>
+<div class="api-method"><code>virtual void blendWith(const IOzzAnimationSampler&amp; other, float weight) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual float currentTime() const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual bool isPlaying() const noexcept = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-ozzanimationsampler">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OzzAnimationSampler</code> <span class="api-class__extra">: public IOzzAnimationSampler</span> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void setSkeleton(std::shared_ptr&lt;OzzSkeleton&gt; skeleton) override</code></div>
+<div class="api-method"><code>void play(std::shared_ptr&lt;OzzAnimation&gt; animation) override</code></div>
+<div class="api-method"><code>void stop() override</code></div>
+<div class="api-method"><code>void update(float dt) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;Mat4&gt; getLocalTransforms() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;Mat4&gt; getWorldTransforms() const override</code></div>
+<div class="api-method"><code>void blendWith([[maybe_unused]] const IOzzAnimationSampler&amp; other, [[maybe_unused]] float weight) override</code></div>
+<div class="api-method"><code>[[nodiscard]] float currentTime() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isPlaying() const noexcept override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-nullozzanimationsampler">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NullOzzAnimationSampler</code> <span class="api-class__extra">: public IOzzAnimationSampler</span> <span class="api-class__count">22</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void setSkeleton(std::shared_ptr&lt;OzzSkeleton&gt; skeleton) override</code></div>
+<div class="api-method"><code>void play(std::shared_ptr&lt;OzzAnimation&gt; animation) override</code></div>
+<div class="api-method"><code>void stop() override</code></div>
+<div class="api-method"><code>void update(float dt) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;Mat4&gt; getLocalTransforms() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;Mat4&gt; getWorldTransforms() const override</code></div>
+<div class="api-method"><code>void blendWith([[maybe_unused]] const IOzzAnimationSampler&amp; other, [[maybe_unused]] float weight) override</code></div>
+<div class="api-method"><code>[[nodiscard]] float currentTime() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isPlaying() const noexcept override</code></div>
+<div class="api-method"><code>using EaseFunc = float (*)(float);</code></div>
+<div class="api-method"><code>inline float linear(float t) noexcept</code></div>
+<div class="api-method"><code>inline float inQuad(float t) noexcept</code></div>
+<div class="api-method"><code>inline float outQuad(float t) noexcept</code></div>
+<div class="api-method"><code>inline float inOutQuad(float t) noexcept</code></div>
+<div class="api-method"><code>inline float inCubic(float t) noexcept</code></div>
+<div class="api-method"><code>inline float outCubic(float t) noexcept</code></div>
+<div class="api-method"><code>inline float inOutCubic(float t) noexcept</code></div>
+<div class="api-method"><code>inline float inBack(float t) noexcept</code></div>
+<div class="api-method"><code>inline float outBack(float t) noexcept</code></div>
+<div class="api-method"><code>inline float outElastic(float t) noexcept</code></div>
+<div class="api-method"><code>inline float outBounce(float t) noexcept</code></div>
+<div class="api-method"><code>inline float inBounce(float t) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-tween">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Tween</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float from = 0.0f</code></div>
+<div class="api-method"><code>float to = 1.0f</code></div>
+<div class="api-method"><code>float duration = 1.0f</code></div>
+<div class="api-method"><code>float elapsed = 0.0f</code></div>
+<div class="api-method"><code>float delay = 0.0f</code></div>
+<div class="api-method"><code>EaseFunc easing = ease::linear</code></div>
+<div class="api-method"><code>bool finished = false</code></div>
+<div class="api-method"><code>bool autoRemove = true</code></div>
+<div class="api-method"><code>std::function&lt;void(float)&gt; onUpdate</code></div>
+<div class="api-method"><code>std::function&lt;void()&gt; onComplete</code></div>
+<div class="api-method"><code>[[nodiscard]] float value() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float progress() const noexcept</code></div>
+<div class="api-method"><code>void update(float dt)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-tweenmanager">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TweenManager</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Tween&amp; add(float from, float to, float duration, EaseFunc easing = ease::linear, std::function&lt;void(float)&gt; onUpdate = nullptr)</code></div>
+<div class="api-method"><code>Tween&amp; addDelayed(float from, float to, float duration, float delay, EaseFunc easing = ease::linear, std::function&lt;void(float)&gt; onUpdate = nullptr)</code></div>
+<div class="api-method"><code>void update(float dt)</code></div>
+<div class="api-method"><code>void clear()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t count() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool allDone() const noexcept</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+    </div>
+  </article>
+  
+<aside class="api-toc" aria-label="On this page">
+  <p class="api-toc__title">On this page</p>
+  <nav id="TableOfContents"></nav>
+</aside>
+
+
+</div>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">MitiruEngine</p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">License</h2>
+      <p>Permissive open-source. See <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a>.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">Project Status</h2>
+      <p>Header-only. 2254 Catch2 tests green.</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

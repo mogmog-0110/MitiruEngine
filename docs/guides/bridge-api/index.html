@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bridge API Contract | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Responsibilities and shape of the JS-to-C&#43;&#43; and C&#43;&#43;-to-JS bridge surface — signals in, view commands out.">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/guides/bridge-api/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/guides/bridge-api/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="Bridge API Contract | MitiruEngine">
+<meta property="og:description" content="Responsibilities and shape of the JS-to-C&#43;&#43; and C&#43;&#43;-to-JS bridge surface — signals in, view commands out.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/guides/bridge-api/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Bridge API Contract | MitiruEngine">
+<meta name="twitter:description" content="Responsibilities and shape of the JS-to-C&#43;&#43; and C&#43;&#43;-to-JS bridge surface — signals in, view commands out.">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/docs">ドキュメント</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+        <span class="site-nav__lang">
+          
+            
+              <strong>日本語</strong>
+            
+          
+            
+              <a href="https://mogmog-0110.github.io/MitiruEngine/en/">English</a>
+            
+          
+        </span>
+      
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<article class="page-article container">
+  <header class="page-article__header">
+    <p class="page-article__eyebrow">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/guides/">Guides</a>
+    </p>
+    <h1>Bridge API Contract</h1>
+    <p class="page-article__lede">Responsibilities and shape of the JS-to-C&#43;&#43; and C&#43;&#43;-to-JS bridge surface — signals in, view commands out.</p>
+    
+      <p class="page-article__source">
+        Source of truth:
+        <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/BRIDGE_API_CONTRACT.md"><code>docs/BRIDGE_API_CONTRACT.md</code></a>
+      </p>
+    
+  </header>
+  <div class="page-article__body">
+    <h1 id="bridge-api-contract--mitiruengine-cef-bridge-責務定義">Bridge API Contract — MitiruEngine CEF Bridge 責務定義</h1>
+<blockquote>
+<p><strong>関連</strong>: <a href="https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/">ADR 0001</a> — C++ gameplay + CEF は View 専用</p>
+</blockquote>
+<hr>
+<h2 id="1-責務定義">1. 責務定義</h2>
+<p>ADR 0001 のアーキテクチャピボット (2026-05-14) により、bridge は <strong>薄い signal 層</strong> として再定義された。</p>
+<h3 id="11-js--c-で許可される用途">1.1 JS → C++ で許可される用途</h3>
+<table>
+  <thead>
+      <tr>
+          <th>用途</th>
+          <th>説明</th>
+          <th>例</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>入力 signal の発火</strong></td>
+          <td>ポインタ / キー操作を C++ 入力系に転送する</td>
+          <td>ドラッグ操作、タップ、キー押下</td>
+      </tr>
+      <tr>
+          <td><strong>UI イベントの発火</strong></td>
+          <td>ボタンクリック、メニュー選択など UI 上の操作を通知する</td>
+          <td>スタートボタン押下、メニュー項目選択</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>JS → C++ で禁止される用途</strong> (§4 アンチパターン参照):</p>
+<ul>
+<li>ゲームプレイ状態の問い合わせ・書き換え</li>
+<li>シーン分岐の指示</li>
+<li>計算の委託と結果受け取り</li>
+<li>gameplay 関数の直接 RPC 呼び出し</li>
+</ul>
+<h3 id="12-c--js-で許可される用途">1.2 C++ → JS で許可される用途</h3>
+<table>
+  <thead>
+      <tr>
+          <th>用途</th>
+          <th>説明</th>
+          <th>例</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>状態通知</strong></td>
+          <td>C++ が持つ gameplay state の変化を JS に伝える</td>
+          <td>HP 変化、スコア更新、フラグ変化</td>
+      </tr>
+      <tr>
+          <td><strong>DOM 更新指示</strong></td>
+          <td>表示すべき内容を JS に伝え、JS が DOM を操作する</td>
+          <td>ダイアログ表示、HUD 更新、エフェクト発火</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>C++ → JS で禁止される用途</strong>:</p>
+<ul>
+<li>gameplay 判定の依頼</li>
+<li>「次に何をすべきか」の問い合わせ</li>
+<li>JS 側での状態計算を期待する呼び出し</li>
+</ul>
+<hr>
+<h2 id="2-現状の-api-surface">2. 現状の API surface</h2>
+<blockquote>
+<p><strong>注</strong>: 以下は 2026-05-14 時点の実装に基づく要約。実装ファイルを正として参照すること。</p>
+</blockquote>
+<h3 id="21-低レベル-transport-includemitirucefmitirucefbridgehpp">2.1 低レベル transport (<code>include/mitiru/cef/MitiruCefBridge.hpp</code>)</h3>
+<pre tabindex="0"><code>request 形式: &#34;handlerName|payload&#34;
+             or &#34;handlerName&#34;  (payload なし)
+</code></pre><p><code>MitiruCefBridge::registerHandler(name, fn)</code> で任意の handler 名を登録できる。
+JS 側からは <code>window.cefQuery({ request: &quot;handler|payload&quot;, onSuccess, onFailure })</code> で呼ぶ。</p>
+<p>C++ → JS push は <code>MitiruCefBridge::executeJavaScript(browser, code)</code> で任意 JS を実行する。</p>
+<h3 id="22-型付き-stateevent-層-includemitirucefstatestorehpp">2.2 型付き state/event 層 (<code>include/mitiru/cef/StateStore.hpp</code>)</h3>
+<p><code>StateStore</code> は低レベル transport の上に構築された typed API:</p>
+<table>
+  <thead>
+      <tr>
+          <th>C++ メソッド</th>
+          <th>方向</th>
+          <th>用途</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>store.set(key, value)</code></td>
+          <td>C++ → JS</td>
+          <td>状態値を broadcast。JS の <code>window.mitiru.onStateChange(key, fn)</code> が受け取る</td>
+      </tr>
+      <tr>
+          <td><code>store.emit(name, payload)</code></td>
+          <td>C++ → JS</td>
+          <td>one-shot イベント発火。JS の <code>window.mitiru.on(name, fn)</code> が受け取る</td>
+      </tr>
+      <tr>
+          <td><code>store.onAction(action, fn)</code></td>
+          <td>JS → C++</td>
+          <td><code>window.mitiru.dispatch(action, payload)</code> を受け取る handler を登録する</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>現状の handler 名 (StateStore 経由)</strong>:</p>
+<ul>
+<li><code>state.dispatch</code> — JS <code>window.mitiru.dispatch()</code> のエントリポイント (StateStore 内部)</li>
+</ul>
+<h3 id="23-audio-bridge-includemitirucefaudiobridgehpp">2.3 Audio bridge (<code>include/mitiru/cef/AudioBridge.hpp</code>)</h3>
+<p>登録される handler 名 (<code>window.cefQuery({ request: &quot;...&quot; })</code> 形式):</p>
+<table>
+  <thead>
+      <tr>
+          <th>Handler</th>
+          <th>payload 形式</th>
+          <th>内容</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>audio.playBgm</code></td>
+          <td><code>&quot;BGM_KEY&quot;</code></td>
+          <td>BGM 再生 (同キーなら no-op)</td>
+      </tr>
+      <tr>
+          <td><code>audio.stopBgm</code></td>
+          <td>(なし)</td>
+          <td>BGM 停止</td>
+      </tr>
+      <tr>
+          <td><code>audio.crossFadeBgm</code></td>
+          <td><code>&quot;BGM_KEY|duration_ms&quot;</code></td>
+          <td>BGM クロスフェード</td>
+      </tr>
+      <tr>
+          <td><code>audio.playSe</code></td>
+          <td><code>&quot;SE_KEY&quot;</code></td>
+          <td>SE 再生</td>
+      </tr>
+      <tr>
+          <td><code>audio.setCategoryVolume</code></td>
+          <td><code>&quot;bgm|0.8&quot;</code></td>
+          <td>カテゴリ別 volume</td>
+      </tr>
+      <tr>
+          <td><code>audio.setMasterVolume</code></td>
+          <td><code>&quot;0.8&quot;</code></td>
+          <td>マスター volume</td>
+      </tr>
+      <tr>
+          <td><code>audio.currentBgm</code></td>
+          <td>(なし)</td>
+          <td>現在 BGM key を返す (C++ → JS response)</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="24-シーン遷移-bridge-includemitirucefscenetransitionhpp">2.4 シーン遷移 bridge (<code>include/mitiru/cef/SceneTransition.hpp</code>)</h3>
+<table>
+  <thead>
+      <tr>
+          <th>Handler</th>
+          <th>payload</th>
+          <th>内容</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>__mitiru_scene_next__</code></td>
+          <td>(内部用)</td>
+          <td>フェードアウト完了後に JS timer が呼ぶ。C++ が <code>loadUrl()</code> を実行する</td>
+      </tr>
+  </tbody>
+</table>
+<p>C++ → JS push は <code>executeJavaScript</code> 経由でオーバーレイ <code>&lt;div&gt;</code> の CSS を直接操作する。</p>
+<h3 id="25-bridge-スキーマ定義-bridges">2.5 bridge スキーマ定義 (<code>bridges/</code>)</h3>
+<p><code>bridges/save.bridge.json</code>, <code>bridges/telemetry.bridge.json</code> — 検証用スキーマ。
+正規実装は <code>web/mitiru_runtime/</code> の JS。C++ dispatch が必要な method は JSON に <code>jsOnly: false</code> (暗黙) で定義されている。</p>
+<p>save bridge の C++ dispatch handler:</p>
+<table>
+  <thead>
+      <tr>
+          <th>Handler (推定)</th>
+          <th>内容</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>save.write</code></td>
+          <td>スロットへのセーブ</td>
+      </tr>
+      <tr>
+          <td><code>save.read</code></td>
+          <td>スロットからのロード</td>
+      </tr>
+      <tr>
+          <td><code>save.list</code></td>
+          <td>スロット一覧取得</td>
+      </tr>
+      <tr>
+          <td><code>save.delete</code></td>
+          <td>スロット削除</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="26-includemitirubridge-ディレクトリ-sgc-統合-bridge-群">2.6 <code>include/mitiru/bridge/</code> ディレクトリ (sgc 統合 bridge 群)</h3>
+<p><code>UiBridge</code>, <code>DialogueBridge</code>, <code>AnimationBridge</code>, <code>PhysicsBridge</code> 等は <strong>C++ 内部 bridge</strong> であり、CEF transport とは独立している。これらは sgc ライブラリと Mitiru engine をつなぐ adapter であって、JS ↔ C++ 通信の経路には含まれない。</p>
+<blockquote>
+<p><strong>未確認</strong>: <code>include/mitiru/bridge/</code> 内の bridge が CEF handler を直接登録するかどうかは、各ファイルの実装を個別確認すること。本 doc 執筆時点では C++ 内部 API として扱う。</p>
+</blockquote>
+<hr>
+<h2 id="3-新責務での-api-surface">3. 新責務での API surface</h2>
+<p>ADR 0001 に従い、bridge は以下の 2 カテゴリのみを持つ。</p>
+<h3 id="31-js--c-request-handler-命名規則">3.1 JS → C++ request handler 命名規則</h3>
+<p><strong>形式</strong>: <code>&lt;カテゴリ&gt;.&lt;アクション&gt;</code></p>
+<p><strong>許可カテゴリ</strong>:</p>
+<table>
+  <thead>
+      <tr>
+          <th>カテゴリ</th>
+          <th>用途</th>
+          <th>例</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>input</code></td>
+          <td>ポインタ / キー / タッチ操作の転送</td>
+          <td><code>input.pointer</code>, <code>input.key</code></td>
+      </tr>
+      <tr>
+          <td><code>ui</code></td>
+          <td>UI ウィジェットの操作通知</td>
+          <td><code>ui.button</code>, <code>ui.menu.select</code></td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>カテゴリ禁止事項</strong>:</p>
+<ul>
+<li><code>command.*</code> — 禁止。gameplay への命令形 RPC</li>
+<li><code>state.*</code> — 禁止。gameplay state の読み書き (§4 アンチパターン参照)</li>
+<li><code>scene.*</code> — 禁止。シーン分岐の指示</li>
+<li><code>game.*</code> — 禁止。gameplay 関数の直接呼び出し</li>
+</ul>
+<p><strong>標準 handler 一覧 (目標)</strong>:</p>
+<pre tabindex="0"><code>input.pointer         // ポインタ操作 (pointerdown/move/up)
+input.key             // キーボード入力
+ui.button             // ボタンクリック通知
+ui.menu.select        // メニュー項目選択通知
+ui.slider.change      // スライダー値変更通知
+ui.dialog.close       // ダイアログ閉じる操作通知
+ui.option.select      // 選択肢 (ノベル等) 選択通知
+</code></pre><p><strong>payload スキーマ</strong>: JSON。 <code>|</code> セパレータは低レベル transport の実装詳細であり、
+新規 handler は JSON payload を使うこと。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsonc" data-lang="jsonc"><span class="line"><span class="cl"><span class="c1">// input.pointer 例
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;pointerdown&#34;</span> <span class="err">|</span> <span class="s2">&#34;pointermove&#34;</span> <span class="err">|</span> <span class="s2">&#34;pointerup&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;x&#34;</span><span class="p">:</span> <span class="mi">320</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;y&#34;</span><span class="p">:</span> <span class="mi">240</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;pointerId&#34;</span><span class="p">:</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ui.button 例
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;id&#34;</span><span class="p">:</span> <span class="s2">&#34;start-button&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ui.menu.select 例
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;menuId&#34;</span><span class="p">:</span> <span class="s2">&#34;main-menu&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;itemId&#34;</span><span class="p">:</span> <span class="s2">&#34;new-game&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="32-c--js-push-channel-命名規則">3.2 C++ → JS push channel 命名規則</h3>
+<p><strong>形式</strong>: <code>view.&lt;サブシステム&gt;.&lt;キー&gt;</code></p>
+<p><code>StateStore::set()</code> / <code>StateStore::emit()</code> を使う。<code>executeJavaScript</code> 直接呼び出しは内部実装詳細にとどめ、公開 API としては使わない。</p>
+<p><strong>キー体系</strong>:</p>
+<table>
+  <thead>
+      <tr>
+          <th>prefix</th>
+          <th>用途</th>
+          <th>例</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>view.hud.*</code></td>
+          <td>HUD の表示値更新</td>
+          <td><code>view.hud.hp</code>, <code>view.hud.score</code>, <code>view.hud.ammo</code></td>
+      </tr>
+      <tr>
+          <td><code>view.dialog.*</code></td>
+          <td>ダイアログ / ノベル表示制御</td>
+          <td><code>view.dialog.show</code>, <code>view.dialog.speaker</code>, <code>view.dialog.text</code></td>
+      </tr>
+      <tr>
+          <td><code>view.transition.*</code></td>
+          <td>シーン遷移制御</td>
+          <td><code>view.transition.begin</code>, <code>view.transition.end</code></td>
+      </tr>
+      <tr>
+          <td><code>view.effect.*</code></td>
+          <td>演出トリガー</td>
+          <td><code>view.effect.flash</code>, <code>view.effect.shake</code></td>
+      </tr>
+      <tr>
+          <td><code>view.menu.*</code></td>
+          <td>メニュー表示制御</td>
+          <td><code>view.menu.open</code>, <code>view.menu.items</code></td>
+      </tr>
+      <tr>
+          <td><code>view.status.*</code></td>
+          <td>プレイヤー / 敵ステータス表示</td>
+          <td><code>view.status.player</code>, <code>view.status.enemy</code></td>
+      </tr>
+  </tbody>
+</table>
+<p><strong><code>set()</code> vs <code>emit()</code> の使い分け</strong>:</p>
+<ul>
+<li><code>set(key, value)</code> — 遅れて購読した JS も最新値を受け取れる。HUD 値のような <strong>保持が必要な状態</strong> に使う</li>
+<li><code>emit(name, payload)</code> — one-shot。アニメーション発火など <strong>保持不要のイベント</strong> に使う</li>
+</ul>
+<p><strong>payload スキーマ例</strong>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsonc" data-lang="jsonc"><span class="line"><span class="cl"><span class="c1">// StateStore::set(&#34;view.hud.hp&#34;, 85)
+</span></span></span><span class="line"><span class="cl"><span class="c1">// JS: window.mitiru.onStateChange(&#39;view.hud.hp&#39;, v =&gt; hud.setHp(v))
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">// StateStore::emit(&#34;view.effect.flash&#34;, {color: &#34;#ff0000&#34;, duration: 200})
+</span></span></span><span class="line"><span class="cl"><span class="c1">// JS: window.mitiru.on(&#39;view.effect.flash&#39;, p =&gt; playFlash(p.color, p.duration))
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">// StateStore::set(&#34;view.dialog.show&#34;, {
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   speaker: &#34;マリア&#34;,
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   text: &#34;こんにちは！&#34;,
+</span></span></span><span class="line"><span class="cl"><span class="c1">//   choices: []
+</span></span></span><span class="line"><span class="cl"><span class="c1">// })
+</span></span></span></code></pre></div><hr>
+<h2 id="4-アンチパターン">4. アンチパターン</h2>
+<p>以下の 5 パターンは新設計で <strong>明示的に禁止</strong> する。</p>
+<h3 id="ap-1-js-が-state-machine-を持つ">AP-1: JS が state machine を持つ</h3>
+<p><strong>禁止例</strong>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="c1">// NG: JS 側でクッキング状態を管理する
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">let</span> <span class="nx">cookingState</span> <span class="o">=</span> <span class="s1">&#39;idle&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="nb">window</span><span class="p">.</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">onStateChange</span><span class="p">(</span><span class="s1">&#39;cooking.ingredient_dropped&#39;</span><span class="p">,</span> <span class="p">({</span><span class="nx">ingredientId</span><span class="p">})</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nx">cookingState</span> <span class="o">===</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">cookingState</span> <span class="o">=</span> <span class="s1">&#39;mixing&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// ... 状態遷移ロジックが JS に増殖する
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span></code></pre></div><p><strong>正しい実装</strong>: クッキング状態機械は C++ に置く。JS は <code>view.cooking.state</code> の変化通知を受けて DOM を更新するだけ。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// C++: 状態遷移はここで完結する
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kt">void</span> <span class="n">CookingScene</span><span class="o">::</span><span class="n">onIngredientDropped</span><span class="p">(</span><span class="n">IngredientId</span> <span class="n">id</span><span class="p">,</span> <span class="n">SlotId</span> <span class="n">slot</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">m_stateMachine</span><span class="p">.</span><span class="n">transition</span><span class="p">(</span><span class="n">Event</span><span class="o">::</span><span class="n">IngredientDropped</span><span class="p">{</span><span class="n">id</span><span class="p">,</span> <span class="n">slot</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">    <span class="n">m_stateStore</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.cooking.state&#34;</span><span class="p">,</span> <span class="n">m_stateMachine</span><span class="p">.</span><span class="n">currentStateName</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="ap-2-js-が-tutorial-完了--シーン分岐を判定する">AP-2: JS が tutorial 完了 / シーン分岐を判定する</h3>
+<p><strong>禁止例</strong>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="c1">// NG: JS がシーン遷移を決める
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nb">window</span><span class="p">.</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">onStateChange</span><span class="p">(</span><span class="s1">&#39;tutorial.step&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">step</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nx">step</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// tutorial 完了と判断して次のシーンへ
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nb">window</span><span class="p">.</span><span class="nx">cefQuery</span><span class="p">({</span> <span class="nx">request</span><span class="o">:</span> <span class="s1">&#39;scene.load|game_main.html&#39;</span> <span class="p">});</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span></code></pre></div><p><strong>正しい実装</strong>: 分岐判定は C++。JS は <code>view.transition.begin</code> を受けて画面を切り替えるだけ。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// C++: tutorial 完了条件の判定と遷移指示はここで行う
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kt">void</span> <span class="n">TutorialScene</span><span class="o">::</span><span class="n">onStepComplete</span><span class="p">(</span><span class="kt">int</span> <span class="n">step</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">step</span> <span class="o">&gt;=</span> <span class="n">TUTORIAL_COMPLETE_STEP</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">m_stateStore</span><span class="p">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&#34;view.transition.begin&#34;</span><span class="p">,</span> <span class="p">{{</span><span class="s">&#34;url&#34;</span><span class="p">,</span> <span class="s">&#34;game_main.html&#34;</span><span class="p">}});</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="ap-3-c-が計算を-js-に投げて結果を受け取る">AP-3: C++ が計算を JS に投げて結果を受け取る</h3>
+<p><strong>禁止例</strong>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// NG: C++ が JS に計算させてコールバックで受け取る
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">bridge</span><span class="p">.</span><span class="n">executeJavaScript</span><span class="p">(</span><span class="s">&#34;window.__result = computeDamage(&#34;</span> <span class="o">+</span> <span class="n">params</span> <span class="o">+</span> <span class="s">&#34;)&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// ... 後で __result を読み出す
+</span></span></span></code></pre></div><p><strong>正しい実装</strong>: 計算は C++ で行う。JS は表示専用。</p>
+<h3 id="ap-4-js-が次のシーンはどこかを決める">AP-4: JS が「次のシーンはどこか」を決める</h3>
+<p><strong>禁止例</strong>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="c1">// NG: JS がゲームフローを制御する
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">function</span> <span class="nx">onButtonClick</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nx">id</span> <span class="o">===</span> <span class="s1">&#39;new-game&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">cefQuery</span><span class="p">(</span><span class="s1">&#39;scene.load|prologue.html&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">id</span> <span class="o">===</span> <span class="s1">&#39;load-game&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">cefQuery</span><span class="p">(</span><span class="s1">&#39;scene.load|save_select.html&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// ← ゲームフローのルーティング知識が JS に漏れている
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre></div><p><strong>正しい実装</strong>: JS は <code>ui.button</code> signal を発火するだけ。どのシーンへ遷移するかは C++ が決める。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="c1">// OK: JS はイベントを転送するだけ
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">button</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">window</span><span class="p">.</span><span class="nx">cefQuery</span><span class="p">({</span> <span class="nx">request</span><span class="o">:</span> <span class="s1">&#39;ui.button|&#39;</span> <span class="o">+</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span> <span class="nx">id</span><span class="o">:</span> <span class="s1">&#39;new-game&#39;</span> <span class="p">})</span> <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// C++: ルーティングはここで行う
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">bridge</span><span class="p">.</span><span class="n">registerHandler</span><span class="p">(</span><span class="s">&#34;ui.button&#34;</span><span class="p">,</span> <span class="p">[</span><span class="k">this</span><span class="p">](</span><span class="n">std</span><span class="o">::</span><span class="n">string_view</span> <span class="n">payload</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="k">auto</span> <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">::</span><span class="n">parse</span><span class="p">(</span><span class="n">payload</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="k">auto</span> <span class="n">id</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="s">&#34;id&#34;</span><span class="p">).</span><span class="n">get</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">id</span> <span class="o">==</span> <span class="s">&#34;new-game&#34;</span><span class="p">)</span> <span class="n">m_router</span><span class="p">.</span><span class="n">transitionTo</span><span class="p">(</span><span class="n">SceneId</span><span class="o">::</span><span class="n">Prologue</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">else</span> <span class="nf">if</span> <span class="p">(</span><span class="n">id</span> <span class="o">==</span> <span class="s">&#34;load-game&#34;</span><span class="p">)</span> <span class="n">m_router</span><span class="p">.</span><span class="n">transitionTo</span><span class="p">(</span><span class="n">SceneId</span><span class="o">::</span><span class="n">SaveSelect</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="s">&#34;{}&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span></code></pre></div><h3 id="ap-5-js-が-c-の-gameplay-function-を名前で直接-rpc-呼び出しする">AP-5: JS が C++ の gameplay function を名前で直接 RPC 呼び出しする</h3>
+<p><strong>禁止例</strong>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="c1">// NG: C++ の内部関数を名前で直接叩く
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nb">window</span><span class="p">.</span><span class="nx">cefQuery</span><span class="p">({</span> <span class="nx">request</span><span class="o">:</span> <span class="s1">&#39;command.CookingActions.pourBatter|{}&#39;</span> <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="nb">window</span><span class="p">.</span><span class="nx">cefQuery</span><span class="p">({</span> <span class="nx">request</span><span class="o">:</span> <span class="s1">&#39;command.PlayerCharacter.takeDamage|{&#34;amount&#34;:10}&#39;</span> <span class="p">});</span>
+</span></span></code></pre></div><p>これは JS と C++ の実装を密結合させ、C++ 側のリファクタリングを阻害する。
+<code>command.*</code> カテゴリは全面禁止。<code>ui.*</code> / <code>input.*</code> の signal のみ許可する。</p>
+<hr>
+<h2 id="5-js-に残してよい責務">5. JS に残してよい責務</h2>
+<p>JS (CEF view layer) が担ってよい処理を明示する。</p>
+<h3 id="51-dom-描画">5.1 DOM 描画</h3>
+<p>HTML / CSS / JavaScript によるビジュアル表現全般。</p>
+<ul>
+<li><code>filter: blur()</code>, <code>backdrop-filter</code>, <code>mix-blend-mode</code>, <code>conic-gradient</code></li>
+<li>WAAPI (Web Animations API) によるイージング</li>
+<li>SVG <code>&lt;filter&gt;</code>, web フォント描画</li>
+<li>CSS transition / animation</li>
+</ul>
+<h3 id="52-入力-signal-の発火">5.2 入力 signal の発火</h3>
+<p>ポインタ・キーボード・タッチ操作を受け取り、<code>window.cefQuery</code> で C++ に転送する。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="c1">// OK: イベントを受け取って転送するだけ
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">canvas</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;pointerdown&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">window</span><span class="p">.</span><span class="nx">cefQuery</span><span class="p">({</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">request</span><span class="o">:</span> <span class="s1">&#39;input.pointer|&#39;</span> <span class="o">+</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">type</span><span class="o">:</span> <span class="s1">&#39;pointerdown&#39;</span><span class="p">,</span> <span class="nx">x</span><span class="o">:</span> <span class="nx">e</span><span class="p">.</span><span class="nx">clientX</span><span class="p">,</span> <span class="nx">y</span><span class="o">:</span> <span class="nx">e</span><span class="p">.</span><span class="nx">clientY</span><span class="p">,</span> <span class="nx">pointerId</span><span class="o">:</span> <span class="nx">e</span><span class="p">.</span><span class="nx">pointerId</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}),</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">onSuccess</span><span class="o">:</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{},</span> <span class="nx">onFailure</span><span class="o">:</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span></code></pre></div><h3 id="53-dom-更新指示の実行">5.3 DOM 更新指示の実行</h3>
+<p><code>window.mitiru.onStateChange()</code> / <code>window.mitiru.on()</code> で受け取った通知に従い、DOM を更新する。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="c1">// OK: C++ からの通知を受けて DOM を更新するだけ
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nb">window</span><span class="p">.</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">onStateChange</span><span class="p">(</span><span class="s1">&#39;view.hud.hp&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">hp</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;hp-bar&#39;</span><span class="p">).</span><span class="nx">style</span><span class="p">.</span><span class="nx">width</span> <span class="o">=</span> <span class="nx">hp</span> <span class="o">+</span> <span class="s1">&#39;%&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;hp-value&#39;</span><span class="p">).</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">hp</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nb">window</span><span class="p">.</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;view.effect.flash&#39;</span><span class="p">,</span> <span class="p">({</span> <span class="nx">color</span><span class="p">,</span> <span class="nx">duration</span> <span class="p">})</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">playFlashEffect</span><span class="p">(</span><span class="nx">color</span><span class="p">,</span> <span class="nx">duration</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span></code></pre></div><h3 id="54-表示専用-local-state">5.4 表示専用 local state</h3>
+<p>DOM 描画のためだけに必要な一時的な表示状態は JS に持ってよい。</p>
+<p><strong>許可される local state の条件</strong>:</p>
+<ul>
+<li>C++ の gameplay state と同期が不要 (あるいは常に C++ からの通知で上書きされる)</li>
+<li>画面表示のためだけに使われる (アニメーション進行度、hover 状態、スクロール位置など)</li>
+<li>C++ が「知る必要がない」状態である</li>
+</ul>
+<p><strong>禁止される local state</strong>:</p>
+<ul>
+<li>gameplay の進行度・フラグ・カウンタ</li>
+<li>「次に何をすべきか」の判断に使われる状態</li>
+<li>C++ 側でも追跡が必要な状態 (それは C++ に持ち、<code>view.*</code> push で JS に通知すべき)</li>
+</ul>
+<hr>
+<h2 id="6-移行ガイドライン">6. 移行ガイドライン</h2>
+<p>既存コードを新責務に適合させる際の手順:</p>
+<ol>
+<li>JS の <code>window.mitiru.dispatch(action, ...)</code> の <code>action</code> 名を確認する</li>
+<li>action が <code>ui.*</code> / <code>input.*</code> の signal 転送であれば <strong>適合済み</strong> (§3.1 参照)</li>
+<li>action が gameplay state の読み書きを行っていれば <strong>AP-1〜AP-5 該当</strong> → C++ に移す</li>
+<li>C++ → JS push で <code>executeJavaScript</code> を直接呼んでいる箇所は、<code>StateStore::set()</code> / <code>StateStore::emit()</code> に置き換え、key を <code>view.*</code> 体系に沿って命名する</li>
+<li><code>command.*</code> 系の handler 名は全て <code>ui.*</code> / <code>input.*</code> に改名するか削除する</li>
+</ol>
+<hr>
+<h2 id="7-参照">7. 参照</h2>
+<ul>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/">ADR 0001</a> — アーキテクチャピボット決定</li>
+<li><code>include/mitiru/cef/MitiruCefBridge.hpp</code> — 低レベル transport 実装</li>
+<li><code>include/mitiru/cef/StateStore.hpp</code> — typed state/event 層</li>
+<li><code>include/mitiru/cef/AudioBridge.hpp</code> — audio handler 実装例</li>
+<li><code>include/mitiru/cef/SceneTransition.hpp</code> — シーン遷移実装例</li>
+<li><code>bridges/save.bridge.json</code> — save bridge スキーマ定義</li>
+<li><code>web/mitiru_runtime/</code> — JS side runtime 実装</li>
+</ul>
+
+  </div>
+</article>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">MitiruEngine</p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>Permissive open-source. See <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a>.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">プロジェクトステータス</h2>
+      <p>Header-only。Catch2 で 2254 件のテストが green。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

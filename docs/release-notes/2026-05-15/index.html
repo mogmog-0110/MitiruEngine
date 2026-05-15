@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Release Notes 2026-05-15 | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Round 1 through Round 8 engine release — data binding layer, bridge lifetime safety, render backend split, Engine.hpp decomposition.">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/release-notes/2026-05-15/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/release-notes/2026-05-15/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="Release Notes 2026-05-15 | MitiruEngine">
+<meta property="og:description" content="Round 1 through Round 8 engine release — data binding layer, bridge lifetime safety, render backend split, Engine.hpp decomposition.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/release-notes/2026-05-15/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Release Notes 2026-05-15 | MitiruEngine">
+<meta name="twitter:description" content="Round 1 through Round 8 engine release — data binding layer, bridge lifetime safety, render backend split, Engine.hpp decomposition.">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/docs">ドキュメント</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+        <span class="site-nav__lang">
+          
+            
+              <strong>日本語</strong>
+            
+          
+            
+              <a href="https://mogmog-0110.github.io/MitiruEngine/en/">English</a>
+            
+          
+        </span>
+      
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<article class="page-article container">
+  <header class="page-article__header">
+    <p class="page-article__eyebrow">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/release-notes/">Release Notes</a>
+      <span class="page-article__date">2026-05-15</span>
+    </p>
+    <h1>Release Notes 2026-05-15</h1>
+    <p class="page-article__lede">Round 1 through Round 8 engine release — data binding layer, bridge lifetime safety, render backend split, Engine.hpp decomposition.</p>
+    
+      <p class="page-article__source">
+        Source of truth:
+        <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/RELEASE_NOTES_2026-05-15.md"><code>docs/RELEASE_NOTES_2026-05-15.md</code></a>
+      </p>
+    
+  </header>
+  <div class="page-article__body">
+    <h1 id="mitiruengine-release-notes--2026-05-15">MitiruEngine Release Notes — 2026-05-15</h1>
+<p><strong>Date:</strong> 2026-05-15
+<strong>Commits:</strong> ~37 across Rounds 1 through 5 (<code>735edc7b..0e050fc2</code> on <code>main</code>) + Round 8 follow-up (<code>77b88f0c</code>, <code>b9e1828c</code>)
+<strong>Test coverage:</strong> ctest 2110 → 2254 (+144 tests; Rounds 1–5 contributed +128, Round 8 contributed +16 round-trip)
+<strong>Working tree:</strong> clean</p>
+<blockquote>
+<p>Engine-side notes. Consumer migration playbooks (KaeruCrape / hato / pandd-dodo /
+Mathlands) belong in the consumer&rsquo;s own repository per
+<code>[[no-consumer-scope-in-engine]]</code>. This document describes only the engine
+public API surface, internal refactors, and tooling shipped on <code>main</code>.</p>
+</blockquote>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<ul>
+<li>新 <code>mitiru::data::</code> レイヤーが揃った: <code>JsonBinding</code> / <code>SaveSchema&lt;T&gt;</code> / <code>MigrationChain&lt;T&gt;</code> / <code>Migration</code> ops / <code>ContentLoader&lt;T&gt;</code> / <code>SchemaImporter</code>. §5 save と §9 content authoring の &ldquo;C++ struct ↔ JSON&rdquo; の正解パスが engine 内で完結する。ADR 0003 で binding 戦略を Accepted 化。</li>
+<li>Bridge 側は <code>BridgeInputAdapter</code> (signal → <code>InputMapper</code> action) と <code>BridgeEventBusGlue</code> (signal → 型付き <code>EventBus</code> event) を追加し、両者とも destructor で auto-unregister するライフタイム安全に。<code>AnimationBridge</code> / <code>ParticleBridge</code> / <code>VNBridge</code> / <code>DialogueBridge</code> / <code>TransitionBridge</code> には <code>BridgeViewPush</code> 統合と差分短絡 (VN) が入った。</li>
+<li>レンダ側は <code>mitiru::render::BackendInit::createPipeline2DFor</code> / <code>createRenderer3DFor</code> で <code>Engine.hpp</code> から <code>dynamic_cast&lt;Dx11Device&gt;</code> 系を撤去。DX12 では <code>PixelArtFilter</code> 列挙 + <code>Screen::drawPixelGrid</code> オーバーロードを追加し、point-filter PSO は <code>createFromDx12</code> 時に eager 構築 (first-frame hitch なし)。</li>
+<li><code>Engine.hpp</code> を <code>detail/Engine_{Run,Frame,Snapshot,Window,Accessors,...}.hpp</code> に分割 (1008 → 424 行)。<code>Sequence</code> の per-action callable は <code>mitiru::time::detail::SmallFunction</code> (48 byte SBO, Tracy zone 付き) に置換。</li>
+<li>ドキュメント: <code>docs/PROFILING_GUIDE.md</code> / <code>docs/CEF_SUBPROCESS_DIAGNOSTIC.md</code> / <code>docs/CEF_CRT_EXPERIMENT.md</code> を追加。ADR 0003 を Accepted。</li>
+<li><strong>Round 8 追補</strong>: <code>detail/Engine_Init.hpp</code> (398 行) を 4 role file に再分割。<code>SceneDocument</code> を nlohmann::json バックエンドへ移行し 1382 → 923 行 (−459, ~33%) に縮小、副次的に <code>AudioTrait::fromJson</code> が <code>audioPath</code> を取りこぼしていた既存 bug も解消。<code>Engine_Frame.hpp</code> に Tracy zone 9 本 (outer <code>Engine::Frame</code> + 8 phase helpers) を追加。</li>
+</ul>
+<hr>
+<h2 id="new-apis">New APIs</h2>
+<h3 id="save--load">Save / load</h3>
+<table>
+  <thead>
+      <tr>
+          <th>API</th>
+          <th>Header</th>
+          <th>Role</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>data::toJson&lt;T&gt;</code> / <code>data::fromJson&lt;T&gt;</code></td>
+          <td><code>mitiru/data/JsonBinding.hpp</code></td>
+          <td>nlohmann::adl_serializer を経由した薄い wrapper。失敗時は <code>std::nullopt</code>。</td>
+      </tr>
+      <tr>
+          <td><code>data::FromJsonResult&lt;T&gt;</code></td>
+          <td>同上</td>
+          <td><code>value</code> + <code>error</code> + <code>ok()</code> を持つ詳細結果型。</td>
+      </tr>
+      <tr>
+          <td><code>data::Versioned&lt;T&gt;</code></td>
+          <td>同上</td>
+          <td><code>{ &quot;version&quot;: N, &quot;data&quot;: &lt;T&gt; }</code> レイアウトの serialize/deserialize ヘルパ。</td>
+      </tr>
+      <tr>
+          <td><code>data::MigrationChain&lt;T&gt;</code></td>
+          <td>同上</td>
+          <td>旧バージョン blob を current version まで走らせる chain。</td>
+      </tr>
+      <tr>
+          <td><code>data::SaveSchema&lt;T&gt;</code></td>
+          <td><code>mitiru/data/SaveSchema.hpp</code></td>
+          <td><code>currentVersion</code> + <code>MigrationChain&lt;T&gt;</code> を 1 つにまとめ、<code>toJsonString</code> / <code>fromJsonString</code> を提供。</td>
+      </tr>
+      <tr>
+          <td><code>data::Migration</code> (静的ファクトリ)</td>
+          <td><code>mitiru/data/Migration.hpp</code></td>
+          <td><code>backfillField</code> / <code>renameField</code> / <code>removeField</code> / <code>setField</code> / <code>transformField</code> / <code>compose</code>. すべて <code>std::function&lt;Json(Json)&gt;</code> を返す。</td>
+      </tr>
+  </tbody>
+</table>
+<p><code>MigrationChain&lt;T&gt;::addStep</code> は <strong><code>MigrationChain&amp;</code> を返す</strong>ようになり、fluent
+chaining が可能 (<code>schema.migrations().addStep(...).addStep(...)</code>).
+ユーザ型側の opt-in は nlohmann の <code>NLOHMANN_DEFINE_TYPE_INTRUSIVE</code> / <code>_NON_INTRUSIVE</code>
+マクロをそのまま使う。<code>NON_INTRUSIVE</code> は型と同じ namespace 内で宣言すること
+(<code>[[nolhmann-non-intrusive-namespace]]</code>)。</p>
+<p>Hot-path 規律: <code>toJson</code> / <code>fromJson</code> は nlohmann/json 経由で割り当てが起きるため、
+<strong>per-frame コードから呼ばない</strong>こと。save point / boot-time content load / editor
+ツールが想定。</p>
+<h3 id="data-driven-content">Data-driven content</h3>
+<table>
+  <thead>
+      <tr>
+          <th>API</th>
+          <th>Header</th>
+          <th>Role</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>data::ContentLoader&lt;T&gt;::loadFile(path)</code></td>
+          <td><code>mitiru/data/ContentLoader.hpp</code></td>
+          <td>UTF-8 JSON file → typed C++ struct (<code>FromJsonResult&lt;T&gt;</code> 返却)。</td>
+      </tr>
+      <tr>
+          <td><code>ContentLoader&lt;T&gt;::loadString(s)</code></td>
+          <td>同上</td>
+          <td>文字列 → typed struct。</td>
+      </tr>
+      <tr>
+          <td><code>ContentLoader&lt;T&gt;::loadJson(json)</code></td>
+          <td>同上</td>
+          <td><code>Json</code> 値 → typed struct。</td>
+      </tr>
+      <tr>
+          <td><code>ContentLoader&lt;T&gt;::loadFileValidated(path, validator, schemaName)</code></td>
+          <td>同上</td>
+          <td>上記に加えて <code>SchemaValidator</code> チェックを bind 前に実行。</td>
+      </tr>
+      <tr>
+          <td><code>ContentLoader&lt;T&gt;::loadStringValidated(...)</code> / <code>loadJsonValidated(...)</code></td>
+          <td>同上</td>
+          <td>同。</td>
+      </tr>
+      <tr>
+          <td><code>data::SchemaImporter::fromJsonSchema</code> / <code>fromJsonSchemaFile</code></td>
+          <td><code>mitiru/data/SchemaImporter.hpp</code></td>
+          <td>JSON Schema draft-07 (subset) → <code>mitiru::data::Schema</code>。</td>
+      </tr>
+      <tr>
+          <td><code>data::SchemaImportResult</code></td>
+          <td>同上</td>
+          <td><code>schema</code> / <code>error</code> / <strong><code>warnings</code></strong> を保持。<code>warnings</code> には未対応 draft-07 feature が <code>&quot;&lt;scope&gt;: &lt;feature&gt; &lt;reason&gt;&quot;</code> 形式で列挙される (silent drop を防ぐ)。</td>
+      </tr>
+  </tbody>
+</table>
+<p><code>ContentLoader&lt;T&gt;</code> は完全に stateless (全 static method)。<code>std::vector&lt;T&gt;</code>、ネスト struct、<code>Versioned&lt;T&gt;</code> ラップなど任意の <code>T</code> を受ける。</p>
+<p><code>SchemaImporter</code> の対応範囲は header 冒頭に明示してあり、<code>$ref</code> / <code>oneOf</code> /
+<code>allOf</code> / <code>anyOf</code> / <code>enum</code> / <code>pattern</code> / <code>additionalProperties</code> / <code>definitions</code> /
+<code>format</code> / <code>default</code> / <code>items</code> schema / <code>$schema</code> URI などは <strong>warning として捕捉</strong> (エラーにはしない)。
+許容される draft-07 構造から逸脱した場合 (top-level が <code>object</code> でない等) は <code>error</code> に
+詳細メッセージを入れて返す。</p>
+<p>例: <code>examples/cpp_data_driven_minimal/</code> に Stage 5 (SchemaValidator) / Stage 6 (SchemaImporter file) のデモを収録。</p>
+<h3 id="bridge--view-integration">Bridge / view integration</h3>
+<table>
+  <thead>
+      <tr>
+          <th>API</th>
+          <th>Header</th>
+          <th>Role</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>input::BridgeInputAdapter</code></td>
+          <td><code>mitiru/input/BridgeInputAdapter.hpp</code></td>
+          <td><code>BridgeActionRouter</code> signal → <code>InputMapper::triggerActionFromBridge</code>. <code>mapSignalToAction(signal, action)</code> で 1:1 mapping、<code>unmapSignal</code> で取り消し。</td>
+      </tr>
+      <tr>
+          <td><code>bridge::BridgeEventBusGlue</code></td>
+          <td><code>mitiru/bridge/BridgeEventBusGlue.hpp</code></td>
+          <td><code>BridgeActionRouter</code> signal → 型付き <code>EventBus</code> event。<code>mapSignal&lt;Event&gt;(name, builder)</code> / <code>mapSignalToTrivial&lt;Event&gt;(name)</code>.</td>
+      </tr>
+      <tr>
+          <td><code>bridge::BridgeViewPush</code> integration</td>
+          <td><code>mitiru/bridge/BridgeViewPush.hpp</code> を消費する各 bridge</td>
+          <td><code>AnimationBridge</code> / <code>ParticleBridge</code> / <code>VNBridge</code> / <code>DialogueBridge</code> / <code>TransitionBridge</code> が現在の view state を CEF へ push。</td>
+      </tr>
+  </tbody>
+</table>
+<p>両 adapter とも <strong>destructor で auto-unregister</strong> する (HIGH-4 fix)。adapter が
+router より先に破棄されても、router 側で dangling <code>this</code> を invoke しない。
+非コピー・非ムーブ (参照保持)。</p>
+<p><code>VNBridge</code> の view-push は <strong>diff-based short-circuit</strong> が入っており、前回 push
+した payload と一致するときは送信を抑止する。テストは
+<code>tests/mitiru/TestBridgeViewPush.cpp</code> が押し付けカウントで検証する形に更新済み。</p>
+<h3 id="render">Render</h3>
+<table>
+  <thead>
+      <tr>
+          <th>API</th>
+          <th>Header</th>
+          <th>Role</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>render::createPipeline2DFor(device, w, h)</code></td>
+          <td><code>mitiru/render/BackendInit.hpp</code></td>
+          <td><code>device-&gt;backend()</code> で 2D pipeline を dispatch。DX11 は <code>PostProcessManager</code> も同時に組み立て、DX12 は専用 <code>createFromDx12</code> パス、その他は <code>nullopt</code>。</td>
+      </tr>
+      <tr>
+          <td><code>render::createRenderer3DFor(device, cfg, w, h)</code></td>
+          <td>同上</td>
+          <td>3D renderer も同様に backend-aware に。</td>
+      </tr>
+      <tr>
+          <td><code>render::PixelArtFilter</code> enum</td>
+          <td><code>mitiru/render/RenderPipeline2D.hpp</code></td>
+          <td><code>Linear</code> (default) / <code>Point</code> の 2 値。</td>
+      </tr>
+      <tr>
+          <td><code>Screen::drawPixelGrid(..., PixelArtFilter filter)</code> オーバーロード</td>
+          <td><code>mitiru/render/Screen.hpp</code></td>
+          <td>DX12 で point-filter PSO を選択するための公開エントリ。</td>
+      </tr>
+  </tbody>
+</table>
+<p><code>Engine.hpp</code> 内の <code>dynamic_cast&lt;Dx11Device*&gt;</code> / <code>dynamic_cast&lt;Dx12Device*&gt;</code> は
+削除され、<code>BackendInit</code> 側で <code>device-&gt;backend()</code> enum + <code>static_cast</code> に統一。
+&ldquo;engine-internal code には backend 型を leak させない&rdquo; 規律を回復。</p>
+<p>DX12 の point-filter PSO は <code>RenderPipeline2D::createFromDx12</code> で <strong>eager 構築</strong>
+される (Round 5 perf fix)。従来は first-frame で lazy 構築されており、初回
+<code>drawPixelGrid</code> 呼び出し時に hitch が出ていた。</p>
+<h3 id="time--scheduling">Time / scheduling</h3>
+<p><code>mitiru::time::detail::SmallFunction</code> を導入し、<code>mitiru::time::Sequence</code> の
+per-action callable を <code>std::function</code> から差し替えた。</p>
+<ul>
+<li>48 byte の inline SBO バッファ。<code>sizeof(F) &lt;= 48</code> かつ <code>alignof(F) &lt;= alignof(std::max_align_t)</code> のとき heap allocation なし。</li>
+<li>超過時は透過的に heap fallback。</li>
+<li>Move-only、<code>operator bool()</code>、<code>operator()()</code> のみ。<code>MITIRU_ZONE_NAMED(&quot;SmallFunction::invoke&quot;)</code> の Tracy zone を含む。</li>
+<li>Bench は <code>tests/mitiru/TestSmallFunctionBench.cpp</code> で SBO / heap 双方を計測。</li>
+</ul>
+<p><code>mitiru::time::Sequence</code> も <code>Sequence::action</code> で Tracy zone を発行するよう
+instrument 済み。recipe は <code>docs/PROFILING_GUIDE.md</code> 参照。</p>
+<hr>
+<h2 id="behavior-changes--fixes">Behavior changes &amp; fixes</h2>
+<ul>
+<li><strong>JsonEscape</strong> が <code>\n</code> / <code>\r</code> / <code>\t</code> / <code>\b</code> / <code>\f</code> の short-form と他の制御バイト (<code>&lt; 0x20</code>) を <code>\u00XX</code> 形式で正しくエスケープするよう修正 (HIGH-2 fix)。<code>include/mitiru/bridge/detail/JsonEscape.hpp</code> を共有実装にし、<code>AnimationBridge</code> / <code>ParticleBridge</code> 等が同じパスを使う形に揃えた。</li>
+<li><strong><code>SceneDocument</code></strong> の reader / writer が対称になった。<code>writeStr</code> が escape したものを <code>readStr</code> が unescape せず生で取り出していた HIGH-5 を修正。<code>tests/mitiru/TestSceneDocumentVariables.cpp</code> で round-trip を担保。</li>
+<li><strong><code>SceneDocument::deserialize</code></strong> で variables (KV) が復元されない問題を修正 (Task #20)。</li>
+<li><strong>Platform cursor capture</strong>: SDL2 / GLFW backend の <code>setCursorCaptured</code> が no-op stub だったのを実機にワイヤ。SDL2 は <code>SDL_SetRelativeMouseMode</code>、GLFW は <code>glfwSetInputMode(..., GLFW_CURSOR, GLFW_CURSOR_DISABLED)</code> を呼ぶ。</li>
+<li><strong>Bridge view-push の per-frame allocation</strong> を排除 (HIGH-1 perf)。push key を cached <code>std::string</code> に変えてホットパスから割り当てを除去。</li>
+<li><strong><code>BridgeInputAdapter</code> / <code>BridgeEventBusGlue</code></strong> の destructor で auto-unregister (HIGH-4 lifetime fix)。詳細は New APIs セクション参照。</li>
+<li><strong><code>MigrationChain&lt;T&gt;::addStep</code></strong> が <code>MigrationChain&amp;</code> を返すようになった (fluent)。既存の値返却なし呼び出しは互換。</li>
+</ul>
+<hr>
+<h2 id="refactors">Refactors</h2>
+<ul>
+<li><strong><code>Engine.hpp</code> split</strong> — 1008 行のヘッダを <code>include/mitiru/core/detail/Engine_{Run,Frame,Snapshot,Window,Accessors,Init,Audio,AutoTest,Cef,Http,Settings}.hpp</code> に分割し、<code>Engine.hpp</code> 本体は 424 行まで縮小。<code>include/mitiru/</code> の &ldquo;ヘッダ ≤ 800 行&rdquo; 規律を回復。</li>
+<li><strong>Backend type leakage removal</strong> — <code>Engine</code> のメンバから <code>Dx11Device</code> / <code>Dx12Device</code> の <code>dynamic_cast</code> 経路が完全に消え、<code>render::BackendInit</code> の <code>device-&gt;backend()</code> enum dispatch に統一。Null backend や非対応 backend では <code>std::optional&lt;...&gt;</code> の空値を返す。</li>
+<li><strong><code>Sequence</code> SBO 化</strong> — <code>std::function</code> 依存 (常に heap allocation 可能性あり) を <code>SmallFunction</code> に置換。callable が小さい限り heap を踏まない。</li>
+<li><strong><code>JsonEscape</code> 抽出</strong> — bridge 別々に持っていた quoting 実装を <code>include/mitiru/bridge/detail/JsonEscape.hpp</code> に共通化。</li>
+<li><strong>ADR 0003 Accepted</strong> — <code>docs/adr/0003-json-binding-strategy.md</code> を Accepted 化。nlohmann macros (<code>INTRUSIVE</code> / <code>NON_INTRUSIVE</code>) + <code>Versioned&lt;T&gt;</code> envelope を engine 標準として確定。</li>
+</ul>
+<hr>
+<h2 id="new-docs--tools">New docs / tools</h2>
+<table>
+  <thead>
+      <tr>
+          <th>Artifact</th>
+          <th>Purpose</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>docs/PROFILING_GUIDE.md</code></td>
+          <td>Tracy integration (zone macros / capture recipe / SmallFunction SBO vs heap の見方)。<code>include/mitiru/debug/TracyZones.hpp</code> の使い方と、Sequence / SmallFunction を含むホットパスのプロファイル手順。</td>
+      </tr>
+      <tr>
+          <td><code>docs/CEF_SUBPROCESS_DIAGNOSTIC.md</code></td>
+          <td>CEF subprocess の <code>error_code=63</code> を切り分けるための H1〜H7 仮説ツリー + ProcMon recipe + preflight 手順。</td>
+      </tr>
+      <tr>
+          <td><code>docs/CEF_CRT_EXPERIMENT.md</code></td>
+          <td>&ldquo;libcef Release <code>/MD</code> vs Debug <code>/MDd</code>&rdquo; CRT mismatch 仮説を実地検証する 6 phase の実験 protocol。</td>
+      </tr>
+      <tr>
+          <td><code>docs/adr/0003-json-binding-strategy.md</code></td>
+          <td>JSON binding 戦略 ADR (Accepted)。<code>JsonBinding</code> / <code>SaveSchema</code> / <code>ContentLoader</code> の決定理由をまとめる。</td>
+      </tr>
+      <tr>
+          <td><code>tools/diagnose_cef_subprocess.py</code></td>
+          <td>CEF subprocess の preflight チェック自動化スクリプト。</td>
+      </tr>
+      <tr>
+          <td><code>tools/cef_crt_experiment.py</code></td>
+          <td>上記 6 phase 実験ドライバ。</td>
+      </tr>
+      <tr>
+          <td><code>examples/cpp_data_driven_minimal/</code></td>
+          <td>Stage 5 (<code>SchemaValidator</code>) + Stage 6 (<code>SchemaImporter</code> from file) の最小デモ。</td>
+      </tr>
+  </tbody>
+</table>
+<p>クロスリファレンス:</p>
+<ul>
+<li>ADR 0001 (<code>docs/adr/0001-cpp-gameplay-cef-view-only.md</code>) — C++ engine ピボット。Bridge は signal-only の前提。</li>
+<li>ADR 0002 (<code>docs/adr/0002-remove-lua-scripting.md</code>) — Lua 廃止。</li>
+<li><code>docs/CPP_GAMEPLAY_GUIDE.md</code> — <code>JsonBinding</code> / <code>SaveSchema</code> / <code>ContentLoader</code> / <code>BridgeInputAdapter</code> を含む primitive 一覧。</li>
+<li><code>docs/BRIDGE_API_CONTRACT.md</code> — bridge view-push / signal 規約。</li>
+<li><code>docs/HYBRID_RUNTIME.md</code> — JS ↔ C++ レイヤー分担。</li>
+</ul>
+<hr>
+<h2 id="test-suite">Test suite</h2>
+<p>ctest: <strong>2110 → 2238 (+128 tests)</strong> on <code>main</code>. Highlights:</p>
+<ul>
+<li><code>TestJsonBinding</code> / <code>TestSaveSchema</code> / <code>TestContentLoader</code> — typed JSON round-trip と migration chain の境界ケース。</li>
+<li><code>TestSchemaImporter</code> — draft-07 supported subset + warning パス (length-key 警告 / required-non-array 警告 / unsupported keyword 警告)。</li>
+<li><code>TestMigration</code> — <code>backfillField</code> / <code>renameField</code> / <code>removeField</code> / <code>setField</code> / <code>transformField</code> (absent-field no-op を含む) / <code>compose</code> の単体ケース。</li>
+<li><code>TestBridgeViewPush</code> — <code>AnimationBridge</code> / <code>ParticleBridge</code> / <code>VNBridge</code> の view-push assertion。<code>VNBridge</code> は diff-based short-circuit を考慮した push-count 検証に更新。</li>
+<li><code>TestBridgeInputAdapter</code> / <code>TestBridgeEventBusGlue</code> — destructor による auto-unregister で dangling 呼び出しが起きないことの regression test。</li>
+<li><code>TestSmallFunctionBench</code> — SBO / heap 双方の構築・呼び出しコストを bench。</li>
+<li><code>TestSmallFunctionTracy</code> — Tracy zone が SmallFunction::invoke を覆っていることの structural test。</li>
+<li><code>TestSceneDocumentVariables</code> — variables KV の deserialize round-trip。</li>
+<li><code>TestJsonEscape</code> — <code>\n</code> / <code>\r</code> / <code>\t</code> / <code>\b</code> / <code>\f</code> + 制御バイトの escape regression。</li>
+<li><code>TestContentLoaderFileNotFound</code> — <code>loadFileValidated</code> の存在しないファイルパス。</li>
+</ul>
+<p>すべての new test は header-only / <code>NullDevice</code> で実行可能で、CI 上の Linux / Windows / macOS いずれでも green。</p>
+<hr>
+<h2 id="round-8-追補-2026-05-15-続">Round 8 追補 (2026-05-15 続)</h2>
+<p>Rounds 1–5 の merge (<code>0e050fc2</code>) 後に走らせた Round 8 (<code>77b88f0c</code> + doc follow-up <code>b9e1828c</code>) で、Known limitations に残っていた 1 件と、<code>SceneDocument</code> 周りの長期負債、Tracy instrumentation の engine-side カバレッジを片付けた。</p>
+<h3 id="1-engine_inithpp-を-role-別に再分割-90ee5db6">1. <code>Engine_Init.hpp</code> を role 別に再分割 (<code>90ee5db6</code>)</h3>
+<p>旧 <code>include/mitiru/core/detail/Engine_Init.hpp</code> (398 行) を削除し、4 つの role file に分割した。<code>Engine_Init_Lifecycle.hpp</code> (145 行, <code>initialize</code> 本体) / <code>Engine_Init_Pipeline.hpp</code> (81 行, pipeline + viewport setup) / <code>Engine_Init_Font.hpp</code> (159 行, font loading) / <code>Engine_Init_Input.hpp</code> (34 行, <code>applyInjectedInput</code>) という分割。<code>include/mitiru/core/Engine.hpp:444-460</code> で 4 ファイルを alphabetical に <code>#include</code> し、STATIC build path 用の <code>src/core/Engine.cpp</code> も同じ並びで揃えた。これにより Rounds 1–5 時点で残っていた &ldquo;Engine.hpp 分割は機械的 split&rdquo; 由来の最後の大ヘッダが解消した。</p>
+<h3 id="2-scenedocument-を-nlohmannjson-バックエンドに移行-47afb4e2--テスト-0104118b">2. <code>SceneDocument</code> を nlohmann::json バックエンドに移行 (<code>47afb4e2</code> + テスト <code>0104118b</code>)</h3>
+<p><code>include/mitiru/core/SceneDocument.hpp</code> を 1382 → 923 行 (−459 行, 約 33% 削減) に縮小。Scene 本体 + 7 個の trait class が個別に持っていたハンドロール JSON helper (~25 個) を削除し、nlohmann::json の <code>to_json</code> / <code>from_json</code> に統一した。ADR 0002 (Lua 廃止) で確定した「.lua のシナリオ / セーブはすべて .json」方針と整合する形で、scene save 経路の JSON 取扱いが engine 全体で同じ nlohmann 経由に揃った。</p>
+<p>意図的な wire format 変更が 2 点あり、release note 化しておく:</p>
+<ul>
+<li><strong>key ordering が alphabetical になる</strong>: nlohmann のオブジェクトは <code>std::map</code> バックなので、書き出し時に key が昇順に並ぶ。<code>load → toJson → load → toJson</code> は <strong>byte-identical</strong> であることを <code>TestSceneDocumentRoundtrip</code> (test #2251) が enforce する。</li>
+<li><strong>trait-object の whitespace が compact になる</strong>: 旧ハンドロール writer は indent / 改行を独自に挿入していたが、nlohmann::json の compact serializer に統一した。</li>
+</ul>
+<p>新規テスト <code>tests/mitiru/TestSceneDocumentRoundtrip.cpp</code> (378 行) は 16 ケースで unicode / emoji / JSON metachar / 空 scene / 複数 node / byte-identical-stability / garbage input / legacy format / <code>CustomTrait</code> を網羅する。</p>
+<p>副次効果として、旧 <code>AudioTrait::fromJson</code> が writer 側で出力していた <code>audioPath</code> を silently drop していた既存 bug が露見し、移行と同時に解消した。</p>
+<h3 id="3-tracy-zone-を-engine-hot-path-に展開-f08fed08">3. Tracy zone を engine hot path に展開 (<code>f08fed08</code>)</h3>
+<p><code>include/mitiru/core/detail/Engine_Frame.hpp</code> に <code>MITIRU_ZONE_NAMED</code> を 9 本入れた。outer の <code>Engine::Frame</code> 1 本に加えて <code>Engine::Input</code> / <code>Engine::MouseScaling</code> / <code>Engine::FixedUpdate</code> / <code>Engine::Render</code> / <code>Engine::Present</code> / <code>Engine::CefComposite</code> / <code>Engine::AutoCapture</code> / <code>Engine::HttpPoll</code> の 8 phase。<code>MITIRU_HAS_TRACY</code> が off のときは <code>((void)0)</code> に展開されてゼロオーバーヘッド。Rounds 1–5 で既に入っていた <code>SmallFunction::invoke</code> / <code>Sequence::action</code> の zone はそのまま保持 (二重定義はしていない)。</p>
+<h3 id="4-テスト総数-2238--2254-16">4. テスト総数 2238 → 2254 (+16)</h3>
+<p>増分はすべて <code>TestSceneDocumentRoundtrip</code> の round-trip ケース。<code>NullDevice</code> で走り、Linux / Windows / macOS 共通で green。</p>
+<hr>
+<h2 id="known-limitations--future-work-engine-side-only">Known limitations / future work (engine-side only)</h2>
+<ul>
+<li><strong>CEF <code>--single-process</code> workaround が依然残る</strong>。<code>MitiruCefApp.hpp:94-107</code> で hard-coded。<code>docs/CEF_CRT_EXPERIMENT.md</code> の 6 phase protocol を未実施 (実機 build を要する)。CRT mismatch 仮説の確定 / 反証はそのプロトコル完了後。</li>
+<li><strong>Tracy production measurement 未着手</strong>。<code>PROFILING_GUIDE.md</code> のレシピは整備済みだが、実プロジェクトでの SBO vs heap 比率や Sequence hot path の measured 値はまだ collect していない。</li>
+<li><strong><code>SchemaImporter</code> は draft-07 の subset</strong>。<code>$ref</code> / <code>oneOf</code> / <code>allOf</code> / <code>anyOf</code> / <code>enum</code> / <code>pattern</code> / <code>additionalProperties</code> / <code>definitions</code> / <code>format</code> / <code>default</code> / <code>items</code> schema / <code>$schema</code> などは <code>SchemaImportResult::warnings</code> に列挙されるのみで <code>Schema</code> には反映されない。consumer が warning を inspect することで fidelity loss を検知可能。本格対応は <code>SchemaField</code> が enum / pattern / length 等のフィールドを獲得した後。</li>
+<li><strong>DX12 path</strong> は <code>createFromDx12</code> 専用ルートを使う。<code>RenderPipeline2D::createFromDevice</code> (汎用) は DX12 backend では PSO / root signature が bind されず silent no-op になるため、現状 <code>BackendInit::createPipeline2DFor</code> は DX12 で専用パスを明示的に呼ぶ。汎用パスへの一本化は今後の課題。</li>
+</ul>
+<blockquote>
+<p>Round 5 時点で挙げていた &ldquo;<code>detail/Engine_Init.hpp</code> (398 行) など機械的 split が粗い&rdquo; は Round 8 で解消した (<code>Engine.hpp:444-460</code> で 4 role file を <code>#include</code>)。詳細は上の Round 8 追補 §1 を参照。</p>
+</blockquote>
+<hr>
+<h2 id="how-to-consume-engine-side">How to consume (engine-side)</h2>
+<p>すべて header-only な追加なので、<code>#include &lt;mitiru/...&gt;</code> のパスを足すだけで使える
+(該当ヘッダ参照)。<code>Engine.hpp</code> 分割は internal なリファクタで、<code>mitiru::Engine</code>
+の public API は不変 (ABI 互換)。<code>MigrationChain::addStep</code> の戻り値変更は
+<strong>source-compatible</strong> (戻り値を捨てている既存コードは何も変えなくて良い)。</p>
+<p><code>drawPixelGrid</code> の filter オーバーロードはデフォルト引数 <code>PixelArtFilter::Linear</code>
+を持つので、既存 caller は無変更で従来挙動を保つ。</p>
+<p><code>BridgeInputAdapter</code> / <code>BridgeEventBusGlue</code> を採用するときは、両者とも
+non-copyable / non-movable で参照を保持するため、<strong><code>BridgeActionRouter</code> /
+<code>InputMapper</code> / <code>EventBus</code> より長生きしない</strong>ことを構造的に保証すること
+(local 変数で同 scope に並べる、または同じ owner オブジェクトに member として
+持たせる)。</p>
+
+  </div>
+</article>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">MitiruEngine</p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>Permissive open-source. See <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a>.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">プロジェクトステータス</h2>
+      <p>Header-only。Catch2 で 2254 件のテストが green。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

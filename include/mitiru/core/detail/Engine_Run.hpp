@@ -1,0 +1,241 @@
+// Detail header for mitiru::Engine - do not include directly; included via core/Engine.hpp
+#pragma once
+
+#include <mitiru/core/InlineMacro.hpp>
+
+// ── Run loop / batch execution out-of-class definitions ───────────────────
+
+MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
+{
+	/// 設定永続化が有効なら、起動時に settings.json を読み込んで上書きする
+	/// (初回起動でファイルが無ければ既定値を書き出す)
+	EngineConfig config = configIn;
+	if (config.persistSettings)
+	{
+		if (!GameSettings::loadInto(config))
+		{
+			GameSettings::saveFrom(config);
+		}
+	}
+
+	/// MITIRU_AUTOTEST / MITIRU_AUTOTEST_OUTPUT を反映する。
+	/// 明示的に設定された autoTestMode はここで上書きされないため、
+	/// CI / capture script は env だけで対象 exe をテストモードにできる。
+	config.applyAutoTestEnv();
+
+	initialize(config);
+
+	const auto logicalSize = game.layout(
+		m_window->width(), m_window->height());
+	m_screen = std::make_unique<Screen>(logicalSize.width, logicalSize.height);
+
+	m_logicalWidth = logicalSize.width;
+	m_logicalHeight = logicalSize.height;
+
+	// バックバッファはウィンドウのクライアントサイズに合わせる。
+	// 論理サイズ (layout() が返す固定 1920x1080 等) は投影行列に残し、
+	// バックバッファ = 物理ピクセルで 1:1 描画することでストレッチ by DXGI を避ける。
+	// -> 縮小ディスプレイでもシャープに描画される。
+	if (m_device && m_device->backend() != gfx::Backend::Null)
+	{
+		m_device->onResize(m_window->width(), m_window->height());
+	}
+
+	createRenderPipeline(logicalSize.width, logicalSize.height);
+
+	// パイプラインのビューポートを物理バックバッファサイズに設定する
+	// (投影行列は論理サイズのまま、ビューポートだけ物理解像度にする)
+	if (m_renderPipeline)
+	{
+		m_renderPipeline->setViewportSize(
+			static_cast<float>(m_window->width()),
+			static_cast<float>(m_window->height()));
+	}
+
+	// TTFフォント自動読み込み・接続
+	// (skipDefaultFont = true の場合は SDF アトラス構築をスキップ -> ~15s 短縮)
+	if (!config.skipDefaultFont)
+	{
+		initFont(config.fontPath);
+	}
+
+	game.setInputState(&m_inputState);
+	game.setEngine(this);
+	if (m_device)
+	{
+	}
+
+	create3DRenderer(logicalSize.width, logicalSize.height);
+	if (m_renderer3D)
+	{
+		game.setRenderer3D(m_renderer3D.get());
+		/// 2DオーバーレイScreenを3Dレンダラーに接続する
+		/// DX12ではendFrame()でバックバッファ上にHUD/UIが描画される
+		/// DX11ではno-op
+		m_renderer3D->setOverlayScreen(m_screen.get());
+	}
+
+	/// CEF を初期化する (DX12 バックエンド + Win32 のみ。
+	/// config.enableCef=false の場合は完全スキップで起動時間短縮可能)
+	if (config.enableCef)
+	{
+		initializeCef(config);
+	}
+
+#ifdef _WIN32
+	/// VSync 設定を SwapChain に反映する (DX12 のみ実装)
+	if (auto* dx12Device = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
+	{
+		if (auto* swap = dynamic_cast<gfx::Dx12SwapChain*>(dx12Device->getSwapChain()))
+		{
+			swap->setVSync(config.vsync);
+		}
+	}
+#endif
+
+	/// HTTP APIサーバーの初期化 (設定で有効な場合のみ)
+	if (config.enableHttpApi)
+	{
+		initHttpServer(config.httpApiPort, game);
+	}
+
+	/// メインループ
+	/// m_loopConfig は m_config (member, initialize で copy 済み) を指す。
+	/// ローカル config を指すと、設定画面が m_config を書き換えても
+	/// 永続化されないバグになるため、必ず member を参照する。
+	m_loopGame = &game;
+	m_loopConfig = &m_config;
+#ifdef __EMSCRIPTEN__
+	emscripten_set_main_loop_arg(
+		[](void* arg) {
+			static_cast<Engine*>(arg)->tickOneFrame();
+		},
+		this, 0, 1); // 0 = use requestAnimationFrame, 1 = simulate_infinite_loop
+#else
+	while (!m_window->shouldClose() && !m_shouldStop.load())
+	{
+		tickOneFrame();
+	}
+#endif
+
+	/// ループ終了後: ゲームに後処理の機会を与える
+	/// (CEF ハンドラーのクリーンアップはここで行う)
+	game.onExit();
+
+	/// ループ終了後にHTTPサーバーをシャットダウンする
+	if (m_httpServer)
+	{
+		m_httpServer->shutdown();
+	}
+}
+
+MITIRU_INLINE void mitiru::Engine::stepFrames(
+	Game& game, std::uint64_t frameCount, const EngineConfig& config)
+{
+	if (!m_initialized)
+	{
+		auto headlessConfig = config;
+		headlessConfig.headless = true;
+		initialize(headlessConfig);
+
+		const auto logicalSize = game.layout(
+			m_window->width(), m_window->height());
+		m_screen = std::make_unique<Screen>(
+			logicalSize.width, logicalSize.height);
+
+		/// headlessモードではソフトウェアフレームバッファを自動有効化
+		m_screen->enableSoftwareFramebuffer();
+	}
+
+	/// ゲームに入力状態を接続する
+	game.setInputState(&m_inputState);
+	game.setEngine(this);
+
+	for (std::uint64_t i = 0; i < frameCount; ++i)
+	{
+		(void)m_clock->tick();
+		m_inputState.beginFrame();
+		applyInjectedInput();
+
+		/// 固定タイムステップで更新 (stepFramesはヘッドレス用なので
+		/// 各フレーム = 1固定ステップとして扱う)
+		game.update(kFixedDt);
+
+		/// シーンマネージャーが設定されている場合、現在シーンを更新
+		if (m_sceneManager && m_sceneManager->currentScene())
+		{
+			m_sceneManager->currentScene()->onUpdate(kFixedDt);
+		}
+
+		m_screen->resetDrawCallCount();
+		m_screen->clear();
+		game.draw(*m_screen);
+
+		/// シーンマネージャーが設定されている場合、現在シーンを描画
+		if (m_sceneManager && m_sceneManager->currentScene())
+		{
+			m_sceneManager->currentScene()->onDraw(*m_screen);
+		}
+
+		/// ソフトウェアフレームバッファ有効時はpresent()でラスタライズ
+		if (m_screen->hasSoftwareFramebuffer())
+		{
+			m_screen->present();
+		}
+	}
+}
+
+MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::runAndCapture(
+	Game& game, int frameCount, const EngineConfig& config)
+{
+	initialize(config);
+	const auto logicalSize = game.layout(m_window->width(), m_window->height());
+	m_screen = std::make_unique<Screen>(logicalSize.width, logicalSize.height);
+	createRenderPipeline(logicalSize.width, logicalSize.height);
+	game.setInputState(&m_inputState);
+	game.setEngine(this);
+	if (m_device)
+	{
+	}
+	create3DRenderer(logicalSize.width, logicalSize.height);
+	if (m_renderer3D)
+	{
+		game.setRenderer3D(m_renderer3D.get());
+		m_renderer3D->setOverlayScreen(m_screen.get());
+	}
+
+	std::vector<std::uint8_t> capturedPixels;
+
+	for (int f = 0; f < frameCount; ++f)
+	{
+		m_inputState.beginFrame();
+		m_window->pollEvents();
+
+		/// 固定タイムステップで更新 (runAndCaptureはキャプチャ用なので
+		/// 各フレーム = 1固定ステップとして扱う)
+		game.update(kFixedDt);
+
+		m_screen->resetDrawCallCount();
+		m_screen->clear();
+
+		const bool renderer3DActive = m_renderer3D && m_renderer3D->isInitialized();
+		if (m_device) m_device->beginFrame();
+		game.draw(*m_screen);
+
+		// 最後のフレーム: Present前にキャプチャする
+		// (Present後はcurrentBackBufferIndexが進むため、描画済みバッファを読めなくなる)
+		if (f == frameCount - 1 && m_device)
+		{
+			m_device->waitForGpu();
+			capturedPixels = capture();
+		}
+
+		if (m_device)
+		{
+			if (!renderer3DActive) m_screen->present();
+			m_device->endFrame();
+		}
+	}
+
+	return capturedPixels;
+}

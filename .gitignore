@@ -1,0 +1,22 @@
+# CMake / build output
+build/
+build-*/
+out/
+cmake-build-*/
+
+# IDE folders
+.vs/
+.vscode/
+.idea/
+*.user
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Packaged binaries fetched on demand
+external/cef/
+
+# Test scratch
+test_output/

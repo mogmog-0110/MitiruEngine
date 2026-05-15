@@ -1,0 +1,262 @@
+#pragma once
+
+/// @file StateStore.hpp
+/// @brief Typed two-way state bridge layered on top of MitiruCefBridge (G-05)
+///
+/// **Motivation.** The raw bridge (`cefQuery` + `executeJavaScript`) gives
+/// you message-passing but not a pattern. Every game re-invents:
+///   - "C++ stat changed, push the new value to JS so the HUD bar updates"
+///   - "JS button pressed, call into a typed C++ handler"
+///   - "C++ wants to fire a one-shot event (notification, animation trigger)"
+///
+/// `StateStore` wraps all three. It is a thin, additive layer: existing
+/// `cefQuery` handlers keep working, `executeJavaScript` still exists. The
+/// JS companion lives in `web/mitiru_runtime/mitiru_cef_state.js`.
+///
+/// **Usage (C++ side):**
+/// ```cpp
+///   mitiru::cef::StateStore store(
+///       [&](const std::string& js)          { ctx.executeJavaScript(js); },
+///       [&](const std::string& name, auto f){ ctx.registerHandler(name, std::move(f)); });
+///
+///   store.set("stats.hp", 100);                          // broadcast
+///   store.emit("event.raisingEnd", {{"score", 42}});     // one-shot
+///   store.onAction("command.select", [&](const auto& p) {
+///       selectCommand(p.at("id").get<std::string>());
+///       return mitiru::cef::json{};                      // response (optional)
+///   });
+/// ```
+///
+/// **Usage (JS side):**
+/// ```js
+///   window.mitiru.onStateChange('stats.hp', v => hud.setHp(v));
+///   window.mitiru.on('event.raisingEnd', p => animator.playEnd(p.score));
+///   window.mitiru.dispatch('command.select', { id: 'pushup' });
+/// ```
+///
+/// Constructor is deliberately callback-based (not `MitiruCefContext&`) so
+/// the store is unit-testable without a running CEF browser. The engine
+/// exposes a factory helper `MitiruCefContext::makeStateStore()` below for
+/// the common case.
+
+#include <functional>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+
+#include <nlohmann/json.hpp>
+
+namespace mitiru::cef
+{
+
+using json = ::nlohmann::json;
+
+/// @brief Typed C++↔JS reactive state + event bridge.
+class StateStore
+{
+public:
+	using ActionFn           = std::function<json(const json& payload)>;
+	using ExecuteJsFn        = std::function<void(const std::string& code)>;
+	using HandlerFn          = std::function<std::string(std::string_view payload)>;
+	using RegisterHandlerFn  = std::function<void(const std::string& name, HandlerFn fn)>;
+
+	StateStore(ExecuteJsFn executeJs, RegisterHandlerFn registerHandler)
+		: m_executeJs(std::move(executeJs))
+		, m_registerHandler(std::move(registerHandler))
+	{
+		installDispatchHandler();
+	}
+
+	StateStore(const StateStore&)            = delete;
+	StateStore& operator=(const StateStore&) = delete;
+
+	// ── C++ → JS: retained key-value state ───────────────────────
+
+	/// @brief Store a value and broadcast to `window.mitiru.onStateChange`.
+	/// @details Any type nlohmann::json accepts via `json(value)` works:
+	///          bool, int, float, double, std::string, json object/array, etc.
+	template <typename T>
+	void set(std::string_view key, const T& value)
+	{
+		const json encoded = value;
+		std::string snapshot;
+		{
+			std::lock_guard lock(m_mutex);
+			m_state[std::string(key)] = encoded;
+			snapshot = encoded.dump();
+		}
+		pushJs("_onChange", keyJson(key), snapshot);
+	}
+
+	/// @brief Fetch the last-set value.
+	template <typename T>
+	[[nodiscard]] std::optional<T> get(std::string_view key) const
+	{
+		std::lock_guard lock(m_mutex);
+		const auto it = m_state.find(std::string(key));
+		if (it == m_state.end())
+		{
+			return std::nullopt;
+		}
+		try
+		{
+			return it->second.get<T>();
+		}
+		catch (const std::exception&)
+		{
+			return std::nullopt;
+		}
+	}
+
+	/// @brief Raw JSON access (e.g. for logging / debug snapshots).
+	[[nodiscard]] std::optional<json> getJson(std::string_view key) const
+	{
+		std::lock_guard lock(m_mutex);
+		const auto it = m_state.find(std::string(key));
+		if (it == m_state.end())
+		{
+			return std::nullopt;
+		}
+		return it->second;
+	}
+
+	[[nodiscard]] bool has(std::string_view key) const
+	{
+		std::lock_guard lock(m_mutex);
+		return m_state.contains(std::string(key));
+	}
+
+	void clearState()
+	{
+		std::lock_guard lock(m_mutex);
+		m_state.clear();
+	}
+
+	// ── C++ → JS: one-shot event ────────────────────────────────
+
+	/// @brief Fire a named event to `window.mitiru.on(name, ...)` listeners.
+	/// @details Not retained — late-subscribing listeners miss it. For
+	///          retained values use `set()`.
+	void emit(std::string_view eventName, const json& payload = json::object())
+	{
+		pushJs("_onEvent", keyJson(eventName), payload.dump());
+	}
+
+	// ── JS → C++: typed action dispatch ─────────────────────────
+
+	/// @brief Register a handler for `window.mitiru.dispatch(action, payload)`.
+	/// @details The handler runs on the CEF UI thread (same threading rules
+	///          as MitiruCefBridge handlers). Return a json value to respond;
+	///          return `{}` or `json()` for fire-and-forget.
+	void onAction(std::string_view action, ActionFn fn)
+	{
+		std::lock_guard lock(m_mutex);
+		m_actions[std::string(action)] = std::move(fn);
+	}
+
+	void offAction(std::string_view action)
+	{
+		std::lock_guard lock(m_mutex);
+		m_actions.erase(std::string(action));
+	}
+
+	// ── internal (public for testing) ───────────────────────────
+
+	/// @brief Drive a dispatch from a `{action, payload}` JSON blob.
+	/// @details Called from the "state.dispatch" cefQuery handler. Exposed
+	///          here so unit tests can exercise routing without CEF.
+	std::string dispatchFromJson(std::string_view payloadJson) const
+	{
+		json parsed;
+		try { parsed = json::parse(payloadJson); }
+		catch (const std::exception& e)
+		{
+			return errorJson(std::string("state.dispatch: invalid JSON: ") + e.what());
+		}
+
+		if (!parsed.is_object() || !parsed.contains("action"))
+		{
+			return errorJson("state.dispatch: missing 'action' field");
+		}
+
+		const auto action = parsed.at("action").get<std::string>();
+		const json payload = parsed.value("payload", json::object());
+
+		ActionFn fn;
+		{
+			std::lock_guard lock(m_mutex);
+			const auto it = m_actions.find(action);
+			if (it == m_actions.end())
+			{
+				return errorJson("state.dispatch: unknown action '" + action + "'");
+			}
+			fn = it->second;
+		}
+
+		try
+		{
+			const json resp = fn(payload);
+			return resp.dump();
+		}
+		catch (const std::exception& e)
+		{
+			return errorJson(std::string("state.dispatch: handler threw: ") + e.what());
+		}
+	}
+
+private:
+	void installDispatchHandler()
+	{
+		if (!m_registerHandler)
+		{
+			return;
+		}
+		m_registerHandler("state.dispatch",
+			[this](std::string_view payload) -> std::string
+			{
+				return this->dispatchFromJson(payload);
+			});
+	}
+
+	void pushJs(std::string_view method,
+	            const std::string& keyJsonArg,
+	            const std::string& valueJsonArg) const
+	{
+		if (!m_executeJs)
+		{
+			return;
+		}
+		/// Guard against pages that loaded before mitiru_cef_state.js.
+		std::string code;
+		code.reserve(128 + keyJsonArg.size() + valueJsonArg.size());
+		code += "if (window.mitiru && window.mitiru._state) { window.mitiru._state.";
+		code += method;
+		code += "(";
+		code += keyJsonArg;
+		code += ", ";
+		code += valueJsonArg;
+		code += "); }";
+		m_executeJs(code);
+	}
+
+	/// @brief Serialize a key as a JSON string literal (handles quoting + escapes).
+	static std::string keyJson(std::string_view key)
+	{
+		return json(std::string(key)).dump();
+	}
+
+	static std::string errorJson(const std::string& message)
+	{
+		return json{{"error", message}}.dump();
+	}
+
+	ExecuteJsFn                               m_executeJs;
+	RegisterHandlerFn                         m_registerHandler;
+	mutable std::mutex                        m_mutex;
+	std::unordered_map<std::string, json>     m_state;
+	std::unordered_map<std::string, ActionFn> m_actions;
+};
+
+} // namespace mitiru::cef

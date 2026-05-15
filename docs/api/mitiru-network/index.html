@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::network | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Networking primitives: socket abstraction, RPC, replication, and the lockstep transport used by deterministic multiplayer.">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/">
+
+<link rel="alternate" hreflang="en" href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-network/">
+
+
+  
+    
+<link rel="alternate" hreflang="x-default" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/">
+    
+  
+    
+  
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::network | MitiruEngine">
+<meta property="og:description" content="Networking primitives: socket abstraction, RPC, replication, and the lockstep transport used by deterministic multiplayer.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::network | MitiruEngine">
+<meta name="twitter:description" content="Networking primitives: socket abstraction, RPC, replication, and the lockstep transport used by deterministic multiplayer.">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/docs">ドキュメント</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+        <span class="site-nav__lang">
+          
+            
+              <strong>日本語</strong>
+            
+          
+            
+              <a href="https://mogmog-0110.github.io/MitiruEngine/en/">English</a>
+            
+          
+        </span>
+      
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<div class="api-page container">
+  <aside class="api-sidebar" aria-label="名前空間">
+  <details class="api-sidebar__collapsible" open>
+    <summary>名前空間</summary>
+    <nav>
+      <ul>
+        
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"
+               >
+              mitiru
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"
+               >
+              mitiru::adapter
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"
+               >
+              mitiru::animation
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"
+               >
+              mitiru::asset
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"
+               >
+              mitiru::assets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"
+               >
+              mitiru::audio
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"
+               >
+              mitiru::bridge
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"
+               >
+              mitiru::bridge::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"
+               >
+              mitiru::cef
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"
+               >
+              mitiru::cef::bridges
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"
+               >
+              mitiru::control
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"
+               >
+              mitiru::core
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"
+               >
+              mitiru::data
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"
+               >
+              mitiru::debug
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"
+               >
+              mitiru::ecs
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"
+               >
+              mitiru::effects
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"
+               >
+              mitiru::fsm
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"
+               >
+              mitiru::game
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"
+               >
+              mitiru::gfx
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"
+               >
+              mitiru::gfx::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"
+               >
+              mitiru::i18n
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"
+               >
+              mitiru::input
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"
+               >
+              mitiru::live2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"
+               >
+              mitiru::math
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"
+               >
+              mitiru::narrative
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"
+               aria-current="page" class="is-active">
+              mitiru::network
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"
+               >
+              mitiru::observe
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"
+               >
+              mitiru::physics
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"
+               >
+              mitiru::physics2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"
+               >
+              mitiru::physics3d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"
+               >
+              mitiru::platform
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"
+               >
+              mitiru::render
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"
+               >
+              mitiru::render::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"
+               >
+              mitiru::resource
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"
+               >
+              mitiru::scene
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"
+               >
+              mitiru::screen_detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"
+               >
+              mitiru::server
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"
+               >
+              mitiru::server::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"
+               >
+              mitiru::sprite
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"
+               >
+              mitiru::time
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"
+               >
+              mitiru::time::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"
+               >
+              mitiru::ui
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"
+               >
+              mitiru::ui::LayoutPresets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"
+               >
+              mitiru::util
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"
+               >
+              mitiru::validate
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"
+               >
+              mitiru::vn
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"
+               >
+              mitiru::world
+            </a>
+          </li>
+        
+      </ul>
+    </nav>
+  </details>
+</aside>
+
+  <article class="api-page__article">
+    <header>
+      <h1>mitiru::network</h1>
+      <p class="api-page__description">Networking primitives: socket abstraction, RPC, replication, and the lockstep transport used by deterministic multiplayer.</p>
+    </header>
+    <div class="api-page__content">
+      <p class="api-namespace__lede">Networking primitives: socket abstraction, RPC, replication, and the lockstep transport used by deterministic multiplayer.</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#class-inetworktransport"><code>INetworkTransport</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#struct-timestampedstate"><code>TimestampedState</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#class-lagcompensator"><code>LagCompensator</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-lobby"><code>Lobby</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#enum-roomstate"><code>RoomState</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-lobbyevent"><code>LobbyEvent</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#struct-roominfo"><code>RoomInfo</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-lobbyeventinfo"><code>LobbyEventInfo</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-lobbyconfig"><code>LobbyConfig</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-lobbysystem"><code>LobbySystem</code></a></td><td>class</td><td>25</td></tr>
+<tr><td><a href="#class-localtransport"><code>LocalTransport</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#enum-messagetype"><code>MessageType</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#enum-deliverymode"><code>DeliveryMode</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#struct-gamemessage"><code>GameMessage</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#struct-replicatedproperty"><code>ReplicatedProperty</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-replicatedentity"><code>ReplicatedEntity</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-deadreckoningstate"><code>DeadReckoningState</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-replicationmanager"><code>ReplicationManager</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#enum-sessionmode"><code>SessionMode</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-peerstate"><code>PeerState</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-sessionevent"><code>SessionEvent</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#struct-peerinfo"><code>PeerInfo</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-sessionconfig"><code>SessionConfig</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-sessioneventinfo"><code>SessionEventInfo</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-networksession"><code>NetworkSession</code></a></td><td>class</td><td>25</td></tr>
+<tr><td><a href="#enum-authoritymode"><code>AuthorityMode</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#class-syncablecomponent"><code>SyncableComponent</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#struct-statedelta"><code>StateDelta</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-syncsnapshot"><code>SyncSnapshot</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-syncmanager"><code>SyncManager</code></a></td><td>class</td><td>16</td></tr>
+<tr><td><a href="#enum-networkevent"><code>NetworkEvent</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-packetheader"><code>PacketHeader</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-networkmessage"><code>NetworkMessage</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-networkstats"><code>NetworkStats</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-testresult"><code>TestResult</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-validationreport"><code>ValidationReport</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-networkvalidator"><code>NetworkValidator</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#enum-connectionstatus"><code>ConnectionStatus</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#struct-receivedpacket"><code>ReceivedPacket</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-ireliabletransport"><code>IReliableTransport</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-gnsreliabletransport"><code>GnsReliableTransport</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#class-nullreliabletransport"><code>NullReliableTransport</code></a></td><td>class</td><td>19</td></tr>
+<tr><td><a href="#class-wsaguard"><code>WsaGuard</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#class-statesync"><code>StateSync</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-tcptransport"><code>TcpTransport</code></a></td><td>class</td><td>16</td></tr>
+<tr><td><a href="#class-udptransport"><code>UdpTransport</code></a></td><td>class</td><td>16</td></tr>
+<tr><td><a href="#enum-wsopcode"><code>WsOpcode</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-wsframeheader"><code>WsFrameHeader</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-websockettransport"><code>WebSocketTransport</code></a></td><td>class</td><td>14</td></tr>
+</tbody></table>
+<details class="api-class" id="class-inetworktransport" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">INetworkTransport</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~INetworkTransport() = default</code></div>
+<div class="api-method"><code>virtual bool listen(std::uint16_t port) = 0</code></div>
+<div class="api-method"><code>virtual bool connect(std::string_view host, std::uint16_t port) = 0</code></div>
+<div class="api-method"><code>virtual void disconnect(ConnectionId id) = 0</code></div>
+<div class="api-method"><code>virtual void send(ConnectionId id, const std::vector&lt;std::uint8_t&gt;&amp; data) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::vector&lt;NetworkMessage&gt; poll() = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual bool isConnected(ConnectionId id) const = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual NetworkStats stats() const = 0</code></div>
+<div class="api-method"><code>using Timestamp = std::uint64_t;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-timestampedstate" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TimestampedState</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Timestamp time = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-lagcompensator" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">LagCompensator</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using LerpFunc = std::function&lt;State(const State&amp;, const State&amp;, float)&gt;;</code></div>
+<div class="api-method"><code>explicit LagCompensator(std::size_t capacity = kDefaultCapacity)</code></div>
+<div class="api-method"><code>void setLerpFunction(LerpFunc func)</code></div>
+<div class="api-method"><code>void recordState(Timestamp time, State state)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;State&gt; rewindTo(Timestamp time) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;State&gt; interpolate( Timestamp t1, Timestamp t2, float alpha) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;State&gt; interpolateAt(Timestamp time) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t stateCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t capacity() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Timestamp oldestTimestamp() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Timestamp newestTimestamp() const noexcept</code></div>
+<div class="api-method"><code>void clear() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-lobby" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Lobby</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void addPlayer(ConnectionId id, std::string name)</code></div>
+<div class="api-method"><code>void removePlayer(ConnectionId id)</code></div>
+<div class="api-method"><code>void setReady(ConnectionId id, bool ready)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool allReady() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t playerCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;Player&gt;&amp; players() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-roomstate" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RoomState</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Waiting   = 0</code></div>
+<div class="api-method"><code>Starting  = 1</code></div>
+<div class="api-method"><code>InGame    = 2</code></div>
+<div class="api-method"><code>Closed    = 3</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-lobbyevent" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">LobbyEvent</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>RoomCreated      = 0</code></div>
+<div class="api-method"><code>RoomDestroyed    = 1</code></div>
+<div class="api-method"><code>PlayerJoined     = 2</code></div>
+<div class="api-method"><code>PlayerLeft       = 3</code></div>
+<div class="api-method"><code>PlayerReady      = 4</code></div>
+<div class="api-method"><code>AllReady         = 5</code></div>
+<div class="api-method"><code>GameStarting     = 6</code></div>
+<div class="api-method"><code>RoomDiscovered   = 7</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-roominfo">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RoomInfo</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t roomId = 0</code></div>
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string hostAddress</code></div>
+<div class="api-method"><code>std::uint16_t hostPort = 0</code></div>
+<div class="api-method"><code>std::uint32_t currentPlayers = 0</code></div>
+<div class="api-method"><code>std::uint32_t maxPlayers = 4</code></div>
+<div class="api-method"><code>RoomState state = RoomState::Waiting</code></div>
+<div class="api-method"><code>std::string gameMode</code></div>
+<div class="api-method"><code>float lastSeenTime = 0.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isFull() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isJoinable() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] nlohmann::json toJson() const</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::optional&lt;RoomInfo&gt; fromJson(const nlohmann::json&amp; j)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lobbyeventinfo">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LobbyEventInfo</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>LobbyEvent event = LobbyEvent::RoomCreated</code></div>
+<div class="api-method"><code>std::uint32_t roomId = 0</code></div>
+<div class="api-method"><code>ConnectionId playerId = INVALID_CONNECTION</code></div>
+<div class="api-method"><code>std::string detail</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lobbyconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LobbyConfig</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint16_t discoveryPort = 27016</code></div>
+<div class="api-method"><code>float broadcastIntervalSec = 2.0f</code></div>
+<div class="api-method"><code>float roomTimeoutSec = 10.0f</code></div>
+<div class="api-method"><code>std::string discoveryMagic = &quot;MITIRU_LOBBY_V1&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="class-lobbysystem">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">LobbySystem</code> <span class="api-class__count">25</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using EventCallback = std::function&lt;void(const LobbyEventInfo&amp;)&gt;;</code></div>
+<div class="api-method"><code>using GameStartCallback = std::function&lt;void(const RoomInfo&amp;, const Lobby&amp;)&gt;;</code></div>
+<div class="api-method"><code>std::uint32_t createRoom(std::string_view name, std::uint32_t maxPlayers = 4, std::string_view gameMode = &quot;&quot;)</code></div>
+<div class="api-method"><code>void destroyRoom(std::uint32_t roomId)</code></div>
+<div class="api-method"><code>bool joinRoom(std::uint32_t roomId, ConnectionId playerId, std::string_view playerName)</code></div>
+<div class="api-method"><code>void leaveRoom(std::uint32_t roomId, ConnectionId playerId)</code></div>
+<div class="api-method"><code>void setReady(std::uint32_t roomId, ConnectionId playerId, bool ready)</code></div>
+<div class="api-method"><code>bool tryStartGame(std::uint32_t roomId)</code></div>
+<div class="api-method"><code>bool startDiscovery()</code></div>
+<div class="api-method"><code>void stopDiscovery()</code></div>
+<div class="api-method"><code>void update(float deltaTimeSec)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;RoomInfo&gt; discoveredRooms() const</code></div>
+<div class="api-method"><code>[[nodiscard]] const RoomInfo* getRoom(std::uint32_t roomId) const</code></div>
+<div class="api-method"><code>[[nodiscard]] const Lobby* getLobby(std::uint32_t roomId) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t hostedRoomCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] LobbyConfig&amp; config() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const LobbyConfig&amp; config() const noexcept</code></div>
+<div class="api-method"><code>void setEventCallback(EventCallback callback)</code></div>
+<div class="api-method"><code>void setGameStartCallback(GameStartCallback callback)</code></div>
+<div class="api-method"><code>~LobbySystem()</code></div>
+<div class="api-method"><code>LobbySystem() = default</code></div>
+<div class="api-method"><code>LobbySystem(const LobbySystem&amp;) = delete</code></div>
+<div class="api-method"><code>LobbySystem&amp; operator=(const LobbySystem&amp;) = delete</code></div>
+<div class="api-method"><code>LobbySystem(LobbySystem&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>LobbySystem&amp; operator=(LobbySystem&amp;&amp;) = delete</code></div>
+</div>
+</details>
+<details class="api-class" id="class-localtransport">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">LocalTransport</code> <span class="api-class__extra">: public INetworkTransport</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>static void pair(LocalTransport&amp; a, LocalTransport&amp; b)</code></div>
+<div class="api-method"><code>bool listen(std::uint16_t ) override</code></div>
+<div class="api-method"><code>bool connect(std::string_view , std::uint16_t ) override</code></div>
+<div class="api-method"><code>void disconnect(ConnectionId ) override</code></div>
+<div class="api-method"><code>void send(ConnectionId id, const std::vector&lt;std::uint8_t&gt;&amp; data) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;NetworkMessage&gt; poll() override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isConnected(ConnectionId ) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] NetworkStats stats() const override</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-messagetype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">MessageType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Connect     = 0</code></div>
+<div class="api-method"><code>Disconnect  = 1</code></div>
+<div class="api-method"><code>Heartbeat   = 2</code></div>
+<div class="api-method"><code>GameState   = 3</code></div>
+<div class="api-method"><code>Input       = 4</code></div>
+<div class="api-method"><code>RPC         = 5</code></div>
+<div class="api-method"><code>LobbyAction = 6</code></div>
+<div class="api-method"><code>Custom      = 255</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-deliverymode">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">DeliveryMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Unreliable       = 0</code></div>
+<div class="api-method"><code>Reliable         = 1</code></div>
+<div class="api-method"><code>ReliableOrdered  = 2</code></div>
+<div class="api-method"><code>[[nodiscard]] inline GameMessage heartbeat(ConnectionId senderId)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline GameMessage connectRequest(std::string_view playerName)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline GameMessage disconnectNotice( ConnectionId senderId, std::string_view reason = &quot;&quot;)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline GameMessage gameState( ConnectionId senderId, const nlohmann::json&amp; stateJson)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline GameMessage input( ConnectionId senderId, const nlohmann::json&amp; inputJson)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gamemessage">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GameMessage</code> <span class="api-class__count">14</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>MessageType type = MessageType::Custom</code></div>
+<div class="api-method"><code>ConnectionId senderId = INVALID_CONNECTION</code></div>
+<div class="api-method"><code>std::uint32_t sequenceNumber = 0</code></div>
+<div class="api-method"><code>std::uint64_t timestampMs = 0</code></div>
+<div class="api-method"><code>DeliveryMode delivery = DeliveryMode::Reliable</code></div>
+<div class="api-method"><code>std::uint8_t channel = 0</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; payload</code></div>
+<div class="api-method"><code>void stampNow() noexcept</code></div>
+<div class="api-method"><code>void setJsonPayload(const nlohmann::json&amp; j)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;nlohmann::json&gt; jsonPayload() const</code></div>
+<div class="api-method"><code>void setTextPayload(std::string_view text)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string textPayload() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; toBytes() const</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::optional&lt;GameMessage&gt; fromBytes( const std::vector&lt;std::uint8_t&gt;&amp; data)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-replicatedproperty">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReplicatedProperty</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>int numValues = 3</code></div>
+<div class="api-method"><code>uint32_t lastUpdateFrame = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-replicatedentity">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReplicatedEntity</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int nodeId = -1</code></div>
+<div class="api-method"><code>uint32_t networkId = 0</code></div>
+<div class="api-method"><code>uint8_t ownerPeerId = 0</code></div>
+<div class="api-method"><code>std::vector&lt;ReplicatedProperty&gt; properties</code></div>
+<div class="api-method"><code>bool dirty = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-deadreckoningstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DeadReckoningState</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>double timestamp = 0.0</code></div>
+<div class="api-method"><code>void predict(double t, float outPos[3]) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-replicationmanager">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ReplicationManager</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void registerEntity(int nodeId, uint8_t ownerPeerId)</code></div>
+<div class="api-method"><code>void updateProperty(uint32_t networkId, const std::string&amp; propName, const float* values, int numValues)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;uint8_t&gt; serializeDirty()</code></div>
+<div class="api-method"><code>[[nodiscard]] size_t entityCount() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-sessionmode">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">SessionMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>None   = 0</code></div>
+<div class="api-method"><code>Server = 1</code></div>
+<div class="api-method"><code>Client = 2</code></div>
+<div class="api-method"><code>P2P    = 3</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-peerstate">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PeerState</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Connecting    = 0</code></div>
+<div class="api-method"><code>Connected     = 1</code></div>
+<div class="api-method"><code>Disconnecting = 2</code></div>
+<div class="api-method"><code>Disconnected  = 3</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-sessionevent">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">SessionEvent</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>PeerConnected    = 0</code></div>
+<div class="api-method"><code>PeerDisconnected = 1</code></div>
+<div class="api-method"><code>PeerTimedOut     = 2</code></div>
+<div class="api-method"><code>SessionStarted   = 3</code></div>
+<div class="api-method"><code>SessionEnded     = 4</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-peerinfo">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PeerInfo</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ConnectionId connectionId = INVALID_CONNECTION</code></div>
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>PeerState state = PeerState::Disconnected</code></div>
+<div class="api-method"><code>float latencyMs = 0.0f</code></div>
+<div class="api-method"><code>float lastHeartbeatTime = 0.0f</code></div>
+<div class="api-method"><code>float connectedSince = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t nextSequence = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sessionconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SessionConfig</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float heartbeatIntervalSec = 1.0f</code></div>
+<div class="api-method"><code>float timeoutSec = 10.0f</code></div>
+<div class="api-method"><code>float reconnectDelaySec = 3.0f</code></div>
+<div class="api-method"><code>std::uint32_t maxPeers = 16</code></div>
+<div class="api-method"><code>bool autoReconnect = true</code></div>
+<div class="api-method"><code>std::string playerName = &quot;Player&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sessioneventinfo">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SessionEventInfo</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>SessionEvent event = SessionEvent::PeerConnected</code></div>
+<div class="api-method"><code>ConnectionId peerId = INVALID_CONNECTION</code></div>
+<div class="api-method"><code>std::string detail</code></div>
+</div>
+</details>
+<details class="api-class" id="class-networksession">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NetworkSession</code> <span class="api-class__count">25</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using EventCallback = std::function&lt;void(const SessionEventInfo&amp;)&gt;;</code></div>
+<div class="api-method"><code>using MessageHandler = std::function&lt;void(const GameMessage&amp;)&gt;;</code></div>
+<div class="api-method"><code>bool hostAsServer(std::uint16_t port, std::shared_ptr&lt;INetworkTransport&gt; transport)</code></div>
+<div class="api-method"><code>bool joinAsClient(std::string_view host, std::uint16_t port, std::shared_ptr&lt;INetworkTransport&gt; transport)</code></div>
+<div class="api-method"><code>bool startP2P(std::uint16_t port, std::shared_ptr&lt;INetworkTransport&gt; transport)</code></div>
+<div class="api-method"><code>void shutdown()</code></div>
+<div class="api-method"><code>void update(float deltaTimeSec)</code></div>
+<div class="api-method"><code>void sendTo(ConnectionId peerId, GameMessage msg)</code></div>
+<div class="api-method"><code>void broadcast(GameMessage msg)</code></div>
+<div class="api-method"><code>void broadcastGameState(const nlohmann::json&amp; stateJson)</code></div>
+<div class="api-method"><code>void sendInput(const nlohmann::json&amp; inputJson)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;GameMessage&gt; receive()</code></div>
+<div class="api-method"><code>[[nodiscard]] const PeerInfo* getPeer(ConnectionId peerId) const</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::unordered_map&lt;ConnectionId, PeerInfo&gt;&amp; peers() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t connectedPeerCount() const noexcept</code></div>
+<div class="api-method"><code>void disconnectPeer(ConnectionId peerId, std::string_view reason = &quot;&quot;)</code></div>
+<div class="api-method"><code>[[nodiscard]] SessionConfig&amp; config() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const SessionConfig&amp; config() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] SessionMode mode() const noexcept</code></div>
+<div class="api-method"><code>void setLocalId(ConnectionId id) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ConnectionId localId() const noexcept</code></div>
+<div class="api-method"><code>void setEventCallback(EventCallback callback)</code></div>
+<div class="api-method"><code>void onMessage(MessageType type, MessageHandler handler)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isActive() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float elapsedTime() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-authoritymode">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AuthorityMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>HostAuthoritative = 0</code></div>
+<div class="api-method"><code>OwnerAuthoritative = 1</code></div>
+<div class="api-method"><code>Shared = 2</code></div>
+<div class="api-method"><code>[[nodiscard]] inline nlohmann::json lerpJsonNumeric( const nlohmann::json&amp; a, const nlohmann::json&amp; b, float alpha)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-syncablecomponent">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SyncableComponent</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~SyncableComponent() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::uint32_t syncId() const = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual nlohmann::json serialize() const = 0</code></div>
+<div class="api-method"><code>virtual void deserialize(const nlohmann::json&amp; j) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual bool isDirty() const</code></div>
+<div class="api-method"><code>virtual void clearDirty()</code></div>
+<div class="api-method"><code>void markDirty()</code></div>
+<div class="api-method"><code>[[nodiscard]] ConnectionId ownerId() const noexcept</code></div>
+<div class="api-method"><code>void setOwnerId(ConnectionId id) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-statedelta">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StateDelta</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint64_t version = 0</code></div>
+<div class="api-method"><code>std::uint64_t timestampMs = 0</code></div>
+<div class="api-method"><code>nlohmann::json states</code></div>
+<div class="api-method"><code>[[nodiscard]] nlohmann::json toJson() const</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::optional&lt;StateDelta&gt; fromJson(const nlohmann::json&amp; j)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-syncsnapshot">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SyncSnapshot</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint64_t timestampMs = 0</code></div>
+<div class="api-method"><code>nlohmann::json state</code></div>
+</div>
+</details>
+<details class="api-class" id="class-syncmanager">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SyncManager</code> <span class="api-class__count">16</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>`using InterpolateFunc = std::function&lt;nlohmann::json( const nlohmann::json&amp;, const nlohmann::json&amp;, float)&gt;;`</code></div>
+<div class="api-method"><code>void registerComponent(SyncableComponent* component)</code></div>
+<div class="api-method"><code>void unregisterComponent(std::uint32_t syncId)</code></div>
+<div class="api-method"><code>void setAuthorityMode(AuthorityMode mode) noexcept</code></div>
+<div class="api-method"><code>void setLocalPeerId(ConnectionId id) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasAuthority(std::uint32_t syncId) const</code></div>
+<div class="api-method"><code>void setIsHost(bool isHost) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] StateDelta collectDirtyStates()</code></div>
+<div class="api-method"><code>void applyRemoteDelta(const StateDelta&amp; delta)</code></div>
+<div class="api-method"><code>void interpolate(std::uint64_t renderTimeMs)</code></div>
+<div class="api-method"><code>void extrapolate(std::uint64_t currentTimeMs, std::uint64_t maxExtrapolateMs = 200)</code></div>
+<div class="api-method"><code>void setInterpolateFunc(InterpolateFunc func)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t componentCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] nlohmann::json fullSnapshot() const</code></div>
+<div class="api-method"><code>void applyFullSnapshot(const nlohmann::json&amp; snapshot)</code></div>
+<div class="api-method"><code>void clearSnapshots()</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-networkevent">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">NetworkEvent</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Connected</code></div>
+<div class="api-method"><code>Disconnected</code></div>
+<div class="api-method"><code>DataReceived</code></div>
+<div class="api-method"><code>Error</code></div>
+<div class="api-method"><code>using ConnectionId = std::uint32_t;</code></div>
+<div class="api-method"><code>constexpr ConnectionId INVALID_CONNECTION = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-packetheader">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PacketHeader</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t size = 0</code></div>
+<div class="api-method"><code>std::uint32_t type = 0</code></div>
+<div class="api-method"><code>std::uint32_t sequence = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-networkmessage">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NetworkMessage</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ConnectionId sender = INVALID_CONNECTION</code></div>
+<div class="api-method"><code>PacketHeader header</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; payload</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-networkstats">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NetworkStats</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint64_t bytesSent = 0</code></div>
+<div class="api-method"><code>std::uint64_t bytesReceived = 0</code></div>
+<div class="api-method"><code>std::uint64_t packetsSent = 0</code></div>
+<div class="api-method"><code>std::uint64_t packetsReceived = 0</code></div>
+<div class="api-method"><code>float latencyMs = 0.0f</code></div>
+<div class="api-method"><code>float packetLoss = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-testresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TestResult</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>bool passed = false</code></div>
+<div class="api-method"><code>std::string detail</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-validationreport">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ValidationReport</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool allPassed = false</code></div>
+<div class="api-method"><code>std::vector&lt;TestResult&gt; results</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-networkvalidator">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NetworkValidator</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] bool testLocalTransport() const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool testTcpLoopback() const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool testStateSync() const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool testLobby() const</code></div>
+<div class="api-method"><code>[[nodiscard]] ValidationReport runAll() const</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-connectionstatus">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ConnectionStatus</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Connecting = 0</code></div>
+<div class="api-method"><code>Connected</code></div>
+<div class="api-method"><code>Disconnected</code></div>
+<div class="api-method"><code>Failed</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IReliableTransport&gt; createReliableTransport()</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-receivedpacket">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReceivedPacket</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ConnectionId connectionId = INVALID_CONNECTION</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; data</code></div>
+<div class="api-method"><code>std::uint32_t size = 0</code></div>
+<div class="api-method"><code>bool reliable = true</code></div>
+</div>
+</details>
+<details class="api-class" id="class-ireliabletransport">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IReliableTransport</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IReliableTransport() = default</code></div>
+<div class="api-method"><code>virtual bool listen(std::uint16_t port) = 0</code></div>
+<div class="api-method"><code>virtual ConnectionId connect(std::string_view address, std::uint16_t port) = 0</code></div>
+<div class="api-method"><code>virtual void disconnect(ConnectionId connId) = 0</code></div>
+<div class="api-method"><code>virtual void send(ConnectionId connId, const void* data, std::uint32_t size, bool reliable = true) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::vector&lt;ReceivedPacket&gt; receive() = 0</code></div>
+<div class="api-method"><code>virtual void poll() = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual ConnectionStatus getConnectionStatus( ConnectionId connId) const = 0</code></div>
+<div class="api-method"><code>void setOnConnected(std::function&lt;void(ConnectionId)&gt; callback)</code></div>
+<div class="api-method"><code>void setOnDisconnected(std::function&lt;void(ConnectionId)&gt; callback)</code></div>
+<div class="api-method"><code>void setOnData(std::function&lt;void(const ReceivedPacket&amp;)&gt; callback)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-gnsreliabletransport">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GnsReliableTransport</code> <span class="api-class__extra">: public IReliableTransport</span> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>GnsReliableTransport()</code></div>
+<div class="api-method"><code>~GnsReliableTransport() override</code></div>
+<div class="api-method"><code>GnsReliableTransport(const GnsReliableTransport&amp;) = delete</code></div>
+<div class="api-method"><code>GnsReliableTransport&amp; operator=(const GnsReliableTransport&amp;) = delete</code></div>
+<div class="api-method"><code>GnsReliableTransport(GnsReliableTransport&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>GnsReliableTransport&amp; operator=(GnsReliableTransport&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>bool listen(std::uint16_t port) override</code></div>
+<div class="api-method"><code>ConnectionId connect(std::string_view address, std::uint16_t port) override</code></div>
+<div class="api-method"><code>void disconnect(ConnectionId connId) override</code></div>
+<div class="api-method"><code>void send(ConnectionId connId, const void* data, std::uint32_t size, bool reliable) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;ReceivedPacket&gt; receive() override</code></div>
+<div class="api-method"><code>void poll() override</code></div>
+<div class="api-method"><code>[[nodiscard]] ConnectionStatus getConnectionStatus( ConnectionId connId) const override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-nullreliabletransport">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NullReliableTransport</code> <span class="api-class__extra">: public IReliableTransport</span> <span class="api-class__count">19</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool listen([[maybe_unused]] std::uint16_t port) override</code></div>
+<div class="api-method"><code>ConnectionId connect([[maybe_unused]] std::string_view address, [[maybe_unused]] std::uint16_t port) override</code></div>
+<div class="api-method"><code>void disconnect([[maybe_unused]] ConnectionId connId) override</code></div>
+<div class="api-method"><code>void send([[maybe_unused]] ConnectionId connId, [[maybe_unused]] const void* data, [[maybe_unused]] std::uint32_t size, [[maybe_unused]] bool reliable) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;ReceivedPacket&gt; receive() override</code></div>
+<div class="api-method"><code>void poll() override</code></div>
+<div class="api-method"><code>[[nodiscard]] ConnectionStatus getConnectionStatus( [[maybe_unused]] ConnectionId connId) const override</code></div>
+<div class="api-method"><code>using SocketHandle = SOCKET;</code></div>
+<div class="api-method"><code>using SocketHandle = int;</code></div>
+<div class="api-method"><code>inline constexpr SocketHandle INVALID_SOCK = INVALID_SOCKET</code></div>
+<div class="api-method"><code>inline constexpr SocketHandle INVALID_SOCK = -1</code></div>
+<div class="api-method"><code>inline constexpr int SOCK_ERR = SOCKET_ERROR</code></div>
+<div class="api-method"><code>inline constexpr int SOCK_ERR = -1</code></div>
+<div class="api-method"><code>inline constexpr int WOULD_BLOCK_ERR = WSAEWOULDBLOCK</code></div>
+<div class="api-method"><code>inline constexpr int WOULD_BLOCK_ERR = EWOULDBLOCK</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int lastSocketError() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isWouldBlock(int err) noexcept</code></div>
+<div class="api-method"><code>inline void closeSocket(SocketHandle sock) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool setNonBlocking(SocketHandle sock) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-wsaguard">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WsaGuard</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>WsaGuard() noexcept</code></div>
+<div class="api-method"><code>~WsaGuard() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
+<div class="api-method"><code>WsaGuard(const WsaGuard&amp;) = delete</code></div>
+<div class="api-method"><code>WsaGuard&amp; operator=(const WsaGuard&amp;) = delete</code></div>
+<div class="api-method"><code>WsaGuard(WsaGuard&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>WsaGuard&amp; operator=(WsaGuard&amp;&amp;) = delete</code></div>
+</div>
+</details>
+<details class="api-class" id="class-statesync">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StateSync</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void setAuthority(bool isServer) noexcept</code></div>
+<div class="api-method"><code>void pushState(std::string stateJson)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string latestState() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t stateVersion() const noexcept</code></div>
+<div class="api-method"><code>void acknowledgeVersion(std::uint64_t version)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t pendingCount() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-tcptransport">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TcpTransport</code> <span class="api-class__extra">: public INetworkTransport</span> <span class="api-class__count">16</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>TcpTransport() = default</code></div>
+<div class="api-method"><code>~TcpTransport() override</code></div>
+<div class="api-method"><code>TcpTransport(const TcpTransport&amp;) = delete</code></div>
+<div class="api-method"><code>TcpTransport&amp; operator=(const TcpTransport&amp;) = delete</code></div>
+<div class="api-method"><code>TcpTransport(TcpTransport&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>TcpTransport&amp; operator=(TcpTransport&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isWsaInitialized() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] uint16_t getLocalPort() const noexcept</code></div>
+<div class="api-method"><code>bool listen(std::uint16_t port) override</code></div>
+<div class="api-method"><code>bool connect(std::string_view host, std::uint16_t port) override</code></div>
+<div class="api-method"><code>void disconnect(ConnectionId id) override</code></div>
+<div class="api-method"><code>void send(ConnectionId id, const std::vector&lt;std::uint8_t&gt;&amp; data) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;NetworkMessage&gt; poll() override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isConnected(ConnectionId id) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] NetworkStats stats() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isListening() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-udptransport">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">UdpTransport</code> <span class="api-class__extra">: public INetworkTransport</span> <span class="api-class__count">16</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>UdpTransport() = default</code></div>
+<div class="api-method"><code>~UdpTransport() override</code></div>
+<div class="api-method"><code>UdpTransport(const UdpTransport&amp;) = delete</code></div>
+<div class="api-method"><code>UdpTransport&amp; operator=(const UdpTransport&amp;) = delete</code></div>
+<div class="api-method"><code>UdpTransport(UdpTransport&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>UdpTransport&amp; operator=(UdpTransport&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] uint16_t getLocalPort() const noexcept</code></div>
+<div class="api-method"><code>bool listen(std::uint16_t port) override</code></div>
+<div class="api-method"><code>bool connect(std::string_view host, std::uint16_t port) override</code></div>
+<div class="api-method"><code>void disconnect(ConnectionId id) override</code></div>
+<div class="api-method"><code>void send(ConnectionId id, const std::vector&lt;std::uint8_t&gt;&amp; data) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;NetworkMessage&gt; poll() override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isConnected(ConnectionId id) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] NetworkStats stats() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isServerMode() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-wsopcode">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">WsOpcode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Continuation = 0x0</code></div>
+<div class="api-method"><code>Text = 0x1</code></div>
+<div class="api-method"><code>Binary = 0x2</code></div>
+<div class="api-method"><code>Close = 0x8</code></div>
+<div class="api-method"><code>Ping = 0x9</code></div>
+<div class="api-method"><code>Pong = 0xA</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-wsframeheader">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WsFrameHeader</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool fin = false</code></div>
+<div class="api-method"><code>WsOpcode opcode = WsOpcode::Binary</code></div>
+<div class="api-method"><code>bool masked = false</code></div>
+<div class="api-method"><code>std::uint64_t payloadLen = 0</code></div>
+<div class="api-method"><code>std::size_t headerSize = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-websockettransport">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebSocketTransport</code> <span class="api-class__extra">: public INetworkTransport</span> <span class="api-class__count">14</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>WebSocketTransport() = default</code></div>
+<div class="api-method"><code>~WebSocketTransport() override</code></div>
+<div class="api-method"><code>WebSocketTransport(const WebSocketTransport&amp;) = delete</code></div>
+<div class="api-method"><code>WebSocketTransport&amp; operator=(const WebSocketTransport&amp;) = delete</code></div>
+<div class="api-method"><code>WebSocketTransport(WebSocketTransport&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>WebSocketTransport&amp; operator=(WebSocketTransport&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>bool listen(std::uint16_t port) override</code></div>
+<div class="api-method"><code>bool connect(std::string_view host, std::uint16_t port) override</code></div>
+<div class="api-method"><code>void disconnect(ConnectionId id) override</code></div>
+<div class="api-method"><code>void send(ConnectionId id, const std::vector&lt;std::uint8_t&gt;&amp; data) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;NetworkMessage&gt; poll() override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isConnected(ConnectionId id) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] NetworkStats stats() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] uint16_t getLocalPort() const noexcept</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+    </div>
+  </article>
+  
+<aside class="api-toc" aria-label="このページ内">
+  <p class="api-toc__title">このページ内</p>
+  <nav id="TableOfContents"></nav>
+</aside>
+
+
+</div>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">MitiruEngine</p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>Permissive open-source. See <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a>.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">プロジェクトステータス</h2>
+      <p>Header-only。Catch2 で 2254 件のテストが green。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

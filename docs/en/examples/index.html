@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Examples | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="13 runnable samples covering CEF UI hosting, headless C&#43;&#43; gameplay, scene transitions, scripted narrative, and the data-driven pipeline.">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
+
+<link rel="alternate" hreflang="en" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/">
+
+
+  
+    
+<link rel="alternate" hreflang="x-default" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
+    
+  
+    
+  
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="Examples | MitiruEngine">
+<meta property="og:description" content="13 runnable samples covering CEF UI hosting, headless C&#43;&#43; gameplay, scene transitions, scripted narrative, and the data-driven pipeline.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/en/examples/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Examples | MitiruEngine">
+<meta name="twitter:description" content="13 runnable samples covering CEF UI hosting, headless C&#43;&#43; gameplay, scene transitions, scripted narrative, and the data-driven pipeline.">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/en/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="Menu"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/">Home</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">Get Started</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/examples/">Examples</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/docs">Docs</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/en/api/">API Reference</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="Search this site"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">Search this site</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">Search this site</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "Search documentation…",
+      clear_search:      "Clear",
+      load_more:         "Load more",
+      search_label:      "Search this site",
+      filters_label:     "Filters",
+      zero_results:      "No results found for [SEARCH_TERM]",
+      many_results:      "[COUNT] results for [SEARCH_TERM]",
+      one_result:        "[COUNT] result for [SEARCH_TERM]",
+      alt_search:        "Showing results for [DISPLAY_QUERY] instead",
+      search_suggestion: "No results for [SEARCH_TERM]. Try [DISPLAY_QUERY]",
+      searching:         "Searching…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+        <span class="site-nav__lang">
+          
+            
+              <a href="https://mogmog-0110.github.io/MitiruEngine/ja/">日本語</a>
+            
+          
+            
+              <strong>English</strong>
+            
+          
+        </span>
+      
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="Toggle dark mode">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+
+<section class="example-gallery container">
+  <header class="example-gallery__header">
+    <h1>Examples</h1>
+    <div class="example-gallery__intro"><p>Every sample under <code>examples/</code> builds with the default CMake preset and runs standalone. The <strong>CEF</strong> samples open a window and host an HTML overlay; the rest are <strong>headless</strong> console programs that print a deterministic trace to stdout.</p>
+<p>If a card shows the placeholder image, run <code>python tools/site/capture_examples.py</code> from the repo root to populate <code>site/static/screenshots/&lt;name&gt;.png</code> for every example, then rebuild the site.</p>
+</div>
+  </header>
+
+  <div class="examples-grid">
+    
+    
+    
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/animated_sprite/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/animated_sprite.png"
+            alt="Animated Sprite screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--headless">Headless</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">Animated Sprite</h2>
+          <p class="example-card__desc">Frame-based playback, pause/resume, speed multiplier, loop/clamp behaviour, onLoop callback, and injected GIF decoders (G-06).</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::sprite::AnimatedSprite</code></li>
+            
+              <li class="example-card__api-chip"><code>mitiru::sprite::FrameData</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;2 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/cef_minimal/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/cef_minimal.png"
+            alt="CEF Minimal screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">CEF Minimal</h2>
+          <p class="example-card__desc">Smallest possible MitiruEngine &#43; CEF host. Black-bg Game subclass, all gameplay/UI in HTML/JS/CSS.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::Game (subclass)</code></li>
+            
+              <li class="example-card__api-chip"><code>mitiru::EngineConfig (cefStartUrl, skipDefaultFont)</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;1 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/cef_overlay/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/cef_overlay.png"
+            alt="CEF Overlay screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">CEF Overlay</h2>
+          <p class="example-card__desc">Native DX12 scene plus a transparent CEF HTML overlay. F1 toggles input focus between CEF and the native game.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::Game (subclass with update/draw/layout)</code></li>
+            
+              <li class="example-card__api-chip"><code>mitiru::Engine &#43; mitiru::EngineConfig</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;4 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/cef_state_bridge/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/cef_state_bridge.png"
+            alt="CEF State Bridge screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">CEF State Bridge</h2>
+          <p class="example-card__desc">Two-way C&#43;&#43; ↔ JS state bridge via mitiru::cef::StateStore (G-05). HP ticking, pulse events, and a Heal command.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::cef::StateStore</code></li>
+            
+              <li class="example-card__api-chip"><code>StateStore::set / emit / onAction</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;2 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/cef_transition/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/cef_transition.png"
+            alt="CEF Transition screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">CEF Transition</h2>
+          <p class="example-card__desc">Fade transition between two HTML pages using mitiru::cef::SceneTransition (G-17).</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::cef::SceneTransitionState</code></li>
+            
+              <li class="example-card__api-chip"><code>mitiru::cef::CefTransitionDeps</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;3 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/cpp_data_driven_minimal/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/cpp_data_driven_minimal.png"
+            alt="Data-Driven Minimal (C&#43;&#43;) screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--headless">Headless</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">Data-Driven Minimal (C&#43;&#43;)</h2>
+          <p class="example-card__desc">ContentLoader, SaveSchema, BridgeInputAdapter, BridgeViewPush, SchemaValidator, SchemaImporter — every data-driven primitive in one runnable file.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::data::ContentLoader&lt;T&gt;</code></li>
+            
+              <li class="example-card__api-chip"><code>mitiru::data::SaveSchema&lt;T&gt; &#43; MigrationChain</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;6 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/cpp_gameplay_minimal/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/cpp_gameplay_minimal.png"
+            alt="Gameplay Minimal (C&#43;&#43;) screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--headless">Headless</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">Gameplay Minimal (C&#43;&#43;)</h2>
+          <p class="example-card__desc">SceneRouter, StateMachine, Timer, Cooldown, Sequence, BridgeActionRouter, BridgeViewPush — every P0 C&#43;&#43; gameplay primitive in a fake 60 fps loop.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::scene::SceneRouter &#43; mitiru::scene::IScene</code></li>
+            
+              <li class="example-card__api-chip"><code>mitiru::fsm::StateMachine&lt;EnumT&gt;</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;5 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/hello_headless/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/hello_headless.png"
+            alt="Hello Headless screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--headless">Headless</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">Hello Headless</h2>
+          <p class="example-card__desc">Smallest possible MitiruEngine consumer. Link-check stub &#43; FetchContent template for downstream games.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>&lt;mitiru/Mitiru.hpp&gt; umbrella header</code></li>
+            
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/narrative_script/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/narrative_script.png"
+            alt="Narrative Script screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--headless">Headless</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">Narrative Script</h2>
+          <p class="example-card__desc">JSON-driven ADV script runner (G-04). Typed callbacks for text, image, wait, flag, stat, and choice events.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::narrative::ScriptRunner::loadFromDirectory</code></li>
+            
+              <li class="example-card__api-chip"><code>onTextDisplay, onImageShow, onWaitBegin, onFlagSet</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;3 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/parametric_portrait/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/parametric_portrait.png"
+            alt="Parametric Portrait screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--headless">Headless</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">Parametric Portrait</h2>
+          <p class="example-card__desc">N-axis discrete portrait lookup (G-01). Per-axis low/high thresholds, lambda loader, named overrides, memoization.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::sprite::ParametricPortrait&lt;N&gt;</code></li>
+            
+              <li class="example-card__api-chip"><code>pathTemplate with {axis_name} placeholders</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;2 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/scene_transition/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/scene_transition.png"
+            alt="Scene Transition screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--headless">Headless</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">Scene Transition</h2>
+          <p class="example-card__desc">Fade / Dissolve / Slide / Zoom / Custom-easing transitions (G-03) driven through a self-contained overlay.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::scene::Transition (start, update, draw, isDone, buildFrame)</code></li>
+            
+              <li class="example-card__api-chip"><code>mitiru::scene::TransitionKind</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;3 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/vn_game_hybrid/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/vn_game_hybrid.png"
+            alt="VN ↔ Gameplay Hybrid screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--headless">Headless</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">VN ↔ Gameplay Hybrid</h2>
+          <p class="example-card__desc">HybridGameManager (G-09) switching between VN and Gameplay mode while keeping shared state in sync.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::game::HybridGameManager</code></li>
+            
+              <li class="example-card__api-chip"><code>enterVNMode / enterGameplayMode / returnToPreviousMode</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;4 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/vn_hello_world/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/screenshots/vn_hello_world.png"
+            alt="VN Hello World screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--headless">Headless</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">VN Hello World</h2>
+          <p class="example-card__desc">Smallest possible visual-novel sample (G-09). ScenarioScript DSL through ScenarioExecutor, ScenarioCallback events to stdout.</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::vn::ScenarioExecutor</code></li>
+            
+              <li class="example-card__api-chip"><code>ScenarioExecutor::loadFromSource</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">&#43;2 more</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+  </div>
+</section>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">MitiruEngine</p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">License</h2>
+      <p>Permissive open-source. See <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a>.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">Project Status</h2>
+      <p>Header-only. 2254 Catch2 tests green.</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,70 @@
+// Detail header for mitiru::Engine — do not include directly; included via core/Engine.hpp
+// ⚠ This file is only included when both _WIN32 and MITIRU_HAS_CEF are defined.
+#pragma once
+
+#include <cstdio>
+
+#include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/cef/MitiruCefSchemeHandler.hpp>
+
+// ── CEF integration out-of-class definitions ─────────────────────────────
+
+MITIRU_INLINE void mitiru::Engine::initializeCef(const EngineConfig& config)
+{
+#if defined(_WIN32) && defined(MITIRU_HAS_CEF)
+	auto* dx12Device = dynamic_cast<gfx::Dx12Device*>(m_device.get());
+	if (!dx12Device || !m_window)
+	{
+		return;
+	}
+
+	// 実行ファイルのディレクトリを取得する (CEF helper exe の検索に使う)
+	char exePath[MAX_PATH] = {};
+	::GetModuleFileNameA(nullptr, exePath, MAX_PATH);
+	std::string exeDir = exePath;
+	const auto lastSlash = exeDir.find_last_of("\\/");
+	if (lastSlash != std::string::npos)
+	{
+		exeDir = exeDir.substr(0, lastSlash);
+	}
+
+	const std::string logPath = config.cefLogPath.empty()
+		? exeDir + "/cef_debug.log"
+		: config.cefLogPath;
+
+	const std::string startUrl = config.cefStartUrl.empty()
+		? "about:blank"
+		: config.cefStartUrl;
+
+	// `app://` ディスクフォールバック追加ルート (consumer ゲームが宣言)。
+	// CefInitialize 前に登録する必要があるため、`MitiruCefContext::initialize`
+	// より前にここで投入しておく。
+	mitiru::cef::MitiruCefSchemeHandlerFactory::clearExtraAssetRoots();
+	for (const auto& dir : config.cefAdditionalAssetDirs)
+	{
+		mitiru::cef::MitiruCefSchemeHandlerFactory::addAssetRoot(dir);
+	}
+
+	// CEF は常にゲーム論理解像度で動作させる。
+	// フルスクリーン時に物理解像度（例 2560x1440）で初期化すると
+	// HTML の 1920×1080 固定レイアウトとの乖離が起き黒画面・マウスズレが発生する。
+	const int w = config.windowWidth  > 0 ? config.windowWidth  : m_window->width();
+	const int h = config.windowHeight > 0 ? config.windowHeight : m_window->height();
+
+	if (!m_cefContext.initialize(*dx12Device, exeDir, logPath, w, h,
+	                             startUrl, config.cefRemoteDebuggingPort))
+	{
+		OutputDebugStringA("[CEF] initialize() returned false\n");
+	}
+	else if (config.cefRemoteDebuggingPort > 0)
+	{
+		char msg[128];
+		std::snprintf(msg, sizeof(msg),
+			"[CEF] Remote debugging listening on http://localhost:%d\n",
+			config.cefRemoteDebuggingPort);
+		OutputDebugStringA(msg);
+	}
+#else
+	(void)config;
+#endif
+}

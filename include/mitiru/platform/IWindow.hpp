@@ -1,0 +1,56 @@
+﻿#pragma once
+
+/// @file IWindow.hpp
+/// @brief ウィンドウ抽象インターフェース
+/// @details プラットフォーム固有のウィンドウ操作を抽象化する。
+
+#include <functional>
+#include <string_view>
+
+namespace mitiru
+{
+
+// Forward declaration
+class InputState;
+
+/// @brief ウィンドウの抽象インターフェース
+/// @details ヘッドレス実装やOS固有実装がこのインターフェースを実装する。
+class IWindow
+{
+public:
+	/// @brief 仮想デストラクタ
+	virtual ~IWindow() = default;
+
+	/// @brief ウィンドウが閉じられるべきかどうか
+	/// @return 閉じるべき場合 true
+	[[nodiscard]] virtual bool shouldClose() const = 0;
+
+	/// @brief イベントをポーリングする
+	virtual void pollEvents() = 0;
+
+	/// @brief ウィンドウ幅を取得する
+	[[nodiscard]] virtual int width() const = 0;
+
+	/// @brief ウィンドウ高さを取得する
+	[[nodiscard]] virtual int height() const = 0;
+
+	/// @brief ウィンドウタイトルを設定する
+	/// @param title 新しいタイトル文字列
+	virtual void setTitle(std::string_view title) = 0;
+
+	/// @brief ウィンドウの閉じ要求を設定する
+	virtual void requestClose() = 0;
+
+	/// @brief 入力状態の転送先を設定する
+	/// @param state InputStateへの非所有ポインタ（Engineが所有）
+	/// @details プラットフォーム固有のイベントからInputStateに入力を転送する。
+	///          デフォルトはno-op（ヘッドレス等の入力不要な実装向け）。
+	virtual void setInputState(InputState* /*state*/) {}
+
+	/// @brief ウィンドウリサイズ時のコールバックを設定する
+	/// @param cb 新しいwidth, heightを受け取るコールバック
+	/// @details デフォルトはno-op（リサイズイベントを内部処理するウィンドウ向け）。
+	virtual void setResizeCallback(std::function<void(int, int)> /*cb*/) {}
+};
+
+} // namespace mitiru

@@ -1,0 +1,2276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::gfx | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Graphics abstraction layer (GAL). Backend-agnostic device, command buffer, resource, and pipeline types shared by the OpenGL, DX11, DX12, Vulkan and Null …">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/">
+
+<link rel="alternate" hreflang="en" href="https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-gfx/">
+
+
+  
+    
+<link rel="alternate" hreflang="x-default" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/">
+    
+  
+    
+  
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::gfx | MitiruEngine">
+<meta property="og:description" content="Graphics abstraction layer (GAL). Backend-agnostic device, command buffer, resource, and pipeline types shared by the OpenGL, DX11, DX12, Vulkan and Null …">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::gfx | MitiruEngine">
+<meta name="twitter:description" content="Graphics abstraction layer (GAL). Backend-agnostic device, command buffer, resource, and pipeline types shared by the OpenGL, DX11, DX12, Vulkan and Null …">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/docs">ドキュメント</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+        <span class="site-nav__lang">
+          
+            
+              <strong>日本語</strong>
+            
+          
+            
+              <a href="https://mogmog-0110.github.io/MitiruEngine/en/">English</a>
+            
+          
+        </span>
+      
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<div class="api-page container">
+  <aside class="api-sidebar" aria-label="名前空間">
+  <details class="api-sidebar__collapsible" open>
+    <summary>名前空間</summary>
+    <nav>
+      <ul>
+        
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"
+               >
+              mitiru
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"
+               >
+              mitiru::adapter
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"
+               >
+              mitiru::animation
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"
+               >
+              mitiru::asset
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"
+               >
+              mitiru::assets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"
+               >
+              mitiru::audio
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"
+               >
+              mitiru::bridge
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"
+               >
+              mitiru::bridge::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"
+               >
+              mitiru::cef
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"
+               >
+              mitiru::cef::bridges
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"
+               >
+              mitiru::control
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"
+               >
+              mitiru::core
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"
+               >
+              mitiru::data
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"
+               >
+              mitiru::debug
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"
+               >
+              mitiru::ecs
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"
+               >
+              mitiru::effects
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"
+               >
+              mitiru::fsm
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"
+               >
+              mitiru::game
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"
+               aria-current="page" class="is-active">
+              mitiru::gfx
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"
+               >
+              mitiru::gfx::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"
+               >
+              mitiru::i18n
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"
+               >
+              mitiru::input
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"
+               >
+              mitiru::live2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"
+               >
+              mitiru::math
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"
+               >
+              mitiru::narrative
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"
+               >
+              mitiru::network
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"
+               >
+              mitiru::observe
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"
+               >
+              mitiru::physics
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"
+               >
+              mitiru::physics2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"
+               >
+              mitiru::physics3d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"
+               >
+              mitiru::platform
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"
+               >
+              mitiru::render
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"
+               >
+              mitiru::render::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"
+               >
+              mitiru::resource
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"
+               >
+              mitiru::scene
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"
+               >
+              mitiru::screen_detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"
+               >
+              mitiru::server
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"
+               >
+              mitiru::server::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"
+               >
+              mitiru::sprite
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"
+               >
+              mitiru::time
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"
+               >
+              mitiru::time::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"
+               >
+              mitiru::ui
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"
+               >
+              mitiru::ui::LayoutPresets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"
+               >
+              mitiru::util
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"
+               >
+              mitiru::validate
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"
+               >
+              mitiru::vn
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"
+               >
+              mitiru::world
+            </a>
+          </li>
+        
+      </ul>
+    </nav>
+  </details>
+</aside>
+
+  <article class="api-page__article">
+    <header>
+      <h1>mitiru::gfx</h1>
+      <p class="api-page__description">Graphics abstraction layer (GAL). Backend-agnostic device, command buffer, resource, and pipeline types shared by the OpenGL, DX11, DX12, Vulkan and Null backends.</p>
+    </header>
+    <div class="api-page__content">
+      <p class="api-namespace__lede">Graphics abstraction layer (GAL). Backend-agnostic device, command buffer, resource, and pipeline types shared by the OpenGL, DX11, DX12, Vulkan and Null backends.</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#enum-vertexformat"><code>VertexFormat</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-pixelformat"><code>PixelFormat</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-blendmode"><code>BlendMode</code></a></td><td>enum</td><td>7</td></tr>
+<tr><td><a href="#enum-resourcestate"><code>ResourceState</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#enum-descriptorheaptype"><code>DescriptorHeapType</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#struct-texturedesc"><code>TextureDesc</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-bufferdesc"><code>BufferDesc</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-gpudescriptorhandle"><code>GpuDescriptorHandle</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-cpudescriptorhandle"><code>CpuDescriptorHandle</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#enum-buffertype"><code>BufferType</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#class-ibuffer"><code>IBuffer</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-icommandlist"><code>ICommandList</code></a></td><td>class</td><td>18</td></tr>
+<tr><td><a href="#class-idescriptorheap"><code>IDescriptorHeap</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#class-idevice"><code>IDevice</code></a></td><td>class</td><td>20</td></tr>
+<tr><td><a href="#class-igpufence"><code>IGpuFence</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#class-ipipeline"><code>IPipeline</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#class-irendertarget"><code>IRenderTarget</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#enum-shadertype"><code>ShaderType</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#class-ishader"><code>IShader</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#class-iswapchain"><code>ISwapChain</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-itexture"><code>ITexture</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-dx11buffer"><code>Dx11Buffer</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#class-dx11commandlist"><code>Dx11CommandList</code></a></td><td>class</td><td>16</td></tr>
+<tr><td><a href="#class-dx11device"><code>Dx11Device</code></a></td><td>class</td><td>17</td></tr>
+<tr><td><a href="#class-dx11offscreenrt"><code>Dx11OffscreenRT</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#struct-dx11pipelinedesc"><code>Dx11PipelineDesc</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-dx11pipeline"><code>Dx11Pipeline</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-dx11rendertarget"><code>Dx11RenderTarget</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-dx11swapchain"><code>Dx11SwapChain</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#class-dx11texture"><code>Dx11Texture</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-dx12buffer"><code>Dx12Buffer</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#class-dx12commandlist"><code>Dx12CommandList</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#class-dx12descriptorheap"><code>Dx12DescriptorHeap</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-dx12fence"><code>Dx12Fence</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-dx12offscreenrt"><code>Dx12OffscreenRT</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#struct-dx12pipelinedesc"><code>Dx12PipelineDesc</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-dx12pipeline"><code>Dx12Pipeline</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-dx12rendertarget"><code>Dx12RenderTarget</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-dx12swapchain"><code>Dx12SwapChain</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-dx12texture"><code>Dx12Texture</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-nullbuffer"><code>NullBuffer</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#class-nullcommandlist"><code>NullCommandList</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#class-nulldevice"><code>NullDevice</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-glbuffer"><code>GlBuffer</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-glcommandlist"><code>GlCommandList</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-gldevice"><code>GlDevice</code></a></td><td>class</td><td>19</td></tr>
+<tr><td><a href="#struct-glfunctions"><code>GlFunctions</code></a></td><td>struct</td><td>59</td></tr>
+<tr><td><a href="#struct-depthbufferconfig"><code>DepthBufferConfig</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-vulkandepthbuffer"><code>VulkanDepthBuffer</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#struct-descriptorpoolconfig"><code>DescriptorPoolConfig</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-vulkandescriptorpool"><code>VulkanDescriptorPool</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-vulkanbuffer"><code>VulkanBuffer</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-vulkancommandlist"><code>VulkanCommandList</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-vulkandevice"><code>VulkanDevice</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#struct-framebufferconfig"><code>FramebufferConfig</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-vulkanframebuffer"><code>VulkanFramebuffer</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#struct-vulkanappinfo"><code>VulkanAppInfo</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-vulkanvalidationconfig"><code>VulkanValidationConfig</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-vulkaninstancedesc"><code>VulkanInstanceDesc</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-vulkaninstance"><code>VulkanInstance</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#enum-queuefamily"><code>QueueFamily</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-gputype"><code>GpuType</code></a></td><td>enum</td><td>7</td></tr>
+<tr><td><a href="#struct-queuefamilyindices"><code>QueueFamilyIndices</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-physicaldeviceinfo"><code>PhysicalDeviceInfo</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#class-vulkanphysicaldevice"><code>VulkanPhysicalDevice</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#enum-primitivetopology"><code>PrimitiveTopology</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#enum-polygonmode"><code>PolygonMode</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#enum-cullmode"><code>CullMode</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#enum-frontface"><code>FrontFace</code></a></td><td>enum</td><td>2</td></tr>
+<tr><td><a href="#enum-compareop"><code>CompareOp</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#struct-vertexinputattribute"><code>VertexInputAttribute</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-vertexinputbinding"><code>VertexInputBinding</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-vertexinputstate"><code>VertexInputState</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-rasterizerstate"><code>RasterizerState</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-multisamplestate"><code>MultisampleState</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-depthstencilstate"><code>DepthStencilState</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-shaderstagedesc"><code>ShaderStageDesc</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-pushconstantrange"><code>PushConstantRange</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-pipelinelayoutdesc"><code>PipelineLayoutDesc</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-graphicspipelinedesc"><code>GraphicsPipelineDesc</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#class-vulkangraphicspipeline"><code>VulkanGraphicsPipeline</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#enum-attachmentloadop"><code>AttachmentLoadOp</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#enum-attachmentstoreop"><code>AttachmentStoreOp</code></a></td><td>enum</td><td>2</td></tr>
+<tr><td><a href="#enum-imagelayout"><code>ImageLayout</code></a></td><td>enum</td><td>7</td></tr>
+<tr><td><a href="#struct-attachmentdesc"><code>AttachmentDesc</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-attachmentreference"><code>AttachmentReference</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-subpassdesc"><code>SubpassDesc</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-subpassdependency"><code>SubpassDependency</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-renderpassdesc"><code>RenderPassDesc</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-vulkanrenderpass"><code>VulkanRenderPass</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-vulkanrendertarget"><code>VulkanRenderTarget</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#class-vulkanswapchain"><code>VulkanSwapChain</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#struct-textureconfig"><code>TextureConfig</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#class-vulkantexture"><code>VulkanTexture</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#class-webglcommandlist"><code>WebGLCommandList</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-webgldevice"><code>WebGLDevice</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#class-webglbuffer"><code>WebGLBuffer</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#struct-webglpipelinedesc"><code>WebGLPipelineDesc</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#class-webglpipeline"><code>WebGLPipeline</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#class-webglshader"><code>WebGLShader</code></a></td><td>class</td><td>16</td></tr>
+<tr><td><a href="#enum-texturefilter"><code>TextureFilter</code></a></td><td>enum</td><td>2</td></tr>
+<tr><td><a href="#enum-texturewrap"><code>TextureWrap</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#class-webgltexture"><code>WebGLTexture</code></a></td><td>class</td><td>17</td></tr>
+<tr><td><a href="#class-webgpubuffer"><code>WebGPUBuffer</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-webgpucommandlist"><code>WebGPUCommandList</code></a></td><td>class</td><td>18</td></tr>
+<tr><td><a href="#class-webgpudevice"><code>WebGPUDevice</code></a></td><td>class</td><td>23</td></tr>
+</tbody></table>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IDevice&gt; createDevice( Backend backend, [[maybe_unused]] IWindow* window = nullptr)</code></div>
+</div>
+<details class="api-class" id="enum-vertexformat" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">VertexFormat</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Position2D</code></div>
+<div class="api-method"><code>Position3D</code></div>
+<div class="api-method"><code>PositionColor</code></div>
+<div class="api-method"><code>PositionTexCoord</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-pixelformat" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PixelFormat</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>RGBA8</code></div>
+<div class="api-method"><code>BGRA8</code></div>
+<div class="api-method"><code>R8</code></div>
+<div class="api-method"><code>Depth24Stencil8</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-blendmode" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">BlendMode</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>None</code></div>
+<div class="api-method"><code>Alpha</code></div>
+<div class="api-method"><code>Additive</code></div>
+<div class="api-method"><code>Multiplicative</code></div>
+<div class="api-method"><code>Screen</code></div>
+<div class="api-method"><code>Overlay</code></div>
+<div class="api-method"><code>ColorDodge</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-resourcestate" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ResourceState</code> <span class="api-class__extra">: uint32_t</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Common = 0</code></div>
+<div class="api-method"><code>RenderTarget</code></div>
+<div class="api-method"><code>Present</code></div>
+<div class="api-method"><code>ShaderResource</code></div>
+<div class="api-method"><code>DepthWrite</code></div>
+<div class="api-method"><code>CopyDest</code></div>
+<div class="api-method"><code>CopySrc</code></div>
+<div class="api-method"><code>UnorderedAccess</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-descriptorheaptype" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">DescriptorHeapType</code> <span class="api-class__extra">: uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>CbvSrvUav</code></div>
+<div class="api-method"><code>Rtv</code></div>
+<div class="api-method"><code>Dsv</code></div>
+<div class="api-method"><code>Sampler</code></div>
+<div class="api-method"><code>using FenceValue = uint64_t;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-texturedesc" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TextureDesc</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>PixelFormat format = PixelFormat::RGBA8</code></div>
+<div class="api-method"><code>bool renderTarget = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bufferdesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BufferDesc</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>enum `Usage` { Vertex, Index, Constant }</code></div>
+<div class="api-method"><code>Usage usage = Usage::Vertex</code></div>
+<div class="api-method"><code>std::uint32_t sizeBytes = 0</code></div>
+<div class="api-method"><code>bool dynamic = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gpudescriptorhandle">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GpuDescriptorHandle</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>uint64_t ptr = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool isValid() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-cpudescriptorhandle">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CpuDescriptorHandle</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>uint64_t ptr = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool isValid() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-buffertype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">BufferType</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Vertex</code></div>
+<div class="api-method"><code>Index</code></div>
+<div class="api-method"><code>Constant</code></div>
+</div>
+</details>
+<details class="api-class" id="class-ibuffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IBuffer</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IBuffer() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::uint32_t size() const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual BufferType type() const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual bool isValid() const noexcept</code></div>
+<div class="api-method"><code>virtual void update(const void* data, std::uint32_t sizeBytes)</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual uint64_t gpuVirtualAddress() const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-icommandlist">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ICommandList</code> <span class="api-class__count">18</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~ICommandList() = default</code></div>
+<div class="api-method"><code>virtual void begin() = 0</code></div>
+<div class="api-method"><code>virtual void end() = 0</code></div>
+<div class="api-method"><code>virtual void setRenderTarget(IRenderTarget* target) = 0</code></div>
+<div class="api-method"><code>virtual void clearRenderTarget(const sgc::Colorf&amp; color) = 0</code></div>
+<div class="api-method"><code>virtual void setPipeline(IPipeline* pipeline) = 0</code></div>
+<div class="api-method"><code>virtual void setVertexBuffer(IBuffer* buffer) = 0</code></div>
+<div class="api-method"><code>virtual void setIndexBuffer(IBuffer* buffer) = 0</code></div>
+<div class="api-method"><code>virtual void drawIndexed(std::uint32_t indexCount, std::uint32_t startIndex = 0, std::int32_t baseVertex = 0) = 0</code></div>
+<div class="api-method"><code>virtual void draw(std::uint32_t vertexCount, std::uint32_t startVertex = 0) = 0</code></div>
+<div class="api-method"><code>virtual void setViewport(float width, float height)</code></div>
+<div class="api-method"><code>virtual void reset()</code></div>
+<div class="api-method"><code>virtual void close()</code></div>
+<div class="api-method"><code>virtual void resourceBarrier( ITexture* resource, ResourceState before, ResourceState after)</code></div>
+<div class="api-method"><code>virtual void setRootSignature(void* rootSignature)</code></div>
+<div class="api-method"><code>virtual void setDescriptorHeaps( IDescriptorHeap* const* heaps, uint32_t count)</code></div>
+<div class="api-method"><code>virtual void setGraphicsRootDescriptorTable( uint32_t paramIndex, GpuDescriptorHandle handle)</code></div>
+<div class="api-method"><code>virtual void setGraphicsRootCBV( uint32_t paramIndex, uint64_t gpuVirtualAddress)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-idescriptorheap">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IDescriptorHeap</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IDescriptorHeap() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual DescriptorHeapType type() const = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual uint32_t capacity() const = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual uint32_t allocatedCount() const = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual CpuDescriptorHandle allocate() = 0</code></div>
+<div class="api-method"><code>virtual void free(CpuDescriptorHandle handle) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual GpuDescriptorHandle gpuHandle(CpuDescriptorHandle cpuHandle) const = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-idevice">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IDevice</code> <span class="api-class__count">20</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IDevice() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::vector&lt;std::uint8_t&gt; readPixels( int width, int height) const = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual Backend backend() const noexcept = 0</code></div>
+<div class="api-method"><code>virtual void setClearColor(float r, float g, float b, float a = 1.0f)</code></div>
+<div class="api-method"><code>virtual void beginFrame() = 0</code></div>
+<div class="api-method"><code>virtual void endFrame() = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual float gpuFrameMs() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::unique_ptr&lt;IBuffer&gt; createBuffer( BufferType bufferType, std::uint32_t sizeBytes, bool dynamic = false, const void* initialData = nullptr) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::unique_ptr&lt;ICommandList&gt; createCommandList() = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual uint32_t currentFrameIndex() const</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual uint32_t frameInFlightCount() const</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::unique_ptr&lt;IGpuFence&gt; createFence()</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::unique_ptr&lt;IDescriptorHeap&gt; createDescriptorHeap( DescriptorHeapType heapType, uint32_t capacity)</code></div>
+<div class="api-method"><code>virtual void executeCommandLists( ICommandList* const* lists, uint32_t count)</code></div>
+<div class="api-method"><code>virtual void waitForGpu()</code></div>
+<div class="api-method"><code>virtual void onResize(int w, int h)</code></div>
+<div class="api-method"><code>virtual void resetRenderTargetFor2D()</code></div>
+<div class="api-method"><code>virtual void setPostProcessManager(void* )</code></div>
+<div class="api-method"><code>virtual void beginPostProcess()</code></div>
+<div class="api-method"><code>virtual void endPostProcess()</code></div>
+</div>
+</details>
+<details class="api-class" id="class-igpufence">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IGpuFence</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IGpuFence() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual FenceValue currentValue() const = 0</code></div>
+<div class="api-method"><code>virtual void signal(FenceValue value) = 0</code></div>
+<div class="api-method"><code>virtual void waitForValue(FenceValue value) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual bool isComplete(FenceValue value) const = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-ipipeline">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IPipeline</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IPipeline() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual bool isValid() const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual void* rootSignature() const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-irendertarget">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IRenderTarget</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IRenderTarget() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual int width() const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual int height() const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual ITexture* texture() noexcept = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-shadertype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ShaderType</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Vertex</code></div>
+<div class="api-method"><code>Pixel</code></div>
+<div class="api-method"><code>Compute</code></div>
+</div>
+</details>
+<details class="api-class" id="class-ishader">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IShader</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IShader() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual ShaderType type() const noexcept = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-iswapchain">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ISwapChain</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~ISwapChain() = default</code></div>
+<div class="api-method"><code>virtual void present() = 0</code></div>
+<div class="api-method"><code>virtual void resize(int width, int height) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual IRenderTarget* backBuffer() noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual uint32_t currentBackBufferIndex() const</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual uint32_t bufferCount() const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-itexture">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ITexture</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~ITexture() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual int width() const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual int height() const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual PixelFormat format() const noexcept = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx11buffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx11Buffer</code> <span class="api-class__extra">: public IBuffer</span> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>Dx11Buffer(ID3D11Device* device, BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData = nullptr)</code></div>
+<div class="api-method"><code>bool update(ID3D11DeviceContext* context, const void* data, std::uint32_t dataSize)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t size() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] BufferType type() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isDynamic() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D11Buffer* getD3DBuffer() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx11commandlist">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx11CommandList</code> <span class="api-class__extra">: public ICommandList</span> <span class="api-class__count">16</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit Dx11CommandList(ID3D11DeviceContext* context)</code></div>
+<div class="api-method"><code>void begin() override</code></div>
+<div class="api-method"><code>void end() override</code></div>
+<div class="api-method"><code>void setRenderTarget(IRenderTarget* target) override</code></div>
+<div class="api-method"><code>void clearRenderTarget(const sgc::Colorf&amp; color) override</code></div>
+<div class="api-method"><code>void setPipeline(IPipeline* pipeline) override</code></div>
+<div class="api-method"><code>void setVertexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void setIndexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void setViewport(float width, float height)</code></div>
+<div class="api-method"><code>void setVSConstantBuffer(UINT slot, Dx11Buffer* buffer)</code></div>
+<div class="api-method"><code>void drawIndexed(std::uint32_t indexCount, std::uint32_t startIndex, std::int32_t baseVertex) override</code></div>
+<div class="api-method"><code>void draw(std::uint32_t vertexCount, std::uint32_t startVertex) override</code></div>
+<div class="api-method"><code>void setPSConstantBuffer(UINT slot, Dx11Buffer* buffer)</code></div>
+<div class="api-method"><code>void setScissorRect(int x, int y, int width, int height)</code></div>
+<div class="api-method"><code>void resetScissorRect(int screenWidth, int screenHeight)</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D11DeviceContext* getD3DContext() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx11device">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx11Device</code> <span class="api-class__extra">: public IDevice</span> <span class="api-class__count">17</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>explicit Dx11Device(mitiru::Win32Window* window, int bufferWidth = 0, int bufferHeight = 0)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; readPixels( int width, int height) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] Backend backend() const noexcept override</code></div>
+<div class="api-method"><code>void beginFrame() override</code></div>
+<div class="api-method"><code>void endFrame() override</code></div>
+<div class="api-method"><code>[[nodiscard]] float gpuFrameMs() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D11Device* getD3DDevice() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D11DeviceContext* getD3DContext() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Dx11SwapChain* getSwapChain() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IBuffer&gt; createBuffer( BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;ICommandList&gt; createCommandList() override</code></div>
+<div class="api-method"><code>void onResize(int w, int h) override</code></div>
+<div class="api-method"><code>void resetRenderTargetFor2D() override</code></div>
+<div class="api-method"><code>void setPostProcessManager(void* pp) override</code></div>
+<div class="api-method"><code>void beginPostProcess() override</code></div>
+<div class="api-method"><code>void endPostProcess() override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx11offscreenrt">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx11OffscreenRT</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool create(ID3D11Device* device, unsigned int width, unsigned int height)</code></div>
+<div class="api-method"><code>void bind(ID3D11DeviceContext* context, const float clearColor[4] = nullptr)</code></div>
+<div class="api-method"><code>void unbind(ID3D11DeviceContext* context)</code></div>
+<div class="api-method"><code>[[nodiscard]] void* srv() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D11RenderTargetView* rtv() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] unsigned int width() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] unsigned int height() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
+<div class="api-method"><code>void release()</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-dx11pipelinedesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Dx11PipelineDesc</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Dx11Shader* vertexShader = nullptr</code></div>
+<div class="api-method"><code>Dx11Shader* pixelShader = nullptr</code></div>
+<div class="api-method"><code>BlendMode blendMode = BlendMode::Alpha</code></div>
+<div class="api-method"><code>bool wireframe = false</code></div>
+<div class="api-method"><code>bool scissorEnable = false</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx11pipeline">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx11Pipeline</code> <span class="api-class__extra">: public IPipeline</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>explicit Dx11Pipeline(ID3D11Device* device, const Dx11PipelineDesc&amp; desc)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept override</code></div>
+<div class="api-method"><code>void bind(ID3D11DeviceContext* context) const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx11rendertarget">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx11RenderTarget</code> <span class="api-class__extra">: public IRenderTarget</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>[[nodiscard]] static Dx11RenderTarget createFromBackBuffer( ID3D11Device* device, ID3D11Texture2D* backBuffer, int width, int height)</code></div>
+<div class="api-method"><code>[[nodiscard]] int width() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] int height() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] ITexture* texture() noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D11RenderTargetView* getRTV() const noexcept</code></div>
+<div class="api-method"><code>void release() noexcept</code></div>
+<div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;Windows.h&gt; #include &lt;cstdint&gt; #include &lt;stdexcept&gt; #include &lt;string&gt; #include &lt;string_view&gt; #include &lt;vector&gt; #include &lt;d3d11.h&gt; #include &lt;d3dcompiler.h&gt; #include &lt;wrl/client.h&gt; #pragma comment(lib, &quot;d3dcompiler.lib&quot;) #include &lt;mitiru/gfx/IShader.hpp&gt; namespace mitiru::gfx</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx11swapchain">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx11SwapChain</code> <span class="api-class__extra">: public ISwapChain</span> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>Dx11SwapChain( ID3D11Device* device, HWND hwnd, int width, int height)</code></div>
+<div class="api-method"><code>void present() override</code></div>
+<div class="api-method"><code>void resize(int width, int height) override</code></div>
+<div class="api-method"><code>[[nodiscard]] IRenderTarget* backBuffer() noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D11RenderTargetView* getRenderTargetView() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] IDXGISwapChain* getSwapChain() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx11texture">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx11Texture</code> <span class="api-class__extra">: public ITexture</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>[[nodiscard]] static Dx11Texture createFromData( ID3D11Device* device, int width, int height, std::span&lt;const std::uint8_t&gt; data)</code></div>
+<div class="api-method"><code>[[nodiscard]] static Dx11Texture createStaging( ID3D11Device* device, int width, int height)</code></div>
+<div class="api-method"><code>[[nodiscard]] int width() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] int height() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] PixelFormat format() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D11Texture2D* getTexture() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D11ShaderResourceView* getSRV() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12buffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12Buffer</code> <span class="api-class__extra">: public IBuffer</span> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>Dx12Buffer(ID3D12Device* device, BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData = nullptr)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t size() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] BufferType type() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] uint64_t gpuVirtualAddress() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isDynamic() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t alignedSize() const noexcept</code></div>
+<div class="api-method"><code>void update(const void* data, std::uint32_t dataSize) override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12Resource* nativeResource() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12commandlist">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12CommandList</code> <span class="api-class__extra">: public ICommandList</span> <span class="api-class__count">21</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>Dx12CommandList(ID3D12Device* device)</code></div>
+<div class="api-method"><code>void reset() override</code></div>
+<div class="api-method"><code>void begin() override</code></div>
+<div class="api-method"><code>void end() override</code></div>
+<div class="api-method"><code>void close() override</code></div>
+<div class="api-method"><code>void setRenderTarget(IRenderTarget* target) override</code></div>
+<div class="api-method"><code>void clearRenderTarget(const sgc::Colorf&amp; color) override</code></div>
+<div class="api-method"><code>void setPipeline(IPipeline* pipeline) override</code></div>
+<div class="api-method"><code>void setVertexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void setIndexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void drawIndexed(std::uint32_t indexCount, std::uint32_t startIndex, std::int32_t baseVertex) override</code></div>
+<div class="api-method"><code>void draw(std::uint32_t vertexCount, std::uint32_t startVertex) override</code></div>
+<div class="api-method"><code>void setViewport(float width, float height) override</code></div>
+<div class="api-method"><code>void resourceBarrier( ITexture* resource, ResourceState before, ResourceState after) override</code></div>
+<div class="api-method"><code>void resourceBarrierDirect( ID3D12Resource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)</code></div>
+<div class="api-method"><code>void setRootSignature(void* rootSignature) override</code></div>
+<div class="api-method"><code>void setDescriptorHeaps( IDescriptorHeap* const* heaps, uint32_t count) override</code></div>
+<div class="api-method"><code>void setGraphicsRootDescriptorTable( uint32_t paramIndex, GpuDescriptorHandle handle) override</code></div>
+<div class="api-method"><code>void setGraphicsRootCBV( uint32_t paramIndex, uint64_t gpuVirtualAddress) override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12GraphicsCommandList* nativeCommandList() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12descriptorheap">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12DescriptorHeap</code> <span class="api-class__extra">: public IDescriptorHeap</span> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>Dx12DescriptorHeap(ID3D12Device* device, DescriptorHeapType heapType, uint32_t capacity)</code></div>
+<div class="api-method"><code>[[nodiscard]] DescriptorHeapType type() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t capacity() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t allocatedCount() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] CpuDescriptorHandle allocate() override</code></div>
+<div class="api-method"><code>void free(CpuDescriptorHandle handle) override</code></div>
+<div class="api-method"><code>[[nodiscard]] GpuDescriptorHandle gpuHandle( CpuDescriptorHandle cpuHandle) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12DescriptorHeap* nativeHeap() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t descriptorSize() const noexcept</code></div>
+<div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;Windows.h&gt; #include &lt;cstdint&gt; #include &lt;cstring&gt; #include &lt;deque&gt; #include &lt;memory&gt; #include &lt;stdexcept&gt; #include &lt;utility&gt; #include &lt;vector&gt; #include &lt;d3d12.h&gt; #include &lt;dxgi1_4.h&gt; #include &lt;wrl/client.h&gt; #pragma comment(lib, &quot;d3d12.lib&quot;) #pragma comment(lib, &quot;dxgi.lib&quot;) #include &lt;mitiru/gfx/IBuffer.hpp&gt; #include &lt;mitiru/gfx/ICommandList.hpp&gt; #include &lt;mitiru/gfx/IDevice.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12Buffer.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12CommandList.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12DescriptorHeap.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12Fence.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12SwapChain.hpp&gt; #include &lt;mitiru/platform/win32/Win32Window.hpp&gt; namespace mitiru::gfx</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12fence">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12Fence</code> <span class="api-class__extra">: public IGpuFence</span> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>Dx12Fence(ID3D12Device* device, ID3D12CommandQueue* commandQueue, FenceValue initialValue = 0)</code></div>
+<div class="api-method"><code>~Dx12Fence() override</code></div>
+<div class="api-method"><code>Dx12Fence(const Dx12Fence&amp;) = delete</code></div>
+<div class="api-method"><code>Dx12Fence&amp; operator=(const Dx12Fence&amp;) = delete</code></div>
+<div class="api-method"><code>Dx12Fence(Dx12Fence&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>Dx12Fence&amp; operator=(Dx12Fence&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] FenceValue currentValue() const override</code></div>
+<div class="api-method"><code>void signal(FenceValue value) override</code></div>
+<div class="api-method"><code>void waitForValue(FenceValue value) override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isComplete(FenceValue value) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12Fence* nativeFence() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12offscreenrt">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12OffscreenRT</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool create(ID3D12Device* device, UINT w, UINT h, DXGI_FORMAT format, D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle)</code></div>
+<div class="api-method"><code>void copyFrom(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* src)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] UINT width() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] UINT height() const noexcept</code></div>
+<div class="api-method"><code>void release()</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-dx12pipelinedesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Dx12PipelineDesc</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Dx12Shader* vertexShader = nullptr</code></div>
+<div class="api-method"><code>Dx12Shader* pixelShader = nullptr</code></div>
+<div class="api-method"><code>BlendMode blendMode = BlendMode::Alpha</code></div>
+<div class="api-method"><code>bool wireframe = false</code></div>
+<div class="api-method"><code>DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM</code></div>
+<div class="api-method"><code>uint32_t numRenderTargets = 1</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12pipeline">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12Pipeline</code> <span class="api-class__extra">: public IPipeline</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>explicit Dx12Pipeline(ID3D12Device* device, const Dx12PipelineDesc&amp; desc)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] void* rootSignature() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12PipelineState* nativePSO() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12RootSignature* nativeRootSignature() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12rendertarget">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12RenderTarget</code> <span class="api-class__extra">: public IRenderTarget</span> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>Dx12RenderTarget() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] static Dx12RenderTarget createFromBackBuffer( ID3D12Device* device, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, int width, int height)</code></div>
+<div class="api-method"><code>[[nodiscard]] int width() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] int height() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] ITexture* texture() noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12Resource* nativeResource() const noexcept</code></div>
+<div class="api-method"><code>void release() noexcept</code></div>
+<div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;Windows.h&gt; #include &lt;cstdint&gt; #include &lt;cstring&gt; #include &lt;span&gt; #include &lt;stdexcept&gt; #include &lt;string&gt; #include &lt;string_view&gt; #include &lt;vector&gt; #include &lt;d3dcompiler.h&gt; #include &lt;wrl/client.h&gt; #pragma comment(lib, &quot;d3dcompiler.lib&quot;) #include &lt;mitiru/gfx/IShader.hpp&gt; namespace mitiru::gfx</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12swapchain">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12SwapChain</code> <span class="api-class__extra">: public ISwapChain</span> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>Dx12SwapChain(ID3D12Device* device, ID3D12CommandQueue* commandQueue, IDXGIFactory4* factory, HWND hwnd, int width, int height)</code></div>
+<div class="api-method"><code>void present() override</code></div>
+<div class="api-method"><code>void setVSync(bool enabled) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isVSyncEnabled() const noexcept</code></div>
+<div class="api-method"><code>void resize(int width, int height) override</code></div>
+<div class="api-method"><code>[[nodiscard]] IRenderTarget* backBuffer() noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t currentBackBufferIndex() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t bufferCount() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12Resource* getBackBufferResource(uint32_t index) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] IDXGISwapChain3* getSwapChain() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12texture">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12Texture</code> <span class="api-class__extra">: public ITexture</span> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
+<div class="api-method"><code>Dx12Texture() = default</code></div>
+<div class="api-method"><code>Dx12Texture(ComPtr&lt;ID3D12Resource&gt; resource, int width, int height, PixelFormat format = PixelFormat::RGBA8)</code></div>
+<div class="api-method"><code>[[nodiscard]] static Dx12Texture createEmpty( ID3D12Device* device, int width, int height, PixelFormat format = PixelFormat::RGBA8)</code></div>
+<div class="api-method"><code>[[nodiscard]] static Dx12Texture createRenderTarget( ID3D12Device* device, int width, int height, PixelFormat format = PixelFormat::RGBA8)</code></div>
+<div class="api-method"><code>[[nodiscard]] int width() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] int height() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] PixelFormat format() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12Resource* nativeResource() const noexcept</code></div>
+<div class="api-method"><code>void setSrvHandle(CpuDescriptorHandle handle) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] CpuDescriptorHandle srvHandle() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-nullbuffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NullBuffer</code> <span class="api-class__extra">: public IBuffer</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>NullBuffer(BufferType bufferType, std::uint32_t sizeBytes) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t size() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] BufferType type() const noexcept override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-nullcommandlist">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NullCommandList</code> <span class="api-class__extra">: public ICommandList</span> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void begin() override</code></div>
+<div class="api-method"><code>void end() override</code></div>
+<div class="api-method"><code>void setRenderTarget(IRenderTarget*) override</code></div>
+<div class="api-method"><code>void clearRenderTarget(const sgc::Colorf&amp;) override</code></div>
+<div class="api-method"><code>void setPipeline(IPipeline*) override</code></div>
+<div class="api-method"><code>void setVertexBuffer(IBuffer*) override</code></div>
+<div class="api-method"><code>void setIndexBuffer(IBuffer*) override</code></div>
+<div class="api-method"><code>void drawIndexed(std::uint32_t, std::uint32_t, std::int32_t) override</code></div>
+<div class="api-method"><code>void draw(std::uint32_t, std::uint32_t) override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-nulldevice">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NullDevice</code> <span class="api-class__extra">: public IDevice</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; readPixels( int width, int height) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] Backend backend() const noexcept override</code></div>
+<div class="api-method"><code>void beginFrame() override</code></div>
+<div class="api-method"><code>void endFrame() override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IBuffer&gt; createBuffer( BufferType bufferType, std::uint32_t sizeBytes, bool , const void* ) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;ICommandList&gt; createCommandList() override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-glbuffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GlBuffer</code> <span class="api-class__extra">: public IBuffer</span> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>GlBuffer(GlFunctions* gl, BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData = nullptr)</code></div>
+<div class="api-method"><code>~GlBuffer() override</code></div>
+<div class="api-method"><code>GlBuffer(const GlBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>GlBuffer&amp; operator=(const GlBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>GlBuffer(GlBuffer&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>GlBuffer&amp; operator=(GlBuffer&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>void update(const void* data, std::uint32_t sizeBytes) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t size() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] BufferType type() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] GLuint glBuffer() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLenum glTarget() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-glcommandlist">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GlCommandList</code> <span class="api-class__extra">: public ICommandList</span> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>GlCommandList(GlFunctions* gl, GLuint program, GLint projectionLoc, GLuint vao, const float* screenWidth, const float* screenHeight)</code></div>
+<div class="api-method"><code>void begin() override</code></div>
+<div class="api-method"><code>void end() override</code></div>
+<div class="api-method"><code>void setRenderTarget(IRenderTarget*) override</code></div>
+<div class="api-method"><code>void clearRenderTarget(const sgc::Colorf&amp; color) override</code></div>
+<div class="api-method"><code>void setPipeline(IPipeline*) override</code></div>
+<div class="api-method"><code>void setVertexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void setIndexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void drawIndexed(std::uint32_t indexCount, std::uint32_t startIndex, std::int32_t baseVertex) override</code></div>
+<div class="api-method"><code>void draw(std::uint32_t vertexCount, std::uint32_t startVertex) override</code></div>
+<div class="api-method"><code>void setViewport(float width, float height) override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-gldevice">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GlDevice</code> <span class="api-class__extra">: public IDevice</span> <span class="api-class__count">19</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit GlDevice(mitiru::Sdl2Window* window)</code></div>
+<div class="api-method"><code>explicit GlDevice(mitiru::GlfwWindow* window)</code></div>
+<div class="api-method"><code>~GlDevice() override</code></div>
+<div class="api-method"><code>GlDevice(const GlDevice&amp;) = delete</code></div>
+<div class="api-method"><code>GlDevice&amp; operator=(const GlDevice&amp;) = delete</code></div>
+<div class="api-method"><code>GlDevice(GlDevice&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>GlDevice&amp; operator=(GlDevice&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; readPixels( int width, int height) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] Backend backend() const noexcept override</code></div>
+<div class="api-method"><code>void beginFrame() override</code></div>
+<div class="api-method"><code>void endFrame() override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IBuffer&gt; createBuffer( BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;ICommandList&gt; createCommandList() override</code></div>
+<div class="api-method"><code>[[nodiscard]] GlFunctions&amp; glFunctions() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLuint program() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLuint vao() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float screenWidth() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float screenHeight() const noexcept</code></div>
+<div class="api-method"><code>void updateScreenSize(float width, float height) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-glfunctions">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GlFunctions</code> <span class="api-class__count">59</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using PFN_glCreateShader = GLuint (*)(GLenum);</code></div>
+<div class="api-method"><code>using PFN_glShaderSource = void (*)(GLuint, GLsizei, const GLchar* const*, const GLint*);</code></div>
+<div class="api-method"><code>using PFN_glCompileShader = void (*)(GLuint);</code></div>
+<div class="api-method"><code>using PFN_glGetShaderiv = void (*)(GLuint, GLenum, GLint*);</code></div>
+<div class="api-method"><code>using PFN_glGetShaderInfoLog = void (*)(GLuint, GLsizei, GLsizei*, GLchar*);</code></div>
+<div class="api-method"><code>using PFN_glCreateProgram = GLuint (*)();</code></div>
+<div class="api-method"><code>using PFN_glAttachShader = void (*)(GLuint, GLuint);</code></div>
+<div class="api-method"><code>using PFN_glLinkProgram = void (*)(GLuint);</code></div>
+<div class="api-method"><code>using PFN_glGetProgramiv = void (*)(GLuint, GLenum, GLint*);</code></div>
+<div class="api-method"><code>using PFN_glUseProgram = void (*)(GLuint);</code></div>
+<div class="api-method"><code>using PFN_glDeleteShader = void (*)(GLuint);</code></div>
+<div class="api-method"><code>using PFN_glDeleteProgram = void (*)(GLuint);</code></div>
+<div class="api-method"><code>using PFN_glGenVertexArrays = void (*)(GLsizei, GLuint*);</code></div>
+<div class="api-method"><code>using PFN_glDeleteVertexArrays = void (*)(GLsizei, const GLuint*);</code></div>
+<div class="api-method"><code>using PFN_glBindVertexArray = void (*)(GLuint);</code></div>
+<div class="api-method"><code>using PFN_glGenBuffers = void (*)(GLsizei, GLuint*);</code></div>
+<div class="api-method"><code>using PFN_glDeleteBuffers = void (*)(GLsizei, const GLuint*);</code></div>
+<div class="api-method"><code>using PFN_glBindBuffer = void (*)(GLenum, GLuint);</code></div>
+<div class="api-method"><code>using PFN_glBufferData = void (*)(GLenum, GLsizeiptr, const void*, GLenum);</code></div>
+<div class="api-method"><code>using PFN_glBufferSubData = void (*)(GLenum, GLintptr, GLsizeiptr, const void*);</code></div>
+<div class="api-method"><code>using PFN_glVertexAttribPointer = void (*)(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*);</code></div>
+<div class="api-method"><code>using PFN_glEnableVertexAttribArray = void (*)(GLuint);</code></div>
+<div class="api-method"><code>using PFN_glGetUniformLocation = GLint (*)(GLuint, const GLchar*);</code></div>
+<div class="api-method"><code>using PFN_glUniformMatrix4fv = void (*)(GLint, GLsizei, GLboolean, const GLfloat*);</code></div>
+<div class="api-method"><code>using PFN_glDrawElements = void (*)(GLenum, GLsizei, GLenum, const void*);</code></div>
+<div class="api-method"><code>using PFN_glEnable = void (*)(GLenum);</code></div>
+<div class="api-method"><code>using PFN_glBlendFunc = void (*)(GLenum, GLenum);</code></div>
+<div class="api-method"><code>using PFN_glDisable = void (*)(GLenum);</code></div>
+<div class="api-method"><code>PFN_glCreateShader createShader = nullptr</code></div>
+<div class="api-method"><code>PFN_glShaderSource shaderSource = nullptr</code></div>
+<div class="api-method"><code>PFN_glCompileShader compileShader = nullptr</code></div>
+<div class="api-method"><code>PFN_glGetShaderiv getShaderiv = nullptr</code></div>
+<div class="api-method"><code>PFN_glGetShaderInfoLog getShaderInfoLog = nullptr</code></div>
+<div class="api-method"><code>PFN_glCreateProgram createProgram = nullptr</code></div>
+<div class="api-method"><code>PFN_glAttachShader attachShader = nullptr</code></div>
+<div class="api-method"><code>PFN_glLinkProgram linkProgram = nullptr</code></div>
+<div class="api-method"><code>PFN_glGetProgramiv getProgramiv = nullptr</code></div>
+<div class="api-method"><code>PFN_glUseProgram useProgram = nullptr</code></div>
+<div class="api-method"><code>PFN_glDeleteShader deleteShader = nullptr</code></div>
+<div class="api-method"><code>PFN_glDeleteProgram deleteProgram = nullptr</code></div>
+<div class="api-method"><code>PFN_glGenVertexArrays genVertexArrays = nullptr</code></div>
+<div class="api-method"><code>PFN_glDeleteVertexArrays deleteVertexArrays = nullptr</code></div>
+<div class="api-method"><code>PFN_glBindVertexArray bindVertexArray = nullptr</code></div>
+<div class="api-method"><code>PFN_glGenBuffers genBuffers = nullptr</code></div>
+<div class="api-method"><code>PFN_glDeleteBuffers deleteBuffers = nullptr</code></div>
+<div class="api-method"><code>PFN_glBindBuffer bindBuffer = nullptr</code></div>
+<div class="api-method"><code>PFN_glBufferData bufferData = nullptr</code></div>
+<div class="api-method"><code>PFN_glBufferSubData bufferSubData = nullptr</code></div>
+<div class="api-method"><code>PFN_glVertexAttribPointer vertexAttribPointer = nullptr</code></div>
+<div class="api-method"><code>PFN_glEnableVertexAttribArray enableVertexAttribArray = nullptr</code></div>
+<div class="api-method"><code>PFN_glGetUniformLocation getUniformLocation = nullptr</code></div>
+<div class="api-method"><code>PFN_glUniformMatrix4fv uniformMatrix4fv = nullptr</code></div>
+<div class="api-method"><code>PFN_glDrawElements drawElements = nullptr</code></div>
+<div class="api-method"><code>PFN_glEnable enable = nullptr</code></div>
+<div class="api-method"><code>PFN_glBlendFunc blendFunc = nullptr</code></div>
+<div class="api-method"><code>PFN_glDisable disable = nullptr</code></div>
+<div class="api-method"><code>void load()</code></div>
+<div class="api-method"><code>constexpr const char* GL_VERTEX_SHADER_2D = R&quot;glsl( #version 330 core layout(location = 0) in vec2 aPos; layout(location = 1) in vec2 aTexCoord; layout(location = 2) in vec4 aColor; uniform mat4 uProjection; out vec4 vColor; out vec2 vTexCoord; void main() { gl_Position = uProjection * vec4(aPos, 0.0, 1.0); vColor = aColor; vTexCoord = aTexCoord; } )glsl&quot;</code></div>
+<div class="api-method"><code>constexpr const char* GL_FRAGMENT_SHADER_2D = R&quot;glsl( #version 330 core in vec4 vColor; in vec2 vTexCoord; out vec4 fragColor; void main() { fragColor = vColor; } )glsl&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-depthbufferconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DepthBufferConfig</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>uint32_t width = 0</code></div>
+<div class="api-method"><code>uint32_t height = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkandepthbuffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanDepthBuffer</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanDepthBuffer() = default</code></div>
+<div class="api-method"><code>~VulkanDepthBuffer()</code></div>
+<div class="api-method"><code>VulkanDepthBuffer(const VulkanDepthBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanDepthBuffer&amp; operator=(const VulkanDepthBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanDepthBuffer(VulkanDepthBuffer&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>VulkanDepthBuffer&amp; operator=(VulkanDepthBuffer&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>void initialize(VkDevice device, VkPhysicalDevice physDevice, uint32_t width, uint32_t height)</code></div>
+<div class="api-method"><code>void destroy() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] VkImageView imageView() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] VkFormat format() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static VkFormat findSupportedFormat(VkPhysicalDevice physDevice)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-descriptorpoolconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DescriptorPoolConfig</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>uint32_t maxSets = 0</code></div>
+<div class="api-method"><code>std::vector&lt;VkDescriptorPoolSize&gt; poolSizes</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static DescriptorPoolConfig uniformBuffer(uint32_t maxSets, uint32_t count)</code></div>
+<div class="api-method"><code>[[nodiscard]] static DescriptorPoolConfig combinedImageSampler(uint32_t maxSets, uint32_t count)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkandescriptorpool">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanDescriptorPool</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanDescriptorPool() = default</code></div>
+<div class="api-method"><code>~VulkanDescriptorPool()</code></div>
+<div class="api-method"><code>VulkanDescriptorPool(const VulkanDescriptorPool&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanDescriptorPool&amp; operator=(const VulkanDescriptorPool&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanDescriptorPool(VulkanDescriptorPool&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>VulkanDescriptorPool&amp; operator=(VulkanDescriptorPool&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>void initialize( VkDevice device, uint32_t maxSets, const std::vector&lt;VkDescriptorPoolSize&gt;&amp; poolSizes)</code></div>
+<div class="api-method"><code>[[nodiscard]] VkDescriptorSet allocateSet(VkDescriptorSetLayout layout)</code></div>
+<div class="api-method"><code>void resetPool() noexcept</code></div>
+<div class="api-method"><code>void destroy() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] VkDescriptorPool handle() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkanbuffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanBuffer</code> <span class="api-class__extra">: public IBuffer</span> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanBuffer(BufferType bufferType, std::uint32_t sizeBytes) noexcept</code></div>
+<div class="api-method"><code>VulkanBuffer( VkDevice device, VkPhysicalDevice physDevice, BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData)</code></div>
+<div class="api-method"><code>~VulkanBuffer() override</code></div>
+<div class="api-method"><code>VulkanBuffer(const VulkanBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanBuffer&amp; operator=(const VulkanBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanBuffer(VulkanBuffer&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanBuffer&amp; operator=(VulkanBuffer&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t size() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] BufferType type() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] VkBuffer handle() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkancommandlist">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanCommandList</code> <span class="api-class__extra">: public ICommandList</span> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanCommandList() = default</code></div>
+<div class="api-method"><code>explicit VulkanCommandList(VkCommandBuffer cmdBuf) noexcept</code></div>
+<div class="api-method"><code>void begin() override</code></div>
+<div class="api-method"><code>void end() override</code></div>
+<div class="api-method"><code>void setRenderTarget(IRenderTarget*) override</code></div>
+<div class="api-method"><code>void clearRenderTarget(const sgc::Colorf&amp;) override</code></div>
+<div class="api-method"><code>void setPipeline(IPipeline*) override</code></div>
+<div class="api-method"><code>void setVertexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void setIndexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void drawIndexed(std::uint32_t indexCount, std::uint32_t startIndex, std::int32_t baseVertex) override</code></div>
+<div class="api-method"><code>void draw(std::uint32_t vertexCount, std::uint32_t startVertex) override</code></div>
+<div class="api-method"><code>[[nodiscard]] VkCommandBuffer handle() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkandevice">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanDevice</code> <span class="api-class__extra">: public IDevice</span> <span class="api-class__count">15</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit VulkanDevice(mitiru::GlfwWindow* window)</code></div>
+<div class="api-method"><code>~VulkanDevice() override</code></div>
+<div class="api-method"><code>VulkanDevice(const VulkanDevice&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanDevice&amp; operator=(const VulkanDevice&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanDevice(VulkanDevice&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanDevice&amp; operator=(VulkanDevice&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; readPixels( int width, int height) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] Backend backend() const noexcept override</code></div>
+<div class="api-method"><code>void beginFrame() override</code></div>
+<div class="api-method"><code>void endFrame() override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IBuffer&gt; createBuffer( BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;ICommandList&gt; createCommandList() override</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t currentFrameIndex() const override</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t frameInFlightCount() const override</code></div>
+<div class="api-method"><code>void waitForGpu() override</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-framebufferconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FramebufferConfig</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>uint32_t width = 0</code></div>
+<div class="api-method"><code>uint32_t height = 0</code></div>
+<div class="api-method"><code>uint32_t attachmentCount = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static FramebufferConfig colorOnly(uint32_t w, uint32_t h)</code></div>
+<div class="api-method"><code>[[nodiscard]] static FramebufferConfig colorDepth(uint32_t w, uint32_t h)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkanframebuffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanFramebuffer</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanFramebuffer() = default</code></div>
+<div class="api-method"><code>~VulkanFramebuffer()</code></div>
+<div class="api-method"><code>VulkanFramebuffer(const VulkanFramebuffer&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanFramebuffer&amp; operator=(const VulkanFramebuffer&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanFramebuffer(VulkanFramebuffer&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>VulkanFramebuffer&amp; operator=(VulkanFramebuffer&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>void initialize( VkDevice device, VkRenderPass renderPass, const std::vector&lt;VkImageView&gt;&amp; attachments, uint32_t width, uint32_t height)</code></div>
+<div class="api-method"><code>void destroy() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] VkFramebuffer handle() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vulkanappinfo">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VulkanAppInfo</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string appName = &quot;MitiruApp&quot;</code></div>
+<div class="api-method"><code>std::uint32_t appVersion = 1</code></div>
+<div class="api-method"><code>std::string engineName = &quot;MitiruEngine&quot;</code></div>
+<div class="api-method"><code>std::uint32_t engineVersion = 1</code></div>
+<div class="api-method"><code>std::uint32_t apiVersion = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vulkanvalidationconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VulkanValidationConfig</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool enableValidation = false</code></div>
+<div class="api-method"><code>bool enableDebugMessenger = false</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; requiredLayers</code></div>
+<div class="api-method"><code>[[nodiscard]] static VulkanValidationConfig debug() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static VulkanValidationConfig release() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vulkaninstancedesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VulkanInstanceDesc</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanAppInfo appInfo</code></div>
+<div class="api-method"><code>VulkanValidationConfig validation</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; requiredExtensions</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasExtension(const std::string&amp; extensionName) const noexcept</code></div>
+<div class="api-method"><code>void addExtension(const std::string&amp; extensionName)</code></div>
+<div class="api-method"><code>void addSurfaceExtensions()</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkaninstance">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanInstance</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit VulkanInstance(const VulkanInstanceDesc&amp; desc)</code></div>
+<div class="api-method"><code>~VulkanInstance()</code></div>
+<div class="api-method"><code>VulkanInstance(const VulkanInstance&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanInstance&amp; operator=(const VulkanInstance&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanInstance(VulkanInstance&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanInstance&amp; operator=(VulkanInstance&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] VkInstance handle() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const VulkanInstanceDesc&amp; desc() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValidationEnabled() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-queuefamily">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">QueueFamily</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Graphics = 0</code></div>
+<div class="api-method"><code>Compute</code></div>
+<div class="api-method"><code>Transfer</code></div>
+<div class="api-method"><code>Present</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-gputype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">GpuType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Unknown = 0</code></div>
+<div class="api-method"><code>IntegratedGpu</code></div>
+<div class="api-method"><code>DiscreteGpu</code></div>
+<div class="api-method"><code>VirtualGpu</code></div>
+<div class="api-method"><code>Cpu</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int scorePhysicalDevice(const PhysicalDeviceInfo&amp; info) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;std::size_t&gt; selectBestDevice( const std::vector&lt;PhysicalDeviceInfo&gt;&amp; devices) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-queuefamilyindices">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QueueFamilyIndices</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::optional&lt;std::uint32_t&gt; graphics</code></div>
+<div class="api-method"><code>std::optional&lt;std::uint32_t&gt; compute</code></div>
+<div class="api-method"><code>std::optional&lt;std::uint32_t&gt; transfer</code></div>
+<div class="api-method"><code>std::optional&lt;std::uint32_t&gt; present</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isComplete() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasAll() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-physicaldeviceinfo">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PhysicalDeviceInfo</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string deviceName</code></div>
+<div class="api-method"><code>std::uint32_t vendorId = 0</code></div>
+<div class="api-method"><code>std::uint32_t deviceId = 0</code></div>
+<div class="api-method"><code>GpuType gpuType = GpuType::Unknown</code></div>
+<div class="api-method"><code>std::uint32_t apiVersion = 0</code></div>
+<div class="api-method"><code>std::uint32_t driverVersion = 0</code></div>
+<div class="api-method"><code>std::uint64_t dedicatedVideoMemory = 0</code></div>
+<div class="api-method"><code>QueueFamilyIndices queueFamilies</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; supportedExtensions</code></div>
+<div class="api-method"><code>[[nodiscard]] bool supportsExtension(const std::string&amp; extensionName) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkanphysicaldevice">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanPhysicalDevice</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit VulkanPhysicalDevice(const PhysicalDeviceInfo&amp; info)</code></div>
+<div class="api-method"><code>[[nodiscard]] const PhysicalDeviceInfo&amp; info() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const QueueFamilyIndices&amp; queueFamilies() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int score() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-primitivetopology">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PrimitiveTopology</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>TriangleList = 0</code></div>
+<div class="api-method"><code>TriangleStrip</code></div>
+<div class="api-method"><code>LineList</code></div>
+<div class="api-method"><code>LineStrip</code></div>
+<div class="api-method"><code>PointList</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-polygonmode">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PolygonMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Fill = 0</code></div>
+<div class="api-method"><code>Line</code></div>
+<div class="api-method"><code>Point</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-cullmode">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">CullMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>None = 0</code></div>
+<div class="api-method"><code>Front</code></div>
+<div class="api-method"><code>Back</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-frontface">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">FrontFace</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>CounterClockwise = 0</code></div>
+<div class="api-method"><code>Clockwise</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-compareop">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">CompareOp</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Never = 0</code></div>
+<div class="api-method"><code>Less</code></div>
+<div class="api-method"><code>Equal</code></div>
+<div class="api-method"><code>LessOrEqual</code></div>
+<div class="api-method"><code>Greater</code></div>
+<div class="api-method"><code>NotEqual</code></div>
+<div class="api-method"><code>GreaterOrEqual</code></div>
+<div class="api-method"><code>Always</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vertexinputattribute">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VertexInputAttribute</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t location = 0</code></div>
+<div class="api-method"><code>std::uint32_t binding = 0</code></div>
+<div class="api-method"><code>PixelFormat format = PixelFormat::RGBA8</code></div>
+<div class="api-method"><code>std::uint32_t offset = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vertexinputbinding">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VertexInputBinding</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t binding = 0</code></div>
+<div class="api-method"><code>std::uint32_t stride = 0</code></div>
+<div class="api-method"><code>bool perInstance = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vertexinputstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VertexInputState</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;VertexInputBinding&gt; bindings</code></div>
+<div class="api-method"><code>std::vector&lt;VertexInputAttribute&gt; attributes</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rasterizerstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RasterizerState</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>PolygonMode polygonMode = PolygonMode::Fill</code></div>
+<div class="api-method"><code>CullMode cullMode = CullMode::Back</code></div>
+<div class="api-method"><code>FrontFace frontFace = FrontFace::CounterClockwise</code></div>
+<div class="api-method"><code>bool depthClampEnable = false</code></div>
+<div class="api-method"><code>bool depthBiasEnable = false</code></div>
+<div class="api-method"><code>float depthBiasConstant = 0.0f</code></div>
+<div class="api-method"><code>float depthBiasSlope = 0.0f</code></div>
+<div class="api-method"><code>float lineWidth = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-multisamplestate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MultisampleState</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t sampleCount = 1</code></div>
+<div class="api-method"><code>bool sampleShadingEnable = false</code></div>
+<div class="api-method"><code>float minSampleShading = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-depthstencilstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DepthStencilState</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool depthTestEnable = true</code></div>
+<div class="api-method"><code>bool depthWriteEnable = true</code></div>
+<div class="api-method"><code>CompareOp depthCompareOp = CompareOp::Less</code></div>
+<div class="api-method"><code>bool stencilTestEnable = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-shaderstagedesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ShaderStageDesc</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ShaderType type = ShaderType::Vertex</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; code</code></div>
+<div class="api-method"><code>std::string entryPoint = &quot;main&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-pushconstantrange">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PushConstantRange</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ShaderType stageFlags = ShaderType::Vertex</code></div>
+<div class="api-method"><code>std::uint32_t offset = 0</code></div>
+<div class="api-method"><code>std::uint32_t size = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-pipelinelayoutdesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PipelineLayoutDesc</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;PushConstantRange&gt; pushConstantRanges</code></div>
+<div class="api-method"><code>std::uint32_t descriptorSetLayoutCount = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-graphicspipelinedesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GraphicsPipelineDesc</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;ShaderStageDesc&gt; shaderStages</code></div>
+<div class="api-method"><code>VertexInputState vertexInput</code></div>
+<div class="api-method"><code>PrimitiveTopology topology = PrimitiveTopology::TriangleList</code></div>
+<div class="api-method"><code>RasterizerState rasterizer</code></div>
+<div class="api-method"><code>MultisampleState multisample</code></div>
+<div class="api-method"><code>DepthStencilState depthStencil</code></div>
+<div class="api-method"><code>BlendMode blendMode = BlendMode::None</code></div>
+<div class="api-method"><code>PipelineLayoutDesc layout</code></div>
+<div class="api-method"><code>[[nodiscard]] static GraphicsPipelineDesc default2D()</code></div>
+<div class="api-method"><code>[[nodiscard]] static GraphicsPipelineDesc default3D()</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkangraphicspipeline">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanGraphicsPipeline</code> <span class="api-class__extra">: public IPipeline</span> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanGraphicsPipeline(VkDevice device, VkRenderPass renderPass, const GraphicsPipelineDesc&amp; desc)</code></div>
+<div class="api-method"><code>~VulkanGraphicsPipeline() override</code></div>
+<div class="api-method"><code>VulkanGraphicsPipeline(const VulkanGraphicsPipeline&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanGraphicsPipeline&amp; operator=(const VulkanGraphicsPipeline&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanGraphicsPipeline(VulkanGraphicsPipeline&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanGraphicsPipeline&amp; operator=(VulkanGraphicsPipeline&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] VkPipeline handle() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] VkPipelineLayout layout() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const GraphicsPipelineDesc&amp; desc() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-attachmentloadop">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AttachmentLoadOp</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Load = 0</code></div>
+<div class="api-method"><code>Clear</code></div>
+<div class="api-method"><code>DontCare</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-attachmentstoreop">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AttachmentStoreOp</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Store = 0</code></div>
+<div class="api-method"><code>DontCare</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-imagelayout">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ImageLayout</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Undefined = 0</code></div>
+<div class="api-method"><code>ColorAttachment</code></div>
+<div class="api-method"><code>DepthStencilAttachment</code></div>
+<div class="api-method"><code>ShaderReadOnly</code></div>
+<div class="api-method"><code>PresentSrc</code></div>
+<div class="api-method"><code>TransferSrc</code></div>
+<div class="api-method"><code>TransferDst</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-attachmentdesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AttachmentDesc</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>PixelFormat format = PixelFormat::RGBA8</code></div>
+<div class="api-method"><code>std::uint32_t sampleCount = 1</code></div>
+<div class="api-method"><code>AttachmentLoadOp loadOp = AttachmentLoadOp::Clear</code></div>
+<div class="api-method"><code>AttachmentStoreOp storeOp = AttachmentStoreOp::Store</code></div>
+<div class="api-method"><code>AttachmentLoadOp stencilLoadOp = AttachmentLoadOp::DontCare</code></div>
+<div class="api-method"><code>AttachmentStoreOp stencilStoreOp = AttachmentStoreOp::DontCare</code></div>
+<div class="api-method"><code>ImageLayout initialLayout = ImageLayout::Undefined</code></div>
+<div class="api-method"><code>ImageLayout finalLayout = ImageLayout::PresentSrc</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-attachmentreference">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AttachmentReference</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t attachmentIndex = 0</code></div>
+<div class="api-method"><code>ImageLayout layout = ImageLayout::ColorAttachment</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-subpassdesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SubpassDesc</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;AttachmentReference&gt; colorAttachments</code></div>
+<div class="api-method"><code>std::vector&lt;AttachmentReference&gt; inputAttachments</code></div>
+<div class="api-method"><code>std::vector&lt;AttachmentReference&gt; resolveAttachments</code></div>
+<div class="api-method"><code>std::uint32_t depthStencilAttachment = UINT32_MAX</code></div>
+<div class="api-method"><code>ImageLayout depthStencilLayout = ImageLayout::DepthStencilAttachment</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasDepthStencil() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-subpassdependency">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SubpassDependency</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t srcSubpass = UINT32_MAX</code></div>
+<div class="api-method"><code>std::uint32_t dstSubpass = 0</code></div>
+<div class="api-method"><code>std::uint32_t srcStageMask = 0</code></div>
+<div class="api-method"><code>std::uint32_t dstStageMask = 0</code></div>
+<div class="api-method"><code>std::uint32_t srcAccessMask = 0</code></div>
+<div class="api-method"><code>std::uint32_t dstAccessMask = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] static SubpassDependency externalToFirst() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-renderpassdesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RenderPassDesc</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;AttachmentDesc&gt; attachments</code></div>
+<div class="api-method"><code>std::vector&lt;SubpassDesc&gt; subpasses</code></div>
+<div class="api-method"><code>std::vector&lt;SubpassDependency&gt; dependencies</code></div>
+<div class="api-method"><code>[[nodiscard]] static RenderPassDesc simpleColor( PixelFormat format = PixelFormat::BGRA8)</code></div>
+<div class="api-method"><code>[[nodiscard]] static RenderPassDesc colorDepth( PixelFormat colorFormat = PixelFormat::BGRA8)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkanrenderpass">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanRenderPass</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanRenderPass(VkDevice device, const RenderPassDesc&amp; desc)</code></div>
+<div class="api-method"><code>~VulkanRenderPass()</code></div>
+<div class="api-method"><code>VulkanRenderPass(const VulkanRenderPass&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanRenderPass&amp; operator=(const VulkanRenderPass&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanRenderPass(VulkanRenderPass&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanRenderPass&amp; operator=(VulkanRenderPass&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] VkRenderPass handle() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const RenderPassDesc&amp; desc() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkanrendertarget">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanRenderTarget</code> <span class="api-class__extra">: public IRenderTarget</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanRenderTarget(int width, int height) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int width() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] int height() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] ITexture* texture() noexcept override</code></div>
+<div class="api-method"><code>void updateSize(int width, int height) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkanswapchain">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanSwapChain</code> <span class="api-class__extra">: public ISwapChain</span> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanSwapChain(int width, int height)</code></div>
+<div class="api-method"><code>void present() override</code></div>
+<div class="api-method"><code>void resize(int width, int height) override</code></div>
+<div class="api-method"><code>[[nodiscard]] IRenderTarget* backBuffer() noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool needsRecreation() const noexcept</code></div>
+<div class="api-method"><code>void setNeedsRecreation(bool needs) noexcept</code></div>
+<div class="api-method"><code>void recreate( VkDevice , VkPhysicalDevice , VkSurfaceKHR , int width, int height)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-textureconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TextureConfig</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>uint32_t width = 0</code></div>
+<div class="api-method"><code>uint32_t height = 0</code></div>
+<div class="api-method"><code>VkFormat format = VK_FORMAT_R8G8B8A8_UNORM</code></div>
+<div class="api-method"><code>VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT</code></div>
+<div class="api-method"><code>VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static TextureConfig color(uint32_t w, uint32_t h, VkFormat fmt = VK_FORMAT_R8G8B8A8_UNORM)</code></div>
+<div class="api-method"><code>[[nodiscard]] static TextureConfig depth(uint32_t w, uint32_t h, VkFormat fmt = VK_FORMAT_D32_SFLOAT)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-vulkantexture">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VulkanTexture</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VulkanTexture() = default</code></div>
+<div class="api-method"><code>~VulkanTexture()</code></div>
+<div class="api-method"><code>VulkanTexture(const VulkanTexture&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanTexture&amp; operator=(const VulkanTexture&amp;) = delete</code></div>
+<div class="api-method"><code>VulkanTexture(VulkanTexture&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>VulkanTexture&amp; operator=(VulkanTexture&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>void initialize( VkDevice device, VkPhysicalDevice physDevice, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT)</code></div>
+<div class="api-method"><code>void destroy() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] VkImage image() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] VkImageView imageView() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] VkSampler sampler() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] VkFormat format() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-webglcommandlist">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebGLCommandList</code> <span class="api-class__extra">: public ICommandList</span> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void begin() override</code></div>
+<div class="api-method"><code>void end() override</code></div>
+<div class="api-method"><code>void setRenderTarget(IRenderTarget*) override</code></div>
+<div class="api-method"><code>void clearRenderTarget(const sgc::Colorf&amp; color) override</code></div>
+<div class="api-method"><code>void setPipeline(IPipeline* pipeline) override</code></div>
+<div class="api-method"><code>void setVertexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void setIndexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void drawIndexed(std::uint32_t indexCount, std::uint32_t startIndex, std::int32_t) override</code></div>
+<div class="api-method"><code>void draw(std::uint32_t vertexCount, std::uint32_t startVertex) override</code></div>
+<div class="api-method"><code>void setViewport(float width, float height) override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-webgldevice">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebGLDevice</code> <span class="api-class__extra">: public IDevice</span> <span class="api-class__count">21</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit WebGLDevice(const char* canvasId = &quot;#canvas&quot;)</code></div>
+<div class="api-method"><code>~WebGLDevice() override</code></div>
+<div class="api-method"><code>WebGLDevice(const WebGLDevice&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLDevice&amp; operator=(const WebGLDevice&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLDevice(WebGLDevice&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLDevice&amp; operator=(WebGLDevice&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; readPixels( int width, int height) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] Backend backend() const noexcept override</code></div>
+<div class="api-method"><code>void beginFrame() override</code></div>
+<div class="api-method"><code>void endFrame() override</code></div>
+<div class="api-method"><code>void checkGLError(const char* context) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IBuffer&gt; createBuffer( BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;ICommandList&gt; createCommandList() override</code></div>
+<div class="api-method"><code>[[nodiscard]] WebGLShader createShaderProgram( std::string_view vertexSource, std::string_view fragmentSource) const</code></div>
+<div class="api-method"><code>[[nodiscard]] WebGLShader createDefaultShader2D() const</code></div>
+<div class="api-method"><code>[[nodiscard]] WebGLTexture createTexture( int width, int height, PixelFormat pixelFormat, std::span&lt;const std::uint8_t&gt; data) const</code></div>
+<div class="api-method"><code>[[nodiscard]] WebGLTexture createEmptyTexture( int width, int height, PixelFormat pixelFormat = PixelFormat::RGBA8) const</code></div>
+<div class="api-method"><code>[[nodiscard]] WebGLPipeline createPipeline(const WebGLPipelineDesc&amp; desc) const</code></div>
+<div class="api-method"><code>[[nodiscard]] int canvasWidth() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int canvasHeight() const noexcept</code></div>
+<div class="api-method"><code>void setViewport(int x, int y, int width, int height) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-webglbuffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebGLBuffer</code> <span class="api-class__extra">: public IBuffer</span> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>WebGLBuffer( BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData)</code></div>
+<div class="api-method"><code>~WebGLBuffer() override</code></div>
+<div class="api-method"><code>WebGLBuffer(const WebGLBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLBuffer&amp; operator=(const WebGLBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLBuffer(WebGLBuffer&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLBuffer&amp; operator=(WebGLBuffer&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>void update(const void* data, std::uint32_t sizeBytes) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t size() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] BufferType type() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isDynamic() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLuint handle() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLenum bufferTarget() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-webglpipelinedesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WebGLPipelineDesc</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>WebGLShader* shader = nullptr</code></div>
+<div class="api-method"><code>VertexFormat vertexFormat = VertexFormat::PositionTexCoord</code></div>
+<div class="api-method"><code>BlendMode blendMode = BlendMode::Alpha</code></div>
+<div class="api-method"><code>bool depthTest = true</code></div>
+<div class="api-method"><code>bool depthWrite = true</code></div>
+<div class="api-method"><code>bool cullFace = false</code></div>
+<div class="api-method"><code>bool wireframe = false</code></div>
+</div>
+</details>
+<details class="api-class" id="class-webglpipeline">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebGLPipeline</code> <span class="api-class__extra">: public IPipeline</span> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit WebGLPipeline(const WebGLPipelineDesc&amp; desc)</code></div>
+<div class="api-method"><code>~WebGLPipeline() override</code></div>
+<div class="api-method"><code>WebGLPipeline(const WebGLPipeline&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLPipeline&amp; operator=(const WebGLPipeline&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLPipeline(WebGLPipeline&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>WebGLPipeline&amp; operator=(WebGLPipeline&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] WebGLShader* shader() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLuint vao() const noexcept</code></div>
+<div class="api-method"><code>void bind() const noexcept</code></div>
+<div class="api-method"><code>static void unbind() noexcept</code></div>
+<div class="api-method"><code>constexpr const char* WEBGL_VERTEX_SHADER_2D = R&quot;glsl(#version 300 es precision highp float; layout(location = 0) in vec2 aPos; layout(location = 1) in vec2 aTexCoord; layout(location = 2) in vec4 aColor; uniform mat4 uProjection; out vec4 vColor; out vec2 vTexCoord; void main() { gl_Position = uProjection * vec4(aPos, 0.0, 1.0); vColor = aColor; vTexCoord = aTexCoord; } )glsl&quot;</code></div>
+<div class="api-method"><code>constexpr const char* WEBGL_FRAGMENT_SHADER_2D = R&quot;glsl(#version 300 es precision highp float; in vec4 vColor; in vec2 vTexCoord; uniform sampler2D uTexture; uniform int uUseTexture; out vec4 fragColor; void main() { if (uUseTexture != 0) { fragColor = texture(uTexture, vTexCoord) * vColor; } else { fragColor = vColor; } } )glsl&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="class-webglshader">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebGLShader</code> <span class="api-class__extra">: public IShader</span> <span class="api-class__count">16</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static WebGLShader createProgram( std::string_view vertexSource, std::string_view fragmentSource)</code></div>
+<div class="api-method"><code>[[nodiscard]] static WebGLShader createVertexShader(std::string_view source)</code></div>
+<div class="api-method"><code>[[nodiscard]] static WebGLShader createFragmentShader(std::string_view source)</code></div>
+<div class="api-method"><code>~WebGLShader() override</code></div>
+<div class="api-method"><code>WebGLShader(const WebGLShader&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLShader&amp; operator=(const WebGLShader&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLShader(WebGLShader&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>WebGLShader&amp; operator=(WebGLShader&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ShaderType type() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] GLuint program() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLuint vertexShader() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLuint fragmentShader() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLint getUniformLocation(const char* name) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GLint getAttribLocation(const char* name) const noexcept</code></div>
+<div class="api-method"><code>void use() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-texturefilter">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TextureFilter</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Nearest</code></div>
+<div class="api-method"><code>Linear</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-texturewrap">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TextureWrap</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Repeat</code></div>
+<div class="api-method"><code>ClampToEdge</code></div>
+<div class="api-method"><code>MirroredRepeat</code></div>
+</div>
+</details>
+<details class="api-class" id="class-webgltexture">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebGLTexture</code> <span class="api-class__extra">: public ITexture</span> <span class="api-class__count">17</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static WebGLTexture createFromData( int width, int height, PixelFormat pixelFormat, std::span&lt;const std::uint8_t&gt; data)</code></div>
+<div class="api-method"><code>[[nodiscard]] static WebGLTexture createEmpty( int width, int height, PixelFormat pixelFormat = PixelFormat::RGBA8)</code></div>
+<div class="api-method"><code>~WebGLTexture() override</code></div>
+<div class="api-method"><code>WebGLTexture(const WebGLTexture&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLTexture&amp; operator=(const WebGLTexture&amp;) = delete</code></div>
+<div class="api-method"><code>WebGLTexture(WebGLTexture&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>WebGLTexture&amp; operator=(WebGLTexture&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int width() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] int height() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] PixelFormat format() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] GLuint handle() const noexcept</code></div>
+<div class="api-method"><code>void bind(GLuint unit = 0) const noexcept</code></div>
+<div class="api-method"><code>static void unbind(GLuint unit = 0) noexcept</code></div>
+<div class="api-method"><code>void updateSubImage( int x, int y, int w, int h, const void* data) noexcept</code></div>
+<div class="api-method"><code>void setFilter(TextureFilter minFilter, TextureFilter magFilter) noexcept</code></div>
+<div class="api-method"><code>void setWrap(TextureWrap wrapS, TextureWrap wrapT) noexcept</code></div>
+<div class="api-method"><code>void generateMipmaps() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-webgpubuffer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebGPUBuffer</code> <span class="api-class__extra">: public IBuffer</span> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>WebGPUBuffer( WGPUDevice device, BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData)</code></div>
+<div class="api-method"><code>~WebGPUBuffer() override</code></div>
+<div class="api-method"><code>WebGPUBuffer(const WebGPUBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>WebGPUBuffer&amp; operator=(const WebGPUBuffer&amp;) = delete</code></div>
+<div class="api-method"><code>WebGPUBuffer(WebGPUBuffer&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>WebGPUBuffer&amp; operator=(WebGPUBuffer&amp;&amp; other) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t size() const noexcept override</code></div>
+<div class="api-method"><code>void update(WGPUQueue queue, const void* data, std::uint32_t sizeBytes, std::uint32_t offset = 0) const</code></div>
+<div class="api-method"><code>[[nodiscard]] WGPUBuffer handle() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] BufferType bufferType() const noexcept</code></div>
+<div class="api-method"><code>constexpr const char* WEBGPU_VERTEX_SHADER_2D = R&quot;wgsl( struct Uniforms { projection: mat4x4&lt;f32&gt;, }; @binding(0) @group(0) var&lt;uniform&gt; uniforms: Uniforms; struct VertexInput { @location(0) position: vec2&lt;f32&gt;, @location(1) texCoord: vec2&lt;f32&gt;, @location(2) color: vec4&lt;f32&gt;, }; struct VertexOutput { @builtin(position) position: vec4&lt;f32&gt;, @location(0) color: vec4&lt;f32&gt;, @location(1) texCoord: vec2&lt;f32&gt;, }; @vertex fn main(input: VertexInput) -&gt; VertexOutput { var output: VertexOutput; output.position = uniforms.projection * vec4&lt;f32&gt;(input.position, 0.0, 1.0); output.color = input.color; output.texCoord = input.texCoord; return output; } )wgsl&quot;</code></div>
+<div class="api-method"><code>constexpr const char* WEBGPU_FRAGMENT_SHADER_2D = R&quot;wgsl( @group(1) @binding(0) var texSampler: sampler; @group(1) @binding(1) var texColor: texture_2d&lt;f32&gt;; struct Params { useTexture: f32, }; @group(1) @binding(2) var&lt;uniform&gt; params: Params; struct FragmentInput { @location(0) color: vec4&lt;f32&gt;, @location(1) texCoord: vec2&lt;f32&gt;, }; @fragment fn main(input: FragmentInput) -&gt; @location(0) vec4&lt;f32&gt; { if (params.useTexture &gt; 0.5) { let texColor = textureSample(texColor, texSampler, input.texCoord); return texColor * input.color; } return input.color; } )wgsl&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="class-webgpucommandlist">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebGPUCommandList</code> <span class="api-class__extra">: public ICommandList</span> <span class="api-class__count">18</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit WebGPUCommandList(WGPUDevice device)</code></div>
+<div class="api-method"><code>~WebGPUCommandList() override</code></div>
+<div class="api-method"><code>WebGPUCommandList(const WebGPUCommandList&amp;) = delete</code></div>
+<div class="api-method"><code>WebGPUCommandList&amp; operator=(const WebGPUCommandList&amp;) = delete</code></div>
+<div class="api-method"><code>WebGPUCommandList(WebGPUCommandList&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>WebGPUCommandList&amp; operator=(WebGPUCommandList&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>void begin() override</code></div>
+<div class="api-method"><code>void end() override</code></div>
+<div class="api-method"><code>void setRenderTarget(IRenderTarget*) override</code></div>
+<div class="api-method"><code>void clearRenderTarget(const sgc::Colorf&amp; color) override</code></div>
+<div class="api-method"><code>void setPipeline(IPipeline*) override</code></div>
+<div class="api-method"><code>void setVertexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void setIndexBuffer(IBuffer* buffer) override</code></div>
+<div class="api-method"><code>void drawIndexed(std::uint32_t indexCount, std::uint32_t startIndex, std::int32_t) override</code></div>
+<div class="api-method"><code>void draw(std::uint32_t vertexCount, std::uint32_t startVertex) override</code></div>
+<div class="api-method"><code>void setViewport(float width, float height) override</code></div>
+<div class="api-method"><code>void beginRenderPass(WGPUTextureView textureView)</code></div>
+<div class="api-method"><code>void submit(WGPUQueue queue)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-webgpudevice">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebGPUDevice</code> <span class="api-class__extra">: public IDevice</span> <span class="api-class__count">23</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit WebGPUDevice(const char* canvasId = &quot;#canvas&quot;)</code></div>
+<div class="api-method"><code>~WebGPUDevice() override</code></div>
+<div class="api-method"><code>WebGPUDevice(const WebGPUDevice&amp;) = delete</code></div>
+<div class="api-method"><code>WebGPUDevice&amp; operator=(const WebGPUDevice&amp;) = delete</code></div>
+<div class="api-method"><code>WebGPUDevice(WebGPUDevice&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>WebGPUDevice&amp; operator=(WebGPUDevice&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>void init(std::function&lt;void(bool)&gt; callback)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; readPixels( int width, int height) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] Backend backend() const noexcept override</code></div>
+<div class="api-method"><code>void beginFrame() override</code></div>
+<div class="api-method"><code>void endFrame() override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IBuffer&gt; createBuffer( BufferType bufferType, std::uint32_t sizeBytes, bool dynamic, const void* initialData) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;ICommandList&gt; createCommandList() override</code></div>
+<div class="api-method"><code>void waitForGpu() override</code></div>
+<div class="api-method"><code>[[nodiscard]] WGPUShaderModule createShaderModule( std::string_view wgslSource) const</code></div>
+<div class="api-method"><code>[[nodiscard]] WGPUShaderModule createDefaultVertexShader2D() const</code></div>
+<div class="api-method"><code>[[nodiscard]] WGPUShaderModule createDefaultFragmentShader2D() const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] WGPUDevice deviceHandle() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] WGPUQueue queue() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] WGPUTextureView currentTextureView() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int canvasWidth() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int canvasHeight() const noexcept</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+    </div>
+  </article>
+  
+<aside class="api-toc" aria-label="このページ内">
+  <p class="api-toc__title">このページ内</p>
+  <nav id="TableOfContents">
+  <ul>
+    <li><a href="#free-functions-and-typedefs">Free functions and typedefs</a></li>
+  </ul>
+</nav>
+</aside>
+
+
+</div>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">MitiruEngine</p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>Permissive open-source. See <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a>.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">プロジェクトステータス</h2>
+      <p>Header-only。Catch2 で 2254 件のテストが green。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
