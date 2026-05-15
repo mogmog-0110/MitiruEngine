@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="CEF UI ホスティング、ヘッドレス C&#43;&#43; ゲームプレイ、シーン遷移、スクリプト駆動ナラティブ、データ駆動パイプラインをカバーする 13 本の実行可能サンプル。">
+<meta name="description" content="そのまま動かせる 14 本のサンプル。エンジンの考えかたを実コードで確認できます。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
 
@@ -17,16 +17,6 @@
 
 <link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
 
-<link rel="alternate" hreflang="en" href="https://mogmog-0110.github.io/MitiruEngine/en/examples/">
-
-
-  
-    
-<link rel="alternate" hreflang="x-default" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
-    
-  
-    
-  
 
 
 
@@ -40,19 +30,19 @@
 
 
 <meta property="og:title" content="サンプル | MitiruEngine">
-<meta property="og:description" content="CEF UI ホスティング、ヘッドレス C&#43;&#43; ゲームプレイ、シーン遷移、スクリプト駆動ナラティブ、データ駆動パイプラインをカバーする 13 本の実行可能サンプル。">
+<meta property="og:description" content="そのまま動かせる 14 本のサンプル。エンジンの考えかたを実コードで確認できます。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/">
 <meta property="og:site_name" content="MitiruEngine">
 <meta property="og:locale" content="ja_JP">
-<meta property="og:locale:alternate" content="en_US">
+
 <meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="サンプル | MitiruEngine">
-<meta name="twitter:description" content="CEF UI ホスティング、ヘッドレス C&#43;&#43; ゲームプレイ、シーン遷移、スクリプト駆動ナラティブ、データ駆動パイプラインをカバーする 13 本の実行可能サンプル。">
+<meta name="twitter:description" content="そのまま動かせる 14 本のサンプル。エンジンの考えかたを実コードで確認できます。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -99,10 +89,11 @@
     </label>
     <nav class="site-nav" id="primary-nav" aria-label="primary">
       <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
-      <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
-      <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/docs">ドキュメント</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/adr/">設計の記録</a>
       
 <button type="button"
         class="search-trigger"
@@ -279,18 +270,6 @@
         <span class="visually-hidden">GitHub</span>
       </a>
       
-        <span class="site-nav__lang">
-          
-            
-              <strong>日本語</strong>
-            
-          
-            
-              <a href="https://mogmog-0110.github.io/MitiruEngine/en/">English</a>
-            
-          
-        </span>
-      
       <button type="button"
               class="theme-toggle"
               id="theme-toggle"
@@ -374,8 +353,7 @@
 <section class="example-gallery container">
   <header class="example-gallery__header">
     <h1>サンプル</h1>
-    <div class="example-gallery__intro"><p><code>examples/</code> 以下の全サンプルはデフォルト CMake プリセットでビルドでき、スタンドアロンで動作します。<strong>CEF</strong> 系はウィンドウを開いて HTML オーバーレイをホストし、それ以外は <strong>ヘッドレス</strong> なコンソールプログラムとして決定的なトレースを stdout に出力します。</p>
-<p>スクリーンショットが表示されない場合は、<code>python tools/site/capture_examples.py</code> を実行して <code>site/static/screenshots/&lt;name&gt;.png</code> を生成してからサイトを再ビルドしてください。</p>
+    <div class="example-gallery__intro"><p><code>examples/</code> 配下のサンプルは、すべて標準の CMake プリセットでビルドできます。スクリーンショットつきは実画面が出るもの、それ以外はコンソール出力で挙動を確認するタイプです。気になったものを動かして、<code>main.cpp</code> を読むのがおすすめです。</p>
 </div>
   </header>
 
@@ -403,7 +381,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Animated Sprite</h2>
-          <p class="example-card__desc">Frame-based playback, pause/resume, speed multiplier, loop/clamp behaviour, onLoop callback, and injected GIF decoders (G-06).</p>
+          <p class="example-card__desc">アニメーションスプライトの最小デモ。再生・一時停止・速度倍率・ループ制御・コールバック・GIF デコーダ差し替えを順番に確認できる。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -439,7 +417,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">CEF Minimal</h2>
-          <p class="example-card__desc">Smallest possible MitiruEngine &#43; CEF host. Black-bg Game subclass, all gameplay/UI in HTML/JS/CSS.</p>
+          <p class="example-card__desc">もっとも小さい MitiruEngine &#43; CEF のサンプル。背景は黒、ゲームと UI はすべて HTML/JS/CSS で書く。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -475,7 +453,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">CEF Overlay</h2>
-          <p class="example-card__desc">Native DX12 scene plus a transparent CEF HTML overlay. F1 toggles input focus between CEF and the native game.</p>
+          <p class="example-card__desc">DX12 で描いたネイティブシーンの上に、透過の CEF HTML を重ねる。F1 で入力フォーカスを CEF とゲームのあいだで切り替えられる。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -511,7 +489,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">CEF State Bridge</h2>
-          <p class="example-card__desc">Two-way C&#43;&#43; ↔ JS state bridge via mitiru::cef::StateStore (G-05). HP ticking, pulse events, and a Heal command.</p>
+          <p class="example-card__desc">C&#43;&#43; と JS の双方向ステート同期を mitiru::cef::StateStore で行うサンプル。HP の継続減少、パルスイベント、ヒールコマンドが動く。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -547,7 +525,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">CEF Transition</h2>
-          <p class="example-card__desc">Fade transition between two HTML pages using mitiru::cef::SceneTransition (G-17).</p>
+          <p class="example-card__desc">2 枚の HTML ページのあいだをフェードで切り替える、シーン遷移のサンプル。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -583,7 +561,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Data-Driven Minimal (C&#43;&#43;)</h2>
-          <p class="example-card__desc">ContentLoader, SaveSchema, BridgeInputAdapter, BridgeViewPush, SchemaValidator, SchemaImporter — every data-driven primitive in one runnable file.</p>
+          <p class="example-card__desc">ContentLoader、SaveSchema、BridgeInputAdapter、SchemaValidator、SchemaImporter といったデータ駆動の道具を、ひとつの実行ファイルに詰めて挙動を見せる。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -619,7 +597,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Gameplay Minimal (C&#43;&#43;)</h2>
-          <p class="example-card__desc">SceneRouter, StateMachine, Timer, Cooldown, Sequence, BridgeActionRouter, BridgeViewPush — every P0 C&#43;&#43; gameplay primitive in a fake 60 fps loop.</p>
+          <p class="example-card__desc">SceneRouter、StateMachine、Timer、Cooldown、Sequence、BridgeActionRouter といった C&#43;&#43; 側のゲームプレイ部品を、模擬 60 fps ループで一気に試す。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -655,12 +633,48 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Hello Headless</h2>
-          <p class="example-card__desc">Smallest possible MitiruEngine consumer. Link-check stub &#43; FetchContent template for downstream games.</p>
+          <p class="example-card__desc">MitiruEngine をコンシューマから使うときの一番小さな例。FetchContent でリンクが通ることを確認するスタブ。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
               <li class="example-card__api-chip"><code>&lt;mitiru/Mitiru.hpp&gt; umbrella header</code></li>
             
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/hello_sprite/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/hello_sprite.png"
+            alt="Hello Sprite screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--engine">エンジン</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">Hello Sprite</h2>
+          <p class="example-card__desc">C&#43;&#43; の 2D 描画 API だけで、VN 風の 1 シーンを描く最小の例。Engine を使った一番素直なサンプル。</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
+            
+              <li class="example-card__api-chip"><code>mitiru::Game</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 2 件</li>
             
           </ul>
           
@@ -686,7 +700,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Narrative Script</h2>
-          <p class="example-card__desc">JSON-driven ADV script runner (G-04). Typed callbacks for text, image, wait, flag, stat, and choice events.</p>
+          <p class="example-card__desc">JSON で書いたシナリオを動かす ADV ランタイム。台詞・画像・待機・フラグ・ステータス・選択肢のイベントを型付きコールバックで受ける。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -722,7 +736,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Parametric Portrait</h2>
-          <p class="example-card__desc">N-axis discrete portrait lookup (G-01). Per-axis low/high thresholds, lambda loader, named overrides, memoization.</p>
+          <p class="example-card__desc">N 軸の離散ルックアップで立ち絵を切り替えるサンプル。軸ごとのしきい値、ラムダ式によるローダ、上書き名、メモ化を確認できる。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -758,7 +772,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Scene Transition</h2>
-          <p class="example-card__desc">Fade / Dissolve / Slide / Zoom / Custom-easing transitions (G-03) driven through a self-contained overlay.</p>
+          <p class="example-card__desc">フェード・ディゾルブ・スライド・ズーム、カスタムイージングのシーン遷移サンプル。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -794,7 +808,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">VN ↔ Gameplay Hybrid</h2>
-          <p class="example-card__desc">HybridGameManager (G-09) switching between VN and Gameplay mode while keeping shared state in sync.</p>
+          <p class="example-card__desc">HybridGameManager を使って、ノベルモードとゲームプレイモードを切り替えるサンプル。両モードの共有ステートも同期される。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -830,7 +844,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">VN Hello World</h2>
-          <p class="example-card__desc">Smallest possible visual-novel sample (G-09). ScenarioScript DSL through ScenarioExecutor, ScenarioCallback events to stdout.</p>
+          <p class="example-card__desc">もっとも小さなノベルゲームのサンプル。ScenarioScript DSL を ScenarioExecutor で実行し、イベントを stdout に流す。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -859,11 +873,11 @@
     </div>
     <div class="site-footer__col">
       <h2 class="site-footer__h">ライセンス</h2>
-      <p>Permissive open-source. See <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a>.</p>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
     </div>
     <div class="site-footer__col">
-      <h2 class="site-footer__h">プロジェクトステータス</h2>
-      <p>Header-only。Catch2 で 2254 件のテストが green。</p>
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
       <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
     </div>
   </div>

@@ -10,7 +10,7 @@
 
 
 
-<meta name="description" content="ヘッダオンリーの C&#43;&#43;20 ゲームエンジン。Gameplay は C&#43;&#43;、UI は CEF。">
+<meta name="description" content="ヘッダオンリーの C&#43;&#43;20 ゲームエンジン。ゲームのロジックは C&#43;&#43;、画面まわりは HTML/CSS。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/">
 
@@ -18,16 +18,6 @@
 
 <link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/">
 
-<link rel="alternate" hreflang="en" href="https://mogmog-0110.github.io/MitiruEngine/en/">
-
-
-  
-    
-<link rel="alternate" hreflang="x-default" href="https://mogmog-0110.github.io/MitiruEngine/">
-    
-  
-    
-  
 
 
 
@@ -41,19 +31,19 @@
 
 
 <meta property="og:title" content="MitiruEngine">
-<meta property="og:description" content="ヘッダオンリーの C&#43;&#43;20 ゲームエンジン。Gameplay は C&#43;&#43;、UI は CEF。">
+<meta property="og:description" content="ヘッダオンリーの C&#43;&#43;20 ゲームエンジン。ゲームのロジックは C&#43;&#43;、画面まわりは HTML/CSS。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/">
 <meta property="og:site_name" content="MitiruEngine">
 <meta property="og:locale" content="ja_JP">
-<meta property="og:locale:alternate" content="en_US">
+
 <meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MitiruEngine">
-<meta name="twitter:description" content="ヘッダオンリーの C&#43;&#43;20 ゲームエンジン。Gameplay は C&#43;&#43;、UI は CEF。">
+<meta name="twitter:description" content="ヘッダオンリーの C&#43;&#43;20 ゲームエンジン。ゲームのロジックは C&#43;&#43;、画面まわりは HTML/CSS。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -112,10 +102,11 @@
     </label>
     <nav class="site-nav" id="primary-nav" aria-label="primary">
       <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
-      <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
-      <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/docs">ドキュメント</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/adr/">設計の記録</a>
       
 <button type="button"
         class="search-trigger"
@@ -292,18 +283,6 @@
         <span class="visually-hidden">GitHub</span>
       </a>
       
-        <span class="site-nav__lang">
-          
-            
-              <strong>日本語</strong>
-            
-          
-            
-              <a href="https://mogmog-0110.github.io/MitiruEngine/en/">English</a>
-            
-          
-        </span>
-      
       <button type="button"
               class="theme-toggle"
               id="theme-toggle"
@@ -388,47 +367,126 @@
 <section class="hero">
   <div class="container">
     <p class="hero__eyebrow">MitiruEngine</p>
-    <h1 class="hero__title">ヘッダオンリーの C&#43;&#43;20 ゲームエンジン</h1>
-    <p class="hero__sub">Gameplay は C&#43;&#43; で、UI は CEF (HTML/CSS) で。両者は薄い signal-only bridge で繋がる。</p>
+    <h1 class="hero__title">C&#43;&#43; でゲームを書くための、ふだん使いのエンジン</h1>
+    <p class="hero__sub">ヘッダだけで動く C&#43;&#43;20 のゲームエンジン。ゲームのロジックは C&#43;&#43;、UI まわりは HTML/CSS で組めます。</p>
     <div class="hero__cta">
-      <a class="btn btn--primary" href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/GETTING_STARTED.md">はじめてみる &rarr;</a>
-      <a class="btn btn--secondary" href="https://github.com/mogmog-0110/MitiruEngine">GitHub で見る</a>
+      <a class="btn btn--primary" href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめての MitiruEngine →</a>
+      <a class="btn btn--secondary" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a class="btn btn--ghost" href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧</a>
+    </div>
+  </div>
+</section>
+
+<p class="home__lead">
+ゲームの中身は C++、画面まわりは HTML/CSS。ふだんの感覚で、C++ のゲームをつくれます。
+</p>
+
+
+
+<figure class="hero-image">
+  <a class="hero-image__link" href="https://mogmog-0110.github.io/MitiruEngine/examples/hello_sprite/">
+    <img
+      src="https://mogmog-0110.github.io/MitiruEngine/screenshots/hello_sprite.png"
+      alt="hello_sprite のスクリーンショット — C++ の 2D 描画 API だけで描いた VN 風シーン"
+      loading="eager"
+      decoding="async"
+      width="1280" height="720" />
+  </a>
+  <figcaption class="hero-image__caption">
+    <code>examples/hello_sprite</code> — 100 行ちょっとの C++ で描いた、VN 風の 1 シーン。
+    画面 UI まわりは HTML/CSS で組めるので、ここから先のデザインに時間を使えます。
+  </figcaption>
+</figure>
+
+
+<section class="three-min">
+  <div class="container">
+    <h2 class="section-title">3 分でわかる MitiruEngine</h2>
+    <p class="three-min__lede">
+      Hello World は <strong>30 行ほど</strong>。エンジンを継承して
+      <code>update()</code> と <code>draw()</code> を書き、<code>engine.run()</code> を呼ぶだけ。
+      画面はそのまま開きます。
+    </p>
+
+    <div class="three-min__code">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="n">m_t</span> <span class="o">+=</span> <span class="n">dt</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.62f</span><span class="p">,</span> <span class="mf">0.80f</span><span class="p">,</span> <span class="mf">0.93f</span><span class="p">,</span> <span class="mi">1</span><span class="p">});</span>       <span class="c1">// 空
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="n">s</span><span class="p">.</span><span class="n">drawCircle</span><span class="p">({</span><span class="n">w</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">},</span> <span class="mi">80</span><span class="p">,</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.9f</span><span class="p">,</span> <span class="mf">0.4f</span><span class="p">,</span> <span class="mi">1</span><span class="p">});</span> <span class="c1">// 太陽
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">  <span class="kt">float</span> <span class="n">m_t</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="n">MyGame</span> <span class="n">game</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="s">&#34;My First Mitiru Game&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span> <span class="o">=</span> <span class="mi">1280</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span> <span class="o">=</span> <span class="mi">720</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+    </div>
+
+    <div class="three-min__nextsteps">
+      <a class="three-min__step" href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">
+        <span class="three-min__step-num">01</span>
+        <strong>はじめて触る</strong>
+        <span>5 分でビルドして、最初のウィンドウを開きます。</span>
+      </a>
+      <a class="three-min__step" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">
+        <span class="three-min__step-num">02</span>
+        <strong>つくってみる</strong>
+        <span>小さなノベルや 2D ゲームをつくりながら、エンジンの考えかたを覚えます。</span>
+      </a>
+      <a class="three-min__step" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
+        <span class="three-min__step-num">03</span>
+        <strong>動くサンプルを見る</strong>
+        <span>すぐに走る 14 個のサンプル。コード付き。</span>
+      </a>
     </div>
   </div>
 </section>
 
 
-
-
 <section class="position">
   <div class="container">
-    <h2 class="section-title">設計の三本柱</h2>
+    <h2 class="section-title">どんなエンジン?</h2>
     <div class="position__grid">
       <div class="position__pillar">
         <p class="position__num">01</p>
-        <h3>C++ で gameplay</h3>
+        <h3>C++ でゲームを書く</h3>
         <p>
-          
-          シーンロジック、状態機械、ノベル VM、物理、AI まで、ゲームの「動き」は C++ で書く。決定論的でプロファイル可能、LLM にもデバッガにも素直。
-          
+          シーンの進行、状態、ノベルの分岐、物理、AI。「動き」の部分は全部 C++ で書きます。
+          デバッガで止められて、プロファイラで測れて、テストできる。
+          ふだんの C++ の感覚そのままです。
         </p>
       </div>
       <div class="position__pillar">
         <p class="position__num">02</p>
-        <h3>CEF で UI</h3>
+        <h3>UI は HTML/CSS で組む</h3>
         <p>
-          
-          HUD、メニュー、ダイアログ、トランジションは HTML / CSS で組む。Web のデザイン技術と既存の UI コンポーネントをそのまま活かせる。
-          
+          メニュー、HUD、ダイアログボックス、トランジション。
+          画面まわりは Web の道具で組みます。CSS でアニメーションを書けて、
+          Web のデザイン資産がそのまま生きます。エンジン内蔵の CEF が表示まわりを担当します。
         </p>
       </div>
       <div class="position__pillar">
         <p class="position__num">03</p>
-        <h3>Signal-only bridge</h3>
+        <h3>橋は薄く</h3>
         <p>
-          
-          JS → C++ は「何が起きたか」、C++ → JS は「何を表示すべきか」。bridge を薄く保つことで gameplay state を一カ所に集約する。
-          
+          JS → C++ は「何が起きたか」を渡すだけ。C++ → JS は「何を表示してほしいか」を渡すだけ。
+          ゲームの状態は C++ 側にひとつだけ持つので、何が正解かで迷いません。
         </p>
       </div>
     </div>
@@ -438,106 +496,63 @@
 
 <section class="features">
   <div class="container">
-    <h2 class="section-title">主な機能</h2>
+    <h2 class="section-title">中身の話</h2>
     <div class="features__grid">
 
       <div class="feature-card">
-        <h3>ヘッダオンリー構成</h3>
+        <h3>ヘッダだけで動く</h3>
         <p>
-          
-          47 名前空間で構成されるヘッダ群。CMake FetchContent で取り込み、単一の INTERFACE ターゲットを link するだけ。プリビルドのライブラリは無い。
-          
+          47 個の名前空間で構成されたヘッダ群を、CMake の FetchContent で取り込んで
+          1 つのターゲットに <code>link</code> するだけ。プリビルドされた .lib や .dll を
+          配って回る必要はありません。
         </p>
       </div>
 
       <div class="feature-card">
-        <h3>マルチバックエンドグラフィックス</h3>
+        <h3>グラフィックスの裏側を選べる</h3>
         <p>
-          
-          DX11 / DX12 / Vulkan / OpenGL / WebGL / Null を同一の <code>IDevice</code> 抽象で扱う。CI ではハード不要の Null に自動フォールバック。
-          
+          DX11 / DX12 / Vulkan / OpenGL / WebGL / Null を同じ <code>IDevice</code> で扱います。
+          開発機では DX12、CI のヘッドレス環境では Null に自動で切り替わるので、
+          機械を選ばずビルドが通ります。
         </p>
       </div>
 
       <div class="feature-card">
-        <h3>Tracy プロファイリング</h3>
+        <h3>Tracy ですぐ測れる</h3>
         <p>
-          
-          Tracy が組み込み済み。フレーム単位のホットスポット可視化と GPU タイムライン取得を最小限のコードで有効化できる。
-          
+          Tracy プロファイラがあらかじめ繋がっています。
+          フレームのどこに時間がかかっているか、GPU タイムラインも含めて、
+          ほぼコードを書かずに見られます。
         </p>
       </div>
 
       <div class="feature-card">
-        <h3>Save schema とマイグレーション</h3>
+        <h3>セーブデータが壊れにくい</h3>
         <p>
-          
-          JSON ベースの save 仕様と version-up マイグレーション補助 API を同梱。リリース後にスキーマを変えてもセーブデータが壊れない。
-          
+          JSON ベースのセーブとマイグレーション API がついています。
+          スキーマを変えても、古いセーブが読み込めるしくみが用意されているので、
+          リリース後の更新で「ロード不能」になる事故を避けられます。
         </p>
       </div>
 
       <div class="feature-card">
-        <h3>JSON Schema バリデーション</h3>
+        <h3>データは JSON Schema で守られる</h3>
         <p>
-          
-          ノベルスクリプト、i18n、バランステーブル、art bible まで、コンテンツ系データは JSON Schema で検証される。
-          
+          ノベルスクリプト、ローカライズ、バランス調整表、アートバイブル。
+          ゲームに食わせる前に Schema で検証されるので、
+          形が違うデータが入り込んで沈黙バグになる事故が減ります。
         </p>
       </div>
 
       <div class="feature-card">
-        <h3>テストファーストな文化</h3>
+        <h3>テストの土台が用意されている</h3>
         <p>
-          
-          Catch2 ベースの単体 / 統合テストが 2254 件 green。Playwright と Chrome DevTools MCP で実機検証も自動化。
-          
+          Catch2 ベースの単体・統合テストがすでに動いています。
+          ブラウザを必要とする検証は Playwright と Chrome DevTools MCP を併用するので、
+          UI が壊れた瞬間に気付けます。
         </p>
       </div>
 
-    </div>
-  </div>
-</section>
-
-
-<section class="code-sample">
-  <div class="container">
-    <h2 class="section-title">コード例</h2>
-    <div class="code-sample__grid">
-      <div class="code-sample__copy">
-        <h3>
-          最小コンシューマー
-        </h3>
-        <p>
-          
-          <code>FetchContent</code> で取り込み、<code>Mitiru::mitiru</code> を link するだけで、ヘッダオンリーのエンジンが使える状態になる。CI 上では GPU を必要としない <em>hello_headless</em> から始めるのが定番。
-          
-        </p>
-        <p>
-          <a class="link-arrow" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples">
-            11 個のサンプル一覧 &rarr;
-          </a>
-        </p>
-      </div>
-      <div class="code-sample__pre">
-        <pre><code><span class="tok-c">// examples/hello_headless/main.cpp</span>
-<span class="tok-pp">#include</span> <span class="tok-s">&lt;mitiru/Mitiru.hpp&gt;</span>
-<span class="tok-pp">#include</span> <span class="tok-s">&lt;cstdio&gt;</span>
-
-<span class="tok-kw">int</span> <span class="tok-fn">main</span>() {
-    std::printf(<span class="tok-s">"MitiruEngine hello_headless &mdash; OK\n"</span>);
-    <span class="tok-kw">return</span> 0;
-}</code></pre>
-        <pre><code><span class="tok-c"># CMakeLists.txt (consumer game)</span>
-<span class="tok-fn">include</span>(FetchContent)
-<span class="tok-fn">FetchContent_Declare</span>(Mitiru
-    GIT_REPOSITORY https://github.com/mogmog-0110/MitiruEngine.git
-    GIT_TAG        main)
-<span class="tok-fn">FetchContent_MakeAvailable</span>(Mitiru)
-
-<span class="tok-fn">add_executable</span>(MyGame src/main.cpp)
-<span class="tok-fn">target_link_libraries</span>(MyGame PRIVATE Mitiru::mitiru)</code></pre>
-      </div>
     </div>
   </div>
 </section>
@@ -552,11 +567,11 @@
     </div>
     <div class="site-footer__col">
       <h2 class="site-footer__h">ライセンス</h2>
-      <p>Permissive open-source. See <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a>.</p>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
     </div>
     <div class="site-footer__col">
-      <h2 class="site-footer__h">プロジェクトステータス</h2>
-      <p>Header-only。Catch2 で 2254 件のテストが green。</p>
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
       <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
     </div>
   </div>

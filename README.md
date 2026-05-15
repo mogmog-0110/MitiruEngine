@@ -1,139 +1,103 @@
 # MitiruEngine
 
-A header-only C++20 game engine designed around one principle: gameplay logic
-lives in C++, and HTML/CSS handles the UI. The engine runs the simulation.
-CEF renders the HUD. A thin signal-only bridge connects the two — C++ tells
-CEF what to display; CEF tells C++ what the player did. No gameplay state
-leaks into JavaScript.
+C++ でゲームを書くための、ふだん使いのエンジン。
 
-Pre-1.0 / experimental. API may break between tagged releases.
+- **動きは C++、画面は HTML/CSS。** シーンの進行、状態、ノベルの分岐、物理、AI は全部 C++ で書きます。メニューや HUD は HTML/CSS。Web のデザイン資産がそのまま生きます。
+- **ヘッダだけで動く。** プリビルドの .lib を配って回る必要はありません。CMake の FetchContent で取り込んで、`Mitiru::mitiru` を link するだけ。
+- **C++20、Windows がメイン。** Linux と Mac でも一応動きますが、踏み固められているのは Windows + MSVC 2022。
 
-[Live site](https://mogmog-0110.github.io/MitiruEngine) &middot;
-[Examples](https://mogmog-0110.github.io/MitiruEngine/examples/) &middot;
-[API reference](https://mogmog-0110.github.io/MitiruEngine/api/) &middot;
-[ADRs](https://mogmog-0110.github.io/MitiruEngine/adr/)
+> このリポジトリは [`MitiruEngineDev`](https://github.com/mogmog-0110/MitiruEngineDev) から
+> 抽出された **公開向けスナップショット** です。日々の開発はあちらで行われていて、
+> 一定間隔でここに反映されます。Issue やプルリクエストはこのリポジトリ宛でかまいません。
 
----
+## ドキュメントとサンプル
 
-## What you get
+- 公式ページ : <https://mogmog-0110.github.io/MitiruEngine/>
+- はじめに : <https://mogmog-0110.github.io/MitiruEngine/getting-started/>
+- チュートリアル : <https://mogmog-0110.github.io/MitiruEngine/tutorials/>
+- サンプル一覧 : <https://mogmog-0110.github.io/MitiruEngine/examples/>
+- API リファレンス : <https://mogmog-0110.github.io/MitiruEngine/api/>
+- 設計の記録 (ADR) : <https://mogmog-0110.github.io/MitiruEngine/adr/>
 
-- **Header-only by default** — `#include <mitiru/Mitiru.hpp>` and link nothing;
-  `MITIRU_HEADER_ONLY=ON` is the CMake default. A static-library mode
-  (`MITIRU_HEADER_ONLY=OFF`) is available for larger projects.
-- **684 headers across 20+ modules** — core, ecs, scene, gfx, audio, bridge,
-  vn, animation, asset, physics, input, and more under `mitiru::*` namespaces.
-- **Multiple graphics backends** — Direct3D 11, Direct3D 12, Vulkan, OpenGL,
-  WebGL, and a Null backend for headless testing. Windows + MSVC is the primary
-  target; the OpenGL/GLFW path builds on macOS and Linux (less tested).
-- **CEF 128.4.12 UI layer** — load any HTML/CSS page as your game's HUD or
-  menu. The signal-only bridge keeps gameplay state in C++ and DOM updates in
-  JavaScript.
-- **nlohmann::json content pipeline** — novel scripts, i18n tables, balance
-  data, and save blobs are plain JSON. JSON Schema validation is built in.
-- **Tracy profiling** — drop `external/tracy/public/TracyClient.cpp` into the
-  tree and the engine auto-detects it at configure time.
+ドキュメントは日本語で書かれています。
 
----
+## さっと触ってみる
 
-## Quick start
+```bash
+git clone --recursive https://github.com/mogmog-0110/MitiruEngine.git
+cd MitiruEngine
+cmake --preset default
+cmake --build build --config Debug
+./build/examples/hello_sprite/Debug/mitiru_hello_sprite
+```
 
-Consume via CMake `FetchContent`:
+青空に太陽が浮かんで、ダイアログボックスのある画面が開けば成功です。
+
+詳しい手順は [はじめに](https://mogmog-0110.github.io/MitiruEngine/getting-started/) を見てください。
+
+## 自分のゲームから使う
+
+`CMakeLists.txt`:
 
 ```cmake
 include(FetchContent)
-
-FetchContent_Declare(
-    mitiru
+FetchContent_Declare(Mitiru
     GIT_REPOSITORY https://github.com/mogmog-0110/MitiruEngine.git
-    GIT_TAG        v0.1.0   # replace with the tag you want
-)
-FetchContent_MakeAvailable(mitiru)
+    GIT_TAG        v0.1.0)
+FetchContent_MakeAvailable(Mitiru)
 
-target_link_libraries(my_game PRIVATE mitiru::mitiru)
+add_executable(MyGame src/main.cpp)
+target_link_libraries(MyGame PRIVATE Mitiru::mitiru)
 ```
 
-A minimal game entry point:
+`src/main.cpp`:
 
 ```cpp
-#include <mitiru/Main.hpp>
-#include <mitiru/MitiruCore.hpp>
+#include <mitiru/Mitiru.hpp>
 
-class MyGame : public mitiru::Game {
+class MyGame final : public mitiru::Game {
 public:
-    void onUpdate(float dt) override { /* gameplay here */ }
-    void onDraw()           override { /* draw calls here */ }
+  mitiru::Size layout(int w, int h) override { return {w, h}; }
+  void update(float dt) override { /* ゲームのロジック */ }
+  void draw(mitiru::Screen& screen) override {
+    screen.drawRect({0, 0, (float)screen.width(), (float)screen.height()},
+                    {0.1f, 0.1f, 0.2f, 1.0f});
+  }
 };
 
-MITIRU_MAIN(MyGame)
+int main() {
+  mitiru::Engine engine;
+  MyGame game;
+  mitiru::EngineConfig cfg;
+  cfg.title = "MyGame";
+  cfg.windowWidth = 1280;
+  cfg.windowHeight = 720;
+  engine.run(game, cfg);
+}
 ```
 
----
+これで動くウィンドウが手に入ります。
 
-## Build and test
+## 何が同梱されているか
 
-```bash
-cmake --preset default
-cmake --build build --config Debug
-ctest --test-dir build -C Debug
-```
+- 2D / 3D の描画パイプライン (DX11 / DX12 / Vulkan / OpenGL / WebGL / Null から自動選択)
+- CEF 統合 (`include/mitiru/cef/...`) — UI / HUD を HTML/CSS で書くため
+- ノベル VM (`include/mitiru/vn/...`) — シナリオを JSON で書ける
+- セーブ / ロード (`include/mitiru/data/SaveSchema.hpp`) — JSON ベース、スキーマ migration 付き
+- 入力抽象 (Win32 / SDL2 / GLFW)
+- オーディオ (miniaudio ベース)
+- Tracy プロファイラとのフック
+- Catch2 ベースの単体・統合テスト
+- 動作検証用ツール (`include/mitiru/validate/...`)
 
-Windows + MSVC is the primary build target. The OpenGL/GLFW backend compiles
-on macOS and Linux but receives less testing. Direct3D backends require the
-Windows SDK. Tracy profiling is opt-in: place
-`external/tracy/public/TracyClient.cpp` in the tree before configuring.
+## 状態
 
----
+**0.x 系。実験段階。**
 
-## Project structure
+API はまだ変わります。`v0.1.0` のタグで取れる範囲では安定していますが、`main` ブランチを直接追うと API 変更を踏むことがあります。
 
-```
-include/mitiru/     -- all engine headers (header-only mode default)
-examples/           -- 13 worked examples, each a self-contained CMake target
-docs/               -- architecture docs, ADRs, bridge API contract
-site/               -- Hugo source for the live documentation site
-tests/              -- Catch2 v3 unit and integration tests
-external/           -- vendored dependencies (CEF, nlohmann, Catch2, ...)
-tools/              -- scaffolding, API catalog generator, release tooling
-```
+`v0.x` のあいだは「壊さないように努力する」レベル。`v1.0` でロックします。
 
----
+## ライセンス
 
-## Examples
-
-The [examples gallery](https://mogmog-0110.github.io/MitiruEngine/examples/)
-covers 13 worked scenarios. Three good starting points:
-
-- **`vn_game_hybrid`** — visual-novel gameplay in C++ with a CEF HUD; shows
-  the full signal-only bridge round-trip.
-- **`cef_overlay`** — minimal CEF overlay on top of a native render loop.
-- **`parametric_portrait`** — procedural character rendering with no CEF
-  dependency; good for Mode A (native-only) projects.
-
----
-
-## Architecture
-
-Gameplay — scenes, state machines, simulation, save/load, AI, physics — is
-written in C++. CEF is a display layer only: it renders HTML/CSS HUDs and
-menus and fires input events back to C++ through `window.cefQuery`. No
-gameplay state lives in JavaScript. This boundary is described in full in
-[ADR 0001](https://mogmog-0110.github.io/MitiruEngine/adr/0001/) and
-`docs/BRIDGE_API_CONTRACT.md`.
-
----
-
-## License
-
-MIT. See [LICENSE](LICENSE).
-
----
-
-## Mirror notice
-
-This repository is a snapshot mirror of the private development repository
-(`MitiruEngineDev`). Tagged releases are built from that tree and pushed here
-by the release tooling. The source you see is the exact code that shipped —
-nothing is trimmed or altered beyond stripping internal-only tooling.
-
-Issues are welcome here. Pull requests may be redirected to a discussion on
-the issue tracker first, since the canonical history lives upstream.
+MIT。`LICENSE` ファイルを見てください。

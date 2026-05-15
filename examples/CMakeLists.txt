@@ -12,6 +12,7 @@ if(NOT TARGET mitiru)
 endif()
 
 add_subdirectory(hello_headless)
+add_subdirectory(hello_sprite)
 add_subdirectory(cef_minimal)
 add_subdirectory(cef_overlay)
 add_subdirectory(cef_state_bridge)
