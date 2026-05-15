@@ -405,26 +405,6 @@
 
 
 
-
-
-<figure class="hero-image">
-  <a class="hero-image__link" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/vn_game_hybrid">
-    <img
-      src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_game_hybrid-hero.png"
-      alt="vn_game_hybrid screenshot — the C++ novel VM driving a CEF UI layer"
-      loading="eager"
-      decoding="async"
-      width="1280" height="720"
-      onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-  </a>
-  <figcaption class="hero-image__caption">
-    
-    <code>examples/vn_game_hybrid</code> — C++ novel VM drives a branching scenario, CEF renders the UI.
-    
-  </figcaption>
-</figure>
-
-
 <section class="position">
   <div class="container">
     <h2 class="section-title">Three Pillars</h2>
@@ -461,102 +441,6 @@
 </section>
 
 
-
-<section class="showcase">
-  <div class="container">
-    <h2 class="section-title">Showcase</h2>
-    <p class="showcase__lede">
-      
-      A sampler of what the in-tree examples actually look like on screen. Screenshots are captured continuously and refreshed in place.
-      
-    </p>
-    <div class="showcase-grid">
-
-      <a class="showcase-card" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/vn_game_hybrid">
-        <div class="showcase-card__media">
-          <img
-            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_game_hybrid-showcase.png"
-            alt="vn_game_hybrid screenshot"
-            loading="lazy"
-            decoding="async"
-            width="800" height="450"
-            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-        </div>
-        <div class="showcase-card__body">
-          <h3 class="showcase-card__title">vn_game_hybrid</h3>
-          <p class="showcase-caption">
-            
-            Branching novel scenarios that hand control back and forth with a gameplay scene, driven by the C++ novel VM.
-            
-          </p>
-        </div>
-      </a>
-
-      <a class="showcase-card" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cef_overlay">
-        <div class="showcase-card__media">
-          <img
-            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cef_overlay-showcase.png"
-            alt="cef_overlay screenshot"
-            loading="lazy"
-            decoding="async"
-            width="800" height="450"
-            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-        </div>
-        <div class="showcase-card__body">
-          <h3 class="showcase-card__title">cef_overlay</h3>
-          <p class="showcase-caption">
-            
-            A DX12-rendered scene with an HTML/CSS HUD layered on top through CEF — the hybrid architecture in its smallest form.
-            
-          </p>
-        </div>
-      </a>
-
-      <a class="showcase-card" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cef_state_bridge">
-        <div class="showcase-card__media">
-          <img
-            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cef_state_bridge-showcase.png"
-            alt="cef_state_bridge screenshot"
-            loading="lazy"
-            decoding="async"
-            width="800" height="450"
-            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-        </div>
-        <div class="showcase-card__body">
-          <h3 class="showcase-card__title">cef_state_bridge</h3>
-          <p class="showcase-caption">
-            
-            JS reports input to C++, C++ pushes view state back to JS. The signal-only bridge made visible in real time.
-            
-          </p>
-        </div>
-      </a>
-
-      <a class="showcase-card" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/parametric_portrait">
-        <div class="showcase-card__media">
-          <img
-            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/parametric_portrait-showcase.png"
-            alt="parametric_portrait screenshot"
-            loading="lazy"
-            decoding="async"
-            width="800" height="450"
-            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-        </div>
-        <div class="showcase-card__body">
-          <h3 class="showcase-card__title">parametric_portrait</h3>
-          <p class="showcase-caption">
-            
-            Parameter-driven portrait variants, swapped through one entry point. The smallest concrete asset-variation demo.
-            
-          </p>
-        </div>
-      </a>
-
-    </div>
-  </div>
-</section>
-
-
 <section class="features">
   <div class="container">
     <h2 class="section-title">Features</h2>
@@ -566,7 +450,7 @@
         <h3>Header-only architecture</h3>
         <p>
           
-          33 modules, 583 headers. Pull in via CMake FetchContent and link a single INTERFACE target — no precompiled library to ship.
+          47 namespaces, header-only. Pull in via CMake FetchContent and link a single INTERFACE target. No precompiled library to ship.
           
         </p>
       </div>
@@ -593,7 +477,7 @@
         <h3>Save schema with migration</h3>
         <p>
           
-          Versioned JSON save format with migration helpers — keep post-launch save compatibility a structural property, not a hope.
+          Versioned JSON save format with migration helpers. Schema changes after release will not break existing saves.
           
         </p>
       </div>

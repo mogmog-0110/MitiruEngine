@@ -400,26 +400,6 @@
 
 
 
-
-
-<figure class="hero-image">
-  <a class="hero-image__link" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/vn_game_hybrid">
-    <img
-      src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_game_hybrid-hero.png"
-      alt="vn_game_hybrid のスクリーンショット — C++ ノベル VM と CEF UI 層"
-      loading="eager"
-      decoding="async"
-      width="1280" height="720"
-      onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-  </a>
-  <figcaption class="hero-image__caption">
-    
-    <code>examples/vn_game_hybrid</code> — C++ ノベル VM が分岐シナリオを駆動し、CEF が UI を描く。
-    
-  </figcaption>
-</figure>
-
-
 <section class="position">
   <div class="container">
     <h2 class="section-title">設計の三本柱</h2>
@@ -456,102 +436,6 @@
 </section>
 
 
-
-<section class="showcase">
-  <div class="container">
-    <h2 class="section-title">サンプル ショーケース</h2>
-    <p class="showcase__lede">
-      
-      examples/ 配下のサンプルが実機で何を映すかの抜粋。スクリーンショットは継続的にキャプチャされ、差し替えられる。
-      
-    </p>
-    <div class="showcase-grid">
-
-      <a class="showcase-card" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/vn_game_hybrid">
-        <div class="showcase-card__media">
-          <img
-            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_game_hybrid-showcase.png"
-            alt="vn_game_hybrid のスクリーンショット"
-            loading="lazy"
-            decoding="async"
-            width="800" height="450"
-            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-        </div>
-        <div class="showcase-card__body">
-          <h3 class="showcase-card__title">vn_game_hybrid</h3>
-          <p class="showcase-caption">
-            
-            ノベル進行とゲームプレイモードの相互遷移。分岐シナリオを C++ VM が駆動する。
-            
-          </p>
-        </div>
-      </a>
-
-      <a class="showcase-card" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cef_overlay">
-        <div class="showcase-card__media">
-          <img
-            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cef_overlay-showcase.png"
-            alt="cef_overlay のスクリーンショット"
-            loading="lazy"
-            decoding="async"
-            width="800" height="450"
-            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-        </div>
-        <div class="showcase-card__body">
-          <h3 class="showcase-card__title">cef_overlay</h3>
-          <p class="showcase-caption">
-            
-            DX12 で描いたシーンの上に CEF の HTML/CSS HUD を重ねる、ハイブリッド構成の最小デモ。
-            
-          </p>
-        </div>
-      </a>
-
-      <a class="showcase-card" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cef_state_bridge">
-        <div class="showcase-card__media">
-          <img
-            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cef_state_bridge-showcase.png"
-            alt="cef_state_bridge のスクリーンショット"
-            loading="lazy"
-            decoding="async"
-            width="800" height="450"
-            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-        </div>
-        <div class="showcase-card__body">
-          <h3 class="showcase-card__title">cef_state_bridge</h3>
-          <p class="showcase-caption">
-            
-            JS → C++ の入力通知と C++ → JS の状態 push。Signal-only bridge が往復している様子を可視化。
-            
-          </p>
-        </div>
-      </a>
-
-      <a class="showcase-card" href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/parametric_portrait">
-        <div class="showcase-card__media">
-          <img
-            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/parametric_portrait-showcase.png"
-            alt="parametric_portrait のスクリーンショット"
-            loading="lazy"
-            decoding="async"
-            width="800" height="450"
-            onerror="this.onerror=null;this.src='https:\/\/mogmog-0110.github.io\/MitiruEngine\/screenshots\/_placeholder.png';" />
-        </div>
-        <div class="showcase-card__body">
-          <h3 class="showcase-card__title">parametric_portrait</h3>
-          <p class="showcase-caption">
-            
-            パラメータ駆動でポートレートのバリエーションを切り替える。アセット差分の最小実例。
-            
-          </p>
-        </div>
-      </a>
-
-    </div>
-  </div>
-</section>
-
-
 <section class="features">
   <div class="container">
     <h2 class="section-title">主な機能</h2>
@@ -561,7 +445,7 @@
         <h3>ヘッダオンリー構成</h3>
         <p>
           
-          33 モジュール / 583 ヘッダ。CMake FetchContent で取り込み、単一の INTERFACE ターゲットを link するだけ。
+          47 名前空間で構成されるヘッダ群。CMake FetchContent で取り込み、単一の INTERFACE ターゲットを link するだけ。プリビルドのライブラリは無い。
           
         </p>
       </div>
@@ -588,7 +472,7 @@
         <h3>Save schema とマイグレーション</h3>
         <p>
           
-          JSON ベースの save 仕様と version-up マイグレーション補助 API を同梱。リリース後のセーブデータ互換性を仕組みで担保する。
+          JSON ベースの save 仕様と version-up マイグレーション補助 API を同梱。リリース後にスキーマを変えてもセーブデータが壊れない。
           
         </p>
       </div>
