@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="フェード・ディゾルブ・スライド・ズーム、カスタムイージングのシーン遷移サンプル。">
+<meta name="description" content="2 つの HTML シーンを CSS の opacity だけでクロスフェードする CEF デモ。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/scene_transition/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="Scene Transition | MitiruEngine">
-<meta property="og:description" content="フェード・ディゾルブ・スライド・ズーム、カスタムイージングのシーン遷移サンプル。">
+<meta property="og:description" content="2 つの HTML シーンを CSS の opacity だけでクロスフェードする CEF デモ。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/scene_transition/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Scene Transition | MitiruEngine">
-<meta name="twitter:description" content="フェード・ディゾルブ・スライド・ズーム、カスタムイージングのシーン遷移サンプル。">
+<meta name="twitter:description" content="2 つの HTML シーンを CSS の opacity だけでクロスフェードする CEF デモ。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -355,10 +355,10 @@
   <header class="example-detail__header">
     <p class="example-detail__eyebrow">
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧へ戻る</a>
-       <span class="example-detail__kind example-detail__kind--headless">headless</span>
+       <span class="example-detail__kind example-detail__kind--cef">cef</span>
     </p>
     <h1>Scene Transition</h1>
-    <p class="example-detail__lede">フェード・ディゾルブ・スライド・ズーム、カスタムイージングのシーン遷移サンプル。</p>
+    <p class="example-detail__lede">2 つの HTML シーンを CSS の opacity だけでクロスフェードする CEF デモ。</p>
   </header>
 
   <figure class="example-detail__shot">
@@ -370,33 +370,27 @@
   <aside class="example-detail__apis">
     <h2>Key APIs</h2>
     <ul>
-      <li><code>mitiru::scene::Transition (start, update, draw, isDone, buildFrame)</code></li><li><code>mitiru::scene::TransitionKind</code></li><li><code>mitiru::scene::SlideDirection</code></li><li><code>Transition::setDrawCallback</code></li><li><code>Transition::setCustomEasing</code></li>
+      <li><code>mitiru::Engine</code></li><li><code>EngineConfig::cefStartUrl</code></li><li><code>mitiru_add_cef_game (CMake)</code></li>
     </ul>
   </aside>
   
 
   <div class="example-detail__body">
-    <p>Demonstrates <code>mitiru::scene::Transition</code> (G-03): a self-contained overlay
-that drives fade / dissolve / slide / zoom / custom-easing transitions.
-Headless — no window, no GPU. The demo simulates a 60 fps loop with
-<code>std::this_thread::sleep_for(16ms)</code> and prints <code>progress</code>, <code>alpha</code>, and
-any kind-specific extra value per frame.</p>
-<h2 id="what-youll-see">What you&rsquo;ll see</h2>
-<p>Five transition runs, each over <code>0.5s</code> (~30 frames):</p>
+    <p>CEF 上に 2 つのシーン (放課後の教室 / 夜の駅前) を重ねて置き、CSS の <code>opacity</code> キーフレームで交互にフェードさせています。</p>
+<p>C++ 側は Engine を起動して <code>scene.html</code> を読み込むだけで、トランジションの実装は HTML/CSS 側に閉じています。</p>
+<h2 id="ポイント">ポイント</h2>
 <ul>
-<li><code>Fade</code> (black overlay, linear alpha 0 → 1)</li>
-<li><code>Dissolve</code> (smooth-step curve)</li>
-<li><code>Slide</code> with <code>SlideDirection::Right</code> (offset reported)</li>
-<li><code>Zoom</code> (scale-burst, scale factor reported)</li>
-<li><code>Custom</code> quadratic ease-in lambda (<code>t -&gt; t * t</code>)</li>
+<li><code>position: absolute; inset: 0;</code> で 2 シーンを重ねて配置</li>
+<li><code>@keyframes cross-fade</code> で <code>opacity</code> を行き来させ、片方の <code>animation-delay</code> をネガティブにずらしてクロスフェード</li>
+<li>背景は <code>radial-gradient</code> + <code>linear-gradient</code> の合成で空気感を出す</li>
+<li>進行バーは <code>transform: scaleX()</code> で軽く実装</li>
 </ul>
-<p>For every frame: <code>frame  progress  alpha  extra  done</code>. Each section ends
-with <code>Completed in N frames.</code> Final line: <code>All transitions complete. Exiting.</code></p>
-<h2 id="build-and-run">Build and run</h2>
+<h2 id="応用">応用</h2>
+<p>シーン切り替えだけでなく、フェード in / out のトランジション、ローディング画面、章タイトル表示にもそのまま使えます。</p>
+<h2 id="ビルドと実行">ビルドと実行</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target mitiru_scene_transition
-</span></span><span class="line"><span class="cl">./build/examples/scene_transition/Debug/mitiru_scene_transition
-</span></span></code></pre></div><!-- Screenshot pending; run tools/site/capture_examples.py to generate -->
-
+</span></span><span class="line"><span class="cl">./build/examples/scene_transition/mitiru_scene_transition
+</span></span></code></pre></div>
   </div>
 
   

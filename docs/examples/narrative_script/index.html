@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="JSON で書いたシナリオを動かす ADV ランタイム。台詞・画像・待機・フラグ・ステータス・選択肢のイベントを型付きコールバックで受ける。">
+<meta name="description" content="JSON で書いたシナリオを左に、それを再生したイベントログを右に並べる CEF デモ。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/narrative_script/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="Narrative Script | MitiruEngine">
-<meta property="og:description" content="JSON で書いたシナリオを動かす ADV ランタイム。台詞・画像・待機・フラグ・ステータス・選択肢のイベントを型付きコールバックで受ける。">
+<meta property="og:description" content="JSON で書いたシナリオを左に、それを再生したイベントログを右に並べる CEF デモ。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/narrative_script/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Narrative Script | MitiruEngine">
-<meta name="twitter:description" content="JSON で書いたシナリオを動かす ADV ランタイム。台詞・画像・待機・フラグ・ステータス・選択肢のイベントを型付きコールバックで受ける。">
+<meta name="twitter:description" content="JSON で書いたシナリオを左に、それを再生したイベントログを右に並べる CEF デモ。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -355,10 +355,10 @@
   <header class="example-detail__header">
     <p class="example-detail__eyebrow">
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧へ戻る</a>
-       <span class="example-detail__kind example-detail__kind--headless">headless</span>
+       <span class="example-detail__kind example-detail__kind--cef">cef</span>
     </p>
     <h1>Narrative Script</h1>
-    <p class="example-detail__lede">JSON で書いたシナリオを動かす ADV ランタイム。台詞・画像・待機・フラグ・ステータス・選択肢のイベントを型付きコールバックで受ける。</p>
+    <p class="example-detail__lede">JSON で書いたシナリオを左に、それを再生したイベントログを右に並べる CEF デモ。</p>
   </header>
 
   <figure class="example-detail__shot">
@@ -370,41 +370,31 @@
   <aside class="example-detail__apis">
     <h2>Key APIs</h2>
     <ul>
-      <li><code>mitiru::narrative::ScriptRunner::loadFromDirectory</code></li><li><code>onTextDisplay, onImageShow, onWaitBegin, onFlagSet</code></li><li><code>onStatChange, onChoiceOffer</code></li><li><code>mitiru::narrative::GameContext (flags, stats)</code></li><li><code>ScriptRunner::execute</code></li>
+      <li><code>mitiru::Engine</code></li><li><code>EngineConfig::cefStartUrl</code></li><li><code>mitiru_add_cef_game (CMake)</code></li>
     </ul>
   </aside>
   
 
   <div class="example-detail__body">
-    <p>Demonstrates <code>mitiru::narrative::ScriptRunner</code> (G-04): a JSON-driven ADV
-script runner that fires typed callbacks for text, image, wait, flag, stat,
-and choice events. Pure C++, headless — no CEF, no GPU, no window.</p>
-<h2 id="what-youll-see">What you&rsquo;ll see</h2>
-<p>For the bundled <code>demo.intro</code> script:</p>
+    <p>ノベル / ADV のシナリオは JSON で書いて、C++ 側がそれを読みながら台詞やイベントを順に流す ── という構造を、CEF 画面で見えるかたちに並べたデモです。</p>
+<p>左ペインに JSON シンタックスハイライト風の擬似コード、右ペインに「コールバックで呼ばれたイベントを順に積み上げたログ」を出しています。</p>
+<h2 id="何を見せたいか">何を見せたいか</h2>
 <ul>
-<li><code>[text]   Guide: Welcome to the demo.</code></li>
-<li><code>[image]  cg/hall.png (1000ms)</code></li>
-<li><code>[setFlag]    intro_seen = true</code></li>
-<li><code>[statChange] curiosity +3 -&gt; 3</code></li>
-<li><code>[wait]       500ms</code></li>
-<li><code>[choice] &gt; Ask</code> / <code>[choice]   Go</code> (the leading <code>&gt;</code> marks the auto-pick)</li>
-<li>Final summary: <code>chosenNext = &quot;demo.ask&quot;</code>, <code>flags[intro_seen] = true</code>, <code>stats[curiosity] = 3</code>.</li>
+<li>シナリオは JSON にデータとして書く (C++ にハードコードしない)</li>
+<li>C++ 側のコールバックでイベントを順に処理する</li>
+<li>選択肢は分岐ラベルへの <code>jump</code> でつなぐ</li>
 </ul>
-<p>The example always picks the first option in <code>onChoiceOffer</code> so the trace
-is reproducible.</p>
-<h2 id="build-and-run">Build and run</h2>
+<h2 id="応用">応用</h2>
+<p>ここから次にやるのは、</p>
+<ol>
+<li>実際の <code>mitiru::vn::ScenarioExecutor</code> を C++ 側で動かす (<a href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/"><code>vn_hello_world</code></a>)</li>
+<li>JSON を外部ファイル化する</li>
+<li>既読 / 未読フラグを保存する</li>
+</ol>
+<h2 id="ビルドと実行">ビルドと実行</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target mitiru_narrative_script
-</span></span><span class="line"><span class="cl">./build/examples/narrative_script/Debug/mitiru_narrative_script
-</span></span></code></pre></div><p>The script directory is baked in at compile time via the
-<code>NARRATIVE_SCRIPT_DIR</code> compile definition, so the binary can be launched
-from anywhere.</p>
-<h2 id="assets">Assets</h2>
-<ul>
-<li><code>assets/demo.json</code> — tiny intro script with one of each scene type
-(text, image, setFlag, statChange, wait, choice).</li>
-</ul>
-<!-- Screenshot pending; run tools/site/capture_examples.py to generate -->
-
+</span></span><span class="line"><span class="cl">./build/examples/narrative_script/mitiru_narrative_script
+</span></span></code></pre></div>
   </div>
 
   

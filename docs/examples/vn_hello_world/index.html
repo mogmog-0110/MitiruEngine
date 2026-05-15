@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="もっとも小さなノベルゲームのサンプル。ScenarioScript DSL を ScenarioExecutor で実行し、イベントを stdout に流す。">
+<meta name="description" content="もっとも小さなノベルゲーム画面。背景・キャラ・名前枠つきダイアログ・選択肢を CEF で描く。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="VN Hello World | MitiruEngine">
-<meta property="og:description" content="もっとも小さなノベルゲームのサンプル。ScenarioScript DSL を ScenarioExecutor で実行し、イベントを stdout に流す。">
+<meta property="og:description" content="もっとも小さなノベルゲーム画面。背景・キャラ・名前枠つきダイアログ・選択肢を CEF で描く。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="VN Hello World | MitiruEngine">
-<meta name="twitter:description" content="もっとも小さなノベルゲームのサンプル。ScenarioScript DSL を ScenarioExecutor で実行し、イベントを stdout に流す。">
+<meta name="twitter:description" content="もっとも小さなノベルゲーム画面。背景・キャラ・名前枠つきダイアログ・選択肢を CEF で描く。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -355,10 +355,10 @@
   <header class="example-detail__header">
     <p class="example-detail__eyebrow">
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧へ戻る</a>
-       <span class="example-detail__kind example-detail__kind--headless">headless</span>
+       <span class="example-detail__kind example-detail__kind--cef">cef</span>
     </p>
     <h1>VN Hello World</h1>
-    <p class="example-detail__lede">もっとも小さなノベルゲームのサンプル。ScenarioScript DSL を ScenarioExecutor で実行し、イベントを stdout に流す。</p>
+    <p class="example-detail__lede">もっとも小さなノベルゲーム画面。背景・キャラ・名前枠つきダイアログ・選択肢を CEF で描く。</p>
   </header>
 
   <figure class="example-detail__shot">
@@ -370,41 +370,31 @@
   <aside class="example-detail__apis">
     <h2>Key APIs</h2>
     <ul>
-      <li><code>mitiru::vn::ScenarioExecutor</code></li><li><code>ScenarioExecutor::loadFromSource</code></li><li><code>ScenarioCallback subclass (onScene, onBackground, onCharacter, onDialogue, onChoice, onLabel, onJump)</code></li><li><code>ScenarioScript DSL: @scene / @bg / @char / @choice / @label / @jump</code></li>
+      <li><code>mitiru::Engine</code></li><li><code>EngineConfig::cefStartUrl</code></li><li><code>mitiru_add_cef_game (CMake)</code></li>
     </ul>
   </aside>
   
 
   <div class="example-detail__body">
-    <p>Smallest possible visual-novel sample. Loads a short ScenarioScript DSL
-source from a <code>constexpr</code> string, runs it through
-<code>mitiru::vn::ScenarioExecutor</code>, and prints each event via a
-<code>ScenarioCallback</code> subclass. Headless — no GPU, no font, no window.</p>
-<p>Use this as the starting point for VN-style games where the engine&rsquo;s
-scenario / flag manager / VN flow run in <strong>C++</strong> (pick <code>cef_minimal</code>
-instead if all gameplay should live in JS).</p>
-<h2 id="what-youll-see">What you&rsquo;ll see</h2>
+    <p>ノベルゲームでよくある「背景 + 立ち絵 + ダイアログ + 選択肢」の 1 フレームを、CEF と HTML/CSS だけで作った最小デモです。立ち絵もキャラも、画像ファイルを 1 つも使わず CSS の図形だけで描いています。</p>
+<p>C++ 側は Engine を起動して <code>scene.html</code> を読み込むだけで、見た目のすべては HTML/CSS に閉じています。</p>
+<h2 id="何を見せたいか">何を見せたいか</h2>
 <ul>
-<li><code>[scene]    prologue</code></li>
-<li><code>[bg]       file=classroom.png ...</code></li>
-<li><code>[char]     name=sakura ...</code></li>
-<li>Dialogue lines printed as <code>[dialogue] sakura: ...</code> or <code>[narration] ...</code></li>
-<li>A <code>[choice]</code> with two options, auto-picking index 0 (<code>&quot;うん、いいよ！&quot;</code>)</li>
-<li><code>[label] agree</code> → dialogue → <code>[jump] -&gt; ending</code> → final narration</li>
-<li><code>=== end ===</code> and exit <code>0</code></li>
+<li>ノベルゲームの 1 画面が、CEF だけでここまで作れる</li>
+<li>背景 (空・雲・学校・木・道)、立ち絵、ダイアログ、選択肢、シーンタグ ── すべて CSS の図形と背景グラデーション</li>
+<li>画像アセットなしでもプロトタイプができる</li>
 </ul>
-<p>The <code>onChoice</code> callback always returns <code>0</code> so the run is non-interactive
-and reproducible.</p>
-<h2 id="build-and-run">Build and run</h2>
+<h2 id="応用">応用</h2>
+<p>ここから次にやるのは、</p>
+<ol>
+<li>JS 側で台詞テキストを差し替える (typewriter 表示)</li>
+<li>C++ 側からダイアログを送る (<code>cefQuery</code> / bridge)</li>
+<li>シナリオを JSON で外出し (<a href="https://mogmog-0110.github.io/MitiruEngine/examples/narrative_script/"><code>narrative_script</code></a>)</li>
+</ol>
+<h2 id="ビルドと実行">ビルドと実行</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target mitiru_vn_hello_world
-</span></span><span class="line"><span class="cl">./build/examples/vn_hello_world/Debug/mitiru_vn_hello_world
-</span></span></code></pre></div><h2 id="known-issues">Known issues</h2>
-<p><code>@if</code>/<code>@endif</code> branching is not used here because the parser currently
-drops <code>@endif</code> as an unknown command (G-08). Branching is implemented via
-<code>@choice</code> → <code>@label</code> instead. See <code>vn_game_hybrid</code> for a C++-level
-branching pattern that sidesteps this.</p>
-<!-- Screenshot pending; run tools/site/capture_examples.py to generate -->
-
+</span></span><span class="line"><span class="cl">./build/examples/vn_hello_world/mitiru_vn_hello_world
+</span></span></code></pre></div>
   </div>
 
   

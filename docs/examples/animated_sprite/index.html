@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="アニメーションスプライトの最小デモ。再生・一時停止・速度倍率・ループ制御・コールバック・GIF デコーダ差し替えを順番に確認できる。">
+<meta name="description" content="CSS の @keyframes / cubic-bezier / conic-gradient を CEF で描く、アニメーションのショーケース。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/animated_sprite/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="Animated Sprite | MitiruEngine">
-<meta property="og:description" content="アニメーションスプライトの最小デモ。再生・一時停止・速度倍率・ループ制御・コールバック・GIF デコーダ差し替えを順番に確認できる。">
+<meta property="og:description" content="CSS の @keyframes / cubic-bezier / conic-gradient を CEF で描く、アニメーションのショーケース。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/animated_sprite/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Animated Sprite | MitiruEngine">
-<meta name="twitter:description" content="アニメーションスプライトの最小デモ。再生・一時停止・速度倍率・ループ制御・コールバック・GIF デコーダ差し替えを順番に確認できる。">
+<meta name="twitter:description" content="CSS の @keyframes / cubic-bezier / conic-gradient を CEF で描く、アニメーションのショーケース。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -355,10 +355,10 @@
   <header class="example-detail__header">
     <p class="example-detail__eyebrow">
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧へ戻る</a>
-       <span class="example-detail__kind example-detail__kind--headless">headless</span>
+       <span class="example-detail__kind example-detail__kind--cef">cef</span>
     </p>
     <h1>Animated Sprite</h1>
-    <p class="example-detail__lede">アニメーションスプライトの最小デモ。再生・一時停止・速度倍率・ループ制御・コールバック・GIF デコーダ差し替えを順番に確認できる。</p>
+    <p class="example-detail__lede">CSS の @keyframes / cubic-bezier / conic-gradient を CEF で描く、アニメーションのショーケース。</p>
   </header>
 
   <figure class="example-detail__shot">
@@ -370,31 +370,24 @@
   <aside class="example-detail__apis">
     <h2>Key APIs</h2>
     <ul>
-      <li><code>mitiru::sprite::AnimatedSprite</code></li><li><code>mitiru::sprite::FrameData</code></li><li><code>mitiru::render::Texture::solid</code></li><li><code>AnimatedSprite::setGifDecoder</code></li>
+      <li><code>mitiru::Engine</code></li><li><code>EngineConfig::cefStartUrl</code></li><li><code>mitiru_add_cef_game (CMake)</code></li>
     </ul>
   </aside>
   
 
   <div class="example-detail__body">
-    <p>Headless demo for <code>mitiru::sprite::AnimatedSprite</code> (G-06). Stub textures
-(<code>Texture::solid()</code>) make each frame visually distinguishable in stdout
-output without shipping real image files.</p>
-<h2 id="what-youll-see">What you&rsquo;ll see</h2>
-<p>Six numbered sections printed to stdout:</p>
-<ol>
-<li>Basic looped playback of four 120 ms frames, <code>onLoop</code> firing once after one full cycle.</li>
-<li>Pause and resume — a 500 ms tick while paused does not advance the frame index.</li>
-<li><code>setSpeed(2.0f)</code> — 60 ms updates advance one frame each.</li>
-<li><code>setLoop(false)</code> clamp-and-stop at the final frame.</li>
-<li>Injected <code>GifDecoder</code> lambda being called with the requested path.</li>
-<li><code>loadGIF</code> without a decoder throwing <code>std::logic_error</code> (caught and printed).</li>
-</ol>
-<p>Final line: <code>Demo complete.</code> Exit code <code>0</code>.</p>
-<h2 id="build-and-run">Build and run</h2>
+    <p>8 種類のアニメーションを CSS だけで並べた、CEF のショーケース。バウンス、回転、軌道、パルス、バーチャート、スライド、色相回転リング、3 種の easing が同時に動きます。</p>
+<p>実装は <code>examples/animated_sprite/assets/scene.html</code> にすべて入っていて、C++ 側 (<code>main.cpp</code>) は Engine を起動して HTML を読み込むだけです。</p>
+<h2 id="何を見せたいか">何を見せたいか</h2>
+<ul>
+<li><code>@keyframes</code> / <code>cubic-bezier</code> / <code>conic-gradient</code> を使った、CSS だけの軽量アニメーション</li>
+<li>アニメーションごとに別の HTML 要素 ── アセット (画像) を一切使わずにここまで作れる</li>
+<li>CEF が現代の Web エンジンなので、Web で動くものはほぼそのままゲーム画面で動く</li>
+</ul>
+<h2 id="ビルドと実行">ビルドと実行</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target mitiru_animated_sprite
-</span></span><span class="line"><span class="cl">./build/examples/animated_sprite/Debug/mitiru_animated_sprite
-</span></span></code></pre></div><!-- Screenshot pending; run tools/site/capture_examples.py to generate -->
-
+</span></span><span class="line"><span class="cl">./build/examples/animated_sprite/mitiru_animated_sprite
+</span></span></code></pre></div>
   </div>
 
   

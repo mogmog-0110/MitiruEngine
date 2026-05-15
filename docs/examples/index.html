@@ -375,22 +375,22 @@
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
           
-            <span class="example-card__kind example-card__kind--headless">ヘッドレス</span>
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
           
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Animated Sprite</h2>
-          <p class="example-card__desc">アニメーションスプライトの最小デモ。再生・一時停止・速度倍率・ループ制御・コールバック・GIF デコーダ差し替えを順番に確認できる。</p>
+          <p class="example-card__desc">CSS の @keyframes / cubic-bezier / conic-gradient を CEF で描く、アニメーションのショーケース。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
-              <li class="example-card__api-chip"><code>mitiru::sprite::AnimatedSprite</code></li>
+              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
             
-              <li class="example-card__api-chip"><code>mitiru::sprite::FrameData</code></li>
+              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
             
             
               
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 2 件</li>
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
             
           </ul>
           
@@ -694,22 +694,22 @@
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
           
-            <span class="example-card__kind example-card__kind--headless">ヘッドレス</span>
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
           
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Narrative Script</h2>
-          <p class="example-card__desc">JSON で書いたシナリオを動かす ADV ランタイム。台詞・画像・待機・フラグ・ステータス・選択肢のイベントを型付きコールバックで受ける。</p>
+          <p class="example-card__desc">JSON で書いたシナリオを左に、それを再生したイベントログを右に並べる CEF デモ。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
-              <li class="example-card__api-chip"><code>mitiru::narrative::ScriptRunner::loadFromDirectory</code></li>
+              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
             
-              <li class="example-card__api-chip"><code>onTextDisplay, onImageShow, onWaitBegin, onFlagSet</code></li>
+              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
             
             
               
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 3 件</li>
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
             
           </ul>
           
@@ -730,22 +730,22 @@
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
           
-            <span class="example-card__kind example-card__kind--headless">ヘッドレス</span>
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
           
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Parametric Portrait</h2>
-          <p class="example-card__desc">N 軸の離散ルックアップで立ち絵を切り替えるサンプル。軸ごとのしきい値、ラムダ式によるローダ、上書き名、メモ化を確認できる。</p>
+          <p class="example-card__desc">同じ HTML テンプレに別の CSS パラメータを当てて、ポートレートを 4 通り生成する CEF デモ。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
-              <li class="example-card__api-chip"><code>mitiru::sprite::ParametricPortrait&lt;N&gt;</code></li>
+              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
             
-              <li class="example-card__api-chip"><code>pathTemplate with {axis_name} placeholders</code></li>
+              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
             
             
               
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 2 件</li>
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
             
           </ul>
           
@@ -766,22 +766,22 @@
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
           
-            <span class="example-card__kind example-card__kind--headless">ヘッドレス</span>
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
           
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Scene Transition</h2>
-          <p class="example-card__desc">フェード・ディゾルブ・スライド・ズーム、カスタムイージングのシーン遷移サンプル。</p>
+          <p class="example-card__desc">2 つの HTML シーンを CSS の opacity だけでクロスフェードする CEF デモ。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
-              <li class="example-card__api-chip"><code>mitiru::scene::Transition (start, update, draw, isDone, buildFrame)</code></li>
+              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
             
-              <li class="example-card__api-chip"><code>mitiru::scene::TransitionKind</code></li>
+              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
             
             
               
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 3 件</li>
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
             
           </ul>
           
@@ -838,22 +838,22 @@
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
           
-            <span class="example-card__kind example-card__kind--headless">ヘッドレス</span>
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
           
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">VN Hello World</h2>
-          <p class="example-card__desc">もっとも小さなノベルゲームのサンプル。ScenarioScript DSL を ScenarioExecutor で実行し、イベントを stdout に流す。</p>
+          <p class="example-card__desc">もっとも小さなノベルゲーム画面。背景・キャラ・名前枠つきダイアログ・選択肢を CEF で描く。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
-              <li class="example-card__api-chip"><code>mitiru::vn::ScenarioExecutor</code></li>
+              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
             
-              <li class="example-card__api-chip"><code>ScenarioExecutor::loadFromSource</code></li>
+              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
             
             
               
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 2 件</li>
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
             
           </ul>
           

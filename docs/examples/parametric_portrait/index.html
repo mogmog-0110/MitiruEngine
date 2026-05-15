@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="N 軸の離散ルックアップで立ち絵を切り替えるサンプル。軸ごとのしきい値、ラムダ式によるローダ、上書き名、メモ化を確認できる。">
+<meta name="description" content="同じ HTML テンプレに別の CSS パラメータを当てて、ポートレートを 4 通り生成する CEF デモ。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/parametric_portrait/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="Parametric Portrait | MitiruEngine">
-<meta property="og:description" content="N 軸の離散ルックアップで立ち絵を切り替えるサンプル。軸ごとのしきい値、ラムダ式によるローダ、上書き名、メモ化を確認できる。">
+<meta property="og:description" content="同じ HTML テンプレに別の CSS パラメータを当てて、ポートレートを 4 通り生成する CEF デモ。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/parametric_portrait/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Parametric Portrait | MitiruEngine">
-<meta name="twitter:description" content="N 軸の離散ルックアップで立ち絵を切り替えるサンプル。軸ごとのしきい値、ラムダ式によるローダ、上書き名、メモ化を確認できる。">
+<meta name="twitter:description" content="同じ HTML テンプレに別の CSS パラメータを当てて、ポートレートを 4 通り生成する CEF デモ。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -355,10 +355,10 @@
   <header class="example-detail__header">
     <p class="example-detail__eyebrow">
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧へ戻る</a>
-       <span class="example-detail__kind example-detail__kind--headless">headless</span>
+       <span class="example-detail__kind example-detail__kind--cef">cef</span>
     </p>
     <h1>Parametric Portrait</h1>
-    <p class="example-detail__lede">N 軸の離散ルックアップで立ち絵を切り替えるサンプル。軸ごとのしきい値、ラムダ式によるローダ、上書き名、メモ化を確認できる。</p>
+    <p class="example-detail__lede">同じ HTML テンプレに別の CSS パラメータを当てて、ポートレートを 4 通り生成する CEF デモ。</p>
   </header>
 
   <figure class="example-detail__shot">
@@ -370,28 +370,31 @@
   <aside class="example-detail__apis">
     <h2>Key APIs</h2>
     <ul>
-      <li><code>mitiru::sprite::ParametricPortrait&lt;N&gt;</code></li><li><code>pathTemplate with {axis_name} placeholders</code></li><li><code>ParametricPortrait::addOverride &#43; setOverrideFlag</code></li><li><code>mitiru::render::Texture::solid</code></li>
+      <li><code>mitiru::Engine</code></li><li><code>EngineConfig::cefStartUrl</code></li><li><code>mitiru_add_cef_game (CMake)</code></li>
     </ul>
   </aside>
   
 
   <div class="example-detail__body">
-    <p>Demonstrates <code>mitiru::sprite::ParametricPortrait&lt;N&gt;</code> (G-01): an N-axis
-discrete portrait lookup driven by per-axis low/high thresholds. The
-example uses three axes (motivation, weight, jump) modelled after
-pandd-dodo&rsquo;s <code>CharacterAttributes</code>. Headless — no GPU required.</p>
-<h2 id="what-youll-see">What you&rsquo;ll see</h2>
+    <p>同じ顔のテンプレに、髪の色・肌の色・頬の濃さを変えるだけで 4 種類のキャラを並べた CEF デモです。「キャラごとに別のアセットを用意する」のではなく、「テンプレ + パラメータ」で見た目が変わることを見せています。</p>
+<p>実装はすべて <code>examples/parametric_portrait/assets/scene.html</code> の中で完結していて、C++ 側は HTML を読み込むだけです。</p>
+<h2 id="何を見せたいか">何を見せたいか</h2>
 <ul>
-<li>Nine selection cases printed (low / high / mid for each axis, plus threshold edge cases).</li>
-<li>A cache test calling <code>select()</code> 100 times with the same values and reporting <code>loader called 1 time(s)</code> to confirm memoization.</li>
-<li>Override flag toggle (<code>gameover</code>) replacing the normal portrait, then toggling back.</li>
-<li>Final line: <code>Demo complete.</code> Exit code <code>0</code>.</li>
+<li>HTML テンプレを 1 つだけ書き、CSS の差し替えだけで別キャラを生成</li>
+<li>顔の各パーツ (頭・髪・目・頬・口) を <code>position: absolute</code> で組み合わせる</li>
+<li>パラメータバー (hue / mood / cheek) でキャラの個性をビジュアル化</li>
 </ul>
-<h2 id="build-and-run">Build and run</h2>
+<h2 id="応用">応用</h2>
+<p>ここから次にやるのは、</p>
+<ol>
+<li>C++ → JS の bridge でパラメータを動的に変える (CSS カスタムプロパティを書き換える)</li>
+<li>キャラエディタを HTML/CSS で実装する</li>
+<li>立ち絵差分を「ベース + 差分パラメータ」で吸収する</li>
+</ol>
+<h2 id="ビルドと実行">ビルドと実行</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target mitiru_parametric_portrait
-</span></span><span class="line"><span class="cl">./build/examples/parametric_portrait/Debug/mitiru_parametric_portrait
-</span></span></code></pre></div><!-- Screenshot pending; run tools/site/capture_examples.py to generate -->
-
+</span></span><span class="line"><span class="cl">./build/examples/parametric_portrait/mitiru_parametric_portrait
+</span></span></code></pre></div>
   </div>
 
   
