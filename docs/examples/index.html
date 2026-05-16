@@ -92,6 +92,8 @@
       <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
       <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
       <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
       
 <button type="button"
@@ -349,6 +351,74 @@
   <main class="site-main" data-pagefind-body>
     
 
+
+
+
+
+
+
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+
 <section class="example-gallery container">
   <header class="example-gallery__header">
     <h1>サンプル</h1>
@@ -356,16 +426,117 @@
 </div>
   </header>
 
-  <div class="examples-grid">
+  <div class="example-filter" role="navigation" aria-label="カテゴリで絞る">
+    <button type="button"
+            class="example-filter__chip example-filter__chip--all is-active"
+            data-filter="all"
+            aria-pressed="true">
+      すべて
+    </button>
     
+      
+        
+        
+        
+        
+        <button type="button"
+                class="example-filter__chip example-filter__chip--dev-basics"
+                data-filter="dev-basics"
+                aria-pressed="false">
+          エンジン入門
+        </button>
+      
     
+      
+        
+        
+        
+        
+        <button type="button"
+                class="example-filter__chip example-filter__chip--2d"
+                data-filter="2d"
+                aria-pressed="false">
+          2D 描画
+        </button>
+      
     
+      
+        
+        
+        
+        
+        <button type="button"
+                class="example-filter__chip example-filter__chip--ui"
+                data-filter="ui"
+                aria-pressed="false">
+          UI
+        </button>
+      
+    
+      
+        
+        
+        
+        
+        <button type="button"
+                class="example-filter__chip example-filter__chip--games"
+                data-filter="games"
+                aria-pressed="false">
+          ゲーム
+        </button>
+      
+    
+      
+        
+        
+        
+        
+        <button type="button"
+                class="example-filter__chip example-filter__chip--bridge"
+                data-filter="bridge"
+                aria-pressed="false">
+          Bridge
+        </button>
+      
+    
+      
+        
+        
+        
+        
+        <button type="button"
+                class="example-filter__chip example-filter__chip--scripted-scene"
+                data-filter="scripted-scene"
+                aria-pressed="false">
+          スクリプトシーン
+        </button>
+      
+    
+      
+        
+        
+        
+        
+        <button type="button"
+                class="example-filter__chip example-filter__chip--architecture"
+                data-filter="architecture"
+                aria-pressed="false">
+          アーキ
+        </button>
+      
+    
+  </div>
+
+  <div class="examples-grid" id="examples-grid">
     
       
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/animated_sprite/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/animated_sprite/"
+         data-category="2d">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/animated_sprite.png"
@@ -374,26 +545,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Animated Sprite</h2>
-          <p class="example-card__desc">CSS の @keyframes / cubic-bezier / conic-gradient を CEF で描く、アニメーションのショーケース。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
-            
-              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Animated Sprite</span>
+          <span class="example-card__cat example-card__cat--2d">2D 描画</span>
         </div>
       </a>
     
@@ -401,7 +556,33 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/cef_minimal/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/breakout/"
+         data-category="games">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/breakout.png"
+            alt="Breakout screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
+        </div>
+        <div class="example-card__footer">
+          <span class="example-card__title">Breakout</span>
+          <span class="example-card__cat example-card__cat--games">ゲーム</span>
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/cef_minimal/"
+         data-category="architecture">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cef_minimal.png"
@@ -410,26 +591,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">CEF Minimal</h2>
-          <p class="example-card__desc">もっとも小さい MitiruEngine &#43; CEF のサンプル。背景は黒、ゲームと UI はすべて HTML/JS/CSS で書く。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::Game (subclass)</code></li>
-            
-              <li class="example-card__api-chip"><code>mitiru::EngineConfig (cefStartUrl, skipDefaultFont)</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">CEF Minimal</span>
+          <span class="example-card__cat example-card__cat--architecture">アーキ</span>
         </div>
       </a>
     
@@ -437,7 +602,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/cef_overlay/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/cef_overlay/"
+         data-category="architecture">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cef_overlay.png"
@@ -446,26 +614,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">CEF Overlay</h2>
-          <p class="example-card__desc">DX12 で描いたネイティブシーンの上に、透過の CEF HTML を重ねる。F1 で入力フォーカスを CEF とゲームのあいだで切り替えられる。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::Game (subclass with update/draw/layout)</code></li>
-            
-              <li class="example-card__api-chip"><code>mitiru::Engine &#43; mitiru::EngineConfig</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 4 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">CEF Overlay</span>
+          <span class="example-card__cat example-card__cat--architecture">アーキ</span>
         </div>
       </a>
     
@@ -473,7 +625,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/cef_state_bridge/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/cef_state_bridge/"
+         data-category="bridge">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cef_state_bridge.png"
@@ -482,26 +637,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">CEF State Bridge</h2>
-          <p class="example-card__desc">C&#43;&#43; と JS の双方向ステート同期を mitiru::cef::StateStore で行うサンプル。HP の継続減少、パルスイベント、ヒールコマンドが動く。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::cef::StateStore</code></li>
-            
-              <li class="example-card__api-chip"><code>StateStore::set / emit / onAction</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 2 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">CEF State Bridge</span>
+          <span class="example-card__cat example-card__cat--bridge">Bridge</span>
         </div>
       </a>
     
@@ -509,7 +648,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/cef_transition/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/cef_transition/"
+         data-category="architecture">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cef_transition.png"
@@ -518,26 +660,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">CEF Transition</h2>
-          <p class="example-card__desc">2 枚の HTML ページのあいだをフェードで切り替える、シーン遷移のサンプル。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::cef::SceneTransitionState</code></li>
-            
-              <li class="example-card__api-chip"><code>mitiru::cef::CefTransitionDeps</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 3 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">CEF Transition</span>
+          <span class="example-card__cat example-card__cat--architecture">アーキ</span>
         </div>
       </a>
     
@@ -545,7 +671,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/cpp_data_driven_minimal/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/cpp_data_driven_minimal/"
+         data-category="dev-basics">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cpp_data_driven_minimal.png"
@@ -554,26 +683,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--headless">ヘッドレス</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Data-Driven Minimal (C&#43;&#43;)</h2>
-          <p class="example-card__desc">ContentLoader、SaveSchema、BridgeInputAdapter、SchemaValidator、SchemaImporter といったデータ駆動の道具を、ひとつの実行ファイルに詰めて挙動を見せる。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::data::ContentLoader&lt;T&gt;</code></li>
-            
-              <li class="example-card__api-chip"><code>mitiru::data::SaveSchema&lt;T&gt; &#43; MigrationChain</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 6 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Data-Driven Minimal (C&#43;&#43;)</span>
+          <span class="example-card__cat example-card__cat--dev-basics">エンジン入門</span>
         </div>
       </a>
     
@@ -581,7 +694,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/"
+         data-category="scripted-scene">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_hello_world.png"
@@ -590,26 +706,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Dialog Scene Hello World</h2>
-          <p class="example-card__desc">背景・キャラ・名前枠つきダイアログ・選択肢を、CEF と CSS の図形だけで描く 1 フレームのデモ。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
-            
-              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Dialog Scene Hello World</span>
+          <span class="example-card__cat example-card__cat--scripted-scene">スクリプトシーン</span>
         </div>
       </a>
     
@@ -617,7 +717,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/cpp_gameplay_minimal/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/cpp_gameplay_minimal/"
+         data-category="dev-basics">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/cpp_gameplay_minimal.png"
@@ -626,26 +729,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--headless">ヘッドレス</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Gameplay Minimal (C&#43;&#43;)</h2>
-          <p class="example-card__desc">SceneRouter、StateMachine、Timer、Cooldown、Sequence、BridgeActionRouter といった C&#43;&#43; 側のゲームプレイ部品を、模擬 60 fps ループで一気に試す。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::scene::SceneRouter &#43; mitiru::scene::IScene</code></li>
-            
-              <li class="example-card__api-chip"><code>mitiru::fsm::StateMachine&lt;EnumT&gt;</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 5 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Gameplay Minimal (C&#43;&#43;)</span>
+          <span class="example-card__cat example-card__cat--dev-basics">エンジン入門</span>
         </div>
       </a>
     
@@ -653,7 +740,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/hello_headless/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/hello_headless/"
+         data-category="dev-basics">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/hello_headless.png"
@@ -662,21 +752,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--headless">ヘッドレス</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Hello Headless</h2>
-          <p class="example-card__desc">MitiruEngine をコンシューマから使うときの一番小さな例。FetchContent でリンクが通ることを確認するスタブ。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>&lt;mitiru/Mitiru.hpp&gt; umbrella header</code></li>
-            
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Hello Headless</span>
+          <span class="example-card__cat example-card__cat--dev-basics">エンジン入門</span>
         </div>
       </a>
     
@@ -684,7 +763,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/hello_sprite/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/hello_sprite/"
+         data-category="dev-basics">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/hello_sprite.png"
@@ -693,26 +775,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--engine">エンジン</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Hello Sprite</h2>
-          <p class="example-card__desc">C&#43;&#43; の 2D 描画 API だけで 2D ゲームの 1 シーンを描く最小の例。Engine を使った一番素直なサンプル。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
-            
-              <li class="example-card__api-chip"><code>mitiru::Game</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 2 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Hello Sprite</span>
+          <span class="example-card__cat example-card__cat--dev-basics">エンジン入門</span>
         </div>
       </a>
     
@@ -720,7 +786,33 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/narrative_script/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/hp_bar/"
+         data-category="ui">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/hp_bar.png"
+            alt="Liquid HP Bar screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
+        </div>
+        <div class="example-card__footer">
+          <span class="example-card__title">Liquid HP Bar</span>
+          <span class="example-card__cat example-card__cat--ui">UI</span>
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/narrative_script/"
+         data-category="scripted-scene">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/narrative_script.png"
@@ -729,26 +821,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Narrative Script</h2>
-          <p class="example-card__desc">JSON で書いたシナリオを左に、それを再生したイベントログを右に並べる CEF デモ。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
-            
-              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Narrative Script</span>
+          <span class="example-card__cat example-card__cat--scripted-scene">スクリプトシーン</span>
         </div>
       </a>
     
@@ -756,7 +832,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/parametric_portrait/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/parametric_portrait/"
+         data-category="2d">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/parametric_portrait.png"
@@ -765,26 +844,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Parametric Portrait</h2>
-          <p class="example-card__desc">同じ HTML テンプレに別の CSS パラメータを当てて、ポートレートを 4 通り生成する CEF デモ。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
-            
-              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Parametric Portrait</span>
+          <span class="example-card__cat example-card__cat--2d">2D 描画</span>
         </div>
       </a>
     
@@ -792,7 +855,79 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/scene_transition/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/particles/"
+         data-category="2d">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/particles.png"
+            alt="Particles screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
+        </div>
+        <div class="example-card__footer">
+          <span class="example-card__title">Particles</span>
+          <span class="example-card__cat example-card__cat--2d">2D 描画</span>
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/pause_menu/"
+         data-category="ui">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/pause_menu.png"
+            alt="Pause Menu screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
+        </div>
+        <div class="example-card__footer">
+          <span class="example-card__title">Pause Menu</span>
+          <span class="example-card__cat example-card__cat--ui">UI</span>
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/pulldown_menu/"
+         data-category="ui">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/pulldown_menu.png"
+            alt="Pulldown Menu screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
+        </div>
+        <div class="example-card__footer">
+          <span class="example-card__title">Pulldown Menu</span>
+          <span class="example-card__cat example-card__cat--ui">UI</span>
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/scene_transition/"
+         data-category="2d">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/scene_transition.png"
@@ -801,26 +936,10 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Scene Transition</h2>
-          <p class="example-card__desc">2 つの HTML シーンを CSS の opacity だけでクロスフェードする CEF デモ。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
-            
-              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Scene Transition</span>
+          <span class="example-card__cat example-card__cat--2d">2D 描画</span>
         </div>
       </a>
     
@@ -828,7 +947,10 @@
       
       
       
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_game_hybrid/">
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_game_hybrid/"
+         data-category="scripted-scene">
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_game_hybrid.png"
@@ -837,31 +959,90 @@
             decoding="async"
             width="800" height="450"
             onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--headless">ヘッドレス</span>
-          
         </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">Scripted Scene ↔ Gameplay Hybrid</h2>
-          <p class="example-card__desc">HybridGameManager を使って、スクリプト駆動のシーン (会話・カットシーンなど) とゲームプレイ (戦闘・操作など) を切り替えるサンプル。両モードの共有ステートも同期される。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::game::HybridGameManager</code></li>
-            
-              <li class="example-card__api-chip"><code>enterVNMode / enterGameplayMode / returnToPreviousMode</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 4 件</li>
-            
-          </ul>
-          
+        <div class="example-card__footer">
+          <span class="example-card__title">Scripted Scene ↔ Gameplay Hybrid</span>
+          <span class="example-card__cat example-card__cat--scripted-scene">スクリプトシーン</span>
+        </div>
+      </a>
+    
+      
+      
+      
+      
+      
+      <a class="example-card example-card--simple"
+         href="https://mogmog-0110.github.io/MitiruEngine/examples/shoot_em_up/"
+         data-category="games">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/shoot_em_up.png"
+            alt="Shoot &#39;em Up screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
+        </div>
+        <div class="example-card__footer">
+          <span class="example-card__title">Shoot &#39;em Up</span>
+          <span class="example-card__cat example-card__cat--games">ゲーム</span>
         </div>
       </a>
     
   </div>
 </section>
+
+<script>
+(function () {
+  var grid = document.getElementById('examples-grid');
+  if (!grid) return;
+  var chips = document.querySelectorAll('.example-filter__chip');
+  var cards = grid.querySelectorAll('.example-card');
+
+  function apply(filter) {
+    var f = filter || 'all';
+    cards.forEach(function (card) {
+      var cat = card.getAttribute('data-category') || '';
+      if (f === 'all' || cat === f) {
+        card.removeAttribute('hidden');
+      } else {
+        card.setAttribute('hidden', '');
+      }
+    });
+    chips.forEach(function (chip) {
+      var active = chip.getAttribute('data-filter') === f;
+      chip.classList.toggle('is-active', active);
+      chip.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function readHash() {
+    var h = (window.location.hash || '').replace(/^#/, '');
+    if (h && h.indexOf('category=') === 0) {
+      return h.substring('category='.length);
+    }
+    return 'all';
+  }
+
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var f = chip.getAttribute('data-filter') || 'all';
+      if (f === 'all') {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      } else {
+        history.replaceState(null, '', '#category=' + f);
+      }
+      apply(f);
+    });
+  });
+
+  window.addEventListener('hashchange', function () {
+    apply(readHash());
+  });
+
+  apply(readHash());
+})();
+</script>
 
   </main>
   <footer class="site-footer">

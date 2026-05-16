@@ -24,6 +24,9 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/hybrid-runtime/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/drawing/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/animated_sprite/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
@@ -33,6 +36,9 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/input/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/cef_minimal/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
@@ -52,6 +58,17 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/architecture/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/scene/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/breakout/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/cef_overlay/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
@@ -62,6 +79,15 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/profiling/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/shoot_em_up/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/audio/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/particles/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/cef_state_bridge/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
@@ -70,15 +96,30 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/ui/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/hp_bar/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/cef_transition/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/save/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/pause_menu/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/cpp_data_driven_minimal/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/pulldown_menu/</loc>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/cpp_gameplay_minimal/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
@@ -183,7 +224,7 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/</loc>
-    <lastmod>2026-05-15T00:00:00+00:00</lastmod>
+    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/categories/</loc>
   </url><url>
