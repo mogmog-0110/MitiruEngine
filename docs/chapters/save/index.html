@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>6. セーブとロード | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="MitiruEngine のデータ駆動なセーブ / ロード。SaveSchema &#43; MigrationChain &#43; SchemaValidator &#43; ContentLoader を組み合わせて、互換性のあるセーブを書く。">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/chapters/save/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/chapters/save/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="6. セーブとロード | MitiruEngine">
+<meta property="og:description" content="MitiruEngine のデータ駆動なセーブ / ロード。SaveSchema &#43; MigrationChain &#43; SchemaValidator &#43; ContentLoader を組み合わせて、互換性のあるセーブを書く。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/chapters/save/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="6. セーブとロード | MitiruEngine">
+<meta name="twitter:description" content="MitiruEngine のデータ駆動なセーブ / ロード。SaveSchema &#43; MigrationChain &#43; SchemaValidator &#43; ContentLoader を組み合わせて、互換性のあるセーブを書く。">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+
+
+
+
+
+  
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+      
+      
+      
+    
+  
+
+
+<article class="chapter-article container">
+  <header class="chapter-article__header">
+    <p class="chapter-article__eyebrow">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること一覧へ戻る</a>
+    </p>
+    <h1>6. セーブとロード</h1>
+    <p class="chapter-article__lede">MitiruEngine のデータ駆動なセーブ / ロード。SaveSchema &#43; MigrationChain &#43; SchemaValidator &#43; ContentLoader を組み合わせて、互換性のあるセーブを書く。</p>
+  </header>
+
+  <div class="chapter-article__body">
+    <p>「途中で電源を落としても続きから始められる」はジャンルを問わない必須機能です。MitiruEngine はセーブを <strong>「JSON blob + スキーマ + マイグレーション」</strong> の組として扱います。</p>
+<ul>
+<li>セーブの型は C++ 側で <code>struct</code> として定義する</li>
+<li>nlohmann/json の <code>NLOHMANN_DEFINE_TYPE_INTRUSIVE</code> (or <code>NON_INTRUSIVE</code>) でシリアライズを生やす</li>
+<li><code>SaveSchema&lt;T&gt;</code> でバージョンつきの読み書きにする</li>
+<li>旧 → 新の互換性は <code>MigrationChain</code> で一段ずつ書く</li>
+</ul>
+<p>これでアップデートで型が変わっても、古いセーブを壊さずに読めます。</p>
+<h2 id="セーブの型を書く">セーブの型を書く</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/data/SaveSchema.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">SaveV1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">playerName</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">hp</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">gold</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">chapterIndex</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span><span class="line"><span class="cl"><span class="n">NLOHMANN_DEFINE_TYPE_INTRUSIVE</span><span class="p">(</span><span class="n">SaveV1</span><span class="p">,</span> <span class="n">playerName</span><span class="p">,</span> <span class="n">hp</span><span class="p">,</span> <span class="n">gold</span><span class="p">,</span> <span class="n">chapterIndex</span><span class="p">);</span>
+</span></span></code></pre></div><h2 id="バージョンとマイグレーション">バージョンとマイグレーション</h2>
+<p>ある日「ゴールド → 貨幣 (gold / silver) に分割」を入れたいとき:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">SaveV2</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">playerName</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">hp</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">gold</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">silver</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>          <span class="c1">// 新フィールド
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kt">int</span> <span class="n">chapterIndex</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">bool</span> <span class="n">tutorialDone</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span> <span class="c1">// 新フィールド
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">};</span>
+</span></span><span class="line"><span class="cl"><span class="n">NLOHMANN_DEFINE_TYPE_INTRUSIVE</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="n">SaveV2</span><span class="p">,</span> <span class="n">playerName</span><span class="p">,</span> <span class="n">hp</span><span class="p">,</span> <span class="n">gold</span><span class="p">,</span> <span class="n">silver</span><span class="p">,</span> <span class="n">chapterIndex</span><span class="p">,</span> <span class="n">tutorialDone</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// 旧 V1 から V2 へのマイグレーション
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">mitiru</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">MigrationChain</span><span class="o">&lt;</span><span class="n">SaveV2</span><span class="o">&gt;</span> <span class="n">migrations</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="n">migrations</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">nlohmann</span><span class="o">::</span><span class="n">json</span><span class="o">&amp;</span> <span class="n">v1</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">auto</span> <span class="n">v2</span> <span class="o">=</span> <span class="n">v1</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">v2</span><span class="p">[</span><span class="s">&#34;silver&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">v2</span><span class="p">[</span><span class="s">&#34;tutorialDone&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">v2</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">SaveSchema</span><span class="o">&lt;</span><span class="n">SaveV2</span><span class="o">&gt;</span> <span class="n">schema</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/*currentVersion=*/</span><span class="mi">2</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">migrations</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span></code></pre></div><h2 id="読み書き">読み書き</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// 書く
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">blob</span> <span class="o">=</span> <span class="n">schema</span><span class="p">.</span><span class="n">serialize</span><span class="p">(</span><span class="n">currentSave</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="n">writeToDisk</span><span class="p">(</span><span class="s">&#34;save_slot_01.json&#34;</span><span class="p">,</span> <span class="n">blob</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// 読む (旧バージョンは自動でマイグレートされる)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">auto</span> <span class="n">loaded</span> <span class="o">=</span> <span class="n">schema</span><span class="p">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">readFromDisk</span><span class="p">(</span><span class="s">&#34;save_slot_01.json&#34;</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">loaded</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">currentSave</span> <span class="o">=</span> <span class="o">*</span><span class="n">loaded</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h2 id="ui-と組み合わせる">UI と組み合わせる</h2>
+<p>セーブスロット UI は CEF 側 HTML で組み、「セーブする」「スロット選んでロード」のシグナルを C++ に送るだけにします。スロットの中身 (時刻、章タイトル、プレイ時間) は C++ が読み込んでから JS に push します。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">state</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;save.slot.1.exists&#34;</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="n">state</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;save.slot.1.label&#34;</span><span class="p">,</span>  <span class="n">loaded</span><span class="o">-&gt;</span><span class="n">playerName</span> <span class="o">+</span> <span class="s">&#34; — Ch.&#34;</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">loaded</span><span class="o">-&gt;</span><span class="n">chapterIndex</span><span class="p">));</span>
+</span></span></code></pre></div><h2 id="contentloader-と-schemavalidator">ContentLoader と SchemaValidator</h2>
+<p>セーブとは別に、「読み取り専用のコンテンツ (アイテム表、ステージ定義、敵パラメータ)」も同じ仕組みで読めます。<code>ContentLoader&lt;T&gt;</code> で構造体に流し込み、<code>SchemaValidator</code> でロード前に整合性チェック ── というのが推奨パターンです。</p>
+<h2 id="関連サンプル">関連サンプル</h2>
+<ul>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/cpp_data_driven_minimal/">Data-Driven Minimal (C++)</a> — <code>ContentLoader</code> / <code>SaveSchema</code> / <code>MigrationChain</code> / <code>SchemaValidator</code> をすべて実機で動かす</li>
+</ul>
+<h2 id="関連-api">関連 API</h2>
+<ul>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru::data::SaveSchema</code></a></li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru::data::MigrationChain</code></a></li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru::data::ContentLoader</code></a></li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru::data::SchemaValidator</code></a></li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru::data::SchemaImporter</code></a></li>
+</ul>
+<h2 id="もっと深く知る">もっと深く知る</h2>
+<ul>
+<li><a href="../../adr/0003-bridge-signal-only/">ADR 0003: Bridge は signal-only</a> — セーブ操作も発火だけを JS から送る</li>
+<li><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/cpp-gameplay-api-gaps.md">docs/cpp-gameplay-api-gaps.md</a></li>
+</ul>
+
+  </div>
+
+  
+  <nav class="chapter-article__nav" aria-label="chapter navigation">
+    <div class="chapter-article__nav-prev">
+      
+        <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/ui/">
+          <span class="chapter-article__nav-arrow" aria-hidden="true">&larr;</span>
+          <span class="chapter-article__nav-label">前の章</span>
+          <span class="chapter-article__nav-title">5. UI を組む</span>
+        </a>
+      
+    </div>
+    <div class="chapter-article__nav-next">
+      
+    </div>
+  </nav>
+  
+</article>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">MitiruEngine</p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

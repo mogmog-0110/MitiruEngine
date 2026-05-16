@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>アーキテクチャ | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="MitiruEngine の技術スタック、レイヤー構成、性能特性、既知の制限を、誇張なしで一枚にまとめたページ。">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/architecture/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/architecture/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="アーキテクチャ | MitiruEngine">
+<meta property="og:description" content="MitiruEngine の技術スタック、レイヤー構成、性能特性、既知の制限を、誇張なしで一枚にまとめたページ。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/architecture/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="アーキテクチャ | MitiruEngine">
+<meta name="twitter:description" content="MitiruEngine の技術スタック、レイヤー構成、性能特性、既知の制限を、誇張なしで一枚にまとめたページ。">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<article class="page-article container architecture-page">
+  <header class="page-article__header">
+    <h1>アーキテクチャ</h1>
+    <p class="page-article__lede">MitiruEngine の技術スタック、レイヤー構成、性能特性、既知の制限を、誇張なしで一枚にまとめたページ。</p>
+  </header>
+  <div class="page-article__body">
+    <p>MitiruEngine は <strong>C++ で書くゲームロジック</strong> と <strong>HTML/CSS/JS で書く UI</strong> を、薄い signal-only bridge で繋いだヘッダオンリーのゲームエンジンです。このページは、エンジンの中身を「速い部分」「遅い部分」「未対応の部分」まで含めて開示することを目的にしています。</p>
+<h2 id="1-1-行サマリ">1. 1 行サマリ</h2>
+<p>エンジンコア (game loop / scene / ECS / asset / audio / input / graphics / save / network / physics) は header-only な C++20 として <code>include/mitiru/</code> 配下に展開され、<code>#include &lt;mitiru/Mitiru.hpp&gt;</code> 1 行から段階的に利用できます。画面に出る UI / HUD / 演出は CEF (Chromium Embedded Framework) 上の HTML/CSS/JS で組み、両者は「JS → C++ は入力 event のみ」「C++ → JS は view update のみ」という薄い bridge で連絡します。</p>
+<h2 id="2-レイヤー図">2. レイヤー図</h2>
+<p>3 層構成です。矢印は bridge を通る方向と内容を示します。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 380" role="img" aria-labelledby="arch-layers-title arch-layers-desc" class="arch-svg">
+  <title id="arch-layers-title">MitiruEngine の 3 層構成図</title>
+  <desc id="arch-layers-desc">最上層に CEF で動く HTML/CSS/JS の UI 層、中央に signal-only な bridge、最下層に C++20 のエンジンコアが位置する。</desc>
+  <defs>
+    <marker id="arr-down" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,0 L5,10 z" fill="var(--c-accent)"></path>
+    </marker>
+    <marker id="arr-up" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,10 L10,10 L5,0 z" fill="var(--c-accent)"></path>
+    </marker>
+  </defs>
+  <!-- Layer 1: CEF / view -->
+<p><rect x="40" y="20" width="640" height="90" rx="10" ry="10"
+fill="var(--c-accent-soft)" stroke="var(--c-border)" stroke-width="1"></rect>
+<text x="60" y="48" font-family="var(--font-sans)" font-size="16" font-weight="700"
+fill="var(--c-accent-on-soft)">View 層 — CEF 128.4 (HTML / CSS / JS)</text>
+<text x="60" y="72" font-family="var(--font-sans)" font-size="13" fill="var(--c-fg)">
+メニュー / HUD / ダイアログ / トランジション / typewriter / モーダル
+</text>
+<text x="60" y="92" font-family="var(--font-sans)" font-size="12" fill="var(--c-fg-soft)">
+web/mitiru_runtime/*.js (22 モジュール) + ゲームごとの HTML / CSS
+</text></p>
+  <!-- Layer 2: Bridge -->
+<p><rect x="40" y="155" width="640" height="60" rx="10" ry="10"
+fill="var(--c-bg-alt)" stroke="var(--c-border)" stroke-width="1"></rect>
+<text x="60" y="183" font-family="var(--font-sans)" font-size="16" font-weight="700"
+fill="var(--c-fg)">Signal-only Bridge</text>
+<text x="60" y="203" font-family="var(--font-sans)" font-size="12" fill="var(--c-fg-soft)">
+JS → C++ : 入力 event のみ / C++ → JS : view update 通知のみ
+</text></p>
+  <!-- Layer 3: Engine Core -->
+<p><rect x="40" y="260" width="640" height="100" rx="10" ry="10"
+fill="var(--c-bg-elev)" stroke="var(--c-border)" stroke-width="1"></rect>
+<text x="60" y="288" font-family="var(--font-sans)" font-size="16" font-weight="700"
+fill="var(--c-fg)">C++20 Engine Core (header-only)</text>
+<text x="60" y="310" font-family="var(--font-sans)" font-size="12" fill="var(--c-fg-soft)">
+game loop / scene / ecs / asset / resource / audio / input / render / gfx
+</text>
+<text x="60" y="328" font-family="var(--font-sans)" font-size="12" fill="var(--c-fg-soft)">
+data / save / network / physics / fsm / narrative / observe / validate
+</text>
+<text x="60" y="346" font-family="var(--font-sans)" font-size="12" fill="var(--c-fg-soft)">
+Graphics: DX12 / DX11 / Vulkan / OpenGL / WebGL2 / Null
+</text></p>
+  <!-- Arrows -->
+<p><line x1="220" y1="115" x2="220" y2="150" stroke="var(--c-accent)" stroke-width="2"
+marker-end="url(#arr-down)"></line>
+<text x="232" y="138" font-family="var(--font-sans)" font-size="11"
+fill="var(--c-accent-on-soft)">JS event</text></p>
+<p><line x1="220" y1="220" x2="220" y2="255" stroke="var(--c-accent)" stroke-width="2"
+marker-end="url(#arr-down)"></line>
+<text x="232" y="243" font-family="var(--font-sans)" font-size="11"
+fill="var(--c-accent-on-soft)">handler dispatch</text></p>
+<p><line x1="500" y1="255" x2="500" y2="220" stroke="var(--c-accent)" stroke-width="2"
+marker-end="url(#arr-up)"></line>
+<text x="512" y="243" font-family="var(--font-sans)" font-size="11"
+fill="var(--c-accent-on-soft)">view update</text></p>
+<p><line x1="500" y1="150" x2="500" y2="115" stroke="var(--c-accent)" stroke-width="2"
+marker-end="url(#arr-up)"></line>
+<text x="512" y="138" font-family="var(--font-sans)" font-size="11"
+fill="var(--c-accent-on-soft)">DOM patch</text>
+</svg></p>
+<figcaption>図 1: 3 層 (CEF view / signal-only bridge / C++ engine core)</figcaption>
+</figure>
+<h3 id="コンポーネント図">コンポーネント図</h3>
+<p>C++ コアの主な subsystem と、CEF view 側で動く JS runtime を並べたものです。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 480" role="img" aria-labelledby="arch-comp-title arch-comp-desc" class="arch-svg">
+  <title id="arch-comp-title">エンジン subsystem とランタイム JS モジュールの構成</title>
+  <desc id="arch-comp-desc">C++ コアは core / scene / ecs / render / gfx / audio / input / data / save / network / physics / cef / bridge を含む。CEF view 側には router / state / hud / chat / novel / drag / modal などの runtime モジュールが対応する。</desc>
+  <!-- Engine core box -->
+<p><rect x="20" y="20" width="430" height="440" rx="10" ry="10"
+fill="var(--c-bg-elev)" stroke="var(--c-border)" stroke-width="1"></rect>
+<text x="40" y="46" font-family="var(--font-sans)" font-size="14" font-weight="700"
+fill="var(--c-fg)">C++ Engine Core (header-only)</text></p>
+  <!-- Engine subsystem boxes (4 columns, 6 rows worth) -->
+  <g font-family="var(--font-sans)" font-size="11" fill="var(--c-fg)">
+    <rect x="40" y="64" width="95" height="32" rx="6" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+    <text x="87" y="84" text-anchor="middle">core / loop</text>
+<pre><code>&lt;rect x=&quot;145&quot; y=&quot;64&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;192&quot; y=&quot;84&quot; text-anchor=&quot;middle&quot;&gt;scene&lt;/text&gt;
+
+&lt;rect x=&quot;250&quot; y=&quot;64&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;297&quot; y=&quot;84&quot; text-anchor=&quot;middle&quot;&gt;ecs&lt;/text&gt;
+
+&lt;rect x=&quot;355&quot; y=&quot;64&quot; width=&quot;80&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;395&quot; y=&quot;84&quot; text-anchor=&quot;middle&quot;&gt;fsm&lt;/text&gt;
+
+&lt;rect x=&quot;40&quot; y=&quot;106&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;87&quot; y=&quot;126&quot; text-anchor=&quot;middle&quot;&gt;render&lt;/text&gt;
+
+&lt;rect x=&quot;145&quot; y=&quot;106&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;192&quot; y=&quot;126&quot; text-anchor=&quot;middle&quot;&gt;gfx (DX12)&lt;/text&gt;
+
+&lt;rect x=&quot;250&quot; y=&quot;106&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;297&quot; y=&quot;126&quot; text-anchor=&quot;middle&quot;&gt;gfx (Vulkan)&lt;/text&gt;
+
+&lt;rect x=&quot;355&quot; y=&quot;106&quot; width=&quot;80&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;395&quot; y=&quot;126&quot; text-anchor=&quot;middle&quot;&gt;gfx (OpenGL)&lt;/text&gt;
+
+&lt;rect x=&quot;40&quot; y=&quot;148&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;87&quot; y=&quot;168&quot; text-anchor=&quot;middle&quot;&gt;gfx (DX11)&lt;/text&gt;
+
+&lt;rect x=&quot;145&quot; y=&quot;148&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;192&quot; y=&quot;168&quot; text-anchor=&quot;middle&quot;&gt;gfx (WebGL2)&lt;/text&gt;
+
+&lt;rect x=&quot;250&quot; y=&quot;148&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;297&quot; y=&quot;168&quot; text-anchor=&quot;middle&quot;&gt;gfx (Null)&lt;/text&gt;
+
+&lt;rect x=&quot;355&quot; y=&quot;148&quot; width=&quot;80&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;395&quot; y=&quot;168&quot; text-anchor=&quot;middle&quot;&gt;platform&lt;/text&gt;
+
+&lt;rect x=&quot;40&quot; y=&quot;190&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;87&quot; y=&quot;210&quot; text-anchor=&quot;middle&quot;&gt;audio&lt;/text&gt;
+
+&lt;rect x=&quot;145&quot; y=&quot;190&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;192&quot; y=&quot;210&quot; text-anchor=&quot;middle&quot;&gt;input&lt;/text&gt;
+
+&lt;rect x=&quot;250&quot; y=&quot;190&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;297&quot; y=&quot;210&quot; text-anchor=&quot;middle&quot;&gt;resource&lt;/text&gt;
+
+&lt;rect x=&quot;355&quot; y=&quot;190&quot; width=&quot;80&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;395&quot; y=&quot;210&quot; text-anchor=&quot;middle&quot;&gt;asset&lt;/text&gt;
+
+&lt;rect x=&quot;40&quot; y=&quot;232&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;87&quot; y=&quot;252&quot; text-anchor=&quot;middle&quot;&gt;data (JSON)&lt;/text&gt;
+
+&lt;rect x=&quot;145&quot; y=&quot;232&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;192&quot; y=&quot;252&quot; text-anchor=&quot;middle&quot;&gt;save&lt;/text&gt;
+
+&lt;rect x=&quot;250&quot; y=&quot;232&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;297&quot; y=&quot;252&quot; text-anchor=&quot;middle&quot;&gt;network&lt;/text&gt;
+
+&lt;rect x=&quot;355&quot; y=&quot;232&quot; width=&quot;80&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;395&quot; y=&quot;252&quot; text-anchor=&quot;middle&quot;&gt;physics&lt;/text&gt;
+
+&lt;rect x=&quot;40&quot; y=&quot;274&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;87&quot; y=&quot;294&quot; text-anchor=&quot;middle&quot;&gt;narrative&lt;/text&gt;
+
+&lt;rect x=&quot;145&quot; y=&quot;274&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;192&quot; y=&quot;294&quot; text-anchor=&quot;middle&quot;&gt;vn&lt;/text&gt;
+
+&lt;rect x=&quot;250&quot; y=&quot;274&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;297&quot; y=&quot;294&quot; text-anchor=&quot;middle&quot;&gt;i18n&lt;/text&gt;
+
+&lt;rect x=&quot;355&quot; y=&quot;274&quot; width=&quot;80&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;395&quot; y=&quot;294&quot; text-anchor=&quot;middle&quot;&gt;world&lt;/text&gt;
+
+&lt;rect x=&quot;40&quot; y=&quot;316&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;87&quot; y=&quot;336&quot; text-anchor=&quot;middle&quot;&gt;animation&lt;/text&gt;
+
+&lt;rect x=&quot;145&quot; y=&quot;316&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;192&quot; y=&quot;336&quot; text-anchor=&quot;middle&quot;&gt;sprite&lt;/text&gt;
+
+&lt;rect x=&quot;250&quot; y=&quot;316&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;297&quot; y=&quot;336&quot; text-anchor=&quot;middle&quot;&gt;effects&lt;/text&gt;
+
+&lt;rect x=&quot;355&quot; y=&quot;316&quot; width=&quot;80&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;395&quot; y=&quot;336&quot; text-anchor=&quot;middle&quot;&gt;ui&lt;/text&gt;
+
+&lt;rect x=&quot;40&quot; y=&quot;358&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;87&quot; y=&quot;378&quot; text-anchor=&quot;middle&quot;&gt;cef (host)&lt;/text&gt;
+
+&lt;rect x=&quot;145&quot; y=&quot;358&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;192&quot; y=&quot;378&quot; text-anchor=&quot;middle&quot;&gt;bridge&lt;/text&gt;
+
+&lt;rect x=&quot;250&quot; y=&quot;358&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;297&quot; y=&quot;378&quot; text-anchor=&quot;middle&quot;&gt;observe&lt;/text&gt;
+
+&lt;rect x=&quot;355&quot; y=&quot;358&quot; width=&quot;80&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;395&quot; y=&quot;378&quot; text-anchor=&quot;middle&quot;&gt;validate&lt;/text&gt;
+
+&lt;rect x=&quot;40&quot; y=&quot;400&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;87&quot; y=&quot;420&quot; text-anchor=&quot;middle&quot;&gt;debug&lt;/text&gt;
+
+&lt;rect x=&quot;145&quot; y=&quot;400&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;192&quot; y=&quot;420&quot; text-anchor=&quot;middle&quot;&gt;math / util&lt;/text&gt;
+
+&lt;rect x=&quot;250&quot; y=&quot;400&quot; width=&quot;95&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;297&quot; y=&quot;420&quot; text-anchor=&quot;middle&quot;&gt;time&lt;/text&gt;
+
+&lt;rect x=&quot;355&quot; y=&quot;400&quot; width=&quot;80&quot; height=&quot;32&quot; rx=&quot;6&quot; fill=&quot;var(--c-bg-alt)&quot; stroke=&quot;var(--c-rule)&quot;&gt;&lt;/rect&gt;
+&lt;text x=&quot;395&quot; y=&quot;420&quot; text-anchor=&quot;middle&quot;&gt;server&lt;/text&gt;
+</code></pre>
+  </g>
+  <!-- JS runtime box -->
+<p><rect x="480" y="20" width="260" height="440" rx="10" ry="10"
+fill="var(--c-accent-soft)" stroke="var(--c-border)" stroke-width="1"></rect>
+<text x="500" y="46" font-family="var(--font-sans)" font-size="14" font-weight="700"
+fill="var(--c-accent-on-soft)">JS Runtime (CEF 内)</text></p>
+  <g font-family="var(--font-sans)" font-size="11" fill="var(--c-fg)">
+    <rect x="500" y="64" width="220" height="24" rx="6" fill="var(--c-bg)" stroke="var(--c-rule)"></rect>
+    <text x="510" y="80">mitiru_runtime / router / state</text>
+    <rect x="500" y="92" width="220" height="24" rx="6" fill="var(--c-bg)" stroke="var(--c-rule)"></rect>
+    <text x="510" y="108">hud / chat / modal / preloader</text>
+    <rect x="500" y="120" width="220" height="24" rx="6" fill="var(--c-bg)" stroke="var(--c-rule)"></rect>
+    <text x="510" y="136">novel / transitions / audio</text>
+    <rect x="500" y="148" width="220" height="24" rx="6" fill="var(--c-bg)" stroke="var(--c-rule)"></rect>
+    <text x="510" y="164">drag / input / physics</text>
+    <rect x="500" y="176" width="220" height="24" rx="6" fill="var(--c-bg)" stroke="var(--c-rule)"></rect>
+    <text x="510" y="192">i18n / content / save</text>
+    <rect x="500" y="204" width="220" height="24" rx="6" fill="var(--c-bg)" stroke="var(--c-rule)"></rect>
+    <text x="510" y="220">cef_state / debug / telemetry</text>
+    <rect x="500" y="232" width="220" height="24" rx="6" fill="var(--c-bg)" stroke="var(--c-rule)"></rect>
+    <text x="510" y="248">crash_reporter / test_harness</text>
+    <rect x="500" y="260" width="220" height="24" rx="6" fill="var(--c-bg)" stroke="var(--c-rule)"></rect>
+    <text x="510" y="276">anchored_entity / inspector</text>
+  </g>
+  <text x="500" y="312" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">
+    22 モジュール (web/mitiru_runtime/)
+  </text>
+  <text x="500" y="332" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">
+    画面の見た目とアニメーションのみ
+  </text>
+  <text x="500" y="352" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">
+    gameplay state は持たない
+  </text>
+</svg>
+<figcaption>図 2: C++ subsystem (約 44 ディレクトリ) と JS runtime (22 モジュール) の対応</figcaption>
+</figure>
+<h2 id="3-技術スタック">3. 技術スタック</h2>
+<p>実態は <code>CMakeLists.txt</code>、<code>include/mitiru/</code>、<code>external/</code> から読み取った内容です。推測なし。</p>
+<table>
+  <thead>
+      <tr>
+          <th>項目</th>
+          <th>採用</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>言語</td>
+          <td>C++20 (<code>cxx_std_20</code> を <code>CMakeLists.txt</code> で要求)</td>
+      </tr>
+      <tr>
+          <td>ビルドシステム</td>
+          <td>CMake 3.21+、<code>cmake --preset default</code> 対応</td>
+      </tr>
+      <tr>
+          <td>形態</td>
+          <td>Header-only INTERFACE library (<code>MITIRU_HEADER_ONLY=ON</code> がデフォルト、約 700 個の <code>.hpp</code>) / STATIC ビルドも可 (<code>MITIRU_HEADER_ONLY=OFF</code>)</td>
+      </tr>
+      <tr>
+          <td>対応 OS</td>
+          <td>Windows (primary、DX12 + CEF + DX11 が完動)、Linux / macOS (best-effort、Vulkan + OpenGL)、Emscripten (WebAssembly + WebGL2)</td>
+      </tr>
+      <tr>
+          <td>Graphics backend</td>
+          <td>DX12 / DX11 (Windows) / Vulkan (Linux + macOS via MoltenVK / Windows) / OpenGL (SDL2 or GLFW) / WebGL2 (Emscripten) / NullDevice (headless)</td>
+      </tr>
+      <tr>
+          <td>Window backend</td>
+          <td>Win32Window / GlfwWindow / Sdl2Window / WebGL canvas</td>
+      </tr>
+      <tr>
+          <td>UI 層</td>
+          <td>CEF 128.4.12 (Chromium Embedded Framework)、<code>MITIRU_DISABLE_CEF=ON</code> で除外可</td>
+      </tr>
+      <tr>
+          <td>JSON</td>
+          <td>nlohmann/json + <code>NLOHMANN_DEFINE_TYPE_*</code> マクロ規約 (ADR 0003)</td>
+      </tr>
+      <tr>
+          <td>Audio</td>
+          <td>miniaudio (デスクトップ) / WebAudio (Emscripten) / PulseAudio (Linux 検出時) / NullAudioEngine</td>
+      </tr>
+      <tr>
+          <td>Save schema</td>
+          <td>Versioned envelope + <code>MigrationChain&lt;T&gt;</code> (<code>include/mitiru/data/SaveSchema.hpp</code>)</td>
+      </tr>
+      <tr>
+          <td>Profiling</td>
+          <td>Tracy zones (<code>include/mitiru/debug/TracyZones.hpp</code>、オプション有効化)</td>
+      </tr>
+      <tr>
+          <td>Networking</td>
+          <td>GameNetworkingSockets opt-in (<code>MITIRU_ENABLE_GNS=ON</code>)、デフォルトは <code>NullReliableTransport</code> スタブ</td>
+      </tr>
+      <tr>
+          <td>3rd-party (submodule)</td>
+          <td>sgc / mml / stb / tinyobjloader / miniaudio / cgltf / nanovg、Chromium 派生は CEF binary distribution として外部から取得</td>
+      </tr>
+      <tr>
+          <td>Test framework</td>
+          <td>Catch2 v3 (<code>ctest --test-dir build -C Debug</code>)、最新 main で 2259 件 green</td>
+      </tr>
+      <tr>
+          <td>ライセンス</td>
+          <td>MIT</td>
+      </tr>
+  </tbody>
+</table>
+<h2 id="4-主要な設計判断">4. 主要な設計判断</h2>
+<p>エンジン設計の根幹は 3 本の ADR に文書化されています。</p>
+<ul>
+<li><strong><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/">ADR 0001 — C++ ゲームプレイ + CEF は View 専用</a></strong>: 当初 hybrid runtime (gameplay を JS で書く) として開始しましたが、二言語境界の認知負荷、V8 GC 由来の frame drop、CEF subprocess 問題などから「gameplay は C++、CEF は view 専用」に方針転換しました。</li>
+<li><strong><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0002-remove-lua-scripting/">ADR 0002 — Lua scripting と visual scripting を engine から廃止</a></strong>: scripting 言語を embed しない方針 (Siv3D をロールモデル) を採用し、Lua VM / NodeGraph / LuaCodeGen 等を全削除しました。iteration speed は <code>MITIRU_HEADER_ONLY=ON</code> の incremental compile と asset hot reload で確保しています。</li>
+<li><strong><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0003-json-binding-strategy/">ADR 0003 — JSON binding strategy: nlohmann macros + Versioned envelope</a></strong>: codegen / external reflection に頼らず、<code>NLOHMANN_DEFINE_TYPE_INTRUSIVE</code> ベースの 1 行マクロと <code>MigrationChain&lt;T&gt;</code> で save / content / balance すべての JSON I/O を統一しました。</li>
+</ul>
+<h2 id="5-パフォーマンス特性">5. パフォーマンス特性</h2>
+<p>このセクションは「速い部分」「重い部分」「未対応の部分」を分けて、できるだけ正直に書きます。実測がない箇所は明示的に「未計測」と書きます。</p>
+<h3 id="51-速い部分">5.1 速い部分</h3>
+<ul>
+<li><strong>C++20 gameplay は普通のネイティブ速度で動く</strong>: DX12 backend は Windows + GPU 環境で完動し、60 FPS を目標とした game loop が前提です。<code>include/mitiru/core/GameLoop.hpp</code> と <code>FrameTimer.hpp</code> で固定タイムステップを実装しています。</li>
+<li><strong>header-only による inline 効きやすさ</strong>: <code>MITIRU_HEADER_ONLY=ON</code> がデフォルトのため、consumer 側の translation unit ごとに inline 最適化が効きます。トレードオフは consumer 側ビルド時間 (PCH 推奨)。</li>
+<li><strong>bridge 通信量は基本的に小さい</strong>: JS → C++ は input event のみ、C++ → JS は view update のみで、典型的なフレームでは数 event / 数 KB 以下に収まります。</li>
+<li><strong>ECS / scene graph は header-only</strong>: <code>include/mitiru/ecs/</code>、<code>include/mitiru/scene/</code> 配下に展開され、prefab / system scheduler / component registry を直接 inline 利用できます。</li>
+</ul>
+<h3 id="52-重い部分-実測値の有無を明記">5.2 重い部分 (実測値の有無を明記)</h3>
+<ul>
+<li><strong>CEF の off-screen rendering pipeline</strong>: CEF は OSR (off-screen render) → C++ 側でテクスチャに転送 → GPU upload という経路で画面に出ます。1280x720 RGBA で 1 フレームあたり約 3.5 MB の転送が発生する計算で、60 FPS なら約 210 MB/s のバンド幅を消費します。これは無視できないコストです (帯域は理論値、実測スループットは未計測)。</li>
+<li><strong>CEF の起動コストと配布サイズ</strong>: <code>libcef.dll</code> だけで 100 MB 級、<code>Resources/</code>・<code>locales/</code>・<code>*.pak</code> 一式を含めるとコールドスタート 1〜3 秒 (環境依存、実測は未取得)。CEF を使わないゲームには <code>MITIRU_DISABLE_CEF=ON</code> を用意しています。</li>
+<li><strong>ベースラインメモリ</strong>: CEF + Chromium + V8 を含む構成で常駐メモリは数百 MB オーダー (実測未取得)。軽量 2D ゲームには CEF を外す選択肢が現実的です。</li>
+<li><strong>JS → C++ event レイテンシ</strong>: single-process 構成で 1〜3 ms 程度の目安 (Chromium IPC の公開ベンチからの推定で、本リポジトリでの実測は未取得)。60 FPS のユーザー操作には十分ですが、毎フレーム数百 event を要する用途には不向きです。</li>
+</ul>
+<h3 id="53-既知の制限">5.3 既知の制限</h3>
+<ul>
+<li><strong>CEF subprocess launch failed: <code>error_code=63</code></strong>: 一部の Windows 環境で GPU process が spawn できず FATAL 終了する問題が継続しています。現状の workaround として <code>--single-process</code> モードを <code>include/mitiru/cef/MitiruCefApp.hpp:94-107</code> に hard-coded しています。原因の最有力候補は <code>libcef.dll</code> (Release <code>/MD</code>) と consumer 側 (Debug <code>/MDd</code>) の CRT mismatch で、<code>cmake/MitiruCef.cmake</code> で subprocess 専用の <code>/MD</code> wrapper を分けてビルドする対策を入れています。詳細: <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/CEF_SUBPROCESS_DIAGNOSTIC.md"><code>docs/CEF_SUBPROCESS_DIAGNOSTIC.md</code></a> / <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/CEF_CRT_EXPERIMENT.md"><code>docs/CEF_CRT_EXPERIMENT.md</code></a>。</li>
+<li><strong><code>--single-process</code> モードの弊害</strong>: GPU process が分離されないため、CEF クラッシュがホストプロセスを巻き込みます。本番リリース向けにはリスクが残り、根本対策は継続調査中です。</li>
+<li><strong>Linux / macOS は best-effort</strong>: primary tested path は Windows + DX12 + CEF。Linux は Vulkan + GLFW、macOS は MoltenVK 経由を前提に検出ロジックを書いていますが、CI による全 backend テストの coverage は限定的です。</li>
+<li><strong>WebGL build は実験段階</strong>: Emscripten 向けの WebGL2 backend (<code>include/mitiru/gfx/webgl/</code>) と WebAudio は存在しますが、CEF は WebAssembly 環境では動かないため、UI 層の代替設計が必要です (現状未整備)。</li>
+</ul>
+<h3 id="54-ベンチ数値">5.4 ベンチ数値</h3>
+<p>現時点で公開できる数値は次のとおりです (実測なしの項目は「未計測」と明記)。</p>
+<table>
+  <thead>
+      <tr>
+          <th>項目</th>
+          <th>値</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Catch2 テスト件数</td>
+          <td>2259 件 green (main、2026-05-15 時点)</td>
+      </tr>
+      <tr>
+          <td>Header-only ファイル数</td>
+          <td>約 700 個の <code>.hpp</code></td>
+      </tr>
+      <tr>
+          <td>CEF テクスチャ転送 (1280x720 RGBA, 60 FPS)</td>
+          <td>約 210 MB/s (理論値、実測未取得)</td>
+      </tr>
+      <tr>
+          <td>Frame budget (target 60 FPS)</td>
+          <td>16.6 ms / frame (gameplay + render + CEF compositor)</td>
+      </tr>
+      <tr>
+          <td>ECS query / pathfinding / JSON parse スループット</td>
+          <td>未計測 (公式 bench は今後追加予定)</td>
+      </tr>
+  </tbody>
+</table>
+<h2 id="6-他エンジンとの違い">6. 他エンジンとの違い</h2>
+<p>特定エンジンを下げる意図はありません。同じ「2D + scripted scene 中心のゲーム制作」ニーズに対する、それぞれのアプローチの違いです。</p>
+<table>
+  <thead>
+      <tr>
+          <th>エンジン</th>
+          <th>アプローチ</th>
+          <th>強み</th>
+          <th>MitiruEngine との違い</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Unity</td>
+          <td>C# + visual editor + asset store</td>
+          <td>エコシステム規模、エディタ機能、商用サポート</td>
+          <td>MitiruEngine は scripting 言語を持たず、IDE エディタも提供しません。ゲーム作者の手は常に C++ にあります。</td>
+      </tr>
+      <tr>
+          <td>Unreal Engine</td>
+          <td>C++ + Blueprint + visual editor</td>
+          <td>AAA 規模、フォトリアル、巨大エコシステム</td>
+          <td>MitiruEngine は 2D / UI 中心、ヘッダオンリー、配布バイナリが小さい設計です。</td>
+      </tr>
+      <tr>
+          <td>Godot</td>
+          <td>GDScript + C# + 統合エディタ</td>
+          <td>OSS、軽量、エディタ統合</td>
+          <td>MitiruEngine は IDE エディタを作らず、UI は HTML/CSS で書きます。</td>
+      </tr>
+      <tr>
+          <td>Siv3D (OpenSiv3D)</td>
+          <td>Pure C++ ライブラリ、<code>Main.cpp</code> から書く</td>
+          <td>C++ 学習向け、依存が少ない</td>
+          <td>MitiruEngine も pure C++ ですが、CEF を view 層として分離している点が違います。Siv3D は同一プロセスで全描画を完結します。</td>
+      </tr>
+      <tr>
+          <td>Phaser / Pixi.js</td>
+          <td>JavaScript / TypeScript engine、Web first</td>
+          <td>Web 配布、ブラウザで即動く</td>
+          <td>MitiruEngine は native binary。CEF は UI 層に限定しており、gameplay は C++ で書きます。</td>
+      </tr>
+  </tbody>
+</table>
+<h2 id="7-ロードマップと制限事項">7. ロードマップと制限事項</h2>
+<ul>
+<li><strong>IDE / visual editor は作らない方針</strong>: 人間 + テキストエディタ + asset hot reload で十分という前提です。エディタ統合のコストを払わない代わりに、C++ ヘッダの API surface を直接配布しています。</li>
+<li><strong>3D は最小限</strong>: <code>MitiruScene.hpp</code> / <code>include/mitiru/render/Vertex3D.hpp</code> などのプリミティブはありますが、フォトリアル向けの完全な 3D pipeline は対象外です。primary な使用領域は 2D + scripted scene。</li>
+<li><strong>Multiplayer は実験段階</strong>: <code>include/mitiru/network/</code> に抽象化はあるものの、GameNetworkingSockets 連携 (<code>MITIRU_ENABLE_GNS=ON</code>) はオプトインで、本番運用実績はまだありません。</li>
+<li><strong>CEF subprocess 問題の根本対策</strong>: <code>--single-process</code> workaround 依存を解消する作業が継続中です (CRT mismatch 仮説の検証込み)。</li>
+<li><strong>WebAssembly distribution</strong>: WebGL2 backend は存在しますが、CEF を前提とした UI を WebAssembly 上でどう代替するかは未着手です。</li>
+</ul>
+<h2 id="8-ソースと公開状況">8. ソースと公開状況</h2>
+<ul>
+<li><strong>Engine source</strong>: GitHub <a href="https://github.com/mogmog-0110/MitiruEngine">mogmog-0110/MitiruEngine</a> — MIT、public</li>
+<li><strong>Dev internal</strong>: <code>mogmog-0110/MitiruEngineDev</code> — private、開発履歴と社内ドキュメント</li>
+<li><strong>Site source</strong>: 本サイトのソースも上記 public リポジトリの <code>site/</code> 配下に同梱されています。</li>
+<li><strong>ADR / 設計記録</strong>: <a href="https://mogmog-0110.github.io/MitiruEngine/adr/">Architecture Decisions</a> を参照</li>
+<li><strong>API リファレンス</strong>: <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API Reference</a> を参照</li>
+</ul>
+
+  </div>
+</article>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">MitiruEngine</p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
