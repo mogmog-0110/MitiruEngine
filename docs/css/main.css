@@ -2644,3 +2644,785 @@ button:focus-visible {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ============================================================
+   playful — small interactive bits.
+   Owned by Agent I. Independent of the layout-level CSS above
+   so it can be lifted/changed without touching the rest.
+   ============================================================ */
+
+/* Hero-anchored canvas demo. Sits inside .home-hero, under the CTA. */
+.home-hero__playful {
+  margin-top: 2rem;
+}
+.playful-canvas {
+  display: block;
+  border-radius: var(--r-radius);
+  background: linear-gradient(180deg,
+              color-mix(in srgb, var(--c-bg-elev) 92%, transparent),
+              color-mix(in srgb, var(--c-bg-alt) 92%, transparent));
+  border: 1px solid var(--c-border);
+  padding: 0.75rem;
+  box-shadow: var(--c-shadow);
+}
+[data-theme="dark"] .playful-canvas {
+  background: linear-gradient(180deg,
+              color-mix(in srgb, var(--c-bg-elev) 80%, transparent),
+              color-mix(in srgb, var(--c-bg-alt) 80%, transparent));
+}
+.playful-canvas__surface {
+  display: block;
+  width: 100%;
+  height: 180px;
+  border-radius: calc(var(--r-radius) - 2px);
+  cursor: crosshair;
+}
+.playful-canvas__hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  color: var(--c-fg-soft);
+  text-align: center;
+}
+@media (max-width: 640px) {
+  .playful-canvas__surface { height: 120px; }
+  .playful-canvas { padding: 0.4rem; }
+}
+
+/* Scroll-fade — opt-in via [data-fade]. */
+[data-fade] {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 480ms ease, transform 480ms ease;
+  will-change: opacity, transform;
+}
+[data-fade].is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  will-change: auto;
+}
+
+/* Card hover lift / glow. Layered onto existing cards, doesn't replace
+   the 1.03 scale set elsewhere. */
+.showcase-card,
+.three-min__step,
+.features__card {
+  transition: transform 220ms ease,
+              box-shadow 220ms ease,
+              border-color 220ms ease;
+}
+.showcase-card:hover,
+.three-min__step:hover,
+.features__card:hover {
+  border-color: color-mix(in srgb, var(--c-accent) 35%, var(--c-border));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--c-accent) 12%, transparent),
+              var(--c-shadow-card);
+}
+.showcase-card:active,
+.three-min__step:active,
+.features__card:active {
+  transform: translateY(1px);
+}
+
+/* Header "?" button. Mirrors .theme-toggle dimensions. */
+.shortcuts-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-elev);
+  color: var(--c-fg-soft);
+  border-radius: var(--r-radius);
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.shortcuts-trigger:hover {
+  color: var(--c-accent);
+  border-color: color-mix(in srgb, var(--c-accent) 45%, var(--c-border));
+}
+.shortcuts-trigger:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+.shortcuts-trigger__kbd {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+}
+
+/* Shortcuts modal — mirrors the .search-dialog look so the two feel
+   consistent without sharing rules. */
+.shortcuts-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 1rem 1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+.shortcuts-dialog[hidden] { display: none; }
+.shortcuts-dialog.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.shortcuts-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 22, 35, 0.42);
+}
+[data-theme="dark"] .shortcuts-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+.shortcuts-dialog__panel {
+  position: relative;
+  width: min(560px, 100%);
+  background: var(--c-bg-elev);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-radius-lg);
+  box-shadow: 0 18px 42px rgba(20, 25, 35, 0.18);
+  transform: translateY(-8px);
+  transition: transform 180ms ease;
+}
+.shortcuts-dialog.is-open .shortcuts-dialog__panel {
+  transform: translateY(0);
+}
+.shortcuts-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--c-rule);
+}
+.shortcuts-dialog__title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--c-fg);
+}
+.shortcuts-dialog__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-radius);
+  color: var(--c-fg-soft);
+  cursor: pointer;
+}
+.shortcuts-dialog__close:hover { color: var(--c-accent); }
+.shortcuts-dialog__close:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+.shortcuts-dialog__body {
+  padding: 1rem 1.1rem 1.1rem;
+}
+.shortcuts-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.4rem;
+}
+.shortcuts-list__row {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.5fr) 1fr;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px dashed var(--c-rule);
+}
+.shortcuts-list__row:last-child { border-bottom: 0; }
+.shortcuts-list dt {
+  margin: 0;
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+.shortcuts-list dd {
+  margin: 0;
+  color: var(--c-fg-soft);
+  font-size: 0.92rem;
+}
+.shortcuts-list kbd {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1;
+  padding: 3px 6px;
+  background: var(--c-bg-alt);
+  border: 1px solid var(--c-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--c-fg);
+  min-width: 18px;
+  text-align: center;
+}
+.shortcuts-dialog__foot {
+  margin: 0.9rem 0 0;
+  color: var(--c-fg-mute);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .shortcuts-trigger { display: none; }
+  .shortcuts-list__row { grid-template-columns: minmax(96px, auto) 1fr; }
+}
+
+/* Reduced motion: kill our scroll-fade transform/opacity instantly,
+   and keep the canvas frame static (JS already handles the actual loop). */
+@media (prefers-reduced-motion: reduce) {
+  [data-fade],
+  [data-fade].is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .shortcuts-dialog,
+  .shortcuts-dialog__panel,
+  .showcase-card,
+  .three-min__step,
+  .features__card {
+    transition: none !important;
+  }
+}
+
+/* ============================================================
+   Round 38 — Full CSS audit fixes
+   - Chroma syntax highlighting (all token classes used by Hugo)
+   - Missing BEM classes from rendered HTML (48 audited)
+   - Resilience: blockquote / table / details / pre overflow / images
+   - A11y polish: scroll-margin, print styles, high-contrast
+   - Dark mode coverage for newly added rules
+   ============================================================ */
+
+/* ── Chroma token palette (light defaults) ── */
+:root {
+  --c-syn-keyword: #d73a49;
+  --c-syn-comment: #6a737d;
+  --c-syn-string:  #032f62;
+  --c-syn-number:  #005cc5;
+  --c-syn-name:    #24292e;
+  --c-syn-builtin: #6f42c1;
+  --c-syn-operator:#d73a49;
+  --c-syn-punct:   #24292e;
+  --c-syn-err:     #b31d28;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-syn-keyword: #ff7b72;
+    --c-syn-comment: #8b949e;
+    --c-syn-string:  #a5d6ff;
+    --c-syn-number:  #79c0ff;
+    --c-syn-name:    #e6edf3;
+    --c-syn-builtin: #d2a8ff;
+    --c-syn-operator:#ff7b72;
+    --c-syn-punct:   #e6edf3;
+    --c-syn-err:     #ffa198;
+  }
+}
+:root[data-theme="dark"] {
+  --c-syn-keyword: #ff7b72;
+  --c-syn-comment: #8b949e;
+  --c-syn-string:  #a5d6ff;
+  --c-syn-number:  #79c0ff;
+  --c-syn-name:    #e6edf3;
+  --c-syn-builtin: #d2a8ff;
+  --c-syn-operator:#ff7b72;
+  --c-syn-punct:   #e6edf3;
+  --c-syn-err:     #ffa198;
+}
+:root[data-theme="light"] {
+  --c-syn-keyword: #d73a49;
+  --c-syn-comment: #6a737d;
+  --c-syn-string:  #032f62;
+  --c-syn-number:  #005cc5;
+  --c-syn-name:    #24292e;
+  --c-syn-builtin: #6f42c1;
+  --c-syn-operator:#d73a49;
+  --c-syn-punct:   #24292e;
+  --c-syn-err:     #b31d28;
+}
+
+/* Chroma sits inside our dark code-block background regardless of page
+   theme. Force dark-friendly token colors locally on the chroma scope. */
+.chroma {
+  --c-syn-keyword: #ff7b72;
+  --c-syn-comment: #8b949e;
+  --c-syn-string:  #a5d6ff;
+  --c-syn-number:  #79c0ff;
+  --c-syn-name:    #e6edf3;
+  --c-syn-builtin: #d2a8ff;
+  --c-syn-operator:#ff7b72;
+  --c-syn-punct:   #e6edf3;
+  --c-syn-err:     #ffa198;
+
+  color: var(--c-code-fg);
+  background: transparent;
+}
+
+/* Per-line wrapper Hugo emits for code blocks. */
+.chroma .line {
+  display: block;
+}
+
+/* Token classes — flat selectors, Chroma emits class on <span>. */
+.chroma .k,
+.chroma .kc,
+.chroma .kd,
+.chroma .kn,
+.chroma .kp,
+.chroma .kr,
+.chroma .kt {
+  color: var(--c-syn-keyword);
+  font-weight: 600;
+}
+
+.chroma .c,
+.chroma .c1,
+.chroma .cl,
+.chroma .cm,
+.chroma .cs,
+.chroma .cp,
+.chroma .cpf {
+  color: var(--c-syn-comment);
+  font-style: italic;
+}
+
+.chroma .s,
+.chroma .s1,
+.chroma .s2,
+.chroma .sa,
+.chroma .sb,
+.chroma .sc,
+.chroma .dl,
+.chroma .sd,
+.chroma .se,
+.chroma .sh,
+.chroma .si,
+.chroma .sx,
+.chroma .sr,
+.chroma .ss {
+  color: var(--c-syn-string);
+}
+
+.chroma .m,
+.chroma .mb,
+.chroma .mf,
+.chroma .mh,
+.chroma .mi,
+.chroma .il,
+.chroma .mo {
+  color: var(--c-syn-number);
+}
+
+.chroma .n,
+.chroma .na,
+.chroma .nc,
+.chroma .nd,
+.chroma .ne,
+.chroma .nl,
+.chroma .nn,
+.chroma .no,
+.chroma .np,
+.chroma .nt,
+.chroma .nv,
+.chroma .nx,
+.chroma .py {
+  color: var(--c-syn-name);
+}
+
+.chroma .nb {
+  color: var(--c-syn-builtin);
+}
+
+.chroma .nf {
+  color: var(--c-syn-builtin);
+}
+
+.chroma .o,
+.chroma .ow {
+  color: var(--c-syn-operator);
+}
+
+.chroma .p {
+  color: var(--c-syn-punct);
+}
+
+.chroma .err {
+  color: var(--c-syn-err);
+  background: rgba(248, 81, 73, 0.12);
+  border-radius: 2px;
+}
+
+/* Generic <pre><code class="language-X"> defaults outside Chroma. */
+code[class*="language-"] {
+  font-family: var(--font-mono);
+  font-size: inherit;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+pre > code[class*="language-"] {
+  display: block;
+  white-space: pre;
+}
+
+/* ── ADR sidebar (reuses api-sidebar; adds ADR-only spacing) ── */
+.adr-sidebar {
+  padding-top: 0.6rem;
+}
+.adr-sidebar .adr-sidebar__status {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+/* ── example-card kind pill + API chip list ── */
+.example-card__kind {
+  display: inline-block;
+  margin-top: 0.45rem;
+  padding: 0.18rem 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 999px;
+  background: var(--c-bg-alt);
+  color: var(--c-fg-soft);
+  border: 1px solid var(--c-border);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.example-card__kind--cef       { background: var(--c-accent-soft); color: var(--c-accent-on-soft); border-color: transparent; }
+.example-card__kind--engine    { background: var(--c-bg-alt); color: var(--c-fg-soft); border-color: var(--c-border); }
+.example-card__kind--headless  { background: var(--c-badge-headless-soft); color: var(--c-badge-headless-on); border-color: transparent; }
+
+.example-detail__kind--engine  { background: var(--c-bg-alt); color: var(--c-fg-soft); border-color: var(--c-border); }
+
+.example-card__apis {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.example-card__api-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  background: var(--c-bg-alt);
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  color: var(--c-fg-soft);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.example-card__api-chip code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: transparent;
+  padding: 0;
+  color: var(--c-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 22ch;
+}
+.example-card__api-chip--more {
+  font-style: italic;
+  color: var(--c-fg-mute);
+  background: transparent;
+  border-style: dashed;
+}
+
+/* ── guides-list item (li reset; visuals live on the link) ── */
+.guides-list__item {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ── theme-toggle icon base (variants --moon / --sun already exist) ── */
+.theme-toggle__icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  display: block;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Resilience — global element styles for long-form pages
+   ============================================================ */
+
+/* Blockquotes — used heavily in guides for callouts. */
+.page-article__body blockquote,
+.chapter-article__body blockquote,
+.example-detail__body blockquote,
+.api-page__content blockquote {
+  margin: 1.4rem 0;
+  padding: 0.8rem 1.1rem;
+  border-left: 3px solid var(--c-accent);
+  background: var(--c-bg-alt);
+  color: var(--c-fg-soft);
+  border-radius: 0 var(--r-radius) var(--r-radius) 0;
+}
+.page-article__body blockquote > :first-child,
+.chapter-article__body blockquote > :first-child,
+.example-detail__body blockquote > :first-child,
+.api-page__content blockquote > :first-child { margin-top: 0; }
+.page-article__body blockquote > :last-child,
+.chapter-article__body blockquote > :last-child,
+.example-detail__body blockquote > :last-child,
+.api-page__content blockquote > :last-child  { margin-bottom: 0; }
+.page-article__body blockquote p,
+.chapter-article__body blockquote p,
+.example-detail__body blockquote p,
+.api-page__content blockquote p {
+  margin: 0.5rem 0;
+}
+
+/* Tables — used in matrices, scope docs. Scroll horizontally on narrow viewports. */
+.page-article__body table,
+.chapter-article__body table,
+.example-detail__body table,
+.api-page__content table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 1.4rem 0;
+  font-size: 0.92rem;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-radius);
+}
+.page-article__body table thead,
+.chapter-article__body table thead,
+.example-detail__body table thead,
+.api-page__content table thead {
+  background: var(--c-bg-alt);
+}
+.page-article__body table th,
+.chapter-article__body table th,
+.example-detail__body table th,
+.api-page__content table th,
+.page-article__body table td,
+.chapter-article__body table td,
+.example-detail__body table td,
+.api-page__content table td {
+  text-align: left;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--c-rule);
+  vertical-align: top;
+}
+.page-article__body table th,
+.chapter-article__body table th,
+.example-detail__body table th,
+.api-page__content table th {
+  font-weight: 700;
+  color: var(--c-fg);
+  border-bottom-color: var(--c-border);
+}
+.page-article__body table tr:last-child td,
+.chapter-article__body table tr:last-child td,
+.example-detail__body table tr:last-child td,
+.api-page__content table tr:last-child td {
+  border-bottom: none;
+}
+
+/* <details> outside api-sidebar — generic callouts. */
+.page-article__body details,
+.chapter-article__body details,
+.example-detail__body details,
+.api-page__content details {
+  margin: 1.2rem 0;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-radius);
+  background: var(--c-bg-alt);
+}
+.page-article__body details > summary,
+.chapter-article__body details > summary,
+.example-detail__body details > summary,
+.api-page__content details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--c-fg);
+  list-style: none;
+  padding: 0.2rem 0;
+}
+.page-article__body details > summary::-webkit-details-marker,
+.chapter-article__body details > summary::-webkit-details-marker,
+.example-detail__body details > summary::-webkit-details-marker,
+.api-page__content details > summary::-webkit-details-marker {
+  display: none;
+}
+.page-article__body details > summary::before,
+.chapter-article__body details > summary::before,
+.example-detail__body details > summary::before,
+.api-page__content details > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.45rem;
+  color: var(--c-fg-mute);
+  transition: transform 120ms ease;
+}
+.page-article__body details[open] > summary::before,
+.chapter-article__body details[open] > summary::before,
+.example-detail__body details[open] > summary::before,
+.api-page__content details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+/* Images in long-form copy never overflow the column. */
+.page-article__body img,
+.chapter-article__body img,
+.example-detail__body img,
+.api-page__content img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Stray <pre> still scrolls horizontally. */
+pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Long inline <code> never overflows the viewport. */
+:not(pre) > code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Anchor offset — sticky header (~64px) friendly. */
+.page-article__body :is(h2, h3, h4, h5, h6),
+.chapter-article__body :is(h2, h3, h4, h5, h6),
+.example-detail__body :is(h2, h3, h4, h5, h6),
+.api-page__content :is(h2, h3, h4, h5, h6),
+.adr-page__article :is(h2, h3, h4, h5, h6) {
+  scroll-margin-top: 5rem;
+}
+
+/* Dark-mode polish for newly defined chips/pills. */
+[data-theme="dark"] .example-card__api-chip,
+[data-theme="dark"] .example-card__kind {
+  background: var(--c-bg-elev);
+}
+[data-theme="dark"] .example-card__kind--cef {
+  background: var(--c-accent-soft);
+  color: var(--c-accent-on-soft);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .example-card__api-chip,
+  :root:not([data-theme="light"]) .example-card__kind {
+    background: var(--c-bg-elev);
+  }
+  :root:not([data-theme="light"]) .example-card__kind--cef {
+    background: var(--c-accent-soft);
+    color: var(--c-accent-on-soft);
+  }
+}
+
+/* ── Print styles — strip chrome so docs are readable on paper ── */
+@media print {
+  .site-header,
+  .site-footer,
+  .nav-toggle,
+  .theme-toggle,
+  .site-nav,
+  .home-hero__bg,
+  .search-trigger,
+  .search-dialog {
+    display: none !important;
+  }
+  .site-main {
+    padding: 0;
+  }
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+  a {
+    color: inherit;
+    text-decoration: underline;
+  }
+  pre, code, .chroma {
+    background: #f3f3f3 !important;
+    color: #000000 !important;
+    border: 1px solid #cccccc;
+  }
+  .chroma .k, .chroma .kc, .chroma .kd, .chroma .kn,
+  .chroma .kp, .chroma .kr, .chroma .kt,
+  .chroma .c, .chroma .c1, .chroma .cl, .chroma .cm, .chroma .cp, .chroma .cpf,
+  .chroma .s, .chroma .s1, .chroma .s2, .chroma .se,
+  .chroma .m, .chroma .mf, .chroma .mh, .chroma .mi,
+  .chroma .n, .chroma .na, .chroma .nb, .chroma .nc, .chroma .nf,
+  .chroma .nl, .chroma .nt, .chroma .nv, .chroma .nx,
+  .chroma .o, .chroma .p {
+    color: #000000 !important;
+  }
+  .example-card,
+  .feature-card,
+  .position__pillar,
+  .tutorial-card {
+    box-shadow: none !important;
+    border: 1px solid #cccccc !important;
+    page-break-inside: avoid;
+  }
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+}
+
+/* ── High-contrast (Windows forced-colors) ── */
+@media (forced-colors: active) {
+  .btn,
+  .example-card,
+  .feature-card,
+  .position__pillar,
+  .tutorial-card {
+    border: 1px solid CanvasText;
+  }
+  .example-card__kind,
+  .example-card__api-chip,
+  .adr-badge {
+    border: 1px solid CanvasText;
+    forced-color-adjust: none;
+  }
+}
+
+/* ── Responsive sweep for new chip grids ── */
+@media (max-width: 640px) {
+  .example-card__apis {
+    gap: 0.3rem;
+  }
+  .example-card__api-chip code {
+    max-width: 16ch;
+  }
+  .page-article__body table,
+  .chapter-article__body table,
+  .example-detail__body table,
+  .api-page__content table {
+    font-size: 0.85rem;
+  }
+}

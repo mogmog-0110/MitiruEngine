@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-base="/">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -271,6 +271,15 @@
         <span class="visually-hidden">GitHub</span>
       </a>
       
+      <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
       <button type="button"
               class="theme-toggle"
               id="theme-toggle"
@@ -800,7 +809,7 @@ fill="var(--c-accent-on-soft)">JS Runtime (CEF 内)</text></p>
       </tr>
       <tr>
           <td>JSON</td>
-          <td>nlohmann/json + <code>NLOHMANN_DEFINE_TYPE_*</code> マクロ規約 (ADR 0003)</td>
+          <td>nlohmann/json + <code>NLOHMANN_DEFINE_TYPE_*</code> マクロ規約 (詳細は §4)</td>
       </tr>
       <tr>
           <td>Audio</td>
@@ -833,11 +842,11 @@ fill="var(--c-accent-on-soft)">JS Runtime (CEF 内)</text></p>
   </tbody>
 </table>
 <h2 id="4-主要な設計判断">4. 主要な設計判断</h2>
-<p>エンジン設計の根幹は 3 本の ADR に文書化されています。</p>
+<p>エンジン設計の根幹となる 3 つの判断を簡潔にまとめます。</p>
 <ul>
-<li><strong><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/">ADR 0001 — C++ ゲームプレイ + CEF は View 専用</a></strong>: 当初 hybrid runtime (gameplay を JS で書く) として開始しましたが、二言語境界の認知負荷、V8 GC 由来の frame drop、CEF subprocess 問題などから「gameplay は C++、CEF は view 専用」に方針転換しました。</li>
-<li><strong><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0002-remove-lua-scripting/">ADR 0002 — Lua scripting と visual scripting を engine から廃止</a></strong>: scripting 言語を embed しない方針 (Siv3D をロールモデル) を採用し、Lua VM / NodeGraph / LuaCodeGen 等を全削除しました。iteration speed は <code>MITIRU_HEADER_ONLY=ON</code> の incremental compile と asset hot reload で確保しています。</li>
-<li><strong><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0003-json-binding-strategy/">ADR 0003 — JSON binding strategy: nlohmann macros + Versioned envelope</a></strong>: codegen / external reflection に頼らず、<code>NLOHMANN_DEFINE_TYPE_INTRUSIVE</code> ベースの 1 行マクロと <code>MigrationChain&lt;T&gt;</code> で save / content / balance すべての JSON I/O を統一しました。</li>
+<li><strong>C++ ゲームプレイ + CEF は View 専用</strong>: 当初 hybrid runtime (gameplay を JS で書く) として開始しましたが、二言語境界の認知負荷、V8 GC 由来の frame drop、CEF subprocess 問題などから「gameplay は C++、CEF は view 専用」に方針転換しました。bridge は signal-only に絞り、状態は C++ 側に一元化しています。</li>
+<li><strong>scripting 言語を embed しない</strong>: Lua / Squirrel / GDScript 等の embed をやめ、Siv3D をロールモデルに pure C++ 路線を採用しました。Lua VM / NodeGraph / LuaCodeGen 等を全削除しています。iteration speed は <code>MITIRU_HEADER_ONLY=ON</code> の incremental compile と asset hot reload で確保します。</li>
+<li><strong>JSON binding: nlohmann macros + Versioned envelope</strong>: codegen / external reflection に頼らず、<code>NLOHMANN_DEFINE_TYPE_INTRUSIVE</code> ベースの 1 行マクロと <code>MigrationChain&lt;T&gt;</code> で save / content / balance すべての JSON I/O を統一しました。<strong>std types を直接使う</strong>方針 (<code>std::string</code> / <code>std::vector</code> / <code>std::optional</code> を独自エイリアスで隠さない) もこの延長です。</li>
 </ul>
 <h2 id="5-パフォーマンス特性">5. パフォーマンス特性</h2>
 <p>このセクションは「速い部分」「重い部分」「未対応の部分」を分けて、できるだけ正直に書きます。実測がない箇所は明示的に「未計測」と書きます。</p>
@@ -953,7 +962,6 @@ fill="var(--c-accent-on-soft)">JS Runtime (CEF 内)</text></p>
 <li><strong>Engine source</strong>: GitHub <a href="https://github.com/mogmog-0110/MitiruEngine">mogmog-0110/MitiruEngine</a> — MIT、public</li>
 <li><strong>Dev internal</strong>: <code>mogmog-0110/MitiruEngineDev</code> — private、開発履歴と社内ドキュメント</li>
 <li><strong>Site source</strong>: 本サイトのソースも上記 public リポジトリの <code>site/</code> 配下に同梱されています。</li>
-<li><strong>ADR / 設計記録</strong>: <a href="https://mogmog-0110.github.io/MitiruEngine/adr/">Architecture Decisions</a> を参照</li>
 <li><strong>API リファレンス</strong>: <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API Reference</a> を参照</li>
 </ul>
 
@@ -979,5 +987,81 @@ fill="var(--c-accent-on-soft)">JS Runtime (CEF 内)</text></p>
   </div>
 </footer>
 
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>e</kbd></dt>
+          <dd>サンプル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  
 </body>
 </html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-base="/">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -272,6 +272,15 @@
       </a>
       
       <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
+      <button type="button"
               class="theme-toggle"
               id="theme-toggle"
               aria-pressed="false"
@@ -367,11 +376,11 @@
   <div class="page-article__body">
     <h1 id="bridge-api-contract--mitiruengine-cef-bridge-責務定義">Bridge API Contract — MitiruEngine CEF Bridge 責務定義</h1>
 <blockquote>
-<p><strong>関連</strong>: <a href="https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/">ADR 0001</a> — C++ gameplay + CEF は View 専用</p>
+<p><strong>関連</strong>: <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — C++ gameplay + CEF は View 専用</p>
 </blockquote>
 <hr>
 <h2 id="1-責務定義">1. 責務定義</h2>
-<p>ADR 0001 のアーキテクチャピボット (2026-05-14) により、bridge は <strong>薄い signal 層</strong> として再定義された。</p>
+<p>2026-05-14 のアーキテクチャピボット (gameplay は C++、CEF は view 専用) により、bridge は <strong>薄い signal 層</strong> として再定義された。</p>
 <h3 id="11-js--c-で許可される用途">1.1 JS → C++ で許可される用途</h3>
 <table>
   <thead>
@@ -575,7 +584,7 @@ JS 側からは <code>window.cefQuery({ request: &quot;handler|payload&quot;, on
 </blockquote>
 <hr>
 <h2 id="3-新責務での-api-surface">3. 新責務での API surface</h2>
-<p>ADR 0001 に従い、bridge は以下の 2 カテゴリのみを持つ。</p>
+<p>アーキテクチャ方針に従い、bridge は以下の 2 カテゴリのみを持つ。</p>
 <h3 id="31-js--c-request-handler-命名規則">3.1 JS → C++ request handler 命名規則</h3>
 <p><strong>形式</strong>: <code>&lt;カテゴリ&gt;.&lt;アクション&gt;</code></p>
 <p><strong>許可カテゴリ</strong>:</p>
@@ -829,7 +838,7 @@ ui.option.select      // 選択肢 (ダイアログ等) 選択通知
 <hr>
 <h2 id="7-参照">7. 参照</h2>
 <ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/">ADR 0001</a> — アーキテクチャピボット決定</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — レイヤー構成と設計判断</li>
 <li><code>include/mitiru/cef/MitiruCefBridge.hpp</code> — 低レベル transport 実装</li>
 <li><code>include/mitiru/cef/StateStore.hpp</code> — typed state/event 層</li>
 <li><code>include/mitiru/cef/AudioBridge.hpp</code> — audio handler 実装例</li>
@@ -860,5 +869,81 @@ ui.option.select      // 選択肢 (ダイアログ等) 選択通知
   </div>
 </footer>
 
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>e</kbd></dt>
+          <dd>サンプル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  
 </body>
 </html>

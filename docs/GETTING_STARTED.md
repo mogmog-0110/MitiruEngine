@@ -62,19 +62,22 @@ After building, eleven example executables land in `build/Debug/` (Windows) or `
 | Example | Mode | What it does |
 |---------|:-:|---|
 | `hello_headless` | A | Minimal engine init, headless rendering (no window) |
-| `animated_sprite` | A | Sprite + tween |
-| `parametric_portrait` | A | Live2D / parametric character |
-| `scene_transition` | A | Scene graph + transitions |
-| `narrative_script` | A | Narrative DSL execution |
-| `vn_hello_world` | A | Minimal VN scenario |
-| `vn_game_hybrid` | A | VN + gameplay mixed |
+| `hello_sprite` | A | 2D sprite rendering with `mitiru::Screen` |
+| `cpp_gameplay_minimal` | A | `SceneRouter` + `StateMachine` + `Timer` core loop |
+| `cpp_data_driven_minimal` | A | JSON-driven gameplay data loading |
+| `breakout` | A | Action core loop — input, collision, reflection |
+| `shoot_em_up` | A | STG core loop with C++ entities |
+| `particles` | A | 1000 particles simulated in C++, drawn in CEF |
+| `hp_bar` | A | C++ state visualised by a CEF HUD |
+| `pause_menu` | A | ESC opens a CEF modal HUD |
+| `pulldown_menu` | A | CEF pull-down menu driven by C++ input state |
 | `cef_minimal` | B | Smallest possible CEF host |
 | `cef_overlay` | B | CEF HTML overlay over native scene |
 | `cef_transition` | B | Scene transition composited with CEF |
 | `cef_state_bridge` | B | JS ↔ C++ state sync |
 
 ```bash
-./build/Debug/mitiru_animated_sprite.exe   # Windows, Mode A example
+./build/Debug/mitiru_hello_sprite.exe   # Windows, Mode A example
 ./build/Debug/cef_minimal.exe       # Windows, Mode B example
 ```
 

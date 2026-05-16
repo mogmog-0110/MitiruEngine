@@ -9,7 +9,7 @@ Where to start, depending on who you are and what you're doing.
 3. **`docs/HYBRID_RUNTIME.md`** — JS / JSON / C++ split rules (Mode B users)
 4. **`docs/GETTING_STARTED.md`** — building your first project
 5. Pick a starter:
-   - **Mode A:** examine `examples/animated_sprite/`, `examples/scene_transition/`, `examples/hello_headless/`
+   - **Mode A:** examine `examples/hello_sprite/`, `examples/breakout/`, `examples/hello_headless/`
    - **Mode B:** copy `templates/web-first-cef-shell/` and start from `examples/cef_minimal/`
 6. **`docs/ARCHITECTURE.md`** — when you need to dig in
 

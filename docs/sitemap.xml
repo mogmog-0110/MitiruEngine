@@ -2,16 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/</loc>
-    <lastmod>2026-05-14T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/adr/0002-remove-lua-scripting/</loc>
-    <lastmod>2026-05-14T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/getting-started/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/adr/0003-json-binding-strategy/</loc>
-    <lastmod>2026-05-14T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/</loc>
   </url><url>
@@ -24,9 +15,6 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/drawing/</loc>
     <lastmod>2026-05-17T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/animated_sprite/</loc>
-    <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/release-notes/2026-05-15/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
@@ -41,9 +29,6 @@
     <lastmod>2026-05-17T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/cef_minimal/</loc>
-    <lastmod>2026-05-15T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/scene_transition/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/</loc>
@@ -95,9 +80,6 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/cef_state_bridge/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/adr/</loc>
-    <lastmod>2026-05-14T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/ui/</loc>
@@ -133,9 +115,6 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/hello_headless/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/narrative_script/</loc>
-    <lastmod>2026-05-15T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/</loc>
@@ -146,13 +125,7 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/vn_game_hybrid/</loc>
-    <lastmod>2026-05-15T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/</loc>
-    <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/</loc>
   </url><url>

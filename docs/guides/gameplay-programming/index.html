@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-base="/">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -272,6 +272,15 @@
       </a>
       
       <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
+      <button type="button"
               class="theme-toggle"
               id="theme-toggle"
               aria-pressed="false"
@@ -373,7 +382,7 @@ consumer 側ゲーム (例: KaeruCrape) の作者が、エンジンが提供す�
 </blockquote>
 <hr>
 <h2 id="1-overview">1. Overview</h2>
-<p>MitiruEngine は 2026-05-14 の <a href="https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/">ADR 0001</a> で
+<p>MitiruEngine は 2026-05-14 のアーキテクチャピボットで
 <strong>Siv3D ロールモデル</strong> に寄せた C++ engine 路線にピボットした。
 gameplay の決定権は <strong>すべて C++</strong> にあり、CEF (HTML/CSS/JS) は <strong>View 専用</strong> に格下げされた。</p>
 <p>3 行で整理すると:</p>
@@ -386,7 +395,7 @@ gameplay 関数の RPC は禁止。</li>
 </ol>
 <p>関連 doc:</p>
 <ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/">ADR 0001 — C++ gameplay / CEF view-only</a></li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — C++ gameplay / CEF view-only の設計判断</li>
 <li><a href="HYBRID_RUNTIME.md">HYBRID_RUNTIME.md</a> — レイヤー分担の歴史的経緯</li>
 <li><a href="BRIDGE_API_CONTRACT.md">BRIDGE_API_CONTRACT.md</a> — bridge 責務定義 (signal-only)</li>
 <li><a href="cpp-gameplay-api-gaps.md">cpp-gameplay-api-gaps.md</a> — P0/P1 ロードマップ</li>
@@ -702,7 +711,7 @@ JS には「ボタンが押された」だけ言わせて、<strong>どの scene
 </ul>
 <hr>
 <h2 id="5-アンチパターン">5. アンチパターン</h2>
-<p>ADR 0001 / BRIDGE_API_CONTRACT.md と整合する 5 つの NG パターン。</p>
+<p>アーキテクチャ方針 / <code>docs/BRIDGE_API_CONTRACT.md</code> と整合する 5 つの NG パターン。</p>
 <ul>
 <li>
 <p><strong>JS で state machine を持つな</strong>
@@ -732,7 +741,7 @@ C++ → JS は <strong>常に決定済みの表示指示</strong>。<code>emit(&
 <hr>
 <h2 id="6-references">6. References</h2>
 <ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/">ADR 0001 — C++ gameplay / CEF view-only</a></li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — C++ gameplay / CEF view-only の設計判断</li>
 <li><a href="HYBRID_RUNTIME.md">docs/HYBRID_RUNTIME.md</a></li>
 <li><a href="BRIDGE_API_CONTRACT.md">docs/BRIDGE_API_CONTRACT.md</a></li>
 <li><a href="cpp-gameplay-api-gaps.md">docs/cpp-gameplay-api-gaps.md</a></li>
@@ -778,5 +787,81 @@ C++ → JS は <strong>常に決定済みの表示指示</strong>。<code>emit(&
   </div>
 </footer>
 
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>e</kbd></dt>
+          <dd>サンプル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  
 </body>
 </html>
