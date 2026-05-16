@@ -396,6 +396,51 @@
 <li><strong>時間絡みの遷移</strong> は <code>Timer</code> / <code>Cooldown</code> / <code>Sequence</code> で待つ</li>
 </ul>
 <p>JSON で宣言する rule に逃がしてもいいですが、エンジンの方針としてはシンプルな C++ で書くほうが読める、と判断しています。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 240" role="img" aria-labelledby="ch-scene-title ch-scene-desc" class="arch-svg">
+  <title id="ch-scene-title">シーン遷移とフェーズ状態機械の例</title>
+  <desc id="ch-scene-desc">外側にシーンルータ (Title → Menu → Battle → Result)、内側に Battle 内フェーズ (Idle → Windup → Strike → Recover) という 2 階建ての状態機械。</desc>
+  <defs>
+    <marker id="sc-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--c-accent)"></path>
+    </marker>
+  </defs>
+<p><text x="20" y="22" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">外側: SceneRouter</text></p>
+<p><rect x="20" y="36" width="140" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="90" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Title</text>
+<text x="90" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">push</text></p>
+<p><rect x="200" y="36" width="140" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="270" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Menu</text>
+<text x="270" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">replace</text></p>
+<p><rect x="380" y="36" width="140" height="50" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="450" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">Battle</text>
+<text x="450" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">replace</text></p>
+<p><rect x="560" y="36" width="140" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="630" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Result</text>
+<text x="630" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">push</text></p>
+<p><line x1="160" y1="61" x2="200" y2="61" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<line x1="340" y1="61" x2="380" y2="61" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<line x1="520" y1="61" x2="560" y2="61" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line></p>
+<p><text x="20" y="120" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">内側: Battle 内 StateMachine&lt;AttackPhase&gt;</text></p>
+<p><rect x="20" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="90" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Idle</text>
+<text x="90" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">wait input</text></p>
+<p><rect x="200" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="270" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Windup</text>
+<text x="270" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">0.2s</text></p>
+<p><rect x="380" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="450" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Strike</text>
+<text x="450" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">hitbox on</text></p>
+<p><rect x="560" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="630" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Recover</text>
+<text x="630" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">→ Idle</text></p>
+<p><line x1="160" y1="161" x2="200" y2="161" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<line x1="340" y1="161" x2="380" y2="161" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<line x1="520" y1="161" x2="560" y2="161" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<path d="M 630 186 Q 630 220 90 220 Q 90 200 90 186" stroke="var(--c-accent)" stroke-width="2" fill="none" marker-end="url(#sc-arr)"></path>
+</svg></p>
+<figcaption>図: 外側のシーンと内側のフェーズは、両方とも C++ の素直な enum + 関数で書ける。</figcaption>
+</figure>
 <h2 id="シーンルーター">シーンルーター</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/scene/SceneRouter.hpp&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp"></span>

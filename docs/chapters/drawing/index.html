@@ -393,6 +393,36 @@
 <li><strong>CEF (HTML/CSS)</strong> — UI レイアウト、グラデーション、<code>@keyframes</code> を使ったアニメーションは HTML 側で書きます。RPG のメニュー、シミュレーションのパネル、アドベンチャーのダイアログなど、見た目の凝った静的〜セミアニメ要素に向いています。</li>
 </ul>
 <p>ジャンルを問わず、<strong>毎フレーム動く実体は C++</strong>、<strong>綺麗に組み上げた UI は CEF</strong> がデフォルトの分担です。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 260" role="img" aria-labelledby="ch-draw-title ch-draw-desc" class="arch-svg">
+  <title id="ch-draw-title">描画レイヤーの分担</title>
+  <desc id="ch-draw-desc">C++ Screen API は Native GPU backend を通り、CEF DOM は browser compositor を通って、最終的に同じ画面に合成される。</desc>
+  <defs>
+    <marker id="dr-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--c-accent)"></path>
+    </marker>
+  </defs>
+<p><rect x="40" y="20" width="280" height="60" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="180" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="13" font-weight="700" fill="var(--c-fg)">C++ Screen API</text>
+<text x="180" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">drawRect / drawCircle / drawSprite</text></p>
+<p><rect x="400" y="20" width="280" height="60" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="540" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="13" font-weight="700" fill="var(--c-accent-on-soft)">CEF (HTML / CSS / @keyframes)</text>
+<text x="540" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">div / gradient / animation</text></p>
+<p><rect x="40" y="110" width="280" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="180" y="132" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Native GPU backend</text>
+<text x="180" y="150" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">DX12 / Vulkan / OpenGL</text></p>
+<p><rect x="400" y="110" width="280" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="540" y="132" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">CEF off-screen render</text>
+<text x="540" y="150" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">Chromium compositor → texture</text></p>
+<p><rect x="180" y="200" width="360" height="40" rx="6" fill="var(--c-fg)" opacity="0.85"></rect>
+<text x="360" y="225" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-bg)">画面 (合成)</text></p>
+<p><line x1="180" y1="80" x2="180" y2="110" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#dr-arr)"></line>
+<line x1="540" y1="80" x2="540" y2="110" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#dr-arr)"></line>
+<line x1="180" y1="160" x2="280" y2="200" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#dr-arr)"></line>
+<line x1="540" y1="160" x2="440" y2="200" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#dr-arr)"></line>
+</svg></p>
+<figcaption>図: 描画は 2 つの出口を持ち、Native と CEF の両方を最後に合成して画面に出す。</figcaption>
+</figure>
 <h2 id="c-で図形を描く-最短">C++ で図形を描く (最短)</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp"></span>
@@ -431,7 +461,7 @@
 <ul>
 <li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/hello_sprite/">Hello Sprite</a> — C++ の図形 API だけで 2D ゲームの 1 シーンを描く最小例</li>
 <li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/animated_sprite/">Animated Sprite</a> — CSS の <code>@keyframes</code> / <code>cubic-bezier</code> / <code>conic-gradient</code> を使った CEF ショーケース</li>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/parametric_portrait/">Parametric Portrait</a> — 同じテンプレに CSS パラメータを差し替えてバリエーションを作る</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/breakout/">Breakout</a> — <code>Screen::drawRect</code> だけで作るブロック崩しのコアループ</li>
 <li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/scene_transition/">Scene Transition</a> — CSS の <code>opacity</code> でクロスフェードする最小デモ</li>
 </ul>
 <h2 id="関連-api">関連 API</h2>

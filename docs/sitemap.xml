@@ -5,8 +5,6 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/adr/0001-cpp-gameplay-cef-view-only/</loc>
     <lastmod>2026-05-14T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/</loc>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/adr/0002-remove-lua-scripting/</loc>
     <lastmod>2026-05-14T00:00:00+00:00</lastmod>
   </url><url>
@@ -33,6 +31,8 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/release-notes/2026-05-15/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru/</loc>
@@ -51,6 +51,8 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/release-notes/2026-05-04/</loc>
     <lastmod>2026-05-04T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/02-action-prototype/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/bridge-api/</loc>
   </url><url>
@@ -74,6 +76,8 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/release-notes/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/03-save-load/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/</loc>
   </url><url>
@@ -133,9 +137,6 @@
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/parametric_portrait/</loc>
-    <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/</loc>
   </url><url>

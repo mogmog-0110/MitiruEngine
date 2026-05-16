@@ -397,6 +397,45 @@
 <li>C++ 側は <code>BridgeActionRouter</code> で受けて、シーンの状態を更新する</li>
 </ul>
 <p>JS 側にゲームロジックを書かないので、入力の解釈はどんなジャンルでも 1 か所 (C++) にまとまります。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" role="img" aria-labelledby="ch-input-title ch-input-desc" class="arch-svg">
+  <title id="ch-input-title">入力フロー</title>
+  <desc id="ch-input-desc">device → InputMapper → Action enum → ゲームロジック という流れ。CEF からの UI イベントは cefQuery 経由で同じパイプに合流する。</desc>
+  <defs>
+    <marker id="in-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--c-accent)"></path>
+    </marker>
+  </defs>
+<p><rect x="20" y="20" width="140" height="60" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="90" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Device</text>
+<text x="90" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">key / mouse / pad</text></p>
+<p><rect x="200" y="20" width="160" height="60" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="280" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">InputMapper (C++)</text>
+<text x="280" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">bindKey / isDown / wasPressed</text></p>
+<p><rect x="400" y="20" width="160" height="60" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="480" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Action enum</text>
+<text x="480" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">Jump / Fire / Pause</text></p>
+<p><rect x="600" y="20" width="140" height="60" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="670" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Game logic</text>
+<text x="670" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">update(dt)</text></p>
+<p><rect x="20" y="130" width="140" height="50" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="90" y="152" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">HTML button</text>
+<text x="90" y="168" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">UI クリック</text></p>
+<p><rect x="200" y="130" width="160" height="50" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="280" y="152" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">window.cefQuery</text>
+<text x="280" y="168" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">ui|pause-pressed</text></p>
+<p><rect x="400" y="130" width="160" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="480" y="152" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">BridgeActionRouter</text>
+<text x="480" y="168" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">registerHandler</text></p>
+<p><line x1="160" y1="50" x2="200" y2="50" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#in-arr)"></line>
+<line x1="360" y1="50" x2="400" y2="50" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#in-arr)"></line>
+<line x1="560" y1="50" x2="600" y2="50" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#in-arr)"></line></p>
+<p><line x1="160" y1="155" x2="200" y2="155" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#in-arr)"></line>
+<line x1="360" y1="155" x2="400" y2="155" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#in-arr)"></line>
+<line x1="560" y1="155" x2="640" y2="90" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#in-arr)"></line>
+</svg></p>
+<figcaption>図: device 入力と UI クリックは別経路で来るが、最終的には C++ 側の Game logic に合流する。</figcaption>
+</figure>
 <h2 id="c-で-action-に束ねる">C++ で Action に束ねる</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/input/InputMapper.hpp&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/input/BridgeActionRouter.hpp&gt;</span><span class="cp">

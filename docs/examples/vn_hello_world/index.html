@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="背景・キャラ・名前枠つきダイアログ・選択肢を、CEF と CSS の図形だけで描く 1 フレームのデモ。">
+<meta name="description" content="ダイアログ枠 &#43; 選択肢 &#43; 立ち絵プレースホルダの 1 フレーム UI を、CEF と HTML/CSS で組む最小デモ。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="Dialog Scene Hello World | MitiruEngine">
-<meta property="og:description" content="背景・キャラ・名前枠つきダイアログ・選択肢を、CEF と CSS の図形だけで描く 1 フレームのデモ。">
+<meta property="og:description" content="ダイアログ枠 &#43; 選択肢 &#43; 立ち絵プレースホルダの 1 フレーム UI を、CEF と HTML/CSS で組む最小デモ。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Dialog Scene Hello World | MitiruEngine">
-<meta name="twitter:description" content="背景・キャラ・名前枠つきダイアログ・選択肢を、CEF と CSS の図形だけで描く 1 フレームのデモ。">
+<meta name="twitter:description" content="ダイアログ枠 &#43; 選択肢 &#43; 立ち絵プレースホルダの 1 フレーム UI を、CEF と HTML/CSS で組む最小デモ。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -397,7 +397,7 @@
        <span class="example-detail__kind example-detail__kind--cef">cef</span>
     </p>
     <h1>Dialog Scene Hello World</h1>
-    <p class="example-detail__lede">背景・キャラ・名前枠つきダイアログ・選択肢を、CEF と CSS の図形だけで描く 1 フレームのデモ。</p>
+    <p class="example-detail__lede">ダイアログ枠 &#43; 選択肢 &#43; 立ち絵プレースホルダの 1 フレーム UI を、CEF と HTML/CSS で組む最小デモ。</p>
   </header>
 
   <figure class="example-detail__shot">
@@ -415,13 +415,13 @@
   
 
   <div class="example-detail__body">
-    <p>2D ゲームでよく出てくる「背景 + キャラ + ダイアログ + 選択肢」の 1 フレームを、CEF と HTML/CSS だけで作った最小デモです。アクション、RPG、アドベンチャー、シミュレーション ── どんなジャンルにも出てくる UI 要素を、画像ファイルを 1 つも使わず CSS の図形だけで描いています。</p>
-<p>C++ 側は Engine を起動して <code>scene.html</code> を読み込むだけで、見た目のすべては HTML/CSS に閉じています。</p>
+    <p>2D ゲームでよく出てくる「ダイアログ枠 + 名前タグ + 選択肢」の 1 フレーム UI を、CEF と HTML/CSS で組んだ最小デモです。アクション、RPG、シミュレーション、アドベンチャー ── ジャンルを問わず登場する UI 部品の最小構成を、画像アセットなしでそのまま動かせる形にまとめています。</p>
+<p>立ち絵や背景は具体的な絵を描かず、点線枠のプレースホルダにしています。実プロジェクトでは該当要素を <code>&lt;img src=&quot;assets/character.png&quot;&gt;</code> などに差し替えれば、そのまま製品 UI として使えます。C++ 側は Engine を起動して <code>scene.html</code> を読み込むだけで、見た目のレイアウトは HTML/CSS に閉じています。</p>
 <h2 id="何を見せたいか">何を見せたいか</h2>
 <ul>
-<li>会話シーンの 1 画面が、CEF だけでここまで作れる</li>
-<li>背景 (空・雲・学校・木・道)、立ち絵、ダイアログ、選択肢、シーンタグ ── すべて CSS の図形と背景グラデーション</li>
-<li>画像アセットなしでもプロトタイプができる</li>
+<li>ダイアログ枠・名前タグ・選択肢・シーンタグの最小マークアップ</li>
+<li>背景 / 立ち絵を「画像差し替え前提のプレースホルダ」として配置する組み方</li>
+<li>CSS の <code>backdrop-filter</code> / <code>linear-gradient</code> / <code>box-shadow</code> だけで、UI に必要な深さと層を作れること</li>
 </ul>
 <h2 id="応用">応用</h2>
 <p>ここから次にやるのは、</p>

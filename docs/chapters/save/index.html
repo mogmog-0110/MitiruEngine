@@ -395,6 +395,40 @@
 <li>旧 → 新の互換性は <code>MigrationChain</code> で一段ずつ書く</li>
 </ul>
 <p>これでアップデートで型が変わっても、古いセーブを壊さずに読めます。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 240" role="img" aria-labelledby="ch-save-title ch-save-desc" class="arch-svg">
+  <title id="ch-save-title">スキーマ進化と MigrationChain</title>
+  <desc id="ch-save-desc">SaveV1 の JSON blob は MigrationChain によって V1 → V2 → V3 と段階的に変換され、最終的に現行 SaveSchema に流し込まれる。</desc>
+  <defs>
+    <marker id="sv-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--c-accent)"></path>
+    </marker>
+  </defs>
+<p><rect x="20" y="30" width="140" height="80" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="90" y="54" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">SaveV1 blob</text>
+<text x="90" y="72" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">playerName / hp</text>
+<text x="90" y="86" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">gold / chapterIndex</text>
+<text x="90" y="102" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">version: 1</text></p>
+<p><rect x="220" y="30" width="140" height="80" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="290" y="54" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">migrate 1 → 2</text>
+<text x="290" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">+ silver = 0</text>
+<text x="290" y="90" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">+ tutorialDone = false</text></p>
+<p><rect x="420" y="30" width="140" height="80" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="490" y="54" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">migrate 2 → 3</text>
+<text x="490" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">(将来の変更)</text></p>
+<p><rect x="600" y="30" width="140" height="80" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="670" y="54" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">現行 SaveSchema&lt;T&gt;</text>
+<text x="670" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">deserialize() →</text>
+<text x="670" y="90" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">T struct</text></p>
+<p><line x1="160" y1="70" x2="220" y2="70" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sv-arr)"></line>
+<line x1="360" y1="70" x2="420" y2="70" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sv-arr)"></line>
+<line x1="560" y1="70" x2="600" y2="70" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sv-arr)"></line></p>
+<p><rect x="20" y="160" width="720" height="60" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)" stroke-dasharray="4 4"></rect>
+<text x="40" y="184" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">SchemaValidator</text>
+<text x="40" y="204" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">マイグレーション後に整合性を検査 (フィールド不足 / 型不一致を検出)。失敗すれば deserialize は std::nullopt を返す。</text>
+</svg></p>
+<figcaption>図: 旧バージョンのセーブは MigrationChain で順番に新しい形に変換され、SchemaValidator を通って現行 struct に入る。</figcaption>
+</figure>
 <h2 id="セーブの型を書く">セーブの型を書く</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/data/SaveSchema.hpp&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp"></span>

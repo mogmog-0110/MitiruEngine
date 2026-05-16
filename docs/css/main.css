@@ -68,15 +68,16 @@
   --c-footer-link: #9fc3ff;
 
   /* ----- shape & layout ----- */
-  --r-max-width: 1080px;
+  --r-max-width: 1140px;
   --r-pad: 1.5rem;
   --r-radius: 8px;
+  --r-radius-lg: 12px;
   --r-tap: 44px;
 
-  /* ----- typography ----- */
-  --font-sans: "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
-  --font-jp: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  /* ----- typography (Siv3D / ebiten 風: system font 優先で軽く・読みやすく) ----- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", Roboto, "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Mono", Menlo, Consolas, ui-monospace, monospace;
+  --font-jp: -apple-system, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "Segoe UI", sans-serif;
 }
 
 /* ----- dark mode: auto-follow OS, unless [data-theme] is set on <html> ----- */
@@ -1868,7 +1869,7 @@ body.search-open {
 .home-hero {
   position: relative;
   overflow: hidden;
-  padding: 5rem 0 6.5rem;
+  padding: clamp(3.5rem, 8vw, 5.5rem) 0 clamp(3rem, 7vw, 4.5rem);
   text-align: center;
   color: var(--c-fg);
   isolation: isolate;
@@ -1879,18 +1880,16 @@ body.search-open {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 18% 10%, rgba(99, 102, 241, 0.22), transparent 45%),
-    radial-gradient(circle at 84% 18%, rgba(236, 72, 153, 0.18), transparent 50%),
-    radial-gradient(circle at 50% 110%, rgba(14, 165, 233, 0.20), transparent 60%),
-    linear-gradient(180deg, #fafbff 0%, #f1f5fb 100%);
+    radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.08), transparent 60%),
+    linear-gradient(180deg, var(--c-bg-hero-top) 0%, var(--c-bg) 100%);
+  border-bottom: 1px solid var(--c-rule);
 }
 
 [data-theme="dark"] .home-hero__bg {
   background:
-    radial-gradient(circle at 18% 10%, rgba(99, 102, 241, 0.28), transparent 45%),
-    radial-gradient(circle at 84% 18%, rgba(236, 72, 153, 0.20), transparent 50%),
-    radial-gradient(circle at 50% 110%, rgba(14, 165, 233, 0.22), transparent 60%),
-    linear-gradient(180deg, #0c1020 0%, #131a2d 100%);
+    radial-gradient(ellipse at 50% 0%, rgba(96, 165, 250, 0.10), transparent 60%),
+    linear-gradient(180deg, var(--c-bg-hero-top) 0%, var(--c-bg) 100%);
+  border-bottom: 1px solid var(--c-rule);
 }
 
 .home-hero__inner {
@@ -1899,21 +1898,15 @@ body.search-open {
 
 .home-hero__title {
   margin: 0 auto;
-  font-size: clamp(3.5rem, 11vw, 8rem);
+  font-size: clamp(2.6rem, 8vw, 5.5rem);
   font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.0;
-  background: linear-gradient(135deg, #1c2330 0%, #2563eb 45%, #ec4899 100%);
-  -webkit-background-clip: text;
-          background-clip: text;
-  color: transparent;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: var(--c-fg);
 }
 
 [data-theme="dark"] .home-hero__title {
-  background: linear-gradient(135deg, #f0f3f9 0%, #60a5fa 45%, #f9a8d4 100%);
-  -webkit-background-clip: text;
-          background-clip: text;
+  color: var(--c-fg);
 }
 
 .home-hero__sub {
@@ -1939,15 +1932,11 @@ body.search-open {
   box-shadow: var(--c-shadow);
 }
 .btn--lg.btn--primary {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.25) inset,
-    0 12px 28px rgba(37, 99, 235, 0.28);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.18);
 }
 .btn--lg.btn--primary:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.3) inset,
-    0 16px 32px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.24);
 }
 .btn--ghost {
   background: transparent;
@@ -2296,4 +2285,362 @@ body.search-open {
   .chapter-article__nav { grid-template-columns: 1fr; }
   .chapter-article__nav-next { text-align: left; }
   .chapter-article__nav-next a { align-items: flex-start; }
+}
+
+/* ============================================================
+   Round 37 — Siv3D / ebiten 風リバンプ
+   - layout の取りこぼし class (site-main / site-footer__col 等)
+   - typography 微調整
+   - 余白・読みやすさ優先
+   ============================================================ */
+
+/* ── site-main: footer を画面下に押し下げる sticky 構造 ── */
+.site-main {
+  min-height: 60vh;
+  display: block;
+}
+
+/* ── page-list の intro ブロック ── */
+.page-list__intro {
+  color: var(--c-fg-soft);
+  max-width: 70ch;
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.page-list__intro p { margin: 0 0 0.8rem; }
+.page-list__intro p:last-child { margin-bottom: 0; }
+
+/* ── footer 3-col layout (現状 stack していて寂しいので grid 化) ── */
+.site-footer {
+  background: var(--c-footer-bg);
+  color: var(--c-footer-fg);
+  padding: 3rem 0 2.4rem;
+  margin-top: 4rem;
+}
+.site-footer__inner {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 2.2rem;
+  align-items: start;
+}
+.site-footer__col {
+  min-width: 0;
+}
+.site-footer__col p {
+  color: var(--c-footer-fg);
+  line-height: 1.7;
+  margin: 0 0 0.4rem;
+  font-size: 0.92rem;
+}
+.site-footer__col p a { color: var(--c-footer-link); }
+.site-footer__col p a:hover { color: var(--c-footer-fg-strong); }
+
+@media (max-width: 720px) {
+  .site-footer__inner {
+    grid-template-columns: 1fr;
+    gap: 1.6rem;
+  }
+}
+
+/* ── api-page article (api-sidebar + 本文 + api-toc の grid) ── */
+.api-page__article {
+  min-width: 0;
+}
+.api-page__article > header {
+  margin: 0 0 1.6rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--c-rule);
+}
+.api-page__article > header h1 {
+  margin: 0 0 0.6rem;
+  font-size: 1.85rem;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+.api-page__description {
+  color: var(--c-fg-soft);
+  font-size: 1.02rem;
+  line-height: 1.7;
+  margin: 0;
+  max-width: 72ch;
+}
+.api-page__content {
+  font-size: 0.97rem;
+  line-height: 1.75;
+}
+.api-page__content h2 {
+  margin: 2rem 0 0.8rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--c-rule);
+  font-size: 1.25rem;
+}
+.api-page__content h3 {
+  margin: 1.5rem 0 0.6rem;
+  font-size: 1.05rem;
+}
+.api-page__content pre {
+  background: var(--c-bg-code);
+  color: var(--c-code-fg);
+  padding: 1rem 1.2rem;
+  border-radius: var(--r-radius);
+  overflow-x: auto;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+.api-page__content code {
+  background: var(--c-bg-alt);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  border: 1px solid var(--c-rule);
+}
+.api-page__content pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.api-page__content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2rem 0;
+  font-size: 0.92rem;
+}
+.api-page__content th,
+.api-page__content td {
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--c-rule);
+  vertical-align: top;
+  text-align: left;
+}
+.api-page__content th {
+  background: var(--c-bg-alt);
+  font-weight: 700;
+}
+.api-page__content ul,
+.api-page__content ol {
+  padding-left: 1.4rem;
+}
+.api-page__content li { margin: 0.2rem 0; }
+
+/* adr-page__article inherits api-page__article (already styled). 個別の余白だけ */
+.adr-page__article > header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding-bottom: 1.2rem;
+}
+.adr-page__article > header h1 { margin: 0; }
+
+/* ── api-page__body は古い list view 用に残置 ── */
+.api-page__body {
+  font-size: 0.97rem;
+  line-height: 1.7;
+}
+
+/* ── typography 微調整 (Siv3D / ebiten 風: ふんわり大きすぎない見出し) ── */
+.page-article h1,
+.page-list h1,
+.example-detail h1,
+.example-gallery__header h1,
+.chapter-list__header h1,
+.chapter-article__header h1,
+.api-page__article > header h1 {
+  font-weight: 700;
+}
+
+/* 全体の hero / heading: gradient text やめて落ち着いた表示に */
+body {
+  font-feature-settings: "palt" 1, "kern" 1;
+}
+
+/* link の下線を hover 時のみ控えめに */
+.page-article__body a,
+.chapter-article__body a,
+.example-detail__body a,
+.api-page__content a {
+  color: var(--c-accent);
+  text-decoration: underline;
+  text-decoration-color: var(--c-accent-soft);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 120ms ease;
+}
+.page-article__body a:hover,
+.chapter-article__body a:hover,
+.example-detail__body a:hover,
+.api-page__content a:hover {
+  text-decoration-color: var(--c-accent);
+}
+
+/* ── code / pre の見た目を統一 (Siv3D の落ち着いた dark block 風) ── */
+.page-article__body pre,
+.chapter-article__body pre,
+.example-detail__body pre,
+.api-page__content pre {
+  border: 1px solid #1f2937;
+  box-shadow: 0 1px 2px rgba(20, 25, 35, 0.04);
+}
+[data-theme="dark"] .page-article__body pre,
+[data-theme="dark"] .chapter-article__body pre,
+[data-theme="dark"] .example-detail__body pre,
+[data-theme="dark"] .api-page__content pre {
+  border-color: #1a2230;
+}
+
+/* ── three-min の code block: 行間 / フォントサイズ統一 ── */
+.three-min__code .highlight,
+.three-min__code .chroma {
+  margin: 0;
+  background: var(--c-bg-code) !important;
+}
+
+/* ── inline code: 隣の文字とぶつかり気味を解消 ── */
+:not(pre) > code {
+  white-space: nowrap;
+}
+
+/* ── feature-card の絵文字アイコンを少し小さく / 余白整理 ── */
+.feature-card__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  margin-bottom: 0.7rem;
+  opacity: 0.92;
+}
+
+/* ── home の section 余白を画面サイズに応じて調整 ── */
+.three-min,
+.position,
+.features,
+.showcase {
+  padding: clamp(3rem, 6vw, 5rem) 0;
+}
+
+/* ── section-title: アクセントバーを左寄せに (Siv3D 風) ── */
+.section-title {
+  text-align: center;
+  position: relative;
+}
+.section-title::after {
+  margin: 0.55rem auto 0;
+}
+
+/* ── tutorials-grid の grid-template を 3 列でも崩れないように ── */
+@media (min-width: 1024px) {
+  .tutorials-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── chapter-list の番号 (counter) を mono 大きめに ── */
+.chapter-list__link::before {
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  align-self: start;
+  padding-top: 0.05rem;
+}
+
+/* ── chapter-list 全体: hover で control accent を強く出さず、subtle に ── */
+.chapter-list__link:hover {
+  border-color: var(--c-accent);
+}
+
+/* ── architecture-page の SVG figure を中央寄せ + soft shadow ── */
+.architecture-page .arch-figure {
+  box-shadow: var(--c-shadow);
+}
+
+/* ── examples gallery: title の前に小さなアクセント色のラベル無し時の余白 ── */
+.example-gallery__header h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+}
+
+/* ── visited link を消す (Siv3D 風: 訪問済み色は使わない) ── */
+.example-card:visited,
+.chapter-list__link:visited,
+.guides-list__link:visited,
+.three-min__step:visited,
+.tutorial-card:visited,
+.showcase-card:visited {
+  color: inherit;
+}
+
+/* ── scrollbar styling (subtle, technical-feel) ── */
+* {
+  scrollbar-color: var(--c-border) transparent;
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--c-border);
+  border-radius: 5px;
+  border: 2px solid var(--c-bg);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--c-fg-mute);
+}
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ── selection color (subtle accent) ── */
+::selection {
+  background: var(--c-accent-soft);
+  color: var(--c-accent-on-soft);
+}
+
+/* ── focus-visible (a11y polish) ── */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ── article body: 段落の最大幅で読みやすさを担保 ── */
+.page-article__body > p,
+.chapter-article__body > p,
+.example-detail__body > p,
+.api-page__content > p {
+  max-width: 72ch;
+}
+
+/* ── mobile polish: home-hero タイトル / CTA をもう一段小さく ── */
+@media (max-width: 640px) {
+  .home-hero {
+    padding: 2.8rem 0 2.5rem;
+  }
+  .home-hero__title {
+    font-size: clamp(2rem, 9vw, 2.8rem);
+    letter-spacing: -0.025em;
+  }
+  .home-hero__sub {
+    font-size: 0.97rem;
+    margin: 1rem auto 1.6rem;
+  }
+  .home-hero__cta .btn--lg {
+    padding: 0.7rem 1.2rem;
+    font-size: 0.95rem;
+  }
+  .home-hero__cta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  .home-hero__cta .btn { justify-content: center; }
+
+  .three-min__nextsteps,
+  .position__grid,
+  .features__grid,
+  .showcase-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .api-page__article > header h1 { font-size: 1.4rem; }
+}
+
+/* ── tablet (641-1023): 2 列に ── */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .three-min__nextsteps,
+  .position__grid,
+  .features__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

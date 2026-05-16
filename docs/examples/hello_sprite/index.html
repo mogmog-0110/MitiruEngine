@@ -421,18 +421,19 @@
 画像もフォントも要らず、図形 API だけで 2D ゲームの 1 シーンを描いています。</p>
 <h2 id="画面に出るもの">画面に出るもの</h2>
 <ul>
-<li>上 65% が空 (青)、下 35% が草地 (緑)。</li>
+<li>上 65% が空 (グラデーション)、下 35% が草地 (緑)。</li>
 <li>右上に太陽。ゆっくり上下に揺れる。</li>
 <li>雲が画面を流れていく。</li>
-<li>草地の上にキャラクター風シルエット (頭 + 制服色の体)。</li>
-<li>下にダイアログボックス。中の文字は帯で表現。</li>
-<li>左上の小さな赤いタグが話者名のつもり。</li>
+<li>中央付近に「P」と書かれた青い矩形プレースホルダ ── プレイヤースプライトの仮置きです。実プロジェクトでは画像テクスチャに差し替える想定。</li>
+<li>右側に赤い円形の敵プレースホルダ。</li>
+<li>上端に HP バーとスコアの HUD パネル。</li>
+<li>左下に小さな STAGE タグ。</li>
 </ul>
 <h2 id="つくりの要点">つくりの要点</h2>
 <ul>
 <li><code>mitiru::Game</code> を継承して <code>layout()</code> / <code>update()</code> / <code>draw()</code> の 3 つだけ書きます。</li>
-<li>状態は <code>m_time</code>(経過秒) ひとつだけ。雲も太陽もキャラも、これを <code>sin()</code> に渡して動かしています。</li>
-<li>画像アセットを使っていないので、ビルドして実行すればすぐに何かが見えます。</li>
+<li>状態は <code>m_time</code>(経過秒) ひとつだけ。雲も太陽もプレースホルダも、これを <code>sin()</code> に渡して動かしています。</li>
+<li>画像アセットを使っていないので、ビルドして実行すればすぐに何かが見えます。実物のスプライトを描く準備として、配置と HUD だけ先に確認できる形にしています。</li>
 </ul>
 <h2 id="ビルドして動かす">ビルドして動かす</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target mitiru_hello_sprite

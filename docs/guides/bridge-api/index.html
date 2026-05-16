@@ -614,7 +614,7 @@ ui.button             // ボタンクリック通知
 ui.menu.select        // メニュー項目選択通知
 ui.slider.change      // スライダー値変更通知
 ui.dialog.close       // ダイアログ閉じる操作通知
-ui.option.select      // 選択肢 (ノベル等) 選択通知
+ui.option.select      // 選択肢 (ダイアログ等) 選択通知
 </code></pre><p><strong>payload スキーマ</strong>: JSON。 <code>|</code> セパレータは低レベル transport の実装詳細であり、
 新規 handler は JSON payload を使うこと。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsonc" data-lang="jsonc"><span class="line"><span class="cl"><span class="c1">// input.pointer 例
@@ -655,7 +655,7 @@ ui.option.select      // 選択肢 (ノベル等) 選択通知
       </tr>
       <tr>
           <td><code>view.dialog.*</code></td>
-          <td>ダイアログ / ノベル表示制御</td>
+          <td>ダイアログ表示制御 (会話 / カットシーン等)</td>
           <td><code>view.dialog.show</code>, <code>view.dialog.speaker</code>, <code>view.dialog.text</code></td>
       </tr>
       <tr>

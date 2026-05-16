@@ -354,51 +354,64 @@
   <header class="page-list__header">
     <h1>チュートリアル</h1>
     <div class="page-list__intro"><p>「動かすところまでは <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> で済んだので、何かつくってみたい」というひと向けです。</p>
-<p>最初の一本だけ用意してあります。15 〜 20 分くらいで、キャラと台詞が出る 1 シーンが動くところまで行きます。順番に読み進めてください。あくまでエンジンの使いかたを覚えるための小さな例で、特定ジャンルに寄せた内容ではありません。</p>
+<p>短めのチュートリアルを 3 本用意しています。<strong>順番に縛られません</strong>。あなたが作りたいゲームに近いものから始めて OK です。アクションが作りたいなら <strong>02</strong> から、セーブだけ気になるなら <strong>03</strong> から読んでも問題ありません。</p>
+<p>それぞれ 15 〜 30 分くらいで、手元で動くところまで行きます。エンジンの考えかた (C++ で状態を持つ / HTML で見た目をつくる / 必要なときだけ薄い信号でつなぐ) はどのレッスンでも同じです。</p>
 <h2 id="レッスン一覧">レッスン一覧</h2>
 <div class="tutorials-grid">
 <a class="tutorial-card" href="01-hello-novel/">
   <span class="tutorial-card__num">01</span>
-  <h3>会話シーンのワンシーンを動かす</h3>
+  <h3>1 シーンに文字を出す</h3>
   <p class="tutorial-card__time">15 〜 20 分</p>
   <p class="tutorial-card__desc">
-    背景・キャラ・台詞ボックスを出して、クリックで先に進む。会話シーンの 1 画面 ──
-    アクションのカットシーン、RPG の村人会話、シミュレーションのイベントなど、
-    どんなジャンルでも出てくる UI です。C++ 側と HTML 側がどう連携するかを
-    実際に書きながら覚えます。
+    背景の上にテキスト UI を出して、クリックで次のメッセージへ進む。
+    アクションのカットシーン、RPG の村人会話、シミュレーションのイベント通知、
+    シューティング合間の連絡まで、どのジャンルでも出てくる「画面に何かを出す」の基礎です。
   </p>
 </a>
-<div class="tutorial-card tutorial-card--coming">
+<a class="tutorial-card" href="02-action-prototype/">
   <span class="tutorial-card__num">02</span>
   <h3>2D アクションのプロトタイプ</h3>
-  <p class="tutorial-card__time">準備中</p>
+  <p class="tutorial-card__time">20 〜 30 分</p>
   <p class="tutorial-card__desc">
-    キャラを矢印キーで動かす。シンプルな当たり判定を入れる。次に書きます。
+    矩形プレイヤーを矢印キー / WASD で動かす。壁との当たり判定と、
+    画面上の小さな目標 (拾うと得点) を入れる。
+    `mitiru.input` のアクションマップを使ったキー入力と canvas 描画の基本が分かります。
   </p>
-</div>
-<div class="tutorial-card tutorial-card--coming">
+</a>
+<a class="tutorial-card" href="03-save-load/">
   <span class="tutorial-card__num">03</span>
   <h3>セーブとロード</h3>
-  <p class="tutorial-card__time">準備中</p>
+  <p class="tutorial-card__time">20 〜 30 分</p>
   <p class="tutorial-card__desc">
-    JSON でセーブデータを書き出して、次の起動で復元。スキーマを変えても古いセーブが
-    読めるしくみを紹介します。
+    HP / スコア / 進行度を JSON に書き出して、次の起動で復元。
+    `SaveSchema` と `MigrationChain` を使うと、後でセーブの形を変えても
+    古いセーブが壊れずに読めます。ジャンルを問わず必要になる仕組みです。
   </p>
+</a>
 </div>
-</div>
-<h2 id="こういう順番がおすすめ">こういう順番がおすすめ</h2>
-<ol>
-<li>まず <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> で動く状態をつくる。</li>
-<li>ここの <strong>01</strong> をなぞって、何かが動く感じを掴む。</li>
-<li>その後は <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧</a> からピンと来たものを動かして、<code>main.cpp</code> を読む。</li>
-<li>もっと深く知りたくなったら <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a> と <a href="https://mogmog-0110.github.io/MitiruEngine/adr/">設計の記録 (ADR)</a> へ。</li>
-</ol>
+<h2 id="どこから読めばいいか">どこから読めばいいか</h2>
+<ul>
+<li><strong>エンジンの考え方をひととおり知りたい</strong> ⇒ <strong>01 → 02 → 03</strong> の順で全部やるのがいちばん早いです。1 時間ちょっとで終わります。</li>
+<li><strong>作りたいゲームのジャンルが決まっている</strong> ⇒ 一番近いものから始めて OK。たとえばパズルやアクションなら <strong>02</strong> から。ストーリーや会話を見せたいなら <strong>01</strong> から。</li>
+<li><strong>エンジン自体に興味がある</strong> ⇒ チュートリアルは飛ばして <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧</a> と <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>・<a href="https://mogmog-0110.github.io/MitiruEngine/adr/">ADR</a> を直接読むのもありです。</li>
+</ul>
 <p>途中で「これ違くない?」「説明が足りない」と思ったら、Issue で教えてください。</p>
+<h2 id="関連ページ">関連ページ</h2>
+<ul>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> — ビルドと最初の実行</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧</a> — 完成済みの小さな実例</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a> — クラスと関数の一覧</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/adr/">設計の記録 (ADR)</a> — なぜ今のかたちなのか</li>
+</ul>
 </div>
   </header>
   <ul class="page-list__items">
     
-      <li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/">01 会話シーンのワンシーンを動かす</a></li>
+      <li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/">01 1 シーンに文字を出す</a></li>
+    
+      <li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-action-prototype/">02 2D アクションのプロトタイプ</a></li>
+    
+      <li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/03-save-load/">03 セーブとロード</a></li>
     
   </ul>
 </section>

@@ -582,6 +582,184 @@ fill="var(--c-accent-on-soft)">JS Runtime (CEF 内)</text></p>
 </svg>
 <figcaption>図 2: C++ subsystem (約 44 ディレクトリ) と JS runtime (22 モジュール) の対応</figcaption>
 </figure>
+<h3 id="データフロー-入力--状態--描画">データフロー (入力 → 状態 → 描画)</h3>
+<p>入力 → C++ ロジック → 状態更新 → 描画、という 1 フレームの大まかな流れです。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 280" role="img" aria-labelledby="arch-flow-title arch-flow-desc" class="arch-svg">
+  <title id="arch-flow-title">1 フレームのデータフロー</title>
+  <desc id="arch-flow-desc">ユーザ入力が InputMapper を通って C++ のゲームロジックに渡り、状態が更新されたあと CEF / Native renderer の両出口から画面に出る流れ。</desc>
+  <defs>
+    <marker id="flow-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--c-accent)"></path>
+    </marker>
+  </defs>
+  <!-- Input devices -->
+<p><rect x="20" y="20" width="140" height="64" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="90" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">入力デバイス</text>
+<text x="90" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">Keyboard / Mouse</text>
+<text x="90" y="76" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">Gamepad / Touch</text></p>
+  <!-- InputMapper -->
+<p><rect x="200" y="20" width="140" height="64" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="270" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">InputMapper (C++)</text>
+<text x="270" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">raw → Action enum</text>
+<text x="270" y="76" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">Jump / Fire / Pause</text></p>
+  <!-- Game logic -->
+<p><rect x="380" y="20" width="160" height="64" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="460" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">ゲームロジック (C++)</text>
+<text x="460" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">SceneRouter / StateMachine</text>
+<text x="460" y="76" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">ECS / physics / AI</text></p>
+  <!-- State store -->
+<p><rect x="580" y="20" width="160" height="64" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="660" y="44" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">状態 (C++ 所有)</text>
+<text x="660" y="62" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">HP / score / scene</text>
+<text x="660" y="76" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">cef::StateStore</text></p>
+  <!-- Renderer split -->
+<p><rect x="200" y="170" width="220" height="72" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="310" y="194" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Native Renderer</text>
+<text x="310" y="212" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">Renderer2D / Renderer3D</text>
+<text x="310" y="226" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">DX12 / Vulkan / OpenGL</text></p>
+<p><rect x="460" y="170" width="220" height="72" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="570" y="194" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">CEF View (HTML/CSS)</text>
+<text x="570" y="212" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">HUD / menu / dialog</text>
+<text x="570" y="226" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">Mitiru.state.subscribe</text></p>
+  <!-- Screen -->
+<p><rect x="280" y="260" width="320" height="20" rx="4" fill="var(--c-fg)" opacity="0.85"></rect>
+<text x="440" y="275" text-anchor="middle" font-family="var(--font-sans)" font-size="11" font-weight="700" fill="var(--c-bg)">画面 (compositor 出力)</text></p>
+  <!-- Arrows (horizontal top row) -->
+<p><line x1="160" y1="52" x2="200" y2="52" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#flow-arr)"></line>
+<line x1="340" y1="52" x2="380" y2="52" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#flow-arr)"></line>
+<line x1="540" y1="52" x2="580" y2="52" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#flow-arr)"></line></p>
+  <!-- State → renderers -->
+<p><line x1="620" y1="84" x2="380" y2="170" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#flow-arr)"></line>
+<line x1="700" y1="84" x2="600" y2="170" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#flow-arr)"></line></p>
+  <!-- Renderers → screen -->
+<p><line x1="310" y1="242" x2="380" y2="260" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#flow-arr)"></line>
+<line x1="570" y1="242" x2="500" y2="260" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#flow-arr)"></line></p>
+<p><text x="148" y="130" font-family="var(--font-sans)" font-size="10" fill="var(--c-fg-soft)">毎フレーム (60Hz target)</text>
+</svg></p>
+<figcaption>図 3: 1 フレームのデータフロー。入力は C++ で意味を持ち、状態は C++ 側が所有し、描画は Native renderer と CEF view の 2 系統に分かれて compositor に合流する。</figcaption>
+</figure>
+<h3 id="ビルドパイプライン">ビルドパイプライン</h3>
+<p>ソースからユーザに渡る実行ファイル (+ CEF runtime 同梱) までの流れです。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 260" role="img" aria-labelledby="arch-build-title arch-build-desc" class="arch-svg">
+  <title id="arch-build-title">ビルドパイプライン</title>
+  <desc id="arch-build-desc">C++ ヘッダと HTML/CSS/JS の両入力を CMake が束ね、MSVC または Clang/GCC でコンパイルし、最終的に exe と CEF runtime 一式を同梱して配布する。</desc>
+  <defs>
+    <marker id="build-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--c-accent)"></path>
+    </marker>
+  </defs>
+  <!-- Source inputs -->
+<p><rect x="20" y="20" width="180" height="44" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="110" y="40" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">C++20 ヘッダ + .cpp</text>
+<text x="110" y="56" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">include/mitiru/ ~700 hpp</text></p>
+<p><rect x="20" y="80" width="180" height="44" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="110" y="100" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">HTML / CSS / JS</text>
+<text x="110" y="116" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">web/mitiru_runtime/ + assets</text></p>
+<p><rect x="20" y="140" width="180" height="44" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="110" y="160" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">3rd-party submodule</text>
+<text x="110" y="176" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">CEF / Jolt / sgc / stb 他</text></p>
+<p><rect x="20" y="200" width="180" height="44" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="110" y="220" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">JSON (content / save)</text>
+<text x="110" y="236" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">balance / i18n / scenario</text></p>
+  <!-- CMake -->
+<p><rect x="270" y="80" width="160" height="100" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="350" y="106" text-anchor="middle" font-family="var(--font-sans)" font-size="13" font-weight="700" fill="var(--c-fg)">CMake 3.21+</text>
+<text x="350" y="126" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">cmake &ndash;preset default</text>
+<text x="350" y="144" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">MITIRU_HEADER_ONLY=ON</text>
+<text x="350" y="162" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">MITIRU_DISABLE_CEF (opt)</text></p>
+  <!-- Compiler -->
+<p><rect x="500" y="80" width="120" height="100" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="560" y="106" text-anchor="middle" font-family="var(--font-sans)" font-size="13" font-weight="700" fill="var(--c-fg)">Compiler</text>
+<text x="560" y="126" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">MSVC (primary)</text>
+<text x="560" y="144" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">Clang / GCC</text>
+<text x="560" y="162" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">emcc (WebAssembly)</text></p>
+  <!-- Output -->
+<p><rect x="660" y="60" width="80" height="60" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="700" y="84" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">exe</text>
+<text x="700" y="102" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">ゲーム本体</text></p>
+<p><rect x="660" y="140" width="80" height="60" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="700" y="164" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">CEF runtime</text>
+<text x="700" y="182" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">libcef.dll 等</text></p>
+  <!-- Arrows: sources → CMake -->
+<p><line x1="200" y1="42" x2="270" y2="100" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#build-arr)"></line>
+<line x1="200" y1="102" x2="270" y2="120" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#build-arr)"></line>
+<line x1="200" y1="162" x2="270" y2="140" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#build-arr)"></line>
+<line x1="200" y1="222" x2="270" y2="160" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#build-arr)"></line></p>
+  <!-- CMake → compiler -->
+<p><line x1="430" y1="130" x2="500" y2="130" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#build-arr)"></line></p>
+  <!-- Compiler → outputs -->
+<p><line x1="620" y1="110" x2="660" y2="90" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#build-arr)"></line>
+<line x1="620" y1="160" x2="660" y2="170" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#build-arr)"></line></p>
+<p><text x="345" y="200" font-family="var(--font-sans)" font-size="10" fill="var(--c-fg-soft)">Header-only モードでは consumer 側で TU ごと inline</text>
+</svg></p>
+<figcaption>図 4: ビルドパイプライン。CMake が C++ / web / submodule / JSON を束ね、コンパイラを通って exe と CEF runtime 一式が出力される。配布は exe + 同梱 dll セット。</figcaption>
+</figure>
+<h3 id="cef-プロセスモデル-single-process-workaround-の位置">CEF プロセスモデル (single-process workaround の位置)</h3>
+<p>通常の CEF は複数プロセス構成ですが、本エンジンは現状 <code>--single-process</code> で 1 プロセスに集約しています (詳細は §5.3)。下図は両構成を並べたものです。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 320" role="img" aria-labelledby="arch-cef-title arch-cef-desc" class="arch-svg">
+  <title id="arch-cef-title">CEF プロセス構成: 通常 (multi-process) と現状 (single-process)</title>
+  <desc id="arch-cef-desc">通常 CEF は browser/renderer/gpu/utility/helper の複数プロセスに分離するが、MitiruEngine は現状 --single-process で 1 プロセスに集約している。</desc>
+  <defs>
+    <marker id="cef-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--c-accent)"></path>
+    </marker>
+  </defs>
+  <!-- Top: normal CEF -->
+<p><text x="20" y="24" font-family="var(--font-sans)" font-size="13" font-weight="700" fill="var(--c-fg)">通常の CEF (multi-process)</text></p>
+<p><rect x="20" y="36" width="160" height="100" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="100" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Browser (host)</text>
+<text x="100" y="78" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">Engine 本体</text>
+<text x="100" y="94" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">main thread</text>
+<text x="100" y="112" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">UI / IPC 集約</text></p>
+<p><rect x="200" y="36" width="120" height="44" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="260" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">Renderer</text>
+<text x="260" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">V8 / DOM / JS</text></p>
+<p><rect x="200" y="92" width="120" height="44" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="260" y="114" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">GPU process</text>
+<text x="260" y="130" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">accelerated compositor</text></p>
+<p><rect x="340" y="36" width="120" height="44" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="400" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Utility</text>
+<text x="400" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">network / audio</text></p>
+<p><rect x="340" y="92" width="120" height="44" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="400" y="114" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Helper / Plugin</text>
+<text x="400" y="130" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">subprocess.exe</text></p>
+  <!-- IPC arrows -->
+<p><line x1="180" y1="58" x2="200" y2="58" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#cef-arr)"></line>
+<line x1="180" y1="112" x2="200" y2="112" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#cef-arr)"></line>
+<line x1="320" y1="58" x2="340" y2="58" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#cef-arr)"></line>
+<line x1="320" y1="112" x2="340" y2="112" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#cef-arr)"></line></p>
+<p><text x="480" y="60" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">通信は IPC (Mojo)</text>
+<text x="480" y="78" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">GPU クラッシュは</text>
+<text x="480" y="94" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">browser を巻き込まない</text></p>
+  <!-- Divider -->
+<p><line x1="20" y1="160" x2="740" y2="160" stroke="var(--c-rule)" stroke-width="1" stroke-dasharray="4 4"></line></p>
+  <!-- Bottom: single-process -->
+<p><text x="20" y="186" font-family="var(--font-sans)" font-size="13" font-weight="700" fill="var(--c-fg)">MitiruEngine 現状: &ndash;single-process (workaround)</text></p>
+<p><rect x="20" y="200" width="500" height="100" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)" stroke-width="2"></rect>
+<text x="40" y="222" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">1 プロセスに集約</text></p>
+<p><rect x="40" y="234" width="120" height="56" rx="6" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="100" y="254" text-anchor="middle" font-family="var(--font-sans)" font-size="11" font-weight="700" fill="var(--c-fg)">Browser/Host</text>
+<text x="100" y="270" text-anchor="middle" font-family="var(--font-sans)" font-size="10" fill="var(--c-fg-soft)">Engine main</text></p>
+<p><rect x="170" y="234" width="120" height="56" rx="6" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="230" y="254" text-anchor="middle" font-family="var(--font-sans)" font-size="11" font-weight="700" fill="var(--c-accent-on-soft)">Renderer</text>
+<text x="230" y="270" text-anchor="middle" font-family="var(--font-sans)" font-size="10" fill="var(--c-fg-soft)">V8 / DOM</text></p>
+<p><rect x="300" y="234" width="100" height="56" rx="6" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="350" y="254" text-anchor="middle" font-family="var(--font-sans)" font-size="11" font-weight="700" fill="var(--c-fg)">GPU</text>
+<text x="350" y="270" text-anchor="middle" font-family="var(--font-sans)" font-size="10" fill="var(--c-fg-soft)">compositor</text></p>
+<p><rect x="410" y="234" width="100" height="56" rx="6" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="460" y="254" text-anchor="middle" font-family="var(--font-sans)" font-size="11" font-weight="700" fill="var(--c-fg)">Utility</text>
+<text x="460" y="270" text-anchor="middle" font-family="var(--font-sans)" font-size="10" fill="var(--c-fg-soft)">network 等</text></p>
+<p><text x="540" y="220" font-family="var(--font-sans)" font-size="11" font-weight="700" fill="var(--c-fg)">理由</text>
+<text x="540" y="238" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">subprocess の spawn が</text>
+<text x="540" y="254" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">error_code=63 で FATAL に</text>
+<text x="540" y="270" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">なる環境への暫定対策</text>
+<text x="540" y="290" font-family="var(--font-sans)" font-size="10" fill="var(--c-fg-soft)">代償: クラッシュ分離なし</text>
+</svg></p>
+<figcaption>図 5: CEF プロセス構成。上は本来の multi-process 構成、下は現状の MitiruEngine が採用している <code>--single-process</code> workaround。後者は GPU / V8 が host と同一プロセスに同居するため、クラッシュ分離を失う代わりに subprocess spawn 問題を回避している。詳細は §5.3。</figcaption>
+</figure>
 <h2 id="3-技術スタック">3. 技術スタック</h2>
 <p>実態は <code>CMakeLists.txt</code>、<code>include/mitiru/</code>、<code>external/</code> から読み取った内容です。推測なし。</p>
 <table>
@@ -763,7 +941,9 @@ fill="var(--c-accent-on-soft)">JS Runtime (CEF 内)</text></p>
 <h2 id="7-ロードマップと制限事項">7. ロードマップと制限事項</h2>
 <ul>
 <li><strong>IDE / visual editor は作らない方針</strong>: 人間 + テキストエディタ + asset hot reload で十分という前提です。エディタ統合のコストを払わない代わりに、C++ ヘッダの API surface を直接配布しています。</li>
-<li><strong>3D は最小限</strong>: <code>MitiruScene.hpp</code> / <code>include/mitiru/render/Vertex3D.hpp</code> などのプリミティブはありますが、フォトリアル向けの完全な 3D pipeline は対象外です。primary な使用領域は 2D + scripted scene。</li>
+<li><strong>3D は 2D と同等の重みで開発中</strong> (実態): <code>include/mitiru/render/</code> には 3D 系ヘッダが多数あります — <code>Camera3D</code> / <code>Mesh</code> / <code>Scene3D</code> / <code>Pipeline3D</code> / <code>GBuffer</code> / <code>DeferredPipeline</code> / <code>ShadowMap</code> / <code>ShadowSystem</code> / <code>SSAOEffect</code> / <code>DepthOfFieldEffect</code> / <code>TAAEffect</code> / <code>FSREffect</code> / <code>GlobalIllumination</code> / <code>VolumetricLighting</code> / <code>ClusteredLighting</code> / <code>MultiLightSystem</code> / <code>DecalSystem</code> / <code>Billboard3D</code> / <code>ParticleSystem3D</code> / <code>Sprite3DRenderer</code> / <code>OffscreenRenderer3D</code> / <code>GpuSkinning</code> / <code>SkeletalAnimation</code> / <code>InstancedRenderer</code> / <code>FrustumCulling</code> / <code>OcclusionCuller</code> / <code>LODSystem</code> / <code>Skybox</code> / <code>Cubemap</code> / <code>PBRMaterial</code> / <code>PBRShaders</code> / <code>NPRShaders3D</code> / <code>ToonPipeline</code> / <code>GltfLoader</code> / <code>ObjLoader</code> ほか。3D physics は <code>include/mitiru/physics/</code> 配下の <code>PhysicsWorld3D</code> / <code>PhysicsSystem3D</code> / <code>RigidBody3D</code> / <code>Collider3D</code> / <code>BroadPhase3D</code> / <code>NarrowPhase3D</code> / <code>ContactSolver3D</code> / <code>Constraints3D</code> / <code>CollisionDetection3D</code> / <code>PhysicsDebugRenderer3D</code> (10 ファイル) と、Jolt Physics 統合 (<code>JoltPhysics.hpp</code>、外部 submodule <code>external/jolt/</code> がある場合に有効化、なければ <code>NullJoltPhysicsWorld</code> スタブにフォールバック) で構成されます。描画 backend (DX12 / Vulkan / OpenGL) も 2D と 3D 両方を通します。残っているのは「3D 専用 example の本数を増やすこと」「Jolt 連携の安定運用検証」「production-grade な GI / PBR 仕上げの確認」で、エンジン基盤としては揃っています。</li>
+<li><strong>3D 用 example の拡充</strong>: 描画 / 物理ともにヘッダは揃っていますが、エンドツーエンドの 3D サンプル本数は 2D に比べてまだ少なめです。<code>include/mitiru/render/Renderer3D.hpp</code> / <code>Renderer3D_DX12.hpp</code> / <code>Scene3D.hpp</code> を使った最小サンプルを順次追加していく予定です。</li>
+<li><strong>3D physics (Jolt) の安定化</strong>: Jolt Physics は MSVC で CRT mismatch を避けるため <code>MSVC_RUNTIME_LIBRARY</code> を明示的に揃えていますが (<code>CMakeLists.txt</code> 第 489 行付近)、長時間運用での挙動確認は継続中です。Jolt が見つからない環境では <code>NullJoltPhysicsWorld</code> スタブにフォールバックする仕組みになっており、3D physics が必須でない build もそのまま通ります。</li>
 <li><strong>Multiplayer は実験段階</strong>: <code>include/mitiru/network/</code> に抽象化はあるものの、GameNetworkingSockets 連携 (<code>MITIRU_ENABLE_GNS=ON</code>) はオプトインで、本番運用実績はまだありません。</li>
 <li><strong>CEF subprocess 問題の根本対策</strong>: <code>--single-process</code> workaround 依存を解消する作業が継続中です (CRT mismatch 仮説の検証込み)。</li>
 <li><strong>WebAssembly distribution</strong>: WebGL2 backend は存在しますが、CEF を前提とした UI を WebAssembly 上でどう代替するかは未着手です。</li>
