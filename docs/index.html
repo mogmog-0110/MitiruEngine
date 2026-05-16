@@ -386,14 +386,15 @@
   <a class="hero-image__link" href="https://mogmog-0110.github.io/MitiruEngine/examples/hello_sprite/">
     <img
       src="https://mogmog-0110.github.io/MitiruEngine/screenshots/hello_sprite.png"
-      alt="hello_sprite のスクリーンショット — C++ の 2D 描画 API だけで描いた VN 風シーン"
+      alt="hello_sprite のスクリーンショット — C++ + CEF で描いた 2D ゲームの 1 シーン"
       loading="eager"
       decoding="async"
       width="1280" height="720" />
   </a>
   <figcaption class="hero-image__caption">
-    <code>examples/hello_sprite</code> — 100 行ちょっとの C++ で描いた、VN 風の 1 シーン。
-    画面 UI まわりは HTML/CSS で組めるので、ここから先のデザインに時間を使えます。
+    <code>examples/hello_sprite</code> — 100 行ちょっとの C++ で動かしている、HTML/CSS の 1 画面。
+    キャラ、背景、レイアウト ——
+    画面まわりは Web の道具でつくれるので、ここから先のデザインに時間を使えます。
   </figcaption>
 </figure>
 
@@ -446,7 +447,7 @@
       <a class="three-min__step" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">
         <span class="three-min__step-num">02</span>
         <strong>つくってみる</strong>
-        <span>小さなノベルや 2D ゲームをつくりながら、エンジンの考えかたを覚えます。</span>
+        <span>小さな 2D ゲームをつくりながら、エンジンの考えかたを覚えます。</span>
       </a>
       <a class="three-min__step" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
         <span class="three-min__step-num">03</span>
@@ -466,7 +467,7 @@
         <p class="position__num">01</p>
         <h3>C++ でゲームを書く</h3>
         <p>
-          シーンの進行、状態、ノベルの分岐、物理、AI。「動き」の部分は全部 C++ で書きます。
+          シーンの進行、状態、分岐、物理、AI。「動き」の部分は全部 C++ で書きます。
           デバッガで止められて、プロファイラで測れて、テストできる。
           ふだんの C++ の感覚そのままです。
         </p>
@@ -523,11 +524,13 @@
 
       <div class="feature-card">
         <div class="feature-card__icon" aria-hidden="true">🎮</div>
-        <h3>ノベルゲームの部品が入っている</h3>
+        <h3>ジャンルを選ばない</h3>
         <p>
-          シナリオを JSON で書いて、台詞・分岐・立ち絵・BGM を扱う部品が
-          最初から入っています。「ゼロからノベルエンジンを作る」必要がなくて、
-          すぐに自分のシナリオを動かせます。
+          アクション、シューティング、RPG、シミュレーション ——
+          特定ジャンルに寄せた専用エンジンではなく、ふだんの C++ で
+          どんなゲームでも書けるように設計しています。
+          シーン、入力、状態管理、アセット、UI ——
+          土台になる部品をひと通り揃えています。
         </p>
       </div>
 

@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="そのまま動かせる 14 本のサンプル。エンジンの考えかたを実コードで確認できます。">
+<meta name="description" content="そのまま動かせるサンプル集。エンジンの考えかたを実コードで確認できます。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="サンプル | MitiruEngine">
-<meta property="og:description" content="そのまま動かせる 14 本のサンプル。エンジンの考えかたを実コードで確認できます。">
+<meta property="og:description" content="そのまま動かせるサンプル集。エンジンの考えかたを実コードで確認できます。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="サンプル | MitiruEngine">
-<meta name="twitter:description" content="そのまま動かせる 14 本のサンプル。エンジンの考えかたを実コードで確認できます。">
+<meta name="twitter:description" content="そのまま動かせるサンプル集。エンジンの考えかたを実コードで確認できます。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -352,7 +352,7 @@
 <section class="example-gallery container">
   <header class="example-gallery__header">
     <h1>サンプル</h1>
-    <div class="example-gallery__intro"><p><code>examples/</code> 配下のサンプルは、すべて標準の CMake プリセットでビルドできます。スクリーンショットつきは実画面が出るもの、それ以外はコンソール出力で挙動を確認するタイプです。気になったものを動かして、<code>main.cpp</code> を読むのがおすすめです。</p>
+    <div class="example-gallery__intro"><p><code>examples/</code> 配下のサンプルは、すべて標準の CMake プリセットでビルドできます。スクリーンショットつきは実画面が出るもの、それ以外はコンソール出力で挙動を確認するタイプです。エンジンは特定ジャンルに寄せた設計ではないので、ここに並ぶ各サンプルは「エンジンのどの部品がどう使えるか」を示すものとして読んでください。気になったものを動かして、<code>main.cpp</code> を読むのがおすすめです。</p>
 </div>
   </header>
 
@@ -581,6 +581,42 @@
       
       
       
+      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/">
+        <div class="example-card__media">
+          <img
+            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_hello_world.png"
+            alt="Dialog Scene Hello World screenshot"
+            loading="lazy"
+            decoding="async"
+            width="800" height="450"
+            onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
+          
+            <span class="example-card__kind example-card__kind--cef">CEF</span>
+          
+        </div>
+        <div class="example-card__body">
+          <h2 class="example-card__title">Dialog Scene Hello World</h2>
+          <p class="example-card__desc">背景・キャラ・名前枠つきダイアログ・選択肢を、CEF と CSS の図形だけで描く 1 フレームのデモ。</p>
+          
+          <ul class="example-card__apis" aria-label="Key APIs">
+            
+              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
+            
+              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
+            
+            
+              
+              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
+            
+          </ul>
+          
+        </div>
+      </a>
+    
+      
+      
+      
+      
       <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/cpp_gameplay_minimal/">
         <div class="example-card__media">
           <img
@@ -663,7 +699,7 @@
         </div>
         <div class="example-card__body">
           <h2 class="example-card__title">Hello Sprite</h2>
-          <p class="example-card__desc">C&#43;&#43; の 2D 描画 API だけで、VN 風の 1 シーンを描く最小の例。Engine を使った一番素直なサンプル。</p>
+          <p class="example-card__desc">C&#43;&#43; の 2D 描画 API だけで 2D ゲームの 1 シーンを描く最小の例。Engine を使った一番素直なサンプル。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -796,7 +832,7 @@
         <div class="example-card__media">
           <img
             src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_game_hybrid.png"
-            alt="VN ↔ Gameplay Hybrid screenshot"
+            alt="Scripted Scene ↔ Gameplay Hybrid screenshot"
             loading="lazy"
             decoding="async"
             width="800" height="450"
@@ -806,8 +842,8 @@
           
         </div>
         <div class="example-card__body">
-          <h2 class="example-card__title">VN ↔ Gameplay Hybrid</h2>
-          <p class="example-card__desc">HybridGameManager を使って、ノベルモードとゲームプレイモードを切り替えるサンプル。両モードの共有ステートも同期される。</p>
+          <h2 class="example-card__title">Scripted Scene ↔ Gameplay Hybrid</h2>
+          <p class="example-card__desc">HybridGameManager を使って、スクリプト駆動のシーン (会話・カットシーンなど) とゲームプレイ (戦闘・操作など) を切り替えるサンプル。両モードの共有ステートも同期される。</p>
           
           <ul class="example-card__apis" aria-label="Key APIs">
             
@@ -818,42 +854,6 @@
             
               
               <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 4 件</li>
-            
-          </ul>
-          
-        </div>
-      </a>
-    
-      
-      
-      
-      
-      <a class="example-card" href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_hello_world/">
-        <div class="example-card__media">
-          <img
-            src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_hello_world.png"
-            alt="VN Hello World screenshot"
-            loading="lazy"
-            decoding="async"
-            width="800" height="450"
-            onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';" />
-          
-            <span class="example-card__kind example-card__kind--cef">CEF</span>
-          
-        </div>
-        <div class="example-card__body">
-          <h2 class="example-card__title">VN Hello World</h2>
-          <p class="example-card__desc">もっとも小さなノベルゲーム画面。背景・キャラ・名前枠つきダイアログ・選択肢を CEF で描く。</p>
-          
-          <ul class="example-card__apis" aria-label="Key APIs">
-            
-              <li class="example-card__api-chip"><code>mitiru::Engine</code></li>
-            
-              <li class="example-card__api-chip"><code>EngineConfig::cefStartUrl</code></li>
-            
-            
-              
-              <li class="example-card__api-chip example-card__api-chip--more" aria-hidden="true">ほか 1 件</li>
             
           </ul>
           

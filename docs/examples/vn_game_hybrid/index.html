@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VN ↔ Gameplay Hybrid | MitiruEngine</title>
+  <title>Scripted Scene ↔ Gameplay Hybrid | MitiruEngine</title>
   
 
 
 
 
-<meta name="description" content="HybridGameManager を使って、ノベルモードとゲームプレイモードを切り替えるサンプル。両モードの共有ステートも同期される。">
+<meta name="description" content="HybridGameManager を使って、スクリプト駆動のシーン (会話・カットシーンなど) とゲームプレイ (戦闘・操作など) を切り替えるサンプル。両モードの共有ステートも同期される。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/vn_game_hybrid/">
 
@@ -29,8 +29,8 @@
 
 
 
-<meta property="og:title" content="VN ↔ Gameplay Hybrid | MitiruEngine">
-<meta property="og:description" content="HybridGameManager を使って、ノベルモードとゲームプレイモードを切り替えるサンプル。両モードの共有ステートも同期される。">
+<meta property="og:title" content="Scripted Scene ↔ Gameplay Hybrid | MitiruEngine">
+<meta property="og:description" content="HybridGameManager を使って、スクリプト駆動のシーン (会話・カットシーンなど) とゲームプレイ (戦闘・操作など) を切り替えるサンプル。両モードの共有ステートも同期される。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/vn_game_hybrid/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -41,8 +41,8 @@
 <meta property="og:image:height" content="630">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="VN ↔ Gameplay Hybrid | MitiruEngine">
-<meta name="twitter:description" content="HybridGameManager を使って、ノベルモードとゲームプレイモードを切り替えるサンプル。両モードの共有ステートも同期される。">
+<meta name="twitter:title" content="Scripted Scene ↔ Gameplay Hybrid | MitiruEngine">
+<meta name="twitter:description" content="HybridGameManager を使って、スクリプト駆動のシーン (会話・カットシーンなど) とゲームプレイ (戦闘・操作など) を切り替えるサンプル。両モードの共有ステートも同期される。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -357,12 +357,12 @@
       <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル一覧へ戻る</a>
        <span class="example-detail__kind example-detail__kind--headless">headless</span>
     </p>
-    <h1>VN ↔ Gameplay Hybrid</h1>
-    <p class="example-detail__lede">HybridGameManager を使って、ノベルモードとゲームプレイモードを切り替えるサンプル。両モードの共有ステートも同期される。</p>
+    <h1>Scripted Scene ↔ Gameplay Hybrid</h1>
+    <p class="example-detail__lede">HybridGameManager を使って、スクリプト駆動のシーン (会話・カットシーンなど) とゲームプレイ (戦闘・操作など) を切り替えるサンプル。両モードの共有ステートも同期される。</p>
   </header>
 
   <figure class="example-detail__shot">
-    <img src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_game_hybrid.png" alt="VN ↔ Gameplay Hybrid screenshot"
+    <img src="https://mogmog-0110.github.io/MitiruEngine/screenshots/vn_game_hybrid.png" alt="Scripted Scene ↔ Gameplay Hybrid screenshot"
          onerror="this.onerror=null;this.src='\/screenshots\/_placeholder.png';">
   </figure>
 
@@ -376,17 +376,19 @@
   
 
   <div class="example-detail__body">
-    <p>Demonstrates <code>mitiru::game::HybridGameManager</code> (G-09): switching between VN
-mode and Gameplay mode while keeping shared state in sync. The VN side runs
-a ScenarioScript DSL through <code>ScenarioExecutor</code>; <code>@set</code> writes into
+    <p>Demonstrates <code>mitiru::game::HybridGameManager</code> (G-09): switching between a
+scripted-scene mode (named <code>VN</code> in the API, but usable for any scripted scene
+— cutscenes, dialog, intro flow) and a gameplay mode (e.g. battle, action,
+puzzle). Shared state stays in sync across both. The scripted side runs a
+ScenarioScript DSL through <code>ScenarioExecutor</code>; <code>@set</code> writes into
 <code>SharedState::stats</code>; a simulated three-frame &ldquo;battle&rdquo; mutates those same
-stats; control returns to VN and branches in C++ on the result. Headless.</p>
+stats; control returns and the script branches in C++ on the result. Headless.</p>
 <h2 id="what-youll-see">What you&rsquo;ll see</h2>
 <p>Three phases printed to stdout:</p>
 <ol>
-<li><strong>VN opening</strong> — mode flips to <code>VN</code>, scenario plays (<code>prologue</code> scene, classroom bg, hero dialogue), <code>@set hp 100</code> writes <code>stats[&quot;hp&quot;] = 100</code>.</li>
+<li><strong>Scripted opening</strong> — mode flips to scripted (API name: <code>VN</code>), scenario plays (<code>prologue</code> scene, classroom bg, hero dialogue), <code>@set hp 100</code> writes <code>stats[&quot;hp&quot;] = 100</code>.</li>
 <li><strong>Battle</strong> — mode flips to <code>Gameplay (Battle)</code>, three frames each subtracting 30 HP, leaving <code>hp = 10</code>.</li>
-<li><strong>Return to VN</strong> — <code>returnToPreviousMode()</code> flips back to <code>VN</code>. The example reads <code>sharedState().getStat(&quot;hp&quot;, 0.0f)</code> and branches: <code>hp &gt; 0</code> → <code>hero survived the battle</code>, otherwise <code>hero was defeated</code>.</li>
+<li><strong>Return to scripted</strong> — <code>returnToPreviousMode()</code> flips back. The example reads <code>sharedState().getStat(&quot;hp&quot;, 0.0f)</code> and branches in C++: <code>hp &gt; 0</code> → <code>hero survived the battle</code>, otherwise <code>hero was defeated</code>.</li>
 </ol>
 <p>Final line: <code>=== end ===</code> and exit <code>0</code>.</p>
 <h2 id="build-and-run">Build and run</h2>
