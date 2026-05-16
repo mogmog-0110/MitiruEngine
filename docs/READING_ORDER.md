@@ -9,8 +9,9 @@ Where to start, depending on who you are and what you're doing.
 3. **`docs/HYBRID_RUNTIME.md`** — JS / JSON / C++ split rules (Mode B users)
 4. **`docs/GETTING_STARTED.md`** — building your first project
 5. Pick a starter:
-   - **Mode A:** examine `examples/hello_sprite/`, `examples/breakout/`, `examples/hello_headless/`
-   - **Mode B:** copy `templates/web-first-cef-shell/` and start from `examples/cef_minimal/`
+   - **Mode A:** open `templates/headless-cpp-minimal/` and follow the README
+   - **Mode B:** copy `templates/web-first-cef-shell/` and work from its `index.html`
+   - The previous runnable `examples/` set was retired in Round 39; a fresh collection ships in the next release.
 6. **`docs/ARCHITECTURE.md`** — when you need to dig in
 
 ## Newcomer — LLM (Claude Code, Copilot CLI, etc.)

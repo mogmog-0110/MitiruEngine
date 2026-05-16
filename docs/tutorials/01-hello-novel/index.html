@@ -1,711 +1,168 @@
-<!DOCTYPE html>
-<html lang="ja" data-base="/">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>01 1 シーンに文字を出す | MitiruEngine</title>
-  
-
-
-
-
-<meta name="description" content="背景の上にテキスト UI を出して、クリックで次のメッセージへ進む。アクション、RPG、シミュレーション、シューティング、どのジャンルでも応用できる基礎。">
-
-<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/">
-
-
-
-<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/">
-
-
-
-
-
-
-
-
-
-
-
-
-
-<meta property="og:title" content="01 1 シーンに文字を出す | MitiruEngine">
-<meta property="og:description" content="背景の上にテキスト UI を出して、クリックで次のメッセージへ進む。アクション、RPG、シミュレーション、シューティング、どのジャンルでも応用できる基礎。">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/">
-<meta property="og:site_name" content="MitiruEngine">
-<meta property="og:locale" content="ja_JP">
-
-<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="01 1 シーンに文字を出す | MitiruEngine">
-<meta name="twitter:description" content="背景の上にテキスト UI を出して、クリックで次のメッセージへ進む。アクション、RPG、シミュレーション、シューティング、どのジャンルでも応用できる基礎。">
-<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
-
-
-
-  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
-  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
-  <meta name="color-scheme" content="light dark">
-  <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('theme');
-        if (t === 'dark' || t === 'light') {
-          document.documentElement.setAttribute('data-theme', t);
-        }
-      } catch (e) {   }
-    })();
-  </script>
-  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-</head>
-<body>
-  <header class="site-header">
-  <div class="container site-header__inner">
-    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
-      <span class="site-header__brand-mark" aria-hidden="true">M</span>
-      <span class="site-header__brand-name">MitiruEngine</span>
-    </a>
-    <input type="checkbox"
-           id="nav-toggle"
-           class="nav-toggle"
-           role="button"
-           aria-label="メニュー"
-           aria-controls="primary-nav">
-    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <line x1="3" y1="6"  x2="21" y2="6"></line>
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
-      </svg>
-    </label>
-    <nav class="site-nav" id="primary-nav" aria-label="primary">
-      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
-      
-<button type="button"
-        class="search-trigger"
-        id="site-search-trigger"
-        aria-label="サイト内検索"
-        aria-haspopup="dialog"
-        aria-expanded="false"
-        aria-controls="site-search-dialog">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <circle cx="11" cy="11" r="7"></circle>
-    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
-  </svg>
-  <span class="visually-hidden">サイト内検索</span>
+<!doctype html><html lang=ja data-base=/><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>01 1 シーンに文字を出す | MitiruEngine</title>
+<meta name=description content="背景の上にテキスト UI を出して、クリックで次のメッセージへ進む。アクション、RPG、シミュレーション、シューティング、どのジャンルでも応用できる基礎。"><link rel=canonical href=https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/><link rel=alternate hreflang=ja href=https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/><meta property="og:title" content="01 1 シーンに文字を出す | MitiruEngine"><meta property="og:description" content="背景の上にテキスト UI を出して、クリックで次のメッセージへ進む。アクション、RPG、シミュレーション、シューティング、どのジャンルでも応用できる基礎。"><meta property="og:type" content="website"><meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/"><meta property="og:site_name" content="MitiruEngine"><meta property="og:locale" content="ja_JP"><meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name=twitter:card content="summary_large_image"><meta name=twitter:title content="01 1 シーンに文字を出す | MitiruEngine"><meta name=twitter:description content="背景の上にテキスト UI を出して、クリックで次のメッセージへ進む。アクション、RPG、シミュレーション、シューティング、どのジャンルでも応用できる基礎。"><meta name=twitter:image content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><link rel=icon type=image/svg+xml href=https://mogmog-0110.github.io/MitiruEngine/favicon.svg><link rel=icon type=image/png sizes=32x32 href=https://mogmog-0110.github.io/MitiruEngine/favicon-32.png><link rel=apple-touch-icon sizes=180x180 href=https://mogmog-0110.github.io/MitiruEngine/favicon-180.png><link rel="alternate icon" href=https://mogmog-0110.github.io/MitiruEngine/favicon.ico><meta name=color-scheme content="light dark"><script>(function(){try{var e=localStorage.getItem("theme");(e==="dark"||e==="light")&&document.documentElement.setAttribute("data-theme",e)}catch{}})()</script><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/css/main.css><link rel=preconnect href=https://fonts.googleapis.com><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"></head><body><header class=site-header><div class="container site-header__inner"><a class=site-header__brand href=https://mogmog-0110.github.io/MitiruEngine/><span class=site-header__brand-mark aria-hidden=true>M</span>
+<span class=site-header__brand-name>MitiruEngine</span>
+</a><input type=checkbox id=nav-toggle class=nav-toggle role=button aria-label=メニュー aria-controls=primary-nav>
+<label for=nav-toggle class=nav-toggle__label aria-hidden=true><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label><nav class=site-nav id=primary-nav aria-label=primary><a href=https://mogmog-0110.github.io/MitiruEngine/>ホーム</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/getting-started/>はじめに</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/tutorials/>チュートリアル</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/chapters/>できること</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/api/>API</a>
+<button type=button class=search-trigger id=site-search-trigger aria-label=サイト内検索 aria-haspopup=dialog aria-expanded=false aria-controls=site-search-dialog>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+<span class=visually-hidden>サイト内検索</span></button><div class=search-dialog id=site-search-dialog role=dialog aria-modal=true aria-labelledby=site-search-title data-pagefind-ignore hidden><div class=search-dialog__backdrop data-search-close></div><div class=search-dialog__panel role=document><div class=search-dialog__header><h2 id=site-search-title class=search-dialog__title>サイト内検索</h2><button type=button class=search-dialog__close data-search-close aria-label=閉じる><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div id=site-search class=search-dialog__body></div></div></div><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css><script src=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js defer></script><script>(function(){var t,n,i,a,r,c,d,u,s=document.getElementById("site-search-trigger"),e=document.getElementById("site-search-dialog");if(!s||!e)return;d=e.querySelector("#site-search"),i=e.querySelectorAll("[data-search-close]"),c=document.documentElement,u=(c.getAttribute("lang")||"en").toLowerCase(),a="https://mogmog-0110.github.io/MitiruEngine/pagefind/",r={placeholder:"ドキュメントを検索…",clear_search:"クリア",load_more:"さらに読み込む",search_label:"サイト内検索",filters_label:"Filters",zero_results:"「[SEARCH_TERM]」に一致する結果はありません",many_results:"[SEARCH_TERM] の検索結果 [COUNT] 件",one_result:"[SEARCH_TERM] の検索結果 [COUNT] 件",alt_search:"代わりに [DISPLAY_QUERY] の結果を表示しています",search_suggestion:"[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",searching:"検索中…"},t=null,n=null;function h(){return t?t:typeof window.PagefindUI!="function"?null:(t=new window.PagefindUI({element:d,showSubResults:!0,showImages:!1,excerptLength:30,resetStyles:!1,bundlePath:a,translations:r,autofocus:!0}),t)}function l(){n=document.activeElement,e.hidden=!1,requestAnimationFrame(function(){e.classList.add("is-open"),document.body.classList.add("search-open"),s.setAttribute("aria-expanded","true"),h();var t=e.querySelector(".pagefind-ui__search-input");t&&t.focus()})}function o(){e.classList.remove("is-open"),document.body.classList.remove("search-open"),s.setAttribute("aria-expanded","false"),setTimeout(function(){e.classList.contains("is-open")||(e.hidden=!0),n&&typeof n.focus=="function"&&n.focus()},200)}s.addEventListener("click",function(){e.classList.contains("is-open")?o():l()}),i.forEach(function(e){e.addEventListener("click",o)});function m(){var n,t=e.querySelector(".search-dialog__panel");return t?(n='a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',Array.prototype.filter.call(t.querySelectorAll(n),function(e){return!e.hasAttribute("hidden")&&e.offsetParent!==null})):[]}document.addEventListener("keydown",function(t){if(s=e.classList.contains("is-open"),t.key==="Escape"&&s){o();return}if(t.key==="Tab"&&s){if(n=m(),n.length===0){t.preventDefault();return}var n,s,r,i=n[0],c=n[n.length-1],a=document.activeElement;t.shiftKey&&a===i?(t.preventDefault(),c.focus()):!t.shiftKey&&a===c?(t.preventDefault(),i.focus()):e.contains(a)||(t.preventDefault(),i.focus());return}(t.metaKey||t.ctrlKey)&&(t.key==="k"||t.key==="K")&&(t.preventDefault(),s?(r=e.querySelector(".pagefind-ui__search-input"),r&&r.focus()):l())})})()</script><a class=site-nav__github href=https://github.com/mogmog-0110/MitiruEngine aria-label=GitHub><svg width="20" height="20" viewBox="0 0 16 16" fill="currentcolor" aria-hidden="true"><path d="M8 0C3.58.0.0 3.58.0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95.0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12.0.0.67-.21 2.2.82a7.62 7.62.0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15.0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+<span class=visually-hidden>GitHub</span>
+</a><button type=button class=shortcuts-trigger data-shortcuts-open aria-haspopup=dialog aria-controls=shortcuts-dialog aria-label="Keyboard shortcuts" title=?>
+<kbd class=shortcuts-trigger__kbd aria-hidden=true>?</kbd>
 </button>
-
-<div class="search-dialog"
-     id="site-search-dialog"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="site-search-title"
-     data-pagefind-ignore
-     hidden>
-  <div class="search-dialog__backdrop" data-search-close></div>
-  <div class="search-dialog__panel" role="document">
-    <div class="search-dialog__header">
-      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
-      <button type="button"
-              class="search-dialog__close"
-              data-search-close
-              aria-label="閉じる">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div id="site-search" class="search-dialog__body"></div>
-  </div>
-</div>
-
-
-
-<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
-<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
-
-<script>
-  (function () {
-    var trigger = document.getElementById('site-search-trigger');
-    var dialog  = document.getElementById('site-search-dialog');
-    if (!trigger || !dialog) return;
-
-    var mountPoint = dialog.querySelector('#site-search');
-    var closers    = dialog.querySelectorAll('[data-search-close]');
-    var docEl      = document.documentElement;
-    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
-    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
-    var i18nStrings = {
-      placeholder:       "ドキュメントを検索…",
-      clear_search:      "クリア",
-      load_more:         "さらに読み込む",
-      search_label:      "サイト内検索",
-      filters_label:     "Filters",
-      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
-      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
-      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
-      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
-      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
-      searching:         "検索中…"
-    };
-
-    var instance = null;
-    var lastFocus = null;
-
-    function ensureInstance() {
-      if (instance) return instance;
-      if (typeof window.PagefindUI !== 'function') return null;
-      instance = new window.PagefindUI({
-        element:        mountPoint,
-        showSubResults: true,
-        showImages:     false,
-        excerptLength:  30,
-        resetStyles:    false,
-        bundlePath:     pagefindBundlePath,
-        translations:   i18nStrings,
-        autofocus:      true
-      });
-      return instance;
-    }
-
-    function openDialog() {
-      lastFocus = document.activeElement;
-      dialog.hidden = false;
-      
-      requestAnimationFrame(function () {
-        dialog.classList.add('is-open');
-        document.body.classList.add('search-open');
-        trigger.setAttribute('aria-expanded', 'true');
-        ensureInstance();
-        var input = dialog.querySelector('.pagefind-ui__search-input');
-        if (input) input.focus();
-      });
-    }
-
-    function closeDialog() {
-      dialog.classList.remove('is-open');
-      document.body.classList.remove('search-open');
-      trigger.setAttribute('aria-expanded', 'false');
-      
-      setTimeout(function () {
-        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
-        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
-      }, 200);
-    }
-
-    trigger.addEventListener('click', function () {
-      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
-    });
-
-    closers.forEach(function (el) {
-      el.addEventListener('click', closeDialog);
-    });
-
-    function getTabbable() {
-      var panel = dialog.querySelector('.search-dialog__panel');
-      if (!panel) return [];
-      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
-        return !el.hasAttribute('hidden') && el.offsetParent !== null;
-      });
-    }
-
-    document.addEventListener('keydown', function (e) {
-      var open = dialog.classList.contains('is-open');
-      if (e.key === 'Escape' && open) {
-        closeDialog();
-        return;
-      }
-      
-      
-      
-      if (e.key === 'Tab' && open) {
-        var nodes = getTabbable();
-        if (nodes.length === 0) { e.preventDefault(); return; }
-        var first = nodes[0], last = nodes[nodes.length - 1];
-        var active = document.activeElement;
-        if (e.shiftKey && active === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && active === last) {
-          e.preventDefault();
-          first.focus();
-        } else if (!dialog.contains(active)) {
-          e.preventDefault();
-          first.focus();
-        }
-        return;
-      }
-      
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault();
-        if (open) {
-          var input = dialog.querySelector('.pagefind-ui__search-input');
-          if (input) input.focus();
-        } else {
-          openDialog();
-        }
-      }
-    });
-  })();
-</script>
-
-      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span class="visually-hidden">GitHub</span>
-      </a>
-      
-      <button type="button"
-              class="shortcuts-trigger"
-              data-shortcuts-open
-              aria-haspopup="dialog"
-              aria-controls="shortcuts-dialog"
-              aria-label="Keyboard shortcuts"
-              title="?">
-        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
-      </button>
-      <button type="button"
-              class="theme-toggle"
-              id="theme-toggle"
-              aria-pressed="false"
-              aria-label="ダークモード切替">
-        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="4"></circle>
-          <line x1="12" y1="2"  x2="12" y2="4"></line>
-          <line x1="12" y1="20" x2="12" y2="22"></line>
-          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
-          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
-          <line x1="2"  y1="12" x2="4"  y2="12"></line>
-          <line x1="20" y1="12" x2="22" y2="12"></line>
-          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
-          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
-        </svg>
-      </button>
-    </nav>
-  </div>
-</header>
-<script>
-  (function () {
-    var navBox = document.getElementById('nav-toggle');
-    var themeBtn = document.getElementById('theme-toggle');
-
-    if (navBox) {
-      
-      
-      
-      navBox.addEventListener('change', function () {
-        if (navBox.checked) {
-          document.body.classList.add('is-nav-open');
-        } else {
-          document.body.classList.remove('is-nav-open');
-        }
-      });
-    }
-
-    function isDark() {
-      var current = document.documentElement.getAttribute('data-theme');
-      if (current === 'dark' || current === 'light') return current === 'dark';
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-
-    function syncThemeButton() {
-      if (!themeBtn) return;
-      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
-    }
-
-    
-    
-    syncThemeButton();
-
-    if (themeBtn) {
-      themeBtn.addEventListener('click', function () {
-        var root = document.documentElement;
-        var current = root.getAttribute('data-theme');
-        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var next;
-        if (current === 'dark') {
-          next = 'light';
-        } else if (current === 'light') {
-          next = 'dark';
-        } else {
-          next = prefersDark ? 'light' : 'dark';
-        }
-        root.setAttribute('data-theme', next);
-        try { localStorage.setItem('theme', next); } catch (e) {   }
-        syncThemeButton();
-      });
-    }
-  })();
-</script>
-
-  <main class="site-main" data-pagefind-body>
-    
-<section class="page-list container">
-  <header class="page-list__header">
-    <h1>01 1 シーンに文字を出す</h1>
-    <div class="page-list__intro"><p>このチュートリアルでは、こんな画面を動かすところまで行きます。</p>
-<ul>
-<li>1 枚の背景</li>
-<li>画面の下にテキストボックス</li>
-<li>クリック (またはスペース) で次のテキストへ</li>
-<li>最後に「OK」と出る</li>
-</ul>
-<p>時間の目安は <strong>15 〜 20 分</strong>。ビルドの待ち時間込みです。</p>
-<p>これは「会話シーンを作るためのチュートリアル」ではありません。<strong>画面に何かを出して、クリックで進める</strong>、というあらゆるジャンルで出てくる基本を、いちばん短く書いたものです。最後のセクションで、同じ仕組みが他ジャンルでどう使えるかも書いておきます。</p>
-<p>事前に <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> を済ませて、<code>./build/examples/hello_sprite/Debug/mitiru_hello_sprite</code> が動くことを確認しておいてください。</p>
-<hr>
-<h2 id="全体の構成">全体の構成</h2>
-<p>MitiruEngine の流儀では、こんなふうに役割を分けます。</p>
-<table>
-  <thead>
-      <tr>
-          <th>やること</th>
-          <th>どこに書く</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td>メッセージのデータ (本文、順序)</td>
-          <td>JSON ファイル</td>
-      </tr>
-      <tr>
-          <td>シーンの進行・状態</td>
-          <td>C++</td>
-      </tr>
-      <tr>
-          <td>画面 (背景、テキストボックス、ボタン)</td>
-          <td>HTML + CSS</td>
-      </tr>
-      <tr>
-          <td>C++ と HTML のあいだ</td>
-          <td>signal-only bridge (<code>cefQuery</code> / <code>executeJavaScript</code>)</td>
-      </tr>
-  </tbody>
-</table>
-<p>「データは JSON」「ロジックは C++」「見た目は Web の道具」。この 3 つを覚えておけば迷いません。</p>
-<h2 id="手順-1-データを書く">手順 1: データを書く</h2>
-<p><code>my_first_scene/messages.json</code> を新規作成して、こんな内容を書きます。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl"><span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;messages&#34;</span><span class="p">:</span> <span class="p">[</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nt">&#34;speaker&#34;</span><span class="p">:</span> <span class="s2">&#34;システム&#34;</span><span class="p">,</span> <span class="nt">&#34;text&#34;</span><span class="p">:</span> <span class="s2">&#34;ようこそ。これは最初のシーンです。&#34;</span> <span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nt">&#34;speaker&#34;</span><span class="p">:</span> <span class="s2">&#34;システム&#34;</span><span class="p">,</span> <span class="nt">&#34;text&#34;</span><span class="p">:</span> <span class="s2">&#34;クリック (またはスペース) で次に進みます。&#34;</span> <span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nt">&#34;speaker&#34;</span><span class="p">:</span> <span class="s2">&#34;プレイヤー&#34;</span><span class="p">,</span> <span class="nt">&#34;text&#34;</span><span class="p">:</span> <span class="s2">&#34;ふむふむ、シンプルだ。&#34;</span> <span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nt">&#34;speaker&#34;</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span>       <span class="nt">&#34;text&#34;</span><span class="p">:</span> <span class="s2">&#34;—— こうして、はじめの一歩が踏み出される。&#34;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">]</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p><code>speaker</code> が <code>null</code> のときは話し手の名前を出さない、ただのメッセージとして表示します。配列にしてあるだけで形式の自由度は高いので、後でクエストログでも、ヒント表示でも、戦闘ログでも使い回せます。</p>
-<h2 id="手順-2-メッセージを進める-c-を書く">手順 2: メッセージを進める C++ を書く</h2>
-<p><code>my_first_scene/main.cpp</code> を作って、JSON を読んで「いま何行目か」を覚える小さな状態機械を書きます。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;fstream&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;nlohmann/json.hpp&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="k">using</span> <span class="n">json</span> <span class="o">=</span> <span class="n">nlohmann</span><span class="o">::</span><span class="n">json</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">HelloScene</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">onStart</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">in</span><span class="p">(</span><span class="s">&#34;messages.json&#34;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="n">in</span> <span class="o">&gt;&gt;</span> <span class="n">m_script</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">m_messages</span> <span class="o">=</span> <span class="n">m_script</span><span class="p">[</span><span class="s">&#34;messages&#34;</span><span class="p">];</span>
-</span></span><span class="line"><span class="cl">    <span class="n">pushMessageToView</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">hasInput</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">input</span><span class="p">().</span><span class="n">isMouseJustPressed</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">MouseButton</span><span class="o">::</span><span class="n">Left</span><span class="p">))</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">advance</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 描画は HTML 側がやる。C++ 側は状態管理に集中する。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="n">advance</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="o">++</span><span class="n">m_index</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_index</span> <span class="o">&gt;=</span> <span class="n">m_messages</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">pushEndToView</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">pushMessageToView</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">pushMessageToView</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">auto</span><span class="o">&amp;</span> <span class="n">m</span> <span class="o">=</span> <span class="n">m_messages</span><span class="p">[</span><span class="n">m_index</span><span class="p">];</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">char</span> <span class="n">js</span><span class="p">[</span><span class="mi">512</span><span class="p">];</span>
-</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">snprintf</span><span class="p">(</span><span class="n">js</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">js</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">      <span class="s">&#34;window.showMessage &amp;&amp; window.showMessage(%s, %s);&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">      <span class="n">m</span><span class="p">[</span><span class="s">&#34;speaker&#34;</span><span class="p">].</span><span class="n">is_null</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">        <span class="o">?</span> <span class="s">&#34;null&#34;</span>
-</span></span><span class="line"><span class="cl">        <span class="o">:</span> <span class="p">(</span><span class="s">&#34;</span><span class="se">\&#34;</span><span class="s">&#34;</span> <span class="o">+</span> <span class="n">m</span><span class="p">[</span><span class="s">&#34;speaker&#34;</span><span class="p">].</span><span class="n">get</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#34;</span><span class="se">\&#34;</span><span class="s">&#34;</span><span class="p">).</span><span class="n">c_str</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">      <span class="p">(</span><span class="s">&#34;</span><span class="se">\&#34;</span><span class="s">&#34;</span> <span class="o">+</span> <span class="n">m</span><span class="p">[</span><span class="s">&#34;text&#34;</span><span class="p">].</span><span class="n">get</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#34;</span><span class="se">\&#34;</span><span class="s">&#34;</span><span class="p">).</span><span class="n">c_str</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">engine</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">engine</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">engine</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">executeJavaScript</span><span class="p">(</span><span class="n">js</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">pushEndToView</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">engine</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">engine</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">engine</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">executeJavaScript</span><span class="p">(</span><span class="s">&#34;window.showEnd &amp;&amp; window.showEnd();&#34;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="n">json</span> <span class="n">m_script</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">json</span> <span class="n">m_messages</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">size_t</span> <span class="n">m_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">};</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">HelloScene</span> <span class="n">game</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="s">&#34;Hello Scene&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span> <span class="o">=</span> <span class="mi">1280</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span> <span class="o">=</span> <span class="mi">720</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">cefStartUrl</span> <span class="o">=</span> <span class="s">&#34;file:///&#34;</span> <span class="n">__FILE__</span> <span class="s">&#34;/../view.html&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p>ポイント:</p>
-<ul>
-<li>C++ 側は <strong>「いま何番目のメッセージか」だけ覚える</strong>。描画はしません。</li>
-<li>進めるのも C++ 側。<code>input().isMouseJustPressed(...)</code> で 1 行進めます。</li>
-<li>1 行進むたびに <code>executeJavaScript</code> で <strong>HTML 側に通知</strong> します。これが「C++ → JS」の signal-only bridge です。</li>
-</ul>
-<h2 id="手順-3-見た目を-html--css-で書く">手順 3: 見た目を HTML / CSS で書く</h2>
-<p><code>my_first_scene/view.html</code> を作ります。テキストボックスを出すだけのページです。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;ja&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;utf-8&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">style</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">html</span><span class="o">,</span> <span class="nt">body</span> <span class="p">{</span> <span class="k">margin</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span> <span class="k">height</span><span class="p">:</span> <span class="mi">100</span><span class="kt">%</span><span class="p">;</span> <span class="k">font-family</span><span class="p">:</span> <span class="s2">&#34;Noto Sans JP&#34;</span><span class="p">,</span> <span class="kc">sans-serif</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">body</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="k">background</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="nb">radial-gradient</span><span class="p">(</span><span class="kc">circle</span> <span class="n">at</span> <span class="mi">30</span><span class="kt">%</span> <span class="mi">30</span><span class="kt">%</span><span class="p">,</span> <span class="mh">#2a3550</span><span class="p">,</span> <span class="mh">#0f1426</span> <span class="mi">75</span><span class="kt">%</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">      <span class="k">color</span><span class="p">:</span> <span class="mh">#fff</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">stage</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="k">position</span><span class="p">:</span> <span class="kc">fixed</span><span class="p">;</span> <span class="n">inset</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">display</span><span class="p">:</span> <span class="kc">flex</span><span class="p">;</span> <span class="k">align-items</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span> <span class="k">justify-content</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">font-size</span><span class="p">:</span> <span class="mi">18</span><span class="kt">px</span><span class="p">;</span> <span class="k">opacity</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">message</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="k">position</span><span class="p">:</span> <span class="kc">fixed</span><span class="p">;</span> <span class="k">left</span><span class="p">:</span> <span class="mi">4</span><span class="kt">%</span><span class="p">;</span> <span class="k">right</span><span class="p">:</span> <span class="mi">4</span><span class="kt">%</span><span class="p">;</span> <span class="k">bottom</span><span class="p">:</span> <span class="mi">4</span><span class="kt">%</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">padding</span><span class="p">:</span> <span class="mi">24</span><span class="kt">px</span> <span class="mi">28</span><span class="kt">px</span><span class="p">;</span> <span class="k">min-height</span><span class="p">:</span> <span class="mi">110</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">background</span><span class="p">:</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mf">0.86</span><span class="p">);</span> <span class="k">border</span><span class="p">:</span> <span class="mi">1</span><span class="kt">px</span> <span class="kc">solid</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span><span class="mi">255</span><span class="p">,</span><span class="mi">255</span><span class="p">,</span><span class="mf">0.4</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">      <span class="k">border-radius</span><span class="p">:</span> <span class="mi">10</span><span class="kt">px</span><span class="p">;</span> <span class="k">box-shadow</span><span class="p">:</span> <span class="mi">0</span> <span class="mi">8</span><span class="kt">px</span> <span class="mi">24</span><span class="kt">px</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.4</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">message__name</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="k">display</span><span class="p">:</span> <span class="kc">inline-block</span><span class="p">;</span> <span class="k">padding</span><span class="p">:</span> <span class="mi">4</span><span class="kt">px</span> <span class="mi">12</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">background</span><span class="p">:</span> <span class="mh">#5b8ee2</span><span class="p">;</span> <span class="k">border-radius</span><span class="p">:</span> <span class="mi">4</span><span class="kt">px</span><span class="p">;</span> <span class="k">margin-bottom</span><span class="p">:</span> <span class="mi">12</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">font-weight</span><span class="p">:</span> <span class="mi">700</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">message__text</span> <span class="p">{</span> <span class="k">font-size</span><span class="p">:</span> <span class="mi">22</span><span class="kt">px</span><span class="p">;</span> <span class="k">line-height</span><span class="p">:</span> <span class="mf">1.55</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">end</span> <span class="p">{</span> <span class="k">font-size</span><span class="p">:</span> <span class="mi">56</span><span class="kt">px</span><span class="p">;</span> <span class="k">text-align</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span> <span class="k">padding-top</span><span class="p">:</span> <span class="mi">35</span><span class="kt">vh</span><span class="p">;</span> <span class="k">opacity</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">style</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;stage&#34;</span><span class="p">&gt;</span>— hello scene —<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;message&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;message&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;message__name&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;name&#34;</span><span class="p">&gt;</span>システム<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;message__text&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;text&#34;</span><span class="p">&gt;</span>…<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">window</span><span class="p">.</span><span class="nx">showMessage</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">speaker</span><span class="p">,</span> <span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="kd">var</span> <span class="nx">nameEl</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">      <span class="kd">var</span> <span class="nx">textEl</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">      <span class="k">if</span> <span class="p">(</span><span class="nx">speaker</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">nameEl</span><span class="p">.</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">speaker</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">nameEl</span><span class="p">.</span><span class="nx">style</span><span class="p">.</span><span class="nx">display</span> <span class="o">=</span> <span class="s1">&#39;inline-block&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">nameEl</span><span class="p">.</span><span class="nx">style</span><span class="p">.</span><span class="nx">display</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="p">}</span>
-</span></span><span class="line"><span class="cl">      <span class="nx">textEl</span><span class="p">.</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">text</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">};</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nb">window</span><span class="p">.</span><span class="nx">showEnd</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="s1">&#39;&lt;div class=&#34;end&#34;&gt;OK&lt;/div&gt;&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">};</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
-</span></span></code></pre></div><p>ポイント:</p>
-<ul>
-<li>HTML 側は <strong>「描く」「ボタン的なクリックを受ける」だけ</strong>。状態は持ちません。</li>
-<li>C++ から呼ばれた <code>window.showMessage(...)</code> で表示を差し替えるだけ。</li>
-<li>「次へ進む」は C++ 側が決めているので、HTML 側に分岐ロジックは要らない。</li>
-</ul>
-<h2 id="手順-4-cmake-に登録してビルド">手順 4: CMake に登録してビルド</h2>
-<p><code>examples/CMakeLists.txt</code> に 1 行追加します。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cmake" data-lang="cmake"><span class="line"><span class="cl"><span class="nb">add_subdirectory</span><span class="p">(</span><span class="s">my_first_scene</span><span class="p">)</span><span class="err">
-</span></span></span></code></pre></div><p>そして <code>my_first_scene/CMakeLists.txt</code>。CEF を使うので <code>mitiru_add_cef_game</code> を呼びます。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cmake" data-lang="cmake"><span class="line"><span class="cl"><span class="nb">add_executable</span><span class="p">(</span><span class="s">my_first_scene</span> <span class="s">main.cpp</span><span class="p">)</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">my_first_scene</span> <span class="s">PRIVATE</span> <span class="s">Mitiru::mitiru</span><span class="p">)</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="nb">include</span><span class="p">(</span><span class="s2">&#34;${CMAKE_SOURCE_DIR}/cmake/MitiruCef.cmake&#34;</span><span class="p">)</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="nb">mitiru_add_cef_game</span><span class="p">(</span><span class="s">my_first_scene</span><span class="p">)</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># messages.json と view.html を exe の隣にコピー
-</span></span></span><span class="line"><span class="cl"><span class="c"></span><span class="nb">file</span><span class="p">(</span><span class="s">COPY</span> <span class="s">messages.json</span> <span class="s">view.html</span> <span class="s">DESTINATION</span> <span class="o">${</span><span class="nv">CMAKE_CURRENT_BINARY_DIR</span><span class="o">}</span><span class="p">)</span><span class="err">
-</span></span></span></code></pre></div><p>あとはビルド。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target my_first_scene
-</span></span><span class="line"><span class="cl">./build/examples/my_first_scene/Debug/my_first_scene
-</span></span></code></pre></div><p>クリックでメッセージが進んで、最後に <code>OK</code> が出れば完成です。</p>
-<hr>
-<h2 id="何が分かったか">何が分かったか</h2>
-<ul>
-<li><strong>C++ は状態の本体、HTML は表示</strong> という分担が、実コードで体感できたはず。</li>
-<li><code>executeJavaScript</code> で <strong>「これを表示して」だけ伝える</strong> ので、コードがあちこちに散らかりません。</li>
-<li>データが JSON なので、テキストの書き換えは C++ をビルドしなくてもできます。</li>
-</ul>
-<h2 id="同じ仕組みは他ジャンルにも使える">同じ仕組みは他ジャンルにも使える</h2>
-<p>ここで作ったものは「画面の上にテキスト UI を出して、何かをきっかけに次へ進む」という汎用の型です。たとえば:</p>
-<ul>
-<li><strong>アクションゲーム</strong>: ステージ開始のメッセージ、ボス前のカットイン、ゲームオーバー時の演出。</li>
-<li><strong>RPG</strong>: 村人 NPC との会話、クエスト授受、宿屋で休んだあとの「翌朝になった」表示。</li>
-<li><strong>シミュレーション</strong>: イベント通知、四半期決算メッセージ、ランダムイベントの選択肢提示。</li>
-<li><strong>シューティング / RTS</strong>: 出撃前のミッションブリーフィング、戦況の合間に入る無線連絡、リザルト画面。</li>
-<li><strong>パズル / カジュアル</strong>: チュートリアルのヒント、ステージクリア時のコメント、デイリーミッションの説明。</li>
-</ul>
-<p>進める条件を変える (時間経過、ボタン、特定の条件) のも、C++ 側の <code>update()</code> を書き換えるだけです。テキストの中身もデータ側で差し替えれば再利用できます。</p>
-<h2 id="次の一歩">次の一歩</h2>
-<ul>
-<li>背景画像をちゃんと表示する (<code>&lt;img&gt;</code> か CSS の <code>background-image</code> で OK)。トランジションを当てるとそれっぽくなります。</li>
-<li>選択肢を入れる。<code>choices: [{text, action}]</code> をデータに追加して、JS 側でボタンを描き、<code>cefQuery</code> で C++ に「どれを選んだか」を通知すれば動きます。これが「JS → C++」の signal-only bridge です。</li>
-<li>似たパターンの完成サンプルを読んでみる ⇒ 下の「関連サンプル」へ。</li>
-<li>次のレッスン: <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-action-prototype/">02 — 2D アクションのプロトタイプ</a> に進むと、キーボード入力で動くプレイヤーが書けるようになります。</li>
-</ul>
-<h2 id="関連サンプル">関連サンプル</h2>
-<ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/cef_minimal/">cef_minimal</a> — HTML/CSS だけでテキスト UI を作る最小例</li>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/hello_sprite/">hello_sprite</a> — テキストではなく画像を出す側の最小例</li>
-</ul>
-</div>
-  </header>
-  <ul class="page-list__items">
-    
-  </ul>
-</section>
-
-  </main>
-  <footer class="site-footer">
-  <div class="container site-footer__inner">
-    <div class="site-footer__col">
-      <p class="site-footer__brand">MitiruEngine</p>
-      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
-    </div>
-    <div class="site-footer__col">
-      <h2 class="site-footer__h">ライセンス</h2>
-      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
-    </div>
-    <div class="site-footer__col">
-      <h2 class="site-footer__h">状態</h2>
-      <p>0.x 系・実験段階。API はまだ変わります。</p>
-      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
-    </div>
-  </div>
-</footer>
-
-  
-
-<div class="shortcuts-dialog"
-     id="shortcuts-dialog"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="shortcuts-dialog-title"
-     data-pagefind-ignore
-     hidden>
-  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
-  <div class="shortcuts-dialog__panel" role="document">
-    <div class="shortcuts-dialog__header">
-      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
-        キーボードショートカット
-      </h2>
-      <button type="button"
-              class="shortcuts-dialog__close"
-              data-shortcuts-close
-              aria-label="閉じる">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div class="shortcuts-dialog__body">
-      <dl class="shortcuts-list">
-        <div class="shortcuts-list__row">
-          <dt><kbd>?</kbd></dt>
-          <dd>このヘルプを開く</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>Esc</kbd></dt>
-          <dd>ダイアログを閉じる</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
-          <dd>サイト内検索を開く</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
-          <dd>ホームへ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>e</kbd></dt>
-          <dd>サンプル一覧へ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
-          <dd>チャプター一覧へ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
-          <dd>アーキテクチャ一覧へ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
-          <dd>チュートリアル一覧へ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
-          <dd>はじめてのページへ</dd>
-        </div>
-      </dl>
-      <p class="shortcuts-dialog__foot">
-        
-          入力中（テキストフィールド・コード編集）は無効です。
-        
-      </p>
-    </div>
-  </div>
-</div>
-
-  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
-  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
-  
-</body>
-</html>
+<button type=button class=theme-toggle id=theme-toggle aria-pressed=false aria-label=ダークモード切替><svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg></button></nav></div></header><script>(function(){var t=document.getElementById("nav-toggle"),e=document.getElementById("theme-toggle");t&&t.addEventListener("change",function(){t.checked?document.body.classList.add("is-nav-open"):document.body.classList.remove("is-nav-open")});function s(){var e=document.documentElement.getAttribute("data-theme");return e==="dark"||e==="light"?e==="dark":window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches}function n(){if(!e)return;e.setAttribute("aria-pressed",s()?"true":"false")}n(),e&&e.addEventListener("click",function(){var e,t=document.documentElement,s=t.getAttribute("data-theme"),o=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;s==="dark"?e="light":s==="light"?e="dark":e=o?"light":"dark",t.setAttribute("data-theme",e);try{localStorage.setItem("theme",e)}catch{}n()})})()</script><main class=site-main data-pagefind-body><section class="page-list container"><header class=page-list__header><h1>01 1 シーンに文字を出す</h1><div class=page-list__intro><p>このチュートリアルでは、こんな画面を動かすところまで行きます。</p><ul><li>1 枚の背景</li><li>画面の下にテキストボックス</li><li>クリック (またはスペース) で次のテキストへ</li><li>最後に「OK」と出る</li></ul><p>時間の目安は <strong>15 〜 20 分</strong>。ビルドの待ち時間込みです。</p><p>これは「会話シーンを作るためのチュートリアル」ではありません。<strong>画面に何かを出して、クリックで進める</strong>、というあらゆるジャンルで出てくる基本を、いちばん短く書いたものです。最後のセクションで、同じ仕組みが他ジャンルでどう使えるかも書いておきます。</p><p>事前に <a href=https://mogmog-0110.github.io/MitiruEngine/getting-started/>はじめに</a> を済ませて、ビルドが通ることを確認しておいてください。サンプル一式は Round 39 で刷新中です。</p><hr><h2 id=全体の構成>全体の構成</h2><p>MitiruEngine の流儀では、こんなふうに役割を分けます。</p><table><thead><tr><th>やること</th><th>どこに書く</th></tr></thead><tbody><tr><td>メッセージのデータ (本文、順序)</td><td>JSON ファイル</td></tr><tr><td>シーンの進行・状態</td><td>C++</td></tr><tr><td>画面 (背景、テキストボックス、ボタン)</td><td>HTML + CSS</td></tr><tr><td>C++ と HTML のあいだ</td><td>signal-only bridge (<code>cefQuery</code> / <code>executeJavaScript</code>)</td></tr></tbody></table><p>「データは JSON」「ロジックは C++」「見た目は Web の道具」。この 3 つを覚えておけば迷いません。</p><h2 id=手順-1-データを書く>手順 1: データを書く</h2><p><code>my_first_scene/messages.json</code> を新規作成して、こんな内容を書きます。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-json data-lang=json><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=nt>&#34;messages&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span> <span class=nt>&#34;speaker&#34;</span><span class=p>:</span> <span class=s2>&#34;システム&#34;</span><span class=p>,</span> <span class=nt>&#34;text&#34;</span><span class=p>:</span> <span class=s2>&#34;ようこそ。これは最初のシーンです。&#34;</span> <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span> <span class=nt>&#34;speaker&#34;</span><span class=p>:</span> <span class=s2>&#34;システム&#34;</span><span class=p>,</span> <span class=nt>&#34;text&#34;</span><span class=p>:</span> <span class=s2>&#34;クリック (またはスペース) で次に進みます。&#34;</span> <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span> <span class=nt>&#34;speaker&#34;</span><span class=p>:</span> <span class=s2>&#34;プレイヤー&#34;</span><span class=p>,</span> <span class=nt>&#34;text&#34;</span><span class=p>:</span> <span class=s2>&#34;ふむふむ、シンプルだ。&#34;</span> <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span> <span class=nt>&#34;speaker&#34;</span><span class=p>:</span> <span class=kc>null</span><span class=p>,</span>       <span class=nt>&#34;text&#34;</span><span class=p>:</span> <span class=s2>&#34;—— こうして、はじめの一歩が踏み出される。&#34;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>]</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><p><code>speaker</code> が <code>null</code> のときは話し手の名前を出さない、ただのメッセージとして表示します。配列にしてあるだけで形式の自由度は高いので、後でクエストログでも、ヒント表示でも、戦闘ログでも使い回せます。</p><h2 id=手順-2-メッセージを進める-c-を書く>手順 2: メッセージを進める C++ を書く</h2><p><code>my_first_scene/main.cpp</code> を作って、JSON を読んで「いま何行目か」を覚える小さな状態機械を書きます。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;fstream&gt;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;mitiru/Mitiru.hpp&gt;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;nlohmann/json.hpp&gt;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp></span>
+</span></span><span class=line><span class=cl><span class=k>using</span> <span class=n>json</span> <span class=o>=</span> <span class=n>nlohmann</span><span class=o>::</span><span class=n>json</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>HelloScene</span> <span class=k>final</span> <span class=o>:</span> <span class=k>public</span> <span class=n>mitiru</span><span class=o>::</span><span class=n>Game</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>  <span class=n>mitiru</span><span class=o>::</span><span class=n>Size</span> <span class=n>layout</span><span class=p>(</span><span class=kt>int</span> <span class=n>w</span><span class=p>,</span> <span class=kt>int</span> <span class=n>h</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span> <span class=k>return</span> <span class=p>{</span><span class=n>w</span><span class=p>,</span> <span class=n>h</span><span class=p>};</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=kt>void</span> <span class=nf>onStart</span><span class=p>()</span> <span class=k>override</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>ifstream</span> <span class=n>in</span><span class=p>(</span><span class=s>&#34;messages.json&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>in</span> <span class=o>&gt;&gt;</span> <span class=n>m_script</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>m_messages</span> <span class=o>=</span> <span class=n>m_script</span><span class=p>[</span><span class=s>&#34;messages&#34;</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>    <span class=n>pushMessageToView</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=kt>void</span> <span class=nf>update</span><span class=p>(</span><span class=kt>float</span> <span class=n>dt</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>hasInput</span><span class=p>()</span> <span class=o>&amp;&amp;</span> <span class=n>input</span><span class=p>().</span><span class=n>isMouseJustPressed</span><span class=p>(</span><span class=n>mitiru</span><span class=o>::</span><span class=n>MouseButton</span><span class=o>::</span><span class=n>Left</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>advance</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=kt>void</span> <span class=nf>draw</span><span class=p>(</span><span class=n>mitiru</span><span class=o>::</span><span class=n>Screen</span><span class=o>&amp;</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 描画は HTML 側がやる。C++ 側は状態管理に集中する。
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>private</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>  <span class=kt>void</span> <span class=n>advance</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=o>++</span><span class=n>m_index</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>m_index</span> <span class=o>&gt;=</span> <span class=n>m_messages</span><span class=p>.</span><span class=n>size</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>pushEndToView</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>pushMessageToView</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=kt>void</span> <span class=nf>pushMessageToView</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>auto</span><span class=o>&amp;</span> <span class=n>m</span> <span class=o>=</span> <span class=n>m_messages</span><span class=p>[</span><span class=n>m_index</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>    <span class=kt>char</span> <span class=n>js</span><span class=p>[</span><span class=mi>512</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>snprintf</span><span class=p>(</span><span class=n>js</span><span class=p>,</span> <span class=k>sizeof</span><span class=p>(</span><span class=n>js</span><span class=p>),</span>
+</span></span><span class=line><span class=cl>      <span class=s>&#34;window.showMessage &amp;&amp; window.showMessage(%s, %s);&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=n>m</span><span class=p>[</span><span class=s>&#34;speaker&#34;</span><span class=p>].</span><span class=n>is_null</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>        <span class=o>?</span> <span class=s>&#34;null&#34;</span>
+</span></span><span class=line><span class=cl>        <span class=o>:</span> <span class=p>(</span><span class=s>&#34;</span><span class=se>\&#34;</span><span class=s>&#34;</span> <span class=o>+</span> <span class=n>m</span><span class=p>[</span><span class=s>&#34;speaker&#34;</span><span class=p>].</span><span class=n>get</span><span class=o>&lt;</span><span class=n>std</span><span class=o>::</span><span class=n>string</span><span class=o>&gt;</span><span class=p>()</span> <span class=o>+</span> <span class=s>&#34;</span><span class=se>\&#34;</span><span class=s>&#34;</span><span class=p>).</span><span class=n>c_str</span><span class=p>(),</span>
+</span></span><span class=line><span class=cl>      <span class=p>(</span><span class=s>&#34;</span><span class=se>\&#34;</span><span class=s>&#34;</span> <span class=o>+</span> <span class=n>m</span><span class=p>[</span><span class=s>&#34;text&#34;</span><span class=p>].</span><span class=n>get</span><span class=o>&lt;</span><span class=n>std</span><span class=o>::</span><span class=n>string</span><span class=o>&gt;</span><span class=p>()</span> <span class=o>+</span> <span class=s>&#34;</span><span class=se>\&#34;</span><span class=s>&#34;</span><span class=p>).</span><span class=n>c_str</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>engine</span><span class=p>()</span> <span class=o>&amp;&amp;</span> <span class=n>engine</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>cefContext</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>engine</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>cefContext</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>executeJavaScript</span><span class=p>(</span><span class=n>js</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=kt>void</span> <span class=nf>pushEndToView</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>engine</span><span class=p>()</span> <span class=o>&amp;&amp;</span> <span class=n>engine</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>cefContext</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>engine</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>cefContext</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>executeJavaScript</span><span class=p>(</span><span class=s>&#34;window.showEnd &amp;&amp; window.showEnd();&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=n>json</span> <span class=n>m_script</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>json</span> <span class=n>m_messages</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>size_t</span> <span class=n>m_index</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>mitiru</span><span class=o>::</span><span class=n>Engine</span> <span class=n>engine</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>HelloScene</span> <span class=n>game</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=n>mitiru</span><span class=o>::</span><span class=n>EngineConfig</span> <span class=n>cfg</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>cfg</span><span class=p>.</span><span class=n>title</span> <span class=o>=</span> <span class=s>&#34;Hello Scene&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>cfg</span><span class=p>.</span><span class=n>windowWidth</span> <span class=o>=</span> <span class=mi>1280</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>cfg</span><span class=p>.</span><span class=n>windowHeight</span> <span class=o>=</span> <span class=mi>720</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>cfg</span><span class=p>.</span><span class=n>cefStartUrl</span> <span class=o>=</span> <span class=s>&#34;file:///&#34;</span> <span class=n>__FILE__</span> <span class=s>&#34;/../view.html&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=n>engine</span><span class=p>.</span><span class=n>run</span><span class=p>(</span><span class=n>game</span><span class=p>,</span> <span class=n>cfg</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><p>ポイント:</p><ul><li>C++ 側は <strong>「いま何番目のメッセージか」だけ覚える</strong>。描画はしません。</li><li>進めるのも C++ 側。<code>input().isMouseJustPressed(...)</code> で 1 行進めます。</li><li>1 行進むたびに <code>executeJavaScript</code> で <strong>HTML 側に通知</strong> します。これが「C++ → JS」の signal-only bridge です。</li></ul><h2 id=手順-3-見た目を-html--css-で書く>手順 3: 見た目を HTML / CSS で書く</h2><p><code>my_first_scene/view.html</code> を作ります。テキストボックスを出すだけのページです。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-html data-lang=html><span class=line><span class=cl><span class=cp>&lt;!DOCTYPE html&gt;</span>
+</span></span><span class=line><span class=cl><span class=p>&lt;</span><span class=nt>html</span> <span class=na>lang</span><span class=o>=</span><span class=s>&#34;ja&#34;</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl><span class=p>&lt;</span><span class=nt>head</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>  <span class=p>&lt;</span><span class=nt>meta</span> <span class=na>charset</span><span class=o>=</span><span class=s>&#34;utf-8&#34;</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>  <span class=p>&lt;</span><span class=nt>style</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=nt>html</span><span class=o>,</span> <span class=nt>body</span> <span class=p>{</span> <span class=k>margin</span><span class=p>:</span> <span class=mi>0</span><span class=p>;</span> <span class=k>height</span><span class=p>:</span> <span class=mi>100</span><span class=kt>%</span><span class=p>;</span> <span class=k>font-family</span><span class=p>:</span> <span class=s2>&#34;Noto Sans JP&#34;</span><span class=p>,</span> <span class=kc>sans-serif</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=nt>body</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=k>background</span><span class=p>:</span>
+</span></span><span class=line><span class=cl>        <span class=nb>radial-gradient</span><span class=p>(</span><span class=kc>circle</span> <span class=n>at</span> <span class=mi>30</span><span class=kt>%</span> <span class=mi>30</span><span class=kt>%</span><span class=p>,</span> <span class=mh>#2a3550</span><span class=p>,</span> <span class=mh>#0f1426</span> <span class=mi>75</span><span class=kt>%</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=k>color</span><span class=p>:</span> <span class=mh>#fff</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=nc>stage</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=k>position</span><span class=p>:</span> <span class=kc>fixed</span><span class=p>;</span> <span class=n>inset</span><span class=p>:</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=k>display</span><span class=p>:</span> <span class=kc>flex</span><span class=p>;</span> <span class=k>align-items</span><span class=p>:</span> <span class=kc>center</span><span class=p>;</span> <span class=k>justify-content</span><span class=p>:</span> <span class=kc>center</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=k>font-size</span><span class=p>:</span> <span class=mi>18</span><span class=kt>px</span><span class=p>;</span> <span class=k>opacity</span><span class=p>:</span> <span class=mf>0.6</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=nc>message</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=k>position</span><span class=p>:</span> <span class=kc>fixed</span><span class=p>;</span> <span class=k>left</span><span class=p>:</span> <span class=mi>4</span><span class=kt>%</span><span class=p>;</span> <span class=k>right</span><span class=p>:</span> <span class=mi>4</span><span class=kt>%</span><span class=p>;</span> <span class=k>bottom</span><span class=p>:</span> <span class=mi>4</span><span class=kt>%</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=k>padding</span><span class=p>:</span> <span class=mi>24</span><span class=kt>px</span> <span class=mi>28</span><span class=kt>px</span><span class=p>;</span> <span class=k>min-height</span><span class=p>:</span> <span class=mi>110</span><span class=kt>px</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=k>background</span><span class=p>:</span> <span class=nb>rgba</span><span class=p>(</span><span class=mi>8</span><span class=p>,</span> <span class=mi>12</span><span class=p>,</span> <span class=mi>24</span><span class=p>,</span> <span class=mf>0.86</span><span class=p>);</span> <span class=k>border</span><span class=p>:</span> <span class=mi>1</span><span class=kt>px</span> <span class=kc>solid</span> <span class=nb>rgba</span><span class=p>(</span><span class=mi>255</span><span class=p>,</span><span class=mi>255</span><span class=p>,</span><span class=mi>255</span><span class=p>,</span><span class=mf>0.4</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=k>border-radius</span><span class=p>:</span> <span class=mi>10</span><span class=kt>px</span><span class=p>;</span> <span class=k>box-shadow</span><span class=p>:</span> <span class=mi>0</span> <span class=mi>8</span><span class=kt>px</span> <span class=mi>24</span><span class=kt>px</span> <span class=nb>rgba</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span><span class=mi>0</span><span class=p>,</span><span class=mi>0</span><span class=p>,</span><span class=mf>0.4</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=nc>message__name</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=k>display</span><span class=p>:</span> <span class=kc>inline-block</span><span class=p>;</span> <span class=k>padding</span><span class=p>:</span> <span class=mi>4</span><span class=kt>px</span> <span class=mi>12</span><span class=kt>px</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=k>background</span><span class=p>:</span> <span class=mh>#5b8ee2</span><span class=p>;</span> <span class=k>border-radius</span><span class=p>:</span> <span class=mi>4</span><span class=kt>px</span><span class=p>;</span> <span class=k>margin-bottom</span><span class=p>:</span> <span class=mi>12</span><span class=kt>px</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=k>font-weight</span><span class=p>:</span> <span class=mi>700</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=nc>message__text</span> <span class=p>{</span> <span class=k>font-size</span><span class=p>:</span> <span class=mi>22</span><span class=kt>px</span><span class=p>;</span> <span class=k>line-height</span><span class=p>:</span> <span class=mf>1.55</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=nc>end</span> <span class=p>{</span> <span class=k>font-size</span><span class=p>:</span> <span class=mi>56</span><span class=kt>px</span><span class=p>;</span> <span class=k>text-align</span><span class=p>:</span> <span class=kc>center</span><span class=p>;</span> <span class=k>padding-top</span><span class=p>:</span> <span class=mi>35</span><span class=kt>vh</span><span class=p>;</span> <span class=k>opacity</span><span class=p>:</span> <span class=mf>0.85</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>&lt;/</span><span class=nt>style</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl><span class=p>&lt;/</span><span class=nt>head</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl><span class=p>&lt;</span><span class=nt>body</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>  <span class=p>&lt;</span><span class=nt>div</span> <span class=na>class</span><span class=o>=</span><span class=s>&#34;stage&#34;</span><span class=p>&gt;</span>— hello scene —<span class=p>&lt;/</span><span class=nt>div</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>  <span class=p>&lt;</span><span class=nt>div</span> <span class=na>class</span><span class=o>=</span><span class=s>&#34;message&#34;</span> <span class=na>id</span><span class=o>=</span><span class=s>&#34;message&#34;</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=p>&lt;</span><span class=nt>div</span> <span class=na>class</span><span class=o>=</span><span class=s>&#34;message__name&#34;</span> <span class=na>id</span><span class=o>=</span><span class=s>&#34;name&#34;</span><span class=p>&gt;</span>システム<span class=p>&lt;/</span><span class=nt>div</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=p>&lt;</span><span class=nt>div</span> <span class=na>class</span><span class=o>=</span><span class=s>&#34;message__text&#34;</span> <span class=na>id</span><span class=o>=</span><span class=s>&#34;text&#34;</span><span class=p>&gt;</span>…<span class=p>&lt;/</span><span class=nt>div</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>  <span class=p>&lt;/</span><span class=nt>div</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=p>&lt;</span><span class=nt>script</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl>    <span class=nb>window</span><span class=p>.</span><span class=nx>showMessage</span> <span class=o>=</span> <span class=kd>function</span> <span class=p>(</span><span class=nx>speaker</span><span class=p>,</span> <span class=nx>text</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=kd>var</span> <span class=nx>nameEl</span> <span class=o>=</span> <span class=nb>document</span><span class=p>.</span><span class=nx>getElementById</span><span class=p>(</span><span class=s1>&#39;name&#39;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=kd>var</span> <span class=nx>textEl</span> <span class=o>=</span> <span class=nb>document</span><span class=p>.</span><span class=nx>getElementById</span><span class=p>(</span><span class=s1>&#39;text&#39;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=k>if</span> <span class=p>(</span><span class=nx>speaker</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=nx>nameEl</span><span class=p>.</span><span class=nx>textContent</span> <span class=o>=</span> <span class=nx>speaker</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=nx>nameEl</span><span class=p>.</span><span class=nx>style</span><span class=p>.</span><span class=nx>display</span> <span class=o>=</span> <span class=s1>&#39;inline-block&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=nx>nameEl</span><span class=p>.</span><span class=nx>style</span><span class=p>.</span><span class=nx>display</span> <span class=o>=</span> <span class=s1>&#39;none&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=nx>textEl</span><span class=p>.</span><span class=nx>textContent</span> <span class=o>=</span> <span class=nx>text</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=nb>window</span><span class=p>.</span><span class=nx>showEnd</span> <span class=o>=</span> <span class=kd>function</span> <span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=nb>document</span><span class=p>.</span><span class=nx>body</span><span class=p>.</span><span class=nx>innerHTML</span> <span class=o>=</span> <span class=s1>&#39;&lt;div class=&#34;end&#34;&gt;OK&lt;/div&gt;&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>  <span class=p>&lt;/</span><span class=nt>script</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl><span class=p>&lt;/</span><span class=nt>body</span><span class=p>&gt;</span>
+</span></span><span class=line><span class=cl><span class=p>&lt;/</span><span class=nt>html</span><span class=p>&gt;</span>
+</span></span></code></pre></div><p>ポイント:</p><ul><li>HTML 側は <strong>「描く」「ボタン的なクリックを受ける」だけ</strong>。状態は持ちません。</li><li>C++ から呼ばれた <code>window.showMessage(...)</code> で表示を差し替えるだけ。</li><li>「次へ進む」は C++ 側が決めているので、HTML 側に分岐ロジックは要らない。</li></ul><h2 id=手順-4-cmake-に登録してビルド>手順 4: CMake に登録してビルド</h2><p><code>examples/CMakeLists.txt</code> に 1 行追加します。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cmake data-lang=cmake><span class=line><span class=cl><span class=nb>add_subdirectory</span><span class=p>(</span><span class=s>my_first_scene</span><span class=p>)</span><span class=err>
+</span></span></span></code></pre></div><p>そして <code>my_first_scene/CMakeLists.txt</code>。CEF を使うので <code>mitiru_add_cef_game</code> を呼びます。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cmake data-lang=cmake><span class=line><span class=cl><span class=nb>add_executable</span><span class=p>(</span><span class=s>my_first_scene</span> <span class=s>main.cpp</span><span class=p>)</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=nb>target_link_libraries</span><span class=p>(</span><span class=s>my_first_scene</span> <span class=s>PRIVATE</span> <span class=s>Mitiru::mitiru</span><span class=p>)</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=nb>include</span><span class=p>(</span><span class=s2>&#34;${CMAKE_SOURCE_DIR}/cmake/MitiruCef.cmake&#34;</span><span class=p>)</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=nb>mitiru_add_cef_game</span><span class=p>(</span><span class=s>my_first_scene</span><span class=p>)</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># messages.json と view.html を exe の隣にコピー
+</span></span></span><span class=line><span class=cl><span class=c></span><span class=nb>file</span><span class=p>(</span><span class=s>COPY</span> <span class=s>messages.json</span> <span class=s>view.html</span> <span class=s>DESTINATION</span> <span class=o>${</span><span class=nv>CMAKE_CURRENT_BINARY_DIR</span><span class=o>}</span><span class=p>)</span><span class=err>
+</span></span></span></code></pre></div><p>あとはビルド。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>cmake --build build --config Debug --target my_first_scene
+</span></span><span class=line><span class=cl>./build/examples/my_first_scene/Debug/my_first_scene
+</span></span></code></pre></div><p>クリックでメッセージが進んで、最後に <code>OK</code> が出れば完成です。</p><hr><h2 id=何が分かったか>何が分かったか</h2><ul><li><strong>C++ は状態の本体、HTML は表示</strong> という分担が、実コードで体感できたはず。</li><li><code>executeJavaScript</code> で <strong>「これを表示して」だけ伝える</strong> ので、コードがあちこちに散らかりません。</li><li>データが JSON なので、テキストの書き換えは C++ をビルドしなくてもできます。</li></ul><h2 id=同じ仕組みは他ジャンルにも使える>同じ仕組みは他ジャンルにも使える</h2><p>ここで作ったものは「画面の上にテキスト UI を出して、何かをきっかけに次へ進む」という汎用の型です。たとえば:</p><ul><li><strong>アクションゲーム</strong>: ステージ開始のメッセージ、ボス前のカットイン、ゲームオーバー時の演出。</li><li><strong>RPG</strong>: 村人 NPC との会話、クエスト授受、宿屋で休んだあとの「翌朝になった」表示。</li><li><strong>シミュレーション</strong>: イベント通知、四半期決算メッセージ、ランダムイベントの選択肢提示。</li><li><strong>シューティング / RTS</strong>: 出撃前のミッションブリーフィング、戦況の合間に入る無線連絡、リザルト画面。</li><li><strong>パズル / カジュアル</strong>: チュートリアルのヒント、ステージクリア時のコメント、デイリーミッションの説明。</li></ul><p>進める条件を変える (時間経過、ボタン、特定の条件) のも、C++ 側の <code>update()</code> を書き換えるだけです。テキストの中身もデータ側で差し替えれば再利用できます。</p><h2 id=次の一歩>次の一歩</h2><ul><li>背景画像をちゃんと表示する (<code>&lt;img></code> か CSS の <code>background-image</code> で OK)。トランジションを当てるとそれっぽくなります。</li><li>選択肢を入れる。<code>choices: [{text, action}]</code> をデータに追加して、JS 側でボタンを描き、<code>cefQuery</code> で C++ に「どれを選んだか」を通知すれば動きます。これが「JS → C++」の signal-only bridge です。</li><li>次のレッスン: <a href=https://mogmog-0110.github.io/MitiruEngine/tutorials/02-action-prototype/>02 — 2D アクションのプロトタイプ</a> に進むと、キーボード入力で動くプレイヤーが書けるようになります。</li></ul></div></header><ul class=page-list__items></ul></section></main><footer class=site-footer><div class="container site-footer__inner"><div class=site-footer__col><p class=site-footer__brand>MitiruEngine</p><p class=site-footer__copy>&copy; 2026 MitiruEngine contributors.</p></div><div class=site-footer__col><h2 class=site-footer__h>ライセンス</h2><p>MIT。詳しくは <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE>LICENSE</a> を見てください。</p></div><div class=site-footer__col><h2 class=site-footer__h>状態</h2><p>0.x 系・実験段階。API はまだ変わります。</p><p><a href=https://github.com/mogmog-0110/MitiruEngine>github.com/mogmog-0110/MitiruEngine</a></p></div></div></footer><div class=shortcuts-dialog id=shortcuts-dialog role=dialog aria-modal=true aria-labelledby=shortcuts-dialog-title data-pagefind-ignore hidden><div class=shortcuts-dialog__backdrop data-shortcuts-close></div><div class=shortcuts-dialog__panel role=document><div class=shortcuts-dialog__header><h2 id=shortcuts-dialog-title class=shortcuts-dialog__title>キーボードショートカット</h2><button type=button class=shortcuts-dialog__close data-shortcuts-close aria-label=閉じる><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class=shortcuts-dialog__body><dl class=shortcuts-list><div class=shortcuts-list__row><dt><kbd>?</kbd></dt><dd>このヘルプを開く</dd></div><div class=shortcuts-list__row><dt><kbd>Esc</kbd></dt><dd>ダイアログを閉じる</dd></div><div class=shortcuts-list__row><dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt><dd>サイト内検索を開く</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>h</kbd></dt><dd>ホームへ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>c</kbd></dt><dd>チャプター一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>a</kbd></dt><dd>アーキテクチャ一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>t</kbd></dt><dd>チュートリアル一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>s</kbd></dt><dd>はじめてのページへ</dd></div></dl><p class=shortcuts-dialog__foot>入力中（テキストフィールド・コード編集）は無効です。</p></div></div></div><script src=https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js defer></script></body></html>

@@ -3426,3 +3426,216 @@ pre {
     font-size: 0.85rem;
   }
 }
+
+/* ============================================================
+   Round 39 playful additions
+   ============================================================ */
+
+/* --- Konami mascot (fixed bottom-right) --- */
+.konami-mascot {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: 64px;
+  height: 56px;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 320ms ease, transform 320ms ease;
+  pointer-events: none;
+  z-index: 9999;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.18));
+}
+.konami-mascot--visible {
+  opacity: 1;
+  transform: translateY(0);
+  animation: konami-bounce 1.6s ease-in-out infinite;
+}
+.konami-mascot--still.konami-mascot--visible {
+  animation: none;
+}
+@keyframes konami-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+/* --- Card tilt micro-interaction (uses --tilt-x / --tilt-y from JS) --- */
+.guides-list__link,
+.chapter-list__link {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+
+  transform: perspective(700px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transition: transform 150ms ease, box-shadow 200ms ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.guides-list__link:hover,
+.chapter-list__link:hover {
+  box-shadow: 0 8px 20px -10px rgba(60, 80, 130, 0.35);
+}
+.guides-list__link:not(:hover),
+.chapter-list__link:not(:hover) {
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+/* --- Section reveal flourish: animated underline on first heading inside .is-visible --- */
+[data-fade] :is(h1, h2, h3).reveal-flourish::after,
+[data-fade].is-visible :is(.page-article__title, .home-section__title, h2):first-of-type::after {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 0;
+  margin-top: 0.45rem;
+  background: linear-gradient(90deg, var(--c-accent, #3865ff) 0%, transparent 100%);
+  transition: width 720ms cubic-bezier(0.2, 0.7, 0.1, 1) 120ms;
+}
+[data-fade].is-visible :is(.page-article__title, .home-section__title, h2):first-of-type::after {
+  width: 68%;
+  max-width: 16rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .konami-mascot,
+  .konami-mascot--visible { animation: none !important; }
+  .guides-list__link,
+  .chapter-list__link {
+    transform: none !important;
+    transition: box-shadow 200ms ease;
+  }
+  [data-fade].is-visible :is(.page-article__title, .home-section__title, h2):first-of-type::after {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .konami-mascot { filter: none; }
+  [data-fade].is-visible :is(.page-article__title, .home-section__title, h2):first-of-type::after {
+    background: CanvasText;
+  }
+}
+
+/* --- Round 39 home page: concept hero card + capability pillars --- */
+.hero-image--concept {
+  max-width: 760px;
+  margin: 2rem auto 2.5rem;
+  padding: 0;
+}
+.hero-image__concept {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.6rem 1.8rem;
+  background: var(--c-surface, #fff);
+  border: 1px solid var(--c-border, #d8dee9);
+  border-radius: 14px;
+  box-shadow: 0 18px 36px -22px rgba(36, 56, 90, 0.32);
+}
+.hero-image__row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.hero-image__chip {
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.32em 0.7em;
+  border-radius: 999px;
+  background: #283149;
+  color: #fff;
+  white-space: nowrap;
+  min-width: 7.5rem;
+  text-align: center;
+}
+.hero-image__chip--web {
+  background: #c0d6ff;
+  color: #1a325e;
+}
+.hero-image__chip--data {
+  background: #f4d8a3;
+  color: #6b4a18;
+}
+.hero-image__label {
+  color: var(--c-text-muted, #4d566b);
+  font-size: 0.95rem;
+}
+.hero-image__caption {
+  max-width: 760px;
+  margin: 1.1rem auto 0;
+  text-align: center;
+  color: var(--c-text-muted, #4d566b);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  padding: 0 1rem;
+}
+
+.home-section {
+  max-width: 960px;
+  margin: 3rem auto;
+  padding: 0 1.2rem;
+}
+.home-section__header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+.home-section__title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  margin: 0 0 0.55rem;
+  display: inline-block;
+}
+.home-section__lede {
+  color: var(--c-text-muted, #4d566b);
+  font-size: 1rem;
+  line-height: 1.7;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.home-pillars {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1.1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.home-pillar {
+  background: var(--c-surface, #fff);
+  border: 1px solid var(--c-border, #d8dee9);
+  border-radius: 12px;
+  padding: 1.25rem 1.35rem;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.home-pillar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px -14px rgba(36, 56, 90, 0.28);
+}
+.home-pillar__title {
+  margin: 0 0 0.55rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.home-pillar__body {
+  margin: 0;
+  color: var(--c-text-muted, #4d566b);
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+.home-pillar__body code {
+  background: var(--c-code-bg, #f3f4f8);
+  padding: 0.05em 0.4em;
+  border-radius: 4px;
+  font-size: 0.86em;
+}
+.home-showcase__footnote {
+  margin-top: 1.4rem;
+  text-align: center;
+  color: var(--c-text-muted, #4d566b);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-pillar { transition: none; }
+  .home-pillar:hover { transform: none; }
+}

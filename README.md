@@ -15,9 +15,9 @@ C++ でゲームを書くための、ふだん使いのエンジン。
 - 公式ページ : <https://mogmog-0110.github.io/MitiruEngine/>
 - はじめに : <https://mogmog-0110.github.io/MitiruEngine/getting-started/>
 - チュートリアル : <https://mogmog-0110.github.io/MitiruEngine/tutorials/>
-- サンプル一覧 : <https://mogmog-0110.github.io/MitiruEngine/examples/>
+- できること (チャプター) : <https://mogmog-0110.github.io/MitiruEngine/chapters/>
 - API リファレンス : <https://mogmog-0110.github.io/MitiruEngine/api/>
-- 設計の記録 (ADR) : <https://mogmog-0110.github.io/MitiruEngine/adr/>
+- アーキテクチャ : <https://mogmog-0110.github.io/MitiruEngine/architecture/>
 
 ドキュメントは日本語で書かれています。
 
@@ -28,12 +28,9 @@ git clone --recursive https://github.com/mogmog-0110/MitiruEngine.git
 cd MitiruEngine
 cmake --preset default
 cmake --build build --config Debug
-./build/examples/hello_sprite/Debug/mitiru_hello_sprite
 ```
 
-青空に太陽が浮かんで、ダイアログボックスのある画面が開けば成功です。
-
-詳しい手順は [はじめに](https://mogmog-0110.github.io/MitiruEngine/getting-started/) を見てください。
+詳しい手順とサンプルプロジェクトの組みかたは [はじめに](https://mogmog-0110.github.io/MitiruEngine/getting-started/) を見てください。サンプル集は Round 39 で刷新中で、次のリリースで新しいセットが並びます。
 
 ## 自分のゲームから使う
 

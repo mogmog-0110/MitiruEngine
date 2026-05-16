@@ -1,867 +1,170 @@
-<!DOCTYPE html>
-<html lang="ja" data-base="/">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gameplay Programming Guide | MitiruEngine</title>
-  
-
-
-
-
-<meta name="description" content="Starter guide for writing C&#43;&#43; gameplay on top of MitiruEngine — scenes, timers, signal wiring, save/load.">
-
-<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/">
-
-
-
-<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/">
-
-
-
-
-
-
-
-
-
-
-
-
-
-<meta property="og:title" content="Gameplay Programming Guide | MitiruEngine">
-<meta property="og:description" content="Starter guide for writing C&#43;&#43; gameplay on top of MitiruEngine — scenes, timers, signal wiring, save/load.">
-<meta property="og:type" content="article">
-<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/">
-<meta property="og:site_name" content="MitiruEngine">
-<meta property="og:locale" content="ja_JP">
-
-<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Gameplay Programming Guide | MitiruEngine">
-<meta name="twitter:description" content="Starter guide for writing C&#43;&#43; gameplay on top of MitiruEngine — scenes, timers, signal wiring, save/load.">
-<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
-
-
-
-  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
-  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
-  <meta name="color-scheme" content="light dark">
-  <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('theme');
-        if (t === 'dark' || t === 'light') {
-          document.documentElement.setAttribute('data-theme', t);
-        }
-      } catch (e) {   }
-    })();
-  </script>
-  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-</head>
-<body>
-  <header class="site-header">
-  <div class="container site-header__inner">
-    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
-      <span class="site-header__brand-mark" aria-hidden="true">M</span>
-      <span class="site-header__brand-name">MitiruEngine</span>
-    </a>
-    <input type="checkbox"
-           id="nav-toggle"
-           class="nav-toggle"
-           role="button"
-           aria-label="メニュー"
-           aria-controls="primary-nav">
-    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <line x1="3" y1="6"  x2="21" y2="6"></line>
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
-      </svg>
-    </label>
-    <nav class="site-nav" id="primary-nav" aria-label="primary">
-      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
-      
-<button type="button"
-        class="search-trigger"
-        id="site-search-trigger"
-        aria-label="サイト内検索"
-        aria-haspopup="dialog"
-        aria-expanded="false"
-        aria-controls="site-search-dialog">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <circle cx="11" cy="11" r="7"></circle>
-    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
-  </svg>
-  <span class="visually-hidden">サイト内検索</span>
+<!doctype html><html lang=ja data-base=/><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Gameplay Programming Guide | MitiruEngine</title>
+<meta name=description content="Starter guide for writing C++ gameplay on top of MitiruEngine — scenes, timers, signal wiring, save/load."><link rel=canonical href=https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/><link rel=alternate hreflang=ja href=https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/><meta property="og:title" content="Gameplay Programming Guide | MitiruEngine"><meta property="og:description" content="Starter guide for writing C++ gameplay on top of MitiruEngine — scenes, timers, signal wiring, save/load."><meta property="og:type" content="article"><meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/"><meta property="og:site_name" content="MitiruEngine"><meta property="og:locale" content="ja_JP"><meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name=twitter:card content="summary_large_image"><meta name=twitter:title content="Gameplay Programming Guide | MitiruEngine"><meta name=twitter:description content="Starter guide for writing C++ gameplay on top of MitiruEngine — scenes, timers, signal wiring, save/load."><meta name=twitter:image content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><link rel=icon type=image/svg+xml href=https://mogmog-0110.github.io/MitiruEngine/favicon.svg><link rel=icon type=image/png sizes=32x32 href=https://mogmog-0110.github.io/MitiruEngine/favicon-32.png><link rel=apple-touch-icon sizes=180x180 href=https://mogmog-0110.github.io/MitiruEngine/favicon-180.png><link rel="alternate icon" href=https://mogmog-0110.github.io/MitiruEngine/favicon.ico><meta name=color-scheme content="light dark"><script>(function(){try{var e=localStorage.getItem("theme");(e==="dark"||e==="light")&&document.documentElement.setAttribute("data-theme",e)}catch{}})()</script><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/css/main.css><link rel=preconnect href=https://fonts.googleapis.com><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"></head><body><header class=site-header><div class="container site-header__inner"><a class=site-header__brand href=https://mogmog-0110.github.io/MitiruEngine/><span class=site-header__brand-mark aria-hidden=true>M</span>
+<span class=site-header__brand-name>MitiruEngine</span>
+</a><input type=checkbox id=nav-toggle class=nav-toggle role=button aria-label=メニュー aria-controls=primary-nav>
+<label for=nav-toggle class=nav-toggle__label aria-hidden=true><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label><nav class=site-nav id=primary-nav aria-label=primary><a href=https://mogmog-0110.github.io/MitiruEngine/>ホーム</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/getting-started/>はじめに</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/tutorials/>チュートリアル</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/chapters/>できること</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a>
+<a href=https://mogmog-0110.github.io/MitiruEngine/api/>API</a>
+<button type=button class=search-trigger id=site-search-trigger aria-label=サイト内検索 aria-haspopup=dialog aria-expanded=false aria-controls=site-search-dialog>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
+<span class=visually-hidden>サイト内検索</span></button><div class=search-dialog id=site-search-dialog role=dialog aria-modal=true aria-labelledby=site-search-title data-pagefind-ignore hidden><div class=search-dialog__backdrop data-search-close></div><div class=search-dialog__panel role=document><div class=search-dialog__header><h2 id=site-search-title class=search-dialog__title>サイト内検索</h2><button type=button class=search-dialog__close data-search-close aria-label=閉じる><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div id=site-search class=search-dialog__body></div></div></div><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css><script src=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js defer></script><script>(function(){var t,n,i,a,r,c,d,u,s=document.getElementById("site-search-trigger"),e=document.getElementById("site-search-dialog");if(!s||!e)return;d=e.querySelector("#site-search"),i=e.querySelectorAll("[data-search-close]"),c=document.documentElement,u=(c.getAttribute("lang")||"en").toLowerCase(),a="https://mogmog-0110.github.io/MitiruEngine/pagefind/",r={placeholder:"ドキュメントを検索…",clear_search:"クリア",load_more:"さらに読み込む",search_label:"サイト内検索",filters_label:"Filters",zero_results:"「[SEARCH_TERM]」に一致する結果はありません",many_results:"[SEARCH_TERM] の検索結果 [COUNT] 件",one_result:"[SEARCH_TERM] の検索結果 [COUNT] 件",alt_search:"代わりに [DISPLAY_QUERY] の結果を表示しています",search_suggestion:"[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",searching:"検索中…"},t=null,n=null;function h(){return t?t:typeof window.PagefindUI!="function"?null:(t=new window.PagefindUI({element:d,showSubResults:!0,showImages:!1,excerptLength:30,resetStyles:!1,bundlePath:a,translations:r,autofocus:!0}),t)}function l(){n=document.activeElement,e.hidden=!1,requestAnimationFrame(function(){e.classList.add("is-open"),document.body.classList.add("search-open"),s.setAttribute("aria-expanded","true"),h();var t=e.querySelector(".pagefind-ui__search-input");t&&t.focus()})}function o(){e.classList.remove("is-open"),document.body.classList.remove("search-open"),s.setAttribute("aria-expanded","false"),setTimeout(function(){e.classList.contains("is-open")||(e.hidden=!0),n&&typeof n.focus=="function"&&n.focus()},200)}s.addEventListener("click",function(){e.classList.contains("is-open")?o():l()}),i.forEach(function(e){e.addEventListener("click",o)});function m(){var n,t=e.querySelector(".search-dialog__panel");return t?(n='a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',Array.prototype.filter.call(t.querySelectorAll(n),function(e){return!e.hasAttribute("hidden")&&e.offsetParent!==null})):[]}document.addEventListener("keydown",function(t){if(s=e.classList.contains("is-open"),t.key==="Escape"&&s){o();return}if(t.key==="Tab"&&s){if(n=m(),n.length===0){t.preventDefault();return}var n,s,r,i=n[0],c=n[n.length-1],a=document.activeElement;t.shiftKey&&a===i?(t.preventDefault(),c.focus()):!t.shiftKey&&a===c?(t.preventDefault(),i.focus()):e.contains(a)||(t.preventDefault(),i.focus());return}(t.metaKey||t.ctrlKey)&&(t.key==="k"||t.key==="K")&&(t.preventDefault(),s?(r=e.querySelector(".pagefind-ui__search-input"),r&&r.focus()):l())})})()</script><a class=site-nav__github href=https://github.com/mogmog-0110/MitiruEngine aria-label=GitHub><svg width="20" height="20" viewBox="0 0 16 16" fill="currentcolor" aria-hidden="true"><path d="M8 0C3.58.0.0 3.58.0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95.0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12.0.0.67-.21 2.2.82a7.62 7.62.0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15.0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+<span class=visually-hidden>GitHub</span>
+</a><button type=button class=shortcuts-trigger data-shortcuts-open aria-haspopup=dialog aria-controls=shortcuts-dialog aria-label="Keyboard shortcuts" title=?>
+<kbd class=shortcuts-trigger__kbd aria-hidden=true>?</kbd>
 </button>
-
-<div class="search-dialog"
-     id="site-search-dialog"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="site-search-title"
-     data-pagefind-ignore
-     hidden>
-  <div class="search-dialog__backdrop" data-search-close></div>
-  <div class="search-dialog__panel" role="document">
-    <div class="search-dialog__header">
-      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
-      <button type="button"
-              class="search-dialog__close"
-              data-search-close
-              aria-label="閉じる">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div id="site-search" class="search-dialog__body"></div>
-  </div>
-</div>
-
-
-
-<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
-<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
-
-<script>
-  (function () {
-    var trigger = document.getElementById('site-search-trigger');
-    var dialog  = document.getElementById('site-search-dialog');
-    if (!trigger || !dialog) return;
-
-    var mountPoint = dialog.querySelector('#site-search');
-    var closers    = dialog.querySelectorAll('[data-search-close]');
-    var docEl      = document.documentElement;
-    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
-    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
-    var i18nStrings = {
-      placeholder:       "ドキュメントを検索…",
-      clear_search:      "クリア",
-      load_more:         "さらに読み込む",
-      search_label:      "サイト内検索",
-      filters_label:     "Filters",
-      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
-      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
-      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
-      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
-      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
-      searching:         "検索中…"
-    };
-
-    var instance = null;
-    var lastFocus = null;
-
-    function ensureInstance() {
-      if (instance) return instance;
-      if (typeof window.PagefindUI !== 'function') return null;
-      instance = new window.PagefindUI({
-        element:        mountPoint,
-        showSubResults: true,
-        showImages:     false,
-        excerptLength:  30,
-        resetStyles:    false,
-        bundlePath:     pagefindBundlePath,
-        translations:   i18nStrings,
-        autofocus:      true
-      });
-      return instance;
-    }
-
-    function openDialog() {
-      lastFocus = document.activeElement;
-      dialog.hidden = false;
-      
-      requestAnimationFrame(function () {
-        dialog.classList.add('is-open');
-        document.body.classList.add('search-open');
-        trigger.setAttribute('aria-expanded', 'true');
-        ensureInstance();
-        var input = dialog.querySelector('.pagefind-ui__search-input');
-        if (input) input.focus();
-      });
-    }
-
-    function closeDialog() {
-      dialog.classList.remove('is-open');
-      document.body.classList.remove('search-open');
-      trigger.setAttribute('aria-expanded', 'false');
-      
-      setTimeout(function () {
-        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
-        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
-      }, 200);
-    }
-
-    trigger.addEventListener('click', function () {
-      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
-    });
-
-    closers.forEach(function (el) {
-      el.addEventListener('click', closeDialog);
-    });
-
-    function getTabbable() {
-      var panel = dialog.querySelector('.search-dialog__panel');
-      if (!panel) return [];
-      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
-        return !el.hasAttribute('hidden') && el.offsetParent !== null;
-      });
-    }
-
-    document.addEventListener('keydown', function (e) {
-      var open = dialog.classList.contains('is-open');
-      if (e.key === 'Escape' && open) {
-        closeDialog();
-        return;
-      }
-      
-      
-      
-      if (e.key === 'Tab' && open) {
-        var nodes = getTabbable();
-        if (nodes.length === 0) { e.preventDefault(); return; }
-        var first = nodes[0], last = nodes[nodes.length - 1];
-        var active = document.activeElement;
-        if (e.shiftKey && active === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && active === last) {
-          e.preventDefault();
-          first.focus();
-        } else if (!dialog.contains(active)) {
-          e.preventDefault();
-          first.focus();
-        }
-        return;
-      }
-      
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault();
-        if (open) {
-          var input = dialog.querySelector('.pagefind-ui__search-input');
-          if (input) input.focus();
-        } else {
-          openDialog();
-        }
-      }
-    });
-  })();
-</script>
-
-      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span class="visually-hidden">GitHub</span>
-      </a>
-      
-      <button type="button"
-              class="shortcuts-trigger"
-              data-shortcuts-open
-              aria-haspopup="dialog"
-              aria-controls="shortcuts-dialog"
-              aria-label="Keyboard shortcuts"
-              title="?">
-        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
-      </button>
-      <button type="button"
-              class="theme-toggle"
-              id="theme-toggle"
-              aria-pressed="false"
-              aria-label="ダークモード切替">
-        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="4"></circle>
-          <line x1="12" y1="2"  x2="12" y2="4"></line>
-          <line x1="12" y1="20" x2="12" y2="22"></line>
-          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
-          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
-          <line x1="2"  y1="12" x2="4"  y2="12"></line>
-          <line x1="20" y1="12" x2="22" y2="12"></line>
-          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
-          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
-        </svg>
-      </button>
-    </nav>
-  </div>
-</header>
-<script>
-  (function () {
-    var navBox = document.getElementById('nav-toggle');
-    var themeBtn = document.getElementById('theme-toggle');
-
-    if (navBox) {
-      
-      
-      
-      navBox.addEventListener('change', function () {
-        if (navBox.checked) {
-          document.body.classList.add('is-nav-open');
-        } else {
-          document.body.classList.remove('is-nav-open');
-        }
-      });
-    }
-
-    function isDark() {
-      var current = document.documentElement.getAttribute('data-theme');
-      if (current === 'dark' || current === 'light') return current === 'dark';
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-
-    function syncThemeButton() {
-      if (!themeBtn) return;
-      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
-    }
-
-    
-    
-    syncThemeButton();
-
-    if (themeBtn) {
-      themeBtn.addEventListener('click', function () {
-        var root = document.documentElement;
-        var current = root.getAttribute('data-theme');
-        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var next;
-        if (current === 'dark') {
-          next = 'light';
-        } else if (current === 'light') {
-          next = 'dark';
-        } else {
-          next = prefersDark ? 'light' : 'dark';
-        }
-        root.setAttribute('data-theme', next);
-        try { localStorage.setItem('theme', next); } catch (e) {   }
-        syncThemeButton();
-      });
-    }
-  })();
-</script>
-
-  <main class="site-main" data-pagefind-body>
-    
-<article class="page-article container">
-  <header class="page-article__header">
-    <p class="page-article__eyebrow">
-      <a href="https://mogmog-0110.github.io/MitiruEngine/guides/">Guides</a>
-    </p>
-    <h1>Gameplay Programming Guide</h1>
-    <p class="page-article__lede">Starter guide for writing C&#43;&#43; gameplay on top of MitiruEngine — scenes, timers, signal wiring, save/load.</p>
-    
-      <p class="page-article__source">
-        Source of truth:
-        <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/CPP_GAMEPLAY_GUIDE.md"><code>docs/CPP_GAMEPLAY_GUIDE.md</code></a>
-      </p>
-    
-  </header>
-  <div class="page-article__body">
-    <h1 id="c-gameplay-guide--mitiruengine">C++ Gameplay Guide — MitiruEngine</h1>
-<blockquote>
-<p><strong>対象読者</strong>: MitiruEngine 上で <strong>初めて C++ gameplay を書く</strong> 開発者。
+<button type=button class=theme-toggle id=theme-toggle aria-pressed=false aria-label=ダークモード切替><svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg></button></nav></div></header><script>(function(){var t=document.getElementById("nav-toggle"),e=document.getElementById("theme-toggle");t&&t.addEventListener("change",function(){t.checked?document.body.classList.add("is-nav-open"):document.body.classList.remove("is-nav-open")});function s(){var e=document.documentElement.getAttribute("data-theme");return e==="dark"||e==="light"?e==="dark":window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches}function n(){if(!e)return;e.setAttribute("aria-pressed",s()?"true":"false")}n(),e&&e.addEventListener("click",function(){var e,t=document.documentElement,s=t.getAttribute("data-theme"),o=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;s==="dark"?e="light":s==="light"?e="dark":e=o?"light":"dark",t.setAttribute("data-theme",e);try{localStorage.setItem("theme",e)}catch{}n()})})()</script><main class=site-main data-pagefind-body><article class="page-article container"><header class=page-article__header><p class=page-article__eyebrow><a href=https://mogmog-0110.github.io/MitiruEngine/guides/>Guides</a></p><h1>Gameplay Programming Guide</h1><p class=page-article__lede>Starter guide for writing C++ gameplay on top of MitiruEngine — scenes, timers, signal wiring, save/load.</p><p class=page-article__source>Source of truth:
+<a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/CPP_GAMEPLAY_GUIDE.md><code>docs/CPP_GAMEPLAY_GUIDE.md</code></a></p></header><div class=page-article__body><h1 id=c-gameplay-guide--mitiruengine>C++ Gameplay Guide — MitiruEngine</h1><blockquote><p><strong>対象読者</strong>: MitiruEngine 上で <strong>初めて C++ gameplay を書く</strong> 開発者。
 consumer 側ゲーム (例: KaeruCrape) の作者が、エンジンが提供する P0 プリミティブを
-組み合わせてシーン遷移・状態管理・タイマー・UI signal 配線を行うための入口ガイド。</p>
-</blockquote>
-<hr>
-<h2 id="1-overview">1. Overview</h2>
-<p>MitiruEngine は 2026-05-14 のアーキテクチャピボットで
+組み合わせてシーン遷移・状態管理・タイマー・UI signal 配線を行うための入口ガイド。</p></blockquote><hr><h2 id=1-overview>1. Overview</h2><p>MitiruEngine は 2026-05-14 のアーキテクチャピボットで
 <strong>Siv3D ロールモデル</strong> に寄せた C++ engine 路線にピボットした。
-gameplay の決定権は <strong>すべて C++</strong> にあり、CEF (HTML/CSS/JS) は <strong>View 専用</strong> に格下げされた。</p>
-<p>3 行で整理すると:</p>
-<ol>
-<li><strong>Gameplay は C++</strong>: state machine / シーン遷移 / タイマー / 判定はすべて C++ に置く。</li>
-<li><strong>CEF は UI/HUD/演出</strong>: 描画と「ユーザ操作の検出」だけを担当。JS で条件分岐や状態保持はしない。</li>
-<li><strong>Bridge は signal-only</strong>: JS→C++ は <code>ui.button.start</code> のような「何が起きたか」だけ。
-C++→JS は <code>view.&lt;sub&gt;.&lt;key&gt;</code> 形式の「何を表示すべきか」だけ。
-gameplay 関数の RPC は禁止。</li>
-</ol>
-<p>関連 doc:</p>
-<ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — C++ gameplay / CEF view-only の設計判断</li>
-<li><a href="HYBRID_RUNTIME.md">HYBRID_RUNTIME.md</a> — レイヤー分担の歴史的経緯</li>
-<li><a href="BRIDGE_API_CONTRACT.md">BRIDGE_API_CONTRACT.md</a> — bridge 責務定義 (signal-only)</li>
-<li><a href="cpp-gameplay-api-gaps.md">cpp-gameplay-api-gaps.md</a> — P0/P1 ロードマップ</li>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/cpp_gameplay_minimal/">examples/cpp_gameplay_minimal/</a> — 動く最小例</li>
-</ul>
-<hr>
-<h2 id="2-最小例">2. 最小例</h2>
-<p><code>examples/cpp_gameplay_minimal/main.cpp</code> が <strong>headless で動く最小ループ</strong> を実装している。
-ビルド:</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --preset default
-</span></span><span class="line"><span class="cl">cmake --build build --config Debug --target mitiru_cpp_gameplay_minimal
-</span></span></code></pre></div><p>main loop のスケルトンはこれだけ:</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">scene</span><span class="o">::</span><span class="n">SceneRouter</span>        <span class="n">router</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">input</span><span class="o">::</span><span class="n">BridgeActionRouter</span> <span class="n">actions</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">bridge</span><span class="o">::</span><span class="n">BridgeViewPush</span>    <span class="n">view</span><span class="p">(</span><span class="s">&#34;cooking&#34;</span><span class="p">,</span> <span class="n">setSink</span><span class="p">,</span> <span class="n">emitSink</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">router</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">TitleScene</span><span class="o">&gt;</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">view</span><span class="p">));</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">router</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">router</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="n">dt</span><span class="p">);</span>   <span class="c1">// 内部で top scene の onUpdate(dt) を呼ぶ
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 実機では描画 / 入力ポーリング / bridge ポンプはここに挟む
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
-</span></span></code></pre></div><p>各 Scene は <code>mitiru::scene::IScene</code> を継承し、<code>onEnter / onUpdate / onExit</code> を実装する。</p>
-<hr>
-<h2 id="3-primitives-早見表">3. Primitives 早見表</h2>
-<table>
-  <thead>
-      <tr>
-          <th>やりたいこと</th>
-          <th>プリミティブ</th>
-          <th>ヘッダ</th>
-          <th>中心 API</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td>画面遷移 (Title → Stage → Result)</td>
-          <td><code>SceneRouter</code> + <code>IScene</code></td>
-          <td><code>mitiru/scene/SceneRouter.hpp</code></td>
-          <td><code>push</code> / <code>pop</code> / <code>replace</code> / <code>update</code></td>
-      </tr>
-      <tr>
-          <td>シーン内の状態 (Idle → Cook → Done)</td>
-          <td><code>StateMachine&lt;T&gt;</code></td>
-          <td><code>mitiru/fsm/StateMachine.hpp</code></td>
-          <td><code>transition</code> / <code>setGuard</code> / <code>setOnTransition</code></td>
-      </tr>
-      <tr>
-          <td>焼き時間 / カウントダウン</td>
-          <td><code>Timer</code></td>
-          <td><code>mitiru/time/Timer.hpp</code></td>
-          <td><code>tick</code> / <code>expired</code> / <code>progress</code> / <code>reset</code></td>
-      </tr>
-      <tr>
-          <td>スキル再使用待ち / レート制限</td>
-          <td><code>Cooldown</code></td>
-          <td><code>mitiru/time/Cooldown.hpp</code></td>
-          <td><code>tick</code> / <code>ready</code> / <code>trigger</code></td>
-      </tr>
-      <tr>
-          <td>演出 (wait → action → wait …)</td>
-          <td><code>Sequence</code></td>
-          <td><code>mitiru/time/Sequence.hpp</code></td>
-          <td><code>wait</code> / <code>action</code> / <code>tick</code> / <code>done</code></td>
-      </tr>
-      <tr>
-          <td>UI signal → gameplay action</td>
-          <td><code>BridgeActionRouter</code></td>
-          <td><code>mitiru/input/BridgeActionRouter.hpp</code></td>
-          <td><code>registerHandler</code> / <code>unregisterHandler</code> / <code>dispatch</code></td>
-      </tr>
-      <tr>
-          <td>HUD / 演出を view に push</td>
-          <td><code>BridgeViewPush</code></td>
-          <td><code>mitiru/bridge/BridgeViewPush.hpp</code></td>
-          <td><code>set</code> / <code>emit</code></td>
-      </tr>
-      <tr>
-          <td>UI signal を InputMapper Action にマージ</td>
-          <td><code>BridgeInputAdapter</code></td>
-          <td><code>mitiru/input/BridgeInputAdapter.hpp</code></td>
-          <td><code>mapSignalToAction</code> / <code>unmapSignal</code></td>
-      </tr>
-      <tr>
-          <td>UI signal を型付き EventBus event に変換</td>
-          <td><code>BridgeEventBusGlue</code></td>
-          <td><code>mitiru/bridge/BridgeEventBusGlue.hpp</code></td>
-          <td><code>mapSignal</code> / <code>mapSignalToTrivial</code> / <code>unmap</code></td>
-      </tr>
-      <tr>
-          <td>C++ struct ↔ JSON シリアライズ</td>
-          <td><code>JsonBinding</code></td>
-          <td><code>mitiru/data/JsonBinding.hpp</code></td>
-          <td><code>toJson</code> / <code>fromJson</code> / <code>fromJsonVersioned</code> / <code>MigrationChain&lt;T&gt;</code></td>
-      </tr>
-      <tr>
-          <td>Save スロットの型付き読み書き</td>
-          <td><code>SaveSchema&lt;T&gt;</code></td>
-          <td><code>mitiru/data/SaveSchema.hpp</code></td>
-          <td><code>toJsonString</code> / <code>fromJsonString</code> / <code>migrations()</code></td>
-      </tr>
-      <tr>
-          <td>Balance / dialogue 等の JSON content 読込</td>
-          <td><code>ContentLoader&lt;T&gt;</code></td>
-          <td><code>mitiru/data/ContentLoader.hpp</code></td>
-          <td><code>loadFile</code> / <code>loadString</code> / <code>loadJson</code></td>
-      </tr>
-  </tbody>
-</table>
-<p>すべて header-only。include して使うだけで OK。</p>
-<hr>
-<h2 id="4-composition-patterns">4. Composition Patterns</h2>
-<p>ここがメイン。プリミティブは単体ではなく <strong>組み合わせ</strong> で gameplay を表現する。</p>
-<h3 id="pattern-a--scene--statemachine-の二層構造">Pattern A — Scene + StateMachine の二層構造</h3>
-<p><strong>意図</strong>: 「画面の切り替え」と「画面内の状態」を <strong>別レイヤー</strong> として扱う。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CookState</span> <span class="p">{</span> <span class="n">Idle</span><span class="p">,</span> <span class="n">Cooking</span><span class="p">,</span> <span class="n">Done</span> <span class="p">};</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">CookingScene</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">scene</span><span class="o">::</span><span class="n">IScene</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="n">CookingScene</span><span class="p">()</span> <span class="o">:</span> <span class="n">m_fsm</span><span class="p">(</span><span class="n">CookState</span><span class="o">::</span><span class="n">Idle</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="n">m_fsm</span><span class="p">.</span><span class="n">setOnTransition</span><span class="p">([</span><span class="k">this</span><span class="p">](</span><span class="n">CookState</span> <span class="n">from</span><span class="p">,</span> <span class="n">CookState</span> <span class="n">to</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="c1">// 状態が変わるたびに view へ push 等
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="p">});</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">onUpdate</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="c1">// m_fsm.state() を見て分岐
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">fsm</span><span class="o">::</span><span class="n">StateMachine</span><span class="o">&lt;</span><span class="n">CookState</span><span class="o">&gt;</span> <span class="n">m_fsm</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">};</span>
-</span></span></code></pre></div><ul>
-<li><code>SceneRouter</code> は「Title → Cooking → Result」のような <strong>画面単位</strong> の遷移を持つ。</li>
-<li><code>StateMachine&lt;T&gt;</code> は <strong>1 シーン内</strong> の局所状態を持つ。</li>
-<li><strong>ハマる点</strong>: 状態が deeply nested (5 段以上) になってきたら、それは「別 scene に切り出すべきサイン」。
-StateMachine を多段化するより <code>router.push(...)</code> した方が読みやすい。</li>
-</ul>
-<h3 id="pattern-b--timer--statemachine-で時間駆動の遷移">Pattern B — Timer + StateMachine で時間駆動の遷移</h3>
-<p><strong>意図</strong>: 「N 秒経ったら次の状態へ」を素直に表現する。
-<code>Timer.expired()</code> と <code>StateMachine.transition()</code> を組み合わせる。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">onUpdate</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_fsm</span><span class="p">.</span><span class="n">state</span><span class="p">()</span> <span class="o">==</span> <span class="n">CookState</span><span class="o">::</span><span class="n">Cooking</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="n">m_bakeTimer</span><span class="p">.</span><span class="n">tick</span><span class="p">(</span><span class="n">dt</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">m_bakeTimer</span><span class="p">.</span><span class="n">expired</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="n">m_fsm</span><span class="p">.</span><span class="n">transition</span><span class="p">(</span><span class="n">CookState</span><span class="o">::</span><span class="n">Done</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">        <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><ul>
-<li>状態に入った瞬間に <code>m_bakeTimer.reset()</code> を呼ぶ習慣をつける (前回の残り時間を引きずらない)。</li>
-<li><strong>ハマる点</strong>: <code>expired()</code> を毎フレーム見て副作用を発火し続けないこと。
+gameplay の決定権は <strong>すべて C++</strong> にあり、CEF (HTML/CSS/JS) は <strong>View 専用</strong> に格下げされた。</p><p>3 行で整理すると:</p><ol><li><strong>Gameplay は C++</strong>: state machine / シーン遷移 / タイマー / 判定はすべて C++ に置く。</li><li><strong>CEF は UI/HUD/演出</strong>: 描画と「ユーザ操作の検出」だけを担当。JS で条件分岐や状態保持はしない。</li><li><strong>Bridge は signal-only</strong>: JS→C++ は <code>ui.button.start</code> のような「何が起きたか」だけ。
+C++→JS は <code>view.&lt;sub>.&lt;key></code> 形式の「何を表示すべきか」だけ。
+gameplay 関数の RPC は禁止。</li></ol><p>関連 doc:</p><ul><li><a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a> — C++ gameplay / CEF view-only の設計判断</li><li><a href=HYBRID_RUNTIME.md>HYBRID_RUNTIME.md</a> — レイヤー分担の歴史的経緯</li><li><a href=BRIDGE_API_CONTRACT.md>BRIDGE_API_CONTRACT.md</a> — bridge 責務定義 (signal-only)</li><li><a href=cpp-gameplay-api-gaps.md>cpp-gameplay-api-gaps.md</a> — P0/P1 ロードマップ</li></ul><hr><h2 id=2-最小例>2. 最小例</h2><p>以下は <strong>headless で動く最小ループ</strong> のスケルトン (動くサンプルは Round 39 で刷新中)。
+ビルド:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>cmake --preset default
+</span></span><span class=line><span class=cl>cmake --build build --config Debug --target mitiru_cpp_gameplay_minimal
+</span></span></code></pre></div><p>main loop のスケルトンはこれだけ:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>scene</span><span class=o>::</span><span class=n>SceneRouter</span>        <span class=n>router</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>input</span><span class=o>::</span><span class=n>BridgeActionRouter</span> <span class=n>actions</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>bridge</span><span class=o>::</span><span class=n>BridgeViewPush</span>    <span class=n>view</span><span class=p>(</span><span class=s>&#34;cooking&#34;</span><span class=p>,</span> <span class=n>setSink</span><span class=p>,</span> <span class=n>emitSink</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>router</span><span class=p>.</span><span class=n>push</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>make_unique</span><span class=o>&lt;</span><span class=n>TitleScene</span><span class=o>&gt;</span><span class=p>(</span><span class=n>router</span><span class=p>,</span> <span class=n>actions</span><span class=p>,</span> <span class=n>view</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>while</span> <span class=p>(</span><span class=o>!</span><span class=n>router</span><span class=p>.</span><span class=n>empty</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>router</span><span class=p>.</span><span class=n>update</span><span class=p>(</span><span class=n>dt</span><span class=p>);</span>   <span class=c1>// 内部で top scene の onUpdate(dt) を呼ぶ
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 実機では描画 / 入力ポーリング / bridge ポンプはここに挟む
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span></code></pre></div><p>各 Scene は <code>mitiru::scene::IScene</code> を継承し、<code>onEnter / onUpdate / onExit</code> を実装する。</p><hr><h2 id=3-primitives-早見表>3. Primitives 早見表</h2><table><thead><tr><th>やりたいこと</th><th>プリミティブ</th><th>ヘッダ</th><th>中心 API</th></tr></thead><tbody><tr><td>画面遷移 (Title → Stage → Result)</td><td><code>SceneRouter</code> + <code>IScene</code></td><td><code>mitiru/scene/SceneRouter.hpp</code></td><td><code>push</code> / <code>pop</code> / <code>replace</code> / <code>update</code></td></tr><tr><td>シーン内の状態 (Idle → Cook → Done)</td><td><code>StateMachine&lt;T></code></td><td><code>mitiru/fsm/StateMachine.hpp</code></td><td><code>transition</code> / <code>setGuard</code> / <code>setOnTransition</code></td></tr><tr><td>焼き時間 / カウントダウン</td><td><code>Timer</code></td><td><code>mitiru/time/Timer.hpp</code></td><td><code>tick</code> / <code>expired</code> / <code>progress</code> / <code>reset</code></td></tr><tr><td>スキル再使用待ち / レート制限</td><td><code>Cooldown</code></td><td><code>mitiru/time/Cooldown.hpp</code></td><td><code>tick</code> / <code>ready</code> / <code>trigger</code></td></tr><tr><td>演出 (wait → action → wait …)</td><td><code>Sequence</code></td><td><code>mitiru/time/Sequence.hpp</code></td><td><code>wait</code> / <code>action</code> / <code>tick</code> / <code>done</code></td></tr><tr><td>UI signal → gameplay action</td><td><code>BridgeActionRouter</code></td><td><code>mitiru/input/BridgeActionRouter.hpp</code></td><td><code>registerHandler</code> / <code>unregisterHandler</code> / <code>dispatch</code></td></tr><tr><td>HUD / 演出を view に push</td><td><code>BridgeViewPush</code></td><td><code>mitiru/bridge/BridgeViewPush.hpp</code></td><td><code>set</code> / <code>emit</code></td></tr><tr><td>UI signal を InputMapper Action にマージ</td><td><code>BridgeInputAdapter</code></td><td><code>mitiru/input/BridgeInputAdapter.hpp</code></td><td><code>mapSignalToAction</code> / <code>unmapSignal</code></td></tr><tr><td>UI signal を型付き EventBus event に変換</td><td><code>BridgeEventBusGlue</code></td><td><code>mitiru/bridge/BridgeEventBusGlue.hpp</code></td><td><code>mapSignal</code> / <code>mapSignalToTrivial</code> / <code>unmap</code></td></tr><tr><td>C++ struct ↔ JSON シリアライズ</td><td><code>JsonBinding</code></td><td><code>mitiru/data/JsonBinding.hpp</code></td><td><code>toJson</code> / <code>fromJson</code> / <code>fromJsonVersioned</code> / <code>MigrationChain&lt;T></code></td></tr><tr><td>Save スロットの型付き読み書き</td><td><code>SaveSchema&lt;T></code></td><td><code>mitiru/data/SaveSchema.hpp</code></td><td><code>toJsonString</code> / <code>fromJsonString</code> / <code>migrations()</code></td></tr><tr><td>Balance / dialogue 等の JSON content 読込</td><td><code>ContentLoader&lt;T></code></td><td><code>mitiru/data/ContentLoader.hpp</code></td><td><code>loadFile</code> / <code>loadString</code> / <code>loadJson</code></td></tr></tbody></table><p>すべて header-only。include して使うだけで OK。</p><hr><h2 id=4-composition-patterns>4. Composition Patterns</h2><p>ここがメイン。プリミティブは単体ではなく <strong>組み合わせ</strong> で gameplay を表現する。</p><h3 id=pattern-a--scene--statemachine-の二層構造>Pattern A — Scene + StateMachine の二層構造</h3><p><strong>意図</strong>: 「画面の切り替え」と「画面内の状態」を <strong>別レイヤー</strong> として扱う。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>enum</span> <span class=k>class</span> <span class=nc>CookState</span> <span class=p>{</span> <span class=n>Idle</span><span class=p>,</span> <span class=n>Cooking</span><span class=p>,</span> <span class=n>Done</span> <span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>CookingScene</span> <span class=k>final</span> <span class=o>:</span> <span class=k>public</span> <span class=n>mitiru</span><span class=o>::</span><span class=n>scene</span><span class=o>::</span><span class=n>IScene</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=n>CookingScene</span><span class=p>()</span> <span class=o>:</span> <span class=n>m_fsm</span><span class=p>(</span><span class=n>CookState</span><span class=o>::</span><span class=n>Idle</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>m_fsm</span><span class=p>.</span><span class=n>setOnTransition</span><span class=p>([</span><span class=k>this</span><span class=p>](</span><span class=n>CookState</span> <span class=n>from</span><span class=p>,</span> <span class=n>CookState</span> <span class=n>to</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=c1>// 状態が変わるたびに view へ push 等
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=p>});</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=nf>onUpdate</span><span class=p>(</span><span class=kt>float</span> <span class=n>dt</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// m_fsm.state() を見て分岐
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=k>private</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=n>mitiru</span><span class=o>::</span><span class=n>fsm</span><span class=o>::</span><span class=n>StateMachine</span><span class=o>&lt;</span><span class=n>CookState</span><span class=o>&gt;</span> <span class=n>m_fsm</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><ul><li><code>SceneRouter</code> は「Title → Cooking → Result」のような <strong>画面単位</strong> の遷移を持つ。</li><li><code>StateMachine&lt;T></code> は <strong>1 シーン内</strong> の局所状態を持つ。</li><li><strong>ハマる点</strong>: 状態が deeply nested (5 段以上) になってきたら、それは「別 scene に切り出すべきサイン」。
+StateMachine を多段化するより <code>router.push(...)</code> した方が読みやすい。</li></ul><h3 id=pattern-b--timer--statemachine-で時間駆動の遷移>Pattern B — Timer + StateMachine で時間駆動の遷移</h3><p><strong>意図</strong>: 「N 秒経ったら次の状態へ」を素直に表現する。
+<code>Timer.expired()</code> と <code>StateMachine.transition()</code> を組み合わせる。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kt>void</span> <span class=nf>onUpdate</span><span class=p>(</span><span class=kt>float</span> <span class=n>dt</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>m_fsm</span><span class=p>.</span><span class=n>state</span><span class=p>()</span> <span class=o>==</span> <span class=n>CookState</span><span class=o>::</span><span class=n>Cooking</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>m_bakeTimer</span><span class=p>.</span><span class=n>tick</span><span class=p>(</span><span class=n>dt</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>m_bakeTimer</span><span class=p>.</span><span class=n>expired</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>m_fsm</span><span class=p>.</span><span class=n>transition</span><span class=p>(</span><span class=n>CookState</span><span class=o>::</span><span class=n>Done</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><ul><li>状態に入った瞬間に <code>m_bakeTimer.reset()</code> を呼ぶ習慣をつける (前回の残り時間を引きずらない)。</li><li><strong>ハマる点</strong>: <code>expired()</code> を毎フレーム見て副作用を発火し続けないこと。
 <code>transition()</code> した直後は <code>state()</code> が変わっているので二重発火しないが、
-「expired のとき何かする」ロジックは必ず状態遷移にくくる。</li>
-</ul>
-<h3 id="pattern-c--sequence-で演出スクリプト">Pattern C — Sequence で演出スクリプト</h3>
-<p><strong>意図</strong>: 章間カットイン / Title intro / 一連の演出のような <strong>スクリプテッド時系列</strong> を書く。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">m_intro</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mf">0.5f</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="n">action</span><span class="p">([</span><span class="k">this</span><span class="p">]{</span> <span class="n">m_view</span><span class="p">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&#34;intro.start&#34;</span><span class="p">,</span> <span class="s">&#34;{}&#34;</span><span class="p">);</span> <span class="p">})</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mf">0.3f</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="n">action</span><span class="p">([</span><span class="k">this</span><span class="p">]{</span> <span class="n">m_startReady</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span> <span class="p">});</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// update 内で:
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">m_intro</span><span class="p">.</span><span class="n">tick</span><span class="p">(</span><span class="n">dt</span><span class="p">);</span>
-</span></span></code></pre></div><ul>
-<li><code>wait</code> と <code>action</code> を自由に交互に並べられる。<code>action</code> は即時実行で時間を消費しない。</li>
-<li><code>done()</code> で終了判定。終わったあとの <code>tick</code> は no-op。</li>
-<li><strong>ハマる点</strong>: <code>action</code> のラムダ内で <strong>その Sequence 自身を mutate しない</strong> (例: 同じ <code>m_intro</code> に <code>wait(...).action(...)</code> を追加する)。cursor 不整合の原因になる。
-追加演出を流したいなら <strong>別の Sequence インスタンス</strong> を持つこと。</li>
-</ul>
-<h3 id="pattern-d--bridgeactionrouter--scene-のディスパッチ">Pattern D — BridgeActionRouter + Scene のディスパッチ</h3>
-<p><strong>意図</strong>: CEF (UI) から飛んでくる signal を <strong>gameplay の意思決定に変換</strong> する境界を作る。
-JS には「ボタンが押された」だけ言わせて、<strong>どの scene に遷移するか / どんな状態変化を起こすかは C++ が決める</strong>。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">m_actions</span><span class="p">.</span><span class="n">registerHandler</span><span class="p">(</span><span class="s">&#34;ui.button.start&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="p">[</span><span class="k">this</span><span class="p">](</span><span class="n">std</span><span class="o">::</span><span class="n">string_view</span> <span class="cm">/*payload*/</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">m_startReady</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">        <span class="n">m_router</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">CookingScene</span><span class="o">&gt;</span><span class="p">(</span><span class="n">m_router</span><span class="p">,</span> <span class="n">m_actions</span><span class="p">,</span> <span class="n">m_view</span><span class="p">));</span>
-</span></span><span class="line"><span class="cl">    <span class="p">});</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// 後始末: scene が抜けるときに必ず解除
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kt">void</span> <span class="nf">onExit</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">m_actions</span><span class="p">.</span><span class="n">unregisterHandler</span><span class="p">(</span><span class="s">&#34;ui.button.start&#34;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><ul>
-<li>handler 登録は <strong>scene 単位で対称に</strong>: <code>onEnter</code> / ctor で登録、<code>onExit</code> で <code>unregisterHandler</code>。</li>
-<li>同一 signal 名を二重登録すると <strong>last-write-wins</strong> で上書きされる。複数 scene が同じ signal を奪い合わないように責任分界点を決める。</li>
-<li><strong>ハマる点</strong>: handler 内で重い処理をしない。<code>dispatch()</code> は呼び出しスレッドで同期実行されるため、長時間ブロックすると bridge ポンプ全体が詰まる。重い処理は flag を立てて次の <code>onUpdate</code> で消化する。</li>
-</ul>
-<h3 id="pattern-e--bridgeviewpush-で-state-を-view-に流す">Pattern E — BridgeViewPush で state を view に流す</h3>
-<p><strong>意図</strong>: gameplay 側 (C++) で計算した結果を、JS は <strong>描画するだけ</strong> に徹させる。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">m_view</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;hp&#34;</span><span class="p">,</span> <span class="s">&#34;80&#34;</span><span class="p">);</span>                            <span class="c1">// → &#34;view.cooking.hp&#34; = &#34;80&#34;
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">m_view</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;state&#34;</span><span class="p">,</span> <span class="s">&#34;Cooking&#34;</span><span class="p">);</span>                    <span class="c1">// 状態ラベル
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">m_view</span><span class="p">.</span><span class="n">emit</span><span class="p">(</span><span class="s">&#34;damage&#34;</span><span class="p">,</span> <span class="s">&#34;{</span><span class="se">\&#34;</span><span class="s">amount</span><span class="se">\&#34;</span><span class="s">:12,</span><span class="se">\&#34;</span><span class="s">crit</span><span class="se">\&#34;</span><span class="s">:true}&#34;</span><span class="p">);</span>  <span class="c1">// one-shot エフェクト
-</span></span></span></code></pre></div><ul>
-<li><strong><code>set</code> は retained</strong>: 最新値が保持され、後から接続した view も読み取れる (HP / score 等)。</li>
-<li><strong><code>emit</code> は one-shot</strong>: その瞬間のイベント。聴いていない view には届かない (ヒットエフェクト / SE トリガ等)。</li>
-<li>key は <strong><code>view.&lt;subsystem&gt;.&lt;key&gt;</code></strong> 形式に統一される (ctor の <code>subsystem</code> で prefix を固定)。
-詳細命名規約は <a href="BRIDGE_API_CONTRACT.md">BRIDGE_API_CONTRACT.md §3</a> を参照。</li>
-<li><strong>ハマる点</strong>:
-<ul>
-<li>JS で「HP が 50 以下なら赤くする」のような判定を書きたくなったら <strong>負け</strong>。C++ 側で <code>view.cooking.hpLow = &quot;true&quot;</code> を別途 push し、JS は class を toggle するだけにする。</li>
-<li>値はあらかじめ JSON 文字列に整形して渡す (数値は <code>std::to_string</code>、文字列は <code>&quot;\&quot;...&quot;\&quot;&quot;</code> で quote)。</li>
-</ul>
-</li>
-</ul>
-<hr>
-<h3 id="pattern-f--bridgeinputadapter-で-ui-ボタンとキー入力を同じ-action-にする">Pattern F — BridgeInputAdapter で UI ボタンとキー入力を同じ Action にする</h3>
-<p><strong>意図</strong>: 「キーボードでも UI ボタンでも同じ Action として gameplay は受け取る」を仕組みで保証する。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">InputMapper</span>                   <span class="n">mapper</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">input</span><span class="o">::</span><span class="n">BridgeActionRouter</span>     <span class="n">router</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">input</span><span class="o">::</span><span class="n">BridgeInputAdapter</span>     <span class="n">adapter</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">mapper</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// 物理入力
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">mapper</span><span class="p">.</span><span class="n">bindKey</span><span class="p">(</span><span class="s">&#34;Fire&#34;</span><span class="p">,</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">KeyCode</span><span class="o">::</span><span class="n">Space</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// UI 入力 (CEF DOM)
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">adapter</span><span class="p">.</span><span class="n">mapSignalToAction</span><span class="p">(</span><span class="s">&#34;ui.button.fire&#34;</span><span class="p">,</span> <span class="s">&#34;Fire&#34;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// gameplay は分岐なしで同じ Action を見る
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">if</span> <span class="p">(</span><span class="n">mapper</span><span class="p">.</span><span class="n">isActionPressed</span><span class="p">(</span><span class="s">&#34;Fire&#34;</span><span class="p">))</span> <span class="p">{</span> <span class="n">fire</span><span class="p">();</span> <span class="p">}</span>
-</span></span></code></pre></div><ul>
-<li>bridge-triggered action は <strong>one-shot</strong>: <code>isActionPressed</code> だけが true を返し、<code>isActionDown</code> は通常 binding と同じ意味のまま (continuous press の概念は bridge にない)。</li>
-<li>フレーム末で <code>mapper.endFrame()</code> を <strong>必ず</strong>呼ぶ。さもないと一度発火した action が永遠に &ldquo;pressed&rdquo; 状態のまま居座る。</li>
-<li><strong>ハマる点</strong>: <code>mapSignalToAction</code> を二重登録すると <code>BridgeActionRouter</code> の last-write-wins で <strong>上書き</strong> される。複数 signal を 1 action にしたい場合は signal 名側を増やす (例: <code>ui.button.fire</code> と <code>ui.gesture.tap-fire</code> 両方を <code>Fire</code> action にマップ → これは別 signal 名なので両方有効)。</li>
-</ul>
-<h3 id="pattern-g--bridgeeventbusglue-で-ui-signal-を型付き-event-に変換">Pattern G — BridgeEventBusGlue で UI signal を型付き event に変換</h3>
-<p><strong>意図</strong>: 「ボタンが押された」だけでなく「どのスロットか」など payload を <strong>型</strong> で保持して gameplay に届ける。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">UiFireEvent</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">slot</span><span class="p">;</span> <span class="p">};</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">EventBus</span>                       <span class="n">bus</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">input</span><span class="o">::</span><span class="n">BridgeActionRouter</span>      <span class="n">router</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">bridge</span><span class="o">::</span><span class="n">BridgeEventBusGlue</span>     <span class="n">glue</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">bus</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">glue</span><span class="p">.</span><span class="n">mapSignal</span><span class="o">&lt;</span><span class="n">UiFireEvent</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&#34;ui.button.fire&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">string_view</span> <span class="n">payload</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">UiFireEvent</span><span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span> <span class="p">};</span>
-</span></span><span class="line"><span class="cl">    <span class="p">});</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">bus</span><span class="p">.</span><span class="n">subscribe</span><span class="o">&lt;</span><span class="n">UiFireEvent</span><span class="o">&gt;</span><span class="p">([](</span><span class="k">const</span> <span class="n">UiFireEvent</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">handleFire</span><span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">slot</span><span class="p">);</span>   <span class="c1">// gameplay は型安全に受け取る
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">});</span>
-</span></span></code></pre></div><ul>
-<li>payload を捨てて event を default 構築だけしたい場合は <code>mapSignalToTrivial&lt;E&gt;(signal)</code>。</li>
-<li><code>BridgeInputAdapter</code> との使い分け: 「Action として <strong>押された/離された</strong> だけ知りたい」なら Adapter、「payload を <strong>構造化</strong> したい」なら Glue。両方を併用しても OK (同じ signal 名は last-write-wins なので片方だけ)。</li>
-</ul>
-<h3 id="pattern-h--saveschemat--migrationchain-で-save-の互換性管理">Pattern H — SaveSchema<T> + MigrationChain で save の互換性管理</h3>
-<p><strong>意図</strong>: 「v1 で書いた save を v3 の build で読めるようにする」を 1 か所で宣言する。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">PlayerSave</span> <span class="p">{</span> <span class="kt">int</span> <span class="n">level</span><span class="p">;</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">name</span><span class="p">;</span> <span class="p">};</span>
-</span></span><span class="line"><span class="cl"><span class="n">NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE</span><span class="p">(</span><span class="n">PlayerSave</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">SaveSchema</span><span class="o">&lt;</span><span class="n">PlayerSave</span><span class="o">&gt;</span> <span class="n">schema</span><span class="p">(</span><span class="cm">/*currentVersion=*/</span><span class="mi">3</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="n">schema</span><span class="p">.</span><span class="n">migrations</span><span class="p">().</span><span class="n">addStep</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">[](</span><span class="n">mitiru</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">Json</span> <span class="n">data</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">data</span><span class="p">[</span><span class="s">&#34;name&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#34;unnamed&#34;</span><span class="p">;</span>          <span class="c1">// v1 には name が無かった
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">return</span> <span class="n">data</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">});</span>
-</span></span><span class="line"><span class="cl"><span class="n">schema</span><span class="p">.</span><span class="n">migrations</span><span class="p">().</span><span class="n">addStep</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="p">[](</span><span class="n">mitiru</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">Json</span> <span class="n">data</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">data</span><span class="p">.</span><span class="n">contains</span><span class="p">(</span><span class="s">&#34;level&#34;</span><span class="p">))</span> <span class="n">data</span><span class="p">[</span><span class="s">&#34;level&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>  <span class="c1">// v2 で level 追加
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">return</span> <span class="n">data</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">});</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// 書き込み (常に最新 version で書く):
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">blob</span> <span class="o">=</span> <span class="n">schema</span><span class="p">.</span><span class="n">toJsonString</span><span class="p">(</span><span class="n">PlayerSave</span><span class="p">{</span> <span class="mi">5</span><span class="p">,</span> <span class="s">&#34;Alice&#34;</span> <span class="p">});</span>
-</span></span><span class="line"><span class="cl"><span class="n">saveStore</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">blob</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// 読み出し (古い version は自動で migrate される):
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">auto</span> <span class="n">raw</span> <span class="o">=</span> <span class="n">saveStore</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">slot</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="n">schema</span><span class="p">.</span><span class="n">fromJsonString</span><span class="p">(</span><span class="n">raw</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">save</span> <span class="o">=</span> <span class="o">*</span><span class="n">result</span><span class="p">.</span><span class="n">value</span><span class="p">;</span> <span class="p">}</span>
-</span></span></code></pre></div><ul>
-<li>envelope は <code>{ &quot;version&quot;: N, &quot;data&quot;: ... }</code> 形式。<code>toJsonString</code> が自動で付ける。</li>
-<li><strong>ハマる点</strong>: migration step は <strong>append-only</strong>。一度 production で書いた step を後から削ったり順序入れ替えたりすると古い save を壊す。</li>
-<li><code>JsonBinding</code> を直接使うこともできるが、save 用途は <strong>SaveSchema を経由するのが推奨</strong>。「version が混在しうるデータ」を 1 か所で表現できる。</li>
-</ul>
-<h4 id="migration-ヘルパー-mitirudatamigration">Migration ヘルパー (<code>mitiru::data::Migration</code>)</h4>
-<p>手書きの lambda で <code>data[&quot;x&quot;] = ...</code> を書き続けると bug の温床になる。よくある操作 (backfill / rename / remove / set / transform) は <code>Migration::*</code> 経由で <strong>宣言的に</strong> 書ける。<code>compose</code> で 1 step に複数操作をまとめることも可能。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">using</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">Migration</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="k">using</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">Json</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">schema</span><span class="p">.</span><span class="n">migrations</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="n">addStep</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="n">Migration</span><span class="o">::</span><span class="n">backfillField</span><span class="p">(</span><span class="s">&#34;unlockedRecipes&#34;</span><span class="p">,</span> <span class="n">Json</span><span class="o">::</span><span class="n">array</span><span class="p">({</span> <span class="s">&#34;Cookie&#34;</span> <span class="p">})))</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="n">addStep</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="n">Migration</span><span class="o">::</span><span class="n">renameField</span><span class="p">(</span><span class="s">&#34;score&#34;</span><span class="p">,</span> <span class="s">&#34;totalScore&#34;</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="n">addStep</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">Migration</span><span class="o">::</span><span class="n">compose</span><span class="p">({</span>
-</span></span><span class="line"><span class="cl">        <span class="n">Migration</span><span class="o">::</span><span class="n">removeField</span><span class="p">(</span><span class="s">&#34;legacyDebug&#34;</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">        <span class="n">Migration</span><span class="o">::</span><span class="n">transformField</span><span class="p">(</span><span class="s">&#34;level&#34;</span><span class="p">,</span> <span class="p">[](</span><span class="n">Json</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="nf">Json</span><span class="p">(</span><span class="n">v</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">()</span> <span class="o">+</span> <span class="mi">10</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">        <span class="p">}),</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}));</span>
-</span></span></code></pre></div><ul>
-<li>すべて <code>std::function&lt;Json(Json)&gt;</code> を返すので <code>addStep</code> にそのまま渡せる。</li>
-<li><code>addStep</code> は <code>MigrationChain&amp;</code> を返すので上のように <strong>fluent chain</strong> で書ける。 1 step ずつ <code>schema.migrations().addStep(...)</code> と書いても等価。</li>
-<li>引数は <strong>by value capture</strong> されるので、factory のスコープを抜けても安全。</li>
-<li>ヘッダー: <code>include/mitiru/data/Migration.hpp</code>。</li>
-</ul>
-<h3 id="pattern-i--contentloadert-で-balancedialogue-を-1-行ロード">Pattern I — ContentLoader<T> で balance/dialogue を 1 行ロード</h3>
-<p><strong>意図</strong>: 開発者が JSON で書いた content を <strong>型</strong> として受け取り、validate/parse を毎回手書きしない。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">BalanceRow</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">name</span><span class="p">;</span> <span class="kt">int</span> <span class="n">cost</span><span class="p">;</span> <span class="kt">float</span> <span class="n">winRate</span><span class="p">;</span> <span class="p">};</span>
-</span></span><span class="line"><span class="cl"><span class="n">NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE</span><span class="p">(</span><span class="n">BalanceRow</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="n">winRate</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">data</span><span class="o">::</span><span class="n">ContentLoader</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">BalanceRow</span><span class="o">&gt;&gt;::</span><span class="n">loadFile</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">    <span class="s">&#34;data/balance.json&#34;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="nl">row</span> <span class="p">:</span> <span class="o">*</span><span class="n">result</span><span class="p">.</span><span class="n">value</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="n">applyBalance</span><span class="p">(</span><span class="n">row</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">log_error</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">error</span><span class="p">);</span>   <span class="c1">// パス不正 / JSON 不正 / 型 mismatch 等
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
-</span></span></code></pre></div><ul>
-<li>失敗時の <code>result.error</code> は人間可読 (nlohmann::json の例外メッセージ or 自前メッセージ)。</li>
-<li>content は <strong>不変</strong> が前提。書き戻したい場合は SaveSchema の方を使う。</li>
-<li>runtime schema 検証は別物 (<code>include/mitiru/data/SchemaValidator.hpp</code>)。テンプレートでは型一致が静的に強制されるため、AI 生成コンテンツ等で <strong>structural</strong> な検証が要る場合のみ追加で使う。</li>
-</ul>
-<hr>
-<h2 id="5-アンチパターン">5. アンチパターン</h2>
-<p>アーキテクチャ方針 / <code>docs/BRIDGE_API_CONTRACT.md</code> と整合する 5 つの NG パターン。</p>
-<ul>
-<li>
-<p><strong>JS で state machine を持つな</strong>
-「料理の状態は cooking.js が管理する」は禁止。<code>StateMachine&lt;CookState&gt;</code> を C++ に置く。</p>
-</li>
-<li>
-<p><strong>JS が条件分岐 (tutorial 完了判定 / 解放フラグ等) を持つな</strong>
-「tutorial done なら START を有効化」を JS で書かない。C++ が <code>view.title.startEnabled</code> を push し、JS は class を付け外しするだけにする。</p>
-</li>
-<li>
-<p><strong>JS が「次のシーンはどこ」を判定するな</strong>
+「expired のとき何かする」ロジックは必ず状態遷移にくくる。</li></ul><h3 id=pattern-c--sequence-で演出スクリプト>Pattern C — Sequence で演出スクリプト</h3><p><strong>意図</strong>: 章間カットイン / Title intro / 一連の演出のような <strong>スクリプテッド時系列</strong> を書く。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>m_intro</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=n>wait</span><span class=p>(</span><span class=mf>0.5f</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=n>action</span><span class=p>([</span><span class=k>this</span><span class=p>]{</span> <span class=n>m_view</span><span class=p>.</span><span class=n>emit</span><span class=p>(</span><span class=s>&#34;intro.start&#34;</span><span class=p>,</span> <span class=s>&#34;{}&#34;</span><span class=p>);</span> <span class=p>})</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=n>wait</span><span class=p>(</span><span class=mf>0.3f</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=n>action</span><span class=p>([</span><span class=k>this</span><span class=p>]{</span> <span class=n>m_startReady</span> <span class=o>=</span> <span class=nb>true</span><span class=p>;</span> <span class=p>});</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// update 内で:
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>m_intro</span><span class=p>.</span><span class=n>tick</span><span class=p>(</span><span class=n>dt</span><span class=p>);</span>
+</span></span></code></pre></div><ul><li><code>wait</code> と <code>action</code> を自由に交互に並べられる。<code>action</code> は即時実行で時間を消費しない。</li><li><code>done()</code> で終了判定。終わったあとの <code>tick</code> は no-op。</li><li><strong>ハマる点</strong>: <code>action</code> のラムダ内で <strong>その Sequence 自身を mutate しない</strong> (例: 同じ <code>m_intro</code> に <code>wait(...).action(...)</code> を追加する)。cursor 不整合の原因になる。
+追加演出を流したいなら <strong>別の Sequence インスタンス</strong> を持つこと。</li></ul><h3 id=pattern-d--bridgeactionrouter--scene-のディスパッチ>Pattern D — BridgeActionRouter + Scene のディスパッチ</h3><p><strong>意図</strong>: CEF (UI) から飛んでくる signal を <strong>gameplay の意思決定に変換</strong> する境界を作る。
+JS には「ボタンが押された」だけ言わせて、<strong>どの scene に遷移するか / どんな状態変化を起こすかは C++ が決める</strong>。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>m_actions</span><span class=p>.</span><span class=n>registerHandler</span><span class=p>(</span><span class=s>&#34;ui.button.start&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=p>[</span><span class=k>this</span><span class=p>](</span><span class=n>std</span><span class=o>::</span><span class=n>string_view</span> <span class=cm>/*payload*/</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>m_startReady</span><span class=p>)</span> <span class=p>{</span> <span class=k>return</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=n>m_router</span><span class=p>.</span><span class=n>push</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>make_unique</span><span class=o>&lt;</span><span class=n>CookingScene</span><span class=o>&gt;</span><span class=p>(</span><span class=n>m_router</span><span class=p>,</span> <span class=n>m_actions</span><span class=p>,</span> <span class=n>m_view</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>    <span class=p>});</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 後始末: scene が抜けるときに必ず解除
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>void</span> <span class=nf>onExit</span><span class=p>()</span> <span class=k>override</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>m_actions</span><span class=p>.</span><span class=n>unregisterHandler</span><span class=p>(</span><span class=s>&#34;ui.button.start&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><ul><li>handler 登録は <strong>scene 単位で対称に</strong>: <code>onEnter</code> / ctor で登録、<code>onExit</code> で <code>unregisterHandler</code>。</li><li>同一 signal 名を二重登録すると <strong>last-write-wins</strong> で上書きされる。複数 scene が同じ signal を奪い合わないように責任分界点を決める。</li><li><strong>ハマる点</strong>: handler 内で重い処理をしない。<code>dispatch()</code> は呼び出しスレッドで同期実行されるため、長時間ブロックすると bridge ポンプ全体が詰まる。重い処理は flag を立てて次の <code>onUpdate</code> で消化する。</li></ul><h3 id=pattern-e--bridgeviewpush-で-state-を-view-に流す>Pattern E — BridgeViewPush で state を view に流す</h3><p><strong>意図</strong>: gameplay 側 (C++) で計算した結果を、JS は <strong>描画するだけ</strong> に徹させる。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>m_view</span><span class=p>.</span><span class=n>set</span><span class=p>(</span><span class=s>&#34;hp&#34;</span><span class=p>,</span> <span class=s>&#34;80&#34;</span><span class=p>);</span>                            <span class=c1>// → &#34;view.cooking.hp&#34; = &#34;80&#34;
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>m_view</span><span class=p>.</span><span class=n>set</span><span class=p>(</span><span class=s>&#34;state&#34;</span><span class=p>,</span> <span class=s>&#34;Cooking&#34;</span><span class=p>);</span>                    <span class=c1>// 状態ラベル
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>m_view</span><span class=p>.</span><span class=n>emit</span><span class=p>(</span><span class=s>&#34;damage&#34;</span><span class=p>,</span> <span class=s>&#34;{</span><span class=se>\&#34;</span><span class=s>amount</span><span class=se>\&#34;</span><span class=s>:12,</span><span class=se>\&#34;</span><span class=s>crit</span><span class=se>\&#34;</span><span class=s>:true}&#34;</span><span class=p>);</span>  <span class=c1>// one-shot エフェクト
+</span></span></span></code></pre></div><ul><li><strong><code>set</code> は retained</strong>: 最新値が保持され、後から接続した view も読み取れる (HP / score 等)。</li><li><strong><code>emit</code> は one-shot</strong>: その瞬間のイベント。聴いていない view には届かない (ヒットエフェクト / SE トリガ等)。</li><li>key は <strong><code>view.&lt;subsystem>.&lt;key></code></strong> 形式に統一される (ctor の <code>subsystem</code> で prefix を固定)。
+詳細命名規約は <a href=BRIDGE_API_CONTRACT.md>BRIDGE_API_CONTRACT.md §3</a> を参照。</li><li><strong>ハマる点</strong>:<ul><li>JS で「HP が 50 以下なら赤くする」のような判定を書きたくなったら <strong>負け</strong>。C++ 側で <code>view.cooking.hpLow = "true"</code> を別途 push し、JS は class を toggle するだけにする。</li><li>値はあらかじめ JSON 文字列に整形して渡す (数値は <code>std::to_string</code>、文字列は <code>"\"..."\""</code> で quote)。</li></ul></li></ul><hr><h3 id=pattern-f--bridgeinputadapter-で-ui-ボタンとキー入力を同じ-action-にする>Pattern F — BridgeInputAdapter で UI ボタンとキー入力を同じ Action にする</h3><p><strong>意図</strong>: 「キーボードでも UI ボタンでも同じ Action として gameplay は受け取る」を仕組みで保証する。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>InputMapper</span>                   <span class=n>mapper</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>input</span><span class=o>::</span><span class=n>BridgeActionRouter</span>     <span class=n>router</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>input</span><span class=o>::</span><span class=n>BridgeInputAdapter</span>     <span class=n>adapter</span><span class=p>(</span><span class=n>router</span><span class=p>,</span> <span class=n>mapper</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 物理入力
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>mapper</span><span class=p>.</span><span class=n>bindKey</span><span class=p>(</span><span class=s>&#34;Fire&#34;</span><span class=p>,</span> <span class=n>mitiru</span><span class=o>::</span><span class=n>KeyCode</span><span class=o>::</span><span class=n>Space</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// UI 入力 (CEF DOM)
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>adapter</span><span class=p>.</span><span class=n>mapSignalToAction</span><span class=p>(</span><span class=s>&#34;ui.button.fire&#34;</span><span class=p>,</span> <span class=s>&#34;Fire&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// gameplay は分岐なしで同じ Action を見る
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>if</span> <span class=p>(</span><span class=n>mapper</span><span class=p>.</span><span class=n>isActionPressed</span><span class=p>(</span><span class=s>&#34;Fire&#34;</span><span class=p>))</span> <span class=p>{</span> <span class=n>fire</span><span class=p>();</span> <span class=p>}</span>
+</span></span></code></pre></div><ul><li>bridge-triggered action は <strong>one-shot</strong>: <code>isActionPressed</code> だけが true を返し、<code>isActionDown</code> は通常 binding と同じ意味のまま (continuous press の概念は bridge にない)。</li><li>フレーム末で <code>mapper.endFrame()</code> を <strong>必ず</strong>呼ぶ。さもないと一度発火した action が永遠に &ldquo;pressed&rdquo; 状態のまま居座る。</li><li><strong>ハマる点</strong>: <code>mapSignalToAction</code> を二重登録すると <code>BridgeActionRouter</code> の last-write-wins で <strong>上書き</strong> される。複数 signal を 1 action にしたい場合は signal 名側を増やす (例: <code>ui.button.fire</code> と <code>ui.gesture.tap-fire</code> 両方を <code>Fire</code> action にマップ → これは別 signal 名なので両方有効)。</li></ul><h3 id=pattern-g--bridgeeventbusglue-で-ui-signal-を型付き-event-に変換>Pattern G — BridgeEventBusGlue で UI signal を型付き event に変換</h3><p><strong>意図</strong>: 「ボタンが押された」だけでなく「どのスロットか」など payload を <strong>型</strong> で保持して gameplay に届ける。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>struct</span> <span class=nc>UiFireEvent</span> <span class=p>{</span> <span class=n>std</span><span class=o>::</span><span class=n>string</span> <span class=n>slot</span><span class=p>;</span> <span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>EventBus</span>                       <span class=n>bus</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>input</span><span class=o>::</span><span class=n>BridgeActionRouter</span>      <span class=n>router</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>bridge</span><span class=o>::</span><span class=n>BridgeEventBusGlue</span>     <span class=n>glue</span><span class=p>(</span><span class=n>router</span><span class=p>,</span> <span class=n>bus</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>glue</span><span class=p>.</span><span class=n>mapSignal</span><span class=o>&lt;</span><span class=n>UiFireEvent</span><span class=o>&gt;</span><span class=p>(</span><span class=s>&#34;ui.button.fire&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=p>[](</span><span class=n>std</span><span class=o>::</span><span class=n>string_view</span> <span class=n>payload</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=n>UiFireEvent</span><span class=p>{</span> <span class=n>std</span><span class=o>::</span><span class=n>string</span><span class=p>(</span><span class=n>payload</span><span class=p>)</span> <span class=p>};</span>
+</span></span><span class=line><span class=cl>    <span class=p>});</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>bus</span><span class=p>.</span><span class=n>subscribe</span><span class=o>&lt;</span><span class=n>UiFireEvent</span><span class=o>&gt;</span><span class=p>([](</span><span class=k>const</span> <span class=n>UiFireEvent</span><span class=o>&amp;</span> <span class=n>e</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>handleFire</span><span class=p>(</span><span class=n>e</span><span class=p>.</span><span class=n>slot</span><span class=p>);</span>   <span class=c1>// gameplay は型安全に受け取る
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>});</span>
+</span></span></code></pre></div><ul><li>payload を捨てて event を default 構築だけしたい場合は <code>mapSignalToTrivial&lt;E>(signal)</code>。</li><li><code>BridgeInputAdapter</code> との使い分け: 「Action として <strong>押された/離された</strong> だけ知りたい」なら Adapter、「payload を <strong>構造化</strong> したい」なら Glue。両方を併用しても OK (同じ signal 名は last-write-wins なので片方だけ)。</li></ul><h3 id=pattern-h--saveschemat--migrationchain-で-save-の互換性管理>Pattern H — SaveSchema<t> + MigrationChain で save の互換性管理</h3><p><strong>意図</strong>: 「v1 で書いた save を v3 の build で読めるようにする」を 1 か所で宣言する。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>struct</span> <span class=nc>PlayerSave</span> <span class=p>{</span> <span class=kt>int</span> <span class=n>level</span><span class=p>;</span> <span class=n>std</span><span class=o>::</span><span class=n>string</span> <span class=n>name</span><span class=p>;</span> <span class=p>};</span>
+</span></span><span class=line><span class=cl><span class=n>NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE</span><span class=p>(</span><span class=n>PlayerSave</span><span class=p>,</span> <span class=n>level</span><span class=p>,</span> <span class=n>name</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>data</span><span class=o>::</span><span class=n>SaveSchema</span><span class=o>&lt;</span><span class=n>PlayerSave</span><span class=o>&gt;</span> <span class=n>schema</span><span class=p>(</span><span class=cm>/*currentVersion=*/</span><span class=mi>3</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>schema</span><span class=p>.</span><span class=n>migrations</span><span class=p>().</span><span class=n>addStep</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=mi>2</span><span class=p>,</span> <span class=p>[](</span><span class=n>mitiru</span><span class=o>::</span><span class=n>data</span><span class=o>::</span><span class=n>Json</span> <span class=n>data</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>data</span><span class=p>[</span><span class=s>&#34;name&#34;</span><span class=p>]</span> <span class=o>=</span> <span class=s>&#34;unnamed&#34;</span><span class=p>;</span>          <span class=c1>// v1 には name が無かった
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>return</span> <span class=n>data</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>});</span>
+</span></span><span class=line><span class=cl><span class=n>schema</span><span class=p>.</span><span class=n>migrations</span><span class=p>().</span><span class=n>addStep</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span> <span class=mi>3</span><span class=p>,</span> <span class=p>[](</span><span class=n>mitiru</span><span class=o>::</span><span class=n>data</span><span class=o>::</span><span class=n>Json</span> <span class=n>data</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>data</span><span class=p>.</span><span class=n>contains</span><span class=p>(</span><span class=s>&#34;level&#34;</span><span class=p>))</span> <span class=n>data</span><span class=p>[</span><span class=s>&#34;level&#34;</span><span class=p>]</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>  <span class=c1>// v2 で level 追加
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>return</span> <span class=n>data</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>});</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 書き込み (常に最新 version で書く):
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>std</span><span class=o>::</span><span class=n>string</span> <span class=n>blob</span> <span class=o>=</span> <span class=n>schema</span><span class=p>.</span><span class=n>toJsonString</span><span class=p>(</span><span class=n>PlayerSave</span><span class=p>{</span> <span class=mi>5</span><span class=p>,</span> <span class=s>&#34;Alice&#34;</span> <span class=p>});</span>
+</span></span><span class=line><span class=cl><span class=n>saveStore</span><span class=p>.</span><span class=n>write</span><span class=p>(</span><span class=n>slot</span><span class=p>,</span> <span class=n>blob</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 読み出し (古い version は自動で migrate される):
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>auto</span> <span class=n>raw</span> <span class=o>=</span> <span class=n>saveStore</span><span class=p>.</span><span class=n>read</span><span class=p>(</span><span class=n>slot</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=k>auto</span> <span class=n>result</span> <span class=o>=</span> <span class=n>schema</span><span class=p>.</span><span class=n>fromJsonString</span><span class=p>(</span><span class=n>raw</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=k>if</span> <span class=p>(</span><span class=n>result</span><span class=p>.</span><span class=n>ok</span><span class=p>())</span> <span class=p>{</span> <span class=k>auto</span><span class=o>&amp;</span> <span class=n>save</span> <span class=o>=</span> <span class=o>*</span><span class=n>result</span><span class=p>.</span><span class=n>value</span><span class=p>;</span> <span class=p>}</span>
+</span></span></code></pre></div><ul><li>envelope は <code>{ "version": N, "data": ... }</code> 形式。<code>toJsonString</code> が自動で付ける。</li><li><strong>ハマる点</strong>: migration step は <strong>append-only</strong>。一度 production で書いた step を後から削ったり順序入れ替えたりすると古い save を壊す。</li><li><code>JsonBinding</code> を直接使うこともできるが、save 用途は <strong>SaveSchema を経由するのが推奨</strong>。「version が混在しうるデータ」を 1 か所で表現できる。</li></ul><h4 id=migration-ヘルパー-mitirudatamigration>Migration ヘルパー (<code>mitiru::data::Migration</code>)</h4><p>手書きの lambda で <code>data["x"] = ...</code> を書き続けると bug の温床になる。よくある操作 (backfill / rename / remove / set / transform) は <code>Migration::*</code> 経由で <strong>宣言的に</strong> 書ける。<code>compose</code> で 1 step に複数操作をまとめることも可能。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>using</span> <span class=n>mitiru</span><span class=o>::</span><span class=n>data</span><span class=o>::</span><span class=n>Migration</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>using</span> <span class=n>mitiru</span><span class=o>::</span><span class=n>data</span><span class=o>::</span><span class=n>Json</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>schema</span><span class=p>.</span><span class=n>migrations</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=n>addStep</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=mi>2</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>Migration</span><span class=o>::</span><span class=n>backfillField</span><span class=p>(</span><span class=s>&#34;unlockedRecipes&#34;</span><span class=p>,</span> <span class=n>Json</span><span class=o>::</span><span class=n>array</span><span class=p>({</span> <span class=s>&#34;Cookie&#34;</span> <span class=p>})))</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=n>addStep</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span> <span class=mi>3</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>Migration</span><span class=o>::</span><span class=n>renameField</span><span class=p>(</span><span class=s>&#34;score&#34;</span><span class=p>,</span> <span class=s>&#34;totalScore&#34;</span><span class=p>))</span>
+</span></span><span class=line><span class=cl>    <span class=p>.</span><span class=n>addStep</span><span class=p>(</span><span class=mi>3</span><span class=p>,</span> <span class=mi>4</span><span class=p>,</span> <span class=n>Migration</span><span class=o>::</span><span class=n>compose</span><span class=p>({</span>
+</span></span><span class=line><span class=cl>        <span class=n>Migration</span><span class=o>::</span><span class=n>removeField</span><span class=p>(</span><span class=s>&#34;legacyDebug&#34;</span><span class=p>),</span>
+</span></span><span class=line><span class=cl>        <span class=n>Migration</span><span class=o>::</span><span class=n>transformField</span><span class=p>(</span><span class=s>&#34;level&#34;</span><span class=p>,</span> <span class=p>[](</span><span class=n>Json</span> <span class=n>v</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=k>return</span> <span class=nf>Json</span><span class=p>(</span><span class=n>v</span><span class=p>.</span><span class=n>get</span><span class=o>&lt;</span><span class=kt>int</span><span class=o>&gt;</span><span class=p>()</span> <span class=o>+</span> <span class=mi>10</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}),</span>
+</span></span><span class=line><span class=cl>    <span class=p>}));</span>
+</span></span></code></pre></div><ul><li>すべて <code>std::function&lt;Json(Json)></code> を返すので <code>addStep</code> にそのまま渡せる。</li><li><code>addStep</code> は <code>MigrationChain&</code> を返すので上のように <strong>fluent chain</strong> で書ける。 1 step ずつ <code>schema.migrations().addStep(...)</code> と書いても等価。</li><li>引数は <strong>by value capture</strong> されるので、factory のスコープを抜けても安全。</li><li>ヘッダー: <code>include/mitiru/data/Migration.hpp</code>。</li></ul><h3 id=pattern-i--contentloadert-で-balancedialogue-を-1-行ロード>Pattern I — ContentLoader<t> で balance/dialogue を 1 行ロード</h3><p><strong>意図</strong>: 開発者が JSON で書いた content を <strong>型</strong> として受け取り、validate/parse を毎回手書きしない。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>struct</span> <span class=nc>BalanceRow</span> <span class=p>{</span> <span class=n>std</span><span class=o>::</span><span class=n>string</span> <span class=n>name</span><span class=p>;</span> <span class=kt>int</span> <span class=n>cost</span><span class=p>;</span> <span class=kt>float</span> <span class=n>winRate</span><span class=p>;</span> <span class=p>};</span>
+</span></span><span class=line><span class=cl><span class=n>NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE</span><span class=p>(</span><span class=n>BalanceRow</span><span class=p>,</span> <span class=n>name</span><span class=p>,</span> <span class=n>cost</span><span class=p>,</span> <span class=n>winRate</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>auto</span> <span class=n>result</span> <span class=o>=</span> <span class=n>mitiru</span><span class=o>::</span><span class=n>data</span><span class=o>::</span><span class=n>ContentLoader</span><span class=o>&lt;</span><span class=n>std</span><span class=o>::</span><span class=n>vector</span><span class=o>&lt;</span><span class=n>BalanceRow</span><span class=o>&gt;&gt;::</span><span class=n>loadFile</span><span class=p>(</span>
+</span></span><span class=line><span class=cl>    <span class=s>&#34;data/balance.json&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=k>if</span> <span class=p>(</span><span class=n>result</span><span class=p>.</span><span class=n>ok</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=k>const</span> <span class=k>auto</span><span class=o>&amp;</span> <span class=nl>row</span> <span class=p>:</span> <span class=o>*</span><span class=n>result</span><span class=p>.</span><span class=n>value</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>applyBalance</span><span class=p>(</span><span class=n>row</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>log_error</span><span class=p>(</span><span class=n>result</span><span class=p>.</span><span class=n>error</span><span class=p>);</span>   <span class=c1>// パス不正 / JSON 不正 / 型 mismatch 等
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span></code></pre></div><ul><li>失敗時の <code>result.error</code> は人間可読 (nlohmann::json の例外メッセージ or 自前メッセージ)。</li><li>content は <strong>不変</strong> が前提。書き戻したい場合は SaveSchema の方を使う。</li><li>runtime schema 検証は別物 (<code>include/mitiru/data/SchemaValidator.hpp</code>)。テンプレートでは型一致が静的に強制されるため、AI 生成コンテンツ等で <strong>structural</strong> な検証が要る場合のみ追加で使う。</li></ul><hr><h2 id=5-アンチパターン>5. アンチパターン</h2><p>アーキテクチャ方針 / <code>docs/BRIDGE_API_CONTRACT.md</code> と整合する 5 つの NG パターン。</p><ul><li><p><strong>JS で state machine を持つな</strong>
+「料理の状態は cooking.js が管理する」は禁止。<code>StateMachine&lt;CookState></code> を C++ に置く。</p></li><li><p><strong>JS が条件分岐 (tutorial 完了判定 / 解放フラグ等) を持つな</strong>
+「tutorial done なら START を有効化」を JS で書かない。C++ が <code>view.title.startEnabled</code> を push し、JS は class を付け外しするだけにする。</p></li><li><p><strong>JS が「次のシーンはどこ」を判定するな</strong>
 <code>ui.button.start</code> を発火するのは JS の責務だが、「次は CookingScene」と決めるのは <strong>C++ の Scene/Router</strong> の責務。
-<code>signal: &quot;scene.goto.cooking&quot;</code> のような <strong>transition を JS に書かせる signal 名</strong> を作らないこと。</p>
-</li>
-<li>
-<p><strong>bridge を太らせて gameplay 関数の RPC にするな</strong>
-<code>signal: &quot;game.canWrapCrepe?&quot;</code> のような問い合わせ / 計算依頼は NG。
-gameplay の判定は C++ 内で完結させ、結果だけ <code>view.*</code> に push する。</p>
-</li>
-<li>
-<p><strong>逆方向に: C++ が JS に「次に何を考えるか」を聞くな</strong>
-C++ → JS は <strong>常に決定済みの表示指示</strong>。<code>emit(&quot;ask.player.choice&quot;, ...)</code> で答えを待つような片務 RPC は禁止。
-選択肢の提示は <code>set</code> で出し、選択結果は <code>BridgeActionRouter</code> 経由で signal として受け取る。</p>
-</li>
-</ul>
-<p><strong>まとめ</strong>: JS は「描画」と「何が起きたか発火」だけ。C++ が「判断」と「何を表示するか決定」を持つ。</p>
-<hr>
-<h2 id="6-references">6. References</h2>
-<ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — C++ gameplay / CEF view-only の設計判断</li>
-<li><a href="HYBRID_RUNTIME.md">docs/HYBRID_RUNTIME.md</a></li>
-<li><a href="BRIDGE_API_CONTRACT.md">docs/BRIDGE_API_CONTRACT.md</a></li>
-<li><a href="cpp-gameplay-api-gaps.md">docs/cpp-gameplay-api-gaps.md</a></li>
-<li><a href="../examples/cpp_gameplay_minimal/main.cpp">examples/cpp_gameplay_minimal/main.cpp</a></li>
-</ul>
-<p>ヘッダ:</p>
-<ul>
-<li><code>include/mitiru/scene/IScene.hpp</code></li>
-<li><code>include/mitiru/scene/SceneRouter.hpp</code></li>
-<li><code>include/mitiru/fsm/StateMachine.hpp</code></li>
-<li><code>include/mitiru/time/Timer.hpp</code></li>
-<li><code>include/mitiru/time/Cooldown.hpp</code></li>
-<li><code>include/mitiru/time/Sequence.hpp</code></li>
-<li><code>include/mitiru/input/BridgeActionRouter.hpp</code></li>
-<li><code>include/mitiru/input/BridgeInputAdapter.hpp</code></li>
-<li><code>include/mitiru/bridge/BridgeViewPush.hpp</code></li>
-<li><code>include/mitiru/bridge/BridgeEventBusGlue.hpp</code></li>
-<li><code>include/mitiru/data/JsonBinding.hpp</code></li>
-<li><code>include/mitiru/data/SaveSchema.hpp</code></li>
-<li><code>include/mitiru/data/Migration.hpp</code></li>
-<li><code>include/mitiru/data/ContentLoader.hpp</code></li>
-</ul>
-
-  </div>
-</article>
-
-  </main>
-  <footer class="site-footer">
-  <div class="container site-footer__inner">
-    <div class="site-footer__col">
-      <p class="site-footer__brand">MitiruEngine</p>
-      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
-    </div>
-    <div class="site-footer__col">
-      <h2 class="site-footer__h">ライセンス</h2>
-      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
-    </div>
-    <div class="site-footer__col">
-      <h2 class="site-footer__h">状態</h2>
-      <p>0.x 系・実験段階。API はまだ変わります。</p>
-      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
-    </div>
-  </div>
-</footer>
-
-  
-
-<div class="shortcuts-dialog"
-     id="shortcuts-dialog"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="shortcuts-dialog-title"
-     data-pagefind-ignore
-     hidden>
-  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
-  <div class="shortcuts-dialog__panel" role="document">
-    <div class="shortcuts-dialog__header">
-      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
-        キーボードショートカット
-      </h2>
-      <button type="button"
-              class="shortcuts-dialog__close"
-              data-shortcuts-close
-              aria-label="閉じる">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div class="shortcuts-dialog__body">
-      <dl class="shortcuts-list">
-        <div class="shortcuts-list__row">
-          <dt><kbd>?</kbd></dt>
-          <dd>このヘルプを開く</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>Esc</kbd></dt>
-          <dd>ダイアログを閉じる</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
-          <dd>サイト内検索を開く</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
-          <dd>ホームへ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>e</kbd></dt>
-          <dd>サンプル一覧へ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
-          <dd>チャプター一覧へ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
-          <dd>アーキテクチャ一覧へ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
-          <dd>チュートリアル一覧へ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
-          <dd>はじめてのページへ</dd>
-        </div>
-      </dl>
-      <p class="shortcuts-dialog__foot">
-        
-          入力中（テキストフィールド・コード編集）は無効です。
-        
-      </p>
-    </div>
-  </div>
-</div>
-
-  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
-  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
-  
-</body>
-</html>
+<code>signal: "scene.goto.cooking"</code> のような <strong>transition を JS に書かせる signal 名</strong> を作らないこと。</p></li><li><p><strong>bridge を太らせて gameplay 関数の RPC にするな</strong>
+<code>signal: "game.canWrapCrepe?"</code> のような問い合わせ / 計算依頼は NG。
+gameplay の判定は C++ 内で完結させ、結果だけ <code>view.*</code> に push する。</p></li><li><p><strong>逆方向に: C++ が JS に「次に何を考えるか」を聞くな</strong>
+C++ → JS は <strong>常に決定済みの表示指示</strong>。<code>emit("ask.player.choice", ...)</code> で答えを待つような片務 RPC は禁止。
+選択肢の提示は <code>set</code> で出し、選択結果は <code>BridgeActionRouter</code> 経由で signal として受け取る。</p></li></ul><p><strong>まとめ</strong>: JS は「描画」と「何が起きたか発火」だけ。C++ が「判断」と「何を表示するか決定」を持つ。</p><hr><h2 id=6-references>6. References</h2><ul><li><a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a> — C++ gameplay / CEF view-only の設計判断</li><li><a href=HYBRID_RUNTIME.md>docs/HYBRID_RUNTIME.md</a></li><li><a href=BRIDGE_API_CONTRACT.md>docs/BRIDGE_API_CONTRACT.md</a></li><li><a href=cpp-gameplay-api-gaps.md>docs/cpp-gameplay-api-gaps.md</a></li></ul><p>ヘッダ:</p><ul><li><code>include/mitiru/scene/IScene.hpp</code></li><li><code>include/mitiru/scene/SceneRouter.hpp</code></li><li><code>include/mitiru/fsm/StateMachine.hpp</code></li><li><code>include/mitiru/time/Timer.hpp</code></li><li><code>include/mitiru/time/Cooldown.hpp</code></li><li><code>include/mitiru/time/Sequence.hpp</code></li><li><code>include/mitiru/input/BridgeActionRouter.hpp</code></li><li><code>include/mitiru/input/BridgeInputAdapter.hpp</code></li><li><code>include/mitiru/bridge/BridgeViewPush.hpp</code></li><li><code>include/mitiru/bridge/BridgeEventBusGlue.hpp</code></li><li><code>include/mitiru/data/JsonBinding.hpp</code></li><li><code>include/mitiru/data/SaveSchema.hpp</code></li><li><code>include/mitiru/data/Migration.hpp</code></li><li><code>include/mitiru/data/ContentLoader.hpp</code></li></ul></div></article></main><footer class=site-footer><div class="container site-footer__inner"><div class=site-footer__col><p class=site-footer__brand>MitiruEngine</p><p class=site-footer__copy>&copy; 2026 MitiruEngine contributors.</p></div><div class=site-footer__col><h2 class=site-footer__h>ライセンス</h2><p>MIT。詳しくは <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE>LICENSE</a> を見てください。</p></div><div class=site-footer__col><h2 class=site-footer__h>状態</h2><p>0.x 系・実験段階。API はまだ変わります。</p><p><a href=https://github.com/mogmog-0110/MitiruEngine>github.com/mogmog-0110/MitiruEngine</a></p></div></div></footer><div class=shortcuts-dialog id=shortcuts-dialog role=dialog aria-modal=true aria-labelledby=shortcuts-dialog-title data-pagefind-ignore hidden><div class=shortcuts-dialog__backdrop data-shortcuts-close></div><div class=shortcuts-dialog__panel role=document><div class=shortcuts-dialog__header><h2 id=shortcuts-dialog-title class=shortcuts-dialog__title>キーボードショートカット</h2><button type=button class=shortcuts-dialog__close data-shortcuts-close aria-label=閉じる><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class=shortcuts-dialog__body><dl class=shortcuts-list><div class=shortcuts-list__row><dt><kbd>?</kbd></dt><dd>このヘルプを開く</dd></div><div class=shortcuts-list__row><dt><kbd>Esc</kbd></dt><dd>ダイアログを閉じる</dd></div><div class=shortcuts-list__row><dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt><dd>サイト内検索を開く</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>h</kbd></dt><dd>ホームへ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>c</kbd></dt><dd>チャプター一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>a</kbd></dt><dd>アーキテクチャ一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>t</kbd></dt><dd>チュートリアル一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>s</kbd></dt><dd>はじめてのページへ</dd></div></dl><p class=shortcuts-dialog__foot>入力中（テキストフィールド・コード編集）は無効です。</p></div></div></div><script src=https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js defer></script></body></html>

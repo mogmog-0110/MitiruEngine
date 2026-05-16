@@ -57,29 +57,12 @@ cmake --build build --config Release
 
 ## Run the Examples
 
-After building, eleven example executables land in `build/Debug/` (Windows) or `build/` (Linux). Each is a single-purpose runnable.
+The runnable sample set was retired in Round 39 pending a redesigned consumer
+example collection. A fresh `examples/` set will land in the next release.
 
-| Example | Mode | What it does |
-|---------|:-:|---|
-| `hello_headless` | A | Minimal engine init, headless rendering (no window) |
-| `hello_sprite` | A | 2D sprite rendering with `mitiru::Screen` |
-| `cpp_gameplay_minimal` | A | `SceneRouter` + `StateMachine` + `Timer` core loop |
-| `cpp_data_driven_minimal` | A | JSON-driven gameplay data loading |
-| `breakout` | A | Action core loop — input, collision, reflection |
-| `shoot_em_up` | A | STG core loop with C++ entities |
-| `particles` | A | 1000 particles simulated in C++, drawn in CEF |
-| `hp_bar` | A | C++ state visualised by a CEF HUD |
-| `pause_menu` | A | ESC opens a CEF modal HUD |
-| `pulldown_menu` | A | CEF pull-down menu driven by C++ input state |
-| `cef_minimal` | B | Smallest possible CEF host |
-| `cef_overlay` | B | CEF HTML overlay over native scene |
-| `cef_transition` | B | Scene transition composited with CEF |
-| `cef_state_bridge` | B | JS ↔ C++ state sync |
-
-```bash
-./build/Debug/mitiru_hello_sprite.exe   # Windows, Mode A example
-./build/Debug/cef_minimal.exe       # Windows, Mode B example
-```
+Until then, the templates under `templates/` and the [tutorials](tutorials/)
+are the recommended starting points — both build cleanly against the
+header-only engine.
 
 ---
 
