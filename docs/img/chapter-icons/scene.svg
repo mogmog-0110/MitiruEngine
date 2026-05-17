@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <!-- node A -->
+  <circle cx="6" cy="16" r="3.5" stroke="currentColor"/>
+  <!-- node B -->
+  <circle cx="16" cy="7" r="3.5" stroke="currentColor"/>
+  <!-- node C -->
+  <circle cx="26" cy="16" r="3.5" stroke="currentColor"/>
+  <!-- arrow A -> B -->
+  <line x1="9" y1="14" x2="13" y2="9.5"/>
+  <polyline points="12,8.5 13.5,10.5 11.5,11.5" fill="currentColor" stroke="currentColor" stroke-width="1.5"/>
+  <!-- arrow B -> C -->
+  <line x1="19" y1="9.5" x2="23" y2="14"/>
+  <polyline points="23.5,12.5 22.5,14.5 24.5,14.5" fill="currentColor" stroke="currentColor" stroke-width="1.5"/>
+  <!-- filmstrip notch marks at bottom -->
+  <rect x="5" y="23" width="4" height="3" rx="1" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="14" y="23" width="4" height="3" rx="1" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="23" y="23" width="4" height="3" rx="1" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5"/>
+</svg>

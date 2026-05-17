@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <!-- window frame -->
+  <rect x="3" y="5" width="26" height="22" rx="3" stroke="currentColor"/>
+  <!-- title bar separator -->
+  <line x1="3" y1="11" x2="29" y2="11"/>
+  <!-- traffic-light dots -->
+  <circle cx="7" cy="8" r="1.2" fill="currentColor" stroke="none"/>
+  <circle cx="11" cy="8" r="1.2" fill="currentColor" stroke="none"/>
+  <!-- button in content area -->
+  <rect x="8" y="15" width="10" height="5" rx="2" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.5"/>
+  <!-- text line placeholder -->
+  <line x1="8" y1="23" x2="22" y2="23" stroke-width="1.5"/>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <!-- cylinder top ellipse -->
+  <ellipse cx="16" cy="9" rx="11" ry="4" stroke="currentColor" fill="currentColor" fill-opacity="0.15"/>
+  <!-- cylinder sides -->
+  <line x1="5" y1="9" x2="5" y2="23"/>
+  <line x1="27" y1="9" x2="27" y2="23"/>
+  <!-- cylinder bottom ellipse -->
+  <ellipse cx="16" cy="23" rx="11" ry="4" stroke="currentColor" fill="currentColor" fill-opacity="0.15"/>
+  <!-- middle ellipse (stack layer) -->
+  <path d="M5,16 C5,18.2 10,20 16,20 C22,20 27,18.2 27,16" stroke="currentColor" fill="none"/>
+</svg>

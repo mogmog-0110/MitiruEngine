@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <!-- sine wave -->
+  <path d="M2,16 C5,16 5,8 9,8 C13,8 13,24 17,24 C21,24 21,8 25,8 C29,8 29,16 30,16" stroke="currentColor" fill="none"/>
+  <!-- music note stem -->
+  <line x1="26" y1="22" x2="26" y2="28"/>
+  <!-- note head -->
+  <ellipse cx="24.5" cy="28" rx="2.5" ry="1.8" transform="rotate(-20 24.5 28)" fill="currentColor" fill-opacity="0.35" stroke="currentColor" stroke-width="1.5"/>
+</svg>
