@@ -1,23 +1,1426 @@
-<!doctype html><html lang=ja data-base=/><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>mitiru::game | MitiruEngine</title>
-<meta name=description content="Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items)."><link rel=canonical href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/><link rel=alternate hreflang=ja href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/><meta property="og:title" content="mitiru::game | MitiruEngine"><meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items)."><meta property="og:type" content="article"><meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"><meta property="og:site_name" content="MitiruEngine"><meta property="og:locale" content="ja_JP"><meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name=twitter:card content="summary_large_image"><meta name=twitter:title content="mitiru::game | MitiruEngine"><meta name=twitter:description content="Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items)."><meta name=twitter:image content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><link rel=icon type=image/svg+xml href=https://mogmog-0110.github.io/MitiruEngine/favicon.svg><link rel=icon type=image/png sizes=32x32 href=https://mogmog-0110.github.io/MitiruEngine/favicon-32.png><link rel=apple-touch-icon sizes=180x180 href=https://mogmog-0110.github.io/MitiruEngine/favicon-180.png><link rel="alternate icon" href=https://mogmog-0110.github.io/MitiruEngine/favicon.ico><meta name=color-scheme content="light dark"><script>(function(){try{var e=localStorage.getItem("theme");(e==="dark"||e==="light")&&document.documentElement.setAttribute("data-theme",e)}catch{}})()</script><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/css/main.css><link rel=preconnect href=https://fonts.googleapis.com><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"></head><body><header class=site-header><div class="container site-header__inner"><a class=site-header__brand href=https://mogmog-0110.github.io/MitiruEngine/><span class=site-header__brand-mark aria-hidden=true>M</span>
-<span class=site-header__brand-name>MitiruEngine</span>
-</a><input type=checkbox id=nav-toggle class=nav-toggle role=button aria-label=メニュー aria-controls=primary-nav>
-<label for=nav-toggle class=nav-toggle__label aria-hidden=true><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label><nav class=site-nav id=primary-nav aria-label=primary><a href=https://mogmog-0110.github.io/MitiruEngine/>ホーム</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/getting-started/>はじめに</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/tutorials/>チュートリアル</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/chapters/>できること</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/api/>API</a>
-<button type=button class=search-trigger id=site-search-trigger aria-label=サイト内検索 aria-haspopup=dialog aria-expanded=false aria-controls=site-search-dialog>
-<svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
-<span class=visually-hidden>サイト内検索</span></button><div class=search-dialog id=site-search-dialog role=dialog aria-modal=true aria-labelledby=site-search-title data-pagefind-ignore hidden><div class=search-dialog__backdrop data-search-close></div><div class=search-dialog__panel role=document><div class=search-dialog__header><h2 id=site-search-title class=search-dialog__title>サイト内検索</h2><button type=button class=search-dialog__close data-search-close aria-label=閉じる><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div id=site-search class=search-dialog__body></div></div></div><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css><script src=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js defer></script><script>(function(){var t,n,i,a,r,c,d,u,s=document.getElementById("site-search-trigger"),e=document.getElementById("site-search-dialog");if(!s||!e)return;d=e.querySelector("#site-search"),i=e.querySelectorAll("[data-search-close]"),c=document.documentElement,u=(c.getAttribute("lang")||"en").toLowerCase(),a="https://mogmog-0110.github.io/MitiruEngine/pagefind/",r={placeholder:"ドキュメントを検索…",clear_search:"クリア",load_more:"さらに読み込む",search_label:"サイト内検索",filters_label:"Filters",zero_results:"「[SEARCH_TERM]」に一致する結果はありません",many_results:"[SEARCH_TERM] の検索結果 [COUNT] 件",one_result:"[SEARCH_TERM] の検索結果 [COUNT] 件",alt_search:"代わりに [DISPLAY_QUERY] の結果を表示しています",search_suggestion:"[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",searching:"検索中…"},t=null,n=null;function h(){return t?t:typeof window.PagefindUI!="function"?null:(t=new window.PagefindUI({element:d,showSubResults:!0,showImages:!1,excerptLength:30,resetStyles:!1,bundlePath:a,translations:r,autofocus:!0}),t)}function l(){n=document.activeElement,e.hidden=!1,requestAnimationFrame(function(){e.classList.add("is-open"),document.body.classList.add("search-open"),s.setAttribute("aria-expanded","true"),h();var t=e.querySelector(".pagefind-ui__search-input");t&&t.focus()})}function o(){e.classList.remove("is-open"),document.body.classList.remove("search-open"),s.setAttribute("aria-expanded","false"),setTimeout(function(){e.classList.contains("is-open")||(e.hidden=!0),n&&typeof n.focus=="function"&&n.focus()},200)}s.addEventListener("click",function(){e.classList.contains("is-open")?o():l()}),i.forEach(function(e){e.addEventListener("click",o)});function m(){var n,t=e.querySelector(".search-dialog__panel");return t?(n='a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',Array.prototype.filter.call(t.querySelectorAll(n),function(e){return!e.hasAttribute("hidden")&&e.offsetParent!==null})):[]}document.addEventListener("keydown",function(t){if(s=e.classList.contains("is-open"),t.key==="Escape"&&s){o();return}if(t.key==="Tab"&&s){if(n=m(),n.length===0){t.preventDefault();return}var n,s,r,i=n[0],c=n[n.length-1],a=document.activeElement;t.shiftKey&&a===i?(t.preventDefault(),c.focus()):!t.shiftKey&&a===c?(t.preventDefault(),i.focus()):e.contains(a)||(t.preventDefault(),i.focus());return}(t.metaKey||t.ctrlKey)&&(t.key==="k"||t.key==="K")&&(t.preventDefault(),s?(r=e.querySelector(".pagefind-ui__search-input"),r&&r.focus()):l())})})()</script><a class=site-nav__github href=https://github.com/mogmog-0110/MitiruEngine aria-label=GitHub><svg width="20" height="20" viewBox="0 0 16 16" fill="currentcolor" aria-hidden="true"><path d="M8 0C3.58.0.0 3.58.0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95.0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12.0.0.67-.21 2.2.82a7.62 7.62.0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15.0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-<span class=visually-hidden>GitHub</span>
-</a><button type=button class=shortcuts-trigger data-shortcuts-open aria-haspopup=dialog aria-controls=shortcuts-dialog aria-label="Keyboard shortcuts" title=?>
-<kbd class=shortcuts-trigger__kbd aria-hidden=true>?</kbd>
+<!DOCTYPE html>
+<html lang="ja" data-base="/">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::game | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::game | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::game | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
 </button>
-<button type=button class=theme-toggle id=theme-toggle aria-pressed=false aria-label=ダークモード切替><svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg></button></nav></div></header><script>(function(){var t=document.getElementById("nav-toggle"),e=document.getElementById("theme-toggle");t&&t.addEventListener("change",function(){t.checked?document.body.classList.add("is-nav-open"):document.body.classList.remove("is-nav-open")});function s(){var e=document.documentElement.getAttribute("data-theme");return e==="dark"||e==="light"?e==="dark":window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches}function n(){if(!e)return;e.setAttribute("aria-pressed",s()?"true":"false")}n(),e&&e.addEventListener("click",function(){var e,t=document.documentElement,s=t.getAttribute("data-theme"),o=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;s==="dark"?e="light":s==="light"?e="dark":e=o?"light":"dark",t.setAttribute("data-theme",e);try{localStorage.setItem("theme",e)}catch{}n()})})()</script><main class=site-main data-pagefind-body><div class="api-page container"><aside class=api-sidebar aria-label=名前空間><details class=api-sidebar__collapsible open><summary>名前空間</summary><nav><ul><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru/>mitiru</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/>mitiru::adapter</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/>mitiru::animation</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/>mitiru::asset</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/>mitiru::assets</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/>mitiru::audio</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/>mitiru::bridge</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/>mitiru::bridge::detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/>mitiru::cef</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/>mitiru::cef::bridges</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/>mitiru::control</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/>mitiru::core</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/>mitiru::data</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/>mitiru::debug</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/>mitiru::ecs</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/>mitiru::effects</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/>mitiru::fsm</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/ aria-current=page class=is-active>mitiru::game</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/>mitiru::gfx</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/>mitiru::gfx::dx12</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/>mitiru::i18n</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/>mitiru::input</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/>mitiru::live2d</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/>mitiru::math</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/>mitiru::narrative</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/>mitiru::network</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/>mitiru::observe</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/>mitiru::physics</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/>mitiru::physics2d</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/>mitiru::physics3d</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/>mitiru::platform</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/>mitiru::render</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/>mitiru::render::dx12</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/>mitiru::resource</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/>mitiru::scene</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/>mitiru::screen_detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/>mitiru::server</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/>mitiru::server::detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/>mitiru::sprite</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/>mitiru::time</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/>mitiru::time::detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/>mitiru::ui</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/>mitiru::ui::LayoutPresets</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/>mitiru::util</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/>mitiru::validate</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/>mitiru::vn</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/>mitiru::world</a></li></ul></nav></details></aside><article class=api-page__article><header><h1>mitiru::game</h1><p class=api-page__description>Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items).</p></header><div class=api-page__content><p class=api-namespace__lede>Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items).</p><table class=api-class-index><thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead><tbody><tr><td><a href=#enum-collisionresponse><code>CollisionResponse</code></a></td><td>enum</td><td>3</td></tr><tr><td><a href=#enum-tiletype><code>TileType</code></a></td><td>enum</td><td>4</td></tr><tr><td><a href=#struct-vec2f><code>Vec2f</code></a></td><td>struct</td><td>5</td></tr><tr><td><a href=#struct-aabb><code>AABB</code></a></td><td>struct</td><td>10</td></tr><tr><td><a href=#struct-tilemap><code>Tilemap</code></a></td><td>struct</td><td>7</td></tr><tr><td><a href=#struct-tilemapcollisionresult><code>TilemapCollisionResult</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#class-tilemapcollider><code>TilemapCollider</code></a></td><td>class</td><td>1</td></tr><tr><td><a href=#struct-platformerinput><code>PlatformerInput</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#struct-platformerconfig><code>PlatformerConfig</code></a></td><td>struct</td><td>10</td></tr><tr><td><a href=#struct-platformerstate><code>PlatformerState</code></a></td><td>struct</td><td>8</td></tr><tr><td><a href=#class-platformerphysics><code>PlatformerPhysics</code></a></td><td>class</td><td>1</td></tr><tr><td><a href=#struct-hitresult><code>HitResult</code></a></td><td>struct</td><td>6</td></tr><tr><td><a href=#struct-hitbox><code>Hitbox</code></a></td><td>struct</td><td>6</td></tr><tr><td><a href=#class-hitboxsystem><code>HitboxSystem</code></a></td><td>class</td><td>7</td></tr><tr><td><a href=#enum-element><code>Element</code></a></td><td>enum</td><td>8</td></tr><tr><td><a href=#enum-targettype><code>TargetType</code></a></td><td>enum</td><td>3</td></tr><tr><td><a href=#enum-equipslot><code>EquipSlot</code></a></td><td>enum</td><td>3</td></tr><tr><td><a href=#enum-battleactiontype><code>BattleActionType</code></a></td><td>enum</td><td>5</td></tr><tr><td><a href=#enum-battlephase><code>BattlePhase</code></a></td><td>enum</td><td>6</td></tr><tr><td><a href=#enum-statuseffect><code>StatusEffect</code></a></td><td>enum</td><td>8</td></tr><tr><td><a href=#struct-stat><code>Stat</code></a></td><td>struct</td><td>5</td></tr><tr><td><a href=#struct-characterstats><code>CharacterStats</code></a></td><td>struct</td><td>11</td></tr><tr><td><a href=#struct-skill><code>Skill</code></a></td><td>struct</td><td>7</td></tr><tr><td><a href=#struct-statbonuses><code>StatBonuses</code></a></td><td>struct</td><td>6</td></tr><tr><td><a href=#struct-equipment><code>Equipment</code></a></td><td>struct</td><td>5</td></tr><tr><td><a href=#struct-inventory><code>Inventory</code></a></td><td>struct</td><td>6</td></tr><tr><td><a href=#struct-battleaction><code>BattleAction</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#struct-damageresult><code>DamageResult</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#class-damagecalculator><code>DamageCalculator</code></a></td><td>class</td><td>1</td></tr><tr><td><a href=#struct-turnentry><code>TurnEntry</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#class-turnordercalculator><code>TurnOrderCalculator</code></a></td><td>class</td><td>1</td></tr><tr><td><a href=#struct-battlestate><code>BattleState</code></a></td><td>struct</td><td>11</td></tr><tr><td><a href=#enum-terraintype><code>TerrainType</code></a></td><td>enum</td><td>6</td></tr><tr><td><a href=#struct-hexcube><code>HexCube</code></a></td><td>struct</td><td>5</td></tr><tr><td><a href=#struct-hexoffset><code>HexOffset</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#struct-hexcoordutil><code>HexCoordUtil</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#struct-hexcell><code>HexCell</code></a></td><td>struct</td><td>5</td></tr><tr><td><a href=#class-hexgrid><code>HexGrid</code></a></td><td>class</td><td>11</td></tr><tr><td><a href=#class-turnmanager><code>TurnManager</code></a></td><td>class</td><td>7</td></tr><tr><td><a href=#class-pathfinderhex><code>PathfinderHex</code></a></td><td>class</td><td>2</td></tr><tr><td><a href=#enum-gamemode><code>GameMode</code></a></td><td>enum</td><td>2</td></tr><tr><td><a href=#enum-gameplaytype><code>GameplayType</code></a></td><td>enum</td><td>5</td></tr><tr><td><a href=#enum-vncommandtype><code>VNCommandType</code></a></td><td>enum</td><td>11</td></tr><tr><td><a href=#struct-sharedstate><code>SharedState</code></a></td><td>struct</td><td>11</td></tr><tr><td><a href=#struct-vnchoice><code>VNChoice</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#struct-vncommand><code>VNCommand</code></a></td><td>struct</td><td>5</td></tr><tr><td><a href=#struct-vnscript><code>VNScript</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#struct-gameplaytrigger><code>GameplayTrigger</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#struct-vntrigger><code>VNTrigger</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#class-hybridgamemanager><code>HybridGameManager</code></a></td><td>class</td><td>23</td></tr></tbody></table><details class=api-class id=enum-collisionresponse open><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>CollisionResponse</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>Slide</code></div><div class=api-method><code>Stop</code></div><div class=api-method><code>Bounce</code></div></div></details><details class=api-class id=enum-tiletype open><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>TileType</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>Empty = 0</code></div><div class=api-method><code>Solid</code></div><div class=api-method><code>OneWay</code></div><div class=api-method><code>Slope</code></div></div></details><details class=api-class id=struct-vec2f open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Vec2f</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>float x = 0.0f</code></div><div class=api-method><code>float y = 0.0f</code></div><div class=api-method><code>Vec2f operator+(const Vec2f& o) const noexcept</code></div><div class=api-method><code>Vec2f operator-(const Vec2f& o) const noexcept</code></div><div class=api-method><code>Vec2f operator*(float s) const noexcept</code></div></div></details><details class=api-class id=struct-aabb open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>AABB</code> <span class=api-class__count>10</span></summary><div class=api-class__body><div class=api-method><code>float x = 0.0f</code></div><div class=api-method><code>float y = 0.0f</code></div><div class=api-method><code>float width = 0.0f</code></div><div class=api-method><code>float height = 0.0f</code></div><div class=api-method><code>[[nodiscard]] float left() const noexcept</code></div><div class=api-method><code>[[nodiscard]] float right() const noexcept</code></div><div class=api-method><code>[[nodiscard]] float top() const noexcept</code></div><div class=api-method><code>[[nodiscard]] float bottom() const noexcept</code></div><div class=api-method><code>[[nodiscard]] Vec2f center() const noexcept</code></div><div class=api-method><code>[[nodiscard]] bool overlaps(const AABB& other) const noexcept</code></div></div></details><details class=api-class id=struct-tilemap open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Tilemap</code> <span class=api-class__count>7</span></summary><div class=api-class__body><div class=api-method><code>int width = 0</code></div><div class=api-method><code>int height = 0</code></div><div class=api-method><code>float tileSize = 16.0f</code></div><div class=api-method><code>std::vector&lt;TileType> tiles</code></div><div class=api-method><code>[[nodiscard]] TileType getTile(int col, int row) const noexcept</code></div><div class=api-method><code>[[nodiscard]] int worldToCol(float wx) const noexcept</code></div><div class=api-method><code>[[nodiscard]] int worldToRow(float wy) const noexcept</code></div></div></details><details class=api-class id=struct-tilemapcollisionresult open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>TilemapCollisionResult</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>Vec2f resolvedPosition</code></div><div class=api-method><code>Vec2f resolvedVelocity</code></div><div class=api-method><code>bool collidedX = false</code></div><div class=api-method><code>bool collidedY = false</code></div></div></details><details class=api-class id=class-tilemapcollider><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>TilemapCollider</code> <span class=api-class__count>1</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] static TilemapCollisionResult resolve( const AABB& aabb, const Vec2f& velocity, const Tilemap& tilemap, float dt, CollisionResponse response = CollisionResponse::Slide, float bounceFactor = 0.5f) noexcept</code></div></div></details><details class=api-class id=struct-platformerinput><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>PlatformerInput</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>float moveX = 0.0f</code></div><div class=api-method><code>bool jump = false</code></div><div class=api-method><code>bool jumpHeld = false</code></div></div></details><details class=api-class id=struct-platformerconfig><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>PlatformerConfig</code> <span class=api-class__count>10</span></summary><div class=api-class__body><div class=api-method><code>float gravity = 980.0f</code></div><div class=api-method><code>float jumpForce = 400.0f</code></div><div class=api-method><code>float maxFallSpeed = 600.0f</code></div><div class=api-method><code>float coyoteTime = 0.1f</code></div><div class=api-method><code>float jumpBufferTime = 0.12f</code></div><div class=api-method><code>float wallSlideSpeed = 80.0f</code></div><div class=api-method><code>float airControl = 0.6f</code></div><div class=api-method><code>float moveSpeed = 200.0f</code></div><div class=api-method><code>float wallJumpForceX = 300.0f</code></div><div class=api-method><code>float wallJumpForceY = 380.0f</code></div></div></details><details class=api-class id=struct-platformerstate><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>PlatformerState</code> <span class=api-class__count>8</span></summary><div class=api-class__body><div class=api-method><code>bool grounded = false</code></div><div class=api-method><code>bool onWall = false</code></div><div class=api-method><code>int wallDirection = 0</code></div><div class=api-method><code>bool jumping = false</code></div><div class=api-method><code>Vec2f velocity</code></div><div class=api-method><code>Vec2f position</code></div><div class=api-method><code>float coyoteTimer = 0.0f</code></div><div class=api-method><code>float jumpBufferTimer = 0.0f</code></div></div></details><details class=api-class id=class-platformerphysics><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>PlatformerPhysics</code> <span class=api-class__count>1</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] static PlatformerState update( float dt, const PlatformerInput& input, const Tilemap& tilemap, const Vec2f& aabbSize, const PlatformerState& state, const PlatformerConfig& config = {}) noexcept</code></div></div></details><details class=api-class id=struct-hitresult><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>HitResult</code> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>std::uint32_t attackerOwnerId = 0</code></div><div class=api-method><code>std::uint32_t defenderOwnerId = 0</code></div><div class=api-method><code>std::uint32_t attackerHitboxIdx = 0</code></div><div class=api-method><code>std::uint32_t defenderHitboxIdx = 0</code></div><div class=api-method><code>float damage = 0.0f</code></div><div class=api-method><code>Vec2f knockback</code></div></div></details><details class=api-class id=struct-hitbox><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Hitbox</code> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>std::uint32_t ownerId = 0</code></div><div class=api-method><code>AABB rect</code></div><div class=api-method><code>std::uint32_t layer = 0</code></div><div class=api-method><code>bool active = true</code></div><div class=api-method><code>float damage = 0.0f</code></div><div class=api-method><code>Vec2f knockback</code></div></div></details><details class=api-class id=class-hitboxsystem><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>HitboxSystem</code> <span class=api-class__count>7</span></summary><div class=api-class__body><div class=api-method><code>std::uint32_t registerHitbox(const Hitbox& hitbox)</code></div><div class=api-method><code>[[nodiscard]] Hitbox* getHitbox(std::uint32_t index) noexcept</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;HitResult> checkOverlaps() const</code></div><div class=api-method><code>void setHitCallback(std::function&lt;void(const HitResult&)> callback)</code></div><div class=api-method><code>void processOverlaps()</code></div><div class=api-method><code>void clear()</code></div><div class=api-method><code>[[nodiscard]] std::size_t count() const noexcept</code></div></div></details><details class=api-class id=enum-element><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>Element</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>8</span></summary><div class=api-class__body><div class=api-method><code>None = 0</code></div><div class=api-method><code>Fire</code></div><div class=api-method><code>Ice</code></div><div class=api-method><code>Thunder</code></div><div class=api-method><code>Wind</code></div><div class=api-method><code>Earth</code></div><div class=api-method><code>Light</code></div><div class=api-method><code>Dark</code></div></div></details><details class=api-class id=enum-targettype><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>TargetType</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>Single</code></div><div class=api-method><code>All</code></div><div class=api-method><code>Self</code></div></div></details><details class=api-class id=enum-equipslot><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>EquipSlot</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>Weapon</code></div><div class=api-method><code>Armor</code></div><div class=api-method><code>Accessory</code></div></div></details><details class=api-class id=enum-battleactiontype><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>BattleActionType</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>Attack</code></div><div class=api-method><code>Skill</code></div><div class=api-method><code>Item</code></div><div class=api-method><code>Defend</code></div><div class=api-method><code>Flee</code></div></div></details><details class=api-class id=enum-battlephase><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>BattlePhase</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>Start</code></div><div class=api-method><code>PlayerTurn</code></div><div class=api-method><code>EnemyTurn</code></div><div class=api-method><code>Animation</code></div><div class=api-method><code>Victory</code></div><div class=api-method><code>Defeat</code></div></div></details><details class=api-class id=enum-statuseffect><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>StatusEffect</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>8</span></summary><div class=api-class__body><div class=api-method><code>None = 0</code></div><div class=api-method><code>Poison</code></div><div class=api-method><code>Paralysis</code></div><div class=api-method><code>Sleep</code></div><div class=api-method><code>AtkUp</code></div><div class=api-method><code>DefUp</code></div><div class=api-method><code>AtkDown</code></div><div class=api-method><code>DefDown</code></div></div></details><details class=api-class id=struct-stat><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Stat</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>float base = 0.0f</code></div><div class=api-method><code>float modifier = 0.0f</code></div><div class=api-method><code>float max = 999.0f</code></div><div class=api-method><code>float current = 0.0f</code></div><div class=api-method><code>[[nodiscard]] float effective() const noexcept</code></div></div></details><details class=api-class id=struct-characterstats><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>CharacterStats</code> <span class=api-class__count>11</span></summary><div class=api-class__body><div class=api-method><code>Stat hp</code></div><div class=api-method><code>Stat mp</code></div><div class=api-method><code>Stat atk</code></div><div class=api-method><code>Stat def</code></div><div class=api-method><code>Stat spd</code></div><div class=api-method><code>Stat luk</code></div><div class=api-method><code>int level = 1</code></div><div class=api-method><code>int exp = 0</code></div><div class=api-method><code>std::string name</code></div><div class=api-method><code>Element weakness = Element::None</code></div><div class=api-method><code>std::vector&lt;StatusEffect> statusEffects</code></div></div></details><details class=api-class id=struct-skill><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Skill</code> <span class=api-class__count>7</span></summary><div class=api-class__body><div class=api-method><code>std::uint32_t id = 0</code></div><div class=api-method><code>std::string name</code></div><div class=api-method><code>float mpCost = 0.0f</code></div><div class=api-method><code>float basePower = 1.0f</code></div><div class=api-method><code>Element element = Element::None</code></div><div class=api-method><code>TargetType targetType = TargetType::Single</code></div><div class=api-method><code>std::vector&lt;StatusEffect> effects</code></div></div></details><details class=api-class id=struct-statbonuses><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>StatBonuses</code> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>float hp = 0.0f</code></div><div class=api-method><code>float mp = 0.0f</code></div><div class=api-method><code>float atk = 0.0f</code></div><div class=api-method><code>float def = 0.0f</code></div><div class=api-method><code>float spd = 0.0f</code></div><div class=api-method><code>float luk = 0.0f</code></div></div></details><details class=api-class id=struct-equipment><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Equipment</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>std::uint32_t id = 0</code></div><div class=api-method><code>std::string name</code></div><div class=api-method><code>EquipSlot slot = EquipSlot::Weapon</code></div><div class=api-method><code>StatBonuses bonuses</code></div><div class=api-method><code>Element element = Element::None</code></div></div></details><details class=api-class id=struct-inventory><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Inventory</code> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>std::map&lt;std::uint32_t, int> items</code></div><div class=api-method><code>int maxSlots = 99</code></div><div class=api-method><code>[[nodiscard]] bool addItem(std::uint32_t itemId, int count = 1)</code></div><div class=api-method><code>[[nodiscard]] bool removeItem(std::uint32_t itemId, int count = 1)</code></div><div class=api-method><code>[[nodiscard]] bool hasItem(std::uint32_t itemId, int count = 1) const</code></div><div class=api-method><code>[[nodiscard]] int getCount(std::uint32_t itemId) const</code></div></div></details><details class=api-class id=struct-battleaction><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>BattleAction</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>BattleActionType type = BattleActionType::Attack</code></div><div class=api-method><code>int targetIndex = 0</code></div><div class=api-method><code>std::uint32_t skillId = 0</code></div><div class=api-method><code>std::uint32_t itemId = 0</code></div></div></details><details class=api-class id=struct-damageresult><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>DamageResult</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>float damage = 0.0f</code></div><div class=api-method><code>bool critical = false</code></div><div class=api-method><code>float elementMultiplier = 1.0f</code></div><div class=api-method><code>bool missed = false</code></div></div></details><details class=api-class id=class-damagecalculator><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>DamageCalculator</code> <span class=api-class__count>1</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] static DamageResult calculate( const CharacterStats& attacker, const CharacterStats& defender, const Skill& skill, std::uint32_t seed = 0)</code></div></div></details><details class=api-class id=struct-turnentry><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>TurnEntry</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>int index = 0</code></div><div class=api-method><code>bool isEnemy = false</code></div><div class=api-method><code>float speed = 0.0f</code></div></div></details><details class=api-class id=class-turnordercalculator><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>TurnOrderCalculator</code> <span class=api-class__count>1</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] static std::vector&lt;TurnEntry> calculateOrder( const std::vector&lt;CharacterStats>& party, const std::vector&lt;CharacterStats>& enemies)</code></div></div></details><details class=api-class id=struct-battlestate><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>BattleState</code> <span class=api-class__count>11</span></summary><div class=api-class__body><div class=api-method><code>BattlePhase phase = BattlePhase::Start</code></div><div class=api-method><code>std::vector&lt;TurnEntry> turnOrder</code></div><div class=api-method><code>int currentActorIndex = 0</code></div><div class=api-method><code>int turnCount = 0</code></div><div class=api-method><code>std::vector&lt;CharacterStats> party</code></div><div class=api-method><code>std::vector&lt;CharacterStats> enemies</code></div><div class=api-method><code>[[nodiscard]] const TurnEntry* currentActor() const noexcept</code></div><div class=api-method><code>void advanceTurn()</code></div><div class=api-method><code>void beginBattle()</code></div><div class=api-method><code>[[nodiscard]] bool isPartyDefeated() const noexcept</code></div><div class=api-method><code>[[nodiscard]] bool isEnemiesDefeated() const noexcept</code></div></div></details><details class=api-class id=enum-terraintype><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>TerrainType</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>Plain = 0</code></div><div class=api-method><code>Forest</code></div><div class=api-method><code>Mountain</code></div><div class=api-method><code>Water</code></div><div class=api-method><code>Road</code></div><div class=api-method><code>[[nodiscard]] inline float terrainMoveCost(TerrainType terrain) noexcept</code></div></div></details><details class=api-class id=struct-hexcube><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>HexCube</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>int q = 0</code></div><div class=api-method><code>int r = 0</code></div><div class=api-method><code>int s = 0</code></div><div class=api-method><code>bool operator==(const HexCube& o) const noexcept</code></div><div class=api-method><code>bool operator!=(const HexCube& o) const noexcept</code></div></div></details><details class=api-class id=struct-hexoffset><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>HexOffset</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>int col = 0</code></div><div class=api-method><code>int row = 0</code></div><div class=api-method><code>bool operator==(const HexOffset& o) const noexcept</code></div><div class=api-method><code>bool operator!=(const HexOffset& o) const noexcept</code></div></div></details><details class=api-class id=struct-hexcoordutil><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>HexCoordUtil</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] static HexCube offsetToCube(const HexOffset& offset) noexcept</code></div><div class=api-method><code>[[nodiscard]] static HexOffset cubeToOffset(const HexCube& cube) noexcept</code></div><div class=api-method><code>[[nodiscard]] static int cubeDistance(const HexCube& a, const HexCube& b) noexcept</code></div></div></details><details class=api-class id=struct-hexcell><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>HexCell</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>int q = 0</code></div><div class=api-method><code>int r = 0</code></div><div class=api-method><code>TerrainType terrain = TerrainType::Plain</code></div><div class=api-method><code>std::uint32_t occupant = 0</code></div><div class=api-method><code>float moveCost = 1.0f</code></div></div></details><details class=api-class id=class-hexgrid><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>HexGrid</code> <span class=api-class__count>11</span></summary><div class=api-class__body><div class=api-method><code>HexGrid(int width, int height)</code></div><div class=api-method><code>HexGrid() = default</code></div><div class=api-method><code>[[nodiscard]] int width() const noexcept</code></div><div class=api-method><code>[[nodiscard]] int height() const noexcept</code></div><div class=api-method><code>[[nodiscard]] HexCell* getCell(int col, int row) noexcept</code></div><div class=api-method><code>[[nodiscard]] const HexCell* getCell(int col, int row) const noexcept</code></div><div class=api-method><code>[[nodiscard]] bool isValid(int col, int row) const noexcept</code></div><div class=api-method><code>[[nodiscard]] int hexDistance(const HexOffset& a, const HexOffset& b) const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;HexCell*> hexNeighbors(int col, int row) noexcept</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;const HexCell*> hexLine(const HexOffset& from, const HexOffset& to) const</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;const HexCell*> hexRing(const HexOffset& center, int radius) const</code></div></div></details><details class=api-class id=class-turnmanager><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>TurnManager</code> <span class=api-class__count>7</span></summary><div class=api-class__body><div class=api-method><code>void setPlayers(std::vector&lt;std::uint32_t> playerIds)</code></div><div class=api-method><code>[[nodiscard]] std::uint32_t currentPlayer() const noexcept</code></div><div class=api-method><code>[[nodiscard]] int currentTurn() const noexcept</code></div><div class=api-method><code>void nextTurn()</code></div><div class=api-method><code>[[nodiscard]] bool isGameOver() const noexcept</code></div><div class=api-method><code>void setGameOver() noexcept</code></div><div class=api-method><code>[[nodiscard]] const std::vector&lt;std::uint32_t>& playerOrder() const noexcept</code></div></div></details><details class=api-class id=class-pathfinderhex><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>PathfinderHex</code> <span class=api-class__count>2</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] static std::vector&lt;const HexCell*> findPath( const HexGrid& grid, const HexOffset& from, const HexOffset& to, float maxMovePoints)</code></div><div class=api-method><code>[[nodiscard]] static std::vector&lt;const HexCell*> getReachableCells( const HexGrid& grid, const HexOffset& from, float movePoints)</code></div></div></details><details class=api-class id=enum-gamemode><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>GameMode</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>2</span></summary><div class=api-class__body><div class=api-method><code>VN</code></div><div class=api-method><code>Gameplay</code></div></div></details><details class=api-class id=enum-gameplaytype><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>GameplayType</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>Battle</code></div><div class=api-method><code>Minigame</code></div><div class=api-method><code>Puzzle</code></div><div class=api-method><code>Explore</code></div><div class=api-method><code>Custom</code></div></div></details><details class=api-class id=enum-vncommandtype><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>VNCommandType</code> <span class=api-class__extra>: std::uint8_t</span> <span class=api-class__count>11</span></summary><div class=api-class__body><div class=api-method><code>Dialogue</code></div><div class=api-method><code>Choice</code></div><div class=api-method><code>SetFlag</code></div><div class=api-method><code>Jump</code></div><div class=api-method><code>Gameplay</code></div><div class=api-method><code>Wait</code></div><div class=api-method><code>Background</code></div><div class=api-method><code>Character</code></div><div class=api-method><code>BGM</code></div><div class=api-method><code>SE</code></div><div class=api-method><code>using FlagValue = std::variant&lt;bool, int, float, std::string>;</code></div></div></details><details class=api-class id=struct-sharedstate><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>SharedState</code> <span class=api-class__count>11</span></summary><div class=api-class__body><div class=api-method><code>std::map&lt;std::string, FlagValue> flags</code></div><div class=api-method><code>std::map&lt;std::uint32_t, int> inventory</code></div><div class=api-method><code>std::map&lt;std::string, float> stats</code></div><div class=api-method><code>void setFlag(const std::string& key, FlagValue value)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] T getFlag(const std::string& key, const T& defaultValue = {}) const</code></div><div class=api-method><code>[[nodiscard]] bool hasFlag(const std::string& key) const</code></div><div class=api-method><code>void addItem(std::uint32_t itemId, int count = 1)</code></div><div class=api-method><code>[[nodiscard]] bool removeItem(std::uint32_t itemId, int count = 1)</code></div><div class=api-method><code>[[nodiscard]] bool hasItem(std::uint32_t itemId, int count = 1) const</code></div><div class=api-method><code>void setStat(const std::string& key, float value)</code></div><div class=api-method><code>[[nodiscard]] float getStat(const std::string& key, float defaultValue = 0.0f) const</code></div></div></details><details class=api-class id=struct-vnchoice><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>VNChoice</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>std::string text</code></div><div class=api-method><code>std::string jumpLabel</code></div><div class=api-method><code>std::function&lt;bool()> condition</code></div></div></details><details class=api-class id=struct-vncommand><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>VNCommand</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>VNCommandType type = VNCommandType::Dialogue</code></div><div class=api-method><code>std::string speaker</code></div><div class=api-method><code>std::string text</code></div><div class=api-method><code>std::vector&lt;VNChoice> choices</code></div><div class=api-method><code>std::map&lt;std::string, std::string> params</code></div></div></details><details class=api-class id=struct-vnscript><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>VNScript</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>std::vector&lt;VNCommand> commands</code></div><div class=api-method><code>std::map&lt;std::string, std::size_t> labels</code></div><div class=api-method><code>void addCommand(VNCommand cmd)</code></div><div class=api-method><code>void setLabel(const std::string& name)</code></div></div></details><details class=api-class id=struct-gameplaytrigger><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>GameplayTrigger</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>std::string gameplayId</code></div><div class=api-method><code>std::map&lt;std::string, std::string> params</code></div><div class=api-method><code>GameplayType type = GameplayType::Battle</code></div><div class=api-method><code>std::function&lt;bool(const SharedState&)> condition</code></div></div></details><details class=api-class id=struct-vntrigger><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>VNTrigger</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>std::string eventId</code></div><div class=api-method><code>std::string scriptLabel</code></div><div class=api-method><code>std::function&lt;bool(const SharedState&)> condition</code></div></div></details><details class=api-class id=class-hybridgamemanager><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>HybridGameManager</code> <span class=api-class__count>23</span></summary><div class=api-class__body><div class=api-method><code>HybridGameManager() = default</code></div><div class=api-method><code>void enterVNMode()</code></div><div class=api-method><code>void enterGameplayMode(GameplayType type = GameplayType::Battle)</code></div><div class=api-method><code>void returnToPreviousMode()</code></div><div class=api-method><code>[[nodiscard]] bool isInVNMode() const noexcept</code></div><div class=api-method><code>[[nodiscard]] bool isInGameplayMode() const noexcept</code></div><div class=api-method><code>[[nodiscard]] GameMode currentMode() const noexcept</code></div><div class=api-method><code>[[nodiscard]] GameplayType currentGameplayType() const noexcept</code></div><div class=api-method><code>[[nodiscard]] SharedState& sharedState() noexcept</code></div><div class=api-method><code>[[nodiscard]] const SharedState& sharedState() const noexcept</code></div><div class=api-method><code>void setFlag(const std::string& key, FlagValue value)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] T getFlag(const std::string& key, const T& defaultValue = {}) const</code></div><div class=api-method><code>void setScript(VNScript script)</code></div><div class=api-method><code>[[nodiscard]] const VNCommand* currentCommand() const noexcept</code></div><div class=api-method><code>bool advanceScript()</code></div><div class=api-method><code>void selectChoice(int choiceIndex)</code></div><div class=api-method><code>void returnToScript()</code></div><div class=api-method><code>void addGameplayTrigger(GameplayTrigger trigger)</code></div><div class=api-method><code>void addVNTrigger(VNTrigger trigger)</code></div><div class=api-method><code>[[nodiscard]] const GameplayTrigger* evaluateGameplayTriggers() const</code></div><div class=api-method><code>[[nodiscard]] const VNTrigger* evaluateVNTriggers() const</code></div><div class=api-method><code>bool processAutoTriggers()</code></div><div class=api-method><code>void setOnModeChange(std::function&lt;void(GameMode)> callback)</code></div></div></details><hr><p class=api-source-note>Sourced from <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md>docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p></div></article><aside class=api-toc aria-label=このページ内><p class=api-toc__title>このページ内</p><nav id=TableOfContents></nav></aside></div></main><footer class=site-footer><div class="container site-footer__inner"><div class=site-footer__col><p class=site-footer__brand><span class=site-footer__brand-mark aria-hidden=true><svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentcolor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 24V8l6 6 6-6 6 6 6-6V24"/></svg>
-</span>MitiruEngine</p><p class=site-footer__copy>&copy; 2026 MitiruEngine contributors.</p><p class=site-footer__build aria-label="built with"><code>built_with</code>
-<span class=site-footer__build-chip>C++20</span>
-<span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
-<span class="site-footer__build-chip site-footer__build-chip--data">JSON</span></p></div><div class=site-footer__col><h2 class=site-footer__h>ライセンス</h2><p>MIT。詳しくは <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE>LICENSE</a> を見てください。</p><p class=site-footer__hint><kbd>?</kbd> でショートカット一覧</p></div><div class=site-footer__col><h2 class=site-footer__h>状態</h2><p>0.x 系・実験段階。API はまだ変わります。</p><p><a href=https://github.com/mogmog-0110/MitiruEngine>github.com/mogmog-0110/MitiruEngine</a></p><p class=site-footer__easter aria-hidden=true><span class=site-footer__easter-prompt><code>$ echo "hello, world"</code></span>
-<span class=site-footer__easter-cursor>_</span></p></div></div></footer><div class=shortcuts-dialog id=shortcuts-dialog role=dialog aria-modal=true aria-labelledby=shortcuts-dialog-title data-pagefind-ignore hidden><div class=shortcuts-dialog__backdrop data-shortcuts-close></div><div class=shortcuts-dialog__panel role=document><div class=shortcuts-dialog__header><h2 id=shortcuts-dialog-title class=shortcuts-dialog__title>キーボードショートカット</h2><button type=button class=shortcuts-dialog__close data-shortcuts-close aria-label=閉じる><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class=shortcuts-dialog__body><dl class=shortcuts-list><div class=shortcuts-list__row><dt><kbd>?</kbd></dt><dd>このヘルプを開く</dd></div><div class=shortcuts-list__row><dt><kbd>Esc</kbd></dt><dd>ダイアログを閉じる</dd></div><div class=shortcuts-list__row><dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt><dd>サイト内検索を開く</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>h</kbd></dt><dd>ホームへ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>c</kbd></dt><dd>チャプター一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>a</kbd></dt><dd>アーキテクチャ一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>t</kbd></dt><dd>チュートリアル一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>s</kbd></dt><dd>はじめてのページへ</dd></div></dl><p class=shortcuts-dialog__foot>入力中（テキストフィールド・コード編集）は無効です。</p></div></div></div><script src=https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js defer></script></body></html>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+      <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<div class="api-page container">
+  <aside class="api-sidebar" aria-label="名前空間">
+  <details class="api-sidebar__collapsible" open>
+    <summary>名前空間</summary>
+    <nav>
+      <ul>
+        
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"
+               >
+              mitiru
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"
+               >
+              mitiru::adapter
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"
+               >
+              mitiru::animation
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"
+               >
+              mitiru::asset
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"
+               >
+              mitiru::assets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"
+               >
+              mitiru::audio
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"
+               >
+              mitiru::bridge
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"
+               >
+              mitiru::bridge::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"
+               >
+              mitiru::cef
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"
+               >
+              mitiru::cef::bridges
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"
+               >
+              mitiru::control
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"
+               >
+              mitiru::core
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"
+               >
+              mitiru::data
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"
+               >
+              mitiru::debug
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"
+               >
+              mitiru::ecs
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"
+               >
+              mitiru::effects
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"
+               >
+              mitiru::fsm
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"
+               aria-current="page" class="is-active">
+              mitiru::game
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"
+               >
+              mitiru::gfx
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"
+               >
+              mitiru::gfx::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"
+               >
+              mitiru::i18n
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"
+               >
+              mitiru::input
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"
+               >
+              mitiru::live2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"
+               >
+              mitiru::math
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"
+               >
+              mitiru::narrative
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"
+               >
+              mitiru::network
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"
+               >
+              mitiru::observe
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"
+               >
+              mitiru::physics
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"
+               >
+              mitiru::physics2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"
+               >
+              mitiru::physics3d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"
+               >
+              mitiru::platform
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"
+               >
+              mitiru::render
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"
+               >
+              mitiru::render::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"
+               >
+              mitiru::resource
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"
+               >
+              mitiru::scene
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"
+               >
+              mitiru::screen_detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"
+               >
+              mitiru::server
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"
+               >
+              mitiru::server::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"
+               >
+              mitiru::sprite
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"
+               >
+              mitiru::time
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"
+               >
+              mitiru::time::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"
+               >
+              mitiru::ui
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"
+               >
+              mitiru::ui::LayoutPresets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"
+               >
+              mitiru::util
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"
+               >
+              mitiru::validate
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"
+               >
+              mitiru::vn
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"
+               >
+              mitiru::world
+            </a>
+          </li>
+        
+      </ul>
+    </nav>
+  </details>
+</aside>
+
+  <article class="api-page__article">
+    <header>
+      <h1>mitiru::game</h1>
+      <p class="api-page__description">Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items).</p>
+    </header>
+    <div class="api-page__content">
+      <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (50 types, 286 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#enum-collisionresponse"><code>CollisionResponse</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#enum-tiletype"><code>TileType</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#struct-vec2f"><code>Vec2f</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-aabb"><code>AABB</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-tilemap"><code>Tilemap</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-tilemapcollisionresult"><code>TilemapCollisionResult</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-tilemapcollider"><code>TilemapCollider</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#struct-platformerinput"><code>PlatformerInput</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-platformerconfig"><code>PlatformerConfig</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-platformerstate"><code>PlatformerState</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#class-platformerphysics"><code>PlatformerPhysics</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#struct-hitresult"><code>HitResult</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-hitbox"><code>Hitbox</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-hitboxsystem"><code>HitboxSystem</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#enum-element"><code>Element</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#enum-targettype"><code>TargetType</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#enum-equipslot"><code>EquipSlot</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#enum-battleactiontype"><code>BattleActionType</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#enum-battlephase"><code>BattlePhase</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#enum-statuseffect"><code>StatusEffect</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#struct-stat"><code>Stat</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-characterstats"><code>CharacterStats</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-skill"><code>Skill</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-statbonuses"><code>StatBonuses</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-equipment"><code>Equipment</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-inventory"><code>Inventory</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-battleaction"><code>BattleAction</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-damageresult"><code>DamageResult</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-damagecalculator"><code>DamageCalculator</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#struct-turnentry"><code>TurnEntry</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-turnordercalculator"><code>TurnOrderCalculator</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#struct-battlestate"><code>BattleState</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#enum-terraintype"><code>TerrainType</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-hexcube"><code>HexCube</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-hexoffset"><code>HexOffset</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-hexcoordutil"><code>HexCoordUtil</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-hexcell"><code>HexCell</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-hexgrid"><code>HexGrid</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-turnmanager"><code>TurnManager</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#class-pathfinderhex"><code>PathfinderHex</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#enum-gamemode"><code>GameMode</code></a></td><td>enum</td><td>2</td></tr>
+<tr><td><a href="#enum-gameplaytype"><code>GameplayType</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#enum-vncommandtype"><code>VNCommandType</code></a></td><td>enum</td><td>11</td></tr>
+<tr><td><a href="#struct-sharedstate"><code>SharedState</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-vnchoice"><code>VNChoice</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-vncommand"><code>VNCommand</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-vnscript"><code>VNScript</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-gameplaytrigger"><code>GameplayTrigger</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-vntrigger"><code>VNTrigger</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-hybridgamemanager"><code>HybridGameManager</code></a></td><td>class</td><td>23</td></tr>
+</tbody></table>
+<details class="api-class" id="enum-collisionresponse" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">CollisionResponse</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Slide</code></div>
+<div class="api-method"><code>Stop</code></div>
+<div class="api-method"><code>Bounce</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-tiletype" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TileType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Empty = 0</code></div>
+<div class="api-method"><code>Solid</code></div>
+<div class="api-method"><code>OneWay</code></div>
+<div class="api-method"><code>Slope</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vec2f" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Vec2f</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x = 0.0f</code></div>
+<div class="api-method"><code>float y = 0.0f</code></div>
+<div class="api-method"><code>Vec2f operator+(const Vec2f&amp; o) const noexcept</code></div>
+<div class="api-method"><code>Vec2f operator-(const Vec2f&amp; o) const noexcept</code></div>
+<div class="api-method"><code>Vec2f operator*(float s) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-aabb" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AABB</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x = 0.0f</code></div>
+<div class="api-method"><code>float y = 0.0f</code></div>
+<div class="api-method"><code>float width = 0.0f</code></div>
+<div class="api-method"><code>float height = 0.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] float left() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float right() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float top() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float bottom() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec2f center() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool overlaps(const AABB&amp; other) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-tilemap" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Tilemap</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>float tileSize = 16.0f</code></div>
+<div class="api-method"><code>std::vector&lt;TileType&gt; tiles</code></div>
+<div class="api-method"><code>[[nodiscard]] TileType getTile(int col, int row) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int worldToCol(float wx) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int worldToRow(float wy) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-tilemapcollisionresult" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TilemapCollisionResult</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Vec2f resolvedPosition</code></div>
+<div class="api-method"><code>Vec2f resolvedVelocity</code></div>
+<div class="api-method"><code>bool collidedX = false</code></div>
+<div class="api-method"><code>bool collidedY = false</code></div>
+</div>
+</details>
+<details class="api-class" id="class-tilemapcollider">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TilemapCollider</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static TilemapCollisionResult resolve( const AABB&amp; aabb, const Vec2f&amp; velocity, const Tilemap&amp; tilemap, float dt, CollisionResponse response = CollisionResponse::Slide, float bounceFactor = 0.5f) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-platformerinput">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PlatformerInput</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float moveX = 0.0f</code></div>
+<div class="api-method"><code>bool jump = false</code></div>
+<div class="api-method"><code>bool jumpHeld = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-platformerconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PlatformerConfig</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float gravity = 980.0f</code></div>
+<div class="api-method"><code>float jumpForce = 400.0f</code></div>
+<div class="api-method"><code>float maxFallSpeed = 600.0f</code></div>
+<div class="api-method"><code>float coyoteTime = 0.1f</code></div>
+<div class="api-method"><code>float jumpBufferTime = 0.12f</code></div>
+<div class="api-method"><code>float wallSlideSpeed = 80.0f</code></div>
+<div class="api-method"><code>float airControl = 0.6f</code></div>
+<div class="api-method"><code>float moveSpeed = 200.0f</code></div>
+<div class="api-method"><code>float wallJumpForceX = 300.0f</code></div>
+<div class="api-method"><code>float wallJumpForceY = 380.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-platformerstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PlatformerState</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool grounded = false</code></div>
+<div class="api-method"><code>bool onWall = false</code></div>
+<div class="api-method"><code>int wallDirection = 0</code></div>
+<div class="api-method"><code>bool jumping = false</code></div>
+<div class="api-method"><code>Vec2f velocity</code></div>
+<div class="api-method"><code>Vec2f position</code></div>
+<div class="api-method"><code>float coyoteTimer = 0.0f</code></div>
+<div class="api-method"><code>float jumpBufferTimer = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-platformerphysics">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PlatformerPhysics</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static PlatformerState update( float dt, const PlatformerInput&amp; input, const Tilemap&amp; tilemap, const Vec2f&amp; aabbSize, const PlatformerState&amp; state, const PlatformerConfig&amp; config = {}) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hitresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HitResult</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t attackerOwnerId = 0</code></div>
+<div class="api-method"><code>std::uint32_t defenderOwnerId = 0</code></div>
+<div class="api-method"><code>std::uint32_t attackerHitboxIdx = 0</code></div>
+<div class="api-method"><code>std::uint32_t defenderHitboxIdx = 0</code></div>
+<div class="api-method"><code>float damage = 0.0f</code></div>
+<div class="api-method"><code>Vec2f knockback</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hitbox">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Hitbox</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t ownerId = 0</code></div>
+<div class="api-method"><code>AABB rect</code></div>
+<div class="api-method"><code>std::uint32_t layer = 0</code></div>
+<div class="api-method"><code>bool active = true</code></div>
+<div class="api-method"><code>float damage = 0.0f</code></div>
+<div class="api-method"><code>Vec2f knockback</code></div>
+</div>
+</details>
+<details class="api-class" id="class-hitboxsystem">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">HitboxSystem</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t registerHitbox(const Hitbox&amp; hitbox)</code></div>
+<div class="api-method"><code>[[nodiscard]] Hitbox* getHitbox(std::uint32_t index) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;HitResult&gt; checkOverlaps() const</code></div>
+<div class="api-method"><code>void setHitCallback(std::function&lt;void(const HitResult&amp;)&gt; callback)</code></div>
+<div class="api-method"><code>void processOverlaps()</code></div>
+<div class="api-method"><code>void clear()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t count() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-element">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Element</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>None = 0</code></div>
+<div class="api-method"><code>Fire</code></div>
+<div class="api-method"><code>Ice</code></div>
+<div class="api-method"><code>Thunder</code></div>
+<div class="api-method"><code>Wind</code></div>
+<div class="api-method"><code>Earth</code></div>
+<div class="api-method"><code>Light</code></div>
+<div class="api-method"><code>Dark</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-targettype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TargetType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Single</code></div>
+<div class="api-method"><code>All</code></div>
+<div class="api-method"><code>Self</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-equipslot">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">EquipSlot</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Weapon</code></div>
+<div class="api-method"><code>Armor</code></div>
+<div class="api-method"><code>Accessory</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-battleactiontype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">BattleActionType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Attack</code></div>
+<div class="api-method"><code>Skill</code></div>
+<div class="api-method"><code>Item</code></div>
+<div class="api-method"><code>Defend</code></div>
+<div class="api-method"><code>Flee</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-battlephase">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">BattlePhase</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Start</code></div>
+<div class="api-method"><code>PlayerTurn</code></div>
+<div class="api-method"><code>EnemyTurn</code></div>
+<div class="api-method"><code>Animation</code></div>
+<div class="api-method"><code>Victory</code></div>
+<div class="api-method"><code>Defeat</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-statuseffect">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">StatusEffect</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>None = 0</code></div>
+<div class="api-method"><code>Poison</code></div>
+<div class="api-method"><code>Paralysis</code></div>
+<div class="api-method"><code>Sleep</code></div>
+<div class="api-method"><code>AtkUp</code></div>
+<div class="api-method"><code>DefUp</code></div>
+<div class="api-method"><code>AtkDown</code></div>
+<div class="api-method"><code>DefDown</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-stat">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Stat</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float base = 0.0f</code></div>
+<div class="api-method"><code>float modifier = 0.0f</code></div>
+<div class="api-method"><code>float max = 999.0f</code></div>
+<div class="api-method"><code>float current = 0.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] float effective() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-characterstats">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CharacterStats</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Stat hp</code></div>
+<div class="api-method"><code>Stat mp</code></div>
+<div class="api-method"><code>Stat atk</code></div>
+<div class="api-method"><code>Stat def</code></div>
+<div class="api-method"><code>Stat spd</code></div>
+<div class="api-method"><code>Stat luk</code></div>
+<div class="api-method"><code>int level = 1</code></div>
+<div class="api-method"><code>int exp = 0</code></div>
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>Element weakness = Element::None</code></div>
+<div class="api-method"><code>std::vector&lt;StatusEffect&gt; statusEffects</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-skill">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Skill</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t id = 0</code></div>
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>float mpCost = 0.0f</code></div>
+<div class="api-method"><code>float basePower = 1.0f</code></div>
+<div class="api-method"><code>Element element = Element::None</code></div>
+<div class="api-method"><code>TargetType targetType = TargetType::Single</code></div>
+<div class="api-method"><code>std::vector&lt;StatusEffect&gt; effects</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-statbonuses">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StatBonuses</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float hp = 0.0f</code></div>
+<div class="api-method"><code>float mp = 0.0f</code></div>
+<div class="api-method"><code>float atk = 0.0f</code></div>
+<div class="api-method"><code>float def = 0.0f</code></div>
+<div class="api-method"><code>float spd = 0.0f</code></div>
+<div class="api-method"><code>float luk = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-equipment">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Equipment</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t id = 0</code></div>
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>EquipSlot slot = EquipSlot::Weapon</code></div>
+<div class="api-method"><code>StatBonuses bonuses</code></div>
+<div class="api-method"><code>Element element = Element::None</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-inventory">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Inventory</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::map&lt;std::uint32_t, int&gt; items</code></div>
+<div class="api-method"><code>int maxSlots = 99</code></div>
+<div class="api-method"><code>[[nodiscard]] bool addItem(std::uint32_t itemId, int count = 1)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool removeItem(std::uint32_t itemId, int count = 1)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasItem(std::uint32_t itemId, int count = 1) const</code></div>
+<div class="api-method"><code>[[nodiscard]] int getCount(std::uint32_t itemId) const</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-battleaction">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BattleAction</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BattleActionType type = BattleActionType::Attack</code></div>
+<div class="api-method"><code>int targetIndex = 0</code></div>
+<div class="api-method"><code>std::uint32_t skillId = 0</code></div>
+<div class="api-method"><code>std::uint32_t itemId = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-damageresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DamageResult</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float damage = 0.0f</code></div>
+<div class="api-method"><code>bool critical = false</code></div>
+<div class="api-method"><code>float elementMultiplier = 1.0f</code></div>
+<div class="api-method"><code>bool missed = false</code></div>
+</div>
+</details>
+<details class="api-class" id="class-damagecalculator">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DamageCalculator</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static DamageResult calculate( const CharacterStats&amp; attacker, const CharacterStats&amp; defender, const Skill&amp; skill, std::uint32_t seed = 0)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-turnentry">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TurnEntry</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int index = 0</code></div>
+<div class="api-method"><code>bool isEnemy = false</code></div>
+<div class="api-method"><code>float speed = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-turnordercalculator">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TurnOrderCalculator</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static std::vector&lt;TurnEntry&gt; calculateOrder( const std::vector&lt;CharacterStats&gt;&amp; party, const std::vector&lt;CharacterStats&gt;&amp; enemies)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-battlestate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BattleState</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BattlePhase phase = BattlePhase::Start</code></div>
+<div class="api-method"><code>std::vector&lt;TurnEntry&gt; turnOrder</code></div>
+<div class="api-method"><code>int currentActorIndex = 0</code></div>
+<div class="api-method"><code>int turnCount = 0</code></div>
+<div class="api-method"><code>std::vector&lt;CharacterStats&gt; party</code></div>
+<div class="api-method"><code>std::vector&lt;CharacterStats&gt; enemies</code></div>
+<div class="api-method"><code>[[nodiscard]] const TurnEntry* currentActor() const noexcept</code></div>
+<div class="api-method"><code>void advanceTurn()</code></div>
+<div class="api-method"><code>void beginBattle()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isPartyDefeated() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isEnemiesDefeated() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-terraintype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TerrainType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Plain = 0</code></div>
+<div class="api-method"><code>Forest</code></div>
+<div class="api-method"><code>Mountain</code></div>
+<div class="api-method"><code>Water</code></div>
+<div class="api-method"><code>Road</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float terrainMoveCost(TerrainType terrain) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hexcube">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HexCube</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int q = 0</code></div>
+<div class="api-method"><code>int r = 0</code></div>
+<div class="api-method"><code>int s = 0</code></div>
+<div class="api-method"><code>bool operator==(const HexCube&amp; o) const noexcept</code></div>
+<div class="api-method"><code>bool operator!=(const HexCube&amp; o) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hexoffset">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HexOffset</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int col = 0</code></div>
+<div class="api-method"><code>int row = 0</code></div>
+<div class="api-method"><code>bool operator==(const HexOffset&amp; o) const noexcept</code></div>
+<div class="api-method"><code>bool operator!=(const HexOffset&amp; o) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hexcoordutil">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HexCoordUtil</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static HexCube offsetToCube(const HexOffset&amp; offset) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static HexOffset cubeToOffset(const HexCube&amp; cube) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static int cubeDistance(const HexCube&amp; a, const HexCube&amp; b) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hexcell">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HexCell</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int q = 0</code></div>
+<div class="api-method"><code>int r = 0</code></div>
+<div class="api-method"><code>TerrainType terrain = TerrainType::Plain</code></div>
+<div class="api-method"><code>std::uint32_t occupant = 0</code></div>
+<div class="api-method"><code>float moveCost = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-hexgrid">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">HexGrid</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>HexGrid(int width, int height)</code></div>
+<div class="api-method"><code>HexGrid() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] int width() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int height() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] HexCell* getCell(int col, int row) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const HexCell* getCell(int col, int row) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid(int col, int row) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int hexDistance(const HexOffset&amp; a, const HexOffset&amp; b) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;HexCell*&gt; hexNeighbors(int col, int row) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;const HexCell*&gt; hexLine(const HexOffset&amp; from, const HexOffset&amp; to) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;const HexCell*&gt; hexRing(const HexOffset&amp; center, int radius) const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-turnmanager">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TurnManager</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void setPlayers(std::vector&lt;std::uint32_t&gt; playerIds)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t currentPlayer() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int currentTurn() const noexcept</code></div>
+<div class="api-method"><code>void nextTurn()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isGameOver() const noexcept</code></div>
+<div class="api-method"><code>void setGameOver() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;std::uint32_t&gt;&amp; playerOrder() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-pathfinderhex">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PathfinderHex</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static std::vector&lt;const HexCell*&gt; findPath( const HexGrid&amp; grid, const HexOffset&amp; from, const HexOffset&amp; to, float maxMovePoints)</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::vector&lt;const HexCell*&gt; getReachableCells( const HexGrid&amp; grid, const HexOffset&amp; from, float movePoints)</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-gamemode">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">GameMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VN</code></div>
+<div class="api-method"><code>Gameplay</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-gameplaytype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">GameplayType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Battle</code></div>
+<div class="api-method"><code>Minigame</code></div>
+<div class="api-method"><code>Puzzle</code></div>
+<div class="api-method"><code>Explore</code></div>
+<div class="api-method"><code>Custom</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-vncommandtype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">VNCommandType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Dialogue</code></div>
+<div class="api-method"><code>Choice</code></div>
+<div class="api-method"><code>SetFlag</code></div>
+<div class="api-method"><code>Jump</code></div>
+<div class="api-method"><code>Gameplay</code></div>
+<div class="api-method"><code>Wait</code></div>
+<div class="api-method"><code>Background</code></div>
+<div class="api-method"><code>Character</code></div>
+<div class="api-method"><code>BGM</code></div>
+<div class="api-method"><code>SE</code></div>
+<div class="api-method"><code>using FlagValue = std::variant&lt;bool, int, float, std::string&gt;;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sharedstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SharedState</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::map&lt;std::string, FlagValue&gt; flags</code></div>
+<div class="api-method"><code>std::map&lt;std::uint32_t, int&gt; inventory</code></div>
+<div class="api-method"><code>std::map&lt;std::string, float&gt; stats</code></div>
+<div class="api-method"><code>void setFlag(const std::string&amp; key, FlagValue value)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] T getFlag(const std::string&amp; key, const T&amp; defaultValue = {}) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasFlag(const std::string&amp; key) const</code></div>
+<div class="api-method"><code>void addItem(std::uint32_t itemId, int count = 1)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool removeItem(std::uint32_t itemId, int count = 1)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasItem(std::uint32_t itemId, int count = 1) const</code></div>
+<div class="api-method"><code>void setStat(const std::string&amp; key, float value)</code></div>
+<div class="api-method"><code>[[nodiscard]] float getStat(const std::string&amp; key, float defaultValue = 0.0f) const</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vnchoice">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VNChoice</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string text</code></div>
+<div class="api-method"><code>std::string jumpLabel</code></div>
+<div class="api-method"><code>std::function&lt;bool()&gt; condition</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vncommand">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VNCommand</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>VNCommandType type = VNCommandType::Dialogue</code></div>
+<div class="api-method"><code>std::string speaker</code></div>
+<div class="api-method"><code>std::string text</code></div>
+<div class="api-method"><code>std::vector&lt;VNChoice&gt; choices</code></div>
+<div class="api-method"><code>std::map&lt;std::string, std::string&gt; params</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vnscript">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VNScript</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;VNCommand&gt; commands</code></div>
+<div class="api-method"><code>std::map&lt;std::string, std::size_t&gt; labels</code></div>
+<div class="api-method"><code>void addCommand(VNCommand cmd)</code></div>
+<div class="api-method"><code>void setLabel(const std::string&amp; name)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gameplaytrigger">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GameplayTrigger</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string gameplayId</code></div>
+<div class="api-method"><code>std::map&lt;std::string, std::string&gt; params</code></div>
+<div class="api-method"><code>GameplayType type = GameplayType::Battle</code></div>
+<div class="api-method"><code>std::function&lt;bool(const SharedState&amp;)&gt; condition</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vntrigger">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VNTrigger</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string eventId</code></div>
+<div class="api-method"><code>std::string scriptLabel</code></div>
+<div class="api-method"><code>std::function&lt;bool(const SharedState&amp;)&gt; condition</code></div>
+</div>
+</details>
+<details class="api-class" id="class-hybridgamemanager">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">HybridGameManager</code> <span class="api-class__count">23</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>HybridGameManager() = default</code></div>
+<div class="api-method"><code>void enterVNMode()</code></div>
+<div class="api-method"><code>void enterGameplayMode(GameplayType type = GameplayType::Battle)</code></div>
+<div class="api-method"><code>void returnToPreviousMode()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isInVNMode() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isInGameplayMode() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GameMode currentMode() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GameplayType currentGameplayType() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] SharedState&amp; sharedState() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const SharedState&amp; sharedState() const noexcept</code></div>
+<div class="api-method"><code>void setFlag(const std::string&amp; key, FlagValue value)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] T getFlag(const std::string&amp; key, const T&amp; defaultValue = {}) const</code></div>
+<div class="api-method"><code>void setScript(VNScript script)</code></div>
+<div class="api-method"><code>[[nodiscard]] const VNCommand* currentCommand() const noexcept</code></div>
+<div class="api-method"><code>bool advanceScript()</code></div>
+<div class="api-method"><code>void selectChoice(int choiceIndex)</code></div>
+<div class="api-method"><code>void returnToScript()</code></div>
+<div class="api-method"><code>void addGameplayTrigger(GameplayTrigger trigger)</code></div>
+<div class="api-method"><code>void addVNTrigger(VNTrigger trigger)</code></div>
+<div class="api-method"><code>[[nodiscard]] const GameplayTrigger* evaluateGameplayTriggers() const</code></div>
+<div class="api-method"><code>[[nodiscard]] const VNTrigger* evaluateVNTriggers() const</code></div>
+<div class="api-method"><code>bool processAutoTriggers()</code></div>
+<div class="api-method"><code>void setOnModeChange(std::function&lt;void(GameMode)&gt; callback)</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+    </div>
+  </article>
+  
+<aside class="api-toc" aria-label="このページ内">
+  <p class="api-toc__title">このページ内</p>
+  <nav id="TableOfContents"></nav>
+</aside>
+
+
+</div>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">
+        <span class="site-footer__brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 24 L4 8 L10 14 L16 8 L22 14 L28 8 L28 24"/>
+          </svg>
+        </span>
+        MitiruEngine
+      </p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+      <p class="site-footer__build" aria-label="built with">
+        <code>built_with</code>
+        <span class="site-footer__build-chip">C++20</span>
+        <span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
+        <span class="site-footer__build-chip site-footer__build-chip--data">JSON</span>
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
+      <p class="site-footer__hint">
+        <kbd>?</kbd> でショートカット一覧
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+      <p class="site-footer__easter" aria-hidden="true">
+        <span class="site-footer__easter-prompt"><code>$ echo &quot;hello, world&quot;</code></span>
+        <span class="site-footer__easter-cursor">_</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js" defer></script>
+</body>
+</html>

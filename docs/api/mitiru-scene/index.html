@@ -1,23 +1,1199 @@
-<!doctype html><html lang=ja data-base=/><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>mitiru::scene | MitiruEngine</title>
-<meta name=description content="Scene graph: nodes, transforms, hierarchies, and traversal helpers."><link rel=canonical href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/><link rel=alternate hreflang=ja href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/><meta property="og:title" content="mitiru::scene | MitiruEngine"><meta property="og:description" content="Scene graph: nodes, transforms, hierarchies, and traversal helpers."><meta property="og:type" content="article"><meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><meta property="og:site_name" content="MitiruEngine"><meta property="og:locale" content="ja_JP"><meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name=twitter:card content="summary_large_image"><meta name=twitter:title content="mitiru::scene | MitiruEngine"><meta name=twitter:description content="Scene graph: nodes, transforms, hierarchies, and traversal helpers."><meta name=twitter:image content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><link rel=icon type=image/svg+xml href=https://mogmog-0110.github.io/MitiruEngine/favicon.svg><link rel=icon type=image/png sizes=32x32 href=https://mogmog-0110.github.io/MitiruEngine/favicon-32.png><link rel=apple-touch-icon sizes=180x180 href=https://mogmog-0110.github.io/MitiruEngine/favicon-180.png><link rel="alternate icon" href=https://mogmog-0110.github.io/MitiruEngine/favicon.ico><meta name=color-scheme content="light dark"><script>(function(){try{var e=localStorage.getItem("theme");(e==="dark"||e==="light")&&document.documentElement.setAttribute("data-theme",e)}catch{}})()</script><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/css/main.css><link rel=preconnect href=https://fonts.googleapis.com><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"></head><body><header class=site-header><div class="container site-header__inner"><a class=site-header__brand href=https://mogmog-0110.github.io/MitiruEngine/><span class=site-header__brand-mark aria-hidden=true>M</span>
-<span class=site-header__brand-name>MitiruEngine</span>
-</a><input type=checkbox id=nav-toggle class=nav-toggle role=button aria-label=メニュー aria-controls=primary-nav>
-<label for=nav-toggle class=nav-toggle__label aria-hidden=true><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label><nav class=site-nav id=primary-nav aria-label=primary><a href=https://mogmog-0110.github.io/MitiruEngine/>ホーム</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/getting-started/>はじめに</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/tutorials/>チュートリアル</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/chapters/>できること</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/api/>API</a>
-<button type=button class=search-trigger id=site-search-trigger aria-label=サイト内検索 aria-haspopup=dialog aria-expanded=false aria-controls=site-search-dialog>
-<svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
-<span class=visually-hidden>サイト内検索</span></button><div class=search-dialog id=site-search-dialog role=dialog aria-modal=true aria-labelledby=site-search-title data-pagefind-ignore hidden><div class=search-dialog__backdrop data-search-close></div><div class=search-dialog__panel role=document><div class=search-dialog__header><h2 id=site-search-title class=search-dialog__title>サイト内検索</h2><button type=button class=search-dialog__close data-search-close aria-label=閉じる><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div id=site-search class=search-dialog__body></div></div></div><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css><script src=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js defer></script><script>(function(){var t,n,i,a,r,c,d,u,s=document.getElementById("site-search-trigger"),e=document.getElementById("site-search-dialog");if(!s||!e)return;d=e.querySelector("#site-search"),i=e.querySelectorAll("[data-search-close]"),c=document.documentElement,u=(c.getAttribute("lang")||"en").toLowerCase(),a="https://mogmog-0110.github.io/MitiruEngine/pagefind/",r={placeholder:"ドキュメントを検索…",clear_search:"クリア",load_more:"さらに読み込む",search_label:"サイト内検索",filters_label:"Filters",zero_results:"「[SEARCH_TERM]」に一致する結果はありません",many_results:"[SEARCH_TERM] の検索結果 [COUNT] 件",one_result:"[SEARCH_TERM] の検索結果 [COUNT] 件",alt_search:"代わりに [DISPLAY_QUERY] の結果を表示しています",search_suggestion:"[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",searching:"検索中…"},t=null,n=null;function h(){return t?t:typeof window.PagefindUI!="function"?null:(t=new window.PagefindUI({element:d,showSubResults:!0,showImages:!1,excerptLength:30,resetStyles:!1,bundlePath:a,translations:r,autofocus:!0}),t)}function l(){n=document.activeElement,e.hidden=!1,requestAnimationFrame(function(){e.classList.add("is-open"),document.body.classList.add("search-open"),s.setAttribute("aria-expanded","true"),h();var t=e.querySelector(".pagefind-ui__search-input");t&&t.focus()})}function o(){e.classList.remove("is-open"),document.body.classList.remove("search-open"),s.setAttribute("aria-expanded","false"),setTimeout(function(){e.classList.contains("is-open")||(e.hidden=!0),n&&typeof n.focus=="function"&&n.focus()},200)}s.addEventListener("click",function(){e.classList.contains("is-open")?o():l()}),i.forEach(function(e){e.addEventListener("click",o)});function m(){var n,t=e.querySelector(".search-dialog__panel");return t?(n='a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',Array.prototype.filter.call(t.querySelectorAll(n),function(e){return!e.hasAttribute("hidden")&&e.offsetParent!==null})):[]}document.addEventListener("keydown",function(t){if(s=e.classList.contains("is-open"),t.key==="Escape"&&s){o();return}if(t.key==="Tab"&&s){if(n=m(),n.length===0){t.preventDefault();return}var n,s,r,i=n[0],c=n[n.length-1],a=document.activeElement;t.shiftKey&&a===i?(t.preventDefault(),c.focus()):!t.shiftKey&&a===c?(t.preventDefault(),i.focus()):e.contains(a)||(t.preventDefault(),i.focus());return}(t.metaKey||t.ctrlKey)&&(t.key==="k"||t.key==="K")&&(t.preventDefault(),s?(r=e.querySelector(".pagefind-ui__search-input"),r&&r.focus()):l())})})()</script><a class=site-nav__github href=https://github.com/mogmog-0110/MitiruEngine aria-label=GitHub><svg width="20" height="20" viewBox="0 0 16 16" fill="currentcolor" aria-hidden="true"><path d="M8 0C3.58.0.0 3.58.0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95.0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12.0.0.67-.21 2.2.82a7.62 7.62.0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15.0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-<span class=visually-hidden>GitHub</span>
-</a><button type=button class=shortcuts-trigger data-shortcuts-open aria-haspopup=dialog aria-controls=shortcuts-dialog aria-label="Keyboard shortcuts" title=?>
-<kbd class=shortcuts-trigger__kbd aria-hidden=true>?</kbd>
+<!DOCTYPE html>
+<html lang="ja" data-base="/">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::scene | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Scene graph: nodes, transforms, hierarchies, and traversal helpers.">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::scene | MitiruEngine">
+<meta property="og:description" content="Scene graph: nodes, transforms, hierarchies, and traversal helpers.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::scene | MitiruEngine">
+<meta name="twitter:description" content="Scene graph: nodes, transforms, hierarchies, and traversal helpers.">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
 </button>
-<button type=button class=theme-toggle id=theme-toggle aria-pressed=false aria-label=ダークモード切替><svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg></button></nav></div></header><script>(function(){var t=document.getElementById("nav-toggle"),e=document.getElementById("theme-toggle");t&&t.addEventListener("change",function(){t.checked?document.body.classList.add("is-nav-open"):document.body.classList.remove("is-nav-open")});function s(){var e=document.documentElement.getAttribute("data-theme");return e==="dark"||e==="light"?e==="dark":window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches}function n(){if(!e)return;e.setAttribute("aria-pressed",s()?"true":"false")}n(),e&&e.addEventListener("click",function(){var e,t=document.documentElement,s=t.getAttribute("data-theme"),o=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;s==="dark"?e="light":s==="light"?e="dark":e=o?"light":"dark",t.setAttribute("data-theme",e);try{localStorage.setItem("theme",e)}catch{}n()})})()</script><main class=site-main data-pagefind-body><div class="api-page container"><aside class=api-sidebar aria-label=名前空間><details class=api-sidebar__collapsible open><summary>名前空間</summary><nav><ul><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru/>mitiru</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/>mitiru::adapter</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/>mitiru::animation</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/>mitiru::asset</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/>mitiru::assets</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/>mitiru::audio</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/>mitiru::bridge</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/>mitiru::bridge::detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/>mitiru::cef</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/>mitiru::cef::bridges</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/>mitiru::control</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/>mitiru::core</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/>mitiru::data</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/>mitiru::debug</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/>mitiru::ecs</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/>mitiru::effects</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/>mitiru::fsm</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/>mitiru::game</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/>mitiru::gfx</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/>mitiru::gfx::dx12</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/>mitiru::i18n</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/>mitiru::input</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/>mitiru::live2d</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/>mitiru::math</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/>mitiru::narrative</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/>mitiru::network</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/>mitiru::observe</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/>mitiru::physics</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/>mitiru::physics2d</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/>mitiru::physics3d</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/>mitiru::platform</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/>mitiru::render</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/>mitiru::render::dx12</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/>mitiru::resource</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/ aria-current=page class=is-active>mitiru::scene</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/>mitiru::screen_detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/>mitiru::server</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/>mitiru::server::detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/>mitiru::sprite</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/>mitiru::time</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/>mitiru::time::detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/>mitiru::ui</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/>mitiru::ui::LayoutPresets</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/>mitiru::util</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/>mitiru::validate</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/>mitiru::vn</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/>mitiru::world</a></li></ul></nav></details></aside><article class=api-page__article><header><h1>mitiru::scene</h1><p class=api-page__description>Scene graph: nodes, transforms, hierarchies, and traversal helpers.</p></header><div class=api-page__content><p class=api-namespace__lede>Scene graph: nodes, transforms, hierarchies, and traversal helpers.</p><table class=api-class-index><thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead><tbody><tr><td><a href=#struct-componentpersistenceentry><code>ComponentPersistenceEntry</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#class-entitypersistence><code>EntityPersistence</code></a></td><td>class</td><td>6</td></tr><tr><td><a href=#enum-lighttype><code>LightType</code></a></td><td>enum</td><td>5</td></tr><tr><td><a href=#struct-meshcomponent><code>MeshComponent</code></a></td><td>struct</td><td>1</td></tr><tr><td><a href=#struct-audiosourcecomponent><code>AudioSourceComponent</code></a></td><td>struct</td><td>1</td></tr><tr><td><a href=#class-componentstore><code>ComponentStore</code></a></td><td>class</td><td>6</td></tr><tr><td><a href=#class-gameworld><code>GameWorld</code></a></td><td>class</td><td>10</td></tr><tr><td><a href=#class-iscene><code>IScene</code></a></td><td>class</td><td>6</td></tr><tr><td><a href=#class-mitiruscene><code>MitiruScene</code></a></td><td>class</td><td>9</td></tr><tr><td><a href=#class-mitiruscenemanager><code>MitiruSceneManager</code></a></td><td>class</td><td>10</td></tr><tr><td><a href=#enum-traversalorder><code>TraversalOrder</code></a></td><td>enum</td><td>2</td></tr><tr><td><a href=#struct-nodeid><code>NodeId</code></a></td><td>struct</td><td>7</td></tr><tr><td><a href=#struct-scenenode><code>SceneNode</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#class-scenegraph><code>SceneGraph</code></a></td><td>class</td><td>10</td></tr><tr><td><a href=#class-scenerouter><code>SceneRouter</code></a></td><td>class</td><td>14</td></tr><tr><td><a href=#struct-scenedata><code>SceneData</code></a></td><td>struct</td><td>6</td></tr><tr><td><a href=#struct-componentserializerentry><code>ComponentSerializerEntry</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#class-sceneserializer2><code>SceneSerializer2</code></a></td><td>class</td><td>7</td></tr><tr><td><a href=#enum-transitiontype><code>TransitionType</code></a></td><td>enum</td><td>6</td></tr><tr><td><a href=#enum-transitionphase><code>TransitionPhase</code></a></td><td>enum</td><td>6</td></tr><tr><td><a href=#struct-transitionconfig><code>TransitionConfig</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#class-scenetransitionmanager><code>SceneTransitionManager</code></a></td><td>class</td><td>17</td></tr><tr><td><a href=#class-isystem><code>ISystem</code></a></td><td>class</td><td>3</td></tr><tr><td><a href=#struct-systemprofile><code>SystemProfile</code></a></td><td>struct</td><td>1</td></tr><tr><td><a href=#class-systemrunner><code>SystemRunner</code></a></td><td>class</td><td>7</td></tr><tr><td><a href=#enum-transitionkind><code>TransitionKind</code></a></td><td>enum</td><td>5</td></tr><tr><td><a href=#enum-slidedirection><code>SlideDirection</code></a></td><td>enum</td><td>4</td></tr><tr><td><a href=#struct-transitionframe><code>TransitionFrame</code></a></td><td>struct</td><td>7</td></tr><tr><td><a href=#class-transition><code>Transition</code></a></td><td>class</td><td>15</td></tr></tbody></table><details class=api-class id=struct-componentpersistenceentry open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>ComponentPersistenceEntry</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>std::string typeName</code></div><div class=api-method><code>std::function&lt;std::string(const sgc::ecs::World&, sgc::ecs::Entity)> serialize</code></div><div class=api-method><code>std::function&lt;void(sgc::ecs::World&, sgc::ecs::Entity, const std::string&)> deserialize</code></div><div class=api-method><code>std::function&lt;bool(const sgc::ecs::World&, sgc::ecs::Entity)> hasComponent</code></div></div></details><details class=api-class id=class-entitypersistence open><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>EntityPersistence</code> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>template &lt;typename T> void registerComponent( const std::string& typeName, std::function&lt;std::string(const T&)> serialize, std::function&lt;T(const std::string&)> deserialize)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] bool isRegistered() const</code></div><div class=api-method><code>[[nodiscard]] std::size_t registeredCount() const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;std::string> registeredTypeNames() const</code></div><div class=api-method><code>[[nodiscard]] std::string saveWorld(const ecs::MitiruWorld& world) const</code></div><div class=api-method><code>void loadWorld(ecs::MitiruWorld& world, const std::string& json) const</code></div></div></details><details class=api-class id=enum-lighttype open><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>LightType</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>Directional</code></div><div class=api-method><code>Point</code></div><div class=api-method><code>Spot</code></div><div class=api-method><code>using EntityId = uint32_t;</code></div><div class=api-method><code>inline constexpr EntityId INVALID_ENTITY = 0</code></div></div></details><details class=api-class id=struct-meshcomponent open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>MeshComponent</code> <span class=api-class__count>1</span></summary><div class=api-class__body><div class=api-method><code>std::string meshId</code></div></div></details><details class=api-class id=struct-audiosourcecomponent open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>AudioSourceComponent</code> <span class=api-class__count>1</span></summary><div class=api-class__body><div class=api-method><code>std::string soundId</code></div></div></details><details class=api-class id=class-componentstore open><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>ComponentStore</code> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>template &lt;typename T> void add(EntityId entityId, T component)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] T* get(EntityId entityId) noexcept</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] const T* get(EntityId entityId) const noexcept</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] bool has(EntityId entityId) const noexcept</code></div><div class=api-method><code>void removeAll(EntityId entityId)</code></div><div class=api-method><code>template &lt;typename T> void forEach(const std::function&lt;void(EntityId, T&)>& callback)</code></div></div></details><details class=api-class id=class-gameworld><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>GameWorld</code> <span class=api-class__count>10</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] EntityId createEntity(const std::string& name = "")</code></div><div class=api-method><code>void removeEntity(EntityId entityId)</code></div><div class=api-method><code>[[nodiscard]] bool isValid(EntityId entityId) const noexcept</code></div><div class=api-method><code>[[nodiscard]] size_t entityCount() const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::string entityName(EntityId entityId) const</code></div><div class=api-method><code>template &lt;typename T> void addComponent(EntityId entityId, T component)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] T* getComponent(EntityId entityId) noexcept</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] const T* getComponent(EntityId entityId) const noexcept</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] bool hasComponent(EntityId entityId) const noexcept</code></div><div class=api-method><code>template &lt;typename T> void forEach(const std::function&lt;void(EntityId, T&)>& callback)</code></div></div></details><details class=api-class id=class-iscene><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>IScene</code> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>virtual ~IScene() = default</code></div><div class=api-method><code>virtual void onEnter()</code></div><div class=api-method><code>virtual void onUpdate(float dt) = 0</code></div><div class=api-method><code>virtual void onExit()</code></div><div class=api-method><code>virtual void onPause()</code></div><div class=api-method><code>virtual void onResume()</code></div></div></details><details class=api-class id=class-mitiruscene><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>MitiruScene</code> <span class=api-class__count>9</span></summary><div class=api-class__body><div class=api-method><code>virtual ~MitiruScene() = default</code></div><div class=api-method><code>virtual void onEnter()</code></div><div class=api-method><code>virtual void onExit()</code></div><div class=api-method><code>virtual void onUpdate(float dt) = 0</code></div><div class=api-method><code>virtual void onDraw(Screen& screen) = 0</code></div><div class=api-method><code>[[nodiscard]] virtual std::string name() const = 0</code></div><div class=api-method><code>void addLabel(const std::string& label)</code></div><div class=api-method><code>[[nodiscard]] bool hasLabel(const std::string& label) const</code></div><div class=api-method><code>[[nodiscard]] const std::vector&lt;std::string>& labels() const noexcept</code></div></div></details><details class=api-class id=class-mitiruscenemanager><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>MitiruSceneManager</code> <span class=api-class__count>10</span></summary><div class=api-class__body><div class=api-method><code>void pushScene(std::unique_ptr&lt;MitiruScene> scene)</code></div><div class=api-method><code>void popScene()</code></div><div class=api-method><code>void replaceScene(std::unique_ptr&lt;MitiruScene> scene)</code></div><div class=api-method><code>void clear()</code></div><div class=api-method><code>[[nodiscard]] MitiruScene* currentScene() noexcept</code></div><div class=api-method><code>[[nodiscard]] const MitiruScene* currentScene() const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;MitiruScene*> sceneStack() const</code></div><div class=api-method><code>[[nodiscard]] std::size_t depth() const noexcept</code></div><div class=api-method><code>[[nodiscard]] bool empty() const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::string toJson() const</code></div></div></details><details class=api-class id=enum-traversalorder><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>TraversalOrder</code> <span class=api-class__count>2</span></summary><div class=api-class__body><div class=api-method><code>DepthFirst</code></div><div class=api-method><code>BreadthFirst</code></div></div></details><details class=api-class id=struct-nodeid><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>NodeId</code> <span class=api-class__count>7</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] uint16_t index() const noexcept</code></div><div class=api-method><code>[[nodiscard]] uint16_t generation() const noexcept</code></div><div class=api-method><code>[[nodiscard]] bool isValid() const noexcept</code></div><div class=api-method><code>bool operator==(const NodeId& other) const noexcept</code></div><div class=api-method><code>bool operator!=(const NodeId& other) const noexcept</code></div><div class=api-method><code>[[nodiscard]] static NodeId make(uint16_t idx, uint16_t gen) noexcept</code></div><div class=api-method><code>[[nodiscard]] static NodeId invalid() noexcept</code></div></div></details><details class=api-class id=struct-scenenode><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>SceneNode</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>std::string name</code></div><div class=api-method><code>std::vector&lt;NodeId> children</code></div><div class=api-method><code>sgc::Mat4f localTransform = sgc::Mat4f::identity()</code></div><div class=api-method><code>NodeId parent = NodeId::invalid()</code></div></div></details><details class=api-class id=class-scenegraph><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>SceneGraph</code> <span class=api-class__count>10</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] NodeId createNode(const std::string& name = "")</code></div><div class=api-method><code>void destroyNode(NodeId id)</code></div><div class=api-method><code>[[nodiscard]] bool isValid(NodeId id) const noexcept</code></div><div class=api-method><code>[[nodiscard]] size_t nodeCount() const noexcept</code></div><div class=api-method><code>[[nodiscard]] SceneNode* getNode(NodeId id) noexcept</code></div><div class=api-method><code>[[nodiscard]] const SceneNode* getNode(NodeId id) const noexcept</code></div><div class=api-method><code>void reparent(NodeId child, NodeId newParent)</code></div><div class=api-method><code>[[nodiscard]] sgc::Mat4f getWorldTransform(NodeId id) const</code></div><div class=api-method><code>[[nodiscard]] std::optional&lt;NodeId> findByName(const std::string& name) const</code></div><div class=api-method><code>void traverse(NodeId root, TraversalOrder order, const std::function&lt;void(const SceneNode&)>& visitor) const</code></div></div></details><details class=api-class id=class-scenerouter><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>SceneRouter</code> <span class=api-class__count>14</span></summary><div class=api-class__body><div class=api-method><code>SceneRouter() = default</code></div><div class=api-method><code>SceneRouter(const SceneRouter&) = delete</code></div><div class=api-method><code>SceneRouter& operator=(const SceneRouter&) = delete</code></div><div class=api-method><code>SceneRouter(SceneRouter&&) = default</code></div><div class=api-method><code>SceneRouter& operator=(SceneRouter&&) = default</code></div><div class=api-method><code>~SceneRouter() = default</code></div><div class=api-method><code>void push(std::unique_ptr&lt;IScene> scene)</code></div><div class=api-method><code>void pop()</code></div><div class=api-method><code>void replace(std::unique_ptr&lt;IScene> scene)</code></div><div class=api-method><code>void update(float dt)</code></div><div class=api-method><code>[[nodiscard]] IScene* current() const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::size_t depth() const noexcept</code></div><div class=api-method><code>[[nodiscard]] bool empty() const noexcept</code></div><div class=api-method><code>class [[deprecated("Use SceneSerializer2 for new code — supports component registration and SceneGraph")]] SceneSerializer</code></div></div></details><details class=api-class id=struct-scenedata><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>SceneData</code> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>std::string sceneName</code></div><div class=api-method><code>std::string entitiesJson</code></div><div class=api-method><code>std::string metadata</code></div><div class=api-method><code>[[nodiscard]] std::string toJson() const</code></div><div class=api-method><code>using SerializeFn = std::function&lt;std::optional&lt;std::string>(const GameWorld&, EntityId)>;</code></div><div class=api-method><code>using DeserializeFn = std::function&lt;bool(const std::string&, GameWorld&, EntityId)>;</code></div></div></details><details class=api-class id=struct-componentserializerentry><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>ComponentSerializerEntry</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>std::string name</code></div><div class=api-method><code>SerializeFn serialize</code></div><div class=api-method><code>DeserializeFn deserialize</code></div></div></details><details class=api-class id=class-sceneserializer2><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>SceneSerializer2</code> <span class=api-class__count>7</span></summary><div class=api-class__body><div class=api-method><code>void registerComponentSerializer( const std::string& name, SerializeFn serializeFn, DeserializeFn deserializeFn)</code></div><div class=api-method><code>void registerBuiltins()</code></div><div class=api-method><code>[[nodiscard]] std::string serializeWorld(const GameWorld& world) const</code></div><div class=api-method><code>bool deserializeWorld(const std::string& json, GameWorld& world) const</code></div><div class=api-method><code>[[nodiscard]] std::string serializeEntity(const GameWorld& world, EntityId entityId) const</code></div><div class=api-method><code>[[nodiscard]] std::string serializeSceneGraph(const SceneGraph& graph) const</code></div><div class=api-method><code>bool deserializeSceneGraph(const std::string& json, SceneGraph& graph) const</code></div></div></details><details class=api-class id=enum-transitiontype><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>TransitionType</code> <span class=api-class__extra>: uint8_t</span> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>None = 0</code></div><div class=api-method><code>Fade</code></div><div class=api-method><code>Slide</code></div><div class=api-method><code>Zoom</code></div><div class=api-method><code>Dissolve</code></div><div class=api-method><code>Custom</code></div></div></details><details class=api-class id=enum-transitionphase><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>TransitionPhase</code> <span class=api-class__extra>: uint8_t</span> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>Idle = 0</code></div><div class=api-method><code>FadeOut</code></div><div class=api-method><code>Load</code></div><div class=api-method><code>FadeIn</code></div><div class=api-method><code>using TransitionEasing = std::function&lt;float(float t)>;</code></div><div class=api-method><code>using LoadingProgressCallback = std::function&lt;void(float progress)>;</code></div></div></details><details class=api-class id=struct-transitionconfig><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>TransitionConfig</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>TransitionType type = TransitionType::Fade</code></div><div class=api-method><code>float duration = 0.5f</code></div><div class=api-method><code>std::string customName</code></div></div></details><details class=api-class id=class-scenetransitionmanager><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>SceneTransitionManager</code> <span class=api-class__count>17</span></summary><div class=api-class__body><div class=api-method><code>SceneTransitionManager() = default</code></div><div class=api-method><code>void transitionTo( std::unique_ptr&lt;MitiruScene> scene, TransitionType type = TransitionType::Fade, float duration = 0.5f)</code></div><div class=api-method><code>void transitionTo( const std::string& sceneName, TransitionType type = TransitionType::Fade, float duration = 0.5f)</code></div><div class=api-method><code>void pushWithTransition( std::unique_ptr&lt;MitiruScene> scene, TransitionType type = TransitionType::Fade, float duration = 0.5f)</code></div><div class=api-method><code>void popWithTransition( TransitionType type = TransitionType::Fade, float duration = 0.5f)</code></div><div class=api-method><code>void update(float dt)</code></div><div class=api-method><code>[[nodiscard]] float getRenderAlpha() const noexcept</code></div><div class=api-method><code>[[nodiscard]] bool isTransitioning() const noexcept</code></div><div class=api-method><code>[[nodiscard]] TransitionPhase phase() const noexcept</code></div><div class=api-method><code>void pushScene(std::unique_ptr&lt;MitiruScene> scene)</code></div><div class=api-method><code>[[nodiscard]] MitiruScene* currentScene() noexcept</code></div><div class=api-method><code>[[nodiscard]] const MitiruScene* currentScene() const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::size_t depth() const noexcept</code></div><div class=api-method><code>void registerTransition(const std::string& name, TransitionEasing easing)</code></div><div class=api-method><code>void transitionToCustom( std::unique_ptr&lt;MitiruScene> scene, const std::string& customName, float duration = 0.5f)</code></div><div class=api-method><code>void registerScene(const std::string& name, std::function&lt;std::unique_ptr&lt;MitiruScene>()> factory)</code></div><div class=api-method><code>void setLoadingCallback(LoadingProgressCallback callback)</code></div></div></details><details class=api-class id=class-isystem><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>ISystem</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>virtual ~ISystem() = default</code></div><div class=api-method><code>[[nodiscard]] virtual std::string name() const = 0</code></div><div class=api-method><code>virtual void update(GameWorld& world, float dt) = 0</code></div></div></details><details class=api-class id=struct-systemprofile><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>SystemProfile</code> <span class=api-class__count>1</span></summary><div class=api-class__body><div class=api-method><code>std::string name</code></div></div></details><details class=api-class id=class-systemrunner><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>SystemRunner</code> <span class=api-class__count>7</span></summary><div class=api-class__body><div class=api-method><code>void addSystem(std::unique_ptr&lt;ISystem> system, int32_t priority = 0)</code></div><div class=api-method><code>bool removeSystem(const std::string& name)</code></div><div class=api-method><code>void updateAll(GameWorld& world, float dt)</code></div><div class=api-method><code>bool setEnabled(const std::string& name, bool enabled)</code></div><div class=api-method><code>[[nodiscard]] bool isEnabled(const std::string& name) const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;SystemProfile> profiles() const</code></div><div class=api-method><code>[[nodiscard]] size_t systemCount() const noexcept</code></div></div></details><details class=api-class id=enum-transitionkind><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>TransitionKind</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>Fade</code></div><div class=api-method><code>Dissolve</code></div><div class=api-method><code>Slide</code></div><div class=api-method><code>Zoom</code></div><div class=api-method><code>Custom</code></div></div></details><details class=api-class id=enum-slidedirection><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>SlideDirection</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>Left</code></div><div class=api-method><code>Right</code></div><div class=api-method><code>Up</code></div><div class=api-method><code>Down</code></div></div></details><details class=api-class id=struct-transitionframe><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>TransitionFrame</code> <span class=api-class__count>7</span></summary><div class=api-class__body><div class=api-method><code>TransitionKind kind = TransitionKind::Fade</code></div><div class=api-method><code>float progress = 0.0f</code></div><div class=api-method><code>SlideDirection slideDir = SlideDirection::Left</code></div><div class=api-method><code>float customResult = 0.0f</code></div><div class=api-method><code>[[nodiscard]] float alpha() const noexcept</code></div><div class=api-method><code>[[nodiscard]] float slideOffset() const noexcept</code></div><div class=api-method><code>[[nodiscard]] float zoomScale() const noexcept</code></div></div></details><details class=api-class id=class-transition><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>Transition</code> <span class=api-class__count>15</span></summary><div class=api-class__body><div class=api-method><code>using EasingFn = std::function&lt;float(float t)>;</code></div><div class=api-method><code>using DrawFn = std::function&lt;void(const TransitionFrame&)>;</code></div><div class=api-method><code>Transition() = default</code></div><div class=api-method><code>void setDrawCallback(DrawFn fn)</code></div><div class=api-method><code>void setCustomEasing(EasingFn fn)</code></div><div class=api-method><code>void setSlideDirection(SlideDirection dir) noexcept</code></div><div class=api-method><code>void start(TransitionKind kind, float durationSec, sgc::Colorf color = sgc::Colorf{0, 0, 0, 1})</code></div><div class=api-method><code>void update(float dt)</code></div><div class=api-method><code>void draw() const</code></div><div class=api-method><code>[[nodiscard]] bool isDone() const noexcept</code></div><div class=api-method><code>[[nodiscard]] float progress() const noexcept</code></div><div class=api-method><code>[[nodiscard]] float alpha() const noexcept</code></div><div class=api-method><code>[[nodiscard]] TransitionKind kind() const noexcept</code></div><div class=api-method><code>[[nodiscard]] sgc::Colorf color() const noexcept</code></div><div class=api-method><code>[[nodiscard]] TransitionFrame buildFrame() const</code></div></div></details><hr><p class=api-source-note>Sourced from <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md>docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p></div></article><aside class=api-toc aria-label=このページ内><p class=api-toc__title>このページ内</p><nav id=TableOfContents></nav></aside></div></main><footer class=site-footer><div class="container site-footer__inner"><div class=site-footer__col><p class=site-footer__brand><span class=site-footer__brand-mark aria-hidden=true><svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentcolor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 24V8l6 6 6-6 6 6 6-6V24"/></svg>
-</span>MitiruEngine</p><p class=site-footer__copy>&copy; 2026 MitiruEngine contributors.</p><p class=site-footer__build aria-label="built with"><code>built_with</code>
-<span class=site-footer__build-chip>C++20</span>
-<span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
-<span class="site-footer__build-chip site-footer__build-chip--data">JSON</span></p></div><div class=site-footer__col><h2 class=site-footer__h>ライセンス</h2><p>MIT。詳しくは <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE>LICENSE</a> を見てください。</p><p class=site-footer__hint><kbd>?</kbd> でショートカット一覧</p></div><div class=site-footer__col><h2 class=site-footer__h>状態</h2><p>0.x 系・実験段階。API はまだ変わります。</p><p><a href=https://github.com/mogmog-0110/MitiruEngine>github.com/mogmog-0110/MitiruEngine</a></p><p class=site-footer__easter aria-hidden=true><span class=site-footer__easter-prompt><code>$ echo "hello, world"</code></span>
-<span class=site-footer__easter-cursor>_</span></p></div></div></footer><div class=shortcuts-dialog id=shortcuts-dialog role=dialog aria-modal=true aria-labelledby=shortcuts-dialog-title data-pagefind-ignore hidden><div class=shortcuts-dialog__backdrop data-shortcuts-close></div><div class=shortcuts-dialog__panel role=document><div class=shortcuts-dialog__header><h2 id=shortcuts-dialog-title class=shortcuts-dialog__title>キーボードショートカット</h2><button type=button class=shortcuts-dialog__close data-shortcuts-close aria-label=閉じる><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class=shortcuts-dialog__body><dl class=shortcuts-list><div class=shortcuts-list__row><dt><kbd>?</kbd></dt><dd>このヘルプを開く</dd></div><div class=shortcuts-list__row><dt><kbd>Esc</kbd></dt><dd>ダイアログを閉じる</dd></div><div class=shortcuts-list__row><dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt><dd>サイト内検索を開く</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>h</kbd></dt><dd>ホームへ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>c</kbd></dt><dd>チャプター一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>a</kbd></dt><dd>アーキテクチャ一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>t</kbd></dt><dd>チュートリアル一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>s</kbd></dt><dd>はじめてのページへ</dd></div></dl><p class=shortcuts-dialog__foot>入力中（テキストフィールド・コード編集）は無効です。</p></div></div></div><script src=https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js defer></script></body></html>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+      <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<div class="api-page container">
+  <aside class="api-sidebar" aria-label="名前空間">
+  <details class="api-sidebar__collapsible" open>
+    <summary>名前空間</summary>
+    <nav>
+      <ul>
+        
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"
+               >
+              mitiru
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"
+               >
+              mitiru::adapter
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"
+               >
+              mitiru::animation
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"
+               >
+              mitiru::asset
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"
+               >
+              mitiru::assets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"
+               >
+              mitiru::audio
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"
+               >
+              mitiru::bridge
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"
+               >
+              mitiru::bridge::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"
+               >
+              mitiru::cef
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"
+               >
+              mitiru::cef::bridges
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"
+               >
+              mitiru::control
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"
+               >
+              mitiru::core
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"
+               >
+              mitiru::data
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"
+               >
+              mitiru::debug
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"
+               >
+              mitiru::ecs
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"
+               >
+              mitiru::effects
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"
+               >
+              mitiru::fsm
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"
+               >
+              mitiru::game
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"
+               >
+              mitiru::gfx
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"
+               >
+              mitiru::gfx::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"
+               >
+              mitiru::i18n
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"
+               >
+              mitiru::input
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"
+               >
+              mitiru::live2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"
+               >
+              mitiru::math
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"
+               >
+              mitiru::narrative
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"
+               >
+              mitiru::network
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"
+               >
+              mitiru::observe
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"
+               >
+              mitiru::physics
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"
+               >
+              mitiru::physics2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"
+               >
+              mitiru::physics3d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"
+               >
+              mitiru::platform
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"
+               >
+              mitiru::render
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"
+               >
+              mitiru::render::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"
+               >
+              mitiru::resource
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"
+               aria-current="page" class="is-active">
+              mitiru::scene
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"
+               >
+              mitiru::screen_detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"
+               >
+              mitiru::server
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"
+               >
+              mitiru::server::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"
+               >
+              mitiru::sprite
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"
+               >
+              mitiru::time
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"
+               >
+              mitiru::time::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"
+               >
+              mitiru::ui
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"
+               >
+              mitiru::ui::LayoutPresets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"
+               >
+              mitiru::util
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"
+               >
+              mitiru::validate
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"
+               >
+              mitiru::vn
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"
+               >
+              mitiru::world
+            </a>
+          </li>
+        
+      </ul>
+    </nav>
+  </details>
+</aside>
+
+  <article class="api-page__article">
+    <header>
+      <h1>mitiru::scene</h1>
+      <p class="api-page__description">Scene graph: nodes, transforms, hierarchies, and traversal helpers.</p>
+    </header>
+    <div class="api-page__content">
+      <p class="api-namespace__lede">Scene graph: nodes, transforms, hierarchies, and traversal helpers.</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#struct-componentpersistenceentry"><code>ComponentPersistenceEntry</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-entitypersistence"><code>EntityPersistence</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#enum-lighttype"><code>LightType</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#struct-meshcomponent"><code>MeshComponent</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-audiosourcecomponent"><code>AudioSourceComponent</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#class-componentstore"><code>ComponentStore</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-gameworld"><code>GameWorld</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-iscene"><code>IScene</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-mitiruscene"><code>MitiruScene</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#class-mitiruscenemanager"><code>MitiruSceneManager</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#enum-traversalorder"><code>TraversalOrder</code></a></td><td>enum</td><td>2</td></tr>
+<tr><td><a href="#struct-nodeid"><code>NodeId</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-scenenode"><code>SceneNode</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-scenegraph"><code>SceneGraph</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-scenerouter"><code>SceneRouter</code></a></td><td>class</td><td>14</td></tr>
+<tr><td><a href="#struct-scenedata"><code>SceneData</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-componentserializerentry"><code>ComponentSerializerEntry</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-sceneserializer2"><code>SceneSerializer2</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#enum-transitiontype"><code>TransitionType</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#enum-transitionphase"><code>TransitionPhase</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-transitionconfig"><code>TransitionConfig</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-scenetransitionmanager"><code>SceneTransitionManager</code></a></td><td>class</td><td>17</td></tr>
+<tr><td><a href="#class-isystem"><code>ISystem</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#struct-systemprofile"><code>SystemProfile</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#class-systemrunner"><code>SystemRunner</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#enum-transitionkind"><code>TransitionKind</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#enum-slidedirection"><code>SlideDirection</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#struct-transitionframe"><code>TransitionFrame</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#class-transition"><code>Transition</code></a></td><td>class</td><td>15</td></tr>
+</tbody></table>
+<details class="api-class" id="struct-componentpersistenceentry" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ComponentPersistenceEntry</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string typeName</code></div>
+<div class="api-method"><code>std::function&lt;std::string(const sgc::ecs::World&amp;, sgc::ecs::Entity)&gt; serialize</code></div>
+<div class="api-method"><code>std::function&lt;void(sgc::ecs::World&amp;, sgc::ecs::Entity, const std::string&amp;)&gt; deserialize</code></div>
+<div class="api-method"><code>std::function&lt;bool(const sgc::ecs::World&amp;, sgc::ecs::Entity)&gt; hasComponent</code></div>
+</div>
+</details>
+<details class="api-class" id="class-entitypersistence" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">EntityPersistence</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; void registerComponent( const std::string&amp; typeName, std::function&lt;std::string(const T&amp;)&gt; serialize, std::function&lt;T(const std::string&amp;)&gt; deserialize)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] bool isRegistered() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t registeredCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::string&gt; registeredTypeNames() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string saveWorld(const ecs::MitiruWorld&amp; world) const</code></div>
+<div class="api-method"><code>void loadWorld(ecs::MitiruWorld&amp; world, const std::string&amp; json) const</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-lighttype" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">LightType</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Directional</code></div>
+<div class="api-method"><code>Point</code></div>
+<div class="api-method"><code>Spot</code></div>
+<div class="api-method"><code>using EntityId = uint32_t;</code></div>
+<div class="api-method"><code>inline constexpr EntityId INVALID_ENTITY = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-meshcomponent" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MeshComponent</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string meshId</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-audiosourcecomponent" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AudioSourceComponent</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string soundId</code></div>
+</div>
+</details>
+<details class="api-class" id="class-componentstore" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ComponentStore</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;typename T&gt; void add(EntityId entityId, T component)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] T* get(EntityId entityId) noexcept</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] const T* get(EntityId entityId) const noexcept</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] bool has(EntityId entityId) const noexcept</code></div>
+<div class="api-method"><code>void removeAll(EntityId entityId)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; void forEach(const std::function&lt;void(EntityId, T&amp;)&gt;&amp; callback)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-gameworld">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GameWorld</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] EntityId createEntity(const std::string&amp; name = &quot;&quot;)</code></div>
+<div class="api-method"><code>void removeEntity(EntityId entityId)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid(EntityId entityId) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] size_t entityCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string entityName(EntityId entityId) const</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; void addComponent(EntityId entityId, T component)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] T* getComponent(EntityId entityId) noexcept</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] const T* getComponent(EntityId entityId) const noexcept</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] bool hasComponent(EntityId entityId) const noexcept</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; void forEach(const std::function&lt;void(EntityId, T&amp;)&gt;&amp; callback)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-iscene">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IScene</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IScene() = default</code></div>
+<div class="api-method"><code>virtual void onEnter()</code></div>
+<div class="api-method"><code>virtual void onUpdate(float dt) = 0</code></div>
+<div class="api-method"><code>virtual void onExit()</code></div>
+<div class="api-method"><code>virtual void onPause()</code></div>
+<div class="api-method"><code>virtual void onResume()</code></div>
+</div>
+</details>
+<details class="api-class" id="class-mitiruscene">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MitiruScene</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~MitiruScene() = default</code></div>
+<div class="api-method"><code>virtual void onEnter()</code></div>
+<div class="api-method"><code>virtual void onExit()</code></div>
+<div class="api-method"><code>virtual void onUpdate(float dt) = 0</code></div>
+<div class="api-method"><code>virtual void onDraw(Screen&amp; screen) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::string name() const = 0</code></div>
+<div class="api-method"><code>void addLabel(const std::string&amp; label)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasLabel(const std::string&amp; label) const</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;std::string&gt;&amp; labels() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-mitiruscenemanager">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MitiruSceneManager</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void pushScene(std::unique_ptr&lt;MitiruScene&gt; scene)</code></div>
+<div class="api-method"><code>void popScene()</code></div>
+<div class="api-method"><code>void replaceScene(std::unique_ptr&lt;MitiruScene&gt; scene)</code></div>
+<div class="api-method"><code>void clear()</code></div>
+<div class="api-method"><code>[[nodiscard]] MitiruScene* currentScene() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const MitiruScene* currentScene() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;MitiruScene*&gt; sceneStack() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t depth() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool empty() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-traversalorder">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TraversalOrder</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>DepthFirst</code></div>
+<div class="api-method"><code>BreadthFirst</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-nodeid">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NodeId</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] uint16_t index() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] uint16_t generation() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
+<div class="api-method"><code>bool operator==(const NodeId&amp; other) const noexcept</code></div>
+<div class="api-method"><code>bool operator!=(const NodeId&amp; other) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static NodeId make(uint16_t idx, uint16_t gen) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static NodeId invalid() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-scenenode">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneNode</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::vector&lt;NodeId&gt; children</code></div>
+<div class="api-method"><code>sgc::Mat4f localTransform = sgc::Mat4f::identity()</code></div>
+<div class="api-method"><code>NodeId parent = NodeId::invalid()</code></div>
+</div>
+</details>
+<details class="api-class" id="class-scenegraph">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SceneGraph</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] NodeId createNode(const std::string&amp; name = &quot;&quot;)</code></div>
+<div class="api-method"><code>void destroyNode(NodeId id)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid(NodeId id) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] size_t nodeCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] SceneNode* getNode(NodeId id) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const SceneNode* getNode(NodeId id) const noexcept</code></div>
+<div class="api-method"><code>void reparent(NodeId child, NodeId newParent)</code></div>
+<div class="api-method"><code>[[nodiscard]] sgc::Mat4f getWorldTransform(NodeId id) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;NodeId&gt; findByName(const std::string&amp; name) const</code></div>
+<div class="api-method"><code>void traverse(NodeId root, TraversalOrder order, const std::function&lt;void(const SceneNode&amp;)&gt;&amp; visitor) const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-scenerouter">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SceneRouter</code> <span class="api-class__count">14</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>SceneRouter() = default</code></div>
+<div class="api-method"><code>SceneRouter(const SceneRouter&amp;) = delete</code></div>
+<div class="api-method"><code>SceneRouter&amp; operator=(const SceneRouter&amp;) = delete</code></div>
+<div class="api-method"><code>SceneRouter(SceneRouter&amp;&amp;) = default</code></div>
+<div class="api-method"><code>SceneRouter&amp; operator=(SceneRouter&amp;&amp;) = default</code></div>
+<div class="api-method"><code>~SceneRouter() = default</code></div>
+<div class="api-method"><code>void push(std::unique_ptr&lt;IScene&gt; scene)</code></div>
+<div class="api-method"><code>void pop()</code></div>
+<div class="api-method"><code>void replace(std::unique_ptr&lt;IScene&gt; scene)</code></div>
+<div class="api-method"><code>void update(float dt)</code></div>
+<div class="api-method"><code>[[nodiscard]] IScene* current() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t depth() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool empty() const noexcept</code></div>
+<div class="api-method"><code>class [[deprecated(&quot;Use SceneSerializer2 for new code — supports component registration and SceneGraph&quot;)]] SceneSerializer</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-scenedata">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneData</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string sceneName</code></div>
+<div class="api-method"><code>std::string entitiesJson</code></div>
+<div class="api-method"><code>std::string metadata</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
+<div class="api-method"><code>using SerializeFn = std::function&lt;std::optional&lt;std::string&gt;(const GameWorld&amp;, EntityId)&gt;;</code></div>
+<div class="api-method"><code>using DeserializeFn = std::function&lt;bool(const std::string&amp;, GameWorld&amp;, EntityId)&gt;;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-componentserializerentry">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ComponentSerializerEntry</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>SerializeFn serialize</code></div>
+<div class="api-method"><code>DeserializeFn deserialize</code></div>
+</div>
+</details>
+<details class="api-class" id="class-sceneserializer2">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SceneSerializer2</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void registerComponentSerializer( const std::string&amp; name, SerializeFn serializeFn, DeserializeFn deserializeFn)</code></div>
+<div class="api-method"><code>void registerBuiltins()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string serializeWorld(const GameWorld&amp; world) const</code></div>
+<div class="api-method"><code>bool deserializeWorld(const std::string&amp; json, GameWorld&amp; world) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string serializeEntity(const GameWorld&amp; world, EntityId entityId) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string serializeSceneGraph(const SceneGraph&amp; graph) const</code></div>
+<div class="api-method"><code>bool deserializeSceneGraph(const std::string&amp; json, SceneGraph&amp; graph) const</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-transitiontype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TransitionType</code> <span class="api-class__extra">: uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>None = 0</code></div>
+<div class="api-method"><code>Fade</code></div>
+<div class="api-method"><code>Slide</code></div>
+<div class="api-method"><code>Zoom</code></div>
+<div class="api-method"><code>Dissolve</code></div>
+<div class="api-method"><code>Custom</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-transitionphase">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TransitionPhase</code> <span class="api-class__extra">: uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Idle = 0</code></div>
+<div class="api-method"><code>FadeOut</code></div>
+<div class="api-method"><code>Load</code></div>
+<div class="api-method"><code>FadeIn</code></div>
+<div class="api-method"><code>using TransitionEasing = std::function&lt;float(float t)&gt;;</code></div>
+<div class="api-method"><code>using LoadingProgressCallback = std::function&lt;void(float progress)&gt;;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-transitionconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TransitionConfig</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>TransitionType type = TransitionType::Fade</code></div>
+<div class="api-method"><code>float duration = 0.5f</code></div>
+<div class="api-method"><code>std::string customName</code></div>
+</div>
+</details>
+<details class="api-class" id="class-scenetransitionmanager">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SceneTransitionManager</code> <span class="api-class__count">17</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>SceneTransitionManager() = default</code></div>
+<div class="api-method"><code>void transitionTo( std::unique_ptr&lt;MitiruScene&gt; scene, TransitionType type = TransitionType::Fade, float duration = 0.5f)</code></div>
+<div class="api-method"><code>void transitionTo( const std::string&amp; sceneName, TransitionType type = TransitionType::Fade, float duration = 0.5f)</code></div>
+<div class="api-method"><code>void pushWithTransition( std::unique_ptr&lt;MitiruScene&gt; scene, TransitionType type = TransitionType::Fade, float duration = 0.5f)</code></div>
+<div class="api-method"><code>void popWithTransition( TransitionType type = TransitionType::Fade, float duration = 0.5f)</code></div>
+<div class="api-method"><code>void update(float dt)</code></div>
+<div class="api-method"><code>[[nodiscard]] float getRenderAlpha() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isTransitioning() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] TransitionPhase phase() const noexcept</code></div>
+<div class="api-method"><code>void pushScene(std::unique_ptr&lt;MitiruScene&gt; scene)</code></div>
+<div class="api-method"><code>[[nodiscard]] MitiruScene* currentScene() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const MitiruScene* currentScene() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t depth() const noexcept</code></div>
+<div class="api-method"><code>void registerTransition(const std::string&amp; name, TransitionEasing easing)</code></div>
+<div class="api-method"><code>void transitionToCustom( std::unique_ptr&lt;MitiruScene&gt; scene, const std::string&amp; customName, float duration = 0.5f)</code></div>
+<div class="api-method"><code>void registerScene(const std::string&amp; name, std::function&lt;std::unique_ptr&lt;MitiruScene&gt;()&gt; factory)</code></div>
+<div class="api-method"><code>void setLoadingCallback(LoadingProgressCallback callback)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-isystem">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ISystem</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~ISystem() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::string name() const = 0</code></div>
+<div class="api-method"><code>virtual void update(GameWorld&amp; world, float dt) = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-systemprofile">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SystemProfile</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+</div>
+</details>
+<details class="api-class" id="class-systemrunner">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SystemRunner</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void addSystem(std::unique_ptr&lt;ISystem&gt; system, int32_t priority = 0)</code></div>
+<div class="api-method"><code>bool removeSystem(const std::string&amp; name)</code></div>
+<div class="api-method"><code>void updateAll(GameWorld&amp; world, float dt)</code></div>
+<div class="api-method"><code>bool setEnabled(const std::string&amp; name, bool enabled)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isEnabled(const std::string&amp; name) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;SystemProfile&gt; profiles() const</code></div>
+<div class="api-method"><code>[[nodiscard]] size_t systemCount() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-transitionkind">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TransitionKind</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Fade</code></div>
+<div class="api-method"><code>Dissolve</code></div>
+<div class="api-method"><code>Slide</code></div>
+<div class="api-method"><code>Zoom</code></div>
+<div class="api-method"><code>Custom</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-slidedirection">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">SlideDirection</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Left</code></div>
+<div class="api-method"><code>Right</code></div>
+<div class="api-method"><code>Up</code></div>
+<div class="api-method"><code>Down</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-transitionframe">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TransitionFrame</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>TransitionKind kind = TransitionKind::Fade</code></div>
+<div class="api-method"><code>float progress = 0.0f</code></div>
+<div class="api-method"><code>SlideDirection slideDir = SlideDirection::Left</code></div>
+<div class="api-method"><code>float customResult = 0.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] float alpha() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float slideOffset() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float zoomScale() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-transition">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Transition</code> <span class="api-class__count">15</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using EasingFn = std::function&lt;float(float t)&gt;;</code></div>
+<div class="api-method"><code>using DrawFn = std::function&lt;void(const TransitionFrame&amp;)&gt;;</code></div>
+<div class="api-method"><code>Transition() = default</code></div>
+<div class="api-method"><code>void setDrawCallback(DrawFn fn)</code></div>
+<div class="api-method"><code>void setCustomEasing(EasingFn fn)</code></div>
+<div class="api-method"><code>void setSlideDirection(SlideDirection dir) noexcept</code></div>
+<div class="api-method"><code>void start(TransitionKind kind, float durationSec, sgc::Colorf color = sgc::Colorf{0, 0, 0, 1})</code></div>
+<div class="api-method"><code>void update(float dt)</code></div>
+<div class="api-method"><code>void draw() const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isDone() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float progress() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float alpha() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] TransitionKind kind() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] sgc::Colorf color() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] TransitionFrame buildFrame() const</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+    </div>
+  </article>
+  
+<aside class="api-toc" aria-label="このページ内">
+  <p class="api-toc__title">このページ内</p>
+  <nav id="TableOfContents"></nav>
+</aside>
+
+
+</div>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">
+        <span class="site-footer__brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 24 L4 8 L10 14 L16 8 L22 14 L28 8 L28 24"/>
+          </svg>
+        </span>
+        MitiruEngine
+      </p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+      <p class="site-footer__build" aria-label="built with">
+        <code>built_with</code>
+        <span class="site-footer__build-chip">C++20</span>
+        <span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
+        <span class="site-footer__build-chip site-footer__build-chip--data">JSON</span>
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
+      <p class="site-footer__hint">
+        <kbd>?</kbd> でショートカット一覧
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+      <p class="site-footer__easter" aria-hidden="true">
+        <span class="site-footer__easter-prompt"><code>$ echo &quot;hello, world&quot;</code></span>
+        <span class="site-footer__easter-cursor">_</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js" defer></script>
+</body>
+</html>

@@ -4,15 +4,14 @@ Where to start, depending on who you are and what you're doing.
 
 ## Newcomer — human
 
-1. **`README.md`** — what is this engine, build commands
-2. **`docs/SCOPE.md`** — Mode A (Native) vs Mode B (Hybrid)
-3. **`docs/HYBRID_RUNTIME.md`** — JS / JSON / C++ split rules (Mode B users)
-4. **`docs/GETTING_STARTED.md`** — building your first project
-5. Pick a starter:
-   - **Mode A:** open `templates/headless-cpp-minimal/` and follow the README
-   - **Mode B:** copy `templates/web-first-cef-shell/` and work from its `index.html`
-   - The previous runnable `examples/` set was retired in Round 39; a fresh collection ships in the next release.
+1. **`README.md`** — what is this engine, `mitiru` CLI quickstart
+2. **`docs/GETTING_STARTED.md`** — install `mitiru` CLI, scaffold your first project (`mitiru new` / `mitiru run`)
+3. **`docs/SCOPE.md`** — Mode A (Native) vs Mode B (Hybrid)
+4. **`docs/HYBRID_RUNTIME.md`** — JS / JSON / C++ split rules (Mode B users)
+5. **First tutorial:** `site/content/tutorials/01-hello-novel/` — a 15-minute dialogue scene built from a fresh `mitiru new` scaffold
 6. **`docs/ARCHITECTURE.md`** — when you need to dig in
+
+Templates live under `templates/` for reference; day-to-day project creation goes through `mitiru new`, which embeds the templates directly inside the CLI.
 
 ## Newcomer — LLM (Claude Code, Copilot CLI, etc.)
 
@@ -54,9 +53,8 @@ See [`docs/NARRATIVE_VMS.md`](NARRATIVE_VMS.md) — decision matrix covering `vn
 For day-to-day Mode B work:
 
 1. Run `python tools/mitiru_serve.py --root web --port 8765`
-2. Edit `.html` / `.css` / `.js` / `.json` — the browser / CEF view reloads
-   within ~250 ms (SSE-based, no manual refresh)
-3. Point CEF at `http://localhost:8765/...` instead of `file://` URLs in dev
+2. Edit `.html` / `.css` / `.js` / `.json` — the browser / CEF view reloads within ~250 ms (SSE-based, no manual refresh)
+3. Point CEF at `http://localhost:8765/...` instead of `file://` URLs in dev (i.e. override `mitiru.toml`'s `[cef] start_url` from a dev override or env var)
 4. See [`docs/DEV_SERVER.md`](DEV_SERVER.md) for full CLI
 
 ## Promoting JS → C++ (hot path or determinism needed)
@@ -71,3 +69,7 @@ For day-to-day Mode B work:
 2. Reproduce with **Real User Path Smoke (RUP-S)** — real `PointerEvent` dispatches, **NOT** internal API calls (`CookingActions.handleDrop(...)` is forbidden as a verification path)
 3. Save evidence screenshot to `specs/.../evidence/`
 4. Fix the **root cause**; do not patch around symptoms
+
+## Consuming the engine from an existing CMake project
+
+If you're not using `mitiru` CLI (e.g. integrating into a larger monorepo), see the **「CMake から直接消費したい (上級)」** section of `docs/GETTING_STARTED.md` for the `FetchContent` / `find_package` recipe. The CLI just wraps that same flow with a `mitiru.toml` on top.

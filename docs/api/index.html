@@ -1,70 +1,736 @@
-<!doctype html><html lang=ja data-base=/><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>API リファレンス | MitiruEngine</title>
-<meta name=description content="MitiruEngine が公開する全名前空間・クラス・構造体・列挙体のインデックス。"><link rel=canonical href=https://mogmog-0110.github.io/MitiruEngine/api/><link rel=alternate hreflang=ja href=https://mogmog-0110.github.io/MitiruEngine/api/><meta property="og:title" content="API リファレンス | MitiruEngine"><meta property="og:description" content="MitiruEngine が公開する全名前空間・クラス・構造体・列挙体のインデックス。"><meta property="og:type" content="website"><meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/"><meta property="og:site_name" content="MitiruEngine"><meta property="og:locale" content="ja_JP"><meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name=twitter:card content="summary_large_image"><meta name=twitter:title content="API リファレンス | MitiruEngine"><meta name=twitter:description content="MitiruEngine が公開する全名前空間・クラス・構造体・列挙体のインデックス。"><meta name=twitter:image content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><link rel=icon type=image/svg+xml href=https://mogmog-0110.github.io/MitiruEngine/favicon.svg><link rel=icon type=image/png sizes=32x32 href=https://mogmog-0110.github.io/MitiruEngine/favicon-32.png><link rel=apple-touch-icon sizes=180x180 href=https://mogmog-0110.github.io/MitiruEngine/favicon-180.png><link rel="alternate icon" href=https://mogmog-0110.github.io/MitiruEngine/favicon.ico><meta name=color-scheme content="light dark"><script>(function(){try{var e=localStorage.getItem("theme");(e==="dark"||e==="light")&&document.documentElement.setAttribute("data-theme",e)}catch{}})()</script><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/css/main.css><link rel=preconnect href=https://fonts.googleapis.com><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"></head><body><header class=site-header><div class="container site-header__inner"><a class=site-header__brand href=https://mogmog-0110.github.io/MitiruEngine/><span class=site-header__brand-mark aria-hidden=true>M</span>
-<span class=site-header__brand-name>MitiruEngine</span>
-</a><input type=checkbox id=nav-toggle class=nav-toggle role=button aria-label=メニュー aria-controls=primary-nav>
-<label for=nav-toggle class=nav-toggle__label aria-hidden=true><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label><nav class=site-nav id=primary-nav aria-label=primary><a href=https://mogmog-0110.github.io/MitiruEngine/>ホーム</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/getting-started/>はじめに</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/tutorials/>チュートリアル</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/chapters/>できること</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/api/>API</a>
-<button type=button class=search-trigger id=site-search-trigger aria-label=サイト内検索 aria-haspopup=dialog aria-expanded=false aria-controls=site-search-dialog>
-<svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
-<span class=visually-hidden>サイト内検索</span></button><div class=search-dialog id=site-search-dialog role=dialog aria-modal=true aria-labelledby=site-search-title data-pagefind-ignore hidden><div class=search-dialog__backdrop data-search-close></div><div class=search-dialog__panel role=document><div class=search-dialog__header><h2 id=site-search-title class=search-dialog__title>サイト内検索</h2><button type=button class=search-dialog__close data-search-close aria-label=閉じる><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div id=site-search class=search-dialog__body></div></div></div><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css><script src=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js defer></script><script>(function(){var t,n,i,a,r,c,d,u,s=document.getElementById("site-search-trigger"),e=document.getElementById("site-search-dialog");if(!s||!e)return;d=e.querySelector("#site-search"),i=e.querySelectorAll("[data-search-close]"),c=document.documentElement,u=(c.getAttribute("lang")||"en").toLowerCase(),a="https://mogmog-0110.github.io/MitiruEngine/pagefind/",r={placeholder:"ドキュメントを検索…",clear_search:"クリア",load_more:"さらに読み込む",search_label:"サイト内検索",filters_label:"Filters",zero_results:"「[SEARCH_TERM]」に一致する結果はありません",many_results:"[SEARCH_TERM] の検索結果 [COUNT] 件",one_result:"[SEARCH_TERM] の検索結果 [COUNT] 件",alt_search:"代わりに [DISPLAY_QUERY] の結果を表示しています",search_suggestion:"[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",searching:"検索中…"},t=null,n=null;function h(){return t?t:typeof window.PagefindUI!="function"?null:(t=new window.PagefindUI({element:d,showSubResults:!0,showImages:!1,excerptLength:30,resetStyles:!1,bundlePath:a,translations:r,autofocus:!0}),t)}function l(){n=document.activeElement,e.hidden=!1,requestAnimationFrame(function(){e.classList.add("is-open"),document.body.classList.add("search-open"),s.setAttribute("aria-expanded","true"),h();var t=e.querySelector(".pagefind-ui__search-input");t&&t.focus()})}function o(){e.classList.remove("is-open"),document.body.classList.remove("search-open"),s.setAttribute("aria-expanded","false"),setTimeout(function(){e.classList.contains("is-open")||(e.hidden=!0),n&&typeof n.focus=="function"&&n.focus()},200)}s.addEventListener("click",function(){e.classList.contains("is-open")?o():l()}),i.forEach(function(e){e.addEventListener("click",o)});function m(){var n,t=e.querySelector(".search-dialog__panel");return t?(n='a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',Array.prototype.filter.call(t.querySelectorAll(n),function(e){return!e.hasAttribute("hidden")&&e.offsetParent!==null})):[]}document.addEventListener("keydown",function(t){if(s=e.classList.contains("is-open"),t.key==="Escape"&&s){o();return}if(t.key==="Tab"&&s){if(n=m(),n.length===0){t.preventDefault();return}var n,s,r,i=n[0],c=n[n.length-1],a=document.activeElement;t.shiftKey&&a===i?(t.preventDefault(),c.focus()):!t.shiftKey&&a===c?(t.preventDefault(),i.focus()):e.contains(a)||(t.preventDefault(),i.focus());return}(t.metaKey||t.ctrlKey)&&(t.key==="k"||t.key==="K")&&(t.preventDefault(),s?(r=e.querySelector(".pagefind-ui__search-input"),r&&r.focus()):l())})})()</script><a class=site-nav__github href=https://github.com/mogmog-0110/MitiruEngine aria-label=GitHub><svg width="20" height="20" viewBox="0 0 16 16" fill="currentcolor" aria-hidden="true"><path d="M8 0C3.58.0.0 3.58.0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95.0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12.0.0.67-.21 2.2.82a7.62 7.62.0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15.0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-<span class=visually-hidden>GitHub</span>
-</a><button type=button class=shortcuts-trigger data-shortcuts-open aria-haspopup=dialog aria-controls=shortcuts-dialog aria-label="Keyboard shortcuts" title=?>
-<kbd class=shortcuts-trigger__kbd aria-hidden=true>?</kbd>
+<!DOCTYPE html>
+<html lang="ja" data-base="/">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API リファレンス | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="MitiruEngine が公開する全名前空間・クラス・構造体・列挙体のインデックス。">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="API リファレンス | MitiruEngine">
+<meta property="og:description" content="MitiruEngine が公開する全名前空間・クラス・構造体・列挙体のインデックス。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="API リファレンス | MitiruEngine">
+<meta name="twitter:description" content="MitiruEngine が公開する全名前空間・クラス・構造体・列挙体のインデックス。">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
 </button>
-<button type=button class=theme-toggle id=theme-toggle aria-pressed=false aria-label=ダークモード切替><svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg></button></nav></div></header><script>(function(){var t=document.getElementById("nav-toggle"),e=document.getElementById("theme-toggle");t&&t.addEventListener("change",function(){t.checked?document.body.classList.add("is-nav-open"):document.body.classList.remove("is-nav-open")});function s(){var e=document.documentElement.getAttribute("data-theme");return e==="dark"||e==="light"?e==="dark":window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches}function n(){if(!e)return;e.setAttribute("aria-pressed",s()?"true":"false")}n(),e&&e.addEventListener("click",function(){var e,t=document.documentElement,s=t.getAttribute("data-theme"),o=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;s==="dark"?e="light":s==="light"?e="dark":e=o?"light":"dark",t.setAttribute("data-theme",e);try{localStorage.setItem("theme",e)}catch{}n()})})()</script><main class=site-main data-pagefind-body><section class="api-page api-page--list container"><header class=api-page__header><p class=api-page__eyebrow>MitiruEngine</p><h1>API リファレンス</h1><p class=api-page__lede>MitiruEngine が公開する全名前空間・クラス・構造体・列挙体のインデックス。</p></header><div class=api-page__body><p class=api-index__lede>47 名前空間 / 1797 型 / 14251 ドキュメント済み項目。<code>docs/API_CATALOG.md</code> から自動生成。</p><div class=api-search><input type=search id=api-filter placeholder=名前空間・クラス名でフィルタ... aria-label="API エントリをフィルタ"><p class=api-search__hint>入力中に絞り込みます。大文字小文字を区別しない部分一致。</p></div><ul class=api-namespace-list id=api-namespace-list><li class=api-namespace-list__item data-name=mitiru data-classes="BinaryWriter BinaryReader Clock CommandResult ScriptLine CommandScript CommandResult CommandDef CommandSystem Backend DisplayMode EngineConfig EngineCommands InputEventType AudioEventType GameStateEventType WindowResizeEvent SceneChangeEvent InputEvent AudioEvent GameStateEvent EventBus FrameTimer Size Game GameLoopConfig GamePlugin GameSettings JobPriority JobHandle JobSystem Language LocalizationManager AllocationInfo LeakInfo MemoryBudget MemoryProfiler AppConfig IGameScene MitiruApp SceneEntry MultiSceneManager NoLock MutexLock ObjectPool PrefabDef PrefabLibrary Random ITrait MeshTrait LightTrait CameraTrait PhysicsTrait ScriptTrait AudioTrait CustomTrait Node Scene JsonType JsonValue JsonWriter JsonReader ISerializable SerializationRegistry ServiceRegistry Signal FrameBudget FrameBudgetScope LogEntry LogViewer FrameBreakdown MemoryBreakdown ScopeTimer ProfilerConnection SectionTiming FrameData ProfilerGUI ColorFlash FadeDirection Fade TrailPoint Trail InputCommandType InputCommand InputInjector GamepadButtonId BindingType InputBinding InputStateProvider InputMapper InputFrame ReplayData InputRecorder InputReplayer MouseButton InputState KeyCode TouchPhase SwipeDirection TouchPoint GestureConfig PinchInfo RotateInfo TouchInputManager MouseWheelAxis Win32Input ObserveServerConfig ObserveServer SnapshotData PlatformType IPlatform IWindow OsType CpuArch AvailableBackends AvailableWindowBackends PlatformInfo WindowBackend EmscriptenPlatform EmscriptenWindow GlfwInputConfig GlfwJoystickState GlfwScrollState GlfwInput GlfwVulkanSurfaceDesc SurfaceCreateResult GlfwVulkanSurface GlfwGraphicsMode GlfwWindow HeadlessWindow HeadlessPlatform AudioSampleFormat AudioDeviceConfig ObtainedAudioFormat Sdl2Audio Sdl2InputConfig GamepadState MouseWheelState Sdl2Input Sdl2Window Win32Platform Win32Window AaRenderer FontRenderer GradientStop LinearGradient RadialGradient ConicGradient GradientRenderer TextRenderer FilterMode TextureFilter RoundedRectParams UiShapeRenderer UiShapeCache Node SpriteNode LabelNode TimerNode EngineBridgeContext EngineCallbacks EngineHttpServer EngineCallbacks EngineHttpServer IssueSeverity IssueType DrawIssue FrameStats DrawCallValidator TestResult GameTest TestHarness"><a class=api-namespace-list__link href=mitiru/><code>mitiru</code></a>
-<span class=api-namespace-list__meta>172 型 &#183; 1704 項目</span></li><li class=api-namespace-list__item data-name=mitiru::adapter data-classes="InputAdapter ScreenRenderer ScreenTextRenderer"><a class=api-namespace-list__link href=mitiru-adapter/><code>mitiru::adapter</code></a>
-<span class=api-namespace-list__meta>3 型 &#183; 23 項目</span></li><li class=api-namespace-list__item data-name=mitiru::animation data-classes="Keyframe AnimTrack Animation AnimationPlayer Joint IKChain FABRIKSolver IBlendNode ClipNode BlendNode AnimationStateMachine Mat4 OzzSkeleton OzzAnimation IOzzAnimationSampler OzzAnimationSampler NullOzzAnimationSampler Tween TweenManager"><a class=api-namespace-list__link href=mitiru-animation/><code>mitiru::animation</code></a>
-<span class=api-namespace-list__meta>19 型 &#183; 118 項目</span></li><li class=api-namespace-list__item data-name=mitiru::asset data-classes="AssetCategory AssetReloadEvent AssetHotReloader AssetManifest AssetPipeline AssetType AssetMetadata AssetRegistry FbxScene FbxLoader FileEventType FileEvent FileWatcher GameAssetCharacters GameAssetEffects GameAssetEnvironment GameAssetTemplates GameAssetUI GameAssetUtil ReloadLogEntry HotReloader CacheMesh MeshCache OptimizedMesh MeshLOD MeshOptimizer ShaderHandle ShaderCompileResult ShaderCache SvgBuilder SvgShape SvgStyle SvgElement SvgDocument SvgGenerator CompressionFormat CompressedTexture MitexHeader TextureCompressor UiThemeConfig UiThemeGenerator"><a class=api-namespace-list__link href=mitiru-asset/><code>mitiru::asset</code></a>
-<span class=api-namespace-list__meta>41 型 &#183; 227 項目</span></li><li class=api-namespace-list__item data-name=mitiru::assets data-classes="MitiruCefResourceHandler MitiruCefSchemeHandlerFactory"><a class=api-namespace-list__link href=mitiru-assets/><code>mitiru::assets</code></a>
-<span class=api-namespace-list__meta>2 型 &#183; 12 項目</span></li><li class=api-namespace-list__item data-name=mitiru::audio data-classes="IAudioEffect ReverbEffect ChorusEffect DelayEffect AudioEffectChain IAudioEngine SoundCategory SeLimiterMode ChannelState Channel AudioMixer AudioOutputBackend AudioFormat IAudioStream WavAudioStream RawPcmAudioStream AudioOutputParams IAudioOutput MidiNote MidiTrack MidiFile MidiToMml AudioFormat MiniaudioBridge MiniaudioEngine MitiruAudioPlayer Pitch Octave Duration Accidental EditorCommandType MmlNote MmlTrack TimeSignature MmlComposition NoteSelection EditorCommand MmlEditorModel MusicGenre PhraseTemplate MmlPhraseGenerator NullAudioEngine NullAudioOutput IAudioDecoder AdpcmDecoder OggVorbisDecoder DecoderStreamAdapter PulseSimpleHandle AudioRingBuffer PulseAudioOutput RingBuffer AdsrParams SineSynth SoundState SoftAudioEngine AttenuationModel AudioVec3 SpatialSourceConfig SpatialResult SpatialAudio StreamState StreamingAudioEngine WebAudioEngine AudioBackend FmodAudioEngine FmodAudioEngine FmodStudioEngine FmodStudioEngine"><a class=api-namespace-list__link href=mitiru-audio/><code>mitiru::audio</code></a>
-<span class=api-namespace-list__meta>68 型 &#183; 600 項目</span></li><li class=api-namespace-list__item data-name=mitiru::bridge data-classes="AiState UtilityResult AiBridge AnimationBridge BridgeEventBusGlue BridgeViewPush DebugDrawBridge DialogueBacklogEntry DialogueBridge EventBridge I18nBridge ParticleBridge PhysicsBodyEntry CollisionEvent PhysicsBridge ProceduralBridge FullScreenVertex Renderer3DBridge SaveBridge SteeringBridge TilemapBridge TransitionBridge WidgetType UiWidgetInfo UiWidgetState UiBridge VNBridge"><a class=api-namespace-list__link href=mitiru-bridge/><code>mitiru::bridge</code></a>
-<span class=api-namespace-list__meta>27 型 &#183; 225 項目</span></li><li class=api-namespace-list__item data-name=mitiru::bridge::detail data-classes><a class=api-namespace-list__link href=mitiru-bridge-detail/><code>mitiru::bridge::detail</code></a>
-<span class=api-namespace-list__meta>0 型 &#183; 4 項目</span></li><li class=api-namespace-list__item data-name=mitiru::cef data-classes="AudioBridgeState MitiruCefApp MitiruCefBridge MitiruCefBrowser MitiruCefClient MitiruCefContext MitiruCefContextMenuHandler MitiruCefDisplayHandler MitiruCefInput MitiruCefLifeSpanHandler MitiruCefLoadHandler MitiruCefRenderHandler MitiruCefTexture BodyEntry WorldSlot PhysicsBridgeState PhysicsBridgeState SaveStore Transition CefTransitionDeps SceneTransitionState StateStore"><a class=api-namespace-list__link href=mitiru-cef/><code>mitiru::cef</code></a>
-<span class=api-namespace-list__meta>22 型 &#183; 222 項目</span></li><li class=api-namespace-list__item data-name=mitiru::cef::bridges data-classes=TelemetryBridge><a class=api-namespace-list__link href=mitiru-cef-bridges/><code>mitiru::cef::bridges</code></a>
-<span class=api-namespace-list__meta>1 型 &#183; 7 項目</span></li><li class=api-namespace-list__item data-name=mitiru::control data-classes="ActionExecutor Command CommandQueue ReplayState ReplaySystem ScriptAction"><a class=api-namespace-list__link href=mitiru-control/><code>mitiru::control</code></a>
-<span class=api-namespace-list__meta>6 型 &#183; 47 項目</span></li><li class=api-namespace-list__item data-name=mitiru::core data-classes="InputState ReplayEvent ReplayMetadata FrameRecord ReplayData ReplayRecorder ReplayPlayer"><a class=api-namespace-list__link href=mitiru-core/><code>mitiru::core</code></a>
-<span class=api-namespace-list__meta>7 型 &#183; 31 項目</span></li><li class=api-namespace-list__item data-name=mitiru::data data-classes="BinaryTag BinVec2 BinVec3 BinColor BinaryWriter BinaryReader ConfigManager ContentLoader CsvParser IniParser FromJsonResult MigrationChain JsonBuilder JsonReader Migration Prefab PrefabLibrary ProjectConfig ProjectFile SaveSchema SchemaImportResult SchemaImporter FieldType SchemaField Schema ValidationResult SchemaValidator TilemapLayer Tilemap TilemapLoader"><a class=api-namespace-list__link href=mitiru-data/><code>mitiru::data</code></a>
-<span class=api-namespace-list__meta>30 型 &#183; 199 項目</span></li><li class=api-namespace-list__item data-name=mitiru::debug data-classes="ConsoleLogger DebugPanel FileLogger IGpuTimer NullGpuTimer GpuProfileScope GpuTimer GpuTimerScope IDebugOverlay LogLevel ILogger Log NullDebugOverlay NullLogger ProfileSample FrameProfile MemoryStats SystemTiming ProfilerOverlay LogSystemLevel SinkType SinkConfig LogSystem TracyHelper"><a class=api-namespace-list__link href=mitiru-debug/><code>mitiru::debug</code></a>
-<span class=api-namespace-list__meta>24 型 &#183; 142 項目</span></li><li class=api-namespace-list__item data-name=mitiru::ecs data-classes="ComponentRegistry BenchmarkResult BenchmarkConfig ECSBenchmark EnttWorld CommonTag MitiruWorld PrefabComponent Prefab PrefabLibrary SystemEntry SystemScheduler"><a class=api-namespace-list__link href=mitiru-ecs/><code>mitiru::ecs</code></a>
-<span class=api-namespace-list__meta>12 型 &#183; 86 項目</span></li><li class=api-namespace-list__item data-name=mitiru::effects data-classes="Bloom CameraEffects Dissolve GpuParticleBase GpuParticleDx11 GpuParticleDx12 EmissionShape EmissionBurst CurveKey ParameterCurve ParticleEmitter ScreenShake"><a class=api-namespace-list__link href=mitiru-effects/><code>mitiru::effects</code></a>
-<span class=api-namespace-list__meta>12 型 &#183; 91 項目</span></li><li class=api-namespace-list__item data-name=mitiru::fsm data-classes=StateMachine><a class=api-namespace-list__link href=mitiru-fsm/><code>mitiru::fsm</code></a>
-<span class=api-namespace-list__meta>1 型 &#183; 12 項目</span></li><li class=api-namespace-list__item data-name=mitiru::game data-classes="CollisionResponse TileType Vec2f AABB Tilemap TilemapCollisionResult TilemapCollider PlatformerInput PlatformerConfig PlatformerState PlatformerPhysics HitResult Hitbox HitboxSystem Element TargetType EquipSlot BattleActionType BattlePhase StatusEffect Stat CharacterStats Skill StatBonuses Equipment Inventory BattleAction DamageResult DamageCalculator TurnEntry TurnOrderCalculator BattleState TerrainType HexCube HexOffset HexCoordUtil HexCell HexGrid TurnManager PathfinderHex GameMode GameplayType VNCommandType SharedState VNChoice VNCommand VNScript GameplayTrigger VNTrigger HybridGameManager"><a class=api-namespace-list__link href=mitiru-game/><code>mitiru::game</code></a>
-<span class=api-namespace-list__meta>50 型 &#183; 286 項目</span></li><li class=api-namespace-list__item data-name=mitiru::gfx data-classes="VertexFormat PixelFormat BlendMode ResourceState DescriptorHeapType TextureDesc BufferDesc GpuDescriptorHandle CpuDescriptorHandle BufferType IBuffer ICommandList IDescriptorHeap IDevice IGpuFence IPipeline IRenderTarget ShaderType IShader ISwapChain ITexture Dx11Buffer Dx11CommandList Dx11Device Dx11OffscreenRT Dx11PipelineDesc Dx11Pipeline Dx11RenderTarget Dx11SwapChain Dx11Texture Dx12Buffer Dx12CommandList Dx12DescriptorHeap Dx12Fence Dx12OffscreenRT Dx12PipelineDesc Dx12Pipeline Dx12RenderTarget Dx12SwapChain Dx12Texture NullBuffer NullCommandList NullDevice GlBuffer GlCommandList GlDevice GlFunctions DepthBufferConfig VulkanDepthBuffer DescriptorPoolConfig VulkanDescriptorPool VulkanBuffer VulkanCommandList VulkanDevice FramebufferConfig VulkanFramebuffer VulkanAppInfo VulkanValidationConfig VulkanInstanceDesc VulkanInstance QueueFamily GpuType QueueFamilyIndices PhysicalDeviceInfo VulkanPhysicalDevice PrimitiveTopology PolygonMode CullMode FrontFace CompareOp VertexInputAttribute VertexInputBinding VertexInputState RasterizerState MultisampleState DepthStencilState ShaderStageDesc PushConstantRange PipelineLayoutDesc GraphicsPipelineDesc VulkanGraphicsPipeline AttachmentLoadOp AttachmentStoreOp ImageLayout AttachmentDesc AttachmentReference SubpassDesc SubpassDependency RenderPassDesc VulkanRenderPass VulkanRenderTarget VulkanSwapChain TextureConfig VulkanTexture WebGLCommandList WebGLDevice WebGLBuffer WebGLPipelineDesc WebGLPipeline WebGLShader TextureFilter TextureWrap WebGLTexture WebGPUBuffer WebGPUCommandList WebGPUDevice"><a class=api-namespace-list__link href=mitiru-gfx/><code>mitiru::gfx</code></a>
-<span class=api-namespace-list__meta>106 型 &#183; 873 項目</span></li><li class=api-namespace-list__item data-name=mitiru::gfx::dx12 data-classes=NullCefContext><a class=api-namespace-list__link href=mitiru-gfx-dx12/><code>mitiru::gfx::dx12</code></a>
-<span class=api-namespace-list__meta>1 型 &#183; 31 項目</span></li><li class=api-namespace-list__item data-name=mitiru::i18n data-classes="TextDirection BiDiRun GlyphPosition ShapedText RTLConfig IBiDiResolver ITextShaper"><a class=api-namespace-list__link href=mitiru-i18n/><code>mitiru::i18n</code></a>
-<span class=api-namespace-list__meta>7 型 &#183; 34 項目</span></li><li class=api-namespace-list__item data-name=mitiru::input data-classes="StringTransparentHash BridgeActionRouter BridgeInputAdapter"><a class=api-namespace-list__link href=mitiru-input/><code>mitiru::input</code></a>
-<span class=api-namespace-list__meta>3 型 &#183; 21 項目</span></li><li class=api-namespace-list__item data-name=mitiru::live2d data-classes="Live2DAllocator Live2DAnimator MotionPriority Live2DModel Live2DRenderer"><a class=api-namespace-list__link href=mitiru-live2d/><code>mitiru::live2d</code></a>
-<span class=api-namespace-list__meta>5 型 &#183; 53 項目</span></li><li class=api-namespace-list__item data-name=mitiru::math data-classes=PerlinNoise><a class=api-namespace-list__link href=mitiru-math/><code>mitiru::math</code></a>
-<span class=api-namespace-list__meta>1 型 &#183; 6 項目</span></li><li class=api-namespace-list__item data-name=mitiru::narrative data-classes="TextScene ImageScene ChoiceOption ChoiceScene WaitScene SetFlagScene StatChangeScene Script GameContext ExecuteResult ScriptRunner"><a class=api-namespace-list__link href=mitiru-narrative/><code>mitiru::narrative</code></a>
-<span class=api-namespace-list__meta>11 型 &#183; 38 項目</span></li><li class=api-namespace-list__item data-name=mitiru::network data-classes="INetworkTransport TimestampedState LagCompensator Lobby RoomState LobbyEvent RoomInfo LobbyEventInfo LobbyConfig LobbySystem LocalTransport MessageType DeliveryMode GameMessage ReplicatedProperty ReplicatedEntity DeadReckoningState ReplicationManager SessionMode PeerState SessionEvent PeerInfo SessionConfig SessionEventInfo NetworkSession AuthorityMode SyncableComponent StateDelta SyncSnapshot SyncManager NetworkEvent PacketHeader NetworkMessage NetworkStats TestResult ValidationReport NetworkValidator ConnectionStatus ReceivedPacket IReliableTransport GnsReliableTransport NullReliableTransport WsaGuard StateSync TcpTransport UdpTransport WsOpcode WsFrameHeader WebSocketTransport"><a class=api-namespace-list__link href=mitiru-network/><code>mitiru::network</code></a>
-<span class=api-namespace-list__meta>49 型 &#183; 380 項目</span></li><li class=api-namespace-list__item data-name=mitiru::observe data-classes="CausalEvent CausalChain DiffEntry DiffTracker Inspector ObserveRouter SemanticLabel EntitySchema UISchema SnapshotSchema StructuredChangeType StructuredChange StructuredDiff"><a class=api-namespace-list__link href=mitiru-observe/><code>mitiru::observe</code></a>
-<span class=api-namespace-list__meta>13 型 &#183; 82 項目</span></li><li class=api-namespace-list__item data-name=mitiru::physics data-classes="Box2DContactBegin Box2DBodyMove Box2DWorld Box2DWorld CollisionBridge ObjectLayerPairFilterImpl BPLayerInterfaceImpl ObjectVsBroadPhaseLayerFilterImpl ContactListenerImpl JoltPhysicsWorld JoltPhysicsWorld BroadphaseType ColliderShapeType MeshData PhysicsBridge PhysicsSystem"><a class=api-namespace-list__link href=mitiru-physics/><code>mitiru::physics</code></a>
-<span class=api-namespace-list__meta>16 型 &#183; 148 項目</span></li><li class=api-namespace-list__item data-name=mitiru::physics2d data-classes="AABBCollider2D OBBCollider2D WorldAABB2D SpatialHashGrid PhysicsWorld2D"><a class=api-namespace-list__link href=mitiru-physics2d/><code>mitiru::physics2d</code></a>
-<span class=api-namespace-list__meta>5 型 &#183; 41 項目</span></li><li class=api-namespace-list__item data-name=mitiru::physics3d data-classes="BroadPhaseProxy3D BroadPhase3D AABBCollider3D OBBCollider3D CapsuleCollider ConvexShape DistanceConstraint HingeConstraint ContactSolver3D EpaFace NarrowPhase3D DebugDrawFlags DebugColor3D PhysicsDebugRenderer3D PhysicsSystem3D ColliderType3D BroadphaseProxy PhysicsWorld3D RigidBody3D"><a class=api-namespace-list__link href=mitiru-physics3d/><code>mitiru::physics3d</code></a>
-<span class=api-namespace-list__meta>19 型 &#183; 194 項目</span></li><li class=api-namespace-list__item data-name=mitiru::platform data-classes="OS Arch"><a class=api-namespace-list__link href=mitiru-platform/><code>mitiru::platform</code></a>
-<span class=api-namespace-list__meta>2 型 &#183; 20 項目</span></li><li class=api-namespace-list__item data-name=mitiru::render data-classes="Screen GpuParticle ParticleSimConstants ParticleRenderConstants IGpuParticleSystem ToneMapOperator BokehShape PSInput PSInput PSInput PSInput PSInput SSAOConfig SSAOPass HDRConfig HDRToneMappingPass TAAConfig TAAPass DoFConfig DepthOfFieldPass BlendFunc AlphaBlend Loop Direction LoopMode Transition KeyframeEntry Keyframes Pipeline2DResult BillboardInstance Billboard3D BitmapFont Camera2D Camera3D ClusterLight ClusterConfig Cluster ClusteredLighting CubeFace Cubemap DecalConfig Decal VSInput VSOutput PSInput PSOutput DecalSystem VSInput VSOutput PSInput VSInput VSOutput PSInput VSInput VSOutput PSInput DeferredPipeline PSInput PSInput DepthOfFieldConfig DepthOfFieldEffect GlyphInfo FontData DxTextRenderer Easing PSInput PSInput FSRConfig FSREffect FXAAQuality PSInput FXAAConfig FXAAPass FontAtlas AABB Plane Frustum GBufferPixel GBuffer GameViewRT VoxelGIConfig LightmapConfig IrradianceSample GISystem GltfMaterialConverter GltfMeshPrimitive GltfMeshData GltfMaterialData GltfSceneData SkinnedVertex GpuSkinner SpriteBlendMode SamplerMode VSInput VSOutput PSInput GpuTexture2D GpuSpriteBatchVertex GpuSpriteBatch ShaderMode3D OutlineMode IRenderer3D ImageLoader InstancedRenderer LODLevel LODGroup LODSelection LODConfig LODObject LODManager LightType Light Material Mesh MeshCache MeshBounds MeshNormalizer MipmapFilterMode MipmapConfig MipmapGenerator MultiLightSystem VertexWithTangent NormalMapTexture VSInput VSOutput PSInput NormalMapHelper ObjVertexKey ObjVertexKeyHash CullAABB CullResult OcclusionCuller OffscreenRenderer3D PBRMaterial PBREnvironment PBRRenderer VSInput VSOutput PSInput PSInput PSInput VSOutput PBRShaderSet ParticleCollisionConfig ParticleCollisionEvent ParticleCollisionStats CollisionParticle CollisionEvent_GPU ParticleCollisionResolver Particle3D ParticleEmitter3D ParticleSystem3D RenderMode DrawCommand3D Pipeline3D PostEffects PostProcessManager PSInput PSInput PSInput PSInput PSInput PSInput PSInput PSInput PSInput ShaderBytecode RenderPass RenderGraph ValidationReport RenderPipelineValidator CullMode RenderState3D RenderTexture Renderer2D Renderer2DBridgeConfig Renderer2DBridge Renderer3D_DX12 PSInput PSInput PSInput SSAOConfig SSAOPass Scene3D ScenePlacer ScreenshotData ButtonState NotificationType ArrowDirection PanelStyle ButtonStyle CardStyle ProgressBarStyle PostProcessSettings ScreenEnhanced SdfTextRenderer SdfShaderLogic PSInput SdfShaderParams SdfFontGpu ShaderLoader DirectionalShadowConfig DirectionalShadow ShadowMapConfig ShadowMap ShadowMapConfig3D ShadowPass3D ShadowFilterMode ShadowConfig CascadeInfo CascadedShadowMap ShapeRenderer Bone AnimationKeyframe BoneTrack AnimationClip MorphTarget Skeleton AnimationPlayer3D Skybox Triangle3D SoftwareRenderer3D OctreeNode GridPartition2D SpritePivot Vertex3DSprite QuadMesh PopupAnimation Sprite3DInstance Sprite3DRenderer AnimatorState AnimatorDirection SpriteFrame SpriteAnimation SpriteAnimationSet SpriteSheet SpriteAnimator SpriteAnimationBuilder SpriteAnimationCache SpriteBatch SpriteRenderer PackedSprite PackResult SpriteSheetPacker AsepriteParseResult SpriteSheetParser Edge PathCommand Color ColorStop Gradient Shadow Corners Stroke StyleTransform Style ZigzagStyle ShapeRect ShapeCircle ShapeEllipse ShapeTriangle ShapeLine ShapeArc ShapePie ShapeRing ShapePolygon PathPoint ShapePath StyledVertex2D StyledRectBatch StyledCircleBatch StyledShapeRenderer SSSProfile PSInput SSSConfig SubsurfaceScatterEffect PSInput PSInput TAAConfig TAAEffect Texture AtlasRegion TextureAtlas TiledObject TiledObjectLayer TiledMapResult TiledMapLoader TileFlip AutoTileNeighbor TilesetConfig AnimatedTile AutoTileRules TilemapLayer Tilemap TilemapCollision TilemapRenderer ToonLightingConfig ToonOutlineConfig ToonConfig ToonPipeline Transform2D SortedDrawCommand TransparencySort TrueTypeRenderer TrueTypeScreenRenderer Vertex2D Vertex3D VisualPresets VolumetricConfig FogConfig PSInput PSInput VolumetricLightPass VolumetricFogPass WorldUIType WorldUIElement WorldUI Overlay2DVertex OutlineDrawCommand SSRConfig PSIn SSRPass ParallaxConfig SSSConfig PSIn SSSPass TessellationConfig VOut HOut HConst HOut HConst DOut TessellationShaders OITConfig PSOut PSIn OITPass GPUParticleConfig GPUParticle ComputeShaderParticles VignetteConfig VignettePass ChromaticAberrationConfig ChromaticAberrationPass FilmGrainConfig FilmGrainPass BloomConfig BloomPass ColorGradingConfig ColorGradingPass GaussianBlurConfig GaussianBlurPass PostProcessConfig PostProcessChain PostProcessPass PostProcessRT FadeConfig FadePass FrostGlassConfig FrostGlassPass SdfOutlineEffect SdfShadowEffect SdfGlowEffect SdfTextEffect SdfGlyphInfo SdfFontMetrics SdfFontAtlas SdfTextSize SdfWrappedLine Utf8Decoder"><a class=api-namespace-list__link href=mitiru-render/><code>mitiru::render</code></a>
-<span class=api-namespace-list__meta>371 型 &#183; 2663 項目</span></li><li class=api-namespace-list__item data-name=mitiru::render::dx12 data-classes="Dx12ComputeContext FreeBlock DescriptorFreeList DescriptorSlot Dx12DescriptorPool Dx12ShadowMap Dx12Texture2D UploadAllocation Dx12UploadRing"><a class=api-namespace-list__link href=mitiru-render-dx12/><code>mitiru::render::dx12</code></a>
-<span class=api-namespace-list__meta>9 型 &#183; 84 項目</span></li><li class=api-namespace-list__item data-name=mitiru::resource data-classes="CacheStatistics AssetCache AssetHandle AssetManager AssetPath AssetProcessor TextureData MipLevel AtlasEntry TextureAtlas TextureProcessor TextureAtlasBuilder ManifestEntry AssetManifest BundleFileEntry BundleHeader BundleData AssetBundler AssetBundleReader AssetPriority CancellationToken BatchProgress AsyncAssetLoader DdsFormat DdsMipLevel DdsTextureData DdsImageLoader EmbeddedAssetData EmbeddedAssets FontMetrics FontLoader HotReloadManager FileChangeType FileChangeEvent HotReloadWatcher IAssetLoaderBase TypedAssetLoader ImageFormat ImageData IImageLoader BmpImageLoader TgaImageLoader UnifiedImageLoader KtxFormat KtxVkFormat KtxMipLevel KtxTextureData KtxImageLoader PackageCommand PackageInfo PackageRuntime TargetPlatform PackageConfig PackageFileEntry VersionMetadata PackageResult DeltaEntry DeltaManifest PackagingTool StbImageHandle PngImageLoader ResourceCache StreamingState StreamingRequest StreamingStatistics StreamingManager ThreadPool"><a class=api-namespace-list__link href=mitiru-resource/><code>mitiru::resource</code></a>
-<span class=api-namespace-list__meta>67 型 &#183; 432 項目</span></li><li class=api-namespace-list__item data-name=mitiru::scene data-classes="ComponentPersistenceEntry EntityPersistence LightType MeshComponent AudioSourceComponent ComponentStore GameWorld IScene MitiruScene MitiruSceneManager TraversalOrder NodeId SceneNode SceneGraph SceneRouter SceneData ComponentSerializerEntry SceneSerializer2 TransitionType TransitionPhase TransitionConfig SceneTransitionManager ISystem SystemProfile SystemRunner TransitionKind SlideDirection TransitionFrame Transition"><a class=api-namespace-list__link href=mitiru-scene/><code>mitiru::scene</code></a>
-<span class=api-namespace-list__meta>29 型 &#183; 185 項目</span></li><li class=api-namespace-list__item data-name=mitiru::screen_detail data-classes><a class=api-namespace-list__link href=mitiru-screen_detail/><code>mitiru::screen_detail</code></a>
-<span class=api-namespace-list__meta>0 型 &#183; 4 項目</span></li><li class=api-namespace-list__item data-name=mitiru::server data-classes="HttpRequest HttpResponse"><a class=api-namespace-list__link href=mitiru-server/><code>mitiru::server</code></a>
-<span class=api-namespace-list__meta>2 型 &#183; 17 項目</span></li><li class=api-namespace-list__item data-name=mitiru::server::detail data-classes><a class=api-namespace-list__link href=mitiru-server-detail/><code>mitiru::server::detail</code></a>
-<span class=api-namespace-list__meta>0 型 &#183; 6 項目</span></li><li class=api-namespace-list__item data-name=mitiru::sprite data-classes="FrameData AnimatedSprite ParametricPortrait"><a class=api-namespace-list__link href=mitiru-sprite/><code>mitiru::sprite</code></a>
-<span class=api-namespace-list__meta>3 型 &#183; 31 項目</span></li><li class=api-namespace-list__item data-name=mitiru::time data-classes="Cooldown Sequence Timer"><a class=api-namespace-list__link href=mitiru-time/><code>mitiru::time</code></a>
-<span class=api-namespace-list__meta>3 型 &#183; 18 項目</span></li><li class=api-namespace-list__item data-name=mitiru::time::detail data-classes=SmallFunction><a class=api-namespace-list__link href=mitiru-time-detail/><code>mitiru::time::detail</code></a>
-<span class=api-namespace-list__meta>1 型 &#183; 9 項目</span></li><li class=api-namespace-list__item data-name=mitiru::ui data-classes="UIAccessibilityConfig FocusIndicatorStyle UIElementDescription ConstraintType UIConstraint SolvedBounds ConstraintLayout DialogueLine DialogueChoice DialogueBoxStyle DialogueBox FlexDirection FlexWrap FlexJustify FlexAlignItems FlexAlignContent FlexAlignSelf FlexConfig FlexItemConfig FlexLayout GridAlign TrackFixed TrackFraction GridPlacement GridLayoutConfig GridArea GridLayout Anchor LayoutDirection SizeMode Margin LayoutConstraints LayoutResult LayoutEngine ModalButtonStyle ModalState ModalButton ModalBackdrop ModalAnimation ModalConfig Modal ModalManager ResponsiveProperty ResponsiveStrategy Breakpoint ResponsiveRule ResponsiveLayout Side Insets ColumnLayout SplitH SplitV LayoutPanelStyle LayoutButtonStyle TabDef FormField ScreenLayout ScrollBarStyle ScrollViewConfig VirtualScrollRange ScrollView AnchorPreset UIAnchorConfig UIResolvedBounds UIAnchorEntry UIAnchorLayout UIAnimationType UIAnimation UIAnimationTransform UIAnimationState UIAnimator UIBuilder UIBindProperty UIBindingEntry UITwoWayBindingEntry UIExpressionBindingEntry UIListBindingEntry UIBindingContext DropResultType DropZoneHighlight DragPayload DropResult DropTarget DragRenderInfo DropZoneRenderInfo UIDragDropManager UIEventType UIEvent UIEventDispatcher UIEventType UIEvent UIEventLog UIEventPhase MouseEventType KeyEventType UIMouseEvent UIKeyEvent UIFocusEvent UIEventProcessor UIFocusManager NineSliceRegions UIRole UINodeData UINode NotificationType NotificationPosition NotificationAction UINotification NotificationQueueConfig NotificationRenderInfo UINotificationQueue UIPrefabNodeDef UIPrefab UIStateManager UIRenderer RichTextSegment RichTextMeasurement UIRichText SmartTooltipPosition TooltipContentType SmartTooltipConfig SmartTooltip SmartTooltipGroup UIElementInfo UISnapshot UIVisualState UIDragState UIInteractiveState UIStateManager UIVisualState UIFontWeight UITextAlign UIVerticalAlign UITextOverflow UIEdgeInsets UIOffset UINineSliceConfig UIWidgetMetrics UIBoxStyle UITextStyle UIBoxStyleOverride UITextStyleOverride UIStateStyles UIStyleSheet UITemplate ThemeMetrics UIThemeStyle UITheme UINodeProperties UIState UITransitionDef UINodeTransitionState UIActiveTransition UIStateManager UIAccordionSection UIAccordionConfig UIAccordion AvatarStatus UIAvatarConfig UIAvatar BadgePosition UIBadgeConfig UIBadge ButtonState UIButtonConfig UIButton UICardContent UICardConfig UICard UICarouselItem UICarouselConfig UICarousel UIChatMessage UIChatChannel UIChatScrollBarStyle UIChatWindowConfig UIChatWindow ColorPickerInteraction UIColorRGBA UIColorHSV UIColorPreset UIColorPickerConfig UIColorPicker UIMenuItemDef UIContextMenuConfig UIContextMenu WindowResizeEdge UIDraggableWindowConfig UIDraggableWindow UIDropdownConfig UIDropdown FloatingTextFontWeight UIFloatingTextStyle UIFloatingTextConfig UIFloatingTextEntry UIFloatingTextManager UIFormFieldType LabelAlign UIFormError UIFormField UIFormConfig UIForm HotbarOrientation UIHotbarConfig UIHotbarSlot UIHotbar ItemRarity GridPos UIInventoryItem UIInventoryGridConfig UIInventoryGrid UIListItem UIListViewConfig UIListView UIMenuDef UIMenuBarConfig UIMenuBar UINumberSpinnerConfig UINumberSpinner ProgressLabelFormat UIProgressBarConfig UIProgressBar RadialMenuAnimation UIRadialMenuItem UIRadialMenuConfig UIRadialSectorInfo UIRadialMenu RadioOrientation UIRadioOption UIRadioGroupConfig UIRadioGroup Orientation UISliderConfig UISlider SplitterOrientation UISplitterConfig UISplitter TabBarOrientation UITabBarConfig UITabBar TableAlign UITableColumn UITableRow UITableConfig UITable UITextInputConfig UITextInput ToastPosition ToastStackDirection ToastType ToastSlideDirection UIToastTypeStyle UIToastConfig UIToastEntry UIToastManager ToggleStyle UIToggleConfig UIToggle TooltipPosition UITooltipConfig UITooltip UITreeNode UITreeViewConfig UITreeView"><a class=api-namespace-list__link href=mitiru-ui/><code>mitiru::ui</code></a>
-<span class=api-namespace-list__meta>264 型 &#183; 2409 項目</span></li><li class=api-namespace-list__item data-name=mitiru::ui::LayoutPresets data-classes="MenuLayout VNLayout TwoColumnLayout HUDLayout SplitLayout DashboardLayout"><a class=api-namespace-list__link href=mitiru-ui-layoutpresets/><code>mitiru::ui::LayoutPresets</code></a>
-<span class=api-namespace-list__meta>6 型 &#183; 43 項目</span></li><li class=api-namespace-list__item data-name=mitiru::util data-classes="Base64 Camera2DHelper PaletteType ColorPalette CommandLineParser Compression CompressedAssetBundle Easing Lerp Grid2D Hash HighScoreStore ObjectPool Pathfinder Rng IntervalTimer CountdownTimer StringUtils TileRenderer TweenEntry Tweener"><a class=api-namespace-list__link href=mitiru-util/><code>mitiru::util</code></a>
-<span class=api-namespace-list__meta>21 型 &#183; 160 項目</span></li><li class=api-namespace-list__item data-name=mitiru::validate data-classes="Engine ScreenshotAnalysis AutoScreenshot ITestableDemo DemoTestResult TestReport AutoScreenshotTest CoverageTracker DeadlockInfo DeadlockDetector GameplayAnomaly MetricRule GameplayMetrics HealthMetrics HealthCheck ValidationResult InvariantRegistry PhysicsAnomaly PhysicsValidatorConfig PhysicsValidator DiffResult ScreenshotDiffer TemporalRuleType TemporalViolation TemporalRule TemporalInvariantChecker UIElement LayoutIssue UILayoutValidator VisualDebugOverlay RegressionResult VisualRegressionTest"><a class=api-namespace-list__link href=mitiru-validate/><code>mitiru::validate</code></a>
-<span class=api-namespace-list__meta>32 型 &#183; 247 項目</span></li><li class=api-namespace-list__item data-name=mitiru::vn data-classes="ColorBlindMode ColorTransform ColorOverrides AccessibilityConfig ScreenReaderOutput AccessibilitySceneState AccessibilityManager ToastPhase Achievement AchievementToastAppearance AchievementToast AchievementSystem AutoSkipBinding AutoSkipMode AdvanceAction AutoSkipConfig AutoSkipController BackgroundLayerType BackgroundColor KenBurnsAnimation BackgroundRenderInfo BackgroundManager BacklogState BacklogEntry BacklogStyle BacklogUIConfig BacklogUI CGGalleryLayout CGEntry CGViewerState CGGallery SceneReplayEntry SceneReplayManager ChapterStatus ChapterDef EndingDef ChapterSelectInfo ChapterManager CharacterPosition ShowAnimation HideAnimation CharacterSlideDirection CharAnimType CharacterPositionConfig CharacterDefinition CharacterState CharacterAnimation CharacterRenderInfo CharacterManager ChoiceState ChoiceLayout ChoiceAlignment ChoiceAnimation ChoiceButtonStyle ChoiceEntry ChoiceUIConfig ChoiceUI ConfigAction VNConfig ConfigScreenLayout SliderWidget ToggleWidget ConfigScreen DialogResult DialogButtons DialogState DialogParams DialogButton ConfirmDialog MoodType BGMTransitionType MoodTypeHash BGMTrack BGMLayer TrackPlayState BGMState MoodDetection MoodDetector DynamicBGMController EasingType ExprTokenKind ExprToken ExpressionLexer ExpressionEvaluator FlagScope FlagManager FlowNodeType FlowChartNodeStyle FlowChartAppearance ChoiceRecord FlowConnection FlowNode EndingInfo FlowChartViewState FlowChart FlowChartBuilder LineDiffType LineDiff LabelDiff ReloadResult ScenarioDiffTracker WatchedFile ScenarioHotReloader WatchEntry OverlayRenderData DeveloperOverlay AnimatedCharacterParam HitTestResult LipSyncConfig EyeTrackingConfig IdleMotionConfig IAnimatedCharacter IAnimatedCharacterFactory NullAnimatedCharacter NullAnimatedCharacterFactory AnimatedCharacterManager MessageWindowState MessageMode WindowAnimation WindowSkinType SolidColorSkin WindowSkin ClickWaitIndicator MessageWindowConfig NvlLine MessageWindow MovieState MovieFrame MovieAudioBuffer MovieFadeConfig IMovieDecoder NullMovieDecoder MoviePlayer NineSliceConfig NineSlice AnalyticsEventType AnalyticsEvent ChoiceStatEntry SceneChoiceStats DropOffPoint RingBuffer PlayerAnalytics ReadTracker SegmentType TextColor TextStyle RichTextSegment LayoutChar TextLayout RichTextParser KinsokuRules RichTextEngine RubySegment PositionedRubyGlyph RubyLayoutResult RubyLayoutParams RubyTextLayout SaveLoadMode SaveLoadAction ThumbnailData ThumbnailCapture SaveSlotInfo SaveDataSerializer SaveLoadGridConfig SaveLoadScreen MacroDefinition MacroRegistry MacroPreprocessor ScenarioTokenType ScenarioCommandType ScenarioToken ScenarioChoiceEntry CharacterParams BackgroundParams AudioParams IfParams SetParams TransitionParams DialogueParams ScenarioNode ScenarioLexer ScenarioParser InlineTag ScenarioCallback ScenarioExecutor CallStackFrame ChoiceDisplayState ScenarioSaveState ColorFilterType ShakeAxis FadeDirection EffectParticle ScreenEffectResult ScreenEffect ShakeEffect FlashEffect FadeEffect RainEffect SnowEffect BlurEffect VignetteEffect ColorFilterEffect LetterboxEffect ZoomEffect ScreenEffectManager ScriptResult IScriptingEngine NullScriptingEngine VNScriptBridge ScrollBarStyle ScrollConfig ScrollContainer TextEffect EffectParams CharTransform CharAnimState TextAnimator TransitionType TransitionState WipeDirection SlideDirection RulePattern FadeColor RuleImageGenerator TransitionEffect TransitionBuilder TransitionManager Utf8Iterator GlyphInfo FontMetrics GlyphCache TrueTypeFont WindowBackgroundType Padding MessageWindowSkin ElementState ChoiceButtonSkin SaveSlotSkin ConfigSliderSkin ScrollBarSkin FontConfig UISkin SkinValidationResult UISkinLoader NineSliceRegion VNRenderer ChoiceButtonState TextureLoadResult VNTextureManager VerticalTextConfig PositionedGlyph VerticalRubySpan VerticalTextLayout"><a class=api-namespace-list__link href=mitiru-vn/><code>mitiru::vn</code></a>
-<span class=api-namespace-list__meta>253 型 &#183; 1981 項目</span></li><li class=api-namespace-list__item data-name=mitiru::world data-classes=AnchoredEntity><a class=api-namespace-list__link href=mitiru-world/><code>mitiru::world</code></a>
-<span class=api-namespace-list__meta>1 型 &#183; 5 項目</span></li></ul></div></section><script>(function(){var n,s,o,e=document.getElementById("api-filter"),t=document.getElementById("api-namespace-list");if(!e||!t)return;s=Array.prototype.slice.call(t.querySelectorAll(".api-namespace-list__item")),o=s.map(function(e){var t=(e.getAttribute("data-name")||"").toLowerCase(),n=(e.getAttribute("data-classes")||"").toLowerCase();return{el:e,hay:t+" "+n}});function i(e){var n,s=e.trim().toLowerCase(),i=!1;o.forEach(function(e){var t=s===""||e.hay.indexOf(s)!==-1;e.el.style.display=t?"":"none",t&&(i=!0)}),n=document.getElementById("api-filter-empty"),i?n&&(n.style.display="none"):(n||(n=document.createElement("p"),n.id="api-filter-empty",n.className="api-search__empty",n.textContent="No namespaces or classes match this filter.",t.parentNode.insertBefore(n,t.nextSibling)),n.style.display="")}n="",e.addEventListener("input",function(){var t=e.value;if(t===n)return;n=t,i(t)}),e.addEventListener("keydown",function(t){t.key==="Escape"&&(e.value="",n="",i(""))})})()</script></main><footer class=site-footer><div class="container site-footer__inner"><div class=site-footer__col><p class=site-footer__brand><span class=site-footer__brand-mark aria-hidden=true><svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentcolor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 24V8l6 6 6-6 6 6 6-6V24"/></svg>
-</span>MitiruEngine</p><p class=site-footer__copy>&copy; 2026 MitiruEngine contributors.</p><p class=site-footer__build aria-label="built with"><code>built_with</code>
-<span class=site-footer__build-chip>C++20</span>
-<span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
-<span class="site-footer__build-chip site-footer__build-chip--data">JSON</span></p></div><div class=site-footer__col><h2 class=site-footer__h>ライセンス</h2><p>MIT。詳しくは <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE>LICENSE</a> を見てください。</p><p class=site-footer__hint><kbd>?</kbd> でショートカット一覧</p></div><div class=site-footer__col><h2 class=site-footer__h>状態</h2><p>0.x 系・実験段階。API はまだ変わります。</p><p><a href=https://github.com/mogmog-0110/MitiruEngine>github.com/mogmog-0110/MitiruEngine</a></p><p class=site-footer__easter aria-hidden=true><span class=site-footer__easter-prompt><code>$ echo "hello, world"</code></span>
-<span class=site-footer__easter-cursor>_</span></p></div></div></footer><div class=shortcuts-dialog id=shortcuts-dialog role=dialog aria-modal=true aria-labelledby=shortcuts-dialog-title data-pagefind-ignore hidden><div class=shortcuts-dialog__backdrop data-shortcuts-close></div><div class=shortcuts-dialog__panel role=document><div class=shortcuts-dialog__header><h2 id=shortcuts-dialog-title class=shortcuts-dialog__title>キーボードショートカット</h2><button type=button class=shortcuts-dialog__close data-shortcuts-close aria-label=閉じる><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class=shortcuts-dialog__body><dl class=shortcuts-list><div class=shortcuts-list__row><dt><kbd>?</kbd></dt><dd>このヘルプを開く</dd></div><div class=shortcuts-list__row><dt><kbd>Esc</kbd></dt><dd>ダイアログを閉じる</dd></div><div class=shortcuts-list__row><dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt><dd>サイト内検索を開く</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>h</kbd></dt><dd>ホームへ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>c</kbd></dt><dd>チャプター一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>a</kbd></dt><dd>アーキテクチャ一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>t</kbd></dt><dd>チュートリアル一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>s</kbd></dt><dd>はじめてのページへ</dd></div></dl><p class=shortcuts-dialog__foot>入力中（テキストフィールド・コード編集）は無効です。</p></div></div></div><script src=https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js defer></script></body></html>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+      <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<section class="api-page api-page--list container">
+  <header class="api-page__header">
+    <p class="api-page__eyebrow">MitiruEngine</p>
+    <h1>API リファレンス</h1>
+    <p class="api-page__lede">MitiruEngine が公開する全名前空間・クラス・構造体・列挙体のインデックス。</p>
+  </header>
+
+  <div class="api-page__body">
+    <p class="api-index__lede">47 名前空間 / 1797 型 / 14251 ドキュメント済み項目。<code>docs/API_CATALOG.md</code> から自動生成。</p>
+<div class="api-search">
+  <input type="search" id="api-filter" placeholder="名前空間・クラス名でフィルタ..." aria-label="API エントリをフィルタ" />
+  <p class="api-search__hint">入力中に絞り込みます。大文字小文字を区別しない部分一致。</p>
+</div>
+<ul class="api-namespace-list" id="api-namespace-list">
+  <li class="api-namespace-list__item" data-name="mitiru" data-classes="BinaryWriter BinaryReader Clock CommandResult ScriptLine CommandScript CommandResult CommandDef CommandSystem Backend DisplayMode EngineConfig EngineCommands InputEventType AudioEventType GameStateEventType WindowResizeEvent SceneChangeEvent InputEvent AudioEvent GameStateEvent EventBus FrameTimer Size Game GameLoopConfig GamePlugin GameSettings JobPriority JobHandle JobSystem Language LocalizationManager AllocationInfo LeakInfo MemoryBudget MemoryProfiler AppConfig IGameScene MitiruApp SceneEntry MultiSceneManager NoLock MutexLock ObjectPool PrefabDef PrefabLibrary Random ITrait MeshTrait LightTrait CameraTrait PhysicsTrait ScriptTrait AudioTrait CustomTrait Node Scene JsonType JsonValue JsonWriter JsonReader ISerializable SerializationRegistry ServiceRegistry Signal FrameBudget FrameBudgetScope LogEntry LogViewer FrameBreakdown MemoryBreakdown ScopeTimer ProfilerConnection SectionTiming FrameData ProfilerGUI ColorFlash FadeDirection Fade TrailPoint Trail InputCommandType InputCommand InputInjector GamepadButtonId BindingType InputBinding InputStateProvider InputMapper InputFrame ReplayData InputRecorder InputReplayer MouseButton InputState KeyCode TouchPhase SwipeDirection TouchPoint GestureConfig PinchInfo RotateInfo TouchInputManager MouseWheelAxis Win32Input ObserveServerConfig ObserveServer SnapshotData PlatformType IPlatform IWindow OsType CpuArch AvailableBackends AvailableWindowBackends PlatformInfo WindowBackend EmscriptenPlatform EmscriptenWindow GlfwInputConfig GlfwJoystickState GlfwScrollState GlfwInput GlfwVulkanSurfaceDesc SurfaceCreateResult GlfwVulkanSurface GlfwGraphicsMode GlfwWindow HeadlessWindow HeadlessPlatform AudioSampleFormat AudioDeviceConfig ObtainedAudioFormat Sdl2Audio Sdl2InputConfig GamepadState MouseWheelState Sdl2Input Sdl2Window Win32Platform Win32Window AaRenderer FontRenderer GradientStop LinearGradient RadialGradient ConicGradient GradientRenderer TextRenderer FilterMode TextureFilter RoundedRectParams UiShapeRenderer UiShapeCache Node SpriteNode LabelNode TimerNode EngineBridgeContext EngineCallbacks EngineHttpServer EngineCallbacks EngineHttpServer IssueSeverity IssueType DrawIssue FrameStats DrawCallValidator TestResult GameTest TestHarness">
+    <a class="api-namespace-list__link" href="mitiru/"><code>mitiru</code></a>
+    <span class="api-namespace-list__meta">172 型 &middot; 1704 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::adapter" data-classes="InputAdapter ScreenRenderer ScreenTextRenderer">
+    <a class="api-namespace-list__link" href="mitiru-adapter/"><code>mitiru::adapter</code></a>
+    <span class="api-namespace-list__meta">3 型 &middot; 23 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::animation" data-classes="Keyframe AnimTrack Animation AnimationPlayer Joint IKChain FABRIKSolver IBlendNode ClipNode BlendNode AnimationStateMachine Mat4 OzzSkeleton OzzAnimation IOzzAnimationSampler OzzAnimationSampler NullOzzAnimationSampler Tween TweenManager">
+    <a class="api-namespace-list__link" href="mitiru-animation/"><code>mitiru::animation</code></a>
+    <span class="api-namespace-list__meta">19 型 &middot; 118 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::asset" data-classes="AssetCategory AssetReloadEvent AssetHotReloader AssetManifest AssetPipeline AssetType AssetMetadata AssetRegistry FbxScene FbxLoader FileEventType FileEvent FileWatcher GameAssetCharacters GameAssetEffects GameAssetEnvironment GameAssetTemplates GameAssetUI GameAssetUtil ReloadLogEntry HotReloader CacheMesh MeshCache OptimizedMesh MeshLOD MeshOptimizer ShaderHandle ShaderCompileResult ShaderCache SvgBuilder SvgShape SvgStyle SvgElement SvgDocument SvgGenerator CompressionFormat CompressedTexture MitexHeader TextureCompressor UiThemeConfig UiThemeGenerator">
+    <a class="api-namespace-list__link" href="mitiru-asset/"><code>mitiru::asset</code></a>
+    <span class="api-namespace-list__meta">41 型 &middot; 227 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::assets" data-classes="MitiruCefResourceHandler MitiruCefSchemeHandlerFactory">
+    <a class="api-namespace-list__link" href="mitiru-assets/"><code>mitiru::assets</code></a>
+    <span class="api-namespace-list__meta">2 型 &middot; 12 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::audio" data-classes="IAudioEffect ReverbEffect ChorusEffect DelayEffect AudioEffectChain IAudioEngine SoundCategory SeLimiterMode ChannelState Channel AudioMixer AudioOutputBackend AudioFormat IAudioStream WavAudioStream RawPcmAudioStream AudioOutputParams IAudioOutput MidiNote MidiTrack MidiFile MidiToMml AudioFormat MiniaudioBridge MiniaudioEngine MitiruAudioPlayer Pitch Octave Duration Accidental EditorCommandType MmlNote MmlTrack TimeSignature MmlComposition NoteSelection EditorCommand MmlEditorModel MusicGenre PhraseTemplate MmlPhraseGenerator NullAudioEngine NullAudioOutput IAudioDecoder AdpcmDecoder OggVorbisDecoder DecoderStreamAdapter PulseSimpleHandle AudioRingBuffer PulseAudioOutput RingBuffer AdsrParams SineSynth SoundState SoftAudioEngine AttenuationModel AudioVec3 SpatialSourceConfig SpatialResult SpatialAudio StreamState StreamingAudioEngine WebAudioEngine AudioBackend FmodAudioEngine FmodAudioEngine FmodStudioEngine FmodStudioEngine">
+    <a class="api-namespace-list__link" href="mitiru-audio/"><code>mitiru::audio</code></a>
+    <span class="api-namespace-list__meta">68 型 &middot; 600 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::bridge" data-classes="AiState UtilityResult AiBridge AnimationBridge BridgeEventBusGlue BridgeViewPush DebugDrawBridge DialogueBacklogEntry DialogueBridge EventBridge I18nBridge ParticleBridge PhysicsBodyEntry CollisionEvent PhysicsBridge ProceduralBridge FullScreenVertex Renderer3DBridge SaveBridge SteeringBridge TilemapBridge TransitionBridge WidgetType UiWidgetInfo UiWidgetState UiBridge VNBridge">
+    <a class="api-namespace-list__link" href="mitiru-bridge/"><code>mitiru::bridge</code></a>
+    <span class="api-namespace-list__meta">27 型 &middot; 225 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::bridge::detail" data-classes="">
+    <a class="api-namespace-list__link" href="mitiru-bridge-detail/"><code>mitiru::bridge::detail</code></a>
+    <span class="api-namespace-list__meta">0 型 &middot; 4 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::cef" data-classes="AudioBridgeState MitiruCefApp MitiruCefBridge MitiruCefBrowser MitiruCefClient MitiruCefContext MitiruCefContextMenuHandler MitiruCefDisplayHandler MitiruCefInput MitiruCefLifeSpanHandler MitiruCefLoadHandler MitiruCefRenderHandler MitiruCefTexture BodyEntry WorldSlot PhysicsBridgeState PhysicsBridgeState SaveStore Transition CefTransitionDeps SceneTransitionState StateStore">
+    <a class="api-namespace-list__link" href="mitiru-cef/"><code>mitiru::cef</code></a>
+    <span class="api-namespace-list__meta">22 型 &middot; 222 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::cef::bridges" data-classes="TelemetryBridge">
+    <a class="api-namespace-list__link" href="mitiru-cef-bridges/"><code>mitiru::cef::bridges</code></a>
+    <span class="api-namespace-list__meta">1 型 &middot; 7 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::control" data-classes="ActionExecutor Command CommandQueue ReplayState ReplaySystem ScriptAction">
+    <a class="api-namespace-list__link" href="mitiru-control/"><code>mitiru::control</code></a>
+    <span class="api-namespace-list__meta">6 型 &middot; 47 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::core" data-classes="InputState ReplayEvent ReplayMetadata FrameRecord ReplayData ReplayRecorder ReplayPlayer">
+    <a class="api-namespace-list__link" href="mitiru-core/"><code>mitiru::core</code></a>
+    <span class="api-namespace-list__meta">7 型 &middot; 31 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::data" data-classes="BinaryTag BinVec2 BinVec3 BinColor BinaryWriter BinaryReader ConfigManager ContentLoader CsvParser IniParser FromJsonResult MigrationChain JsonBuilder JsonReader Migration Prefab PrefabLibrary ProjectConfig ProjectFile SaveSchema SchemaImportResult SchemaImporter FieldType SchemaField Schema ValidationResult SchemaValidator TilemapLayer Tilemap TilemapLoader">
+    <a class="api-namespace-list__link" href="mitiru-data/"><code>mitiru::data</code></a>
+    <span class="api-namespace-list__meta">30 型 &middot; 199 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::debug" data-classes="ConsoleLogger DebugPanel FileLogger IGpuTimer NullGpuTimer GpuProfileScope GpuTimer GpuTimerScope IDebugOverlay LogLevel ILogger Log NullDebugOverlay NullLogger ProfileSample FrameProfile MemoryStats SystemTiming ProfilerOverlay LogSystemLevel SinkType SinkConfig LogSystem TracyHelper">
+    <a class="api-namespace-list__link" href="mitiru-debug/"><code>mitiru::debug</code></a>
+    <span class="api-namespace-list__meta">24 型 &middot; 142 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::ecs" data-classes="ComponentRegistry BenchmarkResult BenchmarkConfig ECSBenchmark EnttWorld CommonTag MitiruWorld PrefabComponent Prefab PrefabLibrary SystemEntry SystemScheduler">
+    <a class="api-namespace-list__link" href="mitiru-ecs/"><code>mitiru::ecs</code></a>
+    <span class="api-namespace-list__meta">12 型 &middot; 86 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::effects" data-classes="Bloom CameraEffects Dissolve GpuParticleBase GpuParticleDx11 GpuParticleDx12 EmissionShape EmissionBurst CurveKey ParameterCurve ParticleEmitter ScreenShake">
+    <a class="api-namespace-list__link" href="mitiru-effects/"><code>mitiru::effects</code></a>
+    <span class="api-namespace-list__meta">12 型 &middot; 91 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::fsm" data-classes="StateMachine">
+    <a class="api-namespace-list__link" href="mitiru-fsm/"><code>mitiru::fsm</code></a>
+    <span class="api-namespace-list__meta">1 型 &middot; 12 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::game" data-classes="CollisionResponse TileType Vec2f AABB Tilemap TilemapCollisionResult TilemapCollider PlatformerInput PlatformerConfig PlatformerState PlatformerPhysics HitResult Hitbox HitboxSystem Element TargetType EquipSlot BattleActionType BattlePhase StatusEffect Stat CharacterStats Skill StatBonuses Equipment Inventory BattleAction DamageResult DamageCalculator TurnEntry TurnOrderCalculator BattleState TerrainType HexCube HexOffset HexCoordUtil HexCell HexGrid TurnManager PathfinderHex GameMode GameplayType VNCommandType SharedState VNChoice VNCommand VNScript GameplayTrigger VNTrigger HybridGameManager">
+    <a class="api-namespace-list__link" href="mitiru-game/"><code>mitiru::game</code></a>
+    <span class="api-namespace-list__meta">50 型 &middot; 286 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::gfx" data-classes="VertexFormat PixelFormat BlendMode ResourceState DescriptorHeapType TextureDesc BufferDesc GpuDescriptorHandle CpuDescriptorHandle BufferType IBuffer ICommandList IDescriptorHeap IDevice IGpuFence IPipeline IRenderTarget ShaderType IShader ISwapChain ITexture Dx11Buffer Dx11CommandList Dx11Device Dx11OffscreenRT Dx11PipelineDesc Dx11Pipeline Dx11RenderTarget Dx11SwapChain Dx11Texture Dx12Buffer Dx12CommandList Dx12DescriptorHeap Dx12Fence Dx12OffscreenRT Dx12PipelineDesc Dx12Pipeline Dx12RenderTarget Dx12SwapChain Dx12Texture NullBuffer NullCommandList NullDevice GlBuffer GlCommandList GlDevice GlFunctions DepthBufferConfig VulkanDepthBuffer DescriptorPoolConfig VulkanDescriptorPool VulkanBuffer VulkanCommandList VulkanDevice FramebufferConfig VulkanFramebuffer VulkanAppInfo VulkanValidationConfig VulkanInstanceDesc VulkanInstance QueueFamily GpuType QueueFamilyIndices PhysicalDeviceInfo VulkanPhysicalDevice PrimitiveTopology PolygonMode CullMode FrontFace CompareOp VertexInputAttribute VertexInputBinding VertexInputState RasterizerState MultisampleState DepthStencilState ShaderStageDesc PushConstantRange PipelineLayoutDesc GraphicsPipelineDesc VulkanGraphicsPipeline AttachmentLoadOp AttachmentStoreOp ImageLayout AttachmentDesc AttachmentReference SubpassDesc SubpassDependency RenderPassDesc VulkanRenderPass VulkanRenderTarget VulkanSwapChain TextureConfig VulkanTexture WebGLCommandList WebGLDevice WebGLBuffer WebGLPipelineDesc WebGLPipeline WebGLShader TextureFilter TextureWrap WebGLTexture WebGPUBuffer WebGPUCommandList WebGPUDevice">
+    <a class="api-namespace-list__link" href="mitiru-gfx/"><code>mitiru::gfx</code></a>
+    <span class="api-namespace-list__meta">106 型 &middot; 873 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::gfx::dx12" data-classes="NullCefContext">
+    <a class="api-namespace-list__link" href="mitiru-gfx-dx12/"><code>mitiru::gfx::dx12</code></a>
+    <span class="api-namespace-list__meta">1 型 &middot; 31 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::i18n" data-classes="TextDirection BiDiRun GlyphPosition ShapedText RTLConfig IBiDiResolver ITextShaper">
+    <a class="api-namespace-list__link" href="mitiru-i18n/"><code>mitiru::i18n</code></a>
+    <span class="api-namespace-list__meta">7 型 &middot; 34 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::input" data-classes="StringTransparentHash BridgeActionRouter BridgeInputAdapter">
+    <a class="api-namespace-list__link" href="mitiru-input/"><code>mitiru::input</code></a>
+    <span class="api-namespace-list__meta">3 型 &middot; 21 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::live2d" data-classes="Live2DAllocator Live2DAnimator MotionPriority Live2DModel Live2DRenderer">
+    <a class="api-namespace-list__link" href="mitiru-live2d/"><code>mitiru::live2d</code></a>
+    <span class="api-namespace-list__meta">5 型 &middot; 53 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::math" data-classes="PerlinNoise">
+    <a class="api-namespace-list__link" href="mitiru-math/"><code>mitiru::math</code></a>
+    <span class="api-namespace-list__meta">1 型 &middot; 6 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::narrative" data-classes="TextScene ImageScene ChoiceOption ChoiceScene WaitScene SetFlagScene StatChangeScene Script GameContext ExecuteResult ScriptRunner">
+    <a class="api-namespace-list__link" href="mitiru-narrative/"><code>mitiru::narrative</code></a>
+    <span class="api-namespace-list__meta">11 型 &middot; 38 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::network" data-classes="INetworkTransport TimestampedState LagCompensator Lobby RoomState LobbyEvent RoomInfo LobbyEventInfo LobbyConfig LobbySystem LocalTransport MessageType DeliveryMode GameMessage ReplicatedProperty ReplicatedEntity DeadReckoningState ReplicationManager SessionMode PeerState SessionEvent PeerInfo SessionConfig SessionEventInfo NetworkSession AuthorityMode SyncableComponent StateDelta SyncSnapshot SyncManager NetworkEvent PacketHeader NetworkMessage NetworkStats TestResult ValidationReport NetworkValidator ConnectionStatus ReceivedPacket IReliableTransport GnsReliableTransport NullReliableTransport WsaGuard StateSync TcpTransport UdpTransport WsOpcode WsFrameHeader WebSocketTransport">
+    <a class="api-namespace-list__link" href="mitiru-network/"><code>mitiru::network</code></a>
+    <span class="api-namespace-list__meta">49 型 &middot; 380 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::observe" data-classes="CausalEvent CausalChain DiffEntry DiffTracker Inspector ObserveRouter SemanticLabel EntitySchema UISchema SnapshotSchema StructuredChangeType StructuredChange StructuredDiff">
+    <a class="api-namespace-list__link" href="mitiru-observe/"><code>mitiru::observe</code></a>
+    <span class="api-namespace-list__meta">13 型 &middot; 82 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::physics" data-classes="Box2DContactBegin Box2DBodyMove Box2DWorld Box2DWorld CollisionBridge ObjectLayerPairFilterImpl BPLayerInterfaceImpl ObjectVsBroadPhaseLayerFilterImpl ContactListenerImpl JoltPhysicsWorld JoltPhysicsWorld BroadphaseType ColliderShapeType MeshData PhysicsBridge PhysicsSystem">
+    <a class="api-namespace-list__link" href="mitiru-physics/"><code>mitiru::physics</code></a>
+    <span class="api-namespace-list__meta">16 型 &middot; 148 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::physics2d" data-classes="AABBCollider2D OBBCollider2D WorldAABB2D SpatialHashGrid PhysicsWorld2D">
+    <a class="api-namespace-list__link" href="mitiru-physics2d/"><code>mitiru::physics2d</code></a>
+    <span class="api-namespace-list__meta">5 型 &middot; 41 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::physics3d" data-classes="BroadPhaseProxy3D BroadPhase3D AABBCollider3D OBBCollider3D CapsuleCollider ConvexShape DistanceConstraint HingeConstraint ContactSolver3D EpaFace NarrowPhase3D DebugDrawFlags DebugColor3D PhysicsDebugRenderer3D PhysicsSystem3D ColliderType3D BroadphaseProxy PhysicsWorld3D RigidBody3D">
+    <a class="api-namespace-list__link" href="mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+    <span class="api-namespace-list__meta">19 型 &middot; 194 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::platform" data-classes="OS Arch">
+    <a class="api-namespace-list__link" href="mitiru-platform/"><code>mitiru::platform</code></a>
+    <span class="api-namespace-list__meta">2 型 &middot; 20 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::render" data-classes="Screen GpuParticle ParticleSimConstants ParticleRenderConstants IGpuParticleSystem ToneMapOperator BokehShape PSInput PSInput PSInput PSInput PSInput SSAOConfig SSAOPass HDRConfig HDRToneMappingPass TAAConfig TAAPass DoFConfig DepthOfFieldPass BlendFunc AlphaBlend Loop Direction LoopMode Transition KeyframeEntry Keyframes Pipeline2DResult BillboardInstance Billboard3D BitmapFont Camera2D Camera3D ClusterLight ClusterConfig Cluster ClusteredLighting CubeFace Cubemap DecalConfig Decal VSInput VSOutput PSInput PSOutput DecalSystem VSInput VSOutput PSInput VSInput VSOutput PSInput VSInput VSOutput PSInput DeferredPipeline PSInput PSInput DepthOfFieldConfig DepthOfFieldEffect GlyphInfo FontData DxTextRenderer Easing PSInput PSInput FSRConfig FSREffect FXAAQuality PSInput FXAAConfig FXAAPass FontAtlas AABB Plane Frustum GBufferPixel GBuffer GameViewRT VoxelGIConfig LightmapConfig IrradianceSample GISystem GltfMaterialConverter GltfMeshPrimitive GltfMeshData GltfMaterialData GltfSceneData SkinnedVertex GpuSkinner SpriteBlendMode SamplerMode VSInput VSOutput PSInput GpuTexture2D GpuSpriteBatchVertex GpuSpriteBatch ShaderMode3D OutlineMode IRenderer3D ImageLoader InstancedRenderer LODLevel LODGroup LODSelection LODConfig LODObject LODManager LightType Light Material Mesh MeshCache MeshBounds MeshNormalizer MipmapFilterMode MipmapConfig MipmapGenerator MultiLightSystem VertexWithTangent NormalMapTexture VSInput VSOutput PSInput NormalMapHelper ObjVertexKey ObjVertexKeyHash CullAABB CullResult OcclusionCuller OffscreenRenderer3D PBRMaterial PBREnvironment PBRRenderer VSInput VSOutput PSInput PSInput PSInput VSOutput PBRShaderSet ParticleCollisionConfig ParticleCollisionEvent ParticleCollisionStats CollisionParticle CollisionEvent_GPU ParticleCollisionResolver Particle3D ParticleEmitter3D ParticleSystem3D RenderMode DrawCommand3D Pipeline3D PostEffects PostProcessManager PSInput PSInput PSInput PSInput PSInput PSInput PSInput PSInput PSInput ShaderBytecode RenderPass RenderGraph ValidationReport RenderPipelineValidator CullMode RenderState3D RenderTexture Renderer2D Renderer2DBridgeConfig Renderer2DBridge Renderer3D_DX12 PSInput PSInput PSInput SSAOConfig SSAOPass Scene3D ScenePlacer ScreenshotData ButtonState NotificationType ArrowDirection PanelStyle ButtonStyle CardStyle ProgressBarStyle PostProcessSettings ScreenEnhanced SdfTextRenderer SdfShaderLogic PSInput SdfShaderParams SdfFontGpu ShaderLoader DirectionalShadowConfig DirectionalShadow ShadowMapConfig ShadowMap ShadowMapConfig3D ShadowPass3D ShadowFilterMode ShadowConfig CascadeInfo CascadedShadowMap ShapeRenderer Bone AnimationKeyframe BoneTrack AnimationClip MorphTarget Skeleton AnimationPlayer3D Skybox Triangle3D SoftwareRenderer3D OctreeNode GridPartition2D SpritePivot Vertex3DSprite QuadMesh PopupAnimation Sprite3DInstance Sprite3DRenderer AnimatorState AnimatorDirection SpriteFrame SpriteAnimation SpriteAnimationSet SpriteSheet SpriteAnimator SpriteAnimationBuilder SpriteAnimationCache SpriteBatch SpriteRenderer PackedSprite PackResult SpriteSheetPacker AsepriteParseResult SpriteSheetParser Edge PathCommand Color ColorStop Gradient Shadow Corners Stroke StyleTransform Style ZigzagStyle ShapeRect ShapeCircle ShapeEllipse ShapeTriangle ShapeLine ShapeArc ShapePie ShapeRing ShapePolygon PathPoint ShapePath StyledVertex2D StyledRectBatch StyledCircleBatch StyledShapeRenderer SSSProfile PSInput SSSConfig SubsurfaceScatterEffect PSInput PSInput TAAConfig TAAEffect Texture AtlasRegion TextureAtlas TiledObject TiledObjectLayer TiledMapResult TiledMapLoader TileFlip AutoTileNeighbor TilesetConfig AnimatedTile AutoTileRules TilemapLayer Tilemap TilemapCollision TilemapRenderer ToonLightingConfig ToonOutlineConfig ToonConfig ToonPipeline Transform2D SortedDrawCommand TransparencySort TrueTypeRenderer TrueTypeScreenRenderer Vertex2D Vertex3D VisualPresets VolumetricConfig FogConfig PSInput PSInput VolumetricLightPass VolumetricFogPass WorldUIType WorldUIElement WorldUI Overlay2DVertex OutlineDrawCommand SSRConfig PSIn SSRPass ParallaxConfig SSSConfig PSIn SSSPass TessellationConfig VOut HOut HConst HOut HConst DOut TessellationShaders OITConfig PSOut PSIn OITPass GPUParticleConfig GPUParticle ComputeShaderParticles VignetteConfig VignettePass ChromaticAberrationConfig ChromaticAberrationPass FilmGrainConfig FilmGrainPass BloomConfig BloomPass ColorGradingConfig ColorGradingPass GaussianBlurConfig GaussianBlurPass PostProcessConfig PostProcessChain PostProcessPass PostProcessRT FadeConfig FadePass FrostGlassConfig FrostGlassPass SdfOutlineEffect SdfShadowEffect SdfGlowEffect SdfTextEffect SdfGlyphInfo SdfFontMetrics SdfFontAtlas SdfTextSize SdfWrappedLine Utf8Decoder">
+    <a class="api-namespace-list__link" href="mitiru-render/"><code>mitiru::render</code></a>
+    <span class="api-namespace-list__meta">371 型 &middot; 2663 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::render::dx12" data-classes="Dx12ComputeContext FreeBlock DescriptorFreeList DescriptorSlot Dx12DescriptorPool Dx12ShadowMap Dx12Texture2D UploadAllocation Dx12UploadRing">
+    <a class="api-namespace-list__link" href="mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+    <span class="api-namespace-list__meta">9 型 &middot; 84 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::resource" data-classes="CacheStatistics AssetCache AssetHandle AssetManager AssetPath AssetProcessor TextureData MipLevel AtlasEntry TextureAtlas TextureProcessor TextureAtlasBuilder ManifestEntry AssetManifest BundleFileEntry BundleHeader BundleData AssetBundler AssetBundleReader AssetPriority CancellationToken BatchProgress AsyncAssetLoader DdsFormat DdsMipLevel DdsTextureData DdsImageLoader EmbeddedAssetData EmbeddedAssets FontMetrics FontLoader HotReloadManager FileChangeType FileChangeEvent HotReloadWatcher IAssetLoaderBase TypedAssetLoader ImageFormat ImageData IImageLoader BmpImageLoader TgaImageLoader UnifiedImageLoader KtxFormat KtxVkFormat KtxMipLevel KtxTextureData KtxImageLoader PackageCommand PackageInfo PackageRuntime TargetPlatform PackageConfig PackageFileEntry VersionMetadata PackageResult DeltaEntry DeltaManifest PackagingTool StbImageHandle PngImageLoader ResourceCache StreamingState StreamingRequest StreamingStatistics StreamingManager ThreadPool">
+    <a class="api-namespace-list__link" href="mitiru-resource/"><code>mitiru::resource</code></a>
+    <span class="api-namespace-list__meta">67 型 &middot; 432 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::scene" data-classes="ComponentPersistenceEntry EntityPersistence LightType MeshComponent AudioSourceComponent ComponentStore GameWorld IScene MitiruScene MitiruSceneManager TraversalOrder NodeId SceneNode SceneGraph SceneRouter SceneData ComponentSerializerEntry SceneSerializer2 TransitionType TransitionPhase TransitionConfig SceneTransitionManager ISystem SystemProfile SystemRunner TransitionKind SlideDirection TransitionFrame Transition">
+    <a class="api-namespace-list__link" href="mitiru-scene/"><code>mitiru::scene</code></a>
+    <span class="api-namespace-list__meta">29 型 &middot; 185 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::screen_detail" data-classes="">
+    <a class="api-namespace-list__link" href="mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+    <span class="api-namespace-list__meta">0 型 &middot; 4 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::server" data-classes="HttpRequest HttpResponse">
+    <a class="api-namespace-list__link" href="mitiru-server/"><code>mitiru::server</code></a>
+    <span class="api-namespace-list__meta">2 型 &middot; 17 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::server::detail" data-classes="">
+    <a class="api-namespace-list__link" href="mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+    <span class="api-namespace-list__meta">0 型 &middot; 6 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::sprite" data-classes="FrameData AnimatedSprite ParametricPortrait">
+    <a class="api-namespace-list__link" href="mitiru-sprite/"><code>mitiru::sprite</code></a>
+    <span class="api-namespace-list__meta">3 型 &middot; 31 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::time" data-classes="Cooldown Sequence Timer">
+    <a class="api-namespace-list__link" href="mitiru-time/"><code>mitiru::time</code></a>
+    <span class="api-namespace-list__meta">3 型 &middot; 18 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::time::detail" data-classes="SmallFunction">
+    <a class="api-namespace-list__link" href="mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+    <span class="api-namespace-list__meta">1 型 &middot; 9 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::ui" data-classes="UIAccessibilityConfig FocusIndicatorStyle UIElementDescription ConstraintType UIConstraint SolvedBounds ConstraintLayout DialogueLine DialogueChoice DialogueBoxStyle DialogueBox FlexDirection FlexWrap FlexJustify FlexAlignItems FlexAlignContent FlexAlignSelf FlexConfig FlexItemConfig FlexLayout GridAlign TrackFixed TrackFraction GridPlacement GridLayoutConfig GridArea GridLayout Anchor LayoutDirection SizeMode Margin LayoutConstraints LayoutResult LayoutEngine ModalButtonStyle ModalState ModalButton ModalBackdrop ModalAnimation ModalConfig Modal ModalManager ResponsiveProperty ResponsiveStrategy Breakpoint ResponsiveRule ResponsiveLayout Side Insets ColumnLayout SplitH SplitV LayoutPanelStyle LayoutButtonStyle TabDef FormField ScreenLayout ScrollBarStyle ScrollViewConfig VirtualScrollRange ScrollView AnchorPreset UIAnchorConfig UIResolvedBounds UIAnchorEntry UIAnchorLayout UIAnimationType UIAnimation UIAnimationTransform UIAnimationState UIAnimator UIBuilder UIBindProperty UIBindingEntry UITwoWayBindingEntry UIExpressionBindingEntry UIListBindingEntry UIBindingContext DropResultType DropZoneHighlight DragPayload DropResult DropTarget DragRenderInfo DropZoneRenderInfo UIDragDropManager UIEventType UIEvent UIEventDispatcher UIEventType UIEvent UIEventLog UIEventPhase MouseEventType KeyEventType UIMouseEvent UIKeyEvent UIFocusEvent UIEventProcessor UIFocusManager NineSliceRegions UIRole UINodeData UINode NotificationType NotificationPosition NotificationAction UINotification NotificationQueueConfig NotificationRenderInfo UINotificationQueue UIPrefabNodeDef UIPrefab UIStateManager UIRenderer RichTextSegment RichTextMeasurement UIRichText SmartTooltipPosition TooltipContentType SmartTooltipConfig SmartTooltip SmartTooltipGroup UIElementInfo UISnapshot UIVisualState UIDragState UIInteractiveState UIStateManager UIVisualState UIFontWeight UITextAlign UIVerticalAlign UITextOverflow UIEdgeInsets UIOffset UINineSliceConfig UIWidgetMetrics UIBoxStyle UITextStyle UIBoxStyleOverride UITextStyleOverride UIStateStyles UIStyleSheet UITemplate ThemeMetrics UIThemeStyle UITheme UINodeProperties UIState UITransitionDef UINodeTransitionState UIActiveTransition UIStateManager UIAccordionSection UIAccordionConfig UIAccordion AvatarStatus UIAvatarConfig UIAvatar BadgePosition UIBadgeConfig UIBadge ButtonState UIButtonConfig UIButton UICardContent UICardConfig UICard UICarouselItem UICarouselConfig UICarousel UIChatMessage UIChatChannel UIChatScrollBarStyle UIChatWindowConfig UIChatWindow ColorPickerInteraction UIColorRGBA UIColorHSV UIColorPreset UIColorPickerConfig UIColorPicker UIMenuItemDef UIContextMenuConfig UIContextMenu WindowResizeEdge UIDraggableWindowConfig UIDraggableWindow UIDropdownConfig UIDropdown FloatingTextFontWeight UIFloatingTextStyle UIFloatingTextConfig UIFloatingTextEntry UIFloatingTextManager UIFormFieldType LabelAlign UIFormError UIFormField UIFormConfig UIForm HotbarOrientation UIHotbarConfig UIHotbarSlot UIHotbar ItemRarity GridPos UIInventoryItem UIInventoryGridConfig UIInventoryGrid UIListItem UIListViewConfig UIListView UIMenuDef UIMenuBarConfig UIMenuBar UINumberSpinnerConfig UINumberSpinner ProgressLabelFormat UIProgressBarConfig UIProgressBar RadialMenuAnimation UIRadialMenuItem UIRadialMenuConfig UIRadialSectorInfo UIRadialMenu RadioOrientation UIRadioOption UIRadioGroupConfig UIRadioGroup Orientation UISliderConfig UISlider SplitterOrientation UISplitterConfig UISplitter TabBarOrientation UITabBarConfig UITabBar TableAlign UITableColumn UITableRow UITableConfig UITable UITextInputConfig UITextInput ToastPosition ToastStackDirection ToastType ToastSlideDirection UIToastTypeStyle UIToastConfig UIToastEntry UIToastManager ToggleStyle UIToggleConfig UIToggle TooltipPosition UITooltipConfig UITooltip UITreeNode UITreeViewConfig UITreeView">
+    <a class="api-namespace-list__link" href="mitiru-ui/"><code>mitiru::ui</code></a>
+    <span class="api-namespace-list__meta">264 型 &middot; 2409 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::ui::LayoutPresets" data-classes="MenuLayout VNLayout TwoColumnLayout HUDLayout SplitLayout DashboardLayout">
+    <a class="api-namespace-list__link" href="mitiru-ui-layoutpresets/"><code>mitiru::ui::LayoutPresets</code></a>
+    <span class="api-namespace-list__meta">6 型 &middot; 43 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::util" data-classes="Base64 Camera2DHelper PaletteType ColorPalette CommandLineParser Compression CompressedAssetBundle Easing Lerp Grid2D Hash HighScoreStore ObjectPool Pathfinder Rng IntervalTimer CountdownTimer StringUtils TileRenderer TweenEntry Tweener">
+    <a class="api-namespace-list__link" href="mitiru-util/"><code>mitiru::util</code></a>
+    <span class="api-namespace-list__meta">21 型 &middot; 160 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::validate" data-classes="Engine ScreenshotAnalysis AutoScreenshot ITestableDemo DemoTestResult TestReport AutoScreenshotTest CoverageTracker DeadlockInfo DeadlockDetector GameplayAnomaly MetricRule GameplayMetrics HealthMetrics HealthCheck ValidationResult InvariantRegistry PhysicsAnomaly PhysicsValidatorConfig PhysicsValidator DiffResult ScreenshotDiffer TemporalRuleType TemporalViolation TemporalRule TemporalInvariantChecker UIElement LayoutIssue UILayoutValidator VisualDebugOverlay RegressionResult VisualRegressionTest">
+    <a class="api-namespace-list__link" href="mitiru-validate/"><code>mitiru::validate</code></a>
+    <span class="api-namespace-list__meta">32 型 &middot; 247 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::vn" data-classes="ColorBlindMode ColorTransform ColorOverrides AccessibilityConfig ScreenReaderOutput AccessibilitySceneState AccessibilityManager ToastPhase Achievement AchievementToastAppearance AchievementToast AchievementSystem AutoSkipBinding AutoSkipMode AdvanceAction AutoSkipConfig AutoSkipController BackgroundLayerType BackgroundColor KenBurnsAnimation BackgroundRenderInfo BackgroundManager BacklogState BacklogEntry BacklogStyle BacklogUIConfig BacklogUI CGGalleryLayout CGEntry CGViewerState CGGallery SceneReplayEntry SceneReplayManager ChapterStatus ChapterDef EndingDef ChapterSelectInfo ChapterManager CharacterPosition ShowAnimation HideAnimation CharacterSlideDirection CharAnimType CharacterPositionConfig CharacterDefinition CharacterState CharacterAnimation CharacterRenderInfo CharacterManager ChoiceState ChoiceLayout ChoiceAlignment ChoiceAnimation ChoiceButtonStyle ChoiceEntry ChoiceUIConfig ChoiceUI ConfigAction VNConfig ConfigScreenLayout SliderWidget ToggleWidget ConfigScreen DialogResult DialogButtons DialogState DialogParams DialogButton ConfirmDialog MoodType BGMTransitionType MoodTypeHash BGMTrack BGMLayer TrackPlayState BGMState MoodDetection MoodDetector DynamicBGMController EasingType ExprTokenKind ExprToken ExpressionLexer ExpressionEvaluator FlagScope FlagManager FlowNodeType FlowChartNodeStyle FlowChartAppearance ChoiceRecord FlowConnection FlowNode EndingInfo FlowChartViewState FlowChart FlowChartBuilder LineDiffType LineDiff LabelDiff ReloadResult ScenarioDiffTracker WatchedFile ScenarioHotReloader WatchEntry OverlayRenderData DeveloperOverlay AnimatedCharacterParam HitTestResult LipSyncConfig EyeTrackingConfig IdleMotionConfig IAnimatedCharacter IAnimatedCharacterFactory NullAnimatedCharacter NullAnimatedCharacterFactory AnimatedCharacterManager MessageWindowState MessageMode WindowAnimation WindowSkinType SolidColorSkin WindowSkin ClickWaitIndicator MessageWindowConfig NvlLine MessageWindow MovieState MovieFrame MovieAudioBuffer MovieFadeConfig IMovieDecoder NullMovieDecoder MoviePlayer NineSliceConfig NineSlice AnalyticsEventType AnalyticsEvent ChoiceStatEntry SceneChoiceStats DropOffPoint RingBuffer PlayerAnalytics ReadTracker SegmentType TextColor TextStyle RichTextSegment LayoutChar TextLayout RichTextParser KinsokuRules RichTextEngine RubySegment PositionedRubyGlyph RubyLayoutResult RubyLayoutParams RubyTextLayout SaveLoadMode SaveLoadAction ThumbnailData ThumbnailCapture SaveSlotInfo SaveDataSerializer SaveLoadGridConfig SaveLoadScreen MacroDefinition MacroRegistry MacroPreprocessor ScenarioTokenType ScenarioCommandType ScenarioToken ScenarioChoiceEntry CharacterParams BackgroundParams AudioParams IfParams SetParams TransitionParams DialogueParams ScenarioNode ScenarioLexer ScenarioParser InlineTag ScenarioCallback ScenarioExecutor CallStackFrame ChoiceDisplayState ScenarioSaveState ColorFilterType ShakeAxis FadeDirection EffectParticle ScreenEffectResult ScreenEffect ShakeEffect FlashEffect FadeEffect RainEffect SnowEffect BlurEffect VignetteEffect ColorFilterEffect LetterboxEffect ZoomEffect ScreenEffectManager ScriptResult IScriptingEngine NullScriptingEngine VNScriptBridge ScrollBarStyle ScrollConfig ScrollContainer TextEffect EffectParams CharTransform CharAnimState TextAnimator TransitionType TransitionState WipeDirection SlideDirection RulePattern FadeColor RuleImageGenerator TransitionEffect TransitionBuilder TransitionManager Utf8Iterator GlyphInfo FontMetrics GlyphCache TrueTypeFont WindowBackgroundType Padding MessageWindowSkin ElementState ChoiceButtonSkin SaveSlotSkin ConfigSliderSkin ScrollBarSkin FontConfig UISkin SkinValidationResult UISkinLoader NineSliceRegion VNRenderer ChoiceButtonState TextureLoadResult VNTextureManager VerticalTextConfig PositionedGlyph VerticalRubySpan VerticalTextLayout">
+    <a class="api-namespace-list__link" href="mitiru-vn/"><code>mitiru::vn</code></a>
+    <span class="api-namespace-list__meta">253 型 &middot; 1981 項目</span>
+  </li>
+  <li class="api-namespace-list__item" data-name="mitiru::world" data-classes="AnchoredEntity">
+    <a class="api-namespace-list__link" href="mitiru-world/"><code>mitiru::world</code></a>
+    <span class="api-namespace-list__meta">1 型 &middot; 5 項目</span>
+  </li>
+</ul>
+
+  </div>
+</section>
+
+<script>
+  (function () {
+    var input = document.getElementById('api-filter');
+    var list = document.getElementById('api-namespace-list');
+    if (!input || !list) { return; }
+
+    var items = Array.prototype.slice.call(list.querySelectorAll('.api-namespace-list__item'));
+    var indexed = items.map(function (li) {
+      var name = (li.getAttribute('data-name') || '').toLowerCase();
+      var classes = (li.getAttribute('data-classes') || '').toLowerCase();
+      return { el: li, hay: name + ' ' + classes };
+    });
+
+    function filter(query) {
+      var q = query.trim().toLowerCase();
+      var anyVisible = false;
+      indexed.forEach(function (entry) {
+        var match = q === '' || entry.hay.indexOf(q) !== -1;
+        entry.el.style.display = match ? '' : 'none';
+        if (match) { anyVisible = true; }
+      });
+
+      var emptyMsg = document.getElementById('api-filter-empty');
+      if (!anyVisible) {
+        if (!emptyMsg) {
+          emptyMsg = document.createElement('p');
+          emptyMsg.id = 'api-filter-empty';
+          emptyMsg.className = 'api-search__empty';
+          emptyMsg.textContent = 'No namespaces or classes match this filter.';
+          list.parentNode.insertBefore(emptyMsg, list.nextSibling);
+        }
+        emptyMsg.style.display = '';
+      } else if (emptyMsg) {
+        emptyMsg.style.display = 'none';
+      }
+    }
+
+    var lastValue = '';
+    input.addEventListener('input', function () {
+      var v = input.value;
+      if (v === lastValue) { return; }
+      lastValue = v;
+      filter(v);
+    });
+
+    
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        input.value = '';
+        lastValue = '';
+        filter('');
+      }
+    });
+  }());
+</script>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">
+        <span class="site-footer__brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 24 L4 8 L10 14 L16 8 L22 14 L28 8 L28 24"/>
+          </svg>
+        </span>
+        MitiruEngine
+      </p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+      <p class="site-footer__build" aria-label="built with">
+        <code>built_with</code>
+        <span class="site-footer__build-chip">C++20</span>
+        <span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
+        <span class="site-footer__build-chip site-footer__build-chip--data">JSON</span>
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
+      <p class="site-footer__hint">
+        <kbd>?</kbd> でショートカット一覧
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+      <p class="site-footer__easter" aria-hidden="true">
+        <span class="site-footer__easter-prompt"><code>$ echo &quot;hello, world&quot;</code></span>
+        <span class="site-footer__easter-cursor">_</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js" defer></script>
+</body>
+</html>

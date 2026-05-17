@@ -1,75 +1,704 @@
-<!doctype html><html lang=ja data-base=/><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>3. シーンと状態を管理する | MitiruEngine</title>
-<meta name=description content="MitiruEngine におけるシーン構成と状態管理。SceneRouter / StateMachine / Timer / Cooldown / Sequence を組み合わせて、ジャンルを問わない update ループを書く方法。"><link rel=canonical href=https://mogmog-0110.github.io/MitiruEngine/chapters/scene/><link rel=alternate hreflang=ja href=https://mogmog-0110.github.io/MitiruEngine/chapters/scene/><meta property="og:title" content="3. シーンと状態を管理する | MitiruEngine"><meta property="og:description" content="MitiruEngine におけるシーン構成と状態管理。SceneRouter / StateMachine / Timer / Cooldown / Sequence を組み合わせて、ジャンルを問わない update ループを書く方法。"><meta property="og:type" content="article"><meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/chapters/scene/"><meta property="og:site_name" content="MitiruEngine"><meta property="og:locale" content="ja_JP"><meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name=twitter:card content="summary_large_image"><meta name=twitter:title content="3. シーンと状態を管理する | MitiruEngine"><meta name=twitter:description content="MitiruEngine におけるシーン構成と状態管理。SceneRouter / StateMachine / Timer / Cooldown / Sequence を組み合わせて、ジャンルを問わない update ループを書く方法。"><meta name=twitter:image content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><link rel=icon type=image/svg+xml href=https://mogmog-0110.github.io/MitiruEngine/favicon.svg><link rel=icon type=image/png sizes=32x32 href=https://mogmog-0110.github.io/MitiruEngine/favicon-32.png><link rel=apple-touch-icon sizes=180x180 href=https://mogmog-0110.github.io/MitiruEngine/favicon-180.png><link rel="alternate icon" href=https://mogmog-0110.github.io/MitiruEngine/favicon.ico><meta name=color-scheme content="light dark"><script>(function(){try{var e=localStorage.getItem("theme");(e==="dark"||e==="light")&&document.documentElement.setAttribute("data-theme",e)}catch{}})()</script><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/css/main.css><link rel=preconnect href=https://fonts.googleapis.com><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"></head><body><header class=site-header><div class="container site-header__inner"><a class=site-header__brand href=https://mogmog-0110.github.io/MitiruEngine/><span class=site-header__brand-mark aria-hidden=true>M</span>
-<span class=site-header__brand-name>MitiruEngine</span>
-</a><input type=checkbox id=nav-toggle class=nav-toggle role=button aria-label=メニュー aria-controls=primary-nav>
-<label for=nav-toggle class=nav-toggle__label aria-hidden=true><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label><nav class=site-nav id=primary-nav aria-label=primary><a href=https://mogmog-0110.github.io/MitiruEngine/>ホーム</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/getting-started/>はじめに</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/tutorials/>チュートリアル</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/chapters/>できること</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/api/>API</a>
-<button type=button class=search-trigger id=site-search-trigger aria-label=サイト内検索 aria-haspopup=dialog aria-expanded=false aria-controls=site-search-dialog>
-<svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
-<span class=visually-hidden>サイト内検索</span></button><div class=search-dialog id=site-search-dialog role=dialog aria-modal=true aria-labelledby=site-search-title data-pagefind-ignore hidden><div class=search-dialog__backdrop data-search-close></div><div class=search-dialog__panel role=document><div class=search-dialog__header><h2 id=site-search-title class=search-dialog__title>サイト内検索</h2><button type=button class=search-dialog__close data-search-close aria-label=閉じる><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div id=site-search class=search-dialog__body></div></div></div><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css><script src=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js defer></script><script>(function(){var t,n,i,a,r,c,d,u,s=document.getElementById("site-search-trigger"),e=document.getElementById("site-search-dialog");if(!s||!e)return;d=e.querySelector("#site-search"),i=e.querySelectorAll("[data-search-close]"),c=document.documentElement,u=(c.getAttribute("lang")||"en").toLowerCase(),a="https://mogmog-0110.github.io/MitiruEngine/pagefind/",r={placeholder:"ドキュメントを検索…",clear_search:"クリア",load_more:"さらに読み込む",search_label:"サイト内検索",filters_label:"Filters",zero_results:"「[SEARCH_TERM]」に一致する結果はありません",many_results:"[SEARCH_TERM] の検索結果 [COUNT] 件",one_result:"[SEARCH_TERM] の検索結果 [COUNT] 件",alt_search:"代わりに [DISPLAY_QUERY] の結果を表示しています",search_suggestion:"[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",searching:"検索中…"},t=null,n=null;function h(){return t?t:typeof window.PagefindUI!="function"?null:(t=new window.PagefindUI({element:d,showSubResults:!0,showImages:!1,excerptLength:30,resetStyles:!1,bundlePath:a,translations:r,autofocus:!0}),t)}function l(){n=document.activeElement,e.hidden=!1,requestAnimationFrame(function(){e.classList.add("is-open"),document.body.classList.add("search-open"),s.setAttribute("aria-expanded","true"),h();var t=e.querySelector(".pagefind-ui__search-input");t&&t.focus()})}function o(){e.classList.remove("is-open"),document.body.classList.remove("search-open"),s.setAttribute("aria-expanded","false"),setTimeout(function(){e.classList.contains("is-open")||(e.hidden=!0),n&&typeof n.focus=="function"&&n.focus()},200)}s.addEventListener("click",function(){e.classList.contains("is-open")?o():l()}),i.forEach(function(e){e.addEventListener("click",o)});function m(){var n,t=e.querySelector(".search-dialog__panel");return t?(n='a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',Array.prototype.filter.call(t.querySelectorAll(n),function(e){return!e.hasAttribute("hidden")&&e.offsetParent!==null})):[]}document.addEventListener("keydown",function(t){if(s=e.classList.contains("is-open"),t.key==="Escape"&&s){o();return}if(t.key==="Tab"&&s){if(n=m(),n.length===0){t.preventDefault();return}var n,s,r,i=n[0],c=n[n.length-1],a=document.activeElement;t.shiftKey&&a===i?(t.preventDefault(),c.focus()):!t.shiftKey&&a===c?(t.preventDefault(),i.focus()):e.contains(a)||(t.preventDefault(),i.focus());return}(t.metaKey||t.ctrlKey)&&(t.key==="k"||t.key==="K")&&(t.preventDefault(),s?(r=e.querySelector(".pagefind-ui__search-input"),r&&r.focus()):l())})})()</script><a class=site-nav__github href=https://github.com/mogmog-0110/MitiruEngine aria-label=GitHub><svg width="20" height="20" viewBox="0 0 16 16" fill="currentcolor" aria-hidden="true"><path d="M8 0C3.58.0.0 3.58.0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95.0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12.0.0.67-.21 2.2.82a7.62 7.62.0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15.0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-<span class=visually-hidden>GitHub</span>
-</a><button type=button class=shortcuts-trigger data-shortcuts-open aria-haspopup=dialog aria-controls=shortcuts-dialog aria-label="Keyboard shortcuts" title=?>
-<kbd class=shortcuts-trigger__kbd aria-hidden=true>?</kbd>
+<!DOCTYPE html>
+<html lang="ja" data-base="/">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3. シーンと状態を管理する | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="MitiruEngine におけるシーン構成と状態管理。SceneRouter / StateMachine / Timer / Cooldown / Sequence を組み合わせて、ジャンルを問わない update ループを書く方法。">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/chapters/scene/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/chapters/scene/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="3. シーンと状態を管理する | MitiruEngine">
+<meta property="og:description" content="MitiruEngine におけるシーン構成と状態管理。SceneRouter / StateMachine / Timer / Cooldown / Sequence を組み合わせて、ジャンルを問わない update ループを書く方法。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/chapters/scene/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="3. シーンと状態を管理する | MitiruEngine">
+<meta name="twitter:description" content="MitiruEngine におけるシーン構成と状態管理。SceneRouter / StateMachine / Timer / Cooldown / Sequence を組み合わせて、ジャンルを問わない update ループを書く方法。">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
 </button>
-<button type=button class=theme-toggle id=theme-toggle aria-pressed=false aria-label=ダークモード切替><svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg></button></nav></div></header><script>(function(){var t=document.getElementById("nav-toggle"),e=document.getElementById("theme-toggle");t&&t.addEventListener("change",function(){t.checked?document.body.classList.add("is-nav-open"):document.body.classList.remove("is-nav-open")});function s(){var e=document.documentElement.getAttribute("data-theme");return e==="dark"||e==="light"?e==="dark":window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches}function n(){if(!e)return;e.setAttribute("aria-pressed",s()?"true":"false")}n(),e&&e.addEventListener("click",function(){var e,t=document.documentElement,s=t.getAttribute("data-theme"),o=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;s==="dark"?e="light":s==="light"?e="dark":e=o?"light":"dark",t.setAttribute("data-theme",e);try{localStorage.setItem("theme",e)}catch{}n()})})()</script><main class=site-main data-pagefind-body><article class="chapter-article container" style=--chapter-accent:#14b8a6><header class=chapter-article__header><p class=page-eyebrow><a href=https://mogmog-0110.github.io/MitiruEngine/chapters/>チャプター</a>
-<span class=page-eyebrow__num>03</span>
-<span class=page-eyebrow__total>/ 06</span></p><div class=chapter-article__icon aria-hidden=true><svg viewBox="0 0 32 32" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="16" r="3.5" stroke="currentcolor"/><circle cx="16" cy="7" r="3.5" stroke="currentcolor"/><circle cx="26" cy="16" r="3.5" stroke="currentcolor"/><line x1="9" y1="14" x2="13" y2="9.5"/><polyline points="12,8.5 13.5,10.5 11.5,11.5" fill="currentcolor" stroke="currentcolor" stroke-width="1.5"/><line x1="19" y1="9.5" x2="23" y2="14"/><polyline points="23.5,12.5 22.5,14.5 24.5,14.5" fill="currentcolor" stroke="currentcolor" stroke-width="1.5"/><rect x="5" y="23" width="4" height="3" rx="1" fill="currentcolor" fill-opacity=".3" stroke="currentcolor" stroke-width="1.5"/><rect x="14" y="23" width="4" height="3" rx="1" fill="currentcolor" fill-opacity=".3" stroke="currentcolor" stroke-width="1.5"/><rect x="23" y="23" width="4" height="3" rx="1" fill="currentcolor" fill-opacity=".3" stroke="currentcolor" stroke-width="1.5"/></svg></div><h1 class=chapter-article__title>3. シーンと状態を管理する</h1><p class=chapter-article__lede>MitiruEngine におけるシーン構成と状態管理。SceneRouter / StateMachine / Timer / Cooldown / Sequence を組み合わせて、ジャンルを問わない update ループを書く方法。</p></header><aside class=page-summary><h2 class=page-summary__h>このページで分かること</h2><ul><li>シーンの作りかたと遷移の組みかた</li><li>StateMachine + Timer + Cooldown の使い分け</li><li>ゲームループと固定タイムステップ</li></ul></aside><div class=page-with-toc><div class=chapter-article__body><p>シーン (タイトル → メニュー → 戦闘 → リザルト&mldr;) の切り替えと、シーン内の細かい状態 (idle → attacking → cooldown) は、ジャンルを問わずゲームの背骨です。MitiruEngine はこれを <strong>C++ 側で素直に持つ</strong>ことを推奨しています。</p><ul><li><strong>シーン遷移</strong> は <code>mitiru::scene::SceneRouter</code> でスタック型に積む / 差し替える</li><li><strong>シーン内のフェーズ管理</strong> は <code>mitiru::fsm::StateMachine&lt;EnumT></code> で enum 駆動の状態機械を持つ</li><li><strong>時間絡みの遷移</strong> は <code>Timer</code> / <code>Cooldown</code> / <code>Sequence</code> で待つ</li></ul><p>JSON で宣言する rule に逃がしてもいいですが、シンプルな C++ で書くほうが読みやすいというのがエンジンの方針です。</p><figure class=arch-figure><svg viewBox="0 0 760 240" role="img" aria-labelledby="ch-scene-title ch-scene-desc" class="arch-svg"><title id="ch-scene-title">シーン遷移とフェーズ状態機械の例</title><desc id="ch-scene-desc">外側にシーンルータ (Title → Menu → Battle → Result)、内側に Battle 内フェーズ (Idle → Windup → Strike → Recover) という 2 階建ての状態機械。</desc><defs><marker id="sc-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="var(--c-accent)"/></marker></defs><p><text x="20" y="22" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">外側: SceneRouter</text></p><p><rect x="20" y="36" width="140" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"/><text x="90" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Title</text><text x="90" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">push</text></p><p><rect x="200" y="36" width="140" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"/><text x="270" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Menu</text><text x="270" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">replace</text></p><p><rect x="380" y="36" width="140" height="50" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"/><text x="450" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">Battle</text><text x="450" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">replace</text></p><p><rect x="560" y="36" width="140" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"/><text x="630" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Result</text><text x="630" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">push</text></p><p><line x1="160" y1="61" x2="200" y2="61" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"/><line x1="340" y1="61" x2="380" y2="61" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"/><line x1="520" y1="61" x2="560" y2="61" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"/></p><p><text x="20" y="120" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">内側: Battle 内 StateMachine&lt;AttackPhase></text></p><p><rect x="20" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"/><text x="90" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Idle</text><text x="90" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">wait input</text></p><p><rect x="200" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"/><text x="270" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Windup</text><text x="270" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">0.2s</text></p><p><rect x="380" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"/><text x="450" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Strike</text><text x="450" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">hitbox on</text></p><p><rect x="560" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"/><text x="630" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Recover</text><text x="630" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">→ Idle</text></p><p><line x1="160" y1="161" x2="200" y2="161" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"/><line x1="340" y1="161" x2="380" y2="161" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"/><line x1="520" y1="161" x2="560" y2="161" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"/><path d="M630 186q0 34-540 34 0-20 0-34" stroke="var(--c-accent)" stroke-width="2" fill="none" marker-end="url(#sc-arr)"/></svg></p><figcaption>図: 外側のシーンと内側のフェーズは、両方とも C++ の素直な enum + 関数で書ける。</figcaption></figure><h2 id=シーンルーター>シーンルーター</h2><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;mitiru/scene/SceneRouter.hpp&gt;</span><span class=cp>
-</span></span></span><span class=line><span class=cl><span class=cp></span>
-</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>TitleScene</span> <span class=o>:</span> <span class=k>public</span> <span class=n>mitiru</span><span class=o>::</span><span class=n>scene</span><span class=o>::</span><span class=n>IScene</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
-</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=n>update</span><span class=p>(</span><span class=kt>float</span> <span class=n>dt</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span> <span class=cm>/* ... */</span> <span class=p>}</span>
-</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=nf>draw</span><span class=p>(</span><span class=n>mitiru</span><span class=o>::</span><span class=n>Screen</span><span class=o>&amp;</span> <span class=n>s</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span> <span class=cm>/* ... */</span> <span class=p>}</span>
-</span></span><span class=line><span class=cl><span class=p>};</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>BattleScene</span> <span class=o>:</span> <span class=k>public</span> <span class=n>mitiru</span><span class=o>::</span><span class=n>scene</span><span class=o>::</span><span class=n>IScene</span> <span class=p>{</span> <span class=cm>/* ... */</span> <span class=p>};</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>scene</span><span class=o>::</span><span class=n>SceneRouter</span> <span class=n>router</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=n>router</span><span class=p>.</span><span class=n>push</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>make_unique</span><span class=o>&lt;</span><span class=n>TitleScene</span><span class=o>&gt;</span><span class=p>());</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// プレイヤーが「始める」を選んだら
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>router</span><span class=p>.</span><span class=n>replace</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>make_unique</span><span class=o>&lt;</span><span class=n>BattleScene</span><span class=o>&gt;</span><span class=p>());</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// ポーズメニューを上に積む
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>router</span><span class=p>.</span><span class=n>push</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>make_unique</span><span class=o>&lt;</span><span class=n>PauseScene</span><span class=o>&gt;</span><span class=p>());</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// ポーズを閉じる
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>router</span><span class=p>.</span><span class=n>pop</span><span class=p>();</span>
-</span></span></code></pre></div><p>RPG のシーン階層 (世界 → 街 → 店) も、RTS の (ロビー → マッチ → リザルト) も、シューティングの (タイトル → ステージ → ゲームオーバー) も、すべて同じ <code>push/pop/replace</code> で書けます。</p><h2 id=ステートマシン-シーン内のフェーズ>ステートマシン (シーン内のフェーズ)</h2><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;mitiru/fsm/StateMachine.hpp&gt;</span><span class=cp>
-</span></span></span><span class=line><span class=cl><span class=cp></span>
-</span></span><span class=line><span class=cl><span class=k>enum</span> <span class=k>class</span> <span class=nc>AttackPhase</span> <span class=p>{</span> <span class=n>Idle</span><span class=p>,</span> <span class=n>Windup</span><span class=p>,</span> <span class=n>Strike</span><span class=p>,</span> <span class=n>Recover</span> <span class=p>};</span>
-</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>fsm</span><span class=o>::</span><span class=n>StateMachine</span><span class=o>&lt;</span><span class=n>AttackPhase</span><span class=o>&gt;</span> <span class=n>sm</span><span class=p>{</span><span class=n>AttackPhase</span><span class=o>::</span><span class=n>Idle</span><span class=p>};</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=n>sm</span><span class=p>.</span><span class=n>transition</span><span class=p>(</span><span class=n>AttackPhase</span><span class=o>::</span><span class=n>Idle</span><span class=p>,</span> <span class=n>AttackPhase</span><span class=o>::</span><span class=n>Windup</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=c1>// 0.2s 経過後...
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>sm</span><span class=p>.</span><span class=n>transition</span><span class=p>(</span><span class=n>AttackPhase</span><span class=o>::</span><span class=n>Windup</span><span class=p>,</span> <span class=n>AttackPhase</span><span class=o>::</span><span class=n>Strike</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=c1>// hitbox を有効にして、その後...
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>sm</span><span class=p>.</span><span class=n>transition</span><span class=p>(</span><span class=n>AttackPhase</span><span class=o>::</span><span class=n>Strike</span><span class=p>,</span> <span class=n>AttackPhase</span><span class=o>::</span><span class=n>Recover</span><span class=p>);</span>
-</span></span></code></pre></div><p>アクションのコンボ、シミュレーションの建築フェーズ、カードゲームのターン進行、どれにも同じパターンが効きます。</p><h2 id=タイマー--クールダウン--シーケンス>タイマー / クールダウン / シーケンス</h2><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>time</span><span class=o>::</span><span class=n>Cooldown</span> <span class=n>fireCooldown</span><span class=p>{</span><span class=mf>0.25f</span><span class=p>};</span>   <span class=c1>// 4 連射 / 秒
-</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>if</span> <span class=p>(</span><span class=n>mapper</span><span class=p>.</span><span class=n>wasPressed</span><span class=p>(</span><span class=n>Action</span><span class=o>::</span><span class=n>Fire</span><span class=p>)</span> <span class=o>&amp;&amp;</span> <span class=n>fireCooldown</span><span class=p>.</span><span class=n>ready</span><span class=p>())</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=n>spawnBullet</span><span class=p>();</span>
-</span></span><span class=line><span class=cl>    <span class=n>fireCooldown</span><span class=p>.</span><span class=n>trigger</span><span class=p>();</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl><span class=n>fireCooldown</span><span class=p>.</span><span class=n>update</span><span class=p>(</span><span class=n>dt</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=n>mitiru</span><span class=o>::</span><span class=n>time</span><span class=o>::</span><span class=n>Sequence</span> <span class=n>intro</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=n>intro</span><span class=p>.</span><span class=n>then</span><span class=p>([</span><span class=o>&amp;</span><span class=p>]{</span> <span class=n>showLogo</span><span class=p>();</span> <span class=p>},</span> <span class=mf>1.0f</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>     <span class=p>.</span><span class=n>then</span><span class=p>([</span><span class=o>&amp;</span><span class=p>]{</span> <span class=n>showTitle</span><span class=p>();</span> <span class=p>},</span> <span class=mf>0.6f</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>     <span class=p>.</span><span class=n>then</span><span class=p>([</span><span class=o>&amp;</span><span class=p>]{</span> <span class=n>enableInput</span><span class=p>();</span> <span class=p>},</span> <span class=mf>0.0f</span><span class=p>);</span>
-</span></span><span class=line><span class=cl><span class=n>intro</span><span class=p>.</span><span class=n>update</span><span class=p>(</span><span class=n>dt</span><span class=p>);</span>
-</span></span></code></pre></div><h2 id=cef-側にステートを通知する>CEF 側にステートを通知する</h2><p>シーン状態を HUD や UI に出すとき、JS にロジックを持たせず「C++ が決めた現在値を push して、HTML が表示する」だけにします。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>engine</span><span class=p>.</span><span class=n>cefContext</span><span class=p>().</span><span class=n>executeJavaScript</span><span class=p>(</span>
-</span></span><span class=line><span class=cl>    <span class=s>&#34;Mitiru.state.set(&#39;scene&#39;, &#39;&#34;</span> <span class=o>+</span> <span class=n>currentSceneName</span> <span class=o>+</span> <span class=s>&#34;&#39;);&#34;</span><span class=p>);</span>
-</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-html data-lang=html><span class=line><span class=cl><span class=p>&lt;</span><span class=nt>script</span><span class=p>&gt;</span>
-</span></span><span class=line><span class=cl>  <span class=nx>Mitiru</span><span class=p>.</span><span class=nx>state</span><span class=p>.</span><span class=nx>subscribe</span><span class=p>(</span><span class=s1>&#39;scene&#39;</span><span class=p>,</span> <span class=nx>name</span> <span class=p>=&gt;</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=nb>document</span><span class=p>.</span><span class=nx>getElementById</span><span class=p>(</span><span class=s1>&#39;scene-label&#39;</span><span class=p>).</span><span class=nx>textContent</span> <span class=o>=</span> <span class=nx>name</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>  <span class=p>});</span>
-</span></span><span class=line><span class=cl><span class=p>&lt;/</span><span class=nt>script</span><span class=p>&gt;</span>
-</span></span></code></pre></div><h2 id=関連-api>関連 API</h2><ul><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru/><code>mitiru::scene::SceneRouter</code></a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru/><code>mitiru::fsm::StateMachine</code></a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru/><code>mitiru::time::Timer</code> / <code>Cooldown</code> / <code>Sequence</code></a></li></ul><h2 id=もっと深く知る>もっと深く知る</h2><ul><li><a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/cpp-gameplay-api-gaps.md>docs/cpp-gameplay-api-gaps.md</a> — C++ gameplay API の現状</li><li><a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a></li></ul></div><aside class=page-toc aria-label=このページの目次><h2>このページの目次</h2><nav id=TableOfContents><ul><li><a href=#シーンルーター>シーンルーター</a></li><li><a href=#ステートマシン-シーン内のフェーズ>ステートマシン (シーン内のフェーズ)</a></li><li><a href=#タイマー--クールダウン--シーケンス>タイマー / クールダウン / シーケンス</a></li><li><a href=#cef-側にステートを通知する>CEF 側にステートを通知する</a></li><li><a href=#関連-api>関連 API</a></li><li><a href=#もっと深く知る>もっと深く知る</a></li></ul></nav></aside></div><nav class=page-pager aria-label="chapter navigation"><div><a class=page-pager__prev href=https://mogmog-0110.github.io/MitiruEngine/chapters/input/>前: 2. 入力を受ける</a></div><div><a class=page-pager__next href=https://mogmog-0110.github.io/MitiruEngine/chapters/audio/>次: 4. BGM と SE を鳴らす</a></div></nav></article></main><footer class=site-footer><div class="container site-footer__inner"><div class=site-footer__col><p class=site-footer__brand><span class=site-footer__brand-mark aria-hidden=true><svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentcolor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 24V8l6 6 6-6 6 6 6-6V24"/></svg>
-</span>MitiruEngine</p><p class=site-footer__copy>&copy; 2026 MitiruEngine contributors.</p><p class=site-footer__build aria-label="built with"><code>built_with</code>
-<span class=site-footer__build-chip>C++20</span>
-<span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
-<span class="site-footer__build-chip site-footer__build-chip--data">JSON</span></p></div><div class=site-footer__col><h2 class=site-footer__h>ライセンス</h2><p>MIT。詳しくは <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE>LICENSE</a> を見てください。</p><p class=site-footer__hint><kbd>?</kbd> でショートカット一覧</p></div><div class=site-footer__col><h2 class=site-footer__h>状態</h2><p>0.x 系・実験段階。API はまだ変わります。</p><p><a href=https://github.com/mogmog-0110/MitiruEngine>github.com/mogmog-0110/MitiruEngine</a></p><p class=site-footer__easter aria-hidden=true><span class=site-footer__easter-prompt><code>$ echo "hello, world"</code></span>
-<span class=site-footer__easter-cursor>_</span></p></div></div></footer><div class=shortcuts-dialog id=shortcuts-dialog role=dialog aria-modal=true aria-labelledby=shortcuts-dialog-title data-pagefind-ignore hidden><div class=shortcuts-dialog__backdrop data-shortcuts-close></div><div class=shortcuts-dialog__panel role=document><div class=shortcuts-dialog__header><h2 id=shortcuts-dialog-title class=shortcuts-dialog__title>キーボードショートカット</h2><button type=button class=shortcuts-dialog__close data-shortcuts-close aria-label=閉じる><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class=shortcuts-dialog__body><dl class=shortcuts-list><div class=shortcuts-list__row><dt><kbd>?</kbd></dt><dd>このヘルプを開く</dd></div><div class=shortcuts-list__row><dt><kbd>Esc</kbd></dt><dd>ダイアログを閉じる</dd></div><div class=shortcuts-list__row><dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt><dd>サイト内検索を開く</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>h</kbd></dt><dd>ホームへ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>c</kbd></dt><dd>チャプター一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>a</kbd></dt><dd>アーキテクチャ一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>t</kbd></dt><dd>チュートリアル一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>s</kbd></dt><dd>はじめてのページへ</dd></div></dl><p class=shortcuts-dialog__foot>入力中（テキストフィールド・コード編集）は無効です。</p></div></div></div><script src=https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js defer></script></body></html>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+      <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+
+
+
+
+
+
+  
+  
+    
+  
+    
+  
+    
+      
+      
+        
+      
+      
+      
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+
+
+
+
+
+<article class="chapter-article container"
+         style="--chapter-accent: #14b8a6">
+  <header class="chapter-article__header">
+    <p class="page-eyebrow">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">チャプター</a>
+      <span class="page-eyebrow__num">03</span>
+      <span class="page-eyebrow__total">/ 06</span>
+    </p><div class="chapter-article__icon" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <!-- node A -->
+  <circle cx="6" cy="16" r="3.5" stroke="currentColor"/>
+  <!-- node B -->
+  <circle cx="16" cy="7" r="3.5" stroke="currentColor"/>
+  <!-- node C -->
+  <circle cx="26" cy="16" r="3.5" stroke="currentColor"/>
+  <!-- arrow A -> B -->
+  <line x1="9" y1="14" x2="13" y2="9.5"/>
+  <polyline points="12,8.5 13.5,10.5 11.5,11.5" fill="currentColor" stroke="currentColor" stroke-width="1.5"/>
+  <!-- arrow B -> C -->
+  <line x1="19" y1="9.5" x2="23" y2="14"/>
+  <polyline points="23.5,12.5 22.5,14.5 24.5,14.5" fill="currentColor" stroke="currentColor" stroke-width="1.5"/>
+  <!-- filmstrip notch marks at bottom -->
+  <rect x="5" y="23" width="4" height="3" rx="1" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="14" y="23" width="4" height="3" rx="1" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5"/>
+  <rect x="23" y="23" width="4" height="3" rx="1" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5"/>
+</svg>
+
+    </div><h1 class="chapter-article__title">3. シーンと状態を管理する</h1>
+    <p class="chapter-article__lede">MitiruEngine におけるシーン構成と状態管理。SceneRouter / StateMachine / Timer / Cooldown / Sequence を組み合わせて、ジャンルを問わない update ループを書く方法。</p>
+  </header>
+
+  
+  <aside class="page-summary">
+    <h2 class="page-summary__h">このページで分かること</h2>
+    <ul>
+      <li>シーンの作りかたと遷移の組みかた</li><li>StateMachine &#43; Timer &#43; Cooldown の使い分け</li><li>ゲームループと固定タイムステップ</li>
+    </ul>
+  </aside>
+  
+
+  <div class="page-with-toc">
+    <div class="chapter-article__body">
+      <p>シーン (タイトル → メニュー → 戦闘 → リザルト&hellip;) の切り替えと、シーン内の細かい状態 (idle → attacking → cooldown) は、ジャンルを問わずゲームの背骨です。MitiruEngine はこれを <strong>C++ 側で素直に持つ</strong>ことを推奨しています。</p>
+<ul>
+<li><strong>シーン遷移</strong> は <code>mitiru::scene::SceneRouter</code> でスタック型に積む / 差し替える</li>
+<li><strong>シーン内のフェーズ管理</strong> は <code>mitiru::fsm::StateMachine&lt;EnumT&gt;</code> で enum 駆動の状態機械を持つ</li>
+<li><strong>時間絡みの遷移</strong> は <code>Timer</code> / <code>Cooldown</code> / <code>Sequence</code> で待つ</li>
+</ul>
+<p>JSON で宣言する rule に逃がしてもいいですが、シンプルな C++ で書くほうが読みやすいというのがエンジンの方針です。</p>
+<figure class="arch-figure">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 240" role="img" aria-labelledby="ch-scene-title ch-scene-desc" class="arch-svg">
+  <title id="ch-scene-title">シーン遷移とフェーズ状態機械の例</title>
+  <desc id="ch-scene-desc">外側にシーンルータ (Title → Menu → Battle → Result)、内側に Battle 内フェーズ (Idle → Windup → Strike → Recover) という 2 階建ての状態機械。</desc>
+  <defs>
+    <marker id="sc-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--c-accent)"></path>
+    </marker>
+  </defs>
+<p><text x="20" y="22" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">外側: SceneRouter</text></p>
+<p><rect x="20" y="36" width="140" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="90" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Title</text>
+<text x="90" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">push</text></p>
+<p><rect x="200" y="36" width="140" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="270" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Menu</text>
+<text x="270" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">replace</text></p>
+<p><rect x="380" y="36" width="140" height="50" rx="8" fill="var(--c-accent-soft)" stroke="var(--c-rule)"></rect>
+<text x="450" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-accent-on-soft)">Battle</text>
+<text x="450" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">replace</text></p>
+<p><rect x="560" y="36" width="140" height="50" rx="8" fill="var(--c-bg-elev)" stroke="var(--c-rule)"></rect>
+<text x="630" y="58" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Result</text>
+<text x="630" y="74" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">push</text></p>
+<p><line x1="160" y1="61" x2="200" y2="61" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<line x1="340" y1="61" x2="380" y2="61" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<line x1="520" y1="61" x2="560" y2="61" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line></p>
+<p><text x="20" y="120" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">内側: Battle 内 StateMachine&lt;AttackPhase&gt;</text></p>
+<p><rect x="20" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="90" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Idle</text>
+<text x="90" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">wait input</text></p>
+<p><rect x="200" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="270" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Windup</text>
+<text x="270" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">0.2s</text></p>
+<p><rect x="380" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="450" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Strike</text>
+<text x="450" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">hitbox on</text></p>
+<p><rect x="560" y="136" width="140" height="50" rx="8" fill="var(--c-bg-alt)" stroke="var(--c-rule)"></rect>
+<text x="630" y="158" text-anchor="middle" font-family="var(--font-sans)" font-size="12" font-weight="700" fill="var(--c-fg)">Recover</text>
+<text x="630" y="174" text-anchor="middle" font-family="var(--font-sans)" font-size="11" fill="var(--c-fg-soft)">→ Idle</text></p>
+<p><line x1="160" y1="161" x2="200" y2="161" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<line x1="340" y1="161" x2="380" y2="161" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<line x1="520" y1="161" x2="560" y2="161" stroke="var(--c-accent)" stroke-width="2" marker-end="url(#sc-arr)"></line>
+<path d="M 630 186 Q 630 220 90 220 Q 90 200 90 186" stroke="var(--c-accent)" stroke-width="2" fill="none" marker-end="url(#sc-arr)"></path>
+</svg></p>
+<figcaption>図: 外側のシーンと内側のフェーズは、両方とも C++ の素直な enum + 関数で書ける。</figcaption>
+</figure>
+<h2 id="シーンルーター">シーンルーター</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/scene/SceneRouter.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">TitleScene</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">scene</span><span class="o">::</span><span class="n">IScene</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="n">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">BattleScene</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">scene</span><span class="o">::</span><span class="n">IScene</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">scene</span><span class="o">::</span><span class="n">SceneRouter</span> <span class="n">router</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="n">router</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">TitleScene</span><span class="o">&gt;</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// プレイヤーが「始める」を選んだら
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">router</span><span class="p">.</span><span class="n">replace</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">BattleScene</span><span class="o">&gt;</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ポーズメニューを上に積む
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">router</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">PauseScene</span><span class="o">&gt;</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ポーズを閉じる
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">router</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+</span></span></code></pre></div><p>RPG のシーン階層 (世界 → 街 → 店) も、RTS の (ロビー → マッチ → リザルト) も、シューティングの (タイトル → ステージ → ゲームオーバー) も、すべて同じ <code>push/pop/replace</code> で書けます。</p>
+<h2 id="ステートマシン-シーン内のフェーズ">ステートマシン (シーン内のフェーズ)</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/fsm/StateMachine.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="k">enum</span> <span class="k">class</span> <span class="nc">AttackPhase</span> <span class="p">{</span> <span class="n">Idle</span><span class="p">,</span> <span class="n">Windup</span><span class="p">,</span> <span class="n">Strike</span><span class="p">,</span> <span class="n">Recover</span> <span class="p">};</span>
+</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">fsm</span><span class="o">::</span><span class="n">StateMachine</span><span class="o">&lt;</span><span class="n">AttackPhase</span><span class="o">&gt;</span> <span class="n">sm</span><span class="p">{</span><span class="n">AttackPhase</span><span class="o">::</span><span class="n">Idle</span><span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">sm</span><span class="p">.</span><span class="n">transition</span><span class="p">(</span><span class="n">AttackPhase</span><span class="o">::</span><span class="n">Idle</span><span class="p">,</span> <span class="n">AttackPhase</span><span class="o">::</span><span class="n">Windup</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 0.2s 経過後...
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">sm</span><span class="p">.</span><span class="n">transition</span><span class="p">(</span><span class="n">AttackPhase</span><span class="o">::</span><span class="n">Windup</span><span class="p">,</span> <span class="n">AttackPhase</span><span class="o">::</span><span class="n">Strike</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// hitbox を有効にして、その後...
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">sm</span><span class="p">.</span><span class="n">transition</span><span class="p">(</span><span class="n">AttackPhase</span><span class="o">::</span><span class="n">Strike</span><span class="p">,</span> <span class="n">AttackPhase</span><span class="o">::</span><span class="n">Recover</span><span class="p">);</span>
+</span></span></code></pre></div><p>アクションのコンボ、シミュレーションの建築フェーズ、カードゲームのターン進行、どれにも同じパターンが効きます。</p>
+<h2 id="タイマー--クールダウン--シーケンス">タイマー / クールダウン / シーケンス</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">time</span><span class="o">::</span><span class="n">Cooldown</span> <span class="n">fireCooldown</span><span class="p">{</span><span class="mf">0.25f</span><span class="p">};</span>   <span class="c1">// 4 連射 / 秒
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">if</span> <span class="p">(</span><span class="n">mapper</span><span class="p">.</span><span class="n">wasPressed</span><span class="p">(</span><span class="n">Action</span><span class="o">::</span><span class="n">Fire</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">fireCooldown</span><span class="p">.</span><span class="n">ready</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">spawnBullet</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="n">fireCooldown</span><span class="p">.</span><span class="n">trigger</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="n">fireCooldown</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="n">dt</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">time</span><span class="o">::</span><span class="n">Sequence</span> <span class="n">intro</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="n">intro</span><span class="p">.</span><span class="n">then</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]{</span> <span class="n">showLogo</span><span class="p">();</span> <span class="p">},</span> <span class="mf">1.0f</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">     <span class="p">.</span><span class="n">then</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]{</span> <span class="n">showTitle</span><span class="p">();</span> <span class="p">},</span> <span class="mf">0.6f</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">     <span class="p">.</span><span class="n">then</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]{</span> <span class="n">enableInput</span><span class="p">();</span> <span class="p">},</span> <span class="mf">0.0f</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="n">intro</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="n">dt</span><span class="p">);</span>
+</span></span></code></pre></div><h2 id="cef-側にステートを通知する">CEF 側にステートを通知する</h2>
+<p>シーン状態を HUD や UI に出すとき、JS にロジックを持たせず「C++ が決めた現在値を push して、HTML が表示する」だけにします。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">engine</span><span class="p">.</span><span class="n">cefContext</span><span class="p">().</span><span class="n">executeJavaScript</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;Mitiru.state.set(&#39;scene&#39;, &#39;&#34;</span> <span class="o">+</span> <span class="n">currentSceneName</span> <span class="o">+</span> <span class="s">&#34;&#39;);&#34;</span><span class="p">);</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">Mitiru</span><span class="p">.</span><span class="nx">state</span><span class="p">.</span><span class="nx">subscribe</span><span class="p">(</span><span class="s1">&#39;scene&#39;</span><span class="p">,</span> <span class="nx">name</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;scene-label&#39;</span><span class="p">).</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">name</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span></code></pre></div><h2 id="関連-api">関連 API</h2>
+<ul>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru::scene::SceneRouter</code></a></li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru::fsm::StateMachine</code></a></li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru::time::Timer</code> / <code>Cooldown</code> / <code>Sequence</code></a></li>
+</ul>
+<h2 id="もっと深く知る">もっと深く知る</h2>
+<ul>
+<li><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/cpp-gameplay-api-gaps.md">docs/cpp-gameplay-api-gaps.md</a> — C++ gameplay API の現状</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a></li>
+</ul>
+
+    </div>
+    
+    <aside class="page-toc" aria-label="このページの目次">
+      <h2>このページの目次</h2>
+      <nav id="TableOfContents">
+  <ul>
+    <li><a href="#シーンルーター">シーンルーター</a></li>
+    <li><a href="#ステートマシン-シーン内のフェーズ">ステートマシン (シーン内のフェーズ)</a></li>
+    <li><a href="#タイマー--クールダウン--シーケンス">タイマー / クールダウン / シーケンス</a></li>
+    <li><a href="#cef-側にステートを通知する">CEF 側にステートを通知する</a></li>
+    <li><a href="#関連-api">関連 API</a></li>
+    <li><a href="#もっと深く知る">もっと深く知る</a></li>
+  </ul>
+</nav>
+    </aside>
+    
+  </div>
+
+  
+  <nav class="page-pager" aria-label="chapter navigation">
+    <div>
+      
+        <a class="page-pager__prev" href="https://mogmog-0110.github.io/MitiruEngine/chapters/input/">前: 2. 入力を受ける</a>
+      
+    </div>
+    <div>
+      
+        <a class="page-pager__next" href="https://mogmog-0110.github.io/MitiruEngine/chapters/audio/">次: 4. BGM と SE を鳴らす</a>
+      
+    </div>
+  </nav>
+  
+</article>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">
+        <span class="site-footer__brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 24 L4 8 L10 14 L16 8 L22 14 L28 8 L28 24"/>
+          </svg>
+        </span>
+        MitiruEngine
+      </p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+      <p class="site-footer__build" aria-label="built with">
+        <code>built_with</code>
+        <span class="site-footer__build-chip">C++20</span>
+        <span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
+        <span class="site-footer__build-chip site-footer__build-chip--data">JSON</span>
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
+      <p class="site-footer__hint">
+        <kbd>?</kbd> でショートカット一覧
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+      <p class="site-footer__easter" aria-hidden="true">
+        <span class="site-footer__easter-prompt"><code>$ echo &quot;hello, world&quot;</code></span>
+        <span class="site-footer__easter-cursor">_</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js" defer></script>
+</body>
+</html>

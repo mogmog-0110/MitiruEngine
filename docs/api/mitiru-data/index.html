@@ -1,23 +1,1219 @@
-<!doctype html><html lang=ja data-base=/><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>mitiru::data | MitiruEngine</title>
-<meta name=description content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items)."><link rel=canonical href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/><link rel=alternate hreflang=ja href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/><meta property="og:title" content="mitiru::data | MitiruEngine"><meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items)."><meta property="og:type" content="article"><meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><meta property="og:site_name" content="MitiruEngine"><meta property="og:locale" content="ja_JP"><meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name=twitter:card content="summary_large_image"><meta name=twitter:title content="mitiru::data | MitiruEngine"><meta name=twitter:description content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items)."><meta name=twitter:image content="https://mogmog-0110.github.io/MitiruEngine/ogp.png"><link rel=icon type=image/svg+xml href=https://mogmog-0110.github.io/MitiruEngine/favicon.svg><link rel=icon type=image/png sizes=32x32 href=https://mogmog-0110.github.io/MitiruEngine/favicon-32.png><link rel=apple-touch-icon sizes=180x180 href=https://mogmog-0110.github.io/MitiruEngine/favicon-180.png><link rel="alternate icon" href=https://mogmog-0110.github.io/MitiruEngine/favicon.ico><meta name=color-scheme content="light dark"><script>(function(){try{var e=localStorage.getItem("theme");(e==="dark"||e==="light")&&document.documentElement.setAttribute("data-theme",e)}catch{}})()</script><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/css/main.css><link rel=preconnect href=https://fonts.googleapis.com><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"></head><body><header class=site-header><div class="container site-header__inner"><a class=site-header__brand href=https://mogmog-0110.github.io/MitiruEngine/><span class=site-header__brand-mark aria-hidden=true>M</span>
-<span class=site-header__brand-name>MitiruEngine</span>
-</a><input type=checkbox id=nav-toggle class=nav-toggle role=button aria-label=メニュー aria-controls=primary-nav>
-<label for=nav-toggle class=nav-toggle__label aria-hidden=true><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label><nav class=site-nav id=primary-nav aria-label=primary><a href=https://mogmog-0110.github.io/MitiruEngine/>ホーム</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/getting-started/>はじめに</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/tutorials/>チュートリアル</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/chapters/>できること</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/architecture/>アーキテクチャ</a>
-<a href=https://mogmog-0110.github.io/MitiruEngine/api/>API</a>
-<button type=button class=search-trigger id=site-search-trigger aria-label=サイト内検索 aria-haspopup=dialog aria-expanded=false aria-controls=site-search-dialog>
-<svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>
-<span class=visually-hidden>サイト内検索</span></button><div class=search-dialog id=site-search-dialog role=dialog aria-modal=true aria-labelledby=site-search-title data-pagefind-ignore hidden><div class=search-dialog__backdrop data-search-close></div><div class=search-dialog__panel role=document><div class=search-dialog__header><h2 id=site-search-title class=search-dialog__title>サイト内検索</h2><button type=button class=search-dialog__close data-search-close aria-label=閉じる><svg viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div id=site-search class=search-dialog__body></div></div></div><link rel=stylesheet href=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css><script src=https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js defer></script><script>(function(){var t,n,i,a,r,c,d,u,s=document.getElementById("site-search-trigger"),e=document.getElementById("site-search-dialog");if(!s||!e)return;d=e.querySelector("#site-search"),i=e.querySelectorAll("[data-search-close]"),c=document.documentElement,u=(c.getAttribute("lang")||"en").toLowerCase(),a="https://mogmog-0110.github.io/MitiruEngine/pagefind/",r={placeholder:"ドキュメントを検索…",clear_search:"クリア",load_more:"さらに読み込む",search_label:"サイト内検索",filters_label:"Filters",zero_results:"「[SEARCH_TERM]」に一致する結果はありません",many_results:"[SEARCH_TERM] の検索結果 [COUNT] 件",one_result:"[SEARCH_TERM] の検索結果 [COUNT] 件",alt_search:"代わりに [DISPLAY_QUERY] の結果を表示しています",search_suggestion:"[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",searching:"検索中…"},t=null,n=null;function h(){return t?t:typeof window.PagefindUI!="function"?null:(t=new window.PagefindUI({element:d,showSubResults:!0,showImages:!1,excerptLength:30,resetStyles:!1,bundlePath:a,translations:r,autofocus:!0}),t)}function l(){n=document.activeElement,e.hidden=!1,requestAnimationFrame(function(){e.classList.add("is-open"),document.body.classList.add("search-open"),s.setAttribute("aria-expanded","true"),h();var t=e.querySelector(".pagefind-ui__search-input");t&&t.focus()})}function o(){e.classList.remove("is-open"),document.body.classList.remove("search-open"),s.setAttribute("aria-expanded","false"),setTimeout(function(){e.classList.contains("is-open")||(e.hidden=!0),n&&typeof n.focus=="function"&&n.focus()},200)}s.addEventListener("click",function(){e.classList.contains("is-open")?o():l()}),i.forEach(function(e){e.addEventListener("click",o)});function m(){var n,t=e.querySelector(".search-dialog__panel");return t?(n='a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',Array.prototype.filter.call(t.querySelectorAll(n),function(e){return!e.hasAttribute("hidden")&&e.offsetParent!==null})):[]}document.addEventListener("keydown",function(t){if(s=e.classList.contains("is-open"),t.key==="Escape"&&s){o();return}if(t.key==="Tab"&&s){if(n=m(),n.length===0){t.preventDefault();return}var n,s,r,i=n[0],c=n[n.length-1],a=document.activeElement;t.shiftKey&&a===i?(t.preventDefault(),c.focus()):!t.shiftKey&&a===c?(t.preventDefault(),i.focus()):e.contains(a)||(t.preventDefault(),i.focus());return}(t.metaKey||t.ctrlKey)&&(t.key==="k"||t.key==="K")&&(t.preventDefault(),s?(r=e.querySelector(".pagefind-ui__search-input"),r&&r.focus()):l())})})()</script><a class=site-nav__github href=https://github.com/mogmog-0110/MitiruEngine aria-label=GitHub><svg width="20" height="20" viewBox="0 0 16 16" fill="currentcolor" aria-hidden="true"><path d="M8 0C3.58.0.0 3.58.0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95.0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12.0.0.67-.21 2.2.82a7.62 7.62.0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15.0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-<span class=visually-hidden>GitHub</span>
-</a><button type=button class=shortcuts-trigger data-shortcuts-open aria-haspopup=dialog aria-controls=shortcuts-dialog aria-label="Keyboard shortcuts" title=?>
-<kbd class=shortcuts-trigger__kbd aria-hidden=true>?</kbd>
+<!DOCTYPE html>
+<html lang="ja" data-base="/">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::data | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::data | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::data | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
 </button>
-<button type=button class=theme-toggle id=theme-toggle aria-pressed=false aria-label=ダークモード切替><svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg></button></nav></div></header><script>(function(){var t=document.getElementById("nav-toggle"),e=document.getElementById("theme-toggle");t&&t.addEventListener("change",function(){t.checked?document.body.classList.add("is-nav-open"):document.body.classList.remove("is-nav-open")});function s(){var e=document.documentElement.getAttribute("data-theme");return e==="dark"||e==="light"?e==="dark":window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches}function n(){if(!e)return;e.setAttribute("aria-pressed",s()?"true":"false")}n(),e&&e.addEventListener("click",function(){var e,t=document.documentElement,s=t.getAttribute("data-theme"),o=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;s==="dark"?e="light":s==="light"?e="dark":e=o?"light":"dark",t.setAttribute("data-theme",e);try{localStorage.setItem("theme",e)}catch{}n()})})()</script><main class=site-main data-pagefind-body><div class="api-page container"><aside class=api-sidebar aria-label=名前空間><details class=api-sidebar__collapsible open><summary>名前空間</summary><nav><ul><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru/>mitiru</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/>mitiru::adapter</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/>mitiru::animation</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/>mitiru::asset</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/>mitiru::assets</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/>mitiru::audio</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/>mitiru::bridge</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/>mitiru::bridge::detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/>mitiru::cef</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/>mitiru::cef::bridges</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/>mitiru::control</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/>mitiru::core</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/ aria-current=page class=is-active>mitiru::data</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/>mitiru::debug</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/>mitiru::ecs</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/>mitiru::effects</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/>mitiru::fsm</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/>mitiru::game</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/>mitiru::gfx</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/>mitiru::gfx::dx12</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/>mitiru::i18n</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/>mitiru::input</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/>mitiru::live2d</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/>mitiru::math</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/>mitiru::narrative</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/>mitiru::network</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/>mitiru::observe</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/>mitiru::physics</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/>mitiru::physics2d</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/>mitiru::physics3d</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/>mitiru::platform</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/>mitiru::render</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/>mitiru::render::dx12</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/>mitiru::resource</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/>mitiru::scene</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/>mitiru::screen_detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/>mitiru::server</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/>mitiru::server::detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/>mitiru::sprite</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/>mitiru::time</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/>mitiru::time::detail</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/>mitiru::ui</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/>mitiru::ui::LayoutPresets</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/>mitiru::util</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/>mitiru::validate</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/>mitiru::vn</a></li><li><a href=https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/>mitiru::world</a></li></ul></nav></details></aside><article class=api-page__article><header><h1>mitiru::data</h1><p class=api-page__description>Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items).</p></header><div class=api-page__content><p class=api-namespace__lede>Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items).</p><table class=api-class-index><thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead><tbody><tr><td><a href=#enum-binarytag><code>BinaryTag</code></a></td><td>enum</td><td>11</td></tr><tr><td><a href=#struct-binvec2><code>BinVec2</code></a></td><td>struct</td><td>2</td></tr><tr><td><a href=#struct-binvec3><code>BinVec3</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#struct-bincolor><code>BinColor</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#class-binarywriter><code>BinaryWriter</code></a></td><td>class</td><td>15</td></tr><tr><td><a href=#class-binaryreader><code>BinaryReader</code></a></td><td>class</td><td>22</td></tr><tr><td><a href=#class-configmanager><code>ConfigManager</code></a></td><td>class</td><td>12</td></tr><tr><td><a href=#class-contentloader><code>ContentLoader</code></a></td><td>class</td><td>8</td></tr><tr><td><a href=#class-csvparser><code>CsvParser</code></a></td><td>class</td><td>8</td></tr><tr><td><a href=#class-iniparser><code>IniParser</code></a></td><td>class</td><td>18</td></tr><tr><td><a href=#struct-fromjsonresult><code>FromJsonResult</code></a></td><td>struct</td><td>4</td></tr><tr><td><a href=#class-migrationchain><code>MigrationChain</code></a></td><td>class</td><td>4</td></tr><tr><td><a href=#class-jsonbuilder><code>JsonBuilder</code></a></td><td>class</td><td>13</td></tr><tr><td><a href=#class-jsonreader><code>JsonReader</code></a></td><td>class</td><td>1</td></tr><tr><td><a href=#class-migration><code>Migration</code></a></td><td>class</td><td>8</td></tr><tr><td><a href=#struct-prefab><code>Prefab</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#class-prefablibrary><code>PrefabLibrary</code></a></td><td>class</td><td>7</td></tr><tr><td><a href=#struct-projectconfig><code>ProjectConfig</code></a></td><td>struct</td><td>2</td></tr><tr><td><a href=#class-projectfile><code>ProjectFile</code></a></td><td>class</td><td>2</td></tr><tr><td><a href=#class-saveschema><code>SaveSchema</code></a></td><td>class</td><td>13</td></tr><tr><td><a href=#struct-schemaimportresult><code>SchemaImportResult</code></a></td><td>struct</td><td>5</td></tr><tr><td><a href=#class-schemaimporter><code>SchemaImporter</code></a></td><td>class</td><td>5</td></tr><tr><td><a href=#enum-fieldtype><code>FieldType</code></a></td><td>enum</td><td>6</td></tr><tr><td><a href=#struct-schemafield><code>SchemaField</code></a></td><td>struct</td><td>5</td></tr><tr><td><a href=#struct-schema><code>Schema</code></a></td><td>struct</td><td>3</td></tr><tr><td><a href=#struct-validationresult><code>ValidationResult</code></a></td><td>struct</td><td>1</td></tr><tr><td><a href=#class-schemavalidator><code>SchemaValidator</code></a></td><td>class</td><td>5</td></tr><tr><td><a href=#struct-tilemaplayer><code>TilemapLayer</code></a></td><td>struct</td><td>2</td></tr><tr><td><a href=#struct-tilemap><code>Tilemap</code></a></td><td>struct</td><td>2</td></tr><tr><td><a href=#class-tilemaploader><code>TilemapLoader</code></a></td><td>class</td><td>5</td></tr></tbody></table><details class=api-class id=enum-binarytag open><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>BinaryTag</code> <span class=api-class__extra>: uint8_t</span> <span class=api-class__count>11</span></summary><div class=api-class__body><div class=api-method><code>Int32 = 0x01</code></div><div class=api-method><code>Float32 = 0x02</code></div><div class=api-method><code>String = 0x03</code></div><div class=api-method><code>Bool = 0x04</code></div><div class=api-method><code>Vec2 = 0x05</code></div><div class=api-method><code>Vec3 = 0x06</code></div><div class=api-method><code>Color = 0x07</code></div><div class=api-method><code>Array = 0x08</code></div><div class=api-method><code>Bytes = 0x09</code></div><div class=api-method><code>Int64 = 0x0A</code></div><div class=api-method><code>Float64 = 0x0B</code></div></div></details><details class=api-class id=struct-binvec2 open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>BinVec2</code> <span class=api-class__count>2</span></summary><div class=api-class__body><div class=api-method><code>float x = 0.0f</code></div><div class=api-method><code>float y = 0.0f</code></div></div></details><details class=api-class id=struct-binvec3 open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>BinVec3</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>float x = 0.0f</code></div><div class=api-method><code>float y = 0.0f</code></div><div class=api-method><code>float z = 0.0f</code></div></div></details><details class=api-class id=struct-bincolor open><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>BinColor</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>float r = 0.0f</code></div><div class=api-method><code>float g = 0.0f</code></div><div class=api-method><code>float b = 0.0f</code></div><div class=api-method><code>float a = 1.0f</code></div></div></details><details class=api-class id=class-binarywriter open><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>BinaryWriter</code> <span class=api-class__count>15</span></summary><div class=api-class__body><div class=api-method><code>BinaryWriter()</code></div><div class=api-method><code>BinaryWriter& writeInt(int32_t value)</code></div><div class=api-method><code>BinaryWriter& writeInt64(int64_t value)</code></div><div class=api-method><code>BinaryWriter& writeFloat(float value)</code></div><div class=api-method><code>BinaryWriter& writeDouble(double value)</code></div><div class=api-method><code>BinaryWriter& writeString(const std::string& value)</code></div><div class=api-method><code>BinaryWriter& writeBool(bool value)</code></div><div class=api-method><code>BinaryWriter& writeVec2(float x, float y)</code></div><div class=api-method><code>BinaryWriter& writeVec3(float x, float y, float z)</code></div><div class=api-method><code>BinaryWriter& writeColor(float r, float g, float b, float a)</code></div><div class=api-method><code>BinaryWriter& writeArray(const std::vector&lt;int32_t>& values)</code></div><div class=api-method><code>BinaryWriter& writeArray(const std::vector&lt;float>& values)</code></div><div class=api-method><code>BinaryWriter& writeArray(const std::vector&lt;std::string>& values)</code></div><div class=api-method><code>BinaryWriter& writeBytes(const uint8_t* data, std::size_t size)</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;uint8_t> finish()</code></div></div></details><details class=api-class id=class-binaryreader open><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>BinaryReader</code> <span class=api-class__count>22</span></summary><div class=api-class__body><div class=api-method><code>BinaryReader(const uint8_t* data, std::size_t size)</code></div><div class=api-method><code>explicit BinaryReader(const std::vector&lt;uint8_t>& data)</code></div><div class=api-method><code>[[nodiscard]] bool isValid() const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::size_t remaining() const noexcept</code></div><div class=api-method><code>[[nodiscard]] bool atEnd() const noexcept</code></div><div class=api-method><code>[[nodiscard]] int32_t readInt()</code></div><div class=api-method><code>[[nodiscard]] int64_t readInt64()</code></div><div class=api-method><code>[[nodiscard]] float readFloat()</code></div><div class=api-method><code>[[nodiscard]] double readDouble()</code></div><div class=api-method><code>[[nodiscard]] std::string readString()</code></div><div class=api-method><code>[[nodiscard]] bool readBool()</code></div><div class=api-method><code>[[nodiscard]] BinVec2 readVec2()</code></div><div class=api-method><code>[[nodiscard]] BinVec3 readVec3()</code></div><div class=api-method><code>[[nodiscard]] BinColor readColor()</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;int32_t> readIntArray()</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;float> readFloatArray()</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;std::string> readStringArray()</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;uint8_t> readBytes()</code></div><div class=api-method><code>[[nodiscard]] BinaryTag peekTag() const</code></div><div class=api-method><code>using ConfigValue = std::variant&lt;std::string, int, float, bool>;</code></div><div class=api-method><code>using ConfigChangeCallback = std::function&lt;void(const ConfigValue&)>;</code></div><div class=api-method><code>[[nodiscard]] static size_t skipWs(const std::string& s, size_t pos)</code></div></div></details><details class=api-class id=class-configmanager><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>ConfigManager</code> <span class=api-class__count>12</span></summary><div class=api-class__body><div class=api-method><code>void set(const std::string& key, const ConfigValue& value)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] std::optional&lt;T> get(const std::string& key) const</code></div><div class=api-method><code>[[nodiscard]] std::optional&lt;std::string> getString(const std::string& key) const</code></div><div class=api-method><code>[[nodiscard]] std::optional&lt;int> getInt(const std::string& key) const</code></div><div class=api-method><code>[[nodiscard]] std::optional&lt;float> getFloat(const std::string& key) const</code></div><div class=api-method><code>[[nodiscard]] std::optional&lt;bool> getBool(const std::string& key) const</code></div><div class=api-method><code>bool loadFromJson(const std::string& json)</code></div><div class=api-method><code>[[nodiscard]] std::string saveToJson() const</code></div><div class=api-method><code>[[nodiscard]] bool hasKey(const std::string& key) const</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;std::string> keys() const</code></div><div class=api-method><code>void setDefault(const std::string& key, const ConfigValue& value)</code></div><div class=api-method><code>void onChange(const std::string& key, ConfigChangeCallback callback)</code></div></div></details><details class=api-class id=class-contentloader><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>ContentLoader</code> <span class=api-class__count>8</span></summary><div class=api-class__body><div class=api-method><code>ContentLoader() = default</code></div><div class=api-method><code>~ContentLoader() = default</code></div><div class=api-method><code>[[nodiscard]] static FromJsonResult&lt;T> loadFile(const std::string& path)</code></div><div class=api-method><code>[[nodiscard]] static FromJsonResult&lt;T> loadJson(const Json& json)</code></div><div class=api-method><code>[[nodiscard]] static FromJsonResult&lt;T> loadString(const std::string& s)</code></div><div class=api-method><code>[[nodiscard]] static FromJsonResult&lt;T> loadFileValidated( const std::string& path, const Schema& schema)</code></div><div class=api-method><code>[[nodiscard]] static FromJsonResult&lt;T> loadJsonValidated( const Json& json, const Schema& schema)</code></div><div class=api-method><code>[[nodiscard]] static FromJsonResult&lt;T> loadStringValidated( const std::string& s, const Schema& schema)</code></div></div></details><details class=api-class id=class-csvparser><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>CsvParser</code> <span class=api-class__count>8</span></summary><div class=api-class__body><div class=api-method><code>void parse(const std::string& text)</code></div><div class=api-method><code>[[nodiscard]] int rowCount() const noexcept</code></div><div class=api-method><code>[[nodiscard]] int columnCount(int row) const noexcept</code></div><div class=api-method><code>[[nodiscard]] std::string get(int row, int col) const</code></div><div class=api-method><code>[[nodiscard]] int getInt(int row, int col, int defaultVal = 0) const</code></div><div class=api-method><code>[[nodiscard]] float getFloat(int row, int col, float defaultVal = 0) const</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;std::string> getRow(int row) const</code></div><div class=api-method><code>void clear()</code></div></div></details><details class=api-class id=class-iniparser><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>IniParser</code> <span class=api-class__count>18</span></summary><div class=api-class__body><div class=api-method><code>void parse(const std::string& text)</code></div><div class=api-method><code>[[nodiscard]] std::string get(const std::string& section, const std::string& key, const std::string& defaultVal = {}) const</code></div><div class=api-method><code>[[nodiscard]] int getInt(const std::string& section, const std::string& key, int defaultVal = 0) const</code></div><div class=api-method><code>[[nodiscard]] float getFloat(const std::string& section, const std::string& key, float defaultVal = 0) const</code></div><div class=api-method><code>[[nodiscard]] bool getBool(const std::string& section, const std::string& key, bool defaultVal = false) const</code></div><div class=api-method><code>[[nodiscard]] bool hasSection(const std::string& section) const</code></div><div class=api-method><code>[[nodiscard]] bool hasKey(const std::string& section, const std::string& key) const</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;std::string> sections() const</code></div><div class=api-method><code>void clear()</code></div><div class=api-method><code>using Json = nlohmann::json;</code></div><div class=api-method><code>[[nodiscard]] inline std::optional&lt;Json> loadJsonFile(const std::string& path)</code></div><div class=api-method><code>inline bool saveJsonFile(const std::string& path, const Json& j, int indent = 2)</code></div><div class=api-method><code>[[nodiscard]] inline std::optional&lt;Json> parseJson(const std::string& str)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] inline Json toJson(const T& value)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] inline std::optional&lt;T> fromJson(const Json& json) noexcept</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] inline FromJsonResult&lt;T> fromJsonResult(const Json& json)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] inline Json toJsonVersioned(const T& value, int version)</code></div><div class=api-method><code>template &lt;typename T> [[nodiscard]] inline FromJsonResult&lt;T> fromJsonVersioned(const Json& json, int expectedVersion)</code></div></div></details><details class=api-class id=struct-fromjsonresult><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>FromJsonResult</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>std::optional&lt;T> value</code></div><div class=api-method><code>std::string error</code></div><div class=api-method><code>[[nodiscard]] bool ok() const noexcept</code></div><div class=api-method><code>[[nodiscard]] explicit operator bool() const noexcept</code></div></div></details><details class=api-class id=class-migrationchain><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>MigrationChain</code> <span class=api-class__count>4</span></summary><div class=api-class__body><div class=api-method><code>using Migrate = std::function&lt;Json(Json)>;</code></div><div class=api-method><code>MigrationChain& addStep(int fromVersion, int toVersion, Migrate migrate)</code></div><div class=api-method><code>[[nodiscard]] FromJsonResult&lt;T> load(const Json& json, int currentVersion) const</code></div><div class=api-method><code>[[nodiscard]] std::size_t stepCount() const noexcept</code></div></div></details><details class=api-class id=class-jsonbuilder><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>JsonBuilder</code> <span class=api-class__count>13</span></summary><div class=api-class__body><div class=api-method><code>JsonBuilder& beginObject()</code></div><div class=api-method><code>JsonBuilder& beginArray()</code></div><div class=api-method><code>JsonBuilder& endArray()</code></div><div class=api-method><code>JsonBuilder& key(const std::string& k)</code></div><div class=api-method><code>JsonBuilder& value(const std::string& v)</code></div><div class=api-method><code>JsonBuilder& value(const char* v)</code></div><div class=api-method><code>JsonBuilder& value(int v)</code></div><div class=api-method><code>JsonBuilder& value(float v)</code></div><div class=api-method><code>JsonBuilder& value(double v)</code></div><div class=api-method><code>JsonBuilder& value(bool v)</code></div><div class=api-method><code>JsonBuilder& array(const std::string& k, const std::vector&lt;float>& values)</code></div><div class=api-method><code>JsonBuilder& rawValue(const std::string& raw)</code></div><div class=api-method><code>[[nodiscard]] std::string build() const</code></div></div></details><details class=api-class id=class-jsonreader><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>JsonReader</code> <span class=api-class__count>1</span></summary><div class=api-class__body><div class=api-method><code>bool parse(const std::string& json)</code></div></div></details><details class=api-class id=class-migration><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>Migration</code> <span class=api-class__count>8</span></summary><div class=api-class__body><div class=api-method><code>using Op = std::function&lt;Json(Json)>;</code></div><div class=api-method><code>[[nodiscard]] static inline Op backfillField(std::string field, Json defaultValue)</code></div><div class=api-method><code>[[nodiscard]] static inline Op renameField(std::string oldName, std::string newName)</code></div><div class=api-method><code>[[nodiscard]] static inline Op removeField(std::string field)</code></div><div class=api-method><code>[[nodiscard]] static inline Op setField(std::string field, Json value)</code></div><div class=api-method><code>[[nodiscard]] static inline Op transformField(std::string field, std::function&lt;Json(Json)> fn)</code></div><div class=api-method><code>[[nodiscard]] static inline Op compose(std::initializer_list&lt;Op> ops)</code></div><div class=api-method><code>[[nodiscard]] static inline Op compose(std::vector&lt;Op> ops)</code></div></div></details><details class=api-class id=struct-prefab><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Prefab</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>std::string name</code></div><div class=api-method><code>std::string componentsJson</code></div><div class=api-method><code>std::vector&lt;std::string> childPrefabs</code></div></div></details><details class=api-class id=class-prefablibrary><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>PrefabLibrary</code> <span class=api-class__count>7</span></summary><div class=api-class__body><div class=api-method><code>void registerPrefab(const Prefab& prefab)</code></div><div class=api-method><code>[[nodiscard]] scene::EntityId instantiate( const std::string& prefabName, scene::GameWorld& world) const</code></div><div class=api-method><code>[[nodiscard]] scene::EntityId instantiateWithOverrides( const std::string& prefabName, const std::string& overridesJson, scene::GameWorld& world) const</code></div><div class=api-method><code>[[nodiscard]] std::optional&lt;Prefab> getPrefab(const std::string& name) const</code></div><div class=api-method><code>[[nodiscard]] std::vector&lt;std::string> allPrefabNames() const</code></div><div class=api-method><code>bool loadFromJson(const std::string& json)</code></div><div class=api-method><code>[[nodiscard]] std::string toJson() const</code></div></div></details><details class=api-class id=struct-projectconfig><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>ProjectConfig</code> <span class=api-class__count>2</span></summary><div class=api-class__body><div class=api-method><code>std::string projectName</code></div><div class=api-method><code>std::vector&lt;std::string> assetPaths</code></div></div></details><details class=api-class id=class-projectfile><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>ProjectFile</code> <span class=api-class__count>2</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] static std::string saveToString(const ProjectConfig& config)</code></div><div class=api-method><code>[[nodiscard]] static std::optional&lt;ProjectConfig> loadFromString(const std::string& json)</code></div></div></details><details class=api-class id=class-saveschema><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>SaveSchema</code> <span class=api-class__count>13</span></summary><div class=api-class__body><div class=api-method><code>explicit SaveSchema(int currentVersion) noexcept</code></div><div class=api-method><code>SaveSchema(const SaveSchema&) = default</code></div><div class=api-method><code>SaveSchema& operator=(const SaveSchema&) = default</code></div><div class=api-method><code>SaveSchema(SaveSchema&&) = default</code></div><div class=api-method><code>SaveSchema& operator=(SaveSchema&&) = default</code></div><div class=api-method><code>~SaveSchema() = default</code></div><div class=api-method><code>[[nodiscard]] int currentVersion() const noexcept</code></div><div class=api-method><code>[[nodiscard]] MigrationChain&lt;T>& migrations() noexcept</code></div><div class=api-method><code>[[nodiscard]] const MigrationChain&lt;T>& migrations() const noexcept</code></div><div class=api-method><code>[[nodiscard]] Json toJson(const T& value) const</code></div><div class=api-method><code>[[nodiscard]] std::string toJsonString(const T& value) const</code></div><div class=api-method><code>[[nodiscard]] FromJsonResult&lt;T> fromJson(const Json& json) const</code></div><div class=api-method><code>[[nodiscard]] FromJsonResult&lt;T> fromJsonString(const std::string& s) const</code></div></div></details><details class=api-class id=struct-schemaimportresult><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>SchemaImportResult</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>std::optional&lt;Schema> schema</code></div><div class=api-method><code>std::string error</code></div><div class=api-method><code>std::vector&lt;std::string> warnings</code></div><div class=api-method><code>[[nodiscard]] bool ok() const noexcept</code></div><div class=api-method><code>explicit operator bool() const noexcept</code></div></div></details><details class=api-class id=class-schemaimporter><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>SchemaImporter</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>SchemaImporter() = default</code></div><div class=api-method><code>~SchemaImporter() = default</code></div><div class=api-method><code>[[nodiscard]] static SchemaImportResult fromJsonSchemaString( const std::string& s, std::string schemaName)</code></div><div class=api-method><code>[[nodiscard]] static SchemaImportResult fromJsonSchemaJson( const Json& json, std::string schemaName)</code></div><div class=api-method><code>[[nodiscard]] static SchemaImportResult fromJsonSchemaFile( const std::string& path, std::string schemaName)</code></div></div></details><details class=api-class id=enum-fieldtype><summary class=api-class__summary><span class=api-class__kind>enum</span> <code class=api-class__name>FieldType</code> <span class=api-class__count>6</span></summary><div class=api-class__body><div class=api-method><code>String</code></div><div class=api-method><code>Int</code></div><div class=api-method><code>Float</code></div><div class=api-method><code>Bool</code></div><div class=api-method><code>Array</code></div><div class=api-method><code>Object</code></div></div></details><details class=api-class id=struct-schemafield><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>SchemaField</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>std::string name</code></div><div class=api-method><code>std::string defaultValue</code></div><div class=api-method><code>std::string description</code></div><div class=api-method><code>std::optional&lt;float> minValue</code></div><div class=api-method><code>std::optional&lt;float> maxValue</code></div></div></details><details class=api-class id=struct-schema><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Schema</code> <span class=api-class__count>3</span></summary><div class=api-class__body><div class=api-method><code>std::string name</code></div><div class=api-method><code>std::string version</code></div><div class=api-method><code>std::vector&lt;SchemaField> fields</code></div></div></details><details class=api-class id=struct-validationresult><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>ValidationResult</code> <span class=api-class__count>1</span></summary><div class=api-class__body><div class=api-method><code>std::vector&lt;std::string> errors</code></div></div></details><details class=api-class id=class-schemavalidator><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>SchemaValidator</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>SchemaValidator()</code></div><div class=api-method><code>void registerSchema(const Schema& schema)</code></div><div class=api-method><code>[[nodiscard]] ValidationResult validate( const std::string& schemaName, const std::string& jsonString) const</code></div><div class=api-method><code>[[nodiscard]] std::string generateTemplate(const std::string& schemaName) const</code></div><div class=api-method><code>[[nodiscard]] std::optional&lt;Schema> getSchema(const std::string& name) const</code></div></div></details><details class=api-class id=struct-tilemaplayer><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>TilemapLayer</code> <span class=api-class__count>2</span></summary><div class=api-class__body><div class=api-method><code>std::string name</code></div><div class=api-method><code>std::vector&lt;TileData> tiles</code></div></div></details><details class=api-class id=struct-tilemap><summary class=api-class__summary><span class=api-class__kind>struct</span> <code class=api-class__name>Tilemap</code> <span class=api-class__count>2</span></summary><div class=api-class__body><div class=api-method><code>std::string name</code></div><div class=api-method><code>std::vector&lt;TilemapLayer> layers</code></div></div></details><details class=api-class id=class-tilemaploader><summary class=api-class__summary><span class=api-class__kind>class</span> <code class=api-class__name>TilemapLoader</code> <span class=api-class__count>5</span></summary><div class=api-class__body><div class=api-method><code>[[nodiscard]] std::optional&lt;Tilemap> loadFromJson(const std::string& json) const</code></div><div class=api-method><code>[[nodiscard]] std::string saveToJson(const Tilemap& tilemap) const</code></div><div class=api-method><code>[[nodiscard]] std::optional&lt;TileData> getTile( const TilemapLayer& layer, int x, int y) const</code></div><div class=api-method><code>void setTile(TilemapLayer& layer, int x, int y, const TileData& tileData)</code></div><div class=api-method><code>[[nodiscard]] Tilemap createEmpty( const std::string& name, int width, int height, int tileW, int tileH) const</code></div></div></details><hr><p class=api-source-note>Sourced from <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md>docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p></div></article><aside class=api-toc aria-label=このページ内><p class=api-toc__title>このページ内</p><nav id=TableOfContents></nav></aside></div></main><footer class=site-footer><div class="container site-footer__inner"><div class=site-footer__col><p class=site-footer__brand><span class=site-footer__brand-mark aria-hidden=true><svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentcolor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 24V8l6 6 6-6 6 6 6-6V24"/></svg>
-</span>MitiruEngine</p><p class=site-footer__copy>&copy; 2026 MitiruEngine contributors.</p><p class=site-footer__build aria-label="built with"><code>built_with</code>
-<span class=site-footer__build-chip>C++20</span>
-<span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
-<span class="site-footer__build-chip site-footer__build-chip--data">JSON</span></p></div><div class=site-footer__col><h2 class=site-footer__h>ライセンス</h2><p>MIT。詳しくは <a href=https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE>LICENSE</a> を見てください。</p><p class=site-footer__hint><kbd>?</kbd> でショートカット一覧</p></div><div class=site-footer__col><h2 class=site-footer__h>状態</h2><p>0.x 系・実験段階。API はまだ変わります。</p><p><a href=https://github.com/mogmog-0110/MitiruEngine>github.com/mogmog-0110/MitiruEngine</a></p><p class=site-footer__easter aria-hidden=true><span class=site-footer__easter-prompt><code>$ echo "hello, world"</code></span>
-<span class=site-footer__easter-cursor>_</span></p></div></div></footer><div class=shortcuts-dialog id=shortcuts-dialog role=dialog aria-modal=true aria-labelledby=shortcuts-dialog-title data-pagefind-ignore hidden><div class=shortcuts-dialog__backdrop data-shortcuts-close></div><div class=shortcuts-dialog__panel role=document><div class=shortcuts-dialog__header><h2 id=shortcuts-dialog-title class=shortcuts-dialog__title>キーボードショートカット</h2><button type=button class=shortcuts-dialog__close data-shortcuts-close aria-label=閉じる><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class=shortcuts-dialog__body><dl class=shortcuts-list><div class=shortcuts-list__row><dt><kbd>?</kbd></dt><dd>このヘルプを開く</dd></div><div class=shortcuts-list__row><dt><kbd>Esc</kbd></dt><dd>ダイアログを閉じる</dd></div><div class=shortcuts-list__row><dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt><dd>サイト内検索を開く</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>h</kbd></dt><dd>ホームへ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>c</kbd></dt><dd>チャプター一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>a</kbd></dt><dd>アーキテクチャ一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>t</kbd></dt><dd>チュートリアル一覧へ</dd></div><div class=shortcuts-list__row><dt><kbd>g</kbd> <kbd>s</kbd></dt><dd>はじめてのページへ</dd></div></dl><p class=shortcuts-dialog__foot>入力中（テキストフィールド・コード編集）は無効です。</p></div></div></div><script src=https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js defer></script><script src=https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js defer></script></body></html>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+      <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<div class="api-page container">
+  <aside class="api-sidebar" aria-label="名前空間">
+  <details class="api-sidebar__collapsible" open>
+    <summary>名前空間</summary>
+    <nav>
+      <ul>
+        
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"
+               >
+              mitiru
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"
+               >
+              mitiru::adapter
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"
+               >
+              mitiru::animation
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"
+               >
+              mitiru::asset
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"
+               >
+              mitiru::assets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"
+               >
+              mitiru::audio
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"
+               >
+              mitiru::bridge
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"
+               >
+              mitiru::bridge::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"
+               >
+              mitiru::cef
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"
+               >
+              mitiru::cef::bridges
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"
+               >
+              mitiru::control
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"
+               >
+              mitiru::core
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"
+               aria-current="page" class="is-active">
+              mitiru::data
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"
+               >
+              mitiru::debug
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"
+               >
+              mitiru::ecs
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"
+               >
+              mitiru::effects
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"
+               >
+              mitiru::fsm
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"
+               >
+              mitiru::game
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"
+               >
+              mitiru::gfx
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"
+               >
+              mitiru::gfx::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"
+               >
+              mitiru::i18n
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"
+               >
+              mitiru::input
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"
+               >
+              mitiru::live2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"
+               >
+              mitiru::math
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"
+               >
+              mitiru::narrative
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"
+               >
+              mitiru::network
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"
+               >
+              mitiru::observe
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"
+               >
+              mitiru::physics
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"
+               >
+              mitiru::physics2d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"
+               >
+              mitiru::physics3d
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"
+               >
+              mitiru::platform
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"
+               >
+              mitiru::render
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"
+               >
+              mitiru::render::dx12
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"
+               >
+              mitiru::resource
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"
+               >
+              mitiru::scene
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"
+               >
+              mitiru::screen_detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"
+               >
+              mitiru::server
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"
+               >
+              mitiru::server::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"
+               >
+              mitiru::sprite
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"
+               >
+              mitiru::time
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"
+               >
+              mitiru::time::detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"
+               >
+              mitiru::ui
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"
+               >
+              mitiru::ui::LayoutPresets
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"
+               >
+              mitiru::util
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"
+               >
+              mitiru::validate
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"
+               >
+              mitiru::vn
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"
+               >
+              mitiru::world
+            </a>
+          </li>
+        
+      </ul>
+    </nav>
+  </details>
+</aside>
+
+  <article class="api-page__article">
+    <header>
+      <h1>mitiru::data</h1>
+      <p class="api-page__description">Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items).</p>
+    </header>
+    <div class="api-page__content">
+      <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (30 types, 199 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#enum-binarytag"><code>BinaryTag</code></a></td><td>enum</td><td>11</td></tr>
+<tr><td><a href="#struct-binvec2"><code>BinVec2</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-binvec3"><code>BinVec3</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-bincolor"><code>BinColor</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-binarywriter"><code>BinaryWriter</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#class-binaryreader"><code>BinaryReader</code></a></td><td>class</td><td>22</td></tr>
+<tr><td><a href="#class-configmanager"><code>ConfigManager</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-contentloader"><code>ContentLoader</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-csvparser"><code>CsvParser</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-iniparser"><code>IniParser</code></a></td><td>class</td><td>18</td></tr>
+<tr><td><a href="#struct-fromjsonresult"><code>FromJsonResult</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-migrationchain"><code>MigrationChain</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-jsonbuilder"><code>JsonBuilder</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#class-jsonreader"><code>JsonReader</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-migration"><code>Migration</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#struct-prefab"><code>Prefab</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-prefablibrary"><code>PrefabLibrary</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#struct-projectconfig"><code>ProjectConfig</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-projectfile"><code>ProjectFile</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#class-saveschema"><code>SaveSchema</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#struct-schemaimportresult"><code>SchemaImportResult</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-schemaimporter"><code>SchemaImporter</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#enum-fieldtype"><code>FieldType</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-schemafield"><code>SchemaField</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-schema"><code>Schema</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-validationresult"><code>ValidationResult</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#class-schemavalidator"><code>SchemaValidator</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#struct-tilemaplayer"><code>TilemapLayer</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-tilemap"><code>Tilemap</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-tilemaploader"><code>TilemapLoader</code></a></td><td>class</td><td>5</td></tr>
+</tbody></table>
+<details class="api-class" id="enum-binarytag" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">BinaryTag</code> <span class="api-class__extra">: uint8_t</span> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Int32 = 0x01</code></div>
+<div class="api-method"><code>Float32 = 0x02</code></div>
+<div class="api-method"><code>String = 0x03</code></div>
+<div class="api-method"><code>Bool = 0x04</code></div>
+<div class="api-method"><code>Vec2 = 0x05</code></div>
+<div class="api-method"><code>Vec3 = 0x06</code></div>
+<div class="api-method"><code>Color = 0x07</code></div>
+<div class="api-method"><code>Array = 0x08</code></div>
+<div class="api-method"><code>Bytes = 0x09</code></div>
+<div class="api-method"><code>Int64 = 0x0A</code></div>
+<div class="api-method"><code>Float64 = 0x0B</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-binvec2" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BinVec2</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x = 0.0f</code></div>
+<div class="api-method"><code>float y = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-binvec3" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BinVec3</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x = 0.0f</code></div>
+<div class="api-method"><code>float y = 0.0f</code></div>
+<div class="api-method"><code>float z = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bincolor" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BinColor</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float r = 0.0f</code></div>
+<div class="api-method"><code>float g = 0.0f</code></div>
+<div class="api-method"><code>float b = 0.0f</code></div>
+<div class="api-method"><code>float a = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-binarywriter" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BinaryWriter</code> <span class="api-class__count">15</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BinaryWriter()</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeInt(int32_t value)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeInt64(int64_t value)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeFloat(float value)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeDouble(double value)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeString(const std::string&amp; value)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeBool(bool value)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeVec2(float x, float y)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeVec3(float x, float y, float z)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeColor(float r, float g, float b, float a)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeArray(const std::vector&lt;int32_t&gt;&amp; values)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeArray(const std::vector&lt;float&gt;&amp; values)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeArray(const std::vector&lt;std::string&gt;&amp; values)</code></div>
+<div class="api-method"><code>BinaryWriter&amp; writeBytes(const uint8_t* data, std::size_t size)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;uint8_t&gt; finish()</code></div>
+</div>
+</details>
+<details class="api-class" id="class-binaryreader" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BinaryReader</code> <span class="api-class__count">22</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BinaryReader(const uint8_t* data, std::size_t size)</code></div>
+<div class="api-method"><code>explicit BinaryReader(const std::vector&lt;uint8_t&gt;&amp; data)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t remaining() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool atEnd() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int32_t readInt()</code></div>
+<div class="api-method"><code>[[nodiscard]] int64_t readInt64()</code></div>
+<div class="api-method"><code>[[nodiscard]] float readFloat()</code></div>
+<div class="api-method"><code>[[nodiscard]] double readDouble()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string readString()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool readBool()</code></div>
+<div class="api-method"><code>[[nodiscard]] BinVec2 readVec2()</code></div>
+<div class="api-method"><code>[[nodiscard]] BinVec3 readVec3()</code></div>
+<div class="api-method"><code>[[nodiscard]] BinColor readColor()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;int32_t&gt; readIntArray()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;float&gt; readFloatArray()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::string&gt; readStringArray()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;uint8_t&gt; readBytes()</code></div>
+<div class="api-method"><code>[[nodiscard]] BinaryTag peekTag() const</code></div>
+<div class="api-method"><code>using ConfigValue = std::variant&lt;std::string, int, float, bool&gt;;</code></div>
+<div class="api-method"><code>using ConfigChangeCallback = std::function&lt;void(const ConfigValue&amp;)&gt;;</code></div>
+<div class="api-method"><code>[[nodiscard]] static size_t skipWs(const std::string&amp; s, size_t pos)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-configmanager">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ConfigManager</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void set(const std::string&amp; key, const ConfigValue&amp; value)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] std::optional&lt;T&gt; get(const std::string&amp; key) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;std::string&gt; getString(const std::string&amp; key) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;int&gt; getInt(const std::string&amp; key) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;float&gt; getFloat(const std::string&amp; key) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;bool&gt; getBool(const std::string&amp; key) const</code></div>
+<div class="api-method"><code>bool loadFromJson(const std::string&amp; json)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string saveToJson() const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasKey(const std::string&amp; key) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::string&gt; keys() const</code></div>
+<div class="api-method"><code>void setDefault(const std::string&amp; key, const ConfigValue&amp; value)</code></div>
+<div class="api-method"><code>void onChange(const std::string&amp; key, ConfigChangeCallback callback)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-contentloader">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ContentLoader</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ContentLoader() = default</code></div>
+<div class="api-method"><code>~ContentLoader() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] static FromJsonResult&lt;T&gt; loadFile(const std::string&amp; path)</code></div>
+<div class="api-method"><code>[[nodiscard]] static FromJsonResult&lt;T&gt; loadJson(const Json&amp; json)</code></div>
+<div class="api-method"><code>[[nodiscard]] static FromJsonResult&lt;T&gt; loadString(const std::string&amp; s)</code></div>
+<div class="api-method"><code>[[nodiscard]] static FromJsonResult&lt;T&gt; loadFileValidated( const std::string&amp; path, const Schema&amp; schema)</code></div>
+<div class="api-method"><code>[[nodiscard]] static FromJsonResult&lt;T&gt; loadJsonValidated( const Json&amp; json, const Schema&amp; schema)</code></div>
+<div class="api-method"><code>[[nodiscard]] static FromJsonResult&lt;T&gt; loadStringValidated( const std::string&amp; s, const Schema&amp; schema)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-csvparser">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CsvParser</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void parse(const std::string&amp; text)</code></div>
+<div class="api-method"><code>[[nodiscard]] int rowCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int columnCount(int row) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string get(int row, int col) const</code></div>
+<div class="api-method"><code>[[nodiscard]] int getInt(int row, int col, int defaultVal = 0) const</code></div>
+<div class="api-method"><code>[[nodiscard]] float getFloat(int row, int col, float defaultVal = 0) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::string&gt; getRow(int row) const</code></div>
+<div class="api-method"><code>void clear()</code></div>
+</div>
+</details>
+<details class="api-class" id="class-iniparser">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IniParser</code> <span class="api-class__count">18</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void parse(const std::string&amp; text)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string get(const std::string&amp; section, const std::string&amp; key, const std::string&amp; defaultVal = {}) const</code></div>
+<div class="api-method"><code>[[nodiscard]] int getInt(const std::string&amp; section, const std::string&amp; key, int defaultVal = 0) const</code></div>
+<div class="api-method"><code>[[nodiscard]] float getFloat(const std::string&amp; section, const std::string&amp; key, float defaultVal = 0) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool getBool(const std::string&amp; section, const std::string&amp; key, bool defaultVal = false) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasSection(const std::string&amp; section) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasKey(const std::string&amp; section, const std::string&amp; key) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::string&gt; sections() const</code></div>
+<div class="api-method"><code>void clear()</code></div>
+<div class="api-method"><code>using Json = nlohmann::json;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;Json&gt; loadJsonFile(const std::string&amp; path)</code></div>
+<div class="api-method"><code>inline bool saveJsonFile(const std::string&amp; path, const Json&amp; j, int indent = 2)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;Json&gt; parseJson(const std::string&amp; str)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] inline Json toJson(const T&amp; value)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] inline std::optional&lt;T&gt; fromJson(const Json&amp; json) noexcept</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] inline FromJsonResult&lt;T&gt; fromJsonResult(const Json&amp; json)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] inline Json toJsonVersioned(const T&amp; value, int version)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] inline FromJsonResult&lt;T&gt; fromJsonVersioned(const Json&amp; json, int expectedVersion)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-fromjsonresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FromJsonResult</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::optional&lt;T&gt; value</code></div>
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ok() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] explicit operator bool() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-migrationchain">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MigrationChain</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using Migrate = std::function&lt;Json(Json)&gt;;</code></div>
+<div class="api-method"><code>MigrationChain&amp; addStep(int fromVersion, int toVersion, Migrate migrate)</code></div>
+<div class="api-method"><code>[[nodiscard]] FromJsonResult&lt;T&gt; load(const Json&amp; json, int currentVersion) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t stepCount() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-jsonbuilder">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JsonBuilder</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>JsonBuilder&amp; beginObject()</code></div>
+<div class="api-method"><code>JsonBuilder&amp; beginArray()</code></div>
+<div class="api-method"><code>JsonBuilder&amp; endArray()</code></div>
+<div class="api-method"><code>JsonBuilder&amp; key(const std::string&amp; k)</code></div>
+<div class="api-method"><code>JsonBuilder&amp; value(const std::string&amp; v)</code></div>
+<div class="api-method"><code>JsonBuilder&amp; value(const char* v)</code></div>
+<div class="api-method"><code>JsonBuilder&amp; value(int v)</code></div>
+<div class="api-method"><code>JsonBuilder&amp; value(float v)</code></div>
+<div class="api-method"><code>JsonBuilder&amp; value(double v)</code></div>
+<div class="api-method"><code>JsonBuilder&amp; value(bool v)</code></div>
+<div class="api-method"><code>JsonBuilder&amp; array(const std::string&amp; k, const std::vector&lt;float&gt;&amp; values)</code></div>
+<div class="api-method"><code>JsonBuilder&amp; rawValue(const std::string&amp; raw)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string build() const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-jsonreader">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JsonReader</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool parse(const std::string&amp; json)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-migration">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Migration</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using Op = std::function&lt;Json(Json)&gt;;</code></div>
+<div class="api-method"><code>[[nodiscard]] static inline Op backfillField(std::string field, Json defaultValue)</code></div>
+<div class="api-method"><code>[[nodiscard]] static inline Op renameField(std::string oldName, std::string newName)</code></div>
+<div class="api-method"><code>[[nodiscard]] static inline Op removeField(std::string field)</code></div>
+<div class="api-method"><code>[[nodiscard]] static inline Op setField(std::string field, Json value)</code></div>
+<div class="api-method"><code>[[nodiscard]] static inline Op transformField(std::string field, std::function&lt;Json(Json)&gt; fn)</code></div>
+<div class="api-method"><code>[[nodiscard]] static inline Op compose(std::initializer_list&lt;Op&gt; ops)</code></div>
+<div class="api-method"><code>[[nodiscard]] static inline Op compose(std::vector&lt;Op&gt; ops)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-prefab">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Prefab</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string componentsJson</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; childPrefabs</code></div>
+</div>
+</details>
+<details class="api-class" id="class-prefablibrary">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PrefabLibrary</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void registerPrefab(const Prefab&amp; prefab)</code></div>
+<div class="api-method"><code>[[nodiscard]] scene::EntityId instantiate( const std::string&amp; prefabName, scene::GameWorld&amp; world) const</code></div>
+<div class="api-method"><code>[[nodiscard]] scene::EntityId instantiateWithOverrides( const std::string&amp; prefabName, const std::string&amp; overridesJson, scene::GameWorld&amp; world) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;Prefab&gt; getPrefab(const std::string&amp; name) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::string&gt; allPrefabNames() const</code></div>
+<div class="api-method"><code>bool loadFromJson(const std::string&amp; json)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-projectconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ProjectConfig</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string projectName</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; assetPaths</code></div>
+</div>
+</details>
+<details class="api-class" id="class-projectfile">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ProjectFile</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static std::string saveToString(const ProjectConfig&amp; config)</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::optional&lt;ProjectConfig&gt; loadFromString(const std::string&amp; json)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-saveschema">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SaveSchema</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit SaveSchema(int currentVersion) noexcept</code></div>
+<div class="api-method"><code>SaveSchema(const SaveSchema&amp;) = default</code></div>
+<div class="api-method"><code>SaveSchema&amp; operator=(const SaveSchema&amp;) = default</code></div>
+<div class="api-method"><code>SaveSchema(SaveSchema&amp;&amp;) = default</code></div>
+<div class="api-method"><code>SaveSchema&amp; operator=(SaveSchema&amp;&amp;) = default</code></div>
+<div class="api-method"><code>~SaveSchema() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] int currentVersion() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] MigrationChain&lt;T&gt;&amp; migrations() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const MigrationChain&lt;T&gt;&amp; migrations() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Json toJson(const T&amp; value) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string toJsonString(const T&amp; value) const</code></div>
+<div class="api-method"><code>[[nodiscard]] FromJsonResult&lt;T&gt; fromJson(const Json&amp; json) const</code></div>
+<div class="api-method"><code>[[nodiscard]] FromJsonResult&lt;T&gt; fromJsonString(const std::string&amp; s) const</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-schemaimportresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SchemaImportResult</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::optional&lt;Schema&gt; schema</code></div>
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; warnings</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ok() const noexcept</code></div>
+<div class="api-method"><code>explicit operator bool() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-schemaimporter">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SchemaImporter</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>SchemaImporter() = default</code></div>
+<div class="api-method"><code>~SchemaImporter() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] static SchemaImportResult fromJsonSchemaString( const std::string&amp; s, std::string schemaName)</code></div>
+<div class="api-method"><code>[[nodiscard]] static SchemaImportResult fromJsonSchemaJson( const Json&amp; json, std::string schemaName)</code></div>
+<div class="api-method"><code>[[nodiscard]] static SchemaImportResult fromJsonSchemaFile( const std::string&amp; path, std::string schemaName)</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-fieldtype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">FieldType</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>String</code></div>
+<div class="api-method"><code>Int</code></div>
+<div class="api-method"><code>Float</code></div>
+<div class="api-method"><code>Bool</code></div>
+<div class="api-method"><code>Array</code></div>
+<div class="api-method"><code>Object</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-schemafield">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SchemaField</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string defaultValue</code></div>
+<div class="api-method"><code>std::string description</code></div>
+<div class="api-method"><code>std::optional&lt;float&gt; minValue</code></div>
+<div class="api-method"><code>std::optional&lt;float&gt; maxValue</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-schema">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Schema</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string version</code></div>
+<div class="api-method"><code>std::vector&lt;SchemaField&gt; fields</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-validationresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ValidationResult</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;std::string&gt; errors</code></div>
+</div>
+</details>
+<details class="api-class" id="class-schemavalidator">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SchemaValidator</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>SchemaValidator()</code></div>
+<div class="api-method"><code>void registerSchema(const Schema&amp; schema)</code></div>
+<div class="api-method"><code>[[nodiscard]] ValidationResult validate( const std::string&amp; schemaName, const std::string&amp; jsonString) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string generateTemplate(const std::string&amp; schemaName) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;Schema&gt; getSchema(const std::string&amp; name) const</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-tilemaplayer">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TilemapLayer</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::vector&lt;TileData&gt; tiles</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-tilemap">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Tilemap</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::vector&lt;TilemapLayer&gt; layers</code></div>
+</div>
+</details>
+<details class="api-class" id="class-tilemaploader">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TilemapLoader</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;Tilemap&gt; loadFromJson(const std::string&amp; json) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string saveToJson(const Tilemap&amp; tilemap) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;TileData&gt; getTile( const TilemapLayer&amp; layer, int x, int y) const</code></div>
+<div class="api-method"><code>void setTile(TilemapLayer&amp; layer, int x, int y, const TileData&amp; tileData)</code></div>
+<div class="api-method"><code>[[nodiscard]] Tilemap createEmpty( const std::string&amp; name, int width, int height, int tileW, int tileH) const</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+    </div>
+  </article>
+  
+<aside class="api-toc" aria-label="このページ内">
+  <p class="api-toc__title">このページ内</p>
+  <nav id="TableOfContents"></nav>
+</aside>
+
+
+</div>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">
+        <span class="site-footer__brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 24 L4 8 L10 14 L16 8 L22 14 L28 8 L28 24"/>
+          </svg>
+        </span>
+        MitiruEngine
+      </p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+      <p class="site-footer__build" aria-label="built with">
+        <code>built_with</code>
+        <span class="site-footer__build-chip">C++20</span>
+        <span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
+        <span class="site-footer__build-chip site-footer__build-chip--data">JSON</span>
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
+      <p class="site-footer__hint">
+        <kbd>?</kbd> でショートカット一覧
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+      <p class="site-footer__easter" aria-hidden="true">
+        <span class="site-footer__easter-prompt"><code>$ echo &quot;hello, world&quot;</code></span>
+        <span class="site-footer__easter-cursor">_</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js" defer></script>
+</body>
+</html>

@@ -1,136 +1,132 @@
-# Getting Started with MitiruEngine
+# はじめに — MitiruEngine セットアップ
 
-> **Pick your mode first.** MitiruEngine is dual-mode (see [`SCOPE.md`](SCOPE.md), canonical):
->
-> - **Mode A — Native (C++ only):** console / mobile / 3D action / headless / tools. Pure C++,
->   no browser process. Smallest dependency surface, fastest cold build.
-> - **Mode B — Hybrid (Mode A + CEF + JS):** desktop narrative / management / simulation games
->   where HTML / CSS / JS iterate faster than C++ UI code.
->
-> The clone + build steps below are identical for both modes. Template choice (further down)
-> depends on the mode you pick — there are now **three** starter templates.
+このページの目的は **「動くものを 5 分で作る」** こと。
+ゲーム設計の話は後回しで、まずは `mitiru` CLI を入れて、プロジェクトを作って、画面が開くところまで一緒に行きます。
 
-## Prerequisites
+## 必要なもの
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| CMake | 3.21+ | [cmake.org/download](https://cmake.org/download/) |
-| C++ Compiler | MSVC 2022 / GCC 13+ / Clang 18+ | C++20 required |
-| Git | Any recent | Submodule support needed |
+| ツール | バージョン目安 | ひとこと |
+|------|------------|--------|
+| Go | 1.22 以降 | `mitiru` CLI を `go install` で入れるため。 |
+| C++ コンパイラ | MSVC 2022 / GCC 13+ / Clang 18+ | C++20 が通るやつ。`mitiru build` が裏で呼びます。 |
+| CMake | 3.21 以降 | 同上。CMake を直接触ることはありません。 |
+| Git | わりと新しめ | submodule もあるので、古すぎなければ OK。 |
 
-**Windows (recommended):** Install Visual Studio 2022 with the "Desktop development with C++" workload. CMake is bundled with VS but a standalone install also works.
+### Windows のひと
 
-**Linux:** `sudo apt install cmake g++-13 git` (Ubuntu/Debian). Ensure `g++-13` or later is available.
+Visual Studio 2022 を入れて、インストーラで **「C++ によるデスクトップ開発」** ワークロードを選んでおけば、コンパイラと CMake と Git がまとめて入ります。Go は [go.dev/dl](https://go.dev/dl/) からどうぞ。
+
+### Linux のひと
+
+```bash
+sudo apt install golang-1.22 cmake g++-13 git
+```
+
+`g++-13` 以上が入っていれば C++20 のビルドは通ります。
+
+### Mac のひと
+
+```bash
+brew install go cmake
+```
+
+Xcode に付いてくる Clang は新しいので、それで足ります。
 
 ---
 
-## Clone and Build (5 commands)
+## mitiru CLI を入れる
 
 ```bash
-git clone --recursive https://github.com/mogmog-0110/MitiruEngine.git
-cd MitiruEngine
-cmake --preset default
-cmake --build build --config Debug
-ctest --test-dir build -C Debug
+go install github.com/mogmog-0110/mitiru-cli/cmd/mitiru@latest
 ```
 
-> If you forgot `--recursive`, run `git submodule update --init --recursive` inside the repo.
+`$GOPATH/bin` (デフォルトは `$HOME/go/bin`) に `mitiru` バイナリが入ります。`PATH` が通っていれば、すぐに使えます。
 
-### Build Presets
-
-| Preset | Description |
-|--------|-------------|
-| `default` | Debug build (MSVC on Windows) |
-| `release` | Optimized release build |
-| `gcc` | GCC 13 on Linux |
-| `clang` | Clang 18 on Linux |
-| `emscripten` | WebAssembly build |
-
-For a release build:
+通っているか確認:
 
 ```bash
-cmake --preset release
-cmake --build build --config Release
+mitiru version
 ```
+
+ここで `mitiru: command not found` と言われたら `PATH` の問題です。`go env GOPATH` で出てきたパスの `bin/` を `PATH` に追加してください。
 
 ---
 
-## Run the Examples
+## 最初のプロジェクトを作る
 
-The runnable sample set was retired in Round 39 pending a redesigned consumer
-example collection. A fresh `examples/` set will land in the next release.
+```bash
+mitiru new my-game
+cd my-game
+mitiru run
+```
 
-Until then, the templates under `templates/` and the [tutorials](tutorials/)
-are the recommended starting points — both build cleanly against the
-header-only engine.
+`mitiru new` がフォルダを作って、`src/main.cpp` / `mitiru.toml` / `assets/scene.html` の最小セットを置きます。
+`mitiru run` がビルドして実行します。初回は CMake configure + engine 取得で 1〜2 分くらい時間がかかります。
+
+これだけで、`MitiruEngine` のウィンドウが手元で開きます。お疲れさまでした。
+
+### よく使うコマンド
+
+| コマンド | やること |
+|------|------|
+| `mitiru new <name>` | テンプレートから新しいプロジェクトを作る |
+| `mitiru build` | ビルドだけ。実行はしない。 |
+| `mitiru run` | ビルドして実行 |
+| `mitiru clean` | `build/` を消して configure からやり直す |
+| `mitiru doctor` | 環境チェック (Go / CMake / コンパイラの版) |
+| `mitiru version` | CLI のバージョン |
 
 ---
 
-## Create Your First Project from a Template
+## mitiru.toml に何が書いてあるか
 
-MitiruEngine ships **three starter templates** in `templates/`. All three use
-`find_package(MitiruEngine)` and resolve the engine via either
-`-DMITIRU_ENGINE_DIR=<path>` or a sibling `../engine` worktree.
+`mitiru new` が生成するマニフェスト:
 
-| Template | Mode | When to pick |
-|---|:-:|---|
-| `native-only` | A | Pure C++ game. No CEF, no HTML, no JS runtime. Headless / console (planned) / 3D action / tools. Fastest build. |
-| `native-plus-cef-overlay` | B | Native gameplay loop with a transparent CEF HUD on top. Menus, dialogs, score panels in HTML. KaeruCrape-style split. |
-| `web-first-cef-shell` | B | Whole game is HTML/CSS/JS; C++ host is a thin shell + bridges. |
+```toml
+[project]
+name = "my-game"
+version = "0.1.0"
+engine = "0.1.0"
 
-### Quick Start: Instantiate
+[window]
+title = "my-game"
+width = 1280
+height = 720
+vsync = true
 
-```bash
-# Mode A (pure native)
-python templates/_scripts/instantiate.py \
-    --variant native-only \
-    --name MyGame \
-    --dest ../MyGame
+[cef]
+start_url = "assets/scene.html"
+skip_default_font = true
 
-# Mode B (native + HUD overlay)
-python templates/_scripts/instantiate.py \
-    --variant native-plus-cef-overlay \
-    --name MyGame \
-    --dest ../MyGame
-
-# Mode B (web-first)
-python templates/_scripts/instantiate.py \
-    --variant web-first-cef-shell \
-    --name MyGame \
-    --dest ../MyGame
+[build]
+backend = "auto"
 ```
 
-The script substitutes `@NAME@` / `@NAME_LOWER@` placeholders in both file
-contents and file names. See `templates/README.md` for the full substitution
-table and probe-order details.
-
-### Build the instantiated project
-
-```bash
-cd ../MyGame
-cmake --preset default              # picks up sibling ../engine automatically
-cmake --build build --config Debug
-./build/MyGame                      # or build/Debug/MyGame.exe on Windows
-```
-
-If your engine checkout is **not** a sibling of the game project, pass
-`-DMITIRU_ENGINE_DIR=<absolute path>` to the configure step. See the
-"Two-phase resolution gotcha" section in `templates/README.md` if a different
-engine checkout is being picked up than expected.
+- `[window]` — ウィンドウのタイトルとサイズ。C++ 側でハードコードしなくて済みます。
+- `[cef]` — Mode B (CEF 併用) のとき、最初に読む HTML。Mode A 純 C++ なら `start_url` は無視されます。
+- `[build]` — グラフィクス backend。`auto` でプラットフォームから自動選択。明示するなら `dx11` / `vulkan` / `webgl2` / `null` 等。
 
 ---
 
-## Minimal Game Code (Mode A)
+## 動かしかた 2 種 (Mode A / Mode B)
 
-This is what `templates/native-only/src/main.cpp` produces in shape. Copy
-into a fresh project, then replace the placeholder geometry with your own.
+- **Mode A — Native (C++ のみ)**: デスクトップ / ヘッドレス。3D アクション、performance-critical な処理、CEF を使わない最小実行。`mitiru.toml` の `[cef]` を消すか `enabled = false` を入れます。
+- **Mode B — Hybrid (Mode A + CEF + JS)**: デスクトップのみ。UI を HTML/CSS で組み、C++ から `state` を push する。HUD、メニュー、ノベル風の演出。`mitiru new` のデフォルトは Mode B 寄りのテンプレートです。
+
+詳しい線引きは [`SCOPE.md`](SCOPE.md)。
+
+---
+
+## 最小のゲームコード (Mode A)
+
+`mitiru new` が `src/main.cpp` にこういうのを置きます。置き換える出発点として使ってください:
 
 ```cpp
 #include <cmath>
 #include <mitiru/Mitiru.hpp>
 
-constexpr int kKeyEscape = 27;   // VK_ESCAPE
-constexpr int kKeySpace  = 32;   // VK_SPACE
+constexpr int kKeyEscape = 27;
+constexpr int kKeySpace  = 32;
 
 class MyGame final : public mitiru::Game
 {
@@ -154,11 +150,11 @@ public:
         const bool  boost = hasInput() && input().isKeyDown(kKeySpace);
         const float pulse = 0.5f + 0.5f * std::sin(m_elapsed * 2.0f);
         const float size  = 80.0f + (boost ? 60.0f : 20.0f) * pulse;
+
         screen.drawRect(
             sgc::Rectf{w * 0.5f - size * 0.5f, h * 0.5f - size * 0.5f, size, size},
             sgc::Colorf{0.30f, 0.95f, 0.85f, 0.9f});
 
-        // Use drawTextInRect, not drawText — see .claude/rules/mitiru-engine.md.
         screen.drawTextInRect(
             sgc::Rectf{0.0f, 24.0f, w, 32.0f},
             "Hello, Mitiru!",
@@ -182,15 +178,9 @@ int main()
     MyGame        game;
 
     mitiru::EngineConfig cfg;
-    cfg.title           = "Hello Mitiru";
-    cfg.windowWidth     = 1280;
-    cfg.windowHeight    = 720;
-
-    // Mode A: skip CEF entirely (no libcef.dll dependency at launch).
+    // Mode A: CEF を完全に切る (libcef.dll に依存しない)。
     cfg.enableCef = false;
-
-    // Latin-only atlas → ~1 s startup vs ~15 s default Japanese atlas.
-    // Switch to FontAtlas::Japanese when you render kana / kanji.
+    // Latin-only atlas → 起動 ~1 s (デフォルトの日本語 atlas は ~15 s)。
     cfg.fontAtlasRanges = mitiru::EngineConfig::FontAtlas::Latin;
 
     engine.run(game, cfg);
@@ -198,65 +188,82 @@ int main()
 }
 ```
 
-For Mode B, the `cefStartUrl` field of `EngineConfig` plus the template's
-`web/` directory drive CEF — see the README inside each Mode B template
-for the exact wiring.
+`cfg.title` / `cfg.windowWidth` / `cfg.windowHeight` は **書かなくて OK** です。`mitiru build` が `mitiru.toml` の `[window]` を C++ ヘッダに焼き込みます。
+
+Mode B のときの `cefStartUrl` も同様に、`mitiru.toml` の `[cef] start_url` から自動で焼き込まれます。
 
 ---
 
-## Project Structure
+## ディレクトリ構成 (生成された直後)
 
 ```
-MitiruEngine/
-├── include/mitiru/         # All engine headers (header-only library)
-│   ├── core/               # Engine, Clock, Config, Game, Screen, GameLoop
-│   ├── ecs/                # Entity-Component-System (MitiruWorld, SystemScheduler)
-│   ├── scene/              # Scene management, GameWorld, SceneGraph
-│   ├── render/             # 2D/3D rendering, Camera, Mesh, Material, Light
-│   ├── gfx/                # GPU abstraction (DX11, DX12, Vulkan, OpenGL, WebGL, Null)
-│   ├── input/              # Input state, key codes, gamepad, input mapper
-│   ├── audio/              # Audio engine, mixer, MML music playback
-│   ├── physics/            # Collision detection, rigid body, physics system
-│   ├── network/            # TCP transport, lobby, state sync
-│   ├── vn/                 # Visual novel engine (40+ modules)
-│   ├── ui/                 # UI framework (nodes, themes, layout)
-│   ├── bridge/             # ShiggyGameCore integration layer
-│   ├── scripting/          # Script engine, parser, evaluator
-│   ├── resource/           # Asset loading, hot-reload, font loader
-│   ├── asset/              # Asset pipeline, SVG generation, mesh cache
-│   ├── data/               # JSON, config, schema validation, tilemap
-│   ├── control/            # Command queue, replay system
-│   ├── observe/            # State inspection, diff tracking, HTTP server
-│   ├── validate/           # Test harness, health checks, invariants
-│   ├── debug/              # Debug overlay, profiler, logging
-│   ├── ai/                 # Behavior trees, pathfinding, test runner
-│   ├── platform/           # Window creation (Win32, GLFW, SDL2, Emscripten)
-│   ├── cef/                # CEF host, StateStore, render handler (Mode B)
-│   └── Mitiru.hpp          # Umbrella header (includes everything)
-├── external/               # Third-party dependencies (submodules)
-│   ├── sgc/                # ShiggyGameCore (ECS, math, physics, AI)
-│   ├── mml/                # MitiruMML (music macro language)
-│   ├── stb/                # stb_image, stb_truetype
-│   └── ...
-├── templates/              # Starter templates: native-only (Mode A), native-plus-cef-overlay (Mode B), web-first-cef-shell (Mode B)
-├── examples/               # 11 single-purpose runnable samples
-├── web/                    # JS runtime modules (Mode B): mitiru.audio/save/novel/input/...
-├── tests/                  # Unit tests (CTest)
-├── tools/                  # CLI tool, helper scripts
-├── assets/                 # Shared assets
-└── docs/                   # Documentation and tutorials
+my-game/
+├── mitiru.toml         # プロジェクトマニフェスト
+├── src/
+│   └── main.cpp        # ゲーム本体
+├── assets/
+│   └── scene.html      # Mode B 用の初期 HTML
+└── build/              # mitiru build が生成 (gitignore 推奨)
 ```
+
+`mitiru build` は裏で CMake `FetchContent` 経由でエンジン本体を引いてきて、ビルドツリーを作ります。`include/mitiru/` 以下のヘッダはエンジンリポジトリ側にあり、消費プロジェクトには複製されません。
 
 ---
 
-## Next Steps
+## 次に何を見るか
 
-- [Reading Order — where to go next](READING_ORDER.md)
-- [Scope and Mode Declaration (canonical)](SCOPE.md)
-- [Hybrid Runtime — Mode B JS / JSON / C++ split](HYBRID_RUNTIME.md)
-- [Tutorial 1: Your First Visual Novel](tutorials/01_first_vn.md)
-- [Tutorial 2: Build a Flappy Bird Clone](tutorials/02_arcade_game.md)
-- [Tutorial 3: Your First 3D Scene](tutorials/03_3d_scene.md)
-- [Tutorial 5: Entity Component System Guide](tutorials/05_ecs_basics.md) *(tutorial 4 is not yet written)*
-- [Architecture Overview](ARCHITECTURE.md)
+- [チュートリアル 1: 最初のシーン](tutorials/01_first_vn.md) — `src/main.cpp` を少しずつ膨らませて、台詞表示まで。
+- [チュートリアル 2: アクションのプロトタイプ](tutorials/02_arcade_game.md) — 入力を取って、Player を動かす。
+- [チュートリアル 3: セーブ / ロード](tutorials/03_save_load.md) — JSON 永続化。
+- [Reading Order — 次に読むべきページ](READING_ORDER.md)
+- [Mode A / Mode B の使い分け](SCOPE.md)
+- [Hybrid Runtime — Mode B の C++ / JS / JSON 分担](HYBRID_RUNTIME.md)
+- [Architecture — エンジン全体の設計](ARCHITECTURE.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
+
+---
+
+## CMake から直接消費したい (上級)
+
+`mitiru` CLI を使わずに、既存の CMake プロジェクトに足したい場合:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(Mitiru
+  GIT_REPOSITORY https://github.com/mogmog-0110/MitiruEngine.git
+  GIT_TAG        main
+)
+FetchContent_MakeAvailable(Mitiru)
+
+add_executable(MyGame src/main.cpp)
+target_link_libraries(MyGame PRIVATE Mitiru::mitiru)
+```
+
+`find_package(Mitiru CONFIG REQUIRED)` も install 後なら有効。
+
+エンジン本体をクローンしてテストまで走らせるには:
+
+```bash
+git clone --recursive https://github.com/mogmog-0110/MitiruEngine.git
+cd MitiruEngine
+cmake --preset default
+cmake --build build --config Debug
+ctest --test-dir build -C Debug
+```
+
+`--recursive` は `external/` 下の submodule (Box2D, Jolt, ozz-animation, tracy, zstd, MitiruMML, ShiggyGameCore) の取得に必要です。
+
+---
+
+## ハマったとき
+
+| 症状 | たぶんこれ |
+|------|----------|
+| `mitiru: command not found` | `$HOME/go/bin` が `PATH` にない。`go env GOPATH` で確認。 |
+| `mitiru doctor` で CMake が見つからない | CMake 3.21 以上を入れる。古いと preset が読めません。 |
+| `mitiru build` で C++20 系のエラー | コンパイラが古い。MSVC 2022 / GCC 13+ / Clang 18+ に。 |
+| 初回 build が異様に遅い | `FetchContent` が submodule を取りに行っています。1〜2 分は普通。 |
+| Windows でリンカが `libcef.dll` を見つけられない | `mitiru build` をやり直すと CEF ランタイムが exe の隣にコピーされます。 |
+| `mitiru` が古い engine を引いてしまう | `mitiru.toml` の `[project] engine` を直すか、`mitiru clean` で `build/` を作り直す。 |
+
+それでも詰まったら、[GitHub Issue](https://github.com/mogmog-0110/MitiruEngine/issues) に投げてください。再現手順と OS / Go バージョンが書いてあると助かります。
