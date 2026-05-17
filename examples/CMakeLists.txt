@@ -13,3 +13,15 @@ if(NOT TARGET mitiru)
 	message(STATUS "examples/ skipped: mitiru target not defined")
 	return()
 endif()
+
+# v0.1.1 examples — minimum runnable samples linked against the mitiru target.
+# Build all:
+#     cmake --build build --config Debug
+# Build one:
+#     cmake --build build --config Debug --target hello_window
+
+add_subdirectory(hello_window)
+add_subdirectory(hello_input)
+add_subdirectory(hello_scene)
+add_subdirectory(hello_shapes)
+add_subdirectory(hello_cef_overlay)
