@@ -1730,6 +1730,15 @@ body.search-open {
   padding: 2rem 0 4rem;
 }
 
+/* The list (index) page has no sidebar/TOC — collapse to a single full-width
+   column so the namespace grid (auto-fit minmax 260px) can actually use the
+   page width. */
+.api-page--list {
+  display: block;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
 .api-sidebar,
 .api-toc {
   position: sticky;
@@ -3652,3 +3661,282 @@ pre {
   .home-pillar { transition: none; }
   .home-pillar:hover { transform: none; }
 }
+
+/* ============================================================
+   Round 40: hero title flourish + footer playfulness
+   ============================================================ */
+
+/* --- Hero title: animated gradient underline that draws on load --- */
+.home-hero__title {
+  position: relative;
+  display: inline-block;
+}
+.home-hero__title-text {
+  position: relative;
+  background: linear-gradient(90deg, var(--c-fg, #1a2230) 0%, var(--c-fg, #1a2230) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+.home-hero__title-underline {
+  display: block;
+  height: 5px;
+  width: 0;
+  margin: 0.45rem auto 0;
+  background: linear-gradient(90deg,
+    #ec4899 0%,
+    #f97316 20%,
+    #14b8a6 40%,
+    #a855f7 60%,
+    #0ea5e9 80%,
+    #22c55e 100%);
+  border-radius: 3px;
+  animation: hero-underline-draw 1.4s cubic-bezier(0.2, 0.7, 0.1, 1) 0.25s forwards;
+}
+
+@keyframes hero-underline-draw {
+  from { width: 0; opacity: 0.4; }
+  to   { width: 100%; opacity: 1; }
+}
+
+/* --- Primary CTA button: subtle shine sweep on hover --- */
+.btn--primary {
+  position: relative;
+  overflow: hidden;
+}
+.btn--primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.25) 50%, transparent 70%);
+  transform: translateX(-110%);
+  transition: transform 480ms cubic-bezier(0.2, 0.7, 0.1, 1);
+  pointer-events: none;
+}
+.btn--primary:hover::after {
+  transform: translateX(110%);
+}
+
+/* --- Footer: chip palette + easter terminal --- */
+.site-footer__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.site-footer__brand-mark {
+  display: inline-flex;
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--c-accent, #3865ff);
+}
+.site-footer__build {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.78rem;
+  color: var(--c-fg-soft, #4d566b);
+}
+.site-footer__build code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: 0.78rem;
+}
+.site-footer__build-chip {
+  padding: 0.15em 0.55em;
+  border-radius: 999px;
+  background: #283149;
+  color: #fff;
+  font-size: 0.7rem;
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  letter-spacing: 0.02em;
+}
+.site-footer__build-chip--web {
+  background: #c0d6ff;
+  color: #1a325e;
+}
+.site-footer__build-chip--data {
+  background: #f4d8a3;
+  color: #6b4a18;
+}
+.site-footer__hint {
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--c-fg-soft, #4d566b);
+}
+.site-footer__hint kbd {
+  display: inline-block;
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 0.78rem;
+  padding: 0.04em 0.45em;
+  border: 1px solid var(--c-border, #d8dee9);
+  border-radius: 4px;
+  background: var(--c-bg-elev, #fff);
+  color: var(--c-fg, #1a2230);
+}
+.site-footer__easter {
+  margin-top: 0.7rem;
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 0.78rem;
+  color: var(--c-fg-soft, #4d566b);
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+.site-footer__easter-prompt code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+.site-footer__easter-cursor {
+  display: inline-block;
+  width: 0.55ch;
+  background: var(--c-fg-soft, #4d566b);
+  animation: footer-cursor-blink 1.05s steps(2, end) infinite;
+}
+
+@keyframes footer-cursor-blink {
+  0%, 50%   { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+/* --- 404 page --- */
+.notfound {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 4rem 1.5rem;
+}
+.notfound__code {
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: clamp(4rem, 12vw, 7rem);
+  font-weight: 800;
+  line-height: 1;
+  margin: 0 0 1rem;
+  background: linear-gradient(90deg, #ec4899, #f97316, #14b8a6, #0ea5e9);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.notfound__title {
+  font-size: 1.5rem;
+  margin: 0 0 0.6rem;
+}
+.notfound__lede {
+  color: var(--c-fg-soft, #4d566b);
+  max-width: 460px;
+  margin: 0 auto 1.4rem;
+  line-height: 1.7;
+}
+.notfound__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+.notfound__mascot {
+  margin: 0 auto 1.4rem;
+  width: 96px;
+  height: 84px;
+  color: #14b8a6;
+  animation: notfound-mascot-float 3.4s ease-in-out infinite;
+}
+
+@keyframes notfound-mascot-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hero__title-underline,
+  .btn--primary::after,
+  .site-footer__easter-cursor,
+  .notfound__mascot {
+    animation: none !important;
+  }
+  .home-hero__title-underline { width: 100%; }
+}
+
+/* ============================================================
+   Round 40: chapter accent palette + icon column
+   ============================================================ */
+
+/* Add a third column (icon) between the counter and the title/desc. */
+.chapter-list__link {
+  position: relative;
+  overflow: hidden;
+  grid-template-columns: 2.6rem 2.4rem 1fr;
+}
+.chapter-list__link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--chapter-accent, #6b7280);
+  transition: width 220ms ease;
+}
+.chapter-list__link:hover::after { width: 8px; }
+
+.chapter-list__icon {
+  grid-column: 2;
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  color: var(--chapter-accent, #6b7280);
+  align-self: center;
+}
+.chapter-list__icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* Title + desc move to column 3 */
+.chapter-list__title { grid-column: 3; }
+.chapter-list__desc  { grid-column: 3; }
+
+/* Counter `::before` is the auto-placed default content; keep it in col 1 */
+.chapter-list__link::before {
+  grid-column: 1;
+}
+
+/* Chapter detail: icon + heading accent */
+.chapter-article {
+  --chapter-accent: #6b7280;
+}
+.chapter-article__icon {
+  color: var(--chapter-accent);
+  margin: 0 0 0.6rem;
+}
+.chapter-article__icon svg {
+  width: 48px;
+  height: 48px;
+}
+.chapter-article__body > h2::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 0.9em;
+  background: var(--chapter-accent);
+  margin-right: 0.55rem;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
+/* Home pillars: rotate through the chapter palette so the four cards each
+   pick up a different accent strip. */
+.home-pillar {
+  --pillar-accent: #6b7280;
+
+  border-top: 3px solid var(--pillar-accent);
+}
+.home-pillar:nth-child(1) { --pillar-accent: #ec4899; }
+.home-pillar:nth-child(2) { --pillar-accent: #f97316; }
+.home-pillar:nth-child(3) { --pillar-accent: #0ea5e9; }
+.home-pillar:nth-child(4) { --pillar-accent: #22c55e; }
