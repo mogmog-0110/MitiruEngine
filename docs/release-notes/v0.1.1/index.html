@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ja" data-base="/">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Release Notes v0.1.1 | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Front-door release — mitiru CLI as the primary entry, site structural overhaul, AI-decoration scrub, 5 new runnable examples. No engine API delta from v0.1.0.">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/release-notes/v0.1.1/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/release-notes/v0.1.1/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="Release Notes v0.1.1 | MitiruEngine">
+<meta property="og:description" content="Front-door release — mitiru CLI as the primary entry, site structural overhaul, AI-decoration scrub, 5 new runnable examples. No engine API delta from v0.1.0.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/release-notes/v0.1.1/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Release Notes v0.1.1 | MitiruEngine">
+<meta name="twitter:description" content="Front-door release — mitiru CLI as the primary entry, site structural overhaul, AI-decoration scrub, 5 new runnable examples. No engine API delta from v0.1.0.">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+      <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+<article class="page-article container">
+  <header class="page-article__header">
+    <p class="page-article__eyebrow">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/release-notes/">Release Notes</a>
+      <span class="page-article__date">2026-05-18</span>
+    </p>
+    <h1>Release Notes v0.1.1</h1>
+    <p class="page-article__lede">Front-door release — mitiru CLI as the primary entry, site structural overhaul, AI-decoration scrub, 5 new runnable examples. No engine API delta from v0.1.0.</p>
+    
+      <p class="page-article__source">
+        Source of truth:
+        <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/RELEASE_NOTES_v0.1.1.md"><code>docs/RELEASE_NOTES_v0.1.1.md</code></a>
+      </p>
+    
+  </header>
+  <div class="page-article__body">
+    <h1 id="mitiruengine-release-notes--v011">MitiruEngine Release Notes — v0.1.1</h1>
+<p><strong>Date:</strong> 2026-05-18
+<strong>Tag:</strong> <code>v0.1.1</code>
+<strong>Commits since v0.1.0:</strong> 19
+<strong>Engine API delta:</strong> none (<code>include/mitiru/</code> byte-identical to v0.1.0)
+<strong>Test coverage:</strong> ctest 2259/2259 (unchanged from v0.1.0)</p>
+<blockquote>
+<p>v0.1.1 is a <strong>front-door release</strong>. No new engine API surface, no behavior
+changes, no migration steps for consumers. What changed is how the engine
+is introduced — to humans on the website, and to people scaffolding their
+first project via the new CLI.</p>
+</blockquote>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<ul>
+<li><strong><code>mitiru</code> CLI is now the front door.</strong> All user-facing docs (<code>README.md</code>,
+<code>docs/GETTING_STARTED.md</code>, <code>docs/READING_ORDER.md</code>, the
+<code>getting-started/</code> and <code>tutorials/*</code> pages on the live site) lead with
+<code>go install ... &amp;&amp; mitiru new &amp;&amp; mitiru run</code>. CMake is demoted to an
+&ldquo;advanced / 裏で動いてる&rdquo; section for <code>FetchContent</code> / <code>find_package</code>
+consumers.</li>
+<li><strong>The published website was restructured for readability.</strong> Every chapter
+/ tutorial / guide page now has the same anatomy: page eyebrow with
+back-link, an optional TLDR &ldquo;このページで分かること&rdquo; summary, the body,
+and a sidebar TOC for long pages (&gt;1.5 KB raw content). Plus prev/next
+pagers at the bottom where ordering is well-defined.</li>
+<li><strong>AI-flavoured chrome was removed.</strong> The hero rainbow underline,
+Konami code easter egg, button shine sweep, cursor blink, and 404 mascot
+bob were all toned down or deleted. The site is now <code>data-fade</code> only for
+scroll-in, no other ambient motion.</li>
+<li><strong>5 runnable examples are back.</strong> After Round 39 retired the previous
+set, <code>examples/&lt;name&gt;/</code> is repopulated with minimal samples that link
+the <code>mitiru</code> target directly: <code>hello_window</code>, <code>hello_input</code>,
+<code>hello_scene</code>, <code>hello_shapes</code>, <code>hello_cef_overlay</code>. All five build green
+with <code>cmake --build build --config Debug --target &lt;name&gt;</code>.</li>
+<li><strong>Release allowlist tightened.</strong> <code>docs/404.html</code>, <code>docs/img/**</code>,
+<code>docs/js/**</code>, <code>docs/chapters/**</code>, <code>docs/architecture/**</code>, and
+<code>docs/getting-started/**</code> were missing from the public-repo release
+allowlist and are now included. <code>docs/js/**</code> was a real production
+regression cause (see &ldquo;Bug fixes&rdquo; below).</li>
+</ul>
+<hr>
+<h2 id="whats-not-in-this-release">What&rsquo;s not in this release</h2>
+<ul>
+<li><strong>No engine API additions or removals.</strong> <code>include/mitiru/</code> is unchanged.
+Any consumer pinned to v0.1.0 can move to v0.1.1 with no source changes.</li>
+<li><strong>No CMake removal.</strong> <code>mitiru</code> CLI is the recommended entry point, but
+<code>FetchContent_Declare(Mitiru ...)</code> and <code>find_package(Mitiru CONFIG)</code>
+continue to work exactly as before. The architecture page still
+documents CMake 3.21+ as the internal build system because that&rsquo;s the
+truth — <code>mitiru</code> CLI just wraps it.</li>
+<li><strong>No EN localization.</strong> The site is now JA-only by deliberate choice
+(<code>defaultContentLanguage = &quot;ja&quot;</code> in <code>site/config.toml</code>).</li>
+</ul>
+<hr>
+<h2 id="front-door-migration-round-42">Front-door migration (Round 42)</h2>
+<p>The published <code>README.md</code> quickstart used to be:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">git clone --recursive https://github.com/mogmog-0110/MitiruEngine.git
+</span></span><span class="line"><span class="cl"><span class="nb">cd</span> MitiruEngine
+</span></span><span class="line"><span class="cl">cmake --preset default
+</span></span><span class="line"><span class="cl">cmake --build build --config Debug
+</span></span><span class="line"><span class="cl">ctest --test-dir build -C Debug
+</span></span></code></pre></div><p>It is now:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">go install github.com/mogmog-0110/mitiru-cli/cmd/mitiru@latest
+</span></span><span class="line"><span class="cl">mitiru new my-game
+</span></span><span class="line"><span class="cl"><span class="nb">cd</span> my-game
+</span></span><span class="line"><span class="cl">mitiru run
+</span></span></code></pre></div><p><code>mitiru new</code> generates <code>src/main.cpp</code> / <code>mitiru.toml</code> / <code>assets/scene.html</code>,
+<code>mitiru build</code> reads <code>mitiru.toml</code> and synthesises a <code>CMakeLists.txt</code> under
+<code>build/cmake/</code>, then invokes CMake configure + build behind the scenes.
+The CMake recipe is still available in the &ldquo;CMake から直接使うときは&rdquo;
+section of both <code>README.md</code> and <code>docs/GETTING_STARTED.md</code>.</p>
+<h3 id="mitiru-cli-が増えたコマンド"><code>mitiru</code> CLI が増えたコマンド</h3>
+<table>
+  <thead>
+      <tr>
+          <th>コマンド</th>
+          <th>やること</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>mitiru new &lt;name&gt;</code></td>
+          <td>テンプレートから新しいプロジェクトを作る</td>
+      </tr>
+      <tr>
+          <td><code>mitiru new &lt;name&gt; --template native-only</code></td>
+          <td>Mode A 専用 (CEF 抜き) で scaffold</td>
+      </tr>
+      <tr>
+          <td><code>mitiru build</code></td>
+          <td>ビルドだけ</td>
+      </tr>
+      <tr>
+          <td><code>mitiru run</code></td>
+          <td>ビルドして実行</td>
+      </tr>
+      <tr>
+          <td><code>mitiru clean</code></td>
+          <td><code>build/</code> を削除。<code>--all</code> で <code>~/.mitiru/cache/</code> も</td>
+      </tr>
+      <tr>
+          <td><code>mitiru doctor</code></td>
+          <td>環境チェック</td>
+      </tr>
+      <tr>
+          <td><code>mitiru version</code></td>
+          <td>バージョン表示</td>
+      </tr>
+  </tbody>
+</table>
+<p><code>--template native-only</code> は v0.1.1 と同時に CLI 側にも入った Mode A 専用テンプレート。<code>mitiru.toml</code> から <code>[cef]</code> セクションが消え、<code>assets/</code> ディレクトリが生成されないので、CEF を切ったまま固められます。</p>
+<h2 id="site-structural-overhaul-round-41">Site structural overhaul (Round 41)</h2>
+<p>Every long-form page now follows the same anatomy:</p>
+<ol>
+<li><strong>Page eyebrow</strong> — small back-link breadcrumb above the title.</li>
+<li><strong>Title + description</strong> — <code>description</code> from frontmatter renders as a
+lede line under <code>&lt;h1&gt;</code>.</li>
+<li><strong>TLDR (optional)</strong> — when frontmatter contains <code>tldr: [...]</code>, an aside
+block &ldquo;このページで分かること&rdquo; renders before the body.</li>
+<li><strong>Body</strong>.</li>
+<li><strong>Sidebar TOC (optional)</strong> — for pages with &gt;1500 chars of raw content,
+the table of contents pins to the right column on viewports ≥1024px.</li>
+<li><strong>Prev/next pager</strong> — when the section has a defined ordering, the
+bottom of the page links to the adjacent siblings.</li>
+</ol>
+<p>Naming note: Hugo&rsquo;s reserved <code>.Summary</code> shadowed <code>.Params.summary</code>, so the
+frontmatter key is <code>tldr:</code> (not <code>summary:</code>) across all migrated pages.</p>
+<h2 id="examples-this-release">Examples (this release)</h2>
+<p><code>examples/&lt;name&gt;/</code> is repopulated. Each example is one <code>main.cpp</code>
+(≤80 lines) + one <code>CMakeLists.txt</code> linking the <code>mitiru</code> target. See
+<a href="https://mogmog-0110.github.io/MitiruEngine/examples/">examples gallery</a> for details.</p>
+<table>
+  <thead>
+      <tr>
+          <th>Name</th>
+          <th style="text-align: center">Mode</th>
+          <th>What it shows</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>hello_window</code></td>
+          <td style="text-align: center">A</td>
+          <td>最小: ウィンドウ + テキスト + ESC で終了</td>
+      </tr>
+      <tr>
+          <td><code>hello_input</code></td>
+          <td style="text-align: center">A</td>
+          <td>矢印 / WASD で 64×64 の矩形を動かす</td>
+      </tr>
+      <tr>
+          <td><code>hello_scene</code></td>
+          <td style="text-align: center">A</td>
+          <td>enum で 2 シーン (Title → Game)</td>
+      </tr>
+      <tr>
+          <td><code>hello_shapes</code></td>
+          <td style="text-align: center">A</td>
+          <td><code>drawRect</code> × 5 + <code>drawCircle</code> × 2 + sin(t) pulse</td>
+      </tr>
+      <tr>
+          <td><code>hello_cef_overlay</code></td>
+          <td style="text-align: center">B</td>
+          <td>native rect + 半透明 CSS HUD オーバーレイ</td>
+      </tr>
+  </tbody>
+</table>
+<h2 id="bug-fixes">Bug fixes</h2>
+<table>
+  <thead>
+      <tr>
+          <th>Symptom</th>
+          <th>Root cause</th>
+          <th>Fix</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>All <code>[data-fade]</code> blocks stuck at <code>opacity: 0</code> on live site</td>
+          <td><code>docs/js/</code> was missing from <code>release_allowlist.yaml</code> → prod 404&rsquo;d 5 home JS files</td>
+          <td><code>docs/js/**</code> added to allowlist; 1.2 s safety-net timeout in <code>scroll-fade.js</code></td>
+      </tr>
+      <tr>
+          <td>Architecture page SVG diagrams rendered as solid black</td>
+          <td>171 <code>fill=&quot;var(--c-...)&quot;</code> attributes; SVG presentation attributes don&rsquo;t resolve CSS variables</td>
+          <td>Converted all to <code>style=&quot;fill: var(...); stroke: var(...)&quot;</code></td>
+      </tr>
+      <tr>
+          <td>Architecture page SVG bodies were empty</td>
+          <td>Blank lines inside SVG caused Goldmark to insert <code>&lt;p&gt;</code> after <code>&lt;/defs&gt;</code></td>
+          <td>Stripped blank lines inside each <code>.arch-svg</code> block</td>
+      </tr>
+      <tr>
+          <td>API page rendered as tall single column</td>
+          <td><code>.api-page</code> 3-col grid override also hit the list view</td>
+          <td><code>.api-page--list { display: block; max-width: 1100px; }</code></td>
+      </tr>
+      <tr>
+          <td>Chapter list descriptions wrapped per-character</td>
+          <td>3-child grid placed desc in row 2 col 1 of <code>2.6rem 1fr</code></td>
+          <td>Explicit <code>grid-column: 2</code> on title + desc</td>
+      </tr>
+      <tr>
+          <td>Frontmatter <code>summary:</code> ignored</td>
+          <td>Hugo&rsquo;s reserved <code>.Summary</code> shadowed <code>.Params.summary</code></td>
+          <td>Renamed to <code>tldr:</code></td>
+      </tr>
+  </tbody>
+</table>
+<h2 id="going-forward">Going forward</h2>
+<ul>
+<li><code>mitiru</code> CLI のテンプレ追加 (<code>headless-cli</code> / <code>web-shell</code> 等) が次の検討候補。</li>
+<li>CEF subprocess <code>error_code=63</code> は引き続き <code>--single-process</code> workaround で運用中。CRT mismatch 検証は <code>docs/CEF_CRT_EXPERIMENT.md</code> で継続。</li>
+<li>examples のスクリーンショット pipeline は未着手。サイトの examples gallery は v0.1.1 ではテキスト + コード抜粋のみ。</li>
+</ul>
+<h2 id="upgrade-path">Upgrade path</h2>
+<p><code>v0.1.1</code> is wire-compatible with <code>v0.1.0</code> for any consumer that used
+<code>FetchContent</code> or <code>find_package(Mitiru CONFIG)</code>. Engine API delta from
+v0.1.0: <code>include/mitiru/</code> is byte-identical (verified via
+<code>git diff --stat v0.1.0..HEAD -- include/</code> = empty).</p>
+
+  </div>
+</article>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">
+        <span class="site-footer__brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 24 L4 8 L10 14 L16 8 L22 14 L28 8 L28 24"/>
+          </svg>
+        </span>
+        MitiruEngine
+      </p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+      <p class="site-footer__build" aria-label="built with">
+        <code>built_with</code>
+        <span class="site-footer__build-chip">C++20</span>
+        <span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
+        <span class="site-footer__build-chip site-footer__build-chip--data">JSON</span>
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
+      <p class="site-footer__hint">
+        <kbd>?</kbd> でショートカット一覧
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+      <p class="site-footer__easter" aria-hidden="true">
+        <span class="site-footer__easter-prompt"><code>$ echo &quot;hello, world&quot;</code></span>
+        <span class="site-footer__easter-cursor">_</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js" defer></script>
+</body>
+</html>
