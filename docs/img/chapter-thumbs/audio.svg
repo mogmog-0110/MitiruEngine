@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" fill="none" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+  <rect width="320" height="180" fill="#1d172e"/>
+  <g fill="#a78bfa">
+    <rect x="32"  y="80" width="6" height="20" rx="2"/>
+    <rect x="48"  y="68" width="6" height="44" rx="2"/>
+    <rect x="64"  y="56" width="6" height="68" rx="2"/>
+    <rect x="80"  y="44" width="6" height="92" rx="2"/>
+    <rect x="96"  y="58" width="6" height="64" rx="2"/>
+    <rect x="112" y="40" width="6" height="100" rx="2"/>
+    <rect x="128" y="64" width="6" height="52" rx="2"/>
+    <rect x="144" y="48" width="6" height="84" rx="2"/>
+    <rect x="160" y="60" width="6" height="60" rx="2"/>
+    <rect x="176" y="72" width="6" height="36" rx="2"/>
+    <rect x="192" y="50" width="6" height="80" rx="2"/>
+    <rect x="208" y="64" width="6" height="52" rx="2"/>
+    <rect x="224" y="76" width="6" height="28" rx="2"/>
+    <rect x="240" y="58" width="6" height="64" rx="2"/>
+    <rect x="256" y="74" width="6" height="32" rx="2"/>
+    <rect x="272" y="82" width="6" height="16" rx="2"/>
+  </g>
+  <g transform="translate(252 32)">
+    <circle cx="0" cy="20" r="9" fill="#c4b5fd"/>
+    <rect x="7" y="-4" width="3" height="24" fill="#c4b5fd"/>
+    <path d="M 10 -4 L 22 -10 L 22 -2 L 10 4 z" fill="#c4b5fd"/>
+  </g>
+</svg>
