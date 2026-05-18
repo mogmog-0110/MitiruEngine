@@ -388,6 +388,10 @@
       <p><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> で作った C++ ゲームの上に、HTML/CSS で組んだ <strong>見た目だけのレイヤー</strong> を重ねるチュートリアルです。HUD バー、ダイアログ、メニューなど、Web のデザイン資産を活かしたい部分はここに乗ります。</p>
 <p>このチュートリアルでは「中身は C++、画面は HTML / CSS、橋渡しは薄く」という MitiruEngine の標準形を実際のコードで体験します。</p>
 <p>時間の目安は <strong>20 〜 25 分</strong>。事前に <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> と <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> を済ませておくと、流れがつかみやすいです。</p>
+<aside class="cpp-note">
+<span class="cpp-note__title">C++ がはじめての方へ</span>
+<p>01 と同じく、要所に <strong>C++ メモ</strong> を置きます。今回は HTML / CSS / JavaScript も少しだけ出てきますが、いずれも「見た目を作る」「値を受け取って画面に貼る」だけの簡単な部分です。</p>
+</aside>
 <hr>
 <h2 id="できあがるもの">できあがるもの</h2>
 <ul>
@@ -396,7 +400,7 @@
 <li>HUD には「経過時間」が表示され、毎フレーム C++ から更新される</li>
 </ul>
 <figure class="tutorial-figure">
-  <img src="images/finished.png" alt="完成画面: 暗背景に水色矩形が描かれ、上部に半透明の HUD バーが乗って 00:12 と表示されている" loading="lazy">
+  <img src="images/finished.svg" alt="完成画面: 暗背景に水色矩形が描かれ、上部に半透明の HUD バーが乗って 00:12 と表示されている" loading="lazy">
   <figcaption>C++ が描いた背景 + プレイヤー (Native レンダ) の上に、CSS で組んだ HUD (CEF レイヤー) が乗る。HUD の時計は C++ から push される。</figcaption>
 </figure>
 <hr>
@@ -433,13 +437,18 @@
   </tbody>
 </table>
 <p><strong>ゲームのロジックを JS に書かない</strong>、これが一番大事です。JS は受け取って表示するだけ。CEF レイヤーは「見た目の Photoshop」と思ってください。</p>
+<aside class="cpp-note">
+<span class="cpp-note__title">設計メモ — なぜ役割を分けるのか</span>
+<p>「全部 C++ で書けばいいのでは?」と思うかもしれません。実際 [01](../01-action-prototype/) ではそうしました。それでも CEF を使う理由は <strong>HTML / CSS のほうが見た目を作りやすい</strong> から。グラデーション、半透明、フォントの組版、アニメーション、レスポンシブ ── Web の道具は何十年も磨かれてきました。これらを C++ でゼロから書くのはコスパが悪いです。</p>
+<p>でも <strong>ゲームのルールまで HTML 側に書くと迷子になります</strong>。「いま HP がいくつなのか」を C++ と JS が両方持ってしまうと、片方を更新し忘れた瞬間に表示と中身がズレ、デバッグが地獄になります。これを避けるために「<strong>真実は C++ にだけ置く、JS はそれを映すだけ</strong>」と決めておく、というのが今回の話です。</p>
+</aside>
 <hr>
 <h2 id="手順-1-ひな型を作る">手順 1: ひな型を作る</h2>
 <p>CEF を含むデフォルトテンプレートでひな型を作ります。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru new my-ui
 </span></span><span class="line"><span class="cl"><span class="nb">cd</span> my-ui
 </span></span></code></pre></div><figure class="tutorial-figure">
-  <img src="images/01-folder.png" alt="生成された my-ui/ フォルダの中身: src/main.cpp, assets/scene.html, mitiru.toml, .gitignore, README.md" loading="lazy">
+  <img src="images/01-folder.svg" alt="生成された my-ui/ フォルダの中身: src/main.cpp, assets/scene.html, mitiru.toml, .gitignore, README.md" loading="lazy">
   <figcaption>デフォルトテンプレートには assets/scene.html が含まれる。これが CEF が読み込む HTML。</figcaption>
 </figure>
 <hr>
@@ -447,7 +456,7 @@
 <p>中身を変える前に、ひな型を走らせて初期画面を確認します。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru run
 </span></span></code></pre></div><figure class="tutorial-figure">
-  <img src="images/02-default.png" alt="ひな型を走らせた直後: グラデーション背景にプロジェクト名が中央表示" loading="lazy">
+  <img src="images/02-default.svg" alt="ひな型を走らせた直後: グラデーション背景にプロジェクト名が中央表示" loading="lazy">
   <figcaption>デフォルトのシーンは HTML/CSS だけで描かれている。C++ 側はまだ何も描いていない。</figcaption>
 </figure>
 <p>ここまでで、CEF レイヤーが画面に乗ることが確認できました。</p>
@@ -539,7 +548,7 @@
 </span></span></code></pre></div><p><code>background: transparent</code> にしたことで、HTML レイヤーの下にいる C++ の描画 (背景 + プレイヤー矩形) が見えるようになります。HUD は画面の左上に半透明の小さなバーとして残ります。</p>
 <p><code>mitiru run</code> でこの段階を確認:</p>
 <figure class="tutorial-figure">
-  <img src="images/04-hud-zero.png" alt="C++ の背景とプレイヤー矩形の上に、半透明の HUD バーが TIME 00:00 と表示している" loading="lazy">
+  <img src="images/04-hud-zero.svg" alt="C++ の背景とプレイヤー矩形の上に、半透明の HUD バーが TIME 00:00 と表示している" loading="lazy">
   <figcaption>C++ で描いた背景の上に HUD バーが乗る。まだ 00:00 のまま動かない。</figcaption>
 </figure>
 <hr>
@@ -593,9 +602,15 @@
 <li>JS 側は <code>mitiru.onStateChange</code> で値を <strong>受け取って DOM に書き込む</strong> だけ。「経過時間を進める」 判断はしていない。</li>
 <li>名前 (<code>scene.time</code>) を介して薄くつないでいる。これが <strong>signal-only bridge</strong> です。</li>
 </ul>
+<aside class="cpp-note">
+<span class="cpp-note__title">C++ メモ — std::unique_ptr とポインタチェーン</span>
+<p><code>std::unique_ptr&lt;StateStore&gt; m_store;</code> は「<strong>所有権をもったポインタ</strong>」です。普通のポインタ <code>StateStore*</code> と違って、<code>m_store</code> が寿命を終えるとき (このクラスが破棄されるとき) に、指し示している <code>StateStore</code> 本体も自動で <code>delete</code> されます。<strong>「メモリの開放を書き忘れる」</strong> 種の事故を構造的に防ぐ仕組みです。</p>
+<p><code>engine()-&gt;cefContext()</code> のように <code>-&gt;</code> でつないでいくのは「ポインタ越しにメンバを呼ぶ」記法。<code>auto* eng = engine()</code> で受けて <code>if (eng)</code> でチェックしているのは、<strong>null ポインタを使うとクラッシュする</strong> から。<code>engine()</code> は呼ぶタイミングによっては <code>nullptr</code> を返すこともあるので、こうやって守ります。</p>
+<p><code>m_store-&gt;set("scene.time", std::string{buf});</code> の <code>std::string{buf}</code> は「C 文字列の <code>buf</code> から C++ の <code>std::string</code> を作る」式。<code>{...}</code> はコンストラクタ呼び出しです。</p>
+</aside>
 <p>もう一度 <code>mitiru run</code>:</p>
 <figure class="tutorial-figure">
-  <img src="images/05-finished.png" alt="HUD バーの TIME 表示が 00:12 のように毎秒更新されている完成画面" loading="lazy">
+  <img src="images/05-finished.svg" alt="HUD バーの TIME 表示が 00:12 のように毎秒更新されている完成画面" loading="lazy">
   <figcaption>HUD の時計が毎秒動く。値の進行は C++、見た目の更新は JS、両者の連絡は名前 1 個だけ。</figcaption>
 </figure>
 <hr>

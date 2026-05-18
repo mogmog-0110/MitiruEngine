@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 280" role="img" aria-label="my-action フォルダの中身">
+  <rect width="760" height="280" fill="#f4f6fa"/>
+  <rect x="40" y="40" width="680" height="200" rx="8" fill="#ffffff" stroke="#d8dde6" stroke-width="1"/>
+  <g font-family="Consolas, 'Courier New', monospace" font-size="14" fill="#1c2330">
+    <text x="64" y="76">my-action/</text>
+    <text x="84" y="100" fill="#5a6675">├── src/</text>
+    <text x="104" y="120" fill="#2563eb">│   └── main.cpp</text>
+    <text x="84" y="144" fill="#5a6675">├── mitiru.toml</text>
+    <text x="84" y="168" fill="#5a6675">├── .gitignore</text>
+    <text x="84" y="192" fill="#5a6675">└── README.md</text>
+  </g>
+  <text x="40" y="266" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8c95a3">native-only テンプレ: assets/scene.html を含まない最小構成</text>
+</svg>

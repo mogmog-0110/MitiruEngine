@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 580" role="img" aria-label="プレイヤー矩形だけの画面">
+  <rect width="760" height="580" fill="#f4f6fa"/>
+  <rect x="60" y="40" width="640" height="500" rx="6" fill="#1f2329" stroke="#4a5160" stroke-width="1"/>
+  <rect x="60" y="40" width="640" height="32" rx="6" fill="#2a3038"/>
+  <circle cx="80" cy="56" r="6" fill="#ff5f57"/>
+  <circle cx="100" cy="56" r="6" fill="#ffbd2e"/>
+  <circle cx="120" cy="56" r="6" fill="#28c840"/>
+  <text x="380" y="60" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="12" fill="#9aa3af">My Action</text>
+  <!-- dark game bg -->
+  <rect x="60" y="72" width="640" height="468" fill="#0f0f1a"/>
+  <!-- player rect, centered (~32x32 scaled into 26x26 visible) -->
+  <rect x="367" y="293" width="26" height="26" fill="#73bff2"/>
+  <text x="380" y="566" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="12" fill="#8c95a3">中央に水色のプレイヤー矩形。まだ動かない</text>
+</svg>

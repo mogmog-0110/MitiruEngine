@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 580" role="img" aria-label="完成イメージ">
+  <rect width="760" height="580" fill="#f4f6fa"/>
+  <rect x="60" y="40" width="640" height="500" rx="6" fill="#1f2329" stroke="#4a5160" stroke-width="1"/>
+  <rect x="60" y="40" width="640" height="32" rx="6" fill="#2a3038"/>
+  <circle cx="80" cy="56" r="6" fill="#ff5f57"/>
+  <circle cx="100" cy="56" r="6" fill="#ffbd2e"/>
+  <circle cx="120" cy="56" r="6" fill="#28c840"/>
+  <text x="380" y="60" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="12" fill="#9aa3af">My UI</text>
+  <rect x="60" y="72" width="640" height="468" fill="#0f0f1a"/>
+  <rect x="356" y="282" width="48" height="48" fill="#73bff2"/>
+  <rect x="92" y="100" width="170" height="34" rx="8" fill="rgba(8,12,24,0.55)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+  <text x="108" y="122" font-family="'Segoe UI', sans-serif" font-size="13" fill="#ffffff" opacity="0.6">TIME</text>
+  <text x="160" y="122" font-family="'Segoe UI', sans-serif" font-size="14" fill="#ffffff" font-weight="700">00:12</text>
+</svg>

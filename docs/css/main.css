@@ -2013,14 +2013,21 @@ body.search-open {
   overflow: hidden;
   box-shadow: 0 16px 40px rgba(20, 25, 35, 0.10);
   border: 1px solid var(--c-border);
+  background: #0f1623;
+  color: #e6edf3;
+}
+.three-min__code pre,
+.three-min__code .highlight,
+.three-min__code .chroma,
+.three-min__code code {
+  background: transparent !important;
+  color: inherit !important;
 }
 .three-min__code pre {
   margin: 0;
   padding: 1rem 1.2rem;
   font-size: 0.92rem;
   line-height: 1.55;
-  background: #0f1623 !important;
-  color: #f0f3f9;
   overflow-x: auto;
 }
 
@@ -2167,6 +2174,28 @@ body.search-open {
 
 /* ── 旧 hero (legacy) を home では使わない場合の保険 ── */
 .home-hero + .hero { display: none; }
+
+/* ── tutorial: C++ beginner notes ────────────────────── */
+.cpp-note {
+  margin: 1rem 0 1.4rem;
+  padding: 0.85rem 1.1rem 0.95rem;
+  background: var(--c-bg-alt);
+  border-left: 3px solid var(--c-accent);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.93rem;
+}
+.cpp-note__title {
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--c-accent);
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.cpp-note p { margin: 0.35rem 0 0; }
+.cpp-note p:first-of-type { margin-top: 0; }
+.cpp-note code { background: var(--c-bg); padding: 0.05em 0.3em; border-radius: 3px; }
 
 /* ── tutorial screenshot figures ─────────────────────── */
 .tutorial-figure {
@@ -2555,12 +2584,11 @@ body {
   border-color: #1a2230;
 }
 
-/* ── three-min の code block: 行間 / フォントサイズ統一 ── */
+/* ── three-min の code block: 行間 / フォントサイズ統一
+   (背景/文字色は .three-min__code そのものに掛けて子要素は transparent) ── */
 .three-min__code .highlight,
 .three-min__code .chroma {
   margin: 0;
-  background: transparent !important;
-  color: #e6edf3 !important;
 }
 
 /* ── inline code: 隣の文字とぶつかり気味を解消 ── */
