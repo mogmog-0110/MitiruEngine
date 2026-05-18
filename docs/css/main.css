@@ -239,7 +239,18 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-html[lang="ja"] body { font-family: var(--font-jp); }
+html[lang="ja"] body {
+  font-family: var(--font-jp);
+  line-height: 1.8;
+  font-feature-settings: "palt" 1;
+}
+html[lang="ja"] .page-article__body,
+html[lang="ja"] .chapter-article__body,
+html[lang="ja"] .example-detail__body,
+html[lang="ja"] .api-page__content,
+html[lang="ja"] .adr-page__article {
+  line-break: strict;
+}
 
 a {
   color: var(--c-accent);
@@ -509,7 +520,8 @@ code, pre, kbd, samp { font-family: var(--font-mono); }
 .page-article, .page-list { padding: 4rem 0; }
 .page-article__header h1, .page-list__header h1 { margin: 0 0 1rem; font-size: 2rem; letter-spacing: -0.01em; }
 .page-article__lede { color: var(--c-fg-soft); font-size: 1.1rem; margin: 0 0 2rem; }
-.page-article__body h2 { margin-top: 2.2rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--c-rule); }
+.page-article__body h2 { margin-top: 2.2rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--c-rule); font-size: 1.25rem; line-height: 1.45; }
+.page-article__body h3 { margin-top: 1.6rem; font-size: 1.05rem; line-height: 1.45; }
 .page-article__body pre { background: var(--c-bg-code); color: var(--c-code-fg); padding: 1rem; border-radius: var(--r-radius); overflow-x: auto; }
 .page-article__body code { background: var(--c-bg-alt); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
 .page-list__items { list-style: none; padding: 0; }
@@ -3255,9 +3267,18 @@ pre > code[class*="language-"] {
 .example-detail__body table td,
 .api-page__content table td {
   text-align: left;
-  padding: 0.55rem 0.8rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--c-rule);
   vertical-align: top;
+  line-height: 1.6;
+}
+/* Compact first column (tool / API / key names) — keep short labels
+   on a single line rather than breaking "C++ コンパイラ" mid-word. */
+.page-article__body table td:first-child,
+.chapter-article__body table td:first-child,
+.example-detail__body table td:first-child,
+.api-page__content table td:first-child {
+  white-space: nowrap;
 }
 .page-article__body table th,
 .chapter-article__body table th,
