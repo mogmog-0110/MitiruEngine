@@ -283,7 +283,7 @@ code, pre, kbd, samp { font-family: var(--font-mono); }
   color: var(--c-fg-invert); font-weight: 800; font-size: 0.95rem;
 }
 .site-nav { display: flex; align-items: center; gap: 1.5rem; font-size: 0.93rem; }
-.site-nav a { color: var(--c-fg-soft); }
+.site-nav a { color: var(--c-fg-soft); white-space: nowrap; }
 .site-nav a:hover { color: var(--c-accent); text-decoration: none; }
 .site-nav__github { display: inline-flex; }
 .site-nav__lang { color: var(--c-fg-mute); font-size: 0.85rem; }
@@ -1122,8 +1122,11 @@ code, pre, kbd, samp { font-family: var(--font-mono); }
   .position__grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 }
 
-/* mobile: stack nav into hamburger, single-column grids */
-@media (max-width: 720px) {
+/* mobile: stack nav into hamburger, single-column grids
+   Breakpoint is 960px because the JA nav has 7 multi-char labels
+   plus search/GitHub/?/theme buttons — below that the nav crowds the
+   brand and chars start wrapping vertically. */
+@media (max-width: 960px) {
   :root {
     --r-pad: 1rem;
   }
