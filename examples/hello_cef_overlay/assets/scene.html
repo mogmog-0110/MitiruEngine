@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>hello_cef_overlay</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #f5f7fb;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .hud {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    padding: 16px 22px;
+    background: rgba(20, 30, 50, 0.55);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .hud__label {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+
+  .hud__value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .hud__bar {
+    width: 160px;
+    height: 6px;
+    margin-top: 4px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+  }
+
+  .hud__bar__fill {
+    width: 78%;
+    height: 100%;
+    background: linear-gradient(90deg, #5cd7c8, #7fb7ff);
+  }
+
+  .hint {
+    position: absolute;
+    bottom: 18px;
+    right: 22px;
+    font-size: 12px;
+    opacity: 0.55;
+  }
+</style>
+</head>
+<body>
+  <div class="hud">
+    <span class="hud__label">HP</span>
+    <span class="hud__value">100 <span style="opacity:0.5;font-size:18px">/ 128</span></span>
+    <div class="hud__bar"><div class="hud__bar__fill"></div></div>
+  </div>
+  <div class="hint">ESC to exit</div>
+</body>
+</html>

@@ -6,10 +6,6 @@ C++ でゲームを書くための、ふだん使いのエンジン。
 - **ヘッダだけで動く。** プリビルドの .lib を配って回る必要はありません。CMake の FetchContent で取り込んで、`Mitiru::mitiru` を link するだけ。
 - **C++20、Windows がメイン。** Linux と Mac でも一応動きますが、踏み固められているのは Windows + MSVC 2022。
 
-> このリポジトリは [`MitiruEngineDev`](https://github.com/mogmog-0110/MitiruEngineDev) から
-> 抽出された **公開向けスナップショット** です。日々の開発はあちらで行われていて、
-> 一定間隔でここに反映されます。Issue やプルリクエストはこのリポジトリ宛でかまいません。
-
 ## ドキュメントとサンプル
 
 - 公式ページ : <https://mogmog-0110.github.io/MitiruEngine/>
@@ -30,7 +26,7 @@ cmake --preset default
 cmake --build build --config Debug
 ```
 
-詳しい手順とサンプルプロジェクトの組みかたは [はじめに](https://mogmog-0110.github.io/MitiruEngine/getting-started/) を見てください。サンプル集は Round 39 で刷新中で、次のリリースで新しいセットが並びます。
+詳しい手順は [はじめに](https://mogmog-0110.github.io/MitiruEngine/getting-started/) を、動くサンプルは [サンプル](https://mogmog-0110.github.io/MitiruEngine/examples/) を見てください。
 
 ## 自分のゲームから使う
 

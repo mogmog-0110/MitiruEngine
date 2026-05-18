@@ -1,24 +1,21 @@
 <!DOCTYPE html>
 <html lang="ja" data-base="/">
 <head>
-	<meta name="generator" content="Hugo 0.142.0">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine</title>
+  <title>Examples | MitiruEngine</title>
   
 
 
 
 
-<meta name="description" content="ヘッダオンリーの C&#43;&#43;20 ゲームエンジン。ゲームのロジックは C&#43;&#43;、画面まわりは HTML/CSS。">
+<meta name="description" content="v0.1.1 で復活した最小サンプル 5 本。ぜんぶ ~80 行以下の main.cpp &#43; CMakeLists.txt セット。">
 
-<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/">
-
-
-
-<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/">
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
 
 
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
 
 
 
@@ -30,10 +27,12 @@
 
 
 
-<meta property="og:title" content="MitiruEngine">
-<meta property="og:description" content="ヘッダオンリーの C&#43;&#43;20 ゲームエンジン。ゲームのロジックは C&#43;&#43;、画面まわりは HTML/CSS。">
+
+
+<meta property="og:title" content="Examples | MitiruEngine">
+<meta property="og:description" content="v0.1.1 で復活した最小サンプル 5 本。ぜんぶ ~80 行以下の main.cpp &#43; CMakeLists.txt セット。">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/">
 <meta property="og:site_name" content="MitiruEngine">
 <meta property="og:locale" content="ja_JP">
 
@@ -42,22 +41,10 @@
 <meta property="og:image:height" content="630">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="MitiruEngine">
-<meta name="twitter:description" content="ヘッダオンリーの C&#43;&#43;20 ゲームエンジン。ゲームのロジックは C&#43;&#43;、画面まわりは HTML/CSS。">
+<meta name="twitter:title" content="Examples | MitiruEngine">
+<meta name="twitter:description" content="v0.1.1 で復活した最小サンプル 5 本。ぜんぶ ~80 行以下の main.cpp &#43; CMakeLists.txt セット。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareSourceCode",
-  "name": "MitiruEngine",
-  "url": "https:\/\/mogmog-0110.github.io\/MitiruEngine\/",
-  "codeRepository": "https:\/\/github.com\/mogmog-0110\/MitiruEngine",
-  "programmingLanguage": "C++20",
-  "license": "https://opensource.org/licenses/MIT"
-}
-</script>
 
 
   <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
@@ -372,140 +359,133 @@
 
   <main class="site-main" data-pagefind-body>
     
-<section class="home-hero">
-  <div class="home-hero__bg" aria-hidden="true"></div>
-  <div class="home-hero__inner container">
-    <h1 class="home-hero__title">
-      <span class="home-hero__title-text">MitiruEngine</span>
-      <span class="home-hero__title-underline" aria-hidden="true"></span>
-    </h1>
-    <p class="home-hero__sub">
-      ゲームの中身は C++、画面は HTML/CSS でつくる、C++20 のヘッダオンリーエンジン。
-    </p>
-    <div class="home-hero__cta">
-      <a class="btn btn--primary btn--lg" href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめる</a>
-      <a class="btn btn--secondary btn--lg" href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
-    </div>
-  </div>
-</section>
 
 
 
-<div data-fade>
-<section class="three-min">
-  <div class="container">
-    <h2 class="section-title">3 分でわかる MitiruEngine</h2>
-    <p class="three-min__lede">
-      Hello World は <strong>30 行ほど</strong>。エンジンを継承して
-      <code>update()</code> と <code>draw()</code> を書き、<code>engine.run()</code> を呼ぶだけ。
-      画面はそのまま開きます。
-    </p>
 
-    <div class="three-min__code">
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="n">m_t</span> <span class="o">+=</span> <span class="n">dt</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">    <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.62f</span><span class="p">,</span> <span class="mf">0.80f</span><span class="p">,</span> <span class="mf">0.93f</span><span class="p">,</span> <span class="mi">1</span><span class="p">});</span>       <span class="c1">// 空
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="n">s</span><span class="p">.</span><span class="n">drawCircle</span><span class="p">({</span><span class="n">w</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">},</span> <span class="mi">80</span><span class="p">,</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.9f</span><span class="p">,</span> <span class="mf">0.4f</span><span class="p">,</span> <span class="mi">1</span><span class="p">});</span> <span class="c1">// 太陽
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">  <span class="kt">float</span> <span class="n">m_t</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">};</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">MyGame</span> <span class="n">game</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="s">&#34;My First Mitiru Game&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span> <span class="o">=</span> <span class="mi">1280</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span> <span class="o">=</span> <span class="mi">720</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
-    </div>
-
-    <div class="three-min__nextsteps">
-      <a class="three-min__step" href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">
-        <span class="three-min__step-num">01</span>
-        <strong>はじめて触る</strong>
-        <span>5 分でビルドして、最初のウィンドウを開きます。</span>
-      </a>
-      <a class="three-min__step" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">
-        <span class="three-min__step-num">02</span>
-        <strong>つくってみる</strong>
-        <span>小さな 2D ゲームをつくりながら、エンジンの考えかたを覚えます。</span>
-      </a>
-      <a class="three-min__step" href="https://mogmog-0110.github.io/MitiruEngine/chapters/">
-        <span class="three-min__step-num">03</span>
-        <strong>できることを知る</strong>
-        <span>描画、入力、音、セーブ。エンジンが受け持つ範囲をひと通り。</span>
-      </a>
-    </div>
-  </div>
-</section>
-</div>
-<div data-fade>
-<section class="home-showcase home-section" data-fade>
-  <header class="home-section__header">
-    <h2 class="home-section__title">
-      エンジンが受け持つ範囲
-    </h2>
-    <p class="home-section__lede">
-      
-        ジャンルに依存しない共通機能を一式。アクション、RPG、シューティング、シミュレーション、どれでも使い回せます。
-      
-    </p>
+<article class="page-article container">
+  <header class="page-article__header">
+    
+    <h1 class="page-article__title">Examples</h1>
+    <p class="page-article__lede">v0.1.1 で復活した最小サンプル 5 本。ぜんぶ ~80 行以下の main.cpp &#43; CMakeLists.txt セット。</p>
   </header>
 
-  <ul class="home-pillars">
-    <li class="home-pillar">
-      <h3 class="home-pillar__title">描画 / シーン</h3>
-      <p class="home-pillar__body">
-        
-          <code>mitiru::Screen</code> でスプライト、図形、テキストを直接描画。<code>SceneRouter</code> でシーン遷移、<code>StateMachine</code> でゲーム内ステートを整理。
-        
-      </p>
-    </li>
-    <li class="home-pillar">
-      <h3 class="home-pillar__title">入力 / ゲームループ</h3>
-      <p class="home-pillar__body">
-        
-          キーボード、マウス、ゲームパッドを <code>InputMapper</code> 経由で扱い、ゲームループは <code>Timer</code> + 固定タイムステップ。フレーム独立な物理進行が標準。
-        
-      </p>
-    </li>
-    <li class="home-pillar">
-      <h3 class="home-pillar__title">HUD / メニュー (CEF)</h3>
-      <p class="home-pillar__body">
-        
-          HUD やメニューは HTML / CSS で作り、C++ から <code>state.set()</code> でデータを流し込みます。デザイナーが触れる UI レイヤー。
-        
-      </p>
-    </li>
-    <li class="home-pillar">
-      <h3 class="home-pillar__title">データ / セーブ</h3>
-      <p class="home-pillar__body">
-        
-          <code>ContentLoader&lt;T&gt;</code> で JSON をそのまま型に流し込み、<code>SaveSchema</code> + <code>MigrationChain</code> で古いセーブを壊さずに形を変えられます。
-        
-      </p>
-    </li>
-  </ul>
+  
+  <aside class="page-summary">
+    <h2 class="page-summary__h">このページで分かること</h2>
+    <ul>
+      <li>ウィンドウを開く / 入力を取る / シーンを切り替える / 図形を描く / CEF オーバーレイを載せる、の 5 パターン</li><li>全部 mitiru target を target_link_libraries するだけ</li><li>Mode A 純 C&#43;&#43; が 4 本、Mode B (CEF) が 1 本</li>
+    </ul>
+  </aside>
+  
 
-  <p class="home-showcase__footnote">
-    
-      動くサンプルは <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a> から。
-    
-  </p>
+  <div class="page-with-toc">
+    <div class="page-article__body">
+      <p><code>examples/&lt;name&gt;/</code> 以下に置かれた、コピペで動かせる最小サンプル集です。
+ゲームをこれで作る、というよりは「この機能を呼ぶ最小コード」を 1 ファイルにまとめた <strong>読むため</strong> のサンプル群。</p>
+<p>ビルド:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --preset default
+</span></span><span class="line"><span class="cl">cmake --build build --config Debug --target hello_window
+</span></span><span class="line"><span class="cl"><span class="c1"># 全部を一気にビルドしたいなら --target なしで OK</span>
+</span></span></code></pre></div><p>実行 (Windows の例):</p>
+<pre tabindex="0"><code>build\examples\hello_window\hello_window.exe
+</code></pre><section class="example-gallery" aria-label="examples">
+  <div class="examples-grid">
+<pre><code>&lt;article class=&quot;example-card&quot;&gt;
+  &lt;div class=&quot;example-card__body&quot;&gt;
+    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_window&lt;/h3&gt;
+    &lt;p class=&quot;example-card__kind example-card__kind--engine&quot;&gt;Mode A · 純 C++&lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      最小構成。800×600 のウィンドウを開き、&quot;Hello, Mitiru!&quot; を画面中央に表示する。ESC で終了。
+      CEF を切って (&lt;code&gt;enableCef = false&lt;/code&gt;) Latin atlas にすると、コールド起動 1 秒未満。
+    &lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_window/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
+    &lt;/p&gt;
+  &lt;/div&gt;
+&lt;/article&gt;
+
+&lt;article class=&quot;example-card&quot;&gt;
+  &lt;div class=&quot;example-card__body&quot;&gt;
+    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_input&lt;/h3&gt;
+    &lt;p class=&quot;example-card__kind example-card__kind--engine&quot;&gt;Mode A · 純 C++&lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      64×64 の四角を矢印キー / WASD で動かす。&lt;code&gt;input().isKeyDown()&lt;/code&gt; を &lt;code&gt;update(dt)&lt;/code&gt; から呼んで
+      速度ベクトルを積分する、ふつうの per-frame 入力ループ。
+    &lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_input/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
+    &lt;/p&gt;
+  &lt;/div&gt;
+&lt;/article&gt;
+
+&lt;article class=&quot;example-card&quot;&gt;
+  &lt;div class=&quot;example-card__body&quot;&gt;
+    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_scene&lt;/h3&gt;
+    &lt;p class=&quot;example-card__kind example-card__kind--engine&quot;&gt;Mode A · 純 C++&lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      enum で 2 シーン (Title → Game) を切り替える。SceneRouter は使わない、配線最小版。
+      実プロジェクトに置き換えたくなったら &lt;code&gt;mitiru::scene::SceneRouter&lt;/code&gt; へ。
+    &lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_scene/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
+    &lt;/p&gt;
+  &lt;/div&gt;
+&lt;/article&gt;
+
+&lt;article class=&quot;example-card&quot;&gt;
+  &lt;div class=&quot;example-card__body&quot;&gt;
+    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_shapes&lt;/h3&gt;
+    &lt;p class=&quot;example-card__kind example-card__kind--engine&quot;&gt;Mode A · 純 C++&lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      &lt;code&gt;drawRect&lt;/code&gt; で 5 色の矩形を並べ、&lt;code&gt;drawCircle&lt;/code&gt; で 2 つの円を描く。
+      片方の円は &lt;code&gt;sin(t)&lt;/code&gt; で半径が脈打つ — つまり 1 ファイルで描画 + 時間進行の最小デモ。
+    &lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_shapes/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
+    &lt;/p&gt;
+  &lt;/div&gt;
+&lt;/article&gt;
+
+&lt;article class=&quot;example-card&quot;&gt;
+  &lt;div class=&quot;example-card__body&quot;&gt;
+    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_cef_overlay&lt;/h3&gt;
+    &lt;p class=&quot;example-card__kind example-card__kind--cef&quot;&gt;Mode B · CEF + HTML&lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      C++ 側は背景を塗って中央に矩形を描くだけ。その上に &lt;code&gt;assets/scene.html&lt;/code&gt; の半透明 HUD
+      (&quot;HP: 100 / 128&quot;) を CEF が合成する。JS はゼロ — HTML/CSS だけで HUD が成立することの最小デモ。
+    &lt;/p&gt;
+    &lt;p class=&quot;example-card__desc&quot;&gt;
+      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_cef_overlay/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
+      ・
+      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_cef_overlay/assets/scene.html&quot;&gt;scene.html →&lt;/a&gt;
+    &lt;/p&gt;
+  &lt;/div&gt;
+&lt;/article&gt;
+</code></pre>
+  </div>
 </section>
-</div>
+<h2 id="次に読むなら">次に読むなら</h2>
+<ul>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">チャプター</a> — エンジンの構成要素ごとの解説。examples で出てくる API がどのモジュールにあるかが分かる</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a> — <code>mitiru new</code> から始めて 15 分で会話シーンまで持っていく構成</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/release-notes/v0.1.1/">リリースノート v0.1.1</a> — このサンプルセットが入ったリリース</li>
+</ul>
+
+      
+    </div>
+    
+    <aside class="page-toc" aria-label="このページの目次">
+      <h2>このページの目次</h2>
+      <nav id="TableOfContents">
+  <ul>
+    <li><a href="#次に読むなら">次に読むなら</a></li>
+  </ul>
+</nav>
+    </aside>
+    
+  </div>
+</article>
 
   </main>
   <footer class="site-footer">
