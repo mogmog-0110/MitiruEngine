@@ -9,7 +9,7 @@
   --c-bg: #ffffff;
   --c-bg-alt: #f6f7f9;
   --c-bg-elev: #ffffff;
-  --c-bg-code: #0f1623;
+  --c-bg-code: #f3f5f9;
   --c-bg-hero-top: #fafbfc;
   --c-bg-header: rgba(255, 255, 255, 0.92);
   --c-fg: #1c2330;
@@ -28,8 +28,8 @@
   --c-shadow-card: 0 10px 24px rgba(20, 25, 35, 0.08);
   --c-shadow-soft: 0 6px 18px rgba(20, 25, 35, 0.05);
 
-  /* code-block syntax tokens */
-  --c-code-fg: #e6edf3;
+  /* code-block syntax tokens (light theme defaults — dark theme overrides below) */
+  --c-code-fg: #1a2030;
   --c-code-comment: #8b949e;
   --c-code-kw: #ff7b72;
   --c-code-fn: #d2a8ff;
@@ -87,6 +87,7 @@
     --c-bg-alt: #161c24;
     --c-bg-elev: #1a2230;
     --c-bg-code: #0a0f17;
+    --c-code-fg: #e6edf3;
     --c-bg-hero-top: #11171f;
     --c-bg-header: rgba(15, 20, 25, 0.85);
     --c-fg: #e6ecf2;
@@ -133,6 +134,7 @@
 :root[data-theme="dark"] {
   --c-bg: #0f1419;
   --c-bg-alt: #161c24;
+  --c-code-fg: #e6edf3;
   --c-bg-elev: #1a2230;
   --c-bg-code: #0a0f17;
   --c-bg-hero-top: #11171f;
@@ -183,7 +185,8 @@
   --c-bg: #ffffff;
   --c-bg-alt: #f6f7f9;
   --c-bg-elev: #ffffff;
-  --c-bg-code: #0f1623;
+  --c-bg-code: #f3f5f9;
+  --c-code-fg: #1a2030;
   --c-bg-hero-top: #fafbfc;
   --c-bg-header: rgba(255, 255, 255, 0.92);
   --c-fg: #1c2330;
@@ -522,7 +525,7 @@ code, pre, kbd, samp { font-family: var(--font-mono); }
 .page-article__lede { color: var(--c-fg-soft); font-size: 1.1rem; margin: 0 0 2rem; }
 .page-article__body h2 { margin-top: 2.2rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--c-rule); font-size: 1.25rem; line-height: 1.45; }
 .page-article__body h3 { margin-top: 1.6rem; font-size: 1.05rem; line-height: 1.45; }
-.page-article__body pre { background: var(--c-bg-code); color: var(--c-code-fg); padding: 1rem; border-radius: var(--r-radius); overflow-x: auto; }
+.page-article__body pre { background: var(--c-bg-code); color: var(--c-code-fg); padding: 0.7rem 1rem; border-radius: var(--r-radius); overflow-x: auto; font-size: 0.88rem; line-height: 1.55; border: 1px solid var(--c-rule); }
 .page-article__body code { background: var(--c-bg-alt); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
 .page-list__items { list-style: none; padding: 0; }
 .page-list__items li { padding: 0.6rem 0; border-bottom: 1px solid var(--c-rule); }
@@ -719,7 +722,7 @@ code, pre, kbd, samp { font-family: var(--font-mono); }
 .example-detail__apis code { background: var(--c-bg); padding: 0.08em 0.35em; border-radius: 3px; font-size: 0.86em; border: 1px solid var(--c-rule); }
 .example-detail__body h2 { margin-top: 2.2rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--c-rule); font-size: 1.25rem; }
 .example-detail__body h3 { margin-top: 1.6rem; font-size: 1.05rem; }
-.example-detail__body pre { background: var(--c-bg-code); color: var(--c-code-fg); padding: 1rem 1.2rem; border-radius: var(--r-radius); overflow-x: auto; font-size: 0.86rem; line-height: 1.55; }
+.example-detail__body pre { background: var(--c-bg-code); color: var(--c-code-fg); padding: 0.7rem 1rem; border-radius: var(--r-radius); overflow-x: auto; font-size: 0.88rem; line-height: 1.55; border: 1px solid var(--c-rule); }
 .example-detail__body code { background: var(--c-bg-alt); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
 .example-detail__body pre code { background: transparent; padding: 0; }
 .example-detail__source { margin-top: 2rem; font-size: 0.98rem; }
@@ -2013,10 +2016,10 @@ body.search-open {
 }
 .three-min__code pre {
   margin: 0;
-  padding: 1.1rem 1.4rem;
+  padding: 1rem 1.2rem;
   font-size: 0.92rem;
   line-height: 1.55;
-  background: var(--c-bg-code) !important;
+  background: #0f1623 !important;
   color: #f0f3f9;
   overflow-x: auto;
 }
@@ -2274,7 +2277,7 @@ body.search-open {
 .chapter-article__lede { color: var(--c-fg-soft); font-size: 1.05rem; margin: 0 0 2rem; }
 .chapter-article__body h2 { margin-top: 2.2rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--c-rule); font-size: 1.25rem; }
 .chapter-article__body h3 { margin-top: 1.6rem; font-size: 1.05rem; }
-.chapter-article__body pre { background: var(--c-bg-code); color: var(--c-code-fg); padding: 1rem 1.2rem; border-radius: var(--r-radius); overflow-x: auto; font-size: 0.86rem; line-height: 1.55; }
+.chapter-article__body pre { background: var(--c-bg-code); color: var(--c-code-fg); padding: 0.7rem 1rem; border-radius: var(--r-radius); overflow-x: auto; font-size: 0.88rem; line-height: 1.55; border: 1px solid var(--c-rule); }
 .chapter-article__body code { background: var(--c-bg-alt); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }
 .chapter-article__body pre code { background: transparent; padding: 0; }
 .chapter-article__body ul { padding-left: 1.4rem; }
@@ -2419,11 +2422,12 @@ body.search-open {
 .api-page__content pre {
   background: var(--c-bg-code);
   color: var(--c-code-fg);
-  padding: 1rem 1.2rem;
+  padding: 0.7rem 1rem;
   border-radius: var(--r-radius);
   overflow-x: auto;
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   line-height: 1.55;
+  border: 1px solid var(--c-rule);
 }
 .api-page__content code {
   background: var(--c-bg-alt);
@@ -2996,6 +3000,36 @@ button:focus-visible {
 /* Chroma sits inside our dark code-block background regardless of page
    theme. Force dark-friendly token colors locally on the chroma scope. */
 .chroma {
+  /* Light theme defaults (github-light flavor). */
+  --c-syn-keyword: #d73a49;
+  --c-syn-comment: #6a737d;
+  --c-syn-string:  #032f62;
+  --c-syn-number:  #005cc5;
+  --c-syn-name:    #24292e;
+  --c-syn-builtin: #6f42c1;
+  --c-syn-operator:#d73a49;
+  --c-syn-punct:   #24292e;
+  --c-syn-err:     #b31d28;
+
+  color: var(--c-code-fg);
+  background: transparent;
+}
+
+/* Dark theme syntax tokens (github-dark flavor). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .chroma {
+    --c-syn-keyword: #ff7b72;
+    --c-syn-comment: #8b949e;
+    --c-syn-string:  #a5d6ff;
+    --c-syn-number:  #79c0ff;
+    --c-syn-name:    #e6edf3;
+    --c-syn-builtin: #d2a8ff;
+    --c-syn-operator:#ff7b72;
+    --c-syn-punct:   #e6edf3;
+    --c-syn-err:     #ffa198;
+  }
+}
+:root[data-theme="dark"] .chroma {
   --c-syn-keyword: #ff7b72;
   --c-syn-comment: #8b949e;
   --c-syn-string:  #a5d6ff;
@@ -3005,9 +3039,18 @@ button:focus-visible {
   --c-syn-operator:#ff7b72;
   --c-syn-punct:   #e6edf3;
   --c-syn-err:     #ffa198;
-
-  color: var(--c-code-fg);
-  background: transparent;
+}
+/* three-min code block always uses dark bg (hero showcase). */
+.three-min__code .chroma {
+  --c-syn-keyword: #ff7b72;
+  --c-syn-comment: #8b949e;
+  --c-syn-string:  #a5d6ff;
+  --c-syn-number:  #79c0ff;
+  --c-syn-name:    #e6edf3;
+  --c-syn-builtin: #d2a8ff;
+  --c-syn-operator:#ff7b72;
+  --c-syn-punct:   #e6edf3;
+  --c-syn-err:     #ffa198;
 }
 
 /* Per-line wrapper Hugo emits for code blocks. */

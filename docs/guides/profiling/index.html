@@ -604,10 +604,9 @@ Scene の <code>onDraw()</code> がここに集約されるので、コンテン
 <code>Engine::*</code> や <code>MySystem::*</code> でフィルタしやすくするため。</p>
 <h2 id="known-limitations">Known Limitations</h2>
 <ul>
-<li><strong>本番ハードウェアでの計測は未実施</strong>。Engine_Frame 9 ゾーン + 既存 2 ゾーン
-は計装済みで no-op gate も検証済みだが、実機キャプチャによるベースライン
-数値の公開は保留中。詳細は <a href="RELEASE_NOTES_2026-05-15.md"><code>RELEASE_NOTES_2026-05-15.md</code></a>
-の該当項目を参照。</li>
+<li><strong>本番ハードウェアでの計測は未実施</strong>。エンジンコアの主要フェーズは
+計装済みで no-op gate も検証済みだが、実機キャプチャによるベースライン
+数値はまだ公開できる形に揃っていない。</li>
 <li><strong>GPU 側のゾーンは未計装</strong>。Tracy には GPU タイムスタンプ機構があるが、
 現状の DX11/DX12/Vulkan/OpenGL バックエンドにはまだ統合されていない。
 GPU 時間を見たい場合は当面 PIX / RenderDoc / NSight などのベンダーツールを

@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Examples | MitiruEngine</title>
+  <title>サンプル | MitiruEngine</title>
   
 
 
 
 
-<meta name="description" content="v0.1.1 で復活した最小サンプル 5 本。ぜんぶ ~80 行以下の main.cpp &#43; CMakeLists.txt セット。">
+<meta name="description" content="短い main.cpp と CMakeLists.txt のセット。コピペで動かして読むためのサンプル集です。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/examples/">
 
@@ -29,8 +29,8 @@
 
 
 
-<meta property="og:title" content="Examples | MitiruEngine">
-<meta property="og:description" content="v0.1.1 で復活した最小サンプル 5 本。ぜんぶ ~80 行以下の main.cpp &#43; CMakeLists.txt セット。">
+<meta property="og:title" content="サンプル | MitiruEngine">
+<meta property="og:description" content="短い main.cpp と CMakeLists.txt のセット。コピペで動かして読むためのサンプル集です。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/examples/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -41,8 +41,8 @@
 <meta property="og:image:height" content="630">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Examples | MitiruEngine">
-<meta name="twitter:description" content="v0.1.1 で復活した最小サンプル 5 本。ぜんぶ ~80 行以下の main.cpp &#43; CMakeLists.txt セット。">
+<meta name="twitter:title" content="サンプル | MitiruEngine">
+<meta name="twitter:description" content="短い main.cpp と CMakeLists.txt のセット。コピペで動かして読むためのサンプル集です。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -366,8 +366,8 @@
 <article class="page-article container">
   <header class="page-article__header">
     
-    <h1 class="page-article__title">Examples</h1>
-    <p class="page-article__lede">v0.1.1 で復活した最小サンプル 5 本。ぜんぶ ~80 行以下の main.cpp &#43; CMakeLists.txt セット。</p>
+    <h1 class="page-article__title">サンプル</h1>
+    <p class="page-article__lede">短い main.cpp と CMakeLists.txt のセット。コピペで動かして読むためのサンプル集です。</p>
   </header>
 
   
@@ -382,7 +382,7 @@
   <div class="page-with-toc">
     <div class="page-article__body">
       <p><code>examples/&lt;name&gt;/</code> 以下に置かれた、コピペで動かせる最小サンプル集です。
-ゲームをこれで作る、というよりは「この機能を呼ぶ最小コード」を 1 ファイルにまとめた <strong>読むため</strong> のサンプル群。</p>
+ゲームをこれで作るというよりは、「このの機能を呼ぶ最小コード」を 1 ファイルにまとめた <strong>読むため</strong> のサンプル群。</p>
 <p>ビルド:</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --preset default
 </span></span><span class="line"><span class="cl">cmake --build build --config Debug --target hello_window
@@ -390,98 +390,56 @@
 </span></span></code></pre></div><p>実行 (Windows の例):</p>
 <pre tabindex="0"><code>build\examples\hello_window\hello_window.exe
 </code></pre><section class="example-gallery" aria-label="examples">
-  <div class="examples-grid">
-<pre><code>&lt;article class=&quot;example-card&quot;&gt;
-  &lt;div class=&quot;example-card__body&quot;&gt;
-    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_window&lt;/h3&gt;
-    &lt;p class=&quot;example-card__kind example-card__kind--engine&quot;&gt;Mode A · 純 C++&lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      最小構成。800×600 のウィンドウを開き、&quot;Hello, Mitiru!&quot; を画面中央に表示する。ESC で終了。
-      CEF を切って (&lt;code&gt;enableCef = false&lt;/code&gt;) Latin atlas にすると、コールド起動 1 秒未満。
-    &lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_window/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
-    &lt;/p&gt;
-  &lt;/div&gt;
-&lt;/article&gt;
-
-&lt;article class=&quot;example-card&quot;&gt;
-  &lt;div class=&quot;example-card__body&quot;&gt;
-    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_input&lt;/h3&gt;
-    &lt;p class=&quot;example-card__kind example-card__kind--engine&quot;&gt;Mode A · 純 C++&lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      64×64 の四角を矢印キー / WASD で動かす。&lt;code&gt;input().isKeyDown()&lt;/code&gt; を &lt;code&gt;update(dt)&lt;/code&gt; から呼んで
-      速度ベクトルを積分する、ふつうの per-frame 入力ループ。
-    &lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_input/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
-    &lt;/p&gt;
-  &lt;/div&gt;
-&lt;/article&gt;
-
-&lt;article class=&quot;example-card&quot;&gt;
-  &lt;div class=&quot;example-card__body&quot;&gt;
-    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_scene&lt;/h3&gt;
-    &lt;p class=&quot;example-card__kind example-card__kind--engine&quot;&gt;Mode A · 純 C++&lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      enum で 2 シーン (Title → Game) を切り替える。SceneRouter は使わない、配線最小版。
-      実プロジェクトに置き換えたくなったら &lt;code&gt;mitiru::scene::SceneRouter&lt;/code&gt; へ。
-    &lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_scene/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
-    &lt;/p&gt;
-  &lt;/div&gt;
-&lt;/article&gt;
-
-&lt;article class=&quot;example-card&quot;&gt;
-  &lt;div class=&quot;example-card__body&quot;&gt;
-    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_shapes&lt;/h3&gt;
-    &lt;p class=&quot;example-card__kind example-card__kind--engine&quot;&gt;Mode A · 純 C++&lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      &lt;code&gt;drawRect&lt;/code&gt; で 5 色の矩形を並べ、&lt;code&gt;drawCircle&lt;/code&gt; で 2 つの円を描く。
-      片方の円は &lt;code&gt;sin(t)&lt;/code&gt; で半径が脈打つ — つまり 1 ファイルで描画 + 時間進行の最小デモ。
-    &lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_shapes/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
-    &lt;/p&gt;
-  &lt;/div&gt;
-&lt;/article&gt;
-
-&lt;article class=&quot;example-card&quot;&gt;
-  &lt;div class=&quot;example-card__body&quot;&gt;
-    &lt;h3 class=&quot;example-card__title&quot;&gt;hello_cef_overlay&lt;/h3&gt;
-    &lt;p class=&quot;example-card__kind example-card__kind--cef&quot;&gt;Mode B · CEF + HTML&lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      C++ 側は背景を塗って中央に矩形を描くだけ。その上に &lt;code&gt;assets/scene.html&lt;/code&gt; の半透明 HUD
-      (&quot;HP: 100 / 128&quot;) を CEF が合成する。JS はゼロ — HTML/CSS だけで HUD が成立することの最小デモ。
-    &lt;/p&gt;
-    &lt;p class=&quot;example-card__desc&quot;&gt;
-      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_cef_overlay/main.cpp&quot;&gt;main.cpp →&lt;/a&gt;
-      ・
-      &lt;a href=&quot;https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_cef_overlay/assets/scene.html&quot;&gt;scene.html →&lt;/a&gt;
-    &lt;/p&gt;
-  &lt;/div&gt;
-&lt;/article&gt;
-</code></pre>
-  </div>
+<div class="examples-grid">
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">hello_window</h3>
+<p class="example-card__kind example-card__kind--engine">Mode A · 純 C++</p>
+<p class="example-card__desc">最小構成。800×600 のウィンドウを開き、"Hello, Mitiru!" を画面中央に表示する。ESC で終了。CEF を切って (<code>enableCef = false</code>) Latin atlas にすると、コールド起動 1 秒未満。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_window/main.cpp">main.cpp →</a></p>
+</div>
+</article>
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">hello_input</h3>
+<p class="example-card__kind example-card__kind--engine">Mode A · 純 C++</p>
+<p class="example-card__desc">64×64 の四角を矢印キー / WASD で動かす。<code>input().isKeyDown()</code> を <code>update(dt)</code> から呼んで、速度ベクトルを積分する、ふつうの per-frame 入力ループ。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_input/main.cpp">main.cpp →</a></p>
+</div>
+</article>
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">hello_scene</h3>
+<p class="example-card__kind example-card__kind--engine">Mode A · 純 C++</p>
+<p class="example-card__desc">タイトル → ゲーム → ゲームオーバーの 3 シーンをスペースキーで遷移する。<code>SceneRouter</code> + <code>Scene</code> 派生クラスの最小例。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_scene/main.cpp">main.cpp →</a></p>
+</div>
+</article>
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">hello_shapes</h3>
+<p class="example-card__kind example-card__kind--engine">Mode A · 純 C++</p>
+<p class="example-card__desc">矩形 5 + 円 2 を <code>drawRect</code> / <code>drawCircle</code> で並べ、<code>sin(t)</code> で半径と色相を脈動させる。<code>mitiru::Screen</code> の C++ 直接描画の最小例。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_shapes/main.cpp">main.cpp →</a></p>
+</div>
+</article>
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">hello_cef_overlay</h3>
+<p class="example-card__kind example-card__kind--cef">Mode B · CEF オーバーレイ</p>
+<p class="example-card__desc">C++ で背景矩形を描いた上に、HTML/CSS の半透明 HUD を CEF オーバーレイとして重ねる。<code>cefStartUrl</code> + <code>assets/scene.html</code> のコピー手順入り。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_cef_overlay/main.cpp">main.cpp →</a></p>
+</div>
+</article>
+</div>
 </section>
-<h2 id="次に読むなら">次に読むなら</h2>
-<ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">チャプター</a> — エンジンの構成要素ごとの解説。examples で出てくる API がどのモジュールにあるかが分かる</li>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a> — <code>mitiru new</code> から始めて 15 分で会話シーンまで持っていく構成</li>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/release-notes/v0.1.1/">リリースノート v0.1.1</a> — このサンプルセットが入ったリリース</li>
-</ul>
 
       
     </div>
     
     <aside class="page-toc" aria-label="このページの目次">
       <h2>このページの目次</h2>
-      <nav id="TableOfContents">
-  <ul>
-    <li><a href="#次に読むなら">次に読むなら</a></li>
-  </ul>
-</nav>
+      <nav id="TableOfContents"></nav>
     </aside>
     
   </div>
