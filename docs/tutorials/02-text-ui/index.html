@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="背景の上に CEF で UI を重ね、C&#43;&#43; から状態を流し込んでクリックで反応させる。RPG のメニュー、アクションのカットイン、シミュレーションの通知、どこでも使う基本パターン。">
+<meta name="description" content="C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。中身は C&#43;&#43; で持って、見た目は HTML/CSS、つなぎは薄い state push。RPG のメニューやアクションのカットインの土台になるパターン。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="02 画面に UI を出す | MitiruEngine">
-<meta property="og:description" content="背景の上に CEF で UI を重ね、C&#43;&#43; から状態を流し込んでクリックで反応させる。RPG のメニュー、アクションのカットイン、シミュレーションの通知、どこでも使う基本パターン。">
+<meta property="og:description" content="C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。中身は C&#43;&#43; で持って、見た目は HTML/CSS、つなぎは薄い state push。RPG のメニューやアクションのカットインの土台になるパターン。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="02 画面に UI を出す | MitiruEngine">
-<meta name="twitter:description" content="背景の上に CEF で UI を重ね、C&#43;&#43; から状態を流し込んでクリックで反応させる。RPG のメニュー、アクションのカットイン、シミュレーションの通知、どこでも使う基本パターン。">
+<meta name="twitter:description" content="C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。中身は C&#43;&#43; で持って、見た目は HTML/CSS、つなぎは薄い state push。RPG のメニューやアクションのカットインの土台になるパターン。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -371,33 +371,37 @@
     </p>
     
     <h1 class="page-article__title">02 画面に UI を出す</h1>
-    <p class="page-article__lede">背景の上に CEF で UI を重ね、C&#43;&#43; から状態を流し込んでクリックで反応させる。RPG のメニュー、アクションのカットイン、シミュレーションの通知、どこでも使う基本パターン。</p>
+    <p class="page-article__lede">C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。中身は C&#43;&#43; で持って、見た目は HTML/CSS、つなぎは薄い state push。RPG のメニューやアクションのカットインの土台になるパターン。</p>
   </header>
 
   
   <aside class="page-summary">
     <h2 class="page-summary__h">このページで分かること</h2>
     <ul>
-      <li>CEF で HUD / ダイアログ風の UI を組む最小手順</li><li>C&#43;&#43; 側でその状態を進めるロジック</li><li>CEF と C&#43;&#43; の signal-only bridge の使いどころ</li>
+      <li>mitiru new (デフォルトテンプレート) で CEF 入りのひな型を作る</li><li>C&#43;&#43; で値を持って、StateStore で JS に push する</li><li>JS は state を受け取って DOM を書き換えるだけ。ゲームのロジックは書かない</li>
     </ul>
   </aside>
   
 
   <div class="page-with-toc">
     <div class="page-article__body">
-      <p>このチュートリアルでは、こんな画面を動かすところまで行きます。</p>
-<ul>
-<li>1 枚の背景</li>
-<li>画面の下にテキストボックス</li>
-<li>クリック (またはスペース) で次のテキストへ</li>
-<li>最後に「OK」と出る</li>
-</ul>
-<p>時間の目安は <strong>15 〜 20 分</strong>。</p>
-<p><strong>画面に何かを出して、クリックで進める</strong> — あらゆるジャンルに出てくる基本を最短で書きます。最後のセクションで他ジャンルへの応用も触れます。</p>
-<p>事前に <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> を済ませ、<code>mitiru doctor</code> が OK を返すことを確認してください。</p>
+      <p><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> で作った C++ ゲームの上に、HTML/CSS で組んだ <strong>見た目だけのレイヤー</strong> を重ねるチュートリアルです。HUD バー、ダイアログ、メニューなど、Web のデザイン資産を活かしたい部分はここに乗ります。</p>
+<p>このチュートリアルでは「中身は C++、画面は HTML / CSS、橋渡しは薄く」という MitiruEngine の標準形を実際のコードで体験します。</p>
+<p>時間の目安は <strong>20 〜 25 分</strong>。事前に <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> と <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> を済ませておくと、流れがつかみやすいです。</p>
 <hr>
-<h2 id="全体の構成">全体の構成</h2>
-<p>MitiruEngine の流儀では、こんなふうに役割を分けます。</p>
+<h2 id="できあがるもの">できあがるもの</h2>
+<ul>
+<li>黒い背景の上に、C++ で描いた水色の矩形 (前のチュートリアルと同じプレイヤー)</li>
+<li>画面の上に、HTML/CSS で組んだ HUD バー</li>
+<li>HUD には「経過時間」が表示され、毎フレーム C++ から更新される</li>
+</ul>
+<figure class="tutorial-figure">
+  <img src="images/finished.png" alt="完成画面: 暗背景に水色矩形が描かれ、上部に半透明の HUD バーが乗って 00:12 と表示されている" loading="lazy">
+  <figcaption>C++ が描いた背景 + プレイヤー (Native レンダ) の上に、CSS で組んだ HUD (CEF レイヤー) が乗る。HUD の時計は C++ から push される。</figcaption>
+</figure>
+<hr>
+<h2 id="役割分担をはっきりさせる">役割分担をはっきりさせる</h2>
+<p>書き始める前に、それぞれの担当を整理します。これがすべての判断のもとになります。</p>
 <table>
   <thead>
       <tr>
@@ -407,211 +411,210 @@
   </thead>
   <tbody>
       <tr>
-          <td>メッセージのデータ (本文、順序)</td>
-          <td>JSON ファイル</td>
+          <td>経過時間を数える</td>
+          <td><strong>C++</strong> (<code>Game::update</code>)</td>
       </tr>
       <tr>
-          <td>シーンの進行・状態</td>
-          <td>C++</td>
+          <td>プレイヤーや背景の描画</td>
+          <td><strong>C++</strong> (<code>Game::draw</code>)</td>
       </tr>
       <tr>
-          <td>画面 (背景、テキストボックス、ボタン)</td>
-          <td>HTML + CSS</td>
+          <td>HUD のレイアウトと見た目</td>
+          <td><strong>HTML / CSS</strong></td>
       </tr>
       <tr>
-          <td>C++ と HTML のあいだ</td>
-          <td>signal-only bridge (<code>cefQuery</code> / <code>executeJavaScript</code>)</td>
+          <td>HUD に値を書き込む</td>
+          <td><strong>JS</strong> (受け取って DOM に貼るだけ)</td>
+      </tr>
+      <tr>
+          <td>「次は何が起きるか」を決める</td>
+          <td><strong>C++</strong>。JS では決めない</td>
       </tr>
   </tbody>
 </table>
-<p>「データは JSON」「ロジックは C++」「見た目は Web の道具」。この 3 つを覚えておけば迷いません。</p>
-<h2 id="手順-1-プロジェクトを作る">手順 1: プロジェクトを作る</h2>
+<p><strong>ゲームのロジックを JS に書かない</strong>、これが一番大事です。JS は受け取って表示するだけ。CEF レイヤーは「見た目の Photoshop」と思ってください。</p>
+<hr>
+<h2 id="手順-1-ひな型を作る">手順 1: ひな型を作る</h2>
+<p>CEF を含むデフォルトテンプレートでひな型を作ります。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru new my-ui
 </span></span><span class="line"><span class="cl"><span class="nb">cd</span> my-ui
-</span></span></code></pre></div><p><code>mitiru new</code> が <code>src/main.cpp</code>、<code>assets/scene.html</code>、<code>mitiru.toml</code> などを生成します。裏では CMake が動いていますが、触る必要はありません。</p>
-<p>ウィンドウサイズを変えたい場合は <code>mitiru.toml</code> の <code>[window]</code> セクションを編集します。</p>
-<h2 id="手順-2-データを書く">手順 2: データを書く</h2>
-<p><code>messages.json</code> をプロジェクト直下に新規作成します。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl"><span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;messages&#34;</span><span class="p">:</span> <span class="p">[</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nt">&#34;speaker&#34;</span><span class="p">:</span> <span class="s2">&#34;システム&#34;</span><span class="p">,</span> <span class="nt">&#34;text&#34;</span><span class="p">:</span> <span class="s2">&#34;ようこそ。これは最初のシーンです。&#34;</span> <span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nt">&#34;speaker&#34;</span><span class="p">:</span> <span class="s2">&#34;システム&#34;</span><span class="p">,</span> <span class="nt">&#34;text&#34;</span><span class="p">:</span> <span class="s2">&#34;クリック (またはスペース) で次に進みます。&#34;</span> <span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nt">&#34;speaker&#34;</span><span class="p">:</span> <span class="s2">&#34;プレイヤー&#34;</span><span class="p">,</span> <span class="nt">&#34;text&#34;</span><span class="p">:</span> <span class="s2">&#34;ふむふむ、シンプルだ。&#34;</span> <span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nt">&#34;speaker&#34;</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span>       <span class="nt">&#34;text&#34;</span><span class="p">:</span> <span class="s2">&#34;—— こうして、はじめの一歩が踏み出される。&#34;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">]</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p><code>speaker</code> が <code>null</code> のときは話し手名を出さず、ただのメッセージとして表示します。クエストログ、ヒント、戦闘ログにも使い回せます。</p>
-<h2 id="手順-3-メッセージを進める-c-を書く">手順 3: メッセージを進める C++ を書く</h2>
-<p><code>src/main.cpp</code> を開いて、JSON を読んで「いま何行目か」を覚える小さな状態機械に書き換えます。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;fstream&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;nlohmann/json.hpp&gt;</span><span class="cp">
+</span></span></code></pre></div><figure class="tutorial-figure">
+  <img src="images/01-folder.png" alt="生成された my-ui/ フォルダの中身: src/main.cpp, assets/scene.html, mitiru.toml, .gitignore, README.md" loading="lazy">
+  <figcaption>デフォルトテンプレートには assets/scene.html が含まれる。これが CEF が読み込む HTML。</figcaption>
+</figure>
+<hr>
+<h2 id="手順-2-そのまま走らせる">手順 2: そのまま走らせる</h2>
+<p>中身を変える前に、ひな型を走らせて初期画面を確認します。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru run
+</span></span></code></pre></div><figure class="tutorial-figure">
+  <img src="images/02-default.png" alt="ひな型を走らせた直後: グラデーション背景にプロジェクト名が中央表示" loading="lazy">
+  <figcaption>デフォルトのシーンは HTML/CSS だけで描かれている。C++ 側はまだ何も描いていない。</figcaption>
+</figure>
+<p>ここまでで、CEF レイヤーが画面に乗ることが確認できました。</p>
+<hr>
+<h2 id="手順-3-c-で背景とプレイヤーを描く">手順 3: C++ で背景とプレイヤーを描く</h2>
+<p><code>src/main.cpp</code> を開いて、C++ で背景と矩形を描くコードに書き換えます。<a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> と同じ流儀です。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="k">using</span> <span class="n">json</span> <span class="o">=</span> <span class="n">nlohmann</span><span class="o">::</span><span class="n">json</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">HelloScene</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
 </span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">onStart</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">in</span><span class="p">(</span><span class="s">&#34;messages.json&#34;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="n">in</span> <span class="o">&gt;&gt;</span> <span class="n">m_script</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">m_messages</span> <span class="o">=</span> <span class="n">m_script</span><span class="p">[</span><span class="s">&#34;messages&#34;</span><span class="p">];</span>
-</span></span><span class="line"><span class="cl">    <span class="n">pushMessageToView</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">hasInput</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">input</span><span class="p">().</span><span class="n">isMouseJustPressed</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">MouseButton</span><span class="o">::</span><span class="n">Left</span><span class="p">))</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">advance</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">m_elapsed</span> <span class="o">+=</span> <span class="n">dt</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 描画は HTML 側がやる。C++ 側は状態管理に集中する。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.10f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="n">w</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">-</span> <span class="mi">24</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">-</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">48</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.75f</span><span class="p">,</span> <span class="mf">0.95f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="n">advance</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="o">++</span><span class="n">m_index</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_index</span> <span class="o">&gt;=</span> <span class="n">m_messages</span><span class="p">.</span><span class="n">size</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">pushEndToView</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">pushMessageToView</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">pushMessageToView</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">auto</span><span class="o">&amp;</span> <span class="n">m</span> <span class="o">=</span> <span class="n">m_messages</span><span class="p">[</span><span class="n">m_index</span><span class="p">];</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">char</span> <span class="n">js</span><span class="p">[</span><span class="mi">512</span><span class="p">];</span>
-</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">snprintf</span><span class="p">(</span><span class="n">js</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">js</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">      <span class="s">&#34;window.showMessage &amp;&amp; window.showMessage(%s, %s);&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">      <span class="n">m</span><span class="p">[</span><span class="s">&#34;speaker&#34;</span><span class="p">].</span><span class="n">is_null</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">        <span class="o">?</span> <span class="s">&#34;null&#34;</span>
-</span></span><span class="line"><span class="cl">        <span class="o">:</span> <span class="p">(</span><span class="s">&#34;</span><span class="se">\&#34;</span><span class="s">&#34;</span> <span class="o">+</span> <span class="n">m</span><span class="p">[</span><span class="s">&#34;speaker&#34;</span><span class="p">].</span><span class="n">get</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#34;</span><span class="se">\&#34;</span><span class="s">&#34;</span><span class="p">).</span><span class="n">c_str</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">      <span class="p">(</span><span class="s">&#34;</span><span class="se">\&#34;</span><span class="s">&#34;</span> <span class="o">+</span> <span class="n">m</span><span class="p">[</span><span class="s">&#34;text&#34;</span><span class="p">].</span><span class="n">get</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#34;</span><span class="se">\&#34;</span><span class="s">&#34;</span><span class="p">).</span><span class="n">c_str</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">engine</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">engine</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">engine</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">executeJavaScript</span><span class="p">(</span><span class="n">js</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">pushEndToView</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">engine</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">engine</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="n">engine</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">executeJavaScript</span><span class="p">(</span><span class="s">&#34;window.showEnd &amp;&amp; window.showEnd();&#34;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="n">json</span> <span class="n">m_script</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">json</span> <span class="n">m_messages</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">size_t</span> <span class="n">m_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">m_elapsed</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl"><span class="p">};</span>
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">HelloScene</span> <span class="n">game</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="s">&#34;Hello Scene&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">cefStartUrl</span> <span class="o">=</span> <span class="s">&#34;file:///&#34;</span> <span class="n">__FILE__</span> <span class="s">&#34;/../assets/scene.html&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">MyGame</span> <span class="n">game</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">title</span>         <span class="o">=</span> <span class="s">&#34;My UI&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span>   <span class="o">=</span> <span class="mi">800</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span>  <span class="o">=</span> <span class="mi">600</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">cefStartUrl</span>   <span class="o">=</span> <span class="s">&#34;assets/scene.html&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">skipDefaultFont</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p>ポイント:</p>
-<ul>
-<li>C++ 側は <strong>「いま何番目のメッセージか」だけ覚える</strong>。描画はしません。</li>
-<li>進めるのも C++ 側。<code>input().isMouseJustPressed(...)</code> で 1 行進めます。</li>
-<li>1 行進むたびに <code>executeJavaScript</code> で <strong>HTML 側に通知</strong> します。これが「C++ → JS」の signal-only bridge です。</li>
-</ul>
-<h2 id="手順-4-見た目を-html--css-で書く">手順 4: 見た目を HTML / CSS で書く</h2>
-<p><code>assets/scene.html</code> を開いて、テキストボックスを出す内容に書き換えます。</p>
+</span></span></code></pre></div><p>ここまでで <code>mitiru run</code> すると、ひな型の HUD はそのままで、C++ の描画は HTML の <strong>下</strong> に隠れてしまいます。HTML が画面いっぱいに不透明な背景を持っているからです。次の手順で HTML を「透ける HUD」に作り直します。</p>
+<hr>
+<h2 id="手順-4-html-を透ける-hudに作り変える">手順 4: HTML を「透ける HUD」に作り変える</h2>
+<p><code>assets/scene.html</code> を開いて、画面いっぱいの背景をやめ、上部に細い HUD バーだけを残すように書き換えます。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
 </span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;ja&#34;</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;utf-8&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">style</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">html</span><span class="o">,</span> <span class="nt">body</span> <span class="p">{</span> <span class="k">margin</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span> <span class="k">height</span><span class="p">:</span> <span class="mi">100</span><span class="kt">%</span><span class="p">;</span> <span class="k">font-family</span><span class="p">:</span> <span class="s2">&#34;Noto Sans JP&#34;</span><span class="p">,</span> <span class="kc">sans-serif</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">body</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="k">background</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="nb">radial-gradient</span><span class="p">(</span><span class="kc">circle</span> <span class="n">at</span> <span class="mi">30</span><span class="kt">%</span> <span class="mi">30</span><span class="kt">%</span><span class="p">,</span> <span class="mh">#2a3550</span><span class="p">,</span> <span class="mh">#0f1426</span> <span class="mi">75</span><span class="kt">%</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">      <span class="k">color</span><span class="p">:</span> <span class="mh">#fff</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">stage</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="k">position</span><span class="p">:</span> <span class="kc">fixed</span><span class="p">;</span> <span class="n">inset</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">display</span><span class="p">:</span> <span class="kc">flex</span><span class="p">;</span> <span class="k">align-items</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span> <span class="k">justify-content</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">font-size</span><span class="p">:</span> <span class="mi">18</span><span class="kt">px</span><span class="p">;</span> <span class="k">opacity</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">message</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="k">position</span><span class="p">:</span> <span class="kc">fixed</span><span class="p">;</span> <span class="k">left</span><span class="p">:</span> <span class="mi">4</span><span class="kt">%</span><span class="p">;</span> <span class="k">right</span><span class="p">:</span> <span class="mi">4</span><span class="kt">%</span><span class="p">;</span> <span class="k">bottom</span><span class="p">:</span> <span class="mi">4</span><span class="kt">%</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">padding</span><span class="p">:</span> <span class="mi">24</span><span class="kt">px</span> <span class="mi">28</span><span class="kt">px</span><span class="p">;</span> <span class="k">min-height</span><span class="p">:</span> <span class="mi">110</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">background</span><span class="p">:</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mf">0.86</span><span class="p">);</span> <span class="k">border</span><span class="p">:</span> <span class="mi">1</span><span class="kt">px</span> <span class="kc">solid</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span><span class="mi">255</span><span class="p">,</span><span class="mi">255</span><span class="p">,</span><span class="mf">0.4</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">      <span class="k">border-radius</span><span class="p">:</span> <span class="mi">10</span><span class="kt">px</span><span class="p">;</span> <span class="k">box-shadow</span><span class="p">:</span> <span class="mi">0</span> <span class="mi">8</span><span class="kt">px</span> <span class="mi">24</span><span class="kt">px</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.4</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">message__name</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="k">display</span><span class="p">:</span> <span class="kc">inline-block</span><span class="p">;</span> <span class="k">padding</span><span class="p">:</span> <span class="mi">4</span><span class="kt">px</span> <span class="mi">12</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">background</span><span class="p">:</span> <span class="mh">#5b8ee2</span><span class="p">;</span> <span class="k">border-radius</span><span class="p">:</span> <span class="mi">4</span><span class="kt">px</span><span class="p">;</span> <span class="k">margin-bottom</span><span class="p">:</span> <span class="mi">12</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="k">font-weight</span><span class="p">:</span> <span class="mi">700</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">message__text</span> <span class="p">{</span> <span class="k">font-size</span><span class="p">:</span> <span class="mi">22</span><span class="kt">px</span><span class="p">;</span> <span class="k">line-height</span><span class="p">:</span> <span class="mf">1.55</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">.</span><span class="nc">end</span> <span class="p">{</span> <span class="k">font-size</span><span class="p">:</span> <span class="mi">56</span><span class="kt">px</span><span class="p">;</span> <span class="k">text-align</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span> <span class="k">padding-top</span><span class="p">:</span> <span class="mi">35</span><span class="kt">vh</span><span class="p">;</span> <span class="k">opacity</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">style</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;utf-8&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>My UI<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">style</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">html</span><span class="o">,</span> <span class="nt">body</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">margin</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">height</span><span class="p">:</span> <span class="mi">100</span><span class="kt">%</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">background</span><span class="p">:</span> <span class="kc">transparent</span><span class="p">;</span>          <span class="c">/* 中身が透ける */</span>
+</span></span><span class="line"><span class="cl">    <span class="k">font-family</span><span class="p">:</span> <span class="s2">&#34;Noto Sans JP&#34;</span><span class="p">,</span> <span class="s2">&#34;Hiragino Sans&#34;</span><span class="p">,</span> <span class="s2">&#34;Yu Gothic&#34;</span><span class="p">,</span> <span class="n">system-ui</span><span class="p">,</span> <span class="kc">sans-serif</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">color</span><span class="p">:</span> <span class="mh">#fff</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">overflow</span><span class="p">:</span> <span class="kc">hidden</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nc">hud</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">position</span><span class="p">:</span> <span class="kc">fixed</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">top</span><span class="p">:</span> <span class="mi">16</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">left</span><span class="p">:</span> <span class="mi">16</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">padding</span><span class="p">:</span> <span class="mi">6</span><span class="kt">px</span> <span class="mi">14</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">background</span><span class="p">:</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">border</span><span class="p">:</span> <span class="mi">1</span><span class="kt">px</span> <span class="kc">solid</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mf">0.18</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">border-radius</span><span class="p">:</span> <span class="mi">8</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">backdrop-filter</span><span class="p">:</span> <span class="nb">blur</span><span class="p">(</span><span class="mi">6</span><span class="kt">px</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">font-size</span><span class="p">:</span> <span class="mi">14</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">letter-spacing</span><span class="p">:</span> <span class="mf">0.04</span><span class="kt">em</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nc">hud__label</span> <span class="p">{</span> <span class="k">opacity</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">;</span> <span class="k">margin-right</span><span class="p">:</span> <span class="mf">0.6</span><span class="kt">em</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nc">hud__value</span> <span class="p">{</span> <span class="k">font-weight</span><span class="p">:</span> <span class="mi">700</span><span class="p">;</span> <span class="k">font-variant-numeric</span><span class="p">:</span> <span class="n">tabular-nums</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">style</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;stage&#34;</span><span class="p">&gt;</span>— hello scene —<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;message&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;message&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;message__name&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;name&#34;</span><span class="p">&gt;</span>システム<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;message__text&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;text&#34;</span><span class="p">&gt;</span>…<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hud&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hud__label&#34;</span><span class="p">&gt;</span>TIME<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hud__value&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;hud-time&#34;</span><span class="p">&gt;</span>00:00<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;../../../web/mitiru_runtime/mitiru_runtime.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">window</span><span class="p">.</span><span class="nx">showMessage</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">speaker</span><span class="p">,</span> <span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="kd">var</span> <span class="nx">nameEl</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">      <span class="kd">var</span> <span class="nx">textEl</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">      <span class="k">if</span> <span class="p">(</span><span class="nx">speaker</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">nameEl</span><span class="p">.</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">speaker</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">nameEl</span><span class="p">.</span><span class="nx">style</span><span class="p">.</span><span class="nx">display</span> <span class="o">=</span> <span class="s1">&#39;inline-block&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">nameEl</span><span class="p">.</span><span class="nx">style</span><span class="p">.</span><span class="nx">display</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">      <span class="p">}</span>
-</span></span><span class="line"><span class="cl">      <span class="nx">textEl</span><span class="p">.</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">text</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">};</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nb">window</span><span class="p">.</span><span class="nx">showEnd</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="s1">&#39;&lt;div class=&#34;end&#34;&gt;OK&lt;/div&gt;&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">};</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// C++ から push された scene.time を受け取って DOM に貼るだけ。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 「次に何をするか」は決めない。決めるのは C++ 側。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nb">window</span><span class="p">.</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">onStateChange</span><span class="p">(</span><span class="s1">&#39;scene.time&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;hud-time&#39;</span><span class="p">).</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">});</span>
 </span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre></div><p><code>background: transparent</code> にしたことで、HTML レイヤーの下にいる C++ の描画 (背景 + プレイヤー矩形) が見えるようになります。HUD は画面の左上に半透明の小さなバーとして残ります。</p>
+<p><code>mitiru run</code> でこの段階を確認:</p>
+<figure class="tutorial-figure">
+  <img src="images/04-hud-zero.png" alt="C++ の背景とプレイヤー矩形の上に、半透明の HUD バーが TIME 00:00 と表示している" loading="lazy">
+  <figcaption>C++ で描いた背景の上に HUD バーが乗る。まだ 00:00 のまま動かない。</figcaption>
+</figure>
+<hr>
+<h2 id="手順-5-c-から値を-push-する">手順 5: C++ から値を push する</h2>
+<p><code>src/main.cpp</code> を書き足して、毎フレーム経過時間を <code>scene.time</code> という名前で JS に push します。</p>
+<p><code>#include</code> と <code>MyGame</code> を次のように変更してください。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/cef/StateStore.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;cstdio&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">onStart</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// CEF コンテキストから StateStore を作る。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// これが C++ → JS の唯一の経路になる。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">if</span> <span class="p">(</span><span class="k">auto</span><span class="o">*</span> <span class="n">eng</span> <span class="o">=</span> <span class="n">engine</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="p">(</span><span class="k">auto</span><span class="o">*</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">eng</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="n">m_store</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">-&gt;</span><span class="n">makeStateStore</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">m_elapsed</span> <span class="o">+=</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// &#34;MM:SS&#34; に整形して JS 側に push する。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">const</span> <span class="kt">int</span> <span class="n">total</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">m_elapsed</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">        <span class="n">std</span><span class="o">::</span><span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&#34;%02d:%02d&#34;</span><span class="p">,</span> <span class="n">total</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="n">total</span> <span class="o">%</span> <span class="mi">60</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">m_store</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="n">m_store</span><span class="o">-&gt;</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;scene.time&#34;</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">{</span><span class="n">buf</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.10f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="n">w</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">-</span> <span class="mi">24</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">-</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">48</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.75f</span><span class="p">,</span> <span class="mf">0.95f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">m_elapsed</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">mitiru</span><span class="o">::</span><span class="n">cef</span><span class="o">::</span><span class="n">StateStore</span><span class="o">&gt;</span> <span class="n">m_store</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
 </span></span></code></pre></div><p>ポイント:</p>
 <ul>
-<li>HTML 側は <strong>「描く」「ボタン的なクリックを受ける」だけ</strong>。状態は持ちません。</li>
-<li>C++ から呼ばれた <code>window.showMessage(...)</code> で表示を差し替えるだけ。</li>
-<li>「次へ進む」は C++ 側が決めているので、HTML 側に分岐ロジックは要らない。</li>
+<li>C++ 側は値を <strong>持って整形して push する</strong> だけ。HTML の <code>&lt;span&gt;</code> の存在も、CSS のスタイルも知らない。</li>
+<li>JS 側は <code>mitiru.onStateChange</code> で値を <strong>受け取って DOM に書き込む</strong> だけ。「経過時間を進める」 判断はしていない。</li>
+<li>名前 (<code>scene.time</code>) を介して薄くつないでいる。これが <strong>signal-only bridge</strong> です。</li>
 </ul>
-<h2 id="手順-5-ビルドして実行">手順 5: ビルドして実行</h2>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru run
-</span></span></code></pre></div><p>クリックでメッセージが進んで、最後に <code>OK</code> が出れば完成です。</p>
-<p><code>messages.json</code> は <code>mitiru.toml</code> と同じ階層に置いてください。<code>mitiru build</code> が実行ファイルの隣に自動でコピーします。</p>
+<p>もう一度 <code>mitiru run</code>:</p>
+<figure class="tutorial-figure">
+  <img src="images/05-finished.png" alt="HUD バーの TIME 表示が 00:12 のように毎秒更新されている完成画面" loading="lazy">
+  <figcaption>HUD の時計が毎秒動く。値の進行は C++、見た目の更新は JS、両者の連絡は名前 1 個だけ。</figcaption>
+</figure>
 <hr>
 <h2 id="何が分かったか">何が分かったか</h2>
 <ul>
-<li><strong>C++ は状態の本体、HTML は表示</strong> という分担が、実コードで体感できたはず。</li>
-<li><code>executeJavaScript</code> で <strong>「これを表示して」だけ伝える</strong> ので、コードがあちこちに散らかりません。</li>
-<li>データが JSON なので、テキストの書き換えは C++ をビルドしなくてもできます。</li>
+<li><strong>見た目の凝った部分は HTML / CSS</strong> に置ける。グラデーションも <code>backdrop-filter</code> も、Web の道具がそのまま使えます。</li>
+<li><strong>値の本体は C++</strong> にあります。JS はそれを表示するだけで、状態は持たない。</li>
+<li>C++ と JS のあいだは <strong>state 名 1 個</strong> で繋がっています。複雑なメッセージプロトコルは要りません。</li>
 </ul>
-<h2 id="同じ仕組みは他ジャンルにも使える">同じ仕組みは他ジャンルにも使える</h2>
-<p>ここで作ったものは「画面の上にテキスト UI を出して、何かをきっかけに次へ進む」という汎用の型です。たとえば:</p>
+<h2 id="やってはいけないパターン">やってはいけないパターン</h2>
 <ul>
-<li><strong>アクションゲーム</strong>: ステージ開始のメッセージ、ボス前のカットイン、ゲームオーバー時の演出。</li>
-<li><strong>RPG</strong>: 村人 NPC との会話、クエスト授受、宿屋で休んだあとの「翌朝になった」表示。</li>
-<li><strong>シミュレーション</strong>: イベント通知、四半期決算メッセージ、ランダムイベントの選択肢提示。</li>
-<li><strong>シューティング / RTS</strong>: 出撃前のミッションブリーフィング、戦況の合間に入る無線連絡、リザルト画面。</li>
-<li><strong>パズル / カジュアル</strong>: チュートリアルのヒント、ステージクリア時のコメント、デイリーミッションの説明。</li>
+<li>JS 側で <code>setInterval</code> を使って自前で時計を進める ── 状態の二重管理になり、画面と中身がズレた瞬間にデバッグが地獄になります。<strong>時計は C++ 側だけ</strong>。</li>
+<li>HTML / CSS に当たり判定やゲームのルールを書く ── これは「Photoshop でゲームを作ろうとする」のと同じ。<strong>ルールは C++ 側だけ</strong>。</li>
 </ul>
-<p>進める条件を変える (時間経過、ボタン、特定の条件) のも、C++ 側の <code>update()</code> を書き換えるだけです。テキストの中身もデータ側で差し替えれば再利用できます。</p>
 <h2 id="次の一歩">次の一歩</h2>
 <ul>
-<li>背景画像をちゃんと表示する (<code>&lt;img&gt;</code> か CSS の <code>background-image</code> で OK)。トランジションを当てるとそれっぽくなります。</li>
-<li>選択肢を入れる。<code>choices: [{text, action}]</code> をデータに追加して、JS 側でボタンを描き、<code>cefQuery</code> で C++ に「どれを選んだか」を通知すれば動きます。これが「JS → C++」の signal-only bridge です。</li>
-<li>次のレッスン: <a href="../02-action-prototype/">02 — 2D アクションのプロトタイプ</a> に進むと、キーボード入力で動くプレイヤーが書けるようになります。</li>
+<li><strong>複数の値を push</strong> してみる: <code>scene.score</code> や <code>player.hp</code> も同じ書き方で増やせます。</li>
+<li><strong>画面を切り替える</strong>: 別の HTML ファイルに <code>cefStartUrl</code> を差し替えるか、JS 側で別の <code>&lt;div&gt;</code> を表示する、どちらでも作れます。シーンの遷移ロジックは C++ 側 (<code>SceneRouter</code>) に置くのが定石です。</li>
+<li><strong>JS から C++ に「クリックされた」と通知する</strong>: <code>window.mitiru.dispatch('action.next')</code> を JS から呼んで、C++ 側で <code>store-&gt;onAction(&quot;action.next&quot;, ...)</code> で受ければ、ボタン UI から C++ のロジックを動かせます。これも signal-only — JS は「何が起きたか」しか伝えません。</li>
 </ul>
 
       
@@ -621,14 +624,15 @@
       <h2>このページの目次</h2>
       <nav id="TableOfContents">
   <ul>
-    <li><a href="#全体の構成">全体の構成</a></li>
-    <li><a href="#手順-1-プロジェクトを作る">手順 1: プロジェクトを作る</a></li>
-    <li><a href="#手順-2-データを書く">手順 2: データを書く</a></li>
-    <li><a href="#手順-3-メッセージを進める-c-を書く">手順 3: メッセージを進める C++ を書く</a></li>
-    <li><a href="#手順-4-見た目を-html--css-で書く">手順 4: 見た目を HTML / CSS で書く</a></li>
-    <li><a href="#手順-5-ビルドして実行">手順 5: ビルドして実行</a></li>
+    <li><a href="#できあがるもの">できあがるもの</a></li>
+    <li><a href="#役割分担をはっきりさせる">役割分担をはっきりさせる</a></li>
+    <li><a href="#手順-1-ひな型を作る">手順 1: ひな型を作る</a></li>
+    <li><a href="#手順-2-そのまま走らせる">手順 2: そのまま走らせる</a></li>
+    <li><a href="#手順-3-c-で背景とプレイヤーを描く">手順 3: C++ で背景とプレイヤーを描く</a></li>
+    <li><a href="#手順-4-html-を透ける-hudに作り変える">手順 4: HTML を「透ける HUD」に作り変える</a></li>
+    <li><a href="#手順-5-c-から値を-push-する">手順 5: C++ から値を push する</a></li>
     <li><a href="#何が分かったか">何が分かったか</a></li>
-    <li><a href="#同じ仕組みは他ジャンルにも使える">同じ仕組みは他ジャンルにも使える</a></li>
+    <li><a href="#やってはいけないパターン">やってはいけないパターン</a></li>
     <li><a href="#次の一歩">次の一歩</a></li>
   </ul>
 </nav>

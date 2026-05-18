@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="矩形プレイヤーを矢印キー / WASD で動かす。壁との当たり判定と、画面上の目標 (拾うと得点) を入れる。アクション、シューティング、パズルの基礎になる入力 &#43; 描画の最小ループ。">
+<meta name="description" content="矩形プレイヤーをキーで動かし、壁との当たり判定、画面上の目標を拾うとスコアが上がる。すべて C&#43;&#43; だけで書く、もっとも基本的な作り方。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="01 2D アクションのプロトタイプ | MitiruEngine">
-<meta property="og:description" content="矩形プレイヤーを矢印キー / WASD で動かす。壁との当たり判定と、画面上の目標 (拾うと得点) を入れる。アクション、シューティング、パズルの基礎になる入力 &#43; 描画の最小ループ。">
+<meta property="og:description" content="矩形プレイヤーをキーで動かし、壁との当たり判定、画面上の目標を拾うとスコアが上がる。すべて C&#43;&#43; だけで書く、もっとも基本的な作り方。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="01 2D アクションのプロトタイプ | MitiruEngine">
-<meta name="twitter:description" content="矩形プレイヤーを矢印キー / WASD で動かす。壁との当たり判定と、画面上の目標 (拾うと得点) を入れる。アクション、シューティング、パズルの基礎になる入力 &#43; 描画の最小ループ。">
+<meta name="twitter:description" content="矩形プレイヤーをキーで動かし、壁との当たり判定、画面上の目標を拾うとスコアが上がる。すべて C&#43;&#43; だけで書く、もっとも基本的な作り方。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -371,227 +371,244 @@
     </p>
     
     <h1 class="page-article__title">01 2D アクションのプロトタイプ</h1>
-    <p class="page-article__lede">矩形プレイヤーを矢印キー / WASD で動かす。壁との当たり判定と、画面上の目標 (拾うと得点) を入れる。アクション、シューティング、パズルの基礎になる入力 &#43; 描画の最小ループ。</p>
+    <p class="page-article__lede">矩形プレイヤーをキーで動かし、壁との当たり判定、画面上の目標を拾うとスコアが上がる。すべて C&#43;&#43; だけで書く、もっとも基本的な作り方。</p>
   </header>
 
   
   <aside class="page-summary">
     <h2 class="page-summary__h">このページで分かること</h2>
     <ul>
-      <li>矩形プレイヤーを矢印キー / WASD で動かす</li><li>壁との当たり判定の最小コード</li><li>拾うアイテムとカウンタの仕組み</li>
+      <li>mitiru new でひな型を作って、mitiru run で動かす流れ</li><li>Game::update(dt) と Game::draw(Screen&amp;) に C&#43;&#43; だけで書く</li><li>入力 / 状態 / 描画の最小ループ</li>
     </ul>
   </aside>
   
 
   <div class="page-with-toc">
     <div class="page-article__body">
-      <p>このチュートリアルでは、こんなものを動かすところまで行きます。</p>
+      <p>「画面の上で何かを動かす」を、<strong>純 C++</strong> だけで作るチュートリアルです。HTML も JS もこの段階では出てきません。MitiruEngine の標準的な作り方は「ゲームの中身は C++」なので、まずはここから入るのが順当です。</p>
+<p>時間の目安は <strong>20 〜 30 分</strong>。事前に <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> を済ませ、<code>mitiru doctor</code> が OK を返すことを確認してください。</p>
+<hr>
+<h2 id="できあがるもの">できあがるもの</h2>
 <ul>
-<li>黒い背景の上に動く矩形プレイヤー (約 32 × 32 px)</li>
+<li>黒い背景の上に動く矩形プレイヤー (32 × 32 px)</li>
 <li>矢印キー <strong>か</strong> WASD で 4 方向に移動</li>
 <li>画面の端を超えない (壁との当たり判定)</li>
-<li>小さい目標 (黄色い円) を 1 個出して、触れたら得点 +1 + 別の場所に再配置</li>
+<li>小さい黄色い円を 1 個出して、触れたら得点 +1 + 別の場所に再配置</li>
 <li>左上にスコア表示</li>
 </ul>
-<p>時間の目安は <strong>20 〜 30 分</strong>。</p>
-<p><strong>キーボードで何かを動かす + 当たり判定 + スコア</strong> — あらゆる 2D ゲームに出てくる最小ループです。シューティングなら弾、パズルなら駒、RPG ならフィールドキャラ、見せ方が違うだけで型は同じです。</p>
-<p>事前に <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> を済ませ、<code>mitiru doctor</code> が OK を返すことを確認してください。</p>
+<figure class="tutorial-figure">
+  <img src="images/finished.png" alt="完成画面: 黒背景の上に青い矩形プレイヤーと黄色い円、左上にスコア表示" loading="lazy">
+  <figcaption>完成イメージ。プレイヤーをキーで動かして、黄色い円に触れるとスコアが増える。</figcaption>
+</figure>
 <hr>
-<h2 id="全体の構成">全体の構成</h2>
-<table>
-  <thead>
-      <tr>
-          <th>やること</th>
-          <th>どこに書く</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td>ウィンドウと CEF の起動</td>
-          <td>C++</td>
-      </tr>
-      <tr>
-          <td>キー入力の宣言 (action map)</td>
-          <td>JS (<code>mitiru.input</code> ランタイム)</td>
-      </tr>
-      <tr>
-          <td>プレイヤー / 目標の状態 + 衝突判定</td>
-          <td>JS</td>
-      </tr>
-      <tr>
-          <td>画面の描画</td>
-          <td>JS + <code>&lt;canvas&gt;</code></td>
-      </tr>
-  </tbody>
-</table>
-<p>このチュートリアルでは <strong>gameplay を JS 側で書きます</strong>。MitiruEngine は本来 gameplay を C++ に置く方針ですが、最初のプロトタイプを 1 ファイルで作る段階では JS + canvas が手っ取り早い。<code>breakout</code> / <code>shoot_em_up</code> サンプルも同じ流儀です。本格的に作り込むときは状態を C++ に引き上げてください。</p>
-<h2 id="手順-1-プロジェクトを作る">手順 1: プロジェクトを作る</h2>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru new my-action
+<h2 id="手順-1-ひな型を作る">手順 1: ひな型を作る</h2>
+<p>純 C++ のプロトタイプなので、CEF を切った最小テンプレートを使います。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru new --template native-only my-action
 </span></span><span class="line"><span class="cl"><span class="nb">cd</span> my-action
-</span></span></code></pre></div><h2 id="手順-2-c-側-ホスト-を書く">手順 2: C++ 側 (ホスト) を書く</h2>
-<p><code>src/main.cpp</code> を開いて、ウィンドウを開いて HTML を読むだけのホストに書き換えます。</p>
+</span></span></code></pre></div><p><code>native-only</code> テンプレートは <code>assets/scene.html</code> を含みません。CEF プロセスも起動せず、起動が 1 秒未満になります。</p>
+<figure class="tutorial-figure">
+  <img src="images/01-folder.png" alt="生成された my-action/ フォルダの中身: src/main.cpp, mitiru.toml, .gitignore, README.md" loading="lazy">
+  <figcaption>mitiru new 直後のフォルダ構成。触るのは src/main.cpp と mitiru.toml だけ。</figcaption>
+</figure>
+<hr>
+<h2 id="手順-2-そのまま走らせて確認">手順 2: そのまま走らせて確認</h2>
+<p>中身を書き換える前に、一度走らせて初期状態を見ます。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru run
+</span></span></code></pre></div><p>初回は engine を取得して CMake configure が走るので 1 〜 2 分かかります。2 回目以降は秒で立ち上がります。</p>
+<figure class="tutorial-figure">
+  <img src="images/02-default-window.png" alt="ひな型を走らせた直後の画面: 黒背景に Hello, Mitiru! の文字" loading="lazy">
+  <figcaption>ひな型は黒背景に小さなテキストが出るだけのウィンドウを開く。ここから書き換えていく。</figcaption>
+</figure>
+<p>ウィンドウのタイトルやサイズを変えたければ <code>mitiru.toml</code> の <code>[window]</code> を編集します。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-toml" data-lang="toml"><span class="line"><span class="cl"><span class="p">[</span><span class="nx">window</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Action&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">width</span> <span class="p">=</span> <span class="mi">800</span>
+</span></span><span class="line"><span class="cl"><span class="nx">height</span> <span class="p">=</span> <span class="mi">600</span>
+</span></span><span class="line"><span class="cl"><span class="nx">vsync</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre></div><p><code>mitiru run</code> をもう一度叩くと、変えた設定で開き直します。</p>
+<hr>
+<h2 id="手順-3-プレイヤーを置く">手順 3: プレイヤーを置く</h2>
+<p><code>src/main.cpp</code> を開いて、矩形プレイヤーを表示するだけの最小コードに書き換えます。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">ActionGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Player</span> <span class="p">{</span>
 </span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span><span class="p">)</span> <span class="k">override</span> <span class="p">{}</span>                  <span class="c1">// gameplay は JS 側
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span><span class="p">)</span> <span class="k">override</span> <span class="p">{}</span>          <span class="c1">// 描画も JS 側
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">};</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">x</span> <span class="o">=</span> <span class="mf">384.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">y</span> <span class="o">=</span> <span class="mf">284.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">float</span> <span class="n">kSize</span> <span class="o">=</span> <span class="mf">32.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.10f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>        <span class="c1">// 背景
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="n">m_player</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">m_player</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">Player</span><span class="o">::</span><span class="n">kSize</span><span class="p">,</span> <span class="n">Player</span><span class="o">::</span><span class="n">kSize</span><span class="p">},</span>
+</span></span><span class="line"><span class="cl">                   <span class="p">{</span><span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.75f</span><span class="p">,</span> <span class="mf">0.95f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>                       <span class="c1">// プレイヤー
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">Player</span> <span class="n">m_player</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">ActionGame</span> <span class="n">game</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">title</span> <span class="o">=</span> <span class="s">&#34;My Action&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span> <span class="o">=</span> <span class="mi">960</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span> <span class="o">=</span> <span class="mi">540</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="n">cfg</span><span class="p">.</span><span class="n">cefStartUrl</span> <span class="o">=</span> <span class="s">&#34;file:///&#34;</span> <span class="n">__FILE__</span> <span class="s">&#34;/../scene.html&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">MyGame</span> <span class="n">game</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">title</span>         <span class="o">=</span> <span class="s">&#34;My Action&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span>   <span class="o">=</span> <span class="mi">800</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span>  <span class="o">=</span> <span class="mi">600</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">enableCef</span>     <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">fontAtlasRanges</span> <span class="o">=</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span><span class="o">::</span><span class="n">FontAtlas</span><span class="o">::</span><span class="n">Latin</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><h2 id="手順-3-html-と-css-で土台を用意する">手順 3: HTML と CSS で土台を用意する</h2>
-<p><code>assets/scene.html</code> を開いて以下の内容に書き換えます。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;ja&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;utf-8&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;scene.css&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">canvas</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;stage&#34;</span> <span class="na">width</span><span class="o">=</span><span class="s">&#34;960&#34;</span> <span class="na">height</span><span class="o">=</span><span class="s">&#34;540&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">canvas</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;hud&#34;</span><span class="p">&gt;</span>Score: <span class="p">&lt;</span><span class="nt">span</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;score&#34;</span><span class="p">&gt;</span>0<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre></div><p>ここまでで分かること:</p>
+<ul>
+<li><code>Game</code> を継承して <code>update(dt)</code> と <code>draw(Screen&amp;)</code> を埋めるのが基本形。</li>
+<li>描画は <code>Screen::drawRect(rect, color)</code> のように <strong>C++ の関数を呼ぶ</strong> だけ。HTML も JS もいらない。</li>
+<li>色は RGBA 0.0 〜 1.0 の <code>Colorf</code>。RGB の感覚で書ける。</li>
+</ul>
+<p><code>mitiru run</code> で確認:</p>
+<figure class="tutorial-figure">
+  <img src="images/03-player-rect.png" alt="プレイヤーの矩形を描画した画面: 暗い背景の中央付近に水色の正方形" loading="lazy">
+  <figcaption>プレイヤー矩形だけ。まだ動かない。</figcaption>
+</figure>
+<hr>
+<h2 id="手順-4-動かす">手順 4: 動かす</h2>
+<p><code>update(dt)</code> でキー入力を見て位置を進めます。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">speed</span> <span class="o">=</span> <span class="mf">240.0f</span><span class="p">;</span>  <span class="c1">// px / sec
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">in</span> <span class="o">=</span> <span class="n">input</span><span class="p">();</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;mitiru_runtime/mitiru_input.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;scene.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
-</span></span></code></pre></div><p><code>assets/scene.css</code> を同じ階層に新規作成します。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-css" data-lang="css"><span class="line"><span class="cl"><span class="nt">html</span><span class="o">,</span> <span class="nt">body</span> <span class="p">{</span> <span class="k">margin</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span> <span class="k">height</span><span class="p">:</span> <span class="mi">100</span><span class="kt">%</span><span class="p">;</span> <span class="k">background</span><span class="p">:</span> <span class="mh">#0b0e15</span><span class="p">;</span> <span class="k">overflow</span><span class="p">:</span> <span class="kc">hidden</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">             <span class="k">font-family</span><span class="p">:</span> <span class="s2">&#34;Noto Sans JP&#34;</span><span class="p">,</span> <span class="kc">sans-serif</span><span class="p">;</span> <span class="k">color</span><span class="p">:</span> <span class="mh">#fff</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">#</span><span class="nn">stage</span>     <span class="p">{</span> <span class="k">display</span><span class="p">:</span> <span class="kc">block</span><span class="p">;</span> <span class="k">margin</span><span class="p">:</span> <span class="mi">0</span> <span class="kc">auto</span><span class="p">;</span> <span class="k">background</span><span class="p">:</span> <span class="mh">#131826</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">#</span><span class="nn">hud</span>       <span class="p">{</span> <span class="k">position</span><span class="p">:</span> <span class="kc">fixed</span><span class="p">;</span> <span class="k">top</span><span class="p">:</span> <span class="mi">12</span><span class="kt">px</span><span class="p">;</span> <span class="k">left</span><span class="p">:</span> <span class="mi">16</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">             <span class="k">font-size</span><span class="p">:</span> <span class="mi">18</span><span class="kt">px</span><span class="p">;</span> <span class="k">letter-spacing</span><span class="p">:</span> <span class="mf">0.05</span><span class="kt">em</span><span class="p">;</span> <span class="p">}</span>
-</span></span></code></pre></div><p><code>mitiru_runtime/mitiru_input.js</code> は engine 側が同梱する入力ランタイムです。<code>mitiru build</code> が自動で <code>assets/</code> 隣にコピーするので、パスを変更する必要はありません。</p>
-<h2 id="手順-4-入力--ゲームループを書く">手順 4: 入力 + ゲームループを書く</h2>
-<p><code>assets/scene.js</code> を新規作成します。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="line"><span class="cl"><span class="c1">// --- アクションマップ -----------------------------------------------------
-</span></span></span><span class="line"><span class="cl"><span class="c1">// 矢印キーと WASD を同じ「方向」アクションにまとめる。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">input</span><span class="p">.</span><span class="nx">setActionMap</span><span class="p">({</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">up</span><span class="o">:</span>    <span class="p">[</span><span class="s1">&#39;ArrowUp&#39;</span><span class="p">,</span>    <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">],</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">down</span><span class="o">:</span>  <span class="p">[</span><span class="s1">&#39;ArrowDown&#39;</span><span class="p">,</span>  <span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="s1">&#39;S&#39;</span><span class="p">],</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">left</span><span class="o">:</span>  <span class="p">[</span><span class="s1">&#39;ArrowLeft&#39;</span><span class="p">,</span>  <span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">],</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">right</span><span class="o">:</span> <span class="p">[</span><span class="s1">&#39;ArrowRight&#39;</span><span class="p">,</span> <span class="s1">&#39;d&#39;</span><span class="p">,</span> <span class="s1">&#39;D&#39;</span><span class="p">],</span>
-</span></span><span class="line"><span class="cl"><span class="p">});</span>
-</span></span><span class="line"><span class="cl"><span class="nx">mitiru</span><span class="p">.</span><span class="nx">input</span><span class="p">.</span><span class="nx">start</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// --- 定数 ----------------------------------------------------------------
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kr">const</span> <span class="nx">W</span> <span class="o">=</span> <span class="mi">960</span><span class="p">,</span> <span class="nx">H</span> <span class="o">=</span> <span class="mi">540</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">PLAYER_SIZE</span> <span class="o">=</span> <span class="mi">32</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">PLAYER_SPEED</span> <span class="o">=</span> <span class="mi">240</span><span class="p">;</span>     <span class="c1">// px / sec
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kr">const</span> <span class="nx">TARGET_R</span> <span class="o">=</span> <span class="mi">12</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// --- 状態 ----------------------------------------------------------------
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">let</span> <span class="nx">player</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">x</span><span class="o">:</span> <span class="nx">W</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="nx">y</span><span class="o">:</span> <span class="nx">H</span> <span class="o">/</span> <span class="mi">2</span> <span class="p">};</span>
-</span></span><span class="line"><span class="cl"><span class="kd">let</span> <span class="nx">target</span> <span class="o">=</span> <span class="nx">randomTarget</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl"><span class="kd">let</span> <span class="nx">score</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">randomTarget</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">x</span><span class="o">:</span> <span class="mi">40</span> <span class="o">+</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="nx">W</span> <span class="o">-</span> <span class="mi">80</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">y</span><span class="o">:</span> <span class="mi">40</span> <span class="o">+</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="nx">H</span> <span class="o">-</span> <span class="mi">80</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">  <span class="p">};</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowLeft</span><span class="p">)</span>  <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">A</span><span class="p">))</span> <span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">-=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowRight</span><span class="p">)</span> <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">D</span><span class="p">))</span> <span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">+=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowUp</span><span class="p">)</span>    <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">W</span><span class="p">))</span> <span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">-=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowDown</span><span class="p">)</span>  <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">S</span><span class="p">))</span> <span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">+=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// --- メインループ --------------------------------------------------------
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kr">const</span> <span class="nx">ctx</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;stage&#39;</span><span class="p">).</span><span class="nx">getContext</span><span class="p">(</span><span class="s1">&#39;2d&#39;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="kd">let</span> <span class="nx">last</span> <span class="o">=</span> <span class="nx">performance</span><span class="p">.</span><span class="nx">now</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">frame</span><span class="p">(</span><span class="nx">now</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">dt</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">min</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="p">(</span><span class="nx">now</span> <span class="o">-</span> <span class="nx">last</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">last</span> <span class="o">=</span> <span class="nx">now</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="nx">step</span><span class="p">(</span><span class="nx">dt</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">draw</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="nx">requestAnimationFrame</span><span class="p">(</span><span class="nx">frame</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">step</span><span class="p">(</span><span class="nx">dt</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="c1">// 方向ベクトルを作る
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="kr">const</span> <span class="nx">dx</span> <span class="o">=</span> <span class="p">(</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">input</span><span class="p">.</span><span class="nx">button</span><span class="p">(</span><span class="s1">&#39;right&#39;</span><span class="p">)</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">           <span class="o">-</span> <span class="p">(</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">input</span><span class="p">.</span><span class="nx">button</span><span class="p">(</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>  <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">dy</span> <span class="o">=</span> <span class="p">(</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">input</span><span class="p">.</span><span class="nx">button</span><span class="p">(</span><span class="s1">&#39;down&#39;</span><span class="p">)</span>  <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">           <span class="o">-</span> <span class="p">(</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">input</span><span class="p">.</span><span class="nx">button</span><span class="p">(</span><span class="s1">&#39;up&#39;</span><span class="p">)</span>    <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="mi">0</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c1">// 斜め移動も同速度にする (ベクトル正規化)
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="kr">const</span> <span class="nx">len</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">hypot</span><span class="p">(</span><span class="nx">dx</span><span class="p">,</span> <span class="nx">dy</span><span class="p">)</span> <span class="o">||</span> <span class="mi">1</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">player</span> <span class="o">=</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">x</span><span class="o">:</span> <span class="nx">player</span><span class="p">.</span><span class="nx">x</span> <span class="o">+</span> <span class="p">(</span><span class="nx">dx</span> <span class="o">/</span> <span class="nx">len</span><span class="p">)</span> <span class="o">*</span> <span class="nx">PLAYER_SPEED</span> <span class="o">*</span> <span class="nx">dt</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">y</span><span class="o">:</span> <span class="nx">player</span><span class="p">.</span><span class="nx">y</span> <span class="o">+</span> <span class="p">(</span><span class="nx">dy</span> <span class="o">/</span> <span class="nx">len</span><span class="p">)</span> <span class="o">*</span> <span class="nx">PLAYER_SPEED</span> <span class="o">*</span> <span class="nx">dt</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="p">};</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c1">// 画面端でクランプ (壁との当たり判定)
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="kr">const</span> <span class="nx">half</span> <span class="o">=</span> <span class="nx">PLAYER_SIZE</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">player</span><span class="p">.</span><span class="nx">x</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">max</span><span class="p">(</span><span class="nx">half</span><span class="p">,</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">min</span><span class="p">(</span><span class="nx">W</span> <span class="o">-</span> <span class="nx">half</span><span class="p">,</span> <span class="nx">player</span><span class="p">.</span><span class="nx">x</span><span class="p">));</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">player</span><span class="p">.</span><span class="nx">y</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">max</span><span class="p">(</span><span class="nx">half</span><span class="p">,</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">min</span><span class="p">(</span><span class="nx">H</span> <span class="o">-</span> <span class="nx">half</span><span class="p">,</span> <span class="nx">player</span><span class="p">.</span><span class="nx">y</span><span class="p">));</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c1">// 目標との当たり判定 (中心同士の距離)
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="kr">const</span> <span class="nx">dist</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">hypot</span><span class="p">(</span><span class="nx">player</span><span class="p">.</span><span class="nx">x</span> <span class="o">-</span> <span class="nx">target</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span> <span class="nx">player</span><span class="p">.</span><span class="nx">y</span> <span class="o">-</span> <span class="nx">target</span><span class="p">.</span><span class="nx">y</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="nx">dist</span> <span class="o">&lt;</span> <span class="p">(</span><span class="nx">PLAYER_SIZE</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="nx">TARGET_R</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">score</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">target</span> <span class="o">=</span> <span class="nx">randomTarget</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;score&#39;</span><span class="p">).</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">score</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">draw</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">ctx</span><span class="p">.</span><span class="nx">clearRect</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">W</span><span class="p">,</span> <span class="nx">H</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c1">// target
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="nx">ctx</span><span class="p">.</span><span class="nx">fillStyle</span> <span class="o">=</span> <span class="s1">&#39;#ffd24d&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">ctx</span><span class="p">.</span><span class="nx">beginPath</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">ctx</span><span class="p">.</span><span class="nx">arc</span><span class="p">(</span><span class="nx">target</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span> <span class="nx">target</span><span class="p">.</span><span class="nx">y</span><span class="p">,</span> <span class="nx">TARGET_R</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">PI</span> <span class="o">*</span> <span class="mi">2</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">ctx</span><span class="p">.</span><span class="nx">fill</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c1">// player
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="nx">ctx</span><span class="p">.</span><span class="nx">fillStyle</span> <span class="o">=</span> <span class="s1">&#39;#5be0a7&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="nx">ctx</span><span class="p">.</span><span class="nx">fillRect</span><span class="p">(</span><span class="nx">player</span><span class="p">.</span><span class="nx">x</span> <span class="o">-</span> <span class="nx">PLAYER_SIZE</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="nx">player</span><span class="p">.</span><span class="nx">y</span> <span class="o">-</span> <span class="nx">PLAYER_SIZE</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">               <span class="nx">PLAYER_SIZE</span><span class="p">,</span> <span class="nx">PLAYER_SIZE</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">requestAnimationFrame</span><span class="p">(</span><span class="nx">frame</span><span class="p">);</span>
 </span></span></code></pre></div><p>ポイント:</p>
 <ul>
-<li><code>mitiru.input.setActionMap</code> で <strong>矢印キーと WASD を同じ &ldquo;アクション&rdquo; として宣言</strong> すれば、両方が同時に効くようになります。プレイヤー側で「Arrow vs WASD」のような分岐コードを書く必要はありません。</li>
-<li>移動は <strong>時間ベース</strong> (<code>PLAYER_SPEED * dt</code>) です。フレームレートが変わっても速さが変わりません。</li>
-<li>壁との当たり判定は単純なクランプで OK。複雑なステージは後で。</li>
+<li><code>update(dt)</code> は毎フレーム呼ばれ、<code>dt</code> には前フレームからの経過秒が入ります。</li>
+<li><code>speed * dt</code> で動かすと、フレームレートに依存しない一定速度になります (60Hz でも 144Hz でも同じ速さ)。</li>
+<li><code>isKeyDown</code> は <strong>押されているあいだ ずっと true</strong>。一回押した瞬間だけ欲しい場合は <code>isKeyJustPressed</code> を使います。</li>
 </ul>
-<h2 id="手順-5-ビルドして実行">手順 5: ビルドして実行</h2>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru run
-</span></span></code></pre></div><p>矢印キーか WASD で緑の矩形が動き、黄色い丸に触れるとスコアが上がれば完成です。</p>
+<p><code>mitiru run</code> し直すと、キーで矩形が動くようになっています。</p>
+<figure class="tutorial-figure">
+  <img src="images/04-moving.png" alt="プレイヤーがキー入力で移動している様子: 元の位置から右上に動いた水色矩形" loading="lazy">
+  <figcaption>キーを押している方向にプレイヤーが進む。</figcaption>
+</figure>
+<hr>
+<h2 id="手順-5-画面の端でぶつかる">手順 5: 画面の端でぶつかる</h2>
+<p>このままだと画面外まで行ってしまうので、<code>update</code> の末尾で位置をクランプします。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// (上のキー入力処理はそのまま)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">maxX</span> <span class="o">=</span> <span class="mf">800.0f</span> <span class="o">-</span> <span class="n">Player</span><span class="o">::</span><span class="n">kSize</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">maxY</span> <span class="o">=</span> <span class="mf">600.0f</span> <span class="o">-</span> <span class="n">Player</span><span class="o">::</span><span class="n">kSize</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>     <span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">&gt;</span> <span class="n">maxX</span><span class="p">)</span>  <span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">maxX</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>     <span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">&gt;</span> <span class="n">maxY</span><span class="p">)</span>  <span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">maxY</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>これだけで「壁との当たり判定」になります。プロトタイプ段階の衝突はだいたいこのレベルで足りる、というのも覚えておくといいです。</p>
+<hr>
+<h2 id="手順-6-目標を出してスコアを足す">手順 6: 目標を出してスコアを足す</h2>
+<p>目標 (黄色い円) とスコアを追加します。クラスのメンバに目標とスコアを足し、<code>update</code> で接触判定、<code>draw</code> で円とテキストを出します。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;cstdio&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">onStart</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">respawnTarget</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">speed</span> <span class="o">=</span> <span class="mf">240.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">in</span> <span class="o">=</span> <span class="n">input</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowLeft</span><span class="p">)</span>  <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">A</span><span class="p">))</span> <span class="n">m_x</span> <span class="o">-=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowRight</span><span class="p">)</span> <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">D</span><span class="p">))</span> <span class="n">m_x</span> <span class="o">+=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowUp</span><span class="p">)</span>    <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">W</span><span class="p">))</span> <span class="n">m_y</span> <span class="o">-=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowDown</span><span class="p">)</span>  <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">S</span><span class="p">))</span> <span class="n">m_y</span> <span class="o">+=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="n">m_x</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">clamp</span><span class="p">(</span><span class="n">m_x</span><span class="p">,</span> <span class="mf">0.0f</span><span class="p">,</span> <span class="mf">800.0f</span> <span class="o">-</span> <span class="n">kSize</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">m_y</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">clamp</span><span class="p">(</span><span class="n">m_y</span><span class="p">,</span> <span class="mf">0.0f</span><span class="p">,</span> <span class="mf">600.0f</span> <span class="o">-</span> <span class="n">kSize</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// 矩形 (プレイヤー) と円 (目標) の中心距離で当たり判定
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">const</span> <span class="kt">float</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">m_x</span> <span class="o">+</span> <span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">m_y</span> <span class="o">+</span> <span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">dx</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">-</span> <span class="n">m_targetX</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">cy</span> <span class="o">-</span> <span class="n">m_targetY</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">dx</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">dy</span> <span class="o">*</span> <span class="n">dy</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">+</span> <span class="mf">14.0f</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">+</span> <span class="mf">14.0f</span><span class="p">))</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="o">++</span><span class="n">m_score</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">            <span class="n">respawnTarget</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.10f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawCircle</span><span class="p">({</span><span class="n">m_targetX</span><span class="p">,</span> <span class="n">m_targetY</span><span class="p">},</span> <span class="mf">14.0f</span><span class="p">,</span> <span class="p">{</span><span class="mf">1.0f</span><span class="p">,</span> <span class="mf">0.85f</span><span class="p">,</span> <span class="mf">0.30f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="n">m_x</span><span class="p">,</span> <span class="n">m_y</span><span class="p">,</span> <span class="n">kSize</span><span class="p">,</span> <span class="n">kSize</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.75f</span><span class="p">,</span> <span class="mf">0.95f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">        <span class="n">std</span><span class="o">::</span><span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&#34;Score: %d&#34;</span><span class="p">,</span> <span class="n">m_score</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawTextInRect</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="p">{</span><span class="mi">16</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">24</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="n">respawnTarget</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">static</span> <span class="n">std</span><span class="o">::</span><span class="n">mt19937</span> <span class="n">rng</span><span class="p">{</span><span class="n">std</span><span class="o">::</span><span class="n">random_device</span><span class="p">{}()};</span>
+</span></span><span class="line"><span class="cl">        <span class="n">std</span><span class="o">::</span><span class="n">uniform_real_distribution</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span> <span class="n">rx</span><span class="p">(</span><span class="mf">40.0f</span><span class="p">,</span> <span class="mf">760.0f</span><span class="p">),</span> <span class="n">ry</span><span class="p">(</span><span class="mf">40.0f</span><span class="p">,</span> <span class="mf">560.0f</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">m_targetX</span> <span class="o">=</span> <span class="n">rx</span><span class="p">(</span><span class="n">rng</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">m_targetY</span> <span class="o">=</span> <span class="n">ry</span><span class="p">(</span><span class="n">rng</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">float</span> <span class="n">kSize</span> <span class="o">=</span> <span class="mf">32.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">m_x</span> <span class="o">=</span> <span class="mf">384.0f</span><span class="p">,</span> <span class="n">m_y</span> <span class="o">=</span> <span class="mf">284.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">m_targetX</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">,</span> <span class="n">m_targetY</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span>   <span class="n">m_score</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">MyGame</span> <span class="n">game</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">title</span>         <span class="o">=</span> <span class="s">&#34;My Action&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span>   <span class="o">=</span> <span class="mi">800</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span>  <span class="o">=</span> <span class="mi">600</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">enableCef</span>     <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">fontAtlasRanges</span> <span class="o">=</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span><span class="o">::</span><span class="n">FontAtlas</span><span class="o">::</span><span class="n">Latin</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p><code>mitiru run</code> で動作確認:</p>
+<figure class="tutorial-figure">
+  <img src="images/05-finished.png" alt="完成画面: 左上に Score 表示、プレイヤー矩形と目標の黄色い円" loading="lazy">
+  <figcaption>左上にスコア、画面のどこかに目標 (黄色い円)。プレイヤーが触れるとスコアが増えて目標が別の位置に出る。</figcaption>
+</figure>
 <hr>
 <h2 id="何が分かったか">何が分かったか</h2>
 <ul>
-<li><code>mitiru.input</code> を使うと <strong>入力デバイスの違いを 1 行も書かずに済む</strong>。アクションマップが意図を表現する。</li>
-<li>ゲームループは <strong>「状態を進める step()」と「現在の状態を描く draw()」を別関数に分ける</strong> と読みやすい。</li>
-<li>当たり判定は最初は単純なクランプや距離計算で十分。当たり判定が増えたら別ファイルに切り出します。</li>
+<li><code>Game::update(dt)</code> と <code>Game::draw(Screen&amp;)</code> の 2 つに <strong>C++ だけで</strong> ゲームの中身が書ける。</li>
+<li>入力 / 状態 / 描画は別レイヤーじゃなく、同じクラスのメソッドとして並ぶ。プロトタイプ段階ではこれで充分。</li>
+<li>HTML / CSS / JS は <strong>このチュートリアルでは 1 行も書いていない</strong>。MitiruEngine の標準形はこの方向です。</li>
 </ul>
-<h2 id="同じ仕組みは他ジャンルにも使える">同じ仕組みは他ジャンルにも使える</h2>
-<p>このプロトタイプの骨は「入力 → 状態更新 → 衝突判定 → 描画」というループです。役割は同じまま、見せ方や中身を変えるとほぼあらゆる 2D ゲームの土台になります。</p>
-<ul>
-<li><strong>シューティング</strong>: 弾と敵をプールで持って、毎フレーム位置を進めて衝突を見る (<code>shoot_em_up</code> サンプル)。</li>
-<li><strong>パズル</strong>: 入力は離散 (1 マスずつ動く) になりますが、<code>mitiru.input.pressed('right')</code> のように 1 回押しを取れば実装できます。</li>
-<li><strong>アクション RPG</strong>: プレイヤーに HP を持たせ、目標を敵に置き換えると戦闘になります。</li>
-<li><strong>物理パズル / ブロック崩し</strong>: ボールの速度ベクトルを保持し、壁と当たったら符号反転 (<code>breakout</code> サンプル)。</li>
-</ul>
+<p>CEF (HTML / CSS) は HUD やメニューの <strong>見た目</strong> を凝りたくなったときに使います。それは <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/">02 画面に UI を出す</a> で扱います。</p>
 <h2 id="次の一歩">次の一歩</h2>
 <ul>
-<li>HP やゲームオーバー状態を入れる ⇒ HUD を 1 個増やす要領で、CEF 側に表示専用のバーを足すと自然です。</li>
-<li>効果音 ⇒ engine の audio API を呼ぶ (TODO: 次のチュートリアル候補)。</li>
-<li>状態を C++ 側に引き上げる ⇒ <code>BridgeActionRouter</code> 経由で gameplay を C++ に寄せると、JS は描画と入力通知だけになります。</li>
-<li>次のレッスン: <a href="../03-save-load/">03 — セーブとロード</a> に進むと、スコアや進行状況を保存できるようになります。</li>
+<li>プレイヤーを <strong>画像</strong> にする: <code>Screen::drawSprite</code> に置き換える。</li>
+<li><strong>時間制限</strong> を入れる: <code>Game::onStart</code> で開始時刻を覚え、<code>update</code> で残り時間を計算、<code>draw</code> で表示。</li>
+<li><strong>シーン遷移</strong>: タイトル → ゲーム → 結果の 3 シーンに分けたい場合は <code>SceneRouter</code> を使います。<code>examples/hello_scene/</code> が短い実例です。</li>
 </ul>
 
       
@@ -601,14 +618,14 @@
       <h2>このページの目次</h2>
       <nav id="TableOfContents">
   <ul>
-    <li><a href="#全体の構成">全体の構成</a></li>
-    <li><a href="#手順-1-プロジェクトを作る">手順 1: プロジェクトを作る</a></li>
-    <li><a href="#手順-2-c-側-ホスト-を書く">手順 2: C++ 側 (ホスト) を書く</a></li>
-    <li><a href="#手順-3-html-と-css-で土台を用意する">手順 3: HTML と CSS で土台を用意する</a></li>
-    <li><a href="#手順-4-入力--ゲームループを書く">手順 4: 入力 + ゲームループを書く</a></li>
-    <li><a href="#手順-5-ビルドして実行">手順 5: ビルドして実行</a></li>
+    <li><a href="#できあがるもの">できあがるもの</a></li>
+    <li><a href="#手順-1-ひな型を作る">手順 1: ひな型を作る</a></li>
+    <li><a href="#手順-2-そのまま走らせて確認">手順 2: そのまま走らせて確認</a></li>
+    <li><a href="#手順-3-プレイヤーを置く">手順 3: プレイヤーを置く</a></li>
+    <li><a href="#手順-4-動かす">手順 4: 動かす</a></li>
+    <li><a href="#手順-5-画面の端でぶつかる">手順 5: 画面の端でぶつかる</a></li>
+    <li><a href="#手順-6-目標を出してスコアを足す">手順 6: 目標を出してスコアを足す</a></li>
     <li><a href="#何が分かったか">何が分かったか</a></li>
-    <li><a href="#同じ仕組みは他ジャンルにも使える">同じ仕組みは他ジャンルにも使える</a></li>
     <li><a href="#次の一歩">次の一歩</a></li>
   </ul>
 </nav>
