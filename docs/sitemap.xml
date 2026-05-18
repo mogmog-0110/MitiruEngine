@@ -19,7 +19,7 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/release-notes/2026-05-15/</loc>
     <lastmod>2026-05-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/</loc>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/</loc>
   </url><url>
@@ -31,7 +31,7 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/release-notes/2026-05-04/</loc>
     <lastmod>2026-05-04T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/02-action-prototype/</loc>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/bridge-api/</loc>
   </url><url>
@@ -52,8 +52,6 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/scene/</loc>
     <lastmod>2026-05-17T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/03-save-load/</loc>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/profiling/</loc>
@@ -62,6 +60,8 @@
     <lastmod>2026-05-17T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/guides/save-load/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/ui/</loc>
     <lastmod>2026-05-17T00:00:00+00:00</lastmod>

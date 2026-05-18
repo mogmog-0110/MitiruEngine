@@ -374,7 +374,7 @@
   <aside class="page-summary">
     <h2 class="page-summary__h">このページで分かること</h2>
     <ul>
-      <li>MitiruEngine で実際に作るチュートリアル一覧</li><li>どこから読めばいいか</li><li>関連ページへのリンク</li>
+      <li>MitiruEngine で実際に作るチュートリアル一覧</li><li>順番に縛られず、興味のあるものから読める</li><li>関連ガイドへのリンク</li>
     </ul>
   </aside>
   
@@ -382,63 +382,49 @@
   <div class="page-with-toc">
     <div class="page-article__body">
       <p>「動かすところまでは <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> で済んだので、何かつくってみたい」というひと向けです。</p>
-<p>短めのチュートリアルを 3 本用意しています。<strong>順番に縛られません</strong>。あなたが作りたいゲームに近いものから始めて OK です。アクションが作りたいなら <strong>02</strong> から、セーブだけ気になるなら <strong>03</strong> から読んでも問題ありません。</p>
-<p>それぞれ 15 〜 30 分くらいで、手元で動くところまで行きます。エンジンの考えかた (C++ で状態を持つ / HTML で見た目をつくる / 必要なときだけ薄い信号でつなぐ) はどのレッスンでも同じです。</p>
+<p>短めのチュートリアルが 2 本あります。<strong>順番に縛られません</strong>。アクションが作りたければ <strong>01</strong> から、UI / HUD の組み方を見たければ <strong>02</strong> から、好きなほうから始めてください。それぞれ 15 〜 30 分で、手元で動くところまで行きます。</p>
+<p>エンジンの考えかた (C++ で動かす / HTML で組む / 必要なときだけ薄い信号でつなぐ) はどちらでも同じです。</p>
 <h2 id="レッスン一覧">レッスン一覧</h2>
 <div class="tutorials-grid">
-<a class="tutorial-card" href="01-hello-novel/">
+<a class="tutorial-card" href="01-action-prototype/">
   <span class="tutorial-card__num">01</span>
-  <h3>1 シーンに文字を出す</h3>
-  <p class="tutorial-card__time">15 〜 20 分</p>
-  <p class="tutorial-card__desc">
-    背景の上にテキスト UI を出して、クリックで次のメッセージへ進む。
-    アクションのカットシーン、RPG の村人会話、シミュレーションのイベント通知、
-    シューティング合間の連絡まで、どのジャンルでも出てくる「画面に何かを出す」の基礎です。
-  </p>
-</a>
-<a class="tutorial-card" href="02-action-prototype/">
-  <span class="tutorial-card__num">02</span>
   <h3>2D アクションのプロトタイプ</h3>
   <p class="tutorial-card__time">20 〜 30 分</p>
   <p class="tutorial-card__desc">
-    矩形プレイヤーを矢印キー / WASD で動かす。壁との当たり判定と、
-    画面上の小さな目標 (拾うと得点) を入れる。
-    `mitiru.input` のアクションマップを使ったキー入力と canvas 描画の基本が分かります。
+    矩形プレイヤーを矢印キー / WASD で動かす。壁との当たり判定と、画面上の目標 (拾うと得点) を入れる。
+    アクション、シューティング、パズル、トップビュー RPG など、2D で動くゲームの根っこになる入力 + 描画の最小ループです。
   </p>
 </a>
-<a class="tutorial-card" href="03-save-load/">
-  <span class="tutorial-card__num">03</span>
-  <h3>セーブとロード</h3>
-  <p class="tutorial-card__time">20 〜 30 分</p>
+<a class="tutorial-card" href="02-text-ui/">
+  <span class="tutorial-card__num">02</span>
+  <h3>画面に UI を出す</h3>
+  <p class="tutorial-card__time">15 〜 20 分</p>
   <p class="tutorial-card__desc">
-    HP / スコア / 進行度を JSON に書き出して、次の起動で復元。
-    `SaveSchema` と `MigrationChain` を使うと、後でセーブの形を変えても
-    古いセーブが壊れずに読めます。ジャンルを問わず必要になる仕組みです。
+    背景の上に CEF で UI を重ね、C++ から状態を流し込んでクリックで反応させる。
+    RPG のメニュー、アクションのカットイン、シミュレーションの通知 ── どのジャンルでも使う「画面に何かを出して、クリックで進める」基本パターンです。
   </p>
 </a>
 </div>
 <h2 id="どこから読めばいいか">どこから読めばいいか</h2>
-<ul>
-<li><strong>エンジンの考え方をひととおり知りたい</strong> ⇒ <strong>01 → 02 → 03</strong> の順で全部やるのがいちばん早いです。1 時間ちょっとで終わります。</li>
-<li><strong>作りたいゲームのジャンルが決まっている</strong> ⇒ 一番近いものから始めて OK。たとえばパズルやアクションなら <strong>02</strong> から。ストーリーや会話を見せたいなら <strong>01</strong> から。</li>
-<li><strong>エンジン自体に興味がある</strong> ⇒ チュートリアルは飛ばして <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>・<a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> を直接読むのもありです。</li>
-</ul>
+<p><strong>作りたいゲームのジャンルが決まっているなら</strong>、一番近いものから始めて OK です。動くものを画面に出したいなら 01、HUD やダイアログの組み方が気になるなら 02 を先に。</p>
+<p><strong>エンジンの考え方をひととおり知りたいなら</strong>、01 → 02 の順で両方やるのが最短です。1 時間ちょっとで終わります。</p>
+<p><strong>エンジン自体に興味があるなら</strong>、チュートリアルは飛ばして <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a> と <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> を直接読むのもありです。</p>
 <p>途中で「これ違くない?」「説明が足りない」と思ったら、Issue で教えてください。</p>
-<h2 id="関連ページ">関連ページ</h2>
+<h2 id="次に読むもの">次に読むもの</h2>
 <ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> — ビルドと最初の実行</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> — まだなら最初にこちら</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a> — 動くコードを 1 ファイル単位で読みたい場合</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a> — 機能カテゴリ別のリファレンス</li>
+<li><a href="https://mogmog-0110.github.io/MitiruEngine/guides/save-load/">セーブとロード</a> — <code>SaveSchema</code> と <code>MigrationChain</code> の使い方</li>
 <li><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a> — クラスと関数の一覧</li>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — レイヤー構成と技術スタック</li>
 </ul>
 
       
       <ul class="page-list__items">
         
-          <li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-hello-novel/">01 1 シーンに文字を出す</a></li>
+          <li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01 2D アクションのプロトタイプ</a></li>
         
-          <li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-action-prototype/">02 2D アクションのプロトタイプ</a></li>
-        
-          <li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/03-save-load/">03 セーブとロード</a></li>
+          <li><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/">02 画面に UI を出す</a></li>
         
       </ul>
       
@@ -450,7 +436,7 @@
   <ul>
     <li><a href="#レッスン一覧">レッスン一覧</a></li>
     <li><a href="#どこから読めばいいか">どこから読めばいいか</a></li>
-    <li><a href="#関連ページ">関連ページ</a></li>
+    <li><a href="#次に読むもの">次に読むもの</a></li>
   </ul>
 </nav>
     </aside>
