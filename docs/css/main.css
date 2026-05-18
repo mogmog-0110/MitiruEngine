@@ -3971,50 +3971,10 @@ pre {
 }
 
 /* ============================================================
-   Round 40: chapter accent palette + icon column
+   Chapter accent palette — chapter list layout lives earlier in this
+   file (~line 2284). Only the detail page rules + the home-pillar
+   palette rotation are kept here.
    ============================================================ */
-
-/* Add a third column (icon) between the counter and the title/desc. */
-.chapter-list__link {
-  position: relative;
-  overflow: hidden;
-  grid-template-columns: 2.6rem 2.4rem 1fr;
-}
-.chapter-list__link::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--chapter-accent, #6b7280);
-  transition: width 220ms ease;
-}
-.chapter-list__link:hover::after { width: 8px; }
-
-.chapter-list__icon {
-  grid-column: 2;
-  grid-row: span 2;
-  display: grid;
-  place-items: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  color: var(--chapter-accent, #6b7280);
-  align-self: center;
-}
-.chapter-list__icon svg {
-  width: 28px;
-  height: 28px;
-}
-
-/* Title + desc move to column 3 */
-.chapter-list__title { grid-column: 3; }
-.chapter-list__desc  { grid-column: 3; }
-
-/* Counter `::before` is the auto-placed default content; keep it in col 1 */
-.chapter-list__link::before {
-  grid-column: 1;
-}
 
 /* Chapter detail: icon + heading accent */
 .chapter-article {
