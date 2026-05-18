@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="小さなものを実際につくって、エンジンの考えかたを覚えるためのページ。">
+<meta name="description" content="小さなものを実際につくって、エンジンの考えかたを覚えるためのページ。01 → 02 の順に進む構成です。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="チュートリアル | MitiruEngine">
-<meta property="og:description" content="小さなものを実際につくって、エンジンの考えかたを覚えるためのページ。">
+<meta property="og:description" content="小さなものを実際につくって、エンジンの考えかたを覚えるためのページ。01 → 02 の順に進む構成です。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorials/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="チュートリアル | MitiruEngine">
-<meta name="twitter:description" content="小さなものを実際につくって、エンジンの考えかたを覚えるためのページ。">
+<meta name="twitter:description" content="小さなものを実際につくって、エンジンの考えかたを覚えるためのページ。01 → 02 の順に進む構成です。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -367,14 +367,14 @@
   <header class="page-article__header">
     
     <h1 class="page-article__title">チュートリアル</h1>
-    <p class="page-article__lede">小さなものを実際につくって、エンジンの考えかたを覚えるためのページ。</p>
+    <p class="page-article__lede">小さなものを実際につくって、エンジンの考えかたを覚えるためのページ。01 → 02 の順に進む構成です。</p>
   </header>
 
   
   <aside class="page-summary">
     <h2 class="page-summary__h">このページで分かること</h2>
     <ul>
-      <li>MitiruEngine で実際に作るチュートリアル一覧</li><li>順番に縛られず、興味のあるものから読める</li><li>関連ガイドへのリンク</li>
+      <li>01: 純 C&#43;&#43; でゲームの中身を作る</li><li>02: その上に HTML/CSS で UI を載せる</li><li>01 → 02 の順で進む構成 (中身 → 見た目)</li>
     </ul>
   </aside>
   
@@ -382,8 +382,8 @@
   <div class="page-with-toc">
     <div class="page-article__body">
       <p>「動かすところまでは <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> で済んだので、何かつくってみたい」というひと向けです。</p>
-<p>短めのチュートリアルが 2 本あります。<strong>順番に縛られません</strong>。アクションが作りたければ <strong>01</strong> から、UI / HUD の組み方を見たければ <strong>02</strong> から、好きなほうから始めてください。それぞれ 15 〜 30 分で、手元で動くところまで行きます。</p>
-<p>エンジンの考えかた (C++ で動かす / HTML で組む / 必要なときだけ薄い信号でつなぐ) はどちらでも同じです。</p>
+<p>短めのチュートリアルが 2 本あります。<strong>まずは 01 から、続けて 02 へ</strong> の順で進めてください。「ゲームの中身を C++ で作る」→「その中身を CEF の UI で見せる」という流れになっていて、02 は 01 の続きとして読むことを前提にしています。</p>
+<p>各レッスンは 20 〜 30 分。合わせて 1 時間ちょっとで両方終わります。</p>
 <h2 id="レッスン一覧">レッスン一覧</h2>
 <div class="tutorials-grid">
 <a class="tutorial-card" href="01-action-prototype/">
@@ -405,10 +405,10 @@
   </p>
 </a>
 </div>
-<h2 id="どこから読めばいいか">どこから読めばいいか</h2>
-<p><strong>作りたいゲームのジャンルが決まっているなら</strong>、一番近いものから始めて OK です。動くものを画面に出したいなら 01、HUD やダイアログの組み方が気になるなら 02 を先に。</p>
-<p><strong>エンジンの考え方をひととおり知りたいなら</strong>、01 → 02 の順で両方やるのが最短です。1 時間ちょっとで終わります。</p>
-<p><strong>エンジン自体に興味があるなら</strong>、チュートリアルは飛ばして <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a> と <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> を直接読むのもありです。</p>
+<h2 id="なぜ-01--02-の順なのか">なぜ 01 → 02 の順なのか</h2>
+<p>MitiruEngine は <strong>「ゲームの中身は C++、見た目は HTML/CSS」</strong> という分担で書きます。順番を逆にすると「見た目を作る道具で中身まで作ろうとする」誘惑に負けやすく、後から直すのが面倒になります。</p>
+<p>そこで、最初に <strong>01 で純 C++ だけの最小ゲームを動かして「中身は C++ に置く」感覚を体に入れ</strong>、その上で <strong>02 で同じゲームに UI を被せる</strong> 構成にしました。逆順より圧倒的にうまく行きます。</p>
+<p>すでにエンジンの作りだけ確認したい方は、チュートリアルは飛ばして <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a> や <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> を直接読んでも OK です。</p>
 <p>途中で「これ違くない?」「説明が足りない」と思ったら、Issue で教えてください。</p>
 <h2 id="次に読むもの">次に読むもの</h2>
 <ul>
@@ -435,7 +435,7 @@
       <nav id="TableOfContents">
   <ul>
     <li><a href="#レッスン一覧">レッスン一覧</a></li>
-    <li><a href="#どこから読めばいいか">どこから読めばいいか</a></li>
+    <li><a href="#なぜ-01--02-の順なのか">なぜ 01 → 02 の順なのか</a></li>
     <li><a href="#次に読むもの">次に読むもの</a></li>
   </ul>
 </nav>

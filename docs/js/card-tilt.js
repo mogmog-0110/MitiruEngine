@@ -1,5 +1,5 @@
 /* card-tilt.js — subtle tilt micro-interaction for list cards.
- * Targets .guides-list__link and .chapter-list__link.
+ * Targets .guides-list__link only (chapter list now uses a flat hover).
  * Writes --tilt-x and --tilt-y CSS custom properties on the hovered
  * element; CSS handles the actual transform (perspective + rotateX/Y).
  * Max ±2.5deg. Fast 150ms transition on enter, 200ms on leave.
@@ -38,8 +38,7 @@
 
   function init() {
     var selectors = [
-      '.guides-list__link',
-      '.chapter-list__link'
+      '.guides-list__link'
     ];
     selectors.forEach(function (sel) {
       var els = document.querySelectorAll(sel);

@@ -387,7 +387,7 @@
     <div class="page-article__body">
       <p><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> で作った C++ ゲームの上に、HTML/CSS で組んだ <strong>見た目だけのレイヤー</strong> を重ねるチュートリアルです。HUD バー、ダイアログ、メニューなど、Web のデザイン資産を活かしたい部分はここに乗ります。</p>
 <p>このチュートリアルでは「中身は C++、画面は HTML / CSS、橋渡しは薄く」という MitiruEngine の標準形を実際のコードで体験します。</p>
-<p>時間の目安は <strong>20 〜 25 分</strong>。事前に <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> と <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> を済ませておくと、流れがつかみやすいです。</p>
+<p>時間の目安は <strong>20 〜 25 分</strong>。<strong>先に <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> を済ませてください</strong> ── このチュートリアルは 01 で書いた純 C++ コードに UI を被せる前提で進みます。</p>
 <aside class="cpp-note">
 <span class="cpp-note__title">C++ がはじめての方へ</span>
 <p>01 と同じく、要所に <strong>C++ メモ</strong> を置きます。今回は HTML / CSS / JavaScript も少しだけ出てきますが、いずれも「見た目を作る」「値を受け取って画面に貼る」だけの簡単な部分です。</p>
@@ -436,7 +436,7 @@
       </tr>
   </tbody>
 </table>
-<p><strong>ゲームのロジックを JS に書かない</strong>、これが一番大事です。JS は受け取って表示するだけ。CEF レイヤーは「見た目の Photoshop」と思ってください。</p>
+<p><strong>ゲームのロジックを JS に書かない</strong>、これが一番大事です。JS は受け取って表示するだけ。HTML / CSS / JS は <strong>「画面のレイアウトと見た目を作るための道具」</strong> だと割り切ってください。値を進めるとか、勝敗を判定するとか、そういう仕事は C++ にぜんぶ寄せます。</p>
 <aside class="cpp-note">
 <span class="cpp-note__title">設計メモ — なぜ役割を分けるのか</span>
 <p>「全部 C++ で書けばいいのでは?」と思うかもしれません。実際 [01](../01-action-prototype/) ではそうしました。それでも CEF を使う理由は <strong>HTML / CSS のほうが見た目を作りやすい</strong> から。グラデーション、半透明、フォントの組版、アニメーション、レスポンシブ ── Web の道具は何十年も磨かれてきました。これらを C++ でゼロから書くのはコスパが悪いです。</p>
@@ -623,7 +623,7 @@
 <h2 id="やってはいけないパターン">やってはいけないパターン</h2>
 <ul>
 <li>JS 側で <code>setInterval</code> を使って自前で時計を進める ── 状態の二重管理になり、画面と中身がズレた瞬間にデバッグが地獄になります。<strong>時計は C++ 側だけ</strong>。</li>
-<li>HTML / CSS に当たり判定やゲームのルールを書く ── これは「Photoshop でゲームを作ろうとする」のと同じ。<strong>ルールは C++ 側だけ</strong>。</li>
+<li>HTML / CSS / JS に当たり判定やゲームのルールを書く ── HTML/CSS は <strong>画面の構造とデザイン</strong> を表現するための道具で、ゲームのルールを記述する道具ではありません。混ぜると見た目を直したいだけのつもりがゲームの挙動も壊す、という事故が起きます。<strong>ルールは C++ 側だけ</strong>。</li>
 </ul>
 <h2 id="次の一歩">次の一歩</h2>
 <ul>

@@ -2283,45 +2283,85 @@ body.search-open {
 .chapter-list__item { margin: 0; padding: 0; }
 .chapter-list__link {
   display: grid;
-  grid-template-columns: 2.6rem 1fr;
-  align-items: baseline;
-  gap: 0.9rem;
-  padding: 1rem 1.2rem;
+  grid-template-columns: 88px 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 0.15rem 1.2rem;
+  align-items: start;
+  padding: 1.2rem 1.4rem;
   border: 1px solid var(--c-border);
-  border-radius: var(--r-radius);
+  border-radius: 12px;
   background: var(--c-bg-elev);
   color: var(--c-fg);
   text-decoration: none;
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  transition: transform 120ms ease, box-shadow 160ms ease, border-color 120ms ease;
+}
+.chapter-list__icon {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  width: 88px;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--chapter-accent, var(--c-accent)) 14%, transparent);
+  color: var(--chapter-accent, var(--c-accent));
+}
+.chapter-list__icon svg {
+  width: 44px;
+  height: 44px;
+  display: block;
 }
 .chapter-list__link::before {
   counter-increment: chapter;
   content: counter(chapter, decimal-leading-zero);
+  grid-column: 2;
+  grid-row: 1;
   font-family: var(--font-mono);
-  font-size: 0.95rem;
-  color: var(--c-accent);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--chapter-accent, var(--c-accent));
   font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 0.2rem;
 }
 .chapter-list__link:hover {
   text-decoration: none;
-  transform: translateY(-1px);
-  box-shadow: var(--c-shadow-soft);
-  border-color: var(--c-accent-soft);
+  transform: translateY(-2px);
+  box-shadow: var(--c-shadow-card);
+  border-color: color-mix(in srgb, var(--chapter-accent, var(--c-accent)) 40%, var(--c-border));
 }
 .chapter-list__title {
   display: block;
-  font-weight: 700;
-  font-size: 1.05rem;
-  color: var(--c-fg);
-  margin-bottom: 0.3rem;
   grid-column: 2;
+  grid-row: 2;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--c-fg);
+  line-height: 1.35;
+  margin-top: 0.15rem;
 }
 .chapter-list__desc {
   display: block;
-  color: var(--c-fg-soft);
-  font-size: 0.92rem;
-  line-height: 1.5;
   grid-column: 2;
+  grid-row: 3;
+  color: var(--c-fg-soft);
+  font-size: 0.93rem;
+  line-height: 1.6;
+  margin-top: 0.45rem;
+}
+
+/* Mobile: stack icon above text. */
+@media (max-width: 600px) {
+  .chapter-list__link {
+    grid-template-columns: 64px 1fr;
+    column-gap: 0.9rem;
+    padding: 1rem 1.1rem;
+  }
+  .chapter-list__icon { width: 64px; height: 64px; border-radius: 12px; }
+  .chapter-list__icon svg { width: 34px; height: 34px; }
+  .chapter-list__title { font-size: 1.05rem; }
+  .chapter-list__desc { font-size: 0.9rem; margin-top: 0.35rem; }
 }
 
 .chapter-article { padding: 3.5rem 0 4.5rem; max-width: 880px; }
@@ -2626,18 +2666,8 @@ body {
   .tutorials-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* ── chapter-list の番号 (counter) を mono 大きめに ── */
-.chapter-list__link::before {
-  font-size: 1.1rem;
-  letter-spacing: 0.04em;
-  align-self: start;
-  padding-top: 0.05rem;
-}
-
-/* ── chapter-list 全体: hover で control accent を強く出さず、subtle に ── */
-.chapter-list__link:hover {
-  border-color: var(--c-accent);
-}
+/* (chapter-list counter / hover overrides removed — handled in the main
+   .chapter-list__link block above with chapter-accent color-mix.) */
 
 /* ── architecture-page の SVG figure を中央寄せ + soft shadow ── */
 .architecture-page .arch-figure {
@@ -3602,9 +3632,10 @@ pre {
   50%      { transform: translateY(-10px); }
 }
 
-/* --- Card tilt micro-interaction (uses --tilt-x / --tilt-y from JS) --- */
-.guides-list__link,
-.chapter-list__link {
+/* --- Card tilt micro-interaction (uses --tilt-x / --tilt-y from JS) ---
+   Restricted to .guides-list__link so it does not fight the new
+   chapter-list grid hover (which uses translateY + accent border). */
+.guides-list__link {
   --tilt-x: 0deg;
   --tilt-y: 0deg;
 
@@ -3613,12 +3644,10 @@ pre {
   transform-style: preserve-3d;
   will-change: transform;
 }
-.guides-list__link:hover,
-.chapter-list__link:hover {
+.guides-list__link:hover {
   box-shadow: 0 8px 20px -10px rgba(60, 80, 130, 0.35);
 }
-.guides-list__link:not(:hover),
-.chapter-list__link:not(:hover) {
+.guides-list__link:not(:hover) {
   transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
