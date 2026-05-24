@@ -274,6 +274,14 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 			cef->registerHandler(name, std::move(fn));
 		});
 
+	// ページが (再)読み込みされたら保持済み state を全て再送する。これで
+	// ページ読込前に push された値の取りこぼしが無くなり、game 側の heartbeat
+	// 再 push が不要になる (hot reload 後も即座に最新状態が出る)。
+	{
+		auto* store = m_moduleStateStore.get();
+		cef->setLoadEndCallback([store](std::string_view) { store->replayRetainedState(); });
+	}
+
 	// Engine-owned action handlers — these can't live in the DLL because
 	// their captures would dangle on reload (ADR 0005, F3).
 	m_moduleStateStore->onAction("inspector.open",

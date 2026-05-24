@@ -47,6 +47,7 @@
 #include "include/cef_base.h"
 
 #include <mitiru/cef/MitiruCefApp.hpp>
+#include <mitiru/cef/StateStore.hpp>
 #include <mitiru/cef/MitiruCefBridge.hpp>
 #include <mitiru/cef/MitiruCefBrowser.hpp>
 #include <mitiru/cef/MitiruCefClient.hpp>
@@ -452,6 +453,35 @@ public:
         {
             m_client->loadHandler()->setOnLoadEndCallback(std::move(cb));
         }
+    }
+
+    /// @brief StateStore を生成し、OnLoadEnd で retained state を自動再送する。
+    /// @details ページロード完了時に StateStore::replayRetainedState() が
+    ///          呼ばれるため、ゲーム側のハートビート再送ハックが不要になる。
+    ///
+    /// **Usage:**
+    /// ```cpp
+    ///   auto store = ctx.makeStateStore();
+    ///   store->set("stats.hp", 100);   // 以降ロード完了時に自動再送
+    /// ```
+    [[nodiscard]] std::unique_ptr<StateStore> makeStateStore()
+    {
+        auto store = std::make_unique<StateStore>(
+            [this](const std::string& js) { executeJavaScript(js); },
+            [this](const std::string& name, HandlerFn fn)
+            {
+                registerHandler(name, std::move(fn));
+            });
+
+        // Keep a raw pointer for the lambda; the caller owns the store and
+        // must ensure it outlives this context (same lifetime as the game).
+        StateStore* raw = store.get();
+        setLoadEndCallback([raw](std::string_view /*url*/)
+        {
+            raw->replayRetainedState();
+        });
+
+        return store;
     }
 
     /// @brief 全 JS ハンドラーを解除する

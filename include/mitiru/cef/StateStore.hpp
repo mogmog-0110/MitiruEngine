@@ -135,6 +135,31 @@ public:
 		m_state.clear();
 	}
 
+	/// @brief Re-push every retained key→value to the page.
+	/// @details Call this from an OnLoadEnd hook so a freshly loaded (or
+	///          hot-reloaded) page immediately receives all state that was
+	///          set before it finished loading.  Idempotent — the JS binder
+	///          is declarative and handles duplicate delivery safely.
+	///
+	/// **Usage:**
+	/// ```cpp
+	///   ctx.setLoadEndCallback([&](std::string_view) {
+	///       store.replayRetainedState();
+	///   });
+	/// ```
+	void replayRetainedState()
+	{
+		std::unordered_map<std::string, json> snapshot;
+		{
+			std::lock_guard lock(m_mutex);
+			snapshot = m_state;
+		}
+		for (const auto& [key, value] : snapshot)
+		{
+			pushJs("_onChange", keyJson(key), value.dump());
+		}
+	}
+
 	// ── C++ → JS: one-shot event ────────────────────────────────
 
 	/// @brief Fire a named event to `window.mitiru.on(name, ...)` listeners.
