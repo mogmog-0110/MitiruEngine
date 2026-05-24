@@ -39,6 +39,7 @@
 /// exposes a factory helper `MitiruCefContext::makeStateStore()` below for
 /// the common case.
 
+#include <fstream>
 #include <functional>
 #include <mutex>
 #include <optional>
@@ -158,6 +159,167 @@ public:
 		{
 			pushJs("_onChange", keyJson(key), value.dump());
 		}
+	}
+
+	// ── Debug snapshot: export / import view state ──────────────
+
+	/// @brief Write all currently-retained key→value pairs to a JSON file.
+	///
+	/// **Scope:** This snapshots the *observable pushed state* — the `view.*`
+	/// values (and any other keys) that were set via `set()` and are currently
+	/// retained in the store.  It does **not** capture the game's internal
+	/// `GameMemory`; that is opaque to the engine.  Full gameplay time-travel
+	/// requires the game to serialize `GameMemory` separately and coordinate
+	/// with this snapshot.  Use this for restoring what the UI *displays*.
+	///
+	/// File shape: a flat JSON object  `{ "view.hp": 80, "view.x": 120, ... }`
+	///
+	/// @param path  File path to write (UTF-8, created or overwritten).
+	/// @return `true` on success; `false` on I/O error.
+	///
+	/// **Usage:**
+	/// ```cpp
+	///   if (!store.saveSnapshot("debug/scene_snapshot.json"))
+	///       log::error("saveSnapshot failed");
+	/// ```
+	[[nodiscard]] bool saveSnapshot(const std::string& path) const
+	{
+		json doc = json::object();
+		{
+			std::lock_guard lock(m_mutex);
+			for (const auto& [key, value] : m_state)
+			{
+				doc[key] = value;
+			}
+		}
+		std::ofstream file(path, std::ios::out | std::ios::trunc);
+		if (!file.is_open())
+		{
+			return false;
+		}
+		file << doc.dump(2);
+		return file.good();
+	}
+
+	/// @brief Load a snapshot file written by `saveSnapshot()` and restore it.
+	///
+	/// Each key from the file is written into the retained map and immediately
+	/// re-pushed to the page via the same `_onChange` path that `set()` and
+	/// `replayRetainedState()` use.  This makes the UI reflect the snapshot
+	/// state instantly without a page reload.
+	///
+	/// **Scope caveat:** loading a snapshot restores UI display state only.
+	/// It does NOT restore `GameMemory`.  If gameplay logic reads engine state
+	/// on the next frame, it will still see whatever `GameMemory` holds.
+	///
+	/// @param path  File path to read (UTF-8).
+	/// @return `true` on success; `false` on I/O or JSON parse error.
+	///
+	/// **Usage:**
+	/// ```cpp
+	///   if (!store.loadSnapshot("debug/scene_snapshot.json"))
+	///       log::error("loadSnapshot failed");
+	/// ```
+	[[nodiscard]] bool loadSnapshot(const std::string& path)
+	{
+		std::ifstream file(path);
+		if (!file.is_open())
+		{
+			return false;
+		}
+		json doc;
+		try
+		{
+			file >> doc;
+		}
+		catch (const std::exception&)
+		{
+			return false;
+		}
+		if (!doc.is_object())
+		{
+			return false;
+		}
+
+		// Snapshot the entries to push outside the lock (same pattern as
+		// replayRetainedState — JS dispatch must not run while mutex is held).
+		std::unordered_map<std::string, json> loaded;
+		loaded.reserve(doc.size());
+		for (const auto& [key, value] : doc.items())
+		{
+			loaded[key] = value;
+		}
+		{
+			std::lock_guard lock(m_mutex);
+			for (const auto& [key, value] : loaded)
+			{
+				m_state[key] = value;
+			}
+		}
+		for (const auto& [key, value] : loaded)
+		{
+			pushJs("_onChange", keyJson(key), value.dump());
+		}
+		return true;
+	}
+
+	// ── Interface schema ────────────────────────────────────────
+
+	/// @brief Returns a JSON description of the game's observable interface.
+	///
+	/// Reports every state key currently retained in the store with a
+	/// best-effort type tag, and every action name registered via `onAction`.
+	/// If an `onActionFallback` is installed a sentinel entry `"*"` is
+	/// appended to the actions array to signal an open-ended forwarder.
+	///
+	/// Returned shape:
+	/// ```json
+	/// {
+	///   "stateKeys": [
+	///     {"name": "view.points", "type": "number"},
+	///     {"name": "view.shop",   "type": "object"}
+	///   ],
+	///   "actions": ["tap", "buyClick", "*"]
+	/// }
+	/// ```
+	/// Type tags: `"number"` `"string"` `"object"` `"array"` `"bool"` `"null"`
+	///
+	/// Thread-safe: acquires the store mutex for the duration of the read.
+	///
+	/// **Usage:**
+	/// ```cpp
+	///   std::cout << store.schemaJson() << '\n';
+	/// ```
+	[[nodiscard]] std::string schemaJson() const
+	{
+		std::lock_guard lock(m_mutex);
+
+		json stateKeys = json::array();
+		for (const auto& [key, value] : m_state)
+		{
+			std::string_view tag;
+			if      (value.is_number())  { tag = "number"; }
+			else if (value.is_string())  { tag = "string"; }
+			else if (value.is_object())  { tag = "object"; }
+			else if (value.is_array())   { tag = "array";  }
+			else if (value.is_boolean()) { tag = "bool";   }
+			else                         { tag = "null";   }
+
+			stateKeys.push_back({{"name", key}, {"type", tag}});
+		}
+
+		json actions = json::array();
+		for (const auto& [name, fn] : m_actions)
+		{
+			actions.push_back(name);
+		}
+		if (m_fallbackAction)
+		{
+			actions.push_back("*");
+		}
+
+		return json{{"stateKeys", std::move(stateKeys)},
+		            {"actions",   std::move(actions)}}.dump();
 	}
 
 	// ── C++ → JS: one-shot event ────────────────────────────────

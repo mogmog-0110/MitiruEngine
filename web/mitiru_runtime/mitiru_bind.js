@@ -26,6 +26,8 @@
  *     data-m-arg="path"             dispatch に載せる値 (repeat 内なら item の値。例: 押した項目の id)
  *     フォーム要素 (input/select) は現在値を自動で arg に載せる (スライダー/選択 等の設定 UI)
  *   data-m-flash="field"          値が変わった瞬間に m-flash クラスを一瞬付与 (CSS 発火用)
+ *   data-m-tween="path"           数値が変わったとき ~300ms でカウントアップ/ダウン表示
+ *                                 (data-m-format=int|kmb に対応。data-m-text と同一要素では tween が優先)
  *   data-m-repeat="listPath"      リストを子 <template> で要素群に展開 (プール使い回し)
  *     data-m-fields="a,b,c"         コンパクト列の列名 (JSON リストなら不要)
  *     data-m-type="t"               case 選択に使う列名 (既定 "t")
@@ -36,6 +38,8 @@
  *              data-m-pos="xF,yF"     transform: translate(x,y)
  *              data-m-rot="deg"       回転を付与 (リテラル度数)
  *     生成された要素には一瞬 m-enter クラスが付く (CSS 生成アニメ用、任意)
+ *     data-m-leave (属性のみ)        keyed repeat で key が消えたとき即削除せず m-leave
+ *                                 クラスを付与し animationend (または 400ms fallback) 後に削除
  *
  *   開発時: <body data-m-debug> か URL に ?mdebug=1 で未知パスを警告。
  */
@@ -125,10 +129,34 @@
     });
   }
 
+  // data-m-tween="path": 数値変化を ~300ms でカウントアップ/ダウン表示。
+  // data-m-format に従いフォーマット。非数値は即セット。
+  var TWEEN_MS = 300;
+  function applyTween(el, path, item) {
+    var raw = resolve(path, item);
+    var target = Number(raw);
+    if (isNaN(target)) { el.textContent = raw == null ? '' : String(raw); el._mtween_last = target; return; }
+    var from = (el._mtween_last !== undefined && !isNaN(el._mtween_last)) ? el._mtween_last : target;
+    el._mtween_last = target;
+    if (from === target) { return; }
+    var spec = el.dataset.mFormat;
+    var start = null;
+    if (el._mtween_raf) { cancelAnimationFrame(el._mtween_raf); }
+    function step(ts) {
+      if (!start) { start = ts; }
+      var t = Math.min(1, (ts - start) / TWEEN_MS);
+      el.textContent = fmt(from + (target - from) * t, spec);
+      if (t < 1) { el._mtween_raf = requestAnimationFrame(step); }
+      else { el._mtween_raf = null; el._mtween_last = target; }
+    }
+    el._mtween_raf = requestAnimationFrame(step);
+  }
+
   // ── 1 要素へ data-m-* を適用 (item != null なら item スコープ) ──
   function applyBindings(el, item) {
     var d = el.dataset;
-    if (d.mText != null)  { el.textContent = fmt(resolve(d.mText, item), d.mFormat); }
+    if (d.mTween != null) { applyTween(el, d.mTween, item); }
+    else if (d.mText != null) { el.textContent = fmt(resolve(d.mText, item), d.mFormat); }
     if (d.mTpl != null)   { el.textContent = renderTpl(d.mTpl, item); }
     if (d.mShow != null)  { el.style.display = evalCond(d.mShow, item) ? '' : 'none'; }
     if (d.mHide != null)  { el.style.display = evalCond(d.mHide, item) ? 'none' : ''; }
@@ -315,8 +343,23 @@
         }
         this._bind(slot, item);
       }
+      var usesLeave = this.el.hasAttribute('data-m-leave');
       for (var key in this.byKey) {
-        if (!seen[key]) { var s = this.byKey[key]; if (s.el.parentNode) { s.el.parentNode.removeChild(s.el); } delete this.byKey[key]; }
+        if (!seen[key]) {
+          var s = this.byKey[key];
+          delete this.byKey[key];
+          if (s.el.parentNode) {
+            if (usesLeave && !s.el._mleaving) {
+              s.el._mleaving = true;
+              s.el.classList.add('m-leave');
+              var _el = s.el;
+              var _tid = setTimeout(function () { if (_el.parentNode) { _el.parentNode.removeChild(_el); } }, 400);
+              _el.addEventListener('animationend', function () { clearTimeout(_tid); if (_el.parentNode) { _el.parentNode.removeChild(_el); } }, { once: true });
+            } else {
+              s.el.parentNode.removeChild(s.el);
+            }
+          }
+        }
       }
       return;
     }
@@ -337,7 +380,7 @@
   };
 
   // ── バインディング収集 ──
-  var SELECTOR = '[data-m-text],[data-m-tpl],[data-m-show],[data-m-hide],[data-m-class],[data-m-style],[data-m-pos],[data-m-flash],[data-m-attr],[data-m-action]';
+  var SELECTOR = '[data-m-text],[data-m-tpl],[data-m-show],[data-m-hide],[data-m-class],[data-m-style],[data-m-pos],[data-m-flash],[data-m-attr],[data-m-action],[data-m-tween]';
 
   // node 配下の (item スコープ用) 単純バインド要素を集める。repeat はネスト不可とする。
   function collectBinds(root, includeSelf) {
@@ -389,7 +432,7 @@
       if (el.closest('[data-m-repeat]')) { continue; }   // repeat 内は item 解決に任せる
       topBinds.push(el);
       var dd = el.dataset;
-      ['mText', 'mTpl', 'mShow', 'mHide', 'mClass', 'mStyle', 'mAttr', 'mArg'].forEach(function (a) {
+      ['mText', 'mTpl', 'mShow', 'mHide', 'mClass', 'mStyle', 'mAttr', 'mArg', 'mTween'].forEach(function (a) {
         if (dd[a] != null) { keysIn(dd[a]).forEach(function (k) { subscribed[k] = true; }); }
       });
     }

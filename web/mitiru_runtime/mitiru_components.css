@@ -1160,6 +1160,420 @@ img.mitiru-art-placeholder:not(.mitiru-art-placeholder--shown)::after { content:
 	animation-fill-mode:       both;
 }
 
+
+/* ===============================================================
+ *   §20  汎用 data-m-* バインダ対応コンポーネント (m-* 系)
+ *
+ *   JavaScript ゼロ。data-m-* 属性と CSS だけで完結するゲーム UI パーツ。
+ *   色はすべて token 変数経由 — テーマ切り替えで自動追従。
+ *   固定 px サイズは使わない (overflow 防止)。
+ * =============================================================== */
+
+/* ──────────────────────────────────────────────────────────────
+ * §20-1  .m-btn — 汎用ボタン
+ *
+ * <button class="m-btn" data-m-action="fire">Shot</button>
+ * <button class="m-btn m-btn--primary" data-m-action="confirm">OK</button>
+ * <button class="m-btn" data-m-show="view.canShoot" data-m-action="fire">Shot</button>
+ *
+ * バリアント modifier:
+ *   .m-btn--primary   アクセント背景
+ *   .m-btn--ghost     枠だけ
+ *   .m-btn--danger    危険操作
+ *   .m-btn--sm        小サイズ
+ *   .m-btn--lg        大サイズ
+ *
+ * Tunables:
+ *   --m-btn-bg / --m-btn-fg / --m-btn-border / --m-btn-radius
+ * ────────────────────────────────────────────────────────────── */
+.m-btn {
+	--m-btn-bg:     var(--mitiru-surface, #f0f0f0);
+	--m-btn-fg:     var(--mitiru-text, #2b2118);
+	--m-btn-border: var(--mitiru-border, #d0d0d0);
+	--m-btn-radius: var(--mitiru-radius-md, 6px);
+
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 8px 18px;
+	border: 1px solid var(--m-btn-border);
+	border-radius: var(--m-btn-radius);
+	background: var(--m-btn-bg);
+	color: var(--m-btn-fg);
+	font: inherit;
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	font-weight: 600;
+	line-height: 1.4;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background var(--mitiru-duration-fast, 80ms),
+	            border-color var(--mitiru-duration-fast, 80ms),
+	            transform var(--mitiru-duration-fast, 80ms);
+	box-sizing: border-box;
+}
+.m-btn:hover  { filter: brightness(1.08); }
+.m-btn:active { transform: translateY(1px); }
+.m-btn:focus-visible {
+	outline: none;
+	box-shadow: var(--mitiru-focus-ring, 0 0 0 2px var(--mitiru-accent, #c0392b));
+}
+
+.m-btn--primary {
+	--m-btn-bg:     var(--mitiru-accent, #c0392b);
+	--m-btn-fg:     #fff;
+	--m-btn-border: var(--mitiru-accent, #c0392b);
+}
+.m-btn--ghost {
+	--m-btn-bg:     transparent;
+	--m-btn-fg:     var(--mitiru-accent, #c0392b);
+	--m-btn-border: var(--mitiru-accent, #c0392b);
+}
+.m-btn--danger {
+	--m-btn-bg:     #d32f2f;
+	--m-btn-fg:     #fff;
+	--m-btn-border: #d32f2f;
+}
+.m-btn--sm { padding: 4px 12px; font-size: var(--mitiru-text-xs, 0.75rem); }
+.m-btn--lg { padding: 12px 28px; font-size: var(--mitiru-text-lg, 1.1rem); }
+
+@media (prefers-reduced-motion: reduce) {
+	.m-btn { transition: none; }
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+ * §20-2  .m-bar — 進捗バー / HP バー (幅を data-m-style でバインド)
+ *
+ * <div class="m-bar">
+ *   <div class="m-bar-fill" data-m-style="width: {view.hp}%"></div>
+ * </div>
+ *
+ * 色バリアント:
+ *   .m-bar--success   緑
+ *   .m-bar--danger    赤 (低 HP 警告用)
+ *   .m-bar--warning   黄
+ *
+ * Tunables: --m-bar-track / --m-bar-fill / --m-bar-h / --m-bar-radius
+ * ────────────────────────────────────────────────────────────── */
+.m-bar {
+	--m-bar-track:  var(--mitiru-border-soft, rgba(0,0,0,0.15));
+	--m-bar-fill:   var(--mitiru-accent, #c0392b);
+	--m-bar-h:      12px;
+	--m-bar-radius: var(--mitiru-radius-sm, 4px);
+
+	width: 100%;
+	height: var(--m-bar-h);
+	background: var(--m-bar-track);
+	border-radius: var(--m-bar-radius);
+	overflow: hidden;
+	box-sizing: border-box;
+}
+.m-bar-fill {
+	height: 100%;
+	width: 0%;
+	background: var(--m-bar-fill);
+	border-radius: var(--m-bar-radius);
+	transition: width 100ms linear;
+}
+.m-bar--success { --m-bar-fill: var(--mitiru-success, #2e7d32); }
+.m-bar--warning { --m-bar-fill: var(--mitiru-warning, #f59e0b); }
+.m-bar--danger  { --m-bar-fill: var(--mitiru-danger,  #d32f2f); }
+
+@media (prefers-reduced-motion: reduce) {
+	.m-bar-fill { transition: none; }
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+ * §20-3  .m-list + .m-list-item — 動的リスト (data-m-repeat 対応)
+ *
+ * <ul class="m-list" data-m-repeat="view.items" data-m-key="id">
+ *   <template>
+ *     <li class="m-list-item">
+ *       <span data-m-text="name"></span>
+ *       <button class="m-btn m-btn--sm" data-m-action="select" data-m-arg="id">選択</button>
+ *     </li>
+ *   </template>
+ * </ul>
+ *
+ * Tunables: --m-list-gap / --m-list-item-bg / --m-list-item-border
+ * ────────────────────────────────────────────────────────────── */
+.m-list {
+	--m-list-gap:         4px;
+	--m-list-item-bg:     var(--mitiru-surface, #f8f8f8);
+	--m-list-item-border: var(--mitiru-border, #d0d0d0);
+
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--m-list-gap);
+	width: 100%;
+	box-sizing: border-box;
+}
+.m-list-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	background: var(--m-list-item-bg);
+	border: 1px solid var(--m-list-item-border);
+	border-radius: var(--mitiru-radius-sm, 0);
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	color: var(--mitiru-text, #2b2118);
+	box-sizing: border-box;
+	min-height: 0;
+}
+.m-list-item:hover { filter: brightness(0.97); }
+
+/* enter animation for newly added items */
+.m-enter.m-list-item { animation: m-list-enter 150ms ease-out both; }
+@keyframes m-list-enter {
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.m-enter.m-list-item { animation: none; }
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+ * §20-4  .m-dialog + .m-overlay — ダイアログ / モーダル
+ *        (data-m-show でバインド)
+ *
+ * <div class="m-overlay" data-m-show="view.dialogOpen">
+ *   <div class="m-dialog" role="dialog" aria-modal="true">
+ *     <h2 class="m-dialog__title" data-m-text="view.dialog.title"></h2>
+ *     <div class="m-dialog__body" data-m-text="view.dialog.body"></div>
+ *     <div class="m-dialog__actions">
+ *       <button class="m-btn" data-m-action="dialogCancel">キャンセル</button>
+ *       <button class="m-btn m-btn--primary" data-m-action="dialogOk">OK</button>
+ *     </div>
+ *   </div>
+ * </div>
+ *
+ * Tunables: --m-overlay-bg / --m-dialog-bg / --m-dialog-max-w
+ * ────────────────────────────────────────────────────────────── */
+.m-overlay {
+	--m-overlay-bg:   rgba(0, 0, 0, 0.45);
+	--m-dialog-bg:    var(--mitiru-surface, #f8f8f8);
+	--m-dialog-max-w: 480px;
+
+	position: fixed;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--m-overlay-bg);
+	z-index: var(--mitiru-z-modal, 300);
+	padding: 16px;
+	box-sizing: border-box;
+}
+.m-dialog {
+	background: var(--m-dialog-bg);
+	color: var(--mitiru-text, #2b2118);
+	font-family: var(--mitiru-font-body, sans-serif);
+	border-radius: var(--mitiru-radius-md, 6px);
+	box-shadow: var(--mitiru-shadow-2, 0 4px 24px rgba(0,0,0,0.2));
+	width: 100%;
+	max-width: var(--m-dialog-max-w);
+	padding: 24px;
+	box-sizing: border-box;
+	animation: m-dialog-in 140ms ease-out both;
+}
+.m-dialog__title {
+	margin: 0 0 10px;
+	font-size: var(--mitiru-text-lg, 1.1rem);
+	font-weight: bold;
+	color: var(--mitiru-text, #2b2118);
+	line-height: 1.3;
+}
+.m-dialog__body {
+	margin-bottom: 16px;
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	line-height: 1.55;
+}
+.m-dialog__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+@keyframes m-dialog-in {
+	from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+	to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.m-dialog { animation: none; }
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+ * §20-5  .m-menu — ドロップダウン / コンテキストメニュー
+ *        (data-m-show でバインド)
+ *
+ * <div class="m-menu" data-m-show="view.menuOpen">
+ *   <ul class="m-list" data-m-repeat="view.menuItems" data-m-key="id">
+ *     <template>
+ *       <li class="m-list-item m-menu__item" data-m-action="menuSelect" data-m-arg="id">
+ *         <span data-m-text="label"></span>
+ *       </li>
+ *     </template>
+ *   </ul>
+ * </div>
+ *
+ * Tunables: --m-menu-bg / --m-menu-w / --m-menu-shadow
+ * ────────────────────────────────────────────────────────────── */
+.m-menu {
+	--m-menu-bg:     var(--mitiru-surface, #f8f8f8);
+	--m-menu-w:      200px;
+	--m-menu-shadow: var(--mitiru-shadow-2, 0 4px 16px rgba(0,0,0,0.18));
+
+	position: absolute;
+	background: var(--m-menu-bg);
+	border: 1px solid var(--mitiru-border, #d0d0d0);
+	border-radius: var(--mitiru-radius-md, 6px);
+	box-shadow: var(--m-menu-shadow);
+	min-width: var(--m-menu-w);
+	max-width: 90vw;
+	z-index: var(--mitiru-z-overlay, 200);
+	padding: 4px 0;
+	box-sizing: border-box;
+	animation: m-menu-in 100ms ease-out both;
+}
+.m-menu__item {
+	padding: 10px 16px;
+	cursor: pointer;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	width: 100%;
+	text-align: left;
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	color: var(--mitiru-text, #2b2118);
+}
+.m-menu__item:hover {
+	background: color-mix(in srgb, var(--mitiru-accent, #c0392b) 10%, transparent);
+}
+@keyframes m-menu-in {
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.m-menu { animation: none; }
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+ * §20-6  .m-toast — 一時通知トースト (data-m-show + data-m-flash)
+ *
+ * <div class="m-toast" data-m-show="view.toastVisible"
+ *      data-m-flash="view.toastMsg">
+ *   <span data-m-text="view.toastMsg"></span>
+ * </div>
+ *
+ * バリアント: .m-toast--success / .m-toast--danger / .m-toast--info
+ * Tunables: --m-toast-bg / --m-toast-fg / --m-toast-max-w
+ * ────────────────────────────────────────────────────────────── */
+.m-toast {
+	--m-toast-bg:    var(--mitiru-text, #2b2118);
+	--m-toast-fg:    #fff;
+	--m-toast-max-w: 360px;
+
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: var(--mitiru-z-toast, 400);
+	background: var(--m-toast-bg);
+	color: var(--m-toast-fg);
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	padding: 10px 20px;
+	border-radius: var(--mitiru-radius-md, 6px);
+	box-shadow: var(--mitiru-shadow-2, 0 4px 16px rgba(0,0,0,0.2));
+	max-width: var(--m-toast-max-w);
+	width: max-content;
+	text-align: center;
+	pointer-events: none;
+	animation: m-toast-in 160ms ease-out both;
+}
+.m-toast--success { --m-toast-bg: var(--mitiru-success, #2e7d32); }
+.m-toast--danger  { --m-toast-bg: var(--mitiru-danger,  #d32f2f); }
+.m-toast--info    { --m-toast-bg: var(--mitiru-accent,  #c0392b); }
+
+/* m-flash クラスが付いたとき再入場アニメを再生 */
+.m-toast.m-flash  { animation: m-toast-flash 300ms ease-out both; }
+
+@keyframes m-toast-in {
+	from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+	to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes m-toast-flash {
+	0%   { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.97); }
+	60%  { opacity: 1; transform: translateX(-50%) translateY(-2px) scale(1.01); }
+	100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.m-toast, .m-toast.m-flash { animation: none; }
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+ * §20-7  .m-tabs — タブナビゲーション
+ *        (アクティブタブを data-m-class でバインド)
+ *
+ * <div class="m-tabs">
+ *   <button class="m-tab" data-m-action="selectTab" data-m-arg="inventory"
+ *           data-m-class="m-tab--active: view.tab == inventory">アイテム</button>
+ *   <button class="m-tab" data-m-action="selectTab" data-m-arg="map"
+ *           data-m-class="m-tab--active: view.tab == map">マップ</button>
+ * </div>
+ * <div data-m-show="view.tab == inventory">…インベントリ…</div>
+ * <div data-m-show="view.tab == map">…マップ…</div>
+ *
+ * Tunables: --m-tab-active-color / --m-tab-border
+ * ────────────────────────────────────────────────────────────── */
+.m-tabs {
+	--m-tab-active-color: var(--mitiru-accent, #c0392b);
+	--m-tab-border:       var(--mitiru-border, #d0d0d0);
+
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0;
+	border-bottom: 2px solid var(--m-tab-border);
+	box-sizing: border-box;
+}
+.m-tab {
+	flex: 0 0 auto;
+	padding: 8px 20px;
+	border: none;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -2px;
+	background: transparent;
+	color: var(--mitiru-text-mute, #8a7865);
+	font: inherit;
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	cursor: pointer;
+	white-space: nowrap;
+	transition: color var(--mitiru-duration-fast, 80ms),
+	            border-color var(--mitiru-duration-fast, 80ms);
+}
+.m-tab:hover { color: var(--mitiru-text, #2b2118); }
+.m-tab--active {
+	color: var(--m-tab-active-color);
+	border-bottom-color: var(--m-tab-active-color);
+	font-weight: 600;
+}
+.m-tab:focus-visible {
+	outline: none;
+	box-shadow: var(--mitiru-focus-ring, 0 0 0 2px var(--mitiru-accent, #c0392b));
+}
+@media (prefers-reduced-motion: reduce) {
+	.m-tab { transition: none; }
+}
+
 /* ===============================================================
  *   19. Novel textbox defaults — H-05 cascade-friendly variant
  * ===============================================================

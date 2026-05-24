@@ -38,6 +38,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <string>
@@ -715,18 +716,174 @@ void writeDivergenceJson(const mitiru::replay::Player::StateDivergence& d,
 	f << "}\n";
 }
 
+// ── Headless test mode ────────────────────────────────────────────────────
+// Reads a v3 .mtrr file, re-runs the same deterministic applyInput logic
+// without opening a window or touching CEF, and emits final-state JSON to
+// stdout. If --expect <json> is supplied, compares key-by-key and exits
+// non-zero on mismatch.
+//
+// JSON shape: {"cursorX":<int>,"cursorY":<int>,"seed":<uint64>,"frames":<uint64>}
+
+// Minimal JSON parser for the four expected keys. Returns false on any parse
+// error, sets output params. Tolerates extra whitespace and key order.
+static bool parseExpectJson(const std::string& path,
+                            int&      outX, int&      outY,
+                            long long& outSeed, long long& outFrames)
+{
+	std::ifstream f(path, std::ios::binary);
+	if (!f.is_open()) { return false; }
+	std::string txt((std::istreambuf_iterator<char>(f)),
+	                 std::istreambuf_iterator<char>());
+
+	// Extract a numeric value following "key": in the JSON string.
+	auto extract = [&](const char* key, long long& out) -> bool
+	{
+		const std::string needle = std::string("\"") + key + "\"";
+		const auto pos = txt.find(needle);
+		if (pos == std::string::npos) { return false; }
+		auto colon = txt.find(':', pos + needle.size());
+		if (colon == std::string::npos) { return false; }
+		char* end = nullptr;
+		out = std::strtoll(txt.c_str() + colon + 1, &end, 10);
+		return end != txt.c_str() + colon + 1;
+	};
+
+	long long x = 0, y = 0, seed = 0, frames = 0;
+	if (!extract("cursorX", x)   || !extract("cursorY", y) ||
+	    !extract("seed",    seed) || !extract("frames",  frames))
+	{
+		return false;
+	}
+	outX      = static_cast<int>(x);
+	outY      = static_cast<int>(y);
+	outSeed   = seed;
+	outFrames = frames;
+	return true;
+}
+
+// Headless replay-test: open file, iterate all frames, apply the same
+// deterministic applyInput arithmetic, emit final-state JSON to stdout.
+// Returns 0 on PASS, non-zero on FAIL (mismatch or I/O error).
+static int runHeadlessTest(const std::string& replayPath,
+                           const std::string& expectPath)
+{
+	mitiru::replay::Player player;
+	if (!player.open(replayPath))
+	{
+		std::fprintf(stderr, "test: cannot open %s\n", replayPath.c_str());
+		return 3;
+	}
+
+	// Reproduce the same initial cursor position used during record.
+	// The recorded game starts at (screenW*0.25, screenH*0.25) = (200, 125)
+	// for the default 800x500 window; we replicate that constant here.
+	constexpr float kInitX = 800.0f * 0.25f;
+	constexpr float kInitY = 500.0f * 0.25f;
+
+	constexpr std::uint8_t kVkLeft  = 0x25;
+	constexpr std::uint8_t kVkUp    = 0x26;
+	constexpr std::uint8_t kVkRight = 0x27;
+	constexpr std::uint8_t kVkDown  = 0x28;
+
+	float cursorX = kInitX;
+	float cursorY = kInitY;
+
+	mitiru::module::InputSnapshot     snap{};
+	std::vector<std::uint8_t>         state;
+	std::uint32_t                     frameIdx = 0;
+
+	while (player.readNextWithState(snap, state, frameIdx))
+	{
+		// Mirror ReplaySampleGame::applyInput exactly (kCursorSpeed = 2.0f for
+		// horizontal; m_cursorSpeed = kCursorSpeed for vertical in normal record).
+		if (snap.keysDown[kVkLeft])  { cursorX -= kCursorSpeed; }
+		if (snap.keysDown[kVkRight]) { cursorX += kCursorSpeed; }
+		if (snap.keysDown[kVkUp])    { cursorY -= kCursorSpeed; }
+		if (snap.keysDown[kVkDown])  { cursorY += kCursorSpeed; }
+	}
+
+	const std::uint64_t framesRead = player.framesRead();
+	const std::uint64_t seed       = player.rngSeed();
+
+	// Emit final-state JSON to stdout.
+	std::printf("{\"cursorX\":%d,\"cursorY\":%d,\"seed\":%llu,\"frames\":%llu}\n",
+		static_cast<int>(cursorX), static_cast<int>(cursorY),
+		static_cast<unsigned long long>(seed),
+		static_cast<unsigned long long>(framesRead));
+	std::fflush(stdout);
+
+	if (expectPath.empty()) { return 0; }
+
+	// Compare against expected JSON.
+	int       expX = 0, expY = 0;
+	long long expSeed = 0, expFrames = 0;
+	if (!parseExpectJson(expectPath, expX, expY, expSeed, expFrames))
+	{
+		std::fprintf(stderr, "test: cannot parse expect file %s\n",
+		             expectPath.c_str());
+		return 4;
+	}
+
+	bool pass = true;
+	const int    actX      = static_cast<int>(cursorX);
+	const int    actY      = static_cast<int>(cursorY);
+	const long long actSeed   = static_cast<long long>(seed);
+	const long long actFrames = static_cast<long long>(framesRead);
+
+	auto check = [&](const char* key, long long actual, long long expected)
+	{
+		if (actual != expected)
+		{
+			std::fprintf(stderr, "FAIL  %-10s  actual=%-12lld  expected=%lld\n",
+			             key, actual, expected);
+			pass = false;
+		}
+		else
+		{
+			std::fprintf(stderr, "PASS  %-10s  %lld\n", key, actual);
+		}
+	};
+
+	check("cursorX", actX,      expX);
+	check("cursorY", actY,      expY);
+	check("seed",    actSeed,   expSeed);
+	check("frames",  actFrames, expFrames);
+
+	return pass ? 0 : 1;
+}
+
 void printUsage()
 {
 	std::fprintf(stderr,
 		"usage: mitiru_subsys_replay --record <path> | --record-variant <path>"
 		" | --replay <path> | --diff <fileA> <fileB>"
-		" | --state-divergence <runA> <runB>\n");
+		" | --state-divergence <runA> <runB>"
+		" | --test <path> [--expect <json>]\n");
 }
 
 }  // namespace
 
 int main(int argc, char* argv[])
 {
+	if (argc < 2) { printUsage(); return 2; }
+
+	// ── Headless test mode: --test <path> [--expect <json>] ────────────────
+	if (std::strcmp(argv[1], "--test") == 0)
+	{
+		if (argc < 3) { printUsage(); return 2; }
+		std::string replayPath = argv[2];
+		std::string expectPath;
+		for (int i = 3; i < argc - 1; ++i)
+		{
+			if (std::strcmp(argv[i], "--expect") == 0)
+			{
+				expectPath = argv[i + 1];
+				break;
+			}
+		}
+		return runHeadlessTest(replayPath, expectPath);
+	}
+
 	if (argc < 3) { printUsage(); return 2; }
 
 	// ── Diff mode: --diff <fileA> <fileB> ──────────────────────────────────
