@@ -67,6 +67,7 @@ public:
 
         client->onBrowserCreated(m_browser);
         client->renderHandler()->setSize(width, height);
+        m_client = client;          // hold ref for runtime renderHandler->setSize
         m_width  = width;
         m_height = height;
         return true;
@@ -103,6 +104,13 @@ public:
     }
 
     /// @brief ビューポートをリサイズする
+    /// @details CEF の `WasResized()` は browser host にサイズ通知を送るが、
+    ///          実際に CEF が再描画する際の viewport 寸法は
+    ///          `MitiruCefRenderHandler::GetViewRect` の返値で決まる。
+    ///          そのため render handler 側にも `setSize` を流して、CEF が
+    ///          新サイズで HTML を re-layout + OnPaint するようにする。
+    ///          これを呼ばないと CSS `@media` が反応せず、新サイズ window
+    ///          に古いレイアウトが bilinear stretch される。
     void resize(int width, int height)
     {
         if (!m_host || (width == m_width && height == m_height))
@@ -111,7 +119,19 @@ public:
         }
         m_width  = width;
         m_height = height;
+        if (m_client && m_client->renderHandler())
+        {
+            m_client->renderHandler()->setSize(width, height);
+        }
         m_host->WasResized();
+        // CRITICAL: WasResized() alone may be debounced by CEF when
+        // multiple resize events arrive in quick succession (e.g.
+        // maximize → restore → drag-resize). Invalidate forces a fresh
+        // OnPaint at the new viewport, ensuring our pending texture
+        // resize gets applied. Without this, the texture stays at an
+        // intermediate stale size and composite stretches it onto the
+        // final window dims (2026-05-21 user verdict, maximize chain).
+        m_host->Invalidate(PET_VIEW);
     }
 
     /// @brief ブラウザを閉じる (非同期)
@@ -155,10 +175,18 @@ public:
     [[nodiscard]] int  height()  const { return m_height; }
 
     /// @brief LifeSpanHandler からブラウザが閉じられた後に呼ぶ
+    /// @details m_client も release する。これをしないと
+    ///          ~MitiruCefBrowser (= MitiruCefContext destructor) が
+    ///          **CefShutdown 後** に走り、~MitiruCefClient の
+    ///          `router->RemoveHandler` で `Check failed: CefCurrentlyOn(TID_UI)`
+    ///          FATAL になる。release ここで済ませれば、shutdown 内の
+    ///          `m_client = nullptr` で refcount 0 確定 → destructor が
+    ///          CEF alive な UI thread で走る。
     void onClosed()
     {
         m_host    = nullptr;
         m_browser = nullptr;
+        m_client  = nullptr;
     }
 
 private:
@@ -167,8 +195,9 @@ private:
         return m_browser ? m_browser->GetMainFrame() : nullptr;
     }
 
-    CefRefPtr<CefBrowser>     m_browser;
-    CefRefPtr<CefBrowserHost> m_host;   ///< GetHost() 結果をキャッシュ — 一時 CefRefPtr 問題を回避
+    CefRefPtr<CefBrowser>      m_browser;
+    CefRefPtr<CefBrowserHost>  m_host;     ///< GetHost() 結果をキャッシュ — 一時 CefRefPtr 問題を回避
+    CefRefPtr<MitiruCefClient> m_client;   ///< render handler への参照を runtime resize で使う
     int m_width  = 1920;
     int m_height = 1080;
 };

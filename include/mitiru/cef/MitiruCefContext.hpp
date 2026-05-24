@@ -36,10 +36,12 @@
 #  undef GetNextSibling
 #endif
 
+#include <chrono>
 #include <functional>
 #include <span>
 #include <string>
 #include <string_view>
+#include <thread>
 
 #include "include/cef_app.h"
 #include "include/cef_base.h"
@@ -355,7 +357,7 @@ public:
             m_browser.claimKeyboardFocus();
             m_focusClaimedOnce = true;
         }
-        m_input.update(m_browser.host(), input);
+        m_input.update(m_browser.host(), input, &m_texture);
     }
 
     /// @brief CEF への入力転送を有効/無効にする
@@ -464,6 +466,11 @@ public:
     // ── リサイズ ──────────────────────────────────────────────
 
     /// @brief ビューポートをリサイズする
+    /// @details non-blocking。composite は texture dim を viewport にするので
+    ///          (MitiruCefTexture::composite 参照) CEF が catch-up するまでは
+    ///          texture が old size のまま old content を 1:1 表示し、余白に
+    ///          engine clear color が見える (letterbox)。CEF が新 dim で paint
+    ///          したら自動的に viewport が拡大する。stretch / 判定ズレなし。
     void resize(
         mitiru::gfx::Dx12Device& device,
         int width,
@@ -475,8 +482,8 @@ public:
         }
         m_width  = width;
         m_height = height;
-        m_browser.resize(width, height);
-        m_texture.resize(device, width, height);
+        m_browser.resize(width, height); // WasResized + Invalidate
+        m_texture.resize(device, width, height); // pending mark
     }
 
     // ── アクセサー ────────────────────────────────────────────

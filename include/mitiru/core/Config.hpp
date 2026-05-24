@@ -6,13 +6,18 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <functional>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <sgc/types/Color.hpp>
+
 namespace mitiru
 {
+
+class Engine;  // forward decl for onFrameStart callback signature
 
 /// @brief グラフィックスバックエンド列挙
 namespace gfx
@@ -62,6 +67,38 @@ struct EngineConfig
 	DisplayMode displayMode = DisplayMode::Windowed; ///< 表示モード
 	bool vsync = true;                     ///< 垂直同期 (DX12 SwapChain Present interval)
 	int targetFps = 0;                     ///< フレームレート上限 (0=無制限。vsync が ON の場合は vsync が優先)
+
+	/// @brief ユーザがウィンドウ枠でリサイズできるか
+	/// @details false にすると WS_THICKFRAME / WS_MAXIMIZEBOX が外れ、
+	///          固定サイズの window になる。Siv3D の `WindowStyle::Fixed`
+	///          に相当。ピクセルアート / 固定解像度ゲームで誤リサイズ
+	///          を防ぎたい場合に使う。
+	bool windowResizable = true;
+
+	/// @brief 動的リサイズ時の logical screen size の扱い
+	/// @details Siv3D の `Scene::SetResizeMode` に相当する3-mode 切替:
+	///   - **Actual**: logical = physical (1:1)。HTML の `@media` も発火、
+	///                 native draw も physical coords。動的レイアウト推奨。
+	///   - **Virtual**: logical を初期値で固定、viewport だけ physical 追従。
+	///                  anisotropic stretch (アスペクト保たれない)。Siv3D の
+	///                  `Virtual` と同じ。論理座標で書かれた legacy game 向け。
+	///   - **Keep**: logical を初期値で固定、viewport は letterbox/pillarbox
+	///               でアスペクト保持。固定解像度のゲームに最適。
+	enum class ResizeMode : std::uint32_t
+	{
+		Actual  = 0,
+		Virtual = 1,
+		Keep    = 2,
+	};
+	ResizeMode resizeMode = ResizeMode::Actual;
+
+	/// @brief フレーム冒頭で device 経由で issued される clear color。
+	/// @details DLL 内 `screen->clear(...)` は m_clearColor を更新するが
+	///          実際の ClearRenderTargetView は frame 頭で device->m_clearColor
+	///          を使って発行されるため、DLL からの per-frame 上書きは効かない。
+	///          host (mitiru_host 等) でゲーム本体の背景色を統一したい場合は
+	///          このフィールドに値を設定する。default は黒 (後方互換)。
+	sgc::Colorf backgroundColor{0.0f, 0.0f, 0.0f, 1.0f};
 
 	/// @brief ゲーム側で選択可能な解像度プリセット
 	/// @details 設定 UI のドロップダウン用。空ならプリセット非表示。
@@ -179,6 +216,15 @@ struct EngineConfig
 	// ── 設定永続化 ──
 	bool persistSettings = false;          ///< 起動時に settings.json を読み込み、変更時に保存する
 	std::string settingsFileName = "settings.json"; ///< 設定ファイル名 (%APPDATA%/<title>/ 配下に配置)
+
+	// ── per-frame host hook ─────────────────────────────────────────────
+	/// @brief tickOneFrame の先頭で呼ばれる (optional)
+	/// @details Host が「main loop に割り込みたい」用途のためのフック。
+	///          典型的な用途は **DLL hot reload の file watcher** —
+	///          `mitiru_host --watch` がここで DLL の mtime を polling し、
+	///          変化があれば `engine.reloadModule(path)` を呼ぶ。
+	///          設定されていなければ engine 側は no-op。
+	std::function<void(mitiru::Engine&)> onFrameStart;
 
 	// ── 自律テストモード ──
 	/// @brief テストモードフラグ（指定フレーム後に自動キャプチャ＆終了）

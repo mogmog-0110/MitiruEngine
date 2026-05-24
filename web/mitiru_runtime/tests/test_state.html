@@ -1,0 +1,227 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_state.js tests</title>
+<!--
+    test_state.html — mitiru.state (F-03) unit tests
+    Pattern: inline IIFE, no module imports — matches mitiru_drag.js / mitiru_debug.js style.
+
+    Run:
+      python -m http.server 8765 --bind 127.0.0.1
+      open http://localhost:8765/web/mitiru_runtime/tests/test_state.html
+      (or: node headless runner — see WEB_RUNTIME.md)
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_state.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+    'use strict';
+
+    const t = mitiru.test;
+    const s = mitiru.state;
+
+    // Helper: clear store between tests by resetting known keys.
+    function reset(keys)
+    {
+        keys.forEach(function(k) { s.reset(k); });
+    }
+
+    // ── 1. get / set basics ──────────────────────────────────────
+    t.case('set + get roundtrip (string value)', function()
+    {
+        s.set('t1_str', 'hello');
+        t.assertEq(s.get('t1_str'), 'hello');
+        reset(['t1_str']);
+    });
+
+    t.case('set + get roundtrip (object value)', function()
+    {
+        s.set('t1_obj', { x: 1, y: 2 });
+        t.assertEq(s.get('t1_obj'), { x: 1, y: 2 });
+        reset(['t1_obj']);
+    });
+
+    t.case('get returns fallback when key is absent', function()
+    {
+        t.assertEq(s.get('no_such_key', 42), 42);
+    });
+
+    t.case('get returns undefined when key absent and no fallback given', function()
+    {
+        t.assertEq(s.get('no_such_key_2'), undefined);
+    });
+
+    // ── 2. immutability ──────────────────────────────────────────
+    t.case('stored object is frozen (immutability)', function()
+    {
+        s.set('t2_freeze', { score: 10 });
+        const v = s.get('t2_freeze');
+        t.assert(Object.isFrozen(v), 'value should be frozen');
+        reset(['t2_freeze']);
+    });
+
+    t.case('set does not mutate original object', function()
+    {
+        const original = { level: 5 };
+        s.set('t2_orig', original);
+        original.level = 999;  // mutate original
+        t.assertEq(s.get('t2_orig').level, 5, 'store should hold independent copy');
+        reset(['t2_orig']);
+    });
+
+    // ── 3. subscribe / unsubscribe ───────────────────────────────
+    t.case('subscribe fires immediately when value already exists', function()
+    {
+        s.set('t3_sub', 77);
+        const received = [];
+        s.subscribe('t3_sub', function(v) { received.push(v); });
+        t.assertEq(received, [77], 'should receive current value on subscribe');
+        reset(['t3_sub']);
+    });
+
+    t.case('subscribe does not fire immediately when key is absent', function()
+    {
+        const received = [];
+        s.subscribe('t3_nosub', function(v) { received.push(v); });
+        t.assertEq(received, [], 'should not receive anything when key absent');
+        s.unsubscribe('t3_nosub', received[0]);
+    });
+
+    t.case('subscribe fires on subsequent set()', function()
+    {
+        const received = [];
+        s.subscribe('t3_fire', function(v) { received.push(v); });
+        s.set('t3_fire', 'a');
+        s.set('t3_fire', 'b');
+        t.assertEq(received, ['a', 'b']);
+        reset(['t3_fire']);
+    });
+
+    t.case('unsubscribe stops notifications', function()
+    {
+        const received = [];
+        const fn = function(v) { received.push(v); };
+        s.subscribe('t3_unsub', fn);
+        s.set('t3_unsub', 1);
+        s.unsubscribe('t3_unsub', fn);
+        s.set('t3_unsub', 2);
+        t.assertEq(received, [1], 'should not receive after unsubscribe');
+        reset(['t3_unsub']);
+    });
+
+    t.case('subscribe returns an unsubscribe function', function()
+    {
+        const received = [];
+        const off = s.subscribe('t3_unsub_fn', function(v) { received.push(v); });
+        s.set('t3_unsub_fn', 'x');
+        t.assert(typeof off === 'function', 'should return function');
+        off();
+        s.set('t3_unsub_fn', 'y');
+        t.assertEq(received, ['x']);
+        reset(['t3_unsub_fn']);
+    });
+
+    // ── 4. reset ─────────────────────────────────────────────────
+    t.case('reset removes key and notifies with undefined', function()
+    {
+        const received = [];
+        s.set('t4_reset', 'present');
+        s.subscribe('t4_reset', function(v) { received.push(v); });
+        // subscribe fires immediately with 'present'
+        s.reset('t4_reset');
+        t.assertEq(received, ['present', undefined]);
+        t.assertEq(s.get('t4_reset'), undefined);
+    });
+
+    t.case('reset on absent key is a no-op', function()
+    {
+        t.assertNoThrow(function() { s.reset('ghost_key_xyz'); });
+    });
+
+    // ── 5. keys / snapshot ───────────────────────────────────────
+    t.case('keys() returns live key list', function()
+    {
+        reset(['snap_a', 'snap_b']);
+        s.set('snap_a', 1);
+        s.set('snap_b', 2);
+        const k = s.keys();
+        t.assert(k.indexOf('snap_a') >= 0, 'snap_a in keys');
+        t.assert(k.indexOf('snap_b') >= 0, 'snap_b in keys');
+        reset(['snap_a', 'snap_b']);
+    });
+
+    t.case('snapshot() returns plain copy of store', function()
+    {
+        reset(['ss_x', 'ss_y']);
+        s.set('ss_x', 10);
+        s.set('ss_y', 20);
+        const snap = s.snapshot();
+        t.assertEq(snap.ss_x, 10);
+        t.assertEq(snap.ss_y, 20);
+        // snapshot should not be the internal store
+        snap.ss_x = 999;
+        t.assertEq(s.get('ss_x'), 10, 'snapshot mutation should not affect store');
+        reset(['ss_x', 'ss_y']);
+    });
+
+    // ── 6. input validation ──────────────────────────────────────
+    t.case('set throws on empty key', function()
+    {
+        t.assertThrow(function() { s.set('', 'value'); });
+    });
+
+    t.case('set throws on non-string key', function()
+    {
+        t.assertThrow(function() { s.set(42, 'value'); });
+    });
+
+    t.case('subscribe throws on non-function subscriber', function()
+    {
+        t.assertThrow(function() { s.subscribe('bad_sub', 'not-a-function'); });
+    });
+
+    // ── 7. dispatch-based persistence (outside CEF — should reject) ──
+    t.case('save rejects outside CEF (no cefQuery)', function()
+    {
+        s.set('persist_key', 'data');
+        // dispatch may not exist in plain browser; either way this path should reject.
+        const p = s.save('persist_key', 'slot1');
+        return p.then(
+            function() { t.assert(false, 'should have rejected'); },
+            function(err) { t.assert(err instanceof Error); }
+        );
+    });
+
+    t.case('load rejects outside CEF (no cefQuery)', function()
+    {
+        const p = s.load('persist_key', 'slot1');
+        return p.then(
+            function() { t.assert(false, 'should have rejected'); },
+            function(err) { t.assert(err instanceof Error); }
+        );
+    });
+
+    t.case('listSlots rejects outside CEF (no cefQuery)', function()
+    {
+        const p = s.listSlots();
+        return p.then(
+            function() { t.assert(false, 'should have rejected'); },
+            function(err) { t.assert(err instanceof Error); }
+        );
+    });
+
+    // ── run ──────────────────────────────────────────────────────
+    mitiru.test.run();
+})();
+</script>

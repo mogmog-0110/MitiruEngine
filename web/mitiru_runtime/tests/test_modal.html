@@ -1,0 +1,542 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_modal.js tests</title>
+<!--
+    test_modal.html — mitiru.modal (NF-13) unit tests
+
+    Run:
+      python tools/mitiru_serve.py --port 8770 --no-inject
+      open http://localhost:8770/web/mitiru_runtime/tests/test_modal.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<link rel="stylesheet" href="../mitiru_components.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_modal.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+	'use strict';
+
+	const t = mitiru.test;
+	const m = mitiru.modal;
+
+	// ── cleanup helper ────────────────────────────────────────────
+	// Forcibly close all open modals between tests to prevent leaked DOM.
+	async function cleanup()
+	{
+		while (m.count() > 0)
+		{
+			m.close(undefined);
+			await tick();
+		}
+	}
+
+	function tick()
+	{
+		return new Promise(function(r) { setTimeout(r, 0); });
+	}
+
+	// ── 1. alert resolves on OK click ─────────────────────────────
+	t.case('alert_opens_and_resolves_on_ok_click', async function()
+	{
+		var p = m.alert({ body: 'Hello' });
+		await tick();
+		t.assert(m.isOpen(), 'modal is open');
+
+		var okBtn = document.querySelector('.mitiru-modal__btn--ok');
+		t.assert(okBtn !== null, 'OK button exists');
+		okBtn.click();
+
+		await p;
+		await tick();
+		t.assert(!m.isOpen(), 'modal closed after OK');
+		await cleanup();
+	});
+
+	// ── 2. confirm resolves true on OK ────────────────────────────
+	t.case('confirm_resolves_true_on_ok', async function()
+	{
+		var p = m.confirm({ body: 'Are you sure?' });
+		await tick();
+
+		var okBtn = document.querySelector('.mitiru-modal__btn--ok');
+		okBtn.click();
+
+		var result = await p;
+		t.assertEq(result, true, 'confirm OK resolves true');
+		await cleanup();
+	});
+
+	// ── 3. confirm resolves false on Cancel ───────────────────────
+	t.case('confirm_resolves_false_on_cancel', async function()
+	{
+		var p = m.confirm({ body: 'Delete?' });
+		await tick();
+
+		var cancelBtn = document.querySelector('.mitiru-modal__btn--cancel');
+		t.assert(cancelBtn !== null, 'Cancel button exists');
+		cancelBtn.click();
+
+		var result = await p;
+		t.assertEq(result, false, 'confirm Cancel resolves false');
+		await cleanup();
+	});
+
+	// ── 4. prompt resolves to typed string on OK ──────────────────
+	t.case('prompt_resolves_typed_string_on_ok', async function()
+	{
+		var p = m.prompt({ body: 'Enter name:' });
+		await tick();
+
+		var input = document.querySelector('.mitiru-modal__input');
+		t.assert(input !== null, 'input element exists');
+		input.value = 'Alice';
+
+		var okBtn = document.querySelector('.mitiru-modal__btn--ok');
+		okBtn.click();
+
+		var result = await p;
+		t.assertEq(result, 'Alice', 'prompt resolves with typed string');
+		await cleanup();
+	});
+
+	// ── 5. prompt resolves null on Cancel ─────────────────────────
+	t.case('prompt_resolves_null_on_cancel', async function()
+	{
+		var p = m.prompt({ body: 'Enter value:' });
+		await tick();
+
+		var cancelBtn = document.querySelector('.mitiru-modal__btn--cancel');
+		cancelBtn.click();
+
+		var result = await p;
+		t.assertEq(result, null, 'prompt Cancel resolves null');
+		await cleanup();
+	});
+
+	// ── 6. prompt defaultValue pre-fills input ────────────────────
+	t.case('prompt_defaultValue_prefills_input', async function()
+	{
+		var p = m.prompt({ body: 'Name?', defaultValue: 'Bob' });
+		await tick();
+
+		var input = document.querySelector('.mitiru-modal__input');
+		t.assertEq(input.value, 'Bob', 'defaultValue pre-fills input');
+
+		var cancelBtn = document.querySelector('.mitiru-modal__btn--cancel');
+		cancelBtn.click();
+		await p;
+		await cleanup();
+	});
+
+	// ── 7. close(value) resolves programmatically ─────────────────
+	t.case('close_value_resolves_programmatically', async function()
+	{
+		var p = m.custom({ body: 'Custom' });
+		await tick();
+		t.assert(m.isOpen(), 'modal open before close()');
+
+		m.close('myValue');
+		var result = await p;
+
+		t.assertEq(result, 'myValue', 'close(value) passes value to promise');
+		t.assert(!m.isOpen(), 'modal closed after close()');
+		await cleanup();
+	});
+
+	// ── 8. isOpen / count reflect state ──────────────────────────
+	t.case('isOpen_and_count_reflect_state', async function()
+	{
+		t.assertEq(m.count(), 0, 'count 0 before open');
+		t.assertEq(m.isOpen(), false, 'isOpen false before open');
+
+		var p1 = m.alert({ body: 'A' });
+		await tick();
+		t.assertEq(m.count(), 1, 'count 1 after first open');
+		t.assert(m.isOpen(), 'isOpen true after first open');
+
+		var p2 = m.alert({ body: 'B' });
+		await tick();
+		t.assertEq(m.count(), 2, 'count 2 after second open');
+
+		m.close();
+		await tick();
+		t.assertEq(m.count(), 1, 'count 1 after first close');
+
+		m.close();
+		await tick();
+		t.assertEq(m.count(), 0, 'count 0 after second close');
+		t.assertEq(m.isOpen(), false, 'isOpen false after all closed');
+
+		await Promise.all([p1, p2]);
+		await cleanup();
+	});
+
+	// ── 9. Nested modals: B resolves first, A still open ─────────
+	t.case('nested_modals_b_resolves_first_a_still_open', async function()
+	{
+		var aResolved = false;
+		var bResolved = false;
+
+		var pa = m.alert({ body: 'Modal A' }).then(function() { aResolved = true; });
+		await tick();
+
+		var pb = m.alert({ body: 'Modal B' }).then(function() { bResolved = true; });
+		await tick();
+
+		t.assertEq(m.count(), 2, 'two modals open');
+
+		// Close topmost (B)
+		m.close();
+		await tick();
+
+		t.assertEq(bResolved, true, 'B resolved first');
+		t.assertEq(aResolved, false, 'A still pending');
+		t.assertEq(m.count(), 1, 'A still open');
+
+		m.close();
+		await tick();
+		t.assertEq(aResolved, true, 'A now resolved');
+
+		await Promise.all([pa, pb]);
+		await cleanup();
+	});
+
+	// ── 10. Escape closes topmost only ────────────────────────────
+	t.case('escape_closes_topmost_only', async function()
+	{
+		var pa = m.alert({ body: 'A' });
+		await tick();
+		var pb = m.alert({ body: 'B' });
+		await tick();
+
+		t.assertEq(m.count(), 2);
+
+		// Escape must be dispatched to the TOPMOST modal — each modal owns
+		// its own keydown listener, and the handler returns early when the
+		// event target is not the topmost stack entry.
+		var roots   = document.querySelectorAll('[data-mitiru-modal]');
+		var topRoot = roots[roots.length - 1];
+		var escEvt  = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+		topRoot.dispatchEvent(escEvt);
+		await tick();
+
+		t.assertEq(m.count(), 1, 'Escape closed only topmost');
+
+		m.close(); m.close();
+		await Promise.all([pa, pb]);
+		await cleanup();
+	});
+
+	// ── 11. closeOnEscape:false prevents Escape close ─────────────
+	t.case('closeOnEscape_false_escape_does_not_close', async function()
+	{
+		var resolved = false;
+		var p = m.alert({ body: 'Sticky', closeOnEscape: false }).then(function() { resolved = true; });
+		await tick();
+
+		var root = document.querySelector('[data-mitiru-modal]');
+		root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		await tick();
+
+		t.assertEq(resolved, false, 'Escape did not close modal');
+		t.assert(m.isOpen(), 'modal still open');
+
+		m.close();
+		await p;
+		await cleanup();
+	});
+
+	// ── 12. Backdrop click closes with dismissed:true ─────────────
+	t.case('backdrop_click_closes_with_dismissed_true', async function()
+	{
+		var closePayload = null;
+		var unsub = m.on('close', function(d) { closePayload = d; });
+
+		var p = m.confirm({ body: 'Backdrop test' });
+		await tick();
+
+		var backdrop = document.querySelector('.mitiru-modal-backdrop');
+		backdrop.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await p;
+		await tick();
+
+		t.assert(closePayload !== null, 'close event fired');
+		t.assertEq(closePayload.dismissed, true, 'dismissed:true on backdrop click');
+
+		unsub();
+		await cleanup();
+	});
+
+	// ── 13. closeOnBackdrop:false — backdrop click does nothing ───
+	t.case('closeOnBackdrop_false_backdrop_does_not_close', async function()
+	{
+		var resolved = false;
+		var p = m.alert({ body: 'No backdrop', closeOnBackdrop: false }).then(function() { resolved = true; });
+		await tick();
+
+		var backdrop = document.querySelector('.mitiru-modal-backdrop');
+		backdrop.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await tick();
+
+		t.assertEq(resolved, false, 'backdrop click did not close');
+
+		m.close();
+		await p;
+		await cleanup();
+	});
+
+	// ── 14. Focus trap: Tab at last focusable wraps to first ──────
+	t.case('focus_trap_tab_at_last_wraps_to_first', async function()
+	{
+		var p = m.confirm({ body: 'Focus trap test', title: 'Trap' });
+		await tick();
+
+		var box = document.querySelector('.mitiru-modal');
+		var focusable = box.querySelectorAll(
+			'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])');
+		t.assert(focusable.length >= 2, 'at least 2 focusable elements');
+
+		// Move focus to last element
+		var last = focusable[focusable.length - 1];
+		last.focus();
+		t.assertEq(document.activeElement, last, 'last element focused');
+
+		// Dispatch Tab
+		var tabEvt = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+		var root = document.querySelector('[data-mitiru-modal]');
+		root.dispatchEvent(tabEvt);
+
+		// After trap, first element should be focused
+		t.assertEq(document.activeElement, focusable[0], 'focus wrapped to first element');
+
+		m.close();
+		await p;
+		await cleanup();
+	});
+
+	// ── 15. activeElement restored on close ───────────────────────
+	t.case('active_element_restored_on_close', async function()
+	{
+		// Create a button to focus, simulating a trigger element
+		var btn = document.createElement('button');
+		btn.textContent = 'Trigger';
+		document.body.appendChild(btn);
+		btn.focus();
+
+		var p = m.alert({ body: 'Restore focus test' });
+		await tick();
+
+		m.close();
+		await p;
+		await tick();
+
+		t.assertEq(document.activeElement, btn, 'focus restored to triggering element');
+		document.body.removeChild(btn);
+		await cleanup();
+	});
+
+	// ── 16. 'open' and 'close' events fire with correct payload ───
+	t.case('open_and_close_events_fire_with_correct_payload', async function()
+	{
+		var openPayload  = null;
+		var closePayload = null;
+
+		var u1 = m.on('open',  function(d) { openPayload  = d; });
+		var u2 = m.on('close', function(d) { closePayload = d; });
+
+		var p = m.confirm({ body: 'Event test' });
+		await tick();
+
+		t.assert(openPayload !== null, 'open event fired');
+		t.assertEq(openPayload.kind, 'confirm', 'open.kind = confirm');
+
+		var okBtn = document.querySelector('.mitiru-modal__btn--ok');
+		okBtn.click();
+		await p;
+		await tick();
+
+		t.assert(closePayload !== null, 'close event fired');
+		t.assertEq(closePayload.kind, 'confirm', 'close.kind = confirm');
+		t.assertEq(closePayload.value, true, 'close.value = true (OK)');
+		t.assertEq(closePayload.dismissed, false, 'close.dismissed = false (OK pressed)');
+
+		u1(); u2();
+		await cleanup();
+	});
+
+	// ── 17. okKind='danger' adds danger class to OK button ────────
+	t.case('okKind_danger_adds_danger_class_to_ok_button', async function()
+	{
+		var p = m.alert({ body: 'Destructive!', okKind: 'danger' });
+		await tick();
+
+		var okBtn = document.querySelector('.mitiru-modal__btn--ok');
+		t.assert(okBtn.classList.contains('mitiru-modal__btn--danger'),
+			'OK button has --danger class');
+
+		okBtn.click();
+		await p;
+		await cleanup();
+	});
+
+	// ── 18. dismissable:false hides the × button ──────────────────
+	t.case('dismissable_false_hides_close_button', async function()
+	{
+		var p = m.alert({ body: 'No X', dismissable: false });
+		await tick();
+
+		var closeBtn = document.querySelector('.mitiru-modal__close');
+		t.assertEq(closeBtn, null, '× button not rendered when dismissable:false');
+
+		m.close();
+		await p;
+		await cleanup();
+	});
+
+	// ── 19. body as HTMLElement is appended correctly ─────────────
+	t.case('body_as_html_element_is_appended', async function()
+	{
+		var span = document.createElement('span');
+		span.textContent = 'Node body';
+		span.className = 'test-node-body';
+
+		var p = m.alert({ body: span });
+		await tick();
+
+		var found = document.querySelector('.mitiru-modal__body .test-node-body');
+		t.assert(found !== null, 'HTMLElement body was appended');
+		t.assertEq(found.textContent, 'Node body');
+
+		m.close();
+		await p;
+		await cleanup();
+	});
+
+	// ── 20. html:true renders innerHTML (no injection on false) ───
+	t.case('html_true_renders_innerHTML_html_false_uses_textContent', async function()
+	{
+		// html:true
+		var p1 = m.alert({ body: '<strong>Bold</strong>', html: true });
+		await tick();
+
+		var bodyEl = document.querySelector('.mitiru-modal__body');
+		t.assert(bodyEl.querySelector('strong') !== null, 'html:true renders as innerHTML');
+
+		m.close();
+		await p1;
+		await tick();
+
+		// html:false (default)
+		var p2 = m.alert({ body: '<script>evil()</scr'+'ipt>', html: false });
+		await tick();
+
+		var bodyEl2 = document.querySelector('.mitiru-modal__body');
+		t.assert(bodyEl2.querySelector('script') === null, 'html:false no script injection');
+		t.assert(bodyEl2.textContent.indexOf('<script>') >= 0, 'html:false content treated as text');
+
+		m.close();
+		await p2;
+		await cleanup();
+	});
+
+	// ── 21. close() on no-open does not throw ─────────────────────
+	t.case('close_on_no_open_does_not_throw', function()
+	{
+		t.assertEq(m.count(), 0, 'no open modals');
+		t.assertNoThrow(function() { m.close(); }, 'close() on empty stack does not throw');
+		t.assertNoThrow(function() { m.close('value'); }, 'close(value) on empty stack does not throw');
+	});
+
+	// ── 22. ARIA attributes present on dialog element ──────────────
+	t.case('aria_attributes_present_on_dialog', async function()
+	{
+		var p = m.alert({ title: 'ARIA Test', body: 'Check attributes' });
+		await tick();
+
+		var dialog = document.querySelector('[role="dialog"]');
+		t.assert(dialog !== null, 'role=dialog present');
+		t.assertEq(dialog.getAttribute('aria-modal'), 'true', 'aria-modal=true');
+
+		var labelId = dialog.getAttribute('aria-labelledby');
+		t.assert(labelId !== null, 'aria-labelledby set when title given');
+
+		var titleEl = document.getElementById(labelId);
+		t.assert(titleEl !== null, 'title element found by labelledby id');
+		t.assertEq(titleEl.textContent, 'ARIA Test', 'title content correct');
+
+		m.close();
+		await p;
+		await cleanup();
+	});
+
+	// ── 23. No title: aria-labelledby omitted ─────────────────────
+	t.case('no_title_aria_labelledby_omitted', async function()
+	{
+		var p = m.alert({ body: 'No title modal' });
+		await tick();
+
+		var dialog = document.querySelector('[role="dialog"]');
+		var labelId = dialog.getAttribute('aria-labelledby');
+		t.assertEq(labelId, null, 'aria-labelledby absent when no title');
+
+		m.close();
+		await p;
+		await cleanup();
+	});
+
+	// ── 24. on/off subscribe and unsubscribe ──────────────────────
+	t.case('on_returns_unsub_fn_off_removes_listener', async function()
+	{
+		var count = 0;
+		var fn = function() { count++; };
+
+		var unsub = m.on('open', fn);
+
+		var p1 = m.alert({ body: 'A' });
+		await tick();
+		t.assertEq(count, 1, 'listener called after on()');
+
+		m.close();
+		await p1;
+		await tick();
+
+		unsub();
+
+		var p2 = m.alert({ body: 'B' });
+		await tick();
+		t.assertEq(count, 1, 'listener NOT called after unsub');
+
+		m.close();
+		await p2;
+		await cleanup();
+	});
+
+	// ── 25. Escape on prompt resolves null ────────────────────────
+	t.case('escape_on_prompt_resolves_null', async function()
+	{
+		var p = m.prompt({ body: 'Hit Escape' });
+		await tick();
+
+		var root = document.querySelector('[data-mitiru-modal]');
+		root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+
+		var result = await p;
+		t.assertEq(result, null, 'Escape on prompt resolves null');
+		await cleanup();
+	});
+
+	// ── run ──────────────────────────────────────────────────────
+	mitiru.test.run();
+})();
+</script>

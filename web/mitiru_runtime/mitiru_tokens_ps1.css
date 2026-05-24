@@ -1,0 +1,146 @@
+/*!
+ * mitiru_tokens_ps1.css — PlayStation 1 BIOS / Memory Card inspired theme
+ *
+ * Design intent: 1996 PSX boot screen. Pure black void, cyan brand glow,
+ * yellow selection. Bitmap monospace, hard 1px borders, radius 0, optional
+ * CRT scanline overlay. The only dark theme in the retro trio.
+ *
+ * Swap by replacing the <link> to mitiru_tokens.css with this file.
+ * Recommended <head> font import:
+ *   <link rel="preconnect" href="https://fonts.googleapis.com">
+ *   <link rel="stylesheet"
+ *     href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+ */
+:root
+{
+	/* ── Base palette: PS1 BIOS (black + cyan + yellow) ──────────── */
+	--mitiru-paper:        #000000;   /* pure black void */
+	--mitiru-paper-hi:     #0a0a1f;   /* near-black with hint of navy */
+	--mitiru-ink:          #ffffff;   /* pure white phosphor text */
+	--mitiru-ink-mute:     #a0a0c0;   /* dim lavender for metadata */
+	--mitiru-cyan:         #00d4ff;   /* PSX logo cyan */
+	--mitiru-cyan-hi:      #33e0ff;   /* brighter cyan on hover */
+	--mitiru-yellow:       #ffea00;   /* memory-card selection yellow */
+	--mitiru-phosphor:     #00d4ff;   /* success uses brand cyan */
+	--mitiru-brick:        #ff3030;   /* error red */
+	--mitiru-paper-edge:   #00d4ff;   /* cyan hairline borders */
+
+	/* ── Semantic aliases ─────────────────────────────────────── */
+	--mitiru-bg:        var(--mitiru-paper);
+	--mitiru-surface:   var(--mitiru-paper-hi);
+	--mitiru-text:      var(--mitiru-ink);
+	--mitiru-text-mute: var(--mitiru-ink-mute);
+	--mitiru-accent:    var(--mitiru-cyan);
+	--mitiru-accent-hi: var(--mitiru-cyan-hi);
+	--mitiru-success:   var(--mitiru-cyan);
+	--mitiru-warning:   var(--mitiru-yellow);
+	--mitiru-danger:    var(--mitiru-brick);
+	--mitiru-focus:     var(--mitiru-yellow);
+	--mitiru-border:    var(--mitiru-paper-edge);
+	--mitiru-border-soft: rgba(0, 212, 255, 0.30);
+
+	--mitiru-row-tint:  rgba(0, 212, 255, 0.04);
+
+	/* ── Typography — bitmap monospace ────────────────────────── */
+	--mitiru-font-body:    "Press Start 2P", "Courier New", "MS Gothic",
+	                       ui-monospace, "Consolas", monospace;
+	--mitiru-font-display: "Press Start 2P", "Courier New", "MS Gothic",
+	                       ui-monospace, "Consolas", monospace;
+	--mitiru-font-mono:    "Press Start 2P", "Courier New", "MS Gothic",
+	                       ui-monospace, "Consolas", monospace;
+	--mitiru-font-prose:   "Courier New", "MS Gothic", "Consolas", monospace;
+
+	/* Press Start 2P renders ~30% larger glyph cell than Inter at same px,
+	   so we scale the base scale down a touch to keep panels readable. */
+	--mitiru-text-xs:   10px;
+	--mitiru-text-sm:   11px;
+	--mitiru-text-md:   12px;
+	--mitiru-text-lg:   14px;
+	--mitiru-text-xl:   16px;
+	--mitiru-text-2xl:  20px;
+	--mitiru-text-3xl:  28px;
+
+	--mitiru-leading-tight:  1.3;
+	--mitiru-leading-normal: 1.6;
+	--mitiru-leading-loose:  1.8;
+
+	/* ── Spacing — 8 multiples ────────────────────────────────── */
+	--mitiru-space-0:  0;
+	--mitiru-space-1:  4px;
+	--mitiru-space-2:  8px;
+	--mitiru-space-3:  12px;
+	--mitiru-space-4:  16px;
+	--mitiru-space-5:  24px;
+	--mitiru-space-6:  32px;
+	--mitiru-space-7:  48px;
+
+	/* ── Corner radius — zero, hardware was square ────────────── */
+	--mitiru-radius-sm:   0;
+	--mitiru-radius-md:   0;
+	--mitiru-radius-lg:   0;
+	--mitiru-radius-pill: 0;
+
+	/* ── Elevation — hard cyan halo, no soft glow ─────────────── */
+	--mitiru-shadow-1: 0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-2: 0 0 0 1px var(--mitiru-border),
+	                   0 0 8px rgba(0, 212, 255, 0.20);
+	--mitiru-shadow-3: 0 0 0 1px var(--mitiru-border),
+	                   0 0 16px rgba(0, 212, 255, 0.30);
+	--mitiru-shadow-4: 0 0 0 1px var(--mitiru-border),
+	                   0 0 32px rgba(0, 212, 255, 0.40);
+
+	/* Focus ring — yellow selection */
+	--mitiru-focus-ring: 0 0 0 2px var(--mitiru-yellow);
+
+	--mitiru-blur-sm: blur(0);
+	--mitiru-blur-md: blur(0);
+	--mitiru-blur-lg: blur(0);
+
+	/* ── Z-index ladder ─────────────────────────────────────── */
+	--mitiru-z-base:     0;
+	--mitiru-z-hud:      100;
+	--mitiru-z-overlay:  200;
+	--mitiru-z-modal:    300;
+	--mitiru-z-toast:    400;
+	--mitiru-z-drag:     500;
+
+	/* ── Transition — instant feel, like hardware-blit ────────── */
+	--mitiru-ease:          steps(2, end);
+	--mitiru-ease-bounce:   steps(2, end);
+	--mitiru-duration-fast: 60ms;
+	--mitiru-duration-mid:  120ms;
+	--mitiru-duration-slow: 200ms;
+}
+
+body
+{
+	background: var(--mitiru-bg);
+	color: var(--mitiru-text);
+	font-family: var(--mitiru-locale-font, var(--mitiru-font-body));
+	font-size: var(--mitiru-text-md);
+	line-height: var(--mitiru-leading-normal);
+	letter-spacing: 0.06em;
+	font-variant-numeric: tabular-nums;
+	-webkit-font-smoothing: none;
+	-moz-osx-font-smoothing: auto;
+	image-rendering: pixelated;
+	position: relative;
+}
+
+/* CRT scanline overlay — purely decorative, ignores pointer events. */
+body::before
+{
+	content: "";
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	background: repeating-linear-gradient(
+		to bottom,
+		rgba(0, 0, 0, 0)     0px,
+		rgba(0, 0, 0, 0)     2px,
+		rgba(0, 0, 0, 0.18)  3px,
+		rgba(0, 0, 0, 0.18)  4px
+	);
+	z-index: 9999;
+	mix-blend-mode: multiply;
+}

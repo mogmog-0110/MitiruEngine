@@ -1,0 +1,360 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>CEF CSS capability probe (F-06)</title>
+<!--
+    test_cef_css_probe.html — live capability probe for CSS features that
+    the docs/CEF_CSS_CAPABILITIES.md matrix lists as "untested" under CEF.
+
+    This page is NOT part of the mitiru.test automated suite — it is meant
+    to be opened by a human inside a running CEF Release build of the
+    engine.  The matrix's ⚠ untested entries get promoted to ✅ / ❌ by
+    visually eyeballing the rendered result and checking the console for
+    the programmatic CSS.supports() readout.
+
+    How to use:
+      1. Build MitiruEngine with CEF in Release config.
+      2. Launch the engine and load this file via file://.
+      3. Compare each tile to the "expected" callout below it.
+      4. Check DevTools console — the probe auto-logs CSS.supports() results.
+      5. Update docs/CEF_CSS_CAPABILITIES.md with the observed status.
+
+    Expected readings in a bog-standard Chromium (dev reference):
+      - filter: blur()              — blur visible, text becomes soft
+      - backdrop-filter: blur()     — content behind the pane is blurred
+      - mix-blend-mode              — each variant blends the rect into bg
+      - clip-path: polygon / path   — diamond / star-shape rendered cleanly
+      - radial / conic gradient     — smooth interpolation, no banding
+-->
+<style>
+    :root {
+        color-scheme: light;
+        font-family: "Roboto", "Noto Sans JP", system-ui, sans-serif;
+    }
+    body {
+        margin: 0;
+        padding: 24px;
+        background: #f5f2eb;
+        color: #2b2118;
+    }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+    }
+    .card {
+        background: #fff;
+        border: 1px solid #c9c3b8;
+        border-radius: 8px;
+        padding: 12px;
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+    }
+    .card__title {
+        font-size: 12px;
+        font-weight: bold;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #5b4b38;
+        margin-bottom: 8px;
+    }
+    .card__meta {
+        font-size: 11px;
+        color: #7f705a;
+        margin-top: 8px;
+        font-family: monospace;
+    }
+    .card__stage {
+        flex: 1;
+        position: relative;
+        background:
+            repeating-linear-gradient(45deg, #e0d7c4, #e0d7c4 8px,
+                                      #efe7d4 8px, #efe7d4 16px);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .card__stage--solid { background: #6aaaff; }
+
+    /* ── Probes ──────────────────────────────────────────────── */
+
+    .probe-blur {
+        position: absolute; inset: 20%;
+        background: #fff;
+        display: flex; align-items: center; justify-content: center;
+        filter: blur(4px);
+        font-weight: bold;
+    }
+
+    .probe-backdrop {
+        position: absolute; inset: 20%;
+        background: rgba(255, 255, 255, 0.3);
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+        border-radius: 8px;
+    }
+
+    .probe-blend {
+        position: absolute; inset: 15% 15% 15% 15%;
+    }
+    .probe-blend > div {
+        position: absolute; width: 80%; height: 80%;
+        border-radius: 50%;
+    }
+    .probe-blend > div:nth-child(1) { left: 0;  top: 0;  background: #e63946; mix-blend-mode: var(--blend-mode, multiply); }
+    .probe-blend > div:nth-child(2) { right: 0; bottom:0; background: #4da6ff; mix-blend-mode: var(--blend-mode, multiply); }
+
+    .probe-clip-polygon {
+        position: absolute; inset: 20%;
+        background: #e07a5f;
+        clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    }
+    .probe-clip-path {
+        position: absolute; inset: 20%;
+        background: #81b29a;
+        clip-path: path("M10,80 Q50,10 90,80 Q50,50 10,80 Z");
+    }
+
+    .probe-radial {
+        position: absolute; inset: 10%;
+        background: radial-gradient(circle at 30% 30%, #fffbe0, #ff6a00 60%, #b30000);
+        border-radius: 50%;
+    }
+    .probe-conic {
+        position: absolute; inset: 10%;
+        background: conic-gradient(from 0deg, #fffbe0, #ffd36a, #fffbe0, #ffd36a, #fffbe0);
+        border-radius: 50%;
+    }
+
+    .probe-turbulence {
+        position: absolute; inset: 10%;
+        background: #efe7d4;
+        filter: url(#turbulence-filter);
+    }
+
+    .status {
+        display: inline-block; padding: 2px 8px;
+        border-radius: 4px; font-size: 11px;
+        font-family: monospace;
+        margin-left: 6px;
+    }
+    .status--ok   { background: #c8e6c9; color: #1b5e20; }
+    .status--warn { background: #fff3cd; color: #856404; }
+    .status--bad  { background: #f8d7da; color: #721c24; }
+
+    .summary {
+        background: #fff;
+        border: 1px solid #c9c3b8;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 16px;
+        font-size: 13px;
+    }
+    .summary pre {
+        background: #f5f2eb;
+        padding: 8px;
+        overflow-x: auto;
+        font-size: 11px;
+        border-radius: 4px;
+    }
+</style>
+
+<h1>CEF CSS capability probe <small style="color:#7f705a; font-weight:normal;">F-06</small></h1>
+<p style="max-width: 68ch; font-size: 13px; color: #5b4b38;">
+    Open in the live CEF build. Each tile renders one of the ⚠ untested
+    entries from <code>CEF_CSS_CAPABILITIES.md</code>. Visually compare to
+    the expectation described in the HTML comment at the top of this file.
+    The console + summary below reports <code>CSS.supports()</code> results
+    programmatically.
+</p>
+
+<div class="grid" id="grid">
+
+    <div class="card" data-probe="filter-blur">
+        <div class="card__title">filter: blur(4px)
+            <span class="status" data-status></span></div>
+        <div class="card__stage">
+            <div class="probe-blur">blur text</div>
+        </div>
+        <div class="card__meta">Expect: text is visibly blurred; no hard edge.</div>
+    </div>
+
+    <div class="card" data-probe="backdrop-filter-blur">
+        <div class="card__title">backdrop-filter: blur(6px)
+            <span class="status" data-status></span></div>
+        <div class="card__stage">
+            <div class="probe-backdrop"></div>
+        </div>
+        <div class="card__meta">Expect: diagonal stripes visibly blurred under the pane. Solid pane = not working.</div>
+    </div>
+
+    <div class="card" data-probe="mix-blend-multiply">
+        <div class="card__title">mix-blend-mode: multiply
+            <span class="status" data-status></span></div>
+        <div class="card__stage card__stage--solid">
+            <div class="probe-blend" style="--blend-mode: multiply;">
+                <div></div><div></div>
+            </div>
+        </div>
+        <div class="card__meta">Expect: darker overlap where circles meet.</div>
+    </div>
+
+    <div class="card" data-probe="mix-blend-screen">
+        <div class="card__title">mix-blend-mode: screen
+            <span class="status" data-status></span></div>
+        <div class="card__stage card__stage--solid">
+            <div class="probe-blend" style="--blend-mode: screen;">
+                <div></div><div></div>
+            </div>
+        </div>
+        <div class="card__meta">Expect: lighter overlap where circles meet.</div>
+    </div>
+
+    <div class="card" data-probe="mix-blend-soft-light">
+        <div class="card__title">mix-blend-mode: soft-light
+            <span class="status" data-status></span></div>
+        <div class="card__stage card__stage--solid">
+            <div class="probe-blend" style="--blend-mode: soft-light;">
+                <div></div><div></div>
+            </div>
+        </div>
+        <div class="card__meta">Expect: soft contrast boost over background.</div>
+    </div>
+
+    <div class="card" data-probe="clip-path-polygon">
+        <div class="card__title">clip-path: polygon()
+            <span class="status" data-status></span></div>
+        <div class="card__stage">
+            <div class="probe-clip-polygon"></div>
+        </div>
+        <div class="card__meta">Expect: diamond shape (4 points).</div>
+    </div>
+
+    <div class="card" data-probe="clip-path-path">
+        <div class="card__title">clip-path: path()
+            <span class="status" data-status></span></div>
+        <div class="card__stage">
+            <div class="probe-clip-path"></div>
+        </div>
+        <div class="card__meta">Expect: curved leaf-like shape from SVG path.</div>
+    </div>
+
+    <div class="card" data-probe="radial-gradient">
+        <div class="card__title">radial-gradient
+            <span class="status" data-status></span></div>
+        <div class="card__stage">
+            <div class="probe-radial"></div>
+        </div>
+        <div class="card__meta">Expect: smooth sun gradient, no banding.</div>
+    </div>
+
+    <div class="card" data-probe="conic-gradient">
+        <div class="card__title">conic-gradient
+            <span class="status" data-status></span></div>
+        <div class="card__stage">
+            <div class="probe-conic"></div>
+        </div>
+        <div class="card__meta">Expect: sunbeam wedge pattern, 5 slices.</div>
+    </div>
+
+    <div class="card" data-probe="feTurbulence">
+        <div class="card__title">filter: url(#feTurbulence)
+            <span class="status" data-status></span></div>
+        <div class="card__stage">
+            <div class="probe-turbulence"></div>
+        </div>
+        <div class="card__meta">Expect: painterly noise overlay on the beige rect.</div>
+    </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <filter id="turbulence-filter">
+    <feTurbulence type="fractalNoise" baseFrequency="0.02 0.04" numOctaves="2" />
+    <feDisplacementMap in="SourceGraphic" scale="6" />
+  </filter>
+</svg>
+
+<div class="summary">
+    <strong>Programmatic CSS.supports() readout</strong>
+    <pre id="summary-out">(running…)</pre>
+    <p style="font-size:12px;color:#5b4b38;margin:4px 0 0;">
+        Note: <code>CSS.supports()</code> answers "does the parser understand
+        this declaration?" — NOT "does it render correctly in CEF OSR
+        compositing." A ✅ here still needs a visual pass to confirm.
+    </p>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // Programmatic probes — answer the "does the engine recognise the
+    // declaration" question even before visual validation.
+    var probes = [
+        { key: 'filter-blur',            q: 'filter',            v: 'blur(4px)' },
+        { key: 'backdrop-filter-blur',   q: 'backdrop-filter',   v: 'blur(6px)' },
+        { key: 'mix-blend-multiply',     q: 'mix-blend-mode',    v: 'multiply' },
+        { key: 'mix-blend-screen',       q: 'mix-blend-mode',    v: 'screen' },
+        { key: 'mix-blend-soft-light',   q: 'mix-blend-mode',    v: 'soft-light' },
+        { key: 'clip-path-polygon',      q: 'clip-path',         v: 'polygon(50% 0, 100% 100%, 0 100%)' },
+        { key: 'clip-path-path',         q: 'clip-path',         v: 'path("M0,0 L100,0 L100,100 Z")' },
+        { key: 'radial-gradient',        q: 'background-image',  v: 'radial-gradient(circle, red, blue)' },
+        { key: 'conic-gradient',         q: 'background-image',  v: 'conic-gradient(red, blue)' },
+    ];
+
+    var report = {
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString(),
+        results: {},
+    };
+
+    probes.forEach(function(p) {
+        var supported = false;
+        try { supported = CSS.supports(p.q, p.v); }
+        catch (_e) { supported = false; }
+        report.results[p.key] = supported;
+
+        var card   = document.querySelector('.card[data-probe="' + p.key + '"]');
+        var status = card && card.querySelector('[data-status]');
+        if (status) {
+            if (supported) {
+                status.textContent = 'supports ✓';
+                status.classList.add('status--ok');
+            } else {
+                status.textContent = 'supports ✗';
+                status.classList.add('status--bad');
+            }
+        }
+    });
+
+    // feTurbulence needs SVG filter parsing — we can check by computing the
+    // filter style on the probe element and seeing the URL parses.
+    var turbCard = document.querySelector('.card[data-probe="feTurbulence"]');
+    if (turbCard) {
+        var probe = turbCard.querySelector('.probe-turbulence');
+        var cs    = getComputedStyle(probe).filter;
+        var ok    = cs && cs.indexOf('url(') !== -1;
+        report.results['feTurbulence'] = ok;
+        var status = turbCard.querySelector('[data-status]');
+        status.textContent = ok ? 'applied ✓' : 'applied ✗';
+        status.classList.add(ok ? 'status--ok' : 'status--bad');
+    }
+
+    // Surface the report for console + summary div.
+    console.log('[CEF CSS probe]', report);
+    window.__cefCssReport = report;
+    var out = document.getElementById('summary-out');
+    if (out) { out.textContent = JSON.stringify(report, null, 2); }
+
+    // Set test harness signals even though this page isn't in the auto suite,
+    // so /tools/mitiru_test.py --filter cef_css_probe still reports pass.
+    window.__testResult = {
+        pass: Object.values(report.results).filter(Boolean).length,
+        fail: Object.values(report.results).filter(function(v) { return !v; }).length,
+        tests: Object.keys(report.results).map(function(k) {
+            return { name: k, ok: report.results[k] };
+        }),
+    };
+    window.__testDone = true;
+})();
+</script>

@@ -221,7 +221,6 @@ public:
 			const auto ortho = OrthoMatrix::create(width, height);
 			m_genConstBuffer->update(ortho.m, sizeof(ortho.m));
 		}
-
 #ifdef _WIN32
 		if (!m_useGenericPath && !m_useDx12Path && m_dx11Context && m_constantBuffer)
 		{
@@ -230,10 +229,15 @@ public:
 				m_dx11Context, ortho.m, sizeof(ortho.m));
 		}
 
-		if (m_useDx12Path && m_dx12ConstantBuffer)
+		if (m_useDx12Path && m_dx12VsCb)
 		{
+			// CRITICAL: 実 runtime の VS constant buffer は m_dx12VsCb。
+			// m_dx12ConstantBuffer は "エイリアス用" コメントの dead pointer
+			// (init で populate されない) — そっちを update してた古い resize
+			// は ortho 更新が runtime に届かず、resize 後に anisotropic
+			// stretch が発生していた (2026-05-21 報告)。
 			const auto ortho = OrthoMatrix::create(width, height);
-			updateCbDx12(m_dx12ConstantBuffer.Get(), ortho.m, sizeof(ortho.m));
+			updateCbDx12(m_dx12VsCb.Get(), ortho.m, sizeof(ortho.m));
 		}
 #endif
 	}

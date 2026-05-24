@@ -3,6 +3,7 @@
 /// @file SdfTextRendererGpu.hpp
 /// @brief GPU SpriteBatch用SDFテキスト描画メソッド（SdfTextRendererのインライン実装）
 
+#include <cmath>
 #include <cstdint>
 #include <string_view>
 
@@ -20,6 +21,12 @@ namespace sdf_gpu_detail
 {
 
 /// @brief SpriteBatchにSDFテキストを描画する（内部実装）
+/// @details At small font sizes (e.g. 16px on a 32px SDF atlas → 0.5x display
+///          scale) sub-pixel glyph positions blur each character via bilinear
+///          texture filtering. We snap destination quad x/y/w/h to integer
+///          pixels so glyphs land on whole texels — this removes the
+///          "Inspector text looks smudged" artifact at small sizes without
+///          affecting layout / advance accounting.
 template <typename BatchType>
 inline void drawText(const SdfFontAtlas& atlas, BatchType& batch, std::string_view text,
 	float x, float y, float fontSize, const sgc::Colorf& color)
@@ -43,10 +50,18 @@ inline void drawText(const SdfFontAtlas& atlas, BatchType& batch, std::string_vi
 		const auto* gi = atlas.findGlyph(cp);
 		if (gi != nullptr && gi->width() > 0 && gi->height() > 0)
 		{
-			const float gx = cursorX + gi->xoff * displayScale;
-			const float gy = y + gi->yoff * displayScale;
-			const float gw = static_cast<float>(gi->width()) * displayScale;
-			const float gh = static_cast<float>(gi->height()) * displayScale;
+			// Compute the exact float dest, then snap to whole pixels for
+			// the actual quad. The advance below still uses float so
+			// glyph spacing accumulates without rounding error.
+			const float gxF = cursorX + gi->xoff * displayScale;
+			const float gyF = y + gi->yoff * displayScale;
+			const float gwF = static_cast<float>(gi->width())  * displayScale;
+			const float ghF = static_cast<float>(gi->height()) * displayScale;
+
+			const float gx = std::floor(gxF + 0.5f);
+			const float gy = std::floor(gyF + 0.5f);
+			const float gw = std::floor(gwF + 0.5f);
+			const float gh = std::floor(ghF + 0.5f);
 
 			const sgc::Rectf destRect{gx, gy, gw, gh};
 			const sgc::Rectf srcRect{

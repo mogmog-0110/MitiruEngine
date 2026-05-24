@@ -1,0 +1,133 @@
+/*!
+ * mitiru_tokens_saturn.css — Sega Saturn BIOS inspired theme (refined)
+ *
+ * Design intent: 1995 Saturn BIOS memory-manager UI — silver-plastic gray,
+ * single sober red accent for selection / CTAs, hard black hairlines, strong
+ * 2px inset bevel chrome (white top-left + dark bottom-right). Press Start 2P
+ * for headings, condensed sans for body. No magenta-cyan mix — Saturn BIOS
+ * was much more restrained than the brand mark.
+ *
+ * Swap by replacing the <link> to mitiru_tokens.css with this file.
+ * Recommended <head> font import:
+ *   <link rel="preconnect" href="https://fonts.googleapis.com">
+ *   <link rel="stylesheet"
+ *     href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+ */
+:root
+{
+	/* ── Base palette: Saturn BIOS (silver gray + single red accent) ── */
+	--mitiru-paper:        #c8c8c8;   /* console plastic gray */
+	--mitiru-paper-hi:     #d8d8d8;   /* lighter chrome surface */
+	--mitiru-ink:          #101010;   /* hard black */
+	--mitiru-ink-mute:     #4a4a4a;   /* neutral mid-gray */
+	--mitiru-red:          #c8002c;   /* Saturn BIOS selection red (sober) */
+	--mitiru-red-hi:       #a30022;   /* darker red on hover */
+	--mitiru-paper-edge:   #101010;   /* black hairline */
+	--mitiru-bevel-hi:     #ffffff;   /* bevel light edge */
+	--mitiru-bevel-lo:     #6a6a6a;   /* bevel dark edge */
+
+	/* ── Semantic aliases ─────────────────────────────────────── */
+	--mitiru-bg:        var(--mitiru-paper);
+	--mitiru-surface:   var(--mitiru-paper-hi);
+	--mitiru-text:      var(--mitiru-ink);
+	--mitiru-text-mute: var(--mitiru-ink-mute);
+	--mitiru-accent:    var(--mitiru-red);
+	--mitiru-accent-hi: var(--mitiru-red-hi);
+	--mitiru-success:   var(--mitiru-ink-mute);  /* no special success color in Saturn UI */
+	--mitiru-warning:   var(--mitiru-red);
+	--mitiru-danger:    var(--mitiru-red);
+	--mitiru-focus:     var(--mitiru-red);
+	--mitiru-border:    var(--mitiru-paper-edge);
+	--mitiru-border-soft: rgba(16, 16, 16, 0.30);
+
+	--mitiru-row-tint:  rgba(16, 16, 16, 0.03);
+
+	/* ── Typography — condensed bitmap heading, mono body ─────── */
+	--mitiru-font-body:    "Arial Narrow", "Helvetica Neue Condensed",
+	                       "Courier New", "MS Gothic", ui-monospace,
+	                       "Consolas", monospace;
+	--mitiru-font-display: "Press Start 2P", "Arial Narrow",
+	                       "Helvetica Neue Condensed", "Courier New",
+	                       "MS Gothic", ui-monospace, "Consolas", monospace;
+	--mitiru-font-mono:    "Press Start 2P", "Courier New", "MS Gothic",
+	                       ui-monospace, "Consolas", monospace;
+	--mitiru-font-prose:   "Arial Narrow", "Helvetica Neue Condensed",
+	                       "Courier New", "MS Gothic", monospace;
+
+	--mitiru-text-xs:   11px;
+	--mitiru-text-sm:   12px;
+	--mitiru-text-md:   14px;
+	--mitiru-text-lg:   16px;
+	--mitiru-text-xl:   18px;
+	--mitiru-text-2xl:  22px;
+	--mitiru-text-3xl:  28px;
+
+	--mitiru-leading-tight:  1.25;
+	--mitiru-leading-normal: 1.45;
+	--mitiru-leading-loose:  1.6;
+
+	/* ── Spacing — 8 multiples ────────────────────────────────── */
+	--mitiru-space-0:  0;
+	--mitiru-space-1:  4px;
+	--mitiru-space-2:  8px;
+	--mitiru-space-3:  12px;
+	--mitiru-space-4:  16px;
+	--mitiru-space-5:  24px;
+	--mitiru-space-6:  32px;
+	--mitiru-space-7:  48px;
+
+	/* ── Corner radius — zero ─────────────────────────────────── */
+	--mitiru-radius-sm:   0;
+	--mitiru-radius-md:   0;
+	--mitiru-radius-lg:   0;
+	--mitiru-radius-pill: 0;
+
+	/* ── Elevation — strong 2px bevel chrome (3D-era plastic) ───── */
+	--mitiru-shadow-1: inset 2px 2px 0 var(--mitiru-bevel-hi),
+	                   inset -2px -2px 0 var(--mitiru-bevel-lo),
+	                   0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-2: inset 2px 2px 0 var(--mitiru-bevel-hi),
+	                   inset -2px -2px 0 var(--mitiru-bevel-lo),
+	                   0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-3: inset 3px 3px 0 var(--mitiru-bevel-hi),
+	                   inset -3px -3px 0 var(--mitiru-bevel-lo),
+	                   0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-4: inset 3px 3px 0 var(--mitiru-bevel-hi),
+	                   inset -3px -3px 0 var(--mitiru-bevel-lo),
+	                   0 0 0 1px var(--mitiru-border);
+
+	/* Focus ring — red highlight (no cyan secondary in Saturn BIOS) */
+	--mitiru-focus-ring: 0 0 0 2px var(--mitiru-red);
+
+	--mitiru-blur-sm: blur(0);
+	--mitiru-blur-md: blur(0);
+	--mitiru-blur-lg: blur(0);
+
+	/* ── Z-index ladder ─────────────────────────────────────── */
+	--mitiru-z-base:     0;
+	--mitiru-z-hud:      100;
+	--mitiru-z-overlay:  200;
+	--mitiru-z-modal:    300;
+	--mitiru-z-toast:    400;
+	--mitiru-z-drag:     500;
+
+	/* ── Transition — clipped steps ───────────────────────────── */
+	--mitiru-ease:          steps(2, end);
+	--mitiru-ease-bounce:   steps(2, end);
+	--mitiru-duration-fast: 70ms;
+	--mitiru-duration-mid:  130ms;
+	--mitiru-duration-slow: 220ms;
+}
+
+body
+{
+	background: var(--mitiru-bg);
+	color: var(--mitiru-text);
+	font-family: var(--mitiru-locale-font, var(--mitiru-font-body));
+	font-size: var(--mitiru-text-md);
+	line-height: var(--mitiru-leading-normal);
+	letter-spacing: 0.01em;
+	font-variant-numeric: tabular-nums;
+	-webkit-font-smoothing: none;
+	-moz-osx-font-smoothing: auto;
+}

@@ -1,0 +1,651 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_preloader.js tests</title>
+<!--
+    test_preloader.html — mitiru.preloader (NF-04) unit tests
+
+    Run:
+      python tools/mitiru_serve.py --port 8770 --no-inject
+      open http://localhost:8770/web/mitiru_runtime/tests/test_preloader.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_preloader.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+	'use strict';
+
+	const t = mitiru.test;
+	const p = mitiru.preloader;
+
+	// Tiny 1x1 transparent PNG (data URL — no network needed)
+	var DATA_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+	// 404 path for failure tests
+	var PATH_404 = '/nonexistent-test-fixture-404.json';
+
+	// Helper: reset preloader state between tests
+	function reset()
+	{
+		p.clear();
+		p.unmount();
+	}
+
+	// ── 1. register() appends items ──────────────────────────────
+	t.case('register_appends_items_to_registry', function()
+	{
+		// Arrange
+		reset();
+
+		// Act
+		p.register([{ kind: 'text', path: 'a.txt', key: 'a' }]);
+
+		// Assert: progress().total reflects registered count
+		t.assertEq(p.progress().total, 0, 'total is 0 before start (not yet counted)');
+		// We can't read _items directly but register + clear proves append
+		p.register([{ kind: 'text', path: 'b.txt', key: 'b' }]);
+		// After clear, total resets; before clear both are present — tested via start below
+		reset();
+	});
+
+	// ── 2. register() called twice concatenates ───────────────────
+	t.case('register_twice_concatenates_items', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'a.txt': 'hello', 'b.txt': 'world' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		// Act
+		p.register([{ kind: 'text', path: 'a.txt', key: 'a' }]);
+		p.register([{ kind: 'text', path: 'b.txt', key: 'b' }]);
+		var result = await p.start();
+
+		// Assert
+		t.assertEq(result.loaded.length, 2, 'both items loaded');
+		t.assert(result.loaded.indexOf('a') >= 0, 'key a loaded');
+		t.assert(result.loaded.indexOf('b') >= 0, 'key b loaded');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 3. clear() drops items and resolved map ──────────────────
+	t.case('clear_drops_items_and_resolved_map', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'x.txt': 'content' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		p.register([{ kind: 'text', path: 'x.txt', key: 'x' }]);
+		await p.start();
+		t.assertEq(p.get('x'), 'content', 'x is in resolved map before clear');
+
+		// Act
+		p.clear();
+
+		// Assert
+		t.assertEq(p.get('x'), undefined, 'x is gone from resolved map after clear');
+		t.assertEq(p.progress().total, 0, 'total reset to 0 after clear');
+
+		mitiru.fetch = origFetch;
+	});
+
+	// ── 4. mount() builds expected DOM ───────────────────────────
+	t.case('mount_builds_expected_DOM_structure', function()
+	{
+		// Arrange
+		reset();
+		var container = document.createElement('div');
+
+		// Act
+		p.mount(container);
+
+		// Assert
+		var root = container.querySelector('[data-mitiru-preloader]');
+		t.assert(root !== null, 'root element with data-mitiru-preloader exists');
+		t.assert(root.classList.contains('mitiru-preloader'), 'root has mitiru-preloader class');
+
+		var track = root.querySelector('.mitiru-preloader__track');
+		t.assert(track !== null, 'track element exists');
+
+		var fill = root.querySelector('.mitiru-preloader__fill');
+		t.assert(fill !== null, 'fill element exists');
+		t.assertEq(fill.style.width, '0%', 'fill starts at 0%');
+
+		var label = root.querySelector('[data-preloader-label]');
+		t.assert(label !== null, 'label element with data-preloader-label exists');
+		t.assert(label.classList.contains('mitiru-preloader__label'), 'label has correct class');
+
+		reset();
+	});
+
+	// ── 5. unmount() removes from DOM ────────────────────────────
+	t.case('unmount_removes_preloader_from_DOM', function()
+	{
+		// Arrange
+		reset();
+		var container = document.createElement('div');
+		document.body.appendChild(container);
+		p.mount(container);
+		t.assert(container.querySelector('[data-mitiru-preloader]') !== null, 'mounted');
+
+		// Act
+		p.unmount();
+
+		// Assert
+		t.assertEq(container.querySelector('[data-mitiru-preloader]'), null, 'removed after unmount');
+
+		document.body.removeChild(container);
+		reset();
+	});
+
+	// ── 6. mount() after unmount() rebuilds ──────────────────────
+	t.case('mount_after_unmount_rebuilds_DOM', function()
+	{
+		// Arrange
+		reset();
+		var container = document.createElement('div');
+		p.mount(container);
+		p.unmount();
+
+		// Act
+		p.mount(container);
+
+		// Assert
+		t.assert(container.querySelector('[data-mitiru-preloader]') !== null, 'rebuilt after re-mount');
+
+		reset();
+	});
+
+	// ── 7. start() with empty registry resolves immediately ───────
+	t.case('start_empty_registry_resolves_immediately', async function()
+	{
+		// Arrange
+		reset();
+
+		// Act
+		var result = await p.start();
+
+		// Assert
+		t.assertEq(result.loaded.length, 0, 'no loaded keys');
+		t.assertEq(result.failed.length, 0, 'no failed keys');
+	});
+
+	// ── 8. start() loads a text item; get(key) returns text ──────
+	t.case('start_loads_text_item_get_returns_text', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'notes.txt': 'hello world' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		p.register([{ kind: 'text', path: 'notes.txt', key: 'notes' }]);
+
+		// Act
+		await p.start();
+
+		// Assert
+		t.assertEq(p.get('notes'), 'hello world', 'get(notes) returns text content');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 9. start() loads a json item; get(key) returns object ────
+	t.case('start_loads_json_item_get_returns_parsed_object', async function()
+	{
+		// Arrange
+		reset();
+		var payload = { version: 1, items: ['a', 'b'] };
+		var stub = _makeFetchStub({ 'data.json': JSON.stringify(payload) }, 'json');
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		p.register([{ kind: 'json', path: 'data.json', key: 'data' }]);
+
+		// Act
+		await p.start();
+
+		// Assert
+		var got = p.get('data');
+		t.assert(got !== null && typeof got === 'object', 'get(data) is an object');
+		t.assertEq(got.version, 1, 'parsed version field correct');
+		t.assertEq(got.items[0], 'a', 'parsed items[0] correct');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 10. start() loads an image; get(key) is HTMLImageElement ─
+	t.case('start_loads_image_item_get_returns_HTMLImageElement', async function()
+	{
+		// Arrange
+		reset();
+		p.register([{ kind: 'image', path: DATA_PNG, key: 'bg' }]);
+
+		// Act
+		await p.start();
+
+		// Assert
+		var img = p.get('bg');
+		t.assert(img instanceof window.HTMLImageElement, 'get(bg) is HTMLImageElement');
+
+		reset();
+	});
+
+	// ── 11. start() emits progress events with fraction 0..1 ─────
+	t.case('start_emits_progress_events_with_fraction_in_range', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'a.txt': 'a', 'b.txt': 'b', 'c.txt': 'c' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		p.register([
+			{ kind: 'text', path: 'a.txt', key: 'a' },
+			{ kind: 'text', path: 'b.txt', key: 'b' },
+			{ kind: 'text', path: 'c.txt', key: 'c' },
+		]);
+
+		var fractions = [];
+		var unsub = p.on('progress', function(d) { fractions.push(d.fraction); });
+
+		// Act
+		await p.start();
+		unsub();
+
+		// Assert
+		t.assertEq(fractions.length, 3, '3 progress events for 3 items');
+		for (var i = 0; i < fractions.length; ++i)
+		{
+			t.assert(fractions[i] >= 0 && fractions[i] <= 1,
+				'fraction[' + i + '] in 0..1, got ' + fractions[i]);
+		}
+		var last = fractions[fractions.length - 1];
+		t.assertClose(last, 1.0, 1e-6, 'final fraction is 1.0');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 12. start() emits complete with loaded+failed arrays ──────
+	t.case('start_emits_complete_event_with_loaded_and_failed', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'ok.txt': 'yes' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		p.register([{ kind: 'text', path: 'ok.txt', key: 'ok' }]);
+
+		var completes = [];
+		var unsub = p.on('complete', function(d) { completes.push(d); });
+
+		// Act
+		await p.start();
+		unsub();
+
+		// Assert
+		t.assertEq(completes.length, 1, 'exactly one complete event');
+		t.assert(completes[0].loaded.indexOf('ok') >= 0, 'ok is in loaded array');
+		t.assertEq(completes[0].failed.length, 0, 'failed is empty');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 13. item:fail fires on 404; loading continues ────────────
+	t.case('item_fail_fires_on_404_loading_continues_complete_has_key', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'good.txt': 'good' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		p.register([
+			{ kind: 'text', path: 'good.txt',  key: 'good' },
+			{ kind: 'text', path: PATH_404,    key: 'bad'  },
+		]);
+
+		var fails = [];
+		var unsub = p.on('item:fail', function(d) { fails.push(d); });
+
+		// Act
+		var result = await p.start();
+		unsub();
+
+		// Assert
+		t.assert(result.loaded.indexOf('good') >= 0, 'good item loaded');
+		t.assert(result.failed.indexOf('bad')  >= 0, 'bad item in failed');
+		t.assertEq(fails.length, 1, 'one item:fail event');
+		t.assertEq(fails[0].key, 'bad', 'item:fail key is bad');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 14. concurrency=2 never exceeds 2 in-flight at once ──────
+	t.case('concurrency_2_never_exceeds_2_in_flight', async function()
+	{
+		// Arrange
+		reset();
+		var maxInFlight = 0;
+		var inFlight    = 0;
+
+		// Build a controlled fetch stub that counts concurrent calls.
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = function(path)
+		{
+			inFlight++;
+			if (inFlight > maxInFlight) { maxInFlight = inFlight; }
+			return new Promise(function(resolve)
+			{
+				// Let the event loop tick before resolving (so concurrency is observable).
+				setTimeout(function()
+				{
+					inFlight--;
+					resolve({ text: function() { return Promise.resolve('t'); }, ok: true });
+				}, 0);
+			});
+		};
+
+		p.register([
+			{ kind: 'text', path: 'a.txt', key: 'a' },
+			{ kind: 'text', path: 'b.txt', key: 'b' },
+			{ kind: 'text', path: 'c.txt', key: 'c' },
+			{ kind: 'text', path: 'd.txt', key: 'd' },
+			{ kind: 'text', path: 'e.txt', key: 'e' },
+		]);
+
+		// Act
+		await p.start({ concurrency: 2 });
+
+		// Assert
+		t.assert(maxInFlight <= 2, 'max in-flight was ' + maxInFlight + ', expected ≤ 2');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 15. mount + start: progress bar width reflects fraction ──
+	t.case('mount_and_start_fill_width_reflects_fraction', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'a.txt': 'a', 'b.txt': 'b' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		var container = document.createElement('div');
+		document.body.appendChild(container);
+		p.mount(container, { fadeMs: 0 });
+		p.register([
+			{ kind: 'text', path: 'a.txt', key: 'a' },
+			{ kind: 'text', path: 'b.txt', key: 'b' },
+		]);
+
+		var widthsAfterProgress = [];
+		var unsub = p.on('progress', function()
+		{
+			var fill = container.querySelector('.mitiru-preloader__fill');
+			if (fill) { widthsAfterProgress.push(fill.style.width); }
+		});
+
+		// Act
+		await p.start();
+		unsub();
+
+		// Assert.  Browsers normalise "100.0%" → "100%" on read, so
+		// compare as a number rather than string.
+		t.assert(widthsAfterProgress.length >= 1, 'fill width was recorded on progress events');
+		var last = widthsAfterProgress[widthsAfterProgress.length - 1];
+		t.assertEq(parseFloat(last), 100, 'final fill width is 100%');
+
+		document.body.removeChild(container);
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 16. mount + complete: fade-out starts after complete ──────
+	t.case('mount_and_complete_fade_out_applied_after_complete', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'x.txt': 'x' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		var container = document.createElement('div');
+		document.body.appendChild(container);
+		p.mount(container, { fadeMs: 50 });
+		p.register([{ kind: 'text', path: 'x.txt', key: 'x' }]);
+
+		// Act
+		await p.start();
+
+		// Assert: opacity should be '0' immediately after complete (transition started)
+		var root = container.querySelector('[data-mitiru-preloader]');
+		// root may be null if fadeMs=0 caused synchronous removal; with 50ms it exists.
+		if (root)
+		{
+			t.assertEq(root.style.opacity, '0', 'opacity set to 0 to start fade-out');
+		}
+		else
+		{
+			// Already removed — also acceptable.
+			t.assert(true, 'root already removed (instant fade)');
+		}
+
+		document.body.removeChild(container);
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 17. on/off subscribe and unsubscribe ─────────────────────
+	t.case('on_returns_unsub_fn_off_removes_listener', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'x.txt': 'x' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		p.register([{ kind: 'text', path: 'x.txt', key: 'x' }]);
+
+		var count = 0;
+		var fn    = function() { count++; };
+
+		// Act: subscribe then start
+		var unsub = p.on('item:done', fn);
+		await p.start();
+		t.assertEq(count, 1, 'listener called once on first run');
+
+		// Reset and unsubscribe
+		p.clear();
+		p.register([{ kind: 'text', path: 'x.txt', key: 'x' }]);
+		unsub();
+		await p.start();
+
+		// Assert
+		t.assertEq(count, 1, 'listener NOT called after unsubscribe');
+
+		// Also test off() directly
+		p.clear();
+		p.register([{ kind: 'text', path: 'x.txt', key: 'x' }]);
+		var fn2 = function() { count += 10; };
+		p.on('item:done', fn2);
+		await p.start();
+		t.assertEq(count, 11, 'fn2 called once');
+
+		p.clear();
+		p.register([{ kind: 'text', path: 'x.txt', key: 'x' }]);
+		p.off('item:done', fn2);
+		await p.start();
+		t.assertEq(count, 11, 'fn2 not called after off()');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 18. unknown event type is a no-op ─────────────────────────
+	t.case('unknown_event_type_noop', function()
+	{
+		// Arrange + Act + Assert: must not throw
+		reset();
+		var unsub = p.on('totally:unknown:event', function() {});
+		t.assert(typeof unsub === 'function', 'on() returns a function for unknown events');
+		unsub();  // should not throw
+		p.off('totally:unknown:event', function() {});  // should not throw
+		reset();
+	});
+
+	// ── 19. double mount() cleans up prior instance ───────────────
+	t.case('double_mount_is_idempotent_cleans_prior_instance', function()
+	{
+		// Arrange
+		reset();
+		var container = document.createElement('div');
+
+		// Act
+		p.mount(container);
+		p.mount(container);  // second mount should replace first
+
+		// Assert: only one root element in container
+		var roots = container.querySelectorAll('[data-mitiru-preloader]');
+		t.assertEq(roots.length, 1, 'only one preloader root after double mount');
+
+		reset();
+	});
+
+	// ── 20. start() empty registry emits complete event ──────────
+	t.case('start_empty_registry_emits_complete_event', async function()
+	{
+		// Arrange
+		reset();
+		var completes = [];
+		var unsub = p.on('complete', function(d) { completes.push(d); });
+
+		// Act
+		await p.start();
+		unsub();
+
+		// Assert
+		t.assertEq(completes.length, 1, 'complete fires even for empty registry');
+		t.assertEq(completes[0].loaded.length, 0);
+		t.assertEq(completes[0].failed.length, 0);
+	});
+
+	// ── 21. item:done fires for each successfully loaded item ─────
+	t.case('item_done_fires_for_each_successful_item', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'a.txt': 'a', 'b.txt': 'b' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		p.register([
+			{ kind: 'text', path: 'a.txt', key: 'a' },
+			{ kind: 'text', path: 'b.txt', key: 'b' },
+		]);
+
+		var dones = [];
+		var unsub = p.on('item:done', function(d) { dones.push(d); });
+
+		// Act
+		await p.start();
+		unsub();
+
+		// Assert
+		t.assertEq(dones.length, 2, 'two item:done events');
+		var keys = dones.map(function(d) { return d.key; }).sort();
+		t.assertEq(keys[0], 'a');
+		t.assertEq(keys[1], 'b');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── 22. progress currentKey reflects item being processed ─────
+	t.case('progress_currentKey_reflects_item_being_processed', async function()
+	{
+		// Arrange
+		reset();
+		var stub = _makeFetchStub({ 'z.txt': 'z' });
+		var origFetch = mitiru.fetch;
+		mitiru.fetch = stub;
+
+		p.register([{ kind: 'text', path: 'z.txt', key: 'z' }]);
+
+		var progressKeys = [];
+		var unsub = p.on('progress', function(d) { progressKeys.push(d.currentKey); });
+
+		// Act
+		await p.start();
+		unsub();
+
+		// Assert
+		t.assert(progressKeys.indexOf('z') >= 0, 'currentKey includes z');
+
+		mitiru.fetch = origFetch;
+		reset();
+	});
+
+	// ── Helpers ──────────────────────────────────────────────────
+
+	/**
+	 * Build a mitiru.fetch stub that resolves known paths.
+	 * Unknown paths (or PATH_404) reject with a non-ok response.
+	 * mode: 'text' (default) | 'json'
+	 */
+	function _makeFetchStub(map, mode)
+	{
+		return function(url)
+		{
+			if (url === PATH_404 || !Object.prototype.hasOwnProperty.call(map, url))
+			{
+				// Simulate a 404 that causes text()/json() to throw.
+				return Promise.resolve({
+					ok:   false,
+					status: 404,
+					text: function() { return Promise.reject(new Error('404 Not Found: ' + url)); },
+					json: function() { return Promise.reject(new Error('404 Not Found: ' + url)); },
+				});
+			}
+			var raw = map[url];
+			return Promise.resolve({
+				ok:   true,
+				status: 200,
+				text: function() { return Promise.resolve(raw); },
+				json: function()
+				{
+					try { return Promise.resolve(JSON.parse(raw)); }
+					catch (e) { return Promise.reject(e); }
+				},
+			});
+		};
+	}
+
+	// ── run ──────────────────────────────────────────────────────
+	mitiru.test.run();
+})();
+</script>

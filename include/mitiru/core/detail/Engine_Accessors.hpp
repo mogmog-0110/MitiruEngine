@@ -12,6 +12,27 @@
 
 MITIRU_INLINE mitiru::Engine::~Engine()
 {
+	// Auto-save replay recording if MITIRU_RECORD was set. Best-effort: swallow
+	// I/O errors so a missing output dir or read-only path can't take down the
+	// destructor (would lose the rest of the cleanup chain).
+	if (m_inputRecorder.isRecording() && !m_recordOutputPath.empty())
+	{
+		try
+		{
+			auto data = m_inputRecorder.endRecording();
+			data.saveToFile(m_recordOutputPath);
+		}
+		catch (...)
+		{
+			// intentionally swallowed; no logger guarantee at this point
+		}
+	}
+
+	// Tear down any game DLL before CEF / HTTP. Calls on_shutdown + FreeLibrary
+	// inside ModuleHost. m_moduleHost's unique_ptr also auto-destructs after
+	// this, which is the safety net when runModule() was bypassed.
+	unloadModule();
+
 	m_cefContext.shutdown();
 	if (m_httpServer)
 	{
@@ -127,6 +148,26 @@ MITIRU_INLINE std::uint64_t mitiru::Engine::frameNumber() const noexcept
 MITIRU_INLINE mitiru::InputInjector& mitiru::Engine::inputInjector() noexcept
 {
 	return m_inputInjector;
+}
+
+MITIRU_INLINE mitiru::InputRecorder& mitiru::Engine::inputRecorder() noexcept
+{
+	return m_inputRecorder;
+}
+
+MITIRU_INLINE const mitiru::InputRecorder& mitiru::Engine::inputRecorder() const noexcept
+{
+	return m_inputRecorder;
+}
+
+MITIRU_INLINE mitiru::InputReplayer& mitiru::Engine::inputReplayer() noexcept
+{
+	return m_inputReplayer;
+}
+
+MITIRU_INLINE const mitiru::InputReplayer& mitiru::Engine::inputReplayer() const noexcept
+{
+	return m_inputReplayer;
 }
 
 MITIRU_INLINE const mitiru::InputState& mitiru::Engine::inputState() const noexcept

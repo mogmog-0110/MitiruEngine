@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru test template</title>
+<!--
+    mitiru_test_template.html — コピーして `<game>/assets/tests/foo.test.html`
+    として使う。module import の相対パスはコピー先の tests/ ディレクトリから
+    mitiru_runtime/ までに合わせて書き換える。
+
+    走らせ方 (Playwright / MCP 経由):
+      1. ファイルを開く (file://... または serve.py 経由)
+      2. `window.__testDone` が true になるまで待つ
+      3. `window.__testResult` を読み取る
+         {pass: int, fail: int, tests: [{name, ok, error?, durationMs}]}
+-->
+<link rel="stylesheet" href="mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre { white-space: pre-wrap; }
+</style>
+<script src="mitiru_runtime.js"></script>
+<script src="mitiru_test_harness.js"></script>
+<pre id="results">(running...)</pre>
+<script type="module">
+    // ── テスト対象のモジュールを import ───────────────────
+    // import { foo } from '../ui/foo.js';
+
+    // ── ケース登録 ──────────────────────────────────────
+    mitiru.test.case('sanity check — 1 + 1 === 2', () =>
+    {
+        mitiru.test.assertEq(1 + 1, 2);
+    });
+
+    mitiru.test.case('assertThrow on throw', () =>
+    {
+        mitiru.test.assertThrow(() => { throw new Error('expected'); });
+    });
+
+    mitiru.test.case('assertClose within tolerance', () =>
+    {
+        mitiru.test.assertClose(0.1 + 0.2, 0.3, 1e-9);
+    });
+
+    // ── 走らせる ────────────────────────────────────────
+    mitiru.test.run();
+</script>

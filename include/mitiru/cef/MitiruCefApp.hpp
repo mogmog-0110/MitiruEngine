@@ -91,6 +91,16 @@ public:
         command_line->AppendSwitch("disable-web-security");
         // ログ削減
         command_line->AppendSwitch("disable-logging");
+        // single-process 運用では V8 Proxy resolver が初期化できず、CEF が
+        // フレーム毎に "Cannot use V8 Proxy resolver in single process mode"
+        // を stderr に吐く (system_network_context_manager.cc:863)。
+        // proxy server を direct:// 固定にして PAC 解決器の起動自体を skip
+        // させると spam が止まる。ゲーム HUD は file:// しか触らないため
+        // proxy 機能は不要。
+        command_line->AppendSwitchWithValue("proxy-server", "direct://");
+        command_line->AppendSwitch("no-proxy-server");
+        // network service 関連の追加ノイズ抑制 (どれも HUD 用途で不要)
+        command_line->AppendSwitchWithValue("log-severity", "disable");
         // [ARCHITECTURAL 2026-04-22] Multi-process モードで subprocess 起動が
         // "GPU process launch failed: error_code=63" で FATAL 終了する。
         // 根本原因: CEF minimal 配布の libcef.dll は Release CRT (/MD) 固定で

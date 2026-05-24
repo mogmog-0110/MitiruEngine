@@ -61,10 +61,17 @@ inline CefSettings buildCefSettings(
     // 本番リリース時は CefSandboxInfo を適切に設定すること。
     s.no_sandbox = 1;
 
-    // ── ログ ─────────────────────────────────────────────
+    // ── ログ + キャッシュ (PID で分離) ─────────────────────
+    // 複数の mitiru_host が同時起動するケース (launcher + game +
+    // dev_companion など) で同じ exeDir/cef_cache を取り合うと CEF が
+    // 真っ白 / 真っ黒 のまま動かなくなる。PID を suffix にして per-process
+    // で分ける。古い cache は OS の temp 同様 累積 — 必要なら別ツールで掃除。
+    const DWORD pid = ::GetCurrentProcessId();
+    const std::string pidSuffix = "_" + std::to_string(pid);
+
     s.log_severity = LOGSEVERITY_WARNING;
     const auto lp  = logPath.empty()
-        ? (exeDir / "cef.log").string()
+        ? (exeDir / ("cef" + pidSuffix + ".log")).string()
         : logPath;
     CefString(&s.log_file) = lp;
 
@@ -72,8 +79,8 @@ inline CefSettings buildCefSettings(
     // false = CefDoMessageLoopWork() を毎フレーム呼ぶ方式 (ゲームループ統合)
     s.multi_threaded_message_loop = 0;
 
-    // ── ユーザーデータ ────────────────────────────────────
-    CefString(&s.cache_path) = (exeDir / "cef_cache").string();
+    // ── ユーザーデータ (per-process) ──────────────────────
+    CefString(&s.cache_path) = (exeDir / ("cef_cache" + pidSuffix)).string();
 
     // ── リモートデバッグ (E-02) ───────────────────────────
     // 0 以外にすると Chromium の DevTools protocol が TCP で待ち受けする。

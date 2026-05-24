@@ -1,0 +1,365 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_content.js tests</title>
+<!--
+    test_content.html — mitiru.content (F-16) unit tests
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_content.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+	'use strict';
+
+	const t = mitiru.test;
+	const c = mitiru.content;
+
+	// All fixtures live alongside this HTML.
+	const FIX = 'fixtures_content/';
+
+	// Save/restore baseDir between tests (mutates global state).
+	function withBase(dir, fn)
+	{
+		const prev = c.baseDir();
+		c.setBaseDir(dir);
+		try     { return fn(); }
+		finally { c.setBaseDir(prev); }
+	}
+
+	// ── 1. path() + baseDir() ────────────────────────────────────
+	t.case('default baseDir is "assets/content/"', function()
+	{
+		t.assertEq(c.baseDir(), 'assets/content/');
+	});
+
+	t.case('path(scene, chapter) uses current baseDir', function()
+	{
+		withBase('foo/', function()
+		{
+			t.assertEq(c.path('cooking', 'ch01'), 'foo/cooking/ch01.json');
+		});
+	});
+
+	t.case('setBaseDir auto-appends trailing slash', function()
+	{
+		withBase('abc/def', function()
+		{
+			t.assertEq(c.baseDir(), 'abc/def/');
+		});
+	});
+
+	t.case('setBaseDir("") falls back to default', function()
+	{
+		withBase('', function()
+		{
+			t.assertEq(c.baseDir(), 'assets/content/');
+		});
+	});
+
+	t.case('path() throws on empty scene or chapter', function()
+	{
+		let threwScene = false, threwChapter = false;
+		try { c.path('',    'a'); } catch (_e) { threwScene   = true; }
+		try { c.path('a',   '' ); } catch (_e) { threwChapter = true; }
+		t.assertEq(threwScene,   true);
+		t.assertEq(threwChapter, true);
+	});
+
+	// ── 2. schema registry ──────────────────────────────────────
+	t.case('built-in schemas are registered', function()
+	{
+		t.assertEq(c.hasSchema('novel'),    true);
+		t.assertEq(c.hasSchema('dialogue'), true);
+		t.assertEq(c.hasSchema('quest'),    true);
+		const names = c.schemas();
+		t.assertEq(names.indexOf('novel')    >= 0, true);
+		t.assertEq(names.indexOf('dialogue') >= 0, true);
+		t.assertEq(names.indexOf('quest')    >= 0, true);
+	});
+
+	t.case('registerSchema adds a custom validator', function()
+	{
+		c.registerSchema('custom-x', function(data)
+		{
+			if (data.x !== 1) { throw new Error('x must be 1'); }
+		});
+		t.assertEq(c.hasSchema('custom-x'), true);
+	});
+
+	t.case('registerSchema throws on bad args', function()
+	{
+		let a = false, b = false;
+		try { c.registerSchema('',  function() {}); } catch (_e) { a = true; }
+		try { c.registerSchema('x', 'not a fn');    } catch (_e) { b = true; }
+		t.assertEq(a, true);
+		t.assertEq(b, true);
+	});
+
+	// ── 3. loadPath — valid files ──────────────────────────────
+	t.case('loadPath resolves a valid novel', function()
+	{
+		return c.loadPath(FIX + 'valid_novel.json', { schemaName: 'novel' }).then(function(data)
+		{
+			t.assertEq(data.id, 'fixture_novel');
+			t.assertEq(Array.isArray(data.lines), true);
+			// Frozen by default.
+			t.assertEq(Object.isFrozen(data), true);
+		});
+	});
+
+	t.case('loadPath resolves a valid dialogue', function()
+	{
+		return c.loadPath(FIX + 'valid_dialogue.json', { schemaName: 'dialogue' }).then(function(data)
+		{
+			t.assertEq(data.lines.length, 3);
+			t.assertEq(data.lines[0].speaker, 'サチ');
+		});
+	});
+
+	t.case('loadPath resolves a valid quest', function()
+	{
+		return c.loadPath(FIX + 'valid_quest.json', { schemaName: 'quest' }).then(function(data)
+		{
+			t.assertEq(data.id, 'q_shift_01');
+			t.assertEq(data.steps.length, 2);
+			t.assertEq(data.rewards.yen,  500);
+		});
+	});
+
+	// ── 4. loadPath — validation failures ───────────────────────
+	t.case('loadPath rejects invalid novel (missing lines)', function()
+	{
+		return c.loadPath(FIX + 'invalid_novel_missing_lines.json', { schemaName: 'novel' }).then(
+			function()  { throw new Error('expected rejection'); },
+			function(e) {
+				// Error message prefixed with path + schema name.
+				t.assertEq(/invalid_novel_missing_lines\.json/.test(e.message), true);
+				t.assertEq(/novel/.test(e.message),                             true);
+				t.assertEq(/lines/.test(e.message),                             true);
+			}
+		);
+	});
+
+	t.case('loadPath rejects invalid quest (missing id)', function()
+	{
+		return c.loadPath(FIX + 'invalid_quest_missing_id.json', { schemaName: 'quest' }).then(
+			function()  { throw new Error('expected rejection'); },
+			function(e) {
+				t.assertEq(/invalid_quest_missing_id\.json/.test(e.message), true);
+				t.assertEq(/id/.test(e.message),                             true);
+			}
+		);
+	});
+
+	t.case('loadPath rejects when schemaName is unknown', function()
+	{
+		return c.loadPath(FIX + 'valid_novel.json', { schemaName: 'no-such-schema' }).then(
+			function()  { throw new Error('expected rejection'); },
+			function(e) { t.assertEq(/no-such-schema/.test(e.message), true); }
+		);
+	});
+
+	// ── 5. custom validator ─────────────────────────────────────
+	t.case('loadPath accepts a custom validator fn', function()
+	{
+		return c.loadPath(FIX + 'valid_quest.json', {
+			validator: function(data) { if (data.id !== 'q_shift_01') { throw new Error('wrong id'); } },
+		}).then(function(data)
+		{
+			t.assertEq(data.id, 'q_shift_01');
+		});
+	});
+
+	t.case('loadPath surfaces validator errors with path prefix', function()
+	{
+		return c.loadPath(FIX + 'valid_quest.json', {
+			validator: function() { throw new Error('synthetic'); },
+		}).then(
+			function()  { throw new Error('expected rejection'); },
+			function(e) {
+				t.assertEq(/valid_quest\.json/.test(e.message),        true);
+				t.assertEq(/validator.*synthetic/.test(e.message),     true);
+			}
+		);
+	});
+
+	// ── 6. schemaVersion (forwards to loadJson) ─────────────────
+	t.case('loadPath with matching schemaVersion resolves', function()
+	{
+		return c.loadPath(FIX + 'versioned.json', { schemaVersion: '1.0.0' }).then(function(data)
+		{
+			t.assertEq(data.value, 42);
+		});
+	});
+
+	t.case('loadPath with mismatched schemaVersion rejects', function()
+	{
+		return c.loadPath(FIX + 'versioned.json', { schemaVersion: '2.0.0' }).then(
+			function()  { throw new Error('expected rejection'); },
+			function(e) { t.assertEq(/schema_version mismatch/.test(e.message), true); }
+		);
+	});
+
+	// ── 7. required paths (forwards to loadJson) ────────────────
+	t.case('loadPath honours required dot-paths', function()
+	{
+		return c.loadPath(FIX + 'valid_quest.json', { required: ['id', 'steps'] }).then(function(data)
+		{
+			t.assertEq(data.id, 'q_shift_01');
+		});
+	});
+
+	t.case('loadPath rejects when required path is missing', function()
+	{
+		return c.loadPath(FIX + 'valid_quest.json', { required: ['nope.absent'] }).then(
+			function()  { throw new Error('expected rejection'); },
+			function(e) { t.assertEq(/missing required path/.test(e.message), true); }
+		);
+	});
+
+	// ── 8. freeze:false skips freezing ──────────────────────────
+	t.case('loadPath with freeze:false leaves data mutable', function()
+	{
+		return c.loadPath(FIX + 'valid_quest.json', { freeze: false }).then(function(data)
+		{
+			t.assertEq(Object.isFrozen(data), false);
+			data.mutated = true;  // must not throw
+			t.assertEq(data.mutated, true);
+		});
+	});
+
+	// ── 9. load() = path() + loadPath() ─────────────────────────
+	t.case('load(scene, chapter) resolves via the baseDir convention', function()
+	{
+		// Point baseDir at the fixtures root so load('.', 'valid_novel') composes correctly.
+		return withBase(FIX, function()
+		{
+			// load('.', name) → FIX + './' + name + '.json' — pretend "novel" is the scene dir.
+			// Create a fake scene-chapter layout by using '.' as scene.
+			return c.loadPath(c.path('.', 'valid_novel'), { schemaName: 'novel' }).then(function(data)
+			{
+				t.assertEq(data.id, 'fixture_novel');
+			});
+		});
+	});
+
+	// ── 10. loadPath() throws early on bad path ─────────────────
+	t.case('loadPath throws synchronously on empty path', function()
+	{
+		let threw = false;
+		try { c.loadPath(''); } catch (_e) { threw = true; }
+		// Older engines may reject via Promise instead — accept either.
+		if (!threw)
+		{
+			return c.loadPath('').then(
+				function()  { throw new Error('expected rejection'); },
+				function(_e) { /* ok */ }
+			);
+		}
+		t.assertEq(threw, true);
+	});
+
+	// ── 11. mitiru.resolveUrl (NF-01 helper) ────────────────────
+	t.case('resolveUrl handles absolute paths unchanged', function()
+	{
+		const out = mitiru.resolveUrl('https://example.com/a.json');
+		t.assertEq(out, 'https://example.com/a.json');
+	});
+
+	t.case('resolveUrl rebases relative against an explicit base', function()
+	{
+		const out = mitiru.resolveUrl('b.json', 'https://example.com/foo/a.json');
+		t.assertEq(out, 'https://example.com/foo/b.json');
+	});
+
+	t.case('resolveUrl traverses parent segments', function()
+	{
+		const out = mitiru.resolveUrl('../sibling/x.png', 'https://example.com/foo/bar/a.json');
+		t.assertEq(out, 'https://example.com/foo/sibling/x.png');
+	});
+
+	t.case('resolveUrl throws on empty rel', function()
+	{
+		let threw = false;
+		try { mitiru.resolveUrl(''); } catch (_e) { threw = true; }
+		t.assertEq(threw, true);
+	});
+
+	// ── 12. loadManifest — path convention + resolver ───────────
+	t.case('loadManifest returns {data, url, resolve}', function()
+	{
+		return c.loadManifest(FIX + 'manifest.json').then(function(m)
+		{
+			t.assertEq(m.data.id, 'fixture_manifest');
+			t.assertEq(typeof m.url, 'string');
+			// url should be absolute.
+			t.assertEq(/^https?:\/\//.test(m.url), true);
+			t.assertEq(typeof m.resolve, 'function');
+		});
+	});
+
+	t.case('loadManifest.resolve rebases entries against the manifest URL', function()
+	{
+		return c.loadManifest(FIX + 'manifest.json').then(function(m)
+		{
+			// Relative path from inside the manifest.
+			const ch01 = m.resolve(m.data.chapters[0].path);
+			// Must point into the fixtures_content/scripts/ path, not into
+			// the page's own directory.
+			t.assertEq(/\/fixtures_content\/scripts\/novel\/ch01\.json$/.test(ch01), true);
+		});
+	});
+
+	t.case('loadManifest.resolve handles parent-segment rebasing', function()
+	{
+		return c.loadManifest(FIX + 'manifest.json').then(function(m)
+		{
+			// manifest has "../../art/bg_street.png"
+			const art = m.resolve(m.data.art.bg_street);
+			// Should jump above fixtures_content/ two levels.
+			t.assertEq(/\/art\/bg_street\.png$/.test(art), true);
+			t.assertEq(art.indexOf('fixtures_content'), -1);
+		});
+	});
+
+	t.case('loadManifest honours loadPath opts (freeze, required)', function()
+	{
+		return c.loadManifest(FIX + 'manifest.json', { required: ['chapters', 'art'] }).then(function(m)
+		{
+			t.assertEq(Object.isFrozen(m.data), true);
+		});
+	});
+
+	t.case('loadManifest rejects when required key is missing', function()
+	{
+		return c.loadManifest(FIX + 'manifest.json', { required: ['nope'] }).then(
+			function()  { throw new Error('expected rejection'); },
+			function(e) { t.assertEq(/missing required path/.test(e.message), true); }
+		);
+	});
+
+	t.case('loadManifest throws synchronously on empty path', function()
+	{
+		let threw = false;
+		try { c.loadManifest(''); } catch (_e) { threw = true; }
+		if (!threw)
+		{
+			return c.loadManifest('').then(
+				function()  { throw new Error('expected rejection'); },
+				function(_e) { /* ok */ }
+			);
+		}
+		t.assertEq(threw, true);
+	});
+
+	// ── drive ────────────────────────────────────────────────────
+	mitiru.test.run();
+})();
+</script>

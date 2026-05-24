@@ -1,0 +1,10 @@
+{
+  "id": "fixture_manifest",
+  "chapters": [
+    { "id": "ch01", "path": "scripts/novel/ch01.json" },
+    { "id": "ch02", "path": "scripts/novel/ch02.json" }
+  ],
+  "art": {
+    "bg_street": "../../art/bg_street.png"
+  }
+}

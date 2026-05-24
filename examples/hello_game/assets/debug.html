@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <title>hello_game — Debug Inspector</title>
+    <style>
+        :root {
+            --bg:      #050810;
+            --panel:   rgba(20, 28, 44, 0.85);
+            --fg:      #f1f4fa;
+            --accent:  #5cd7c8;
+            --warn:    #f5c451;
+            --info:    #7cc4ff;
+            --danger:  #ff6b6b;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+        }
+        .wrap {
+            padding: 20px 22px 26px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        h2 {
+            font-size: 10px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            opacity: 0.65;
+            margin: 0 0 8px;
+            font-weight: 600;
+        }
+        .pause-state {
+            padding: 7px 14px;
+            background: rgba(92, 215, 200, 0.15);
+            border: 1px solid rgba(92, 215, 200, 0.45);
+            color: var(--accent);
+            border-radius: 6px;
+            display: inline-block;
+            font-size: 11px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .pause-state.is-paused {
+            background: rgba(245, 196, 81, 0.15);
+            border-color: rgba(245, 196, 81, 0.45);
+            color: var(--warn);
+        }
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            min-height: 28px;
+        }
+        .chip {
+            padding: 4px 10px;
+            background: rgba(124, 196, 255, 0.18);
+            border: 1px solid rgba(124, 196, 255, 0.45);
+            color: var(--info);
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            line-height: 1;
+        }
+        .chip--mouse {
+            background: rgba(245, 196, 81, 0.18);
+            border-color: rgba(245, 196, 81, 0.45);
+            color: var(--warn);
+        }
+        .placeholder { opacity: 0.4; font-size: 12px; }
+        .mouse-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 13px;
+            color: rgba(255,255,255,0.75);
+        }
+        .history-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dotted rgba(255,255,255,0.06);
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 12px;
+            color: rgba(255,255,255,0.78);
+        }
+        .history-row:last-child { border-bottom: none; }
+        .history-row .t {
+            color: rgba(255,255,255,0.4);
+            font-variant-numeric: tabular-nums;
+        }
+        .conn-banner {
+            position: fixed;
+            bottom: 8px;
+            right: 12px;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <section>
+            <h2>Game State</h2>
+            <div class="pause-state" id="pause-state">▶ Running</div>
+        </section>
+
+        <section>
+            <h2>Keys Held</h2>
+            <div class="chip-row" id="held-row"><span class="placeholder">(no keys held)</span></div>
+        </section>
+
+        <section>
+            <h2>Mouse</h2>
+            <div class="mouse-row" id="mouse-row">(0, 0)</div>
+        </section>
+
+        <section>
+            <h2>History (newest first)</h2>
+            <div id="history-list"><div class="history-row placeholder"><span>(no key events yet)</span><span></span></div></div>
+        </section>
+    </div>
+    <div class="conn-banner" id="conn">waiting for engine…</div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const $        = (id) => document.getElementById(id);
+            const heldRow  = $('held-row');
+            const mouseRow = $('mouse-row');
+            const histList = $('history-list');
+            const pauseEl  = $('pause-state');
+            const connEl   = $('conn');
+
+            let lastMouseX = 0, lastMouseY = 0, lastMouseBtns = [];
+
+            function markLive() {
+                connEl.textContent = 'live';
+                connEl.style.color = '#5cd7c8';
+                connEl.style.opacity = 0.7;
+            }
+
+            function renderHeld(arr) {
+                if (!arr || arr.length === 0) {
+                    heldRow.innerHTML = '<span class="placeholder">(no keys held)</span>';
+                } else {
+                    heldRow.innerHTML = arr.map(k => '<span class="chip">' + k + '</span>').join('');
+                }
+            }
+            function renderMouse() {
+                const x = Math.round(lastMouseX);
+                const y = Math.round(lastMouseY);
+                const btns = lastMouseBtns.length
+                    ? ' ' + lastMouseBtns.map(b => '<span class="chip chip--mouse">' + b + '</span>').join(' ')
+                    : '';
+                mouseRow.innerHTML = '<span>(' + x + ', ' + y + ')</span>' + btns;
+            }
+            function renderHistory(arr) {
+                if (!arr || arr.length === 0) {
+                    histList.innerHTML = '<div class="history-row placeholder"><span>(no key events yet)</span><span></span></div>';
+                    return;
+                }
+                histList.innerHTML = arr.map(e =>
+                    '<div class="history-row"><span>' + e.name + '</span><span class="t">' + Number(e.t).toFixed(2) + 's</span></div>'
+                ).join('');
+            }
+            function renderPause(isPaused) {
+                if (isPaused) {
+                    pauseEl.textContent = '❚❚ Paused — F1 toggle · F2 step';
+                    pauseEl.classList.add('is-paused');
+                } else {
+                    pauseEl.textContent = '▶ Running';
+                    pauseEl.classList.remove('is-paused');
+                }
+            }
+
+            window.addEventListener('message', function (ev) {
+                const msg = ev.data || {};
+                markLive();
+                switch (msg.k) {
+                    case 'held':      renderHeld(msg.v); break;
+                    case 'mouseX':    lastMouseX = Number(msg.v) || 0; renderMouse(); break;
+                    case 'mouseY':    lastMouseY = Number(msg.v) || 0; renderMouse(); break;
+                    case 'mouseBtns': lastMouseBtns = Array.isArray(msg.v) ? msg.v : []; renderMouse(); break;
+                    case 'history':   renderHistory(msg.v); break;
+                    case 'paused':    renderPause(Boolean(msg.v)); break;
+                }
+            });
+
+            // Signal parent that we're ready (so it flushes any buffered state).
+            if (window.opener && !window.opener.closed) {
+                try { window.opener.postMessage({ k: '__debug_ready' }, '*'); }
+                catch (e) { console.warn('debug.html: opener postMessage failed', e); }
+            }
+        })();
+    </script>
+</body>
+</html>

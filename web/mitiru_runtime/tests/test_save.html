@@ -1,0 +1,608 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_save.js tests</title>
+<!--
+    test_save.html — mitiru.save (F-11) unit tests
+
+    Run:
+      python -m http.server 8765 --bind 127.0.0.1
+      open http://localhost:8765/web/mitiru_runtime/tests/test_save.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_cef_state.js"></script>
+<script src="../mitiru_save.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+	'use strict';
+
+	const t = mitiru.test;
+	const s = mitiru.save;
+
+	// ── helpers ──────────────────────────────────────────────────
+	// Clear all save slots between tests to keep them independent.
+	async function clearAll()
+	{
+		for (let i = 0; i < s.MAX_SLOTS; ++i)
+		{
+			await s.delete(i);
+		}
+	}
+
+	// ── 1. constants ─────────────────────────────────────────────
+	t.case('MAX_SLOTS === 10', function()
+	{
+		t.assertEq(s.MAX_SLOTS, 10);
+	});
+
+	t.case('SCHEMA_VERSION is a positive integer', function()
+	{
+		t.assert(typeof s.SCHEMA_VERSION === 'number' && s.SCHEMA_VERSION >= 1,
+		         'SCHEMA_VERSION should be >= 1');
+	});
+
+	// ── 2. empty slot ─────────────────────────────────────────────
+	t.case('read empty slot returns null', async function()
+	{
+		await clearAll();
+		const result = await s.read(0);
+		t.assertEq(result, null);
+	});
+
+	// ── 3. write + read round-trip ────────────────────────────────
+	t.case('write + read round-trip (localStorage backend)', async function()
+	{
+		await clearAll();
+		const data = { chapter: 3, gold: 420, flags: { metMaria: true } };
+		await s.write(0, data);
+		const result = await s.read(0);
+		t.assert(result !== null, 'read should return non-null after write');
+		t.assertEq(result.data.chapter, 3);
+		t.assertEq(result.data.gold, 420);
+		t.assertEq(result.data.flags.metMaria, true);
+	});
+
+	// ── 4. metadata preserved + timestamp auto-set ───────────────
+	t.case('metadata is preserved and timestamp is auto-set', async function()
+	{
+		await clearAll();
+		const before = Date.now();
+		await s.write(1, { hp: 100 }, { title: 'Day 3', description: 'Afternoon' });
+		const after  = Date.now();
+		const result = await s.read(1);
+		t.assert(result !== null, 'slot should be readable');
+		t.assertEq(result.meta.title,       'Day 3');
+		t.assertEq(result.meta.description, 'Afternoon');
+		t.assert(result.meta.timestamp >= before && result.meta.timestamp <= after,
+		         'timestamp should be within the write window');
+	});
+
+	// ── 5. list returns exactly MAX_SLOTS entries ─────────────────
+	t.case('list returns exactly MAX_SLOTS entries', async function()
+	{
+		await clearAll();
+		const slots = await s.list();
+		t.assertEq(slots.length, s.MAX_SLOTS);
+	});
+
+	// ── 6. list marks written slots as exists:true ────────────────
+	t.case('list marks written slot as exists:true', async function()
+	{
+		await clearAll();
+		await s.write(2, { score: 999 });
+		const slots = await s.list();
+		const entry2 = slots.find(function(e) { return e.slot === 2; });
+		const entry3 = slots.find(function(e) { return e.slot === 3; });
+		t.assert(entry2 !== undefined,  'slot 2 should appear in list');
+		t.assertEq(entry2.exists, true, 'slot 2 should be marked exists');
+		t.assertEq(entry3.exists, false,'slot 3 should be empty');
+	});
+
+	// ── 7. delete removes data and meta ──────────────────────────
+	t.case('delete removes data + meta', async function()
+	{
+		await clearAll();
+		await s.write(4, { day: 1 });
+		await s.delete(4);
+		const result = await s.read(4);
+		t.assertEq(result, null, 'slot should be empty after delete');
+		const slots = await s.list();
+		const entry4 = slots.find(function(e) { return e.slot === 4; });
+		t.assertEq(entry4.exists, false, 'list should show slot as empty after delete');
+	});
+
+	// ── 8. delete on empty slot is no-op ─────────────────────────
+	t.case('delete on empty slot does not throw', async function()
+	{
+		await clearAll();
+		// Must not throw — deleting a non-existent slot is fine.
+		await s.delete(5);
+		const result = await s.read(5);
+		t.assertEq(result, null);
+	});
+
+	// ── 9. migration applied on read ─────────────────────────────
+	t.case('registerMigration applied on read when version mismatches', async function()
+	{
+		await clearAll();
+
+		// Manually inject a v0 blob so migration triggers.
+		const v0Blob = JSON.stringify({
+			version:     0,
+			timestamp:   Date.now(),
+			playtimeMs:  0,
+			title:       '',
+			description: '',
+			thumbnailDataUrl: '',
+			data:        { legacy: 'value' },
+		});
+		localStorage.setItem('mitiru.save.slot.6.data', v0Blob);
+		localStorage.setItem('mitiru.save.slot.6.meta', JSON.stringify({ version: 0, title: '' }));
+
+		// Register migration 0 → 1.
+		s.registerMigration(0, 1, function(old)
+		{
+			return Object.assign({}, old, { migrated: true, newField: 'added' });
+		});
+
+		const result = await s.read(6);
+		t.assert(result !== null, 'slot should be readable');
+		t.assertEq(result.data.legacy,   'value', 'original field preserved');
+		t.assertEq(result.data.migrated, true,    'migration flag applied');
+		t.assertEq(result.data.newField, 'added', 'new field from migration present');
+
+		// Cleanup: remove the test migration so it does not bleed into other tests.
+		// (Cannot remove from _migrations directly — use knowledge of array length.)
+		await clearAll();
+	});
+
+	// ── 10. multiple migrations chain in order ───────────────────
+	t.case('migrations chain in order: 1→2, 2→3', async function()
+	{
+		await clearAll();
+
+		// Inject v1 blob.
+		const v1Blob = JSON.stringify({
+			version:     1,
+			timestamp:   Date.now(),
+			playtimeMs:  0,
+			title:       '',
+			description: '',
+			thumbnailDataUrl: '',
+			data:        { v1data: 'hello' },
+		});
+		localStorage.setItem('mitiru.save.slot.7.data', v1Blob);
+		localStorage.setItem('mitiru.save.slot.7.meta', JSON.stringify({ version: 1, title: '' }));
+
+		// Register two chained migrations.
+		s.registerMigration(1, 2, function(old)
+		{
+			return Object.assign({}, old, { step2: true });
+		});
+		s.registerMigration(2, 3, function(old)
+		{
+			return Object.assign({}, old, { step3: true });
+		});
+
+		const result = await s.read(7);
+		t.assert(result !== null, 'slot should be readable');
+		t.assertEq(result.data.v1data, 'hello', 'original data preserved through chain');
+		t.assertEq(result.data.step2,  true,    'v1→v2 migration applied');
+		t.assertEq(result.data.step3,  true,    'v2→v3 migration applied');
+
+		await clearAll();
+	});
+
+	// ── 11. write to invalid slot throws ─────────────────────────
+	t.case('write to invalid slot index throws synchronously', function()
+	{
+		t.assertThrow(function() { s.write(-1,  {}); }, 'negative slot should throw');
+		t.assertThrow(function() { s.write(10, {}); }, 'slot === MAX_SLOTS should throw');
+		t.assertThrow(function() { s.write(1.5, {}); }, 'fractional slot should throw');
+	});
+
+	// ── 12. large write does not corrupt adjacent slot ────────────
+	t.case('~1 MB write to slot 0 does not corrupt slot 1', async function()
+	{
+		await clearAll();
+
+		// Write a known sentinel to slot 1 first.
+		await s.write(1, { sentinel: 'untouched' });
+
+		// Write ~1 MB of data to slot 0.
+		const bigString = new Array(1024 * 1024 / 2 + 1).join('x');  // ~512 KB chars = ~1 MB UTF-16
+		await s.write(0, { payload: bigString });
+
+		// Verify slot 0 is readable and contains the big data.
+		const r0 = await s.read(0);
+		t.assert(r0 !== null,                 'slot 0 should be readable after large write');
+		t.assert(r0.data.payload.length > 0,  'slot 0 payload should be non-empty');
+
+		// Verify slot 1 sentinel is still intact.
+		const r1 = await s.read(1);
+		t.assert(r1 !== null,                           'slot 1 should still be readable');
+		t.assertEq(r1.data.sentinel, 'untouched',       'slot 1 data should be unaffected');
+
+		await clearAll();
+	});
+
+	// ── 13. backend() returns 'localStorage' without cefQuery ────
+	t.case("backend() returns 'localStorage' when cefQuery is absent", function()
+	{
+		// In a plain browser / test environment cefQuery is not defined.
+		const saved = window.cefQuery;
+		delete window.cefQuery;
+		t.assertEq(s.backend(), 'localStorage');
+		if (saved !== undefined) { window.cefQuery = saved; }
+	});
+
+	// ── 14. backend() returns 'cef' when cefQuery is present ─────
+	t.case("backend() returns 'cef' when cefQuery stub is installed", function()
+	{
+		const saved = window.cefQuery;
+
+		// Install a minimal stub.
+		window.cefQuery = function(opts)
+		{
+			if (opts.onSuccess) { opts.onSuccess('{"ok":true}'); }
+			return {};
+		};
+
+		t.assertEq(s.backend(), 'cef');
+
+		// Restore.
+		if (saved !== undefined)
+		{
+			window.cefQuery = saved;
+		}
+		else
+		{
+			delete window.cefQuery;
+		}
+	});
+
+	// ── 15. atomic write recovery via staging key ─────────────────
+	t.case('staging key recovery: read uses staging data when data key is absent', async function()
+	{
+		await clearAll();
+
+		// Simulate an interrupted write: only the staging key was written.
+		const blob = JSON.stringify({
+			version:     1,
+			timestamp:   Date.now(),
+			playtimeMs:  0,
+			title:       'staged',
+			description: '',
+			thumbnailDataUrl: '',
+			data:        { recovered: true },
+		});
+		localStorage.setItem('mitiru.save.slot.8.staging', blob);
+		// Intentionally do NOT set .data or .meta.
+
+		const result = await s.read(8);
+		t.assert(result !== null,             'read should recover from staging key');
+		t.assertEq(result.data.recovered, true, 'staged data should be returned');
+		t.assertEq(result.meta.title, 'staged', 'staged meta.title should be returned');
+
+		await clearAll();
+	});
+
+	// ── 16. currentVersion() ─────────────────────────────────────
+	t.case('currentVersion() returns SCHEMA_VERSION', function()
+	{
+		t.assertEq(s.currentVersion(), s.SCHEMA_VERSION);
+	});
+
+	// ── 17. exportSlot produces a Blob with correct shape ─────────
+	t.case('exportSlot: produces Blob containing slot data', async function()
+	{
+		await clearAll();
+		const payload = { scene: 'forest', flags: { talked: true } };
+		await s.write(0, payload, { title: 'Export Test' });
+
+		const blob = await s.exportSlot(0);
+		t.assert(blob instanceof Blob, 'exportSlot should return a Blob');
+
+		const text   = await blob.text();
+		const bundle = JSON.parse(text);
+		t.assertEq(bundle.engineVersion, s.SCHEMA_VERSION, 'bundle.engineVersion matches SCHEMA_VERSION');
+		t.assert(bundle.slots && typeof bundle.slots === 'object', 'bundle.slots is an object');
+		t.assert(bundle.slots['0'] !== undefined, 'slot 0 entry present in bundle');
+		t.assertEq(bundle.slots['0'].data.scene,          'forest', 'scene preserved in raw blob');
+		t.assertEq(bundle.slots['0'].data.flags.talked,   true,     'nested flag preserved');
+		t.assertEq(bundle.slots['0'].title,               'Export Test', 'meta.title preserved in raw blob');
+
+		await clearAll();
+	});
+
+	// ── 18. exportSlot on empty slot yields empty slots object ────
+	t.case('exportSlot: empty slot yields bundle with no slot entry', async function()
+	{
+		await clearAll();
+		const blob   = await s.exportSlot(3);
+		const text   = await blob.text();
+		const bundle = JSON.parse(text);
+		t.assertEq(bundle.engineVersion, s.SCHEMA_VERSION);
+		t.assert(bundle.slots['3'] === undefined, 'empty slot should not appear in bundle.slots');
+	});
+
+	// ── 19. exportAll bundles only occupied slots ─────────────────
+	t.case('exportAll: bundles all occupied slots, skips empty ones', async function()
+	{
+		await clearAll();
+		await s.write(1, { x: 1 });
+		await s.write(3, { x: 3 });
+
+		const blob   = await s.exportAll();
+		const text   = await blob.text();
+		const bundle = JSON.parse(text);
+		t.assertEq(bundle.engineVersion, s.SCHEMA_VERSION);
+		t.assert(bundle.slots['1'] !== undefined, 'slot 1 present');
+		t.assert(bundle.slots['3'] !== undefined, 'slot 3 present');
+		t.assert(bundle.slots['0'] === undefined, 'slot 0 absent (empty)');
+		t.assert(bundle.slots['2'] === undefined, 'slot 2 absent (empty)');
+		t.assertEq(bundle.slots['1'].data.x, 1);
+		t.assertEq(bundle.slots['3'].data.x, 3);
+
+		await clearAll();
+	});
+
+	// ── 20. importSlot round-trip ─────────────────────────────────
+	t.case('importSlot: imports slot data into target slot', async function()
+	{
+		await clearAll();
+		await s.write(2, { level: 7 }, { title: 'Import Test' });
+		const blob = await s.exportSlot(2);
+		await s.delete(2);
+
+		// Confirm deleted before import.
+		t.assertEq(await s.read(2), null, 'slot should be empty before import');
+
+		await s.importSlot(blob, 2);
+
+		const result = await s.read(2);
+		t.assert(result !== null, 'slot should be populated after importSlot');
+		t.assertEq(result.data.level, 7,             'data.level preserved through export/import');
+		t.assertEq(result.meta.title, 'Import Test', 'meta.title preserved through export/import');
+
+		await clearAll();
+	});
+
+	// ── 21. importSlot: slot absent in bundle is no-op ────────────
+	t.case('importSlot: slot absent in bundle resolves as no-op', async function()
+	{
+		await clearAll();
+		await s.write(0, { sentinel: 'keep' });
+
+		// Export slot 1 (empty) — slot 0 won't be in the bundle.
+		const blob = await s.exportSlot(1);
+		// Import that bundle into slot 0; slot 0 entry is absent → no-op.
+		await s.importSlot(blob, 0);
+
+		const result = await s.read(0);
+		t.assert(result !== null,                  'slot 0 should still have data');
+		t.assertEq(result.data.sentinel, 'keep',   'existing slot 0 data must be untouched');
+
+		await clearAll();
+	});
+
+	// ── 22. importAll round-trip ──────────────────────────────────
+	t.case('importAll: restores all exported slots and reports counts', async function()
+	{
+		await clearAll();
+		await s.write(0, { q: 0 });
+		await s.write(2, { q: 2 });
+		await s.write(5, { q: 5 });
+
+		const blob = await s.exportAll();
+
+		// Wipe before importing.
+		await clearAll();
+
+		const report = await s.importAll(blob);
+
+		t.assert(Array.isArray(report.imported), 'report.imported is an array');
+		t.assert(Array.isArray(report.skipped),  'report.skipped is an array');
+		t.assert(report.imported.indexOf(0) !== -1, 'slot 0 in imported list');
+		t.assert(report.imported.indexOf(2) !== -1, 'slot 2 in imported list');
+		t.assert(report.imported.indexOf(5) !== -1, 'slot 5 in imported list');
+		t.assertEq(report.imported.length + report.skipped.length, s.MAX_SLOTS,
+		           'imported + skipped must equal MAX_SLOTS');
+
+		t.assertEq((await s.read(0)).data.q, 0, 'slot 0 data restored');
+		t.assertEq((await s.read(2)).data.q, 2, 'slot 2 data restored');
+		t.assertEq((await s.read(5)).data.q, 5, 'slot 5 data restored');
+
+		await clearAll();
+	});
+
+	// ── 23. importSlot rejects engineVersion newer than runtime ───
+	t.case('importSlot: rejects bundle with engineVersion > SCHEMA_VERSION', async function()
+	{
+		await clearAll();
+		const futureBundle = JSON.stringify({
+			engineVersion: s.SCHEMA_VERSION + 9999,
+			slots:         { '0': { version: 9999, timestamp: Date.now(), playtimeMs: 0, title: '', description: '', thumbnailDataUrl: '', data: {} } },
+		});
+		const blob = new Blob([futureBundle], { type: 'application/octet-stream' });
+
+		let threw = false;
+		await s.importSlot(blob, 0).catch(function(e)
+		{
+			threw = true;
+			t.assert(e.message.indexOf('engineVersion') !== -1, 'error message should mention engineVersion');
+			t.assert(e.message.indexOf('SCHEMA_VERSION') !== -1, 'error message should mention SCHEMA_VERSION');
+		});
+		t.assert(threw, 'importSlot should reject for future engineVersion');
+
+		await clearAll();
+	});
+
+	// ── 24. importAll rejects engineVersion newer than runtime ────
+	t.case('importAll: rejects bundle with engineVersion > SCHEMA_VERSION', async function()
+	{
+		await clearAll();
+		const futureBundle = JSON.stringify({
+			engineVersion: s.SCHEMA_VERSION + 9999,
+			slots:         {},
+		});
+		const blob = new Blob([futureBundle], { type: 'application/octet-stream' });
+
+		let threw = false;
+		await s.importAll(blob).catch(function(e)
+		{
+			threw = true;
+			t.assert(e.message.indexOf('engineVersion') !== -1, 'error mentions engineVersion');
+		});
+		t.assert(threw, 'importAll should reject for future engineVersion');
+
+		await clearAll();
+	});
+
+	// ── 25. importSlot invalid slot throws synchronously ──────────
+	t.case('importSlot: invalid slot throws synchronously', function()
+	{
+		const dummyBlob = new Blob(['{}'], { type: 'application/octet-stream' });
+		t.assertThrow(function() { s.importSlot(dummyBlob, -1);  }, 'negative slot should throw');
+		t.assertThrow(function() { s.importSlot(dummyBlob, 10);  }, 'slot === MAX_SLOTS should throw');
+		t.assertThrow(function() { s.importSlot(dummyBlob, 1.5); }, 'fractional slot should throw');
+	});
+
+	// ── 26. exportSlot invalid slot throws synchronously ──────────
+	t.case('exportSlot: invalid slot throws synchronously', function()
+	{
+		t.assertThrow(function() { s.exportSlot(-1);  }, 'negative slot should throw');
+		t.assertThrow(function() { s.exportSlot(10);  }, 'slot === MAX_SLOTS should throw');
+	});
+
+	// ── NF-09: multi-step migration chain on import ───────────────
+	// Using version range 100-103 to avoid colliding with existing tests
+	// 9/10 which registered 0→1, 1→2, 2→3.
+
+	// ── 27. NF-09: single-step migration fires on importSlot ──────
+	t.case('NF-09: importSlot applies v100→v101 migration', async function()
+	{
+		await clearAll();
+
+		// Register 100 → 101 migration.
+		s.registerMigration(100, 101, function(old)
+		{
+			return Object.assign({}, old, { upgraded100to101: true });
+		});
+
+		// Manually inject a v100 blob into a slot and export it.
+		const rawBlob = JSON.stringify({
+			version:          100,
+			timestamp:        Date.now(),
+			playtimeMs:       0,
+			title:            'v100 save',
+			description:      '',
+			thumbnailDataUrl: '',
+			data:             { legacyField: 'present' },
+		});
+		const bundle = JSON.stringify({ engineVersion: s.SCHEMA_VERSION, slots: { '0': JSON.parse(rawBlob) } });
+		const blob   = new Blob([bundle], { type: 'application/octet-stream' });
+
+		await s.importSlot(blob, 0);
+
+		const result = await s.read(0);
+		t.assert(result !== null,                           'slot should be readable after import');
+		t.assertEq(result.data.legacyField, 'present',     'legacy field preserved');
+		t.assertEq(result.data.upgraded100to101, true,     '100→101 migration applied');
+
+		await clearAll();
+	});
+
+	// ── 28. NF-09: three-step chain 100→101→102→103 on importAll ──
+	t.case('NF-09: importAll applies full v100→v101→v102→v103 chain', async function()
+	{
+		await clearAll();
+
+		// Migrations 101→102 and 102→103 — 100→101 already registered in test 27.
+		s.registerMigration(101, 102, function(old)
+		{
+			return Object.assign({}, old, { upgraded101to102: true });
+		});
+		s.registerMigration(102, 103, function(old)
+		{
+			return Object.assign({}, old, { upgraded102to103: true });
+		});
+
+		// Build a bundle with a v100 blob in slot 4.
+		const rawBlob = {
+			version:          100,
+			timestamp:        Date.now(),
+			playtimeMs:       0,
+			title:            'v100 chain',
+			description:      '',
+			thumbnailDataUrl: '',
+			data:             { base: 'value' },
+		};
+		const bundle = JSON.stringify({ engineVersion: s.SCHEMA_VERSION, slots: { '4': rawBlob } });
+		const blob   = new Blob([bundle], { type: 'application/octet-stream' });
+
+		const report = await s.importAll(blob);
+
+		t.assert(report.imported.indexOf(4) !== -1, 'slot 4 should be in imported list');
+
+		const result = await s.read(4);
+		t.assert(result !== null,                         'slot 4 should be readable');
+		t.assertEq(result.data.base,              'value', 'base data preserved through full chain');
+		t.assertEq(result.data.upgraded100to101,  true,   '100→101 step applied');
+		t.assertEq(result.data.upgraded101to102,  true,   '101→102 step applied');
+		t.assertEq(result.data.upgraded102to103,  true,   '102→103 step applied');
+
+		await clearAll();
+	});
+
+	// ── 29. NF-09: migration that throws produces a rejection ─────
+	t.case('NF-09: broken migration in importSlot rejects promise', async function()
+	{
+		await clearAll();
+
+		// Register a migration that always throws.
+		s.registerMigration(103, 104, function(_old)
+		{
+			throw new Error('intentional migration failure');
+		});
+
+		// Bundle with a v103 blob to trigger the 103→104 migration.
+		const rawBlob = {
+			version:          103,
+			timestamp:        Date.now(),
+			playtimeMs:       0,
+			title:            '',
+			description:      '',
+			thumbnailDataUrl: '',
+			data:             { x: 1 },
+		};
+		const bundle = JSON.stringify({ engineVersion: s.SCHEMA_VERSION, slots: { '0': rawBlob } });
+		const blob   = new Blob([bundle], { type: 'application/octet-stream' });
+
+		let threw = false;
+		await s.importSlot(blob, 0).catch(function(e)
+		{
+			threw = true;
+			t.assert(e.message.indexOf('migration') !== -1, 'error should mention migration');
+		});
+		t.assert(threw, 'importSlot should reject when migration throws');
+
+		await clearAll();
+	});
+
+	// ── run ──────────────────────────────────────────────────────
+	mitiru.test.run();
+
+})();
+</script>

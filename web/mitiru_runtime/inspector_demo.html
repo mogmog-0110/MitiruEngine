@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InspectorOverlay Demo</title>
+  <style>
+    body { margin: 0; background: #1a1a2e; display: flex; flex-direction: column; align-items: center; padding: 20px; font-family: monospace; color: #eee; }
+    h1   { margin: 0 0 8px; font-size: 1rem; }
+    p    { margin: 0 0 12px; font-size: 0.8rem; color: #aaa; }
+    canvas { border: 1px solid #444; background: #0f3460; }
+    #info  { margin-top: 10px; font-size: 0.75rem; color: #7ec8e3; }
+  </style>
+</head>
+<body>
+  <h1>InspectorOverlay — Manual Demo</h1>
+  <p>Press <kbd>F3</kbd> to toggle the inspector overlay on/off.</p>
+  <canvas id="c" width="640" height="360"></canvas>
+  <div id="info">Inspector: OFF</div>
+
+  <script src="inspector_overlay.js"></script>
+  <script>
+    'use strict';
+
+    const canvas  = document.getElementById('c');
+    const ctx     = canvas.getContext('2d');
+    const infoEl  = document.getElementById('info');
+    const overlay = new mitiru.InspectorOverlay();
+
+    // ── 3 demo entities ────────────────────────────────────────────────────────
+
+    // Entity A: frog character at top-left
+    let frogX = 60, frogY = 80;
+    overlay.register('frog', function () {
+      return {
+        name:       'Frog',
+        spriteRect: { x: frogX,      y: frogY,      w: 64, h: 64 },
+        hitboxRect: { x: frogX + 8,  y: frogY + 16, w: 48, h: 44 },
+        anchor:     { x: frogX + 32, y: frogY + 64 },
+      };
+    });
+
+    // Entity B: item box at centre
+    overlay.register('item_box', function () {
+      return {
+        name:       'ItemBox',
+        spriteRect: { x: 280, y: 140, w: 80, h: 80 },
+        hitboxRect: { x: 285, y: 145, w: 70, h: 70 },
+        anchor:     { x: 320, y: 180 },
+      };
+    });
+
+    // Entity C: edge-case entity near top-right corner (tests label clamping)
+    overlay.register('corner_enemy', function () {
+      return {
+        name:       'CornerEnemy',
+        spriteRect: { x: 580, y: 2, w: 48, h: 48 },
+        hitboxRect: { x: 582, y: 4, w: 44, h: 44 },
+        anchor:     { x: 604, y: 26 },
+      };
+    });
+
+    overlay.bindKeyToggle(window, 'F3');
+
+    // ── animation loop ─────────────────────────────────────────────────────────
+
+    function drawScene() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // simple animated frog (moves in a small sine arc)
+      const t = Date.now() / 1000;
+      frogX = 60 + Math.round(Math.sin(t) * 20);
+
+      // draw placeholder sprites as simple coloured rects
+      ctx.fillStyle = '#16c79a';
+      ctx.fillRect(frogX, frogY, 64, 64);   // frog
+
+      ctx.fillStyle = '#e94560';
+      ctx.fillRect(280, 140, 80, 80);        // item box
+
+      ctx.fillStyle = '#f5a623';
+      ctx.fillRect(580, 2, 48, 48);          // corner enemy
+
+      // overlay on top
+      overlay.render(ctx);
+
+      // update label
+      infoEl.textContent = 'Inspector: ' + (overlay.isEnabled() ? 'ON  (F3 to toggle)' : 'OFF (F3 to toggle)');
+    }
+
+    function loop() {
+      drawScene();
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+</body>
+</html>

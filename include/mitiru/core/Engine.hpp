@@ -37,7 +37,9 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <mitiru/core/Clock.hpp>
@@ -54,9 +56,13 @@
 #include <mitiru/render/Renderer3D.hpp>
 #include <mitiru/render/RenderPipeline2D.hpp>
 #include <mitiru/input/InputInjector.hpp>
+#include <mitiru/input/InputRecorder.hpp>
+#include <mitiru/input/InputReplayer.hpp>
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/util/ImageWriter.hpp>
 #include <mitiru/observe/Snapshot.hpp>
+#include <mitiru/observe/SharedSnapshot.hpp>
+#include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/platform/WindowFactory.hpp>
 #include <mitiru/ecs/MitiruWorld.hpp>
 #include <mitiru/scene/MitiruScene.hpp>
@@ -67,6 +73,13 @@
 // Forward declarations -- stored as raw/shared pointers, no method calls in Engine
 namespace mitiru::validate { class TemporalInvariantChecker; }
 namespace mitiru::observe { class StructuredDiff; class CausalChain; }
+// ModuleHost is pimpl-style: full type lives in mitiru/module/ModuleHost.hpp
+// (which pulls in <windows.h>). Kept out of Engine.hpp consumers to limit
+// the WIN32 macro pollution to actual host code (Engine_Module.hpp + tests).
+namespace mitiru::module { class ModuleHost; }
+// StateStore lives in mitiru/cef/StateStore.hpp (pulls in nlohmann/json).
+// Engine owns one in module-mode (ADR 0005); pimpl keeps Engine.hpp light.
+namespace mitiru::cef { class StateStore; }
 // IAudioEngine は applyVolumes() で setVolume() を呼ぶため完全型が必要
 #include <mitiru/audio/AudioEngine.hpp>
 namespace mitiru::render { class PostProcessManager; }
@@ -219,6 +232,20 @@ public:
 	/// @return InputInjector への参照
 	[[nodiscard]] InputInjector& inputInjector() noexcept;
 
+	/// @brief 入力レコーダーへの参照を取得する (axis 4)
+	/// @details MITIRU_RECORD env var が設定されている場合、Engine::run() が
+	///          beginRecording() を自動で呼ぶ。手動 begin / end / saveToFile
+	///          したい場合はこの accessor 経由で操作する。
+	[[nodiscard]] InputRecorder& inputRecorder() noexcept;
+	[[nodiscard]] const InputRecorder& inputRecorder() const noexcept;
+
+	/// @brief 入力リプレイヤーへの参照を取得する (axis 4)
+	/// @details MITIRU_REPLAY=<path> が設定されている場合、Engine::run() が
+	///          loadFromFile + load を自動で行い、各フレームの記録済み
+	///          コマンドを injector 経由で apply する。
+	[[nodiscard]] InputReplayer& inputReplayer() noexcept;
+	[[nodiscard]] const InputReplayer& inputReplayer() const noexcept;
+
 	/// @brief 現在の入力状態を取得する
 	[[nodiscard]] const InputState& inputState() const noexcept;
 
@@ -252,7 +279,69 @@ public:
 	/// @return Clock へのポインタ (未初期化時は nullptr)
 	[[nodiscard]] const Clock* clock() const noexcept;
 
+	// ── Module loading (v0.2.0 step 2 — game-as-DLL hot reload foundation) ──
+	// Game DLL を host process に load して main loop から callback 駆動する。
+	// 既存の `run(Game&, cfg)` 経路と並走する別エントリ。step 7 で exe-モードを
+	// 廃止した時点で `runModule` が一級市民になる。
+
+	/// @brief Game DLL を一度だけ load する。memory pointer は first-time のため null 渡し
+	/// @param modulePath 元 DLL の path (rebuild される側)。実際に LoadLibrary するのは
+	///        %TEMP% に copy された別 file
+	/// @return 成功なら true。失敗時は内部 ModuleHost::lastError() を参照する
+	/// @details
+	///   - すでに module が load 済みなら false (先に `unloadModule()` を呼ぶこと)
+	///   - 成功時、`mitiru_module_load` を invoke して ModuleApi + memory pointer を
+	///     populate する。version mismatch は失敗扱い
+	///   - 直後に `api.on_init` が non-null なら呼び出す
+	bool loadModule(const std::filesystem::path& modulePath);
+
+	/// @brief 現在 load 済みの module を unload する。call safe (未 load なら no-op)
+	/// @details on_shutdown を呼び、FreeLibrary し、callback table を null 化する。
+	///          memory は破棄しない (reload で再利用される; 完全に手放すには
+	///          `discardModuleMemory()` を別途呼ぶこと — v0.2.0 では未提供)
+	void unloadModule() noexcept;
+
+	/// @brief 現在の module を unload して新しい (or 同じ) path から再 load
+	/// @param modulePath 新 DLL の path
+	/// @return 成功なら true。失敗時 module は unloaded 状態に置かれる
+	/// @details
+	///   - 既存 memory pointer は新 DLL に渡される (state 維持)
+	///   - rebuild 直後の DLL を hot-swap するための主用途
+	bool reloadModule(const std::filesystem::path& modulePath);
+
+	/// @brief module を load してから main loop を回す統合エントリ
+	/// @param modulePath 元 DLL の path
+	/// @param configIn engine 設定
+	/// @details
+	///   - 内部で stack-local Game adapter を立て、`run(adapter, config)` を呼ぶ
+	///   - ループ終了後 `unloadModule()` を呼ぶ
+	///   - module load 失敗時は no-op で return (engine 自体は init しない)
+	void runModule(const std::filesystem::path& modulePath,
+	               const EngineConfig& configIn = {});
+
+	/// @brief 現在 module が load されているか
+	[[nodiscard]] bool hasModule() const noexcept;
+
+	/// @brief 現在 active な ModuleApi callback table (read-only)
+	[[nodiscard]] const module::ModuleApi& moduleApi() const noexcept;
+
+	/// @brief module の persistent memory pointer (DLL が自分で `new` したもの)
+	[[nodiscard]] void* moduleMemory() const noexcept;
+
+	/// @brief module-mode で engine 所有の CEF StateStore (lazy created)
+	/// @details CEF init 後 + module load 後にのみ non-null。ADR 0005 により
+	///          DLL は直接これに触らず、`FrameIntents::statePushes` 経由で
+	///          host に push を依頼する。
+	[[nodiscard]] cef::StateStore* moduleStateStore() noexcept;
+
 private:
+	// ── Module-mode per-frame helpers (called by ModuleAdapter in runModule) ──
+	// Defined out-of-class in detail/Engine_Module.hpp.
+	void ensureModuleCefBindings();        ///< lazy create StateStore + SharedSnapshot once CEF is ready
+	void buildModuleInputSnapshot();       ///< populate m_moduleInputSnapshot from m_inputState + action queue
+	void zeroModuleFrameIntents();         ///< wipe m_moduleFrameIntents before each on_update call
+	void drainModuleFrameIntents();        ///< apply DLL's requested side-effects after on_update
+
 	/// @brief 1フレーム分のゲームループを実行する
 	/// @details run()から呼ばれる。Emscriptenではemscripten_set_main_loop_argのコールバック。
 	void tickOneFrame();
@@ -404,6 +493,10 @@ private:
 	std::shared_ptr<render::PostProcessManager> m_postProcess;   ///< ポストプロセスマネージャー (Win32のみ生成)
 	InputInjector m_inputInjector;                   ///< 入力インジェクター
 	InputState m_inputState;                         ///< 現在の入力状態
+	InputRecorder m_inputRecorder;                   ///< 決定論的リプレイ用入力レコーダー (axis 4)
+	InputReplayer m_inputReplayer;                   ///< 決定論的リプレイ用入力再生器 (axis 4)
+	std::string m_recordOutputPath;                  ///< MITIRU_RECORD で設定: 終了時にここへ ReplayData を保存
+	bool m_replayActive = false;                     ///< MITIRU_REPLAY で設定: 入力イベントを replayer から injection
 	ecs::MitiruWorld* m_world = nullptr;             ///< ECSワールド (非所有)
 	scene::MitiruSceneManager* m_sceneManager = nullptr; ///< シーンマネージャー (非所有)
 	validate::TemporalInvariantChecker* m_temporalChecker = nullptr; ///< 時系列不変条件チェッカー (非所有)
@@ -421,6 +514,8 @@ private:
 	std::map<std::string, std::string> m_gameFlags;  ///< ゲームフラグストア (HTTP API用)
 	std::atomic<bool> m_shouldStop{false};            ///< 停止要求フラグ (スレッドセーフ)
 	bool m_initialized = false;                      ///< 初期化済みフラグ
+	int m_pendingResizeW = 0;                        ///< modal-loop drag 中の defer 先 (WM_EXITSIZEMOVE で flush)
+	int m_pendingResizeH = 0;
 	int m_autoTestFrameCount = 0;                    ///< 自律テストモード用フレームカウンタ
 	bool m_autoTestCaptured = false;                 ///< 自律テスト用キャプチャ完了フラグ
 	Game* m_loopGame = nullptr;                      ///< tickOneFrame()用ゲーム参照
@@ -431,6 +526,34 @@ private:
 	static constexpr int kMaxFrameSkip = 5;           ///< 最大フレームスキップ数
 	static constexpr float kMaxDelta = 0.1f;          ///< スパイラルオブデス防止キャップ
 	float m_accumulator = 0.0f;                       ///< 固定タイムステップ用アキュムレータ
+
+	// ── Module (game-as-DLL) state ──────────────────────────────────────────
+	// Pimpl: ModuleHost includes <windows.h>; keep it out of Engine.hpp's
+	// transitive include set by storing it behind a unique_ptr.
+	std::unique_ptr<module::ModuleHost>   m_moduleHost;
+	module::ModuleApi                     m_moduleApi{};            ///< zero-init: all callbacks null until load
+	void*                                 m_moduleMemory = nullptr; ///< DLL-owned game state (engine doesn't free)
+
+	// Per-frame POD scratch buffers for the host→DLL signal flow. Heap-
+	// allocated (lazy) because the structs are ~50KB combined and we don't
+	// want to inflate every Engine instance that never loads a module.
+	std::unique_ptr<module::InputSnapshot> m_moduleInputSnapshot;
+	std::unique_ptr<module::FrameIntents>  m_moduleFrameIntents;
+
+	// Module-mode CEF StateStore + Inspector SharedSnapshot — engine-owned
+	// so the DLL never holds pointers to host objects (ADR 0005).
+	std::unique_ptr<cef::StateStore>        m_moduleStateStore;
+	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
+
+	// Action events from CEF JS queued for next on_update. Mutex-guarded
+	// because StateStore handlers fire on the CEF UI thread but on_update
+	// runs on the engine main thread.
+	struct ModuleActionEventBuffer
+	{
+		std::mutex                                  mu;
+		std::vector<std::pair<std::string, std::string>> events; // (name, payloadJson)
+	};
+	std::unique_ptr<ModuleActionEventBuffer> m_moduleActionEvents;
 };
 
 } // namespace mitiru
@@ -458,4 +581,8 @@ private:
 // #if defined(_WIN32) && defined(MITIRU_HAS_CEF) guard (matching Engine.hpp's
 // existing CefContext typedef guard above), so it compiles safely on all platforms.
 #include <mitiru/core/detail/Engine_Cef.hpp>
+// Module loader detail (loadModule / unloadModule / reloadModule / runModule).
+// Pulls in ModuleHost.hpp which on Windows brings <windows.h> — kept last so
+// the macro pollution is confined to this include's transitive set.
+#include <mitiru/core/detail/Engine_Module.hpp>
 #endif // MITIRU_HEADER_ONLY

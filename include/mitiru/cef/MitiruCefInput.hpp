@@ -12,6 +12,7 @@
 
 #include "include/cef_browser.h"
 
+#include <mitiru/cef/MitiruCefTexture.hpp>
 #include <mitiru/input/InputState.hpp>
 
 namespace mitiru::cef
@@ -28,22 +29,38 @@ public:
     /// @brief 毎フレーム呼ぶ — 前フレームとの差分イベントを送信する
     /// @param host   対象ブラウザホスト (null なら no-op)
     /// @param input  現在の入力状態
-    void update(CefBrowserHost* host, const InputState& input)
+    /// @param tex    composite 中の texture (letterbox fit-rect 逆変換に使う。
+    ///               null なら window 座標をそのまま渡す)
+    void update(CefBrowserHost* host, const InputState& input,
+                const MitiruCefTexture* tex = nullptr)
     {
         if (!host)
         {
             return;
         }
 
-        sendMouse(host, input);
+        sendMouse(host, input, tex);
         sendKeys(host, input);
     }
 
 private:
     // ── マウス ────────────────────────────────────────────────
-    void sendMouse(CefBrowserHost* host, const InputState& input)
+    void sendMouse(CefBrowserHost* host, const InputState& input,
+                   const MitiruCefTexture* tex)
     {
-        const auto [mx, my] = input.mousePosition();
+        const auto pos = input.mousePosition();
+        int mx = pos.first;
+        int my = pos.second;
+        // letterbox composite で texture が中央 fit-rect に縮小配置されている
+        // 場合、window 生座標のままだと CEF 内 layout 位置とズレる。fit-rect の
+        // 逆変換で CEF 論理座標へマップする (fit-rect == window の時は恒等)。
+        if (tex)
+        {
+            int cx = mx, cy = my;
+            tex->mapWindowToCef(mx, my, cx, cy);
+            mx = cx;
+            my = cy;
+        }
 
         // マウス移動
         if (mx != m_prevMx || my != m_prevMy)

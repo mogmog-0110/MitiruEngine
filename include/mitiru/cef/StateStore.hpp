@@ -58,6 +58,7 @@ class StateStore
 {
 public:
 	using ActionFn           = std::function<json(const json& payload)>;
+	using FallbackActionFn   = std::function<json(std::string_view action, const json& payload)>;
 	using ExecuteJsFn        = std::function<void(const std::string& code)>;
 	using HandlerFn          = std::function<std::string(std::string_view payload)>;
 	using RegisterHandlerFn  = std::function<void(const std::string& name, HandlerFn fn)>;
@@ -162,6 +163,21 @@ public:
 		m_actions.erase(std::string(action));
 	}
 
+	/// @brief Catch-all handler for actions that have no specific `onAction()`
+	///        registration. Receives `(action_name, payload)` and may return
+	///        any json (or `{}` for fire-and-forget).
+	/// @details
+	/// Used by the engine in module-mode (ADR 0005): the DLL doesn't get to
+	/// register C++ handlers from across the DLL boundary, so the engine
+	/// installs a fallback that queues incoming actions as `ActionEvent`s
+	/// into next frame's `InputSnapshot`. This lets the DLL react to any
+	/// action name without engine knowing the list ahead of time.
+	void onActionFallback(FallbackActionFn fn)
+	{
+		std::lock_guard lock(m_mutex);
+		m_fallbackAction = std::move(fn);
+	}
+
 	// ── internal (public for testing) ───────────────────────────
 
 	/// @brief Drive a dispatch from a `{action, payload}` JSON blob.
@@ -184,21 +200,32 @@ public:
 		const auto action = parsed.at("action").get<std::string>();
 		const json payload = parsed.value("payload", json::object());
 
-		ActionFn fn;
+		ActionFn         fn;
+		FallbackActionFn fallback;
 		{
 			std::lock_guard lock(m_mutex);
 			const auto it = m_actions.find(action);
-			if (it == m_actions.end())
+			if (it != m_actions.end())
 			{
-				return errorJson("state.dispatch: unknown action '" + action + "'");
+				fn = it->second;
 			}
-			fn = it->second;
+			else
+			{
+				fallback = m_fallbackAction;
+			}
 		}
 
 		try
 		{
-			const json resp = fn(payload);
-			return resp.dump();
+			if (fn)
+			{
+				return fn(payload).dump();
+			}
+			if (fallback)
+			{
+				return fallback(action, payload).dump();
+			}
+			return errorJson("state.dispatch: unknown action '" + action + "'");
 		}
 		catch (const std::exception& e)
 		{
@@ -257,6 +284,7 @@ private:
 	mutable std::mutex                        m_mutex;
 	std::unordered_map<std::string, json>     m_state;
 	std::unordered_map<std::string, ActionFn> m_actions;
+	FallbackActionFn                          m_fallbackAction;
 };
 
 } // namespace mitiru::cef

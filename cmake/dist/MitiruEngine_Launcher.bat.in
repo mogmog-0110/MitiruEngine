@@ -1,0 +1,16 @@
+@echo off
+rem MitiruEngine Launcher launcher (v@PROJECT_VERSION@)
+rem
+rem Double-click this file (or its Start-menu shortcut) to open the
+rem MitiruEngine project launcher. Console window appears briefly while
+rem CEF initializes, then the GUI window takes over.
+rem
+rem For power users: bypass this wrapper and call mitiru_host directly:
+rem   mitiru_host.exe path\to\your_game.dll [--watch]
+
+setlocal
+cd /d "%~dp0"
+rem 800x540 = compact picker, leaves room for other windows on a 1080p screen.
+rem Power users can edit this number or call mitiru_host.exe directly.
+start "" /b "%~dp0mitiru_host.exe" "mitiru_launcher\mitiru_launcher.dll" --size 800x540
+endlocal

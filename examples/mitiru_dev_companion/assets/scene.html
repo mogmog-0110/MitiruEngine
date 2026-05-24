@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <title>Mitiru Dev Companion — Saturn</title>
+    <link rel="stylesheet" href="mitiru_runtime/mitiru_tokens.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+    <style>
+        /* Dev Companion — Mitiru Saturn (BIOS statusbar feel).
+           Tokens imported above; this file applies them.
+           Spec: docs/DESIGN.md (top-level). */
+
+        /* Inline token fallback for CEF file:// resolution edge cases. */
+        :root {
+            --mitiru-bg:        #c8c8c8;
+            --mitiru-surface:   #d8d8d8;
+            --mitiru-text:      #101010;
+            --mitiru-text-mute: #4a4a4a;
+            --mitiru-accent:    #c8002c;
+            --mitiru-accent-hi: #a30022;
+            --mitiru-success:   #4a4a4a;
+            --mitiru-danger:    #c8002c;
+            --mitiru-border:    #101010;
+            --mitiru-font-body: "Arial Narrow", "Helvetica Neue Condensed",
+                                "Courier New", "MS Gothic", ui-monospace, monospace;
+            --mitiru-font-display: "Press Start 2P", "Arial Narrow",
+                                   "Helvetica Neue Condensed", "Courier New", monospace;
+        }
+
+        html, body {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            background: var(--mitiru-bg);
+            color: var(--mitiru-text);
+            font-family: var(--mitiru-font-body);
+            font-size: 12px;
+            line-height: 1.3;
+            font-variant-numeric: tabular-nums;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        body {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            padding: 0 14px;
+            box-sizing: border-box;
+            min-width: 0;
+            box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #6a6a6a;
+            border: 1px solid var(--mitiru-border);
+        }
+
+        /* tmux-style separator pipes */
+        .sep {
+            color: var(--mitiru-border);
+            margin: 0 10px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        /* ── Status indicator ●  ────────────────────────── */
+        .indicator {
+            font-size: 12px;
+            line-height: 1;
+            color: var(--mitiru-text);
+            flex-shrink: 0;
+            user-select: none;
+        }
+        .indicator.is-dead { color: var(--mitiru-danger); }
+
+        /* ── Project name  + pid  ──────────────────────── */
+        .project-name {
+            font-family: var(--mitiru-font-display);
+            font-weight: 400;
+            font-size: 11px;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            flex-shrink: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 240px;
+            margin-left: 8px;
+        }
+        .pid {
+            color: var(--mitiru-text-mute);
+            font-size: 11px;
+            font-weight: 400;
+            margin-left: 6px;
+        }
+        @media (max-width: 560px) {
+            .pid { display: none; }
+        }
+
+        /* ── Build status (between separators) ──────────── */
+        .build-status {
+            color: var(--mitiru-text-mute);
+            font-size: 11px;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .build-status .ok   { color: var(--mitiru-text); }
+        .build-status .bad  { color: var(--mitiru-danger); }
+        .build-status .busy { color: var(--mitiru-accent); }
+        @media (max-width: 440px) {
+            .build-status { display: none; }
+        }
+
+        /* ── Buttons (kbd-style with brackets) ──────────── */
+        .actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        button.btn {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0;
+            padding: 4px 12px;
+            border-radius: 0;
+            border: 1px solid var(--mitiru-border);
+            background: var(--mitiru-surface);
+            color: var(--mitiru-text);
+            cursor: pointer;
+            transition: background 100ms;
+            white-space: nowrap;
+            box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #6a6a6a;
+        }
+        button.btn:hover  { background: rgba(0, 0, 0, 0.06); }
+        button.btn:active {
+            box-shadow: inset -2px -2px 0 #ffffff, inset 2px 2px 0 #6a6a6a;
+        }
+        button.btn[disabled],
+        button.btn[disabled]:hover {
+            opacity: 0.32;
+            cursor: not-allowed;
+            background: var(--mitiru-surface);
+        }
+
+        /* Primary: Build = Saturn red bg */
+        button.btn.build {
+            color: #ffffff;
+            border-color: var(--mitiru-border);
+            background: var(--mitiru-accent);
+            font-weight: 600;
+            box-shadow: inset 2px 2px 0 rgba(255,255,255,0.45),
+                        inset -2px -2px 0 rgba(0,0,0,0.45);
+        }
+        button.btn.build:hover { background: var(--mitiru-accent-hi); }
+        button.btn.build.busy  {
+            background: var(--mitiru-surface);
+            color: var(--mitiru-accent);
+            border-color: var(--mitiru-accent);
+            box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #6a6a6a;
+        }
+
+        button.btn.inspect { color: var(--mitiru-text); }
+        button.btn.inspect.is-active {
+            background: var(--mitiru-accent);
+            color: #ffffff;
+            border-color: var(--mitiru-border);
+            font-weight: 600;
+            box-shadow: inset 2px 2px 0 rgba(255,255,255,0.45),
+                        inset -2px -2px 0 rgba(0,0,0,0.45);
+        }
+        button.btn.stop {
+            color: var(--mitiru-danger);
+        }
+        button.btn.stop:hover { background: rgba(200, 0, 44, 0.10); }
+
+        /* ── Flash toast ─────────────────────────────────── */
+        .flash {
+            position: fixed;
+            bottom: 4px; left: 50%;
+            transform: translate(-50%, 4px);
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 0;
+            background: var(--mitiru-surface);
+            border: 1px solid var(--mitiru-border);
+            opacity: 0;
+            transition: opacity 180ms, transform 180ms;
+            pointer-events: none;
+            white-space: nowrap;
+            max-width: calc(100vw - 24px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #6a6a6a;
+        }
+        .flash.is-visible { opacity: 1; transform: translate(-50%, 0); }
+        .flash.kind-ok    { color: var(--mitiru-text);    border-color: var(--mitiru-text); }
+        .flash.kind-error { color: var(--mitiru-danger);  border-color: var(--mitiru-danger); }
+        .flash.kind-info  { color: var(--mitiru-accent);  border-color: var(--mitiru-accent); }
+    </style>
+</head>
+<body>
+    <span class="indicator" id="indicator">●</span>
+    <div class="project-name">
+        <span id="project-name">—</span>
+        <span class="pid" id="pid"></span>
+    </div>
+    <span class="sep">│</span>
+    <div class="build-status" id="build-status">ready</div>
+    <span class="sep">│</span>
+    <div class="actions">
+        <button class="btn build"   id="btn-build"   disabled>Build</button>
+        <button class="btn inspect" id="btn-inspect">Inspector</button>
+        <button class="btn stop"    id="btn-stop">Stop</button>
+    </div>
+    <div class="flash" id="flash"></div>
+
+    <script src="mitiru_runtime/mitiru_cef_state.js"></script>
+    <script>
+        (function () {
+            const indicator   = document.getElementById('indicator');
+            const projectName = document.getElementById('project-name');
+            const pidEl       = document.getElementById('pid');
+            const buildStatus = document.getElementById('build-status');
+            const btnBuild    = document.getElementById('btn-build');
+            const btnInspect  = document.getElementById('btn-inspect');
+            const btnStop     = document.getElementById('btn-stop');
+            const flashEl     = document.getElementById('flash');
+
+            function esc(s) {
+                return String(s).replace(/[&<>"]/g, c =>
+                    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+            }
+
+            let env = {projectName: '', buildEnabled: false, gameAlive: true, inspectorOpen: false};
+            let build = {active: false, attempted: false};
+
+            function renderEnv() {
+                projectName.textContent = env.projectName || '(no session)';
+                pidEl.textContent       = env.gamePid ? '· pid ' + env.gamePid : '';
+                indicator.classList.toggle('is-dead', !env.gameAlive);
+                btnBuild.disabled = !env.buildEnabled || build.active;
+                btnInspect.disabled = !env.gamePid;
+                btnStop.disabled = !env.gameAlive;
+                btnInspect.textContent = env.inspectorOpen ? 'Hide Inspector' : 'Inspector';
+                btnInspect.classList.toggle('is-active', !!env.inspectorOpen);
+            }
+            function renderBuild() {
+                if (build.active) {
+                    buildStatus.innerHTML = '<span class="busy">building…</span>';
+                    btnBuild.classList.add('busy');
+                    btnBuild.textContent = 'Building…';
+                    btnBuild.disabled = true;
+                } else {
+                    btnBuild.classList.remove('busy');
+                    btnBuild.textContent = 'Build';
+                    btnBuild.disabled = !env.buildEnabled;
+                    if (build.attempted) {
+                        if (build.ok) {
+                            const dur = (build.durationMs / 1000).toFixed(1);
+                            buildStatus.innerHTML = '<span class="ok">build ok · ' + dur + 's</span>';
+                        } else {
+                            buildStatus.innerHTML = '<span class="bad">build FAILED (exit ' + build.exitCode + ')</span>';
+                        }
+                    } else {
+                        buildStatus.textContent = 'ready';
+                    }
+                }
+            }
+
+            let flashTimer = null;
+            function showFlash(kind, message) {
+                if (!message) return;
+                flashEl.className = 'flash kind-' + kind + ' is-visible';
+                flashEl.textContent = message;
+                if (flashTimer) clearTimeout(flashTimer);
+                flashTimer = setTimeout(() => {
+                    flashEl.classList.remove('is-visible');
+                }, 4000);
+            }
+
+            let lastEnvJson = null, lastBuildJson = null, lastFlashJson = null;
+            window.mitiru.onStateChange('view.companion.env', json => {
+                if (json === lastEnvJson) return;
+                lastEnvJson = json;
+                try { env = JSON.parse(json); renderEnv(); }
+                catch (e) { console.error('env', e); }
+            });
+            window.mitiru.onStateChange('view.companion.build', json => {
+                if (json === lastBuildJson) return;
+                lastBuildJson = json;
+                try { build = JSON.parse(json); renderBuild(); }
+                catch (e) { console.error('build', e); }
+            });
+            window.mitiru.onStateChange('view.companion.flash', json => {
+                if (json === lastFlashJson) return;
+                lastFlashJson = json;
+                try {
+                    const f = JSON.parse(json);
+                    showFlash(f.kind || 'info', f.message || '');
+                } catch (e) { console.error('flash', e); }
+            });
+
+            btnBuild.addEventListener('click', () => {
+                if (btnBuild.disabled) return;
+                window.mitiru.dispatch('companion.build', {});
+            });
+            btnInspect.addEventListener('click', () => {
+                if (btnInspect.disabled) return;
+                window.mitiru.dispatch('companion.inspector', {});
+            });
+            btnStop.addEventListener('click', () => {
+                if (btnStop.disabled) return;
+                window.mitiru.dispatch('companion.stop', {});
+            });
+
+            renderEnv();
+            renderBuild();
+        })();
+    </script>
+</body>
+</html>

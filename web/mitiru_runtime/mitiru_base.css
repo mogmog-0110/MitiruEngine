@@ -1,0 +1,161 @@
+/*!
+ * mitiru_base.css — MitiruEngine web runtime base styles
+ *
+ * ゲーム UI (CEF 経由 / ブラウザ) が最低限必要とする CSS normalization と
+ * well-known なバグ回避を提供する。games side では以下のように読み込む:
+ *
+ *   <link rel="stylesheet" href="../mitiru_runtime/mitiru_base.css">
+ *
+ * さらに `mitiru_tokens.css` を読み込むと Mitiru palette / typography が
+ * CSS custom properties として利用可能になる。
+ */
+
+/* ── hidden 属性の確実な非表示 ───────────────────────────────
+ * [hidden] は UA stylesheet で `display: none` が設定されているが、
+ * flex/grid コンテナ内の子要素に `display: flex/grid` を付けると
+ * 特異度タイ+後勝ちで UA ルールを上書きしてしまい [hidden] が効かなくなる。
+ * Constitution IX が mandate している通り !important で確実に隠す。
+ */
+[hidden] {
+	display: none !important;
+}
+
+/* ── box-sizing 正規化 ──────────────────────────────────────
+ * padding/border をサイズに含める (レイアウト算数が素直になる)。
+ * ゲーム UI の矩形配置で最も事故りにくい既定。
+ */
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
+/* ── drag-select 抑止 ───────────────────────────────────────
+ * ゲーム UI 内の文字選択/画像ドラッグは原則不要。選択したい箇所は
+ * 個別に `user-select: text` で上書きする。
+ */
+html, body {
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-user-drag: none;
+}
+input, textarea, [contenteditable] {
+	-webkit-user-select: text;
+	user-select: text;
+}
+
+/* ── iOS タップハイライト除去 (CEF 以外でも無害) ───────────── */
+* {
+	-webkit-tap-highlight-color: transparent;
+}
+
+/* ── 画像 ドラッグ/選択 の完全無効化 ──────────────────────── */
+img {
+	-webkit-user-drag: none;
+	user-select: none;
+	pointer-events: none;
+}
+img.draggable {
+	/* 明示的にドラッグ対象にしたい画像だけ逃げ道を用意 */
+	pointer-events: auto;
+}
+
+/* ── body スクロール抑止 (ゲーム UI は常に viewport-fit) ───── */
+html, body {
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	width: 100%;
+	height: 100%;
+}
+
+/* ── タイポグラフィ フォールバック ──────────────────────────
+ * mitiru_tokens.css を読み込まない場合でも落ち着くデフォルト。
+ * tokens を読み込めば --mitiru-font-body で上書きされる。
+ */
+body {
+	font-family: var(--mitiru-font-body,
+		"Noto Sans JP", "Yu Gothic", "Meiryo", system-ui, sans-serif);
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+/* ── ボタンの UA 装飾リセット ─────────────────────────────── */
+button {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+}
+button:focus-visible {
+	outline: 2px solid var(--mitiru-focus, #4fc3f7);
+	outline-offset: 2px;
+}
+
+/* ── drag engine (mitiru_drag.js) ────────────────────────────
+ * ghost と reject flash の見た目。inline style が位置/z-index/
+ * opacity を掌握するので、ここではモーション/ハイライトだけ。
+ */
+.mitiru-drag-ghost {
+	pointer-events: none;
+	will-change: transform, left, top, opacity;
+	user-select: none;
+	-webkit-user-drag: none;
+}
+
+body.mitiru-dragging,
+body.mitiru-dragging * {
+	cursor: grabbing !important;
+	-webkit-user-select: none !important;
+	user-select: none !important;
+}
+
+@keyframes mitiru-drop-reject-flash {
+	0%   { filter: none; transform: translate(0, 0); }
+	20%  { filter: drop-shadow(0 0 6px rgba(255, 80, 80, 0.85)); transform: translate(-3px, 0); }
+	40%  { transform: translate(3px, 0); }
+	60%  { transform: translate(-2px, 0); }
+	80%  { transform: translate(2px, 0); }
+	100% { filter: none; transform: translate(0, 0); }
+}
+.mitiru-drop-rejected {
+	animation: mitiru-drop-reject-flash 320ms ease-out;
+}
+
+/* ── A11y attribute contract (NF-14) ─────────────────────────────
+ *
+ * Games toggle these attributes on <html> to opt into accessibility modes.
+ * Each preference is an OR of:
+ *   (a) the OS-level media query (automatically applied)
+ *   (b) the explicit data- attribute (player setting, beats OS)
+ *
+ *   <html data-reduce-motion="on">    — force motion reduction
+ *   <html data-reduce-motion="off">   — override the OS setting
+ *   <html data-color-assist="on">     — enable color-blind assist
+ *   <html data-high-contrast="on">    — boost contrast
+ *
+ * Components scope their own CSS under these selectors; the base stylesheet
+ * only provides the baseline "stop animating" rule. Any component can
+ * override when a particular motion must remain (e.g. a progress bar fill).
+ */
+
+@media (prefers-reduced-motion: reduce) {
+	html:not([data-reduce-motion="off"]) *,
+	html:not([data-reduce-motion="off"]) *::before,
+	html:not([data-reduce-motion="off"]) *::after {
+		animation-duration:  0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+html[data-reduce-motion="on"] *,
+html[data-reduce-motion="on"] *::before,
+html[data-reduce-motion="on"] *::after {
+	animation-duration:  0.01ms !important;
+	animation-iteration-count: 1 !important;
+	transition-duration: 0.01ms !important;
+	scroll-behavior: auto !important;
+}

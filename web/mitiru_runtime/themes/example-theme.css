@@ -1,0 +1,38 @@
+/* theme-warm-paper.css
+ *
+ * Warm-paper aesthetic: sepia tones, handwritten font, slower transitions.
+ *
+ * This file is the worked example from docs/THEME_PACKS.md §6.
+ * Copy it into your game's assets/ui/themes/ directory and customise.
+ *
+ * Load order in your game HTML:
+ *   <link rel="stylesheet" href="../mitiru_runtime/mitiru_base.css">
+ *   <link rel="stylesheet" href="../mitiru_runtime/mitiru_tokens.css">
+ *   <link rel="stylesheet" href="../mitiru_runtime/mitiru_components.css">
+ *   <link rel="stylesheet" href="themes/theme-warm-paper.css">   <!-- last -->
+ *
+ * Overrides 8 tokens. All other engine tokens keep their defaults.
+ * See docs/THEME_PACKS.md for the full stable token surface.
+ */
+
+:root {
+    /* Shift the base palette to sepia */
+    --mitiru-cherry:   #9b4d2a;
+    --mitiru-rose:     #d4a574;
+    --mitiru-cream:    #f5ead5;
+    --mitiru-caramel:  #6b3d1e;
+
+    /* Re-point semantic aliases */
+    --mitiru-bg:       var(--mitiru-cream);
+    --mitiru-surface:  #fdf6e3;
+    --mitiru-text:     #3a2410;
+    --mitiru-border:   #c9a876;
+
+    /* Handwritten feel */
+    --mitiru-font-display: "Caveat", "Kosugi Maru", cursive;
+    --mitiru-font-body:    "Noto Serif JP", Georgia, serif;
+
+    /* Slightly slower, more deliberate motion */
+    --mitiru-duration-mid:  320ms;
+    --mitiru-duration-slow: 600ms;
+}

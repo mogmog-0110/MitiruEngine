@@ -41,7 +41,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx11(
 	pipeline.m_constantBuffer = std::make_unique<gfx::Dx11Buffer>(
 		device,
 		gfx::BufferType::Constant,
-		sizeof(ortho.m),
+		static_cast<std::uint32_t>(sizeof(ortho.m)),  // 64B matrix — fits u32; silences C4267
 		true,
 		ortho.m);
 
@@ -72,7 +72,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx11(
 	pipeline.m_psConstantBuffer = std::make_unique<gfx::Dx11Buffer>(
 		device,
 		gfx::BufferType::Constant,
-		sizeof(psConst),
+		static_cast<std::uint32_t>(sizeof(psConst)),  // 16B — fits u32; silences C4267
 		true,
 		psConst);
 
@@ -253,7 +253,7 @@ inline void RenderPipeline2D::submitStyledBatchDx11(
 		m_sdfStyleBuffer = std::make_unique<gfx::Dx11Buffer>(
 			m_dx11Device,
 			gfx::BufferType::Constant,
-			sizeof(StyleConstants),
+			static_cast<std::uint32_t>(sizeof(StyleConstants)),  // fits u32; silences C4267
 			true,
 			&style);
 	}

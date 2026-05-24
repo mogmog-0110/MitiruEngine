@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mitiru-novel-script-v1",
+  "title": "MitiruNovel Script",
+  "description": "JSON schema for mitiru.novel script objects (F-04). Consumed by mitiru_novel.js.",
+  "type": "object",
+  "required": ["lines"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this script. Used as save-state key."
+    },
+    "lines": {
+      "type": "array",
+      "description": "Ordered array of scene lines executed sequentially.",
+      "items": { "$ref": "#/$defs/Line" }
+    }
+  },
+  "$defs": {
+    "Line": {
+      "oneOf": [
+        { "$ref": "#/$defs/TextLine" },
+        { "$ref": "#/$defs/BgLine" },
+        { "$ref": "#/$defs/SpriteLine" },
+        { "$ref": "#/$defs/ChoiceLine" },
+        { "$ref": "#/$defs/WaitLine" }
+      ]
+    },
+    "TextLine": {
+      "type": "object",
+      "description": "Dialogue or narration. Typewriter animation plays; voice is optional.",
+      "required": ["text"],
+      "properties": {
+        "type":    { "type": "string", "enum": ["text", "dialogue"],
+                     "default": "text", "description": "Omitting 'type' defaults to 'text'." },
+        "label":   { "type": "string",
+                     "description": "Optional jump target label (used by choice.next)." },
+        "speaker": { "type": "string", "default": "",
+                     "description": "Character name shown above the text box. Empty = narration." },
+        "text":    { "type": "string", "description": "Line content. Displayed with typewriter animation." },
+        "voice":   { "type": "string",
+                     "description": "URL of voice audio file. Played via new Audio(url).play()." }
+      },
+      "additionalProperties": true
+    },
+    "BgLine": {
+      "type": "object",
+      "description": "Change background image with CSS opacity crossfade (~400ms).",
+      "required": ["type", "path"],
+      "properties": {
+        "type":  { "type": "string", "const": "bg" },
+        "label": { "type": "string" },
+        "path":  { "type": "string", "description": "URL or relative path to the background image." }
+      },
+      "additionalProperties": true
+    },
+    "SpriteLine": {
+      "type": "object",
+      "description": "Show or hide a character sprite.",
+      "required": ["type", "id"],
+      "properties": {
+        "type":  { "type": "string", "const": "sprite" },
+        "label": { "type": "string" },
+        "id":    { "type": "string", "description": "Sprite identifier. Used to update/hide by name." },
+        "path":  { "type": "string", "description": "Image URL. Required when hide is false/absent." },
+        "pos":   { "type": "string", "enum": ["left", "center", "right"],
+                   "default": "center",
+                   "description": "Horizontal position. CSS percentage or keyword." },
+        "hide":  { "type": "boolean", "default": false,
+                   "description": "When true, remove the sprite instead of showing it." }
+      },
+      "additionalProperties": true
+    },
+    "ChoiceLine": {
+      "type": "object",
+      "description": "Present player choices. Execution pauses until a choice is picked. Terminal — lines after a choice in the same array are unreachable if next labels are used.",
+      "required": ["type", "options"],
+      "properties": {
+        "type":    { "type": "string", "const": "choice" },
+        "label":   { "type": "string" },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["label"],
+            "properties": {
+              "label": { "type": "string", "description": "Button text shown to the player." },
+              "next":  { "type": "string",
+                         "description": "Target line label to jump to on pick. If empty or absent and no matching label exists, the script ends." }
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "WaitLine": {
+      "type": "object",
+      "description": "Pause execution for a fixed number of milliseconds.",
+      "required": ["type", "ms"],
+      "properties": {
+        "type":  { "type": "string", "const": "wait" },
+        "label": { "type": "string" },
+        "ms":    { "type": "number", "minimum": 0, "description": "Duration in milliseconds." }
+      },
+      "additionalProperties": true
+    }
+  }
+}

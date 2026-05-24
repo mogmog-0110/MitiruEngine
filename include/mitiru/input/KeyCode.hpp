@@ -216,6 +216,12 @@ static_assert(static_cast<int>(KeyCode::NumpadEnter) == static_cast<int>(KeyCode
 	case KeyCode::Alt:       return "Alt";
 	case KeyCode::Escape:    return "Escape";
 	case KeyCode::Space:     return "Space";
+	case KeyCode::Backquote: return "`";
+	case KeyCode::Semicolon: return ";";
+	case KeyCode::Comma:     return ",";
+	case KeyCode::Period:    return ".";
+	case KeyCode::Minus:     return "-";
+	case KeyCode::Slash:     return "/";
 	case KeyCode::Left:      return "Left";
 	case KeyCode::Up:        return "Up";
 	case KeyCode::Right:     return "Right";

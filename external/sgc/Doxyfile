@@ -1,0 +1,51 @@
+# Doxyfile for ShiggyGameCore
+# Generated for Doxygen 1.9+
+
+PROJECT_NAME           = "ShiggyGameCore"
+PROJECT_BRIEF          = "C++20 game utility library for design patterns, math, and utilities"
+PROJECT_NUMBER         = 0.1.0
+
+OUTPUT_DIRECTORY       = docs/api
+OUTPUT_LANGUAGE        = Japanese
+
+INPUT                  = include/sgc
+RECURSIVE              = YES
+FILE_PATTERNS          = *.hpp
+
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+
+USE_MDFILE_AS_MAINPAGE = README.md
+BUILTIN_STL_SUPPORT    = YES
+JAVADOC_AUTOBRIEF      = YES
+
+# C++20 support
+CLANG_ASSISTED_PARSING = NO
+
+# Appearance
+HAVE_DOT               = NO
+HTML_COLORSTYLE_HUE    = 220
+SORT_BRIEF_DOCS        = YES
+SORT_MEMBERS_CTORS_1ST = YES
+
+# Warnings
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = YES
+
+# Source browsing
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+STRIP_CODE_COMMENTS    = YES
+
+# Preprocessing
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+PREDEFINED             = __cplusplus=202002L
+
+# Encoding
+INPUT_ENCODING         = UTF-8

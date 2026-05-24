@@ -1,0 +1,23 @@
+# Normalize line endings
+* text=auto
+
+# Source files
+*.hpp text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.c text eol=lf
+
+# CMake
+CMakeLists.txt text eol=lf
+*.cmake text eol=lf
+
+# Config
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+
+# Binary
+*.png binary
+*.jpg binary
+*.ico binary

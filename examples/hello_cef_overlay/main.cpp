@@ -4,6 +4,8 @@
 // compositing layer sits on top of the engine's frame and renders glass HUDs
 // with HTML/CSS.
 
+#include <filesystem>
+
 #include <mitiru/Mitiru.hpp>
 
 namespace {
@@ -39,10 +41,22 @@ public:
     }
 };
 
+void anchorCwdToExeDir(const char* argv0)
+{
+    if (!argv0) { return; }
+    std::error_code ec;
+    const auto canon = std::filesystem::weakly_canonical(
+        std::filesystem::path(argv0), ec);
+    if (ec) { return; }
+    std::filesystem::current_path(canon.parent_path(), ec);
+}
+
 }  // namespace
 
-int main()
+int main(int argc, char* argv[])
 {
+    anchorCwdToExeDir(argc > 0 ? argv[0] : nullptr);
+
     mitiru::Engine engine;
     HelloCefOverlay game;
 
@@ -51,7 +65,7 @@ int main()
     cfg.windowWidth = 960;
     cfg.windowHeight = 720;
     cfg.enableCef = true;
-    cfg.cefStartUrl = "assets/scene.html";
+    cfg.cefStartUrl = "file:///./assets/scene.html";
     cfg.skipDefaultFont = true;
 
     engine.run(game, cfg);

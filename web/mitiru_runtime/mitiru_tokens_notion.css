@@ -1,0 +1,119 @@
+/*!
+ * mitiru_tokens_notion.css — Notion inspired alt theme
+ *
+ * Design intent: Reading-first document surface. Pure white, near-black
+ * type, almost no accent color, and hierarchy expressed through spacing
+ * and weight rather than chroma. Suitable for log viewers, narrative
+ * inspectors, and content-heavy debug panels. Compatible with
+ * `--mitiru-*` consumers.
+ *
+ * Swap by replacing the <link> to mitiru_tokens.css with this file.
+ */
+:root
+{
+	/* ── Base palette: Notion (white + warm gray) ─────────────── */
+	--mitiru-paper:        #ffffff;   /* pure white canvas */
+	--mitiru-paper-hi:     #f7f6f3;   /* warm hover surface */
+	--mitiru-ink:          #37352f;   /* warm near-black */
+	--mitiru-ink-mute:     #787774;   /* warm gray for metadata */
+	--mitiru-link:         #2eaadc;   /* subtle blue (links only) */
+	--mitiru-link-hover:   #1f8ab8;
+	--mitiru-phosphor:     #448361;   /* muted green */
+	--mitiru-brick:        #d44c47;   /* destructive red */
+	--mitiru-paper-edge:   rgba(55, 53, 47, 0.09);   /* warm hairline */
+
+	/* ── Semantic aliases ─────────────────────────────────────── */
+	--mitiru-bg:        var(--mitiru-paper);
+	--mitiru-surface:   var(--mitiru-paper);   /* identical surface */
+	--mitiru-text:      var(--mitiru-ink);
+	--mitiru-text-mute: var(--mitiru-ink-mute);
+	--mitiru-accent:    var(--mitiru-link);
+	--mitiru-accent-hi: var(--mitiru-link-hover);
+	--mitiru-success:   var(--mitiru-phosphor);
+	--mitiru-warning:   #cb912f;
+	--mitiru-danger:    var(--mitiru-brick);
+	--mitiru-focus:     var(--mitiru-link);
+	--mitiru-border:    var(--mitiru-paper-edge);
+	--mitiru-border-soft: rgba(55, 53, 47, 0.05);
+
+	--mitiru-row-tint:  rgba(55, 53, 47, 0.03);
+
+	/* ── Typography — Inter / Segoe UI ────────────────────────── */
+	--mitiru-font-body:    "Inter", "Segoe UI", "Hiragino Sans",
+	                       "Yu Gothic", system-ui, -apple-system, sans-serif;
+	--mitiru-font-display: "Inter", "Segoe UI", "Hiragino Sans",
+	                       "Yu Gothic", system-ui, -apple-system, sans-serif;
+	--mitiru-font-mono:    "JetBrains Mono", "SF Mono", "Cascadia Code",
+	                       ui-monospace, "Consolas", monospace;
+	--mitiru-font-prose:   "Inter", "Segoe UI", "Hiragino Sans",
+	                       "Yu Gothic", system-ui, sans-serif;
+
+	--mitiru-text-xs:   11px;
+	--mitiru-text-sm:   12px;
+	--mitiru-text-md:   14px;
+	--mitiru-text-lg:   16px;
+	--mitiru-text-xl:   18px;
+	--mitiru-text-2xl:  24px;
+	--mitiru-text-3xl:  32px;
+
+	--mitiru-leading-tight:  1.25;
+	--mitiru-leading-normal: 1.6;
+	--mitiru-leading-loose:  1.75;
+
+	/* ── Spacing — generous reading rhythm ────────────────────── */
+	--mitiru-space-0:  0;
+	--mitiru-space-1:  4px;
+	--mitiru-space-2:  8px;
+	--mitiru-space-3:  12px;
+	--mitiru-space-4:  16px;
+	--mitiru-space-5:  24px;
+	--mitiru-space-6:  36px;
+	--mitiru-space-7:  56px;
+
+	/* ── Corner radius (almost square 3px) ────────────────────── */
+	--mitiru-radius-sm:   2px;
+	--mitiru-radius-md:   3px;
+	--mitiru-radius-lg:   4px;
+	--mitiru-radius-pill: 9999px;
+
+	/* ── Elevation — almost none, hairline only ───────────────── */
+	--mitiru-shadow-1: 0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-2: 0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-3: 0 2px 4px rgba(15, 15, 15, 0.04),
+	                   0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-4: 0 8px 24px rgba(15, 15, 15, 0.10),
+	                   0 0 0 1px var(--mitiru-border);
+
+	/* Focus ring — soft blue */
+	--mitiru-focus-ring: 0 0 0 2px rgba(46, 170, 220, 0.30);
+
+	--mitiru-blur-sm: blur(4px);
+	--mitiru-blur-md: blur(12px);
+	--mitiru-blur-lg: blur(24px);
+
+	/* ── Z-index ladder ─────────────────────────────────────── */
+	--mitiru-z-base:     0;
+	--mitiru-z-hud:      100;
+	--mitiru-z-overlay:  200;
+	--mitiru-z-modal:    300;
+	--mitiru-z-toast:    400;
+	--mitiru-z-drag:     500;
+
+	/* ── Transition ──────────────────────────────────────────── */
+	--mitiru-ease:          cubic-bezier(0.4, 0, 0.2, 1);
+	--mitiru-ease-bounce:   cubic-bezier(0.34, 1.56, 0.64, 1);
+	--mitiru-duration-fast: 80ms;
+	--mitiru-duration-mid:  140ms;
+	--mitiru-duration-slow: 240ms;
+}
+
+body
+{
+	background: var(--mitiru-bg);
+	color: var(--mitiru-text);
+	font-family: var(--mitiru-locale-font, var(--mitiru-font-body));
+	font-size: var(--mitiru-text-md);
+	line-height: var(--mitiru-leading-normal);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}

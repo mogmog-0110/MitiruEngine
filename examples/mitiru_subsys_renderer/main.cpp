@@ -1,0 +1,151 @@
+// mitiru_subsys_renderer — axis 3 (per-system isolation) P3 deliverable.
+//
+// Boots the renderer subsystem with no game logic, no CEF, no audio, no
+// time-travel, no inspector — just Engine + Screen + a 60Hz update/draw
+// loop. The on-screen test pattern is intentionally minimal so it doubles
+// as visual smoke for the renderer backend during shader / pipeline edits.
+//
+// What you see:
+//   - silver-gray Saturn background (matches launcher / hello_game)
+//   - 64px hairline grid covering the surface
+//   - center 60x60 rect oscillating horizontally (Saturn red accent)
+//   - "frame: N" counter top-left, hint line bottom-left
+//
+// Controls: ESC quits.
+//
+// Why this exists (axis 3 / "全 system 単独起動"):
+//   - The same Engine class can run with the gameplay layer absent — proves
+//     the host-game boundary is real and not load-bearing on game code.
+//   - Cold-start budget < 1s (no CEF init, no font atlas warm-up beyond the
+//     Latin range we actually draw).
+
+#include <cmath>
+#include <cstdio>
+
+#include <mitiru/Mitiru.hpp>
+
+namespace {
+
+constexpr sgc::Colorf kPaperBg     {0.784f, 0.784f, 0.784f, 1.0f};  // #c8c8c8 silver
+constexpr sgc::Colorf kPaperEdge   {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 ink border
+constexpr sgc::Colorf kInk         {0.063f, 0.063f, 0.063f, 1.0f};  // #101010
+constexpr sgc::Colorf kMute        {0.290f, 0.290f, 0.290f, 1.0f};  // #4a4a4a mid gray
+constexpr sgc::Colorf kAmberAccent {0.784f, 0.0f,   0.173f, 1.0f};  // #c8002c Saturn red
+
+class RendererSampleGame final : public mitiru::Game
+{
+public:
+    void update(float dt) override
+    {
+        m_elapsed += dt;
+        ++m_frame;
+
+        if (hasInput() &&
+            input().isKeyJustPressed(mitiru::KeyCode::Escape))
+        {
+            if (auto* eng = engine()) { eng->requestStop(); }
+        }
+    }
+
+    void draw(mitiru::Screen& screen) override
+    {
+        m_screenW = static_cast<float>(screen.width());
+        m_screenH = static_cast<float>(screen.height());
+
+        screen.clear(kPaperBg);
+
+        drawGrid(screen);
+        drawCenterRect(screen);
+        drawFrameLabel(screen);
+        drawHint(screen);
+    }
+
+    [[nodiscard]] mitiru::Size layout(int outsideW, int outsideH) override
+    {
+        return {outsideW, outsideH};
+    }
+
+private:
+    void drawGrid(mitiru::Screen& screen)
+    {
+        constexpr float kStep = 64.0f;
+        // Vertical lines.
+        for (float x = kStep; x < m_screenW; x += kStep)
+        {
+            screen.drawRect(sgc::Rectf{x, 0.0f, 1.0f, m_screenH}, kPaperEdge);
+        }
+        // Horizontal lines.
+        for (float y = kStep; y < m_screenH; y += kStep)
+        {
+            screen.drawRect(sgc::Rectf{0.0f, y, m_screenW, 1.0f}, kPaperEdge);
+        }
+    }
+
+    void drawCenterRect(mitiru::Screen& screen)
+    {
+        // 60x60 rect oscillating horizontally around screen center. Avoids
+        // true rotation (no transform API surfaced on Screen today) while
+        // still making the renderer visibly time-driven for smoke checks.
+        constexpr float kSize     = 60.0f;
+        const float     amplitude = std::min(m_screenW * 0.30f, 200.0f);
+        const float     cx        = m_screenW * 0.5f
+                                  + std::sin(m_elapsed * 2.0f) * amplitude;
+        const float     cy        = m_screenH * 0.5f;
+        screen.drawRect(
+            sgc::Rectf{cx - kSize * 0.5f, cy - kSize * 0.5f, kSize, kSize},
+            kAmberAccent);
+    }
+
+    void drawFrameLabel(mitiru::Screen& screen)
+    {
+        char buf[48];
+        std::snprintf(buf, sizeof(buf), "frame: %llu",
+                      static_cast<unsigned long long>(m_frame));
+        screen.drawTextInRect(
+            sgc::Rectf{16.0f, 12.0f, m_screenW - 32.0f, 32.0f},
+            buf,
+            kInk,
+            24.0f,
+            mitiru::Screen::TextAlignH::Left,
+            mitiru::Screen::TextAlignV::Top);
+    }
+
+    void drawHint(mitiru::Screen& screen)
+    {
+        screen.drawTextInRect(
+            sgc::Rectf{16.0f, m_screenH - 28.0f, m_screenW - 32.0f, 20.0f},
+            "renderer subsystem - no game logic, no CEF",
+            kMute,
+            16.0f,
+            mitiru::Screen::TextAlignH::Left,
+            mitiru::Screen::TextAlignV::Top);
+    }
+
+    float         m_screenW{800.0f};
+    float         m_screenH{500.0f};
+    float         m_elapsed{0.0f};
+    std::uint64_t m_frame{0};
+};
+
+}  // namespace
+
+int main(int /*argc*/, char* /*argv*/[])
+{
+    mitiru::Engine        engine;
+    RendererSampleGame    game;
+
+    mitiru::EngineConfig cfg;
+    cfg.title              = "mitiru_subsys_renderer";
+    cfg.windowWidth        = 800;
+    cfg.windowHeight       = 500;
+    cfg.vsync              = true;
+    cfg.enableCef          = false;
+    cfg.fontAtlasRanges    = mitiru::EngineConfig::FontAtlas::Latin;
+    cfg.useLogicalWindowSize = true;
+    // Silver-gray Saturn surface — host-side clear must match the in-draw
+    // screen.clear() so the very first frame (before draw runs) is not black.
+    cfg.backgroundColor    = kPaperBg;
+
+    engine.run(game, cfg);
+    return 0;
+}

@@ -1,0 +1,9 @@
+{
+  "id": "q_shift_01",
+  "steps": [
+    { "id": "open_shop",  "goal": "店を開ける" },
+    { "id": "serve_five", "goal": "5 人に提供" }
+  ],
+  "flags":   ["introduced_maria"],
+  "rewards": { "yen": 500, "stars": 1 }
+}

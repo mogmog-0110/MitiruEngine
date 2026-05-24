@@ -1,0 +1,424 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_physics.js tests</title>
+<!--
+    test_physics.html — mitiru.physics (H-06) unit tests
+
+    Run:
+      python -m http.server 8795 --bind 127.0.0.1
+      open http://localhost:8795/web/mitiru_runtime/tests/test_physics.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_physics.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+	'use strict';
+
+	var t = mitiru.test;
+	var p = mitiru.physics;
+
+	// ── mock bridge helpers ───────────────────────────────────────────
+	// Only allowed mock: stub window.cefQuery via responseMap.
+	// responseMap: { 'handler.name': function(payloadStr, callIndex) -> respStr }
+	function installMockBridge(responseMap)
+	{
+		var calls = [];
+		window.cefQuery = function(opts)
+		{
+			var req = opts.request;
+			var sep = req.indexOf('|');
+			var name = sep < 0 ? req : req.substring(0, sep);
+			var payload = sep < 0 ? '' : req.substring(sep + 1);
+			calls.push({ name: name, payload: payload });
+			var fn = responseMap[name];
+			if (!fn)
+			{
+				opts.onFailure && opts.onFailure(404, 'no mock for ' + name);
+				return;
+			}
+			try
+			{
+				var resp = fn(payload, calls.length);
+				setTimeout(function() { opts.onSuccess && opts.onSuccess(resp); }, 0);
+			}
+			catch (e)
+			{
+				setTimeout(function() { opts.onFailure && opts.onFailure(500, String(e)); }, 0);
+			}
+		};
+		return calls;
+	}
+
+	function removeMockBridge() { delete window.cefQuery; }
+
+	// Standard mock that handles the full round-trip used by most tests.
+	function makeFullMock()
+	{
+		return installMockBridge({
+			'physics.createWorld': function()
+			{
+				return JSON.stringify({ worldId: 1 });
+			},
+			'physics.createCircle': function()
+			{
+				return JSON.stringify({ bodyId: 42 });
+			},
+			'physics.createStaticEdge': function()
+			{
+				return JSON.stringify({ bodyId: 99 });
+			},
+			'physics.destroyBody': function()
+			{
+				return JSON.stringify({});
+			},
+			'physics.setLinearVelocity': function()
+			{
+				return JSON.stringify({});
+			},
+			'physics.destroyWorld': function()
+			{
+				return JSON.stringify({});
+			},
+			'physics.poll': function()
+			{
+				return JSON.stringify({
+					moves:    [{ id: 42, x: 100, y: 200, angle: 0.5 }],
+					contacts: [{ a: 42, b: 99, aData: 'ball', bData: 'edge' }]
+				});
+			}
+		});
+	}
+
+	// ── 1. guard: double-load prevention ─────────────────────────────
+	t.case('mitiru.physics exists and is not re-created on re-include', function()
+	{
+		t.assert(typeof p === 'object' && p !== null, 'physics API should be an object');
+		var ref = mitiru.physics;
+		// The IIFE guard means a second execution of the script would early-exit.
+		// We verify the reference is stable (same object).
+		t.assertEq(mitiru.physics, ref, 'reference must be the same object after guard');
+	});
+
+	// ── 2. createWorld without cefQuery rejects ───────────────────────
+	t.case('createWorld without cefQuery rejects with bridge-unavailable error', async function()
+	{
+		removeMockBridge();
+		var threw = false;
+		await p.createWorld({ gravityX: 0, gravityY: 9.81 }).catch(function(e)
+		{
+			threw = true;
+			t.assert(
+				e.message.indexOf('physics bridge unavailable') !== -1,
+				'error should mention bridge unavailable, got: ' + e.message
+			);
+		});
+		t.assert(threw, 'createWorld should reject when cefQuery is absent');
+	});
+
+	// ── 3. createWorld → createCircle → destroyBody → destroy round-trip ─
+	t.case('createWorld → createCircle → destroyBody → destroy round-trip resolves', async function()
+	{
+		var calls = makeFullMock();
+
+		var world = await p.createWorld({ gravityX: 0, gravityY: 9.81 });
+		t.assert(typeof world === 'object' && world !== null, 'createWorld should return a World object');
+
+		var ballId = await world.createCircle({
+			x: 400, y: 50, r: 20, density: 1, restitution: 0.2,
+			friction: 0.5, userData: 'ball#1'
+		});
+		t.assertEq(ballId, 42, 'createCircle should resolve with bodyId from mock');
+
+		await world.destroyBody(ballId);
+
+		await world.destroy();
+
+		// Verify the correct handler names were invoked.
+		var names = calls.map(function(c) { return c.name; });
+		t.assert(names.indexOf('physics.createWorld')  !== -1, 'createWorld handler called');
+		t.assert(names.indexOf('physics.createCircle') !== -1, 'createCircle handler called');
+		t.assert(names.indexOf('physics.destroyBody')  !== -1, 'destroyBody handler called');
+		t.assert(names.indexOf('physics.destroyWorld') !== -1, 'destroyWorld handler called');
+
+		removeMockBridge();
+	});
+
+	// ── 4. setLinearVelocity on a destroyed body still resolves ──────
+	t.case('setLinearVelocity on a destroyed body still resolves (no throw)', async function()
+	{
+		makeFullMock();
+
+		var world = await p.createWorld({ gravityX: 0, gravityY: 9.81 });
+		var ballId = await world.createCircle({ x: 0, y: 0, r: 10, density: 1,
+			restitution: 0, friction: 0.3, userData: '' });
+
+		await world.destroyBody(ballId);
+
+		// C++ is the no-op; JS just forwards — should resolve without throw.
+		var resolved = false;
+		await world.setLinearVelocity(ballId, 0, 100).then(function()
+		{
+			resolved = true;
+		});
+		t.assert(resolved, 'setLinearVelocity should resolve even after destroyBody');
+
+		await world.destroy();
+		removeMockBridge();
+	});
+
+	// ── 5. start() polls via rAF and fires bodies:update ─────────────
+	t.case('start() polls via rAF and fires bodies:update with moves from mock', async function()
+	{
+		// Fake rAF: fires callback once via setTimeout(fn, 0).
+		var origRaf    = window.requestAnimationFrame;
+		var origCancel = window.cancelAnimationFrame;
+		var rafFired   = false;
+		window.requestAnimationFrame = function(fn)
+		{
+			if (rafFired) { return -1; }  // only fire once
+			rafFired = true;
+			var id = setTimeout(function() { fn(performance.now()); }, 0);
+			return id;
+		};
+		window.cancelAnimationFrame = function(id) { clearTimeout(id); };
+
+		makeFullMock();
+
+		var world = await p.createWorld({ gravityX: 0, gravityY: 9.81 });
+
+		var bodiesUpdateCalls = [];
+		world.on('bodies:update', function(bodies)
+		{
+			bodiesUpdateCalls.push(bodies);
+		});
+
+		world.start();
+
+		// Wait for the fake rAF tick + poll response.
+		await new Promise(function(resolve) { setTimeout(resolve, 50); });
+
+		world.stop();
+
+		t.assert(bodiesUpdateCalls.length >= 1, 'bodies:update should have fired at least once');
+		t.assertEq(bodiesUpdateCalls[0].length, 1, 'first update should contain 1 body from mock');
+		t.assertEq(bodiesUpdateCalls[0][0].id,    42,  'body id should be 42');
+		t.assertEq(bodiesUpdateCalls[0][0].x,     100, 'body x should be 100');
+		t.assertEq(bodiesUpdateCalls[0][0].y,     200, 'body y should be 200');
+
+		await world.destroy();
+		removeMockBridge();
+
+		window.requestAnimationFrame = origRaf;
+		window.cancelAnimationFrame  = origCancel;
+	});
+
+	// ── 6. contact event fires once per contact in poll response ─────
+	t.case('contact event fires once per contact entry in poll response', async function()
+	{
+		var origRaf    = window.requestAnimationFrame;
+		var origCancel = window.cancelAnimationFrame;
+		var rafFired   = false;
+		window.requestAnimationFrame = function(fn)
+		{
+			if (rafFired) { return -1; }
+			rafFired = true;
+			var id = setTimeout(function() { fn(performance.now()); }, 0);
+			return id;
+		};
+		window.cancelAnimationFrame = function(id) { clearTimeout(id); };
+
+		// Mock that returns 2 contact entries.
+		installMockBridge({
+			'physics.createWorld':  function() { return JSON.stringify({ worldId: 2 }); },
+			'physics.destroyWorld': function() { return JSON.stringify({}); },
+			'physics.poll': function()
+			{
+				return JSON.stringify({
+					moves: [],
+					contacts: [
+						{ a: 1, b: 2, aData: 'ball1', bData: 'ball2' },
+						{ a: 3, b: 4, aData: 'ball3', bData: 'edge'  }
+					]
+				});
+			}
+		});
+
+		var world = await p.createWorld({ gravityX: 0, gravityY: 9.81 });
+		var contactEvents = [];
+		world.on('contact', function(ev) { contactEvents.push(ev); });
+
+		world.start();
+		await new Promise(function(resolve) { setTimeout(resolve, 50); });
+		world.stop();
+
+		t.assertEq(contactEvents.length, 2, 'should fire one contact event per contact entry');
+		t.assertEq(contactEvents[0].aData, 'ball1');
+		t.assertEq(contactEvents[1].aData, 'ball3');
+
+		await world.destroy();
+		removeMockBridge();
+
+		window.requestAnimationFrame = origRaf;
+		window.cancelAnimationFrame  = origCancel;
+	});
+
+	// ── 7. start() is idempotent ──────────────────────────────────────
+	t.case('start() is idempotent — second start does not stack a second rAF', async function()
+	{
+		var rafCallCount = 0;
+		var origRaf      = window.requestAnimationFrame;
+		var origCancel   = window.cancelAnimationFrame;
+		window.requestAnimationFrame = function(_fn)
+		{
+			rafCallCount++;
+			return rafCallCount;  // never fires — we just count calls
+		};
+		window.cancelAnimationFrame = function() {};
+
+		makeFullMock();
+
+		var world = await p.createWorld({ gravityX: 0, gravityY: 9.81 });
+
+		world.start();
+		var countAfterFirst = rafCallCount;
+		world.start();  // second call — must be no-op
+		var countAfterSecond = rafCallCount;
+
+		t.assertEq(countAfterFirst,  1, 'first start() should schedule exactly one rAF');
+		t.assertEq(countAfterSecond, 1, 'second start() must not schedule another rAF');
+
+		world.stop();
+		await world.destroy();
+		removeMockBridge();
+
+		window.requestAnimationFrame = origRaf;
+		window.cancelAnimationFrame  = origCancel;
+	});
+
+	// ── 8. stop() halts the loop ──────────────────────────────────────
+	t.case('stop() halts the loop — no more polls after stop', async function()
+	{
+		var origRaf    = window.requestAnimationFrame;
+		var origCancel = window.cancelAnimationFrame;
+		// Real-ish rAF: uses setTimeout so we can observe multiple ticks.
+		window.requestAnimationFrame = function(fn)
+		{
+			return setTimeout(function() { fn(performance.now()); }, 5);
+		};
+		window.cancelAnimationFrame = function(id) { clearTimeout(id); };
+
+		var pollCount = 0;
+		installMockBridge({
+			'physics.createWorld':  function() { return JSON.stringify({ worldId: 3 }); },
+			'physics.destroyWorld': function() { return JSON.stringify({}); },
+			'physics.poll': function()
+			{
+				pollCount++;
+				return JSON.stringify({ moves: [], contacts: [] });
+			}
+		});
+
+		var world = await p.createWorld({ gravityX: 0, gravityY: 0 });
+		world.start();
+
+		// Let one tick fire.
+		await new Promise(function(resolve) { setTimeout(resolve, 30); });
+		world.stop();
+		var countAtStop = pollCount;
+
+		// Wait more — no more polls should fire.
+		await new Promise(function(resolve) { setTimeout(resolve, 40); });
+		t.assertEq(pollCount, countAtStop, 'poll count must not increase after stop()');
+		t.assert(countAtStop >= 1, 'at least one poll should have fired before stop');
+
+		await world.destroy();
+		removeMockBridge();
+
+		window.requestAnimationFrame = origRaf;
+		window.cancelAnimationFrame  = origCancel;
+	});
+
+	// ── 9. on() returns an unsubscribe function ───────────────────────
+	t.case('on() returns an unsubscribe function that detaches the listener', async function()
+	{
+		var origRaf    = window.requestAnimationFrame;
+		var origCancel = window.cancelAnimationFrame;
+		var rafFired   = false;
+		window.requestAnimationFrame = function(fn)
+		{
+			if (rafFired) { return -1; }
+			rafFired = true;
+			var id = setTimeout(function() { fn(performance.now()); }, 0);
+			return id;
+		};
+		window.cancelAnimationFrame = function(id) { clearTimeout(id); };
+
+		makeFullMock();
+
+		var world = await p.createWorld({ gravityX: 0, gravityY: 9.81 });
+
+		var count = 0;
+		var unsub = world.on('bodies:update', function() { count++; });
+
+		world.start();
+		await new Promise(function(resolve) { setTimeout(resolve, 30); });
+		var countBeforeUnsub = count;
+
+		// Unsubscribe and trigger another tick.
+		unsub();
+		rafFired = false;
+		world.start();  // will no-op if still running; stop first
+		// If loop is still running from mock, we stop and restart.
+		world.stop();
+		rafFired = false;
+		world.start();
+		await new Promise(function(resolve) { setTimeout(resolve, 30); });
+		world.stop();
+
+		t.assert(countBeforeUnsub >= 1, 'handler should have been called before unsubscribe');
+		t.assertEq(count, countBeforeUnsub, 'count should not increase after unsubscribe');
+
+		await world.destroy();
+		removeMockBridge();
+
+		window.requestAnimationFrame = origRaf;
+		window.cancelAnimationFrame  = origCancel;
+	});
+
+	// ── 10. world.destroy() sends physics.destroyWorld ───────────────
+	t.case('world.destroy() sends physics.destroyWorld to the bridge', async function()
+	{
+		var calls = makeFullMock();
+
+		var world = await p.createWorld({ gravityX: 0, gravityY: 9.81 });
+		await world.destroy();
+
+		var destroyWorldCalls = calls.filter(function(c)
+		{
+			return c.name === 'physics.destroyWorld';
+		});
+		t.assertEq(destroyWorldCalls.length, 1, 'physics.destroyWorld should be called exactly once');
+
+		var payload = JSON.parse(destroyWorldCalls[0].payload);
+		t.assertEq(payload.worldId, 1, 'destroyWorld payload should carry the correct worldId');
+
+		removeMockBridge();
+	});
+
+	// ── run ──────────────────────────────────────────────────────────
+	mitiru.test.run();
+
+})();
+</script>

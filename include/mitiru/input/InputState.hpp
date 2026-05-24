@@ -100,6 +100,20 @@ public:
 		m_rawDeltaY = 0.0f;
 	}
 
+	/// @brief 全ての held key / mouse button を「離された」状態にする
+	/// @details Win32 window が WM_KILLFOCUS を受けた時など、focus を失った
+	///          直後に呼ぶ。focus 喪失中は OS から WM_KEYUP が届かないので
+	///          押しっぱなしの key state が "stuck" するのを防ぐ。
+	///          `prev` 配列は触らないので、`isKeyJustReleased()` が 1 回だけ
+	///          edge を発火する (game logic 側に「キー離された」通知が届く)。
+	void clearHeldKeys() noexcept
+	{
+		m_keys.fill(false);
+		m_mouseButtons.fill(false);
+		m_rawDeltaX = 0.0f;
+		m_rawDeltaY = 0.0f;
+	}
+
 	/// @brief 1 つの fixed-step tick が終わった直後に呼び、エッジを「消化」する
 	/// @details Accumulator-based 固定ステップループでは 1 レンダーフレーム内に
 	///          `game.update()` が複数回走ることがある。`beginFrame()` は

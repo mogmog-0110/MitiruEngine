@@ -1,0 +1,54 @@
+MitiruEngine v@PROJECT_VERSION@ — Portable Windows distribution
+==============================================================
+
+This zip contains a ready-to-run MitiruEngine install. No terminal required.
+
+QUICK START
+-----------
+
+  1. Extract this zip to any folder (e.g. C:\Tools\MitiruEngine).
+  2. Double-click `MitiruEngine_Launcher.bat`.
+  3. The launcher window opens with a list of registered projects.
+  4. Click "+ Add project (.dll)" to register a game DLL, or click Run / Watch
+     on the bundled hello_game sample.
+
+INCLUDED
+--------
+
+  - mitiru_host.exe       — the engine host that loads game DLLs
+  - mitiru_launcher/      — GUI launcher (built with MitiruEngine itself!)
+  - hello_game/           — sample game demonstrating C-only signal flow
+  - CEF runtime           — Chromium Embedded Framework for HTML/CSS UI
+  - MitiruCefHelper.exe   — CEF subprocess helper (don't run directly)
+
+WORKFLOW
+--------
+
+  1. Build your game DLL with the engine (see docs/MIGRATION_v0.2.md).
+  2. From the launcher: + Add project → pick your_game.dll.
+  3. Click "Run" — your game opens in its own window.
+  4. Click "Watch" — your game opens AND auto-reloads when you rebuild the DLL.
+     Edit code → rebuild → game state preserved, new code runs.
+
+POWER USERS / CI
+----------------
+
+  Bypass the launcher and call mitiru_host directly:
+
+    mitiru_host.exe path\to\your_game.dll              # plain run
+    mitiru_host.exe path\to\your_game.dll --watch      # hot reload mode
+
+REQUIREMENTS
+------------
+
+  - Windows 10/11 x64
+  - DirectX 11 / 12 capable GPU (most integrated GPUs work)
+  - No installation. No registry changes. Just extract and run.
+
+DOCS
+----
+
+  README.md, docs/SCOPE.md, docs/adr/0005-host-game-c-abi-signal-flow.md,
+  docs/MIGRATION_v0.2.md at https://github.com/mogmog-0110/MitiruEngine
+
+LICENSE — MIT

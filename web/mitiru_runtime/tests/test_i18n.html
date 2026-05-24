@@ -1,0 +1,347 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_i18n.js tests</title>
+<!--
+    test_i18n.html — mitiru.i18n (F-07) unit tests
+    Pattern: inline IIFE (matches test_state.html / test_save.html).
+
+    Run:
+      python tools/mitiru_serve.py --port 8770
+      open http://localhost:8770/web/mitiru_runtime/tests/test_i18n.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_i18n.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+	'use strict';
+
+	const t    = mitiru.test;
+	const i18n = mitiru.i18n;
+
+	// ── fixtures ─────────────────────────────────────────────────
+	const JA = {
+		'menu.title':  'メインメニュー',
+		'menu.start':  'はじめる',
+		'day.counter': 'DAY {n} / {total}',
+		'greet':       'こんにちは、{name}',
+		nested: {
+			settings: {
+				bgm: 'BGM音量'
+			}
+		}
+	};
+
+	const EN = {
+		menu: { title: 'Main Menu', start: 'Start' },
+		'day.counter': 'DAY {n} / {total}',
+		greet:         'Hello, {name}',
+		nested: { settings: { bgm: 'BGM Volume' } }
+	};
+
+	// Helper — make a container attached to body.
+	function makeRoot(html)
+	{
+		const el = document.createElement('div');
+		el.innerHTML = html || '';
+		document.body.appendChild(el);
+		return el;
+	}
+	function cleanup(el)
+	{
+		if (el && el.parentNode) { el.parentNode.removeChild(el); }
+	}
+
+	// ── 1. addLocale + t() basics ────────────────────────────────
+	t.case('addLocale then t() returns the flat value', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		t.assertEq(i18n.t('menu.title'), 'メインメニュー');
+	});
+
+	t.case('t() falls back to dot-path traversal when flat miss', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		t.assertEq(i18n.t('nested.settings.bgm'), 'BGM音量');
+	});
+
+	t.case('t() interpolates {name} params', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		t.assertEq(i18n.t('day.counter', { n: 3, total: 12 }), 'DAY 3 / 12');
+	});
+
+	t.case('t() interpolates named string param', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		t.assertEq(i18n.t('greet', { name: 'サチ' }), 'こんにちは、サチ');
+	});
+
+	t.case('t() with missing param leaves the placeholder literal', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		t.assertEq(i18n.t('greet'), 'こんにちは、{name}');
+	});
+
+	t.case('t() returns the key itself when missing and no fallback', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		i18n.setFallback('');
+		t.assertEq(i18n.t('nope.absent'), 'nope.absent');
+	});
+
+	// ── 2. locale switching ──────────────────────────────────────
+	t.case('setLocale switches the active table', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.addLocale('en', EN);
+		i18n.setLocale('en');
+		t.assertEq(i18n.locale(), 'en');
+		t.assertEq(i18n.t('menu.title'), 'Main Menu');
+		i18n.setLocale('ja');
+		t.assertEq(i18n.t('menu.title'), 'メインメニュー');
+	});
+
+	t.case('setLocale throws if locale is not loaded', function()
+	{
+		let threw = false;
+		try { i18n.setLocale('zz'); } catch (_e) { threw = true; }
+		t.assertEq(threw, true);
+	});
+
+	t.case('locales() returns an array of loaded codes', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.addLocale('en', EN);
+		const locs = i18n.locales();
+		t.assertEq(locs.indexOf('ja') >= 0, true);
+		t.assertEq(locs.indexOf('en') >= 0, true);
+	});
+
+	// ── 3. has() ──────────────────────────────────────────────────
+	t.case('has() returns true for known flat key', function()
+	{
+		i18n.addLocale('ja', JA);
+		t.assertEq(i18n.has('menu.title', 'ja'), true);
+	});
+
+	t.case('has() returns false for unknown key', function()
+	{
+		i18n.addLocale('ja', JA);
+		t.assertEq(i18n.has('does.not.exist', 'ja'), false);
+	});
+
+	t.case('has() uses active locale when locale arg omitted', function()
+	{
+		i18n.addLocale('en', EN);
+		i18n.setLocale('en');
+		t.assertEq(i18n.has('menu.title'), true);
+	});
+
+	// ── 4. fallback ──────────────────────────────────────────────
+	t.case('setFallback — t() falls back to fallback locale on miss', function()
+	{
+		const onlyEn = { 'only.en': 'English only' };
+		i18n.addLocale('ja', JA);
+		i18n.addLocale('en', Object.assign({}, EN, onlyEn));
+		i18n.setLocale('ja');
+		i18n.setFallback('en');
+		t.assertEq(i18n.t('only.en'), 'English only');
+		i18n.setFallback('');
+	});
+
+	// ── 5. onLocaleChange ────────────────────────────────────────
+	t.case('onLocaleChange fires with (next, prev)', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.addLocale('en', EN);
+		i18n.setLocale('ja');
+
+		let got = null;
+		const off = i18n.onLocaleChange(function(next, prev) { got = { next: next, prev: prev }; });
+		i18n.setLocale('en');
+		t.assertEq(got.next, 'en');
+		t.assertEq(got.prev, 'ja');
+		off();
+
+		// After unsubscribe, no further calls.
+		got = null;
+		i18n.setLocale('ja');
+		t.assertEq(got, null);
+	});
+
+	t.case('onLocaleChange does NOT fire if locale unchanged', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		let count = 0;
+		const off = i18n.onLocaleChange(function() { count += 1; });
+		i18n.setLocale('ja');
+		t.assertEq(count, 0);
+		off();
+	});
+
+	// ── 6. bindDOM + textContent ─────────────────────────────────
+	t.case('bindDOM applies textContent for [data-i18n]', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		const root = makeRoot('<span data-i18n="menu.title"></span><span data-i18n="menu.start"></span>');
+		const n = i18n.bindDOM(root);
+		t.assertEq(n, 2);
+		t.assertEq(root.children[0].textContent, 'メインメニュー');
+		t.assertEq(root.children[1].textContent, 'はじめる');
+		i18n.unbindDOM(root);
+		cleanup(root);
+	});
+
+	// ── 7. bindDOM + attribute binding ───────────────────────────
+	t.case('bindDOM applies attribute when data-i18n-attr is set', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		const root = makeRoot('<button data-i18n="menu.start" data-i18n-attr="title">Ignored</button>');
+		i18n.bindDOM(root);
+		t.assertEq(root.firstElementChild.getAttribute('title'), 'はじめる');
+		// textContent must NOT be overwritten when attr binding is used.
+		t.assertEq(root.firstElementChild.textContent, 'Ignored');
+		i18n.unbindDOM(root);
+		cleanup(root);
+	});
+
+	// ── 8. bindDOM + inline params ────────────────────────────────
+	t.case('bindDOM honours data-i18n-params (JSON)', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		const root = makeRoot('<span data-i18n="day.counter" data-i18n-params=\'{"n":3,"total":12}\'></span>');
+		i18n.bindDOM(root);
+		t.assertEq(root.firstElementChild.textContent, 'DAY 3 / 12');
+		i18n.unbindDOM(root);
+		cleanup(root);
+	});
+
+	// ── 9. setLocale re-applies to bound DOM ─────────────────────
+	t.case('setLocale re-applies bound DOM to the new locale', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.addLocale('en', EN);
+		i18n.setLocale('ja');
+		const root = makeRoot('<span data-i18n="menu.title"></span>');
+		i18n.bindDOM(root);
+		t.assertEq(root.firstElementChild.textContent, 'メインメニュー');
+		i18n.setLocale('en');
+		t.assertEq(root.firstElementChild.textContent, 'Main Menu');
+		i18n.unbindDOM(root);
+		cleanup(root);
+	});
+
+	// ── 10. unbindDOM ────────────────────────────────────────────
+	t.case('unbindDOM removes bindings (subsequent setLocale does not touch)', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.addLocale('en', EN);
+		i18n.setLocale('ja');
+		const root = makeRoot('<span data-i18n="menu.title"></span>');
+		i18n.bindDOM(root);
+		t.assertEq(i18n.unbindDOM(root), 1);
+		// Mutate manually, then switch locale — must remain as-is.
+		root.firstElementChild.textContent = 'LOCKED';
+		i18n.setLocale('en');
+		t.assertEq(root.firstElementChild.textContent, 'LOCKED');
+		cleanup(root);
+	});
+
+	t.case('bindDOM replaces prior bindings for the same root (idempotent)', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.setLocale('ja');
+		const root = makeRoot('<span data-i18n="menu.title"></span>');
+		i18n.bindDOM(root);
+		i18n.bindDOM(root);
+		// Only one binding slot should exist — verify by unbind count.
+		t.assertEq(i18n.unbindDOM(root), 1);
+		cleanup(root);
+	});
+
+	// ── 11. font swap ────────────────────────────────────────────
+	t.case('setFontMap + setLocale writes --mitiru-locale-font on <html>', function()
+	{
+		i18n.addLocale('ja', JA);
+		i18n.addLocale('en', EN);
+		i18n.setFontMap({
+			ja: '"Noto Sans JP", sans-serif',
+			en: '"Nunito", sans-serif'
+		});
+		i18n.setLocale('ja');
+		const v1 = document.documentElement.style.getPropertyValue('--mitiru-locale-font');
+		t.assertEq(v1.indexOf('Noto Sans JP') >= 0, true);
+		i18n.setLocale('en');
+		const v2 = document.documentElement.style.getPropertyValue('--mitiru-locale-font');
+		t.assertEq(v2.indexOf('Nunito') >= 0, true);
+		// Reset.
+		i18n.setFontMap({});
+		document.documentElement.style.removeProperty('--mitiru-locale-font');
+	});
+
+	t.case('fontFamily() returns null for unmapped locale', function()
+	{
+		i18n.setFontMap({ ja: '"Noto Sans JP", sans-serif' });
+		t.assertEq(i18n.fontFamily('zz'), null);
+		i18n.setFontMap({});
+	});
+
+	// ── 12. load() via fetch (inline data path only — no server dep) ────
+	t.case('load(locale, {inline data}) skips fetch and registers', function()
+	{
+		return i18n.load('xx', { hello: 'ハロー' }).then(function()
+		{
+			i18n.setLocale('xx');
+			t.assertEq(i18n.t('hello'), 'ハロー');
+		});
+	});
+
+	t.case('load() rejects when locale arg is empty', function()
+	{
+		return i18n.load('').then(
+			function()  { throw new Error('expected rejection'); },
+			function(_e) { /* ok */ }
+		);
+	});
+
+	// ── 13. addLocale validation ─────────────────────────────────
+	t.case('addLocale throws on non-string locale', function()
+	{
+		let threw = false;
+		try { i18n.addLocale(null, {}); } catch (_e) { threw = true; }
+		t.assertEq(threw, true);
+	});
+
+	t.case('addLocale throws on non-object data', function()
+	{
+		let threw = false;
+		try { i18n.addLocale('ja', 'not an object'); } catch (_e) { threw = true; }
+		t.assertEq(threw, true);
+	});
+
+	// ── drive the harness ─────────────────────────────────────────
+	mitiru.test.run();
+})();
+</script>

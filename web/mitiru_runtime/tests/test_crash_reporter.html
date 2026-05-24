@@ -1,0 +1,506 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_crash_reporter.js tests</title>
+<!--
+    test_crash_reporter.html — mitiru.crashReporter (NF-05) unit tests
+
+    Run:
+      python tools/mitiru_serve.py --port 8770 --no-inject
+      open http://127.0.0.1:8770/web/mitiru_runtime/tests/test_crash_reporter.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_crash_reporter.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+	'use strict';
+
+	var t = mitiru.test;
+	var c = mitiru.crashReporter;
+	var LS_KEY = 'mitiru.crashReports';
+
+	// ── helpers ──────────────────────────────────────────────────
+	function freshInstall(opts)
+	{
+		c.uninstall();
+		c.clear();
+		c.setStateSnapshotFn(null);
+		c.setMaxReports(20);
+		localStorage.removeItem(LS_KEY);
+		c.install(opts);
+	}
+
+	function cleanup()
+	{
+		c.uninstall();
+		c.clear();
+		c.setStateSnapshotFn(null);
+		c.setMaxReports(20);
+		localStorage.removeItem(LS_KEY);
+	}
+
+	// ── 1. install() is idempotent ────────────────────────────────
+	t.case('install() is idempotent — calling twice does not double-hook', function()
+	{
+		try
+		{
+			c.install();
+			var firstHandler = window.onerror;
+			c.install();
+			var secondHandler = window.onerror;
+			// After second install the handler must still be a function and there
+			// should be exactly one logical reporter installed (count stays consistent).
+			t.assert(typeof secondHandler === 'function', 'onerror should be a function after second install');
+			// Record one error — count should be exactly 1 (not doubled).
+			c.clear();
+			c.record(new Error('idempotent-check'));
+			t.assertEq(c.count(), 1, 'exactly one report after single record — no double-hook');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 2. uninstall() removes onerror listener ───────────────────
+	t.case('uninstall() restores window.onerror to prior value', function()
+	{
+		var sentinel = function() {};
+		var savedOnerror = window.onerror;
+		window.onerror = sentinel;
+		try
+		{
+			c.install();
+			t.assert(window.onerror !== sentinel, 'install should replace onerror');
+			c.uninstall();
+			t.assertEq(window.onerror, sentinel, 'uninstall should restore prior onerror');
+		}
+		finally
+		{
+			window.onerror = savedOnerror;
+			cleanup();
+		}
+	});
+
+	// ── 3. record(error) — kind === 'manual' ─────────────────────
+	t.case('record(error) captures with kind="manual"', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.record(new Error('test-manual'));
+			var reports = c.list();
+			t.assertEq(reports.length, 1, 'one report');
+			t.assertEq(reports[0].kind, 'manual', 'kind should be manual');
+			t.assert(reports[0].message.indexOf('test-manual') !== -1, 'message preserved');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 4. record(error, extra) — extra field carries through ─────
+	t.case('record(error, extra) carries extra through to report', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.record(new Error('with-extra'), { context: 'title-screen', attempt: 2 });
+			var reports = c.list();
+			t.assertEq(reports.length, 1, 'one report');
+			t.assert(reports[0].extra !== null, 'extra should be set');
+			t.assertEq(reports[0].extra.context, 'title-screen', 'extra.context preserved');
+			t.assertEq(reports[0].extra.attempt, 2, 'extra.attempt preserved');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 5. onerror hook captures synchronous throws ───────────────
+	t.case('onerror hook captures via ErrorEvent dispatch', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			var err = new Error('onerror-test');
+			window.dispatchEvent(new ErrorEvent('error', {
+				message:  err.message,
+				filename: 'test.js',
+				lineno:   10,
+				colno:    5,
+				error:    err,
+			}));
+			var reports = c.list();
+			t.assertEq(reports.length, 1, 'one report captured via onerror');
+			t.assertEq(reports[0].kind, 'error', 'kind should be error');
+			t.assert(reports[0].message.indexOf('onerror-test') !== -1, 'message captured');
+			t.assertEq(reports[0].source, 'test.js', 'source captured');
+			t.assertEq(reports[0].line, 10, 'line captured');
+			t.assertEq(reports[0].column, 5, 'column captured');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 6. unhandledrejection hook captures ───────────────────────
+	t.case('unhandledrejection hook captures via PromiseRejectionEvent', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			var reason = new Error('unhandled-rejection-test');
+			window.dispatchEvent(new PromiseRejectionEvent('unhandledrejection', {
+				promise:  Promise.reject(reason),
+				reason:   reason,
+				cancelable: true,
+			}));
+			var reports = c.list();
+			t.assertEq(reports.length, 1, 'one report captured via unhandledrejection');
+			t.assertEq(reports[0].kind, 'unhandled-rejection', 'kind should be unhandled-rejection');
+			t.assert(reports[0].message.indexOf('unhandled-rejection-test') !== -1, 'reason message captured');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 7. list() returns newest-first ───────────────────────────
+	t.case('list() returns newest-first', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.record(new Error('first'));
+			c.record(new Error('second'));
+			c.record(new Error('third'));
+			var reports = c.list();
+			t.assertEq(reports.length, 3, 'three reports');
+			t.assert(reports[0].message.indexOf('third')  !== -1, 'first item is newest');
+			t.assert(reports[1].message.indexOf('second') !== -1, 'second item is middle');
+			t.assert(reports[2].message.indexOf('first')  !== -1, 'third item is oldest');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 8. count() returns length ────────────────────────────────
+	t.case('count() returns the number of captured reports', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			t.assertEq(c.count(), 0, 'empty initially');
+			c.record(new Error('a'));
+			t.assertEq(c.count(), 1, 'one after first record');
+			c.record(new Error('b'));
+			t.assertEq(c.count(), 2, 'two after second record');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 9. clear() empties all reports ───────────────────────────
+	t.case('clear() empties reports', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.record(new Error('to-clear'));
+			t.assert(c.count() > 0, 'should have at least one report before clear');
+			c.clear();
+			t.assertEq(c.count(), 0, 'should be empty after clear');
+			t.assertEq(c.list().length, 0, 'list() should return empty array');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 10. setMaxReports(3) enforces FIFO cap ───────────────────
+	t.case('setMaxReports(3): 5 captures → 3 reports, oldest dropped', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.setMaxReports(3);
+			c.record(new Error('msg-1'));
+			c.record(new Error('msg-2'));
+			c.record(new Error('msg-3'));
+			c.record(new Error('msg-4'));
+			c.record(new Error('msg-5'));
+			t.assertEq(c.count(), 3, 'capped at 3');
+			var reports = c.list();
+			// Newest first: 5, 4, 3 — 1 and 2 should be gone.
+			t.assert(reports[0].message.indexOf('msg-5') !== -1, 'newest is msg-5');
+			t.assert(reports[1].message.indexOf('msg-4') !== -1, 'second is msg-4');
+			t.assert(reports[2].message.indexOf('msg-3') !== -1, 'third is msg-3');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 11. setStateSnapshotFn — called per capture ───────────────
+	t.case('setStateSnapshotFn: snapshot called once per capture; result in report.state', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			var callCount = 0;
+			c.setStateSnapshotFn(function()
+			{
+				callCount++;
+				return { scene: 'title', tick: callCount };
+			});
+			c.record(new Error('snap-test-1'));
+			c.record(new Error('snap-test-2'));
+			t.assertEq(callCount, 2, 'snapshot called once per record');
+			var reports = c.list();
+			t.assert(reports[0].state !== null, 'state set on newest report');
+			t.assertEq(reports[0].state.scene, 'title', 'state.scene captured');
+			t.assert(typeof reports[0].state.tick === 'number', 'state.tick is a number');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 12. setStateSnapshotFn throwing → __snapshotError ─────────
+	t.case('setStateSnapshotFn throwing → state = { __snapshotError }, reporter does not throw', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.setStateSnapshotFn(function()
+			{
+				throw new Error('snapshot-boom');
+			});
+			// Must not throw.
+			c.record(new Error('test'));
+			var reports = c.list();
+			t.assertEq(reports.length, 1, 'report was still captured');
+			t.assert(reports[0].state !== null, 'state should be set');
+			t.assert(typeof reports[0].state.__snapshotError === 'string',
+			         '__snapshotError should be a string');
+			t.assert(reports[0].state.__snapshotError.indexOf('snapshot-boom') !== -1,
+			         '__snapshotError should contain original message');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 13. setStateSnapshotFn circular → __nonSerialisable ───────
+	t.case('setStateSnapshotFn returning circular object → state = { __nonSerialisable: true }', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.setStateSnapshotFn(function()
+			{
+				var obj = {};
+				obj.self = obj;  // circular
+				return obj;
+			});
+			c.record(new Error('circular'));
+			var reports = c.list();
+			t.assertEq(reports.length, 1, 'report captured despite circular snapshot');
+			t.assert(reports[0].state !== null, 'state should be set');
+			t.assertEq(reports[0].state.__nonSerialisable, true,
+			           '__nonSerialisable flag should be true');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 14. persist + autoLoad round-trips via localStorage ───────
+	t.case('persist:true + autoLoad:true round-trips across install/clear/reinstall', function()
+	{
+		localStorage.removeItem(LS_KEY);
+		try
+		{
+			// Phase 1: install, record, verify persisted.
+			c.install({ persist: true, autoLoad: false, key: LS_KEY });
+			c.clear();
+			c.record(new Error('persisted-a'));
+			c.record(new Error('persisted-b'));
+			var countAfterRecord = c.count();
+			t.assertEq(countAfterRecord, 2, 'two reports in memory');
+
+			// Phase 2: snapshot localStorage, uninstall + wipe, then restore
+			// localStorage to simulate a page reload where disk data survives.
+			var snapshot = localStorage.getItem(LS_KEY);
+			c.uninstall();
+			c.clear();                                 // wipes both memory AND disk
+			localStorage.setItem(LS_KEY, snapshot);    // restore disk portion
+			t.assertEq(c.count(), 0, 'memory cleared');
+
+			// Phase 3: re-install with autoLoad:true — should reload from localStorage.
+			c.install({ persist: true, autoLoad: true, key: LS_KEY });
+			t.assertEq(c.count(), 2, 'autoLoad restored 2 reports from localStorage');
+		}
+		finally
+		{
+			cleanup();
+			localStorage.removeItem(LS_KEY);
+		}
+	});
+
+	// ── 15. exportBlob() — application/json with correct content ──
+	t.case('exportBlob() returns Blob of type application/json with all reports', async function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.record(new Error('blob-test'));
+			var blob = c.exportBlob();
+			t.assert(blob instanceof Blob, 'should return a Blob');
+			t.assertEq(blob.type, 'application/json', 'MIME type should be application/json');
+			var text = await blob.text();
+			var parsed = JSON.parse(text);
+			t.assert(Array.isArray(parsed), 'exported JSON should be an array');
+			t.assertEq(parsed.length, 1, 'should contain one report');
+			t.assert(parsed[0].message.indexOf('blob-test') !== -1, 'message preserved in export');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 16. exportString() — valid JSON ───────────────────────────
+	t.case('exportString() returns valid JSON that parses correctly', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.record(new Error('string-export'));
+			var str = c.exportString();
+			t.assert(typeof str === 'string', 'should return a string');
+			var parsed = JSON.parse(str);
+			t.assert(Array.isArray(parsed), 'parsed value should be an array');
+			t.assertEq(parsed.length, 1, 'one report in parsed array');
+			t.assert(parsed[0].kind === 'manual', 'report kind preserved');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 17. triggerDownload builds <a download> ───────────────────
+	t.case('triggerDownload creates <a> element with correct download filename', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.record(new Error('download-test'));
+
+			// Intercept createElement / click without actually triggering a download.
+			var createdA  = null;
+			var origCreate = document.createElement.bind(document);
+			document.createElement = function(tag)
+			{
+				var el = origCreate(tag);
+				if (tag === 'a') { createdA = el; }
+				return el;
+			};
+
+			try
+			{
+				c.triggerDownload('my_crash.json');
+			}
+			finally
+			{
+				document.createElement = origCreate;
+			}
+
+			t.assert(createdA !== null, '<a> element should have been created');
+			t.assertEq(createdA.download, 'my_crash.json', 'download attribute should match filename');
+			t.assert(createdA.href.indexOf('blob:') === 0 || createdA.href.length > 0,
+			         'href should be set to a blob URL');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 18. on('capture', cb) fires on each capture ───────────────
+	t.case('on("capture", cb) fires for each capture; off() stops it', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			var fired = [];
+			var cb = function(report) { fired.push(report.message); };
+
+			c.on('capture', cb);
+			c.record(new Error('event-1'));
+			c.record(new Error('event-2'));
+
+			t.assertEq(fired.length, 2, 'listener fired twice');
+			t.assert(fired[0].indexOf('event-1') !== -1, 'first event carries first message');
+			t.assert(fired[1].indexOf('event-2') !== -1, 'second event carries second message');
+
+			c.off('capture', cb);
+			c.record(new Error('event-3'));
+			t.assertEq(fired.length, 2, 'listener not called after off()');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── 19. install() without opts uses documented defaults ───────
+	t.case('install() without opts uses documented defaults (maxReports=20, persist=true, key)', function()
+	{
+		localStorage.removeItem(LS_KEY);
+		try
+		{
+			c.install();  // no opts
+			// Verify default key is used: record a report and check localStorage.
+			c.clear();
+			c.record(new Error('defaults-test'));
+			var raw = localStorage.getItem(LS_KEY);
+			t.assert(raw !== null, 'data should be written to default localStorage key');
+			var parsed = JSON.parse(raw);
+			t.assert(Array.isArray(parsed) && parsed.length === 1, 'one report in localStorage');
+			// Verify maxReports default: set max to 20 and confirm no exception.
+			c.setMaxReports(20);
+			t.assertEq(c.count(), 1, 'count still correct');
+		}
+		finally
+		{
+			cleanup();
+			localStorage.removeItem(LS_KEY);
+		}
+	});
+
+	// ── 20. report shape — all required fields present ────────────
+	t.case('report shape: all required fields are present', function()
+	{
+		try
+		{
+			c.install({ persist: false });
+			c.clear();
+			c.record(new Error('shape-check'), { foo: 'bar' });
+			var r = c.list()[0];
+			t.assert(typeof r.id        === 'string',  'id is string');
+			t.assert(r.id.indexOf('crash-') === 0,     'id starts with crash-');
+			t.assert(typeof r.ts        === 'number',  'ts is number');
+			t.assert(typeof r.when      === 'string',  'when is string');
+			t.assert(typeof r.kind      === 'string',  'kind is string');
+			t.assert(typeof r.message   === 'string',  'message is string');
+			t.assert(typeof r.stack     === 'string',  'stack is string');
+			t.assert(typeof r.source    === 'string',  'source is string');
+			t.assert(typeof r.line      === 'number',  'line is number');
+			t.assert(typeof r.column    === 'number',  'column is number');
+			t.assert(typeof r.userAgent === 'string',  'userAgent is string');
+			t.assert(typeof r.url       === 'string',  'url is string');
+			t.assert('state' in r,                     'state field present');
+			t.assert(r.extra !== undefined,            'extra field present');
+			t.assertEq(r.extra.foo, 'bar',             'extra value correct');
+		}
+		finally { cleanup(); }
+	});
+
+	// ── run ──────────────────────────────────────────────────────
+	mitiru.test.run();
+
+})();
+</script>

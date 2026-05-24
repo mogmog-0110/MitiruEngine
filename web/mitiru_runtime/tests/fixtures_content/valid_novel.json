@@ -1,0 +1,13 @@
+{
+  "id": "fixture_novel",
+  "lines": [
+    { "type": "bg",     "path": "bg/street.png" },
+    { "type": "sprite", "id": "saki", "path": "char/saki.png", "pos": "left" },
+    { "type": "text",   "speaker": "サキ", "text": "おはよう。" },
+    { "type": "wait",   "ms": 300 },
+    { "type": "choice", "options": [
+      { "label": "はい", "next": "y" },
+      { "label": "いいえ" }
+    ] }
+  ]
+}

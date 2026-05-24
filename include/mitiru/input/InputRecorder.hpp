@@ -6,8 +6,12 @@
 ///          フレームごとの入力コマンドを記録し、ReplayDataとして出力する。
 
 #include <cstdint>
+#include <fstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
+
+#include <nlohmann/json.hpp>
 
 #include "mitiru/input/InputInjector.hpp"
 
@@ -22,93 +26,132 @@ struct InputFrame
 	std::vector<InputCommand> commands;       ///< そのフレームの入力コマンド一覧
 
 	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
-		std::string json;
-		json += "{\"frame\":" + std::to_string(frameNumber) + ",\"commands\":[";
-		for (std::size_t i = 0; i < commands.size(); ++i)
-		{
-			if (i > 0) json += ",";
-			json += commandToJson(commands[i]);
-		}
-		json += "]}";
-		return json;
+		return toJsonValue().dump();
 	}
 
-private:
-	/// @brief InputCommandをJSON文字列に変換する
-	/// @param cmd 変換対象のコマンド
-	/// @return JSON形式の文字列
-	[[nodiscard]] static std::string commandToJson(const InputCommand& cmd)
+	/// @brief nlohmann::json オブジェクトに変換する
+	[[nodiscard]] nlohmann::json toJsonValue() const
 	{
-		std::string json;
-		json += "{\"type\":" + std::to_string(static_cast<int>(cmd.type));
-		json += ",\"keyCode\":" + std::to_string(cmd.keyCode);
-		json += ",\"mouseButton\":" + std::to_string(cmd.mouseButton);
-		json += ",\"mouseX\":" + std::to_string(cmd.mouseX);
-		json += ",\"mouseY\":" + std::to_string(cmd.mouseY);
-		json += "}";
-		return json;
+		nlohmann::json jcmds = nlohmann::json::array();
+		for (const auto& c : commands)
+		{
+			jcmds.push_back(nlohmann::json{
+				{"type",        static_cast<int>(c.type)},
+				{"keyCode",     c.keyCode},
+				{"mouseButton", c.mouseButton},
+				{"mouseX",      c.mouseX},
+				{"mouseY",      c.mouseY},
+			});
+		}
+		return nlohmann::json{
+			{"frame",    frameNumber},
+			{"commands", std::move(jcmds)},
+		};
+	}
+
+	/// @brief nlohmann::json オブジェクトから InputFrame を構築する
+	[[nodiscard]] static InputFrame fromJsonValue(const nlohmann::json& j)
+	{
+		InputFrame f;
+		f.frameNumber = j.value("frame", std::uint64_t{0});
+		if (j.contains("commands") && j["commands"].is_array())
+		{
+			for (const auto& jc : j["commands"])
+			{
+				InputCommand c;
+				c.type        = static_cast<InputCommandType>(jc.value("type", 0));
+				c.keyCode     = jc.value("keyCode", 0);
+				c.mouseButton = jc.value("mouseButton", 0);
+				c.mouseX      = jc.value("mouseX", 0.0f);
+				c.mouseY      = jc.value("mouseY", 0.0f);
+				f.commands.push_back(c);
+			}
+		}
+		return f;
 	}
 };
 
 /// @brief リプレイデータ
 /// @details 記録セッション全体のデータを保持する。
 ///          乱数シード・TPS・全フレームの入力を含む。
+///          JSON 経由で disk に save / load 可能 (決定論再現の最低限のペイロード)。
 struct ReplayData
 {
 	std::uint64_t seed = 0;                  ///< 乱数シード
 	int tps = 60;                            ///< Ticks Per Second
 	std::vector<InputFrame> frames;          ///< フレームごとの入力データ
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
-	[[nodiscard]] std::string toJson() const
+	/// @brief nlohmann::json オブジェクトに変換する
+	[[nodiscard]] nlohmann::json toJsonValue() const
 	{
-		std::string json;
-		json += "{\"seed\":" + std::to_string(seed);
-		json += ",\"tps\":" + std::to_string(tps);
-		json += ",\"frames\":[";
-		for (std::size_t i = 0; i < frames.size(); ++i)
+		nlohmann::json jframes = nlohmann::json::array();
+		for (const auto& f : frames)
 		{
-			if (i > 0) json += ",";
-			json += frames[i].toJson();
+			jframes.push_back(f.toJsonValue());
 		}
-		json += "]}";
-		return json;
+		return nlohmann::json{
+			{"seed",   seed},
+			{"tps",    tps},
+			{"frames", std::move(jframes)},
+		};
 	}
 
-	/// @brief JSON文字列からReplayDataを構築する（簡易パーサー）
-	/// @param jsonStr JSON文字列
-	/// @return 構築されたReplayData
-	/// @note 簡易実装のため、正しいフォーマットを前提とする
-	[[nodiscard]] static ReplayData fromJson(const std::string& jsonStr)
+	/// @brief JSON文字列に変換する
+	[[nodiscard]] std::string toJson() const
+	{
+		return toJsonValue().dump();
+	}
+
+	/// @brief nlohmann::json オブジェクトから ReplayData を構築する
+	[[nodiscard]] static ReplayData fromJsonValue(const nlohmann::json& j)
 	{
 		ReplayData data;
-
-		/// seed の抽出
-		auto seedPos = jsonStr.find("\"seed\":");
-		if (seedPos != std::string::npos)
+		data.seed = j.value("seed", std::uint64_t{0});
+		data.tps  = j.value("tps", 60);
+		if (j.contains("frames") && j["frames"].is_array())
 		{
-			seedPos += 7;
-			data.seed = std::stoull(jsonStr.substr(seedPos));
+			for (const auto& jf : j["frames"])
+			{
+				data.frames.push_back(InputFrame::fromJsonValue(jf));
+			}
 		}
-
-		/// tps の抽出
-		auto tpsPos = jsonStr.find("\"tps\":");
-		if (tpsPos != std::string::npos)
-		{
-			tpsPos += 6;
-			data.tps = std::stoi(jsonStr.substr(tpsPos));
-		}
-
-		/// フレームデータの抽出（簡易）
-		/// 完全なJSONパーサーは将来の外部ライブラリ統合で対応
-		/// 現時点ではtoJson()でシリアライズしたデータの読み戻しは
-		/// フレームデータなしの基本情報のみサポート
-
 		return data;
+	}
+
+	/// @brief JSON 文字列から ReplayData を構築する
+	/// @throw nlohmann::json::parse_error 不正な JSON の場合
+	[[nodiscard]] static ReplayData fromJson(const std::string& jsonStr)
+	{
+		return fromJsonValue(nlohmann::json::parse(jsonStr));
+	}
+
+	/// @brief 指定パスに JSON で保存する
+	/// @throw std::runtime_error ファイルを開けない場合
+	void saveToFile(const std::string& path) const
+	{
+		std::ofstream out(path, std::ios::binary | std::ios::trunc);
+		if (!out)
+		{
+			throw std::runtime_error("ReplayData::saveToFile: cannot open '" + path + "'");
+		}
+		// dump(2) で人間が grep / diff しやすい改行付きを出す。
+		// バイナリサイズが問題になったら dump() に戻して圧縮レイヤーを噛ます。
+		out << toJsonValue().dump(2);
+	}
+
+	/// @brief 指定パスから JSON を読み込む
+	/// @throw std::runtime_error ファイルを開けない場合
+	/// @throw nlohmann::json::parse_error 不正な JSON の場合
+	[[nodiscard]] static ReplayData loadFromFile(const std::string& path)
+	{
+		std::ifstream in(path, std::ios::binary);
+		if (!in)
+		{
+			throw std::runtime_error("ReplayData::loadFromFile: cannot open '" + path + "'");
+		}
+		return fromJsonValue(nlohmann::json::parse(in));
 	}
 
 	/// @brief 総フレーム数を取得する

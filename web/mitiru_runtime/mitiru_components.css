@@ -1,0 +1,1200 @@
+/*!
+ * mitiru_components.css — MitiruEngine shared visual primitives
+ *
+ * F-12 / F-13 の起点ファイル。KaeruCrape の各モックアップが毎回 SVG / CSS で
+ * 再実装していた "diner の定番パーツ" を 1 箇所に集約する。F-02 の component
+ * library 本体は別ファイルになる見込みだが、visual-signature に直結する
+ * 個別コンポーネントはまず本ファイルに追加していく。
+ *
+ * 読み込み順 (games 側):
+ *   <link rel="stylesheet" href="../mitiru_runtime/mitiru_base.css">
+ *   <link rel="stylesheet" href="../mitiru_runtime/mitiru_tokens.css">
+ *   <link rel="stylesheet" href="../mitiru_runtime/mitiru_components.css">
+ *
+ * 既存コンポーネント:
+ *   - .mitiru-checker-floor       (F-12) Conic/linear gradient のチェッカー + perspective 傾斜
+ *   - .mitiru-checker-wall        (F-12) 縦面向けバリアント (背面壁用)
+ *   - .mitiru-pane-window         (F-13) 6-pane / 4-pane 窓 + bloom overlay
+ *
+ * 各コンポーネントは data-* 属性か CSS custom property で調整する。
+ * 「既定値だけで描画できる」「色は tokens 経由で上書き可」「追加のネスト構造を
+ * 強要しない」の 3 原則。
+ */
+
+/* =============================================================
+ *   F-12: Checker floor / Checker wall
+ * =============================================================
+ *
+ * Usage:
+ *   <div class="mitiru-checker-floor"></div>
+ *   <div class="mitiru-checker-floor"
+ *        data-perspective="60"
+ *        style="--mitiru-checker-light:#f1f1ef; --mitiru-checker-dark:#2a2a2a;">
+ *   </div>
+ *
+ * Tunables (CSS custom properties):
+ *   --mitiru-checker-tile      : 1 タイルの寸法 (default 80px)
+ *   --mitiru-checker-light     : 明タイル色 (default #f1f1ef)
+ *   --mitiru-checker-dark      : 暗タイル色 (default #1e1e1e)
+ *   --mitiru-checker-tint      : 床全体に被せる overlay 色 (default transparent)
+ *   --mitiru-checker-perspective : 傾斜角 (deg, default 0 = 真上から)
+ *                                  data-perspective="60" でも設定可
+ *
+ * 仕組み:
+ *   - conic-gradient で 4 タイルのユニットを作成、background-size で繰り返し
+ *   - perspective > 0 のとき transform で rotateX して消失点に向けて傾斜
+ *   - .mitiru-checker-wall は縦面バリアント (rotateX ではなく translateZ 配置用)
+ */
+
+.mitiru-checker-floor,
+.mitiru-checker-wall
+{
+	--mitiru-checker-tile: 80px;
+	--mitiru-checker-light: #f1f1ef;
+	--mitiru-checker-dark: #1e1e1e;
+	--mitiru-checker-tint: transparent;
+	--mitiru-checker-perspective: 0deg;
+
+	position: relative;
+	width: 100%;
+	height: 100%;
+	background-color: var(--mitiru-checker-light);
+	background-image:
+		linear-gradient(var(--mitiru-checker-tint), var(--mitiru-checker-tint)),
+		conic-gradient(
+			var(--mitiru-checker-dark) 0deg 90deg,
+			var(--mitiru-checker-light) 90deg 180deg,
+			var(--mitiru-checker-dark) 180deg 270deg,
+			var(--mitiru-checker-light) 270deg 360deg
+		);
+	background-size:
+		100% 100%,
+		calc(var(--mitiru-checker-tile) * 2) calc(var(--mitiru-checker-tile) * 2);
+	background-position: 0 0, 0 0;
+	transform-origin: center bottom;
+}
+
+.mitiru-checker-floor
+{
+	transform: perspective(800px) rotateX(var(--mitiru-checker-perspective));
+}
+
+/* data-perspective="<deg>" で傾斜を上書き */
+.mitiru-checker-floor[data-perspective="30"]  { --mitiru-checker-perspective: 30deg; }
+.mitiru-checker-floor[data-perspective="45"]  { --mitiru-checker-perspective: 45deg; }
+.mitiru-checker-floor[data-perspective="60"]  { --mitiru-checker-perspective: 60deg; }
+.mitiru-checker-floor[data-perspective="75"]  { --mitiru-checker-perspective: 75deg; }
+
+/* .mitiru-checker-wall は傾斜無し (真正面から見える縦面) */
+.mitiru-checker-wall
+{
+	transform: none;
+}
+
+
+/* =============================================================
+ *   F-13: Pane window (6-pane / 4-pane / 9-pane)
+ * =============================================================
+ *
+ * Usage:
+ *   <div class="mitiru-pane-window" data-panes="6"></div>
+ *   <div class="mitiru-pane-window" data-panes="9" data-grid="3x3"
+ *        style="--mitiru-pane-frame:#4a90d9;"></div>
+ *
+ * Tunables (CSS custom properties):
+ *   --mitiru-pane-frame        : 窓枠色 (default #4a90d9 = diner blue)
+ *   --mitiru-pane-frame-width  : 枠の太さ (default 6px)
+ *   --mitiru-pane-mullion      : 桟 (内部仕切り) の太さ (default 4px)
+ *   --mitiru-pane-glass        : 硝子色 (default #d8ecff transparent)
+ *   --mitiru-pane-bloom        : 光漏れハイライト色 (default #fffbe0)
+ *   --mitiru-pane-bloom-alpha  : bloom 強度 (default 0.35)
+ *
+ * 仕組み:
+ *   - 外枠は border、内部 grid は CSS grid で仕切り線をギャップで表現
+ *   - 各 pane は ::before で bloom (radial-gradient) を被せる
+ *   - data-grid 属性で格子を変更 (2x3 / 3x2 / 3x3 / 2x2)
+ *   - data-panes は意味 metadata (CSS 自体は grid 配置に使う)
+ */
+
+.mitiru-pane-window
+{
+	--mitiru-pane-frame: #4a90d9;
+	--mitiru-pane-frame-width: 6px;
+	--mitiru-pane-mullion: 4px;
+	--mitiru-pane-glass: #d8ecff;
+	--mitiru-pane-bloom: #fffbe0;
+	--mitiru-pane-bloom-alpha: 0.35;
+
+	position: relative;
+	display: grid;
+	gap: var(--mitiru-pane-mullion);
+	padding: 0;
+	background: var(--mitiru-pane-frame);
+	border: var(--mitiru-pane-frame-width) solid var(--mitiru-pane-frame);
+	box-sizing: border-box;
+	overflow: hidden;
+
+	/* デフォルトは 3x2 (6-pane) */
+	grid-template-columns: repeat(3, 1fr);
+	grid-template-rows: repeat(2, 1fr);
+}
+
+.mitiru-pane-window::before
+{
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(
+		ellipse at 30% 20%,
+		var(--mitiru-pane-bloom) 0%,
+		transparent 70%
+	);
+	opacity: var(--mitiru-pane-bloom-alpha);
+	pointer-events: none;
+	z-index: 2;
+}
+
+/* 各 pane (grid 子要素を想定) */
+.mitiru-pane-window > .mitiru-pane
+{
+	background: var(--mitiru-pane-glass);
+	box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.15);
+}
+
+/* 子要素が無くても pane grid 塗りを見せるため: */
+.mitiru-pane-window:not(:has(.mitiru-pane))
+{
+	background-image:
+		linear-gradient(var(--mitiru-pane-glass), var(--mitiru-pane-glass));
+	background-origin: content-box;
+}
+
+/* ── Grid 構成バリアント ─────────────────────────────────────
+ * data-grid="COLSxROWS" で自動的に grid を設定。
+ * 未対応の値は CSS 側の default (3x2) にフォールバック。
+ */
+.mitiru-pane-window[data-grid="2x2"]
+{
+	grid-template-columns: repeat(2, 1fr);
+	grid-template-rows:    repeat(2, 1fr);
+}
+.mitiru-pane-window[data-grid="3x2"]
+{
+	grid-template-columns: repeat(3, 1fr);
+	grid-template-rows:    repeat(2, 1fr);
+}
+.mitiru-pane-window[data-grid="2x3"]
+{
+	grid-template-columns: repeat(2, 1fr);
+	grid-template-rows:    repeat(3, 1fr);
+}
+.mitiru-pane-window[data-grid="3x3"]
+{
+	grid-template-columns: repeat(3, 1fr);
+	grid-template-rows:    repeat(3, 1fr);
+}
+.mitiru-pane-window[data-grid="4x2"]
+{
+	grid-template-columns: repeat(4, 1fr);
+	grid-template-rows:    repeat(2, 1fr);
+}
+
+
+/* =============================================================
+ *   F-02 COMPONENT LIBRARY — 10 shared diner UI primitives
+ *   Each component:  (1) renders with defaults only
+ *                    (2) exposes --mitiru-<comp>-<prop> tunables
+ *                    (3) uses data-* attributes for named variants
+ * =============================================================
+ */
+
+/* ── §1  Paper note ───────────────────────────────────────────
+ * <div class="mitiru-paper-note">text</div>
+ * data-color="yellow|pink|blue|white"
+ * data-pinned="true"  -> red thumbtack via ::before
+ */
+.mitiru-paper-note {
+	--mitiru-note-bg:     #fef9c3;
+	--mitiru-note-ink:    #3b2f1e;
+	--mitiru-note-shadow: var(--mitiru-shadow-3);
+	--mitiru-note-rotate: -1.5deg;
+	--mitiru-note-lines:  rgba(0,0,0,0.08);
+	position: relative;
+	padding: 16px 14px 14px;
+	background-color: var(--mitiru-note-bg);
+	background-image: repeating-linear-gradient(
+		transparent, transparent 23px,
+		var(--mitiru-note-lines) 23px, var(--mitiru-note-lines) 24px);
+	background-position: 0 28px;
+	color: var(--mitiru-note-ink);
+	font-family: var(--mitiru-font-mono);
+	font-size: var(--mitiru-text-sm);
+	line-height: 24px;
+	box-shadow: var(--mitiru-note-shadow);
+	transform: rotate(var(--mitiru-note-rotate));
+	border-radius: 2px;
+}
+.mitiru-paper-note[data-color="yellow"] { --mitiru-note-bg: #fef9c3; }
+.mitiru-paper-note[data-color="pink"]   { --mitiru-note-bg: #fde2e4; }
+.mitiru-paper-note[data-color="blue"]   { --mitiru-note-bg: #dbeafe; }
+.mitiru-paper-note[data-color="white"]  { --mitiru-note-bg: #ffffff; }
+.mitiru-paper-note[data-pinned="true"]::before {
+	content: "";
+	position: absolute;
+	top: -6px; left: 50%;
+	transform: translateX(-50%);
+	width: 12px; height: 12px;
+	border-radius: 50%;
+	background: radial-gradient(circle at 35% 35%, #e57373, #b71c1c);
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	z-index: 1;
+}
+
+
+/* ── §2  Menu card ────────────────────────────────────────────
+ * <div class="mitiru-menu-card">
+ *   <div class="mitiru-menu-card__name">Pancake Stack</div>
+ *   <div class="mitiru-menu-card__price">¥680</div>
+ * </div>
+ * Tunables: --mitiru-menu-bg/border/accent/radius
+ */
+.mitiru-menu-card {
+	--mitiru-menu-bg:     #fffdf7;
+	--mitiru-menu-border: var(--mitiru-caramel, #8b5e3c);
+	--mitiru-menu-accent: var(--mitiru-cherry, #c0392b);
+	--mitiru-menu-radius: var(--mitiru-radius-md, 8px);
+	position: relative;
+	background: var(--mitiru-menu-bg);
+	border: 2px solid var(--mitiru-menu-border);
+	border-radius: var(--mitiru-menu-radius);
+	padding: 12px 14px 10px;
+	box-shadow: var(--mitiru-shadow-2, 0 2px 6px rgba(43,33,24,.1));
+	overflow: hidden;
+}
+.mitiru-menu-card::before {
+	content: "";
+	position: absolute;
+	top: 0; left: 0; right: 0; height: 4px;
+	background: var(--mitiru-menu-accent);
+}
+.mitiru-menu-card__name {
+	font-family: var(--mitiru-font-display, cursive);
+	font-size: var(--mitiru-text-md, 1rem);
+	color: var(--mitiru-text, #2b2118);
+	margin-bottom: 4px;
+}
+.mitiru-menu-card__price {
+	font-family: var(--mitiru-font-mono, monospace);
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	color: var(--mitiru-menu-accent);
+	font-weight: bold;
+}
+
+
+/* ── §3  Pendant lamp ─────────────────────────────────────────
+ * <div class="mitiru-pendant-lamp"></div>
+ * Tunables: --mitiru-lamp-cord/cord-h/shade/w/h/glow
+ * ::before = cord  ::after = trapezoid shade
+ */
+.mitiru-pendant-lamp {
+	--mitiru-lamp-cord:   #5a3e28;
+	--mitiru-lamp-cord-h: 48px;
+	--mitiru-lamp-shade:  #d4a843;
+	--mitiru-lamp-w:      72px;
+	--mitiru-lamp-h:      40px;
+	--mitiru-lamp-glow:   #fffbea;
+	position: relative;
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+}
+.mitiru-pendant-lamp::before {
+	content: "";
+	width: 2px; height: var(--mitiru-lamp-cord-h);
+	background: var(--mitiru-lamp-cord);
+}
+.mitiru-pendant-lamp::after {
+	content: "";
+	width: var(--mitiru-lamp-w); height: var(--mitiru-lamp-h);
+	background: linear-gradient(to bottom,
+		var(--mitiru-lamp-shade) 0%,
+		color-mix(in srgb, var(--mitiru-lamp-shade) 70%, #000) 100%);
+	clip-path: polygon(12% 0%, 88% 0%, 100% 100%, 0% 100%);
+	box-shadow: 0 8px 24px var(--mitiru-lamp-glow);
+}
+
+
+/* ── §4  Wall clock ───────────────────────────────────────────
+ * <div class="mitiru-wall-clock">
+ *   <div class="mitiru-wall-clock__hand mitiru-wall-clock__hand--hour"></div>
+ *   <div class="mitiru-wall-clock__hand mitiru-wall-clock__hand--min"></div>
+ * </div>
+ *
+ * data-time="HH:MM" is read by caller JS which sets the custom properties:
+ *   --mitiru-clock-hour-deg  (= (h%12)*30 + m*0.5 + 'deg')
+ *   --mitiru-clock-min-deg   (= m*6 + 'deg')
+ * CSS rotates the hand elements using those custom properties.
+ * Tunables: --mitiru-clock-face/rim/hand/hour-deg/min-deg
+ */
+.mitiru-wall-clock {
+	--mitiru-clock-face:     #fffdf5;
+	--mitiru-clock-rim:      #5a3e28;
+	--mitiru-clock-hand:     #2b2118;
+	--mitiru-clock-hour-deg: 0deg;
+	--mitiru-clock-min-deg:  0deg;
+	position: relative;
+	width: 80px; height: 80px;
+	border-radius: 50%;
+	background: var(--mitiru-clock-face);
+	border: 4px solid var(--mitiru-clock-rim);
+	box-shadow: var(--mitiru-shadow-2, 0 2px 6px rgba(0,0,0,.1)),
+	            inset 0 0 8px rgba(0,0,0,0.05);
+	box-sizing: border-box;
+}
+.mitiru-wall-clock::before {
+	content: "";
+	position: absolute;
+	top: 50%; left: 50%;
+	transform: translate(-50%,-50%);
+	width: 6px; height: 6px;
+	border-radius: 50%;
+	background: var(--mitiru-clock-hand);
+	z-index: 2;
+}
+.mitiru-wall-clock__hand {
+	position: absolute;
+	left: 50%; bottom: 50%;
+	transform-origin: 50% 100%;
+	background: var(--mitiru-clock-hand);
+	border-radius: 2px;
+}
+.mitiru-wall-clock__hand--hour {
+	width: 4px; height: 26px;
+	margin-left: -2px;
+	transform: rotate(var(--mitiru-clock-hour-deg));
+}
+.mitiru-wall-clock__hand--min {
+	width: 2px; height: 34px;
+	margin-left: -1px;
+	transform: rotate(var(--mitiru-clock-min-deg));
+}
+
+
+/* ── §5  Chrome counter ───────────────────────────────────────
+ * <div class="mitiru-chrome-counter"
+ *      style="--mitiru-counter-value:'42'"></div>
+ * Tunables: --mitiru-counter-bg/shine/value/h/w
+ * ::after renders the value string (CSS content property).
+ */
+.mitiru-chrome-counter {
+	--mitiru-counter-bg:    #c8c8c8;
+	--mitiru-counter-shine: #f0f0f0;
+	--mitiru-counter-value: '00';
+	--mitiru-counter-h:     48px;
+	--mitiru-counter-w:     80px;
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--mitiru-counter-w);
+	height: var(--mitiru-counter-h);
+	background: linear-gradient(160deg,
+		var(--mitiru-counter-shine) 0%,
+		var(--mitiru-counter-bg) 40%,
+		#9a9a9a 100%);
+	border-radius: 6px;
+	box-shadow: var(--mitiru-shadow-2, 0 2px 6px rgba(0,0,0,.1)),
+	            inset 0 1px 0 rgba(255,255,255,0.6),
+	            inset 0 -1px 0 rgba(0,0,0,0.2);
+	font-family: var(--mitiru-font-mono, monospace);
+	font-size: calc(var(--mitiru-counter-h) * 0.5);
+	font-weight: bold;
+	letter-spacing: 0.1em;
+	color: #2b2118;
+}
+.mitiru-chrome-counter::after { content: var(--mitiru-counter-value); }
+
+
+/* ── §6  Painted sign ─────────────────────────────────────────
+ * <div class="mitiru-painted-sign">OPEN</div>
+ * data-style="chalkboard|yellow"
+ * Tunables: --mitiru-sign-bg/fg/border/rotate
+ */
+.mitiru-painted-sign {
+	--mitiru-sign-bg:     #c0392b;
+	--mitiru-sign-fg:     #fffdf5;
+	--mitiru-sign-border: rgba(0,0,0,0.3);
+	--mitiru-sign-rotate: 0deg;
+	display: inline-block;
+	padding: 10px 20px;
+	background: var(--mitiru-sign-bg);
+	color: var(--mitiru-sign-fg);
+	font-family: var(--mitiru-font-display, cursive);
+	font-size: var(--mitiru-text-lg, 1.25rem);
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	border: 3px solid var(--mitiru-sign-fg);
+	outline: 3px solid var(--mitiru-sign-border);
+	outline-offset: -6px;
+	box-shadow: var(--mitiru-shadow-3, 0 6px 16px rgba(0,0,0,.14));
+	transform: rotate(var(--mitiru-sign-rotate));
+	border-radius: 3px;
+}
+.mitiru-painted-sign[data-style="chalkboard"] {
+	--mitiru-sign-bg: #2d4a3e;
+	--mitiru-sign-fg: #e8e0d0;
+	font-family: var(--mitiru-font-mono, monospace);
+	text-shadow: 1px 1px 0 rgba(255,255,255,0.15);
+}
+.mitiru-painted-sign[data-style="yellow"] {
+	--mitiru-sign-bg: #e0a028;
+	--mitiru-sign-fg: #2b2118;
+}
+
+
+/* ── §7  Heroine silhouette ───────────────────────────────────
+ * <div class="mitiru-heroine-silhouette"
+ *      style="--mitiru-hero-mask:url('char.svg');"></div>
+ * Tunables: --mitiru-hero-mask/color/w/h/opacity
+ * mask-image cuts character outline; background-color fills it.
+ */
+.mitiru-heroine-silhouette {
+	--mitiru-hero-mask:    none;
+	--mitiru-hero-color:   #2b2118;
+	--mitiru-hero-w:       120px;
+	--mitiru-hero-h:       200px;
+	--mitiru-hero-opacity: 1;
+	display: inline-block;
+	width: var(--mitiru-hero-w);
+	height: var(--mitiru-hero-h);
+	background-color: var(--mitiru-hero-color);
+	opacity: var(--mitiru-hero-opacity);
+	-webkit-mask-image: var(--mitiru-hero-mask);
+	        mask-image: var(--mitiru-hero-mask);
+	-webkit-mask-size: contain;
+	        mask-size: contain;
+	-webkit-mask-repeat: no-repeat;
+	        mask-repeat: no-repeat;
+	-webkit-mask-position: center bottom;
+	        mask-position: center bottom;
+}
+
+
+/* ── §8  Chrome knob row ──────────────────────────────────────
+ * <div class="mitiru-chrome-knob-row" data-count="3"></div>
+ * Zero child markup. N knobs drawn via repeating radial-gradient.
+ * Width = (size + gap) * N - gap (pure CSS calc).
+ * data-count="1|2|3|4|5" maps to --mitiru-knob-count.
+ * Tunables: --mitiru-knob-count/size/gap/color/shine
+ */
+.mitiru-chrome-knob-row {
+	--mitiru-knob-count: 3;
+	--mitiru-knob-size:  32px;
+	--mitiru-knob-gap:   12px;
+	--mitiru-knob-color: #b8b8b8;
+	--mitiru-knob-shine: #e8e8e8;
+	display: inline-block;
+	height: var(--mitiru-knob-size);
+	width: calc(
+		(var(--mitiru-knob-size) + var(--mitiru-knob-gap))
+		* var(--mitiru-knob-count) - var(--mitiru-knob-gap));
+	background-image: radial-gradient(
+		circle at 35% 30%,
+		var(--mitiru-knob-shine) 0%,
+		var(--mitiru-knob-color) 45%,
+		#7a7a7a 100%);
+	background-size:
+		calc(var(--mitiru-knob-size) + var(--mitiru-knob-gap))
+		var(--mitiru-knob-size);
+	background-repeat: repeat-x;
+	background-position: 0 0;
+	border-radius: calc(var(--mitiru-knob-size) / 2);
+}
+.mitiru-chrome-knob-row[data-count="1"] { --mitiru-knob-count: 1; }
+.mitiru-chrome-knob-row[data-count="2"] { --mitiru-knob-count: 2; }
+.mitiru-chrome-knob-row[data-count="3"] { --mitiru-knob-count: 3; }
+.mitiru-chrome-knob-row[data-count="4"] { --mitiru-knob-count: 4; }
+.mitiru-chrome-knob-row[data-count="5"] { --mitiru-knob-count: 5; }
+
+
+/* ── §9  Ingredient shelf tile ────────────────────────────────
+ * <div class="mitiru-ingredient-shelf-tile">
+ *   <span class="mitiru-ingredient-shelf-tile__icon">EGG</span>
+ *   <span class="mitiru-ingredient-shelf-tile__label">Egg</span>
+ * </div>
+ * data-state="selected|empty"
+ * Tunables: --mitiru-shelf-bg/border/select/size
+ */
+.mitiru-ingredient-shelf-tile {
+	--mitiru-shelf-bg:     #fffdf7;
+	--mitiru-shelf-border: var(--mitiru-border, #d8cbb8);
+	--mitiru-shelf-select: var(--mitiru-cherry, #c0392b);
+	--mitiru-shelf-size:   72px;
+	position: relative;
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	width: var(--mitiru-shelf-size);
+	height: var(--mitiru-shelf-size);
+	background: var(--mitiru-shelf-bg);
+	border: 2px solid var(--mitiru-shelf-border);
+	border-radius: var(--mitiru-radius-md, 8px);
+	box-shadow: var(--mitiru-shadow-1, 0 1px 2px rgba(43,33,24,.08));
+	cursor: pointer;
+	transition: border-color 120ms, box-shadow 120ms;
+	gap: 2px;
+}
+.mitiru-ingredient-shelf-tile:hover {
+	border-color: var(--mitiru-shelf-select);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--mitiru-shelf-select) 25%, transparent);
+}
+.mitiru-ingredient-shelf-tile[data-state="selected"] {
+	border-color: var(--mitiru-shelf-select);
+	background: color-mix(in srgb, var(--mitiru-shelf-select) 8%, var(--mitiru-shelf-bg));
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mitiru-shelf-select) 30%, transparent);
+}
+.mitiru-ingredient-shelf-tile[data-state="empty"] {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+.mitiru-ingredient-shelf-tile__icon {
+	font-size: calc(var(--mitiru-shelf-size) * 0.42);
+	line-height: 1;
+}
+.mitiru-ingredient-shelf-tile__label {
+	font-size: 10px;
+	color: var(--mitiru-text-mute, #8a7865);
+	font-family: var(--mitiru-font-body, sans-serif);
+}
+
+
+/* ── §10 HUD note ─────────────────────────────────────────────
+ * <div class="mitiru-hud-note">
+ *   <div class="mitiru-hud-note__title">Order #3</div>
+ *   <div class="mitiru-hud-note__body">Butter crepe x 2</div>
+ * </div>
+ * data-urgency="high"  -> red left bar + pulse animation
+ * data-urgency="low"   -> grey left bar
+ * Tunables: --mitiru-hud-bg/border/blur/radius
+ */
+.mitiru-hud-note {
+	--mitiru-hud-bg:     rgba(255,253,245,0.88);
+	--mitiru-hud-border: var(--mitiru-cherry, #c0392b);
+	--mitiru-hud-blur:   var(--mitiru-blur-sm, blur(4px));
+	--mitiru-hud-radius: var(--mitiru-radius-sm, 4px);
+	position: relative;
+	padding: 8px 12px;
+	background: var(--mitiru-hud-bg);
+	backdrop-filter: var(--mitiru-hud-blur);
+	-webkit-backdrop-filter: var(--mitiru-hud-blur);
+	border-left: 4px solid var(--mitiru-hud-border);
+	border-radius: var(--mitiru-hud-radius);
+	box-shadow: var(--mitiru-shadow-2, 0 2px 6px rgba(43,33,24,.1));
+	font-family: var(--mitiru-font-body, sans-serif);
+}
+.mitiru-hud-note__title {
+	font-size: var(--mitiru-text-xs, 0.75rem);
+	font-weight: bold;
+	color: var(--mitiru-hud-border);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	margin-bottom: 4px;
+}
+.mitiru-hud-note__body {
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	color: var(--mitiru-text, #2b2118);
+	line-height: var(--mitiru-leading-normal, 1.5);
+}
+.mitiru-hud-note[data-urgency="high"] {
+	--mitiru-hud-border: #e53935;
+	animation: mitiru-hud-pulse 1.4s ease-in-out infinite;
+}
+.mitiru-hud-note[data-urgency="low"] { --mitiru-hud-border: #9e9e9e; }
+
+@keyframes mitiru-hud-pulse {
+	0%, 100% { box-shadow: var(--mitiru-shadow-2, 0 2px 6px rgba(43,33,24,.1)); }
+	50%       { box-shadow: 0 0 0 3px rgba(229,57,53,0.3),
+	                        var(--mitiru-shadow-2, 0 2px 6px rgba(43,33,24,.1)); }
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * 14. Chat bubble — mitiru-chat / mitiru-chat-bubble (F-10)
+ *
+ * Scrollable chat surface with typed bubbles. Used by the heroines-laptop
+ * messaging UI in KaeruCrape and any dating-sim / phone-style view.
+ *
+ * Tokens:
+ *   --mitiru-chat-bg / -pad / -gap / -radius / -max
+ *   --mitiru-chat-incoming-bg / -incoming-fg
+ *   --mitiru-chat-outgoing-bg / -outgoing-fg
+ *   --mitiru-chat-system-fg
+ *   --mitiru-chat-heroine-color   per-bubble accent; override via data-heroine
+ *
+ * Markup:
+ *   <div class="mitiru-chat" data-mitiru-chat>
+ *     <div class="mitiru-chat-bubble mitiru-chat-bubble--system">...</div>
+ *     <div class="mitiru-chat-bubble mitiru-chat-bubble--incoming"
+ *          data-heroine="maria">
+ *       <span class="mitiru-chat-bubble__speaker">マリア</span>
+ *       <span class="mitiru-chat-bubble__text">おはよう</span>
+ *       <span class="mitiru-chat-bubble__time">06:43</span>
+ *     </div>
+ *     <div class="mitiru-chat-bubble mitiru-chat-bubble--outgoing">
+ *       <span class="mitiru-chat-bubble__text">おはよう！</span>
+ *     </div>
+ *     <div class="mitiru-chat-typing" data-heroine="maria">
+ *       <span></span><span></span><span></span>
+ *     </div>
+ *     <div class="mitiru-chat-choice">
+ *       <button class="mitiru-chat-choice__btn">はい</button>
+ *       <button class="mitiru-chat-choice__btn">いいえ</button>
+ *     </div>
+ *   </div>
+ */
+.mitiru-chat {
+	--mitiru-chat-bg:          rgba(255, 250, 244, 0.86);
+	--mitiru-chat-pad:         12px;
+	--mitiru-chat-gap:         8px;
+	--mitiru-chat-radius:      14px;
+	--mitiru-chat-max:         72%;
+	--mitiru-chat-incoming-bg: #f1ece4;
+	--mitiru-chat-incoming-fg: #2b2118;
+	--mitiru-chat-outgoing-bg: #b5d7e8;
+	--mitiru-chat-outgoing-fg: #1a2e3a;
+	--mitiru-chat-system-fg:   #8d7c6a;
+
+	display: flex;
+	flex-direction: column;
+	gap: var(--mitiru-chat-gap);
+	padding: var(--mitiru-chat-pad);
+	background: var(--mitiru-chat-bg);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	font-family: var(--mitiru-font-body, sans-serif);
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	line-height: var(--mitiru-leading-normal, 1.5);
+}
+
+.mitiru-chat-bubble {
+	max-width: var(--mitiru-chat-max);
+	padding: 8px 12px;
+	border-radius: var(--mitiru-chat-radius);
+	word-wrap: break-word;
+	box-shadow: var(--mitiru-shadow-1, 0 1px 2px rgba(43,33,24,0.08));
+	animation: mitiru-chat-pop 180ms ease-out;
+}
+.mitiru-chat-bubble__speaker {
+	display: block;
+	font-size: var(--mitiru-text-xs, 0.75rem);
+	font-weight: bold;
+	color: var(--mitiru-chat-heroine-color, inherit);
+	margin-bottom: 2px;
+	opacity: 0.82;
+}
+.mitiru-chat-bubble__text {
+	display: block;
+	white-space: pre-wrap;
+}
+.mitiru-chat-bubble__time {
+	display: block;
+	font-size: 0.68rem;
+	opacity: 0.5;
+	margin-top: 2px;
+	text-align: right;
+}
+.mitiru-chat-bubble--incoming {
+	align-self: flex-start;
+	background: var(--mitiru-chat-incoming-bg);
+	color: var(--mitiru-chat-incoming-fg);
+	border-top-left-radius: 4px;
+	border-left: 3px solid var(--mitiru-chat-heroine-color, transparent);
+}
+.mitiru-chat-bubble--outgoing {
+	align-self: flex-end;
+	background: var(--mitiru-chat-outgoing-bg);
+	color: var(--mitiru-chat-outgoing-fg);
+	border-top-right-radius: 4px;
+}
+.mitiru-chat-bubble--system {
+	align-self: center;
+	background: transparent;
+	box-shadow: none;
+	color: var(--mitiru-chat-system-fg);
+	font-size: var(--mitiru-text-xs, 0.75rem);
+	font-style: italic;
+	opacity: 0.85;
+	padding: 2px 10px;
+}
+
+/* Heroine color presets — extend per game via data-heroine attribute. */
+.mitiru-chat-bubble[data-heroine="maria"]    { --mitiru-chat-heroine-color: #e07a5f; }
+.mitiru-chat-bubble[data-heroine="raika"]    { --mitiru-chat-heroine-color: #81b29a; }
+.mitiru-chat-bubble[data-heroine="sachi"]    { --mitiru-chat-heroine-color: #f2cc8f; }
+.mitiru-chat-bubble[data-heroine="elizabeth"]{ --mitiru-chat-heroine-color: #7c6ba0; }
+
+.mitiru-chat-typing {
+	align-self: flex-start;
+	display: inline-flex;
+	gap: 4px;
+	padding: 10px 14px;
+	background: var(--mitiru-chat-incoming-bg);
+	border-radius: var(--mitiru-chat-radius);
+	border-top-left-radius: 4px;
+	box-shadow: var(--mitiru-shadow-1, 0 1px 2px rgba(43,33,24,0.08));
+	border-left: 3px solid var(--mitiru-chat-heroine-color, transparent);
+}
+.mitiru-chat-typing > span {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--mitiru-chat-heroine-color, #8d7c6a);
+	opacity: 0.3;
+	animation: mitiru-chat-typing 1.2s ease-in-out infinite;
+}
+.mitiru-chat-typing > span:nth-child(2) { animation-delay: 0.15s; }
+.mitiru-chat-typing > span:nth-child(3) { animation-delay: 0.30s; }
+.mitiru-chat-typing[data-heroine="maria"]    { --mitiru-chat-heroine-color: #e07a5f; }
+.mitiru-chat-typing[data-heroine="raika"]    { --mitiru-chat-heroine-color: #81b29a; }
+.mitiru-chat-typing[data-heroine="sachi"]    { --mitiru-chat-heroine-color: #f2cc8f; }
+.mitiru-chat-typing[data-heroine="elizabeth"]{ --mitiru-chat-heroine-color: #7c6ba0; }
+
+.mitiru-chat-choice {
+	align-self: stretch;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	justify-content: flex-end;
+	margin-top: 2px;
+}
+.mitiru-chat-choice__btn {
+	padding: 8px 14px;
+	border: 1px solid var(--mitiru-chat-outgoing-bg);
+	border-radius: var(--mitiru-chat-radius);
+	background: rgba(181, 215, 232, 0.3);
+	color: var(--mitiru-chat-outgoing-fg);
+	font: inherit;
+	cursor: pointer;
+	transition: background 120ms ease, transform 80ms ease;
+}
+.mitiru-chat-choice__btn:hover  { background: var(--mitiru-chat-outgoing-bg); }
+.mitiru-chat-choice__btn:active { transform: translateY(1px); }
+
+@keyframes mitiru-chat-pop {
+	from { opacity: 0; transform: translateY(4px) scale(0.98); }
+	to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+@keyframes mitiru-chat-typing {
+	0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+	40%            { opacity: 1.0; transform: translateY(-3px); }
+}
+
+
+/* ───────────────────────────────────────────────────────────────────
+ * 16. Modal — mitiru-modal (NF-13)
+ *
+ * Reusable dialog primitive: alert / confirm / prompt / custom.
+ * Stacks with ascending z-index; each instance root carries its own
+ * z-index inline so CSS here uses a sensible visual default only.
+ *
+ * Tokens used: --mitiru-surface, --mitiru-text, --mitiru-accent,
+ *              --mitiru-shadow-2, --mitiru-radius-md, --mitiru-font-body
+ *
+ * Markup skeleton:
+ *   <div class="mitiru-modal-root" data-mitiru-modal data-mitiru-modal-type="confirm">
+ *     <div class="mitiru-modal-backdrop"></div>
+ *     <div class="mitiru-modal" role="dialog" aria-modal="true" aria-labelledby="…">
+ *       <button class="mitiru-modal__close" aria-label="Close">×</button>
+ *       <h2 class="mitiru-modal__title" id="…">Title</h2>
+ *       <div class="mitiru-modal__body">…</div>
+ *       <input class="mitiru-modal__input">          <!-- prompt only -->
+ *       <div class="mitiru-modal__actions">
+ *         <button class="mitiru-modal__btn mitiru-modal__btn--cancel">Cancel</button>
+ *         <button class="mitiru-modal__btn mitiru-modal__btn--ok mitiru-modal__btn--primary">OK</button>
+ *       </div>
+ *     </div>
+ *   </div>
+ */
+
+/* ── Root wrapper (full-screen overlay container) ────────────────── */
+.mitiru-modal-root {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;       /* overridden inline per stacked instance */
+}
+
+/* ── Backdrop ────────────────────────────────────────────────────── */
+.mitiru-modal-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.4);
+	-webkit-backdrop-filter: blur(2px);
+	        backdrop-filter: blur(2px);
+}
+
+/* ── Dialog box ──────────────────────────────────────────────────── */
+.mitiru-modal {
+	position: relative;
+	z-index: 1;
+	background: var(--mitiru-surface, #fffdf7);
+	color: var(--mitiru-text, #2b2118);
+	font-family: var(--mitiru-font-body, sans-serif);
+	border-radius: var(--mitiru-radius-md, 8px);
+	box-shadow: var(--mitiru-shadow-2, 0 4px 24px rgba(0, 0, 0, 0.18));
+	width: 100%;
+	max-width: 480px;
+	padding: 24px;
+	box-sizing: border-box;
+	animation: mitiru-modal-in 150ms ease-out both;
+}
+
+/* ── × close button ──────────────────────────────────────────────── */
+.mitiru-modal__close {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	width: 28px;
+	height: 28px;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	font-size: 20px;
+	line-height: 1;
+	color: var(--mitiru-text-mute, #8a7865);
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	transition: background 120ms, color 120ms;
+}
+.mitiru-modal__close:hover {
+	background: rgba(0, 0, 0, 0.06);
+	color: var(--mitiru-text, #2b2118);
+}
+
+/* ── Title ───────────────────────────────────────────────────────── */
+.mitiru-modal__title {
+	margin: 0 0 12px;
+	padding-right: 24px;    /* avoid overlap with × button */
+	font-size: 1.1rem;
+	font-weight: bold;
+	color: var(--mitiru-text, #2b2118);
+	font-family: var(--mitiru-font-body, sans-serif);
+	line-height: 1.3;
+}
+
+/* ── Body ────────────────────────────────────────────────────────── */
+.mitiru-modal__body {
+	margin-bottom: 16px;
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	line-height: 1.55;
+	color: var(--mitiru-text, #2b2118);
+}
+
+/* ── Prompt input ────────────────────────────────────────────────── */
+.mitiru-modal__input {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	margin-bottom: 16px;
+	padding: 8px 10px;
+	border: 1px solid var(--mitiru-border, #d8cbb8);
+	border-radius: var(--mitiru-radius-md, 8px);
+	font: inherit;
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	color: var(--mitiru-text, #2b2118);
+	background: var(--mitiru-surface, #fffdf7);
+	outline: none;
+	transition: border-color 120ms, box-shadow 120ms;
+}
+.mitiru-modal__input:focus {
+	border-color: var(--mitiru-accent, #c0392b);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mitiru-accent, #c0392b) 20%, transparent);
+}
+
+/* ── Actions row ─────────────────────────────────────────────────── */
+.mitiru-modal__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+/* ── Shared button base ──────────────────────────────────────────── */
+.mitiru-modal__btn {
+	padding: 8px 20px;
+	border-radius: var(--mitiru-radius-md, 8px);
+	border: 1px solid transparent;
+	cursor: pointer;
+	font: inherit;
+	font-size: var(--mitiru-text-sm, 0.875rem);
+	font-weight: 600;
+	line-height: 1.4;
+	transition: background 120ms, border-color 120ms, box-shadow 120ms, transform 80ms;
+}
+.mitiru-modal__btn:active { transform: translateY(1px); }
+
+/* Cancel variant */
+.mitiru-modal__btn--cancel {
+	background: transparent;
+	border-color: var(--mitiru-border, #d8cbb8);
+	color: var(--mitiru-text-mute, #8a7865);
+}
+.mitiru-modal__btn--cancel:hover {
+	background: rgba(0, 0, 0, 0.04);
+	border-color: var(--mitiru-text-mute, #8a7865);
+}
+
+/* Primary variant (OK default) */
+.mitiru-modal__btn--primary {
+	background: var(--mitiru-accent, #c0392b);
+	color: #fff;
+	border-color: var(--mitiru-accent, #c0392b);
+}
+.mitiru-modal__btn--primary:hover {
+	background: color-mix(in srgb, var(--mitiru-accent, #c0392b) 85%, #000);
+	border-color: color-mix(in srgb, var(--mitiru-accent, #c0392b) 85%, #000);
+}
+.mitiru-modal__btn--primary:focus-visible {
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mitiru-accent, #c0392b) 35%, transparent);
+}
+
+/* Danger variant */
+.mitiru-modal__btn--danger {
+	background: #d32f2f;
+	color: #fff;
+	border-color: #d32f2f;
+}
+.mitiru-modal__btn--danger:hover {
+	background: #b71c1c;
+	border-color: #b71c1c;
+}
+.mitiru-modal__btn--danger:focus-visible {
+	box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.35);
+}
+
+/* Ghost variant */
+.mitiru-modal__btn--ghost {
+	background: transparent;
+	color: var(--mitiru-accent, #c0392b);
+	border-color: var(--mitiru-accent, #c0392b);
+}
+.mitiru-modal__btn--ghost:hover {
+	background: color-mix(in srgb, var(--mitiru-accent, #c0392b) 10%, transparent);
+}
+
+/* ── Entrance animation ──────────────────────────────────────────── */
+@keyframes mitiru-modal-in {
+	from {
+		opacity: 0;
+		transform: scale(0.94) translateY(-8px);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+	}
+}
+
+/* ── Reduced-motion: disable entrance animation ──────────────────── */
+@media (prefers-reduced-motion: reduce) {
+	.mitiru-modal {
+		animation: none;
+	}
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * 15. Preloader — mitiru-preloader (NF-04)
+ *
+ * Boot-time asset preloader progress bar. Mounts into any container.
+ * Fades out on load completion. Falls back to inline styles when this
+ * sheet is absent.
+ *
+ * Tokens used:
+ *   --mitiru-accent       fill colour
+ *   --mitiru-surface      track background
+ *   --mitiru-radius-sm    track corner radius
+ *
+ * Markup:
+ *   <div class="mitiru-preloader" data-mitiru-preloader>
+ *     <div class="mitiru-preloader__track">
+ *       <div class="mitiru-preloader__fill" style="width: 0%"></div>
+ *     </div>
+ *     <div class="mitiru-preloader__label" data-preloader-label>Loading… 0 / N</div>
+ *   </div>
+ */
+
+.mitiru-preloader {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 8px 16px;
+}
+
+.mitiru-preloader__track {
+	width: 100%;
+	height: 8px;
+	background: var(--mitiru-surface, #e0e0e0);
+	border-radius: var(--mitiru-radius-sm, 4px);
+	overflow: hidden;
+}
+
+.mitiru-preloader__fill {
+	height: 100%;
+	width: 0%;
+	background: var(--mitiru-accent, #e07a5f);
+	border-radius: var(--mitiru-radius-sm, 4px);
+	transition: width 80ms ease;
+}
+
+.mitiru-preloader__label {
+	margin-top: 6px;
+	font-size: 12px;
+	color: var(--mitiru-text-mute, #666666);
+	line-height: 1.4;
+}
+
+/* ===============================================================
+ *   17. Art placeholder — mitiru-art-placeholder (NF-12)
+ * ===============================================================
+ *
+ * Shown anywhere real art hasn't landed yet. Dashed outline + diagonal
+ * hatch + centred key-name label (via data-key attribute, rendered by
+ * the ::after pseudo so games don't need to duplicate the string in DOM).
+ *
+ * Usage:
+ *   <div class="mitiru-art-placeholder"
+ *        data-key="bg_street_morning"
+ *        style="aspect-ratio: 16/9;"></div>
+ *
+ *   <img class="mitiru-art-placeholder"
+ *        data-key="maria_happy"
+ *        src="art/maria_happy.png"
+ *        onerror="this.classList.add('mitiru-art-placeholder--shown');">
+ *
+ * Tokens:
+ *   --mitiru-placeholder-border   : #c9c3b8  dashed outline
+ *   --mitiru-placeholder-hatch    : rgba(0,0,0,0.06)  diagonal stripe
+ *   --mitiru-placeholder-label-bg : rgba(255,255,255,0.8)  label pill
+ *   --mitiru-placeholder-label-fg : #4a4236  label text
+ */
+.mitiru-art-placeholder {
+	--mitiru-placeholder-border:   #c9c3b8;
+	--mitiru-placeholder-hatch:    rgba(0, 0, 0, 0.06);
+	--mitiru-placeholder-label-bg: rgba(255, 255, 255, 0.82);
+	--mitiru-placeholder-label-fg: #4a4236;
+
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 48px;
+	min-height: 48px;
+	border: 2px dashed var(--mitiru-placeholder-border);
+	border-radius: var(--mitiru-radius-sm, 4px);
+	background-color: #f5f2eb;
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--mitiru-placeholder-hatch) 0,
+		var(--mitiru-placeholder-hatch) 1px,
+		transparent 1px,
+		transparent 8px
+	);
+	color: var(--mitiru-placeholder-label-fg);
+	font-family: var(--mitiru-font-mono, monospace);
+	font-size: 11px;
+	box-sizing: border-box;
+}
+.mitiru-art-placeholder::after {
+	content: attr(data-key);
+	padding: 2px 8px;
+	background: var(--mitiru-placeholder-label-bg);
+	border-radius: 999px;
+	letter-spacing: 0.04em;
+	max-width: 90%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mitiru-art-placeholder:not([data-key])::after { content: "placeholder"; }
+/* For <img> variants: the element shows the placeholder only once the image
+ * fails to load and this class is applied by onerror. */
+img.mitiru-art-placeholder:not(.mitiru-art-placeholder--shown) {
+	border: none;
+	background: none;
+}
+img.mitiru-art-placeholder:not(.mitiru-art-placeholder--shown)::after { content: ""; }
+
+/* ===============================================================
+ *   18. Novel effect keyframes — mitiru-novel-shake (NF-11)
+ * ===============================================================
+ *
+ * CSS side of the novel VM effect primitives. The shake effect uses
+ * a named keyframe animation — other effects (flash/tint/zoom/blur/
+ * slide/fade-sprite) run via Element.animate() directly from the JS
+ * module so the CSS surface stays small.
+ *
+ * Tunable via --mitiru-shake-intensity (0..1, default 1.0). The JS
+ * module sets it inline based on the line's `intensity` field.
+ */
+
+@keyframes mitiru-novel-shake {
+	0%, 100% { transform: translate(0, 0); }
+	10%      { transform: translate(calc(var(--mitiru-shake-intensity, 1) * -4px), calc(var(--mitiru-shake-intensity, 1) *  2px)); }
+	20%      { transform: translate(calc(var(--mitiru-shake-intensity, 1) *  3px), calc(var(--mitiru-shake-intensity, 1) * -3px)); }
+	30%      { transform: translate(calc(var(--mitiru-shake-intensity, 1) * -3px), calc(var(--mitiru-shake-intensity, 1) *  1px)); }
+	40%      { transform: translate(calc(var(--mitiru-shake-intensity, 1) *  4px), calc(var(--mitiru-shake-intensity, 1) *  3px)); }
+	50%      { transform: translate(calc(var(--mitiru-shake-intensity, 1) * -2px), calc(var(--mitiru-shake-intensity, 1) * -4px)); }
+	60%      { transform: translate(calc(var(--mitiru-shake-intensity, 1) *  2px), calc(var(--mitiru-shake-intensity, 1) *  2px)); }
+	70%      { transform: translate(calc(var(--mitiru-shake-intensity, 1) * -4px), calc(var(--mitiru-shake-intensity, 1) * -1px)); }
+	80%      { transform: translate(calc(var(--mitiru-shake-intensity, 1) *  3px), calc(var(--mitiru-shake-intensity, 1) *  1px)); }
+	90%      { transform: translate(calc(var(--mitiru-shake-intensity, 1) * -1px), calc(var(--mitiru-shake-intensity, 1) *  2px)); }
+}
+
+.mitiru-novel-shake {
+	animation-name:            mitiru-novel-shake;
+	animation-duration:        var(--mitiru-novel-shake-duration, 300ms);
+	animation-timing-function: cubic-bezier(.36, .07, .19, .97);
+	animation-fill-mode:       both;
+}
+
+/* ===============================================================
+ *   19. Novel textbox defaults — H-05 cascade-friendly variant
+ * ===============================================================
+ *
+ * Default visual rules for `mitiru.novel` textbox. Lives here (not
+ * injected at mount time via <style>) so consumer stylesheets that
+ * are loaded AFTER this file win the cascade with normal selector
+ * specificity — no `!important` required.
+ *
+ * Override pattern (consumer side):
+ *   .novel-textbox { bottom: 4em; padding: 24px; ... }
+ *   .novel-textbox [data-novel-speaker] { font-weight: 500; }
+ *
+ * Tunables (CSS custom properties on `.novel-textbox`):
+ *   --mitiru-novel-textbox-bg     : default rgba(0,0,0,0.7)
+ *   --mitiru-novel-textbox-fg     : default #fff
+ *   --mitiru-novel-textbox-pad    : default 16px
+ *   --mitiru-novel-textbox-min-h  : default 6em
+ *   --mitiru-novel-textbox-z      : default 20 (matches Z_TEXTBOX in mitiru_novel.js)
+ */
+
+.novel-textbox {
+	position:    absolute;
+	left:        0;
+	right:       0;
+	bottom:      0;
+	z-index:     var(--mitiru-novel-textbox-z, 20);
+	padding:     var(--mitiru-novel-textbox-pad, 16px);
+	background:  var(--mitiru-novel-textbox-bg, rgba(0, 0, 0, 0.7));
+	color:       var(--mitiru-novel-textbox-fg, #fff);
+	min-height:  var(--mitiru-novel-textbox-min-h, 6em);
+	box-sizing:  border-box;
+}
+
+.novel-textbox [data-novel-speaker] {
+	font-weight:   bold;
+	margin-bottom: 4px;
+}

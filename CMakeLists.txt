@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0091 NEW)
 
 project(MitiruEngine
-	VERSION 0.1.0
-	DESCRIPTION "AI-first C++20 game engine built on ShiggyGameCore"
+	VERSION 0.2.0
+	DESCRIPTION "「必要なものしか画面に出さない」C++ game framework — game-as-DLL + hot reload"
 	LANGUAGES CXX
 )
 
@@ -617,14 +617,123 @@ if(MITIRU_BUILD_TESTS)
 	add_subdirectory(tests)
 endif()
 
-# ── Packaging ─────────────────────────────────────────────────────
+# ── Packaging (portable zip for v0.2.0 release) ───────────────────
 # CPack is opt-in: include(CPack) errors with "CPack.cmake:994" on some CMake 4.0
 # installs that ship without the CPack template. Local devs almost never want
 # packaging, so default OFF and let release pipelines explicitly enable it.
-option(MITIRU_ENABLE_CPACK "Generate CPack configuration" OFF)
-if(MITIRU_ENABLE_CPACK)
+#
+# Layout target — produces MitiruEngine-<ver>-Windows-x64.zip with:
+#
+#   MitiruEngine/
+#     mitiru_host.exe + MitiruCefHelper.exe + libcef.dll + *.pak + locales/
+#     mitiru_launcher/
+#       mitiru_launcher.dll
+#       assets/scene.html + mitiru_runtime/mitiru_cef_state.js
+#     hello_game/
+#       hello_game.dll
+#       assets/scene.html + mitiru_runtime/mitiru_cef_state.js
+#     README.txt — "double-click mitiru_host.exe ./mitiru_launcher/mitiru_launcher.dll"
+#
+# The user unzips, double-clicks the launcher entry (provided via .bat /
+# shortcut), and is in a no-terminal experience.
+option(MITIRU_ENABLE_CPACK "Generate CPack portable-zip configuration" OFF)
+if(MITIRU_ENABLE_CPACK AND WIN32 AND PROJECT_IS_TOP_LEVEL)
+	# ── install rules — lay out the dist tree ────────────────────────
+	# Targets land at top-level dest (no `bin/` prefix); subdir-per-target via DESTINATION.
+
+	install(TARGETS mitiru_host         RUNTIME DESTINATION . COMPONENT runtime)
+	if(TARGET MitiruCefHelper)
+		install(TARGETS MitiruCefHelper RUNTIME DESTINATION . COMPONENT runtime)
+	endif()
+
+	# Optional: mitiru CLI + installer pulled from the mogmog-0110/mitiru-cli
+	# release. CI stages them under build/extra_runtime/ before configure.
+	# When absent (first run / dev builds) we silently ship without them.
+	# Spec: docs/INSTALLER.md
+	if(EXISTS "${CMAKE_BINARY_DIR}/extra_runtime/mitiru.exe")
+		install(PROGRAMS "${CMAKE_BINARY_DIR}/extra_runtime/mitiru.exe"
+		        DESTINATION . COMPONENT runtime)
+	endif()
+	if(EXISTS "${CMAKE_BINARY_DIR}/extra_runtime/MitiruEngine_Installer.exe")
+		install(PROGRAMS "${CMAKE_BINARY_DIR}/extra_runtime/MitiruEngine_Installer.exe"
+		        DESTINATION . COMPONENT runtime)
+	endif()
+
+	# Game / launcher DLLs go in subdirectories so cefStartUrl resolves
+	# relative to host cwd (matching the dev layout).
+	if(TARGET hello_game)
+		install(TARGETS hello_game RUNTIME DESTINATION hello_game COMPONENT runtime
+		                            LIBRARY DESTINATION hello_game COMPONENT runtime)
+		install(DIRECTORY examples/hello_game/assets/
+		        DESTINATION hello_game/assets COMPONENT runtime
+		        PATTERN "*.html"
+		        PATTERN "*.css"
+		        PATTERN "*.js"
+		        PATTERN "*.json")
+		install(FILES web/mitiru_runtime/mitiru_cef_state.js
+		        DESTINATION hello_game/assets/mitiru_runtime COMPONENT runtime)
+	endif()
+
+	if(TARGET mitiru_launcher)
+		install(TARGETS mitiru_launcher RUNTIME DESTINATION mitiru_launcher COMPONENT runtime
+		                                LIBRARY DESTINATION mitiru_launcher COMPONENT runtime)
+		install(DIRECTORY examples/mitiru_launcher/assets/
+		        DESTINATION mitiru_launcher/assets COMPONENT runtime
+		        PATTERN "*.html"
+		        PATTERN "*.css"
+		        PATTERN "*.js"
+		        PATTERN "*.json")
+		install(FILES web/mitiru_runtime/mitiru_cef_state.js
+		        DESTINATION mitiru_launcher/assets/mitiru_runtime COMPONENT runtime)
+	endif()
+
+	# CEF runtime — libcef.dll + chrome_elf.dll + *.bin + .pak + locales/
+	# Exclude cef_sandbox.lib (96MB compile-only static lib, not a runtime asset).
+	if(CEF_FOUND)
+		install(DIRECTORY ${CEF_BINARY_DIR}/   DESTINATION . COMPONENT runtime
+		        PATTERN "cef_sandbox.lib" EXCLUDE
+		        PATTERN "libcef.lib"      EXCLUDE)
+		install(DIRECTORY ${CEF_RESOURCE_DIR}/ DESTINATION . COMPONENT runtime)
+	endif()
+
+	# Top-level convenience launcher: a .bat file that runs the GUI launcher
+	# without a console window flash. Users double-click this instead of the
+	# bare host exe + DLL path.
+	configure_file(
+		${CMAKE_CURRENT_SOURCE_DIR}/cmake/dist/MitiruEngine_Launcher.bat.in
+		${CMAKE_CURRENT_BINARY_DIR}/dist/MitiruEngine_Launcher.bat
+		@ONLY)
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dist/MitiruEngine_Launcher.bat
+	        DESTINATION . COMPONENT runtime)
+
+	configure_file(
+		${CMAKE_CURRENT_SOURCE_DIR}/cmake/dist/README_DIST.txt.in
+		${CMAKE_CURRENT_BINARY_DIR}/dist/README.txt
+		@ONLY)
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dist/README.txt
+	        DESTINATION . COMPONENT runtime)
+
+	# ── CPack settings ──────────────────────────────────────────────
 	set(CPACK_PACKAGE_NAME "MitiruEngine")
 	set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+	set(CPACK_PACKAGE_VENDOR "mogmog-0110")
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
+	set(CPACK_PACKAGE_INSTALL_DIRECTORY "MitiruEngine-${PROJECT_VERSION}")
+	set(CPACK_PACKAGE_FILE_NAME
+		"MitiruEngine-${PROJECT_VERSION}-Windows-x64")
 	set(CPACK_GENERATOR "ZIP")
+	set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY ON)
+	# Only pack the `runtime` component (everything we explicitly tagged).
+	# This drops the auto-imported submodule install rules (sgc headers, etc.)
+	# and any libcef.lib / cef_sandbox.lib that aren't runtime files.
+	# Combination needed: COMPONENT_INSTALL=ON enables filtering;
+	# ALL_COMPONENTS_IN_ONE merges them back into a single zip.
+	set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+	set(CPACK_COMPONENTS_GROUPING ALL_COMPONENTS_IN_ONE)
+	set(CPACK_COMPONENTS_ALL runtime)
+	# Manually add the toplevel dir prefix — with COMPONENT mode the default
+	# CPACK_INCLUDE_TOPLEVEL_DIRECTORY behaviour drops it. Without this every
+	# file unzips to the user's current directory (bad UX).
+	set(CPACK_PACKAGING_INSTALL_PREFIX "/MitiruEngine-${PROJECT_VERSION}")
 	include(CPack)
 endif()

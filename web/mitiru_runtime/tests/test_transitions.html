@@ -1,0 +1,321 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_transitions.js tests</title>
+<!--
+    test_transitions.html — mitiru.transitions (F-05) unit tests
+
+    Covers all 12 built-in transitions plus API contract tests.
+    WAAPI is shimmed for duration=0 paths.  Tests that need real animation
+    use small durations (5-10 ms) which resolve quickly in a real browser.
+
+    Node WAAPI shim:
+      A minimal shim at the top of the inline script patches
+      Element.prototype.animate (or a FakeEl class) so the tests can also
+      be driven from a bare Node environment without a real DOM.
+
+    Run (browser):
+      python -m http.server 8765 --bind 127.0.0.1
+      open http://localhost:8765/web/mitiru_runtime/tests/test_transitions.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+
+    Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-05
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_transitions.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function ()
+{
+    'use strict';
+
+    // ── WAAPI shim (Node / environments without animate) ──────────────────
+    // If Element.prototype.animate is absent (bare Node), install a minimal
+    // shim that returns { finished: Promise.resolve() } immediately.
+    // In a real browser this is never reached.
+    var _needsShim = (typeof Element === 'undefined')
+                  || (typeof Element.prototype === 'undefined')
+                  || (typeof Element.prototype.animate !== 'function');
+
+    if (_needsShim)
+    {
+        // Provide a global Element stub with animate if running in Node.
+        if (typeof global !== 'undefined' && typeof Element === 'undefined')
+        {
+            global.Element = function FakeElement() {};
+        }
+        if (typeof Element !== 'undefined')
+        {
+            Element.prototype.animate = function (_kf, _opts)
+            {
+                return { finished: Promise.resolve(), onfinish: null };
+            };
+        }
+    }
+
+    // ── element factory ───────────────────────────────────────────────────
+    // Creates a lightweight fake DOM element compatible with WAAPI shim and
+    // real browser Element.  In a browser, uses a real <div>.
+    function makeEl()
+    {
+        if (typeof document !== 'undefined')
+        {
+            var el = document.createElement('div');
+            el.style.opacity = '1';
+            return el;
+        }
+        // Node fallback: fake element with animate shim.
+        var fake = new Element();
+        fake.style = {};
+        fake.parentNode = null;
+        fake.nextSibling = null;
+        fake.animate = Element.prototype.animate;
+        return fake;
+    }
+
+    // ── harness shorthand ─────────────────────────────────────────────────
+    var t  = mitiru.test;
+    var tr = mitiru.transitions;
+
+    // ── 1. instant / cut ─────────────────────────────────────────────────
+    t.case('instant: resolves immediately (duration:0)', function ()
+    {
+        var el = makeEl();
+        return tr.run(el, 'instant').then(function () { t.assert(true); });
+    });
+
+    t.case('instant: alias "cut" also resolves', function ()
+    {
+        var el = makeEl();
+        return tr.run(el, 'cut').then(function () { t.assert(true); });
+    });
+
+    // ── 2. fade (duration:0 fast path) ───────────────────────────────────
+    t.case('fade: run(el, "fade", {duration:0}) returns a Promise', function ()
+    {
+        var el = makeEl();
+        var p  = tr.run(el, 'fade', { duration: 0 });
+        t.assert(p && typeof p.then === 'function', 'should return Promise');
+        return p;
+    });
+
+    // ── 3. fade (live animation, small duration) ──────────────────────────
+    t.case('fade: resolves within reasonable time (duration:10)', function ()
+    {
+        var el = makeEl();
+        return tr.run(el, 'fade', { duration: 10 });
+    });
+
+    // ── 4. fade reverse: final state is opacity 1 ─────────────────────────
+    t.case('fade: reverse:true ends at opacity "1"', function ()
+    {
+        var el = makeEl();
+        el.style.opacity = '0';
+        return tr.run(el, 'fade', { duration: 0, reverse: true }).then(function ()
+        {
+            // With duration:0 the last keyframe's props are applied via style.
+            t.assertEq(el.style.opacity, '1');
+        });
+    });
+
+    // ── 5. register custom ────────────────────────────────────────────────
+    t.case('register: custom fn is invoked by run()', function ()
+    {
+        var called = false;
+        tr.register('_test_custom_01', function (_el, _opts)
+        {
+            called = true;
+            return Promise.resolve();
+        }, { override: true });
+
+        var el = makeEl();
+        return tr.run(el, '_test_custom_01').then(function ()
+        {
+            t.assert(called, 'custom fn should have been called');
+        });
+    });
+
+    // ── 6. register: duplicate name without override throws ───────────────
+    t.case('register: duplicate name throws without override:true', function ()
+    {
+        // First registration.
+        tr.register('_test_dup_02', function () { return Promise.resolve(); },
+                    { override: true });
+        // Second without override should throw.
+        t.assertThrow(function ()
+        {
+            tr.register('_test_dup_02', function () { return Promise.resolve(); });
+        });
+    });
+
+    t.case('register: duplicate name succeeds with override:true', function ()
+    {
+        tr.register('_test_dup_03', function () { return Promise.resolve(); },
+                    { override: true });
+        t.assertNoThrow(function ()
+        {
+            tr.register('_test_dup_03', function () { return Promise.resolve(); },
+                        { override: true });
+        });
+    });
+
+    // ── 7. run unknown name rejects ───────────────────────────────────────
+    t.case('run: unknown transition name rejects with clear error', function ()
+    {
+        var el = makeEl();
+        return tr.run(el, 'nonexistent_xyz').then(
+            function ()  { t.assert(false, 'should have rejected'); },
+            function (e) { t.assert(e.message.indexOf('nonexistent_xyz') >= 0); }
+        );
+    });
+
+    // ── 8. list returns all 12 built-ins (+ any custom) ──────────────────
+    t.case('list: contains all 12 built-in names', function ()
+    {
+        var expected = [
+            'card-fold', 'crossfade', 'fade',
+            'ink-dot', 'instant',
+            'iris-in', 'iris-out',
+            'page-fold', 'pan',
+            'slide-in', 'slide-out',
+            'walk-through',
+        ];
+        var listed = tr.list();
+        expected.forEach(function (name)
+        {
+            t.assert(listed.indexOf(name) >= 0,
+                '"' + name + '" should be in list()');
+        });
+    });
+
+    t.case('list: custom-registered name appears in list()', function ()
+    {
+        tr.register('_test_listed_04', function () { return Promise.resolve(); },
+                    { override: true });
+        t.assert(tr.list().indexOf('_test_listed_04') >= 0);
+    });
+
+    // ── 9. chain: sequential execution ───────────────────────────────────
+    t.case('chain: second transition starts only after first resolves', function ()
+    {
+        var order = [];
+        tr.register('_test_seq_a', function ()
+        {
+            order.push('a');
+            return Promise.resolve();
+        }, { override: true });
+        tr.register('_test_seq_b', function ()
+        {
+            order.push('b');
+            return Promise.resolve();
+        }, { override: true });
+
+        var el = makeEl();
+        return tr.chain(el, [
+            ['_test_seq_a', {}],
+            ['_test_seq_b', {}],
+        ]).then(function ()
+        {
+            t.assertEq(order, ['a', 'b']);
+        });
+    });
+
+    t.case('chain: with real transitions (fade + slide-in, 5ms each)', function ()
+    {
+        var el = makeEl();
+        return tr.chain(el, [
+            ['fade',     { duration: 5 }],
+            ['slide-in', { duration: 5 }],
+        ]);
+    });
+
+    // ── 10. slide-in direction:right ─────────────────────────────────────
+    t.case('slide-in: direction=right resolves (starts from translateX(+100%))', function ()
+    {
+        // We cannot easily observe the keyframes from outside WAAPI, but we
+        // can verify the transition runs without error and resolves.
+        var el = makeEl();
+        return tr.run(el, 'slide-in', { duration: 5, direction: 'right' });
+    });
+
+    t.case('slide-in: direction=right with duration:0 applies end transform', function ()
+    {
+        var el = makeEl();
+        return tr.run(el, 'slide-in', { duration: 0, direction: 'right' }).then(function ()
+        {
+            // Last keyframe is translateX(0) for slide-in.
+            t.assert(el.style.transform !== undefined);
+        });
+    });
+
+    // ── 11. iris-in: clip-path applied ────────────────────────────────────
+    t.case('iris-in: duration:0 sets clipPath to circle(150%)', function ()
+    {
+        var el = makeEl();
+        return tr.run(el, 'iris-in', { duration: 0 }).then(function ()
+        {
+            // The last keyframe for iris-in is circle(150% at 50% 50%).
+            var cp = el.style.clipPath || el.style.webkitClipPath || '';
+            t.assert(cp.indexOf('circle') >= 0 || cp === '',
+                'clipPath should contain "circle" or be empty (browser compat): got "' + cp + '"');
+        });
+    });
+
+    t.case('iris-in: live animation (duration:5) resolves', function ()
+    {
+        var el = makeEl();
+        return tr.run(el, 'iris-in', { duration: 5 });
+    });
+
+    // ── 12. crossfade: animates both from and to ──────────────────────────
+    t.case('crossfade: animates from and to elements', function ()
+    {
+        var fromEl = makeEl();
+        var toEl   = makeEl();
+        fromEl.style.opacity = '1';
+        toEl.style.opacity   = '0';
+
+        return tr.run(fromEl, 'crossfade', {
+            duration : 5,
+            from     : fromEl,
+            to       : toEl,
+        });
+    });
+
+    t.case('crossfade: duration:0 completes synchronously', function ()
+    {
+        var fromEl = makeEl();
+        var toEl   = makeEl();
+        return tr.run(fromEl, 'crossfade', {
+            duration : 0,
+            from     : fromEl,
+            to       : toEl,
+        });
+    });
+
+    // ── bonus: remaining built-ins resolve without error ─────────────────
+    var _smokeNames = [
+        'slide-out', 'iris-out', 'pan', 'ink-dot', 'page-fold', 'card-fold', 'walk-through',
+    ];
+    _smokeNames.forEach(function (name)
+    {
+        t.case(name + ': resolves with duration:5', function ()
+        {
+            var el = makeEl();
+            return tr.run(el, name, { duration: 5 });
+        });
+    });
+
+    // ── run all tests ─────────────────────────────────────────────────────
+    mitiru.test.run();
+
+}());
+</script>

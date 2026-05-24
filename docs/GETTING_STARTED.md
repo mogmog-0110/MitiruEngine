@@ -14,7 +14,9 @@
 
 ### Windows のひと
 
-Visual Studio 2022 を入れて、インストーラで **「C++ によるデスクトップ開発」** ワークロードを選んでおけば、コンパイラと CMake と Git がまとめて入ります。Go は [go.dev/dl](https://go.dev/dl/) からどうぞ。
+**Visual Studio Build Tools 2022** (または full Visual Studio 2022) を入れて、インストーラで **「C++ によるデスクトップ開発」** ワークロードを選んでおけば、MSVC コンパイラと CMake と Git がまとめて入ります。Go は [go.dev/dl](https://go.dev/dl/) からどうぞ。
+
+**IDE は optional** です。MitiruEngine は CLI 中心の設計なので、テキストエディタ (VS Code / Vim / Helix / メモ帳 等) と `mitiru` コマンドだけで完結します。Visual Studio IDE を使うのも自由ですが、必須ではありません。
 
 ### Linux のひと
 
@@ -103,21 +105,20 @@ backend = "auto"
 ```
 
 - `[window]` — ウィンドウのタイトルとサイズ。C++ 側でハードコードしなくて済みます。
-- `[cef]` — Mode B (CEF 併用) のとき、最初に読む HTML。Mode A 純 C++ なら `start_url` は無視されます。
-- `[build]` — グラフィクス backend。`auto` でプラットフォームから自動選択。明示するなら `dx11` / `vulkan` / `webgl2` / `null` 等。
+- `[cef]` — UI / HUD を HTML/CSS で書く場合の初期 HTML。CEF レイヤーを使わない純 C++ runtime なら `start_url` は無視されます。
+- `[build]` — グラフィクス backend。`auto` でプラットフォームから自動選択。
 
 ---
 
-## 動かしかた 2 種 (Mode A / Mode B)
+## C++ のみで動かす場合
 
-- **Mode A — Native (C++ のみ)**: デスクトップ / ヘッドレス。3D アクション、performance-critical な処理、CEF を使わない最小実行。`mitiru.toml` の `[cef]` を消すか `enabled = false` を入れます。
-- **Mode B — Hybrid (Mode A + CEF + JS)**: デスクトップのみ。UI を HTML/CSS で組み、C++ から `state` を push する。HUD、メニュー、ノベル風の演出。`mitiru new` のデフォルトは Mode B 寄りのテンプレートです。
+UI を HTML/CSS で書かず、純 C++ で完結したい場合は `mitiru.toml` の `[cef]` セクションを消すか、`main.cpp` で `cfg.enableCef = false` を設定します。CEF のプロセスが起動しないので、libcef.dll 依存も無くなります。
 
-詳しい線引きは [`SCOPE.md`](SCOPE.md)。
+詳細は [`SCOPE.md`](SCOPE.md)。
 
 ---
 
-## 最小のゲームコード (Mode A)
+## 最小のゲームコード (純 C++)
 
 `mitiru new` が `src/main.cpp` にこういうのを置きます。置き換える出発点として使ってください:
 
@@ -125,16 +126,13 @@ backend = "auto"
 #include <cmath>
 #include <mitiru/Mitiru.hpp>
 
-constexpr int kKeyEscape = 27;
-constexpr int kKeySpace  = 32;
-
 class MyGame final : public mitiru::Game
 {
 public:
     void update(float dt) override
     {
         m_elapsed += dt;
-        if (hasInput() && input().isKeyJustPressed(kKeyEscape))
+        if (hasInput() && input().isKeyJustPressed(mitiru::KeyCode::Escape))
         {
             if (auto* eng = engine()) eng->requestStop();
         }
@@ -147,7 +145,7 @@ public:
         const float w = static_cast<float>(screen.width());
         const float h = static_cast<float>(screen.height());
 
-        const bool  boost = hasInput() && input().isKeyDown(kKeySpace);
+        const bool  boost = hasInput() && input().isKeyDown(mitiru::KeyCode::Space);
         const float pulse = 0.5f + 0.5f * std::sin(m_elapsed * 2.0f);
         const float size  = 80.0f + (boost ? 60.0f : 20.0f) * pulse;
 
@@ -178,7 +176,7 @@ int main()
     MyGame        game;
 
     mitiru::EngineConfig cfg;
-    // Mode A: CEF を完全に切る (libcef.dll に依存しない)。
+    // 純 C++ runtime: CEF を完全に切る (libcef.dll に依存しない)。
     cfg.enableCef = false;
     // Latin-only atlas → 起動 ~1 s (デフォルトの日本語 atlas は ~15 s)。
     cfg.fontAtlasRanges = mitiru::EngineConfig::FontAtlas::Latin;
@@ -190,7 +188,7 @@ int main()
 
 `cfg.title` / `cfg.windowWidth` / `cfg.windowHeight` は **書かなくて OK** です。`mitiru build` が `mitiru.toml` の `[window]` を C++ ヘッダに焼き込みます。
 
-Mode B のときの `cefStartUrl` も同様に、`mitiru.toml` の `[cef] start_url` から自動で焼き込まれます。
+CEF を使う場合の `cefStartUrl` も同様に、`mitiru.toml` の `[cef] start_url` から自動で焼き込まれます。HTML/CSS で UI を書く実例は `examples/hello_game/` を参照。
 
 ---
 
@@ -212,12 +210,9 @@ my-game/
 
 ## 次に何を見るか
 
-- [チュートリアル 1: 最初のシーン](tutorials/01_first_vn.md) — `src/main.cpp` を少しずつ膨らませて、台詞表示まで。
-- [チュートリアル 2: アクションのプロトタイプ](tutorials/02_arcade_game.md) — 入力を取って、Player を動かす。
-- [チュートリアル 3: セーブ / ロード](tutorials/03_save_load.md) — JSON 永続化。
+- [`examples/hello_game/`](../examples/hello_game/) — C++ gameplay + HTML/CSS HUD の動く showcase
 - [Reading Order — 次に読むべきページ](READING_ORDER.md)
-- [Mode A / Mode B の使い分け](SCOPE.md)
-- [Hybrid Runtime — Mode B の C++ / JS / JSON 分担](HYBRID_RUNTIME.md)
+- [Scope & Identity — engine の identity / 4 軸 / target user](SCOPE.md)
 - [Architecture — エンジン全体の設計](ARCHITECTURE.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
 
@@ -230,7 +225,7 @@ my-game/
 ```cmake
 include(FetchContent)
 FetchContent_Declare(Mitiru
-  GIT_REPOSITORY https://github.com/mogmog-0110/MitiruEngine.git
+  GIT_REPOSITORY https://github.com/mogmog-0110/MitiruEngineDev.git
   GIT_TAG        main
 )
 FetchContent_MakeAvailable(Mitiru)
@@ -244,8 +239,8 @@ target_link_libraries(MyGame PRIVATE Mitiru::mitiru)
 エンジン本体をクローンしてテストまで走らせるには:
 
 ```bash
-git clone --recursive https://github.com/mogmog-0110/MitiruEngine.git
-cd MitiruEngine
+git clone --recursive https://github.com/mogmog-0110/MitiruEngineDev.git
+cd MitiruEngineDev
 cmake --preset default
 cmake --build build --config Debug
 ctest --test-dir build -C Debug
@@ -266,4 +261,4 @@ ctest --test-dir build -C Debug
 | Windows でリンカが `libcef.dll` を見つけられない | `mitiru build` をやり直すと CEF ランタイムが exe の隣にコピーされます。 |
 | `mitiru` が古い engine を引いてしまう | `mitiru.toml` の `[project] engine` を直すか、`mitiru clean` で `build/` を作り直す。 |
 
-それでも詰まったら、[GitHub Issue](https://github.com/mogmog-0110/MitiruEngine/issues) に投げてください。再現手順と OS / Go バージョンが書いてあると助かります。
+それでも詰まったら、[GitHub Issue](https://github.com/mogmog-0110/MitiruEngineDev/issues) に投げてください。再現手順と OS / Go バージョンが書いてあると助かります。

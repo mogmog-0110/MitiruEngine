@@ -1,0 +1,5 @@
+{
+  "steps": [
+    { "id": "do_thing", "goal": "x" }
+  ]
+}

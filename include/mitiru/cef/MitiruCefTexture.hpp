@@ -98,23 +98,81 @@ public:
 
     [[nodiscard]] bool isInitialized() const noexcept { return m_initialized; }
 
-    /// @brief テクスチャサイズを変更する
+    /// @brief 現在の texture 実 dim (last applied paint dim)。
+    /// resize() が pending を立てただけの段階では依然として古い dim を返す。
+    /// caller (CefContext::resize の sync pump) はこれを poll して
+    /// "新 dim での paint が arrived & applied" を検知する。
+    [[nodiscard]] int width()  const noexcept { return m_width;  }
+    [[nodiscard]] int height() const noexcept { return m_height; }
+
+    /// @brief テクスチャサイズを変更する (deferred: 実際の recreate は
+    ///        upload() が新サイズの paint データを受け取った瞬間に行う)。
+    ///
+    /// 即時 createTexture() すると、CEF の WasResized → OnPaint
+    /// (async) が来る前に composite() が走る → 空の新テクスチャを描画
+    /// → UI が一瞬消える。そこで「pending mark を立てるだけ」 にして、
+    /// upload() が来た時に「届いた data dim == pending dim?」 をチェックし、
+    /// 一致したらその場で createTexture + populate を atomic に実行する。
+    /// pending 中は古いテクスチャがそのまま使われ、composite は
+    /// 古いサイズの内容を window に bilinear stretch する (一時的ながら
+    /// 内容は維持される)。
     void resize(gfx::Dx12Device& /*device*/, int width, int height)
     {
+        if (width <= 0 || height <= 0) { return; }
         if (width == m_width && height == m_height && m_texture)
         {
+            m_pendingWidth = 0;
+            m_pendingHeight = 0;
             return;
         }
-        m_width  = width;
-        m_height = height;
+        if (!m_texture)
+        {
+            // First-time init: create immediately, no deferred path.
+            m_width  = width;
+            m_height = height;
+            m_pendingWidth = 0;
+            m_pendingHeight = 0;
+            createTexture();
+            return;
+        }
+        m_pendingWidth  = width;
+        m_pendingHeight = height;
+    }
+
+    /// @brief upload() / uploadPartial() の頭で呼ぶ — 届いた paint data の
+    ///        dim と current texture dim が一致しなければ texture を作り直す。
+    ///
+    /// 元の実装は "pending dim と data dim が一致した時だけ" 作り直していた
+    /// が、CEF は drag-resize 中に intermediate dim でも paint を送ってきて
+    /// pending と mismatch するケースが多発し、結果 texture が古いまま残って
+    /// composite が古い texture を新 window に bilinear stretch する不具合が
+    /// 発生していた。**CEF の OnPaint dim を authoritative とみなす** ことで
+    /// この問題が構造的に消える (CEF が送ってくる dim = 真の current viewport)。
+    /// @return true なら texture を recreate 済み (caller は m_width/m_height を再読み)
+    bool applyPendingResize(int dataWidth, int dataHeight)
+    {
+        if (dataWidth <= 0 || dataHeight <= 0) { return false; }
+        if (dataWidth == m_width && dataHeight == m_height && m_texture)
+        {
+            return false; // already at this size
+        }
+        m_width  = dataWidth;
+        m_height = dataHeight;
+        m_pendingWidth = 0;
+        m_pendingHeight = 0;
         createTexture();
+        return true;
     }
 
     /// @brief MitiruCefRenderHandler::Frame を GPU テクスチャにフルアップロードする
     /// @param data   BGRA バイト列 (width * height * 4 バイト)
     void upload(const uint8_t* data, int width, int height)
     {
-        if (!data || !m_uploadBuffer || width != m_width || height != m_height)
+        if (!data) { return; }
+        // If a resize is pending and this paint matches the new dims,
+        // recreate the texture now then proceed with upload.
+        applyPendingResize(width, height);
+        if (!m_uploadBuffer || width != m_width || height != m_height)
         {
             return;
         }
@@ -159,8 +217,21 @@ public:
         {
             return; // 変更なし — 転送しない
         }
-        if (!data || !m_uploadBuffer || width != m_width || height != m_height)
+        if (!data) { return; }
+        // Apply pending resize if this partial matches the new dims.
+        // A partial-only paint on resize is unusual (CEF typically sends a
+        // full repaint on WasResized) but we handle it for correctness.
+        const bool didApply = applyPendingResize(width, height);
+        if (!m_uploadBuffer || width != m_width || height != m_height)
         {
+            return;
+        }
+        if (didApply)
+        {
+            // After resize the texture is blank — partial upload alone
+            // would leave the un-dirty area uninitialised. Fall through
+            // to full upload() in this case.
+            upload(data, width, height);
             return;
         }
 
@@ -281,12 +352,28 @@ public:
     ///          アロケーターをリセットする。これにより
     ///          "COMMAND_ALLOCATOR_SYNC" D3D12 エラーを防ぐ。
     /// @param rtvHandle  バックバッファの RTV ハンドル
-    /// @param w          ビューポート幅
-    /// @param h          ビューポート高さ
-    void composite(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, int w, int h)
+    /// @param windowW    現在の window dim (composite 表示先)
+    /// @param windowH    現在の window dim
+    ///
+    /// ### Aspect-preserving fit composite (canonical UI scaling)
+    /// texture の aspect ratio を保ったまま window 内に最大サイズで収まる
+    /// 矩形を計算し、その viewport に fullscreen 三角形を描画する。
+    /// 余白 (letterbox/pillarbox) には engine clear color (paper amber 等) が見える。
+    ///
+    /// 利点 (vs. window dim stretch / texture dim 1:1):
+    ///  - 必ず content 全体が見える (見切れ無し) ← 端 clip 防止
+    ///  - aspect 維持 (滲み無し / 比率歪み無し)
+    ///  - 拡大時は texture を sampler で補間 (LINEAR で滑らか)
+    ///  - drag 中 deferred resize なら、texture aspect は前 paint のまま
+    ///    window が伸縮しても fit-rect が滑らかに追従 → 中身は静止
+    void composite(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, int windowW, int windowH)
     {
         if (!m_initialized || !m_pipeline || !m_texture ||
             !m_compositeAlloc || !m_compositeCl)
+        {
+            return;
+        }
+        if (windowW <= 0 || windowH <= 0 || m_width <= 0 || m_height <= 0)
         {
             return;
         }
@@ -312,14 +399,45 @@ public:
 
         m_compositeCl->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-        D3D12_VIEWPORT vp{0.0f, 0.0f,
-            static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
-        D3D12_RECT sci{0, 0, w, h};
+        // ── Aspect-fit rect (letterbox/pillarbox 中央配置) ─────────
+        // window aspect が texture より wide なら 上下フル + 左右 pad (pillar)
+        // window aspect が texture より tall なら 左右フル + 上下 pad (letter)
+        const float texAspect = static_cast<float>(m_width) / static_cast<float>(m_height);
+        const float winAspect = static_cast<float>(windowW) / static_cast<float>(windowH);
+        float fitW, fitH;
+        if (winAspect > texAspect)
+        {
+            // window がより wide → height 基準で fit、左右 pad
+            fitH = static_cast<float>(windowH);
+            fitW = fitH * texAspect;
+        }
+        else
+        {
+            // window がより tall → width 基準で fit、上下 pad
+            fitW = static_cast<float>(windowW);
+            fitH = fitW / texAspect;
+        }
+        const float offX = (static_cast<float>(windowW) - fitW) * 0.5f;
+        const float offY = (static_cast<float>(windowH) - fitH) * 0.5f;
+
+        // 入力逆変換用に fit-rect を記録 (mapWindowToCef が参照)
+        m_fitX = offX;
+        m_fitY = offY;
+        m_fitW = fitW;
+        m_fitH = fitH;
+
+        D3D12_VIEWPORT vp{offX, offY, fitW, fitH, 0.0f, 1.0f};
+        D3D12_RECT sci{
+            static_cast<LONG>(offX),
+            static_cast<LONG>(offY),
+            static_cast<LONG>(offX + fitW),
+            static_cast<LONG>(offY + fitH)
+        };
         m_compositeCl->RSSetViewports(1, &vp);
         m_compositeCl->RSSetScissorRects(1, &sci);
 
         m_compositeCl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        m_compositeCl->DrawInstanced(3, 1, 0, 0); // フルスクリーン三角形
+        m_compositeCl->DrawInstanced(3, 1, 0, 0); // fit 矩形を覆う三角形 (NDC -1..1)
         m_compositeCl->Close();
 
         ID3D12CommandList* lists[] = {m_compositeCl.Get()};
@@ -417,6 +535,9 @@ private:
         param.ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;
 
         D3D12_STATIC_SAMPLER_DESC sampler{};
+        // LINEAR: aspect-fit composite では drag 中も texture が拡大/縮小
+        // されうるため、bilinear で滑らかに sample する (POINT だと縮小時に
+        // 残酷なエイリアスが出る)。aspect 維持されているので歪みは出ない。
         sampler.Filter           = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
         sampler.AddressU         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
         sampler.AddressV         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -626,9 +747,48 @@ float4 main(PSIn i) : SV_Target
     HANDLE                              m_compositeEvent = nullptr;
 
     size_t m_uploadRowPitch = 0;
-    int    m_width     = 0;
-    int    m_height    = 0;
-    bool   m_initialized = false;
+    int    m_width          = 0;
+    int    m_height         = 0;
+    // Pending resize: target dims announced via resize() but not yet
+    // realized (waiting for matching paint data from CEF OnPaint).
+    int    m_pendingWidth   = 0;
+    int    m_pendingHeight  = 0;
+    bool   m_initialized    = false;
+
+    // ── Last composite fit-rect (window-space) ─────────────────────
+    // composite() で計算した letterbox/pillarbox 矩形を保持する。
+    // 入力経路 (mapWindowToCef) がこれを使って window 座標を CEF 論理座標に
+    // 逆変換する。これを欠くと texture dim != window dim の時に click 位置と
+    // HTML layout 位置がズレる (= ボタン当たり判定バグ)。
+    float  m_fitX = 0.0f;
+    float  m_fitY = 0.0f;
+    float  m_fitW = 0.0f;
+    float  m_fitH = 0.0f;
+
+public:
+    /// @brief window 座標 (mx,my) を CEF 論理座標 (cx,cy) に逆変換する
+    /// @details composite() の fit-rect を逆に適用。fit-rect 未計算時 (初回
+    ///          frame 前) は恒等で返す。letterbox 余白を click した場合は
+    ///          [0,texDim] にクランプ (CEF へは端の座標を渡す)。
+    void mapWindowToCef(int mx, int my, int& cx, int& cy) const
+    {
+        if (m_fitW <= 0.0f || m_fitH <= 0.0f || m_width <= 0 || m_height <= 0)
+        {
+            cx = mx;
+            cy = my;
+            return;
+        }
+        const float nx = (static_cast<float>(mx) - m_fitX) / m_fitW; // 0..1
+        const float ny = (static_cast<float>(my) - m_fitY) / m_fitH;
+        float lx = nx * static_cast<float>(m_width);
+        float ly = ny * static_cast<float>(m_height);
+        if (lx < 0.0f) { lx = 0.0f; }
+        if (ly < 0.0f) { ly = 0.0f; }
+        if (lx > static_cast<float>(m_width))  { lx = static_cast<float>(m_width); }
+        if (ly > static_cast<float>(m_height)) { ly = static_cast<float>(m_height); }
+        cx = static_cast<int>(lx);
+        cy = static_cast<int>(ly);
+    }
 };
 
 } // namespace mitiru::cef

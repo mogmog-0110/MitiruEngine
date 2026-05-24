@@ -1,0 +1,597 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_audio.js tests</title>
+<!--
+    test_audio.html — mitiru.audio (NF-02) unit tests
+
+    Run:
+      python tools/mitiru_serve.py --port 8770 --no-inject
+      open http://localhost:8770/web/mitiru_runtime/tests/test_audio.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_audio.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+	'use strict';
+
+	const t = mitiru.test;
+	const a = mitiru.audio;
+
+	// ── Audio stub ────────────────────────────────────────────────
+	// Replace window.Audio with a controllable stub for all tests.
+	// The stub records calls and exposes .triggerEnded() for voice tests.
+	var _realAudio = window.Audio;
+
+	function AudioStub(url)
+	{
+		this.url         = url;
+		this.volume      = 1;
+		this.loop        = false;
+		this.currentTime = 0;
+		this.ended       = false;
+		this.src         = url;
+		this._listeners  = {};
+		AudioStub._instances.push(this);
+	}
+	AudioStub._instances = [];
+	AudioStub.prototype.play = function()
+	{
+		this.ended = false;
+		return Promise.resolve();
+	};
+	AudioStub.prototype.pause = function()
+	{
+		this.ended = true;
+	};
+	AudioStub.prototype.addEventListener = function(ev, fn)
+	{
+		if (!this._listeners[ev]) { this._listeners[ev] = []; }
+		this._listeners[ev].push(fn);
+	};
+	AudioStub.prototype.triggerEnded = function()
+	{
+		this.ended = true;
+		var arr = this._listeners['ended'] || [];
+		for (var i = 0; i < arr.length; ++i) { arr[i](); }
+	};
+
+	function installStub()
+	{
+		AudioStub._instances = [];
+		window.Audio = AudioStub;
+	}
+
+	function restoreAudio()
+	{
+		window.Audio = _realAudio;
+	}
+
+	// Reset audio module internal state between tests that need a clean slate.
+	// Because mitiru.audio is a singleton we manipulate it via its public API.
+	function resetAudio()
+	{
+		a.stopAll();
+		a.setVolume('master', 1);
+		a.setVolume('bgm',    1);
+		a.setVolume('se',     1);
+		a.setVolume('voice',  1);
+		a.setDucking({ bgm: 0.3, fadeMs: 0 });
+	}
+
+	var TEST_MANIFEST = {
+		se:    { confirm: 'assets/se/confirm.ogg', cancel: 'assets/se/cancel.ogg' },
+		bgm:   { title:   'assets/bgm/title.ogg',  cooking: 'assets/bgm/cooking.ogg' },
+		voice: { sachi_01: 'assets/voice/sachi_01.ogg' },
+	};
+
+	// ── 1. setManifest — inline object ───────────────────────────
+	t.case('setManifest_inline_object_sets_manifest', async function()
+	{
+		await a.setManifest(TEST_MANIFEST);
+		const m = a.manifest();
+		t.assert(m !== null, 'manifest should be set');
+		t.assertEq(m.se.confirm, 'assets/se/confirm.ogg');
+		t.assertEq(m.bgm.title,  'assets/bgm/title.ogg');
+	});
+
+	// ── 2. setManifest — URL fetch ────────────────────────────────
+	t.case('setManifest_url_fetch_uses_mitiru_fetch_or_global_fetch', async function()
+	{
+		// Stub mitiru.fetch to return a known manifest without HTTP.
+		var originalFetch = mitiru.fetch;
+		mitiru.fetch = function(url)
+		{
+			return Promise.resolve({
+				ok:   true,
+				json: function() { return Promise.resolve(TEST_MANIFEST); },
+			});
+		};
+
+		await a.setManifest('http://fake/manifest.json');
+		const m = a.manifest();
+		t.assertEq(m.se.confirm, 'assets/se/confirm.ogg', 'manifest loaded via fetch stub');
+
+		mitiru.fetch = originalFetch;
+	});
+
+	// ── 3. play — splits 'category.key' ──────────────────────────
+	t.case('play_splits_category_key_and_fires_event', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var events = [];
+		var unsub = a.on('play', function(d) { events.push(d); });
+
+		a.play('se.confirm');
+
+		t.assertEq(events.length, 1, 'exactly one play event');
+		t.assertEq(events[0].category, 'se');
+		t.assertEq(events[0].key,      'confirm');
+		t.assertEq(events[0].resolved, true);
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 4. play — unknown key fires event with resolved:false ─────
+	t.case('play_unknown_key_fires_event_resolved_false_and_warns_once', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var events = [];
+		var unsub  = a.on('play', function(d) { events.push(d); });
+
+		// Patch warn to count calls.
+		var warnCount = 0;
+		var origWarn  = console.warn;
+		console.warn = function() { warnCount++; };
+
+		a.play('se.totally_unknown');
+		a.play('se.totally_unknown');  // second call must NOT warn again
+
+		console.warn = origWarn;
+
+		t.assertEq(events.length, 2, 'two play events fired');
+		t.assertEq(events[0].resolved, false, 'first call: resolved=false');
+		t.assertEq(events[1].resolved, false, 'second call: resolved=false');
+		t.assertEq(warnCount, 1, 'warn fired exactly once for duplicate unknown key');
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 5. play — no manifest fires event + warns once ────────────
+	t.case('play_no_manifest_fires_event_and_warns', async function()
+	{
+		installStub();
+		// Force clear manifest by setting a fresh one then immediately null-ing via
+		// an edge-case: re-import is guarded, so we abuse setManifest with empty.
+		await a.setManifest({});
+
+		var events = [];
+		var unsub  = a.on('play', function(d) { events.push(d); });
+
+		a.play('se.confirm');
+
+		t.assert(events.length >= 1, 'play event fires even when key missing from empty manifest');
+		t.assertEq(events[0].resolved, false);
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 6. se — delegates to play('se.key') ──────────────────────
+	t.case('se_method_delegates_to_play_with_se_prefix', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var events = [];
+		var unsub  = a.on('play', function(d) { events.push(d); });
+
+		a.se('confirm');
+
+		t.assertEq(events.length, 1);
+		t.assertEq(events[0].category, 'se');
+		t.assertEq(events[0].key,      'confirm');
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 7. bgm — crossfade creates second audio element ──────────
+	t.case('bgm_crossfade_creates_new_audio_node', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+		AudioStub._instances = [];
+
+		a.bgm('title',   { fadeMs: 0 });
+		var firstCount = AudioStub._instances.length;
+		t.assert(firstCount >= 1, 'first bgm play creates audio node');
+
+		a.bgm('cooking', { fadeMs: 0 });
+		t.assert(AudioStub._instances.length > firstCount, 'crossfade creates second audio node');
+
+		restoreAudio();
+	});
+
+	// ── 8. bgm(null) stops current BGM ───────────────────────────
+	t.case('bgm_null_stops_current_bgm', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var bgmChanges = [];
+		var unsub = a.on('bgm:change', function(d) { bgmChanges.push(d); });
+
+		a.bgm('title',  { fadeMs: 0 });
+		a.bgm(null,     { fadeMs: 0 });
+
+		t.assert(bgmChanges.length >= 2, 'bgm:change fires for initial play and for stop');
+		const lastChange = bgmChanges[bgmChanges.length - 1];
+		t.assertEq(lastChange.to, null, 'bgm:change.to is null when stopping');
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 9. stop('bgm') fires stop event ──────────────────────────
+	t.case('stop_bgm_fires_stop_event', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var stopped = [];
+		var unsub = a.on('stop', function(d) { stopped.push(d); });
+
+		a.bgm('title', { fadeMs: 0 });
+		a.stop('bgm');
+
+		t.assert(stopped.some(function(d) { return d.category === 'bgm'; }), 'stop event for bgm');
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 10. stop('se') fires stop event ──────────────────────────
+	t.case('stop_se_fires_stop_event', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var stopped = [];
+		var unsub = a.on('stop', function(d) { stopped.push(d); });
+
+		a.se('confirm');
+		a.stop('se');
+
+		t.assert(stopped.some(function(d) { return d.category === 'se'; }), 'stop event for se');
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 11. stop('voice') fires stop + voice:end events ──────────
+	t.case('stop_voice_fires_stop_and_voice_end_events', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var stops     = [];
+		var voiceEnds = [];
+		var u1 = a.on('stop',      function(d) { stops.push(d); });
+		var u2 = a.on('voice:end', function(d) { voiceEnds.push(d); });
+
+		a.voice('sachi_01');
+		a.stop('voice');
+
+		t.assert(stops.some(function(d) { return d.category === 'voice'; }), 'stop event for voice');
+		t.assert(voiceEnds.length >= 1, 'voice:end event fired on stop');
+
+		u1(); u2();
+		restoreAudio();
+	});
+
+	// ── 12. stop('all') stops se + bgm + voice ───────────────────
+	t.case('stop_all_stops_every_category', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var categories = [];
+		var unsub = a.on('stop', function(d) { categories.push(d.category); });
+
+		a.se('confirm');
+		a.bgm('title', { fadeMs: 0 });
+		a.voice('sachi_01');
+		a.stopAll();
+
+		t.assert(categories.indexOf('se')    >= 0, 'se stopped');
+		t.assert(categories.indexOf('bgm')   >= 0, 'bgm stopped');
+		t.assert(categories.indexOf('voice') >= 0, 'voice stopped');
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 13. setVolume / volume roundtrip ─────────────────────────
+	t.case('setVolume_volume_roundtrip', function()
+	{
+		a.setVolume('master', 0.7);
+		t.assertClose(a.volume('master'), 0.7, 1e-6);
+
+		a.setVolume('bgm', 0.5);
+		t.assertClose(a.volume('bgm'), 0.5, 1e-6);
+
+		a.setVolume('se', 0);
+		t.assertClose(a.volume('se'), 0, 1e-6);
+
+		// Restore defaults.
+		a.setVolume('master', 1);
+		a.setVolume('bgm',    1);
+		a.setVolume('se',     1);
+	});
+
+	// ── 14. setVolume clamps to 0..1 ─────────────────────────────
+	t.case('setVolume_clamps_range_to_0_1', function()
+	{
+		a.setVolume('se', 2.0);
+		t.assertClose(a.volume('se'), 1.0, 1e-6, 'clamped to 1 from above');
+
+		a.setVolume('se', -0.5);
+		t.assertClose(a.volume('se'), 0.0, 1e-6, 'clamped to 0 from below');
+
+		a.setVolume('se', 1);  // restore
+	});
+
+	// ── 15. volume() throws for unknown category ──────────────────
+	t.case('volume_throws_for_unknown_category', function()
+	{
+		t.assertThrow(function() { a.volume('sfx'); }, 'unknown category should throw');
+	});
+
+	// ── 16. voice() ducks bgm; voice end restores bgm volume ─────
+	t.case('voice_ducks_bgm_then_restores_on_voice_end', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+		a.setDucking({ bgm: 0.25, fadeMs: 0 });  // instant fade for test
+		a.setVolume('bgm', 1);
+		AudioStub._instances = [];
+
+		a.bgm('title', { fadeMs: 0 });
+
+		// Find the BGM node (first Audio instance with .loop true).
+		var bgmNode = AudioStub._instances.find(function(n) { return n.loop; });
+		t.assert(bgmNode !== undefined, 'bgm node exists');
+
+		// Voice starts — bgm should be ducked.
+		a.voice('sachi_01');
+		t.assertClose(bgmNode.volume, 0.25, 0.01, 'bgm ducked to 0.25');
+
+		// Trigger voice ended — bgm should restore.
+		var voiceNode = AudioStub._instances.find(function(n) { return !n.loop && n !== bgmNode; });
+		t.assert(voiceNode !== undefined, 'voice node exists');
+		voiceNode.triggerEnded();
+
+		t.assertClose(bgmNode.volume, 1.0, 0.01, 'bgm restored after voice end');
+
+		a.setDucking({ bgm: 0.3, fadeMs: 0 });  // restore default
+		restoreAudio();
+	});
+
+	// ── 17. event dispatch: play ──────────────────────────────────
+	t.case('event_play_fires_with_correct_detail', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var got = null;
+		var unsub = a.on('play', function(d) { got = d; });
+
+		a.play('bgm.title');
+
+		t.assert(got !== null,          'play event fired');
+		t.assertEq(got.category, 'bgm');
+		t.assertEq(got.key,      'title');
+		t.assertEq(got.resolved, true);
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 18. event dispatch: bgm:change ───────────────────────────
+	t.case('event_bgm_change_fires_on_crossfade', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var changes = [];
+		var unsub = a.on('bgm:change', function(d) { changes.push(d); });
+
+		a.bgm('title',   { fadeMs: 0 });
+		a.bgm('cooking', { fadeMs: 0 });
+
+		t.assert(changes.length >= 2, 'two bgm:change events');
+		t.assertEq(changes[0].from, null,    'first from is null');
+		t.assertEq(changes[0].to,   'title', 'first to is title');
+		t.assertEq(changes[1].from, 'title', 'second from is title');
+		t.assertEq(changes[1].to,   'cooking');
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 19. event dispatch: voice:start and voice:end ────────────
+	t.case('event_voice_start_and_voice_end_fire', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+		AudioStub._instances = [];
+
+		var starts = [];
+		var ends   = [];
+		var u1 = a.on('voice:start', function(d) { starts.push(d); });
+		var u2 = a.on('voice:end',   function(d) { ends.push(d); });
+
+		a.voice('sachi_01');
+		t.assertEq(starts.length, 1, 'voice:start fired');
+		t.assertEq(starts[0].key, 'sachi_01');
+
+		var voiceNode = AudioStub._instances[AudioStub._instances.length - 1];
+		voiceNode.triggerEnded();
+		t.assertEq(ends.length, 1, 'voice:end fired on audio ended');
+		t.assertEq(ends[0].key, 'sachi_01');
+
+		u1(); u2();
+		restoreAudio();
+	});
+
+	// ── 20. on/off subscribe and unsubscribe ─────────────────────
+	t.case('on_returns_unsubscribe_fn_off_removes_listener', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var count = 0;
+		var fn    = function() { count++; };
+
+		var unsub = a.on('play', fn);
+		a.play('se.confirm');
+		t.assertEq(count, 1, 'listener called after on()');
+
+		unsub();
+		a.play('se.confirm');
+		t.assertEq(count, 1, 'listener NOT called after unsubscribe');
+
+		// Also test a.off directly.
+		var fn2  = function() { count += 10; };
+		a.on('play', fn2);
+		a.play('se.confirm');
+		t.assertEq(count, 11, 'fn2 called once');
+		a.off('play', fn2);
+		a.play('se.confirm');
+		t.assertEq(count, 11, 'fn2 not called after off()');
+
+		restoreAudio();
+	});
+
+	// ── 21. no-op safety when Audio is undefined ─────────────────
+	t.case('noop_safe_when_Audio_undefined_events_still_fire', async function()
+	{
+		// Temporarily hide Audio constructor.
+		var saved = window.Audio;
+		delete window.Audio;
+
+		// Re-load module internal state by resetting warned flags via setManifest.
+		// Since module is a singleton we can only test via its API with Audio hidden.
+		await a.setManifest(TEST_MANIFEST);
+
+		var events = [];
+		var unsub  = a.on('play', function(d) { events.push(d); });
+
+		// Patch warn to silence it.
+		var origWarn = console.warn;
+		console.warn = function() {};
+
+		a.play('se.confirm');
+
+		console.warn = origWarn;
+
+		// Events MUST fire even though Audio is unavailable.
+		t.assertEq(events.length, 1, 'play event fires even without Audio');
+
+		unsub();
+		window.Audio = saved;
+	});
+
+	// ── 22. isAvailable reflects Audio constructor presence ───────
+	t.case('isAvailable_returns_bool_based_on_Audio_constructor', function()
+	{
+		// Audio was installed as stub at this point; isAvailable() reflects the
+		// value at MODULE LOAD TIME (cached), so we just assert it returns a boolean.
+		var result = a.isAvailable();
+		t.assert(typeof result === 'boolean', 'isAvailable() returns boolean');
+	});
+
+	// ── 23. setManifest rejects invalid input ─────────────────────
+	t.case('setManifest_rejects_invalid_input', async function()
+	{
+		var threw = false;
+		try { await a.setManifest(42); } catch (_e) { threw = true; }
+		t.assertEq(threw, true, 'setManifest(42) should reject');
+	});
+
+	// ── 24. bgm:change fires with null when no BGM was playing ────
+	t.case('bgm_change_from_is_null_when_no_previous_bgm', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var changes = [];
+		var unsub = a.on('bgm:change', function(d) { changes.push(d); });
+
+		a.bgm('title', { fadeMs: 0 });
+
+		t.assertEq(changes[0].from, null, 'from is null when no BGM was active');
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── 25. play with malformed key warns and fires resolved:false ─
+	t.case('play_malformed_key_no_dot_fires_event_resolved_false', async function()
+	{
+		installStub();
+		await a.setManifest(TEST_MANIFEST);
+		resetAudio();
+
+		var events = [];
+		var unsub  = a.on('play', function(d) { events.push(d); });
+
+		var origWarn = console.warn;
+		console.warn = function() {};
+		a.play('nodotkey');
+		console.warn = origWarn;
+
+		t.assertEq(events.length, 1, 'event fires for malformed key');
+		t.assertEq(events[0].resolved, false);
+
+		unsub();
+		restoreAudio();
+	});
+
+	// ── run ──────────────────────────────────────────────────────
+	mitiru.test.run();
+})();
+</script>

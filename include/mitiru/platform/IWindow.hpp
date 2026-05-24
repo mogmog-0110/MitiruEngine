@@ -10,8 +10,9 @@
 namespace mitiru
 {
 
-// Forward declaration
+// Forward declarations
 class InputState;
+class InputInjector;
 
 /// @brief ウィンドウの抽象インターフェース
 /// @details ヘッドレス実装やOS固有実装がこのインターフェースを実装する。
@@ -46,6 +47,18 @@ public:
 	/// @details プラットフォーム固有のイベントからInputStateに入力を転送する。
 	///          デフォルトはno-op（ヘッドレス等の入力不要な実装向け）。
 	virtual void setInputState(InputState* /*state*/) {}
+
+	/// @brief 入力インジェクターを設定する
+	/// @param injector InputInjectorへの非所有ポインタ（Engineが所有）
+	/// @details 設定されると、キー/マウスイベントをInputState直接mutateではなく
+	///          InputInjector::inject() 経由で発行する。RECORDモードでhuman playを
+	///          キャプチャするために使用する。デフォルトはno-op。
+	///
+	/// Example:
+	/// @code
+	/// engine.window()->setInputInjector(&myInjector);
+	/// @endcode
+	virtual void setInputInjector(InputInjector* /*injector*/) noexcept {}
 
 	/// @brief ウィンドウリサイズ時のコールバックを設定する
 	/// @param cb 新しいwidth, heightを受け取るコールバック

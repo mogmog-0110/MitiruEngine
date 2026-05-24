@@ -43,6 +43,16 @@ public:
 		return window;
 	}
 
+	/// @brief DisplayMode + resizable 指定版
+	[[nodiscard]] std::unique_ptr<IWindow> createWindowExtended(
+		std::string_view title, int width, int height,
+		DisplayMode mode, bool resizable)
+	{
+		auto window = std::make_unique<Win32Window>(title, width, height, mode, resizable);
+		window->show();
+		return window;
+	}
+
 	/// @brief プラットフォーム種別を取得する
 	/// @return PlatformType::Windows
 	[[nodiscard]] PlatformType type() const noexcept override

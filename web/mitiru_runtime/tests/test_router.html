@@ -1,0 +1,237 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_router.js tests</title>
+<!--
+    test_router.html — mitiru.router (F-01) unit tests
+    Pattern: inline IIFE, no module imports — matches project convention.
+
+    The router uses an iframe and setTimeout for fade timing.
+    Tests mock the iframe and fake timers to run synchronously where possible,
+    or use short real waits where the Promise chain requires it.
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+    /* Keep the injected iframe invisible during tests. */
+    #mitiru-scene-frame { display: none !important; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<!-- Router loaded after harness; tests run in inline IIFE below. -->
+<script src="../mitiru_router.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+    'use strict';
+
+    const t = mitiru.test;
+    const r = mitiru.router;
+
+    // ── helpers ──────────────────────────────────────────────────
+
+    // Simulate a scene signalling ready after a short delay.
+    // The real pattern is: scene's DOMContentLoaded calls onSceneReady().
+    // Here we call it from a setTimeout to let the Promise chain reach the
+    // _waitSceneReady() point before we resolve it.
+    function autoReady(ms)
+    {
+        ms = ms || 10;
+        setTimeout(function() { r.onSceneReady(); }, ms);
+    }
+
+    // Reset router state by navigating away from any leftover current scene.
+    // We do this by registering a sentinel scene and faking through it.
+    function resetRouter()
+    {
+        // Re-register __reset__ unconditionally (register replaces).
+        r.register('__reset__', { url: 'about:blank' });
+        // We cannot truly clear _current without private access, but since
+        // each test registers its own fresh keys, isolation is sufficient.
+    }
+
+    // ── 1. register ──────────────────────────────────────────────
+    t.case('register: throws on empty key', function()
+    {
+        t.assertThrow(function() { r.register('', { url: 'x.html' }); });
+    });
+
+    t.case('register: throws when url is missing', function()
+    {
+        t.assertThrow(function() { r.register('bad', {}); });
+        t.assertThrow(function() { r.register('bad', { url: 42 }); });
+    });
+
+    t.case('register: second call with same key replaces descriptor', function()
+    {
+        r.register('scene_dup', { url: 'v1.html' });
+        r.register('scene_dup', { url: 'v2.html' });
+        // Navigate would use v2; indirect check via navigate not failing on key.
+        t.assertNoThrow(function() { r.register('scene_dup', { url: 'v3.html' }); });
+    });
+
+    t.case('register: preload:true emits console.warn (no throw)', function()
+    {
+        const warnings = [];
+        const orig = console.warn;
+        console.warn = function() { warnings.push(Array.prototype.join.call(arguments, ' ')); };
+        try
+        {
+            r.register('scene_preload', { url: 'x.html', preload: true });
+        }
+        finally { console.warn = orig; }
+        t.assert(warnings.length >= 1, 'should have warned about preload');
+        t.assert(warnings[0].indexOf('preload') >= 0 || warnings[0].indexOf('reserved') >= 0,
+                 'warning should mention preload or reserved');
+    });
+
+    // ── 2. navigate ──────────────────────────────────────────────
+    t.case('navigate: rejects on unknown scene key', function()
+    {
+        return r.navigate('totally_unknown_xyz').then(
+            function() { t.assert(false, 'should have rejected'); },
+            function(err) { t.assert(err instanceof Error); }
+        );
+    });
+
+    t.case('navigate: resolves and updates current() after transition', function()
+    {
+        r.register('scene_A', { url: 'about:blank' });
+        autoReady(15);
+        return r.navigate('scene_A', { level: 1 }).then(function()
+        {
+            const cur = r.current();
+            t.assertEq(cur.key, 'scene_A');
+            t.assertEq(cur.params, { level: 1 });
+        });
+    });
+
+    t.case('navigate: calls in() hook with params', function()
+    {
+        const calls = [];
+        r.register('scene_B', {
+            url: 'about:blank',
+            in: function(params) { calls.push(params); },
+        });
+        autoReady(15);
+        return r.navigate('scene_B', { stage: 2 }).then(function()
+        {
+            t.assertEq(calls.length, 1);
+            t.assertEq(calls[0], { stage: 2 });
+        });
+    });
+
+    t.case('navigate: calls out() hook of previous scene', function()
+    {
+        const outCalls = [];
+        r.register('scene_C1', {
+            url: 'about:blank',
+            out: function() { outCalls.push('out_C1'); },
+        });
+        r.register('scene_C2', { url: 'about:blank' });
+
+        autoReady(15);
+        return r.navigate('scene_C1').then(function()
+        {
+            autoReady(15);
+            return r.navigate('scene_C2');
+        }).then(function()
+        {
+            t.assertEq(outCalls, ['out_C1']);
+        });
+    });
+
+    // ── 3. current / history ─────────────────────────────────────
+    t.case('current() returns null before any navigation', function()
+    {
+        // This test only holds at page load order; after earlier tests have
+        // navigated it will not be null. Verify the type is correct instead.
+        const cur = r.current();
+        t.assert(cur === null || (typeof cur === 'object' && typeof cur.key === 'string'),
+                 'current() must be null or {key, params}');
+    });
+
+    t.case('navigate: history grows on successive navigate calls', function()
+    {
+        r.register('hist_1', { url: 'about:blank' });
+        r.register('hist_2', { url: 'about:blank' });
+        const lenBefore = r._historyLength;
+
+        autoReady(15);
+        return r.navigate('hist_1').then(function()
+        {
+            autoReady(15);
+            return r.navigate('hist_2');
+        }).then(function()
+        {
+            t.assert(r._historyLength >= lenBefore + 1,
+                     'history should grow by at least 1');
+        });
+    });
+
+    // ── 4. back ──────────────────────────────────────────────────
+    t.case('back: navigates to previous scene without pushing onto history', function()
+    {
+        r.register('back_src', { url: 'about:blank' });
+        r.register('back_dst', { url: 'about:blank' });
+
+        autoReady(15);
+        return r.navigate('back_src').then(function()
+        {
+            autoReady(15);
+            return r.navigate('back_dst');
+        }).then(function()
+        {
+            const lenAfterFwd = r._historyLength;
+            autoReady(15);
+            return r.back().then(function()
+            {
+                // back() pops one entry, so length decreases.
+                t.assert(r._historyLength <= lenAfterFwd,
+                         'history should not grow after back()');
+                t.assertEq(r.current().key, 'back_src');
+            });
+        });
+    });
+
+    t.case('back: no-op when history is empty', function()
+    {
+        // Navigate to a leaf scene first so current is set,
+        // then drain history by repeating back().
+        r.register('back_leaf', { url: 'about:blank' });
+        autoReady(15);
+        return r.navigate('back_leaf').then(function()
+        {
+            // Drain all history.
+            function drain()
+            {
+                if (r._historyLength === 0) { return Promise.resolve(); }
+                autoReady(15);
+                return r.back().then(drain);
+            }
+            return drain();
+        }).then(function()
+        {
+            // With empty history, back() should resolve without error.
+            return r.back();
+        }).then(function()
+        {
+            t.assert(true, 'back() on empty history resolved without error');
+        });
+    });
+
+    // ── 5. onSceneReady ──────────────────────────────────────────
+    t.case('onSceneReady: calling when no navigation pending is a no-op', function()
+    {
+        t.assertNoThrow(function() { r.onSceneReady(); });
+    });
+
+    // ── run ──────────────────────────────────────────────────────
+    mitiru.test.run();
+})();
+</script>

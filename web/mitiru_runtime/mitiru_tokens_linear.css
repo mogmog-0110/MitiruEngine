@@ -1,0 +1,120 @@
+/*!
+ * mitiru_tokens_linear.css — Linear-app inspired alt theme
+ *
+ * Design intent: Calm productivity surface. Off-white canvas with indigo
+ * accent and soft elevation. Suitable for keyboard-driven tools that
+ * favour clarity over personality. Compatible with `--mitiru-*` consumers.
+ *
+ * Swap by replacing the <link> to mitiru_tokens.css with this file.
+ */
+:root
+{
+	/* ── Base palette: Linear (off-white + indigo) ────────────────── */
+	--mitiru-paper:        #fbfbfd;   /* near-white canvas */
+	--mitiru-paper-hi:     #ffffff;   /* card surface */
+	--mitiru-ink:          #161a23;   /* near-black body text */
+	--mitiru-ink-mute:     #6b7280;   /* cool gray for metadata */
+	--mitiru-indigo:       #5e6ad2;   /* signature indigo */
+	--mitiru-indigo-hover: #4c52a8;   /* deeper indigo for hover */
+	--mitiru-phosphor:     #16a34a;   /* success green */
+	--mitiru-brick:        #dc2626;   /* destructive red */
+	--mitiru-paper-edge:   rgba(0, 0, 0, 0.06);   /* hairline border */
+
+	/* ── Semantic aliases ─────────────────────────────────────── */
+	--mitiru-bg:        var(--mitiru-paper);
+	--mitiru-surface:   var(--mitiru-paper-hi);
+	--mitiru-text:      var(--mitiru-ink);
+	--mitiru-text-mute: var(--mitiru-ink-mute);
+	--mitiru-accent:    var(--mitiru-indigo);
+	--mitiru-accent-hi: var(--mitiru-indigo-hover);
+	--mitiru-success:   var(--mitiru-phosphor);
+	--mitiru-warning:   #d97706;
+	--mitiru-danger:    var(--mitiru-brick);
+	--mitiru-focus:     var(--mitiru-indigo);
+	--mitiru-border:    var(--mitiru-paper-edge);
+	--mitiru-border-soft: rgba(0, 0, 0, 0.04);
+
+	--mitiru-row-tint:  rgba(94, 106, 210, 0.04);
+
+	/* ── Typography — Inter / SF Pro Display ──────────────────── */
+	--mitiru-font-body:    "Inter", "SF Pro Display", "Hiragino Sans",
+	                       "Yu Gothic", system-ui, -apple-system, sans-serif;
+	--mitiru-font-display: "Inter", "SF Pro Display", "Hiragino Sans",
+	                       "Yu Gothic", system-ui, -apple-system, sans-serif;
+	--mitiru-font-mono:    "JetBrains Mono", "SF Mono", "Cascadia Code",
+	                       ui-monospace, "Consolas", monospace;
+	--mitiru-font-prose:   "Inter", "SF Pro Display", "Hiragino Sans",
+	                       "Yu Gothic", system-ui, sans-serif;
+
+	--mitiru-text-xs:   11px;
+	--mitiru-text-sm:   12px;
+	--mitiru-text-md:   14px;
+	--mitiru-text-lg:   16px;
+	--mitiru-text-xl:   18px;
+	--mitiru-text-2xl:  24px;
+	--mitiru-text-3xl:  32px;
+
+	--mitiru-leading-tight:  1.2;
+	--mitiru-leading-normal: 1.5;
+	--mitiru-leading-loose:  1.6;
+
+	/* ── Spacing — 8 multiples ────────────────────────────────── */
+	--mitiru-space-0:  0;
+	--mitiru-space-1:  4px;
+	--mitiru-space-2:  8px;
+	--mitiru-space-3:  12px;
+	--mitiru-space-4:  16px;
+	--mitiru-space-5:  24px;
+	--mitiru-space-6:  32px;
+	--mitiru-space-7:  48px;
+
+	/* ── Corner radius (soft 8px) ─────────────────────────────── */
+	--mitiru-radius-sm:   4px;
+	--mitiru-radius-md:   8px;
+	--mitiru-radius-lg:   12px;
+	--mitiru-radius-pill: 9999px;
+
+	/* ── Elevation — soft, layered shadows ────────────────────── */
+	--mitiru-shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04),
+	                   0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-2: 0 2px 4px rgba(15, 23, 42, 0.06),
+	                   0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-3: 0 4px 12px rgba(15, 23, 42, 0.08),
+	                   0 0 0 1px var(--mitiru-border);
+	--mitiru-shadow-4: 0 12px 32px rgba(15, 23, 42, 0.12),
+	                   0 0 0 1px var(--mitiru-border);
+
+	/* Focus ring — indigo halo */
+	--mitiru-focus-ring: 0 0 0 3px rgba(94, 106, 210, 0.25);
+
+	--mitiru-blur-sm: blur(4px);
+	--mitiru-blur-md: blur(12px);
+	--mitiru-blur-lg: blur(24px);
+
+	/* ── Z-index ladder ─────────────────────────────────────── */
+	--mitiru-z-base:     0;
+	--mitiru-z-hud:      100;
+	--mitiru-z-overlay:  200;
+	--mitiru-z-modal:    300;
+	--mitiru-z-toast:    400;
+	--mitiru-z-drag:     500;
+
+	/* ── Transition ──────────────────────────────────────────── */
+	--mitiru-ease:          cubic-bezier(0.4, 0, 0.2, 1);
+	--mitiru-ease-bounce:   cubic-bezier(0.34, 1.56, 0.64, 1);
+	--mitiru-duration-fast: 100ms;
+	--mitiru-duration-mid:  180ms;
+	--mitiru-duration-slow: 320ms;
+}
+
+body
+{
+	background: var(--mitiru-bg);
+	color: var(--mitiru-text);
+	font-family: var(--mitiru-locale-font, var(--mitiru-font-body));
+	font-size: var(--mitiru-text-md);
+	line-height: var(--mitiru-leading-normal);
+	font-variant-numeric: tabular-nums;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}

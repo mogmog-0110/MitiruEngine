@@ -27,6 +27,7 @@
 #include <mitiru/core/Config.hpp>
 #include <mitiru/platform/IWindow.hpp>
 #include <mitiru/input/InputState.hpp>
+#include <mitiru/input/InputInjector.hpp>
 
 namespace mitiru
 {
@@ -41,11 +42,16 @@ public:
 	/// @param title ウィンドウタイトル
 	/// @param width クライアント領域の幅
 	/// @param height クライアント領域の高さ
+	/// @param displayMode ウィンドウ表示モード
+	/// @param resizable ユーザがフレームでリサイズできるか (false の場合は
+	///                  WS_THICKFRAME/WS_MAXIMIZEBOX を外して固定サイズ)
 	explicit Win32Window(std::string_view title, int width, int height,
-		DisplayMode displayMode = DisplayMode::Windowed)
+		DisplayMode displayMode = DisplayMode::Windowed,
+		bool resizable = true)
 		: m_width(width)
 		, m_height(height)
 		, m_displayMode(displayMode)
+		, m_resizable(resizable)
 	{
 		/// Per-Monitor V2 DPI awareness を有効化する
 		/// → 125%/150% スケール環境でも物理ピクセル単位で 1:1 描画される
@@ -89,10 +95,14 @@ public:
 		}
 		else
 		{
-			/// Windowed: 通常のリサイズ可能ウィンドウ
+			/// Windowed: 通常のリサイズ可能ウィンドウ。`resizable=false` の
+			/// 時は WS_THICKFRAME / WS_MAXIMIZEBOX を外して固定サイズに。
 			const UINT dpi = systemDpi();
+			const DWORD style = m_resizable
+				? WS_OVERLAPPEDWINDOW
+				: (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
 			RECT rect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
-			adjustWindowRectForDpi(&rect, WS_OVERLAPPEDWINDOW, FALSE, 0, dpi);
+			adjustWindowRectForDpi(&rect, style, FALSE, 0, dpi);
 
 			int windowWidth = rect.right - rect.left;
 			int windowHeight = rect.bottom - rect.top;
@@ -116,7 +126,7 @@ public:
 
 			m_hwnd = CreateWindowExW(
 				0, CLASS_NAME, wideTitle.c_str(),
-				WS_OVERLAPPEDWINDOW,
+				style,
 				CW_USEDEFAULT, CW_USEDEFAULT,
 				windowWidth, windowHeight,
 				nullptr, nullptr, GetModuleHandleW(nullptr), this);
@@ -288,6 +298,15 @@ public:
 		m_inputState = state;
 	}
 
+	/// @brief 入力インジェクターを設定する
+	/// @param injector InputInjectorへの非所有ポインタ（Engineが所有）
+	/// @details 設定後はキー/マウスイベントをInputState直接mutateではなく
+	///          injector::inject() 経由で発行する。nullptr でフォールバックに戻る。
+	void setInputInjector(InputInjector* injector) noexcept override
+	{
+		m_inputInjector = injector;
+	}
+
 	/// @brief DEBUG: InputStateポインタを取得する
 	[[nodiscard]] const InputState* getInputStatePtr() const noexcept { return m_inputState; }
 
@@ -299,6 +318,33 @@ public:
 	void setResizeCallback(std::function<void(int, int)> cb) noexcept override
 	{
 		m_resizeCallback = std::move(cb);
+	}
+
+	/// @brief Win32 modal resize loop 中も engine を tick させるための callback
+	/// @details ユーザが window 枠を drag すると Windows は `DefWindowProc` 内で
+	///          modal loop に入り、main thread を block する → engine main loop
+	///          (`tickOneFrame`) が止まり描画/計算/CEF pump も止まる。
+	///          WM_ENTERSIZEMOVE で SetTimer し WM_TIMER で本 callback を呼ぶ
+	///          ことで、drag 中も ~60fps で engine が回り続ける。Direct3D SDK
+	///          sample の standard pattern。
+	void setTickCallback(std::function<void()> cb) noexcept
+	{
+		m_tickCallback = std::move(cb);
+	}
+
+	/// @brief 現在 modal resize loop (枠 drag) 中か
+	/// @details Engine::onWindowResize がこれを参照して、drag 中は
+	///          logical / CEF re-layout を抑止し backbuffer のみ追従させる。
+	///          release (WM_EXITSIZEMOVE) で onModalResizeEnd が呼ばれた時に
+	///          初めて本格 resize する。
+	[[nodiscard]] bool inModalLoop() const noexcept { return m_inModalLoop; }
+
+	/// @brief WM_EXITSIZEMOVE で 1 回だけ呼ばれる callback
+	/// @details drag 完了後の最終 size で full resize を実施するために engine
+	///          が登録する。
+	void setModalResizeEndCallback(std::function<void()> cb) noexcept
+	{
+		m_modalResizeEndCallback = std::move(cb);
 	}
 
 private:
@@ -413,10 +459,43 @@ private:
 			return 0;
 		}
 
+		/// --- Modal resize loop ティック維持 ---
+		/// drag 中も engine main loop を回し続けるための timer-driven tick。
+		/// 詳細は setTickCallback の comment 参照。
+		case WM_ENTERSIZEMOVE:
+			m_inModalLoop = true;
+			if (m_tickCallback)
+			{
+				/// USER_TIMER_MINIMUM (10ms) より遅めの 8ms 指定だと
+				/// 内部で 10ms にクランプされる。~60fps target で 16ms。
+				SetTimer(hwnd, kModalTickTimerId, 16, nullptr);
+			}
+			return 0;
+
+		case WM_EXITSIZEMOVE:
+			KillTimer(hwnd, kModalTickTimerId);
+			m_inModalLoop = false;
+			/// modal 中に deferred されていた full resize (logical / CEF) を発火
+			if (m_modalResizeEndCallback) { m_modalResizeEndCallback(); }
+			/// 反映後 1 frame 引いて即座に画面更新
+			if (m_tickCallback) { m_tickCallback(); }
+			return 0;
+
+		case WM_TIMER:
+			if (wParam == kModalTickTimerId && m_tickCallback)
+			{
+				m_tickCallback();
+			}
+			return 0;
+
 		/// --- キーボード入力 ---
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
-			if (m_inputState)
+			if (m_inputInjector)
+			{
+				m_inputInjector->inject(InputCommand{InputCommandType::KeyDown, mapVirtualKey(wParam)});
+			}
+			else if (m_inputState)
 			{
 				m_inputState->setKeyDown(mapVirtualKey(wParam), true);
 			}
@@ -424,10 +503,24 @@ private:
 
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
-			if (m_inputState)
+			if (m_inputInjector)
+			{
+				m_inputInjector->inject(InputCommand{InputCommandType::KeyUp, mapVirtualKey(wParam)});
+			}
+			else if (m_inputState)
 			{
 				m_inputState->setKeyDown(mapVirtualKey(wParam), false);
 			}
+			return 0;
+
+		/// --- Focus loss --------------------------------------------------
+		/// When the user alt-tabs away (or clicks a sibling window like the
+		/// dev companion) Windows stops delivering WM_KEYUP to this hwnd.
+		/// Any keys held at the time would stay "down" forever in our
+		/// InputState — the classic "stuck arrow" bug. Clear them here so
+		/// the game sees a clean release edge.
+		case WM_KILLFOCUS:
+			if (m_inputState) { m_inputState->clearHeldKeys(); }
 			return 0;
 
 		/// --- マウス移動 ---
@@ -445,7 +538,11 @@ private:
 			m_lastMouseX = mx;
 			m_lastMouseY = my;
 			++m_mouseMoveCount;
-			if (m_inputState)
+			if (m_inputInjector)
+			{
+				m_inputInjector->inject(InputCommand{InputCommandType::MouseMove, 0, 0, mx, my});
+			}
+			else if (m_inputState)
 			{
 				m_inputState->setMousePosition(mx, my);
 				// DEBUG: 書き込み直後に読み返す
@@ -458,40 +555,40 @@ private:
 
 		/// --- マウスボタン ---
 		case WM_LBUTTONDOWN:
-			if (m_inputState)
-			{
+			if (m_inputInjector)
+				m_inputInjector->inject(InputCommand{InputCommandType::MouseDown, 0, static_cast<int>(MouseButton::Left)});
+			else if (m_inputState)
 				m_inputState->setMouseButtonDown(MouseButton::Left, true);
-			}
 			return 0;
 		case WM_LBUTTONUP:
-			if (m_inputState)
-			{
+			if (m_inputInjector)
+				m_inputInjector->inject(InputCommand{InputCommandType::MouseUp, 0, static_cast<int>(MouseButton::Left)});
+			else if (m_inputState)
 				m_inputState->setMouseButtonDown(MouseButton::Left, false);
-			}
 			return 0;
 		case WM_RBUTTONDOWN:
-			if (m_inputState)
-			{
+			if (m_inputInjector)
+				m_inputInjector->inject(InputCommand{InputCommandType::MouseDown, 0, static_cast<int>(MouseButton::Right)});
+			else if (m_inputState)
 				m_inputState->setMouseButtonDown(MouseButton::Right, true);
-			}
 			return 0;
 		case WM_RBUTTONUP:
-			if (m_inputState)
-			{
+			if (m_inputInjector)
+				m_inputInjector->inject(InputCommand{InputCommandType::MouseUp, 0, static_cast<int>(MouseButton::Right)});
+			else if (m_inputState)
 				m_inputState->setMouseButtonDown(MouseButton::Right, false);
-			}
 			return 0;
 		case WM_MBUTTONDOWN:
-			if (m_inputState)
-			{
+			if (m_inputInjector)
+				m_inputInjector->inject(InputCommand{InputCommandType::MouseDown, 0, static_cast<int>(MouseButton::Middle)});
+			else if (m_inputState)
 				m_inputState->setMouseButtonDown(MouseButton::Middle, true);
-			}
 			return 0;
 		case WM_MBUTTONUP:
-			if (m_inputState)
-			{
+			if (m_inputInjector)
+				m_inputInjector->inject(InputCommand{InputCommandType::MouseUp, 0, static_cast<int>(MouseButton::Middle)});
+			else if (m_inputState)
 				m_inputState->setMouseButtonDown(MouseButton::Middle, false);
-			}
 			return 0;
 
 		default:
@@ -631,6 +728,7 @@ private:
 	int m_width = 0;                  ///< クライアント領域の幅
 	int m_height = 0;                 ///< クライアント領域の高さ
 	DisplayMode m_displayMode = DisplayMode::Windowed;
+	bool m_resizable = true;          ///< ユーザがフレームでリサイズできるか
 	LONG m_savedStyle = 0;            ///< フルスクリーン前のウィンドウスタイル
 	RECT m_savedRect  = {};           ///< フルスクリーン前のウィンドウ矩形
 
@@ -647,9 +745,14 @@ public:
 	float m_dbgReadbackY = -1;        ///< DEBUG: setMousePosition直後のreadback
 	int m_mouseMoveCount = 0;         ///< DEBUG: WM_MOUSEMOVE受信回数
 private:
-	bool m_shouldClose = false;       ///< 閉じ要求フラグ
-	InputState* m_inputState = nullptr;  ///< 入力状態転送先（非所有）
-	ResizeCallback m_resizeCallback;     ///< リサイズコールバック
+	bool m_shouldClose = false;            ///< 閉じ要求フラグ
+	InputState* m_inputState = nullptr;   ///< 入力状態転送先（非所有）
+	InputInjector* m_inputInjector = nullptr; ///< 入力インジェクター（非所有）。非nullの場合はinject()経由でイベント発行
+	ResizeCallback m_resizeCallback;      ///< リサイズコールバック
+	std::function<void()> m_tickCallback;  ///< modal-loop tick (drag-resize 中の engine 駆動)
+	std::function<void()> m_modalResizeEndCallback; ///< WM_EXITSIZEMOVE で 1 回呼ぶ deferred full resize
+	bool m_inModalLoop = false;            ///< WM_ENTERSIZEMOVE..WM_EXITSIZEMOVE
+	static constexpr UINT_PTR kModalTickTimerId = 0x4D54; // 'MT'
 };
 
 } // namespace mitiru

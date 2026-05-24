@@ -1,0 +1,288 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_hud.js tests</title>
+<!--
+    test_hud.html — mitiru.hud (F-08) unit tests
+    Pattern: inline IIFE, no module imports — matches test_state.html style.
+
+    Run:
+      python -m http.server 8765 --bind 127.0.0.1
+      open http://localhost:8765/web/mitiru_runtime/tests/test_hud.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_state.js"></script>
+<script src="../mitiru_hud.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+    'use strict';
+
+    var t   = mitiru.test;
+    var s   = mitiru.state;
+    var hud = mitiru.hud;
+
+    // ── helpers ──────────────────────────────────────────────────
+
+    /**
+     * Create a minimal detached container for each test.
+     * Returns a <div> appended to document.body so DOM methods work,
+     * but all HUD elements are cleaned up by hud.unmount() in teardown.
+     */
+    function makeContainer()
+    {
+        var el = document.createElement('div');
+        document.body.appendChild(el);
+        return el;
+    }
+
+    /** Tear down HUD and remove the test container from the DOM. */
+    function teardown(container)
+    {
+        hud.unmount();
+        if (container && container.parentNode) { container.parentNode.removeChild(container); }
+    }
+
+    /** Minimal slot descriptor. */
+    function slot(id, renderFn)
+    {
+        return { id: id, render: renderFn };
+    }
+
+    // ── 1. mount creates HUD element ─────────────────────────────
+    t.case('mount creates [data-mitiru-hud] element inside container', function()
+    {
+        var c = makeContainer();
+        hud.mount(c, { slots: [] });
+        var el = c.querySelector('[data-mitiru-hud]');
+        t.assert(el !== null, 'HUD root element should exist in container');
+        teardown(c);
+    });
+
+    // ── 2. slots are rendered with correct data-hud-slot attrs ───
+    t.case('mount creates slot elements with data-hud-slot attribute', function()
+    {
+        var c = makeContainer();
+        hud.mount(c, {
+            slots: [
+                slot('day',   function() { return 'Day 1'; }),
+                slot('money', function() { return '¥100'; }),
+            ],
+        });
+        t.assert(c.querySelector('[data-hud-slot="day"]')   !== null, 'day slot');
+        t.assert(c.querySelector('[data-hud-slot="money"]') !== null, 'money slot');
+        teardown(c);
+    });
+
+    // ── 3. string render → textContent ───────────────────────────
+    t.case('string render result is assigned to textContent', function()
+    {
+        var c = makeContainer();
+        hud.mount(c, {
+            slots: [ slot('lbl', function() { return 'Hello'; }) ],
+        });
+        var el = c.querySelector('[data-hud-slot="lbl"]');
+        t.assertEq(el.textContent, 'Hello');
+        teardown(c);
+    });
+
+    // ── 4. Node render → replaceChildren ─────────────────────────
+    t.case('Node render result is inserted via replaceChildren', function()
+    {
+        var c = makeContainer();
+        hud.mount(c, {
+            slots: [ slot('nodeSlot', function()
+            {
+                var span = document.createElement('span');
+                span.textContent = 'NodeContent';
+                return span;
+            }) ],
+        });
+        var slotEl = c.querySelector('[data-hud-slot="nodeSlot"]');
+        t.assert(slotEl.querySelector('span') !== null, 'span should be child');
+        t.assertEq(slotEl.querySelector('span').textContent, 'NodeContent');
+        teardown(c);
+    });
+
+    // ── 5. {html} render → innerHTML ─────────────────────────────
+    t.case('{html} render result is assigned to innerHTML', function()
+    {
+        var c = makeContainer();
+        hud.mount(c, {
+            slots: [ slot('htmlSlot', function()
+            {
+                return { html: '<b>bold</b>' };
+            }) ],
+        });
+        var slotEl = c.querySelector('[data-hud-slot="htmlSlot"]');
+        t.assert(slotEl.querySelector('b') !== null, '<b> tag should be present');
+        teardown(c);
+    });
+
+    // ── 6. stateKeys subscription — rerenders on state change ────
+    t.case('slot rerenders when subscribed state key changes', function()
+    {
+        s.reset('hud_day');
+        s.set('hud_day', 1);
+        var c = makeContainer();
+        hud.mount(c, {
+            stateKeys: ['hud_day'],
+            slots: [ slot('day', function(st) { return 'Day ' + st.hud_day; }) ],
+        });
+        var slotEl = c.querySelector('[data-hud-slot="day"]');
+        t.assertEq(slotEl.textContent, 'Day 1', 'initial render');
+
+        s.set('hud_day', 2);
+        t.assertEq(slotEl.textContent, 'Day 2', 'after state update');
+
+        s.reset('hud_day');
+        teardown(c);
+    });
+
+    // ── 7. stateKeys default [] — static snapshot, no subscriptions
+    t.case('stateKeys default [] mounts with no subscriptions (static snapshot)', function()
+    {
+        s.set('hud_static', 'initial');
+        var c = makeContainer();
+        hud.mount(c, {
+            // no stateKeys
+            slots: [ slot('x', function() { return 'static'; }) ],
+        });
+        var slotEl = c.querySelector('[data-hud-slot="x"]');
+        t.assertEq(slotEl.textContent, 'static');
+
+        // No subscriptions were registered, so changing state does nothing.
+        s.set('hud_static', 'changed');
+        t.assertEq(slotEl.textContent, 'static', 'no re-render without subscription');
+
+        s.reset('hud_static');
+        teardown(c);
+    });
+
+    // ── 8. double-mount protection ────────────────────────────────
+    t.case('mounting twice unmounts previous instance first', function()
+    {
+        var c = makeContainer();
+        hud.mount(c, { slots: [ slot('a', function() { return 'first'; }) ] });
+        var firstRoot = c.querySelector('[data-mitiru-hud]');
+        t.assert(firstRoot !== null, 'first root exists');
+
+        hud.mount(c, { slots: [ slot('b', function() { return 'second'; }) ] });
+        var roots = c.querySelectorAll('[data-mitiru-hud]');
+        t.assertEq(roots.length, 1, 'only one HUD root should exist after re-mount');
+        t.assert(roots[0].querySelector('[data-hud-slot="b"]') !== null, 'second slot present');
+        t.assertEq(roots[0].querySelector('[data-hud-slot="a"]'), null, 'first slot gone');
+        teardown(c);
+    });
+
+    // ── 9. unmount removes element and stops updates ──────────────
+    t.case('unmount removes HUD element and stops state-driven rerenders', function()
+    {
+        s.set('hud_umount', 10);
+        var c = makeContainer();
+        hud.mount(c, {
+            stateKeys: ['hud_umount'],
+            slots: [ slot('v', function(st) { return String(st.hud_umount); }) ],
+        });
+        var slotEl = c.querySelector('[data-hud-slot="v"]');
+        t.assertEq(slotEl.textContent, '10');
+
+        hud.unmount();
+        t.assertEq(c.querySelector('[data-mitiru-hud]'), null, 'root removed from DOM');
+
+        // State changes after unmount must not throw or update the detached element.
+        t.assertNoThrow(function() { s.set('hud_umount', 99); });
+        t.assertEq(slotEl.textContent, '10', 'detached slot unchanged after unmount');
+
+        s.reset('hud_umount');
+        if (c.parentNode) { c.parentNode.removeChild(c); }
+    });
+
+    // ── 10. hud.slots() returns live descriptors ──────────────────
+    t.case('hud.slots() returns [{id, el}] for each mounted slot', function()
+    {
+        var c = makeContainer();
+        hud.mount(c, {
+            slots: [
+                slot('alpha', function() { return 'a'; }),
+                slot('beta',  function() { return 'b'; }),
+            ],
+        });
+        var ss = hud.slots();
+        t.assertEq(ss.length, 2);
+        t.assertEq(ss[0].id, 'alpha');
+        t.assertEq(ss[1].id, 'beta');
+        t.assert(ss[0].el instanceof Element, 'alpha.el is an Element');
+        teardown(c);
+    });
+
+    // ── 11. graceful degrade when mitiru.state absent ─────────────
+    t.case('mount works gracefully when mitiru.state is temporarily unavailable', function()
+    {
+        // Temporarily hide mitiru.state to simulate F-03 not loaded.
+        var saved = mitiru.state;
+        try
+        {
+            delete mitiru.state;
+            var c = makeContainer();
+            t.assertNoThrow(function()
+            {
+                hud.mount(c, {
+                    stateKeys: ['missing_key'],
+                    slots: [ slot('s', function(st) { return st.missing_key || 'fallback'; }) ],
+                });
+            });
+            var slotEl = c.querySelector('[data-hud-slot="s"]');
+            t.assertEq(slotEl.textContent, 'fallback', 'renders fallback without state');
+            teardown(c);
+        }
+        finally
+        {
+            mitiru.state = saved;
+        }
+    });
+
+    // ── 12. hud.update() forces synchronous re-render ─────────────
+    t.case('hud.update() re-renders all slots from current state', function()
+    {
+        s.set('hud_update', 'v1');
+        var c = makeContainer();
+        hud.mount(c, {
+            stateKeys: ['hud_update'],
+            slots: [ slot('u', function(st) { return st.hud_update; }) ],
+        });
+        t.assertEq(c.querySelector('[data-hud-slot="u"]').textContent, 'v1');
+
+        // Direct store manipulation without triggering subscriber (not the normal path,
+        // but update() should still pick up the current value).
+        s.set('hud_update', 'v2');  // this fires subscription normally
+        t.assertEq(c.querySelector('[data-hud-slot="u"]').textContent, 'v2');
+
+        hud.update();               // explicit force
+        t.assertEq(c.querySelector('[data-hud-slot="u"]').textContent, 'v2');
+
+        s.reset('hud_update');
+        teardown(c);
+    });
+
+    // ── 13. mount throws on invalid container ─────────────────────
+    t.case('mount throws Error when container is null or non-element', function()
+    {
+        t.assertThrow(function() { hud.mount(null, {}); });
+        t.assertThrow(function() { hud.mount('not-an-element', {}); });
+    });
+
+    // ── run ──────────────────────────────────────────────────────
+    mitiru.test.run();
+})();
+</script>

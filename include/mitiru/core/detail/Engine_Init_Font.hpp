@@ -18,16 +18,25 @@ MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 		"../../assets/fonts/default.ttf",
 	});
 #ifdef _WIN32
-	// Windows システムフォント（日本語対応）
+	// Windows system fonts — Workbench-aligned monospace first, then JP
+	// fallbacks. Mono fonts (Cascadia / Consolas) survive SDF rasterisation
+	// at small sizes much better than Yu Gothic's thin variable strokes,
+	// which were rendering as smudgy/unreadable at 16px in the inspector.
 	const char* winFonts = std::getenv("WINDIR");
 	if (winFonts)
 	{
 		const std::string fontsDir = std::string(winFonts) + "\\Fonts\\";
-		searchPaths.push_back(fontsDir + "YuGothM.ttc");   // Yu Gothic Medium
-		searchPaths.push_back(fontsDir + "YuGothR.ttc");   // Yu Gothic Regular
-		searchPaths.push_back(fontsDir + "meiryo.ttc");    // Meiryo
-		searchPaths.push_back(fontsDir + "msgothic.ttc");  // MS Gothic
-		searchPaths.push_back(fontsDir + "segoeui.ttf");   // Segoe UI (ASCII fallback)
+		// ── Monospace family (Workbench primary) ────────────────────
+		searchPaths.push_back(fontsDir + "CascadiaMono.ttf");      // Cascadia Mono (Win 11 default)
+		searchPaths.push_back(fontsDir + "CascadiaCode.ttf");      // Cascadia Code (Win 10+ Terminal)
+		searchPaths.push_back(fontsDir + "consola.ttf");           // Consolas (Vista+ ubiquitous)
+		// ── Japanese fallbacks (CJK glyph coverage) ─────────────────
+		searchPaths.push_back(fontsDir + "YuGothM.ttc");           // Yu Gothic Medium
+		searchPaths.push_back(fontsDir + "YuGothR.ttc");           // Yu Gothic Regular
+		searchPaths.push_back(fontsDir + "meiryo.ttc");            // Meiryo
+		searchPaths.push_back(fontsDir + "msgothic.ttc");          // MS Gothic
+		// ── Sans-serif ultimate fallback ────────────────────────────
+		searchPaths.push_back(fontsDir + "segoeui.ttf");           // Segoe UI
 	}
 #endif
 	searchPaths.insert(searchPaths.end(), {
@@ -129,8 +138,14 @@ MITIRU_INLINE void mitiru::Engine::initSdfFont(std::vector<std::uint8_t> fontDat
 {
 	try
 	{
+		// SDF padding bumped to 12 (was 6). At 16px display scale (0.5x of
+		// 32px atlas) padding shrinks to half — 6px padding becomes 3px,
+		// which is too narrow for the smoothstep edge AA to render thin
+		// vertical strokes (l / i / | / digits) cleanly. 12px padding gives
+		// 6px effective at 0.5x — enough for crisp small-text rendering.
+		// Atlas texture grows ~15% for ASCII-only; acceptable cost.
 		m_sdfAtlas = std::make_unique<render::SdfFontAtlas>(
-			std::move(fontData), 32.0f, 6);
+			std::move(fontData), 32.0f, 12);
 
 		// config.fontAtlasRanges の bitmask に従って glyph 範囲を登録する。
 		// Japanese (default) は 3000+ kanji を焼くため ~15s、

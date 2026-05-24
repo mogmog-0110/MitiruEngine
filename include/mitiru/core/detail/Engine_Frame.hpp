@@ -33,6 +33,14 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 	/// フレームレートキャップ用: 前フレーム開始時刻
 	const auto frameStart = std::chrono::steady_clock::now();
 
+	// Host hook — typically `mitiru_host --watch` polls DLL mtime here and
+	// triggers Engine::reloadModule() when the source changes. Safe to fire
+	// before any per-frame state is touched.
+	if (m_loopConfig && m_loopConfig->onFrameStart)
+	{
+		m_loopConfig->onFrameStart(*this);
+	}
+
 	if (!tickInputPollPhase())
 	{
 		return;
@@ -172,7 +180,11 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	// =====================================================================
 
 	m_screen->resetDrawCallCount();
-	m_screen->clear();
+	// config.backgroundColor を渡すことで、host 側で hello_game 等の bg を
+	// 統一できる。DLL 内 `screen->clear(...)` は m_clearColor を更新するだけ
+	// で device の ClearRenderTargetView には届かない (frame 頭で sync された
+	// 値が使われる) ので、ここで明示的に config の値を流す。
+	m_screen->clear(m_config.backgroundColor);
 
 	// screen.clear()のクリア色をGPUデバイスに同期する
 	if (m_device && m_screen)

@@ -85,13 +85,14 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	}
 	else
 	{
-		// DX11/DX12/Auto → Win32Window (DisplayMode 指定可)
+		// DX11/DX12/Auto → Win32Window (DisplayMode + resizable 指定可)
 		auto* win32Plat = dynamic_cast<Win32Platform*>(m_platform.get());
 		if (win32Plat)
 		{
-			m_window = win32Plat->createWindowWithMode(
+			m_window = win32Plat->createWindowExtended(
 				config.title, winW, winH,
-				config.displayMode);
+				config.displayMode,
+				config.windowResizable);
 		}
 		else
 		{
@@ -126,6 +127,13 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	m_window->setResizeCallback([this](int w, int h) {
 		onWindowResize(w, h);
 	});
+#ifdef _WIN32
+	/// Win32Window がある場合、InputInjector を接続してhuman playをキャプチャ可能にする
+	if (auto* w32 = dynamic_cast<Win32Window*>(m_window.get()))
+	{
+		w32->setInputInjector(&m_inputInjector);
+	}
+#endif
 
 	/// GPUデバイス生成
 	if (config.headless || config.gfxBackend == gfx::Backend::Null)

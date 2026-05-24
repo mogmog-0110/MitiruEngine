@@ -25,3 +25,28 @@ add_subdirectory(hello_input)
 add_subdirectory(hello_scene)
 add_subdirectory(hello_shapes)
 add_subdirectory(hello_cef_overlay)
+# mitiru_host MUST come before hello_game — the latter installs its DLL into
+# $<TARGET_FILE_DIR:mitiru_host>/hello_game/ and references mitiru_host's
+# location during configure-time generator expression resolution.
+add_subdirectory(mitiru_host)
+add_subdirectory(hello_game)
+add_subdirectory(mitiru_launcher)
+add_subdirectory(mitiru_dev_companion)
+add_subdirectory(mitiru_renderer)
+add_subdirectory(mitiru_subsys_renderer)
+add_subdirectory(mitiru_subsys_replay)
+add_subdirectory(mitiru_subsys_audio)
+add_subdirectory(mitiru_subsys_input)
+add_subdirectory(mitiru_subsys_scene)
+add_subdirectory(mitiru_audio)
+add_subdirectory(mitiru_inspector)
+
+# MYSHOOTER / my_shooter are dev-only skeletons excluded from the public
+# release snapshot. Guard with EXISTS so the prod top-level build (which lacks
+# these dirs) configures cleanly; the dev tree has them and still builds them.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/MYSHOOTER/CMakeLists.txt")
+	add_subdirectory(MYSHOOTER)
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/my_shooter/CMakeLists.txt")
+	add_subdirectory(my_shooter)
+endif()

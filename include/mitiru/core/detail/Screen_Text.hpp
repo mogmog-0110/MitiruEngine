@@ -127,13 +127,44 @@ inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_v
 	const float innerH = rect.height() - padY * 2.0f;
 	if (innerW <= 0.0f || innerH <= 0.0f) return;
 
-	float actualFontSize = fontSize;
-	auto size = measureText(text, actualFontSize);
-	if (size.x > innerW && !text.empty())
+	// CRITICAL: do NOT proportional-shrink fontSize when text overflows.
+	// Reducing 16 → 11.3 lands on non-atlas fractions (atlas is 32px so
+	// only 32 / 24 / 16 / 12 / 8 render crisply) — the result is smudgy,
+	// unreadable text in narrow windows. Instead, keep fontSize and let
+	// the text get truncated with an ellipsis (mirrors drawTextClipped
+	// semantics). This keeps SDF rendering on atlas-aligned fractions
+	// and preserves legibility at any window width.
+	const auto fullSize = measureText(text, fontSize);
+	std::string_view drawable = text;
+	std::string ellipsisBuf;  // owns truncated form when ellipsis applied
+	sgc::Vec2f size = fullSize;
+	if (fullSize.x > innerW && !text.empty())
 	{
-		const float ratio = innerW / size.x;
-		actualFontSize = std::max(4.0f, actualFontSize * ratio);
-		size = measureText(text, actualFontSize);
+		const auto ellipsisW = measureText("...", fontSize).x;
+		if (innerW > ellipsisW)
+		{
+			const float availW = innerW - ellipsisW;
+			std::size_t lo = 0, hi = text.size();
+			while (lo < hi)
+			{
+				const auto mid = (lo + hi + 1) / 2;
+				if (measureText(text.substr(0, mid), fontSize).x <= availW)
+					lo = mid;
+				else
+					hi = mid - 1;
+			}
+			ellipsisBuf.assign(text.substr(0, lo));
+			ellipsisBuf += "...";
+			drawable = ellipsisBuf;
+			size = measureText(drawable, fontSize);
+		}
+		else
+		{
+			// Rect too small even for "..." — drop to single "."
+			ellipsisBuf = ".";
+			drawable = ellipsisBuf;
+			size = measureText(drawable, fontSize);
+		}
 	}
 
 	float x = rect.x() + padX;
@@ -144,7 +175,7 @@ inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_v
 	if (alignV == TextAlignV::Middle) y = rect.y() + (rect.height() - size.y) * 0.5f;
 	else if (alignV == TextAlignV::Bottom) y = rect.y() + rect.height() - padY - size.y;
 
-	drawText({x, y}, text, color, actualFontSize);
+	drawText({x, y}, drawable, color, fontSize);
 }
 
 inline void mitiru::Screen::drawTextWrapped(const sgc::Rectf& rect, std::string_view text,

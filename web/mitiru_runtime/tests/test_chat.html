@@ -1,0 +1,290 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_chat.js tests</title>
+<!--
+    test_chat.html — mitiru.chat (F-10) unit tests
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<link rel="stylesheet" href="../mitiru_tokens.css">
+<link rel="stylesheet" href="../mitiru_components.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+    .test-surface { width: 320px; height: 240px; border: 1px solid #ccc; margin: 8px 0; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_chat.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+	'use strict';
+
+	const t    = mitiru.test;
+	const chat = mitiru.chat;
+
+	function makeSurface(opts)
+	{
+		const el = document.createElement('div');
+		el.className = 'test-surface';
+		document.body.appendChild(el);
+		return { el: el, handle: chat.mount(el, opts || {}) };
+	}
+
+	function cleanup(s)
+	{
+		chat.unmount(s.handle);
+		if (s.el.parentNode) { s.el.parentNode.removeChild(s.el); }
+	}
+
+	// ── 1. mount ─────────────────────────────────────────────────
+	t.case('mount attaches mitiru-chat class + data attribute', function()
+	{
+		const s = makeSurface();
+		t.assertEq(s.el.classList.contains('mitiru-chat'), true);
+		t.assertEq(s.el.hasAttribute('data-mitiru-chat'),  true);
+		cleanup(s);
+	});
+
+	t.case('mount throws on non-element', function()
+	{
+		let threw = false;
+		try { chat.mount(null); } catch (_e) { threw = true; }
+		t.assertEq(threw, true);
+	});
+
+	// ── 2. send bubbles ──────────────────────────────────────────
+	t.case('send creates incoming bubble with speaker + text', function()
+	{
+		const s = makeSurface();
+		const el = chat.send(s.handle, { kind: 'incoming', speaker: 'マリア', text: 'おはよう' });
+		t.assertEq(el.classList.contains('mitiru-chat-bubble--incoming'), true);
+		t.assertEq(el.querySelector('.mitiru-chat-bubble__speaker').textContent, 'マリア');
+		t.assertEq(el.querySelector('.mitiru-chat-bubble__text').textContent,    'おはよう');
+		cleanup(s);
+	});
+
+	t.case('send creates outgoing bubble (no speaker rendering)', function()
+	{
+		const s = makeSurface();
+		const el = chat.send(s.handle, { kind: 'outgoing', text: 'hi' });
+		t.assertEq(el.classList.contains('mitiru-chat-bubble--outgoing'), true);
+		t.assertEq(el.querySelector('.mitiru-chat-bubble__speaker'), null);
+		cleanup(s);
+	});
+
+	t.case('send creates system bubble', function()
+	{
+		const s = makeSurface();
+		const el = chat.send(s.handle, { kind: 'system', text: '-- later --' });
+		t.assertEq(el.classList.contains('mitiru-chat-bubble--system'), true);
+		t.assertEq(el.textContent, '-- later --');
+		cleanup(s);
+	});
+
+	t.case('send defaults kind to incoming', function()
+	{
+		const s = makeSurface();
+		const el = chat.send(s.handle, { text: 'hello' });
+		t.assertEq(el.classList.contains('mitiru-chat-bubble--incoming'), true);
+		cleanup(s);
+	});
+
+	t.case('send sets data-heroine when heroine is provided', function()
+	{
+		const s = makeSurface();
+		const el = chat.send(s.handle, { speaker: 'マリア', text: 'x', heroine: 'maria' });
+		t.assertEq(el.getAttribute('data-heroine'), 'maria');
+		cleanup(s);
+	});
+
+	t.case('send renders timestamp when time is provided', function()
+	{
+		const s = makeSurface();
+		const el = chat.send(s.handle, { text: 'x', time: '06:43' });
+		t.assertEq(el.querySelector('.mitiru-chat-bubble__time').textContent, '06:43');
+		cleanup(s);
+	});
+
+	t.case('send escapes HTML by default (text not innerHTML)', function()
+	{
+		const s = makeSurface();
+		const el = chat.send(s.handle, { text: '<img src=x onerror=1>' });
+		const body = el.querySelector('.mitiru-chat-bubble__text');
+		t.assertEq(body.querySelector('img'), null);
+		t.assertEq(body.textContent, '<img src=x onerror=1>');
+		cleanup(s);
+	});
+
+	t.case('send honours html:true to render as innerHTML', function()
+	{
+		const s = makeSurface();
+		const el = chat.send(s.handle, { text: '<b>bold</b>', html: true });
+		const body = el.querySelector('.mitiru-chat-bubble__text');
+		t.assertEq(body.querySelector('b') !== null, true);
+		cleanup(s);
+	});
+
+	t.case('send throws on unknown kind', function()
+	{
+		const s = makeSurface();
+		let threw = false;
+		try { chat.send(s.handle, { kind: 'bogus', text: 'x' }); } catch (_e) { threw = true; }
+		t.assertEq(threw, true);
+		cleanup(s);
+	});
+
+	// ── 3. typing indicator ──────────────────────────────────────
+	t.case('typing appends 3-dot indicator with heroine', function()
+	{
+		const s = makeSurface();
+		const stop = chat.typing(s.handle, 'raika');
+		const node = s.el.querySelector('.mitiru-chat-typing');
+		t.assertEq(node !== null, true);
+		t.assertEq(node.getAttribute('data-heroine'), 'raika');
+		t.assertEq(node.querySelectorAll('span').length, 3);
+		stop();
+		t.assertEq(s.el.querySelector('.mitiru-chat-typing'), null);
+		cleanup(s);
+	});
+
+	// ── 4. choice prompt ─────────────────────────────────────────
+	t.case('choice renders one button per option and fires onPick', function()
+	{
+		const s = makeSurface();
+		let picked = null;
+		const dismiss = chat.choice(s.handle, [
+			{ label: 'はい',   id: 'y' },
+			{ label: 'いいえ', id: 'n' },
+		], function(opt, idx) { picked = { opt: opt, idx: idx }; });
+
+		const btns = s.el.querySelectorAll('.mitiru-chat-choice__btn');
+		t.assertEq(btns.length, 2);
+		t.assertEq(btns[0].textContent, 'はい');
+		t.assertEq(btns[1].textContent, 'いいえ');
+
+		btns[1].click();
+		t.assertEq(picked.opt.id, 'n');
+		t.assertEq(picked.idx,    1);
+		// Auto-dismiss after pick.
+		t.assertEq(s.el.querySelector('.mitiru-chat-choice'), null);
+		// dismiss() is idempotent (already removed).
+		dismiss();
+		cleanup(s);
+	});
+
+	t.case('choice accepts plain strings as options', function()
+	{
+		const s = makeSurface();
+		let picked = null;
+		chat.choice(s.handle, ['A', 'B'], function(opt, idx) { picked = { opt: opt, idx: idx }; });
+		const btns = s.el.querySelectorAll('.mitiru-chat-choice__btn');
+		btns[0].click();
+		t.assertEq(picked.opt, 'A');
+		t.assertEq(picked.idx, 0);
+		cleanup(s);
+	});
+
+	t.case('choice throws when options is not an array', function()
+	{
+		const s = makeSurface();
+		let threw = false;
+		try { chat.choice(s.handle, 'nope', function() {}); } catch (_e) { threw = true; }
+		t.assertEq(threw, true);
+		cleanup(s);
+	});
+
+	// ── 5. events ────────────────────────────────────────────────
+	t.case('chat:append fires with bubble + element', function()
+	{
+		const s = makeSurface();
+		let got = null;
+		s.el.addEventListener('chat:append', function(e) { got = e.detail; });
+		const el = chat.send(s.handle, { text: 'hi' });
+		t.assertEq(got.element, el);
+		t.assertEq(got.bubble.text, 'hi');
+		cleanup(s);
+	});
+
+	t.case('chat:choice:pick fires before onPick', function()
+	{
+		const s = makeSurface();
+		const order = [];
+		s.el.addEventListener('chat:choice:pick', function() { order.push('event'); });
+		chat.choice(s.handle, ['A'], function() { order.push('cb'); });
+		s.el.querySelector('.mitiru-chat-choice__btn').click();
+		t.assertEq(order.join(','), 'event,cb');
+		cleanup(s);
+	});
+
+	// ── 6. clear + scroll ────────────────────────────────────────
+	t.case('clear removes all children', function()
+	{
+		const s = makeSurface();
+		chat.send(s.handle, { text: 'a' });
+		chat.send(s.handle, { text: 'b' });
+		chat.send(s.handle, { text: 'c' });
+		t.assertEq(s.el.children.length, 3);
+		chat.clear(s.handle);
+		t.assertEq(s.el.children.length, 0);
+		cleanup(s);
+	});
+
+	t.case('isAtBottom true for fresh empty surface', function()
+	{
+		const s = makeSurface();
+		t.assertEq(chat.isAtBottom(s.handle), true);
+		cleanup(s);
+	});
+
+	t.case('scrollToBottom pins scrollTop to scrollHeight', function()
+	{
+		const s = makeSurface();
+		for (let i = 0; i < 30; ++i) { chat.send(s.handle, { text: 'L' + i }); }
+		s.el.scrollTop = 0;
+		chat.scrollToBottom(s.handle);
+		t.assertEq(chat.isAtBottom(s.handle), true);
+		cleanup(s);
+	});
+
+	t.case('send does NOT force-scroll when user scrolled back', function()
+	{
+		const s = makeSurface();
+		// Fill + scroll away from the bottom.
+		for (let i = 0; i < 30; ++i) { chat.send(s.handle, { text: 'line ' + i }); }
+		s.el.scrollTop = 0;
+		// Synthesise a scroll event so the handle notices.
+		s.el.dispatchEvent(new Event('scroll'));
+		const topBefore = s.el.scrollTop;
+		chat.send(s.handle, { text: 'new!' });
+		t.assertEq(s.el.scrollTop, topBefore);
+		cleanup(s);
+	});
+
+	t.case('forceScroll:true always pins to bottom on send', function()
+	{
+		const s = makeSurface({ forceScroll: true });
+		for (let i = 0; i < 30; ++i) { chat.send(s.handle, { text: 'line ' + i }); }
+		s.el.scrollTop = 0;
+		chat.send(s.handle, { text: 'new!' });
+		t.assertEq(chat.isAtBottom(s.handle), true);
+		cleanup(s);
+	});
+
+	// ── 7. unmount ───────────────────────────────────────────────
+	t.case('unmount stops scroll event tracking', function()
+	{
+		const s = makeSurface();
+		let scrolls = 0;
+		s.el.addEventListener('chat:scroll', function() { scrolls += 1; });
+		chat.unmount(s.handle);
+		s.el.dispatchEvent(new Event('scroll'));
+		t.assertEq(scrolls, 0);
+		if (s.el.parentNode) { s.el.parentNode.removeChild(s.el); }
+	});
+
+	// ── drive ────────────────────────────────────────────────────
+	mitiru.test.run();
+})();
+</script>

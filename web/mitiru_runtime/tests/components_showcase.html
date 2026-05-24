@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>mitiru_components showcase (F-12 / F-13)</title>
+<link rel="stylesheet" href="../mitiru_base.css">
+<link rel="stylesheet" href="../mitiru_tokens.css">
+<link rel="stylesheet" href="../mitiru_components.css">
+<style>
+body
+{
+	margin: 0;
+	padding: 20px;
+	background: #eae3d4;
+	color: #2b2118;
+	font-family: system-ui, sans-serif;
+}
+h2 { margin: 32px 0 12px; font-size: 14px; letter-spacing: 0.1em; }
+.grid
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 16px;
+	margin-bottom: 32px;
+}
+.tile
+{
+	background: #fff;
+	border: 1px solid #d8cbb8;
+	padding: 8px;
+}
+.tile .label
+{
+	font-size: 11px;
+	color: #8a7865;
+	margin-bottom: 8px;
+	font-family: monospace;
+}
+.tile .preview
+{
+	width: 100%;
+	height: 160px;
+	overflow: hidden;
+	position: relative;
+}
+</style>
+</head>
+<body>
+
+<h2>F-12 · mitiru-checker-floor</h2>
+<div class="grid">
+	<div class="tile">
+		<div class="label">default</div>
+		<div class="preview"><div class="mitiru-checker-floor"></div></div>
+	</div>
+	<div class="tile">
+		<div class="label">data-perspective="45"</div>
+		<div class="preview"><div class="mitiru-checker-floor" data-perspective="45"></div></div>
+	</div>
+	<div class="tile">
+		<div class="label">data-perspective="60"</div>
+		<div class="preview"><div class="mitiru-checker-floor" data-perspective="60"></div></div>
+	</div>
+	<div class="tile">
+		<div class="label">warm tint + bigger tile</div>
+		<div class="preview">
+			<div class="mitiru-checker-floor"
+				style="--mitiru-checker-tile:60px; --mitiru-checker-light:#f5e3c8; --mitiru-checker-dark:#3c2a1b; --mitiru-checker-perspective:55deg;"></div>
+		</div>
+	</div>
+</div>
+
+<h2>F-12 · mitiru-checker-wall</h2>
+<div class="grid">
+	<div class="tile">
+		<div class="label">default (upright)</div>
+		<div class="preview"><div class="mitiru-checker-wall"></div></div>
+	</div>
+	<div class="tile">
+		<div class="label">monochrome blue</div>
+		<div class="preview">
+			<div class="mitiru-checker-wall"
+				style="--mitiru-checker-light:#b7d4f2; --mitiru-checker-dark:#3a5a7e; --mitiru-checker-tile:40px;"></div>
+		</div>
+	</div>
+</div>
+
+<h2>F-13 · mitiru-pane-window</h2>
+<div class="grid">
+	<div class="tile">
+		<div class="label">default (6-pane 3x2)</div>
+		<div class="preview"><div class="mitiru-pane-window"></div></div>
+	</div>
+	<div class="tile">
+		<div class="label">data-grid="2x2"</div>
+		<div class="preview"><div class="mitiru-pane-window" data-grid="2x2"></div></div>
+	</div>
+	<div class="tile">
+		<div class="label">data-grid="3x3"</div>
+		<div class="preview"><div class="mitiru-pane-window" data-grid="3x3"></div></div>
+	</div>
+	<div class="tile">
+		<div class="label">red frame, strong bloom</div>
+		<div class="preview">
+			<div class="mitiru-pane-window"
+				style="--mitiru-pane-frame:#b94949; --mitiru-pane-bloom-alpha:0.8;"></div>
+		</div>
+	</div>
+</div>
+
+<h2>F-12 + F-13 · Composed: diner interior</h2>
+<div class="grid">
+	<div class="tile">
+		<div class="label">checker floor + pane window</div>
+		<div class="preview" style="position:relative; background:#5a8cc4;">
+			<div class="mitiru-checker-floor" data-perspective="55"
+				style="position:absolute; inset:55% 0 0 0; height:45%;"></div>
+			<div class="mitiru-pane-window"
+				style="position:absolute; left:10%; right:10%; top:5%; height:50%;"></div>
+		</div>
+	</div>
+</div>
+
+<h2>F-02 §1 · mitiru-paper-note</h2>
+<div class="grid">
+	<div class="tile"><div class="label">default</div>
+		<div class="preview"><div class="mitiru-paper-note">Order: Sakura set</div></div></div>
+	<div class="tile"><div class="label">data-color="pink" data-pinned="true"</div>
+		<div class="preview"><div class="mitiru-paper-note" data-color="pink" data-pinned="true">pinned note</div></div></div>
+	<div class="tile"><div class="label">data-color="blue" rotate +3</div>
+		<div class="preview"><div class="mitiru-paper-note" data-color="blue" style="--mitiru-note-rotate:3deg;">tilted blue</div></div></div>
+</div>
+
+<h2>F-02 §2 · mitiru-menu-card</h2>
+<div class="grid">
+	<div class="tile"><div class="label">default</div>
+		<div class="preview"><div class="mitiru-menu-card">START</div></div></div>
+	<div class="tile"><div class="label">aria-pressed="true"</div>
+		<div class="preview"><div class="mitiru-menu-card" aria-pressed="true">SELECTED</div></div></div>
+</div>
+
+<h2>F-02 §3 · mitiru-pendant-lamp</h2>
+<div class="grid">
+	<div class="tile"><div class="label">default</div>
+		<div class="preview" style="background:#222;"><div class="mitiru-pendant-lamp"></div></div></div>
+	<div class="tile"><div class="label">tinted warm</div>
+		<div class="preview" style="background:#1a1a22;"><div class="mitiru-pendant-lamp" style="--mitiru-lamp-color:#ffb347;"></div></div></div>
+</div>
+
+<h2>F-02 §4 · mitiru-wall-clock</h2>
+<div class="grid">
+	<div class="tile"><div class="label">default (set via --mitiru-clock-*-deg)</div>
+		<div class="preview"><div class="mitiru-wall-clock" style="--mitiru-clock-hour-deg:220deg; --mitiru-clock-min-deg:30deg;"></div></div></div>
+	<div class="tile"><div class="label">12 o'clock</div>
+		<div class="preview"><div class="mitiru-wall-clock" style="--mitiru-clock-hour-deg:0deg; --mitiru-clock-min-deg:0deg;"></div></div></div>
+</div>
+
+<h2>F-02 §5 · mitiru-chrome-counter</h2>
+<div class="grid">
+	<div class="tile"><div class="label">default</div>
+		<div class="preview" style="background:#e5dcd0;"><div class="mitiru-chrome-counter" style="position:absolute; bottom:0; left:0; right:0;"></div></div></div>
+</div>
+
+<h2>F-02 §6 · mitiru-painted-sign</h2>
+<div class="grid">
+	<div class="tile"><div class="label">default</div>
+		<div class="preview"><div class="mitiru-painted-sign">OPEN</div></div></div>
+	<div class="tile"><div class="label">data-swing="true"</div>
+		<div class="preview"><div class="mitiru-painted-sign" data-swing="true">CAFE</div></div></div>
+</div>
+
+<h2>F-02 §7 · mitiru-heroine-silhouette</h2>
+<div class="grid">
+	<div class="tile"><div class="label">data-color="cherry"</div>
+		<div class="preview"><div class="mitiru-heroine-silhouette" data-color="cherry"></div></div></div>
+	<div class="tile"><div class="label">data-color="mint"</div>
+		<div class="preview"><div class="mitiru-heroine-silhouette" data-color="mint"></div></div></div>
+	<div class="tile"><div class="label">data-color="caramel"</div>
+		<div class="preview"><div class="mitiru-heroine-silhouette" data-color="caramel"></div></div></div>
+</div>
+
+<h2>F-02 §8 · mitiru-chrome-knob-row</h2>
+<div class="grid">
+	<div class="tile"><div class="label">data-count="3"</div>
+		<div class="preview" style="background:#2c2a28;"><div class="mitiru-chrome-knob-row" data-count="3" style="position:absolute; top:50%; left:10%; right:10%; transform:translateY(-50%);"></div></div></div>
+	<div class="tile"><div class="label">data-count="5"</div>
+		<div class="preview" style="background:#2c2a28;"><div class="mitiru-chrome-knob-row" data-count="5" style="position:absolute; top:50%; left:5%; right:5%; transform:translateY(-50%);"></div></div></div>
+</div>
+
+<h2>F-02 §9 · mitiru-ingredient-shelf-tile</h2>
+<div class="grid">
+	<div class="tile"><div class="label">default</div>
+		<div class="preview"><div class="mitiru-ingredient-shelf-tile">🌿 basil</div></div></div>
+	<div class="tile"><div class="label">lighter wood</div>
+		<div class="preview"><div class="mitiru-ingredient-shelf-tile" style="--mitiru-shelf-wood:#c8a678;">🧂 salt</div></div></div>
+</div>
+
+<h2>F-02 §10 · mitiru-hud-note (paired with F-08)</h2>
+<div class="grid">
+	<div class="tile"><div class="label">default fixed position (preview non-fixed)</div>
+		<div class="preview"><div class="mitiru-hud-note" style="position:static; margin:8px;">Day 3 · ¥480</div></div></div>
+</div>
+
+</body>
+</html>

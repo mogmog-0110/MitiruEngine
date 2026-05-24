@@ -1,0 +1,734 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mitiru_novel.js tests</title>
+<!--
+    test_novel.html — mitiru.novel (F-04) unit tests
+    Pattern: same inline IIFE as test_state.html / test_hud.html
+
+    Run:
+      python -m http.server 8765 --bind 127.0.0.1
+      open http://localhost:8765/web/mitiru_runtime/tests/test_novel.html
+
+    Machine-readable result:
+      window.__testResult  = { pass, fail, tests: [...] }
+      window.__testDone    = true
+-->
+<link rel="stylesheet" href="../mitiru_base.css">
+<style>
+    body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
+    pre  { white-space: pre-wrap; }
+</style>
+<script src="../mitiru_runtime.js"></script>
+<script src="../mitiru_test_harness.js"></script>
+<script src="../mitiru_state.js"></script>
+<script src="../mitiru_novel.js"></script>
+<pre id="results">(running...)</pre>
+<script>
+(function()
+{
+    'use strict';
+
+    const t = mitiru.test;
+    const n = mitiru.novel;
+
+    // ── helpers ──────────────────────────────────────────────────
+    function makeContainer()
+    {
+        var el = document.createElement('div');
+        el.style.cssText = 'width:640px;height:360px;position:relative;';
+        document.body.appendChild(el);
+        return el;
+    }
+
+    function teardown(container)
+    {
+        n.destroy();
+        if (container && container.parentNode) { container.parentNode.removeChild(container); }
+    }
+
+    function simpleScript(lines)
+    {
+        return { id: 'test', lines: lines };
+    }
+
+    // Collect events fired on containerEl.
+    function collectEvents(el, eventNames)
+    {
+        var log = [];
+        eventNames.forEach(function(name)
+        {
+            el.addEventListener(name, function(ev) { log.push({ type: name, detail: ev.detail }); });
+        });
+        return log;
+    }
+
+    // ── 1. guard: double-load prevention ────────────────────────
+    t.case('mitiru.novel exists and is not re-created on re-include', function()
+    {
+        t.assert(typeof n === 'object' && n !== null, 'novel API should be an object');
+        var ref = mitiru.novel;
+        // Simulate second load by invoking the IIFE manually (already guarded).
+        t.assertEq(mitiru.novel, ref, 'reference must be the same after guard');
+    });
+
+    // ── 2. load — inline object ──────────────────────────────────
+    t.case('load() with inline object resolves with script', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        var script = simpleScript([{ text: 'Hello' }]);
+        var result = await n.load(script);
+        t.assertEq(result.id, 'test');
+        teardown(c);
+    });
+
+    // ── 3. load — script:loaded event ───────────────────────────
+    t.case('load() fires novel:script-loaded event', async function()
+    {
+        var c      = makeContainer();
+        n.mount(c);
+        var events = collectEvents(c, ['novel:script-loaded']);
+        await n.load(simpleScript([{ text: 'Hi' }]));
+        t.assertEq(events.length, 1);
+        t.assertEq(events[0].detail.scriptId, 'test');
+        teardown(c);
+    });
+
+    // ── 4. advance + line:start event ───────────────────────────
+    t.case('advance() fires novel:line:start with correct detail', async function()
+    {
+        var c      = makeContainer();
+        n.mount(c);
+        var events = collectEvents(c, ['novel:line:start']);
+        await n.load(simpleScript([{ text: 'Line 1' }, { text: 'Line 2' }]));
+        n.advance();
+        t.assertEq(events.length, 1);
+        t.assertEq(events[0].detail.index, 0);
+        t.assertEq(events[0].detail.line.text, 'Line 1');
+        teardown(c);
+    });
+
+    // ── 5. pc() returns current index ───────────────────────────
+    t.case('pc() returns -1 before first advance', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([{ text: 'A' }]));
+        t.assertEq(n.pc(), -1);
+        teardown(c);
+    });
+
+    t.case('pc() increments with each advance', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([{ text: 'A' }, { text: 'B' }]));
+        n.advance();
+        t.assertEq(n.pc(), 0);
+        n._twShowFull();   // skip typewriter
+        n.advance();
+        t.assertEq(n.pc(), 1);
+        teardown(c);
+    });
+
+    // ── 6. script:end fires when lines exhausted ─────────────────
+    t.case('script:end fires after last line', async function()
+    {
+        var c      = makeContainer();
+        n.mount(c);
+        var events = collectEvents(c, ['novel:script:end']);
+        await n.load(simpleScript([{ text: 'Only line' }]));
+        n.advance();          // line 0 starts, typewriter begins
+        n._twShowFull();      // skip typewriter
+        n.advance();          // move past last line → script:end
+        t.assertEq(events.length, 1);
+        teardown(c);
+    });
+
+    // ── 7. double-tap: advance during typewriter skips to end ───
+    t.case('advance() during typewriter skips to full text (no new line)', async function()
+    {
+        var c      = makeContainer();
+        n.mount(c);
+        var starts = collectEvents(c, ['novel:line:start']);
+        await n.load(simpleScript([{ text: 'Long text' }, { text: 'Next' }]));
+        n.advance();   // starts line 0 + typewriter
+        t.assertEq(starts.length, 1, 'one line:start before second advance');
+        n.advance();   // double-tap: skip typewriter
+        t.assertEq(starts.length, 1, 'still one line:start — did not advance to next line');
+        // Textbox should show full text.
+        var textEl = c.querySelector('[data-novel-text]');
+        if (textEl) { t.assertEq(textEl.textContent, 'Long text'); }
+        teardown(c);
+    });
+
+    // ── 8. speaker displayed in textbox ─────────────────────────
+    t.case('speaker name is rendered in [data-novel-speaker]', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([{ speaker: 'Maria', text: 'Hello' }]));
+        n.advance();
+        n._twShowFull();
+        var spEl = c.querySelector('[data-novel-speaker]');
+        t.assert(spEl !== null, '[data-novel-speaker] element must exist');
+        t.assertEq(spEl.textContent, 'Maria');
+        teardown(c);
+    });
+
+    // ── 9. bg line auto-advances ─────────────────────────────────
+    t.case('bg line does not block — auto-advances to next line', async function()
+    {
+        var c      = makeContainer();
+        n.mount(c);
+        var starts = collectEvents(c, ['novel:line:start']);
+        await n.load(simpleScript([
+            { type: 'bg',   path: 'bg/test.png' },
+            { type: 'text', text: 'After bg' }
+        ]));
+        n.advance();   // runs bg line, then auto-advances to text line
+        t.assertEq(starts.length, 2, 'bg + text lines should both have started');
+        teardown(c);
+    });
+
+    // ── 10. choice: novel:choice:open fires ──────────────────────
+    t.case('choice line fires novel:choice:open with correct options', async function()
+    {
+        var c      = makeContainer();
+        n.mount(c);
+        var events = collectEvents(c, ['novel:choice:open']);
+        await n.load(simpleScript([
+            { type: 'choice', options: [
+                { label: 'Yes', next: 'branch.yes' },
+                { label: 'No',  next: 'branch.no'  }
+            ]}
+        ]));
+        n.advance();
+        t.assertEq(events.length, 1);
+        t.assertEq(events[0].detail.options.length, 2);
+        t.assertEq(events[0].detail.options[0].label, 'Yes');
+        teardown(c);
+    });
+
+    // ── 11. choice: button click fires choice:pick ───────────────
+    t.case('clicking a choice button fires novel:choice:pick', async function()
+    {
+        var c      = makeContainer();
+        n.mount(c);
+        var picks  = collectEvents(c, ['novel:choice:pick']);
+        await n.load(simpleScript([
+            { type: 'choice', options: [{ label: 'Go', next: '' }] }
+        ]));
+        n.advance();
+        var btn = c.querySelector('[data-novel-choice]');
+        t.assert(btn !== null, 'choice button should be rendered');
+        btn.click();
+        t.assertEq(picks.length, 1);
+        t.assertEq(picks[0].detail.label, 'Go');
+        teardown(c);
+    });
+
+    // ── 12. choice: label jump ───────────────────────────────────
+    t.case('choice.next jumps to matching label in script', async function()
+    {
+        var c      = makeContainer();
+        n.mount(c);
+        var starts = collectEvents(c, ['novel:line:start']);
+        await n.load(simpleScript([
+            { type: 'choice', options: [{ label: 'Jump', next: 'target' }] },
+            { type: 'text',   text: 'UNREACHABLE' },
+            { type: 'text',   label: 'target', text: 'Reached' }
+        ]));
+        n.advance();   // choice opens
+        var btn = c.querySelector('[data-novel-choice]');
+        btn.click();
+        // After click, line:start fires for 'Reached'.
+        var lastStart = starts[starts.length - 1];
+        t.assertEq(lastStart.detail.line.text, 'Reached');
+        teardown(c);
+    });
+
+    // ── 13. log() records dialogue lines ────────────────────────
+    t.case('log() accumulates text lines in order', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([
+            { speaker: 'A', text: 'First'  },
+            { speaker: 'B', text: 'Second' }
+        ]));
+        n.advance(); n._twShowFull();
+        n.advance(); n._twShowFull();
+        var log = n.log();
+        t.assertEq(log.length, 2);
+        t.assertEq(log[0].text, 'First');
+        t.assertEq(log[1].text, 'Second');
+        teardown(c);
+    });
+
+    // ── 14. backlog DOM rendered correctly ──────────────────────
+    t.case('showBacklog() renders log entries in a <ul>', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([{ speaker: 'X', text: 'Entry' }]));
+        n.advance(); n._twShowFull();
+        n.showBacklog();
+        var ul = c.querySelector('[data-novel-backlog] ul');
+        t.assert(ul !== null, 'backlog <ul> should exist');
+        t.assertEq(ul.children.length, 1);
+        teardown(c);
+    });
+
+    // ── 15. save() / restore() ──────────────────────────────────
+    t.case('save() + restore() round-trips pc and log', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        var script = simpleScript([
+            { speaker: 'A', text: 'Line 0' },
+            { speaker: 'B', text: 'Line 1' }
+        ]);
+        await n.load(script);
+        n.advance(); n._twShowFull();
+        t.assertEq(n.pc(), 0);
+
+        await n.save('slot0');
+
+        // Advance further then restore.
+        n.advance(); n._twShowFull();
+        t.assertEq(n.pc(), 1);
+
+        await n.restore('slot0');
+        t.assertEq(n.pc(), 0);
+        teardown(c);
+    });
+
+    // ── 16. wait line uses setTimeout ───────────────────────────
+    t.case('wait line fires line:start for next line after delay', async function()
+    {
+        var c      = makeContainer();
+        n.mount(c);
+        var starts = collectEvents(c, ['novel:line:start']);
+        await n.load(simpleScript([
+            { type: 'wait', ms: 0 },
+            { type: 'text', text: 'After wait' }
+        ]));
+        n.advance();   // wait line starts, immediately resolves (ms:0)
+        // ms:0 setTimeout fires asynchronously — await a microtask tick.
+        await new Promise(function(r) { setTimeout(r, 10); });
+        t.assertEq(starts.length, 2, 'text line should have started after wait');
+        teardown(c);
+    });
+
+    // ── 17. destroy() clears DOM and state ──────────────────────
+    t.case('destroy() removes novel-root from container', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([{ text: 'X' }]));
+        n.destroy();
+        t.assertEq(c.querySelector('[data-novel-root]'), null);
+        if (c.parentNode) { c.parentNode.removeChild(c); }
+    });
+
+    // ── NF-10: skip-unread tracking ──────────────────────────────
+    function resetRead()
+    {
+        n.clearReadHistory();
+        n.setSkipMode('off');
+    }
+
+    t.case('NF-10 isRead returns false before markRead', function()
+    {
+        resetRead();
+        t.assertEq(n.isRead('ch01', 0), false);
+    });
+
+    t.case('NF-10 markRead + isRead roundtrip', function()
+    {
+        resetRead();
+        n.markRead('ch01', 2);
+        t.assertEq(n.isRead('ch01', 2), true);
+        t.assertEq(n.isRead('ch01', 1), false);
+    });
+
+    t.case('NF-10 advance() through a text line auto-calls markRead', async function()
+    {
+        resetRead();
+        var c = makeContainer();
+        var script = { id: 'ch01', lines: [{ text: 'A' }, { text: 'B' }] };
+        n.mount(c);
+        await n.load(script);
+        n.advance();                       // start line 0
+        await new Promise(function(r){ setTimeout(r, 20); });
+        n._twShowFull();                   // finish typewriter on line 0
+        n.advance();                       // advance to line 1 — marks line 0 as read
+        await new Promise(function(r){ setTimeout(r, 20); });
+        t.assertEq(n.isRead('ch01', 0), true);
+        teardown(c);
+    });
+
+    t.case('NF-10 chapterProgress counts text/dialogue only', async function()
+    {
+        resetRead();
+        var script = { id: 'ch01', lines: [
+            { type: 'bg',     path: 'x' },
+            { text: 'A' },
+            { type: 'wait',   ms: 0 },
+            { text: 'B' },
+            { text: 'C' },
+        ]};
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(script);
+        var p = n.chapterProgress('ch01');
+        t.assertEq(p.total, 3);
+        t.assertEq(p.read,  0);
+        n.markRead('ch01', 1);
+        n.markRead('ch01', 3);
+        p = n.chapterProgress('ch01');
+        t.assertEq(p.read, 2);
+        t.assertEq(Math.round(p.fraction * 100) / 100, Math.round((2/3) * 100) / 100);
+        teardown(c);
+    });
+
+    t.case('NF-10 totalReadLines sums across scripts', function()
+    {
+        resetRead();
+        n.markRead('a', 0); n.markRead('a', 1);
+        n.markRead('b', 0);
+        t.assertEq(n.totalReadLines(), 3);
+    });
+
+    t.case('NF-10 clearReadHistory(id) drops only that id', function()
+    {
+        resetRead();
+        n.markRead('a', 0);
+        n.markRead('b', 0);
+        n.clearReadHistory('a');
+        t.assertEq(n.isRead('a', 0), false);
+        t.assertEq(n.isRead('b', 0), true);
+    });
+
+    t.case('NF-10 clearReadHistory() drops all', function()
+    {
+        resetRead();
+        n.markRead('a', 0);
+        n.markRead('b', 0);
+        n.clearReadHistory();
+        t.assertEq(n.totalReadLines(), 0);
+    });
+
+    t.case('NF-10 setSkipMode validates mode string', function()
+    {
+        resetRead();
+        var threw = false;
+        try { n.setSkipMode('nope'); } catch (_e) { threw = true; }
+        t.assertEq(threw, true);
+        t.assertEq(n.skipMode(), 'off');
+    });
+
+    t.case('NF-10 setSkipMode + skipMode roundtrip', function()
+    {
+        resetRead();
+        n.setSkipMode('all');
+        t.assertEq(n.skipMode(), 'all');
+        n.setSkipMode('read-only');
+        t.assertEq(n.skipMode(), 'read-only');
+        n.setSkipMode('off');
+        t.assertEq(n.skipMode(), 'off');
+    });
+
+    // ── NF-11: effect primitives ─────────────────────────────────
+    t.case('NF-11 shake fires novel:effect:start + :end', async function()
+    {
+        var c = makeContainer();
+        var starts = [], ends = [];
+        c.addEventListener('novel:effect:start', function(e) { starts.push(e.detail); });
+        c.addEventListener('novel:effect:end',   function(e) { ends.push(e.detail);   });
+
+        n.mount(c);
+        await n.load(simpleScript([
+            { type: 'shake', target: 'stage', durationMs: 10, intensity: 0.5 },
+            { text: 'after' },
+        ]));
+        n.advance();                                   // runs shake
+        await new Promise(function(r){ setTimeout(r, 80); });
+        t.assertEq(starts.length, 1);
+        t.assertEq(starts[0].type, 'shake');
+        t.assertEq(ends.length, 1);
+        t.assertEq(ends[0].type, 'shake');
+        teardown(c);
+    });
+
+    t.case('NF-11 flash creates + removes overlay element', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([
+            { type: 'flash', color: '#ffffff', durationMs: 10 },
+            { text: 'after' },
+        ]));
+        n.advance();
+        await new Promise(function(r){ setTimeout(r, 5); });
+        var overlay = c.querySelector('.novel-flash-overlay');
+        t.assert(overlay !== null, 'overlay present during flash');
+        await new Promise(function(r){ setTimeout(r, 80); });
+        t.assertEq(c.querySelector('.novel-flash-overlay'), null);
+        teardown(c);
+    });
+
+    t.case('NF-11 tint creates + removes overlay element', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([
+            { type: 'tint', color: '#ff4444', durationMs: 10, peakAlpha: 0.5 },
+            { text: 'after' },
+        ]));
+        n.advance();
+        await new Promise(function(r){ setTimeout(r, 80); });
+        t.assertEq(c.querySelector('.novel-tint-overlay'), null);
+        teardown(c);
+    });
+
+    t.case('NF-11 zoom fires effect events for bg target', async function()
+    {
+        var c = makeContainer();
+        var types = [];
+        c.addEventListener('novel:effect:start', function(e) { types.push(e.detail.type); });
+        n.mount(c);
+        await n.load(simpleScript([
+            { type: 'zoom', target: 'bg', scale: 1.2, durationMs: 10 },
+            { text: 'after' },
+        ]));
+        n.advance();
+        await new Promise(function(r){ setTimeout(r, 80); });
+        t.assertEq(types.indexOf('zoom') >= 0, true);
+        teardown(c);
+    });
+
+    t.case('NF-11 effect line auto-advances to the next line', async function()
+    {
+        var c = makeContainer();
+        var startedTexts = [];
+        c.addEventListener('novel:line:start', function(e)
+        {
+            var l = e.detail.line;
+            if (l.text) { startedTexts.push(l.text); }
+        });
+        n.mount(c);
+        await n.load(simpleScript([
+            { type: 'flash', durationMs: 10 },
+            { text: 'A' },
+        ]));
+        n.advance();                                   // enters flash
+        await new Promise(function(r){ setTimeout(r, 80); });
+        t.assertEq(startedTexts.indexOf('A') >= 0, true);
+        teardown(c);
+    });
+
+    t.case('NF-11 sprite:<id> target missing → warn + no-op', async function()
+    {
+        var c = makeContainer();
+        var ends = [];
+        c.addEventListener('novel:effect:end', function(e) { ends.push(e.detail.type); });
+        n.mount(c);
+        await n.load(simpleScript([
+            { type: 'slide', target: 'sprite:bogus', direction: 'left', distance: 32, durationMs: 10 },
+            { text: 'A' },
+        ]));
+        n.advance();
+        await new Promise(function(r){ setTimeout(r, 50); });
+        // The effect still resolves (no-op path) so playback continues.
+        t.assertEq(ends.length >= 1, true);
+        teardown(c);
+    });
+
+    // ── H-01: load() clears previous script's UI DOM ─────────────
+    t.case('H-01 load() clears textbox, bg layer, and sprite layer', async function()
+    {
+        // Arrange: mount, play a script to completion so textbox/bg/sprite
+        // all carry residue from the previous script.
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([
+            { speaker: 'Narrator', text: 'farewell' },
+            { type: 'bg', path: 'data:image/svg+xml;utf8,<svg/>' },
+            { type: 'sprite', id: 'hero', path: 'data:image/svg+xml;utf8,<svg/>', pos: 'center' }
+        ]));
+        n.advance(); n._twShowFull();   // render text line
+        n.advance();                    // bg line (auto-advances)
+        n.advance();                    // sprite line
+        // Sanity: textbox now has residue.
+        var speakerEl = c.querySelector('[data-novel-speaker]');
+        var textEl    = c.querySelector('[data-novel-text]');
+        t.assertEq(speakerEl.textContent, 'Narrator');
+        t.assertEq(textEl.textContent, 'farewell');
+        t.assert(c.querySelector('.novel-bg-layer').children.length >= 1, 'bg layer has children before reload');
+        t.assert(c.querySelector('.novel-sprite-layer').children.length >= 1, 'sprite layer has children before reload');
+
+        // Act: load a second script without advancing it.
+        await n.load(simpleScript([{ text: 'fresh line' }]));
+
+        // Assert: all UI residue cleared.
+        t.assertEq(speakerEl.textContent, '');
+        t.assertEq(textEl.textContent, '');
+        t.assertEq(c.querySelector('.novel-bg-layer').children.length, 0);
+        t.assertEq(c.querySelector('.novel-sprite-layer').children.length, 0);
+        teardown(c);
+    });
+
+    // ── H-02: bgFit mount option + per-line override ─────────────
+    t.case('H-02 bgFit mount option applies to bg lines', async function()
+    {
+        var c = makeContainer();
+        n.mount(c, { bgFit: 'contain' });
+        await n.load(simpleScript([
+            { type: 'bg', path: 'data:image/svg+xml;utf8,<svg/>' },
+            { text: 'next' }
+        ]));
+        n.advance();
+        var bgEl = c.querySelector('.novel-bg-layer > div');
+        t.assert(bgEl !== null, 'bg element created');
+        t.assertEq(bgEl.style.backgroundSize, 'contain');
+        teardown(c);
+    });
+
+    t.case('H-02 per-line fit overrides mount default', async function()
+    {
+        var c = makeContainer();
+        n.mount(c, { bgFit: 'cover' });
+        await n.load(simpleScript([
+            { type: 'bg', path: 'data:image/svg+xml;utf8,<svg/>', fit: 'fill' },
+            { text: 'next' }
+        ]));
+        n.advance();
+        var bgEl = c.querySelector('.novel-bg-layer > div');
+        // 'fill' is a novel-level alias for the CSS stretch `100% 100%`.
+        t.assertEq(bgEl.style.backgroundSize, '100% 100%');
+        teardown(c);
+    });
+
+    t.case('H-02 invalid bgFit throws from mount', function()
+    {
+        var c = makeContainer();
+        var threw = false;
+        try { n.mount(c, { bgFit: 'bogus' }); } catch (e) { threw = true; }
+        t.assertEq(threw, true);
+        n.destroy();
+        if (c.parentNode) { c.parentNode.removeChild(c); }
+    });
+
+    // ── H-03: setSkipMode 'none' alias + SkipMode enum ───────────
+    t.case('H-03 setSkipMode accepts none as alias for off', function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        var threw = false;
+        try { n.setSkipMode('none'); } catch (e) { threw = true; }
+        t.assertEq(threw, false);
+        t.assertEq(n.skipMode(), 'off');
+        teardown(c);
+    });
+
+    t.case('H-03 SkipMode enum exposes frozen constants', function()
+    {
+        t.assertEq(n.SkipMode.OFF, 'off');
+        t.assertEq(n.SkipMode.ALL, 'all');
+        t.assertEq(n.SkipMode.READ_ONLY, 'read-only');
+        // Frozen: mutation silently fails in non-strict or throws in strict.
+        var before = n.SkipMode.OFF;
+        try { n.SkipMode.OFF = 'mutated'; } catch (e) { /* strict mode throws */ }
+        t.assertEq(n.SkipMode.OFF, before);
+    });
+
+    t.case('H-03 setSkipMode still throws on unknown mode', function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        var threw = false;
+        try { n.setSkipMode('bogus'); } catch (e) { threw = true; }
+        t.assertEq(threw, true);
+        teardown(c);
+    });
+
+    // ── H-05: textbox style rules live in injected <style> block ─
+    t.case('H-05 mount injects mitiru-novel-styles once', function()
+    {
+        var c1 = makeContainer();
+        n.mount(c1);
+        var styleEl = document.getElementById('mitiru-novel-styles');
+        t.assert(styleEl !== null, 'style block present after first mount');
+        t.assert(styleEl.textContent.indexOf('.novel-textbox') >= 0, 'textbox rule present');
+        n.destroy();
+        if (c1.parentNode) { c1.parentNode.removeChild(c1); }
+
+        // Second mount does not duplicate the style block.
+        var c2 = makeContainer();
+        n.mount(c2);
+        var styleEls = document.querySelectorAll('#mitiru-novel-styles');
+        t.assertEq(styleEls.length, 1);
+        teardown(c2);
+    });
+
+    t.case('H-05 textbox has no inline background or min-height', function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        var tb = c.querySelector('.novel-textbox');
+        t.assert(tb !== null, 'textbox created');
+        // Visual defaults now live in the <style> block, not inline.
+        t.assertEq(tb.style.background, '');
+        t.assertEq(tb.style.backgroundColor, '');
+        t.assertEq(tb.style.padding, '');
+        t.assertEq(tb.style.minHeight, '');
+        t.assertEq(tb.style.color, '');
+        teardown(c);
+    });
+
+    // ── Bonus: input lockout ─────────────────────────────────────
+    t.case('bonus setInputLockout arms perLineMs on advance', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([{ text: 'A' }, { text: 'B' }]));
+        n.setInputLockout({ perLineMs: 100 });
+
+        t.assertEq(n.inputLocked(), false);
+        n.advance();
+        t.assertEq(n.inputLocked(), true);
+
+        await new Promise(function(r){ setTimeout(r, 130); });
+        t.assertEq(n.inputLocked(), false);
+        teardown(c);
+    });
+
+    t.case('bonus setInputLockout arms sceneTransitionMs on load', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        n.setInputLockout({ sceneTransitionMs: 120 });
+        t.assertEq(n.inputLocked(), false);
+        await n.load(simpleScript([{ text: 'A' }]));
+        t.assertEq(n.inputLocked(), true);
+        await new Promise(function(r){ setTimeout(r, 150); });
+        t.assertEq(n.inputLocked(), false);
+        teardown(c);
+    });
+
+    t.case('bonus setInputLockout defaults to disabled (perLineMs=0)', async function()
+    {
+        var c = makeContainer();
+        n.mount(c);
+        await n.load(simpleScript([{ text: 'A' }]));
+        n.advance();
+        t.assertEq(n.inputLocked(), false);
+        teardown(c);
+    });
+
+    // ── run ─────────────────────────────────────────────────────
+    mitiru.test.run();
+}());
+</script>

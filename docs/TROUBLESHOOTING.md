@@ -140,9 +140,9 @@ If you do not need audio output, the engine will fall back to `NullAudioOutput` 
 **Cause:** HLSL shader source has syntax errors or the shader compiler (d3dcompiler_47.dll) is missing.
 
 **Fix:**
-1. Ensure the Windows SDK is installed (comes with Visual Studio)
+1. Ensure the Windows SDK is installed (bundled with Visual Studio Build Tools 2022 or the full IDE)
 2. Check that `d3dcompiler.lib` is linked
-3. For custom shaders, validate syntax in Visual Studio's HLSL editor
+3. For custom shaders, validate syntax in any HLSL-aware editor (VS Code + HLSL extension, or the full Visual Studio IDE if you happen to have it)
 4. The engine's built-in shaders (in `DefaultShaders3D.hpp`, `ToonShaders3D.hpp`, `NPRShaders3D.hpp`) are embedded as string constants -- if these fail, it likely indicates a driver or SDK issue
 
 ### Shader mode switch causes crash

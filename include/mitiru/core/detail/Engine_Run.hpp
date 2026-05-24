@@ -1,7 +1,13 @@
 // Detail header for mitiru::Engine - do not include directly; included via core/Engine.hpp
 #pragma once
 
+#include <cstdlib>
+
 #include <mitiru/core/InlineMacro.hpp>
+
+#ifdef _WIN32
+#include <mitiru/platform/win32/Win32Window.hpp>
+#endif
 
 // ── Run loop / batch execution out-of-class definitions ───────────────────
 
@@ -24,6 +30,33 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	config.applyAutoTestEnv();
 
 	initialize(config);
+
+	/// axis 4 — deterministic replay recording.
+	/// MITIRU_RECORD=<path> が設定されていれば InputRecorder を起動し、
+	/// 終了時に ~Engine() で saveToFile する。
+	if (const char* recPath = std::getenv("MITIRU_RECORD"); recPath && *recPath)
+	{
+		m_recordOutputPath = recPath;
+		m_inputRecorder.beginRecording(/*seed=*/0, /*tps=*/60);
+	}
+
+	/// axis 4 — deterministic replay playback.
+	/// MITIRU_REPLAY=<path> が設定されていれば ReplayData を読み込んで
+	/// InputReplayer に load する。以後 applyInjectedInput が毎フレーム
+	/// replayer.getCommandsForFrame(clock.frameNumber()) を inject する。
+	if (const char* replayPath = std::getenv("MITIRU_REPLAY"); replayPath && *replayPath)
+	{
+		try
+		{
+			auto data = mitiru::ReplayData::loadFromFile(replayPath);
+			m_inputReplayer.load(data);
+			m_replayActive = true;
+		}
+		catch (...)
+		{
+			// File missing / malformed: leave replay disabled and run normally.
+		}
+	}
 
 	const auto logicalSize = game.layout(
 		m_window->width(), m_window->height());
@@ -105,6 +138,32 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	/// 永続化されないバグになるため、必ず member を参照する。
 	m_loopGame = &game;
 	m_loopConfig = &m_config;
+
+#ifdef _WIN32
+	/// Win32 modal resize loop 中 (枠 drag 中) も engine を tick させる。
+	/// 詳細は Win32Window::setTickCallback / WM_ENTERSIZEMOVE の comment 参照。
+	if (auto* win32 = dynamic_cast<mitiru::Win32Window*>(m_window.get()))
+	{
+		win32->setTickCallback([this] {
+			if (!m_window->shouldClose() && !m_shouldStop.load())
+			{
+				tickOneFrame();
+			}
+		});
+
+		/// drag 終了時に、modal 中 defer されていた logical/CEF resize を flush
+		win32->setModalResizeEndCallback([this] {
+			if (m_pendingResizeW > 0 && m_pendingResizeH > 0)
+			{
+				const int w = m_pendingResizeW;
+				const int h = m_pendingResizeH;
+				m_pendingResizeW = 0;
+				m_pendingResizeH = 0;
+				onWindowResize(w, h);
+			}
+		});
+	}
+#endif
 #ifdef __EMSCRIPTEN__
 	emscripten_set_main_loop_arg(
 		[](void* arg) {
