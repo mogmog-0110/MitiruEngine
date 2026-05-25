@@ -322,6 +322,22 @@ void requestJsExec(mitiru::module::FrameIntents* intents,
 //
 // Only gameplay HUD values reach the game window: HP / SURVIVE timer /
 // win-lose modal / hit-flash trigger. No debug/tool state is pushed here.
+//
+// The HP bar is composed C++-side (filled/empty block strings) so the HTML
+// stays pure data-m-* with zero JavaScript: the scene binds view.hud.hpFill /
+// view.hud.hpEmpty as text and view.hud.hpLow as a class. Presentation logic
+// that used to live in scene JS now lives here, where the state already is.
+
+constexpr int kHpBarWidth = 20;  // total block count in the HP bar
+
+// Repeat a UTF-8 block glyph `count` times into a std::string.
+std::string repeatGlyph(const char* glyph, int count)
+{
+	std::string out;
+	out.reserve(static_cast<std::size_t>(count) * std::strlen(glyph));
+	for (int i = 0; i < count; ++i) { out += glyph; }
+	return out;
+}
 
 void pushHudDelta(HelloGameMemory& mem,
                   mitiru::module::FrameIntents* intents)
@@ -330,6 +346,13 @@ void pushHudDelta(HelloGameMemory& mem,
 	{
 		pushStateInt(intents, "view.hud.hp", mem.hp);
 		mem.lastHp = mem.hp;
+
+		// Recompose the block bar from the new HP (maxHp is constant kMaxHp).
+		const float pct    = std::clamp(static_cast<float>(mem.hp) / kMaxHp, 0.0f, 1.0f);
+		const int   filled = static_cast<int>(std::lround(pct * kHpBarWidth));
+		pushStateString(intents, "view.hud.hpFill",  repeatGlyph("█", filled));
+		pushStateString(intents, "view.hud.hpEmpty", repeatGlyph("░", kHpBarWidth - filled));
+		pushStateBool(intents, "view.hud.hpLow", pct <= 0.35f);
 	}
 	if (mem.lastMaxHp != kMaxHp)
 	{

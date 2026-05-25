@@ -128,9 +128,10 @@
             50%      { opacity: 0.55; }
         }
 
-        /* Hit flash — DLL pushes view.hud.hitCount on damage. JS toggles
-           .is-hit-flash on .panel--hp for ~180ms → quick scale + tint. */
-        .panel--hp.is-hit-flash {
+        /* Hit flash — DLL pushes view.hud.hitCount on damage. The binder adds
+           .m-flash on .panel--hp whenever that value changes (data-m-flash),
+           then drops it on animationend → quick scale + tint. Zero JS. */
+        .panel--hp.m-flash {
             animation: hit-flash 180ms ease-out;
         }
         @keyframes hit-flash {
@@ -147,7 +148,7 @@
 
         /* HP value number — slight digit-flip when HP changes */
         .value#hp-value { transition: color 120ms; display: inline-block; }
-        .panel--hp.is-hit-flash .value#hp-value { color: var(--mitiru-danger); }
+        .panel--hp.m-flash .value#hp-value { color: var(--mitiru-danger); }
 
         /* ── Hint dock (bottom-left, no panel chrome) ─────────── */
         .hint {
@@ -271,15 +272,15 @@
     </style>
 </head>
 <body>
-    <div class="panel panel--hp">
+    <div class="panel panel--hp" data-m-flash="view.hud.hitCount">
         <div class="panel__caption">HP</div>
-        <div class="value"><span id="hp-value">100</span><span class="sub">/ <span id="hp-max">100</span></span></div>
-        <div class="bar" id="hp-bar"><span class="bar__fill" id="hp-fill">████████████████████</span><span class="bar__empty" id="hp-empty"></span></div>
+        <div class="value"><span id="hp-value" data-m-text="view.hud.hp">100</span><span class="sub">/ <span id="hp-max" data-m-text="view.hud.maxHp">100</span></span></div>
+        <div class="bar" id="hp-bar" data-m-class="bar--low: view.hud.hpLow"><span class="bar__fill" id="hp-fill" data-m-text="view.hud.hpFill">████████████████████</span><span class="bar__empty" id="hp-empty" data-m-text="view.hud.hpEmpty"></span></div>
     </div>
 
     <div class="panel panel--timer">
         <div class="panel__caption">SURVIVE</div>
-        <div class="value"><span id="time-value">30</span><span class="sub">sec</span></div>
+        <div class="value"><span id="time-value" data-m-text="view.hud.time">30</span><span class="sub">sec</span></div>
     </div>
 
     <div class="hint">
@@ -288,96 +289,23 @@
         <span><kbd>ESC</kbd> quit</span>
     </div>
 
-    <div class="overlay" id="overlay">
+    <!-- Win-lose modal. data-m-class toggles .is-visible on game over; the two
+         title/subtitle variants pick themselves with data-m-show on the outcome
+         string; the button dispatches an action. No JavaScript — all data-m-*. -->
+    <div class="overlay" id="overlay" data-m-class="is-visible: view.hud.gameOver">
         <div class="card">
-            <h1 class="card__title" id="card-title">GAME OVER</h1>
-            <div class="card__subtitle" id="card-subtitle">enemies caught you</div>
-            <button class="restart" id="restart-btn">[ Restart ]</button>
+            <h1 class="card__title card__title--win"  data-m-show="view.hud.outcome == win">YOU SURVIVED</h1>
+            <h1 class="card__title card__title--lose" data-m-show="view.hud.outcome == lose">GAME OVER</h1>
+            <div class="card__subtitle" data-m-show="view.hud.outcome == win">cleared the 30-second run</div>
+            <div class="card__subtitle" data-m-show="view.hud.outcome == lose">the enemies caught you</div>
+            <button class="restart" data-m-action="game.restart">[ Restart ]</button>
         </div>
     </div>
 
+    <!-- Bridge transport + declarative binder. The game pushes view.hud.* from
+         C++ (see hello_game_dll.cpp pushHudDelta); these scripts are engine
+         runtime, not game code — hello_game itself contains zero hand-written JS. -->
     <script src="mitiru_runtime/mitiru_cef_state.js"></script>
-    <script>
-        (function () {
-            'use strict';
-
-            const $ = (id) => document.getElementById(id);
-            const hpValue  = $('hp-value');
-            const hpMax    = $('hp-max');
-            const hpFill   = $('hp-fill');
-            const hpEmpty  = $('hp-empty');
-            const hpBar    = $('hp-bar');
-            const timeEl   = $('time-value');
-            const overlay  = $('overlay');
-            const title    = $('card-title');
-            const subtitle = $('card-subtitle');
-            const button   = $('restart-btn');
-
-            let maxHp = 100;
-            const BAR_WIDTH = 20;  // total block count in HP bar
-
-            window.mitiru.onStateChange('view.hud.maxHp', function (v) {
-                maxHp = Number(v) || 100;
-                hpMax.textContent = String(maxHp);
-            });
-
-            window.mitiru.onStateChange('view.hud.hp', function (v) {
-                const hp  = Number(v) || 0;
-                const pct = Math.max(0, Math.min(1, hp / maxHp));
-                const filled = Math.round(pct * BAR_WIDTH);
-                hpValue.textContent = String(hp);
-                hpFill.textContent  = '█'.repeat(filled);
-                hpEmpty.textContent = '░'.repeat(BAR_WIDTH - filled);
-                hpBar.classList.toggle('bar--low', pct <= 0.35);
-            });
-
-            /* Hit flash — DLL increments view.hud.hitCount on damage.
-               JS triggers a one-shot animation on the HP panel.            */
-            const hpPanel = document.querySelector('.panel--hp');
-            let lastHitCount = 0;
-            let hitFlashTimer = 0;
-            window.mitiru.onStateChange('view.hud.hitCount', function (v) {
-                const c = Number(v) || 0;
-                if (c === lastHitCount) { return; }
-                lastHitCount = c;
-                if (!hpPanel) { return; }
-                hpPanel.classList.remove('is-hit-flash');
-                void hpPanel.offsetWidth; // restart animation
-                hpPanel.classList.add('is-hit-flash');
-                if (hitFlashTimer) { clearTimeout(hitFlashTimer); }
-                hitFlashTimer = setTimeout(function () {
-                    hpPanel.classList.remove('is-hit-flash');
-                }, 200);
-            });
-
-            window.mitiru.onStateChange('view.hud.time', function (v) {
-                timeEl.textContent = String(Math.max(0, Number(v) || 0));
-            });
-
-            window.mitiru.onStateChange('view.hud.gameOver', function (v) {
-                overlay.classList.toggle('is-visible', Boolean(v));
-            });
-
-            window.mitiru.onStateChange('view.hud.outcome', function (v) {
-                if (v === 'win') {
-                    title.textContent = 'YOU SURVIVED';
-                    title.className = 'card__title card__title--win';
-                    subtitle.textContent = 'cleared the 30-second run';
-                } else if (v === 'lose') {
-                    title.textContent = 'GAME OVER';
-                    title.className = 'card__title card__title--lose';
-                    subtitle.textContent = 'the enemies caught you';
-                } else {
-                    title.textContent = '';
-                    subtitle.textContent = '';
-                }
-            });
-
-            button.addEventListener('click', function () {
-                window.mitiru.dispatch('game.restart').catch(err =>
-                    console.error('[hello_game] restart dispatch failed:', err));
-            });
-        })();
-    </script>
+    <script src="mitiru_runtime/mitiru_bind.js"></script>
 </body>
 </html>
