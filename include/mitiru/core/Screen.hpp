@@ -36,7 +36,7 @@
 namespace mitiru::render
 {
 class RenderPipeline2D;
-enum class PixelArtFilter; ///< Forward decl; full definition in RenderPipeline2D.hpp.
+enum class PixelArtFilter; ///< forward decl。完全な定義は RenderPipeline2D.hpp。
 } // namespace mitiru::render
 
 
@@ -644,9 +644,9 @@ public:
 	/// @details バッチをフラッシュしてからパイプラインのブレンドモードを切り替える。
 	void setBlendMode(gfx::BlendMode mode);
 
-	/// @brief 2D affine transform (alias for mitiru::render::Transform2D).
-	/// @details 2x3 affine matrix supporting translate/scale/rotate/compose.
-	///          See `include/mitiru/render/Transform2D.hpp`.
+	/// @brief 2D affine transform (mitiru::render::Transform2D の alias)。
+	/// @details translate/scale/rotate/compose をサポートする 2x3 affine matrix。
+	///          詳細は `include/mitiru/render/Transform2D.hpp`。
 	using Transform2D = render::Transform2D;
 
 	/// @brief 変換をプッシュする（現在の変換に乗算）
@@ -698,8 +698,8 @@ public:
 	{
 		constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 		const float rad = rotationDeg * kDegToRad;
-		// translate(position) * rotate(rad) — rotation around local origin,
-		// then translate the whole group to `position`.
+		// translate(position) * rotate(rad) — local 原点まわりで回転させ、
+		// その後 group 全体を `position` へ平行移動する。
 		pushTransform(Transform2D::translate(position.x, position.y) * Transform2D::rotate(rad));
 		drawFn(*this);
 		popTransform();
@@ -794,7 +794,7 @@ private:
 		return m_transformStack.top();
 	}
 
-	// ── Internal transform-aware emit helpers ─────────────
+	// ── transform 対応の内部 emit ヘルパー ─────────────
 	// 描画メソッドはこれらを経由することで currentTransform を自動適用する。
 	// rotation を持つ変換では、SpriteBatch のAABB矩形では表現不能なため
 	// ShapeRenderer 経由で2三角形クワッドとして emit する。
@@ -1123,13 +1123,13 @@ private:
 		const auto& bounds = node.bounds();
 		const auto style = theme.styleFor(node.role());
 
-		// Draw background
+		// 背景を描画
 		if (style.background.a > 0.01f)
 		{
 			drawRect(bounds, style.background);
 		}
 
-		// Draw border
+		// 枠線を描画
 		if (style.border.a > 0.01f)
 		{
 			const float bw = 1.0f;
@@ -1139,7 +1139,7 @@ private:
 			drawRect(sgc::Rectf{bounds.x() + bounds.width() - bw, bounds.y(), bw, bounds.height()}, style.border);
 		}
 
-		// Draw role-specific content
+		// role 固有のコンテンツを描画
 		switch (node.role())
 		{
 		case ui::UIRole::Label:
@@ -1171,7 +1171,7 @@ private:
 			break;
 		}
 
-		// Recurse children
+		// 子ノードを再帰描画
 		for (const auto& child : node.children())
 		{
 			if (child) renderUINode(*child, theme);

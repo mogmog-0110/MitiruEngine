@@ -1,39 +1,39 @@
 /*!
  * mitiru_tokens_saturn.css — Sega Saturn BIOS inspired theme (refined)
  *
- * Design intent: 1995 Saturn BIOS memory-manager UI — silver-plastic gray,
- * single sober red accent for selection / CTAs, hard black hairlines, strong
- * 2px inset bevel chrome (white top-left + dark bottom-right). Press Start 2P
- * for headings, condensed sans for body. No magenta-cyan mix — Saturn BIOS
- * was much more restrained than the brand mark.
+ * Design intent: 1995 年の Saturn BIOS メモリマネージャ UI — シルバープラスチックの
+ * グレー、選択 / CTA 用の落ち着いた赤 accent ひとつ、硬い黒のヘアライン、強い
+ * 2px inset bevel chrome (左上が白 + 右下が暗色)。見出しは Press Start 2P、
+ * 本文は condensed sans。magenta-cyan の混色は使わない — Saturn BIOS は
+ * ブランドマークよりずっと抑制的だった。
  *
- * Swap by replacing the <link> to mitiru_tokens.css with this file.
- * Recommended <head> font import:
+ * mitiru_tokens.css への <link> をこのファイルに差し替えて切り替える。
+ * 推奨する <head> の font import:
  *   <link rel="preconnect" href="https://fonts.googleapis.com">
  *   <link rel="stylesheet"
  *     href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
  */
 :root
 {
-	/* ── Base palette: Saturn BIOS (silver gray + single red accent) ── */
-	--mitiru-paper:        #c8c8c8;   /* console plastic gray */
-	--mitiru-paper-hi:     #d8d8d8;   /* lighter chrome surface */
-	--mitiru-ink:          #101010;   /* hard black */
-	--mitiru-ink-mute:     #4a4a4a;   /* neutral mid-gray */
-	--mitiru-red:          #c8002c;   /* Saturn BIOS selection red (sober) */
-	--mitiru-red-hi:       #a30022;   /* darker red on hover */
-	--mitiru-paper-edge:   #101010;   /* black hairline */
-	--mitiru-bevel-hi:     #ffffff;   /* bevel light edge */
-	--mitiru-bevel-lo:     #6a6a6a;   /* bevel dark edge */
+	/* ── Base palette: Saturn BIOS (シルバーグレー + 赤 accent ひとつ) ── */
+	--mitiru-paper:        #c8c8c8;   /* コンソールのプラスチックグレー */
+	--mitiru-paper-hi:     #d8d8d8;   /* 明るめの chrome surface */
+	--mitiru-ink:          #101010;   /* 硬い黒 */
+	--mitiru-ink-mute:     #4a4a4a;   /* 中間グレー */
+	--mitiru-red:          #c8002c;   /* Saturn BIOS の選択赤 (落ち着いた) */
+	--mitiru-red-hi:       #a30022;   /* hover 時の暗い赤 */
+	--mitiru-paper-edge:   #101010;   /* 黒のヘアライン */
+	--mitiru-bevel-hi:     #ffffff;   /* bevel の明エッジ */
+	--mitiru-bevel-lo:     #6a6a6a;   /* bevel の暗エッジ */
 
-	/* ── Semantic aliases ─────────────────────────────────────── */
+	/* ── Semantic alias ─────────────────────────────────────── */
 	--mitiru-bg:        var(--mitiru-paper);
 	--mitiru-surface:   var(--mitiru-paper-hi);
 	--mitiru-text:      var(--mitiru-ink);
 	--mitiru-text-mute: var(--mitiru-ink-mute);
 	--mitiru-accent:    var(--mitiru-red);
 	--mitiru-accent-hi: var(--mitiru-red-hi);
-	--mitiru-success:   var(--mitiru-ink-mute);  /* no special success color in Saturn UI */
+	--mitiru-success:   var(--mitiru-ink-mute);  /* Saturn UI に専用の success 色は無い */
 	--mitiru-warning:   var(--mitiru-red);
 	--mitiru-danger:    var(--mitiru-red);
 	--mitiru-focus:     var(--mitiru-red);
@@ -42,7 +42,7 @@
 
 	--mitiru-row-tint:  rgba(16, 16, 16, 0.03);
 
-	/* ── Typography — condensed bitmap heading, mono body ─────── */
+	/* ── Typography — condensed bitmap の見出し、mono の本文 ─────── */
 	--mitiru-font-body:    "Arial Narrow", "Helvetica Neue Condensed",
 	                       "Courier New", "MS Gothic", ui-monospace,
 	                       "Consolas", monospace;
@@ -66,7 +66,7 @@
 	--mitiru-leading-normal: 1.45;
 	--mitiru-leading-loose:  1.6;
 
-	/* ── Spacing — 8 multiples ────────────────────────────────── */
+	/* ── Spacing — 8 の倍数 ────────────────────────────────── */
 	--mitiru-space-0:  0;
 	--mitiru-space-1:  4px;
 	--mitiru-space-2:  8px;
@@ -76,13 +76,13 @@
 	--mitiru-space-6:  32px;
 	--mitiru-space-7:  48px;
 
-	/* ── Corner radius — zero ─────────────────────────────────── */
+	/* ── Corner radius — ゼロ ─────────────────────────────────── */
 	--mitiru-radius-sm:   0;
 	--mitiru-radius-md:   0;
 	--mitiru-radius-lg:   0;
 	--mitiru-radius-pill: 0;
 
-	/* ── Elevation — strong 2px bevel chrome (3D-era plastic) ───── */
+	/* ── Elevation — 強い 2px bevel chrome (3D 期のプラスチック) ───── */
 	--mitiru-shadow-1: inset 2px 2px 0 var(--mitiru-bevel-hi),
 	                   inset -2px -2px 0 var(--mitiru-bevel-lo),
 	                   0 0 0 1px var(--mitiru-border);
@@ -96,14 +96,14 @@
 	                   inset -3px -3px 0 var(--mitiru-bevel-lo),
 	                   0 0 0 1px var(--mitiru-border);
 
-	/* Focus ring — red highlight (no cyan secondary in Saturn BIOS) */
+	/* Focus ring — 赤のハイライト (Saturn BIOS に cyan の副色は無い) */
 	--mitiru-focus-ring: 0 0 0 2px var(--mitiru-red);
 
 	--mitiru-blur-sm: blur(0);
 	--mitiru-blur-md: blur(0);
 	--mitiru-blur-lg: blur(0);
 
-	/* ── Z-index ladder ─────────────────────────────────────── */
+	/* ── Z-index の段階 ─────────────────────────────────────── */
 	--mitiru-z-base:     0;
 	--mitiru-z-hud:      100;
 	--mitiru-z-overlay:  200;
@@ -111,7 +111,7 @@
 	--mitiru-z-toast:    400;
 	--mitiru-z-drag:     500;
 
-	/* ── Transition — clipped steps ───────────────────────────── */
+	/* ── Transition — clipped な steps ───────────────────────────── */
 	--mitiru-ease:          steps(2, end);
 	--mitiru-ease-bounce:   steps(2, end);
 	--mitiru-duration-fast: 70ms;

@@ -459,7 +459,7 @@ public:
     /// @details ページロード完了時に StateStore::replayRetainedState() が
     ///          呼ばれるため、ゲーム側のハートビート再送ハックが不要になる。
     ///
-    /// **Usage:**
+    /// **使い方:**
     /// ```cpp
     ///   auto store = ctx.makeStateStore();
     ///   store->set("stats.hp", 100);   // 以降ロード完了時に自動再送
@@ -473,8 +473,8 @@ public:
                 registerHandler(name, std::move(fn));
             });
 
-        // Keep a raw pointer for the lambda; the caller owns the store and
-        // must ensure it outlives this context (same lifetime as the game).
+        // lambda 用に生ポインタを保持する。store の所有権は呼び出し側にあり、
+        // この context より長生きさせる責任がある (ゲームと同じライフタイム)。
         StateStore* raw = store.get();
         setLoadEndCallback([raw](std::string_view /*url*/)
         {

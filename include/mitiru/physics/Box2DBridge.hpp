@@ -17,13 +17,13 @@
 
 namespace mitiru::physics {
 
-/// @brief Begin-contact event between two bodies (polled from world each step).
+/// @brief 2 body 間の begin-contact イベント (毎 step で world から poll する)。
 struct Box2DContactBegin {
     b2BodyId a;
     b2BodyId b;
 };
 
-/// @brief Per-frame body transform sample (id + position + angle).
+/// @brief フレームごとの body transform サンプル (id + position + angle)。
 struct Box2DBodyMove {
     b2BodyId body;
     float x;
@@ -45,7 +45,7 @@ public:
             b2DestroyWorld(m_world);
     }
 
-    // Non-copyable, movable
+    // コピー禁止、ムーブ可
     Box2DWorld(const Box2DWorld&) = delete;
     Box2DWorld& operator=(const Box2DWorld&) = delete;
     Box2DWorld(Box2DWorld&& other) noexcept : m_world(other.m_world) {

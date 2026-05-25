@@ -400,7 +400,7 @@ private:
 
 inline ArrayElement::~ArrayElement()
 {
-    if (m_owner == nullptr) return;  // moved-from
+    if (m_owner == nullptr) return;  // 移動済み (moved-from)
     m_body += '}';
     m_owner->appendElement(m_body);
 }

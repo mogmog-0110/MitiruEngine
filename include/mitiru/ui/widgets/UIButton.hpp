@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIButton.hpp
-/// @brief Clickable button widget with normal/hover/pressed/disabled states and toggle mode.
+/// @brief normal/hover/pressed/disabled 状態と toggle モードを持つクリック可能 button widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -12,7 +12,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Visual/interaction state of a button.
+/// @brief button の表示 / 操作状態。
 enum class ButtonState : std::uint8_t
 {
 	Normal,
@@ -21,7 +21,7 @@ enum class ButtonState : std::uint8_t
 	Disabled
 };
 
-/// @brief Configuration for creating a UIButton.
+/// @brief UIButton 生成用の設定。
 struct UIButtonConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -33,10 +33,10 @@ struct UIButtonConfig
 	bool toggleable = false;
 };
 
-/// @brief Button widget that wraps a UINode with press/release/click logic.
+/// @brief press/release/click ロジックで UINode をラップする button widget。
 ///
-/// The button configures a UINode with role Button and manages interaction
-/// state transitions. Rendering is handled externally by UIRenderer.
+/// button は role Button の UINode を構成し、操作の状態遷移を管理する。
+/// 描画は外部の UIRenderer が担当する。
 ///
 /// @code
 ///   UIButtonConfig cfg;
@@ -61,8 +61,8 @@ class UIButton
 	std::function<void()> m_onClick;
 
 public:
-	/// @brief Construct a button from configuration.
-	/// @param config Button configuration.
+	/// @brief 設定から button を構築する。
+	/// @param config button の設定。
 	explicit UIButton(const UIButtonConfig& config)
 		: m_enabled(config.enabled)
 		, m_toggleable(config.toggleable)
@@ -80,29 +80,29 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current button state.
+	/// @brief 現在の button 状態を取得する。
 	[[nodiscard]] ButtonState state() const noexcept { return m_state; }
 
-	/// @brief Check if the button is enabled.
+	/// @brief button が有効か判定する。
 	[[nodiscard]] bool isEnabled() const noexcept { return m_enabled; }
 
-	/// @brief Check if the button is currently toggled on (only meaningful if toggleable).
+	/// @brief button が現在 toggle ON か判定する (toggleable 時のみ意味を持つ)。
 	[[nodiscard]] bool isToggled() const noexcept { return m_toggled; }
 
-	/// @brief Get the button text.
+	/// @brief button のテキストを取得する。
 	[[nodiscard]] const std::string& text() const noexcept { return m_node->text(); }
 
-	// ── Configuration ────────────────────────────────────────
+	// ── 設定 ────────────────────────────────────────
 
-	/// @brief Set the click callback.
-	/// @param callback Function invoked on click.
+	/// @brief click コールバックを設定する。
+	/// @param callback click 時に呼ばれる関数。
 	void setOnClick(std::function<void()> callback) { m_onClick = std::move(callback); }
 
-	/// @brief Set whether the button is enabled.
-	/// @param enabled True to enable.
+	/// @brief button の有効 / 無効を設定する。
+	/// @param enabled 有効にするなら true。
 	void setEnabled(bool enabled)
 	{
 		m_enabled = enabled;
@@ -117,16 +117,16 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Set the button display text.
-	/// @param text New text.
+	/// @brief button の表示テキストを設定する。
+	/// @param text 新しいテキスト。
 	void setText(const std::string& text)
 	{
 		m_node->setText(text);
 	}
 
-	// ── Interaction (called by event system) ─────────────────
+	// ── 操作 (event system から呼ばれる) ─────────────────
 
-	/// @brief Called when the pointer enters the button area.
+	/// @brief pointer が button 領域に入ったときに呼ばれる。
 	void onPointerEnter()
 	{
 		m_pointerInside = true;
@@ -138,7 +138,7 @@ public:
 		}
 	}
 
-	/// @brief Called when the pointer leaves the button area.
+	/// @brief pointer が button 領域から出たときに呼ばれる。
 	void onPointerLeave()
 	{
 		m_pointerInside = false;
@@ -150,7 +150,7 @@ public:
 		}
 	}
 
-	/// @brief Called when the pointer is pressed down on the button.
+	/// @brief button 上で pointer が押されたときに呼ばれる。
 	void onPointerDown()
 	{
 		if (!m_enabled) { return; }
@@ -158,7 +158,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Called when the pointer is released.
+	/// @brief pointer が離されたときに呼ばれる。
 	void onPointerUp()
 	{
 		if (!m_enabled) { return; }
@@ -184,7 +184,7 @@ public:
 	}
 
 private:
-	/// @brief Synchronize interaction state to the UINode properties.
+	/// @brief 操作状態を UINode の properties に同期する。
 	void syncNodeState()
 	{
 		const char* stateStr = "normal";

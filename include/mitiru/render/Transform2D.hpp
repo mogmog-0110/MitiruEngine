@@ -1,19 +1,19 @@
 #pragma once
 
 /// @file Transform2D.hpp
-/// @brief 2D affine transform (2x3 matrix) for Screen draw operations.
+/// @brief Screen の draw 操作向け 2D アフィン変換 (2x3 matrix)。
 ///
-/// Matrix layout (column-major style conceptually, stored as 6 floats):
+/// matrix のレイアウト (概念上は column-major、6 個の float として保持):
 ///
 ///   | a  c  tx |
 ///   | b  d  ty |
 ///   | 0  0  1  |
 ///
-/// Linear part = {a, b, c, d}, translation = {tx, ty}.
-/// Point transform: p' = { a*p.x + c*p.y + tx,  b*p.x + d*p.y + ty }
+/// 線形部 = {a, b, c, d}、平行移動 = {tx, ty}。
+/// 点の変換: p' = { a*p.x + c*p.y + tx,  b*p.x + d*p.y + ty }
 ///
-/// Composition (this * rhs) applies `rhs` first, then `this` — i.e. the
-/// left operand is the OUTER transform (parent).
+/// 合成 (this * rhs) は先に `rhs`、次に `this` を適用する — つまり左オペランドが
+/// 外側 (親) の transform となる。
 
 #include <sgc/math/Vec2.hpp>
 #include <sgc/math/Rect.hpp>
@@ -30,10 +30,10 @@ struct Transform2D
     float b  = 0.0f;  ///< linear[1][0]
     float c  = 0.0f;  ///< linear[0][1]
     float d  = 1.0f;  ///< linear[1][1]
-    float tx = 0.0f;  ///< translate x
-    float ty = 0.0f;  ///< translate y
+    float tx = 0.0f;  ///< 平行移動 x
+    float ty = 0.0f;  ///< 平行移動 y
 
-    // ── Factories ──
+    // ── ファクトリ ──
 
     [[nodiscard]] static constexpr Transform2D identity() noexcept
     {
@@ -50,8 +50,8 @@ struct Transform2D
         return {sx, 0.0f, 0.0f, sy, 0.0f, 0.0f};
     }
 
-    /// @brief Rotation around origin.
-    /// @param rad Rotation angle in radians (positive = CCW in y-down screen space = CW visually).
+    /// @brief 原点周りの回転。
+    /// @param rad 回転角 (radian)。正値は y-down の screen 空間で CCW = 見た目では CW。
     [[nodiscard]] static Transform2D rotate(float rad) noexcept
     {
         const float cs = std::cos(rad);
@@ -59,8 +59,8 @@ struct Transform2D
         return {cs, sn, -sn, cs, 0.0f, 0.0f};
     }
 
-    /// @brief Rotation around an arbitrary pivot (px, py).
-    /// Equivalent to: translate(px, py) * rotate(rad) * translate(-px, -py)
+    /// @brief 任意の pivot (px, py) 周りの回転。
+    /// translate(px, py) * rotate(rad) * translate(-px, -py) と等価。
     [[nodiscard]] static Transform2D rotateAround(float rad, float px, float py) noexcept
     {
         const float cs = std::cos(rad);
@@ -72,10 +72,10 @@ struct Transform2D
         };
     }
 
-    // ── Composition ──
+    // ── 合成 ──
 
-    /// @brief Matrix multiplication: result = this * rhs.
-    /// @details Applies `rhs` first, then `this` (i.e. `this` is the outer/parent).
+    /// @brief 行列の乗算: result = this * rhs。
+    /// @details 先に `rhs`、次に `this` を適用する (つまり `this` が外側 / 親)。
     [[nodiscard]] constexpr Transform2D operator*(const Transform2D& r) const noexcept
     {
         return Transform2D{
@@ -88,7 +88,7 @@ struct Transform2D
         };
     }
 
-    // ── Application ──
+    // ── 適用 ──
 
     [[nodiscard]] constexpr sgc::Vec2f apply(const sgc::Vec2f& p) const noexcept
     {
@@ -100,8 +100,8 @@ struct Transform2D
         return sgc::Vec2f{a * x + c * y + tx, b * x + d * y + ty};
     }
 
-    /// @brief Apply to a rect and return its axis-aligned bounding rect.
-    /// @note For rotated transforms this returns the AABB, not the rotated quad.
+    /// @brief rect に適用し、その軸並行の bounding rect を返す。
+    /// @note 回転を含む transform では回転後の quad ではなく AABB を返す。
     [[nodiscard]] sgc::Rectf applyBounds(const sgc::Rectf& r) const noexcept
     {
         const auto p0 = apply(r.x(),             r.y());
@@ -115,10 +115,10 @@ struct Transform2D
         return sgc::Rectf{minX, minY, maxX - minX, maxY - minY};
     }
 
-    // ── Queries ──
+    // ── クエリ ──
 
-    /// @brief Average uniform scale factor (geometric mean of the 2D scale).
-    /// @details Used to adjust radii/thickness for primitives like circles or lines.
+    /// @brief 平均的な等方 scale 係数 (2D scale の幾何平均)。
+    /// @details 円や線などの primitive の半径 / 太さを調整するのに使う。
     [[nodiscard]] float avgScale() const noexcept
     {
         const float sx = std::sqrt(a * a + b * b);
@@ -129,10 +129,10 @@ struct Transform2D
     [[nodiscard]] float scaleX() const noexcept { return std::sqrt(a * a + b * b); }
     [[nodiscard]] float scaleY() const noexcept { return std::sqrt(c * c + d * d); }
 
-    /// @brief Rotation angle in radians (only valid when scale is uniform).
+    /// @brief 回転角 (radian)。scale が等方のときのみ有効。
     [[nodiscard]] float rotation() const noexcept { return std::atan2(b, a); }
 
-    /// @brief Return true if this is (approximately) the identity transform.
+    /// @brief (ほぼ) 単位変換であれば true を返す。
     [[nodiscard]] bool isIdentity() const noexcept
     {
         constexpr float kEps = 1e-6f;
@@ -141,7 +141,7 @@ struct Transform2D
             && std::abs(tx) < kEps && std::abs(ty) < kEps;
     }
 
-    /// @brief Return true if the linear part is the identity (translation-only).
+    /// @brief 線形部が単位行列 (平行移動のみ) であれば true を返す。
     [[nodiscard]] bool isTranslationOnly() const noexcept
     {
         constexpr float kEps = 1e-6f;
@@ -149,14 +149,14 @@ struct Transform2D
             && std::abs(b) < kEps && std::abs(c) < kEps;
     }
 
-    /// @brief Return true if there is any rotation or shear.
+    /// @brief 回転または剪断 (shear) があれば true を返す。
     [[nodiscard]] bool hasRotation() const noexcept
     {
         constexpr float kEps = 1e-6f;
         return std::abs(b) > kEps || std::abs(c) > kEps;
     }
 
-    // ── Legacy compat accessors (to ease migration from the old struct) ──
+    // ── 旧構造体からの移行を容易にする legacy 互換 accessor ──
     [[nodiscard]] float translateX() const noexcept { return tx; }
     [[nodiscard]] float translateY() const noexcept { return ty; }
 };

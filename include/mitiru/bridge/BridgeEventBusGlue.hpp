@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file BridgeEventBusGlue.hpp
-/// @brief Glue class that routes CEF bridge signals into typed EventBus events.
-/// @details Wraps a BridgeActionRouter and an EventBus together so that
-///          registering a signal-to-event mapping requires only one call.
-///          The class is header-only, non-copyable, and non-movable because it
-///          stores references to both collaborators.
+/// @brief CEF bridge signal を typed な EventBus event に流す glue class。
+/// @details BridgeActionRouter と EventBus を一緒に wrap し、signal-to-event の
+///          mapping 登録が 1 回の呼び出しで済むようにする。
+///          この class は header-only かつ copy 不可 / move 不可。両 collaborator
+///          への参照を保持するため。
 ///
 /// @code
 /// mitiru::EventBus bus;
@@ -18,12 +18,12 @@
 ///     return FireEvent{ std::string(payload) };
 /// });
 ///
-/// // Trivial (no-payload) variant:
+/// // payload 無し (trivial) variant:
 /// struct PauseEvent {};
 /// glue.mapSignalToTrivial<PauseEvent>("ui.menu.pause");
 ///
 /// // CEF bridge callback:
-/// router.dispatch("ui.button.fire", "slot=3");  // publishes FireEvent{"slot=3"}
+/// router.dispatch("ui.button.fire", "slot=3");  // FireEvent{"slot=3"} を publish
 /// @endcode
 
 #include <algorithm>
@@ -37,21 +37,21 @@
 
 namespace mitiru::bridge {
 
-/// @brief Routes CEF bridge signals to typed EventBus events.
-/// @details Each registered mapping installs a handler in the BridgeActionRouter
-///          that, when dispatched, invokes a builder function and publishes the
-///          resulting event to the EventBus.
+/// @brief CEF bridge signal を typed な EventBus event に流す。
+/// @details 登録された各 mapping は BridgeActionRouter に handler を設置し、
+///          dispatch 時に builder 関数を呼んで生成された event を EventBus に
+///          publish する。
 ///
-///          Lifetime: both the router and the bus must outlive this object.
-///          On destruction, every signal this glue registered is removed from
-///          the router so that subsequent dispatches cannot invoke a handler
-///          whose captured `this` is dangling.
+///          Lifetime: router と bus はこの object より長生きする必要がある。
+///          破棄時、この glue が登録した全 signal を router から削除するので、
+///          以後の dispatch が captured `this` が dangling な handler を
+///          呼び出すことはない。
 class BridgeEventBusGlue
 {
 public:
-    /// @brief Constructs the glue, binding it to an existing router and bus.
-    /// @param router The BridgeActionRouter that receives raw CEF signals.
-    /// @param bus    The EventBus that receives typed gameplay events.
+    /// @brief glue を構築し、既存の router と bus に束縛する。
+    /// @param router 生の CEF signal を受け取る BridgeActionRouter。
+    /// @param bus    typed な gameplay event を受け取る EventBus。
     BridgeEventBusGlue(mitiru::input::BridgeActionRouter& router,
                        mitiru::EventBus& bus) noexcept
         : m_router(router)
@@ -59,10 +59,10 @@ public:
     {
     }
 
-    /// @brief Automatically unregisters every signal this glue installed.
-    /// @details Walks m_registered and removes each entry from the router.
-    ///          Prevents the router from later dispatching to a handler whose
-    ///          captured `this` (or m_bus reference) is dangling.
+    /// @brief この glue が設置した全 signal を自動的に登録解除する。
+    /// @details m_registered を走査し、各 entry を router から削除する。
+    ///          captured `this` (または m_bus 参照) が dangling な handler に
+    ///          router が後で dispatch するのを防ぐ。
     ~BridgeEventBusGlue()
     {
         for (const auto& signalName : m_registered) {
@@ -75,14 +75,14 @@ public:
     BridgeEventBusGlue(BridgeEventBusGlue&&)                 = delete;
     BridgeEventBusGlue& operator=(BridgeEventBusGlue&&)      = delete;
 
-    /// @brief Map a signal name to a typed EventBus event via a builder function.
-    /// @details The builder receives the raw payload string_view and returns an
-    ///          instance of Event, which is then published to the bus.
-    ///          Registering the same signal name twice overwrites the prior mapping
-    ///          (last-write-wins — mirrors BridgeActionRouter semantics).
-    /// @tparam Event The event type to publish. Must be copy-constructible.
-    /// @param signalName Name of the CEF signal (e.g. "ui.button.fire").
-    /// @param builder    Callable that converts payload to an Event instance.
+    /// @brief signal 名を builder 関数経由で typed な EventBus event に map する。
+    /// @details builder は生の payload string_view を受け取り Event の instance を
+    ///          返す。それが bus に publish される。
+    ///          同じ signal 名を 2 回登録すると以前の mapping を上書きする
+    ///          (last-write-wins — BridgeActionRouter の semantics に倣う)。
+    /// @tparam Event publish する event 型。copy-constructible である必要がある。
+    /// @param signalName CEF signal 名 (例: "ui.button.fire")。
+    /// @param builder    payload を Event の instance に変換する callable。
     template <typename Event>
     void mapSignal(std::string signalName,
                    std::function<Event(std::string_view)> builder)
@@ -94,11 +94,11 @@ public:
             });
     }
 
-    /// @brief Map a signal to a default-constructed event, ignoring the payload.
-    /// @details Convenience overload for signals that carry no meaningful data.
-    ///          Publishes a value-initialized Event{} on every dispatch.
-    /// @tparam Event The event type to publish. Must be default-constructible.
-    /// @param signalName Name of the CEF signal (e.g. "ui.menu.pause").
+    /// @brief payload を無視し、default 構築された event に signal を map する。
+    /// @details 意味のあるデータを持たない signal 用の便利 overload。
+    ///          dispatch ごとに value 初期化された Event{} を publish する。
+    /// @tparam Event publish する event 型。default-constructible である必要がある。
+    /// @param signalName CEF signal 名 (例: "ui.menu.pause")。
     template <typename Event>
     void mapSignalToTrivial(std::string signalName)
     {
@@ -109,9 +109,9 @@ public:
             });
     }
 
-    /// @brief Remove a previously registered signal mapping.
-    /// @details No-op if the signal name was never registered.
-    /// @param signalName The signal name to remove.
+    /// @brief 以前に登録した signal mapping を削除する。
+    /// @details その signal 名が一度も登録されていなければ no-op。
+    /// @param signalName 削除する signal 名。
     void unmap(std::string_view signalName)
     {
         m_router.unregisterHandler(signalName);
@@ -122,9 +122,9 @@ public:
     }
 
 private:
-    /// @brief Add a signal name to m_registered if not already present.
-    /// @details De-duplicates so that re-mapping the same signal does not
-    ///          cause the destructor to call unregisterHandler twice.
+    /// @brief signal 名がまだ無ければ m_registered に追加する。
+    /// @details 重複排除する。同じ signal を再 map しても destructor が
+    ///          unregisterHandler を 2 回呼ばないようにするため。
     void trackSignal(const std::string& signalName)
     {
         const auto it = std::find(m_registered.begin(), m_registered.end(), signalName);
@@ -135,9 +135,9 @@ private:
 
     mitiru::input::BridgeActionRouter& m_router;
     mitiru::EventBus&                  m_bus;
-    /// @brief Signal names this glue registered with the router.
-    /// @details Used by the destructor to undo every registration so that the
-    ///          router cannot later dispatch to a dangling captured `this`.
+    /// @brief この glue が router に登録した signal 名。
+    /// @details destructor が全登録を取り消すのに使う。router が後で dangling な
+    ///          captured `this` に dispatch できないようにするため。
     std::vector<std::string>           m_registered;
 };
 

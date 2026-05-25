@@ -1,5 +1,5 @@
 #pragma once
-// Detail header for mitiru::Screen — do not include directly; included via core/Screen.hpp
+// mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
 
 inline void mitiru::Screen::drawZigzagEdge(const sgc::Rectf& rect, const render::ZigzagStyle& zs)
 {
@@ -93,12 +93,12 @@ inline void mitiru::Screen::drawRoundedRect(const sgc::Rectf& rect, const sgc::C
 	const float r = std::min(radius, std::min(rect.width(), rect.height()) * 0.5f);
 	const float x = rect.x(), y = rect.y(), w = rect.width(), h = rect.height();
 
-	// Center cross (3 rectangles) — emitRect handles transform
+	// 中央の十字（矩形 3 つ）— transform は emitRect が処理する
 	emitRect(sgc::Rectf{x + r, y, w - r * 2, h}, color);
 	emitRect(sgc::Rectf{x, y + r, r, h - r * 2}, color);
 	emitRect(sgc::Rectf{x + w - r, y + r, r, h - r * 2}, color);
 
-	// 4 corner arcs (approximated with triangle fans)
+	// 四隅の弧（triangle fan で近似）
 	constexpr int kSegments = 8;
 	constexpr float kHalfPi = 1.5707963f;
 	const sgc::Vec2f corners[] = {
@@ -301,7 +301,7 @@ inline void mitiru::Screen::drawRoundedRect4(const sgc::Rectf& rect, const sgc::
 		emitRect({botBarLeft, y + h - std::max(r[2], r[3]),
 		          botBarRight - botBarLeft, std::max(r[2], r[3])}, color);
 
-	// 4 corner arcs with individual radii
+	// 四隅の弧（各々で半径が異なる）
 	constexpr int kSeg = 8;
 	constexpr float kHalfPi = 1.5707963f;
 	const sgc::Vec2f centers[4] = {

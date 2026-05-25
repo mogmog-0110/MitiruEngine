@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file ChoiceUI.hpp
-/// @brief Interactive choice/selection system for visual novels.
-/// @details Displays N choices as a vertical (or horizontal/grid) button list
-///          with keyboard, mouse, and controller navigation. Supports timed
-///          choices, conditional enable/disable, and sequential entry animation.
+/// @brief VN 用の対話型 choice/選択システム
+/// @details N 個の choice を縦（または横/グリッド）のボタンリストとして表示し、
+///          キーボード・マウス・コントローラーでのナビゲーションに対応する。
+///          時間制限付き choice、条件による有効/無効、順次表示アニメーションをサポート。
 
 #include <algorithm>
 #include <cmath>
@@ -22,29 +22,29 @@
 namespace mitiru::vn
 {
 
-// ── State machine ────────────────────────────────────────────
+// ── 状態マシン ────────────────────────────────────────────
 
-/// @brief Choice UI visibility / interaction state.
+/// @brief choice UI の表示/操作状態
 enum class ChoiceState : std::uint8_t
 {
-	Hidden,        ///< Not visible.
-	Appearing,     ///< Entry animation in progress.
-	Active,        ///< Accepting input.
-	Selected,      ///< A choice was made, brief feedback state.
-	Disappearing   ///< Exit animation in progress.
+	Hidden,        ///< 非表示
+	Appearing,     ///< 表示アニメーション中
+	Active,        ///< 入力受付中
+	Selected,      ///< choice が決定された短いフィードバック状態
+	Disappearing   ///< 退場アニメーション中
 };
 
-// ── Layout ───────────────────────────────────────────────────
+// ── レイアウト ───────────────────────────────────────────────────
 
-/// @brief Layout direction for choices.
+/// @brief choice の配置方向
 enum class ChoiceLayout : std::uint8_t
 {
-	Vertical,     ///< Top-to-bottom list.
-	Horizontal,   ///< Left-to-right row.
-	Grid          ///< Multi-column grid.
+	Vertical,     ///< 上から下へのリスト
+	Horizontal,   ///< 左から右への行
+	Grid          ///< 複数列のグリッド
 };
 
-/// @brief Horizontal alignment of the choice list.
+/// @brief choice リストの水平方向の揃え
 enum class ChoiceAlignment : std::uint8_t
 {
 	Left,
@@ -52,17 +52,17 @@ enum class ChoiceAlignment : std::uint8_t
 	Right
 };
 
-/// @brief Entry animation for individual choices.
+/// @brief 個々の choice の表示アニメーション
 enum class ChoiceAnimation : std::uint8_t
 {
-	None,       ///< Instant appearance.
-	FadeIn,     ///< Alpha fade per item.
-	SlideIn     ///< Slide in from side.
+	None,       ///< 即座に表示
+	FadeIn,     ///< 項目ごとの alpha フェード
+	SlideIn     ///< 横からスライドイン
 };
 
-// ── Styling ──────────────────────────────────────────────────
+// ── スタイル ──────────────────────────────────────────────────
 
-/// @brief Visual style for choice buttons.
+/// @brief choice ボタンの視覚スタイル
 struct ChoiceButtonStyle
 {
 	sgc::Colorf normalColor{0.15f, 0.15f, 0.15f, 0.85f};
@@ -74,20 +74,20 @@ struct ChoiceButtonStyle
 	sgc::Colorf borderColor{0.5f, 0.5f, 0.5f, 0.8f};
 	float borderWidth = 1.0f;
 	float fontSize    = 20.0f;
-	float paddingH    = 16.0f;   ///< Horizontal padding inside button.
-	float paddingV    = 10.0f;   ///< Vertical padding inside button.
+	float paddingH    = 16.0f;   ///< ボタン内側の水平方向の余白
+	float paddingV    = 10.0f;   ///< ボタン内側の垂直方向の余白
 };
 
-// ── Choice entry ─────────────────────────────────────────────
+// ── choice エントリ ─────────────────────────────────────────────
 
-/// @brief A single choice item.
+/// @brief 1 つの choice 項目
 struct ChoiceEntry
 {
-	std::string text;                       ///< Display text.
-	bool enabled = true;                    ///< Whether selectable (false = grayed).
-	std::function<bool()> condition;        ///< Optional dynamic condition.
+	std::string text;                       ///< 表示テキスト
+	bool enabled = true;                    ///< 選択可能か（false = グレーアウト）
+	std::function<bool()> condition;        ///< 任意の動的条件
 
-	/// @brief Evaluate whether this choice is currently selectable.
+	/// @brief この choice が現在選択可能かを評価する
 	[[nodiscard]] bool isEnabled() const
 	{
 		if (condition)
@@ -98,17 +98,17 @@ struct ChoiceEntry
 	}
 };
 
-// ── Callbacks ────────────────────────────────────────────────
+// ── コールバック ────────────────────────────────────────────────
 
-/// @brief Called when a choice is selected.
-/// @param index Zero-based index of the selected choice.
+/// @brief choice が選択されたときに呼ばれる
+/// @param index 選択された choice の 0 始まりインデックス
 using ChoiceSelectedCallback = std::function<void(std::size_t index)>;
 
-/// @brief Called when the timer expires with no selection.
-/// @param defaultIndex The default choice index.
+/// @brief 未選択のままタイマーが切れたときに呼ばれる
+/// @param defaultIndex デフォルトの choice インデックス
 using ChoiceTimeoutCallback = std::function<void(std::size_t defaultIndex)>;
 
-/// @brief Text render callback for choice labels.
+/// @brief choice ラベル用のテキスト描画コールバック
 using ChoiceTextRenderer = std::function<
 	void(render::SpriteBatch& batch,
 	     const std::string& text,
@@ -116,40 +116,40 @@ using ChoiceTextRenderer = std::function<
 	     const sgc::Colorf& color,
 	     float fontSize)>;
 
-// ── Configuration ────────────────────────────────────────────
+// ── 設定 ────────────────────────────────────────────────
 
-/// @brief Full configuration for the choice UI.
+/// @brief choice UI の全設定
 struct ChoiceUIConfig
 {
-	// Layout
+	// レイアウト
 	sgc::Rectf containerBounds{460.0f, 300.0f, 1000.0f, 480.0f};
 	ChoiceLayout layout     = ChoiceLayout::Vertical;
 	ChoiceAlignment alignment = ChoiceAlignment::Center;
 	float buttonWidth       = 600.0f;
 	float buttonHeight      = 48.0f;
 	float spacing           = 8.0f;
-	int gridColumns         = 2;       ///< Columns for Grid layout.
+	int gridColumns         = 2;       ///< Grid レイアウトの列数
 
-	// Animation
+	// アニメーション
 	ChoiceAnimation entryAnimation = ChoiceAnimation::FadeIn;
-	float animDurationSec     = 0.3f;     ///< Total entry animation time.
-	float perItemDelaySec     = 0.08f;    ///< Stagger delay between items.
-	float exitDurationSec     = 0.2f;     ///< Exit animation time.
+	float animDurationSec     = 0.3f;     ///< 表示アニメーションの総時間
+	float perItemDelaySec     = 0.08f;    ///< 項目間のずらし遅延
+	float exitDurationSec     = 0.2f;     ///< 退場アニメーション時間
 
-	// Timer
-	bool timedChoice          = false;    ///< Enable countdown timer.
-	float timeoutSec          = 10.0f;    ///< Seconds before timeout.
-	std::size_t defaultChoice = 0;        ///< Choice selected on timeout.
+	// タイマー
+	bool timedChoice          = false;    ///< カウントダウンタイマーを有効化
+	float timeoutSec          = 10.0f;    ///< タイムアウトまでの秒数
+	std::size_t defaultChoice = 0;        ///< タイムアウト時に選択される choice
 	sgc::Colorf timerBarColor{1.0f, 0.6f, 0.0f, 0.9f};
 	float timerBarHeight      = 4.0f;
 
-	// Style
+	// スタイル
 	ChoiceButtonStyle buttonStyle;
 };
 
-// ── ChoiceUI class ───────────────────────────────────────────
+// ── ChoiceUI クラス ───────────────────────────────────────────
 
-/// @brief Interactive choice/selection UI for visual novels.
+/// @brief VN 用の対話型 choice/選択 UI
 ///
 /// @code
 /// mitiru::vn::ChoiceUI choices;
@@ -175,52 +175,52 @@ class ChoiceUI
 	ChoiceState m_state = ChoiceState::Hidden;
 
 	std::vector<ChoiceEntry> m_choices;
-	int m_focusedIndex = 0;       ///< Keyboard/controller focus index.
-	int m_hoveredIndex = -1;      ///< Mouse hover index (-1 = none).
-	int m_selectedIndex = -1;     ///< Final selection (-1 = none).
+	int m_focusedIndex = 0;       ///< キーボード/コントローラーのフォーカスインデックス
+	int m_hoveredIndex = -1;      ///< マウスホバーインデックス（-1 = なし）
+	int m_selectedIndex = -1;     ///< 最終的な選択（-1 = なし）
 
-	// Animation
+	// アニメーション
 	float m_animTimer     = 0.0f;
 	float m_exitTimer     = 0.0f;
 	float m_exitAlpha     = 1.0f;
 
-	// Countdown timer
+	// カウントダウンタイマー
 	float m_countdownTimer = 0.0f;
 
-	// Per-item animation progress (0 to 1).
+	// 項目ごとのアニメーション進行度（0〜1）
 	std::vector<float> m_itemProgress;
 
-	// Callbacks
+	// コールバック
 	ChoiceSelectedCallback m_onSelected;
 	ChoiceTimeoutCallback m_onTimeout;
 	ChoiceTextRenderer m_textRenderer;
 
 public:
-	/// @brief Construct with default configuration.
-	/// @param config Choice UI configuration.
+	/// @brief デフォルト設定で構築する
+	/// @param config choice UI 設定
 	explicit ChoiceUI(ChoiceUIConfig config = {})
 		: m_config(std::move(config))
 	{
 	}
 
-	// ── State ────────────────────────────────────────────────
+	// ── 状態 ────────────────────────────────────────────────
 
-	/// @brief Current state.
+	/// @brief 現在の状態
 	[[nodiscard]] ChoiceState state() const noexcept { return m_state; }
 
-	/// @brief Whether the UI is accepting input.
+	/// @brief UI が入力を受け付けているか
 	[[nodiscard]] bool isActive() const noexcept
 	{
 		return m_state == ChoiceState::Active;
 	}
 
-	/// @brief Index of the selected choice (-1 if none).
+	/// @brief 選択された choice のインデックス（なければ -1）
 	[[nodiscard]] int selectedIndex() const noexcept { return m_selectedIndex; }
 
-	/// @brief Index of the focused choice.
+	/// @brief フォーカス中の choice のインデックス
 	[[nodiscard]] int focusedIndex() const noexcept { return m_focusedIndex; }
 
-	/// @brief Remaining countdown time (0 if not timed).
+	/// @brief 残りカウントダウン時間（時間制限なしなら 0）
 	[[nodiscard]] float remainingTime() const noexcept
 	{
 		return m_config.timedChoice
@@ -228,21 +228,21 @@ public:
 			: 0.0f;
 	}
 
-	/// @brief Access configuration.
+	/// @brief 設定へアクセスする
 	[[nodiscard]] const ChoiceUIConfig& config() const noexcept { return m_config; }
 
-	/// @brief Access the choice list.
+	/// @brief choice リストへアクセスする
 	[[nodiscard]] const std::vector<ChoiceEntry>& choices() const noexcept
 	{
 		return m_choices;
 	}
 
-	// ── Setup ────────────────────────────────────────────────
+	// ── セットアップ ────────────────────────────────────────────────
 
-	/// @brief Replace configuration.
+	/// @brief 設定を置き換える
 	void setConfig(ChoiceUIConfig config) { m_config = std::move(config); }
 
-	/// @brief Set the list of choices.
+	/// @brief choice のリストを設定する
 	void setChoices(std::vector<ChoiceEntry> choices)
 	{
 		m_choices = std::move(choices);
@@ -252,18 +252,18 @@ public:
 		m_selectedIndex = -1;
 	}
 
-	/// @brief Register selection callback.
+	/// @brief 選択コールバックを登録する
 	void onSelected(ChoiceSelectedCallback cb) { m_onSelected = std::move(cb); }
 
-	/// @brief Register timeout callback.
+	/// @brief タイムアウトコールバックを登録する
 	void onTimeout(ChoiceTimeoutCallback cb) { m_onTimeout = std::move(cb); }
 
-	/// @brief Set text render callback.
+	/// @brief テキスト描画コールバックを設定する
 	void setTextRenderer(ChoiceTextRenderer cb) { m_textRenderer = std::move(cb); }
 
-	// ── Commands ─────────────────────────────────────────────
+	// ── コマンド ─────────────────────────────────────────────
 
-	/// @brief Show choices with entry animation.
+	/// @brief 表示アニメーション付きで choice を表示する
 	void show()
 	{
 		if (m_choices.empty()) return;
@@ -289,7 +289,7 @@ public:
 		}
 	}
 
-	/// @brief Hide choices (typically after selection).
+	/// @brief choice を隠す（通常は選択後）
 	void dismiss()
 	{
 		if (m_state == ChoiceState::Hidden) return;
@@ -297,9 +297,9 @@ public:
 		m_exitTimer = 0.0f;
 	}
 
-	// ── Input ────────────────────────────────────────────────
+	// ── 入力 ────────────────────────────────────────────────
 
-	/// @brief Navigate focus up (keyboard/d-pad).
+	/// @brief フォーカスを上へ移動する（キーボード/d-pad）
 	void focusUp()
 	{
 		if (!isActive()) return;
@@ -307,7 +307,7 @@ public:
 		if (prev >= 0) m_focusedIndex = prev;
 	}
 
-	/// @brief Navigate focus down (keyboard/d-pad).
+	/// @brief フォーカスを下へ移動する（キーボード/d-pad）
 	void focusDown()
 	{
 		if (!isActive()) return;
@@ -315,7 +315,7 @@ public:
 		if (next >= 0) m_focusedIndex = next;
 	}
 
-	/// @brief Confirm the focused choice (Enter/A button).
+	/// @brief フォーカス中の choice を確定する（Enter/A ボタン）
 	void confirm()
 	{
 		if (!isActive()) return;
@@ -332,9 +332,9 @@ public:
 		selectChoice(static_cast<std::size_t>(m_focusedIndex));
 	}
 
-	/// @brief Handle mouse movement for hover detection.
-	/// @param screenX Mouse X in screen space.
-	/// @param screenY Mouse Y in screen space.
+	/// @brief ホバー検出のためマウス移動を処理する
+	/// @param screenX スクリーン座標系でのマウス X
+	/// @param screenY スクリーン座標系でのマウス Y
 	void onMouseMove(float screenX, float screenY)
 	{
 		if (!isActive()) return;
@@ -356,9 +356,9 @@ public:
 		}
 	}
 
-	/// @brief Handle mouse click.
-	/// @param screenX Click X in screen space.
-	/// @param screenY Click Y in screen space.
+	/// @brief マウスクリックを処理する
+	/// @param screenX スクリーン座標系でのクリック X
+	/// @param screenY スクリーン座標系でのクリック Y
 	void onMouseClick(float screenX, float screenY)
 	{
 		if (!isActive()) return;
@@ -378,10 +378,10 @@ public:
 		}
 	}
 
-	// ── Update ───────────────────────────────────────────────
+	// ── 更新 ───────────────────────────────────────────────
 
-	/// @brief Update animation and timer state.
-	/// @param dt Delta time in seconds.
+	/// @brief アニメーションとタイマー状態を更新する
+	/// @param dt デルタタイム（秒）
 	void update(float dt)
 	{
 		switch (m_state)
@@ -398,7 +398,7 @@ public:
 			break;
 
 		case ChoiceState::Selected:
-			// Brief flash, then auto-dismiss.
+			// 短く点滅してから自動的に閉じる
 			m_exitTimer += dt;
 			if (m_exitTimer >= 0.15f)
 			{
@@ -412,10 +412,10 @@ public:
 		}
 	}
 
-	// ── Rendering ────────────────────────────────────────────
+	// ── 描画 ────────────────────────────────────────────
 
-	/// @brief Draw the choice UI into a SpriteBatch.
-	/// @param batch SpriteBatch (must be between begin/end).
+	/// @brief choice UI を SpriteBatch へ描画する
+	/// @param batch SpriteBatch（begin/end の間で呼ぶこと）
 	void draw(render::SpriteBatch& batch) const
 	{
 		if (m_state == ChoiceState::Hidden) return;
@@ -425,7 +425,7 @@ public:
 			drawChoiceButton(batch, i);
 		}
 
-		// Timer bar.
+		// タイマーバー
 		if (m_config.timedChoice && m_state == ChoiceState::Active)
 		{
 			drawTimerBar(batch);
@@ -433,7 +433,7 @@ public:
 	}
 
 private:
-	// ── Selection ────────────────────────────────────────────
+	// ── 選択 ────────────────────────────────────────────
 
 	void selectChoice(std::size_t index)
 	{
@@ -447,7 +447,7 @@ private:
 		}
 	}
 
-	// ── Animation ────────────────────────────────────────────
+	// ── アニメーション ────────────────────────────────────────────
 
 	void updateEntryAnimation(float dt)
 	{
@@ -512,9 +512,9 @@ private:
 		}
 	}
 
-	// ── Layout ───────────────────────────────────────────────
+	// ── レイアウト ───────────────────────────────────────────────
 
-	/// @brief Compute the screen rect for a choice button by index.
+	/// @brief インデックスから choice ボタンのスクリーン矩形を計算する
 	[[nodiscard]] sgc::Rectf computeButtonRect(std::size_t index) const noexcept
 	{
 		const auto& cb = m_config.containerBounds;
@@ -532,13 +532,13 @@ private:
 				const float totalH = static_cast<float>(m_choices.size())
 					* bh + static_cast<float>(m_choices.size() - 1) * sp;
 
-				// Vertical centering within container.
+				// コンテナ内での垂直方向のセンタリング
 				const float startY = cb.y()
 					+ (cb.height() - totalH) * 0.5f;
 
 				y = startY + static_cast<float>(index) * (bh + sp);
 
-				// Horizontal alignment.
+				// 水平方向の揃え
 				switch (m_config.alignment)
 				{
 				case ChoiceAlignment::Left:
@@ -583,7 +583,7 @@ private:
 		return sgc::Rectf{x, y, bw, bh};
 	}
 
-	// ── Drawing helpers ──────────────────────────────────────
+	// ── 描画補助 ──────────────────────────────────────
 
 	void drawChoiceButton(render::SpriteBatch& batch, std::size_t index) const
 	{
@@ -591,16 +591,16 @@ private:
 		const sgc::Rectf rect = computeButtonRect(index);
 		const auto& style = m_config.buttonStyle;
 
-		// Per-item animation alpha.
+		// 項目ごとのアニメーション alpha
 		float itemAlpha = (index < m_itemProgress.size())
 			? m_itemProgress[index] : 1.0f;
 
-		// Global exit alpha.
+		// 全体の退場 alpha
 		itemAlpha *= m_exitAlpha;
 
 		if (itemAlpha <= 0.0f) return;
 
-		// Determine button colour.
+		// ボタンの色を決定する
 		const bool isEnabled = entry.isEnabled();
 		const bool isFocused = (static_cast<int>(index) == m_focusedIndex);
 		const bool isHovered = (static_cast<int>(index) == m_hoveredIndex);
@@ -633,7 +633,7 @@ private:
 		bgColor.a *= itemAlpha;
 		txtColor.a *= itemAlpha;
 
-		// Apply slide-in offset if animating.
+		// アニメーション中ならスライドインのオフセットを適用する
 		sgc::Rectf drawRect = rect;
 		if (m_config.entryAnimation == ChoiceAnimation::SlideIn
 		    && itemAlpha < 1.0f)
@@ -644,10 +644,10 @@ private:
 				rect.width(), rect.height()};
 		}
 
-		// Background.
+		// 背景
 		batch.drawRect(drawRect, bgColor);
 
-		// Border.
+		// 枠線
 		if (style.borderWidth > 0.0f)
 		{
 			auto borderCol = style.borderColor;
@@ -655,7 +655,7 @@ private:
 			batch.drawRectFrame(drawRect, borderCol, style.borderWidth);
 		}
 
-		// Text via callback.
+		// コールバック経由でテキストを描画する
 		if (m_textRenderer)
 		{
 			const sgc::Rectf textArea{
@@ -674,7 +674,7 @@ private:
 			- std::min(1.0f, m_countdownTimer / m_config.timeoutSec);
 		const auto& cb = m_config.containerBounds;
 
-		// Timer bar across the top of the container.
+		// コンテナ上端を横切るタイマーバー
 		const float barW = cb.width() * progress;
 		const sgc::Rectf barRect{cb.x(), cb.y() - m_config.timerBarHeight - 2.0f,
 		                         barW, m_config.timerBarHeight};
@@ -682,7 +682,7 @@ private:
 		batch.drawRect(barRect, m_config.timerBarColor);
 	}
 
-	// ── Navigation helpers ───────────────────────────────────
+	// ── ナビゲーション補助 ───────────────────────────────────
 
 	[[nodiscard]] int findFirstEnabled(int from) const noexcept
 	{

@@ -1,20 +1,18 @@
 #pragma once
 
 /// @file BackendInit.hpp
-/// @brief 3D renderer / 2D pipeline backend dispatch helpers.
+/// @brief 3D renderer / 2D pipeline の backend dispatch ヘルパー。
 /// @details
-/// Engine.hpp used to do `dynamic_cast<Dx11Device*>` / `dynamic_cast<Dx12Device*>`
-/// to pick the right concrete factory for `Renderer3D` / `RenderPipeline2D`.
-/// That violates the "no backend type leakage in engine-internal code"
-/// guideline.
+/// Engine.hpp はかつて `Renderer3D` / `RenderPipeline2D` の適切な具象 factory を
+/// 選ぶために `dynamic_cast<Dx11Device*>` / `dynamic_cast<Dx12Device*>` を
+/// 行っていた。これは「engine 内部コードに backend 型を漏らさない」指針に反する。
 ///
-/// Rather than adding render-layer types to `IDevice` (which would create a
-/// circular dependency: IDevice -> Renderer3D -> IDevice), this header sits
-/// in the render layer and dispatches on the device-reported `Backend` enum.
-/// The static_cast that follows is safe because the enum is canonical for the
-/// concrete IDevice subclass.
+/// `IDevice` に render 層の型を足す (IDevice -> Renderer3D -> IDevice の循環依存に
+/// なる) のではなく、本ヘッダを render 層に置き、device が報告する `Backend` enum で
+/// dispatch する。続く static_cast は、この enum が具象 IDevice 派生クラスにとって
+/// canonical なので安全である。
 ///
-/// Usage:
+/// 使い方:
 /// @code
 /// auto pipeline = render::createPipeline2DFor(device, w, h);
 /// auto renderer = render::createRenderer3DFor(device, cfg, w, h);
@@ -40,26 +38,25 @@
 namespace mitiru::render
 {
 
-/// @brief Result of `createPipeline2DFor` - pipeline plus optional
-///        post-process manager that the caller is expected to wire into
-///        the device.
+/// @brief `createPipeline2DFor` の結果 - pipeline と、呼び出し側が device に
+///        繋ぎ込むことが期待される optional な post-process manager。
 struct Pipeline2DResult
 {
-	/// 2D render pipeline (`valid()` reports backend support).
+	/// 2D render pipeline (`valid()` が backend 対応の有無を返す)。
 	std::optional<RenderPipeline2D> pipeline;
 
-	/// Win32 / DX11 specific post-process manager. nullptr on other backends.
+	/// Win32 / DX11 専用の post-process manager。他 backend では nullptr。
 	std::shared_ptr<PostProcessManager> postProcess;
 };
 
-/// @brief Construct the 2D pipeline appropriate for the device backend.
-/// @details Replaces the engine-internal dynamic_cast chain. Dispatches on
-///          `device->backend()` (the canonical concrete type tag) instead.
+/// @brief device の backend に適した 2D pipeline を構築する。
+/// @details engine 内部の dynamic_cast チェーンを置き換える。代わりに
+///          `device->backend()` (canonical な具象型タグ) で dispatch する。
 /// @param device GPU device
-/// @param screenWidth Target screen width
-/// @param screenHeight Target screen height
-/// @return Pipeline2DResult with the constructed pipeline. `pipeline` is
-///         `std::nullopt` for Null / unsupported backends.
+/// @param screenWidth 対象 screen の幅
+/// @param screenHeight 対象 screen の高さ
+/// @return 構築した pipeline を含む Pipeline2DResult。Null / 非対応 backend では
+///         `pipeline` は `std::nullopt`。
 [[nodiscard]] inline Pipeline2DResult createPipeline2DFor(
 	gfx::IDevice* device, int screenWidth, int screenHeight)
 {
@@ -114,18 +111,17 @@ struct Pipeline2DResult
 	return result;
 }
 
-/// @brief Construct the 3D renderer appropriate for the device backend.
-/// @details Replaces the engine-internal dynamic_cast chain in
-///          `Engine::create3DRenderer`. DX12 is preferred when available
-///          (its toon outline PSO is the reference path); DX11 is the
-///          Win32 fallback. Other backends return nullptr (3D not yet
-///          implemented).
+/// @brief device の backend に適した 3D renderer を構築する。
+/// @details `Engine::create3DRenderer` 内の engine 内部 dynamic_cast チェーンを
+///          置き換える。利用可能なら DX12 を優先 (toon outline PSO が reference
+///          path)。DX11 は Win32 の fallback。他 backend は nullptr を返す
+///          (3D は未実装)。
 /// @param device GPU device
-/// @param screenWidth Logical screen width  (DX11 fallback viewport)
-/// @param screenHeight Logical screen height (DX11 fallback viewport)
-/// @param windowWidth Physical window width  (DX12 viewport, DPI aware)
-/// @param windowHeight Physical window height (DX12 viewport, DPI aware)
-/// @return Renderer instance, or nullptr when the backend has no 3D path.
+/// @param screenWidth 論理 screen 幅  (DX11 fallback の viewport)
+/// @param screenHeight 論理 screen 高さ (DX11 fallback の viewport)
+/// @param windowWidth 物理 window 幅  (DX12 viewport、DPI 対応)
+/// @param windowHeight 物理 window 高さ (DX12 viewport、DPI 対応)
+/// @return renderer インスタンス。backend に 3D path が無ければ nullptr。
 [[nodiscard]] inline std::unique_ptr<IRenderer3D> createRenderer3DFor(
 	gfx::IDevice* device,
 	int screenWidth, int screenHeight,
@@ -213,7 +209,7 @@ struct Pipeline2DResult
 	(void)windowHeight;
 #endif
 
-	// 非Win32 / Null / OpenGL: 3D renderer not yet implemented
+	// 非Win32 / Null / OpenGL: 3D renderer は未実装
 	return nullptr;
 }
 

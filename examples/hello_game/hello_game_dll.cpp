@@ -1,23 +1,22 @@
-// hello_game — Game-as-DLL port (v0.2.0 / ADR 0005, pure survival game)
+// hello_game — Game-as-DLL 移植 (ADR 0005、純粋なサバイバルゲーム)
 //
-// ADR 0005 (Host-Game C-only signal flow) reference implementation. The game
-// window is a *pure game*: HP / SURVIVE timer / win-lose modal / restart only.
-// All debug & tool chrome (time-travel scrubber, record/replay, pause, time
-// scale, snapshot slots, command palette, screenshots) has been removed from
-// the game window — those concerns belong to inspector sub-windows / the CLI.
+// ADR 0005 (Host-Game C-only signal flow) の参照実装。ゲーム窓は「純粋なゲーム」
+// で、HP / SURVIVE タイマー / 勝敗モーダル / リスタートのみ。debug・tool 系
+// (タイムトラベル / record-replay / pause / time scale / snapshot / palette /
+// screenshot) はゲーム窓から排除済み — inspector sub-window / CLI の責務だから。
 //
-// **Features**:
-//   Gameplay: 移動 / 敵 / HP / 30s survive / win/lose
-//   Quit:     ESC                       → intents.requestStop
-//   Restart:  CEF button (game.restart) → InputSnapshot.actionEvents
-//   HUD push: view.hud.*                → intents.statePushes
-//   Game feel: trail / hit flash / enemy death fade / low-hp pulse
-//   Asset hot reload: poll hello_game/assets/ mtime → intents.jsToExecute
-//   Inspector exports: gameplay + input + timetravel → intents.exportedInspectables
-//                      (sub-window channel — never drawn in the game window)
+// 機能:
+//   gameplay:  移動 / 敵 / HP / 30 秒生存 / 勝敗
+//   終了:      ESC                       → intents.requestStop
+//   リスタート: CEF ボタン (game.restart) → InputSnapshot.actionEvents
+//   HUD push:  view.hud.*                → intents.statePushes
+//   game feel: trail / 被弾フラッシュ / 敵死亡フェード / 低 HP パルス
+//   asset hot reload: hello_game/assets/ の mtime を polling → intents.jsToExecute
+//   inspector export: gameplay + input + timetravel → intents.exportedInspectables
+//                     (sub-window 専用チャネル。ゲーム窓には描画しない)
 //
-// The history ring buffer keeps recording every frame as the invisible
-// substrate that inspector sub-windows observe; the game itself never scrubs.
+// history ring buffer は毎フレーム記録し続け、inspector sub-window が観測する
+// invisible な substrate になる。ゲーム本体は scrub しない。
 
 #include <algorithm>
 #include <array>
@@ -38,7 +37,7 @@
 #include <mitiru/observe/TimeTravelRecorder.hpp>
 
 #if defined(_WIN32)
-#include <process.h>  // _getpid (for EventLog::open)
+#include <process.h>  // _getpid (EventLog::open 用)
 #else
 #include <unistd.h>   // getpid
 #endif
@@ -55,7 +54,7 @@ inline int currentPid()
 #endif
 }
 
-// ── Gameplay constants ─────────────────────────────────────────────────────
+// ── gameplay 定数 ───────────────────────────────────────────────────────────
 
 constexpr float kPlayerSpeed   = 260.0f;
 constexpr float kEnemySpeed    = 95.0f;
@@ -69,7 +68,7 @@ constexpr int   kEnemyCount    = 4;
 
 constexpr float kDefaultScreenW = 1280.0f;
 constexpr float kDefaultScreenH = 720.0f;
-constexpr std::size_t kHistoryCap = 300;  // 5s @ 60fps
+constexpr std::size_t kHistoryCap = 300;  // 5 秒 @ 60fps
 
 namespace vk
 {
@@ -79,10 +78,10 @@ constexpr int Up          = 0x26;
 constexpr int Right       = 0x27;
 constexpr int Down        = 0x28;
 constexpr int A           = 0x41;
-constexpr int B           = 0x42;  // debug: hold to force invariant break (demo)
+constexpr int B           = 0x42;  // debug: 押しっぱなしで invariant 違反を強制 (demo)
 }  // namespace vk
 
-// ── Data structures ───────────────────────────────────────────────────────
+// ── データ構造 ─────────────────────────────────────────────────────────────
 
 struct Vec2 { float x; float y; };
 
@@ -95,8 +94,8 @@ struct Enemy
 	float deathFadeT {0.0f};        // 0.30 → 0 で fade out
 };
 
-/// Per-frame replayable snapshot — small enough for ~5s of history at 60fps.
-/// Recorded continuously as the substrate an inspector sub-window observes.
+/// 毎フレームの replay 可能な snapshot — 60fps で約 5 秒分の履歴に収まる軽さ。
+/// inspector sub-window が観測する substrate として継続記録される。
 struct Snapshot
 {
 	Vec2               playerPos;
@@ -112,10 +111,10 @@ struct KeyEvent
 	float       time;
 };
 
-/// All persistent state lives here. Host owns the pointer across reloads.
+/// 永続 state は全てここに置く。reload を跨いで host が pointer を保持する。
 struct HelloGameMemory
 {
-	// Gameplay
+	// gameplay
 	Vec2               player    {kDefaultScreenW * 0.5f, kDefaultScreenH * 0.5f};
 	std::vector<Enemy> enemies;
 	int                hp        {kMaxHp};
@@ -124,73 +123,73 @@ struct HelloGameMemory
 	std::string        outcome;
 	std::uint32_t      rngSeed   {1u};
 
-	// ── Game feel ───────────────────────────────────────────────────
-	// Player trail — last N positions, drawn with decaying alpha.
+	// ── game feel ─────────────────────────────────────────────────────
+	// player trail — 直近 N 位置、alpha を減衰させて描画。
 	std::deque<Vec2>   trail;
 	static constexpr std::size_t kTrailMax = 10;
-	// Hit flash: set on damage, decays. drawRect alpha 演出 + HUD flash 連動。
+	// 被弾フラッシュ: 被弾で立ち減衰。drawRect alpha 演出 + HUD flash 連動。
 	float              hitFlashT {0.0f};
-	int                hitCount  {0};  // monotonic counter → HUD push (1-shot anim trigger)
+	int                hitCount  {0};  // 単調増加カウンタ → HUD push (1-shot anim trigger)
 	int                lastHitCount {-1};
 
-	// Resize tracking — recenter player + respawn enemies when window changes
-	// shape significantly (demo polish: never see player pinned at edge)
+	// resize 追跡 — 窓の形状が大きく変わったら player を中央へ戻し敵を再配置
+	// (demo polish: player が端に貼り付くのを防ぐ)
 	float lastScreenW {0.0f};
 	float lastScreenH {0.0f};
 
-	// Screen size (resolved on first draw)
+	// 画面サイズ (初回 draw で確定)
 	float screenW {kDefaultScreenW};
 	float screenH {kDefaultScreenH};
 
-	// Wall-clock total since boot (monotonic timestamps for inspector exports)
+	// 起動からの実時間累計 (inspector export 用の単調 timestamp)
 	float totalTime {0.0f};
 
-	// Frame counter — the time axis for the event timeline (EventLog) and the
-	// deterministic check point for invariants (ADR 0005).
+	// フレームカウンタ — event timeline (EventLog) の時間軸であり、
+	// invariant の deterministic check point でもある (ADR 0005)。
 	std::uint32_t frame {0};
 
-	// ── Dual-readable debug substrate (invisible to the game window) ──────
-	// EventLog: append-only JSONL at %TEMP%\mitiru_events_<pid>.jsonl. Sparse
-	// gameplay milestones (hit / death / game_over / restart / invariant
-	// violation) land here. Both the inspector AND an AI agent can read it.
+	// ── dual-readable な debug substrate (game 窓には不可視) ──────────────
+	// EventLog: %TEMP%\mitiru_events_<pid>.jsonl への append-only JSONL。疎な
+	// gameplay マイルストン (hit / death / game_over / restart / invariant
+	// 違反) がここに着地。inspector と AI agent の両方が読める。
 	mitiru::observe::EventLog    eventLog;
-	// Invariant set: declared once in on_init, checked every frame in update.
-	// Violations go to eventLog (machine-readable) and recent() (window/inspector).
+	// Invariant set: on_init で 1 度宣言、update で毎フレーム check。
+	// 違反は eventLog (機械可読) と recent() (window/inspector) へ。
 	mitiru::observe::InvariantSet invariants;
-	// Debug toggle: hold the invariant-break key to force hp negative so the
-	// red overlay + violation event can be demonstrated. Restored when released.
+	// debug トグル: invariant-break キー押しっぱなしで hp を負に強制し、赤
+	// overlay + 違反 event を demo できる。離せば元に戻す。
 	bool                          forceInvariantBreak {false};
 
-	// ── Inspector substrate (invisible to the game window) ─────────────
-	// History ring buffer recorded every frame. The game never scrubs it;
-	// inspector sub-windows observe it via the timetravel export. Keeping it
-	// recording is what powers the time-travel inspector (5 軸 #2).
+	// ── inspector substrate (game 窓には不可視) ────────────────────────
+	// 毎フレーム記録する history ring buffer。game は scrub しない;
+	// inspector sub-window が timetravel export 経由で観測する。記録し続ける
+	// こと自体が time-travel inspector (5 軸 #2) を支える。
 	mitiru::observe::TimeTravelRecorder<Snapshot> history{kHistoryCap};
 
-	// Input monitor (for the input inspectable)
+	// input monitor (input inspectable 用)
 	std::deque<KeyEvent>     keyHistory;
 	std::array<int, 256>     pressCounts{};
 
-	// HUD push throttling
+	// HUD push のスロットリング
 	int pushTick {0};
 
-	// HUD diff cache — avoid re-pushing unchanged values
+	// HUD diff キャッシュ — 変化のない値の再 push を避ける
 	int  lastHp         {-1};
 	int  lastMaxHp      {-1};
 	int  lastTimeInt    {-1};
 	bool lastGameOver   {false};
 	std::string lastOutcome;
 
-	// Asset hot reload (CEF)
+	// asset hot reload (CEF)
 	std::filesystem::file_time_type lastAssetMtime{};
 	bool                            assetMtimeInitialized {false};
 	int                             assetPollTick {0};
 
-	// Scratch buffers (reuse to avoid per-frame heap traffic)
+	// scratch buffer (毎フレームの heap traffic を避けるため使い回す)
 	std::string scratchJson;
 };
 
-// ── World setup ────────────────────────────────────────────────────────
+// ── world セットアップ ──────────────────────────────────────────────────
 
 void seedEnemy(Enemy& enemy, std::mt19937& rng,
                std::uniform_int_distribution<int>&    sideDist,
@@ -233,20 +232,19 @@ void resetWorld(HelloGameMemory& mem)
 	mem.player     = {mem.screenW * 0.5f, mem.screenH * 0.5f};
 	spawnEnemies(mem);
 	mem.history.clear();
-	// Force HUD re-push by setting "last seen" to OPPOSITE of current state
-	// so pushHudDelta() detects a diff and emits the new value. Setting them
-	// to the same value as current would silently skip the push (bug:
-	// restart モーダルが消えない).
+	// "last seen" を現 state の逆にして HUD 再 push を強制し、pushHudDelta() に
+	// diff を検出させ新値を emit させる。現値と同じにすると push が黙って skip
+	// される (bug: restart モーダルが消えない)。
 	mem.lastHp        = -1;
 	mem.lastMaxHp     = -1;
 	mem.lastTimeInt   = -1;
-	mem.lastGameOver  = true;             // force diff vs current (false)
-	mem.lastOutcome   = "__stale__";      // force diff vs current ("")
+	mem.lastGameOver  = true;             // 現値 (false) との diff を強制
+	mem.lastOutcome   = "__stale__";      // 現値 ("") との diff を強制
 	mem.hitCount      = 0;
 	mem.lastHitCount  = -1;
 }
 
-// ── Intent helpers (DLL → host) ───────────────────────────────────────────
+// ── intent ヘルパ (DLL → host) ─────────────────────────────────────────────
 
 void pushStateInt(mitiru::module::FrameIntents* intents,
                   const char* key, int value)
@@ -287,6 +285,20 @@ void pushStateString(mitiru::module::FrameIntents* intents,
 	std::strncpy(slot.strVal, value.c_str(), sizeof(slot.strVal) - 1);
 }
 
+// 論理 id で one-shot SE を要求 (ADR 0008)。host が id を assets/audio/<id>.*
+// に解決して再生する; game は mixer を持たない。
+void pushSoundSE(mitiru::module::FrameIntents* intents, const char* id)
+{
+	const int cap = static_cast<int>(sizeof(intents->soundIntents) /
+	                                 sizeof(intents->soundIntents[0]));
+	if (intents->soundIntentCount >= cap) { return; }
+	auto& s = intents->soundIntents[intents->soundIntentCount++];
+	std::memset(&s, 0, sizeof(s));
+	std::strncpy(s.id, id, sizeof(s.id) - 1);
+	s.category = 0;     // SE
+	s.volume   = 1.0f;
+}
+
 void exportInspectable(mitiru::module::FrameIntents* intents,
                        const char* name, const char* title,
                        const std::string& jsonStr)
@@ -318,19 +330,19 @@ void requestJsExec(mitiru::module::FrameIntents* intents,
 	intents->jsToExecuteLen = n;
 }
 
-// ── HUD push (state diff → minimum intent traffic) ───────────────────────
+// ── HUD push (state diff → 最小 intent traffic) ───────────────────────────
 //
-// Only gameplay HUD values reach the game window: HP / SURVIVE timer /
-// win-lose modal / hit-flash trigger. No debug/tool state is pushed here.
+// game 窓に届くのは gameplay HUD 値のみ: HP / SURVIVE タイマー / 勝敗モーダル /
+// hit-flash トリガー。debug/tool state はここで push しない。
 //
-// The HP bar is composed C++-side (filled/empty block strings) so the HTML
-// stays pure data-m-* with zero JavaScript: the scene binds view.hud.hpFill /
-// view.hud.hpEmpty as text and view.hud.hpLow as a class. Presentation logic
-// that used to live in scene JS now lives here, where the state already is.
+// HP bar は C++ 側で組む (filled/empty ブロック文字列) ので HTML は JavaScript
+// ゼロの純 data-m-* のまま: scene は view.hud.hpFill / view.hud.hpEmpty を text、
+// view.hud.hpLow を class として bind する。かつて scene JS にあった表示ロジック
+// を、state が既にあるこちら側へ移した。
 
-constexpr int kHpBarWidth = 20;  // total block count in the HP bar
+constexpr int kHpBarWidth = 20;  // HP bar の総ブロック数
 
-// Repeat a UTF-8 block glyph `count` times into a std::string.
+// UTF-8 ブロック glyph を `count` 回繰り返して std::string にする。
 std::string repeatGlyph(const char* glyph, int count)
 {
 	std::string out;
@@ -347,7 +359,7 @@ void pushHudDelta(HelloGameMemory& mem,
 		pushStateInt(intents, "view.hud.hp", mem.hp);
 		mem.lastHp = mem.hp;
 
-		// Recompose the block bar from the new HP (maxHp is constant kMaxHp).
+		// 新 HP からブロック bar を再構成 (maxHp は定数 kMaxHp)。
 		const float pct    = std::clamp(static_cast<float>(mem.hp) / kMaxHp, 0.0f, 1.0f);
 		const int   filled = static_cast<int>(std::lround(pct * kHpBarWidth));
 		pushStateString(intents, "view.hud.hpFill",  repeatGlyph("█", filled));
@@ -377,12 +389,17 @@ void pushHudDelta(HelloGameMemory& mem,
 	}
 	if (mem.hitCount != mem.lastHitCount)
 	{
+		// 本物の被弾 (-1 からの reset エッジではない) は hit SE 再生 (ADR 0008)。
+		if (mem.hitCount > mem.lastHitCount && mem.lastHitCount >= 0)
+		{
+			pushSoundSE(intents, "hit");
+		}
 		pushStateInt(intents, "view.hud.hitCount", mem.hitCount);
 		mem.lastHitCount = mem.hitCount;
 	}
 }
 
-// ── Inspector exports (DLL → host SharedSnapshot, sub-window channel) ─────
+// ── inspector export (DLL → host SharedSnapshot、sub-window チャネル) ──────
 
 void exportGameplayInspectable(HelloGameMemory& mem,
                                mitiru::module::FrameIntents* intents)
@@ -401,21 +418,20 @@ void exportGameplayInspectable(HelloGameMemory& mem,
 	exportInspectable(intents, "gameplay", "Gameplay state", mem.scratchJson);
 }
 
-/// Time-travel inspectable: HP + X history series for the inspector sub-window
-/// to scrub locally. The game does NOT scrub — it only publishes the raw ring
-/// buffer contents. The inspector owns the scrub cursor on its own side.
+/// time-travel inspectable: inspector sub-window がローカルに scrub するための
+/// HP + X 履歴系列。game は scrub しない — raw な ring buffer 内容を publish する
+/// だけ。scrub カーソルは inspector が自分側で保持する。
 void exportTimeTravelInspectable(HelloGameMemory& mem,
                                   mitiru::module::FrameIntents* intents)
 {
 	nlohmann::json hpHistory = nlohmann::json::array();
 	nlohmann::json xHistory  = nlohmann::json::array();
-	// oldest first (left edge of graph) → newest last (current).
+	// 古い順 (graph 左端) から新しい順 (末尾=現在) へ。
 	//
-	// Downsample to at most kGraphSamples points so the serialized JSON stays
-	// well under the FrameIntents inspectable buffer (3968 B). 300 raw frames
-	// of hp+x would serialize to ~4 KB and overflow → truncated/invalid JSON
-	// ("DLL produced invalid JSON" in the inspector). 96 samples is plenty for
-	// a graph at typical inspector widths.
+	// serialize 後の JSON が FrameIntents inspectable buffer (3968 B) を十分下回る
+	// よう最大 kGraphSamples 点へダウンサンプル。hp+x を 300 raw frame 分だと
+	// ~4 KB に serialize されて overflow し JSON が壊れる (inspector で "DLL
+	// produced invalid JSON")。典型的な inspector 幅の graph には 96 サンプルで十分。
 	constexpr std::size_t kGraphSamples = 96;
 	const std::size_t n = mem.history.size();
 	if (n > 0)
@@ -423,16 +439,16 @@ void exportTimeTravelInspectable(HelloGameMemory& mem,
 		const std::size_t count = n < kGraphSamples ? n : kGraphSamples;
 		for (std::size_t k = 0; k < count; ++k)
 		{
-			// Map sample k (0..count-1) → history index, oldest→newest.
-			// idxFromOldest spans [0, n-1] evenly across `count` samples.
+			// サンプル k (0..count-1) を history index (古い順) へマップ。
+			// idxFromOldest は `count` 個のサンプルで [0, n-1] を均等に張る。
 			const std::size_t idxFromOldest = (count == 1)
 				? (n - 1)
 				: (k * (n - 1)) / (count - 1);
-			const std::size_t idx = (n - 1) - idxFromOldest; // at() is newest-first
+			const std::size_t idx = (n - 1) - idxFromOldest; // at() は新しい順
 			if (const auto* s = mem.history.at(idx))
 			{
 				hpHistory.push_back(s->hp);
-				// 1 decimal keeps the JSON compact (no 6-sigfig float spam).
+				// 小数 1 桁で JSON をコンパクトに (6 桁 float の spam を防ぐ)。
 				xHistory.push_back(std::round(s->playerPos.x * 10.0f) / 10.0f);
 			}
 		}
@@ -451,7 +467,7 @@ void exportInputInspectable(HelloGameMemory& mem,
                             const mitiru::module::InputSnapshot* input,
                             mitiru::module::FrameIntents* intents)
 {
-	// Held keys (currently down this frame)
+	// 押下中のキー (このフレームで down)
 	nlohmann::json heldKeys = nlohmann::json::array();
 	for (int vk = 1; vk < 256; ++vk)
 	{
@@ -461,20 +477,20 @@ void exportInputInspectable(HelloGameMemory& mem,
 		}
 	}
 
-	// Mouse state
+	// マウス state
 	nlohmann::json mouseBtns = nlohmann::json::array();
 	if (input->mouseButtonsDown[0]) mouseBtns.push_back("L");
 	if (input->mouseButtonsDown[1]) mouseBtns.push_back("R");
 	if (input->mouseButtonsDown[2]) mouseBtns.push_back("M");
 
-	// Recent press history (rolling buffer in memory)
+	// 直近の press 履歴 (memory 上の rolling buffer)
 	nlohmann::json history = nlohmann::json::array();
 	for (const auto& entry : mem.keyHistory)
 	{
 		history.push_back({{"name", entry.name}, {"t", entry.time}});
 	}
 
-	// Per-key press counts (only keys with count > 0 or currently held)
+	// キー別 press 回数 (count > 0 か押下中のキーのみ)
 	nlohmann::json stats = nlohmann::json::array();
 	for (int vk = 1; vk < 256; ++vk)
 	{
@@ -500,7 +516,7 @@ void exportInputInspectable(HelloGameMemory& mem,
 	exportInspectable(intents, "input", "Input", mem.scratchJson);
 }
 
-// ── Action event handling (CEF → DLL) ────────────────────────────────────
+// ── action event 処理 (CEF → DLL) ─────────────────────────────────────────
 
 void processActionEvents(HelloGameMemory& mem,
                          const mitiru::module::InputSnapshot* input)
@@ -517,7 +533,7 @@ void processActionEvents(HelloGameMemory& mem,
 	}
 }
 
-// ── Input monitor maintenance (press history + counts) ───────────────────
+// ── input monitor の維持 (press 履歴 + 回数) ──────────────────────────────
 
 void pollInputDebug(HelloGameMemory& mem,
                     const mitiru::module::InputSnapshot* input)
@@ -544,17 +560,17 @@ void captureSnapshot(HelloGameMemory& mem)
 	mem.history.push(std::move(s));
 }
 
-// ── Asset hot reload (DLL → CEF JS via intent) ───────────────────────────
+// ── asset hot reload (DLL → intent 経由で CEF JS) ─────────────────────────
 
 void pollAssetHotReload(HelloGameMemory& mem,
                         mitiru::module::FrameIntents* intents)
 {
 	++mem.assetPollTick;
-	if (mem.assetPollTick < 60) { return; }  // ~1s @ 60fps
+	if (mem.assetPollTick < 60) { return; }  // 約 1 秒 @ 60fps
 	mem.assetPollTick = 0;
 
-	// hello_game DLL is installed as `<host>/hello_game/hello_game.dll`,
-	// so its assets live in `hello_game/assets/` relative to host cwd.
+	// hello_game DLL は `<host>/hello_game/hello_game.dll` として配置されるので、
+	// asset は host cwd 相対の `hello_game/assets/` にある。
 	std::error_code ec;
 	std::filesystem::file_time_type newest{};
 	bool any = false;
@@ -585,22 +601,20 @@ void pollAssetHotReload(HelloGameMemory& mem,
 	mem.assetMtimeInitialized   = true;
 }
 
-// ── Gameplay update ───────────────────────────────────────────────────
+// ── gameplay update ─────────────────────────────────────────────────────
 
 void movePlayer(HelloGameMemory& mem,
                 const mitiru::module::InputSnapshot* input, float dt)
 {
-	// Mouse-native control: the player chases the cursor at kPlayerSpeed.
-	// Keyboard movement was removed because the inspector sub-window is
-	// mouse-driven — forcing the dev to swap hand position between the game
-	// (keys) and the inspector (mouse) during a debug session is friction.
-	// Chasing (rather than snapping) preserves the dodge/survival challenge:
-	// you steer the player but can't teleport away from enemies.
-	// Cold-start guard: before the first real mouse move, the engine reports
-	// (0,0). Without this the player would dart to the top-left corner on
-	// spawn. Treat a (0,0) reading as "no cursor yet" and hold position until
-	// the player actually moves the mouse (the clamp means a genuine corner
-	// target is unreachable anyway, so nothing is lost).
+	// マウス native 操作: player は kPlayerSpeed でカーソルを追う。inspector
+	// sub-window がマウス駆動なので、debug 中に game (キー) と inspector (マウス)
+	// で手を持ち替える摩擦を避けるべくキーボード移動は廃止した。
+	// snap でなく追従にすることで回避/生存の難易度を保つ: player を操舵できるが
+	// 敵から瞬間移動はできない。
+	// cold-start guard: 最初の実マウス移動前は engine が (0,0) を報告する。これが
+	// 無いと spawn 時に player が左上隅へ突進する。(0,0) は「まだカーソル無し」と
+	// 扱い、実際にマウスを動かすまで位置を保持 (clamp により真の隅 target は
+	// どのみち到達不能なので失うものは無い)。
 	if (input->mouseX <= 0.5f && input->mouseY <= 0.5f)
 	{
 		if (!mem.trail.empty()) { mem.trail.pop_back(); }
@@ -615,12 +629,12 @@ void movePlayer(HelloGameMemory& mem,
 
 	const float step = kPlayerSpeed * dt;
 	bool moved = false;
-	// Deadzone avoids jitter when the cursor sits on top of the player.
+	// deadzone はカーソルが player 真上に乗ったときの jitter を防ぐ。
 	if (dist > 2.0f)
 	{
 		if (dist <= step)
 		{
-			mem.player.x = targetX;   // close enough — land exactly on cursor
+			mem.player.x = targetX;   // 十分近い — カーソルにぴったり着地
 			mem.player.y = targetY;
 		}
 		else
@@ -635,7 +649,7 @@ void movePlayer(HelloGameMemory& mem,
 	mem.player.y = std::clamp(mem.player.y,
 	                          kPlayerSize * 0.5f, mem.screenH - kPlayerSize * 0.5f);
 
-	// Trail: push past positions while moving; decay when idle.
+	// trail: 移動中は過去位置を push、停止中は減衰させる。
 	if (moved)
 	{
 		mem.trail.push_front(mem.player);
@@ -670,18 +684,18 @@ void applyHit(HelloGameMemory& mem, Enemy& enemy, int enemyIdx)
 	mem.hp -= kHitDamage;
 	enemy.alive     = false;
 	enemy.respawnIn = kEnemyRespawn;
-	enemy.deathPos   = enemy.pos;  // freeze for fade overlay
+	enemy.deathPos   = enemy.pos;  // fade overlay 用に凍結
 	enemy.deathFadeT = 0.30f;
-	mem.hitFlashT    = 0.18f;       // ~180ms full-screen red wash
-	++mem.hitCount;                 // monotonic counter for HUD pulse
+	mem.hitFlashT    = 0.18f;       // 約 180ms の全画面赤 wash
+	++mem.hitCount;                 // HUD パルス用の単調カウンタ
 
-	// Event timeline: the moment of damage (dual-readable substrate).
+	// event timeline: 被弾の瞬間 (dual-readable な substrate)。
 	mem.eventLog.emit(mem.frame, "hit", {
 		{"dmg",       kHitDamage},
 		{"hp_after",  mem.hp},
 		{"enemy_idx", enemyIdx},
 	});
-	// The enemy that hit dies on contact — record where it fell.
+	// 当たった敵は接触で死ぬ — 倒れた位置を記録する。
 	mem.eventLog.emit(mem.frame, "enemy_death", {
 		{"x", std::round(enemy.deathPos.x * 10.0f) / 10.0f},
 		{"y", std::round(enemy.deathPos.y * 10.0f) / 10.0f},
@@ -742,21 +756,21 @@ void tickTimer(HelloGameMemory& mem, float dt)
 	}
 }
 
-// ── Module callback impls ────────────────────────────────────────────────
+// ── module callback 実装 ───────────────────────────────────────────────────
 
 void hello_on_init(void* memory)
 {
 	if (memory == nullptr) { return; }
 	auto& mem = *static_cast<HelloGameMemory*>(memory);
-	mem.enemies.clear();  // world bootstraps on first update
+	mem.enemies.clear();  // world は初回 update で立ち上がる
 
-	// Open the append-only event timeline (fresh per run). PID-scoped so the
-	// inspector / an AI agent can find it via EventLog::pathForPid.
+	// append-only な event timeline を open (run ごとに新規)。PID スコープなので
+	// inspector / AI agent が EventLog::pathForPid 経由で見つけられる。
 	if (!mem.eventLog.isOpen()) { mem.eventLog.open(currentPid()); }
 
-	// Declare invariants once. predicates close over GameMemory (ADR 0005:
-	// it is the single source of truth, so checks are deterministic). Declared
-	// only if not already present (on_init may run again across hot reloads).
+	// invariant を 1 度だけ宣言。predicate は GameMemory を閉じ込める (ADR 0005:
+	// それが single source of truth なので check は deterministic)。未登録の時だけ
+	// 宣言する (on_init は hot reload を跨いで再実行されうる)。
 	if (mem.invariants.size() == 0)
 	{
 		mem.invariants.add(
@@ -787,17 +801,17 @@ void hello_on_update(void* memory, float dt,
 	if (memory == nullptr || input == nullptr || intents == nullptr) { return; }
 	auto& mem = *static_cast<HelloGameMemory*>(memory);
 
-	mem.totalTime += dt;  // wall-clock
-	++mem.frame;          // time axis for the event timeline + invariant checks
+	mem.totalTime += dt;  // 実時間
+	++mem.frame;          // event timeline + invariant check の時間軸
 
 	if (mem.enemies.empty()) { spawnEnemies(mem); }
 
-	// ESC → quit (the only meta-control the game window exposes).
+	// ESC で終了 (game 窓が公開する唯一の meta-control)。
 	if (input->keysJustPressed[vk::Escape]) { intents->requestStop = 1; }
 
-	// Debug-only: hold [B] to force an invariant violation (hp < 0) so the
-	// red overlay + invariant_violation event can be demonstrated. Released =
-	// restored to a sane value. This is a demo affordance, not gameplay.
+	// debug 専用: [B] 押しっぱなしで invariant 違反 (hp < 0) を強制し、赤 overlay
+	// + invariant_violation event を demo できる。離せば正常値へ復帰。これは demo
+	// 用の仕掛けであり gameplay ではない。
 	const bool breakNow = input->keysDown[vk::B];
 	if (breakNow) { mem.hp = -10; }
 	else if (mem.forceInvariantBreak && mem.hp < 0) { mem.hp = kMaxHp; }
@@ -807,15 +821,15 @@ void hello_on_update(void* memory, float dt,
 	pollInputDebug(mem, input);
 	pollAssetHotReload(mem, intents);
 
-	// Check declared invariants every frame against GameMemory. Violations
-	// land in the event timeline (machine-readable) and recent() (window).
+	// 宣言済み invariant を毎フレーム GameMemory に対して check。違反は event
+	// timeline (機械可読) と recent() (window) に着地する。
 	mem.invariants.check(mem.frame, mem.eventLog);
 
-	// Gameplay is always live — the game never time-travels itself.
+	// gameplay は常に live — game は自身を time-travel させない。
 	const float gameplayDt = dt;
 
-	// HUD + inspectable export every 6 frames. HUD reaches the game window;
-	// inspectables feed sub-windows (never drawn here).
+	// HUD + inspectable を 6 フレームごとに export。HUD は game 窓へ届く;
+	// inspectable は sub-window へ供給される (ここでは描画しない)。
 	if (++mem.pushTick >= 6)
 	{
 		mem.pushTick = 0;
@@ -842,9 +856,8 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 	mem.screenW = static_cast<float>(screen->width());
 	mem.screenH = static_cast<float>(screen->height());
 
-	// Recenter on shape change — never let player be pinned at edge after
-	// resize. Threshold avoids per-pixel WM_SIZE churn (which is already
-	// deferred at engine level, but be defensive).
+	// 形状変化で中央へ戻す — resize 後に player が端へ貼り付くのを防ぐ。閾値で
+	// per-pixel な WM_SIZE churn を避ける (engine 側で既に deferred だが防御的に)。
 	const bool firstFrame = mem.lastScreenW <= 0.0f;
 	const bool resized    = !firstFrame &&
 		(std::abs(mem.screenW - mem.lastScreenW) > 4.0f ||
@@ -853,18 +866,18 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 	{
 		mem.player = {mem.screenW * 0.5f, mem.screenH * 0.5f};
 		mem.trail.clear();
-		// re-seed enemies at edges of the NEW screen
+		// 新しい画面の端に敵を再配置
 		spawnEnemies(mem);
 		mem.lastScreenW = mem.screenW;
 		mem.lastScreenH = mem.screenH;
 	}
 
-	// Mitiru Saturn palette — silver gray + sober red + ink.
-	// bg is engine-level (cfg.backgroundColor), gameplay rects use the
-	// Saturn primary (ink player) + danger (Saturn red enemy) tokens.
+	// Mitiru Saturn palette — silver gray + sober red + ink。
+	// bg は engine-level (cfg.backgroundColor)、gameplay rect は Saturn primary
+	// (ink player) + danger (Saturn red enemy) token を使う。
 	screen->clear(sgc::Colorf{0.784f, 0.784f, 0.784f, 1.0f});  // #c8c8c8 (silver)
 
-	// ── Player trail (oldest first → darkest)
+	// ── player trail (古い順 = 最も暗い)
 	if (!mem.trail.empty())
 	{
 		const std::size_t n = mem.trail.size();
@@ -876,14 +889,14 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 			const float a = t * 0.30f;  // max 30% で控えめに
 			const float scale = 0.55f + 0.30f * t;  // 古いほど小さく
 			const float sz = kPlayerSize * scale;
-			// Trail = player ink black with alpha decay (#101010).
+			// trail = player の ink black に alpha 減衰 (#101010)。
 			screen->drawRect(
 				sgc::Rectf{p.x - sz * 0.5f, p.y - sz * 0.5f, sz, sz},
 				sgc::Colorf{0.063f, 0.063f, 0.063f, a});
 		}
 	}
 
-	// Player = ink black (#101010) — neutral, "operated subject" against silver bg.
+	// player = ink black (#101010) — silver bg に対し中立な「操作対象」。
 	screen->drawRect(
 		sgc::Rectf{mem.player.x - kPlayerSize * 0.5f,
 		           mem.player.y - kPlayerSize * 0.5f,
@@ -894,7 +907,7 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 	{
 		if (enemy.alive)
 		{
-			// Enemy = Saturn red (#c8002c) — single identity accent = danger.
+			// enemy = Saturn red (#c8002c) — 唯一の identity accent = danger。
 			screen->drawRect(
 				sgc::Rectf{enemy.pos.x - kEnemySize * 0.5f,
 				           enemy.pos.y - kEnemySize * 0.5f,
@@ -907,7 +920,7 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 			const float t = enemy.deathFadeT / 0.30f;  // 1 → 0
 			const float a = t * 0.7f;
 			const float sz = kEnemySize * (1.0f + (1.0f - t) * 0.8f);
-			// Death fade = Saturn red with alpha decay.
+			// 死亡 fade = Saturn red に alpha 減衰。
 			screen->drawRect(
 				sgc::Rectf{enemy.deathPos.x - sz * 0.5f,
 				           enemy.deathPos.y - sz * 0.5f,
@@ -916,25 +929,25 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 		}
 	}
 
-	// ── Hit flash full-screen overlay
+	// ── 被弾フラッシュの全画面 overlay
 	if (mem.hitFlashT > 0.0f)
 	{
 		const float a = std::min(0.32f, mem.hitFlashT * 1.8f);
-		// Hit flash = Saturn red wash overlay.
+		// 被弾フラッシュ = Saturn red の wash overlay。
 		screen->drawRect(
 			sgc::Rectf{0.0f, 0.0f, mem.screenW, mem.screenH},
 			sgc::Colorf{0.784f, 0.0f, 0.173f, a});
 	}
 
-	// ── Invariant violation overlay (debug, EXCEPTION to pure-game rule) ──
-	// Only drawn when an invariant is actually broken — it occupies no screen
-	// space when the game is healthy (必要な時しか出ない). A thin top band in
-	// Saturn red names the first broken invariant so the dev sees it without
-	// opening the inspector. The same violation is in the event timeline.
+	// ── invariant 違反 overlay (debug、pure-game ルールの例外) ──
+	// invariant が実際に壊れた時だけ描画 — game が健全な間は画面を占めない
+	// (必要な時しか出ない)。Saturn red の細い上部 band が最初に壊れた invariant
+	// 名を出すので、dev は inspector を開かずとも気付ける。同じ違反は event
+	// timeline にもある。
 	if (!mem.invariants.recent().empty())
 	{
 		const float bandH = 30.0f;
-		// Saturn red band across the top edge.
+		// 上端に Saturn red の band。
 		screen->drawRect(
 			sgc::Rectf{0.0f, 0.0f, mem.screenW, bandH},
 			sgc::Colorf{0.784f, 0.0f, 0.173f, 0.92f});
@@ -946,7 +959,7 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 		{
 			label += "  +" + std::to_string(mem.invariants.recent().size() - 1);
 		}
-		// White-on-red text — readable against the band.
+		// 赤地に白文字 — band に対して読める。
 		screen->drawTextInRect(
 			sgc::Rectf{10.0f, 5.0f, mem.screenW - 20.0f, bandH - 8.0f},
 			label.c_str(),
@@ -966,7 +979,7 @@ void hello_on_shutdown(void* memory)
 
 }  // namespace hello_game
 
-// ── DLL exports ──────────────────────────────────────────────────────────
+// ── DLL export ─────────────────────────────────────────────────────────────
 
 extern "C"
 {
@@ -982,8 +995,8 @@ void mitiru_module_load(mitiru::module::ModuleApi* api, void** memory)
 {
 	if (api == nullptr || memory == nullptr) { return; }
 
-	// First-time load: allocate persistent state. On reload, host hands us
-	// the same pointer so gameplay state survives the code swap (ADR 0005).
+	// 初回 load: 永続 state を確保。reload 時は host が同じ pointer を渡すので
+	// gameplay state は code swap を生き延びる (ADR 0005)。
 	if (*memory == nullptr)
 	{
 		*memory = new hello_game::HelloGameMemory{};

@@ -67,8 +67,8 @@ namespace mitiru::render
 
 	std::error_code ec;
 	std::filesystem::create_directories(dir, ec);
-	// create_directories: returns false if the dir already exists (not an
-	// error). Treat ec being set as the only fatal case.
+	// create_directories: dir が既存なら false を返す (エラーではない)。
+	// ec がセットされた場合のみ致命的とみなす。
 	if (ec)
 	{
 		return {};

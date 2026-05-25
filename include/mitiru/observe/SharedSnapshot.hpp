@@ -78,8 +78,8 @@ public:
 
 	~SharedSnapshot()
 	{
-		// Best-effort cleanup. Reader may still be polling; if so they'll just
-		// observe nullopt next tick, which is fine.
+		// best-effort cleanup。Reader がまだ polling 中でも、次 tick で nullopt を
+		// 観測するだけなので問題ない。
 		std::error_code ec;
 		std::filesystem::remove(m_path, ec);
 	}
@@ -104,7 +104,7 @@ public:
 			std::filesystem::rename(m_tmpPath, m_path, ec);
 			if (ec)
 			{
-				// rename failed (e.g. file in use on Windows). Try unlink + rename.
+				// rename 失敗 (例: Windows でファイル使用中)。unlink + rename を試す。
 				std::filesystem::remove(m_path, ec);
 				std::filesystem::rename(m_tmpPath, m_path, ec);
 				if (ec) { return false; }
@@ -153,7 +153,7 @@ public:
 			}
 			catch (...)
 			{
-				// Mid-rename race or truncated read; try again next tick.
+				// rename 途中の race / truncated read。次 tick で再試行する。
 				return std::nullopt;
 			}
 		}

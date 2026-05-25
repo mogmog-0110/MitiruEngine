@@ -2,13 +2,13 @@
 <meta charset="utf-8">
 <title>mitiru_modal.js tests</title>
 <!--
-    test_modal.html — mitiru.modal (NF-13) unit tests
+    test_modal.html — mitiru.modal (NF-13) unit test
 
-    Run:
+    走らせ方:
       python tools/mitiru_serve.py --port 8770 --no-inject
       open http://localhost:8770/web/mitiru_runtime/tests/test_modal.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -31,7 +31,7 @@
 	const m = mitiru.modal;
 
 	// ── cleanup helper ────────────────────────────────────────────
-	// Forcibly close all open modals between tests to prevent leaked DOM.
+	// DOM の漏れを防ぐため、テスト間で開いている modal を強制的に全て閉じる。
 	async function cleanup()
 	{
 		while (m.count() > 0)
@@ -46,7 +46,7 @@
 		return new Promise(function(r) { setTimeout(r, 0); });
 	}
 
-	// ── 1. alert resolves on OK click ─────────────────────────────
+	// ── 1. alert は OK click で resolve ─────────────────────────────
 	t.case('alert_opens_and_resolves_on_ok_click', async function()
 	{
 		var p = m.alert({ body: 'Hello' });
@@ -63,7 +63,7 @@
 		await cleanup();
 	});
 
-	// ── 2. confirm resolves true on OK ────────────────────────────
+	// ── 2. confirm は OK で true に resolve ────────────────────────────
 	t.case('confirm_resolves_true_on_ok', async function()
 	{
 		var p = m.confirm({ body: 'Are you sure?' });
@@ -77,7 +77,7 @@
 		await cleanup();
 	});
 
-	// ── 3. confirm resolves false on Cancel ───────────────────────
+	// ── 3. confirm は Cancel で false に resolve ───────────────────────
 	t.case('confirm_resolves_false_on_cancel', async function()
 	{
 		var p = m.confirm({ body: 'Delete?' });
@@ -92,7 +92,7 @@
 		await cleanup();
 	});
 
-	// ── 4. prompt resolves to typed string on OK ──────────────────
+	// ── 4. prompt は OK で入力文字列に resolve ──────────────────
 	t.case('prompt_resolves_typed_string_on_ok', async function()
 	{
 		var p = m.prompt({ body: 'Enter name:' });
@@ -110,7 +110,7 @@
 		await cleanup();
 	});
 
-	// ── 5. prompt resolves null on Cancel ─────────────────────────
+	// ── 5. prompt は Cancel で null に resolve ─────────────────────────
 	t.case('prompt_resolves_null_on_cancel', async function()
 	{
 		var p = m.prompt({ body: 'Enter value:' });
@@ -124,7 +124,7 @@
 		await cleanup();
 	});
 
-	// ── 6. prompt defaultValue pre-fills input ────────────────────
+	// ── 6. prompt の defaultValue が input を事前入力する ────────────────────
 	t.case('prompt_defaultValue_prefills_input', async function()
 	{
 		var p = m.prompt({ body: 'Name?', defaultValue: 'Bob' });
@@ -139,7 +139,7 @@
 		await cleanup();
 	});
 
-	// ── 7. close(value) resolves programmatically ─────────────────
+	// ── 7. close(value) はプログラムから resolve する ─────────────────
 	t.case('close_value_resolves_programmatically', async function()
 	{
 		var p = m.custom({ body: 'Custom' });
@@ -154,7 +154,7 @@
 		await cleanup();
 	});
 
-	// ── 8. isOpen / count reflect state ──────────────────────────
+	// ── 8. isOpen / count は state を反映する ──────────────────────────
 	t.case('isOpen_and_count_reflect_state', async function()
 	{
 		t.assertEq(m.count(), 0, 'count 0 before open');
@@ -182,7 +182,7 @@
 		await cleanup();
 	});
 
-	// ── 9. Nested modals: B resolves first, A still open ─────────
+	// ── 9. ネストした modal: B が先に resolve、A はまだ開いている ─────────
 	t.case('nested_modals_b_resolves_first_a_still_open', async function()
 	{
 		var aResolved = false;
@@ -196,7 +196,7 @@
 
 		t.assertEq(m.count(), 2, 'two modals open');
 
-		// Close topmost (B)
+		// 最前面 (B) を閉じる
 		m.close();
 		await tick();
 
@@ -212,7 +212,7 @@
 		await cleanup();
 	});
 
-	// ── 10. Escape closes topmost only ────────────────────────────
+	// ── 10. Escape は最前面のみ閉じる ────────────────────────────
 	t.case('escape_closes_topmost_only', async function()
 	{
 		var pa = m.alert({ body: 'A' });
@@ -222,9 +222,9 @@
 
 		t.assertEq(m.count(), 2);
 
-		// Escape must be dispatched to the TOPMOST modal — each modal owns
-		// its own keydown listener, and the handler returns early when the
-		// event target is not the topmost stack entry.
+		// Escape は最前面の modal に dispatch する必要がある — 各 modal は
+		// 自分の keydown listener を持ち、event target が stack 最前面の
+		// entry でない場合 handler は早期 return する。
 		var roots   = document.querySelectorAll('[data-mitiru-modal]');
 		var topRoot = roots[roots.length - 1];
 		var escEvt  = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
@@ -238,7 +238,7 @@
 		await cleanup();
 	});
 
-	// ── 11. closeOnEscape:false prevents Escape close ─────────────
+	// ── 11. closeOnEscape:false は Escape での close を防ぐ ─────────────
 	t.case('closeOnEscape_false_escape_does_not_close', async function()
 	{
 		var resolved = false;
@@ -257,7 +257,7 @@
 		await cleanup();
 	});
 
-	// ── 12. Backdrop click closes with dismissed:true ─────────────
+	// ── 12. Backdrop click は dismissed:true で閉じる ─────────────
 	t.case('backdrop_click_closes_with_dismissed_true', async function()
 	{
 		var closePayload = null;
@@ -278,7 +278,7 @@
 		await cleanup();
 	});
 
-	// ── 13. closeOnBackdrop:false — backdrop click does nothing ───
+	// ── 13. closeOnBackdrop:false — backdrop click は何もしない ───
 	t.case('closeOnBackdrop_false_backdrop_does_not_close', async function()
 	{
 		var resolved = false;
@@ -296,7 +296,7 @@
 		await cleanup();
 	});
 
-	// ── 14. Focus trap: Tab at last focusable wraps to first ──────
+	// ── 14. Focus trap: 最後の focusable での Tab は最初に回り込む ──────
 	t.case('focus_trap_tab_at_last_wraps_to_first', async function()
 	{
 		var p = m.confirm({ body: 'Focus trap test', title: 'Trap' });
@@ -307,17 +307,17 @@
 			'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])');
 		t.assert(focusable.length >= 2, 'at least 2 focusable elements');
 
-		// Move focus to last element
+		// focus を最後の要素に移す
 		var last = focusable[focusable.length - 1];
 		last.focus();
 		t.assertEq(document.activeElement, last, 'last element focused');
 
-		// Dispatch Tab
+		// Tab を dispatch
 		var tabEvt = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
 		var root = document.querySelector('[data-mitiru-modal]');
 		root.dispatchEvent(tabEvt);
 
-		// After trap, first element should be focused
+		// trap 後は最初の要素に focus されるはず
 		t.assertEq(document.activeElement, focusable[0], 'focus wrapped to first element');
 
 		m.close();
@@ -325,10 +325,10 @@
 		await cleanup();
 	});
 
-	// ── 15. activeElement restored on close ───────────────────────
+	// ── 15. close 時に activeElement が復元される ───────────────────────
 	t.case('active_element_restored_on_close', async function()
 	{
-		// Create a button to focus, simulating a trigger element
+		// trigger 要素を模擬するため focus 用の button を作る
 		var btn = document.createElement('button');
 		btn.textContent = 'Trigger';
 		document.body.appendChild(btn);
@@ -346,7 +346,7 @@
 		await cleanup();
 	});
 
-	// ── 16. 'open' and 'close' events fire with correct payload ───
+	// ── 16. 'open' と 'close' event が正しい payload で発火 ───
 	t.case('open_and_close_events_fire_with_correct_payload', async function()
 	{
 		var openPayload  = null;
@@ -375,7 +375,7 @@
 		await cleanup();
 	});
 
-	// ── 17. okKind='danger' adds danger class to OK button ────────
+	// ── 17. okKind='danger' は OK ボタンに danger class を付ける ────────
 	t.case('okKind_danger_adds_danger_class_to_ok_button', async function()
 	{
 		var p = m.alert({ body: 'Destructive!', okKind: 'danger' });
@@ -390,7 +390,7 @@
 		await cleanup();
 	});
 
-	// ── 18. dismissable:false hides the × button ──────────────────
+	// ── 18. dismissable:false は × ボタンを隠す ──────────────────
 	t.case('dismissable_false_hides_close_button', async function()
 	{
 		var p = m.alert({ body: 'No X', dismissable: false });
@@ -404,7 +404,7 @@
 		await cleanup();
 	});
 
-	// ── 19. body as HTMLElement is appended correctly ─────────────
+	// ── 19. HTMLElement の body が正しく append される ─────────────
 	t.case('body_as_html_element_is_appended', async function()
 	{
 		var span = document.createElement('span');
@@ -423,7 +423,7 @@
 		await cleanup();
 	});
 
-	// ── 20. html:true renders innerHTML (no injection on false) ───
+	// ── 20. html:true は innerHTML を描画 (false では注入されない) ───
 	t.case('html_true_renders_innerHTML_html_false_uses_textContent', async function()
 	{
 		// html:true
@@ -437,7 +437,7 @@
 		await p1;
 		await tick();
 
-		// html:false (default)
+		// html:false (既定)
 		var p2 = m.alert({ body: '<script>evil()</scr'+'ipt>', html: false });
 		await tick();
 
@@ -450,7 +450,7 @@
 		await cleanup();
 	});
 
-	// ── 21. close() on no-open does not throw ─────────────────────
+	// ── 21. 開いていないときの close() は throw しない ─────────────────────
 	t.case('close_on_no_open_does_not_throw', function()
 	{
 		t.assertEq(m.count(), 0, 'no open modals');
@@ -458,7 +458,7 @@
 		t.assertNoThrow(function() { m.close('value'); }, 'close(value) on empty stack does not throw');
 	});
 
-	// ── 22. ARIA attributes present on dialog element ──────────────
+	// ── 22. dialog 要素に ARIA 属性が存在する ──────────────
 	t.case('aria_attributes_present_on_dialog', async function()
 	{
 		var p = m.alert({ title: 'ARIA Test', body: 'Check attributes' });
@@ -480,7 +480,7 @@
 		await cleanup();
 	});
 
-	// ── 23. No title: aria-labelledby omitted ─────────────────────
+	// ── 23. title 無し: aria-labelledby は省略される ─────────────────────
 	t.case('no_title_aria_labelledby_omitted', async function()
 	{
 		var p = m.alert({ body: 'No title modal' });
@@ -495,7 +495,7 @@
 		await cleanup();
 	});
 
-	// ── 24. on/off subscribe and unsubscribe ──────────────────────
+	// ── 24. on/off の subscribe と unsubscribe ──────────────────────
 	t.case('on_returns_unsub_fn_off_removes_listener', async function()
 	{
 		var count = 0;
@@ -522,7 +522,7 @@
 		await cleanup();
 	});
 
-	// ── 25. Escape on prompt resolves null ────────────────────────
+	// ── 25. prompt での Escape は null に resolve ────────────────────────
 	t.case('escape_on_prompt_resolves_null', async function()
 	{
 		var p = m.prompt({ body: 'Hit Escape' });

@@ -7,17 +7,17 @@
 #include "mitiru/debug/TracyZones.hpp"
 
 /// @file Sequence.hpp
-/// @brief Chainable timeline for ordered waits and callbacks.
+/// @brief 順序付き wait と callback をチェーンできる timeline。
 ///
-/// Steps are added at construction time (heap allocation is fine there).
-/// @c tick() advances the timeline without allocating — it only moves a
-/// cursor and subtracts from an accumulator.
+/// step は構築時に追加する (そこでの heap allocation は許容)。
+/// @c tick() は allocation せずに timeline を進める — cursor を動かし
+/// accumulator から減算するだけ。
 ///
-/// Callbacks are stored using @c mitiru::time::detail::SmallFunction — a
-/// 48-byte SBO type-erased callable. Lambdas with captures up to 48 bytes
-/// are stored inline (no heap allocation per action step).
+/// callback は @c mitiru::time::detail::SmallFunction で保持する — 48 byte
+/// SBO の type-erased callable。キャプチャが 48 byte までの lambda は
+/// インラインに格納される (action step ごとの heap allocation 無し)。
 ///
-/// Usage example:
+/// 使用例:
 /// @code
 ///   mitiru::time::Sequence seq;
 ///   seq.wait(1.0f)
@@ -30,37 +30,36 @@
 ///   if (seq.done()) { /* sequence finished */ }
 /// @endcode
 ///
-/// Thread-safety: NOT thread-safe. Tick on the same thread as construction.
+/// スレッド安全性: thread-safe ではない。構築と同じスレッドで tick すること。
 
 namespace mitiru::time {
 
-/// Ordered sequence of timed waits and instant callbacks.
-/// Waits and actions may be freely interleaved. An action step fires
-/// immediately and advances to the next step within the same @c tick() call.
+/// 時間付き wait と即時 callback の順序付きシーケンス。
+/// wait と action は自由に交互配置できる。action step は即座に発火し、
+/// 同じ @c tick() 呼び出し内で次の step へ進む。
 class Sequence {
 public:
     Sequence() = default;
 
-    /// Append a wait step of @p seconds duration. Returns *this for chaining.
+    /// @p seconds 秒の wait step を追加する。チェーン用に *this を返す。
     Sequence& wait(float seconds) {
         m_steps.push_back(Step{seconds, detail::SmallFunction{}});
         return *this;
     }
 
-    /// Append an action step (zero-duration callback). Returns *this for
-    /// chaining. The callback is fired during @c tick() when the cursor
-    /// reaches this step — no allocation occurs at that point for captures
-    /// up to 48 bytes.
+    /// action step (継続時間 0 の callback) を追加する。チェーン用に *this
+    /// を返す。callback は cursor がこの step に到達した @c tick() 中に発火し、
+    /// その時点でキャプチャが 48 byte までなら allocation は発生しない。
     ///
-    /// @tparam F  Any callable with signature @c void().
+    /// @tparam F  シグネチャ @c void() の任意の callable。
     template <typename F>
     Sequence& action(F&& fn) {
         m_steps.push_back(Step{0.0f, detail::SmallFunction{std::forward<F>(fn)}});
         return *this;
     }
 
-    /// Advance the sequence by @p dt seconds.
-    /// tick() is allocation-free: only the cursor and accumulator are mutated.
+    /// sequence を @p dt 秒進める。
+    /// tick() は allocation 無し: cursor と accumulator のみを変更する。
     void tick(float dt) {
         if (done()) { return; }
 
@@ -70,7 +69,7 @@ public:
             Step& step = m_steps[m_cursor];
 
             if (step.action_) {
-                // Action step: fire and advance immediately (no time consumed)
+                // action step: 即座に発火して進む (時間を消費しない)
                 {
                     MITIRU_ZONE_NAMED("Sequence::action");
                     step.action_();
@@ -79,7 +78,7 @@ public:
                 continue;
             }
 
-            // Wait step: consume accumulated time
+            // wait step: 蓄積した時間を消費する
             if (m_acc >= step.wait_) {
                 m_acc -= step.wait_;
                 ++m_cursor;
@@ -89,12 +88,12 @@ public:
         }
     }
 
-    /// Returns true after the last step has been processed.
+    /// 最後の step が処理された後 true を返す。
     [[nodiscard]] bool done() const noexcept {
         return m_cursor >= m_steps.size();
     }
 
-    /// Restart from the first step. Accumulated time is discarded.
+    /// 最初の step から再開する。蓄積された時間は破棄される。
     void reset() noexcept {
         m_cursor = 0;
         m_acc    = 0.0f;
@@ -102,8 +101,8 @@ public:
 
 private:
     struct Step {
-        float                    wait_;    // > 0 for wait steps, 0 for action steps
-        detail::SmallFunction    action_;  // empty for wait steps
+        float                    wait_;    // wait step は > 0、action step は 0
+        detail::SmallFunction    action_;  // wait step では空
     };
 
     std::vector<Step> m_steps;

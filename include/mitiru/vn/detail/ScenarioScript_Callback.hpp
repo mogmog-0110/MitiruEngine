@@ -1,6 +1,6 @@
 #pragma once
 
-// Detail header for mitiru::vn::ScenarioScript — included via vn/ScenarioScript.hpp
+// mitiru::vn::ScenarioScript の detail ヘッダ — vn/ScenarioScript.hpp 経由で include される
 // ScenarioCallback / ConditionEvaluator / ScriptExecutor / FlagManager fwd decl をまとめたファイル。
 
 #include <functional>

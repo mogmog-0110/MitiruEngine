@@ -1,27 +1,26 @@
 /*!
  * mitiru_tokens_vercel.css — Vercel / Geist inspired alt theme
  *
- * Design intent: High-contrast minimalism. Pure white surface, pure black
- * type, electric blue accent, sharp 4px corners. Primary CTAs invert to
- * white-on-black. Best for landing pages and developer-facing surfaces.
- * Compatible with `--mitiru-*` consumers.
+ * Design intent: 高コントラストのミニマリズム。純白の surface、純黒の文字、
+ * electric blue の accent、シャープな 4px の角。primary CTA は white-on-black に
+ * 反転する。landing page や開発者向けの面に最適。`--mitiru-*` consumer と互換。
  *
- * Swap by replacing the <link> to mitiru_tokens.css with this file.
+ * mitiru_tokens.css への <link> をこのファイルに差し替えて切り替える。
  */
 :root
 {
 	/* ── Base palette: Vercel (white + black + electric blue) ─────── */
-	--mitiru-paper:        #ffffff;   /* pure white canvas */
-	--mitiru-paper-hi:     #ffffff;   /* identical surface */
-	--mitiru-ink:          #000000;   /* pure black body text */
-	--mitiru-ink-mute:     #666666;   /* neutral gray for metadata */
-	--mitiru-electric:     #0070f3;   /* signature electric blue */
-	--mitiru-electric-hi:  #0761d1;   /* darker blue for hover */
-	--mitiru-phosphor:     #0070f3;   /* success uses brand blue */
-	--mitiru-brick:        #ee0000;   /* destructive red */
-	--mitiru-paper-edge:   #eaeaea;   /* light gray hairline */
+	--mitiru-paper:        #ffffff;   /* 純白の canvas */
+	--mitiru-paper-hi:     #ffffff;   /* surface は同一 */
+	--mitiru-ink:          #000000;   /* 純黒の本文 */
+	--mitiru-ink-mute:     #666666;   /* metadata 用のニュートラルグレー */
+	--mitiru-electric:     #0070f3;   /* 象徴的な electric blue */
+	--mitiru-electric-hi:  #0761d1;   /* hover 用の濃い青 */
+	--mitiru-phosphor:     #0070f3;   /* success はブランド青を使う */
+	--mitiru-brick:        #ee0000;   /* 破壊的操作の赤 */
+	--mitiru-paper-edge:   #eaeaea;   /* 薄いグレーのヘアライン */
 
-	/* ── Semantic aliases ─────────────────────────────────────── */
+	/* ── Semantic alias ─────────────────────────────────────── */
 	--mitiru-bg:        var(--mitiru-paper);
 	--mitiru-surface:   var(--mitiru-paper-hi);
 	--mitiru-text:      var(--mitiru-ink);
@@ -59,7 +58,7 @@
 	--mitiru-leading-normal: 1.5;
 	--mitiru-leading-loose:  1.6;
 
-	/* ── Spacing — 8 multiples ────────────────────────────────── */
+	/* ── Spacing — 8 の倍数 ────────────────────────────────── */
 	--mitiru-space-0:  0;
 	--mitiru-space-1:  4px;
 	--mitiru-space-2:  8px;
@@ -69,13 +68,13 @@
 	--mitiru-space-6:  32px;
 	--mitiru-space-7:  48px;
 
-	/* ── Corner radius (sharp 4px) ────────────────────────────── */
+	/* ── Corner radius (シャープな 4px) ────────────────────────────── */
 	--mitiru-radius-sm:   2px;
 	--mitiru-radius-md:   4px;
 	--mitiru-radius-lg:   6px;
 	--mitiru-radius-pill: 9999px;
 
-	/* ── Elevation — minimal, mostly hairline ─────────────────── */
+	/* ── Elevation — 最小限、ほぼヘアライン ─────────────────── */
 	--mitiru-shadow-1: 0 0 0 1px var(--mitiru-border);
 	--mitiru-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.04),
 	                   0 0 0 1px var(--mitiru-border);
@@ -84,14 +83,14 @@
 	--mitiru-shadow-4: 0 8px 24px rgba(0, 0, 0, 0.10),
 	                   0 0 0 1px var(--mitiru-border);
 
-	/* Focus ring — electric blue halo */
+	/* Focus ring — electric blue のハロー */
 	--mitiru-focus-ring: 0 0 0 2px rgba(0, 112, 243, 0.40);
 
 	--mitiru-blur-sm: blur(4px);
 	--mitiru-blur-md: blur(12px);
 	--mitiru-blur-lg: blur(24px);
 
-	/* ── Z-index ladder ─────────────────────────────────────── */
+	/* ── Z-index の段階 ─────────────────────────────────────── */
 	--mitiru-z-base:     0;
 	--mitiru-z-hud:      100;
 	--mitiru-z-overlay:  200;

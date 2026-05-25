@@ -125,19 +125,19 @@ body.mitiru-dragging * {
 
 /* ── A11y attribute contract (NF-14) ─────────────────────────────
  *
- * Games toggle these attributes on <html> to opt into accessibility modes.
- * Each preference is an OR of:
- *   (a) the OS-level media query (automatically applied)
- *   (b) the explicit data- attribute (player setting, beats OS)
+ * Games は <html> でこれらの attribute を切り替えて accessibility mode を opt-in する。
+ * 各設定は次の OR:
+ *   (a) OS レベルの media query (自動適用)
+ *   (b) 明示的な data- attribute (player 設定、OS より優先)
  *
- *   <html data-reduce-motion="on">    — force motion reduction
- *   <html data-reduce-motion="off">   — override the OS setting
- *   <html data-color-assist="on">     — enable color-blind assist
- *   <html data-high-contrast="on">    — boost contrast
+ *   <html data-reduce-motion="on">    — motion 抑制を強制
+ *   <html data-reduce-motion="off">   — OS 設定を上書き
+ *   <html data-color-assist="on">     — 色覚補助を有効化
+ *   <html data-high-contrast="on">    — コントラストを強める
  *
- * Components scope their own CSS under these selectors; the base stylesheet
- * only provides the baseline "stop animating" rule. Any component can
- * override when a particular motion must remain (e.g. a progress bar fill).
+ * Components は各自の CSS をこれら selector 配下にスコープする。base stylesheet は
+ * 基本の「アニメーション停止」ルールのみ提供。特定の motion を残したい場合
+ * (例: progress bar の fill) は component 側で上書きできる。
  */
 
 @media (prefers-reduced-motion: reduce) {

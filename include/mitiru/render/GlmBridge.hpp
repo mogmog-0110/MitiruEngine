@@ -22,7 +22,7 @@ inline glm::vec2 toGlm(const sgc::Vec2f& v) { return {v.x, v.y}; }
 /// sgc::Mat4f.m[row][col] -> glm::mat4 (column-major)
 inline glm::mat4 toGlm(const sgc::Mat4f& m) {
 	glm::mat4 result;
-	// sgc stores m[row][col], glm stores column-major
+	// sgc は m[row][col] 順、glm は column-major で格納する
 	// glm[col][row] = sgc.m[row][col]
 	for (int r = 0; r < 4; ++r)
 		for (int c = 0; c < 4; ++c)
@@ -31,10 +31,10 @@ inline glm::mat4 toGlm(const sgc::Mat4f& m) {
 }
 
 /// @brief glm::mat4 -> float[4][4] (HLSL row-major constant buffer用)
-/// HLSL expects row-major when using mul(vector, matrix)
+/// HLSL は mul(vector, matrix) 使用時に row-major を期待する
 inline void toHLSL(float dst[4][4], const glm::mat4& m) {
-	// glm is column-major: m[col][row]
-	// HLSL row-major: dst[row][col]
+	// glm は column-major: m[col][row]
+	// HLSL は row-major: dst[row][col]
 	for (int r = 0; r < 4; ++r)
 		for (int c = 0; c < 4; ++c)
 			dst[r][c] = m[c][r];

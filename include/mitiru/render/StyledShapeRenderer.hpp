@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file StyledShapeRenderer.hpp
-/// @brief Style2D-aware shape renderer for non-rect primitives
-/// @details Extends ShapeRenderer with gradient fills, shadows, strokes,
-///          transforms, and opacity via CPU tessellation + vertex colors.
+/// @brief 非矩形 primitive 用の Style2D 対応 shape renderer
+/// @details ShapeRenderer を拡張し、gradient fill / shadow / stroke /
+///          transform / opacity を CPU tessellation + vertex color で実現する。
 
 #include <algorithm>
 #include <cmath>
@@ -31,7 +31,7 @@ public:
 
     void end() { m_recording = false; }
 
-    // ── Shape draw methods ──────────────────────────────────
+    // ── Shape 描画メソッド ──────────────────────────────────
 
     void drawCircle(const ShapeCircle& shape, const Style& style)
     {
@@ -142,11 +142,11 @@ public:
         if (!m_recording) return;
         if (shape.commands.empty()) return;
 
-        // Flatten all path commands into a polyline
+        // 全 path command を polyline に平坦化する
         const auto points = flattenPath(shape);
         if (points.size() < 3) return;
 
-        // Reuse polygon drawing
+        // polygon 描画を再利用する
         sgc::Vec2f ctr{0, 0};
         for (const auto& p : points) { ctr.x += p.x; ctr.y += p.y; }
         ctr.x /= static_cast<float>(points.size());
@@ -157,7 +157,7 @@ public:
         });
     }
 
-    // ── Accessors ───────────────────────────────────────────
+    // ── Accessor ───────────────────────────────────────────
 
     [[nodiscard]] const std::vector<Vertex2D>& vertices() const { return m_vertices; }
     [[nodiscard]] const std::vector<uint32_t>& indices() const { return m_indices; }
@@ -166,14 +166,14 @@ public:
 private:
     static constexpr float PI = 3.14159265358979323846f;
 
-    /// @brief Calculate optimal segment count based on radius.
-    /// Scales with sqrt(radius): fewer segments for tiny shapes, more for large.
+    /// @brief 半径から最適な segment 数を算出する。
+    /// sqrt(radius) でスケールする: 小さい shape は少なく、大きい shape は多く。
     static int adaptiveSegments(float radius)
     {
         return std::clamp(static_cast<int>(std::sqrt(radius) * 4.0f), 8, 64);
     }
 
-    /// @brief Calculate segments for an arc/pie based on radius and angular span.
+    /// @brief 半径と角度幅から arc/pie の segment 数を算出する。
     static int adaptiveArcSegments(float radius, float startDeg, float endDeg)
     {
         const int full = adaptiveSegments(radius);
@@ -185,7 +185,7 @@ private:
     std::vector<uint32_t> m_indices;
     bool m_recording = false;
 
-    // ── Gradient evaluation ─────────────────────────────────
+    // ── Gradient 評価 ─────────────────────────────────────
 
     sgc::Colorf evaluateGradient(const Gradient& grad,
                                  float nx, float ny) const
@@ -260,7 +260,7 @@ private:
         return {px + center.x + xf.translate.x, py + center.y + xf.translate.y};
     }
 
-    // ── Normalized position within bounds ───────────────────
+    // ── bounds 内の正規化座標 ───────────────────
 
     static sgc::Vec2f normalize(const sgc::Vec2f& p, const sgc::Rectf& b)
     {
@@ -271,7 +271,7 @@ private:
         return {nx, ny};
     }
 
-    // ── Draw orchestrator ───────────────────────────────────
+    // ── 描画 orchestrator ───────────────────────────────────
 
     template <typename EmitFn>
     void drawShapeWithStyle(const Style& style, const sgc::Vec2f& center,
@@ -294,7 +294,7 @@ private:
         {
             const auto shadowStart = static_cast<uint32_t>(m_vertices.size());
             emitFill(Gradient::solid(style.shadow.color), style.shadow.blur * 0.5f);
-            // Offset shadow vertices
+            // shadow vertex をオフセットする
             for (auto i = shadowStart; i < m_vertices.size(); ++i)
             {
                 m_vertices[i].position.x += style.shadow.x;
@@ -320,7 +320,7 @@ private:
                 m_vertices[i].color.a *= style.opacity;
         }
 
-        // 4. Apply transform to all vertices from this draw call
+        // 4. この draw call の全 vertex に transform を適用する
         if (hasTransform)
         {
             for (auto i = vertStart; i < m_vertices.size(); ++i)
@@ -329,7 +329,7 @@ private:
         }
     }
 
-    // ── Primitive emitters ──────────────────────────────────
+    // ── Primitive emitter ──────────────────────────────────
 
     void emitCircleFan(sgc::Vec2f center, float radius,
                        const Gradient& fill, const sgc::Rectf& bounds, int seg)
@@ -547,9 +547,9 @@ private:
         }
     }
 
-    // ── Path flattening ──────────────────────────────────────
+    // ── Path 平坦化 ──────────────────────────────────────
 
-    /// @brief Flatten a ShapePath into a polyline via de Casteljau subdivision
+    /// @brief de Casteljau 分割で ShapePath を polyline に平坦化する
     static std::vector<sgc::Vec2f> flattenPath(const ShapePath& shape)
     {
         std::vector<sgc::Vec2f> pts;
@@ -571,7 +571,7 @@ private:
 
             case PathCommand::QuadTo:
             {
-                // Quadratic bezier: cursor -> cmd.p0 (control) -> cmd.p1 (target)
+                // 2 次 bezier: cursor -> cmd.p0 (control) -> cmd.p1 (target)
                 constexpr int segs = 8;
                 const sgc::Vec2f start = cursor;
                 const sgc::Vec2f cp = cmd.p0;
@@ -590,7 +590,7 @@ private:
 
             case PathCommand::CubicTo:
             {
-                // Cubic bezier: cursor -> cmd.p0 (c1) -> cmd.p1 (c2) -> cmd.p2 (target)
+                // 3 次 bezier: cursor -> cmd.p0 (c1) -> cmd.p1 (c2) -> cmd.p2 (target)
                 constexpr int segs = 16;
                 const sgc::Vec2f start = cursor;
                 const sgc::Vec2f c1 = cmd.p0;
@@ -613,7 +613,7 @@ private:
             }
 
             case PathCommand::Close:
-                // Close subpath: line back to first point
+                // subpath を閉じる: 最初の点へ線を戻す
                 if (!pts.empty())
                 {
                     cursor = pts.front();
@@ -625,7 +625,7 @@ private:
         return pts;
     }
 
-    // ── Bounds helpers ──────────────────────────────────────
+    // ── Bounds ヘルパー ──────────────────────────────────────
 
     static sgc::Rectf triangleBounds(sgc::Vec2f p0, sgc::Vec2f p1, sgc::Vec2f p2)
     {

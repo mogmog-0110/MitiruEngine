@@ -460,7 +460,7 @@ public:
 						atlasPixels[dstIdx + 0] = 255; // R
 						atlasPixels[dstIdx + 1] = 255; // G
 						atlasPixels[dstIdx + 2] = 255; // B
-						atlasPixels[dstIdx + 3] = rg.sdfBitmap[srcIdx]; // A = SDF distance
+						atlasPixels[dstIdx + 3] = rg.sdfBitmap[srcIdx]; // A = SDF 距離
 					}
 				}
 			}

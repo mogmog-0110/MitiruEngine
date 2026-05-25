@@ -1,26 +1,22 @@
-// mitiru_inspector — axis 5 (modular sub-window architecture) seed.
+// mitiru_inspector — 軸 5 (modular sub-window architecture) の種。
 //
-// A standalone, separate-OS-process window that watches another running
-// MitiruEngine game's state and renders it live. No CEF, no audio, no
-// ECS — just the renderer + file-mtime polling. Drag it to a second monitor
-// and you get a real sub-window inspector while gameplay continues
-// uninterrupted in the main window.
+// 別 OS プロセスの独立窓。動作中の MitiruEngine ゲームの state を監視しライブ描画する。
+// CEF / audio / ECS なし — renderer + file-mtime polling のみ。別モニタに drag すれば、
+// main window のゲームを止めずに本物の sub-window inspector が手に入る。
 //
-// The producer (gameplay) writes to
+// producer (gameplay) は
 //   %TEMP%\mitiru_inspector_<pid>.json
-// (see include/mitiru/observe/SharedSnapshot.hpp). The inspector reads
-// from there at ~30 Hz, rendering whatever it finds.
+// に書く (include/mitiru/observe/SharedSnapshot.hpp 参照)。inspector は ~30 Hz で読み描画。
 //
 // Usage:
-//   mitiru_inspector <pid>          # watch process with that pid
-//   mitiru_inspector --file <path>  # watch a specific file directly
+//   mitiru_inspector <pid>          # その pid のプロセスを監視
+//   mitiru_inspector --file <path>  # 特定ファイルを直接監視
 //
-// Why this design (instead of CEF multi-process):
-//   - CEF runs in single-process mode in the engine today (V8 proxy
-//     resolver blocker; see docs/adr/0004-modular-sub-window-architecture.md)
-//   - Native sub-window via separate process trivially gives us
-//     multi-monitor support, isolated crashes, and no IPC ceremony beyond
-//     the file-mtime polling already used for hot reload
+// なぜこの design か (CEF multi-process でなく):
+//   - 現状 CEF は engine 内で single-process mode 動作 (V8 proxy resolver の制約;
+//     docs/adr/0004-modular-sub-window-architecture.md 参照)
+//   - 別プロセスの native sub-window なら multi-monitor / クラッシュ隔離が容易で、
+//     hot reload で既に使う file-mtime polling 以上の IPC が要らない
 
 #include <algorithm>
 #include <cmath>
@@ -37,9 +33,8 @@
 
 namespace {
 
-// Pretty-print a json value as a single line; trims very long arrays/objects
-// and rounds floats to 2 decimal places so the inspector doesn't show
-// junk like 453.33353764648438 that just clutters the UI.
+// json value を 1 行に整形。長すぎる array/object は切り詰め、float は小数 2 桁に丸める
+// (453.33353764648438 のような UI を散らかすゴミを出さないため)。
 std::string compactValue(const nlohmann::json& v)
 {
     if (v.is_number_float())
@@ -57,25 +52,23 @@ std::string compactValue(const nlohmann::json& v)
     return s;
 }
 
-// Which subset of the snapshot the inspector should render. Chosen via the
-// `--panel <name>` CLI arg so the same exe can act as a focused viewer
-// (e.g. input only) without bloating the screen with unrelated data.
+// inspector が snapshot のどの subset を描画するか。`--panel <name>` CLI arg で選ぶ。
+// 同じ exe を無関係なデータで画面を膨らませずに focused viewer (例: input のみ) にできる。
 //
-// --panel state|input|log refers to FIXED built-in layouts.
-// --inspectable <name> refers to a producer-registered Inspectable (from
-//   mitiru::debug::registerInspectable / LocalInspectable). When set, the
-//   inspector reads snapshot["<name>"]["state"] and renders it as a generic
-//   key/value tree, with the title coming from snapshot["<name>"]["title"].
+// --panel state|input|log は固定の built-in layout を指す。
+// --inspectable <name> は producer 登録の Inspectable (mitiru::debug::registerInspectable /
+//   LocalInspectable) を指す。指定時は snapshot["<name>"]["state"] を読み generic な
+//   key/value tree として描画。title は snapshot["<name>"]["title"] から取る。
 enum class Panel
 {
-    State,         ///< gameplay + input + debugLog (back-compat with old schema)
-    Input,         ///< only the input section, full window
-    Log,           ///< only the debug log, full window
-    Inspectable,   ///< render snapshot[m_inspectable]["state"] only
-    TimeTravel,    ///< P2 differentiator: scrub bar + HP graph (auto-selected
-                   ///  when --inspectable timetravel)
-    Events,        ///< Event timeline — reads %TEMP%\mitiru_events_<pid>.jsonl
-                   ///  (append-only JSONL, dual-readable by AI). Needs a pid.
+    State,         ///< gameplay + input + debugLog (旧 schema 後方互換)
+    Input,         ///< input section のみ、全画面
+    Log,           ///< debug log のみ、全画面
+    Inspectable,   ///< snapshot[m_inspectable]["state"] のみ描画
+    TimeTravel,    ///< P2 差別化: scrub bar + HP graph (--inspectable timetravel で
+                   ///  自動選択)
+    Events,        ///< Event timeline — %TEMP%\mitiru_events_<pid>.jsonl を読む
+                   ///  (append-only JSONL、AI から dual-readable)。pid 必須。
 };
 
 inline Panel parsePanel(const std::string& s)
@@ -93,7 +86,7 @@ inline const char* panelTitleSuffix(Panel p)
     {
         case Panel::Input:       return " · input";
         case Panel::Log:         return " · log";
-        case Panel::Inspectable: return "";  // overridden with inspectable's own title
+        case Panel::Inspectable: return "";  // inspectable 自身の title で上書きされる
         case Panel::TimeTravel:  return " · time travel";
         case Panel::Events:      return " · events";
         default:                 return "";
@@ -128,12 +121,10 @@ public:
             return;
         }
 
-        // Local view-only scrub: a left click inside the last-drawn HP graph
-        // rect maps the click x → a LOCAL array offset into the history the
-        // inspector already received. Nothing is sent back to the game — the
-        // game window is pure gameplay and never freezes. Scrubbing happens
-        // entirely inside this observation window. Works regardless of source
-        // (pid or file) since no producer cooperation is needed.
+        // ローカル view-only scrub: 直近描画の HP graph rect 内の左クリックを、inspector が
+        // 既に受け取った history への LOCAL array offset へ写像する。ゲームへは何も送らない —
+        // game window は純粋な gameplay で freeze しない。scrub はこの観察窓内で完結する。
+        // producer の協力不要なので source (pid / file) を問わず動く。
         if (hasInput() &&
             input().isMouseButtonJustPressed(mitiru::MouseButton::Left))
         {
@@ -151,7 +142,7 @@ public:
         m_screenW = static_cast<float>(screen.width());
         m_screenH = static_cast<float>(screen.height());
 
-        // Mitiru Saturn — silver gray base (#c8c8c8).
+        // Mitiru Saturn — シルバーグレー基調 (#c8c8c8)。
         screen.clear(sgc::Colorf{0.784f, 0.784f, 0.784f, 1.0f});
 
         drawHeader(screen);
@@ -185,7 +176,7 @@ private:
                 m_haveMtime = true;
                 ++m_updateCount;
             }
-            catch (...) { /* truncated mid-read; try again */ }
+            catch (...) { /* 読み取り途中で truncate されていた; リトライ */ }
             return;
         }
 
@@ -202,9 +193,9 @@ private:
         }
     }
 
-    /// Poll the append-only JSONL event timeline. Source is either a pid
-    /// (→ %TEMP%\mitiru_events_<pid>.jsonl) or an explicit --file path. The
-    /// reader keeps the most recent N events; a fresh read bumps the counter.
+    /// append-only JSONL event timeline を poll。source は pid
+    /// (→ %TEMP%\mitiru_events_<pid>.jsonl) か明示的な --file path。
+    /// reader は最新 N 件を保持し、新規読み取りで counter を進める。
     void pollEvents()
     {
         if (!m_eventReader)
@@ -224,16 +215,15 @@ private:
 
     void drawHeader(mitiru::Screen& screen)
     {
-        // Heights are sized to comfortably fit the chosen font (16px header
-        // text + padding). SDF atlas is built at 32px so 16 = clean 0.5x
-        // downscale → crisp glyphs even at this size.
-        // Saturn: silver bg + 1px hairline divider (matches the
-        // launcher / hello_game / companion surface treatment).
+        // 高さは選択 font (16px header text + padding) が余裕で収まる寸法。SDF atlas は
+        // 32px 生成なので 16 = きれいな 0.5x downscale → このサイズでも crisp。
+        // Saturn: silver bg + 1px hairline divider
+        // (launcher / hello_game / companion の surface 処理と揃える)。
         const float h = 36.0f;
-        // 1px bottom hairline separator (no inverted strip).
+        // 下端 1px hairline separator (反転帯なし)。
         screen.drawRect(
             sgc::Rectf{0.0f, h - 1.0f, m_screenW, 1.0f},
-            sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f});  // #101010 ink border
+            sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f});  // #101010 ink ボーダー
 
         std::string title = "MitiruEngine — inspector";
         if (!m_currentTitle.empty())
@@ -249,7 +239,7 @@ private:
         screen.drawTextInRect(
             sgc::Rectf{12.0f, 8.0f, m_screenW - 24.0f, h - 12.0f},
             title.c_str(),
-            sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f},  // ink on silver
+            sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f},  // silver 上の ink
             16.0f,
             mitiru::Screen::TextAlignH::Left,
             mitiru::Screen::TextAlignV::Top);
@@ -257,16 +247,15 @@ private:
 
     void drawJsonBody(mitiru::Screen& screen)
     {
-        // All font sizes below are snapped to clean fractions of the SDF
-        // atlas size (32px): 24 = 0.75x, 16 = 0.5x. Off-fraction sizes
-        // (18, 19, 20) cause thin glyphs (l, i, .) to thin out below the
-        // SDF threshold and appear as gaps.
-        // Header bar is 36px; start the body with clearance so the first
-        // section title doesn't crowd the "MitiruEngine — inspector · pid" line.
+        // 以下の font size は全て SDF atlas size (32px) のきれいな分数に揃える:
+        // 24 = 0.75x, 16 = 0.5x。半端なサイズ (18, 19, 20) は細い glyph (l, i, .) を
+        // SDF 閾値以下に痩せさせ、隙間として見える原因になる。
+        // Header bar は 36px。最初の section title が
+        // "MitiruEngine — inspector · pid" 行に詰まらないよう余白を取って body 開始。
         const float top = 48.0f;
 
-        // Event timeline: independent of the SharedSnapshot m_state — reads the
-        // append-only JSONL via EventLog::Reader. Render even with no m_state.
+        // Event timeline: SharedSnapshot の m_state とは独立 — EventLog::Reader 経由で
+        // append-only JSONL を読む。m_state が無くても描画する。
         if (m_panel == Panel::Events)
         {
             drawEventTimeline(screen, 14.0f, top, m_screenW - 28.0f);
@@ -301,9 +290,8 @@ private:
             return;
         }
 
-        // TimeTravel: rich scrub bar + HP graph. DLL exports under
-        // inspectable name "timetravel" with raw history only:
-        // { capacity, hpMax, hpHistory[], xHistory[] }. Scrub state is local.
+        // TimeTravel: リッチな scrub bar + HP graph。DLL は inspectable 名 "timetravel" で
+        // raw history のみ export: { capacity, hpMax, hpHistory[], xHistory[] }。scrub state はローカル。
         if (m_panel == Panel::TimeTravel)
         {
             const std::string key = m_inspectable.empty() ? "timetravel" : m_inspectable;
@@ -331,8 +319,8 @@ private:
             return;
         }
 
-        // --inspectable <name> overrides everything: render only the named
-        // Inspectable's state. Producer's wire format is
+        // --inspectable <name> は全てに優先: 指定 Inspectable の state のみ描画。
+        // producer の wire format は
         //   { "<name>": {"title": "...", "state": {...}} , ... }
         if (m_panel == Panel::Inspectable && !m_inspectable.empty())
         {
@@ -350,7 +338,7 @@ private:
                     return;
                 }
             }
-            // Inspectable not present in this snapshot — show a waiting note.
+            // この snapshot に Inspectable が無い — 待機表示を出す。
             screen.drawTextInRect(
                 sgc::Rectf{12.0f, top, m_screenW - 24.0f, 28.0f},
                 ("waiting for inspectable '" + m_inspectable + "'...").c_str(),
@@ -363,11 +351,11 @@ private:
 
         // ADR 0005 snapshot schema:
         //   { "<name>": {"title": "...", "state": {...}}, ... }
-        // Each top-level key is an Inspectable; we expand its `state` so
-        // the user sees actual data (hp, x, y, ...) rather than the wrapper.
+        // top-level key は各 Inspectable。wrapper でなく `state` を展開し、
+        // user に実データ (hp, x, y, ...) を見せる。
         const float pad        = 14.0f;
         const float bodyWidth  = m_screenW - pad * 2.0f;
-        const float bottomGuard = 36.0f;  // footer height
+        const float bottomGuard = 36.0f;  // footer の高さ
         float y                = top;
         bool  drewAnything     = false;
         for (auto it = obj.begin(); it != obj.end(); ++it)
@@ -378,7 +366,7 @@ private:
             std::string title = it.value().value("title", it.key());
             const bool hasStateKey = it.value().contains("state");
 
-            // Section header — 24px (0.75x atlas) for emphasis
+            // Section header — 強調用に 24px (0.75x atlas)
             screen.drawTextInRect(
                 sgc::Rectf{pad, y, bodyWidth, 28.0f},
                 title.c_str(),
@@ -388,15 +376,15 @@ private:
                 mitiru::Screen::TextAlignV::Top);
             y += 32.0f;
 
-            // Section body — prefer the `state` subtree (wrapper convention);
-            // fall back to the object itself for any non-wrapped entries.
+            // Section body — `state` subtree を優先 (wrapper 規約)。
+            // wrap されてない entry は object 自体に fallback。
             const nlohmann::json& body = hasStateKey ? it.value()["state"] : it.value();
 
             if (it.key() == "input" && body.is_object())
             {
-                // Specialised compact renderer (held keys / mouse / counts).
-                // Bound to a 220px band so a long press-count list doesn't
-                // overflow into the next section (was causing header overlap).
+                // 専用 compact renderer (held keys / mouse / counts)。
+                // 長い press-count list が次 section に溢れない (= header 重なりの原因だった)
+                // よう 220px band に制限。
                 const float band  = std::min(m_screenH - y - bottomGuard, 220.0f);
                 const float endY  = drawInputSection(
                     screen, body, pad, y, bodyWidth, y + band);
@@ -431,11 +419,11 @@ private:
                         mitiru::Screen::TextAlignV::Top);
                     y += rowH + 2.0f;
                 }
-                y += 12.0f;  // gap between sections
+                y += 12.0f;  // section 間の gap
             }
             else
             {
-                // primitive — single big line
+                // primitive — 1 行で大きく
                 screen.drawTextInRect(
                     sgc::Rectf{pad, y, bodyWidth, 24.0f},
                     compactValue(body).c_str(),
@@ -450,18 +438,17 @@ private:
 
         if (!drewAnything)
         {
-            // Fallback for legacy or unrecognised schemas — dump as compact kv.
+            // 旧 / 未知 schema への fallback — compact kv で dump。
             drawKvSection(screen, "", obj, pad, top, bodyWidth);
         }
     }
 
-    /// Local view-only scrub: map a left-click inside the HP graph rect to a
-    /// LOCAL array-index offset into the history this inspector already holds.
-    /// Nothing is sent to the game — the game never freezes. The graph is laid
-    /// out oldest-left .. newest-right over the array (len = m_hpGraphCapacity),
-    /// and m_ttOffset counts back from newest (0 = newest = right edge), so
+    /// ローカル view-only scrub: HP graph rect 内の左クリックを、この inspector が既に持つ
+    /// history への LOCAL array-index offset へ写像。ゲームへは何も送らず freeze もしない。
+    /// graph は array 上で oldest-left .. newest-right に並ぶ (len = m_hpGraphCapacity)。
+    /// m_ttOffset は newest から逆算 (0 = newest = 右端) なので
     ///   offset = (len-1) - round((clickX - graphX) / graphW * (len-1))
-    /// A click on the right edge (or offset 0) returns to live mode.
+    /// 右端 (または offset 0) のクリックで live mode に戻る。
     void handleGraphClick()
     {
         if (m_panel != Panel::TimeTravel) { return; }
@@ -471,53 +458,53 @@ private:
         if (mx < m_hpGraphX || mx > m_hpGraphX + m_hpGraphW) { return; }
         if (my < m_hpGraphY || my > m_hpGraphY + m_hpGraphH) { return; }
 
-        const int len = m_hpGraphCapacity;  // array length, not frame capacity
+        const int len = m_hpGraphCapacity;  // frame capacity でなく array 長
         float frac = m_hpGraphW > 0.0f ? (mx - m_hpGraphX) / m_hpGraphW : 0.0f;
         frac = std::clamp(frac, 0.0f, 1.0f);
         const int idxFromOldest =
             static_cast<int>(std::lround(frac * static_cast<float>(len - 1)));
-        int offset = (len - 1) - idxFromOldest;  // right edge → 0 (newest)
+        int offset = (len - 1) - idxFromOldest;  // 右端 → 0 (newest)
         offset = std::clamp(offset, 0, len - 1);
 
         m_ttOffset = offset;
-        // Right edge (or computed newest) snaps back to live; otherwise scrub.
+        // 右端 (または算出 newest) は live に戻す。それ以外は scrub。
         m_ttScrubbing = !(frac > 0.97f || offset == 0);
     }
 
-    /// Time-travel scrub panel — LOCAL view-only scrub. The producer exports
-    /// only raw history; the inspector computes scrub state itself and never
-    /// sends anything back to the game (no freeze, no reverse channel).
-    /// Producer JSON schema (new contract):
+    /// Time-travel scrub panel — LOCAL view-only scrub。producer は raw history のみ
+    /// export し、inspector が scrub state を自分で計算。ゲームへは何も返さない
+    /// (freeze なし、逆方向 channel なし)。
+    /// producer JSON schema (新契約):
     ///   { capacity, hpMax, hpHistory[]  (oldest→newest, downsampled),
     ///     xHistory[] (oldest→newest, downsampled) }
-    /// Local scrub state lives in m_ttScrubbing / m_ttOffset (array-index units;
-    /// offset 0 = newest = right edge).
+    /// ローカル scrub state は m_ttScrubbing / m_ttOffset に持つ (array-index 単位;
+    /// offset 0 = newest = 右端)。
     void drawTimeTravelBody(mitiru::Screen& screen,
                             const nlohmann::json& s,
                             float x, float y, float w)
     {
-        // capacity = total frames recorded (informational only).
+        // capacity = 記録された総 frame 数 (情報表示のみ)。
         const int   capacity = s.value("capacity", 0);
         const int   hpMax    = s.value("hpMax", 100);
 
-        const sgc::Colorf muteCol{0.290f, 0.290f, 0.290f, 1.0f};       // #4a4a4a mid gray
+        const sgc::Colorf muteCol{0.290f, 0.290f, 0.290f, 1.0f};       // #4a4a4a 中間グレー
         const sgc::Colorf accentCol{0.784f, 0.0f, 0.173f, 1.0f};       // #c8002c Saturn red
-        const sgc::Colorf dangerCol{0.784f, 0.0f, 0.173f, 1.0f};       // #c8002c Saturn red (single accent)
-        const sgc::Colorf xAxisCol{0.063f, 0.063f, 0.063f, 1.0f};      // #101010 ink — secondary series
-        const sgc::Colorf borderCol{0.063f, 0.063f, 0.063f, 1.0f};     // #101010 ink border
+        const sgc::Colorf dangerCol{0.784f, 0.0f, 0.173f, 1.0f};       // #c8002c Saturn red (単一 accent)
+        const sgc::Colorf xAxisCol{0.063f, 0.063f, 0.063f, 1.0f};      // #101010 ink — 副系列
+        const sgc::Colorf borderCol{0.063f, 0.063f, 0.063f, 1.0f};     // #101010 ink ボーダー
 
         const auto& hist  = s.value("hpHistory", nlohmann::json::array());
         const auto& xHist = s.value("xHistory",  nlohmann::json::array());
         const int   n     = static_cast<int>(hist.size());
         const int   nx    = static_cast<int>(xHist.size());
 
-        // Clamp local scrub offset to the current array length (history grows
-        // as the game runs, and may shrink/reset). offset 0 = newest.
+        // ローカル scrub offset を現在の array 長に clamp (history はゲーム進行で増え、
+        // 縮小/reset もあり得る)。offset 0 = newest。
         if (n > 0 && m_ttOffset > n - 1) { m_ttOffset = std::max(0, n - 1); }
         if (n <= 0) { m_ttScrubbing = false; }
 
-        // Locally compute scrubbed values from the arrays we already hold.
-        // newest = last element; scrubbing reads back by m_ttOffset.
+        // 既に持つ array から scrub 値をローカル計算。
+        // newest = 末尾要素。scrub 中は m_ttOffset 分だけ遡る。
         int   hpAtScrub = 0;
         float xAtScrub  = 0.0f;
         if (n > 0)
@@ -531,7 +518,7 @@ private:
             try { xAtScrub = xHist[std::clamp(idx, 0, nx - 1)].get<float>(); } catch (...) {}
         }
 
-        // ── Status header ─────────────────────────────────────────
+        // ── ステータス header ─────────────────────────────────────
         char hdr[160];
         if (m_ttScrubbing)
         {
@@ -552,24 +539,24 @@ private:
             mitiru::Screen::TextAlignV::Top);
         y += 30.0f;
 
-        // Split available vertical space into two stacked graphs with a label
-        // strip + gap between them. Reserve room for the hint footer below.
+        // 縦の空きを 2 段 graph に分割し、間に label strip + gap を挟む。
+        // 下部の hint footer 用に余白を確保。
         const float hintReserve = 28.0f;
         const float labelStrip  = 22.0f;
         const float gap         = 8.0f;
         const float totalAvail  = std::max(80.0f, m_screenH - y - hintReserve - 14.0f);
         const float graphH      = std::max(40.0f, (totalAvail - labelStrip - gap) * 0.5f);
 
-        // ── HP graph (top half, bars) ─────────────────────────────
+        // ── HP graph (上半分、bar) ────────────────────────────────
         screen.drawTextInRect(
             sgc::Rectf{x, y - 22.0f, w, 18.0f}, "HP",
             muteCol, 14.0f,
             mitiru::Screen::TextAlignH::Left,
             mitiru::Screen::TextAlignV::Top);
-        // Record the HP graph rect for click-to-scrub hit testing (update()
-        // runs separately from draw(), so we stash the last-drawn geometry).
-        // m_hpGraphCapacity now holds the ARRAY length (local scrub maps clicks
-        // to array indices, not real frame units).
+        // click-to-scrub の hit test 用に HP graph rect を記録 (update() は draw() と
+        // 別タイミングで走るので直近 geometry を退避)。
+        // m_hpGraphCapacity は ARRAY 長を保持 (ローカル scrub は real frame でなく
+        // array index に click を写像)。
         m_hpGraphX        = x;
         m_hpGraphY        = y;
         m_hpGraphW        = w;
@@ -579,7 +566,7 @@ private:
 
         if (n > 0 && hpMax > 0)
         {
-            // Box border
+            // box border
             screen.drawRect(sgc::Rectf{x, y, w, 1.0f}, borderCol);
             screen.drawRect(sgc::Rectf{x, y + graphH, w, 1.0f}, borderCol);
             screen.drawRect(sgc::Rectf{x, y, 1.0f, graphH}, borderCol);
@@ -599,8 +586,8 @@ private:
                                 sgc::Colorf{col.r, col.g, col.b, 0.65f});
             }
 
-            // Local cursor — array-index based. cursorIdx counts from oldest
-            // (left), centred in its bar. Only shown while scrubbing.
+            // ローカル cursor — array-index 基準。cursorIdx は oldest (左) から数え、
+            // bar 中央に配置。scrub 中のみ表示。
             if (m_ttScrubbing)
             {
                 const int   cursorIdx = std::clamp(n - 1 - m_ttOffset, 0, n - 1);
@@ -619,7 +606,7 @@ private:
         }
         y += graphH + gap;
 
-        // ── PLAYER X label strip ──────────────────────────────────
+        // ── PLAYER X ラベル帯 ──────────────────────────────────────
         screen.drawTextInRect(
             sgc::Rectf{x, y, w, labelStrip}, "PLAYER X",
             xAxisCol, 14.0f,
@@ -627,16 +614,16 @@ private:
             mitiru::Screen::TextAlignV::Top);
         y += labelStrip;
 
-        // ── player_x graph (bottom half, bars; auto-fit to xMin..xMax) ──
+        // ── player_x graph (下半分、bar; xMin..xMax に auto-fit) ──
         if (nx > 0)
         {
-            // Box border
+            // box border
             screen.drawRect(sgc::Rectf{x, y, w, 1.0f}, borderCol);
             screen.drawRect(sgc::Rectf{x, y + graphH, w, 1.0f}, borderCol);
             screen.drawRect(sgc::Rectf{x, y, 1.0f, graphH}, borderCol);
             screen.drawRect(sgc::Rectf{x + w - 1.0f, y, 1.0f, graphH}, borderCol);
 
-            // Auto-fit: scan range, then normalize each sample into [0,1].
+            // auto-fit: 範囲を scan し、各 sample を [0,1] に正規化。
             float xMin = std::numeric_limits<float>::infinity();
             float xMax = -std::numeric_limits<float>::infinity();
             for (int i = 0; i < nx; ++i)
@@ -647,15 +634,15 @@ private:
                 if (v > xMax) { xMax = v; }
             }
             const float xRange  = xMax - xMin;
-            const bool  flatish = xRange < 1.0f;  // player stationary → no spread
+            const bool  flatish = xRange < 1.0f;  // player 静止 → 広がりなし
 
             const float barW = w / static_cast<float>(nx);
             for (int i = 0; i < nx; ++i)
             {
                 float v = 0.0f;
                 try { v = xHist[i].get<float>(); } catch (...) {}
-                // Flat data → render at 50% center so the user still sees
-                // "here's the data, it's just unchanged" instead of an empty box.
+                // flat data → 50% 中央で描画。空 box でなく「データはある、ただ不変」
+                // と user に伝える。
                 const float pct = flatish ? 0.5f
                                           : std::clamp((v - xMin) / xRange, 0.0f, 1.0f);
                 const float h   = (graphH - 2.0f) * pct;
@@ -665,7 +652,7 @@ private:
                                 sgc::Colorf{xAxisCol.r, xAxisCol.g, xAxisCol.b, 0.55f});
             }
 
-            // Local cursor — array-index based, mirrors the HP graph.
+            // ローカル cursor — array-index 基準、HP graph と対称。
             if (m_ttScrubbing)
             {
                 const int   cursorIdx = std::clamp(nx - 1 - m_ttOffset, 0, nx - 1);
@@ -684,11 +671,11 @@ private:
         }
         y += graphH + 8.0f;
 
-        // ── Hint footer ───────────────────────────────────────────
+        // ── ヒント footer ──────────────────────────────────────────
         char hintBuf[160];
         std::snprintf(hintBuf, sizeof(hintBuf),
             "click graph = scrub   ·   click right edge = live   ·   (observes game, never freezes it)");
-        (void)capacity;  // shown in header context only; kept for future use
+        (void)capacity;  // header context でのみ使用; 将来用に保持
         screen.drawTextInRect(
             sgc::Rectf{x, y, w, 22.0f}, hintBuf,
             muteCol, 14.0f,
@@ -696,12 +683,10 @@ private:
             mitiru::Screen::TextAlignV::Top);
     }
 
-    /// Event timeline — a time-ordered list of sparse gameplay milestones read
-    /// from the producer's append-only JSONL (%TEMP%\mitiru_events_<pid>.jsonl).
-    /// The SAME file is machine-readable by an AI agent via tail/Read — the
-    /// window and the agent observe one substrate (dual-readable). Newest at
-    /// the bottom; type drives the swatch colour, invariant_violation is
-    /// emphasised (full red row).
+    /// Event timeline — producer の append-only JSONL (%TEMP%\mitiru_events_<pid>.jsonl)
+    /// から読む、時系列順の疎な gameplay マイルストーン一覧。同じファイルは AI agent からも
+    /// tail/Read で機械可読 — 窓と agent が単一 substrate を観察する (dual-readable)。
+    /// 最新が下。type が swatch 色を決め、invariant_violation は強調 (行全体を赤)。
     void drawEventTimeline(mitiru::Screen& screen, float x, float y, float w)
     {
         const sgc::Colorf inkCol{0.063f, 0.063f, 0.063f, 1.0f};
@@ -722,7 +707,7 @@ private:
 
         const auto& events = m_eventReader->events();
 
-        // Status header.
+        // ステータス header。
         char hdr[96];
         std::snprintf(hdr, sizeof(hdr), "%zu events  (newest at bottom)",
                       events.size());
@@ -733,7 +718,7 @@ private:
         y += 26.0f;
 
         const float rowH      = 24.0f;
-        const float bottom    = m_screenH - 36.0f;  // footer guard
+        const float bottom    = m_screenH - 36.0f;  // footer ガード
         const std::size_t maxRows =
             static_cast<std::size_t>(std::max(0.0f, (bottom - y) / rowH));
         const std::size_t start =
@@ -749,18 +734,18 @@ private:
             const auto& e = events[i];
             const bool isViolation = (e.type == "invariant_violation");
 
-            // Whole-row tint for violations so they jump out.
+            // violation は目立つよう行全体を tint。
             if (isViolation)
             {
                 screen.drawRect(sgc::Rectf{x, y, w, rowH - 2.0f},
                                 sgc::Colorf{redCol.r, redCol.g, redCol.b, 0.16f});
             }
 
-            // Left swatch — colour by type.
+            // 左 swatch — type で色分け。
             const sgc::Colorf swatch = eventColor(e.type);
             screen.drawRect(sgc::Rectf{x, y + 3.0f, swatchW, rowH - 8.0f}, swatch);
 
-            // frame # column.
+            // frame # 列。
             char frameBuf[24];
             std::snprintf(frameBuf, sizeof(frameBuf), "f%u", e.frame);
             screen.drawTextInRect(
@@ -769,7 +754,7 @@ private:
                 mitiru::Screen::TextAlignH::Left,
                 mitiru::Screen::TextAlignV::Top);
 
-            // type column.
+            // type 列。
             screen.drawTextInRect(
                 sgc::Rectf{x + swatchW + 8.0f + frameColW, y, typeColW, rowH},
                 e.type.c_str(),
@@ -777,7 +762,7 @@ private:
                 mitiru::Screen::TextAlignH::Left,
                 mitiru::Screen::TextAlignV::Top);
 
-            // data column — compact dump of the payload.
+            // data 列 — payload の compact dump。
             const float dataX = x + swatchW + 8.0f + frameColW + typeColW;
             std::string data = e.data.is_null() ? "" : e.data.dump();
             if (data.size() > 64) { data = data.substr(0, 61) + "..."; }
@@ -791,24 +776,24 @@ private:
         }
     }
 
-    /// Map an event type to a Saturn-palette swatch colour.
+    /// event type を Saturn パレットの swatch 色に写像。
     static sgc::Colorf eventColor(const std::string& type)
     {
         if (type == "hit")                 { return {0.784f, 0.0f, 0.173f, 1.0f}; } // Saturn red
         if (type == "invariant_violation") { return {0.784f, 0.0f, 0.173f, 1.0f}; } // Saturn red
         if (type == "enemy_death")         { return {0.063f, 0.063f, 0.063f, 1.0f}; } // ink
         if (type == "game_over")           { return {0.063f, 0.063f, 0.063f, 1.0f}; } // ink
-        return {0.290f, 0.290f, 0.290f, 1.0f};  // mid gray (restart / other)
+        return {0.290f, 0.290f, 0.290f, 1.0f};  // 中間グレー (restart / その他)
     }
 
-    /// Bottom-half "Debug Log" — newest lines at the bottom, wraps as it scrolls.
-    /// Lines come from the producer's mitiru::debug::println / printf calls.
+    /// 下半分の "Debug Log" — 最新行が下、スクロールで折り返す。
+    /// 行は producer の mitiru::debug::println / printf 呼び出し由来。
     void drawDebugLog(mitiru::Screen& screen,
                       const nlohmann::json& lines,
                       float x, float y, float w, float h)
     {
         const float headerH = 24.0f;
-        // Header bar — ink (#101010) on silver page
+        // Header bar — silver ページ上の ink (#101010)
         screen.drawRect(
             sgc::Rectf{x, y, w, headerH},
             sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f});
@@ -822,7 +807,7 @@ private:
 
         const float bodyY = y + headerH + 2.0f;
         const float bodyH = h - headerH - 2.0f;
-        // Body — light gray (#d8d8d8) inset against silver page
+        // Body — silver ページに対し薄いグレー (#d8d8d8) の inset
         screen.drawRect(
             sgc::Rectf{x, bodyY, w, bodyH},
             sgc::Colorf{0.847f, 0.847f, 0.847f, 1.0f});
@@ -852,7 +837,7 @@ private:
             screen.drawTextInRect(
                 sgc::Rectf{x + 8.0f, row, w - 16.0f, rowH},
                 lines[i].get_ref<const std::string&>().c_str(),
-                sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f},  // ink on light gray
+                sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f},  // 薄いグレー上の ink
                 16.0f,
                 mitiru::Screen::TextAlignH::Left,
                 mitiru::Screen::TextAlignV::Top);
@@ -860,7 +845,7 @@ private:
         }
     }
 
-    /// Generic flat key/value renderer.
+    /// 汎用 flat key/value renderer。
     void drawKvSection(mitiru::Screen& screen,
                        const std::string& title,
                        const nlohmann::json& obj,
@@ -900,18 +885,17 @@ private:
         }
     }
 
-    /// Render a producer-registered Inspectable's `state` JSON. Handles the
-    /// common shapes: object → key/value list; array → indexed bullet list;
-    /// primitive → centred big text. Specialised renderers (input table, log
-    /// scroller) kick in when the inspectable's name hints at them.
+    /// producer 登録 Inspectable の `state` JSON を描画。よくある形を処理:
+    /// object → key/value list; array → index 付き list; primitive → 中央大テキスト。
+    /// inspectable 名がヒントになる場合は専用 renderer (input table / log scroller) が働く。
     void drawInspectableState(mitiru::Screen& screen,
                               const nlohmann::json& state,
                               float x, float y, float w)
     {
-        // Built-in specialisations the user can opt into by naming.
+        // 名前で opt-in できる built-in 特殊化。
         if (m_inspectable == "input" && state.is_object())
         {
-            // Dedicated Input panel — full window height available.
+            // 専用 Input panel — 全画面高を使える。
             drawInputSection(screen, state, x, y, w, m_screenH - 36.0f);
             return;
         }
@@ -932,7 +916,7 @@ private:
                 std::snprintf(idx, sizeof(idx), "[%zu]", i);
                 screen.drawTextInRect(
                     sgc::Rectf{x, ry, 48.0f, rowH}, idx,
-                    sgc::Colorf{0.784f, 0.0f, 0.173f, 1.0f}, 16.0f,  // Saturn red index
+                    sgc::Colorf{0.784f, 0.0f, 0.173f, 1.0f}, 16.0f,  // index は Saturn red
                     mitiru::Screen::TextAlignH::Left,
                     mitiru::Screen::TextAlignV::Top);
                 screen.drawTextInRect(
@@ -960,15 +944,15 @@ private:
             mitiru::Screen::TextAlignV::Top);
     }
 
-    /// Purpose-built input section: held keys (chips), mouse pos+buttons,
-    /// per-key press counters, recent event history.
+    /// 専用 input section: held keys (chips)、mouse pos+buttons、
+    /// key 別 press counter、最近の event history。
     /// @return 描画後の最終 y (caller の縦フローを正しく進めるため)。
     /// @param bottomLimit この y を超える行は描画しない (section overlap 防止)。
     float drawInputSection(mitiru::Screen& screen,
                           const nlohmann::json& obj,
                           float x, float y, float w, float bottomLimit)
     {
-        // Held keys — single line of comma-joined names.
+        // held keys — カンマ区切り名を 1 行で。
         std::string heldLine = "held: ";
         if (obj.contains("held") && obj["held"].is_array() && !obj["held"].empty())
         {
@@ -985,7 +969,7 @@ private:
             mitiru::Screen::TextAlignH::Left, mitiru::Screen::TextAlignV::Top);
         y += 24.0f;
 
-        // Mouse line.
+        // mouse 行。
         char mouseLine[160];
         std::string btns;
         if (obj.contains("mouseBtns") && obj["mouseBtns"].is_array())
@@ -1007,7 +991,7 @@ private:
             mitiru::Screen::TextAlignH::Left, mitiru::Screen::TextAlignV::Top);
         y += 28.0f;
 
-        // Press counts.
+        // press count。
         screen.drawTextInRect(
             sgc::Rectf{x, y, w, 22.0f}, "press counts",
             sgc::Colorf{0.784f, 0.0f, 0.173f, 1.0f}, 16.0f,  // Saturn red
@@ -1016,7 +1000,7 @@ private:
         if (obj.contains("stats") && obj["stats"].is_array())
         {
             const float rowH  = 22.0f;
-            // Respect caller's band AND the footer guard, whichever is tighter.
+            // caller の band と footer guard の、厳しい方に従う。
             const float limit = std::min(bottomLimit, m_screenH - 36.0f);
             for (const auto& s : obj["stats"])
             {
@@ -1043,12 +1027,12 @@ private:
 
     void drawFooter(mitiru::Screen& screen)
     {
-        // Saturn: silver bg + 1px hairline top divider (matches header).
+        // Saturn: silver bg + 上端 1px hairline divider (header と揃える)。
         const float h = 32.0f;
         const float y = m_screenH - h;
         screen.drawRect(
             sgc::Rectf{0.0f, y, m_screenW, 1.0f},
-            sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f});  // #101010 ink border
+            sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f});  // #101010 ink ボーダー
 
         char buf[96];
         std::snprintf(buf, sizeof(buf),
@@ -1057,7 +1041,7 @@ private:
         screen.drawTextInRect(
             sgc::Rectf{12.0f, y + 8.0f, m_screenW - 24.0f, h - 12.0f},
             buf,
-            sgc::Colorf{0.290f, 0.290f, 0.290f, 1.0f},  // text-mute on silver
+            sgc::Colorf{0.290f, 0.290f, 0.290f, 1.0f},  // silver 上の text-mute
             16.0f,
             mitiru::Screen::TextAlignH::Left,
             mitiru::Screen::TextAlignV::Top);
@@ -1093,10 +1077,10 @@ private:
     float                                                    m_pollAccum{0.0f};
     int                                                      m_updateCount{0};
 
-    // ── Local view-only scrub (P2) ───────────────────────────────────────
-    // Last-drawn HP graph geometry, stashed by drawTimeTravelBody() so update()
-    // can hit-test a click against it. m_hpGraphCapacity holds the ARRAY length
-    // (oldest-left .. newest-right); clicks map to array indices.
+    // ── ローカル view-only scrub (P2) ─────────────────────────────────────
+    // 直近描画の HP graph geometry。update() が click を hit-test できるよう
+    // drawTimeTravelBody() が退避する。m_hpGraphCapacity は ARRAY 長
+    // (oldest-left .. newest-right) を保持。click は array index に写像する。
     float                                                    m_hpGraphX{0.0f};
     float                                                    m_hpGraphY{0.0f};
     float                                                    m_hpGraphW{0.0f};
@@ -1104,10 +1088,10 @@ private:
     int                                                      m_hpGraphCapacity{0};
     bool                                                     m_hpGraphValid{false};
 
-    // Local scrub state — owned entirely by the inspector. The game is never
-    // told about it (pure observation; no reverse channel, no freeze).
+    // ローカル scrub state — inspector が完全に所有。ゲームには一切伝えない
+    // (純観察; 逆方向 channel なし、freeze なし)。
     bool                                                     m_ttScrubbing{false};  // false = live (newest)
-    int                                                      m_ttOffset{0};         // 0 = newest(right), len-1 = oldest(left)
+    int                                                      m_ttOffset{0};         // 0 = newest(右), len-1 = oldest(左)
 };
 
 void printUsage()
@@ -1145,9 +1129,9 @@ int main(int argc, char* argv[])
         else if (a == "--inspectable" && i + 1 < argc)
         {
             inspectable = argv[++i];
-            // Special name "timetravel" auto-routes to the TimeTravel panel
-            // so producers can opt into the rich scrub UI just by naming
-            // their inspectable accordingly (DLL-side change only).
+            // 特殊名 "timetravel" は自動で TimeTravel panel に振り分ける。
+            // producer は inspectable 名をそう付けるだけで (DLL 側変更のみ)
+            // リッチな scrub UI に opt-in できる。
             panel = (inspectable == "timetravel" || inspectable == "tt")
                 ? Panel::TimeTravel
                 : Panel::Inspectable;
@@ -1190,29 +1174,27 @@ int main(int argc, char* argv[])
     {
         title += panelTitleSuffix(panel);
     }
-    cfg.title           = title.c_str();  // Engine stores std::string; safe
-    // Sub-window default: compact enough to fit on a 1080p monitor next to
-    // the game window without dominating it. User can resize freely.
-    // Default to a "vertical sidebar" geometry that fits next to a 1080p
-    // game window without dominating it. Crisper than wide+short because
-    // dense inspector data reads better in a narrow scrollable column.
+    cfg.title           = title.c_str();  // Engine が std::string で保持; 安全
+    // Sub-window default: 1080p モニタで game window の隣に圧迫せず収まる程度に
+    // コンパクト。user は自由に resize 可。
+    // 密な inspector データは狭い縦スクロール列の方が読みやすいので、wide+short より
+    // "縦 sidebar" geometry を default にする。
     cfg.windowWidth     = 360;
     cfg.windowHeight    = 720;
     cfg.vsync           = true;
     cfg.enableCef       = false;
     cfg.fontAtlasRanges = mitiru::EngineConfig::FontAtlas::Latin;
-    // DPI awareness — without this, 720x540 on a 125%/150% scaled monitor
-    // renders to a 720x540 physical back buffer that the OS then bilinear-
-    // upscales for display = blurry text. useLogicalWindowSize=true makes
-    // the engine scale the back buffer to physical px upfront → text stays
-    // crisp on high-DPI displays.
+    // DPI awareness — これが無いと 125%/150% scale モニタ上の 720x540 は
+    // 720x540 物理 back buffer に描画され、OS が bilinear upscale 表示 = ぼやけた文字。
+    // useLogicalWindowSize=true で engine が back buffer を先に物理 px へ scale し、
+    // high-DPI でも文字が crisp に保たれる。
     cfg.useLogicalWindowSize = true;
-    // Mitiru Saturn silver-gray base — must match the host so the
-    // inspector visually unifies with hello_game / launcher / companion.
-    // `screen.clear(...)` in draw() only sets the Screen-side clear value;
-    // the actual device ClearRenderTargetView uses this config field
-    // (see Engine_Frame.hpp). Without this, the back buffer is whatever
-    // the device defaults to (typically black) — defeats the whole theme.
+    // Mitiru Saturn シルバーグレー基調 — inspector が hello_game / launcher / companion と
+    // 視覚的に統一されるよう host に合わせる必須。
+    // draw() 内の `screen.clear(...)` は Screen 側の clear 値を設定するだけ。
+    // 実際の device ClearRenderTargetView はこの config field を使う
+    // (Engine_Frame.hpp 参照)。これが無いと back buffer は device の default
+    // (通常黒) になり、theme が台無しになる。
     cfg.backgroundColor = sgc::Colorf{0.784f, 0.784f, 0.784f, 1.0f};
 
     engine.run(game, cfg);

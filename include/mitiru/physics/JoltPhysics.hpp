@@ -45,7 +45,7 @@
 
 #ifdef MITIRU_HAS_JOLT
 
-// Jolt requires these defines before inclusion
+// Jolt は include 前にこれらの define が必要
 #ifndef JPH_DEBUG_RENDERER
 #define JPH_DEBUG_RENDERER
 #endif
@@ -322,11 +322,11 @@ public:
 	JoltPhysicsWorld() = default;
 	~JoltPhysicsWorld() { shutdown(); }
 
-	// Non-copyable
+	// コピー禁止
 	JoltPhysicsWorld(const JoltPhysicsWorld&) = delete;
 	JoltPhysicsWorld& operator=(const JoltPhysicsWorld&) = delete;
 
-	// Non-movable (Jolt global state and internal pointers make move unsafe)
+	// ムーブ禁止 (Jolt のグローバル state と内部 pointer により move は危険)
 	JoltPhysicsWorld(JoltPhysicsWorld&&) = delete;
 	JoltPhysicsWorld& operator=(JoltPhysicsWorld&&) = delete;
 
@@ -431,7 +431,7 @@ public:
 		{
 			m_physicsSystem->Update(
 				m_config.fixedTimeStep,
-				1,                    // collision steps
+				1,                    // collision step 数
 				m_tempAllocator.get(),
 				m_jobSystem.get());
 

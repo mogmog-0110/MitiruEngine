@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UITreeView.hpp
-/// @brief Expandable hierarchical tree view widget with keyboard navigation.
+/// @brief 展開可能な階層 tree view widget。keyboard navigation 対応。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,44 +15,44 @@
 
 namespace mitiru::ui {
 
-/// @brief Node data for a tree view hierarchy.
+/// @brief tree view 階層の node データ。
 struct UITreeNode
 {
-	std::string label;                         ///< Display label.
-	std::string iconImageKey;                  ///< Icon when collapsed or leaf.
-	std::string expandedIconImageKey;          ///< Icon when expanded.
-	std::vector<UITreeNode> children;          ///< Child nodes.
-	bool expanded = false;                     ///< Whether children are visible.
-	bool selected = false;                     ///< Selection state.
-	bool enabled = true;                       ///< Whether the node is interactive.
-	std::any data;                             ///< Arbitrary user data.
+	std::string label;                         ///< 表示 label。
+	std::string iconImageKey;                  ///< 折りたたみ時 / leaf の icon。
+	std::string expandedIconImageKey;          ///< 展開時の icon。
+	std::vector<UITreeNode> children;          ///< 子 node。
+	bool expanded = false;                     ///< 子を表示中か。
+	bool selected = false;                     ///< 選択状態。
+	bool enabled = true;                       ///< 操作可能か。
+	std::any data;                             ///< 任意のユーザーデータ。
 };
 
-/// @brief Configuration for creating a UITreeView.
+/// @brief UITreeView 生成用の設定。
 struct UITreeViewConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
-	float indentWidth = 20.0f;                 ///< Pixels per indent level.
-	float nodeHeight = 24.0f;                  ///< Height of each tree node row.
-	std::string expandIconImageKey;            ///< Image for expand indicator.
-	std::string collapseIconImageKey;          ///< Image for collapse indicator.
-	std::string nodeBackgroundImageKey;        ///< Default node background image.
-	std::string nodeHoverImageKey;             ///< Hovered node background image.
-	std::string nodeSelectedImageKey;          ///< Selected node background image.
-	std::string connectionLineColor;           ///< Color string for connection lines.
-	float connectionLineWidth = 1.0f;          ///< Width of connection lines.
-	float fontSize = 13.0f;                    ///< Node label font size.
-	bool multiSelect = false;                  ///< Allow multiple selection.
+	float indentWidth = 20.0f;                 ///< indent 1 段あたりの px。
+	float nodeHeight = 24.0f;                  ///< tree node 1 行の高さ。
+	std::string expandIconImageKey;            ///< 展開インジケータの画像。
+	std::string collapseIconImageKey;          ///< 折りたたみインジケータの画像。
+	std::string nodeBackgroundImageKey;        ///< 既定の node 背景画像。
+	std::string nodeHoverImageKey;             ///< hover 時の node 背景画像。
+	std::string nodeSelectedImageKey;          ///< 選択時の node 背景画像。
+	std::string connectionLineColor;           ///< 接続線の色文字列。
+	float connectionLineWidth = 1.0f;          ///< 接続線の幅。
+	float fontSize = 13.0f;                    ///< node label の font size。
+	bool multiSelect = false;                  ///< 複数選択を許可する。
 };
 
-/// @brief Path to a node in the tree, as a sequence of child indices.
+/// @brief tree 内の node への path。child index の列で表す。
 using TreeNodePath = std::vector<int>;
 
-/// @brief Expandable hierarchical tree view widget.
+/// @brief 展開可能な階層 tree view widget。
 ///
-/// Supports expand/collapse, keyboard navigation, single/multi selection,
-/// and connection lines between parent and child nodes.
+/// expand/collapse、keyboard navigation、単一 / 複数選択、
+/// 親子間の接続線をサポートする。
 ///
 /// @code
 ///   UITreeViewConfig cfg;
@@ -78,7 +78,7 @@ class UITreeView
 	float m_nodeHeight;
 	bool m_multiSelect;
 
-	// Flattened visible list for navigation.
+	// navigation 用に平坦化した visible リスト。
 	struct FlatEntry
 	{
 		TreeNodePath path;
@@ -98,8 +98,8 @@ class UITreeView
 	std::function<void(const TreeNodePath&)> m_onNodeCollapsed;
 
 public:
-	/// @brief Construct a tree view from configuration.
-	/// @param config Tree view configuration.
+	/// @brief 設定から tree view を構築する。
+	/// @param config tree view 設定。
 	explicit UITreeView(const UITreeViewConfig& config)
 		: m_indentWidth(config.indentWidth)
 		, m_nodeHeight(config.nodeHeight)
@@ -125,36 +125,36 @@ public:
 		m_node = std::make_shared<UINode>(std::move(data));
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基となる UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the root nodes.
+	/// @brief root node 群を取得する。
 	[[nodiscard]] const std::vector<UITreeNode>& roots() const noexcept { return m_roots; }
 
-	/// @brief Get the flattened visible list (for rendering).
+	/// @brief 平坦化した visible リストを取得する (描画用)。
 	[[nodiscard]] const std::vector<FlatEntry>& flatList() const noexcept { return m_flatList; }
 
-	/// @brief Get the selected node paths.
+	/// @brief 選択中の node path 群を取得する。
 	[[nodiscard]] const std::vector<TreeNodePath>& getSelectedNodes() const noexcept { return m_selectedPaths; }
 
-	/// @brief Get the focused path.
+	/// @brief focus 中の path を取得する。
 	[[nodiscard]] const TreeNodePath& focusedPath() const noexcept { return m_focusedPath; }
 
 	// ── Configuration ────────────────────────────────────────
 
-	/// @brief Set the node-selected callback.
+	/// @brief node 選択時の callback を設定する。
 	void setOnNodeSelected(std::function<void(const TreeNodePath&)> callback)
 	{
 		m_onNodeSelected = std::move(callback);
 	}
 
-	/// @brief Set the node-expanded callback.
+	/// @brief node 展開時の callback を設定する。
 	void setOnNodeExpanded(std::function<void(const TreeNodePath&)> callback)
 	{
 		m_onNodeExpanded = std::move(callback);
 	}
 
-	/// @brief Set the node-collapsed callback.
+	/// @brief node 折りたたみ時の callback を設定する。
 	void setOnNodeCollapsed(std::function<void(const TreeNodePath&)> callback)
 	{
 		m_onNodeCollapsed = std::move(callback);
@@ -162,8 +162,8 @@ public:
 
 	// ── Data ─────────────────────────────────────────────────
 
-	/// @brief Set the root nodes of the tree.
-	/// @param roots Root node vector.
+	/// @brief tree の root node 群を設定する。
+	/// @param roots root node の vector。
 	void setRoot(std::vector<UITreeNode> roots)
 	{
 		m_roots = std::move(roots);
@@ -176,8 +176,8 @@ public:
 
 	// ── Expand/Collapse ──────────────────────────────────────
 
-	/// @brief Expand a node at the given path.
-	/// @param path Path to the node.
+	/// @brief 指定 path の node を展開する。
+	/// @param path node への path。
 	void expand(const TreeNodePath& path)
 	{
 		UITreeNode* treeNode = findNode(path);
@@ -190,8 +190,8 @@ public:
 		if (m_onNodeExpanded) { m_onNodeExpanded(path); }
 	}
 
-	/// @brief Collapse a node at the given path.
-	/// @param path Path to the node.
+	/// @brief 指定 path の node を折りたたむ。
+	/// @param path node への path。
 	void collapse(const TreeNodePath& path)
 	{
 		UITreeNode* treeNode = findNode(path);
@@ -204,7 +204,7 @@ public:
 		if (m_onNodeCollapsed) { m_onNodeCollapsed(path); }
 	}
 
-	/// @brief Expand all nodes in the tree.
+	/// @brief tree 内の全 node を展開する。
 	void expandAll()
 	{
 		expandAllRecursive(m_roots);
@@ -212,7 +212,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Collapse all nodes in the tree.
+	/// @brief tree 内の全 node を折りたたむ。
 	void collapseAll()
 	{
 		collapseAllRecursive(m_roots);
@@ -220,8 +220,8 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Toggle expand/collapse of a node.
-	/// @param path Path to the node.
+	/// @brief node の展開 / 折りたたみを切り替える。
+	/// @param path node への path。
 	void toggle(const TreeNodePath& path)
 	{
 		UITreeNode* treeNode = findNode(path);
@@ -233,8 +233,8 @@ public:
 
 	// ── Selection ────────────────────────────────────────────
 
-	/// @brief Select a node at the given path.
-	/// @param path Path to the node.
+	/// @brief 指定 path の node を選択する。
+	/// @param path node への path。
 	void selectNode(const TreeNodePath& path)
 	{
 		UITreeNode* treeNode = findNode(path);
@@ -242,7 +242,7 @@ public:
 
 		if (!m_multiSelect)
 		{
-			// Clear previous selections.
+			// 以前の選択をクリアする。
 			clearSelectionRecursive(m_roots);
 			m_selectedPaths.clear();
 		}
@@ -256,7 +256,7 @@ public:
 		if (m_onNodeSelected) { m_onNodeSelected(path); }
 	}
 
-	/// @brief Clear all selections.
+	/// @brief 全選択をクリアする。
 	void clearSelection()
 	{
 		clearSelectionRecursive(m_roots);
@@ -267,7 +267,7 @@ public:
 
 	// ── Keyboard Navigation ──────────────────────────────────
 
-	/// @brief Move focus up (Up key).
+	/// @brief focus を上へ移動する (Up key)。
 	void focusPrevious()
 	{
 		if (m_flatList.empty()) { return; }
@@ -278,7 +278,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Move focus down (Down key).
+	/// @brief focus を下へ移動する (Down key)。
 	void focusNext()
 	{
 		if (m_flatList.empty()) { return; }
@@ -289,7 +289,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Collapse focused node or move to parent (Left key).
+	/// @brief focus 中の node を折りたたむ、または親へ移動する (Left key)。
 	void focusLeft()
 	{
 		if (m_focusedFlatIndex < 0 || m_focusedFlatIndex >= static_cast<int>(m_flatList.size())) { return; }
@@ -301,7 +301,7 @@ public:
 		}
 		else if (entry.path.size() > 1)
 		{
-			// Move to parent.
+			// 親へ移動する。
 			TreeNodePath parentPath(entry.path.begin(), entry.path.end() - 1);
 			m_focusedPath = parentPath;
 			updateFocusedFlatIndex();
@@ -309,7 +309,7 @@ public:
 		}
 	}
 
-	/// @brief Expand focused node or move to first child (Right key).
+	/// @brief focus 中の node を展開する、または最初の child へ移動する (Right key)。
 	void focusRight()
 	{
 		if (m_focusedFlatIndex < 0 || m_focusedFlatIndex >= static_cast<int>(m_flatList.size())) { return; }
@@ -321,12 +321,12 @@ public:
 		}
 		else if (entry.hasChildren && entry.expanded)
 		{
-			// Move to first child.
+			// 最初の child へ移動する。
 			focusNext();
 		}
 	}
 
-	/// @brief Select the focused node (Space key).
+	/// @brief focus 中の node を選択する (Space key)。
 	void confirmFocused()
 	{
 		if (m_focusedFlatIndex >= 0 && m_focusedFlatIndex < static_cast<int>(m_flatList.size()))
@@ -336,7 +336,7 @@ public:
 	}
 
 private:
-	/// @brief Find a node by path. Returns nullptr if not found.
+	/// @brief path から node を検索する。見つからなければ nullptr を返す。
 	[[nodiscard]] UITreeNode* findNode(const TreeNodePath& path)
 	{
 		if (path.empty()) { return nullptr; }
@@ -353,7 +353,7 @@ private:
 		return result;
 	}
 
-	/// @brief Rebuild the flattened visible list from the tree.
+	/// @brief tree から平坦化した visible リストを再構築する。
 	void rebuildFlatList()
 	{
 		m_flatList.clear();
@@ -362,7 +362,7 @@ private:
 		updateFocusedFlatIndex();
 	}
 
-	/// @brief Recursively flatten visible nodes.
+	/// @brief visible な node を再帰的に平坦化する。
 	void flattenRecursive(const std::vector<UITreeNode>& nodes, TreeNodePath& path, int depth)
 	{
 		for (std::size_t i = 0; i < nodes.size(); ++i)
@@ -390,7 +390,7 @@ private:
 		}
 	}
 
-	/// @brief Update the focused flat index from m_focusedPath.
+	/// @brief m_focusedPath から focus 中の flat index を更新する。
 	void updateFocusedFlatIndex()
 	{
 		m_focusedFlatIndex = -1;
@@ -404,7 +404,7 @@ private:
 		}
 	}
 
-	/// @brief Recursively expand all nodes.
+	/// @brief 全 node を再帰的に展開する。
 	static void expandAllRecursive(std::vector<UITreeNode>& nodes)
 	{
 		for (auto& treeNode : nodes)
@@ -414,7 +414,7 @@ private:
 		}
 	}
 
-	/// @brief Recursively collapse all nodes.
+	/// @brief 全 node を再帰的に折りたたむ。
 	static void collapseAllRecursive(std::vector<UITreeNode>& nodes)
 	{
 		for (auto& treeNode : nodes)
@@ -424,7 +424,7 @@ private:
 		}
 	}
 
-	/// @brief Recursively clear selection on all nodes.
+	/// @brief 全 node の選択を再帰的にクリアする。
 	static void clearSelectionRecursive(std::vector<UITreeNode>& nodes)
 	{
 		for (auto& treeNode : nodes)
@@ -434,7 +434,7 @@ private:
 		}
 	}
 
-	/// @brief Encode a path as a string (e.g. "0.2.1").
+	/// @brief path を文字列に encode する (例: "0.2.1")。
 	[[nodiscard]] static std::string pathToString(const TreeNodePath& path)
 	{
 		std::string result;
@@ -446,14 +446,14 @@ private:
 		return result;
 	}
 
-	/// @brief Synchronize state to the UINode.
+	/// @brief 状態を UINode へ同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("node_count", std::to_string(m_flatList.size()));
 		m_node->setProperty("focused_index", std::to_string(m_focusedFlatIndex));
 		m_node->setProperty("focused_path", pathToString(m_focusedPath));
 
-		// Encode selected paths.
+		// 選択中の path を encode する。
 		std::string selStr;
 		for (const auto& path : m_selectedPaths)
 		{
@@ -462,7 +462,7 @@ private:
 		}
 		m_node->setProperty("selected_paths", selStr);
 
-		// Encode visible flat entries for renderer.
+		// renderer 向けに visible な flat entry を encode する。
 		for (std::size_t i = 0; i < m_flatList.size(); ++i)
 		{
 			const auto prefix = "node_" + std::to_string(i) + "_";

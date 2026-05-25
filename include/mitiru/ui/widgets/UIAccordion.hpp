@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIAccordion.hpp
-/// @brief Collapsible accordion widget for settings panels, FAQ sections, etc.
+/// @brief 折り畳み可能な accordion widget。設定パネルや FAQ セクション等向け。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,42 +15,42 @@
 
 namespace mitiru::ui {
 
-/// @brief Data for a single accordion section.
+/// @brief 1 つの accordion section のデータ。
 struct UIAccordionSection
 {
-	std::string title;                  ///< Section header text.
-	bool expanded = false;              ///< Whether the section is expanded.
-	std::string headerImageKey;         ///< Image key for the header background.
-	float contentHeight = 100.0f;       ///< Height of the content area when expanded.
-	std::string iconImageKey;           ///< Icon image key displayed in the header.
+	std::string title;                  ///< section ヘッダのテキスト。
+	bool expanded = false;              ///< section が展開されているか。
+	std::string headerImageKey;         ///< ヘッダ背景の image key。
+	float contentHeight = 100.0f;       ///< 展開時の content 領域の高さ。
+	std::string iconImageKey;           ///< ヘッダに表示するアイコンの image key。
 };
 
-/// @brief Configuration for creating a UIAccordion.
+/// @brief UIAccordion 生成用の設定。
 struct UIAccordionConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
 	std::vector<UIAccordionSection> sections;
-	bool allowMultipleOpen = false;         ///< Allow multiple sections open simultaneously.
-	float headerHeight = 40.0f;             ///< Height of each section header.
-	std::string headerBackgroundImageKey;   ///< Default header background image key.
-	std::string headerHoverImageKey;        ///< Header background on hover.
-	std::string headerActiveImageKey;       ///< Header background when section is expanded.
-	std::string expandIconImageKey;         ///< Icon shown when section is collapsed (expand arrow).
-	std::string collapseIconImageKey;       ///< Icon shown when section is expanded (collapse arrow).
-	std::string contentBackgroundImageKey;  ///< Background image key for content area.
-	float animationDuration = 0.25f;        ///< Duration of expand/collapse animation in seconds.
-	float spacing = 0.0f;                   ///< Vertical spacing between sections.
-	float padding = 8.0f;                   ///< Internal padding for content areas.
-	float fontSize = 14.0f;                 ///< Font size for content text.
-	float headerFontSize = 16.0f;           ///< Font size for header text.
-	float width = 300.0f;                   ///< Total width of the accordion.
+	bool allowMultipleOpen = false;         ///< 複数 section の同時展開を許可する。
+	float headerHeight = 40.0f;             ///< 各 section ヘッダの高さ。
+	std::string headerBackgroundImageKey;   ///< デフォルトのヘッダ背景 image key。
+	std::string headerHoverImageKey;        ///< hover 時のヘッダ背景。
+	std::string headerActiveImageKey;       ///< section 展開時のヘッダ背景。
+	std::string expandIconImageKey;         ///< section が折り畳み時に表示するアイコン (展開矢印)。
+	std::string collapseIconImageKey;       ///< section が展開時に表示するアイコン (折り畳み矢印)。
+	std::string contentBackgroundImageKey;  ///< content 領域の背景 image key。
+	float animationDuration = 0.25f;        ///< 展開/折り畳みアニメーションの秒数。
+	float spacing = 0.0f;                   ///< section 間の縦方向の間隔。
+	float padding = 8.0f;                   ///< content 領域の内側 padding。
+	float fontSize = 14.0f;                 ///< content テキストの font size。
+	float headerFontSize = 16.0f;           ///< ヘッダテキストの font size。
+	float width = 300.0f;                   ///< accordion の全体幅。
 };
 
-/// @brief Collapsible accordion widget with animated expand/collapse transitions.
+/// @brief 展開/折り畳みアニメーション付きの折り畳み可能な accordion widget。
 ///
-/// Each section has a clickable header that toggles visibility of its content.
-/// Supports exclusive mode (only one section open) and smooth height animation.
+/// 各 section にはクリック可能なヘッダがあり、その content の表示を切り替える。
+/// 排他 mode (1 section のみ展開) と滑らかな高さアニメーションに対応する。
 ///
 /// @code
 ///   UIAccordionConfig cfg;
@@ -71,12 +71,12 @@ struct UIAccordionConfig
 /// @endcode
 class UIAccordion
 {
-	/// @brief Runtime state for a single section's animation.
+	/// @brief 1 section のアニメーションの実行時 state。
 	struct SectionState
 	{
 		UIAccordionSection section;
-		float animProgress = 0.0f;   ///< 0 = collapsed, 1 = expanded.
-		float targetProgress = 0.0f; ///< Animation target (0 or 1).
+		float animProgress = 0.0f;   ///< 0 = 折り畳み、1 = 展開。
+		float targetProgress = 0.0f; ///< アニメーションの target (0 または 1)。
 	};
 
 	std::shared_ptr<UINode> m_node;
@@ -89,8 +89,8 @@ class UIAccordion
 	std::function<void(std::size_t, bool)> m_onSectionToggled;
 
 public:
-	/// @brief Construct an accordion from configuration.
-	/// @param config Accordion configuration.
+	/// @brief 設定から accordion を構築する。
+	/// @param config accordion の設定。
 	explicit UIAccordion(const UIAccordionConfig& config)
 		: m_allowMultipleOpen(config.allowMultipleOpen)
 		, m_headerHeight(config.headerHeight)
@@ -143,23 +143,23 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基盤となる UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the number of sections.
+	/// @brief section 数を取得する。
 	[[nodiscard]] std::size_t sectionCount() const noexcept { return m_sections.size(); }
 
-	/// @brief Check if a section is expanded.
-	/// @param index Section index.
-	/// @return True if expanded or animating toward expanded.
+	/// @brief section が展開されているか確認する。
+	/// @param index section の index。
+	/// @return 展開済み、または展開方向にアニメーション中なら true。
 	[[nodiscard]] bool isExpanded(std::size_t index) const noexcept
 	{
 		if (index >= m_sections.size()) { return false; }
 		return m_sections[index].section.expanded;
 	}
 
-	/// @brief Get the current animation progress for a section (0 = collapsed, 1 = expanded).
-	/// @param index Section index.
+	/// @brief section の現在のアニメーション進捗を取得する (0 = 折り畳み、1 = 展開)。
+	/// @param index section の index。
 	[[nodiscard]] float animProgress(std::size_t index) const noexcept
 	{
 		if (index >= m_sections.size()) { return 0.0f; }
@@ -168,8 +168,8 @@ public:
 
 	// -- Configuration -------------------------------------------------------
 
-	/// @brief Set the section-toggled callback.
-	/// @param callback Function invoked with (sectionIndex, expanded).
+	/// @brief section 切り替え時の callback を設定する。
+	/// @param callback (sectionIndex, expanded) で呼ばれる関数。
 	void setOnSectionToggled(std::function<void(std::size_t, bool)> callback)
 	{
 		m_onSectionToggled = std::move(callback);
@@ -177,8 +177,8 @@ public:
 
 	// -- Interaction ---------------------------------------------------------
 
-	/// @brief Toggle a section's expanded state.
-	/// @param index Section index.
+	/// @brief section の展開状態を切り替える。
+	/// @param index section の index。
 	void toggle(std::size_t index)
 	{
 		if (index >= m_sections.size()) { return; }
@@ -187,7 +187,7 @@ public:
 		target.section.expanded = !target.section.expanded;
 		target.targetProgress = target.section.expanded ? 1.0f : 0.0f;
 
-		// Exclusive mode: collapse all others when opening.
+		// 排他 mode: 開くとき他の section をすべて折り畳む。
 		if (target.section.expanded && !m_allowMultipleOpen)
 		{
 			for (std::size_t i = 0; i < m_sections.size(); ++i)
@@ -213,7 +213,7 @@ public:
 		}
 	}
 
-	/// @brief Expand all sections (ignored if allowMultipleOpen is false).
+	/// @brief 全 section を展開する (allowMultipleOpen が false なら無視)。
 	void expandAll()
 	{
 		if (!m_allowMultipleOpen) { return; }
@@ -234,7 +234,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Collapse all sections.
+	/// @brief 全 section を折り畳む。
 	void collapseAll()
 	{
 		for (std::size_t i = 0; i < m_sections.size(); ++i)
@@ -253,8 +253,8 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Update animation state.
-	/// @param dt Delta time in seconds.
+	/// @brief アニメーション state を更新する。
+	/// @param dt 経過秒数 (delta time)。
 	void update(float dt)
 	{
 		if (m_animationDuration <= 0.0f)
@@ -297,7 +297,7 @@ public:
 	}
 
 private:
-	/// @brief Synchronize all section states to the UINode tree.
+	/// @brief 全 section の state を UINode tree に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("section_count", std::to_string(m_sections.size()));

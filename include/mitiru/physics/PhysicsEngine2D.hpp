@@ -445,7 +445,7 @@ public:
 				}
 				else if constexpr (std::is_same_v<T, AABBCollider2D>)
 					return CollisionDetection2D::circleVsAabb(c, r, b.position + col.min, b.position + col.max).has_value();
-				else return true; // OBB: AABB-level approximation already passed
+				else return true; // OBB: AABBレベルの近似で既に通過済み
 			}, b.collider);
 			if (hit) result.push_back(id);
 		}

@@ -49,9 +49,12 @@ namespace mitiru::module
 /// @details
 ///   - v1 (1e53c8d9): on_init / on_update / on_draw / on_shutdown のみ
 ///   - v2 (47e0a43a): InputSnapshot, FrameIntents 追加。on_update sig 変更
-///   - v3 (本 commit): StatePushItem::strVal を 160 → 3968 に拡張
+///   - v3 (47cc3cc1): StatePushItem::strVal を 160 → 3968 に拡張
 ///     (launcher の view.launcher.projects 等、JSON-encoded big state push 対応)
-constexpr std::uint32_t kCurrentApiVersion = 3;
+///   - v4 (本 commit): FrameIntents に soundIntents 追加 (ADR 0008)。DLL ゲームが
+///     既存 audio mixer へ「音を鳴らして」と intent を出せる。host は古い v3
+///     module の soundIntents を読まない (= 音無しで動く) ので後方安全。
+constexpr std::uint32_t kCurrentApiVersion = 4;
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
@@ -68,8 +71,8 @@ constexpr const char* kUnloadSymbol = "mitiru_module_unload";
 ///   - 翌フレーム頭の InputSnapshot.actionEvents に詰めて DLL に渡す
 struct ActionEvent
 {
-	char name[64];          ///< action name, null-terminated (e.g. "game.restart")
-	char payloadJson[256];  ///< JSON payload string, null-terminated
+	char name[64];          ///< action 名、null 終端 (例: "game.restart")
+	char payloadJson[256];  ///< JSON payload 文字列、null 終端
 };
 
 /// @brief 1 フレーム分の input 状態 (host → DLL の push)
@@ -80,17 +83,17 @@ struct ActionEvent
 /// (= replay 時の bit-exact 再現が構造保証される)。
 struct InputSnapshot
 {
-	std::uint8_t keysDown[256];           ///< 1 = currently held
-	std::uint8_t keysJustPressed[256];    ///< 1 = pressed this frame
-	std::uint8_t keysJustReleased[256];   ///< 1 = released this frame
-	float        mouseX;                  ///< logical screen coords
+	std::uint8_t keysDown[256];           ///< 1 = 現在押下中
+	std::uint8_t keysJustPressed[256];    ///< 1 = このフレームで押された
+	std::uint8_t keysJustReleased[256];   ///< 1 = このフレームで離された
+	float        mouseX;                  ///< 論理スクリーン座標
 	float        mouseY;
 	std::uint8_t mouseButtonsDown[3];           ///< L=0, R=1, M=2
 	std::uint8_t mouseButtonsJustPressed[3];
 	std::uint8_t mouseButtonsJustReleased[3];
-	std::uint8_t _pad[1];                 ///< explicit padding (align)
+	std::uint8_t _pad[1];                 ///< 明示的 padding (align)
 
-	/// @brief queued action events from CEF JS this frame
+	/// @brief このフレームに溜まった CEF JS からの action event
 	std::int32_t actionEventCount;
 	ActionEvent  actionEvents[16];
 };
@@ -108,13 +111,13 @@ struct InputSnapshot
 /// scene.html 側は `window.mitiru.onStateChange(key, ...)` で受ける。
 struct StatePushItem
 {
-	char         key[96];       ///< state key, null-terminated (e.g. "view.hud.hp")
-	std::int32_t kind;          ///< type tag (上記参照)
-	std::int32_t intVal;        ///< for kind=1, 3
-	float        floatVal;      ///< for kind=2
-	char         strVal[3968];  ///< for kind=4, null-terminated. Large enough for
-	                            ///< JSON-encoded compound state (e.g. project lists).
-	                            ///< v0.2.0 launcher hit truncation at 160 bytes.
+	char         key[96];       ///< state key、null 終端 (例: "view.hud.hp")
+	std::int32_t kind;          ///< 型タグ (上記参照)
+	std::int32_t intVal;        ///< kind=1, 3 用
+	float        floatVal;      ///< kind=2 用
+	char         strVal[3968];  ///< kind=4 用、null 終端。JSON-encoded な複合 state
+	                            ///< (例: project リスト) を収めるのに十分な大きさ。
+	                            ///< v0.2.0 launcher は 160 bytes で truncation に当たった。
 };
 
 /// @brief 1 つの inspectable の export (DLL → host の intent)
@@ -125,10 +128,24 @@ struct StatePushItem
 /// JSON が json[] buffer を超える時は **truncate** され `jsonLen` がその旨を示す。
 struct InspectableExport
 {
-	char         name[64];   ///< unique id, null-terminated
-	char         title[64];  ///< human label, null-terminated
-	std::int32_t jsonLen;    ///< size in bytes (without trailing null); 0 OK
-	char         json[3968]; ///< serialized JSON, null-terminated
+	char         name[64];   ///< 一意 id、null 終端
+	char         title[64];  ///< 人間向けラベル、null 終端
+	std::int32_t jsonLen;    ///< バイト数 (末尾 null を除く); 0 でも可
+	char         json[3968]; ///< serialize した JSON、null 終端
+};
+
+/// @brief 「この音を鳴らして」という DLL → host の intent (ADR 0008)
+/// @details ゲームは mixer / AudioEngine pointer を持たず (ADR 0005)、id を
+///          書くだけ。host が所有する audio engine が再生する。id は host が
+///          assets/audio/ からロードした論理名 (拡張子抜きファイル名)。
+struct SoundIntent
+{
+	char         id[64];      ///< 論理サウンド id (例: "hit")。null 終端。
+	std::uint8_t category;    ///< 0=SE, 1=BGM, 2=Voice
+	std::uint8_t loop;        ///< 1 = ループ再生
+	std::uint8_t stop;        ///< 1 = 鳴らすのでなく停止
+	std::uint8_t _pad;
+	float        volume;      ///< 0.0–1.0
 };
 
 /// @brief 1 フレーム分の DLL → host への要求 (intent)
@@ -137,7 +154,7 @@ struct InspectableExport
 /// DLL は必要な field だけ書き込む。次フレームには値は残らない。
 struct FrameIntents
 {
-	std::uint8_t requestStop;       ///< 1 = call engine.requestStop()
+	std::uint8_t requestStop;       ///< 1 = engine.requestStop() を呼ぶ
 	std::uint8_t requestScreenshot; ///< 1 = engine が PNG を保存
 	std::uint8_t paletteToggle;     ///< 1 = command palette の visible を toggle
 	std::uint8_t _pad0[5];
@@ -150,11 +167,17 @@ struct FrameIntents
 	std::int32_t      exportedInspectableCount;
 	InspectableExport exportedInspectables[8];
 
-	/// @brief Raw JS execution (e.g. hot reload toast trigger)
+	/// @brief 生 JS の実行 (例: hot reload の toast trigger)
 	/// @details jsToExecuteLen > 0 のとき、host が
 	///          `cefContext.executeJavaScript(jsToExecute)` を呼ぶ。
 	std::int32_t jsToExecuteLen;
 	char         jsToExecute[2048];
+
+	/// @brief このフレームの sound 再生要求 (ADR 0008)。末尾に追加したので既存
+	///        field の offset は不変。struct size は増えたため kCurrentApiVersion
+	///        を 4 に bump した。
+	std::int32_t soundIntentCount;
+	SoundIntent  soundIntents[8];
 };
 
 // ── ModuleApi callback table ─────────────────────────────────────────────

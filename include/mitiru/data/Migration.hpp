@@ -1,15 +1,15 @@
 #pragma once
 
 /// @file Migration.hpp
-/// @brief Composable migration ops for SaveSchema<T>::migrations().
+/// @brief SaveSchema<T>::migrations() 向けの合成可能な migration op 群。
 ///
-/// **Purpose.** `MigrationChain<T>::addStep` accepts a `std::function<Json(Json)>`
-/// for upgrading legacy save blobs. Consumers usually write the same shapes
-/// over and over: "backfill a missing field", "rename a field", "drop a field".
-/// This header provides ready-made lambda factories so those common cases stay
-/// declarative — and `compose(...)` lets one step do multiple things in order.
+/// **目的。** `MigrationChain<T>::addStep` は旧 save blob を upgrade するための
+/// `std::function<Json(Json)>` を受け取る。consumer は同じ形を何度も書きがち:
+/// 「欠落 field を backfill」「field を rename」「field を drop」。本ヘッダは
+/// これら定番ケースを宣言的に保つための出来合い lambda factory を提供する。
+/// `compose(...)` を使えば 1 step で複数の処理を順に行える。
 ///
-/// **Typical usage**
+/// **典型的な使い方**
 /// @code
 /// using mitiru::data::Migration;
 ///
@@ -24,12 +24,12 @@
 ///     }));
 /// @endcode
 ///
-/// All helpers return a `std::function<Json(Json)>` that captures arguments
-/// **by value** so the returned op safely outlives the factory call.
+/// 全ヘルパーは引数を **値キャプチャ** する `std::function<Json(Json)>` を返す
+/// ため、返された op は factory 呼び出しより安全に長生きする。
 ///
-/// @note `MigrationChain<T>::addStep` returns `*this`, so the fluent chain
-///       above works directly. Calling `addStep` line by line (ignoring the
-///       return value) is also fine when fluent style would hurt readability.
+/// @note `MigrationChain<T>::addStep` は `*this` を返すので、上記の fluent chain
+///       がそのまま動く。fluent style が可読性を損なう場合は `addStep` を
+///       (戻り値を無視して) 1 行ずつ呼んでも構わない。
 
 #include <functional>
 #include <initializer_list>
@@ -41,24 +41,24 @@
 
 namespace mitiru::data {
 
-/// @brief Composable migration helpers usable with `MigrationChain::addStep`.
+/// @brief `MigrationChain::addStep` で使える合成可能な migration ヘルパー。
 ///
-/// Stateless utility class — all members are static factory functions that
-/// return ready-made `std::function<Json(Json)>` lambdas. Captures are by
-/// value so the resulting op is safe to store in `MigrationChain`.
+/// stateless な utility class — 全メンバは出来合いの `std::function<Json(Json)>`
+/// lambda を返す static factory function。キャプチャは値渡しなので、得られる op
+/// は `MigrationChain` に安全に格納できる。
 class Migration
 {
 public:
-    /// @brief Migration op signature: takes a JSON object, returns the upgraded JSON object.
+    /// @brief migration op の signature: JSON object を受け取り、upgrade 済み JSON object を返す。
     using Op = std::function<Json(Json)>;
 
     // -----------------------------------------------------------------------
-    // Single-field ops
+    // 単一 field の op
     // -----------------------------------------------------------------------
 
-    /// @brief Backfill a missing field with @p defaultValue. No-op if already present.
-    /// @param field         Field name to inspect.
-    /// @param defaultValue  Value to set when the field is absent.
+    /// @brief 欠落している field を @p defaultValue で backfill する。既存なら no-op。
+    /// @param field         調べる field 名。
+    /// @param defaultValue  field が無い場合に設定する値。
     [[nodiscard]] static inline Op backfillField(std::string field, Json defaultValue)
     {
         return [field = std::move(field), defaultValue = std::move(defaultValue)]
@@ -72,9 +72,9 @@ public:
         };
     }
 
-    /// @brief Rename a field. No-op if @p oldName is missing.
-    /// @param oldName  Source field name (will be erased on success).
-    /// @param newName  Destination field name (overwritten if it already exists).
+    /// @brief field を rename する。@p oldName が無い場合は no-op。
+    /// @param oldName  元の field 名 (成功時に erase される)。
+    /// @param newName  先の field 名 (既存なら上書き)。
     [[nodiscard]] static inline Op renameField(std::string oldName, std::string newName)
     {
         return [oldName = std::move(oldName), newName = std::move(newName)]
@@ -89,7 +89,7 @@ public:
         };
     }
 
-    /// @brief Remove a field. No-op if absent.
+    /// @brief field を削除する。存在しなければ no-op。
     [[nodiscard]] static inline Op removeField(std::string field)
     {
         return [field = std::move(field)](Json data) -> Json
@@ -102,7 +102,7 @@ public:
         };
     }
 
-    /// @brief Set a field unconditionally (overwrites any existing value).
+    /// @brief field を無条件に設定する (既存値があれば上書き)。
     [[nodiscard]] static inline Op setField(std::string field, Json value)
     {
         return [field = std::move(field), value = std::move(value)]
@@ -113,9 +113,9 @@ public:
         };
     }
 
-    /// @brief Apply a transform to a field's value. No-op if the field is absent.
-    /// @param field  Field whose value is passed to @p fn.
-    /// @param fn     Pure function returning the new value.
+    /// @brief field の値に transform を適用する。field が無ければ no-op。
+    /// @param field  値が @p fn に渡される field。
+    /// @param fn     新しい値を返す純関数。
     [[nodiscard]] static inline Op transformField(std::string field,
                                                   std::function<Json(Json)> fn)
     {
@@ -131,18 +131,18 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // Composition
+    // 合成
     // -----------------------------------------------------------------------
 
-    /// @brief Compose multiple ops left-to-right.
-    /// @details Empty list returns the identity op. Each op receives the
-    ///          output of the previous one.
+    /// @brief 複数の op を左から右へ合成する。
+    /// @details 空リストは identity op を返す。各 op は直前の op の出力を
+    ///          受け取る。
     [[nodiscard]] static inline Op compose(std::initializer_list<Op> ops)
     {
         return compose(std::vector<Op>(ops.begin(), ops.end()));
     }
 
-    /// @brief Compose via a runtime-built vector of ops.
+    /// @brief runtime に構築した op の vector で合成する。
     [[nodiscard]] static inline Op compose(std::vector<Op> ops)
     {
         return [ops = std::move(ops)](Json data) -> Json

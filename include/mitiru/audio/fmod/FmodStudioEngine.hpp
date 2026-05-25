@@ -84,7 +84,7 @@ public:
         }
     }
 
-    // Non-copyable, non-movable
+    // コピー禁止・ムーブ禁止
     FmodStudioEngine(const FmodStudioEngine&) = delete;
     FmodStudioEngine& operator=(const FmodStudioEngine&) = delete;
     FmodStudioEngine(FmodStudioEngine&&) = delete;
@@ -99,7 +99,7 @@ public:
         }
     }
 
-    // ── Bank management ──
+    // ── バンク管理 ──
 
     /// @brief バンクファイルをロードする
     /// @param path バンクファイルパス (.bank)
@@ -134,7 +134,7 @@ public:
         }
     }
 
-    // ── Event playback ──
+    // ── イベント再生 ──
 
     /// @brief イベントを再生する
     /// @param eventPath FMOD Studioイベントパス (例: "event:/Music/BGM_01")

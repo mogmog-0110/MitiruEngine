@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UITooltip.hpp
-/// @brief Hover popup tooltip widget with auto-positioning, fade animation, and UINode attachment.
+/// @brief hover ポップアップの tooltip widget。auto-positioning、fade アニメーション、UINode への attach に対応。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -13,17 +13,17 @@
 
 namespace mitiru::ui {
 
-/// @brief Anchor position relative to the target element.
+/// @brief 対象要素に対する anchor 位置。
 enum class TooltipPosition : std::uint8_t
 {
 	Above,
 	Below,
 	Left,
 	Right,
-	Auto ///< Automatically choose based on available screen space.
+	Auto ///< 利用可能な画面スペースに応じて自動選択する。
 };
 
-/// @brief Configuration for creating a UITooltip.
+/// @brief UITooltip 生成用の設定。
 struct UITooltipConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -31,37 +31,37 @@ struct UITooltipConfig
 	std::string text;
 
 	// ── Layout ────────────────────────────────────────────────
-	float maxWidth = 300.0f;         ///< Maximum width before text wraps.
-	float padding = 8.0f;            ///< Inner padding on all sides.
-	float arrowSize = 6.0f;          ///< Size of the directional arrow.
-	float anchorOffsetX = 0.0f;      ///< Offset from anchor point X.
-	float anchorOffsetY = 0.0f;      ///< Offset from anchor point Y.
+	float maxWidth = 300.0f;         ///< テキストが折り返す前の最大幅。
+	float padding = 8.0f;            ///< 全方向の内側 padding。
+	float arrowSize = 6.0f;          ///< 方向矢印のサイズ。
+	float anchorOffsetX = 0.0f;      ///< anchor 点からの X offset。
+	float anchorOffsetY = 0.0f;      ///< anchor 点からの Y offset。
 	TooltipPosition position = TooltipPosition::Auto;
 
 	// ── Timing ────────────────────────────────────────────────
-	float showDelay = 0.5f;          ///< Seconds before tooltip appears.
-	float hideDelay = 0.1f;          ///< Seconds after pointer leaves before hiding.
-	float fadeInDuration = 0.15f;    ///< Fade-in animation duration in seconds.
-	float fadeOutDuration = 0.1f;    ///< Fade-out animation duration in seconds.
+	float showDelay = 0.5f;          ///< tooltip 出現までの秒数。
+	float hideDelay = 0.1f;          ///< pointer が離れてから非表示までの秒数。
+	float fadeInDuration = 0.15f;    ///< fade-in アニメーションの秒数。
+	float fadeOutDuration = 0.1f;    ///< fade-out アニメーションの秒数。
 
 	// ── Behavior ──────────────────────────────────────────────
-	bool followMouse = false;        ///< If true, tooltip tracks the cursor position.
-	float screenMargin = 4.0f;       ///< Minimum margin from screen edges.
+	bool followMouse = false;        ///< true なら tooltip が cursor 位置を追従する。
+	float screenMargin = 4.0f;       ///< 画面端からの最小 margin。
 
 	// ── Screen bounds (for auto-positioning) ──────────────────
-	float screenWidth = 1920.0f;     ///< Screen width for boundary clamping.
-	float screenHeight = 1080.0f;    ///< Screen height for boundary clamping.
+	float screenWidth = 1920.0f;     ///< 境界 clamp 用の画面幅。
+	float screenHeight = 1080.0f;    ///< 境界 clamp 用の画面高さ。
 
 	// ── Image keys ────────────────────────────────────────────
-	std::string backgroundImageKey;  ///< Image key for tooltip background.
-	std::string borderImageKey;      ///< Image key for tooltip border/frame.
-	std::string arrowImageKey;       ///< Image key for the directional arrow.
+	std::string backgroundImageKey;  ///< tooltip 背景の image key。
+	std::string borderImageKey;      ///< tooltip の border / frame の image key。
+	std::string arrowImageKey;       ///< 方向矢印の image key。
 };
 
-/// @brief Tooltip widget that displays contextual information near the cursor or an anchor element.
+/// @brief cursor または anchor 要素の近くに文脈情報を表示する tooltip widget。
 ///
-/// Manages show/hide delays, fade animation, auto-positioning within screen bounds,
-/// and optional attachment to a UINode. Rendering is handled externally by UIRenderer.
+/// show/hide の delay、fade アニメーション、画面境界内での auto-positioning、
+/// 任意の UINode への attach を管理する。描画は外部の UIRenderer が担う。
 ///
 /// @code
 ///   UITooltipConfig cfg;
@@ -77,7 +77,7 @@ struct UITooltipConfig
 /// @endcode
 class UITooltip
 {
-	/// @brief Internal phase of tooltip lifecycle.
+	/// @brief tooltip lifecycle の内部 phase。
 	enum class Phase : std::uint8_t
 	{
 		Hidden,
@@ -121,8 +121,8 @@ class UITooltip
 	std::weak_ptr<UINode> m_attachedNode;
 
 public:
-	/// @brief Construct a tooltip from configuration.
-	/// @param config Tooltip configuration.
+	/// @brief 設定から tooltip を構築する。
+	/// @param config tooltip 設定。
 	explicit UITooltip(const UITooltipConfig& config)
 		: m_maxWidth(config.maxWidth)
 		, m_padding(config.padding)
@@ -158,10 +158,10 @@ public:
 
 	// ── Accessors ─────────────────────────────────────────────
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基となる UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Check if the tooltip is currently visible (including during fade).
+	/// @brief tooltip が現在 visible か判定する (fade 中を含む)。
 	[[nodiscard]] bool isVisible() const noexcept
 	{
 		return m_phase == Phase::FadingIn
@@ -170,33 +170,33 @@ public:
 			|| m_phase == Phase::FadingOut;
 	}
 
-	/// @brief Get the current opacity (0.0 = fully transparent, 1.0 = fully opaque).
+	/// @brief 現在の不透明度を取得する (0.0 = 完全透明、1.0 = 完全不透明)。
 	[[nodiscard]] float opacity() const noexcept { return m_opacity; }
 
-	/// @brief Get the current tooltip bounds in screen space.
+	/// @brief 現在の tooltip 境界を screen space で取得する。
 	[[nodiscard]] sgc::Rectf currentBounds() const noexcept { return m_node->bounds(); }
 
-	/// @brief Get the resolved anchor position (after auto-positioning).
+	/// @brief 解決済みの anchor 位置を取得する (auto-positioning 適用後)。
 	[[nodiscard]] TooltipPosition resolvedPosition() const noexcept { return m_resolvedPosition; }
 
-	/// @brief Get the tooltip text.
+	/// @brief tooltip テキストを取得する。
 	[[nodiscard]] const std::string& text() const noexcept { return m_node->text(); }
 
-	/// @brief Get the background image key.
+	/// @brief 背景の image key を取得する。
 	[[nodiscard]] const std::string& backgroundImageKey() const noexcept { return m_backgroundImageKey; }
 
-	/// @brief Get the border image key.
+	/// @brief border の image key を取得する。
 	[[nodiscard]] const std::string& borderImageKey() const noexcept { return m_borderImageKey; }
 
-	/// @brief Get the arrow image key.
+	/// @brief 矢印の image key を取得する。
 	[[nodiscard]] const std::string& arrowImageKey() const noexcept { return m_arrowImageKey; }
 
 	// ── Actions ───────────────────────────────────────────────
 
-	/// @brief Request to show the tooltip at the given anchor position.
-	/// @param text Text to display (supports rich text pass-through).
-	/// @param x Anchor X position in screen space.
-	/// @param y Anchor Y position in screen space.
+	/// @brief 指定 anchor 位置に tooltip 表示を要求する。
+	/// @param text 表示するテキスト (rich text の素通しに対応)。
+	/// @param x screen space の anchor X 位置。
+	/// @param y screen space の anchor Y 位置。
 	void show(const std::string& text, float x, float y)
 	{
 		m_node->setText(text);
@@ -217,15 +217,15 @@ public:
 		}
 	}
 
-	/// @brief Request to show the tooltip using the previously set text.
-	/// @param x Anchor X position.
-	/// @param y Anchor Y position.
+	/// @brief 直前に設定したテキストで tooltip 表示を要求する。
+	/// @param x anchor X 位置。
+	/// @param y anchor Y 位置。
 	void show(float x, float y)
 	{
 		show(m_node->text(), x, y);
 	}
 
-	/// @brief Request to hide the tooltip (begins hide delay / fade-out).
+	/// @brief tooltip の非表示を要求する (hide delay / fade-out を開始)。
 	void hide()
 	{
 		if (m_phase == Phase::Hidden || m_phase == Phase::FadingOut)
@@ -253,7 +253,7 @@ public:
 		}
 	}
 
-	/// @brief Immediately hide without any delay or animation.
+	/// @brief delay やアニメーション無しで即座に非表示にする。
 	void hideImmediate()
 	{
 		m_phase = Phase::Hidden;
@@ -262,22 +262,22 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Attach the tooltip to a UINode (auto-show on hover).
-	/// @param target Node to attach to.
+	/// @brief tooltip を UINode へ attach する (hover で自動表示)。
+	/// @param target attach 先の node。
 	void attachTo(std::shared_ptr<UINode> target)
 	{
 		m_attachedNode = target;
 	}
 
-	/// @brief Detach from the currently attached UINode.
+	/// @brief 現在 attach 中の UINode から detach する。
 	void detach()
 	{
 		m_attachedNode.reset();
 	}
 
-	/// @brief Update the cursor position when followMouse is enabled.
-	/// @param x Current cursor X.
-	/// @param y Current cursor Y.
+	/// @brief followMouse 有効時に cursor 位置を更新する。
+	/// @param x 現在の cursor X。
+	/// @param y 現在の cursor Y。
 	void updateCursorPosition(float x, float y) noexcept
 	{
 		if (m_followMouse && isVisible())
@@ -288,9 +288,9 @@ public:
 		}
 	}
 
-	/// @brief Set estimated content dimensions (called by layout/renderer).
-	/// @param width Content width.
-	/// @param height Content height.
+	/// @brief 推定 content サイズを設定する (layout / renderer から呼ばれる)。
+	/// @param width content 幅。
+	/// @param height content 高さ。
 	void setContentSize(float width, float height) noexcept
 	{
 		m_contentWidth = std::min(width, m_maxWidth);
@@ -298,9 +298,9 @@ public:
 		resolvePositionAndClamp();
 	}
 
-	/// @brief Set screen bounds for auto-positioning.
-	/// @param width Screen width.
-	/// @param height Screen height.
+	/// @brief auto-positioning 用の画面境界を設定する。
+	/// @param width 画面幅。
+	/// @param height 画面高さ。
 	void setScreenBounds(float width, float height) noexcept
 	{
 		m_screenWidth = width;
@@ -309,8 +309,8 @@ public:
 
 	// ── Update ────────────────────────────────────────────────
 
-	/// @brief Advance tooltip animation and timing.
-	/// @param dt Delta time in seconds.
+	/// @brief tooltip のアニメーションと timing を進める。
+	/// @param dt delta time (秒)。
 	void update(float dt)
 	{
 		switch (m_phase)
@@ -342,7 +342,7 @@ public:
 			break;
 
 		case Phase::Visible:
-			// Steady state; nothing to update.
+			// 定常状態。更新は不要。
 			break;
 
 		case Phase::WaitingToHide:
@@ -392,7 +392,7 @@ private:
 		syncNodeState();
 	}
 
-	/// @brief Resolve tooltip position and clamp within screen bounds.
+	/// @brief tooltip 位置を解決し画面境界内に clamp する。
 	void resolvePositionAndClamp()
 	{
 		const float totalW = m_contentWidth + m_padding * 2.0f;
@@ -427,17 +427,17 @@ private:
 			y = m_anchorY + m_anchorOffsetY - totalH * 0.5f;
 			break;
 		case TooltipPosition::Auto:
-			break; // Already resolved above.
+			break; // 上で解決済み。
 		}
 
-		// Clamp within screen bounds.
+		// 画面境界内に clamp する。
 		x = std::clamp(x, margin, m_screenWidth - totalW - margin);
 		y = std::clamp(y, margin, m_screenHeight - totalH - margin);
 
 		m_node->setBounds(sgc::Rectf(x, y, totalW, totalH));
 	}
 
-	/// @brief Choose the best position when Auto is selected.
+	/// @brief Auto 選択時に最適な位置を選ぶ。
 	[[nodiscard]] TooltipPosition chooseAutoPosition(float totalW, float totalH) const noexcept
 	{
 		const float margin = m_screenMargin;
@@ -446,13 +446,13 @@ private:
 		const float spaceLeft = m_anchorX - margin;
 		const float spaceRight = m_screenWidth - m_anchorX - margin;
 
-		// Prefer below, then above, then right, then left.
+		// below を優先し、次に above、right、left の順。
 		if (spaceBelow >= totalH + m_arrowSize) { return TooltipPosition::Below; }
 		if (spaceAbove >= totalH + m_arrowSize) { return TooltipPosition::Above; }
 		if (spaceRight >= totalW + m_arrowSize) { return TooltipPosition::Right; }
 		if (spaceLeft >= totalW + m_arrowSize)  { return TooltipPosition::Left; }
 
-		return TooltipPosition::Below; // Fallback.
+		return TooltipPosition::Below; // fallback。
 	}
 
 	void syncNodeState()

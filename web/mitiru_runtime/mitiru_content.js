@@ -1,49 +1,49 @@
 /*!
  * mitiru_content.js — content-script loader + schema registry (F-16)
  *
- * Thin convention layer on top of mitiru.loadJson for scene-specific content
- * files (novel scripts, quest definitions, dialogue trees, etc.).
+ * scene 固有の content file (novel script、quest 定義、dialogue tree 等) 用に、
+ * mitiru.loadJson の上に乗る薄い規約 layer。
  *
- * ── Path convention ────────────────────────────────────────────────────────
- *   Default base dir:  'assets/content/'
- *   Chapter path:      '<baseDir><scene>/<chapter>.json'
+ * ── Path 規約 ────────────────────────────────────────────────────────
+ *   default の base dir:  'assets/content/'
+ *   chapter path:         '<baseDir><scene>/<chapter>.json'
  *
  *     mitiru.content.path('cooking', 'ch01')
  *       → 'assets/content/cooking/ch01.json'
  *
  * ── Schema registry ────────────────────────────────────────────────────────
- *   registerSchema(name, validator) — validator is a function that receives
- *   the parsed JSON and must throw on invalid input. Built-in schemas:
+ *   registerSchema(name, validator) — validator は parse 済み JSON を受け取り、
+ *   不正入力で throw する function。Built-in schema:
  *
- *     'novel'    — validates { id?, lines: [...] } against the mitiru_novel
- *                  line-type shape (text / bg / sprite / wait / choice).
- *     'dialogue' — validates { lines: [{speaker,text}, ...] }  (superset of
- *                  novel minus bg/sprite/choice — suitable for quick cutscenes).
- *     'quest'    — validates { id, steps: [...], flags?: [...], rewards?: {} }.
+ *     'novel'    — { id?, lines: [...] } を mitiru_novel の line-type 形
+ *                  (text / bg / sprite / wait / choice) で検証する。
+ *     'dialogue' — { lines: [{speaker,text}, ...] } を検証 (novel から
+ *                  bg/sprite/choice を除いた上位集合 — 短い cutscene 向き)。
+ *     'quest'    — { id, steps: [...], flags?: [...], rewards?: {} } を検証する。
  *
  * ── API ────────────────────────────────────────────────────────────────────
  *   mitiru.content.setBaseDir(path)                  default 'assets/content/'
- *   mitiru.content.baseDir()                         current base dir
- *   mitiru.content.path(scene, chapter)              → full URL string
+ *   mitiru.content.baseDir()                         現在の base dir
+ *   mitiru.content.path(scene, chapter)              → 完全な URL string
  *   mitiru.content.load(scene, chapter, opts?)       → Promise<data>
  *   mitiru.content.loadPath(path, opts?)             → Promise<data>
  *   mitiru.content.loadManifest(path, opts?)         → Promise<{data, url, resolve}>  (NF-01)
- *   mitiru.content.registerSchema(name, validator)   register or override
+ *   mitiru.content.registerSchema(name, validator)   登録または上書き
  *   mitiru.content.hasSchema(name)                   boolean
  *   mitiru.content.schemas()                         string[]
  *
  *   opts: {
- *     schemaName: 'novel',           // registry lookup; throws on invalid data
- *     validator:  fn(data),          // custom validator fn; same semantics
- *     required:   ['lines'],         // dot-paths that must resolve (via loadJson)
+ *     schemaName: 'novel',           // registry lookup; 不正 data で throw
+ *     validator:  fn(data),          // custom validator fn; 意味は同じ
+ *     required:   ['lines'],         // 解決必須の dot-path (loadJson 経由)
  *     schemaVersion: '1.0.0',        // data.schema_version === ...
- *     freeze:     true,              // deep-freeze on load (default true)
+ *     freeze:     true,              // load 時に deep-freeze (default true)
  *   }
  *
  * ── Error handling ─────────────────────────────────────────────────────────
- *   Validation failures throw with a prefix identifying the source path:
+ *   検証失敗は source path を示す prefix を付けて throw する:
  *     "mitiru.content: <path> — <schemaName|validator>: <reason>"
- *   so production log scraping can distinguish network vs schema failures.
+ *   これにより production の log scraping で network 失敗と schema 失敗を区別できる。
  *
  * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-16
  */
@@ -52,7 +52,7 @@
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.content) { return; }  // already loaded
+	if (mitiru.content) { return; }  // 読み込み済み
 
 	// ── internal state ──────────────────────────────────────────
 	let   _baseDir = 'assets/content/';
@@ -77,7 +77,7 @@
 		}
 	}
 
-	// ── built-in schemas ────────────────────────────────────────
+	// ── built-in schema ────────────────────────────────────────
 	function _assert(cond, msg) { if (!cond) { throw new Error(msg); } }
 
 	function _validateNovel(data)
@@ -198,7 +198,7 @@
 		}
 		opts = opts || {};
 
-		// Delegate I/O + basic validation to loadJson (E-04).
+		// I/O と基本 validation は loadJson (E-04) に委譲する。
 		if (!mitiru.loadJson)
 		{
 			throw new Error('mitiru.content.loadPath: mitiru.loadJson not loaded');
@@ -208,12 +208,12 @@
 			required: opts.required || null,
 		};
 		if (opts.schemaVersion !== undefined) { loadOpts.schema = opts.schemaVersion; }
-		// loadJson freezes by default; we want to validate BEFORE freezing.
+		// loadJson は default で freeze する; freeze の前に validate したい。
 		loadOpts.freeze = false;
 
 		const data = await mitiru.loadJson(pathStr, loadOpts);
 
-		// Registry schema.
+		// Registry schema。
 		if (opts.schemaName)
 		{
 			const v = _schemas[opts.schemaName];
@@ -221,13 +221,13 @@
 			_wrapValidator(pathStr, opts.schemaName, v, data);
 		}
 
-		// Custom validator.
+		// Custom validator。
 		if (typeof opts.validator === 'function')
 		{
 			_wrapValidator(pathStr, 'validator', opts.validator, data);
 		}
 
-		// Freeze after validation (validators may iterate freely).
+		// validation 後に freeze する (validator は自由に走査してよい)。
 		if (opts.freeze !== false) { _deepFreeze(data); }
 		return data;
 	};
@@ -238,29 +238,28 @@
 	};
 
 	/**
-	 * Load a manifest JSON and return a bound resolver (NF-01).
+	 * manifest JSON を読み込み、束縛済み resolver を返す (NF-01)。
 	 *
-	 * Entries in a manifest typically reference other assets via paths that
-	 * are relative to the MANIFEST's location — not the page's base URL.
-	 * Resolving those paths against `document.baseURI` silently 404s when
-	 * the page lives elsewhere (e.g. `/ui/novel.html` loading a manifest
-	 * from `/ui/data/` whose entries target `/assets/scripts/…`).
+	 * manifest 内の entry は通常、page の base URL ではなく MANIFEST の
+	 * 位置を基準とした path で他の asset を参照する。それらの path を
+	 * `document.baseURI` を基準に解決すると、page が別の場所にある場合に
+	 * 黙って 404 する (例: `/ui/novel.html` が `/ui/data/` の manifest を
+	 * 読み込み、その entry が `/assets/scripts/…` を指すケース)。
 	 *
-	 * Usage:
+	 * 使い方:
 	 *   const m = await mitiru.content.loadManifest('data/script_manifest.json');
 	 *   for (const entry of m.data.chapters)
 	 *   {
-	 *       const url = m.resolve(entry.path);   // absolute URL
+	 *       const url = m.resolve(entry.path);   // 絶対 URL
 	 *       fetch(url);
 	 *   }
 	 *
-	 * Returns { data, url, resolve(rel) } where url is the absolute URL the
-	 * manifest was fetched from and resolve() rebases any relative path
-	 * against that URL.
+	 * { data, url, resolve(rel) } を返す。url は manifest を取得した絶対 URL、
+	 * resolve() は任意の相対 path をその URL を基準に rebase する。
 	 *
-	 * All loadPath opts (schemaName, validator, required, schemaVersion,
-	 * freeze) are forwarded.  The returned object is not frozen (the
-	 * resolve function is attached); `data` IS frozen unless freeze:false.
+	 * loadPath の全 opts (schemaName, validator, required, schemaVersion,
+	 * freeze) は転送される。返り値の object は frozen ではない (resolve
+	 * function が付くため); `data` は freeze:false でない限り frozen。
 	 */
 	content.loadManifest = async function(pathStr, opts)
 	{

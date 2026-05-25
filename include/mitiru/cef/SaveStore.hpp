@@ -1,16 +1,15 @@
 #pragma once
 
 /// @file SaveStore.hpp
-/// @brief C++ save-slot file bridge backing `window.mitiru.save.*` (F-11).
+/// @brief `window.mitiru.save.*` を backing する C++ save-slot file bridge (F-11)。
 ///
-/// The web-side module `mitiru_save.js` dispatches four actions via
-/// `window.mitiru.dispatch` — `save.write` / `save.read` / `save.list` /
-/// `save.delete` — and falls back to `localStorage` when no C++ handler is
-/// registered.  This class registers those four handlers against a
-/// `mitiru::cef::StateStore` and maps them onto atomic file I/O under a
-/// per-game save directory.
+/// web 側 module `mitiru_save.js` は `window.mitiru.dispatch` 経由で 4 つの
+/// action — `save.write` / `save.read` / `save.list` / `save.delete` — を
+/// dispatch し、C++ handler が未登録なら `localStorage` に fallback する。
+/// 本クラスは `mitiru::cef::StateStore` にこの 4 つの handler を登録し、
+/// ゲームごとの save ディレクトリ下の atomic file I/O にマップする。
 ///
-/// **Usage**
+/// **使い方**
 /// ```cpp
 /// #include <mitiru/cef/StateStore.hpp>
 /// #include <mitiru/cef/SaveStore.hpp>
@@ -23,29 +22,28 @@
 /// // `saves` keeps itself registered for the lifetime of the object.
 /// ```
 ///
-/// **File layout** under `Config::dir`:
-///   - `slot_<N>.json`          committed blob (data + meta + version)
-///   - `slot_<N>.meta.json`     small summary for `save.list()`
-///   - `slot_<N>.staging.json`  ephemeral — present only mid-write; if
-///                              crash recovery picks one up, `read()`
-///                              promotes it to `slot_<N>.json`.
+/// **File layout** (`Config::dir` 下):
+///   - `slot_<N>.json`          commit 済み blob (data + meta + version)
+///   - `slot_<N>.meta.json`     `save.list()` 用の小さな summary
+///   - `slot_<N>.staging.json`  一時ファイル — write 途中だけ存在する。crash
+///                              recovery がこれを拾った場合、`read()` が
+///                              `slot_<N>.json` に昇格させる。
 ///
-/// **JSON contract** (matches the JSDoc in mitiru_save.js):
+/// **JSON 契約** (mitiru_save.js の JSDoc と一致):
 ///   - `save.write`  → `{slot, payload: <full blob JSON string>}`  → `{ok:true}`
-///   - `save.read`   → `{slot}`                                    → blob object or null
-///   - `save.list`   → `{}`                                         → array of `{slot, exists, meta}`
+///   - `save.read`   → `{slot}`                                    → blob オブジェクト or null
+///   - `save.list`   → `{}`                                         → `{slot, exists, meta}` の配列
 ///   - `save.delete` → `{slot}`                                    → `{ok:true}`
 ///
-/// Any exception thrown from a handler propagates through StateStore's
-/// dispatchFromJson as an `{error:"..."}` response, which `mitiru.save` then
-/// converts to a Promise rejection.  The rejection path activates the
-/// web-side localStorage fallback, so a server-side failure degrades
-/// gracefully rather than silently dropping saves.
+/// handler が投げた例外は StateStore の dispatchFromJson を通って
+/// `{error:"..."}` レスポンスに変換され、`mitiru.save` がそれを Promise
+/// reject に変える。reject 経路は web 側の localStorage fallback を起動する
+/// ため、サーバー側の失敗は save を黙って捨てるのではなく gracefully に
+/// degrade する。
 ///
-/// **Thread safety.** StateStore dispatches on the CEF UI thread; we
-/// serialise further via an internal mutex so races between a read and a
-/// concurrent write (possible if a script ever drives both) do not leave
-/// the disk inconsistent.
+/// **Thread safety。** StateStore は CEF UI thread で dispatch する。本クラスは
+/// 内部 mutex でさらに直列化し、read と並行 write (script が両方を駆動した
+/// 場合に起こりうる) の race がディスクを不整合状態にしないようにする。
 
 #include <cstddef>
 #include <cstdint>
@@ -64,25 +62,25 @@
 namespace mitiru::cef
 {
 
-/// @brief Disk-backed implementation of the web `mitiru.save` bridge.
+/// @brief web の `mitiru.save` bridge の disk backing 実装。
 class SaveStore
 {
 public:
 	using json = ::nlohmann::json;
 
-	/// @brief Construction-time configuration.
+	/// @brief 構築時の設定。
 	struct Config
 	{
-		/// Directory that holds every slot's files. Created if missing.
+		/// 各 slot のファイルを格納するディレクトリ。無ければ作成する。
 		std::filesystem::path dir;
 
-		/// Number of slots the game exposes. Must match
-		/// `mitiru.save.MAX_SLOTS` on the JS side (default 10).
+		/// ゲームが公開する slot 数。JS 側の `mitiru.save.MAX_SLOTS` と
+		/// 一致させる必要がある (default 10)。
 		std::size_t maxSlots = 10;
 
-		/// Hard cap on a single slot's payload string length.  Guard against
-		/// a compromised JS sending a gigabyte of data.  Defaults to 16 MB
-		/// which is already well beyond any sane save file.
+		/// 単一 slot の payload 文字列長の上限。改竄された JS が gigabyte 級の
+		/// data を送ってくるのを防ぐ。default は 16 MB で、これはまともな
+		/// save file の範囲を既に大きく超えている。
 		std::size_t maxFileBytes = 16ull * 1024ull * 1024ull;
 	};
 
@@ -117,25 +115,25 @@ public:
 
 	~SaveStore()
 	{
-		// StateStore::onAction only holds a std::function pointing to the
-		// lambda; when SaveStore is destroyed the lambda body still exists
-		// inside the std::function but its captured `this` dangles.  Remove
-		// the handlers so subsequent dispatches are cleanly unknown.
+		// StateStore::onAction は lambda を指す std::function を保持するだけ。
+		// SaveStore が破棄されると lambda 本体は std::function 内に残るが、
+		// capture した `this` は dangle する。以降の dispatch が綺麗に unknown
+		// 扱いになるよう handler を解除する。
 		m_store.offAction("save.write");
 		m_store.offAction("save.read");
 		m_store.offAction("save.list");
 		m_store.offAction("save.delete");
 	}
 
-	// ── accessors ──────────────────────────────────────────────
+	// ── accessor ──────────────────────────────────────────────
 
-	/// @brief Save directory (absolute preferred, relative tolerated).
+	/// @brief save ディレクトリ (絶対パス推奨、相対パスも許容)。
 	[[nodiscard]] const std::filesystem::path& dir() const noexcept { return m_cfg.dir; }
 
-	/// @brief Slot count, matched against `mitiru.save.MAX_SLOTS` on JS side.
+	/// @brief slot 数。JS 側の `mitiru.save.MAX_SLOTS` と照合される。
 	[[nodiscard]] std::size_t maxSlots() const noexcept { return m_cfg.maxSlots; }
 
-	/// @brief Size cap per-write, in bytes.
+	/// @brief write 1 回あたりのサイズ上限 (バイト)。
 	[[nodiscard]] std::size_t maxFileBytes() const noexcept { return m_cfg.maxFileBytes; }
 
 private:
@@ -143,7 +141,7 @@ private:
 	Config             m_cfg;
 	mutable std::mutex m_mu;
 
-	// ── handler wiring ─────────────────────────────────────────
+	// ── handler 配線 ─────────────────────────────────────────
 
 	void registerHandlers()
 	{
@@ -157,7 +155,7 @@ private:
 			[this](const json& p) { return onDelete(p); });
 	}
 
-	// ── path helpers ──────────────────────────────────────────
+	// ── path helper ──────────────────────────────────────────
 
 	[[nodiscard]] std::filesystem::path blobPath(int slot) const
 	{
@@ -190,7 +188,7 @@ private:
 		return slot;
 	}
 
-	// ── I/O primitives ────────────────────────────────────────
+	// ── I/O プリミティブ ────────────────────────────────────────
 
 	static std::string readFile(const std::filesystem::path& path)
 	{
@@ -224,13 +222,13 @@ private:
 			out.flush();
 		}
 		std::error_code ec;
-		// Overwriting rename is required on POSIX (ok by default) and on
-		// Win32 (std::filesystem::rename maps to MoveFileExW with REPLACE
-		// behaviour in MSVC STL).
+		// 上書き rename は POSIX (default で可) と Win32 (MSVC STL では
+		// std::filesystem::rename が REPLACE 挙動の MoveFileExW にマップされる)
+		// の両方で必要。
 		std::filesystem::rename(staging, final_, ec);
 		if (ec)
 		{
-			// Fallback: copy + remove (slower but wider platform support).
+			// fallback: copy + remove (遅いがより広いプラットフォームで動く)。
 			std::filesystem::copy_file(staging, final_,
 				std::filesystem::copy_options::overwrite_existing, ec);
 			if (ec)
@@ -242,7 +240,7 @@ private:
 		}
 	}
 
-	// ── handlers ──────────────────────────────────────────────
+	// ── handler ──────────────────────────────────────────────
 
 	json onWrite(const json& p)
 	{
@@ -262,8 +260,8 @@ private:
 				+ std::to_string(m_cfg.maxFileBytes));
 		}
 
-		// Validate the payload parses, and extract meta eagerly — sending a
-		// corrupt write to disk would poison the next read.
+		// payload が parse できるか検証し、meta を先に抽出する — 壊れた write を
+		// ディスクに送ると次の read を汚染してしまう。
 		json blob;
 		try { blob = json::parse(payload); }
 		catch (const std::exception& e)
@@ -274,12 +272,12 @@ private:
 
 		const json metaBlob = extractMeta(blob);
 
-		// Atomic main-file write.
+		// main file の atomic write。
 		writeFileAtomic(stagePath(slot), blobPath(slot), payload);
 
-		// Best-effort meta write.  If this fails the next list() for this
-		// slot still reports exists:true but with meta:null, and list
-		// consumers handle null-meta gracefully.
+		// best-effort な meta write。失敗してもこの slot の次の list() は
+		// exists:true / meta:null を返すだけで、list の consumer は null-meta を
+		// gracefully に扱う。
 		std::ofstream metaOut(metaPath(slot),
 		                      std::ios::binary | std::ios::trunc);
 		if (metaOut)
@@ -298,9 +296,9 @@ private:
 
 		const int slot = requireSlot(p);
 
-		// Crash-recovery: an orphan staging file next to a missing committed
-		// file implies the previous write died after writeFileAtomic's
-		// staging step but before the rename.  Promote it.
+		// crash recovery: commit 済みファイルが無いのに staging ファイルが残って
+		// いる = 前回の write が writeFileAtomic の staging 段階の後、rename の
+		// 前に死んだことを意味する。これを昇格させる。
 		const auto staging = stagePath(slot);
 		const auto final_  = blobPath(slot);
 		std::error_code ec;
@@ -308,7 +306,7 @@ private:
 		    !std::filesystem::exists(final_,  ec))
 		{
 			std::filesystem::rename(staging, final_, ec);
-			// ec is swallowed here — fall through to the existence check.
+			// ここでは ec を握り潰す — 下の存在チェックに fall through する。
 		}
 
 		if (!std::filesystem::exists(final_, ec))
@@ -361,7 +359,7 @@ private:
 		return json{{"ok", true}};
 	}
 
-	// ── helpers ─────────────────────────────────────────────────
+	// ── helper ─────────────────────────────────────────────────
 
 	static json extractMeta(const json& blob)
 	{

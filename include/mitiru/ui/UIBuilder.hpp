@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file UIBuilder.hpp
-/// @brief Declarative layout builder for MitiruEngine UI.
-/// @details Provides one-line layout helpers that return positioned Rectf values,
-///          making declarative layouts easier than hardcoding coordinates.
+/// @brief MitiruEngine UI 用の宣言的 layout builder。
+/// @details 配置済みの Rectf 値を返す 1 行 layout helper を提供し、座標を
+///          ハードコードするより簡単に宣言的 layout を組めるようにする。
 
 #include <sgc/math/Rect.hpp>
 
@@ -13,7 +13,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Convenience layout builder that turns layout intent into positioned rects.
+/// @brief layout の意図を配置済み rect に変換する簡易 layout builder。
 ///
 /// @code
 ///   UIBuilder ui(1280, 720);
@@ -26,32 +26,32 @@ class UIBuilder {
 public:
 	// ── Result types ──────────────────────────────────
 
-	/// @brief Result of a horizontal row layout.
+	/// @brief 水平 row layout の結果。
 	struct RowResult {
 		std::vector<sgc::Rectf> cells;
 		float totalWidth  = 0.0f;
 		float totalHeight = 0.0f;
 	};
 
-	/// @brief Result of a vertical column layout.
+	/// @brief 垂直 column layout の結果。
 	struct ColResult {
 		std::vector<sgc::Rectf> cells;
 		float totalWidth  = 0.0f;
 		float totalHeight = 0.0f;
 	};
 
-	/// @brief Result of a grid layout.
+	/// @brief grid layout の結果。
 	struct GridResult {
 		std::vector<std::vector<sgc::Rectf>> cells;
 	};
 
-	/// @brief Result of a horizontal split.
+	/// @brief 水平 split の結果。
 	struct SplitResult {
 		sgc::Rectf left;
 		sgc::Rectf right;
 	};
 
-	/// @brief Result of a vertical split.
+	/// @brief 垂直 split の結果。
 	struct VSplitResult {
 		sgc::Rectf top;
 		sgc::Rectf bottom;
@@ -59,9 +59,9 @@ public:
 
 	// ── Construction ──────────────────────────────────
 
-	/// @brief Set the working area to the full screen.
-	/// @param screenW Screen width in pixels.
-	/// @param screenH Screen height in pixels.
+	/// @brief 作業領域を画面全体に設定する。
+	/// @param screenW 画面幅 (px)。
+	/// @param screenH 画面高さ (px)。
 	UIBuilder(float screenW, float screenH) noexcept
 		: m_screenW(screenW)
 		, m_screenH(screenH)
@@ -74,7 +74,7 @@ public:
 
 	// ── Spacing ───────────────────────────────────────
 
-	/// @brief Apply uniform padding to all sides.
+	/// @brief 全辺に均一な padding を適用する。
 	UIBuilder& padding(float p) noexcept {
 		m_areaX += p;
 		m_areaY += p;
@@ -85,7 +85,7 @@ public:
 		return *this;
 	}
 
-	/// @brief Apply horizontal and vertical padding.
+	/// @brief 水平・垂直の padding を適用する。
 	UIBuilder& padding(float h, float v) noexcept {
 		m_areaX += h;
 		m_areaY += v;
@@ -96,7 +96,7 @@ public:
 		return *this;
 	}
 
-	/// @brief Apply per-side padding (top, right, bottom, left).
+	/// @brief 辺ごとの padding を適用する (top, right, bottom, left)。
 	UIBuilder& padding(float top, float right, float bottom, float left) noexcept {
 		m_areaX += left;
 		m_areaY += top;
@@ -107,12 +107,12 @@ public:
 		return *this;
 	}
 
-	/// @brief Apply uniform margin (equivalent to padding for builder purposes).
+	/// @brief 均一な margin を適用する (builder 上は padding と等価)。
 	UIBuilder& margin(float m) noexcept {
 		return padding(m);
 	}
 
-	/// @brief Override the working area explicitly.
+	/// @brief 作業領域を明示的に上書きする。
 	UIBuilder& area(const sgc::Rectf& rect) noexcept {
 		m_areaX = rect.x();
 		m_areaY = rect.y();
@@ -121,17 +121,17 @@ public:
 		return *this;
 	}
 
-	/// @brief Get the current working area as a Rectf.
+	/// @brief 現在の作業領域を Rectf として取得する。
 	[[nodiscard]] sgc::Rectf workingArea() const noexcept {
 		return sgc::Rectf{m_areaX, m_areaY, m_areaW, m_areaH};
 	}
 
 	// ── Row layout (horizontal) ───────────────────────
 
-	/// @brief Create N equal-width cells in a horizontal row.
-	/// @param count Number of cells.
-	/// @param height Cell height in pixels.
-	/// @param gap Space between cells.
+	/// @brief 水平 row に N 個の等幅 cell を生成する。
+	/// @param count cell 数。
+	/// @param height cell の高さ (px)。
+	/// @param gap cell 間の間隔。
 	[[nodiscard]] RowResult row(int count, float height = 40.0f, float gap = 8.0f) const {
 		if (count <= 0) { return {}; }
 		const float totalGap = gap * static_cast<float>(count - 1);
@@ -146,10 +146,10 @@ public:
 		return RowResult{std::move(cells), m_areaW, height};
 	}
 
-	/// @brief Create cells with explicit widths in a horizontal row.
-	/// @param widths Per-cell widths.
-	/// @param height Cell height in pixels.
-	/// @param gap Space between cells.
+	/// @brief 水平 row に幅を明示指定した cell を生成する。
+	/// @param widths cell ごとの幅。
+	/// @param height cell の高さ (px)。
+	/// @param gap cell 間の間隔。
 	[[nodiscard]] RowResult row(const std::vector<float>& widths,
 	                            float height = 40.0f, float gap = 8.0f) const {
 		std::vector<sgc::Rectf> cells;
@@ -167,10 +167,10 @@ public:
 
 	// ── Column layout (vertical) ──────────────────────
 
-	/// @brief Create N equal-height cells in a vertical column.
-	/// @param count Number of cells.
-	/// @param itemHeight Cell height in pixels.
-	/// @param gap Space between cells.
+	/// @brief 垂直 column に N 個の等高 cell を生成する。
+	/// @param count cell 数。
+	/// @param itemHeight cell の高さ (px)。
+	/// @param gap cell 間の間隔。
 	[[nodiscard]] ColResult column(int count, float itemHeight = 40.0f, float gap = 8.0f) const {
 		if (count <= 0) { return {}; }
 		std::vector<sgc::Rectf> cells;
@@ -187,10 +187,10 @@ public:
 
 	// ── Grid layout ───────────────────────────────────
 
-	/// @brief Create a rows x cols grid of equal-sized cells.
-	/// @param rows Number of rows.
-	/// @param cols Number of columns.
-	/// @param gap Space between cells.
+	/// @brief 等サイズ cell の rows x cols grid を生成する。
+	/// @param rows 行数。
+	/// @param cols 列数。
+	/// @param gap cell 間の間隔。
 	[[nodiscard]] GridResult grid(int rows, int cols, float gap = 8.0f) const {
 		GridResult result;
 		if (rows <= 0 || cols <= 0) { return result; }
@@ -215,7 +215,7 @@ public:
 
 	// ── Centering ─────────────────────────────────────
 
-	/// @brief Center a rect of given size within the working area.
+	/// @brief 指定サイズの rect を作業領域内で中央寄せする。
 	[[nodiscard]] sgc::Rectf centered(float w, float h) const noexcept {
 		return sgc::Rectf{
 			m_areaX + (m_areaW - w) * 0.5f,
@@ -223,12 +223,12 @@ public:
 			w, h};
 	}
 
-	/// @brief Center horizontally at a given Y position.
+	/// @brief 指定 Y 位置で水平方向に中央寄せする。
 	[[nodiscard]] sgc::Rectf centeredHorizontally(float w, float h, float y) const noexcept {
 		return sgc::Rectf{m_areaX + (m_areaW - w) * 0.5f, y, w, h};
 	}
 
-	/// @brief Center vertically at a given X position.
+	/// @brief 指定 X 位置で垂直方向に中央寄せする。
 	[[nodiscard]] sgc::Rectf centeredVertically(float w, float h, float x) const noexcept {
 		return sgc::Rectf{x, m_areaY + (m_areaH - h) * 0.5f, w, h};
 	}
@@ -259,21 +259,21 @@ public:
 		return sgc::Rectf{m_areaX + m_areaW - w, m_areaY + m_areaH - h, w, h};
 	}
 
-	/// @brief Vertically centered, left aligned.
+	/// @brief 垂直中央寄せ・左揃え。
 	[[nodiscard]] sgc::Rectf left(float w, float h) const noexcept {
 		return sgc::Rectf{m_areaX, m_areaY + (m_areaH - h) * 0.5f, w, h};
 	}
 
-	/// @brief Vertically centered, right aligned.
+	/// @brief 垂直中央寄せ・右揃え。
 	[[nodiscard]] sgc::Rectf right(float w, float h) const noexcept {
 		return sgc::Rectf{m_areaX + m_areaW - w, m_areaY + (m_areaH - h) * 0.5f, w, h};
 	}
 
 	// ── Split layout ──────────────────────────────────
 
-	/// @brief Split working area horizontally into left and right panels.
-	/// @param ratio Left panel proportion (0.0 .. 1.0).
-	/// @param gap Space between panels.
+	/// @brief 作業領域を水平に左右 panel へ分割する。
+	/// @param ratio 左 panel の割合 (0.0 .. 1.0)。
+	/// @param gap panel 間の間隔。
 	[[nodiscard]] SplitResult splitHorizontal(float ratio = 0.5f, float gap = 8.0f) const noexcept {
 		const float leftW  = std::max(0.0f, (m_areaW - gap) * ratio);
 		const float rightW = std::max(0.0f, m_areaW - gap - leftW);
@@ -282,9 +282,9 @@ public:
 			sgc::Rectf{m_areaX + leftW + gap, m_areaY, rightW, m_areaH}};
 	}
 
-	/// @brief Split working area vertically into top and bottom panels.
-	/// @param ratio Top panel proportion (0.0 .. 1.0).
-	/// @param gap Space between panels.
+	/// @brief 作業領域を垂直に上下 panel へ分割する。
+	/// @param ratio 上 panel の割合 (0.0 .. 1.0)。
+	/// @param gap panel 間の間隔。
 	[[nodiscard]] VSplitResult splitVertical(float ratio = 0.5f, float gap = 8.0f) const noexcept {
 		const float topH    = std::max(0.0f, (m_areaH - gap) * ratio);
 		const float bottomH = std::max(0.0f, m_areaH - gap - topH);
@@ -295,7 +295,7 @@ public:
 
 	// ── Stack (accumulates Y) ─────────────────────────
 
-	/// @brief Begin a vertical stack at the given position and width.
+	/// @brief 指定位置・幅で垂直 stack を開始する。
 	UIBuilder& beginStack(float x, float y, float width) noexcept {
 		m_stackX = x;
 		m_stackY = y;
@@ -304,37 +304,37 @@ public:
 		return *this;
 	}
 
-	/// @brief Get the next rect in the stack and advance Y.
-	/// @param height Item height.
-	/// @param gap Space after this item.
+	/// @brief stack 内の次の rect を取得し Y を進める。
+	/// @param height item の高さ。
+	/// @param gap この item の後ろの間隔。
 	[[nodiscard]] sgc::Rectf stackItem(float height, float gap = 4.0f) noexcept {
 		const sgc::Rectf rect{m_stackX, m_stackY, m_stackW, height};
 		m_stackY += height + gap;
 		return rect;
 	}
 
-	/// @brief Current Y position in the stack.
+	/// @brief stack 内の現在の Y 位置。
 	[[nodiscard]] float stackY() const noexcept { return m_stackY; }
 
 	// ── Responsive helpers ────────────────────────────
 
-	/// @brief True if screen width suggests a mobile layout (< 768px).
+	/// @brief 画面幅が mobile layout 相当か (< 768px) を返す。
 	[[nodiscard]] bool isMobile() const noexcept { return m_screenW < 768.0f; }
 
-	/// @brief True if screen width suggests a tablet layout (768 .. 1279px).
+	/// @brief 画面幅が tablet layout 相当か (768 .. 1279px) を返す。
 	[[nodiscard]] bool isTablet() const noexcept {
 		return m_screenW >= 768.0f && m_screenW < 1280.0f;
 	}
 
-	/// @brief True if screen width suggests a desktop layout (>= 1280px).
+	/// @brief 画面幅が desktop layout 相当か (>= 1280px) を返す。
 	[[nodiscard]] bool isDesktop() const noexcept { return m_screenW >= 1280.0f; }
 
-	/// @brief Responsive scale factor relative to 1280px baseline.
+	/// @brief 1280px を基準とした responsive scale factor。
 	[[nodiscard]] float scale() const noexcept {
 		return std::max(0.5f, m_screenW / 1280.0f);
 	}
 
-	/// @brief Suggested column count based on screen width.
+	/// @brief 画面幅に基づく推奨列数。
 	[[nodiscard]] int columns() const noexcept {
 		if (m_screenW < 768.0f)  { return 2; }
 		if (m_screenW < 1280.0f) { return 3; }
@@ -349,7 +349,7 @@ private:
 	float m_areaW   = 0.0f;
 	float m_areaH   = 0.0f;
 
-	// Stack state.
+	// stack の状態。
 	float m_stackX = 0.0f;
 	float m_stackY = 0.0f;
 	float m_stackW = 0.0f;

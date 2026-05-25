@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Recorder.hpp
-/// @brief Frame-by-frame InputSnapshot recorder (axis 4: deterministic + replay)
+/// @brief フレーム単位の InputSnapshot recorder (axis 4: deterministic + replay)
 /// @details
 /// P4 phase の第一弾 infrastructure。1 game session の毎フレーム input を
 /// append-only binary file に書き出し、後で `mitiru::replay::Player` から
@@ -77,9 +77,9 @@ constexpr std::size_t   kOffReserved   = 32;
 constexpr std::uint32_t kFnvSeed  = 0x811c9dc5u;
 constexpr std::uint32_t kFnvPrime = 0x01000193u;
 
-/// @brief fold @p len bytes into an existing fnv1a-32 @p hash (rolling form).
-/// @details lets a checksum span multiple disjoint buffers (head + state blob)
-///          without first concatenating them into one contiguous array.
+/// @brief 既存の fnv1a-32 @p hash に @p len バイトを畳み込む (rolling 形式)。
+/// @details 一つの連続配列に連結せずとも、複数の離れた buffer (head + state blob)
+///          にまたがって checksum を計算できる。
 [[nodiscard]] inline std::uint32_t
 fnv1aAppend(std::uint32_t hash, const void* data, std::size_t len) noexcept
 {
@@ -92,14 +92,14 @@ fnv1aAppend(std::uint32_t hash, const void* data, std::size_t len) noexcept
 	return hash;
 }
 
-/// @brief fnv1a-32 over arbitrary bytes (frame checksum)
-/// @details http://www.isthe.com/chongo/tech/comp/fnv/ — non-cryptographic
+/// @brief 任意バイト列の fnv1a-32 (frame checksum)
+/// @details http://www.isthe.com/chongo/tech/comp/fnv/ — 非暗号用途
 [[nodiscard]] inline std::uint32_t fnv1a32(const void* data, std::size_t len) noexcept
 {
 	return fnv1aAppend(kFnvSeed, data, len);
 }
 
-/// @brief Append-only binary recorder for `mitiru::module::InputSnapshot`.
+/// @brief `mitiru::module::InputSnapshot` 用の append-only binary recorder。
 /// @details 1 instance = 1 output file。`open()` で header を書き、
 ///          `record()` で 1 frame ずつ追記、`close()` で flush。
 ///          再 open はしない (replay session を新しく作ること)。
@@ -114,10 +114,10 @@ public:
 
 	~Recorder() { close(); }
 
-	/// @brief open output file and write header. Returns false on IO failure.
-	/// @param path   output file
-	/// @param rngSeed deterministic RNG seed in effect at record time. Stored
-	///        in the header so replay can re-seed the same sequence (axis 4).
+	/// @brief 出力 file を開いて header を書く。IO 失敗時は false を返す。
+	/// @param path   出力 file
+	/// @param rngSeed 記録時に有効だった deterministic RNG seed。header に保存し、
+	///        replay が同じ列を re-seed できるようにする (axis 4)。
 	bool open(const std::string& path, std::uint64_t rngSeed = 0)
 	{
 		close();
@@ -136,7 +136,7 @@ public:
 		std::memcpy(header + kOffMagic, kMagic, 4);
 		const std::uint32_t ver   = kFormatVersion;
 		const std::uint32_t fs    = static_cast<std::uint32_t>(sizeof(module::InputSnapshot));
-		const std::uint32_t fc0   = 0;  // patched at close() via seek-back
+		const std::uint32_t fc0   = 0;  // close() で seek-back して上書きする
 		const std::uint64_t rsvd  = 0;
 		std::memcpy(header + kOffVersion,    &ver,            sizeof(ver));
 		std::memcpy(header + kOffFrameSize,  &fs,             sizeof(fs));
@@ -149,12 +149,12 @@ public:
 		return m_out.good();
 	}
 
-	/// @brief append 1 frame: InputSnapshot + optional state blob.
-	/// @param frameIdx   logical frame index
-	/// @param snap       this frame's input snapshot (POD memcpy)
-	/// @param stateBlob  caller-owned bytes describing game state at this frame
-	///                   (memcpy / serialized struct, or a hash). May be null.
-	/// @param stateLen   bytes in @p stateBlob. 0 = no state recorded.
+	/// @brief 1 frame を追記する: InputSnapshot + 任意の state blob。
+	/// @param frameIdx   論理 frame index
+	/// @param snap       この frame の input snapshot (POD memcpy)
+	/// @param stateBlob  この frame の game state を表す caller 所有のバイト列
+	///                   (memcpy / serialize した struct、または hash)。null 可。
+	/// @param stateLen   @p stateBlob のバイト数。0 = state を記録しない。
 	/// @details file が open でなければ no-op false。checksum は
 	///          [frameIdx | payload | stateLen | state] 全体を covers するので、
 	///          state の truncation / corruption も read 時に検出される。
@@ -166,13 +166,13 @@ public:
 		if (!m_out.is_open()) { return false; }
 		if (stateBlob == nullptr) { stateLen = 0; }
 
-		// Layout: [frameIdx u32][payload InputSnapshot][stateLen u32][state][checksum u32]
+		// レイアウト: [frameIdx u32][payload InputSnapshot][stateLen u32][state][checksum u32]
 		constexpr std::size_t kPayloadBytes = sizeof(module::InputSnapshot);
 		std::uint8_t          head[sizeof(std::uint32_t) + kPayloadBytes];
 		std::memcpy(head, &frameIdx, sizeof(frameIdx));
 		std::memcpy(head + sizeof(frameIdx), &snap, kPayloadBytes);
 
-		// Rolling checksum over head, then stateLen field, then state bytes.
+		// head → stateLen field → state バイト列 の順で rolling checksum を取る。
 		std::uint32_t checksum = fnv1a32(head, sizeof(head));
 		checksum = fnv1aAppend(checksum, &stateLen, sizeof(stateLen));
 		if (stateLen > 0)
@@ -200,7 +200,7 @@ public:
 	{
 		if (m_out.is_open())
 		{
-			// Patch the frameCount field now that the total is known.
+			// 総数が確定したので frameCount field を上書きする。
 			const std::uint32_t fc =
 				static_cast<std::uint32_t>(m_frameCount);
 			m_out.seekp(static_cast<std::streamoff>(kOffFrameCount),

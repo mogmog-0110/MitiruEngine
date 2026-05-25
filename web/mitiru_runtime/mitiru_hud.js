@@ -1,38 +1,38 @@
 /*!
- * mitiru_hud.js — persistent HUD widget (F-08)
+ * mitiru_hud.js — 常駐 HUD ウィジェット (F-08)
  *
- * Persistent overlay that lives in main.html and survives scene transitions.
- * Slots subscribe to mitiru.state keys and re-render on change.
+ * main.html に常駐しシーン遷移をまたいで生き残るオーバーレイ。
+ * slot は mitiru.state の key を購読し、変化時に再レンダリングする。
  *
  * API: mount(container, opts) / unmount() / slots() / update()
  * opts: { stateKeys:string[], slots:[{id, render}], className:string }
- * render return type dispatch:
+ * render の戻り値型による振り分け:
  *   string → textContent | Node → replaceChildren | {html:string} → innerHTML
  *
- * stateKeys:[] (default) = static snapshot, no subscriptions.
- * Double-mount: silently unmounts previous instance first.
- * F-02 absent: falls back to minimal inline style.
+ * stateKeys:[] (既定) = 静的スナップショット、購読なし。
+ * 二重 mount: 先に前のインスタンスを黙って unmount する。
+ * F-02 不在時: 最小限の inline style に fallback する。
  *
- * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-08
+ * 仕様: docs/feedback-from-kaerucrape/2026-04-24.md F-08
  */
 (function(global)
 {
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.hud) { return; }  // already loaded
+	if (mitiru.hud) { return; }  // 既に読み込み済み
 
 	const document = global.document;
 
-	// ── internal state ────────────────────────────────────────────
-	let _root    = null;   // HTMLElement — the mounted HUD root
+	// ── 内部状態 ────────────────────────────────────────────
+	let _root    = null;   // HTMLElement — mount された HUD ルート
 	let _slots   = [];     // [{ id, el, render }]
-	let _unsubs  = [];     // [unsubscribe fn, ...]  from mitiru.state.subscribe
-	let _opts    = null;   // last mount options (for update())
+	let _unsubs  = [];     // mitiru.state.subscribe からの [unsubscribe fn, ...]
+	let _opts    = null;   // 直近の mount オプション (update() 用)
 
-	// ── helpers ───────────────────────────────────────────────────
+	// ── ヘルパ ───────────────────────────────────────────────────
 
-	// Render one slot; dispatch on render() return type.
+	// slot を 1 つレンダリング。render() の戻り値型で振り分ける。
 	function _renderSlot(slot, snapshot)
 	{
 		var value;
@@ -65,12 +65,12 @@
 		}
 		else
 		{
-			// Fallback: coerce to string safely.
+			// fallback: 安全に文字列化する。
 			el.textContent = String(value);
 		}
 	}
 
-	// Build snapshot of subscribed keys and render all slots.
+	// 購読 key のスナップショットを作り、全 slot をレンダリングする。
 	function _renderAll()
 	{
 		if (!_root || !_opts) { return; }
@@ -83,8 +83,8 @@
 	}
 
 	/**
-	 * Build a plain-object snapshot of the given state keys.
-	 * Falls back gracefully when mitiru.state is not loaded.
+	 * 指定した state key の plain-object スナップショットを作る。
+	 * mitiru.state が未読み込みでも穏当に fallback する。
 	 */
 	function _buildSnapshot(keys)
 	{
@@ -99,8 +99,8 @@
 	}
 
 	/**
-	 * Check whether the F-02 component class is available in any loaded stylesheet.
-	 * Returns true if `mitiru-hud-note` resolves to a non-empty rule set.
+	 * F-02 のコンポーネントクラスが読み込み済みの stylesheet にあるか確認する。
+	 * `mitiru-hud-note` が空でないルールセットに解決できれば true を返す。
 	 */
 	function _f02Available()
 	{
@@ -111,7 +111,7 @@
 			{
 				var rules;
 				try { rules = sheets[i].cssRules || sheets[i].rules; }
-				catch (_e) { continue; }  // cross-origin sheet
+				catch (_e) { continue; }  // cross-origin の sheet
 				if (!rules) { continue; }
 				for (var j = 0; j < rules.length; ++j)
 				{
@@ -123,12 +123,12 @@
 				}
 			}
 		}
-		catch (_e) { /* ignore */ }
+		catch (_e) { /* 無視 */ }
 		return false;
 	}
 
 	/**
-	 * Apply inline fallback styles to the HUD root when F-02 is not available.
+	 * F-02 が利用できないとき、HUD ルートに inline fallback スタイルを適用する。
 	 */
 	function _applyFallbackStyle(el)
 	{
@@ -144,12 +144,12 @@
 		].join(';');
 	}
 
-	// ── public API ────────────────────────────────────────────────
+	// ── 公開 API ────────────────────────────────────────────────
 	const hud = mitiru.hud = Object.create(null);
 
 	/**
-	 * Mount the HUD into `container`.
-	 * If already mounted, the previous instance is unmounted first (double-mount protection).
+	 * HUD を `container` に mount する。
+	 * 既に mount 済みなら先に前のインスタンスを unmount する (二重 mount 防止)。
 	 *
 	 * @param {HTMLElement} container
 	 * @param {object}      opts
@@ -164,7 +164,7 @@
 			throw new Error('mitiru.hud.mount: container must be a DOM element');
 		}
 
-		// Double-mount protection: tear down any existing instance.
+		// 二重 mount 防止: 既存インスタンスがあれば破棄する。
 		if (_root) { hud.unmount(); }
 
 		opts = opts || {};
@@ -176,13 +176,13 @@
 		_slots = [];
 		_unsubs = [];
 
-		// ── build root element ────────────────────────────────────
+		// ── ルート要素を構築 ────────────────────────────────────
 		_root = document.createElement('div');
 		_root.setAttribute('data-mitiru-hud', '');
 		_root.classList.add('mitiru-hud');
 		if (extraClass) { _root.classList.add(extraClass); }
 
-		// Apply F-02 class if available, otherwise inline fallback.
+		// F-02 クラスがあれば適用、無ければ inline fallback。
 		if (_f02Available())
 		{
 			_root.classList.add('mitiru-hud-note');
@@ -192,7 +192,7 @@
 			_applyFallbackStyle(_root);
 		}
 
-		// ── build slot elements ───────────────────────────────────
+		// ── slot 要素を構築 ───────────────────────────────────
 		for (var i = 0; i < slotDefs.length; ++i)
 		{
 			var def = slotDefs[i];
@@ -211,12 +211,12 @@
 
 		container.appendChild(_root);
 
-		// ── initial render ────────────────────────────────────────
+		// ── 初回レンダリング ────────────────────────────────────────
 		_renderAll();
 
-		// ── subscriptions ─────────────────────────────────────────
-		// Single shared handler — all key changes trigger a full re-render.
-		// This avoids N separate closures and simplifies teardown via _unsubs[].
+		// ── 購読 ─────────────────────────────────────────
+		// 共有ハンドラ 1 つ — どの key の変化でも全体を再レンダリングする。
+		// N 個の別クロージャを避け、_unsubs[] での後始末も簡潔になる。
 		var s = mitiru.state;
 		if (s && stateKeys.length > 0)
 		{
@@ -224,14 +224,14 @@
 
 			for (var k = 0; k < stateKeys.length; ++k)
 			{
-				// subscribe fires immediately — suppress the redundant initial render
-				// by temporarily wrapping; we already rendered above.
+				// subscribe は即時発火する — 上で既にレンダリング済みなので、
+				// 一時的にラップして冗長な初回レンダリングを抑制する。
 				var unsub = (function(key)
 				{
 					var fired = false;
 					var off = s.subscribe(key, function()
 					{
-						if (!fired) { fired = true; return; }  // skip immediate fire
+						if (!fired) { fired = true; return; }  // 即時発火はスキップ
 						_handler();
 					});
 					return off;
@@ -243,19 +243,19 @@
 	};
 
 	/**
-	 * Unmount: unsubscribe all state listeners and remove the HUD element from the DOM.
-	 * Safe to call when not mounted (no-op).
+	 * unmount: 全 state listener を解除し、HUD 要素を DOM から取り除く。
+	 * mount されていなくても安全に呼べる (no-op)。
 	 */
 	hud.unmount = function()
 	{
-		// Tear down subscriptions.
+		// 購読を破棄する。
 		for (var i = 0; i < _unsubs.length; ++i)
 		{
-			try { _unsubs[i](); } catch (_e) { /* ignore */ }
+			try { _unsubs[i](); } catch (_e) { /* 無視 */ }
 		}
 		_unsubs = [];
 
-		// Remove element.
+		// 要素を取り除く。
 		if (_root && _root.remove) { _root.remove(); }
 		_root  = null;
 		_slots = [];
@@ -263,8 +263,8 @@
 	};
 
 	/**
-	 * Returns the current live slot descriptors: [{ id: string, el: HTMLElement }].
-	 * Returns [] when not mounted.
+	 * 現在生きている slot の記述 [{ id: string, el: HTMLElement }] を返す。
+	 * mount されていなければ [] を返す。
 	 */
 	hud.slots = function()
 	{
@@ -272,8 +272,8 @@
 	};
 
 	/**
-	 * Force re-render all slots from the current state snapshot.
-	 * Useful after batch state mutations when you want a single synchronous update.
+	 * 現在の state スナップショットから全 slot を強制的に再レンダリングする。
+	 * バッチで state を変更した後、同期的に 1 回だけ更新したいときに便利。
 	 */
 	hud.update = function()
 	{

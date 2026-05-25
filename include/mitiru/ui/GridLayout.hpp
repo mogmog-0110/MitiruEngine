@@ -2,10 +2,10 @@
 
 /**
  * @file GridLayout.hpp
- * @brief CSS Grid-like layout engine for MitiruEngine UI.
+ * @brief MitiruEngine UI 向けの CSS Grid 風 layout engine。
  *
- * Supports fixed, fractional (fr), and auto track sizing, gap control,
- * named areas, auto-placement, and per-item alignment.
+ * fixed / fractional (fr) / auto の track sizing、gap 制御、
+ * named area、auto-placement、item ごとの alignment に対応。
  */
 
 #include <sgc/math/Rect.hpp>
@@ -24,27 +24,27 @@ namespace mitiru::ui {
 // Track sizing
 // -----------------------------------------------------------------------
 
-/// @brief Fixed pixel size for a grid track.
+/// @brief grid track の固定 pixel サイズ。
 struct TrackFixed {
     float pixels = 0.0f;
 };
 
-/// @brief Fractional unit (like CSS `fr`) for a grid track.
+/// @brief grid track の分数単位 (CSS の `fr` に相当)。
 struct TrackFraction {
     float value = 1.0f;
 };
 
-/// @brief Auto-sized track (uses the largest child in that track).
+/// @brief auto サイズの track (その track 内で最大の child に合わせる)。
 struct TrackAuto {};
 
-/// @brief A single grid track size definition.
+/// @brief grid track 1 本のサイズ定義。
 using GridTrackSize = std::variant<TrackFixed, TrackFraction, TrackAuto>;
 
 // -----------------------------------------------------------------------
 // Alignment
 // -----------------------------------------------------------------------
 
-/// @brief Alignment for grid items along an axis.
+/// @brief 軸方向の grid item の alignment。
 enum class GridAlign : uint8_t {
     Start,
     Center,
@@ -56,25 +56,25 @@ enum class GridAlign : uint8_t {
 // Configuration
 // -----------------------------------------------------------------------
 
-/// @brief Placement of a single child within the grid.
+/// @brief grid 内での child 1 個の配置。
 struct GridPlacement {
-    int column     = -1; ///< 0-based column index (-1 = auto).
-    int row        = -1; ///< 0-based row index (-1 = auto).
-    int columnSpan = 1;  ///< Number of columns to span.
-    int rowSpan    = 1;  ///< Number of rows to span.
+    int column     = -1; ///< 0 始まりの column index (-1 = auto)。
+    int row        = -1; ///< 0 始まりの row index (-1 = auto)。
+    int columnSpan = 1;  ///< またぐ column 数。
+    int rowSpan    = 1;  ///< またぐ row 数。
 };
 
-/// @brief Configuration for the entire grid container.
+/// @brief grid container 全体の設定。
 struct GridLayoutConfig {
-    std::vector<GridTrackSize> columns;          ///< Column track definitions.
-    std::vector<GridTrackSize> rows;             ///< Row track definitions.
-    float columnGap    = 0.0f;                   ///< Horizontal gap between columns.
-    float rowGap       = 0.0f;                   ///< Vertical gap between rows.
-    GridAlign justifyItems = GridAlign::Stretch;  ///< Default horizontal alignment.
-    GridAlign alignItems   = GridAlign::Stretch;  ///< Default vertical alignment.
+    std::vector<GridTrackSize> columns;          ///< column track の定義。
+    std::vector<GridTrackSize> rows;             ///< row track の定義。
+    float columnGap    = 0.0f;                   ///< column 間の水平 gap。
+    float rowGap       = 0.0f;                   ///< row 間の垂直 gap。
+    GridAlign justifyItems = GridAlign::Stretch;  ///< デフォルトの水平 alignment。
+    GridAlign alignItems   = GridAlign::Stretch;  ///< デフォルトの垂直 alignment。
 };
 
-/// @brief A named rectangular area within the grid.
+/// @brief grid 内の名前付き矩形領域。
 struct GridArea {
     std::string name;
     int column     = 0;
@@ -89,9 +89,9 @@ struct GridArea {
 
 /**
  * @class GridLayout
- * @brief Computes child bounds using a CSS Grid-like algorithm.
+ * @brief CSS Grid 風の algorithm で child の bounds を計算する。
  *
- * Usage:
+ * 使い方:
  * @code
  *   GridLayoutConfig config;
  *   config.columns = { TrackFixed{200}, TrackFraction{1}, TrackFraction{2} };
@@ -112,14 +112,14 @@ public:
     // Named areas
     // -------------------------------------------------------------------
 
-    /// @brief Define a named area spanning the given grid region.
+    /// @brief 指定した grid 領域にまたがる named area を定義する。
     void defineArea(const std::string& name,
                     int col, int row, int colSpan, int rowSpan) {
         m_areas.insert_or_assign(name, GridArea{name, col, row, colSpan, rowSpan});
     }
 
-    /// @brief Resolve a GridPlacement from a named area.
-    /// @return Placement for the area, or default auto-placement if not found.
+    /// @brief named area から GridPlacement を解決する。
+    /// @return その area の placement。見つからなければデフォルトの auto-placement。
     [[nodiscard]] GridPlacement placeInArea(const std::string& areaName) const {
         const auto it = m_areas.find(areaName);
         if (it != m_areas.end()) {
@@ -129,27 +129,27 @@ public:
         return {};
     }
 
-    /// @brief Clear all named areas.
+    /// @brief すべての named area を消去する。
     void clearAreas() noexcept { m_areas.clear(); }
 
     // -------------------------------------------------------------------
     // compute
     // -------------------------------------------------------------------
 
-    /// @brief Size hint for auto-track sizing.
+    /// @brief auto track sizing 用のサイズ hint。
     struct ChildHint {
         float preferredWidth  = 0.0f;
         float preferredHeight = 0.0f;
     };
 
     /**
-     * @brief Resolve child bounds within the parent rectangle.
+     * @brief parent 矩形内で各 child の bounds を解決する。
      *
-     * @param parentBounds  Available space for the grid.
-     * @param config        Grid configuration.
-     * @param placements    Per-child placement (same order as children).
-     * @param hints         Per-child size hints (used for Auto tracks).
-     * @return Resolved bounds per child, in input order.
+     * @param parentBounds  grid が使える領域。
+     * @param config        grid の設定。
+     * @param placements    child ごとの placement (children と同じ順)。
+     * @param hints         child ごとのサイズ hint (Auto track で使用)。
+     * @return 入力順で並んだ child ごとの解決済み bounds。
      */
     [[nodiscard]] std::vector<sgc::Rectf> compute(
         const sgc::Rectf& parentBounds,
@@ -161,10 +161,10 @@ public:
         const size_t numCols = config.columns.empty() ? 1 : config.columns.size();
         const size_t numRows = config.rows.empty() ? 1 : config.rows.size();
 
-        // Auto-place children that have no explicit position.
+        // 明示位置を持たない child を auto-place する。
         autoPlace(placements, static_cast<int>(numCols), static_cast<int>(numRows));
 
-        // Resolve track sizes.
+        // track サイズを解決する。
         auto colSizes = resolveTracks(config.columns, parentBounds.width(),
                                       config.columnGap, numCols,
                                       hints, placements, true);
@@ -172,11 +172,11 @@ public:
                                       config.rowGap, numRows,
                                       hints, placements, false);
 
-        // Compute track start positions.
+        // track の開始位置を計算する。
         auto colStarts = trackStarts(colSizes, config.columnGap, parentBounds.x());
         auto rowStarts = trackStarts(rowSizes, config.rowGap, parentBounds.y());
 
-        // Build child bounds.
+        // child の bounds を組み立てる。
         std::vector<sgc::Rectf> results(childCount);
         for (size_t i = 0; i < childCount; ++i) {
             const auto& p = placements[i];
@@ -216,18 +216,18 @@ private:
 
     static void autoPlace(std::vector<GridPlacement>& placements,
                           int numCols, int numRows) {
-        // Build occupancy grid.
+        // 占有 grid を構築する。
         const size_t gridSize = static_cast<size_t>(numCols) * static_cast<size_t>(numRows);
         std::vector<bool> occupied(gridSize, false);
 
-        // Mark explicitly placed children.
+        // 明示配置された child を mark する。
         for (const auto& p : placements) {
             if (p.column >= 0 && p.row >= 0) {
                 markOccupied(occupied, numCols, numRows, p);
             }
         }
 
-        // Fill unplaced children left-to-right, top-to-bottom.
+        // 未配置の child を 左→右、上→下 の順で埋める。
         int cursorCol = 0;
         int cursorRow = 0;
         for (auto& p : placements) {
@@ -248,7 +248,7 @@ private:
                     ++cursorRow;
                 }
             }
-            // Fallback: place at (0,0) if grid is full.
+            // fallback: grid が満杯なら (0,0) に置く。
             if (p.column < 0) { p.column = 0; }
             if (p.row    < 0) { p.row    = 0; }
         }
@@ -296,7 +296,7 @@ private:
         float usedSpace = totalGap;
         float totalFr   = 0.0f;
 
-        // First pass: fixed and auto.
+        // 第 1 pass: fixed と auto。
         for (size_t i = 0; i < count; ++i) {
             const auto& track = (i < tracks.size()) ? tracks[i] : GridTrackSize{TrackAuto{}};
 
@@ -304,7 +304,7 @@ private:
                 sizes[i] = fixed->pixels;
                 usedSpace += sizes[i];
             } else if (std::holds_alternative<TrackAuto>(track)) {
-                // Measure max preferred size of children in this track.
+                // この track 内の child の preferred size の最大を測る。
                 float maxPref = 0.0f;
                 for (size_t ci = 0; ci < placements.size(); ++ci) {
                     const int idx = isColumnAxis ? placements[ci].column : placements[ci].row;
@@ -322,7 +322,7 @@ private:
             }
         }
 
-        // Second pass: distribute remaining space to fractional tracks.
+        // 第 2 pass: 残り領域を fractional track に分配する。
         const float remaining = std::max(0.0f, totalSpace - usedSpace);
         if (totalFr > 0.0f) {
             for (size_t i = 0; i < count; ++i) {

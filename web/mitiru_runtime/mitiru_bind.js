@@ -55,8 +55,8 @@
   function warn() { if (DEBUG) { console.warn.apply(console, ['[mitiru-bind]'].concat([].slice.call(arguments))); } }
 
   // ── 値ストア: 生文字列を保持し、JSON は変化時だけパースしてメモ化 ──
-  var rawCache = Object.create(null);     // key -> last raw string
-  var parsedCache = Object.create(null);  // key -> parsed (object/array/string/number)
+  var rawCache = Object.create(null);     // key -> 直近の生文字列
+  var parsedCache = Object.create(null);  // key -> パース結果 (object/array/string/number)
 
   function parseValue(key) {
     var raw = mitiru.getState(key);
@@ -282,7 +282,7 @@
     this.sep = d.mSep || ';';
     this.fsep = d.mFsep || ',';
     this.keyField = d.mKey || null;  // 指定時は item[key] で要素を保持 (slide transition 用)
-    this.templates = {};       // case -> <template>, '' -> default
+    this.templates = {};       // case -> <template>、'' -> 既定
     this.pool = [];            // index プール (keyField 無し時)
     this.byKey = Object.create(null);  // key プール (keyField 有り時)
     var tpls = container.querySelectorAll(':scope > template');

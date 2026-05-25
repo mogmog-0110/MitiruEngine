@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UICarousel.hpp
-/// @brief Swipeable card carousel widget for character select, gallery browse, etc.
+/// @brief キャラ選択やギャラリー閲覧などに使う swipe 可能な card carousel widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,46 +15,46 @@
 
 namespace mitiru::ui {
 
-/// @brief Data for a single carousel item.
+/// @brief carousel item 1 件分のデータ。
 struct UICarouselItem
 {
-	std::string imageKey;       ///< Image key for the item content.
-	std::string title;          ///< Item title text.
-	std::string description;    ///< Item description text.
+	std::string imageKey;       ///< item 内容の画像 key。
+	std::string title;          ///< item タイトル文字列。
+	std::string description;    ///< item 説明文字列。
 };
 
-/// @brief Configuration for creating a UICarousel.
+/// @brief UICarousel 生成用の構成設定。
 struct UICarouselConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
 	std::vector<UICarouselItem> items;
-	int visibleItems = 3;                   ///< Number of visible items (1, 3, or 5 for preview).
-	float itemWidth = 200.0f;               ///< Width of each item.
-	float itemHeight = 250.0f;              ///< Height of each item.
-	float spacing = 16.0f;                  ///< Horizontal spacing between items.
-	float centerScale = 1.2f;               ///< Scale factor for the center (focused) item.
-	float sideScale = 0.8f;                 ///< Scale factor for side items.
-	float sideAlpha = 0.6f;                 ///< Alpha for side items.
-	bool autoPlay = false;                  ///< Automatically advance items.
-	float autoPlayInterval = 3.0f;          ///< Seconds between auto-advance.
-	bool showDots = true;                   ///< Show dot indicators.
-	bool showArrows = true;                 ///< Show left/right arrow buttons.
-	std::string arrowLeftImageKey;          ///< Image key for left arrow.
-	std::string arrowRightImageKey;         ///< Image key for right arrow.
-	std::string dotImageKey;                ///< Image key for inactive dot.
-	std::string dotActiveImageKey;          ///< Image key for active dot.
-	std::string backgroundImageKey;         ///< Background image key.
-	float animationDuration = 0.3f;         ///< Slide animation duration in seconds.
-	float swipeThreshold = 50.0f;           ///< Minimum swipe distance to trigger transition.
-	bool loopEnabled = true;                ///< Wrap around at ends.
+	int visibleItems = 3;                   ///< 表示 item 数 (preview 用に 1、3、5)。
+	float itemWidth = 200.0f;               ///< 各 item の幅。
+	float itemHeight = 250.0f;              ///< 各 item の高さ。
+	float spacing = 16.0f;                  ///< item 間の水平方向の間隔。
+	float centerScale = 1.2f;               ///< 中央 (focus 中) item の scale 係数。
+	float sideScale = 0.8f;                 ///< 両脇 item の scale 係数。
+	float sideAlpha = 0.6f;                 ///< 両脇 item の alpha。
+	bool autoPlay = false;                  ///< item を自動送りする。
+	float autoPlayInterval = 3.0f;          ///< 自動送りの間隔 (秒)。
+	bool showDots = true;                   ///< dot インジケータを表示する。
+	bool showArrows = true;                 ///< 左右の矢印ボタンを表示する。
+	std::string arrowLeftImageKey;          ///< 左矢印の画像 key。
+	std::string arrowRightImageKey;         ///< 右矢印の画像 key。
+	std::string dotImageKey;                ///< 非アクティブな dot の画像 key。
+	std::string dotActiveImageKey;          ///< アクティブな dot の画像 key。
+	std::string backgroundImageKey;         ///< 背景画像 key。
+	float animationDuration = 0.3f;         ///< スライド animation の長さ (秒)。
+	float swipeThreshold = 50.0f;           ///< 遷移を発火させる最小 swipe 距離。
+	bool loopEnabled = true;                ///< 端で折り返す。
 };
 
-/// @brief Swipeable carousel widget with center emphasis, dot indicators, and auto-play.
+/// @brief 中央強調・dot インジケータ・auto-play を備えた swipe 可能な carousel widget。
 ///
-/// Displays a set of items as a horizontal carousel with the center item emphasized.
-/// Supports touch/swipe gesture input, arrow buttons, auto-play with pause on interaction,
-/// and smooth slide animations.
+/// 複数の item を水平 carousel として表示し、中央の item を強調する。
+/// touch / swipe ジェスチャ入力、矢印ボタン、操作時に一時停止する auto-play、
+/// 滑らかなスライド animation に対応する。
 ///
 /// @code
 ///   UICarouselConfig cfg;
@@ -76,8 +76,8 @@ class UICarousel
 	std::vector<UICarouselItem> m_items;
 	int m_currentIndex = 0;
 	int m_targetIndex = 0;
-	float m_animProgress = 0.0f;     ///< 0 = at current, 1 = at target.
-	float m_animDirection = 0.0f;    ///< -1 = sliding left, +1 = sliding right, 0 = idle.
+	float m_animProgress = 0.0f;     ///< 0 = current 位置、1 = target 位置。
+	float m_animDirection = 0.0f;    ///< -1 = 左へスライド、+1 = 右へスライド、0 = 停止中。
 	float m_animationDuration;
 	float m_autoPlayInterval;
 	float m_autoPlayTimer = 0.0f;
@@ -85,7 +85,7 @@ class UICarousel
 	bool m_autoPlayPaused = false;
 	bool m_loopEnabled;
 	float m_swipeThreshold;
-	float m_swipeAccum = 0.0f;       ///< Accumulated swipe distance.
+	float m_swipeAccum = 0.0f;       ///< 累積した swipe 距離。
 	bool m_swiping = false;
 	int m_visibleItems;
 	float m_itemWidth;
@@ -97,8 +97,8 @@ class UICarousel
 	std::function<void(int)> m_onItemChanged;
 
 public:
-	/// @brief Construct a carousel from configuration.
-	/// @param config Carousel configuration.
+	/// @brief 構成設定から carousel を構築する。
+	/// @param config carousel の構成設定。
 	explicit UICarousel(const UICarouselConfig& config)
 		: m_items(config.items)
 		, m_animationDuration(config.animationDuration)
@@ -142,7 +142,7 @@ public:
 
 		m_node = std::make_shared<UINode>(std::move(data));
 
-		// Create child nodes for each item.
+		// 各 item の子 node を生成する。
 		for (std::size_t i = 0; i < m_items.size(); ++i)
 		{
 			UINodeData itemData;
@@ -159,29 +159,29 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current (center) item index.
+	/// @brief 現在 (中央) の item index を取得する。
 	[[nodiscard]] int currentIndex() const noexcept { return m_currentIndex; }
 
-	/// @brief Get the number of items.
+	/// @brief item 数を取得する。
 	[[nodiscard]] std::size_t itemCount() const noexcept { return m_items.size(); }
 
-	/// @brief Check if a slide animation is in progress.
+	/// @brief スライド animation 進行中か確認する。
 	[[nodiscard]] bool isAnimating() const noexcept { return m_animDirection != 0.0f; }
 
 	// -- Configuration -------------------------------------------------------
 
-	/// @brief Set the item-changed callback.
-	/// @param callback Function invoked with the new current index.
+	/// @brief item 変更時の callback を設定する。
+	/// @param callback 新しい current index を渡して呼ばれる関数。
 	void setOnItemChanged(std::function<void(int)> callback)
 	{
 		m_onItemChanged = std::move(callback);
 	}
 
-	/// @brief Set auto-play enabled state.
-	/// @param enabled True to enable auto-play.
+	/// @brief auto-play の有効状態を設定する。
+	/// @param enabled true で auto-play を有効化する。
 	void setAutoPlay(bool enabled)
 	{
 		m_autoPlay = enabled;
@@ -191,7 +191,7 @@ public:
 
 	// -- Navigation ----------------------------------------------------------
 
-	/// @brief Navigate to the next item.
+	/// @brief 次の item へ移動する。
 	void next()
 	{
 		if (m_items.empty() || isAnimating()) { return; }
@@ -205,7 +205,7 @@ public:
 		resetAutoPlayTimer();
 	}
 
-	/// @brief Navigate to the previous item.
+	/// @brief 前の item へ移動する。
 	void previous()
 	{
 		if (m_items.empty() || isAnimating()) { return; }
@@ -219,8 +219,8 @@ public:
 		resetAutoPlayTimer();
 	}
 
-	/// @brief Navigate directly to a specific index.
-	/// @param index Target item index.
+	/// @brief 指定 index へ直接移動する。
+	/// @param index 移動先の item index。
 	void goTo(int index)
 	{
 		if (m_items.empty() || isAnimating()) { return; }
@@ -237,7 +237,7 @@ public:
 
 	// -- Swipe Input ---------------------------------------------------------
 
-	/// @brief Begin a swipe gesture.
+	/// @brief swipe ジェスチャを開始する。
 	void onSwipeBegin()
 	{
 		m_swiping = true;
@@ -245,15 +245,15 @@ public:
 		m_autoPlayPaused = true;
 	}
 
-	/// @brief Update swipe gesture with a horizontal delta.
-	/// @param deltaX Horizontal swipe delta (positive = right).
+	/// @brief 水平 delta で swipe ジェスチャを更新する。
+	/// @param deltaX 水平方向の swipe 差分 (正 = 右)。
 	void onSwipeUpdate(float deltaX)
 	{
 		if (!m_swiping) { return; }
 		m_swipeAccum += deltaX;
 	}
 
-	/// @brief End the swipe gesture and trigger navigation if threshold met.
+	/// @brief swipe ジェスチャを終了し、閾値を超えていれば移動を発火する。
 	void onSwipeEnd()
 	{
 		if (!m_swiping) { return; }
@@ -273,11 +273,11 @@ public:
 
 	// -- Update --------------------------------------------------------------
 
-	/// @brief Update animation and auto-play timers.
-	/// @param dt Delta time in seconds.
+	/// @brief animation と auto-play の timer を更新する。
+	/// @param dt delta time (秒)。
 	void update(float dt)
 	{
-		// Slide animation.
+		// スライド animation。
 		if (isAnimating())
 		{
 			if (m_animationDuration <= 0.0f)
@@ -303,7 +303,7 @@ public:
 			syncNodeState();
 		}
 
-		// Auto-play.
+		// auto-play。
 		if (m_autoPlay && !m_autoPlayPaused && !isAnimating() && !m_items.empty())
 		{
 			m_autoPlayTimer += dt;
@@ -316,14 +316,14 @@ public:
 	}
 
 private:
-	/// @brief Reset auto-play timer (called on user interaction).
+	/// @brief auto-play timer を reset する (ユーザー操作時に呼ばれる)。
 	void resetAutoPlayTimer()
 	{
 		m_autoPlayTimer = 0.0f;
 		m_autoPlayPaused = false;
 	}
 
-	/// @brief Synchronize state to the UINode tree.
+	/// @brief 状態を UINode tree に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("current_index", std::to_string(m_currentIndex));
@@ -337,7 +337,7 @@ private:
 			const int idx = static_cast<int>(i);
 			const int offset = idx - m_currentIndex;
 
-			// Compute scale and alpha based on distance from center.
+			// 中央からの距離に基づき scale と alpha を計算する。
 			const float absOffset = static_cast<float>(std::abs(offset));
 			const float scale = (offset == 0) ? m_centerScale : m_sideScale;
 			const float alpha = (offset == 0) ? 1.0f : m_sideAlpha;

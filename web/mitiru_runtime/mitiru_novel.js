@@ -1,39 +1,39 @@
 /*!
- * mitiru_novel.js — JSON-driven ADV novel VM (F-04)
+ * mitiru_novel.js — JSON 駆動の ADV novel VM (F-04)
  *
- * Implements window.mitiru.novel — a lightweight visual-novel runtime
- * that interprets the mitiru narrative JSON schema (see
- * web/mitiru_runtime/mitiru_novel/schema.json and docs/NARRATIVE_SCRIPT.md).
+ * window.mitiru.novel を実装。mitiru narrative JSON schema を解釈する
+ * 軽量な visual-novel runtime (schema は
+ * web/mitiru_runtime/mitiru_novel/schema.json と docs/NARRATIVE_SCRIPT.md 参照)。
  *
  * Attaches to: window.mitiru.novel
- * Depends on:  mitiru_state.js (optional — for save/restore)
+ * Depends on:  mitiru_state.js (optional — save/restore 用)
  *
- * // Scope (approved 2026-04-24)
- * //   INCLUDED : voice (line.voice -> new Audio(...).play()), ~10 lines
- * //   INCLUDED : backlog with jumpTo (pc rewind + full re-render from scratch)
- * //   INCLUDED : NF-10 skip-unread tracking & readline stats
- * //   INCLUDED : NF-11 effect primitives (shake/flash/tint/zoom/blur/slide/fade-sprite)
- * //   DEFERRED : backlog "time-travel fidelity" — sprite positions before a
- * //              jumpTo target may not match in-between mutation state (Phase 2)
- * //   DEFERRED : text interpolation, conditional branches beyond choice.next,
- * //              loops, localisation keys (per NARRATIVE_SCRIPT.md v2 deferrals)
+ * // Scope (2026-04-24 承認)
+ * //   INCLUDED : voice (line.voice -> new Audio(...).play())、約 10 行
+ * //   INCLUDED : jumpTo 付き backlog (pc 巻き戻し + 全 re-render)
+ * //   INCLUDED : NF-10 未読 skip 追跡 & readline 統計
+ * //   INCLUDED : NF-11 effect primitive (shake/flash/tint/zoom/blur/slide/fade-sprite)
+ * //   DEFERRED : backlog の「time-travel 忠実度」 — jumpTo target 以前の sprite
+ * //              位置は途中の mutation state と一致しない場合あり (Phase 2)
+ * //   DEFERRED : text interpolation、choice.next を超える条件分岐、
+ * //              loop、localisation key (NARRATIVE_SCRIPT.md v2 の deferral 通り)
  *
- * // Naming deviation from spec (approved):
- * //   novel.load(script)      = load JSON script (URL string or object)
- * //   novel.save(slotId)      = persist runtime state via mitiru.state
- * //   novel.restore(slotId)   = restore runtime state via mitiru.state
- * //   ("load" overloaded for script loading; "save"/"restore" avoid ambiguity
- * //    with the spec text that had save/load for persistence)
+ * // spec からの命名逸脱 (承認済):
+ * //   novel.load(script)      = JSON script を読み込む (URL string か object)
+ * //   novel.save(slotId)      = mitiru.state 経由で runtime state を永続化
+ * //   novel.restore(slotId)   = mitiru.state 経由で runtime state を復元
+ * //   ("load" は script 読み込み用にオーバーロード。永続化に save/load を使う
+ * //    spec 文面との曖昧さを "save"/"restore" で回避)
  *
- * Events (CustomEvent on containerEl):
- *   novel:script-loaded   — after load() resolves; detail: { scriptId }
- *   novel:line:start      — before a line is displayed; detail: { index, line }
- *   novel:line:end        — after typewriter finishes; detail: { index }
- *   novel:choice:open     — when choices are shown; detail: { options: [{label,next}] }
- *   novel:choice:pick     — when a choice is committed; detail: { label, next }
- *   novel:script:end      — script exhausted (no more lines); detail: {}
- *   novel:effect:start    — before an NF-11 effect runs; detail: { type, line, durationMs }
- *   novel:effect:end      — after an NF-11 effect completes; detail: { type }
+ * Events (containerEl 上の CustomEvent):
+ *   novel:script-loaded   — load() resolve 後; detail: { scriptId }
+ *   novel:line:start      — line 表示前; detail: { index, line }
+ *   novel:line:end        — typewriter 完了後; detail: { index }
+ *   novel:choice:open     — 選択肢表示時; detail: { options: [{label,next}] }
+ *   novel:choice:pick     — 選択肢確定時; detail: { label, next }
+ *   novel:script:end      — script 末尾到達 (line 残無し); detail: {}
+ *   novel:effect:start    — NF-11 effect 実行前; detail: { type, line, durationMs }
+ *   novel:effect:end      — NF-11 effect 完了後; detail: { type }
  *
  * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-04, NF-10, NF-11
  */
@@ -44,7 +44,7 @@
 	const mitiru = global.mitiru = global.mitiru || {};
 	if (mitiru.novel) { return; }
 
-	// ── constants ──────────────────────────────────────────────────
+	// ── 定数 ──────────────────────────────────────────────────
 	const Z_BG = 0, Z_SPRITE = 10, Z_TEXTBOX = 20, Z_BACKLOG = 30;
 	const TYPEWRITER_DEFAULT_CPS = 40;
 
@@ -58,21 +58,20 @@
 	// backlog
 	var _log = [];
 
-	// ── NF-10: skip-unread tracking ───────────────────────────────
-	// _readSets: { [scriptId]: Set<number> } — in-memory read index sets
+	// ── NF-10: 未読 skip 追跡 ───────────────────────────────
+	// _readSets: { [scriptId]: Set<number> } — メモリ上の既読 index 集合
 	var _readSets  = Object.create(null);
 	// _skipMode: 'off' | 'all' | 'read-only'
 	var _skipMode  = 'off';
-	// _skipTimer: RAF/timer handle for auto-advance loop
+	// _skipTimer: auto-advance loop 用 RAF/timer ハンドル
 	var _skipTimer = null;
-	// _warnedSprites: { [id]: true } — suppress repeat console.warn
+	// _warnedSprites: { [id]: true } — console.warn の重複抑制
 	var _warnedSprites = Object.create(null);
-	// H-02: background fit mode (cover | contain | fill). Default keeps
-	// pre-H-02 behaviour; per-bg-line `fit` overrides this.
+	// H-02: background fit mode (cover | contain | fill)。default は
+	// H-02 以前の挙動を維持。per-bg-line の `fit` がこれを上書き。
 	var _bgFit = 'cover';
-	// Bonus: input lockout. _inputLockout holds the configured windows
-	// (0 = disabled). _inputLockUntil is the absolute timestamp at which
-	// input becomes responsive again.
+	// Bonus: input lockout。_inputLockout は設定済みの window 幅を保持
+	// (0 = 無効)。_inputLockUntil は入力が再び応答する絶対 timestamp。
 	var _inputLockout = { sceneTransitionMs: 0, perLineMs: 0 };
 	var _inputLockUntil = 0;
 
@@ -88,7 +87,7 @@
 		}
 		else
 		{
-			// IE/Node shim path
+			// IE/Node 用 shim 経路
 			ev = _containerEl.ownerDocument.createEvent('CustomEvent');
 			ev.initCustomEvent(name, true, false, detail || {});
 		}
@@ -102,19 +101,19 @@
 		el.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:' + z + ';';
 	}
 
-	// H-02: allowed background-size values.
+	// H-02: 許可する background-size 値。
 	function _isValidFit(value)
 	{
 		return value === 'cover' || value === 'contain' || value === 'fill';
 	}
 
-	// H-05: textbox defaults are defined in mitiru_components.css (section 19)
-	// so consumer stylesheets loaded AFTER mitiru_components.css can override
-	// them with normal cascade rules. Previously this module injected a
-	// <style> block at mount time, which appended after consumer <link>s and
-	// forced the consumer to use `!important`. The shim below stays as a
-	// no-op for backwards compat; remove in a future major version.
-	function _ensureStyleBlock() { /* moved to mitiru_components.css §19 */ }
+	// H-05: textbox の default は mitiru_components.css (section 19) に定義する。
+	// こうすれば mitiru_components.css の後に読み込まれた consumer stylesheet が
+	// 通常の cascade 規則で上書きできる。以前はこの module が mount 時に
+	// <style> block を注入していたが、consumer の <link> 群の後に追加されるため
+	// consumer 側に `!important` を強いていた。下の shim は後方互換のための
+	// no-op として残す。将来の major version で削除する。
+	function _ensureStyleBlock() { /* mitiru_components.css §19 へ移動 */ }
 
 	function _createDiv(cls)
 	{
@@ -123,7 +122,7 @@
 		return el;
 	}
 
-	// ── NF-10: read-set persistence helpers ───────────────────────
+	// ── NF-10: 既読集合の永続化 helper ───────────────────────
 
 	function _readKey(scriptId) { return 'novel:read:' + (scriptId || ''); }
 
@@ -176,12 +175,12 @@
 		if (_skipMode === 'off' || !_script) { return; }
 		if (_pc < 0 || _pc >= _script.lines.length) { return; }
 		var line = _script.lines[_pc];
-		// Never skip choice lines.
+		// choice line は決して skip しない。
 		if (line.type === 'choice') { return; }
 		var isText = _isTextLine(line);
 		if (_skipMode === 'all')
 		{
-			// Auto-advance everything that isn't a choice.
+			// choice 以外は全て auto-advance する。
 			if (_twActive) { _twShowFull(); return; }
 			_advance();
 		}
@@ -240,7 +239,7 @@
 			_twStop();
 			_emit('novel:line:end', { index: _pc });
 			if (_playing) { _advance(); return; }
-			// NF-10: schedule skip-mode tick after typewriter finishes.
+			// NF-10: typewriter 完了後に skip-mode tick を予約。
 			if (_skipMode !== 'off') { _scheduleSkipTick(0); }
 		}
 		else
@@ -268,9 +267,9 @@
 	function _setBg(path, fit)
 	{
 		if (!_bgLayer || !path) { return; }
-		// H-02: per-line fit overrides the mount-default; default keeps
-		// backward-compatible 'cover' behaviour. 'fill' is a novel-level
-		// alias that maps to the CSS `background-size: 100% 100%` stretch.
+		// H-02: per-line fit が mount-default を上書きする。default は
+		// 後方互換の 'cover' 挙動を維持。'fill' は CSS の
+		// `background-size: 100% 100%` stretch に対応する novel レベルの alias。
 		var resolvedFit = fit || _bgFit;
 		if (!_isValidFit(resolvedFit))
 		{
@@ -278,7 +277,7 @@
 				+ '" (expected cover | contain | fill)');
 		}
 		var cssSize = (resolvedFit === 'fill') ? '100% 100%' : resolvedFit;
-		// Create a new layer on top, fade in, then remove old one.
+		// 上に新 layer を作り fade in、その後で古い layer を削除。
 		var doc    = global.document;
 		var newImg = doc.createElement('div');
 		newImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;'
@@ -287,11 +286,11 @@
 		                     + 'background-image:url("' + path + '");'
 		                     + 'opacity:0;transition:opacity 0.4s ease;';
 		_bgLayer.appendChild(newImg);
-		// Force reflow then fade in.
+		// reflow を強制してから fade in。
 		void newImg.offsetWidth;
 		newImg.style.opacity = '1';
 
-		// Remove all siblings after transition.
+		// transition 後に sibling を全削除。
 		var siblings = Array.prototype.slice.call(_bgLayer.children, 0, _bgLayer.children.length - 1);
 		setTimeout(function()
 		{
@@ -318,7 +317,7 @@
 			_spriteLayer.appendChild(el);
 		}
 		el.src = path;
-		// Position: left/center/right or custom percent string.
+		// 位置: left/center/right またはカスタムの percent 文字列。
 		var posMap = { left: '15%', center: '50%', right: '75%' };
 		var left   = (pos && posMap[pos]) ? posMap[pos] : (pos || '50%');
 		el.style.left      = left;
@@ -375,7 +374,7 @@
 	{
 		_clearChoices();
 		_emit('novel:choice:pick', { label: opt.label, next: opt.next });
-		// Jump to the labelled line if one exists in this script.
+		// この script に該当 label の line があればそこへ jump。
 		var target = opt.next;
 		if (target && _script)
 		{
@@ -383,13 +382,13 @@
 			{
 				if (_script.lines[i].label === target)
 				{
-					_pc = i - 1;   // _advance() will increment
+					_pc = i - 1;   // _advance() で increment される
 					_advance();
 					return;
 				}
 			}
 		}
-		// No matching label — treat as script end.
+		// 一致する label 無し — script 終了として扱う。
 		_emit('novel:script:end', {});
 	}
 
@@ -404,7 +403,7 @@
 	{
 		if (!_backlogEl) { return; }
 		var doc = global.document;
-		// Clear and rebuild.
+		// clear して再構築。
 		_backlogEl.innerHTML = '';
 		var list = doc.createElement('ul');
 		list.style.cssText   = 'list-style:none;margin:0;padding:16px;overflow-y:auto;max-height:100%;';
@@ -417,7 +416,7 @@
 			li.setAttribute('data-backlog-index', String(i));
 			li.innerHTML = (entry.speaker ? '<b>' + _escHtml(entry.speaker) + '</b>: ' : '')
 			             + _escHtml(entry.text);
-			// jumpTo on click — rewind pc and re-render from scratch.
+			// click で jumpTo — pc を巻き戻して最初から re-render。
 			(function(idx) {
 				li.addEventListener('click', function() { novel.jumpTo(idx); });
 			})(i);
@@ -433,7 +432,7 @@
 		                .replace(/>/g, '&gt;');
 	}
 
-	// ── NF-11: effect helpers ──────────────────────────────────────
+	// ── NF-11: effect helper ──────────────────────────────────────
 
 	function _resolveTarget(target)
 	{
@@ -614,7 +613,7 @@
 		setTimeout(_advance, durationMs);
 	}
 
-	// ── line execution ─────────────────────────────────────────────
+	// ── line 実行 ─────────────────────────────────────────────
 
 	var _EFFECT_TYPES = { shake: 1, flash: 1, tint: 1, zoom: 1, blur: 1, slide: 1, 'fade-sprite': 1 };
 
@@ -624,11 +623,11 @@
 
 		if (type === 'text' || type === 'dialogue' || !type)
 		{
-			// Plain dialogue / narration line.
+			// 通常の dialogue / narration line。
 			var speaker = line.speaker || '';
 			var text    = line.text    || '';
 
-			// NF-10: mark this line as read.
+			// NF-10: この line を既読としてマーク。
 			if (_script)
 			{
 				var sid = _script.id || '';
@@ -637,20 +636,20 @@
 				_saveReadSet(sid);
 			}
 
-			// Update speaker display.
+			// speaker 表示を更新。
 			if (_textboxEl)
 			{
 				var speakerEl = _textboxEl.querySelector('[data-novel-speaker]');
 				if (speakerEl) { speakerEl.textContent = speaker; }
 			}
-			// Typewriter.
+			// Typewriter。
 			_twStart(text);
-			// Log.
+			// Log。
 			_logLine(speaker, text);
-			// Voice.
+			// Voice。
 			if (line.voice && typeof Audio !== 'undefined')
 			{
-				try { new Audio(line.voice).play(); } catch (_e) { /* non-fatal */ }
+				try { new Audio(line.voice).play(); } catch (_e) { /* 致命的でない */ }
 			}
 		}
 		else if (type === 'bg')
@@ -669,7 +668,7 @@
 			_twStop();
 			var options = Array.isArray(line.options) ? line.options : [];
 			_showChoices(options);
-			// Execution pauses; resumes via _commitChoice.
+			// 実行を一時停止; _commitChoice で再開する。
 		}
 		else if (type === 'wait')
 		{
@@ -678,12 +677,12 @@
 		}
 		else if (_EFFECT_TYPES[type])
 		{
-			// NF-11: effect primitive — auto-advances after durationMs.
+			// NF-11: effect primitive — durationMs 後に auto-advance。
 			_execEffect(line);
 		}
 		else
 		{
-			// Unknown type — skip.
+			// 未知の type — skip。
 			_advance();
 		}
 	}
@@ -717,7 +716,7 @@
 			{
 				throw new Error('novel: lines[' + i + '] must be an object');
 			}
-			// text/dialogue lines need .text
+			// text/dialogue line には .text が必要
 			var t = line.type || 'text';
 			if ((t === 'text' || t === 'dialogue') && typeof line.text !== 'string')
 			{
@@ -733,14 +732,14 @@
 	/**
 	 * mount(containerEl, opts)
 	 *
-	 * Builds the layer stack inside containerEl. If opts.textBox is provided
-	 * the element is adopted (moved) into the novel root. If opts.toolbar is
-	 * provided it is likewise adopted.
+	 * containerEl 内に layer stack を構築する。opts.textBox が渡されれば
+	 * その element を novel root に取り込む (移動する)。opts.toolbar が
+	 * 渡された場合も同様に取り込む。
 	 *
 	 * opts: {
-	 *   textBox     : HTMLElement  (existing element — will be adopted)
-	 *   toolbar     : HTMLElement  (optional — will be adopted)
-	 *   cps         : number       (typewriter chars/sec, default 40)
+	 *   textBox     : HTMLElement  (既存 element — 取り込まれる)
+	 *   toolbar     : HTMLElement  (optional — 取り込まれる)
+	 *   cps         : number       (typewriter chars/sec、default 40)
 	 *   autoAdvance : boolean      (default false)
 	 * }
 	 */
@@ -751,7 +750,7 @@
 		_opts        = opts || {};
 		_playing     = !!_opts.autoAdvance;
 
-		// H-02: accept bgFit option (default 'cover' preserves legacy).
+		// H-02: bgFit option を受理 (default 'cover' で従来挙動を維持)。
 		if (typeof _opts.bgFit !== 'undefined')
 		{
 			if (!_isValidFit(_opts.bgFit))
@@ -762,12 +761,12 @@
 			_bgFit = _opts.bgFit;
 		}
 
-		// H-05: ensure CSS defaults are reachable by external stylesheets.
+		// H-05: 外部 stylesheet から CSS default に到達できるようにする。
 		_ensureStyleBlock();
 
 		var doc = global.document;
 
-		// Novel root — fills container.
+		// Novel root — container を埋める。
 		var root = _createDiv('novel-root');
 		root.setAttribute('data-novel-root', '');
 		root.style.cssText = 'position:relative;width:100%;height:100%;overflow:hidden;';
@@ -782,7 +781,7 @@
 		_setLayerStyle(_spriteLayer, Z_SPRITE);
 		root.appendChild(_spriteLayer);
 
-		// Layer: text-box — adopt existing element or create one.
+		// Layer: text-box — 既存 element を取り込むか新規作成。
 		if (_opts.textBox && _opts.textBox.nodeType === 1)
 		{
 			_textboxEl = _opts.textBox;
@@ -794,14 +793,14 @@
 			_textboxEl.innerHTML =
 				'<div data-novel-speaker></div>'
 				+ '<div data-novel-text></div>';
-			// H-05: position, z-index, and all visual defaults live in
-			// mitiru_components.css §19 (.novel-textbox). External CSS
-			// loaded after mitiru_components.css overrides with plain
-			// selectors — no `!important` needed.
+			// H-05: position、z-index、視覚的 default は全て
+			// mitiru_components.css §19 (.novel-textbox) にある。
+			// mitiru_components.css の後に読み込まれた外部 CSS は素の
+			// selector で上書きできる — `!important` は不要。
 		}
 		root.appendChild(_textboxEl);
 
-		// Layer: backlog overlay (hidden).
+		// Layer: backlog overlay (非表示)。
 		_backlogEl = _createDiv('novel-backlog');
 		_backlogEl.setAttribute('data-novel-backlog', '');
 		_backlogEl.style.cssText =
@@ -810,7 +809,7 @@
 			+ 'z-index:' + Z_BACKLOG + ';';
 		root.appendChild(_backlogEl);
 
-		// Optional toolbar — adopt.
+		// Optional toolbar — 取り込む。
 		if (_opts.toolbar && _opts.toolbar.nodeType === 1)
 		{
 			_toolbarEl = _opts.toolbar;
@@ -823,9 +822,9 @@
 	/**
 	 * load(scriptOrUrl)
 	 *
-	 * Loads a script. Accepts a plain object or a URL string.
-	 * Returns a Promise that resolves once the script is ready.
-	 * Resets playback state but does NOT auto-advance.
+	 * script を読み込む。plain object か URL string を受理する。
+	 * script 準備完了で resolve する Promise を返す。
+	 * 再生状態は reset するが auto-advance はしない。
 	 */
 	novel.load = function(scriptOrUrl)
 	{
@@ -834,9 +833,9 @@
 		_log     = [];
 		_playing = !!(_opts && _opts.autoAdvance);
 
-		// H-01: clear UI so the previous script's final textbox content,
-		// background image, and sprites don't flash before the new script's
-		// first line renders. Guarded for pre-mount calls.
+		// H-01: UI を clear し、新 script の最初の line が render される前に
+		// 前 script の最終 textbox 内容・background・sprite が一瞬出ないように
+		// する。mount 前の呼び出しに備えてガード済み。
 		if (_textboxEl)
 		{
 			var _speakerEl = _textboxEl.querySelector('[data-novel-speaker]');
@@ -855,8 +854,8 @@
 		_clearChoices();
 		_warnedSprites = Object.create(null);
 
-		// Bonus: arm scene-transition input lockout so clicks from the
-		// previous scene don't leak into the newly-loaded script.
+		// Bonus: scene-transition の input lockout を armed にし、前 scene の
+		// click が新規読み込み script に漏れないようにする。
 		if (_inputLockout.sceneTransitionMs > 0)
 		{
 			var _now = Date.now();
@@ -883,7 +882,7 @@
 			});
 		}
 
-		// Inline object.
+		// Inline object。
 		return Promise.resolve().then(function()
 		{
 			_validateScript(scriptOrUrl);
@@ -896,15 +895,15 @@
 	/**
 	 * advance()
 	 *
-	 * Move to the next line.
-	 * - If the typewriter is still running, skip to the end first (double-tap).
-	 * - If the typewriter has finished, proceed to the next line.
+	 * 次の line へ進む。
+	 * - typewriter がまだ動作中なら、まず末尾まで skip する (double-tap)。
+	 * - typewriter が完了済みなら、次の line へ進む。
 	 */
 	novel.advance = function()
 	{
-		// Bonus: refresh per-line input lockout on every advance() so
-		// rhythmic clicking can't chain-skip lines. Games read the state
-		// via novel.inputLocked() in their own click handlers.
+		// Bonus: advance() の度に per-line input lockout を更新し、
+		// リズミカルな click で line を連鎖 skip できないようにする。game は
+		// 自身の click handler で novel.inputLocked() から状態を読む。
 		if (_inputLockout.perLineMs > 0)
 		{
 			var _now = Date.now();
@@ -926,15 +925,15 @@
 	/**
 	 * jumpTo(logIndex)
 	 *
-	 * Rewind to a logged dialogue entry (backlog click).
-	 * Re-renders from pc=logIndex; sprite positions before that point are
-	 * NOT restored (Phase 2 deferral — documented in module header).
+	 * log 済みの dialogue entry へ巻き戻す (backlog click)。
+	 * pc=logIndex から re-render する; その地点以前の sprite 位置は
+	 * 復元されない (Phase 2 deferral — module header に記載)。
 	 */
 	novel.jumpTo = function(logIndex)
 	{
 		if (!_script) { return; }
-		// Find the script line whose logged position matches logIndex.
-		// We count only text/dialogue lines when matching to log indices.
+		// logged 位置が logIndex に一致する script line を探す。
+		// log index への対応付けでは text/dialogue line のみを数える。
 		var logCount = 0;
 		for (var i = 0; i < _script.lines.length; ++i)
 		{
@@ -945,7 +944,7 @@
 				{
 					_twStop();
 					_clearChoices();
-					_pc = i - 1;   // _advance() will increment
+					_pc = i - 1;   // _advance() で increment される
 					_advance();
 					_hideBacklog();
 					return;
@@ -972,8 +971,8 @@
 	/**
 	 * save(slotId)
 	 *
-	 * Persist runtime state to mitiru.state under key 'novel:save:<slotId>'.
-	 * Returns a Promise. Rejects if mitiru.state is unavailable.
+	 * runtime state を key 'novel:save:<slotId>' で mitiru.state に永続化する。
+	 * Promise を返す。mitiru.state が使えない場合は reject する。
 	 */
 	novel.save = function(slotId)
 	{
@@ -994,8 +993,8 @@
 	/**
 	 * restore(slotId)
 	 *
-	 * Restore previously saved state from mitiru.state.
-	 * Returns a Promise. Rejects if no save data found.
+	 * 以前 save した状態を mitiru.state から復元する。
+	 * Promise を返す。save data が無ければ reject する。
 	 */
 	novel.restore = function(slotId)
 	{
@@ -1013,7 +1012,7 @@
 			_clearChoices();
 			_log = (saved.log || []).slice();
 			_pc  = typeof saved.pc === 'number' ? saved.pc : -1;
-			// Re-display current line without typewriter.
+			// typewriter 無しで現在の line を再表示。
 			if (_pc >= 0 && _pc < _script.lines.length)
 			{
 				var line     = _script.lines[_pc];
@@ -1031,23 +1030,23 @@
 		});
 	};
 
-	/** pc() — read the current program counter (0-based line index, -1 = before start). */
+	/** pc() — 現在の program counter を読む (0 始まりの line index、-1 = 開始前)。 */
 	novel.pc = function() { return _pc; };
 
-	/** script() — returns a shallow copy of the loaded script object, or null. */
+	/** script() — 読み込み済み script object の shallow copy を返す、無ければ null。 */
 	novel.script = function() { return _script ? _deepClone(_script) : null; };
 
-	/** log() — snapshot of the backlog entries. */
+	/** log() — backlog entry の snapshot。 */
 	novel.log = function() { return _log.slice(); };
 
 	/**
-	 * Bonus (hato H-*): configure input-lockout windows used by click-heavy
-	 * callers. Both windows are in milliseconds and default to 0 (disabled).
-	 *   - sceneTransitionMs: armed on novel.load() — prevents clicks from the
-	 *     previous scene from leaking into the freshly loaded script.
-	 *   - perLineMs: armed on each novel.advance() — prevents rhythmic
-	 *     double-clicks from chain-skipping lines.
-	 * Games consult novel.inputLocked() from their own click handlers.
+	 * Bonus (hato H-*): click 多用の caller 向けに input-lockout window を設定。
+	 * 両 window は milliseconds 単位で default は 0 (無効)。
+	 *   - sceneTransitionMs: novel.load() で armed — 前 scene の click が
+	 *     新規読み込み script に漏れるのを防ぐ。
+	 *   - perLineMs: novel.advance() ごとに armed — リズミカルな double-click で
+	 *     line を連鎖 skip するのを防ぐ。
+	 * game は自身の click handler から novel.inputLocked() を参照する。
 	 */
 	novel.setInputLockout = function(opts)
 	{
@@ -1067,7 +1066,7 @@
 		return Date.now() < _inputLockUntil;
 	};
 
-	/** destroy() — tear down all DOM and internal state. */
+	/** destroy() — DOM と内部状態を全て破棄する。 */
 	novel.destroy = function()
 	{
 		_twStop();
@@ -1099,9 +1098,9 @@
 	/**
 	 * isRead(scriptId, lineIdx)
 	 *
-	 * Returns true if the text/dialogue line at lineIdx in scriptId has been read.
+	 * scriptId の lineIdx にある text/dialogue line が既読なら true を返す。
 	 * @param {string} scriptId
-	 * @param {number} lineIdx — array index in script.lines (not log index)
+	 * @param {number} lineIdx — script.lines の array index (log index ではない)
 	 * @returns {boolean}
 	 */
 	novel.isRead = function(scriptId, lineIdx)
@@ -1114,8 +1113,8 @@
 	/**
 	 * markRead(scriptId, lineIdx)
 	 *
-	 * Marks a text/dialogue line as read. Persists via mitiru.state if available.
-	 * Non-text lines (bg/sprite/wait/choice) are silently ignored.
+	 * text/dialogue line を既読としてマーク。可能なら mitiru.state で永続化。
+	 * text 以外の line (bg/sprite/wait/choice) は黙って無視する。
 	 * @param {string} scriptId
 	 * @param {number} lineIdx
 	 */
@@ -1130,8 +1129,8 @@
 	/**
 	 * chapterProgress(scriptId)
 	 *
-	 * Returns read statistics for a script.
-	 * total counts only text/dialogue lines; read counts those in the read set.
+	 * script の既読統計を返す。
+	 * total は text/dialogue line のみ数える; read は既読集合内の数。
 	 * @param {string} scriptId
 	 * @returns {{ read: number, total: number, fraction: number }}
 	 */
@@ -1141,7 +1140,7 @@
 		_loadReadSet(id);
 		var set = _readSets[id] || new Set();
 
-		// If the current script matches, count from it.
+		// 現在の script が一致するなら、そこから数える。
 		var total = 0;
 		if (_script && (_script.id || '') === id)
 		{
@@ -1151,7 +1150,7 @@
 			}
 		}
 
-		// read = intersection of set with valid text indices.
+		// read = 集合と有効な text index との積集合。
 		var read = 0;
 		set.forEach(function(idx)
 		{
@@ -1167,7 +1166,7 @@
 	/**
 	 * setSkipMode(mode)
 	 *
-	 * Set the auto-advance skip mode.
+	 * auto-advance の skip mode を設定する。
 	 * @param {'off'|'all'|'read-only'} mode
 	 */
 	novel.SkipMode = Object.freeze({
@@ -1178,8 +1177,8 @@
 
 	novel.setSkipMode = function(mode)
 	{
-		// H-03: accept 'none' as an ergonomic alias for 'off' — callers
-		// often reach for it and the silent rejection is hard to diagnose.
+		// H-03: 'none' を 'off' の使いやすい alias として受理 — caller が
+		// よく使う割に、黙って reject されると原因究明が難しいため。
 		if (mode === 'none') { mode = 'off'; }
 		if (mode !== 'off' && mode !== 'all' && mode !== 'read-only')
 		{
@@ -1193,7 +1192,7 @@
 	/**
 	 * skipMode()
 	 *
-	 * Returns the current skip mode.
+	 * 現在の skip mode を返す。
 	 * @returns {'off'|'all'|'read-only'}
 	 */
 	novel.skipMode = function() { return _skipMode; };
@@ -1201,7 +1200,7 @@
 	/**
 	 * totalReadLines()
 	 *
-	 * Returns the total number of read lines across all tracked script ids.
+	 * 追跡中の全 script id を跨いだ既読 line の総数を返す。
 	 * @returns {number}
 	 */
 	novel.totalReadLines = function()
@@ -1218,8 +1217,8 @@
 	/**
 	 * clearReadHistory(scriptId?)
 	 *
-	 * Clears the read history for one script id (if given) or all scripts.
-	 * Also removes the persisted state key(s).
+	 * 1 つの script id (指定時) または全 script の既読履歴を消去する。
+	 * 永続化された state key も削除する。
 	 * @param {string} [scriptId]
 	 */
 	novel.clearReadHistory = function(scriptId)
@@ -1242,7 +1241,7 @@
 	};
 
 	// ── dev hooks ──────────────────────────────────────────────────
-	// Exposed for unit tests so tests can drive the VM without a real clock.
+	// unit test 用に公開。実時計なしで VM を駆動できるようにするため。
 	novel._forceAdvance  = _advance;
 	novel._twShowFull    = _twShowFull;
 	novel._getLog        = function() { return _log; };

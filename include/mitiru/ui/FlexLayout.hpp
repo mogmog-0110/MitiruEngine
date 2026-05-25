@@ -2,7 +2,7 @@
 
 /**
  * @file FlexLayout.hpp
- * @brief Full CSS Flexbox layout engine for MitiruEngine UI.
+ * @brief MitiruEngine UI 向けの完全な CSS Flexbox layout エンジン。
  */
 
 #include <sgc/math/Rect.hpp>
@@ -14,7 +14,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Main axis direction.
+/// @brief main axis の方向。
 enum class FlexDirection : uint8_t {
     Row,
     RowReverse,
@@ -64,7 +64,7 @@ enum class FlexAlignSelf : uint8_t {
     Baseline
 };
 
-/// @brief Container-level flex configuration.
+/// @brief container レベルの flex 設定。
 struct FlexConfig {
     FlexDirection   direction    = FlexDirection::Row;
     FlexWrap        wrap         = FlexWrap::NoWrap;
@@ -74,21 +74,21 @@ struct FlexConfig {
     float           gap          = 0.0f;
 };
 
-/// @brief Per-child flex item configuration.
+/// @brief 子ごとの flex item 設定。
 struct FlexItemConfig {
     float          flexGrow   = 0.0f;
     float          flexShrink = 1.0f;
-    float          flexBasis  = -1.0f; ///< -1 = use preferred size.
+    float          flexBasis  = -1.0f; ///< -1 = preferred size を使用。
     FlexAlignSelf  alignSelf  = FlexAlignSelf::Auto;
     int            order      = 0;
     float preferredWidth  = 0.0f;
     float preferredHeight = 0.0f;
 };
 
-/// @brief Computes child bounds using a full CSS Flexbox algorithm.
+/// @brief 完全な CSS Flexbox アルゴリズムで子の bounds を計算する。
 class FlexLayout {
 public:
-    /// @brief Compute child bounds within the parent rectangle.
+    /// @brief 親矩形の中で子の bounds を計算する。
     [[nodiscard]] std::vector<sgc::Rectf> compute(
         const sgc::Rectf& parentBounds,
         const FlexConfig& config,
@@ -104,7 +104,7 @@ public:
         const float mainSize  = isRow ? parentBounds.width()  : parentBounds.height();
         const float crossSize = isRow ? parentBounds.height() : parentBounds.width();
 
-        // Build sorted index list by `order`.
+        // `order` で整列した index リストを構築する。
         std::vector<size_t> sorted(items.size());
         std::iota(sorted.begin(), sorted.end(), 0u);
         std::stable_sort(sorted.begin(), sorted.end(),
@@ -156,7 +156,7 @@ public:
             }
         }
 
-        // Reverse line order for WrapReverse.
+        // WrapReverse のときは line の順序を反転する。
         if (config.wrap == FlexWrap::WrapReverse) {
             std::reverse(lines.begin(), lines.end());
         }
@@ -170,7 +170,7 @@ public:
             const float lineCross = line.resolvedCross;
             const float lineCrossStart = lineStarts[li];
 
-            // Flex grow / shrink.
+            // flex grow / shrink。
             const float totalGaps = (line.indices.size() > 1)
                 ? config.gap * static_cast<float>(line.indices.size() - 1)
                 : 0.0f;
@@ -196,7 +196,7 @@ public:
                 mainSizes[i] = std::max(0.0f, size);
             }
 
-            // Main-axis positioning (justify-content).
+            // main axis の配置 (justify-content)。
             float totalMain = 0.0f;
             for (float s : mainSizes) totalMain += s;
             const float remainingMain = mainSize - totalMain - totalGaps;
@@ -205,13 +205,13 @@ public:
             distributeMainAxis(mainPositions, mainSizes, remainingMain,
                                config.gap, config.justifyContent, reversed);
 
-            // Place each item.
+            // 各 item を配置する。
             for (size_t i = 0; i < line.indices.size(); ++i) {
                 const size_t idx = line.indices[i];
                 const float itemMain = mainPositions[i];
                 const float itemMainSize = mainSizes[i];
 
-                // Cross-axis alignment.
+                // cross axis の整列。
                 FlexAlignItems align = config.alignItems;
                 if (items[idx].alignSelf != FlexAlignSelf::Auto) {
                     align = static_cast<FlexAlignItems>(
@@ -376,7 +376,7 @@ private:
         }
 
         if (reversed) {
-            // Place items from end to start.
+            // item を末尾から先頭へ配置する。
             float pos = cursor;
             for (size_t i = 0; i < n; ++i) {
                 const size_t ri = n - 1 - i;

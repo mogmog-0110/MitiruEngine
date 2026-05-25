@@ -59,7 +59,7 @@ public:
 	{
 	}
 
-	// Non-copyable, non-movable（参照を保持するため）
+	// コピー禁止・ムーブ禁止（参照を保持するため）
 	MiniaudioBridge(const MiniaudioBridge&) = delete;
 	MiniaudioBridge& operator=(const MiniaudioBridge&) = delete;
 	MiniaudioBridge(MiniaudioBridge&&) = delete;

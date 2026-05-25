@@ -1,23 +1,23 @@
-// mitiru_subsys_renderer — axis 3 (per-system isolation) P3 deliverable.
+// mitiru_subsys_renderer — axis 3 (全 system 単独起動) の P3 成果物。
 //
-// Boots the renderer subsystem with no game logic, no CEF, no audio, no
-// time-travel, no inspector — just Engine + Screen + a 60Hz update/draw
-// loop. The on-screen test pattern is intentionally minimal so it doubles
-// as visual smoke for the renderer backend during shader / pipeline edits.
+// ゲームロジック・CEF・audio・time-travel・inspector なしで renderer
+// subsystem を起動する。Engine + Screen + 60Hz の update/draw loop のみ。
+// 画面のテストパターンは意図的に最小で、shader / pipeline 編集時の renderer
+// backend の視覚 smoke を兼ねる。
 //
-// What you see:
-//   - silver-gray Saturn background (matches launcher / hello_game)
-//   - 64px hairline grid covering the surface
-//   - center 60x60 rect oscillating horizontally (Saturn red accent)
-//   - "frame: N" counter top-left, hint line bottom-left
+// 見えるもの:
+//   - 銀灰の Saturn 背景 (launcher / hello_game と揃える)
+//   - 64px のヘアライン grid が surface 全体を覆う
+//   - 中央の 60x60 rect が水平に往復 (Saturn red のアクセント)
+//   - 左上に "frame: N" カウンタ、左下にヒント行
 //
-// Controls: ESC quits.
+// 操作: ESC で終了。
 //
-// Why this exists (axis 3 / "全 system 単独起動"):
-//   - The same Engine class can run with the gameplay layer absent — proves
-//     the host-game boundary is real and not load-bearing on game code.
-//   - Cold-start budget < 1s (no CEF init, no font atlas warm-up beyond the
-//     Latin range we actually draw).
+// 存在理由 (axis 3 / 全 system 単独起動):
+//   - 同じ Engine class が gameplay 層なしで動く — host-game 境界が実在し、
+//     ゲームコードに依存していないことを示す。
+//   - cold-start 予算 < 1s (CEF init なし、実描画する Latin 範囲を超える font
+//     atlas の暖機なし)。
 
 #include <cmath>
 #include <cstdio>
@@ -26,10 +26,10 @@
 
 namespace {
 
-constexpr sgc::Colorf kPaperBg     {0.784f, 0.784f, 0.784f, 1.0f};  // #c8c8c8 silver
-constexpr sgc::Colorf kPaperEdge   {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 ink border
+constexpr sgc::Colorf kPaperBg     {0.784f, 0.784f, 0.784f, 1.0f};  // #c8c8c8 銀
+constexpr sgc::Colorf kPaperEdge   {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 墨の縁
 constexpr sgc::Colorf kInk         {0.063f, 0.063f, 0.063f, 1.0f};  // #101010
-constexpr sgc::Colorf kMute        {0.290f, 0.290f, 0.290f, 1.0f};  // #4a4a4a mid gray
+constexpr sgc::Colorf kMute        {0.290f, 0.290f, 0.290f, 1.0f};  // #4a4a4a 中間灰
 constexpr sgc::Colorf kAmberAccent {0.784f, 0.0f,   0.173f, 1.0f};  // #c8002c Saturn red
 
 class RendererSampleGame final : public mitiru::Game
@@ -69,12 +69,12 @@ private:
     void drawGrid(mitiru::Screen& screen)
     {
         constexpr float kStep = 64.0f;
-        // Vertical lines.
+        // 縦線。
         for (float x = kStep; x < m_screenW; x += kStep)
         {
             screen.drawRect(sgc::Rectf{x, 0.0f, 1.0f, m_screenH}, kPaperEdge);
         }
-        // Horizontal lines.
+        // 横線。
         for (float y = kStep; y < m_screenH; y += kStep)
         {
             screen.drawRect(sgc::Rectf{0.0f, y, m_screenW, 1.0f}, kPaperEdge);
@@ -83,9 +83,8 @@ private:
 
     void drawCenterRect(mitiru::Screen& screen)
     {
-        // 60x60 rect oscillating horizontally around screen center. Avoids
-        // true rotation (no transform API surfaced on Screen today) while
-        // still making the renderer visibly time-driven for smoke checks.
+        // 画面中心を水平に往復する 60x60 rect。真の回転は避け (Screen に今は
+        // transform API なし)、smoke 用に renderer が時間駆動だと見せる。
         constexpr float kSize     = 60.0f;
         const float     amplitude = std::min(m_screenW * 0.30f, 200.0f);
         const float     cx        = m_screenW * 0.5f
@@ -142,8 +141,8 @@ int main(int /*argc*/, char* /*argv*/[])
     cfg.enableCef          = false;
     cfg.fontAtlasRanges    = mitiru::EngineConfig::FontAtlas::Latin;
     cfg.useLogicalWindowSize = true;
-    // Silver-gray Saturn surface — host-side clear must match the in-draw
-    // screen.clear() so the very first frame (before draw runs) is not black.
+    // 銀灰の Saturn surface — host 側 clear は draw 内の screen.clear() と
+    // 一致させる。最初のフレーム (draw 実行前) を黒にしないため。
     cfg.backgroundColor    = kPaperBg;
 
     engine.run(game, cfg);

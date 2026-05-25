@@ -1,16 +1,15 @@
-// mitiru_subsys_scene — axis 3 (per-system isolation) P3 deliverable.
+// mitiru_subsys_scene — axis 3 (全 system 単独起動) の P3 成果物。
 //
-// Boots the scene loop with no game logic dependency, no CEF, no audio.
-// A minimal in-place "scene" of 12 entities is updated each frame:
-//   - each entity has independent (vel, angularSpeed)
-//   - position integrates with edge reflection on the playfield rect
-//   - angle integrates and is reflected by the inner ink dot offset
+// ゲームロジック依存・CEF・audio なしで scene loop を起動する。
+// 12 entity の最小 "scene" を毎フレーム更新:
+//   - 各 entity は独立した (vel, angularSpeed) を持つ
+//   - 位置を積分し、playfield rect の縁で反射
+//   - 角度を積分し、内側の ink dot のオフセットで表現
 //
-// The point isn't a full ECS — it's that the engine's Game/update/draw
-// contract is enough to run a per-frame scene loop with the rest of the
-// stack absent.
+// 狙いは完全な ECS ではなく、エンジンの Game/update/draw 契約だけで、
+// 残りの stack が無くても per-frame の scene loop が回ること。
 //
-// Controls: ESC quits.
+// 操作: ESC で終了。
 
 #include <cmath>
 #include <cstdint>
@@ -21,14 +20,14 @@
 
 namespace {
 
-// ── Saturn palette (matches other subsys demos) ────────────────────────────
+// ── Saturn パレット (他の subsys デモと揃える) ─────────────────────────────
 constexpr sgc::Colorf kPaperBg     {0.784f, 0.784f, 0.784f, 1.0f};  // #c8c8c8
-constexpr sgc::Colorf kPaperHi     {0.878f, 0.878f, 0.878f, 1.0f};  // #e0e0e0 entity fill
-constexpr sgc::Colorf kPaperEdge   {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 ink border
-constexpr sgc::Colorf kInk         {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 text/dot
+constexpr sgc::Colorf kPaperHi     {0.878f, 0.878f, 0.878f, 1.0f};  // #e0e0e0 entity 塗り
+constexpr sgc::Colorf kPaperEdge   {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 墨の縁
+constexpr sgc::Colorf kInk         {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 文字/dot
 constexpr sgc::Colorf kMute        {0.290f, 0.290f, 0.290f, 1.0f};  // #4a4a4a
-constexpr sgc::Colorf kBevelHi     {1.000f, 1.000f, 1.000f, 1.0f};  // white inset
-constexpr sgc::Colorf kBevelLo     {0.510f, 0.510f, 0.510f, 1.0f};  // #828282 inset
+constexpr sgc::Colorf kBevelHi     {1.000f, 1.000f, 1.000f, 1.0f};  // 白の凸
+constexpr sgc::Colorf kBevelLo     {0.510f, 0.510f, 0.510f, 1.0f};  // #828282 凹
 constexpr sgc::Colorf kSaturnRed   {0.784f, 0.0f,   0.173f, 1.0f};  // #c8002c
 
 constexpr int   kEntityCount = 12;
@@ -46,7 +45,7 @@ struct SceneEntity
     float rotSpeed{0.0f};
 };
 
-// Deterministic LCG so the layout is stable across runs (no <random> dep).
+// 決定的 LCG。実行間でレイアウトを安定させる (<random> 依存なし)。
 struct Rng
 {
     std::uint32_t state{0x12345u};
@@ -128,19 +127,19 @@ private:
     void drawEntity(mitiru::Screen& screen, const SceneEntity& e)
     {
         const sgc::Rectf body{e.x, e.y, kEntitySize, kEntitySize};
-        // Saturn-red border (outer), paper-hi fill (inner), bevel insets.
+        // Saturn red の外枠、paper-hi の内塗り、bevel の凹凸。
         screen.drawRect(body, kSaturnRed);
         screen.drawRect(sgc::Rectf{e.x + 2, e.y + 2,
                                    kEntitySize - 4, kEntitySize - 4},
                         kPaperHi);
-        // 1px white top/left inset, 1px gray bottom/right inset (chrome bevel)
+        // 上/左に白 1px、下/右に灰 1px の凹凸 (クロームの bevel)
         screen.drawRect(sgc::Rectf{e.x + 2, e.y + 2, kEntitySize - 4, 1}, kBevelHi);
         screen.drawRect(sgc::Rectf{e.x + 2, e.y + 2, 1, kEntitySize - 4}, kBevelHi);
         screen.drawRect(sgc::Rectf{e.x + 2, e.y + kEntitySize - 3,
                                    kEntitySize - 4, 1}, kBevelLo);
         screen.drawRect(sgc::Rectf{e.x + kEntitySize - 3, e.y + 2,
                                    1, kEntitySize - 4}, kBevelLo);
-        // Orientation indicator: ink dot offset by (cos,sin) of angle.
+        // 向きの指標: angle の (cos,sin) だけずらした ink dot。
         const float cx = e.x + kEntitySize * 0.5f;
         const float cy = e.y + kEntitySize * 0.5f;
         const float dotR = 3.0f;
@@ -161,7 +160,7 @@ private:
             title, kInk, 24.0f,
             mitiru::Screen::TextAlignH::Left,
             mitiru::Screen::TextAlignV::Top);
-        // Header underline.
+        // ヘッダの下線。
         screen.drawRect(sgc::Rectf{0.0f, kHeaderH - 1.0f, m_screenW, 1.0f},
                         kPaperEdge);
     }

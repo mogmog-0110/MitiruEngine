@@ -1,5 +1,5 @@
-// hello_shapes — Mode A. Five colored rectangles + two circles.
-// One circle pulses with sin(t).
+// hello_shapes — Mode A。色付き矩形 5 個 + 円 2 個。
+// 片方の円は sin(t) で脈動する。
 
 #include <cmath>
 #include <mitiru/Mitiru.hpp>

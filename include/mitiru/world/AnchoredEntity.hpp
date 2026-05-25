@@ -2,13 +2,13 @@
 
 /*!
  * @file AnchoredEntity.hpp
- * @brief Anchor-based entity positioning — sprite and hitbox share one origin.
+ * @brief anchor を基準にした entity の位置決め — sprite と hitbox が 1 つの原点を共有する。
  *
- * Both `getSpriteWorldRect()` and `getHitboxWorldRect()` are derived from
- * `anchor` plus their respective offset.  Moving the anchor via `setAnchor()`
- * moves both rects in lock-step; there is no separate stored world rect.
+ * `getSpriteWorldRect()` と `getHitboxWorldRect()` はどちらも `anchor` と
+ * それぞれの offset から導出される。`setAnchor()` で anchor を動かすと両 rect が
+ * 連動して動く。独立した world rect を別に持つことはしない。
  *
- * Usage (Mode A / C++ gameplay):
+ * 使い方 (Mode A / C++ gameplay):
  * @code
  *   mitiru::world::AnchoredEntity crepe{
  *       .anchor       = {100.f, 200.f},
@@ -33,35 +33,35 @@ namespace mitiru::world {
 
 /*!
  * @struct AnchoredEntity
- * @brief Positional descriptor that binds a sprite bbox and hitbox bbox to a
- *        single world-space anchor point.
+ * @brief sprite bbox と hitbox bbox を 1 つの world 空間 anchor 点に
+ *        束ねる位置 descriptor。
  *
- * **Invariant**: `anchor`, `spriteOffset`, and `hitboxOffset` must always
- * contain finite (non-NaN, non-Inf) values.  The assertion helpers enforce
- * this on construction and mutation.
+ * **不変条件**: `anchor`、`spriteOffset`、`hitboxOffset` は常に有限値
+ * (non-NaN, non-Inf) を持たねばならない。assertion helper が構築時と変更時に
+ * これを強制する。
  */
 struct AnchoredEntity
 {
-	/// World-space anchor position — the single source of truth for location.
+	/// world 空間の anchor 位置 — 位置の単一の source of truth。
 	sgc::Vec2f anchor{0.f, 0.f};
 
-	/// Rect of the visible sprite, *relative* to `anchor`.
-	/// x/y may be negative (e.g. centred sprites).
+	/// 可視 sprite の rect。`anchor` に対する*相対*値。
+	/// x/y は負になりうる (例: 中心揃え sprite)。
 	sgc::Rectf spriteOffset{0.f, 0.f, 0.f, 0.f};
 
-	/// Rect of the collision hitbox, *relative* to `anchor`.
-	/// Typically a smaller inset of spriteOffset.
+	/// 当たり判定 hitbox の rect。`anchor` に対する*相対*値。
+	/// 通常は spriteOffset を少し内側に inset したもの。
 	sgc::Rectf hitboxOffset{0.f, 0.f, 0.f, 0.f};
 
-	/// Human-readable label used by the inspector overlay and debug logs.
+	/// inspector overlay と debug log で使う人間可読の label。
 	std::string name;
 
-	// ── Derived accessors ─────────────────────────────────────────────────
+	// ── 導出 accessor ─────────────────────────────────────────────────
 
 	/*!
-	 * @brief Returns the world-space sprite bounding rect.
+	 * @brief world 空間の sprite bounding rect を返す。
 	 *
-	 * Always computed from `anchor + spriteOffset`.  No separate stored rect.
+	 * 常に `anchor + spriteOffset` から計算する。別に保持した rect は無い。
 	 */
 	[[nodiscard]] sgc::Rectf getSpriteWorldRect() const noexcept
 	{
@@ -74,9 +74,9 @@ struct AnchoredEntity
 	}
 
 	/*!
-	 * @brief Returns the world-space hitbox bounding rect.
+	 * @brief world 空間の hitbox bounding rect を返す。
 	 *
-	 * Always computed from `anchor + hitboxOffset`.  No separate stored rect.
+	 * 常に `anchor + hitboxOffset` から計算する。別に保持した rect は無い。
 	 */
 	[[nodiscard]] sgc::Rectf getHitboxWorldRect() const noexcept
 	{
@@ -89,12 +89,12 @@ struct AnchoredEntity
 	}
 
 	/*!
-	 * @brief Sets the anchor to a new world-space position.
+	 * @brief anchor を新しい world 空間位置に設定する。
 	 *
-	 * Both `getSpriteWorldRect()` and `getHitboxWorldRect()` will reflect the
-	 * new position immediately after this call.
+	 * 呼び出し直後に `getSpriteWorldRect()` と `getHitboxWorldRect()` の両方が
+	 * 新しい位置を反映する。
 	 *
-	 * @param pos  New world-space anchor.  Must contain finite values.
+	 * @param pos  新しい world 空間 anchor。有限値を持たねばならない。
 	 */
 	void setAnchor(const sgc::Vec2f& pos) noexcept
 	{
@@ -103,7 +103,7 @@ struct AnchoredEntity
 	}
 
 	/*!
-	 * @brief Returns the current world-space anchor position.
+	 * @brief 現在の world 空間 anchor 位置を返す。
 	 */
 	[[nodiscard]] sgc::Vec2f getAnchorWorld() const noexcept
 	{

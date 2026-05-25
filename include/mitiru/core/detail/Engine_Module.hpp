@@ -1,4 +1,4 @@
-// Detail header for mitiru::Engine - do not include directly; included via core/Engine.hpp
+// mitiru::Engine の detail header - 直接 include しないこと。core/Engine.hpp 経由で include される
 #pragma once
 
 /// @file Engine_Module.hpp
@@ -23,15 +23,16 @@
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/debug/DebugPrint.hpp>
 #include <mitiru/module/ModuleHost.hpp>
+#include <mitiru/module/SoundIntentRouter.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
 
-// ── Free helpers (file-local, not Engine methods) ──────────────────────────
+// ── Free helper 群 (file-local、Engine の method ではない) ──────────────────
 namespace mitiru::module::detail
 {
 
-/// @brief Copy `src` into a fixed-size buffer, null-terminating + truncating
-///        without UB if the source is longer than the buffer.
+/// @brief `src` を固定長 buffer に copy する。source が buffer より長くても
+///        UB を起こさず null 終端 + 切り詰めする。
 template <std::size_t N>
 inline void copyBounded(char (&dst)[N], const std::string& src) noexcept
 {
@@ -75,7 +76,7 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 
 	loadFn(&m_moduleApi, &m_moduleMemory);
 
-	// Version check.
+	// version check。
 	if (m_moduleApi.version == 0u || m_moduleApi.version > module::kCurrentApiVersion)
 	{
 		m_moduleHost->unload();
@@ -83,7 +84,7 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 		return false;
 	}
 
-	// Lazy-allocate scratch buffers for per-frame signal flow.
+	// per-frame signal flow 用の scratch buffer を遅延確保する。
 	if (!m_moduleInputSnapshot)
 	{
 		m_moduleInputSnapshot = std::make_unique<module::InputSnapshot>();
@@ -128,8 +129,8 @@ MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept
 	m_moduleApi = module::ModuleApi{};
 	m_moduleHost->unload();
 
-	// Action queue must drop any pending events that referenced state owned
-	// by the (now-dead) DLL.
+	// (今や死んでいる) DLL が所有する state を参照していた pending event は
+	// action queue から全て破棄する必要がある。
 	if (m_moduleActionEvents)
 	{
 		std::lock_guard lock(m_moduleActionEvents->mu);
@@ -162,10 +163,10 @@ MITIRU_INLINE void mitiru::Engine::runModule(
 		return;
 	}
 
-	// Stack-local Game adapter. Bridges existing engine main loop into the
-	// ADR 0005 signal flow:
-	//   - update(): snapshot input, zero intents, on_update, drain intents
-	//   - draw():   pass Screen pointer through to on_draw
+	// stack-local な Game adapter。既存の engine main loop を ADR 0005 の
+	// signal flow へ橋渡しする:
+	//   - update(): input を snapshot、intents を zero、on_update、intents を drain
+	//   - draw():   Screen pointer をそのまま on_draw へ渡す
 	class ModuleAdapter : public Game
 	{
 	public:
@@ -186,6 +187,16 @@ MITIRU_INLINE void mitiru::Engine::runModule(
 			}
 
 			m_engine->drainModuleFrameIntents();
+
+			// Replay record hook (axis 4): このフレームの input + 結果の intents を
+			// host に渡し、.mtrr へ追記できるようにする (mitiru run --record)。
+			if (m_engine->m_config.onModuleFrameRecorded
+			    && m_engine->m_moduleInputSnapshot && m_engine->m_moduleFrameIntents)
+			{
+				m_engine->m_config.onModuleFrameRecorded(
+					*m_engine->m_moduleInputSnapshot,
+					*m_engine->m_moduleFrameIntents);
+			}
 		}
 
 		void draw(Screen& screen) override
@@ -228,43 +239,51 @@ MITIRU_INLINE void* mitiru::Engine::moduleMemory() const noexcept
 	return m_moduleMemory;
 }
 
-// ── Per-frame signal flow helpers (private; called by ModuleAdapter) ──────
-// These are member fns added inline below; declared as inline-friend would be
-// cleaner but Engine.hpp already exposes them through plain private status —
-// ModuleAdapter is friended implicitly via `m_engine->m_*` access.
-// For clarity we declare them as private member fns in Engine.hpp's class
-// body... but to keep that header tidy, define them here in a free namespace
-// that the adapter calls. Simpler: just call into m_engine's private members
-// directly since ModuleAdapter is defined inside runModule's body, making it
-// a friend by virtue of being a local class with access to enclosing scope.
+// ── Per-frame signal flow helper 群 (private; ModuleAdapter が呼ぶ) ────────
+// 以下は inline で追加する member fn。inline-friend 宣言の方が綺麗だが、
+// Engine.hpp が既に素の private として公開しており、ModuleAdapter は
+// `m_engine->m_*` access 経由で暗黙に friend 扱いになる。
+// 明確さのため Engine.hpp の class body に private member fn として宣言する…
+// が、その header を整然と保つため、ここでは adapter が呼ぶ free namespace 内に
+// 定義する。より単純には、ModuleAdapter が runModule の本体内で定義され、
+// 囲うスコープへ access できる local class となるため friend 扱いとなり、
+// m_engine の private member を直接呼べる。
 //
-// Adjustment: C++ local classes do NOT have access to the enclosing function's
-// `this` private members unless friended. So we expose the helpers as
-// PRIVATE member functions but make them friends via mark below. Cleanest:
-// just make them private members of Engine and ModuleAdapter calls via
-// `m_engine->fooBar()`. To do so, we need to declare them in Engine.hpp's
-// private section.
+// 補足: C++ の local class は friend にしない限り囲う関数の `this` の private
+// member へ access できない。そこで helper を PRIVATE member function として
+// 公開し、下記マークで friend にする。最も綺麗なのは Engine の private member に
+// して ModuleAdapter から `m_engine->fooBar()` で呼ぶ方法。そのためには
+// Engine.hpp の private section に宣言する必要がある。
 //
-// Implementation strategy used here: helpers are file-scope free functions
-// that take Engine* and access via public accessors + a small set of newly-
-// exposed accessors for the buffers (added to Engine.hpp).
+// ここで採った実装方針: helper は Engine* を取り、public accessor + buffer 用に
+// 新たに公開した少数の accessor (Engine.hpp に追加) 経由で access する file-scope
+// の free function とする。
 
 namespace mitiru::module::detail
 {
-// (no helpers needed here — Engine has its own member fns)
+// (ここに helper は不要 — Engine が自前の member fn を持つ)
 }  // namespace mitiru::module::detail
 
-// ── Engine member helper definitions (called from ModuleAdapter) ──────────
+// ── Engine member helper の定義 (ModuleAdapter から呼ばれる) ──────────────
 
 MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 {
 	if (m_moduleStateStore)
 	{
-		return;  // already wired
+		return;  // 接続済み
 	}
 	if (!m_cefContext.isInitialized())
 	{
-		return;  // CEF not ready yet — try again next frame
+		// Headless / CEF 無効時 (例: `mitiru replay --test`): それでも no-op sink で
+		// StateStore を生成し、game が push する view.* state を観察/assertion 用に
+		// map へ取り込む。CEF 有効時は準備完了まで待つ。
+		if (!m_config.enableCef && !m_moduleStateStore)
+		{
+			m_moduleStateStore = std::make_unique<cef::StateStore>(
+				[](const std::string&) {},
+				[](const std::string&, cef::StateStore::HandlerFn) {});
+		}
+		return;  // CEF はまだ準備未完 — 次フレームで再試行 (または上で store 生成済み)
 	}
 
 	auto* cef = &m_cefContext;
@@ -282,8 +301,8 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 		cef->setLoadEndCallback([store](std::string_view) { store->replayRetainedState(); });
 	}
 
-	// Engine-owned action handlers — these can't live in the DLL because
-	// their captures would dangle on reload (ADR 0005, F3).
+	// engine 所有の action handler — capture が reload 時に dangle する (ADR 0005,
+	// F3) ため DLL 側には置けない。
 	m_moduleStateStore->onAction("inspector.open",
 		[](const cef::json& payload) -> cef::json
 		{
@@ -296,8 +315,8 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 			return cef::json{{"ok", ok}};
 		});
 
-	// Catch-all forwarder for any other action — queue as an ActionEvent for
-	// the DLL to process next frame.
+	// その他の action 全てを受ける catch-all forwarder — DLL が次フレームで
+	// 処理できるよう ActionEvent として queue する。
 	auto* buffer = m_moduleActionEvents.get();
 	m_moduleStateStore->onActionFallback(
 		[buffer](std::string_view action, const cef::json& payload) -> cef::json
@@ -307,15 +326,15 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 				return cef::json{{"ok", false}, {"reason", "no event buffer"}};
 			}
 			std::lock_guard lock(buffer->mu);
-			if (buffer->events.size() < 64)  // bound the queue
+			if (buffer->events.size() < 64)  // queue を bound する
 			{
 				buffer->events.emplace_back(std::string(action), payload.dump());
 			}
 			return cef::json{{"ok", true}, {"queued", true}};
 		});
 
-	// Inspector SharedSnapshot — writes %TEMP%\mitiru_inspector_<pid>.json
-	// that mitiru_inspector.exe sub-windows poll.
+	// Inspector SharedSnapshot — mitiru_inspector.exe の sub-window が poll する
+	// %TEMP%\mitiru_inspector_<pid>.json を書き出す。
 	if (!m_moduleInspectorSnapshot)
 	{
 		m_moduleInspectorSnapshot = std::make_unique<observe::SharedSnapshot>();
@@ -327,8 +346,8 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 	auto* snap = m_moduleInputSnapshot.get();
 	if (snap == nullptr) { return; }
 
-	// Keys (256 VK codes). Use the InputState API rather than peeking at
-	// internals — keeps engine refactor freedom in InputState.
+	// Keys (256 VK codes)。internal を覗かず InputState API を使う —
+	// InputState の engine refactor の自由度を保つため。
 	for (int vk = 0; vk < 256; ++vk)
 	{
 		const auto key = static_cast<KeyCode>(vk);
@@ -337,7 +356,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 		snap->keysJustReleased[vk] = m_inputState.isKeyJustReleased(key) ? 1u : 0u;
 	}
 
-	// Mouse — 3 buttons (L/R/M).
+	// Mouse — 3 button (L/R/M)。
 	auto [mx, my] = m_inputState.mousePosition();
 	snap->mouseX = mx;
 	snap->mouseY = my;
@@ -349,7 +368,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 		snap->mouseButtonsJustReleased[i]    = m_inputState.isMouseButtonJustReleased(btn) ? 1u : 0u;
 	}
 
-	// Drain queued action events (from CEF UI thread) into the POD buffer.
+	// queue 済み action event (CEF UI thread 由来) を POD buffer へ drain する。
 	snap->actionEventCount = 0;
 	if (m_moduleActionEvents)
 	{
@@ -364,7 +383,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 			module::detail::copyBounded(snap->actionEvents[i].payloadJson, payloadJson);
 		}
 		snap->actionEventCount = static_cast<std::int32_t>(take);
-		// Drop the consumed events; any overflow stays for next frame.
+		// 消費した event を破棄する。溢れた分は次フレームに残す。
 		if (take > 0)
 		{
 			m_moduleActionEvents->events.erase(
@@ -372,6 +391,12 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 				m_moduleActionEvents->events.begin() + static_cast<std::ptrdiff_t>(take));
 		}
 	}
+
+	// Replay inject hook (axis 4): headless な `mitiru replay --test` は live 構築
+	// した snapshot を記録済み byte で上書きし、on_update が記録通りの input stream を
+	// 再実行できるようにする (DLL は input に関して stateless ゆえ ADR 0005、これで
+	// run を bit-exact に再現する)。
+	if (m_config.moduleInputOverride) { m_config.moduleInputOverride(*snap); }
 }
 
 MITIRU_INLINE void mitiru::Engine::zeroModuleFrameIntents()
@@ -387,10 +412,10 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	auto* intents = m_moduleFrameIntents.get();
 	if (intents == nullptr) { return; }
 
-	// Simple flags
+	// 単純な flag 群
 	if (intents->requestStop) { requestStop(); }
 
-	// Screenshot — host handles capture + filename.
+	// Screenshot — host が capture + filename を処理する。
 	if (intents->requestScreenshot)
 	{
 		if (m_screen != nullptr)
@@ -409,7 +434,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		}
 	}
 
-	// Palette visibility — engine-owned flag pushed to CEF.
+	// Palette の表示状態 — engine 所有の flag を CEF へ push する。
 	if (intents->paletteToggle && m_moduleStateStore)
 	{
 		const auto cur = m_moduleStateStore->get<bool>("view.palette.visible");
@@ -417,7 +442,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		m_moduleStateStore->set("view.palette.visible", next);
 	}
 
-	// State pushes — DLL → host → StateStore → CEF JS.
+	// State push — DLL → host → StateStore → CEF JS。
 	if (m_moduleStateStore && intents->statePushCount > 0)
 	{
 		const std::int32_t n = std::min<std::int32_t>(
@@ -434,21 +459,21 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			case 2: m_moduleStateStore->set(key, item.floatVal); break;
 			case 3: m_moduleStateStore->set(key, static_cast<bool>(item.intVal)); break;
 			case 4: m_moduleStateStore->set(key, std::string{item.strVal}); break;
-			default: break;  // kind=0 (null) intentionally no-op for now
+			default: break;  // kind=0 (null) は今は意図的に no-op
 			}
 		}
 	}
 
-	// Exported inspectables — DLL fills these each frame; engine syncs to
-	// SharedSnapshot + view.palette.items so the F12 palette + inspector
-	// sub-windows pick up DLL-side state.
+	// Exported inspectable — DLL が毎フレーム埋める。engine が SharedSnapshot +
+	// view.palette.items へ sync し、F12 palette + inspector sub-window が
+	// DLL 側 state を拾えるようにする。
 	if (intents->exportedInspectableCount > 0 && m_moduleInspectorSnapshot)
 	{
 		const std::int32_t n = std::min<std::int32_t>(
 			intents->exportedInspectableCount,
 			static_cast<std::int32_t>(sizeof(intents->exportedInspectables) /
 			                          sizeof(intents->exportedInspectables[0])));
-		// Build the JSON map that mitiru_inspector.exe expects:
+		// mitiru_inspector.exe が期待する JSON map を構築する:
 		//   { name: { title, state }, ... }
 		cef::json out = cef::json::object();
 		cef::json palette = cef::json::array();
@@ -479,7 +504,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		}
 	}
 
-	// Raw JS execution (e.g. hot reload toast trigger).
+	// 生の JS 実行 (例: hot reload toast の trigger)。
 	if (intents->jsToExecuteLen > 0 && m_cefContext.isInitialized())
 	{
 		const std::int32_t cap = static_cast<std::int32_t>(
@@ -490,6 +515,23 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			m_cefContext.executeJavaScript(
 				std::string{intents->jsToExecute,
 				            static_cast<std::size_t>(n)});
+		}
+	}
+
+	// Sound 再生要求 — DLL → host → audio engine (ADR 0008)。game は mixer
+	// pointer を持たず (ADR 0005)、sound 名を指定するだけ。audio engine 未設定時
+	// (graceful degradation) や v3 module では無音 no-op となる
+	// (soundIntentCount は 0 のまま — on_update 前に毎フレーム zero される)。
+	if (intents->soundIntentCount > 0 && m_audioEngine)
+	{
+		const std::int32_t n = std::min<std::int32_t>(
+			intents->soundIntentCount,
+			static_cast<std::int32_t>(sizeof(intents->soundIntents) /
+			                          sizeof(intents->soundIntents[0])));
+		// category / stop / loop / volume の解釈は applySoundIntent に集約 (ADR 0008)。
+		for (std::int32_t i = 0; i < n; ++i)
+		{
+			mitiru::module::applySoundIntent(*m_audioEngine, intents->soundIntents[i]);
 		}
 	}
 }

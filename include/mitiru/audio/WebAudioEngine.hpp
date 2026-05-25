@@ -15,7 +15,7 @@
 
 #include <mitiru/audio/AudioEngine.hpp>
 
-// ── JS interop functions ────────────────────────────────────
+// ── JS interop 関数 ────────────────────────────────────
 
 /// @cond INTERNAL
 EM_JS(void, mitiru_webaudio_init, (), {
@@ -118,7 +118,7 @@ public:
 	/// @param id ファイルパス
 	void playMusic(std::string_view id) override
 	{
-		// BGM is played the same way; distinction is logical
+		// BGM も同じ方法で再生する。SE との区別は論理的なものにすぎない
 		stopMusic();
 		currentMusic_ = std::string{id};
 		mitiru_webaudio_play(currentMusic_.c_str());
@@ -147,9 +147,9 @@ public:
 	/// @return 再生中のソースが存在すれば true（厳密ではない）
 	[[nodiscard]] bool isPlaying(std::string_view id) const override
 	{
-		// Web Audio API does not provide synchronous playback state queries
-		// from C++. A full implementation would use EM_ASM_INT to check
-		// source node state. For now, return false as a safe default.
+		// Web Audio API は C++ から同期的に再生状態を問い合わせる手段を
+		// 提供しない。完全な実装なら EM_ASM_INT で source node の状態を
+		// 確認するが、ここでは安全側のデフォルトとして false を返す。
 		static_cast<void>(id);
 		return false;
 	}

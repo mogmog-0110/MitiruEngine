@@ -1,6 +1,6 @@
-// hello_scene — Mode A. Two scenes in one Game: Title -> Game.
-// Space on the title advances; ESC anywhere exits.
-// Deliberately uses a plain enum, not SceneRouter — that's a bigger topic.
+// hello_scene — Mode A。1 つの Game に 2 シーン: Title -> Game。
+// Title で Space を押すと進む。どこでも ESC で終了。
+// あえて SceneRouter でなく素の enum を使う — あれは別の大きな話題。
 
 #include <mitiru/Mitiru.hpp>
 

@@ -1,19 +1,19 @@
 /*!
- * mitiru_physics.js — JS consumer of the C++ physics bridge (H-06)
+ * mitiru_physics.js — C++ physics bridge の JS consumer (H-06)
  *
- * Wraps the CEF/Box2D bridge via window.cefQuery into a promise-based API.
- * C++ owns all simulation; JS receives per-frame position/angle updates and
- * contact events via a requestAnimationFrame poll loop.
+ * window.cefQuery 経由の CEF/Box2D bridge を promise ベース API で包む。
+ * simulation は全て C++ が所有する; JS は frame ごとの position/angle 更新と
+ * contact event を requestAnimationFrame poll loop で受け取る。
  *
- * If window.cefQuery is undefined (plain browser / test without mock), all
- * calls reject immediately with Error('physics bridge unavailable').
- * There is NO JS-side fallback — engine philosophy: C++ owns simulation.
+ * window.cefQuery が undefined の場合 (素の browser / mock 無しの test) は、
+ * 全 call が即座に Error('physics bridge unavailable') で reject する。
+ * JS 側の fallback は無い — engine 哲学: simulation は C++ が所有する。
  *
  * ── API ─────────────────────────────────────────────────────────────────────
  *   mitiru.physics.createWorld(opts)           Promise<World>
  *     opts: { gravityX, gravityY }
  *
- * World instance methods:
+ * World インスタンスの method:
  *   world.createCircle(opts)                   Promise<bodyId:number>
  *     opts: { x, y, r, density, restitution, friction, userData }
  *   world.createStaticEdge(opts)               Promise<bodyId:number>
@@ -24,8 +24,8 @@
  *     events: 'bodies:update'  → fn([{id,x,y,angle},…])
  *             'contact'        → fn({a,b,aData,bData})
  *             'error'          → fn(Error)
- *   world.start()                              void  (idempotent)
- *   world.stop()                               void  (idempotent)
+ *   world.start()                              void  (冪等)
+ *   world.stop()                               void  (冪等)
  *   world.destroy()                            Promise<void>
  *
  * Implements spec: docs/hato-project-engine-requests-20260425.md H-06
@@ -35,9 +35,9 @@
 	'use strict';
 
 	var mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.physics) { return; }  // already loaded
+	if (mitiru.physics) { return; }  // 読み込み済み
 
-	// ── bridge availability ───────────────────────────────────────
+	// ── bridge の利用可否 ───────────────────────────────────────
 	var _warnedUnavail = false;
 
 	function _bridgeAvail()
@@ -59,10 +59,10 @@
 		return true;
 	}
 
-	// ── low-level cefQuery wrapper ────────────────────────────────
-	// Sends handler|payloadJSON, resolves with parsed response object.
-	// Rejects with Error if bridge unavailable, onFailure fires, or
-	// response contains { error }.
+	// ── 低レベル cefQuery wrapper ────────────────────────────────
+	// handler|payloadJSON を送り、parse 済みの response object で resolve する。
+	// bridge が使えない、onFailure 発火、response に { error } がある場合は
+	// Error で reject する。
 	function _query(handlerName, payloadObj)
 	{
 		if (!_requireBridge())
@@ -101,7 +101,7 @@
 		});
 	}
 
-	// ── event emitter factory ─────────────────────────────────────
+	// ── event emitter ファクトリ ─────────────────────────────────────
 	function _makeEmitter()
 	{
 		var _listeners = Object.create(null);
@@ -116,7 +116,7 @@
 				try { copy[i](detail); }
 				catch (e)
 				{
-					// swallow to avoid one bad handler killing the frame loop
+					// 1 つの不良 handler が frame loop を止めないよう握り潰す
 				}
 			}
 		}
@@ -141,7 +141,7 @@
 		return { emit: emit, on: on };
 	}
 
-	// ── World factory ─────────────────────────────────────────────
+	// ── World ファクトリ ─────────────────────────────────────────────
 	function _makeWorld(worldId)
 	{
 		var _emitter    = _makeEmitter();
@@ -152,7 +152,7 @@
 		// ── poll tick ─────────────────────────────────────────────
 		function _tick(ts)
 		{
-			if (_rafId === null) { return; }  // stop() was called
+			if (_rafId === null) { return; }  // stop() が呼ばれた
 
 			var dtMs = (_lastTs === null) ? 16.6 : (ts - _lastTs);
 			_lastTs = ts;
@@ -160,7 +160,7 @@
 			_query('physics.poll', { worldId: worldId, dtMs: dtMs })
 				.then(function(resp)
 				{
-					if (_rafId === null) { return; }  // stopped during async
+					if (_rafId === null) { return; }  // async 中に stop された
 
 					var moves    = Array.isArray(resp.moves)    ? resp.moves    : [];
 					var contacts = Array.isArray(resp.contacts) ? resp.contacts : [];
@@ -188,7 +188,7 @@
 				});
 		}
 
-		// ── public world object ───────────────────────────────────
+		// ── public な world object ───────────────────────────────────
 		var world = {};
 
 		world.createCircle = function(opts)
@@ -265,11 +265,11 @@
 		return world;
 	}
 
-	// ── public mitiru.physics namespace ──────────────────────────
+	// ── public な mitiru.physics namespace ──────────────────────────
 	var physics = mitiru.physics = Object.create(null);
 
 	/**
-	 * Create a new physics world on the C++ side.
+	 * C++ 側に新しい physics world を作成する。
 	 * @param {object} opts  { gravityX:number, gravityY:number }
 	 * @returns {Promise<World>}
 	 */

@@ -1,20 +1,20 @@
 #pragma once
 
 /// @file ContentLoader.hpp
-/// @brief Stateless typed content loader — JSON file or in-memory JSON -> C++ struct in one call.
+/// @brief stateless な typed content loader — JSON file または in-memory JSON を 1 回の呼び出しで C++ struct へ。
 ///
-/// **Purpose.** §9 data-driven authoring: balance tables, dialogue scripts, level data, and
-/// any other read-only authored content can be declared in JSON and loaded as typed C++ structs
-/// at startup or scene-load time.
+/// **目的。** §9 data-driven authoring: balance table、dialogue script、level data、
+/// その他あらゆる read-only な authored content を JSON で宣言し、起動時または
+/// scene-load 時に typed な C++ struct として load できる。
 ///
-/// **User-side type opt-in.** Register your struct with nlohmann's serialization macros:
+/// **利用側の type opt-in。** nlohmann の serialization マクロで自分の struct を register する:
 ///
 /// @code
 /// struct BalanceRow { std::string name; int cost; float winRate; };
 /// NLOHMANN_DEFINE_TYPE_INTRUSIVE(BalanceRow, name, cost, winRate)
 /// @endcode
 ///
-/// Then load in one line:
+/// あとは 1 行で load する:
 ///
 /// @code
 /// // Single struct
@@ -30,16 +30,17 @@
 /// auto r3 = mitiru::data::ContentLoader<BalanceTable>::loadFile("data/table.json");
 /// @endcode
 ///
-/// **Versioned content.** For authored content that needs schema migration, wrap the type with
-/// `Versioned<T>` or use `MigrationChain<T>` from `JsonBinding.hpp` independently. ContentLoader
-/// itself is stateless and has no notion of versions — it is a thin static dispatcher.
+/// **Versioned content。** schema migration が必要な authored content には、type を
+/// `Versioned<T>` で wrap するか、`JsonBinding.hpp` の `MigrationChain<T>` を独立して
+/// 使う。ContentLoader 自体は stateless で version の概念を持たない — 薄い static
+/// dispatcher である。
 ///
-/// **Opt-in schema validation.** `loadFileValidated / loadJsonValidated / loadStringValidated`
-/// run a `mitiru::data::Schema` check before binding. Useful for AI-generated or external JSON
-/// content where structural verification is required prior to deserialization.
+/// **Opt-in schema validation。** `loadFileValidated / loadJsonValidated / loadStringValidated`
+/// は bind 前に `mitiru::data::Schema` check を走らせる。deserialize 前に構造検証が
+/// 必要な AI 生成 / 外部 JSON content に有用。
 ///
-/// @note Hot-path discipline: do NOT call from per-frame code. Intended for boot-time loads,
-///       scene transitions, and editor tooling. All entry points allocate via nlohmann/json.
+/// @note Hot-path 規律: per-frame code から呼ばないこと。boot 時の load、
+///       scene 遷移、editor tooling 向け。全 entry point は nlohmann/json 経由で allocate する。
 
 #include <string>
 
@@ -49,11 +50,11 @@
 
 namespace mitiru::data {
 
-/// @brief Stateless loader for typed content (balance tables, dialogue scripts, level data, etc.).
+/// @brief typed content (balance table、dialogue script、level data 等) の stateless loader。
 ///
-/// All methods are static — the class carries no state.
+/// 全 method が static — class は state を持たない。
 ///
-/// Usage:
+/// 使い方:
 /// @code
 /// struct BalanceRow { std::string name; int cost; float winRate; };
 /// NLOHMANN_DEFINE_TYPE_INTRUSIVE(BalanceRow, name, cost, winRate)
@@ -69,13 +70,13 @@ public:
     ContentLoader()  = default;
     ~ContentLoader() = default;
 
-    /// @brief Load typed content from a file path.
+    /// @brief file path から typed content を load する。
     ///
-    /// Returns an error result if the file cannot be opened, is not valid JSON,
-    /// or does not match the schema expected by T's from_json.
+    /// file を開けない、valid な JSON でない、または T の from_json が期待する
+    /// schema に一致しない場合は error result を返す。
     ///
-    /// @param path Absolute or relative path to a UTF-8 JSON file.
-    /// @return FromJsonResult<T> — check ok() before accessing value.
+    /// @param path UTF-8 JSON file への絶対 / 相対 path。
+    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadFile(const std::string& path)
     {
         const auto json = loadJsonFile(path);
@@ -85,22 +86,22 @@ public:
         return fromJsonResult<T>(*json);
     }
 
-    /// @brief Load typed content from an already-parsed in-memory JSON object.
+    /// @brief parse 済みの in-memory JSON object から typed content を load する。
     ///
-    /// @param json A valid nlohmann::json value.
-    /// @return FromJsonResult<T> — check ok() before accessing value.
+    /// @param json valid な nlohmann::json value。
+    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadJson(const Json& json)
     {
         return fromJsonResult<T>(json);
     }
 
-    /// @brief Load typed content from a raw JSON string.
+    /// @brief 生の JSON 文字列から typed content を load する。
     ///
-    /// Parses the string first; returns an error result if parsing or
-    /// deserialization fails.
+    /// 先に文字列を parse する。parse または deserialize に失敗したら
+    /// error result を返す。
     ///
-    /// @param s Raw UTF-8 JSON string.
-    /// @return FromJsonResult<T> — check ok() before accessing value.
+    /// @param s 生 UTF-8 の JSON 文字列。
+    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadString(const std::string& s)
     {
         try {
@@ -110,15 +111,15 @@ public:
         }
     }
 
-    /// @brief Load typed content from a file path with schema validation.
+    /// @brief schema validation 付きで file path から typed content を load する。
     ///
-    /// Runs `mitiru::data::SchemaValidator` against the parsed JSON before binding to T.
-    /// On validation failure returns an error result with the concatenated errors,
-    /// short-circuiting the bind step.
+    /// T へ bind する前に、parse した JSON に対して `mitiru::data::SchemaValidator`
+    /// を走らせる。validation 失敗時は連結した error を持つ error result を返し、
+    /// bind step を short-circuit する。
     ///
-    /// @param path   Absolute or relative path to a UTF-8 JSON file.
-    /// @param schema Schema definition to validate against.
-    /// @return FromJsonResult<T> — check ok() before accessing value.
+    /// @param path   UTF-8 JSON file への絶対 / 相対 path。
+    /// @param schema 検証に使う Schema 定義。
+    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadFileValidated(
         const std::string& path, const Schema& schema)
     {
@@ -129,11 +130,11 @@ public:
         return loadJsonValidated(*json, schema);
     }
 
-    /// @brief Load typed content from an in-memory JSON object with schema validation.
+    /// @brief schema validation 付きで in-memory JSON object から typed content を load する。
     ///
-    /// @param json   A valid nlohmann::json value.
-    /// @param schema Schema definition to validate against.
-    /// @return FromJsonResult<T> — check ok() before accessing value.
+    /// @param json   valid な nlohmann::json value。
+    /// @param schema 検証に使う Schema 定義。
+    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadJsonValidated(
         const Json& json, const Schema& schema)
     {
@@ -144,13 +145,13 @@ public:
         return loadJson(json);
     }
 
-    /// @brief Load typed content from a raw JSON string with schema validation.
+    /// @brief schema validation 付きで生の JSON 文字列から typed content を load する。
     ///
-    /// Parses the string first, then runs schema validation prior to binding.
+    /// 先に文字列を parse し、bind の前に schema validation を走らせる。
     ///
-    /// @param s      Raw UTF-8 JSON string.
-    /// @param schema Schema definition to validate against.
-    /// @return FromJsonResult<T> — check ok() before accessing value.
+    /// @param s      生 UTF-8 の JSON 文字列。
+    /// @param schema 検証に使う Schema 定義。
+    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadStringValidated(
         const std::string& s, const Schema& schema)
     {
@@ -164,7 +165,7 @@ public:
     }
 
 private:
-    /// @brief Run schema validation; return empty string on success, error message otherwise.
+    /// @brief schema validation を走らせる。成功時は空文字列、それ以外は error メッセージを返す。
     [[nodiscard]] static std::string runSchemaCheck(const Json& json, const Schema& schema)
     {
         SchemaValidator validator;

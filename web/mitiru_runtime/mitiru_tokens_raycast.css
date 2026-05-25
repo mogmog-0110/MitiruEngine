@@ -1,27 +1,26 @@
 /*!
  * mitiru_tokens_raycast.css — Raycast inspired alt theme
  *
- * Design intent: Command-palette aesthetic. White canvas with a warm
- * coral accent, elegant shadows, and kbd chips styled as first-class
- * citizens. Optimised for keyboard-driven inspectors, search panels,
- * and quick-action surfaces. Compatible with `--mitiru-*` consumers.
+ * Design intent: command-palette の美意識。白い canvas に暖かい coral accent、
+ * 上品な shadow、一級市民として扱う kbd チップ。キーボード駆動の inspector、
+ * 検索パネル、quick-action 面に最適化。`--mitiru-*` consumer と互換。
  *
- * Swap by replacing the <link> to mitiru_tokens.css with this file.
+ * mitiru_tokens.css への <link> をこのファイルに差し替えて切り替える。
  */
 :root
 {
 	/* ── Base palette: Raycast (white + coral) ────────────────────── */
-	--mitiru-paper:        #ffffff;   /* pure white canvas */
-	--mitiru-paper-hi:     #f8f8f8;   /* neutral panel surface */
-	--mitiru-ink:          #16161d;   /* dense near-black */
-	--mitiru-ink-mute:     #6b6b76;   /* cool gray metadata */
-	--mitiru-coral:        #ff6363;   /* Raycast brand coral */
-	--mitiru-coral-hover:  #e84d4d;   /* deeper coral for hover */
-	--mitiru-phosphor:     #22c55e;   /* success green */
-	--mitiru-brick:        #ef4444;   /* destructive red */
-	--mitiru-paper-edge:   rgba(22, 22, 29, 0.08);   /* hairline */
+	--mitiru-paper:        #ffffff;   /* 純白の canvas */
+	--mitiru-paper-hi:     #f8f8f8;   /* ニュートラルな panel surface */
+	--mitiru-ink:          #16161d;   /* 濃いほぼ黒 */
+	--mitiru-ink-mute:     #6b6b76;   /* クールグレーの metadata */
+	--mitiru-coral:        #ff6363;   /* Raycast ブランドの coral */
+	--mitiru-coral-hover:  #e84d4d;   /* hover 用の濃い coral */
+	--mitiru-phosphor:     #22c55e;   /* success の緑 */
+	--mitiru-brick:        #ef4444;   /* 破壊的操作の赤 */
+	--mitiru-paper-edge:   rgba(22, 22, 29, 0.08);   /* ヘアライン */
 
-	/* ── Semantic aliases ─────────────────────────────────────── */
+	/* ── Semantic alias ─────────────────────────────────────── */
 	--mitiru-bg:        var(--mitiru-paper);
 	--mitiru-surface:   var(--mitiru-paper-hi);
 	--mitiru-text:      var(--mitiru-ink);
@@ -37,7 +36,7 @@
 
 	--mitiru-row-tint:  rgba(255, 99, 99, 0.04);
 
-	/* ── Typography — Inter body / JetBrains Mono code ────────── */
+	/* ── Typography — 本文 Inter / コード JetBrains Mono ────────── */
 	--mitiru-font-body:    "Inter", "SF Pro Display", "Hiragino Sans",
 	                       "Yu Gothic", system-ui, -apple-system, sans-serif;
 	--mitiru-font-display: "Inter", "SF Pro Display", "Hiragino Sans",
@@ -59,7 +58,7 @@
 	--mitiru-leading-normal: 1.5;
 	--mitiru-leading-loose:  1.6;
 
-	/* ── Spacing — 8 multiples ────────────────────────────────── */
+	/* ── Spacing — 8 の倍数 ────────────────────────────────── */
 	--mitiru-space-0:  0;
 	--mitiru-space-1:  4px;
 	--mitiru-space-2:  8px;
@@ -69,13 +68,13 @@
 	--mitiru-space-6:  32px;
 	--mitiru-space-7:  48px;
 
-	/* ── Corner radius (round 8px) ────────────────────────────── */
+	/* ── Corner radius (丸み 8px) ────────────────────────────── */
 	--mitiru-radius-sm:   4px;
 	--mitiru-radius-md:   8px;
 	--mitiru-radius-lg:   12px;
 	--mitiru-radius-pill: 9999px;
 
-	/* ── Elevation — refined dual-layer ───────────────────────── */
+	/* ── Elevation — 洗練された二層 ───────────────────────── */
 	--mitiru-shadow-1: 0 1px 2px rgba(22, 22, 29, 0.06),
 	                   0 0 0 1px var(--mitiru-border);
 	--mitiru-shadow-2: 0 2px 6px rgba(22, 22, 29, 0.08),
@@ -85,14 +84,14 @@
 	--mitiru-shadow-4: 0 16px 32px rgba(22, 22, 29, 0.14),
 	                   0 0 0 1px var(--mitiru-border);
 
-	/* Focus ring — coral halo */
+	/* Focus ring — coral のハロー */
 	--mitiru-focus-ring: 0 0 0 3px rgba(255, 99, 99, 0.28);
 
 	--mitiru-blur-sm: blur(4px);
 	--mitiru-blur-md: blur(12px);
 	--mitiru-blur-lg: blur(24px);
 
-	/* ── Z-index ladder ─────────────────────────────────────── */
+	/* ── Z-index の段階 ─────────────────────────────────────── */
 	--mitiru-z-base:     0;
 	--mitiru-z-hud:      100;
 	--mitiru-z-overlay:  200;

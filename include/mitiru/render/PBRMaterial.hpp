@@ -393,7 +393,7 @@ public:
 		/// GGX NDF
 		const float D = distributionGGX(NdotH, rough);
 
-		/// Smith GGX Geometry
+		/// Smith GGX ジオメトリ項
 		const float G = geometrySmith(NdotV, NdotL, rough);
 
 		/// Schlick Fresnel
@@ -402,7 +402,7 @@ public:
 		const float Fg = f0g + (1.0f - f0g) * fresnelFactor;
 		const float Fb = f0b + (1.0f - f0b) * fresnelFactor;
 
-		/// Cook-Torrance specular
+		/// Cook-Torrance スペキュラ
 		const float denom = 4.0f * NdotV * NdotL + 0.0001f;
 		const float specR = D * G * Fr / denom;
 		const float specG = D * G * Fg / denom;
@@ -454,7 +454,7 @@ public:
 	}
 
 private:
-	/// @brief GGX Normal Distribution Function
+	/// @brief GGX 法線分布関数（NDF）
 	[[nodiscard]] static float distributionGGX(float NdotH, float roughness) noexcept
 	{
 		const float a = roughness * roughness;
@@ -465,7 +465,7 @@ private:
 		return a2 / std::max(kPi * denom * denom, 0.0000001f);
 	}
 
-	/// @brief Schlick-GGX Geometry Function (片方向)
+	/// @brief Schlick-GGX ジオメトリ関数（片方向）
 	[[nodiscard]] static float geometrySchlickGGX(float NdotV, float roughness) noexcept
 	{
 		const float r = roughness + 1.0f;
@@ -473,7 +473,7 @@ private:
 		return NdotV / (NdotV * (1.0f - k) + k);
 	}
 
-	/// @brief Smith's Geometry Function (両方向合成)
+	/// @brief Smith ジオメトリ関数（両方向合成）
 	[[nodiscard]] static float geometrySmith(float NdotV, float NdotL,
 	                                         float roughness) noexcept
 	{

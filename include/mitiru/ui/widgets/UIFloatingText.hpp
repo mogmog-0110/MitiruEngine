@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIFloatingText.hpp
-/// @brief Animated floating text widget for damage numbers, item pickups, status effects.
+/// @brief ダメージ数値 / アイテム取得 / 状態効果向けのアニメーション floating text widget。
 
 #include <mitiru/ui/Easing.hpp>
 
@@ -15,7 +15,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Font weight hint for floating text rendering.
+/// @brief floating text 描画用の font weight ヒント。
 enum class FloatingTextFontWeight : std::uint8_t
 {
 	Normal,
@@ -23,59 +23,59 @@ enum class FloatingTextFontWeight : std::uint8_t
 	ExtraBold,
 };
 
-/// @brief Visual style for a floating text entry.
+/// @brief floating text entry の visual style。
 struct UIFloatingTextStyle
 {
-	float fontSize              = 24.0f;                           ///< Font size in pixels.
-	float color[4]              = {1.0f, 1.0f, 1.0f, 1.0f};      ///< Text RGBA color.
-	float outlineColor[4]       = {0.0f, 0.0f, 0.0f, 1.0f};      ///< Outline RGBA color.
-	float outlineWidth          = 0.0f;                            ///< Outline width in pixels.
-	float shadowColor[4]        = {0.0f, 0.0f, 0.0f, 0.0f};      ///< Shadow RGBA color.
-	float shadowOffsetX         = 0.0f;                            ///< Shadow X offset.
-	float shadowOffsetY         = 0.0f;                            ///< Shadow Y offset.
-	FloatingTextFontWeight fontWeight = FloatingTextFontWeight::Normal; ///< Font weight hint.
-	std::string backgroundImageKey;                                ///< Optional background image key.
+	float fontSize              = 24.0f;                           ///< font size (pixel)。
+	float color[4]              = {1.0f, 1.0f, 1.0f, 1.0f};      ///< テキストの RGBA 色。
+	float outlineColor[4]       = {0.0f, 0.0f, 0.0f, 1.0f};      ///< 縁取りの RGBA 色。
+	float outlineWidth          = 0.0f;                            ///< 縁取りの幅 (pixel)。
+	float shadowColor[4]        = {0.0f, 0.0f, 0.0f, 0.0f};      ///< 影の RGBA 色。
+	float shadowOffsetX         = 0.0f;                            ///< 影の X offset。
+	float shadowOffsetY         = 0.0f;                            ///< 影の Y offset。
+	FloatingTextFontWeight fontWeight = FloatingTextFontWeight::Normal; ///< font weight ヒント。
+	std::string backgroundImageKey;                                ///< 任意の背景画像 key。
 };
 
-/// @brief Global configuration for the floating text manager.
+/// @brief floating text manager 全体の構成設定。
 struct UIFloatingTextConfig
 {
-	float defaultDuration       = 1.0f;    ///< Default lifetime in seconds.
-	float defaultRiseSpeed      = 80.0f;   ///< Default upward speed in pixels/sec.
-	float defaultFadeStart      = 0.6f;    ///< Normalized time (0-1) when fade begins.
-	std::size_t maxActive       = 32;      ///< Maximum simultaneous entries.
-	bool stackSamePosition      = true;    ///< Offset entries at same position to avoid overlap.
-	float stackOffset           = 20.0f;   ///< Vertical offset between stacked entries.
+	float defaultDuration       = 1.0f;    ///< 既定の寿命 (秒)。
+	float defaultRiseSpeed      = 80.0f;   ///< 既定の上昇速度 (pixel/秒)。
+	float defaultFadeStart      = 0.6f;    ///< fade 開始の正規化時刻 (0-1)。
+	std::size_t maxActive       = 32;      ///< 同時 entry 数の上限。
+	bool stackSamePosition      = true;    ///< 同位置の entry を重ならないようずらす。
+	float stackOffset           = 20.0f;   ///< 重ねた entry 間の垂直 offset。
 };
 
-/// @brief A single floating text entry with animation state.
+/// @brief animation 状態を持つ単一の floating text entry。
 struct UIFloatingTextEntry
 {
-	std::string text;                              ///< Display text content.
-	float x             = 0.0f;                    ///< Spawn X position.
-	float y             = 0.0f;                    ///< Spawn Y position.
-	UIFloatingTextStyle style;                     ///< Visual style.
-	float duration      = 1.0f;                    ///< Lifetime in seconds.
-	float riseSpeed     = 80.0f;                   ///< Upward speed in pixels/sec.
-	float fadeStart     = 0.6f;                    ///< Normalized time when fade begins.
-	float scaleStart    = 1.0f;                    ///< Scale at spawn (1.0 = normal).
-	float scaleEnd      = 1.0f;                    ///< Scale at expiry.
-	EasingType easing   = EasingType::EaseOutQuad; ///< Easing curve for rise motion.
-	bool shakeEnabled   = false;                   ///< Enable shake effect (critical hits).
-	float shakeAmount   = 3.0f;                    ///< Shake amplitude in pixels.
-	float shakeFrequency = 20.0f;                  ///< Shake oscillation frequency (Hz).
+	std::string text;                              ///< 表示するテキスト内容。
+	float x             = 0.0f;                    ///< 出現 X 位置。
+	float y             = 0.0f;                    ///< 出現 Y 位置。
+	UIFloatingTextStyle style;                     ///< visual style。
+	float duration      = 1.0f;                    ///< 寿命 (秒)。
+	float riseSpeed     = 80.0f;                   ///< 上昇速度 (pixel/秒)。
+	float fadeStart     = 0.6f;                    ///< fade 開始の正規化時刻。
+	float scaleStart    = 1.0f;                    ///< 出現時の scale (1.0 = 等倍)。
+	float scaleEnd      = 1.0f;                    ///< 消滅時の scale。
+	EasingType easing   = EasingType::EaseOutQuad; ///< 上昇動作の easing curve。
+	bool shakeEnabled   = false;                   ///< shake 効果を有効化 (会心の一撃)。
+	float shakeAmount   = 3.0f;                    ///< shake 振幅 (pixel)。
+	float shakeFrequency = 20.0f;                  ///< shake 振動の周波数 (Hz)。
 
-	// ── Runtime state (managed by UIFloatingTextManager) ────
-	float elapsed       = 0.0f;                    ///< Elapsed time in seconds.
-	float currentX      = 0.0f;                    ///< Current rendered X.
-	float currentY      = 0.0f;                    ///< Current rendered Y.
-	float currentAlpha  = 1.0f;                    ///< Current opacity (0-1).
-	float currentScale  = 1.0f;                    ///< Current scale factor.
+	// ── runtime 状態 (UIFloatingTextManager が管理) ────
+	float elapsed       = 0.0f;                    ///< 経過時間 (秒)。
+	float currentX      = 0.0f;                    ///< 現在の描画 X。
+	float currentY      = 0.0f;                    ///< 現在の描画 Y。
+	float currentAlpha  = 1.0f;                    ///< 現在の不透明度 (0-1)。
+	float currentScale  = 1.0f;                    ///< 現在の scale 係数。
 };
 
-// ── Preset style factory functions ──────────────────────────────
+// ── preset style の factory 関数 ──────────────────────────────
 
-/// @brief Red, large, bold style with bounce easing for damage numbers.
+/// @brief ダメージ数値向けの、赤・大きめ・bold で bounce easing の style。
 [[nodiscard]] inline UIFloatingTextStyle damageStyle() noexcept
 {
 	UIFloatingTextStyle s;
@@ -87,7 +87,7 @@ struct UIFloatingTextEntry
 	return s;
 }
 
-/// @brief Green, medium style for healing numbers.
+/// @brief 回復数値向けの、緑・中サイズの style。
 [[nodiscard]] inline UIFloatingTextStyle healStyle() noexcept
 {
 	UIFloatingTextStyle s;
@@ -99,7 +99,7 @@ struct UIFloatingTextEntry
 	return s;
 }
 
-/// @brief Yellow, extra-large, bold style with shake for critical hits.
+/// @brief 会心の一撃向けの、黄・特大・bold で shake 付きの style。
 [[nodiscard]] inline UIFloatingTextStyle criticalStyle() noexcept
 {
 	UIFloatingTextStyle s;
@@ -114,7 +114,7 @@ struct UIFloatingTextEntry
 	return s;
 }
 
-/// @brief White, small style for item pickup notifications.
+/// @brief アイテム取得通知向けの、白・小サイズの style。
 [[nodiscard]] inline UIFloatingTextStyle itemPickupStyle() noexcept
 {
 	UIFloatingTextStyle s;
@@ -126,7 +126,7 @@ struct UIFloatingTextEntry
 	return s;
 }
 
-/// @brief Purple, medium style for experience gain.
+/// @brief 経験値獲得向けの、紫・中サイズの style。
 [[nodiscard]] inline UIFloatingTextStyle expGainStyle() noexcept
 {
 	UIFloatingTextStyle s;
@@ -138,7 +138,7 @@ struct UIFloatingTextEntry
 	return s;
 }
 
-/// @brief Manager that owns, spawns, updates, and expires floating text entries.
+/// @brief floating text entry を所有し、生成・更新・消滅させる manager。
 ///
 /// @code
 ///   UIFloatingTextConfig config;
@@ -162,29 +162,29 @@ class UIFloatingTextManager
 	std::vector<UIFloatingTextEntry> m_entries;
 
 public:
-	/// @brief Construct with default configuration.
+	/// @brief default 構成で構築する。
 	UIFloatingTextManager() = default;
 
-	/// @brief Construct with custom configuration.
-	/// @param config Manager configuration.
+	/// @brief カスタム構成で構築する。
+	/// @param config manager の構成設定。
 	explicit UIFloatingTextManager(const UIFloatingTextConfig& config)
 		: m_config(config)
 	{
 	}
 
-	/// @brief Get the current configuration.
+	/// @brief 現在の構成設定を取得する。
 	[[nodiscard]] const UIFloatingTextConfig& config() const noexcept { return m_config; }
 
-	/// @brief Set a new configuration.
-	/// @param config New configuration.
+	/// @brief 新しい構成設定を設定する。
+	/// @param config 新しい構成設定。
 	void setConfig(const UIFloatingTextConfig& config) { m_config = config; }
 
-	/// @brief Spawn a new floating text entry.
-	/// @param text Display text.
-	/// @param x Spawn X position.
-	/// @param y Spawn Y position.
-	/// @param style Visual style.
-	/// @return Pointer to the spawned entry, or nullptr if maxActive reached.
+	/// @brief 新しい floating text entry を生成する。
+	/// @param text 表示テキスト。
+	/// @param x 出現 X 位置。
+	/// @param y 出現 Y 位置。
+	/// @param style visual style。
+	/// @return 生成した entry へのポインタ。maxActive 到達時は nullptr。
 	UIFloatingTextEntry* spawn(const std::string& text, float x, float y,
 	                           const UIFloatingTextStyle& style)
 	{
@@ -206,7 +206,7 @@ public:
 		entry.currentAlpha  = 1.0f;
 		entry.currentScale  = entry.scaleStart;
 
-		// Apply stack offset to avoid overlap with existing entries near the same position.
+		// 同じ位置付近の既存 entry と重ならないよう stack offset を適用する。
 		if (m_config.stackSamePosition)
 		{
 			applyStackOffset(entry);
@@ -216,9 +216,9 @@ public:
 		return &m_entries.back();
 	}
 
-	/// @brief Spawn a floating text entry with full customization.
-	/// @param entry Pre-configured entry (elapsed and current* fields will be reset).
-	/// @return Pointer to the spawned entry, or nullptr if maxActive reached.
+	/// @brief 完全カスタム指定で floating text entry を生成する。
+	/// @param entry 構成済み entry (elapsed と current* フィールドは reset される)。
+	/// @return 生成した entry へのポインタ。maxActive 到達時は nullptr。
 	UIFloatingTextEntry* spawnCustom(UIFloatingTextEntry entry)
 	{
 		if (m_entries.size() >= m_config.maxActive)
@@ -241,8 +241,8 @@ public:
 		return &m_entries.back();
 	}
 
-	/// @brief Update all active entries. Removes expired entries.
-	/// @param dt Delta time in seconds.
+	/// @brief すべての active entry を更新する。寿命切れの entry は除去する。
+	/// @param dt delta time (秒)。
 	void update(float dt)
 	{
 		for (auto& entry : m_entries)
@@ -250,12 +250,12 @@ public:
 			entry.elapsed += dt;
 			const float t = std::clamp(entry.elapsed / entry.duration, 0.0f, 1.0f);
 
-			// Rise motion with easing.
+			// easing 付きの上昇動作。
 			const float easedT = easing::apply(entry.easing, t);
 			const float totalRise = entry.riseSpeed * entry.duration;
 			entry.currentY = entry.y - (totalRise * easedT);
 
-			// Shake effect (critical hits).
+			// shake 効果 (会心の一撃)。
 			float shakeOffsetX = 0.0f;
 			if (entry.shakeEnabled && t < entry.fadeStart)
 			{
@@ -265,7 +265,7 @@ public:
 			}
 			entry.currentX = entry.x + shakeOffsetX;
 
-			// Fade.
+			// fade。
 			if (t >= entry.fadeStart && entry.fadeStart < 1.0f)
 			{
 				const float fadeT = (t - entry.fadeStart) / (1.0f - entry.fadeStart);
@@ -276,31 +276,31 @@ public:
 				entry.currentAlpha = 1.0f;
 			}
 
-			// Scale interpolation.
+			// scale の補間。
 			entry.currentScale = entry.scaleStart + (entry.scaleEnd - entry.scaleStart) * t;
 		}
 
-		// Remove expired entries.
+		// 寿命切れの entry を除去する。
 		m_entries.erase(
 			std::remove_if(m_entries.begin(), m_entries.end(),
 				[](const UIFloatingTextEntry& e) { return e.elapsed >= e.duration; }),
 			m_entries.end());
 	}
 
-	/// @brief Get all currently active entries (read-only).
+	/// @brief 現在 active な entry をすべて取得する (read-only)。
 	[[nodiscard]] const std::vector<UIFloatingTextEntry>& activeEntries() const noexcept
 	{
 		return m_entries;
 	}
 
-	/// @brief Get the number of currently active entries.
+	/// @brief 現在 active な entry の数を取得する。
 	[[nodiscard]] std::size_t activeCount() const noexcept { return m_entries.size(); }
 
-	/// @brief Remove all active entries immediately.
+	/// @brief active な entry をすべて即座に除去する。
 	void clearAll() { m_entries.clear(); }
 
 private:
-	/// @brief Offset a new entry vertically if others exist near the same spawn position.
+	/// @brief 同じ出現位置付近に他の entry があれば、新しい entry を垂直方向へずらす。
 	void applyStackOffset(UIFloatingTextEntry& entry)
 	{
 		constexpr float proximityThreshold = 10.0f;

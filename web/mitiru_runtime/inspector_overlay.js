@@ -1,30 +1,30 @@
 /*!
- * inspector_overlay.js — Visual debug inspector for entity positions, sprite
- * bounds, hitbox bounds, and anchor points.
+ * inspector_overlay.js — entity 位置・sprite 境界・hitbox 境界・anchor 点の
+ * visual debug inspector。
  *
- * Solves the "AI can't see the screen" problem by rendering overlay data onto
- * a Canvas2D context so the result can be captured as a PNG and inspected.
+ * overlay データを Canvas2D context に描画して結果を PNG として capture・
+ * 検査できるようにし、「AI が画面を見られない」問題を解決する。
  *
  * API:
  *   const overlay = new InspectorOverlay();
- *   overlay.register(entityId, getter)   — getter returns EntityDebugInfo
+ *   overlay.register(entityId, getter)   — getter は EntityDebugInfo を返す
  *   overlay.unregister(entityId)
  *   overlay.setEnabled(bool)
- *   overlay.render(ctx2d)               — call each frame after game rendering
- *   overlay.bindKeyToggle(window, 'F3') — optional keyboard toggle
+ *   overlay.render(ctx2d)               — ゲーム描画後に毎 frame 呼ぶ
+ *   overlay.bindKeyToggle(window, 'F3') — 任意のキーボード toggle
  *
  * EntityDebugInfo shape:
  *   {
  *     name:       string,
- *     spriteRect: { x, y, w, h },   // canvas-space pixel rect
- *     hitboxRect: { x, y, w, h },   // canvas-space pixel rect
- *     anchor:     { x, y },          // canvas-space pixel point
+ *     spriteRect: { x, y, w, h },   // canvas 座標の pixel rect
+ *     hitboxRect: { x, y, w, h },   // canvas 座標の pixel rect
+ *     anchor:     { x, y },          // canvas 座標の pixel 点
  *   }
  */
 (function (global) {
   'use strict';
 
-  // ── colour constants ────────────────────────────────────────────────────────
+  // ── 色定数 ────────────────────────────────────────────────────────
   const SPRITE_STROKE  = 'rgba(0,128,255,1)';
   const HITBOX_STROKE  = 'rgba(255,0,0,1)';
   const HITBOX_FILL    = 'rgba(255,0,0,0.15)';
@@ -32,9 +32,9 @@
   const LABEL_TEXT     = 'rgba(255,255,255,1)';
   const LABEL_SHADOW   = 'rgba(0,0,0,1)';
 
-  // ── helpers ─────────────────────────────────────────────────────────────────
+  // ── ヘルパー ─────────────────────────────────────────────────────────────────
 
-  /** Draw a 1 px stroked rectangle. */
+  /** 1 px の枠線の矩形を描く。 */
   function strokeRect(ctx, rect, color) {
     ctx.save();
     ctx.strokeStyle = color;
@@ -43,7 +43,7 @@
     ctx.restore();
   }
 
-  /** Draw a filled + stroked rectangle. */
+  /** 塗りつぶし + 枠線の矩形を描く。 */
   function fillStrokeRect(ctx, rect, fillColor, strokeColor) {
     ctx.save();
     ctx.fillStyle = fillColor;
@@ -54,7 +54,7 @@
     ctx.restore();
   }
 
-  /** Draw a 4×4 filled square centred on (px, py). */
+  /** (px, py) を中心とする 4×4 の塗りつぶし正方形を描く。 */
   function drawAnchorSquare(ctx, px, py, color) {
     ctx.save();
     ctx.fillStyle = color;
@@ -63,8 +63,8 @@
   }
 
   /**
-   * Draw text with a 1 px black outline for contrast.
-   * Position is clamped so the label stays within the canvas bounds.
+   * コントラストのため 1 px の黒 outline 付きでテキストを描く。
+   * label が canvas 境界内に収まるよう位置を clamp する。
    */
   function drawLabel(ctx, text, px, py, canvasWidth, canvasHeight) {
     ctx.save();
@@ -73,13 +73,13 @@
 
     const metrics = ctx.measureText(text);
     const textW = metrics.width;
-    const textH = 12; // approximate ascent for 11px mono
+    const textH = 12; // 11px mono の ascent 近似値
 
-    // clamp so both the label and its 1 px outline stay inside the canvas
+    // label と 1 px outline の両方が canvas 内に収まるよう clamp する
     const clampedX = Math.max(2, Math.min(px, canvasWidth  - textW - 2));
     const clampedY = Math.max(textH + 2, Math.min(py, canvasHeight - 2));
 
-    // 1 px black outline (8-direction)
+    // 1 px の黒 outline (8 方向)
     ctx.fillStyle = LABEL_SHADOW;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
@@ -98,8 +98,8 @@
 
   /**
    * @class InspectorOverlay
-   * Manages a registry of entity debug getters and renders their spatial info
-   * to a CanvasRenderingContext2D.
+   * entity debug getter の registry を管理し、その空間情報を
+   * CanvasRenderingContext2D に描画する。
    */
   function InspectorOverlay() {
     this._enabled  = false;
@@ -107,9 +107,9 @@
   }
 
   /**
-   * Register an entity getter.
-   * @param {string}   entityId  Unique identifier for the entity.
-   * @param {Function} getter    Returns EntityDebugInfo each frame.
+   * entity getter を登録する。
+   * @param {string}   entityId  entity の一意な識別子。
+   * @param {Function} getter    毎 frame EntityDebugInfo を返す。
    */
   InspectorOverlay.prototype.register = function (entityId, getter) {
     if (typeof entityId !== 'string' || entityId.length === 0) {
@@ -122,7 +122,7 @@
   };
 
   /**
-   * Unregister an entity getter.
+   * entity getter を登録解除する。
    * @param {string} entityId
    */
   InspectorOverlay.prototype.unregister = function (entityId) {
@@ -130,7 +130,7 @@
   };
 
   /**
-   * Enable or disable the overlay.
+   * overlay を有効/無効にする。
    * @param {boolean} enabled
    */
   InspectorOverlay.prototype.setEnabled = function (enabled) {
@@ -143,8 +143,8 @@
   };
 
   /**
-   * Render all registered entities onto the provided 2D canvas context.
-   * No-ops when disabled.
+   * 登録済みの全 entity を渡された 2D canvas context に描画する。
+   * 無効時は no-op。
    * @param {CanvasRenderingContext2D} ctx
    */
   InspectorOverlay.prototype.render = function (ctx) {
@@ -162,42 +162,42 @@
       try {
         info = getter();
       } catch (e) {
-        continue; // skip broken getters silently
+        continue; // 壊れた getter は黙って skip
       }
 
       if (!info) { continue; }
 
       const { name, spriteRect, hitboxRect, anchor } = info;
 
-      // sprite bounds — blue outline
+      // sprite 境界 — 青い枠線
       if (spriteRect) {
         strokeRect(ctx, spriteRect, SPRITE_STROKE);
       }
 
-      // hitbox bounds — red fill + outline
+      // hitbox 境界 — 赤の塗りつぶし + 枠線
       if (hitboxRect) {
         fillStrokeRect(ctx, hitboxRect, HITBOX_FILL, HITBOX_STROKE);
       }
 
-      // anchor point — 4×4 magenta square
+      // anchor 点 — 4×4 のマゼンタ正方形
       if (anchor) {
         drawAnchorSquare(ctx, anchor.x, anchor.y, ANCHOR_FILL);
       }
 
-      // label "name @ (x,y)" above sprite bbox
+      // sprite bbox の上に "name @ (x,y)" ラベル
       if (name && spriteRect) {
         const label  = name + ' @ (' + Math.round(spriteRect.x) + ',' + Math.round(spriteRect.y) + ')';
         const labelX = spriteRect.x;
-        const labelY = spriteRect.y - 1; // 1 px above top edge
+        const labelY = spriteRect.y - 1; // 上辺の 1 px 上
         drawLabel(ctx, label, labelX, labelY, canvasWidth, canvasHeight);
       }
     }
   };
 
   /**
-   * Bind an F3 (or any key) toggle to window.
-   * @param {Window}  win       The window object to attach to.
-   * @param {string}  key       Key to listen for (e.g. 'F3').
+   * F3 (または任意のキー) の toggle を window に bind する。
+   * @param {Window}  win       attach 先の window object。
+   * @param {string}  key       監視するキー (例 'F3')。
    */
   InspectorOverlay.prototype.bindKeyToggle = function (win, key) {
     const self = this;

@@ -34,7 +34,7 @@ class ReplaySystem
 public:
 	/// @brief 記録を開始する
 	/// @param seed 乱数シード（決定論的リプレイに必要）
-	/// @param tps Ticks Per Second
+	/// @param tps 1 秒あたりの tick 数 (Ticks Per Second)
 	void startRecording(std::uint64_t seed = 0, int tps = 60)
 	{
 		stopAll();

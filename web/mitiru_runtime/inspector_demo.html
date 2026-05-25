@@ -27,9 +27,9 @@
     const infoEl  = document.getElementById('info');
     const overlay = new mitiru.InspectorOverlay();
 
-    // ── 3 demo entities ────────────────────────────────────────────────────────
+    // ── demo entity 3 個 ────────────────────────────────────────────────────────
 
-    // Entity A: frog character at top-left
+    // Entity A: 左上の frog キャラクター
     let frogX = 60, frogY = 80;
     overlay.register('frog', function () {
       return {
@@ -40,7 +40,7 @@
       };
     });
 
-    // Entity B: item box at centre
+    // Entity B: 中央の item box
     overlay.register('item_box', function () {
       return {
         name:       'ItemBox',
@@ -50,7 +50,7 @@
       };
     });
 
-    // Entity C: edge-case entity near top-right corner (tests label clamping)
+    // Entity C: 右上隅付近の edge-case entity (label の clamp をテスト)
     overlay.register('corner_enemy', function () {
       return {
         name:       'CornerEnemy',
@@ -67,11 +67,11 @@
     function drawScene() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // simple animated frog (moves in a small sine arc)
+      // 単純にアニメーションする frog (小さな sine 弧を描いて動く)
       const t = Date.now() / 1000;
       frogX = 60 + Math.round(Math.sin(t) * 20);
 
-      // draw placeholder sprites as simple coloured rects
+      // placeholder sprite を単純な色付き矩形として描画
       ctx.fillStyle = '#16c79a';
       ctx.fillRect(frogX, frogY, 64, 64);   // frog
 
@@ -81,10 +81,10 @@
       ctx.fillStyle = '#f5a623';
       ctx.fillRect(580, 2, 48, 48);          // corner enemy
 
-      // overlay on top
+      // 上に overlay
       overlay.render(ctx);
 
-      // update label
+      // label を更新
       infoEl.textContent = 'Inspector: ' + (overlay.isEnabled() ? 'ON  (F3 to toggle)' : 'OFF (F3 to toggle)');
     }
 

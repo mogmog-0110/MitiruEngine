@@ -1,18 +1,17 @@
-// mitiru_audio — axis 3 (per-system isolation), 2nd subsystem demo.
+// mitiru_audio — axis 3 (全 system 単独起動)、2 番目の subsystem デモ。
 //
-// Boots ONLY the audio subsystem (miniaudio backend) alongside a minimal
-// renderer for the status HUD. No CEF, no ECS, no scene manager, no
-// physics. Proves the per-system isolation pattern (introduced by
-// mitiru_renderer) is repeatable for arbitrary subsystems.
+// audio subsystem (miniaudio backend) のみを、status HUD 用の最小 renderer と
+// 共に起動する。CEF・ECS・scene manager・physics なし。mitiru_renderer が
+// 導入した単独起動パターンが任意の subsystem で再現できることを示す。
 //
-// What you can do:
-//   - launch with `mitiru audio` to confirm miniaudio inits on your machine
-//   - launch with `mitiru_audio <path>` to load a .wav/.mp3/.flac on startup
-//   - SPACE to (re-)play the loaded file
-//   - + / - to step master volume (in 10% increments)
-//   - ESC to quit
+// できること:
+//   - `mitiru audio` で起動し、この環境で miniaudio が init するか確認
+//   - `mitiru_audio <path>` で起動し、.wav/.mp3/.flac を起動時に読み込む
+//   - SPACE で読み込んだファイルを (再)再生
+//   - + / - で master volume を 10% 刻みで変更
+//   - ESC で終了
 //
-// Controls:  SPACE play · + - volume · ESC quit
+// 操作:  SPACE 再生 · + - 音量 · ESC 終了
 
 #include <cmath>
 #include <cstdio>
@@ -55,7 +54,7 @@ public:
             }
         }
 
-        // Volume bump using the keyboard's +/- (Equal / Minus).
+        // キーボードの +/- (Equal / Minus) で音量を上下。
         if (input().isKeyJustPressed(mitiru::KeyCode::Equal))
         {
             m_volume = std::min(1.0f, m_volume + 0.10f);
@@ -92,16 +91,16 @@ private:
         const float barW = std::min(m_screenW * 0.6f, 520.0f);
         const float barH = 28.0f;
 
-        // Outline.
+        // 外枠。
         screen.drawRect(
             sgc::Rectf{cx - barW * 0.5f - 2.0f, cy - barH * 0.5f - 2.0f,
                        barW + 4.0f, barH + 4.0f},
             sgc::Colorf{0.18f, 0.22f, 0.32f, 1.0f});
-        // Track.
+        // トラック。
         screen.drawRect(
             sgc::Rectf{cx - barW * 0.5f, cy - barH * 0.5f, barW, barH},
             sgc::Colorf{0.10f, 0.13f, 0.20f, 1.0f});
-        // Fill.
+        // フィル。
         const float fillW = barW * m_volume;
         const sgc::Colorf fill = m_audioReady
             ? sgc::Colorf{0.40f, 0.85f, 0.95f, 1.0f}
@@ -110,8 +109,8 @@ private:
             sgc::Rectf{cx - barW * 0.5f, cy - barH * 0.5f, fillW, barH},
             fill);
 
-        // "Vibration" overlay — bar pulses for ~0.5s after each playback to
-        // give visual confirmation even without an actual audio device.
+        // "振動" オーバーレイ — 再生のたびにバーを ~0.5s 脈動させ、実 audio
+        // デバイスが無くても視覚的に確認できるようにする。
         if (m_lastPlayT > 0.0f && m_elapsed - m_lastPlayT < 0.5f)
         {
             const float t = (m_elapsed - m_lastPlayT) / 0.5f;

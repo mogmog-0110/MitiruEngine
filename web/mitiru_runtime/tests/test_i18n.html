@@ -2,14 +2,14 @@
 <meta charset="utf-8">
 <title>mitiru_i18n.js tests</title>
 <!--
-    test_i18n.html — mitiru.i18n (F-07) unit tests
-    Pattern: inline IIFE (matches test_state.html / test_save.html).
+    test_i18n.html — mitiru.i18n (F-07) unit test
+    パターン: inline IIFE (test_state.html / test_save.html に合わせる)。
 
-    Run:
+    走らせ方:
       python tools/mitiru_serve.py --port 8770
       open http://localhost:8770/web/mitiru_runtime/tests/test_i18n.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -50,7 +50,7 @@
 		nested: { settings: { bgm: 'BGM Volume' } }
 	};
 
-	// Helper — make a container attached to body.
+	// Helper — body に append した container を作る。
 	function makeRoot(html)
 	{
 		const el = document.createElement('div');
@@ -63,7 +63,7 @@
 		if (el && el.parentNode) { el.parentNode.removeChild(el); }
 	}
 
-	// ── 1. addLocale + t() basics ────────────────────────────────
+	// ── 1. addLocale + t() の基本 ────────────────────────────────
 	t.case('addLocale then t() returns the flat value', function()
 	{
 		i18n.addLocale('ja', JA);
@@ -107,7 +107,7 @@
 		t.assertEq(i18n.t('nope.absent'), 'nope.absent');
 	});
 
-	// ── 2. locale switching ──────────────────────────────────────
+	// ── 2. locale 切り替え ──────────────────────────────────────
 	t.case('setLocale switches the active table', function()
 	{
 		i18n.addLocale('ja', JA);
@@ -181,7 +181,7 @@
 		t.assertEq(got.prev, 'ja');
 		off();
 
-		// After unsubscribe, no further calls.
+		// unsubscribe 後はそれ以上呼ばれない。
 		got = null;
 		i18n.setLocale('ja');
 		t.assertEq(got, null);
@@ -212,7 +212,7 @@
 		cleanup(root);
 	});
 
-	// ── 7. bindDOM + attribute binding ───────────────────────────
+	// ── 7. bindDOM + 属性バインド ───────────────────────────
 	t.case('bindDOM applies attribute when data-i18n-attr is set', function()
 	{
 		i18n.addLocale('ja', JA);
@@ -220,7 +220,7 @@
 		const root = makeRoot('<button data-i18n="menu.start" data-i18n-attr="title">Ignored</button>');
 		i18n.bindDOM(root);
 		t.assertEq(root.firstElementChild.getAttribute('title'), 'はじめる');
-		// textContent must NOT be overwritten when attr binding is used.
+		// attr バインド使用時は textContent を上書きしてはいけない。
 		t.assertEq(root.firstElementChild.textContent, 'Ignored');
 		i18n.unbindDOM(root);
 		cleanup(root);
@@ -238,7 +238,7 @@
 		cleanup(root);
 	});
 
-	// ── 9. setLocale re-applies to bound DOM ─────────────────────
+	// ── 9. setLocale は bind 済み DOM に再適用する ─────────────────────
 	t.case('setLocale re-applies bound DOM to the new locale', function()
 	{
 		i18n.addLocale('ja', JA);
@@ -262,7 +262,7 @@
 		const root = makeRoot('<span data-i18n="menu.title"></span>');
 		i18n.bindDOM(root);
 		t.assertEq(i18n.unbindDOM(root), 1);
-		// Mutate manually, then switch locale — must remain as-is.
+		// 手動で変更してから locale 切り替え — そのまま保たれるはず。
 		root.firstElementChild.textContent = 'LOCKED';
 		i18n.setLocale('en');
 		t.assertEq(root.firstElementChild.textContent, 'LOCKED');
@@ -276,12 +276,12 @@
 		const root = makeRoot('<span data-i18n="menu.title"></span>');
 		i18n.bindDOM(root);
 		i18n.bindDOM(root);
-		// Only one binding slot should exist — verify by unbind count.
+		// binding slot は 1 つだけのはず — unbind の数で確認する。
 		t.assertEq(i18n.unbindDOM(root), 1);
 		cleanup(root);
 	});
 
-	// ── 11. font swap ────────────────────────────────────────────
+	// ── 11. font の切り替え ────────────────────────────────────────────
 	t.case('setFontMap + setLocale writes --mitiru-locale-font on <html>', function()
 	{
 		i18n.addLocale('ja', JA);
@@ -296,7 +296,7 @@
 		i18n.setLocale('en');
 		const v2 = document.documentElement.style.getPropertyValue('--mitiru-locale-font');
 		t.assertEq(v2.indexOf('Nunito') >= 0, true);
-		// Reset.
+		// リセット。
 		i18n.setFontMap({});
 		document.documentElement.style.removeProperty('--mitiru-locale-font');
 	});
@@ -308,7 +308,7 @@
 		i18n.setFontMap({});
 	});
 
-	// ── 12. load() via fetch (inline data path only — no server dep) ────
+	// ── 12. fetch 経由の load() (inline data 経路のみ — server 依存無し) ────
 	t.case('load(locale, {inline data}) skips fetch and registers', function()
 	{
 		return i18n.load('xx', { hello: 'ハロー' }).then(function()
@@ -322,11 +322,11 @@
 	{
 		return i18n.load('').then(
 			function()  { throw new Error('expected rejection'); },
-			function(_e) { /* ok */ }
+			function(_e) { /* 正常 */ }
 		);
 	});
 
-	// ── 13. addLocale validation ─────────────────────────────────
+	// ── 13. addLocale の validation ─────────────────────────────────
 	t.case('addLocale throws on non-string locale', function()
 	{
 		let threw = false;
@@ -341,7 +341,7 @@
 		t.assertEq(threw, true);
 	});
 
-	// ── drive the harness ─────────────────────────────────────────
+	// ── harness を走らせる ─────────────────────────────────────────
 	mitiru.test.run();
 })();
 </script>

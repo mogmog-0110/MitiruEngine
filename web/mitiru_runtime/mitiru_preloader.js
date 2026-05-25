@@ -1,19 +1,19 @@
 /*!
- * mitiru_preloader.js — boot-time asset preloader + progress UI (NF-04)
+ * mitiru_preloader.js — 起動時の asset preloader + progress UI (NF-04)
  *
- * Registered manifest list, progress bar mount, fade-out on completion.
- * Every scene can opt in or skip independently.
+ * manifest list の登録、progress bar の mount、完了時の fade-out。
+ * 各シーンが個別に opt in / skip できる。
  *
  * Public API:
- *   mitiru.preloader.register(items)         Register asset items to load.
- *   mitiru.preloader.mount(containerEl, opts) Build progress-bar DOM.
- *   mitiru.preloader.unmount()               Remove from DOM; safe to re-mount.
+ *   mitiru.preloader.register(items)         ロードする asset item を登録。
+ *   mitiru.preloader.mount(containerEl, opts) progress-bar の DOM を構築。
+ *   mitiru.preloader.unmount()               DOM から除去; 再 mount 可。
  *   mitiru.preloader.start()                 → Promise<{loaded, failed}>
- *   mitiru.preloader.get(key)                Resolved value after start().
+ *   mitiru.preloader.get(key)                start() 後に解決された値。
  *   mitiru.preloader.progress()              { done, total, fraction, currentKey }
- *   mitiru.preloader.on(event, cb)           Subscribe: 'progress'|'item:done'|'item:fail'|'complete'
- *   mitiru.preloader.off(event, cb)          Unsubscribe.
- *   mitiru.preloader.clear()                 Reset registry + resolved map.
+ *   mitiru.preloader.on(event, cb)           購読: 'progress'|'item:done'|'item:fail'|'complete'
+ *   mitiru.preloader.off(event, cb)          購読解除。
+ *   mitiru.preloader.clear()                 registry + resolved map をリセット。
  *
  * Events:
  *   'progress'   { done, total, fraction, currentKey }
@@ -21,20 +21,20 @@
  *   'item:fail'  { key, kind, error }
  *   'complete'   { loaded: string[], failed: string[] }
  *
- * Depends on mitiru.fetch (E-15) when available; falls back to global fetch.
+ * mitiru.fetch (E-15) が使えればそれに依存; なければ global fetch に fallback。
  *
- * Implements spec: NF-04
+ * 仕様: NF-04
  */
 (function(global)
 {
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.preloader) { return; }  // already loaded
+	if (mitiru.preloader) { return; }  // ロード済み
 
 	const document = global.document;
 
-	// ── capability checks (warn once) ────────────────────────────
+	// ── capability チェック (一度だけ warn) ────────────────────────────
 	var _warnedFetch = false;
 	var _warnedImage = false;
 	var _warnedAudio = false;
@@ -81,9 +81,9 @@
 		return true;
 	}
 
-	// ── internal state ────────────────────────────────────────────
-	var _items    = [];    // registered items: [{kind, path, key}]
-	var _resolved = {};    // key → loaded value
+	// ── 内部状態 ────────────────────────────────────────────
+	var _items    = [];    // 登録済み item: [{kind, path, key}]
+	var _resolved = {};    // key → ロード済みの値
 	var _listeners = {};   // event → [cb, ...]
 
 	var _done    = 0;
@@ -91,13 +91,13 @@
 	var _current = '';
 	var _running = false;
 
-	// DOM state
-	var _root     = null;  // mounted container div
+	// DOM 状態
+	var _root     = null;  // mount された container div
 	var _fill     = null;  // .mitiru-preloader__fill
 	var _label    = null;  // .mitiru-preloader__label
 	var _mountOpts = null;
 
-	// ── event helpers ─────────────────────────────────────────────
+	// ── event ヘルパー ─────────────────────────────────────────────
 
 	function _emit(event, data)
 	{
@@ -109,7 +109,7 @@
 		}
 	}
 
-	// ── loader helpers ────────────────────────────────────────────
+	// ── loader ヘルパー ────────────────────────────────────────────
 
 	function _doFetch(path)
 	{
@@ -167,7 +167,7 @@
 		return Promise.reject(new Error('unknown kind: ' + kind));
 	}
 
-	// ── concurrency pool ─────────────────────────────────────────
+	// ── 並列ロードプール ─────────────────────────────────────────
 
 	function _runPool(items, concurrency, onItem)
 	{
@@ -202,7 +202,7 @@
 		});
 	}
 
-	// ── UI helpers ───────────────────────────────────────────────
+	// ── UI ヘルパー ───────────────────────────────────────────────
 
 	function _updateUI()
 	{
@@ -230,7 +230,7 @@
 		setTimeout(function()
 		{
 			if (captured && captured.parentNode) { captured.parentNode.removeChild(captured); }
-			// Clear internal DOM refs only if this is still the active root.
+			// 現在もこれが active な root の時だけ内部 DOM ref をクリアする。
 			if (_root === captured)
 			{
 				_root  = null;
@@ -244,8 +244,8 @@
 	var preloader = mitiru.preloader = Object.create(null);
 
 	/**
-	 * Register asset items to load.
-	 * Calling register() multiple times concatenates to the existing list.
+	 * ロードする asset item を登録する。
+	 * register() を複数回呼ぶと既存リストに連結される。
 	 *
 	 * @param {Array<{kind: string, path: string, key: string}>} items
 	 */
@@ -265,8 +265,8 @@
 	};
 
 	/**
-	 * Build the progress-bar DOM into container.
-	 * If already mounted, the prior instance is removed first (idempotent).
+	 * progress-bar の DOM を container に構築する。
+	 * 既に mount 済みなら先に旧 instance を除去する (冪等)。
 	 *
 	 * @param {HTMLElement} containerEl
 	 * @param {object}      [opts]
@@ -282,7 +282,7 @@
 			throw new Error('mitiru.preloader.mount: containerEl must be a DOM element');
 		}
 
-		// Double-mount protection.
+		// 二重 mount を防ぐ。
 		if (_root) { preloader.unmount(); }
 
 		_mountOpts = opts || {};
@@ -291,7 +291,7 @@
 		_root.className = 'mitiru-preloader';
 		_root.setAttribute('data-mitiru-preloader', '');
 
-		// Inline fallback styles when mitiru_components.css is not loaded.
+		// mitiru_components.css が未ロードの時の inline fallback style。
 		if (!_isCssLoaded())
 		{
 			_root.style.cssText = [
@@ -352,7 +352,7 @@
 	};
 
 	/**
-	 * Check if the CSS component sheet is loaded (heuristic on class name).
+	 * CSS component sheet がロード済みか判定する (class 名による heuristic)。
 	 */
 	function _isCssLoaded()
 	{
@@ -371,12 +371,12 @@
 				}
 			}
 		}
-		catch (_e) { /* ignore */ }
+		catch (_e) { /* 無視 */ }
 		return false;
 	}
 
 	/**
-	 * Remove the preloader DOM. Safe to call when not mounted.
+	 * preloader の DOM を除去する。未 mount 時に呼んでも安全。
 	 */
 	preloader.unmount = function()
 	{
@@ -387,10 +387,10 @@
 	};
 
 	/**
-	 * Start loading all registered items.
-	 * Returns a Promise that resolves with { loaded: string[], failed: string[] }.
+	 * 登録済みの全 item のロードを開始する。
+	 * { loaded: string[], failed: string[] } で resolve する Promise を返す。
 	 *
-	 * @param {object} [opts]  Same options as mount(); concurrency applies here.
+	 * @param {object} [opts]  mount() と同じ options; concurrency はここで効く。
 	 * @returns {Promise<{loaded: string[], failed: string[]}>}
 	 */
 	preloader.start = function(opts)
@@ -456,10 +456,10 @@
 	};
 
 	/**
-	 * Get the resolved value for a key after start() completes.
+	 * start() 完了後、key に対応する解決済みの値を取得する。
 	 *
 	 * @param  {string} key
-	 * @returns {*}  image / HTMLAudioElement / parsed JSON / text string / Response
+	 * @returns {*}  image / HTMLAudioElement / parse 済み JSON / text 文字列 / Response
 	 */
 	preloader.get = function(key)
 	{
@@ -467,7 +467,7 @@
 	};
 
 	/**
-	 * Current loading progress snapshot.
+	 * 現在のロード進捗の snapshot。
 	 *
 	 * @returns {{ done: number, total: number, fraction: number, currentKey: string }}
 	 */
@@ -478,12 +478,12 @@
 	};
 
 	/**
-	 * Subscribe to a preloader event.
-	 * Unknown event types are silently accepted (no-op until that event fires).
+	 * preloader event を購読する。
+	 * 未知の event 型は黙って受理される (その event が発火するまで no-op)。
 	 *
 	 * @param  {string}   event  'progress'|'item:done'|'item:fail'|'complete'
 	 * @param  {Function} cb
-	 * @returns {Function} unsubscribe
+	 * @returns {Function} 購読解除
 	 */
 	preloader.on = function(event, cb)
 	{
@@ -494,7 +494,7 @@
 	};
 
 	/**
-	 * Unsubscribe a previously registered event listener.
+	 * 登録済みの event listener を購読解除する。
 	 *
 	 * @param {string}   event
 	 * @param {Function} cb
@@ -510,7 +510,7 @@
 	};
 
 	/**
-	 * Reset registry and resolved map. Does not affect mounted DOM.
+	 * registry と resolved map をリセットする。mount 済みの DOM には影響しない。
 	 */
 	preloader.clear = function()
 	{

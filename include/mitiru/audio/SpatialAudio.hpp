@@ -136,7 +136,7 @@ private:
 
 		case AttenuationModel::InverseDistance:
 		{
-			// 1/d model: volume = minDist / (minDist + rolloff * (dist - minDist))
+			// 1/d 減衰: volume = minDist / (minDist + rolloff * (dist - minDist))
 			const float denom = config.minDistance
 				+ config.rolloffFactor * (distance - config.minDistance);
 			return (denom > 0.0f) ? (config.minDistance / denom) : 0.0f;
@@ -144,7 +144,7 @@ private:
 
 		case AttenuationModel::LinearDistance:
 		{
-			// Linear: volume = 1 - rolloff * (dist - minDist) / (maxDist - minDist)
+			// 線形減衰: volume = 1 - rolloff * (dist - minDist) / (maxDist - minDist)
 			const float range = config.maxDistance - config.minDistance;
 			if (range <= 0.0f) { return 0.0f; }
 			return 1.0f - config.rolloffFactor * (distance - config.minDistance) / range;
@@ -152,7 +152,7 @@ private:
 
 		case AttenuationModel::ExponentialDistance:
 		{
-			// Exponential: volume = (dist / minDist) ^ (-rolloff)
+			// 指数減衰: volume = (dist / minDist) ^ (-rolloff)
 			if (config.minDistance <= 0.0f) { return 0.0f; }
 			return std::pow(distance / config.minDistance, -config.rolloffFactor);
 		}

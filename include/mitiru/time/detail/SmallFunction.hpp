@@ -10,12 +10,12 @@
 #include "mitiru/debug/TracyZones.hpp"
 
 /// @file detail/SmallFunction.hpp
-/// @brief Move-only, header-only SBO type-erased callable for @c void().
+/// @brief @c void() 用の move-only・header-only な SBO type-erased callable。
 ///
-/// Stores callables with captures up to 48 bytes inline (no heap allocation).
-/// Larger captures automatically fall back to a heap allocation.
+/// キャプチャが 48 byte までの callable をインラインに格納する (heap allocation 無し)。
+/// より大きいキャプチャは自動的に heap allocation にフォールバックする。
 ///
-/// Usage example:
+/// 使用例:
 /// @code
 ///   mitiru::time::detail::SmallFunction f{[x = 42]{ printf("%d\n", x); }};
 ///   f();                  // prints 42
@@ -24,27 +24,27 @@
 ///   if (g) { g(); }       // operator bool guards against empty call
 /// @endcode
 ///
-/// Thread-safety: NOT thread-safe. Use on a single thread.
+/// スレッド安全性: thread-safe ではない。単一スレッドで使うこと。
 
 namespace mitiru::time::detail {
 
-/// Move-only type-erased callable for @c void().
+/// @c void() 用の move-only な type-erased callable。
 ///
-/// Inline buffer is 48 bytes. Callables that exceed 48 bytes in size or
-/// require stricter alignment than @c std::max_align_t are heap-allocated
-/// transparently.
+/// インライン buffer は 48 byte。サイズが 48 byte を超える、または
+/// @c std::max_align_t より厳しい alignment を要求する callable は、
+/// 透過的に heap-allocate される。
 class SmallFunction {
 public:
     // -----------------------------------------------------------------------
-    // Construction / destruction
+    // 構築 / 破棄
     // -----------------------------------------------------------------------
 
-    /// Constructs an empty SmallFunction. @c operator bool() returns false.
+    /// 空の SmallFunction を構築する。@c operator bool() は false を返す。
     SmallFunction() noexcept = default;
 
-    /// Stores @p f. Inline if @c sizeof(F) <= 48 and alignment fits; heap otherwise.
+    /// @p f を格納する。@c sizeof(F) <= 48 で alignment が合えばインライン、それ以外は heap。
     ///
-    /// @tparam F  Any callable type with signature @c void().
+    /// @tparam F  シグネチャ @c void() の任意の callable 型。
     template <typename F,
               typename = std::enable_if_t<!std::is_same_v<std::decay_t<F>, SmallFunction>>>
     explicit SmallFunction(F&& f) {
@@ -71,24 +71,24 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // Invocation
+    // 呼び出し
     // -----------------------------------------------------------------------
 
-    /// Invokes the stored callable. Behavior is undefined if empty.
+    /// 格納された callable を呼び出す。空の場合は未定義動作。
     void operator()() const {
         MITIRU_ZONE_NAMED("SmallFunction::invoke");
         assert(invoke_ && "SmallFunction: called while empty");
         invoke_(dataPtr());
     }
 
-    /// Returns true if a callable is stored.
+    /// callable が格納されていれば true を返す。
     explicit operator bool() const noexcept {
         return invoke_ != nullptr;
     }
 
 private:
     // -----------------------------------------------------------------------
-    // Internal layout
+    // 内部レイアウト
     // -----------------------------------------------------------------------
 
     static constexpr std::size_t kBufSize = 48;
@@ -98,14 +98,14 @@ private:
 
     using InvokeFn  = void (*)(const void*);
     using DestroyFn = void (*)(void*);
-    using MoveFn    = void (*)(void* dst, void* src);  // src is nulled after move
+    using MoveFn    = void (*)(void* dst, void* src);  // move 後 src は null 化される
 
     InvokeFn  invoke_  = nullptr;
     DestroyFn destroy_ = nullptr;
     MoveFn    move_    = nullptr;
 
     // -----------------------------------------------------------------------
-    // Helpers
+    // ヘルパー
     // -----------------------------------------------------------------------
 
     [[nodiscard]] void* dataPtr() noexcept {
@@ -157,7 +157,7 @@ private:
     }
 
     // -----------------------------------------------------------------------
-    // store() — inline path
+    // store() — インラインパス
     // -----------------------------------------------------------------------
 
     template <typename F>
@@ -179,7 +179,7 @@ private:
     }
 
     // -----------------------------------------------------------------------
-    // store() — heap fallback
+    // store() — heap フォールバック
     // -----------------------------------------------------------------------
 
     template <typename F>
@@ -191,11 +191,11 @@ private:
         m_heap   = true;
         invoke_  = [](const void* p) { (*static_cast<const T*>(p))(); };
         destroy_ = [](void* p)       { static_cast<T*>(p)->~T(); };
-        // For heap path, move_ swaps the raw pointer stored in buf
+        // heap パスでは move_ は buf に格納された生 pointer を入れ替える
         move_    = [](void* dst, void* src) {
-            // src and dst are the m_buf arrays; copy the pointer bytes
+            // src と dst は m_buf 配列。pointer の byte をコピーする
             std::memcpy(dst, src, sizeof(void*));
-            // Zero src pointer so the moved-from SmallFunction won't double-free
+            // moved-from の SmallFunction が double-free しないよう src pointer を 0 化
             void* null_ptr = nullptr;
             std::memcpy(src, &null_ptr, sizeof(void*));
         };

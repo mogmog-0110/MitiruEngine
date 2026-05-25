@@ -96,7 +96,7 @@ public:
 			std::filesystem::rename(m_tmpPath, m_path, ec);
 			if (ec)
 			{
-				// rename failed (e.g. file in use on Windows). unlink + retry.
+				// rename 失敗 (例: Windows でファイル使用中)。unlink + retry。
 				std::filesystem::remove(m_path, ec);
 				std::filesystem::rename(m_tmpPath, m_path, ec);
 				if (ec) { return false; }
@@ -156,7 +156,7 @@ public:
 		}
 		catch (...)
 		{
-			// Mid-rename race or truncated read; try again next tick.
+			// rename 途中の race / truncated read。次 tick で再試行する。
 			return std::nullopt;
 		}
 	}

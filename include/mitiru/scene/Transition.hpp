@@ -1,29 +1,29 @@
 #pragma once
 
 /// @file Transition.hpp
-/// @brief Lightweight, renderer-agnostic screen-transition overlay (G-03).
+/// @brief renderer 非依存の軽量な screen-transition overlay (G-03)。
 ///
-/// **Motivation.**
-/// `SceneTransitionManager` is a heavier system tightly coupled to scene
-/// loading and MitiruScene lifecycle. Game-level UI often needs a simpler,
-/// *standalone* overlay — play a Fade/Dissolve/Slide/Zoom/Custom effect
-/// on top of whatever is already drawn (a CEF page, a 2D canvas, a native
-/// screen) without touching any scene graph. `Transition` fills that gap.
+/// **動機。**
+/// `SceneTransitionManager` は scene loading と MitiruScene lifecycle に密結合した
+/// 重いシステム。game-level UI ではもっと単純で *standalone* な overlay が必要に
+/// なることが多い — 既に描かれているもの (CEF page、2D canvas、native screen)
+/// の上に Fade/Dissolve/Slide/Zoom/Custom effect を、scene graph に一切触れず
+/// 再生する。`Transition` がその隙間を埋める。
 ///
-/// **Design decisions:**
-/// - Header-only, zero GPU dependency. The class owns timing state only.
-///   Rendering is delegated to a `DrawFn` callback that the caller binds to
-///   whatever primitive is available (Screen, CEF StateStore, a test spy).
-/// - `TransitionFrame` is a plain value type — all data the renderer needs in
-///   one struct: kind, progress [0,1], color, slide direction, custom result.
-/// - `TransitionKind::Custom` accepts an `EasingFn` lambda so designers can
-///   supply any curve (e.g. `smoothstep`, bounce) without engine changes.
-/// - `Color` is reused from `mitiru::render::Color` (wraps `sgc::Colorf`).
-///   Default overlay color is opaque black.
-/// - Delta-time driven — fully frame-rate independent.
-/// - `start()` is idempotent: calling it mid-transition resets to t=0 cleanly.
+/// **設計判断:**
+/// - Header-only、GPU 依存ゼロ。class が持つのは timing state のみ。
+///   描画は `DrawFn` callback に委譲し、caller が利用可能な primitive
+///   (Screen、CEF StateStore、test spy) へ bind する。
+/// - `TransitionFrame` は単なる value type — renderer が必要とする全データを
+///   1 struct に: kind、progress [0,1]、color、slide 方向、custom result。
+/// - `TransitionKind::Custom` は `EasingFn` lambda を受け取り、designer が
+///   engine 改変なしに任意の curve (例: `smoothstep`、bounce) を供給できる。
+/// - `Color` は `mitiru::render::Color` (`sgc::Colorf` の wrapper) を再利用。
+///   default の overlay color は不透明な黒。
+/// - delta-time 駆動 — frame-rate に完全非依存。
+/// - `start()` は冪等: transition 途中で呼んでも t=0 へきれいに reset される。
 ///
-/// **Usage (Fade to black, 0.5 s):**
+/// **使い方 (黒へ Fade、0.5 秒):**
 /// ```cpp
 ///   #include <mitiru/scene/Transition.hpp>
 ///   #include <mitiru/render/Style2D.hpp>  // mitiru::render::Color
@@ -41,7 +41,7 @@
 ///   if (tr.isDone()) { /* transition finished */ }
 /// ```
 ///
-/// **Usage (Custom easing — smoothstep):**
+/// **使い方 (Custom easing — smoothstep):**
 /// ```cpp
 ///   tr.setCustomEasing([](float t) {
 ///       return t * t * (3.0f - 2.0f * t);  // smoothstep
@@ -49,8 +49,8 @@
 ///   tr.start(mitiru::scene::TransitionKind::Custom, 1.0f);
 /// ```
 ///
-/// @note Japanese: シーン遷移オーバーレイ。GPUもシーングラフも不要。
-///       DrawFnコールバックで描画先をカスタマイズできる。
+/// @note シーン遷移 overlay。GPU も scene graph も不要。
+///       DrawFn callback で描画先を customize できる。
 
 #include <algorithm>
 #include <cmath>
@@ -63,67 +63,66 @@ namespace mitiru::scene
 
 // ── Enums ─────────────────────────────────────────────────────────────────
 
-/// @brief Built-in transition kinds.
+/// @brief 組み込みの transition 種別。
 enum class TransitionKind
 {
-    Fade,      ///< Full-screen color overlay fades in then out.
-    Dissolve,  ///< Same as Fade but progress curve is a smooth-step.
-    Slide,     ///< Screen slides in from one edge; overlay covers the seam.
-    Zoom,      ///< Scale factor oscillates: 1→peak→1 (e.g. zoom-in reveal).
-    Custom,    ///< User-supplied easing lambda (see setCustomEasing).
+    Fade,      ///< 全画面の color overlay が fade in してから fade out。
+    Dissolve,  ///< Fade と同じだが progress curve が smooth-step。
+    Slide,     ///< 画面が片端から slide in。overlay が継ぎ目を覆う。
+    Zoom,      ///< scale factor が振動: 1→peak→1 (例: zoom-in reveal)。
+    Custom,    ///< ユーザ供給の easing lambda (setCustomEasing 参照)。
 };
 
-/// @brief Direction used by TransitionKind::Slide.
+/// @brief TransitionKind::Slide で使う方向。
 enum class SlideDirection
 {
-    Left,   ///< New content slides in from the left.
-    Right,  ///< New content slides in from the right.
-    Up,     ///< New content slides in from above.
-    Down,   ///< New content slides in from below.
+    Left,   ///< 新コンテンツが左から slide in。
+    Right,  ///< 新コンテンツが右から slide in。
+    Up,     ///< 新コンテンツが上から slide in。
+    Down,   ///< 新コンテンツが下から slide in。
 };
 
 // ── TransitionFrame ───────────────────────────────────────────────────────
 
-/// @brief Snapshot passed to the DrawFn callback each frame.
+/// @brief 毎フレーム DrawFn callback へ渡す snapshot。
 ///
-/// All fields are read-only from the renderer's perspective — they describe
-/// the current transition state.  The renderer decides how to apply them.
+/// renderer から見ると全 field は read-only — 現在の transition state を
+/// 記述する。どう適用するかは renderer が決める。
 struct TransitionFrame
 {
     TransitionKind  kind          = TransitionKind::Fade;
-    float           progress      = 0.0f;  ///< [0, 1], clamped
+    float           progress      = 0.0f;  ///< [0, 1] に clamp
     sgc::Colorf     color         = {0, 0, 0, 1};  ///< overlay color
     SlideDirection  slideDir      = SlideDirection::Left;
-    float           customResult  = 0.0f;  ///< value returned by EasingFn(t)
+    float           customResult  = 0.0f;  ///< EasingFn(t) が返した値
 
     // ── Derived helpers ──────────────────────────────────────────────────
 
-    /// @brief Alpha for a simple overlay (Fade / Custom / Dissolve).
+    /// @brief 単純な overlay (Fade / Custom / Dissolve) 用の alpha。
     ///
-    /// For Fade/Dissolve/Custom: rises from 0→1 for the first half of the
-    /// transition, then falls back 1→0 (in/out envelope). Callers that want
-    /// only a one-way curtain can use `progress` directly.
+    /// Fade/Dissolve/Custom の場合: transition の前半で 0→1 に上昇し、
+    /// 後半で 1→0 に戻る (in/out envelope)。片道の curtain だけ欲しい
+    /// caller は `progress` を直接使える。
     [[nodiscard]] float alpha() const noexcept
     {
-        // Triangle envelope: 0→1 on [0,0.5], 1→0 on [0.5,1]
+        // Triangle envelope: [0,0.5] で 0→1、[0.5,1] で 1→0
         return 1.0f - 2.0f * std::abs(progress - 0.5f);
     }
 
-    /// @brief Normalized slide offset in [-1, 1].
+    /// @brief [-1, 1] に正規化された slide offset。
     ///
-    /// Positive = slide panel is still off-screen in the positive direction.
-    /// At progress==0 the panel is fully off-screen; at progress==1 it is
-    /// fully off-screen on the other side.  At progress==0.5 the panel is
-    /// centred (fully on-screen).
+    /// 正 = slide panel が正方向にまだ画面外。
+    /// progress==0 で panel は完全に画面外、progress==1 で反対側へ
+    /// 完全に画面外。progress==0.5 で panel は中央 (完全に画面内)。
     [[nodiscard]] float slideOffset() const noexcept
     {
-        // 0→-1 then -1→0 (triangle, negative peak at 0.5)
+        // 0→-1 のあと -1→0 (triangle、0.5 で負の peak)
         return -(1.0f - 2.0f * std::abs(progress - 0.5f));
     }
 
-    /// @brief Scale factor for Zoom transitions (1.0 at start/end, peak > 1).
+    /// @brief Zoom transition の scale factor (開始/終了で 1.0、peak > 1)。
     ///
-    /// Default peak is 1.2 (20% zoom burst centred at t=0.5).
+    /// default の peak は 1.2 (t=0.5 中心の 20% zoom burst)。
     [[nodiscard]] float zoomScale() const noexcept
     {
         constexpr float kPeak = 1.2f;
@@ -133,51 +132,51 @@ struct TransitionFrame
 
 // ── Transition ────────────────────────────────────────────────────────────
 
-/// @brief Standalone screen-transition overlay.
+/// @brief standalone な screen-transition overlay。
 ///
-/// Owns timing state only.  GPU-free, scene-graph-free.
-/// Bind a DrawFn to connect it to any rendering backend.
+/// 持つのは timing state のみ。GPU 不要、scene graph 不要。
+/// DrawFn を bind すれば任意の rendering backend に接続できる。
 class Transition
 {
 public:
-    /// @brief Easing function type for TransitionKind::Custom.
-    /// @param t Normalised time in [0, 1].
-    /// @return Eased value, typically in [0, 1] (clamping is the caller's choice).
+    /// @brief TransitionKind::Custom 用の easing 関数型。
+    /// @param t [0, 1] に正規化された時刻。
+    /// @return eased された値。通常は [0, 1] (clamp するかは caller の選択)。
     using EasingFn = std::function<float(float t)>;
 
-    /// @brief Draw callback type.
+    /// @brief draw callback 型。
     ///
-    /// Called by `draw()` while the transition is active.
-    /// The callback receives a `TransitionFrame` snapshot; the renderer
-    /// interprets the fields as appropriate for its backend.
+    /// transition が active な間 `draw()` から呼ばれる。
+    /// callback は `TransitionFrame` snapshot を受け取り、renderer が
+    /// 自分の backend に合わせて各 field を解釈する。
     using DrawFn = std::function<void(const TransitionFrame&)>;
 
     Transition() = default;
 
     // ── Setup ─────────────────────────────────────────────────────────────
 
-    /// @brief Register the draw callback (called from `draw()` while active).
+    /// @brief draw callback を登録 (active な間 `draw()` から呼ばれる)。
     void setDrawCallback(DrawFn fn) { m_drawFn = std::move(fn); }
 
-    /// @brief Supply an easing lambda for TransitionKind::Custom.
+    /// @brief TransitionKind::Custom 用の easing lambda を供給。
     ///
-    /// The lambda is called with t ∈ [0,1] each update; its return value is
-    /// stored in `TransitionFrame::customResult` for the renderer.
-    /// Default (if not set): linear `t`.
+    /// lambda は毎 update で t ∈ [0,1] を引数に呼ばれ、戻り値は renderer 向けに
+    /// `TransitionFrame::customResult` へ格納される。
+    /// default (未設定時): 線形の `t`。
     void setCustomEasing(EasingFn fn) { m_customEasing = std::move(fn); }
 
-    /// @brief Set the slide direction (only meaningful for TransitionKind::Slide).
+    /// @brief slide 方向を設定 (TransitionKind::Slide でのみ意味を持つ)。
     void setSlideDirection(SlideDirection dir) noexcept { m_slideDir = dir; }
 
     // ── Control ───────────────────────────────────────────────────────────
 
-    /// @brief Start (or restart) the transition.
+    /// @brief transition を開始 (または再開始)。
     ///
-    /// Resetting mid-transition is safe: progress resets to 0 immediately.
+    /// transition 途中での reset は安全: progress が即座に 0 へ戻る。
     ///
-    /// @param kind         Which transition kind to play.
-    /// @param durationSec  Total duration in seconds. 0 → instant (isDone immediately).
-    /// @param color        Overlay / fill color (default: opaque black).
+    /// @param kind         再生する transition 種別。
+    /// @param durationSec  秒単位の総時間。0 → 即時 (即 isDone)。
+    /// @param color        overlay / fill color (default: 不透明な黒)。
     void start(TransitionKind kind,
                float          durationSec,
                sgc::Colorf    color = sgc::Colorf{0, 0, 0, 1})
@@ -189,7 +188,7 @@ public:
         m_done       = (m_duration == 0.0f);
     }
 
-    /// @brief Advance timing by `dt` seconds (delta-time, frame-rate independent).
+    /// @brief timing を `dt` 秒進める (delta-time、frame-rate 非依存)。
     void update(float dt)
     {
         if (m_done) return;
@@ -203,10 +202,10 @@ public:
         }
     }
 
-    /// @brief Fire the DrawFn callback if the transition is active (not yet done
-    ///        and a callback has been registered).
+    /// @brief transition が active (まだ done でなく callback が登録済み) なら
+    ///        DrawFn callback を発火する。
     ///
-    /// Always calls top-most — callers should invoke this *after* all other draws.
+    /// 常に最前面に描く — caller は他の全描画の *後* にこれを呼ぶべき。
     void draw() const
     {
         if (!m_drawFn) return;
@@ -215,31 +214,31 @@ public:
 
     // ── Query ─────────────────────────────────────────────────────────────
 
-    /// @brief True once the transition has completed (elapsed >= duration).
+    /// @brief transition が完了したら true (elapsed >= duration)。
     [[nodiscard]] bool isDone() const noexcept { return m_done; }
 
-    /// @brief Normalised progress in [0, 1].
+    /// @brief [0, 1] に正規化された progress。
     ///
-    /// 0 = just started, 1 = finished (same moment isDone() becomes true).
+    /// 0 = 開始直後、1 = 完了 (isDone() が true になる瞬間と同じ)。
     [[nodiscard]] float progress() const noexcept
     {
         if (m_duration == 0.0f) return 1.0f;
         return std::clamp(m_elapsed / m_duration, 0.0f, 1.0f);
     }
 
-    /// @brief Triangle-envelope alpha derived from current progress.
+    /// @brief 現在の progress から導かれる triangle-envelope alpha。
     /// @see TransitionFrame::alpha()
     [[nodiscard]] float alpha() const noexcept { return buildFrame().alpha(); }
 
-    /// @brief Current kind.
+    /// @brief 現在の kind。
     [[nodiscard]] TransitionKind kind() const noexcept { return m_kind; }
 
-    /// @brief Current overlay color.
+    /// @brief 現在の overlay color。
     [[nodiscard]] sgc::Colorf color() const noexcept { return m_color; }
 
-    /// @brief Build a frame snapshot without firing the callback.
+    /// @brief callback を発火せずに frame snapshot を構築する。
     ///
-    /// Useful for unit tests and CEF bridge serialisation.
+    /// unit test や CEF bridge の serialise に便利。
     [[nodiscard]] TransitionFrame buildFrame() const
     {
         const float t = progress();
@@ -256,7 +255,7 @@ public:
         }
         else if (m_kind == TransitionKind::Dissolve)
         {
-            // Dissolve uses a smooth-step curve on the alpha envelope.
+            // Dissolve は alpha envelope に smooth-step curve を使う。
             const float a = frame.alpha();
             frame.customResult = a * a * (3.0f - 2.0f * a);  // smoothstep
         }
@@ -272,7 +271,7 @@ private:
     TransitionKind  m_kind      = TransitionKind::Fade;
     float           m_duration  = 0.0f;
     float           m_elapsed   = 0.0f;
-    bool            m_done      = true;   ///< starts done so isDone() == true before first start()
+    bool            m_done      = true;   ///< 初期状態が done。最初の start() 前は isDone() == true
     sgc::Colorf     m_color     = {0, 0, 0, 1};
     SlideDirection  m_slideDir  = SlideDirection::Left;
     EasingFn        m_customEasing;

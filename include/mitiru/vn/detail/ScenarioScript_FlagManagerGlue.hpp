@@ -1,6 +1,6 @@
 #pragma once
 
-// Detail header for mitiru::vn::ScenarioScript — included via vn/ScenarioScript.hpp
+// mitiru::vn::ScenarioScript の detail ヘッダ — vn/ScenarioScript.hpp 経由で include される
 // ScenarioExecutor::applySetToFlagManager の out-of-line 定義。
 //
 // 循環参照回避: FlagManager.hpp を遅延 include して定義するため、

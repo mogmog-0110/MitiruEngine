@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIAvatar.hpp
-/// @brief Circular avatar image display with status indicator and fallback initials.
+/// @brief status indicator と fallback initials を持つ円形 avatar 画像表示。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -13,7 +13,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Online status for avatar display.
+/// @brief avatar 表示用のオンライン status。
 enum class AvatarStatus : std::uint8_t
 {
 	None,
@@ -23,31 +23,32 @@ enum class AvatarStatus : std::uint8_t
 	Busy
 };
 
-/// @brief Configuration for creating a UIAvatar.
+/// @brief UIAvatar 生成用の設定。
 struct UIAvatarConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
-	float size = 48.0f;                    ///< Diameter of the avatar circle.
-	std::string imageKey;                  ///< Image key for the avatar picture.
-	std::string fallbackText;              ///< Initials text when no image is set.
-	float borderWidth = 2.0f;              ///< Border thickness around the circle.
-	std::string borderColor = "cccccc";    ///< Border color (hex, no #).
-	std::string borderImageKey;            ///< Border image key (overrides borderColor if set).
-	AvatarStatus statusIndicator = AvatarStatus::None;  ///< Initial status.
-	std::string statusColor = "00ff00";    ///< Status dot color (hex, no #).
-	float statusSize = 12.0f;              ///< Diameter of the status dot.
-	std::string statusPosition = "bottom_right"; ///< Where the status dot appears.
-	std::string backgroundImageKey;        ///< Background image for the circle.
-	bool clickable = false;                ///< Whether clicking the avatar triggers a callback.
-	float fallbackFontSize = 18.0f;        ///< Font size for fallback initials.
-	std::string fallbackBackgroundColor = "888888"; ///< Background color for initials fallback.
+	float size = 48.0f;                    ///< avatar 円の直径。
+	std::string imageKey;                  ///< avatar 画像の image key。
+	std::string fallbackText;              ///< 画像未設定時の initials text。
+	float borderWidth = 2.0f;              ///< 円周りの border の太さ。
+	std::string borderColor = "cccccc";    ///< border 色 (hex、# なし)。
+	std::string borderImageKey;            ///< border の image key (設定時は borderColor を上書き)。
+	AvatarStatus statusIndicator = AvatarStatus::None;  ///< 初期 status。
+	std::string statusColor = "00ff00";    ///< status dot の色 (hex、# なし)。
+	float statusSize = 12.0f;              ///< status dot の直径。
+	std::string statusPosition = "bottom_right"; ///< status dot を出す位置。
+	std::string backgroundImageKey;        ///< 円の背景画像。
+	bool clickable = false;                ///< avatar の click で callback を起動するか。
+	float fallbackFontSize = 18.0f;        ///< fallback initials の font size。
+	std::string fallbackBackgroundColor = "888888"; ///< initials fallback の背景色。
 };
 
-/// @brief Circular avatar widget with image, status indicator, and fallback initials.
+/// @brief 画像・status indicator・fallback initials を持つ円形 avatar widget。
 ///
-/// Displays a circular-cropped image. When no image is set, shows colored circle
-/// with initials. Optionally shows a status dot overlay (Online/Offline/Away/Busy).
+/// 円形に切り抜いた画像を表示する。画像未設定なら、initials 入りの
+/// 色付き円を表示する。任意で status dot の overlay (Online/Offline/Away/Busy)
+/// を出す。
 ///
 /// @code
 ///   UIAvatarConfig cfg;
@@ -72,8 +73,8 @@ class UIAvatar
 	std::function<void()> m_onClick;
 
 public:
-	/// @brief Construct an avatar from configuration.
-	/// @param config Avatar configuration.
+	/// @brief 設定から avatar を構築する。
+	/// @param config avatar の設定。
 	explicit UIAvatar(const UIAvatarConfig& config)
 		: m_imageKey(config.imageKey)
 		, m_fallbackText(config.fallbackText)
@@ -105,34 +106,34 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current image key.
+	/// @brief 現在の image key を取得する。
 	[[nodiscard]] const std::string& imageKey() const noexcept { return m_imageKey; }
 
-	/// @brief Get the fallback text (initials).
+	/// @brief fallback text (initials) を取得する。
 	[[nodiscard]] const std::string& fallbackText() const noexcept { return m_fallbackText; }
 
-	/// @brief Get the current status.
+	/// @brief 現在の status を取得する。
 	[[nodiscard]] AvatarStatus status() const noexcept { return m_status; }
 
-	/// @brief Check if the avatar has an image set.
+	/// @brief avatar に画像が設定されているか判定する。
 	[[nodiscard]] bool hasImage() const noexcept { return !m_imageKey.empty(); }
 
-	/// @brief Check if the avatar is clickable.
+	/// @brief avatar が click 可能か判定する。
 	[[nodiscard]] bool isClickable() const noexcept { return m_clickable; }
 
-	// -- Configuration -------------------------------------------------------
+	// -- 設定 -------------------------------------------------------
 
-	/// @brief Set the click callback.
-	/// @param callback Function invoked on click.
+	/// @brief click 時の callback を設定する。
+	/// @param callback click 時に呼ばれる関数。
 	void setOnClick(std::function<void()> callback) { m_onClick = std::move(callback); }
 
-	// -- Setters -------------------------------------------------------------
+	// -- setter -------------------------------------------------------------
 
-	/// @brief Set the avatar image.
-	/// @param key Image key for the avatar picture.
+	/// @brief avatar 画像を設定する。
+	/// @param key avatar 画像の image key。
 	void setImage(const std::string& key)
 	{
 		m_imageKey = key;
@@ -140,16 +141,16 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Set the online status.
-	/// @param newStatus New status value.
+	/// @brief オンライン status を設定する。
+	/// @param newStatus 新しい status 値。
 	void setStatus(AvatarStatus newStatus)
 	{
 		m_status = newStatus;
 		syncNodeState();
 	}
 
-	/// @brief Set the fallback text (initials).
-	/// @param text Initials to display when no image is set.
+	/// @brief fallback text (initials) を設定する。
+	/// @param text 画像未設定時に表示する initials。
 	void setFallbackText(const std::string& text)
 	{
 		m_fallbackText = text;
@@ -158,23 +159,23 @@ public:
 		syncNodeState();
 	}
 
-	// -- Interaction ---------------------------------------------------------
+	// -- 操作 ---------------------------------------------------------
 
-	/// @brief Called when the pointer enters the avatar area.
+	/// @brief pointer が avatar 領域に入ったときに呼ばれる。
 	void onPointerEnter()
 	{
 		m_hovered = true;
 		m_node->setProperty("hovered", "true");
 	}
 
-	/// @brief Called when the pointer leaves the avatar area.
+	/// @brief pointer が avatar 領域から離れたときに呼ばれる。
 	void onPointerLeave()
 	{
 		m_hovered = false;
 		m_node->setProperty("hovered", "false");
 	}
 
-	/// @brief Called when the avatar is clicked.
+	/// @brief avatar が click されたときに呼ばれる。
 	void onPointerUp()
 	{
 		if (m_clickable && m_hovered && m_onClick)
@@ -184,7 +185,7 @@ public:
 	}
 
 private:
-	/// @brief Convert status enum to string.
+	/// @brief status enum を文字列に変換する。
 	[[nodiscard]] static const char* statusToString(AvatarStatus s) noexcept
 	{
 		switch (s)
@@ -198,7 +199,7 @@ private:
 		return "none";
 	}
 
-	/// @brief Synchronize state to the UINode.
+	/// @brief state を UINode に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("status", statusToString(m_status));

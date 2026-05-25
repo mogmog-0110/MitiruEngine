@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIBadge.hpp
-/// @brief Small counter/notification badge overlay for UI elements.
+/// @brief UI 要素に重ねる小型の counter / notification badge。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,7 +15,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Badge anchor position relative to the parent element.
+/// @brief 親要素に対する badge の anchor 位置。
 enum class BadgePosition : std::uint8_t
 {
 	TopRight,
@@ -24,32 +24,32 @@ enum class BadgePosition : std::uint8_t
 	BottomLeft
 };
 
-/// @brief Configuration for creating a UIBadge.
+/// @brief UIBadge 生成用の設定。
 struct UIBadgeConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
-	int maxCount = 99;                     ///< Counts above this display as "N+".
-	float fontSize = 11.0f;                ///< Badge text font size.
-	float minSize = 20.0f;                 ///< Minimum badge diameter.
-	float padding = 4.0f;                  ///< Horizontal padding inside badge.
-	std::string backgroundImageKey;        ///< Badge background image key.
-	std::string textColor = "ffffff";       ///< Badge text color (hex, no #).
-	std::string backgroundColor = "ff0000"; ///< Badge background color (hex, no #).
-	BadgePosition position = BadgePosition::TopRight;  ///< Anchor position.
-	float offsetX = 0.0f;                  ///< Horizontal offset from anchor.
-	float offsetY = 0.0f;                  ///< Vertical offset from anchor.
-	bool pulseAnimation = true;            ///< Pulse on count change.
-	bool hideWhenZero = true;              ///< Hide badge when count is 0.
-	float pulseDuration = 0.4f;            ///< Duration of pulse animation in seconds.
-	float pulseScale = 1.3f;               ///< Maximum scale during pulse.
+	int maxCount = 99;                     ///< この値を超えると "N+" 表示。
+	float fontSize = 11.0f;                ///< badge テキストの font size。
+	float minSize = 20.0f;                 ///< badge の最小直径。
+	float padding = 4.0f;                  ///< badge 内の水平 padding。
+	std::string backgroundImageKey;        ///< badge 背景画像のキー。
+	std::string textColor = "ffffff";       ///< badge テキスト色 (hex、# なし)。
+	std::string backgroundColor = "ff0000"; ///< badge 背景色 (hex、# なし)。
+	BadgePosition position = BadgePosition::TopRight;  ///< anchor 位置。
+	float offsetX = 0.0f;                  ///< anchor からの水平オフセット。
+	float offsetY = 0.0f;                  ///< anchor からの垂直オフセット。
+	bool pulseAnimation = true;            ///< count 変化時に pulse する。
+	bool hideWhenZero = true;              ///< count が 0 のとき badge を隠す。
+	float pulseDuration = 0.4f;            ///< pulse animation の長さ (秒)。
+	float pulseScale = 1.3f;               ///< pulse 中の最大スケール。
 };
 
-/// @brief Small counter badge overlay for notification counts.
+/// @brief 通知件数を表す小型 counter badge。
 ///
-/// Displays a circle or rounded-rect with a number, typically attached to
-/// another UI element. Shows "N+" for counts exceeding maxCount. Provides
-/// a pulse animation on count change.
+/// 数字付きの円または角丸矩形を表示し、通常は別の UI 要素に付随させる。
+/// maxCount を超える count は "N+" と表示する。count 変化時には pulse
+/// animation を提供する。
 ///
 /// @code
 ///   UIBadgeConfig cfg;
@@ -76,15 +76,15 @@ class UIBadge
 	bool m_hideWhenZero;
 	bool m_visible = true;
 
-	// Pulse animation state.
+	// pulse animation の状態。
 	float m_pulseDuration;
 	float m_pulseScale;
 	float m_pulseTimer = 0.0f;
 	bool m_pulsing = false;
 
 public:
-	/// @brief Construct a badge from configuration.
-	/// @param config Badge configuration.
+	/// @brief 設定から badge を構築する。
+	/// @param config badge の設定。
 	explicit UIBadge(const UIBadgeConfig& config)
 		: m_maxCount(config.maxCount)
 		, m_minSize(config.minSize)
@@ -122,19 +122,19 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current count.
+	/// @brief 現在の count を取得する。
 	[[nodiscard]] int getCount() const noexcept { return m_count; }
 
-	/// @brief Check if the badge is visible.
+	/// @brief badge が表示中か判定する。
 	[[nodiscard]] bool isVisible() const noexcept { return m_visible; }
 
-	/// @brief Check if pulse animation is active.
+	/// @brief pulse animation が動作中か判定する。
 	[[nodiscard]] bool isPulsing() const noexcept { return m_pulsing; }
 
-	/// @brief Get the display text (e.g. "5" or "99+").
+	/// @brief 表示テキストを取得する (例: "5" や "99+")。
 	[[nodiscard]] std::string displayText() const
 	{
 		if (m_count <= 0) { return "0"; }
@@ -147,8 +147,8 @@ public:
 
 	// -- Setters -------------------------------------------------------------
 
-	/// @brief Set the badge count.
-	/// @param count New count value.
+	/// @brief badge の count を設定する。
+	/// @param count 新しい count 値。
 	void setCount(int count)
 	{
 		const int newCount = std::max(0, count);
@@ -157,14 +157,14 @@ public:
 		const bool increased = (newCount > m_count);
 		m_count = newCount;
 
-		// Trigger pulse on count increase.
+		// count 増加時に pulse を発火する。
 		if (increased && m_pulseAnimation)
 		{
 			m_pulsing = true;
 			m_pulseTimer = 0.0f;
 		}
 
-		// Update visibility.
+		// 表示状態を更新する。
 		if (m_hideWhenZero)
 		{
 			m_visible = (m_count > 0);
@@ -173,14 +173,14 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Show the badge.
+	/// @brief badge を表示する。
 	void show()
 	{
 		m_visible = true;
 		syncNodeState();
 	}
 
-	/// @brief Hide the badge.
+	/// @brief badge を隠す。
 	void hide()
 	{
 		m_visible = false;
@@ -189,8 +189,8 @@ public:
 
 	// -- Update --------------------------------------------------------------
 
-	/// @brief Update pulse animation.
-	/// @param dt Delta time in seconds.
+	/// @brief pulse animation を更新する。
+	/// @param dt フレーム間の経過時間 (秒)。
 	void update(float dt)
 	{
 		if (!m_pulsing) { return; }
@@ -206,7 +206,7 @@ public:
 		}
 
 		const float progress = m_pulseTimer / m_pulseDuration;
-		// Sine wave: scale up then back down.
+		// sin 波: 拡大してから元に戻る。
 		const float scaleFactor = 1.0f +
 			(m_pulseScale - 1.0f) * std::sin(progress * std::numbers::pi_v<float>);
 
@@ -215,7 +215,7 @@ public:
 	}
 
 private:
-	/// @brief Convert position enum to string.
+	/// @brief position enum を文字列へ変換する。
 	[[nodiscard]] static const char* positionToString(BadgePosition pos) noexcept
 	{
 		switch (pos)
@@ -228,7 +228,7 @@ private:
 		return "top_right";
 	}
 
-	/// @brief Synchronize state to the UINode.
+	/// @brief 状態を UINode へ同期する。
 	void syncNodeState()
 	{
 		m_node->setText(displayText());

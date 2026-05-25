@@ -1,24 +1,22 @@
-// mitiru_renderer — axis 3 (per-system isolation) seed.
+// mitiru_renderer — axis 3 (全 system 単独起動) の種。
 //
-// This program boots the renderer subsystem in isolation: no CEF, no audio
-// engine, no ECS world, no scene manager, no physics, no input recording.
-// All the other subsystems initialise to their Null backends or skip outright.
+// renderer subsystem を単独起動する: CEF・audio engine・ECS world・scene
+// manager・physics・input 記録なし。他の subsystem は Null backend か skip。
 //
-// What you get on screen:
-//   - animated HSV color bars (proves clear + textured drawRect works)
-//   - a slow rotating diagonal divider (proves world transform / projection)
-//   - frame counter + elapsed wall-clock time (proves the loop is alive)
-//   - the bottom-left status block names the renderer backend currently driving
-//     the window
+// 画面に出るもの:
+//   - アニメ HSV カラーバー (clear + textured drawRect の動作確認)
+//   - ゆっくり回る斜め分割線 (world transform / projection の確認)
+//   - frame カウンタ + 経過時間 (loop が生きている確認)
+//   - 左下の status block が駆動中の renderer backend 名を表示
 //
-// Why this exists:
-//   - Shader / pipeline iteration without paying CEF (~3s) or font atlas
-//     (~15s) cold-start cost. Cold start here is < 1 second.
-//   - Bisection: if a consumer game's draw is broken, this tool still works,
-//     which narrows the blame to gameplay or higher-level subsystems.
-//   - The "1 tool = 1 concern = 1 window" philosophy in action.
+// 存在理由:
+//   - CEF (~3s) や font atlas (~15s) の cold-start を払わずに shader / pipeline
+//     を反復する。ここの cold start は 1 秒未満。
+//   - 二分切り分け: consumer ゲームの draw が壊れてもこのツールは動くので、
+//     原因を gameplay や上位 subsystem に絞れる。
+//   - 「1 ツール = 1 関心事 = 1 ウィンドウ」哲学の実践。
 //
-// Controls:  ESC to quit, F3 saves a PNG of the current frame.
+// 操作:  ESC で終了、F3 で現フレームを PNG 保存。
 
 #include <cmath>
 #include <string>
@@ -30,7 +28,7 @@ namespace {
 
 constexpr float kPi = 3.14159265358979323846f;
 
-// Cheap HSV→RGB for the animated color bar. Hue in [0,1).
+// アニメカラーバー用の軽量 HSV→RGB。hue は [0,1)。
 sgc::Colorf hsv(float h, float s, float v, float a = 1.0f)
 {
     h = h - std::floor(h);
@@ -61,13 +59,13 @@ public:
 
         if (hasInput())
         {
-            // ESC quits.
+            // ESC で終了。
             if (input().isKeyJustPressed(mitiru::KeyCode::Escape))
             {
                 if (auto* eng = engine()) { eng->requestStop(); }
             }
 
-            // F3 saves a screenshot to ./screenshots/mitiru_renderer_*.png.
+            // F3 で ./screenshots/mitiru_renderer_*.png に保存。
             if (input().isKeyJustPressed(mitiru::KeyCode::F3))
             {
                 takeScreenshot();
@@ -95,8 +93,8 @@ public:
 private:
     void drawHsvBars(mitiru::Screen& screen)
     {
-        // 24 vertical bars across the top half. Hue cycles with time so the
-        // whole gradient drifts to the right; alpha is fixed.
+        // 上半分に縦バー 24 本。hue が時間で循環しグラデ全体が右へ流れる。
+        // alpha は固定。
         constexpr int kBars = 24;
         const float w = m_screenW;
         const float h = m_screenH * 0.55f;
@@ -113,9 +111,8 @@ private:
 
     void drawRotatingDivider(mitiru::Screen& screen)
     {
-        // A 6px thick diagonal stripe that orbits the screen centre. Renders
-        // as a series of small rects approximating the line — keeps us off
-        // any specific drawLine variant the backend may not expose.
+        // 画面中心を周回する太さ 6px の斜め線。backend が持たないかもしれない
+        // drawLine に依存しないよう、小 rect の連続で線を近似する。
         const float cx = m_screenW * 0.5f;
         const float cy = m_screenH * 0.65f;
         const float r  = std::min(m_screenW, m_screenH) * 0.30f;
@@ -138,7 +135,7 @@ private:
 
     void drawStatusBlock(mitiru::Screen& screen)
     {
-        // Plain text label. Uses drawTextInRect, not drawText (engine rule).
+        // 素のテキストラベル。drawText でなく drawTextInRect を使う (エンジン規約)。
         const float panelW = 360.0f;
         const float panelH = 92.0f;
         const float x = 18.0f;
@@ -195,7 +192,7 @@ private:
 
         const std::string path = mitiru::render::saveTimestampedFrameToPng(
             pixels.data(), w, h, "screenshots", "mitiru_renderer");
-        (void)path;  // shell user sees the file at the printed path; no HUD here
+        (void)path;  // 保存先 path は shell に出る。ここに HUD はない
     }
 
     float          m_screenW{1280.0f};
@@ -216,7 +213,7 @@ int main()
     cfg.windowWidth     = 1280;
     cfg.windowHeight    = 720;
     cfg.vsync           = true;
-    cfg.enableCef       = false;   // pure renderer — no HTML overlay
+    cfg.enableCef       = false;   // 純 renderer — HTML overlay なし
     cfg.fontAtlasRanges = mitiru::EngineConfig::FontAtlas::Latin;
 
     engine.run(game, cfg);

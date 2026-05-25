@@ -101,7 +101,7 @@ struct MouseWheelState
 	}
 };
 
-} // namespace mitiru (temporarily close for SDL2 include)
+} // namespace mitiru (SDL2 include のため一時的に閉じる)
 
 #ifdef MITIRU_HAS_SDL2
 

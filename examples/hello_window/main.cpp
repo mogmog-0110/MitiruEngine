@@ -1,7 +1,7 @@
-// hello_window — Mode A minimum.
+// hello_window — Mode A の最小。
 //
-// 800x600 window, "Hello, Mitiru!" centered. ESC to exit.
-// No CEF, latin atlas only — under 1s cold start.
+// 800x600 ウィンドウに "Hello, Mitiru!" を中央表示。ESC で終了。
+// CEF なし、latin atlas のみ — cold start 1s 未満。
 
 #include <mitiru/Mitiru.hpp>
 

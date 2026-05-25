@@ -17,7 +17,11 @@
 namespace mitiru
 {
 
-class Engine;  // forward decl for onFrameStart callback signature
+class Engine;  // onFrameStart コールバックの signature 用 forward decl
+
+// 後述の replay record/inject コールバック用 forward decl (host 側専用。
+// DLL ABI には含まれない — EngineConfig は game から一切見えない)。
+namespace module { struct InputSnapshot; struct FrameIntents; }
 
 /// @brief グラフィックスバックエンド列挙
 namespace gfx
@@ -225,6 +229,19 @@ struct EngineConfig
 	///          変化があれば `engine.reloadModule(path)` を呼ぶ。
 	///          設定されていなければ engine 側は no-op。
 	std::function<void(mitiru::Engine&)> onFrameStart;
+
+	// ── replay record / inject フック (axis 4: deterministic + replay-as-test) ──
+	/// @brief 毎フレーム on_update 後に呼ばれ、その frame の InputSnapshot と
+	///        FrameIntents を host へ渡す。host は Recorder へ書き出す
+	///        (`mitiru run --record`)。設定が無ければ no-op。ADR 0005 不変:
+	///        これは host 側 config であって DLL は一切見ない。
+	std::function<void(const module::InputSnapshot&, const module::FrameIntents&)>
+		onModuleFrameRecorded;
+
+	/// @brief buildModuleInputSnapshot の末尾で呼ばれ、live 入力で組んだ snapshot を
+	///        記録済みバイトで上書きする (`mitiru replay --test` のヘッドレス再生)。
+	///        true を返すと上書き採用。設定が無ければ live 入力のまま。
+	std::function<bool(module::InputSnapshot&)> moduleInputOverride;
 
 	// ── 自律テストモード ──
 	/// @brief テストモードフラグ（指定フレーム後に自動キャプチャ＆終了）

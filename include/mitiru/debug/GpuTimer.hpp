@@ -344,7 +344,7 @@ public:
                 glGetQueryObjectui64v(m_glEndQueries[i],
                                       GL_QUERY_RESULT, &endTs);
 
-                // GL timestamps are in nanoseconds
+                // GL タイムスタンプはナノ秒単位
                 m_passMs[i] = static_cast<float>(
                     static_cast<double>(endTs - beginTs) / 1000000.0);
             }

@@ -2,12 +2,11 @@
 
 /**
  * @file ConstraintLayout.hpp
- * @brief Constraint-based layout engine for MitiruEngine UI.
+ * @brief MitiruEngine UI 向けの constraint ベース layout engine。
  *
- * Provides a simplified Auto Layout-style system where nodes are positioned
- * by declaring relationships (constraints) between edges, centers, and
- * dimensions. Uses an iterative solver (max 10 iterations) rather than
- * a full Cassowary implementation.
+ * 辺・中心・寸法の間に関係 (constraint) を宣言することで node を配置する、
+ * 簡易版 Auto Layout 風システムを提供する。完全な Cassowary 実装ではなく
+ * 反復 solver (最大 10 反復) を用いる。
  */
 
 #include <sgc/math/Rect.hpp>
@@ -24,7 +23,7 @@ namespace mitiru::ui {
 // Constraint types
 // -----------------------------------------------------------------------
 
-/// @brief The kind of spatial relationship a constraint describes.
+/// @brief constraint が表す空間的な関係の種類。
 enum class ConstraintType : uint8_t {
     LeftToLeft,      ///< node.left   = target.left   + offset
     LeftToRight,     ///< node.left   = target.right  + offset
@@ -41,10 +40,10 @@ enum class ConstraintType : uint8_t {
     AspectRatio      ///< node.width  = node.height * multiplier
 };
 
-/// @brief A single constraint linking a node to a target.
+/// @brief node を target に結びつける 1 つの constraint。
 struct UIConstraint {
     ConstraintType type     = ConstraintType::LeftToLeft;
-    std::string    target;      ///< Target node ID string, or "parent".
+    std::string    target;      ///< target node の ID 文字列、または "parent"。
     float          offset     = 0.0f;
     float          multiplier = 1.0f;
 };
@@ -55,7 +54,7 @@ struct UIConstraint {
 
 namespace detail {
 
-/// @brief Mutable bounds used during iterative solving.
+/// @brief 反復解法中に使う可変な bounds。
 struct SolvedBounds {
     float left   = 0.0f;
     float top    = 0.0f;
@@ -81,9 +80,9 @@ struct SolvedBounds {
 
 /**
  * @class ConstraintLayout
- * @brief Positions nodes by solving a set of declared constraints.
+ * @brief 宣言された constraint 群を解いて node を配置する。
  *
- * Usage:
+ * 使い方:
  * @code
  *   ConstraintLayout layout;
  *
@@ -103,47 +102,47 @@ struct SolvedBounds {
  * @endcode
  */
 class ConstraintLayout {
-    /// @brief All constraints grouped by node ID.
+    /// @brief node ID ごとにまとめた全 constraint。
     std::map<std::string, std::vector<UIConstraint>> m_constraints;
 
-    /// @brief Default sizes for nodes before constraint solving.
+    /// @brief constraint 解法前の node のデフォルトサイズ。
     std::map<std::string, std::pair<float, float>> m_defaultSizes;
 
-    /// @brief Maximum solver iterations.
+    /// @brief solver の最大反復回数。
     static constexpr int kMaxIterations = 10;
 
 public:
-    /// @brief Add a constraint for the given node.
+    /// @brief 指定 node に constraint を追加する。
     void addConstraint(const std::string& nodeId, UIConstraint constraint) {
         m_constraints[nodeId].push_back(std::move(constraint));
     }
 
-    /// @brief Remove all constraints for a node.
+    /// @brief ある node の全 constraint を削除する。
     void clearConstraints(const std::string& nodeId) {
         m_constraints.erase(nodeId);
     }
 
-    /// @brief Remove all constraints.
+    /// @brief 全 constraint を削除する。
     void clearAll() noexcept {
         m_constraints.clear();
         m_defaultSizes.clear();
     }
 
-    /// @brief Set a default (intrinsic) size for a node.
+    /// @brief node のデフォルト (固有) サイズを設定する。
     void setDefaultSize(const std::string& nodeId, float w, float h) {
         m_defaultSizes.insert_or_assign(nodeId, std::make_pair(w, h));
     }
 
     /**
-     * @brief Solve all constraints and return bounds per node.
+     * @brief 全 constraint を解き、node ごとの bounds を返す。
      *
-     * @param parentBounds The parent rectangle ("parent" target resolves to this).
-     * @return Map from node ID to resolved screen-space rectangle.
+     * @param parentBounds 親矩形 ("parent" target はこれに解決される)。
+     * @return node ID から解決済みの screen 空間矩形への map。
      */
     [[nodiscard]] std::map<std::string, sgc::Rectf> solve(
         const sgc::Rectf& parentBounds) const {
 
-        // Initialize solved bounds for all constrained nodes.
+        // constraint を持つ全 node の solved bounds を初期化する。
         detail::SolvedBounds parentSolved{
             parentBounds.x(), parentBounds.y(),
             parentBounds.width(), parentBounds.height()
@@ -163,7 +162,7 @@ public:
             solved.insert_or_assign(nodeId, sb);
         }
 
-        // Iterative solver.
+        // 反復 solver。
         for (int iter = 0; iter < kMaxIterations; ++iter) {
             bool changed = false;
 
@@ -179,7 +178,7 @@ public:
             if (!changed) break;
         }
 
-        // Convert to output format.
+        // 出力形式に変換する。
         std::map<std::string, sgc::Rectf> results;
         for (const auto& [nodeId, sb] : solved) {
             results.insert_or_assign(nodeId,
@@ -206,14 +205,14 @@ private:
         if (it != solved.end()) {
             return it->second;
         }
-        return parentSolved; // Fallback to parent.
+        return parentSolved; // 見つからなければ parent に fallback する。
     }
 
     // -------------------------------------------------------------------
     // Constraint application
     // -------------------------------------------------------------------
 
-    /// @return true if any value changed significantly.
+    /// @return いずれかの値が有意に変化したら true。
     [[nodiscard]] static bool applyConstraint(
         detail::SolvedBounds& node,
         const detail::SolvedBounds& target,

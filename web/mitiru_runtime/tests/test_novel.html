@@ -2,14 +2,14 @@
 <meta charset="utf-8">
 <title>mitiru_novel.js tests</title>
 <!--
-    test_novel.html — mitiru.novel (F-04) unit tests
-    Pattern: same inline IIFE as test_state.html / test_hud.html
+    test_novel.html — mitiru.novel (F-04) unit test
+    パターン: test_state.html / test_hud.html と同じ inline IIFE
 
-    Run:
+    走らせ方:
       python -m http.server 8765 --bind 127.0.0.1
       open http://localhost:8765/web/mitiru_runtime/tests/test_novel.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -51,7 +51,7 @@
         return { id: 'test', lines: lines };
     }
 
-    // Collect events fired on containerEl.
+    // containerEl で発火した event を収集する。
     function collectEvents(el, eventNames)
     {
         var log = [];
@@ -62,12 +62,12 @@
         return log;
     }
 
-    // ── 1. guard: double-load prevention ────────────────────────
+    // ── 1. guard: double-load 防止 ────────────────────────
     t.case('mitiru.novel exists and is not re-created on re-include', function()
     {
         t.assert(typeof n === 'object' && n !== null, 'novel API should be an object');
         var ref = mitiru.novel;
-        // Simulate second load by invoking the IIFE manually (already guarded).
+        // IIFE を手動で呼んで二度目の load を模擬 (既に guard 済み)。
         t.assertEq(mitiru.novel, ref, 'reference must be the same after guard');
     });
 
@@ -82,7 +82,7 @@
         teardown(c);
     });
 
-    // ── 3. load — script:loaded event ───────────────────────────
+    // ── 3. load — script:loaded イベント ───────────────────────────
     t.case('load() fires novel:script-loaded event', async function()
     {
         var c      = makeContainer();
@@ -94,7 +94,7 @@
         teardown(c);
     });
 
-    // ── 4. advance + line:start event ───────────────────────────
+    // ── 4. advance + line:start イベント ───────────────────────────
     t.case('advance() fires novel:line:start with correct detail', async function()
     {
         var c      = makeContainer();
@@ -108,7 +108,7 @@
         teardown(c);
     });
 
-    // ── 5. pc() returns current index ───────────────────────────
+    // ── 5. pc() は現在の index を返す ───────────────────────────
     t.case('pc() returns -1 before first advance', async function()
     {
         var c = makeContainer();
@@ -125,44 +125,44 @@
         await n.load(simpleScript([{ text: 'A' }, { text: 'B' }]));
         n.advance();
         t.assertEq(n.pc(), 0);
-        n._twShowFull();   // skip typewriter
+        n._twShowFull();   // typewriter をスキップ
         n.advance();
         t.assertEq(n.pc(), 1);
         teardown(c);
     });
 
-    // ── 6. script:end fires when lines exhausted ─────────────────
+    // ── 6. 行を使い切ると script:end が発火 ─────────────────
     t.case('script:end fires after last line', async function()
     {
         var c      = makeContainer();
         n.mount(c);
         var events = collectEvents(c, ['novel:script:end']);
         await n.load(simpleScript([{ text: 'Only line' }]));
-        n.advance();          // line 0 starts, typewriter begins
-        n._twShowFull();      // skip typewriter
-        n.advance();          // move past last line → script:end
+        n.advance();          // line 0 開始、typewriter 開始
+        n._twShowFull();      // typewriter をスキップ
+        n.advance();          // 最終行を通過 → script:end
         t.assertEq(events.length, 1);
         teardown(c);
     });
 
-    // ── 7. double-tap: advance during typewriter skips to end ───
+    // ── 7. double-tap: typewriter 中の advance は末尾までスキップ ───
     t.case('advance() during typewriter skips to full text (no new line)', async function()
     {
         var c      = makeContainer();
         n.mount(c);
         var starts = collectEvents(c, ['novel:line:start']);
         await n.load(simpleScript([{ text: 'Long text' }, { text: 'Next' }]));
-        n.advance();   // starts line 0 + typewriter
+        n.advance();   // line 0 + typewriter を開始
         t.assertEq(starts.length, 1, 'one line:start before second advance');
-        n.advance();   // double-tap: skip typewriter
+        n.advance();   // double-tap: typewriter をスキップ
         t.assertEq(starts.length, 1, 'still one line:start — did not advance to next line');
-        // Textbox should show full text.
+        // Textbox は全文を表示するはず。
         var textEl = c.querySelector('[data-novel-text]');
         if (textEl) { t.assertEq(textEl.textContent, 'Long text'); }
         teardown(c);
     });
 
-    // ── 8. speaker displayed in textbox ─────────────────────────
+    // ── 8. speaker が textbox に表示される ─────────────────────────
     t.case('speaker name is rendered in [data-novel-speaker]', async function()
     {
         var c = makeContainer();
@@ -176,7 +176,7 @@
         teardown(c);
     });
 
-    // ── 9. bg line auto-advances ─────────────────────────────────
+    // ── 9. bg 行は自動で advance する ─────────────────────────────────
     t.case('bg line does not block — auto-advances to next line', async function()
     {
         var c      = makeContainer();
@@ -186,12 +186,12 @@
             { type: 'bg',   path: 'bg/test.png' },
             { type: 'text', text: 'After bg' }
         ]));
-        n.advance();   // runs bg line, then auto-advances to text line
+        n.advance();   // bg 行を実行し、自動で text 行へ advance
         t.assertEq(starts.length, 2, 'bg + text lines should both have started');
         teardown(c);
     });
 
-    // ── 10. choice: novel:choice:open fires ──────────────────────
+    // ── 10. choice: novel:choice:open が発火 ──────────────────────
     t.case('choice line fires novel:choice:open with correct options', async function()
     {
         var c      = makeContainer();
@@ -210,7 +210,7 @@
         teardown(c);
     });
 
-    // ── 11. choice: button click fires choice:pick ───────────────
+    // ── 11. choice: ボタン click で choice:pick が発火 ───────────────
     t.case('clicking a choice button fires novel:choice:pick', async function()
     {
         var c      = makeContainer();
@@ -228,7 +228,7 @@
         teardown(c);
     });
 
-    // ── 12. choice: label jump ───────────────────────────────────
+    // ── 12. choice: label への jump ───────────────────────────────────
     t.case('choice.next jumps to matching label in script', async function()
     {
         var c      = makeContainer();
@@ -239,16 +239,16 @@
             { type: 'text',   text: 'UNREACHABLE' },
             { type: 'text',   label: 'target', text: 'Reached' }
         ]));
-        n.advance();   // choice opens
+        n.advance();   // choice が開く
         var btn = c.querySelector('[data-novel-choice]');
         btn.click();
-        // After click, line:start fires for 'Reached'.
+        // click 後、'Reached' に対して line:start が発火する。
         var lastStart = starts[starts.length - 1];
         t.assertEq(lastStart.detail.line.text, 'Reached');
         teardown(c);
     });
 
-    // ── 13. log() records dialogue lines ────────────────────────
+    // ── 13. log() が dialogue 行を記録 ────────────────────────
     t.case('log() accumulates text lines in order', async function()
     {
         var c = makeContainer();
@@ -266,7 +266,7 @@
         teardown(c);
     });
 
-    // ── 14. backlog DOM rendered correctly ──────────────────────
+    // ── 14. backlog の DOM が正しく描画される ──────────────────────
     t.case('showBacklog() renders log entries in a <ul>', async function()
     {
         var c = makeContainer();
@@ -295,7 +295,7 @@
 
         await n.save('slot0');
 
-        // Advance further then restore.
+        // さらに advance してから restore。
         n.advance(); n._twShowFull();
         t.assertEq(n.pc(), 1);
 
@@ -304,7 +304,7 @@
         teardown(c);
     });
 
-    // ── 16. wait line uses setTimeout ───────────────────────────
+    // ── 16. wait 行は setTimeout を使う ───────────────────────────
     t.case('wait line fires line:start for next line after delay', async function()
     {
         var c      = makeContainer();
@@ -314,14 +314,14 @@
             { type: 'wait', ms: 0 },
             { type: 'text', text: 'After wait' }
         ]));
-        n.advance();   // wait line starts, immediately resolves (ms:0)
-        // ms:0 setTimeout fires asynchronously — await a microtask tick.
+        n.advance();   // wait 行が開始、即座に resolve (ms:0)
+        // ms:0 の setTimeout は非同期で発火 — microtask tick を await。
         await new Promise(function(r) { setTimeout(r, 10); });
         t.assertEq(starts.length, 2, 'text line should have started after wait');
         teardown(c);
     });
 
-    // ── 17. destroy() clears DOM and state ──────────────────────
+    // ── 17. destroy() が DOM と state をクリア ──────────────────────
     t.case('destroy() removes novel-root from container', async function()
     {
         var c = makeContainer();
@@ -332,7 +332,7 @@
         if (c.parentNode) { c.parentNode.removeChild(c); }
     });
 
-    // ── NF-10: skip-unread tracking ──────────────────────────────
+    // ── NF-10: 未読スキップの追跡 ──────────────────────────────
     function resetRead()
     {
         n.clearReadHistory();
@@ -360,10 +360,10 @@
         var script = { id: 'ch01', lines: [{ text: 'A' }, { text: 'B' }] };
         n.mount(c);
         await n.load(script);
-        n.advance();                       // start line 0
+        n.advance();                       // line 0 を開始
         await new Promise(function(r){ setTimeout(r, 20); });
-        n._twShowFull();                   // finish typewriter on line 0
-        n.advance();                       // advance to line 1 — marks line 0 as read
+        n._twShowFull();                   // line 0 の typewriter を完了
+        n.advance();                       // line 1 へ advance — line 0 を既読にする
         await new Promise(function(r){ setTimeout(r, 20); });
         t.assertEq(n.isRead('ch01', 0), true);
         teardown(c);
@@ -440,7 +440,7 @@
         t.assertEq(n.skipMode(), 'off');
     });
 
-    // ── NF-11: effect primitives ─────────────────────────────────
+    // ── NF-11: effect primitive ─────────────────────────────────
     t.case('NF-11 shake fires novel:effect:start + :end', async function()
     {
         var c = makeContainer();
@@ -453,7 +453,7 @@
             { type: 'shake', target: 'stage', durationMs: 10, intensity: 0.5 },
             { text: 'after' },
         ]));
-        n.advance();                                   // runs shake
+        n.advance();                                   // shake を実行
         await new Promise(function(r){ setTimeout(r, 80); });
         t.assertEq(starts.length, 1);
         t.assertEq(starts[0].type, 'shake');
@@ -523,7 +523,7 @@
             { type: 'flash', durationMs: 10 },
             { text: 'A' },
         ]));
-        n.advance();                                   // enters flash
+        n.advance();                                   // flash に入る
         await new Promise(function(r){ setTimeout(r, 80); });
         t.assertEq(startedTexts.indexOf('A') >= 0, true);
         teardown(c);
@@ -541,16 +541,16 @@
         ]));
         n.advance();
         await new Promise(function(r){ setTimeout(r, 50); });
-        // The effect still resolves (no-op path) so playback continues.
+        // effect は (no-op 経路でも) resolve するので再生は続く。
         t.assertEq(ends.length >= 1, true);
         teardown(c);
     });
 
-    // ── H-01: load() clears previous script's UI DOM ─────────────
+    // ── H-01: load() は前の script の UI DOM をクリアする ─────────────
     t.case('H-01 load() clears textbox, bg layer, and sprite layer', async function()
     {
-        // Arrange: mount, play a script to completion so textbox/bg/sprite
-        // all carry residue from the previous script.
+        // Arrange: mount し、script を最後まで再生して textbox/bg/sprite が
+        // すべて前の script の残骸を持つ状態にする。
         var c = makeContainer();
         n.mount(c);
         await n.load(simpleScript([
@@ -558,10 +558,10 @@
             { type: 'bg', path: 'data:image/svg+xml;utf8,<svg/>' },
             { type: 'sprite', id: 'hero', path: 'data:image/svg+xml;utf8,<svg/>', pos: 'center' }
         ]));
-        n.advance(); n._twShowFull();   // render text line
-        n.advance();                    // bg line (auto-advances)
-        n.advance();                    // sprite line
-        // Sanity: textbox now has residue.
+        n.advance(); n._twShowFull();   // text 行を描画
+        n.advance();                    // bg 行 (自動で advance)
+        n.advance();                    // sprite 行
+        // Sanity: textbox に残骸がある状態。
         var speakerEl = c.querySelector('[data-novel-speaker]');
         var textEl    = c.querySelector('[data-novel-text]');
         t.assertEq(speakerEl.textContent, 'Narrator');
@@ -569,10 +569,10 @@
         t.assert(c.querySelector('.novel-bg-layer').children.length >= 1, 'bg layer has children before reload');
         t.assert(c.querySelector('.novel-sprite-layer').children.length >= 1, 'sprite layer has children before reload');
 
-        // Act: load a second script without advancing it.
+        // Act: advance せずに 2 本目の script を load。
         await n.load(simpleScript([{ text: 'fresh line' }]));
 
-        // Assert: all UI residue cleared.
+        // Assert: UI の残骸がすべてクリアされている。
         t.assertEq(speakerEl.textContent, '');
         t.assertEq(textEl.textContent, '');
         t.assertEq(c.querySelector('.novel-bg-layer').children.length, 0);
@@ -580,7 +580,7 @@
         teardown(c);
     });
 
-    // ── H-02: bgFit mount option + per-line override ─────────────
+    // ── H-02: bgFit の mount option + 行ごとの上書き ─────────────
     t.case('H-02 bgFit mount option applies to bg lines', async function()
     {
         var c = makeContainer();
@@ -606,7 +606,7 @@
         ]));
         n.advance();
         var bgEl = c.querySelector('.novel-bg-layer > div');
-        // 'fill' is a novel-level alias for the CSS stretch `100% 100%`.
+        // 'fill' は CSS の stretch `100% 100%` に対する novel レベルの alias。
         t.assertEq(bgEl.style.backgroundSize, '100% 100%');
         teardown(c);
     });
@@ -621,7 +621,7 @@
         if (c.parentNode) { c.parentNode.removeChild(c); }
     });
 
-    // ── H-03: setSkipMode 'none' alias + SkipMode enum ───────────
+    // ── H-03: setSkipMode の 'none' alias + SkipMode enum ───────────
     t.case('H-03 setSkipMode accepts none as alias for off', function()
     {
         var c = makeContainer();
@@ -638,9 +638,9 @@
         t.assertEq(n.SkipMode.OFF, 'off');
         t.assertEq(n.SkipMode.ALL, 'all');
         t.assertEq(n.SkipMode.READ_ONLY, 'read-only');
-        // Frozen: mutation silently fails in non-strict or throws in strict.
+        // Frozen: 非 strict では mutation が黙って失敗、strict では throw。
         var before = n.SkipMode.OFF;
-        try { n.SkipMode.OFF = 'mutated'; } catch (e) { /* strict mode throws */ }
+        try { n.SkipMode.OFF = 'mutated'; } catch (e) { /* strict mode は throw */ }
         t.assertEq(n.SkipMode.OFF, before);
     });
 
@@ -654,7 +654,7 @@
         teardown(c);
     });
 
-    // ── H-05: textbox style rules live in injected <style> block ─
+    // ── H-05: textbox の style ルールは注入された <style> ブロックに置く ─
     t.case('H-05 mount injects mitiru-novel-styles once', function()
     {
         var c1 = makeContainer();
@@ -665,7 +665,7 @@
         n.destroy();
         if (c1.parentNode) { c1.parentNode.removeChild(c1); }
 
-        // Second mount does not duplicate the style block.
+        // 2 度目の mount では style ブロックは重複しない。
         var c2 = makeContainer();
         n.mount(c2);
         var styleEls = document.querySelectorAll('#mitiru-novel-styles');
@@ -679,7 +679,7 @@
         n.mount(c);
         var tb = c.querySelector('.novel-textbox');
         t.assert(tb !== null, 'textbox created');
-        // Visual defaults now live in the <style> block, not inline.
+        // 視覚的な既定値は inline ではなく <style> ブロックにある。
         t.assertEq(tb.style.background, '');
         t.assertEq(tb.style.backgroundColor, '');
         t.assertEq(tb.style.padding, '');
@@ -688,7 +688,7 @@
         teardown(c);
     });
 
-    // ── Bonus: input lockout ─────────────────────────────────────
+    // ── おまけ: input lockout ─────────────────────────────────────
     t.case('bonus setInputLockout arms perLineMs on advance', async function()
     {
         var c = makeContainer();

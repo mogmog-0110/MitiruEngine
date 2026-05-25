@@ -139,7 +139,7 @@ namespace mitiru::render
 					{
 						const auto& tex = texIt->second;
 						float u = vert.texCoord.x - std::floor(vert.texCoord.x);
-						float vv = 1.0f - (vert.texCoord.y - std::floor(vert.texCoord.y)); // flip V
+						float vv = 1.0f - (vert.texCoord.y - std::floor(vert.texCoord.y)); // V 反転
 						int px = std::clamp(static_cast<int>(u * tex.w), 0, tex.w - 1);
 						int py = std::clamp(static_cast<int>(vv * tex.h), 0, tex.h - 1);
 						auto pi = static_cast<size_t>((py * tex.w + px) * 4);

@@ -654,7 +654,7 @@ public:
 	}
 
 private:
-	// ── Instance ──────────────────────────────────────────────
+	// ── Instance（インスタンス） ──────────────────────────────────────────────
 
 	void createInstance()
 	{
@@ -701,7 +701,7 @@ private:
 		}
 	}
 
-	// ── Surface ───────────────────────────────────────────────
+	// ── Surface（サーフェス） ───────────────────────────────────────────────
 
 	void createSurface()
 	{
@@ -714,7 +714,7 @@ private:
 #endif
 	}
 
-	// ── Physical Device ───────────────────────────────────────
+	// ── Physical Device（物理デバイス） ───────────────────────────────────────
 
 	void pickPhysicalDevice()
 	{
@@ -822,7 +822,7 @@ private:
 		m_queueFamilies = deviceInfos[bestIdx.value()].queueFamilies;
 	}
 
-	// ── Logical Device ────────────────────────────────────────
+	// ── Logical Device（論理デバイス） ────────────────────────────────────────
 
 	void createLogicalDevice()
 	{
@@ -874,7 +874,7 @@ private:
 		vkGetDeviceQueue(m_device, m_queueFamilies.present.value(), 0, &m_presentQueue);
 	}
 
-	// ── Swap Chain ────────────────────────────────────────────
+	// ── Swap Chain（スワップチェーン） ────────────────────────────────────────────
 
 	struct SwapChainSupportDetails
 	{
@@ -1166,7 +1166,7 @@ private:
 		createSwapChain();
 	}
 
-	// ── Command Pool / Buffers ────────────────────────────────
+	// ── Command Pool / Buffers（コマンドプール・バッファ） ────────────────────────────────
 
 	void createCommandPool()
 	{
@@ -1206,7 +1206,7 @@ private:
 		}
 	}
 
-	// ── Sync Objects ──────────────────────────────────────────
+	// ── Sync Objects（同期オブジェクト） ──────────────────────────────────────────
 
 	void createSyncObjects()
 	{
@@ -1247,7 +1247,7 @@ private:
 		}
 	}
 
-	// ── Memory ────────────────────────────────────────────────
+	// ── Memory（メモリ） ────────────────────────────────────────────────
 
 	[[nodiscard]] std::optional<uint32_t> findMemoryType(
 		uint32_t typeFilter,
@@ -1267,11 +1267,11 @@ private:
 		return std::nullopt;
 	}
 
-	// ── Member variables ──────────────────────────────────────
+	// ── Member variables（メンバー変数） ──────────────────────────────────────
 
 	mitiru::GlfwWindow* m_glfwWindow = nullptr;
 
-	/// Vulkan core objects
+	/// Vulkan コアオブジェクト
 	VkInstance m_instance = VK_NULL_HANDLE;
 	VkSurfaceKHR m_surface = VK_NULL_HANDLE;
 	VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
@@ -1280,7 +1280,7 @@ private:
 	VkQueue m_presentQueue = VK_NULL_HANDLE;
 	QueueFamilyIndices m_queueFamilies;
 
-	/// Swap chain
+	/// スワップチェーン
 	VkSwapchainKHR m_swapChain = VK_NULL_HANDLE;
 	std::vector<VkImage> m_swapChainImages;
 	std::vector<VkImageView> m_swapChainImageViews;
@@ -1289,16 +1289,16 @@ private:
 	VkExtent2D m_swapChainExtent{};
 	VkRenderPass m_renderPass = VK_NULL_HANDLE;
 
-	/// Command pool and buffers
+	/// コマンドプールとバッファ
 	VkCommandPool m_commandPool = VK_NULL_HANDLE;
 	std::vector<VkCommandBuffer> m_commandBuffers;
 
-	/// Synchronization
+	/// 同期オブジェクト
 	std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_imageAvailableSemaphores{};
 	std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_renderFinishedSemaphores{};
 	std::array<VkFence, MAX_FRAMES_IN_FLIGHT> m_inFlightFences{};
 
-	/// Frame state
+	/// フレーム状態
 	uint32_t m_currentFrame = 0;
 	uint32_t m_currentImageIndex = 0;
 };

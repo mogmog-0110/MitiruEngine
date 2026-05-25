@@ -1,23 +1,24 @@
 #pragma once
 
 /// @file ParametricPortrait.hpp
-/// @brief N-dimensional grid of sprite variants selected by quantized real-valued inputs (G-01)
+/// @brief 量子化した実数値入力で選択する sprite variant の N 次元 grid (G-01)
 ///
-/// **Motivation.** Characters in pandd-dodo have appearance driven by continuous
-/// stats (motivation, weight, jump). The original code in
-/// `CharacterAttributes::getMotivationAppearance()` mapped each stat → {-1, 0, +1}
-/// and assembled a filename like `1_0_-1.PNG`. Every game re-invents this pattern.
-/// `ParametricPortrait` owns the quantization, path-template substitution, and
-/// per-path texture caching so the game only needs to call `select(values)`.
+/// **動機。** pandd-dodo の character は連続値の stat (motivation・weight・jump)
+/// で見た目が駆動される。元の
+/// `CharacterAttributes::getMotivationAppearance()` のコードは各 stat を
+/// {-1, 0, +1} に map し、`1_0_-1.PNG` のような filename を組み立てていた。
+/// どの game もこの pattern を再発明する。
+/// `ParametricPortrait` が量子化・path-template の置換・per-path の texture
+/// cache を所有するので、game は `select(values)` を呼ぶだけでよい。
 ///
-/// **Design decisions:**
-/// - Header-only; no I/O dependency. The caller supplies a `LoaderFn` callback.
-/// - `mutable std::mutex` on the cache so `select()` is safe to call from any thread.
-/// - Override flags use insertion-order priority (first-added first-matched).
-/// - Empty/failed loads are reported to stderr and return an empty `Texture`; the
-///   game must not crash on a missing asset.
+/// **設計判断:**
+/// - Header-only。I/O 依存無し。caller が `LoaderFn` callback を供給する。
+/// - cache に `mutable std::mutex` を持つので `select()` はどの thread からでも安全。
+/// - Override flag は挿入順 priority (先に追加されたものが先に match)。
+/// - 空 / 失敗した load は stderr に報告し空の `Texture` を返す。game は asset
+///   欠落で crash してはならない。
 ///
-/// **Usage (3-axis pandd-dodo portrait):**
+/// **使い方 (3 軸 pandd-dodo portrait):**
 /// ```cpp
 ///   using mitiru::sprite::ParametricPortrait;
 ///   using mitiru::render::Texture;
@@ -36,11 +37,11 @@
 ///   const Texture& tex = portrait.select({motivationStat, weightStat, jumpStat});
 /// ```
 ///
-/// **Quantization rule:**
+/// **量子化ルール:**
 ///   - value < axis.lowThreshold  → "-1"
 ///   - value > axis.highThreshold → "1"
-///   - otherwise                  → "0"
-///   - equal to a threshold is treated as middle (0)
+///   - それ以外                   → "0"
+///   - threshold と等しい場合は中央 (0) として扱う
 
 #include <array>
 #include <filesystem>
@@ -58,34 +59,34 @@
 namespace mitiru::sprite
 {
 
-/// @brief Picks one texture from an N-dimensional grid of variants based on
-///        quantized real-valued inputs.
-/// @tparam N_AXES Number of independent quantization axes (e.g. 3 for pandd-dodo portraits).
+/// @brief 量子化した実数値入力に基づき、variant の N 次元 grid から
+///        texture を 1 つ選ぶ。
+/// @tparam N_AXES 独立した量子化軸の数 (例: pandd-dodo portrait なら 3)。
 template <std::size_t N_AXES>
 class ParametricPortrait
 {
 public:
-	/// @brief Loader callback type.
-	/// @details Called with the resolved absolute path when a texture is first
-	///          needed. Return an empty (default-constructed) `Texture` to signal
-	///          failure; the portrait will log to stderr and return an empty ref.
+	/// @brief Loader callback の型。
+	/// @details texture が初めて必要になった時、解決済みの絶対 path で呼ばれる。
+	///          失敗を伝えるには空 (default 構築) の `Texture` を返す。portrait は
+	///          stderr に log を出し空の ref を返す。
 	using LoaderFn = std::function<mitiru::render::Texture(const std::filesystem::path&)>;
 
-	/// @brief One quantization axis.
+	/// @brief 1 つの量子化軸。
 	struct Axis
 	{
 		float       lowThreshold;   ///< value < low  → "-1"
 		float       highThreshold;  ///< value > high → "1"
-		std::string name;           ///< placeholder name used in pathTemplate, e.g. "motivation"
+		std::string name;           ///< pathTemplate で使う placeholder 名。例 "motivation"
 	};
 
-	/// @brief Construct a portrait grid.
-	/// @param axes           Array of N_AXES quantization axes, in template-placeholder order.
-	/// @param pathTemplate   Path relative to baseDir; placeholders `{axisName}` are
-	///                       replaced with "-1", "0", or "1".
-	///                       Example: `"raising/{motivation}_{weight}_{jump}.PNG"`
-	/// @param baseDir        Root directory prepended to every resolved path before loading.
-	/// @param loader         Callback invoked (once per unique path) to load a texture.
+	/// @brief portrait grid を構築する。
+	/// @param axes           N_AXES 個の量子化軸の配列。template-placeholder 順。
+	/// @param pathTemplate   baseDir からの相対 path。placeholder `{axisName}` が
+	///                       "-1"・"0"・"1" に置換される。
+	///                       例: `"raising/{motivation}_{weight}_{jump}.PNG"`
+	/// @param baseDir        load 前に解決済み path 全てに前置される root directory。
+	/// @param loader         texture 読み込みのため (unique path ごとに 1 回) 呼ばれる callback。
 	ParametricPortrait(
 		std::array<Axis, N_AXES>  axes,
 		std::string               pathTemplate,
@@ -101,17 +102,16 @@ public:
 	ParametricPortrait(const ParametricPortrait&)            = delete;
 	ParametricPortrait& operator=(const ParametricPortrait&) = delete;
 
-	// ── override flags ────────────────────────────────────────────────
+	// ── override flag ────────────────────────────────────────────────
 
-	/// @brief Register an override: when `flag` is active, `select()` returns
-	///        the texture at `overridePath` (relative to baseDir) instead of the
-	///        normally computed portrait.
-	/// @details Multiple overrides are checked in insertion order; the first
-	///          active flag wins.
+	/// @brief override を登録する: `flag` が有効な時、`select()` は通常計算される
+	///        portrait の代わりに `overridePath` (baseDir からの相対) の texture
+	///        を返す。
+	/// @details 複数の override は挿入順に検査され、最初に有効な flag が勝つ。
 	void addOverride(std::string_view flag, std::string_view overridePath)
 	{
 		std::lock_guard lock(m_mutex);
-		// Avoid duplicates — update path if flag already registered.
+		// 重複を避ける — flag が既に登録済みなら path を更新する。
 		for (auto& entry : m_overrides)
 		{
 			if (entry.flag == flag)
@@ -123,8 +123,8 @@ public:
 		m_overrides.push_back({std::string(flag), std::string(overridePath), false});
 	}
 
-	/// @brief Activate or deactivate an override flag.
-	/// @details No-op if the flag was never registered via `addOverride`.
+	/// @brief override flag を有効 / 無効にする。
+	/// @details `addOverride` で登録されていない flag なら no-op。
 	void setOverrideFlag(std::string_view flag, bool on)
 	{
 		std::lock_guard lock(m_mutex);
@@ -138,18 +138,18 @@ public:
 		}
 	}
 
-	// ── core selection ────────────────────────────────────────────────
+	// ── 中核の選択 ────────────────────────────────────────────────
 
-	/// @brief Quantize `values`, resolve the path, cache-hit or load, return ref.
-	/// @param values  One float per axis, in the same order as the `axes` array.
-	/// @return Const ref to the cached texture. The ref is stable for the
-	///         lifetime of this ParametricPortrait. An empty Texture is returned
-	///         (and logged to stderr) if the loader fails.
+	/// @brief `values` を量子化し path を解決、cache-hit か load して ref を返す。
+	/// @param values  軸ごとに 1 つの float。`axes` 配列と同じ順序。
+	/// @return cache 済み texture への const ref。ref はこの ParametricPortrait の
+	///         生存期間にわたり安定。loader が失敗すると空の Texture を返す
+	///         (かつ stderr に log)。
 	const mitiru::render::Texture& select(std::array<float, N_AXES> values) const
 	{
 		std::lock_guard lock(m_mutex);
 
-		// Check override flags first (insertion order = priority order).
+		// まず override flag を検査する (挿入順 = priority 順)。
 		for (const auto& entry : m_overrides)
 		{
 			if (entry.active)
@@ -158,7 +158,7 @@ public:
 			}
 		}
 
-		// Build path from quantized axis values.
+		// 量子化した軸の値から path を組み立てる。
 		const std::string resolvedPath = buildPath(values);
 		return loadCached(resolvedPath);
 	}
@@ -173,9 +173,9 @@ private:
 		bool        active = false;
 	};
 
-	// ── helpers (all called under lock) ──────────────────────────────
+	// ── helper (全て lock 下で呼ばれる) ──────────────────────────────
 
-	/// @brief Quantize a single axis value.
+	/// @brief 単一の軸の値を量子化する。
 	static std::string quantize(float value, const Axis& axis)
 	{
 		if (value < axis.lowThreshold)  return "-1";
@@ -183,7 +183,7 @@ private:
 		return "0";
 	}
 
-	/// @brief Build the relative path string by substituting all axis placeholders.
+	/// @brief 全ての軸 placeholder を置換して相対 path 文字列を組み立てる。
 	std::string buildPath(const std::array<float, N_AXES>& values) const
 	{
 		std::string result = m_pathTemplate;
@@ -196,7 +196,7 @@ private:
 		return result;
 	}
 
-	/// @brief Replace every occurrence of `placeholder` in `str` with `value`.
+	/// @brief `str` 中の `placeholder` の全出現を `value` に置換する。
 	static void replacePlaceholder(std::string& str,
 	                               const std::string& placeholder,
 	                               const std::string& value)
@@ -209,8 +209,8 @@ private:
 		}
 	}
 
-	/// @brief Cache-lookup + load. Returns ref into m_cache (stable address).
-	/// @details Must be called under m_mutex.
+	/// @brief cache 検索 + load。m_cache 内への ref (安定 address) を返す。
+	/// @details m_mutex 下で呼ぶこと。
 	const mitiru::render::Texture& loadCached(const std::string& relativePath) const
 	{
 		auto it = m_cache.find(relativePath);
@@ -219,7 +219,7 @@ private:
 			return it->second;
 		}
 
-		// Load and insert unconditionally so we have a stable address to return.
+		// 返す address を安定させるため、無条件に load して insert する。
 		const std::filesystem::path fullPath = m_baseDir / relativePath;
 		mitiru::render::Texture tex;
 		if (m_loader)
@@ -238,7 +238,7 @@ private:
 		return inserted->second;
 	}
 
-	// ── data ─────────────────────────────────────────────────────────
+	// ── データ ─────────────────────────────────────────────────────────
 
 	std::array<Axis, N_AXES>                               m_axes;
 	std::string                                            m_pathTemplate;

@@ -118,7 +118,7 @@ public:
             end - m_frameStart).count();
         m_totalFrameMs = static_cast<float>(us) / 1000.0f;
 
-        // Other = total - sum of known categories
+        // Other = 全体時間 - 既知カテゴリの合計
         float knownMs = 0.0f;
         for (std::size_t i = 0; i < kCategoryCount; ++i)
         {
@@ -288,18 +288,18 @@ private:
                 break;
             }
 
-            // Label
+            // ラベル
             const sgc::Rectf labelRect{x + 4.0f, rowY, labelWidth - 4.0f, barHeight};
             screen.drawTextInRect(labelRect,
                                   categoryName(cat),
                                   sgc::Colorf{0.9f, 0.9f, 0.9f, 1.0f},
                                   11.0f);
 
-            // Bar background
+            // バー背景
             const sgc::Rectf barBgRect{x + labelWidth, rowY, barAreaWidth, barHeight};
             screen.drawRect(barBgRect, sgc::Colorf{0.2f, 0.2f, 0.2f, 1.0f});
 
-            // Bar fill
+            // バー塗りつぶし
             const float ms = m_categoryMs[i];
             const float ratio = std::min(ms / kBudgetMs, 1.0f);
             if (ratio > 0.0f)
@@ -309,7 +309,7 @@ private:
                 screen.drawRect(barRect, categoryColor(cat));
             }
 
-            // Value text
+            // 数値テキスト
             char valBuf[32];
             std::snprintf(valBuf, sizeof(valBuf), "%.2fms", ms);
             const sgc::Rectf valueRect{valueX, rowY, 72.0f, barHeight};
@@ -318,7 +318,7 @@ private:
                                   11.0f);
         }
 
-        // Budget line marker (red line at 100%)
+        // バジェットライン (100% 位置の赤線)
         const float budgetLineX = x + labelWidth + barAreaWidth;
         const float budgetLineY = y;
         const float budgetLineH = std::min(

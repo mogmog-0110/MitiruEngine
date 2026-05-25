@@ -1,23 +1,23 @@
 /*!
- * mitiru_save.js — whole-game-state save slots (F-11)
+ * mitiru_save.js — ゲーム全状態の save slot (F-11)
  *
- * 10 numbered save slots, each holding a versioned, timestamped game-state blob.
- * Supports localStorage (dev / web fallback) and a CEF file-bridge backend
- * (production, no practical size limit).
+ * 10 個の番号付き save slot。各 slot が version 付き・timestamp 付きの
+ * game-state blob を保持する。localStorage (dev / web の fallback) と
+ * CEF file-bridge backend (production、実質的なサイズ上限なし) をサポート。
  *
  * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-11
  *
  * ── API ─────────────────────────────────────────────────────────────────────
- *   mitiru.save.SCHEMA_VERSION            number — bump when stored format changes
- *   mitiru.save.MAX_SLOTS                 number — always 10
+ *   mitiru.save.SCHEMA_VERSION            number — 保存形式変更時に上げる
+ *   mitiru.save.MAX_SLOTS                 number — 常に 10
  *   mitiru.save.write(slot, data, meta?)  Promise<void>
  *   mitiru.save.read(slot)               Promise<{data,meta}|null>
  *   mitiru.save.list()                   Promise<Array<{slot,exists,meta}>>
  *   mitiru.save.delete(slot)             Promise<void>
  *   mitiru.save.registerMigration(from, to, fn)
- *   mitiru.save.migrateAll()             Promise<void>  — migrate every occupied slot
+ *   mitiru.save.migrateAll()             Promise<void>  — 使用中の全 slot を migrate
  *   mitiru.save.backend()                'cef' | 'localStorage'
- *   mitiru.save.sizeBytes()              Promise<number>  — -1 in CEF
+ *   mitiru.save.sizeBytes()              Promise<number>  — CEF では -1
  *   mitiru.save.exportSlot(slot)         Promise<Blob>   — NF-06
  *   mitiru.save.exportAll()              Promise<Blob>   — NF-06
  *   mitiru.save.importSlot(blob, slot)   Promise<void>   — NF-06
@@ -25,10 +25,10 @@
  *   mitiru.save.triggerDownload(blob, filename?)  void  — NF-06
  *   mitiru.save.currentVersion()         number          — NF-06
  *
- * ── Storage keys (localStorage) ─────────────────────────────────────────────
- *   mitiru.save.slot.<N>.data      committed data blob (JSON)
- *   mitiru.save.slot.<N>.meta      committed meta blob (JSON)
- *   mitiru.save.slot.<N>.staging   atomic staging — present only during write
+ * ── Storage key (localStorage) ─────────────────────────────────────────────
+ *   mitiru.save.slot.<N>.data      commit 済み data blob (JSON)
+ *   mitiru.save.slot.<N>.meta      commit 済み meta blob (JSON)
+ *   mitiru.save.slot.<N>.staging   atomic staging — write 中のみ存在
  *
  * ── CEF handler namespace ────────────────────────────────────────────────────
  *   save.write   {slot, payload: <full blob JSON string>}
@@ -36,40 +36,40 @@
  *   save.list    {}
  *   save.delete  {slot}
  *
- *   TODO(engine): proper disk-backed save handler in StateStore.
- *   C++ registration stub signature:
+ *   TODO(engine): StateStore に正式な disk-backed save handler を実装する。
+ *   C++ 登録 stub の signature:
  *
  *     ctx.registerHandler("save.write",  [](const std::string& payload) -> std::string);
  *     ctx.registerHandler("save.read",   [](const std::string& payload) -> std::string);
  *     ctx.registerHandler("save.list",   [](const std::string& payload) -> std::string);
  *     ctx.registerHandler("save.delete", [](const std::string& payload) -> std::string);
  *
- *   All handlers receive a JSON string (payload from dispatch) and must return
- *   a JSON string.  write/delete return `{"ok":true}`.  read returns the stored
- *   blob JSON or `null`.  list returns an array of {slot,exists,meta} objects.
+ *   全 handler は JSON string (dispatch からの payload) を受け取り、JSON string を
+ *   返さねばならない。write/delete は `{"ok":true}` を返す。read は保存された
+ *   blob JSON か `null` を返す。list は {slot,exists,meta} object の配列を返す。
  *
- *   If the C++ handler is not registered, mitiru.dispatch rejects — this module
- *   catches that error and falls back to localStorage automatically.
+ *   C++ handler が未登録なら mitiru.dispatch は reject する — この module は
+ *   その error を捕捉し、自動的に localStorage に fallback する。
  *
  * ── Supersedes ───────────────────────────────────────────────────────────────
- *   mitiru.state.save / .load / .listSlots (F-03) remain for per-key ephemeral
- *   state persistence.  For whole-game-state blobs (save-screen flow) use this
- *   module instead.
+ *   mitiru.state.save / .load / .listSlots (F-03) は per-key の一時的な state
+ *   永続化として残る。game 全状態の blob (save 画面 flow) にはこの module を
+ *   代わりに使う。
  */
 (function(global)
 {
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.save) { return; }  // already loaded
+	if (mitiru.save) { return; }  // 読み込み済み
 
-	// ── constants ─────────────────────────────────────────────────
+	// ── 定数 ─────────────────────────────────────────────────
 	const SCHEMA_VERSION = 1;
 	const MAX_SLOTS      = 10;
 	const KEY_PREFIX     = 'mitiru.save.slot.';
 
 	// ── migration registry ────────────────────────────────────────
-	// Each entry: { from: number, to: number, fn: (oldData) => newData }
+	// 各 entry: { from: number, to: number, fn: (oldData) => newData }
 	const _migrations = [];
 
 	// ── helpers ───────────────────────────────────────────────────
@@ -96,7 +96,7 @@
 		let current = blob;
 		let version = (typeof current.version === 'number') ? current.version : 0;
 
-		// Sort migrations ascending by `from` so chains apply in order.
+		// chain が順番に適用されるよう、migration を `from` 昇順に sort する。
 		const sorted = _migrations.slice().sort(function(a, b) { return a.from - b.from; });
 
 		for (let i = 0; i < sorted.length; ++i)
@@ -124,15 +124,15 @@
 		return current;
 	}
 
-	// ── backend detection ─────────────────────────────────────────
+	// ── backend 検出 ─────────────────────────────────────────
 	function _isCef()
 	{
 		return typeof global.cefQuery === 'function';
 	}
 
-	// ── CEF dispatch with localStorage fallback ───────────────────
-	// Returns Promise.  If the C++ handler rejects (not registered), falls back
-	// to the localStorage implementation transparently.
+	// ── localStorage fallback 付き CEF dispatch ───────────────────
+	// Promise を返す。C++ handler が reject した場合 (未登録) は、透過的に
+	// localStorage 実装へ fallback する。
 	function _cefDispatch(action, args)
 	{
 		if (!_isCef() || typeof mitiru.dispatch !== 'function')
@@ -142,9 +142,9 @@
 		return mitiru.dispatch(action, args)
 			.catch(function(err)
 			{
-				// If the handler simply isn't registered on the C++ side the error
-				// message will contain "unknown action".  Treat that as a signal to
-				// use the localStorage fallback rather than bubbling.
+				// C++ 側に handler が単に未登録なだけなら error message に
+				// "unknown action" が含まれる。それを bubble させず localStorage
+				// fallback を使う signal として扱う。
 				if (err && typeof err.message === 'string'
 				    && err.message.indexOf('unknown action') !== -1)
 				{
@@ -154,7 +154,7 @@
 			});
 	}
 
-	// ── localStorage implementation ───────────────────────────────
+	// ── localStorage 実装 ───────────────────────────────
 
 	function _lsWrite(slot, data, meta)
 	{
@@ -178,7 +178,7 @@
 			thumbnailDataUrl: blob.thumbnailDataUrl,
 		};
 
-		// Atomic staging: write staging first, then commit, then clean up.
+		// Atomic staging: まず staging を書き、commit し、最後に掃除する。
 		try
 		{
 			global.localStorage.setItem(_stagingKey(slot), blobStr);
@@ -188,7 +188,7 @@
 		}
 		catch (e)
 		{
-			// Quota exceeded or similar — staging key remains for recovery.
+			// quota 超過等 — recovery 用に staging key を残す。
 			throw new Error('mitiru.save: write failed (slot ' + slot + '): ' + e.message);
 		}
 		return Promise.resolve();
@@ -199,8 +199,8 @@
 		const dataStr    = global.localStorage.getItem(_dataKey(slot));
 		const stagingStr = global.localStorage.getItem(_stagingKey(slot));
 
-		// Corruption recovery: if staging exists but committed data does not
-		// (or they differ), use staging and log a warning.
+		// 破損 recovery: staging があるが commit 済み data が無い (または
+		// 両者が異なる) 場合、staging を使い warning を log する。
 		let raw = null;
 		if (stagingStr && (!dataStr || dataStr !== stagingStr))
 		{
@@ -274,13 +274,13 @@
 		{
 			const d = global.localStorage.getItem(_dataKey(i));
 			const m = global.localStorage.getItem(_metaKey(i));
-			if (d) { total += d.length * 2; }  // UTF-16: 2 bytes per char
+			if (d) { total += d.length * 2; }  // UTF-16: 1 文字 2 bytes
 			if (m) { total += m.length * 2; }
 		}
 		return Promise.resolve(total);
 	}
 
-	// ── CEF implementation (delegates to registered C++ handlers) ────
+	// ── CEF 実装 (登録済み C++ handler に委譲) ────
 
 	function _cefWrite(slot, data, meta)
 	{
@@ -304,8 +304,8 @@
 			.then(function(resp)
 			{
 				if (!resp) { return null; }
-				// resp may be a pre-parsed object or a JSON string depending on
-				// how the C++ handler was registered.
+				// resp は C++ handler の登録方法次第で、parse 済み object か
+				// JSON string のどちらかになりうる。
 				let blob = (typeof resp === 'string') ? JSON.parse(resp) : resp;
 				blob = _applyMigrations(blob);
 				const meta = {
@@ -337,8 +337,8 @@
 			.then(function() { return undefined; });
 	}
 
-	// ── with-fallback wrappers ────────────────────────────────────
-	// Try CEF first; on error ("unknown action" / cef unavailable), use localStorage.
+	// ── fallback 付き wrapper ────────────────────────────────────
+	// まず CEF を試す; error ("unknown action" / cef 不可) 時は localStorage を使う。
 
 	function _withFallback(cefFn, lsFn)
 	{
@@ -360,9 +360,9 @@
 	save.MAX_SLOTS      = MAX_SLOTS;
 
 	/**
-	 * Write entire game state to a slot.
+	 * ゲームの全状態を slot に書き込む。
 	 * @param {number}  slot  0 .. MAX_SLOTS-1
-	 * @param {object}  data  JSON-serializable game state
+	 * @param {object}  data  JSON 直列化可能な game state
 	 * @param {object} [meta] {title?, description?, thumbnailDataUrl?, playtimeMs?, timestamp?}
 	 * @returns {Promise<void>}
 	 */
@@ -377,9 +377,9 @@
 	};
 
 	/**
-	 * Read a slot.
+	 * slot を読む。
 	 * @param {number} slot
-	 * @returns {Promise<{data:object,meta:object}|null>}  null if slot is empty
+	 * @returns {Promise<{data:object,meta:object}|null>}  slot が空なら null
 	 */
 	save.read = function(slot)
 	{
@@ -391,9 +391,9 @@
 	};
 
 	/**
-	 * List all slots.
+	 * 全 slot を列挙する。
 	 * @returns {Promise<Array<{slot:number,exists:boolean,meta:object|null}>>}
-	 *   Always exactly MAX_SLOTS entries.
+	 *   常にちょうど MAX_SLOTS 個の entry。
 	 */
 	save.list = function()
 	{
@@ -404,7 +404,7 @@
 	};
 
 	/**
-	 * Delete a slot.  No-op if the slot is already empty.
+	 * slot を削除する。slot が既に空なら no-op。
 	 * @param {number} slot
 	 * @returns {Promise<void>}
 	 */
@@ -418,8 +418,8 @@
 	};
 
 	/**
-	 * Register a migration from `fromVersion` to `toVersion`.
-	 * Applied in ascending `from` order at read time when stored version < SCHEMA_VERSION.
+	 * `fromVersion` から `toVersion` への migration を登録する。
+	 * 保存 version < SCHEMA_VERSION のとき read 時に `from` 昇順で適用される。
 	 * @param {number}   fromVersion
 	 * @param {number}   toVersion
 	 * @param {function} migrate   (oldData: object) => newData: object
@@ -438,8 +438,8 @@
 	};
 
 	/**
-	 * Apply all registered migrations to every occupied slot.
-	 * Useful for a post-update migration sweep at game startup.
+	 * 登録済みの全 migration を、使用中の全 slot に適用する。
+	 * game 起動時の update 後 migration sweep に有用。
 	 * @returns {Promise<void>}
 	 */
 	save.migrateAll = async function()
@@ -455,7 +455,7 @@
 	};
 
 	/**
-	 * Probe the active storage backend.
+	 * 現在 active な storage backend を調べる。
 	 * @returns {'cef'|'localStorage'}
 	 */
 	save.backend = function()
@@ -464,8 +464,8 @@
 	};
 
 	/**
-	 * Total bytes used by save data in localStorage.
-	 * Returns -1 when running on the CEF backend (disk usage not queryable from JS).
+	 * localStorage 上で save data が使う総 byte 数。
+	 * CEF backend 上では -1 を返す (disk 使用量は JS から問い合わせ不可)。
 	 * @returns {Promise<number>}
 	 */
 	save.sizeBytes = async function()
@@ -477,10 +477,10 @@
 	// ── NF-06: export / import / download ─────────────────────────
 
 	/**
-	 * Read the raw stored blob from localStorage without applying migrations.
-	 * Returns the parsed blob object, or null if the slot is empty / corrupt.
-	 * Used by exportSlot/exportAll so the exported bundle carries the actual
-	 * stored shape — _applyMigrations runs at importSlot time, not export time.
+	 * migration を適用せず localStorage から生の保存 blob を読む。
+	 * parse 済み blob object を返す、slot が空 / 破損なら null。
+	 * exportSlot/exportAll が使い、export した bundle に実際の保存形を持たせる
+	 * — _applyMigrations は export 時ではなく importSlot 時に走る。
 	 *
 	 * @param {number} slot
 	 * @returns {object|null}
@@ -507,13 +507,13 @@
 	}
 
 	/**
-	 * Export a single save slot as a portable Blob.
+	 * 単一の save slot を可搬な Blob として export する。
 	 *
-	 * Bundle format (JSON, application/octet-stream):
+	 * Bundle 形式 (JSON, application/octet-stream):
 	 * {
-	 *   engineVersion: number,   // SCHEMA_VERSION at export time
+	 *   engineVersion: number,   // export 時の SCHEMA_VERSION
 	 *   slots: {
-	 *     "<N>": {               // the raw stored blob as-is from localStorage
+	 *     "<N>": {               // localStorage から取った生の保存 blob そのまま
 	 *       version:          number,
 	 *       timestamp:        number,
 	 *       playtimeMs:       number,
@@ -525,8 +525,8 @@
 	 *   }
 	 * }
 	 *
-	 * The raw blob is exported without running migrations so that
-	 * _applyMigrations can execute on the receiving side at importSlot time.
+	 * 生 blob は migration を走らせずに export する。これにより受け取り側で
+	 * importSlot 時に _applyMigrations を実行できる。
 	 *
 	 * @param {number} slot  0 .. MAX_SLOTS-1
 	 * @returns {Promise<Blob>}  MIME: application/octet-stream
@@ -547,10 +547,10 @@
 	};
 
 	/**
-	 * Export all occupied save slots as a single portable Blob.
+	 * 使用中の全 save slot を 1 つの可搬な Blob として export する。
 	 *
-	 * Bundle format is the same as exportSlot but `slots` may have 0..MAX_SLOTS
-	 * entries.  Empty slots are omitted entirely.
+	 * Bundle 形式は exportSlot と同じだが `slots` は 0..MAX_SLOTS 個の entry を
+	 * 持ちうる。空の slot は完全に省略する。
 	 *
 	 * @returns {Promise<Blob>}  MIME: application/octet-stream
 	 */
@@ -572,15 +572,14 @@
 	};
 
 	/**
-	 * Import a bundle Blob into a specific slot, overwriting existing data.
+	 * bundle Blob を特定の slot に import し、既存 data を上書きする。
 	 *
-	 * The bundle's stored blob for the matching slot is run through
-	 * _applyMigrations before writing, so the saved slot is always at the
-	 * current SCHEMA_VERSION after import.
+	 * 一致する slot の保存 blob は書き込み前に _applyMigrations を通すため、
+	 * import 後の slot は常に現在の SCHEMA_VERSION になる。
 	 *
-	 * Throws RangeError synchronously for invalid slot (mirrors write() behaviour).
-	 * Rejects if bundle.engineVersion > SCHEMA_VERSION.
-	 * Resolves with void if the bundle contains no data for the given slot.
+	 * 不正な slot では同期的に RangeError を throw する (write() と同じ挙動)。
+	 * bundle.engineVersion > SCHEMA_VERSION なら reject する。
+	 * bundle にその slot の data が無い場合は void で resolve する。
 	 *
 	 * @param {Blob}   blob
 	 * @param {number} slot  0 .. MAX_SLOTS-1
@@ -588,8 +587,8 @@
 	 */
 	save.importSlot = function(blob, slot)
 	{
-		// Validate synchronously — mirrors write() which calls _validateSlot
-		// as its first statement before entering any async work.
+		// 同期的に validate — write() が async 処理に入る前の最初の文で
+		// _validateSlot を呼ぶのと同じ挙動。
 		_validateSlot(slot);
 		return blob.text().then(function(text)
 		{
@@ -615,9 +614,9 @@
 			}
 
 			const raw = bundle.slots[String(slot)];
-			if (raw === undefined) { return undefined; }  // slot absent in bundle — no-op
+			if (raw === undefined) { return undefined; }  // bundle に slot 無し — no-op
 
-			// Apply any registered migrations so the slot is written at current version.
+			// 登録済み migration を適用し、slot を現在 version で書き込む。
 			const migrated = _applyMigrations(raw);
 
 			const meta = {
@@ -635,17 +634,17 @@
 	};
 
 	/**
-	 * Import all slots from a bundle Blob.
+	 * bundle Blob から全 slot を import する。
 	 *
-	 * Slots present in the bundle overwrite local data.
-	 * Slots absent in the bundle are left untouched.
+	 * bundle にある slot は local data を上書きする。
+	 * bundle に無い slot はそのまま残す。
 	 *
-	 * Rejects if bundle.engineVersion > SCHEMA_VERSION.
+	 * bundle.engineVersion > SCHEMA_VERSION なら reject する。
 	 *
 	 * @param {Blob} blob
 	 * @returns {Promise<{imported: number[], skipped: number[]}>}
-	 *   imported — slot indices that were written
-	 *   skipped  — slot indices absent in the bundle
+	 *   imported — 書き込まれた slot index
+	 *   skipped  — bundle に無かった slot index
 	 */
 	save.importAll = function(blob)
 	{
@@ -694,7 +693,7 @@
 					description:      migrated.description,
 					thumbnailDataUrl: migrated.thumbnailDataUrl,
 				};
-				// Capture loop variable via closure.
+				// closure で loop 変数を捕捉する。
 				(function(s, d, m)
 				{
 					writes.push(
@@ -714,10 +713,10 @@
 	};
 
 	/**
-	 * Trigger a browser file-download for a Blob.  Synchronous.
+	 * Blob の browser file-download を起動する。同期的。
 	 *
-	 * Creates a temporary object-URL, simulates an anchor click, then revokes
-	 * the URL on the next macrotask (100 ms) to avoid leaking object URLs.
+	 * 一時的な object-URL を作り、anchor の click を模擬し、object URL の
+	 * leak を防ぐため次の macrotask (100 ms) で URL を revoke する。
 	 *
 	 * @param {Blob}   blob
 	 * @param {string} [filename='mitiru_save.sav']
@@ -733,13 +732,13 @@
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
-		// Revoke after the browser has had a chance to begin the download.
+		// browser が download を開始できるだけの猶予を置いてから revoke する。
 		setTimeout(function() { URL.revokeObjectURL(url); }, 100);
 	};
 
 	/**
-	 * Return the current schema version number.
-	 * Convenience accessor — same value as save.SCHEMA_VERSION.
+	 * 現在の schema version 番号を返す。
+	 * 便宜的な accessor — save.SCHEMA_VERSION と同じ値。
 	 * @returns {number}
 	 */
 	save.currentVersion = function()

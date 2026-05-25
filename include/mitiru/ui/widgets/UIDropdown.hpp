@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIDropdown.hpp
-/// @brief Dropdown selection widget with scrollable option list.
+/// @brief スクロール可能な option リストを持つ dropdown 選択 widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -14,23 +14,23 @@
 
 namespace mitiru::ui {
 
-/// @brief Configuration for creating a UIDropdown.
+/// @brief UIDropdown 生成用の構成設定。
 struct UIDropdownConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
 	std::vector<std::string> options;
-	int selectedIndex = -1;     ///< -1 = no selection.
+	int selectedIndex = -1;     ///< -1 = 選択なし。
 	float width = 180.0f;
 	float itemHeight = 24.0f;
-	int maxVisibleItems = 6;    ///< Max items shown before scrolling.
+	int maxVisibleItems = 6;    ///< スクロール前に表示する最大 item 数。
 };
 
-/// @brief Dropdown selection widget that wraps a UINode with open/close and selection logic.
+/// @brief UINode を包み、開閉と選択ロジックを持つ dropdown 選択 widget。
 ///
-/// Manages an option list, open/close state, scroll offset for overflow,
-/// and keyboard navigation. The UINode tree contains the header and a
-/// list container child with item children (only visible items are populated).
+/// option リスト、開閉状態、はみ出し用の scroll offset、キーボード操作を
+/// 管理する。UINode tree は header と、item の子を持つ list container の子
+/// から成る (表示中の item のみ生成される)。
 ///
 /// @code
 ///   UIDropdownConfig cfg;
@@ -57,8 +57,8 @@ class UIDropdown
 	std::function<void(int)> m_onSelectionChanged;
 
 public:
-	/// @brief Construct a dropdown from configuration.
-	/// @param config Dropdown configuration.
+	/// @brief 構成設定から dropdown を構築する。
+	/// @param config dropdown の構成設定。
 	explicit UIDropdown(const UIDropdownConfig& config)
 		: m_options(config.options)
 		, m_selectedIndex(config.selectedIndex)
@@ -84,16 +84,16 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Check if the dropdown list is open.
+	/// @brief dropdown リストが開いているか確認する。
 	[[nodiscard]] bool isOpen() const noexcept { return m_open; }
 
-	/// @brief Get the currently selected index (-1 if none).
+	/// @brief 現在選択中の index を取得する (なければ -1)。
 	[[nodiscard]] int selectedIndex() const noexcept { return m_selectedIndex; }
 
-	/// @brief Get the text of the currently selected option.
+	/// @brief 現在選択中の option のテキストを取得する。
 	[[nodiscard]] std::string selectedText() const
 	{
 		if (m_selectedIndex >= 0 && m_selectedIndex < static_cast<int>(m_options.size()))
@@ -103,22 +103,22 @@ public:
 		return {};
 	}
 
-	/// @brief Get the option list.
+	/// @brief option リストを取得する。
 	[[nodiscard]] const std::vector<std::string>& options() const noexcept { return m_options; }
 
-	/// @brief Get the current scroll offset.
+	/// @brief 現在の scroll offset を取得する。
 	[[nodiscard]] int scrollOffset() const noexcept { return m_scrollOffset; }
 
-	/// @brief Get the highlighted item index.
+	/// @brief highlight 中の item index を取得する。
 	[[nodiscard]] int highlightedIndex() const noexcept { return m_highlightedIndex; }
 
-	// ── Configuration ────────────────────────────────────────
+	// ── 構成設定 ────────────────────────────────────────
 
-	/// @brief Set the selection-changed callback.
+	/// @brief 選択変更時の callback を設定する。
 	void setOnSelectionChanged(std::function<void(int)> callback) { m_onSelectionChanged = std::move(callback); }
 
-	/// @brief Replace the option list.
-	/// @param options New option strings.
+	/// @brief option リストを差し替える。
+	/// @param options 新しい option 文字列。
 	void setOptions(std::vector<std::string> options)
 	{
 		m_options = std::move(options);
@@ -132,8 +132,8 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Set the selected index programmatically.
-	/// @param index Index to select (-1 to clear).
+	/// @brief 選択 index をプログラムから設定する。
+	/// @param index 選択する index (-1 でクリア)。
 	void setSelectedIndex(int index)
 	{
 		if (index < -1 || index >= static_cast<int>(m_options.size())) { return; }
@@ -147,7 +147,7 @@ public:
 
 	// ── Interaction ──────────────────────────────────────────
 
-	/// @brief Toggle the dropdown open/closed.
+	/// @brief dropdown の開閉を切り替える。
 	void toggle()
 	{
 		m_open = !m_open;
@@ -159,7 +159,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Open the dropdown list.
+	/// @brief dropdown リストを開く。
 	void open()
 	{
 		if (!m_open)
@@ -171,7 +171,7 @@ public:
 		}
 	}
 
-	/// @brief Close the dropdown list.
+	/// @brief dropdown リストを閉じる。
 	void close()
 	{
 		if (m_open)
@@ -181,8 +181,8 @@ public:
 		}
 	}
 
-	/// @brief Select an item by index and close the dropdown.
-	/// @param index Item index to select.
+	/// @brief index で item を選択し dropdown を閉じる。
+	/// @param index 選択する item の index。
 	void selectItem(int index)
 	{
 		if (index < 0 || index >= static_cast<int>(m_options.size())) { return; }
@@ -192,8 +192,8 @@ public:
 		if (m_onSelectionChanged) { m_onSelectionChanged(m_selectedIndex); }
 	}
 
-	/// @brief Highlight an item (e.g., on mouse hover).
-	/// @param index Item index to highlight.
+	/// @brief item を highlight する (例: マウス hover 時)。
+	/// @param index highlight する item の index。
 	void highlightItem(int index)
 	{
 		if (index < 0 || index >= static_cast<int>(m_options.size())) { return; }
@@ -201,7 +201,7 @@ public:
 		m_node->setProperty("highlighted", std::to_string(m_highlightedIndex));
 	}
 
-	/// @brief Move highlight up (keyboard navigation).
+	/// @brief highlight を上へ移動する (キーボード操作)。
 	void highlightPrevious()
 	{
 		if (m_options.empty()) { return; }
@@ -212,7 +212,7 @@ public:
 		m_node->setProperty("highlighted", std::to_string(m_highlightedIndex));
 	}
 
-	/// @brief Move highlight down (keyboard navigation).
+	/// @brief highlight を下へ移動する (キーボード操作)。
 	void highlightNext()
 	{
 		if (m_options.empty()) { return; }
@@ -223,7 +223,7 @@ public:
 		m_node->setProperty("highlighted", std::to_string(m_highlightedIndex));
 	}
 
-	/// @brief Confirm the currently highlighted item.
+	/// @brief 現在 highlight 中の item を確定する。
 	void confirmHighlighted()
 	{
 		if (m_highlightedIndex >= 0 && m_highlightedIndex < static_cast<int>(m_options.size()))
@@ -232,8 +232,8 @@ public:
 		}
 	}
 
-	/// @brief Scroll the visible list by a delta.
-	/// @param delta Positive = scroll down, negative = scroll up.
+	/// @brief 表示リストを delta だけスクロールする。
+	/// @param delta 正 = 下へスクロール、負 = 上へスクロール。
 	void scroll(int delta)
 	{
 		const int maxScroll = std::max(0, static_cast<int>(m_options.size()) - m_maxVisibleItems);
@@ -242,7 +242,7 @@ public:
 	}
 
 private:
-	/// @brief Ensure the highlighted item is within the visible scroll range.
+	/// @brief highlight 中の item が表示スクロール範囲内に収まるようにする。
 	void ensureHighlightedVisible()
 	{
 		if (m_highlightedIndex < m_scrollOffset)
@@ -256,7 +256,7 @@ private:
 		m_node->setProperty("scroll_offset", std::to_string(m_scrollOffset));
 	}
 
-	/// @brief Synchronize state to the UINode.
+	/// @brief 状態を UINode に同期する。
 	void syncNodeState()
 	{
 		if (m_selectedIndex >= 0 && m_selectedIndex < static_cast<int>(m_options.size()))

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIListView.hpp
-/// @brief Scrollable list view widget with virtual scrolling and selection.
+/// @brief スクロール可能な list view widget。virtual scrolling と選択に対応。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -16,15 +16,15 @@
 
 namespace mitiru::ui {
 
-/// @brief Data model for a single list view item.
+/// @brief 単一 list view item のデータモデル。
 struct UIListItem
 {
-	std::string text;            ///< Display text.
-	std::string icon;            ///< Icon identifier (renderer-interpreted).
-	std::any userData;           ///< Arbitrary user data.
+	std::string text;            ///< 表示テキスト。
+	std::string icon;            ///< icon 識別子 (renderer が解釈)。
+	std::any userData;           ///< 任意のユーザーデータ。
 };
 
-/// @brief Configuration for creating a UIListView.
+/// @brief UIListView 生成用の設定。
 struct UIListViewConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -36,11 +36,11 @@ struct UIListViewConfig
 	float width = 250.0f;
 };
 
-/// @brief List view widget with virtual scrolling and single/multi selection.
+/// @brief virtual scrolling と単一 / 複数選択を備えた list view widget。
 ///
-/// Only visible items are exposed via UINode children, enabling efficient
-/// rendering of large data sets. The scroll offset determines which slice
-/// of the data model is materialized.
+/// visible な item のみ UINode の child として公開され、大規模データセットも
+/// 効率的に描画できる。scroll offset がデータモデルのどの slice を
+/// 実体化するかを決める。
 ///
 /// @code
 ///   UIListViewConfig cfg;
@@ -68,8 +68,8 @@ class UIListView
 	std::function<void(int)> m_onItemSelected;
 
 public:
-	/// @brief Construct a list view from configuration.
-	/// @param config List view configuration.
+	/// @brief 設定から list view を構築する。
+	/// @param config list view 設定。
 	explicit UIListView(const UIListViewConfig& config)
 		: m_itemHeight(config.itemHeight)
 		, m_visibleItems(config.visibleItems)
@@ -90,31 +90,31 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基となる UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the total item count.
+	/// @brief item の総数を取得する。
 	[[nodiscard]] std::size_t itemCount() const noexcept { return m_items.size(); }
 
-	/// @brief Get the items data model.
+	/// @brief item データモデルを取得する。
 	[[nodiscard]] const std::vector<UIListItem>& items() const noexcept { return m_items; }
 
-	/// @brief Get the set of selected indices.
+	/// @brief 選択中の index の集合を取得する。
 	[[nodiscard]] const std::set<int>& selectedIndices() const noexcept { return m_selectedIndices; }
 
-	/// @brief Get the single selected index (first in set, or -1).
+	/// @brief 単一の選択 index を取得する (集合の先頭、なければ -1)。
 	[[nodiscard]] int selectedIndex() const noexcept
 	{
 		return m_selectedIndices.empty() ? -1 : *m_selectedIndices.begin();
 	}
 
-	/// @brief Get the focused (keyboard-navigated) index.
+	/// @brief focus 中 (keyboard 操作対象) の index を取得する。
 	[[nodiscard]] int focusedIndex() const noexcept { return m_focusedIndex; }
 
-	/// @brief Get the current scroll offset (first visible item index).
+	/// @brief 現在の scroll offset を取得する (最初の visible item の index)。
 	[[nodiscard]] int scrollOffset() const noexcept { return m_scrollOffset; }
 
-	/// @brief Get the range of currently visible item indices [start, end).
+	/// @brief 現在 visible な item index の範囲 [start, end) を取得する。
 	[[nodiscard]] std::pair<int, int> visibleRange() const noexcept
 	{
 		const int start = m_scrollOffset;
@@ -124,17 +124,17 @@ public:
 
 	// ── Data Manipulation ────────────────────────────────────
 
-	/// @brief Add an item to the end of the list.
-	/// @param item Item to add.
+	/// @brief list の末尾に item を追加する。
+	/// @param item 追加する item。
 	void addItem(UIListItem item)
 	{
 		m_items.push_back(std::move(item));
 		syncNodeState();
 	}
 
-	/// @brief Insert an item at a specific index.
-	/// @param index Position to insert at.
-	/// @param item Item to insert.
+	/// @brief 指定 index に item を挿入する。
+	/// @param index 挿入位置。
+	/// @param item 挿入する item。
 	void insertItem(std::size_t index, UIListItem item)
 	{
 		if (index > m_items.size()) { index = m_items.size(); }
@@ -142,8 +142,8 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Remove an item by index.
-	/// @param index Item index to remove.
+	/// @brief index 指定で item を削除する。
+	/// @param index 削除する item の index。
 	void removeItem(std::size_t index)
 	{
 		if (index >= m_items.size()) { return; }
@@ -152,7 +152,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Clear all items.
+	/// @brief 全 item をクリアする。
 	void clearItems()
 	{
 		m_items.clear();
@@ -162,8 +162,8 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Set the complete item list.
-	/// @param items New item vector.
+	/// @brief item リスト全体を設定する。
+	/// @param items 新しい item の vector。
 	void setItems(std::vector<UIListItem> items)
 	{
 		m_items = std::move(items);
@@ -175,14 +175,14 @@ public:
 
 	// ── Configuration ────────────────────────────────────────
 
-	/// @brief Set the item-selected callback.
+	/// @brief item 選択時の callback を設定する。
 	void setOnItemSelected(std::function<void(int)> callback) { m_onItemSelected = std::move(callback); }
 
 	// ── Selection ────────────────────────────────────────────
 
-	/// @brief Select an item by index.
-	/// @param index Item index.
-	/// @param addToSelection If true and multiSelect enabled, adds to current selection.
+	/// @brief index 指定で item を選択する。
+	/// @param index item の index。
+	/// @param addToSelection true かつ multiSelect 有効なら現在の選択に追加する。
 	void selectItem(int index, bool addToSelection = false)
 	{
 		if (!m_selectable) { return; }
@@ -198,23 +198,23 @@ public:
 		if (m_onItemSelected) { m_onItemSelected(index); }
 	}
 
-	/// @brief Deselect an item by index.
-	/// @param index Item index.
+	/// @brief index 指定で item の選択を解除する。
+	/// @param index item の index。
 	void deselectItem(int index)
 	{
 		m_selectedIndices.erase(index);
 		syncNodeState();
 	}
 
-	/// @brief Clear all selections.
+	/// @brief 全選択をクリアする。
 	void clearSelection()
 	{
 		m_selectedIndices.clear();
 		syncNodeState();
 	}
 
-	/// @brief Check if an item is selected.
-	/// @param index Item index.
+	/// @brief item が選択されているか判定する。
+	/// @param index item の index。
 	[[nodiscard]] bool isSelected(int index) const
 	{
 		return m_selectedIndices.count(index) > 0;
@@ -222,7 +222,7 @@ public:
 
 	// ── Navigation ───────────────────────────────────────────
 
-	/// @brief Move focus to the previous item (Up key).
+	/// @brief focus を前の item へ移動する (Up key)。
 	void focusPrevious()
 	{
 		if (m_items.empty()) { return; }
@@ -233,7 +233,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Move focus to the next item (Down key).
+	/// @brief focus を次の item へ移動する (Down key)。
 	void focusNext()
 	{
 		if (m_items.empty()) { return; }
@@ -244,7 +244,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Select the currently focused item (Enter key).
+	/// @brief 現在 focus 中の item を選択する (Enter key)。
 	void confirmFocused()
 	{
 		if (m_focusedIndex >= 0 && m_focusedIndex < static_cast<int>(m_items.size()))
@@ -253,8 +253,8 @@ public:
 		}
 	}
 
-	/// @brief Scroll by a number of items.
-	/// @param delta Positive = scroll down, negative = scroll up.
+	/// @brief 指定 item 数だけスクロールする。
+	/// @param delta 正 = 下スクロール、負 = 上スクロール。
 	void scroll(int delta)
 	{
 		const int maxScroll = std::max(0, static_cast<int>(m_items.size()) - m_visibleItems);
@@ -263,7 +263,7 @@ public:
 	}
 
 private:
-	/// @brief Ensure the focused item is within the visible scroll range.
+	/// @brief focus 中の item が visible なスクロール範囲に収まるようにする。
 	void ensureFocusedVisible()
 	{
 		if (m_focusedIndex < m_scrollOffset)
@@ -276,14 +276,14 @@ private:
 		}
 	}
 
-	/// @brief Synchronize state to the UINode properties.
+	/// @brief 状態を UINode の properties へ同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("item_count", std::to_string(m_items.size()));
 		m_node->setProperty("scroll_offset", std::to_string(m_scrollOffset));
 		m_node->setProperty("focused", std::to_string(m_focusedIndex));
 
-		// Encode selected indices as comma-separated string.
+		// 選択中の index をカンマ区切り文字列に encode する。
 		std::string selStr;
 		for (const auto idx : m_selectedIndices)
 		{
@@ -292,7 +292,7 @@ private:
 		}
 		m_node->setProperty("selected", selStr);
 
-		// Encode visible item texts for renderer convenience.
+		// renderer の便宜のため visible な item のテキストを encode する。
 		const auto [start, end] = visibleRange();
 		m_node->setProperty("visible_start", std::to_string(start));
 		m_node->setProperty("visible_end", std::to_string(end));

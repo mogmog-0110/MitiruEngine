@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file Accessibility.hpp
-/// @brief General-purpose accessibility support for the UI system.
-/// @details Bridges the VN accessibility module into the general UI namespace,
-///          adding UINode tree traversal for screen reader output and focus
-///          indicator rendering. Re-exports core types from vn::Accessibility.
+/// @brief UI system 向けの汎用 accessibility support。
+/// @details VN の accessibility module を汎用 UI namespace へ橋渡しし、
+///          screen reader 出力用の UINode tree traversal と focus
+///          indicator 描画を追加する。vn::Accessibility の中核型を再 export する。
 
 #include <string>
 #include <vector>
@@ -19,31 +19,31 @@ namespace mitiru::ui
 {
 
 // ════════════════════════════════════════════════════════════════════
-//  Re-exported types from VN accessibility
+//  VN accessibility から再 export した型
 // ════════════════════════════════════════════════════════════════════
 
-/// @brief Color blindness mode (re-exported from vn module).
+/// @brief 色覚モード (vn module から再 export)。
 using ColorBlindMode = vn::ColorBlindMode;
 
-/// @brief Color transform utility (re-exported from vn module).
+/// @brief 色変換ユーティリティ (vn module から再 export)。
 using ColorTransform = vn::ColorTransform;
 
 // ════════════════════════════════════════════════════════════════════
-//  General-purpose accessibility configuration
+//  汎用 accessibility 設定
 // ════════════════════════════════════════════════════════════════════
 
-/// @brief Accessibility settings for the general UI system.
+/// @brief 汎用 UI system の accessibility 設定。
 struct UIAccessibilityConfig
 {
-	bool highContrast          = false;   ///< High-contrast mode.
-	bool reducedMotion         = false;   ///< Reduce or disable animations.
-	bool screenReaderEnabled   = false;   ///< Enable screen reader text output.
-	float textSizeMultiplier   = 1.0f;    ///< Text size scale (1.0-3.0).
-	float letterSpacing        = 1.0f;    ///< Letter spacing multiplier.
-	float lineSpacing          = 1.0f;    ///< Line spacing multiplier.
-	ColorBlindMode colorBlindMode = ColorBlindMode::None; ///< Color vision mode.
+	bool highContrast          = false;   ///< 高コントラストモード。
+	bool reducedMotion         = false;   ///< アニメーションを抑制 / 無効化する。
+	bool screenReaderEnabled   = false;   ///< screen reader のテキスト出力を有効化する。
+	float textSizeMultiplier   = 1.0f;    ///< 文字サイズ倍率 (1.0-3.0)。
+	float letterSpacing        = 1.0f;    ///< 字間倍率。
+	float lineSpacing          = 1.0f;    ///< 行間倍率。
+	ColorBlindMode colorBlindMode = ColorBlindMode::None; ///< 色覚モード。
 
-	/// @brief Clamp text size multiplier to safe range.
+	/// @brief 文字サイズ倍率を安全な範囲に clamp する。
 	void setTextSizeMultiplier(float multiplier) noexcept
 	{
 		textSizeMultiplier = std::clamp(multiplier, 1.0f, 3.0f);
@@ -54,21 +54,21 @@ struct UIAccessibilityConfig
 //  Focus indicator
 // ════════════════════════════════════════════════════════════════════
 
-/// @brief Visual configuration for focus indicators.
+/// @brief focus indicator の見た目設定。
 struct FocusIndicatorStyle
 {
-	sgc::Colorf color{0.2f, 0.6f, 1.0f, 0.9f}; ///< Focus ring colour.
-	float thickness   = 2.0f;                     ///< Ring thickness in pixels.
-	float padding     = 2.0f;                     ///< Padding outside the node bounds.
-	float cornerRadius = 4.0f;                    ///< Rounded corner radius.
-	bool pulsate      = true;                     ///< Subtle pulsation animation.
-	float pulsateSpeed = 2.0f;                    ///< Pulsation cycles per second.
+	sgc::Colorf color{0.2f, 0.6f, 1.0f, 0.9f}; ///< focus ring の色。
+	float thickness   = 2.0f;                     ///< ring の太さ (px)。
+	float padding     = 2.0f;                     ///< node 境界の外側の padding。
+	float cornerRadius = 4.0f;                    ///< 角丸の半径。
+	bool pulsate      = true;                     ///< 控えめな脈動アニメーション。
+	float pulsateSpeed = 2.0f;                    ///< 1 秒あたりの脈動回数。
 };
 
-/// @brief Computes focus indicator bounds for a given UINode.
-/// @param node The focused node.
-/// @param style Focus indicator style.
-/// @return Outer rectangle for the focus ring.
+/// @brief 指定 UINode の focus indicator 境界を計算する。
+/// @param node focus 中の node。
+/// @param style focus indicator style。
+/// @return focus ring の外側矩形。
 [[nodiscard]] inline sgc::Rectf computeFocusIndicatorBounds(
 	const UINode& node, const FocusIndicatorStyle& style = {}) noexcept
 {
@@ -81,10 +81,10 @@ struct FocusIndicatorStyle
 	};
 }
 
-/// @brief Compute focus indicator opacity with optional pulsation.
-/// @param style Focus indicator style.
-/// @param elapsedTime Time in seconds (for pulsation).
-/// @return Opacity value [0, 1].
+/// @brief focus indicator の不透明度を計算する (任意で脈動を加味)。
+/// @param style focus indicator style。
+/// @param elapsedTime 経過秒数 (脈動用)。
+/// @return 不透明度 [0, 1]。
 [[nodiscard]] inline float computeFocusIndicatorOpacity(
 	const FocusIndicatorStyle& style, float elapsedTime) noexcept
 {
@@ -94,22 +94,22 @@ struct FocusIndicatorStyle
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Screen reader text from UINode tree
+//  UINode tree からの screen reader テキスト
 // ════════════════════════════════════════════════════════════════════
 
-/// @brief Screen reader description of a single UI element.
+/// @brief 単一 UI 要素の screen reader 用説明。
 struct UIElementDescription
 {
-	UINodeId id = INVALID_UI_NODE;   ///< Node ID.
-	std::string role;                 ///< Semantic role name.
-	std::string name;                 ///< Node name / label.
-	std::string value;                ///< Current value (for sliders, etc.).
-	std::string state;                ///< State info ("focused", "disabled", etc.).
+	UINodeId id = INVALID_UI_NODE;   ///< Node ID。
+	std::string role;                 ///< 意味的な role 名。
+	std::string name;                 ///< node 名 / label。
+	std::string value;                ///< 現在値 (slider 等向け)。
+	std::string state;                ///< 状態情報 ("focused"、"disabled" 等)。
 };
 
-/// @brief Convert a UIRole to a screen reader-friendly role string.
-/// @param role The UIRole enumeration value.
-/// @return Human-readable role name.
+/// @brief UIRole を screen reader 向けの role 文字列へ変換する。
+/// @param role UIRole の列挙値。
+/// @return 人間が読める role 名。
 [[nodiscard]] inline std::string roleToString(UIRole role) noexcept
 {
 	switch (role)
@@ -138,9 +138,9 @@ struct UIElementDescription
 	return "unknown";
 }
 
-/// @brief Build a screen reader description for a single UINode.
-/// @param node The UINode to describe.
-/// @return Element description for screen reader output.
+/// @brief 単一 UINode の screen reader 用説明を構築する。
+/// @param node 説明対象の UINode。
+/// @return screen reader 出力用の要素説明。
 [[nodiscard]] inline UIElementDescription describeNode(const UINode& node)
 {
 	UIElementDescription desc;
@@ -170,10 +170,10 @@ struct UIElementDescription
 	return desc;
 }
 
-/// @brief Traverse a UINode tree and collect screen reader descriptions.
-/// @details Only includes visible nodes. Recursion follows the child tree.
-/// @param root The root node to traverse.
-/// @return Flat list of element descriptions in tree order.
+/// @brief UINode tree を走査し screen reader 用説明を収集する。
+/// @details visible な node のみ含む。再帰は child tree を辿る。
+/// @param root 走査対象の root node。
+/// @return tree 順に並んだ要素説明の平坦リスト。
 [[nodiscard]] inline std::vector<UIElementDescription> traverseForScreenReader(
 	const UINode& root)
 {
@@ -196,7 +196,7 @@ struct UIElementDescription
 
 		result.push_back(describeNode(*current.node));
 
-		// Push children in reverse order so first child is processed first.
+		// 最初の child を先に処理するため逆順に push する。
 		for (std::size_t i = current.node->childCount(); i > 0; --i)
 		{
 			stack.push_back({&current.node->child(i - 1)});
@@ -206,9 +206,9 @@ struct UIElementDescription
 	return result;
 }
 
-/// @brief Generate a single plain-text string from UINode tree for screen readers.
-/// @param root The root node.
-/// @return Concatenated text description.
+/// @brief screen reader 向けに UINode tree から単一の plain-text 文字列を生成する。
+/// @param root root node。
+/// @return 連結したテキスト説明。
 [[nodiscard]] inline std::string generateScreenReaderText(const UINode& root)
 {
 	const auto descriptions = traverseForScreenReader(root);
@@ -238,13 +238,13 @@ struct UIElementDescription
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Color transforms (delegated to vn::ColorTransform)
+//  色変換 (vn::ColorTransform へ委譲)
 // ════════════════════════════════════════════════════════════════════
 
-/// @brief Apply color blindness transform to a colour.
-/// @param color Input colour.
-/// @param mode Color blindness mode.
-/// @return Transformed colour.
+/// @brief 色に色覚変換を適用する。
+/// @param color 入力色。
+/// @param mode 色覚モード。
+/// @return 変換後の色。
 [[nodiscard]] inline sgc::Colorf applyColorBlindTransform(
 	const sgc::Colorf& color, ColorBlindMode mode) noexcept
 {
@@ -252,32 +252,32 @@ struct UIElementDescription
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Reduced motion helper
+//  reduced motion ヘルパー
 // ════════════════════════════════════════════════════════════════════
 
-/// @brief Query whether animations should be reduced.
-/// @param config Accessibility configuration.
-/// @return True if animations should be reduced or skipped.
+/// @brief アニメーションを抑制すべきか問い合わせる。
+/// @param config accessibility 設定。
+/// @return 抑制 / スキップすべきなら true。
 [[nodiscard]] inline bool shouldReduceMotion(
 	const UIAccessibilityConfig& config) noexcept
 {
 	return config.reducedMotion;
 }
 
-/// @brief Adjust animation duration based on accessibility settings.
-/// @param baseDuration Original duration in seconds.
-/// @param config Accessibility configuration.
-/// @return Adjusted duration (0 if reduced motion is enabled).
+/// @brief accessibility 設定に応じてアニメーション時間を調整する。
+/// @param baseDuration 元の時間 (秒)。
+/// @param config accessibility 設定。
+/// @return 調整後の時間 (reduced motion 有効なら 0)。
 [[nodiscard]] inline float adjustAnimationDuration(
 	float baseDuration, const UIAccessibilityConfig& config) noexcept
 {
 	return config.reducedMotion ? 0.0f : baseDuration;
 }
 
-/// @brief Adjust font size based on accessibility settings.
-/// @param baseFontSize Original font size.
-/// @param config Accessibility configuration.
-/// @return Scaled font size.
+/// @brief accessibility 設定に応じて font size を調整する。
+/// @param baseFontSize 元の font size。
+/// @param config accessibility 設定。
+/// @return スケール後の font size。
 [[nodiscard]] inline float adjustFontSize(
 	float baseFontSize, const UIAccessibilityConfig& config) noexcept
 {

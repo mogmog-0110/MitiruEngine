@@ -9,7 +9,7 @@
 
 namespace mitiru::render {
 
-// --- Loop mode ---
+// --- ループモード ---
 
 enum class Loop { Once, Infinite, Count };
 
@@ -22,11 +22,11 @@ struct LoopMode {
     static LoopMode times(int n) { return {Loop::Count, n}; }
 };
 
-// --- Direction ---
+// --- 再生方向 ---
 
 enum class Direction { Normal, Reverse, Alternate, AlternateReverse };
 
-// --- CSS transition equivalent ---
+// --- CSS transition 相当 ---
 
 struct Transition {
     float duration = 0.3f;
@@ -42,10 +42,10 @@ struct Transition {
             m_animating = false;
             return;
         }
-        // Only restart if target actually changed
+        // target が実際に変わった時だけ再スタートする
         m_from = m_current;
         m_to = newTarget;
-        m_elapsed = -delay; // negative elapsed accounts for delay
+        m_elapsed = -delay; // 負の elapsed で delay を表現する
         m_animating = true;
     }
 
@@ -53,7 +53,7 @@ struct Transition {
         if (!m_animating) { return; }
 
         m_elapsed += dt;
-        if (m_elapsed < 0.0f) { return; } // still in delay
+        if (m_elapsed < 0.0f) { return; } // まだ delay 中
 
         const float raw = (duration > 0.0f)
             ? std::clamp(m_elapsed / duration, 0.0f, 1.0f)
@@ -89,10 +89,10 @@ private:
     bool m_initialized = false;
 };
 
-// --- CSS @keyframes equivalent ---
+// --- CSS @keyframes 相当 ---
 
 struct KeyframeEntry {
-    float offset; // 0.0 ~ 1.0
+    float offset; // 0.0 ～ 1.0
     Style style;
 };
 
@@ -109,8 +109,8 @@ struct Keyframes {
 
         const float localT = computeLocalT(time);
 
-        // Find surrounding keyframes
-        // frames should be sorted by offset
+        // 前後の keyframe を探す
+        // frames は offset でソート済みである前提
         std::size_t upper = 0;
         for (std::size_t i = 0; i < frames.size(); ++i) {
             if (frames[i].offset >= localT) {
@@ -149,7 +149,7 @@ private:
         float iterationF = time / duration;
         int iteration = static_cast<int>(std::floor(iterationF));
 
-        // Clamp for non-infinite loops
+        // 無限ループ以外はクランプする
         if (loop.type != Loop::Infinite && iteration >= totalLoops) {
             iteration = totalLoops - 1;
             iterationF = static_cast<float>(totalLoops);
@@ -158,13 +158,13 @@ private:
         float t = iterationF - static_cast<float>(iteration);
         t = std::clamp(t, 0.0f, 1.0f);
 
-        // If we've completed all loops, snap to end
+        // 全ループ完了済みなら終端にスナップする
         if (loop.type != Loop::Infinite && time >= duration * static_cast<float>(totalLoops)) {
             t = 1.0f;
             iteration = totalLoops - 1;
         }
 
-        // Apply direction
+        // 再生方向を適用する
         const bool shouldReverse = [&]() {
             switch (direction) {
                 case Direction::Normal:           return false;

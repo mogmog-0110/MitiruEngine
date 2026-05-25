@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIProgressBar.hpp
-/// @brief Progress bar widget with animated fill, label formatting, and indeterminate mode.
+/// @brief progress bar widget。アニメーション fill、ラベル整形、不定 (indeterminate) mode 対応。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -13,15 +13,15 @@
 
 namespace mitiru::ui {
 
-/// @brief Label format for progress bar display text.
+/// @brief progress bar の表示テキストのラベル書式。
 enum class ProgressLabelFormat : std::uint8_t
 {
-	None,           ///< No label.
+	None,           ///< ラベル無し。
 	ValueSlashMax,  ///< "75/100"
 	Percent         ///< "75%"
 };
 
-/// @brief Configuration for creating a UIProgressBar.
+/// @brief UIProgressBar 生成用の設定。
 struct UIProgressBarConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -31,17 +31,17 @@ struct UIProgressBarConfig
 	float value = 0.0f;
 	bool showLabel = true;
 	ProgressLabelFormat labelFormat = ProgressLabelFormat::Percent;
-	bool animated = true;         ///< Smooth value transitions.
-	bool indeterminate = false;   ///< Bouncing bar mode (ignores value).
+	bool animated = true;         ///< 値の遷移を滑らかにする。
+	bool indeterminate = false;   ///< 往復する bar mode (value を無視)。
 	float width = 200.0f;
 	float height = 20.0f;
 };
 
-/// @brief Progress bar widget that wraps a UINode with animated fill and label logic.
+/// @brief UINode をラップし、アニメーション fill とラベルロジックを持つ progress bar widget。
 ///
-/// Manages value display, smooth animation via update(), and indeterminate
-/// (bouncing) mode. The UINode's value/maxValue and properties encode all
-/// state needed for rendering.
+/// 値の表示、update() による滑らかなアニメーション、不定 (往復) mode を管理する。
+/// 描画に必要な state はすべて UINode の value/maxValue と properties に
+/// エンコードされる。
 ///
 /// @code
 ///   UIProgressBarConfig cfg;
@@ -66,11 +66,11 @@ class UIProgressBar
 	bool m_animated;
 	bool m_indeterminate;
 	float m_indeterminatePhase = 0.0f;
-	float m_animationSpeed = 5.0f;  ///< Units per second for smooth transitions.
+	float m_animationSpeed = 5.0f;  ///< 滑らかな遷移の秒あたり単位数。
 
 public:
-	/// @brief Construct a progress bar from configuration.
-	/// @param config Progress bar configuration.
+	/// @brief 設定から progress bar を構築する。
+	/// @param config progress bar の設定。
 	explicit UIProgressBar(const UIProgressBarConfig& config)
 		: m_min(config.min)
 		, m_max(config.max)
@@ -97,26 +97,26 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基盤となる UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the target value (the value being animated toward).
+	/// @brief target 値 (アニメーションの到達先) を取得する。
 	[[nodiscard]] float value() const noexcept { return m_targetValue; }
 
-	/// @brief Get the current display value (may lag behind target during animation).
+	/// @brief 現在の表示値を取得する (アニメーション中は target より遅れる場合あり)。
 	[[nodiscard]] float displayValue() const noexcept { return m_displayValue; }
 
-	/// @brief Get the normalized progress (0..1).
+	/// @brief 正規化された進捗 (0..1) を取得する。
 	[[nodiscard]] float normalizedValue() const noexcept
 	{
 		if (m_max <= m_min) { return 0.0f; }
 		return (m_displayValue - m_min) / (m_max - m_min);
 	}
 
-	/// @brief Check if in indeterminate mode.
+	/// @brief 不定 (indeterminate) mode かどうかを確認する。
 	[[nodiscard]] bool isIndeterminate() const noexcept { return m_indeterminate; }
 
-	/// @brief Get the formatted label string.
+	/// @brief 整形済みのラベル文字列を取得する。
 	[[nodiscard]] std::string labelText() const
 	{
 		if (!m_showLabel || m_indeterminate) { return {}; }
@@ -142,8 +142,8 @@ public:
 
 	// ── Configuration ────────────────────────────────────────
 
-	/// @brief Set the target value.
-	/// @param val New target value (clamped to [min, max]).
+	/// @brief target 値を設定する。
+	/// @param val 新しい target 値 ([min, max] に clamp される)。
 	void setValue(float val)
 	{
 		m_targetValue = std::clamp(val, m_min, m_max);
@@ -154,9 +154,9 @@ public:
 		}
 	}
 
-	/// @brief Set the value range.
-	/// @param minVal Minimum value.
-	/// @param maxVal Maximum value.
+	/// @brief 値の範囲を設定する。
+	/// @param minVal 最小値。
+	/// @param maxVal 最大値。
 	void setRange(float minVal, float maxVal)
 	{
 		m_min = minVal;
@@ -167,12 +167,12 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Set the animation speed.
-	/// @param unitsPerSecond How fast the display value catches up to the target.
+	/// @brief アニメーション速度を設定する。
+	/// @param unitsPerSecond 表示値が target に追いつく速さ。
 	void setAnimationSpeed(float unitsPerSecond) { m_animationSpeed = unitsPerSecond; }
 
-	/// @brief Enable or disable indeterminate mode.
-	/// @param indeterminate True for bouncing bar mode.
+	/// @brief 不定 (indeterminate) mode を有効/無効にする。
+	/// @param indeterminate 往復する bar mode にする場合 true。
 	void setIndeterminate(bool indeterminate)
 	{
 		m_indeterminate = indeterminate;
@@ -180,8 +180,8 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Set the label format.
-	/// @param format Label display format.
+	/// @brief ラベル書式を設定する。
+	/// @param format ラベルの表示書式。
 	void setLabelFormat(ProgressLabelFormat format)
 	{
 		m_labelFormat = format;
@@ -190,8 +190,8 @@ public:
 
 	// ── Update ───────────────────────────────────────────────
 
-	/// @brief Advance animation by one frame.
-	/// @param deltaTime Elapsed time in seconds since last frame.
+	/// @brief アニメーションを 1 frame 進める。
+	/// @param deltaTime 前 frame からの経過秒数。
 	void update(float deltaTime)
 	{
 		if (m_indeterminate)
@@ -220,7 +220,7 @@ public:
 	}
 
 private:
-	/// @brief Synchronize state to the UINode.
+	/// @brief state を UINode に同期する。
 	void syncNodeState()
 	{
 		m_node->setValue(m_displayValue);

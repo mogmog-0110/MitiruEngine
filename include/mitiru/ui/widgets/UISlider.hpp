@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UISlider.hpp
-/// @brief Draggable slider widget for numeric value selection.
+/// @brief 数値を選択するための drag 可能な slider widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -13,14 +13,14 @@
 
 namespace mitiru::ui {
 
-/// @brief Orientation for slider or bar widgets.
+/// @brief slider や bar widget の向き。
 enum class Orientation : std::uint8_t
 {
 	Horizontal,
 	Vertical
 };
 
-/// @brief Configuration for creating a UISlider.
+/// @brief UISlider 生成用の設定。
 struct UISliderConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -28,17 +28,17 @@ struct UISliderConfig
 	float min = 0.0f;
 	float max = 1.0f;
 	float value = 0.0f;
-	float step = 0.0f;             ///< 0 = continuous (no snapping).
+	float step = 0.0f;             ///< 0 = 連続値 (snap なし)。
 	Orientation orientation = Orientation::Horizontal;
 	float trackLength = 200.0f;
 	float trackThickness = 8.0f;
 	float handleSize = 16.0f;
 };
 
-/// @brief Slider widget that wraps a UINode with drag-to-change-value logic.
+/// @brief drag で値を変える logic を備え UINode をラップする slider widget。
 ///
-/// Handles pointer drag, keyboard increment/decrement, and step snapping.
-/// The value is stored in the UINode's value/maxValue fields for renderer access.
+/// pointer drag、keyboard での増減、step snap を扱う。
+/// 値は renderer がアクセスできるよう UINode の value/maxValue field に格納される。
 ///
 /// @code
 ///   UISliderConfig cfg;
@@ -65,8 +65,8 @@ class UISlider
 	std::function<void(float)> m_onValueChanged;
 
 public:
-	/// @brief Construct a slider from configuration.
-	/// @param config Slider configuration.
+	/// @brief 設定から slider を構築する。
+	/// @param config slider の設定。
 	explicit UISlider(const UISliderConfig& config)
 		: m_min(config.min)
 		, m_max(config.max)
@@ -100,36 +100,36 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current value.
+	/// @brief 現在の値を取得する。
 	[[nodiscard]] float value() const noexcept { return m_value; }
 
-	/// @brief Get the minimum value.
+	/// @brief 最小値を取得する。
 	[[nodiscard]] float min() const noexcept { return m_min; }
 
-	/// @brief Get the maximum value.
+	/// @brief 最大値を取得する。
 	[[nodiscard]] float max() const noexcept { return m_max; }
 
-	/// @brief Get the normalized value (0..1).
+	/// @brief 正規化された値 (0..1) を取得する。
 	[[nodiscard]] float normalizedValue() const noexcept
 	{
 		if (m_max <= m_min) { return 0.0f; }
 		return (m_value - m_min) / (m_max - m_min);
 	}
 
-	/// @brief Check if currently being dragged.
+	/// @brief 現在 drag 中か判定する。
 	[[nodiscard]] bool isDragging() const noexcept { return m_dragging; }
 
-	// ── Configuration ────────────────────────────────────────
+	// ── 設定 ────────────────────────────────────────
 
-	/// @brief Set the value-changed callback.
-	/// @param callback Function invoked when value changes.
+	/// @brief 値変更時の callback を設定する。
+	/// @param callback 値が変わったときに呼ばれる関数。
 	void setOnValueChanged(std::function<void(float)> callback) { m_onValueChanged = std::move(callback); }
 
-	/// @brief Set the value programmatically.
-	/// @param val New value (clamped to [min, max] and snapped to step).
+	/// @brief 値をプログラム的に設定する。
+	/// @param val 新しい値 ([min, max] に clamp され step に snap される)。
 	void setValue(float val)
 	{
 		const float snapped = snapToStep(std::clamp(val, m_min, m_max));
@@ -141,28 +141,28 @@ public:
 		}
 	}
 
-	/// @brief Set the value range.
-	/// @param minVal Minimum value.
-	/// @param maxVal Maximum value.
+	/// @brief 値の範囲を設定する。
+	/// @param minVal 最小値。
+	/// @param maxVal 最大値。
 	void setRange(float minVal, float maxVal)
 	{
 		m_min = minVal;
 		m_max = maxVal;
 		m_node->setProperty("min", std::to_string(m_min));
-		setValue(m_value);  // re-clamp
+		setValue(m_value);  // 再 clamp
 	}
 
-	/// @brief Set enabled state.
-	/// @param enabled True to enable interaction.
+	/// @brief 有効状態を設定する。
+	/// @param enabled 操作を有効にするなら true。
 	void setEnabled(bool enabled)
 	{
 		m_enabled = enabled;
 		m_node->setProperty("enabled", m_enabled ? "true" : "false");
 	}
 
-	// ── Interaction ──────────────────────────────────────────
+	// ── 操作 ──────────────────────────────────────────
 
-	/// @brief Called when a drag begins on the slider.
+	/// @brief slider 上で drag が始まったときに呼ばれる。
 	void onDragBegin()
 	{
 		if (!m_enabled) { return; }
@@ -170,8 +170,8 @@ public:
 		m_node->setProperty("dragging", "true");
 	}
 
-	/// @brief Called during drag with a normalized position (0..1) along the track.
-	/// @param normalizedPos Position along track, 0 = min end, 1 = max end.
+	/// @brief drag 中に track 上の正規化位置 (0..1) で呼ばれる。
+	/// @param normalizedPos track 上の位置。0 = min 端、1 = max 端。
 	void onDragUpdate(float normalizedPos)
 	{
 		if (!m_enabled || !m_dragging) { return; }
@@ -179,14 +179,14 @@ public:
 		setValue(m_min + clamped * (m_max - m_min));
 	}
 
-	/// @brief Called when the drag ends.
+	/// @brief drag が終わったときに呼ばれる。
 	void onDragEnd()
 	{
 		m_dragging = false;
 		m_node->setProperty("dragging", "false");
 	}
 
-	/// @brief Increment the value by one step (or 1% of range if no step).
+	/// @brief 値を 1 step 増やす (step 未設定なら range の 1%)。
 	void increment()
 	{
 		if (!m_enabled) { return; }
@@ -194,7 +194,7 @@ public:
 		setValue(m_value + delta);
 	}
 
-	/// @brief Decrement the value by one step (or 1% of range if no step).
+	/// @brief 値を 1 step 減らす (step 未設定なら range の 1%)。
 	void decrement()
 	{
 		if (!m_enabled) { return; }
@@ -203,14 +203,14 @@ public:
 	}
 
 private:
-	/// @brief Snap a value to the nearest step, if step > 0.
+	/// @brief step > 0 のとき、値を最も近い step に snap する。
 	[[nodiscard]] float snapToStep(float val) const noexcept
 	{
 		if (m_step <= 0.0f) { return val; }
 		return m_min + std::round((val - m_min) / m_step) * m_step;
 	}
 
-	/// @brief Synchronize state to the UINode.
+	/// @brief state を UINode に同期する。
 	void syncNodeState()
 	{
 		m_node->setValue(m_value);

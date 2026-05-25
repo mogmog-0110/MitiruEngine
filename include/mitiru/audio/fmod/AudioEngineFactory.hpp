@@ -62,7 +62,7 @@ enum class AudioBackend : uint8_t
 #ifdef MITIRU_HAS_FMOD
         return std::make_unique<FmodAudioEngine>();
 #else
-        // FMOD unavailable: fall back to null
+        // FMOD 利用不可: Null にフォールバック
         return std::make_unique<NullAudioEngine>();
 #endif
 

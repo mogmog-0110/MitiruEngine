@@ -30,7 +30,7 @@ inline void saveBmp(const std::string& path, const std::vector<std::uint8_t>& pi
 		return;
 	}
 
-	// BMP File Header (14 bytes)
+	// BMPファイルヘッダー (14 bytes)
 	auto write16 = [&](std::uint16_t v) {
 		ofs.put(static_cast<char>(v & 0xFF));
 		ofs.put(static_cast<char>((v >> 8) & 0xFF));
@@ -45,20 +45,20 @@ inline void saveBmp(const std::string& path, const std::vector<std::uint8_t>& pi
 	ofs.put('B'); ofs.put('M');
 	write32(static_cast<std::uint32_t>(fileSize));
 	write16(0); write16(0);
-	write32(54); // offset to pixel data
+	write32(54); // ピクセルデータへのオフセット
 
-	// DIB Header (40 bytes - BITMAPINFOHEADER)
+	// DIBヘッダー (40 bytes - BITMAPINFOHEADER)
 	write32(40);
 	write32(static_cast<std::uint32_t>(w));
 	write32(static_cast<std::uint32_t>(h));
-	write16(1);  // planes
-	write16(24); // bits per pixel
-	write32(0);  // compression (none)
+	write16(1);  // プレーン数
+	write16(24); // 1ピクセルあたりのビット数
+	write32(0);  // 圧縮（なし）
 	write32(static_cast<std::uint32_t>(imageSize));
-	write32(2835); write32(2835); // pixels per meter
+	write32(2835); write32(2835); // pixels per meter（解像度）
 	write32(0); write32(0);
 
-	// Pixel data (bottom-up, BGR)
+	// ピクセルデータ（ボトムアップ・BGR）
 	const std::uint8_t pad[3] = {0, 0, 0};
 	const int padBytes = paddedRowBytes - rowBytes;
 	for (int y = h - 1; y >= 0; --y)
@@ -66,9 +66,9 @@ inline void saveBmp(const std::string& path, const std::vector<std::uint8_t>& pi
 		for (int x = 0; x < w; ++x)
 		{
 			const int idx = (y * w + x) * 4;
-			ofs.put(static_cast<char>(pixels[static_cast<std::size_t>(idx + 2)])); // B
-			ofs.put(static_cast<char>(pixels[static_cast<std::size_t>(idx + 1)])); // G
-			ofs.put(static_cast<char>(pixels[static_cast<std::size_t>(idx + 0)])); // R
+			ofs.put(static_cast<char>(pixels[static_cast<std::size_t>(idx + 2)])); // 青
+			ofs.put(static_cast<char>(pixels[static_cast<std::size_t>(idx + 1)])); // 緑
+			ofs.put(static_cast<char>(pixels[static_cast<std::size_t>(idx + 0)])); // 赤
 		}
 		if (padBytes > 0)
 		{
@@ -91,17 +91,17 @@ inline void savePng(const std::string& path, const std::vector<std::uint8_t>& pi
 	const auto rowBytes = static_cast<std::size_t>(w) * 4 + 1;
 	const auto rawSize = rowBytes * static_cast<std::size_t>(h);
 
-	// raw pixel data with filter bytes
+	// フィルタバイト付きの生ピクセルデータ
 	std::vector<std::uint8_t> rawData;
 	rawData.reserve(rawSize);
 	for (int y = 0; y < h; ++y)
 	{
-		rawData.push_back(0); // filter: None
+		rawData.push_back(0); // フィルタ: None
 		const auto* row = pixels.data() + static_cast<std::size_t>(y) * static_cast<std::size_t>(w) * 4;
 		rawData.insert(rawData.end(), row, row + static_cast<std::size_t>(w) * 4);
 	}
 
-	// deflate (stored blocks, no compression)
+	// deflate（stored block・無圧縮）
 	std::vector<std::uint8_t> deflateData;
 	deflateData.reserve(rawSize + 64);
 	deflateData.push_back(0x78); // CMF
@@ -172,7 +172,7 @@ inline void savePng(const std::string& path, const std::vector<std::uint8_t>& pi
 		push32be(crc);
 	};
 
-	// Build PNG
+	// PNGを構築する
 	std::vector<std::uint8_t> png;
 	png.reserve(deflateData.size() + 128);
 
@@ -189,8 +189,8 @@ inline void savePng(const std::string& path, const std::vector<std::uint8_t>& pi
 	ihdr[5] = static_cast<std::uint8_t>((h >> 16) & 0xFF);
 	ihdr[6] = static_cast<std::uint8_t>((h >> 8) & 0xFF);
 	ihdr[7] = static_cast<std::uint8_t>(h & 0xFF);
-	ihdr[8] = 8;  // bit depth
-	ihdr[9] = 6;  // color type: RGBA
+	ihdr[8] = 8;  // ビット深度
+	ihdr[9] = 6;  // カラータイプ: RGBA
 	writeChunk(png, "IHDR", ihdr, 13);
 
 	// IDAT
@@ -199,7 +199,7 @@ inline void savePng(const std::string& path, const std::vector<std::uint8_t>& pi
 	// IEND
 	writeChunk(png, "IEND", nullptr, 0);
 
-	// Write to file
+	// ファイルへ書き出す
 	std::ofstream ofs(path, std::ios::binary);
 	if (ofs)
 	{

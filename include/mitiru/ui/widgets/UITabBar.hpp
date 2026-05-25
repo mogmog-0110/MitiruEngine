@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UITabBar.hpp
-/// @brief Tab bar widget for switching between content panels.
+/// @brief content パネルを切り替えるための tab bar widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -14,7 +14,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Position of the tab bar relative to content.
+/// @brief content に対する tab bar の配置位置。
 enum class TabBarOrientation : std::uint8_t
 {
 	Top,
@@ -23,7 +23,7 @@ enum class TabBarOrientation : std::uint8_t
 	Right
 };
 
-/// @brief Configuration for creating a UITabBar.
+/// @brief UITabBar 生成用の設定。
 struct UITabBarConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -31,16 +31,16 @@ struct UITabBarConfig
 	std::vector<std::string> tabs;
 	int selectedIndex = 0;
 	TabBarOrientation orientation = TabBarOrientation::Top;
-	float tabWidth = 0.0f;    ///< 0 = auto-size from text.
+	float tabWidth = 0.0f;    ///< 0 = テキストから自動サイズ。
 	float tabHeight = 32.0f;
-	float totalWidth = 400.0f; ///< Total bar width (horizontal) or height (vertical).
+	float totalWidth = 400.0f; ///< bar の全体幅 (横) または高さ (縦)。
 };
 
-/// @brief Tab bar widget that wraps a UINode with tab switching logic.
+/// @brief UINode をラップし、tab 切り替えロジックを持つ tab bar widget。
 ///
-/// Manages which tab is active and notifies via callback on change.
-/// Individual tab nodes are created as children, with the active one
-/// marked for the renderer to highlight.
+/// どの tab がアクティブかを管理し、変更時に callback で通知する。
+/// 個々の tab node は子として生成され、アクティブなものは renderer が
+/// ハイライトできるよう mark される。
 ///
 /// @code
 ///   UITabBarConfig cfg;
@@ -61,8 +61,8 @@ class UITabBar
 	std::function<void(int)> m_onTabChanged;
 
 public:
-	/// @brief Construct a tab bar from configuration.
-	/// @param config Tab bar configuration.
+	/// @brief 設定から tab bar を構築する。
+	/// @param config tab bar の設定。
 	explicit UITabBar(const UITabBarConfig& config)
 		: m_tabs(config.tabs)
 		, m_selectedIndex(config.selectedIndex)
@@ -91,7 +91,7 @@ public:
 
 		m_node = std::make_shared<UINode>(std::move(data));
 
-		// Create child nodes for each tab.
+		// 各 tab に対応する子 node を生成する。
 		for (std::size_t i = 0; i < m_tabs.size(); ++i)
 		{
 			UINodeData tabData;
@@ -106,13 +106,13 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基盤となる UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the currently selected tab index.
+	/// @brief 現在選択中の tab index を取得する。
 	[[nodiscard]] int selectedIndex() const noexcept { return m_selectedIndex; }
 
-	/// @brief Get the text of the currently selected tab.
+	/// @brief 現在選択中の tab のテキストを取得する。
 	[[nodiscard]] const std::string& selectedTabText() const
 	{
 		static const std::string empty;
@@ -123,19 +123,19 @@ public:
 		return empty;
 	}
 
-	/// @brief Get the tab labels.
+	/// @brief tab ラベル群を取得する。
 	[[nodiscard]] const std::vector<std::string>& tabs() const noexcept { return m_tabs; }
 
-	/// @brief Get the tab count.
+	/// @brief tab 数を取得する。
 	[[nodiscard]] std::size_t tabCount() const noexcept { return m_tabs.size(); }
 
 	// ── Configuration ────────────────────────────────────────
 
-	/// @brief Set the tab-changed callback.
+	/// @brief tab 変更時の callback を設定する。
 	void setOnTabChanged(std::function<void(int)> callback) { m_onTabChanged = std::move(callback); }
 
-	/// @brief Replace the tab list.
-	/// @param tabs New tab labels.
+	/// @brief tab リストを差し替える。
+	/// @param tabs 新しい tab ラベル群。
 	void setTabs(std::vector<std::string> tabs)
 	{
 		m_tabs = std::move(tabs);
@@ -151,8 +151,8 @@ public:
 
 	// ── Interaction ──────────────────────────────────────────
 
-	/// @brief Select a tab by index.
-	/// @param index Tab index to select.
+	/// @brief index で tab を選択する。
+	/// @param index 選択する tab の index。
 	void selectTab(int index)
 	{
 		if (index < 0 || index >= static_cast<int>(m_tabs.size())) { return; }
@@ -163,14 +163,14 @@ public:
 		if (m_onTabChanged) { m_onTabChanged(m_selectedIndex); }
 	}
 
-	/// @brief Select the next tab (wraps around).
+	/// @brief 次の tab を選択する (端で折り返す)。
 	void selectNext()
 	{
 		if (m_tabs.empty()) { return; }
 		selectTab((m_selectedIndex + 1) % static_cast<int>(m_tabs.size()));
 	}
 
-	/// @brief Select the previous tab (wraps around).
+	/// @brief 前の tab を選択する (端で折り返す)。
 	void selectPrevious()
 	{
 		if (m_tabs.empty()) { return; }
@@ -179,7 +179,7 @@ public:
 	}
 
 private:
-	/// @brief Convert orientation enum to string.
+	/// @brief orientation enum を文字列に変換する。
 	[[nodiscard]] static const char* orientationToString(TabBarOrientation o) noexcept
 	{
 		switch (o)
@@ -192,7 +192,7 @@ private:
 		return "top";
 	}
 
-	/// @brief Synchronize active tab state to the UINode tree.
+	/// @brief アクティブな tab の state を UINode tree に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("selected", std::to_string(m_selectedIndex));
@@ -201,7 +201,7 @@ private:
 			m_node->setText(m_tabs[static_cast<std::size_t>(m_selectedIndex)]);
 		}
 
-		// Mark active/inactive on child tab nodes.
+		// 子 tab node に active/inactive を反映する。
 		const auto& children = m_node->children();
 		for (std::size_t i = 0; i < children.size(); ++i)
 		{

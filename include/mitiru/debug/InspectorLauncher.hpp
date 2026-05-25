@@ -42,14 +42,14 @@ inline bool spawnInspector(int producerPid, const std::string& extraArgs)
 		producerPid = _getpid();
 	}
 
-	// 1. env var override
+	// 1. 環境変数による override
 	std::string exePath;
 	if (const char* env = std::getenv("MITIRU_INSPECTOR_EXE"); env && *env)
 	{
 		exePath = env;
 	}
 
-	// 2. same dir as the running game exe
+	// 2. 走っている game exe と同階層
 	if (exePath.empty())
 	{
 		wchar_t buf[MAX_PATH] = {};
@@ -61,7 +61,7 @@ inline bool spawnInspector(int producerPid, const std::string& extraArgs)
 			{
 				exePath = candidate.string();
 			}
-			// 3. dev fallback: engine build tree
+			// 3. 開発用 fallback: engine build tree 内
 			if (exePath.empty())
 			{
 				auto devCandidate = self.parent_path().parent_path()
@@ -79,7 +79,7 @@ inline bool spawnInspector(int producerPid, const std::string& extraArgs)
 		return false;
 	}
 
-	// Build command line: `"<exePath>" <pid> <extraArgs>`
+	// コマンドライン構築: `"<exePath>" <pid> <extraArgs>`
 	std::wstring wexe;
 	wexe.assign(exePath.begin(), exePath.end());
 	std::wstring cmd = L"\"" + wexe + L"\" " + std::to_wstring(producerPid);
@@ -126,8 +126,8 @@ inline bool openInspector(int producerPid = 0)
 inline bool openInspectable(const std::string& name, int producerPid = 0)
 {
 	if (name.empty()) { return false; }
-	// Escape backslashes / quotes for the command line — names are user input
-	// from JS dispatch payload.
+	// コマンドライン用に backslash / quote を escape — name は JS dispatch
+	// payload 由来の user input。
 	std::string safe;
 	safe.reserve(name.size());
 	for (char c : name)

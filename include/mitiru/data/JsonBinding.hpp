@@ -1,15 +1,15 @@
 #pragma once
 
 /// @file JsonBinding.hpp
-/// @brief Type-driven C++ struct ↔ JSON binding (thin wrappers over nlohmann/json).
+/// @brief 型駆動の C++ struct ↔ JSON binding (nlohmann/json の薄い wrapper)。
 ///
-/// **Purpose.** Save/load schema (§5) and data-driven content authoring (§9)
-/// both need a single answer for "how does a C++ struct become JSON, and back?".
-/// This header provides the engine-side conventions on top of nlohmann/json's
-/// existing serialization mechanism. It is NOT a new serialization library.
+/// **目的。** save/load schema (§5) も data 駆動の content authoring (§9) も、
+/// 「C++ struct はどう JSON になり、どう戻るか」という単一の答えを必要とする。
+/// 本ヘッダは nlohmann/json 既存の serialization 機構の上に engine 側の規約を
+/// 提供する。新しい serialization library ではない。
 ///
-/// **User-side type opt-in.** Define `to_json` / `from_json` for your type via
-/// nlohmann's standard macros (already a dependency):
+/// **ユーザ型の opt-in。** 自分の型には nlohmann 標準マクロ (既に依存済み) で
+/// `to_json` / `from_json` を定義する:
 ///
 /// @code
 /// struct PlayerStats {
@@ -20,18 +20,18 @@
 /// NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PlayerStats, level, health, name)
 /// @endcode
 ///
-/// The `NON_INTRUSIVE` form is declared outside the struct (as above).
-/// Inside a class body, use `NLOHMANN_DEFINE_TYPE_INTRUSIVE(T, fields...)`.
-/// See nlohmann/json docs for details.
+/// `NON_INTRUSIVE` 形式は struct の外で宣言する (上記の通り)。
+/// class 本体の内側では `NLOHMANN_DEFINE_TYPE_INTRUSIVE(T, fields...)` を使う。
+/// 詳細は nlohmann/json のドキュメントを参照。
 ///
-/// **Versioning.** Save data and authored content both benefit from a schema
-/// version field. `Versioned<T>` and `MigrationChain<T>` codify the conventions:
+/// **Versioning。** save data も authored content も schema version field の
+/// 恩恵を受ける。`Versioned<T>` と `MigrationChain<T>` が規約を成文化する:
 ///   - serialized layout: `{ "version": N, "data": <T> }`
-///   - `MigrationChain<T>` walks legacy versions up to the current one
+///   - `MigrationChain<T>` は旧 version を最新まで辿る
 ///
-/// @note Hot-path discipline: `toJson` / `fromJson` allocate via nlohmann/json
-///       internally. Do NOT call from per-frame code; intended for save points,
-///       boot-time content loads, and editor tooling.
+/// @note Hot-path 規律: `toJson` / `fromJson` は内部で nlohmann/json 経由の
+///       allocation を行う。per-frame code から呼ばないこと。save point、
+///       boot 時の content load、editor tooling での使用を想定。
 
 #include <algorithm>
 #include <functional>
@@ -45,7 +45,7 @@
 namespace mitiru::data {
 
 // ---------------------------------------------------------------------------
-// Basic toJson / fromJson
+// 基本の toJson / fromJson
 // ---------------------------------------------------------------------------
 
 /// @brief C++ value を JSON へ変換する
@@ -147,7 +147,7 @@ template <typename T>
 }
 
 // ---------------------------------------------------------------------------
-// MigrationChain — walks legacy versions up to the current one
+// MigrationChain — 旧 version を最新まで辿る
 // ---------------------------------------------------------------------------
 
 /// @brief 旧 version の JSON を最新まで段階的に変換するチェーン
@@ -170,9 +170,9 @@ public:
     using Migrate = std::function<Json(Json)>;
 
     /// @brief 1 step を追加 (from → to)
-    /// @return `*this` so callers can chain `addStep(...).addStep(...)`. The
-    ///         return value is for convenience only — using it purely for
-    ///         side effects (e.g. `chain.addStep(1, 2, fn);`) is also fine.
+    /// @return `addStep(...).addStep(...)` と chain できるよう `*this` を返す。
+    ///         戻り値は利便性のためだけのもので、side effect 目的に
+    ///         (例: `chain.addStep(1, 2, fn);`) 使い捨てても構わない。
     MigrationChain& addStep(int fromVersion, int toVersion, Migrate migrate)
     {
         m_steps.push_back(Step{ fromVersion, toVersion, std::move(migrate) });

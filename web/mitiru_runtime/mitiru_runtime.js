@@ -144,15 +144,14 @@
 		return obj;
 	}
 
-	// ── NF-01: manifest-relative URL resolution ─────────────────
-	// Problem: a scene at /ui/novel.html fetches a manifest at
-	// /ui/data/script_manifest.json that lists entry paths relative to the
-	// MANIFEST's location, not the scene's. Resolving those paths against
-	// document.baseURI silently 404s. Standard fix: resolve every entry
-	// via `new URL(entry, manifestUrl).href`.
+	// ── NF-01: manifest 相対 URL 解決 ─────────────────
+	// 問題: /ui/novel.html のシーンが /ui/data/script_manifest.json を fetch し、
+	// その manifest が列挙する entry パスは「シーンではなく manifest の位置」に
+	// 相対している。これらを document.baseURI に対して解決すると無言で 404 になる。
+	// 定石: 各 entry を `new URL(entry, manifestUrl).href` で解決する。
 	//
-	// Absolute URLs (http://…, file://…, /absolute, data:…) pass through
-	// unchanged — `new URL()` already handles them correctly.
+	// 絶対 URL (http://…, file://…, /absolute, data:…) はそのまま通る —
+	// `new URL()` が正しく処理する。
 	mitiru.resolveUrl = function mitiruResolveUrl(rel, base)
 	{
 		if (typeof rel !== 'string' || !rel)

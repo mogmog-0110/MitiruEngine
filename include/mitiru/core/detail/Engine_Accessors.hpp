@@ -1,20 +1,20 @@
-// Detail header for mitiru::Engine - do not include directly; included via core/Engine.hpp
+// mitiru::Engine の detail header — 直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
 
-// ── One-liner accessor out-of-class definitions ───────────────────────────
-// Pure pass-through getters/setters and trivial helpers extracted from
-// Engine.hpp to keep the main class declaration compact. Anything with
-// non-trivial logic stays in Engine.hpp itself.
+// ── 一行 accessor の class 外定義 ───────────────────────────
+// 純粋な pass-through な getter/setter と些末な helper を Engine.hpp から
+// 抜き出し、本体 class 宣言を簡潔に保つ。non-trivial な logic は Engine.hpp
+// 本体に残す。
 
 // -- Destructor ------------------------------------------------------------
 
 MITIRU_INLINE mitiru::Engine::~Engine()
 {
-	// Auto-save replay recording if MITIRU_RECORD was set. Best-effort: swallow
-	// I/O errors so a missing output dir or read-only path can't take down the
-	// destructor (would lose the rest of the cleanup chain).
+	// MITIRU_RECORD が設定されていれば replay 記録を自動保存する。Best-effort:
+	// I/O error は握り潰し、output dir が無い / read-only path でも destructor を
+	// 巻き込まないようにする (残りの cleanup chain を失うのを防ぐ)。
 	if (m_inputRecorder.isRecording() && !m_recordOutputPath.empty())
 	{
 		try
@@ -24,13 +24,13 @@ MITIRU_INLINE mitiru::Engine::~Engine()
 		}
 		catch (...)
 		{
-			// intentionally swallowed; no logger guarantee at this point
+			// 意図的に握り潰す。この時点で logger の保証は無い
 		}
 	}
 
-	// Tear down any game DLL before CEF / HTTP. Calls on_shutdown + FreeLibrary
-	// inside ModuleHost. m_moduleHost's unique_ptr also auto-destructs after
-	// this, which is the safety net when runModule() was bypassed.
+	// CEF / HTTP より先に game DLL を破棄する。ModuleHost 内で on_shutdown +
+	// FreeLibrary を呼ぶ。m_moduleHost の unique_ptr もこの後に自動破棄され、
+	// runModule() を経由しなかった場合の safety net になる。
 	unloadModule();
 
 	m_cefContext.shutdown();

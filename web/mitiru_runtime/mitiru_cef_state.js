@@ -1,19 +1,19 @@
 /*!
- * mitiru_cef_state.js — JS side of the CEF state bridge (G-05)
+ * mitiru_cef_state.js — CEF state bridge の JS 側 (G-05)
  *
- * Pair with C++ `mitiru::cef::StateStore` (include/mitiru/cef/StateStore.hpp).
+ * C++ 側 `mitiru::cef::StateStore` (include/mitiru/cef/StateStore.hpp) と対になる。
  *
- * Exposes:
- *   window.mitiru.onStateChange(key, fn)   — reactive subscription to C++ set()
+ * 提供 API:
+ *   window.mitiru.onStateChange(key, fn)   — C++ の set() へのリアクティブ購読
  *   window.mitiru.offStateChange(key, fn)
- *   window.mitiru.on(event, fn)            — one-shot event listener
+ *   window.mitiru.on(event, fn)            — one-shot イベントリスナ
  *   window.mitiru.off(event, fn)
- *   window.mitiru.getState(key)            — current retained value
- *   window.mitiru.dispatch(action, payload)— JS → C++ typed action; returns Promise
+ *   window.mitiru.getState(key)            — 現在の retained 値
+ *   window.mitiru.dispatch(action, payload)— JS → C++ の型付き action。Promise を返す
  *
- * Retained semantics: `onStateChange` fires immediately with the most recent
- * retained value if one exists (common reactive pattern, matches RxJS
- * BehaviorSubject). `on` does not — events are fire-and-forget.
+ * Retained セマンティクス: `onStateChange` は retained 値が存在すれば直近の値で
+ * 即時発火する (よくあるリアクティブパターン、RxJS の BehaviorSubject に相当)。
+ * `on` は発火しない — イベントは fire-and-forget。
  */
 (function(global)
 {
@@ -21,13 +21,13 @@
 
 	const mitiru = global.mitiru = global.mitiru || {};
 
-	// Internal sinks — the C++ side only touches `_state._onChange` and `_onEvent`.
+	// 内部 sink — C++ 側は `_state._onChange` と `_onEvent` だけに触れる。
 	const _state = mitiru._state = mitiru._state || {};
 	const _stateListeners = Object.create(null);  // key -> [fn, ...]
 	const _eventListeners = Object.create(null);  // name -> [fn, ...]
-	const _retained       = Object.create(null);  // key -> last value
+	const _retained       = Object.create(null);  // key -> 直近の値
 
-	// ── C++ → JS sinks ────────────────────────────────────────
+	// ── C++ → JS の sink ────────────────────────────────────────
 	_state._onChange = function(key, value)
 	{
 		_retained[key] = value;
@@ -39,7 +39,7 @@
 		_invokeAll(_eventListeners[name], payload, 'on:' + name);
 	};
 
-	// ── subscription APIs ────────────────────────────────────
+	// ── 購読 API ────────────────────────────────────
 	mitiru.onStateChange = function(key, fn)
 	{
 		if (typeof key !== 'string' || typeof fn !== 'function')
@@ -49,8 +49,8 @@
 		if (!_stateListeners[key]) { _stateListeners[key] = []; }
 		_stateListeners[key].push(fn);
 
-		// Immediate fire for reactive pattern — late subscribers still see
-		// the current value. No-op if the key was never set.
+		// リアクティブパターンのための即時発火 — 後から購読しても現在値を見られる。
+		// key が一度も set されていなければ no-op。
 		if (Object.prototype.hasOwnProperty.call(_retained, key))
 		{
 			try { fn(_retained[key]); }
@@ -91,7 +91,7 @@
 		return _retained[key];
 	};
 
-	// ── JS → C++ dispatch (wraps cefQuery) ───────────────────
+	// ── JS → C++ dispatch (cefQuery をラップ) ───────────────────
 	mitiru.dispatch = function(action, payload)
 	{
 		if (typeof action !== 'string')
@@ -134,11 +134,11 @@
 		});
 	};
 
-	// ── helpers ───────────────────────────────────────────────
+	// ── ヘルパ ───────────────────────────────────────────────
 	function _invokeAll(listeners, arg, label)
 	{
 		if (!listeners || listeners.length === 0) { return; }
-		// Defensive copy — listeners may unsubscribe during callback.
+		// 防御的コピー — コールバック中に listener が unsubscribe する場合がある。
 		const copy = listeners.slice();
 		for (let i = 0; i < copy.length; ++i)
 		{

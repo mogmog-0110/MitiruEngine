@@ -1,27 +1,26 @@
 /*!
  * mitiru_tokens_stripe.css — Stripe inspired alt theme
  *
- * Design intent: Trustworthy product surface. White canvas with a violet
- * brand accent, generous spacing, and a gentle focus halo. Tailored for
- * dashboards / settings panels where state is dense but should breathe.
- * Compatible with `--mitiru-*` consumers.
+ * Design intent: 信頼感のあるプロダクト面。白い canvas に violet のブランド accent、
+ * ゆったりした spacing、穏やかな focus のハロー。state は密だが余白を持たせたい
+ * dashboard / settings panel 向けに調整。`--mitiru-*` consumer と互換。
  *
- * Swap by replacing the <link> to mitiru_tokens.css with this file.
+ * mitiru_tokens.css への <link> をこのファイルに差し替えて切り替える。
  */
 :root
 {
 	/* ── Base palette: Stripe (white + violet) ────────────────────── */
-	--mitiru-paper:        #ffffff;   /* pure white canvas */
-	--mitiru-paper-hi:     #fafbfc;   /* secondary surface (subtle gray) */
-	--mitiru-ink:          #1a1f36;   /* deep navy-ink body text */
-	--mitiru-ink-mute:     #525f7f;   /* slate-blue metadata */
-	--mitiru-violet:       #635bff;   /* Stripe brand violet */
-	--mitiru-violet-hover: #4f46e5;   /* deeper indigo for hover */
-	--mitiru-phosphor:     #11b886;   /* success teal-green */
-	--mitiru-brick:        #e2384a;   /* destructive red */
-	--mitiru-paper-edge:   rgba(60, 66, 87, 0.12);   /* slate hairline */
+	--mitiru-paper:        #ffffff;   /* 純白の canvas */
+	--mitiru-paper-hi:     #fafbfc;   /* 副 surface (薄いグレー) */
+	--mitiru-ink:          #1a1f36;   /* 深い navy-ink の本文 */
+	--mitiru-ink-mute:     #525f7f;   /* スレートブルーの metadata */
+	--mitiru-violet:       #635bff;   /* Stripe ブランドの violet */
+	--mitiru-violet-hover: #4f46e5;   /* hover 用の濃い indigo */
+	--mitiru-phosphor:     #11b886;   /* success の teal-green */
+	--mitiru-brick:        #e2384a;   /* 破壊的操作の赤 */
+	--mitiru-paper-edge:   rgba(60, 66, 87, 0.12);   /* スレートのヘアライン */
 
-	/* ── Semantic aliases ─────────────────────────────────────── */
+	/* ── Semantic alias ─────────────────────────────────────── */
 	--mitiru-bg:        var(--mitiru-paper);
 	--mitiru-surface:   var(--mitiru-paper-hi);
 	--mitiru-text:      var(--mitiru-ink);
@@ -59,7 +58,7 @@
 	--mitiru-leading-normal: 1.5;
 	--mitiru-leading-loose:  1.65;
 
-	/* ── Spacing — generous 16/24/32/48 scale ─────────────────── */
+	/* ── Spacing — ゆったりした 16/24/32/48 scale ─────────────────── */
 	--mitiru-space-0:  0;
 	--mitiru-space-1:  4px;
 	--mitiru-space-2:  8px;
@@ -69,13 +68,13 @@
 	--mitiru-space-6:  32px;
 	--mitiru-space-7:  48px;
 
-	/* ── Corner radius (6px round) ────────────────────────────── */
+	/* ── Corner radius (6px の丸み) ────────────────────────────── */
 	--mitiru-radius-sm:   3px;
 	--mitiru-radius-md:   6px;
 	--mitiru-radius-lg:   10px;
 	--mitiru-radius-pill: 9999px;
 
-	/* ── Elevation — soft slate shadows ───────────────────────── */
+	/* ── Elevation — 柔らかいスレートの shadow ───────────────────────── */
 	--mitiru-shadow-1: 0 1px 3px rgba(60, 66, 87, 0.08),
 	                   0 0 0 1px var(--mitiru-border);
 	--mitiru-shadow-2: 0 2px 5px rgba(60, 66, 87, 0.10),
@@ -86,14 +85,14 @@
 	--mitiru-shadow-4: 0 16px 40px rgba(60, 66, 87, 0.16),
 	                   0 0 0 1px var(--mitiru-border);
 
-	/* Focus ring — violet halo */
+	/* Focus ring — violet のハロー */
 	--mitiru-focus-ring: 0 0 0 3px rgba(99, 91, 255, 0.25);
 
 	--mitiru-blur-sm: blur(4px);
 	--mitiru-blur-md: blur(12px);
 	--mitiru-blur-lg: blur(24px);
 
-	/* ── Z-index ladder ─────────────────────────────────────── */
+	/* ── Z-index の段階 ─────────────────────────────────────── */
 	--mitiru-z-base:     0;
 	--mitiru-z-hud:      100;
 	--mitiru-z-overlay:  200;

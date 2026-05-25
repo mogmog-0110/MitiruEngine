@@ -106,7 +106,7 @@ public:
 		desc.BufferCount = 2;
 		desc.OutputWindow = hwnd;
 		desc.Windowed = TRUE;
-		// MSAA enabled swap chains require the classic DISCARD swap effect.
+		// MSAA有効のスワップチェーンは従来のDISCARDスワップエフェクトが必須
 		desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
 		hr = factory->CreateSwapChain(

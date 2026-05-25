@@ -1,8 +1,7 @@
-// hello_cef_overlay — Mode B. Native clear + a translucent HTML HUD overlay.
+// hello_cef_overlay — Mode B。native clear + 半透明 HTML HUD オーバーレイ。
 //
-// The HUD is pure CSS — no JS state push from C++ — just to prove the CEF
-// compositing layer sits on top of the engine's frame and renders glass HUDs
-// with HTML/CSS.
+// HUD は純 CSS — C++ からの JS state push なし — CEF の合成層がエンジンの
+// フレーム上に乗り、HTML/CSS でガラス調 HUD を描けることを示すだけ。
 
 #include <filesystem>
 

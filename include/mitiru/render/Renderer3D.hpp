@@ -559,7 +559,7 @@ public:
 	}
 
 	/// @brief フレーム描画を終了する
-	/// @note Use ToonPipeline for outline rendering.
+	/// @note アウトライン描画には ToonPipeline を使う。
 	void endFrame() override
 	{
 		m_outlineQueue.clear();
@@ -1126,7 +1126,7 @@ private:
 		{
 			return it->second.Get();
 		}
-		// upload texture (mirroring uploadTexture but storing in the cache)
+		// texture を upload する (uploadTexture と同様だが cache に格納する)
 		D3D11_TEXTURE2D_DESC desc = {};
 		desc.Width            = static_cast<UINT>(tex->width());
 		desc.Height           = static_cast<UINT>(tex->height());

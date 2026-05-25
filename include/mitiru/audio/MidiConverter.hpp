@@ -181,7 +181,7 @@ private:
 			const uint8_t type = status & 0xF0;
 			const uint8_t ch = status & 0x0F;
 
-			if (type == 0x90) // Note On
+			if (type == 0x90) // Note On (発音開始)
 			{
 				uint8_t key, vel;
 				s.read(reinterpret_cast<char*>(&key), 1);
@@ -191,12 +191,12 @@ private:
 					noteOnTick[key] = tick;
 					noteOnVel[key] = vel;
 				}
-				else // vel=0 is Note Off
+				else // vel=0 は Note Off と同義
 				{
 					track.notes.push_back({noteOnTick[key], tick - noteOnTick[key], ch, key, noteOnVel[key]});
 				}
 			}
-			else if (type == 0x80) // Note Off
+			else if (type == 0x80) // Note Off (発音停止)
 			{
 				uint8_t key, vel;
 				s.read(reinterpret_cast<char*>(&key), 1);
@@ -208,12 +208,12 @@ private:
 			else if (type == 0xD0) { s.seekg(1, std::ios::cur); }
 			else if (type == 0xE0) { s.seekg(2, std::ios::cur); }
 			else if (type == 0xA0 || type == 0xB0) { s.seekg(2, std::ios::cur); }
-			else if (status == 0xFF) // Meta
+			else if (status == 0xFF) // Meta イベント
 			{
 				uint8_t metaType;
 				s.read(reinterpret_cast<char*>(&metaType), 1);
 				const uint32_t metaLen = readVarLen(s);
-				if (metaType == 0x51 && metaLen == 3) // Tempo
+				if (metaType == 0x51 && metaLen == 3) // テンポ設定
 				{
 					uint8_t buf[3];
 					s.read(reinterpret_cast<char*>(buf), 3);
@@ -223,7 +223,7 @@ private:
 				}
 				else { s.seekg(metaLen, std::ios::cur); }
 			}
-			else if (status == 0xF0 || status == 0xF7) // SysEx
+			else if (status == 0xF0 || status == 0xF7) // SysEx (システムエクスクルーシブ)
 			{
 				const uint32_t sysLen = readVarLen(s);
 				s.seekg(sysLen, std::ios::cur);

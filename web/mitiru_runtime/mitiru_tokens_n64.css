@@ -1,12 +1,12 @@
 /*!
  * mitiru_tokens_n64.css — Nintendo 64 cartridge / OS menu inspired theme
  *
- * Design intent: 1996 N64 era warm cream plastic, controller red, cartridge
- * label yellow. Chunky 2px black borders, hard offset shadow (2px 2px 0),
- * radius 0. Bitmap headings, sans body for legibility.
+ * Design intent: 1996 年 N64 期の暖かいクリーム色プラスチック、コントローラー赤、
+ * カートリッジラベルの黄。太い 2px の黒枠、硬いオフセット shadow (2px 2px 0)、
+ * radius 0。見出しは bitmap、本文は可読性重視の sans。
  *
- * Swap by replacing the <link> to mitiru_tokens.css with this file.
- * Recommended <head> font import:
+ * mitiru_tokens.css への <link> をこのファイルに差し替えて切り替える。
+ * 推奨する <head> の font import:
  *   <link rel="preconnect" href="https://fonts.googleapis.com">
  *   <link rel="stylesheet"
  *     href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
@@ -14,18 +14,18 @@
 :root
 {
 	/* ── Base palette: N64 (cream + red + yellow + black) ────────── */
-	--mitiru-paper:        #f3ede0;   /* warm cartridge-plastic cream */
-	--mitiru-paper-hi:     #fbf7ec;   /* pale cream card surface */
-	--mitiru-ink:          #0d0d0d;   /* near-black for hard contrast */
-	--mitiru-ink-mute:     #5a5a5a;   /* warm gray for metadata */
-	--mitiru-red:          #dc3545;   /* Mario / controller red */
-	--mitiru-red-hi:       #b62a38;   /* darker red on hover */
-	--mitiru-yellow:       #fdb813;   /* cartridge label yellow */
-	--mitiru-phosphor:     #2d8a3e;   /* Luigi green */
-	--mitiru-brick:        #dc3545;   /* error uses brand red */
-	--mitiru-paper-edge:   #0d0d0d;   /* black hairline */
+	--mitiru-paper:        #f3ede0;   /* 暖かいカートリッジプラスチックのクリーム */
+	--mitiru-paper-hi:     #fbf7ec;   /* 淡いクリームの card surface */
+	--mitiru-ink:          #0d0d0d;   /* 強いコントラスト用のほぼ黒 */
+	--mitiru-ink-mute:     #5a5a5a;   /* metadata 用の暖かいグレー */
+	--mitiru-red:          #dc3545;   /* Mario / コントローラーの赤 */
+	--mitiru-red-hi:       #b62a38;   /* hover 時の暗い赤 */
+	--mitiru-yellow:       #fdb813;   /* カートリッジラベルの黄 */
+	--mitiru-phosphor:     #2d8a3e;   /* Luigi の緑 */
+	--mitiru-brick:        #dc3545;   /* error はブランド赤を使う */
+	--mitiru-paper-edge:   #0d0d0d;   /* 黒のヘアライン */
 
-	/* ── Semantic aliases ─────────────────────────────────────── */
+	/* ── Semantic alias ─────────────────────────────────────── */
 	--mitiru-bg:        var(--mitiru-paper);
 	--mitiru-surface:   var(--mitiru-paper-hi);
 	--mitiru-text:      var(--mitiru-ink);
@@ -41,7 +41,7 @@
 
 	--mitiru-row-tint:  rgba(13, 13, 13, 0.04);
 
-	/* ── Typography — bitmap headings, mono body ──────────────── */
+	/* ── Typography — bitmap の見出し、mono の本文 ──────────────── */
 	--mitiru-font-body:    "Courier New", "MS Gothic", ui-monospace,
 	                       "Consolas", monospace;
 	--mitiru-font-display: "Press Start 2P", "Courier New", "MS Gothic",
@@ -62,7 +62,7 @@
 	--mitiru-leading-normal: 1.5;
 	--mitiru-leading-loose:  1.7;
 
-	/* ── Spacing — 8 multiples ────────────────────────────────── */
+	/* ── Spacing — 8 の倍数 ────────────────────────────────── */
 	--mitiru-space-0:  0;
 	--mitiru-space-1:  4px;
 	--mitiru-space-2:  8px;
@@ -72,26 +72,26 @@
 	--mitiru-space-6:  32px;
 	--mitiru-space-7:  48px;
 
-	/* ── Corner radius — zero, era was boxy ───────────────────── */
+	/* ── Corner radius — ゼロ、この時代は角張っていた ───────────────────── */
 	--mitiru-radius-sm:   0;
 	--mitiru-radius-md:   0;
 	--mitiru-radius-lg:   0;
 	--mitiru-radius-pill: 0;
 
-	/* ── Elevation — hard offset shadow, 90s sticker style ────── */
+	/* ── Elevation — 硬いオフセット shadow、90 年代ステッカー風 ────── */
 	--mitiru-shadow-1: 2px 2px 0 var(--mitiru-ink);
 	--mitiru-shadow-2: 3px 3px 0 var(--mitiru-ink);
 	--mitiru-shadow-3: 4px 4px 0 var(--mitiru-ink);
 	--mitiru-shadow-4: 6px 6px 0 var(--mitiru-ink);
 
-	/* Focus ring — cartridge yellow halo */
+	/* Focus ring — カートリッジ黄のハロー */
 	--mitiru-focus-ring: 0 0 0 3px var(--mitiru-yellow);
 
 	--mitiru-blur-sm: blur(0);
 	--mitiru-blur-md: blur(0);
 	--mitiru-blur-lg: blur(0);
 
-	/* ── Z-index ladder ─────────────────────────────────────── */
+	/* ── Z-index の段階 ─────────────────────────────────────── */
 	--mitiru-z-base:     0;
 	--mitiru-z-hud:      100;
 	--mitiru-z-overlay:  200;
@@ -99,7 +99,7 @@
 	--mitiru-z-toast:    400;
 	--mitiru-z-drag:     500;
 
-	/* ── Transition — chunky, no smoothing ────────────────────── */
+	/* ── Transition — 粗く、スムージング無し ────────────────────── */
 	--mitiru-ease:          steps(3, end);
 	--mitiru-ease-bounce:   steps(3, end);
 	--mitiru-duration-fast: 90ms;

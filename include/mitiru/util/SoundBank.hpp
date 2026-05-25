@@ -160,8 +160,8 @@ private:
 
 		/// fmtチャンク
 		std::memcpy(p, "fmt ", 4); p += 4;
-		writeU32(p, 16); p += 4;                          // chunk size
-		writeU16(p, 1); p += 2;                            // PCM
+		writeU32(p, 16); p += 4;                          // チャンクサイズ
+		writeU16(p, 1); p += 2;                            // PCM形式
 		writeU16(p, CHANNELS); p += 2;
 		writeU32(p, SAMPLE_RATE); p += 4;
 		writeU32(p, SAMPLE_RATE * CHANNELS * (BITS / 8)); p += 4;

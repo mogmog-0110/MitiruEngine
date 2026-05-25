@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file Dx12DescriptorPool.hpp
-/// @brief DX12 descriptor heap pool with offline free-list suballocation
-/// @details Wraps a single ID3D12DescriptorHeap and manages descriptor slots
-///          through a DescriptorFreeList that coalesces adjacent free blocks.
+/// @brief offline free-list サブアロケーション付き DX12 descriptor heap pool
+/// @details 単一の ID3D12DescriptorHeap をラップし、隣接する空きブロックを
+///          結合する DescriptorFreeList を通じて descriptor slot を管理する。
 ///
 ///          API:
 ///            ```cpp
@@ -16,8 +16,8 @@
 ///            pool.free(slot);
 ///            ```
 ///
-///          Thread-safety: NOT thread-safe. Caller must synchronize when
-///          allocating/freeing from multiple threads.
+///          Thread-safety: スレッドセーフではない。複数スレッドから
+///          allocate / free する場合は呼び出し側で同期すること。
 
 #ifdef _WIN32
 
@@ -39,22 +39,22 @@ namespace mitiru::render::dx12
 {
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DescriptorFreeList — pure math, no D3D12 dependency (testable standalone)
+// DescriptorFreeList — 純粋な計算のみ、D3D12 依存なし (単体でテスト可能)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// @brief Contiguous run of free descriptor slots
+/// @brief 連続した空き descriptor slot のひとかたまり
 struct FreeBlock
 {
-    UINT offset = 0; ///< First free slot index
-    UINT count  = 0; ///< Number of consecutive free slots
+    UINT offset = 0; ///< 最初の空き slot index
+    UINT count  = 0; ///< 連続する空き slot の数
 };
 
-/// @brief Offset-based free-list allocator for descriptor indices.
-/// @details Stores free runs as sorted FreeBlock entries and coalesces
-///          adjacent blocks on free(). No D3D12 types used here so unit
-///          tests can run without a device.
+/// @brief descriptor index 用の offset ベース free-list allocator。
+/// @details 空き領域を offset 順にソートした FreeBlock として保持し、free()
+///          時に隣接ブロックを結合する。D3D12 型を使わないので device 無しで
+///          unit test を実行できる。
 ///
-///          Usage:
+///          使い方:
 ///            ```cpp
 ///            DescriptorFreeList fl(1024);
 ///            UINT off = fl.allocate(4);   // returns 0
@@ -74,8 +74,8 @@ public:
         }
     }
 
-    /// @brief Allocate `count` contiguous descriptor slots.
-    /// @return Starting slot index, or kInvalid when the heap is exhausted.
+    /// @brief 連続した `count` 個の descriptor slot を確保する。
+    /// @return 先頭 slot index。heap を使い切った場合は kInvalid。
     [[nodiscard]] UINT allocate(UINT count)
     {
         if (count == 0) return kInvalid;
@@ -93,16 +93,16 @@ public:
             }
             return offset;
         }
-        return kInvalid; // exhausted
+        return kInvalid; // 使い切り
     }
 
-    /// @brief Return `count` slots starting at `offset` back to the free list.
-    /// @details Adjacent blocks are coalesced to avoid fragmentation.
+    /// @brief `offset` から始まる `count` 個の slot を free list へ返却する。
+    /// @details 断片化を防ぐため隣接ブロックを結合する。
     void free(UINT offset, UINT count)
     {
         assert(count > 0 && offset + count <= m_capacity);
 
-        // Find insertion point (blocks kept sorted by offset)
+        // 挿入位置を探す (ブロックは offset 順にソート維持)
         auto it = m_blocks.begin();
         while (it != m_blocks.end() && it->offset < offset) ++it;
 
@@ -132,13 +132,13 @@ public:
         }
     }
 
-    /// @brief Total capacity this list was constructed with.
+    /// @brief この list を構築したときの総容量。
     [[nodiscard]] UINT capacity()    const noexcept { return m_capacity; }
 
-    /// @brief Number of free-block entries (diagnostic / test use).
+    /// @brief free-block エントリの数 (診断 / test 用)。
     [[nodiscard]] std::size_t blockCount() const noexcept { return m_blocks.size(); }
 
-    /// @brief True when every slot is free (single contiguous block == capacity).
+    /// @brief 全 slot が空きのとき true (単一の連続ブロック == capacity)。
     [[nodiscard]] bool fullyFree() const noexcept
     {
         return m_blocks.size() == 1
@@ -156,25 +156,25 @@ private:
 // Dx12DescriptorPool
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// @brief A suballocated D3D12 descriptor heap slot
+/// @brief サブアロケートされた D3D12 descriptor heap slot
 struct DescriptorSlot
 {
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle  = {0}; ///< CPU handle of first descriptor
-    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle  = {0}; ///< GPU handle (valid only if shaderVisible)
-    UINT                        offset     = 0;   ///< Slot index inside the pool
-    UINT                        count      = 0;   ///< Number of descriptors allocated
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle  = {0}; ///< 先頭 descriptor の CPU handle
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle  = {0}; ///< GPU handle (shaderVisible のときのみ有効)
+    UINT                        offset     = 0;   ///< pool 内の slot index
+    UINT                        count      = 0;   ///< 確保した descriptor の数
 
-    /// @brief True if this slot was successfully allocated
+    /// @brief この slot が確保に成功していれば true
     [[nodiscard]] bool valid() const noexcept { return count > 0; }
 };
 
-/// @brief Suballocated DX12 descriptor heap pool.
-/// @details Owns one ID3D12DescriptorHeap and uses DescriptorFreeList to hand
-///          out contiguous descriptor ranges. Freed slots are immediately
-///          returned and coalesced.
+/// @brief サブアロケーション方式の DX12 descriptor heap pool。
+/// @details 単一の ID3D12DescriptorHeap を所有し、DescriptorFreeList を使って
+///          連続した descriptor 範囲を払い出す。free した slot は即座に返却・
+///          結合される。
 ///
-///          The heap is created once at initialize() and never resized —
-///          pass a generous capacity up front (e.g., 4096 for CBV/SRV/UAV).
+///          heap は initialize() で一度だけ作られ resize されない —
+///          余裕を持った capacity を前もって渡すこと (例: CBV/SRV/UAV なら 4096)。
 class Dx12DescriptorPool
 {
     template <typename T> using ComPtr = Microsoft::WRL::ComPtr<T>;
@@ -186,12 +186,12 @@ public:
     Dx12DescriptorPool(const Dx12DescriptorPool&) = delete;
     Dx12DescriptorPool& operator=(const Dx12DescriptorPool&) = delete;
 
-    /// @brief Create the backing descriptor heap.
+    /// @brief 裏付けとなる descriptor heap を生成する。
     /// @param device        D3D12 device
-    /// @param type          Heap type (CBV_SRV_UAV, SAMPLER, RTV, DSV)
-    /// @param capacity      Total number of descriptors
-    /// @param shaderVisible True for CBV/SRV/UAV and SAMPLER heaps bound to the pipeline
-    /// @return true on success
+    /// @param type          heap の種別 (CBV_SRV_UAV, SAMPLER, RTV, DSV)
+    /// @param capacity      descriptor の総数
+    /// @param shaderVisible pipeline に bind する CBV/SRV/UAV・SAMPLER heap なら true
+    /// @return 成功時 true
     bool initialize(ID3D12Device*              device,
                     D3D12_DESCRIPTOR_HEAP_TYPE type,
                     UINT                       capacity,
@@ -221,7 +221,7 @@ public:
         return true;
     }
 
-    /// @brief Release the heap and reset free-list state.
+    /// @brief heap を解放し free-list の状態をリセットする。
     void destroy()
     {
         m_heap.Reset();
@@ -230,8 +230,8 @@ public:
         m_shaderVisible = false;
     }
 
-    /// @brief Allocate `count` contiguous descriptors.
-    /// @return DescriptorSlot with valid()==true on success.
+    /// @brief 連続した `count` 個の descriptor を確保する。
+    /// @return 成功時は valid()==true の DescriptorSlot。
     [[nodiscard]] DescriptorSlot allocate(UINT count = 1)
     {
         if (!m_heap) return {};
@@ -250,20 +250,20 @@ public:
         return slot;
     }
 
-    /// @brief Return a previously allocated slot back to the pool.
+    /// @brief 確保済みの slot を pool へ返却する。
     void free(const DescriptorSlot& slot)
     {
         if (!slot.valid()) return;
         m_freeList.free(slot.offset, slot.count);
     }
 
-    /// @brief Expose the backing heap for binding to the command list.
+    /// @brief command list へ bind するため裏付けの heap を公開する。
     [[nodiscard]] ID3D12DescriptorHeap* heap() const noexcept { return m_heap.Get(); }
 
-    /// @brief Descriptor increment size in bytes.
+    /// @brief descriptor の increment size (byte 単位)。
     [[nodiscard]] UINT incrementSize() const noexcept { return m_incrementSize; }
 
-    /// @brief True when the pool has been successfully initialized.
+    /// @brief pool の初期化に成功していれば true。
     [[nodiscard]] bool ready() const noexcept { return m_heap != nullptr; }
 
 private:

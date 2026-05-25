@@ -102,7 +102,7 @@
  *        style="--mitiru-pane-frame:#4a90d9;"></div>
  *
  * Tunables (CSS custom properties):
- *   --mitiru-pane-frame        : 窓枠色 (default #4a90d9 = diner blue)
+ *   --mitiru-pane-frame        : 窓枠色 (default #4a90d9 = diner の青)
  *   --mitiru-pane-frame-width  : 枠の太さ (default 6px)
  *   --mitiru-pane-mullion      : 桟 (内部仕切り) の太さ (default 4px)
  *   --mitiru-pane-glass        : 硝子色 (default #d8ecff transparent)
@@ -201,17 +201,17 @@
 
 
 /* =============================================================
- *   F-02 COMPONENT LIBRARY — 10 shared diner UI primitives
- *   Each component:  (1) renders with defaults only
- *                    (2) exposes --mitiru-<comp>-<prop> tunables
- *                    (3) uses data-* attributes for named variants
+ *   F-02 COMPONENT LIBRARY — 10 個の共有 diner UI primitive
+ *   各コンポーネント:  (1) 既定値だけで描画できる
+ *                    (2) --mitiru-<comp>-<prop> tunables を公開
+ *                    (3) 名前付きバリアントに data-* 属性を使う
  * =============================================================
  */
 
 /* ── §1  Paper note ───────────────────────────────────────────
  * <div class="mitiru-paper-note">text</div>
  * data-color="yellow|pink|blue|white"
- * data-pinned="true"  -> red thumbtack via ::before
+ * data-pinned="true"  -> ::before で赤い画鋲
  */
 .mitiru-paper-note {
 	--mitiru-note-bg:     #fef9c3;
@@ -294,7 +294,7 @@
 /* ── §3  Pendant lamp ─────────────────────────────────────────
  * <div class="mitiru-pendant-lamp"></div>
  * Tunables: --mitiru-lamp-cord/cord-h/shade/w/h/glow
- * ::before = cord  ::after = trapezoid shade
+ * ::before = コード  ::after = 台形のシェード
  */
 .mitiru-pendant-lamp {
 	--mitiru-lamp-cord:   #5a3e28;
@@ -330,10 +330,10 @@
  *   <div class="mitiru-wall-clock__hand mitiru-wall-clock__hand--min"></div>
  * </div>
  *
- * data-time="HH:MM" is read by caller JS which sets the custom properties:
+ * data-time="HH:MM" は caller の JS が読み、custom property を設定する:
  *   --mitiru-clock-hour-deg  (= (h%12)*30 + m*0.5 + 'deg')
  *   --mitiru-clock-min-deg   (= m*6 + 'deg')
- * CSS rotates the hand elements using those custom properties.
+ * CSS はその custom property を使って針要素を回転させる。
  * Tunables: --mitiru-clock-face/rim/hand/hour-deg/min-deg
  */
 .mitiru-wall-clock {
@@ -384,7 +384,7 @@
  * <div class="mitiru-chrome-counter"
  *      style="--mitiru-counter-value:'42'"></div>
  * Tunables: --mitiru-counter-bg/shine/value/h/w
- * ::after renders the value string (CSS content property).
+ * ::after が値文字列を描画する (CSS content property)。
  */
 .mitiru-chrome-counter {
 	--mitiru-counter-bg:    #c8c8c8;
@@ -456,7 +456,7 @@
  * <div class="mitiru-heroine-silhouette"
  *      style="--mitiru-hero-mask:url('char.svg');"></div>
  * Tunables: --mitiru-hero-mask/color/w/h/opacity
- * mask-image cuts character outline; background-color fills it.
+ * mask-image でキャラクター輪郭を切り抜き、background-color で塗る。
  */
 .mitiru-heroine-silhouette {
 	--mitiru-hero-mask:    none;
@@ -482,9 +482,9 @@
 
 /* ── §8  Chrome knob row ──────────────────────────────────────
  * <div class="mitiru-chrome-knob-row" data-count="3"></div>
- * Zero child markup. N knobs drawn via repeating radial-gradient.
- * Width = (size + gap) * N - gap (pure CSS calc).
- * data-count="1|2|3|4|5" maps to --mitiru-knob-count.
+ * 子 markup ゼロ。repeating radial-gradient で N 個の knob を描画。
+ * Width = (size + gap) * N - gap (純粋な CSS calc)。
+ * data-count="1|2|3|4|5" は --mitiru-knob-count に対応。
  * Tunables: --mitiru-knob-count/size/gap/color/shine
  */
 .mitiru-chrome-knob-row {
@@ -574,8 +574,8 @@
  *   <div class="mitiru-hud-note__title">Order #3</div>
  *   <div class="mitiru-hud-note__body">Butter crepe x 2</div>
  * </div>
- * data-urgency="high"  -> red left bar + pulse animation
- * data-urgency="low"   -> grey left bar
+ * data-urgency="high"  -> 左側の赤バー + pulse アニメーション
+ * data-urgency="low"   -> 左側のグレーバー
  * Tunables: --mitiru-hud-bg/border/blur/radius
  */
 .mitiru-hud-note {
@@ -621,15 +621,15 @@
 /* ───────────────────────────────────────────────────────────────────
  * 14. Chat bubble — mitiru-chat / mitiru-chat-bubble (F-10)
  *
- * Scrollable chat surface with typed bubbles. Used by the heroines-laptop
- * messaging UI in KaeruCrape and any dating-sim / phone-style view.
+ * 種類別 bubble を並べるスクロール可能な chat 面。KaeruCrape の
+ * heroines-laptop メッセージ UI や、dating-sim / phone 風 view で使う。
  *
  * Tokens:
  *   --mitiru-chat-bg / -pad / -gap / -radius / -max
  *   --mitiru-chat-incoming-bg / -incoming-fg
  *   --mitiru-chat-outgoing-bg / -outgoing-fg
  *   --mitiru-chat-system-fg
- *   --mitiru-chat-heroine-color   per-bubble accent; override via data-heroine
+ *   --mitiru-chat-heroine-color   bubble 単位の accent; data-heroine で上書き
  *
  * Markup:
  *   <div class="mitiru-chat" data-mitiru-chat>
@@ -727,7 +727,7 @@
 	padding: 2px 10px;
 }
 
-/* Heroine color presets — extend per game via data-heroine attribute. */
+/* Heroine 色プリセット — game ごとに data-heroine 属性で拡張する。 */
 .mitiru-chat-bubble[data-heroine="maria"]    { --mitiru-chat-heroine-color: #e07a5f; }
 .mitiru-chat-bubble[data-heroine="raika"]    { --mitiru-chat-heroine-color: #81b29a; }
 .mitiru-chat-bubble[data-heroine="sachi"]    { --mitiru-chat-heroine-color: #f2cc8f; }
@@ -793,9 +793,9 @@
 /* ───────────────────────────────────────────────────────────────────
  * 16. Modal — mitiru-modal (NF-13)
  *
- * Reusable dialog primitive: alert / confirm / prompt / custom.
- * Stacks with ascending z-index; each instance root carries its own
- * z-index inline so CSS here uses a sensible visual default only.
+ * 再利用可能な dialog primitive: alert / confirm / prompt / custom。
+ * z-index 昇順で積み重なる。各インスタンスの root は自分の z-index を
+ * inline で持つので、ここの CSS は妥当な視覚 default のみ提供する。
  *
  * Tokens used: --mitiru-surface, --mitiru-text, --mitiru-accent,
  *              --mitiru-shadow-2, --mitiru-radius-md, --mitiru-font-body
@@ -807,7 +807,7 @@
  *       <button class="mitiru-modal__close" aria-label="Close">×</button>
  *       <h2 class="mitiru-modal__title" id="…">Title</h2>
  *       <div class="mitiru-modal__body">…</div>
- *       <input class="mitiru-modal__input">          <!-- prompt only -->
+ *       <input class="mitiru-modal__input">          <!-- prompt のみ -->
  *       <div class="mitiru-modal__actions">
  *         <button class="mitiru-modal__btn mitiru-modal__btn--cancel">Cancel</button>
  *         <button class="mitiru-modal__btn mitiru-modal__btn--ok mitiru-modal__btn--primary">OK</button>
@@ -816,14 +816,14 @@
  *   </div>
  */
 
-/* ── Root wrapper (full-screen overlay container) ────────────────── */
+/* ── Root wrapper (全画面 overlay コンテナ) ────────────────── */
 .mitiru-modal-root {
 	position: fixed;
 	inset: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 1000;       /* overridden inline per stacked instance */
+	z-index: 1000;       /* 積み重ねインスタンスごとに inline で上書き */
 }
 
 /* ── Backdrop ────────────────────────────────────────────────────── */
@@ -851,7 +851,7 @@
 	animation: mitiru-modal-in 150ms ease-out both;
 }
 
-/* ── × close button ──────────────────────────────────────────────── */
+/* ── × 閉じるボタン ──────────────────────────────────────────────── */
 .mitiru-modal__close {
 	position: absolute;
 	top: 12px;
@@ -879,7 +879,7 @@
 /* ── Title ───────────────────────────────────────────────────────── */
 .mitiru-modal__title {
 	margin: 0 0 12px;
-	padding-right: 24px;    /* avoid overlap with × button */
+	padding-right: 24px;    /* × ボタンとの重なりを回避 */
 	font-size: 1.1rem;
 	font-weight: bold;
 	color: var(--mitiru-text, #2b2118);
@@ -895,7 +895,7 @@
 	color: var(--mitiru-text, #2b2118);
 }
 
-/* ── Prompt input ────────────────────────────────────────────────── */
+/* ── Prompt 入力欄 ────────────────────────────────────────────────── */
 .mitiru-modal__input {
 	display: block;
 	width: 100%;
@@ -916,7 +916,7 @@
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mitiru-accent, #c0392b) 20%, transparent);
 }
 
-/* ── Actions row ─────────────────────────────────────────────────── */
+/* ── 操作ボタン行 ─────────────────────────────────────────────────── */
 .mitiru-modal__actions {
 	display: flex;
 	justify-content: flex-end;
@@ -924,7 +924,7 @@
 	flex-wrap: wrap;
 }
 
-/* ── Shared button base ──────────────────────────────────────────── */
+/* ── 共通ボタン base ──────────────────────────────────────────── */
 .mitiru-modal__btn {
 	padding: 8px 20px;
 	border-radius: var(--mitiru-radius-md, 8px);
@@ -938,7 +938,7 @@
 }
 .mitiru-modal__btn:active { transform: translateY(1px); }
 
-/* Cancel variant */
+/* Cancel バリアント */
 .mitiru-modal__btn--cancel {
 	background: transparent;
 	border-color: var(--mitiru-border, #d8cbb8);
@@ -949,7 +949,7 @@
 	border-color: var(--mitiru-text-mute, #8a7865);
 }
 
-/* Primary variant (OK default) */
+/* Primary バリアント (OK 既定) */
 .mitiru-modal__btn--primary {
 	background: var(--mitiru-accent, #c0392b);
 	color: #fff;
@@ -963,7 +963,7 @@
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mitiru-accent, #c0392b) 35%, transparent);
 }
 
-/* Danger variant */
+/* Danger バリアント */
 .mitiru-modal__btn--danger {
 	background: #d32f2f;
 	color: #fff;
@@ -977,7 +977,7 @@
 	box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.35);
 }
 
-/* Ghost variant */
+/* Ghost バリアント */
 .mitiru-modal__btn--ghost {
 	background: transparent;
 	color: var(--mitiru-accent, #c0392b);
@@ -987,7 +987,7 @@
 	background: color-mix(in srgb, var(--mitiru-accent, #c0392b) 10%, transparent);
 }
 
-/* ── Entrance animation ──────────────────────────────────────────── */
+/* ── 入場アニメーション ──────────────────────────────────────────── */
 @keyframes mitiru-modal-in {
 	from {
 		opacity: 0;
@@ -999,7 +999,7 @@
 	}
 }
 
-/* ── Reduced-motion: disable entrance animation ──────────────────── */
+/* ── Reduced-motion: 入場アニメーションを無効化 ──────────────────── */
 @media (prefers-reduced-motion: reduce) {
 	.mitiru-modal {
 		animation: none;
@@ -1009,14 +1009,14 @@
 /* ───────────────────────────────────────────────────────────────────
  * 15. Preloader — mitiru-preloader (NF-04)
  *
- * Boot-time asset preloader progress bar. Mounts into any container.
- * Fades out on load completion. Falls back to inline styles when this
- * sheet is absent.
+ * 起動時の asset preloader 進捗バー。任意のコンテナにマウントする。
+ * 読み込み完了でフェードアウト。この sheet が無い場合は inline style に
+ * フォールバックする。
  *
  * Tokens used:
- *   --mitiru-accent       fill colour
- *   --mitiru-surface      track background
- *   --mitiru-radius-sm    track corner radius
+ *   --mitiru-accent       fill 色
+ *   --mitiru-surface      track 背景
+ *   --mitiru-radius-sm    track の角丸
  *
  * Markup:
  *   <div class="mitiru-preloader" data-mitiru-preloader>
@@ -1060,9 +1060,9 @@
  *   17. Art placeholder — mitiru-art-placeholder (NF-12)
  * ===============================================================
  *
- * Shown anywhere real art hasn't landed yet. Dashed outline + diagonal
- * hatch + centred key-name label (via data-key attribute, rendered by
- * the ::after pseudo so games don't need to duplicate the string in DOM).
+ * 本物の art がまだ無い箇所に表示する。破線の枠 + 斜めハッチ + 中央の
+ * key 名ラベル (data-key 属性経由、::after 擬似要素で描画するので games は
+ * DOM 内に文字列を二重に持つ必要がない)。
  *
  * Usage:
  *   <div class="mitiru-art-placeholder"
@@ -1075,10 +1075,10 @@
  *        onerror="this.classList.add('mitiru-art-placeholder--shown');">
  *
  * Tokens:
- *   --mitiru-placeholder-border   : #c9c3b8  dashed outline
- *   --mitiru-placeholder-hatch    : rgba(0,0,0,0.06)  diagonal stripe
- *   --mitiru-placeholder-label-bg : rgba(255,255,255,0.8)  label pill
- *   --mitiru-placeholder-label-fg : #4a4236  label text
+ *   --mitiru-placeholder-border   : #c9c3b8  破線の枠
+ *   --mitiru-placeholder-hatch    : rgba(0,0,0,0.06)  斜めストライプ
+ *   --mitiru-placeholder-label-bg : rgba(255,255,255,0.8)  ラベルの pill
+ *   --mitiru-placeholder-label-fg : #4a4236  ラベル文字
  */
 .mitiru-art-placeholder {
 	--mitiru-placeholder-border:   #c9c3b8;
@@ -1119,8 +1119,8 @@
 	white-space: nowrap;
 }
 .mitiru-art-placeholder:not([data-key])::after { content: "placeholder"; }
-/* For <img> variants: the element shows the placeholder only once the image
- * fails to load and this class is applied by onerror. */
+/* <img> バリアント用: 画像の読み込みに失敗して onerror でこのクラスが
+ * 付いたときだけ placeholder を表示する。 */
 img.mitiru-art-placeholder:not(.mitiru-art-placeholder--shown) {
 	border: none;
 	background: none;
@@ -1131,13 +1131,13 @@ img.mitiru-art-placeholder:not(.mitiru-art-placeholder--shown)::after { content:
  *   18. Novel effect keyframes — mitiru-novel-shake (NF-11)
  * ===============================================================
  *
- * CSS side of the novel VM effect primitives. The shake effect uses
- * a named keyframe animation — other effects (flash/tint/zoom/blur/
- * slide/fade-sprite) run via Element.animate() directly from the JS
- * module so the CSS surface stays small.
+ * novel VM の effect primitive の CSS 側。shake effect は名前付き keyframe
+ * アニメーションを使う — 他の effect (flash/tint/zoom/blur/slide/fade-sprite)
+ * は JS モジュールから Element.animate() で直接走らせ、CSS の表面積を
+ * 小さく保つ。
  *
- * Tunable via --mitiru-shake-intensity (0..1, default 1.0). The JS
- * module sets it inline based on the line's `intensity` field.
+ * --mitiru-shake-intensity (0..1, default 1.0) で調整可能。JS モジュールが
+ * 行の `intensity` フィールドに基づいて inline で設定する。
  */
 
 @keyframes mitiru-novel-shake {
@@ -1328,7 +1328,7 @@ img.mitiru-art-placeholder:not(.mitiru-art-placeholder--shown)::after { content:
 }
 .m-list-item:hover { filter: brightness(0.97); }
 
-/* enter animation for newly added items */
+/* 新しく追加された item の入場アニメーション */
 .m-enter.m-list-item { animation: m-list-enter 150ms ease-out both; }
 @keyframes m-list-enter {
 	from { opacity: 0; transform: translateY(-4px); }
@@ -1578,21 +1578,21 @@ img.mitiru-art-placeholder:not(.mitiru-art-placeholder--shown)::after { content:
  *   19. Novel textbox defaults — H-05 cascade-friendly variant
  * ===============================================================
  *
- * Default visual rules for `mitiru.novel` textbox. Lives here (not
- * injected at mount time via <style>) so consumer stylesheets that
- * are loaded AFTER this file win the cascade with normal selector
- * specificity — no `!important` required.
+ * `mitiru.novel` textbox の既定の視覚ルール。(mount 時に <style> で注入する
+ * のではなく) ここに置くことで、このファイルより後に読み込まれた consumer の
+ * stylesheet が通常の selector specificity で cascade に勝てる —
+ * `!important` 不要。
  *
- * Override pattern (consumer side):
+ * 上書きパターン (consumer 側):
  *   .novel-textbox { bottom: 4em; padding: 24px; ... }
  *   .novel-textbox [data-novel-speaker] { font-weight: 500; }
  *
- * Tunables (CSS custom properties on `.novel-textbox`):
- *   --mitiru-novel-textbox-bg     : default rgba(0,0,0,0.7)
- *   --mitiru-novel-textbox-fg     : default #fff
- *   --mitiru-novel-textbox-pad    : default 16px
- *   --mitiru-novel-textbox-min-h  : default 6em
- *   --mitiru-novel-textbox-z      : default 20 (matches Z_TEXTBOX in mitiru_novel.js)
+ * Tunables (`.novel-textbox` の CSS custom property):
+ *   --mitiru-novel-textbox-bg     : 既定 rgba(0,0,0,0.7)
+ *   --mitiru-novel-textbox-fg     : 既定 #fff
+ *   --mitiru-novel-textbox-pad    : 既定 16px
+ *   --mitiru-novel-textbox-min-h  : 既定 6em
+ *   --mitiru-novel-textbox-z      : 既定 20 (mitiru_novel.js の Z_TEXTBOX と一致)
  */
 
 .novel-textbox {

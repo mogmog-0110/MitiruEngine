@@ -52,8 +52,8 @@ namespace mitiru::render
 ///          ピクセルアートのシャープなエッジを保つ。
 enum class PixelArtFilter
 {
-	Linear, ///< D3D12_FILTER_MIN_MAG_MIP_LINEAR (default — backward compatible)
-	Point   ///< D3D12_FILTER_MIN_MAG_MIP_POINT  (crisp pixel art)
+	Linear, ///< D3D12_FILTER_MIN_MAG_MIP_LINEAR (default — 後方互換)
+	Point   ///< D3D12_FILTER_MIN_MAG_MIP_POINT  (シャープな pixel art)
 };
 
 /// @brief 正射影行列（列優先 column-major、float4x4 — OpenGL標準配置）
@@ -526,7 +526,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dx12PgSrvHeap;  ///< shader-visible SRV heap
 	int  m_dx12PgTexW     = 0;     ///< キャッシュテクスチャ幅
 	int  m_dx12PgTexH     = 0;     ///< キャッシュテクスチャ高さ
-	bool m_dx12PgTexReady = false; ///< true after first CopyTextureRegion (state = PSR)
+	bool m_dx12PgTexReady = false; ///< 初回 CopyTextureRegion 後に true (state = PSR)
 
 public:
 	/// @brief RGBA8ピクセルバッファをGPUにアップロードし、クワッドとして描画する

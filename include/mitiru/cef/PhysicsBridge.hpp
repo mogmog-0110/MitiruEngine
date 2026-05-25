@@ -7,7 +7,7 @@
 /// ワールド/ボディは C++ 側が所有し、step も C++ で実行する。JS 側は各ボディの
 /// 位置・角度を受け取って CSS transform / canvas で描画する (hybrid runtime §2 準拠)。
 ///
-/// **Registered handlers (JS → C++):**
+/// **登録される handler (JS → C++):**
 /// - `physics.createWorld`       payload: `{"gravityX":n,"gravityY":n}`
 ///                               → `{"worldId":N}`
 /// - `physics.destroyWorld`      payload: `{"worldId":N}`
@@ -27,10 +27,10 @@
 ///                               → `{"moves":[{"id":N,"x":n,"y":n,"angle":n},…],
 ///                                   "contacts":[{"a":N,"b":N,"aData":"str","bData":"str"},…]}`
 ///
-/// **Step ownership.** `physics.poll` is the step driver — called from the JS
-/// `requestAnimationFrame` loop. C++ does not own a thread.
+/// **Step ownership。** `physics.poll` が step の駆動役 — JS の
+/// `requestAnimationFrame` ループから呼ばれる。C++ は thread を所有しない。
 ///
-/// **Usage:**
+/// **使い方:**
 /// ```cpp
 ///   auto* ctx = engine.cefContext();
 ///   auto physState = mitiru::cef::bindPhysicsBridge(
@@ -60,7 +60,7 @@ namespace mitiru::cef
 
 using json = ::nlohmann::json;
 
-// ── RegisterHandlerFn (identical alias to AudioBridge) ──────────────────────
+// ── RegisterHandlerFn (AudioBridge と同一の alias) ──────────────────────
 
 /// @brief handler 登録関数のシグネチャ
 /// @details `MitiruCefContext::registerHandler()` と互換。テスト時はモック関数を渡す。
@@ -68,7 +68,7 @@ using RegisterHandlerFn = std::function<void(
     std::string /*name*/,
     std::function<std::string(std::string_view /*payload*/)> /*fn*/)>;
 
-// ── JSON payload helpers ─────────────────────────────────────────────────────
+// ── JSON payload helper ─────────────────────────────────────────────────────
 
 namespace detail
 {
@@ -125,7 +125,7 @@ inline std::string errUnknownWorld()
 
 #ifdef MITIRU_HAS_BOX2D
 
-// ── Real implementation (Box2D available) ───────────────────────────────────
+// ── 実装本体 (Box2D が利用可能) ───────────────────────────────────
 
 /// @brief ワールド内の 1 ボディのエントリ
 struct BodyEntry
@@ -142,7 +142,7 @@ struct WorldSlot
 
     explicit WorldSlot(float gx, float gy) : world(gx, gy) {}
 
-    // Non-copyable (Box2DWorld is non-copyable)
+    // copy 不可 (Box2DWorld が copy 不可のため)
     WorldSlot(const WorldSlot&)            = delete;
     WorldSlot& operator=(const WorldSlot&) = delete;
     WorldSlot(WorldSlot&&)                 = default;
@@ -157,11 +157,11 @@ class PhysicsBridgeState
 public:
     PhysicsBridgeState() = default;
 
-    // Non-copyable
+    // copy 不可
     PhysicsBridgeState(const PhysicsBridgeState&)            = delete;
     PhysicsBridgeState& operator=(const PhysicsBridgeState&) = delete;
 
-    // ── Handlers ───────────────────────────────────────────────────────────
+    // ── handler ───────────────────────────────────────────────────────────
 
     /// @brief physics.createWorld
     std::string handleCreateWorld(std::string_view payload)
@@ -277,7 +277,7 @@ public:
 
         WorldSlot& slot  = wit->second;
         auto       bit   = slot.bodies.find(bid);
-        if (bit == slot.bodies.end()) return "{}";   // stale id: no-op
+        if (bit == slot.bodies.end()) return "{}";   // 失効した id: no-op
 
         slot.world.destroyBody(bit->second.nativeId);
         slot.bodies.erase(bit);
@@ -308,13 +308,13 @@ public:
 
         WorldSlot& slot = wit->second;
         auto       bit  = slot.bodies.find(bid);
-        if (bit == slot.bodies.end()) return "{}";   // stale id: no-op
+        if (bit == slot.bodies.end()) return "{}";   // 失効した id: no-op
 
         slot.world.setLinearVelocity(bit->second.nativeId, vx, vy);
         return "{}";
     }
 
-    /// @brief physics.poll — steps world then returns move + contact events
+    /// @brief physics.poll — world を step し、move + contact イベントを返す
     std::string handlePoll(std::string_view payload)
     {
         const json p = detail::parsePayload(payload);
@@ -340,16 +340,16 @@ private:
     uint64_t                                    m_nextWorldId{0};
     uint64_t                                    m_nextBodyId {0};
 
-    // ── Response builders ──────────────────────────────────────────────────
+    // ── レスポンス builder ──────────────────────────────────────────────────
 
-    /// @brief Build poll JSON from drained move + contact events.
-    /// @details Builds a reverse lookup from b2BodyId → bridge bodyId + userData.
-    ///          Called with m_mutex held.
+    /// @brief drain した move + contact イベントから poll JSON を構築する。
+    /// @details b2BodyId → bridge bodyId + userData の逆引きを構築する。
+    ///          m_mutex を保持した状態で呼ばれる。
     std::string buildPollResponse(WorldSlot& slot) const
     {
-        // Build reverse lookup: native b2BodyId → (bridge bodyId, userData).
-        // b2BodyId is a plain struct; use a linear scan (bodies count ≤ few
-        // hundred — linear is cache-friendly and avoids a custom hash).
+        // 逆引きを構築: native b2BodyId → (bridge bodyId, userData)。
+        // b2BodyId は素の struct。linear scan を使う (body 数は高々数百 —
+        // linear は cache に優しく、独自 hash も不要)。
         struct ReverseEntry { uint64_t bid; std::string_view userData; };
         std::vector<std::pair<b2BodyId, ReverseEntry>> rev;
         rev.reserve(slot.bodies.size());
@@ -358,7 +358,7 @@ private:
             rev.push_back({entry.nativeId, {bid, entry.userData}});
         }
 
-        // Helper: native id → bridge id (0 = not found)
+        // helper: native id → bridge id (0 = 見つからない)
         auto nativeToBid = [&](b2BodyId native) -> ReverseEntry
         {
             for (const auto& [n, e] : rev)
@@ -379,7 +379,7 @@ private:
         for (const auto& mv : slot.world.drainMoveEvents())
         {
             const auto re = nativeToBid(mv.body);
-            if (re.bid == 0) continue;   // body already destroyed
+            if (re.bid == 0) continue;   // body は既に破棄済み
             moves.push_back({
                 {"id",    re.bid},
                 {"x",     mv.x},
@@ -407,10 +407,10 @@ private:
 
 #else  // !MITIRU_HAS_BOX2D
 
-// ── Stub (Box2D not built) ───────────────────────────────────────────────────
+// ── stub (Box2D 未ビルド) ───────────────────────────────────────────────────
 
-/// @brief PhysicsBridgeState stub — returns an error for every handler.
-/// @details Allows downstream code to compile without Box2D present.
+/// @brief PhysicsBridgeState の stub — どの handler もエラーを返す。
+/// @details Box2D が無くても下流コードが compile できるようにする。
 class PhysicsBridgeState
 {
 public:
@@ -433,7 +433,7 @@ private:
 
 #endif // MITIRU_HAS_BOX2D
 
-// ── Bridge binding (shared by both real and stub paths) ──────────────────────
+// ── bridge binding (実装本体と stub の両経路で共有) ──────────────────────
 
 /// @brief Box2D 物理シミュレーションを CEF handler として expose する
 /// @details 登録される handler 名は上部 Doxygen 参照。state は handler closure の

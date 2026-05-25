@@ -68,7 +68,7 @@ struct SurfaceCreateResult
 	}
 };
 
-} // namespace mitiru (temporarily close for system includes)
+} // namespace mitiru (system include のため一時的に閉じる)
 
 #if defined(MITIRU_HAS_GLFW) && defined(MITIRU_HAS_VULKAN)
 

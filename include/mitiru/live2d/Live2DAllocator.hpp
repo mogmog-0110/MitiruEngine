@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Live2DAllocator.hpp
-/// @brief ICubismAllocator implementation using standard C++ allocators
+/// @brief 標準 C++ allocator を使った ICubismAllocator 実装
 
 #ifdef MITIRU_HAS_CUBISM
 
@@ -14,9 +14,9 @@
 namespace mitiru::live2d
 {
 
-/// @brief Standard C++ memory allocator for Cubism Framework
-/// @details Uses std::malloc/std::free for normal allocations
-///          and platform-aligned allocation for aligned requests.
+/// @brief Cubism Framework 向けの標準 C++ memory allocator
+/// @details 通常確保は std::malloc/std::free、aligned 要求は
+///          platform 固有の aligned allocation を使う。
 class Live2DAllocator final : public Csm::ICubismAllocator
 {
 public:

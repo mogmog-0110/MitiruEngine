@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIColorPicker.hpp
-/// @brief Color selection widget with HSV model, hue bar, alpha bar, and preset swatches.
+/// @brief 色選択 widget。HSV モデル、hue bar、alpha bar、preset swatch を備える。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,7 +15,7 @@
 
 namespace mitiru::ui {
 
-/// @brief RGBA color value (0.0 - 1.0 per channel).
+/// @brief RGBA 色値 (各 channel 0.0 - 1.0)。
 struct UIColorRGBA
 {
 	float r = 1.0f;
@@ -24,15 +24,15 @@ struct UIColorRGBA
 	float a = 1.0f;
 };
 
-/// @brief HSV color value (H: 0-360, S: 0-1, V: 0-1).
+/// @brief HSV 色値 (H: 0-360, S: 0-1, V: 0-1)。
 struct UIColorHSV
 {
-	float h = 0.0f;   ///< Hue in degrees (0-360).
-	float s = 1.0f;   ///< Saturation (0-1).
-	float v = 1.0f;   ///< Value/brightness (0-1).
+	float h = 0.0f;   ///< 色相 (度、0-360)。
+	float s = 1.0f;   ///< 彩度 (0-1)。
+	float v = 1.0f;   ///< 明度 (0-1)。
 };
 
-/// @brief Preset color entry.
+/// @brief preset 色エントリ。
 struct UIColorPreset
 {
 	float r = 0.0f;
@@ -41,7 +41,7 @@ struct UIColorPreset
 	float a = 1.0f;
 };
 
-/// @brief Which component of the color picker is being interacted with.
+/// @brief color picker のどの component を操作中か。
 enum class ColorPickerInteraction : std::uint8_t
 {
 	None,
@@ -51,32 +51,32 @@ enum class ColorPickerInteraction : std::uint8_t
 	Eyedropper
 };
 
-/// @brief Configuration for creating a UIColorPicker.
+/// @brief UIColorPicker 生成用の設定。
 struct UIColorPickerConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
-	float width = 260.0f;                  ///< Total widget width.
-	float height = 300.0f;                 ///< Total widget height.
-	bool showAlpha = true;                 ///< Show alpha channel bar.
-	bool showHex = true;                   ///< Show hex color input.
-	bool showRGB = true;                   ///< Show RGB sliders.
-	bool showHSV = false;                  ///< Show HSV sliders.
-	std::vector<UIColorPreset> presetColors;  ///< Preset color swatches.
-	float hueBarWidth = 20.0f;             ///< Width of the vertical hue bar.
-	float alphaBarHeight = 16.0f;          ///< Height of the horizontal alpha bar.
-	float previewSize = 40.0f;             ///< Size of the color preview square.
-	std::string backgroundImageKey;        ///< Background image key.
-	std::string hueBarImageKey;            ///< Hue bar gradient image key.
-	float alphaCheckerSize = 8.0f;         ///< Size of alpha checker pattern cells.
-	float fontSize = 12.0f;                ///< Font size for labels and hex input.
-	float labelWidth = 20.0f;              ///< Width of "R:", "G:", "B:" labels.
+	float width = 260.0f;                  ///< widget 全体の幅。
+	float height = 300.0f;                 ///< widget 全体の高さ。
+	bool showAlpha = true;                 ///< alpha channel bar を表示する。
+	bool showHex = true;                   ///< hex 色入力を表示する。
+	bool showRGB = true;                   ///< RGB slider を表示する。
+	bool showHSV = false;                  ///< HSV slider を表示する。
+	std::vector<UIColorPreset> presetColors;  ///< preset 色の swatch。
+	float hueBarWidth = 20.0f;             ///< 垂直 hue bar の幅。
+	float alphaBarHeight = 16.0f;          ///< 水平 alpha bar の高さ。
+	float previewSize = 40.0f;             ///< 色 preview 四角のサイズ。
+	std::string backgroundImageKey;        ///< 背景 image key。
+	std::string hueBarImageKey;            ///< hue bar グラデーションの image key。
+	float alphaCheckerSize = 8.0f;         ///< alpha checker パターンの cell サイズ。
+	float fontSize = 12.0f;                ///< label と hex 入力の font size。
+	float labelWidth = 20.0f;              ///< "R:"、"G:"、"B:" label の幅。
 };
 
-/// @brief Color picker widget with HSV model, hue bar, SV box, alpha bar, and presets.
+/// @brief HSV モデル、hue bar、SV box、alpha bar、preset を備えた color picker widget。
 ///
-/// Provides a saturation-value rectangular box plus a vertical hue bar. Optionally
-/// shows an alpha bar, hex input, RGB sliders, and preset color swatches.
+/// saturation-value の矩形 box と垂直 hue bar を提供する。任意で
+/// alpha bar、hex 入力、RGB slider、preset 色の swatch を表示する。
 ///
 /// @code
 ///   UIColorPickerConfig cfg;
@@ -108,8 +108,8 @@ class UIColorPicker
 	std::function<void(const UIColorRGBA&)> m_onColorChanged;
 
 public:
-	/// @brief Construct a color picker from configuration.
-	/// @param config Color picker configuration.
+	/// @brief 設定から color picker を構築する。
+	/// @param config color picker 設定。
 	explicit UIColorPicker(const UIColorPickerConfig& config)
 		: m_showAlpha(config.showAlpha)
 		, m_showHex(config.showHex)
@@ -144,22 +144,22 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基となる UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current color as RGBA.
+	/// @brief 現在の色を RGBA で取得する。
 	[[nodiscard]] UIColorRGBA getColor() const noexcept
 	{
 		return hsvToRgb(m_hsv, m_alpha);
 	}
 
-	/// @brief Get the current color as HSV.
+	/// @brief 現在の色を HSV で取得する。
 	[[nodiscard]] UIColorHSV getHSV() const noexcept { return m_hsv; }
 
-	/// @brief Get the current alpha value.
+	/// @brief 現在の alpha 値を取得する。
 	[[nodiscard]] float getAlpha() const noexcept { return m_alpha; }
 
-	/// @brief Get the current hex string (e.g. "#FF8040" or "#FF8040CC").
+	/// @brief 現在の hex 文字列を取得する (例: "#FF8040" や "#FF8040CC")。
 	[[nodiscard]] std::string getHex() const
 	{
 		const auto c = getColor();
@@ -180,13 +180,13 @@ public:
 		return hex;
 	}
 
-	/// @brief Check if eyedropper mode is active.
+	/// @brief eyedropper モードが有効か判定する。
 	[[nodiscard]] bool isEyedropperActive() const noexcept { return m_eyedropperMode; }
 
 	// -- Configuration -------------------------------------------------------
 
-	/// @brief Set the color-changed callback.
-	/// @param callback Function invoked with the new RGBA color.
+	/// @brief 色変更時の callback を設定する。
+	/// @param callback 新しい RGBA 色を引数に呼ばれる関数。
 	void setOnColorChanged(std::function<void(const UIColorRGBA&)> callback)
 	{
 		m_onColorChanged = std::move(callback);
@@ -194,11 +194,11 @@ public:
 
 	// -- Color Setters -------------------------------------------------------
 
-	/// @brief Set the color from RGBA values.
-	/// @param r Red (0-1).
-	/// @param g Green (0-1).
-	/// @param b Blue (0-1).
-	/// @param a Alpha (0-1).
+	/// @brief RGBA 値から色を設定する。
+	/// @param r 赤 (0-1)。
+	/// @param g 緑 (0-1)。
+	/// @param b 青 (0-1)。
+	/// @param a alpha (0-1)。
 	void setColor(float r, float g, float b, float a = 1.0f)
 	{
 		m_hsv = rgbToHsv(r, g, b);
@@ -207,10 +207,10 @@ public:
 		notifyColorChanged();
 	}
 
-	/// @brief Set the color from HSV values.
-	/// @param h Hue (0-360).
-	/// @param s Saturation (0-1).
-	/// @param v Value (0-1).
+	/// @brief HSV 値から色を設定する。
+	/// @param h 色相 (0-360)。
+	/// @param s 彩度 (0-1)。
+	/// @param v 明度 (0-1)。
 	void setHSV(float h, float s, float v)
 	{
 		m_hsv.h = std::fmod(std::max(h, 0.0f), 360.0f);
@@ -220,8 +220,8 @@ public:
 		notifyColorChanged();
 	}
 
-	/// @brief Set the alpha value.
-	/// @param a Alpha (0-1).
+	/// @brief alpha 値を設定する。
+	/// @param a alpha (0-1)。
 	void setAlpha(float a)
 	{
 		m_alpha = std::clamp(a, 0.0f, 1.0f);
@@ -229,8 +229,8 @@ public:
 		notifyColorChanged();
 	}
 
-	/// @brief Select a preset color by index.
-	/// @param index Preset index.
+	/// @brief index 指定で preset 色を選択する。
+	/// @param index preset の index。
 	void selectPreset(std::size_t index)
 	{
 		if (index >= m_presets.size()) { return; }
@@ -240,16 +240,16 @@ public:
 
 	// -- Interaction ---------------------------------------------------------
 
-	/// @brief Begin interaction with a specific component.
-	/// @param component Which component is being interacted with.
+	/// @brief 特定 component との操作を開始する。
+	/// @param component 操作対象の component。
 	void onInteractionBegin(ColorPickerInteraction component)
 	{
 		m_interaction = component;
 	}
 
-	/// @brief Update the saturation-value box with normalized coordinates.
-	/// @param normX Normalized X (0-1, maps to saturation).
-	/// @param normY Normalized Y (0-1, maps to value, 0 = top = bright).
+	/// @brief 正規化座標で saturation-value box を更新する。
+	/// @param normX 正規化 X (0-1、saturation に対応)。
+	/// @param normY 正規化 Y (0-1、value に対応、0 = 上端 = 明るい)。
 	void onSaturationValueUpdate(float normX, float normY)
 	{
 		if (m_interaction != ColorPickerInteraction::SaturationValue) { return; }
@@ -259,8 +259,8 @@ public:
 		notifyColorChanged();
 	}
 
-	/// @brief Update the hue bar with a normalized position.
-	/// @param normY Normalized Y (0-1, maps to hue 0-360).
+	/// @brief 正規化位置で hue bar を更新する。
+	/// @param normY 正規化 Y (0-1、hue 0-360 に対応)。
 	void onHueBarUpdate(float normY)
 	{
 		if (m_interaction != ColorPickerInteraction::HueBar) { return; }
@@ -269,8 +269,8 @@ public:
 		notifyColorChanged();
 	}
 
-	/// @brief Update the alpha bar with a normalized position.
-	/// @param normX Normalized X (0-1, maps to alpha).
+	/// @brief 正規化位置で alpha bar を更新する。
+	/// @param normX 正規化 X (0-1、alpha に対応)。
 	void onAlphaBarUpdate(float normX)
 	{
 		if (m_interaction != ColorPickerInteraction::AlphaBar) { return; }
@@ -279,23 +279,23 @@ public:
 		notifyColorChanged();
 	}
 
-	/// @brief End the current interaction.
+	/// @brief 現在の操作を終了する。
 	void onInteractionEnd()
 	{
 		m_interaction = ColorPickerInteraction::None;
 	}
 
-	/// @brief Toggle eyedropper mode.
+	/// @brief eyedropper モードを切り替える。
 	void toggleEyedropper()
 	{
 		m_eyedropperMode = !m_eyedropperMode;
 		m_node->setProperty("eyedropper_active", m_eyedropperMode ? "true" : "false");
 	}
 
-	/// @brief Set color from eyedropper pick result.
-	/// @param r Red (0-1).
-	/// @param g Green (0-1).
-	/// @param b Blue (0-1).
+	/// @brief eyedropper の pick 結果から色を設定する。
+	/// @param r 赤 (0-1)。
+	/// @param g 緑 (0-1)。
+	/// @param b 青 (0-1)。
 	void onEyedropperPick(float r, float g, float b)
 	{
 		m_eyedropperMode = false;
@@ -304,7 +304,7 @@ public:
 	}
 
 private:
-	/// @brief Notify color change through callback.
+	/// @brief callback 経由で色変更を通知する。
 	void notifyColorChanged()
 	{
 		if (m_onColorChanged)
@@ -313,7 +313,7 @@ private:
 		}
 	}
 
-	/// @brief Synchronize state to the UINode.
+	/// @brief 状態を UINode へ同期する。
 	void syncNodeState()
 	{
 		const auto rgb = getColor();
@@ -330,7 +330,7 @@ private:
 
 	// -- Color Conversion Utilities ------------------------------------------
 
-	/// @brief Convert HSV to RGBA.
+	/// @brief HSV を RGBA に変換する。
 	[[nodiscard]] static UIColorRGBA hsvToRgb(const UIColorHSV& hsv, float alpha) noexcept
 	{
 		const float h = hsv.h;
@@ -362,7 +362,7 @@ private:
 		return {r, g, b, alpha};
 	}
 
-	/// @brief Convert RGB to HSV.
+	/// @brief RGB を HSV に変換する。
 	[[nodiscard]] static UIColorHSV rgbToHsv(float r, float g, float b) noexcept
 	{
 		r = std::clamp(r, 0.0f, 1.0f);

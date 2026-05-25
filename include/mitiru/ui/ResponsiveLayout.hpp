@@ -2,11 +2,11 @@
 
 /**
  * @file ResponsiveLayout.hpp
- * @brief Responsive breakpoint system for MitiruEngine UI.
+ * @brief MitiruEngine UI 用の responsive breakpoint system。
  *
- * Allows defining width-based breakpoints and property rules that are
- * applied to UI nodes when the viewport matches a given breakpoint.
- * Supports mobile-first and desktop-first evaluation strategies.
+ * 幅ベースの breakpoint と property rule を定義でき、viewport が指定の
+ * breakpoint に一致したとき UI node に適用される。
+ * mobile-first / desktop-first の評価 strategy をサポートする。
  */
 
 #include <mitiru/ui/UINode.hpp>
@@ -24,45 +24,45 @@ namespace mitiru::ui {
 // Breakpoint
 // -----------------------------------------------------------------------
 
-/// @brief A named width range that activates a set of responsive rules.
+/// @brief responsive rule 一式を有効化する、名前付きの幅レンジ。
 struct Breakpoint {
     std::string name;
-    float minWidth = 0.0f;   ///< Activates when viewport >= minWidth.
-    float maxWidth = 99999.0f; ///< Deactivates when viewport > maxWidth.
+    float minWidth = 0.0f;   ///< viewport >= minWidth で有効化。
+    float maxWidth = 99999.0f; ///< viewport > maxWidth で無効化。
 };
 
 // -----------------------------------------------------------------------
 // Responsive rule
 // -----------------------------------------------------------------------
 
-/// @brief Property that can be set by a responsive rule.
+/// @brief responsive rule が設定できる property。
 enum class ResponsiveProperty : uint8_t {
-    Visible,       ///< "true" or "false"
-    FontSize,      ///< float as string
-    Width,         ///< float as string
-    Height,        ///< float as string
-    Opacity,       ///< float (0..1) as string
-    Text,          ///< string value
-    Custom         ///< stored in node properties
+    Visible,       ///< "true" または "false"
+    FontSize,      ///< float を文字列化したもの
+    Width,         ///< float を文字列化したもの
+    Height,        ///< float を文字列化したもの
+    Opacity,       ///< float (0..1) を文字列化したもの
+    Text,          ///< 文字列値
+    Custom         ///< node properties に格納される
 };
 
-/// @brief A single responsive rule: at a given breakpoint, set a property on a node.
+/// @brief 1 つの responsive rule: 指定 breakpoint で、node の property を設定する。
 struct ResponsiveRule {
-    std::string        breakpoint; ///< Breakpoint name.
-    std::string        nodeId;     ///< Target node identifier (by name).
+    std::string        breakpoint; ///< breakpoint 名。
+    std::string        nodeId;     ///< 対象 node の識別子 (名前で指定)。
     ResponsiveProperty property = ResponsiveProperty::Custom;
-    std::string        customKey;  ///< Key when property == Custom.
-    std::string        value;      ///< New value to apply.
+    std::string        customKey;  ///< property == Custom のときの key。
+    std::string        value;      ///< 適用する新しい値。
 };
 
 // -----------------------------------------------------------------------
 // Evaluation strategy
 // -----------------------------------------------------------------------
 
-/// @brief How breakpoints are matched when multiple overlap.
+/// @brief 複数の breakpoint が重なったときの一致のさせ方。
 enum class ResponsiveStrategy : uint8_t {
-    MobileFirst,  ///< Smallest matching breakpoint wins (ascending minWidth).
-    DesktopFirst  ///< Largest matching breakpoint wins (descending minWidth).
+    MobileFirst,  ///< 一致する最小の breakpoint が勝つ (minWidth 昇順)。
+    DesktopFirst  ///< 一致する最大の breakpoint が勝つ (minWidth 降順)。
 };
 
 // -----------------------------------------------------------------------
@@ -71,9 +71,9 @@ enum class ResponsiveStrategy : uint8_t {
 
 /**
  * @class ResponsiveLayout
- * @brief Applies responsive rules to UI nodes based on viewport width.
+ * @brief viewport 幅に基づいて UI node に responsive rule を適用する。
  *
- * Usage:
+ * 使い方:
  * @code
  *   ResponsiveLayout responsive;
  *   responsive.addBreakpoint("mobile",  0.0f);
@@ -94,12 +94,12 @@ class ResponsiveLayout {
 
 public:
     // -------------------------------------------------------------------
-    // Breakpoint management
+    // Breakpoint 管理
     // -------------------------------------------------------------------
 
-    /// @brief Add a named breakpoint.
+    /// @brief 名前付きの breakpoint を追加する。
     void addBreakpoint(const std::string& name, float minWidth) {
-        // Check if already exists; update if so.
+        // 既存なら更新する。
         for (auto& bp : m_breakpoints) {
             if (bp.name == name) {
                 bp.minWidth = minWidth;
@@ -113,7 +113,7 @@ public:
         computeMaxWidths();
     }
 
-    /// @brief Remove a breakpoint and its associated rules.
+    /// @brief breakpoint と、それに紐づく rule を削除する。
     void removeBreakpoint(const std::string& name) {
         m_breakpoints.erase(
             std::remove_if(m_breakpoints.begin(), m_breakpoints.end(),
@@ -126,16 +126,16 @@ public:
         computeMaxWidths();
     }
 
-    /// @brief Get all breakpoints (sorted by minWidth ascending).
+    /// @brief 全 breakpoint を取得する (minWidth 昇順でソート済み)。
     [[nodiscard]] const std::vector<Breakpoint>& breakpoints() const noexcept {
         return m_breakpoints;
     }
 
     // -------------------------------------------------------------------
-    // Rule management
+    // Rule 管理
     // -------------------------------------------------------------------
 
-    /// @brief Add a responsive rule for a standard property.
+    /// @brief 標準 property に対する responsive rule を追加する。
     void setRule(const std::string& breakpoint,
                  const std::string& nodeId,
                  ResponsiveProperty property,
@@ -143,7 +143,7 @@ public:
         m_rules.push_back(ResponsiveRule{breakpoint, nodeId, property, {}, value});
     }
 
-    /// @brief Add a responsive rule for a custom node property.
+    /// @brief custom な node property に対する responsive rule を追加する。
     void setCustomRule(const std::string& breakpoint,
                        const std::string& nodeId,
                        const std::string& key,
@@ -152,7 +152,7 @@ public:
             breakpoint, nodeId, ResponsiveProperty::Custom, key, value});
     }
 
-    /// @brief Remove all rules for a specific node.
+    /// @brief 特定 node の rule をすべて削除する。
     void clearRulesForNode(const std::string& nodeId) {
         m_rules.erase(
             std::remove_if(m_rules.begin(), m_rules.end(),
@@ -160,24 +160,24 @@ public:
             m_rules.end());
     }
 
-    /// @brief Remove all rules.
+    /// @brief 全 rule を削除する。
     void clearAllRules() noexcept { m_rules.clear(); }
 
     // -------------------------------------------------------------------
     // Strategy
     // -------------------------------------------------------------------
 
-    /// @brief Set the evaluation strategy.
+    /// @brief 評価 strategy を設定する。
     void setStrategy(ResponsiveStrategy strategy) noexcept { m_strategy = strategy; }
 
-    /// @brief Get the current evaluation strategy.
+    /// @brief 現在の評価 strategy を取得する。
     [[nodiscard]] ResponsiveStrategy strategy() const noexcept { return m_strategy; }
 
     // -------------------------------------------------------------------
     // Presets
     // -------------------------------------------------------------------
 
-    /// @brief Configure standard mobile-first breakpoints.
+    /// @brief 標準的な mobile-first breakpoint を設定する。
     void mobileFirst() {
         m_strategy = ResponsiveStrategy::MobileFirst;
         m_breakpoints.clear();
@@ -187,7 +187,7 @@ public:
         addBreakpoint("wide",    1920.0f);
     }
 
-    /// @brief Configure standard desktop-first breakpoints.
+    /// @brief 標準的な desktop-first breakpoint を設定する。
     void desktopFirst() {
         m_strategy = ResponsiveStrategy::DesktopFirst;
         m_breakpoints.clear();
@@ -201,12 +201,12 @@ public:
     // Apply
     // -------------------------------------------------------------------
 
-    /// @brief Find the active breakpoint name for the given viewport width.
+    /// @brief 指定された viewport 幅に対して有効な breakpoint 名を見つける。
     [[nodiscard]] std::string activeBreakpoint(float viewportWidth) const {
         if (m_breakpoints.empty()) return {};
 
         if (m_strategy == ResponsiveStrategy::MobileFirst) {
-            // Last breakpoint whose minWidth <= viewportWidth.
+            // minWidth <= viewportWidth を満たす最後の breakpoint。
             std::string active;
             for (const auto& bp : m_breakpoints) {
                 if (viewportWidth >= bp.minWidth) {
@@ -216,7 +216,7 @@ public:
             return active;
         }
 
-        // DesktopFirst: first breakpoint whose minWidth <= viewportWidth.
+        // DesktopFirst: minWidth <= viewportWidth を満たす最初の breakpoint。
         for (auto it = m_breakpoints.rbegin(); it != m_breakpoints.rend(); ++it) {
             if (viewportWidth >= it->minWidth) {
                 return it->name;
@@ -226,20 +226,20 @@ public:
     }
 
     /**
-     * @brief Apply matching responsive rules to a UI node tree.
+     * @brief 一致する responsive rule を UI node tree に適用する。
      *
-     * For MobileFirst: applies rules from smallest matching breakpoint
-     * up to the active one (cascading).
-     * For DesktopFirst: applies rules from largest down to active.
+     * MobileFirst: 一致する最小の breakpoint から有効な breakpoint まで
+     * の rule を適用する (cascade)。
+     * DesktopFirst: 最大から有効な breakpoint まで降順で適用する。
      *
-     * @param viewportWidth Current viewport width in pixels.
-     * @param root          Root of the UI node tree.
+     * @param viewportWidth 現在の viewport 幅 (pixel)。
+     * @param root          UI node tree の root。
      */
     void apply(float viewportWidth, UINode& root) const {
-        // Collect matching breakpoints in cascade order.
+        // 一致する breakpoint を cascade 順で集める。
         auto matchingBps = matchingBreakpoints(viewportWidth);
 
-        // Apply rules in cascade order.
+        // cascade 順に rule を適用する。
         for (const auto& bpName : matchingBps) {
             for (const auto& rule : m_rules) {
                 if (rule.breakpoint != bpName) continue;
@@ -253,12 +253,12 @@ public:
     }
 
     /**
-     * @brief Apply rules using a custom applicator callback.
+     * @brief custom な applicator callback を使って rule を適用する。
      *
-     * For cases where nodes are not in a UINode tree (e.g., external systems).
+     * node が UINode tree に無い場合向け (例: 外部 system)。
      *
-     * @param viewportWidth Current viewport width.
-     * @param applicator    Callback(nodeId, property, customKey, value).
+     * @param viewportWidth 現在の viewport 幅。
+     * @param applicator    Callback(nodeId, property, customKey, value)。
      */
     void applyCustom(
         float viewportWidth,
@@ -277,7 +277,7 @@ public:
 
 private:
     // -------------------------------------------------------------------
-    // Internal helpers
+    // 内部ヘルパー
     // -------------------------------------------------------------------
 
     void sortBreakpoints() {
@@ -297,25 +297,25 @@ private:
         }
     }
 
-    /// @brief Get breakpoint names that should cascade for the viewport width.
+    /// @brief 指定 viewport 幅で cascade すべき breakpoint 名を取得する。
     [[nodiscard]] std::vector<std::string> matchingBreakpoints(float viewportWidth) const {
         std::vector<std::string> result;
 
         if (m_strategy == ResponsiveStrategy::MobileFirst) {
-            // Apply from smallest up to (and including) active.
+            // 最小から有効な breakpoint まで (含む) を適用する。
             for (const auto& bp : m_breakpoints) {
                 if (viewportWidth >= bp.minWidth) {
                     result.push_back(bp.name);
                 }
             }
         } else {
-            // DesktopFirst: apply from largest down to active.
+            // DesktopFirst: 最大から有効な breakpoint まで降順で適用する。
             for (auto it = m_breakpoints.rbegin(); it != m_breakpoints.rend(); ++it) {
                 if (viewportWidth < it->minWidth) {
                     result.push_back(it->name);
                 }
             }
-            // Always include the active breakpoint.
+            // 有効な breakpoint は常に含める。
             for (const auto& bp : m_breakpoints) {
                 if (viewportWidth >= bp.minWidth && viewportWidth <= bp.maxWidth) {
                     result.push_back(bp.name);
@@ -327,7 +327,7 @@ private:
         return result;
     }
 
-    /// @brief Apply a single rule to a node.
+    /// @brief 1 つの rule を node に適用する。
     static void applyRule(UINode& node, const ResponsiveRule& rule) {
         switch (rule.property) {
         case ResponsiveProperty::Visible:

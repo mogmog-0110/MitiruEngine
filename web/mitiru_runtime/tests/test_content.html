@@ -2,7 +2,7 @@
 <meta charset="utf-8">
 <title>mitiru_content.js tests</title>
 <!--
-    test_content.html — mitiru.content (F-16) unit tests
+    test_content.html — mitiru.content (F-16) unit test
 -->
 <link rel="stylesheet" href="../mitiru_base.css">
 <style>
@@ -21,10 +21,10 @@
 	const t = mitiru.test;
 	const c = mitiru.content;
 
-	// All fixtures live alongside this HTML.
+	// fixture はすべてこの HTML と同じ場所に置く。
 	const FIX = 'fixtures_content/';
 
-	// Save/restore baseDir between tests (mutates global state).
+	// テスト間で baseDir を保存/復元する (global state を変更する)。
 	function withBase(dir, fn)
 	{
 		const prev = c.baseDir();
@@ -102,14 +102,14 @@
 		t.assertEq(b, true);
 	});
 
-	// ── 3. loadPath — valid files ──────────────────────────────
+	// ── 3. loadPath — 正常なファイル ──────────────────────────────
 	t.case('loadPath resolves a valid novel', function()
 	{
 		return c.loadPath(FIX + 'valid_novel.json', { schemaName: 'novel' }).then(function(data)
 		{
 			t.assertEq(data.id, 'fixture_novel');
 			t.assertEq(Array.isArray(data.lines), true);
-			// Frozen by default.
+			// 既定で freeze される。
 			t.assertEq(Object.isFrozen(data), true);
 		});
 	});
@@ -133,13 +133,13 @@
 		});
 	});
 
-	// ── 4. loadPath — validation failures ───────────────────────
+	// ── 4. loadPath — validation の失敗 ───────────────────────
 	t.case('loadPath rejects invalid novel (missing lines)', function()
 	{
 		return c.loadPath(FIX + 'invalid_novel_missing_lines.json', { schemaName: 'novel' }).then(
 			function()  { throw new Error('expected rejection'); },
 			function(e) {
-				// Error message prefixed with path + schema name.
+				// エラーメッセージは path + schema 名で前置される。
 				t.assertEq(/invalid_novel_missing_lines\.json/.test(e.message), true);
 				t.assertEq(/novel/.test(e.message),                             true);
 				t.assertEq(/lines/.test(e.message),                             true);
@@ -190,7 +190,7 @@
 		);
 	});
 
-	// ── 6. schemaVersion (forwards to loadJson) ─────────────────
+	// ── 6. schemaVersion (loadJson に転送する) ─────────────────
 	t.case('loadPath with matching schemaVersion resolves', function()
 	{
 		return c.loadPath(FIX + 'versioned.json', { schemaVersion: '1.0.0' }).then(function(data)
@@ -207,7 +207,7 @@
 		);
 	});
 
-	// ── 7. required paths (forwards to loadJson) ────────────────
+	// ── 7. required path (loadJson に転送する) ────────────────
 	t.case('loadPath honours required dot-paths', function()
 	{
 		return c.loadPath(FIX + 'valid_quest.json', { required: ['id', 'steps'] }).then(function(data)
@@ -224,13 +224,13 @@
 		);
 	});
 
-	// ── 8. freeze:false skips freezing ──────────────────────────
+	// ── 8. freeze:false は freeze をスキップ ──────────────────────────
 	t.case('loadPath with freeze:false leaves data mutable', function()
 	{
 		return c.loadPath(FIX + 'valid_quest.json', { freeze: false }).then(function(data)
 		{
 			t.assertEq(Object.isFrozen(data), false);
-			data.mutated = true;  // must not throw
+			data.mutated = true;  // throw してはいけない
 			t.assertEq(data.mutated, true);
 		});
 	});
@@ -238,11 +238,11 @@
 	// ── 9. load() = path() + loadPath() ─────────────────────────
 	t.case('load(scene, chapter) resolves via the baseDir convention', function()
 	{
-		// Point baseDir at the fixtures root so load('.', 'valid_novel') composes correctly.
+		// load('.', 'valid_novel') が正しく組み立つよう baseDir を fixtures root に向ける。
 		return withBase(FIX, function()
 		{
-			// load('.', name) → FIX + './' + name + '.json' — pretend "novel" is the scene dir.
-			// Create a fake scene-chapter layout by using '.' as scene.
+			// load('.', name) → FIX + './' + name + '.json' — "novel" を scene dir に見立てる。
+			// '.' を scene として疑似的な scene-chapter レイアウトを作る。
 			return c.loadPath(c.path('.', 'valid_novel'), { schemaName: 'novel' }).then(function(data)
 			{
 				t.assertEq(data.id, 'fixture_novel');
@@ -250,23 +250,23 @@
 		});
 	});
 
-	// ── 10. loadPath() throws early on bad path ─────────────────
+	// ── 10. loadPath() は不正な path で早期に throw ─────────────────
 	t.case('loadPath throws synchronously on empty path', function()
 	{
 		let threw = false;
 		try { c.loadPath(''); } catch (_e) { threw = true; }
-		// Older engines may reject via Promise instead — accept either.
+		// 古い engine は代わりに Promise で reject する場合がある — どちらも許容。
 		if (!threw)
 		{
 			return c.loadPath('').then(
 				function()  { throw new Error('expected rejection'); },
-				function(_e) { /* ok */ }
+				function(_e) { /* 正常 */ }
 			);
 		}
 		t.assertEq(threw, true);
 	});
 
-	// ── 11. mitiru.resolveUrl (NF-01 helper) ────────────────────
+	// ── 11. mitiru.resolveUrl (NF-01 の helper) ────────────────────
 	t.case('resolveUrl handles absolute paths unchanged', function()
 	{
 		const out = mitiru.resolveUrl('https://example.com/a.json');
@@ -292,14 +292,14 @@
 		t.assertEq(threw, true);
 	});
 
-	// ── 12. loadManifest — path convention + resolver ───────────
+	// ── 12. loadManifest — path 規約 + resolver ───────────
 	t.case('loadManifest returns {data, url, resolve}', function()
 	{
 		return c.loadManifest(FIX + 'manifest.json').then(function(m)
 		{
 			t.assertEq(m.data.id, 'fixture_manifest');
 			t.assertEq(typeof m.url, 'string');
-			// url should be absolute.
+			// url は絶対 path のはず。
 			t.assertEq(/^https?:\/\//.test(m.url), true);
 			t.assertEq(typeof m.resolve, 'function');
 		});
@@ -309,10 +309,10 @@
 	{
 		return c.loadManifest(FIX + 'manifest.json').then(function(m)
 		{
-			// Relative path from inside the manifest.
+			// manifest 内部からの相対 path。
 			const ch01 = m.resolve(m.data.chapters[0].path);
-			// Must point into the fixtures_content/scripts/ path, not into
-			// the page's own directory.
+			// page 自身のディレクトリではなく fixtures_content/scripts/ の
+			// path を指す必要がある。
 			t.assertEq(/\/fixtures_content\/scripts\/novel\/ch01\.json$/.test(ch01), true);
 		});
 	});
@@ -321,9 +321,9 @@
 	{
 		return c.loadManifest(FIX + 'manifest.json').then(function(m)
 		{
-			// manifest has "../../art/bg_street.png"
+			// manifest は "../../art/bg_street.png" を持つ
 			const art = m.resolve(m.data.art.bg_street);
-			// Should jump above fixtures_content/ two levels.
+			// fixtures_content/ から 2 階層上に飛ぶはず。
 			t.assertEq(/\/art\/bg_street\.png$/.test(art), true);
 			t.assertEq(art.indexOf('fixtures_content'), -1);
 		});
@@ -353,13 +353,13 @@
 		{
 			return c.loadManifest('').then(
 				function()  { throw new Error('expected rejection'); },
-				function(_e) { /* ok */ }
+				function(_e) { /* 正常 */ }
 			);
 		}
 		t.assertEq(threw, true);
 	});
 
-	// ── drive ────────────────────────────────────────────────────
+	// ── 実行 ────────────────────────────────────────────────────
 	mitiru.test.run();
 })();
 </script>

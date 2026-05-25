@@ -877,10 +877,10 @@ private:
 
 	// ─────────────────────────────────────────────────────────
 	//  PSO生成・リソース生成・描画ヘルパー（別ファイルに分離）
-	//  NOTE: This is an intentional .inl include inside the class body.
-	//  DX12PipelineStates.inl declares private member functions of
-	//  Renderer3D_DX12 and must be included here to access the class
-	//  scope. Do NOT move this include outside the class declaration.
+	//  NOTE: これは class body 内への意図的な .inl include である。
+	//  DX12PipelineStates.inl は Renderer3D_DX12 の private member function を
+	//  宣言しており、class scope にアクセスするためここで include する必要が
+	//  ある。この include を class 宣言の外に移動してはいけない。
 	// ─────────────────────────────────────────────────────────
 
 	// NOLINTNEXTLINE(google-build-namespaces) — intentional in-class .inl include
@@ -1199,7 +1199,7 @@ private:
 		case ShaderMode3D::Toon:
 		default: break;
 		}
-		return m_mainPSO.Get(); // fallback: toon
+		return m_mainPSO.Get(); // フォールバック: toon
 	}
 
 public:

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UINumberSpinner.hpp
-/// @brief Numeric input widget with increment/decrement buttons and auto-repeat.
+/// @brief 増減ボタンと auto-repeat を備えた数値 input widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,33 +15,32 @@
 
 namespace mitiru::ui {
 
-/// @brief Configuration for creating a UINumberSpinner.
+/// @brief UINumberSpinner 生成用の設定。
 struct UINumberSpinnerConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
-	float value = 0.0f;                    ///< Initial value.
-	float min = 0.0f;                      ///< Minimum value.
-	float max = 100.0f;                    ///< Maximum value.
-	float step = 1.0f;                     ///< Increment/decrement step.
-	int decimalPlaces = 0;                 ///< Decimal places for display.
-	float width = 160.0f;                  ///< Total widget width.
-	float height = 32.0f;                  ///< Total widget height.
-	float buttonWidth = 32.0f;             ///< Width of +/- buttons.
-	float inputWidth = 96.0f;              ///< Width of the number display area.
-	std::string incrementImageKey;         ///< Image for increment button.
-	std::string decrementImageKey;         ///< Image for decrement button.
-	std::string inputBackgroundImageKey;   ///< Image for number input background.
-	float fontSize = 14.0f;                ///< Font size for the number display.
-	float holdRepeatDelay = 0.5f;          ///< Seconds before auto-repeat starts.
-	float holdRepeatRate = 0.1f;           ///< Seconds between auto-repeat ticks.
+	float value = 0.0f;                    ///< 初期値。
+	float min = 0.0f;                      ///< 最小値。
+	float max = 100.0f;                    ///< 最大値。
+	float step = 1.0f;                     ///< 増減の step。
+	int decimalPlaces = 0;                 ///< 表示の小数桁数。
+	float width = 160.0f;                  ///< widget 全体の幅。
+	float height = 32.0f;                  ///< widget 全体の高さ。
+	float buttonWidth = 32.0f;             ///< +/- ボタンの幅。
+	float inputWidth = 96.0f;              ///< 数値表示領域の幅。
+	std::string incrementImageKey;         ///< increment ボタンの画像。
+	std::string decrementImageKey;         ///< decrement ボタンの画像。
+	std::string inputBackgroundImageKey;   ///< 数値 input 背景の画像。
+	float fontSize = 14.0f;                ///< 数値表示のフォントサイズ。
+	float holdRepeatDelay = 0.5f;          ///< auto-repeat 開始までの秒数。
+	float holdRepeatRate = 0.1f;           ///< auto-repeat の tick 間隔 (秒)。
 };
 
-/// @brief Numeric spinner widget with +/- buttons and hold-to-repeat.
+/// @brief +/- ボタンと長押しリピートを備えた数値 spinner widget。
 ///
-/// Provides increment/decrement buttons, direct text input, and auto-repeat
-/// when a button is held down. Values are clamped to [min, max] and snapped
-/// to the configured step.
+/// 増減ボタン・直接のテキスト入力・ボタン長押し時の auto-repeat を提供する。
+/// 値は [min, max] に clamp され、設定された step に snap される。
 ///
 /// @code
 ///   UINumberSpinnerConfig cfg;
@@ -69,7 +68,7 @@ class UINumberSpinner
 	bool m_editing = false;
 	std::string m_editBuffer;
 
-	// Hold-to-repeat state.
+	// 長押しリピートの state。
 	enum class HoldDirection : std::uint8_t { None, Increment, Decrement };
 	HoldDirection m_holdDirection = HoldDirection::None;
 	float m_holdTimer = 0.0f;
@@ -78,8 +77,8 @@ class UINumberSpinner
 	std::function<void(float)> m_onValueChanged;
 
 public:
-	/// @brief Construct a number spinner from configuration.
-	/// @param config Spinner configuration.
+	/// @brief 設定から number spinner を構築する。
+	/// @param config spinner の設定。
 	explicit UINumberSpinner(const UINumberSpinnerConfig& config)
 		: m_value(std::clamp(config.value, config.min, config.max))
 		, m_min(config.min)
@@ -112,29 +111,29 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current value.
+	/// @brief 現在の値を取得する。
 	[[nodiscard]] float getValue() const noexcept { return m_value; }
 
-	/// @brief Get the minimum value.
+	/// @brief 最小値を取得する。
 	[[nodiscard]] float getMin() const noexcept { return m_min; }
 
-	/// @brief Get the maximum value.
+	/// @brief 最大値を取得する。
 	[[nodiscard]] float getMax() const noexcept { return m_max; }
 
-	/// @brief Check if currently in text editing mode.
+	/// @brief 現在テキスト編集 mode かどうか判定する。
 	[[nodiscard]] bool isEditing() const noexcept { return m_editing; }
 
 	// ── Configuration ────────────────────────────────────────
 
-	/// @brief Set the value-changed callback.
-	/// @param callback Function invoked when value changes.
+	/// @brief 値変更時の callback を設定する。
+	/// @param callback 値が変わったときに呼ばれる関数。
 	void setOnValueChanged(std::function<void(float)> callback) { m_onValueChanged = std::move(callback); }
 
-	/// @brief Set the value programmatically.
-	/// @param val New value (clamped and snapped).
+	/// @brief プログラムから値を設定する。
+	/// @param val 新しい値 (clamp と snap が行われる)。
 	void setValue(float val)
 	{
 		const float snapped = snapToStep(std::clamp(val, m_min, m_max));
@@ -146,20 +145,20 @@ public:
 		}
 	}
 
-	/// @brief Set the value range.
-	/// @param minVal Minimum value.
-	/// @param maxVal Maximum value.
+	/// @brief 値の範囲を設定する。
+	/// @param minVal 最小値。
+	/// @param maxVal 最大値。
 	void setRange(float minVal, float maxVal)
 	{
 		m_min = minVal;
 		m_max = maxVal;
 		m_node->setProperty("min", std::to_string(m_min));
 		m_node->setProperty("max", std::to_string(m_max));
-		setValue(m_value); // re-clamp
+		setValue(m_value); // 再 clamp
 	}
 
-	/// @brief Set the step size.
-	/// @param step New step value.
+	/// @brief step サイズを設定する。
+	/// @param step 新しい step 値。
 	void setStep(float step)
 	{
 		m_step = step;
@@ -168,19 +167,19 @@ public:
 
 	// ── Interaction ──────────────────────────────────────────
 
-	/// @brief Increment the value by one step.
+	/// @brief 値を 1 step 増やす。
 	void increment()
 	{
 		setValue(m_value + m_step);
 	}
 
-	/// @brief Decrement the value by one step.
+	/// @brief 値を 1 step 減らす。
 	void decrement()
 	{
 		setValue(m_value - m_step);
 	}
 
-	/// @brief Begin holding the increment button.
+	/// @brief increment ボタンの長押しを開始する。
 	void beginHoldIncrement()
 	{
 		m_holdDirection = HoldDirection::Increment;
@@ -189,7 +188,7 @@ public:
 		increment();
 	}
 
-	/// @brief Begin holding the decrement button.
+	/// @brief decrement ボタンの長押しを開始する。
 	void beginHoldDecrement()
 	{
 		m_holdDirection = HoldDirection::Decrement;
@@ -198,7 +197,7 @@ public:
 		decrement();
 	}
 
-	/// @brief Release the held button.
+	/// @brief 長押し中のボタンを離す。
 	void endHold()
 	{
 		m_holdDirection = HoldDirection::None;
@@ -206,8 +205,8 @@ public:
 		m_holdRepeating = false;
 	}
 
-	/// @brief Update auto-repeat logic. Call each frame.
-	/// @param dt Delta time in seconds.
+	/// @brief auto-repeat ロジックを更新する。毎フレーム呼ぶ。
+	/// @param dt 経過時間 (秒)。
 	void update(float dt)
 	{
 		if (m_holdDirection == HoldDirection::None) { return; }
@@ -242,7 +241,7 @@ public:
 
 	// ── Text Editing ─────────────────────────────────────────
 
-	/// @brief Begin direct text editing of the number field.
+	/// @brief 数値フィールドの直接テキスト編集を開始する。
 	void beginEditing()
 	{
 		m_editing = true;
@@ -251,13 +250,13 @@ public:
 		m_node->setProperty("edit_buffer", m_editBuffer);
 	}
 
-	/// @brief Append a character to the edit buffer.
-	/// @param ch Character to append (digits, '.', '-').
+	/// @brief edit buffer に文字を追加する。
+	/// @param ch 追加する文字 (数字、'.'、'-')。
 	void editAppendChar(char ch)
 	{
 		if (!m_editing) { return; }
 
-		// Allow digits, decimal point, minus sign.
+		// 数字・小数点・マイナス記号を許可する。
 		const bool isDigit = (ch >= '0' && ch <= '9');
 		const bool isDot = (ch == '.' && m_decimalPlaces > 0 && m_editBuffer.find('.') == std::string::npos);
 		const bool isMinus = (ch == '-' && m_editBuffer.empty() && m_min < 0.0f);
@@ -269,7 +268,7 @@ public:
 		}
 	}
 
-	/// @brief Remove the last character from the edit buffer.
+	/// @brief edit buffer の末尾の文字を削除する。
 	void editBackspace()
 	{
 		if (!m_editing || m_editBuffer.empty()) { return; }
@@ -277,7 +276,7 @@ public:
 		m_node->setProperty("edit_buffer", m_editBuffer);
 	}
 
-	/// @brief Confirm the text edit and apply the value.
+	/// @brief テキスト編集を確定し値を適用する。
 	void confirmEditing()
 	{
 		if (!m_editing) { return; }
@@ -293,13 +292,13 @@ public:
 			}
 			catch (...)
 			{
-				// Invalid input; keep current value.
+				// 不正な入力。現在値を保持する。
 			}
 		}
 		syncNodeState();
 	}
 
-	/// @brief Cancel text editing without applying.
+	/// @brief 適用せずにテキスト編集をキャンセルする。
 	void cancelEditing()
 	{
 		m_editing = false;
@@ -308,14 +307,14 @@ public:
 	}
 
 private:
-	/// @brief Snap a value to the nearest step.
+	/// @brief 値を最も近い step に snap する。
 	[[nodiscard]] float snapToStep(float val) const noexcept
 	{
 		if (m_step <= 0.0f) { return val; }
 		return m_min + std::round((val - m_min) / m_step) * m_step;
 	}
 
-	/// @brief Format a value with the configured decimal places.
+	/// @brief 設定された小数桁数で値を整形する。
 	[[nodiscard]] std::string formatValue(float val) const
 	{
 		std::ostringstream oss;
@@ -323,7 +322,7 @@ private:
 		return oss.str();
 	}
 
-	/// @brief Synchronize state to the UINode.
+	/// @brief state を UINode へ同期する。
 	void syncNodeState()
 	{
 		m_node->setValue(m_value);

@@ -513,12 +513,12 @@ private:
 			}
 			return 0;
 
-		/// --- Focus loss --------------------------------------------------
-		/// When the user alt-tabs away (or clicks a sibling window like the
-		/// dev companion) Windows stops delivering WM_KEYUP to this hwnd.
-		/// Any keys held at the time would stay "down" forever in our
-		/// InputState — the classic "stuck arrow" bug. Clear them here so
-		/// the game sees a clean release edge.
+		/// --- focus 喪失 --------------------------------------------------
+		/// ユーザが alt-tab で離れた (または dev companion のような別 window を
+		/// クリックした) 時、Windows はこの hwnd へ WM_KEYUP を配送しなくなる。
+		/// その時点で押されていた key は InputState 内で永久に "down" のまま残る
+		/// — 典型的な "矢印キー stuck" bug。ここでクリアし、game に正しい
+		/// release edge が届くようにする。
 		case WM_KILLFOCUS:
 			if (m_inputState) { m_inputState->clearHeldKeys(); }
 			return 0;

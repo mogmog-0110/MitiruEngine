@@ -1,28 +1,28 @@
 /*!
- * mitiru_crash_reporter.js — uncaught-error capture + export (NF-05)
+ * mitiru_crash_reporter.js — uncaught-error の capture + export (NF-05)
  *
- * Hooks window.onerror and unhandledrejection to capture crash reports,
- * persists them to localStorage, and provides export / download helpers
- * for player → developer handoff from the Title screen.
+ * window.onerror と unhandledrejection を hook して crash report を capture し、
+ * localStorage に永続化する。Title 画面から player → developer へ渡すための
+ * export / download ヘルパーを提供する。
  *
- * Implements spec: docs/engine-feedback-20260424b NF-05
+ * 仕様: docs/engine-feedback-20260424b NF-05
  *
  * ── API ──────────────────────────────────────────────────────────────────────
- *   mitiru.crashReporter.install(opts?)        hooks onerror + unhandledrejection
- *   mitiru.crashReporter.uninstall()           removes listeners
- *   mitiru.crashReporter.record(error, extra?) manually record a report
- *   mitiru.crashReporter.list()                array of captured reports (newest first)
- *   mitiru.crashReporter.clear()               drop all reports
- *   mitiru.crashReporter.count()               number of reports
+ *   mitiru.crashReporter.install(opts?)        onerror + unhandledrejection を hook
+ *   mitiru.crashReporter.uninstall()           listener を除去
+ *   mitiru.crashReporter.record(error, extra?) report を手動記録
+ *   mitiru.crashReporter.list()                capture した report の配列 (新しい順)
+ *   mitiru.crashReporter.clear()               全 report を破棄
+ *   mitiru.crashReporter.count()               report 数
  *   mitiru.crashReporter.exportBlob()          Blob (application/json)
- *   mitiru.crashReporter.exportString()        plain JSON string
- *   mitiru.crashReporter.triggerDownload(filename?)  <a download> trigger
- *   mitiru.crashReporter.setStateSnapshotFn(fn)  register state snapshot fn
+ *   mitiru.crashReporter.exportString()        plain JSON 文字列
+ *   mitiru.crashReporter.triggerDownload(filename?)  <a download> を起動
+ *   mitiru.crashReporter.setStateSnapshotFn(fn)  state snapshot fn を登録
  *   mitiru.crashReporter.setMaxReports(n)      default 20; FIFO cap
  *   mitiru.crashReporter.on(event, cb)         'capture' event listener
- *   mitiru.crashReporter.off(event, cb)        remove listener
+ *   mitiru.crashReporter.off(event, cb)        listener を除去
  *
- * ── install() defaults ───────────────────────────────────────────────────────
+ * ── install() の default ───────────────────────────────────────────────────────
  *   autoLoad:   true
  *   persist:    true
  *   maxReports: 20
@@ -33,29 +33,29 @@
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.crashReporter) { return; }  // already loaded
+	if (mitiru.crashReporter) { return; }  // ロード済み
 
-	// ── constants ──────────────────────────────────────────────────
+	// ── 定数 ──────────────────────────────────────────────────
 	var DEFAULT_KEY        = 'mitiru.crashReports';
 	var DEFAULT_MAX        = 20;
 
-	// ── private state ──────────────────────────────────────────────
-	var _reports       = [];          // newest first
+	// ── private 状態 ──────────────────────────────────────────────
+	var _reports       = [];          // 新しい順
 	var _maxReports    = DEFAULT_MAX;
 	var _snapshotFn    = null;
 	var _listeners     = { capture: [] };
 
-	// install config (nulled on uninstall)
+	// install 設定 (uninstall 時に null 化)
 	var _installed     = false;
 	var _persistKey    = DEFAULT_KEY;
 	var _doPersist     = true;
 
-	// saved prior handlers for chain-call on uninstall
+	// uninstall 時に chain-call するため保存した旧 handler
 	var _prevOnerror   = null;
 	var _rejHandler    = null;
 	var _onerrorBound  = null;
 
-	// ── helpers ────────────────────────────────────────────────────
+	// ── ヘルパー ────────────────────────────────────────────────────
 	function _hex(n)
 	{
 		return n.toString(16).padStart(4, '0');
@@ -68,7 +68,7 @@
 		return 'crash-' + ts + '-' + _hex(rnd);
 	}
 
-	// Returns the JSON string, or null if serialisation fails (circular ref etc.)
+	// JSON 文字列を返す。serialise 失敗時 (循環参照等) は null。
 	function _safeStringify(obj)
 	{
 		try
@@ -93,7 +93,7 @@
 		{
 			return { __snapshotError: (e && e.message) ? e.message : String(e) };
 		}
-		// Verify it is JSON-serialisable (catches circular refs, BigInt, etc.)
+		// JSON-serialise 可能か検証 (循環参照, BigInt 等を捕捉)
 		var str = _safeStringify(snap);
 		if (str === null) { return { __nonSerialisable: true }; }
 		return snap;
@@ -120,7 +120,7 @@
 		for (var i = 0; i < cbs.length; ++i)
 		{
 			try { cbs[i](data); }
-			catch (_e) { /* listener errors must not crash the reporter */ }
+			catch (_e) { /* listener の error で reporter を crash させない */ }
 		}
 	}
 
@@ -133,7 +133,7 @@
 		}
 		catch (_e)
 		{
-			/* localStorage full or unavailable — silently skip */
+			/* localStorage が満杯 or 利用不可 — 黙って skip */
 		}
 	}
 
@@ -154,9 +154,9 @@
 
 	function _pushReport(report)
 	{
-		// Prepend (newest first).
+		// 先頭に追加 (新しい順)。
 		_reports = [report].concat(_reports);
-		// Enforce FIFO cap: drop from the tail (oldest).
+		// FIFO cap を適用: 末尾 (最古) から落とす。
 		if (_reports.length > _maxReports)
 		{
 			_reports = _reports.slice(0, _maxReports);
@@ -185,17 +185,17 @@
 		};
 	}
 
-	// ── onerror / unhandledrejection handlers ──────────────────────
+	// ── onerror / unhandledrejection の handler ──────────────────────
 	function _onerrorHandler(msg, src, lineno, colno, errorObj)
 	{
 		var report = _buildReport('error', errorObj || msg, src, lineno, colno, null);
 		_pushReport(report);
-		// Chain to prior handler if any.
+		// 旧 handler があれば chain する。
 		if (typeof _prevOnerror === 'function')
 		{
 			return _prevOnerror(msg, src, lineno, colno, errorObj);
 		}
-		return false;  // do not suppress default browser handling
+		return false;  // browser の default 処理を抑制しない
 	}
 
 	function _rejectionHandler(evt)
@@ -209,18 +209,18 @@
 	var crashReporter = mitiru.crashReporter = {};
 
 	/**
-	 * Install window.onerror and unhandledrejection hooks.
-	 * Safe to call multiple times — uninstalls old hooks first.
+	 * window.onerror と unhandledrejection の hook を install する。
+	 * 複数回呼んでも安全 — 先に旧 hook を uninstall する。
 	 *
 	 * @param {object} [opts]
-	 * @param {boolean} [opts.autoLoad=true]   load prior reports from localStorage
-	 * @param {boolean} [opts.persist=true]    write to localStorage on each capture
+	 * @param {boolean} [opts.autoLoad=true]   過去の report を localStorage からロード
+	 * @param {boolean} [opts.persist=true]    capture ごとに localStorage へ書き込む
 	 * @param {number}  [opts.maxReports=20]   FIFO cap
 	 * @param {string}  [opts.key]             localStorage key
 	 */
 	crashReporter.install = function(opts)
 	{
-		// Idempotent: remove old handlers before re-installing.
+		// 冪等: 再 install 前に旧 handler を除去する。
 		if (_installed) { crashReporter.uninstall(); }
 
 		var o = (opts && typeof opts === 'object') ? opts : {};
@@ -237,7 +237,7 @@
 		if (autoLoad)
 		{
 			var stored = _loadFromStorage(key);
-			// Merge: stored are already newest-first; current in-memory prepend.
+			// マージ: stored は既に新しい順; 現在の in-memory 分を前に付ける。
 			_reports = _reports.concat(stored);
 			if (_reports.length > _maxReports)
 			{
@@ -245,12 +245,12 @@
 			}
 		}
 
-		// Save and replace window.onerror.
+		// window.onerror を保存して差し替える。
 		_prevOnerror = global.onerror || null;
 		_onerrorBound = _onerrorHandler;
 		global.onerror = _onerrorBound;
 
-		// Add unhandledrejection listener.
+		// unhandledrejection listener を追加する。
 		_rejHandler = _rejectionHandler;
 		global.addEventListener('unhandledrejection', _rejHandler);
 
@@ -258,13 +258,13 @@
 	};
 
 	/**
-	 * Remove installed hooks.
+	 * install 済みの hook を除去する。
 	 */
 	crashReporter.uninstall = function()
 	{
 		if (!_installed) { return; }
 
-		// Restore prior onerror.
+		// 旧 onerror を復元する。
 		if (global.onerror === _onerrorBound)
 		{
 			global.onerror = _prevOnerror;
@@ -282,10 +282,10 @@
 	};
 
 	/**
-	 * Manually record an error (for non-throwing code paths).
+	 * error を手動記録する (throw しない code path 向け)。
 	 *
 	 * @param {Error|string} error
-	 * @param {*} [extra]  any JSON-serialisable extra context
+	 * @param {*} [extra]  JSON-serialise 可能な追加コンテキスト
 	 */
 	crashReporter.record = function(error, extra)
 	{
@@ -293,34 +293,34 @@
 		_pushReport(report);
 	};
 
-	/** Return all captured reports, newest first. @returns {Array} */
+	/** capture した全 report を新しい順で返す。 @returns {Array} */
 	crashReporter.list = function() { return _reports.slice(); };
 
-	/** Drop all in-memory reports and clear localStorage entry. */
+	/** in-memory の全 report を破棄し localStorage entry をクリアする。 */
 	crashReporter.clear = function()
 	{
 		_reports = [];
 		try { global.localStorage.removeItem(_persistKey); }
-		catch (_e) { /* ignore */ }
+		catch (_e) { /* 無視 */ }
 	};
 
-	/** Number of captured reports. @returns {number} */
+	/** capture した report 数。 @returns {number} */
 	crashReporter.count = function() { return _reports.length; };
 
-	/** Export all reports as a Blob (application/json). @returns {Blob} */
+	/** 全 report を Blob (application/json) として export する。 @returns {Blob} */
 	crashReporter.exportBlob = function()
 	{
 		return new Blob([crashReporter.exportString()], { type: 'application/json' });
 	};
 
-	/** Export all reports as a plain JSON string. @returns {string} */
+	/** 全 report を plain JSON 文字列として export する。 @returns {string} */
 	crashReporter.exportString = function()
 	{
 		return JSON.stringify(_reports, null, 2);
 	};
 
 	/**
-	 * Trigger a browser file-download of the crash log.
+	 * crash log の browser file-download を起動する。
 	 * @param {string} [filename='mitiru_crash.json']
 	 */
 	crashReporter.triggerDownload = function(filename)
@@ -340,10 +340,10 @@
 	};
 
 	/**
-	 * Register a function called at capture time to attach game state.
-	 * fn() must return a JSON-serialisable object.
-	 * If fn throws, report.state is set to { __snapshotError: message }.
-	 * If the return value is not serialisable, { __nonSerialisable: true }.
+	 * capture 時に game state を添付するため呼ばれる関数を登録する。
+	 * fn() は JSON-serialise 可能な object を返す必要がある。
+	 * fn が throw した場合、report.state は { __snapshotError: message } になる。
+	 * 戻り値が serialise 不可なら { __nonSerialisable: true } になる。
 	 *
 	 * @param {function|null} fn
 	 */
@@ -357,8 +357,8 @@
 	};
 
 	/**
-	 * Set the FIFO cap on stored reports.  Older reports beyond n are dropped immediately.
-	 * @param {number} n  positive integer
+	 * 保存 report の FIFO cap を設定する。n を超える古い report は即座に破棄される。
+	 * @param {number} n  正の整数
 	 */
 	crashReporter.setMaxReports = function(n)
 	{
@@ -374,9 +374,9 @@
 	};
 
 	/**
-	 * Subscribe to an event.
+	 * event を購読する。
 	 * @param {'capture'} event
-	 * @param {function}  cb    called with the report object
+	 * @param {function}  cb    report object を引数に呼ばれる
 	 */
 	crashReporter.on = function(event, cb)
 	{
@@ -385,7 +385,7 @@
 	};
 
 	/**
-	 * Unsubscribe from an event.
+	 * event を購読解除する。
 	 * @param {'capture'} event
 	 * @param {function}  cb
 	 */

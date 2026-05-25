@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIChatWindow.hpp
-/// @brief Scrollable chat window widget with channels, input field, and message history.
+/// @brief channel、入力欄、message 履歴を備えた scroll 可能な chat window widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -16,64 +16,63 @@
 
 namespace mitiru::ui {
 
-/// @brief A single chat message with sender, channel, and style metadata.
+/// @brief sender、channel、style metadata を持つ単一 chat message。
 struct UIChatMessage
 {
-	std::string sender;                            ///< Sender display name.
-	std::string text;                              ///< Message body.
-	double timestamp         = 0.0;                ///< Unix timestamp or game time.
-	std::string channel;                           ///< Channel name this message belongs to.
-	float color[4]           = {1.0f, 1.0f, 1.0f, 1.0f}; ///< Message text RGBA color.
-	float senderColor[4]     = {0.8f, 0.8f, 0.2f, 1.0f}; ///< Sender name RGBA color.
-	std::string iconImageKey;                      ///< Optional sender icon image key.
+	std::string sender;                            ///< sender の表示名。
+	std::string text;                              ///< message 本文。
+	double timestamp         = 0.0;                ///< Unix timestamp または game time。
+	std::string channel;                           ///< この message が属する channel 名。
+	float color[4]           = {1.0f, 1.0f, 1.0f, 1.0f}; ///< message テキストの RGBA 色。
+	float senderColor[4]     = {0.8f, 0.8f, 0.2f, 1.0f}; ///< sender 名の RGBA 色。
+	std::string iconImageKey;                      ///< sender icon の image key (任意)。
 };
 
-/// @brief Definition of a chat channel with filtering.
+/// @brief フィルタリング付き chat channel の定義。
 struct UIChatChannel
 {
-	std::string name;                              ///< Channel identifier/name.
-	float color[4]           = {1.0f, 1.0f, 1.0f, 1.0f}; ///< Channel accent RGBA color.
-	std::string iconImageKey;                      ///< Optional channel icon image key.
-	bool enabled             = true;               ///< Whether this channel is visible.
+	std::string name;                              ///< channel の識別子 / 名前。
+	float color[4]           = {1.0f, 1.0f, 1.0f, 1.0f}; ///< channel アクセントの RGBA 色。
+	std::string iconImageKey;                      ///< channel icon の image key (任意)。
+	bool enabled             = true;               ///< この channel が表示されるか。
 };
 
-/// @brief Scroll bar style hints for the renderer.
+/// @brief renderer 向けの scroll bar スタイルヒント。
 struct UIChatScrollBarStyle
 {
-	float width              = 8.0f;               ///< Scroll bar width in pixels.
-	float minThumbHeight     = 20.0f;              ///< Minimum thumb height.
-	std::string trackImageKey;                     ///< Optional track background image key.
-	std::string thumbImageKey;                     ///< Optional thumb image key.
+	float width              = 8.0f;               ///< scroll bar の幅 (pixel)。
+	float minThumbHeight     = 20.0f;              ///< thumb の最小高さ。
+	std::string trackImageKey;                     ///< track 背景の image key (任意)。
+	std::string thumbImageKey;                     ///< thumb の image key (任意)。
 };
 
-/// @brief Configuration for the chat window.
+/// @brief chat window の設定。
 struct UIChatWindowConfig
 {
-	float width              = 400.0f;             ///< Window width.
-	float height             = 300.0f;             ///< Window height.
-	std::size_t maxMessages  = 200;                ///< Maximum stored messages (oldest auto-removed).
-	float inputHeight        = 28.0f;              ///< Input field height.
-	std::string backgroundImageKey;                ///< Window background image key.
-	std::string inputBackgroundImageKey;           ///< Input field background image key.
-	float channelTabHeight   = 24.0f;              ///< Channel tab strip height.
-	std::string channelTabImageKey;                ///< Channel tab background image key.
-	UIChatScrollBarStyle scrollBarStyle;            ///< Scroll bar appearance.
-	float messagePadding     = 4.0f;               ///< Vertical padding between messages.
-	float messageFontSize    = 14.0f;              ///< Message body font size.
-	float senderFontSize     = 14.0f;              ///< Sender name font size.
-	float timestampFontSize  = 11.0f;              ///< Timestamp font size.
-	float timestampColor[4]  = {0.5f, 0.5f, 0.5f, 0.8f}; ///< Timestamp RGBA color.
-	float separatorColor[4]  = {0.3f, 0.3f, 0.3f, 0.4f}; ///< Message separator RGBA color.
-	bool showTimestamps      = true;               ///< Show timestamps on messages.
-	bool showSenderIcon      = true;               ///< Show sender icon beside messages.
-	std::size_t inputHistorySize = 32;             ///< Max stored input history entries.
+	float width              = 400.0f;             ///< window 幅。
+	float height             = 300.0f;             ///< window 高さ。
+	std::size_t maxMessages  = 200;                ///< 保持する最大 message 数 (古いものを自動削除)。
+	float inputHeight        = 28.0f;              ///< 入力欄の高さ。
+	std::string backgroundImageKey;                ///< window 背景の image key。
+	std::string inputBackgroundImageKey;           ///< 入力欄背景の image key。
+	float channelTabHeight   = 24.0f;              ///< channel tab 列の高さ。
+	std::string channelTabImageKey;                ///< channel tab 背景の image key。
+	UIChatScrollBarStyle scrollBarStyle;            ///< scroll bar の見た目。
+	float messagePadding     = 4.0f;               ///< message 間の縦 padding。
+	float messageFontSize    = 14.0f;              ///< message 本文の font size。
+	float senderFontSize     = 14.0f;              ///< sender 名の font size。
+	float timestampFontSize  = 11.0f;              ///< timestamp の font size。
+	float timestampColor[4]  = {0.5f, 0.5f, 0.5f, 0.8f}; ///< timestamp の RGBA 色。
+	float separatorColor[4]  = {0.3f, 0.3f, 0.3f, 0.4f}; ///< message 区切りの RGBA 色。
+	bool showTimestamps      = true;               ///< message に timestamp を表示するか。
+	bool showSenderIcon      = true;               ///< message の横に sender icon を表示するか。
+	std::size_t inputHistorySize = 32;             ///< 保持する入力履歴の最大件数。
 };
 
-/// @brief Chat window widget with channels, scrolling, and input history.
+/// @brief channel、scroll、入力履歴を備えた chat window widget。
 ///
-/// Provides a complete chat log with channel-based filtering, auto-scrolling,
-/// input field with history navigation, and configurable appearance via
-/// image keys and style parameters.
+/// channel ベースのフィルタリング、auto-scroll、履歴移動付き入力欄、image key
+/// や style パラメータによる外観カスタマイズを備えた完全な chat ログを提供する。
 ///
 /// @code
 ///   UIChatWindowConfig cfg;
@@ -109,17 +108,17 @@ class UIChatWindow
 	float m_scrollOffset       = 0.0f;
 	float m_maxScrollOffset    = 0.0f;
 
-	// Input history (newest at back).
+	// 入力履歴 (新しいものが末尾)。
 	std::vector<std::string> m_inputHistory;
 	int m_historyIndex         = -1;
 
-	// Callbacks.
+	// Callbacks。
 	std::function<void(const std::string&, const std::string&)> m_onMessageSent;
 	std::function<void(const std::string&)> m_onChannelChanged;
 
 public:
-	/// @brief Construct a chat window from configuration.
-	/// @param config Chat window configuration.
+	/// @brief 設定から chat window を構築する。
+	/// @param config chat window の設定。
 	explicit UIChatWindow(const UIChatWindowConfig& config)
 		: m_config(config)
 	{
@@ -135,19 +134,19 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基底の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current configuration (read-only).
+	/// @brief 現在の設定を取得する (読み取り専用)。
 	[[nodiscard]] const UIChatWindowConfig& config() const noexcept { return m_config; }
 
-	// ── Messages ─────────────────────────────────────────────
+	// ── message ─────────────────────────────────────────────
 
-	/// @brief Add a message to the chat log.
-	/// @param msg Message to add.
+	/// @brief chat ログに message を追加する。
+	/// @param msg 追加する message。
 	void addMessage(UIChatMessage msg)
 	{
-		// Enforce max messages by removing oldest.
+		// 古いものを消して最大 message 数を守る。
 		while (m_messages.size() >= m_config.maxMessages)
 		{
 			m_messages.pop_front();
@@ -155,7 +154,7 @@ public:
 
 		m_messages.push_back(std::move(msg));
 
-		// Auto-scroll to bottom if user hasn't scrolled up.
+		// ユーザーが上へ scroll していなければ最下部へ auto-scroll する。
 		if (m_autoScroll)
 		{
 			scrollToBottom();
@@ -164,13 +163,13 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get all messages.
+	/// @brief 全 message を取得する。
 	[[nodiscard]] const std::deque<UIChatMessage>& messages() const noexcept
 	{
 		return m_messages;
 	}
 
-	/// @brief Get messages filtered by active channel.
+	/// @brief active channel でフィルタした message を取得する。
 	[[nodiscard]] std::vector<const UIChatMessage*> filteredMessages() const
 	{
 		std::vector<const UIChatMessage*> result;
@@ -187,10 +186,10 @@ public:
 		return result;
 	}
 
-	/// @brief Get the total message count.
+	/// @brief message の総数を取得する。
 	[[nodiscard]] std::size_t messageCount() const noexcept { return m_messages.size(); }
 
-	/// @brief Clear all messages.
+	/// @brief 全 message を消去する。
 	void clearMessages()
 	{
 		m_messages.clear();
@@ -199,20 +198,20 @@ public:
 		syncNodeState();
 	}
 
-	// ── Input ────────────────────────────────────────────────
+	// ── 入力 ────────────────────────────────────────────────
 
-	/// @brief Set the input field text.
-	/// @param text New input text.
+	/// @brief 入力欄のテキストを設定する。
+	/// @param text 新しい入力テキスト。
 	void setInput(const std::string& text)
 	{
 		m_inputText = text;
 		m_node->setProperty("input_text", m_inputText);
 	}
 
-	/// @brief Get the current input text.
+	/// @brief 現在の入力テキストを取得する。
 	[[nodiscard]] const std::string& getInput() const noexcept { return m_inputText; }
 
-	/// @brief Clear the input field.
+	/// @brief 入力欄を消去する。
 	void clearInput()
 	{
 		m_inputText.clear();
@@ -220,12 +219,12 @@ public:
 		m_node->setProperty("input_text", "");
 	}
 
-	/// @brief Submit the current input (sends message).
+	/// @brief 現在の入力を submit する (message を送信)。
 	void submitInput()
 	{
 		if (m_inputText.empty()) { return; }
 
-		// Add to input history.
+		// 入力履歴に追加する。
 		if (m_inputHistory.size() >= m_config.inputHistorySize)
 		{
 			m_inputHistory.erase(m_inputHistory.begin());
@@ -242,7 +241,7 @@ public:
 		}
 	}
 
-	/// @brief Navigate input history upward (older entries).
+	/// @brief 入力履歴を上へ辿る (古いエントリ)。
 	void inputHistoryUp()
 	{
 		if (m_inputHistory.empty()) { return; }
@@ -260,7 +259,7 @@ public:
 		m_node->setProperty("input_text", m_inputText);
 	}
 
-	/// @brief Navigate input history downward (newer entries).
+	/// @brief 入力履歴を下へ辿る (新しいエントリ)。
 	void inputHistoryDown()
 	{
 		if (m_historyIndex < 0) { return; }
@@ -278,10 +277,10 @@ public:
 		}
 	}
 
-	// ── Channels ─────────────────────────────────────────────
+	// ── channel ─────────────────────────────────────────────
 
-	/// @brief Add a channel to the chat window.
-	/// @param channel Channel definition.
+	/// @brief chat window に channel を追加する。
+	/// @param channel channel の定義。
 	void addChannel(UIChatChannel channel)
 	{
 		if (m_activeChannel.empty())
@@ -292,8 +291,8 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Set the active channel by name.
-	/// @param name Channel name to activate.
+	/// @brief 名前で active channel を設定する。
+	/// @param name 有効化する channel 名。
 	void setActiveChannel(const std::string& name)
 	{
 		if (m_activeChannel == name) { return; }
@@ -309,15 +308,15 @@ public:
 		}
 	}
 
-	/// @brief Get the active channel name.
+	/// @brief active channel 名を取得する。
 	[[nodiscard]] const std::string& activeChannel() const noexcept { return m_activeChannel; }
 
-	/// @brief Get all channels.
+	/// @brief 全 channel を取得する。
 	[[nodiscard]] const std::vector<UIChatChannel>& channels() const noexcept { return m_channels; }
 
-	/// @brief Enable or disable a channel by name.
-	/// @param name Channel name.
-	/// @param enabled Whether the channel should be visible.
+	/// @brief 名前で channel を有効 / 無効にする。
+	/// @param name channel 名。
+	/// @param enabled channel を表示するか。
 	void setChannelEnabled(const std::string& name, bool enabled)
 	{
 		for (auto& ch : m_channels)
@@ -331,21 +330,21 @@ public:
 		syncNodeState();
 	}
 
-	// ── Scrolling ────────────────────────────────────────────
+	// ── scroll ────────────────────────────────────────────
 
-	/// @brief Scroll by a delta amount.
-	/// @param delta Positive = scroll down, negative = scroll up.
+	/// @brief delta 量だけ scroll する。
+	/// @param delta 正 = 下へ scroll、負 = 上へ scroll。
 	void scroll(float delta)
 	{
 		m_scrollOffset = std::clamp(m_scrollOffset + delta, 0.0f, m_maxScrollOffset);
 
-		// If user scrolls up, disable auto-scroll.
+		// ユーザーが上へ scroll したら auto-scroll を無効化する。
 		if (delta < 0.0f && m_scrollOffset < m_maxScrollOffset)
 		{
 			m_autoScroll = false;
 		}
 
-		// Re-enable auto-scroll when at bottom.
+		// 最下部に来たら auto-scroll を再有効化する。
 		if (m_scrollOffset >= m_maxScrollOffset)
 		{
 			m_autoScroll = true;
@@ -354,7 +353,7 @@ public:
 		m_node->setProperty("scroll_offset", std::to_string(m_scrollOffset));
 	}
 
-	/// @brief Scroll to the bottom of the message log.
+	/// @brief message ログの最下部へ scroll する。
 	void scrollToBottom()
 	{
 		m_scrollOffset = m_maxScrollOffset;
@@ -362,14 +361,14 @@ public:
 		m_node->setProperty("scroll_offset", std::to_string(m_scrollOffset));
 	}
 
-	/// @brief Check if auto-scroll is active.
+	/// @brief auto-scroll が有効か確認する。
 	[[nodiscard]] bool isAutoScrolling() const noexcept { return m_autoScroll; }
 
-	/// @brief Get the current scroll offset.
+	/// @brief 現在の scroll offset を取得する。
 	[[nodiscard]] float scrollOffset() const noexcept { return m_scrollOffset; }
 
-	/// @brief Set the maximum scroll offset (call when content height changes).
-	/// @param maxOffset Maximum scroll offset in pixels.
+	/// @brief 最大 scroll offset を設定する (コンテンツ高さが変わったら呼ぶ)。
+	/// @param maxOffset 最大 scroll offset (pixel)。
 	void setMaxScrollOffset(float maxOffset)
 	{
 		m_maxScrollOffset = std::max(0.0f, maxOffset);
@@ -378,29 +377,29 @@ public:
 
 	// ── Callbacks ────────────────────────────────────────────
 
-	/// @brief Set callback when user sends a message.
-	/// @param callback Receives (messageText, channelName).
+	/// @brief ユーザーが message を送信したときの callback を設定する。
+	/// @param callback (messageText, channelName) を受け取る。
 	void setOnMessageSent(std::function<void(const std::string&, const std::string&)> callback)
 	{
 		m_onMessageSent = std::move(callback);
 	}
 
-	/// @brief Set callback when active channel changes.
-	/// @param callback Receives the new channel name.
+	/// @brief active channel が変わったときの callback を設定する。
+	/// @param callback 新しい channel 名を受け取る。
 	void setOnChannelChanged(std::function<void(const std::string&)> callback)
 	{
 		m_onChannelChanged = std::move(callback);
 	}
 
 private:
-	/// @brief Check if a channel is currently visible.
+	/// @brief channel が現在表示されているか確認する。
 	[[nodiscard]] bool isChannelVisible(const std::string& channelName) const
 	{
-		// Show all if no channels configured.
+		// channel 未設定なら全て表示する。
 		if (m_channels.empty()) { return true; }
 
-		// If activeChannel is set and the message matches, show it.
-		// Also show if channel is enabled.
+		// activeChannel が設定され message が一致すれば表示する。
+		// channel が enabled でも表示する。
 		for (const auto& ch : m_channels)
 		{
 			if (ch.name == channelName)
@@ -409,11 +408,11 @@ private:
 			}
 		}
 
-		// Unknown channel: show by default.
+		// 未知の channel: default で表示する。
 		return true;
 	}
 
-	/// @brief Synchronize state to the UINode properties.
+	/// @brief 状態を UINode の properties に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("message_count", std::to_string(m_messages.size()));
@@ -422,7 +421,7 @@ private:
 		m_node->setProperty("scroll_offset", std::to_string(m_scrollOffset));
 		m_node->setProperty("input_text", m_inputText);
 
-		// Encode channel list.
+		// channel リストを encode する。
 		std::string channelList;
 		for (const auto& ch : m_channels)
 		{
@@ -431,7 +430,7 @@ private:
 		}
 		m_node->setProperty("channels", channelList);
 
-		// Encode channel count.
+		// channel 数を encode する。
 		m_node->setProperty("channel_count", std::to_string(m_channels.size()));
 	}
 };

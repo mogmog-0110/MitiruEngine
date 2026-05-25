@@ -92,13 +92,13 @@ public:
         }
     }
 
-    // Non-copyable, non-movable (FMOD_System ownership)
+    // コピー禁止・ムーブ禁止 (FMOD_System の所有権を保持するため)
     FmodAudioEngine(const FmodAudioEngine&) = delete;
     FmodAudioEngine& operator=(const FmodAudioEngine&) = delete;
     FmodAudioEngine(FmodAudioEngine&&) = delete;
     FmodAudioEngine& operator=(FmodAudioEngine&&) = delete;
 
-    // ── IAudioEngine implementation ──
+    // ── IAudioEngine 実装 ──
 
     void playSound(std::string_view id) override
     {
@@ -151,7 +151,7 @@ public:
     void setVolume(float volume) override
     {
         m_masterVolume = std::clamp(volume, 0.0f, 1.0f);
-        // Apply to active music channel
+        // 再生中の music channel に反映
         if (m_musicChannel)
         {
             FMOD_Channel_SetVolume(m_musicChannel, m_masterVolume);
@@ -168,7 +168,7 @@ public:
         return playing != 0;
     }
 
-    // ── Extended FMOD features ──
+    // ── FMOD 拡張機能 ──
 
     /// @brief 毎フレーム更新（FMOD内部処理を進める）
     /// @details ゲームループ内で毎フレーム呼び出す必要がある。

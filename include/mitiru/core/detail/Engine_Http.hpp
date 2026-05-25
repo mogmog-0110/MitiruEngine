@@ -1,9 +1,9 @@
-// Detail header for mitiru::Engine — do not include directly; included via core/Engine.hpp
+// mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
 
-// ── HTTP server bridge out-of-class definitions ───────────────────────────
+// ── HTTP server bridge のクラス外定義 ───────────────────────────
 
 MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 {

@@ -1,30 +1,29 @@
 /*!
  * mitiru_tokens_notion.css — Notion inspired alt theme
  *
- * Design intent: Reading-first document surface. Pure white, near-black
- * type, almost no accent color, and hierarchy expressed through spacing
- * and weight rather than chroma. Suitable for log viewers, narrative
- * inspectors, and content-heavy debug panels. Compatible with
- * `--mitiru-*` consumers.
+ * Design intent: 読みやすさ優先のドキュメント面。純白、ほぼ黒の文字、accent 色は
+ * ほぼ無く、階層は chroma ではなく spacing と weight で表現する。log viewer、
+ * narrative inspector、content の多い debug panel に向く。`--mitiru-*` consumer と
+ * 互換。
  *
- * Swap by replacing the <link> to mitiru_tokens.css with this file.
+ * mitiru_tokens.css への <link> をこのファイルに差し替えて切り替える。
  */
 :root
 {
 	/* ── Base palette: Notion (white + warm gray) ─────────────── */
-	--mitiru-paper:        #ffffff;   /* pure white canvas */
-	--mitiru-paper-hi:     #f7f6f3;   /* warm hover surface */
-	--mitiru-ink:          #37352f;   /* warm near-black */
-	--mitiru-ink-mute:     #787774;   /* warm gray for metadata */
-	--mitiru-link:         #2eaadc;   /* subtle blue (links only) */
+	--mitiru-paper:        #ffffff;   /* 純白の canvas */
+	--mitiru-paper-hi:     #f7f6f3;   /* 暖かい hover surface */
+	--mitiru-ink:          #37352f;   /* 暖かいほぼ黒 */
+	--mitiru-ink-mute:     #787774;   /* metadata 用の暖かいグレー */
+	--mitiru-link:         #2eaadc;   /* 控えめな青 (link のみ) */
 	--mitiru-link-hover:   #1f8ab8;
-	--mitiru-phosphor:     #448361;   /* muted green */
-	--mitiru-brick:        #d44c47;   /* destructive red */
-	--mitiru-paper-edge:   rgba(55, 53, 47, 0.09);   /* warm hairline */
+	--mitiru-phosphor:     #448361;   /* くすんだ緑 */
+	--mitiru-brick:        #d44c47;   /* 破壊的操作の赤 */
+	--mitiru-paper-edge:   rgba(55, 53, 47, 0.09);   /* 暖かいヘアライン */
 
-	/* ── Semantic aliases ─────────────────────────────────────── */
+	/* ── Semantic alias ─────────────────────────────────────── */
 	--mitiru-bg:        var(--mitiru-paper);
-	--mitiru-surface:   var(--mitiru-paper);   /* identical surface */
+	--mitiru-surface:   var(--mitiru-paper);   /* surface は同一 */
 	--mitiru-text:      var(--mitiru-ink);
 	--mitiru-text-mute: var(--mitiru-ink-mute);
 	--mitiru-accent:    var(--mitiru-link);
@@ -60,7 +59,7 @@
 	--mitiru-leading-normal: 1.6;
 	--mitiru-leading-loose:  1.75;
 
-	/* ── Spacing — generous reading rhythm ────────────────────── */
+	/* ── Spacing — ゆったりした読みのリズム ────────────────────── */
 	--mitiru-space-0:  0;
 	--mitiru-space-1:  4px;
 	--mitiru-space-2:  8px;
@@ -70,13 +69,13 @@
 	--mitiru-space-6:  36px;
 	--mitiru-space-7:  56px;
 
-	/* ── Corner radius (almost square 3px) ────────────────────── */
+	/* ── Corner radius (ほぼ四角 3px) ────────────────────── */
 	--mitiru-radius-sm:   2px;
 	--mitiru-radius-md:   3px;
 	--mitiru-radius-lg:   4px;
 	--mitiru-radius-pill: 9999px;
 
-	/* ── Elevation — almost none, hairline only ───────────────── */
+	/* ── Elevation — ほぼ無し、ヘアラインのみ ───────────────── */
 	--mitiru-shadow-1: 0 0 0 1px var(--mitiru-border);
 	--mitiru-shadow-2: 0 0 0 1px var(--mitiru-border);
 	--mitiru-shadow-3: 0 2px 4px rgba(15, 15, 15, 0.04),
@@ -84,14 +83,14 @@
 	--mitiru-shadow-4: 0 8px 24px rgba(15, 15, 15, 0.10),
 	                   0 0 0 1px var(--mitiru-border);
 
-	/* Focus ring — soft blue */
+	/* Focus ring — 柔らかい青 */
 	--mitiru-focus-ring: 0 0 0 2px rgba(46, 170, 220, 0.30);
 
 	--mitiru-blur-sm: blur(4px);
 	--mitiru-blur-md: blur(12px);
 	--mitiru-blur-lg: blur(24px);
 
-	/* ── Z-index ladder ─────────────────────────────────────── */
+	/* ── Z-index の段階 ─────────────────────────────────────── */
 	--mitiru-z-base:     0;
 	--mitiru-z-hud:      100;
 	--mitiru-z-overlay:  200;

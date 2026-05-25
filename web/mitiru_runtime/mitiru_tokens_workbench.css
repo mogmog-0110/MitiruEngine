@@ -1,40 +1,40 @@
 /*!
  * mitiru_tokens.css — MitiruEngine design tokens
  *
- * Canonical design language: **Mitiru Workbench** (Paper-amber + JetBrains
- * Mono + box-drawing chrome). See `DESIGN.md` (top-level) for full spec.
+ * Canonical な design language: **Mitiru Workbench** (Paper-amber + JetBrains
+ * Mono + box-drawing chrome)。完全な spec は `DESIGN.md` (トップレベル) を参照。
  *
- * Tokens are exposed as CSS custom properties (`--mitiru-*`). Game-side
- * stylesheets read them with `var(--mitiru-...)`. Override at `:root` to
- * retint, or activate an opt-in theme by adding its class to `<body>`.
+ * Token は CSS custom property (`--mitiru-*`) として公開される。game 側の
+ * stylesheet は `var(--mitiru-...)` で読む。色を変えたいときは `:root` で上書き、
+ * opt-in theme を使うときは `<body>` にそのクラスを付ける。
  *
- * Example (assets/scene.html for a game):
+ * 例 (game の assets/scene.html):
  *
  *   <link rel="stylesheet" href="mitiru_runtime/mitiru_tokens.css">
  *   <style>
  *     .panel { background: var(--mitiru-surface); color: var(--mitiru-text); }
  *   </style>
  *
- * Opt-in themes available:
- *   class="mitiru-theme-abyss"   → cool-tone dark (legacy, kept for night mode)
- *   class="mitiru-theme-warm"    → "Warm Physical Objects" (cooking/VN games)
+ * 利用できる opt-in theme:
+ *   class="mitiru-theme-abyss"   → クール調の dark (legacy、night mode 用に保持)
+ *   class="mitiru-theme-warm"    → "Warm Physical Objects" (cooking/VN game 向け)
  *
- * Default (no class) = Workbench.
+ * 既定 (クラス無し) = Workbench。
  */
 :root
 {
 	/* ── Base palette: Workbench (paper + amber) ────────────────── */
-	--mitiru-paper:        #f5f4ef;   /* cream-paper base */
-	--mitiru-paper-hi:     #fefefb;   /* near-white card surface */
-	--mitiru-ink:          #1a1a1a;   /* iron-ink body text */
-	--mitiru-ink-mute:     #5a5552;   /* muted ink for metadata */
-	--mitiru-amber:        #b8740e;   /* phosphor amber primary */
-	--mitiru-amber-hover:  #9a610a;   /* darker amber for hover */
-	--mitiru-phosphor:     #3a7530;   /* success / build-ok green */
-	--mitiru-brick:        #a8281e;   /* destructive / failure red */
-	--mitiru-paper-edge:   #c8c4ba;   /* paper edge border */
+	--mitiru-paper:        #f5f4ef;   /* クリーム紙の base */
+	--mitiru-paper-hi:     #fefefb;   /* ほぼ白の card surface */
+	--mitiru-ink:          #1a1a1a;   /* iron-ink の本文 */
+	--mitiru-ink-mute:     #5a5552;   /* metadata 用の控えめな ink */
+	--mitiru-amber:        #b8740e;   /* phosphor amber の primary */
+	--mitiru-amber-hover:  #9a610a;   /* hover 用の濃い amber */
+	--mitiru-phosphor:     #3a7530;   /* success / build-ok の緑 */
+	--mitiru-brick:        #a8281e;   /* 破壊的操作 / 失敗の赤 */
+	--mitiru-paper-edge:   #c8c4ba;   /* 紙の縁の枠 */
 
-	/* ── Semantic aliases ─────────────────────────────────────── */
+	/* ── Semantic alias ─────────────────────────────────────── */
 	--mitiru-bg:        var(--mitiru-paper);
 	--mitiru-surface:   var(--mitiru-paper-hi);
 	--mitiru-text:      var(--mitiru-ink);
@@ -42,29 +42,29 @@
 	--mitiru-accent:    var(--mitiru-amber);
 	--mitiru-accent-hi: var(--mitiru-amber-hover);
 	--mitiru-success:   var(--mitiru-phosphor);
-	--mitiru-warning:   var(--mitiru-amber);     /* amber doubles as warn */
+	--mitiru-warning:   var(--mitiru-amber);     /* amber は warn も兼ねる */
 	--mitiru-danger:    var(--mitiru-brick);
 	--mitiru-focus:     var(--mitiru-amber);
 	--mitiru-border:    var(--mitiru-paper-edge);
 	--mitiru-border-soft: rgba(0, 0, 0, 0.06);
 
-	/* Subtle row tint for alternating list backgrounds */
+	/* list の交互背景用の控えめな row tint */
 	--mitiru-row-tint:  rgba(0, 0, 0, 0.015);
 
-	/* ── Typography — mono-dominant ───────────────────────────── */
-	/* Default body / labels / values / headings: JetBrains Mono.
-	   Prose paragraphs (modal warnings, README) opt into --mitiru-font-prose. */
+	/* ── Typography — mono 主体 ───────────────────────────── */
+	/* 既定の body / label / value / 見出し: JetBrains Mono。
+	   散文の段落 (modal の警告、README) は --mitiru-font-prose を opt-in する。 */
 	--mitiru-font-body:    "JetBrains Mono", "Cascadia Code", "Consolas",
 	                       ui-monospace, "SF Mono", "MS Gothic", monospace;
 	--mitiru-font-display: "JetBrains Mono", "Cascadia Code", "Consolas",
 	                       ui-monospace, "SF Mono", "MS Gothic", monospace;
 	--mitiru-font-mono:    "JetBrains Mono", "Cascadia Code", "Consolas",
 	                       ui-monospace, "SF Mono", "MS Gothic", monospace;
-	/* The only non-mono fallback: prose paragraphs. */
+	/* 唯一の非 mono フォールバック: 散文の段落。 */
 	--mitiru-font-prose:   "Inter", "IBM Plex Sans", "Hiragino Sans",
 	                       "Yu Gothic", system-ui, sans-serif;
 
-	/* SDF atlas-aligned size scale (engine renders 11/12/14/16/18/24 cleanly) */
+	/* SDF atlas に揃えた size scale (engine は 11/12/14/16/18/24 を綺麗に描画) */
 	--mitiru-text-xs:   11px;
 	--mitiru-text-sm:   12px;
 	--mitiru-text-md:   14px;
@@ -77,7 +77,7 @@
 	--mitiru-leading-normal: 1.45;
 	--mitiru-leading-loose:  1.55;
 
-	/* ── Spacing (8px macro grid, 4px micro grid) ─────────────── */
+	/* ── Spacing (8px の macro grid、4px の micro grid) ─────────────── */
 	--mitiru-space-0:  0;
 	--mitiru-space-1:  4px;
 	--mitiru-space-2:  8px;
@@ -87,13 +87,13 @@
 	--mitiru-space-6:  32px;
 	--mitiru-space-7:  48px;
 
-	/* ── Corner radius (Workbench: smaller than Apple-light) ──── */
+	/* ── Corner radius (Workbench: Apple-light より小さめ) ──── */
 	--mitiru-radius-sm:   2px;
 	--mitiru-radius-md:   4px;
 	--mitiru-radius-lg:   6px;
-	--mitiru-radius-pill: 9999px;   /* reserved for "live / running" pills */
+	--mitiru-radius-pill: 9999px;   /* "live / running" の pill 用に予約 */
 
-	/* ── Elevation — tonal + 1px hairline, no soft glow ──────── */
+	/* ── Elevation — tonal + 1px ヘアライン、柔らかい glow は無し ──────── */
 	--mitiru-shadow-1: 0 0 0 0.5px var(--mitiru-border-soft);
 	--mitiru-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.04),
 	                   0 0 0 0.5px var(--mitiru-border-soft);
@@ -102,15 +102,15 @@
 	--mitiru-shadow-4: 0 8px 24px rgba(0, 0, 0, 0.10),
 	                   0 0 0 0.5px var(--mitiru-border-soft);
 
-	/* Focus ring — amber halo */
+	/* Focus ring — amber のハロー */
 	--mitiru-focus-ring: 0 0 0 2px rgba(184, 116, 14, 0.30);
 
-	/* Backdrop blur reserved for modal overlays */
+	/* modal overlay 用に予約した backdrop blur */
 	--mitiru-blur-sm: blur(4px);
 	--mitiru-blur-md: blur(12px);
 	--mitiru-blur-lg: blur(24px);
 
-	/* ── Z-index ladder ─────────────────────────────────────── */
+	/* ── Z-index の段階 ─────────────────────────────────────── */
 	--mitiru-z-base:     0;
 	--mitiru-z-hud:      100;
 	--mitiru-z-overlay:  200;
@@ -127,20 +127,20 @@
 }
 
 /* ── Warm Physical Objects (opt-in theme) ──────────────────
- * Previous canonical, retained as opt-in for narrative / cooking / VN
- * games that want the handmade tactile identity.
+ * 以前の canonical。手作りの触感的なアイデンティティが欲しい
+ * narrative / cooking / VN game 向けに opt-in として保持。
  * Spec: assets/themes/mitiru_warm/DESIGN.md
  * Apply: <body class="mitiru-theme-warm">
  */
 :root.mitiru-theme-warm,
 body.mitiru-theme-warm
 {
-	--mitiru-bg:        #faf3e7;             /* cream */
+	--mitiru-bg:        #faf3e7;             /* クリーム */
 	--mitiru-surface:   #ffffff;
-	--mitiru-text:      #2b2118;             /* deep warm brown */
-	--mitiru-text-mute: #8a7865;             /* caramel-muted */
-	--mitiru-accent:    #c0392b;             /* cherry */
-	--mitiru-success:   #a8d4c4;             /* mint */
+	--mitiru-text:      #2b2118;             /* 深い暖かい茶 */
+	--mitiru-text-mute: #8a7865;             /* キャラメル寄りの控えめ */
+	--mitiru-accent:    #c0392b;             /* チェリー */
+	--mitiru-success:   #a8d4c4;             /* ミント */
 	--mitiru-warning:   #e0a028;
 	--mitiru-danger:    #c0392b;
 	--mitiru-focus:     #4fc3f7;
@@ -157,7 +157,7 @@ body.mitiru-theme-warm
 }
 
 /* ── Abyss (opt-in dark mode) ───────────────────────────────
- * Cool-tone dark palette for opt-in night mode.
+ * opt-in の night mode 用のクール調 dark palette。
  * Apply: <body class="mitiru-theme-abyss">
  */
 :root.mitiru-theme-abyss,
@@ -171,9 +171,9 @@ body.mitiru-theme-abyss
 	--mitiru-border:    #1d2e4a;
 }
 
-/* ── body defaults ────────────────────────────────────────────
- * --mitiru-locale-font is set by mitiru.i18n.setFontMap() when the active
- * locale changes; absent locales fall back to --mitiru-font-body.
+/* ── body の既定 ────────────────────────────────────────────
+ * --mitiru-locale-font は active な locale が変わったとき mitiru.i18n.setFontMap()
+ * が設定する。locale が無い場合は --mitiru-font-body にフォールバックする。
  */
 body
 {

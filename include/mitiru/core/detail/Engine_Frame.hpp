@@ -1,10 +1,10 @@
-// Detail header for mitiru::Engine - do not include directly; included via core/Engine.hpp
+// mitiru::Engine の detail header — 直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/debug/TracyZones.hpp>
 
-// ── Per-frame loop body and screen capture out-of-class definitions ──────
+// ── per-frame ループ本体と screen capture の class 外定義 ──────
 
 MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::capture() const
 {
@@ -33,9 +33,9 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 	/// フレームレートキャップ用: 前フレーム開始時刻
 	const auto frameStart = std::chrono::steady_clock::now();
 
-	// Host hook — typically `mitiru_host --watch` polls DLL mtime here and
-	// triggers Engine::reloadModule() when the source changes. Safe to fire
-	// before any per-frame state is touched.
+	// Host hook — 通常 `mitiru_host --watch` がここで DLL の mtime を polling し、
+	// source 変更時に Engine::reloadModule() を起こす。per-frame state に触れる前
+	// なので安全に発火できる。
 	if (m_loopConfig && m_loopConfig->onFrameStart)
 	{
 		m_loopConfig->onFrameStart(*this);
@@ -205,7 +205,7 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 
 	game.draw(*m_screen);
 
-	// デバッグオーバーレイ削除済み (マウス座標問題は解決)
+	// debug overlay 削除済み (マウス座標問題は解決)
 
 	if (m_sceneManager && m_sceneManager->currentScene())
 	{

@@ -7,27 +7,27 @@
 /// @details プラットフォーム・ウィンドウ・GPUデバイスを統合し、
 ///          ゲームループを実行するメインクラス。
 ///
-/// @note Platform-specific feature availability:
+/// @note platform 別の機能対応状況:
 ///
-///   Windows only (requires DX11/DX12 backend):
+///   Windows のみ (DX11/DX12 backend 必須):
 ///     - PostProcess pipeline (PostProcessIntegration)
 ///     - DX12 Renderer3D (Renderer3D_DX12)
 ///     - Live2D Cubism SDK (precompiled x64 library)
 ///     - Win32 audio output (WaveAudioEngine, Win32AudioOutput)
 ///
-///   Cross-platform (all desktop + Emscripten):
-///     - OpenGL backend (GlDevice) -- requires SDL2 or GLFW
-///     - Vulkan backend (VulkanDevice) -- requires GLFW
-///     - WebGL2 backend -- Emscripten only
+///   Cross-platform (全 desktop + Emscripten):
+///     - OpenGL backend (GlDevice) -- SDL2 または GLFW 必須
+///     - Vulkan backend (VulkanDevice) -- GLFW 必須
+///     - WebGL2 backend -- Emscripten のみ
 ///     - Null backend (NullDevice) -- headless/test
 ///     - GLFW window (GlfwWindow) -- Linux/macOS/Windows
 ///     - SDL2 window (Sdl2Window) -- Linux/macOS/Windows
-///     - Software audio (SoftAudioEngine) -- all platforms
-///     - miniaudio -- all desktop platforms (not Emscripten)
+///     - Software audio (SoftAudioEngine) -- 全 platform
+///     - miniaudio -- 全 desktop platform (Emscripten 除く)
 ///
-///   Planned cross-platform replacements:
+///   Cross-platform 化を予定している差し替え対象:
 ///     - NanoVG UI -- editor UI
-///     - OpenGL PostProcess -- planned to replace DX11-only pipeline
+///     - OpenGL PostProcess -- DX11 専用 pipeline を置き換える予定
 
 #include <algorithm>
 #include <atomic>
@@ -70,15 +70,15 @@
 #include <mitiru/platform/IWindow.hpp>
 #include <mitiru/platform/headless/HeadlessPlatform.hpp>
 
-// Forward declarations -- stored as raw/shared pointers, no method calls in Engine
+// 前方宣言 -- raw/shared pointer で保持し、Engine からは method を呼ばない
 namespace mitiru::validate { class TemporalInvariantChecker; }
 namespace mitiru::observe { class StructuredDiff; class CausalChain; }
-// ModuleHost is pimpl-style: full type lives in mitiru/module/ModuleHost.hpp
-// (which pulls in <windows.h>). Kept out of Engine.hpp consumers to limit
-// the WIN32 macro pollution to actual host code (Engine_Module.hpp + tests).
+// ModuleHost は pimpl 方式: 完全型は mitiru/module/ModuleHost.hpp に置く
+// (<windows.h> を引き込む)。WIN32 macro 汚染を実際の host code
+// (Engine_Module.hpp + tests) のみに限定するため Engine.hpp consumer からは隠す。
 namespace mitiru::module { class ModuleHost; }
-// StateStore lives in mitiru/cef/StateStore.hpp (pulls in nlohmann/json).
-// Engine owns one in module-mode (ADR 0005); pimpl keeps Engine.hpp light.
+// StateStore は mitiru/cef/StateStore.hpp に置く (nlohmann/json を引き込む)。
+// module-mode で Engine が 1 個所有する (ADR 0005)。pimpl で Engine.hpp を軽く保つ。
 namespace mitiru::cef { class StateStore; }
 // IAudioEngine は applyVolumes() で setVolume() を呼ぶため完全型が必要
 #include <mitiru/audio/AudioEngine.hpp>
@@ -335,12 +335,12 @@ public:
 	[[nodiscard]] cef::StateStore* moduleStateStore() noexcept;
 
 private:
-	// ── Module-mode per-frame helpers (called by ModuleAdapter in runModule) ──
-	// Defined out-of-class in detail/Engine_Module.hpp.
-	void ensureModuleCefBindings();        ///< lazy create StateStore + SharedSnapshot once CEF is ready
-	void buildModuleInputSnapshot();       ///< populate m_moduleInputSnapshot from m_inputState + action queue
-	void zeroModuleFrameIntents();         ///< wipe m_moduleFrameIntents before each on_update call
-	void drainModuleFrameIntents();        ///< apply DLL's requested side-effects after on_update
+	// ── Module-mode per-frame helper 群 (runModule 内の ModuleAdapter が呼ぶ) ──
+	// detail/Engine_Module.hpp で out-of-class 定義する。
+	void ensureModuleCefBindings();        ///< CEF 準備完了後に StateStore + SharedSnapshot を遅延生成
+	void buildModuleInputSnapshot();       ///< m_inputState + action queue から m_moduleInputSnapshot を構築
+	void zeroModuleFrameIntents();         ///< 各 on_update 呼び出し前に m_moduleFrameIntents をクリア
+	void drainModuleFrameIntents();        ///< on_update 後に DLL が要求した side-effect を適用
 
 	/// @brief 1フレーム分のゲームループを実行する
 	/// @details run()から呼ばれる。Emscriptenではemscripten_set_main_loop_argのコールバック。
@@ -480,7 +480,7 @@ private:
 	std::unique_ptr<render::RenderPipeline2D> m_renderPipeline; ///< 2Dレンダリングパイプライン
 	int m_logicalWidth = 0;                          ///< Screen論理幅 (layout()で決定、固定)
 	int m_logicalHeight = 0;                         ///< Screen論理高さ (layout()で決定、固定)
-	// Debug overlay data
+	// Debug overlay 用データ
 	float m_dbgWindowW = 0, m_dbgWindowH = 0;
 	float m_dbgScreenW = 0, m_dbgScreenH = 0;
 	float m_dbgRawMx = 0, m_dbgRawMy = 0;
@@ -528,26 +528,26 @@ private:
 	float m_accumulator = 0.0f;                       ///< 固定タイムステップ用アキュムレータ
 
 	// ── Module (game-as-DLL) state ──────────────────────────────────────────
-	// Pimpl: ModuleHost includes <windows.h>; keep it out of Engine.hpp's
-	// transitive include set by storing it behind a unique_ptr.
+	// Pimpl: ModuleHost は <windows.h> を include する。unique_ptr の裏に隠して
+	// Engine.hpp の transitive include set から除外する。
 	std::unique_ptr<module::ModuleHost>   m_moduleHost;
-	module::ModuleApi                     m_moduleApi{};            ///< zero-init: all callbacks null until load
-	void*                                 m_moduleMemory = nullptr; ///< DLL-owned game state (engine doesn't free)
+	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
+	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
 
-	// Per-frame POD scratch buffers for the host→DLL signal flow. Heap-
-	// allocated (lazy) because the structs are ~50KB combined and we don't
-	// want to inflate every Engine instance that never loads a module.
+	// host→DLL signal flow 用の per-frame POD scratch buffer。struct 合計が
+	// ~50KB ある上、module を一切 load しない Engine instance まで肥大化させたく
+	// ないので heap に (遅延) 確保する。
 	std::unique_ptr<module::InputSnapshot> m_moduleInputSnapshot;
 	std::unique_ptr<module::FrameIntents>  m_moduleFrameIntents;
 
-	// Module-mode CEF StateStore + Inspector SharedSnapshot — engine-owned
-	// so the DLL never holds pointers to host objects (ADR 0005).
+	// Module-mode の CEF StateStore + Inspector SharedSnapshot — DLL が host
+	// object の pointer を一切持たないよう engine 所有とする (ADR 0005)。
 	std::unique_ptr<cef::StateStore>        m_moduleStateStore;
 	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
 
-	// Action events from CEF JS queued for next on_update. Mutex-guarded
-	// because StateStore handlers fire on the CEF UI thread but on_update
-	// runs on the engine main thread.
+	// 次の on_update 向けに queue した CEF JS 由来の action event。StateStore の
+	// handler は CEF UI thread で発火するが on_update は engine main thread で
+	// 走るため mutex で保護する。
 	struct ModuleActionEventBuffer
 	{
 		std::mutex                                  mu;
@@ -559,10 +559,10 @@ private:
 } // namespace mitiru
 
 // -- Detail headers (out-of-class method definitions) ----------------------
-// In header-only mode (MITIRU_HEADER_ONLY=1) these are included here so that
-// every TU that includes Engine.hpp gets the inline definitions.
-// In STATIC mode (MITIRU_HEADER_ONLY undefined) the detail headers are compiled
-// once inside src/core/Engine.cpp -- including them here would cause ODR violations.
+// header-only mode (MITIRU_HEADER_ONLY=1) ではここで include し、Engine.hpp を
+// include する全 TU が inline 定義を得られるようにする。
+// STATIC mode (MITIRU_HEADER_ONLY 未定義) では detail header を src/core/Engine.cpp
+// 内で 1 度だけ compile する -- ここで include すると ODR 違反になる。
 #if defined(MITIRU_HEADER_ONLY)
 #include <mitiru/core/detail/Engine_Accessors.hpp>
 #include <mitiru/core/detail/Engine_Audio.hpp>
@@ -577,12 +577,12 @@ private:
 #include <mitiru/core/detail/Engine_Http.hpp>
 #include <mitiru/core/detail/Engine_Run.hpp>
 #include <mitiru/core/detail/Engine_Frame.hpp>
-// CEF detail is unconditionally included; the method body contains its own
-// #if defined(_WIN32) && defined(MITIRU_HAS_CEF) guard (matching Engine.hpp's
-// existing CefContext typedef guard above), so it compiles safely on all platforms.
+// CEF detail は無条件に include する。method 本体が自前の
+// #if defined(_WIN32) && defined(MITIRU_HAS_CEF) guard を持つ (上の Engine.hpp
+// 既存 CefContext typedef guard と一致) ため、全 platform で安全に compile される。
 #include <mitiru/core/detail/Engine_Cef.hpp>
-// Module loader detail (loadModule / unloadModule / reloadModule / runModule).
-// Pulls in ModuleHost.hpp which on Windows brings <windows.h> — kept last so
-// the macro pollution is confined to this include's transitive set.
+// Module loader detail (loadModule / unloadModule / reloadModule / runModule)。
+// Windows では <windows.h> を持ち込む ModuleHost.hpp を引き込むため、macro 汚染を
+// この include の transitive set に閉じ込めるべく最後に置く。
 #include <mitiru/core/detail/Engine_Module.hpp>
 #endif // MITIRU_HEADER_ONLY

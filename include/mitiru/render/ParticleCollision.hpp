@@ -85,7 +85,7 @@ struct CollisionEvent_GPU
     float         pad[3]; ///< 32バイト整列
 };
 
-// ── HLSL compute shader ──────────────────────────────────────────────────────
+// ── HLSL compute シェーダー ──────────────────────────────────────────────────────
 
 /// @brief パーティクルコリジョン解決コンピュートシェーダー（CS 5.0）
 /// @details CPU側で viewProj を transposed() してアップロードし、
@@ -427,7 +427,7 @@ private:
     ComPtr<ID3D11ShaderResourceView> m_depthSRV;
     ComPtr<ID3D11Buffer>           m_constantBuffer;
 
-    // ── Private DX11 helpers ─────────────────────────────────────────────
+    // ── private DX11 ヘルパー ─────────────────────────────────────────────
 
     bool compileShader()
     {

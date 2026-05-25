@@ -391,17 +391,17 @@ private:
 		// 後で rasterizer を CULL_FRONT にして外側を捨てる手もあるが、
 		// CULL_NONE で運用するため winding をここで揃える。
 		const std::uint32_t idx[36] = {
-			// -Z front (looking +Z from inside)
+			// -Z 前面（内側から +Z 方向を見る）
 			0, 2, 1,  0, 3, 2,
-			// +Z back
+			// +Z 背面
 			4, 5, 6,  4, 6, 7,
-			// -X left
+			// -X 左面
 			0, 4, 7,  0, 7, 3,
-			// +X right
+			// +X 右面
 			1, 2, 6,  1, 6, 5,
-			// +Y top
+			// +Y 上面
 			3, 7, 6,  3, 6, 2,
-			// -Y bottom
+			// -Y 下面
 			0, 1, 5,  0, 5, 4,
 		};
 

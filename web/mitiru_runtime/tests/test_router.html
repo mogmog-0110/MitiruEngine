@@ -2,14 +2,14 @@
 <meta charset="utf-8">
 <title>mitiru_router.js tests</title>
 <!--
-    test_router.html — mitiru.router (F-01) unit tests
-    Pattern: inline IIFE, no module imports — matches project convention.
+    test_router.html — mitiru.router (F-01) unit test
+    パターン: inline IIFE、module import 無し — プロジェクト慣習に合わせる。
 
-    The router uses an iframe and setTimeout for fade timing.
-    Tests mock the iframe and fake timers to run synchronously where possible,
-    or use short real waits where the Promise chain requires it.
+    router は fade のタイミングに iframe と setTimeout を使う。
+    テストは可能な限り iframe を mock し fake timer で同期的に走らせる。
+    Promise chain が要求する箇所では短い実 wait を使う。
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -17,12 +17,12 @@
 <style>
     body { padding: 16px; font-family: var(--mitiru-font-mono, monospace); }
     pre  { white-space: pre-wrap; }
-    /* Keep the injected iframe invisible during tests. */
+    /* テスト中は注入された iframe を不可視に保つ。 */
     #mitiru-scene-frame { display: none !important; }
 </style>
 <script src="../mitiru_runtime.js"></script>
 <script src="../mitiru_test_harness.js"></script>
-<!-- Router loaded after harness; tests run in inline IIFE below. -->
+<!-- Router は harness の後に読み込む。テストは下の inline IIFE で走る。 -->
 <script src="../mitiru_router.js"></script>
 <pre id="results">(running...)</pre>
 <script>
@@ -35,24 +35,24 @@
 
     // ── helpers ──────────────────────────────────────────────────
 
-    // Simulate a scene signalling ready after a short delay.
-    // The real pattern is: scene's DOMContentLoaded calls onSceneReady().
-    // Here we call it from a setTimeout to let the Promise chain reach the
-    // _waitSceneReady() point before we resolve it.
+    // scene が短い遅延の後に ready を通知するのを模擬する。
+    // 実際のパターン: scene の DOMContentLoaded が onSceneReady() を呼ぶ。
+    // ここでは setTimeout から呼び、resolve する前に Promise chain が
+    // _waitSceneReady() の地点に到達できるようにする。
     function autoReady(ms)
     {
         ms = ms || 10;
         setTimeout(function() { r.onSceneReady(); }, ms);
     }
 
-    // Reset router state by navigating away from any leftover current scene.
-    // We do this by registering a sentinel scene and faking through it.
+    // 残っている current scene から離れて router の state をリセットする。
+    // sentinel scene を register し、それを経由する形でフェイクする。
     function resetRouter()
     {
-        // Re-register __reset__ unconditionally (register replaces).
+        // __reset__ を無条件に再登録する (register は置き換える)。
         r.register('__reset__', { url: 'about:blank' });
-        // We cannot truly clear _current without private access, but since
-        // each test registers its own fresh keys, isolation is sufficient.
+        // private access 無しでは _current を真にクリアできないが、各テストが
+        // 自分の新しい key を register するので、隔離としては十分。
     }
 
     // ── 1. register ──────────────────────────────────────────────
@@ -71,7 +71,7 @@
     {
         r.register('scene_dup', { url: 'v1.html' });
         r.register('scene_dup', { url: 'v2.html' });
-        // Navigate would use v2; indirect check via navigate not failing on key.
+        // navigate なら v2 を使う。key で navigate が失敗しないことで間接確認。
         t.assertNoThrow(function() { r.register('scene_dup', { url: 'v3.html' }); });
     });
 
@@ -149,8 +149,8 @@
     // ── 3. current / history ─────────────────────────────────────
     t.case('current() returns null before any navigation', function()
     {
-        // This test only holds at page load order; after earlier tests have
-        // navigated it will not be null. Verify the type is correct instead.
+        // このテストは page load 直後の順序でのみ成立する。先行テストが navigate
+        // した後は null にならない。代わりに型が正しいことを確認する。
         const cur = r.current();
         t.assert(cur === null || (typeof cur === 'object' && typeof cur.key === 'string'),
                  'current() must be null or {key, params}');
@@ -191,7 +191,7 @@
             autoReady(15);
             return r.back().then(function()
             {
-                // back() pops one entry, so length decreases.
+                // back() は entry を 1 つ pop するので length は減る。
                 t.assert(r._historyLength <= lenAfterFwd,
                          'history should not grow after back()');
                 t.assertEq(r.current().key, 'back_src');
@@ -201,13 +201,13 @@
 
     t.case('back: no-op when history is empty', function()
     {
-        // Navigate to a leaf scene first so current is set,
-        // then drain history by repeating back().
+        // まず leaf scene に navigate して current を設定し、
+        // それから back() を繰り返して history を空にする。
         r.register('back_leaf', { url: 'about:blank' });
         autoReady(15);
         return r.navigate('back_leaf').then(function()
         {
-            // Drain all history.
+            // history を全部空にする。
             function drain()
             {
                 if (r._historyLength === 0) { return Promise.resolve(); }
@@ -217,7 +217,7 @@
             return drain();
         }).then(function()
         {
-            // With empty history, back() should resolve without error.
+            // history が空のとき、back() はエラー無しで resolve するはず。
             return r.back();
         }).then(function()
         {

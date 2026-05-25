@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIRadioGroup.hpp
-/// @brief Mutually exclusive selection group widget with keyboard navigation.
+/// @brief 排他選択グループ widget。キーボードナビゲーション対応。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -14,23 +14,23 @@
 
 namespace mitiru::ui {
 
-/// @brief Orientation for radio group layout.
+/// @brief radio group の並び方向。
 enum class RadioOrientation : std::uint8_t
 {
 	Vertical,
 	Horizontal
 };
 
-/// @brief Data for a single radio option.
+/// @brief 1 つの radio option のデータ。
 struct UIRadioOption
 {
-	std::string label;                ///< Display label.
-	std::string value;                ///< Programmatic value string.
-	bool enabled = true;              ///< Whether this option is selectable.
-	std::string iconImageKey;         ///< Optional icon image key.
+	std::string label;                ///< 表示ラベル。
+	std::string value;                ///< プログラム用の値文字列。
+	bool enabled = true;              ///< この option が選択可能か。
+	std::string iconImageKey;         ///< 任意のアイコン image key。
 };
 
-/// @brief Configuration for creating a UIRadioGroup.
+/// @brief UIRadioGroup 生成用の設定。
 struct UIRadioGroupConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -38,19 +38,19 @@ struct UIRadioGroupConfig
 	std::vector<UIRadioOption> options;
 	int selectedIndex = 0;
 	RadioOrientation orientation = RadioOrientation::Vertical;
-	float spacing = 8.0f;                  ///< Space between options.
-	float radioSize = 16.0f;               ///< Radio indicator size.
-	float labelGap = 6.0f;                 ///< Gap between indicator and label.
-	std::string radioImageKey;             ///< Unchecked radio image.
-	std::string radioCheckedImageKey;      ///< Checked radio image.
-	std::string radioDisabledImageKey;     ///< Disabled radio image.
-	float fontSize = 14.0f;                ///< Label font size.
+	float spacing = 8.0f;                  ///< option 間の間隔。
+	float radioSize = 16.0f;               ///< radio インジケータのサイズ。
+	float labelGap = 6.0f;                 ///< インジケータとラベルの間隔。
+	std::string radioImageKey;             ///< 未チェック時の radio image。
+	std::string radioCheckedImageKey;      ///< チェック時の radio image。
+	std::string radioDisabledImageKey;     ///< 無効時の radio image。
+	float fontSize = 14.0f;                ///< ラベルの font size。
 };
 
-/// @brief Radio group widget for mutually exclusive selection.
+/// @brief 排他選択用の radio group widget。
 ///
-/// Manages a set of radio options where exactly one may be selected at a time.
-/// Keyboard navigation with up/down to move focus and space to confirm.
+/// 同時にちょうど 1 つだけ選択できる radio option 群を管理する。
+/// 上下キーで focus 移動、space で確定するキーボードナビゲーション付き。
 ///
 /// @code
 ///   UIRadioGroupConfig cfg;
@@ -81,8 +81,8 @@ class UIRadioGroup
 	std::function<void(int, const std::string&)> m_onSelectionChanged;
 
 public:
-	/// @brief Construct a radio group from configuration.
-	/// @param config Radio group configuration.
+	/// @brief 設定から radio group を構築する。
+	/// @param config radio group の設定。
 	explicit UIRadioGroup(const UIRadioGroupConfig& config)
 		: m_options(config.options)
 		, m_selectedIndex(config.selectedIndex)
@@ -111,7 +111,7 @@ public:
 
 		m_node = std::make_shared<UINode>(std::move(data));
 
-		// Create child nodes for each option.
+		// 各 option に対応する子 node を生成する。
 		for (std::size_t i = 0; i < m_options.size(); ++i)
 		{
 			UINodeData optData;
@@ -132,13 +132,13 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基盤となる UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the currently selected index.
+	/// @brief 現在選択中の index を取得する。
 	[[nodiscard]] int selectedIndex() const noexcept { return m_selectedIndex; }
 
-	/// @brief Get the currently selected value string.
+	/// @brief 現在選択中の値文字列を取得する。
 	[[nodiscard]] const std::string& selectedValue() const
 	{
 		static const std::string empty;
@@ -149,26 +149,26 @@ public:
 		return empty;
 	}
 
-	/// @brief Get the focused index (keyboard navigation).
+	/// @brief focus 中の index を取得する (キーボードナビゲーション)。
 	[[nodiscard]] int focusedIndex() const noexcept { return m_focusedIndex; }
 
-	/// @brief Get the option count.
+	/// @brief option 数を取得する。
 	[[nodiscard]] std::size_t optionCount() const noexcept { return m_options.size(); }
 
-	/// @brief Get the options list.
+	/// @brief option リストを取得する。
 	[[nodiscard]] const std::vector<UIRadioOption>& options() const noexcept { return m_options; }
 
 	// ── Configuration ────────────────────────────────────────
 
-	/// @brief Set the selection-changed callback.
-	/// @param callback Function invoked with (index, value) when selection changes.
+	/// @brief 選択変更時の callback を設定する。
+	/// @param callback 選択が変わったとき (index, value) で呼ばれる関数。
 	void setOnSelectionChanged(std::function<void(int, const std::string&)> callback)
 	{
 		m_onSelectionChanged = std::move(callback);
 	}
 
-	/// @brief Replace the options list.
-	/// @param options New options.
+	/// @brief option リストを差し替える。
+	/// @param options 新しい option 群。
 	void setOptions(std::vector<UIRadioOption> options)
 	{
 		m_options = std::move(options);
@@ -182,8 +182,8 @@ public:
 
 	// ── Interaction ──────────────────────────────────────────
 
-	/// @brief Select an option by index.
-	/// @param index Option index to select.
+	/// @brief index で option を選択する。
+	/// @param index 選択する option の index。
 	void select(int index)
 	{
 		if (index < 0 || index >= static_cast<int>(m_options.size())) { return; }
@@ -199,14 +199,14 @@ public:
 		}
 	}
 
-	/// @brief Move focus to the previous option (Up/Left key).
+	/// @brief 前の option へ focus を移す (上/左キー)。
 	void focusPrevious()
 	{
 		if (m_options.empty()) { return; }
 		const int count = static_cast<int>(m_options.size());
 		int next = (m_focusedIndex - 1 + count) % count;
 
-		// Skip disabled options (at most one full loop).
+		// 無効な option は skip する (最大でも 1 周)。
 		for (int i = 0; i < count; ++i)
 		{
 			if (m_options[static_cast<std::size_t>(next)].enabled) { break; }
@@ -216,14 +216,14 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Move focus to the next option (Down/Right key).
+	/// @brief 次の option へ focus を移す (下/右キー)。
 	void focusNext()
 	{
 		if (m_options.empty()) { return; }
 		const int count = static_cast<int>(m_options.size());
 		int next = (m_focusedIndex + 1) % count;
 
-		// Skip disabled options (at most one full loop).
+		// 無効な option は skip する (最大でも 1 周)。
 		for (int i = 0; i < count; ++i)
 		{
 			if (m_options[static_cast<std::size_t>(next)].enabled) { break; }
@@ -233,14 +233,14 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Confirm the currently focused option (Space key).
+	/// @brief 現在 focus 中の option を確定する (Space キー)。
 	void confirmFocused()
 	{
 		select(m_focusedIndex);
 	}
 
 private:
-	/// @brief Synchronize selection state to the UINode tree.
+	/// @brief 選択状態を UINode tree に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("selected", std::to_string(m_selectedIndex));
@@ -252,7 +252,7 @@ private:
 			m_node->setProperty("selected_value", m_options[static_cast<std::size_t>(m_selectedIndex)].value);
 		}
 
-		// Mark checked/unchecked on child nodes.
+		// 子 node に checked/unchecked を反映する。
 		const auto& children = m_node->children();
 		for (std::size_t i = 0; i < children.size() && i < m_options.size(); ++i)
 		{

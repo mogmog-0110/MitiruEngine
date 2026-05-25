@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file ScreenLayout.hpp
-/// @brief Screen-space layout primitives and layout-aware drawing layer.
-/// Part 1: value types / free functions for responsive rect computation.
-/// Part 2: ScreenLayout class combining layout + Screen drawing.
+/// @brief screen 空間の layout primitive と、layout を意識した描画 layer。
+/// Part 1: responsive な rect 計算用の値型 / free function。
+/// Part 2: layout + Screen 描画 を組み合わせた ScreenLayout class。
 
 #include <sgc/math/Rect.hpp>
 #include <sgc/math/Vec2.hpp>
@@ -23,7 +23,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Insets (padding / margin) on four sides.
+/// @brief 四辺の inset (padding / margin)。
 struct Insets
 {
 	float top    = 0.0f;
@@ -31,34 +31,34 @@ struct Insets
 	float bottom = 0.0f;
 	float left   = 0.0f;
 
-	/// Uniform insets.
+	/// 全辺一様な inset。
 	static constexpr Insets uniform(float v) noexcept { return {v, v, v, v}; }
 
-	/// Symmetric (horizontal, vertical).
+	/// 対称 (horizontal, vertical)。
 	static constexpr Insets symmetric(float h, float v) noexcept { return {v, h, v, h}; }
 };
 
-/// @brief A vertical column of equally-sized cells.
+/// @brief 等サイズ cell の縦 column。
 struct ColumnLayout
 {
 	std::vector<sgc::Rectf> cells;
 };
 
-/// @brief A pair of side-by-side rects (left, right).
+/// @brief 左右に並んだ rect の組 (left, right)。
 struct SplitH
 {
 	sgc::Rectf left;
 	sgc::Rectf right;
 };
 
-/// @brief A pair of stacked rects (top, bottom).
+/// @brief 上下に積んだ rect の組 (top, bottom)。
 struct SplitV
 {
 	sgc::Rectf top;
 	sgc::Rectf bottom;
 };
 
-/// @brief Apply insets to shrink a rectangle.
+/// @brief inset を適用して矩形を縮める。
 [[nodiscard]] inline constexpr sgc::Rectf applyInsets(
 	const sgc::Rectf& r, const Insets& ins) noexcept
 {
@@ -70,7 +70,7 @@ struct SplitV
 	};
 }
 
-/// @brief Split a rect horizontally at a ratio (0..1). Gap pixels between halves.
+/// @brief rect を比 (0..1) で水平分割する。両半の間に gap pixel。
 [[nodiscard]] inline SplitH splitHorizontal(
 	const sgc::Rectf& r, float ratio, float gap = 0.0f) noexcept
 {
@@ -83,7 +83,7 @@ struct SplitV
 	};
 }
 
-/// @brief Split a rect vertically at a ratio (0..1). Gap pixels between halves.
+/// @brief rect を比 (0..1) で垂直分割する。両半の間に gap pixel。
 [[nodiscard]] inline SplitV splitVertical(
 	const sgc::Rectf& r, float ratio, float gap = 0.0f) noexcept
 {
@@ -96,7 +96,7 @@ struct SplitV
 	};
 }
 
-/// @brief Subdivide a rect into `count` equal rows with `gap` between them.
+/// @brief rect を `gap` 空きで `count` 個の等 row に分割する。
 [[nodiscard]] inline ColumnLayout columnLayout(
 	const sgc::Rectf& area, int count, float cellH, float gap) noexcept
 {
@@ -110,20 +110,20 @@ struct SplitV
 	return col;
 }
 
-/// @brief Side of the screen for sidebar placement.
+/// @brief sidebar 配置のための screen の左右。
 enum class Side : uint8_t {
 	Left,
 	Right
 };
 
-/// @brief Minimal panel style for ScreenLayout widgets.
+/// @brief ScreenLayout widget 用の最小限の panel style。
 struct LayoutPanelStyle {
 	sgc::Colorf background{0.15f, 0.15f, 0.15f, 0.9f};
 	sgc::Colorf border{0.3f, 0.3f, 0.3f, 1.0f};
 	float borderWidth = 1.0f;
 };
 
-/// @brief Minimal button style for ScreenLayout widgets.
+/// @brief ScreenLayout widget 用の最小限の button style。
 struct LayoutButtonStyle {
 	sgc::Colorf background{0.25f, 0.25f, 0.3f, 1.0f};
 	sgc::Colorf backgroundSelected{0.35f, 0.45f, 0.7f, 1.0f};
@@ -133,18 +133,18 @@ struct LayoutButtonStyle {
 	float borderWidth = 1.0f;
 };
 
-/// @brief Tab definition for tab bars.
+/// @brief tab bar 用の tab 定義。
 struct TabDef {
 	std::string label;
 };
 
-/// @brief Form field (label-value pair) for auto-layout forms.
+/// @brief auto-layout form 用の form field (label-value の組)。
 struct FormField {
 	std::string label;
 	std::string value;
 };
 
-/// @brief Layout-aware Screen wrapper that combines positioning and drawing.
+/// @brief 配置と描画を組み合わせた、layout を意識した Screen wrapper。
 /// @code
 ///   ScreenLayout layout(screen);
 ///   layout.drawHeader("My Game", 50);
@@ -152,7 +152,7 @@ struct FormField {
 /// @endcode
 class ScreenLayout {
 public:
-	/// @brief Construct from a Screen reference.
+	/// @brief Screen 参照から構築する。
 	explicit ScreenLayout(Screen& screen) noexcept
 		: m_screen(screen)
 		, m_screenW(static_cast<float>(screen.width()))
@@ -160,11 +160,11 @@ public:
 	{
 	}
 
-	/// @brief Access the underlying Screen.
+	/// @brief 内部の Screen にアクセスする。
 	[[nodiscard]] Screen& screen() noexcept { return m_screen; }
 	[[nodiscard]] const Screen& screen() const noexcept { return m_screen; }
 
-	/// @brief Draw a centered panel with background and border.
+	/// @brief 背景と border 付きの中央 panel を描画する。
 	void drawCenteredPanel(float w, float h, const LayoutPanelStyle& style) {
 		const UIBuilder ui(m_screenW, m_screenH);
 		const auto rect = ui.centered(w, h);
@@ -174,7 +174,7 @@ public:
 		}
 	}
 
-	/// @brief Draw a header bar at the top of the screen.
+	/// @brief screen 上部に header bar を描画する。
 	void drawHeader(std::string_view title, float height = 60.0f,
 	                const sgc::Colorf& bg = sgc::Colorf{0.1f, 0.1f, 0.15f, 1.0f},
 	                const sgc::Colorf& textColor = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}) {
@@ -187,7 +187,7 @@ public:
 			title, textColor, fontSize);
 	}
 
-	/// @brief Draw a footer bar at the bottom of the screen.
+	/// @brief screen 下部に footer bar を描画する。
 	void drawFooter(std::string_view text, float height = 40.0f,
 	                const sgc::Colorf& bg = sgc::Colorf{0.08f, 0.08f, 0.1f, 1.0f},
 	                const sgc::Colorf& textColor = sgc::Colorf{0.7f, 0.7f, 0.7f, 1.0f}) {
@@ -201,7 +201,7 @@ public:
 			text, textColor, fontSize);
 	}
 
-	/// @brief Draw a sidebar panel and return its rect for further drawing.
+	/// @brief sidebar panel を描画し、追加描画用にその rect を返す。
 	[[nodiscard]] sgc::Rectf drawSidebar(
 		float width, Side side = Side::Left,
 		const sgc::Colorf& bg = sgc::Colorf{0.12f, 0.12f, 0.15f, 1.0f}) {
@@ -211,7 +211,7 @@ public:
 		return rect;
 	}
 
-	/// @brief Draw a horizontal row of buttons.
+	/// @brief button の水平 row を描画する。
 	void drawButtonRow(const std::vector<std::string>& labels, float y, float height,
 	                   const LayoutButtonStyle& style,
 	                   const int* selectedIndex = nullptr) {
@@ -235,9 +235,9 @@ public:
 		}
 	}
 
-	// ── Panel grid ────────────────────────────────────
+	// ── panel grid ────────────────────────────────────
 
-	/// @brief Draw a grid of panels with custom per-cell rendering.
+	/// @brief cell ごとにカスタム描画する panel の grid を描画する。
 	void drawPanelGrid(int rows, int cols, float gap,
 	                   std::function<void(Screen&, sgc::Rectf, int, int)> drawCell) {
 		UIBuilder ui(m_screenW, m_screenH);
@@ -252,9 +252,9 @@ public:
 		}
 	}
 
-	// ── Scroll list ───────────────────────────────────
+	// ── scroll list ───────────────────────────────────
 
-	/// @brief Draw a vertical scrollable list of text items.
+	/// @brief text item の縦 scroll list を描画する。
 	void drawScrollList(const std::vector<std::string>& items,
 	                    float x, float y, float w, float h,
 	                    int* scrollPos, int* selectedIndex) {
@@ -288,9 +288,9 @@ public:
 		}
 	}
 
-	// ── Labeled field ─────────────────────────────────
+	// ── label 付き field ─────────────────────────────────
 
-	/// @brief Draw a labeled field: "Label: [value]".
+	/// @brief label 付き field を描画する: "Label: [value]"。
 	void drawLabeledField(float x, float y, float labelW, float fieldW, float height,
 	                      std::string_view label, std::string_view value) {
 		const float fontSize = std::min(height * 0.6f, 14.0f);
@@ -304,9 +304,9 @@ public:
 		                  sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}, fontSize);
 	}
 
-	// ── Auto-layout form ──────────────────────────────
+	// ── auto-layout form ──────────────────────────────
 
-	/// @brief Draw a vertical form with label-value rows.
+	/// @brief label-value row を並べた縦 form を描画する。
 	void drawForm(const sgc::Rectf& area, const std::vector<FormField>& fields,
 	              float rowHeight = 30.0f) {
 		constexpr float gap = 4.0f;
@@ -320,9 +320,9 @@ public:
 		}
 	}
 
-	// ── Status bar ────────────────────────────────────
+	// ── status bar ────────────────────────────────────
 
-	/// @brief Draw a status bar at the bottom with key-value items.
+	/// @brief 下部に key-value item を並べた status bar を描画する。
 	void drawStatusBar(const std::map<std::string, std::string>& items,
 	                   float height = 24.0f) {
 		const sgc::Rectf bar{0.0f, m_screenH - height, m_screenW, height};
@@ -337,9 +337,9 @@ public:
 		}
 	}
 
-	// ── Progress bar ──────────────────────────────────
+	// ── progress bar ──────────────────────────────────
 
-	/// @brief Draw a progress bar within the given rect.
+	/// @brief 指定 rect 内に progress bar を描画する。
 	void drawProgressBar(const sgc::Rectf& rect, float progress,
 	                     std::string_view label = "") {
 		const float p = std::clamp(progress, 0.0f, 1.0f);
@@ -357,9 +357,9 @@ public:
 		}
 	}
 
-	// ── Tab bar ───────────────────────────────────────
+	// ── tab bar ───────────────────────────────────────
 
-	/// @brief Draw a tab bar and return the content area below it.
+	/// @brief tab bar を描画し、その下の content 領域を返す。
 	[[nodiscard]] sgc::Rectf drawTabBar(const std::vector<TabDef>& tabs, int* activeTab,
 	                                     float y, float height = 32.0f) {
 		if (tabs.empty()) {

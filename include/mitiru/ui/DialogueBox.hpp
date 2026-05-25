@@ -1,29 +1,28 @@
 #pragma once
 
 /// @file DialogueBox.hpp
-/// @brief ADV-style dialogue box: char-by-char reveal + click cooldown +
-///        multiple-choice branching (G-02).
+/// @brief ADV 風 dialogue box: 1 文字ずつ reveal + クリック cooldown +
+///        複数選択肢の分岐 (G-02)。
 ///
-/// Renderer-agnostic. The class owns state only — the game decides whether
-/// to draw natively (via `mitiru::Screen`) or ship state to a CEF page via
-/// `StateStore::set("dialogue", box.toJson())`. CJK line-breaking / 禁則処理
-/// is intentionally NOT done here; native renderers own layout, and CEF
-/// pages can lean on `word-break: keep-all` + Japanese fonts.
+/// Renderer 非依存。このクラスは state のみを持つ — native 描画 (`mitiru::Screen`
+/// 経由) するか、`StateStore::set("dialogue", box.toJson())` で state を CEF page
+/// へ送るかはゲーム側が決める。CJK の行分割 / 禁則処理 はここでは意図的に
+/// 行わない。native renderer が layout を持ち、CEF page は
+/// `word-break: keep-all` + 日本語フォントに頼ればよい。
 ///
 /// Lifecycle:
-///   1. `setLines({ {speaker, text}, ... })`  — start a new sequence
-///   2. `setChoices({...})` (optional)        — presented after the last line
-///   3. Each frame: `update(dt, primaryActionPressed)`
-///   4. Read `visibleText()`, `currentLine()`, `awaitingChoice()`, ...
-///   5. When `awaitingChoice()` is true, call `selectChoice(id)` with the
-///      player's pick; then `isComplete()` becomes true.
+///   1. `setLines({ {speaker, text}, ... })`  — 新しいシーケンスを開始
+///   2. `setChoices({...})` (optional)        — 最終行の後に提示される
+///   3. 毎フレーム: `update(dt, primaryActionPressed)`
+///   4. `visibleText()`, `currentLine()`, `awaitingChoice()` 等を読む
+///   5. `awaitingChoice()` が true のとき、player の選択で `selectChoice(id)`
+///      を呼ぶ。すると `isComplete()` が true になる。
 ///
-/// Click semantics:
-///   - Click *while revealing* jumps to the end of the current line.
-///   - Click *while fully revealed and not the last line* advances to the next line.
-///   - Click *on last line* either shows choices (if set) or marks complete.
-///   - Clicks during the cooldown window are ignored to prevent accidental
-///     double-advance.
+/// クリックの意味:
+///   - reveal 中のクリック → 現在行の末尾まで一気に表示。
+///   - 全表示済み かつ 最終行でないときのクリック → 次の行へ進む。
+///   - 最終行でのクリック → choices があれば表示、無ければ完了とする。
+///   - cooldown 中のクリックは無視する (誤操作による二重送りを防ぐ)。
 
 #include <cstddef>
 #include <cstdint>
@@ -41,8 +40,8 @@ struct DialogueLine
 {
 	std::string                speaker;
 	std::string                text;
-	std::string                portraitKey;          ///< opaque key the game resolves to a Texture
-	std::optional<float>       revealSpeedOverride;  ///< chars/sec for this line; nullopt → use default
+	std::string                portraitKey;          ///< ゲームが Texture に解決する不透明な key
+	std::optional<float>       revealSpeedOverride;  ///< この行の chars/sec。nullopt → default を使う
 };
 
 struct DialogueChoice
@@ -51,11 +50,11 @@ struct DialogueChoice
 	int         id = 0;
 };
 
-/// @brief Visual hint data. Engine does not interpret — forwarded to renderer.
+/// @brief 見た目のヒントデータ。Engine は解釈せず renderer へ渡すだけ。
 struct DialogueBoxStyle
 {
-	/// Hex `#RRGGBB` or `#RRGGBBAA` colour strings so this struct is
-	/// serialisable to JSON without pulling a colour type in.
+	/// Hex `#RRGGBB` または `#RRGGBBAA` の色文字列。color 型を引き込まずに
+	/// この struct を JSON へ serialize できるようにするため。
 	std::string background = "#000000C8";
 	std::string textColor  = "#F0F0F0FF";
 	std::string speakerColor = "#FFD95AFF";
@@ -72,13 +71,13 @@ public:
 
 	// ── setup ─────────────────────────────────────────────────
 
-	/// @brief Start a new line sequence. Resets reveal / index / choices.
+	/// @brief 新しい行シーケンスを開始する。reveal / index / choices を reset。
 	void setLines(std::vector<DialogueLine> lines)
 	{
 		m_lines              = std::move(lines);
 		m_lineIndex          = 0;
 		m_revealProgress     = 0.0f;
-		m_waitingForAdvance  = m_lines.empty();  // empty sequence → done immediately
+		m_waitingForAdvance  = m_lines.empty();  // 空シーケンス → 即完了
 		m_awaitingChoice     = false;
 		m_selectedChoiceId   = std::nullopt;
 		m_clickCooldownLeft  = 0.0f;
@@ -88,7 +87,7 @@ public:
 	void setChoices(std::vector<DialogueChoice> choices)
 	{
 		m_choices = std::move(choices);
-		/// Re-evaluate completion for the edge case of empty-lines + choices.
+		/// 空 lines + choices という edge case のため完了状態を再評価する。
 		if (m_lines.empty() && !m_choices.empty())
 		{
 			m_awaitingChoice = true;
@@ -99,13 +98,13 @@ public:
 	void setStyle(DialogueBoxStyle style) noexcept { m_style = std::move(style); }
 	const DialogueBoxStyle& style() const noexcept { return m_style; }
 
-	/// @brief Default reveal speed in chars/sec. Per-line overrides win.
+	/// @brief default の reveal 速度 (chars/sec)。行ごとの override が優先される。
 	void setDefaultRevealSpeed(float charsPerSec) noexcept
 	{
 		m_defaultRevealSpeed = charsPerSec > 0.0f ? charsPerSec : 1.0f;
 	}
 
-	/// @brief Seconds a click is swallowed after it registers (default 0.5).
+	/// @brief クリック受付後にクリックを無視する秒数 (default 0.5)。
 	void setClickCooldown(float seconds) noexcept
 	{
 		m_clickCooldownDuration = seconds < 0.0f ? 0.0f : seconds;
@@ -113,10 +112,10 @@ public:
 
 	// ── per-frame ─────────────────────────────────────────────
 
-	/// @brief Advance the state machine one frame.
-	/// @param dt                   seconds since last tick
-	/// @param primaryActionPressed true on the *edge* (just-pressed) of the
-	///                             advance input (mouse button / Space / A)
+	/// @brief state machine を 1 フレーム進める。
+	/// @param dt                   前回 tick からの経過秒数
+	/// @param primaryActionPressed 送り入力 (mouse button / Space / A) の
+	///                             立ち上がり (押した瞬間) で true
 	void update(float dt, bool primaryActionPressed)
 	{
 		if (m_clickCooldownLeft > 0.0f)
@@ -127,7 +126,7 @@ public:
 
 		if (m_isComplete || m_awaitingChoice) { return; }
 
-		// Reveal
+		// 文字の reveal
 		if (m_lineIndex < m_lines.size())
 		{
 			const auto&  line  = m_lines[m_lineIndex];
@@ -141,7 +140,7 @@ public:
 			}
 		}
 
-		// Click
+		// クリック処理
 		if (primaryActionPressed && m_clickCooldownLeft <= 0.0f)
 		{
 			m_clickCooldownLeft = m_clickCooldownDuration;
@@ -149,7 +148,7 @@ public:
 		}
 	}
 
-	/// @brief Programmatic advance — identical to a well-timed click.
+	/// @brief プログラムからの送り — 適切なタイミングのクリックと等価。
 	void advance()
 	{
 		if (m_isComplete || m_awaitingChoice) { return; }
@@ -160,13 +159,13 @@ public:
 
 		if (m_revealProgress < full)
 		{
-			// Mid-reveal: jump to end of current line.
+			// reveal 途中: 現在行の末尾まで一気に進める。
 			m_revealProgress    = full;
 			m_waitingForAdvance = true;
 			return;
 		}
 
-		// Line fully shown; move to next or end.
+		// 行を全表示済み。次の行へ、または終了へ。
 		++m_lineIndex;
 		if (m_lineIndex >= m_lines.size())
 		{
@@ -188,7 +187,7 @@ public:
 		}
 	}
 
-	/// @brief Player selected a choice by its `id`. Marks complete.
+	/// @brief player が `id` で選択肢を選んだ。完了とする。
 	bool selectChoice(int id)
 	{
 		if (!m_awaitingChoice) { return false; }
@@ -205,7 +204,7 @@ public:
 		return false;
 	}
 
-	/// @brief Reset all state without clearing configuration (lines/choices).
+	/// @brief 設定 (lines/choices) は消さずに全 state を reset する。
 	void restart() noexcept
 	{
 		m_lineIndex          = 0;
@@ -225,12 +224,12 @@ public:
 		return &m_lines[m_lineIndex];
 	}
 
-	/// @brief UTF-8 byte-safe prefix of the current line up to reveal progress.
-	/// @note Cuts at the progress byte index. For CJK multi-byte chars this
-	///       may land mid-sequence; the caller should either (a) render with
-	///       a text engine that tolerates truncation (CEF does), or (b) pair
-	///       this with a utf-8 codepoint walker. We keep the byte-level API
-	///       because it's cheap and renderer-agnostic.
+	/// @brief 現在行の、reveal 進捗までの UTF-8 バイト境界に安全な prefix。
+	/// @note 進捗のバイト index で切る。CJK のマルチバイト文字では境界の
+	///       途中で切れることがある。呼び出し側は (a) 途中切れを許容する
+	///       text engine で描画する (CEF は許容) か、(b) utf-8 codepoint
+	///       walker と組み合わせること。安価で renderer 非依存なので
+	///       バイト単位 API のまま残している。
 	std::string visibleText() const
 	{
 		const auto* line = currentLine();
@@ -251,10 +250,9 @@ public:
 
 	// ── CEF helper ────────────────────────────────────────────
 
-	/// @brief Serialise state for `StateStore::set("dialogue", box.toJson())`.
-	/// @details The JS side can subscribe via
-	///          `mitiru.onStateChange('dialogue', state => ...)` and render
-	///          with CSS (using the `style` sub-object for colours).
+	/// @brief `StateStore::set("dialogue", box.toJson())` 用に state を serialize。
+	/// @details JS 側は `mitiru.onStateChange('dialogue', state => ...)` で
+	///          購読し、CSS で描画できる (色は `style` サブオブジェクトを使う)。
 	json toJson() const
 	{
 		json j;
@@ -303,9 +301,9 @@ private:
 	float               m_defaultRevealSpeed   = 30.0f;   ///< chars/sec
 	float               m_clickCooldownDuration = 0.5f;
 	float               m_clickCooldownLeft    = 0.0f;
-	bool                m_waitingForAdvance    = true;    ///< true on construction (empty sequence)
+	bool                m_waitingForAdvance    = true;    ///< 構築時は true (空シーケンス)
 	bool                m_awaitingChoice       = false;
-	bool                m_isComplete           = true;    ///< no lines configured → already "done"
+	bool                m_isComplete           = true;    ///< 行が未設定 → 既に「完了」
 	std::optional<int>  m_selectedChoiceId;
 };
 

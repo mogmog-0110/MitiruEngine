@@ -127,7 +127,7 @@ public:
         }
         if (!m_texture)
         {
-            // First-time init: create immediately, no deferred path.
+            // 初回 init: deferred 経路を通らず即座に作成する。
             m_width  = width;
             m_height = height;
             m_pendingWidth = 0;
@@ -154,7 +154,7 @@ public:
         if (dataWidth <= 0 || dataHeight <= 0) { return false; }
         if (dataWidth == m_width && dataHeight == m_height && m_texture)
         {
-            return false; // already at this size
+            return false; // 既にこのサイズ
         }
         m_width  = dataWidth;
         m_height = dataHeight;
@@ -169,8 +169,8 @@ public:
     void upload(const uint8_t* data, int width, int height)
     {
         if (!data) { return; }
-        // If a resize is pending and this paint matches the new dims,
-        // recreate the texture now then proceed with upload.
+        // resize が pending で、この paint が新 dim と一致するなら、ここで
+        // texture を作り直してから upload を続行する。
         applyPendingResize(width, height);
         if (!m_uploadBuffer || width != m_width || height != m_height)
         {
@@ -218,9 +218,9 @@ public:
             return; // 変更なし — 転送しない
         }
         if (!data) { return; }
-        // Apply pending resize if this partial matches the new dims.
-        // A partial-only paint on resize is unusual (CEF typically sends a
-        // full repaint on WasResized) but we handle it for correctness.
+        // この partial が新 dim と一致するなら pending resize を適用する。
+        // resize 時に partial のみの paint が来るのは稀 (CEF は WasResized で
+        // 通常フル repaint を送る) だが、correctness のため処理しておく。
         const bool didApply = applyPendingResize(width, height);
         if (!m_uploadBuffer || width != m_width || height != m_height)
         {
@@ -228,9 +228,9 @@ public:
         }
         if (didApply)
         {
-            // After resize the texture is blank — partial upload alone
-            // would leave the un-dirty area uninitialised. Fall through
-            // to full upload() in this case.
+            // resize 後の texture は空白 — partial upload だけでは dirty で
+            // ない領域が未初期化のまま残る。このケースではフル upload() に
+            // fall through する。
             upload(data, width, height);
             return;
         }
@@ -355,7 +355,7 @@ public:
     /// @param windowW    現在の window dim (composite 表示先)
     /// @param windowH    現在の window dim
     ///
-    /// ### Aspect-preserving fit composite (canonical UI scaling)
+    /// ### aspect 比を保つ fit composite (canonical な UI scaling)
     /// texture の aspect ratio を保ったまま window 内に最大サイズで収まる
     /// 矩形を計算し、その viewport に fullscreen 三角形を描画する。
     /// 余白 (letterbox/pillarbox) には engine clear color (paper amber 等) が見える。
@@ -749,13 +749,13 @@ float4 main(PSIn i) : SV_Target
     size_t m_uploadRowPitch = 0;
     int    m_width          = 0;
     int    m_height         = 0;
-    // Pending resize: target dims announced via resize() but not yet
-    // realized (waiting for matching paint data from CEF OnPaint).
+    // pending resize: resize() で予告された目標 dim だが、まだ実現していない
+    // (CEF OnPaint から一致する paint data が来るのを待っている)。
     int    m_pendingWidth   = 0;
     int    m_pendingHeight  = 0;
     bool   m_initialized    = false;
 
-    // ── Last composite fit-rect (window-space) ─────────────────────
+    // ── 直近の composite fit-rect (window 座標系) ─────────────────────
     // composite() で計算した letterbox/pillarbox 矩形を保持する。
     // 入力経路 (mapWindowToCef) がこれを使って window 座標を CEF 論理座標に
     // 逆変換する。これを欠くと texture dim != window dim の時に click 位置と

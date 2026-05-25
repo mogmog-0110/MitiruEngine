@@ -1,23 +1,23 @@
 /*!
- * mitiru_input.js — unified keyboard / mouse / gamepad input abstraction (NF-03)
+ * mitiru_input.js — keyboard / mouse / gamepad を統合した input 抽象 (NF-03)
  *
- * Provides a single action-map driven API over keyboard, mouse, and Gamepad API.
- * The active device is auto-detected and prompt strings are device-contextual.
+ * keyboard、mouse、Gamepad API を 1 つの action-map 駆動 API で提供する。
+ * active device は auto-detect され、prompt 文字列は device 文脈に応じて変わる。
  *
  * ── API ─────────────────────────────────────────────────────────────────────
  *   mitiru.input.setActionMap(map)       Record<actionName, binding[]>
- *   mitiru.input.actionMap()             frozen snapshot of current map
+ *   mitiru.input.actionMap()             現在の map の frozen snapshot
  *   mitiru.input.setDeadzone(0..1)       gamepad stick deadzone (default 0.15)
- *   mitiru.input.button(action)          bool — currently held
- *   mitiru.input.pressed(action)         bool — true only on frame it went down
- *   mitiru.input.released(action)        bool — true only on frame it went up
- *   mitiru.input.axis(action)            -1..+1 (gamepad stick axes)
+ *   mitiru.input.button(action)          bool — 現在 held か
+ *   mitiru.input.pressed(action)         bool — 押した frame だけ true
+ *   mitiru.input.released(action)        bool — 離した frame だけ true
+ *   mitiru.input.axis(action)            -1..+1 (gamepad stick 軸)
  *   mitiru.input.activeDevice()          'keyboard' | 'mouse' | 'gamepad'
- *   mitiru.input.promptFor(action)       first binding matching active device
- *   mitiru.input.start()                 begin polling + event listeners
- *   mitiru.input.stop()                  remove listeners + cancel RAF loop
- *   mitiru.input.rumble(ms, strong?, weak?)  attempt gamepad rumble
- *   mitiru.input.on(event, cb)           subscribe to events
+ *   mitiru.input.promptFor(action)       active device に一致する最初の binding
+ *   mitiru.input.start()                 polling + event listener を開始
+ *   mitiru.input.stop()                  listener 除去 + RAF loop 停止
+ *   mitiru.input.rumble(ms, strong?, weak?)  gamepad rumble を試行
+ *   mitiru.input.on(event, cb)           event を subscribe
  *   mitiru.input.off(event, cb)          unsubscribe
  *
  * ── Events ──────────────────────────────────────────────────────────────────
@@ -25,12 +25,12 @@
  *   'action:up'     { action, binding, device }
  *   'device:change' { from, to }
  *
- * ── Binding Syntax ──────────────────────────────────────────────────────────
- *   Keyboard: KeyboardEvent.key e.g. 'Enter' 'Space' 'ArrowUp'
- *   Mouse:    'Mouse.0' (left) | 'Mouse.1' (middle) | 'Mouse.2' (right)
+ * ── Binding 構文 ──────────────────────────────────────────────────────────
+ *   Keyboard: KeyboardEvent.key 例 'Enter' 'Space' 'ArrowUp'
+ *   Mouse:    'Mouse.0' (左) | 'Mouse.1' (中) | 'Mouse.2' (右)
  *   Gamepad:  'Gamepad.A/B/X/Y' 'Gamepad.LB/RB/LT/RT' 'Gamepad.Start/Back'
  *             'Gamepad.DPad.Up/Down/Left/Right'
- *             'Gamepad.LStick.Up/Down/Left/Right' (virtual buttons from axis)
+ *             'Gamepad.LStick.Up/Down/Left/Right' (軸から作る virtual button)
  *   Axes:     'Gamepad.LStickX/Y' 'Gamepad.RStickX/Y'
  *
  * Implements spec: docs/feedback-from-engine/NF-03
@@ -40,9 +40,9 @@
 	'use strict';
 
 	var mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.input) { return; }  // already loaded
+	if (mitiru.input) { return; }  // 読み込み済み
 
-	// Xbox button index map (standard mapping)
+	// Xbox button index map (標準 mapping)
 	// index: A=0 B=1 X=2 Y=3 LB=4 RB=5 LT=6 RT=7 Back=8 Start=9 DPad Up=12..Right=15
 	var GAMEPAD_BUTTON_MAP = {
 		'Gamepad.A': 0, 'Gamepad.B': 1, 'Gamepad.X': 2, 'Gamepad.Y': 3,
@@ -52,7 +52,7 @@
 		'Gamepad.DPad.Left': 14, 'Gamepad.DPad.Right': 15,
 	};
 
-	// Virtual stick buttons: [axisIndex, sign] — fires when axis*sign > deadzone
+	// Virtual stick button: [axisIndex, sign] — axis*sign > deadzone で発火
 	var GAMEPAD_STICK_VIRTUAL = {
 		'Gamepad.LStick.Up': [1, -1], 'Gamepad.LStick.Down': [1, 1],
 		'Gamepad.LStick.Left': [0, -1], 'Gamepad.LStick.Right': [0, 1],
@@ -60,13 +60,13 @@
 		'Gamepad.RStick.Left': [2, -1], 'Gamepad.RStick.Right': [2, 1],
 	};
 
-	// Named axis bindings for .axis()
+	// .axis() 用の named axis binding
 	var GAMEPAD_AXIS_MAP = {
 		'Gamepad.LStickX': 0, 'Gamepad.LStickY': 1,
 		'Gamepad.RStickX': 2, 'Gamepad.RStickY': 3,
 	};
 
-	// ── classify a binding string by device ──────────────────
+	// ── binding 文字列を device 別に分類 ──────────────────
 	function _deviceOf(binding)
 	{
 		if (typeof binding !== 'string') { return 'keyboard'; }
@@ -81,17 +81,17 @@
 	var _deadzone     = 0.15;
 	var _activeDevice = 'keyboard';
 
-	// Per-action held state: { action: bool }
+	// action ごとの held 状態: { action: bool }
 	var _held     = Object.create(null);
-	// One-shot flags reset each frame
+	// 毎 frame reset される one-shot flag
 	var _pressed  = Object.create(null);
 	var _released = Object.create(null);
 
-	// Raw held bindings (not actions) — for multi-binding tracking
+	// 生の held binding (action ではない) — multi-binding 追跡用
 	// { binding: bool }
 	var _bindingHeld = Object.create(null);
 
-	// Previous gamepad state for edge detection
+	// edge 検出用の前回 gamepad state
 	// { padIndex: { buttons: [bool,...], axes: [float,...] } }
 	var _padPrevState = Object.create(null);
 
@@ -122,14 +122,14 @@
 		_emit('device:change', { from: prev, to: dev });
 	}
 
-	// ── action edge detection: binding went down/up ───────────
-	// Called whenever a raw binding's held state changes.
+	// ── action edge 検出: binding が down/up した ───────────
+	// 生の binding の held 状態が変わるたびに呼ばれる。
 	function _onBindingDown(binding, device)
 	{
-		if (_bindingHeld[binding]) { return; }  // already held
+		if (_bindingHeld[binding]) { return; }  // 既に held
 		_bindingHeld[binding] = true;
 
-		// Find every action that includes this binding.
+		// この binding を含む action を全て探す。
 		var actions = Object.keys(_actionMap);
 		for (var i = 0; i < actions.length; ++i)
 		{
@@ -137,7 +137,7 @@
 			var bindings = _actionMap[action];
 			if (bindings.indexOf(binding) < 0) { continue; }
 
-			// Was the action already held by another binding?
+			// その action は別の binding で既に held だったか?
 			var wasHeld = _isActionHeld(action, binding);
 			if (!wasHeld)
 			{
@@ -150,7 +150,7 @@
 
 	function _onBindingUp(binding, device)
 	{
-		if (!_bindingHeld[binding]) { return; }  // already released
+		if (!_bindingHeld[binding]) { return; }  // 既に release 済み
 		_bindingHeld[binding] = false;
 
 		var actions = Object.keys(_actionMap);
@@ -160,7 +160,7 @@
 			var bindings = _actionMap[action];
 			if (bindings.indexOf(binding) < 0) { continue; }
 
-			// Is any other binding for this action still held?
+			// この action の他の binding がまだ held か?
 			var stillHeld = _isActionHeld(action, null);
 			if (!stillHeld)
 			{
@@ -171,7 +171,7 @@
 		}
 	}
 
-	// Returns true if any binding for the action is held, ignoring `exceptBinding`.
+	// `exceptBinding` を除いて、action のいずれかの binding が held なら true。
 	function _isActionHeld(action, exceptBinding)
 	{
 		var bindings = _actionMap[action] || [];
@@ -212,7 +212,7 @@
 	{
 		if (!_running) { return; }
 
-		// Clear one-shot flags from previous frame.
+		// 前 frame の one-shot flag を clear。
 		_pressed  = Object.create(null);
 		_released = Object.create(null);
 
@@ -234,7 +234,7 @@
 
 			var prev = _padPrevState[pad.index] || { buttons: [], axes: [] };
 
-			// Check named buttons.
+			// named button をチェック。
 			var btnKeys = Object.keys(GAMEPAD_BUTTON_MAP);
 			for (var bi = 0; bi < btnKeys.length; ++bi)
 			{
@@ -257,7 +257,7 @@
 				}
 			}
 
-			// Check virtual stick buttons.
+			// virtual stick button をチェック。
 			var stickKeys = Object.keys(GAMEPAD_STICK_VIRTUAL);
 			for (var si = 0; si < stickKeys.length; ++si)
 			{
@@ -281,7 +281,7 @@
 				}
 			}
 
-			// Detect any axis above deadzone → switch active device.
+			// deadzone を超える軸を検出 → active device を切り替える。
 			for (var ai = 0; ai < pad.axes.length; ++ai)
 			{
 				if (Math.abs(pad.axes[ai]) > _deadzone)
@@ -291,7 +291,7 @@
 				}
 			}
 
-			// Save snapshot (immutable arrays).
+			// snapshot を保存 (immutable な配列)。
 			var btnSnapshot  = [];
 			for (var bsi = 0; bsi < pad.buttons.length; ++bsi)
 			{
@@ -302,7 +302,7 @@
 		}
 	}
 
-	// ── reset all held/pressed/released state ─────────────────
+	// ── held/pressed/released 状態を全 reset ─────────────────
 	function _resetState()
 	{
 		_held        = Object.create(null);
@@ -332,7 +332,7 @@
 		}
 		_actionMap  = newMap;
 
-		// Build frozen snapshot (deep freeze each binding array + outer).
+		// frozen snapshot を構築 (各 binding 配列と外側を deep freeze)。
 		var snap = Object.create(null);
 		var skeys = Object.keys(_actionMap);
 		for (var si = 0; si < skeys.length; ++si)
@@ -418,7 +418,7 @@
 		{
 			if (_deviceOf(bindings[i]) === dev) { return bindings[i]; }
 		}
-		// Fallback: return first binding.
+		// Fallback: 最初の binding を返す。
 		return bindings[0];
 	};
 
@@ -445,7 +445,7 @@
 	// ── start ────────────────────────────────────────────────
 	input.start = function()
 	{
-		if (_running) { return; }  // idempotent
+		if (_running) { return; }  // 冪等
 		_running = true;
 		_resetState();
 		document.addEventListener('keydown',   _onKeydown);

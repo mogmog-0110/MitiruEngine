@@ -1,37 +1,37 @@
 /*!
- * mitiru_audio.js — no-op-safe audio manager (NF-02)
+ * mitiru_audio.js — no-op に強い audio manager (NF-02)
  *
- * Provides a unified audio API that fires events even when audio hardware is
- * unavailable. Scenes can register haptic hooks on events and the audio layer
- * will call them regardless of whether actual playback occurred.
+ * audio hardware が使えない場合でも event を発火する統合 audio API を提供する。
+ * scene は event に haptic hook を登録でき、audio layer は実際の playback が
+ * 起きたかに関係なくそれらを呼ぶ。
  *
  * ── API ─────────────────────────────────────────────────────────────────────
- *   mitiru.audio.setManifest(manifest | url)    load sound map (inline obj or URL string)
- *   mitiru.audio.manifest()                      frozen copy of current manifest
- *   mitiru.audio.play(key, opts?)                'category.key' → plays or no-ops safely
+ *   mitiru.audio.setManifest(manifest | url)    sound map を読み込む (inline obj か URL string)
+ *   mitiru.audio.manifest()                      現在の manifest の frozen copy
+ *   mitiru.audio.play(key, opts?)                'category.key' → 再生 or 安全に no-op
  *   mitiru.audio.se(key, opts?)                  → play('se.' + key, opts)
- *   mitiru.audio.bgm(key, opts?)                 crossfade to new BGM; null stops
- *   mitiru.audio.voice(key, opts?)               plays; ducks BGM while active
+ *   mitiru.audio.bgm(key, opts?)                 新 BGM へ crossfade; null で停止
+ *   mitiru.audio.voice(key, opts?)               再生; 鳴っている間 BGM を duck
  *   mitiru.audio.stop(category)                  'se'|'bgm'|'voice'|'all'
  *   mitiru.audio.stopAll()                       → stop('all')
  *   mitiru.audio.setVolume(category, 0..1)       'master'|'bgm'|'se'|'voice'
- *   mitiru.audio.volume(category)                current volume for category
- *   mitiru.audio.setDucking({ bgm, fadeMs })     configure BGM duck ratio + fade time
- *   mitiru.audio.on(event, cb)                   subscribe; returns unsubscribe fn
+ *   mitiru.audio.volume(category)                category の現在 volume
+ *   mitiru.audio.setDucking({ bgm, fadeMs })     BGM の duck 比率 + fade 時間を設定
+ *   mitiru.audio.on(event, cb)                   subscribe; unsubscribe fn を返す
  *   mitiru.audio.off(event, cb)                  unsubscribe
- *   mitiru.audio.isAvailable()                   true when Audio constructor exists
+ *   mitiru.audio.isAvailable()                   Audio constructor があれば true
  *
  * ── Events ──────────────────────────────────────────────────────────────────
- *   'play'          { category, key, resolved }   resolved=false when URL not in manifest
+ *   'play'          { category, key, resolved }   URL が manifest に無いと resolved=false
  *   'stop'          { category, key }
  *   'bgm:change'    { from, to }
  *   'voice:start'   { key }
  *   'voice:end'     { key }
  *
- * ── Volume math ─────────────────────────────────────────────────────────────
+ * ── Volume 計算 ─────────────────────────────────────────────────────────────
  *   effectiveVolume = master * category * perClip
- *   setVolume('master', 0.5) halves all categories.
- *   setVolume('se', 0) mutes SE while leaving other categories unaffected.
+ *   setVolume('master', 0.5) は全 category を半分にする。
+ *   setVolume('se', 0) は他の category に影響を与えず SE を mute する。
  *
  * Implements spec: docs/feedback-from-kaerucrape/NF-02
  */
@@ -40,11 +40,11 @@
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.audio) { return; }  // already loaded
+	if (mitiru.audio) { return; }  // 読み込み済み
 
-	// ── availability check ────────────────────────────────────────
-	// Probed live each call so hot-swapping window.Audio (test harnesses,
-	// platform feature flags) is honoured after module load.
+	// ── 利用可否チェック ────────────────────────────────────────
+	// 呼び出しごとに live で調べる。これにより module 読み込み後の
+	// window.Audio の hot-swap (test harness、platform feature flag) も反映される。
 	function _audioAvailable()
 	{
 		try { return typeof global.Audio === 'function'; }
@@ -65,29 +65,29 @@
 	}
 
 	// ── internal state ────────────────────────────────────────────
-	var _manifest     = null;   // frozen manifest object
-	var _warnedKeys   = {};     // keys warned about (missing from manifest)
-	var _warnedNoMfst = false;  // warned about missing manifest
+	var _manifest     = null;   // frozen な manifest object
+	var _warnedKeys   = {};     // warn 済みの key (manifest に無いもの)
+	var _warnedNoMfst = false;  // manifest 欠落について warn 済みか
 
-	// Volume levels: master and per-category.
+	// Volume レベル: master と per-category。
 	var _volumes = { master: 1, bgm: 1, se: 1, voice: 1 };
 
-	// Ducking configuration.
+	// Ducking 設定。
 	var _ducking = { bgm: 0.3, fadeMs: 200 };
 
-	// Active BGM tracking.
-	var _bgmNode     = null;   // current BGM Audio element
-	var _bgmKey      = null;   // current BGM key string
-	var _bgmDuckMult = 1;      // 1 = normal, <1 = ducked; applied on top of volume
+	// Active BGM 追跡。
+	var _bgmNode     = null;   // 現在の BGM Audio element
+	var _bgmKey      = null;   // 現在の BGM key 文字列
+	var _bgmDuckMult = 1;      // 1 = 通常、<1 = ducked; volume に上乗せで適用
 
-	// Active voice tracking (ref-count for simultaneous voices).
+	// Active voice 追跡 (同時 voice の参照カウント)。
 	var _voiceCount = 0;
 	var _voiceNodes = [];   // [{ key, node }]
 
-	// Active SE nodes (fire-and-forget; tracked so stop('se') works).
+	// Active SE node (撃ちっ放し; stop('se') 用に追跡)。
 	var _seNodes = [];
 
-	// Event subscribers: { eventName: [fn, ...] }
+	// Event subscriber: { eventName: [fn, ...] }
 	var _listeners = Object.create(null);
 
 	// ── event emitter ─────────────────────────────────────────────
@@ -125,9 +125,9 @@
 		}
 	}
 
-	// ── fade helpers ──────────────────────────────────────────────
-	// Linearly fades `node.volume` from `fromVol` to `toVol` over `durationMs`.
-	// Calls `onDone()` when complete (or immediately if durationMs <= 0).
+	// ── fade helper ──────────────────────────────────────────────
+	// `node.volume` を `durationMs` かけて `fromVol` から `toVol` へ線形に fade する。
+	// 完了時 (または durationMs <= 0 なら即座) に `onDone()` を呼ぶ。
 	function _fade(node, fromVol, toVol, durationMs, onDone)
 	{
 		if (!node || durationMs <= 0)
@@ -184,7 +184,7 @@
 		return node;
 	}
 
-	// ── SE node GC (remove ended nodes) ──────────────────────────
+	// ── SE node GC (再生終了した node を除去) ──────────────────────────
 	function _gcSeNodes()
 	{
 		_seNodes = _seNodes.filter(function(n) { return !n.ended; });
@@ -199,8 +199,8 @@
 		_fade(_bgmNode, fromVol, _bgmEffectiveVol(), _ducking.fadeMs, null);
 	}
 
-	// ── play internals ────────────────────────────────────────────
-	// Returns { node, resolved } — node may be null when audio unavailable.
+	// ── play 内部処理 ────────────────────────────────────────────
+	// { node, resolved } を返す — audio が使えない場合 node は null になりうる。
 	function _playAudio(category, key, opts)
 	{
 		opts = opts || {};
@@ -234,7 +234,7 @@
 	{
 		if (typeof manifestOrUrl === 'string')
 		{
-			// URL path — fetch via mitiru.fetch if available, else global fetch.
+			// URL path — 可能なら mitiru.fetch、無ければ global fetch で取得。
 			var fetcher = (mitiru.fetch && typeof mitiru.fetch === 'function')
 				? mitiru.fetch
 				: global.fetch.bind(global);
@@ -254,7 +254,7 @@
 				});
 		}
 
-		// Inline object.
+		// Inline object。
 		if (manifestOrUrl !== null && typeof manifestOrUrl === 'object')
 		{
 			_manifest     = Object.freeze(Object.assign({}, manifestOrUrl));
@@ -308,7 +308,7 @@
 		}
 		_volumes[category] = _clamp01(value);
 
-		// Reapply to live BGM node.
+		// live な BGM node へ再適用。
 		if (category === 'master' || category === 'bgm')
 		{
 			_applyVolumeToNode(_bgmNode, _bgmEffectiveVol());
@@ -341,7 +341,7 @@
 			console.warn('[mitiru.audio] play() called before setManifest()');
 		}
 
-		// Split on first '.' only.
+		// 最初の '.' でのみ分割する。
 		var dotIdx   = typeof fullKey === 'string' ? fullKey.indexOf('.') : -1;
 		var category = dotIdx >= 0 ? fullKey.slice(0, dotIdx) : '';
 		var key      = dotIdx >= 0 ? fullKey.slice(dotIdx + 1) : '';
@@ -379,7 +379,7 @@
 		var fadeMs  = typeof opts.fadeMs === 'number' ? opts.fadeMs : 400;
 		var fromKey = _bgmKey;
 
-		// Stop current BGM with fade-out.
+		// 現在の BGM を fade-out して停止。
 		if (_bgmNode)
 		{
 			var nodeToStop = _bgmNode;
@@ -398,7 +398,7 @@
 
 		if (!key) { return; }
 
-		// Resolve URL and start new BGM.
+		// URL を解決して新 BGM を開始。
 		var url = _resolveUrl('bgm', key);
 		if (!url)
 		{
@@ -414,8 +414,8 @@
 		}
 
 		var targetVol = _bgmEffectiveVol();
-		var node      = _makeNode(url, 0);  // start silent, fade in
-		node.loop     = opts.loop !== false; // BGM loops by default
+		var node      = _makeNode(url, 0);  // 無音で開始し fade in
+		node.loop     = opts.loop !== false; // BGM は default で loop
 
 		_bgmNode = node;
 		_bgmKey  = key;
@@ -443,7 +443,7 @@
 
 		if (!resolved || !_checkAudioAvail())
 		{
-			// No-op for playback but event already fired; simulate immediate end.
+			// playback は no-op だが event は発火済み; 即座の終了を模擬する。
 			_voiceCount = Math.max(0, _voiceCount - 1);
 			_applyDucking();
 			_emit('voice:end', { key: key });
@@ -500,7 +500,7 @@
 					_seNodes[i].pause();
 					_seNodes[i].currentTime = 0;
 				}
-				catch (_e) { /* ignore */ }
+				catch (_e) { /* 無視 */ }
 				_emit('stop', { category: 'se', key: '' });
 			}
 			_seNodes = [];
@@ -532,7 +532,7 @@
 			_voiceCount  = 0;
 			for (var j = 0; j < snapshot.length; ++j)
 			{
-				try { snapshot[j].node.pause(); } catch (_e) { /* ignore */ }
+				try { snapshot[j].node.pause(); } catch (_e) { /* 無視 */ }
 				_emit('stop',       { category: 'voice', key: snapshot[j].key });
 				_emit('voice:end',  { key: snapshot[j].key });
 			}

@@ -43,15 +43,15 @@ namespace mitiru::module
 
 /// @brief Game DLL を一つ host する。move-only。
 ///
-/// Lifecycle:
-///   1. `load(source)`  — copy source to temp, LoadLibrary, resolve symbols
-///   2. (caller invokes loadFn() to populate ModuleApi + memory)
-///   3. `unload()`      — FreeLibrary + delete temp file
-///   4. (or destructor — same as unload)
+/// ライフサイクル:
+///   1. `load(source)`  — source を temp に copy、LoadLibrary、symbol 解決
+///   2. (caller が loadFn() を呼び ModuleApi + memory を埋める)
+///   3. `unload()`      — FreeLibrary + temp file 削除
+///   4. (または destructor — unload と同じ)
 ///
-/// Reload is "unload() → load(source)" with a fresh temp filename — host code
-/// holding the ModuleApi callbacks MUST drop them between unload and the
-/// subsequent load (the function pointers belong to the old DLL).
+/// reload は「unload() → load(source)」を新しい temp filename で行う。
+/// ModuleApi callback を保持する host code は、unload と次の load の間で
+/// それを破棄しなければならない (関数 pointer は古い DLL に属する)。
 class ModuleHost
 {
 public:
@@ -59,9 +59,8 @@ public:
 
 	~ModuleHost()
 	{
-		// Best-effort cleanup. Errors here can't be reported (we're in a
-		// destructor), but the temp file is in %TEMP% so the OS reaps it
-		// eventually anyway.
+		// best-effort な後始末。ここでのエラーは報告できない (destructor 内)
+		// が、temp file は %TEMP% にあるので OS がいずれ回収する。
 		unload();
 	}
 
@@ -97,7 +96,7 @@ public:
 		return *this;
 	}
 
-	/// @brief Load the DLL.
+	/// @brief DLL を load する。
 	/// @param source 元 DLL の path (rebuild される側)
 	/// @return 成功なら true、失敗なら false (詳細は lastError() を参照)
 	/// @details
@@ -135,8 +134,8 @@ public:
 			return false;
 		}
 
-		// `LoadLibraryW` for a Unicode-safe path. The temp filename is ASCII
-		// but %TEMP% may contain non-ASCII characters.
+		// Unicode-safe な path のため `LoadLibraryW`。temp filename は ASCII
+		// だが %TEMP% は非 ASCII 文字を含みうる。
 		HMODULE handle = ::LoadLibraryW(runtimePath.wstring().c_str());
 		if (handle == nullptr)
 		{
@@ -148,8 +147,8 @@ public:
 			return false;
 		}
 
-		// Verify the entry symbol exists before we declare success — saves the
-		// caller a separate "did GetProcAddress return null?" check.
+		// 成功宣言の前に entry symbol の存在を確認 — caller の「GetProcAddress
+		// が null を返したか?」という別チェックを省ける。
 		auto* loadFnPtr = ::GetProcAddress(handle, kLoadSymbol);
 		if (loadFnPtr == nullptr)
 		{
@@ -169,8 +168,8 @@ public:
 #endif
 	}
 
-	/// @brief Unload the DLL. Safe to call multiple times.
-	/// @details FreeLibrary + delete temp file. Errors are swallowed (best-effort).
+	/// @brief DLL を unload する。複数回呼んでも安全。
+	/// @details FreeLibrary + temp file 削除。エラーは握り潰す (best-effort)。
 	void unload() noexcept
 	{
 #if defined(_WIN32)
@@ -198,7 +197,7 @@ public:
 #endif
 	}
 
-	/// @brief Resolve the load entry symbol. nullptr if not loaded.
+	/// @brief load entry symbol を解決する。未 load なら nullptr。
 	[[nodiscard]] ModuleLoadFn loadFn() const noexcept
 	{
 #if defined(_WIN32)
@@ -210,7 +209,7 @@ public:
 #endif
 	}
 
-	/// @brief Resolve the unload entry symbol. nullptr if not loaded or absent.
+	/// @brief unload entry symbol を解決する。未 load または不在なら nullptr。
 	[[nodiscard]] ModuleUnloadFn unloadFn() const noexcept
 	{
 #if defined(_WIN32)
@@ -241,7 +240,7 @@ public:
 	}
 
 private:
-	/// @brief Build a unique temp path: %TEMP%/mitiru_module_<pid>_<seq>.dll
+	/// @brief 一意な temp path を作る: %TEMP%/mitiru_module_<pid>_<seq>.dll
 	static std::filesystem::path makeUniqueTempPath()
 	{
 		static std::uint64_t s_seq = 0;
@@ -257,7 +256,7 @@ private:
 		auto tmp = std::filesystem::temp_directory_path(ec);
 		if (ec)
 		{
-			// Fall back to source-relative if %TEMP% is unavailable.
+			// %TEMP% が使えない場合は source 相対に fall back。
 			tmp = ".";
 		}
 		return tmp / filename;

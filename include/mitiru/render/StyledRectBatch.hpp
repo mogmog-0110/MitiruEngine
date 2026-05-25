@@ -178,20 +178,20 @@ private:
     {
         m_style = StyleConstants{};
 
-        // Corner radii
+        // 角丸半径
         m_style.cornerRadii[0] = style.corners.tl;
         m_style.cornerRadii[1] = style.corners.tr;
         m_style.cornerRadii[2] = style.corners.br;
         m_style.cornerRadii[3] = style.corners.bl;
 
-        // Fill colors and gradient params
+        // 塗り色とグラデーションパラメータ
         convertFill(style.fill);
 
-        // Stroke
+        // ストローク
         convertStrokeColor(style.stroke.fill);
         m_style.strokeWidth = style.stroke.width;
 
-        // Shadow
+        // シャドウ
         m_style.shadowColor[0] = style.shadow.color.r;
         m_style.shadowColor[1] = style.shadow.color.g;
         m_style.shadowColor[2] = style.shadow.color.b;
@@ -200,7 +200,7 @@ private:
         m_style.shadowOffsetX  = style.shadow.x;
         m_style.shadowOffsetY  = style.shadow.y;
 
-        // Opacity
+        // 不透明度
         m_style.opacity = style.opacity;
     }
 
@@ -421,14 +421,14 @@ private:
 
         // cornerRadii は未使用（デフォルト0のまま）
 
-        // Fill colors and gradient params
+        // 塗り色とグラデーションパラメータ
         convertFill(style.fill);
 
-        // Stroke
+        // ストローク
         convertStrokeColor(style.stroke.fill);
         m_style.strokeWidth = style.stroke.width;
 
-        // Shadow
+        // シャドウ
         m_style.shadowColor[0] = style.shadow.color.r;
         m_style.shadowColor[1] = style.shadow.color.g;
         m_style.shadowColor[2] = style.shadow.color.b;
@@ -437,7 +437,7 @@ private:
         m_style.shadowOffsetX  = style.shadow.x;
         m_style.shadowOffsetY  = style.shadow.y;
 
-        // Opacity
+        // 不透明度
         m_style.opacity = style.opacity;
     }
 

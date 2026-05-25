@@ -2,13 +2,13 @@
 <meta charset="utf-8">
 <title>mitiru_save.js tests</title>
 <!--
-    test_save.html — mitiru.save (F-11) unit tests
+    test_save.html — mitiru.save (F-11) unit test
 
-    Run:
+    走らせ方:
       python -m http.server 8765 --bind 127.0.0.1
       open http://localhost:8765/web/mitiru_runtime/tests/test_save.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -31,7 +31,7 @@
 	const s = mitiru.save;
 
 	// ── helpers ──────────────────────────────────────────────────
-	// Clear all save slots between tests to keep them independent.
+	// テストを独立させるため、テスト間ですべての save slot をクリアする。
 	async function clearAll()
 	{
 		for (let i = 0; i < s.MAX_SLOTS; ++i)
@@ -52,7 +52,7 @@
 		         'SCHEMA_VERSION should be >= 1');
 	});
 
-	// ── 2. empty slot ─────────────────────────────────────────────
+	// ── 2. 空の slot ─────────────────────────────────────────────
 	t.case('read empty slot returns null', async function()
 	{
 		await clearAll();
@@ -60,7 +60,7 @@
 		t.assertEq(result, null);
 	});
 
-	// ── 3. write + read round-trip ────────────────────────────────
+	// ── 3. write + read の round-trip ────────────────────────────────
 	t.case('write + read round-trip (localStorage backend)', async function()
 	{
 		await clearAll();
@@ -73,7 +73,7 @@
 		t.assertEq(result.data.flags.metMaria, true);
 	});
 
-	// ── 4. metadata preserved + timestamp auto-set ───────────────
+	// ── 4. metadata が保持され timestamp が自動設定される ───────────────
 	t.case('metadata is preserved and timestamp is auto-set', async function()
 	{
 		await clearAll();
@@ -88,7 +88,7 @@
 		         'timestamp should be within the write window');
 	});
 
-	// ── 5. list returns exactly MAX_SLOTS entries ─────────────────
+	// ── 5. list はちょうど MAX_SLOTS 個の entry を返す ─────────────────
 	t.case('list returns exactly MAX_SLOTS entries', async function()
 	{
 		await clearAll();
@@ -96,7 +96,7 @@
 		t.assertEq(slots.length, s.MAX_SLOTS);
 	});
 
-	// ── 6. list marks written slots as exists:true ────────────────
+	// ── 6. list は書き込み済み slot を exists:true にする ────────────────
 	t.case('list marks written slot as exists:true', async function()
 	{
 		await clearAll();
@@ -109,7 +109,7 @@
 		t.assertEq(entry3.exists, false,'slot 3 should be empty');
 	});
 
-	// ── 7. delete removes data and meta ──────────────────────────
+	// ── 7. delete は data と meta を削除する ──────────────────────────
 	t.case('delete removes data + meta', async function()
 	{
 		await clearAll();
@@ -122,22 +122,22 @@
 		t.assertEq(entry4.exists, false, 'list should show slot as empty after delete');
 	});
 
-	// ── 8. delete on empty slot is no-op ─────────────────────────
+	// ── 8. 空 slot への delete は no-op ─────────────────────────
 	t.case('delete on empty slot does not throw', async function()
 	{
 		await clearAll();
-		// Must not throw — deleting a non-existent slot is fine.
+		// throw してはいけない — 存在しない slot の削除は問題ない。
 		await s.delete(5);
 		const result = await s.read(5);
 		t.assertEq(result, null);
 	});
 
-	// ── 9. migration applied on read ─────────────────────────────
+	// ── 9. read 時に migration が適用される ─────────────────────────────
 	t.case('registerMigration applied on read when version mismatches', async function()
 	{
 		await clearAll();
 
-		// Manually inject a v0 blob so migration triggers.
+		// migration が起動するよう v0 blob を手動で注入する。
 		const v0Blob = JSON.stringify({
 			version:     0,
 			timestamp:   Date.now(),
@@ -150,7 +150,7 @@
 		localStorage.setItem('mitiru.save.slot.6.data', v0Blob);
 		localStorage.setItem('mitiru.save.slot.6.meta', JSON.stringify({ version: 0, title: '' }));
 
-		// Register migration 0 → 1.
+		// migration 0 → 1 を登録する。
 		s.registerMigration(0, 1, function(old)
 		{
 			return Object.assign({}, old, { migrated: true, newField: 'added' });
@@ -162,17 +162,17 @@
 		t.assertEq(result.data.migrated, true,    'migration flag applied');
 		t.assertEq(result.data.newField, 'added', 'new field from migration present');
 
-		// Cleanup: remove the test migration so it does not bleed into other tests.
-		// (Cannot remove from _migrations directly — use knowledge of array length.)
+		// 後始末: 他テストに漏れないようテスト用 migration を取り除く。
+		// (_migrations から直接削除できない — 配列長の知識を使う。)
 		await clearAll();
 	});
 
-	// ── 10. multiple migrations chain in order ───────────────────
+	// ── 10. 複数 migration が順番に連鎖する ───────────────────
 	t.case('migrations chain in order: 1→2, 2→3', async function()
 	{
 		await clearAll();
 
-		// Inject v1 blob.
+		// v1 blob を注入する。
 		const v1Blob = JSON.stringify({
 			version:     1,
 			timestamp:   Date.now(),
@@ -185,7 +185,7 @@
 		localStorage.setItem('mitiru.save.slot.7.data', v1Blob);
 		localStorage.setItem('mitiru.save.slot.7.meta', JSON.stringify({ version: 1, title: '' }));
 
-		// Register two chained migrations.
+		// 連鎖する 2 つの migration を登録する。
 		s.registerMigration(1, 2, function(old)
 		{
 			return Object.assign({}, old, { step2: true });
@@ -204,7 +204,7 @@
 		await clearAll();
 	});
 
-	// ── 11. write to invalid slot throws ─────────────────────────
+	// ── 11. 不正な slot への write は throw ─────────────────────────
 	t.case('write to invalid slot index throws synchronously', function()
 	{
 		t.assertThrow(function() { s.write(-1,  {}); }, 'negative slot should throw');
@@ -212,24 +212,24 @@
 		t.assertThrow(function() { s.write(1.5, {}); }, 'fractional slot should throw');
 	});
 
-	// ── 12. large write does not corrupt adjacent slot ────────────
+	// ── 12. 大きな write が隣の slot を壊さない ────────────
 	t.case('~1 MB write to slot 0 does not corrupt slot 1', async function()
 	{
 		await clearAll();
 
-		// Write a known sentinel to slot 1 first.
+		// まず slot 1 に既知の sentinel を書き込む。
 		await s.write(1, { sentinel: 'untouched' });
 
-		// Write ~1 MB of data to slot 0.
-		const bigString = new Array(1024 * 1024 / 2 + 1).join('x');  // ~512 KB chars = ~1 MB UTF-16
+		// slot 0 に ~1 MB のデータを書き込む。
+		const bigString = new Array(1024 * 1024 / 2 + 1).join('x');  // ~512 KB 文字 = ~1 MB UTF-16
 		await s.write(0, { payload: bigString });
 
-		// Verify slot 0 is readable and contains the big data.
+		// slot 0 が読めて大きいデータを含むことを確認する。
 		const r0 = await s.read(0);
 		t.assert(r0 !== null,                 'slot 0 should be readable after large write');
 		t.assert(r0.data.payload.length > 0,  'slot 0 payload should be non-empty');
 
-		// Verify slot 1 sentinel is still intact.
+		// slot 1 の sentinel がまだ無事なことを確認する。
 		const r1 = await s.read(1);
 		t.assert(r1 !== null,                           'slot 1 should still be readable');
 		t.assertEq(r1.data.sentinel, 'untouched',       'slot 1 data should be unaffected');
@@ -237,22 +237,22 @@
 		await clearAll();
 	});
 
-	// ── 13. backend() returns 'localStorage' without cefQuery ────
+	// ── 13. cefQuery 無しで backend() は 'localStorage' を返す ────
 	t.case("backend() returns 'localStorage' when cefQuery is absent", function()
 	{
-		// In a plain browser / test environment cefQuery is not defined.
+		// 素の browser / テスト環境では cefQuery は未定義。
 		const saved = window.cefQuery;
 		delete window.cefQuery;
 		t.assertEq(s.backend(), 'localStorage');
 		if (saved !== undefined) { window.cefQuery = saved; }
 	});
 
-	// ── 14. backend() returns 'cef' when cefQuery is present ─────
+	// ── 14. cefQuery があると backend() は 'cef' を返す ─────
 	t.case("backend() returns 'cef' when cefQuery stub is installed", function()
 	{
 		const saved = window.cefQuery;
 
-		// Install a minimal stub.
+		// 最小限の stub を仕込む。
 		window.cefQuery = function(opts)
 		{
 			if (opts.onSuccess) { opts.onSuccess('{"ok":true}'); }
@@ -261,7 +261,7 @@
 
 		t.assertEq(s.backend(), 'cef');
 
-		// Restore.
+		// 元に戻す。
 		if (saved !== undefined)
 		{
 			window.cefQuery = saved;
@@ -272,12 +272,12 @@
 		}
 	});
 
-	// ── 15. atomic write recovery via staging key ─────────────────
+	// ── 15. staging key による atomic write の復旧 ─────────────────
 	t.case('staging key recovery: read uses staging data when data key is absent', async function()
 	{
 		await clearAll();
 
-		// Simulate an interrupted write: only the staging key was written.
+		// 中断された write を模擬: staging key のみ書き込まれた状態。
 		const blob = JSON.stringify({
 			version:     1,
 			timestamp:   Date.now(),
@@ -288,7 +288,7 @@
 			data:        { recovered: true },
 		});
 		localStorage.setItem('mitiru.save.slot.8.staging', blob);
-		// Intentionally do NOT set .data or .meta.
+		// 意図的に .data や .meta は設定しない。
 
 		const result = await s.read(8);
 		t.assert(result !== null,             'read should recover from staging key');
@@ -304,7 +304,7 @@
 		t.assertEq(s.currentVersion(), s.SCHEMA_VERSION);
 	});
 
-	// ── 17. exportSlot produces a Blob with correct shape ─────────
+	// ── 17. exportSlot は正しい形の Blob を生成する ─────────
 	t.case('exportSlot: produces Blob containing slot data', async function()
 	{
 		await clearAll();
@@ -326,7 +326,7 @@
 		await clearAll();
 	});
 
-	// ── 18. exportSlot on empty slot yields empty slots object ────
+	// ── 18. 空 slot の exportSlot は空の slots object を返す ────
 	t.case('exportSlot: empty slot yields bundle with no slot entry', async function()
 	{
 		await clearAll();
@@ -337,7 +337,7 @@
 		t.assert(bundle.slots['3'] === undefined, 'empty slot should not appear in bundle.slots');
 	});
 
-	// ── 19. exportAll bundles only occupied slots ─────────────────
+	// ── 19. exportAll は使用中の slot だけを束ねる ─────────────────
 	t.case('exportAll: bundles all occupied slots, skips empty ones', async function()
 	{
 		await clearAll();
@@ -358,7 +358,7 @@
 		await clearAll();
 	});
 
-	// ── 20. importSlot round-trip ─────────────────────────────────
+	// ── 20. importSlot の round-trip ─────────────────────────────────
 	t.case('importSlot: imports slot data into target slot', async function()
 	{
 		await clearAll();
@@ -366,7 +366,7 @@
 		const blob = await s.exportSlot(2);
 		await s.delete(2);
 
-		// Confirm deleted before import.
+		// import 前に削除済みであることを確認。
 		t.assertEq(await s.read(2), null, 'slot should be empty before import');
 
 		await s.importSlot(blob, 2);
@@ -379,15 +379,15 @@
 		await clearAll();
 	});
 
-	// ── 21. importSlot: slot absent in bundle is no-op ────────────
+	// ── 21. importSlot: bundle に無い slot は no-op ────────────
 	t.case('importSlot: slot absent in bundle resolves as no-op', async function()
 	{
 		await clearAll();
 		await s.write(0, { sentinel: 'keep' });
 
-		// Export slot 1 (empty) — slot 0 won't be in the bundle.
+		// slot 1 (空) を export — slot 0 は bundle に含まれない。
 		const blob = await s.exportSlot(1);
-		// Import that bundle into slot 0; slot 0 entry is absent → no-op.
+		// その bundle を slot 0 に import; slot 0 の entry が無い → no-op。
 		await s.importSlot(blob, 0);
 
 		const result = await s.read(0);
@@ -397,7 +397,7 @@
 		await clearAll();
 	});
 
-	// ── 22. importAll round-trip ──────────────────────────────────
+	// ── 22. importAll の round-trip ──────────────────────────────────
 	t.case('importAll: restores all exported slots and reports counts', async function()
 	{
 		await clearAll();
@@ -407,7 +407,7 @@
 
 		const blob = await s.exportAll();
 
-		// Wipe before importing.
+		// import 前に消去する。
 		await clearAll();
 
 		const report = await s.importAll(blob);
@@ -427,7 +427,7 @@
 		await clearAll();
 	});
 
-	// ── 23. importSlot rejects engineVersion newer than runtime ───
+	// ── 23. importSlot は runtime より新しい engineVersion を reject ───
 	t.case('importSlot: rejects bundle with engineVersion > SCHEMA_VERSION', async function()
 	{
 		await clearAll();
@@ -449,7 +449,7 @@
 		await clearAll();
 	});
 
-	// ── 24. importAll rejects engineVersion newer than runtime ────
+	// ── 24. importAll は runtime より新しい engineVersion を reject ────
 	t.case('importAll: rejects bundle with engineVersion > SCHEMA_VERSION', async function()
 	{
 		await clearAll();
@@ -470,7 +470,7 @@
 		await clearAll();
 	});
 
-	// ── 25. importSlot invalid slot throws synchronously ──────────
+	// ── 25. importSlot の不正な slot は同期的に throw ──────────
 	t.case('importSlot: invalid slot throws synchronously', function()
 	{
 		const dummyBlob = new Blob(['{}'], { type: 'application/octet-stream' });
@@ -479,29 +479,29 @@
 		t.assertThrow(function() { s.importSlot(dummyBlob, 1.5); }, 'fractional slot should throw');
 	});
 
-	// ── 26. exportSlot invalid slot throws synchronously ──────────
+	// ── 26. exportSlot の不正な slot は同期的に throw ──────────
 	t.case('exportSlot: invalid slot throws synchronously', function()
 	{
 		t.assertThrow(function() { s.exportSlot(-1);  }, 'negative slot should throw');
 		t.assertThrow(function() { s.exportSlot(10);  }, 'slot === MAX_SLOTS should throw');
 	});
 
-	// ── NF-09: multi-step migration chain on import ───────────────
-	// Using version range 100-103 to avoid colliding with existing tests
-	// 9/10 which registered 0→1, 1→2, 2→3.
+	// ── NF-09: import 時の multi-step migration chain ───────────────
+	// 0→1, 1→2, 2→3 を登録した既存テスト 9/10 との衝突を避けるため
+	// version 範囲 100-103 を使う。
 
-	// ── 27. NF-09: single-step migration fires on importSlot ──────
+	// ── 27. NF-09: importSlot で single-step migration が発火 ──────
 	t.case('NF-09: importSlot applies v100→v101 migration', async function()
 	{
 		await clearAll();
 
-		// Register 100 → 101 migration.
+		// 100 → 101 の migration を登録する。
 		s.registerMigration(100, 101, function(old)
 		{
 			return Object.assign({}, old, { upgraded100to101: true });
 		});
 
-		// Manually inject a v100 blob into a slot and export it.
+		// v100 blob を slot に手動注入し export する。
 		const rawBlob = JSON.stringify({
 			version:          100,
 			timestamp:        Date.now(),
@@ -524,12 +524,12 @@
 		await clearAll();
 	});
 
-	// ── 28. NF-09: three-step chain 100→101→102→103 on importAll ──
+	// ── 28. NF-09: importAll で three-step chain 100→101→102→103 ──
 	t.case('NF-09: importAll applies full v100→v101→v102→v103 chain', async function()
 	{
 		await clearAll();
 
-		// Migrations 101→102 and 102→103 — 100→101 already registered in test 27.
+		// migration 101→102 と 102→103 — 100→101 は test 27 で登録済み。
 		s.registerMigration(101, 102, function(old)
 		{
 			return Object.assign({}, old, { upgraded101to102: true });
@@ -539,7 +539,7 @@
 			return Object.assign({}, old, { upgraded102to103: true });
 		});
 
-		// Build a bundle with a v100 blob in slot 4.
+		// slot 4 に v100 blob を持つ bundle を構築する。
 		const rawBlob = {
 			version:          100,
 			timestamp:        Date.now(),
@@ -566,18 +566,18 @@
 		await clearAll();
 	});
 
-	// ── 29. NF-09: migration that throws produces a rejection ─────
+	// ── 29. NF-09: throw する migration は rejection を生む ─────
 	t.case('NF-09: broken migration in importSlot rejects promise', async function()
 	{
 		await clearAll();
 
-		// Register a migration that always throws.
+		// 常に throw する migration を登録する。
 		s.registerMigration(103, 104, function(_old)
 		{
 			throw new Error('intentional migration failure');
 		});
 
-		// Bundle with a v103 blob to trigger the 103→104 migration.
+		// 103→104 の migration を起動するため v103 blob 入りの bundle。
 		const rawBlob = {
 			version:          103,
 			timestamp:        Date.now(),

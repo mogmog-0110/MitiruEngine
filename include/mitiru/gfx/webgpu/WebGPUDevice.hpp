@@ -33,7 +33,7 @@
 namespace mitiru::gfx
 {
 
-// ── WGSL default shaders for 2D sprite rendering ──────────────────────
+// ── 2Dスプライト描画用のデフォルトWGSLシェーダー ──────────────────────
 
 /// @brief 2D頂点シェーダー（WGSL）
 /// @details 正射影変換を適用し、頂点色・テクスチャ座標をフラグメントシェーダーに渡す。
@@ -139,7 +139,7 @@ public:
 
     void setRenderTarget(IRenderTarget*) override
     {
-        // WebGPU render targets are handled via render pass descriptors
+        // WebGPUのレンダーターゲットはrender pass descriptor経由で扱う
     }
 
     void clearRenderTarget(const sgc::Colorf& color) override
@@ -153,7 +153,7 @@ public:
 
     void setPipeline(IPipeline*) override
     {
-        // Pipeline binding handled by WebGPU render pipeline objects
+        // パイプラインのバインドはWebGPUのrender pipelineオブジェクトが扱う
     }
 
     void setVertexBuffer(IBuffer* buffer) override

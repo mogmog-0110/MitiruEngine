@@ -516,7 +516,7 @@ private:
 				using T = std::decay_t<decltype(v)>;
 				if constexpr (std::is_same_v<T, std::monostate>)
 				{
-					// skip
+					// 何もしない
 				}
 				else if constexpr (std::is_same_v<T, bool>)
 				{

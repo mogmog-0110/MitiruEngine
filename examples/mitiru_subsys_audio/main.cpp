@@ -1,23 +1,23 @@
-// mitiru_subsys_audio — axis 3 (per-system isolation) P3 deliverable.
+// mitiru_subsys_audio — axis 3 (全 system 単独起動) の P3 成果物。
 //
-// Boots the audio subsystem with no game logic, no CEF, no inspector — just
-// Engine + Screen for the meter HUD + miniaudio ma_device pulling samples
-// from SineSynth on the audio thread. Mirrors mitiru_subsys_renderer in
-// structure: one .cpp, < 150 lines, silver-gray Saturn surface.
+// audio subsystem を単独起動する: ゲームロジック・CEF・inspector なし。
+// Engine + Screen (meter HUD 用) + audio thread で SineSynth からサンプルを
+// 引く miniaudio ma_device のみ。構成は mitiru_subsys_renderer に倣う:
+// 単一 .cpp、150 行未満、銀灰の Saturn surface。
 //
-// What you see:
-//   - silver-gray background
-//   - title "audio subsystem - 440Hz test tone" (top)
-//   - large Saturn red level meter bar (center) driven by RMS of audio thread output
-//   - hint "press ESC to quit" (bottom)
+// 見えるもの:
+//   - 銀灰の背景
+//   - タイトル "audio subsystem - 440Hz test tone" (上)
+//   - audio thread 出力の RMS で動く Saturn red の大きなレベルメーター (中央)
+//   - ヒント "press ESC to quit" (下)
 //
-// What you hear: a continuous 440Hz sine on the default output device.
+// 聞こえるもの: デフォルト出力デバイスで鳴り続ける 440Hz の sine。
 //
-// Controls: ESC quits. Auto-exits at 5.0s for unattended capture.
+// 操作: ESC で終了。無人キャプチャ用に 5.0s で自動終了。
 //
-// Why this exists (axis 3 / "全 system 単独起動"):
-//   - Same Engine class, audio subsystem only — same isolation guarantee the
-//     renderer subsystem example proves, repeated for a non-graphics system.
+// 存在理由 (axis 3 / 全 system 単独起動):
+//   - 同じ Engine class で audio subsystem のみ — renderer subsystem 例が示す
+//     のと同じ単独起動保証を、非グラフィック系で繰り返す。
 
 #include <atomic>
 #include <cmath>
@@ -28,8 +28,8 @@
 
 namespace {
 
-constexpr sgc::Colorf kPaperBg     {0.784f, 0.784f, 0.784f, 1.0f};  // #c8c8c8 silver
-constexpr sgc::Colorf kPaperEdge   {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 ink border
+constexpr sgc::Colorf kPaperBg     {0.784f, 0.784f, 0.784f, 1.0f};  // #c8c8c8 銀
+constexpr sgc::Colorf kPaperEdge   {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 墨の縁
 constexpr sgc::Colorf kInk         {0.063f, 0.063f, 0.063f, 1.0f};  // #101010
 constexpr sgc::Colorf kMute        {0.290f, 0.290f, 0.290f, 1.0f};  // #4a4a4a
 constexpr sgc::Colorf kAmberAccent {0.784f, 0.0f,   0.173f, 1.0f};  // #c8002c Saturn red
@@ -37,7 +37,7 @@ constexpr sgc::Colorf kAmberAccent {0.784f, 0.0f,   0.173f, 1.0f};  // #c8002c S
 constexpr float kAutoExitSec = 5.0f;
 constexpr int   kSampleRate  = 48000;
 
-// Shared between audio thread (writer) and main thread (reader).
+// audio thread (writer) と main thread (reader) で共有。
 std::atomic<float> g_levelRms{0.0f};
 
 void audioDataCallback(ma_device* device, void* output, const void*, ma_uint32 frameCount)
@@ -46,7 +46,7 @@ void audioDataCallback(ma_device* device, void* output, const void*, ma_uint32 f
     auto* out   = static_cast<float*>(output);
     synth->render(out, frameCount, kSampleRate);
 
-    // RMS over the chunk — cheap level meter for the HUD.
+    // チャンクの RMS — HUD 用の軽量レベルメーター。
     float sumSq = 0.0f;
     for (ma_uint32 i = 0; i < frameCount; ++i) { sumSq += out[i] * out[i]; }
     const float rms = std::sqrt(sumSq / static_cast<float>(frameCount));
@@ -124,11 +124,11 @@ private:
         const float barH  = 56.0f;
         const float x     = (m_screenW - barW) * 0.5f;
         const float y     = (m_screenH - barH) * 0.5f;
-        // Track outline.
+        // トラックの外枠。
         screen.drawRect(sgc::Rectf{x - 2.0f, y - 2.0f, barW + 4.0f, barH + 4.0f}, kPaperEdge);
-        // Track interior — light gray #d8d8d8 inset against silver surface.
+        // トラック内部 — 銀の surface に対して明灰 #d8d8d8 を凹ませる。
         screen.drawRect(sgc::Rectf{x, y, barW, barH}, sgc::Colorf{0.847f, 0.847f, 0.847f, 1.0f});
-        // Fill — RMS amplified so a 0.30-gain sine still visibly travels.
+        // フィル — gain 0.30 の sine でも見えるよう RMS を増幅。
         const float norm = std::clamp(m_level * 4.0f, 0.0f, 1.0f);
         screen.drawRect(sgc::Rectf{x, y, barW * norm, barH}, kAmberAccent);
     }

@@ -1,59 +1,59 @@
 /*!
- * mitiru_router.js — single-page scene router (F-01)
+ * mitiru_router.js — single-page シーンルーター (F-01)
  *
- * Manages scene transitions within a CEF/browser single-page application.
- * Scenes are registered with a route key; navigation loads the scene's HTML
- * into an <iframe> (or a host element) and runs lifecycle hooks.
+ * CEF/ブラウザの single-page application 内のシーン遷移を管理する。
+ * シーンは route key で register され、navigation はシーンの HTML を
+ * <iframe> (または host 要素) に読み込んでライフサイクルフックを実行する。
  *
- * Implements:
- *   window.mitiru.router.register(key, descriptor)  — register / replace a scene
- *   window.mitiru.router.navigate(key, params?)      — transition to a scene
- *   window.mitiru.router.current()                   — { key, params } or null
- *   window.mitiru.router.back()                      — pop history stack (1 level)
- *   window.mitiru.router.onSceneReady()              — called by scene page on DOMContentLoaded
+ * 提供 API:
+ *   window.mitiru.router.register(key, descriptor)  — シーンを登録 / 差し替え
+ *   window.mitiru.router.navigate(key, params?)      — シーンへ遷移
+ *   window.mitiru.router.current()                   — { key, params } または null
+ *   window.mitiru.router.back()                      — 履歴スタックを 1 段 pop
+ *   window.mitiru.router.onSceneReady()              — シーンページが DOMContentLoaded で呼ぶ
  *
- * Scene descriptor:
+ * scene descriptor:
  *   {
- *     url:     string,           // path to scene's HTML (relative to the game root)
- *     preload: boolean,          // reserved — emits console.warn, not yet implemented
- *     in?:     function(params), // transition-in hook (runs after DOMContentLoaded in scene)
- *     out?:    function(),       // transition-out hook (runs before iframe src changes)
+ *     url:     string,           // シーン HTML へのパス (ゲームルート相対)
+ *     preload: boolean,          // 予約 — console.warn を出すのみ、未実装
+ *     in?:     function(params), // transition-in フック (シーンの DOMContentLoaded 後に実行)
+ *     out?:    function(),       // transition-out フック (iframe src 変更前に実行)
  *   }
  *
- * Transition sequence:
- *   1. Call current scene's `out()` hook (if any)
- *   2. Fade document.body to opacity 0 (CSS transition, FADE_MS)
- *   3. Set iframe src to new scene URL
- *   4. Scene page calls `mitiru.router.onSceneReady()` on its DOMContentLoaded
- *   5. Fade document.body back to opacity 1
- *   6. Call new scene's `in(params)` hook (if any)
+ * 遷移シーケンス:
+ *   1. 現在シーンの `out()` フックを呼ぶ (あれば)
+ *   2. document.body を opacity 0 へフェード (CSS transition、FADE_MS)
+ *   3. iframe src を新シーン URL に設定
+ *   4. シーンページが自身の DOMContentLoaded で `mitiru.router.onSceneReady()` を呼ぶ
+ *   5. document.body を opacity 1 へ戻すフェード
+ *   6. 新シーンの `in(params)` フックを呼ぶ (あれば)
  *
- * History:
- *   navigate() pushes onto an internal stack (max HISTORY_MAX entries).
- *   back() pops and navigates to the previous entry — no infinite loop guard
- *   needed because back() does not push onto the stack.
+ * 履歴:
+ *   navigate() は内部スタックに push する (最大 HISTORY_MAX 件)。
+ *   back() は pop して前の entry へ navigate する — back() はスタックに push しないので
+ *   無限ループ防止ガードは不要。
  *
- * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-01
+ * 仕様: docs/feedback-from-kaerucrape/2026-04-24.md F-01
  */
 (function(global)
 {
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.router) { return; }  // already loaded
+	if (mitiru.router) { return; }  // 既に読み込み済み
 
-	// ── constants ─────────────────────────────────────────────────
-	const FADE_MS     = 200;   // body opacity fade duration (ms)
-	const HISTORY_MAX = 50;    // max navigation history entries
+	// ── 定数 ─────────────────────────────────────────────────
+	const FADE_MS     = 200;   // body opacity フェード時間 (ms)
+	const HISTORY_MAX = 50;    // navigation 履歴の最大件数
 
-	// ── internal state ────────────────────────────────────────────
+	// ── 内部状態 ────────────────────────────────────────────
 	const _registry = Object.create(null);  // key -> descriptor
 	let   _current  = null;                 // { key, params, descriptor }
-	const _history  = [];                   // [{ key, params }, ...]  (oldest → newest)
-	let   _pending  = null;                 // Promise resolving when scene signals ready
-	let   _pendingResolve = null;           // resolve fn for _pending
+	const _history  = [];                   // [{ key, params }, ...]  (古い → 新しい)
+	let   _pending  = null;                 // シーンが ready を通知したとき resolve する Promise
+	let   _pendingResolve = null;           // _pending の resolve 関数
 
-	// ── helpers ───────────────────────────────────────────────────
+	// ── ヘルパ ───────────────────────────────────────────────────
 	function _getIframe()
 	{
 		let el = document.getElementById('mitiru-scene-frame');
@@ -83,12 +83,12 @@
 
 	function _waitSceneReady()
 	{
-		// The scene page calls mitiru.router.onSceneReady() to resolve this.
+		// シーンページが mitiru.router.onSceneReady() を呼んでこれを resolve する。
 		_pending = new Promise(function(resolve)
 		{
 			_pendingResolve = resolve;
 		});
-		// Timeout safety — if scene never calls onSceneReady, unblock after 5 s.
+		// タイムアウト安全策 — シーンが onSceneReady を呼ばなければ 5 秒後に解除。
 		const timeout = setTimeout(function()
 		{
 			if (_pendingResolve)
@@ -105,12 +105,12 @@
 		});
 	}
 
-	// ── public API ────────────────────────────────────────────────
+	// ── 公開 API ────────────────────────────────────────────────
 	const router = mitiru.router = Object.create(null);
 
 	/**
-	 * Register or replace a scene.
-	 * Second call with same key replaces the descriptor (cleaner semantics).
+	 * シーンを登録、または差し替える。
+	 * 同じ key で 2 回目を呼ぶと descriptor を差し替える (セマンティクスが明快)。
 	 */
 	router.register = function(key, descriptor)
 	{
@@ -126,7 +126,7 @@
 		{
 			console.warn('[mitiru.router] preload: true is reserved and not yet implemented for key "' + key + '"');
 		}
-		// Store an immutable copy.
+		// immutable なコピーを保存する。
 		_registry[key] = Object.freeze({
 			url:     descriptor.url,
 			preload: descriptor.preload || false,
@@ -136,8 +136,8 @@
 	};
 
 	/**
-	 * Navigate to a registered scene.
-	 * Returns a Promise that resolves once the scene is fully transitioned in.
+	 * 登録済みシーンへ navigate する。
+	 * シーンの遷移インが完了したとき resolve する Promise を返す。
 	 */
 	router.navigate = function(key, params)
 	{
@@ -151,7 +151,7 @@
 		return Promise.resolve()
 			.then(function()
 			{
-				// 1. Run out() hook of the current scene.
+				// 1. 現在シーンの out() フックを実行。
 				if (_current && _current.descriptor.out)
 				{
 					try { return _current.descriptor.out(); }
@@ -160,13 +160,13 @@
 			})
 			.then(function()
 			{
-				// 2. Fade out.
+				// 2. フェードアウト。
 				_setFade(0, FADE_MS);
 				return _waitMs(FADE_MS);
 			})
 			.then(function()
 			{
-				// 3. Push history (only when navigating forward, not via back()).
+				// 3. 履歴に push (前進ナビゲーション時のみ。back() 経由では push しない)。
 				if (_current)
 				{
 					_history.push({ key: _current.key, params: _current.params });
@@ -176,7 +176,7 @@
 					}
 				}
 
-				// 4. Set new current and update iframe src.
+				// 4. 新しい current を設定し iframe src を更新。
 				_current = { key: key, params: params, descriptor: descriptor };
 				const iframe = _getIframe();
 				const readyPromise = _waitSceneReady();
@@ -185,13 +185,13 @@
 			})
 			.then(function()
 			{
-				// 5. Fade in.
+				// 5. フェードイン。
 				_setFade(1, FADE_MS);
 				return _waitMs(FADE_MS);
 			})
 			.then(function()
 			{
-				// 6. Run in() hook of the new scene.
+				// 6. 新シーンの in() フックを実行。
 				if (descriptor.in)
 				{
 					try { return descriptor.in(params); }
@@ -201,7 +201,7 @@
 	};
 
 	/**
-	 * Return the current scene descriptor { key, params } or null.
+	 * 現在のシーン記述 { key, params }、または null を返す。
 	 */
 	router.current = function()
 	{
@@ -210,15 +210,15 @@
 	};
 
 	/**
-	 * Navigate back one level in the history stack.
-	 * No-op (resolves immediately) if history is empty.
+	 * 履歴スタックを 1 段戻る。
+	 * 履歴が空なら no-op (即 resolve)。
 	 */
 	router.back = function()
 	{
 		if (_history.length === 0) { return Promise.resolve(); }
 		const prev = _history.pop();
 
-		// Navigate without pushing onto history again.
+		// 履歴に再 push せずに navigate する。
 		const descriptor = _registry[prev.key];
 		if (!descriptor)
 		{
@@ -265,10 +265,10 @@
 	};
 
 	/**
-	 * Called by a scene page from its own DOMContentLoaded handler.
-	 * Signals the router that the scene is mounted and ready for its in() hook.
+	 * シーンページが自身の DOMContentLoaded ハンドラから呼ぶ。
+	 * シーンが mount され in() フックの準備が整ったことを router に通知する。
 	 *
-	 * Pattern inside each scene's HTML:
+	 * 各シーンの HTML 内のパターン:
 	 *
 	 *   <script>
 	 *     document.addEventListener('DOMContentLoaded', function() {
@@ -288,7 +288,7 @@
 		}
 	};
 
-	// Expose history length for testing / debugging.
+	// テスト / デバッグ用に履歴の長さを公開する。
 	Object.defineProperty(router, '_historyLength', {
 		get: function() { return _history.length; },
 		enumerable: false,

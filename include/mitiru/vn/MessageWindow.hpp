@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file MessageWindow.hpp
-/// @brief Visual novel message window component.
-/// @details Full-featured dialogue display with ADV/NVL modes, speaker name plate,
-///          character-by-character text reveal, click-wait indicator, window skins
-///          (solid/9-slice/custom), and show/hide animations.
+/// @brief VN用メッセージウィンドウコンポーネント
+/// @details ADV/NVLモード、話者ネームプレート、1文字ずつのテキスト表示、
+///          クリック待ちインジケータ、window skin（単色/9-slice/カスタム）、
+///          表示/非表示アニメーションを備えた多機能なダイアログ表示。
 
 #include <algorithm>
 #include <cmath>
@@ -23,61 +23,61 @@
 namespace mitiru::vn
 {
 
-// ── State machine ────────────────────────────────────────────
+// ── 状態機械 ────────────────────────────────────────────
 
-/// @brief Message window visibility state.
+/// @brief メッセージウィンドウの表示状態
 enum class MessageWindowState : std::uint8_t
 {
-	Hidden,        ///< Not visible.
-	Appearing,     ///< Show animation in progress.
-	Idle,          ///< Visible but no text being displayed.
-	Displaying,    ///< Character-by-character reveal in progress.
-	WaitingClick,  ///< All text shown, waiting for player click.
-	Disappearing   ///< Hide animation in progress.
+	Hidden,        ///< 非表示
+	Appearing,     ///< 表示アニメーション進行中
+	Idle,          ///< 表示中だがテキスト表示なし
+	Displaying,    ///< 1文字ずつ表示中
+	WaitingClick,  ///< 全テキスト表示済み、プレイヤーのクリック待ち
+	Disappearing   ///< 非表示アニメーション進行中
 };
 
-/// @brief Display mode for the message window.
+/// @brief メッセージウィンドウの表示モード
 enum class MessageMode : std::uint8_t
 {
-	ADV,   ///< Bottom text box (standard adventure game).
-	NVL    ///< Full-screen text with scrolling (novel mode).
+	ADV,   ///< 画面下部のテキストボックス（標準的なアドベンチャーゲーム）
+	NVL    ///< スクロール付き全画面テキスト（ノベルモード）
 };
 
-/// @brief Show/hide animation type.
+/// @brief 表示/非表示アニメーションの種別
 enum class WindowAnimation : std::uint8_t
 {
-	None,      ///< Instant show/hide.
-	Fade,      ///< Alpha fade.
-	SlideUp    ///< Slide up from bottom.
+	None,      ///< 即時表示/非表示
+	Fade,      ///< アルファフェード
+	SlideUp    ///< 下からスライドアップ
 };
 
 // ── Window skin ──────────────────────────────────────────────
 
-/// @brief Window skin type selector.
+/// @brief window skin の種別セレクタ
 enum class WindowSkinType : std::uint8_t
 {
-	SolidColor,     ///< Flat colour with border and alpha.
-	Image9Slice,    ///< 9-slice scalable background.
-	Custom          ///< User-provided render callback.
+	SolidColor,     ///< 枠線・アルファ付きの単色
+	Image9Slice,    ///< 9-slice 拡縮可能な背景
+	Custom          ///< ユーザー指定の描画コールバック
 };
 
-/// @brief Solid-colour skin parameters.
+/// @brief 単色 skin のパラメータ
 struct SolidColorSkin
 {
 	sgc::Colorf fillColor{0.0f, 0.0f, 0.0f, 0.75f};
 	sgc::Colorf borderColor{0.4f, 0.4f, 0.4f, 1.0f};
 	float borderWidth = 2.0f;
-	float cornerRadius = 0.0f;  ///< Reserved for future rounded corners.
+	float cornerRadius = 0.0f;  ///< 将来の角丸用に予約
 };
 
-/// @brief Custom render callback signature.
-/// @param batch  SpriteBatch to draw into.
-/// @param rect   Window rectangle.
-/// @param alpha  Current alpha (from animation).
+/// @brief カスタム描画コールバックのシグネチャ
+/// @param batch  描画先の SpriteBatch
+/// @param rect   ウィンドウ矩形
+/// @param alpha  現在のアルファ（アニメーション由来）
 using CustomSkinRenderer = std::function<
 	void(render::SpriteBatch& batch, const sgc::Rectf& rect, float alpha)>;
 
-/// @brief Window skin configuration.
+/// @brief window skin の設定
 struct WindowSkin
 {
 	WindowSkinType type = WindowSkinType::SolidColor;
@@ -86,28 +86,28 @@ struct WindowSkin
 	CustomSkinRenderer customRenderer;
 };
 
-// ── Click-wait indicator ─────────────────────────────────────
+// ── クリック待ちインジケータ ─────────────────────────────────────
 
-/// @brief Configuration for the click-wait indicator glyph.
+/// @brief クリック待ちインジケータのグリフ設定
 struct ClickWaitIndicator
 {
 	bool enabled         = true;
-	float size           = 12.0f;        ///< Indicator size in pixels.
-	float offsetX        = -20.0f;       ///< Offset from right edge.
-	float offsetY        = -20.0f;       ///< Offset from bottom edge.
-	float blinkSpeed     = 3.0f;         ///< Blinks per second.
+	float size           = 12.0f;        ///< インジケータのサイズ（ピクセル）
+	float offsetX        = -20.0f;       ///< 右端からのオフセット
+	float offsetY        = -20.0f;       ///< 下端からのオフセット
+	float blinkSpeed     = 3.0f;         ///< 1秒あたりの点滅回数
 	sgc::Colorf color{1.0f, 1.0f, 1.0f, 1.0f};
 };
 
-// ── Text reveal callback ─────────────────────────────────────
+// ── テキスト表示コールバック ─────────────────────────────────────
 
-/// @brief Callback for rendering text.
-/// @param batch  SpriteBatch.
-/// @param text   Full text string.
-/// @param visibleChars Number of characters to show (0 = all).
-/// @param area   Text drawing area.
-/// @param color  Text colour.
-/// @param fontSize Text size.
+/// @brief テキスト描画用コールバック
+/// @param batch  SpriteBatch
+/// @param text   全文文字列
+/// @param visibleChars 表示する文字数（0 = 全部）
+/// @param area   テキスト描画領域
+/// @param color  テキスト色
+/// @param fontSize テキストサイズ
 using TextRenderCallback = std::function<
 	void(render::SpriteBatch& batch,
 	     const std::string& text,
@@ -116,7 +116,7 @@ using TextRenderCallback = std::function<
 	     const sgc::Colorf& color,
 	     float fontSize)>;
 
-/// @brief Callback for rendering the speaker name.
+/// @brief 話者名描画用コールバック
 using NameRenderCallback = std::function<
 	void(render::SpriteBatch& batch,
 	     const std::string& name,
@@ -124,19 +124,19 @@ using NameRenderCallback = std::function<
 	     const sgc::Colorf& color,
 	     float fontSize)>;
 
-// ── Configuration ────────────────────────────────────────────
+// ── 設定 ────────────────────────────────────────────────
 
-/// @brief Full configuration for the message window.
+/// @brief メッセージウィンドウの全設定
 struct MessageWindowConfig
 {
-	// Layout
-	sgc::Rectf bounds{0.0f, 700.0f, 1920.0f, 300.0f};  ///< Window bounds.
+	// レイアウト
+	sgc::Rectf bounds{0.0f, 700.0f, 1920.0f, 300.0f};  ///< ウィンドウ範囲
 	float paddingLeft   = 24.0f;
 	float paddingRight  = 24.0f;
 	float paddingTop    = 20.0f;
 	float paddingBottom = 20.0f;
 
-	// Name plate
+	// ネームプレート
 	bool showNamePlate          = true;
 	sgc::Rectf namePlateBounds{24.0f, 660.0f, 220.0f, 40.0f};
 	sgc::Colorf namePlateColor{0.0f, 0.0f, 0.0f, 0.85f};
@@ -144,42 +144,42 @@ struct MessageWindowConfig
 	sgc::Colorf nameTextColor{1.0f, 1.0f, 1.0f, 1.0f};
 	float nameFontSize = 18.0f;
 
-	// Text
+	// テキスト
 	sgc::Colorf textColor{1.0f, 1.0f, 1.0f, 1.0f};
 	float fontSize       = 22.0f;
-	float charsPerSecond = 30.0f;  ///< Character reveal speed.
+	float charsPerSecond = 30.0f;  ///< 文字表示速度
 
-	// Mode
+	// モード
 	MessageMode mode = MessageMode::ADV;
 
-	// NVL-specific
-	float nvlMaxLines    = 20;           ///< Maximum visible lines in NVL mode.
+	// NVL専用
+	float nvlMaxLines    = 20;           ///< NVLモードでの最大表示行数
 	sgc::Rectf nvlBounds{100.0f, 50.0f, 1720.0f, 980.0f};
 
 	// Skin
 	WindowSkin skin;
 
-	// Animation
+	// アニメーション
 	WindowAnimation showAnimation = WindowAnimation::Fade;
 	WindowAnimation hideAnimation = WindowAnimation::Fade;
 	float animationDurationSec    = 0.25f;
 
-	// Click-wait indicator
+	// クリック待ちインジケータ
 	ClickWaitIndicator clickWait;
 };
 
-// ── NVL line entry ───────────────────────────────────────────
+// ── NVL行エントリ ───────────────────────────────────────────
 
-/// @brief A single line in NVL mode's accumulated text buffer.
+/// @brief NVLモードの蓄積テキストバッファ内の1行
 struct NvlLine
 {
-	std::string speaker;  ///< Speaker name (empty for narration).
-	std::string text;     ///< Line text.
+	std::string speaker;  ///< 話者名（地の文なら空）
+	std::string text;     ///< 行テキスト
 };
 
-// ── MessageWindow class ──────────────────────────────────────
+// ── MessageWindow クラス ──────────────────────────────────────
 
-/// @brief Main dialogue display component for visual novels.
+/// @brief VN用のメインダイアログ表示コンポーネント
 ///
 /// @code
 /// mitiru::vn::MessageWindowConfig cfg;
@@ -205,79 +205,79 @@ class MessageWindow
 	MessageWindowConfig m_config;
 	MessageWindowState m_state = MessageWindowState::Hidden;
 
-	// Text state
+	// テキスト状態
 	std::string m_speaker;
 	std::string m_text;
 	std::size_t m_visibleChars = 0;
 	float m_charTimer = 0.0f;
 
-	// NVL accumulated lines
+	// NVL蓄積行
 	std::vector<NvlLine> m_nvlLines;
 	bool m_nvlNewLineRevealing = false;
 
-	// Animation state
-	float m_animProgress = 0.0f;  ///< 0 = start, 1 = complete.
-	float m_alpha = 0.0f;         ///< Current effective alpha.
+	// アニメーション状態
+	float m_animProgress = 0.0f;  ///< 0 = 開始, 1 = 完了
+	float m_alpha = 0.0f;         ///< 現在の実効アルファ
 
-	// Click-wait indicator
+	// クリック待ちインジケータ
 	float m_indicatorTimer = 0.0f;
 
-	// Page history for in-window scroll (current page only)
+	// ウィンドウ内スクロール用のページ履歴（現在ページのみ）
 	std::vector<std::string> m_pageHistory;
 	int m_pageHistoryIndex = -1;
 
-	// 9-slice renderer (lazy-initialized)
+	// 9-slice レンダラ（遅延初期化）
 	NineSlice m_nineSlice{NineSliceConfig{}};
 
-	// Render callbacks
+	// 描画コールバック
 	TextRenderCallback m_textRenderer;
 	NameRenderCallback m_nameRenderer;
 
 public:
-	/// @brief Construct with the given configuration.
-	/// @param config Window configuration.
+	/// @brief 指定した設定で構築する
+	/// @param config ウィンドウ設定
 	explicit MessageWindow(MessageWindowConfig config = {})
 		: m_config(std::move(config))
 		, m_nineSlice(m_config.skin.nineSlice)
 	{
 	}
 
-	// ── State queries ────────────────────────────────────────
+	// ── 状態クエリ ────────────────────────────────────────
 
-	/// @brief Current state.
+	/// @brief 現在の状態
 	[[nodiscard]] MessageWindowState state() const noexcept { return m_state; }
 
-	/// @brief Current display mode.
+	/// @brief 現在の表示モード
 	[[nodiscard]] MessageMode mode() const noexcept { return m_config.mode; }
 
-	/// @brief Current effective alpha (0-1).
+	/// @brief 現在の実効アルファ（0-1）
 	[[nodiscard]] float alpha() const noexcept { return m_alpha; }
 
-	/// @brief Whether all text is fully revealed.
+	/// @brief 全テキストが完全に表示されているか
 	[[nodiscard]] bool isTextComplete() const noexcept
 	{
 		return m_visibleChars >= m_text.size();
 	}
 
-	/// @brief Whether the window is visible (any state except Hidden).
+	/// @brief ウィンドウが表示中か（Hidden以外のすべての状態）
 	[[nodiscard]] bool isVisible() const noexcept
 	{
 		return m_state != MessageWindowState::Hidden;
 	}
 
-	/// @brief Current speaker name.
+	/// @brief 現在の話者名
 	[[nodiscard]] const std::string& speaker() const noexcept { return m_speaker; }
 
-	/// @brief Current full text.
+	/// @brief 現在の全文
 	[[nodiscard]] const std::string& text() const noexcept { return m_text; }
 
-	/// @brief Number of visible characters.
+	/// @brief 表示中の文字数
 	[[nodiscard]] std::size_t visibleChars() const noexcept { return m_visibleChars; }
 
-	/// @brief Access configuration.
+	/// @brief 設定へアクセスする
 	[[nodiscard]] const MessageWindowConfig& config() const noexcept { return m_config; }
 
-	/// @brief Active window bounds (accounts for ADV/NVL mode).
+	/// @brief 有効なウィンドウ範囲（ADV/NVLモードを考慮）
 	[[nodiscard]] const sgc::Rectf& activeBounds() const noexcept
 	{
 		return (m_config.mode == MessageMode::NVL)
@@ -285,27 +285,27 @@ public:
 			: m_config.bounds;
 	}
 
-	// ── Configuration ────────────────────────────────────────
+	// ── 設定 ────────────────────────────────────────────
 
-	/// @brief Replace the full configuration.
+	/// @brief 設定を丸ごと差し替える
 	void setConfig(MessageWindowConfig config)
 	{
 		m_config = std::move(config);
 		m_nineSlice.setConfig(m_config.skin.nineSlice);
 	}
 
-	/// @brief Set display mode.
+	/// @brief 表示モードを設定する
 	void setMode(MessageMode mode) noexcept { m_config.mode = mode; }
 
-	/// @brief Set text render callback.
+	/// @brief テキスト描画コールバックを設定する
 	void setTextRenderer(TextRenderCallback cb) { m_textRenderer = std::move(cb); }
 
-	/// @brief Set name render callback.
+	/// @brief 話者名描画コールバックを設定する
 	void setNameRenderer(NameRenderCallback cb) { m_nameRenderer = std::move(cb); }
 
-	// ── Commands ─────────────────────────────────────────────
+	// ── コマンド ─────────────────────────────────────────────
 
-	/// @brief Show the window with animation.
+	/// @brief アニメーション付きでウィンドウを表示する
 	void show()
 	{
 		if (m_state != MessageWindowState::Hidden
@@ -327,7 +327,7 @@ public:
 		}
 	}
 
-	/// @brief Hide the window with animation.
+	/// @brief アニメーション付きでウィンドウを非表示にする
 	void hide()
 	{
 		if (m_state == MessageWindowState::Hidden
@@ -349,9 +349,9 @@ public:
 		}
 	}
 
-	/// @brief Set new dialogue text.
-	/// @param speaker Speaker name (empty for narration).
-	/// @param text Dialogue text.
+	/// @brief 新しいダイアログテキストを設定する
+	/// @param speaker 話者名（地の文なら空）
+	/// @param text ダイアログテキスト
 	void setText(const std::string& speaker, const std::string& text)
 	{
 		if (m_config.mode == MessageMode::NVL)
@@ -359,7 +359,7 @@ public:
 			m_nvlLines.push_back(NvlLine{speaker, text});
 			m_nvlNewLineRevealing = true;
 
-			// Trim old lines beyond limit.
+			// 上限を超えた古い行を切り詰める
 			const auto maxLines = static_cast<std::size_t>(m_config.nvlMaxLines);
 			while (m_nvlLines.size() > maxLines)
 			{
@@ -367,7 +367,7 @@ public:
 			}
 		}
 
-		// Save to page history.
+		// ページ履歴に保存する
 		if (!m_text.empty())
 		{
 			m_pageHistory.push_back(m_text);
@@ -386,7 +386,7 @@ public:
 		}
 	}
 
-	/// @brief Instantly reveal all remaining text.
+	/// @brief 残りのテキストを即座に全表示する
 	void revealAll() noexcept
 	{
 		m_visibleChars = m_text.size();
@@ -397,30 +397,30 @@ public:
 		m_nvlNewLineRevealing = false;
 	}
 
-	/// @brief Advance past click-wait (call when player clicks).
+	/// @brief クリック待ちを進める（プレイヤーがクリックしたときに呼ぶ）
 	void advance()
 	{
 		if (m_state == MessageWindowState::Displaying)
 		{
-			// First click: instant reveal.
+			// 1回目のクリック: 即時全表示
 			revealAll();
 		}
 		else if (m_state == MessageWindowState::WaitingClick)
 		{
-			// Second click: ready for next text.
+			// 2回目のクリック: 次のテキストの準備完了
 			m_state = MessageWindowState::Idle;
 		}
 	}
 
-	/// @brief Clear NVL mode accumulated text.
+	/// @brief NVLモードの蓄積テキストをクリアする
 	void clearNvl()
 	{
 		m_nvlLines.clear();
 		m_nvlNewLineRevealing = false;
 	}
 
-	/// @brief Scroll page history up (show previous text).
-	/// @return true if scrolled, false if at beginning.
+	/// @brief ページ履歴を上にスクロールする（前のテキストを表示）
+	/// @return スクロールしたらtrue、先頭ならfalse
 	[[nodiscard]] bool scrollHistoryUp()
 	{
 		if (m_pageHistory.empty()) return false;
@@ -440,8 +440,8 @@ public:
 		return true;
 	}
 
-	/// @brief Scroll page history down (show next text).
-	/// @return true if scrolled back to current, false if not in history.
+	/// @brief ページ履歴を下にスクロールする（次のテキストを表示）
+	/// @return 現在テキストまで戻ったらtrue、履歴中でなければfalse
 	[[nodiscard]] bool scrollHistoryDown()
 	{
 		if (m_pageHistoryIndex < 0) return false;
@@ -452,15 +452,15 @@ public:
 		}
 		else
 		{
-			m_pageHistoryIndex = -1;  // Return to current text.
+			m_pageHistoryIndex = -1;  // 現在テキストへ戻る
 		}
 		return true;
 	}
 
-	// ── Update ───────────────────────────────────────────────
+	// ── 更新 ───────────────────────────────────────────────
 
-	/// @brief Update state and animations.
-	/// @param dt Delta time in seconds.
+	/// @brief 状態とアニメーションを更新する
+	/// @param dt デルタタイム（秒）
 	void update(float dt)
 	{
 		switch (m_state)
@@ -493,10 +493,10 @@ public:
 		}
 	}
 
-	// ── Rendering ────────────────────────────────────────────
+	// ── 描画 ────────────────────────────────────────────
 
-	/// @brief Draw the message window into a SpriteBatch.
-	/// @param batch SpriteBatch (must be between begin/end).
+	/// @brief メッセージウィンドウを SpriteBatch に描画する
+	/// @param batch SpriteBatch（begin/endの間で呼ぶこと）
 	void draw(render::SpriteBatch& batch) const
 	{
 		if (m_state == MessageWindowState::Hidden || m_alpha <= 0.0f)
@@ -514,20 +514,20 @@ public:
 			bounds.height()
 		};
 
-		// Draw window background.
+		// ウィンドウ背景を描画
 		drawSkin(batch, drawBounds);
 
-		// Draw name plate (ADV mode only).
+		// ネームプレートを描画（ADVモードのみ）
 		if (m_config.mode == MessageMode::ADV && m_config.showNamePlate
 		    && !m_speaker.empty())
 		{
 			drawNamePlate(batch, yOffset);
 		}
 
-		// Draw text.
+		// テキストを描画
 		drawText(batch, drawBounds);
 
-		// Draw click-wait indicator.
+		// クリック待ちインジケータを描画
 		if (m_state == MessageWindowState::WaitingClick
 		    && m_config.clickWait.enabled)
 		{
@@ -536,7 +536,7 @@ public:
 	}
 
 private:
-	// ── Animation helpers ────────────────────────────────────
+	// ── アニメーション補助 ────────────────────────────────────
 
 	void updateAnimation(float dt, bool appearing)
 	{
@@ -599,7 +599,7 @@ private:
 		}
 	}
 
-	/// @brief Compute vertical offset for slide animation.
+	/// @brief スライドアニメーション用の垂直オフセットを計算する
 	[[nodiscard]] float computeSlideOffset() const noexcept
 	{
 		const bool isAppearing = (m_state == MessageWindowState::Appearing);
@@ -623,7 +623,7 @@ private:
 		return slideDistance * smoothstep(m_animProgress);
 	}
 
-	// ── Skin drawing ─────────────────────────────────────────
+	// ── skin 描画 ─────────────────────────────────────────
 
 	void drawSkin(render::SpriteBatch& batch, const sgc::Rectf& rect) const
 	{
@@ -653,12 +653,12 @@ private:
 	{
 		const auto& skin = m_config.skin.solidColor;
 
-		// Fill.
+		// 塗りつぶし
 		auto fill = skin.fillColor;
 		fill.a *= m_alpha;
 		batch.drawRect(rect, fill);
 
-		// Border.
+		// 枠線
 		if (skin.borderWidth > 0.0f)
 		{
 			auto border = skin.borderColor;
@@ -667,7 +667,7 @@ private:
 		}
 	}
 
-	// ── Name plate drawing ───────────────────────────────────
+	// ── ネームプレート描画 ───────────────────────────────────
 
 	void drawNamePlate(render::SpriteBatch& batch, float yOffset) const
 	{
@@ -678,17 +678,17 @@ private:
 			m_config.namePlateBounds.height()
 		};
 
-		// Background.
+		// 背景
 		auto bg = m_config.namePlateColor;
 		bg.a *= m_alpha;
 		batch.drawRect(npRect, bg);
 
-		// Border.
+		// 枠線
 		auto border = m_config.namePlateBorder;
 		border.a *= m_alpha;
 		batch.drawRectFrame(npRect, border, 1.0f);
 
-		// Name text via callback.
+		// コールバック経由で話者名テキストを描画
 		if (m_nameRenderer)
 		{
 			auto col = m_config.nameTextColor;
@@ -703,7 +703,7 @@ private:
 		}
 	}
 
-	// ── Text drawing ─────────────────────────────────────────
+	// ── テキスト描画 ─────────────────────────────────────────
 
 	void drawText(render::SpriteBatch& batch, const sgc::Rectf& bounds) const
 	{
@@ -725,7 +725,7 @@ private:
 		}
 		else
 		{
-			// ADV mode: show current text or history page.
+			// ADVモード: 現在テキストまたは履歴ページを表示
 			const std::string& displayText = (m_pageHistoryIndex >= 0
 				&& m_pageHistoryIndex < static_cast<int>(m_pageHistory.size()))
 				? m_pageHistory[static_cast<std::size_t>(m_pageHistoryIndex)]
@@ -744,8 +744,8 @@ private:
 	                 const sgc::Rectf& area,
 	                 const sgc::Colorf& col) const
 	{
-		// In NVL mode, concatenate all lines and render as one block.
-		// The last line may be partially revealed.
+		// NVLモードでは全行を連結し1ブロックとして描画する。
+		// 最終行は部分的に表示中の場合がある。
 		std::string fullText;
 		for (std::size_t i = 0; i < m_nvlLines.size(); ++i)
 		{
@@ -761,11 +761,11 @@ private:
 			}
 		}
 
-		// All characters visible unless the last line is being revealed.
+		// 最終行を表示中でない限り全文字を表示する
 		std::size_t totalVisible = fullText.size();
 		if (m_nvlNewLineRevealing && !m_nvlLines.empty())
 		{
-			// Only the last line is partially revealed.
+			// 最終行のみが部分的に表示中
 			const std::size_t precedingLen = fullText.size() - m_text.size();
 			totalVisible = precedingLen + m_visibleChars;
 		}
@@ -774,7 +774,7 @@ private:
 		               col, m_config.fontSize);
 	}
 
-	// ── Click-wait indicator ─────────────────────────────────
+	// ── クリック待ちインジケータ ─────────────────────────────────
 
 	void drawClickWaitIndicator(render::SpriteBatch& batch,
 	                            const sgc::Rectf& bounds) const
@@ -789,14 +789,14 @@ private:
 		const float x = bounds.x() + bounds.width() + cw.offsetX;
 		const float y = bounds.y() + bounds.height() + cw.offsetY;
 
-		// Draw as a small triangle pointing down.
+		// 下向きの小さな三角形として描画する
 		const sgc::Rectf indicator{x, y, cw.size, cw.size};
 		batch.drawRect(indicator, col);
 	}
 
-	// ── Math utilities ───────────────────────────────────────
+	// ── 数学ユーティリティ ───────────────────────────────────────
 
-	/// @brief Smooth-step interpolation (ease in-out).
+	/// @brief スムーズステップ補間（ease in-out）
 	[[nodiscard]] static float smoothstep(float t) noexcept
 	{
 		t = std::max(0.0f, std::min(1.0f, t));

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UICard.hpp
-/// @brief Composite card container widget with image, title, description, tags, and action buttons.
+/// @brief 画像 / タイトル / 説明 / タグ / アクションボタンを束ねる複合 card container widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,48 +15,48 @@
 
 namespace mitiru::ui {
 
-/// @brief Content data for a UICard.
+/// @brief UICard が表示する content data。
 struct UICardContent
 {
-	std::string title;                     ///< Card title text.
-	std::string description;               ///< Card description text.
-	std::string imageKey;                  ///< Header image key.
-	std::vector<std::string> tags;         ///< Tag labels.
-	std::vector<std::string> actionLabels; ///< Action button labels.
+	std::string title;                     ///< card タイトル文字列。
+	std::string description;               ///< card 説明文字列。
+	std::string imageKey;                  ///< ヘッダー画像 key。
+	std::vector<std::string> tags;         ///< タグラベル。
+	std::vector<std::string> actionLabels; ///< アクションボタンのラベル。
 };
 
-/// @brief Configuration for creating a UICard.
+/// @brief UICard 生成用の構成設定。
 struct UICardConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
-	float width = 280.0f;                  ///< Card width.
-	float imageHeight = 160.0f;            ///< Height of the header image area.
-	float padding = 12.0f;                 ///< Internal padding.
-	float titleFontSize = 18.0f;           ///< Title font size.
-	float descFontSize = 13.0f;            ///< Description font size.
-	std::string backgroundImageKey;        ///< Card background image key.
-	std::string imageKey;                  ///< Default header image key.
-	std::string hoverImageKey;             ///< Background image on hover.
-	float borderRadius = 8.0f;             ///< Corner radius.
-	float shadowOffsetX = 0.0f;            ///< Shadow X offset.
-	float shadowOffsetY = 2.0f;            ///< Shadow Y offset.
-	float shadowBlur = 8.0f;               ///< Shadow blur radius.
-	std::string shadowColor = "00000040";  ///< Shadow color (hex with alpha).
-	float elevation = 1.0f;                ///< Elevation level for shadow depth.
-	float hoverElevation = 3.0f;           ///< Elevation when hovered.
-	float actionBarHeight = 36.0f;         ///< Height of the action button bar.
-	std::string actionBarImageKey;         ///< Action bar background image key.
-	float tagFontSize = 11.0f;             ///< Tag label font size.
-	float tagHeight = 20.0f;              ///< Height of tag labels.
-	float tagSpacing = 4.0f;               ///< Spacing between tags.
+	float width = 280.0f;                  ///< card の幅。
+	float imageHeight = 160.0f;            ///< ヘッダー画像領域の高さ。
+	float padding = 12.0f;                 ///< 内側 padding。
+	float titleFontSize = 18.0f;           ///< タイトルの font size。
+	float descFontSize = 13.0f;            ///< 説明文の font size。
+	std::string backgroundImageKey;        ///< card 背景画像 key。
+	std::string imageKey;                  ///< 既定のヘッダー画像 key。
+	std::string hoverImageKey;             ///< hover 時の背景画像。
+	float borderRadius = 8.0f;             ///< 角丸半径。
+	float shadowOffsetX = 0.0f;            ///< 影の X offset。
+	float shadowOffsetY = 2.0f;            ///< 影の Y offset。
+	float shadowBlur = 8.0f;               ///< 影のぼかし半径。
+	std::string shadowColor = "00000040";  ///< 影の色 (alpha 付き hex)。
+	float elevation = 1.0f;                ///< 影の深さを決める elevation レベル。
+	float hoverElevation = 3.0f;           ///< hover 時の elevation。
+	float actionBarHeight = 36.0f;         ///< アクションボタンバーの高さ。
+	std::string actionBarImageKey;         ///< アクションバー背景画像 key。
+	float tagFontSize = 11.0f;             ///< タグラベルの font size。
+	float tagHeight = 20.0f;              ///< タグラベルの高さ。
+	float tagSpacing = 4.0f;               ///< タグ間の間隔。
 };
 
-/// @brief Composite card widget with image header, title, description, tags, and action bar.
+/// @brief 画像ヘッダー / タイトル / 説明 / タグ / アクションバーを持つ複合 card widget。
 ///
-/// Cards are commonly used for item displays, gallery views, and content summaries.
-/// The card consists of: header image, title, description, optional tags, and action buttons.
-/// Hover state increases shadow/elevation for a lift effect.
+/// card はアイテム表示、ギャラリー閲覧、コンテンツ要約によく使う。
+/// 構成要素: ヘッダー画像、タイトル、説明、任意のタグ、アクションボタン。
+/// hover 状態では影 / elevation を強めて浮き上がる効果を出す。
 ///
 /// @code
 ///   UICardConfig cfg;
@@ -93,8 +93,8 @@ class UICard
 	std::function<void(std::size_t)> m_onActionClicked;
 
 public:
-	/// @brief Construct a card from configuration.
-	/// @param config Card configuration.
+	/// @brief 構成設定から card を構築する。
+	/// @param config card の構成設定。
 	explicit UICard(const UICardConfig& config)
 		: m_width(config.width)
 		, m_imageHeight(config.imageHeight)
@@ -135,23 +135,23 @@ public:
 		updateLayout();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current card content.
+	/// @brief 現在の card content を取得する。
 	[[nodiscard]] const UICardContent& content() const noexcept { return m_content; }
 
-	/// @brief Check if the card is hovered.
+	/// @brief card が hover 中か確認する。
 	[[nodiscard]] bool isHovered() const noexcept { return m_hovered; }
 
-	// -- Configuration -------------------------------------------------------
+	// -- 構成設定 -------------------------------------------------------
 
-	/// @brief Set the card-clicked callback.
-	/// @param callback Function invoked on card click.
+	/// @brief card クリック時の callback を設定する。
+	/// @param callback card クリック時に呼ばれる関数。
 	void setOnClicked(std::function<void()> callback) { m_onClicked = std::move(callback); }
 
-	/// @brief Set the action-clicked callback.
-	/// @param callback Function invoked with the action button index.
+	/// @brief アクションクリック時の callback を設定する。
+	/// @param callback アクションボタンの index を渡して呼ばれる関数。
 	void setOnActionClicked(std::function<void(std::size_t)> callback)
 	{
 		m_onActionClicked = std::move(callback);
@@ -159,8 +159,8 @@ public:
 
 	// -- Content -------------------------------------------------------------
 
-	/// @brief Set the card content.
-	/// @param newContent New content data.
+	/// @brief card content を設定する。
+	/// @param newContent 新しい content data。
 	void setContent(const UICardContent& newContent)
 	{
 		m_content = newContent;
@@ -170,9 +170,9 @@ public:
 
 	// -- Interaction ---------------------------------------------------------
 
-	/// @brief Process input for hover and click detection.
-	/// @param pointerInside Whether the pointer is within card bounds.
-	/// @param pointerPressed Whether the pointer is pressed this frame.
+	/// @brief hover とクリック検出のため入力を処理する。
+	/// @param pointerInside pointer が card 範囲内にあるか。
+	/// @param pointerPressed このフレームで pointer が押されたか。
 	void update(bool pointerInside, bool pointerPressed)
 	{
 		const bool wasHovered = m_hovered;
@@ -194,8 +194,8 @@ public:
 		}
 	}
 
-	/// @brief Called when an action button is clicked.
-	/// @param actionIndex Index of the action button.
+	/// @brief アクションボタンがクリックされたときに呼ばれる。
+	/// @param actionIndex アクションボタンの index。
 	void onActionClick(std::size_t actionIndex)
 	{
 		if (actionIndex < m_content.actionLabels.size() && m_onActionClicked)
@@ -204,7 +204,7 @@ public:
 		}
 	}
 
-	/// @brief Called when the pointer enters the card area.
+	/// @brief pointer が card 領域に入ったときに呼ばれる。
 	void onPointerEnter()
 	{
 		m_hovered = true;
@@ -212,7 +212,7 @@ public:
 		m_node->setProperty("current_elevation", std::to_string(m_hoverElevation));
 	}
 
-	/// @brief Called when the pointer leaves the card area.
+	/// @brief pointer が card 領域から出たときに呼ばれる。
 	void onPointerLeave()
 	{
 		m_hovered = false;
@@ -220,7 +220,7 @@ public:
 		m_node->setProperty("current_elevation", std::to_string(m_elevation));
 	}
 
-	/// @brief Called when the card is clicked.
+	/// @brief card がクリックされたときに呼ばれる。
 	void onPointerUp()
 	{
 		if (m_hovered && m_onClicked)
@@ -230,17 +230,17 @@ public:
 	}
 
 private:
-	/// @brief Rebuild child nodes from current content.
+	/// @brief 現在の content から子 node を再構築する。
 	void rebuildChildren()
 	{
-		// Remove existing children by building a new node tree approach.
-		// Since UINode doesn't have removeAllChildren, we rebuild children manually.
-		// Store current node data and recreate.
+		// 新しい node tree を組む方針で既存の子を取り除く。
+		// UINode に removeAllChildren が無いので、子を手動で再構築する。
+		// 現在の node data を保持して作り直す。
 		const auto baseId = m_node->id();
 		const auto baseName = m_node->name();
 		UINodeId childId = baseId + 1;
 
-		// Clear old children by removing them individually.
+		// 古い子を 1 つずつ取り除いてクリアする。
 		while (m_node->childCount() > 0)
 		{
 			const auto& children = m_node->children();
@@ -250,7 +250,7 @@ private:
 			}
 		}
 
-		// Image child.
+		// 画像の子。
 		if (!m_content.imageKey.empty())
 		{
 			UINodeData imgData;
@@ -262,7 +262,7 @@ private:
 			m_node->addChild(std::make_shared<UINode>(std::move(imgData)));
 		}
 
-		// Title child.
+		// タイトルの子。
 		if (!m_content.title.empty())
 		{
 			UINodeData titleData;
@@ -274,7 +274,7 @@ private:
 			m_node->addChild(std::make_shared<UINode>(std::move(titleData)));
 		}
 
-		// Description child.
+		// 説明の子。
 		if (!m_content.description.empty())
 		{
 			UINodeData descData;
@@ -286,7 +286,7 @@ private:
 			m_node->addChild(std::make_shared<UINode>(std::move(descData)));
 		}
 
-		// Tag children.
+		// タグの子。
 		for (std::size_t i = 0; i < m_content.tags.size(); ++i)
 		{
 			UINodeData tagData;
@@ -299,7 +299,7 @@ private:
 			m_node->addChild(std::make_shared<UINode>(std::move(tagData)));
 		}
 
-		// Action button children.
+		// アクションボタンの子。
 		for (std::size_t i = 0; i < m_content.actionLabels.size(); ++i)
 		{
 			UINodeData actionData;
@@ -313,41 +313,41 @@ private:
 		}
 	}
 
-	/// @brief Update layout and bounds based on current content.
+	/// @brief 現在の content に基づき layout と bounds を更新する。
 	void updateLayout()
 	{
 		float totalHeight = 0.0f;
 
-		// Image area.
+		// 画像領域。
 		if (!m_content.imageKey.empty())
 		{
 			totalHeight += m_imageHeight;
 		}
 
-		// Title + description + padding.
-		totalHeight += m_padding; // Top padding for text area.
+		// タイトル + 説明 + padding。
+		totalHeight += m_padding; // テキスト領域の上 padding。
 		if (!m_content.title.empty())
 		{
-			totalHeight += 24.0f; // Estimated title line height (renderer uses titleFontSize).
+			totalHeight += 24.0f; // タイトル行高の見積もり (renderer は titleFontSize を使う)。
 		}
 		if (!m_content.description.empty())
 		{
-			totalHeight += 40.0f; // Estimated description area.
+			totalHeight += 40.0f; // 説明領域の見積もり。
 		}
 
-		// Tags.
+		// タグ。
 		if (!m_content.tags.empty())
 		{
 			totalHeight += m_tagHeight + m_tagSpacing;
 		}
 
-		// Action bar.
+		// アクションバー。
 		if (!m_content.actionLabels.empty())
 		{
 			totalHeight += m_actionBarHeight;
 		}
 
-		totalHeight += m_padding; // Bottom padding.
+		totalHeight += m_padding; // 下 padding。
 
 		m_node->setBounds(sgc::Rectf(0.0f, 0.0f, m_width, totalHeight));
 		m_node->setProperty("current_elevation", std::to_string(m_elevation));

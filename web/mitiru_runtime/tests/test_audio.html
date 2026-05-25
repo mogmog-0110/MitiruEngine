@@ -2,13 +2,13 @@
 <meta charset="utf-8">
 <title>mitiru_audio.js tests</title>
 <!--
-    test_audio.html — mitiru.audio (NF-02) unit tests
+    test_audio.html — mitiru.audio (NF-02) unit test
 
-    Run:
+    走らせ方:
       python tools/mitiru_serve.py --port 8770 --no-inject
       open http://localhost:8770/web/mitiru_runtime/tests/test_audio.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -30,8 +30,8 @@
 	const a = mitiru.audio;
 
 	// ── Audio stub ────────────────────────────────────────────────
-	// Replace window.Audio with a controllable stub for all tests.
-	// The stub records calls and exposes .triggerEnded() for voice tests.
+	// 全テストで window.Audio を制御可能な stub に置き換える。
+	// stub は呼び出しを記録し、voice テスト用に .triggerEnded() を公開する。
 	var _realAudio = window.Audio;
 
 	function AudioStub(url)
@@ -78,8 +78,8 @@
 		window.Audio = _realAudio;
 	}
 
-	// Reset audio module internal state between tests that need a clean slate.
-	// Because mitiru.audio is a singleton we manipulate it via its public API.
+	// クリーンな状態が必要なテスト間で audio モジュールの内部 state をリセット。
+	// mitiru.audio は singleton なので public API 経由で操作する。
 	function resetAudio()
 	{
 		a.stopAll();
@@ -109,7 +109,7 @@
 	// ── 2. setManifest — URL fetch ────────────────────────────────
 	t.case('setManifest_url_fetch_uses_mitiru_fetch_or_global_fetch', async function()
 	{
-		// Stub mitiru.fetch to return a known manifest without HTTP.
+		// HTTP 無しで既知の manifest を返すよう mitiru.fetch を stub する。
 		var originalFetch = mitiru.fetch;
 		mitiru.fetch = function(url)
 		{
@@ -126,7 +126,7 @@
 		mitiru.fetch = originalFetch;
 	});
 
-	// ── 3. play — splits 'category.key' ──────────────────────────
+	// ── 3. play — 'category.key' を分割する ──────────────────────────
 	t.case('play_splits_category_key_and_fires_event', async function()
 	{
 		installStub();
@@ -147,7 +147,7 @@
 		restoreAudio();
 	});
 
-	// ── 4. play — unknown key fires event with resolved:false ─────
+	// ── 4. play — 未知の key は resolved:false で event を発火 ─────
 	t.case('play_unknown_key_fires_event_resolved_false_and_warns_once', async function()
 	{
 		installStub();
@@ -157,13 +157,13 @@
 		var events = [];
 		var unsub  = a.on('play', function(d) { events.push(d); });
 
-		// Patch warn to count calls.
+		// 呼び出し回数を数えるため warn を patch。
 		var warnCount = 0;
 		var origWarn  = console.warn;
 		console.warn = function() { warnCount++; };
 
 		a.play('se.totally_unknown');
-		a.play('se.totally_unknown');  // second call must NOT warn again
+		a.play('se.totally_unknown');  // 2 度目は再度 warn してはいけない
 
 		console.warn = origWarn;
 
@@ -176,12 +176,12 @@
 		restoreAudio();
 	});
 
-	// ── 5. play — no manifest fires event + warns once ────────────
+	// ── 5. play — manifest 無しでも event 発火 + 1 回 warn ────────────
 	t.case('play_no_manifest_fires_event_and_warns', async function()
 	{
 		installStub();
-		// Force clear manifest by setting a fresh one then immediately null-ing via
-		// an edge-case: re-import is guarded, so we abuse setManifest with empty.
+		// 新しい manifest を設定して即座に null 化する edge-case で manifest を
+		// 強制クリア: 再 import は guard されているので、空の setManifest を悪用する。
 		await a.setManifest({});
 
 		var events = [];
@@ -196,7 +196,7 @@
 		restoreAudio();
 	});
 
-	// ── 6. se — delegates to play('se.key') ──────────────────────
+	// ── 6. se — play('se.key') に委譲する ──────────────────────
 	t.case('se_method_delegates_to_play_with_se_prefix', async function()
 	{
 		installStub();
@@ -216,7 +216,7 @@
 		restoreAudio();
 	});
 
-	// ── 7. bgm — crossfade creates second audio element ──────────
+	// ── 7. bgm — crossfade は 2 つ目の audio 要素を作る ──────────
 	t.case('bgm_crossfade_creates_new_audio_node', async function()
 	{
 		installStub();
@@ -234,7 +234,7 @@
 		restoreAudio();
 	});
 
-	// ── 8. bgm(null) stops current BGM ───────────────────────────
+	// ── 8. bgm(null) は現在の BGM を止める ───────────────────────────
 	t.case('bgm_null_stops_current_bgm', async function()
 	{
 		installStub();
@@ -255,7 +255,7 @@
 		restoreAudio();
 	});
 
-	// ── 9. stop('bgm') fires stop event ──────────────────────────
+	// ── 9. stop('bgm') は stop event を発火 ──────────────────────────
 	t.case('stop_bgm_fires_stop_event', async function()
 	{
 		installStub();
@@ -274,7 +274,7 @@
 		restoreAudio();
 	});
 
-	// ── 10. stop('se') fires stop event ──────────────────────────
+	// ── 10. stop('se') は stop event を発火 ──────────────────────────
 	t.case('stop_se_fires_stop_event', async function()
 	{
 		installStub();
@@ -293,7 +293,7 @@
 		restoreAudio();
 	});
 
-	// ── 11. stop('voice') fires stop + voice:end events ──────────
+	// ── 11. stop('voice') は stop + voice:end event を発火 ──────────
 	t.case('stop_voice_fires_stop_and_voice_end_events', async function()
 	{
 		installStub();
@@ -315,7 +315,7 @@
 		restoreAudio();
 	});
 
-	// ── 12. stop('all') stops se + bgm + voice ───────────────────
+	// ── 12. stop('all') は se + bgm + voice を止める ───────────────────
 	t.case('stop_all_stops_every_category', async function()
 	{
 		installStub();
@@ -338,7 +338,7 @@
 		restoreAudio();
 	});
 
-	// ── 13. setVolume / volume roundtrip ─────────────────────────
+	// ── 13. setVolume / volume の roundtrip ─────────────────────────
 	t.case('setVolume_volume_roundtrip', function()
 	{
 		a.setVolume('master', 0.7);
@@ -350,13 +350,13 @@
 		a.setVolume('se', 0);
 		t.assertClose(a.volume('se'), 0, 1e-6);
 
-		// Restore defaults.
+		// 既定値に戻す。
 		a.setVolume('master', 1);
 		a.setVolume('bgm',    1);
 		a.setVolume('se',     1);
 	});
 
-	// ── 14. setVolume clamps to 0..1 ─────────────────────────────
+	// ── 14. setVolume は 0..1 に clamp する ─────────────────────────────
 	t.case('setVolume_clamps_range_to_0_1', function()
 	{
 		a.setVolume('se', 2.0);
@@ -365,47 +365,47 @@
 		a.setVolume('se', -0.5);
 		t.assertClose(a.volume('se'), 0.0, 1e-6, 'clamped to 0 from below');
 
-		a.setVolume('se', 1);  // restore
+		a.setVolume('se', 1);  // 元に戻す
 	});
 
-	// ── 15. volume() throws for unknown category ──────────────────
+	// ── 15. volume() は未知の category で throw ──────────────────
 	t.case('volume_throws_for_unknown_category', function()
 	{
 		t.assertThrow(function() { a.volume('sfx'); }, 'unknown category should throw');
 	});
 
-	// ── 16. voice() ducks bgm; voice end restores bgm volume ─────
+	// ── 16. voice() は bgm を duck し、voice 終了で bgm volume を戻す ─────
 	t.case('voice_ducks_bgm_then_restores_on_voice_end', async function()
 	{
 		installStub();
 		await a.setManifest(TEST_MANIFEST);
 		resetAudio();
-		a.setDucking({ bgm: 0.25, fadeMs: 0 });  // instant fade for test
+		a.setDucking({ bgm: 0.25, fadeMs: 0 });  // テスト用に即時 fade
 		a.setVolume('bgm', 1);
 		AudioStub._instances = [];
 
 		a.bgm('title', { fadeMs: 0 });
 
-		// Find the BGM node (first Audio instance with .loop true).
+		// BGM node を探す (.loop が true の最初の Audio instance)。
 		var bgmNode = AudioStub._instances.find(function(n) { return n.loop; });
 		t.assert(bgmNode !== undefined, 'bgm node exists');
 
-		// Voice starts — bgm should be ducked.
+		// voice 開始 — bgm は duck されるはず。
 		a.voice('sachi_01');
 		t.assertClose(bgmNode.volume, 0.25, 0.01, 'bgm ducked to 0.25');
 
-		// Trigger voice ended — bgm should restore.
+		// voice 終了を発火 — bgm は戻るはず。
 		var voiceNode = AudioStub._instances.find(function(n) { return !n.loop && n !== bgmNode; });
 		t.assert(voiceNode !== undefined, 'voice node exists');
 		voiceNode.triggerEnded();
 
 		t.assertClose(bgmNode.volume, 1.0, 0.01, 'bgm restored after voice end');
 
-		a.setDucking({ bgm: 0.3, fadeMs: 0 });  // restore default
+		a.setDucking({ bgm: 0.3, fadeMs: 0 });  // 既定に戻す
 		restoreAudio();
 	});
 
-	// ── 17. event dispatch: play ──────────────────────────────────
+	// ── 17. event の dispatch: play ──────────────────────────────────
 	t.case('event_play_fires_with_correct_detail', async function()
 	{
 		installStub();
@@ -426,7 +426,7 @@
 		restoreAudio();
 	});
 
-	// ── 18. event dispatch: bgm:change ───────────────────────────
+	// ── 18. event の dispatch: bgm:change ───────────────────────────
 	t.case('event_bgm_change_fires_on_crossfade', async function()
 	{
 		installStub();
@@ -449,7 +449,7 @@
 		restoreAudio();
 	});
 
-	// ── 19. event dispatch: voice:start and voice:end ────────────
+	// ── 19. event の dispatch: voice:start と voice:end ────────────
 	t.case('event_voice_start_and_voice_end_fire', async function()
 	{
 		installStub();
@@ -475,7 +475,7 @@
 		restoreAudio();
 	});
 
-	// ── 20. on/off subscribe and unsubscribe ─────────────────────
+	// ── 20. on/off の subscribe と unsubscribe ─────────────────────
 	t.case('on_returns_unsubscribe_fn_off_removes_listener', async function()
 	{
 		installStub();
@@ -493,7 +493,7 @@
 		a.play('se.confirm');
 		t.assertEq(count, 1, 'listener NOT called after unsubscribe');
 
-		// Also test a.off directly.
+		// a.off も直接テスト。
 		var fn2  = function() { count += 10; };
 		a.on('play', fn2);
 		a.play('se.confirm');
@@ -505,21 +505,21 @@
 		restoreAudio();
 	});
 
-	// ── 21. no-op safety when Audio is undefined ─────────────────
+	// ── 21. Audio が undefined のときの no-op 安全性 ─────────────────
 	t.case('noop_safe_when_Audio_undefined_events_still_fire', async function()
 	{
-		// Temporarily hide Audio constructor.
+		// Audio コンストラクタを一時的に隠す。
 		var saved = window.Audio;
 		delete window.Audio;
 
-		// Re-load module internal state by resetting warned flags via setManifest.
-		// Since module is a singleton we can only test via its API with Audio hidden.
+		// setManifest 経由で warned フラグをリセットしモジュール内部 state を再読み込み。
+		// モジュールは singleton なので、Audio を隠した状態で API 経由でしかテストできない。
 		await a.setManifest(TEST_MANIFEST);
 
 		var events = [];
 		var unsub  = a.on('play', function(d) { events.push(d); });
 
-		// Patch warn to silence it.
+		// warn を patch して黙らせる。
 		var origWarn = console.warn;
 		console.warn = function() {};
 
@@ -527,23 +527,23 @@
 
 		console.warn = origWarn;
 
-		// Events MUST fire even though Audio is unavailable.
+		// Audio が使えなくても event は必ず発火しなければならない。
 		t.assertEq(events.length, 1, 'play event fires even without Audio');
 
 		unsub();
 		window.Audio = saved;
 	});
 
-	// ── 22. isAvailable reflects Audio constructor presence ───────
+	// ── 22. isAvailable は Audio コンストラクタの有無を反映 ───────
 	t.case('isAvailable_returns_bool_based_on_Audio_constructor', function()
 	{
-		// Audio was installed as stub at this point; isAvailable() reflects the
-		// value at MODULE LOAD TIME (cached), so we just assert it returns a boolean.
+		// この時点で Audio は stub として仕込まれている。isAvailable() は
+		// MODULE LOAD 時の値 (cache) を反映するので、boolean を返すことだけ assert する。
 		var result = a.isAvailable();
 		t.assert(typeof result === 'boolean', 'isAvailable() returns boolean');
 	});
 
-	// ── 23. setManifest rejects invalid input ─────────────────────
+	// ── 23. setManifest は不正な入力を reject ─────────────────────
 	t.case('setManifest_rejects_invalid_input', async function()
 	{
 		var threw = false;
@@ -551,7 +551,7 @@
 		t.assertEq(threw, true, 'setManifest(42) should reject');
 	});
 
-	// ── 24. bgm:change fires with null when no BGM was playing ────
+	// ── 24. BGM 再生が無かったとき bgm:change は null で発火 ────
 	t.case('bgm_change_from_is_null_when_no_previous_bgm', async function()
 	{
 		installStub();
@@ -569,7 +569,7 @@
 		restoreAudio();
 	});
 
-	// ── 25. play with malformed key warns and fires resolved:false ─
+	// ── 25. 不正な形式の key の play は warn し resolved:false を発火 ─
 	t.case('play_malformed_key_no_dot_fires_event_resolved_false', async function()
 	{
 		installStub();

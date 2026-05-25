@@ -2,28 +2,27 @@
 <meta charset="utf-8">
 <title>CEF CSS capability probe (F-06)</title>
 <!--
-    test_cef_css_probe.html — live capability probe for CSS features that
-    the docs/CEF_CSS_CAPABILITIES.md matrix lists as "untested" under CEF.
+    test_cef_css_probe.html — docs/CEF_CSS_CAPABILITIES.md の matrix が CEF 下で
+    「untested」とする CSS 機能の実機 capability probe。
 
-    This page is NOT part of the mitiru.test automated suite — it is meant
-    to be opened by a human inside a running CEF Release build of the
-    engine.  The matrix's ⚠ untested entries get promoted to ✅ / ❌ by
-    visually eyeballing the rendered result and checking the console for
-    the programmatic CSS.supports() readout.
+    このページは mitiru.test 自動 suite の一部ではない — engine の動作中の
+    CEF Release build 内で人間が開くためのもの。matrix の ⚠ untested 項目は、
+    描画結果を目視し、console の programmatic な CSS.supports() の読み出しを
+    確認することで ✅ / ❌ に昇格する。
 
-    How to use:
-      1. Build MitiruEngine with CEF in Release config.
-      2. Launch the engine and load this file via file://.
-      3. Compare each tile to the "expected" callout below it.
-      4. Check DevTools console — the probe auto-logs CSS.supports() results.
-      5. Update docs/CEF_CSS_CAPABILITIES.md with the observed status.
+    使い方:
+      1. MitiruEngine を CEF + Release config でビルドする。
+      2. engine を起動し、このファイルを file:// で読み込む。
+      3. 各 tile を下の "expected" の説明と比較する。
+      4. DevTools console を確認 — probe が CSS.supports() の結果を自動 log する。
+      5. 観察した状態で docs/CEF_CSS_CAPABILITIES.md を更新する。
 
-    Expected readings in a bog-standard Chromium (dev reference):
-      - filter: blur()              — blur visible, text becomes soft
-      - backdrop-filter: blur()     — content behind the pane is blurred
-      - mix-blend-mode              — each variant blends the rect into bg
-      - clip-path: polygon / path   — diamond / star-shape rendered cleanly
-      - radial / conic gradient     — smooth interpolation, no banding
+    ごく標準的な Chromium での期待される読み (dev リファレンス):
+      - filter: blur()              — blur が見え、文字が柔らかくなる
+      - backdrop-filter: blur()     — pane の後ろの内容が blur される
+      - mix-blend-mode              — 各 variant が rect を背景に blend する
+      - clip-path: polygon / path   — diamond / star 形が綺麗に描画される
+      - radial / conic gradient     — 滑らかな補間、banding 無し
 -->
 <style>
     :root {
@@ -76,7 +75,7 @@
     }
     .card__stage--solid { background: #6aaaff; }
 
-    /* ── Probes ──────────────────────────────────────────────── */
+    /* ── Probe ──────────────────────────────────────────────── */
 
     .probe-blur {
         position: absolute; inset: 20%;
@@ -288,8 +287,8 @@
 (function() {
     'use strict';
 
-    // Programmatic probes — answer the "does the engine recognise the
-    // declaration" question even before visual validation.
+    // Programmatic な probe — 視覚検証の前に「engine がこの宣言を
+    // 認識するか」の問いに答える。
     var probes = [
         { key: 'filter-blur',            q: 'filter',            v: 'blur(4px)' },
         { key: 'backdrop-filter-blur',   q: 'backdrop-filter',   v: 'blur(6px)' },
@@ -327,8 +326,8 @@
         }
     });
 
-    // feTurbulence needs SVG filter parsing — we can check by computing the
-    // filter style on the probe element and seeing the URL parses.
+    // feTurbulence は SVG filter の parse が必要 — probe 要素の filter style を
+    // 計算し、URL が parse されるか確認できる。
     var turbCard = document.querySelector('.card[data-probe="feTurbulence"]');
     if (turbCard) {
         var probe = turbCard.querySelector('.probe-turbulence');
@@ -340,14 +339,14 @@
         status.classList.add(ok ? 'status--ok' : 'status--bad');
     }
 
-    // Surface the report for console + summary div.
+    // report を console + summary div に出す。
     console.log('[CEF CSS probe]', report);
     window.__cefCssReport = report;
     var out = document.getElementById('summary-out');
     if (out) { out.textContent = JSON.stringify(report, null, 2); }
 
-    // Set test harness signals even though this page isn't in the auto suite,
-    // so /tools/mitiru_test.py --filter cef_css_probe still reports pass.
+    // このページは auto suite に無いが、/tools/mitiru_test.py --filter cef_css_probe
+    // が pass を報告できるよう test harness の signal を設定する。
     window.__testResult = {
         pass: Object.values(report.results).filter(Boolean).length,
         fail: Object.values(report.results).filter(function(v) { return !v; }).length,

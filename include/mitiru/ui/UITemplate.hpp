@@ -2,12 +2,12 @@
 
 /**
  * @file UITemplate.hpp
- * @brief JSON-driven UI tree generation and serialisation.
+ * @brief JSON 駆動の UI tree 生成と serialize。
  *
- * Converts between a compact JSON template format and the runtime UINode tree.
- * Provides factory helpers for common HUD layouts and element creation.
+ * コンパクトな JSON template 形式と runtime の UINode tree を相互変換する。
+ * よくある HUD layout と要素生成のための factory helper を提供する。
  *
- * @par JSON template format
+ * @par JSON template 形式
  * @code{.json}
  * {
  *   "type": "panel",
@@ -36,9 +36,9 @@ namespace mitiru::ui {
 
 /**
  * @class UITemplate
- * @brief Bidirectional converter between JSON templates and UINode trees.
+ * @brief JSON template と UINode tree の双方向 converter。
  *
- * All public methods are static; the class is not meant to be instantiated.
+ * public method は全て static。このクラスは instance 化を想定しない。
  *
  * @code
  *   auto root = UITemplate::fromJson(jsonStr);
@@ -53,13 +53,13 @@ public:
     // -----------------------------------------------------------------
 
     /**
-     * @brief Parse a JSON template string into a UI node tree.
+     * @brief JSON template 文字列を UI node tree に parse する。
      *
-     * Uses @c mitiru::data::JsonReader internally. Each JSON object becomes
-     * a UINode; nested @c "children" arrays produce child nodes recursively.
+     * 内部で @c mitiru::data::JsonReader を使う。各 JSON object が UINode に
+     * なり、ネストした @c "children" 配列が子 node を再帰的に生成する。
      *
-     * @param jsonTemplate  Well-formed JSON string.
-     * @return Shared pointer to the root UINode, or nullptr on parse failure.
+     * @param jsonTemplate  整形式の JSON 文字列。
+     * @return root UINode への shared pointer。parse 失敗時は nullptr。
      */
     static std::shared_ptr<UINode> fromJson(const std::string& jsonTemplate) {
         mitiru::data::JsonReader reader;
@@ -70,10 +70,10 @@ public:
     }
 
     /**
-     * @brief Serialise an existing UI tree back to a JSON template string.
+     * @brief 既存の UI tree を JSON template 文字列へ serialize し直す。
      *
-     * @param root  The root node of the tree to serialise.
-     * @return Pretty-printed JSON string.
+     * @param root  serialize する tree の root node。
+     * @return 整形済み (pretty-print) の JSON 文字列。
      */
     static std::string toJson(const UINode& root) {
         return nodeToJson(root, 0);
@@ -84,34 +84,34 @@ public:
     // -----------------------------------------------------------------
 
     /**
-     * @brief Create a standard game HUD layout.
+     * @brief 標準的なゲーム HUD layout を生成する。
      *
-     * The returned tree contains:
+     * 返される tree は以下を含む:
      * - Health bar (top-left)
      * - Score label (top-right)
      * - Minimap placeholder (bottom-right)
      *
-     * @param screenW  Viewport width in pixels.
-     * @param screenH  Viewport height in pixels.
-     * @return Shared pointer to the root HUD node.
+     * @param screenW  viewport 幅 (px)。
+     * @param screenH  viewport 高さ (px)。
+     * @return root HUD node への shared pointer。
      */
     static std::shared_ptr<UINode> createHUD(float screenW, float screenH) {
         auto root = makeNode(generateId(), "hud", UIRole::Panel);
         root->setBounds(sgc::Rectf{0.0f, 0.0f, screenW, screenH});
 
-        // Health bar -- top-left
+        // Health bar -- 左上
         auto hp = makeNode(generateId(), "hp_bar", UIRole::HealthBar);
         hp->setValue(1.0f);
         hp->setBounds(sgc::Rectf{10.0f, 10.0f, 200.0f, 24.0f});
         root->addChild(hp);
 
-        // Score label -- top-right
+        // Score label -- 右上
         auto score = makeNode(generateId(), "score_label", UIRole::Label);
         score->setText("Score: 0");
         score->setBounds(sgc::Rectf{screenW - 210.0f, 10.0f, 200.0f, 24.0f});
         root->addChild(score);
 
-        // Minimap -- bottom-right
+        // Minimap -- 右下
         auto minimap = makeNode(generateId(), "minimap", UIRole::Panel);
         minimap->setBounds(sgc::Rectf{screenW - 170.0f, screenH - 170.0f, 160.0f, 160.0f});
         root->addChild(minimap);
@@ -120,11 +120,11 @@ public:
     }
 
     /**
-     * @brief Create a single UI element by its type name.
+     * @brief 型名から単一の UI 要素を生成する。
      *
-     * @param typeName  Role as a lowercase string (e.g. "label", "button").
-     * @param name      Human-readable name / identifier.
-     * @return Shared pointer to the new node.
+     * @param typeName  小文字文字列の role (例 "label", "button")。
+     * @param name      人間可読な name / 識別子。
+     * @return 新規 node への shared pointer。
      */
     static std::shared_ptr<UINode> createElement(const std::string& typeName,
                                                   const std::string& name) {
@@ -136,15 +136,15 @@ public:
     // -----------------------------------------------------------------
 
     /**
-     * @brief Map a type-name string to a UIRole enum value.
+     * @brief 型名文字列を UIRole enum 値へ対応付ける。
      *
-     * Recognised names (case-sensitive, lowercase):
+     * 認識される名前 (case-sensitive, 小文字):
      * "panel", "label", "button", "health_bar", "image", "progress_bar",
      * "container", "score_label", "minimap", "inventory", "dialog_box",
-     * "menu_item", "tooltip", "custom".
+     * "menu_item", "tooltip", "custom"。
      *
-     * @param typeName  Lowercase role name.
-     * @return Corresponding UIRole; defaults to UIRole::Panel for unknowns.
+     * @param typeName  小文字の role 名。
+     * @return 対応する UIRole。未知の場合は UIRole::Panel。
      */
     static UIRole roleFromString(const std::string& typeName) {
         static const std::map<std::string, UIRole> table = {
@@ -168,10 +168,10 @@ public:
     }
 
     /**
-     * @brief Convert a UIRole enum to its canonical string representation.
+     * @brief UIRole enum を正規の文字列表現へ変換する。
      *
-     * @param role  The UIRole value.
-     * @return Lowercase string name.
+     * @param role  UIRole 値。
+     * @return 小文字の文字列名。
      */
     static std::string roleToString(UIRole role) {
         switch (role) {
@@ -194,15 +194,15 @@ public:
     }
 
     /**
-     * @brief Map an anchor-name string to an Anchor enum value.
+     * @brief anchor 名文字列を Anchor enum 値へ対応付ける。
      *
-     * Recognised names (hyphenated, lowercase):
+     * 認識される名前 (ハイフン区切り, 小文字):
      * "top-left", "top-center", "top-right",
      * "center-left", "center", "center-right",
-     * "bottom-left", "bottom-center", "bottom-right".
+     * "bottom-left", "bottom-center", "bottom-right"。
      *
-     * @param anchorName  Lowercase, hyphenated anchor name.
-     * @return Corresponding Anchor; defaults to Anchor::TopLeft for unknowns.
+     * @param anchorName  小文字・ハイフン区切りの anchor 名。
+     * @return 対応する Anchor。未知の場合は Anchor::TopLeft。
      */
     static Anchor anchorFromString(const std::string& anchorName) {
         static const std::map<std::string, Anchor> table = {
@@ -221,26 +221,26 @@ public:
     }
 
 private:
-    /** @brief Monotonically increasing ID counter. */
+    /** @brief 単調増加する ID カウンタ。 */
     static inline uint32_t s_nextId = 1;
 
     /**
-     * @brief Generate a unique UINodeId.
-     * @return Next available ID.
+     * @brief 一意な UINodeId を生成する。
+     * @return 次に利用可能な ID。
      */
     static UINodeId generateId() {
         return static_cast<UINodeId>(s_nextId++);
     }
 
     /**
-     * @brief Helper to construct a UINode from id, name, and role.
+     * @brief id, name, role から UINode を構築する helper。
      *
-     * Builds a UINodeData and passes it to the UINode constructor.
+     * UINodeData を組み立てて UINode コンストラクタへ渡す。
      *
-     * @param id    Node ID.
-     * @param name  Node name.
-     * @param role  Semantic role.
-     * @return Shared pointer to the new UINode.
+     * @param id    node ID。
+     * @param name  node 名。
+     * @param role  意味的な role。
+     * @return 新規 UINode への shared pointer。
      */
     static std::shared_ptr<UINode> makeNode(UINodeId id, const std::string& name, UIRole role) {
         UINodeData data;
@@ -255,7 +255,7 @@ private:
     // -----------------------------------------------------------------
 
     /**
-     * @brief Build a UINode (and its children) from a parsed JsonReader.
+     * @brief parse 済みの JsonReader から UINode (と子要素) を構築する。
      */
     static std::shared_ptr<UINode> parseNode(mitiru::data::JsonReader& reader) {
         const std::string typeName = reader.getString("type").value_or("");
@@ -263,14 +263,14 @@ private:
 
         auto node = makeNode(generateId(), name, roleFromString(typeName));
 
-        // Optional bounds
+        // 任意の bounds
         const float w = reader.getFloat("width").value_or(0.0f);
         const float h = reader.getFloat("height").value_or(0.0f);
         if (w > 0.0f || h > 0.0f) {
             node->setBounds(sgc::Rectf{0.0f, 0.0f, w, h});
         }
 
-        // Optional data fields
+        // 任意のデータフィールド
         {
             const auto text = reader.getString("text");
             if (text.has_value() && !text->empty()) {
@@ -282,9 +282,9 @@ private:
             }
         }
 
-        // Children parsing is limited — getArray returns optional<vector<string>>
-        // Full recursive JSON parsing requires a richer JsonReader
-        // For now, skip children in fromJson() (use createHUD() for tree creation)
+        // 子要素の parse は限定的 — getArray は optional<vector<string>> を返す
+        // 完全な再帰 JSON parse にはより高機能な JsonReader が必要
+        // 当面は fromJson() で子要素を skip する (tree 生成には createHUD() を使う)
 
         return node;
     }
@@ -294,14 +294,14 @@ private:
     // -----------------------------------------------------------------
 
     /**
-     * @brief Indent helper: returns @p depth * 2 spaces.
+     * @brief インデント helper: @p depth * 2 個の空白を返す。
      */
     static std::string indent(int depth) {
         return std::string(static_cast<size_t>(depth) * 2, ' ');
     }
 
     /**
-     * @brief Recursively serialise a node and its children to JSON.
+     * @brief node とその子要素を JSON へ再帰的に serialize する。
      */
     static std::string nodeToJson(const UINode& node, int depth) {
         std::string json;
@@ -312,7 +312,7 @@ private:
         json += pad1 + "\"type\": \"" + roleToString(node.role()) + "\",\n";
         json += pad1 + "\"name\": \"" + node.name() + "\"";
 
-        // Bounds
+        // bounds
         const auto& b = node.bounds();
         if (b.width() > 0.0f || b.height() > 0.0f) {
             json += ",\n";
@@ -321,7 +321,7 @@ private:
             json += pad1 + "\"height\": " + std::to_string(static_cast<int>(b.height()));
         }
 
-        // Children
+        // children
         const auto& children = node.children();
         if (!children.empty()) {
             json += ",\n";

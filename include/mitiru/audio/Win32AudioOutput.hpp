@@ -34,7 +34,7 @@ struct AudioOutputConfig
 	std::uint16_t bitsPerSample = 16;      ///< サンプルあたりのビット数
 
 	/// @brief 1サンプルのバイト数を計算する
-	/// @return bytes per sample (channels * bitsPerSample / 8)
+	/// @return 1サンプルのバイト数 (channels * bitsPerSample / 8)
 	[[nodiscard]] constexpr std::uint32_t bytesPerSample() const noexcept
 	{
 		return static_cast<std::uint32_t>(channels) *
@@ -42,7 +42,7 @@ struct AudioOutputConfig
 	}
 
 	/// @brief 1秒分のバイト数を計算する
-	/// @return bytes per second
+	/// @return 1秒分のバイト数
 	[[nodiscard]] constexpr std::uint32_t bytesPerSecond() const noexcept
 	{
 		return sampleRate * bytesPerSample();

@@ -1,57 +1,57 @@
 /*!
- * mitiru_chat.js — chat bubble surface helper (F-10)
+ * mitiru_chat.js — chat バブル surface ヘルパー (F-10)
  *
- * Small wrapper around the `.mitiru-chat*` CSS classes in mitiru_components.css.
- * Handles bubble DOM creation, typing indicator show/hide, choice rendering,
- * auto-scroll-to-bottom anchor, and click-to-scroll-back interaction.
+ * mitiru_components.css の `.mitiru-chat*` CSS class の薄い wrapper。
+ * バブルの DOM 生成、typing indicator の表示/非表示、choice 描画、
+ * 末尾への auto-scroll anchor、クリックで scroll back する操作を扱う。
  *
  * ── API ─────────────────────────────────────────────────────────────────────
- *   mitiru.chat.mount(rootEl, opts?)        attach the surface; returns a handle
- *   mitiru.chat.send(handle, bubble)        append one bubble (returns element)
- *   mitiru.chat.typing(handle, heroine?)    show typing indicator; returns
- *                                            stop() — call to hide
+ *   mitiru.chat.mount(rootEl, opts?)        surface を attach; handle を返す
+ *   mitiru.chat.send(handle, bubble)        バブルを 1 件追加 (element を返す)
+ *   mitiru.chat.typing(handle, heroine?)    typing indicator を表示;
+ *                                            stop() を返す — 呼ぶと非表示
  *   mitiru.chat.choice(handle, options, onPick)
- *                                           render choice-prompt buttons;
- *                                            returns dismiss() — call to remove
- *   mitiru.chat.clear(handle)               remove all bubbles/indicators
+ *                                           choice-prompt ボタンを描画;
+ *                                            dismiss() を返す — 呼ぶと除去
+ *   mitiru.chat.clear(handle)               全バブル/indicator を除去
  *   mitiru.chat.scrollToBottom(handle, smooth?)
- *   mitiru.chat.isAtBottom(handle)          boolean (within 8px tolerance)
- *   mitiru.chat.unmount(handle)             detach listeners; DOM stays
+ *   mitiru.chat.isAtBottom(handle)          boolean (8px の許容内か)
+ *   mitiru.chat.unmount(handle)             listener を外す; DOM は残す
  *
  * ── Bubble shape ────────────────────────────────────────────────────────────
  *   {
  *     kind:      'incoming' | 'outgoing' | 'system',    // default 'incoming'
- *     text:      'message body',                         // required for non-system
- *     speaker:   'マリア',                               // optional (incoming)
- *     heroine:   'maria',                                // optional → data-heroine
- *     time:      '06:43',                                // optional
- *     html:      false,                                  // treat text as HTML (default false)
+ *     text:      'message body',                         // system 以外は必須
+ *     speaker:   'マリア',                               // 任意 (incoming)
+ *     heroine:   'maria',                                // 任意 → data-heroine
+ *     time:      '06:43',                                // 任意
+ *     html:      false,                                  // text を HTML 扱い (default false)
  *   }
  *
  * ── Auto-scroll ─────────────────────────────────────────────────────────────
- *   By default, `send()` scrolls to the bottom only when the user is already
- *   pinned at the bottom (classic chat UX). Manual scroll back freezes the
- *   scroll position; sending more messages does NOT yank the user forward.
- *   Pass `{forceScroll: true}` in opts to always scroll on send.
+ *   default では `send()` は user が既に末尾に張り付いている時だけ末尾へ
+ *   scroll する (古典的な chat UX)。手動で scroll back すると scroll 位置は
+ *   固定され、以降の送信で user を前へ引き戻すことはない。
+ *   常に send 時 scroll させたい場合は opts に `{forceScroll: true}` を渡す。
  *
  * ── Events ──────────────────────────────────────────────────────────────────
- *   handle.root dispatches CustomEvent:
+ *   handle.root が CustomEvent を dispatch する:
  *     'chat:append'   { bubble, element }
  *     'chat:scroll'   { atBottom }
  *     'chat:choice:pick' { option, index }
  *
- * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-10
+ * 仕様: docs/feedback-from-kaerucrape/2026-04-24.md F-10
  */
 (function(global)
 {
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.chat) { return; }  // already loaded
+	if (mitiru.chat) { return; }  // ロード済み
 
 	const SCROLL_TOLERANCE = 8;
 
-	// ── helpers ─────────────────────────────────────────────────
+	// ── ヘルパー ─────────────────────────────────────────────────
 	function _mkEl(tag, cls, attrs)
 	{
 		const el = document.createElement(tag);
@@ -66,7 +66,7 @@
 		{
 			handle.root.dispatchEvent(new CustomEvent(name, { detail: detail }));
 		}
-		catch (_e) { /* IE/legacy guard */ }
+		catch (_e) { /* IE/legacy ガード */ }
 	}
 
 	function _atBottom(el)
@@ -130,7 +130,7 @@
 	}
 
 	// ── public API ──────────────────────────────────────────────
-	const chat = {};
+	const chat = {};  // 公開 API
 
 	chat.mount = function(rootEl, opts)
 	{
@@ -250,6 +250,6 @@
 	};
 
 	// ── export ──────────────────────────────────────────────────
-	mitiru.chat = chat;
+	mitiru.chat = chat;  // 公開
 
 })(typeof window !== 'undefined' ? window : globalThis);

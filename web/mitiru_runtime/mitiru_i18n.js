@@ -1,33 +1,33 @@
 /*!
- * mitiru_i18n.js — locale / translation runtime (F-07)
+ * mitiru_i18n.js — locale / 翻訳 runtime (F-07)
  *
- * Tiny translation layer for UI strings. Loads per-locale JSON tables,
- * looks up keys via dot-path, interpolates named parameters, and live-binds
- * DOM elements tagged with `data-i18n`.
+ * UI 文字列用の極小な翻訳 layer。locale ごとの JSON table を読み込み、
+ * dot-path で key を引き、named parameter を補間し、`data-i18n` を付けた
+ * DOM element を live-bind する。
  *
  * ── API ─────────────────────────────────────────────────────────────────────
  *   mitiru.i18n.load(locale, source)        Promise<void>
  *                                           source: URL string | inline object
- *                                           If omitted, uses baseDir + locale + '.json'
- *   mitiru.i18n.addLocale(locale, data)     void — register without fetching
- *   mitiru.i18n.setLocale(locale)           void — switch active locale
- *   mitiru.i18n.locale()                    string — current active locale
- *   mitiru.i18n.locales()                   string[] — loaded locales
- *   mitiru.i18n.t(key, params?)             string — translate + interpolate
+ *                                           省略時は baseDir + locale + '.json' を使う
+ *   mitiru.i18n.addLocale(locale, data)     void — fetch せずに登録
+ *   mitiru.i18n.setLocale(locale)           void — active locale を切り替える
+ *   mitiru.i18n.locale()                    string —現在 active な locale
+ *   mitiru.i18n.locales()                   string[] — 読み込み済み locale
+ *   mitiru.i18n.t(key, params?)             string — 翻訳 + 補間
  *   mitiru.i18n.has(key, locale?)           boolean
  *   mitiru.i18n.onLocaleChange(cb)          unsubscribe fn
- *   mitiru.i18n.bindDOM(root?)              scans [data-i18n] / [data-i18n-attr]
- *   mitiru.i18n.unbindDOM(root?)            clears the registry for `root`
+ *   mitiru.i18n.bindDOM(root?)              [data-i18n] / [data-i18n-attr] を走査
+ *   mitiru.i18n.unbindDOM(root?)            `root` の registry を clear
  *   mitiru.i18n.setFontMap(map)             { ja: 'Noto Sans JP', en: 'Nunito' }
  *   mitiru.i18n.fontFamily(locale?)         string | null
  *   mitiru.i18n.setBaseDir(path)            default 'locales/'
- *   mitiru.i18n.setFallback(locale)         e.g. 'en' — used when key missing
+ *   mitiru.i18n.setFallback(locale)         例 'en' — key 欠落時に使う
  *
- * ── Locale JSON format ──────────────────────────────────────────────────────
- *   Either flat ("menu.title": "…") or nested ({"menu": {"title": "…"}}).
- *   Lookup tries the literal flat key first, then dot-path traversal.
+ * ── Locale JSON 形式 ──────────────────────────────────────────────────────
+ *   flat ("menu.title": "…") か nested ({"menu": {"title": "…"}}) のどちらか。
+ *   lookup はまず literal な flat key を試し、次に dot-path 走査する。
  *
- *   Interpolation: "{name}" placeholders replaced from params.
+ *   補間: "{name}" placeholder を params から置換する。
  *     t('day.counter', {n: 3, total: 12})   → "DAY 3 / 12"
  *
  * ── DOM binding ─────────────────────────────────────────────────────────────
@@ -35,15 +35,15 @@
  *   <button data-i18n="tooltip"
  *           data-i18n-attr="title"></button>                → element.title
  *   <span data-i18n="day.counter"
- *         data-i18n-params='{"n":3,"total":12}'></span>     → interpolated
+ *         data-i18n-params='{"n":3,"total":12}'></span>     → 補間される
  *
- *   Bound elements are tracked per-root so re-binding is idempotent and
- *   subsequent setLocale() calls re-apply translations.
+ *   bind した element は root ごとに追跡され、再 bind は冪等。以降の
+ *   setLocale() 呼び出しで翻訳が再適用される。
  *
  * ── Font swap ───────────────────────────────────────────────────────────────
  *   setFontMap({ ja: '"Noto Sans JP", sans-serif', en: '"Nunito", sans-serif' })
- *   On setLocale(), writes CSS custom property --mitiru-locale-font on
- *   document.documentElement.  mitiru_tokens.css / app CSS reference it via
+ *   setLocale() 時に document.documentElement へ CSS custom property
+ *   --mitiru-locale-font を書く。mitiru_tokens.css / app CSS は次で参照する:
  *       body { font-family: var(--mitiru-locale-font, inherit); }
  *
  * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-07
@@ -53,27 +53,27 @@
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.i18n) { return; }  // already loaded
+	if (mitiru.i18n) { return; }  // 読み込み済み
 
 	// ── internal state ──────────────────────────────────────────
-	const _tables    = Object.create(null);  // locale -> table object (flat or nested)
+	const _tables    = Object.create(null);  // locale -> table object (flat か nested)
 	let   _active    = '';
 	let   _fallback  = '';
 	let   _baseDir   = 'locales/';
 	const _fontMap   = Object.create(null);  // locale -> css font-family
-	const _listeners = [];                   // onLocaleChange callbacks
+	const _listeners = [];                   // onLocaleChange callback
 	const _bindings  = [];                   // [{root, records: [{el, key, attr, params}]}]
 
 	// ── helpers ─────────────────────────────────────────────────
 	function _lookup(table, key)
 	{
-		// Flat lookup takes priority (supports flat JSON with dotted keys).
+		// flat lookup を優先する (dot 付き key の flat JSON に対応)。
 		if (Object.prototype.hasOwnProperty.call(table, key))
 		{
 			const v = table[key];
 			if (typeof v === 'string') { return v; }
 		}
-		// Fallback: dot-path traversal.
+		// Fallback: dot-path 走査。
 		const parts = key.split('.');
 		let cur = table;
 		for (let i = 0; i < parts.length; ++i)
@@ -172,13 +172,13 @@
 		{
 			return Promise.reject(new Error('mitiru.i18n.load: locale required'));
 		}
-		// Inline data path — no fetch.
+		// Inline data path — fetch なし。
 		if (source && typeof source === 'object')
 		{
 			i18n.addLocale(locale, source);
 			return Promise.resolve();
 		}
-		// URL path — fetch via mitiru.fetch if available.
+		// URL path — 可能なら mitiru.fetch 経由で取得。
 		const url = (typeof source === 'string' && source)
 			? source
 			: (_baseDir + locale + '.json');
@@ -229,7 +229,7 @@
 		{
 			str = _lookup(_tables[_fallback], key);
 		}
-		if (str === undefined) { return key; }    // missing-key fallback
+		if (str === undefined) { return key; }    // key 欠落時の fallback
 		return _interpolate(str, params);
 	};
 
@@ -248,7 +248,7 @@
 	{
 		if (typeof document === 'undefined') { return 0; }
 		const host = root || document;
-		// Drop any existing slot for this root (re-binding is idempotent).
+		// この root の既存 slot を破棄する (再 bind は冪等)。
 		for (let i = _bindings.length - 1; i >= 0; --i)
 		{
 			if (_bindings[i].root === host) { _bindings.splice(i, 1); }
@@ -289,7 +289,7 @@
 	i18n.setFontMap = function(map)
 	{
 		if (map === null || typeof map !== 'object') { throw new Error('mitiru.i18n.setFontMap: map must be an object'); }
-		// Replace entire map.
+		// map 全体を置き換える。
 		const keys = Object.keys(_fontMap);
 		for (let i = 0; i < keys.length; ++i) { delete _fontMap[keys[i]]; }
 		const nk = Object.keys(map);

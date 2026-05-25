@@ -1,19 +1,19 @@
-// mitiru_launcher — GUI project manager / launcher dogfooded as a Game-as-DLL
+// mitiru_launcher — Game-as-DLL として dogfood する GUI プロジェクトマネージャ / launcher
 //
-// ADR 0005 reference: this DLL never calls into the engine's C++ API. All
-// state pushes to CEF go through `FrameIntents::statePushes[]`. All user-
-// triggered actions arrive as `InputSnapshot::actionEvents[]` (engine routes
-// CEF dispatches into this queue via `StateStore::onActionFallback`).
+// ADR 0005: この DLL はエンジンの C++ API を一切呼ばない。CEF への state push は
+// 全て `FrameIntents::statePushes[]` 経由。ユーザー操作は全て
+// `InputSnapshot::actionEvents[]` で届く (エンジンが CEF dispatch を
+// `StateStore::onActionFallback` 経由でこのキューへ流す)。
 //
-// What this DLL does:
-//   - Reads / writes %APPDATA%/MitiruEngine/projects.json (persistence)
-//   - Spawns child mitiru_host.exe processes for Run / Watch (CreateProcessW)
-//   - File picker to add existing DLLs (GetOpenFileNameW)
-//   - [+ New project] scaffold: creates examples/<name>/ + CMakeLists patch
-//   - [Build] button: spawns cmake under vcvars64.bat with stdout → log file
-//   - Opens explorer / log files (ShellExecuteW)
+// この DLL の役割:
+//   - %APPDATA%/MitiruEngine/projects.json の読み書き (永続化)
+//   - Run / Watch 用に子 mitiru_host.exe を起動 (CreateProcessW)
+//   - 既存 DLL 追加用ファイルピッカー (GetOpenFileNameW)
+//   - [+ New project] scaffold: examples/<name>/ 作成 + CMakeLists パッチ
+//   - [Build] ボタン: vcvars64.bat 下で cmake を起動、stdout → ログファイル
+//   - explorer / ログファイルを開く (ShellExecuteW)
 //
-// Win32 APIs are fair game per ADR 0005 — they're not engine API.
+// Win32 API は ADR 0005 上許容 — エンジン API ではないため。
 
 #include <algorithm>
 #include <array>
@@ -47,15 +47,15 @@ namespace mitiru_launcher
 
 constexpr int kMaxRecents = 16;
 
-// ── Data structures ────────────────────────────────────────────────────
+// ── データ構造 ────────────────────────────────────────────────────
 
 struct Project
 {
-	std::string name;                           ///< human-readable label
-	std::string dllPath;                        ///< absolute path to the game DLL
-	std::string sourceDir;                      ///< optional: where the .cpp / CMakeLists live
-	std::string buildDir;                       ///< optional: cmake build dir (where CMakeCache.txt is)
-	std::string buildTarget;                    ///< optional: cmake target name (defaults to stem(dllPath))
+	std::string name;                           ///< 表示用ラベル
+	std::string dllPath;                        ///< ゲーム DLL の絶対パス
+	std::string sourceDir;                      ///< 任意: .cpp / CMakeLists の場所
+	std::string buildDir;                       ///< 任意: cmake build dir (CMakeCache.txt のある所)
+	std::string buildTarget;                    ///< 任意: cmake target 名 (既定は stem(dllPath))
 };
 
 struct RecentRun
@@ -97,9 +97,8 @@ struct BuildResult
 	std::filesystem::path      logPath;
 };
 
-/// In-flight cmake reconfigure spawned by [+ New project]. Async — the
-/// engine loop polls it each frame so the UI doesn't freeze during the
-/// 5-10 second configure step.
+/// [+ New project] が起動する実行中の cmake reconfigure。非同期 —
+/// 5-10 秒かかる configure 中も UI を固めないよう、エンジンループが毎フレーム poll する。
 struct ScaffoldJob
 {
 	std::string                projectName;
@@ -118,20 +117,20 @@ struct LauncherMemory
 	std::deque<RecentRun>     recents;
 	std::vector<LiveChild>    children;
 	std::vector<BuildJob>     activeBuilds;
-	std::unordered_map<std::string, BuildResult> lastBuilds; // key = project name
-	std::vector<ScaffoldJob>  activeScaffolds; // async cmake reconfigure
-	// Names of projects whose [▶ Open] is waiting on a build to finish.
-	// reapFinishedBuilds() consumes these and spawns game+companion on
-	// successful build, so [Open] feels like "just works" even when the
-	// DLL hasn't been built yet (typical after [+ New project]).
+	std::unordered_map<std::string, BuildResult> lastBuilds; // key = project 名
+	std::vector<ScaffoldJob>  activeScaffolds; // 非同期 cmake reconfigure
+	// [▶ Open] がビルド完了待ちのプロジェクト名。
+	// reapFinishedBuilds() がこれを消費し、ビルド成功時に game+companion を
+	// 起動する。DLL 未ビルドでも (典型的には [+ New project] 直後)
+	// [Open] が「ただ動く」感覚になる。
 	std::vector<std::string>  pendingOpenAfterBuild;
 
 	std::filesystem::path     appDataDir;
 	std::filesystem::path     projectsFile;
-	std::filesystem::path     hostExePath;     // mitiru_host.exe (this process)
-	std::filesystem::path     hostExeDir;      // parent of hostExePath
-	std::optional<std::filesystem::path> engineRoot;   // detected if launcher is in dev tree
-	std::optional<std::filesystem::path> vcvarsBat;    // detected on first need
+	std::filesystem::path     hostExePath;     // mitiru_host.exe (このプロセス)
+	std::filesystem::path     hostExeDir;      // hostExePath の親
+	std::optional<std::filesystem::path> engineRoot;   // launcher が dev tree 内なら検出
+	std::optional<std::filesystem::path> vcvarsBat;    // 初めて必要になった時に検出
 
 	int  pushTick {0};
 	bool firstPush {true};
@@ -139,7 +138,7 @@ struct LauncherMemory
 	std::string scratchJson;
 };
 
-// ── String / path helpers ─────────────────────────────────────────────
+// ── 文字列 / パス ヘルパ ─────────────────────────────────────────────
 
 std::string utf16ToUtf8(const std::wstring& w)
 {
@@ -181,7 +180,7 @@ std::filesystem::path resolveAppDataDir()
 	return dir;
 }
 
-/// Locate this DLL's host exe path via GetModuleFileNameW(nullptr).
+/// この DLL の host exe パスを GetModuleFileNameW(nullptr) で取得。
 std::filesystem::path resolveHostExePath()
 {
 	wchar_t buf[MAX_PATH];
@@ -190,8 +189,8 @@ std::filesystem::path resolveHostExePath()
 	return std::filesystem::path{std::wstring{buf, n}};
 }
 
-/// If the host is running from the engine's build tree, return engine source root.
-/// Heuristic: walk up from host exe dir, looking for `CMakeLists.txt` + `include/mitiru/`.
+/// host がエンジンの build tree から動いているなら engine source root を返す。
+/// ヒューリスティック: host exe dir から上へ辿り `CMakeLists.txt` + `include/mitiru/` を探す。
 std::optional<std::filesystem::path> detectEngineRoot(const std::filesystem::path& hostExeDir)
 {
 	std::filesystem::path p = hostExeDir;
@@ -209,7 +208,7 @@ std::optional<std::filesystem::path> detectEngineRoot(const std::filesystem::pat
 	return std::nullopt;
 }
 
-/// Walk up from a DLL path looking for CMakeCache.txt — that's the build dir.
+/// DLL パスから上へ辿り CMakeCache.txt を探す — それが build dir。
 std::optional<std::filesystem::path> findCmakeBuildDir(const std::filesystem::path& start)
 {
 	std::filesystem::path p = start;
@@ -223,7 +222,7 @@ std::optional<std::filesystem::path> findCmakeBuildDir(const std::filesystem::pa
 	return std::nullopt;
 }
 
-/// Best-effort vcvars64.bat location. Tries common VS 2022 install paths.
+/// vcvars64.bat の best-effort 探索。一般的な VS 2022 install パスを試す。
 std::optional<std::filesystem::path> findVcvarsBat()
 {
 	const std::vector<std::wstring> candidates = {
@@ -246,7 +245,7 @@ std::optional<std::filesystem::path> findVcvarsBat()
 	return std::nullopt;
 }
 
-// ── Intent push helpers (DLL → host) ─────────────────────────────────
+// ── Intent push ヘルパ (DLL → host) ─────────────────────────────────
 
 void pushStateString(mitiru::module::FrameIntents* intents,
                      const char* key, const std::string& value)
@@ -261,7 +260,7 @@ void pushStateString(mitiru::module::FrameIntents* intents,
 	std::strncpy(slot.strVal, value.c_str(), sizeof(slot.strVal) - 1);
 }
 
-// ── Persistence ──────────────────────────────────────────────────────
+// ── 永続化 ──────────────────────────────────────────────────────
 
 void loadProjects(LauncherMemory& mem)
 {
@@ -307,8 +306,8 @@ void saveProjects(const LauncherMemory& mem)
 	if (ofs) { ofs << arr.dump(2); }
 }
 
-/// Fill in missing build / source context for a project by inferring from
-/// its DLL path. Idempotent — only writes empty fields.
+/// プロジェクトの欠けた build / source 情報を DLL パスから推測して補完。
+/// 冪等 — 空フィールドのみ書き込む。
 void inferProjectContext(Project& p)
 {
 	if (p.dllPath.empty()) { return; }
@@ -324,10 +323,10 @@ void inferProjectContext(Project& p)
 	}
 }
 
-// ── Child mitiru_host spawning ───────────────────────────────────────
+// ── 子 mitiru_host 起動 ───────────────────────────────────────
 
-/// Spawn a child mitiru_host.exe for the game DLL with --watch enabled
-/// so the dev-companion's [Build] can hot-swap. Returns PID or 0.
+/// ゲーム DLL 用に子 mitiru_host.exe を --watch 付きで起動。
+/// dev-companion の [Build] が hot-swap できるようにする。PID または 0 を返す。
 DWORD spawnChildGame(LauncherMemory& mem, const Project& proj)
 {
 	const std::wstring hostExe = mem.hostExePath.wstring();
@@ -360,7 +359,7 @@ DWORD spawnChildGame(LauncherMemory& mem, const Project& proj)
 	return pi.dwProcessId;
 }
 
-/// Drop a session file in %TEMP% the companion will read on startup.
+/// companion が起動時に読む session ファイルを %TEMP% に書き出す。
 std::filesystem::path writeSessionFile(const Project& proj, DWORD gamePid)
 {
 	const std::string target = proj.buildTarget.empty()
@@ -382,8 +381,8 @@ std::filesystem::path writeSessionFile(const Project& proj, DWORD gamePid)
 	return sessionFile;
 }
 
-/// Spawn mitiru_dev_companion in a 760x80 compact bar. Reads its session
-/// from MITIRU_COMPANION_SESSION env var (set by us here).
+/// mitiru_dev_companion を 760x80 のコンパクトバーで起動。session は
+/// (ここで設定する) MITIRU_COMPANION_SESSION 環境変数から読む。
 bool spawnCompanion(LauncherMemory& mem,
                     const Project& /*proj*/,
                     const std::filesystem::path& sessionFile)
@@ -397,7 +396,7 @@ bool spawnCompanion(LauncherMemory& mem,
 	std::wstring cmdLine = L"\"" + hostExe + L"\" \"" + companionDll.wstring() +
 		L"\" --size 760x80";
 
-	// Build env block with MITIRU_COMPANION_SESSION injected.
+	// MITIRU_COMPANION_SESSION を注入した env block を構築。
 	std::wstring envBlock;
 	LPWCH parentEnv = GetEnvironmentStringsW();
 	if (parentEnv != nullptr)
@@ -467,7 +466,7 @@ void reapExitedChildren(LauncherMemory& mem)
 	}
 }
 
-// ── Build subprocess ─────────────────────────────────────────────────
+// ── Build サブプロセス ─────────────────────────────────────────────────
 
 bool spawnBuild(LauncherMemory& mem, const Project& proj)
 {
@@ -478,7 +477,7 @@ bool spawnBuild(LauncherMemory& mem, const Project& proj)
 	std::filesystem::path tempDir = std::filesystem::temp_directory_path();
 	std::filesystem::path logPath = tempDir / ("mitiru_build_" + proj.name + ".log");
 
-	// Command:
+	// コマンド:
 	//   cmd.exe /c "call "<vcvars64.bat>" >nul && cmake --build "<buildDir>" --config Debug --target <target> > "<log>" 2>&1"
 	std::wstring vcvarsW = mem.vcvarsBat->wstring();
 	std::wstring buildDirW = utf8ToUtf16(proj.buildDir);
@@ -490,7 +489,7 @@ bool spawnBuild(LauncherMemory& mem, const Project& proj)
 		L"cmake --build \"" + buildDirW + L"\" --config Debug --target " + targetW +
 		L" > \"" + logPathW + L"\" 2>&1";
 
-	// cmd.exe /c "<inner>" — needs outer quoting
+	// cmd.exe /c "<inner>" — 外側の quoting が必要
 	std::wstring cmdLine = L"cmd.exe /c \"" + inner + L"\"";
 
 	STARTUPINFOW si{};
@@ -521,7 +520,7 @@ bool spawnBuild(LauncherMemory& mem, const Project& proj)
 	return true;
 }
 
-// Forward-declared so reapFinishedBuilds() can complete pending [Open]s.
+// reapFinishedBuilds() が保留中の [Open] を完了できるよう前方宣言。
 DWORD spawnChildGame(LauncherMemory& mem, const Project& proj);
 std::filesystem::path writeSessionFile(const Project& proj, DWORD gamePid);
 bool spawnCompanion(LauncherMemory& mem, const Project& proj,
@@ -557,7 +556,7 @@ void reapFinishedBuilds(LauncherMemory& mem,
 		CloseHandle(it->hThread);
 		it = mem.activeBuilds.erase(it);
 
-		// Auto-Open after Auto-Build (launcher.open of an unbuilt DLL).
+		// Auto-Build 後の Auto-Open (未ビルド DLL の launcher.open)。
 		auto pIt = std::find(mem.pendingOpenAfterBuild.begin(),
 		                     mem.pendingOpenAfterBuild.end(),
 		                     finishedName);
@@ -574,7 +573,7 @@ void reapFinishedBuilds(LauncherMemory& mem,
 			continue;
 		}
 
-		// Locate the project entry and complete the open dance.
+		// プロジェクトエントリを探して open 処理を完了する。
 		const Project* proj = nullptr;
 		for (const auto& p : mem.projects)
 		{
@@ -600,8 +599,8 @@ void reapFinishedBuilds(LauncherMemory& mem,
 		{
 			pushFlash(mem, intents, "ok",
 				"Built '" + finishedName + "' and opened.");
-			// Auto-close launcher (same atomic-tools rationale as the
-			// synchronous launcher.open path above).
+			// launcher を自動で閉じる (上の同期 launcher.open と
+			// 同じ atomic-tools の理由)。
 			intents->requestStop = 1;
 		}
 	}
@@ -616,7 +615,7 @@ bool isBuildActive(const LauncherMemory& mem, const std::string& name)
 	return false;
 }
 
-// ── File picker (Add Project) ────────────────────────────────────────
+// ── ファイルピッカー (Add Project) ────────────────────────────────────────
 
 std::optional<std::string> pickDllFile()
 {
@@ -651,13 +650,13 @@ void openLogInNotepad(const std::filesystem::path& logPath)
 
 // ── Scaffold (+ New project) ─────────────────────────────────────────
 //
-// Strategy: when launcher runs from a dev tree, scaffold under
-//   <engine_root>/examples/<name>/ with templated cpp + CMakeLists + assets,
-//   then append `add_subdirectory(<name>)` to examples/CMakeLists.txt and
-//   trigger cmake reconfigure. After reconfigure, [Build] works.
+// 方針: launcher が dev tree から動いている時、
+//   <engine_root>/examples/<name>/ にテンプレ cpp + CMakeLists + assets を生成し、
+//   examples/CMakeLists.txt に `add_subdirectory(<name>)` を追記して
+//   cmake reconfigure を起こす。reconfigure 後に [Build] が機能する。
 //
-// If the launcher is running from a release zip (no engine_root), scaffold
-// dispatch reports an error.
+// release zip から動いている (engine_root 無し) 場合、scaffold dispatch は
+// エラーを報告する。
 
 constexpr const char* kDllTemplate = R"CPP(// {NAME} — game DLL scaffolded by mitiru_launcher.
 //
@@ -839,7 +838,7 @@ constexpr const char* kSceneHtmlTemplate = R"HTML(<!doctype html>
 </html>
 )HTML";
 
-/// Search-and-replace `{NAME}` placeholder in a template string.
+/// テンプレ文字列内の `{NAME}` プレースホルダを置換する。
 std::string applyTemplate(const char* tmpl, const std::string& name)
 {
 	std::string s{tmpl};
@@ -867,9 +866,9 @@ bool isValidProjectName(const std::string& name)
 	return true;
 }
 
-/// Result of the synchronous file-creation phase of scaffolding.
-/// The expensive cmake reconfigure step is started separately and tracked
-/// in mem.activeScaffolds so the UI doesn't freeze for ~5-10 seconds.
+/// scaffolding の同期ファイル生成フェーズの結果。
+/// コストの高い cmake reconfigure は別途起動し、~5-10 秒 UI を固めないよう
+/// mem.activeScaffolds で追跡する。
 struct ScaffoldStartResult
 {
 	bool        ok {false};
@@ -878,7 +877,7 @@ struct ScaffoldStartResult
 	std::string sourceDir;
 	std::string buildDir;
 	std::string buildTarget;
-	bool        cmakeStarted {false}; // true if reconfigure is queued in activeScaffolds
+	bool        cmakeStarted {false}; // reconfigure が activeScaffolds に積まれたら true
 };
 
 ScaffoldStartResult scaffoldStart(LauncherMemory& mem, const std::string& name)
@@ -903,11 +902,10 @@ ScaffoldStartResult scaffoldStart(LauncherMemory& mem, const std::string& name)
 
 	if (dirAlreadyExists)
 	{
-		// User had this project scaffolded before (maybe pressed ✕ in the
-		// launcher list which only removes the entry, not the files).
-		// Don't overwrite any customizations — just re-register into the
-		// list and re-run cmake configure so the build tree is in sync.
-		// Existing source files are preserved as-is.
+		// 以前 scaffold 済み (launcher リストで ✕ を押した — これはエントリのみ
+		// 削除しファイルは残す)。カスタマイズを上書きせず、リストへ再登録して
+		// cmake configure を再実行し build tree を同期させる。
+		// 既存ソースファイルはそのまま保持。
 	}
 	else
 	{
@@ -918,7 +916,7 @@ ScaffoldStartResult scaffoldStart(LauncherMemory& mem, const std::string& name)
 		}
 		std::filesystem::create_directories(dir / "assets", ec);
 
-		// Write source files (fast: a few KB of text — synchronous is fine).
+		// ソースファイル書き込み (高速: 数 KB のテキスト — 同期で問題ない)。
 		{
 			std::ofstream cpp(dir / (name + ".cpp"));
 			cpp << applyTemplate(kDllTemplate, name);
@@ -933,7 +931,7 @@ ScaffoldStartResult scaffoldStart(LauncherMemory& mem, const std::string& name)
 		}
 	}
 
-	// Append `add_subdirectory(name)` to examples/CMakeLists.txt — idempotent.
+	// examples/CMakeLists.txt に `add_subdirectory(name)` を追記 — 冪等。
 	std::filesystem::path examplesCm = *mem.engineRoot / "examples" / "CMakeLists.txt";
 	if (std::filesystem::exists(examplesCm, ec))
 	{
@@ -962,9 +960,9 @@ ScaffoldStartResult scaffoldStart(LauncherMemory& mem, const std::string& name)
 	r.buildDir    = engineBuild.string();
 	r.buildTarget = name;
 
-	// Kick off cmake reconfigure asynchronously. Without vcvars64.bat we
-	// skip — the new subdir is added to CMakeLists but user must re-run
-	// cmake themselves before [Build] works.
+	// cmake reconfigure を非同期で開始。vcvars64.bat 無しならスキップ —
+	// 新 subdir は CMakeLists に追加済みだが、[Build] が機能する前に
+	// ユーザー自身で cmake を再実行する必要がある。
 	if (!mem.vcvarsBat.has_value()) { mem.vcvarsBat = findVcvarsBat(); }
 	if (mem.vcvarsBat.has_value())
 	{
@@ -1021,14 +1019,14 @@ bool isScaffoldActive(const LauncherMemory& mem)
 	return !mem.activeScaffolds.empty();
 }
 
-/// Called once per frame from on_update. Reaps any scaffold cmake-configure
-/// processes that have finished, pushes completion flash, and adopts the
-/// scaffolded project as a fully-buildable entry (it was registered with
-/// empty buildDir at scaffoldStart; we fill it in here).
+/// on_update から毎フレーム呼ばれる。完了した scaffold cmake-configure
+/// プロセスを回収し、完了 flash を push し、scaffold したプロジェクトを
+/// 完全ビルド可能エントリとして採用する (scaffoldStart では buildDir 空で
+/// 登録された。ここで埋める)。
 void reapFinishedScaffolds(LauncherMemory& mem,
-                           mitiru::module::FrameIntents* intents);  // fwd decl
+                           mitiru::module::FrameIntents* intents);  // 前方宣言
 
-// ── State push to CEF ────────────────────────────────────────────────
+// ── CEF への state push ────────────────────────────────────────────────
 
 void pushProjectsState(LauncherMemory& mem,
                       mitiru::module::FrameIntents* intents)
@@ -1104,7 +1102,7 @@ void pushFlash(LauncherMemory& mem,
                const std::string& kind, const std::string& message)
 {
 	nlohmann::json j = {
-		{"kind",    kind},     // "ok" | "error" | "info"
+		{"kind",    kind},     // "ok" | "error" | "info"  種別
 		{"message", message},
 		{"at",      static_cast<long long>(std::time(nullptr))},
 	};
@@ -1112,7 +1110,7 @@ void pushFlash(LauncherMemory& mem,
 	pushStateString(intents, "view.launcher.flash", mem.scratchJson);
 }
 
-// ── Action event dispatch (CEF → DLL) ───────────────────────────────
+// ── Action event の dispatch (CEF → DLL) ───────────────────────────────
 
 void processActionEvents(LauncherMemory& mem,
                          const mitiru::module::InputSnapshot* input,
@@ -1155,8 +1153,8 @@ void processActionEvents(LauncherMemory& mem,
 			if (idx < 0 || idx >= static_cast<int>(mem.projects.size())) { continue; }
 			const auto& proj = mem.projects[idx];
 
-			// If the DLL isn't built yet, try to auto-build first then open.
-			// This matches the natural "I just scaffolded; now run it" flow.
+			// DLL が未ビルドなら、先に auto-build してから open を試みる。
+			// 「scaffold した、さあ動かそう」という自然な流れに合わせる。
 			std::error_code dllEc;
 			const bool dllExists =
 				!proj.dllPath.empty() &&
@@ -1193,7 +1191,7 @@ void processActionEvents(LauncherMemory& mem,
 				continue;
 			}
 
-			// Normal path: DLL is built, spawn game + companion.
+			// 通常経路: DLL ビルド済み、game + companion を起動。
 			const DWORD pid = spawnChildGame(mem, proj);
 			if (pid == 0)
 			{
@@ -1204,11 +1202,10 @@ void processActionEvents(LauncherMemory& mem,
 			std::filesystem::path sf = writeSessionFile(proj, pid);
 			if (!sf.empty()) { spawnCompanion(mem, proj, sf); }
 
-			// Launcher is a transient picker — atomic-tools philosophy says
-			// it shouldn't loiter on screen after handing off to the dev
-			// session. Close ourselves; the user re-launches via the .bat
-			// (or a future "Switch project" menu in companion) when they
-			// want to pick another project.
+			// launcher は一時的な picker — atomic-tools 哲学では dev session へ
+			// 引き渡した後に画面に居座るべきでない。自分を閉じる。別プロジェクトを
+			// 選びたい時、ユーザーは .bat (または将来 companion の "Switch project"
+			// メニュー) から再起動する。
 			intents->requestStop = 1;
 		}
 		else if (name == "launcher.open_folder")
@@ -1226,7 +1223,7 @@ void processActionEvents(LauncherMemory& mem,
 		else if (name == "launcher.scaffold")
 		{
 			const std::string newName = payload.value("name", "");
-			// Reject if another scaffold is in progress — single-slot for now.
+			// 他の scaffold 実行中なら拒否 — 今は single-slot。
 			if (isScaffoldActive(mem))
 			{
 				pushFlash(mem, intents, "info",
@@ -1236,10 +1233,9 @@ void processActionEvents(LauncherMemory& mem,
 			auto r = scaffoldStart(mem, newName);
 			if (r.ok)
 			{
-				// Register the project now (even before cmake configure finishes)
-				// so the user sees it appear immediately in the list. buildDir
-				// is left empty when cmake didn't start; populated by
-				// reapFinishedScaffolds() once configure succeeds.
+				// プロジェクトを今すぐ登録 (cmake configure 完了前でも) し、
+				// リストに即座に現れるようにする。cmake が始まらない時は buildDir を
+				// 空のままにし、configure 成功時に reapFinishedScaffolds() が埋める。
 				Project p;
 				p.name        = newName;
 				p.dllPath     = r.dllPath;
@@ -1247,7 +1243,7 @@ void processActionEvents(LauncherMemory& mem,
 				p.buildTarget = r.buildTarget;
 				if (!r.cmakeStarted)
 				{
-					p.buildDir = r.buildDir; // skip configure step → enable Build immediately (user re-runs cmake manually)
+					p.buildDir = r.buildDir; // configure を飛ばす → Build を即有効化 (ユーザーが手動で cmake 再実行)
 				}
 				mem.projects.push_back(std::move(p));
 				saveProjects(mem);
@@ -1269,7 +1265,7 @@ void processActionEvents(LauncherMemory& mem,
 	}
 }
 
-// ── Module callbacks ─────────────────────────────────────────────────
+// ── モジュールコールバック ─────────────────────────────────────────────────
 
 void launcher_on_init(void* memory)
 {
@@ -1283,7 +1279,7 @@ void launcher_on_init(void* memory)
 	mem.engineRoot   = detectEngineRoot(mem.hostExeDir);
 
 	loadProjects(mem);
-	// Backfill build context for projects that didn't have it (older schema).
+	// build 情報を持たない (旧 schema) プロジェクトに補完する。
 	for (auto& p : mem.projects) { inferProjectContext(p); }
 }
 
@@ -1340,7 +1336,7 @@ void launcher_on_shutdown(void* memory)
 	mem.activeScaffolds.clear();
 }
 
-// Out-of-line definition (forward-declared above; needs Project + memory access).
+// 行外定義 (上で前方宣言済み。Project + memory アクセスが必要)。
 void reapFinishedScaffolds(LauncherMemory& mem,
                            mitiru::module::FrameIntents* intents)
 {
@@ -1354,7 +1350,7 @@ void reapFinishedScaffolds(LauncherMemory& mem,
 		const long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now() - it->startedAtSteady).count();
 
-		// Populate the matching project's buildDir so [Build] becomes enabled.
+		// 該当プロジェクトの buildDir を埋めて [Build] を有効化する。
 		for (auto& p : mem.projects)
 		{
 			if (p.name == it->projectName)
@@ -1386,7 +1382,7 @@ void reapFinishedScaffolds(LauncherMemory& mem,
 
 }  // namespace mitiru_launcher
 
-// ── DLL exports ──────────────────────────────────────────────────────
+// ── DLL エクスポート ──────────────────────────────────────────────────────
 
 extern "C"
 {

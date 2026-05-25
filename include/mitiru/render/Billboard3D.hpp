@@ -18,7 +18,7 @@ struct BillboardInstance {
     float width = 1.0f;
     float height = 1.0f;
     sgc::Colorf color{1,1,1,1};
-    float rotation = 0.0f;  // radians around view axis
+    float rotation = 0.0f;  // ビュー軸まわりの回転（ラジアン）
 };
 
 /// @brief ビルボードレンダラー
@@ -39,18 +39,18 @@ public:
     /// @brief ビルボードのワールド行列を計算する（カメラの向きを向く）
     [[nodiscard]] sgc::Mat4f computeWorldMatrix(const BillboardInstance& bb,
                                                  const Camera3D& camera) const noexcept {
-        // Camera right and up vectors
+        // カメラの right / up ベクトル
         const auto forward = camera.forwardDirection();
         const auto right = camera.rightDirection();
         const auto up = camera.upDirection();
 
-        // Billboard matrix: scale + orient to face camera + translate
+        // billboard 行列: scale + カメラを向く orient + translate
         const auto scale = sgc::Mat4f::scaling({bb.width, bb.height, 1.0f});
 
-        // Rotation around view axis
+        // ビュー軸まわりの回転
         const auto rot = sgc::Mat4f::rotationZ(bb.rotation);
 
-        // Orientation matrix (columns = right, up, -forward)
+        // 向き行列（列 = right, up, -forward）
         sgc::Mat4f orient = sgc::Mat4f::identity();
         orient.m[0][0] = right.x;  orient.m[0][1] = right.y;  orient.m[0][2] = right.z;
         orient.m[1][0] = up.x;     orient.m[1][1] = up.y;     orient.m[1][2] = up.z;

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIMenuBar.hpp
-/// @brief Horizontal menu bar with dropdown menus (File, Edit, View, etc.).
+/// @brief dropdown menu を持つ水平 menu bar (File, Edit, View 等)。
 
 #include <mitiru/ui/UINode.hpp>
 #include <mitiru/ui/widgets/UIContextMenu.hpp>
@@ -16,52 +16,52 @@
 
 namespace mitiru::ui {
 
-/// @brief Definition of a top-level menu in the menu bar.
+/// @brief menu bar 内の top-level menu の定義。
 struct UIMenuDef
 {
-	std::string label;                      ///< Menu label (e.g. "File").
-	std::vector<UIMenuItemDef> items;       ///< Dropdown items.
-	bool enabled = true;                    ///< Whether the menu is interactive.
+	std::string label;                      ///< menu の label (例 "File")。
+	std::vector<UIMenuItemDef> items;       ///< dropdown 項目。
+	bool enabled = true;                    ///< menu が操作可能か。
 };
 
-/// @brief Configuration for creating a UIMenuBar.
+/// @brief UIMenuBar 生成用の設定。
 struct UIMenuBarConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
 	std::vector<UIMenuDef> menus;
 
-	// ── Layout ────────────────────────────────────────────────
-	float height = 28.0f;                   ///< Bar height.
-	float itemPaddingX = 12.0f;             ///< Horizontal padding inside each menu label.
-	float itemPaddingY = 4.0f;              ///< Vertical padding inside each menu label.
-	float fontSize = 14.0f;                 ///< Font size for menu labels.
-	float barWidth = 0.0f;                  ///< Total bar width (0 = auto/full width).
+	// ── layout ────────────────────────────────────────────────
+	float height = 28.0f;                   ///< bar の高さ。
+	float itemPaddingX = 12.0f;             ///< 各 menu label 内の水平 padding。
+	float itemPaddingY = 4.0f;              ///< 各 menu label 内の垂直 padding。
+	float fontSize = 14.0f;                 ///< menu label の font size。
+	float barWidth = 0.0f;                  ///< bar の総幅 (0 = auto/全幅)。
 
-	// ── Dropdown config ───────────────────────────────────────
-	float dropdownWidth = 200.0f;           ///< Width of dropdown menus.
-	float dropdownItemHeight = 28.0f;       ///< Height of dropdown items.
-	int dropdownMaxVisibleItems = 12;       ///< Max visible dropdown items before scroll.
-	float dropdownPadding = 4.0f;           ///< Dropdown inner padding.
+	// ── dropdown 設定 ─────────────────────────────────────────
+	float dropdownWidth = 200.0f;           ///< dropdown menu の幅。
+	float dropdownItemHeight = 28.0f;       ///< dropdown 項目の高さ。
+	int dropdownMaxVisibleItems = 12;       ///< scroll 前に表示する dropdown 項目の最大数。
+	float dropdownPadding = 4.0f;           ///< dropdown の内側 padding。
 
-	// ── Screen bounds ─────────────────────────────────────────
+	// ── 画面 bounds ───────────────────────────────────────────
 	float screenWidth = 1920.0f;
 	float screenHeight = 1080.0f;
 
-	// ── Image keys ────────────────────────────────────────────
-	std::string backgroundImageKey;         ///< Image key for the bar background.
-	std::string activeItemImageKey;         ///< Image key for the active/selected menu label.
-	std::string hoverItemImageKey;          ///< Image key for the hovered menu label.
-	std::string dropdownBackgroundImageKey; ///< Image key for dropdown background.
-	std::string dropdownItemHoverImageKey;  ///< Image key for hovered dropdown item.
-	std::string dropdownSeparatorImageKey;  ///< Image key for dropdown separator.
+	// ── 画像 key 群 ───────────────────────────────────────────
+	std::string backgroundImageKey;         ///< bar 背景の画像 key。
+	std::string activeItemImageKey;         ///< active/選択中の menu label の画像 key。
+	std::string hoverItemImageKey;          ///< hover 中の menu label の画像 key。
+	std::string dropdownBackgroundImageKey; ///< dropdown 背景の画像 key。
+	std::string dropdownItemHoverImageKey;  ///< hover 中の dropdown 項目の画像 key。
+	std::string dropdownSeparatorImageKey;  ///< dropdown separator の画像 key。
 };
 
-/// @brief Horizontal menu bar widget with dropdown menus.
+/// @brief dropdown menu を持つ水平 menu bar widget。
 ///
-/// Manages top-level menu labels and their associated dropdown menus (UIContextMenu).
-/// Supports hover-to-switch when a dropdown is open, Alt key activation,
-/// and full keyboard navigation. Rendering is handled externally by UIRenderer.
+/// top-level の menu label と、それに紐づく dropdown menu (UIContextMenu) を管理する。
+/// dropdown が開いている間の hover 切り替え、Alt key による activation、
+/// 完全な keyboard navigation をサポートする。描画は外部の UIRenderer が担当する。
 ///
 /// @code
 ///   UIMenuBarConfig cfg;
@@ -77,12 +77,12 @@ struct UIMenuBarConfig
 /// @endcode
 class UIMenuBar
 {
-	/// @brief Runtime state of a single top-level menu entry.
+	/// @brief 単一の top-level menu entry の runtime state。
 	struct MenuEntry
 	{
 		UIMenuDef def;
-		float x = 0.0f;           ///< Left edge of the label area.
-		float width = 0.0f;       ///< Width of the label area.
+		float x = 0.0f;           ///< label 領域の左端。
+		float width = 0.0f;       ///< label 領域の幅。
 		bool hovered = false;
 	};
 
@@ -90,7 +90,7 @@ class UIMenuBar
 	std::vector<MenuEntry> m_entries;
 	UIContextMenu m_dropdown;
 
-	// ── Config copies ─────────────────────────────────────────
+	// ── config の複製 ─────────────────────────────────────────
 	float m_height;
 	float m_itemPaddingX;
 	float m_itemPaddingY;
@@ -102,17 +102,17 @@ class UIMenuBar
 	std::string m_activeItemImageKey;
 	std::string m_hoverItemImageKey;
 
-	// ── Runtime state ─────────────────────────────────────────
-	int m_activeMenuIndex = -1;     ///< Currently open menu index (-1 = none).
-	int m_hoveredMenuIndex = -1;    ///< Currently hovered menu label index.
-	bool m_activated = false;       ///< Whether the bar is in activated state (Alt pressed).
+	// ── runtime state ─────────────────────────────────────────
+	int m_activeMenuIndex = -1;     ///< 現在開いている menu の index (-1 = なし)。
+	int m_hoveredMenuIndex = -1;    ///< 現在 hover 中の menu label の index。
+	bool m_activated = false;       ///< bar が activated 状態か (Alt 押下)。
 
 	// ── Callbacks ─────────────────────────────────────────────
 	std::function<void(int, int)> m_onMenuItemSelected;
 
 public:
-	/// @brief Construct a menu bar from configuration.
-	/// @param config Menu bar configuration.
+	/// @brief 設定から menu bar を構築する。
+	/// @param config menu bar 設定。
 	explicit UIMenuBar(const UIMenuBarConfig& config)
 		: m_dropdown(buildDropdownConfig(config))
 		, m_height(config.height)
@@ -139,13 +139,13 @@ public:
 
 		m_node = std::make_shared<UINode>(std::move(data));
 
-		// Build entries from config.
+		// config から entry を構築する。
 		for (const auto& menuDef : config.menus)
 		{
 			addMenuInternal(menuDef);
 		}
 
-		// Wire dropdown callback to route through our callback.
+		// dropdown の callback を自分の callback 経由に配線する。
 		m_dropdown.setOnItemSelected([this](int itemIdx, const std::vector<int>& /*path*/) {
 			if (m_onMenuItemSelected && m_activeMenuIndex >= 0)
 			{
@@ -163,39 +163,39 @@ public:
 
 	// ── Accessors ─────────────────────────────────────────────
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the dropdown context menu (for rendering access).
+	/// @brief dropdown の context menu を取得する (描画アクセス用)。
 	[[nodiscard]] const UIContextMenu& dropdown() const noexcept { return m_dropdown; }
 
-	/// @brief Check if any dropdown menu is currently open.
+	/// @brief いずれかの dropdown menu が現在開いているか確認する。
 	[[nodiscard]] bool isMenuOpen() const noexcept { return m_activeMenuIndex >= 0 && m_dropdown.isOpen(); }
 
-	/// @brief Get the index of the currently open menu (-1 = none).
+	/// @brief 現在開いている menu の index を取得する (-1 = なし)。
 	[[nodiscard]] int activeMenuIndex() const noexcept { return m_activeMenuIndex; }
 
-	/// @brief Get the index of the currently hovered menu label (-1 = none).
+	/// @brief 現在 hover 中の menu label の index を取得する (-1 = なし)。
 	[[nodiscard]] int hoveredMenuIndex() const noexcept { return m_hoveredMenuIndex; }
 
-	/// @brief Get the number of top-level menus.
+	/// @brief top-level menu の数を取得する。
 	[[nodiscard]] std::size_t menuCount() const noexcept { return m_entries.size(); }
 
-	/// @brief Check if the menu bar is in activated mode (Alt pressed).
+	/// @brief menu bar が activated mode か確認する (Alt 押下)。
 	[[nodiscard]] bool isActivated() const noexcept { return m_activated; }
 
-	/// @brief Get the bar height.
+	/// @brief bar の高さを取得する。
 	[[nodiscard]] float height() const noexcept { return m_height; }
 
-	/// @brief Get the background image key.
+	/// @brief 背景画像 key を取得する。
 	[[nodiscard]] const std::string& backgroundImageKey() const noexcept { return m_backgroundImageKey; }
 
-	/// @brief Get the active item image key.
+	/// @brief active item の画像 key を取得する。
 	[[nodiscard]] const std::string& activeItemImageKey() const noexcept { return m_activeItemImageKey; }
 
-	/// @brief Get a menu entry label and bounds for rendering.
-	/// @param index Menu index.
-	/// @return Pair of (label, Rectf bounds) or empty if invalid.
+	/// @brief 描画用に menu entry の label と bounds を取得する。
+	/// @param index menu の index。
+	/// @return (label, Rectf bounds) の組。無効なら空。
 	struct MenuLabelInfo
 	{
 		std::string label;
@@ -220,9 +220,9 @@ public:
 
 	// ── Configuration ─────────────────────────────────────────
 
-	/// @brief Add a menu to the bar.
-	/// @param label Menu label.
-	/// @param items Dropdown items.
+	/// @brief bar に menu を追加する。
+	/// @param label menu の label。
+	/// @param items dropdown 項目。
 	void addMenu(const std::string& label, const std::vector<UIMenuItemDef>& items)
 	{
 		UIMenuDef def;
@@ -232,16 +232,16 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Set the callback invoked when a dropdown item is selected.
-	/// @param callback Function receiving (menuIndex, itemIndex).
+	/// @brief dropdown 項目が選択されたときに呼ばれる callback を設定する。
+	/// @param callback (menuIndex, itemIndex) を受け取る関数。
 	void setOnMenuItemSelected(std::function<void(int, int)> callback)
 	{
 		m_onMenuItemSelected = std::move(callback);
 	}
 
-	/// @brief Set estimated label width for a specific menu (called by layout/renderer).
-	/// @param index Menu index.
-	/// @param width Label width.
+	/// @brief 特定 menu の推定 label 幅を設定する (layout/renderer が呼ぶ)。
+	/// @param index menu の index。
+	/// @param width label の幅。
 	void setMenuLabelWidth(std::size_t index, float width)
 	{
 		if (index >= m_entries.size()) { return; }
@@ -249,7 +249,7 @@ public:
 		recalculateLayout();
 	}
 
-	/// @brief Set screen bounds for dropdown positioning.
+	/// @brief dropdown 配置用の screen bounds を設定する。
 	void setScreenBounds(float width, float height) noexcept
 	{
 		m_screenWidth = width;
@@ -257,20 +257,20 @@ public:
 		m_dropdown.setScreenBounds(width, height);
 	}
 
-	// ── Input handling ────────────────────────────────────────
+	// ── 入力処理 ──────────────────────────────────────────────
 
-	/// @brief Process mouse movement.
-	/// @param mouseX Mouse X in screen space.
-	/// @param mouseY Mouse Y in screen space.
+	/// @brief mouse の移動を処理する。
+	/// @param mouseX screen 空間での mouse X。
+	/// @param mouseY screen 空間での mouse Y。
 	void onMouseMove(float mouseX, float mouseY)
 	{
-		// Forward to dropdown if open.
+		// 開いていれば dropdown へ転送する。
 		if (m_dropdown.isOpen())
 		{
 			m_dropdown.onMouseMove(mouseX, mouseY);
 		}
 
-		// Check hover over bar labels.
+		// bar label 上の hover を判定する。
 		m_hoveredMenuIndex = -1;
 		for (std::size_t i = 0; i < m_entries.size(); ++i)
 		{
@@ -283,7 +283,7 @@ public:
 			{
 				m_hoveredMenuIndex = static_cast<int>(i);
 
-				// Hover-to-switch: if a dropdown is open and we hover a different label, switch.
+				// hover 切り替え: dropdown が開いていて別の label を hover したら切り替える。
 				if (isMenuOpen() && m_activeMenuIndex != static_cast<int>(i) && entry.def.enabled)
 				{
 					openDropdown(static_cast<int>(i));
@@ -297,12 +297,12 @@ public:
 		}
 	}
 
-	/// @brief Process mouse click.
-	/// @param mouseX Mouse X in screen space.
-	/// @param mouseY Mouse Y in screen space.
+	/// @brief mouse の click を処理する。
+	/// @param mouseX screen 空間での mouse X。
+	/// @param mouseY screen 空間での mouse Y。
 	void onMouseClick(float mouseX, float mouseY)
 	{
-		// Check if click is on a bar label.
+		// click が bar label 上か判定する。
 		for (std::size_t i = 0; i < m_entries.size(); ++i)
 		{
 			const auto& entry = m_entries[i];
@@ -313,7 +313,7 @@ public:
 
 				if (m_activeMenuIndex == static_cast<int>(i) && m_dropdown.isOpen())
 				{
-					// Toggle: close if already open.
+					// toggle: 既に開いていれば閉じる。
 					m_dropdown.close();
 					m_activeMenuIndex = -1;
 				}
@@ -326,16 +326,16 @@ public:
 			}
 		}
 
-		// Forward click to dropdown.
+		// click を dropdown へ転送する。
 		if (m_dropdown.isOpen())
 		{
 			m_dropdown.onMouseClick(mouseX, mouseY);
 		}
 	}
 
-	// ── Keyboard navigation ───────────────────────────────────
+	// ── keyboard navigation ───────────────────────────────────
 
-	/// @brief Toggle activation of the menu bar (Alt key).
+	/// @brief menu bar の activation を toggle する (Alt key)。
 	void toggleActivation()
 	{
 		m_activated = !m_activated;
@@ -355,7 +355,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Navigate to the next menu label (Right arrow when activated).
+	/// @brief 次の menu label へ移動する (activated 時の Right arrow)。
 	void navigateNextMenu()
 	{
 		if (m_entries.empty()) { return; }
@@ -364,7 +364,7 @@ public:
 		int next = current + 1;
 		if (next >= static_cast<int>(m_entries.size())) { next = 0; }
 
-		// Skip disabled menus.
+		// disabled な menu は飛ばす。
 		const int start = next;
 		do
 		{
@@ -380,7 +380,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Navigate to the previous menu label (Left arrow when activated).
+	/// @brief 前の menu label へ移動する (activated 時の Left arrow)。
 	void navigatePreviousMenu()
 	{
 		if (m_entries.empty()) { return; }
@@ -404,7 +404,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Open the dropdown for the currently hovered menu (Enter/Down arrow).
+	/// @brief 現在 hover 中の menu の dropdown を開く (Enter/Down arrow)。
 	void openHoveredMenu()
 	{
 		if (m_hoveredMenuIndex >= 0 && m_hoveredMenuIndex < static_cast<int>(m_entries.size()))
@@ -414,7 +414,7 @@ public:
 		}
 	}
 
-	/// @brief Forward keyboard navigation to the open dropdown.
+	/// @brief keyboard navigation を開いている dropdown へ転送する。
 	void dropdownNavigateUp()    { m_dropdown.navigateUp(); }
 	void dropdownNavigateDown()  { m_dropdown.navigateDown(); }
 	void dropdownNavigateRight() { m_dropdown.navigateRight(); }
@@ -427,7 +427,7 @@ private:
 	{
 		MenuEntry entry;
 		entry.def = menuDef;
-		// Default width estimate; caller should use setMenuLabelWidth for accurate sizing.
+		// 既定の幅推定値。正確な sizing には caller が setMenuLabelWidth を使うこと。
 		entry.width = static_cast<float>(menuDef.label.size()) * m_fontSize * 0.6f + m_itemPaddingX * 2.0f;
 		m_entries.push_back(std::move(entry));
 		recalculateLayout();

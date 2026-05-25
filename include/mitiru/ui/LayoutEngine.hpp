@@ -2,10 +2,10 @@
 
 /**
  * @file LayoutEngine.hpp
- * @brief Flexbox-like declarative layout engine for MitiruEngine UI.
+ * @brief MitiruEngine UI 用の Flexbox 風 宣言的 layout engine。
  *
- * Provides anchor-based positioning, directional child layout with flex grow,
- * and recursive tree layout computation. All sizes are in screen-space pixels.
+ * anchor ベースの位置決め、flex grow 付きの方向性子要素 layout、
+ * 再帰的な tree layout 計算を提供する。サイズは全て screen-space の px。
  */
 
 #include <sgc/math/Rect.hpp>
@@ -19,10 +19,9 @@
 namespace mitiru::ui {
 
 /**
- * @brief Anchor point within the parent or screen area.
+ * @brief 親または screen 領域内の anchor 点。
  *
- * Determines the reference corner / edge used when positioning an element
- * inside its available space.
+ * 要素を利用可能空間内に配置する際の基準となる角 / 辺を決める。
  */
 enum class Anchor : uint8_t {
     TopLeft,
@@ -37,25 +36,25 @@ enum class Anchor : uint8_t {
 };
 
 /**
- * @brief Primary axis along which children are laid out.
+ * @brief 子要素を並べる主軸 (primary axis)。
  */
 enum class LayoutDirection : uint8_t {
-    Horizontal, ///< Left-to-right flow.
-    Vertical    ///< Top-to-bottom flow.
+    Horizontal, ///< 左から右への flow。
+    Vertical    ///< 上から下への flow。
 };
 
 /**
- * @brief How a dimension (width or height) is determined.
+ * @brief 寸法 (幅または高さ) の決定方法。
  */
 enum class SizeMode : uint8_t {
-    Fixed,   ///< Exact pixel size specified by the user.
-    Fill,    ///< Expand to fill all remaining space in the parent.
-    Wrap,    ///< Shrink to fit the content.
-    Percent  ///< Percentage (0-100) of the parent dimension.
+    Fixed,   ///< user 指定の正確な px サイズ。
+    Fill,    ///< 親の残り空間を全て埋めるよう拡張。
+    Wrap,    ///< content に合わせて縮小。
+    Percent  ///< 親寸法に対する割合 (0-100)。
 };
 
 /**
- * @brief Four-sided spacing value used for margins and padding.
+ * @brief margin / padding に使う四辺の spacing 値。
  */
 struct Margin {
     float top    = 0.0f;
@@ -63,24 +62,24 @@ struct Margin {
     float bottom = 0.0f;
     float left   = 0.0f;
 
-    /** @brief Create uniform margin on all sides. */
+    /** @brief 全辺均一の margin を生成する。 */
     static Margin all(float v) noexcept { return {v, v, v, v}; }
 
-    /** @brief Create symmetric margin (horizontal, vertical). */
+    /** @brief 対称な margin を生成する (horizontal, vertical)。 */
     static Margin symmetric(float h, float v) noexcept { return {v, h, v, h}; }
 };
 
 /**
- * @brief Full set of layout parameters for a single UI node.
+ * @brief 単一 UI node の layout パラメータ一式。
  *
- * Combines sizing mode, min/max bounds, anchor, margin/padding, flex
- * factor, and child-layout direction into one descriptor.
+ * sizing mode、min/max bounds、anchor、margin/padding、flex factor、
+ * 子要素 layout direction を 1 つの descriptor にまとめたもの。
  */
 struct LayoutConstraints {
     SizeMode widthMode  = SizeMode::Wrap;
     SizeMode heightMode = SizeMode::Wrap;
-    float width         = 0.0f;       ///< Used when widthMode is Fixed or Percent.
-    float height        = 0.0f;       ///< Used when heightMode is Fixed or Percent.
+    float width         = 0.0f;       ///< widthMode が Fixed または Percent の時に使用。
+    float height        = 0.0f;       ///< heightMode が Fixed または Percent の時に使用。
     float minWidth      = 0.0f;
     float minHeight     = 0.0f;
     float maxWidth      = 99999.0f;
@@ -88,17 +87,17 @@ struct LayoutConstraints {
     Anchor anchor       = Anchor::TopLeft;
     Margin margin{};
     Margin padding{};
-    float spacing             = 0.0f; ///< Gap between children.
+    float spacing             = 0.0f; ///< 子要素間の gap。
     LayoutDirection direction = LayoutDirection::Vertical;
-    float flex                = 0.0f; ///< Flex-grow factor (0 = no flex).
+    float flex                = 0.0f; ///< flex-grow factor (0 = flex 無し)。
 };
 
 /**
- * @brief Computed layout output for a single node.
+ * @brief 単一 node の計算済み layout 出力。
  */
 struct LayoutResult {
-    sgc::Rectf bounds;   ///< Computed bounds in screen space.
-    std::string nodeId;  ///< Maps back to the originating UINode.
+    sgc::Rectf bounds;   ///< screen space 上の計算済み bounds。
+    std::string nodeId;  ///< 元の UINode への対応付け。
 };
 
 // -----------------------------------------------------------------------
@@ -107,7 +106,7 @@ struct LayoutResult {
 namespace detail {
 
 /**
- * @brief Clamp @p value between @p lo and @p hi.
+ * @brief @p value を @p lo と @p hi の間に clamp する。
  */
 inline float clampf(float value, float lo, float hi) noexcept {
     if (value < lo) return lo;
@@ -116,15 +115,15 @@ inline float clampf(float value, float lo, float hi) noexcept {
 }
 
 /**
- * @brief Resolve a single dimension from its SizeMode.
+ * @brief SizeMode から単一の寸法を解決する。
  *
- * @param mode       The sizing mode.
- * @param specified  The user-specified value (pixels or percent).
- * @param parentDim  The parent's dimension along the same axis.
- * @param contentDim Measured content size (used for Wrap).
- * @param minDim     Minimum allowed size.
- * @param maxDim     Maximum allowed size.
- * @return Resolved size in pixels, clamped to [minDim, maxDim].
+ * @param mode       sizing mode。
+ * @param specified  user 指定値 (px または percent)。
+ * @param parentDim  同軸方向の親の寸法。
+ * @param contentDim 計測した content サイズ (Wrap 用)。
+ * @param minDim     許容最小サイズ。
+ * @param maxDim     許容最大サイズ。
+ * @return [minDim, maxDim] に clamp した解決済みサイズ (px)。
  */
 inline float resolveDimension(SizeMode mode,
                               float specified,
@@ -150,9 +149,9 @@ inline float resolveDimension(SizeMode mode,
 
 /**
  * @class LayoutEngine
- * @brief Computes screen-space positions and sizes for a UI node tree.
+ * @brief UI node tree の screen-space 位置とサイズを計算する。
  *
- * Usage:
+ * 使用例:
  * @code
  *   LayoutEngine engine(1920.0f, 1080.0f);
  *
@@ -172,24 +171,24 @@ class LayoutEngine {
 
 public:
     /**
-     * @brief Construct with initial screen dimensions.
-     * @param screenW  Viewport width in pixels.
-     * @param screenH  Viewport height in pixels.
+     * @brief 初期 screen 寸法を与えて構築する。
+     * @param screenW  viewport 幅 (px)。
+     * @param screenH  viewport 高さ (px)。
      */
     LayoutEngine(float screenW, float screenH) noexcept
         : m_screenW(screenW), m_screenH(screenH) {}
 
     /**
-     * @brief Update the viewport size (e.g. on window resize).
+     * @brief viewport サイズを更新する (window resize 時など)。
      */
     void setScreenSize(float w, float h) noexcept {
         m_screenW = w;
         m_screenH = h;
     }
 
-    /** @brief Current viewport width. */
+    /** @brief 現在の viewport 幅。 */
     float screenWidth()  const noexcept { return m_screenW; }
-    /** @brief Current viewport height. */
+    /** @brief 現在の viewport 高さ。 */
     float screenHeight() const noexcept { return m_screenH; }
 
     // -------------------------------------------------------------------
@@ -197,16 +196,16 @@ public:
     // -------------------------------------------------------------------
 
     /**
-     * @brief Position a single element inside the screen using its anchor.
+     * @brief 単一要素を anchor に従って screen 内に配置する。
      *
-     * The element's final width/height are given by @p contentW / @p contentH
-     * (already resolved). This function only computes the (x, y) origin
-     * based on the anchor point and margins.
+     * 要素の最終的な幅/高さは @p contentW / @p contentH で与えられる
+     * (解決済み)。本関数は anchor 点と margin に基づき (x, y) 原点のみを
+     * 計算する。
      *
-     * @param constraints Layout constraints (anchor and margin are used).
-     * @param contentW    Resolved width of the element.
-     * @param contentH    Resolved height of the element.
-     * @return Screen-space rectangle.
+     * @param constraints layout 制約 (anchor と margin を使用)。
+     * @param contentW    要素の解決済み幅。
+     * @param contentH    要素の解決済み高さ。
+     * @return screen-space の矩形。
      */
     sgc::Rectf computeAnchored(const LayoutConstraints& constraints,
                                 float contentW,
@@ -221,18 +220,17 @@ public:
     // -------------------------------------------------------------------
 
     /**
-     * @brief Distribute child elements along a direction inside a parent rect.
+     * @brief 親矩形内で子要素を方向に沿って配置する。
      *
-     * Children are placed sequentially along @p direction. Fixed-size and
-     * wrap children are laid out first; remaining space is divided among
-     * children whose flex factor is greater than zero. Margins and spacing
-     * are respected.
+     * 子要素は @p direction に沿って順番に配置される。Fixed サイズと
+     * wrap の子要素を先に配置し、残り空間を flex factor が 0 より大きい
+     * 子要素に分配する。margin と spacing は尊重される。
      *
-     * @param parentBounds      Available area for children.
-     * @param childConstraints  One LayoutConstraints per child, in order.
-     * @param direction         Primary layout axis.
-     * @param spacing           Extra gap between consecutive children.
-     * @return One Rectf per child, in the same order as @p childConstraints.
+     * @param parentBounds      子要素が使える領域。
+     * @param childConstraints  子要素ごとの LayoutConstraints (順序通り)。
+     * @param direction         主軸 (primary layout axis)。
+     * @param spacing           連続する子要素間の追加 gap。
+     * @return 子要素ごとの Rectf (@p childConstraints と同順)。
      */
     std::vector<sgc::Rectf> layoutChildren(
         const sgc::Rectf& parentBounds,
@@ -245,7 +243,7 @@ public:
         const float parentCross = horizontal ? parentBounds.height() : parentBounds.width();
         const size_t count = childConstraints.size();
 
-        // --- First pass: resolve non-flex sizes, accumulate flex total ---
+        // --- 第 1 パス: 非 flex サイズを解決し、flex 合計を集計 ---
         struct ChildInfo {
             float mainSize  = 0.0f;
             float crossSize = 0.0f;
@@ -276,7 +274,7 @@ public:
                 info.marginCrossAfter  = c.margin.right;
             }
 
-            // Cross-axis size
+            // 交差軸 (cross-axis) のサイズ
             const SizeMode crossMode = horizontal ? c.heightMode : c.widthMode;
             const float crossSpec    = horizontal ? c.height     : c.width;
             const float crossMin     = horizontal ? c.minHeight  : c.minWidth;
@@ -284,7 +282,7 @@ public:
             const float availCross   = parentCross - info.marginCrossBefore - info.marginCrossAfter;
             info.crossSize = detail::resolveDimension(crossMode, crossSpec, availCross, 0.0f, crossMin, crossMax);
 
-            // Main-axis size
+            // 主軸 (main-axis) のサイズ
             const SizeMode mainMode = horizontal ? c.widthMode : c.heightMode;
             const float mainSpec    = horizontal ? c.width     : c.height;
             const float mainMin     = horizontal ? c.minWidth  : c.minHeight;
@@ -292,7 +290,7 @@ public:
 
             info.flex = c.flex;
             if (c.flex > 0.0f) {
-                // Will be resolved in second pass; use min for accounting.
+                // 第 2 パスで解決する。集計用には min を使う。
                 info.mainSize = mainMin;
                 totalFlex += c.flex;
             } else {
@@ -301,11 +299,11 @@ public:
             totalFixed += info.mainSize + info.marginMainBefore + info.marginMainAfter;
         }
 
-        // Spacing between children
+        // 子要素間の spacing
         const float totalSpacing = (count > 1) ? spacing * static_cast<float>(count - 1) : 0.0f;
         const float remaining    = parentMain - totalFixed - totalSpacing;
 
-        // --- Second pass: distribute remaining space to flex children ---
+        // --- 第 2 パス: 残り空間を flex の子要素へ分配 ---
         if (totalFlex > 0.0f && remaining > 0.0f) {
             for (size_t i = 0; i < count; ++i) {
                 if (infos[i].flex > 0.0f) {
@@ -318,7 +316,7 @@ public:
             }
         }
 
-        // --- Third pass: position each child ---
+        // --- 第 3 パス: 各子要素を配置 ---
         std::vector<sgc::Rectf> results(count);
         float cursor = 0.0f;
 
@@ -356,16 +354,16 @@ public:
     // -------------------------------------------------------------------
 
     /**
-     * @brief Recursively compute bounds for every node in the tree.
+     * @brief tree 内の全 node の bounds を再帰的に計算する。
      *
-     * Each node looks up its LayoutConstraints in @p constraints. If a node
-     * has no entry, a default LayoutConstraints (Wrap, TopLeft) is used.
-     * Computed bounds are written directly into each node's data via
-     * @c UINode::setPosition / @c UINode::setSize (or stored externally
-     * depending on UINode API).
+     * 各 node は @p constraints から自身の LayoutConstraints を引く。
+     * エントリが無い node には default の LayoutConstraints (Wrap, TopLeft)
+     * を使う。計算済み bounds は @c UINode::setPosition / @c UINode::setSize
+     * 経由で各 node のデータへ直接書き込まれる (UINode API によっては外部
+     * 保存)。
      *
-     * @param root        Root of the UI tree.
-     * @param constraints Per-node layout parameters keyed by UINodeId.
+     * @param root        UI tree の root。
+     * @param constraints UINodeId をキーとした node ごとの layout パラメータ。
      */
     void layoutTree(UINode& root,
                     const std::map<UINodeId, LayoutConstraints>& constraints) const {
@@ -379,7 +377,7 @@ private:
     // -------------------------------------------------------------------
 
     /**
-     * @brief Position an element inside an arbitrary parent rectangle.
+     * @brief 任意の親矩形内に要素を配置する。
      */
     sgc::Rectf computeAnchoredInRect(const sgc::Rectf& parent,
                                       const LayoutConstraints& constraints,
@@ -431,7 +429,7 @@ private:
     }
 
     /**
-     * @brief Resolve the size of a node given its constraints and parent bounds.
+     * @brief 制約と親 bounds から node のサイズを解決する。
      */
     sgc::Rectf resolveNodeBounds(const sgc::Rectf& parentBounds,
                                   const LayoutConstraints& lc) const noexcept {
@@ -445,14 +443,14 @@ private:
     }
 
     /**
-     * @brief Depth-first recursive layout pass.
+     * @brief 深さ優先の再帰 layout パス。
      */
     void layoutNodeRecursive(
         UINode& node,
         const sgc::Rectf& parentBounds,
         const std::map<UINodeId, LayoutConstraints>& constraintMap) const {
 
-        // Look up constraints (default if absent).
+        // 制約を引く (無ければ default)。
         LayoutConstraints lc;
         {
             auto it = constraintMap.find(node.id());
@@ -461,11 +459,11 @@ private:
             }
         }
 
-        // Resolve this node's bounds.
+        // この node の bounds を解決する。
         const sgc::Rectf nodeBounds = resolveNodeBounds(parentBounds, lc);
         node.setBounds(nodeBounds);
 
-        // Content area after padding.
+        // padding を引いた後の content 領域。
         const sgc::Rectf contentArea{
             nodeBounds.x() + lc.padding.left,
             nodeBounds.y() + lc.padding.top,
@@ -473,7 +471,7 @@ private:
             nodeBounds.height() - lc.padding.top  - lc.padding.bottom
         };
 
-        // Collect children constraints.
+        // 子要素の制約を収集する。
         auto& children = node.children();
         if (children.empty()) {
             return;
@@ -486,10 +484,10 @@ private:
             childLCs.push_back(it != constraintMap.end() ? it->second : LayoutConstraints{});
         }
 
-        // Layout children within content area.
+        // content 領域内に子要素を配置する。
         const auto rects = layoutChildren(contentArea, childLCs, lc.direction, lc.spacing);
 
-        // Recurse into each child.
+        // 各子要素へ再帰する。
         for (size_t i = 0; i < children.size(); ++i) {
             layoutNodeRecursive(*children[i], rects[i], constraintMap);
         }

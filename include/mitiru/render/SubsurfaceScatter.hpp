@@ -134,9 +134,9 @@ enum class SSSProfile : int
 // ============================================================================
 
 /// @brief Skinプロファイル 17タップカーネル（float4: RGB重み + オフセット）
-// kernel format (Jimenez 2009 SSS, 17-tap):
-//   .rgb = per-channel weight contribution
-//   .a   = spatial offset along blur direction (center = 0)
+// カーネルフォーマット (Jimenez 2009 SSS, 17-tap):
+//   .rgb = チャンネルごとの重み寄与
+//   .a   = ブラー方向に沿った空間オフセット (center = 0)
 static constexpr std::array<std::array<float, 4>, 17> SKIN_KERNEL_17 = {{
 	{{0.530605f, 0.613514f, 0.739601f,  0.0f}},
 	{{0.000973f, 0.001138f, 0.001999f, -2.0f}},
@@ -240,12 +240,12 @@ public:
 		const float texW = static_cast<float>(m_width);
 		const float texH = static_cast<float>(m_height);
 
-		// H pass: scene → ping RT
+		// 水平パス: scene → ping RT
 		runBlurPass(context, sceneSRV, depthSRV,
 			m_pingRT.rtv.Get(), 1.0f, 0.0f,
 			texW, texH, kernel);
 
-		// V pass: ping RT → outputRTV
+		// 垂直パス: ping RT → outputRTV
 		runBlurPass(context, m_pingRT.srv.Get(), depthSRV,
 			outputRTV, 0.0f, 1.0f,
 			texW, texH, kernel);

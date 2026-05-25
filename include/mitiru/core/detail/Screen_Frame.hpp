@@ -1,5 +1,5 @@
 #pragma once
-// Detail header for mitiru::Screen — do not include directly; included via core/Screen.hpp
+// mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
 
 inline void mitiru::Screen::setPipeline(render::RenderPipeline2D* pipeline) noexcept
 {

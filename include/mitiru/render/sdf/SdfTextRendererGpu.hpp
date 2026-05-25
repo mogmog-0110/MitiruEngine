@@ -21,12 +21,12 @@ namespace sdf_gpu_detail
 {
 
 /// @brief SpriteBatchにSDFテキストを描画する（内部実装）
-/// @details At small font sizes (e.g. 16px on a 32px SDF atlas → 0.5x display
-///          scale) sub-pixel glyph positions blur each character via bilinear
-///          texture filtering. We snap destination quad x/y/w/h to integer
-///          pixels so glyphs land on whole texels — this removes the
-///          "Inspector text looks smudged" artifact at small sizes without
-///          affecting layout / advance accounting.
+/// @details 小さいフォントサイズ（例 32px SDF atlas に対し 16px → 0.5x display
+///          scale）では、sub-pixel なグリフ位置が bilinear texture filtering で
+///          各文字をぼかしてしまう。dest quad の x/y/w/h を整数ピクセルに
+///          スナップし、グリフを texel 単位に揃える — これで小サイズ時の
+///          「Inspector のテキストがにじむ」アーティファクトを、
+///          layout / advance の計算に影響を与えずに除去する。
 template <typename BatchType>
 inline void drawText(const SdfFontAtlas& atlas, BatchType& batch, std::string_view text,
 	float x, float y, float fontSize, const sgc::Colorf& color)
@@ -50,9 +50,9 @@ inline void drawText(const SdfFontAtlas& atlas, BatchType& batch, std::string_vi
 		const auto* gi = atlas.findGlyph(cp);
 		if (gi != nullptr && gi->width() > 0 && gi->height() > 0)
 		{
-			// Compute the exact float dest, then snap to whole pixels for
-			// the actual quad. The advance below still uses float so
-			// glyph spacing accumulates without rounding error.
+			// 正確な float の dest を計算してから、実際の quad は整数ピクセルに
+			// スナップする。下の advance は float のまま使うので、
+			// グリフ間隔が丸め誤差なしで累積する。
 			const float gxF = cursorX + gi->xoff * displayScale;
 			const float gyF = y + gi->yoff * displayScale;
 			const float gwF = static_cast<float>(gi->width())  * displayScale;

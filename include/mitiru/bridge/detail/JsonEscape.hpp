@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file JsonEscape.hpp
-/// @brief JSON-escape helpers shared across bridges.
+/// @brief bridge 間で共有する JSON エスケープヘルパー。
 /// @details bridge コードで頻出する「string を `"..."` JSON literal にする」処理を
 ///          一箇所に集約する。RFC 8259 §7 に従い、`"` / `\\` / 制御文字
 ///          (0x00–0x1F: `\\n` `\\r` `\\t` `\\b` `\\f` および `\\u00XX`) を

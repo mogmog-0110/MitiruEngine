@@ -1,11 +1,11 @@
-// Detail header for mitiru::Engine — do not include directly; included via core/Engine.hpp
+// mitiru::Engine の detail header — 直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
 
 #include <fstream>
 
-// ── Font loading (TTF + SDF atlas) out-of-class definitions ──────────────
+// ── font 読み込み (TTF + SDF atlas) の class 外定義 ──────────────
 
 MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 {
@@ -18,24 +18,24 @@ MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 		"../../assets/fonts/default.ttf",
 	});
 #ifdef _WIN32
-	// Windows system fonts — Workbench-aligned monospace first, then JP
-	// fallbacks. Mono fonts (Cascadia / Consolas) survive SDF rasterisation
-	// at small sizes much better than Yu Gothic's thin variable strokes,
-	// which were rendering as smudgy/unreadable at 16px in the inspector.
+	// Windows system fonts — Workbench に揃えた monospace を先に、その後 JP
+	// fallback。Mono font (Cascadia / Consolas) は小サイズでも SDF rasterise
+	// に強く、Yu Gothic の細い variable stroke (inspector の 16px で smudgy /
+	// 判読不能に rendering されていた) より遥かに良い。
 	const char* winFonts = std::getenv("WINDIR");
 	if (winFonts)
 	{
 		const std::string fontsDir = std::string(winFonts) + "\\Fonts\\";
-		// ── Monospace family (Workbench primary) ────────────────────
-		searchPaths.push_back(fontsDir + "CascadiaMono.ttf");      // Cascadia Mono (Win 11 default)
+		// ── Monospace 系 (Workbench の主フォント) ────────────────────
+		searchPaths.push_back(fontsDir + "CascadiaMono.ttf");      // Cascadia Mono (Win 11 既定)
 		searchPaths.push_back(fontsDir + "CascadiaCode.ttf");      // Cascadia Code (Win 10+ Terminal)
-		searchPaths.push_back(fontsDir + "consola.ttf");           // Consolas (Vista+ ubiquitous)
-		// ── Japanese fallbacks (CJK glyph coverage) ─────────────────
+		searchPaths.push_back(fontsDir + "consola.ttf");           // Consolas (Vista+ で遍在)
+		// ── 日本語 fallback (CJK glyph をカバー) ─────────────────
 		searchPaths.push_back(fontsDir + "YuGothM.ttc");           // Yu Gothic Medium
 		searchPaths.push_back(fontsDir + "YuGothR.ttc");           // Yu Gothic Regular
 		searchPaths.push_back(fontsDir + "meiryo.ttc");            // Meiryo
 		searchPaths.push_back(fontsDir + "msgothic.ttc");          // MS Gothic
-		// ── Sans-serif ultimate fallback ────────────────────────────
+		// ── Sans-serif の最終 fallback ────────────────────────────
 		searchPaths.push_back(fontsDir + "segoeui.ttf");           // Segoe UI
 	}
 #endif
@@ -138,12 +138,12 @@ MITIRU_INLINE void mitiru::Engine::initSdfFont(std::vector<std::uint8_t> fontDat
 {
 	try
 	{
-		// SDF padding bumped to 12 (was 6). At 16px display scale (0.5x of
-		// 32px atlas) padding shrinks to half — 6px padding becomes 3px,
-		// which is too narrow for the smoothstep edge AA to render thin
-		// vertical strokes (l / i / | / digits) cleanly. 12px padding gives
-		// 6px effective at 0.5x — enough for crisp small-text rendering.
-		// Atlas texture grows ~15% for ASCII-only; acceptable cost.
+		// SDF padding を 12 に引き上げ (旧 6)。16px 表示スケール (32px atlas の
+		// 0.5x) では padding が半分に縮む — 6px padding は 3px になり、
+		// smoothstep の edge AA が細い縦 stroke (l / i / | / 数字) を綺麗に
+		// render するには狭すぎる。12px padding なら 0.5x で実効 6px となり、
+		// 小サイズ text を crisp に render できる。
+		// ASCII のみなら atlas texture は ~15% 増。許容範囲のコスト。
 		m_sdfAtlas = std::make_unique<render::SdfFontAtlas>(
 			std::move(fontData), 32.0f, 12);
 

@@ -108,35 +108,35 @@ private:
 
 	void initDefaultPhrases()
 	{
-		// RPG Field
+		// RPG フィールド
 		m_phrases.push_back({"Field A", "L4 CEGA L8 GFED", MusicGenre::RPGField, 100});
 		m_phrases.push_back({"Field B", "L4 EFGA L8 BAGF", MusicGenre::RPGField, 100});
 		m_phrases.push_back({"Field C", "L8 CDECDECD L4 EG", MusicGenre::RPGField, 100});
 
-		// RPG Battle
+		// RPG バトル
 		m_phrases.push_back({"Battle A", "L16 CEGCEGCE L8 G>C<B", MusicGenre::RPGBattle, 160});
 		m_phrases.push_back({"Battle B", "L8 C+D+F+G+ L16 A+G+F+D+", MusicGenre::RPGBattle, 160});
 		m_phrases.push_back({"Battle C", "L16 EDEDEDED L8 C<B>C4", MusicGenre::RPGBattle, 160});
 
-		// RPG Boss
+		// RPG ボス
 		m_phrases.push_back({"Boss A", "L8 O3 CDCD L16 EFGAB>C<", MusicGenre::RPGBoss, 180});
 		m_phrases.push_back({"Boss B", "L16 O4 CDCDEFEF L8 GAB>C", MusicGenre::RPGBoss, 180});
 
-		// RPG Town
+		// RPG 街
 		m_phrases.push_back({"Town A", "L4 CEG L8 AGFE L4 C2", MusicGenre::RPGTown, 90});
 		m_phrases.push_back({"Town B", "L8 GECE GECE L4 C2", MusicGenre::RPGTown, 90});
 
-		// Puzzle
+		// パズル
 		m_phrases.push_back({"Puzzle A", "L8 CEC DFD L4 EGE4", MusicGenre::Puzzle, 110});
 		m_phrases.push_back({"Puzzle B", "L16 CDEFGAB> L8 CDEC", MusicGenre::Puzzle, 110});
 
-		// Action
+		// アクション
 		m_phrases.push_back({"Action A", "L16 CDCD EFEF L8 GAB>C", MusicGenre::Action, 140});
 
-		// Horror
+		// ホラー
 		m_phrases.push_back({"Horror A", "L2 C L8 R C+R L4 D+ L2 R", MusicGenre::Horror, 60});
 
-		// Menu
+		// メニュー
 		m_phrases.push_back({"Menu A", "L4 EGE L8 DC L4 E2", MusicGenre::Menu, 80});
 	}
 
@@ -167,7 +167,7 @@ private:
 		if (chord == "G" || chord == "GM") return {"G", "B", ">D"};
 		if (chord == "Am") return {"A", ">C", ">E"};
 		if (chord == "Bdim") return {"B", ">D", ">F"};
-		return {"C", "E", "G"}; // default
+		return {"C", "E", "G"}; // デフォルト
 	}
 };
 

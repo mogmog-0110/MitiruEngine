@@ -39,10 +39,10 @@ namespace mitiru::input {
 ///          InputMapper::triggerActionFromBridge を呼び出す。
 ///          Non-copyable, non-movable (内部で参照を保持するため)。
 ///
-///          Lifetime: this object must not outlive m_router or m_mapper.
-///          On destruction, all signals registered through mapSignalToAction
-///          are automatically unregistered from the router so that subsequent
-///          dispatches do not invoke a dangling `this`.
+///          Lifetime: 本 object は m_router / m_mapper より長生きしてはならない。
+///          破棄時に mapSignalToAction で登録した全 signal を router から
+///          自動的に解除するので、以降の dispatch が dangling な `this` を
+///          呼び出すことはない。
 class BridgeInputAdapter {
 public:
     /// @param router  signal の dispatch 元となる BridgeActionRouter
@@ -50,9 +50,9 @@ public:
     BridgeInputAdapter(BridgeActionRouter&  router,
                        mitiru::InputMapper& mapper) noexcept;
 
-    /// @brief Automatically unregisters every signal this adapter installed.
-    /// @details Prevents dangling `this` captures inside the router if the
-    ///          adapter is destroyed while the router stays alive.
+    /// @brief このアダプタが登録した全 signal を自動的に解除する
+    /// @details router が生存したまま adapter だけ破棄された場合に、router 内に
+    ///          残る dangling な `this` キャプチャを防ぐ。
     ~BridgeInputAdapter();
 
     BridgeInputAdapter(const BridgeInputAdapter&)            = delete;
@@ -75,10 +75,10 @@ public:
 private:
     BridgeActionRouter&  m_router;
     mitiru::InputMapper& m_mapper;
-    /// @brief signal names that this adapter has registered with the router.
-    /// @details Used by the destructor to undo every registration so that the
-    ///          router cannot later invoke a handler whose captured `this` is
-    ///          a dangling pointer.
+    /// @brief このアダプタが router に登録した signal 名の一覧
+    /// @details destructor が全登録を取り消すために使う。これにより router が
+    ///          後で dangling pointer の `this` をキャプチャした handler を
+    ///          呼び出せないようにする。
     std::vector<std::string> m_registered;
 };
 
@@ -97,9 +97,9 @@ inline BridgeInputAdapter::~BridgeInputAdapter()
 inline void BridgeInputAdapter::mapSignalToAction(std::string signalName,
                                                   std::string actionName)
 {
-    // Track the signal name BEFORE moving it into registerHandler so we can
-    // unregister on destruction. Avoid duplicate entries when re-mapping the
-    // same signal so the destructor does not call unregisterHandler twice.
+    // registerHandler に move する前に signal 名を記録しておき、破棄時に
+    // 解除できるようにする。同一 signal を再マップしたときに重複登録しないよう
+    // にして、destructor が unregisterHandler を二重に呼ばないようにする。
     const auto already = std::find(m_registered.begin(), m_registered.end(), signalName);
     if (already == m_registered.end()) {
         m_registered.push_back(signalName);

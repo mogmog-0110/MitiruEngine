@@ -1,43 +1,43 @@
 #pragma once
 
 /// @file SchemaImporter.hpp
-/// @brief Convert a JSON Schema draft-07 document into a `mitiru::data::Schema`.
+/// @brief JSON Schema draft-07 ドキュメントを `mitiru::data::Schema` へ変換する。
 ///
-/// **Purpose.** Allow value tables and other authored content to declare their
-/// shape in an external `*.schema.json` (JSON Schema draft-07) file rather than
-/// in C++ source. The imported `Schema` plugs directly into
-/// `SchemaValidator::registerSchema` and the `ContentLoader<T>::loadFileValidated`
-/// pipeline.
+/// **目的。** value table やその他の authored content が、その形状を C++ ソース
+/// ではなく外部の `*.schema.json` (JSON Schema draft-07) ファイルで宣言できる
+/// ようにする。import された `Schema` は
+/// `SchemaValidator::registerSchema` と `ContentLoader<T>::loadFileValidated`
+/// パイプラインへ直接接続される。
 ///
-/// **Supported subset (draft-07).**
-/// - Top-level `"type": "object"` is REQUIRED. Any other top-level type is rejected.
-/// - `"required": [field, ...]` — names listed here become `SchemaField::required = true`.
+/// **対応サブセット (draft-07)。**
+/// - top-level `"type": "object"` は必須。それ以外の top-level type は reject。
+/// - `"required": [field, ...]` — ここに列挙された名前は `SchemaField::required = true` になる。
 /// - `"properties": { name: { type, minimum?, maximum?, minLength?, maxLength? } }`.
-///   - `minimum` / `maximum` map onto `SchemaField::minValue` / `maxValue`.
-///   - `minLength` / `maxLength` are **read but discarded** because the engine's
-///     `SchemaField` has no per-string length fields today; this is an explicit,
-///     documented omission rather than a silent drop. Re-add when `SchemaField`
-///     grows length fields.
-/// - Property `"type"` strings accepted: `"string"`, `"integer"`, `"number"`,
-///   `"boolean"`, `"array"`, `"object"`. They map to the matching `FieldType`.
+///   - `minimum` / `maximum` は `SchemaField::minValue` / `maxValue` に対応する。
+///   - `minLength` / `maxLength` は **読むが破棄する**。現状エンジンの
+///     `SchemaField` に文字列長 field が無いため。これは黙って捨てるのではなく
+///     明示的・文書化された省略である。`SchemaField` に length field が
+///     追加されたら再対応する。
+/// - 受理される property `"type"` 文字列: `"string"`, `"integer"`, `"number"`,
+///   `"boolean"`, `"array"`, `"object"`。対応する `FieldType` へ map する。
 ///
-/// **Explicit draft-07 rejections** (any of these populates `error`):
-/// - top-level `type != "object"` (e.g. `"array"`, `"string"`)
-/// - missing top-level `"type"`
-/// - missing `"properties"` map (an object schema with no fields is treated as malformed)
-/// - property without a `"type"` field
-/// - property `"type"` is an array (union types — not supported)
-/// - property `"type"` is an unknown string
-/// - `"required"` is not an array of strings
+/// **明示的な draft-07 reject** (いずれも `error` を埋める):
+/// - top-level `type != "object"` (例: `"array"`, `"string"`)
+/// - top-level `"type"` 欠落
+/// - `"properties"` map 欠落 (field 無しの object schema は不正扱い)
+/// - `"type"` field を持たない property
+/// - property `"type"` が array (union type — 非対応)
+/// - property `"type"` が未知の文字列
+/// - `"required"` が文字列 array でない
 ///
-/// All other draft-07 features (`$ref`, `oneOf`, `allOf`, `anyOf`, `enum`,
+/// その他の draft-07 機能 (`$ref`, `oneOf`, `allOf`, `anyOf`, `enum`,
 /// `pattern`, `additionalProperties`, `definitions`, `format`, `default`,
-/// `items` schemas, `$schema` URI, etc.) are **captured as warnings** in
-/// `SchemaImportResult::warnings` rather than silently ignored. They do not
-/// cause errors and do not leak into the resulting `Schema`, but consumers can
-/// inspect the `warnings` list to detect fidelity loss. The warning format is
-/// `"<scope>: <feature> <reason>"` (e.g. `"field 'cost': enum constraint ignored
-/// (SchemaField has no enum support)"`).
+/// `items` schema, `$schema` URI 等) は黙殺せず
+/// `SchemaImportResult::warnings` に **warning として記録される**。これらは
+/// error を起こさず、結果の `Schema` にも漏れ出さないが、consumer は
+/// `warnings` list を見て忠実度の喪失を検知できる。warning 形式は
+/// `"<scope>: <feature> <reason>"` (例: `"field 'cost': enum constraint ignored
+/// (SchemaField has no enum support)"`)。
 ///
 /// @code
 /// auto r = mitiru::data::SchemaImporter::fromJsonSchemaFile(
@@ -49,8 +49,8 @@
 /// }
 /// @endcode
 ///
-/// @note Header-only. Static, stateless. Hot-path discipline: do NOT call from
-///       per-frame code — intended for boot-time loads and editor tooling.
+/// @note Header-only。static / stateless。Hot-path 規律: per-frame code から
+///       呼ばないこと — boot 時の load や editor tooling 向け。
 
 #include <optional>
 #include <string>
@@ -63,19 +63,18 @@
 namespace mitiru::data
 {
 
-/// @brief Result of importing a JSON Schema draft-07 document.
+/// @brief JSON Schema draft-07 ドキュメント import の結果。
 ///
-/// On success `schema` is populated and `error` is empty. On failure `schema`
-/// is `std::nullopt` and `error` contains a human-readable message naming the
-/// offending field where possible.
+/// 成功時は `schema` が埋まり `error` は空。失敗時は `schema` が
+/// `std::nullopt` で、`error` に可能なら問題の field 名を含む人間可読な
+/// メッセージが入る。
 ///
-/// `warnings` contains zero or more human-readable messages describing draft-07
-/// features that were encountered but could not be represented in the resulting
-/// `Schema`. Each warning follows the format
-/// `"<scope>: <feature> <reason>"`. Consumers should inspect `warnings` when
-/// they need to detect fidelity loss (e.g. an enum constraint silently dropped).
-/// A non-empty `warnings` list does NOT imply failure — `ok()` still returns
-/// true when the imported `Schema` is valid.
+/// `warnings` には、遭遇したが結果の `Schema` で表現できなかった draft-07
+/// 機能を説明する人間可読メッセージが 0 個以上入る。各 warning は
+/// `"<scope>: <feature> <reason>"` 形式に従う。consumer は忠実度の喪失
+/// (例: enum constraint が黙って捨てられた) を検知したい時に `warnings` を
+/// 確認すべき。`warnings` が空でないことは失敗を意味しない — import した
+/// `Schema` が valid なら `ok()` は true を返す。
 struct SchemaImportResult
 {
     std::optional<Schema>    schema;
@@ -86,19 +85,19 @@ struct SchemaImportResult
     explicit operator bool() const noexcept { return ok(); }
 };
 
-/// @brief Stateless converter from JSON Schema draft-07 to `mitiru::data::Schema`.
+/// @brief JSON Schema draft-07 → `mitiru::data::Schema` の stateless converter。
 ///
-/// See file header for supported / rejected features.
+/// 対応 / reject される機能は file header を参照。
 class SchemaImporter
 {
 public:
     SchemaImporter()  = default;
     ~SchemaImporter() = default;
 
-    /// @brief Import from a raw JSON Schema string.
-    /// @param s          Raw UTF-8 JSON Schema document.
-    /// @param schemaName Name assigned to the produced `Schema` (used by
-    ///                   `SchemaValidator::validate` lookups).
+    /// @brief 生の JSON Schema 文字列から import する。
+    /// @param s          生 UTF-8 の JSON Schema ドキュメント。
+    /// @param schemaName 生成される `Schema` に付ける名前 (`SchemaValidator::validate`
+    ///                   の lookup で使われる)。
     [[nodiscard]] static SchemaImportResult fromJsonSchemaString(
         const std::string& s, std::string schemaName)
     {
@@ -110,14 +109,14 @@ public:
         }
     }
 
-    /// @brief Import from an already-parsed JSON Schema object.
+    /// @brief parse 済みの JSON Schema object から import する。
     [[nodiscard]] static SchemaImportResult fromJsonSchemaJson(
         const Json& json, std::string schemaName)
     {
         return buildFromJson(json, std::move(schemaName));
     }
 
-    /// @brief Import from a file path.
+    /// @brief file path から import する。
     [[nodiscard]] static SchemaImportResult fromJsonSchemaFile(
         const std::string& path, std::string schemaName)
     {
@@ -130,7 +129,7 @@ public:
     }
 
 private:
-    /// @brief Validate top-level structure. Returns empty string on success.
+    /// @brief top-level 構造を検証する。成功時は空文字列を返す。
     [[nodiscard]] static std::string validateRoot(const Json& j)
     {
         if (!j.is_object()) {
@@ -148,7 +147,7 @@ private:
         return {};
     }
 
-    /// @brief Top-level builder. Enforces `type=object`, walks `properties`.
+    /// @brief top-level builder。`type=object` を強制し `properties` を走査する。
     [[nodiscard]] static SchemaImportResult buildFromJson(
         const Json& j, std::string name)
     {
@@ -179,9 +178,9 @@ private:
         return SchemaImportResult{ std::move(schema), {}, std::move(warnings) };
     }
 
-    /// @brief Walk the `properties` object, push fields onto `schema`. Returns
-    ///        empty string on success, or an error string for the first failing
-    ///        property.
+    /// @brief `properties` object を走査し field を `schema` に push する。
+    ///        成功時は空文字列、最初に失敗した property があればその error
+    ///        文字列を返す。
     [[nodiscard]] static std::string buildProperties(
         const Json&                     props,
         const std::vector<std::string>& requiredNames,
@@ -205,8 +204,8 @@ private:
         return {};
     }
 
-    /// @brief Extract `required` names. Returns empty string on success, or
-    ///        an error string describing why the `required` field is malformed.
+    /// @brief `required` の名前を抽出する。成功時は空文字列、`required` field が
+    ///        不正な場合はその理由を説明する error 文字列を返す。
     [[nodiscard]] static std::string collectRequiredNames(
         const Json& j, std::vector<std::string>& out)
     {
@@ -225,8 +224,8 @@ private:
         return {};
     }
 
-    /// @brief Push warnings for top-level draft-07 keys that the importer cannot
-    ///        represent in `Schema` (composition, $ref, $schema URI, etc.).
+    /// @brief importer が `Schema` で表現できない top-level draft-07 key
+    ///        (composition, $ref, $schema URI 等) について warning を push する。
     static void collectTopLevelWarnings(
         const Json& j, std::vector<std::string>& warnings)
     {
@@ -260,8 +259,8 @@ private:
         }
     }
 
-    /// @brief Push warnings for property-level draft-07 keys that the importer
-    ///        cannot represent in a single `SchemaField`.
+    /// @brief importer が単一の `SchemaField` で表現できない property-level
+    ///        draft-07 key について warning を push する。
     static void collectFieldWarnings(const std::string& fieldName,
                                      const Json&        spec,
                                      std::vector<std::string>& warnings)
@@ -311,7 +310,7 @@ private:
         }
     }
 
-    /// @brief Build a single field from a property spec node.
+    /// @brief property spec node から単一の field を構築する。
     [[nodiscard]] static std::optional<SchemaField> buildField(
         std::string fieldName, const Json& spec, bool required,
         std::string& error, std::vector<std::string>& warnings)
@@ -338,7 +337,7 @@ private:
             return std::nullopt;
         }
 
-        // Record any unsupported keys before we drop them on the floor.
+        // 捨てる前に非対応の key を記録しておく。
         collectFieldWarnings(fieldName, spec, warnings);
 
         SchemaField field;
@@ -356,14 +355,14 @@ private:
         if (spec.contains("maximum") && spec["maximum"].is_number()) {
             field.maxValue = spec["maximum"].get<float>();
         }
-        // minLength/maxLength are intentionally read-and-discard for now:
-        // SchemaField has no string-length fields. See header docs.
+        // minLength/maxLength は今は意図的に読んで破棄する:
+        // SchemaField に文字列長 field が無いため。header docs 参照。
 
         return field;
     }
 
-    /// @brief Map a draft-07 type string onto `FieldType`. Returns nullopt for
-    ///        unknown / unsupported types.
+    /// @brief draft-07 type 文字列を `FieldType` へ map する。未知 / 非対応の
+    ///        type には nullopt を返す。
     [[nodiscard]] static std::optional<FieldType> mapJsonSchemaType(
         const std::string& s)
     {

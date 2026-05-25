@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIDraggableWindow.hpp
-/// @brief Draggable, resizable window/panel widget with title bar, close, and minimize.
+/// @brief title bar / close / minimize を持つ、drag・resize 可能な window/panel widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -14,7 +14,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Configuration for creating a UIDraggableWindow.
+/// @brief UIDraggableWindow 生成用の設定。
 struct UIDraggableWindowConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -43,7 +43,7 @@ struct UIDraggableWindowConfig
 	float initialY = 100.0f;
 };
 
-/// @brief Edge/corner region for resize hit-testing.
+/// @brief resize の hit-test 用の edge/corner 領域。
 enum class WindowResizeEdge : std::uint8_t
 {
 	None,
@@ -57,11 +57,11 @@ enum class WindowResizeEdge : std::uint8_t
 	BottomRight
 };
 
-/// @brief Draggable, resizable window widget.
+/// @brief drag・resize 可能な window widget。
 ///
-/// Manages a panel with a title bar, optional close/minimize buttons,
-/// drag-to-move, and edge/corner resize. Content area accepts child widgets.
-/// Z-order is managed externally; call bringToFront() to request re-ordering.
+/// title bar、任意の close/minimize button、drag 移動、edge/corner resize を持つ
+/// panel を管理する。content 領域は子 widget を受け付ける。
+/// Z-order は外部で管理する。並び替え要求には bringToFront() を呼ぶ。
 ///
 /// @code
 ///   UIDraggableWindowConfig cfg;
@@ -110,8 +110,8 @@ class UIDraggableWindow
 	std::vector<std::shared_ptr<UINode>> m_children;
 
 public:
-	/// @brief Construct a draggable window from configuration.
-	/// @param config Window configuration.
+	/// @brief 設定から draggable window を構築する。
+	/// @param config window 設定。
 	explicit UIDraggableWindow(const UIDraggableWindowConfig& config)
 		: m_title(config.title)
 		, m_width(config.width)
@@ -150,42 +150,42 @@ public:
 		syncNodeState();
 	}
 
-	// ── Accessors ────────────────────────────────────────────
+	// ── accessor ──────────────────────────────────────────────
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Check if the window is open.
+	/// @brief window が open か確認する。
 	[[nodiscard]] bool isOpen() const noexcept { return m_open; }
 
-	/// @brief Check if the window is minimized.
+	/// @brief window が minimize されているか確認する。
 	[[nodiscard]] bool isMinimized() const noexcept { return m_minimized; }
 
-	/// @brief Check if the window is being dragged.
+	/// @brief window が drag 中か確認する。
 	[[nodiscard]] bool isDragging() const noexcept { return m_dragging; }
 
-	/// @brief Check if the window is being resized.
+	/// @brief window が resize 中か確認する。
 	[[nodiscard]] bool isResizing() const noexcept { return m_resizing; }
 
-	/// @brief Get the window position X.
+	/// @brief window の位置 X を取得する。
 	[[nodiscard]] float posX() const noexcept { return m_posX; }
 
-	/// @brief Get the window position Y.
+	/// @brief window の位置 Y を取得する。
 	[[nodiscard]] float posY() const noexcept { return m_posY; }
 
-	/// @brief Get the window width.
+	/// @brief window の幅を取得する。
 	[[nodiscard]] float width() const noexcept { return m_width; }
 
-	/// @brief Get the window height.
+	/// @brief window の高さを取得する。
 	[[nodiscard]] float height() const noexcept { return m_height; }
 
-	/// @brief Get the current z-order value.
+	/// @brief 現在の z-order 値を取得する。
 	[[nodiscard]] std::uint32_t zOrder() const noexcept { return m_zOrder; }
 
-	/// @brief Get the title string.
+	/// @brief title 文字列を取得する。
 	[[nodiscard]] const std::string& title() const noexcept { return m_title; }
 
-	/// @brief Get the content area bounds (inside title bar and padding).
+	/// @brief content 領域の bounds を取得する (title bar と padding の内側)。
 	[[nodiscard]] sgc::Rectf contentBounds() const noexcept
 	{
 		if (m_minimized) { return sgc::Rectf(0.0f, 0.0f, 0.0f, 0.0f); }
@@ -196,30 +196,30 @@ public:
 		return sgc::Rectf(x, y, std::max(0.0f, w), std::max(0.0f, h));
 	}
 
-	/// @brief Get the title bar bounds.
+	/// @brief title bar の bounds を取得する。
 	[[nodiscard]] sgc::Rectf titleBarBounds() const noexcept
 	{
 		return sgc::Rectf(m_posX, m_posY, m_width, m_titleBarHeight);
 	}
 
-	// ── Child management ─────────────────────────────────────
+	// ── 子の管理 ──────────────────────────────────────────────
 
-	/// @brief Add a child widget node to the content area.
-	/// @param child The child UINode.
+	/// @brief content 領域に子 widget node を追加する。
+	/// @param child 子の UINode。
 	void addChild(std::shared_ptr<UINode> child)
 	{
 		m_children.push_back(std::move(child));
 	}
 
-	/// @brief Get all child widget nodes.
+	/// @brief 全ての子 widget node を取得する。
 	[[nodiscard]] const std::vector<std::shared_ptr<UINode>>& children() const noexcept
 	{
 		return m_children;
 	}
 
-	// ── Commands ─────────────────────────────────────────────
+	// ── command ───────────────────────────────────────────────
 
-	/// @brief Open the window.
+	/// @brief window を開く。
 	void open()
 	{
 		m_open = true;
@@ -227,7 +227,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Close the window.
+	/// @brief window を閉じる。
 	void close()
 	{
 		m_open = false;
@@ -237,7 +237,7 @@ public:
 		if (m_onClose) { m_onClose(); }
 	}
 
-	/// @brief Minimize the window to title bar only.
+	/// @brief window を title bar のみに minimize する。
 	void minimize()
 	{
 		if (!m_minimizable) { return; }
@@ -247,7 +247,7 @@ public:
 		if (m_onMinimize) { m_onMinimize(); }
 	}
 
-	/// @brief Restore the window from minimized state.
+	/// @brief minimize 状態から window を restore する。
 	void restore()
 	{
 		m_minimized = false;
@@ -255,70 +255,70 @@ public:
 		if (m_onRestore) { m_onRestore(); }
 	}
 
-	/// @brief Set the window title.
-	/// @param title New title string.
+	/// @brief window の title を設定する。
+	/// @param title 新しい title 文字列。
 	void setTitle(const std::string& title)
 	{
 		m_title = title;
 		m_node->setText(title);
 	}
 
-	/// @brief Set the z-order value.
-	/// @param z New z-order.
+	/// @brief z-order 値を設定する。
+	/// @param z 新しい z-order。
 	void setZOrder(std::uint32_t z)
 	{
 		m_zOrder = z;
 		m_node->setProperty("z_order", std::to_string(z));
 	}
 
-	/// @brief Request bringing this window to front (invokes callback).
+	/// @brief この window を前面に出すよう要求する (callback を呼ぶ)。
 	void bringToFront()
 	{
 		if (m_onBringToFront) { m_onBringToFront(m_node->id()); }
 	}
 
-	// ── Callbacks ────────────────────────────────────────────
+	// ── callback ──────────────────────────────────────────────
 
-	/// @brief Set callback invoked when the window is closed.
+	/// @brief window が閉じられたときに呼ばれる callback を設定する。
 	void setOnClose(std::function<void()> callback) { m_onClose = std::move(callback); }
 
-	/// @brief Set callback invoked when the window is minimized.
+	/// @brief window が minimize されたときに呼ばれる callback を設定する。
 	void setOnMinimize(std::function<void()> callback) { m_onMinimize = std::move(callback); }
 
-	/// @brief Set callback invoked when the window is restored.
+	/// @brief window が restore されたときに呼ばれる callback を設定する。
 	void setOnRestore(std::function<void()> callback) { m_onRestore = std::move(callback); }
 
-	/// @brief Set callback to request z-order change (pass node id).
+	/// @brief z-order 変更を要求する callback を設定する (node id を渡す)。
 	void setOnBringToFront(std::function<void(std::uint32_t)> callback)
 	{
 		m_onBringToFront = std::move(callback);
 	}
 
-	// ── Interaction (called by event system) ─────────────────
+	// ── 操作 (event system から呼ばれる) ──────────────────────
 
-	/// @brief Called when pointer is pressed on the window.
-	/// @param px Pointer X in screen space.
-	/// @param py Pointer Y in screen space.
+	/// @brief window 上で pointer が押されたときに呼ばれる。
+	/// @param px screen 空間での pointer X。
+	/// @param py screen 空間での pointer Y。
 	void onPointerDown(float px, float py)
 	{
 		if (!m_open) { return; }
 		bringToFront();
 
-		// Check close button (top-right corner of title bar)
+		// close button を判定 (title bar の右上 corner)
 		if (m_closeable && hitTestCloseButton(px, py))
 		{
 			close();
 			return;
 		}
 
-		// Check minimize button (next to close)
+		// minimize button を判定 (close の隣)
 		if (m_minimizable && hitTestMinimizeButton(px, py))
 		{
 			if (m_minimized) { restore(); } else { minimize(); }
 			return;
 		}
 
-		// Check resize edges
+		// resize edge を判定
 		if (m_resizable && !m_minimized)
 		{
 			const auto edge = hitTestResizeEdge(px, py);
@@ -332,7 +332,7 @@ public:
 			}
 		}
 
-		// Check title bar drag
+		// title bar の drag を判定
 		if (m_draggable && hitTestTitleBar(px, py))
 		{
 			m_dragging = true;
@@ -341,9 +341,9 @@ public:
 		}
 	}
 
-	/// @brief Called when pointer moves while pressed.
-	/// @param px Pointer X in screen space.
-	/// @param py Pointer Y in screen space.
+	/// @brief 押下中に pointer が移動したときに呼ばれる。
+	/// @param px screen 空間での pointer X。
+	/// @param py screen 空間での pointer Y。
 	void onPointerMove(float px, float py)
 	{
 		if (m_dragging)
@@ -361,7 +361,7 @@ public:
 		}
 	}
 
-	/// @brief Called when pointer is released.
+	/// @brief pointer が離されたときに呼ばれる。
 	void onPointerUp()
 	{
 		m_dragging = false;
@@ -370,14 +370,14 @@ public:
 	}
 
 private:
-	/// @brief Check if point is inside the title bar.
+	/// @brief 点が title bar の内側にあるか確認する。
 	[[nodiscard]] bool hitTestTitleBar(float px, float py) const noexcept
 	{
 		return px >= m_posX && px <= m_posX + m_width
 			&& py >= m_posY && py <= m_posY + m_titleBarHeight;
 	}
 
-	/// @brief Check if point is on the close button (right side of title bar).
+	/// @brief 点が close button 上にあるか確認する (title bar の右側)。
 	[[nodiscard]] bool hitTestCloseButton(float px, float py) const noexcept
 	{
 		const float btnSize = m_titleBarHeight;
@@ -386,7 +386,7 @@ private:
 			&& py >= m_posY && py <= m_posY + btnSize;
 	}
 
-	/// @brief Check if point is on the minimize button (left of close).
+	/// @brief 点が minimize button 上にあるか確認する (close の左)。
 	[[nodiscard]] bool hitTestMinimizeButton(float px, float py) const noexcept
 	{
 		const float btnSize = m_titleBarHeight;
@@ -396,7 +396,7 @@ private:
 			&& py >= m_posY && py <= m_posY + btnSize;
 	}
 
-	/// @brief Determine which resize edge/corner the point is on.
+	/// @brief 点がどの resize edge/corner 上にあるか判定する。
 	[[nodiscard]] WindowResizeEdge hitTestResizeEdge(float px, float py) const noexcept
 	{
 		const float grab = std::max(m_borderWidth, 6.0f);
@@ -416,7 +416,7 @@ private:
 		return WindowResizeEdge::None;
 	}
 
-	/// @brief Apply resize delta from pointer position.
+	/// @brief pointer 位置から resize の delta を適用する。
 	void applyResize(float px, float py)
 	{
 		const float dx = px - m_dragOffsetX;
@@ -442,11 +442,11 @@ private:
 		default: break;
 		}
 
-		// Clamp to min/max
+		// min/max に clamp する
 		newW = std::clamp(newW, m_minWidth, m_maxWidth);
 		newH = std::clamp(newH, m_minHeight, m_maxHeight);
 
-		// If clamped, don't move origin for left/top edges
+		// clamp された場合、left/top edge では origin を動かさない
 		if (m_resizeEdge == WindowResizeEdge::Left || m_resizeEdge == WindowResizeEdge::TopLeft
 			|| m_resizeEdge == WindowResizeEdge::BottomLeft)
 		{
@@ -465,14 +465,14 @@ private:
 		syncBounds();
 	}
 
-	/// @brief Update node bounds from current position/size.
+	/// @brief 現在の位置/サイズから node の bounds を更新する。
 	void syncBounds()
 	{
 		const float h = m_minimized ? m_titleBarHeight : m_height;
 		m_node->setBounds(sgc::Rectf(m_posX, m_posY, m_width, h));
 	}
 
-	/// @brief Synchronize all state to the UINode properties.
+	/// @brief 全 state を UINode の properties に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("open", m_open ? "true" : "false");

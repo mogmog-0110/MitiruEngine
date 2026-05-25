@@ -1,4 +1,4 @@
-// hello_input — Mode A. Move a 64x64 square with arrow keys / WASD. ESC to exit.
+// hello_input — Mode A。矢印キー / WASD で 64x64 の四角を動かす。ESC で終了。
 
 #include <mitiru/Mitiru.hpp>
 

@@ -63,7 +63,7 @@ public:
 		return m_world;
 	}
 
-	// ── Typed tag system (preferred) ───────────────────────────
+	// ── 型付き tag system (推奨) ───────────────────────────
 
 	/// @brief エンティティに型付きタグを追加する
 	/// @param entity 対象エンティティ
@@ -124,7 +124,7 @@ public:
 		return (it != m_commonTags.end()) ? it->second : CommonTagSet{};
 	}
 
-	// ── String tag system (legacy, use typed tags when possible) ─
+	// ── 文字列 tag system (legacy、可能なら型付き tag を使う) ─
 
 	/// @brief エンティティに文字列タグを設定する
 	/// @param entity 対象エンティティ
@@ -303,7 +303,7 @@ private:
 			default:
 				if (static_cast<unsigned char>(c) < 0x20)
 				{
-					// Control characters as \u00XX
+					// 制御文字は \u00XX 形式で出力
 					char buf[8];
 					std::snprintf(buf, sizeof(buf), "\\u%04x",
 					              static_cast<unsigned int>(static_cast<unsigned char>(c)));

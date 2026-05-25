@@ -10,7 +10,7 @@
 namespace mitiru
 {
 
-// Forward declarations
+// 前方宣言
 class InputState;
 class InputInjector;
 
@@ -54,7 +54,7 @@ public:
 	///          InputInjector::inject() 経由で発行する。RECORDモードでhuman playを
 	///          キャプチャするために使用する。デフォルトはno-op。
 	///
-	/// Example:
+	/// 例:
 	/// @code
 	/// engine.window()->setInputInjector(&myInjector);
 	/// @endcode

@@ -99,7 +99,7 @@ public:
 			return {};
 		}
 
-		// Rasterize using the vn::TrueTypeFont glyph API
+		// vn::TrueTypeFont のグリフ API でラスタライズする
 		std::vector<std::uint8_t> pixels(
 			static_cast<std::size_t>(totalW) * lineH * 4, 0);
 		const int baseline = static_cast<int>(metrics.ascent);
@@ -108,8 +108,8 @@ public:
 		std::uint32_t prevCp = 0;
 		vn::Utf8Iterator it(text.data(), text.size());
 
-		// Need mutable access to getGlyph (cache), use const_cast
-		// since the original render::TrueTypeFont also had mutable stbtt state
+		// getGlyph (キャッシュ) には mutable アクセスが必要なため const_cast する。
+		// 元の render::TrueTypeFont も mutable な stbtt 状態を持っていた
 		auto& mutableImpl = const_cast<vn::TrueTypeFont&>(m_impl);
 
 		while (it.hasNext())

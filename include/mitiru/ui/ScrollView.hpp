@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file ScrollView.hpp
-/// @brief General-purpose scrollable container for UINode trees.
-/// @details Provides vertical and horizontal scrolling with inertia, bounce,
-///          virtual scrolling for large lists, and integrated UIEvent handling.
-///          Built on the same physics model as vn::ScrollContainer but designed
-///          to work with the UINode tree rather than raw SpriteBatch rendering.
+/// @brief UINode tree 用の汎用 scroll コンテナ。
+/// @details 慣性 / bounce 付きの垂直・水平 scroll、大量リスト向けの virtual
+///          scroll、UIEvent 処理の統合を提供する。
+///          vn::ScrollContainer と同じ物理モデルだが、生の SpriteBatch 描画では
+///          なく UINode tree と協調する設計。
 
 #include <algorithm>
 #include <cmath>
@@ -19,51 +19,51 @@
 namespace mitiru::ui
 {
 
-/// @brief Scroll bar visual style.
+/// @brief Scroll bar の見た目スタイル。
 struct ScrollBarStyle
 {
-	float width           = 6.0f;    ///< Bar width in pixels.
-	float minThumbLength  = 20.0f;   ///< Minimum thumb size.
-	float cornerRadius    = 3.0f;    ///< Rounded corner radius.
-	bool autoHide         = true;    ///< Hide when idle.
-	float fadeDelaySec    = 1.5f;    ///< Seconds before fade begins.
-	float opacity         = 0.5f;    ///< Maximum thumb opacity.
+	float width           = 6.0f;    ///< bar 幅 (px)。
+	float minThumbLength  = 20.0f;   ///< thumb の最小サイズ。
+	float cornerRadius    = 3.0f;    ///< 角丸半径。
+	bool autoHide         = true;    ///< idle 時に隠す。
+	float fadeDelaySec    = 1.5f;    ///< fade 開始までの秒数。
+	float opacity         = 0.5f;    ///< thumb の最大不透明度。
 };
 
-/// @brief Configuration for ScrollView behaviour.
+/// @brief ScrollView の挙動設定。
 struct ScrollViewConfig
 {
-	sgc::Rectf viewport{};                ///< Visible area in screen space.
-	float contentHeight   = 0.0f;         ///< Total content height.
-	float contentWidth    = 0.0f;         ///< Total content width.
+	sgc::Rectf viewport{};                ///< screen space 上の可視領域。
+	float contentHeight   = 0.0f;         ///< content 全体の高さ。
+	float contentWidth    = 0.0f;         ///< content 全体の幅。
 
-	bool verticalScroll   = true;         ///< Allow vertical scrolling.
-	bool horizontalScroll = false;        ///< Allow horizontal scrolling.
-	bool bounceEffect     = true;         ///< Overscroll rubber-band bounce.
-	bool snapToItem       = false;        ///< Snap to item boundaries.
-	float snapItemHeight  = 0.0f;         ///< Item height for snap (0 = disabled).
-	float inertiaDamping  = 0.92f;        ///< Velocity damping per frame (0-1).
-	float bounceDamping   = 0.6f;         ///< Bounce return speed factor.
-	float wheelMultiplier = 40.0f;        ///< Pixels per mouse wheel notch.
-	float keyboardScrollAmount = 40.0f;   ///< Pixels per keyboard scroll step.
+	bool verticalScroll   = true;         ///< 垂直 scroll を許可。
+	bool horizontalScroll = false;        ///< 水平 scroll を許可。
+	bool bounceEffect     = true;         ///< overscroll 時のラバーバンド bounce。
+	bool snapToItem       = false;        ///< item 境界に snap する。
+	float snapItemHeight  = 0.0f;         ///< snap 用の item 高さ (0 = 無効)。
+	float inertiaDamping  = 0.92f;        ///< frame ごとの velocity 減衰 (0-1)。
+	float bounceDamping   = 0.6f;         ///< bounce 復帰速度の係数。
+	float wheelMultiplier = 40.0f;        ///< mouse wheel 1 ノッチあたりの px。
+	float keyboardScrollAmount = 40.0f;   ///< keyboard scroll 1 ステップあたりの px。
 
-	ScrollBarStyle scrollBar;             ///< Scroll bar appearance.
+	ScrollBarStyle scrollBar;             ///< scroll bar の外観。
 
-	/// @brief Enable virtual scrolling for large lists.
+	/// @brief 大量リスト向けに virtual scroll を有効化。
 	bool virtualScrolling = false;
-	/// @brief Item height for virtual scrolling (all items same height).
+	/// @brief virtual scroll 用の item 高さ (全 item 同一高さ)。
 	float virtualItemHeight = 0.0f;
 };
 
-/// @brief Information about a visible range in virtual scrolling mode.
+/// @brief virtual scroll モードでの可視範囲の情報。
 struct VirtualScrollRange
 {
-	std::size_t firstVisible = 0;   ///< Index of first visible item.
-	std::size_t lastVisible  = 0;   ///< Index of last visible item (inclusive).
-	float offsetY            = 0.0f; ///< Y offset for the first visible item.
+	std::size_t firstVisible = 0;   ///< 最初に見える item の index。
+	std::size_t lastVisible  = 0;   ///< 最後に見える item の index (inclusive)。
+	float offsetY            = 0.0f; ///< 最初に見える item の Y offset。
 };
 
-/// @brief General-purpose scrollable container for UINode trees.
+/// @brief UINode tree 用の汎用 scroll コンテナ。
 ///
 /// @code
 /// mitiru::ui::ScrollViewConfig cfg;
@@ -80,8 +80,8 @@ struct VirtualScrollRange
 class ScrollView
 {
 public:
-	/// @brief Construct with configuration.
-	/// @param config Scroll behaviour configuration.
+	/// @brief 設定を与えて構築する。
+	/// @param config scroll 挙動の設定。
 	explicit ScrollView(ScrollViewConfig config = {}) noexcept
 		: m_config(config)
 	{
@@ -89,77 +89,77 @@ public:
 
 	// ── Accessors ────────────────────────────────────────────
 
-	/// @brief Current viewport rectangle.
+	/// @brief 現在の viewport 矩形。
 	[[nodiscard]] const sgc::Rectf& viewport() const noexcept { return m_config.viewport; }
 
-	/// @brief Set the viewport rectangle.
+	/// @brief viewport 矩形を設定する。
 	void setViewport(const sgc::Rectf& vp) noexcept { m_config.viewport = vp; }
 
-	/// @brief Current vertical scroll offset (pixels from top).
+	/// @brief 現在の垂直 scroll offset (上端からの px)。
 	[[nodiscard]] float scrollY() const noexcept { return m_scrollY; }
 
-	/// @brief Current horizontal scroll offset.
+	/// @brief 現在の水平 scroll offset。
 	[[nodiscard]] float scrollX() const noexcept { return m_scrollX; }
 
-	/// @brief Total content height.
+	/// @brief content 全体の高さ。
 	[[nodiscard]] float contentHeight() const noexcept { return m_config.contentHeight; }
 
-	/// @brief Total content width.
+	/// @brief content 全体の幅。
 	[[nodiscard]] float contentWidth() const noexcept { return m_config.contentWidth; }
 
-	/// @brief Set total content height (call when content changes).
+	/// @brief content 全体の高さを設定 (content 変更時に呼ぶ)。
 	void setContentHeight(float h) noexcept { m_config.contentHeight = h; }
 
-	/// @brief Set total content width.
+	/// @brief content 全体の幅を設定する。
 	void setContentWidth(float w) noexcept { m_config.contentWidth = w; }
 
-	/// @brief Access the configuration.
+	/// @brief 設定にアクセスする。
 	[[nodiscard]] const ScrollViewConfig& config() const noexcept { return m_config; }
 
-	/// @brief Replace configuration.
+	/// @brief 設定を差し替える。
 	void setConfig(const ScrollViewConfig& cfg) noexcept { m_config = cfg; }
 
-	/// @brief Maximum valid vertical scroll offset.
+	/// @brief 有効な垂直 scroll offset の最大値。
 	[[nodiscard]] float maxScrollY() const noexcept
 	{
 		return std::max(0.0f, m_config.contentHeight - m_config.viewport.height());
 	}
 
-	/// @brief Maximum valid horizontal scroll offset.
+	/// @brief 有効な水平 scroll offset の最大値。
 	[[nodiscard]] float maxScrollX() const noexcept
 	{
 		return std::max(0.0f, m_config.contentWidth - m_config.viewport.width());
 	}
 
-	/// @brief Whether content is taller than viewport.
+	/// @brief content が viewport より高いか。
 	[[nodiscard]] bool canScrollVertically() const noexcept
 	{
 		return m_config.verticalScroll
 			&& m_config.contentHeight > m_config.viewport.height();
 	}
 
-	/// @brief Whether content is wider than viewport.
+	/// @brief content が viewport より幅広いか。
 	[[nodiscard]] bool canScrollHorizontally() const noexcept
 	{
 		return m_config.horizontalScroll
 			&& m_config.contentWidth > m_config.viewport.width();
 	}
 
-	/// @brief Normalized vertical scroll position [0, 1].
+	/// @brief 正規化された垂直 scroll 位置 [0, 1]。
 	[[nodiscard]] float normalizedScrollY() const noexcept
 	{
 		const float maxY = maxScrollY();
 		return (maxY > 0.0f) ? (m_scrollY / maxY) : 0.0f;
 	}
 
-	/// @brief Normalized horizontal scroll position [0, 1].
+	/// @brief 正規化された水平 scroll 位置 [0, 1]。
 	[[nodiscard]] float normalizedScrollX() const noexcept
 	{
 		const float maxX = maxScrollX();
 		return (maxX > 0.0f) ? (m_scrollX / maxX) : 0.0f;
 	}
 
-	/// @brief Whether a point in screen space is inside the viewport.
+	/// @brief screen space 上の点が viewport 内かどうか。
 	[[nodiscard]] bool containsPoint(float x, float y) const noexcept
 	{
 		return x >= m_config.viewport.x()
@@ -168,10 +168,10 @@ public:
 			&& y < m_config.viewport.y() + m_config.viewport.height();
 	}
 
-	/// @brief Whether the scroll view is currently being dragged.
+	/// @brief scroll view が現在 drag 中かどうか。
 	[[nodiscard]] bool isDragging() const noexcept { return m_dragging; }
 
-	/// @brief Whether the scroll view has any momentum.
+	/// @brief scroll view に何らかの momentum があるか。
 	[[nodiscard]] bool isScrolling() const noexcept
 	{
 		return m_dragging
@@ -181,37 +181,37 @@ public:
 
 	// ── Programmatic scroll ──────────────────────────────────
 
-	/// @brief Set vertical scroll position directly.
+	/// @brief 垂直 scroll 位置を直接設定する。
 	void setScrollY(float y) noexcept
 	{
 		m_scrollY = clampScroll(y, maxScrollY());
 		m_velocityY = 0.0f;
 	}
 
-	/// @brief Set horizontal scroll position directly.
+	/// @brief 水平 scroll 位置を直接設定する。
 	void setScrollX(float x) noexcept
 	{
 		m_scrollX = clampScroll(x, maxScrollX());
 		m_velocityX = 0.0f;
 	}
 
-	/// @brief Scroll to the top.
+	/// @brief 先頭まで scroll する。
 	void scrollToTop() noexcept
 	{
 		m_scrollY = 0.0f;
 		m_velocityY = 0.0f;
 	}
 
-	/// @brief Scroll to the bottom.
+	/// @brief 末尾まで scroll する。
 	void scrollToBottom() noexcept
 	{
 		m_scrollY = maxScrollY();
 		m_velocityY = 0.0f;
 	}
 
-	/// @brief Ensure a vertical region is visible, scrolling minimally.
-	/// @param itemTop Top of the item in content space.
-	/// @param itemHeight Height of the item.
+	/// @brief 垂直方向の領域が見えるように最小限の scroll を行う。
+	/// @param itemTop content space 上の item 上端。
+	/// @param itemHeight item の高さ。
 	void ensureVisible(float itemTop, float itemHeight) noexcept
 	{
 		const float itemBottom = itemTop + itemHeight;
@@ -230,8 +230,8 @@ public:
 
 	// ── Input handling ───────────────────────────────────────
 
-	/// @brief Handle mouse wheel input.
-	/// @param delta Wheel delta (negative = scroll down).
+	/// @brief mouse wheel 入力を処理する。
+	/// @param delta wheel delta (負 = 下方向 scroll)。
 	void onMouseWheel(float delta)
 	{
 		if (m_config.verticalScroll)
@@ -241,8 +241,8 @@ public:
 		m_timeSinceInteraction = 0.0f;
 	}
 
-	/// @brief Handle horizontal mouse wheel.
-	/// @param delta Wheel delta (negative = scroll right).
+	/// @brief 水平 mouse wheel を処理する。
+	/// @param delta wheel delta (負 = 右方向 scroll)。
 	void onMouseWheelH(float delta)
 	{
 		if (m_config.horizontalScroll)
@@ -252,10 +252,10 @@ public:
 		m_timeSinceInteraction = 0.0f;
 	}
 
-	/// @brief Handle keyboard scroll (e.g. arrow keys, Page Up/Down).
-	/// @param deltaX Horizontal direction (-1, 0, +1).
-	/// @param deltaY Vertical direction (-1, 0, +1).
-	/// @param pageScroll Whether to scroll by a page instead of a step.
+	/// @brief keyboard scroll を処理する (矢印キー, Page Up/Down 等)。
+	/// @param deltaX 水平方向 (-1, 0, +1)。
+	/// @param deltaY 垂直方向 (-1, 0, +1)。
+	/// @param pageScroll 1 ステップでなく 1 ページ分 scroll するか。
 	void onKeyboardScroll(float deltaX, float deltaY, bool pageScroll = false)
 	{
 		const float amount = pageScroll
@@ -273,9 +273,9 @@ public:
 		m_timeSinceInteraction = 0.0f;
 	}
 
-	/// @brief Begin a drag/touch scroll.
-	/// @param screenX Screen X position.
-	/// @param screenY Screen Y position.
+	/// @brief drag / touch scroll を開始する。
+	/// @param screenX screen X 位置。
+	/// @param screenY screen Y 位置。
 	void onDragBegin(float screenX, float screenY)
 	{
 		m_dragging = true;
@@ -288,9 +288,9 @@ public:
 		m_timeSinceInteraction = 0.0f;
 	}
 
-	/// @brief Update drag position.
-	/// @param screenX Current screen X.
-	/// @param screenY Current screen Y.
+	/// @brief drag 位置を更新する。
+	/// @param screenX 現在の screen X。
+	/// @param screenY 現在の screen Y。
 	void onDragMove(float screenX, float screenY)
 	{
 		if (!m_dragging) return;
@@ -320,9 +320,9 @@ public:
 		m_timeSinceInteraction = 0.0f;
 	}
 
-	/// @brief End a drag/touch scroll with release velocity.
-	/// @param velocityX Release velocity X (pixels/sec).
-	/// @param velocityY Release velocity Y (pixels/sec).
+	/// @brief release velocity を与えて drag / touch scroll を終了する。
+	/// @param velocityX release 時の velocity X (px/sec)。
+	/// @param velocityY release 時の velocity Y (px/sec)。
 	void onDragEnd(float velocityX = 0.0f, float velocityY = 0.0f)
 	{
 		m_dragging = false;
@@ -333,9 +333,9 @@ public:
 
 	// ── Virtual scrolling ────────────────────────────────────
 
-	/// @brief Compute the visible range for virtual scrolling.
-	/// @param totalItems Total number of items in the list.
-	/// @return Range of visible item indices and the Y offset.
+	/// @brief virtual scroll での可視範囲を計算する。
+	/// @param totalItems リスト内の item 総数。
+	/// @return 可視 item index の範囲と Y offset。
 	[[nodiscard]] VirtualScrollRange computeVisibleRange(
 		std::size_t totalItems) const noexcept
 	{
@@ -359,11 +359,10 @@ public:
 
 	// ── UINode tree integration ──────────────────────────────
 
-	/// @brief Apply scroll offset to a UINode's child positions.
-	/// @details Adjusts the Y position of each child by -scrollY and the X
-	///          position by -scrollX. Children fully outside the viewport
-	///          are marked invisible.
-	/// @param parent The container UINode whose children should be scrolled.
+	/// @brief scroll offset を UINode の子要素位置に適用する。
+	/// @details 各子要素の Y 位置を -scrollY、X 位置を -scrollX だけずらす。
+	///          viewport から完全にはみ出た子要素は invisible にする。
+	/// @param parent scroll 対象の子要素を持つコンテナ UINode。
 	void applyToChildren(UINode& parent) const
 	{
 		for (std::size_t i = 0; i < parent.childCount(); ++i)
@@ -371,7 +370,7 @@ public:
 			auto& child = parent.child(i);
 			auto bounds = child.bounds();
 
-			// Offset by scroll position.
+			// scroll 位置の分だけ offset。
 			bounds = sgc::Rectf{
 				bounds.x() - m_scrollX,
 				bounds.y() - m_scrollY,
@@ -380,7 +379,7 @@ public:
 			};
 			child.setBounds(bounds);
 
-			// Cull children outside viewport.
+			// viewport 外の子要素を cull する。
 			const bool inView =
 				(bounds.y() + bounds.height() > m_config.viewport.y())
 				&& (bounds.y() < m_config.viewport.y() + m_config.viewport.height())
@@ -392,15 +391,15 @@ public:
 
 	// ── Update ───────────────────────────────────────────────
 
-	/// @brief Update scroll physics.
-	/// @param dt Delta time in seconds.
+	/// @brief scroll の物理を更新する。
+	/// @param dt delta time (秒)。
 	void update(float dt)
 	{
 		m_timeSinceInteraction += dt;
 
 		if (m_dragging) return;
 
-		// Apply velocity with inertia.
+		// 慣性付きで velocity を適用。
 		if (m_config.verticalScroll)
 		{
 			m_scrollY += m_velocityY * dt;
@@ -421,7 +420,7 @@ public:
 			}
 		}
 
-		// Bounce back from overscroll.
+		// overscroll から bounce back する。
 		if (m_config.bounceEffect)
 		{
 			m_scrollY = bounceBack(m_scrollY, maxScrollY(), m_velocityY, dt);
@@ -433,7 +432,7 @@ public:
 			m_scrollX = clampScroll(m_scrollX, maxScrollX());
 		}
 
-		// Snap to item boundary after momentum settles.
+		// momentum が収まったら item 境界に snap する。
 		if (m_config.snapToItem && m_config.snapItemHeight > 0.0f
 			&& m_velocityY == 0.0f && !m_dragging)
 		{
@@ -445,7 +444,7 @@ public:
 
 	// ── Scroll bar state ─────────────────────────────────────
 
-	/// @brief Whether the vertical scroll bar should be visible.
+	/// @brief 垂直 scroll bar を表示すべきかどうか。
 	[[nodiscard]] bool isScrollBarVisible() const noexcept
 	{
 		if (!canScrollVertically()) return false;
@@ -453,7 +452,7 @@ public:
 		return m_timeSinceInteraction < m_config.scrollBar.fadeDelaySec;
 	}
 
-	/// @brief Current scroll bar opacity (accounts for auto-hide fade).
+	/// @brief 現在の scroll bar の不透明度 (auto-hide の fade を加味)。
 	[[nodiscard]] float scrollBarOpacity() const noexcept
 	{
 		if (!canScrollVertically()) return 0.0f;
@@ -470,8 +469,8 @@ public:
 		return style.opacity * (1.0f - t);
 	}
 
-	/// @brief Compute the scroll bar thumb rectangle (vertical).
-	/// @return Thumb rectangle in screen space.
+	/// @brief scroll bar の thumb 矩形を計算する (垂直)。
+	/// @return screen space 上の thumb 矩形。
 	[[nodiscard]] sgc::Rectf scrollBarThumbRect() const noexcept
 	{
 		if (!canScrollVertically()) return {};
@@ -490,7 +489,7 @@ public:
 	}
 
 private:
-	/// @brief Clamp scroll offset to valid range.
+	/// @brief scroll offset を有効範囲に clamp する。
 	[[nodiscard]] static float clampScroll(float value, float maxVal) noexcept
 	{
 		if (value < 0.0f) return 0.0f;
@@ -498,7 +497,7 @@ private:
 		return value;
 	}
 
-	/// @brief Apply rubber-band overscroll resistance.
+	/// @brief ラバーバンド式の overscroll 抵抗を適用する。
 	[[nodiscard]] static float applyOverscroll(float value, float maxVal) noexcept
 	{
 		if (value < 0.0f)
@@ -512,7 +511,7 @@ private:
 		return value;
 	}
 
-	/// @brief Spring back from overscroll towards valid range.
+	/// @brief overscroll から有効範囲へ spring back させる。
 	[[nodiscard]] static float bounceBack(
 		float scroll, float maxVal, float& velocity, float dt) noexcept
 	{

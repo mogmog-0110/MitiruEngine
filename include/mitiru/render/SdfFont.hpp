@@ -642,7 +642,7 @@ private:
 ///          C++参考実装。GpuSpriteBatchのフラグメントシェーダーに移植する際の
 ///          リファレンスとして使用する。
 ///
-/// GPU HLSL pseudocode:
+/// GPU HLSL の疑似コード:
 /// @code
 /// float dist = tex.Sample(sampler, input.uv).a;
 /// float smoothing = fwidth(dist) * 0.5;

@@ -114,7 +114,7 @@ struct GlfwScrollState
 	}
 };
 
-} // namespace mitiru (temporarily close for system includes)
+} // namespace mitiru (system include のため一時的に閉じる)
 
 #ifdef MITIRU_HAS_GLFW
 

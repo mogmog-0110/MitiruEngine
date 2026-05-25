@@ -367,7 +367,7 @@ private:
 
 		if (force || next.visibleChars != m_lastPushed.visibleChars)
 		{
-			// short-form decimal — small alloc, only on change.
+			// short-form の十進数 — 小さな alloc、変化時のみ。
 			m_viewPush->set(kKeyVisibleChars, std::to_string(next.visibleChars));
 		}
 

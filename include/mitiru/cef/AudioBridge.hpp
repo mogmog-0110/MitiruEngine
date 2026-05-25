@@ -3,25 +3,25 @@
 /// @file AudioBridge.hpp
 /// @brief CEF ↔ C++ 間の AudioMixer 制御 bridge (G-16)
 ///
-/// **Why.** 各 CEF ページが `<audio>` タグで BGM を持つパターンだと scene
+/// **背景.** 各 CEF ページが `<audio>` タグで BGM を持つパターンだと scene
 /// transition (`loadUrl`) のたびに `<audio>` が破棄され、同一 BGM キーでも
 /// リスタートが走る。engine 側の `AudioMixer` は scene を跨いで生存するので、
 /// これを JS から叩けるようにすれば「同キーなら継続、異キーなら cross-fade」
 /// が自然に書ける。
 ///
-/// **Registered handlers (JS → C++):**
+/// **登録される handler (JS → C++):**
 /// - `audio.playBgm`          payload: "BGM_KEY"            → 同キーなら no-op、違えば play
 /// - `audio.stopBgm`          payload: ""                  → BGM 停止
 /// - `audio.crossFadeBgm`     payload: "BGM_KEY|duration_ms"→ 異キーなら cross-fade、同キーなら no-op
 /// - `audio.playSe`           payload: "SE_KEY"            → SE 再生
-/// - `audio.setCategoryVolume` payload: "bgm|0.8" or "se|1.0" or "voice|0.6"
+/// - `audio.setCategoryVolume` payload: "bgm|0.8" / "se|1.0" / "voice|0.6"
 /// - `audio.setMasterVolume`  payload: "0.8"
-/// - `audio.currentBgm`       payload: ""                  → response: 現在 BGM key
+/// - `audio.currentBgm`       payload: ""                  → 戻り値: 現在 BGM key
 ///
 /// **Payload 形式.** 任意セパレータが必要な場面は `|` を使う (JSON パーサを
 /// 引き込みたくないため)。
 ///
-/// **Usage:**
+/// **使い方:**
 /// ```cpp
 ///   mitiru::audio::AudioMixer mixer;
 ///   auto* ctx = engine.cefContext();
@@ -128,7 +128,7 @@ private:
 	std::string m_currentBgmKey;              ///< 現 BGM key (空 = 無音)
 };
 
-// ── Payload parser helpers ──────────────────────────────────────────
+// ── payload パーサー補助 ──────────────────────────────────────────
 
 /// @brief "key|value" を分割する
 inline std::pair<std::string_view, std::string_view> splitPipe(std::string_view s)
@@ -155,7 +155,7 @@ inline audio::SoundCategory parseCategory(std::string_view s)
 	return audio::SoundCategory::Se;
 }
 
-// ── Bridge binding ──────────────────────────────────────────────────
+// ── bridge の登録 ──────────────────────────────────────────────────
 
 /// @brief handler 登録関数のシグネチャ
 /// @details `MitiruCefContext::registerHandler()` と互換。StateStore と同じ

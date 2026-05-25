@@ -2,26 +2,26 @@
 <meta charset="utf-8">
 <title>mitiru_transitions.js tests</title>
 <!--
-    test_transitions.html — mitiru.transitions (F-05) unit tests
+    test_transitions.html — mitiru.transitions (F-05) unit test
 
-    Covers all 12 built-in transitions plus API contract tests.
-    WAAPI is shimmed for duration=0 paths.  Tests that need real animation
-    use small durations (5-10 ms) which resolve quickly in a real browser.
+    組み込み 12 種類の transition すべてと API 契約テストを網羅する。
+    WAAPI は duration=0 経路向けに shim される。実アニメーションが必要な
+    テストは小さい duration (5-10 ms) を使い、実 browser では素早く resolve する。
 
-    Node WAAPI shim:
-      A minimal shim at the top of the inline script patches
-      Element.prototype.animate (or a FakeEl class) so the tests can also
-      be driven from a bare Node environment without a real DOM.
+    Node 用 WAAPI shim:
+      inline script 冒頭の最小 shim が Element.prototype.animate (または
+      FakeEl クラス) を patch するので、実 DOM の無い素の Node 環境からも
+      テストを駆動できる。
 
-    Run (browser):
+    走らせ方 (browser):
       python -m http.server 8765 --bind 127.0.0.1
       open http://localhost:8765/web/mitiru_runtime/tests/test_transitions.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 
-    Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-05
+    実装する spec: docs/feedback-from-kaerucrape/2026-04-24.md F-05
 -->
 <link rel="stylesheet" href="../mitiru_base.css">
 <style>
@@ -37,17 +37,17 @@
 {
     'use strict';
 
-    // ── WAAPI shim (Node / environments without animate) ──────────────────
-    // If Element.prototype.animate is absent (bare Node), install a minimal
-    // shim that returns { finished: Promise.resolve() } immediately.
-    // In a real browser this is never reached.
+    // ── WAAPI shim (Node / animate の無い環境) ──────────────────
+    // Element.prototype.animate が無い場合 (素の Node) は、即座に
+    // { finished: Promise.resolve() } を返す最小 shim を仕込む。
+    // 実 browser では決して到達しない。
     var _needsShim = (typeof Element === 'undefined')
                   || (typeof Element.prototype === 'undefined')
                   || (typeof Element.prototype.animate !== 'function');
 
     if (_needsShim)
     {
-        // Provide a global Element stub with animate if running in Node.
+        // Node で動いているなら animate 付きの global Element stub を用意する。
         if (typeof global !== 'undefined' && typeof Element === 'undefined')
         {
             global.Element = function FakeElement() {};
@@ -62,8 +62,8 @@
     }
 
     // ── element factory ───────────────────────────────────────────────────
-    // Creates a lightweight fake DOM element compatible with WAAPI shim and
-    // real browser Element.  In a browser, uses a real <div>.
+    // WAAPI shim と実 browser の Element の両方に対応する軽量な疑似 DOM 要素を
+    // 生成する。browser では実 <div> を使う。
     function makeEl()
     {
         if (typeof document !== 'undefined')
@@ -72,7 +72,7 @@
             el.style.opacity = '1';
             return el;
         }
-        // Node fallback: fake element with animate shim.
+        // Node フォールバック: animate shim 付きの疑似要素。
         var fake = new Element();
         fake.style = {};
         fake.parentNode = null;
@@ -107,21 +107,21 @@
         return p;
     });
 
-    // ── 3. fade (live animation, small duration) ──────────────────────────
+    // ── 3. fade (実アニメーション、小さい duration) ──────────────────────────
     t.case('fade: resolves within reasonable time (duration:10)', function ()
     {
         var el = makeEl();
         return tr.run(el, 'fade', { duration: 10 });
     });
 
-    // ── 4. fade reverse: final state is opacity 1 ─────────────────────────
+    // ── 4. fade reverse: 最終状態は opacity 1 ─────────────────────────
     t.case('fade: reverse:true ends at opacity "1"', function ()
     {
         var el = makeEl();
         el.style.opacity = '0';
         return tr.run(el, 'fade', { duration: 0, reverse: true }).then(function ()
         {
-            // With duration:0 the last keyframe's props are applied via style.
+            // duration:0 では最後の keyframe の props が style 経由で適用される。
             t.assertEq(el.style.opacity, '1');
         });
     });
@@ -143,13 +143,13 @@
         });
     });
 
-    // ── 6. register: duplicate name without override throws ───────────────
+    // ── 6. register: override 無しの重複名は throw ───────────────
     t.case('register: duplicate name throws without override:true', function ()
     {
-        // First registration.
+        // 1 回目の登録。
         tr.register('_test_dup_02', function () { return Promise.resolve(); },
                     { override: true });
-        // Second without override should throw.
+        // override 無しの 2 回目は throw するはず。
         t.assertThrow(function ()
         {
             tr.register('_test_dup_02', function () { return Promise.resolve(); });
@@ -167,7 +167,7 @@
         });
     });
 
-    // ── 7. run unknown name rejects ───────────────────────────────────────
+    // ── 7. 未知の名前の run は reject ───────────────────────────────────────
     t.case('run: unknown transition name rejects with clear error', function ()
     {
         var el = makeEl();
@@ -177,7 +177,7 @@
         );
     });
 
-    // ── 8. list returns all 12 built-ins (+ any custom) ──────────────────
+    // ── 8. list は組み込み 12 種すべて (+ custom) を返す ──────────────────
     t.case('list: contains all 12 built-in names', function ()
     {
         var expected = [
@@ -203,7 +203,7 @@
         t.assert(tr.list().indexOf('_test_listed_04') >= 0);
     });
 
-    // ── 9. chain: sequential execution ───────────────────────────────────
+    // ── 9. chain: 逐次実行 ───────────────────────────────────
     t.case('chain: second transition starts only after first resolves', function ()
     {
         var order = [];
@@ -240,8 +240,8 @@
     // ── 10. slide-in direction:right ─────────────────────────────────────
     t.case('slide-in: direction=right resolves (starts from translateX(+100%))', function ()
     {
-        // We cannot easily observe the keyframes from outside WAAPI, but we
-        // can verify the transition runs without error and resolves.
+        // WAAPI の外から keyframe を観察するのは難しいが、transition が
+        // エラー無く走り resolve することは確認できる。
         var el = makeEl();
         return tr.run(el, 'slide-in', { duration: 5, direction: 'right' });
     });
@@ -251,18 +251,18 @@
         var el = makeEl();
         return tr.run(el, 'slide-in', { duration: 0, direction: 'right' }).then(function ()
         {
-            // Last keyframe is translateX(0) for slide-in.
+            // slide-in の最後の keyframe は translateX(0)。
             t.assert(el.style.transform !== undefined);
         });
     });
 
-    // ── 11. iris-in: clip-path applied ────────────────────────────────────
+    // ── 11. iris-in: clip-path が適用される ────────────────────────────────────
     t.case('iris-in: duration:0 sets clipPath to circle(150%)', function ()
     {
         var el = makeEl();
         return tr.run(el, 'iris-in', { duration: 0 }).then(function ()
         {
-            // The last keyframe for iris-in is circle(150% at 50% 50%).
+            // iris-in の最後の keyframe は circle(150% at 50% 50%)。
             var cp = el.style.clipPath || el.style.webkitClipPath || '';
             t.assert(cp.indexOf('circle') >= 0 || cp === '',
                 'clipPath should contain "circle" or be empty (browser compat): got "' + cp + '"');
@@ -275,7 +275,7 @@
         return tr.run(el, 'iris-in', { duration: 5 });
     });
 
-    // ── 12. crossfade: animates both from and to ──────────────────────────
+    // ── 12. crossfade: from と to の両方をアニメーション ──────────────────────────
     t.case('crossfade: animates from and to elements', function ()
     {
         var fromEl = makeEl();
@@ -301,7 +301,7 @@
         });
     });
 
-    // ── bonus: remaining built-ins resolve without error ─────────────────
+    // ── おまけ: 残りの組み込みがエラー無く resolve する ─────────────────
     var _smokeNames = [
         'slide-out', 'iris-out', 'pan', 'ink-dot', 'page-fold', 'card-fold', 'walk-through',
     ];
@@ -314,7 +314,7 @@
         });
     });
 
-    // ── run all tests ─────────────────────────────────────────────────────
+    // ── 全テストを走らせる ─────────────────────────────────────────────────────
     mitiru.test.run();
 
 }());

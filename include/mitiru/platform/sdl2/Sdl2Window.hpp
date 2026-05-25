@@ -263,12 +263,12 @@ private:
 	/// @brief SDLキーコードをエンジン内部キーコードに変換する
 	[[nodiscard]] static int sdlKeyToEngine(SDL_Keycode key) noexcept
 	{
-		// 文字キー (A-Z): SDL uses lowercase, engine uses uppercase (65-90)
+		// 文字キー (A-Z): SDL は小文字、engine は大文字 (65-90) を使う
 		if (key >= SDLK_a && key <= SDLK_z)
 		{
 			return static_cast<int>(key - SDLK_a) + 65;
 		}
-		// 数字キー (0-9): both use 48-57
+		// 数字キー (0-9): SDL / engine とも 48-57 を使う
 		if (key >= SDLK_0 && key <= SDLK_9)
 		{
 			return static_cast<int>(key);

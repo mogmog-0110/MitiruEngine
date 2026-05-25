@@ -43,6 +43,6 @@
 #include "detail/ScenarioScript_Inline.hpp"
 #include "detail/ScenarioScript_Callback.hpp"
 #include "detail/ScenarioScript_Executor.hpp"
-// _FlagManagerGlue.hpp MUST be last: it triggers the deferred FlagManager.hpp
-// include that breaks the ScenarioExecutor <-> FlagManager cyclic dependency.
+// _FlagManagerGlue.hpp は必ず最後: 遅延された FlagManager.hpp の include を
+// 起動し、ScenarioExecutor <-> FlagManager の循環依存を断ち切る。
 #include "detail/ScenarioScript_FlagManagerGlue.hpp"

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Player.hpp
-/// @brief Frame-by-frame InputSnapshot player (axis 4: deterministic + replay)
+/// @brief フレーム単位の InputSnapshot player (axis 4: deterministic + replay)
 /// @details
 /// `mitiru::replay::Recorder` で書き出した append-only binary を読んで、
 /// 1 frame ずつ `InputSnapshot` を取り出す。Checksum mismatch / truncation /
@@ -41,7 +41,7 @@ enum class PlayerError : std::uint8_t
 	ChecksumMismatch = 7
 };
 
-/// @brief Append-only binary player for `mitiru::module::InputSnapshot`.
+/// @brief `mitiru::module::InputSnapshot` 用の append-only binary player。
 /// @details 1 instance = 1 input file。`open()` で header を検証、
 ///          `readNext()` で 1 frame ずつ吸い出し、`eof()` で終了確認。
 class Player
@@ -87,7 +87,7 @@ public:
 
 		if (ver != kFormatVersion)
 		{
-			// v1 (or any non-v2) is unsupported — re-record required.
+			// v1 (や v2 以外) は非対応 — 再録画が必要。
 			m_lastError = PlayerError::VersionMismatch;
 			return false;
 		}
@@ -118,9 +118,9 @@ public:
 
 	/// @brief 次フレームを InputSnapshot + state blob 込みで 1 件読む。
 	///        正常 read で true、 EOF / corruption で false。
-	/// @param outSnap     decoded InputSnapshot
-	/// @param outState    decoded state blob bytes (state 無し frame なら empty)
-	/// @param outFrameIdx logical frame index recorded for this frame
+	/// @param outSnap     復号した InputSnapshot
+	/// @param outState    復号した state blob バイト列 (state 無し frame なら empty)
+	/// @param outFrameIdx この frame に記録された論理 frame index
 	bool readNextWithState(module::InputSnapshot&     outSnap,
 	                       std::vector<std::uint8_t>& outState,
 	                       std::uint32_t&             outFrameIdx)
@@ -132,7 +132,7 @@ public:
 		}
 		if (m_eof) { return false; }
 
-		// Layout: [frameIdx u32][payload InputSnapshot][stateLen u32][state][checksum u32]
+		// レイアウト: [frameIdx u32][payload InputSnapshot][stateLen u32][state][checksum u32]
 		constexpr std::size_t kPayloadBytes = sizeof(module::InputSnapshot);
 		std::uint8_t          head[sizeof(std::uint32_t) + kPayloadBytes];
 		m_in.read(reinterpret_cast<char*>(head), sizeof(head));
@@ -140,7 +140,7 @@ public:
 
 		if (headBytes == 0)
 		{
-			// Clean EOF on a frame boundary.
+			// frame 境界での clean EOF。
 			m_eof = true;
 			return false;
 		}
@@ -181,7 +181,7 @@ public:
 			return false;
 		}
 
-		// Checksum spans head + stateLen field + state bytes (matches Recorder).
+		// checksum は head + stateLen field + state バイト列 を covers する (Recorder と一致)。
 		std::uint32_t expected = fnv1a32(head, sizeof(head));
 		expected = fnv1aAppend(expected, &stateLen, sizeof(stateLen));
 		if (stateLen > 0)
@@ -268,11 +268,11 @@ public:
 		return result;
 	}
 
-	/// @brief sentinel for "no divergent frame found" in StateDivergence.
+	/// @brief StateDivergence で「分岐 frame なし」を表す sentinel。
 	static constexpr std::uint32_t kNoDivergence =
 		std::numeric_limits<std::uint32_t>::max();
 
-	/// @brief result of a frame-by-frame state-trace comparison.
+	/// @brief frame 単位の state-trace 比較結果。
 	/// @details 主眼は「同 input・異コード」: input が一致したまま state が
 	///          分岐したら code-caused regression と判別できる。
 	struct StateDivergence
@@ -299,7 +299,7 @@ public:
 		Player b;
 		if (!a.open(runA) || !b.open(runB))
 		{
-			out.diverged = true;  // cannot compare → treat as divergent
+			out.diverged = true;  // 比較不能 → 分岐扱いにする
 			return out;
 		}
 

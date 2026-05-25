@@ -1,8 +1,8 @@
 /*!
- * mitiru_modal.js — reusable modal / dialog primitive (NF-13)
+ * mitiru_modal.js — 再利用可能な modal / dialog primitive (NF-13)
  *
- * Provides alert / confirm / prompt / custom modals with full accessibility,
- * focus trapping, Escape / backdrop dismissal, and nested stacking support.
+ * alert / confirm / prompt / custom modal を提供。完全な accessibility、
+ * focus trap、Escape / backdrop での dismiss、入れ子 stack をサポート。
  *
  * API:
  *   mitiru.modal.alert(opts)    → Promise<void>
@@ -21,17 +21,17 @@
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.modal) { return; }  // already loaded
+	if (mitiru.modal) { return; }  // 読み込み済み
 
 	const document = global.document;
 
 	// ── internal state ────────────────────────────────────────────
-	var _stack    = [];   // [{root, resolve, kind, opts}]  topmost = last
-	var _zBase    = 1000; // z-index base; each modal adds 10
-	var _idSeq    = 0;    // monotonic ID for aria-labelledby uniqueness
+	var _stack    = [];   // [{root, resolve, kind, opts}]  最前面 = 末尾
+	var _zBase    = 1000; // z-index の基準; modal ごとに 10 加算
+	var _idSeq    = 0;    // aria-labelledby を一意にする単調増加 ID
 	var _listeners = {};  // { 'open': [fn,...], 'close': [fn,...] }
 
-	// ── event emitter helpers ─────────────────────────────────────
+	// ── event emitter helper ─────────────────────────────────────
 
 	function _emit(event, payload)
 	{
@@ -39,7 +39,7 @@
 		if (!handlers) { return; }
 		for (var i = 0; i < handlers.length; ++i)
 		{
-			try { handlers[i](payload); } catch (_e) { /* isolate */ }
+			try { handlers[i](payload); } catch (_e) { /* 隔離 */ }
 		}
 	}
 
@@ -126,7 +126,7 @@
 		var labelId = 'mitiru-modal-title-' + _idSeq;
 		var zIndex  = _zBase + _stack.length * 10;
 
-		// ── root wrapper ──────────────────────────────────────────
+		// ── root ラッパー ──────────────────────────────────────────
 		var root = document.createElement('div');
 		root.className = 'mitiru-modal-root';
 		root.setAttribute('data-mitiru-modal', '');
@@ -233,7 +233,7 @@
 
 		box.appendChild(actionsEl);
 
-		// keyboard events
+		// keyboard イベント
 		root.addEventListener('keydown', function(e)
 		{
 			if (_stack.length === 0) { return; }
@@ -253,7 +253,7 @@
 			}
 		});
 
-		// backdrop click
+		// backdrop クリック
 		backdrop.addEventListener('click', function()
 		{
 			if (opts.closeOnBackdrop)
@@ -300,7 +300,7 @@
 			elements.inputEl.select();
 			return;
 		}
-		// CSS selector
+		// CSS セレクタ
 		if (typeof focusHint === 'string')
 		{
 			var target = elements.box.querySelector(focusHint);
@@ -310,11 +310,11 @@
 				return;
 			}
 		}
-		// fallback
+		// フォールバック
 		if (elements.okBtn) { elements.okBtn.focus(); }
 	}
 
-	// ── open / close lifecycle ────────────────────────────────────
+	// ── open / close ライフサイクル ────────────────────────────────────
 
 	function _open(kind, opts)
 	{
@@ -353,15 +353,15 @@
 			entry.root.parentNode.removeChild(entry.root);
 		}
 
-		// Restore focus only if this was the topmost modal remaining
-		// (after pop, the stack no longer contains this entry).
+		// これが残っていた最前面 modal だった場合のみ focus を復元
+		// (pop 後、stack にこの entry はもう含まれない)。
 		if (_stack.length === 0 && entry.savedFocus && typeof entry.savedFocus.focus === 'function')
 		{
-			try { entry.savedFocus.focus(); } catch (_e) { /* ignore */ }
+			try { entry.savedFocus.focus(); } catch (_e) { /* 無視 */ }
 		}
 		else if (_stack.length > 0)
 		{
-			// Return focus to previous modal's primary button.
+			// 直前の modal の primary button へ focus を戻す。
 			var prev = _stack[_stack.length - 1];
 			var prevFocusable = _getFocusable(prev.root);
 			if (prevFocusable.length > 0) { prevFocusable[0].focus(); }

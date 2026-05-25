@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file SceneRouter.hpp
-/// @brief Stack-based scene flow router
-/// @details Manages a stack of IScene instances and dispatches lifecycle
-///          callbacks (onEnter / onExit / onPause / onResume) in strict order.
-///          Only the top-of-stack scene receives onUpdate.
+/// @brief stack ベースの scene flow router
+/// @details IScene instance の stack を管理し、lifecycle callback
+///          (onEnter / onExit / onPause / onResume) を厳密な順序で dispatch する。
+///          onUpdate を受け取るのは stack 最上位の scene のみ。
 ///
-/// @par Push / Pop semantics
+/// @par Push / Pop の挙動
 /// @code
 /// SceneRouter router;
 ///
@@ -23,7 +23,7 @@
 /// router.update(dt);   // TitleScene is top again
 /// @endcode
 ///
-/// @par Replace semantics
+/// @par Replace の挙動
 /// @code
 /// // Replace current top — fires old::onExit, new::onEnter
 /// // onPause / onResume are NOT fired on the scene below.
@@ -39,15 +39,15 @@
 
 namespace mitiru::scene {
 
-/// @brief Stack-based scene flow controller.
+/// @brief stack ベースの scene flow controller。
 ///
-/// Thread safety: NOT thread-safe. Call from the game-loop thread only.
-/// Hot-path: update(), current(), depth() perform zero heap allocations.
+/// thread 安全性: thread-safe ではない。game-loop thread からのみ呼ぶこと。
+/// hot-path: update()、current()、depth() は heap 確保ゼロ。
 class SceneRouter {
 public:
     SceneRouter() = default;
 
-    // Non-copyable; movable.
+    // copy 不可、move 可。
     SceneRouter(const SceneRouter&)            = delete;
     SceneRouter& operator=(const SceneRouter&) = delete;
     SceneRouter(SceneRouter&&)                 = default;
@@ -56,12 +56,12 @@ public:
     ~SceneRouter() = default;
 
     // -----------------------------------------------------------------------
-    // Mutation
+    // 変更操作
     // -----------------------------------------------------------------------
 
-    /// Push a new scene onto the stack.
-    /// Fires: top-before::onPause (if any), new::onEnter.
-    /// @param scene  Must not be null.
+    /// 新しい scene を stack に push する。
+    /// 発火: 直前の top::onPause (あれば)、new::onEnter。
+    /// @param scene  null 不可。
     void push(std::unique_ptr<IScene> scene) {
         assert(scene && "SceneRouter::push — scene must not be null");
 
@@ -72,9 +72,9 @@ public:
         m_stack.back()->onEnter();
     }
 
-    /// Pop the top scene off the stack.
-    /// Fires: top::onExit, revealed::onResume (if any).
-    /// No-op if the stack is empty.
+    /// stack から top の scene を pop する。
+    /// 発火: top::onExit、現れた scene::onResume (あれば)。
+    /// stack が空なら何もしない。
     void pop() {
         if (m_stack.empty()) {
             return;
@@ -87,10 +87,10 @@ public:
         }
     }
 
-    /// Replace the top scene without touching the scene below.
-    /// Fires: old-top::onExit, new::onEnter.
-    /// onPause / onResume are NOT fired on the scene below.
-    /// @param scene  Must not be null.
+    /// 下の scene に触れず top の scene を置き換える。
+    /// 発火: 旧 top::onExit、new::onEnter。
+    /// 下の scene に onPause / onResume は発火しない。
+    /// @param scene  null 不可。
     void replace(std::unique_ptr<IScene> scene) {
         assert(scene && "SceneRouter::replace — scene must not be null");
 
@@ -103,11 +103,11 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // Per-frame (hot path — zero allocation)
+    // Per-frame (hot path — 確保ゼロ)
     // -----------------------------------------------------------------------
 
-    /// Tick the top scene. No-op if the stack is empty.
-    /// @param dt  Frame delta time in seconds.
+    /// top の scene を tick する。stack が空なら何もしない。
+    /// @param dt  秒単位の frame delta time。
     void update(float dt) {
         if (m_stack.empty()) {
             return;
@@ -116,10 +116,10 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // Query (hot path — zero allocation)
+    // Query (hot path — 確保ゼロ)
     // -----------------------------------------------------------------------
 
-    /// Return a raw pointer to the top scene, or nullptr if empty.
+    /// top の scene への raw pointer を返す。空なら nullptr。
     [[nodiscard]] IScene* current() const noexcept {
         if (m_stack.empty()) {
             return nullptr;
@@ -127,12 +127,12 @@ public:
         return m_stack.back().get();
     }
 
-    /// Return the number of scenes currently on the stack.
+    /// 現在 stack 上にある scene の数を返す。
     [[nodiscard]] std::size_t depth() const noexcept {
         return m_stack.size();
     }
 
-    /// Return true when the stack has no scenes.
+    /// stack に scene が無ければ true を返す。
     [[nodiscard]] bool empty() const noexcept {
         return m_stack.empty();
     }

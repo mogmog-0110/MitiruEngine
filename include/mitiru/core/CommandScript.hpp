@@ -201,17 +201,17 @@ private:
 			const auto& scriptLine = m_lines[i];
 			const std::string line = trimLine(scriptLine.raw);
 
-			// Skip empty lines and comments
+			// 空行とコメントをスキップ
 			if (line.empty() || line[0] == '#')
 			{
 				++i;
 				continue;
 			}
 
-			// Variable substitution
+			// 変数置換
 			const std::string expanded = substituteVariables(line);
 
-			// Built-in: set <name> <value>
+			// 組み込み: set <name> <value>
 			if (expanded.rfind("set ", 0) == 0)
 			{
 				handleSet(expanded);
@@ -219,7 +219,7 @@ private:
 				continue;
 			}
 
-			// Built-in: echo <message>
+			// 組み込み: echo <message>
 			if (expanded.rfind("echo ", 0) == 0)
 			{
 				handleEcho(expanded.substr(5));
@@ -227,7 +227,7 @@ private:
 				continue;
 			}
 
-			// Built-in: wait <seconds>
+			// 組み込み: wait <seconds>
 			if (expanded.rfind("wait ", 0) == 0)
 			{
 				handleWait(expanded.substr(5));
@@ -235,28 +235,28 @@ private:
 				continue;
 			}
 
-			// Built-in: if <expr>
+			// 組み込み: if <expr>
 			if (expanded.rfind("if ", 0) == 0)
 			{
 				i = handleIf(cmdSystem, results, expanded, i, end);
 				continue;
 			}
 
-			// Built-in: repeat <N>
+			// 組み込み: repeat <N>
 			if (expanded.rfind("repeat ", 0) == 0)
 			{
 				i = handleRepeat(cmdSystem, results, expanded, i, end);
 				continue;
 			}
 
-			// Skip block-end keywords if encountered out of context
+			// 文脈外で現れた block 終端キーワードはスキップ
 			if (expanded == "endif" || expanded == "endrepeat")
 			{
 				++i;
 				continue;
 			}
 
-			// Regular command — dispatch to CommandSystem
+			// 通常コマンド — CommandSystem へ dispatch
 			auto result = cmdSystem.executeString(expanded);
 			results.push_back(result);
 			++i;
@@ -267,7 +267,7 @@ private:
 	/// @param line "set <name> <value>" 形式の行
 	void handleSet(const std::string& line)
 	{
-		// "set name value..."
+		// "set name value..." 形式
 		const auto nameStart = line.find(' ');
 		if (nameStart == std::string::npos)
 		{
@@ -276,7 +276,7 @@ private:
 		const auto nameEnd = line.find(' ', nameStart + 1);
 		if (nameEnd == std::string::npos)
 		{
-			// "set name" — set to empty
+			// "set name" — 空文字列を設定
 			m_variables[line.substr(nameStart + 1)] = "";
 			return;
 		}
@@ -290,7 +290,7 @@ private:
 	/// @param message 出力メッセージ
 	void handleEcho(const std::string& message)
 	{
-		// Strip surrounding quotes if present
+		// 前後の引用符があれば除去
 		std::string msg = message;
 		if (msg.size() >= 2 && msg.front() == '"' && msg.back() == '"')
 		{
@@ -323,7 +323,7 @@ private:
 		}
 		else
 		{
-			// Default: thread sleep
+			// 既定: thread sleep
 			const auto ms = static_cast<int>(seconds * 1000.0f);
 			if (ms > 0)
 			{
@@ -345,7 +345,7 @@ private:
 	                     const std::string& condLine,
 	                     std::size_t ifIndex, std::size_t blockEnd)
 	{
-		// Find matching endif
+		// 対応する endif を探す
 		std::size_t depth = 1;
 		std::size_t endifIndex = ifIndex + 1;
 		while (endifIndex < blockEnd && depth > 0)
@@ -387,7 +387,7 @@ private:
 	                         std::size_t repeatIndex,
 	                         std::size_t blockEnd)
 	{
-		// Find matching endrepeat
+		// 対応する endrepeat を探す
 		std::size_t depth = 1;
 		std::size_t endrepeatIndex = repeatIndex + 1;
 		while (endrepeatIndex < blockEnd && depth > 0)
@@ -407,7 +407,7 @@ private:
 			}
 		}
 
-		// Parse repeat count
+		// repeat 回数をパース
 		int count = 0;
 		try
 		{
@@ -418,7 +418,7 @@ private:
 			return endrepeatIndex + 1;
 		}
 
-		// Execute block N times, setting $i to iteration index
+		// block を N 回実行し、$i に反復インデックスを設定する
 		for (int iteration = 0; iteration < count; ++iteration)
 		{
 			m_variables["i"] = std::to_string(iteration);
@@ -472,7 +472,7 @@ private:
 		{
 			if (line[i] == '$' && i + 1 < line.size())
 			{
-				// Extract variable name (alphanumeric + underscore)
+				// 変数名を抽出 (英数字 + アンダースコア)
 				std::size_t j = i + 1;
 				while (j < line.size()
 					&& (std::isalnum(static_cast<unsigned char>(line[j]))
@@ -488,10 +488,10 @@ private:
 				}
 				else
 				{
-					// Keep original $name if undefined
+					// 未定義なら元の $name をそのまま残す
 					result += line.substr(i, j - i);
 				}
-				i = j - 1; // -1 because loop will ++i
+				i = j - 1; // loop が ++i するので -1
 			}
 			else
 			{

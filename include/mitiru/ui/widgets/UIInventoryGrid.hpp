@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIInventoryGrid.hpp
-/// @brief Drag-and-drop item grid widget for inventory systems.
+/// @brief inventory system 向けの drag & drop item grid widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,7 +15,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Item rarity tier (affects visual border styling).
+/// @brief item の rarity (枠の見た目スタイルに影響する)。
 enum class ItemRarity : std::uint8_t
 {
 	Common,
@@ -25,7 +25,7 @@ enum class ItemRarity : std::uint8_t
 	Legendary
 };
 
-/// @brief Grid coordinate (column, row).
+/// @brief grid 座標 (column, row)。
 struct GridPos
 {
 	std::uint32_t col = 0;
@@ -42,7 +42,7 @@ struct GridPos
 	}
 };
 
-/// @brief Data for an item that can be placed in the inventory grid.
+/// @brief inventory grid に配置できる item のデータ。
 struct UIInventoryItem
 {
 	std::uint32_t id = 0;
@@ -54,7 +54,7 @@ struct UIInventoryItem
 	ItemRarity rarity = ItemRarity::Common;
 };
 
-/// @brief Configuration for creating a UIInventoryGrid.
+/// @brief UIInventoryGrid 生成用の設定。
 struct UIInventoryGridConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -72,10 +72,10 @@ struct UIInventoryGridConfig
 	float stackCountFontSize = 10.0f;
 };
 
-/// @brief Drag-and-drop inventory grid widget.
+/// @brief drag & drop 対応の inventory grid widget。
 ///
-/// Manages a grid of item cells supporting drag & drop, stack merging,
-/// hover tooltips, and multi-grid transfers.
+/// item cell の grid を管理し、drag & drop、stack の統合、hover tooltip、
+/// 複数 grid 間の移動に対応する。
 ///
 /// @code
 ///   UIInventoryGridConfig cfg;
@@ -97,7 +97,7 @@ class UIInventoryGrid
 	std::shared_ptr<UINode> m_node;
 	UIInventoryGridConfig m_config;
 
-	/// @brief Cells stored in row-major order.
+	/// @brief row-major 順で格納された cell 群。
 	std::vector<std::optional<UIInventoryItem>> m_cells;
 
 	std::int32_t m_hoveredCol = -1;
@@ -105,7 +105,7 @@ class UIInventoryGrid
 	std::int32_t m_selectedCol = -1;
 	std::int32_t m_selectedRow = -1;
 
-	// Drag state
+	// drag 状態
 	bool m_dragging = false;
 	GridPos m_dragOrigin{};
 	float m_dragGhostX = 0.0f;
@@ -117,8 +117,8 @@ class UIInventoryGrid
 	std::function<void(const UIInventoryItem&, GridPos)> m_onItemHovered;
 
 public:
-	/// @brief Construct an inventory grid from configuration.
-	/// @param config Grid configuration.
+	/// @brief 設定から inventory grid を構築する。
+	/// @param config grid の設定。
 	explicit UIInventoryGrid(const UIInventoryGridConfig& config)
 		: m_config(config)
 		, m_cells(static_cast<std::size_t>(config.columns) * config.rows)
@@ -144,30 +144,30 @@ public:
 
 	// ── Accessors ────────────────────────────────────────────
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基底の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get column count.
+	/// @brief column 数を取得する。
 	[[nodiscard]] std::uint32_t columns() const noexcept { return m_config.columns; }
 
-	/// @brief Get row count.
+	/// @brief row 数を取得する。
 	[[nodiscard]] std::uint32_t rows() const noexcept { return m_config.rows; }
 
-	/// @brief Compute total width.
+	/// @brief 総幅を計算する。
 	[[nodiscard]] float totalWidth() const noexcept
 	{
 		const auto n = static_cast<float>(m_config.columns);
 		return 2.0f * m_config.padding + n * m_config.cellSize + (n - 1.0f) * m_config.cellSpacing;
 	}
 
-	/// @brief Compute total height.
+	/// @brief 総高さを計算する。
 	[[nodiscard]] float totalHeight() const noexcept
 	{
 		const auto n = static_cast<float>(m_config.rows);
 		return 2.0f * m_config.padding + n * m_config.cellSize + (n - 1.0f) * m_config.cellSpacing;
 	}
 
-	/// @brief Get the bounds of a cell in local grid space.
+	/// @brief ローカル grid 空間での cell の bounds を取得する。
 	[[nodiscard]] sgc::Rectf cellBounds(std::uint32_t col, std::uint32_t row) const noexcept
 	{
 		const float x = m_config.padding + static_cast<float>(col) * (m_config.cellSize + m_config.cellSpacing);
@@ -175,32 +175,32 @@ public:
 		return sgc::Rectf(x, y, m_config.cellSize, m_config.cellSize);
 	}
 
-	/// @brief Check if a grid position is valid.
+	/// @brief grid 位置が有効か確認する。
 	[[nodiscard]] bool isValidPos(std::uint32_t col, std::uint32_t row) const noexcept
 	{
 		return col < m_config.columns && row < m_config.rows;
 	}
 
-	/// @brief Check if currently dragging an item.
+	/// @brief 現在 item を drag 中か確認する。
 	[[nodiscard]] bool isDragging() const noexcept { return m_dragging; }
 
-	/// @brief Get the drag origin position.
+	/// @brief drag 開始位置を取得する。
 	[[nodiscard]] GridPos dragOrigin() const noexcept { return m_dragOrigin; }
 
-	/// @brief Get the drag ghost screen position.
+	/// @brief drag ghost の画面位置を取得する。
 	[[nodiscard]] float dragGhostX() const noexcept { return m_dragGhostX; }
 	[[nodiscard]] float dragGhostY() const noexcept { return m_dragGhostY; }
 
-	// ── Item management ──────────────────────────────────────
+	// ── item 管理 ──────────────────────────────────────
 
-	/// @brief Get item at position, or nullopt if empty.
+	/// @brief 指定位置の item を取得する。空なら nullopt。
 	[[nodiscard]] std::optional<UIInventoryItem> getItem(std::uint32_t col, std::uint32_t row) const
 	{
 		if (!isValidPos(col, row)) { return std::nullopt; }
 		return m_cells[cellIndex(col, row)];
 	}
 
-	/// @brief Set an item at the given position.
+	/// @brief 指定位置に item を設定する。
 	void setItem(std::uint32_t col, std::uint32_t row, const UIInventoryItem& item)
 	{
 		if (!isValidPos(col, row)) { return; }
@@ -208,7 +208,7 @@ public:
 		syncCellProperty(col, row);
 	}
 
-	/// @brief Remove and return the item at the given position.
+	/// @brief 指定位置の item を取り除いて返す。
 	std::optional<UIInventoryItem> removeItem(std::uint32_t col, std::uint32_t row)
 	{
 		if (!isValidPos(col, row)) { return std::nullopt; }
@@ -219,7 +219,7 @@ public:
 		return result;
 	}
 
-	/// @brief Swap items between two grid positions.
+	/// @brief 2 つの grid 位置の item を入れ替える。
 	void swapItems(GridPos from, GridPos to)
 	{
 		if (!isValidPos(from.col, from.row) || !isValidPos(to.col, to.row)) { return; }
@@ -228,8 +228,8 @@ public:
 		syncCellProperty(to.col, to.row);
 	}
 
-	/// @brief Move an item from one position to another, with stack merging support.
-	/// @return True if the move (or merge) was performed.
+	/// @brief item をある位置から別の位置へ移動する (stack 統合に対応)。
+	/// @return 移動 (or 統合) が行われたら true。
 	bool moveItem(GridPos from, GridPos to)
 	{
 		if (!isValidPos(from.col, from.row) || !isValidPos(to.col, to.row)) { return false; }
@@ -240,7 +240,7 @@ public:
 
 		if (!srcCell.has_value()) { return false; }
 
-		// Stack merging: same item id and stackable
+		// stack 統合: 同じ item id かつ stack 可能
 		if (dstCell.has_value() && dstCell->id == srcCell->id && dstCell->maxStack > 1)
 		{
 			const std::uint32_t space = dstCell->maxStack - dstCell->stackCount;
@@ -258,7 +258,7 @@ public:
 				if (m_onItemMoved) { m_onItemMoved(from, to); }
 				return true;
 			}
-			// No space for merge — swap instead
+			// 統合する空きが無い — 代わりに入れ替える
 			swapItems(from, to);
 			if (m_onItemMoved) { m_onItemMoved(from, to); }
 			return true;
@@ -266,12 +266,12 @@ public:
 
 		if (dstCell.has_value())
 		{
-			// Different items — swap
+			// 異なる item — 入れ替える
 			swapItems(from, to);
 		}
 		else
 		{
-			// Empty destination — move
+			// 移動先が空 — 移動する
 			dstCell = std::move(srcCell);
 			srcCell.reset();
 			syncCellProperty(from.col, from.row);
@@ -282,17 +282,17 @@ public:
 		return true;
 	}
 
-	/// @brief Accept an item dropped from an external source (e.g. another grid).
-	/// @param item The item being dropped.
-	/// @param col Destination column.
-	/// @param row Destination row.
-	/// @return True if the item was placed.
+	/// @brief 外部ソース (例 別の grid) から drop された item を受け取る。
+	/// @param item drop される item。
+	/// @param col 移動先の column。
+	/// @param row 移動先の row。
+	/// @return item が配置されたら true。
 	bool acceptExternalDrop(const UIInventoryItem& item, std::uint32_t col, std::uint32_t row)
 	{
 		if (!isValidPos(col, row)) { return false; }
 		auto& cell = m_cells[cellIndex(col, row)];
 
-		// Stack merge with existing
+		// 既存の item と stack 統合
 		if (cell.has_value() && cell->id == item.id && cell->maxStack > 1)
 		{
 			const std::uint32_t space = cell->maxStack - cell->stackCount;
@@ -306,7 +306,7 @@ public:
 			return false;
 		}
 
-		if (cell.has_value()) { return false; } // occupied
+		if (cell.has_value()) { return false; } // 占有済み
 
 		cell = item;
 		syncCellProperty(col, row);
@@ -316,35 +316,35 @@ public:
 
 	// ── Callbacks ────────────────────────────────────────────
 
-	/// @brief Set callback for when an item is moved within this grid.
+	/// @brief この grid 内で item が移動したときの callback を設定する。
 	void setOnItemMoved(std::function<void(GridPos, GridPos)> callback)
 	{
 		m_onItemMoved = std::move(callback);
 	}
 
-	/// @brief Set callback for when an item is dropped onto this grid.
+	/// @brief この grid に item が drop されたときの callback を設定する。
 	void setOnItemDropped(std::function<void(const UIInventoryItem&, GridPos)> callback)
 	{
 		m_onItemDropped = std::move(callback);
 	}
 
-	/// @brief Set callback for when an item is right-clicked.
+	/// @brief item が右クリックされたときの callback を設定する。
 	void setOnItemRightClicked(std::function<void(const UIInventoryItem&)> callback)
 	{
 		m_onItemRightClicked = std::move(callback);
 	}
 
-	/// @brief Set callback for when an item is hovered (for tooltip).
+	/// @brief item が hover されたときの callback を設定する (tooltip 用)。
 	void setOnItemHovered(std::function<void(const UIInventoryItem&, GridPos)> callback)
 	{
 		m_onItemHovered = std::move(callback);
 	}
 
-	// ── Interaction (called by event system) ─────────────────
+	// ── 操作 (event system から呼ばれる) ─────────────────
 
-	/// @brief Called when pointer moves over the grid.
-	/// @param localX X in local grid space.
-	/// @param localY Y in local grid space.
+	/// @brief pointer が grid 上を移動したとき呼ばれる。
+	/// @param localX ローカル grid 空間での X。
+	/// @param localY ローカル grid 空間での Y。
 	void onPointerMove(float localX, float localY)
 	{
 		const auto [col, row] = hitTestCell(localX, localY);
@@ -357,7 +357,7 @@ public:
 			m_dragGhostY = localY;
 		}
 
-		// Tooltip notification
+		// tooltip 通知
 		if (col >= 0 && row >= 0 && m_onItemHovered)
 		{
 			const auto& cell = m_cells[cellIndex(
@@ -371,7 +371,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Called when pointer leaves the grid area.
+	/// @brief pointer が grid 領域から離れたとき呼ばれる。
 	void onPointerLeave()
 	{
 		m_hoveredCol = -1;
@@ -379,9 +379,9 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Called when pointer is pressed down on the grid.
-	/// @param localX X in local grid space.
-	/// @param localY Y in local grid space.
+	/// @brief grid 上で pointer が押下されたとき呼ばれる。
+	/// @param localX ローカル grid 空間での X。
+	/// @param localY ローカル grid 空間での Y。
 	void onPointerDown(float localX, float localY)
 	{
 		const auto [col, row] = hitTestCell(localX, localY);
@@ -402,9 +402,9 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Called when pointer is released.
-	/// @param localX X in local grid space.
-	/// @param localY Y in local grid space.
+	/// @brief pointer が離されたとき呼ばれる。
+	/// @param localX ローカル grid 空間での X。
+	/// @param localY ローカル grid 空間での Y。
 	void onPointerUp(float localX, float localY)
 	{
 		if (m_dragging)
@@ -420,9 +420,9 @@ public:
 		}
 	}
 
-	/// @brief Called when pointer right-clicks on the grid.
-	/// @param localX X in local grid space.
-	/// @param localY Y in local grid space.
+	/// @brief grid 上で pointer が右クリックされたとき呼ばれる。
+	/// @param localX ローカル grid 空間での X。
+	/// @param localY ローカル grid 空間での Y。
 	void onRightClick(float localX, float localY)
 	{
 		const auto [col, row] = hitTestCell(localX, localY);
@@ -436,15 +436,15 @@ public:
 		}
 	}
 
-	/// @brief Cancel an in-progress drag operation.
+	/// @brief 進行中の drag 操作を取り消す。
 	void cancelDrag()
 	{
 		m_dragging = false;
 		syncNodeState();
 	}
 
-	/// @brief Extract the item being dragged (for cross-grid transfer).
-	/// @return The dragged item, or nullopt if not dragging.
+	/// @brief drag 中の item を取り出す (grid 間移動用)。
+	/// @return drag 中の item、drag 中でなければ nullopt。
 	std::optional<UIInventoryItem> extractDraggedItem()
 	{
 		if (!m_dragging) { return std::nullopt; }
@@ -455,14 +455,14 @@ public:
 	}
 
 private:
-	/// @brief Convert (col, row) to flat index.
+	/// @brief (col, row) を平坦な index に変換する。
 	[[nodiscard]] std::size_t cellIndex(std::uint32_t col, std::uint32_t row) const noexcept
 	{
 		return static_cast<std::size_t>(row) * m_config.columns + col;
 	}
 
-	/// @brief Hit-test a local point against cells.
-	/// @return (col, row) or (-1, -1) if no cell hit.
+	/// @brief ローカル点を cell に対して hit-test する。
+	/// @return (col, row)、どの cell にも当たらなければ (-1, -1)。
 	struct CellHit { std::int32_t col; std::int32_t row; };
 	[[nodiscard]] CellHit hitTestCell(float lx, float ly) const noexcept
 	{
@@ -480,7 +480,7 @@ private:
 		return {-1, -1};
 	}
 
-	/// @brief Sync a single cell's data to node properties.
+	/// @brief 単一 cell のデータを node properties に同期する。
 	void syncCellProperty(std::uint32_t col, std::uint32_t row)
 	{
 		const auto prefix = "cell_" + std::to_string(col) + "_" + std::to_string(row) + "_";
@@ -503,7 +503,7 @@ private:
 		}
 	}
 
-	/// @brief Convert rarity enum to string.
+	/// @brief rarity enum を文字列に変換する。
 	[[nodiscard]] static const char* rarityToString(ItemRarity r) noexcept
 	{
 		switch (r)
@@ -516,7 +516,7 @@ private:
 		}
 	}
 
-	/// @brief Synchronize overall state to the UINode.
+	/// @brief 全体の状態を UINode に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("hovered_col", std::to_string(m_hoveredCol));

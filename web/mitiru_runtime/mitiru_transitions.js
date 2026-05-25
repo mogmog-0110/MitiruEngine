@@ -1,9 +1,9 @@
 /*!
- * mitiru_transitions.js — named scene / overlay transition library (F-05)
+ * mitiru_transitions.js — 名前付き scene / overlay transition library (F-05)
  *
- * Provides a menu of reusable CSS-animated transitions powered by the
- * Web Animations API (WAAPI).  Works both within a scene (overlay open/close)
- * and between scenes when wired into mitiru.router's `in`/`out` hooks:
+ * Web Animations API (WAAPI) を使った、再利用可能な CSS アニメ transition を
+ * メニュー形式で提供する。scene 内 (overlay の open/close) でも、
+ * mitiru.router の `in`/`out` hook に繋げば scene 間でも動く:
  *
  *   router.register('mainmenu', {
  *     url: 'scenes/mainmenu.html',
@@ -18,18 +18,18 @@
  *   mitiru.transitions.chain(el, pairs)         → Promise<void>
  *     pairs: [[name, options?], ...]
  *
- * Options (all optional):
- *   duration  {number}  ms, default 400
- *   easing    {string}  CSS easing, default 'ease'
- *   direction {string}  'left'|'right'|'up'|'down' (slide/pan), default 'left'
- *   intensity {number}  0..1 (blur magnitude for walk-through), default 0.5
- *   reverse   {boolean} run the transition backwards (used by fade), default false
- *   from      {Element} outgoing element (crossfade)
- *   to        {Element} incoming element (crossfade)
- *   color     {string}  fill color for ink-dot overlay, default '#000'
- *   override  {boolean} allow re-registering an existing name (register only)
+ * Options (全て optional):
+ *   duration  {number}  ms、default 400
+ *   easing    {string}  CSS easing、default 'ease'
+ *   direction {string}  'left'|'right'|'up'|'down' (slide/pan)、default 'left'
+ *   intensity {number}  0..1 (walk-through の blur 強度)、default 0.5
+ *   reverse   {boolean} transition を逆再生する (fade が使用)、default false
+ *   from      {Element} 退出する element (crossfade)
+ *   to        {Element} 進入する element (crossfade)
+ *   color     {string}  ink-dot overlay の塗り色、default '#000'
+ *   override  {boolean} 既存の名前の再登録を許可 (register のみ)
  *
- * Built-ins (12):
+ * Built-in (12):
  *   fade, instant (alias: cut), crossfade,
  *   slide-in, slide-out,
  *   iris-in, iris-out,
@@ -45,9 +45,9 @@
     'use strict';
 
     var mitiru = global.mitiru = global.mitiru || {};
-    if (mitiru.transitions) { return; }   // already loaded
+    if (mitiru.transitions) { return; }   // 読み込み済み
 
-    // ── constants ──────────────────────────────────────────────────────────
+    // ── 定数 ──────────────────────────────────────────────────────────
     var DEFAULT_DURATION = 400;
     var DEFAULT_EASING   = 'ease';
 
@@ -56,10 +56,10 @@
 
     // ── WAAPI helper ───────────────────────────────────────────────────────
     /**
-     * Run a WAAPI animation on `el`.
-     * When duration === 0 the animation is skipped entirely and a resolved
-     * Promise is returned — this satisfies the "duration:0 is a no-op" rule
-     * without handing a zero-duration animation to the browser.
+     * `el` に WAAPI animation を実行する。
+     * duration === 0 のときは animation を完全に skip し、resolve 済みの
+     * Promise を返す — zero-duration animation を browser に渡さずに
+     * 「duration:0 は no-op」規則を満たすため。
      *
      * @param  {Element}  el
      * @param  {object[]} keyframes  — WAAPI keyframes array
@@ -74,8 +74,8 @@
 
         if (duration <= 0)
         {
-            // Apply the last keyframe's properties so the element ends up in
-            // the correct visual state even without actually animating.
+            // 実際に animate しなくても element が正しい視覚状態で終わるよう
+            // 最後の keyframe の property を適用する。
             var last = keyframes[keyframes.length - 1];
             if (last)
             {
@@ -95,11 +95,11 @@
         return animation.finished;
     }
 
-    // ── direction helpers ──────────────────────────────────────────────────
+    // ── direction helper ──────────────────────────────────────────────────
     function _slideTranslate(direction, inward)
     {
-        // Returns [fromTransform, toTransform].
-        // inward = true → element enters. inward = false → element exits.
+        // [fromTransform, toTransform] を返す。
+        // inward = true → element 進入。inward = false → element 退出。
         var dir = direction || 'left';
         var start;
         if      (dir === 'left')  { start = inward ? 'translateX(-100%)' : 'translateX(0)'; }
@@ -116,7 +116,7 @@
         return [start, end];
     }
 
-    // ── built-in transition implementations ───────────────────────────────
+    // ── built-in transition 実装 ───────────────────────────────
 
     function _builtinFade(el, opts)
     {
@@ -134,7 +134,7 @@
 
     function _builtinCrossfade(el, opts)
     {
-        // `from` fades out; `to` fades in. `el` is ignored when from/to present.
+        // `from` が fade out、`to` が fade in。from/to がある場合 `el` は無視。
         var from = (opts && opts.from) ? opts.from : el;
         var to   = (opts && opts.to)   ? opts.to   : el;
 
@@ -182,7 +182,7 @@
         var dir      = (opts && opts.direction) || 'left';
         var isHoriz  = (dir === 'left' || dir === 'right');
         var sign     = (dir === 'right' || dir === 'down') ? 1 : -1;
-        var amount   = sign * 5;   // 5% parallax shift
+        var amount   = sign * 5;   // 5% の parallax shift
         var translate = isHoriz
             ? 'translateX(' + amount + '%)'
             : 'translateY(' + amount + '%)';
@@ -195,14 +195,14 @@
 
     function _builtinInkDot(el, opts)
     {
-        // Expands a radial clip from the element's top-left corner by default.
-        // If opts.color is set, a cover overlay is created and removed on completion.
+        // default では element の左上角から radial clip を広げる。
+        // opts.color 指定時は cover overlay を作り、完了時に削除する。
         var color  = (opts && opts.color) || null;
         var origin = (opts && opts.origin) || '50% 50%';
 
         if (color)
         {
-            // Create a temporary full-cover overlay and animate it.
+            // 一時的な full-cover overlay を作って animate する。
             var cover = document.createElement('div');
             cover.style.cssText = [
                 'position:fixed', 'inset:0',
@@ -230,7 +230,7 @@
 
     function _builtinPageFold(el, opts)
     {
-        // Book-page flip around vertical axis.
+        // 垂直軸まわりの本のページめくり。
         return _animate(el, [
             { transform: 'perspective(1200px) rotateY(0deg)'    },
             { transform: 'perspective(1200px) rotateY(-180deg)' },
@@ -239,7 +239,7 @@
 
     function _builtinCardFold(el, opts)
     {
-        // Card flip around horizontal axis (downward).
+        // 水平軸まわりの card flip (下向き)。
         return _animate(el, [
             { transform: 'perspective(1200px) rotateX(0deg)'   },
             { transform: 'perspective(1200px) rotateX(90deg)'  },
@@ -257,11 +257,11 @@
         ], opts);
     }
 
-    // ── register built-ins ─────────────────────────────────────────────────
+    // ── built-in を登録 ─────────────────────────────────────────────────
     var _BUILTINS = {
         'fade'        : _builtinFade,
         'instant'     : _builtinInstant,
-        'cut'         : _builtinInstant,       // alias
+        'cut'         : _builtinInstant,       // 別名
         'crossfade'   : _builtinCrossfade,
         'slide-in'    : _builtinSlideIn,
         'slide-out'   : _builtinSlideOut,
@@ -279,7 +279,7 @@
         _registry[name] = _BUILTINS[name];
     });
 
-    // Canonical list excludes the 'cut' alias so list() returns clean names.
+    // list() がきれいな名前を返すよう、正規リストから 'cut' alias を除く。
     var _BUILTIN_NAMES = [
         'fade', 'instant', 'crossfade',
         'slide-in', 'slide-out',
@@ -293,8 +293,8 @@
     var transitions = mitiru.transitions = Object.create(null);
 
     /**
-     * Run a named transition on `el`.
-     * Returns a Promise that resolves when the transition finishes.
+     * `el` に名前付き transition を実行する。
+     * transition 完了時に resolve する Promise を返す。
      *
      * @param  {Element} el
      * @param  {string}  name
@@ -333,7 +333,7 @@
     };
 
     /**
-     * Register a custom transition (or override an existing one).
+     * カスタム transition を登録 (または既存を上書き) する。
      * fn signature: fn(el, options) => Promise<void>
      *
      * @param  {string}   name
@@ -361,8 +361,8 @@
     };
 
     /**
-     * Return a sorted array of all registered transition names.
-     * Built-in alias 'cut' is omitted from the list (it is still runnable).
+     * 登録済みの全 transition 名を sort した配列で返す。
+     * built-in alias 'cut' はリストから除外する (実行は引き続き可能)。
      *
      * @returns {string[]}
      */
@@ -373,9 +373,9 @@
     };
 
     /**
-     * Run multiple transitions sequentially on `el`.
-     * Each pair is [name, options?].  Returns a Promise resolving after all
-     * transitions have completed in order.
+     * `el` に複数の transition を順次実行する。
+     * 各 pair は [name, options?]。全 transition が順番に完了した後で
+     * resolve する Promise を返す。
      *
      * @param  {Element}   el
      * @param  {Array}     pairs  — [[name, opts?], ...]

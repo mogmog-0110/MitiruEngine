@@ -2,13 +2,13 @@
 <meta charset="utf-8">
 <title>mitiru_input.js tests</title>
 <!--
-    test_input.html — mitiru.input (NF-03) unit tests
+    test_input.html — mitiru.input (NF-03) unit test
 
-    Run:
+    走らせ方:
       python tools/mitiru_serve.py --port 8770 --no-inject
       open http://127.0.0.1:8770/web/mitiru_runtime/tests/test_input.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -30,8 +30,8 @@
 	var inp = mitiru.input;
 
 	// ── Gamepad stub factory ──────────────────────────────────
-	// Returns a fresh fake pad; caller can mutate buttons/axes then
-	// stub navigator.getGamepads to return it.
+	// 新しい fake pad を返す。caller は buttons/axes を変更し、それを返すよう
+	// navigator.getGamepads を stub できる。
 	function makeFakePad()
 	{
 		return {
@@ -60,7 +60,7 @@
 		});
 	}
 
-	// Dispatch a synthetic event on document.
+	// document 上で合成 event を dispatch する。
 	function dispatchKey(type, key)
 	{
 		document.dispatchEvent(new KeyboardEvent(type, { key: key, bubbles: true }));
@@ -71,13 +71,13 @@
 		document.dispatchEvent(new MouseEvent(type, { button: button, bubbles: true }));
 	}
 
-	// Wait for the next RAF tick (gamepad polling runs there).
+	// 次の RAF tick を待つ (gamepad の polling はそこで走る)。
 	function nextFrame()
 	{
 		return new Promise(function(resolve) { requestAnimationFrame(resolve); });
 	}
 
-	// Standard action map used by most tests.
+	// 大半のテストで使う標準の action map。
 	var TEST_MAP = {
 		confirm: ['Enter', 'Space', 'Gamepad.A'],
 		back:    ['Escape', 'Gamepad.B'],
@@ -88,7 +88,7 @@
 		moveX:   ['Gamepad.LStickX'],
 	};
 
-	// ── 1. setActionMap + actionMap roundtrip ─────────────────
+	// ── 1. setActionMap + actionMap の roundtrip ─────────────────
 	t.case('setActionMap_actionMap_roundtrip_deep_frozen_snapshot', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -99,7 +99,7 @@
 		t.assertEq(m.back.slice(),    ['Escape', 'Gamepad.B']);
 	});
 
-	// ── 2. button false before any input ─────────────────────
+	// ── 2. 入力前は button が false ─────────────────────
 	t.case('button_returns_false_before_any_input', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -107,7 +107,7 @@
 		t.assertEq(inp.button('back'),    false);
 	});
 
-	// ── 3. button true while keydown held ────────────────────
+	// ── 3. keydown 中は button が true ────────────────────
 	t.case('button_true_while_keydown_Enter_held', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -120,7 +120,7 @@
 		finally { inp.stop(); }
 	});
 
-	// ── 4. button false after keyup ──────────────────────────
+	// ── 4. keyup 後は button が false ──────────────────────────
 	t.case('button_false_after_keyup_Enter', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -135,23 +135,23 @@
 		finally { inp.stop(); }
 	});
 
-	// ── 5. pressed true only on the frame it went down ───────
+	// ── 5. pressed は押された frame のみ true ───────
 	t.case('pressed_true_only_on_frame_it_went_down', function()
 	{
 		inp.setActionMap(TEST_MAP);
 		inp.start();
 		try
 		{
-			// pressed is set synchronously on keydown, then cleared next RAF.
+			// pressed は keydown で同期的に立ち、次の RAF でクリアされる。
 			dispatchKey('keydown', 'Enter');
 			t.assertEq(inp.pressed('confirm'), true, 'pressed on down frame');
-			// After RAF loop clears it we cannot test without awaiting,
-			// but we can verify it is already true synchronously here.
+			// RAF loop がクリアした後は await 無しでテストできないが、
+			// ここで同期的に既に true であることは確認できる。
 		}
 		finally { inp.stop(); }
 	});
 
-	// ── 6. pressed false after RAF tick clears it ────────────
+	// ── 6. RAF tick がクリアした後は pressed が false ────────────
 	t.case('pressed_cleared_after_next_RAF_frame', async function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -161,14 +161,14 @@
 			dispatchKey('keydown', 'Enter');
 			t.assertEq(inp.pressed('confirm'), true);
 			await nextFrame();
-			await nextFrame();  // two ticks: loop clears then re-polls
+			await nextFrame();  // 2 tick: loop がクリアし、その後 re-poll する
 			t.assertEq(inp.pressed('confirm'), false, 'pressed cleared after RAF');
 			t.assertEq(inp.button('confirm'),  true,  'still held');
 		}
 		finally { inp.stop(); }
 	});
 
-	// ── 7. released true only on the frame it went up ────────
+	// ── 7. released は離した frame のみ true ────────
 	t.case('released_true_only_on_frame_it_went_up', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -183,7 +183,7 @@
 		finally { inp.stop(); }
 	});
 
-	// ── 8. unknown action returns false / 0 without throw ────
+	// ── 8. 未知の action は throw せず false / 0 を返す ────
 	t.case('unknown_action_returns_false_or_0_no_throw', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -197,7 +197,7 @@
 		t.assertEq(inp.axis('nonexistent'),     0);
 	});
 
-	// ── 9. multiple bindings: any one marks action as down ───
+	// ── 9. 複数 binding: どれか 1 つで action が down になる ───
 	t.case('multiple_bindings_any_binding_marks_action_down', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -212,7 +212,7 @@
 		finally { inp.stop(); }
 	});
 
-	// ── 10. active device flips keyboard → mouse → back ──────
+	// ── 10. active device が keyboard → mouse → 戻る ──────
 	t.case('active_device_flips_keyboard_mouse_keyboard', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -234,7 +234,7 @@
 		finally { inp.stop(); }
 	});
 
-	// ── 11. device:change event fires with {from, to} ────────
+	// ── 11. device:change event が {from, to} で発火 ────────
 	t.case('device_change_event_fires_with_from_to', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -243,7 +243,7 @@
 		var unsub = inp.on('device:change', function(d) { changes.push(d); });
 		try
 		{
-			// Start as keyboard (default). Mouse event flips it.
+			// keyboard で開始 (既定)。mouse event で切り替わる。
 			dispatchMouse('mousedown', 0);
 			t.assert(changes.length >= 1, 'device:change fired');
 			t.assertEq(changes[0].to,   'mouse');
@@ -257,7 +257,7 @@
 		}
 	});
 
-	// ── 12. action:down / action:up events fire ───────────────
+	// ── 12. action:down / action:up event が発火 ───────────────
 	t.case('action_down_and_up_events_fire_with_detail', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -286,7 +286,7 @@
 		}
 	});
 
-	// ── 13. promptFor returns first binding matching active device ─
+	// ── 13. promptFor は active device に合う最初の binding を返す ─
 	t.case('promptFor_returns_first_binding_for_active_device', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -294,14 +294,14 @@
 		try
 		{
 			dispatchKey('keydown', 'Enter');
-			// Active device is keyboard; first keyboard binding for confirm = 'Enter'.
+			// active device は keyboard。confirm の最初の keyboard binding = 'Enter'。
 			t.assertEq(inp.promptFor('confirm'), 'Enter');
 			dispatchKey('keyup', 'Enter');
 		}
 		finally { inp.stop(); }
 	});
 
-	// ── 14. promptFor returns gamepad binding when device is gamepad
+	// ── 14. device が gamepad のとき promptFor は gamepad binding を返す
 	t.case('promptFor_returns_Gamepad_A_when_device_is_gamepad', async function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -310,7 +310,7 @@
 		inp.start();
 		try
 		{
-			// Simulate A button press to switch active device to gamepad.
+			// active device を gamepad に切り替えるため A ボタン押下を模擬。
 			fakePad.buttons[0].pressed = true;
 			await nextFrame();
 			await nextFrame();
@@ -324,7 +324,7 @@
 		}
 	});
 
-	// ── 15. promptFor unknown action returns null ─────────────
+	// ── 15. promptFor は未知の action で null を返す ─────────────
 	t.case('promptFor_unknown_action_returns_null', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -333,13 +333,13 @@
 			'promptFor unknown returns null/empty');
 	});
 
-	// ── 16. setDeadzone — axis below deadzone returns 0 ──────
+	// ── 16. setDeadzone — deadzone 未満の axis は 0 を返す ──────
 	t.case('setDeadzone_axis_below_deadzone_returns_0', async function()
 	{
 		inp.setDeadzone(0.2);
 		inp.setActionMap({ moveX: ['Gamepad.LStickX'] });
 		var fakePad = makeFakePad();
-		fakePad.axes[0] = 0.1;  // below deadzone
+		fakePad.axes[0] = 0.1;  // deadzone 未満
 		stubGamepads([fakePad]);
 		inp.start();
 		try
@@ -351,11 +351,11 @@
 		{
 			inp.stop();
 			unstubGamepads();
-			inp.setDeadzone(0.15);  // restore
+			inp.setDeadzone(0.15);  // 元に戻す
 		}
 	});
 
-	// ── 17. setDeadzone — axis above deadzone returns value ──
+	// ── 17. setDeadzone — deadzone 以上の axis は値を返す ──
 	t.case('setDeadzone_axis_above_deadzone_returns_value', async function()
 	{
 		inp.setDeadzone(0.2);
@@ -377,7 +377,7 @@
 		}
 	});
 
-	// ── 18. gamepad simulation — A button press fires action:down ─
+	// ── 18. gamepad シミュレーション — A ボタン押下が action:down を発火 ─
 	t.case('gamepad_stub_A_button_fires_action_down', async function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -404,7 +404,7 @@
 		}
 	});
 
-	// ── 19. gamepad simulation — A button release fires action:up ─
+	// ── 19. gamepad シミュレーション — A ボタン解放が action:up を発火 ─
 	t.case('gamepad_stub_A_button_release_fires_action_up', async function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -432,7 +432,7 @@
 		}
 	});
 
-	// ── 20. virtual stick button — LStick.Up fires when Y < -deadzone ─
+	// ── 20. 仮想スティックボタン — Y < -deadzone で LStick.Up が発火 ─
 	t.case('virtual_stick_LStick_Up_fires_when_Y_below_negative_deadzone', async function()
 	{
 		inp.setDeadzone(0.15);
@@ -444,7 +444,7 @@
 		inp.start();
 		try
 		{
-			// Y axis 1 (LStickY). Up = negative direction.
+			// Y axis 1 (LStickY)。Up = 負の方向。
 			fakePad.axes[1] = -0.9;
 			await nextFrame();
 			await nextFrame();
@@ -459,7 +459,7 @@
 		}
 	});
 
-	// ── 21. axis returns current LStickX value ───────────────
+	// ── 21. axis は現在の LStickX 値を返す ───────────────
 	t.case('axis_returns_current_LStickX_value', async function()
 	{
 		inp.setDeadzone(0.15);
@@ -480,7 +480,7 @@
 		}
 	});
 
-	// ── 22. rumble no-op with no gamepad; warns once ─────────
+	// ── 22. gamepad 無しの rumble は no-op; 1 回 warn ─────────
 	t.case('rumble_no_gamepad_no_throw_warns_once', function()
 	{
 		unstubGamepads();
@@ -490,26 +490,26 @@
 		try
 		{
 			t.assertNoThrow(function() { inp.rumble(100); });
-			t.assertNoThrow(function() { inp.rumble(100); });  // second call must NOT warn again
-			// warnCount may be 1 (first rumble call) or 0 if a previous test already warned.
-			// We only check no throw, not the exact count, because singleton state persists.
+			t.assertNoThrow(function() { inp.rumble(100); });  // 2 度目は再度 warn してはいけない
+			// warnCount は 1 (最初の rumble) か、先行テストが既に warn 済みなら 0 になりうる。
+			// singleton state が残るので、throw しないことだけ確認し正確な count は見ない。
 			t.assert(true, 'no throw from rumble without gamepad');
 		}
 		finally { console.warn = origWarn; }
 	});
 
-	// ── 23. start idempotent — calling twice does not double-bind ─
+	// ── 23. start は冪等 — 2 回呼んでも二重 bind しない ─
 	t.case('start_idempotent_no_double_bind', function()
 	{
 		inp.setActionMap(TEST_MAP);
 		inp.start();
-		inp.start();  // second call should be a no-op
+		inp.start();  // 2 度目の呼び出しは no-op のはず
 		var events = [];
 		var unsub  = inp.on('action:down', function(d) { events.push(d); });
 		try
 		{
 			dispatchKey('keydown', 'Enter');
-			// If double-bound, we'd get 2 events. We expect exactly 1.
+			// 二重 bind なら event は 2 件になる。ちょうど 1 件を期待する。
 			t.assertEq(events.length, 1, 'exactly one action:down despite double start');
 			dispatchKey('keyup', 'Enter');
 		}
@@ -520,18 +520,18 @@
 		}
 	});
 
-	// ── 24. stop removes listeners; subsequent keydowns ignored ─
+	// ── 24. stop は listener を取り除き、以降の keydown は無視 ─
 	t.case('stop_removes_listeners_subsequent_keydowns_ignored', function()
 	{
 		inp.setActionMap(TEST_MAP);
 		inp.start();
 		inp.stop();
-		// After stop, state is reset and listeners removed.
+		// stop 後は state がリセットされ listener が取り除かれる。
 		dispatchKey('keydown', 'Enter');
 		t.assertEq(inp.button('confirm'), false, 'keydown after stop does not affect state');
 	});
 
-	// ── 25. on / off subscribe and unsubscribe ────────────────
+	// ── 25. on / off の subscribe と unsubscribe ────────────────
 	t.case('on_off_subscribe_and_unsubscribe', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -550,7 +550,7 @@
 			t.assertEq(count, 1, 'listener NOT called after unsubscribe via returned fn');
 			dispatchKey('keyup', 'Enter');
 
-			// Also test inp.off directly.
+			// inp.off も直接テスト。
 			var fn2 = function() { count += 10; };
 			inp.on('action:down', fn2);
 			dispatchKey('keydown', 'Enter');
@@ -565,7 +565,7 @@
 		finally { inp.stop(); }
 	});
 
-	// ── 26. setActionMap while running is safe ────────────────
+	// ── 26. 動作中の setActionMap は安全 ────────────────
 	t.case('setActionMap_while_running_is_safe', function()
 	{
 		inp.setActionMap(TEST_MAP);
@@ -575,7 +575,7 @@
 			dispatchKey('keydown', 'Enter');
 			t.assertEq(inp.button('confirm'), true);
 
-			// Replace map while running; state is reset.
+			// 動作中に map を差し替え; state はリセットされる。
 			inp.setActionMap({ jump: ['Space'] });
 			t.assertEq(inp.button('confirm'), false, 'old action reset after setActionMap');
 			t.assertEq(inp.button('jump'),    false, 'new action starts false');
@@ -583,7 +583,7 @@
 		finally { inp.stop(); }
 	});
 
-	// ── 27. mouse button binding fires action ─────────────────
+	// ── 27. mouse ボタンの binding が action を発火 ─────────────────
 	t.case('mouse_binding_Mouse0_fires_action_down', function()
 	{
 		inp.setActionMap({ shoot: ['Mouse.0'] });

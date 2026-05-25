@@ -2,13 +2,13 @@
 <meta charset="utf-8">
 <title>mitiru_crash_reporter.js tests</title>
 <!--
-    test_crash_reporter.html — mitiru.crashReporter (NF-05) unit tests
+    test_crash_reporter.html — mitiru.crashReporter (NF-05) unit test
 
-    Run:
+    走らせ方:
       python tools/mitiru_serve.py --port 8770 --no-inject
       open http://127.0.0.1:8770/web/mitiru_runtime/tests/test_crash_reporter.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -50,7 +50,7 @@
 		localStorage.removeItem(LS_KEY);
 	}
 
-	// ── 1. install() is idempotent ────────────────────────────────
+	// ── 1. install() は冪等 ────────────────────────────────
 	t.case('install() is idempotent — calling twice does not double-hook', function()
 	{
 		try
@@ -59,10 +59,10 @@
 			var firstHandler = window.onerror;
 			c.install();
 			var secondHandler = window.onerror;
-			// After second install the handler must still be a function and there
-			// should be exactly one logical reporter installed (count stays consistent).
+			// 2 度目の install 後も handler は関数のままで、論理的に reporter は
+			// ちょうど 1 つだけ仕込まれているべき (count が一貫している)。
 			t.assert(typeof secondHandler === 'function', 'onerror should be a function after second install');
-			// Record one error — count should be exactly 1 (not doubled).
+			// error を 1 件 record — count はちょうど 1 のはず (二重にならない)。
 			c.clear();
 			c.record(new Error('idempotent-check'));
 			t.assertEq(c.count(), 1, 'exactly one report after single record — no double-hook');
@@ -70,7 +70,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 2. uninstall() removes onerror listener ───────────────────
+	// ── 2. uninstall() は onerror listener を取り除く ───────────────────
 	t.case('uninstall() restores window.onerror to prior value', function()
 	{
 		var sentinel = function() {};
@@ -106,7 +106,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 4. record(error, extra) — extra field carries through ─────
+	// ── 4. record(error, extra) — extra フィールドが伝わる ─────
 	t.case('record(error, extra) carries extra through to report', function()
 	{
 		try
@@ -123,7 +123,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 5. onerror hook captures synchronous throws ───────────────
+	// ── 5. onerror hook は同期的な throw を捕捉する ───────────────
 	t.case('onerror hook captures via ErrorEvent dispatch', function()
 	{
 		try
@@ -149,7 +149,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 6. unhandledrejection hook captures ───────────────────────
+	// ── 6. unhandledrejection hook が捕捉する ───────────────────────
 	t.case('unhandledrejection hook captures via PromiseRejectionEvent', function()
 	{
 		try
@@ -170,7 +170,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 7. list() returns newest-first ───────────────────────────
+	// ── 7. list() は新しい順で返す ───────────────────────────
 	t.case('list() returns newest-first', function()
 	{
 		try
@@ -189,7 +189,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 8. count() returns length ────────────────────────────────
+	// ── 8. count() は件数を返す ────────────────────────────────
 	t.case('count() returns the number of captured reports', function()
 	{
 		try
@@ -205,7 +205,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 9. clear() empties all reports ───────────────────────────
+	// ── 9. clear() は全 report を空にする ───────────────────────────
 	t.case('clear() empties reports', function()
 	{
 		try
@@ -220,7 +220,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 10. setMaxReports(3) enforces FIFO cap ───────────────────
+	// ── 10. setMaxReports(3) は FIFO の上限を適用 ───────────────────
 	t.case('setMaxReports(3): 5 captures → 3 reports, oldest dropped', function()
 	{
 		try
@@ -235,7 +235,7 @@
 			c.record(new Error('msg-5'));
 			t.assertEq(c.count(), 3, 'capped at 3');
 			var reports = c.list();
-			// Newest first: 5, 4, 3 — 1 and 2 should be gone.
+			// 新しい順: 5, 4, 3 — 1 と 2 は消えているはず。
 			t.assert(reports[0].message.indexOf('msg-5') !== -1, 'newest is msg-5');
 			t.assert(reports[1].message.indexOf('msg-4') !== -1, 'second is msg-4');
 			t.assert(reports[2].message.indexOf('msg-3') !== -1, 'third is msg-3');
@@ -243,7 +243,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 11. setStateSnapshotFn — called per capture ───────────────
+	// ── 11. setStateSnapshotFn — capture ごとに呼ばれる ───────────────
 	t.case('setStateSnapshotFn: snapshot called once per capture; result in report.state', function()
 	{
 		try
@@ -267,7 +267,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 12. setStateSnapshotFn throwing → __snapshotError ─────────
+	// ── 12. setStateSnapshotFn の throw → __snapshotError ─────────
 	t.case('setStateSnapshotFn throwing → state = { __snapshotError }, reporter does not throw', function()
 	{
 		try
@@ -278,7 +278,7 @@
 			{
 				throw new Error('snapshot-boom');
 			});
-			// Must not throw.
+			// throw してはいけない。
 			c.record(new Error('test'));
 			var reports = c.list();
 			t.assertEq(reports.length, 1, 'report was still captured');
@@ -291,7 +291,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 13. setStateSnapshotFn circular → __nonSerialisable ───────
+	// ── 13. setStateSnapshotFn の循環参照 → __nonSerialisable ───────
 	t.case('setStateSnapshotFn returning circular object → state = { __nonSerialisable: true }', function()
 	{
 		try
@@ -301,7 +301,7 @@
 			c.setStateSnapshotFn(function()
 			{
 				var obj = {};
-				obj.self = obj;  // circular
+				obj.self = obj;  // 循環参照
 				return obj;
 			});
 			c.record(new Error('circular'));
@@ -314,13 +314,13 @@
 		finally { cleanup(); }
 	});
 
-	// ── 14. persist + autoLoad round-trips via localStorage ───────
+	// ── 14. persist + autoLoad が localStorage 経由で round-trip ───────
 	t.case('persist:true + autoLoad:true round-trips across install/clear/reinstall', function()
 	{
 		localStorage.removeItem(LS_KEY);
 		try
 		{
-			// Phase 1: install, record, verify persisted.
+			// Phase 1: install、record、永続化を確認。
 			c.install({ persist: true, autoLoad: false, key: LS_KEY });
 			c.clear();
 			c.record(new Error('persisted-a'));
@@ -328,15 +328,15 @@
 			var countAfterRecord = c.count();
 			t.assertEq(countAfterRecord, 2, 'two reports in memory');
 
-			// Phase 2: snapshot localStorage, uninstall + wipe, then restore
-			// localStorage to simulate a page reload where disk data survives.
+			// Phase 2: localStorage を snapshot し、uninstall + 消去、その後
+			// disk のデータが残る page reload を模擬するため localStorage を復元。
 			var snapshot = localStorage.getItem(LS_KEY);
 			c.uninstall();
-			c.clear();                                 // wipes both memory AND disk
-			localStorage.setItem(LS_KEY, snapshot);    // restore disk portion
+			c.clear();                                 // memory と disk の両方を消去
+			localStorage.setItem(LS_KEY, snapshot);    // disk 部分を復元
 			t.assertEq(c.count(), 0, 'memory cleared');
 
-			// Phase 3: re-install with autoLoad:true — should reload from localStorage.
+			// Phase 3: autoLoad:true で再 install — localStorage から再読み込みするはず。
 			c.install({ persist: true, autoLoad: true, key: LS_KEY });
 			t.assertEq(c.count(), 2, 'autoLoad restored 2 reports from localStorage');
 		}
@@ -347,7 +347,7 @@
 		}
 	});
 
-	// ── 15. exportBlob() — application/json with correct content ──
+	// ── 15. exportBlob() — 正しい内容の application/json ──
 	t.case('exportBlob() returns Blob of type application/json with all reports', async function()
 	{
 		try
@@ -367,7 +367,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 16. exportString() — valid JSON ───────────────────────────
+	// ── 16. exportString() — 妥当な JSON ───────────────────────────
 	t.case('exportString() returns valid JSON that parses correctly', function()
 	{
 		try
@@ -385,7 +385,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 17. triggerDownload builds <a download> ───────────────────
+	// ── 17. triggerDownload は <a download> を作る ───────────────────
 	t.case('triggerDownload creates <a> element with correct download filename', function()
 	{
 		try
@@ -394,7 +394,7 @@
 			c.clear();
 			c.record(new Error('download-test'));
 
-			// Intercept createElement / click without actually triggering a download.
+			// 実際に download を起こさずに createElement / click を傍受する。
 			var createdA  = null;
 			var origCreate = document.createElement.bind(document);
 			document.createElement = function(tag)
@@ -421,7 +421,7 @@
 		finally { cleanup(); }
 	});
 
-	// ── 18. on('capture', cb) fires on each capture ───────────────
+	// ── 18. on('capture', cb) は capture ごとに発火 ───────────────
 	t.case('on("capture", cb) fires for each capture; off() stops it', function()
 	{
 		try
@@ -446,21 +446,21 @@
 		finally { cleanup(); }
 	});
 
-	// ── 19. install() without opts uses documented defaults ───────
+	// ── 19. opts 無しの install() は文書化された既定値を使う ───────
 	t.case('install() without opts uses documented defaults (maxReports=20, persist=true, key)', function()
 	{
 		localStorage.removeItem(LS_KEY);
 		try
 		{
-			c.install();  // no opts
-			// Verify default key is used: record a report and check localStorage.
+			c.install();  // opts 無し
+			// 既定の key が使われることを確認: report を record し localStorage を確認。
 			c.clear();
 			c.record(new Error('defaults-test'));
 			var raw = localStorage.getItem(LS_KEY);
 			t.assert(raw !== null, 'data should be written to default localStorage key');
 			var parsed = JSON.parse(raw);
 			t.assert(Array.isArray(parsed) && parsed.length === 1, 'one report in localStorage');
-			// Verify maxReports default: set max to 20 and confirm no exception.
+			// maxReports の既定を確認: max を 20 に設定し例外が出ないことを確認。
 			c.setMaxReports(20);
 			t.assertEq(c.count(), 1, 'count still correct');
 		}
@@ -471,7 +471,7 @@
 		}
 	});
 
-	// ── 20. report shape — all required fields present ────────────
+	// ── 20. report の形 — 必須フィールドがすべて存在 ────────────
 	t.case('report shape: all required fields are present', function()
 	{
 		try

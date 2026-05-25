@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UITextInput.hpp
-/// @brief Single/multi-line text input widget with cursor, selection, and editing.
+/// @brief cursor / 選択 / 編集を備えた単一行・複数行の text input widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -13,7 +13,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Configuration for creating a UITextInput.
+/// @brief UITextInput 生成用の設定。
 struct UITextInputConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -27,11 +27,11 @@ struct UITextInputConfig
 	float height = 28.0f;
 };
 
-/// @brief Text input widget that wraps a UINode with cursor and editing logic.
+/// @brief UINode を cursor と編集ロジックで包む text input widget。
 ///
-/// Manages cursor position, selection range, text insertion/deletion,
-/// and password masking. Does not handle actual keyboard input dispatch --
-/// the event system calls the editing methods.
+/// cursor 位置・選択範囲・テキストの挿入/削除・password マスクを管理する。
+/// 実際のキーボード入力 dispatch は扱わない — event system が編集メソッドを
+/// 呼ぶ。
 ///
 /// @code
 ///   UITextInputConfig cfg;
@@ -61,8 +61,8 @@ class UITextInput
 	std::function<void(const std::string&)> m_onSubmit;
 
 public:
-	/// @brief Construct a text input from configuration.
-	/// @param config Text input configuration.
+	/// @brief 設定から text input を構築する。
+	/// @param config text input の設定。
 	explicit UITextInput(const UITextInputConfig& config)
 		: m_text(config.initialText)
 		, m_placeholder(config.placeholder)
@@ -87,13 +87,13 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current text.
+	/// @brief 現在のテキストを取得する。
 	[[nodiscard]] const std::string& text() const noexcept { return m_text; }
 
-	/// @brief Get the display text (masked if password mode).
+	/// @brief 表示用テキストを取得する (password mode ではマスクされる)。
 	[[nodiscard]] std::string displayText() const
 	{
 		if (m_text.empty()) { return m_placeholder; }
@@ -101,31 +101,31 @@ public:
 		return m_text;
 	}
 
-	/// @brief Get the cursor position.
+	/// @brief cursor 位置を取得する。
 	[[nodiscard]] std::size_t cursorPos() const noexcept { return m_cursorPos; }
 
-	/// @brief Get the selection start index.
+	/// @brief 選択開始 index を取得する。
 	[[nodiscard]] std::size_t selectionStart() const noexcept { return m_selectionStart; }
 
-	/// @brief Get the selection end index.
+	/// @brief 選択終了 index を取得する。
 	[[nodiscard]] std::size_t selectionEnd() const noexcept { return m_selectionEnd; }
 
-	/// @brief Check if text is currently selected.
+	/// @brief 現在テキストが選択されているか判定する。
 	[[nodiscard]] bool hasSelection() const noexcept { return m_selectionStart != m_selectionEnd; }
 
-	/// @brief Check if the input is focused.
+	/// @brief input が focus されているか判定する。
 	[[nodiscard]] bool isFocused() const noexcept { return m_focused; }
 
 	// ── Configuration ────────────────────────────────────────
 
-	/// @brief Set the text-changed callback.
+	/// @brief text 変更時の callback を設定する。
 	void setOnTextChanged(std::function<void(const std::string&)> callback) { m_onTextChanged = std::move(callback); }
 
-	/// @brief Set the submit callback (Enter key).
+	/// @brief submit 時 (Enter キー) の callback を設定する。
 	void setOnSubmit(std::function<void(const std::string&)> callback) { m_onSubmit = std::move(callback); }
 
-	/// @brief Set the text programmatically.
-	/// @param text New text content.
+	/// @brief プログラムからテキストを設定する。
+	/// @param text 新しいテキスト内容。
 	void setText(const std::string& text)
 	{
 		m_text = text.substr(0, m_maxLength);
@@ -137,14 +137,14 @@ public:
 
 	// ── Focus ────────────────────────────────────────────────
 
-	/// @brief Called when the input gains focus.
+	/// @brief input が focus を得たときに呼ばれる。
 	void onFocus()
 	{
 		m_focused = true;
 		m_node->setProperty("focused", "true");
 	}
 
-	/// @brief Called when the input loses focus.
+	/// @brief input が focus を失ったときに呼ばれる。
 	void onBlur()
 	{
 		m_focused = false;
@@ -154,8 +154,8 @@ public:
 
 	// ── Text Editing ─────────────────────────────────────────
 
-	/// @brief Insert text at the current cursor position.
-	/// @param str Text to insert.
+	/// @brief 現在の cursor 位置にテキストを挿入する。
+	/// @param str 挿入するテキスト。
 	void insertText(const std::string& str)
 	{
 		if (!m_focused) { return; }
@@ -172,7 +172,7 @@ public:
 		if (m_onTextChanged) { m_onTextChanged(m_text); }
 	}
 
-	/// @brief Delete the character before the cursor (Backspace).
+	/// @brief cursor の前の文字を削除する (Backspace)。
 	void deleteBackward()
 	{
 		if (!m_focused) { return; }
@@ -194,7 +194,7 @@ public:
 		}
 	}
 
-	/// @brief Delete the character after the cursor (Delete key).
+	/// @brief cursor の後の文字を削除する (Delete キー)。
 	void deleteForward()
 	{
 		if (!m_focused) { return; }
@@ -215,9 +215,9 @@ public:
 		}
 	}
 
-	/// @brief Move the cursor by an offset.
-	/// @param offset Positive = right, negative = left.
-	/// @param extendSelection If true, extends the selection range.
+	/// @brief cursor を offset 分だけ動かす。
+	/// @param offset 正 = 右、負 = 左。
+	/// @param extendSelection true なら選択範囲を拡張する。
 	void moveCursor(int offset, bool extendSelection = false)
 	{
 		const auto newPos = static_cast<std::size_t>(
@@ -243,8 +243,8 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Move cursor to the beginning of the text (Home key).
-	/// @param extendSelection If true, extends the selection.
+	/// @brief cursor をテキスト先頭へ動かす (Home キー)。
+	/// @param extendSelection true なら選択を拡張する。
 	void moveToStart(bool extendSelection = false)
 	{
 		if (extendSelection && !hasSelection())
@@ -257,8 +257,8 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Move cursor to the end of the text (End key).
-	/// @param extendSelection If true, extends the selection.
+	/// @brief cursor をテキスト末尾へ動かす (End キー)。
+	/// @param extendSelection true なら選択を拡張する。
 	void moveToEnd(bool extendSelection = false)
 	{
 		if (extendSelection && !hasSelection())
@@ -271,7 +271,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Select all text (Ctrl+A).
+	/// @brief 全テキストを選択する (Ctrl+A)。
 	void selectAll()
 	{
 		m_selectionStart = 0;
@@ -280,7 +280,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Handle the Enter/Return key.
+	/// @brief Enter/Return キーを処理する。
 	void onSubmitKey()
 	{
 		if (!m_focused) { return; }
@@ -295,7 +295,7 @@ public:
 		}
 	}
 
-	/// @brief Get the currently selected text.
+	/// @brief 現在選択されているテキストを取得する。
 	[[nodiscard]] std::string selectedText() const
 	{
 		if (!hasSelection()) { return {}; }
@@ -305,14 +305,14 @@ public:
 	}
 
 private:
-	/// @brief Clear the current selection.
+	/// @brief 現在の選択を解除する。
 	void clearSelection()
 	{
 		m_selectionStart = 0;
 		m_selectionEnd = 0;
 	}
 
-	/// @brief Delete the currently selected text and move cursor.
+	/// @brief 選択中テキストを削除し cursor を移動する。
 	void deleteSelection()
 	{
 		if (!hasSelection()) { return; }
@@ -323,7 +323,7 @@ private:
 		clearSelection();
 	}
 
-	/// @brief Synchronize state to the UINode.
+	/// @brief state を UINode へ同期する。
 	void syncNodeState()
 	{
 		m_node->setText(m_password ? std::string(m_text.size(), '*') : m_text);

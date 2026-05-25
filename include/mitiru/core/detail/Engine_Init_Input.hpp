@@ -1,17 +1,16 @@
-// Detail header for mitiru::Engine — do not include directly; included via core/Engine.hpp
+// mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
 
-// ── Injected input application out-of-class definition ───────────────────
+// ── inject された input の適用 (クラス外定義) ───────────────────
 
 MITIRU_INLINE void mitiru::Engine::applyInjectedInput()
 {
-	// Replay path: pump recorded commands for the current frame into the
-	// injector BEFORE consuming, so they flow through the same KeyDown /
-	// MouseMove / etc. switch below as live-injected commands. This keeps
-	// the recorder hook on the consumePending() result honest — replayed
-	// frames re-record as the same frame they came from.
+	// Replay path: 現フレームの記録済み command を consume する前に injector へ
+	// 流し込む。そうすれば下の KeyDown / MouseMove 等の switch を live-inject された
+	// command と同じ経路で通る。これにより consumePending() 結果への recorder hook が
+	// 正直になる — replay された frame は元の frame として再記録される。
 	if (m_replayActive && m_clock)
 	{
 		const auto replayed = m_inputReplayer.getCommandsForFrame(
@@ -47,9 +46,8 @@ MITIRU_INLINE void mitiru::Engine::applyInjectedInput()
 		}
 	}
 
-	// Record injected input for deterministic replay (axis 4). Frames with no
-	// commands are skipped to keep the file size proportional to actual events
-	// rather than total runtime.
+	// deterministic replay (axis 4) 用に inject された input を記録する。command の無い
+	// frame はスキップし、ファイルサイズを総ランタイムではなく実イベント数に比例させる。
 	if (m_inputRecorder.isRecording() && !commands.empty() && m_clock)
 	{
 		m_inputRecorder.recordFrame(m_clock->frameNumber(), commands);

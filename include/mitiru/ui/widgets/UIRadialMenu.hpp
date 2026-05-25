@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIRadialMenu.hpp
-/// @brief Circular/pie radial menu widget for quick item selection.
+/// @brief 素早い項目選択のための円形 / 扇形 radial menu widget。
 
 #include <mitiru/ui/Easing.hpp>
 #include <mitiru/ui/UINode.hpp>
@@ -17,63 +17,63 @@
 
 namespace mitiru::ui {
 
-/// @brief Animation type for opening/closing the radial menu.
+/// @brief radial menu の開閉アニメーション種別。
 enum class RadialMenuAnimation : std::uint8_t
 {
-	Scale, ///< Scale from center outward.
-	Fade,  ///< Fade in/out.
+	Scale, ///< 中心から外側へ拡大。
+	Fade,  ///< フェードイン / アウト。
 };
 
-/// @brief A single item in the radial menu.
+/// @brief radial menu の単一項目。
 struct UIRadialMenuItem
 {
-	std::string label;                             ///< Display label.
-	std::string iconImageKey;                      ///< Icon image key for the renderer.
-	bool enabled            = true;                ///< Whether this item can be selected.
-	std::string shortcutKey;                       ///< Keyboard shortcut (e.g. "1", "Q").
-	std::vector<UIRadialMenuItem> subItems;        ///< Nested sub-items for a second ring.
+	std::string label;                             ///< 表示ラベル。
+	std::string iconImageKey;                      ///< renderer 用の icon image key。
+	bool enabled            = true;                ///< この項目が選択可能か。
+	std::string shortcutKey;                       ///< キーボード shortcut (例 "1", "Q")。
+	std::vector<UIRadialMenuItem> subItems;        ///< 第 2 ring 用の入れ子 sub-item。
 };
 
-/// @brief Configuration for the radial menu.
+/// @brief radial menu の設定。
 struct UIRadialMenuConfig
 {
-	float innerRadius           = 40.0f;           ///< Inner radius (dead zone boundary).
-	float outerRadius           = 150.0f;          ///< Outer radius.
-	std::vector<UIRadialMenuItem> items;            ///< Menu items (sectors).
-	std::string centerIconImageKey;                ///< Center area icon image key.
-	std::string sectorBackgroundImageKey;          ///< Sector normal state image key.
-	std::string sectorHoverImageKey;               ///< Sector hovered state image key.
-	std::string sectorDisabledImageKey;            ///< Sector disabled state image key.
-	float labelFontSize         = 14.0f;           ///< Label font size.
-	float iconSize              = 32.0f;           ///< Icon display size in pixels.
-	float animationDuration     = 0.2f;            ///< Open/close animation duration in seconds.
-	RadialMenuAnimation openAnimation = RadialMenuAnimation::Scale; ///< Animation type.
-	float centerDeadZone        = 30.0f;           ///< Radius within which no sector is selected.
-	float subRingInnerRadius    = 160.0f;          ///< Sub-ring inner radius.
-	float subRingOuterRadius    = 250.0f;          ///< Sub-ring outer radius.
+	float innerRadius           = 40.0f;           ///< 内半径 (dead zone 境界)。
+	float outerRadius           = 150.0f;          ///< 外半径。
+	std::vector<UIRadialMenuItem> items;            ///< menu 項目 (sector)。
+	std::string centerIconImageKey;                ///< 中心領域の icon image key。
+	std::string sectorBackgroundImageKey;          ///< sector 通常状態の image key。
+	std::string sectorHoverImageKey;               ///< sector hover 状態の image key。
+	std::string sectorDisabledImageKey;            ///< sector 無効状態の image key。
+	float labelFontSize         = 14.0f;           ///< ラベルの font size。
+	float iconSize              = 32.0f;           ///< icon の表示サイズ (pixel)。
+	float animationDuration     = 0.2f;            ///< 開閉アニメーションの秒数。
+	RadialMenuAnimation openAnimation = RadialMenuAnimation::Scale; ///< アニメーション種別。
+	float centerDeadZone        = 30.0f;           ///< この半径内では sector を選択しない。
+	float subRingInnerRadius    = 160.0f;          ///< sub-ring の内半径。
+	float subRingOuterRadius    = 250.0f;          ///< sub-ring の外半径。
 };
 
-/// @brief Computed per-sector geometry for rendering.
+/// @brief 描画用に計算した sector ごとの geometry。
 struct UIRadialSectorInfo
 {
-	int index                   = -1;              ///< Item index in the items array.
-	float startAngle            = 0.0f;            ///< Start angle in radians.
-	float endAngle              = 0.0f;            ///< End angle in radians.
-	float midAngle              = 0.0f;            ///< Center angle in radians.
-	float iconX                 = 0.0f;            ///< Icon center X (relative to menu center).
-	float iconY                 = 0.0f;            ///< Icon center Y (relative to menu center).
-	float labelX                = 0.0f;            ///< Label position X (relative to menu center).
-	float labelY                = 0.0f;            ///< Label position Y (relative to menu center).
-	bool hovered                = false;           ///< Whether this sector is hovered.
-	bool enabled                = true;            ///< Whether this sector is enabled.
-	bool hasSubItems            = false;           ///< Whether this sector has nested sub-items.
+	int index                   = -1;              ///< items 配列内の項目 index。
+	float startAngle            = 0.0f;            ///< 開始角 (radian)。
+	float endAngle              = 0.0f;            ///< 終了角 (radian)。
+	float midAngle              = 0.0f;            ///< 中心角 (radian)。
+	float iconX                 = 0.0f;            ///< icon 中心 X (menu 中心からの相対)。
+	float iconY                 = 0.0f;            ///< icon 中心 Y (menu 中心からの相対)。
+	float labelX                = 0.0f;            ///< ラベル位置 X (menu 中心からの相対)。
+	float labelY                = 0.0f;            ///< ラベル位置 Y (menu 中心からの相対)。
+	bool hovered                = false;           ///< この sector が hover 中か。
+	bool enabled                = true;            ///< この sector が有効か。
+	bool hasSubItems            = false;           ///< この sector が入れ子 sub-item を持つか。
 };
 
-/// @brief Circular/pie menu for quick selection via mouse direction or keyboard.
+/// @brief マウス方向 or キーボードで素早く選択する円形 / 扇形 menu。
 ///
-/// Sectors are evenly distributed around the circle. Mouse direction from
-/// center determines which sector is hovered. Keyboard number keys provide
-/// quick selection. Items with subItems expand a second ring on hover.
+/// sector は円周上に均等配置される。中心からのマウス方向で hover 中の
+/// sector が決まる。キーボードの数字キーで素早い選択ができる。subItems を
+/// 持つ項目は hover で第 2 ring を展開する。
 ///
 /// @code
 ///   UIRadialMenuConfig cfg;
@@ -109,25 +109,25 @@ class UIRadialMenu
 	int m_hoveredSubIndex       = -1;
 	bool m_subRingOpen          = false;
 
-	// Animation state.
-	float m_animProgress        = 0.0f;    ///< 0 = closed, 1 = fully open.
+	// アニメーション状態。
+	float m_animProgress        = 0.0f;    ///< 0 = 閉、1 = 完全に開。
 	bool m_animating            = false;
 	bool m_animOpening          = false;
 
-	// Computed sector geometry.
+	// 計算済み sector geometry。
 	std::vector<UIRadialSectorInfo> m_sectors;
 	std::vector<UIRadialSectorInfo> m_subSectors;
 
-	// Callbacks.
+	// Callbacks。
 	std::function<void(int)> m_onItemSelected;
 	std::function<void(int, int)> m_onSubItemSelected;
 
 public:
-	/// @brief Construct with default configuration.
+	/// @brief デフォルト設定で構築する。
 	UIRadialMenu() { rebuildSectors(); }
 
-	/// @brief Construct with custom configuration.
-	/// @param config Menu configuration.
+	/// @brief カスタム設定で構築する。
+	/// @param config menu 設定。
 	explicit UIRadialMenu(const UIRadialMenuConfig& config)
 		: m_config(config)
 	{
@@ -146,14 +146,14 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基底の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current configuration.
+	/// @brief 現在の設定を取得する。
 	[[nodiscard]] const UIRadialMenuConfig& config() const noexcept { return m_config; }
 
-	/// @brief Set a new configuration and rebuild sectors.
-	/// @param config New configuration.
+	/// @brief 新しい設定を反映し sector を再構築する。
+	/// @param config 新しい設定。
 	void setConfig(const UIRadialMenuConfig& config)
 	{
 		m_config = config;
@@ -161,11 +161,11 @@ public:
 		syncNodeState();
 	}
 
-	// ── Open/Close ───────────────────────────────────────────
+	// ── 開閉 ───────────────────────────────────────────
 
-	/// @brief Open the menu at a screen position.
-	/// @param centerX Center X position.
-	/// @param centerY Center Y position.
+	/// @brief 画面上の位置で menu を開く。
+	/// @param centerX 中心 X 位置。
+	/// @param centerY 中心 Y 位置。
 	void open(float centerX, float centerY)
 	{
 		m_centerX = centerX;
@@ -190,7 +190,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Close the menu (begins close animation).
+	/// @brief menu を閉じる (閉じるアニメーションを開始)。
 	void close()
 	{
 		if (!m_open) { return; }
@@ -201,30 +201,30 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Check if the menu is open (including during animation).
+	/// @brief menu が開いているか (アニメーション中も含む)。
 	[[nodiscard]] bool isOpen() const noexcept { return m_open; }
 
-	/// @brief Check if the menu is currently animating.
+	/// @brief menu が現在アニメーション中か。
 	[[nodiscard]] bool isAnimating() const noexcept { return m_animating; }
 
-	/// @brief Get the current animation progress (0 = closed, 1 = open).
+	/// @brief 現在のアニメーション進捗を取得する (0 = 閉、1 = 開)。
 	[[nodiscard]] float animationProgress() const noexcept { return m_animProgress; }
 
-	/// @brief Get the menu center X.
+	/// @brief menu の中心 X を取得する。
 	[[nodiscard]] float centerX() const noexcept { return m_centerX; }
 
-	/// @brief Get the menu center Y.
+	/// @brief menu の中心 Y を取得する。
 	[[nodiscard]] float centerY() const noexcept { return m_centerY; }
 
-	// ── Update ───────────────────────────────────────────────
+	// ── 更新 ───────────────────────────────────────────────
 
-	/// @brief Update hover state and animation.
-	/// @param mouseX Current mouse X position.
-	/// @param mouseY Current mouse Y position.
-	/// @param dt Delta time in seconds (for animation).
+	/// @brief hover 状態とアニメーションを更新する。
+	/// @param mouseX 現在のマウス X 位置。
+	/// @param mouseY 現在のマウス Y 位置。
+	/// @param dt 経過時間 (秒、アニメーション用)。
 	void update(float mouseX, float mouseY, float dt)
 	{
-		// Advance animation.
+		// アニメーションを進める。
 		if (m_animating)
 		{
 			const float speed = (m_config.animationDuration > 0.0f)
@@ -251,12 +251,12 @@ public:
 
 		if (!m_open) { return; }
 
-		// Compute direction from center.
+		// 中心からの方向を計算する。
 		const float dx = mouseX - m_centerX;
 		const float dy = mouseY - m_centerY;
 		const float dist = std::sqrt(dx * dx + dy * dy);
 
-		// Reset hover states.
+		// hover 状態をリセットする。
 		for (auto& sector : m_sectors) { sector.hovered = false; }
 		for (auto& sector : m_subSectors) { sector.hovered = false; }
 
@@ -264,13 +264,13 @@ public:
 
 		if (dist < m_config.centerDeadZone)
 		{
-			// In dead zone: no selection.
+			// dead zone 内: 選択なし。
 			m_hoveredIndex = -1;
 			m_hoveredSubIndex = -1;
 		}
 		else if (m_subRingOpen && dist >= m_config.subRingInnerRadius && dist <= m_config.subRingOuterRadius)
 		{
-			// Hovering in sub-ring.
+			// sub-ring を hover 中。
 			m_hoveredSubIndex = findSectorAtAngle(m_subSectors, dx, dy);
 			if (m_hoveredSubIndex >= 0 && m_hoveredSubIndex < static_cast<int>(m_subSectors.size()))
 			{
@@ -279,7 +279,7 @@ public:
 		}
 		else if (dist >= m_config.innerRadius && dist <= m_config.outerRadius)
 		{
-			// Hovering in main ring.
+			// main ring を hover 中。
 			m_hoveredIndex = findSectorAtAngle(m_sectors, dx, dy);
 			m_hoveredSubIndex = -1;
 
@@ -287,7 +287,7 @@ public:
 			{
 				m_sectors[static_cast<std::size_t>(m_hoveredIndex)].hovered = true;
 
-				// Open sub-ring if item has sub-items.
+				// 項目が sub-item を持つなら sub-ring を開く。
 				if (m_sectors[static_cast<std::size_t>(m_hoveredIndex)].hasSubItems
 					&& m_hoveredIndex != prevHovered)
 				{
@@ -309,12 +309,12 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Confirm the currently hovered item (mouse click or gamepad confirm).
+	/// @brief 現在 hover 中の項目を確定する (マウスクリック or gamepad 確定)。
 	void confirm()
 	{
 		if (!m_open) { return; }
 
-		// Sub-ring selection takes priority.
+		// sub-ring の選択を優先する。
 		if (m_hoveredSubIndex >= 0 && m_subRingOpen && m_hoveredIndex >= 0)
 		{
 			const auto& subItems = m_config.items[static_cast<std::size_t>(m_hoveredIndex)].subItems;
@@ -330,7 +330,7 @@ public:
 			return;
 		}
 
-		// Main ring selection.
+		// main ring の選択。
 		if (m_hoveredIndex >= 0 && m_hoveredIndex < static_cast<int>(m_config.items.size()))
 		{
 			const auto& item = m_config.items[static_cast<std::size_t>(m_hoveredIndex)];
@@ -345,13 +345,13 @@ public:
 		}
 	}
 
-	/// @brief Select an item by keyboard shortcut key.
-	/// @param key The shortcut key string (e.g. "1", "2").
+	/// @brief キーボード shortcut で項目を選択する。
+	/// @param key shortcut key 文字列 (例 "1", "2")。
 	void selectByKey(const std::string& key)
 	{
 		if (!m_open) { return; }
 
-		// Check sub-ring first if open.
+		// 開いていれば先に sub-ring を調べる。
 		if (m_subRingOpen && m_hoveredIndex >= 0)
 		{
 			const auto& subItems = m_config.items[static_cast<std::size_t>(m_hoveredIndex)].subItems;
@@ -369,7 +369,7 @@ public:
 			}
 		}
 
-		// Check main ring.
+		// main ring を調べる。
 		for (std::size_t i = 0; i < m_config.items.size(); ++i)
 		{
 			if (m_config.items[i].shortcutKey == key && m_config.items[i].enabled)
@@ -384,7 +384,7 @@ public:
 				}
 				else
 				{
-					// Open sub-ring for this item.
+					// この項目の sub-ring を開く。
 					m_hoveredIndex = static_cast<int>(i);
 					openSubRing(m_hoveredIndex);
 				}
@@ -393,30 +393,30 @@ public:
 		}
 	}
 
-	// ── Query ────────────────────────────────────────────────
+	// ── 問い合わせ ────────────────────────────────────────────────
 
-	/// @brief Get the currently hovered main sector index (-1 if none).
+	/// @brief 現在 hover 中の main sector index を取得する (なければ -1)。
 	[[nodiscard]] int hoveredIndex() const noexcept { return m_hoveredIndex; }
 
-	/// @brief Get the currently hovered sub-sector index (-1 if none).
+	/// @brief 現在 hover 中の sub-sector index を取得する (なければ -1)。
 	[[nodiscard]] int hoveredSubIndex() const noexcept { return m_hoveredSubIndex; }
 
-	/// @brief Check if the sub-ring is open.
+	/// @brief sub-ring が開いているか。
 	[[nodiscard]] bool isSubRingOpen() const noexcept { return m_subRingOpen; }
 
-	/// @brief Get computed sector geometry for the main ring (for rendering).
+	/// @brief main ring の計算済み sector geometry を取得する (描画用)。
 	[[nodiscard]] const std::vector<UIRadialSectorInfo>& sectors() const noexcept
 	{
 		return m_sectors;
 	}
 
-	/// @brief Get computed sector geometry for the sub-ring (for rendering).
+	/// @brief sub-ring の計算済み sector geometry を取得する (描画用)。
 	[[nodiscard]] const std::vector<UIRadialSectorInfo>& subSectors() const noexcept
 	{
 		return m_subSectors;
 	}
 
-	/// @brief Get the menu items.
+	/// @brief menu 項目を取得する。
 	[[nodiscard]] const std::vector<UIRadialMenuItem>& items() const noexcept
 	{
 		return m_config.items;
@@ -424,15 +424,15 @@ public:
 
 	// ── Callbacks ────────────────────────────────────────────
 
-	/// @brief Set callback when a main item is selected.
-	/// @param callback Receives the item index.
+	/// @brief main 項目が選択されたときの callback を設定する。
+	/// @param callback 項目 index を受け取る。
 	void setOnItemSelected(std::function<void(int)> callback)
 	{
 		m_onItemSelected = std::move(callback);
 	}
 
-	/// @brief Set callback when a sub-item is selected.
-	/// @param callback Receives (parentIndex, subItemIndex).
+	/// @brief sub-item が選択されたときの callback を設定する。
+	/// @param callback (parentIndex, subItemIndex) を受け取る。
 	void setOnSubItemSelected(std::function<void(int, int)> callback)
 	{
 		m_onSubItemSelected = std::move(callback);
@@ -442,7 +442,7 @@ private:
 	static constexpr float kPi = 3.14159265358979323846f;
 	static constexpr float kTwoPi = 6.28318530717958647692f;
 
-	/// @brief Rebuild sector geometry from current config items.
+	/// @brief 現在の config items から sector geometry を再構築する。
 	void rebuildSectors()
 	{
 		m_sectors.clear();
@@ -452,7 +452,7 @@ private:
 		const float sectorAngle = kTwoPi / static_cast<float>(count);
 		const float midRadius = (m_config.innerRadius + m_config.outerRadius) * 0.5f;
 
-		// Sectors start from top (-pi/2) and go clockwise.
+		// sector は上 (-pi/2) から時計回りに並ぶ。
 		const float startOffset = -kPi * 0.5f - sectorAngle * 0.5f;
 
 		for (std::size_t i = 0; i < count; ++i)
@@ -473,8 +473,8 @@ private:
 		}
 	}
 
-	/// @brief Build sub-ring sectors from a parent item's subItems.
-	/// @param parentIndex Index of the parent item.
+	/// @brief 親項目の subItems から sub-ring sector を構築する。
+	/// @param parentIndex 親項目の index。
 	void openSubRing(int parentIndex)
 	{
 		m_subSectors.clear();
@@ -512,11 +512,11 @@ private:
 		}
 	}
 
-	/// @brief Find which sector contains the given direction vector.
-	/// @param sectors Sector list to search.
-	/// @param dx Direction X from center.
-	/// @param dy Direction Y from center.
-	/// @return Sector index, or -1 if none found.
+	/// @brief 指定方向ベクトルを含む sector を探す。
+	/// @param sectors 探索対象の sector リスト。
+	/// @param dx 中心からの方向 X。
+	/// @param dy 中心からの方向 Y。
+	/// @return sector index、見つからなければ -1。
 	[[nodiscard]] static int findSectorAtAngle(
 		const std::vector<UIRadialSectorInfo>& sectors, float dx, float dy)
 	{
@@ -526,9 +526,9 @@ private:
 
 		for (const auto& sector : sectors)
 		{
-			// Normalize angle relative to sector start.
+			// sector 開始角を基準に角度を正規化する。
 			float relAngle = angle - sector.startAngle;
-			// Wrap to [-pi, pi).
+			// [-pi, pi) に折り返す。
 			while (relAngle > kPi) { relAngle -= kTwoPi; }
 			while (relAngle < -kPi) { relAngle += kTwoPi; }
 
@@ -542,7 +542,7 @@ private:
 		return -1;
 	}
 
-	/// @brief Synchronize state to the UINode properties.
+	/// @brief 状態を UINode の properties に同期する。
 	void syncNodeState()
 	{
 		if (!m_node) { return; }

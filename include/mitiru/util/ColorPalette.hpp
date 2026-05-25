@@ -26,22 +26,22 @@ struct ColorPalette
 
 	/// @brief PICO-8パレット
 	static constexpr std::array<sgc::Colorf, PALETTE_SIZE> PICO8 = {{
-		sgc::Colorf{0.0f/255, 0.0f/255, 0.0f/255, 1.0f},       // 0: black
-		sgc::Colorf{29.0f/255, 43.0f/255, 83.0f/255, 1.0f},     // 1: dark-blue
-		sgc::Colorf{126.0f/255, 37.0f/255, 83.0f/255, 1.0f},    // 2: dark-purple
-		sgc::Colorf{0.0f/255, 135.0f/255, 81.0f/255, 1.0f},     // 3: dark-green
-		sgc::Colorf{171.0f/255, 82.0f/255, 54.0f/255, 1.0f},    // 4: brown
-		sgc::Colorf{95.0f/255, 87.0f/255, 79.0f/255, 1.0f},     // 5: dark-grey
-		sgc::Colorf{194.0f/255, 195.0f/255, 199.0f/255, 1.0f},  // 6: light-grey
-		sgc::Colorf{255.0f/255, 241.0f/255, 232.0f/255, 1.0f},  // 7: white
-		sgc::Colorf{255.0f/255, 0.0f/255, 77.0f/255, 1.0f},     // 8: red
-		sgc::Colorf{255.0f/255, 163.0f/255, 0.0f/255, 1.0f},    // 9: orange
-		sgc::Colorf{255.0f/255, 236.0f/255, 39.0f/255, 1.0f},   // 10: yellow
-		sgc::Colorf{0.0f/255, 228.0f/255, 54.0f/255, 1.0f},     // 11: green
-		sgc::Colorf{41.0f/255, 173.0f/255, 255.0f/255, 1.0f},   // 12: blue
-		sgc::Colorf{131.0f/255, 118.0f/255, 156.0f/255, 1.0f},  // 13: lavender
-		sgc::Colorf{255.0f/255, 119.0f/255, 168.0f/255, 1.0f},  // 14: pink
-		sgc::Colorf{255.0f/255, 204.0f/255, 170.0f/255, 1.0f}   // 15: light-peach
+		sgc::Colorf{0.0f/255, 0.0f/255, 0.0f/255, 1.0f},       // 0: 黒
+		sgc::Colorf{29.0f/255, 43.0f/255, 83.0f/255, 1.0f},     // 1: 濃い青
+		sgc::Colorf{126.0f/255, 37.0f/255, 83.0f/255, 1.0f},    // 2: 濃い紫
+		sgc::Colorf{0.0f/255, 135.0f/255, 81.0f/255, 1.0f},     // 3: 濃い緑
+		sgc::Colorf{171.0f/255, 82.0f/255, 54.0f/255, 1.0f},    // 4: 茶
+		sgc::Colorf{95.0f/255, 87.0f/255, 79.0f/255, 1.0f},     // 5: 濃い灰
+		sgc::Colorf{194.0f/255, 195.0f/255, 199.0f/255, 1.0f},  // 6: 薄い灰
+		sgc::Colorf{255.0f/255, 241.0f/255, 232.0f/255, 1.0f},  // 7: 白
+		sgc::Colorf{255.0f/255, 0.0f/255, 77.0f/255, 1.0f},     // 8: 赤
+		sgc::Colorf{255.0f/255, 163.0f/255, 0.0f/255, 1.0f},    // 9: 橙
+		sgc::Colorf{255.0f/255, 236.0f/255, 39.0f/255, 1.0f},   // 10: 黄
+		sgc::Colorf{0.0f/255, 228.0f/255, 54.0f/255, 1.0f},     // 11: 緑
+		sgc::Colorf{41.0f/255, 173.0f/255, 255.0f/255, 1.0f},   // 12: 青
+		sgc::Colorf{131.0f/255, 118.0f/255, 156.0f/255, 1.0f},  // 13: ラベンダー
+		sgc::Colorf{255.0f/255, 119.0f/255, 168.0f/255, 1.0f},  // 14: ピンク
+		sgc::Colorf{255.0f/255, 204.0f/255, 170.0f/255, 1.0f}   // 15: 薄いピーチ
 	}};
 
 	/// @brief NES風パレット（代表的な16色）
@@ -86,10 +86,10 @@ struct ColorPalette
 
 	/// @brief ゲームボーイ風パレット（4色、残りは最暗色で埋める）
 	static constexpr std::array<sgc::Colorf, PALETTE_SIZE> GAMEBOY = {{
-		sgc::Colorf{15.0f/255, 56.0f/255, 15.0f/255, 1.0f},     // 0: darkest
-		sgc::Colorf{48.0f/255, 98.0f/255, 48.0f/255, 1.0f},     // 1: dark
-		sgc::Colorf{139.0f/255, 172.0f/255, 15.0f/255, 1.0f},   // 2: light
-		sgc::Colorf{155.0f/255, 188.0f/255, 15.0f/255, 1.0f},   // 3: lightest
+		sgc::Colorf{15.0f/255, 56.0f/255, 15.0f/255, 1.0f},     // 0: 最暗
+		sgc::Colorf{48.0f/255, 98.0f/255, 48.0f/255, 1.0f},     // 1: 暗
+		sgc::Colorf{139.0f/255, 172.0f/255, 15.0f/255, 1.0f},   // 2: 明
+		sgc::Colorf{155.0f/255, 188.0f/255, 15.0f/255, 1.0f},   // 3: 最明
 		sgc::Colorf{15.0f/255, 56.0f/255, 15.0f/255, 1.0f},
 		sgc::Colorf{15.0f/255, 56.0f/255, 15.0f/255, 1.0f},
 		sgc::Colorf{15.0f/255, 56.0f/255, 15.0f/255, 1.0f},
@@ -118,7 +118,7 @@ struct ColorPalette
 		case PaletteType::Pastel:  return PASTEL[static_cast<std::size_t>(wrapped)];
 		case PaletteType::GameBoy: return GAMEBOY[static_cast<std::size_t>(wrapped)];
 		}
-		return PICO8[0]; // fallback
+		return PICO8[0]; // フォールバック
 	}
 
 	/// @brief 配列から色を安全に取得する（ラップアラウンド）

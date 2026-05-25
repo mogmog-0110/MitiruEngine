@@ -18,10 +18,10 @@ public:
     [[nodiscard]] static Material convertPBR(const GltfMaterialData& gltf) {
         Material mat;
 
-        // Base color → diffuse
+        // base color → diffuse
         mat.diffuse = {gltf.baseColor.r, gltf.baseColor.g, gltf.baseColor.b, gltf.baseColor.a};
 
-        // Ambient = darkened base color
+        // ambient = base color を暗くしたもの
         const float ambientFactor = 0.3f;
         mat.ambient = {
             gltf.baseColor.r * ambientFactor,
@@ -30,8 +30,8 @@ public:
             1.0f
         };
 
-        // Metallic → specular color
-        // Metallic surfaces reflect the base color, non-metallic reflect white
+        // metallic → specular color
+        // metallic 面は base color を反射、非 metallic は白を反射する
         const float m = std::clamp(gltf.metallic, 0.0f, 1.0f);
         mat.specular = {
             lerp(0.04f, gltf.baseColor.r, m),
@@ -40,13 +40,13 @@ public:
             1.0f
         };
 
-        // Roughness → shininess (inverse mapping)
-        // roughness 0 = mirror (high shininess), roughness 1 = matte (low shininess)
+        // roughness → shininess (逆マッピング)
+        // roughness 0 = 鏡面 (shininess 大), roughness 1 = マット (shininess 小)
         const float r = std::clamp(gltf.roughness, 0.01f, 1.0f);
         mat.shininess = std::pow(2.0f / (r * r) - 2.0f, 0.25f) * 10.0f;
         mat.shininess = std::clamp(mat.shininess, 1.0f, 256.0f);
 
-        // Texture paths
+        // テクスチャパス
         mat.diffuseTexturePath = gltf.baseColorTexturePath;
         mat.normalTexturePath = gltf.normalTexturePath;
         mat.metallic = gltf.metallic;
@@ -60,18 +60,18 @@ public:
     [[nodiscard]] static Material convertPBRForToon(const GltfMaterialData& gltf) {
         auto mat = convertPBR(gltf);
 
-        // Boost saturation for cartoon look
+        // カートゥーン調にするため彩度を上げる
         float grey = mat.diffuse.r * 0.299f + mat.diffuse.g * 0.587f + mat.diffuse.b * 0.114f;
         const float satBoost = 1.3f;
         mat.diffuse.r = std::clamp(grey + (mat.diffuse.r - grey) * satBoost, 0.0f, 1.0f);
         mat.diffuse.g = std::clamp(grey + (mat.diffuse.g - grey) * satBoost, 0.0f, 1.0f);
         mat.diffuse.b = std::clamp(grey + (mat.diffuse.b - grey) * satBoost, 0.0f, 1.0f);
 
-        // Reduce specular for cartoon (cel-shading doesn't use sharp specular)
+        // カートゥーン用に specular を抑える (cel-shading は鋭い specular を使わない)
         mat.specular = {0.15f, 0.15f, 0.15f, 1.0f};
         mat.shininess = 8.0f;
 
-        // Brighter ambient for cartoon
+        // カートゥーン用に ambient を明るめにする
         mat.ambient = {
             mat.diffuse.r * 0.5f,
             mat.diffuse.g * 0.5f,

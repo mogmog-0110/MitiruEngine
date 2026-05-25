@@ -2,10 +2,10 @@
 
 /**
  * @file UITheme.hpp
- * @brief Runtime theme system for UI rendering.
+ * @brief UI 描画用の runtime theme system。
  *
- * Provides colour palettes, metric presets, and per-role style overrides
- * that can be swapped at runtime without rebuilding the UI tree.
+ * color palette、metric preset、role 別の style override を提供し、
+ * UI tree を作り直さずに runtime で差し替えられる。
  */
 
 #include <sgc/types/Color.hpp>
@@ -18,55 +18,55 @@ namespace mitiru::ui {
 
 /**
  * @struct ThemeColors
- * @brief Semantic colour palette used by all UI elements.
+ * @brief 全 UI 要素が使う意味付き color palette。
  */
 struct ThemeColors {
-    sgc::Colorf background{0.1f, 0.1f, 0.1f, 0.8f};   ///< Default panel background.
-    sgc::Colorf foreground{1.0f, 1.0f, 1.0f, 1.0f};    ///< Primary text / icon colour.
-    sgc::Colorf accent{0.0f, 0.8f, 1.0f, 1.0f};        ///< Interactive highlight.
-    sgc::Colorf danger{1.0f, 0.2f, 0.2f, 1.0f};        ///< Error / critical state.
-    sgc::Colorf success{0.2f, 1.0f, 0.2f, 1.0f};       ///< Positive / healthy state.
-    sgc::Colorf warning{1.0f, 0.8f, 0.0f, 1.0f};       ///< Cautionary state.
-    sgc::Colorf disabled{0.5f, 0.5f, 0.5f, 0.5f};      ///< Greyed-out / inactive.
-    sgc::Colorf border{0.4f, 0.4f, 0.4f, 1.0f};        ///< Default border stroke.
+    sgc::Colorf background{0.1f, 0.1f, 0.1f, 0.8f};   ///< 既定の panel 背景。
+    sgc::Colorf foreground{1.0f, 1.0f, 1.0f, 1.0f};    ///< 主要なテキスト / アイコン色。
+    sgc::Colorf accent{0.0f, 0.8f, 1.0f, 1.0f};        ///< 操作系の highlight。
+    sgc::Colorf danger{1.0f, 0.2f, 0.2f, 1.0f};        ///< エラー / 致命的状態。
+    sgc::Colorf success{0.2f, 1.0f, 0.2f, 1.0f};       ///< 肯定的 / 健全な状態。
+    sgc::Colorf warning{1.0f, 0.8f, 0.0f, 1.0f};       ///< 注意状態。
+    sgc::Colorf disabled{0.5f, 0.5f, 0.5f, 0.5f};      ///< グレーアウト / 非活性。
+    sgc::Colorf border{0.4f, 0.4f, 0.4f, 1.0f};        ///< 既定の border stroke。
 };
 
 /**
  * @struct ThemeMetrics
- * @brief Scalar sizing values shared across UI elements.
+ * @brief UI 要素間で共有する scalar の寸法値。
  */
 struct ThemeMetrics {
-    float fontSize      = 16.0f;  ///< Body text size.
-    float titleFontSize = 24.0f;  ///< Title / heading text size.
-    float padding       = 8.0f;   ///< Inner padding.
-    float margin        = 4.0f;   ///< Outer margin.
-    float borderWidth   = 1.0f;   ///< Border stroke width.
-    float barHeight     = 20.0f;  ///< Height of progress / health bars.
-    float buttonHeight  = 32.0f;  ///< Default button height.
-    float cornerRadius  = 4.0f;   ///< Cosmetic corner radius (future use).
+    float fontSize      = 16.0f;  ///< 本文テキストのサイズ。
+    float titleFontSize = 24.0f;  ///< タイトル / 見出しテキストのサイズ。
+    float padding       = 8.0f;   ///< 内側 padding。
+    float margin        = 4.0f;   ///< 外側 margin。
+    float borderWidth   = 1.0f;   ///< border stroke の幅。
+    float barHeight     = 20.0f;  ///< progress / health bar の高さ。
+    float buttonHeight  = 32.0f;  ///< 既定の button 高さ。
+    float cornerRadius  = 4.0f;   ///< 装飾用の角丸半径 (将来用)。
 };
 
 /**
  * @struct UIThemeStyle
- * @brief Resolved visual style for a single UI element.
+ * @brief 単一 UI 要素について解決済みの visual style。
  *
- * Renderers consume this struct directly; it collapses theme colours
- * and metrics into the handful of values needed to draw one element.
+ * renderer はこの struct を直接消費する。theme の color と metrics を、
+ * 1 要素を描くのに必要な少数の値へ畳み込んだもの。
  */
 struct UIThemeStyle {
-    sgc::Colorf background;  ///< Fill colour.
-    sgc::Colorf foreground;  ///< Text / glyph colour.
-    sgc::Colorf border;      ///< Border colour.
-    float fontSize;          ///< Text size.
-    float padding;           ///< Inner padding.
+    sgc::Colorf background;  ///< 塗り色。
+    sgc::Colorf foreground;  ///< テキスト / glyph の色。
+    sgc::Colorf border;      ///< border の色。
+    float fontSize;          ///< テキストサイズ。
+    float padding;           ///< 内側 padding。
 };
 
 /**
  * @class UITheme
- * @brief Manages colours, metrics, and per-role style overrides.
+ * @brief color、metrics、role 別 style override を管理する。
  *
- * The theme can be hot-swapped at runtime and provides four built-in
- * presets: dark, light, cyberpunk, and retro.
+ * theme は runtime で hot-swap でき、組み込み preset を 4 つ提供する:
+ * dark、light、cyberpunk、retro。
  *
  * @code
  *   UITheme theme = UITheme::cyberpunk();
@@ -80,39 +80,38 @@ class UITheme {
     std::map<UIRole, UIThemeStyle> m_roleOverrides;
 
 public:
-    /** @brief Default-construct with dark theme colours. */
+    /** @brief dark theme の色で default 構築する。 */
     UITheme() = default;
 
     /**
-     * @brief Construct with explicit colours and optional metrics.
-     * @param colors   Semantic colour palette.
-     * @param metrics  Sizing values (defaults used if omitted).
+     * @brief 明示的な色と任意の metrics で構築する。
+     * @param colors   意味付き color palette。
+     * @param metrics  寸法値 (省略時は default を使う)。
      */
     explicit UITheme(ThemeColors colors, ThemeMetrics metrics = {})
         : m_colors(colors), m_metrics(metrics) {}
 
-    /** @brief Access the current colour palette. */
+    /** @brief 現在の color palette にアクセスする。 */
     const ThemeColors& colors() const noexcept { return m_colors; }
 
-    /** @brief Access the current metrics. */
+    /** @brief 現在の metrics にアクセスする。 */
     const ThemeMetrics& metrics() const noexcept { return m_metrics; }
 
-    /** @brief Replace the colour palette. */
+    /** @brief color palette を差し替える。 */
     void setColors(const ThemeColors& colors) { m_colors = colors; }
 
-    /** @brief Replace the metrics. */
+    /** @brief metrics を差し替える。 */
     void setMetrics(const ThemeMetrics& metrics) { m_metrics = metrics; }
 
     // -----------------------------------------------------------------
-    // Per-role styling
+    // role 別の styling
     // -----------------------------------------------------------------
 
     /**
-     * @brief Resolve the visual style for a given UI role.
+     * @brief 指定 UI role の visual style を解決する。
      *
-     * If a per-role override has been registered via @c setStyleFor, that
-     * override is returned. Otherwise a sensible default is computed from
-     * the base colour palette and metrics:
+     * @c setStyleFor で role 別 override が登録済みならそれを返す。
+     * 無ければ base の color palette と metrics から妥当な default を計算する:
      *
      * | Role        | Background         | Foreground    |
      * |-------------|--------------------|---------------|
@@ -124,11 +123,11 @@ public:
      * | Image       | transparent        | foreground    |
      * | Other       | background         | foreground    |
      *
-     * @param role  The UI role to resolve.
-     * @return Fully populated UIThemeStyle.
+     * @param role  解決する UI role。
+     * @return 完全に埋まった UIThemeStyle。
      */
     UIThemeStyle styleFor(UIRole role) const {
-        // Check for explicit override first.
+        // まず明示的な override を確認する。
         {
             auto it = m_roleOverrides.find(role);
             if (it != m_roleOverrides.end()) {
@@ -136,7 +135,7 @@ public:
             }
         }
 
-        // Compute from base palette.
+        // base palette から計算する。
         UIThemeStyle style;
         style.fontSize = m_metrics.fontSize;
         style.padding  = m_metrics.padding;
@@ -196,23 +195,23 @@ public:
     }
 
     /**
-     * @brief Register a per-role style override.
+     * @brief role 別の style override を登録する。
      *
-     * @param role   The role to override.
-     * @param style  The style that @c styleFor will return for @p role.
+     * @param role   override する role。
+     * @param style  @c styleFor が @p role に対して返す style。
      */
     void setStyleFor(UIRole role, const UIThemeStyle& style) {
         m_roleOverrides[role] = style;
     }
 
     // -----------------------------------------------------------------
-    // Preset themes
+    // Preset theme
     // -----------------------------------------------------------------
 
     /**
-     * @brief Dark theme (default).
+     * @brief dark theme (default)。
      *
-     * Dark backgrounds, white text, cyan accent.
+     * 暗い背景、白テキスト、cyan の accent。
      */
     static UITheme dark() {
         ThemeColors c;
@@ -228,9 +227,9 @@ public:
     }
 
     /**
-     * @brief Light theme.
+     * @brief light theme。
      *
-     * Near-white backgrounds, dark text, blue accent.
+     * ほぼ白の背景、暗いテキスト、blue の accent。
      */
     static UITheme light() {
         ThemeColors c;
@@ -246,9 +245,9 @@ public:
     }
 
     /**
-     * @brief Cyberpunk theme.
+     * @brief cyberpunk theme。
      *
-     * Deep purple/blue background, neon magenta accent, electric cyan text.
+     * 濃い紫 / 青の背景、neon magenta の accent、electric cyan のテキスト。
      */
     static UITheme cyberpunk() {
         ThemeColors c;
@@ -264,9 +263,9 @@ public:
     }
 
     /**
-     * @brief Retro / pixel-art theme.
+     * @brief retro / pixel-art theme。
      *
-     * Warm sepia tones, amber accent, classic game feel.
+     * 暖かいセピア調、amber の accent、古典的なゲームの雰囲気。
      */
     static UITheme retro() {
         ThemeColors c;
@@ -280,20 +279,20 @@ public:
         c.border     = sgc::Colorf{0.6f,  0.5f,  0.3f,  1.0f};
 
         ThemeMetrics m;
-        m.cornerRadius = 0.0f;  // Sharp corners for pixel-art aesthetic.
+        m.cornerRadius = 0.0f;  // pixel-art の見た目に合わせて角を尖らせる。
         return UITheme(c, m);
     }
 
     // -----------------------------------------------------------------
-    // Serialisation
+    // Serialization
     // -----------------------------------------------------------------
 
     /**
-     * @brief Serialise the theme's colour palette to a JSON string.
+     * @brief theme の color palette を JSON 文字列に serialize する。
      *
-     * Useful for saving user-customised themes to disk.
+     * ユーザーがカスタムした theme をディスクへ保存するのに便利。
      *
-     * @return JSON object string with all ThemeColors fields.
+     * @return ThemeColors 全フィールドを含む JSON object 文字列。
      */
     std::string toJson() const {
         std::string json = "{\n";
@@ -311,7 +310,7 @@ public:
 
 private:
     /**
-     * @brief Format a single colour as a JSON field with an RGBA array value.
+     * @brief 単一の色を RGBA 配列値を持つ JSON field として整形する。
      */
     static std::string colorToJsonField(const std::string& name,
                                          const sgc::Colorf& c) {

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIToast.hpp
-/// @brief Non-blocking toast notification system with stacking, auto-dismiss, and slide animation.
+/// @brief 非ブロッキングな toast 通知システム。stacking / 自動消去 / slide animation 対応。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,7 +15,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Screen anchor position for the toast stack.
+/// @brief toast stack の screen anchor 位置。
 enum class ToastPosition : std::uint8_t
 {
 	TopLeft,
@@ -26,14 +26,14 @@ enum class ToastPosition : std::uint8_t
 	BottomCenter
 };
 
-/// @brief Stack growth direction.
+/// @brief stack の伸長方向。
 enum class ToastStackDirection : std::uint8_t
 {
-	Up,   ///< New toasts push older ones upward.
-	Down  ///< New toasts push older ones downward.
+	Up,   ///< 新しい toast が古いものを上へ押す。
+	Down  ///< 新しい toast が古いものを下へ押す。
 };
 
-/// @brief Toast notification severity type.
+/// @brief toast 通知の severity 種別。
 enum class ToastType : std::uint8_t
 {
 	Info,
@@ -42,7 +42,7 @@ enum class ToastType : std::uint8_t
 	Error
 };
 
-/// @brief Slide animation direction for toast entry/exit.
+/// @brief toast の入出時 slide animation 方向。
 enum class ToastSlideDirection : std::uint8_t
 {
 	Left,
@@ -51,14 +51,14 @@ enum class ToastSlideDirection : std::uint8_t
 	Down
 };
 
-/// @brief Per-type style configuration for toasts.
+/// @brief toast の種別ごとの style 設定。
 struct UIToastTypeStyle
 {
-	std::string backgroundImageKey;   ///< Background image for this toast type.
-	std::string iconImageKey;         ///< Icon image for this toast type.
+	std::string backgroundImageKey;   ///< この toast 種別の背景画像。
+	std::string iconImageKey;         ///< この toast 種別の icon 画像。
 };
 
-/// @brief Configuration for the toast notification manager.
+/// @brief toast 通知 manager の設定。
 struct UIToastConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -67,55 +67,54 @@ struct UIToastConfig
 	// ── Layout ────────────────────────────────────────────────
 	ToastPosition position = ToastPosition::TopRight;
 	ToastStackDirection stackDirection = ToastStackDirection::Down;
-	int maxVisible = 5;                ///< Maximum toasts visible at once.
-	float spacing = 8.0f;             ///< Vertical spacing between toasts.
-	float width = 320.0f;             ///< Toast width.
-	float minHeight = 48.0f;          ///< Minimum toast height.
-	float padding = 12.0f;            ///< Inner padding.
-	float iconSize = 24.0f;           ///< Icon size.
-	float marginX = 16.0f;            ///< Margin from screen edge X.
-	float marginY = 16.0f;            ///< Margin from screen edge Y.
+	int maxVisible = 5;                ///< 同時に表示する toast の最大数。
+	float spacing = 8.0f;             ///< toast 間の縦方向 spacing。
+	float width = 320.0f;             ///< toast の幅。
+	float minHeight = 48.0f;          ///< toast の最小高さ。
+	float padding = 12.0f;            ///< 内側 padding。
+	float iconSize = 24.0f;           ///< icon のサイズ。
+	float marginX = 16.0f;            ///< 画面端からの X margin。
+	float marginY = 16.0f;            ///< 画面端からの Y margin。
 
 	// ── Timing ────────────────────────────────────────────────
-	float defaultDuration = 4.0f;     ///< Default auto-dismiss duration in seconds.
-	float slideInDuration = 0.25f;    ///< Slide-in animation duration.
-	float slideOutDuration = 0.2f;    ///< Slide-out animation duration.
+	float defaultDuration = 4.0f;     ///< 自動消去までの既定時間 (秒)。
+	float slideInDuration = 0.25f;    ///< slide-in animation の時間。
+	float slideOutDuration = 0.2f;    ///< slide-out animation の時間。
 	ToastSlideDirection slideInDirection = ToastSlideDirection::Right;
 	ToastSlideDirection slideOutDirection = ToastSlideDirection::Right;
-	float slideDistance = 0.0f;       ///< Slide distance (0 = auto, uses toast width).
+	float slideDistance = 0.0f;       ///< slide 距離 (0 = auto、toast 幅を使う)。
 
-	// ── Screen bounds ─────────────────────────────────────────
+	// ── 画面 bounds ───────────────────────────────────────────
 	float screenWidth = 1920.0f;
 	float screenHeight = 1080.0f;
 
-	// ── Image keys ────────────────────────────────────────────
-	std::string backgroundImageKey;     ///< Default background image.
-	std::string closeButtonImageKey;    ///< Close button image.
-	std::string iconImageKey;           ///< Default icon image.
+	// ── 画像 key 群 ───────────────────────────────────────────
+	std::string backgroundImageKey;     ///< 既定の背景画像。
+	std::string closeButtonImageKey;    ///< close button の画像。
+	std::string iconImageKey;           ///< 既定の icon 画像。
 
-	// ── Per-type styles ───────────────────────────────────────
-	UIToastTypeStyle infoStyle;         ///< Style overrides for Info toasts.
-	UIToastTypeStyle successStyle;      ///< Style overrides for Success toasts.
-	UIToastTypeStyle warningStyle;      ///< Style overrides for Warning toasts.
-	UIToastTypeStyle errorStyle;        ///< Style overrides for Error toasts.
+	// ── 種別ごとの style ──────────────────────────────────────
+	UIToastTypeStyle infoStyle;         ///< Info toast の style 上書き。
+	UIToastTypeStyle successStyle;      ///< Success toast の style 上書き。
+	UIToastTypeStyle warningStyle;      ///< Warning toast の style 上書き。
+	UIToastTypeStyle errorStyle;        ///< Error toast の style 上書き。
 };
 
-/// @brief A single toast notification entry.
+/// @brief 単一の toast 通知 entry。
 struct UIToastEntry
 {
-	std::uint32_t id = 0;            ///< Unique toast identifier.
-	std::string text;                ///< Display text.
-	std::string iconImageKey;        ///< Icon image key (overrides type default).
-	float duration = 4.0f;           ///< Auto-dismiss duration in seconds.
+	std::uint32_t id = 0;            ///< toast 固有の識別子。
+	std::string text;                ///< 表示テキスト。
+	std::string iconImageKey;        ///< icon 画像 key (種別の既定を上書き)。
+	float duration = 4.0f;           ///< 自動消去までの時間 (秒)。
 	ToastType type = ToastType::Info;
-	float timestamp = 0.0f;          ///< Time when the toast was created.
+	float timestamp = 0.0f;          ///< toast 生成時刻。
 };
 
-/// @brief Non-blocking toast notification manager.
+/// @brief 非ブロッキングな toast 通知 manager。
 ///
-/// Manages a stack of toast notifications with auto-dismiss, slide animations,
-/// per-type styling, and configurable positioning. Rendering is handled externally
-/// by UIRenderer.
+/// 自動消去 / slide animation / 種別ごとの styling / 配置設定を持つ toast 通知の
+/// stack を管理する。描画は外部の UIRenderer が担当する。
 ///
 /// @code
 ///   UIToastConfig cfg;
@@ -132,7 +131,7 @@ struct UIToastEntry
 /// @endcode
 class UIToastManager
 {
-	/// @brief Animation phase for individual toasts.
+	/// @brief 個々の toast の animation phase。
 	enum class ToastPhase : std::uint8_t
 	{
 		SlidingIn,
@@ -141,22 +140,22 @@ class UIToastManager
 		Dismissed
 	};
 
-	/// @brief Internal runtime state of a single toast.
+	/// @brief 単一 toast の内部 runtime state。
 	struct ActiveToast
 	{
 		UIToastEntry entry;
 		ToastPhase phase = ToastPhase::SlidingIn;
-		float phaseTimer = 0.0f;        ///< Time spent in current phase.
-		float elapsed = 0.0f;           ///< Total time since creation.
-		float animationProgress = 0.0f; ///< 0..1 animation factor.
-		float height = 0.0f;            ///< Measured height (set by renderer).
+		float phaseTimer = 0.0f;        ///< 現在の phase での経過時間。
+		float elapsed = 0.0f;           ///< 生成からの総経過時間。
+		float animationProgress = 0.0f; ///< 0..1 の animation 係数。
+		float height = 0.0f;            ///< 測定された高さ (renderer が設定)。
 		std::shared_ptr<UINode> node;
 	};
 
 	std::shared_ptr<UINode> m_rootNode;
 	std::vector<ActiveToast> m_toasts;
 
-	// ── Config copies ─────────────────────────────────────────
+	// ── config の複製 ─────────────────────────────────────────
 	ToastPosition m_position;
 	ToastStackDirection m_stackDirection;
 	int m_maxVisible;
@@ -183,7 +182,7 @@ class UIToastManager
 	UIToastTypeStyle m_warningStyle;
 	UIToastTypeStyle m_errorStyle;
 
-	// ── Runtime state ─────────────────────────────────────────
+	// ── runtime state ─────────────────────────────────────────
 	std::uint32_t m_nextId = 1;
 	float m_totalTime = 0.0f;
 
@@ -192,8 +191,8 @@ class UIToastManager
 	std::function<void(std::uint32_t)> m_onClicked;
 
 public:
-	/// @brief Construct a toast manager from configuration.
-	/// @param config Toast configuration.
+	/// @brief 設定から toast manager を構築する。
+	/// @param config toast 設定。
 	explicit UIToastManager(const UIToastConfig& config)
 		: m_position(config.position)
 		, m_stackDirection(config.stackDirection)
@@ -235,13 +234,13 @@ public:
 
 	// ── Accessors ─────────────────────────────────────────────
 
-	/// @brief Get the underlying root UINode.
+	/// @brief 内部の root UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_rootNode; }
 
-	/// @brief Get the number of currently active toasts (including animating ones).
+	/// @brief 現在 active な toast 数 (animation 中も含む) を取得する。
 	[[nodiscard]] std::size_t activeCount() const noexcept { return m_toasts.size(); }
 
-	/// @brief Get the number of visible toasts (not yet dismissed).
+	/// @brief 表示中 (未消去) の toast 数を取得する。
 	[[nodiscard]] std::size_t visibleCount() const noexcept
 	{
 		std::size_t count = 0;
@@ -252,16 +251,16 @@ public:
 		return count;
 	}
 
-	/// @brief Check if there are any active toasts.
+	/// @brief active な toast が存在するか確認する。
 	[[nodiscard]] bool hasToasts() const noexcept { return !m_toasts.empty(); }
 
-	/// @brief Get the background image key.
+	/// @brief 背景画像 key を取得する。
 	[[nodiscard]] const std::string& backgroundImageKey() const noexcept { return m_backgroundImageKey; }
 
-	/// @brief Get the close button image key.
+	/// @brief close button の画像 key を取得する。
 	[[nodiscard]] const std::string& closeButtonImageKey() const noexcept { return m_closeButtonImageKey; }
 
-	/// @brief Get toast info for rendering.
+	/// @brief 描画用の toast 情報を取得する。
 	struct ToastRenderInfo
 	{
 		std::uint32_t id = 0;
@@ -269,13 +268,13 @@ public:
 		ToastType type = ToastType::Info;
 		sgc::Rectf bounds;
 		float opacity = 1.0f;
-		float slideOffset = 0.0f;   ///< Offset for slide animation (pixels).
+		float slideOffset = 0.0f;   ///< slide animation 用の offset (pixel)。
 		std::string backgroundImageKey;
 		std::string iconImageKey;
 		std::string closeButtonImageKey;
 	};
 
-	/// @brief Get render info for all visible toasts.
+	/// @brief 表示中の全 toast の描画情報を取得する。
 	[[nodiscard]] std::vector<ToastRenderInfo> renderInfo() const
 	{
 		std::vector<ToastRenderInfo> result;
@@ -292,7 +291,7 @@ public:
 			info.bounds = toast.node ? toast.node->bounds() : sgc::Rectf{};
 			info.closeButtonImageKey = m_closeButtonImageKey;
 
-			// Determine opacity and offset from animation.
+			// animation から opacity と offset を決める。
 			const float slideDistActual = effectiveSlideDistance();
 
 			switch (toast.phase)
@@ -313,7 +312,7 @@ public:
 				break;
 			}
 
-			// Resolve per-type images.
+			// 種別ごとの画像を解決する。
 			const auto& typeStyle = styleForType(toast.entry.type);
 			info.backgroundImageKey = typeStyle.backgroundImageKey.empty()
 				? m_backgroundImageKey : typeStyle.backgroundImageKey;
@@ -328,21 +327,21 @@ public:
 
 	// ── Configuration ─────────────────────────────────────────
 
-	/// @brief Set the callback invoked when a toast is dismissed.
+	/// @brief toast が消去されたときに呼ばれる callback を設定する。
 	void setOnDismissed(std::function<void(std::uint32_t)> callback)
 	{
 		m_onDismissed = std::move(callback);
 	}
 
-	/// @brief Set the callback invoked when a toast is clicked.
+	/// @brief toast が click されたときに呼ばれる callback を設定する。
 	void setOnClicked(std::function<void(std::uint32_t)> callback)
 	{
 		m_onClicked = std::move(callback);
 	}
 
-	/// @brief Set the measured height for a toast (called by layout/renderer).
-	/// @param toastId Toast identifier.
-	/// @param height Measured height.
+	/// @brief toast の測定済み高さを設定する (layout/renderer が呼ぶ)。
+	/// @param toastId toast の識別子。
+	/// @param height 測定された高さ。
 	void setToastHeight(std::uint32_t toastId, float height)
 	{
 		for (auto& toast : m_toasts)
@@ -356,7 +355,7 @@ public:
 		}
 	}
 
-	/// @brief Set screen bounds.
+	/// @brief screen の bounds を設定する。
 	void setScreenBounds(float width, float height) noexcept
 	{
 		m_screenWidth = width;
@@ -366,11 +365,11 @@ public:
 
 	// ── Actions ───────────────────────────────────────────────
 
-	/// @brief Show a new toast notification.
-	/// @param text Display text.
-	/// @param type Toast type for styling.
-	/// @param duration Duration in seconds (0 = use default, <0 = never auto-dismiss).
-	/// @return Toast identifier for programmatic dismissal.
+	/// @brief 新しい toast 通知を表示する。
+	/// @param text 表示テキスト。
+	/// @param type styling 用の toast 種別。
+	/// @param duration 表示時間 (秒) (0 = 既定値を使う、<0 = 自動消去しない)。
+	/// @return プログラムからの消去に使う toast 識別子。
 	std::uint32_t show(const std::string& text, ToastType type = ToastType::Info, float duration = 0.0f)
 	{
 		UIToastEntry entry;
@@ -383,12 +382,12 @@ public:
 		return showEntry(entry);
 	}
 
-	/// @brief Show a toast with a custom icon.
-	/// @param text Display text.
-	/// @param iconImageKey Custom icon image key.
-	/// @param type Toast type.
-	/// @param duration Duration in seconds.
-	/// @return Toast identifier.
+	/// @brief custom icon 付きの toast を表示する。
+	/// @param text 表示テキスト。
+	/// @param iconImageKey custom icon 画像 key。
+	/// @param type toast 種別。
+	/// @param duration 表示時間 (秒)。
+	/// @return toast 識別子。
 	std::uint32_t show(const std::string& text, const std::string& iconImageKey,
 					   ToastType type = ToastType::Info, float duration = 0.0f)
 	{
@@ -403,8 +402,8 @@ public:
 		return showEntry(entry);
 	}
 
-	/// @brief Dismiss a specific toast by ID.
-	/// @param toastId Toast identifier.
+	/// @brief ID 指定で特定の toast を消去する。
+	/// @param toastId toast の識別子。
 	void dismiss(std::uint32_t toastId)
 	{
 		for (auto& toast : m_toasts)
@@ -420,7 +419,7 @@ public:
 		}
 	}
 
-	/// @brief Dismiss all active toasts.
+	/// @brief active な全 toast を消去する。
 	void dismissAll()
 	{
 		for (auto& toast : m_toasts)
@@ -434,9 +433,9 @@ public:
 		}
 	}
 
-	/// @brief Handle click at the given position (checks close buttons).
-	/// @param mouseX Mouse X.
-	/// @param mouseY Mouse Y.
+	/// @brief 指定位置での click を処理する (close button を判定)。
+	/// @param mouseX mouse の X。
+	/// @param mouseY mouse の Y。
 	void onMouseClick(float mouseX, float mouseY)
 	{
 		for (auto& toast : m_toasts)
@@ -457,8 +456,8 @@ public:
 
 	// ── Update ────────────────────────────────────────────────
 
-	/// @brief Advance all toast animations and auto-dismiss timers.
-	/// @param dt Delta time in seconds.
+	/// @brief 全 toast の animation と自動消去 timer を進める。
+	/// @param dt delta time (秒)。
 	void update(float dt)
 	{
 		m_totalTime += dt;
@@ -489,7 +488,7 @@ public:
 				break;
 
 			case ToastPhase::Visible:
-				// Auto-dismiss check (negative duration = never auto-dismiss).
+				// 自動消去判定 (duration が負 = 自動消去しない)。
 				if (toast.entry.duration >= 0.0f && toast.elapsed >= toast.entry.duration)
 				{
 					toast.phase = ToastPhase::SlidingOut;
@@ -520,7 +519,7 @@ public:
 			}
 		}
 
-		// Remove dismissed toasts.
+		// 消去済みの toast を除去する。
 		const auto removed = std::remove_if(m_toasts.begin(), m_toasts.end(),
 			[](const ActiveToast& t) { return t.phase == ToastPhase::Dismissed; });
 		if (removed != m_toasts.end())
@@ -540,10 +539,10 @@ public:
 private:
 	std::uint32_t showEntry(const UIToastEntry& entry)
 	{
-		// Evict oldest if at capacity.
+		// 上限に達していたら最古を追い出す。
 		while (visibleCount() >= static_cast<std::size_t>(m_maxVisible) && !m_toasts.empty())
 		{
-			// Dismiss the oldest visible toast.
+			// 表示中で最古の toast を消去する。
 			for (auto& t : m_toasts)
 			{
 				if (t.phase != ToastPhase::SlidingOut && t.phase != ToastPhase::Dismissed)
@@ -554,7 +553,7 @@ private:
 					break;
 				}
 			}
-			break; // Only evict one at a time.
+			break; // 一度に 1 個だけ追い出す。
 		}
 
 		ActiveToast active;
@@ -587,13 +586,13 @@ private:
 		return entry.id;
 	}
 
-	/// @brief Recalculate toast positions based on stack configuration.
+	/// @brief stack 設定に基づき toast の位置を再計算する。
 	void recalculatePositions()
 	{
 		float anchorX = 0.0f;
 		float anchorY = 0.0f;
 
-		// Determine anchor corner.
+		// anchor となる corner を決める。
 		switch (m_position)
 		{
 		case ToastPosition::TopLeft:
@@ -655,13 +654,13 @@ private:
 		}
 	}
 
-	/// @brief Get the effective slide distance.
+	/// @brief 実効的な slide 距離を取得する。
 	[[nodiscard]] float effectiveSlideDistance() const noexcept
 	{
 		return m_slideDistance > 0.0f ? m_slideDistance : m_width;
 	}
 
-	/// @brief Get the style for a toast type.
+	/// @brief toast 種別に対応する style を取得する。
 	[[nodiscard]] const UIToastTypeStyle& styleForType(ToastType type) const noexcept
 	{
 		switch (type)
@@ -674,7 +673,7 @@ private:
 		return m_infoStyle;
 	}
 
-	/// @brief Convert toast type to string.
+	/// @brief toast 種別を文字列に変換する。
 	[[nodiscard]] static const char* typeToString(ToastType type) noexcept
 	{
 		switch (type)

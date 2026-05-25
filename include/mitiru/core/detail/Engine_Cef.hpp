@@ -1,5 +1,5 @@
-// Detail header for mitiru::Engine — do not include directly; included via core/Engine.hpp
-// ⚠ This file is only included when both _WIN32 and MITIRU_HAS_CEF are defined.
+// mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
+// ⚠ このファイルは _WIN32 と MITIRU_HAS_CEF の両方が定義されているときのみインクルードされる。
 #pragma once
 
 #include <cstdio>
@@ -7,7 +7,7 @@
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/cef/MitiruCefSchemeHandler.hpp>
 
-// ── CEF integration out-of-class definitions ─────────────────────────────
+// ── CEF integration のクラス外定義 ─────────────────────────────
 
 MITIRU_INLINE void mitiru::Engine::initializeCef(const EngineConfig& config)
 {

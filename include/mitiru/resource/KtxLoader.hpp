@@ -23,24 +23,24 @@ enum class KtxFormat : std::uint32_t
 {
 	Unknown = 0,
 
-	/// BC (S3TC/BPTC) formats — Desktop GPU
+	/// BC (S3TC/BPTC) フォーマット — desktop GPU 向け
 	Bc1Rgba = 0x8C4D,             ///< GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
 	Bc2Rgba = 0x8C4E,             ///< GL_COMPRESSED_RGBA_S3TC_DXT3_EXT
 	Bc3Rgba = 0x8C4F,             ///< GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
 	Bc7Rgba = 0x8E8C,             ///< GL_COMPRESSED_RGBA_BPTC_UNORM
 
-	/// ETC2 formats — Mobile GPU (OpenGL ES 3.0+)
+	/// ETC2 フォーマット — mobile GPU 向け (OpenGL ES 3.0+)
 	Etc2Rgb8 = 0x9274,            ///< GL_COMPRESSED_RGB8_ETC2
 	Etc2Rgba8 = 0x9278,           ///< GL_COMPRESSED_RGBA8_ETC2_EAC
 	Etc2Rgb8A1 = 0x9276,          ///< GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2
 
-	/// ASTC formats — Mobile GPU (OpenGL ES 3.1+ / Vulkan)
+	/// ASTC フォーマット — mobile GPU 向け (OpenGL ES 3.1+ / Vulkan)
 	Astc4x4 = 0x93B0,             ///< GL_COMPRESSED_RGBA_ASTC_4x4_KHR
 	Astc5x5 = 0x93B2,             ///< GL_COMPRESSED_RGBA_ASTC_5x5_KHR
 	Astc6x6 = 0x93B4,             ///< GL_COMPRESSED_RGBA_ASTC_6x6_KHR
 	Astc8x8 = 0x93B7,             ///< GL_COMPRESSED_RGBA_ASTC_8x8_KHR
 
-	/// Uncompressed
+	/// 非圧縮
 	Rgba8 = 0x8058,                ///< GL_RGBA8
 	Rgb8 = 0x8051,                 ///< GL_RGB8
 };

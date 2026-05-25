@@ -210,8 +210,8 @@ public:
 	/// @param fmt フォーマット文字列
 	/// @param args フォーマット引数
 	/// @return フォーマット済み文字列
-	/// @warning fmt must be a compile-time constant, never user input.
-	/// Passing user-controlled strings as fmt enables format string injection attacks.
+	/// @warning fmt はコンパイル時定数であること。ユーザー入力を渡してはいけない。
+	/// ユーザー制御の文字列を fmt に渡すと format string injection 攻撃を許す。
 	template <typename... Args>
 	[[nodiscard]] [[deprecated("Use with caution: fmt must be a compile-time constant, never user input")]]
 	static std::string format(const char* fmt, Args&&... args)

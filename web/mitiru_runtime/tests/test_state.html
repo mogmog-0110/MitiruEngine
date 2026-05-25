@@ -2,15 +2,15 @@
 <meta charset="utf-8">
 <title>mitiru_state.js tests</title>
 <!--
-    test_state.html — mitiru.state (F-03) unit tests
-    Pattern: inline IIFE, no module imports — matches mitiru_drag.js / mitiru_debug.js style.
+    test_state.html — mitiru.state (F-03) unit test
+    パターン: inline IIFE、module import 無し — mitiru_drag.js / mitiru_debug.js のスタイルに合わせる。
 
-    Run:
+    走らせ方:
       python -m http.server 8765 --bind 127.0.0.1
       open http://localhost:8765/web/mitiru_runtime/tests/test_state.html
-      (or: node headless runner — see WEB_RUNTIME.md)
+      (または: node headless runner — WEB_RUNTIME.md を参照)
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -31,13 +31,13 @@
     const t = mitiru.test;
     const s = mitiru.state;
 
-    // Helper: clear store between tests by resetting known keys.
+    // Helper: 既知の key を reset してテスト間で store をクリアする。
     function reset(keys)
     {
         keys.forEach(function(k) { s.reset(k); });
     }
 
-    // ── 1. get / set basics ──────────────────────────────────────
+    // ── 1. get / set の基本 ──────────────────────────────────────
     t.case('set + get roundtrip (string value)', function()
     {
         s.set('t1_str', 'hello');
@@ -62,7 +62,7 @@
         t.assertEq(s.get('no_such_key_2'), undefined);
     });
 
-    // ── 2. immutability ──────────────────────────────────────────
+    // ── 2. immutability (不変性) ──────────────────────────────────────────
     t.case('stored object is frozen (immutability)', function()
     {
         s.set('t2_freeze', { score: 10 });
@@ -75,7 +75,7 @@
     {
         const original = { level: 5 };
         s.set('t2_orig', original);
-        original.level = 999;  // mutate original
+        original.level = 999;  // 元を変更
         t.assertEq(s.get('t2_orig').level, 5, 'store should hold independent copy');
         reset(['t2_orig']);
     });
@@ -138,7 +138,7 @@
         const received = [];
         s.set('t4_reset', 'present');
         s.subscribe('t4_reset', function(v) { received.push(v); });
-        // subscribe fires immediately with 'present'
+        // subscribe は即座に 'present' で発火する
         s.reset('t4_reset');
         t.assertEq(received, ['present', undefined]);
         t.assertEq(s.get('t4_reset'), undefined);
@@ -169,13 +169,13 @@
         const snap = s.snapshot();
         t.assertEq(snap.ss_x, 10);
         t.assertEq(snap.ss_y, 20);
-        // snapshot should not be the internal store
+        // snapshot は内部 store であってはいけない
         snap.ss_x = 999;
         t.assertEq(s.get('ss_x'), 10, 'snapshot mutation should not affect store');
         reset(['ss_x', 'ss_y']);
     });
 
-    // ── 6. input validation ──────────────────────────────────────
+    // ── 6. 入力 validation ──────────────────────────────────────
     t.case('set throws on empty key', function()
     {
         t.assertThrow(function() { s.set('', 'value'); });
@@ -191,11 +191,11 @@
         t.assertThrow(function() { s.subscribe('bad_sub', 'not-a-function'); });
     });
 
-    // ── 7. dispatch-based persistence (outside CEF — should reject) ──
+    // ── 7. dispatch ベースの永続化 (CEF 外 — reject するはず) ──
     t.case('save rejects outside CEF (no cefQuery)', function()
     {
         s.set('persist_key', 'data');
-        // dispatch may not exist in plain browser; either way this path should reject.
+        // 素の browser では dispatch が無い場合がある; いずれにせよこの経路は reject するはず。
         const p = s.save('persist_key', 'slot1');
         return p.then(
             function() { t.assert(false, 'should have rejected'); },

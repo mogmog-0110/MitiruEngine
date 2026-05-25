@@ -1,38 +1,88 @@
-// mitiru_host — minimal engine launcher for game-as-DLL modules (v0.2.0 step 3-4)
+// mitiru_host — game-as-DLL モジュール用の最小エンジンランチャ (v0.2.0 step 3-4)
 //
 // Argv:
-//   argv[0]  = host exe path
-//   argv[1]  = game DLL path (relative to cwd or absolute)
-//   argv[2+] = optional flags:
-//                --watch         poll the DLL file mtime, reload on change
-//                --url <url>     override CEF start URL (default: file:///./<dll_dir>/assets/scene.html)
+//   argv[0]  = host exe のパス
+//   argv[1]  = game DLL のパス (cwd 相対または絶対)
+//   argv[2+] = 任意フラグ:
+//                --watch         DLL ファイルの mtime を監視し変更時にリロード
+//                --url <url>     CEF 起動 URL を上書き (既定: file:///./<dll_dir>/assets/scene.html)
 //
-// Per ADR 0005 the host is the only piece that ever sees the engine
-// directly — game code lives entirely inside the DLL and communicates with
-// the engine through the C-only signal flow defined in ModuleApi.hpp.
+// ADR 0005: エンジンを直接見るのは host のみ。game コードは DLL 内に閉じ、
+// ModuleApi.hpp の C-only シグナルフロー経由でエンジンと通信する。
 //
-// `--watch` is the L3 hot reload mode (handoff north-star #3): file mtime is
-// polled every ~250ms; when it ticks, the engine swaps the DLL while keeping
-// HelloGameMemory* alive across the reload (state preserved).
+// `--watch` は L3 ホットリロード: mtime を約 250ms ごとに監視し、変化したら
+// HelloGameMemory* を生かしたまま DLL を差し替える (状態を保持)。
 //
-// Future: `mitiru-cli run [--watch]` will resolve project/module.toml to
-// build equivalent argv automatically.
+// 将来: `mitiru-cli run [--watch]` が project/module.toml を解決して
+// 等価な argv を自動構築する。
 
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <string_view>
 
 #include <mitiru/Mitiru.hpp>
+#include <mitiru/audio/AudioEngine.hpp>
+#include <mitiru/audio/MiniaudioEngine.hpp>
+#include <mitiru/replay/Player.hpp>
+#include <mitiru/replay/Recorder.hpp>
+
+#include <nlohmann/json.hpp>
 
 namespace
 {
 
-/// Anchor the process cwd to the directory containing argv[0] so relative
-/// paths in EngineConfig (cefStartUrl, etc.) resolve regardless of which
-/// shell launched the host.
+// FileAudioEngine — 論理 sound id を game の assets/audio/ 配下のファイルに解決し
+// miniaudio で再生する host 側 IAudioEngine (ADR 0008)。game は触れず SoundIntents を
+// 書くだけ。未知の id は無言で失敗させず stderr に出す。
+class FileAudioEngine final : public mitiru::audio::IAudioEngine
+{
+public:
+	explicit FileAudioEngine(std::filesystem::path baseDir)
+		: m_baseDir(std::move(baseDir)) {}
+
+	void playSound(std::string_view id) override { playById(id, 1.0f, /*music=*/false, false); }
+	void playSound(std::string_view id, float vol) override { playById(id, vol, false, false); }
+	void stopSound(std::string_view) override {}      // SE は撃ちっぱなし (id 別 stop は未対応)
+	void playMusic(std::string_view id) override { playById(id, 1.0f, /*music=*/true, true); }
+	void playMusic(std::string_view id, float vol, bool loop) override { playById(id, vol, true, loop); }
+	void stopMusic() override { m_engine.stopMusic(); }
+	void setVolume(float v) override { m_engine.setMasterVolume(v); }
+	[[nodiscard]] bool isPlaying(std::string_view) const override { return false; }
+
+private:
+	void playById(std::string_view id, float volume, bool music, bool loop)
+	{
+		for (const char* ext : {".wav", ".ogg", ".mp3"})
+		{
+			const auto p = m_baseDir / (std::string(id) + ext);
+			if (std::filesystem::exists(p))
+			{
+				if (music) { m_engine.playMusic(p.string(), volume, loop); }
+				else       { m_engine.playSoundVolume(p.string(), volume); }
+				return;
+			}
+		}
+		std::fprintf(stderr, "[mitiru_host] sound id not found under %s: %.*s\n",
+		             m_baseDir.string().c_str(),
+		             static_cast<int>(id.size()), id.data());
+	}
+
+	std::filesystem::path          m_baseDir;
+	mitiru::audio::MiniaudioEngine m_engine;
+};
+
+}  // namespace
+
+namespace
+{
+
+/// プロセスの cwd を argv[0] のディレクトリに固定する。EngineConfig 内の相対パス
+/// (cefStartUrl 等) を、どのシェルから起動しても解決できるようにするため。
 void anchorCwdToExeDir(const char* argv0)
 {
 	if (argv0 == nullptr) { return; }
@@ -43,8 +93,8 @@ void anchorCwdToExeDir(const char* argv0)
 	std::filesystem::current_path(canon.parent_path(), ec);
 }
 
-/// Build "file:///./<dll_dir>/assets/scene.html" from the DLL path so a
-/// game that puts its scene.html next to its DLL works out of the box.
+/// DLL パスから "file:///./<dll_dir>/assets/scene.html" を組み立てる。
+/// scene.html を DLL の隣に置いた game がそのまま動くようにするため。
 std::string defaultCefUrlFor(const std::filesystem::path& dllPath)
 {
 	std::error_code ec;
@@ -63,8 +113,11 @@ struct CliArgs
 	std::string           cefUrlOverride;
 	bool                  watch = false;
 	bool                  helpRequested = false;
-	int                   widthOverride  = 0;  // 0 = default 1280
-	int                   heightOverride = 0;  // 0 = default 720
+	int                   widthOverride  = 0;  // 0 = 既定 1280
+	int                   heightOverride = 0;  // 0 = 既定 720
+	std::string           recordPath;          // --record <f>: .mtrr を書き出す
+	std::string           replayPath;          // --replay-test <f>: ヘッドレス再実行
+	std::string           expectPath;          // --expect <f>: 最終 view.* 状態を検証
 };
 
 CliArgs parseArgs(int argc, char* argv[])
@@ -87,9 +140,21 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			if (i + 1 < argc) { out.cefUrlOverride = argv[++i]; }
 		}
+		else if (a == "--record")
+		{
+			if (i + 1 < argc) { out.recordPath = argv[++i]; }
+		}
+		else if (a == "--replay-test")
+		{
+			if (i + 1 < argc) { out.replayPath = argv[++i]; }
+		}
+		else if (a == "--expect")
+		{
+			if (i + 1 < argc) { out.expectPath = argv[++i]; }
+		}
 		else if (a == "--size")
 		{
-			// Format: WxH e.g. "800x500". Both must be positive ints.
+			// 形式: WxH 例 "800x500"。両方とも正の整数であること。
 			if (i + 1 < argc)
 			{
 				std::string s{argv[++i]};
@@ -112,14 +177,14 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.dllPath = a;
 		}
-		// Trailing positional after the DLL = legacy URL slot.
+		// DLL の後ろの位置引数 = 旧式 URL スロット。
 		else if (out.cefUrlOverride.empty())
 		{
 			out.cefUrlOverride = a;
 		}
 	}
 
-	// MITIRU_WATCH=1 env var = same as --watch.
+	// 環境変数 MITIRU_WATCH=1 は --watch と同じ。
 	if (const char* envWatch = std::getenv("MITIRU_WATCH");
 	    envWatch && envWatch[0] != '\0' && std::string{envWatch} != "0")
 	{
@@ -147,13 +212,13 @@ void printUsage()
 		"docs/adr/0005-host-game-c-abi-signal-flow.md).\n");
 }
 
-/// File watcher state — captured into the onFrameStart closure.
+/// ファイル監視状態 — onFrameStart クロージャにキャプチャされる。
 struct WatcherState
 {
 	std::filesystem::path           dllPath;
 	std::filesystem::file_time_type lastMtime{};
 	int                             pollTick   = 0;
-	int                             pollEvery  = 15;       // frames; ~250ms @60fps
+	int                             pollEvery  = 15;       // frame 数; 60fps で約 250ms
 	bool                            initialized = false;
 };
 
@@ -181,20 +246,18 @@ int main(int argc, char* argv[])
 	cfg.vsync           = true;
 	cfg.enableCef       = true;
 	cfg.skipDefaultFont = true;
-	// Mitiru Saturn canonical bg — silver gray (#c8c8c8). All
-	// engine-shipped surfaces (hello_game / launcher / companion) render
-	// their HUD on this silver base for unified Saturn identity.
-	// Games that want a different bg can override per-instance.
+	// Mitiru Saturn 標準背景 — シルバーグレー (#c8c8c8)。エンジン同梱の全 surface
+	// (hello_game / launcher / companion) はこのシルバー地に HUD を描き、Saturn の
+	// 統一感を出す。別の背景が欲しい game はインスタンス単位で上書きできる。
 	cfg.backgroundColor = sgc::Colorf{0.784f, 0.784f, 0.784f, 1.0f};
 	cfg.cefStartUrl     = !args.cefUrlOverride.empty()
 		? args.cefUrlOverride
 		: defaultCefUrlFor(args.dllPath);
 
-	// MITIRU_AUTOTEST_FRAMES allows extending the autotest window so CEF
-	// has enough time to load scene.html before the screenshot fires.
-	// applyAutoTestEnv() in Engine::run uses default 120 (~2s); on cold CEF
-	// boot scene.html may not have rendered yet. Bump to 600 (~10s) for
-	// smoke tests that need to verify the HUD overlay.
+	// MITIRU_AUTOTEST_FRAMES は autotest の猶予を延ばし、スクショ発火前に CEF が
+	// scene.html を読み込む時間を確保する。Engine::run の applyAutoTestEnv() は既定
+	// 120 (約 2s) だが、CEF コールドブート時はまだ scene.html が描けていないことがある。
+	// HUD オーバーレイを検証するスモークテストでは 600 (約 10s) に上げる。
 	if (const char* envFrames = std::getenv("MITIRU_AUTOTEST_FRAMES");
 	    envFrames && envFrames[0] != '\0')
 	{
@@ -211,14 +274,14 @@ int main(int argc, char* argv[])
 		catch (...) {}
 	}
 
-	// File watcher → DLL hot reload (L3 of the engine UX north star).
-	// The captured WatcherState lives in this stack frame; lifetime is fine
-	// because Engine::runModule blocks until the loop exits.
+	// ファイル監視 → DLL ホットリロード (エンジン UX 北極星の L3)。
+	// キャプチャした WatcherState はこのスタックフレームに置く。Engine::runModule が
+	// ループ終了までブロックするので lifetime は問題ない。
 	WatcherState watcher;
 	if (args.watch)
 	{
 		watcher.dllPath   = args.dllPath;
-		// Resolve absolute path so post-cwd-change reload still finds the file.
+		// 絶対パスに解決し、cwd 変更後のリロードでもファイルを見つけられるようにする。
 		std::error_code rc;
 		auto abs = std::filesystem::absolute(args.dllPath, rc);
 		if (!rc) { watcher.dllPath = abs; }
@@ -261,6 +324,117 @@ int main(int argc, char* argv[])
 	}
 
 	mitiru::Engine engine;
+
+	// SoundIntents (ADR 0008) を実際に鳴らすため audio engine を接続する。id は
+	// game の配置先 assets/audio/ ディレクトリ (DLL の隣) に対して解決する。
+	const auto audioDir =
+		std::filesystem::path(args.dllPath).parent_path() / "assets" / "audio";
+	engine.setAudioEngine(std::make_shared<FileAudioEngine>(audioDir));
+
+	// ── replay-as-test (軸 4) ──────────────────────────────────────────
+	// --record: 毎フレームの InputSnapshot と game が push した view.* 状態を .mtrr に
+	//   追記する。--replay-test: .mtrr をヘッドレスで再投入し DLL に bit-exact 再現させ、
+	//   最終 view.* 状態を検証する。
+	mitiru::replay::Recorder recorder;
+	mitiru::replay::Player   player;
+	std::uint32_t            frameIdx = 0;
+
+	if (!args.recordPath.empty())
+	{
+		if (!recorder.open(args.recordPath))
+		{
+			std::fprintf(stderr, "mitiru_host: cannot open record file: %s\n",
+			             args.recordPath.c_str());
+			return 2;
+		}
+		std::fprintf(stderr, "[mitiru_host] recording → %s\n", args.recordPath.c_str());
+		cfg.onModuleFrameRecorded =
+			[&recorder, &frameIdx, &engine](const mitiru::module::InputSnapshot& snap,
+			                                const mitiru::module::FrameIntents&)
+			{
+				std::string blob;
+				if (auto* store = engine.moduleStateStore()) { blob = store->snapshotJson(); }
+				recorder.record(frameIdx++, snap, blob.data(),
+				                static_cast<std::uint32_t>(blob.size()));
+			};
+	}
+
+	if (!args.replayPath.empty())
+	{
+		if (!player.open(args.replayPath))
+		{
+			std::fprintf(stderr, "mitiru_host: cannot open replay file: %s\n",
+			             args.replayPath.c_str());
+			return 2;
+		}
+		cfg.enableCef = false;   // ヘッドレス決定的再実行
+		cfg.headless  = true;
+		cfg.moduleInputOverride =
+			[&player, &engine](mitiru::module::InputSnapshot& snap) -> bool
+			{
+				mitiru::module::InputSnapshot rec{};
+				std::uint32_t fidx = 0;
+				if (!player.readNext(rec, fidx))   // state blob は破棄。入力のみ再投入する
+				{
+					engine.requestStop();   // EOF → ヘッドレスループを終了
+					return false;
+				}
+				snap = rec;
+				return true;
+			};
+	}
+
+	// record と replay はどちらも固定 dt (1/targetTps) で走らせ、dt 列を一致させる
+	// → sim が bit-exact 再現する (timer 駆動の状態も含む)。
+	if (!args.recordPath.empty() || !args.replayPath.empty())
+	{
+		cfg.deterministic = true;
+	}
+
 	engine.runModule(args.dllPath, cfg);
+
+	// Replay 検証: 観測可能な最終状態を出力する。--expect 指定時はキー単位で diff し、
+	// 不一致があれば非ゼロ終了する (CI リグレッションゲート)。
+	if (!args.replayPath.empty())
+	{
+		std::string finalState = "{}";
+		if (auto* store = engine.moduleStateStore()) { finalState = store->snapshotJson(2); }
+		std::fprintf(stdout, "%s\n", finalState.c_str());
+
+		if (!args.expectPath.empty())
+		{
+			std::ifstream ef(args.expectPath);
+			if (!ef.is_open())
+			{
+				std::fprintf(stderr, "mitiru_host: cannot open --expect file: %s\n",
+				             args.expectPath.c_str());
+				return 2;
+			}
+			nlohmann::json expected, actual;
+			try { ef >> expected; actual = nlohmann::json::parse(finalState); }
+			catch (const std::exception& e)
+			{
+				std::fprintf(stderr, "mitiru_host: replay assert: bad JSON: %s\n", e.what());
+				return 2;
+			}
+			int mismatches = 0;
+			for (auto it = expected.begin(); it != expected.end(); ++it)
+			{
+				if (!actual.contains(it.key()) || actual[it.key()] != it.value())
+				{
+					std::fprintf(stderr, "  MISMATCH %s: expected %s, got %s\n",
+					             it.key().c_str(), it.value().dump().c_str(),
+					             actual.contains(it.key()) ? actual[it.key()].dump().c_str() : "(absent)");
+					++mismatches;
+				}
+			}
+			if (mismatches > 0)
+			{
+				std::fprintf(stderr, "replay assert FAILED: %d mismatch(es)\n", mismatches);
+				return 1;
+			}
+			std::fprintf(stderr, "replay assert OK: final state matches --expect\n");
+		}
+	}
 	return 0;
 }

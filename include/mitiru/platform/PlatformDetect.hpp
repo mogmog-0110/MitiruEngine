@@ -43,7 +43,7 @@ enum class Arch : std::uint8_t
 	Unknown   ///< 未検出
 };
 
-// ── OS detection ────────────────────────────────────────────
+// ── OS 検出 ────────────────────────────────────────────
 
 /// @brief コンパイル時のOS種別を返す
 /// @return 現在のOS
@@ -68,7 +68,7 @@ enum class Arch : std::uint8_t
 #endif
 }
 
-// ── Architecture detection ──────────────────────────────────
+// ── アーキテクチャ検出 ──────────────────────────────────
 
 /// @brief コンパイル時のCPUアーキテクチャを返す
 /// @return 現在のアーキテクチャ
@@ -89,7 +89,7 @@ enum class Arch : std::uint8_t
 #endif
 }
 
-// ── Platform categories ─────────────────────────────────────
+// ── プラットフォーム分類 ─────────────────────────────────────
 
 /// @brief デスクトッププラットフォームか判定する
 /// @return Windows / Linux / macOS なら true
@@ -115,7 +115,7 @@ enum class Arch : std::uint8_t
 	return currentOS() == OS::Web;
 }
 
-// ── Name strings ────────────────────────────────────────────
+// ── 名前文字列 ────────────────────────────────────────────
 
 /// @brief OS名を文字列リテラルで返す
 /// @return OS名（null終端文字列）

@@ -1,19 +1,19 @@
 #pragma once
 
 /// @file StateStore.hpp
-/// @brief Typed two-way state bridge layered on top of MitiruCefBridge (G-05)
+/// @brief MitiruCefBridge の上に乗せる型付き双方向 state bridge (G-05)
 ///
-/// **Motivation.** The raw bridge (`cefQuery` + `executeJavaScript`) gives
-/// you message-passing but not a pattern. Every game re-invents:
-///   - "C++ stat changed, push the new value to JS so the HUD bar updates"
-///   - "JS button pressed, call into a typed C++ handler"
-///   - "C++ wants to fire a one-shot event (notification, animation trigger)"
+/// **動機。** 生の bridge (`cefQuery` + `executeJavaScript`) は message-passing
+/// を提供するがパターンは提供しない。どのゲームも以下を再発明する:
+///   - 「C++ の stat が変わったので新値を JS に push して HUD bar を更新する」
+///   - 「JS の button が押されたので型付き C++ handler を呼ぶ」
+///   - 「C++ が一回限りの event を発火したい (notification, animation trigger)」
 ///
-/// `StateStore` wraps all three. It is a thin, additive layer: existing
-/// `cefQuery` handlers keep working, `executeJavaScript` still exists. The
-/// JS companion lives in `web/mitiru_runtime/mitiru_cef_state.js`.
+/// `StateStore` はこの 3 つをまとめて包む。薄い追加 (additive) layer であり、
+/// 既存の `cefQuery` handler はそのまま動き、`executeJavaScript` も残る。
+/// JS 側の companion は `web/mitiru_runtime/mitiru_cef_state.js` にある。
 ///
-/// **Usage (C++ side):**
+/// **使い方 (C++ 側):**
 /// ```cpp
 ///   mitiru::cef::StateStore store(
 ///       [&](const std::string& js)          { ctx.executeJavaScript(js); },
@@ -34,10 +34,9 @@
 ///   window.mitiru.dispatch('command.select', { id: 'pushup' });
 /// ```
 ///
-/// Constructor is deliberately callback-based (not `MitiruCefContext&`) so
-/// the store is unit-testable without a running CEF browser. The engine
-/// exposes a factory helper `MitiruCefContext::makeStateStore()` below for
-/// the common case.
+/// constructor は意図的に callback ベース (`MitiruCefContext&` ではない) にして
+/// あり、CEF browser を起動せず store を unit test できる。よくあるケース向けに
+/// engine は factory helper `MitiruCefContext::makeStateStore()` を後述する。
 
 #include <fstream>
 #include <functional>
@@ -54,7 +53,7 @@ namespace mitiru::cef
 
 using json = ::nlohmann::json;
 
-/// @brief Typed C++↔JS reactive state + event bridge.
+/// @brief 型付き C++↔JS reactive state + event bridge。
 class StateStore
 {
 public:
@@ -74,11 +73,11 @@ public:
 	StateStore(const StateStore&)            = delete;
 	StateStore& operator=(const StateStore&) = delete;
 
-	// ── C++ → JS: retained key-value state ───────────────────────
+	// ── C++ → JS: 保持される key-value state ───────────────────────
 
-	/// @brief Store a value and broadcast to `window.mitiru.onStateChange`.
-	/// @details Any type nlohmann::json accepts via `json(value)` works:
-	///          bool, int, float, double, std::string, json object/array, etc.
+	/// @brief 値を保存し `window.mitiru.onStateChange` に broadcast する。
+	/// @details `json(value)` で nlohmann::json が受け付ける型は何でも可:
+	///          bool, int, float, double, std::string, json object/array 等。
 	template <typename T>
 	void set(std::string_view key, const T& value)
 	{
@@ -92,7 +91,7 @@ public:
 		pushJs("_onChange", keyJson(key), snapshot);
 	}
 
-	/// @brief Fetch the last-set value.
+	/// @brief 最後に set した値を取得する。
 	template <typename T>
 	[[nodiscard]] std::optional<T> get(std::string_view key) const
 	{
@@ -112,7 +111,7 @@ public:
 		}
 	}
 
-	/// @brief Raw JSON access (e.g. for logging / debug snapshots).
+	/// @brief 生 JSON へのアクセス (例: logging / debug snapshot 用)。
 	[[nodiscard]] std::optional<json> getJson(std::string_view key) const
 	{
 		std::lock_guard lock(m_mutex);
@@ -136,13 +135,13 @@ public:
 		m_state.clear();
 	}
 
-	/// @brief Re-push every retained key→value to the page.
-	/// @details Call this from an OnLoadEnd hook so a freshly loaded (or
-	///          hot-reloaded) page immediately receives all state that was
-	///          set before it finished loading.  Idempotent — the JS binder
-	///          is declarative and handles duplicate delivery safely.
+	/// @brief 保持中の全 key→value を page に再 push する。
+	/// @details OnLoadEnd hook から呼ぶことで、読み込み直後 (または hot-reload
+	///          直後) の page が、読み込み完了前に set されていた全 state を
+	///          即座に受け取れる。冪等 — JS binder は宣言的で重複配信を安全に
+	///          処理する。
 	///
-	/// **Usage:**
+	/// **使い方:**
 	/// ```cpp
 	///   ctx.setLoadEndCallback([&](std::string_view) {
 	///       store.replayRetainedState();
@@ -161,28 +160,44 @@ public:
 		}
 	}
 
-	// ── Debug snapshot: export / import view state ──────────────
+	// ── Debug snapshot: view state の export / import ──────────────
 
-	/// @brief Write all currently-retained key→value pairs to a JSON file.
+	/// @brief 現在保持中の全 key→value ペアを JSON ファイルに書き出す。
 	///
-	/// **Scope:** This snapshots the *observable pushed state* — the `view.*`
-	/// values (and any other keys) that were set via `set()` and are currently
-	/// retained in the store.  It does **not** capture the game's internal
-	/// `GameMemory`; that is opaque to the engine.  Full gameplay time-travel
-	/// requires the game to serialize `GameMemory` separately and coordinate
-	/// with this snapshot.  Use this for restoring what the UI *displays*.
+	/// **範囲:** これは *観測可能な push 済み state* を snapshot する — `set()`
+	/// で set され現在 store に保持されている `view.*` 値 (とその他の key)。
+	/// ゲーム内部の `GameMemory` は **取得しない**; それは engine から不透明。
+	/// 完全な gameplay time-travel には、ゲームが `GameMemory` を別途
+	/// serialize し、この snapshot と協調する必要がある。これは UI が
+	/// *表示している* ものの復元に使う。
 	///
-	/// File shape: a flat JSON object  `{ "view.hp": 80, "view.x": 120, ... }`
+	/// ファイル形状: フラットな JSON object  `{ "view.hp": 80, "view.x": 120, ... }`
 	///
-	/// @param path  File path to write (UTF-8, created or overwritten).
-	/// @return `true` on success; `false` on I/O error.
+	/// @param path  書き出し先ファイルパス (UTF-8、新規作成または上書き)。
+	/// @return 成功時 `true`; I/O error 時 `false`。
 	///
-	/// **Usage:**
+	/// **使い方:**
 	/// ```cpp
 	///   if (!store.saveSnapshot("debug/scene_snapshot.json"))
 	///       log::error("saveSnapshot failed");
 	/// ```
 	[[nodiscard]] bool saveSnapshot(const std::string& path) const
+	{
+		std::ofstream file(path, std::ios::out | std::ios::trunc);
+		if (!file.is_open())
+		{
+			return false;
+		}
+		file << snapshotJson(2);
+		return file.good();
+	}
+
+	/// @brief 保持中の全 key を JSON object 文字列に serialize する。
+	/// @details saveSnapshot() と同内容だが in-memory で返す — replay-as-test
+	///          (axis 4) が、ゲームの観測可能な push 済み `view.*` state を
+	///          per-frame / 最終 assertion blob として捕捉するのに使う。新たな
+	///          DLL ABI hook は不要 (ゲームは HUD 用に既にこれを push している)。
+	[[nodiscard]] std::string snapshotJson(int indent = -1) const
 	{
 		json doc = json::object();
 		{
@@ -192,30 +207,23 @@ public:
 				doc[key] = value;
 			}
 		}
-		std::ofstream file(path, std::ios::out | std::ios::trunc);
-		if (!file.is_open())
-		{
-			return false;
-		}
-		file << doc.dump(2);
-		return file.good();
+		return doc.dump(indent);
 	}
 
-	/// @brief Load a snapshot file written by `saveSnapshot()` and restore it.
+	/// @brief `saveSnapshot()` が書いた snapshot ファイルを読み込んで復元する。
 	///
-	/// Each key from the file is written into the retained map and immediately
-	/// re-pushed to the page via the same `_onChange` path that `set()` and
-	/// `replayRetainedState()` use.  This makes the UI reflect the snapshot
-	/// state instantly without a page reload.
+	/// ファイル内の各 key は保持 map に書き込まれ、`set()` や
+	/// `replayRetainedState()` と同じ `_onChange` 経路で即座に page へ再 push
+	/// される。これにより page reload なしで UI が snapshot state を即時反映する。
 	///
-	/// **Scope caveat:** loading a snapshot restores UI display state only.
-	/// It does NOT restore `GameMemory`.  If gameplay logic reads engine state
-	/// on the next frame, it will still see whatever `GameMemory` holds.
+	/// **範囲の注意:** snapshot の読み込みは UI 表示 state のみを復元する。
+	/// `GameMemory` は復元 **しない**。gameplay logic が次フレームで engine
+	/// state を読むと、`GameMemory` が保持している値をそのまま見る。
 	///
-	/// @param path  File path to read (UTF-8).
-	/// @return `true` on success; `false` on I/O or JSON parse error.
+	/// @param path  読み込むファイルパス (UTF-8)。
+	/// @return 成功時 `true`; I/O または JSON parse error 時 `false`。
 	///
-	/// **Usage:**
+	/// **使い方:**
 	/// ```cpp
 	///   if (!store.loadSnapshot("debug/scene_snapshot.json"))
 	///       log::error("loadSnapshot failed");
@@ -241,8 +249,8 @@ public:
 			return false;
 		}
 
-		// Snapshot the entries to push outside the lock (same pattern as
-		// replayRetainedState — JS dispatch must not run while mutex is held).
+		// lock の外で push するため entry を snapshot する (replayRetainedState
+		// と同パターン — mutex 保持中に JS dispatch を走らせてはいけない)。
 		std::unordered_map<std::string, json> loaded;
 		loaded.reserve(doc.size());
 		for (const auto& [key, value] : doc.items())
@@ -265,14 +273,14 @@ public:
 
 	// ── Interface schema ────────────────────────────────────────
 
-	/// @brief Returns a JSON description of the game's observable interface.
+	/// @brief ゲームの観測可能な interface を表す JSON 記述を返す。
 	///
-	/// Reports every state key currently retained in the store with a
-	/// best-effort type tag, and every action name registered via `onAction`.
-	/// If an `onActionFallback` is installed a sentinel entry `"*"` is
-	/// appended to the actions array to signal an open-ended forwarder.
+	/// store に現在保持中の全 state key を best-effort な type tag 付きで報告し、
+	/// `onAction` で登録された全 action 名を報告する。`onActionFallback` が
+	/// 設定されている場合、open-ended な forwarder を示す sentinel entry `"*"`
+	/// が actions 配列に追加される。
 	///
-	/// Returned shape:
+	/// 返る形状:
 	/// ```json
 	/// {
 	///   "stateKeys": [
@@ -282,11 +290,11 @@ public:
 	///   "actions": ["tap", "buyClick", "*"]
 	/// }
 	/// ```
-	/// Type tags: `"number"` `"string"` `"object"` `"array"` `"bool"` `"null"`
+	/// Type tag: `"number"` `"string"` `"object"` `"array"` `"bool"` `"null"`
 	///
-	/// Thread-safe: acquires the store mutex for the duration of the read.
+	/// Thread-safe: 読み取りの間 store mutex を取得する。
 	///
-	/// **Usage:**
+	/// **使い方:**
 	/// ```cpp
 	///   std::cout << store.schemaJson() << '\n';
 	/// ```
@@ -322,22 +330,22 @@ public:
 		            {"actions",   std::move(actions)}}.dump();
 	}
 
-	// ── C++ → JS: one-shot event ────────────────────────────────
+	// ── C++ → JS: 一回限りの event ────────────────────────────────
 
-	/// @brief Fire a named event to `window.mitiru.on(name, ...)` listeners.
-	/// @details Not retained — late-subscribing listeners miss it. For
-	///          retained values use `set()`.
+	/// @brief 名前付き event を `window.mitiru.on(name, ...)` listener に発火する。
+	/// @details 保持されない — 後から subscribe した listener は取りこぼす。
+	///          保持される値には `set()` を使う。
 	void emit(std::string_view eventName, const json& payload = json::object())
 	{
 		pushJs("_onEvent", keyJson(eventName), payload.dump());
 	}
 
-	// ── JS → C++: typed action dispatch ─────────────────────────
+	// ── JS → C++: 型付き action dispatch ─────────────────────────
 
-	/// @brief Register a handler for `window.mitiru.dispatch(action, payload)`.
-	/// @details The handler runs on the CEF UI thread (same threading rules
-	///          as MitiruCefBridge handlers). Return a json value to respond;
-	///          return `{}` or `json()` for fire-and-forget.
+	/// @brief `window.mitiru.dispatch(action, payload)` 用の handler を登録する。
+	/// @details handler は CEF UI thread 上で走る (MitiruCefBridge handler と
+	///          同じ threading ルール)。応答するには json 値を返す;
+	///          fire-and-forget なら `{}` または `json()` を返す。
 	void onAction(std::string_view action, ActionFn fn)
 	{
 		std::lock_guard lock(m_mutex);
@@ -350,26 +358,26 @@ public:
 		m_actions.erase(std::string(action));
 	}
 
-	/// @brief Catch-all handler for actions that have no specific `onAction()`
-	///        registration. Receives `(action_name, payload)` and may return
-	///        any json (or `{}` for fire-and-forget).
+	/// @brief 個別の `onAction()` 登録が無い action 向けの catch-all handler。
+	///        `(action_name, payload)` を受け取り、任意の json (または
+	///        fire-and-forget なら `{}`) を返してよい。
 	/// @details
-	/// Used by the engine in module-mode (ADR 0005): the DLL doesn't get to
-	/// register C++ handlers from across the DLL boundary, so the engine
-	/// installs a fallback that queues incoming actions as `ActionEvent`s
-	/// into next frame's `InputSnapshot`. This lets the DLL react to any
-	/// action name without engine knowing the list ahead of time.
+	/// engine が module-mode (ADR 0005) で使う: DLL は DLL boundary 越しに
+	/// C++ handler を登録できないため、engine は到来した action を次フレームの
+	/// `InputSnapshot` に `ActionEvent` として queue する fallback を設置する。
+	/// これにより engine が事前に一覧を知らなくても DLL が任意の action 名に
+	/// 反応できる。
 	void onActionFallback(FallbackActionFn fn)
 	{
 		std::lock_guard lock(m_mutex);
 		m_fallbackAction = std::move(fn);
 	}
 
-	// ── internal (public for testing) ───────────────────────────
+	// ── internal (test 用に public) ───────────────────────────
 
-	/// @brief Drive a dispatch from a `{action, payload}` JSON blob.
-	/// @details Called from the "state.dispatch" cefQuery handler. Exposed
-	///          here so unit tests can exercise routing without CEF.
+	/// @brief `{action, payload}` JSON blob から dispatch を駆動する。
+	/// @details "state.dispatch" cefQuery handler から呼ばれる。CEF 無しでも
+	///          unit test が routing を試せるようここで公開している。
 	std::string dispatchFromJson(std::string_view payloadJson) const
 	{
 		json parsed;
@@ -442,7 +450,7 @@ private:
 		{
 			return;
 		}
-		/// Guard against pages that loaded before mitiru_cef_state.js.
+		/// mitiru_cef_state.js より前に読み込まれた page に対するガード。
 		std::string code;
 		code.reserve(128 + keyJsonArg.size() + valueJsonArg.size());
 		code += "if (window.mitiru && window.mitiru._state) { window.mitiru._state.";
@@ -455,7 +463,7 @@ private:
 		m_executeJs(code);
 	}
 
-	/// @brief Serialize a key as a JSON string literal (handles quoting + escapes).
+	/// @brief key を JSON 文字列リテラルとして serialize する (quote + escape 処理)。
 	static std::string keyJson(std::string_view key)
 	{
 		return json(std::string(key)).dump();

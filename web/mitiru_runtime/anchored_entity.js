@@ -1,22 +1,22 @@
 /*!
- * anchored_entity.js — Anchor-based entity positioning for MitiruEngine (Mode B)
+ * anchored_entity.js — MitiruEngine の anchor ベース entity 配置 (Mode B)
  *
- * Sprite bbox and hitbox bbox both derive from a single anchor point.
- * Moving the anchor moves both simultaneously; independent offsets are
- * explicit and documented on the struct itself.
+ * sprite bbox と hitbox bbox はどちらも単一の anchor 点から導出される。
+ * anchor を動かすと両方が同時に動く; 個別の offset は struct 自身に
+ * 明示的に記述・ドキュメント化される。
  *
  * ── Shape ───────────────────────────────────────────────────────────────────
- *   anchor        {x, y}           World-space position (single source of truth)
- *   spriteOffset  {x, y, w, h}     Relative to anchor (may be negative)
- *   hitboxOffset  {x, y, w, h}     Relative to anchor (may be negative)
- *   name          string           Debug / inspector label
+ *   anchor        {x, y}           World 座標の位置 (single source of truth)
+ *   spriteOffset  {x, y, w, h}     anchor からの相対 (負も可)
+ *   hitboxOffset  {x, y, w, h}     anchor からの相対 (負も可)
+ *   name          string           debug / inspector ラベル
  *
  * ── API ─────────────────────────────────────────────────────────────────────
- *   getSpriteWorldRect()            → {x, y, w, h}  always derived from anchor
- *   getHitboxWorldRect()            → {x, y, w, h}  always derived from anchor
- *   setAnchor(x, y)                 moves anchor; both rects follow
+ *   getSpriteWorldRect()            → {x, y, w, h}  常に anchor から導出
+ *   getHitboxWorldRect()            → {x, y, w, h}  常に anchor から導出
+ *   setAnchor(x, y)                 anchor を移動; 両 rect が追従する
  *   getAnchorWorld()                → {x, y}
- *   toJSON()                        → plain object (serialisable)
+ *   toJSON()                        → plain object (serialise 可能)
  *   static fromJSON(obj)            → AnchoredEntity
  *
  * ── Inspector ───────────────────────────────────────────────────────────────
@@ -24,9 +24,8 @@
  */
 
 /**
- * Anchor-based entity.  All positional data flows through `anchor`; offsets
- * are immutable descriptors of visual and collision shape relative to that
- * single origin.
+ * anchor ベースの entity。全ての位置データは `anchor` を経由する; offset は
+ * その単一原点に対する visual / collision shape の immutable な記述子である。
  */
 export class AnchoredEntity {
 	/**
@@ -61,7 +60,7 @@ export class AnchoredEntity {
 	}
 
 	/**
-	 * Returns the world-space bounding rect of the sprite, derived from anchor.
+	 * anchor から導出した sprite の world 座標 bounding rect を返す。
 	 * @returns {{x: number, y: number, w: number, h: number}}
 	 */
 	getSpriteWorldRect() {
@@ -74,7 +73,7 @@ export class AnchoredEntity {
 	}
 
 	/**
-	 * Returns the world-space bounding rect of the hitbox, derived from anchor.
+	 * anchor から導出した hitbox の world 座標 bounding rect を返す。
 	 * @returns {{x: number, y: number, w: number, h: number}}
 	 */
 	getHitboxWorldRect() {
@@ -87,7 +86,7 @@ export class AnchoredEntity {
 	}
 
 	/**
-	 * Moves the anchor. Both sprite and hitbox world rects follow automatically.
+	 * anchor を移動する。sprite と hitbox の world rect は自動で追従する。
 	 * @param {number} x
 	 * @param {number} y
 	 */
@@ -99,7 +98,7 @@ export class AnchoredEntity {
 	}
 
 	/**
-	 * Returns the current world-space anchor position.
+	 * 現在の world 座標 anchor 位置を返す。
 	 * @returns {{x: number, y: number}}
 	 */
 	getAnchorWorld() {
@@ -107,7 +106,7 @@ export class AnchoredEntity {
 	}
 
 	/**
-	 * Serialises to a plain object suitable for JSON.stringify.
+	 * JSON.stringify に適した plain object に serialise する。
 	 * @returns {Object}
 	 */
 	toJSON() {
@@ -120,7 +119,7 @@ export class AnchoredEntity {
 	}
 
 	/**
-	 * Deserialises from a plain object produced by toJSON().
+	 * toJSON() が生成した plain object から deserialise する。
 	 * @param {Object} obj
 	 * @returns {AnchoredEntity}
 	 */
@@ -137,12 +136,12 @@ export class AnchoredEntity {
 // ── Inspector adapter ────────────────────────────────────────────────────────
 
 /**
- * Converts an AnchoredEntity to the shape expected by the inspector overlay.
+ * AnchoredEntity を inspector overlay が期待する shape に変換する。
  *
  * Shape: { name: string, spriteRect: {x,y,w,h}, hitboxRect: {x,y,w,h}, anchor: {x,y} }
  *
- * If inspector_overlay.js is not yet present, store the returned object in an
- * array and pass it to the overlay's registerEntities() once it loads.
+ * inspector_overlay.js が未ロードなら、戻り値の object を配列に溜めておき、
+ * overlay がロードされ次第 registerEntities() に渡す。
  *
  * @param {AnchoredEntity} anchored
  * @returns {{ name: string, spriteRect: {x:number,y:number,w:number,h:number}, hitboxRect: {x:number,y:number,w:number,h:number}, anchor: {x:number,y:number} }}
@@ -156,7 +155,7 @@ export function toInspectorEntry(anchored) {
 	};
 }
 
-// ── Internal helpers ─────────────────────────────────────────────────────────
+// ── 内部ヘルパー ─────────────────────────────────────────────────────────
 
 /** @param {{x:number,y:number,w:number,h:number}} r */
 function isFiniteRect(r) {

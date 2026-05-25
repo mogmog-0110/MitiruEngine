@@ -1,4 +1,4 @@
-// Detail header for mitiru::Engine - do not include directly; included via core/Engine.hpp
+// mitiru::Engine の detail header — 直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
 #include <cstdlib>
@@ -9,7 +9,7 @@
 #include <mitiru/platform/win32/Win32Window.hpp>
 #endif
 
-// ── Run loop / batch execution out-of-class definitions ───────────────────
+// ── run ループ / batch 実行の class 外定義 ───────────────────
 
 MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 {
@@ -31,7 +31,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 
 	initialize(config);
 
-	/// axis 4 — deterministic replay recording.
+	/// axis 4 — deterministic replay の記録。
 	/// MITIRU_RECORD=<path> が設定されていれば InputRecorder を起動し、
 	/// 終了時に ~Engine() で saveToFile する。
 	if (const char* recPath = std::getenv("MITIRU_RECORD"); recPath && *recPath)
@@ -40,7 +40,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		m_inputRecorder.beginRecording(/*seed=*/0, /*tps=*/60);
 	}
 
-	/// axis 4 — deterministic replay playback.
+	/// axis 4 — deterministic replay の再生。
 	/// MITIRU_REPLAY=<path> が設定されていれば ReplayData を読み込んで
 	/// InputReplayer に load する。以後 applyInjectedInput が毎フレーム
 	/// replayer.getCommandsForFrame(clock.frameNumber()) を inject する。
@@ -54,7 +54,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		}
 		catch (...)
 		{
-			// File missing / malformed: leave replay disabled and run normally.
+			// file が無い / 壊れている場合: replay を無効のまま通常起動する。
 		}
 	}
 
@@ -169,7 +169,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		[](void* arg) {
 			static_cast<Engine*>(arg)->tickOneFrame();
 		},
-		this, 0, 1); // 0 = use requestAnimationFrame, 1 = simulate_infinite_loop
+		this, 0, 1); // 0 = requestAnimationFrame を使う, 1 = simulate_infinite_loop
 #else
 	while (!m_window->shouldClose() && !m_shouldStop.load())
 	{

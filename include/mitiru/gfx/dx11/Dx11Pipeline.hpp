@@ -190,7 +190,7 @@ private:
 			break;
 		case BlendMode::Screen:
 			// Screen: result = 1 - (1-src)*(1-dst) = src + dst - src*dst
-			// DX11 approx: src*(1) + dst*(1-src)
+			// DX11 近似: src*(1) + dst*(1-src)
 			rt.BlendEnable = TRUE;
 			rt.SrcBlend = D3D11_BLEND_ONE;
 			rt.DestBlend = D3D11_BLEND_INV_SRC_COLOR;
@@ -200,8 +200,8 @@ private:
 			rt.BlendOpAlpha = D3D11_BLEND_OP_ADD;
 			break;
 		case BlendMode::Overlay:
-			// Overlay: complex per-pixel op; approximate with soft-light-like blend
-			// src*dst + src*(1-dst) ≈ src * (dst + 1-dst) but weighted
+			// Overlay: ピクセル単位の複雑な演算。soft-light 風ブレンドで近似する
+			// src*dst + src*(1-dst) ≈ src * (dst + 1-dst) を重み付けで近似
 			rt.BlendEnable = TRUE;
 			rt.SrcBlend = D3D11_BLEND_ONE;
 			rt.DestBlend = D3D11_BLEND_SRC_COLOR;
@@ -211,7 +211,7 @@ private:
 			rt.BlendOpAlpha = D3D11_BLEND_OP_ADD;
 			break;
 		case BlendMode::ColorDodge:
-			// ColorDodge: dst / (1-src); approximate with additive + alpha
+			// ColorDodge: dst / (1-src)。加算 + alpha で近似する
 			rt.BlendEnable = TRUE;
 			rt.SrcBlend = D3D11_BLEND_SRC_ALPHA;
 			rt.DestBlend = D3D11_BLEND_ONE;
@@ -247,11 +247,11 @@ private:
 		desc.FrontCounterClockwise = FALSE;
 		desc.DepthClipEnable = TRUE;
 		desc.ScissorEnable = scissorEnable ? TRUE : FALSE;
-		// MSAA enabled on the swap chain → enable multisample rasterization
-		// so triangle edges get covered-sample averaging.
+		// MSAA enabled on the swap chain → マルチサンプルラスタライズを有効化し
+		// 三角形のエッジをカバレッジサンプル平均で処理する。
 		desc.MultisampleEnable = TRUE;
-		// Smooth lines at pixel edges (has no effect when MultisampleEnable is TRUE,
-		// but kept for non-MSAA fallback paths).
+		// ピクセルエッジのライン平滑化（MultisampleEnable が TRUE のときは効果なし、
+		// 非MSAA フォールバック経路のために残している）。
 		desc.AntialiasedLineEnable = TRUE;
 
 		HRESULT hr = device->CreateRasterizerState(

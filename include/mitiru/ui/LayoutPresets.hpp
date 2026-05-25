@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file LayoutPresets.hpp
-/// @brief Pre-defined layout computations for common screen arrangements.
+/// @brief よくある画面構成のための定義済み layout 計算。
 ///
-/// Each nested struct provides a static `compute(screenW, screenH, ...)` method
-/// that returns a filled-in layout descriptor. Consumers just read the rects.
+/// 各 nested struct は static な `compute(screenW, screenH, ...)` を提供し、
+/// 値を埋めた layout descriptor を返す。consumer は rect を読むだけでよい。
 ///
 /// @code
 ///   auto hud = HUDLayout::compute(1280, 720);
@@ -22,25 +22,25 @@ namespace mitiru::ui::LayoutPresets {
 
 // ─── Menu Layout ──────────────────────────────────────────────────────────
 
-/// @brief Standard menu screen layout (title, list area, footer).
+/// @brief 標準的なメニュー画面の layout (title, list area, footer)。
 struct MenuLayout
 {
-	sgc::Rectf title;       ///< Title text area (centered, top).
-	sgc::Rectf hint;        ///< Hint text area (below title).
-	sgc::Rectf listArea;    ///< Scrollable list region.
-	sgc::Rectf pageInfo;    ///< Page counter (top-right).
-	sgc::Rectf footer;      ///< Footer bar at bottom.
-	sgc::Rectf scrollTrack; ///< Scrollbar track (right of listArea).
-	float marginX   = 0.0f; ///< Horizontal margin.
-	float headerH   = 0.0f; ///< Header height (title + hint).
-	float footerH   = 0.0f; ///< Footer height.
+	sgc::Rectf title;       ///< タイトル文字領域 (中央寄せ・上部)。
+	sgc::Rectf hint;        ///< ヒント文字領域 (title の下)。
+	sgc::Rectf listArea;    ///< スクロール可能なリスト領域。
+	sgc::Rectf pageInfo;    ///< ページカウンタ (右上)。
+	sgc::Rectf footer;      ///< 最下部の footer bar。
+	sgc::Rectf scrollTrack; ///< Scrollbar track (listArea の右)。
+	float marginX   = 0.0f; ///< 水平マージン。
+	float headerH   = 0.0f; ///< ヘッダ高さ (title + hint)。
+	float footerH   = 0.0f; ///< footer 高さ。
 	float listWidth  = 0.0f;
 	float listHeight = 0.0f;
 
-	/// @brief Compute layout for the given screen size.
-	/// @param screenW Screen width in pixels.
-	/// @param screenH Screen height in pixels.
-	/// @param margin  Horizontal margin (default 60).
+	/// @brief 指定された画面サイズに対する layout を計算する。
+	/// @param screenW 画面幅 (pixel)。
+	/// @param screenH 画面高さ (pixel)。
+	/// @param margin  水平マージン (default 60)。
 	[[nodiscard]] static MenuLayout compute(
 		float screenW, float screenH, float margin = 60.0f) noexcept
 	{
@@ -66,26 +66,26 @@ struct MenuLayout
 
 // ─── VN Layout ────────────────────────────────────────────────────────────
 
-/// @brief Visual-novel screen layout (message window, name plate, choices, characters).
+/// @brief Visual-novel 画面の layout (message window, name plate, choices, characters)。
 struct VNLayout
 {
-	sgc::Rectf messageWindow;    ///< Main message box.
-	sgc::Rectf textArea;         ///< Text region inside message window (with padding).
-	sgc::Rectf namePlate;        ///< Speaker name plate (above message window).
-	sgc::Rectf autoIndicator;    ///< AUTO mode pill (above message window, right).
-	sgc::Rectf waitIndicator;    ///< Click-wait icon position.
-	sgc::Rectf choiceArea;       ///< Region for choice buttons.
-	sgc::Rectf backlogPanel;     ///< Full-screen backlog overlay.
-	float characterLeft   = 0.0f; ///< X ratio for left character.
-	float characterCenter = 0.0f; ///< X ratio for center character.
-	float characterRight  = 0.0f; ///< X ratio for right character.
-	float characterBottomY = 0.0f; ///< Y where characters stand (above message window).
+	sgc::Rectf messageWindow;    ///< メインの message box。
+	sgc::Rectf textArea;         ///< message window 内部の文字領域 (padding あり)。
+	sgc::Rectf namePlate;        ///< 話者の name plate (message window の上)。
+	sgc::Rectf autoIndicator;    ///< AUTO mode の pill (message window の上・右)。
+	sgc::Rectf waitIndicator;    ///< クリック待ちアイコンの位置。
+	sgc::Rectf choiceArea;       ///< 選択肢ボタンの領域。
+	sgc::Rectf backlogPanel;     ///< 全画面の backlog overlay。
+	float characterLeft   = 0.0f; ///< 左キャラの X 比率。
+	float characterCenter = 0.0f; ///< 中央キャラの X 比率。
+	float characterRight  = 0.0f; ///< 右キャラの X 比率。
+	float characterBottomY = 0.0f; ///< キャラが立つ Y (message window の上)。
 
 	[[nodiscard]] static VNLayout compute(float screenW, float screenH) noexcept
 	{
 		VNLayout l;
 
-		// Message window: 140px tall, 10px from bottom, 20px side margins.
+		// Message window: 高さ 140px、下から 10px、左右 20px マージン。
 		constexpr float winH = 140.0f;
 		constexpr float winMarginBottom = 10.0f;
 		constexpr float winMarginX = 20.0f;
@@ -95,26 +95,26 @@ struct VNLayout
 		l.messageWindow = {winMarginX, winY, winW, winH};
 		l.textArea      = {winMarginX + 24.0f, winY + 20.0f, winW - 48.0f, winH - 40.0f};
 
-		// Name plate: above the message window.
+		// Name plate: message window の上。
 		l.namePlate = {winMarginX + 16.0f, winY - 30.0f, winW * 0.4f, 28.0f};
 
-		// AUTO indicator: above message window, right side.
+		// AUTO indicator: message window の上・右側。
 		l.autoIndicator = {winMarginX + winW - 82.0f, winY - 30.0f, 64.0f, 24.0f};
 
-		// Wait indicator: bottom-right of message window.
+		// Wait indicator: message window の右下。
 		l.waitIndicator = {winMarginX + winW - 22.0f, winY + winH - 16.0f, 8.0f, 8.0f};
 
-		// Choices: centered, starting at 25% of screen height.
+		// Choices: 中央寄せ、画面高さの 25% から開始。
 		l.choiceArea = {(screenW - 400.0f) * 0.5f, screenH * 0.25f, 400.0f, screenH * 0.4f};
 
-		// Backlog: full-screen with 10px margin.
+		// Backlog: 10px マージンの全画面。
 		l.backlogPanel = {10.0f, 10.0f, screenW - 20.0f, screenH - 20.0f};
 
-		// Character positions (X ratios, multiplied by screenW to get center X).
+		// キャラ位置 (X 比率。screenW を掛けて中心 X を得る)。
 		l.characterLeft   = 0.25f;
 		l.characterCenter = 0.50f;
 		l.characterRight  = 0.75f;
-		l.characterBottomY = winY - 10.0f; // slightly above message window
+		l.characterBottomY = winY - 10.0f; // message window の少し上
 
 		return l;
 	}
@@ -122,13 +122,13 @@ struct VNLayout
 
 // ─── Two-Column Layout ───────────────────────────────────────────────────
 
-/// @brief Two-column showcase layout for widget demos.
+/// @brief widget demo 用の 2 カラムショーケース layout。
 struct TwoColumnLayout
 {
-	sgc::Rectf header;   ///< Full-width header bar.
-	sgc::Rectf left;     ///< Left column content area.
-	sgc::Rectf right;    ///< Right column content area.
-	float contentY = 0.0f; ///< Y where content begins (below header).
+	sgc::Rectf header;   ///< 全幅の header bar。
+	sgc::Rectf left;     ///< 左カラムのコンテンツ領域。
+	sgc::Rectf right;    ///< 右カラムのコンテンツ領域。
+	float contentY = 0.0f; ///< コンテンツの開始 Y (header の下)。
 
 	[[nodiscard]] static TwoColumnLayout compute(
 		float screenW, float screenH, float headerH = 36.0f,
@@ -149,21 +149,21 @@ struct TwoColumnLayout
 
 // ─── HUD Layout ───────────────────────────────────────────────────────────
 
-/// @brief Game HUD layout (top bar, bottom bar, minimap, dialogue, center).
+/// @brief ゲームの HUD layout (top bar, bottom bar, minimap, dialogue, center)。
 struct HUDLayout
 {
-	sgc::Rectf topBar;     ///< HP / MP / score bar at top.
-	sgc::Rectf bottomBar;  ///< Actions / items bar at bottom.
-	sgc::Rectf minimap;    ///< Minimap area (top-right corner).
-	sgc::Rectf dialogue;   ///< Dialogue text area (bottom, above bottomBar).
-	sgc::Rectf center;     ///< Remaining game viewport area.
+	sgc::Rectf topBar;     ///< 上部の HP / MP / score bar。
+	sgc::Rectf bottomBar;  ///< 下部の Actions / items bar。
+	sgc::Rectf minimap;    ///< minimap 領域 (右上隅)。
+	sgc::Rectf dialogue;   ///< dialogue 文字領域 (下部・bottomBar の上)。
+	sgc::Rectf center;     ///< 残りのゲーム viewport 領域。
 
-	/// @brief Compute HUD layout for the given screen size.
-	/// @param screenW  Screen width.
-	/// @param screenH  Screen height.
-	/// @param topH     Top bar height.
-	/// @param bottomH  Bottom bar height.
-	/// @param minimapSize Minimap side length.
+	/// @brief 指定された画面サイズに対する HUD layout を計算する。
+	/// @param screenW  画面幅。
+	/// @param screenH  画面高さ。
+	/// @param topH     top bar の高さ。
+	/// @param bottomH  bottom bar の高さ。
+	/// @param minimapSize minimap の一辺の長さ。
 	[[nodiscard]] static HUDLayout compute(
 		float screenW, float screenH,
 		float topH = 40.0f, float bottomH = 120.0f,
@@ -177,14 +177,14 @@ struct HUDLayout
 		l.minimap   = {screenW - minimapSize - margin, topH + margin,
 		               minimapSize, minimapSize};
 
-		// Dialogue: centered horizontally, above the bottom bar.
+		// Dialogue: 水平方向に中央寄せ、bottom bar の上。
 		constexpr float dialogueH = 100.0f;
 		const float dialogueW     = screenW * 0.7f;
 		l.dialogue = {(screenW - dialogueW) * 0.5f,
 		              screenH - bottomH - dialogueH - margin,
 		              dialogueW, dialogueH};
 
-		// Center: everything between top and bottom bars, excluding minimap column.
+		// Center: top bar と bottom bar の間すべて。minimap カラムは除く。
 		l.center = {0.0f, topH, screenW - minimapSize - margin * 2.0f,
 		            screenH - topH - bottomH};
 
@@ -194,22 +194,22 @@ struct HUDLayout
 
 // ─── Split Layout (editor-like) ──────────────────────────────────────────
 
-/// @brief Editor-like split panel layout (left sidebar, right panel, top, bottom, center).
+/// @brief editor 風の split panel layout (left sidebar, right panel, top, bottom, center)。
 struct SplitLayout
 {
-	sgc::Rectf left;    ///< Left sidebar.
-	sgc::Rectf right;   ///< Right panel.
-	sgc::Rectf top;     ///< Top toolbar / menu bar.
-	sgc::Rectf bottom;  ///< Bottom status bar.
-	sgc::Rectf center;  ///< Main content area.
+	sgc::Rectf left;    ///< 左 sidebar。
+	sgc::Rectf right;   ///< 右 panel。
+	sgc::Rectf top;     ///< 上部の toolbar / menu bar。
+	sgc::Rectf bottom;  ///< 下部の status bar。
+	sgc::Rectf center;  ///< メインのコンテンツ領域。
 
-	/// @brief Compute editor-like split layout.
-	/// @param screenW  Screen width.
-	/// @param screenH  Screen height.
-	/// @param leftW    Left sidebar width.
-	/// @param rightW   Right panel width.
-	/// @param topH     Top bar height.
-	/// @param bottomH  Bottom bar height.
+	/// @brief editor 風の split layout を計算する。
+	/// @param screenW  画面幅。
+	/// @param screenH  画面高さ。
+	/// @param leftW    左 sidebar の幅。
+	/// @param rightW   右 panel の幅。
+	/// @param topH     top bar の高さ。
+	/// @param bottomH  bottom bar の高さ。
 	[[nodiscard]] static SplitLayout compute(
 		float screenW, float screenH,
 		float leftW = 250.0f, float rightW = 300.0f,
@@ -229,17 +229,17 @@ struct SplitLayout
 
 // ─── Dashboard Layout (grid of cards) ────────────────────────────────────
 
-/// @brief Dashboard layout: a responsive grid of equal-height cards.
+/// @brief Dashboard layout: 等高 card の responsive な grid。
 struct DashboardLayout
 {
-	std::vector<sgc::Rectf> cards; ///< Card rects, row-major order.
+	std::vector<sgc::Rectf> cards; ///< card の rect 群 (行優先順)。
 
-	/// @brief Compute dashboard card positions.
-	/// @param screenW    Screen width.
-	/// @param screenH    Screen height.
-	/// @param cols       Number of columns.
-	/// @param cardHeight Height of each card.
-	/// @param gap        Gap between cards.
+	/// @brief dashboard の card 位置を計算する。
+	/// @param screenW    画面幅。
+	/// @param screenH    画面高さ。
+	/// @param cols       カラム数。
+	/// @param cardHeight 各 card の高さ。
+	/// @param gap        card 間の隙間。
 	[[nodiscard]] static DashboardLayout compute(
 		float screenW, float screenH,
 		int cols, float cardHeight, float gap = 16.0f) noexcept

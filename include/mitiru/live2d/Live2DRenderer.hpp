@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file Live2DRenderer.hpp
-/// @brief OpenGL renderer setup for Live2D Cubism Framework
-/// @details Manages CubismFramework lifecycle, view/projection matrices,
-///          and texture loading via stb_image.
+/// @brief Live2D Cubism Framework 向けの OpenGL renderer setup
+/// @details CubismFramework の lifecycle、view/projection matrix、
+///          stb_image 経由の texture 読み込みを管理する。
 
 #ifdef MITIRU_HAS_CUBISM
 
@@ -31,10 +31,10 @@
 namespace mitiru::live2d
 {
 
-/// @brief Read a file into a malloc'd buffer
-/// @param path File path (absolute or relative)
-/// @param outSize Output: file size in bytes
-/// @return Buffer (caller frees via ReleaseBytes), or nullptr on failure
+/// @brief ファイルを malloc した buffer に読み込む
+/// @param path file path (絶対 or 相対)
+/// @param outSize 出力: ファイルサイズ (byte)
+/// @return buffer (呼び出し側が ReleaseBytes で解放)、失敗時は nullptr
 inline Csm::csmByte* ReadFileBytes(const char* path, Csm::csmSizeInt* outSize)
 {
     std::FILE* file = std::fopen(path, "rb");
@@ -53,17 +53,17 @@ inline Csm::csmByte* ReadFileBytes(const char* path, Csm::csmSizeInt* outSize)
     return buf;
 }
 
-/// @brief File loading utility for Cubism SDK
-/// @details Used as CubismFramework LoadFileFunction. Handles both absolute
-///          paths (model files) and relative paths (framework shader files).
-///          For "FrameworkShaders/..." paths, searches the SDK's shader directory.
+/// @brief Cubism SDK 向けのファイル読み込みユーティリティ
+/// @details CubismFramework の LoadFileFunction として使う。絶対 path
+///          (model ファイル) と相対 path (framework shader ファイル) の両方を扱う。
+///          "FrameworkShaders/..." path は SDK の shader directory を探索する。
 inline Csm::csmByte* LoadFileAsBytes(const std::string filePath, Csm::csmSizeInt* outSize)
 {
-    // Try as-is first (works for absolute paths and correct working directory)
+    // まずそのまま試す (絶対 path や正しい working directory では成功する)
     auto* buf = ReadFileBytes(filePath.c_str(), outSize);
     if (buf) return buf;
 
-    // Fallback: resolve "FrameworkShaders/X" to the SDK's Standard shader dir
+    // fallback: "FrameworkShaders/X" を SDK の Standard shader dir に解決する
     const std::string prefix = "FrameworkShaders/";
     if (filePath.compare(0, prefix.size(), prefix) == 0)
     {
@@ -81,14 +81,14 @@ inline Csm::csmByte* LoadFileAsBytes(const std::string filePath, Csm::csmSizeInt
     return nullptr;
 }
 
-/// @brief Release bytes allocated by LoadFileAsBytes
+/// @brief LoadFileAsBytes で確保した byte を解放する
 inline void ReleaseBytes(Csm::csmByte* byteData)
 {
     std::free(byteData);
 }
 
-/// @brief Load a texture from file and create an OpenGL texture
-/// @param filePath Path to the image file
+/// @brief ファイルから texture を読み込み OpenGL texture を生成する
+/// @param filePath 画像ファイルへの path
 /// @return OpenGL texture ID
 inline GLuint LoadTextureFromFile(const std::string& filePath)
 {
@@ -109,7 +109,7 @@ inline GLuint LoadTextureFromFile(const std::string& filePath)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    // Premultiply alpha
+    // alpha を premultiply する
     const int pixelCount = width * height;
     for (int i = 0; i < pixelCount; ++i)
     {
@@ -129,16 +129,16 @@ inline GLuint LoadTextureFromFile(const std::string& filePath)
     return textureId;
 }
 
-/// @brief Manages CubismFramework lifecycle and rendering matrices
-/// @details RAII wrapper that calls StartUp/Initialize on construction
-///          and Dispose/CleanUp on destruction.
+/// @brief CubismFramework の lifecycle と描画 matrix を管理する
+/// @details 構築時に StartUp/Initialize、破棄時に Dispose/CleanUp を呼ぶ
+///          RAII wrapper。
 class Live2DRenderer
 {
 public:
-    /// @brief Initialize CubismFramework with allocator and options
+    /// @brief allocator と option で CubismFramework を初期化する
     Live2DRenderer()
     {
-        // Option must persist — CubismFramework stores the pointer, not a copy
+        // option は生存させ続ける — CubismFramework は copy でなく pointer を保持する
         m_option.LogFunction = nullptr;
         m_option.LoggingLevel = Csm::CubismFramework::Option::LogLevel_Off;
         m_option.LoadFileFunction = LoadFileAsBytes;
@@ -156,35 +156,35 @@ public:
         m_viewMatrix.SetMaxScreenRect(-2.0f, 2.0f, -2.0f, 2.0f);
     }
 
-    /// @brief Dispose and clean up CubismFramework
+    /// @brief CubismFramework を Dispose / clean up する
     ~Live2DRenderer()
     {
         Csm::CubismFramework::Dispose();
         Csm::CubismFramework::CleanUp();
     }
 
-    // Non-copyable, non-movable
+    // copy / move 禁止
     Live2DRenderer(const Live2DRenderer&) = delete;
     Live2DRenderer& operator=(const Live2DRenderer&) = delete;
     Live2DRenderer(Live2DRenderer&&) = delete;
     Live2DRenderer& operator=(Live2DRenderer&&) = delete;
 
-    /// @brief Get the view matrix
+    /// @brief view matrix を取得する
     [[nodiscard]] Csm::CubismViewMatrix& viewMatrix() noexcept
     {
         return m_viewMatrix;
     }
 
-    /// @brief Get the projection matrix
+    /// @brief projection matrix を取得する
     [[nodiscard]] Csm::CubismMatrix44& projectionMatrix() noexcept
     {
         return m_projection;
     }
 
-    /// @brief Set projection for given window dimensions and model width
-    /// @param windowWidth Window width in pixels
-    /// @param windowHeight Window height in pixels
-    /// @param modelWidth Model canvas width for scaling
+    /// @brief 与えられた window 寸法と model 幅で projection を設定する
+    /// @param windowWidth window 幅 (pixel)
+    /// @param windowHeight window 高さ (pixel)
+    /// @param modelWidth scaling 用の model canvas 幅
     void setProjection(float windowWidth, float windowHeight, float modelWidth)
     {
         const float aspect = windowWidth / windowHeight;
@@ -199,8 +199,8 @@ public:
         }
     }
 
-    /// @brief Get the combined view-projection matrix
-    /// @return Combined matrix (projection * view)
+    /// @brief 合成済みの view-projection matrix を取得する
+    /// @return 合成 matrix (projection * view)
     [[nodiscard]] Csm::CubismMatrix44 getViewProjectionMatrix()
     {
         Csm::CubismMatrix44 vp;

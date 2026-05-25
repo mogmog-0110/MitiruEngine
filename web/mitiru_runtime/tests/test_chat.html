@@ -2,7 +2,7 @@
 <meta charset="utf-8">
 <title>mitiru_chat.js tests</title>
 <!--
-    test_chat.html — mitiru.chat (F-10) unit tests
+    test_chat.html — mitiru.chat (F-10) unit test
 -->
 <link rel="stylesheet" href="../mitiru_base.css">
 <link rel="stylesheet" href="../mitiru_tokens.css">
@@ -54,7 +54,7 @@
 		t.assertEq(threw, true);
 	});
 
-	// ── 2. send bubbles ──────────────────────────────────────────
+	// ── 2. send で bubble ──────────────────────────────────────────
 	t.case('send creates incoming bubble with speaker + text', function()
 	{
 		const s = makeSurface();
@@ -135,7 +135,7 @@
 		cleanup(s);
 	});
 
-	// ── 3. typing indicator ──────────────────────────────────────
+	// ── 3. typing インジケータ ──────────────────────────────────────
 	t.case('typing appends 3-dot indicator with heroine', function()
 	{
 		const s = makeSurface();
@@ -149,7 +149,7 @@
 		cleanup(s);
 	});
 
-	// ── 4. choice prompt ─────────────────────────────────────────
+	// ── 4. choice の選択肢 ─────────────────────────────────────────
 	t.case('choice renders one button per option and fires onPick', function()
 	{
 		const s = makeSurface();
@@ -167,9 +167,9 @@
 		btns[1].click();
 		t.assertEq(picked.opt.id, 'n');
 		t.assertEq(picked.idx,    1);
-		// Auto-dismiss after pick.
+		// pick 後に自動で dismiss。
 		t.assertEq(s.el.querySelector('.mitiru-chat-choice'), null);
-		// dismiss() is idempotent (already removed).
+		// dismiss() は冪等 (既に削除済み)。
 		dismiss();
 		cleanup(s);
 	});
@@ -251,10 +251,10 @@
 	t.case('send does NOT force-scroll when user scrolled back', function()
 	{
 		const s = makeSurface();
-		// Fill + scroll away from the bottom.
+		// 埋めて、最下部から離れる方向に scroll する。
 		for (let i = 0; i < 30; ++i) { chat.send(s.handle, { text: 'line ' + i }); }
 		s.el.scrollTop = 0;
-		// Synthesise a scroll event so the handle notices.
+		// handle が気づくよう scroll event を合成する。
 		s.el.dispatchEvent(new Event('scroll'));
 		const topBefore = s.el.scrollTop;
 		chat.send(s.handle, { text: 'new!' });
@@ -284,7 +284,7 @@
 		if (s.el.parentNode) { s.el.parentNode.removeChild(s.el); }
 	});
 
-	// ── drive ────────────────────────────────────────────────────
+	// ── 実行 ────────────────────────────────────────────────────
 	mitiru.test.run();
 })();
 </script>

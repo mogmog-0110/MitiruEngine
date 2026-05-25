@@ -8,8 +8,8 @@
 
 /// @file AdvancedEffects.hpp
 /// @brief SSR, Parallax, SSS, Tessellation, OIT, Compute Particles
-/// @note This header is EXPERIMENTAL. APIs and HLSL implementations are incomplete
-///       and may not produce correct results. Requires MITIRU_ENABLE_EXPERIMENTAL_RENDER.
+/// @note このヘッダーは EXPERIMENTAL。API と HLSL 実装は未完成で、
+///       正しい結果を出さない可能性がある。MITIRU_ENABLE_EXPERIMENTAL_RENDER が必要。
 
 #ifdef _WIN32
 
@@ -140,7 +140,7 @@ struct ParallaxConfig
 	int maxLayers = 32;
 };
 
-/// @brief Embed this function in any pixel shader that needs parallax mapping
+/// @brief parallax mapping が必要なピクセルシェーダーにこの関数を埋め込む
 constexpr std::string_view PARALLAX_HLSL_FUNCTION = R"hlsl(
 float2 ParallaxOcclusionMapping(
 	float2 uv, float3 viewDirTS, Texture2D heightMap,
@@ -465,7 +465,7 @@ public:
 private:
 	void createBlendStates(ID3D11Device* dev)
 	{
-		// Accumulation blend: additive on RT0, multiplicative on RT1
+		// Accumulation blend: RT0 は加算、RT1 は乗算
 		D3D11_BLEND_DESC bd = {};
 		bd.IndependentBlendEnable = TRUE;
 		auto& rt0 = bd.RenderTarget[0];
@@ -483,7 +483,7 @@ private:
 		if (FAILED(dev->CreateBlendState(&bd, m_oitBlend.GetAddressOf())))
 			throw std::runtime_error("OIT: CreateBlendState (accum) failed");
 
-		// Composite blend: standard alpha blend
+		// Composite blend: 標準の alpha blend
 		D3D11_BLEND_DESC cd = {};
 		auto& c0 = cd.RenderTarget[0];
 		c0.BlendEnable = TRUE;

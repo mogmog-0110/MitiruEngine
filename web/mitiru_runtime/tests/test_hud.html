@@ -2,14 +2,14 @@
 <meta charset="utf-8">
 <title>mitiru_hud.js tests</title>
 <!--
-    test_hud.html — mitiru.hud (F-08) unit tests
-    Pattern: inline IIFE, no module imports — matches test_state.html style.
+    test_hud.html — mitiru.hud (F-08) unit test
+    パターン: inline IIFE、module import 無し — test_state.html のスタイルに合わせる。
 
-    Run:
+    走らせ方:
       python -m http.server 8765 --bind 127.0.0.1
       open http://localhost:8765/web/mitiru_runtime/tests/test_hud.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -35,9 +35,9 @@
     // ── helpers ──────────────────────────────────────────────────
 
     /**
-     * Create a minimal detached container for each test.
-     * Returns a <div> appended to document.body so DOM methods work,
-     * but all HUD elements are cleaned up by hud.unmount() in teardown.
+     * 各テスト用に最小限の独立 container を作る。
+     * DOM メソッドが動くよう document.body に append した <div> を返すが、
+     * HUD 要素はすべて teardown の hud.unmount() で片付けられる。
      */
     function makeContainer()
     {
@@ -46,20 +46,20 @@
         return el;
     }
 
-    /** Tear down HUD and remove the test container from the DOM. */
+    /** HUD を片付け、テスト container を DOM から取り除く。 */
     function teardown(container)
     {
         hud.unmount();
         if (container && container.parentNode) { container.parentNode.removeChild(container); }
     }
 
-    /** Minimal slot descriptor. */
+    /** 最小限の slot 記述子。 */
     function slot(id, renderFn)
     {
         return { id: id, render: renderFn };
     }
 
-    // ── 1. mount creates HUD element ─────────────────────────────
+    // ── 1. mount は HUD 要素を作る ─────────────────────────────
     t.case('mount creates [data-mitiru-hud] element inside container', function()
     {
         var c = makeContainer();
@@ -69,7 +69,7 @@
         teardown(c);
     });
 
-    // ── 2. slots are rendered with correct data-hud-slot attrs ───
+    // ── 2. slot が正しい data-hud-slot 属性で描画される ───
     t.case('mount creates slot elements with data-hud-slot attribute', function()
     {
         var c = makeContainer();
@@ -84,7 +84,7 @@
         teardown(c);
     });
 
-    // ── 3. string render → textContent ───────────────────────────
+    // ── 3. 文字列 render → textContent ───────────────────────────
     t.case('string render result is assigned to textContent', function()
     {
         var c = makeContainer();
@@ -129,7 +129,7 @@
         teardown(c);
     });
 
-    // ── 6. stateKeys subscription — rerenders on state change ────
+    // ── 6. stateKeys の subscription — state 変化で再描画 ────
     t.case('slot rerenders when subscribed state key changes', function()
     {
         s.reset('hud_day');
@@ -149,19 +149,19 @@
         teardown(c);
     });
 
-    // ── 7. stateKeys default [] — static snapshot, no subscriptions
+    // ── 7. stateKeys 既定 [] — static snapshot、subscription 無し
     t.case('stateKeys default [] mounts with no subscriptions (static snapshot)', function()
     {
         s.set('hud_static', 'initial');
         var c = makeContainer();
         hud.mount(c, {
-            // no stateKeys
+            // stateKeys 無し
             slots: [ slot('x', function() { return 'static'; }) ],
         });
         var slotEl = c.querySelector('[data-hud-slot="x"]');
         t.assertEq(slotEl.textContent, 'static');
 
-        // No subscriptions were registered, so changing state does nothing.
+        // subscription を登録していないので、state 変更は何もしない。
         s.set('hud_static', 'changed');
         t.assertEq(slotEl.textContent, 'static', 'no re-render without subscription');
 
@@ -169,7 +169,7 @@
         teardown(c);
     });
 
-    // ── 8. double-mount protection ────────────────────────────────
+    // ── 8. double-mount 保護 ────────────────────────────────
     t.case('mounting twice unmounts previous instance first', function()
     {
         var c = makeContainer();
@@ -185,7 +185,7 @@
         teardown(c);
     });
 
-    // ── 9. unmount removes element and stops updates ──────────────
+    // ── 9. unmount は要素を取り除き更新を止める ──────────────
     t.case('unmount removes HUD element and stops state-driven rerenders', function()
     {
         s.set('hud_umount', 10);
@@ -200,7 +200,7 @@
         hud.unmount();
         t.assertEq(c.querySelector('[data-mitiru-hud]'), null, 'root removed from DOM');
 
-        // State changes after unmount must not throw or update the detached element.
+        // unmount 後の state 変更は throw も、切り離した要素の更新もしてはいけない。
         t.assertNoThrow(function() { s.set('hud_umount', 99); });
         t.assertEq(slotEl.textContent, '10', 'detached slot unchanged after unmount');
 
@@ -208,7 +208,7 @@
         if (c.parentNode) { c.parentNode.removeChild(c); }
     });
 
-    // ── 10. hud.slots() returns live descriptors ──────────────────
+    // ── 10. hud.slots() は live な記述子を返す ──────────────────
     t.case('hud.slots() returns [{id, el}] for each mounted slot', function()
     {
         var c = makeContainer();
@@ -226,10 +226,10 @@
         teardown(c);
     });
 
-    // ── 11. graceful degrade when mitiru.state absent ─────────────
+    // ── 11. mitiru.state 不在時の graceful degrade ─────────────
     t.case('mount works gracefully when mitiru.state is temporarily unavailable', function()
     {
-        // Temporarily hide mitiru.state to simulate F-03 not loaded.
+        // F-03 が未読み込みの状態を模擬するため mitiru.state を一時的に隠す。
         var saved = mitiru.state;
         try
         {
@@ -252,7 +252,7 @@
         }
     });
 
-    // ── 12. hud.update() forces synchronous re-render ─────────────
+    // ── 12. hud.update() は同期的な再描画を強制 ─────────────
     t.case('hud.update() re-renders all slots from current state', function()
     {
         s.set('hud_update', 'v1');
@@ -263,19 +263,19 @@
         });
         t.assertEq(c.querySelector('[data-hud-slot="u"]').textContent, 'v1');
 
-        // Direct store manipulation without triggering subscriber (not the normal path,
-        // but update() should still pick up the current value).
-        s.set('hud_update', 'v2');  // this fires subscription normally
+        // subscriber を起動せず store を直接操作 (通常経路ではないが、
+        // update() は現在値を拾うはず)。
+        s.set('hud_update', 'v2');  // これは通常 subscription を発火させる
         t.assertEq(c.querySelector('[data-hud-slot="u"]').textContent, 'v2');
 
-        hud.update();               // explicit force
+        hud.update();               // 明示的に強制
         t.assertEq(c.querySelector('[data-hud-slot="u"]').textContent, 'v2');
 
         s.reset('hud_update');
         teardown(c);
     });
 
-    // ── 13. mount throws on invalid container ─────────────────────
+    // ── 13. mount は不正な container で throw ─────────────────────
     t.case('mount throws Error when container is null or non-element', function()
     {
         t.assertThrow(function() { hud.mount(null, {}); });

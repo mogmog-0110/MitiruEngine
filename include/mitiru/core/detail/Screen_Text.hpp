@@ -1,5 +1,5 @@
 #pragma once
-// Detail header for mitiru::Screen — do not include directly; included via core/Screen.hpp
+// mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
 
 inline void mitiru::Screen::setTrueTypeFont(void* font, TtDrawFunc drawFn, TtMeasureFunc measureFn) noexcept
 {
@@ -127,16 +127,15 @@ inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_v
 	const float innerH = rect.height() - padY * 2.0f;
 	if (innerW <= 0.0f || innerH <= 0.0f) return;
 
-	// CRITICAL: do NOT proportional-shrink fontSize when text overflows.
-	// Reducing 16 → 11.3 lands on non-atlas fractions (atlas is 32px so
-	// only 32 / 24 / 16 / 12 / 8 render crisply) — the result is smudgy,
-	// unreadable text in narrow windows. Instead, keep fontSize and let
-	// the text get truncated with an ellipsis (mirrors drawTextClipped
-	// semantics). This keeps SDF rendering on atlas-aligned fractions
-	// and preserves legibility at any window width.
+	// CRITICAL: text が overflow しても fontSize を比例縮小しては「いけない」。
+	// 16 → 11.3 のような縮小は non-atlas な端数に落ちる (atlas は 32px なので
+	// 32 / 24 / 16 / 12 / 8 だけが鮮明に描ける) — 結果は狭い window で滲んだ
+	// 読めない text になる。代わりに fontSize は保ち、ellipsis で text を
+	// truncate させる (drawTextClipped の semantics を踏襲)。これで SDF rendering を
+	// atlas-aligned な端数に保ち、任意の window 幅で可読性を維持する。
 	const auto fullSize = measureText(text, fontSize);
 	std::string_view drawable = text;
-	std::string ellipsisBuf;  // owns truncated form when ellipsis applied
+	std::string ellipsisBuf;  // ellipsis 適用時に truncate された形を保持する
 	sgc::Vec2f size = fullSize;
 	if (fullSize.x > innerW && !text.empty())
 	{
@@ -160,7 +159,7 @@ inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_v
 		}
 		else
 		{
-			// Rect too small even for "..." — drop to single "."
+			// rect が "..." すら入らないほど狭い — 単一の "." に落とす
 			ellipsisBuf = ".";
 			drawable = ellipsisBuf;
 			size = measureText(drawable, fontSize);

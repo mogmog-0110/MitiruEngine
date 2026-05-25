@@ -1,33 +1,33 @@
 #pragma once
 
 /// @file BridgeViewPush.hpp
-/// @brief Thin adapter that routes key-value state and one-shot events to the
-///        `view.*` push channel defined in docs/BRIDGE_API_CONTRACT.md.
+/// @brief key-value state と one-shot event を docs/BRIDGE_API_CONTRACT.md で
+///        定義された `view.*` push channel に流す薄い adapter。
 ///
-/// **Motivation.**
-/// Each bridge subsystem (HUD, dialogue, transition, …) shares the naming
-/// convention  `view.<subsystem>.<key>`.  Without a shared helper every bridge
-/// must manually concatenate the prefix — a maintenance hazard when the prefix
-/// spec changes.  `BridgeViewPush` encodes the prefix once per instance and
-/// provides a minimal `set` / `emit` surface.
+/// **動機。**
+/// 各 bridge subsystem (HUD, dialogue, transition, …) は命名規約
+/// `view.<subsystem>.<key>` を共有する。共通 helper が無いと各 bridge が
+/// prefix を手で連結する必要があり、prefix の spec が変わると保守の落とし穴になる。
+/// `BridgeViewPush` は prefix を instance ごとに一度だけ encode し、最小限の
+/// `set` / `emit` 表面のみを提供する。
 ///
-/// **Design.**
-/// - `StateStore` is NOT included here.  Callers inject two `std::function`
-///   sinks so the helper works in any test or host environment without CEF.
-/// - The full channel key `"view.<subsystem>.<key>"` is assembled on each
-///   `set`/`emit` call.  One `std::string` allocation per call is acceptable
-///   for non-hot-path bridge traffic; if a subsystem needs zero-alloc dispatch
-///   it should use `StateStore` directly in its hot path.
-/// - `m_keyPrefix` (`"view.<subsystem>."`) is constructed once in the ctor so
-///   the repeated prefix portion is never recomputed.
+/// **設計。**
+/// - `StateStore` はここで include しない。呼び出し元が 2 つの `std::function`
+///   sink を inject することで、CEF 無しのあらゆる test / host 環境でも動作する。
+/// - 完全な channel key `"view.<subsystem>.<key>"` は各 `set`/`emit` 呼び出しで
+///   組み立てる。呼び出しごとの `std::string` 1 回の allocation は、hot path で
+///   ない bridge traffic では許容できる。zero-alloc dispatch が必要な subsystem は
+///   hot path で `StateStore` を直接使うべき。
+/// - `m_keyPrefix` (`"view.<subsystem>."`) は ctor で一度だけ構築するので、
+///   繰り返される prefix 部分は再計算されない。
 ///
-/// **Usage:**
+/// **使用例:**
 /// ```cpp
-/// // Wiring up to a real StateStore (no nlohmann/json needed here):
+/// // 実際の StateStore への配線 (ここでは nlohmann/json 不要):
 /// BridgeViewPush hud(
 ///     "hud",
 ///     [&store](std::string_view k, std::string_view v)
-///         { store.set(k, store.json::parse(v)); },   // or a typed helper
+///         { store.set(k, store.json::parse(v)); },   // または typed helper
 ///     [&store](std::string_view k, std::string_view v)
 ///         { store.emit(k, nlohmann::json::parse(v)); }
 /// );
@@ -36,8 +36,8 @@
 /// hud.emit("damage", "{\"x\":1}"); // → store.emit("view.hud.damage", …)
 /// ```
 ///
-/// The recommended glue (pre-parsed JSON variant) is shown in
-/// docs/BRIDGE_API_CONTRACT.md §3.
+/// 推奨される glue (事前 parse 済み JSON variant) は
+/// docs/BRIDGE_API_CONTRACT.md §3 を参照。
 
 #include <functional>
 #include <string>
@@ -46,34 +46,34 @@
 namespace mitiru::bridge
 {
 
-/// @brief Routes `set`/`emit` calls to the canonical `view.<sub>.<key>` channel.
+/// @brief `set`/`emit` 呼び出しを正規の `view.<sub>.<key>` channel に流す。
 ///
-/// Thread-safety: The sinks themselves must be thread-safe if called from
-/// multiple threads; `BridgeViewPush` adds no synchronization of its own.
+/// Thread-safety: 複数 thread から呼ぶ場合、sink 自体が thread-safe である必要が
+/// ある。`BridgeViewPush` 自身は同期を一切追加しない。
 class BridgeViewPush
 {
 public:
-    /// Sink called by `set(key, jsonValue)`.
-    /// @param key       Full channel key, e.g. `"view.hud.hp"`.
-    /// @param jsonValue JSON-encoded value string, e.g. `"80"` or `"\"red\""`.
+    /// `set(key, jsonValue)` から呼ばれる sink。
+    /// @param key       完全な channel key (例: `"view.hud.hp"`)。
+    /// @param jsonValue JSON-encoded された値文字列 (例: `"80"` や `"\"red\""`)。
     using SetSink  = std::function<void(std::string_view key,
                                         std::string_view jsonValue)>;
 
-    /// Sink called by `emit(key, jsonPayload)`.
-    /// @param key         Full channel key, e.g. `"view.hud.damage"`.
-    /// @param jsonPayload JSON-encoded payload string, e.g. `"{\"x\":1}"`.
+    /// `emit(key, jsonPayload)` から呼ばれる sink。
+    /// @param key         完全な channel key (例: `"view.hud.damage"`)。
+    /// @param jsonPayload JSON-encoded された payload 文字列 (例: `"{\"x\":1}"`)。
     using EmitSink = std::function<void(std::string_view key,
                                         std::string_view jsonPayload)>;
 
-    /// @brief Construct with a subsystem name and the two push sinks.
+    /// @brief subsystem 名と 2 つの push sink で構築する。
     ///
-    /// @param subsystem  Short subsystem identifier, e.g. `"hud"`, `"dialog"`,
-    ///                   `"transition"`.  An empty string is accepted and yields
-    ///                   keys of the form `"view..<key>"`.
-    /// @param setSink    Invoked by `set()`.  Must remain valid for the lifetime
-    ///                   of this object.
-    /// @param emitSink   Invoked by `emit()`.  Must remain valid for the
-    ///                   lifetime of this object.
+    /// @param subsystem  短い subsystem 識別子 (例: `"hud"`, `"dialog"`,
+    ///                   `"transition"`)。空文字列も受け付け、その場合
+    ///                   `"view..<key>"` 形式の key になる。
+    /// @param setSink    `set()` から呼ばれる。この object の lifetime の間、
+    ///                   有効であり続ける必要がある。
+    /// @param emitSink   `emit()` から呼ばれる。この object の lifetime の間、
+    ///                   有効であり続ける必要がある。
     BridgeViewPush(std::string    subsystem,
                    SetSink        setSink,
                    EmitSink       emitSink)
@@ -83,23 +83,23 @@ public:
         , m_emitSink(std::move(emitSink))
     {}
 
-    // Non-copyable; sinks are move-only-friendly but copying the bound
-    // lambdas can silently duplicate captured state.  Move is fine.
+    // copy 不可。sink は move には適するが、束縛した lambda を copy すると
+    // captured state を黙って複製しかねない。move なら問題ない。
     BridgeViewPush(const BridgeViewPush&)            = delete;
     BridgeViewPush& operator=(const BridgeViewPush&) = delete;
     BridgeViewPush(BridgeViewPush&&)                 = default;
     BridgeViewPush& operator=(BridgeViewPush&&)      = default;
 
-    /// @brief Push a retained key-value state update.
+    /// @brief 保持される key-value state 更新を push する。
     ///
-    /// Calls `setSink("view.<subsystem>.<key>", jsonValue)`.
+    /// `setSink("view.<subsystem>.<key>", jsonValue)` を呼ぶ。
     ///
-    /// @param key       Short key within the subsystem, e.g. `"hp"`.
-    /// @param jsonValue Pre-serialised JSON string for the value.
+    /// @param key       subsystem 内の短い key (例: `"hp"`)。
+    /// @param jsonValue 値の事前 serialize 済み JSON 文字列。
     ///
-    /// @note One `std::string` allocation is incurred per call to build the
-    ///       full channel key.  Acceptable for bridge traffic; avoid in tight
-    ///       loops.
+    /// @note 完全な channel key を組み立てるため、呼び出しごとに `std::string`
+    ///       1 回の allocation が発生する。bridge traffic では許容できるが、
+    ///       tight loop では避けること。
     void set(std::string_view key, std::string_view jsonValue)
     {
         if (m_setSink)
@@ -108,12 +108,12 @@ public:
         }
     }
 
-    /// @brief Fire a one-shot event.
+    /// @brief one-shot event を発火する。
     ///
-    /// Calls `emitSink("view.<subsystem>.<key>", jsonPayload)`.
+    /// `emitSink("view.<subsystem>.<key>", jsonPayload)` を呼ぶ。
     ///
-    /// @param key         Short event key, e.g. `"damage"`.
-    /// @param jsonPayload Pre-serialised JSON payload string.
+    /// @param key         短い event key (例: `"damage"`)。
+    /// @param jsonPayload 事前 serialize 済み JSON payload 文字列。
     void emit(std::string_view key, std::string_view jsonPayload)
     {
         if (m_emitSink)
@@ -122,23 +122,23 @@ public:
         }
     }
 
-    /// @brief The subsystem name passed at construction.
+    /// @brief 構築時に渡された subsystem 名。
     [[nodiscard]] std::string_view subsystem() const noexcept
     {
         return m_subsystem;
     }
 
-    /// @brief The computed key prefix, e.g. `"view.hud."`.
+    /// @brief 算出された key prefix (例: `"view.hud."`)。
     ///
-    /// Exposed primarily for testing and logging; callers should not need it
-    /// in production code.
+    /// 主に test / logging 用に公開している。production code で呼び出し元が
+    /// 必要とすることはないはず。
     [[nodiscard]] std::string_view keyPrefix() const noexcept
     {
         return m_keyPrefix;
     }
 
 private:
-    /// Prepend `m_keyPrefix` to `key` and return the full channel key.
+    /// `key` の前に `m_keyPrefix` を付けて完全な channel key を返す。
     [[nodiscard]] std::string buildKey(std::string_view key) const
     {
         std::string full;
@@ -148,8 +148,8 @@ private:
         return full;
     }
 
-    std::string m_subsystem;   ///< e.g. "hud"
-    std::string m_keyPrefix;   ///< e.g. "view.hud." — pre-computed in ctor
+    std::string m_subsystem;   ///< 例: "hud"
+    std::string m_keyPrefix;   ///< 例: "view.hud." — ctor で事前計算
     SetSink     m_setSink;
     EmitSink    m_emitSink;
 };

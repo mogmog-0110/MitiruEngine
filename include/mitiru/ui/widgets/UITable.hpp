@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UITable.hpp
-/// @brief Data table widget with sortable columns, selectable rows, and virtual scrolling.
+/// @brief sortable な column / 選択可能な row / virtual scrolling を持つ data table widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -16,7 +16,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Column text alignment.
+/// @brief column のテキスト alignment。
 enum class TableAlign : std::uint8_t
 {
 	Left,
@@ -24,54 +24,54 @@ enum class TableAlign : std::uint8_t
 	Right
 };
 
-/// @brief Column definition for a UITable.
+/// @brief UITable の column 定義。
 struct UITableColumn
 {
-	std::string header;                    ///< Column header text.
-	std::string key;                       ///< Data key for this column.
-	float width = 100.0f;                  ///< Current column width.
-	float minWidth = 40.0f;               ///< Minimum column width.
-	bool sortable = true;                  ///< Whether column can be sorted.
-	bool resizable = true;                 ///< Whether column can be resized.
-	TableAlign align = TableAlign::Left;   ///< Text alignment within the column.
-	std::string headerImageKey;            ///< Optional header icon image.
+	std::string header;                    ///< column の header テキスト。
+	std::string key;                       ///< この column の data key。
+	float width = 100.0f;                  ///< 現在の column 幅。
+	float minWidth = 40.0f;               ///< column の最小幅。
+	bool sortable = true;                  ///< column を sort 可能か。
+	bool resizable = true;                 ///< column を resize 可能か。
+	TableAlign align = TableAlign::Left;   ///< column 内のテキスト alignment。
+	std::string headerImageKey;            ///< 任意の header icon 画像。
 };
 
-/// @brief Row data for a UITable.
+/// @brief UITable の row data。
 struct UITableRow
 {
-	std::vector<std::string> cells;        ///< Cell values (one per column).
-	std::any data;                         ///< Arbitrary user data.
-	bool selected = false;                 ///< Selection state.
-	bool enabled = true;                   ///< Whether the row is interactive.
+	std::vector<std::string> cells;        ///< cell の値 (column ごとに 1 つ)。
+	std::any data;                         ///< 任意の user data。
+	bool selected = false;                 ///< 選択状態。
+	bool enabled = true;                   ///< row が操作可能か。
 };
 
-/// @brief Configuration for creating a UITable.
+/// @brief UITable 生成用の設定。
 struct UITableConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
 	std::vector<UITableColumn> columns;
-	float rowHeight = 28.0f;               ///< Height of each data row.
-	float headerHeight = 32.0f;            ///< Height of the header row.
-	std::string headerBackgroundImageKey;   ///< Header background image.
-	std::string rowBackgroundImageKey;      ///< Normal row background image.
-	std::string rowAlternateImageKey;       ///< Alternating row background image.
-	std::string rowHoverImageKey;           ///< Hovered row background image.
-	std::string rowSelectedImageKey;        ///< Selected row background image.
-	std::string separatorColor;             ///< Color string for row/column separators.
-	std::string sortIndicatorImageKey;      ///< Sort direction indicator image.
-	float resizeHandleWidth = 4.0f;        ///< Width of column resize handle.
-	float fontSize = 13.0f;                ///< Cell text font size.
-	float headerFontSize = 14.0f;          ///< Header text font size.
-	int maxVisibleRows = 10;               ///< Max visible rows before scrolling.
-	bool scrollable = true;                ///< Whether the table scrolls.
+	float rowHeight = 28.0f;               ///< 各 data row の高さ。
+	float headerHeight = 32.0f;            ///< header row の高さ。
+	std::string headerBackgroundImageKey;   ///< header の背景画像。
+	std::string rowBackgroundImageKey;      ///< 通常 row の背景画像。
+	std::string rowAlternateImageKey;       ///< 交互 row の背景画像。
+	std::string rowHoverImageKey;           ///< hover 中 row の背景画像。
+	std::string rowSelectedImageKey;        ///< 選択中 row の背景画像。
+	std::string separatorColor;             ///< row/column separator の色文字列。
+	std::string sortIndicatorImageKey;      ///< sort 方向 indicator の画像。
+	float resizeHandleWidth = 4.0f;        ///< column resize handle の幅。
+	float fontSize = 13.0f;                ///< cell テキストの font size。
+	float headerFontSize = 14.0f;          ///< header テキストの font size。
+	int maxVisibleRows = 10;               ///< scroll 前に表示する最大 row 数。
+	bool scrollable = true;                ///< table が scroll するか。
 };
 
-/// @brief Data table widget with sortable columns, selectable rows, and virtual scrolling.
+/// @brief sortable な column / 選択可能な row / virtual scrolling を持つ data table widget。
 ///
-/// Supports column sorting, row selection, column resizing, and efficient
-/// virtual scrolling for large datasets.
+/// column の sort、row の選択、column の resize、大規模 dataset 向けの効率的な
+/// virtual scrolling をサポートする。
 ///
 /// @code
 ///   UITableConfig cfg;
@@ -99,7 +99,7 @@ class UITable
 	float m_headerHeight;
 	float m_resizeHandleWidth;
 
-	// Column resize state.
+	// column resize の state。
 	int m_resizingColumn = -1;
 	float m_resizeStartX = 0.0f;
 	float m_resizeStartWidth = 0.0f;
@@ -109,8 +109,8 @@ class UITable
 	std::function<void(int, int)> m_onCellClicked;
 
 public:
-	/// @brief Construct a table from configuration.
-	/// @param config Table configuration.
+	/// @brief 設定から table を構築する。
+	/// @param config table 設定。
 	explicit UITable(const UITableConfig& config)
 		: m_columns(config.columns)
 		, m_maxVisibleRows(config.maxVisibleRows)
@@ -146,31 +146,31 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the total row count.
+	/// @brief 総 row 数を取得する。
 	[[nodiscard]] std::size_t rowCount() const noexcept { return m_rows.size(); }
 
-	/// @brief Get the column definitions.
+	/// @brief column 定義を取得する。
 	[[nodiscard]] const std::vector<UITableColumn>& columns() const noexcept { return m_columns; }
 
-	/// @brief Get the row data.
+	/// @brief row data を取得する。
 	[[nodiscard]] const std::vector<UITableRow>& rows() const noexcept { return m_rows; }
 
-	/// @brief Get the set of selected row indices.
+	/// @brief 選択中の row index 集合を取得する。
 	[[nodiscard]] std::vector<int> getSelectedRows() const
 	{
 		return {m_selectedIndices.begin(), m_selectedIndices.end()};
 	}
 
-	/// @brief Get the current sort column index (-1 if none).
+	/// @brief 現在の sort column index を取得する (なければ -1)。
 	[[nodiscard]] int sortColumn() const noexcept { return m_sortColumn; }
 
-	/// @brief Get the sort direction.
+	/// @brief sort 方向を取得する。
 	[[nodiscard]] bool isSortAscending() const noexcept { return m_sortAscending; }
 
-	/// @brief Get the visible row range [start, end).
+	/// @brief 表示中の row 範囲 [start, end) を取得する。
 	[[nodiscard]] std::pair<int, int> visibleRange() const noexcept
 	{
 		const int start = m_scrollOffset;
@@ -178,21 +178,21 @@ public:
 		return {start, end};
 	}
 
-	// ── Configuration ────────────────────────────────────────
+	// ── 設定 ──────────────────────────────────────────────────
 
-	/// @brief Set the row-selected callback.
+	/// @brief row 選択時の callback を設定する。
 	void setOnRowSelected(std::function<void(int)> callback) { m_onRowSelected = std::move(callback); }
 
-	/// @brief Set the column-sorted callback.
+	/// @brief column sort 時の callback を設定する。
 	void setOnColumnSorted(std::function<void(int, bool)> callback) { m_onColumnSorted = std::move(callback); }
 
-	/// @brief Set the cell-clicked callback.
+	/// @brief cell click 時の callback を設定する。
 	void setOnCellClicked(std::function<void(int, int)> callback) { m_onCellClicked = std::move(callback); }
 
-	// ── Data Manipulation ────────────────────────────────────
+	// ── data 操作 ─────────────────────────────────────────────
 
-	/// @brief Set the complete row data.
-	/// @param rows New row vector.
+	/// @brief row data 全体を設定する。
+	/// @param rows 新しい row vector。
 	void setData(std::vector<UITableRow> rows)
 	{
 		m_rows = std::move(rows);
@@ -201,23 +201,23 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Add a row to the end.
-	/// @param row Row to add.
+	/// @brief 末尾に row を追加する。
+	/// @param row 追加する row。
 	void addRow(UITableRow row)
 	{
 		m_rows.push_back(std::move(row));
 		syncNodeState();
 	}
 
-	/// @brief Remove a row by index.
-	/// @param index Row index to remove.
+	/// @brief index 指定で row を削除する。
+	/// @param index 削除する row の index。
 	void removeRow(int index)
 	{
 		if (index < 0 || index >= static_cast<int>(m_rows.size())) { return; }
 		m_rows.erase(m_rows.begin() + index);
 		m_selectedIndices.erase(index);
 
-		// Adjust selected indices above removed row.
+		// 削除した row より上の selected index を調整する。
 		std::set<int> adjusted;
 		for (const int idx : m_selectedIndices)
 		{
@@ -227,7 +227,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Clear all rows.
+	/// @brief 全 row を消去する。
 	void clearData()
 	{
 		m_rows.clear();
@@ -236,11 +236,11 @@ public:
 		syncNodeState();
 	}
 
-	// ── Sorting ──────────────────────────────────────────────
+	// ── sort ──────────────────────────────────────────────────
 
-	/// @brief Sort the table by a column.
-	/// @param column Column index.
-	/// @param ascending True for ascending, false for descending.
+	/// @brief column を基準に table を sort する。
+	/// @param column column の index。
+	/// @param ascending 昇順なら true、降順なら false。
 	void sortBy(int column, bool ascending)
 	{
 		if (column < 0 || column >= static_cast<int>(m_columns.size())) { return; }
@@ -263,10 +263,10 @@ public:
 		if (m_onColumnSorted) { m_onColumnSorted(column, ascending); }
 	}
 
-	// ── Selection ────────────────────────────────────────────
+	// ── 選択 ──────────────────────────────────────────────────
 
-	/// @brief Select a row by index.
-	/// @param index Row index.
+	/// @brief index 指定で row を選択する。
+	/// @param index row の index。
 	void selectRow(int index)
 	{
 		if (index < 0 || index >= static_cast<int>(m_rows.size())) { return; }
@@ -279,7 +279,7 @@ public:
 		if (m_onRowSelected) { m_onRowSelected(index); }
 	}
 
-	/// @brief Deselect all rows.
+	/// @brief 全 row の選択を解除する。
 	void clearSelection()
 	{
 		for (auto& row : m_rows) { row.selected = false; }
@@ -287,11 +287,11 @@ public:
 		syncNodeState();
 	}
 
-	// ── Interaction ──────────────────────────────────────────
+	// ── 操作 ──────────────────────────────────────────────────
 
-	/// @brief Handle a click on a specific cell.
-	/// @param row Row index.
-	/// @param col Column index.
+	/// @brief 特定 cell への click を処理する。
+	/// @param row row の index。
+	/// @param col column の index。
 	void clickCell(int row, int col)
 	{
 		if (row < 0 || row >= static_cast<int>(m_rows.size())) { return; }
@@ -301,8 +301,8 @@ public:
 		if (m_onCellClicked) { m_onCellClicked(row, col); }
 	}
 
-	/// @brief Handle a click on a column header (toggles sort).
-	/// @param column Column index.
+	/// @brief column header への click を処理する (sort を toggle)。
+	/// @param column column の index。
 	void clickHeader(int column)
 	{
 		if (column < 0 || column >= static_cast<int>(m_columns.size())) { return; }
@@ -312,17 +312,17 @@ public:
 		sortBy(column, ascending);
 	}
 
-	/// @brief Set the hovered row index (-1 for none).
-	/// @param index Row index.
+	/// @brief hover 中の row index を設定する (なしは -1)。
+	/// @param index row の index。
 	void setHoveredRow(int index)
 	{
 		m_hoveredRow = index;
 		m_node->setProperty("hovered_row", std::to_string(m_hoveredRow));
 	}
 
-	/// @brief Begin column resize drag.
-	/// @param column Column index.
-	/// @param startX Starting pointer X position.
+	/// @brief column resize の drag を開始する。
+	/// @param column column の index。
+	/// @param startX 開始時の pointer X 位置。
 	void beginColumnResize(int column, float startX)
 	{
 		if (column < 0 || column >= static_cast<int>(m_columns.size())) { return; }
@@ -333,8 +333,8 @@ public:
 		m_resizeStartWidth = m_columns[static_cast<std::size_t>(column)].width;
 	}
 
-	/// @brief Update column resize drag.
-	/// @param currentX Current pointer X position.
+	/// @brief column resize の drag を更新する。
+	/// @param currentX 現在の pointer X 位置。
 	void updateColumnResize(float currentX)
 	{
 		if (m_resizingColumn < 0) { return; }
@@ -346,14 +346,14 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief End column resize drag.
+	/// @brief column resize の drag を終了する。
 	void endColumnResize()
 	{
 		m_resizingColumn = -1;
 	}
 
-	/// @brief Scroll by a number of rows.
-	/// @param delta Positive = scroll down, negative = scroll up.
+	/// @brief 指定 row 数だけ scroll する。
+	/// @param delta 正 = 下へ scroll、負 = 上へ scroll。
 	void scroll(int delta)
 	{
 		const int maxScroll = std::max(0, static_cast<int>(m_rows.size()) - m_maxVisibleRows);
@@ -362,7 +362,7 @@ public:
 	}
 
 private:
-	/// @brief Convert alignment to string.
+	/// @brief alignment を文字列に変換する。
 	[[nodiscard]] static const char* alignToString(TableAlign a) noexcept
 	{
 		switch (a)
@@ -374,7 +374,7 @@ private:
 		return "left";
 	}
 
-	/// @brief Synchronize state to the UINode.
+	/// @brief state を UINode に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("row_count", std::to_string(m_rows.size()));
@@ -384,7 +384,7 @@ private:
 		m_node->setProperty("sort_ascending", m_sortAscending ? "true" : "false");
 		m_node->setProperty("hovered_row", std::to_string(m_hoveredRow));
 
-		// Encode column info.
+		// column 情報を encode する。
 		for (std::size_t c = 0; c < m_columns.size(); ++c)
 		{
 			const auto prefix = "col_" + std::to_string(c) + "_";
@@ -395,7 +395,7 @@ private:
 			m_node->setProperty(prefix + "header_image", m_columns[c].headerImageKey);
 		}
 
-		// Encode selected indices.
+		// 選択中の index を encode する。
 		std::string selStr;
 		for (const auto idx : m_selectedIndices)
 		{
@@ -404,7 +404,7 @@ private:
 		}
 		m_node->setProperty("selected", selStr);
 
-		// Encode visible rows.
+		// 表示中の row を encode する。
 		const auto [start, end] = visibleRange();
 		m_node->setProperty("visible_start", std::to_string(start));
 		m_node->setProperty("visible_end", std::to_string(end));

@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file BacklogUI.hpp
-/// @brief Scrollable text history viewer for visual novels.
-/// @details Displays all previously shown dialogue with speaker names,
-///          supports smooth scrolling, voice replay, jump-to, and read/unread
-///          indicators. Uses ScrollContainer internally for scroll physics.
+/// @brief VN 用スクロール可能なテキスト履歴ビューア
+/// @details 過去に表示した全ダイアログを話者名付きで表示する。
+///          滑らかなスクロール、voice 再生、jump-to、既読/未読
+///          インジケータをサポート。スクロール物理は内部で ScrollContainer を使う。
 
 #include <algorithm>
 #include <cmath>
@@ -23,42 +23,42 @@
 namespace mitiru::vn
 {
 
-// ── State machine ────────────────────────────────────────────
+// ── 状態マシン ────────────────────────────────────────────
 
-/// @brief Backlog overlay visibility state.
+/// @brief Backlog オーバーレイの表示状態
 enum class BacklogState : std::uint8_t
 {
-	Hidden,       ///< Not visible.
-	ScrollingIn,  ///< Opening animation.
-	Active,       ///< Visible and interactive.
-	ScrollingOut  ///< Closing animation.
+	Hidden,       ///< 非表示
+	ScrollingIn,  ///< 開くアニメーション中
+	Active,       ///< 表示中・操作可能
+	ScrollingOut  ///< 閉じるアニメーション中
 };
 
-// ── Backlog entry ────────────────────────────────────────────
+// ── Backlog エントリ ────────────────────────────────────────────
 
-/// @brief A single entry in the dialogue backlog.
+/// @brief ダイアログ backlog の 1 エントリ
 struct BacklogEntry
 {
-	std::string speaker;        ///< Speaker name (empty for narration).
-	std::string text;           ///< Dialogue text.
-	std::string voiceId;        ///< Voice clip identifier (empty if none).
-	float timestamp = 0.0f;     ///< Game time when this was displayed.
-	bool isChoice = false;      ///< Whether this entry represents a choice result.
-	std::string choiceText;     ///< The choice that was selected (if isChoice).
-	bool isRead = true;         ///< Whether the player has seen this entry.
+	std::string speaker;        ///< 話者名（ナレーションは空）
+	std::string text;           ///< ダイアログテキスト
+	std::string voiceId;        ///< voice クリップ識別子（無ければ空）
+	float timestamp = 0.0f;     ///< 表示時のゲーム時刻
+	bool isChoice = false;      ///< このエントリが choice 結果を表すか
+	std::string choiceText;     ///< 選択された choice（isChoice 時）
+	bool isRead = true;         ///< プレイヤーがこのエントリを見たか
 };
 
-// ── Callbacks ────────────────────────────────────────────────
+// ── コールバック ────────────────────────────────────────────────
 
-/// @brief Called when the player requests voice replay.
-/// @param voiceId Voice clip identifier.
+/// @brief プレイヤーが voice 再生を要求したときに呼ばれる
+/// @param voiceId voice クリップ識別子
 using VoiceReplayCallback = std::function<void(const std::string& voiceId)>;
 
-/// @brief Called when the player jumps to a backlog entry.
-/// @param entryIndex Zero-based index of the entry.
+/// @brief プレイヤーが backlog エントリへ jump したときに呼ばれる
+/// @param entryIndex エントリの 0 始まりインデックス
 using JumpToCallback = std::function<void(std::size_t entryIndex)>;
 
-/// @brief Text render callback for backlog entries.
+/// @brief backlog エントリ用のテキスト描画コールバック
 using BacklogTextRenderer = std::function<
 	void(render::SpriteBatch& batch,
 	     const std::string& text,
@@ -66,48 +66,48 @@ using BacklogTextRenderer = std::function<
 	     const sgc::Colorf& color,
 	     float fontSize)>;
 
-// ── Styling ──────────────────────────────────────────────────
+// ── スタイル ──────────────────────────────────────────────────
 
-/// @brief Visual style for the backlog overlay.
+/// @brief backlog オーバーレイの視覚スタイル
 struct BacklogStyle
 {
-	sgc::Colorf overlayColor{0.0f, 0.0f, 0.0f, 0.85f};       ///< Background dimming.
-	sgc::Colorf speakerColor{0.3f, 0.7f, 1.0f, 1.0f};        ///< Speaker name colour.
-	sgc::Colorf textColor{1.0f, 1.0f, 1.0f, 1.0f};           ///< Body text colour.
-	sgc::Colorf choiceColor{1.0f, 0.8f, 0.2f, 1.0f};         ///< Choice indicator colour.
-	sgc::Colorf unreadMark{1.0f, 0.3f, 0.3f, 0.8f};          ///< Unread dot colour.
-	sgc::Colorf voiceButtonColor{0.2f, 0.6f, 0.9f, 0.8f};    ///< Voice replay button.
-	sgc::Colorf entryHoverColor{0.2f, 0.2f, 0.3f, 0.4f};     ///< Hover highlight.
-	sgc::Colorf separatorColor{0.3f, 0.3f, 0.3f, 0.5f};      ///< Line between entries.
+	sgc::Colorf overlayColor{0.0f, 0.0f, 0.0f, 0.85f};       ///< 背景の暗転
+	sgc::Colorf speakerColor{0.3f, 0.7f, 1.0f, 1.0f};        ///< 話者名の色
+	sgc::Colorf textColor{1.0f, 1.0f, 1.0f, 1.0f};           ///< 本文テキストの色
+	sgc::Colorf choiceColor{1.0f, 0.8f, 0.2f, 1.0f};         ///< choice インジケータの色
+	sgc::Colorf unreadMark{1.0f, 0.3f, 0.3f, 0.8f};          ///< 未読ドットの色
+	sgc::Colorf voiceButtonColor{0.2f, 0.6f, 0.9f, 0.8f};    ///< voice 再生ボタン
+	sgc::Colorf entryHoverColor{0.2f, 0.2f, 0.3f, 0.4f};     ///< ホバーハイライト
+	sgc::Colorf separatorColor{0.3f, 0.3f, 0.3f, 0.5f};      ///< エントリ間の区切り線
 
 	float speakerFontSize = 16.0f;
 	float textFontSize    = 18.0f;
-	float entryPadding    = 12.0f;    ///< Padding inside each entry.
-	float entrySpacing    = 4.0f;     ///< Space between entries.
-	float speakerHeight   = 24.0f;    ///< Height reserved for speaker line.
-	float textLineHeight  = 22.0f;    ///< Height per text line (estimate).
-	float voiceButtonSize = 20.0f;    ///< Voice replay button size.
-	float unreadDotSize   = 6.0f;     ///< Unread indicator dot size.
-	float marginLeft      = 60.0f;    ///< Left margin (for indicators).
-	float marginRight     = 30.0f;    ///< Right margin.
+	float entryPadding    = 12.0f;    ///< 各エントリ内側の余白
+	float entrySpacing    = 4.0f;     ///< エントリ間の間隔
+	float speakerHeight   = 24.0f;    ///< 話者行に確保する高さ
+	float textLineHeight  = 22.0f;    ///< テキスト 1 行あたりの高さ（推定）
+	float voiceButtonSize = 20.0f;    ///< voice 再生ボタンのサイズ
+	float unreadDotSize   = 6.0f;     ///< 未読インジケータのドットサイズ
+	float marginLeft      = 60.0f;    ///< 左余白（インジケータ用）
+	float marginRight     = 30.0f;    ///< 右余白
 };
 
-// ── Configuration ────────────────────────────────────────────
+// ── 設定 ────────────────────────────────────────────────
 
-/// @brief Full configuration for the backlog UI.
+/// @brief backlog UI の全設定
 struct BacklogUIConfig
 {
-	sgc::Rectf bounds{0.0f, 0.0f, 1920.0f, 1080.0f};  ///< Overlay bounds.
-	std::size_t maxEntries = 500;                        ///< Maximum stored entries.
-	float animDurationSec  = 0.3f;                       ///< Open/close animation.
+	sgc::Rectf bounds{0.0f, 0.0f, 1920.0f, 1080.0f};  ///< オーバーレイの範囲
+	std::size_t maxEntries = 500;                        ///< 保持する最大エントリ数
+	float animDurationSec  = 0.3f;                       ///< 開閉アニメーション
 
 	BacklogStyle style;
 	ScrollConfig scrollConfig;
 };
 
-// ── BacklogUI class ──────────────────────────────────────────
+// ── BacklogUI クラス ──────────────────────────────────────────
 
-/// @brief Scrollable text history viewer overlay.
+/// @brief スクロール可能なテキスト履歴ビューアのオーバーレイ
 ///
 /// @code
 /// mitiru::vn::BacklogUI backlog;
@@ -130,70 +130,70 @@ class BacklogUI
 	std::vector<BacklogEntry> m_entries;
 	ScrollContainer m_scroll;
 
-	// Animation
+	// アニメーション
 	float m_animTimer = 0.0f;
 	float m_overlayAlpha = 0.0f;
 
-	// Interaction
+	// 操作
 	int m_hoveredEntry = -1;
 
-	// Callbacks
+	// コールバック
 	VoiceReplayCallback m_onVoiceReplay;
 	JumpToCallback m_onJumpTo;
 	BacklogTextRenderer m_textRenderer;
 
 public:
-	/// @brief Construct with default configuration.
-	/// @param config Backlog configuration.
+	/// @brief デフォルト設定で構築する
+	/// @param config backlog 設定
 	explicit BacklogUI(BacklogUIConfig config = {})
 		: m_config(std::move(config))
 		, m_scroll(m_config.bounds, 0.0f, 0.0f, m_config.scrollConfig)
 	{
 	}
 
-	// ── State ────────────────────────────────────────────────
+	// ── 状態 ────────────────────────────────────────────────
 
-	/// @brief Current state.
+	/// @brief 現在の状態
 	[[nodiscard]] BacklogState state() const noexcept { return m_state; }
 
-	/// @brief Whether the backlog is visible.
+	/// @brief backlog が表示中か
 	[[nodiscard]] bool isVisible() const noexcept
 	{
 		return m_state != BacklogState::Hidden;
 	}
 
-	/// @brief Number of entries in the backlog.
+	/// @brief backlog のエントリ数
 	[[nodiscard]] std::size_t entryCount() const noexcept
 	{
 		return m_entries.size();
 	}
 
-	/// @brief Access the entry list.
+	/// @brief エントリ一覧へアクセスする
 	[[nodiscard]] const std::vector<BacklogEntry>& entries() const noexcept
 	{
 		return m_entries;
 	}
 
-	/// @brief Access an entry by index.
-	/// @param index Zero-based index.
-	/// @return Pointer to the entry, or nullptr if out of range.
+	/// @brief インデックスでエントリへアクセスする
+	/// @param index 0 始まりのインデックス
+	/// @return エントリへのポインタ。範囲外なら nullptr
 	[[nodiscard]] const BacklogEntry* entryAt(std::size_t index) const noexcept
 	{
 		return (index < m_entries.size()) ? &m_entries[index] : nullptr;
 	}
 
-	/// @brief Access configuration.
+	/// @brief 設定へアクセスする
 	[[nodiscard]] const BacklogUIConfig& config() const noexcept { return m_config; }
 
-	/// @brief Access the internal scroll container.
+	/// @brief 内部の scroll container へアクセスする
 	[[nodiscard]] const ScrollContainer& scrollContainer() const noexcept
 	{
 		return m_scroll;
 	}
 
-	// ── Setup ────────────────────────────────────────────────
+	// ── セットアップ ────────────────────────────────────────────────
 
-	/// @brief Replace configuration.
+	/// @brief 設定を置き換える
 	void setConfig(BacklogUIConfig config)
 	{
 		m_config = std::move(config);
@@ -201,24 +201,24 @@ public:
 		m_scroll.setConfig(m_config.scrollConfig);
 	}
 
-	/// @brief Register voice replay callback.
+	/// @brief voice 再生コールバックを登録する
 	void onVoiceReplay(VoiceReplayCallback cb) { m_onVoiceReplay = std::move(cb); }
 
-	/// @brief Register jump-to callback.
+	/// @brief jump-to コールバックを登録する
 	void onJumpTo(JumpToCallback cb) { m_onJumpTo = std::move(cb); }
 
-	/// @brief Set text render callback.
+	/// @brief テキスト描画コールバックを設定する
 	void setTextRenderer(BacklogTextRenderer cb) { m_textRenderer = std::move(cb); }
 
-	// ── Entry management ─────────────────────────────────────
+	// ── エントリ管理 ─────────────────────────────────────
 
-	/// @brief Add a dialogue entry to the backlog.
-	/// @param entry The entry to add.
+	/// @brief ダイアログエントリを backlog へ追加する
+	/// @param entry 追加するエントリ
 	void addEntry(BacklogEntry entry)
 	{
 		m_entries.push_back(std::move(entry));
 
-		// Enforce max entries.
+		// 最大エントリ数を超えないようにする
 		while (m_entries.size() > m_config.maxEntries)
 		{
 			m_entries.erase(m_entries.begin());
@@ -227,7 +227,7 @@ public:
 		recalculateContentHeight();
 	}
 
-	/// @brief Clear all entries.
+	/// @brief 全エントリをクリアする
 	void clearEntries()
 	{
 		m_entries.clear();
@@ -235,7 +235,7 @@ public:
 		m_scroll.scrollToTop();
 	}
 
-	/// @brief Mark all entries as read.
+	/// @brief 全エントリを既読にする
 	void markAllRead()
 	{
 		for (auto& entry : m_entries)
@@ -244,9 +244,9 @@ public:
 		}
 	}
 
-	// ── Commands ─────────────────────────────────────────────
+	// ── コマンド ─────────────────────────────────────────────
 
-	/// @brief Show the backlog overlay.
+	/// @brief backlog オーバーレイを表示する
 	void show()
 	{
 		if (m_state != BacklogState::Hidden) return;
@@ -256,11 +256,11 @@ public:
 		m_state = BacklogState::ScrollingIn;
 		m_animTimer = 0.0f;
 
-		// Start scrolled to bottom (most recent).
+		// 最下部（最新）までスクロールした状態で開始する
 		m_scroll.scrollToBottom();
 	}
 
-	/// @brief Hide the backlog overlay.
+	/// @brief backlog オーバーレイを隠す
 	void hide()
 	{
 		if (m_state == BacklogState::Hidden
@@ -273,7 +273,7 @@ public:
 		m_animTimer = 0.0f;
 	}
 
-	/// @brief Toggle visibility.
+	/// @brief 表示をトグルする
 	void toggle()
 	{
 		if (m_state == BacklogState::Hidden)
@@ -286,10 +286,10 @@ public:
 		}
 	}
 
-	// ── Input ────────────────────────────────────────────────
+	// ── 入力 ────────────────────────────────────────────────
 
-	/// @brief Handle mouse wheel.
-	/// @param delta Wheel delta (negative = scroll down).
+	/// @brief マウスホイールを処理する
+	/// @param delta ホイールデルタ（負 = 下スクロール）
 	void onMouseWheel(float delta)
 	{
 		if (m_state == BacklogState::Active)
@@ -298,8 +298,8 @@ public:
 		}
 	}
 
-	/// @brief Handle key scroll (up/down).
-	/// @param deltaPixels Positive = scroll down, negative = scroll up.
+	/// @brief キーによるスクロール（上/下）を処理する
+	/// @param deltaPixels 正 = 下スクロール、負 = 上スクロール
 	void onKeyScroll(float deltaPixels)
 	{
 		if (m_state == BacklogState::Active)
@@ -308,9 +308,9 @@ public:
 		}
 	}
 
-	/// @brief Handle mouse move for hover detection.
-	/// @param screenX Mouse X.
-	/// @param screenY Mouse Y.
+	/// @brief ホバー検出のためマウス移動を処理する
+	/// @param screenX マウス X
+	/// @param screenY マウス Y
 	void onMouseMove(float screenX, float screenY)
 	{
 		if (m_state != BacklogState::Active) return;
@@ -331,7 +331,7 @@ public:
 			    && screenX >= entryRect.x()
 			    && screenX < entryRect.x() + entryRect.width())
 			{
-				// Only register if within the viewport.
+				// viewport 内のときのみ登録する
 				if (entryRect.y() + entryH > m_config.bounds.y()
 				    && entryRect.y() < m_config.bounds.y() + m_config.bounds.height())
 				{
@@ -343,9 +343,9 @@ public:
 		}
 	}
 
-	/// @brief Handle click on a backlog entry.
-	/// @param screenX Click X.
-	/// @param screenY Click Y.
+	/// @brief backlog エントリ上のクリックを処理する
+	/// @param screenX クリック X
+	/// @param screenY クリック Y
 	void onMouseClick(float screenX, float screenY)
 	{
 		if (m_state != BacklogState::Active || m_hoveredEntry < 0) return;
@@ -355,7 +355,7 @@ public:
 
 		const auto& entry = m_entries[idx];
 
-		// Check if click is on the voice replay button area.
+		// クリックが voice 再生ボタン領域上かを確認する
 		const float scrollY = m_scroll.scrollY();
 		float yPos = m_config.bounds.y() - scrollY;
 		for (std::size_t i = 0; i < idx; ++i)
@@ -378,7 +378,7 @@ public:
 		}
 		else
 		{
-			// Jump to this dialogue point.
+			// このダイアログ地点へ jump する
 			if (m_onJumpTo)
 			{
 				m_onJumpTo(idx);
@@ -386,7 +386,7 @@ public:
 		}
 	}
 
-	/// @brief Handle drag start.
+	/// @brief ドラッグ開始を処理する
 	void onDragBegin(float x, float y)
 	{
 		if (m_state == BacklogState::Active)
@@ -395,7 +395,7 @@ public:
 		}
 	}
 
-	/// @brief Handle drag move.
+	/// @brief ドラッグ移動を処理する
 	void onDragMove(float x, float y)
 	{
 		if (m_state == BacklogState::Active)
@@ -404,7 +404,7 @@ public:
 		}
 	}
 
-	/// @brief Handle drag end.
+	/// @brief ドラッグ終了を処理する
 	void onDragEnd(float velX = 0.0f, float velY = 0.0f)
 	{
 		if (m_state == BacklogState::Active)
@@ -413,10 +413,10 @@ public:
 		}
 	}
 
-	// ── Update ───────────────────────────────────────────────
+	// ── 更新 ───────────────────────────────────────────────
 
-	/// @brief Update animation and scroll physics.
-	/// @param dt Delta time in seconds.
+	/// @brief アニメーションとスクロール物理を更新する
+	/// @param dt デルタタイム（秒）
 	void update(float dt)
 	{
 		switch (m_state)
@@ -456,10 +456,10 @@ public:
 		}
 	}
 
-	// ── Rendering ────────────────────────────────────────────
+	// ── 描画 ────────────────────────────────────────────
 
-	/// @brief Draw the backlog overlay into a SpriteBatch.
-	/// @param batch SpriteBatch (must be between begin/end).
+	/// @brief backlog オーバーレイを SpriteBatch へ描画する
+	/// @param batch SpriteBatch（begin/end の間で呼ぶこと）
 	void draw(render::SpriteBatch& batch) const
 	{
 		if (m_state == BacklogState::Hidden || m_overlayAlpha <= 0.0f)
@@ -467,12 +467,12 @@ public:
 			return;
 		}
 
-		// Background overlay.
+		// 背景オーバーレイ
 		auto overlayCol = m_config.style.overlayColor;
 		overlayCol.a *= m_overlayAlpha;
 		batch.drawRect(m_config.bounds, overlayCol);
 
-		// Draw entries.
+		// エントリを描画する
 		const float scrollY = m_scroll.scrollY();
 		const float viewTop = m_config.bounds.y();
 		const float viewBottom = viewTop + m_config.bounds.height();
@@ -484,7 +484,7 @@ public:
 			const float entryH = estimateEntryHeight(i);
 			const float entryBottom = yPos + entryH;
 
-			// Skip entries entirely above or below the viewport.
+			// viewport の完全に上または下にあるエントリはスキップする
 			if (entryBottom > viewTop && yPos < viewBottom)
 			{
 				drawEntry(batch, i, yPos, entryH);
@@ -492,18 +492,18 @@ public:
 
 			yPos += entryH + m_config.style.entrySpacing;
 
-			// Early exit if below viewport.
+			// viewport より下に来たら早期終了する
 			if (yPos > viewBottom) break;
 		}
 
-		// Scroll bar.
+		// スクロールバー
 		m_scroll.drawScrollBar(batch);
 	}
 
 private:
-	// ── Entry layout helpers ─────────────────────────────────
+	// ── エントリレイアウト補助 ─────────────────────────────────
 
-	/// @brief Estimate the rendered height of an entry.
+	/// @brief エントリの描画高さを推定する
 	[[nodiscard]] float estimateEntryHeight(std::size_t index) const noexcept
 	{
 		if (index >= m_entries.size()) return 0.0f;
@@ -511,13 +511,13 @@ private:
 		const auto& style = m_config.style;
 		float h = style.entryPadding * 2.0f;
 
-		// Speaker line.
+		// 話者行
 		if (!m_entries[index].speaker.empty())
 		{
 			h += style.speakerHeight;
 		}
 
-		// Text lines (rough estimate based on character count and available width).
+		// テキスト行数（文字数と利用可能幅からの大まかな推定）
 		const float availW = m_config.bounds.width()
 			- style.marginLeft - style.marginRight;
 		const float charsPerLine = std::max(1.0f, availW / (style.textFontSize * 0.6f));
@@ -525,7 +525,7 @@ private:
 		const float lines = std::max(1.0f, std::ceil(textLen / charsPerLine));
 		h += lines * style.textLineHeight;
 
-		// Choice indicator.
+		// choice インジケータ
 		if (m_entries[index].isChoice)
 		{
 			h += style.textLineHeight;
@@ -534,7 +534,7 @@ private:
 		return h;
 	}
 
-	/// @brief Recalculate total content height for the scroll container.
+	/// @brief scroll container 用の総コンテンツ高さを再計算する
 	void recalculateContentHeight()
 	{
 		float totalH = 0.0f;
@@ -545,7 +545,7 @@ private:
 		m_scroll.setContentHeight(totalH);
 	}
 
-	// ── Entry drawing ────────────────────────────────────────
+	// ── エントリ描画 ────────────────────────────────────────
 
 	void drawEntry(render::SpriteBatch& batch,
 	               std::size_t index, float yPos, float entryH) const
@@ -558,7 +558,7 @@ private:
 			m_config.bounds.x(), yPos,
 			m_config.bounds.width(), entryH};
 
-		// Hover highlight.
+		// ホバーハイライト
 		if (static_cast<int>(index) == m_hoveredEntry)
 		{
 			auto hoverCol = style.entryHoverColor;
@@ -566,7 +566,7 @@ private:
 			batch.drawRect(entryRect, hoverCol);
 		}
 
-		// Separator line.
+		// 区切り線
 		if (index > 0)
 		{
 			auto sepCol = style.separatorColor;
@@ -578,7 +578,7 @@ private:
 				sepCol);
 		}
 
-		// Unread indicator.
+		// 未読インジケータ
 		if (!entry.isRead)
 		{
 			auto dotCol = style.unreadMark;
@@ -590,7 +590,7 @@ private:
 				dotCol);
 		}
 
-		// Voice replay button.
+		// voice 再生ボタン
 		if (!entry.voiceId.empty())
 		{
 			auto voiceCol = style.voiceButtonColor;
@@ -602,13 +602,13 @@ private:
 				voiceCol);
 		}
 
-		// Text content area.
+		// テキスト内容領域
 		const float textX = m_config.bounds.x() + style.marginLeft;
 		const float textW = m_config.bounds.width()
 			- style.marginLeft - style.marginRight;
 		float textY = yPos + style.entryPadding;
 
-		// Speaker name.
+		// 話者名
 		if (!entry.speaker.empty() && m_textRenderer)
 		{
 			auto speakerCol = style.speakerColor;
@@ -619,7 +619,7 @@ private:
 			textY += style.speakerHeight;
 		}
 
-		// Body text.
+		// 本文テキスト
 		if (m_textRenderer)
 		{
 			auto textCol = style.textColor;
@@ -631,7 +631,7 @@ private:
 			textY += remainH;
 		}
 
-		// Choice indicator.
+		// choice インジケータ
 		if (entry.isChoice && !entry.choiceText.empty() && m_textRenderer)
 		{
 			auto choiceCol = style.choiceColor;

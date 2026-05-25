@@ -1,27 +1,25 @@
 #pragma once
 
 /// @file ScriptRunner.hpp
-/// @brief JSON-driven ADV-style script runner (G-04).
+/// @brief JSON 駆動の ADV 形式 script runner (G-04)。
 ///
-/// Data-driven per MitiruEngine's architecture rule: the engine interprets
-/// scripts, games provide callbacks for each effect (text render, image
-/// show, choice offer, stat change). The engine does NOT render — renderer-
-/// agnostic. See `docs/NARRATIVE_SCRIPT.md` for the JSON schema and the
-/// complete callback contract.
+/// MitiruEngine の architecture rule に従い data-driven: engine は script を
+/// 解釈し、game が各 effect (text render、image show、choice offer、stat change)
+/// の callback を提供する。engine 自身は描画しない — renderer 非依存。JSON schema
+/// と callback 契約の全体は `docs/NARRATIVE_SCRIPT.md` を参照。
 ///
-/// **Design decisions (v1):**
-/// - `ChoiceScene` is terminal: `execute()` returns the chosen `next` id
-///   (empty string if no choice). The game drives the outer loop — no
-///   internal recursion between scripts.
-/// - `setFlag` / `statChange` mutate `GameContext` in-place. Callbacks fire
-///   *after* mutation so they can read the updated value from `ctx`.
-/// - Unknown scene `"type"`, missing required fields, unknown script id in
-///   `execute()`, duplicate script ids across files → all throw
-///   `std::runtime_error` with field-path context.
+/// **設計判断 (v1):**
+/// - `ChoiceScene` は終端: `execute()` は選ばれた `next` id を返す
+///   (choice が無ければ空文字列)。外側の loop は game が回す — script 間の
+///   内部 recursion は無い。
+/// - `setFlag` / `statChange` は `GameContext` を in-place で変更する。callback は
+///   変更*後*に発火するので `ctx` から更新済みの値を読める。
+/// - 未知の scene `"type"`、必須 field 欠落、`execute()` での未知 script id、
+///   ファイル間での script id 重複 → いずれも field-path 文脈付きで
+///   `std::runtime_error` を throw する。
 ///
-/// Not in v1: loops, variables, text interpolation (`{name}`), conditional
-/// branches other than choice's `next`. Those land in v2 once a second
-/// consumer hits the ceiling.
+/// v1 非対応: loop、variable、text 補間 (`{name}`)、choice の `next` 以外の
+/// 条件分岐。これらは 2 つ目の consumer が天井に当たった時点で v2 に入る。
 
 #include <cctype>
 #include <filesystem>
@@ -43,7 +41,7 @@ namespace mitiru::narrative
 
 using json = ::nlohmann::json;
 
-// ── Scene variants ───────────────────────────────────────────────
+// ── Scene の種別 ───────────────────────────────────────────────
 
 struct TextScene
 {
@@ -88,7 +86,7 @@ struct StatChangeScene
 using Scene = std::variant<TextScene, ImageScene, ChoiceScene,
                            WaitScene, SetFlagScene, StatChangeScene>;
 
-// ── Script + execution context ──────────────────────────────────
+// ── Script + 実行 context ──────────────────────────────────
 
 struct Script
 {
@@ -102,9 +100,9 @@ struct GameContext
 	std::unordered_map<std::string, int>  stats;
 };
 
-/// @brief Result of executing a script. If `chosenNext` is non-empty, the
-///        game should call `execute(chosenNext, ctx)` to continue. Otherwise
-///        the script completed without a choice.
+/// @brief script 実行の結果。`chosenNext` が空でなければ game は
+///        `execute(chosenNext, ctx)` を呼んで継続すべき。空なら
+///        script は choice 無しで完了している。
 struct ExecuteResult
 {
 	std::string chosenNext;
@@ -124,10 +122,10 @@ public:
 
 	ScriptRunner() = default;
 
-	// ── loading ───────────────────────────────────────────────
+	// ── 読み込み ───────────────────────────────────────────────
 
-	/// @brief Parse one script from an inline JSON blob.
-	/// @throws std::runtime_error on parse/schema failure.
+	/// @brief inline な JSON blob から script を 1 つ parse する。
+	/// @throws parse/schema 失敗時に std::runtime_error。
 	void loadFromJson(std::string_view jsonText, std::string_view sourceLabel = "<inline>")
 	{
 		json parsed;
@@ -141,10 +139,10 @@ public:
 		insertScript(std::move(script), sourceLabel);
 	}
 
-	/// @brief Load every `*.json` in `dir`. Case-insensitive extension match.
-	///        Non-.json files are silently skipped. Recurses subdirectories.
-	/// @throws std::runtime_error on parse/schema failure (filename included)
-	///         or duplicate script id across files.
+	/// @brief `dir` 内の全 `*.json` を読み込む。拡張子は大小無視で match。
+	///        .json 以外は黙って skip。subdirectory も再帰する。
+	/// @throws parse/schema 失敗 (filename 付き) または
+	///         ファイル間の script id 重複時に std::runtime_error。
 	void loadFromDirectory(const std::filesystem::path& dir)
 	{
 		if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir))
@@ -186,7 +184,7 @@ public:
 		m_scripts.clear();
 	}
 
-	// ── callbacks ─────────────────────────────────────────────
+	// ── callback ─────────────────────────────────────────────
 
 	void onTextDisplay(TextFn fn)       { m_onText  = std::move(fn); }
 	void onImageShow(ImageFn fn)        { m_onImage = std::move(fn); }
@@ -195,12 +193,12 @@ public:
 	void onFlagSet(FlagFn fn)           { m_onFlag = std::move(fn); }
 	void onStatChange(StatChangeFn fn)  { m_onStat = std::move(fn); }
 
-	// ── execute ───────────────────────────────────────────────
+	// ── 実行 ───────────────────────────────────────────────
 
-	/// @brief Run a script, firing callbacks for each scene.
-	/// @returns ExecuteResult with `chosenNext` set if the last scene was a
-	///          ChoiceScene (empty string otherwise).
-	/// @throws std::runtime_error on unknown script id.
+	/// @brief script を実行し、各 scene で callback を発火する。
+	/// @returns 最後の scene が ChoiceScene なら `chosenNext` を設定した
+	///          ExecuteResult (それ以外は空文字列)。
+	/// @throws 未知の script id 時に std::runtime_error。
 	ExecuteResult execute(std::string_view scriptId, GameContext& ctx)
 	{
 		const auto it = m_scripts.find(std::string(scriptId));
@@ -213,8 +211,8 @@ public:
 		for (const auto& scene : it->second.scenes)
 		{
 			std::visit([&](const auto& s) { this->dispatch(s, ctx, result); }, scene);
-			/// ChoiceScene terminates the script — downstream scenes in the
-			/// same list after a choice are unreachable by design.
+			/// ChoiceScene は script を終端する — 同じ list 内で choice の後ろに
+			/// ある scene は設計上到達不能。
 			if (std::holds_alternative<ChoiceScene>(scene))
 			{
 				break;
@@ -224,7 +222,7 @@ public:
 	}
 
 private:
-	// ── parsing ───────────────────────────────────────────────
+	// ── parse ───────────────────────────────────────────────
 
 	[[nodiscard]] static Script parseScript(const json& j, std::string_view sourceLabel)
 	{
@@ -374,7 +372,7 @@ private:
 		}
 	}
 
-	// ── dispatch ──────────────────────────────────────────────
+	// ── 処理振り分け (dispatch) ──────────────────────────────────────────────
 
 	void dispatch(const TextScene& s, GameContext&, ExecuteResult&) const
 	{
@@ -396,7 +394,7 @@ private:
 		{
 			picked = m_onChoice(labels);
 		}
-		/// Resolve label → next id. Empty picked or unknown label → first option.
+		/// label → next id を解決する。picked が空 or 未知 label なら先頭 option。
 		const ChoiceOption* match = nullptr;
 		for (const auto& o : s.options) { if (o.label == picked) { match = &o; break; } }
 		if (!match) { match = &s.options.front(); }
@@ -410,7 +408,7 @@ private:
 
 	void dispatch(const SetFlagScene& s, GameContext& ctx, ExecuteResult&) const
 	{
-		/// Mutate first, then fire callback — callback can inspect ctx.flags.
+		/// 先に変更し、その後 callback を発火 — callback は ctx.flags を見れる。
 		ctx.flags[s.name] = s.value;
 		if (m_onFlag) { m_onFlag(s.name, s.value); }
 	}
@@ -422,7 +420,7 @@ private:
 		if (m_onStat) { m_onStat(s.stat, s.delta, ref); }
 	}
 
-	// ── members ───────────────────────────────────────────────
+	// ── メンバ ───────────────────────────────────────────────
 
 	std::unordered_map<std::string, Script> m_scripts;
 

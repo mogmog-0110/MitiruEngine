@@ -1,47 +1,47 @@
 /*!
- * mitiru_state.js — cross-scene state store (F-03)
+ * mitiru_state.js — シーン跨ぎの state store (F-03)
  *
- * Lightweight key/value store that survives scene navigation.
- * In CEF the backing channel is `mitiru.dispatch` (G-05 bridge) for
- * persistence operations; in a plain browser all data stays in memory.
+ * シーン遷移をまたいで生き残る軽量な key/value store。
+ * CEF では永続化操作の backing channel は `mitiru.dispatch` (G-05 bridge)。
+ * 素のブラウザでは全データはメモリ内のみ。
  *
- * Implements:
- *   window.mitiru.state.set(key, value)         — immutable replace, notifies subscribers
- *   window.mitiru.state.get(key, fallback?)      — current value or fallback
- *   window.mitiru.state.subscribe(key, fn)       — BehaviorSubject pattern (fires immediately)
+ * 提供 API:
+ *   window.mitiru.state.set(key, value)         — immutable な置換、subscriber へ通知
+ *   window.mitiru.state.get(key, fallback?)      — 現在値、または fallback
+ *   window.mitiru.state.subscribe(key, fn)       — BehaviorSubject パターン (即時発火)
  *   window.mitiru.state.unsubscribe(key, fn)
- *   window.mitiru.state.reset(key)               — remove key, notify with undefined
- *   window.mitiru.state.keys()                   — snapshot array of live keys
- *   window.mitiru.state.snapshot()               — plain-object copy of entire store
- *   window.mitiru.state.save(key, slotId)        — persist via dispatch (CEF path)
- *   window.mitiru.state.load(key, slotId)        — load + commit from dispatch (CEF path)
- *   window.mitiru.state.listSlots()              — list save slots via dispatch (CEF path)
+ *   window.mitiru.state.reset(key)               — key を削除し undefined で通知
+ *   window.mitiru.state.keys()                   — 生存中の key のスナップショット配列
+ *   window.mitiru.state.snapshot()               — store 全体の plain-object コピー
+ *   window.mitiru.state.save(key, slotId)        — dispatch 経由で永続化 (CEF 経路)
+ *   window.mitiru.state.load(key, slotId)        — dispatch から load + commit (CEF 経路)
+ *   window.mitiru.state.listSlots()              — dispatch 経由でセーブスロット一覧 (CEF 経路)
  *
- * Design notes:
- *   - Values are structurally frozen on write (immutability rule).
- *   - Subscribers receive the new value, not a diff — compare yourself if needed.
- *   - `save` / `load` / `listSlots` return Promises; they reject outside CEF.
- *   - The store is intentionally global-singleton (one per page context).
+ * 設計メモ:
+ *   - 値は書き込み時に構造的に freeze される (immutability ルール)。
+ *   - subscriber は diff ではなく新しい値を受け取る — 必要なら自分で比較する。
+ *   - `save` / `load` / `listSlots` は Promise を返す。CEF 外では reject する。
+ *   - store は意図的に global-singleton (ページコンテキストごとに 1 つ)。
  *
- * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-03
+ * 仕様: docs/feedback-from-kaerucrape/2026-04-24.md F-03
  */
 (function(global)
 {
 	'use strict';
 
 	const mitiru = global.mitiru = global.mitiru || {};
-	if (mitiru.state) { return; }  // already loaded
+	if (mitiru.state) { return; }  // 既に読み込み済み
 
-	// ── internal storage ─────────────────────────────────────────
-	const _store     = Object.create(null);  // key -> frozen value
+	// ── 内部ストレージ ─────────────────────────────────────────
+	const _store     = Object.create(null);  // key -> freeze 済みの値
 	const _listeners = Object.create(null);  // key -> [fn, ...]
 
-	// ── helpers ───────────────────────────────────────────────────
+	// ── ヘルパ ───────────────────────────────────────────────────
 	function _freeze(v)
 	{
 		if (v === null || typeof v !== 'object') { return v; }
 		if (Object.isFrozen(v)) { return v; }
-		// Shallow freeze the root; nested objects frozen recursively.
+		// ルートを浅く freeze し、ネストした object は再帰的に freeze。
 		const keys = Object.keys(v);
 		for (let i = 0; i < keys.length; ++i) { v[keys[i]] = _freeze(v[keys[i]]); }
 		return Object.freeze(v);
@@ -59,7 +59,7 @@
 		}
 	}
 
-	// ── public API ────────────────────────────────────────────────
+	// ── 公開 API ────────────────────────────────────────────────
 	const state = mitiru.state = Object.create(null);
 
 	state.set = function(key, value)
@@ -68,7 +68,7 @@
 		{
 			throw new Error('mitiru.state.set: key must be a non-empty string');
 		}
-		// Create a new frozen value — never mutate existing objects.
+		// 新しい freeze 済みの値を作る — 既存 object は決して mutate しない。
 		const frozen = _freeze(Array.isArray(value) ? value.slice() :
 		               (value !== null && typeof value === 'object')
 		                   ? Object.assign(Object.create(null), value)
@@ -95,7 +95,7 @@
 		if (!_listeners[key]) { _listeners[key] = []; }
 		_listeners[key].push(fn);
 
-		// BehaviorSubject pattern — fire immediately if a value already exists.
+		// BehaviorSubject パターン — 既に値があれば即時発火する。
 		if (Object.prototype.hasOwnProperty.call(_store, key))
 		{
 			try { fn(_store[key]); }
@@ -132,9 +132,9 @@
 		return out;
 	};
 
-	// ── CEF persistence (via G-05 dispatch channel) ───────────────
-	// All three methods delegate to `mitiru.dispatch` which wraps cefQuery.
-	// Outside CEF they reject — callers must handle the rejection gracefully.
+	// ── CEF 永続化 (G-05 dispatch channel 経由) ───────────────
+	// 3 メソッドとも cefQuery をラップする `mitiru.dispatch` に委譲する。
+	// CEF 外では reject する — caller は reject を適切に処理すること。
 
 	state.save = function(key, slotId)
 	{

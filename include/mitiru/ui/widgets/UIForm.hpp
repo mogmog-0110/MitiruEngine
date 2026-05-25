@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIForm.hpp
-/// @brief Form composition helper with labeled inputs, validation, and submit logic.
+/// @brief ラベル付き入力、validation、submit ロジックを備えた form 構成 helper。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -17,7 +17,7 @@
 
 namespace mitiru::ui {
 
-/// @brief Supported form field types.
+/// @brief 対応する form field の種別。
 enum class UIFormFieldType : std::uint8_t
 {
 	Text,
@@ -29,24 +29,24 @@ enum class UIFormFieldType : std::uint8_t
 	RadioGroup
 };
 
-/// @brief Alignment for field labels.
+/// @brief field ラベルの揃え方。
 enum class LabelAlign : std::uint8_t
 {
 	Left,
 	Right
 };
 
-/// @brief Validation result for a single field.
+/// @brief 単一 field の validation 結果。
 struct UIFormError
 {
 	std::string key;
 	std::string message;
 };
 
-/// @brief Validation function type: receives value, returns empty string if valid.
+/// @brief validation 関数型: 値を受け取り、有効なら空文字列を返す。
 using FormValidationFn = std::function<std::string(const std::string&)>;
 
-/// @brief Definition of a single form field.
+/// @brief 単一 form field の定義。
 struct UIFormField
 {
 	std::string label;
@@ -54,19 +54,19 @@ struct UIFormField
 	std::string key;
 	bool required = false;
 	std::string placeholder;
-	/// @brief Validation: regex pattern string OR callback. Empty = no validation.
+	/// @brief validation: regex pattern 文字列 or callback。空 = validation なし。
 	std::string validationRegex;
 	FormValidationFn validationCallback;
 	std::string errorMessage;
 	std::string defaultValue;
-	/// @brief Options for Dropdown / RadioGroup fields.
+	/// @brief Dropdown / RadioGroup field の選択肢。
 	std::vector<std::string> options;
-	/// @brief Min/max for Slider fields.
+	/// @brief Slider field の min / max。
 	float sliderMin = 0.0f;
 	float sliderMax = 1.0f;
 };
 
-/// @brief Configuration for creating a UIForm.
+/// @brief UIForm 生成用の設定。
 struct UIFormConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -83,10 +83,10 @@ struct UIFormConfig
 	std::string requiredMarker = "*";
 };
 
-/// @brief Form composition widget with labeled inputs and validation.
+/// @brief ラベル付き入力と validation を備えた form 構成 widget。
 ///
-/// Manages a collection of named fields with real-time validation,
-/// tab navigation, and submit/cancel actions.
+/// 名前付き field の集合を、リアルタイム validation、tab 移動、
+/// submit / cancel 操作とともに管理する。
 ///
 /// @code
 ///   UIFormConfig cfg;
@@ -108,13 +108,13 @@ class UIForm
 	std::shared_ptr<UINode> m_node;
 	UIFormConfig m_config;
 
-	/// @brief Current values keyed by field key.
+	/// @brief field key で引く現在値。
 	std::map<std::string, std::string> m_values;
 
-	/// @brief Current validation errors keyed by field key.
+	/// @brief field key で引く現在の validation error。
 	std::map<std::string, std::string> m_errors;
 
-	/// @brief Index of the currently focused field, or -1 if none.
+	/// @brief 現在 focus 中の field の index、無ければ -1。
 	std::int32_t m_focusedFieldIndex = -1;
 
 	std::function<void(const std::map<std::string, std::string>&)> m_onSubmit;
@@ -122,12 +122,12 @@ class UIForm
 	std::function<void(const std::string&, const std::string&)> m_onValueChanged;
 
 public:
-	/// @brief Construct a form from configuration.
-	/// @param config Form configuration.
+	/// @brief 設定から form を構築する。
+	/// @param config form の設定。
 	explicit UIForm(const UIFormConfig& config)
 		: m_config(config)
 	{
-		// Initialize default values
+		// default 値で初期化する
 		for (const auto& field : config.fields)
 		{
 			m_values[field.key] = field.defaultValue;
@@ -154,51 +154,51 @@ public:
 
 	// ── Accessors ────────────────────────────────────────────
 
-	/// @brief Get the underlying UINode.
+	/// @brief 基底の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get total form width.
+	/// @brief form の総幅を取得する。
 	[[nodiscard]] float totalWidth() const noexcept
 	{
-		return m_config.labelWidth + m_config.fieldWidth + 16.0f; // margin
+		return m_config.labelWidth + m_config.fieldWidth + 16.0f; // 余白
 	}
 
-	/// @brief Get total form height.
+	/// @brief form の総高さを取得する。
 	[[nodiscard]] float totalHeight() const noexcept
 	{
-		const float fieldHeight = 28.0f; // standard row height
+		const float fieldHeight = 28.0f; // 標準の行高さ
 		const float rows = static_cast<float>(m_config.fields.size());
 		const float buttonsRow = fieldHeight + m_config.rowSpacing;
 		return rows * (fieldHeight + m_config.rowSpacing) + buttonsRow;
 	}
 
-	/// @brief Get the field definitions.
+	/// @brief field 定義を取得する。
 	[[nodiscard]] const std::vector<UIFormField>& fields() const noexcept
 	{
 		return m_config.fields;
 	}
 
-	/// @brief Get the index of the currently focused field, or -1.
+	/// @brief 現在 focus 中の field の index を取得する、無ければ -1。
 	[[nodiscard]] std::int32_t focusedFieldIndex() const noexcept { return m_focusedFieldIndex; }
 
-	/// @brief Get current error message for a field, empty if no error.
+	/// @brief field の現在の error メッセージを取得する、error が無ければ空。
 	[[nodiscard]] std::string fieldError(const std::string& key) const
 	{
 		const auto it = m_errors.find(key);
 		return (it != m_errors.end()) ? it->second : std::string{};
 	}
 
-	/// @brief Get all current values.
+	/// @brief 現在の全値を取得する。
 	[[nodiscard]] const std::map<std::string, std::string>& values() const noexcept
 	{
 		return m_values;
 	}
 
-	// ── Value management ─────────────────────────────────────
+	// ── 値の管理 ─────────────────────────────────────
 
-	/// @brief Set the value of a field by key.
-	/// @param key Field key.
-	/// @param value New value.
+	/// @brief key で field の値を設定する。
+	/// @param key field key。
+	/// @param value 新しい値。
 	void setValue(const std::string& key, const std::string& value)
 	{
 		m_values[key] = value;
@@ -207,17 +207,17 @@ public:
 		if (m_onValueChanged) { m_onValueChanged(key, value); }
 	}
 
-	/// @brief Get the value of a field by key.
-	/// @param key Field key.
-	/// @return Current value, or empty string if key not found.
+	/// @brief key で field の値を取得する。
+	/// @param key field key。
+	/// @return 現在値、key が見つからなければ空文字列。
 	[[nodiscard]] std::string getValue(const std::string& key) const
 	{
 		const auto it = m_values.find(key);
 		return (it != m_values.end()) ? it->second : std::string{};
 	}
 
-	/// @brief Validate all fields and return errors.
-	/// @return Vector of validation errors (empty if all valid).
+	/// @brief 全 field を validation し error を返す。
+	/// @return validation error の vector (全て有効なら空)。
 	[[nodiscard]] std::vector<UIFormError> validate()
 	{
 		m_errors.clear();
@@ -238,14 +238,14 @@ public:
 		return errors;
 	}
 
-	/// @brief Check if the form is currently valid (all fields pass validation).
+	/// @brief form が現在有効か確認する (全 field が validation を通過)。
 	[[nodiscard]] bool isValid()
 	{
 		const auto errors = validate();
 		return errors.empty();
 	}
 
-	/// @brief Reset all fields to their default values and clear errors.
+	/// @brief 全 field を default 値にリセットし error を消す。
 	void reset()
 	{
 		m_errors.clear();
@@ -257,10 +257,10 @@ public:
 		syncNodeState();
 	}
 
-	// ── Actions ──────────────────────────────────────────────
+	// ── 操作 ──────────────────────────────────────────────
 
-	/// @brief Attempt to submit the form. Validates first.
-	/// @return True if submitted (all fields valid), false otherwise.
+	/// @brief form の submit を試みる。まず validation する。
+	/// @return submit された (全 field 有効) なら true、それ以外は false。
 	bool submit()
 	{
 		if (!isValid()) { return false; }
@@ -268,7 +268,7 @@ public:
 		return true;
 	}
 
-	/// @brief Cancel the form.
+	/// @brief form を cancel する。
 	void cancel()
 	{
 		if (m_onCancel) { m_onCancel(); }
@@ -276,25 +276,25 @@ public:
 
 	// ── Callbacks ────────────────────────────────────────────
 
-	/// @brief Set callback invoked on successful submit.
+	/// @brief submit 成功時に呼ばれる callback を設定する。
 	void setOnSubmit(std::function<void(const std::map<std::string, std::string>&)> callback)
 	{
 		m_onSubmit = std::move(callback);
 	}
 
-	/// @brief Set callback invoked on cancel.
+	/// @brief cancel 時に呼ばれる callback を設定する。
 	void setOnCancel(std::function<void()> callback) { m_onCancel = std::move(callback); }
 
-	/// @brief Set callback invoked when any field value changes.
+	/// @brief いずれかの field 値が変わったとき呼ばれる callback を設定する。
 	void setOnValueChanged(std::function<void(const std::string&, const std::string&)> callback)
 	{
 		m_onValueChanged = std::move(callback);
 	}
 
-	// ── Navigation (called by event system) ──────────────────
+	// ── 移動 (event system から呼ばれる) ──────────────────
 
-	/// @brief Focus a specific field by index.
-	/// @param index Field index.
+	/// @brief index で特定の field を focus する。
+	/// @param index field index。
 	void focusField(std::int32_t index)
 	{
 		if (index < 0 || index >= static_cast<std::int32_t>(m_config.fields.size()))
@@ -308,7 +308,7 @@ public:
 		m_node->setProperty("focused_field", std::to_string(m_focusedFieldIndex));
 	}
 
-	/// @brief Move focus to the next field (Tab key).
+	/// @brief 次の field へ focus を移す (Tab キー)。
 	void focusNext()
 	{
 		const auto count = static_cast<std::int32_t>(m_config.fields.size());
@@ -317,7 +317,7 @@ public:
 		m_node->setProperty("focused_field", std::to_string(m_focusedFieldIndex));
 	}
 
-	/// @brief Move focus to the previous field (Shift+Tab).
+	/// @brief 前の field へ focus を移す (Shift+Tab)。
 	void focusPrevious()
 	{
 		const auto count = static_cast<std::int32_t>(m_config.fields.size());
@@ -326,21 +326,21 @@ public:
 		m_node->setProperty("focused_field", std::to_string(m_focusedFieldIndex));
 	}
 
-	/// @brief Handle Enter key press (submit if valid).
+	/// @brief Enter キー押下を処理する (有効なら submit)。
 	void onEnterPressed()
 	{
 		submit();
 	}
 
-	/// @brief Handle Tab key press.
-	/// @param shiftHeld True if Shift is held.
+	/// @brief Tab キー押下を処理する。
+	/// @param shiftHeld Shift が押されていれば true。
 	void onTabPressed(bool shiftHeld)
 	{
 		if (shiftHeld) { focusPrevious(); } else { focusNext(); }
 	}
 
 private:
-	/// @brief Validate a single field by key.
+	/// @brief key で単一 field を validation する。
 	void validateField(const std::string& key)
 	{
 		const auto* field = findField(key);
@@ -359,10 +359,10 @@ private:
 		}
 	}
 
-	/// @brief Run validation for one field and return error message (empty = valid).
+	/// @brief 1 つの field を validation し error メッセージを返す (空 = 有効)。
 	[[nodiscard]] std::string validateSingleField(const UIFormField& field, const std::string& value) const
 	{
-		// Required check
+		// 必須チェック
 		if (field.required && value.empty())
 		{
 			return field.errorMessage.empty()
@@ -370,10 +370,10 @@ private:
 				: field.errorMessage;
 		}
 
-		// Skip further validation on empty optional fields
+		// 空の任意 field はそれ以上の validation を飛ばす
 		if (value.empty()) { return {}; }
 
-		// Number type check
+		// 数値型チェック
 		if (field.fieldType == UIFormFieldType::Number)
 		{
 			try
@@ -388,7 +388,7 @@ private:
 			}
 		}
 
-		// Regex validation
+		// regex validation
 		if (!field.validationRegex.empty())
 		{
 			try
@@ -407,7 +407,7 @@ private:
 			}
 		}
 
-		// Callback validation
+		// callback validation
 		if (field.validationCallback)
 		{
 			return field.validationCallback(value);
@@ -416,7 +416,7 @@ private:
 		return {};
 	}
 
-	/// @brief Find a field definition by key.
+	/// @brief key で field 定義を探す。
 	[[nodiscard]] const UIFormField* findField(const std::string& key) const
 	{
 		for (const auto& f : m_config.fields)
@@ -426,7 +426,7 @@ private:
 		return nullptr;
 	}
 
-	/// @brief Sync a single field's state to node properties.
+	/// @brief 単一 field の状態を node properties に同期する。
 	void syncFieldProperty(const std::string& key)
 	{
 		const auto prefix = "field_" + key + "_";
@@ -435,7 +435,7 @@ private:
 		m_node->setProperty(prefix + "error", (errIt != m_errors.end()) ? errIt->second : "");
 	}
 
-	/// @brief Synchronize overall state to the UINode.
+	/// @brief 全体の状態を UINode に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("focused_field", std::to_string(m_focusedFieldIndex));
@@ -451,7 +451,7 @@ private:
 			m_node->setProperty(prefix + "required", field.required ? "true" : "false");
 			m_node->setProperty(prefix + "placeholder", field.placeholder);
 
-			// Serialize options for dropdown/radio
+			// dropdown / radio 用に options を serialize する
 			if (!field.options.empty())
 			{
 				std::string joined;
@@ -465,7 +465,7 @@ private:
 		}
 	}
 
-	/// @brief Convert field type to string.
+	/// @brief field type を文字列に変換する。
 	[[nodiscard]] static const char* fieldTypeToString(UIFormFieldType t) noexcept
 	{
 		switch (t)

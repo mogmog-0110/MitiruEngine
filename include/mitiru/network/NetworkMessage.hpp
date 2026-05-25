@@ -191,7 +191,7 @@ struct GameMessage
 	static constexpr std::size_t kHeaderSize = 25;
 
 private:
-	static constexpr std::uint8_t kMagic = 0x4D;   ///< 'M' for Mitiru
+	static constexpr std::uint8_t kMagic = 0x4D;   ///< Mitiru の 'M'
 	static constexpr std::uint8_t kVersion = 1;
 
 	static void pushU32(std::vector<std::uint8_t>& buf, std::uint32_t v)

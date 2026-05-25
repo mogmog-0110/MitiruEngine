@@ -1,4 +1,4 @@
-// Detail header for mitiru::Engine — do not include directly; included via core/Engine.hpp
+// mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
@@ -6,7 +6,7 @@
 
 #include <fstream>
 
-// ── Engine lifecycle (initialize) out-of-class definition ────────────────
+// ── Engine lifecycle (initialize) のクラス外定義 ────────────────
 
 MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 {
@@ -58,13 +58,13 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 #ifdef _WIN32
 	if (config.gfxBackend == gfx::Backend::OpenGL)
 	{
-		// OpenGLにはGlfwWindow（GLFW_NO_APIなし）が必要
+		// OpenGL には GlfwWindow（GLFW_NO_API なし）が必要
 #ifdef MITIRU_HAS_GLFW
 		m_window = std::make_unique<GlfwWindow>(
 			config.title, winW, winH,
 			GlfwGraphicsMode::OpenGL);
 #else
-		// GLFWが利用不可の場合、DX11にフォールバック
+		// GLFW が利用不可の場合、DX11 にフォールバック
 		m_config.gfxBackend = gfx::Backend::Dx11;
 		m_window = m_platform->createWindow(
 			config.title, winW, winH);
@@ -72,7 +72,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	}
 	else if (config.gfxBackend == gfx::Backend::Vulkan)
 	{
-		// VulkanにはGlfwWindow（GLFW_NO_API）が必要
+		// Vulkan には GlfwWindow（GLFW_NO_API）が必要
 #ifdef MITIRU_HAS_GLFW
 		m_window = std::make_unique<GlfwWindow>(
 			config.title, winW, winH,
@@ -85,7 +85,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	}
 	else
 	{
-		// DX11/DX12/Auto → Win32Window (DisplayMode + resizable 指定可)
+		// DX11/DX12/Auto → Win32Window（DisplayMode + resizable 指定可）
 		auto* win32Plat = dynamic_cast<Win32Platform*>(m_platform.get());
 		if (win32Plat)
 		{

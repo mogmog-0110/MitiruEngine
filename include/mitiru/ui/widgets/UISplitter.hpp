@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UISplitter.hpp
-/// @brief Resizable panel divider widget with drag handle.
+/// @brief drag handle 付きの可変サイズ panel 分割 widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -12,37 +12,37 @@
 
 namespace mitiru::ui {
 
-/// @brief Splitter orientation (which axis the divider runs along).
+/// @brief splitter の向き (分割線がどの軸に沿うか)。
 enum class SplitterOrientation : std::uint8_t
 {
-	Horizontal,  ///< Panels are side by side (left | right), handle is vertical.
-	Vertical     ///< Panels are stacked (top / bottom), handle is horizontal.
+	Horizontal,  ///< panel が左右並び (left | right)、handle は縦。
+	Vertical     ///< panel が上下積み (top / bottom)、handle は横。
 };
 
-/// @brief Configuration for creating a UISplitter.
+/// @brief UISplitter 生成用の設定。
 struct UISplitterConfig
 {
 	UINodeId id = INVALID_UI_NODE;
 	std::string name;
 	SplitterOrientation orientation = SplitterOrientation::Horizontal;
-	float initialRatio = 0.5f;            ///< Initial split ratio (0.0-1.0).
-	float minRatio = 0.1f;                ///< Minimum ratio for panel A.
-	float maxRatio = 0.9f;                ///< Maximum ratio for panel A.
-	float handleSize = 6.0f;              ///< Handle thickness in pixels.
-	float totalWidth = 800.0f;            ///< Total widget width.
-	float totalHeight = 600.0f;           ///< Total widget height.
-	std::string handleImageKey;            ///< Default handle image.
-	std::string handleHoverImageKey;       ///< Handle image on hover.
-	std::string handleDragImageKey;        ///< Handle image while dragging.
-	std::string panelABackgroundImageKey;  ///< Panel A background image.
-	std::string panelBBackgroundImageKey;  ///< Panel B background image.
+	float initialRatio = 0.5f;            ///< 初期の分割比 (0.0-1.0)。
+	float minRatio = 0.1f;                ///< panel A の最小比。
+	float maxRatio = 0.9f;                ///< panel A の最大比。
+	float handleSize = 6.0f;              ///< handle の太さ (pixel)。
+	float totalWidth = 800.0f;            ///< widget 全体の幅。
+	float totalHeight = 600.0f;           ///< widget 全体の高さ。
+	std::string handleImageKey;            ///< デフォルトの handle 画像。
+	std::string handleHoverImageKey;       ///< hover 時の handle 画像。
+	std::string handleDragImageKey;        ///< drag 中の handle 画像。
+	std::string panelABackgroundImageKey;  ///< panel A の背景画像。
+	std::string panelBBackgroundImageKey;  ///< panel B の背景画像。
 };
 
-/// @brief Resizable panel divider widget.
+/// @brief 可変サイズの panel 分割 widget。
 ///
-/// Splits available space into two panels (A and B) separated by a
-/// draggable handle. Supports horizontal and vertical orientations,
-/// ratio clamping, and double-click to reset.
+/// 利用可能な領域を、drag 可能な handle で区切られた 2 つの panel (A と B)
+/// に分割する。horizontal / vertical の向き、比の clamp、double-click で
+/// リセット に対応。
 ///
 /// @code
 ///   UISplitterConfig cfg;
@@ -74,8 +74,8 @@ class UISplitter
 	std::function<void(float)> m_onRatioChanged;
 
 public:
-	/// @brief Construct a splitter from configuration.
-	/// @param config Splitter configuration.
+	/// @brief 設定から splitter を構築する。
+	/// @param config splitter の設定。
 	explicit UISplitter(const UISplitterConfig& config)
 		: m_orientation(config.orientation)
 		, m_ratio(std::clamp(config.initialRatio, config.minRatio, config.maxRatio))
@@ -105,22 +105,22 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Get the current split ratio.
+	/// @brief 現在の分割比を取得する。
 	[[nodiscard]] float getRatio() const noexcept { return m_ratio; }
 
-	/// @brief Check if the handle is being dragged.
+	/// @brief handle が drag 中か判定する。
 	[[nodiscard]] bool isDragging() const noexcept { return m_dragging; }
 
-	/// @brief Check if the handle is being hovered.
+	/// @brief handle が hover 中か判定する。
 	[[nodiscard]] bool isHovered() const noexcept { return m_hovered; }
 
-	/// @brief Get panel A bounds as (x, y, width, height).
+	/// @brief panel A の bounds を (x, y, width, height) で取得する。
 	struct PanelBounds { float x; float y; float width; float height; };
 
-	/// @brief Get the bounds of panel A.
+	/// @brief panel A の bounds を取得する。
 	[[nodiscard]] PanelBounds panelABounds() const noexcept
 	{
 		if (m_orientation == SplitterOrientation::Horizontal)
@@ -132,7 +132,7 @@ public:
 		return {0.0f, 0.0f, m_totalWidth, std::max(0.0f, panelAHeight)};
 	}
 
-	/// @brief Get the bounds of panel B.
+	/// @brief panel B の bounds を取得する。
 	[[nodiscard]] PanelBounds panelBBounds() const noexcept
 	{
 		if (m_orientation == SplitterOrientation::Horizontal)
@@ -144,7 +144,7 @@ public:
 		return {0.0f, handleEnd, m_totalWidth, std::max(0.0f, m_totalHeight - handleEnd)};
 	}
 
-	/// @brief Get the bounds of the handle.
+	/// @brief handle の bounds を取得する。
 	[[nodiscard]] PanelBounds handleBounds() const noexcept
 	{
 		if (m_orientation == SplitterOrientation::Horizontal)
@@ -156,14 +156,14 @@ public:
 		return {0.0f, handleY, m_totalWidth, m_handleSize};
 	}
 
-	// ── Configuration ────────────────────────────────────────
+	// ── 設定 ────────────────────────────────────────
 
-	/// @brief Set the ratio-changed callback.
-	/// @param callback Function invoked when ratio changes.
+	/// @brief 比変更時の callback を設定する。
+	/// @param callback 比が変わったときに呼ばれる関数。
 	void setOnRatioChanged(std::function<void(float)> callback) { m_onRatioChanged = std::move(callback); }
 
-	/// @brief Set the split ratio programmatically.
-	/// @param ratio New ratio (clamped to [minRatio, maxRatio]).
+	/// @brief 分割比をプログラム的に設定する。
+	/// @param ratio 新しい比 ([minRatio, maxRatio] に clamp される)。
 	void setRatio(float ratio)
 	{
 		const float clamped = std::clamp(ratio, m_minRatio, m_maxRatio);
@@ -175,9 +175,9 @@ public:
 		}
 	}
 
-	/// @brief Set the total dimensions.
-	/// @param width Total width.
-	/// @param height Total height.
+	/// @brief 全体サイズを設定する。
+	/// @param width 全体の幅。
+	/// @param height 全体の高さ。
 	void setSize(float width, float height)
 	{
 		m_totalWidth = width;
@@ -186,24 +186,24 @@ public:
 		syncNodeState();
 	}
 
-	// ── Interaction ──────────────────────────────────────────
+	// ── 操作 ──────────────────────────────────────────
 
-	/// @brief Notify that the pointer is hovering over the handle.
+	/// @brief pointer が handle 上を hover していることを通知する。
 	void onHandleHoverEnter()
 	{
 		m_hovered = true;
 		m_node->setProperty("handle_state", "hovered");
 	}
 
-	/// @brief Notify that the pointer has left the handle.
+	/// @brief pointer が handle から離れたことを通知する。
 	void onHandleHoverLeave()
 	{
 		if (!m_dragging) { m_hovered = false; }
 		m_node->setProperty("handle_state", m_dragging ? "dragging" : "normal");
 	}
 
-	/// @brief Begin dragging the handle.
-	/// @param pointerPos Current pointer position along the split axis.
+	/// @brief handle の drag を開始する。
+	/// @param pointerPos 分割軸に沿った現在の pointer 位置。
 	void beginDrag(float pointerPos)
 	{
 		m_dragging = true;
@@ -212,8 +212,8 @@ public:
 		m_node->setProperty("handle_state", "dragging");
 	}
 
-	/// @brief Update the drag with a new pointer position.
-	/// @param pointerPos Current pointer position along the split axis.
+	/// @brief 新しい pointer 位置で drag を更新する。
+	/// @param pointerPos 分割軸に沿った現在の pointer 位置。
 	void updateDrag(float pointerPos)
 	{
 		if (!m_dragging) { return; }
@@ -225,21 +225,21 @@ public:
 		setRatio(m_dragStartRatio + delta);
 	}
 
-	/// @brief End the drag.
+	/// @brief drag を終了する。
 	void endDrag()
 	{
 		m_dragging = false;
 		m_node->setProperty("handle_state", m_hovered ? "hovered" : "normal");
 	}
 
-	/// @brief Double-click the handle to reset to 50/50.
+	/// @brief handle を double-click して 50/50 にリセットする。
 	void resetToCenter()
 	{
 		setRatio(0.5f);
 	}
 
 private:
-	/// @brief Synchronize state to the UINode.
+	/// @brief state を UINode に同期する。
 	void syncNodeState()
 	{
 		m_node->setProperty("ratio", std::to_string(m_ratio));

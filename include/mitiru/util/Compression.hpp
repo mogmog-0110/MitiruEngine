@@ -274,11 +274,11 @@ public:
 		}
 
 		/// バッファサイズを推定
-		std::size_t totalSize = 12; // magic + version + fileCount
+		std::size_t totalSize = 12; // magic + version + fileCount の3フィールド
 		for (const auto& e : entries)
 		{
-			totalSize += 4 + e.name.size() + 8 + 8 + 8; // TOC entry
-			totalSize += e.compressed.size();              // data
+			totalSize += 4 + e.name.size() + 8 + 8 + 8; // TOCエントリ
+			totalSize += e.compressed.size();              // データ本体
 		}
 
 		std::vector<uint8_t> bundle;

@@ -1,46 +1,45 @@
 #pragma once
 
 /// @file UI.hpp
-/// @brief Master include for the MitiruEngine general-purpose UI system.
-/// @details Includes all UI headers in dependency order for convenience.
-///          Individual headers can still be included separately for
-///          minimal compile-time overhead.
+/// @brief MitiruEngine 汎用 UI システムのマスター include
+/// @details 全 UI ヘッダを依存順にまとめて include する利便性ヘッダ。
+///          個別ヘッダを単独で include すればコンパイル時間を最小化できる。
 
-// ── Foundation ───────────────────────────────────────────────────
+// ── 基盤 ─────────────────────────────────────────────────────────
 #include <mitiru/ui/UINode.hpp>
 
-// ── Events and interaction ───────────────────────────────────────
+// ── イベントとインタラクション ───────────────────────────────────
 #include <mitiru/ui/UIEvent.hpp>
 #include <mitiru/ui/UIHitTest.hpp>
 #include <mitiru/ui/UIFocus.hpp>
 
-// ── State and styling ────────────────────────────────────────────
+// ── ステートとスタイリング ───────────────────────────────────────
 #include <mitiru/ui/UIState.hpp>
 #include <mitiru/ui/UIStyle.hpp>
 #include <mitiru/ui/UITheme.hpp>
 
-// ── Rendering primitives ─────────────────────────────────────────
+// ── 描画プリミティブ ─────────────────────────────────────────────
 #include <mitiru/ui/UINineSlice.hpp>
 #include <mitiru/ui/UIAnimation.hpp>
 
-// ── Layout ───────────────────────────────────────────────────────
+// ── レイアウト ───────────────────────────────────────────────────
 #include <mitiru/ui/LayoutEngine.hpp>
 #include <mitiru/ui/UITemplate.hpp>
 
-// ── Bridge modules (VN-to-UI) ────────────────────────────────────
+// ── ブリッジモジュール（VN→UI）───────────────────────────────────
 #include <mitiru/ui/Easing.hpp>
 #include <mitiru/ui/ScrollView.hpp>
 #include <mitiru/ui/Modal.hpp>
 #include <mitiru/ui/Accessibility.hpp>
 
-// ── Rendering ────────────────────────────────────────────────────
+// ── 描画 ─────────────────────────────────────────────────────────
 #include <mitiru/ui/UIRenderer.hpp>
 
-// ── Observation / debugging ──────────────────────────────────────
+// ── 観察・デバッグ ───────────────────────────────────────────────
 #include <mitiru/ui/UIEventLog.hpp>
 #include <mitiru/ui/UISnapshot.hpp>
 
-// ── Widgets ──────────────────────────────────────────────────────
+// ── ウィジェット ─────────────────────────────────────────────────
 #include <mitiru/ui/widgets/UIAccordion.hpp>
 #include <mitiru/ui/widgets/UIAvatar.hpp>
 #include <mitiru/ui/widgets/UIBadge.hpp>

@@ -1,26 +1,26 @@
 /*!
  * mitiru_tokens_linear.css — Linear-app inspired alt theme
  *
- * Design intent: Calm productivity surface. Off-white canvas with indigo
- * accent and soft elevation. Suitable for keyboard-driven tools that
- * favour clarity over personality. Compatible with `--mitiru-*` consumers.
+ * Design intent: 落ち着いた生産性の面。オフホワイトの canvas に indigo accent と
+ * 柔らかい elevation。個性より明瞭さを優先するキーボード駆動ツールに向く。
+ * `--mitiru-*` consumer と互換。
  *
- * Swap by replacing the <link> to mitiru_tokens.css with this file.
+ * mitiru_tokens.css への <link> をこのファイルに差し替えて切り替える。
  */
 :root
 {
 	/* ── Base palette: Linear (off-white + indigo) ────────────────── */
-	--mitiru-paper:        #fbfbfd;   /* near-white canvas */
+	--mitiru-paper:        #fbfbfd;   /* ほぼ白の canvas */
 	--mitiru-paper-hi:     #ffffff;   /* card surface */
-	--mitiru-ink:          #161a23;   /* near-black body text */
-	--mitiru-ink-mute:     #6b7280;   /* cool gray for metadata */
-	--mitiru-indigo:       #5e6ad2;   /* signature indigo */
-	--mitiru-indigo-hover: #4c52a8;   /* deeper indigo for hover */
-	--mitiru-phosphor:     #16a34a;   /* success green */
-	--mitiru-brick:        #dc2626;   /* destructive red */
-	--mitiru-paper-edge:   rgba(0, 0, 0, 0.06);   /* hairline border */
+	--mitiru-ink:          #161a23;   /* ほぼ黒の本文 */
+	--mitiru-ink-mute:     #6b7280;   /* metadata 用のクールグレー */
+	--mitiru-indigo:       #5e6ad2;   /* 象徴的な indigo */
+	--mitiru-indigo-hover: #4c52a8;   /* hover 用の濃い indigo */
+	--mitiru-phosphor:     #16a34a;   /* success の緑 */
+	--mitiru-brick:        #dc2626;   /* 破壊的操作の赤 */
+	--mitiru-paper-edge:   rgba(0, 0, 0, 0.06);   /* ヘアラインの枠 */
 
-	/* ── Semantic aliases ─────────────────────────────────────── */
+	/* ── Semantic alias ─────────────────────────────────────── */
 	--mitiru-bg:        var(--mitiru-paper);
 	--mitiru-surface:   var(--mitiru-paper-hi);
 	--mitiru-text:      var(--mitiru-ink);
@@ -58,7 +58,7 @@
 	--mitiru-leading-normal: 1.5;
 	--mitiru-leading-loose:  1.6;
 
-	/* ── Spacing — 8 multiples ────────────────────────────────── */
+	/* ── Spacing — 8 の倍数 ────────────────────────────────── */
 	--mitiru-space-0:  0;
 	--mitiru-space-1:  4px;
 	--mitiru-space-2:  8px;
@@ -68,13 +68,13 @@
 	--mitiru-space-6:  32px;
 	--mitiru-space-7:  48px;
 
-	/* ── Corner radius (soft 8px) ─────────────────────────────── */
+	/* ── Corner radius (柔らかい 8px) ─────────────────────────────── */
 	--mitiru-radius-sm:   4px;
 	--mitiru-radius-md:   8px;
 	--mitiru-radius-lg:   12px;
 	--mitiru-radius-pill: 9999px;
 
-	/* ── Elevation — soft, layered shadows ────────────────────── */
+	/* ── Elevation — 柔らかく重ねた shadow ────────────────────── */
 	--mitiru-shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04),
 	                   0 0 0 1px var(--mitiru-border);
 	--mitiru-shadow-2: 0 2px 4px rgba(15, 23, 42, 0.06),
@@ -84,14 +84,14 @@
 	--mitiru-shadow-4: 0 12px 32px rgba(15, 23, 42, 0.12),
 	                   0 0 0 1px var(--mitiru-border);
 
-	/* Focus ring — indigo halo */
+	/* Focus ring — indigo のハロー */
 	--mitiru-focus-ring: 0 0 0 3px rgba(94, 106, 210, 0.25);
 
 	--mitiru-blur-sm: blur(4px);
 	--mitiru-blur-md: blur(12px);
 	--mitiru-blur-lg: blur(24px);
 
-	/* ── Z-index ladder ─────────────────────────────────────── */
+	/* ── Z-index の段階 ─────────────────────────────────────── */
 	--mitiru-z-base:     0;
 	--mitiru-z-hud:      100;
 	--mitiru-z-overlay:  200;

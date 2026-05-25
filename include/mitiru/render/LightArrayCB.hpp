@@ -41,10 +41,10 @@ namespace mitiru::render
 /// @details HLSL の cbuffer alignment と一致させるため、各メンバは 16 byte。
 struct alignas(16) LightEntryGpu
 {
-	float typeAndIntensity[4]{};  ///< x=type(0=Dir/1=Point/2=Spot), y=intensity, z=spotInnerCos, w=spotOuterCos
-	float position[4]{};          ///< xyz=position (Point/Spot)
-	float direction[4]{};         ///< xyz=direction (Dir/Spot)
-	float color[4]{};             ///< rgb=color, a=range
+	float typeAndIntensity[4]{};  ///< x=type(0=Dir/1=Point/2=Spot), y=強度, z=spotInnerCos, w=spotOuterCos
+	float position[4]{};          ///< xyz=位置 (Point/Spot)
+	float direction[4]{};         ///< xyz=向き (Dir/Spot)
+	float color[4]{};             ///< rgb=色, a=range
 };
 
 /// @brief マルチライト定数バッファ（544 byte / 16 byte aligned）

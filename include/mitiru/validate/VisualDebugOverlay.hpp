@@ -90,10 +90,10 @@ public:
 		// ── 画面境界（緑の枠） ──────────────────────────────
 		const sgc::Colorf green{0.0f, 0.8f, 0.0f, 0.6f};
 		const float borderW = 2.0f;
-		screen.drawRect(sgc::Rectf{0.0f, 0.0f, sw, borderW}, green);             // top
-		screen.drawRect(sgc::Rectf{0.0f, sh - borderW, sw, borderW}, green);     // bottom
-		screen.drawRect(sgc::Rectf{0.0f, 0.0f, borderW, sh}, green);             // left
-		screen.drawRect(sgc::Rectf{sw - borderW, 0.0f, borderW, sh}, green);     // right
+		screen.drawRect(sgc::Rectf{0.0f, 0.0f, sw, borderW}, green);             // 上
+		screen.drawRect(sgc::Rectf{0.0f, sh - borderW, sw, borderW}, green);     // 下
+		screen.drawRect(sgc::Rectf{0.0f, 0.0f, borderW, sh}, green);             // 左
+		screen.drawRect(sgc::Rectf{sw - borderW, 0.0f, borderW, sh}, green);     // 右
 
 		// ── 描画コール矩形 ──────────────────────────────────
 		const sgc::Colorf blueOutline{0.3f, 0.5f, 1.0f, 0.3f};
@@ -102,7 +102,7 @@ public:
 		for (const auto& [rect, isText] : m_recordedRects)
 		{
 			const auto& outlineColor = isText ? yellowOutline : blueOutline;
-			const float t = 1.0f; // outline thickness
+			const float t = 1.0f; // 枠線の太さ
 
 			// 枠線を4本の細い矩形で描画
 			screen.drawRect(sgc::Rectf{rect.x(), rect.y(), rect.width(), t}, outlineColor);

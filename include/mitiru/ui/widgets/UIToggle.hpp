@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIToggle.hpp
-/// @brief Toggle (checkbox / switch) widget for boolean values.
+/// @brief 真偽値用の toggle (checkbox / switch) widget。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -11,14 +11,14 @@
 
 namespace mitiru::ui {
 
-/// @brief Visual style for the toggle widget.
+/// @brief toggle widget の表示スタイル。
 enum class ToggleStyle : std::uint8_t
 {
-	Checkbox,  ///< Square checkbox with checkmark.
-	Switch     ///< Sliding switch (pill shape).
+	Checkbox,  ///< チェックマーク付きの四角い checkbox。
+	Switch     ///< スライドする switch (pill 形状)。
 };
 
-/// @brief Configuration for creating a UIToggle.
+/// @brief UIToggle 生成用の設定。
 struct UIToggleConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -27,14 +27,14 @@ struct UIToggleConfig
 	bool checked = false;
 	bool enabled = true;
 	ToggleStyle style = ToggleStyle::Checkbox;
-	float width = 0.0f;   ///< 0 = auto-size from label.
+	float width = 0.0f;   ///< 0 = label から自動サイズ。
 	float height = 24.0f;
 };
 
-/// @brief Toggle widget that wraps a UINode with click-to-toggle logic.
+/// @brief click-to-toggle ロジックで UINode をラップする toggle widget。
 ///
-/// The toggle manages a boolean checked state and notifies via callback.
-/// It creates a container node with a toggle indicator child and a label child.
+/// toggle は真偽値の checked 状態を管理し、callback で通知する。
+/// toggle インジケータの子と label の子を持つコンテナ node を生成する。
 ///
 /// @code
 ///   UIToggleConfig cfg;
@@ -57,8 +57,8 @@ class UIToggle
 	std::function<void(bool)> m_onChanged;
 
 public:
-	/// @brief Construct a toggle from configuration.
-	/// @param config Toggle configuration.
+	/// @brief 設定から toggle を構築する。
+	/// @param config toggle の設定。
 	explicit UIToggle(const UIToggleConfig& config)
 		: m_checked(config.checked)
 		, m_enabled(config.enabled)
@@ -80,26 +80,26 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Get the underlying UINode.
+	/// @brief 内部の UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_node; }
 
-	/// @brief Check if currently toggled on.
+	/// @brief 現在 toggle ON か判定する。
 	[[nodiscard]] bool isChecked() const noexcept { return m_checked; }
 
-	/// @brief Check if the toggle is enabled.
+	/// @brief toggle が有効か判定する。
 	[[nodiscard]] bool isEnabled() const noexcept { return m_enabled; }
 
-	/// @brief Get the label text.
+	/// @brief label テキストを取得する。
 	[[nodiscard]] const std::string& label() const noexcept { return m_node->text(); }
 
-	// ── Configuration ────────────────────────────────────────
+	// ── 設定 ────────────────────────────────────────
 
-	/// @brief Set the state-changed callback.
-	/// @param callback Function invoked with the new checked state.
+	/// @brief 状態変化 callback を設定する。
+	/// @param callback 新しい checked 状態を引数に呼ばれる関数。
 	void setOnChanged(std::function<void(bool)> callback) { m_onChanged = std::move(callback); }
 
-	/// @brief Set the checked state programmatically.
-	/// @param checked New checked state.
+	/// @brief checked 状態をプログラムから設定する。
+	/// @param checked 新しい checked 状態。
 	void setChecked(bool checked)
 	{
 		if (m_checked != checked)
@@ -110,24 +110,24 @@ public:
 		}
 	}
 
-	/// @brief Set the label text.
-	/// @param label New label.
+	/// @brief label テキストを設定する。
+	/// @param label 新しい label。
 	void setLabel(const std::string& label)
 	{
 		m_node->setText(label);
 	}
 
-	/// @brief Set enabled state.
-	/// @param enabled True to enable interaction.
+	/// @brief 有効状態を設定する。
+	/// @param enabled 操作を有効にするなら true。
 	void setEnabled(bool enabled)
 	{
 		m_enabled = enabled;
 		syncNodeState();
 	}
 
-	// ── Interaction ──────────────────────────────────────────
+	// ── 操作 ──────────────────────────────────────────
 
-	/// @brief Called when the toggle is clicked.
+	/// @brief toggle が click されたときに呼ばれる。
 	void onClick()
 	{
 		if (!m_enabled) { return; }
@@ -137,7 +137,7 @@ public:
 	}
 
 private:
-	/// @brief Synchronize state to the UINode.
+	/// @brief 状態を UINode へ同期する。
 	void syncNodeState()
 	{
 		m_node->setValue(m_checked ? 1.0f : 0.0f);

@@ -1,17 +1,17 @@
-// mitiru_subsys_input — axis 3 (per-system isolation) P3 deliverable.
+// mitiru_subsys_input — axis 3 (全 system 単独起動) の P3 成果物。
 //
-// Boots the input subsystem with no game logic, no CEF, no audio — just
-// Engine + Screen + InputState pulled each frame. The HUD makes the raw
-// 256-key VK table observable and turns press / release into a scroll log,
-// so this exe doubles as a manual probe for keyboard / mouse plumbing.
+// ゲームロジック・CEF・audio なしで input subsystem を起動する。Engine +
+// Screen + 毎フレーム引く InputState のみ。HUD が生の 256-key VK テーブルを
+// 観測可能にし、press / release をスクロールログにする。キーボード / マウス
+// 配線の手動プローブを兼ねる exe。
 //
-// What you see (Saturn palette: silver bg / 黒 ink / Saturn red accent):
-//   - header "input subsystem" + last-pressed VK code in large text
-//   - 16×16 grid (256 cells) — Saturn red fill when keysDown[i] = true
-//   - right panel: mouse x/y + L/M/R button state
-//   - bottom: press log scroll (newest first, up to 12 lines)
+// 見えるもの (Saturn パレット: 銀 bg / 黒 ink / Saturn red アクセント):
+//   - ヘッダ "input subsystem" + 最後に押した VK コードを大きく表示
+//   - 16×16 grid (256 セル) — keysDown[i] = true なら Saturn red で塗る
+//   - 右パネル: mouse x/y + L/M/R ボタン状態
+//   - 下: press ログのスクロール (新しい順、最大 12 行)
 //
-// Controls: ESC quits.
+// 操作: ESC で終了。
 
 #include <array>
 #include <cstdio>
@@ -21,12 +21,12 @@
 
 namespace {
 
-constexpr sgc::Colorf kPaperBg     {0.784f, 0.784f, 0.784f, 1.0f};  // #c8c8c8 silver
-constexpr sgc::Colorf kPaperEdge   {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 ink border
+constexpr sgc::Colorf kPaperBg     {0.784f, 0.784f, 0.784f, 1.0f};  // #c8c8c8 銀
+constexpr sgc::Colorf kPaperEdge   {0.063f, 0.063f, 0.063f, 1.0f};  // #101010 墨の縁
 constexpr sgc::Colorf kInk         {0.063f, 0.063f, 0.063f, 1.0f};  // #101010
 constexpr sgc::Colorf kMute        {0.290f, 0.290f, 0.290f, 1.0f};  // #4a4a4a
 constexpr sgc::Colorf kAmberAccent {0.784f, 0.0f,   0.173f, 1.0f};  // #c8002c Saturn red
-constexpr sgc::Colorf kCellEmpty   {0.870f, 0.870f, 0.870f, 1.0f};  // #dedede inset
+constexpr sgc::Colorf kCellEmpty   {0.870f, 0.870f, 0.870f, 1.0f};  // #dedede 凹
 constexpr sgc::Colorf kPanelFill   {0.847f, 0.847f, 0.847f, 1.0f};  // #d8d8d8
 
 constexpr int kMaxLog = 12;
@@ -47,7 +47,7 @@ public:
             return;
         }
 
-        // Walk the full 256-key table and snapshot live + edges.
+        // 256-key テーブルを走査し、現在値とエッジを記録。
         for (int vk = 0; vk < mitiru::InputState::MAX_KEYS; ++vk)
         {
             m_keysDown[static_cast<std::size_t>(vk)] = in.isKeyDown(vk);
@@ -89,7 +89,7 @@ public:
 private:
     void pushLog(std::string line)
     {
-        // Newest first; cap to kMaxLog (drop oldest from the back).
+        // 新しい順。kMaxLog で頭打ち (末尾の古いものを捨てる)。
         m_log.insert(m_log.begin(), std::move(line));
         if (static_cast<int>(m_log.size()) > kMaxLog)
         {
@@ -129,7 +129,7 @@ private:
                 const float x  = gridX + static_cast<float>(col) * (kCell + kGap);
                 const float y  = gridY + static_cast<float>(row) * (kCell + kGap);
                 const bool  on = m_keysDown[static_cast<std::size_t>(vk)];
-                // Border first (1px ink), then interior fill.
+                // 先に枠 (ink 1px)、次に内部塗り。
                 screen.drawRect(sgc::Rectf{x, y, kCell, kCell}, kPaperEdge);
                 screen.drawRect(sgc::Rectf{x + 1.0f, y + 1.0f, kCell - 2.0f, kCell - 2.0f},
                                 on ? kAmberAccent : kCellEmpty);

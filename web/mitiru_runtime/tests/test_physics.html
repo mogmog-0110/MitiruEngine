@@ -2,13 +2,13 @@
 <meta charset="utf-8">
 <title>mitiru_physics.js tests</title>
 <!--
-    test_physics.html — mitiru.physics (H-06) unit tests
+    test_physics.html — mitiru.physics (H-06) unit test
 
-    Run:
+    走らせ方:
       python -m http.server 8795 --bind 127.0.0.1
       open http://localhost:8795/web/mitiru_runtime/tests/test_physics.html
 
-    Machine-readable result:
+    機械可読な結果:
       window.__testResult  = { pass, fail, tests: [...] }
       window.__testDone    = true
 -->
@@ -29,8 +29,8 @@
 	var t = mitiru.test;
 	var p = mitiru.physics;
 
-	// ── mock bridge helpers ───────────────────────────────────────────
-	// Only allowed mock: stub window.cefQuery via responseMap.
+	// ── mock bridge helper ───────────────────────────────────────────
+	// 許可される唯一の mock: responseMap 経由で window.cefQuery を stub する。
 	// responseMap: { 'handler.name': function(payloadStr, callIndex) -> respStr }
 	function installMockBridge(responseMap)
 	{
@@ -63,7 +63,7 @@
 
 	function removeMockBridge() { delete window.cefQuery; }
 
-	// Standard mock that handles the full round-trip used by most tests.
+	// 大半の test で使う full round-trip を扱う標準 mock。
 	function makeFullMock()
 	{
 		return installMockBridge({
@@ -101,17 +101,17 @@
 		});
 	}
 
-	// ── 1. guard: double-load prevention ─────────────────────────────
+	// ── 1. guard: double-load 防止 ─────────────────────────────
 	t.case('mitiru.physics exists and is not re-created on re-include', function()
 	{
 		t.assert(typeof p === 'object' && p !== null, 'physics API should be an object');
 		var ref = mitiru.physics;
-		// The IIFE guard means a second execution of the script would early-exit.
-		// We verify the reference is stable (same object).
+		// IIFE の guard により、script の 2 度目の実行は早期 return する。
+		// reference が安定している (同一オブジェクト) ことを確認する。
 		t.assertEq(mitiru.physics, ref, 'reference must be the same object after guard');
 	});
 
-	// ── 2. createWorld without cefQuery rejects ───────────────────────
+	// ── 2. cefQuery 無しの createWorld は reject ───────────────────────
 	t.case('createWorld without cefQuery rejects with bridge-unavailable error', async function()
 	{
 		removeMockBridge();
@@ -145,7 +145,7 @@
 
 		await world.destroy();
 
-		// Verify the correct handler names were invoked.
+		// 正しい handler 名が呼ばれたことを確認する。
 		var names = calls.map(function(c) { return c.name; });
 		t.assert(names.indexOf('physics.createWorld')  !== -1, 'createWorld handler called');
 		t.assert(names.indexOf('physics.createCircle') !== -1, 'createCircle handler called');
@@ -155,7 +155,7 @@
 		removeMockBridge();
 	});
 
-	// ── 4. setLinearVelocity on a destroyed body still resolves ──────
+	// ── 4. 破棄済み body への setLinearVelocity も resolve する ──────
 	t.case('setLinearVelocity on a destroyed body still resolves (no throw)', async function()
 	{
 		makeFullMock();
@@ -166,7 +166,7 @@
 
 		await world.destroyBody(ballId);
 
-		// C++ is the no-op; JS just forwards — should resolve without throw.
+		// no-op は C++ 側。JS は転送するだけ — throw せず resolve するはず。
 		var resolved = false;
 		await world.setLinearVelocity(ballId, 0, 100).then(function()
 		{
@@ -178,16 +178,16 @@
 		removeMockBridge();
 	});
 
-	// ── 5. start() polls via rAF and fires bodies:update ─────────────
+	// ── 5. start() は rAF で poll し bodies:update を発火 ─────────────
 	t.case('start() polls via rAF and fires bodies:update with moves from mock', async function()
 	{
-		// Fake rAF: fires callback once via setTimeout(fn, 0).
+		// 偽 rAF: setTimeout(fn, 0) で callback を 1 回だけ発火。
 		var origRaf    = window.requestAnimationFrame;
 		var origCancel = window.cancelAnimationFrame;
 		var rafFired   = false;
 		window.requestAnimationFrame = function(fn)
 		{
-			if (rafFired) { return -1; }  // only fire once
+			if (rafFired) { return -1; }  // 1 回だけ発火
 			rafFired = true;
 			var id = setTimeout(function() { fn(performance.now()); }, 0);
 			return id;
@@ -206,7 +206,7 @@
 
 		world.start();
 
-		// Wait for the fake rAF tick + poll response.
+		// 偽 rAF の tick + poll の応答を待つ。
 		await new Promise(function(resolve) { setTimeout(resolve, 50); });
 
 		world.stop();
@@ -224,7 +224,7 @@
 		window.cancelAnimationFrame  = origCancel;
 	});
 
-	// ── 6. contact event fires once per contact in poll response ─────
+	// ── 6. poll 応答の contact ごとに contact event が 1 回発火 ─────
 	t.case('contact event fires once per contact entry in poll response', async function()
 	{
 		var origRaf    = window.requestAnimationFrame;
@@ -239,7 +239,7 @@
 		};
 		window.cancelAnimationFrame = function(id) { clearTimeout(id); };
 
-		// Mock that returns 2 contact entries.
+		// contact entry を 2 件返す mock。
 		installMockBridge({
 			'physics.createWorld':  function() { return JSON.stringify({ worldId: 2 }); },
 			'physics.destroyWorld': function() { return JSON.stringify({}); },
@@ -274,7 +274,7 @@
 		window.cancelAnimationFrame  = origCancel;
 	});
 
-	// ── 7. start() is idempotent ──────────────────────────────────────
+	// ── 7. start() は冪等 ──────────────────────────────────────
 	t.case('start() is idempotent — second start does not stack a second rAF', async function()
 	{
 		var rafCallCount = 0;
@@ -283,7 +283,7 @@
 		window.requestAnimationFrame = function(_fn)
 		{
 			rafCallCount++;
-			return rafCallCount;  // never fires — we just count calls
+			return rafCallCount;  // 発火しない — 呼び出し回数を数えるだけ
 		};
 		window.cancelAnimationFrame = function() {};
 
@@ -293,7 +293,7 @@
 
 		world.start();
 		var countAfterFirst = rafCallCount;
-		world.start();  // second call — must be no-op
+		world.start();  // 2 度目の呼び出し — no-op であるべき
 		var countAfterSecond = rafCallCount;
 
 		t.assertEq(countAfterFirst,  1, 'first start() should schedule exactly one rAF');
@@ -307,12 +307,12 @@
 		window.cancelAnimationFrame  = origCancel;
 	});
 
-	// ── 8. stop() halts the loop ──────────────────────────────────────
+	// ── 8. stop() は loop を止める ──────────────────────────────────────
 	t.case('stop() halts the loop — no more polls after stop', async function()
 	{
 		var origRaf    = window.requestAnimationFrame;
 		var origCancel = window.cancelAnimationFrame;
-		// Real-ish rAF: uses setTimeout so we can observe multiple ticks.
+		// 実物寄りの rAF: setTimeout を使い複数 tick を観察できるようにする。
 		window.requestAnimationFrame = function(fn)
 		{
 			return setTimeout(function() { fn(performance.now()); }, 5);
@@ -333,12 +333,12 @@
 		var world = await p.createWorld({ gravityX: 0, gravityY: 0 });
 		world.start();
 
-		// Let one tick fire.
+		// tick を 1 回発火させる。
 		await new Promise(function(resolve) { setTimeout(resolve, 30); });
 		world.stop();
 		var countAtStop = pollCount;
 
-		// Wait more — no more polls should fire.
+		// さらに待つ — もう poll は発火しないはず。
 		await new Promise(function(resolve) { setTimeout(resolve, 40); });
 		t.assertEq(pollCount, countAtStop, 'poll count must not increase after stop()');
 		t.assert(countAtStop >= 1, 'at least one poll should have fired before stop');
@@ -350,7 +350,7 @@
 		window.cancelAnimationFrame  = origCancel;
 	});
 
-	// ── 9. on() returns an unsubscribe function ───────────────────────
+	// ── 9. on() は unsubscribe 関数を返す ───────────────────────
 	t.case('on() returns an unsubscribe function that detaches the listener', async function()
 	{
 		var origRaf    = window.requestAnimationFrame;
@@ -376,11 +376,11 @@
 		await new Promise(function(resolve) { setTimeout(resolve, 30); });
 		var countBeforeUnsub = count;
 
-		// Unsubscribe and trigger another tick.
+		// unsubscribe して別の tick を起こす。
 		unsub();
 		rafFired = false;
-		world.start();  // will no-op if still running; stop first
-		// If loop is still running from mock, we stop and restart.
+		world.start();  // まだ動作中なら no-op; 先に stop する
+		// mock で loop がまだ動いている場合は stop して restart する。
 		world.stop();
 		rafFired = false;
 		world.start();
@@ -397,7 +397,7 @@
 		window.cancelAnimationFrame  = origCancel;
 	});
 
-	// ── 10. world.destroy() sends physics.destroyWorld ───────────────
+	// ── 10. world.destroy() は physics.destroyWorld を送る ───────────────
 	t.case('world.destroy() sends physics.destroyWorld to the bridge', async function()
 	{
 		var calls = makeFullMock();

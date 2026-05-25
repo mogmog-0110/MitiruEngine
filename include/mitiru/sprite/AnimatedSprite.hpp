@@ -1,35 +1,33 @@
 #pragma once
 
 /// @file AnimatedSprite.hpp
-/// @brief Frame-sequence sprite with playback state machine (G-06)
+/// @brief 再生 state machine 付きの frame-sequence sprite (G-06)
 ///
-/// **Motivation.** pandd-dodo characters need animated sprites driven by
-/// per-frame delay values (as produced by Aseprite and GIF formats). The
-/// engine provides no dedicated animated-sprite class, forcing each game to
-/// re-implement accumulator logic and state management.
-/// `AnimatedSprite` owns the accumulator, state machine, and speed scaling
-/// so games only call `update(dt)` and `currentFrame()`.
+/// **動機。** pandd-dodo の character は per-frame delay 値 (Aseprite や GIF
+/// 形式が生成するもの) で駆動される animated sprite を必要とする。engine には
+/// 専用の animated-sprite class が無く、各 game が accumulator logic と state
+/// 管理を再実装する羽目になる。
+/// `AnimatedSprite` が accumulator・state machine・speed scaling を所有するので、
+/// game は `update(dt)` と `currentFrame()` を呼ぶだけでよい。
 ///
-/// **Design decisions:**
-/// - Header-only; no I/O dependency. Callers inject `GifDecoder` /
-///   `AsepriteDecoder` callbacks, or supply frames directly via
-///   `loadFromFrames()`.
-/// - State machine has three states: `Stopped` (initial), `Playing`,
-///   `Paused`. Transitions are explicit and exhaustive.
-/// - `update(dt)` is frame-rate independent: accumulator is driven by
-///   `dt * 1000.f * speed` (milliseconds).
-/// - `mutable std::mutex` guards all public methods so `currentFrame()`
-///   is safe to call from a render thread while `update()` runs on the
-///   game thread.
+/// **設計判断:**
+/// - Header-only。I/O 依存無し。caller が `GifDecoder` / `AsepriteDecoder`
+///   callback を inject するか、`loadFromFrames()` で frame を直接供給する。
+/// - State machine は 3 状態: `Stopped` (初期)・`Playing`・`Paused`。遷移は
+///   明示的かつ網羅的。
+/// - `update(dt)` は frame-rate 非依存: accumulator は `dt * 1000.f * speed`
+///   (ミリ秒) で駆動される。
+/// - `mutable std::mutex` が全 public method を保護するので、`update()` が game
+///   thread で走る間でも render thread から `currentFrame()` を安全に呼べる。
 ///
-/// **AsepriteLoader note:**
-/// @note No standalone `AsepriteLoader` class exists in the engine.
+/// **AsepriteLoader に関する注意:**
+/// @note engine には独立した `AsepriteLoader` class は存在しない。
 ///       `mitiru::render::SpriteSheetParser` (include/mitiru/render/SpriteSheetParser.hpp)
-///       uses a different atlas-based model and is not directly compatible.
-///       Aseprite JSON export can be parsed externally and injected via
-///       the `AsepriteDecoder` callback passed to `setAsepriteDecoder()`.
+///       は別の atlas ベース model を使っており直接の互換性は無い。
+///       Aseprite の JSON export は外部で parse し、`setAsepriteDecoder()` に渡す
+///       `AsepriteDecoder` callback 経由で inject できる。
 ///
-/// **Usage (stub frames, no real I/O):**
+/// **使い方 (スタブ frame・実 I/O 無し):**
 /// ```cpp
 ///   using mitiru::sprite::AnimatedSprite;
 ///   using mitiru::render::Texture;
@@ -68,61 +66,61 @@
 namespace mitiru::sprite
 {
 
-/// @brief One animation frame: a texture and its display duration.
+/// @brief 1 つの animation frame: texture とその表示時間。
 struct FrameData
 {
 	mitiru::render::Texture tex;
-	int                     delay_ms = 100; ///< Display duration in milliseconds (> 0).
+	int                     delay_ms = 100; ///< 表示時間 (ミリ秒・> 0)。
 };
 
-/// @brief Callback that decodes a GIF file into a sequence of FrameData.
+/// @brief GIF file を FrameData 列に decode する callback。
 using GifDecoder = std::function<std::vector<FrameData>(const std::filesystem::path&)>;
 
-/// @brief Callback that decodes an Aseprite JSON+sheet export into FrameData.
-/// @note  No built-in implementation is provided by the engine.
-///        Callers must supply a decoder or use `loadFromFrames()` directly.
+/// @brief Aseprite の JSON+sheet export を FrameData に decode する callback。
+/// @note  engine は組み込み実装を提供しない。
+///        caller が decoder を供給するか、`loadFromFrames()` を直接使う。
 using AsepriteDecoder = std::function<std::vector<FrameData>(const std::filesystem::path&)>;
 
-/// @brief Frame-sequence animated sprite with play/pause/loop/speed control.
+/// @brief play/pause/loop/speed 制御付きの frame-sequence animated sprite。
 ///
-/// State machine:  Stopped (initial) -> Playing <-> Paused
-/// Loop=false: Playing -> Stopped when the last frame is exhausted.
+/// State machine:  Stopped (初期) -> Playing <-> Paused
+/// Loop=false: 最終 frame を消費しきると Playing -> Stopped。
 class AnimatedSprite
 {
 public:
-	// ── Construction ──────────────────────────────────────────────────
+	// ── 構築 ──────────────────────────────────────────────────
 
-	/// @brief Constructs an empty, stopped sprite.
+	/// @brief 空で停止状態の sprite を構築する。
 	AnimatedSprite() = default;
 
 	AnimatedSprite(const AnimatedSprite&)            = delete;
 	AnimatedSprite& operator=(const AnimatedSprite&) = delete;
-	// Move is also not supported: std::mutex member is non-movable.
+	// move も非対応: std::mutex member が non-movable のため。
 	AnimatedSprite(AnimatedSprite&&)            = delete;
 	AnimatedSprite& operator=(AnimatedSprite&&) = delete;
 
-	// ── Decoder injection ─────────────────────────────────────────────
+	// ── Decoder の inject ─────────────────────────────────────────────
 
-	/// @brief Inject a GIF decoder. Called by `loadGIF()`.
+	/// @brief GIF decoder を inject する。`loadGIF()` から呼ばれる。
 	void setGifDecoder(GifDecoder decoder)
 	{
 		std::lock_guard lock(m_mutex);
 		m_gifDecoder = std::move(decoder);
 	}
 
-	/// @brief Inject an Aseprite decoder. Called by `loadAseprite()`.
-	/// @note  No engine-native implementation exists; supply your own.
+	/// @brief Aseprite decoder を inject する。`loadAseprite()` から呼ばれる。
+	/// @note  engine ネイティブの実装は存在しない。自前のものを供給すること。
 	void setAsepriteDecoder(AsepriteDecoder decoder)
 	{
 		std::lock_guard lock(m_mutex);
 		m_aseDecoder = std::move(decoder);
 	}
 
-	// ── Frame loading ─────────────────────────────────────────────────
+	// ── Frame の読み込み ─────────────────────────────────────────────────
 
-	/// @brief Load frames from a GIF file using the injected `GifDecoder`.
-	/// @throws std::logic_error  if no GIF decoder has been injected.
-	/// @throws std::runtime_error if the decoder returns no frames.
+	/// @brief inject 済みの `GifDecoder` を使って GIF file から frame を読み込む。
+	/// @throws std::logic_error  GIF decoder が inject されていない場合。
+	/// @throws std::runtime_error decoder が frame を 1 つも返さなかった場合。
 	void loadGIF(const std::filesystem::path& path)
 	{
 		std::lock_guard lock(m_mutex);
@@ -142,9 +140,9 @@ public:
 		resetState(std::move(frames));
 	}
 
-	/// @brief Load frames from an Aseprite export using the injected `AsepriteDecoder`.
-	/// @throws std::logic_error  if no Aseprite decoder has been injected.
-	/// @throws std::runtime_error if the decoder returns no frames.
+	/// @brief inject 済みの `AsepriteDecoder` を使って Aseprite export から frame を読み込む。
+	/// @throws std::logic_error  Aseprite decoder が inject されていない場合。
+	/// @throws std::runtime_error decoder が frame を 1 つも返さなかった場合。
 	void loadAseprite(const std::filesystem::path& path)
 	{
 		std::lock_guard lock(m_mutex);
@@ -164,10 +162,10 @@ public:
 		resetState(std::move(frames));
 	}
 
-	/// @brief Load frames from pre-constructed textures and per-frame delays.
-	/// @param textures  Sequence of textures, one per frame.
-	/// @param delays_ms Per-frame display duration in milliseconds.
-	/// @throws std::invalid_argument if sizes differ.
+	/// @brief 構築済みの texture 群と per-frame delay から frame を読み込む。
+	/// @param textures  texture 列。1 frame に 1 つ。
+	/// @param delays_ms per-frame の表示時間 (ミリ秒)。
+	/// @throws std::invalid_argument size が一致しない場合。
 	void loadFromFrames(std::vector<mitiru::render::Texture> textures,
 	                    std::vector<int>                     delays_ms)
 	{
@@ -191,10 +189,10 @@ public:
 		resetState(std::move(frames));
 	}
 
-	// ── Playback control ──────────────────────────────────────────────
+	// ── 再生制御 ──────────────────────────────────────────────
 
-	/// @brief Start or resume playback.
-	/// @details No-op on an empty sprite or if already Playing.
+	/// @brief 再生を開始または再開する。
+	/// @details 空の sprite または既に Playing の場合は no-op。
 	void play()
 	{
 		std::lock_guard lock(m_mutex);
@@ -202,7 +200,7 @@ public:
 		m_state = State::Playing;
 	}
 
-	/// @brief Pause playback. No-op if Stopped or already Paused.
+	/// @brief 再生を一時停止する。Stopped または既に Paused なら no-op。
 	void pause()
 	{
 		std::lock_guard lock(m_mutex);
@@ -212,28 +210,28 @@ public:
 		}
 	}
 
-	/// @brief Enable or disable looping.
-	/// @details When loop=false and the last frame is exhausted, state -> Stopped.
+	/// @brief loop を有効 / 無効にする。
+	/// @details loop=false で最終 frame を消費しきると state -> Stopped。
 	void setLoop(bool loop)
 	{
 		std::lock_guard lock(m_mutex);
 		m_loop = loop;
 	}
 
-	/// @brief Set playback speed multiplier.
-	/// @param speed  1.0 = normal; 2.0 = twice as fast; 0.5 = half speed.
-	///               Values <= 0 are clamped to a small positive epsilon.
+	/// @brief 再生速度の倍率を設定する。
+	/// @param speed  1.0 = 通常; 2.0 = 2 倍速; 0.5 = 半分の速度。
+	///               <= 0 の値は微小な正の epsilon に clamp される。
 	void setSpeed(float speed)
 	{
 		std::lock_guard lock(m_mutex);
 		m_speed = (speed > 0.f) ? speed : 1e-6f;
 	}
 
-	// ── Callbacks ─────────────────────────────────────────────────────
+	// ── Callback ─────────────────────────────────────────────────────
 
-	/// @brief Register a callback fired each time the animation loops back to frame 0.
-	/// @details Only fires when loop=true and the sequence wraps. Not called on
-	///          the first play() or when the animation stops.
+	/// @brief animation が frame 0 に loop back するたびに発火する callback を登録する。
+	/// @details loop=true で sequence が wrap した時のみ発火。最初の play() 時や
+	///          animation 停止時には呼ばれない。
 	void setOnLoop(std::function<void()> cb)
 	{
 		std::lock_guard lock(m_mutex);
@@ -242,14 +240,14 @@ public:
 
 	// ── Update ────────────────────────────────────────────────────────
 
-	/// @brief Advance the animation by `dt` seconds (frame-rate independent).
-	/// @param dt  Elapsed time in seconds since the last call.
+	/// @brief animation を `dt` 秒だけ進める (frame-rate 非依存)。
+	/// @param dt  前回呼び出しからの経過時間 (秒)。
 	void update(float dt)
 	{
 		std::lock_guard lock(m_mutex);
 		if (m_state != State::Playing) { return; }
 		if (m_frames.empty()) { return; }
-		if (m_frames.size() == 1) { return; } // single frame: never advances
+		if (m_frames.size() == 1) { return; } // single frame: 決して advance しない
 
 		m_accumMs += dt * 1000.f * m_speed;
 
@@ -257,14 +255,14 @@ public:
 		{
 			m_accumMs -= static_cast<float>(currentDelay());
 			advanceFrame();
-			if (m_state != State::Playing) { break; } // advanceFrame() may stop
+			if (m_state != State::Playing) { break; } // advanceFrame() が stop しうる
 		}
 	}
 
-	// ── Queries ───────────────────────────────────────────────────────
+	// ── 問い合わせ ───────────────────────────────────────────────────────
 
-	/// @brief Returns the texture for the current frame.
-	/// @return Empty (default-constructed) Texture if no frames are loaded.
+	/// @brief 現在の frame の texture を返す。
+	/// @return frame が 1 つも読み込まれていなければ空 (default 構築) の Texture。
 	[[nodiscard]] mitiru::render::Texture currentFrame() const
 	{
 		std::lock_guard lock(m_mutex);
@@ -272,14 +270,14 @@ public:
 		return m_frames[m_frameIndex].tex;
 	}
 
-	/// @brief Returns the zero-based index of the current frame.
+	/// @brief 現在の frame の 0 始まり index を返す。
 	[[nodiscard]] std::size_t frameIndex() const
 	{
 		std::lock_guard lock(m_mutex);
 		return m_frameIndex;
 	}
 
-	/// @brief Returns true while state is Playing.
+	/// @brief state が Playing の間 true を返す。
 	[[nodiscard]] bool isPlaying() const
 	{
 		std::lock_guard lock(m_mutex);
@@ -288,19 +286,19 @@ public:
 
 	// ── stb_image factory (optional) ─────────────────────────────────
 #ifdef MITIRU_HAS_STB_IMAGE
-	/// @brief Create an AnimatedSprite by loading a GIF with stb_image.
-	/// @note  Requires MITIRU_HAS_STB_IMAGE to be defined at compile time.
-	///        Calls stbi_load_from_file with STBI_rgb_alpha.
-	/// @throws std::runtime_error on decode failure.
+	/// @brief stb_image で GIF を読み込んで AnimatedSprite を生成する。
+	/// @note  compile 時に MITIRU_HAS_STB_IMAGE が定義されている必要がある。
+	///        stbi_load_from_file を STBI_rgb_alpha で呼ぶ。
+	/// @throws std::runtime_error decode 失敗時。
 	[[nodiscard]] static AnimatedSprite fromStbGIF(const std::filesystem::path& path);
 #endif
 
 private:
-	// ── Internal state machine ────────────────────────────────────────
+	// ── 内部 state machine ────────────────────────────────────────
 
 	enum class State { Stopped, Playing, Paused };
 
-	/// @brief Reset to first frame and clear accumulator. Must be called under lock.
+	/// @brief 先頭 frame に戻し accumulator を clear する。lock 下で呼ぶこと。
 	void resetState(std::vector<FrameData> frames)
 	{
 		m_frames     = std::move(frames);
@@ -309,15 +307,15 @@ private:
 		m_state      = State::Stopped;
 	}
 
-	/// @brief Return the delay_ms for the current frame. Must be called under lock.
+	/// @brief 現在の frame の delay_ms を返す。lock 下で呼ぶこと。
 	[[nodiscard]] int currentDelay() const
 	{
 		assert(!m_frames.empty());
 		const int d = m_frames[m_frameIndex].delay_ms;
-		return (d > 0) ? d : 1; // guard against zero/negative
+		return (d > 0) ? d : 1; // ゼロ / 負値に対するガード
 	}
 
-	/// @brief Move to the next frame; handle end-of-sequence. Must be called under lock.
+	/// @brief 次の frame へ移動し、sequence 終端を処理する。lock 下で呼ぶこと。
 	void advanceFrame()
 	{
 		const std::size_t last = m_frames.size() - 1u;
@@ -328,7 +326,7 @@ private:
 		}
 		else
 		{
-			// End of sequence.
+			// sequence の終端。
 			if (m_loop)
 			{
 				m_frameIndex = 0;
@@ -336,13 +334,13 @@ private:
 			}
 			else
 			{
-				// Clamp at last frame and stop.
+				// 最終 frame で clamp して停止する。
 				m_state = State::Stopped;
 			}
 		}
 	}
 
-	// ── Data ──────────────────────────────────────────────────────────
+	// ── データ ──────────────────────────────────────────────────────────
 
 	std::vector<FrameData>   m_frames;
 	std::size_t              m_frameIndex = 0;

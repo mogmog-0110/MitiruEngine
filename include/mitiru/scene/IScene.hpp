@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file IScene.hpp
-/// @brief Scene lifecycle interface for SceneRouter
-/// @details Derive from IScene to create a scene that can be pushed onto or
-///          popped off a SceneRouter stack. Each scene receives lifecycle
-///          callbacks as it is pushed, paused, resumed, and popped.
+/// @brief SceneRouter 向けの scene lifecycle interface
+/// @details IScene を継承すると、SceneRouter stack に push / pop できる scene を
+///          作れる。各 scene は push / pause / resume / pop される過程で
+///          lifecycle callback を受け取る。
 ///
-/// @par Usage example
+/// @par 使用例
 /// @code
 /// class TitleScene : public mitiru::scene::IScene {
 /// public:
@@ -22,36 +22,36 @@
 
 namespace mitiru::scene {
 
-/// @brief Pure interface for a game scene managed by SceneRouter.
+/// @brief SceneRouter が管理する game scene の純粋 interface。
 ///
-/// Lifecycle ordering guarantees:
-///  - push:    onEnter  fires once, before the first onUpdate call.
-///  - pop:     onExit   fires once, after  the last  onUpdate call.
-///  - covered: onPause  fires when another scene is pushed on top.
-///  - uncovered: onResume fires when the covering scene is popped.
+/// lifecycle の順序保証:
+///  - push:    onEnter  は最初の onUpdate の前に 1 度だけ発火。
+///  - pop:     onExit   は最後の onUpdate の後に 1 度だけ発火。
+///  - 覆われた時: onPause  は別の scene が上に push された時に発火。
+///  - 露出した時: onResume は覆っていた scene が pop された時に発火。
 ///
-/// All callbacks default to no-ops so subclasses only override what they need.
-/// onUpdate is pure-virtual — every scene must handle time.
+/// 全 callback は default で no-op なので、subclass は必要なものだけ override すればよい。
+/// onUpdate は pure-virtual — 全 scene は時間を扱う必要がある。
 class IScene {
 public:
     virtual ~IScene() = default;
 
-    /// Called once after the scene is pushed, before the first onUpdate.
+    /// scene が push された後、最初の onUpdate の前に 1 度だけ呼ばれる。
     virtual void onEnter() {}
 
-    /// Called every frame while this scene is the top of the stack.
-    /// @param dt  Frame delta time in seconds.
+    /// この scene が stack の top である間、毎フレーム呼ばれる。
+    /// @param dt  秒単位の frame delta time。
     virtual void onUpdate(float dt) = 0;
 
-    /// Called once after the scene is popped, after the last onUpdate.
+    /// scene が pop された後、最後の onUpdate の後に 1 度だけ呼ばれる。
     virtual void onExit() {}
 
-    /// Called when another scene is pushed on top of this one.
-    /// The scene will not receive onUpdate until onResume is called.
+    /// 別の scene がこの scene の上に push された時に呼ばれる。
+    /// onResume が呼ばれるまで、この scene は onUpdate を受け取らない。
     virtual void onPause() {}
 
-    /// Called when the scene on top of this one is popped.
-    /// The scene resumes receiving onUpdate from the next frame.
+    /// この scene の上の scene が pop された時に呼ばれる。
+    /// 次フレームから onUpdate の受け取りを再開する。
     virtual void onResume() {}
 };
 

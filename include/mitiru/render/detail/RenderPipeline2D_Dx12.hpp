@@ -1,5 +1,5 @@
 #pragma once
-// This header is included by RenderPipeline2D.hpp — do not include directly.
+// このヘッダは RenderPipeline2D.hpp から include される — 直接 include しないこと。
 
 #ifdef _WIN32
 
@@ -310,7 +310,7 @@ inline void RenderPipeline2D::buildDx12PointFilterResources(
 	auto rootSig = detail::createDx12PointRootSig(device, rsd);
 	if (!rootSig)
 	{
-		return; // error already logged in helper
+		return; // エラーは helper 側で既にログ済み
 	}
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> pso;
@@ -611,7 +611,7 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 				"RenderPipeline2D: SDF D3DCompile failed");
 		}
 
-		/// StyledVertex2D: pos(2) + localUV(2) + color(4) + shapeRect(4) = 48 bytes
+		/// StyledVertex2D: pos(2) + localUV(2) + color(4) + shapeRect(4) = 48 byte
 		const D3D12_INPUT_ELEMENT_DESC layout[] = {
 			{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,
 			  0, 0,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },

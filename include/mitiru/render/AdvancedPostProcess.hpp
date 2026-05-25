@@ -350,7 +350,7 @@ public:
 		cbData.kernelSize = std::min(m_config.kernelSize, 16);
 		updateConstantBuffer(context, m_cb.Get(), &cbData, sizeof(cbData));
 
-		// SSAO main pass: depth(t0) + normal(t1) -> intermediate
+		// SSAO メインパス: depth(t0) + normal(t1) -> 中間バッファ
 		ID3D11ShaderResourceView* srvs[2] = { inputSRV, m_normalSRV };
 		D3D11_VIEWPORT vp = {};
 		vp.Width = static_cast<float>(screenW);
@@ -368,11 +368,11 @@ public:
 		context->PSSetConstantBuffers(0, 1, m_cb.GetAddressOf());
 		context->Draw(3, 0);
 
-		// Unbind SRVs
+		// SRV をアンバインドする
 		ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
 		context->PSSetShaderResources(0, 2, nullSRVs);
 
-		// Blur pass
+		// ブラーパス
 		BlurCB blurData = {};
 		blurData.texelSize[0] = 1.0f / static_cast<float>(screenW);
 		blurData.texelSize[1] = 1.0f / static_cast<float>(screenH);
@@ -428,7 +428,7 @@ private:
 			float len = std::sqrt(x * x + y * y + z * z);
 			if (len < 0.0001f) len = 1.0f;
 			x /= len; y /= len; z /= len;
-			// cosine-weighted: scale by accelerating curve
+			// cosine-weighted: 加速カーブでスケールする
 			float scale = static_cast<float>(i) / 16.0f;
 			scale = 0.1f + scale * scale * 0.9f;
 			m_kernel[i] = { x * scale, y * scale, z * scale, 0.0f };
@@ -629,7 +629,7 @@ public:
 		updateConstantBuffer(context, m_cb.Get(),
 			&cbData, sizeof(cbData));
 
-		// Bind: t0=current, t1=history, t2=motion
+		// bind: t0=current, t1=history, t2=motion
 		ID3D11ShaderResourceView* srvs[3] = {
 			inputSRV, m_historyBuffer.srv.Get(), m_motionSRV
 		};
@@ -648,11 +648,11 @@ public:
 		context->PSSetConstantBuffers(0, 1, m_cb.GetAddressOf());
 		context->Draw(3, 0);
 
-		// Unbind
+		// アンバインドする
 		ID3D11ShaderResourceView* nullSRVs[3] = {};
 		context->PSSetShaderResources(0, 3, nullSRVs);
 
-		// Copy current result to history for next frame
+		// 次フレーム用に現在の結果を history へコピーする
 		ComPtr<ID3D11Resource> outputRes;
 		outputRTV->GetResource(outputRes.GetAddressOf());
 		context->CopyResource(
@@ -752,7 +752,7 @@ public:
 		updateConstantBuffer(context, m_cb.Get(),
 			&cbData, sizeof(cbData));
 
-		// Bind: t0=scene, t1=depth
+		// bind: t0=scene, t1=depth
 		ID3D11ShaderResourceView* srvs[2] = {
 			inputSRV, m_depthSRV
 		};
@@ -771,7 +771,7 @@ public:
 		context->PSSetConstantBuffers(0, 1, m_cb.GetAddressOf());
 		context->Draw(3, 0);
 
-		// Unbind
+		// アンバインドする
 		ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
 		context->PSSetShaderResources(0, 2, nullSRVs);
 	}

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Style2D.hpp
-/// @brief CSS-like declarative 2D drawing data structures
+/// @brief CSS ライクな宣言的 2D 描画データ構造
 
 #include <algorithm>
 #include <array>
@@ -18,12 +18,12 @@
 namespace mitiru::render
 {
 
-// ── Color helper ────────────────────────────────────────
+// ── Color ヘルパー ────────────────────────────────────────
 
-/// @brief Static factory methods for common colors (wraps sgc::Colorf)
+/// @brief よく使う色の静的 factory メソッド (sgc::Colorf をラップ)
 struct Color
 {
-    /// @brief 0xRRGGBB hex literal to Colorf
+    /// @brief 0xRRGGBB hex literal を Colorf に変換する
     static constexpr sgc::Colorf hex(uint32_t rgb)
     {
         return sgc::Colorf::fromRGBA8(
@@ -63,20 +63,20 @@ struct ColorStop
     sgc::Colorf color{1, 1, 1, 1};
 };
 
-/// @brief Gradient that doubles as Fill (Type::Solid = flat color)
+/// @brief Fill も兼ねる Gradient (Type::Solid = 単色)
 struct Gradient
 {
     enum class Type { Solid, Linear, Radial };
 
     Type type = Type::Solid;
     sgc::Colorf solidColor{1, 1, 1, 1};
-    float angle = 0;                    // degrees, for Linear
-    sgc::Vec2f center{0.5f, 0.5f};      // for Radial
-    float radius = 0.5f;                // for Radial
+    float angle = 0;                    // degree、Linear 用
+    sgc::Vec2f center{0.5f, 0.5f};      // Radial 用
+    float radius = 0.5f;                // Radial 用
     std::array<ColorStop, 8> stops{};
     uint8_t stopCount = 0;
 
-    // ── Factory methods ──
+    // ── Factory メソッド ──
 
     static Gradient solid(sgc::Colorf c)
     {
@@ -120,14 +120,14 @@ struct Gradient
         return g;
     }
 
-    /// @brief Implicit conversion from Colorf
+    /// @brief Colorf からの暗黙変換
     Gradient(sgc::Colorf c) // NOLINT(google-explicit-constructor)
         : type(Type::Solid), solidColor(c) {}
 
     Gradient() = default;
 };
 
-// ── Fill (alias for Gradient, supports implicit Colorf) ─
+// ── Fill (Gradient の alias、Colorf の暗黙変換に対応) ─
 
 using Fill = Gradient;
 
@@ -159,15 +159,15 @@ struct Stroke
 {
     Fill fill{sgc::Colorf{0, 0, 0, 0}};
     float width = 0;
-    std::array<float, 4> widths{};  // top, right, bottom, left (optional)
+    std::array<float, 4> widths{};  // top, right, bottom, left (任意)
 };
 
 // ── Transform ───────────────────────────────────────────
 
-/// @brief 2D transform parameters (named StyleTransform to avoid conflicts)
+/// @brief 2D transform パラメータ (衝突回避のため StyleTransform と命名)
 struct StyleTransform
 {
-    float rotate = 0;                    // degrees
+    float rotate = 0;                    // degree
     sgc::Vec2f scale{1.0f, 1.0f};
     sgc::Vec2f translate{0.0f, 0.0f};
     sgc::Vec2f skew{0.0f, 0.0f};
@@ -186,7 +186,7 @@ struct Style
     float opacity = 1.0f;
     StyleTransform transform{};
 
-    /// @brief Linearly interpolate all numeric properties
+    /// @brief 全数値プロパティを線形補間する
     static Style lerp(const Style& a, const Style& b, float t)
     {
         Style out;
@@ -216,12 +216,12 @@ struct Style
         return out;
     }
 
-    /// @brief Merge: override only non-default values from `over`
+    /// @brief Merge: `over` の非デフォルト値のみ上書きする
     static Style merge(const Style& base, const Style& over)
     {
         Style out = base;
 
-        // Fill: override if not default white solid
+        // Fill: デフォルトの白単色でなければ上書きする
         const Fill defaultFill{sgc::Colorf{1, 1, 1, 1}};
         if (over.fill.type != defaultFill.type ||
             !(over.fill.solidColor == defaultFill.solidColor))
@@ -285,13 +285,13 @@ private:
 
     static Fill lerpFill(const Fill& a, const Fill& b, float t)
     {
-        // Both solid: simple color lerp
+        // 両方 solid: 単純な color lerp
         if (a.type == Gradient::Type::Solid && b.type == Gradient::Type::Solid)
         {
             return Gradient::solid(a.solidColor.lerp(b.solidColor, t));
         }
 
-        // Gradient stops: lerp each stop color pairwise
+        // Gradient stop: 各 stop color をペアごとに lerp する
         Fill out = b;
         uint8_t count = std::max(a.stopCount, b.stopCount);
         out.stopCount = count;
@@ -334,16 +334,16 @@ struct ShapePie     { sgc::Vec2f center; float radius = 0; float startAngle = 0;
 struct ShapeRing    { sgc::Vec2f center; float outer = 0; float inner = 0; };
 struct ShapePolygon { std::vector<sgc::Vec2f> points; };
 
-// ── Path (bezier curves) ───────────────────────────────
+// ── Path (bezier 曲線) ───────────────────────────────
 
 enum class PathCommand : uint8_t { MoveTo, LineTo, QuadTo, CubicTo, Close };
 
 struct PathPoint
 {
     PathCommand cmd = PathCommand::MoveTo;
-    sgc::Vec2f p0{};     // target (MoveTo, LineTo) or control point 1 (QuadTo, CubicTo)
-    sgc::Vec2f p1{};     // control point 2 (CubicTo) or target (QuadTo)
-    sgc::Vec2f p2{};     // target point (CubicTo only)
+    sgc::Vec2f p0{};     // target (MoveTo, LineTo) または control point 1 (QuadTo, CubicTo)
+    sgc::Vec2f p1{};     // control point 2 (CubicTo) または target (QuadTo)
+    sgc::Vec2f p2{};     // target point (CubicTo のみ)
 };
 
 struct ShapePath

@@ -67,7 +67,7 @@ public:
 
         client->onBrowserCreated(m_browser);
         client->renderHandler()->setSize(width, height);
-        m_client = client;          // hold ref for runtime renderHandler->setSize
+        m_client = client;          // runtime の renderHandler->setSize 用に参照を保持
         m_width  = width;
         m_height = height;
         return true;
@@ -124,13 +124,12 @@ public:
             m_client->renderHandler()->setSize(width, height);
         }
         m_host->WasResized();
-        // CRITICAL: WasResized() alone may be debounced by CEF when
-        // multiple resize events arrive in quick succession (e.g.
-        // maximize → restore → drag-resize). Invalidate forces a fresh
-        // OnPaint at the new viewport, ensuring our pending texture
-        // resize gets applied. Without this, the texture stays at an
-        // intermediate stale size and composite stretches it onto the
-        // final window dims (2026-05-21 user verdict, maximize chain).
+        // CRITICAL: resize イベントが短時間に連続して届く場合 (例: 最大化
+        // → 復元 → drag-resize)、WasResized() 単体だと CEF に debounce され
+        // ることがある。Invalidate で新 viewport での OnPaint を強制し、保留中
+        // の texture resize が確実に適用されるようにする。これがないと texture
+        // が中間の stale サイズのまま残り、composite が最終 window 寸法へ stretch
+        // してしまう (2026-05-21 user verdict, maximize chain)。
         m_host->Invalidate(PET_VIEW);
     }
 

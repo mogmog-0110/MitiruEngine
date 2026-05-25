@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file UIContextMenu.hpp
-/// @brief Right-click popup context menu with nested submenu support and keyboard navigation.
+/// @brief 入れ子 submenu とキーボード操作に対応した右クリック popup context menu。
 
 #include <mitiru/ui/UINode.hpp>
 
@@ -15,18 +15,18 @@
 
 namespace mitiru::ui {
 
-/// @brief Definition of a single menu item (may contain children for submenus).
+/// @brief 単一 menu 項目の定義 (submenu 用に children を持てる)。
 struct UIMenuItemDef
 {
-	std::string label;                      ///< Display text.
-	std::string iconImageKey;               ///< Image key for the item icon.
-	std::string shortcutText;               ///< Shortcut hint text (e.g. "Ctrl+S").
-	bool enabled = true;                    ///< Whether the item is interactive.
-	bool separator = false;                 ///< If true, renders as a separator line.
-	std::vector<UIMenuItemDef> children;    ///< Submenu items (empty = leaf item).
+	std::string label;                      ///< 表示テキスト。
+	std::string iconImageKey;               ///< 項目 icon の image key。
+	std::string shortcutText;               ///< shortcut ヒントテキスト (例 "Ctrl+S")。
+	bool enabled = true;                    ///< 項目が操作可能か。
+	bool separator = false;                 ///< true なら区切り線として描画する。
+	std::vector<UIMenuItemDef> children;    ///< submenu 項目 (空 = leaf 項目)。
 };
 
-/// @brief Configuration for creating a UIContextMenu.
+/// @brief UIContextMenu 生成用の設定。
 struct UIContextMenuConfig
 {
 	UINodeId id = INVALID_UI_NODE;
@@ -34,31 +34,31 @@ struct UIContextMenuConfig
 	std::vector<UIMenuItemDef> items;
 
 	// ── Layout ────────────────────────────────────────────────
-	float width = 200.0f;                   ///< Menu panel width.
-	float itemHeight = 28.0f;               ///< Height of each menu item.
-	int maxVisibleItems = 12;               ///< Max items before scrolling.
-	float padding = 4.0f;                   ///< Inner padding.
-	float separatorHeight = 1.0f;           ///< Height of separator lines.
-	float iconSize = 16.0f;                 ///< Size of item icons.
-	float submenuOffset = -4.0f;            ///< Horizontal overlap for submenus.
+	float width = 200.0f;                   ///< menu panel の幅。
+	float itemHeight = 28.0f;               ///< 各 menu 項目の高さ。
+	int maxVisibleItems = 12;               ///< scroll が始まるまでの最大項目数。
+	float padding = 4.0f;                   ///< 内側 padding。
+	float separatorHeight = 1.0f;           ///< 区切り線の高さ。
+	float iconSize = 16.0f;                 ///< 項目 icon のサイズ。
+	float submenuOffset = -4.0f;            ///< submenu の水平方向の重なり。
 
-	// ── Screen bounds ─────────────────────────────────────────
-	float screenWidth = 1920.0f;            ///< Screen width for boundary clamping.
-	float screenHeight = 1080.0f;           ///< Screen height for boundary clamping.
-	float screenMargin = 4.0f;              ///< Minimum distance from screen edges.
+	// ── 画面境界 ─────────────────────────────────────────
+	float screenWidth = 1920.0f;            ///< 境界 clamp 用の画面幅。
+	float screenHeight = 1080.0f;           ///< 境界 clamp 用の画面高さ。
+	float screenMargin = 4.0f;              ///< 画面端からの最小距離。
 
-	// ── Image keys ────────────────────────────────────────────
-	std::string backgroundImageKey;         ///< Image key for menu background.
-	std::string itemHoverImageKey;          ///< Image key for hovered item background.
-	std::string separatorImageKey;          ///< Image key for separator decoration.
-	std::string submenuArrowImageKey;       ///< Image key for submenu indicator arrow.
+	// ── image key ────────────────────────────────────────────
+	std::string backgroundImageKey;         ///< menu 背景の image key。
+	std::string itemHoverImageKey;          ///< hover 中項目の背景 image key。
+	std::string separatorImageKey;          ///< 区切り装飾の image key。
+	std::string submenuArrowImageKey;       ///< submenu 表示矢印の image key。
 };
 
-/// @brief Context menu widget with nested submenus, keyboard and mouse navigation.
+/// @brief 入れ子 submenu とキーボード / マウス操作を備えた context menu widget。
 ///
-/// Supports unlimited submenu depth, auto-positioning within screen bounds,
-/// and both keyboard (arrow keys, Enter, Escape) and mouse interaction.
-/// Rendering is handled externally by UIRenderer.
+/// 無制限の submenu 深度、画面境界内への自動配置、キーボード (矢印キー、
+/// Enter、Escape) とマウスの両方の操作に対応する。描画は UIRenderer が
+/// 外部で担う。
 ///
 /// @code
 ///   UIContextMenuConfig cfg;
@@ -77,7 +77,7 @@ struct UIContextMenuConfig
 /// @endcode
 class UIContextMenu
 {
-	/// @brief State of a single menu level in the hierarchy.
+	/// @brief 階層内の単一 menu level の状態。
 	struct MenuLevel
 	{
 		std::vector<UIMenuItemDef> items;
@@ -91,7 +91,7 @@ class UIContextMenu
 	std::shared_ptr<UINode> m_rootNode;
 	std::vector<MenuLevel> m_levels;
 
-	// ── Config copies ─────────────────────────────────────────
+	// ── config の複製 ─────────────────────────────────────────
 	float m_width;
 	float m_itemHeight;
 	int m_maxVisibleItems;
@@ -114,8 +114,8 @@ class UIContextMenu
 	bool m_open = false;
 
 public:
-	/// @brief Construct a context menu from configuration.
-	/// @param config Context menu configuration.
+	/// @brief 設定から context menu を構築する。
+	/// @param config context menu の設定。
 	explicit UIContextMenu(const UIContextMenuConfig& config)
 		: m_width(config.width)
 		, m_itemHeight(config.itemHeight)
@@ -152,23 +152,23 @@ public:
 
 	// ── Accessors ─────────────────────────────────────────────
 
-	/// @brief Get the underlying root UINode.
+	/// @brief 基底の root UINode を取得する。
 	[[nodiscard]] std::shared_ptr<UINode> node() const noexcept { return m_rootNode; }
 
-	/// @brief Check if the context menu is currently open.
+	/// @brief context menu が現在開いているか。
 	[[nodiscard]] bool isOpen() const noexcept { return m_open; }
 
-	/// @brief Get the number of open submenu levels (1 = root menu only).
+	/// @brief 開いている submenu level 数を取得する (1 = root menu のみ)。
 	[[nodiscard]] std::size_t menuDepth() const noexcept { return m_levels.size(); }
 
-	/// @brief Get the highlighted index at the given menu depth (0 = root).
+	/// @brief 指定 menu depth の highlight index を取得する (0 = root)。
 	[[nodiscard]] int highlightedIndex(std::size_t depth = 0) const noexcept
 	{
 		if (depth < m_levels.size()) { return m_levels[depth].highlightedIndex; }
 		return -1;
 	}
 
-	/// @brief Get the current selection path as indices through the menu hierarchy.
+	/// @brief 現在の選択パスを menu 階層を辿る index 列として取得する。
 	[[nodiscard]] std::vector<int> currentPath() const
 	{
 		std::vector<int> path;
@@ -179,61 +179,61 @@ public:
 		return path;
 	}
 
-	/// @brief Get the background image key.
+	/// @brief 背景の image key を取得する。
 	[[nodiscard]] const std::string& backgroundImageKey() const noexcept { return m_backgroundImageKey; }
 
-	/// @brief Get the item hover image key.
+	/// @brief 項目 hover の image key を取得する。
 	[[nodiscard]] const std::string& itemHoverImageKey() const noexcept { return m_itemHoverImageKey; }
 
-	// ── Configuration ─────────────────────────────────────────
+	// ── 設定 ─────────────────────────────────────────
 
-	/// @brief Set the items for the root menu level.
-	/// @param items Menu item definitions.
+	/// @brief root menu level の項目を設定する。
+	/// @param items menu 項目の定義。
 	void setItems(const std::vector<UIMenuItemDef>& items)
 	{
 		m_rootNode->setProperty("item_count", std::to_string(items.size()));
-		// Store for use when opened.
+		// 開いたとき使うために保持する。
 		if (!m_levels.empty())
 		{
 			m_levels[0].items = items;
 		}
 	}
 
-	/// @brief Set the callback invoked when an item is selected.
-	/// @param callback Function receiving (leaf index, full path).
+	/// @brief 項目が選択されたとき呼ばれる callback を設定する。
+	/// @param callback (leaf index, full path) を受け取る関数。
 	void setOnItemSelected(std::function<void(int, const std::vector<int>&)> callback)
 	{
 		m_onItemSelected = std::move(callback);
 	}
 
-	/// @brief Set the callback invoked when the menu is closed.
-	/// @param callback Function invoked on close.
+	/// @brief menu が閉じられたとき呼ばれる callback を設定する。
+	/// @param callback 閉じる時に呼ばれる関数。
 	void setOnClosed(std::function<void()> callback)
 	{
 		m_onClosed = std::move(callback);
 	}
 
-	/// @brief Set screen bounds for auto-positioning.
+	/// @brief 自動配置用の画面境界を設定する。
 	void setScreenBounds(float width, float height) noexcept
 	{
 		m_screenWidth = width;
 		m_screenHeight = height;
 	}
 
-	// ── Actions ───────────────────────────────────────────────
+	// ── 操作 ───────────────────────────────────────────────
 
-	/// @brief Open the context menu at the given screen position.
-	/// @param x Screen X coordinate.
-	/// @param y Screen Y coordinate.
+	/// @brief 指定の画面位置で context menu を開く。
+	/// @param x 画面 X 座標。
+	/// @param y 画面 Y 座標。
 	void open(float x, float y)
 	{
 		open(x, y, {});
 	}
 
-	/// @brief Open the context menu with specific items at the given position.
-	/// @param x Screen X coordinate.
-	/// @param y Screen Y coordinate.
-	/// @param items Items to display (empty = use previously configured items).
+	/// @brief 指定位置に特定の項目で context menu を開く。
+	/// @param x 画面 X 座標。
+	/// @param y 画面 Y 座標。
+	/// @param items 表示する項目 (空 = 既に設定済みの項目を使う)。
 	void open(float x, float y, const std::vector<UIMenuItemDef>& items)
 	{
 		m_levels.clear();
@@ -244,11 +244,11 @@ public:
 			? (m_levels.empty() ? std::vector<UIMenuItemDef>{} : m_levels[0].items)
 			: items;
 
-		// If items were passed or previously stored via setItems, use them.
+		// items が渡された or setItems で保持済みなら、それを使う。
 		if (root.items.empty())
 		{
-			// Attempt to use items set via constructor config.
-			// Stored in rootNode property item_count.
+			// constructor の config で設定された項目を使おうとする。
+			// rootNode の property item_count に保持されている。
 		}
 
 		const auto clamped = clampMenuPosition(x, y, root.items);
@@ -260,7 +260,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Close the menu and all submenus.
+	/// @brief menu と全 submenu を閉じる。
 	void close()
 	{
 		m_levels.clear();
@@ -270,29 +270,29 @@ public:
 		if (m_onClosed) { m_onClosed(); }
 	}
 
-	// ── Mouse interaction ─────────────────────────────────────
+	// ── マウス操作 ─────────────────────────────────────
 
-	/// @brief Update highlight based on mouse position.
-	/// @param mouseX Mouse X in screen space.
-	/// @param mouseY Mouse Y in screen space.
+	/// @brief マウス位置に基づいて highlight を更新する。
+	/// @param mouseX 画面空間でのマウス X。
+	/// @param mouseY 画面空間でのマウス Y。
 	void onMouseMove(float mouseX, float mouseY)
 	{
 		if (!m_open || m_levels.empty()) { return; }
 
-		// Check from deepest submenu to root.
+		// 最深 submenu から root へ向かって調べる。
 		for (auto it = m_levels.rbegin(); it != m_levels.rend(); ++it)
 		{
 			const int idx = hitTestLevel(*it, mouseX, mouseY);
 			if (idx >= 0)
 			{
-				// Close deeper levels if mouse moved to a parent level.
+				// マウスが親 level に移動したら、より深い level を閉じる。
 				const auto depth = static_cast<std::size_t>(std::distance(it, m_levels.rend()) - 1);
 				closeLevelsBeyond(depth);
 
 				auto& level = m_levels[depth];
 				level.highlightedIndex = idx;
 
-				// Open submenu if hovered item has children.
+				// hover 中の項目が children を持つなら submenu を開く。
 				if (idx < static_cast<int>(level.items.size()))
 				{
 					const auto& item = level.items[static_cast<std::size_t>(idx)];
@@ -308,14 +308,14 @@ public:
 		}
 	}
 
-	/// @brief Handle mouse click at the given position.
-	/// @param mouseX Mouse X in screen space.
-	/// @param mouseY Mouse Y in screen space.
+	/// @brief 指定位置でのマウスクリックを処理する。
+	/// @param mouseX 画面空間でのマウス X。
+	/// @param mouseY 画面空間でのマウス Y。
 	void onMouseClick(float mouseX, float mouseY)
 	{
 		if (!m_open || m_levels.empty()) { return; }
 
-		// Check from deepest to shallowest.
+		// 最深から最浅へ向かって調べる。
 		for (auto it = m_levels.rbegin(); it != m_levels.rend(); ++it)
 		{
 			const int idx = hitTestLevel(*it, mouseX, mouseY);
@@ -327,13 +327,13 @@ public:
 			}
 		}
 
-		// Clicked outside all menus.
+		// 全 menu の外側がクリックされた。
 		close();
 	}
 
-	// ── Keyboard interaction ──────────────────────────────────
+	// ── キーボード操作 ──────────────────────────────────
 
-	/// @brief Navigate up in the current deepest menu level.
+	/// @brief 現在の最深 menu level で上へ移動する。
 	void navigateUp()
 	{
 		if (!m_open || m_levels.empty()) { return; }
@@ -342,7 +342,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Navigate down in the current deepest menu level.
+	/// @brief 現在の最深 menu level で下へ移動する。
 	void navigateDown()
 	{
 		if (!m_open || m_levels.empty()) { return; }
@@ -351,7 +351,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Open the submenu of the highlighted item (or select if leaf).
+	/// @brief highlight 中の項目の submenu を開く (leaf なら選択する)。
 	void navigateRight()
 	{
 		if (!m_open || m_levels.empty()) { return; }
@@ -367,7 +367,7 @@ public:
 		}
 	}
 
-	/// @brief Close the deepest submenu (go back to parent).
+	/// @brief 最深 submenu を閉じる (親へ戻る)。
 	void navigateLeft()
 	{
 		if (!m_open || m_levels.size() <= 1) { return; }
@@ -375,7 +375,7 @@ public:
 		syncNodeState();
 	}
 
-	/// @brief Select the currently highlighted item (Enter key).
+	/// @brief 現在 highlight 中の項目を選択する (Enter キー)。
 	void confirmSelection()
 	{
 		if (!m_open || m_levels.empty()) { return; }
@@ -386,15 +386,15 @@ public:
 		}
 	}
 
-	/// @brief Close the menu (Escape key).
+	/// @brief menu を閉じる (Escape キー)。
 	void cancel()
 	{
 		close();
 	}
 
 private:
-	/// @brief Hit-test a mouse position against a menu level.
-	/// @return Item index or -1 if outside.
+	/// @brief マウス位置を menu level に対して hit-test する。
+	/// @return 項目 index、外側なら -1。
 	[[nodiscard]] int hitTestLevel(const MenuLevel& level, float mx, float my) const noexcept
 	{
 		const float menuX = level.x;
@@ -418,7 +418,7 @@ private:
 		return -1;
 	}
 
-	/// @brief Move the highlight index up or down, skipping separators and disabled items.
+	/// @brief 区切りと無効項目を飛ばして highlight index を上下に動かす。
 	void moveHighlight(MenuLevel& level, int direction) const
 	{
 		if (level.items.empty()) { return; }
@@ -441,7 +441,7 @@ private:
 		}
 	}
 
-	/// @brief Attempt to select an item. Opens submenu if it has children, otherwise fires callback.
+	/// @brief 項目の選択を試みる。children があれば submenu を開き、無ければ callback を発火する。
 	void selectItem(std::size_t depth, int index)
 	{
 		if (depth >= m_levels.size()) { return; }
@@ -469,7 +469,7 @@ private:
 		close();
 	}
 
-	/// @brief Open a submenu for the item at the given depth and index.
+	/// @brief 指定 depth / index の項目の submenu を開く。
 	void openSubmenu(std::size_t depth, int index)
 	{
 		if (depth >= m_levels.size()) { return; }
@@ -479,19 +479,19 @@ private:
 		const auto& item = parentLevel.items[static_cast<std::size_t>(index)];
 		if (item.children.empty()) { return; }
 
-		// Close any existing deeper levels.
+		// 既存のより深い level を閉じる。
 		closeLevelsBeyond(depth);
 
-		// Position submenu to the right of the parent item.
+		// submenu を親項目の右側に配置する。
 		float subX = parentLevel.x + m_width + m_submenuOffset;
 		float subY = parentLevel.y + m_padding + static_cast<float>(index) * m_itemHeight;
 
-		// Clamp within screen.
+		// 画面内に clamp する。
 		const auto clamped = clampMenuPosition(subX, subY, item.children);
 		subX = clamped.first;
 		subY = clamped.second;
 
-		// If submenu would go off-screen to the right, open to the left.
+		// submenu が右へはみ出すなら、左側に開く。
 		if (subX + m_width > m_screenWidth - m_screenMargin)
 		{
 			subX = parentLevel.x - m_width - m_submenuOffset;
@@ -508,7 +508,7 @@ private:
 		m_levels.push_back(std::move(sub));
 	}
 
-	/// @brief Close all menu levels deeper than the given depth.
+	/// @brief 指定 depth より深い menu level をすべて閉じる。
 	void closeLevelsBeyond(std::size_t depth)
 	{
 		if (depth + 1 < m_levels.size())
@@ -517,7 +517,7 @@ private:
 		}
 	}
 
-	/// @brief Clamp a menu position to stay within screen bounds.
+	/// @brief menu 位置を画面境界内に収まるよう clamp する。
 	[[nodiscard]] std::pair<float, float> clampMenuPosition(
 		float x, float y, const std::vector<UIMenuItemDef>& items) const noexcept
 	{
@@ -531,7 +531,7 @@ private:
 		};
 	}
 
-	/// @brief Compute the total height of a menu level.
+	/// @brief menu level の総高さを計算する。
 	[[nodiscard]] float computeMenuHeight(const std::vector<UIMenuItemDef>& items) const noexcept
 	{
 		float height = m_padding * 2.0f;
@@ -545,7 +545,7 @@ private:
 		return height;
 	}
 
-	/// @brief Create a UINode for a menu level.
+	/// @brief menu level 用の UINode を生成する。
 	[[nodiscard]] std::shared_ptr<UINode> createLevelNode(const MenuLevel& level, std::size_t depth) const
 	{
 		UINodeData data;
