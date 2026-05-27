@@ -55,10 +55,14 @@
 #include <mitiru/gfx/null/NullDevice.hpp>
 #include <mitiru/render/Renderer3D.hpp>
 #include <mitiru/render/RenderPipeline2D.hpp>
+#ifdef _WIN32
+#include <mitiru/gfx/dx12/Dx12LoFiTarget.hpp>
+#endif
 #include <mitiru/input/InputInjector.hpp>
 #include <mitiru/input/InputRecorder.hpp>
 #include <mitiru/input/InputReplayer.hpp>
 #include <mitiru/input/InputState.hpp>
+#include <mitiru/input/GamepadInput.hpp>
 #include <mitiru/util/ImageWriter.hpp>
 #include <mitiru/observe/Snapshot.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
@@ -478,6 +482,9 @@ private:
 	std::unique_ptr<Clock> m_clock;                 ///< ゲームクロック
 	std::unique_ptr<Screen> m_screen;               ///< 描画サーフェス
 	std::unique_ptr<render::RenderPipeline2D> m_renderPipeline; ///< 2Dレンダリングパイプライン
+#ifdef _WIN32
+	std::unique_ptr<gfx::Dx12LoFiTarget> m_loFiTarget; ///< ローファイ・ポストFX（DX12のみ・config で opt-in）
+#endif
 	int m_logicalWidth = 0;                          ///< Screen論理幅 (layout()で決定、固定)
 	int m_logicalHeight = 0;                         ///< Screen論理高さ (layout()で決定、固定)
 	// Debug overlay 用データ
@@ -493,6 +500,9 @@ private:
 	std::shared_ptr<render::PostProcessManager> m_postProcess;   ///< ポストプロセスマネージャー (Win32のみ生成)
 	InputInjector m_inputInjector;                   ///< 入力インジェクター
 	InputState m_inputState;                         ///< 現在の入力状態
+#ifdef _WIN32
+	GamepadInput m_gamepad;                          ///< XInput ゲームパッド (module InputSnapshot へ供給, #12)
+#endif
 	InputRecorder m_inputRecorder;                   ///< 決定論的リプレイ用入力レコーダー (axis 4)
 	InputReplayer m_inputReplayer;                   ///< 決定論的リプレイ用入力再生器 (axis 4)
 	std::string m_recordOutputPath;                  ///< MITIRU_RECORD で設定: 終了時にここへ ReplayData を保存

@@ -129,7 +129,7 @@ public:
         // ることがある。Invalidate で新 viewport での OnPaint を強制し、保留中
         // の texture resize が確実に適用されるようにする。これがないと texture
         // が中間の stale サイズのまま残り、composite が最終 window 寸法へ stretch
-        // してしまう (2026-05-21 user verdict, maximize chain)。
+        // してしまう (特に最大化チェーンで顕著)。
         m_host->Invalidate(PET_VIEW);
     }
 

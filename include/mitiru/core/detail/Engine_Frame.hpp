@@ -76,6 +76,9 @@ MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
 	/// endTick() に任せ、render rate と update rate を独立させる。
 	m_window->pollEvents();
 	applyInjectedInput();
+#ifdef _WIN32
+	m_gamepad.update(); // XInput を毎フレーム 1 回ポーリング (#12, edge 検出は内部 prev/curr)
+#endif
 
 	// DEBUG: pollEvents直後のマウス座標を保存
 	{
@@ -203,6 +206,26 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 		m_device->beginPostProcess();
 	}
 
+#ifdef _WIN32
+	// ローファイ・ポストFX: 有効時はゲーム描画を低解像オフスクリーン RT へ向ける。
+	if (m_config.loFi.enabled && m_renderPipeline)
+	{
+		if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
+		{
+			if (!m_loFiTarget) m_loFiTarget = std::make_unique<gfx::Dx12LoFiTarget>();
+			if (m_loFiTarget->ensure(dx12->nativeDevice(), dx12->commandQueue(),
+				m_config.loFi.internalWidth, m_config.loFi.internalHeight))
+			{
+				const auto& cc = m_screen->clearColor();
+				const float clear[4] = { cc.r, cc.g, cc.b, cc.a };
+				m_loFiTarget->beginFrame(dx12->getSwapChain(), clear);
+				m_renderPipeline->setViewportSize(
+					m_config.loFi.internalWidth, m_config.loFi.internalHeight);
+			}
+		}
+	}
+#endif
+
 	game.draw(*m_screen);
 
 	// debug overlay 削除済み (マウス座標問題は解決)
@@ -241,6 +264,28 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 		}
 		m_screen->present();
 	}
+
+#ifdef _WIN32
+	// ローファイ・ポストFX: 低解像 RT を量子化+Bayerディザしながら実バックバッファへ拡大。
+	if (m_config.loFi.enabled && m_loFiTarget && m_loFiTarget->ready() && m_window)
+	{
+		if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
+		{
+			render::lofi::LoFiParamsCB p;
+			p.texW = static_cast<float>(m_config.loFi.internalWidth);
+			p.texH = static_cast<float>(m_config.loFi.internalHeight);
+			p.bitsR = static_cast<float>(m_config.loFi.colorBitsR);
+			p.bitsG = static_cast<float>(m_config.loFi.colorBitsG);
+			p.bitsB = static_cast<float>(m_config.loFi.colorBitsB);
+			p.ditherStrength = m_config.loFi.ditherStrength;
+			p.doQuantize = m_config.loFi.quantize ? 1.0f : 0.0f;
+			p.doDither = m_config.loFi.dither ? 1.0f : 0.0f;
+			const int fullW = m_window->width(), fullH = m_window->height();
+			m_loFiTarget->resolve(dx12->getSwapChain(), fullW, fullH, p);
+			if (m_renderPipeline) m_renderPipeline->setViewportSize(fullW, fullH); // viewport を戻す
+		}
+	}
+#endif
 
 	/// ポストプロセスチェーンを実行し、バックバッファに出力する
 	m_device->endPostProcess();

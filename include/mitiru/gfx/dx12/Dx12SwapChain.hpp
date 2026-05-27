@@ -149,11 +149,19 @@ public:
 	}
 
 	/// @brief 現在のバックバッファのレンダーターゲットを取得する
-	/// @return レンダーターゲットへのポインタ
+	/// @return レンダーターゲットへのポインタ（override 設定時はそちら）
+	/// @details ローファイ・ポストFX 等が、描画を一時的に低解像オフスクリーン RT へ
+	///          リダイレクトするために backBuffer を差し替える。override が無ければ実バックバッファ。
 	[[nodiscard]] IRenderTarget* backBuffer() noexcept override
 	{
-		return &m_renderTargets[m_frameIndex];
+		return m_overrideRT ? m_overrideRT : &m_renderTargets[m_frameIndex];
 	}
+
+	/// @brief backBuffer() の戻り値を一時的に差し替える（ポストFX のオフスクリーン RT 用）。
+	void setBackBufferOverride(IRenderTarget* rt) noexcept { m_overrideRT = rt; }
+
+	/// @brief backBuffer override を解除し、実バックバッファに戻す。
+	void clearBackBufferOverride() noexcept { m_overrideRT = nullptr; }
 
 	/// @brief 現在のバックバッファインデックスを取得する
 	/// @return バックバッファインデックス
@@ -284,6 +292,7 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;              ///< RTVデスクリプタヒープ
 	ComPtr<ID3D12Resource> m_backBuffers[FRAME_COUNT];   ///< バックバッファリソース
 	Dx12RenderTarget m_renderTargets[FRAME_COUNT];       ///< レンダーターゲット
+	IRenderTarget* m_overrideRT = nullptr;               ///< backBuffer override（ポストFX 用・非所有）
 	uint32_t m_frameIndex = 0;                           ///< 現在のフレームインデックス
 	int m_width = 0;                                      ///< バッファ幅
 	int m_height = 0;                                     ///< バッファ高さ

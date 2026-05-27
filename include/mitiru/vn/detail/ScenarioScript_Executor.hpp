@@ -102,8 +102,8 @@ public:
 	/// @brief スクリプトブロック実行関数を設定する（@script ... @endscript 用）
 	/// @details 設定後、`@script` ブロックを step() するたびに body 文字列が
 	///          そのまま渡される。未設定なら `@script` は no-op (副作用なし)。
-	///          ADR 0001/0002 の方針で engine 同梱の scripting 実装は廃止された
-	///          ため、consumer は `IScriptingEngine` を自前で実装して注入する形になる。
+	///          engine 同梱の scripting 実装は廃止された（C++ gameplay 方針）ため、
+	///          consumer は `IScriptingEngine` を自前で実装して注入する形になる。
 	///          典型例:
 	/// @code
 	/// // consumer 側で IScriptingEngine を実装したと仮定

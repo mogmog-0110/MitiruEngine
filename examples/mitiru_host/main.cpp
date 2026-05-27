@@ -118,6 +118,11 @@ struct CliArgs
 	std::string           recordPath;          // --record <f>: .mtrr を書き出す
 	std::string           replayPath;          // --replay-test <f>: ヘッドレス再実行
 	std::string           expectPath;          // --expect <f>: 最終 view.* 状態を検証
+	std::string           fontMode;            // --font none|latin|kana|japanese (空=none=フォント skip)
+	bool                  loFi = false;        // --lofi: 低解像+量子化+Bayerディザ
+	int                   loFiW = 320, loFiH = 240; // --lofi-size WxH
+	int                   loFiBitsR = 5, loFiBitsG = 6, loFiBitsB = 5; // --lofi-bits R,G,B (既定 RGB565)
+	float                 loFiDither = 1.0f;   // --lofi-dither S
 };
 
 CliArgs parseArgs(int argc, char* argv[])
@@ -152,6 +157,10 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			if (i + 1 < argc) { out.expectPath = argv[++i]; }
 		}
+		else if (a == "--font")
+		{
+			if (i + 1 < argc) { out.fontMode = argv[++i]; }
+		}
 		else if (a == "--size")
 		{
 			// 形式: WxH 例 "800x500"。両方とも正の整数であること。
@@ -172,6 +181,46 @@ CliArgs parseArgs(int argc, char* argv[])
 					} catch (...) {}
 				}
 			}
+		}
+		else if (a == "--lofi")
+		{
+			out.loFi = true;
+		}
+		else if (a == "--lofi-size")
+		{
+			if (i + 1 < argc)
+			{
+				std::string s{argv[++i]};
+				auto x = s.find('x'); if (x == std::string::npos) x = s.find('X');
+				if (x != std::string::npos)
+				{
+					try {
+						int w = std::stoi(s.substr(0, x)), h = std::stoi(s.substr(x + 1));
+						if (w > 0 && h > 0) { out.loFiW = w; out.loFiH = h; out.loFi = true; }
+					} catch (...) {}
+				}
+			}
+		}
+		else if (a == "--lofi-bits")
+		{
+			// 形式: R,G,B 例 "5,6,5"(RGB565) / "3,3,2"(256色相当)
+			if (i + 1 < argc)
+			{
+				std::string s{argv[++i]};
+				try {
+					auto c1 = s.find(','), c2 = s.find(',', c1 + 1);
+					if (c1 != std::string::npos && c2 != std::string::npos) {
+						out.loFiBitsR = std::stoi(s.substr(0, c1));
+						out.loFiBitsG = std::stoi(s.substr(c1 + 1, c2 - c1 - 1));
+						out.loFiBitsB = std::stoi(s.substr(c2 + 1));
+						out.loFi = true;
+					}
+				} catch (...) {}
+			}
+		}
+		else if (a == "--lofi-dither")
+		{
+			if (i + 1 < argc) { try { out.loFiDither = std::stof(argv[++i]); out.loFi = true; } catch (...) {} }
 		}
 		else if (out.dllPath.empty())
 		{
@@ -202,6 +251,13 @@ void printUsage()
 		"  --watch          poll DLL file mtime, hot-reload on change\n"
 		"  --size WxH       override window size (e.g. --size 800x500)\n"
 		"  --url <url>      override CEF start URL\n"
+		"  --font <mode>    none|latin|kana|japanese — native draw 用フォント\n"
+		"                   (既定 none = フォント skip・起動高速。日本語 native text を\n"
+		"                    出すなら japanese)\n"
+		"  --lofi           低解像描画+パレット量子化+Bayerディザ (DX12, DirectX5期の質感)\n"
+		"  --lofi-size WxH  内部解像度 (既定 320x240)\n"
+		"  --lofi-bits R,G,B  量子化ビット数 (既定 5,6,5=RGB565 / 3,3,2=256色相当)\n"
+		"  --lofi-dither S  ディザ強度 (既定 1.0, 0=ディザ無し)\n"
 		"  --help, -h       this message\n"
 		"\n"
 		"environment:\n"
@@ -245,11 +301,37 @@ int main(int argc, char* argv[])
 	cfg.windowHeight    = args.heightOverride > 0 ? args.heightOverride :  720;
 	cfg.vsync           = true;
 	cfg.enableCef       = true;
-	cfg.skipDefaultFont = true;
+	// フォント: 既定はスキップ (起動高速。HTML/CEF UI なら日本語もそちらで出せる)。
+	// native draw (drawTextInRect 等) で日本語/かなを描きたい game は
+	// --font japanese|kana を指定する (エンジンが該当 glyph の SDF atlas を生成)。
+	using FontAtlas = mitiru::EngineConfig::FontAtlas;
+	if (args.fontMode.empty() || args.fontMode == "none")
+	{
+		cfg.skipDefaultFont = true;
+	}
+	else
+	{
+		cfg.skipDefaultFont = false;
+		if      (args.fontMode == "latin") { cfg.fontAtlasRanges = FontAtlas::Latin; }
+		else if (args.fontMode == "kana")  { cfg.fontAtlasRanges = FontAtlas::Kana; }
+		else                                { cfg.fontAtlasRanges = FontAtlas::Japanese; }
+	}
 	// Mitiru Saturn 標準背景 — シルバーグレー (#c8c8c8)。エンジン同梱の全 surface
 	// (hello_game / launcher / companion) はこのシルバー地に HUD を描き、Saturn の
 	// 統一感を出す。別の背景が欲しい game はインスタンス単位で上書きできる。
 	cfg.backgroundColor = sgc::Colorf{0.784f, 0.784f, 0.784f, 1.0f};
+
+	// ローファイ・ポストFX: 低解像描画 + パレット量子化 + Bayer ディザ (DX12)
+	if (args.loFi)
+	{
+		cfg.loFi.enabled       = true;
+		cfg.loFi.internalWidth = args.loFiW;
+		cfg.loFi.internalHeight= args.loFiH;
+		cfg.loFi.colorBitsR    = args.loFiBitsR;
+		cfg.loFi.colorBitsG    = args.loFiBitsG;
+		cfg.loFi.colorBitsB    = args.loFiBitsB;
+		cfg.loFi.ditherStrength= args.loFiDither;
+	}
 	cfg.cefStartUrl     = !args.cefUrlOverride.empty()
 		? args.cefUrlOverride
 		: defaultCefUrlFor(args.dllPath);

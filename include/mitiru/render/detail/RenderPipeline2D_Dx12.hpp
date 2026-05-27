@@ -347,6 +347,14 @@ inline void RenderPipeline2D::submitBatchDx12(
 	/// 前回実行を待つ (初回は GetCompletedValue == 0 == FenceValue で即 return)
 	waitDx12Fence();
 
+	/// uUseTexture = 0 を明示する (直前の textured batch / pixel-grid から漏れた
+	/// 1 で頂点カラー描画がテクスチャサンプルされるのを防ぐ。ADR 0009)。
+	/// waitDx12Fence 後なので前 GPU 読み取りとは race しない。
+	{
+		const float psOff[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+		updateCbDx12(m_dx12PsCb.Get(), psOff, sizeof(psOff));
+	}
+
 	const auto vbSize = static_cast<std::uint32_t>(
 		vertices.size() * sizeof(Vertex2D));
 	const auto ibSize = static_cast<std::uint32_t>(

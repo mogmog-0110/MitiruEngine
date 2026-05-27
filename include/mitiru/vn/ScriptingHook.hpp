@@ -4,8 +4,8 @@
 /// @brief 外部スクリプト言語統合インターフェース
 /// @details Consumer 側で実装した任意のスクリプト言語ランタイムを VN システムに
 ///          接続するためのプラグインインターフェース。IScriptingEngine を実装する
-///          ことで差し替え可能。Engine 本体は ADR 0001/0002 の方針 (C++ gameplay、
-///          二言語依存を避ける) により scripting 実装を同梱しない。
+///          ことで差し替え可能。Engine 本体は C++ gameplay 方針 (二言語依存を
+///          避ける) により scripting 実装を同梱しない。
 ///          VNScriptBridge により VN システムの関数を自動登録し、FlagManager との
 ///          双方向同期を提供する。
 ///

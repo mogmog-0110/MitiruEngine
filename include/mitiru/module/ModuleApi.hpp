@@ -51,10 +51,14 @@ namespace mitiru::module
 ///   - v2 (47e0a43a): InputSnapshot, FrameIntents 追加。on_update sig 変更
 ///   - v3 (47cc3cc1): StatePushItem::strVal を 160 → 3968 に拡張
 ///     (launcher の view.launcher.projects 等、JSON-encoded big state push 対応)
-///   - v4 (本 commit): FrameIntents に soundIntents 追加 (ADR 0008)。DLL ゲームが
+///   - v4 (47..): FrameIntents に soundIntents 追加 (ADR 0008)。DLL ゲームが
 ///     既存 audio mixer へ「音を鳴らして」と intent を出せる。host は古い v3
 ///     module の soundIntents を読まない (= 音無しで動く) ので後方安全。
-constexpr std::uint32_t kCurrentApiVersion = 4;
+///   - v5 (本 commit): InputSnapshot に gamepad (XInput 主コントローラ) 状態を追加。
+///     ボタンビットマスク (down/justPressed/justReleased) + axes[6] + connected。
+///     POD 末尾への追記なので既存 field offset 不変。host が古い module に渡しても
+///     古い module は新 field を読まないだけ (後方安全)。
+constexpr std::uint32_t kCurrentApiVersion = 5;
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
@@ -74,6 +78,36 @@ struct ActionEvent
 	char name[64];          ///< action 名、null 終端 (例: "game.restart")
 	char payloadJson[256];  ///< JSON payload 文字列、null 終端
 };
+
+/// @brief ゲームパッドのボタンビット (InputSnapshot::gamepadButtons* 用)。
+/// @details 値は XInput の wButtons と一致。DLL は ModuleApi.hpp だけ include すれば
+///          `if (input->gamepadButtonsDown & mitiru::module::gamepad::A) ...` と読める。
+namespace gamepad
+{
+	constexpr std::uint32_t DPadUp    = 0x0001;
+	constexpr std::uint32_t DPadDown  = 0x0002;
+	constexpr std::uint32_t DPadLeft  = 0x0004;
+	constexpr std::uint32_t DPadRight = 0x0008;
+	constexpr std::uint32_t Start     = 0x0010;
+	constexpr std::uint32_t Back      = 0x0020;
+	constexpr std::uint32_t LS        = 0x0040; ///< 左スティック押し込み
+	constexpr std::uint32_t RS        = 0x0080; ///< 右スティック押し込み
+	constexpr std::uint32_t LB        = 0x0100; ///< 左バンパー
+	constexpr std::uint32_t RB        = 0x0200; ///< 右バンパー
+	constexpr std::uint32_t A         = 0x1000;
+	constexpr std::uint32_t B         = 0x2000;
+	constexpr std::uint32_t X         = 0x4000;
+	constexpr std::uint32_t Y         = 0x8000;
+
+	/// @brief gamepadAxes[] の添字。stick は [-1,1]、trigger は [0,1]（デッドゾーン適用済）。
+	enum Axis : int
+	{
+		LeftStickX = 0, LeftStickY = 1,
+		RightStickX = 2, RightStickY = 3,
+		LeftTrigger = 4, RightTrigger = 5,
+		AxisCount = 6,
+	};
+}
 
 /// @brief 1 フレーム分の input 状態 (host → DLL の push)
 /// @details
@@ -96,6 +130,14 @@ struct InputSnapshot
 	/// @brief このフレームに溜まった CEF JS からの action event
 	std::int32_t actionEventCount;
 	ActionEvent  actionEvents[16];
+
+	// ── gamepad (主コントローラ = XInput player 0) — ABI v5 で追記 ──────
+	// 末尾追記なので既存 field の offset は不変。非対応 platform / 未接続時は全 0。
+	std::int32_t  gamepadConnected;            ///< 1 = 接続中 (0 = 未接続/非対応)
+	std::uint32_t gamepadButtonsDown;          ///< gamepad:: ビットマスク (押下中)
+	std::uint32_t gamepadButtonsJustPressed;   ///< このフレームで押された
+	std::uint32_t gamepadButtonsJustReleased;  ///< このフレームで離された
+	float         gamepadAxes[6];              ///< gamepad::Axis 添字。stick [-1,1] / trigger [0,1]
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)

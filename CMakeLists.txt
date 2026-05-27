@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0091 NEW)
 
 project(MitiruEngine
-	VERSION 0.6.0
+	VERSION 0.7.0
 	DESCRIPTION "「必要なものしか画面に出さない」C++ game framework — game-as-DLL + hot reload"
 	LANGUAGES CXX
 )

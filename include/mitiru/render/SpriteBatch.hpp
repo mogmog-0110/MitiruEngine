@@ -147,6 +147,22 @@ public:
 		++m_drawCallCount;
 	}
 
+	/// @brief 変換済み4頂点 + UV のテクスチャ付きクワッドを蓄積する（ADR 0009）
+	/// @details corners は変換適用済みのスクリーン座標、uvs は [0,1] テクスチャ座標。
+	///          実テクスチャのバインドは RenderPipeline2D::submitTexturedBatch が行う
+	///          （このバッチは単一テクスチャ run として submit される前提）。
+	/// @param corners 4頂点の位置（TL, TR, BR, BL 順）
+	/// @param uvs 4頂点のテクスチャ座標（corners と同順）
+	/// @param color 乗算色（ティント）
+	void drawSpriteQuad(const sgc::Vec2f corners[4],
+	                    const sgc::Vec2f uvs[4],
+	                    const sgc::Colorf& color)
+	{
+		if (!m_recording) return;
+		pushQuadRaw(corners, uvs, color);
+		++m_drawCallCount;
+	}
+
 	/// @brief 矩形枠を描画する
 	/// @param rect 矩形領域
 	/// @param color 描画色

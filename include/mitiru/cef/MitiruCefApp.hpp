@@ -21,8 +21,8 @@ namespace mitiru::cef
 /// @details ブラウザプロセスの起動設定 + **single-process モードで renderer 側
 ///          の CefMessageRouterRendererSide も注入する**。
 ///
-/// [SINGLE-PROCESS CAVEAT 2026-04-23]
-/// 暫定で `single-process` スイッチを付けているため subprocess (MitiruCefHelper.exe)
+/// single-process モードの制約:
+/// `single-process` スイッチを付けているため subprocess (MitiruCefHelper.exe)
 /// は起動されない。結果、`cef_subprocess_main.cpp` の CefSubprocessApp の
 /// `OnWebKitInitialized` / `OnContextCreated` は一度も呼ばれない。
 ///
@@ -101,19 +101,17 @@ public:
         command_line->AppendSwitch("no-proxy-server");
         // network service 関連の追加ノイズ抑制 (どれも HUD 用途で不要)
         command_line->AppendSwitchWithValue("log-severity", "disable");
-        // [ARCHITECTURAL 2026-04-22] Multi-process モードで subprocess 起動が
+        // Multi-process モードでは subprocess 起動が
         // "GPU process launch failed: error_code=63" で FATAL 終了する。
         // 根本原因: CEF minimal 配布の libcef.dll は Release CRT (/MD) 固定で
         //   ビルドされており、Debug build (/MDd) の consumer と CRT mismatch
         //   を起こす。libcef_dll_wrapper を /MDd でビルド → /MD 版と混在 →
         //   cef_sandbox.lib が参照する _CrtDbgReport が解決できない、等、
         //   複数段階で構造的に衝突する。
-        // 現時点の判断: Debug build で multi-process CEF を正しく動かすには
-        //   CEF standard distribution (Debug libcef.dll 同梱) への切替が必要。
-        //   minimal 配布のままでの multi-process 対応は非現実的。
-        // 暫定: single-process で運用。sandbox/isolation は失われるが、
-        //   ゲーム HUD 用途 (file:// のみ) では問題なし。
-        // 詳細と次セッション候補: memory/todo_cef_subprocess_launch.md 参照。
+        // Debug build で multi-process CEF を動かすには CEF standard distribution
+        //   (Debug libcef.dll 同梱) が要る。minimal 配布のままでは非現実的なため
+        //   single-process で運用する。sandbox/isolation は失われるが、ゲーム HUD
+        //   用途 (file:// のみ) では問題ない。
         command_line->AppendSwitch("single-process");
     }
 

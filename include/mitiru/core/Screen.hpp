@@ -628,6 +628,20 @@ public:
 	void drawSprite(const render::Texture& texture, const sgc::Rectf& dstRect,
 	                const sgc::Colorf& tintColor);
 
+	/// @brief スプライトシートの 1 コマ (srcRect) を ティント / 左右反転付きで描く
+	/// @details テクスチャ全体ではなく srcRect (ピクセル単位の部分矩形) を dstRect に
+	///          描画する。スプライトシートのアニメ 1 フレームを切り出す用途。バッチ＆
+	///          カメラ変換に従う (drawPixelGrid と違い transform を尊重)。
+	/// @param texture シート全体のテクスチャ
+	/// @param dstRect 描画先矩形 (スクリーン座標)
+	/// @param srcRect テクスチャ内のソース領域 (ピクセル単位)
+	/// @param tintColor ティント色 (テクスチャ色に乗算。既定: 白)
+	/// @param flipX 左右反転 (キャラの向き。既定: false)
+	void drawSprite(const render::Texture& texture, const sgc::Rectf& dstRect,
+	                const sgc::Rectf& srcRect,
+	                const sgc::Colorf& tintColor = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f},
+	                bool flipX = false);
+
 	/// @brief UIノードツリーを描画する
 	/// @param root UIツリーのルートノード
 	/// @param theme 描画に使用するテーマ
@@ -770,7 +784,8 @@ private:
 	int m_height;                 ///< サーフェス高さ
 	int m_drawCallCount = 0;      ///< 描画コール数
 	sgc::Colorf m_clearColor{0.0f, 0.0f, 0.0f, 1.0f};  ///< クリア色
-	render::SpriteBatch m_spriteBatch;       ///< スプライトバッチ
+	render::SpriteBatch m_spriteBatch;       ///< スプライトバッチ（現在開いている run のジオメトリ）
+	std::uint32_t m_curTexHandle = 0;        ///< 現在の run のテクスチャハンドル（0=頂点カラー, ADR 0009）
 	render::ShapeRenderer m_shapeRenderer;   ///< シェイプレンダラー
 	render::StyledRectBatch m_styledRectBatch;         ///< SDF矩形バッチ
 	render::StyledCircleBatch m_styledCircleBatch;     ///< SDF円/楕円バッチ
@@ -794,6 +809,20 @@ private:
 		return m_transformStack.top();
 	}
 
+	// ── textured sprite batch ヘルパー（ADR 0009）─────────
+	// painter 順を保つため、頂点カラー run と textured run の切替で現バッチを
+	// flush+submit する。実装は detail/Screen_Frame.hpp（RenderPipeline2D の
+	// 完全型が要るため）。
+	/// @brief 現在のバッチ（頂点カラー or textured）を submit し、空で開き直す
+	void flushCurrentBatch();
+	/// @brief texHandle の textured run を開く（切替時に現バッチを flush）
+	void switchToTexture(std::uint32_t texHandle);
+	/// @brief textured quad を現在の run に積む（必要なら run を切替）
+	void drawSpriteTexturedQuad(std::uint32_t texHandle,
+	                            const sgc::Vec2f corners[4],
+	                            const sgc::Vec2f uvs[4],
+	                            const sgc::Colorf& color);
+
 	// ── transform 対応の内部 emit ヘルパー ─────────────
 	// 描画メソッドはこれらを経由することで currentTransform を自動適用する。
 	// rotation を持つ変換では、SpriteBatch のAABB矩形では表現不能なため
@@ -802,6 +831,8 @@ private:
 	/// @brief 現在のtransformを適用して矩形をemitする
 	void emitRect(const sgc::Rectf& rect, const sgc::Colorf& color)
 	{
+		// 頂点カラー描画: 開いている textured run があれば閉じて順序を保つ（ADR 0009）
+		if (m_curTexHandle != 0) flushCurrentBatch();
 		const auto t = currentTransform();
 		if (t.isIdentity())
 		{
@@ -861,6 +892,8 @@ private:
 	                      const sgc::Colorf& tl, const sgc::Colorf& tr,
 	                      const sgc::Colorf& br, const sgc::Colorf& bl)
 	{
+		// 頂点カラー描画: 開いている textured run があれば閉じる（ADR 0009）
+		if (m_curTexHandle != 0) flushCurrentBatch();
 		const auto t = currentTransform();
 		if (t.isIdentity())
 		{

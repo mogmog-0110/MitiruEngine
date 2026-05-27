@@ -11,6 +11,7 @@
 #include <cstring>
 #include <memory>
 #include <stack>
+#include <unordered_map>
 #include <vector>
 
 #include <sgc/math/Rect.hpp>
@@ -208,6 +209,32 @@ public:
 #endif
 	}
 
+	/// @brief テクスチャ付きスプライトバッチをサポートするか（ADR 0009）
+	/// @details 現状 DX12 path のみ。false の backend では Screen が per-pixel
+	///          fallback を使う（software / DX11 / WebGL / Null）。
+	[[nodiscard]] bool supportsTexturedBatch() const noexcept
+	{
+		return m_valid && m_useDx12Path;
+	}
+
+	/// @brief render::Texture の RGBA8 を GPU にアップロード／キャッシュしハンドルを返す
+	/// @details key+(w,h) が一致する限り再アップロードしない（永続キャッシュ）。
+	///          初回のみ同期アップロード（CopyTextureRegion + barrier→PSR）。
+	/// @param key  テクスチャ識別キー（通常 &Texture）
+	/// @param w,h  テクスチャ寸法（ピクセル）
+	/// @param rgba RGBA8 ピクセル（w*h*4 bytes、行優先）
+	/// @return 1 以上のハンドル。未対応 backend / 失敗時は 0
+	std::uint32_t ensureSpriteTexture(const void* key, int w, int h,
+	                                  const std::uint8_t* rgba);
+
+	/// @brief texHandle のテクスチャをバインドして頂点バッチを描画する（uUseTexture=1）
+	/// @param vertices Vertex2D 頂点（UV 付き）
+	/// @param indices インデックス
+	/// @param texHandle ensureSpriteTexture が返したハンドル
+	void submitTexturedBatch(const std::vector<Vertex2D>& vertices,
+	                         const std::vector<std::uint32_t>& indices,
+	                         std::uint32_t texHandle);
+
 	/// @brief スクリーンサイズ変更時に正射影行列を更新する
 	/// @param width 新しい幅
 	/// @param height 新しい高さ
@@ -235,7 +262,7 @@ public:
 			// m_dx12ConstantBuffer は "エイリアス用" コメントの dead pointer
 			// (init で populate されない) — そっちを update してた古い resize
 			// は ortho 更新が runtime に届かず、resize 後に anisotropic
-			// stretch が発生していた (2026-05-21 報告)。
+			// stretch が発生する。
 			const auto ortho = OrthoMatrix::create(width, height);
 			updateCbDx12(m_dx12VsCb.Get(), ortho.m, sizeof(ortho.m));
 		}
@@ -528,6 +555,21 @@ private:
 	int  m_dx12PgTexH     = 0;     ///< キャッシュテクスチャ高さ
 	bool m_dx12PgTexReady = false; ///< 初回 CopyTextureRegion 後に true (state = PSR)
 
+	/// ── textured sprite batch 用 永続テクスチャキャッシュ (DX12, ADR 0009) ──
+	/// 各 entry は default-heap texture (PSR 状態) + 専用 1-slot shader-visible
+	/// SRV heap を持つ。key+(w,h) でキャッシュし、初回のみ同期アップロードする。
+	struct Dx12SpriteTexture
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource>       tex;     ///< default heap (PSR)
+		Microsoft::WRL::ComPtr<ID3D12Resource>       upload;  ///< upload heap 中間
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvHeap; ///< 1-slot SRV heap
+		int         w   = 0;
+		int         h   = 0;
+		const void* key = nullptr;
+	};
+	std::vector<Dx12SpriteTexture> m_dx12SpriteTextures;              ///< index+1 = handle
+	std::unordered_map<const void*, std::uint32_t> m_dx12SpriteTexLookup; ///< key → index
+
 public:
 	/// @brief RGBA8ピクセルバッファをGPUにアップロードし、クワッドとして描画する
 	/// @details (pw, ph) が前回と異なる場合のみテクスチャを再確保する。
@@ -796,3 +838,4 @@ private:
 #include <mitiru/render/detail/RenderPipeline2D_Dx11.hpp>
 #include <mitiru/render/detail/RenderPipeline2D_Dx12.hpp>
 #include <mitiru/render/detail/RenderPipeline2D_PixelGrid.hpp>
+#include <mitiru/render/detail/RenderPipeline2D_TexturedBatch.hpp>

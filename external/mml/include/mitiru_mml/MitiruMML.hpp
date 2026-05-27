@@ -33,3 +33,10 @@
 #include <mitiru_mml/MmlValidator.hpp>
 #include <mitiru_mml/TfiImporter.hpp>
 #include <mitiru_mml/VgmPlayer.hpp>
+#include <mitiru_mml/Reverb.hpp>
+#include <mitiru_mml/SampleInstrument.hpp>
+#include <mitiru_mml/MultiSampleInstrument.hpp>
+#include <mitiru_mml/SampleSequencer.hpp>
+#include <mitiru_mml/WavReader.hpp>
+#include <mitiru_mml/Sf2File.hpp>
+#include <mitiru_mml/SfzFile.hpp>

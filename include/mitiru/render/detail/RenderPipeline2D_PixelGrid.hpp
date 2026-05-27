@@ -27,7 +27,7 @@ inline void RenderPipeline2D::submitPixelGrid(
 
 	// NOTE: DX11 path は baked-in の D3D11_FILTER_MIN_MAG_MIP_POINT sampler を
 	// 使う (pixel-art content には既に正しい) ため、ここでは `filter` を意図的に
-	// 無視する。DX11 への配線は task spec の scope 外。
+	// 無視する。DX11 path の filter 切替は未対応。
 	(void)filter;
 
 	// DX11 以外の backend: no-op。
@@ -192,8 +192,8 @@ inline void RenderPipeline2D::submitPixelGrid(
 //     (m_dx12PointPipeline == nullptr)、Point リクエストは透過的に linear PSO へ
 //     フォールバックする。視覚品質は劣化する (pixel-art に bilinear blur) が
 //     draw 自体は完了する — point variant は品質最適化であって機能要件ではない。
-//   • この draw path では遅延初期化を行わない (エンジン規約:
-//     `.claude/rules/mitiru-engine.md` — "draw() 内の遅延初期化 / null-skip は禁止")。
+//   • この draw path では遅延初期化を行わない (エンジン規約: draw() 内の
+//     遅延初期化 / null-skip は禁止)。
 //
 inline void RenderPipeline2D::submitPixelGridDx12(
 	const sgc::Rectf& dest,

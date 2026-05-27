@@ -49,6 +49,11 @@ public:
 	/// @brief tick分解能（4分音符あたりのtick数）
 	static constexpr int TICKS_PER_QUARTER = 48;
 
+	/// @brief 出力サンプルレート（Hz）。OPNAチップのネイティブ出力(≈998400Hz=clock/8)は
+	///        FM実効レート(clock/144)の約18倍オーバーサンプリングで、そのままだと WAV が
+	///        巨大かつ consumer 側で ~18倍に間延びする(#8)。標準レートにダウンサンプルして返す。
+	static constexpr uint32_t OUTPUT_SAMPLE_RATE = 44100;
+
 	/// @brief FMトラックを追加する
 	/// @param mml MML文字列
 	/// @param presetIndex FM音色プリセット番号 (0-11)
@@ -254,15 +259,14 @@ public:
 			}
 		}
 
-		return result;
+		// ネイティブ(≈998400Hz)→標準(44100Hz)へダウンサンプルして返す（#8 修正）
+		return resample(result, driver.sampleRate(), OUTPUT_SAMPLE_RATE);
 	}
 
-	/// @brief サンプルレートを取得する（OPNAチップのネイティブレート）
+	/// @brief 出力サンプルレートを取得する（ダウンサンプル後の標準レート）
 	[[nodiscard]] uint32_t sampleRate() const
 	{
-		// OpnaDriverを一時生成してレート取得
-		OpnaDriver temp;
-		return temp.sampleRate();
+		return OUTPUT_SAMPLE_RATE;
 	}
 
 	/// @brief トラック別PCM・振幅データ付きレンダリングを行う
@@ -940,6 +944,30 @@ private:
 		}
 
 		return events;
+	}
+
+	/// @brief PCM を inRate から outRate へリサンプルする（box-filter 平均）
+	/// @details OPNA ネイティブ(≈998400Hz)は FM 実効レートの約18倍オーバーサンプリングなので、
+	///          区間平均でデシメートすればエイリアスを抑えつつ標準レートに落とせる(#8)。
+	[[nodiscard]] static PcmBuffer resample(const PcmBuffer& in, uint32_t inRate, uint32_t outRate)
+	{
+		if (in.empty() || inRate == 0 || outRate == 0 || inRate == outRate) return in;
+		const double ratio = static_cast<double>(inRate) / static_cast<double>(outRate);
+		const auto outLen = static_cast<std::size_t>(static_cast<double>(in.size()) / ratio);
+		PcmBuffer out;
+		out.reserve(outLen);
+		for (std::size_t i = 0; i < outLen; ++i)
+		{
+			std::size_t s = static_cast<std::size_t>(static_cast<double>(i) * ratio);
+			std::size_t e = static_cast<std::size_t>(static_cast<double>(i + 1) * ratio);
+			if (e <= s) e = s + 1;
+			if (e > in.size()) e = in.size();
+			long acc = 0;
+			std::size_t n = 0;
+			for (std::size_t k = s; k < e; ++k) { acc += in[k]; ++n; }
+			out.push_back(static_cast<int16_t>(n ? acc / static_cast<long>(n) : 0));
+		}
+		return out;
 	}
 
 	/// @brief 音長値をtick数に変換する

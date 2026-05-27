@@ -104,6 +104,28 @@ struct EngineConfig
 	///          このフィールドに値を設定する。default は黒 (後方互換)。
 	sgc::Colorf backgroundColor{0.0f, 0.0f, 0.0f, 1.0f};
 
+	/// @brief ローファイ・ポストFX（低解像レンダー + パレット量子化 + Bayer ディザ）。
+	/// @details DirectX5 / 256色・16bit 期の "粗い網点質感" を再現する（DX12 のみ）。
+	///          有効時、ゲームは低い内部解像度のオフスクリーンに描画され、最終提示時に
+	///          パレット量子化 + 4×4 Bayer オーダードディザを掛けてニアレストでウィンドウへ拡大する。
+	///          既定は無効（無効時は従来どおりの描画で挙動は一切変わらない）。
+	struct LoFiConfig
+	{
+		bool enabled = false;          ///< 機能 ON/OFF（既定 OFF）
+		int internalWidth = 320;       ///< 内部レンダー幅（例 320 / 640）
+		int internalHeight = 240;      ///< 内部レンダー高さ（例 240 / 480）
+		bool quantize = true;          ///< パレット量子化を行うか
+		bool dither = true;            ///< Bayer オーダードディザを行うか
+		int colorBitsR = 5;            ///< R チャンネル量子化ビット数（既定 RGB565）
+		int colorBitsG = 6;            ///< G チャンネル量子化ビット数
+		int colorBitsB = 5;            ///< B チャンネル量子化ビット数
+		float ditherStrength = 1.0f;   ///< ディザ強度（0=無し, 1=量子化 1 段ぶん）
+
+		/// @brief 全チャンネルを同一ビット数に設定する（例 256色相当なら 3/3/2 を個別指定）。
+		void setUniformBits(int bits) noexcept { colorBitsR = colorBitsG = colorBitsB = bits; }
+	};
+	LoFiConfig loFi;                   ///< ローファイ・ポストFX 設定
+
 	/// @brief ゲーム側で選択可能な解像度プリセット
 	/// @details 設定 UI のドロップダウン用。空ならプリセット非表示。
 	std::vector<std::pair<int,int>> resolutionPresets = {

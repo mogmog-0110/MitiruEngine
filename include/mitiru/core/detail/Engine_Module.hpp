@@ -368,6 +368,43 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 		snap->mouseButtonsJustReleased[i]    = m_inputState.isMouseButtonJustReleased(btn) ? 1u : 0u;
 	}
 
+	// Gamepad (主コントローラ = XInput player 0) — ABI v5 (#12)。
+	// snapshot は永続バッファ (memset しない) ので毎フレーム必ず全 field を書く。
+#ifdef _WIN32
+	{
+		constexpr int P = 0;
+		snap->gamepadConnected = m_gamepad.isConnected(P) ? 1 : 0;
+		std::uint32_t down = 0, pressed = 0, released = 0;
+		const GamepadButton kBtns[] = {
+			GamepadButton::DPadUp, GamepadButton::DPadDown, GamepadButton::DPadLeft,
+			GamepadButton::DPadRight, GamepadButton::Start, GamepadButton::Back,
+			GamepadButton::LS, GamepadButton::RS, GamepadButton::LB, GamepadButton::RB,
+			GamepadButton::A, GamepadButton::B, GamepadButton::X, GamepadButton::Y };
+		for (auto b : kBtns)
+		{
+			const auto bit = static_cast<std::uint32_t>(b);
+			if (m_gamepad.isButtonDown(P, b))     down     |= bit;
+			if (m_gamepad.isButtonPressed(P, b))  pressed  |= bit;
+			if (m_gamepad.isButtonReleased(P, b)) released |= bit;
+		}
+		snap->gamepadButtonsDown         = down;
+		snap->gamepadButtonsJustPressed  = pressed;
+		snap->gamepadButtonsJustReleased = released;
+		snap->gamepadAxes[0] = m_gamepad.getAxis(P, GamepadAxis::LeftStickX);
+		snap->gamepadAxes[1] = m_gamepad.getAxis(P, GamepadAxis::LeftStickY);
+		snap->gamepadAxes[2] = m_gamepad.getAxis(P, GamepadAxis::RightStickX);
+		snap->gamepadAxes[3] = m_gamepad.getAxis(P, GamepadAxis::RightStickY);
+		snap->gamepadAxes[4] = m_gamepad.getAxis(P, GamepadAxis::LeftTrigger);
+		snap->gamepadAxes[5] = m_gamepad.getAxis(P, GamepadAxis::RightTrigger);
+	}
+#else
+	snap->gamepadConnected = 0;
+	snap->gamepadButtonsDown = 0;
+	snap->gamepadButtonsJustPressed = 0;
+	snap->gamepadButtonsJustReleased = 0;
+	for (int i = 0; i < 6; ++i) { snap->gamepadAxes[i] = 0.0f; }
+#endif
+
 	// queue 済み action event (CEF UI thread 由来) を POD buffer へ drain する。
 	snap->actionEventCount = 0;
 	if (m_moduleActionEvents)

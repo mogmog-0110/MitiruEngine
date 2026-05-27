@@ -7,7 +7,11 @@
 ///          プロシージャルテクスチャ生成機能を提供する。
 
 #include <cstdint>
+#include <optional>
+#include <string>
 #include <vector>
+
+#include <stb_image.h> // 宣言のみ。実装は src/stb_impl.cpp (mitiru が INTERFACE-link 済み)。
 
 namespace mitiru::render
 {
@@ -30,6 +34,29 @@ public:
 		, m_height(height)
 		, m_pixels(pixels)
 	{
+	}
+
+	/// @brief 画像ファイル (PNG/JPG/BMP/TGA 等) から Texture を読み込む。
+	/// @details stb_image 経由で RGBA8 に decode する。**consumer DLL でもそのまま使える** —
+	///          `mitiru` ターゲットが `stb_impl` を INTERFACE-link しているため、stbi_load の
+	///          実装は既にリンク済み。**`STB_IMAGE_IMPLEMENTATION` を自前で定義しないこと**
+	///          (二重シンボル LNK2005 になる)。描画は `Screen::drawSprite(tex, dstRect)` を使う
+	///          (バッチ＆カメラ変換対応。`drawPixelGrid` は変換無視の即時 blit なので非推奨)。
+	/// @param path 画像ファイルパス
+	/// @return 成功時 Texture、失敗時 nullopt
+	[[nodiscard]] static std::optional<Texture> fromFile(const std::string& path)
+	{
+		int w = 0, h = 0, channels = 0;
+		unsigned char* data = stbi_load(path.c_str(), &w, &h, &channels, 4); // 強制 RGBA
+		if (data == nullptr || w <= 0 || h <= 0)
+		{
+			if (data != nullptr) { stbi_image_free(data); }
+			return std::nullopt;
+		}
+		std::vector<std::uint8_t> px(
+			data, data + static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4);
+		stbi_image_free(data);
+		return Texture(w, h, px);
 	}
 
 	/// @brief 単色テクスチャを生成する
