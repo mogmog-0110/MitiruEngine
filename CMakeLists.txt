@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0091 NEW)
 
 project(MitiruEngine
-	VERSION 0.7.0
+	VERSION 0.7.1
 	DESCRIPTION "「必要なものしか画面に出さない」C++ game framework — game-as-DLL + hot reload"
 	LANGUAGES CXX
 )
@@ -238,9 +238,13 @@ elseif(WIN32)
 		target_compile_definitions(libcef_dll_wrapper_mdrel PRIVATE
 			USING_CEF_SHARED NOMINMAX WIN32_LEAN_AND_MEAN WRAPPING_CEF_SHARED)
 		target_link_libraries(libcef_dll_wrapper_mdrel PUBLIC CEF::libcef)
+		# Release CRT (/MD) を CMP0091 のプロパティで宣言する。手動 /MD フラグだと
+		# CMake が自動注入する既定 /MDd (Debug) と二重になり D9025 が出る。
 		target_compile_options(libcef_dll_wrapper_mdrel PRIVATE
-			/MD /W0 /wd4100 /wd4127 /wd4996 /bigobj /utf-8 /FS)
-		set_target_properties(libcef_dll_wrapper_mdrel PROPERTIES FOLDER "cef")
+			/W0 /wd4100 /wd4127 /wd4996 /bigobj /utf-8 /FS)
+		set_target_properties(libcef_dll_wrapper_mdrel PROPERTIES
+			FOLDER "cef"
+			MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
 		# ── MitiruCefHelper.exe (CEF renderer/gpu/utility subprocess) ──
 		# MitiruCefConfig::buildCefSettings は既定で exeDir/MitiruCefHelper.exe を
@@ -255,10 +259,11 @@ elseif(WIN32)
 			MITIRU_HAS_CEF=1 NOMINMAX WIN32_LEAN_AND_MEAN)
 		target_include_directories(MitiruCefHelper PRIVATE
 			"${CEF_ROOT}" "${CEF_ROOT}/include")
-		if(MSVC)
-			target_compile_options(MitiruCefHelper PRIVATE /MD)
-		endif()
-		set_target_properties(MitiruCefHelper PROPERTIES FOLDER "cef")
+		# subprocess は libcef と同じ Release CRT。プロパティで /MD を宣言し
+		# 手動フラグによる D9025 (/MDd→/MD 上書き) を避ける。
+		set_target_properties(MitiruCefHelper PROPERTIES
+			FOLDER "cef"
+			MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 	endif()
 elseif(APPLE)
 	message(STATUS "Building for macOS/iOS")

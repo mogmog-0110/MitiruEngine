@@ -130,13 +130,11 @@ if(NOT TARGET libcef_dll_wrapper)
     target_compile_features(libcef_dll_wrapper PUBLIC cxx_std_17)
 
     if(MSVC)
-        # MSVC ランタイムを消費側 (mitiru) と合わせる — /MDd Debug, /MD Release
-        # MSVC_RUNTIME_LIBRARY プロパティは VS generator でジェネレーター式展開後の値が
-        # "not known" エラーになるため、直接コンパイルフラグで指定する
-        target_compile_options(libcef_dll_wrapper PRIVATE
-            $<$<CONFIG:Debug>:/MDd>
-            $<$<NOT:$<CONFIG:Debug>>:/MD>
-        )
+        # MSVC ランタイムを消費側 (mitiru) と合わせる — /MDd Debug, /MD Release。
+        # CMP0091 のプロパティで宣言する。手動 /MDx フラグだと CMake が自動注入する
+        # 既定ランタイムフラグと二重になり D9025 (/MDx 上書き警告) を招く。
+        set_target_properties(libcef_dll_wrapper PROPERTIES
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
         # CEF ラッパーの警告は抑制する (メンテナンス対象外コード)
         target_compile_options(libcef_dll_wrapper PRIVATE
             /W0 /wd4100 /wd4127 /wd4996 /bigobj /utf-8 /FS

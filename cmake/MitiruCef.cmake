@@ -76,10 +76,11 @@ function(mitiru_add_cef_game target)
                 MITIRU_HAS_CEF=1 NOMINMAX WIN32_LEAN_AND_MEAN)
             target_include_directories(${_helper_target} PRIVATE
                 "${CEF_ROOT}" "${CEF_ROOT}/include")
-            if(MSVC)
-                target_compile_options(${_helper_target} PRIVATE /MD)
-            endif()
-            set_target_properties(${_helper_target} PROPERTIES FOLDER "cef")
+            # Release CRT (/MD) は CMP0091 のプロパティで宣言する。手動 /MD は
+            # CMake 自動注入の既定 /MDd と二重になり D9025 を出す。
+            set_target_properties(${_helper_target} PROPERTIES
+                FOLDER "cef"
+                MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
         endif()
     else()
         # Default: use engine-shipped MitiruCefHelper (already defined by engine/CMakeLists.txt).
