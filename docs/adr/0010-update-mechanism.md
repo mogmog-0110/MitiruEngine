@@ -17,8 +17,20 @@
 | **`mitiru update`** | このプロジェクトの engine pin を最新に揃える | `mitiru.toml` の `engine` |
 | **`mitiru self-update`** | CLI binary 自体を最新に置き換える | `mitiru.exe` |
 
-どちらも **pulled** (ユーザーが叩く)。バックグラウンドの自動更新 nag は哲学
-(「必要なものしか画面に出さない」) に反するため**実装しない**。
+どちらも **pulled** (ユーザーが叩く)。バックグラウンドで常駐し勝手に告知する
+自動更新 nag は哲学 (「必要なものしか画面に出さない / pushed じゃなく pulled」) に
+反するため**実装しない**。
+
+ただし **受動 footer は哲学整合**として実装する: ユーザーが既に叩いた
+`mitiru build` / `run` の**最後に一行だけ**、新しい engine release / CLI binary が
+あれば知らせる (`▸ engine X available (pinned Y) — run 'mitiru update'`)。これは
+background daemon ではなく「ユーザーが開いた文脈内での pull」であり、build はまさに
+engine version が関係する文脈。自動 DL はせず導線を示すだけ。失敗モード対策:
+24h キャッシュ (`~/.mitiru/update-check.json`) + 短 timeout (2.5s) + オフライン無言で
+build を遅くしない / `MITIRU_NO_UPDATE_CHECK` と非 TTY (CI) では完全に黙る /
+watch のリビルドループには出さない (build・run コマンド末尾のみ)。対話プロンプトで
+build を止める案と auto-update 案は、それぞれ「フローを奪う」「pulled 哲学に反する」
+として却下した。
 
 ## 設計上の決定と失敗モード分析
 

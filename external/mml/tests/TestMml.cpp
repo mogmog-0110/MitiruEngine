@@ -47,6 +47,82 @@ TEST_CASE("MmlParser parses note with length", "[mml][parser]")
 	REQUIRE(cmds[0].duration == 4);
 }
 
+namespace
+{
+	// テスト中の stderr に警告が出ないよう抑制する。
+	void setMmlQuiet()
+	{
+#ifdef _WIN32
+		_putenv_s("MITIRU_MML_QUIET", "1");
+#else
+		setenv("MITIRU_MML_QUIET", "1", 1);
+#endif
+	}
+}
+
+TEST_CASE("MmlParser rejects non-standard note length and falls back", "[mml][parser]")
+{
+	setMmlQuiet();
+
+	SECTION("C5 falls back to duration 0 (use default L), not 5")
+	{
+		auto cmds = MmlParser::parse("C5");
+		REQUIRE(cmds.size() == 1);
+		REQUIRE(cmds[0].type == CommandType::Note);
+		REQUIRE(cmds[0].duration == 0);
+	}
+
+	SECTION("C4 still parses as quarter note")
+	{
+		auto cmds = MmlParser::parse("C4");
+		REQUIRE(cmds[0].duration == 4);
+	}
+
+	SECTION("R7 (rest) falls back to duration 0")
+	{
+		auto cmds = MmlParser::parse("R7");
+		REQUIRE(cmds.size() == 1);
+		REQUIRE(cmds[0].type == CommandType::Rest);
+		REQUIRE(cmds[0].duration == 0);
+	}
+
+	SECTION("L5 is stored as L4 (hard default)")
+	{
+		auto cmds = MmlParser::parse("L5");
+		REQUIRE(cmds.size() == 1);
+		REQUIRE(cmds[0].type == CommandType::Length);
+		REQUIRE(cmds[0].value == 4);
+	}
+
+	SECTION("L8 stays as L8")
+	{
+		auto cmds = MmlParser::parse("L8");
+		REQUIRE(cmds[0].value == 8);
+	}
+
+	SECTION("L4 C5C5C5C5 has identical beat to L4 CCCC (fallback preserves the bar)")
+	{
+		// C5 -> len=0 -> use default L=4. Each note effectively a quarter.
+		auto withBad = MmlParser::parse("L4 C5C5C5C5");
+		auto plain   = MmlParser::parse("L4 CCCC");
+
+		auto totalLen = [](const CommandList& cs) {
+			int total = 0;
+			int defaultL = 4;
+			for (const auto& c : cs)
+			{
+				if (c.type == CommandType::Length) defaultL = c.value;
+				if (c.type == CommandType::Note)
+				{
+					total += (c.duration == 0 ? defaultL : c.duration);
+				}
+			}
+			return total;
+		};
+		REQUIRE(totalLen(withBad) == totalLen(plain));
+	}
+}
+
 TEST_CASE("MmlParser parses sharp and flat", "[mml][parser]")
 {
 	auto cmds = MmlParser::parse("C+4 D-8");
@@ -721,11 +797,11 @@ TEST_CASE("OpnaSequencer clear removes tracks", "[mml][opna]")
 	REQUIRE(seq.trackCount() == 0);
 }
 
-TEST_CASE("OpnaSequencer sample rate matches driver", "[mml][opna]")
+TEST_CASE("OpnaSequencer sample rate is 44.1kHz output", "[mml][opna]")
 {
+	// チップ native (~998400Hz) は内部 render 用。出力 PCM は 44100 にダウンサンプルされる。
 	OpnaSequencer seq;
-	OpnaDriver driver;
-	REQUIRE(seq.sampleRate() == driver.sampleRate());
+	REQUIRE(seq.sampleRate() == 44100);
 }
 
 // ============================================================================

@@ -9,6 +9,9 @@
 
 #include <mitiru_mml/MmlTypes.hpp>
 #include <cctype>
+#include <cstdio>
+#include <cstdlib>
+#include <set>
 #include <string_view>
 #include <stdexcept>
 
@@ -26,6 +29,8 @@ public:
 	{
 		CommandList result;
 		std::size_t pos = 0;
+		// 非標準長を 1 値あたり一度だけ警告するための済リスト。
+		std::set<int> badLens;
 
 		while (pos < mml.size())
 		{
@@ -81,7 +86,8 @@ public:
 			if (c == 'L' || c == 'l')
 			{
 				++pos;
-				const int val = readNumber(mml, pos, 4);
+				const int raw = readNumber(mml, pos, 4);
+				const int val = validateNoteLen(raw, 4, badLens);
 				result.push_back({CommandType::Length, val, 0, false, false});
 				continue;
 			}
@@ -371,7 +377,8 @@ public:
 			if (c == 'R' || c == 'r')
 			{
 				++pos;
-				const int len = readOptionalNumber(mml, pos);
+				const int raw = readOptionalNumber(mml, pos);
+				const int len = validateNoteLen(raw, 0, badLens);
 				const bool dot = readDot(mml, pos);
 				result.push_back({CommandType::Rest, 0, len, dot, false});
 				continue;
@@ -395,7 +402,8 @@ public:
 					++pos;
 				}
 
-				const int len = readOptionalNumber(mml, pos);
+				const int raw = readOptionalNumber(mml, pos);
+				const int len = validateNoteLen(raw, 0, badLens);
 				const bool dot = readDot(mml, pos);
 
 				MmlCommand cmd;
@@ -458,6 +466,37 @@ private:
 	static int readOptionalNumber(std::string_view s, std::size_t& pos)
 	{
 		return readNumber(s, pos, 0);
+	}
+
+	/// @brief 標準的な MML 音長 (1=全, 2=半, 4=四, 8=八, 16=十六, 32=三十二) か。
+	/// 0 は「未指定 → デフォルト L 使用」の特例として valid 扱い。
+	[[nodiscard]] static bool isValidNoteLen(int len) noexcept
+	{
+		switch (len)
+		{
+		case 0: case 1: case 2: case 4: case 8: case 16: case 32:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	/// @brief 長さ値が標準集合外なら fallback に丸め、不正値ごとに一度だけ
+	/// stderr に警告する。MITIRU_MML_QUIET=1 で抑制。
+	static int validateNoteLen(int v, int fallback, std::set<int>& reported)
+	{
+		if (isValidNoteLen(v)) return v;
+		if (reported.insert(v).second)
+		{
+			if (std::getenv("MITIRU_MML_QUIET") == nullptr)
+			{
+				std::fprintf(stderr,
+					"mitiru_mml: note length %d is non-standard "
+					"(use 1/2/4/8/16/32 + optional dot) — using default %d\n",
+					v, fallback);
+			}
+		}
+		return fallback;
 	}
 
 	/// @brief ADSR接尾辞かどうか判定する（EA/ED/ES/ER）
