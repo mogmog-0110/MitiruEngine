@@ -89,6 +89,13 @@ public:
 	/// @param path ファイルパス
 	/// @param volume ボリューム [0.0, 1.0]
 	void playSoundVolume(const std::string& path, float volume) {
+		playSoundEx(path, volume, 1.0f, 0.0f);
+	}
+
+	/// @brief pitch / fade-in を指定して one-shot SE を再生する (#19/#20)。
+	/// @param pitchScale 1.0=normal、0.5=半音域低、2.0=高。<=0 は 1.0 とみなす。
+	/// @param fadeInSec  0 = fade-in なし、> 0 で 0→volume へ fade-in。
+	void playSoundEx(const std::string& path, float volume, float pitchScale, float fadeInSec) {
 		if (!m_initialized) { return; }
 		reapFinishedOneShots();
 		auto snd = std::make_unique<ma_sound>();
@@ -97,6 +104,13 @@ public:
 			return;
 		}
 		ma_sound_set_volume(snd.get(), volume);
+		if (pitchScale > 0.0f && pitchScale != 1.0f) {
+			ma_sound_set_pitch(snd.get(), pitchScale);
+		}
+		if (fadeInSec > 0.0f) {
+			ma_sound_set_fade_in_milliseconds(
+				snd.get(), 0.0f, volume, static_cast<ma_uint64>(fadeInSec * 1000.0f));
+		}
 		ma_sound_start(snd.get());
 		m_oneShots.push_back(std::move(snd));
 	}
@@ -122,6 +136,11 @@ public:
 	/// @param volume ボリューム [0.0, 1.0]
 	/// @param loop ループ再生するか
 	void playMusic(const std::string& path, float volume, bool loop) {
+		playMusicEx(path, volume, loop, 0.0f);
+	}
+
+	/// @brief fade-in 指定で BGM を再生する (#20)。fadeInSec > 0 で 0→volume へ。
+	void playMusicEx(const std::string& path, float volume, bool loop, float fadeInSec) {
 		if (!m_initialized) { return; }
 		stopMusic();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_STREAM,
@@ -130,6 +149,10 @@ public:
 		}
 		ma_sound_set_looping(&m_music, loop ? MA_TRUE : MA_FALSE);
 		ma_sound_set_volume(&m_music, volume);
+		if (fadeInSec > 0.0f) {
+			ma_sound_set_fade_in_milliseconds(
+				&m_music, 0.0f, volume, static_cast<ma_uint64>(fadeInSec * 1000.0f));
+		}
 		ma_sound_start(&m_music);
 		m_musicActive = true;
 	}
@@ -141,6 +164,35 @@ public:
 			ma_sound_uninit(&m_music);
 			m_musicActive = false;
 		}
+	}
+
+	/// @brief fade-out しながら BGM を停止する (#20)。
+	/// @details fadeOutSec > 0 のとき volume→0 の fade-out を仕掛けるが、miniaudio の
+	///          fade はサウンド寿命と独立なので、十分時間が経過したら通常 stop を呼ぶ前提。
+	///          シンプルさのため v1 では fade を仕掛けて即 stop しない (呼び側が次フレームで
+	///          通常 playMusic / stopMusic を呼べる)。即「次の BGM へ切替」の crossfade は
+	///          stopMusicFade(prevFadeOut) → playMusicEx(newId, vol, loop, newFadeIn) で実現。
+	void stopMusicFade(float fadeOutSec) {
+		if (!m_musicActive) { return; }
+		if (fadeOutSec <= 0.0f) { stopMusic(); return; }
+		ma_sound_set_fade_in_milliseconds(
+			&m_music, ma_sound_get_volume(&m_music), 0.0f,
+			static_cast<ma_uint64>(fadeOutSec * 1000.0f));
+		// fade 終了後の自動 uninit は miniaudio が直接提供しないため、後続 stopMusic 呼び出しで
+		// 解放する (それまでは fade が走り続け、無音化して再生は継続)。
+	}
+
+	/// @brief BGM を一時的に mul 倍へ下げ、durSec かけて元の音量へ戻す (#34、ducking heuristic)。
+	/// @details 大きな SE 再生中だけ BGM を引っ込めてインパクトを上げる用途。BGM 未再生時は no-op。
+	void duckMusic(float mul, float durSec) {
+		if (!m_initialized || !m_musicActive) { return; }
+		if (mul <= 0.0f || mul >= 1.0f || durSec <= 0.0f) { return; }
+		const float current = ma_sound_get_volume(&m_music);
+		const float ducked  = current * mul;
+		// 即 ducked にし、durSec かけて current へ fade in する → 一瞬下がってじわっと戻る。
+		ma_sound_set_volume(&m_music, ducked);
+		ma_sound_set_fade_in_milliseconds(
+			&m_music, ducked, current, static_cast<ma_uint64>(durSec * 1000.0f));
 	}
 
 	/// @brief 全サウンドを停止する

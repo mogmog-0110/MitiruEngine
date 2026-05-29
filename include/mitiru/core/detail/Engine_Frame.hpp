@@ -79,6 +79,7 @@ MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
 #ifdef _WIN32
 	m_gamepad.update(); // XInput を毎フレーム 1 回ポーリング (#12, edge 検出は内部 prev/curr)
 #endif
+	m_sdlGamepad.update(); // SDL_GameController (#32) — DS4/DS5 等。SDL2 無し時は no-op
 
 	// DEBUG: pollEvents直後のマウス座標を保存
 	{
@@ -162,6 +163,8 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		}
 
 		m_inputState.endTick();
+		// tint 残量を fixed step で減衰 (#31)。決定論的に動く。
+		if (m_screen) { m_screen->advanceTint(kFixedDt); }
 		m_accumulator -= kFixedDt;
 		++steps;
 	}
@@ -234,6 +237,10 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	{
 		m_sceneManager->currentScene()->onDraw(*m_screen);
 	}
+
+	// 全画面 tint オーバーレイ (#31)。被弾点滅 / フラッシュ / グレー化等。
+	// game/scene draw の末尾で重ねるので 2D / 3D どちらの上にも乗る。
+	m_screen->renderTint();
 }
 
 MITIRU_INLINE void mitiru::Engine::tickPresentPhase()

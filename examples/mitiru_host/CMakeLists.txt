@@ -8,6 +8,10 @@
 
 add_executable(mitiru_host WIN32 main.cpp)
 target_link_libraries(mitiru_host PRIVATE mitiru)
+if(WIN32)
+	# ShellExecuteA を使うため (--console 用の既定ブラウザ起動、ADR 0011 phase 3)
+	target_link_libraries(mitiru_host PRIVATE shell32)
+endif()
 
 if(MSVC)
 	target_compile_options(mitiru_host PRIVATE /bigobj)

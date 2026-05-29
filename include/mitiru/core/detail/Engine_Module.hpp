@@ -178,10 +178,27 @@ MITIRU_INLINE void mitiru::Engine::runModule(
 			m_engine->buildModuleInputSnapshot();
 			m_engine->zeroModuleFrameIntents();
 
+			// ランタイム時間制御: timeScale 乗算 + paused/stepFrames。
+			// paused 中 stepFrames>0 なら 1 フレームだけ通常 dt で進める。
+			auto& cfg = m_engine->mutableConfig();
+			float effectiveDt = dt * cfg.timeScale;
+			if (cfg.paused)
+			{
+				if (cfg.stepFrames > 0)
+				{
+					effectiveDt = dt;
+					--cfg.stepFrames;
+				}
+				else
+				{
+					effectiveDt = 0.0f;
+				}
+			}
+
 			const auto& api = m_engine->moduleApi();
 			if (api.on_update != nullptr)
 			{
-				api.on_update(m_engine->moduleMemory(), dt,
+				api.on_update(m_engine->moduleMemory(), effectiveDt,
 				              m_engine->m_moduleInputSnapshot.get(),
 				              m_engine->m_moduleFrameIntents.get());
 			}
@@ -368,42 +385,61 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 		snap->mouseButtonsJustReleased[i]    = m_inputState.isMouseButtonJustReleased(btn) ? 1u : 0u;
 	}
 
-	// Gamepad (主コントローラ = XInput player 0) — ABI v5 (#12)。
-	// snapshot は永続バッファ (memset しない) ので毎フレーム必ず全 field を書く。
-#ifdef _WIN32
+	// Gamepad — ABI v5 (#12) + #32: XInput と SDL_GameController を並走、ボタン OR、
+	// axes は XInput 接続時優先 / 切断時 SDL を採用。snapshot 永続バッファなので毎フレーム全 field 必書。
 	{
-		constexpr int P = 0;
-		snap->gamepadConnected = m_gamepad.isConnected(P) ? 1 : 0;
 		std::uint32_t down = 0, pressed = 0, released = 0;
-		const GamepadButton kBtns[] = {
-			GamepadButton::DPadUp, GamepadButton::DPadDown, GamepadButton::DPadLeft,
-			GamepadButton::DPadRight, GamepadButton::Start, GamepadButton::Back,
-			GamepadButton::LS, GamepadButton::RS, GamepadButton::LB, GamepadButton::RB,
-			GamepadButton::A, GamepadButton::B, GamepadButton::X, GamepadButton::Y };
-		for (auto b : kBtns)
+		bool xinputConn = false;
+		for (int i = 0; i < 6; ++i) { snap->gamepadAxes[i] = 0.0f; }
+#ifdef _WIN32
 		{
-			const auto bit = static_cast<std::uint32_t>(b);
-			if (m_gamepad.isButtonDown(P, b))     down     |= bit;
-			if (m_gamepad.isButtonPressed(P, b))  pressed  |= bit;
-			if (m_gamepad.isButtonReleased(P, b)) released |= bit;
+			constexpr int P = 0;
+			xinputConn = m_gamepad.isConnected(P);
+			const GamepadButton kBtns[] = {
+				GamepadButton::DPadUp, GamepadButton::DPadDown, GamepadButton::DPadLeft,
+				GamepadButton::DPadRight, GamepadButton::Start, GamepadButton::Back,
+				GamepadButton::LS, GamepadButton::RS, GamepadButton::LB, GamepadButton::RB,
+				GamepadButton::A, GamepadButton::B, GamepadButton::X, GamepadButton::Y };
+			for (auto b : kBtns)
+			{
+				const auto bit = static_cast<std::uint32_t>(b);
+				if (m_gamepad.isButtonDown(P, b))     down     |= bit;
+				if (m_gamepad.isButtonPressed(P, b))  pressed  |= bit;
+				if (m_gamepad.isButtonReleased(P, b)) released |= bit;
+			}
+			if (xinputConn)
+			{
+				snap->gamepadAxes[0] = m_gamepad.getAxis(P, GamepadAxis::LeftStickX);
+				snap->gamepadAxes[1] = m_gamepad.getAxis(P, GamepadAxis::LeftStickY);
+				snap->gamepadAxes[2] = m_gamepad.getAxis(P, GamepadAxis::RightStickX);
+				snap->gamepadAxes[3] = m_gamepad.getAxis(P, GamepadAxis::RightStickY);
+				snap->gamepadAxes[4] = m_gamepad.getAxis(P, GamepadAxis::LeftTrigger);
+				snap->gamepadAxes[5] = m_gamepad.getAxis(P, GamepadAxis::RightTrigger);
+			}
 		}
+#endif
+		// SDL_GameController を OR で重ねる (DS4/DS5 等)。同一デバイス重複でもビット OR は冪等。
+		const bool sdlConn = m_sdlGamepad.connected();
+		if (sdlConn)
+		{
+			down     |= m_sdlGamepad.buttonsDown();
+			pressed  |= m_sdlGamepad.buttonsJustPressed();
+			released |= m_sdlGamepad.buttonsJustReleased();
+			if (!xinputConn)  // XInput が axes を埋めてなければ SDL axes を採用
+			{
+				snap->gamepadAxes[0] = m_sdlGamepad.axis(mitiru::module::gamepad::LeftStickX);
+				snap->gamepadAxes[1] = m_sdlGamepad.axis(mitiru::module::gamepad::LeftStickY);
+				snap->gamepadAxes[2] = m_sdlGamepad.axis(mitiru::module::gamepad::RightStickX);
+				snap->gamepadAxes[3] = m_sdlGamepad.axis(mitiru::module::gamepad::RightStickY);
+				snap->gamepadAxes[4] = m_sdlGamepad.axis(mitiru::module::gamepad::LeftTrigger);
+				snap->gamepadAxes[5] = m_sdlGamepad.axis(mitiru::module::gamepad::RightTrigger);
+			}
+		}
+		snap->gamepadConnected           = (xinputConn || sdlConn) ? 1 : 0;
 		snap->gamepadButtonsDown         = down;
 		snap->gamepadButtonsJustPressed  = pressed;
 		snap->gamepadButtonsJustReleased = released;
-		snap->gamepadAxes[0] = m_gamepad.getAxis(P, GamepadAxis::LeftStickX);
-		snap->gamepadAxes[1] = m_gamepad.getAxis(P, GamepadAxis::LeftStickY);
-		snap->gamepadAxes[2] = m_gamepad.getAxis(P, GamepadAxis::RightStickX);
-		snap->gamepadAxes[3] = m_gamepad.getAxis(P, GamepadAxis::RightStickY);
-		snap->gamepadAxes[4] = m_gamepad.getAxis(P, GamepadAxis::LeftTrigger);
-		snap->gamepadAxes[5] = m_gamepad.getAxis(P, GamepadAxis::RightTrigger);
 	}
-#else
-	snap->gamepadConnected = 0;
-	snap->gamepadButtonsDown = 0;
-	snap->gamepadButtonsJustPressed = 0;
-	snap->gamepadButtonsJustReleased = 0;
-	for (int i = 0; i < 6; ++i) { snap->gamepadAxes[i] = 0.0f; }
-#endif
 
 	// queue 済み action event (CEF UI thread 由来) を POD buffer へ drain する。
 	snap->actionEventCount = 0;
@@ -569,6 +605,25 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		for (std::int32_t i = 0; i < n; ++i)
 		{
 			mitiru::module::applySoundIntent(*m_audioEngine, intents->soundIntents[i]);
+		}
+	}
+
+	// VisualIntent (#33、v7): tint を Screen::pushTint に流す。kind=0 は no-op。
+	// future: shake/hitstop は game-side state なのでここでは扱わない (game が同じ
+	// visualIntents を自分で読む将来拡張点)。
+	if (intents->visualIntentCount > 0 && m_screen)
+	{
+		const std::int32_t n = std::min<std::int32_t>(
+			intents->visualIntentCount,
+			static_cast<std::int32_t>(sizeof(intents->visualIntents) /
+			                          sizeof(intents->visualIntents[0])));
+		for (std::int32_t i = 0; i < n; ++i)
+		{
+			const auto& vi = intents->visualIntents[i];
+			if (vi.kind == mitiru::module::kVisualIntentTint && vi.durSec > 0.0f)
+			{
+				m_screen->pushTint(sgc::Colorf{vi.r, vi.g, vi.b, vi.a}, vi.durSec);
+			}
 		}
 	}
 }

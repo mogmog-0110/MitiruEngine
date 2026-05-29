@@ -62,4 +62,37 @@ inline void drawPixelTextInRect(Screen& screen, const sgc::Rectf& rect,
 	screen.popClipRect();
 }
 
+/// @brief 縁取り付きピクセル文字列。8 方向に scale 単位ずらして outline 色で描き、
+///        最後に (x,y) 中央を fill 色で重ねる。
+inline void drawPixelTextOutlined(Screen& screen, float x, float y,
+                                  std::string_view text, int scale,
+                                  const sgc::Colorf& fill, const sgc::Colorf& outline)
+{
+	if (scale < 1) scale = 1;
+	const float d = static_cast<float>(scale);
+	// 8 方向 (ピクセル単位の 1 ずれ = scale)。順序は描画順 (左上から)。
+	static constexpr int kOff[8][2] = {
+		{-1,-1}, { 0,-1}, { 1,-1},
+		{-1, 0},          { 1, 0},
+		{-1, 1}, { 0, 1}, { 1, 1},
+	};
+	for (const auto& o : kOff)
+	{
+		drawPixelText(screen, x + o[0] * d, y + o[1] * d, text, scale, outline);
+	}
+	drawPixelText(screen, x, y, text, scale, fill);
+}
+
+/// @brief 単一方向のドロップシャドウ付き。(dx, dy) は scaled pixel 単位 (既定 +1,+1)。
+inline void drawPixelTextShadow(Screen& screen, float x, float y,
+                                std::string_view text, int scale,
+                                const sgc::Colorf& fill, const sgc::Colorf& shadow,
+                                int dx = 1, int dy = 1)
+{
+	if (scale < 1) scale = 1;
+	const float d = static_cast<float>(scale);
+	drawPixelText(screen, x + dx * d, y + dy * d, text, scale, shadow);
+	drawPixelText(screen, x, y, text, scale, fill);
+}
+
 } // namespace mitiru::render::pixel

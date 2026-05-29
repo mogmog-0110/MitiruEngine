@@ -64,6 +64,29 @@ public:
 	/// @param id サウンドID
 	/// @return 再生中なら true
 	[[nodiscard]] virtual bool isPlaying(std::string_view id) const = 0;
+
+	// ── v6 拡張 (#19/#20): pitch / fade-in / fade-out。既存実装は default で旧経路に
+	//    フォールバック (pitch/fade を無視) するので override しない実装はそのまま動く。
+	virtual void playSoundEx(std::string_view id, float volume, float pitchScale, float fadeInSec)
+	{
+		(void)pitchScale; (void)fadeInSec;
+		playSound(id, volume);
+	}
+	virtual void stopSoundFade(std::string_view id, float fadeOutSec)
+	{
+		(void)fadeOutSec;
+		stopSound(id);
+	}
+	virtual void playMusicEx(std::string_view id, float volume, bool loop, float fadeInSec)
+	{
+		(void)fadeInSec;
+		playMusic(id, volume, loop);
+	}
+	virtual void stopMusicFade(float fadeOutSec)
+	{
+		(void)fadeOutSec;
+		stopMusic();
+	}
 };
 
 } // namespace mitiru::audio

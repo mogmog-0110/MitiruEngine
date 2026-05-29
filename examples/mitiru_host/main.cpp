@@ -13,6 +13,9 @@
 // `--watch` は L3 ホットリロード: mtime を約 250ms ごとに監視し、変化したら
 // HelloGameMemory* を生かしたまま DLL を差し替える (状態を保持)。
 //
+// Runtime hotkeys (Windows): F7 = step, F8 = pause/play, F9 = time-scale,
+// F10 = lo-fi toggle, F12 = screenshot (file + clipboard).
+//
 // 将来: `mitiru-cli run [--watch]` が project/module.toml を解決して
 // 等価な argv を自動構築する。
 
@@ -20,6 +23,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -28,8 +32,20 @@
 #include <mitiru/Mitiru.hpp>
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/MiniaudioEngine.hpp>
+#include <mitiru/render/SaveScreenshotPng.hpp>
 #include <mitiru/replay/Player.hpp>
 #include <mitiru/replay/Recorder.hpp>
+
+#ifdef _WIN32
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  include <windows.h>
+#  include <shellapi.h>  // ShellExecuteA (--console で既定ブラウザ起動)
+#endif
 
 #include <nlohmann/json.hpp>
 
@@ -45,25 +61,49 @@ public:
 	explicit FileAudioEngine(std::filesystem::path baseDir)
 		: m_baseDir(std::move(baseDir)) {}
 
-	void playSound(std::string_view id) override { playById(id, 1.0f, /*music=*/false, false); }
-	void playSound(std::string_view id, float vol) override { playById(id, vol, false, false); }
-	void stopSound(std::string_view) override {}      // SE は撃ちっぱなし (id 別 stop は未対応)
-	void playMusic(std::string_view id) override { playById(id, 1.0f, /*music=*/true, true); }
-	void playMusic(std::string_view id, float vol, bool loop) override { playById(id, vol, true, loop); }
+	void playSound(std::string_view id) override { playByIdEx(id, 1.0f, 1.0f, 0.0f, /*music=*/false, false); }
+	void playSound(std::string_view id, float vol) override { playByIdEx(id, vol, 1.0f, 0.0f, false, false); }
+	void stopSound(std::string_view) override {}      // SE 一括 stop: 個別 id 追跡は未対応
+	void playMusic(std::string_view id) override { playByIdEx(id, 1.0f, 1.0f, 0.0f, /*music=*/true, true); }
+	void playMusic(std::string_view id, float vol, bool loop) override { playByIdEx(id, vol, 1.0f, 0.0f, true, loop); }
 	void stopMusic() override { m_engine.stopMusic(); }
 	void setVolume(float v) override { m_engine.setMasterVolume(v); }
 	[[nodiscard]] bool isPlaying(std::string_view) const override { return false; }
 
+	// v6 拡張 (#19/#20): pitch / fade を route。
+	void playSoundEx(std::string_view id, float vol, float pitch, float fadeIn) override
+	{
+		playByIdEx(id, vol, pitch, fadeIn, /*music=*/false, false);
+	}
+	void stopSoundFade(std::string_view, float) override
+	{
+		// SE は id 別追跡が無いので fade 無し stop と同じ振る舞い (id stop も v1 未対応)。
+	}
+	void playMusicEx(std::string_view id, float vol, bool loop, float fadeIn) override
+	{
+		playByIdEx(id, vol, 1.0f, fadeIn, /*music=*/true, loop);
+	}
+	void stopMusicFade(float fadeOutSec) override { m_engine.stopMusicFade(fadeOutSec); }
+
 private:
-	void playById(std::string_view id, float volume, bool music, bool loop)
+	void playByIdEx(std::string_view id, float volume, float pitch, float fadeIn,
+	                bool music, bool loop)
 	{
 		for (const char* ext : {".wav", ".ogg", ".mp3"})
 		{
 			const auto p = m_baseDir / (std::string(id) + ext);
 			if (std::filesystem::exists(p))
 			{
-				if (music) { m_engine.playMusic(p.string(), volume, loop); }
-				else       { m_engine.playSoundVolume(p.string(), volume); }
+				if (music) { m_engine.playMusicEx(p.string(), volume, loop, fadeIn); }
+				else
+				{
+					m_engine.playSoundEx(p.string(), volume, pitch, fadeIn);
+					// #34 BGM ducking heuristic: 閾値超の大音量 SE で BGM を一瞬引っ込める。
+					if (volume >= kDuckSeThreshold)
+					{
+						m_engine.duckMusic(kDuckMul, kDuckSec);
+					}
+				}
 				return;
 			}
 		}
@@ -71,6 +111,11 @@ private:
 		             m_baseDir.string().c_str(),
 		             static_cast<int>(id.size()), id.data());
 	}
+
+	// #34 ducking パラメータ。閾値以上の SE 音量で BGM を mul 倍にし、sec で復帰。
+	static constexpr float kDuckSeThreshold = 0.7f;
+	static constexpr float kDuckMul         = 0.5f;
+	static constexpr float kDuckSec         = 0.4f;
 
 	std::filesystem::path          m_baseDir;
 	mitiru::audio::MiniaudioEngine m_engine;
@@ -123,6 +168,8 @@ struct CliArgs
 	int                   loFiW = 320, loFiH = 240; // --lofi-size WxH
 	int                   loFiBitsR = 5, loFiBitsG = 6, loFiBitsB = 5; // --lofi-bits R,G,B (既定 RGB565)
 	float                 loFiDither = 1.0f;   // --lofi-dither S
+	int                   httpPort = 0;        // --http-port <N>: EngineHttpServer を listen 開始 (ADR 0011)
+	bool                  console  = false;    // --console: HTTP + default browser で console.html 自動表示
 };
 
 CliArgs parseArgs(int argc, char* argv[])
@@ -160,6 +207,18 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--font")
 		{
 			if (i + 1 < argc) { out.fontMode = argv[++i]; }
+		}
+		else if (a == "--http-port")
+		{
+			if (i + 1 < argc)
+			{
+				try { out.httpPort = std::stoi(argv[++i]); }
+				catch (...) { out.httpPort = 0; }
+			}
+		}
+		else if (a == "--console")
+		{
+			out.console = true;
 		}
 		else if (a == "--size")
 		{
@@ -258,7 +317,16 @@ void printUsage()
 		"  --lofi-size WxH  内部解像度 (既定 320x240)\n"
 		"  --lofi-bits R,G,B  量子化ビット数 (既定 5,6,5=RGB565 / 3,3,2=256色相当)\n"
 		"  --lofi-dither S  ディザ強度 (既定 1.0, 0=ディザ無し)\n"
+		"  --http-port N    EngineHttpServer を 127.0.0.1:N で開始 (runtime コントロール, ADR 0011)\n"
+		"  --console        HTTP 起動 + 既定ブラウザで control panel を自動表示 (port 既定 8090)\n"
 		"  --help, -h       this message\n"
+		"\n"
+		"hotkeys (runtime, Windows):\n"
+		"  F7               paused 時に 1 フレーム step\n"
+		"  F8               pause / play toggle (on_update dt=0 化、描画は継続)\n"
+		"  F9               time-scale cycle (1x→0.5x→0.25x→2x→4x→1x)\n"
+		"  F10              lo-fi post-FX toggle (DX12)\n"
+		"  F12              screenshot — ./screenshots/frame_YYYYMMDD_HHMMSS.png + clipboard\n"
 		"\n"
 		"environment:\n"
 		"  MITIRU_WATCH=1   same as --watch\n"
@@ -266,6 +334,139 @@ void printUsage()
 		"The host loads the game DLL via Engine::loadModule and drives the\n"
 		"main loop. The DLL must export mitiru_module_load (see\n"
 		"docs/adr/0005-host-game-c-abi-signal-flow.md).\n");
+}
+
+#ifdef _WIN32
+/// RGBA8 トップダウン pixel buffer を Windows clipboard に CF_DIB として置く。
+inline bool copyRgbaToClipboard(const std::uint8_t* rgba, int w, int h)
+{
+	if (!rgba || w <= 0 || h <= 0) { return false; }
+
+	const std::size_t headerSize = sizeof(BITMAPINFOHEADER);
+	const std::size_t pixelBytes = static_cast<std::size_t>(w) * h * 4;
+	HGLOBAL hDib = GlobalAlloc(GMEM_MOVEABLE, headerSize + pixelBytes);
+	if (!hDib) { return false; }
+
+	auto* p = static_cast<std::uint8_t*>(GlobalLock(hDib));
+	if (!p) { GlobalFree(hDib); return false; }
+
+	BITMAPINFOHEADER hdr{};
+	hdr.biSize        = static_cast<DWORD>(headerSize);
+	hdr.biWidth       = w;
+	hdr.biHeight      = -h;  // 負 = top-down (本 buffer の row 順と一致)
+	hdr.biPlanes      = 1;
+	hdr.biBitCount    = 32;
+	hdr.biCompression = BI_RGB;
+	hdr.biSizeImage   = static_cast<DWORD>(pixelBytes);
+	std::memcpy(p, &hdr, headerSize);
+
+	// RGBA → BGRA (DIB は B,G,R,A 順)
+	auto* dst = p + headerSize;
+	const std::size_t pixels = static_cast<std::size_t>(w) * h;
+	for (std::size_t i = 0; i < pixels; ++i)
+	{
+		dst[i * 4 + 0] = rgba[i * 4 + 2];
+		dst[i * 4 + 1] = rgba[i * 4 + 1];
+		dst[i * 4 + 2] = rgba[i * 4 + 0];
+		dst[i * 4 + 3] = rgba[i * 4 + 3];
+	}
+	GlobalUnlock(hDib);
+
+	if (!OpenClipboard(nullptr)) { GlobalFree(hDib); return false; }
+	EmptyClipboard();
+	HANDLE set = SetClipboardData(CF_DIB, hDib);
+	CloseClipboard();
+	if (!set) { GlobalFree(hDib); return false; }
+	// 成功時は clipboard が hDib の所有権を持つ。free しない。
+	return true;
+}
+#endif
+
+#ifdef _WIN32
+/// 1 VK あたり、down 状態を保持して立ち下がり検出を返す。GetAsyncKeyState を毎フレーム
+/// 1 回叩く前提。
+inline bool justPressed(int vk)
+{
+	static bool wasDown[256] = {};
+	if (vk < 0 || vk >= 256) { return false; }
+	const bool down = (GetAsyncKeyState(vk) & 0x8000) != 0;
+	const bool jp = down && !wasDown[vk];
+	wasDown[vk] = down;
+	return jp;
+}
+
+/// F12 で window バックバッファを PNG 保存 + clipboard コピー。
+inline void doScreenshot(mitiru::Engine& engine)
+{
+	const int w = engine.captureWidth();
+	const int h = engine.captureHeight();
+	if (w <= 0 || h <= 0) { return; }
+
+	const auto rgba = engine.capture();
+	if (rgba.empty()) { return; }
+
+	const auto path = mitiru::render::saveTimestampedFrameToPng(
+		rgba.data(), w, h, "screenshots", "frame");
+	const bool clipOk = copyRgbaToClipboard(rgba.data(), w, h);
+
+	if (!path.empty() && clipOk)
+	{
+		std::fprintf(stderr, "[mitiru_host] screenshot: %s (also on clipboard)\n", path.c_str());
+	}
+	else if (!path.empty())
+	{
+		std::fprintf(stderr, "[mitiru_host] screenshot: %s (clipboard copy failed)\n", path.c_str());
+	}
+	else if (clipOk)
+	{
+		std::fprintf(stderr, "[mitiru_host] screenshot on clipboard (file save failed)\n");
+	}
+	else
+	{
+		std::fprintf(stderr, "[mitiru_host] screenshot failed (file + clipboard)\n");
+	}
+}
+#endif
+
+/// onFrameStart から毎フレーム呼ぶ host hotkey 処理。Windows のみ。
+inline void pollHostHotkeys(mitiru::Engine& engine)
+{
+#ifdef _WIN32
+	if (justPressed(VK_F12))
+	{
+		doScreenshot(engine);
+	}
+	if (justPressed(VK_F8))
+	{
+		engine.togglePaused();
+		std::fprintf(stderr, "[mitiru_host] %s\n", engine.isPaused() ? "PAUSED" : "PLAYING");
+	}
+	if (justPressed(VK_F7))
+	{
+		if (engine.isPaused())
+		{
+			engine.stepOneFrame();
+			std::fprintf(stderr, "[mitiru_host] step 1 frame\n");
+		}
+	}
+	if (justPressed(VK_F9))
+	{
+		// 1x → 0.5x → 0.25x → 2x → 4x → 1x で巡回
+		static constexpr float kScales[] = { 1.0f, 0.5f, 0.25f, 2.0f, 4.0f };
+		static constexpr int N = static_cast<int>(sizeof(kScales) / sizeof(kScales[0]));
+		static int idx = 0;
+		idx = (idx + 1) % N;
+		engine.setTimeScale(kScales[idx]);
+		std::fprintf(stderr, "[mitiru_host] time-scale %.2fx\n", kScales[idx]);
+	}
+	if (justPressed(VK_F10))
+	{
+		engine.toggleLofi();
+		std::fprintf(stderr, "[mitiru_host] lofi %s\n", engine.isLofiEnabled() ? "ON" : "OFF");
+	}
+#else
+	(void)engine;  // host hotkeys は今のところ Windows 専用
+#endif
 }
 
 /// ファイル監視状態 — onFrameStart クロージャにキャプチャされる。
@@ -301,6 +502,23 @@ int main(int argc, char* argv[])
 	cfg.windowHeight    = args.heightOverride > 0 ? args.heightOverride :  720;
 	cfg.vsync           = true;
 	cfg.enableCef       = true;
+	// EngineHttpServer (ADR 0011): --http-port > 0 か --console で HTTP listen を開始。
+	// 127.0.0.1 限定。--console は既定ブラウザで control panel HTML を自動表示する (phase 3)。
+	if (args.httpPort > 0 || args.console)
+	{
+		cfg.enableHttpApi = true;
+		cfg.httpApiPort   = (args.httpPort > 0) ? args.httpPort : 8090;
+	}
+#ifdef _WIN32
+	if (args.console)
+	{
+		// HTTP server は engine.run() 内で起動するので、開く側は少し遅らせる必要があるが、
+		// ShellExecute は非同期だしブラウザ起動も時間がかかるので、現実には間に合う。
+		const std::string url = "http://127.0.0.1:" + std::to_string(cfg.httpApiPort) + "/";
+		std::fprintf(stderr, "[mitiru_host] control panel: %s (opening default browser)\n", url.c_str());
+		ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+	}
+#endif
 	// フォント: 既定はスキップ (起動高速。HTML/CEF UI なら日本語もそちらで出せる)。
 	// native draw (drawTextInRect 等) で日本語/かなを描きたい game は
 	// --font japanese|kana を指定する (エンジンが該当 glyph の SDF atlas を生成)。
@@ -356,13 +574,15 @@ int main(int argc, char* argv[])
 		catch (...) {}
 	}
 
-	// ファイル監視 → DLL ホットリロード (エンジン UX 北極星の L3)。
+	// onFrameStart: 2 つの常駐ジョブを 1 つのコールバックで処理する。
+	//   (1) F12 → スクリーンショット (常時 on、Windows のみ)
+	//   (2) --watch 時のみ: DLL mtime を polling して L3 ホットリロード
 	// キャプチャした WatcherState はこのスタックフレームに置く。Engine::runModule が
 	// ループ終了までブロックするので lifetime は問題ない。
 	WatcherState watcher;
 	if (args.watch)
 	{
-		watcher.dllPath   = args.dllPath;
+		watcher.dllPath = args.dllPath;
 		// 絶対パスに解決し、cwd 変更後のリロードでもファイルを見つけられるようにする。
 		std::error_code rc;
 		auto abs = std::filesystem::absolute(args.dllPath, rc);
@@ -370,40 +590,43 @@ int main(int argc, char* argv[])
 
 		std::fprintf(stderr, "[mitiru_host] watch mode: polling %s\n",
 		             watcher.dllPath.string().c_str());
-
-		cfg.onFrameStart = [&watcher](mitiru::Engine& engine)
-		{
-			if (++watcher.pollTick < watcher.pollEvery) { return; }
-			watcher.pollTick = 0;
-
-			std::error_code mtimeEc;
-			const auto mtime =
-				std::filesystem::last_write_time(watcher.dllPath, mtimeEc);
-			if (mtimeEc) { return; }
-
-			if (!watcher.initialized)
-			{
-				watcher.lastMtime   = mtime;
-				watcher.initialized = true;
-				return;
-			}
-			if (mtime > watcher.lastMtime)
-			{
-				watcher.lastMtime = mtime;
-				std::fprintf(stderr, "[mitiru_host] DLL changed — reloading\n");
-				const bool ok = engine.reloadModule(watcher.dllPath);
-				if (!ok)
-				{
-					std::fprintf(stderr,
-						"[mitiru_host] reload FAILED — continuing with old code\n");
-				}
-				else
-				{
-					std::fprintf(stderr, "[mitiru_host] reload OK\n");
-				}
-			}
-		};
 	}
+
+	cfg.onFrameStart = [&watcher, watchOn = args.watch](mitiru::Engine& engine)
+	{
+		pollHostHotkeys(engine);
+
+		if (!watchOn) { return; }
+		if (++watcher.pollTick < watcher.pollEvery) { return; }
+		watcher.pollTick = 0;
+
+		std::error_code mtimeEc;
+		const auto mtime =
+			std::filesystem::last_write_time(watcher.dllPath, mtimeEc);
+		if (mtimeEc) { return; }
+
+		if (!watcher.initialized)
+		{
+			watcher.lastMtime   = mtime;
+			watcher.initialized = true;
+			return;
+		}
+		if (mtime > watcher.lastMtime)
+		{
+			watcher.lastMtime = mtime;
+			std::fprintf(stderr, "[mitiru_host] DLL changed — reloading\n");
+			const bool ok = engine.reloadModule(watcher.dllPath);
+			if (!ok)
+			{
+				std::fprintf(stderr,
+					"[mitiru_host] reload FAILED — continuing with old code\n");
+			}
+			else
+			{
+				std::fprintf(stderr, "[mitiru_host] reload OK\n");
+			}
+		}
+	};
 
 	mitiru::Engine engine;
 
@@ -472,6 +695,11 @@ int main(int argc, char* argv[])
 	{
 		cfg.deterministic = true;
 	}
+
+#ifdef _WIN32
+	std::fprintf(stderr,
+		"[mitiru_host] hotkeys: F7=step F8=pause/play F9=time-scale F10=lofi F12=screenshot+clipboard\n");
+#endif
 
 	engine.runModule(args.dllPath, cfg);
 

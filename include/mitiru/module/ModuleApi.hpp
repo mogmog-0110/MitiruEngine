@@ -58,7 +58,7 @@ namespace mitiru::module
 ///     ボタンビットマスク (down/justPressed/justReleased) + axes[6] + connected。
 ///     POD 末尾への追記なので既存 field offset 不変。host が古い module に渡しても
 ///     古い module は新 field を読まないだけ (後方安全)。
-constexpr std::uint32_t kCurrentApiVersion = 5;
+constexpr std::uint32_t kCurrentApiVersion = 7;
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
@@ -180,6 +180,21 @@ struct InspectableExport
 /// @details ゲームは mixer / AudioEngine pointer を持たず (ADR 0005)、id を
 ///          書くだけ。host が所有する audio engine が再生する。id は host が
 ///          assets/audio/ からロードした論理名 (拡張子抜きファイル名)。
+/// @brief 「この画面演出をやって」という DLL → host の intent (#33、v7 追加)。
+/// @details kind = 0:None / 1:Tint (色フラッシュ)。将来 shake / hitstop を追加可。
+///          tint は host が `Screen::pushTint({r,g,b,a}, durSec)` に直接渡す。
+struct VisualIntent
+{
+	std::uint8_t kind;       ///< 0 = none、1 = Tint
+	std::uint8_t _pad[3];
+	float        r, g, b, a; ///< Tint 色 (a は初期 alpha、時間で fade)
+	float        durSec;     ///< 効果尺 (秒)
+	float        _reserved;  ///< 8byte 境界 padding + 将来用
+};
+
+constexpr std::uint8_t kVisualIntentNone = 0;
+constexpr std::uint8_t kVisualIntentTint = 1;
+
 struct SoundIntent
 {
 	char         id[64];      ///< 論理サウンド id (例: "hit")。null 終端。
@@ -188,6 +203,10 @@ struct SoundIntent
 	std::uint8_t stop;        ///< 1 = 鳴らすのでなく停止
 	std::uint8_t _pad;
 	float        volume;      ///< 0.0–1.0
+	// v6 で末尾に追加 (#19/#20、後方安全: 既存 offset 不変、host が zero-init)。
+	float        pitchScale;  ///< 0=未指定→1.0、0.5..2.0 程度。SE 用 (BGM は無視可)。
+	float        fadeInSec;   ///< > 0 で再生開始時に 0→volume へ fade-in (BGM/SE 両用)。
+	float        fadeOutSec;  ///< stop=1 のとき > 0 で volume→0 fade-out してから停止。
 };
 
 /// @brief 1 フレーム分の DLL → host への要求 (intent)
@@ -220,6 +239,11 @@ struct FrameIntents
 	///        を 4 に bump した。
 	std::int32_t soundIntentCount;
 	SoundIntent  soundIntents[8];
+
+	/// @brief このフレームの画面演出要求 (#33、v7 追加)。SoundIntents と同じ pattern。
+	///        末尾追加なので既存 offset 不変、v≤6 module は無視されるだけ (後方安全)。
+	std::int32_t visualIntentCount;
+	VisualIntent visualIntents[8];
 };
 
 // ── ModuleApi callback table ─────────────────────────────────────────────

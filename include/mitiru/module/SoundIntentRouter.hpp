@@ -32,16 +32,17 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s)
 
 	if (s.stop != 0)
 	{
-		if (isMusic)             { engine.stopMusic(); }
-		else if (s.id[0] != '\0'){ engine.stopSound(s.id); }
+		if (isMusic)             { engine.stopMusicFade(s.fadeOutSec); }
+		else if (s.id[0] != '\0'){ engine.stopSoundFade(s.id, s.fadeOutSec); }
 		return;
 	}
 
 	if (s.id[0] == '\0') { return; }
 
-	const float vol = (s.volume > 0.0f) ? s.volume : 1.0f;  // 0 = 未指定 → 既定音量
-	if (isMusic) { engine.playMusic(s.id, vol, s.loop != 0); }
-	else         { engine.playSound(s.id, vol); }
+	const float vol   = (s.volume     > 0.0f) ? s.volume     : 1.0f;  // 0 = 未指定 → 既定
+	const float pitch = (s.pitchScale > 0.0f) ? s.pitchScale : 1.0f;  // 0 = 未指定 → 1.0
+	if (isMusic) { engine.playMusicEx(s.id, vol, s.loop != 0, s.fadeInSec); }
+	else         { engine.playSoundEx(s.id, vol, pitch,           s.fadeInSec); }
 }
 
 }  // namespace mitiru::module

@@ -160,6 +160,41 @@ public:
 	/// @param color クリア色
 	void clear(const sgc::Colorf& color = sgc::Colorf{0.0f, 0.0f, 0.0f, 1.0f});
 
+	/// @brief 全画面フルスクリーン tint を dur 秒間オーバーレイする (alpha は線形 fade out)。
+	/// @details 被弾点滅・ボス登場フラッシュ・タイム停止のグレー化等の一発エフェクト。
+	///          color.a が初期 alpha、時間と共に 0 に減衰。pushTint を呼び直すと最新で上書き。
+	///          engine が毎フレーム update 末尾に `advanceTint(dt)` を、render 末尾に `renderTint()`
+	///          を呼んで合成する。game コードは pushTint だけ気にすれば良い。
+	void pushTint(const sgc::Colorf& color, float durSec) noexcept
+	{
+		m_tintColor    = color;
+		m_tintDurSec   = (durSec > 0.0f) ? durSec : 0.0f;
+		m_tintRemainSec = m_tintDurSec;
+	}
+
+	/// @brief tint 残量を dt 進める (engine が update 末尾で呼ぶ内部 API)。
+	void advanceTint(float dt) noexcept
+	{
+		if (m_tintRemainSec > 0.0f)
+		{
+			m_tintRemainSec -= dt;
+			if (m_tintRemainSec < 0.0f) { m_tintRemainSec = 0.0f; }
+		}
+	}
+
+	/// @brief tint が残ってれば全画面 rect を描く (engine が render 末尾で呼ぶ内部 API)。
+	void renderTint()
+	{
+		if (m_tintRemainSec <= 0.0f || m_tintDurSec <= 0.0f) { return; }
+		const float k = m_tintRemainSec / m_tintDurSec; // 1 → 0
+		sgc::Colorf c = m_tintColor;
+		c.a *= k;
+		drawRect(sgc::Rectf{0.0f, 0.0f,
+		                    static_cast<float>(m_width),
+		                    static_cast<float>(m_height)},
+		         c);
+	}
+
 	// ── Styled Drawing API (CSS互換) ────────────────────
 
 	/// @brief スタイル付き矩形を描画する (SDF GPU path)
@@ -783,6 +818,10 @@ private:
 	int m_width;                  ///< サーフェス幅
 	int m_height;                 ///< サーフェス高さ
 	int m_drawCallCount = 0;      ///< 描画コール数
+	// フルスクリーン tint オーバーレイ (#31): pushTint で残量セット、advanceTint で減衰、renderTint で重ねる。
+	sgc::Colorf m_tintColor     = {0.0f, 0.0f, 0.0f, 0.0f};
+	float       m_tintDurSec    = 0.0f;
+	float       m_tintRemainSec = 0.0f;
 	sgc::Colorf m_clearColor{0.0f, 0.0f, 0.0f, 1.0f};  ///< クリア色
 	render::SpriteBatch m_spriteBatch;       ///< スプライトバッチ（現在開いている run のジオメトリ）
 	std::uint32_t m_curTexHandle = 0;        ///< 現在の run のテクスチャハンドル（0=頂点カラー, ADR 0009）

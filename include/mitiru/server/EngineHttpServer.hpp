@@ -114,6 +114,17 @@ struct EngineCallbacks
 	std::function<bool()> runGame;
 	std::function<bool()> stopGame;
 	std::function<bool(float yaw, float pitch, float distance, float px, float py, float pz)> setEditorCamera;
+
+	// ── runtime コントロール (ADR 0011) ─────────────────────────────
+	// `mitiru_console` GUI sub-window / 外部ツールが叩く。各 callable は
+	// 設定されてれば host が engine の対応 API へ振り分ける。
+	std::function<bool()>           runtimeTogglePause; ///< 戻り値 = toggle 後の paused
+	std::function<bool()>           runtimeIsPaused;
+	std::function<void()>           runtimeStep;        ///< paused 時に 1 フレーム進める
+	std::function<void(float)>      runtimeSetTimeScale;
+	std::function<float()>          runtimeGetTimeScale;
+	std::function<bool()>           runtimeToggleLofi; ///< 戻り値 = toggle 後の lofi enabled
+	std::function<bool()>           runtimeIsLofiEnabled;
 };
 
 /// @brief エンジン組み込みHTTP APIサーバー
@@ -314,6 +325,9 @@ private:
 
 		if (req.method == "GET")
 		{
+			if (path == "/console.html" || path == "/" || path == "/console")
+			{ handleConsoleHtml(req, resp); return; }
+			if (path == "/api/runtime/status")    { handleRuntimeStatus(req, resp); return; }
 			if (path == "/api/status")           { handleStatus(req, resp); return; }
 			if (path == "/api/commands")          { handleCommands(req, resp); return; }
 			if (path == "/api/screenshot")        { handleScreenshot(req, resp); return; }
@@ -337,6 +351,11 @@ private:
 
 		if (req.method == "POST")
 		{
+			if (path == "/api/runtime/pause")     { handleRuntimePause(req, resp); return; }
+			if (path == "/api/runtime/step")      { handleRuntimeStep(req, resp); return; }
+			if (path == "/api/runtime/timescale") { handleRuntimeTimeScale(req, resp); return; }
+			if (path == "/api/runtime/lofi")      { handleRuntimeLofi(req, resp); return; }
+			if (path == "/api/runtime/quit")      { handleRuntimeQuit(req, resp); return; }
 			if (path == "/api/command")              { handleCommand(req, resp); return; }
 			if (path == "/api/flag")                 { handleSetFlag(req, resp); return; }
 			if (path == "/api/input/simulate")       { handleInputSimulate(req, resp); return; }
@@ -407,6 +426,165 @@ private:
 		json += "}";
 		resp.status = 200;
 		resp.setBody(json);
+	}
+
+	// ── コントロールパネル HTML (ADR 0011 phase 2) ─────────────────
+	// engine 自身が console.html を serve する。`mitiru_host --http-port N` 起動後、
+	// ブラウザで http://127.0.0.1:N/ を開けば pause/step/scale/screenshot ボタンが
+	// 並ぶ UI が出る。phase 3 で --console flag による自動ブラウザ起動を予定。
+
+	void handleConsoleHtml(const HttpRequest&, HttpResponse& resp)
+	{
+		static constexpr const char* kHtml =
+R"HTML(<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>Mitiru Control</title>
+<style>
+ body{background:#1b1d22;color:#dee2e6;font-family:system-ui,sans-serif;margin:0;padding:18px;}
+ h1{margin:0 0 12px;font-size:16px;font-weight:600;letter-spacing:.04em;}
+ #s{background:#272a31;border:1px solid #3a3f47;border-radius:6px;padding:10px 12px;
+    margin-bottom:14px;font-family:monospace;font-size:12px;}
+ .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+ button{background:#3a78c2;border:0;color:#fff;padding:8px 14px;border-radius:5px;
+        font-size:13px;cursor:pointer;}
+ button:hover{background:#4a8fdc;}
+ button.alt{background:#444a55;}
+ button.alt:hover{background:#525866;}
+ .scale{background:#4a623e;}
+ .scale:hover{background:#5a754d;}
+</style></head>
+<body>
+<h1>Mitiru Control</h1>
+<div id="s">loading...</div>
+<div class="row">
+  <button onclick="post('/api/runtime/pause')">pause / play</button>
+  <button class="alt" onclick="post('/api/runtime/step')">step 1 frame</button>
+</div>
+<div class="row">
+  <button class="scale" onclick="setScale(0.25)">0.25x</button>
+  <button class="scale" onclick="setScale(0.5)">0.5x</button>
+  <button class="scale" onclick="setScale(1)">1x</button>
+  <button class="scale" onclick="setScale(2)">2x</button>
+  <button class="scale" onclick="setScale(4)">4x</button>
+</div>
+<div class="row">
+  <button class="alt" onclick="post('/api/runtime/lofi')">lo-fi toggle</button>
+  <button class="alt" onclick="window.open('/api/screenshot','_blank')">screenshot (open PNG)</button>
+  <button class="alt" style="background:#7a3b3b" onclick="post('/api/runtime/quit')">quit game</button>
+</div>
+<script>
+const $s = document.getElementById('s');
+async function post(path, body){
+  try { await fetch(path,{method:'POST',body:body?JSON.stringify(body):''}); }
+  catch(e){ console.error(e); }
+  await refresh();
+}
+async function setScale(v){ await post('/api/runtime/timescale', {value: String(v)}); }
+async function refresh(){
+  try {
+    const r = await fetch('/api/runtime/status'); const j = await r.json();
+    $s.textContent = `paused: ${j.paused} | time-scale: ${j.timeScale.toFixed(2)}x | frame: ${j.frame}`;
+  } catch(e){ $s.textContent = '(engine not responding)'; }
+}
+refresh(); setInterval(refresh, 500);
+</script>
+</body></html>
+)HTML";
+		resp.status = 200;
+		resp.contentType = "text/html; charset=utf-8";
+		resp.setBody(kHtml);
+	}
+
+	// ── runtime コントロール (ADR 0011) ──────────────────────────
+
+	void handleRuntimeStatus(const HttpRequest&, HttpResponse& resp)
+	{
+		const bool paused = m_callbacks.runtimeIsPaused ? m_callbacks.runtimeIsPaused() : false;
+		const float scale = m_callbacks.runtimeGetTimeScale ? m_callbacks.runtimeGetTimeScale() : 1.0f;
+		const std::uint64_t frame = m_callbacks.getFrameNumber ? m_callbacks.getFrameNumber() : 0;
+		std::string json = "{\"paused\":";
+		json += (paused ? "true" : "false");
+		json += ",\"timeScale\":" + std::to_string(scale);
+		json += ",\"frame\":" + std::to_string(frame);
+		json += "}";
+		resp.status = 200;
+		resp.setBody(json);
+	}
+
+	void handleRuntimePause(const HttpRequest&, HttpResponse& resp)
+	{
+		if (!m_callbacks.runtimeTogglePause)
+		{
+			resp.status = 503;
+			resp.setBody(R"({"success":false,"message":"runtime control not wired"})");
+			return;
+		}
+		const bool newPaused = m_callbacks.runtimeTogglePause();
+		std::string json = "{\"success\":true,\"paused\":";
+		json += (newPaused ? "true" : "false");
+		json += "}";
+		resp.status = 200;
+		resp.setBody(json);
+	}
+
+	void handleRuntimeStep(const HttpRequest&, HttpResponse& resp)
+	{
+		if (!m_callbacks.runtimeStep)
+		{
+			resp.status = 503;
+			resp.setBody(R"({"success":false,"message":"runtime control not wired"})");
+			return;
+		}
+		m_callbacks.runtimeStep();
+		resp.status = 200;
+		resp.setBody(R"({"success":true})");
+	}
+
+	void handleRuntimeTimeScale(const HttpRequest& req, HttpResponse& resp)
+	{
+		if (!m_callbacks.runtimeSetTimeScale)
+		{
+			resp.status = 503;
+			resp.setBody(R"({"success":false,"message":"runtime control not wired"})");
+			return;
+		}
+		const auto raw = detail::extractJsonString(req.body, "value");
+		float v = 1.0f;
+		try { v = std::stof(raw); } catch (...) { resp.status = 400; resp.setBody(R"({"success":false,"message":"value must be a number"})"); return; }
+		if (v < 0.0f) { resp.status = 400; resp.setBody(R"({"success":false,"message":"value must be >= 0"})"); return; }
+		m_callbacks.runtimeSetTimeScale(v);
+		std::string json = "{\"success\":true,\"timeScale\":" + std::to_string(v) + "}";
+		resp.status = 200;
+		resp.setBody(json);
+	}
+
+	void handleRuntimeLofi(const HttpRequest&, HttpResponse& resp)
+	{
+		if (!m_callbacks.runtimeToggleLofi)
+		{
+			resp.status = 503;
+			resp.setBody(R"({"success":false,"message":"runtime control not wired"})");
+			return;
+		}
+		const bool nowEnabled = m_callbacks.runtimeToggleLofi();
+		std::string json = "{\"success\":true,\"lofi\":";
+		json += (nowEnabled ? "true" : "false");
+		json += "}";
+		resp.status = 200;
+		resp.setBody(json);
+	}
+
+	void handleRuntimeQuit(const HttpRequest&, HttpResponse& resp)
+	{
+		if (!m_callbacks.requestStop)
+		{
+			resp.status = 503;
+			resp.setBody(R"({"success":false,"message":"requestStop not wired"})");
+			return;
+		}
+		m_callbacks.requestStop();
+		resp.status = 200;
+		resp.setBody(R"({"success":true})");
 	}
 
 	// ── コマンドエンドポイント ──────────────────────────────

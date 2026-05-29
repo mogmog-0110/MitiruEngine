@@ -63,6 +63,7 @@
 #include <mitiru/input/InputReplayer.hpp>
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/input/GamepadInput.hpp>
+#include <mitiru/input/SdlGamepadInput.hpp>
 #include <mitiru/util/ImageWriter.hpp>
 #include <mitiru/observe/Snapshot.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
@@ -154,6 +155,22 @@ public:
 	/// @details ソフトウェアフレームバッファが有効な場合はそちらを優先返却する。
 	[[nodiscard]] std::vector<std::uint8_t> capture() const;
 
+	/// @brief capture() が返す pixel buffer の幅 (px)
+	[[nodiscard]] int captureWidth() const noexcept
+	{
+		if (m_window) { return m_window->width(); }
+		if (m_screen) { return m_screen->width(); }
+		return 0;
+	}
+
+	/// @brief capture() が返す pixel buffer の高さ (px)
+	[[nodiscard]] int captureHeight() const noexcept
+	{
+		if (m_window) { return m_window->height(); }
+		if (m_screen) { return m_screen->height(); }
+		return 0;
+	}
+
 	/// @brief GPU付きでNフレーム実行し、スクリーンショットをキャプチャする
 	/// @param game ゲームインスタンス
 	/// @param frameCount 実行フレーム数
@@ -177,6 +194,21 @@ public:
 	/// @brief オーディオエンジンを取得する
 	/// @return オーディオエンジンへのポインタ (未設定ならnullptr)
 	[[nodiscard]] audio::IAudioEngine* audioEngine() noexcept;
+
+	// ── ランタイム時間制御 (debug toggle) ───────────────────────────
+	// 内部状態は EngineConfig 側に置く。host から host hotkey で叩く。
+	void setPaused(bool p) noexcept    { mutableConfig().paused = p; }
+	void togglePaused() noexcept       { auto& c = mutableConfig(); c.paused = !c.paused; }
+	[[nodiscard]] bool isPaused() const noexcept { return config().paused; }
+	/// 次の 1 フレームだけ通常 dt で進める (paused 中のステップ実行用)。
+	void stepOneFrame() noexcept       { ++mutableConfig().stepFrames; }
+	void setTimeScale(float s) noexcept { mutableConfig().timeScale = s; }
+	[[nodiscard]] float timeScale() const noexcept { return config().timeScale; }
+
+	// lo-fi post-FX (ADR #30: シーン毎の hi-res / lofi 切替):
+	void setLofiEnabled(bool e) noexcept { mutableConfig().loFi.enabled = e; }
+	void toggleLofi() noexcept           { auto& c = mutableConfig(); c.loFi.enabled = !c.loFi.enabled; }
+	[[nodiscard]] bool isLofiEnabled() const noexcept { return config().loFi.enabled; }
 
 	// -- 標準ゲーム音量 API --
 	// マスター音量を変えると全体に反映される。BGM/SE/Voice は将来の bus 分離用
@@ -503,6 +535,7 @@ private:
 #ifdef _WIN32
 	GamepadInput m_gamepad;                          ///< XInput ゲームパッド (module InputSnapshot へ供給, #12)
 #endif
+	input::SdlGamepadInput m_sdlGamepad;             ///< SDL_GameController (DS4/DS5 等、#32)。SDL2 無し時は no-op stub
 	InputRecorder m_inputRecorder;                   ///< 決定論的リプレイ用入力レコーダー (axis 4)
 	InputReplayer m_inputReplayer;                   ///< 決定論的リプレイ用入力再生器 (axis 4)
 	std::string m_recordOutputPath;                  ///< MITIRU_RECORD で設定: 終了時にここへ ReplayData を保存

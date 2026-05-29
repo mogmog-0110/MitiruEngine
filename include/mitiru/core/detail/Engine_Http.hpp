@@ -22,6 +22,15 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 	server::EngineCallbacks cb;
 	server::initEngineHttpCallbacks(cb, ctx, game);
 
+	// runtime コントロール (ADR 0011): `mitiru_console` / 外部ツールから叩く。
+	cb.runtimeTogglePause   = [this]() -> bool { togglePaused(); return isPaused(); };
+	cb.runtimeIsPaused      = [this]() -> bool { return isPaused(); };
+	cb.runtimeStep          = [this]() { stepOneFrame(); };
+	cb.runtimeSetTimeScale  = [this](float s) { setTimeScale(s); };
+	cb.runtimeGetTimeScale  = [this]() -> float { return timeScale(); };
+	cb.runtimeToggleLofi    = [this]() -> bool { toggleLofi(); return isLofiEnabled(); };
+	cb.runtimeIsLofiEnabled = [this]() -> bool { return isLofiEnabled(); };
+
 	m_httpServer->setCallbacks(cb);
 	m_httpServer->setInputInjector(&m_inputInjector);
 	m_httpServer->setFlags(&m_gameFlags);

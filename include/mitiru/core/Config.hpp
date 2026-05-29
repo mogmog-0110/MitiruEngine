@@ -243,6 +243,14 @@ struct EngineConfig
 	bool persistSettings = false;          ///< 起動時に settings.json を読み込み、変更時に保存する
 	std::string settingsFileName = "settings.json"; ///< 設定ファイル名 (%APPDATA%/<title>/ 配下に配置)
 
+	// ── ランタイム時間制御 (host が toggle する debug 用) ───────────────
+	/// @brief on_update に渡す dt の乗数。0=停止と同等、1=通常速。負値は未定義。
+	float timeScale = 1.0f;
+	/// @brief true なら on_update を dt=0 で呼ぶ (描画は継続)。
+	bool paused = false;
+	/// @brief paused かつ > 0 のとき、1 フレームだけ通常 dt で進めて自動デクリメント。
+	int stepFrames = 0;
+
 	// ── per-frame host hook ─────────────────────────────────────────────
 	/// @brief tickOneFrame の先頭で呼ばれる (optional)
 	/// @details Host が「main loop に割り込みたい」用途のためのフック。
