@@ -18,6 +18,7 @@
 /// 構わない。inspector 側は SharedSnapshot::Reader で producer の生存を見て
 /// stale (>10s) になったら自分で waiting 状態に戻る。
 
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -32,40 +33,44 @@
 namespace mitiru::debug
 {
 
-/// @brief inspector exe を探して spawn する (内部用 — args を任意で渡せる)
-/// @return 起動成功で true
-inline bool spawnInspector(int producerPid, const std::string& extraArgs)
+/// @brief mitiru_<toolName>.exe を探して別窓 spawn する (ADR 0014、内部用)
+/// @details 探索順: 環境変数 MITIRU_<TOOLNAME>_EXE / game exe 同階層 / 開発 build tree。
+///          ゲームの DLL は host へ intent を出すだけで、host がこれを呼んでツール窓を開く。
+/// @return 起動成功で true (exe が見つからなければ false で無害)
+inline bool spawnTool(const std::string& toolName, int producerPid, const std::string& extraArgs)
 {
 #ifdef _WIN32
 	if (producerPid == 0)
 	{
 		producerPid = _getpid();
 	}
+	const std::string exeLeaf = "mitiru_" + toolName + ".exe";
 
-	// 1. 環境変数による override
+	// 1. 環境変数による override: MITIRU_<TOOLNAME>_EXE
 	std::string exePath;
-	if (const char* env = std::getenv("MITIRU_INSPECTOR_EXE"); env && *env)
 	{
-		exePath = env;
+		std::string envName = "MITIRU_";
+		for (char c : toolName) { envName += static_cast<char>(std::toupper(static_cast<unsigned char>(c))); }
+		envName += "_EXE";
+		if (const char* env = std::getenv(envName.c_str()); env && *env) { exePath = env; }
 	}
 
-	// 2. 走っている game exe と同階層
+	// 2. 走っている game exe と同階層 / 3. 開発 build tree (examples/mitiru_<tool>/)
 	if (exePath.empty())
 	{
 		wchar_t buf[MAX_PATH] = {};
 		if (GetModuleFileNameW(nullptr, buf, MAX_PATH) > 0)
 		{
 			std::filesystem::path self{buf};
-			auto candidate = self.parent_path() / "mitiru_inspector.exe";
+			auto candidate = self.parent_path() / exeLeaf;
 			if (std::filesystem::exists(candidate))
 			{
 				exePath = candidate.string();
 			}
-			// 3. 開発用 fallback: engine build tree 内
 			if (exePath.empty())
 			{
 				auto devCandidate = self.parent_path().parent_path()
-					/ "mitiru_inspector" / "mitiru_inspector.exe";
+					/ ("mitiru_" + toolName) / exeLeaf;
 				if (std::filesystem::exists(devCandidate))
 				{
 					exePath = devCandidate.string();
@@ -80,8 +85,7 @@ inline bool spawnInspector(int producerPid, const std::string& extraArgs)
 	}
 
 	// コマンドライン構築: `"<exePath>" <pid> <extraArgs>`
-	std::wstring wexe;
-	wexe.assign(exePath.begin(), exePath.end());
+	std::wstring wexe(exePath.begin(), exePath.end());
 	std::wstring cmd = L"\"" + wexe + L"\" " + std::to_wstring(producerPid);
 	if (!extraArgs.empty())
 	{
@@ -105,10 +109,18 @@ inline bool spawnInspector(int producerPid, const std::string& extraArgs)
 	CloseHandle(pi.hThread);
 	return true;
 #else
+	(void)toolName;
 	(void)producerPid;
 	(void)extraArgs;
 	return false;
 #endif
+}
+
+/// @brief inspector exe を探して spawn する (spawnTool("inspector") の薄い別名)
+/// @return 起動成功で true
+inline bool spawnInspector(int producerPid, const std::string& extraArgs)
+{
+	return spawnTool("inspector", producerPid, extraArgs);
 }
 
 /// @brief inspector を default panel (state) で開く

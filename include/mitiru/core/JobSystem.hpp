@@ -154,8 +154,14 @@ public:
 		m_threadCount = threadCount;
 		m_running.store(true, std::memory_order_release);
 
-		/// ワーカーキューを初期化する
-		m_queues.resize(static_cast<std::size_t>(threadCount));
+		/// ワーカーキューを初期化する。WorkerQueue は std::mutex を持ち move/copy 不可な
+		/// ため、unique_ptr で保持して vector に間接的に並べる。
+		m_queues.clear();
+		m_queues.reserve(static_cast<std::size_t>(threadCount));
+		for (int q = 0; q < threadCount; ++q)
+		{
+			m_queues.push_back(std::make_unique<WorkerQueue>());
+		}
 
 		/// ワーカースレッドを起動する
 		m_workers.reserve(static_cast<std::size_t>(threadCount));
@@ -217,19 +223,30 @@ public:
 
 		JobHandle handle(state);
 
-		/// 依存ジョブの完了を待ってから実行するラッパーを作成する
-		auto wrappedJob = [dep = dependency, work = std::move(job)]
-		{
-			dep.wait();
-			work();
-		};
-
 		JobEntry entry;
-		entry.work = std::move(wrappedJob);
+		entry.work = std::move(job);
 		entry.handle = handle;
 		entry.priority = priority;
 
-		pushJob(std::move(entry));
+		// 依存が未完なら worker キューでなく pending に積み、依存完了時
+		// (executeJob → promotePending) にキューへ昇格させる。worker をブロック
+		// しないので、依存解決を待つ間も他のジョブを処理できる。
+		bool runNow = dependency.isComplete();
+		if (!runNow)
+		{
+			std::lock_guard<std::mutex> lock(m_pendingMutex);
+			// lock 内で再確認: 直前に依存が完了して promotePending を取り逃すレースを防ぐ。
+			if (dependency.isComplete())
+			{
+				runNow = true;
+			}
+			else
+			{
+				m_pending.push_back(PendingJob{std::move(entry), dependency});
+				m_pendingCount.store(m_pending.size(), std::memory_order_relaxed);
+			}
+		}
+		if (runNow) { pushJob(std::move(entry)); }
 
 		return handle;
 	}
@@ -311,6 +328,11 @@ public:
 
 		m_workers.clear();
 		m_queues.clear();
+		{
+			std::lock_guard<std::mutex> lock(m_pendingMutex);
+			m_pending.clear();
+			m_pendingCount.store(0, std::memory_order_relaxed);
+		}
 		m_initialized = false;
 
 		MITIRU_LOG_INFO("JobSystem", "shutdown complete");
@@ -324,6 +346,13 @@ private:
 		JobHandle handle;
 		JobPriority priority = JobPriority::Normal;
 		bool isParallelBatch = false;
+	};
+
+	/// @brief 依存待ちジョブ。依存完了までキューに入れず保持する。
+	struct PendingJob
+	{
+		JobEntry  entry;
+		JobHandle dependency;
 	};
 
 	/// @brief ワーカーキュー（ワークスティーリング対応）
@@ -415,7 +444,7 @@ private:
 			m_pushCounter.fetch_add(1, std::memory_order_relaxed)
 			% m_queues.size();
 
-		m_queues[idx].push(std::move(entry));
+		m_queues[idx]->push(std::move(entry));
 		m_globalCV.notify_one();
 	}
 
@@ -433,7 +462,7 @@ private:
 			bool found = false;
 
 			/// 自分のキューからポップする
-			if (m_queues[idx].pop(entry))
+			if (m_queues[idx]->pop(entry))
 			{
 				found = true;
 			}
@@ -450,7 +479,7 @@ private:
 							(victimStart + i) % m_queues.size();
 						if (victim == idx) continue;
 
-						if (m_queues[victim].steal(entry))
+						if (m_queues[victim]->steal(entry))
 						{
 							found = true;
 							break;
@@ -494,6 +523,35 @@ private:
 		{
 			entry.handle.markComplete();
 		}
+
+		/// 依存が満たされた pending ジョブをキューへ昇格させる。
+		promotePending();
+	}
+
+	/// @brief 依存が完了した pending ジョブをワーカーキューへ昇格させる。
+	/// @details 各ジョブ完了後に呼ぶ。worker をブロックせずに依存関係を解決する。
+	void promotePending()
+	{
+		// fast path: pending 無し (大半のジョブは依存なし) は lock 回避。
+		// カウンタは atomic なので unlocked 読みでも data race にならない。
+		if (m_pendingCount.load(std::memory_order_relaxed) == 0) { return; }
+		std::vector<JobEntry> ready;
+		{
+			std::lock_guard<std::mutex> lock(m_pendingMutex);
+			auto it = std::remove_if(m_pending.begin(), m_pending.end(),
+				[&ready](PendingJob& p)
+				{
+					if (p.dependency.isComplete())
+					{
+						ready.push_back(std::move(p.entry));
+						return true;
+					}
+					return false;
+				});
+			m_pending.erase(it, m_pending.end());
+			m_pendingCount.store(m_pending.size(), std::memory_order_relaxed);
+		}
+		for (auto& e : ready) { pushJob(std::move(e)); }
 	}
 
 	/// @brief いずれかのキューにジョブがあるかを判定する
@@ -501,19 +559,23 @@ private:
 	{
 		for (const auto& q : m_queues)
 		{
-			if (!q.empty()) return true;
+			if (!q->empty()) return true;
 		}
 		return false;
 	}
 
 	std::vector<std::thread> m_workers;            ///< ワーカースレッド
-	std::vector<WorkerQueue> m_queues;             ///< ワークスティーリングキュー
+	std::vector<std::unique_ptr<WorkerQueue>> m_queues;  ///< ワークスティーリングキュー (mutex 保持のため間接化)
 	std::atomic<bool> m_running{false};            ///< 実行中フラグ
 	std::atomic<std::size_t> m_pushCounter{0};     ///< ラウンドロビンカウンター
 	std::mutex m_globalMutex;                      ///< グローバル待機用ミューテックス
 	std::condition_variable m_globalCV;             ///< グローバル待機用条件変数
 	int m_threadCount = 0;                         ///< ワーカースレッド数
 	bool m_initialized = false;                    ///< 初期化済みフラグ
+
+	std::mutex m_pendingMutex;                     ///< 依存待ちジョブ用ミューテックス
+	std::vector<PendingJob> m_pending;             ///< 依存完了待ちのジョブ (worker を塞がない)
+	std::atomic<std::size_t> m_pendingCount{0};    ///< m_pending サイズの atomic ヒント (fast path 用)
 };
 
 } // namespace mitiru

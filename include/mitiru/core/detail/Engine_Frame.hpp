@@ -163,6 +163,12 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		}
 
 		m_inputState.endTick();
+		// gamepad の edge (prev/curr) も fixed tick で前進させ、keyboard と cadence を揃える。
+		// これで render rate と update rate が独立でも just-pressed の取りこぼし/多重消費が起きない。
+#ifdef _WIN32
+		m_gamepad.endTick();
+#endif
+		m_sdlGamepad.endTick();
 		// tint 残量を fixed step で減衰 (#31)。決定論的に動く。
 		if (m_screen) { m_screen->advanceTint(kFixedDt); }
 		m_accumulator -= kFixedDt;

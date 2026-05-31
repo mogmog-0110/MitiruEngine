@@ -48,7 +48,9 @@ public:
 		m_initialized = false;
 	}
 
-	/// @brief 毎フレーム呼ぶ。SDL の internal state を pump し、抜き差しを再 scan、prev/curr を更新。
+	/// @brief 毎 render フレーム呼ぶ。SDL state を pump し、抜き差しを再 scan、現在状態を poll。
+	/// @details edge (prev/curr) の前進はここでは行わない。just-pressed を fixed-update
+	///          cadence に揃えるため、prev の前進は endTick() が担う。
 	void update()
 	{
 		if (!m_initialized) { if (!init()) { return; } }  // lazy init
@@ -63,9 +65,11 @@ public:
 			}
 		}
 
-		m_prevDown = m_currDown;
 		m_currDown = computeDown();
 	}
+
+	/// @brief edge 検出用に prev=curr を 1 段進める (1 fixed-update tick の末で呼ぶ)。
+	void endTick() noexcept { m_prevDown = m_currDown; }
 
 	[[nodiscard]] bool connected() const noexcept { return !m_open.empty(); }
 
@@ -178,6 +182,7 @@ public:
 	bool init() noexcept { return false; }
 	void shutdown() noexcept {}
 	void update() noexcept {}
+	void endTick() noexcept {}
 	[[nodiscard]] bool connected() const noexcept { return false; }
 	[[nodiscard]] std::uint32_t buttonsDown()         const noexcept { return 0; }
 	[[nodiscard]] std::uint32_t buttonsJustPressed()  const noexcept { return 0; }

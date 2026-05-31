@@ -142,6 +142,7 @@ private:
         const float panelX = 16.0f + static_cast<float>(kGridCols) * 24.0f + 24.0f;
         const float panelY = 88.0f;
         const float panelW = m_screenW - panelX - 16.0f;
+        if (panelW < 40.0f) { return; }  // 窓が狭すぎ: 負幅 rect を出さず panel 描画を省く
         const float panelH = 180.0f;
         screen.drawRect(sgc::Rectf{panelX, panelY, panelW, panelH}, kPaperEdge);
         screen.drawRect(sgc::Rectf{panelX + 1.0f, panelY + 1.0f, panelW - 2.0f, panelH - 2.0f}, kPanelFill);
@@ -216,6 +217,8 @@ int main(int /*argc*/, char* /*argv*/[])
     cfg.title                = "mitiru_subsys_input";
     cfg.windowWidth          = 900;
     cfg.windowHeight         = 600;
+    cfg.minWindowWidth       = 480;   // grid + mouse panel が潰れない floor (resize 安全)
+    cfg.minWindowHeight      = 360;
     cfg.vsync                = true;
     cfg.enableCef            = false;
     cfg.fontAtlasRanges      = mitiru::EngineConfig::FontAtlas::Latin;

@@ -146,9 +146,10 @@ public:
 protected:
 	/// @brief コンストラクタ
 	/// @param maxParticles 最大パーティクル数
-	explicit GpuParticleBase(std::uint32_t maxParticles)
+	/// @param seed 乱数 seed (既定固定 = 決定論。caller が replay seed を注入できる)
+	explicit GpuParticleBase(std::uint32_t maxParticles, std::uint32_t seed = 42u)
 		: m_maxParticles(maxParticles)
-		, m_rng(std::random_device{}())
+		, m_rng(seed)
 	{
 	}
 

@@ -59,7 +59,9 @@ namespace mitiru::replay
 constexpr char        kMagic[4]      = {'M', 'T', 'R', 'R'};
 
 /// @brief recorder/player 共通の format version
-constexpr std::uint32_t kFormatVersion = 3;
+/// @details v3 → v4: InputSnapshot に rngSeed が増えて frameSize が変わった (ADR 0012)。
+///          旧 file は version / frameSize mismatch で graceful reject (再録画前提)。
+constexpr std::uint32_t kFormatVersion = 4;
 
 /// @brief recorder/player 共通の header byte size (v2: 40 bytes)
 constexpr std::size_t   kHeaderBytes   = 40;

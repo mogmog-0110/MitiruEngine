@@ -385,6 +385,10 @@ public:
 	}
 
 private:
+	// random() 組み込み用の決定論 RNG。固定既定 seed (OS entropy 非依存)。
+	// callFunction は const なので mutable。
+	mutable std::mt19937 m_rng{0x9E3779B9u};
+
 	// ── 再帰下降パーサー ─────────────────────────────────────
 
 	/// @brief OR式: and_expr (|| and_expr)*
@@ -727,10 +731,11 @@ private:
 			int lo = resultToInt(args[0]);
 			int hi = resultToInt(args[1]);
 			if (lo > hi) std::swap(lo, hi);
-			std::random_device rd;
-			std::mt19937 gen(rd());
+			// 決定論 RNG (replay 再現性。OS entropy を引かない)。member を進めるので
+			// 同一 evaluator 内の連続 random() は別値になる。VN が evaluator を持続
+			// させれば多様性も保てる (使い捨て構築では eval ごとに既定 seed から再開)。
 			std::uniform_int_distribution<int> dist(lo, hi);
-			return ExpressionResult{dist(gen)};
+			return ExpressionResult{dist(m_rng)};
 		}
 
 		if (name == "strlen" && args.size() >= 1)

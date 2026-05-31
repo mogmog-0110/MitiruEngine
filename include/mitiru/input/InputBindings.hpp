@@ -107,8 +107,9 @@ private:
 		case Bind::GamepadButton:
 			return s.gamepadConnected && (s.gamepadButtonsJustPressed & b.value) != 0u;
 		case Bind::GamepadAxis:
-			// axis に「今フレーム押した」は無いので、簡易に「現在閾値超」を返す。
-			return matchPressed(s, b);
+			// axis は前フレーム値を持たない (InputSnapshot は stateless view) ため
+			// just-pressed エッジを出せない。false を返す (連続入力は isPressed を使う)。
+			return false;
 		case Bind::Key:
 			return false;
 		default:

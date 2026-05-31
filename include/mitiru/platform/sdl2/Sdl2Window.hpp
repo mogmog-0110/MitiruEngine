@@ -12,6 +12,7 @@
 #include <string_view>
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_syswm.h>  // SDL_SysWMinfo / SDL_GetWindowWMInfo (#40)
 
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/platform/IWindow.hpp>

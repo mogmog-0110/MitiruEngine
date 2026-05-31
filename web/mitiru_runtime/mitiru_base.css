@@ -67,6 +67,26 @@ html, body {
 	height: 100%;
 }
 
+/* ── HUD オーバーレイモード ───────────────────────────────────
+ * ゲーム窓では C++ が下のレイヤー (ゲーム本体) を描き、HTML の HUD はその上に
+ * 重なる透明オーバーレイ。CEF は OSR で native 描画の上に alpha 合成するので、
+ * <body class="mitiru-overlay"> を付けると:
+ *   - 背景を透明にする  (付けないと不透明な既定色で下の C++ 描画が隠れ「画面真っ白」)
+ *   - クリックを透過する (付けないと HUD が全クリックを食って「ゲームが操作不能」)
+ * どちらも engine 固有の必須儀式で、知らないと無言で踏む。だからクラス 1 つにまとめる。
+ *
+ * クリックを受けたい要素 (ボタン等) には .mitiru-interactive を付けるか、
+ * data-m-action を付ければ自動で pointer-events が戻る (binder が押下を C++ へ通知)。
+ */
+body.mitiru-overlay {
+	background: transparent;
+	pointer-events: none;
+}
+body.mitiru-overlay .mitiru-interactive,
+body.mitiru-overlay [data-m-action] {
+	pointer-events: auto;
+}
+
 /* ── タイポグラフィ フォールバック ──────────────────────────
  * mitiru_tokens.css を読み込まない場合でも落ち着くデフォルト。
  * tokens を読み込めば --mitiru-font-body で上書きされる。

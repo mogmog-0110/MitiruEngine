@@ -6,6 +6,8 @@
 ///          `advance(frameDt)` を呼んで返り値の回数だけ固定 step を回す。spiral-of-death を防ぐ
 ///          ため 1 フレーム最大ステップ数で頭打ち。`interpolationAlpha()` は描画補間用 [0,1)。
 
+#include <cmath>
+
 namespace mitiru::time
 {
 
@@ -26,10 +28,12 @@ public:
 			m_accumulator -= dt;
 			++n;
 		}
-		// 上限超過の蓄積は捨てる (spiral-of-death を打ち切る)。
-		if (m_accumulator > dt * static_cast<float>(maxStepsPerFrame))
+		// max step まで回しても dt 以上余っていれば backlog を捨てて wall-clock に
+		// 再同期する (スローモーションを受け入れて時刻を取り戻す)。残余 [0,dt) は
+		// 補間用に保つ。
+		if (n >= maxStepsPerFrame && m_accumulator >= dt)
 		{
-			m_accumulator = dt * static_cast<float>(maxStepsPerFrame);
+			m_accumulator = std::fmod(m_accumulator, dt);
 		}
 		return n;
 	}

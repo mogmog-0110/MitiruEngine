@@ -37,6 +37,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 // Forward declare engine types so the header is light. Concrete definitions
 // come from the engine when the DLL links against `Mitiru::mitiru`.
@@ -54,11 +55,23 @@ namespace mitiru::module
 ///   - v4 (47..): FrameIntents に soundIntents 追加 (ADR 0008)。DLL ゲームが
 ///     既存 audio mixer へ「音を鳴らして」と intent を出せる。host は古い v3
 ///     module の soundIntents を読まない (= 音無しで動く) ので後方安全。
-///   - v5 (本 commit): InputSnapshot に gamepad (XInput 主コントローラ) 状態を追加。
+///   - v5: InputSnapshot に gamepad (XInput 主コントローラ) 状態を追加。
 ///     ボタンビットマスク (down/justPressed/justReleased) + axes[6] + connected。
 ///     POD 末尾への追記なので既存 field offset 不変。host が古い module に渡しても
 ///     古い module は新 field を読まないだけ (後方安全)。
-constexpr std::uint32_t kCurrentApiVersion = 7;
+///   - v6: SoundIntent 末尾に pitchScale / fadeInSec / fadeOutSec を追加。SE 個別
+///     ピッチ変更と BGM crossfade/stopfade に対応 (ADR 0008 拡張)。末尾追記で後方安全。
+///   - v7: FrameIntents 末尾に visualIntents[8] + visualIntentCount を追加。Tint 等の
+///     一発演出を intent で要求できる。末尾追記 + zero-init で v≤6 module は後方安全。
+///   - v8: InputSnapshot 末尾に rngSeed を追加 (ADR 0012)。host が決定論 seed を供給し、
+///     RNG 駆動 game も replay で bit-exact 再現できる。末尾追記で v≤7 module は後方安全。
+///   - v9: ModuleApi 末尾に memorySize を追加 (ADR 0013)。DLL が GameMemory のバイト数を
+///     申告し、host が単一 state channel (replay state slot) に GameMemory を記録できる。
+///     ②time-travel / ④replay-as-test が real DLL game で構造保証に。v≤8 module は後方安全。
+///   - v10: FrameIntents 末尾に toolRequests[] を追加 (ADR 0014)。DLL が「この独立ウィンドウの
+///     ツール (inspector 等) を開いて」と host に頼み、host が別 exe を spawn する。必要なときだけ
+///     コードから tool 窓を配置できる (pulled UI)。末尾追記で v≤9 module は後方安全。
+constexpr std::uint32_t kCurrentApiVersion = 10;
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
@@ -138,6 +151,12 @@ struct InputSnapshot
 	std::uint32_t gamepadButtonsJustPressed;   ///< このフレームで押された
 	std::uint32_t gamepadButtonsJustReleased;  ///< このフレームで離された
 	float         gamepadAxes[6];              ///< gamepad::Axis 添字。stick [-1,1] / trigger [0,1]
+
+	// ── 決定論 RNG seed (ABI v8 で追記、ADR 0012) ─────────────────────
+	// 末尾追記なので既存 field の offset は不変。v≤7 module は読まないだけ (0)。
+	// host が EngineConfig::randomSeed を毎フレーム供給。replay 時は記録値が再投入され
+	// bit-exact に復元される。DLL は `mitiru::Random rng(input->rngSeed)` で seed する。
+	std::uint64_t rngSeed;                     ///< session 固定の決定論 seed (0 = 未供給)
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)
@@ -209,6 +228,17 @@ struct SoundIntent
 	float        fadeOutSec;  ///< stop=1 のとき > 0 で volume→0 fade-out してから停止。
 };
 
+/// @brief 「このツール窓を開いて」という DLL → host の intent (ADR 0014、v10 追加)。
+/// @details game は Engine* を持てない (ADR 0005) ので、独立ウィンドウのツール
+///          (inspector / input monitor / time-travel など) を自分では開けない。代わりに
+///          tool 名を書いて「開いて」と頼み、host が別 exe (mitiru_<tool>.exe) を spawn する。
+///          必要なときだけ呼ぶ — 既定では何も開かない (pulled UI、アトミックツール哲学)。
+struct RequestToolWindow
+{
+	char tool[64];   ///< ツール名 (例: "inspector")。host が mitiru_<tool>.exe を探す。null 終端。
+	char args[128];  ///< 追加 CLI 引数 (例: "--inspectable input")。null 終端。
+};
+
 /// @brief 1 フレーム分の DLL → host への要求 (intent)
 /// @details
 /// 全 field は **毎フレーム host が zero-init してから** on_update に渡す。
@@ -244,7 +274,137 @@ struct FrameIntents
 	///        末尾追加なので既存 offset 不変、v≤6 module は無視されるだけ (後方安全)。
 	std::int32_t visualIntentCount;
 	VisualIntent visualIntents[8];
+
+	/// @brief このフレームのツール窓 spawn 要求 (ADR 0014、v10 追加)。末尾追加で v≤9 後方安全。
+	std::int32_t      toolRequestCount;
+	RequestToolWindow toolRequests[4];
+
+	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
+	// HUD へ値を送る / 音を鳴らす、を 1 行で書くためのヘルパ。中の固定長スロット詰め
+	// (空き探し・上限チェック・null 終端) はここに隠す。これが無いと game 側が毎回
+	// memset / strncpy で手書きする羽目になり、初心者には厳しい。
+	//
+	// これらは inline メソッドで、呼んだ game DLL 側にだけ展開される。struct の
+	// メモリ配置 (= DLL 境界の wire format) は一切変えない (下の static_assert で保証)。
+	//
+	// 使い方:
+	//   intents->pushInt("view.hud.score", score);   // scene.html の data-m-text へ
+	//   intents->playSound("brick", 0.6f);           // assets/audio/brick.wav を再生
+
+	/// HUD に int を送る (scene.html の data-m-text="view.hud.xxx" が受け取る)。
+	void pushInt(const char* key, int value) noexcept
+	{
+		if (StatePushItem* s = nextStatePush()) { s->kind = 1; s->intVal = value; setKey(s, key); }
+	}
+	/// HUD に float を送る。
+	void pushFloat(const char* key, float value) noexcept
+	{
+		if (StatePushItem* s = nextStatePush()) { s->kind = 2; s->floatVal = value; setKey(s, key); }
+	}
+	/// HUD に bool を送る (data-m-show / data-m-class の条件に使える)。
+	void pushBool(const char* key, bool value) noexcept
+	{
+		if (StatePushItem* s = nextStatePush()) { s->kind = 3; s->intVal = value ? 1 : 0; setKey(s, key); }
+	}
+	/// HUD に文字列を送る (勝敗テキスト等)。
+	void pushString(const char* key, const char* value) noexcept
+	{
+		if (StatePushItem* s = nextStatePush()) { s->kind = 4; setKey(s, key); copyStr(s->strVal, value, sizeof(s->strVal)); }
+	}
+	/// 効果音を鳴らす。host が assets/audio/<id>.wav (.ogg/.mp3) を再生する。
+	void playSound(const char* id, float volume = 1.0f) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		copyStr(s.id, id, sizeof(s.id));
+		s.category = 0; s.volume = volume; s.pitchScale = 1.0f;
+	}
+
+	/// 画面を一瞬色フラッシュさせる (被弾演出など)。host が Screen::pushTint に渡す。
+	void pushTint(float r, float g, float b, float a, float durationSec) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(visualIntents) / sizeof(visualIntents[0]));
+		if (visualIntentCount >= cap) { return; }
+		VisualIntent& v = visualIntents[visualIntentCount++];
+		v = VisualIntent{};
+		v.kind = kVisualIntentTint;
+		v.r = r; v.g = g; v.b = b; v.a = a; v.durSec = durationSec;
+	}
+
+	/// このフレームの PNG 保存を要求する。
+	void requestScreenshotNow() noexcept { requestScreenshot = 1; }
+
+	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。
+	/// 必要なときだけ呼べばよい — inspector が開いている時にだけ映る (pulled UI)。
+	void pushInspectable(const char* name, const char* title, const char* json) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(exportedInspectables) / sizeof(exportedInspectables[0]));
+		if (exportedInspectableCount >= cap) { return; }
+		InspectableExport& e = exportedInspectables[exportedInspectableCount++];
+		e = InspectableExport{};
+		copyStr(e.name,  name,  sizeof(e.name));
+		copyStr(e.title, title, sizeof(e.title));
+		std::size_t i = 0;
+		const std::size_t cap2 = sizeof(e.json);
+		if (json != nullptr) { for (; json[i] != '\0' && i + 1 < cap2; ++i) { e.json[i] = json[i]; } }
+		e.json[i] = '\0';
+		e.jsonLen = static_cast<std::int32_t>(i);
+	}
+
+	/// 独立ウィンドウのツール (inspector 等) を開くよう host に頼む。必要なときだけ呼ぶ。
+	/// host は mitiru_<tool>.exe を別窓で spawn する (ADR 0014)。
+	void requestToolWindow(const char* tool, const char* args = "") noexcept
+	{
+		const int cap = static_cast<int>(sizeof(toolRequests) / sizeof(toolRequests[0]));
+		if (toolRequestCount >= cap) { return; }
+		RequestToolWindow& r = toolRequests[toolRequestCount++];
+		r = RequestToolWindow{};
+		copyStr(r.tool, tool, sizeof(r.tool));
+		copyStr(r.args, args ? args : "", sizeof(r.args));
+	}
+
+	/// 生 JavaScript を CEF に実行させる (escape hatch)。HUD は data-m-* で足りるので、
+	/// data-m-* で表せない one-shot な DOM 操作 (例: hot-reload の location.reload) だけに使う。
+	void runJs(const char* code) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(jsToExecute) / sizeof(jsToExecute[0]));
+		int i = 0;
+		if (code != nullptr) { for (; code[i] != '\0' && i + 1 < cap; ++i) { jsToExecute[i] = code[i]; } }
+		jsToExecute[i] = '\0';
+		jsToExecuteLen = i;
+	}
+
+private:
+	/// 空き state-push スロットを 1 つ確保して key を書く。満杯なら nullptr。
+	StatePushItem* nextStatePush() noexcept
+	{
+		const int cap = static_cast<int>(sizeof(statePushes) / sizeof(statePushes[0]));
+		if (statePushCount >= cap) { return nullptr; }
+		StatePushItem& s = statePushes[statePushCount++];
+		s = StatePushItem{};
+		return &s;
+	}
+	static void setKey(StatePushItem* s, const char* key) noexcept { copyStr(s->key, key, sizeof(s->key)); }
+	/// 固定長バッファへの null 終端コピー (src が長ければ切り詰める)。
+	static void copyStr(char* dst, const char* src, std::size_t cap) noexcept
+	{
+		if (cap == 0) { return; }
+		std::size_t i = 0;
+		if (src != nullptr) { for (; src[i] != '\0' && i + 1 < cap; ++i) { dst[i] = src[i]; } }
+		dst[i] = '\0';
+	}
 };
+
+// 便利メソッドを足しても DLL 境界の wire format (= メモリ配置) は不変であることを
+// 構造で保証する。これが崩れたら host と game で解釈がズレる。
+static_assert(std::is_trivially_copyable_v<FrameIntents>,
+              "FrameIntents は DLL 境界を memcpy で渡るので trivially copyable を保つこと");
+static_assert(std::is_standard_layout_v<FrameIntents>,
+              "FrameIntents は C ABI wire format なので standard layout を保つこと");
+static_assert(std::is_trivially_copyable_v<InputSnapshot>,
+              "InputSnapshot も同上 (host → game の POD push)");
 
 // ── ModuleApi callback table ─────────────────────────────────────────────
 
@@ -275,6 +435,12 @@ struct ModuleApi
 
 	/// @brief DLL がもうすぐ unload される直前に呼ばれる (reload 含む)。
 	void (*on_shutdown)(void* memory);
+
+	/// @brief GameMemory (DLL が *memory にセットした state) のバイト数 (ABI v9、ADR 0013)。
+	/// @details DLL は `api->memorySize = sizeof(自分の GameMemory)` を申告する。0 = 未申告で、
+	///          host は GameMemory を記録せず観測 view.* にフォールバックする。host は replay
+	///          記録時にこのサイズだけ opaque に memcpy する (中身は parse しない = ADR 0005)。
+	std::uint32_t memorySize;
 };
 
 /// @brief DLL が export すべき load 関数のシグネチャ

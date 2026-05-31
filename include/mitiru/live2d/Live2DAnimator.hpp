@@ -7,8 +7,8 @@
 
 #ifdef MITIRU_HAS_CUBISM
 
-#include <cstdlib>
-#include <ctime>
+#include <cstdint>
+#include <random>
 #include <string>
 
 #include <CubismFramework.hpp>
@@ -28,10 +28,11 @@ class Live2DAnimator
 public:
     /// @brief model 用の animator を構築する
     /// @param model Live2DModel への pointer (non-owning)
-    explicit Live2DAnimator(Live2DModel* model) noexcept
+    /// @param seed motion / expression 選択の乱数 seed (既定固定 = 決定論・replay 再現可)
+    explicit Live2DAnimator(Live2DModel* model, unsigned seed = 77777u) noexcept
         : m_model(model)
+        , m_rng(seed)
     {
-        std::srand(static_cast<unsigned>(std::time(nullptr)));
     }
 
     // copy 禁止
@@ -60,7 +61,7 @@ public:
         const auto count = m_model->GetMotionCount(group);
         if (count <= 0) return;
 
-        const auto index = std::rand() % count;
+        const auto index = static_cast<int>(m_rng() % static_cast<std::uint32_t>(count));
         m_model->StartMotion(group, index, priority);
     }
 
@@ -83,7 +84,7 @@ public:
         const auto count = setting->GetExpressionCount();
         if (count <= 0) return;
 
-        const auto index = std::rand() % count;
+        const auto index = static_cast<int>(m_rng() % static_cast<std::uint32_t>(count));
         const auto name = setting->GetExpressionName(index);
         if (name)
         {
@@ -156,6 +157,7 @@ private:
     bool m_autoIdleEnabled = true;
     float m_idleTimer = 0.0f;
     float m_idleInterval = 4.0f;
+    std::mt19937 m_rng;  ///< motion / expression 選択用 (決定論 seed)
 };
 
 } // namespace mitiru::live2d

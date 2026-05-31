@@ -37,7 +37,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	if (const char* recPath = std::getenv("MITIRU_RECORD"); recPath && *recPath)
 	{
 		m_recordOutputPath = recPath;
-		m_inputRecorder.beginRecording(/*seed=*/0, /*tps=*/60);
+		m_inputRecorder.beginRecording(config.randomSeed, /*tps=*/60);
 	}
 
 	/// axis 4 — deterministic replay の再生。

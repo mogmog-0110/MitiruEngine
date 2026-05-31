@@ -231,6 +231,50 @@ public:
 	/// @param color 描画色
 	void drawRect(const sgc::Rectf& rect, const sgc::Colorf& color);
 
+	// ── 初心者向け float オーバーロード ───────────────────────────
+	// sgc::Rectf / sgc::Vec2f を組まずに座標を直接渡して描ける薄い糖衣。
+	// 中身は sgc 版へ委譲するだけ。
+
+	/// @brief (x,y) を左上に w×h の矩形を塗る。
+	void drawRect(float x, float y, float w, float h, const sgc::Colorf& color)
+	{
+		drawRect(sgc::Rectf{x, y, w, h}, color);
+	}
+	/// @brief (cx,cy) を中心に w×h の矩形を塗る。
+	void drawRectCentered(float cx, float cy, float w, float h, const sgc::Colorf& color)
+	{
+		drawRect(sgc::Rectf{cx - w * 0.5f, cy - h * 0.5f, w, h}, color);
+	}
+	/// @brief (cx,cy) を中心に半径 r の円を塗る。
+	void fillCircle(float cx, float cy, float r, const sgc::Colorf& color)
+	{
+		drawCircle(sgc::Vec2f{cx, cy}, r, color);
+	}
+	/// @brief (x0,y0)-(x1,y1) を結ぶ線を引く。
+	void line(float x0, float y0, float x1, float y1, const sgc::Colorf& color, float thickness = 2.0f)
+	{
+		drawLine(sgc::Vec2f{x0, y0}, sgc::Vec2f{x1, y1}, color, thickness);
+	}
+	/// @brief (x,y) を左上に 1 行テキストを描く。はみ出しはクリップされる安全版
+	///        (生 drawText は禁止 → drawTextInRect に委譲する)。
+	void text(std::string_view str, float x, float y,
+	          const sgc::Colorf& color = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f},
+	          float fontSize = 18.0f)
+	{
+		drawTextInRect(sgc::Rectf{x, y, 100000.0f, fontSize * 1.6f}, str, color, fontSize,
+		               TextAlignH::Left, TextAlignV::Top, 0.0f, 0.0f);
+	}
+	/// @brief 画面全体を 1 色で塗る (背景用)。draw() の最初に呼ぶ。
+	/// @note `clear()` の色は host 設定 (EngineConfig::backgroundColor) に上書きされ
+	///       game 窓に届かないことがある。背景は確実なこの fillScreen で塗る (全画面 rect)。
+	///       画面端の隙間 (shake 等) も覆うよう少し大きめに描く。
+	void fillScreen(const sgc::Colorf& color)
+	{
+		drawRect(sgc::Rectf{-128.0f, -128.0f,
+		                    static_cast<float>(width()) + 256.0f,
+		                    static_cast<float>(height()) + 256.0f}, color);
+	}
+
 	/// @brief 矩形の枠線を描画する
 	/// @param rect 矩形領域
 	/// @param color 枠線色

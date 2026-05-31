@@ -51,12 +51,21 @@ public:
 			const float sx = camX * L.scrollMulX;
 			const float sy = camY * L.scrollMulY;
 
-			// 描画開始位置: 1 タイル前から repeat
+			// 描画開始位置: 1 タイル前から repeat。offsetY は tile / 非 tile の
+			// 両方で効かせる (tile 時に無視されると地平線の微調整が不能になる)。
 			float startX = -std::fmod(sx, tw);
 			if (startX > 0.0f) { startX -= tw; }
-			float startY = (L.tileY)
-				? (-std::fmod(sy, th) - ((-std::fmod(sy, th) > 0.0f) ? th : 0.0f))
-				: (-sy + L.offsetY);
+			float startY;
+			if (L.tileY)
+			{
+				startY = -std::fmod(sy, th);
+				if (startY > 0.0f) { startY -= th; }
+				startY += L.offsetY;
+			}
+			else
+			{
+				startY = -sy + L.offsetY;
+			}
 
 			// X tile (常に左→右で view 幅をカバー)
 			const int colsX = (L.tileX)

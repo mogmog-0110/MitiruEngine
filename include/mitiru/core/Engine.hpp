@@ -364,6 +364,9 @@ public:
 	/// @brief module の persistent memory pointer (DLL が自分で `new` したもの)
 	[[nodiscard]] void* moduleMemory() const noexcept;
 
+	/// @brief DLL が申告した GameMemory のバイト数 (ADR 0013、0=未申告)
+	[[nodiscard]] std::uint32_t moduleMemorySize() const noexcept;
+
 	/// @brief module-mode で engine 所有の CEF StateStore (lazy created)
 	/// @details CEF init 後 + module load 後にのみ non-null。ADR 0005 により
 	///          DLL は直接これに触らず、`FrameIntents::statePushes` 経由で
@@ -576,6 +579,7 @@ private:
 	std::unique_ptr<module::ModuleHost>   m_moduleHost;
 	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
+	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (ADR 0013、0=未申告)
 
 	// host→DLL signal flow 用の per-frame POD scratch buffer。struct 合計が
 	// ~50KB ある上、module を一切 load しない Engine instance まで肥大化させたく
@@ -587,6 +591,9 @@ private:
 	// object の pointer を一切持たないよう engine 所有とする (ADR 0005)。
 	std::unique_ptr<cef::StateStore>        m_moduleStateStore;
 	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
+	// 直近に書き出した inspector export 内容の FNV-1a hash。同一なら parse+rebuild+
+	// disk-write を丸ごと省く (inspector は同じ内容を読み続けるので観測結果は不変)。
+	std::uint64_t                            m_lastInspectorDigest = 0;
 
 	// 次の on_update 向けに queue した CEF JS 由来の action event。StateStore の
 	// handler は CEF UI thread で発火するが on_update は engine main thread で

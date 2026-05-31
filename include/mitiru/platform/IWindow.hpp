@@ -64,6 +64,11 @@ public:
 	/// @param cb 新しいwidth, heightを受け取るコールバック
 	/// @details デフォルトはno-op（リサイズイベントを内部処理するウィンドウ向け）。
 	virtual void setResizeCallback(std::function<void(int, int)> /*cb*/) {}
+
+	/// @brief リサイズ時の最小クライアントサイズを設定する (px、0=制限なし)
+	/// @details 枠 drag でこの client サイズ未満へ縮められないようにする。
+	///          デフォルトはno-op（最小サイズを強制しない実装向け）。
+	virtual void setMinClientSize(int /*w*/, int /*h*/) {}
 };
 
 } // namespace mitiru

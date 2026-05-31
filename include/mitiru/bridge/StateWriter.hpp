@@ -63,21 +63,23 @@ inline std::string fmtDouble(double v)
 }
 
 /// @brief FrameIntents に kind=4 の push を 1 件追記する。
-/// @return true なら value 全体が収まった。false は push 枠満杯、または
-///         value が strVal 容量を超えて truncate された (= 受け手で壊れた
-///         JSON になりうる)。呼び出し側で検知できるよう bool を返す。
+/// @return true なら key と value が両方そのまま収まった。false は push 枠満杯、
+///         または key / value が容量を超えて truncate された場合。呼び出し側で
+///         検知できるよう bool を返す。
 inline bool pushString(mitiru::module::FrameIntents* it,
                        const char* key, const std::string& value)
 {
     if (!it || it->statePushCount >= 64) return false;
 
     auto& s = it->statePushes[it->statePushCount++];
+    // key が枠 (96B) に収まるか。収まらなければ truncate されるので false を返す。
+    const bool keyFits = std::strlen(key) < sizeof(s.key);
     std::memset(&s, 0, sizeof(s));
     std::strncpy(s.key, key, sizeof(s.key) - 1);
     s.kind = 4;
     const std::size_t cap = sizeof(s.strVal) - 1;
     std::strncpy(s.strVal, value.c_str(), cap);
-    return value.size() <= cap;
+    return keyFits && value.size() <= cap;
 }
 
 } // namespace detail

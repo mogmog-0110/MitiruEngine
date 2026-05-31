@@ -59,6 +59,13 @@ struct EngineConfig
 	int windowWidth = 1920;                ///< ウィンドウ幅（Windowed モード時）
 	int windowHeight = 1080;               ///< ウィンドウ高さ（Windowed モード時）
 
+	/// @brief リサイズ時の最小クライアントサイズ (0 = 制限なし)
+	/// @details ユーザが枠を drag で縮めても、この client px 未満には縮まない
+	///          (Win32 は WM_GETMINMAXINFO で強制)。文字や panel が潰れて
+	///          読めなくなる極端な縮小を防ぐ。resize 安全な窓の最低保証。
+	int minWindowWidth = 0;                ///< 最小クライアント幅 (px、0=制限なし)
+	int minWindowHeight = 0;               ///< 最小クライアント高さ (px、0=制限なし)
+
 	/// @brief windowWidth/Height の解釈
 	/// @details
 	///   - false (既定、後方互換): 物理ピクセル指定。1280 を渡すと 125% DPI 環境でも
@@ -140,7 +147,8 @@ struct EngineConfig
 	///          なる（144 Hz で 2.4 倍速）。リプレイ / ヘッドレス / 自動テスト
 	///          のように決定性を要する用途でだけ明示的に `true` にすること。
 	bool deterministic = false;
-	std::uint64_t randomSeed = 42;         ///< 乱数シード
+	std::uint64_t randomSeed = 42;         ///< 決定論 RNG seed。module 経路では毎フレーム
+	                                       ///< InputSnapshot::rngSeed として DLL に渡る (ADR 0012)。
 	float targetTps = 60.0f;               ///< 目標TPS（tick/秒）
 	gfx::Backend gfxBackend = gfx::Backend::Auto;  ///< グラフィックスバックエンド
 	bool enableObserver = true;            ///< オブザーバー機能の有効化

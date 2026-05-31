@@ -38,11 +38,8 @@ public:
 	/// @brief ジャンルに基づいてランダムフレーズを生成する
 	[[nodiscard]] std::string generate(MusicGenre genre, int measures = 4, uint32_t seed = 0)
 	{
-		if (seed == 0)
-		{
-			std::random_device rd;
-			seed = rd();
-		}
+		// seed 未指定 (0) は固定既定で決定論を保つ (caller が明示 seed を渡せば任意列)。
+		if (seed == 0) { seed = 0x4D6C5031u; }
 		std::mt19937 rng(seed);
 
 		// ジャンルのテンプレートを取得
@@ -74,7 +71,8 @@ public:
 	[[nodiscard]] std::string generateMelody(
 		const std::vector<std::string>& chords, int tempo = 120, uint32_t seed = 0)
 	{
-		if (seed == 0) { std::random_device rd; seed = rd(); }
+		// seed 未指定 (0) は固定既定で決定論を保つ。
+		if (seed == 0) { seed = 0x4D656C6Fu; }
 		std::mt19937 rng(seed);
 
 		std::string result = "T" + std::to_string(tempo) + " O5 L8 ";

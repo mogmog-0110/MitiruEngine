@@ -85,31 +85,30 @@ public:
 	/// @brief デフォルトコンストラクタ
 	GamepadInput() noexcept = default;
 
-	/// @brief 全プレイヤーの状態をポーリングする
-	/// @details 毎フレームのゲームループ先頭で呼び出す。
+	/// @brief 全プレイヤーの現在状態をポーリングする (raw poll)。
+	/// @details 毎 render フレームで呼んでよい。edge (prev/curr) の前進はここでは行わない。
+	///          just-pressed/released を fixed-update cadence に揃えるため、prev の前進は
+	///          endTick() が担う (keyboard の InputState::endTick と同じ扱い)。
 	void update() noexcept
 	{
 		for (int i = 0; i < MAX_PLAYERS; ++i)
 		{
-			m_previousState[static_cast<std::size_t>(i)] =
-				m_currentState[static_cast<std::size_t>(i)];
-
 			XINPUT_STATE state = {};
 			const DWORD result = XInputGetState(
 				static_cast<DWORD>(i), &state);
 
 			const auto idx = static_cast<std::size_t>(i);
 			m_connected[idx] = (result == ERROR_SUCCESS);
-
-			if (m_connected[idx])
-			{
-				m_currentState[idx] = state;
-			}
-			else
-			{
-				m_currentState[idx] = {};
-			}
+			m_currentState[idx] = m_connected[idx] ? state : XINPUT_STATE{};
 		}
+	}
+
+	/// @brief edge 検出用に prev=curr を 1 段進める。
+	/// @details 1 fixed-update tick の末で呼ぶ。render rate と update rate が独立でも
+	///          「1 物理入力 = 1 just-pressed observation」を保証する。
+	void endTick() noexcept
+	{
+		m_previousState = m_currentState;
 	}
 
 	/// @brief 指定プレイヤーのゲームパッドが接続されているか

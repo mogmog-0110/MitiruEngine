@@ -161,7 +161,9 @@ public:
 	template <typename EventType>
 	void publish(const EventType& event)
 	{
-		std::vector<HandlerBase*> snapshot;
+		// ハンドラの std::function を所有コピーして snapshot する。これにより dispatch 中に
+		// ハンドラが unsubscribe / clear されても、コピーが呼び出し中の寿命を保証する。
+		std::vector<std::function<void(const EventType&)>> callbacks;
 
 		{
 			const std::lock_guard<std::mutex> lock(m_mutex);
@@ -171,17 +173,19 @@ public:
 			{
 				return;
 			}
-			snapshot.reserve(it->second.size());
+			callbacks.reserve(it->second.size());
 			for (const auto& h : it->second)
 			{
-				snapshot.push_back(h.get());
+				auto* typed = static_cast<TypedHandler<EventType>*>(h.get());
+				if (typed->handler) { callbacks.push_back(typed->handler); }
 			}
 		}
 
-		// ロック外でハンドラを呼び出す（デッドロック防止）
-		for (auto* handler : snapshot)
+		// ロック外でハンドラを呼び出す。コピー済みなので dispatch 中の
+		// unsubscribe / clear に対しても安全。
+		for (auto& cb : callbacks)
 		{
-			static_cast<TypedHandler<EventType>*>(handler)->invoke(event);
+			cb(event);
 		}
 	}
 

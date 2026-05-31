@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0091 NEW)
 
 project(MitiruEngine
-	VERSION 0.7.3
+	VERSION 0.7.4
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -292,7 +292,9 @@ if(NOT EMSCRIPTEN)
 find_package(SDL2 2.0.10 QUIET)
 if(SDL2_FOUND)
 	message(STATUS "SDL2 found (${SDL2_VERSION}) - enabling SDL2 backend")
-	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_SDL2=1)
+	# SDL_MAIN_HANDLED: console app (mitiru_host が main を持つ) のため SDL2 に main を奪わせない。
+	# 副次効果として SDL2main.lib への link が不要になる。
+	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_SDL2=1 SDL_MAIN_HANDLED=1)
 	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} SDL2::SDL2)
 endif()
 

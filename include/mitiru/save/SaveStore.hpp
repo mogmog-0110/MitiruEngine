@@ -3,7 +3,11 @@
 /// @file SaveStore.hpp
 /// @brief セーブ/ロードの共通インフラ — atomic 書き込み + FNV-1a hash 破損検知。
 /// @details game が任意の bytes blob を slot 名で保存し、後で同じ slot から読み戻す。
-///          途中 crash でも壊れたファイルが残らないよう temp → rename の atomic 書き込み。
+///          temp → rename の atomic 置換で書き、置換が直接できない OS では旧データを
+///          .bak へ退避してから差し替える (どの時点で crash しても final か .bak の
+///          どちらかに有効データが残り、read() が .bak へフォールバックする)。
+///          注: OS page cache の fsync までは保証しない。ハード電源断では最新書き込みが
+///          失われ得るが、その場合も FNV hash で破損を検知して弾く。
 
 #include <algorithm>
 #include <cstdint>
@@ -83,21 +87,51 @@ public:
 			if (!out) { std::filesystem::remove(tmpPath, ec); return false; }
 		}
 
-		// atomic replace: 既存 final があれば上書きする (rename)。
+		// atomic replace: 既存 final があれば上書きする (POSIX rename / NTFS は置換 atomic)。
 		std::filesystem::rename(tmpPath, finalPath, ec);
 		if (ec)
 		{
-			// 一部 OS では target 存在時 rename が失敗するので、remove して再試行。
-			std::filesystem::remove(finalPath, ec);
-			std::filesystem::rename(tmpPath, finalPath, ec);
+			// target 存在時に直接 rename できない OS 向け: 旧 final を .bak へ退避 →
+			// tmp を final へ → 成功後 .bak を削除。どの時点で中断しても final か
+			// .bak のどちらかに有効データが残り、read() が .bak へフォールバックする。
+			const auto bakPath = m_dir / (detail::sanitize(slot) + ".sav.bak");
+			std::error_code ec2;
+			std::filesystem::remove(bakPath, ec2);             // 古い .bak を掃除
+			std::filesystem::rename(finalPath, bakPath, ec2);  // 旧 final を退避 (無くても可)
+			std::filesystem::rename(tmpPath, finalPath, ec);   // 新内容を本命へ
+			if (!ec) { std::filesystem::remove(bakPath, ec2); }  // 成功したら .bak 破棄
 		}
 		return !ec;
 	}
 
 	/// @brief slot から読み戻す。format/hash が一致しない or 不在なら nullopt。
+	/// @details 本命 (.sav) を試し、無い/壊れている場合は write() の fallback 経路で
+	///          crash した時に残る退避 (.sav.bak) から復旧を試みる。
 	[[nodiscard]] std::optional<std::vector<std::uint8_t>> read(std::string_view slot) const
 	{
-		const auto path = m_dir / (detail::sanitize(slot) + ".sav");
+		const auto base = detail::sanitize(slot);
+		if (auto d = tryReadFile(m_dir / (base + ".sav"))) { return d; }
+		return tryReadFile(m_dir / (base + ".sav.bak"));
+	}
+
+	[[nodiscard]] bool exists(std::string_view slot) const
+	{
+		std::error_code ec;
+		return std::filesystem::exists(m_dir / (detail::sanitize(slot) + ".sav"), ec);
+	}
+
+	[[nodiscard]] bool remove(std::string_view slot)
+	{
+		std::error_code ec;
+		return std::filesystem::remove(m_dir / (detail::sanitize(slot) + ".sav"), ec);
+	}
+
+private:
+	/// @brief 1 ファイルを parse して読む (magic/version/長さ/FNV hash を検証)。
+	/// @return 形式・hash が一致すれば data、不在/破損なら nullopt。
+	[[nodiscard]] static std::optional<std::vector<std::uint8_t>>
+	tryReadFile(const std::filesystem::path& path)
+	{
 		std::ifstream in(path, std::ios::binary);
 		if (!in) { return std::nullopt; }
 		char magic[4];
@@ -122,19 +156,6 @@ public:
 		return data;
 	}
 
-	[[nodiscard]] bool exists(std::string_view slot) const
-	{
-		std::error_code ec;
-		return std::filesystem::exists(m_dir / (detail::sanitize(slot) + ".sav"), ec);
-	}
-
-	[[nodiscard]] bool remove(std::string_view slot)
-	{
-		std::error_code ec;
-		return std::filesystem::remove(m_dir / (detail::sanitize(slot) + ".sav"), ec);
-	}
-
-private:
 	std::filesystem::path m_dir;
 };
 

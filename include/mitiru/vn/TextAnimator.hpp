@@ -85,7 +85,6 @@ class TextAnimator
 	std::size_t m_revealedCount = 0;
 	std::size_t m_totalChars = 0;
 	float m_revealAccumulator = 0.0f;
-	std::mt19937 m_rng{std::random_device{}()};
 
 	// 待機制御
 	std::vector<float> m_charWaitTimes; ///< 各文字の追加待機時間

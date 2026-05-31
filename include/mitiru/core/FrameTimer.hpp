@@ -41,13 +41,17 @@ public:
 	/// @details スパイラルオブデスを防止するためのキャップ値
 	static constexpr float DEFAULT_MAX_DELTA = 0.1f;
 
+	/// @brief スムージング用サンプルバッファの最大サイズ
+	/// @details m_deltaSamples の固定長。コンストラクタの clamp 上限でもある。
+	static constexpr std::size_t MAX_SMOOTH_FRAMES = 64;
+
 	/// @brief コンストラクタ
-	/// @param smoothFrames スムージングに使用するフレーム数
+	/// @param smoothFrames スムージングに使用するフレーム数 ([1, MAX_SMOOTH_FRAMES] に clamp)
 	/// @param maxDelta デルタタイム上限（秒）
 	explicit FrameTimer(
 		std::size_t smoothFrames = DEFAULT_SMOOTH_FRAMES,
 		float maxDelta = DEFAULT_MAX_DELTA) noexcept
-		: m_smoothFrameCount(smoothFrames > 0 ? smoothFrames : 1)
+		: m_smoothFrameCount(std::clamp<std::size_t>(smoothFrames, std::size_t{1}, MAX_SMOOTH_FRAMES))
 		, m_maxDelta(maxDelta)
 	{
 		m_deltaSamples.fill(0.0f);
@@ -190,9 +194,6 @@ public:
 private:
 	using SteadyClock = std::chrono::steady_clock;
 	using TimePoint = SteadyClock::time_point;
-
-	/// @brief スムージング用サンプルバッファの最大サイズ
-	static constexpr std::size_t MAX_SMOOTH_FRAMES = 64;
 
 	std::size_t m_smoothFrameCount;                      ///< スムージングフレーム数
 	float m_maxDelta;                                    ///< デルタタイム上限（秒）

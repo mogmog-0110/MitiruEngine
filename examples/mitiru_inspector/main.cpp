@@ -30,6 +30,8 @@
 #include <mitiru/Mitiru.hpp>
 #include <mitiru/observe/EventLog.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
+#include <mitiru/observe/TimeTravelMarkers.hpp>
+#include <vector>
 
 namespace {
 
@@ -156,6 +158,13 @@ public:
     }
 
 private:
+    /// 狭い窓では 1 段小さい (atlas 整合) font を返す。SDF を滲ませずに行を多く収め、
+    /// 文字が "..." へ切り詰められるのを避ける。閾値より広ければ wide をそのまま使う。
+    [[nodiscard]] float scaledFont(float wide, float narrow) const noexcept
+    {
+        return m_screenW < 420.0f ? narrow : wide;
+    }
+
     void poll()
     {
         if (m_overridePath)
@@ -225,22 +234,27 @@ private:
             sgc::Rectf{0.0f, h - 1.0f, m_screenW, 1.0f},
             sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f});  // #101010 ink ボーダー
 
-        std::string title = "MitiruEngine — inspector";
-        if (!m_currentTitle.empty())
+        // 狭い窓ではフル title が "..." に切れるので、情報量の多い 1 つ
+        // (panel 名 or inspectable) だけに絞る。prefix と source は広い時のみ。
+        std::string title;
+        if (m_screenW < 520.0f)
         {
-            title += "  ·  " + m_currentTitle;
+            title = !m_currentTitle.empty() ? m_currentTitle
+                  : (!m_inspectable.empty() ? m_inspectable : "inspector");
         }
-        else if (!m_inspectable.empty())
+        else
         {
-            title += "  ·  " + m_inspectable;
+            title = "MitiruEngine — inspector";
+            if (!m_currentTitle.empty())     { title += "  ·  " + m_currentTitle; }
+            else if (!m_inspectable.empty()) { title += "  ·  " + m_inspectable; }
+            title += "  ·  " + sourceLabel();
         }
-        title += "  ·  " + sourceLabel();
 
         screen.drawTextInRect(
             sgc::Rectf{12.0f, 8.0f, m_screenW - 24.0f, h - 12.0f},
             title.c_str(),
             sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f},  // silver 上の ink
-            16.0f,
+            scaledFont(16.0f, 12.0f),
             mitiru::Screen::TextAlignH::Left,
             mitiru::Screen::TextAlignV::Top);
     }
@@ -366,12 +380,12 @@ private:
             std::string title = it.value().value("title", it.key());
             const bool hasStateKey = it.value().contains("state");
 
-            // Section header — 強調用に 24px (0.75x atlas)
+            // Section header — 強調用に 24px (0.75x atlas)。狭い窓は 16px へ。
             screen.drawTextInRect(
                 sgc::Rectf{pad, y, bodyWidth, 28.0f},
                 title.c_str(),
                 sgc::Colorf{0.784f, 0.0f, 0.173f, 1.0f},  // #c8002c Saturn red
-                24.0f,
+                scaledFont(24.0f, 16.0f),
                 mitiru::Screen::TextAlignH::Left,
                 mitiru::Screen::TextAlignV::Top);
             y += 32.0f;
@@ -383,8 +397,7 @@ private:
             if (it.key() == "input" && body.is_object())
             {
                 // 専用 compact renderer (held keys / mouse / counts)。
-                // 長い press-count list が次 section に溢れない (= header 重なりの原因だった)
-                // よう 220px band に制限。
+                // 長い press-count list が次 section に溢れないよう 220px band に制限する。
                 const float band  = std::min(m_screenH - y - bottomGuard, 220.0f);
                 const float endY  = drawInputSection(
                     screen, body, pad, y, bodyWidth, y + band);
@@ -400,6 +413,7 @@ private:
             {
                 const float rowH    = 22.0f;
                 const float keyColW = std::min(bodyWidth * 0.42f, 220.0f);
+                const float kvFont = scaledFont(16.0f, 12.0f);
                 for (auto sIt = body.begin(); sIt != body.end(); ++sIt)
                 {
                     if (y + rowH > m_screenH - bottomGuard) { break; }
@@ -407,14 +421,14 @@ private:
                         sgc::Rectf{pad, y, keyColW, rowH},
                         sIt.key().c_str(),
                         sgc::Colorf{0.290f, 0.290f, 0.290f, 1.0f},
-                        16.0f,
+                        kvFont,
                         mitiru::Screen::TextAlignH::Left,
                         mitiru::Screen::TextAlignV::Top);
                     screen.drawTextInRect(
                         sgc::Rectf{pad + keyColW + 8.0f, y, bodyWidth - keyColW - 8.0f, rowH},
                         compactValue(sIt.value()).c_str(),
                         sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f},
-                        16.0f,
+                        kvFont,
                         mitiru::Screen::TextAlignH::Left,
                         mitiru::Screen::TextAlignV::Top);
                     y += rowH + 2.0f;
@@ -466,6 +480,14 @@ private:
         int offset = (len - 1) - idxFromOldest;  // 右端 → 0 (newest)
         offset = std::clamp(offset, 0, len - 1);
 
+        // marker があれば最寄り節目へ snap (「HP が落ちたフレームへ一発で飛ぶ」)。
+        // nearestMarker は header の関数 (TestTimeTravelMarkers が網羅) を再利用。
+        if (const auto* mk = mitiru::observe::nearestMarker(
+                m_ttMarkers, static_cast<std::size_t>(offset)))
+        {
+            offset = static_cast<int>(mk->offsetFromNewest);
+        }
+
         m_ttOffset = offset;
         // 右端 (または算出 newest) は live に戻す。それ以外は scrub。
         m_ttScrubbing = !(frac > 0.97f || offset == 0);
@@ -498,6 +520,22 @@ private:
         const int   n     = static_cast<int>(hist.size());
         const int   nx    = static_cast<int>(xHist.size());
 
+        // 節目 marker を parse。offsetFromNewest は hpHistory と同一 index 空間なので
+        // bar と同じ式で位置でき、click 時の nearestMarker() snap にもそのまま使える。
+        m_ttMarkers.clear();
+        if (s.contains("markers") && s["markers"].is_array())
+        {
+            for (const auto& e : s["markers"])
+            {
+                if (!e.is_object()) { continue; }
+                mitiru::observe::Marker mk;
+                mk.offsetFromNewest = static_cast<std::size_t>(e.value("o", 0));
+                mk.value            = e.value("v", 0.0);
+                mk.kind             = static_cast<mitiru::observe::MarkerKind>(e.value("k", 0));
+                m_ttMarkers.push_back(mk);
+            }
+        }
+
         // ローカル scrub offset を現在の array 長に clamp (history はゲーム進行で増え、
         // 縮小/reset もあり得る)。offset 0 = newest。
         if (n > 0 && m_ttOffset > n - 1) { m_ttOffset = std::max(0, n - 1); }
@@ -520,21 +558,32 @@ private:
 
         // ── ステータス header ─────────────────────────────────────
         char hdr[160];
+        const bool narrow = m_screenW < 420.0f;
         if (m_ttScrubbing)
         {
-            std::snprintf(hdr, sizeof(hdr),
-                "SCRUBBING   sample -%d/%d   HP: %d/%d   X: %.1f",
-                m_ttOffset, std::max(0, n - 1), hpAtScrub, hpMax, xAtScrub);
+            if (narrow)
+            {
+                std::snprintf(hdr, sizeof(hdr),
+                    "SCRUB -%d/%d  HP %d/%d",
+                    m_ttOffset, std::max(0, n - 1), hpAtScrub, hpMax);
+            }
+            else
+            {
+                std::snprintf(hdr, sizeof(hdr),
+                    "SCRUBBING   sample -%d/%d   HP: %d/%d   X: %.1f",
+                    m_ttOffset, std::max(0, n - 1), hpAtScrub, hpMax, xAtScrub);
+            }
         }
         else
         {
-            std::snprintf(hdr, sizeof(hdr),
-                "(live — click graph to scrub · click right edge = live)");
+            std::snprintf(hdr, sizeof(hdr), narrow
+                ? "(live — click to scrub)"
+                : "(live — click graph to scrub · click right edge = live)");
         }
         screen.drawTextInRect(
             sgc::Rectf{x, y, w, 24.0f}, hdr,
             m_ttScrubbing ? accentCol : muteCol,
-            16.0f,
+            scaledFont(16.0f, 12.0f),
             mitiru::Screen::TextAlignH::Left,
             mitiru::Screen::TextAlignV::Top);
         y += 30.0f;
@@ -584,6 +633,21 @@ private:
                 const auto col  = pct <= 0.35f ? dangerCol : accentCol;
                 screen.drawRect(sgc::Rectf{bx, by, std::max(1.0f, barW - 0.5f), h},
                                 sgc::Colorf{col.r, col.g, col.b, 0.65f});
+            }
+
+            // ── 節目 marker tick ──────────────────────────────────────
+            // producer 抽出の marker を bar と同じ index 空間で重ねる。
+            // offsetFromNewest o → 古い順 index = (n-1)-o。kind で色分け。
+            for (const auto& mk : m_ttMarkers)
+            {
+                const int idxFromOldest = (n - 1) - static_cast<int>(mk.offsetFromNewest);
+                if (idxFromOldest < 0 || idxFromOldest >= n) { continue; }
+                const float       tx   = x + barW * (static_cast<float>(idxFromOldest) + 0.5f);
+                const sgc::Colorf tcol = markerColor(mk.kind);
+                screen.drawRect(sgc::Rectf{tx - 0.5f, y, 1.5f, graphH},
+                                sgc::Colorf{tcol.r, tcol.g, tcol.b, 0.9f});
+                // 上端に小さなノッチ — tick をグラフ上で視認しやすく。
+                screen.drawRect(sgc::Rectf{tx - 2.5f, y, 5.0f, 4.0f}, tcol);
             }
 
             // ローカル cursor — array-index 基準。cursorIdx は oldest (左) から数え、
@@ -673,12 +737,23 @@ private:
 
         // ── ヒント footer ──────────────────────────────────────────
         char hintBuf[160];
-        std::snprintf(hintBuf, sizeof(hintBuf),
-            "click graph = scrub   ·   click right edge = live   ·   (observes game, never freezes it)");
+        if (!m_ttMarkers.empty())
+        {
+            std::snprintf(hintBuf, sizeof(hintBuf), narrow
+                ? "%zu markers · click = snap"
+                : "%zu markers   ·   click = snap to nearest   ·   click right edge = live",
+                m_ttMarkers.size());
+        }
+        else
+        {
+            std::snprintf(hintBuf, sizeof(hintBuf), narrow
+                ? "click = scrub · right edge = live"
+                : "click graph = scrub   ·   click right edge = live   ·   (observes game, never freezes it)");
+        }
         (void)capacity;  // header context でのみ使用; 将来用に保持
         screen.drawTextInRect(
             sgc::Rectf{x, y, w, 22.0f}, hintBuf,
-            muteCol, 14.0f,
+            muteCol, scaledFont(14.0f, 12.0f),
             mitiru::Screen::TextAlignH::Left,
             mitiru::Screen::TextAlignV::Top);
     }
@@ -786,6 +861,22 @@ private:
         return {0.290f, 0.290f, 0.290f, 1.0f};  // 中間グレー (restart / その他)
     }
 
+    /// marker kind を Saturn パレットの tick 色へ写像。
+    /// danger 閾値の下抜けだけ red で強調、他は ink / 中間グレー。
+    static sgc::Colorf markerColor(mitiru::observe::MarkerKind k)
+    {
+        using K = mitiru::observe::MarkerKind;
+        switch (k)
+        {
+            case K::ThresholdDown: return {0.784f, 0.0f, 0.173f, 1.0f};  // Saturn red — danger 突入
+            case K::ThresholdUp:   return {0.063f, 0.063f, 0.063f, 1.0f}; // ink
+            case K::LocalMin:
+            case K::LocalMax:      return {0.290f, 0.290f, 0.290f, 1.0f}; // 中間グレー
+            case K::Edge:
+            default:               return {0.063f, 0.063f, 0.063f, 1.0f}; // ink
+        }
+    }
+
     /// 下半分の "Debug Log" — 最新行が下、スクロールで折り返す。
     /// 行は producer の mitiru::debug::println / printf 呼び出し由来。
     void drawDebugLog(mitiru::Screen& screen,
@@ -864,6 +955,7 @@ private:
         }
         const float rowH    = 22.0f;
         const float keyColW = std::min(w * 0.40f, 200.0f);
+        const float kvFont  = scaledFont(16.0f, 12.0f);
         for (auto it = obj.begin(); it != obj.end(); ++it)
         {
             if (y + rowH > m_screenH - 36.0f) { break; }
@@ -871,14 +963,14 @@ private:
                 sgc::Rectf{x, y, keyColW, rowH},
                 it.key().c_str(),
                 sgc::Colorf{0.290f, 0.290f, 0.290f, 1.0f},
-                16.0f,
+                kvFont,
                 mitiru::Screen::TextAlignH::Left,
                 mitiru::Screen::TextAlignV::Top);
             screen.drawTextInRect(
                 sgc::Rectf{x + keyColW + 6.0f, y, w - keyColW - 6.0f, rowH},
                 compactValue(it.value()).c_str(),
                 sgc::Colorf{0.063f, 0.063f, 0.063f, 1.0f},
-                16.0f,
+                kvFont,
                 mitiru::Screen::TextAlignH::Left,
                 mitiru::Screen::TextAlignV::Top);
             y += rowH + 2.0f;
@@ -1042,7 +1134,7 @@ private:
             sgc::Rectf{12.0f, y + 8.0f, m_screenW - 24.0f, h - 12.0f},
             buf,
             sgc::Colorf{0.290f, 0.290f, 0.290f, 1.0f},  // silver 上の text-mute
-            16.0f,
+            scaledFont(16.0f, 12.0f),
             mitiru::Screen::TextAlignH::Left,
             mitiru::Screen::TextAlignV::Top);
     }
@@ -1092,6 +1184,10 @@ private:
     // (純観察; 逆方向 channel なし、freeze なし)。
     bool                                                     m_ttScrubbing{false};  // false = live (newest)
     int                                                      m_ttOffset{0};         // 0 = newest(右), len-1 = oldest(左)
+
+    // producer が publish する「節目」marker (offsetFromNewest は hpHistory と同一 index
+    // 空間)。draw 時に parse し、click 時に nearestMarker() で最寄り節目へ snap する。
+    std::vector<mitiru::observe::Marker>                     m_ttMarkers;
 };
 
 void printUsage()
@@ -1181,6 +1277,10 @@ int main(int argc, char* argv[])
     // "縦 sidebar" geometry を default にする。
     cfg.windowWidth     = 360;
     cfg.windowHeight    = 720;
+    // resize 安全: これ未満には縮められない (WM_GETMINMAXINFO 強制)。文字が潰れて
+    // "..." だらけになる極端な縮小を防ぐ。狭い側は scaledFont() で font も 1 段下げる。
+    cfg.minWindowWidth  = 320;
+    cfg.minWindowHeight = 360;
     cfg.vsync           = true;
     cfg.enableCef       = false;
     cfg.fontAtlasRanges = mitiru::EngineConfig::FontAtlas::Latin;

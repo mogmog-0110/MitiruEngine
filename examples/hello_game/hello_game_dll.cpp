@@ -7,12 +7,12 @@
 //
 // 機能:
 //   gameplay:  移動 / 敵 / HP / 30 秒生存 / 勝敗
-//   終了:      ESC                       → intents.requestStop
-//   リスタート: CEF ボタン (game.restart) → InputSnapshot.actionEvents
-//   HUD push:  view.hud.*                → intents.statePushes
+//   終了:      ESC                       → hud.quit()
+//   リスタート: CEF ボタン (game.restart) → in.action()
+//   HUD push:  view.hud.*                → hud.set()
 //   game feel: trail / 被弾フラッシュ / 敵死亡フェード / 低 HP パルス
-//   asset hot reload: hello_game/assets/ の mtime を polling → intents.jsToExecute
-//   inspector export: gameplay + input + timetravel → intents.exportedInspectables
+//   asset hot reload: hello_game/assets/ の mtime を polling → hud.runJs()
+//   inspector export: gameplay + input + timetravel → hud.watch()
 //                     (sub-window 専用チャネル。ゲーム窓には描画しない)
 //
 // history ring buffer は毎フレーム記録し続け、inspector sub-window が観測する
@@ -30,11 +30,11 @@
 
 #include <nlohmann/json.hpp>
 
-#include <mitiru/core/Screen.hpp>
-#include <mitiru/module/ModuleApi.hpp>
+#include <mitiru/module/Game.hpp>
 #include <mitiru/observe/EventLog.hpp>
 #include <mitiru/observe/Invariant.hpp>
 #include <mitiru/observe/TimeTravelRecorder.hpp>
+#include <mitiru/observe/TimeTravelMarkers.hpp>
 
 #if defined(_WIN32)
 #include <process.h>  // _getpid (EventLog::open 用)
@@ -69,17 +69,6 @@ constexpr int   kEnemyCount    = 4;
 constexpr float kDefaultScreenW = 1280.0f;
 constexpr float kDefaultScreenH = 720.0f;
 constexpr std::size_t kHistoryCap = 300;  // 5 秒 @ 60fps
-
-namespace vk
-{
-constexpr int Escape      = 0x1B;
-constexpr int Left        = 0x25;
-constexpr int Up          = 0x26;
-constexpr int Right       = 0x27;
-constexpr int Down        = 0x28;
-constexpr int A           = 0x41;
-constexpr int B           = 0x42;  // debug: 押しっぱなしで invariant 違反を強制 (demo)
-}  // namespace vk
 
 // ── データ構造 ─────────────────────────────────────────────────────────────
 
@@ -187,6 +176,11 @@ struct HelloGameMemory
 
 	// scratch buffer (毎フレームの heap traffic を避けるため使い回す)
 	std::string scratchJson;
+
+	// エンジンが呼ぶ入口 (実装はヘルパ定義の後)。
+	void init();
+	void update(mitiru::Input in, mitiru::Hud hud, float dt);
+	void draw(mitiru::Screen& screen);
 };
 
 // ── world セットアップ ──────────────────────────────────────────────────
@@ -244,92 +238,6 @@ void resetWorld(HelloGameMemory& mem)
 	mem.lastHitCount  = -1;
 }
 
-// ── intent ヘルパ (DLL → host) ─────────────────────────────────────────────
-
-void pushStateInt(mitiru::module::FrameIntents* intents,
-                  const char* key, int value)
-{
-	const int cap = static_cast<int>(sizeof(intents->statePushes) /
-	                                 sizeof(intents->statePushes[0]));
-	if (intents->statePushCount >= cap) { return; }
-	auto& slot = intents->statePushes[intents->statePushCount++];
-	std::memset(&slot, 0, sizeof(slot));
-	std::strncpy(slot.key, key, sizeof(slot.key) - 1);
-	slot.kind   = 1;
-	slot.intVal = value;
-}
-
-void pushStateBool(mitiru::module::FrameIntents* intents,
-                   const char* key, bool value)
-{
-	const int cap = static_cast<int>(sizeof(intents->statePushes) /
-	                                 sizeof(intents->statePushes[0]));
-	if (intents->statePushCount >= cap) { return; }
-	auto& slot = intents->statePushes[intents->statePushCount++];
-	std::memset(&slot, 0, sizeof(slot));
-	std::strncpy(slot.key, key, sizeof(slot.key) - 1);
-	slot.kind   = 3;
-	slot.intVal = value ? 1 : 0;
-}
-
-void pushStateString(mitiru::module::FrameIntents* intents,
-                     const char* key, const std::string& value)
-{
-	const int cap = static_cast<int>(sizeof(intents->statePushes) /
-	                                 sizeof(intents->statePushes[0]));
-	if (intents->statePushCount >= cap) { return; }
-	auto& slot = intents->statePushes[intents->statePushCount++];
-	std::memset(&slot, 0, sizeof(slot));
-	std::strncpy(slot.key, key, sizeof(slot.key) - 1);
-	slot.kind = 4;
-	std::strncpy(slot.strVal, value.c_str(), sizeof(slot.strVal) - 1);
-}
-
-// 論理 id で one-shot SE を要求 (ADR 0008)。host が id を assets/audio/<id>.*
-// に解決して再生する; game は mixer を持たない。
-void pushSoundSE(mitiru::module::FrameIntents* intents, const char* id)
-{
-	const int cap = static_cast<int>(sizeof(intents->soundIntents) /
-	                                 sizeof(intents->soundIntents[0]));
-	if (intents->soundIntentCount >= cap) { return; }
-	auto& s = intents->soundIntents[intents->soundIntentCount++];
-	std::memset(&s, 0, sizeof(s));
-	std::strncpy(s.id, id, sizeof(s.id) - 1);
-	s.category = 0;     // SE
-	s.volume   = 1.0f;
-}
-
-void exportInspectable(mitiru::module::FrameIntents* intents,
-                       const char* name, const char* title,
-                       const std::string& jsonStr)
-{
-	const int cap = static_cast<int>(sizeof(intents->exportedInspectables) /
-	                                 sizeof(intents->exportedInspectables[0]));
-	if (intents->exportedInspectableCount >= cap) { return; }
-	auto& slot = intents->exportedInspectables[intents->exportedInspectableCount++];
-	std::memset(&slot, 0, sizeof(slot));
-	std::strncpy(slot.name,  name,  sizeof(slot.name)  - 1);
-	std::strncpy(slot.title, title, sizeof(slot.title) - 1);
-	const auto cap_json = sizeof(slot.json) - 1;
-	const auto n = jsonStr.size() < cap_json ? jsonStr.size() : cap_json;
-	if (n > 0) { std::memcpy(slot.json, jsonStr.data(), n); }
-	slot.json[n] = '\0';
-	slot.jsonLen = static_cast<std::int32_t>(n);
-}
-
-void requestJsExec(mitiru::module::FrameIntents* intents,
-                   const std::string& code)
-{
-	const std::int32_t cap = static_cast<std::int32_t>(
-		sizeof(intents->jsToExecute) / sizeof(intents->jsToExecute[0]));
-	const std::int32_t maxLen = cap > 0 ? cap - 1 : 0;
-	const std::int32_t n = std::min<std::int32_t>(
-		static_cast<std::int32_t>(code.size()), maxLen);
-	if (n > 0) { std::memcpy(intents->jsToExecute, code.data(), n); }
-	intents->jsToExecute[n] = '\0';
-	intents->jsToExecuteLen = n;
-}
-
 // ── HUD push (state diff → 最小 intent traffic) ───────────────────────────
 //
 // game 窓に届くのは gameplay HUD 値のみ: HP / SURVIVE タイマー / 勝敗モーダル /
@@ -351,40 +259,39 @@ std::string repeatGlyph(const char* glyph, int count)
 	return out;
 }
 
-void pushHudDelta(HelloGameMemory& mem,
-                  mitiru::module::FrameIntents* intents)
+void pushHudDelta(HelloGameMemory& mem, mitiru::Hud hud)
 {
 	if (mem.hp != mem.lastHp)
 	{
-		pushStateInt(intents, "view.hud.hp", mem.hp);
+		hud.set("view.hud.hp", mem.hp);
 		mem.lastHp = mem.hp;
 
 		// 新 HP からブロック bar を再構成 (maxHp は定数 kMaxHp)。
 		const float pct    = std::clamp(static_cast<float>(mem.hp) / kMaxHp, 0.0f, 1.0f);
 		const int   filled = static_cast<int>(std::lround(pct * kHpBarWidth));
-		pushStateString(intents, "view.hud.hpFill",  repeatGlyph("█", filled));
-		pushStateString(intents, "view.hud.hpEmpty", repeatGlyph("░", kHpBarWidth - filled));
-		pushStateBool(intents, "view.hud.hpLow", pct <= 0.35f);
+		hud.set("view.hud.hpFill",  repeatGlyph("█", filled).c_str());
+		hud.set("view.hud.hpEmpty", repeatGlyph("░", kHpBarWidth - filled).c_str());
+		hud.set("view.hud.hpLow", pct <= 0.35f);
 	}
 	if (mem.lastMaxHp != kMaxHp)
 	{
-		pushStateInt(intents, "view.hud.maxHp", kMaxHp);
+		hud.set("view.hud.maxHp", kMaxHp);
 		mem.lastMaxHp = kMaxHp;
 	}
 	const int t = static_cast<int>(std::ceil(mem.remaining));
 	if (t != mem.lastTimeInt)
 	{
-		pushStateInt(intents, "view.hud.time", t);
+		hud.set("view.hud.time", t);
 		mem.lastTimeInt = t;
 	}
 	if (mem.gameOver != mem.lastGameOver)
 	{
-		pushStateBool(intents, "view.hud.gameOver", mem.gameOver);
+		hud.set("view.hud.gameOver", mem.gameOver);
 		mem.lastGameOver = mem.gameOver;
 	}
 	if (mem.outcome != mem.lastOutcome)
 	{
-		pushStateString(intents, "view.hud.outcome", mem.outcome);
+		hud.set("view.hud.outcome", mem.outcome.c_str());
 		mem.lastOutcome = mem.outcome;
 	}
 	if (mem.hitCount != mem.lastHitCount)
@@ -392,17 +299,16 @@ void pushHudDelta(HelloGameMemory& mem,
 		// 本物の被弾 (-1 からの reset エッジではない) は hit SE 再生 (ADR 0008)。
 		if (mem.hitCount > mem.lastHitCount && mem.lastHitCount >= 0)
 		{
-			pushSoundSE(intents, "hit");
+			hud.play("hit");
 		}
-		pushStateInt(intents, "view.hud.hitCount", mem.hitCount);
+		hud.set("view.hud.hitCount", mem.hitCount);
 		mem.lastHitCount = mem.hitCount;
 	}
 }
 
 // ── inspector export (DLL → host SharedSnapshot、sub-window チャネル) ──────
 
-void exportGameplayInspectable(HelloGameMemory& mem,
-                               mitiru::module::FrameIntents* intents)
+void exportGameplayInspectable(HelloGameMemory& mem, mitiru::Hud hud)
 {
 	nlohmann::json j = {
 		{"hp",         mem.hp},
@@ -415,28 +321,26 @@ void exportGameplayInspectable(HelloGameMemory& mem,
 		{"enemyCount", static_cast<int>(mem.enemies.size())},
 	};
 	mem.scratchJson = j.dump();
-	exportInspectable(intents, "gameplay", "Gameplay state", mem.scratchJson);
+	hud.watch("gameplay", "Gameplay state", mem.scratchJson.c_str());
 }
 
 /// time-travel inspectable: inspector sub-window がローカルに scrub するための
 /// HP + X 履歴系列。game は scrub しない — raw な ring buffer 内容を publish する
 /// だけ。scrub カーソルは inspector が自分側で保持する。
-void exportTimeTravelInspectable(HelloGameMemory& mem,
-                                  mitiru::module::FrameIntents* intents)
+void exportTimeTravelInspectable(HelloGameMemory& mem, mitiru::Hud hud)
 {
 	nlohmann::json hpHistory = nlohmann::json::array();
 	nlohmann::json xHistory  = nlohmann::json::array();
-	// 古い順 (graph 左端) から新しい順 (末尾=現在) へ。
-	//
-	// serialize 後の JSON が FrameIntents inspectable buffer (3968 B) を十分下回る
-	// よう最大 kGraphSamples 点へダウンサンプル。hp+x を 300 raw frame 分だと
-	// ~4 KB に serialize されて overflow し JSON が壊れる (inspector で "DLL
-	// produced invalid JSON")。典型的な inspector 幅の graph には 96 サンプルで十分。
+	std::vector<double> hpSeries;  // marker 抽出用 — hpHistory と同一 index 空間
+	// 古い順 (graph 左端) から新しい順 (末尾=現在) へ。serialize 後の JSON が
+	// FrameIntents inspectable buffer (3968 B) に収まるよう最大 kGraphSamples 点へ
+	// ダウンサンプルする (300 raw frame 分は大きすぎる)。inspector 幅には 96 で十分。
 	constexpr std::size_t kGraphSamples = 96;
 	const std::size_t n = mem.history.size();
 	if (n > 0)
 	{
 		const std::size_t count = n < kGraphSamples ? n : kGraphSamples;
+		hpSeries.reserve(count);
 		for (std::size_t k = 0; k < count; ++k)
 		{
 			// サンプル k (0..count-1) を history index (古い順) へマップ。
@@ -450,28 +354,55 @@ void exportTimeTravelInspectable(HelloGameMemory& mem,
 				hpHistory.push_back(s->hp);
 				// 小数 1 桁で JSON をコンパクトに (6 桁 float の spam を防ぐ)。
 				xHistory.push_back(std::round(s->playerPos.x * 10.0f) / 10.0f);
+				hpSeries.push_back(static_cast<double>(s->hp));
 			}
 		}
 	}
+
+	// HP 系列から「節目」を抽出: 値変化 (被弾 / 回復) と danger 閾値跨ぎ。
+	// downsample 済み hpHistory と同じ系列で計算するので marker の offsetFromNewest が
+	// そのまま graph の bar index に対応する (full ring との index ズレを構造で排除)。
+	nlohmann::json markers = nlohmann::json::array();
+	if (hpSeries.size() >= 2)
+	{
+		mitiru::observe::TimeTravelRecorder<double> markerRing(hpSeries.size());
+		for (const double v : hpSeries) { markerRing.push(v); }
+		mitiru::observe::MarkerOpts opts;
+		opts.wantEdges    = true;
+		opts.epsilon      = 0.5;  // 整数 HP: 1 以上の変化だけ edge に
+		opts.hasThreshold = true;
+		opts.threshold    = static_cast<double>(kMaxHp) * 0.35;  // danger ライン
+		opts.maxMarkers   = 24;
+		const auto ms = mitiru::observe::extractMarkers(
+			markerRing, [](double v) { return v; }, opts);
+		for (const auto& m : ms)
+		{
+			markers.push_back({
+				{"o", m.offsetFromNewest},
+				{"v", m.value},
+				{"k", static_cast<int>(m.kind)},
+			});
+		}
+	}
+
 	nlohmann::json j = {
 		{"capacity",  static_cast<int>(mem.history.size())},
 		{"hpMax",     kMaxHp},
 		{"hpHistory", hpHistory},
 		{"xHistory",  xHistory},
+		{"markers",   markers},
 	};
 	mem.scratchJson = j.dump();
-	exportInspectable(intents, "timetravel", "Time travel", mem.scratchJson);
+	hud.watch("timetravel", "Time travel", mem.scratchJson.c_str());
 }
 
-void exportInputInspectable(HelloGameMemory& mem,
-                            const mitiru::module::InputSnapshot* input,
-                            mitiru::module::FrameIntents* intents)
+void exportInputInspectable(HelloGameMemory& mem, mitiru::Input in, mitiru::Hud hud)
 {
 	// 押下中のキー (このフレームで down)
 	nlohmann::json heldKeys = nlohmann::json::array();
 	for (int vk = 1; vk < 256; ++vk)
 	{
-		if (input->keysDown[vk])
+		if (in.raw()->keysDown[vk])
 		{
 			heldKeys.push_back("VK_" + std::to_string(vk));
 		}
@@ -479,9 +410,9 @@ void exportInputInspectable(HelloGameMemory& mem,
 
 	// マウス state
 	nlohmann::json mouseBtns = nlohmann::json::array();
-	if (input->mouseButtonsDown[0]) mouseBtns.push_back("L");
-	if (input->mouseButtonsDown[1]) mouseBtns.push_back("R");
-	if (input->mouseButtonsDown[2]) mouseBtns.push_back("M");
+	if (in.raw()->mouseButtonsDown[0]) mouseBtns.push_back("L");
+	if (in.raw()->mouseButtonsDown[1]) mouseBtns.push_back("R");
+	if (in.raw()->mouseButtonsDown[2]) mouseBtns.push_back("M");
 
 	// 直近の press 履歴 (memory 上の rolling buffer)
 	nlohmann::json history = nlohmann::json::array();
@@ -495,7 +426,7 @@ void exportInputInspectable(HelloGameMemory& mem,
 	for (int vk = 1; vk < 256; ++vk)
 	{
 		const int cnt = mem.pressCounts[vk];
-		const bool held = input->keysDown[vk];
+		const bool held = in.raw()->keysDown[vk];
 		if (cnt == 0 && !held) { continue; }
 		stats.push_back({
 			{"name",  "VK_" + std::to_string(vk)},
@@ -506,41 +437,23 @@ void exportInputInspectable(HelloGameMemory& mem,
 
 	nlohmann::json j = {
 		{"held",      heldKeys},
-		{"mouseX",    input->mouseX},
-		{"mouseY",    input->mouseY},
+		{"mouseX",    in.mouseX()},
+		{"mouseY",    in.mouseY()},
 		{"mouseBtns", mouseBtns},
 		{"history",   history},
 		{"stats",     stats},
 	};
 	mem.scratchJson = j.dump();
-	exportInspectable(intents, "input", "Input", mem.scratchJson);
-}
-
-// ── action event 処理 (CEF → DLL) ─────────────────────────────────────────
-
-void processActionEvents(HelloGameMemory& mem,
-                         const mitiru::module::InputSnapshot* input)
-{
-	for (std::int32_t i = 0; i < input->actionEventCount; ++i)
-	{
-		const auto& ev = input->actionEvents[i];
-		const std::string name{ev.name};
-		if (name == "game.restart")
-		{
-			resetWorld(mem);
-			mem.eventLog.emit(mem.frame, "restart", nlohmann::json::object());
-		}
-	}
+	hud.watch("input", "Input", mem.scratchJson.c_str());
 }
 
 // ── input monitor の維持 (press 履歴 + 回数) ──────────────────────────────
 
-void pollInputDebug(HelloGameMemory& mem,
-                    const mitiru::module::InputSnapshot* input)
+void pollInputDebug(HelloGameMemory& mem, mitiru::Input in)
 {
 	for (int vk = 1; vk < 256; ++vk)
 	{
-		if (input->keysJustPressed[vk])
+		if (in.raw()->keysJustPressed[vk])
 		{
 			mem.keyHistory.push_front({"VK_" + std::to_string(vk), mem.totalTime});
 			while (mem.keyHistory.size() > 16) { mem.keyHistory.pop_back(); }
@@ -562,8 +475,7 @@ void captureSnapshot(HelloGameMemory& mem)
 
 // ── asset hot reload (DLL → intent 経由で CEF JS) ─────────────────────────
 
-void pollAssetHotReload(HelloGameMemory& mem,
-                        mitiru::module::FrameIntents* intents)
+void pollAssetHotReload(HelloGameMemory& mem, mitiru::Hud hud)
 {
 	++mem.assetPollTick;
 	if (mem.assetPollTick < 60) { return; }  // 約 1 秒 @ 60fps
@@ -595,7 +507,7 @@ void pollAssetHotReload(HelloGameMemory& mem,
 
 	if (mem.assetMtimeInitialized && newest > mem.lastAssetMtime)
 	{
-		requestJsExec(intents, "setTimeout(function(){location.reload();}, 80);");
+		hud.runJs("setTimeout(function(){location.reload();}, 80);");
 	}
 	mem.lastAssetMtime          = newest;
 	mem.assetMtimeInitialized   = true;
@@ -603,8 +515,7 @@ void pollAssetHotReload(HelloGameMemory& mem,
 
 // ── gameplay update ─────────────────────────────────────────────────────
 
-void movePlayer(HelloGameMemory& mem,
-                const mitiru::module::InputSnapshot* input, float dt)
+void movePlayer(HelloGameMemory& mem, mitiru::Input in, float dt)
 {
 	// マウス native 操作: player は kPlayerSpeed でカーソルを追う。inspector
 	// sub-window がマウス駆動なので、debug 中に game (キー) と inspector (マウス)
@@ -615,14 +526,14 @@ void movePlayer(HelloGameMemory& mem,
 	// 無いと spawn 時に player が左上隅へ突進する。(0,0) は「まだカーソル無し」と
 	// 扱い、実際にマウスを動かすまで位置を保持 (clamp により真の隅 target は
 	// どのみち到達不能なので失うものは無い)。
-	if (input->mouseX <= 0.5f && input->mouseY <= 0.5f)
+	if (in.mouseX() <= 0.5f && in.mouseY() <= 0.5f)
 	{
 		if (!mem.trail.empty()) { mem.trail.pop_back(); }
 		return;
 	}
 
-	const float targetX = input->mouseX;
-	const float targetY = input->mouseY;
+	const float targetX = in.mouseX();
+	const float targetY = in.mouseY();
 	float dx = targetX - mem.player.x;
 	float dy = targetY - mem.player.y;
 	const float dist = std::sqrt(dx * dx + dy * dy);
@@ -756,12 +667,10 @@ void tickTimer(HelloGameMemory& mem, float dt)
 	}
 }
 
-// ── module callback 実装 ───────────────────────────────────────────────────
+// ── game ロジック実装 (free helper) ───────────────────────────────────────
 
-void hello_on_init(void* memory)
+void initGame(HelloGameMemory& mem)
 {
-	if (memory == nullptr) { return; }
-	auto& mem = *static_cast<HelloGameMemory*>(memory);
 	mem.enemies.clear();  // world は初回 update で立ち上がる
 
 	// append-only な event timeline を open (run ごとに新規)。PID スコープなので
@@ -794,32 +703,32 @@ void hello_on_init(void* memory)
 	}
 }
 
-void hello_on_update(void* memory, float dt,
-                     const mitiru::module::InputSnapshot* input,
-                     mitiru::module::FrameIntents* intents)
+void stepGame(HelloGameMemory& mem, mitiru::Input in, mitiru::Hud hud, float dt)
 {
-	if (memory == nullptr || input == nullptr || intents == nullptr) { return; }
-	auto& mem = *static_cast<HelloGameMemory*>(memory);
-
 	mem.totalTime += dt;  // 実時間
 	++mem.frame;          // event timeline + invariant check の時間軸
 
 	if (mem.enemies.empty()) { spawnEnemies(mem); }
 
 	// ESC で終了 (game 窓が公開する唯一の meta-control)。
-	if (input->keysJustPressed[vk::Escape]) { intents->requestStop = 1; }
+	if (in.pressed(mitiru::Key::Escape)) { hud.quit(); }
 
 	// debug 専用: [B] 押しっぱなしで invariant 違反 (hp < 0) を強制し、赤 overlay
 	// + invariant_violation event を demo できる。離せば正常値へ復帰。これは demo
 	// 用の仕掛けであり gameplay ではない。
-	const bool breakNow = input->keysDown[vk::B];
+	const bool breakNow = in.down(mitiru::Key::B);
 	if (breakNow) { mem.hp = -10; }
 	else if (mem.forceInvariantBreak && mem.hp < 0) { mem.hp = kMaxHp; }
 	mem.forceInvariantBreak = breakNow;
 
-	processActionEvents(mem, input);
-	pollInputDebug(mem, input);
-	pollAssetHotReload(mem, intents);
+	// リスタート (CEF ボタン game.restart)。
+	if (in.action("game.restart"))
+	{
+		resetWorld(mem);
+		mem.eventLog.emit(mem.frame, "restart", nlohmann::json::object());
+	}
+	pollInputDebug(mem, in);
+	pollAssetHotReload(mem, hud);
 
 	// 宣言済み invariant を毎フレーム GameMemory に対して check。違反は event
 	// timeline (機械可読) と recent() (window) に着地する。
@@ -833,28 +742,25 @@ void hello_on_update(void* memory, float dt,
 	if (++mem.pushTick >= 6)
 	{
 		mem.pushTick = 0;
-		pushHudDelta(mem, intents);
-		exportGameplayInspectable(mem, intents);
-		exportInputInspectable(mem, input, intents);
-		exportTimeTravelInspectable(mem, intents);
+		pushHudDelta(mem, hud);
+		exportGameplayInspectable(mem, hud);
+		exportInputInspectable(mem, in, hud);
+		exportTimeTravelInspectable(mem, hud);
 	}
 
 	if (mem.gameOver) { return; }
 
-	movePlayer(mem, input, gameplayDt);
+	movePlayer(mem, in, gameplayDt);
 	moveEnemies(mem, gameplayDt);
 	tickGameFeelTimers(mem, gameplayDt);
 	tickTimer(mem, gameplayDt);
 	captureSnapshot(mem);
 }
 
-void hello_on_draw(void* memory, mitiru::Screen* screen)
+void drawGame(HelloGameMemory& mem, mitiru::Screen& screen)
 {
-	if (memory == nullptr || screen == nullptr) { return; }
-	auto& mem = *static_cast<HelloGameMemory*>(memory);
-
-	mem.screenW = static_cast<float>(screen->width());
-	mem.screenH = static_cast<float>(screen->height());
+	mem.screenW = static_cast<float>(screen.width());
+	mem.screenH = static_cast<float>(screen.height());
 
 	// 形状変化で中央へ戻す — resize 後に player が端へ貼り付くのを防ぐ。閾値で
 	// per-pixel な WM_SIZE churn を避ける (engine 側で既に deferred だが防御的に)。
@@ -875,7 +781,7 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 	// Mitiru Saturn palette — silver gray + sober red + ink。
 	// bg は engine-level (cfg.backgroundColor)、gameplay rect は Saturn primary
 	// (ink player) + danger (Saturn red enemy) token を使う。
-	screen->clear(sgc::Colorf{0.784f, 0.784f, 0.784f, 1.0f});  // #c8c8c8 (silver)
+	screen.clear(sgc::Colorf{0.784f, 0.784f, 0.784f, 1.0f});  // #c8c8c8 (silver)
 
 	// ── player trail (古い順 = 最も暗い)
 	if (!mem.trail.empty())
@@ -890,14 +796,14 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 			const float scale = 0.55f + 0.30f * t;  // 古いほど小さく
 			const float sz = kPlayerSize * scale;
 			// trail = player の ink black に alpha 減衰 (#101010)。
-			screen->drawRect(
+			screen.drawRect(
 				sgc::Rectf{p.x - sz * 0.5f, p.y - sz * 0.5f, sz, sz},
 				sgc::Colorf{0.063f, 0.063f, 0.063f, a});
 		}
 	}
 
 	// player = ink black (#101010) — silver bg に対し中立な「操作対象」。
-	screen->drawRect(
+	screen.drawRect(
 		sgc::Rectf{mem.player.x - kPlayerSize * 0.5f,
 		           mem.player.y - kPlayerSize * 0.5f,
 		           kPlayerSize, kPlayerSize},
@@ -908,7 +814,7 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 		if (enemy.alive)
 		{
 			// enemy = Saturn red (#c8002c) — 唯一の identity accent = danger。
-			screen->drawRect(
+			screen.drawRect(
 				sgc::Rectf{enemy.pos.x - kEnemySize * 0.5f,
 				           enemy.pos.y - kEnemySize * 0.5f,
 				           kEnemySize, kEnemySize},
@@ -921,7 +827,7 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 			const float a = t * 0.7f;
 			const float sz = kEnemySize * (1.0f + (1.0f - t) * 0.8f);
 			// 死亡 fade = Saturn red に alpha 減衰。
-			screen->drawRect(
+			screen.drawRect(
 				sgc::Rectf{enemy.deathPos.x - sz * 0.5f,
 				           enemy.deathPos.y - sz * 0.5f,
 				           sz, sz},
@@ -934,7 +840,7 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 	{
 		const float a = std::min(0.32f, mem.hitFlashT * 1.8f);
 		// 被弾フラッシュ = Saturn red の wash overlay。
-		screen->drawRect(
+		screen.drawRect(
 			sgc::Rectf{0.0f, 0.0f, mem.screenW, mem.screenH},
 			sgc::Colorf{0.784f, 0.0f, 0.173f, a});
 	}
@@ -948,7 +854,7 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 	{
 		const float bandH = 30.0f;
 		// 上端に Saturn red の band。
-		screen->drawRect(
+		screen.drawRect(
 			sgc::Rectf{0.0f, 0.0f, mem.screenW, bandH},
 			sgc::Colorf{0.784f, 0.0f, 0.173f, 0.92f});
 
@@ -960,7 +866,7 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 			label += "  +" + std::to_string(mem.invariants.recent().size() - 1);
 		}
 		// 赤地に白文字 — band に対して読める。
-		screen->drawTextInRect(
+		screen.drawTextInRect(
 			sgc::Rectf{10.0f, 5.0f, mem.screenW - 20.0f, bandH - 8.0f},
 			label.c_str(),
 			sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f},
@@ -970,48 +876,14 @@ void hello_on_draw(void* memory, mitiru::Screen* screen)
 	}
 }
 
-void hello_on_shutdown(void* memory)
-{
-	if (memory == nullptr) { return; }
-	auto& mem = *static_cast<HelloGameMemory*>(memory);
-	(void)mem;
-}
+// ── 入口メソッドの実装 (ヘルパ定義の後) ─────────────────────────────────────
+void HelloGameMemory::init() { initGame(*this); }
+void HelloGameMemory::update(mitiru::Input in, mitiru::Hud hud, float dt) { stepGame(*this, in, hud, dt); }
+void HelloGameMemory::draw(mitiru::Screen& screen) { drawGame(*this, screen); }
 
 }  // namespace hello_game
 
-// ── DLL export ─────────────────────────────────────────────────────────────
-
-extern "C"
-{
-
-#if defined(_WIN32)
-#define HELLO_DLL_EXPORT __declspec(dllexport)
-#else
-#define HELLO_DLL_EXPORT __attribute__((visibility("default")))
-#endif
-
-HELLO_DLL_EXPORT
-void mitiru_module_load(mitiru::module::ModuleApi* api, void** memory)
-{
-	if (api == nullptr || memory == nullptr) { return; }
-
-	// 初回 load: 永続 state を確保。reload 時は host が同じ pointer を渡すので
-	// gameplay state は code swap を生き延びる (ADR 0005)。
-	if (*memory == nullptr)
-	{
-		*memory = new hello_game::HelloGameMemory{};
-	}
-
-	api->version     = mitiru::module::kCurrentApiVersion;
-	api->on_init     = &hello_game::hello_on_init;
-	api->on_update   = &hello_game::hello_on_update;
-	api->on_draw     = &hello_game::hello_on_draw;
-	api->on_shutdown = &hello_game::hello_on_shutdown;
-}
-
-HELLO_DLL_EXPORT
-void mitiru_module_unload(void* /*memory*/)
-{
-}
-
-}  // extern "C"
+// これ 1 行で DLL の入口が出来る。HelloGameMemory は std::vector/deque/string/EventLog を
+// 持つ非 flat POD なので registerGame は is_trivially_copyable で memorySize 申告を自動 skip し、
+// host は memorySize=0 として観測 view.* JSON を記録する (ADR 0013)。
+MITIRU_GAME(hello_game::HelloGameMemory)

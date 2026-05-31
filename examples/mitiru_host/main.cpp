@@ -163,6 +163,8 @@ struct CliArgs
 	std::string           recordPath;          // --record <f>: .mtrr を書き出す
 	std::string           replayPath;          // --replay-test <f>: ヘッドレス再実行
 	std::string           expectPath;          // --expect <f>: 最終 view.* 状態を検証
+	std::string           stateDiffA;          // --state-diff <a> <b>: 2 録画の分岐 frame を報告
+	std::string           stateDiffB;
 	std::string           fontMode;            // --font none|latin|kana|japanese (空=none=フォント skip)
 	bool                  loFi = false;        // --lofi: 低解像+量子化+Bayerディザ
 	int                   loFiW = 320, loFiH = 240; // --lofi-size WxH
@@ -203,6 +205,10 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--expect")
 		{
 			if (i + 1 < argc) { out.expectPath = argv[++i]; }
+		}
+		else if (a == "--state-diff")
+		{
+			if (i + 2 < argc) { out.stateDiffA = argv[++i]; out.stateDiffB = argv[++i]; }
 		}
 		else if (a == "--font")
 		{
@@ -488,6 +494,26 @@ int main(int argc, char* argv[])
 	const CliArgs args = parseArgs(argc, argv);
 	if (args.helpRequested) { printUsage(); return args.dllPath.empty() ? 1 : 0; }
 
+	// --state-diff A B: DLL 不要。2 つの .mtrr の GameMemory blob を byte 比較し、
+	// 「同入力・異コードでどの frame から分岐したか」を 1 行 JSON で報告する (ADR 0013)。
+	if (!args.stateDiffA.empty() && !args.stateDiffB.empty())
+	{
+		const auto d = mitiru::replay::Player::diffState(args.stateDiffA, args.stateDiffB);
+		if (d.totalFrames == 0)
+		{
+			std::fprintf(stderr, "mitiru_host: --state-diff: 比較不能 (header/形式エラー or 空録画)\n");
+			return 2;
+		}
+		if (d.diverged)
+		{
+			std::fprintf(stdout, "{\"diverged\":true,\"firstDivergentFrame\":%u,\"totalFrames\":%u}\n",
+			             d.firstDivergentFrame, d.totalFrames);
+			return 1;
+		}
+		std::fprintf(stdout, "{\"diverged\":false,\"totalFrames\":%u}\n", d.totalFrames);
+		return 0;
+	}
+
 	std::error_code ec;
 	if (!std::filesystem::exists(args.dllPath, ec) || ec)
 	{
@@ -500,6 +526,15 @@ int main(int argc, char* argv[])
 	cfg.title           = "mitiru_host";
 	cfg.windowWidth     = args.widthOverride  > 0 ? args.widthOverride  : 1280;
 	cfg.windowHeight    = args.heightOverride > 0 ? args.heightOverride :  720;
+	// resize 安全: 要求サイズの半分を floor にする (極端な潰れだけ防ぎ、指定サイズは
+	// 超えない)。game 窓 / launcher / 760x80 の companion bar を同じ host が起動するので、
+	// 固定値でなく要求サイズ基準にして「floor > 指定」で窓が開けない事態を避ける。
+	{
+		const int floorW = cfg.windowWidth  / 2;
+		const int floorH = cfg.windowHeight / 2;
+		cfg.minWindowWidth  = floorW > 200 ? floorW : 200;
+		cfg.minWindowHeight = floorH > 48  ? floorH : 48;
+	}
 	cfg.vsync           = true;
 	cfg.enableCef       = true;
 	// EngineHttpServer (ADR 0011): --http-port > 0 か --console で HTTP listen を開始。
@@ -646,7 +681,8 @@ int main(int argc, char* argv[])
 
 	if (!args.recordPath.empty())
 	{
-		if (!recorder.open(args.recordPath))
+		// header の seed と毎フレーム snapshot の rngSeed を一致させる (ADR 0012)。
+		if (!recorder.open(args.recordPath, cfg.randomSeed))
 		{
 			std::fprintf(stderr, "mitiru_host: cannot open record file: %s\n",
 			             args.recordPath.c_str());
@@ -657,12 +693,33 @@ int main(int argc, char* argv[])
 			[&recorder, &frameIdx, &engine](const mitiru::module::InputSnapshot& snap,
 			                                const mitiru::module::FrameIntents&)
 			{
-				std::string blob;
-				if (auto* store = engine.moduleStateStore()) { blob = store->snapshotJson(); }
-				recorder.record(frameIdx++, snap, blob.data(),
-				                static_cast<std::uint32_t>(blob.size()));
+				// GameMemory が申告されていれば「唯一の state」を opaque にそのまま記録する
+				// (ADR 0013、bit-exact diffState 用)。未申告 (v≤8) は観測 view.* JSON に
+				// フォールバック。
+				const std::uint32_t memSize = engine.moduleMemorySize();
+				const void*         mem     = engine.moduleMemory();
+				if (memSize > 0 && mem != nullptr)
+				{
+					recorder.record(frameIdx++, snap, mem, memSize);
+				}
+				else
+				{
+					std::string blob;
+					if (auto* store = engine.moduleStateStore()) { blob = store->snapshotJson(); }
+					recorder.record(frameIdx++, snap, blob.data(),
+					                static_cast<std::uint32_t>(blob.size()));
+				}
 			};
 	}
+
+	// GameMemory 再現検証 (flat POD game のみ; ADR 0013)。replay 中に on_update 後の
+	// live GameMemory を記録値と byte 照合し、単一 state channel を test oracle にする。
+	std::vector<std::uint8_t> recordedMem;
+	std::uint32_t replayFrame     = 0;
+	std::uint32_t memDivergeFrame = 0;
+	bool          memDiverged     = false;
+	bool          memCompared     = false;
+	bool          frameHasRecord  = false;  // この frame に対応する記録 state を読めたか (EOF frame 除外)
 
 	if (!args.replayPath.empty())
 	{
@@ -675,17 +732,40 @@ int main(int argc, char* argv[])
 		cfg.enableCef = false;   // ヘッドレス決定的再実行
 		cfg.headless  = true;
 		cfg.moduleInputOverride =
-			[&player, &engine](mitiru::module::InputSnapshot& snap) -> bool
+			[&player, &engine, &recordedMem, &frameHasRecord](mitiru::module::InputSnapshot& snap) -> bool
 			{
-				mitiru::module::InputSnapshot rec{};
 				std::uint32_t fidx = 0;
-				if (!player.readNext(rec, fidx))   // state blob は破棄。入力のみ再投入する
+				mitiru::module::InputSnapshot rec{};
+				if (!player.readNextWithState(rec, recordedMem, fidx))  // 記録 GameMemory を退避
 				{
+					frameHasRecord = false;
 					engine.requestStop();   // EOF → ヘッドレスループを終了
 					return false;
 				}
+				frameHasRecord = true;
 				snap = rec;
 				return true;
+			};
+		// on_update 後の live GameMemory を退避した記録値と照合する (frame 整合済み)。
+		// EOF frame は記録対応が無いので比較しない (stale な recordedMem との誤検出を防ぐ)。
+		cfg.onModuleFrameRecorded =
+			[&engine, &recordedMem, &replayFrame, &memDivergeFrame, &memDiverged, &memCompared, &frameHasRecord]
+			(const mitiru::module::InputSnapshot&, const mitiru::module::FrameIntents&)
+			{
+				if (!frameHasRecord) { return; }
+				const std::uint32_t memSize = engine.moduleMemorySize();
+				const void*         mem     = engine.moduleMemory();
+				if (memSize > 0 && mem != nullptr &&
+				    recordedMem.size() == static_cast<std::size_t>(memSize))
+				{
+					memCompared = true;
+					if (!memDiverged && std::memcmp(mem, recordedMem.data(), memSize) != 0)
+					{
+						memDiverged     = true;
+						memDivergeFrame = replayFrame;
+					}
+				}
+				++replayFrame;
 			};
 	}
 
@@ -710,6 +790,22 @@ int main(int argc, char* argv[])
 		std::string finalState = "{}";
 		if (auto* store = engine.moduleStateStore()) { finalState = store->snapshotJson(2); }
 		std::fprintf(stdout, "%s\n", finalState.c_str());
+
+		// GameMemory 再現の verdict (flat POD game のみ)。bit-exact なら軸④ 構造保証の証明。
+		if (memCompared)
+		{
+			if (memDiverged)
+			{
+				std::fprintf(stderr, "replay state: GameMemory DIVERGED at frame %u (%u frames)\n",
+				             memDivergeFrame, replayFrame);
+			}
+			else
+			{
+				std::fprintf(stderr, "replay state: GameMemory reproduced bit-exact (%u frames)\n",
+				             replayFrame);
+			}
+		}
+		if (memDiverged) { return 1; }  // 再現失敗 = CI gate fail
 
 		if (!args.expectPath.empty())
 		{

@@ -127,6 +127,9 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	m_window->setResizeCallback([this](int w, int h) {
 		onWindowResize(w, h);
 	});
+	/// 最小クライアントサイズを強制 (0 のときは no-op)。文字や panel が潰れて
+	/// 読めなくなる極端な縮小を防ぐ resize 安全保証。
+	m_window->setMinClientSize(config.minWindowWidth, config.minWindowHeight);
 #ifdef _WIN32
 	/// Win32Window がある場合、InputInjector を接続してhuman playをキャプチャ可能にする
 	if (auto* w32 = dynamic_cast<Win32Window*>(m_window.get()))

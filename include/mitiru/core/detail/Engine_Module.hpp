@@ -76,6 +76,9 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 
 	loadFn(&m_moduleApi, &m_moduleMemory);
 
+	// DLL が申告した GameMemory サイズを保持 (ADR 0013)。v≤8 DLL は未設定 ⇒ zero-init の 0。
+	m_moduleMemorySize = m_moduleApi.memorySize;
+
 	// version check。
 	if (m_moduleApi.version == 0u || m_moduleApi.version > module::kCurrentApiVersion)
 	{
@@ -256,6 +259,11 @@ MITIRU_INLINE void* mitiru::Engine::moduleMemory() const noexcept
 	return m_moduleMemory;
 }
 
+MITIRU_INLINE std::uint32_t mitiru::Engine::moduleMemorySize() const noexcept
+{
+	return m_moduleMemorySize;
+}
+
 // ── Per-frame signal flow helper 群 (private; ModuleAdapter が呼ぶ) ────────
 // 以下は inline で追加する member fn。inline-friend 宣言の方が綺麗だが、
 // Engine.hpp が既に素の private として公開しており、ModuleAdapter は
@@ -362,6 +370,10 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 {
 	auto* snap = m_moduleInputSnapshot.get();
 	if (snap == nullptr) { return; }
+
+	// 決定論 seed を供給 (ADR 0012)。replay 時は末尾の moduleInputOverride が
+	// snapshot 全体を記録値で置換するので、ここで入れた値は再生時に記録 seed に戻る。
+	snap->rngSeed = m_config.randomSeed;
 
 	// Keys (256 VK codes)。internal を覗かず InputState API を使う —
 	// InputState の engine refactor の自由度を保つため。
@@ -507,6 +519,25 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		}
 	}
 
+	// Tool window spawn 要求 — DLL → host → 別 exe を spawn する (ADR 0014)。
+	// game は Engine* を持てない (ADR 0005) ので「このツール窓を開いて」と intent で頼み、
+	// host が mitiru_<tool>.exe を別窓で起動する (必要なときだけ・pulled UI)。exe が
+	// 見つからなければ無害に no-op。inspector へは host 自身の pid を渡し、game が
+	// exportedInspectables に出した state をそのまま観測させる (SharedSnapshot 経由)。
+	if (intents->toolRequestCount > 0)
+	{
+		const std::int32_t n = std::min<std::int32_t>(
+			intents->toolRequestCount,
+			static_cast<std::int32_t>(sizeof(intents->toolRequests) /
+			                          sizeof(intents->toolRequests[0])));
+		for (std::int32_t i = 0; i < n; ++i)
+		{
+			const auto& req = intents->toolRequests[i];
+			if (req.tool[0] == '\0') { continue; }
+			(void)mitiru::debug::spawnTool(std::string{req.tool}, 0, std::string{req.args});
+		}
+	}
+
 	// Palette の表示状態 — engine 所有の flag を CEF へ push する。
 	if (intents->paletteToggle && m_moduleStateStore)
 	{
@@ -546,34 +577,64 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			intents->exportedInspectableCount,
 			static_cast<std::int32_t>(sizeof(intents->exportedInspectables) /
 			                          sizeof(intents->exportedInspectables[0])));
-		// mitiru_inspector.exe が期待する JSON map を構築する:
-		//   { name: { title, state }, ... }
-		cef::json out = cef::json::object();
-		cef::json palette = cef::json::array();
+
+		// 変化検知: export 内容 (name + json) を FNV-1a で畳み、前回と同一なら
+		// parse+rebuild+disk-write を丸ごと省く。inspector は同じ内容を読み続けるので
+		// skip しても観測結果は変わらず、毎フレームの temp-file 書き込みを避けられる。
+		std::uint64_t digest = 1469598103934665603ull;
+		const auto fold = [&digest](const char* p, std::size_t len)
+		{
+			for (std::size_t k = 0; k < len; ++k)
+			{
+				digest ^= static_cast<unsigned char>(p[k]);
+				digest *= 1099511628211ull;
+			}
+		};
+		const auto boundedLen = [](const char* p, std::size_t cap)
+		{
+			std::size_t l = 0;
+			while (l < cap && p[l] != '\0') { ++l; }
+			return l;
+		};
 		for (std::int32_t i = 0; i < n; ++i)
 		{
 			const auto& exp = intents->exportedInspectables[i];
-			const std::string name{exp.name};
-			const std::string title{exp.title};
-			cef::json state;
-			try
-			{
-				state = exp.jsonLen > 0
-					? cef::json::parse(std::string{exp.json,
-					                               static_cast<std::size_t>(exp.jsonLen)})
-					: cef::json::object();
-			}
-			catch (...)
-			{
-				state = cef::json{{"error", "DLL produced invalid JSON"}};
-			}
-			out[name] = cef::json{{"title", title}, {"state", state}};
-			palette.push_back({{"name", name}, {"title", title}});
+			fold(exp.name, boundedLen(exp.name, sizeof(exp.name)));
+			if (exp.jsonLen > 0) { fold(exp.json, static_cast<std::size_t>(exp.jsonLen)); }
 		}
-		m_moduleInspectorSnapshot->write(out);
-		if (m_moduleStateStore)
+
+		if (digest != m_lastInspectorDigest)
 		{
-			m_moduleStateStore->set("view.palette.items", palette);
+			m_lastInspectorDigest = digest;
+			// mitiru_inspector.exe が期待する JSON map を構築する:
+			//   { name: { title, state }, ... }
+			cef::json out = cef::json::object();
+			cef::json palette = cef::json::array();
+			for (std::int32_t i = 0; i < n; ++i)
+			{
+				const auto& exp = intents->exportedInspectables[i];
+				const std::string name{exp.name};
+				const std::string title{exp.title};
+				cef::json state;
+				try
+				{
+					state = exp.jsonLen > 0
+						? cef::json::parse(std::string{exp.json,
+						                               static_cast<std::size_t>(exp.jsonLen)})
+						: cef::json::object();
+				}
+				catch (...)
+				{
+					state = cef::json{{"error", "invalid inspectable JSON"}};
+				}
+				out[name] = cef::json{{"title", title}, {"state", state}};
+				palette.push_back({{"name", name}, {"title", title}});
+			}
+			m_moduleInspectorSnapshot->write(out);
+			if (m_moduleStateStore)
+			{
+				m_moduleStateStore->set("view.palette.items", palette);
+			}
 		}
 	}
 

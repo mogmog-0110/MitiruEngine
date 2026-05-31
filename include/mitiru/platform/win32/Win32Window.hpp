@@ -320,6 +320,14 @@ public:
 		m_resizeCallback = std::move(cb);
 	}
 
+	/// @brief リサイズ時の最小クライアントサイズを設定する (px、0=制限なし)
+	/// @details WM_GETMINMAXINFO で client→window サイズへ変換して強制する。
+	void setMinClientSize(int w, int h) noexcept override
+	{
+		m_minClientW = w;
+		m_minClientH = h;
+	}
+
 	/// @brief Win32 modal resize loop 中も engine を tick させるための callback
 	/// @details ユーザが window 枠を drag すると Windows は `DefWindowProc` 内で
 	///          modal loop に入り、main thread を block する → engine main loop
@@ -442,6 +450,26 @@ private:
 			m_shouldClose = true;
 			PostQuitMessage(0);
 			return 0;
+
+		case WM_GETMINMAXINFO:
+		{
+			/// リサイズの最小サイズを強制する (config.minWindowWidth/Height 由来)。
+			/// client px 指定なので frame 込みの window px へ変換して ptMinTrackSize に。
+			if (m_minClientW > 0 || m_minClientH > 0)
+			{
+				const DWORD style =
+					static_cast<DWORD>(GetWindowLongW(hwnd, GWL_STYLE));
+				const DWORD exStyle =
+					static_cast<DWORD>(GetWindowLongW(hwnd, GWL_EXSTYLE));
+				RECT r = {0, 0, m_minClientW, m_minClientH};
+				adjustWindowRectForDpi(&r, style, FALSE, exStyle, systemDpi());
+				auto* mmi = reinterpret_cast<MINMAXINFO*>(lParam);
+				if (m_minClientW > 0) { mmi->ptMinTrackSize.x = r.right - r.left; }
+				if (m_minClientH > 0) { mmi->ptMinTrackSize.y = r.bottom - r.top; }
+				return 0;
+			}
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+		}
 
 		case WM_SIZE:
 		{
@@ -729,6 +757,8 @@ private:
 	int m_height = 0;                 ///< クライアント領域の高さ
 	DisplayMode m_displayMode = DisplayMode::Windowed;
 	bool m_resizable = true;          ///< ユーザがフレームでリサイズできるか
+	int m_minClientW = 0;             ///< 最小クライアント幅 (px、0=制限なし)
+	int m_minClientH = 0;             ///< 最小クライアント高さ (px、0=制限なし)
 	LONG m_savedStyle = 0;            ///< フルスクリーン前のウィンドウスタイル
 	RECT m_savedRect  = {};           ///< フルスクリーン前のウィンドウ矩形
 

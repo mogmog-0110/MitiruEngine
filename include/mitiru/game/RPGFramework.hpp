@@ -256,7 +256,9 @@ public:
 	{
 		DamageResult result;
 
-		std::mt19937 rng(seed != 0 ? seed : std::random_device{}());
+		// seed 未指定 (0) は固定既定で決定論を保つ (replay 再現性。caller は明示 seed 可)。
+		static constexpr std::uint32_t kDefaultSeed = 0x9E3779B9u;
+		std::mt19937 rng(seed != 0 ? seed : kDefaultSeed);
 		std::uniform_real_distribution<float> randomDist(0.85f, 1.15f);
 		std::uniform_real_distribution<float> critDist(0.0f, 100.0f);
 		std::uniform_real_distribution<float> hitDist(0.0f, 100.0f);
