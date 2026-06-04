@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -206,6 +207,27 @@ inline void savePng(const std::string& path, const std::vector<std::uint8_t>& pi
 		ofs.write(reinterpret_cast<const char*>(png.data()),
 			static_cast<std::streamsize>(png.size()));
 	}
+}
+
+/// @brief 連番 PNG を書き出す（`<dir>/<prefix>_0001.png` …）。
+/// @details ユーザスタディ等の刺激動画用。動画化は外部ツール（ffmpeg）で行う前提の、
+///          連番フレーム出力だけを担う薄いヘルパ。`savePng` に委譲する。
+/// @param dir        出力ディレクトリ（末尾スラッシュは任意。存在している前提）
+/// @param prefix     ファイル名の接頭辞
+/// @param frameIndex フレーム番号（0 始まり可。4 桁ゼロ埋め）
+/// @param pixels     RGBA8 ピクセル
+/// @param w, h       画像サイズ
+/// @return 書き出したファイルパス
+inline std::string saveFrameSequence(const std::string& dir, const std::string& prefix,
+	int frameIndex, const std::vector<std::uint8_t>& pixels, int w, int h)
+{
+	char num[8];
+	std::snprintf(num, sizeof(num), "%04d", frameIndex < 0 ? 0 : frameIndex);
+	std::string base = dir;
+	if (!base.empty() && base.back() != '/' && base.back() != '\\') { base += '/'; }
+	const std::string path = base + prefix + "_" + num + ".png";
+	savePng(path, pixels, w, h);
+	return path;
 }
 
 } // namespace mitiru::util

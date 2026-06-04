@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="矩形プレイヤーをキーで動かし、壁との当たり判定、画面上の目標を拾うとスコアが上がる。すべて C&#43;&#43; だけで書く、もっとも基本的な作り方。">
+<meta name="description" content="mitiru new が生成する DLL 形式のゲームを理解して書き換える。矩形プレイヤーをキーで動かし、画面端でぶつかり、目標を拾うとスコアが上がる。ロジックは C&#43;&#43; だけ。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="01 2D アクションのプロトタイプ | MitiruEngine">
-<meta property="og:description" content="矩形プレイヤーをキーで動かし、壁との当たり判定、画面上の目標を拾うとスコアが上がる。すべて C&#43;&#43; だけで書く、もっとも基本的な作り方。">
+<meta property="og:description" content="mitiru new が生成する DLL 形式のゲームを理解して書き換える。矩形プレイヤーをキーで動かし、画面端でぶつかり、目標を拾うとスコアが上がる。ロジックは C&#43;&#43; だけ。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="01 2D アクションのプロトタイプ | MitiruEngine">
-<meta name="twitter:description" content="矩形プレイヤーをキーで動かし、壁との当たり判定、画面上の目標を拾うとスコアが上がる。すべて C&#43;&#43; だけで書く、もっとも基本的な作り方。">
+<meta name="twitter:description" content="mitiru new が生成する DLL 形式のゲームを理解して書き換える。矩形プレイヤーをキーで動かし、画面端でぶつかり、目標を拾うとスコアが上がる。ロジックは C&#43;&#43; だけ。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -371,271 +371,204 @@
     </p>
     
     <h1 class="page-article__title">01 2D アクションのプロトタイプ</h1>
-    <p class="page-article__lede">矩形プレイヤーをキーで動かし、壁との当たり判定、画面上の目標を拾うとスコアが上がる。すべて C&#43;&#43; だけで書く、もっとも基本的な作り方。</p>
+    <p class="page-article__lede">mitiru new が生成する DLL 形式のゲームを理解して書き換える。矩形プレイヤーをキーで動かし、画面端でぶつかり、目標を拾うとスコアが上がる。ロジックは C&#43;&#43; だけ。</p>
   </header>
 
   
   <aside class="page-summary">
     <h2 class="page-summary__h">このページで分かること</h2>
     <ul>
-      <li>mitiru new でひな型を作って、mitiru run で動かす流れ</li><li>Game::update(dt) と Game::draw(Screen&amp;) に C&#43;&#43; だけで書く</li><li>入力 / 状態 / 描画の最小ループ</li>
+      <li>mitiru new でひな型 (ゲーム DLL) を作って mitiru run で動かす</li><li>状態は GameMemory、毎フレームは on_update、描画は on_draw</li><li>mitiru watch で編集が即反映されるホットリロード</li>
     </ul>
   </aside>
   
 
   <div class="page-with-toc">
     <div class="page-article__body">
-      <p>「画面の上で何かを動かす」を、<strong>純 C++</strong> だけで作るチュートリアルです。HTML も JS もこの段階では出てきません。MitiruEngine の標準的な作り方は「ゲームの中身は C++」なので、まずはここから入るのが順当です。</p>
+      <p>「画面の上で何かを動かす」を、<strong>C++ だけ</strong>で作るチュートリアルです。<code>mitiru new</code> が生成するひな型（ゲーム DLL）を読んで、少しずつ書き換えていきます。HTML/CSS の UI は次の <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/">02</a> で扱います。</p>
 <p>時間の目安は <strong>20 〜 30 分</strong>。事前に <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> を済ませ、<code>mitiru doctor</code> が OK を返すことを確認してください。</p>
 <aside class="cpp-note">
 <span class="cpp-note__title">C++ がはじめての方へ</span>
-<p>このチュートリアルは <strong>C++ 初学者でも追えるように</strong> 書いています。途中に <strong>C++ メモ</strong> という箱を挟みます。すでに C++ に慣れている方は読み飛ばしても問題ありません。コード全体の意図は本文で説明します。</p>
+<p>このチュートリアルは <strong>C++ 初学者でも追えるように</strong> 書いています。途中に <strong>C++ メモ</strong> という箱を挟みます。すでに慣れている方は読み飛ばして構いません。</p>
 </aside>
 <hr>
 <h2 id="できあがるもの">できあがるもの</h2>
 <ul>
-<li>黒い背景の上に動く矩形プレイヤー (32 × 32 px)</li>
-<li>矢印キー <strong>か</strong> WASD で 4 方向に移動</li>
+<li>暗い背景の上を動く矩形プレイヤー (32 × 32 px)</li>
+<li>矢印キーで 4 方向に移動</li>
 <li>画面の端を超えない (壁との当たり判定)</li>
 <li>小さい黄色い円を 1 個出して、触れたら得点 +1 + 別の場所に再配置</li>
 <li>左上にスコア表示</li>
 </ul>
 <figure class="tutorial-figure">
-  <img src="images/finished.svg" alt="完成画面: 黒背景の上に青い矩形プレイヤーと黄色い円、左上にスコア表示" loading="lazy">
+  <img src="images/finished.svg" alt="完成画面: 暗い背景の上に青い矩形プレイヤーと黄色い円、左上にスコア表示" loading="lazy">
   <figcaption>完成イメージ。プレイヤーをキーで動かして、黄色い円に触れるとスコアが増える。</figcaption>
 </figure>
 <hr>
 <h2 id="手順-1-ひな型を作る">手順 1: ひな型を作る</h2>
-<p>純 C++ のプロトタイプなので、CEF を切った最小テンプレートを使います。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru new --template native-only my-action
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru new my-action
 </span></span><span class="line"><span class="cl"><span class="nb">cd</span> my-action
-</span></span></code></pre></div><p><code>native-only</code> テンプレートは <code>assets/scene.html</code> を含みません。CEF プロセスも起動せず、起動が 1 秒未満になります。</p>
+</span></span></code></pre></div><p><code>mitiru new</code> は <strong>ゲーム DLL</strong> のひな型を生成します。<code>mitiru_host</code>（エンジン本体の実行ファイル）が
+この DLL を読み込んで動かす構成です。生成直後の <code>src/main.cpp</code> は、すでに「矩形を矢印キーで動かす」
+動くサンプルになっています（HUD 付き）。まずはそれを走らせて、中身を読んでいきます。</p>
 <figure class="tutorial-figure">
-  <img src="images/01-folder.svg" alt="生成された my-action/ フォルダの中身: src/main.cpp, mitiru.toml, .gitignore, README.md" loading="lazy">
-  <figcaption>mitiru new 直後のフォルダ構成。触るのは src/main.cpp と mitiru.toml だけ。</figcaption>
+  <img src="images/01-folder.svg" alt="生成された my-action/ フォルダの中身: src/main.cpp, assets/scene.html, mitiru.toml" loading="lazy">
+  <figcaption>mitiru new 直後のフォルダ構成。触るのは src/main.cpp と assets/scene.html、mitiru.toml だけ。</figcaption>
 </figure>
 <hr>
 <h2 id="手順-2-そのまま走らせて確認">手順 2: そのまま走らせて確認</h2>
-<p>中身を書き換える前に、一度走らせて初期状態を見ます。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru run
-</span></span></code></pre></div><p>初回は engine を取得して CMake configure が走るので 1 〜 2 分かかります。2 回目以降は秒で立ち上がります。</p>
-<figure class="tutorial-figure">
-  <img src="images/02-default-window.svg" alt="ひな型を走らせた直後の画面: 黒背景に Hello, Mitiru! の文字" loading="lazy">
-  <figcaption>ひな型は黒背景に小さなテキストが出るだけのウィンドウを開く。ここから書き換えていく。</figcaption>
-</figure>
-<p>ウィンドウのタイトルやサイズを変えたければ <code>mitiru.toml</code> の <code>[window]</code> を編集します。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-toml" data-lang="toml"><span class="line"><span class="cl"><span class="p">[</span><span class="nx">window</span><span class="p">]</span>
-</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Action&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="nx">width</span> <span class="p">=</span> <span class="mi">800</span>
-</span></span><span class="line"><span class="cl"><span class="nx">height</span> <span class="p">=</span> <span class="mi">600</span>
-</span></span><span class="line"><span class="cl"><span class="nx">vsync</span> <span class="p">=</span> <span class="kc">true</span>
-</span></span></code></pre></div><p><code>mitiru run</code> をもう一度叩くと、変えた設定で開き直します。</p>
+</span></span></code></pre></div><p>初回は engine を取得して CMake configure が走るので 1 〜 2 分かかります。2 回目以降は秒で立ち上がります。
+矢印キーで水色の矩形が動き、左上の HUD に座標が出れば成功です。</p>
+<blockquote>
+<p><strong>ホットリロードを使う</strong>: <code>mitiru run</code> の代わりに <code>mitiru watch</code> で起動すると、<code>src/</code> を編集して保存した
+瞬間に、<strong>ゲームを止めずに</strong>新しいコードへ差し替わります（プレイヤー位置などの状態はそのまま）。
+以降の編集はこれを回しながらやると速いです。</p>
+</blockquote>
 <hr>
-<h2 id="手順-3-プレイヤーを置く">手順 3: プレイヤーを置く</h2>
-<p><code>src/main.cpp</code> を開いて、矩形プレイヤーを表示するだけの最小コードに書き換えます。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
+<h2 id="手順-3-中身を読む--gamememory--on_update--on_draw">手順 3: 中身を読む — GameMemory / on_update / on_draw</h2>
+<p><code>src/main.cpp</code> の骨格はこうなっています（要点だけ抜粋）。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/core/Screen.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/module/ModuleApi.hpp&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Player</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">x</span> <span class="o">=</span> <span class="mf">384.0f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">y</span> <span class="o">=</span> <span class="mf">284.0f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">float</span> <span class="n">kSize</span> <span class="o">=</span> <span class="mf">32.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="k">namespace</span> <span class="n">my_action</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">namespace</span> <span class="n">vk</span> <span class="p">{</span> <span class="k">constexpr</span> <span class="kt">int</span> <span class="n">Escape</span> <span class="o">=</span> <span class="mh">0x1B</span><span class="p">,</span> <span class="n">Left</span> <span class="o">=</span> <span class="mh">0x25</span><span class="p">,</span> <span class="n">Up</span> <span class="o">=</span> <span class="mh">0x26</span><span class="p">,</span> <span class="n">Right</span> <span class="o">=</span> <span class="mh">0x27</span><span class="p">,</span> <span class="n">Down</span> <span class="o">=</span> <span class="mh">0x28</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// 状態はすべてここに置く。host がこのポインタを所有するので、
+</span></span></span><span class="line"><span class="cl"><span class="c1">// ホットリロード（コードだけ差し替え）を跨いで生き残る。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">struct</span> <span class="nc">GameMemory</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">playerX</span> <span class="o">=</span> <span class="mf">640.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">playerY</span> <span class="o">=</span> <span class="mf">360.0f</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl"><span class="p">};</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 毎フレーム呼ばれる。input は読み取り専用、intents に「お願い」を書く。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kt">void</span> <span class="nf">on_update</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">memory</span><span class="p">,</span> <span class="kt">float</span> <span class="n">dt</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">               <span class="k">const</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">module</span><span class="o">::</span><span class="n">InputSnapshot</span><span class="o">*</span> <span class="n">input</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">               <span class="n">mitiru</span><span class="o">::</span><span class="n">module</span><span class="o">::</span><span class="n">FrameIntents</span><span class="o">*</span> <span class="n">intents</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">auto</span><span class="o">&amp;</span> <span class="n">mem</span> <span class="o">=</span> <span class="o">*</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">GameMemory</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">memory</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">input</span><span class="o">-&gt;</span><span class="n">keysJustPressed</span><span class="p">[</span><span class="n">vk</span><span class="o">::</span><span class="n">Escape</span><span class="p">])</span> <span class="p">{</span> <span class="n">intents</span><span class="o">-&gt;</span><span class="n">requestStop</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="p">}</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.10f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>        <span class="c1">// 背景
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="n">m_player</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">m_player</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">Player</span><span class="o">::</span><span class="n">kSize</span><span class="p">,</span> <span class="n">Player</span><span class="o">::</span><span class="n">kSize</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">                   <span class="p">{</span><span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.75f</span><span class="p">,</span> <span class="mf">0.95f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>                       <span class="c1">// プレイヤー
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="n">Player</span> <span class="n">m_player</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">};</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">MyGame</span> <span class="n">game</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">title</span>         <span class="o">=</span> <span class="s">&#34;My Action&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span>   <span class="o">=</span> <span class="mi">800</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span>  <span class="o">=</span> <span class="mi">600</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">enableCef</span>     <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">fontAtlasRanges</span> <span class="o">=</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span><span class="o">::</span><span class="n">FontAtlas</span><span class="o">::</span><span class="n">Latin</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">constexpr</span> <span class="kt">float</span> <span class="n">kSpeed</span> <span class="o">=</span> <span class="mf">320.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">input</span><span class="o">-&gt;</span><span class="n">keysDown</span><span class="p">[</span><span class="n">vk</span><span class="o">::</span><span class="n">Left</span><span class="p">])</span>  <span class="p">{</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerX</span> <span class="o">-=</span> <span class="n">kSpeed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">input</span><span class="o">-&gt;</span><span class="n">keysDown</span><span class="p">[</span><span class="n">vk</span><span class="o">::</span><span class="n">Right</span><span class="p">])</span> <span class="p">{</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerX</span> <span class="o">+=</span> <span class="n">kSpeed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">input</span><span class="o">-&gt;</span><span class="n">keysDown</span><span class="p">[</span><span class="n">vk</span><span class="o">::</span><span class="n">Up</span><span class="p">])</span>    <span class="p">{</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerY</span> <span class="o">-=</span> <span class="n">kSpeed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">input</span><span class="o">-&gt;</span><span class="n">keysDown</span><span class="p">[</span><span class="n">vk</span><span class="o">::</span><span class="n">Down</span><span class="p">])</span>  <span class="p">{</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerY</span> <span class="o">+=</span> <span class="n">kSpeed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span> <span class="p">}</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p>ここまでで分かること:</p>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// 描画。screen は毎フレーム渡される。保持しない。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kt">void</span> <span class="nf">on_draw</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">memory</span><span class="p">,</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">*</span> <span class="n">screen</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">auto</span><span class="o">&amp;</span> <span class="n">mem</span> <span class="o">=</span> <span class="o">*</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">GameMemory</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">memory</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="n">screen</span><span class="o">-&gt;</span><span class="n">clear</span><span class="p">(</span><span class="n">sgc</span><span class="o">::</span><span class="n">Colorf</span><span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.07f</span><span class="p">,</span> <span class="mf">0.12f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">    <span class="k">constexpr</span> <span class="kt">float</span> <span class="n">kSize</span> <span class="o">=</span> <span class="mf">32.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">screen</span><span class="o">-&gt;</span><span class="n">drawRect</span><span class="p">(</span><span class="n">sgc</span><span class="o">::</span><span class="n">Rectf</span><span class="p">{</span><span class="n">mem</span><span class="p">.</span><span class="n">playerX</span> <span class="o">-</span> <span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerY</span> <span class="o">-</span> <span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="n">kSize</span><span class="p">,</span> <span class="n">kSize</span><span class="p">},</span>
+</span></span><span class="line"><span class="cl">                     <span class="n">sgc</span><span class="o">::</span><span class="n">Colorf</span><span class="p">{</span><span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.85f</span><span class="p">,</span> <span class="mf">0.95f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>ファイル末尾の <code>mitiru_module_load</code> が、これらの関数を host に登録し、初回だけ <code>GameMemory</code> を確保します
+（雛形のまま触らなくて大丈夫）。</p>
+<p>ここまでで分かること:</p>
 <ul>
-<li><code>Game</code> を継承して <code>update(dt)</code> と <code>draw(Screen&amp;)</code> を埋めるのが基本形。</li>
-<li>描画は <code>Screen::drawRect(rect, color)</code> のように <strong>C++ の関数を呼ぶ</strong> だけ。HTML も JS もいらない。</li>
-<li>色は RGBA 0.0 〜 1.0 の <code>Colorf</code>。RGB の感覚で書ける。</li>
+<li><strong>状態は <code>GameMemory</code> 構造体に集約</strong>する。これが「唯一の状態」で、ホットリロードや録画再生（リプレイ）が
+この 1 つの構造体を memcpy するだけで成立する設計です（ADR 0005）。</li>
+<li><code>on_update(memory, dt, input, intents)</code> が毎フレームのロジック。<code>input-&gt;keysDown[...]</code> で押下を見て、
+<code>intents</code> に「終了して」などの要求を書きます。host の object を直接呼ばない（C のみの signal flow）。</li>
+<li><code>on_draw(memory, screen)</code> で描く。<code>screen-&gt;drawRect(rect, color)</code> のように <strong>C++ の関数を呼ぶ</strong> だけ。</li>
 </ul>
 <aside class="cpp-note">
-<span class="cpp-note__title">C++ メモ — class と override</span>
-<p><code>class MyGame final : public mitiru::Game</code> は「<code>MyGame</code> という新しい型を作る、<code>mitiru::Game</code> を <strong>継承</strong> する、これ以上は誰にも継承させない (<code>final</code>)」という宣言です。</p>
-<p><code>update</code> や <code>draw</code> の末尾に付く <code>override</code> は「<strong>親クラスの同名メソッドを上書きしますよ</strong>」という意思表示。タイプミスで親に存在しない名前を書くとコンパイル時に怒ってくれるので、付けておくと安全です。</p>
-<p><code>public:</code> 以降のメンバは外から呼べるもの、<code>private:</code> 以降は中だけで使うもの。今回は <code>m_player</code> という変数を <code>private</code> に持って、状態を <strong>クラスの中に閉じ込めて</strong> います。</p>
+<span class="cpp-note__title">C++ メモ — void* と static_cast</span>
+<p><code>void* memory</code> は「型を消したポインタ」。host は中身の型を知らずに保持しているので、こちら側で
+<code>static_cast&lt;GameMemory*&gt;(memory)</code> と <strong>本来の型に戻して</strong> から使います。<code>auto&amp; mem = *...</code>
+の <code>&amp;</code> は参照（コピーを作らず別名を付ける）。以降 <code>mem.playerX</code> のように普通に書けます。</p>
+<p><code>vk::Left</code> などは Windows の仮想キーコード（数値）。<code>input-&gt;keysDown[コード]</code> が
+そのキーの押下状態です。</p>
 </aside>
-<p><code>mitiru run</code> で確認:</p>
-<figure class="tutorial-figure">
-  <img src="images/03-player-rect.svg" alt="プレイヤーの矩形を描画した画面: 暗い背景の中央付近に水色の正方形" loading="lazy">
-  <figcaption>プレイヤー矩形だけ。まだ動かない。</figcaption>
-</figure>
 <hr>
-<h2 id="手順-4-動かす">手順 4: 動かす</h2>
-<p><code>update(dt)</code> でキー入力を見て位置を進めます。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">speed</span> <span class="o">=</span> <span class="mf">240.0f</span><span class="p">;</span>  <span class="c1">// px / sec
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">in</span> <span class="o">=</span> <span class="n">input</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowLeft</span><span class="p">)</span>  <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">A</span><span class="p">))</span> <span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">-=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowRight</span><span class="p">)</span> <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">D</span><span class="p">))</span> <span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">+=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowUp</span><span class="p">)</span>    <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">W</span><span class="p">))</span> <span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">-=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowDown</span><span class="p">)</span>  <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">S</span><span class="p">))</span> <span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">+=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p>ポイント:</p>
-<ul>
-<li><code>update(dt)</code> は毎フレーム呼ばれ、<code>dt</code> には前フレームからの経過秒が入ります。</li>
-<li><code>speed * dt</code> で動かすと、フレームレートに依存しない一定速度になります (60Hz でも 144Hz でも同じ速さ)。</li>
-<li><code>isKeyDown</code> は <strong>押されているあいだ ずっと true</strong>。一回押した瞬間だけ欲しい場合は <code>isKeyJustPressed</code> を使います。</li>
-</ul>
+<h2 id="手順-4-速度を変えてホットリロードを体感する">手順 4: 速度を変えてホットリロードを体感する</h2>
+<p><code>mitiru watch</code> を回したまま、<code>kSpeed</code> の <code>320.0f</code> を <code>800.0f</code> に変えて保存してみてください。
+ウィンドウはそのまま、プレイヤーが<strong>即座に</strong>速くなります。ビルド → 再起動を待たずに数値を詰められるのが、
+DLL 形式 + ホットリロードの利点です。</p>
+<p><code>speed * dt</code> で動かしているので、何 fps でも同じ速さになります（次のメモ参照）。</p>
 <aside class="cpp-note">
 <span class="cpp-note__title">C++ メモ — なぜ dt を掛けるのか</span>
-<p>もし <code>m_player.x -= speed</code> と書くと、<strong>1 フレームごとに speed (240) px ずつ動く</strong> ことになります。60 fps のマシンなら 1 秒で 14400 px、120 fps のマシンなら 28800 px。同じコードなのにマシン性能でスピードが変わってしまいます。</p>
-<p><code>speed * dt</code> にすると「1 秒間に speed px」になるので、何 fps でも同じ速度。動きものに関わるコードはほぼ全て <code>* dt</code> がついて回ります。</p>
-<p><code>const auto&amp; in = input();</code> の <code>auto</code> は「型をコンパイラに推論させる」キーワード。<code>&amp;</code> は <strong>参照</strong> (オブジェクトのコピーを作らずに別名を付ける)。<code>const</code> は「これ経由では中身を書き換えない」という宣言。読み取り専用の別名、と覚えれば OK です。</p>
+<p><code>playerX -= kSpeed</code> だと <strong>1 フレームごとに kSpeed px</strong> 動き、60fps と 144fps で速度が変わって
+しまいます。<code>kSpeed * dt</code>（dt = 前フレームからの経過秒）にすると「1 秒あたり kSpeed px」になり、
+フレームレートに依存しません。動きものはほぼ全て <code>* dt</code> が付きます。</p>
 </aside>
-<p><code>mitiru run</code> し直すと、キーで矩形が動くようになっています。</p>
-<figure class="tutorial-figure">
-  <img src="images/04-moving.svg" alt="プレイヤーがキー入力で移動している様子: 元の位置から右上に動いた水色矩形" loading="lazy">
-  <figcaption>キーを押している方向にプレイヤーが進む。</figcaption>
-</figure>
 <hr>
 <h2 id="手順-5-画面の端でぶつかる">手順 5: 画面の端でぶつかる</h2>
-<p>このままだと画面外まで行ってしまうので、<code>update</code> の末尾で位置をクランプします。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// (上のキー入力処理はそのまま)
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
-</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">maxX</span> <span class="o">=</span> <span class="mf">800.0f</span> <span class="o">-</span> <span class="n">Player</span><span class="o">::</span><span class="n">kSize</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">maxY</span> <span class="o">=</span> <span class="mf">600.0f</span> <span class="o">-</span> <span class="n">Player</span><span class="o">::</span><span class="n">kSize</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>     <span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">&gt;</span> <span class="n">maxX</span><span class="p">)</span>  <span class="n">m_player</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">maxX</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>     <span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">&gt;</span> <span class="n">maxY</span><span class="p">)</span>  <span class="n">m_player</span><span class="p">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">maxY</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p>これだけで「壁との当たり判定」になります。プロトタイプ段階の衝突はだいたいこのレベルで足りる、というのも覚えておくといいです。</p>
-<aside class="cpp-note">
-<span class="cpp-note__title">設計メモ — まず動かす、洗練はあとで</span>
-<p>「めり込み防止 = 位置をクランプする」というのは、衝突解決の中でいちばん原始的な手法です。本格的なゲームでは「衝突を <em>検出</em> する関数と、衝突を <em>解決</em> する関数を分ける」「速度ベクトルを反射する」など、もう少し凝った構造を取ります。</p>
-<p>とはいえ、まず動かないと議論のしようがありません。プロトタイプ段階では <strong>シンプルなコードで早く動かす</strong> ことを優先して OK。MitiruEngine も同じ考え方で、最初から完璧な抽象を提供するのではなく、必要になった時に層を足していく方針です。</p>
-</aside>
+<p><code>on_update</code> の末尾で位置をクランプします。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">constexpr</span> <span class="kt">float</span> <span class="n">kHalf</span> <span class="o">=</span> <span class="mf">16.0f</span><span class="p">;</span>  <span class="c1">// プレイヤー半分
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">if</span> <span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">playerX</span> <span class="o">&lt;</span> <span class="n">kHalf</span><span class="p">)</span>          <span class="p">{</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerX</span> <span class="o">=</span> <span class="n">kHalf</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">playerX</span> <span class="o">&gt;</span> <span class="mf">1280.0f</span> <span class="o">-</span> <span class="n">kHalf</span><span class="p">)</span> <span class="p">{</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerX</span> <span class="o">=</span> <span class="mf">1280.0f</span> <span class="o">-</span> <span class="n">kHalf</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">playerY</span> <span class="o">&lt;</span> <span class="n">kHalf</span><span class="p">)</span>          <span class="p">{</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerY</span> <span class="o">=</span> <span class="n">kHalf</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">playerY</span> <span class="o">&gt;</span> <span class="mf">720.0f</span> <span class="o">-</span> <span class="n">kHalf</span><span class="p">)</span>  <span class="p">{</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerY</span> <span class="o">=</span> <span class="mf">720.0f</span> <span class="o">-</span> <span class="n">kHalf</span><span class="p">;</span> <span class="p">}</span>
+</span></span></code></pre></div><p>これだけで「壁との当たり判定」になります。プロトタイプ段階の衝突はこのレベルで足りることが多いです
+（画面サイズは <code>mitiru.toml</code> の <code>[window]</code>。既定 1280×720）。</p>
 <hr>
 <h2 id="手順-6-目標を出してスコアを足す">手順 6: 目標を出してスコアを足す</h2>
-<p>目標 (黄色い円) とスコアを追加します。クラスのメンバに目標とスコアを足し、<code>update</code> で接触判定、<code>draw</code> で円とテキストを出します。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;cstdio&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">onStart</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="n">respawnTarget</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">speed</span> <span class="o">=</span> <span class="mf">240.0f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">in</span> <span class="o">=</span> <span class="n">input</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowLeft</span><span class="p">)</span>  <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">A</span><span class="p">))</span> <span class="n">m_x</span> <span class="o">-=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowRight</span><span class="p">)</span> <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">D</span><span class="p">))</span> <span class="n">m_x</span> <span class="o">+=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowUp</span><span class="p">)</span>    <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">W</span><span class="p">))</span> <span class="n">m_y</span> <span class="o">-=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">ArrowDown</span><span class="p">)</span>  <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">isKeyDown</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">S</span><span class="p">))</span> <span class="n">m_y</span> <span class="o">+=</span> <span class="n">speed</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">        <span class="n">m_x</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">clamp</span><span class="p">(</span><span class="n">m_x</span><span class="p">,</span> <span class="mf">0.0f</span><span class="p">,</span> <span class="mf">800.0f</span> <span class="o">-</span> <span class="n">kSize</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">        <span class="n">m_y</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">clamp</span><span class="p">(</span><span class="n">m_y</span><span class="p">,</span> <span class="mf">0.0f</span><span class="p">,</span> <span class="mf">600.0f</span> <span class="o">-</span> <span class="n">kSize</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">        <span class="c1">// 矩形 (プレイヤー) と円 (目標) の中心距離で当たり判定
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">const</span> <span class="kt">float</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">m_x</span> <span class="o">+</span> <span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">m_y</span> <span class="o">+</span> <span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">dx</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">-</span> <span class="n">m_targetX</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">cy</span> <span class="o">-</span> <span class="n">m_targetY</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">dx</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">dy</span> <span class="o">*</span> <span class="n">dy</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">+</span> <span class="mf">14.0f</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">kSize</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">+</span> <span class="mf">14.0f</span><span class="p">))</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="o">++</span><span class="n">m_score</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">            <span class="n">respawnTarget</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">        <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.10f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
-</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawCircle</span><span class="p">({</span><span class="n">m_targetX</span><span class="p">,</span> <span class="n">m_targetY</span><span class="p">},</span> <span class="mf">14.0f</span><span class="p">,</span> <span class="p">{</span><span class="mf">1.0f</span><span class="p">,</span> <span class="mf">0.85f</span><span class="p">,</span> <span class="mf">0.30f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
-</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="n">m_x</span><span class="p">,</span> <span class="n">m_y</span><span class="p">,</span> <span class="n">kSize</span><span class="p">,</span> <span class="n">kSize</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.75f</span><span class="p">,</span> <span class="mf">0.95f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
-</span></span><span class="line"><span class="cl">        <span class="n">std</span><span class="o">::</span><span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&#34;Score: %d&#34;</span><span class="p">,</span> <span class="n">m_score</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawTextInRect</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="p">{</span><span class="mi">16</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">24</span><span class="p">},</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">});</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="n">respawnTarget</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="k">static</span> <span class="n">std</span><span class="o">::</span><span class="n">mt19937</span> <span class="n">rng</span><span class="p">{</span><span class="n">std</span><span class="o">::</span><span class="n">random_device</span><span class="p">{}()};</span>
-</span></span><span class="line"><span class="cl">        <span class="n">std</span><span class="o">::</span><span class="n">uniform_real_distribution</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span> <span class="n">rx</span><span class="p">(</span><span class="mf">40.0f</span><span class="p">,</span> <span class="mf">760.0f</span><span class="p">),</span> <span class="n">ry</span><span class="p">(</span><span class="mf">40.0f</span><span class="p">,</span> <span class="mf">560.0f</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">        <span class="n">m_targetX</span> <span class="o">=</span> <span class="n">rx</span><span class="p">(</span><span class="n">rng</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">        <span class="n">m_targetY</span> <span class="o">=</span> <span class="n">ry</span><span class="p">(</span><span class="n">rng</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">float</span> <span class="n">kSize</span> <span class="o">=</span> <span class="mf">32.0f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">m_x</span> <span class="o">=</span> <span class="mf">384.0f</span><span class="p">,</span> <span class="n">m_y</span> <span class="o">=</span> <span class="mf">284.0f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">m_targetX</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">,</span> <span class="n">m_targetY</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">int</span>   <span class="n">m_score</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<p><code>GameMemory</code> に目標とスコアを足し、<code>on_update</code> で接触判定、<code>on_draw</code> で円とスコアを描きます。
+乱数は再配置のたびに使いますが、リプレイ再現性のため <code>GameMemory</code> 内の単純な LCG で回します。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">GameMemory</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">playerX</span> <span class="o">=</span> <span class="mf">640.0f</span><span class="p">,</span> <span class="n">playerY</span> <span class="o">=</span> <span class="mf">360.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">targetX</span> <span class="o">=</span> <span class="mf">300.0f</span><span class="p">,</span> <span class="n">targetY</span> <span class="o">=</span> <span class="mf">300.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span>   <span class="n">score</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">unsigned</span> <span class="n">rng</span> <span class="o">=</span> <span class="mh">0x12345678u</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl"><span class="p">};</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">MyGame</span> <span class="n">game</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">title</span>         <span class="o">=</span> <span class="s">&#34;My Action&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span>   <span class="o">=</span> <span class="mi">800</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span>  <span class="o">=</span> <span class="mi">600</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">enableCef</span>     <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">fontAtlasRanges</span> <span class="o">=</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span><span class="o">::</span><span class="n">FontAtlas</span><span class="o">::</span><span class="n">Latin</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="kr">inline</span> <span class="kt">float</span> <span class="nf">nextRand</span><span class="p">(</span><span class="n">GameMemory</span><span class="o">&amp;</span> <span class="n">m</span><span class="p">,</span> <span class="kt">float</span> <span class="n">lo</span><span class="p">,</span> <span class="kt">float</span> <span class="n">hi</span><span class="p">)</span>  <span class="c1">// [lo, hi)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">m</span><span class="p">.</span><span class="n">rng</span> <span class="o">=</span> <span class="n">m</span><span class="p">.</span><span class="n">rng</span> <span class="o">*</span> <span class="mi">1664525u</span> <span class="o">+</span> <span class="mi">1013904223u</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">float</span> <span class="n">u</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">((</span><span class="n">m</span><span class="p">.</span><span class="n">rng</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFF</span><span class="p">)</span> <span class="o">/</span> <span class="mf">16777216.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">lo</span> <span class="o">+</span> <span class="n">u</span> <span class="o">*</span> <span class="p">(</span><span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p><code>on_update</code> の移動・クランプの後ろに当たり判定を足します。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">const</span> <span class="kt">float</span> <span class="n">dx</span> <span class="o">=</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerX</span> <span class="o">-</span> <span class="n">mem</span><span class="p">.</span><span class="n">targetX</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="k">const</span> <span class="kt">float</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">mem</span><span class="p">.</span><span class="n">playerY</span> <span class="o">-</span> <span class="n">mem</span><span class="p">.</span><span class="n">targetY</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">dx</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">dy</span> <span class="o">*</span> <span class="n">dy</span> <span class="o">&lt;</span> <span class="mf">30.0f</span> <span class="o">*</span> <span class="mf">30.0f</span><span class="p">)</span> <span class="p">{</span>     <span class="c1">// 中心距離が近い = 接触
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="o">++</span><span class="n">mem</span><span class="p">.</span><span class="n">score</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mem</span><span class="p">.</span><span class="n">targetX</span> <span class="o">=</span> <span class="n">nextRand</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span> <span class="mf">40.0f</span><span class="p">,</span> <span class="mf">1240.0f</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mem</span><span class="p">.</span><span class="n">targetY</span> <span class="o">=</span> <span class="n">nextRand</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span> <span class="mf">40.0f</span><span class="p">,</span> <span class="mf">680.0f</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p><code>on_draw</code> に目標の円とスコア文字を足します。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">screen</span><span class="o">-&gt;</span><span class="n">fillCircle</span><span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">targetX</span><span class="p">,</span> <span class="n">mem</span><span class="p">.</span><span class="n">targetY</span><span class="p">,</span> <span class="mf">14.0f</span><span class="p">,</span> <span class="n">sgc</span><span class="o">::</span><span class="n">Colorf</span><span class="p">{</span><span class="mf">1.0f</span><span class="p">,</span> <span class="mf">0.85f</span><span class="p">,</span> <span class="mf">0.30f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl"><span class="n">std</span><span class="o">::</span><span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&#34;Score: %d&#34;</span><span class="p">,</span> <span class="n">mem</span><span class="p">.</span><span class="n">score</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// drawTextInRect は rect が先、text、color の順。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">screen</span><span class="o">-&gt;</span><span class="n">drawTextInRect</span><span class="p">(</span><span class="n">sgc</span><span class="o">::</span><span class="n">Rectf</span><span class="p">{</span><span class="mi">16</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">240</span><span class="p">,</span> <span class="mi">28</span><span class="p">},</span> <span class="n">buf</span><span class="p">,</span> <span class="n">sgc</span><span class="o">::</span><span class="n">Colorf</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">});</span>
 </span></span></code></pre></div><aside class="cpp-note">
-<span class="cpp-note__title">C++ メモ — 標準ライブラリの便利な道具</span>
-<p><code>std::clamp(v, lo, hi)</code> は「<code>v</code> が <code>lo</code> 未満なら <code>lo</code>、<code>hi</code> 超なら <code>hi</code>、それ以外はそのまま」を 1 行で書ける関数 (C++17 から)。自前で <code>if</code> を 4 個書くより読みやすい、というだけです。</p>
-<p><code>std::mt19937</code> は「メルセンヌ・ツイスタ」という、まずまずの品質の擬似乱数生成器。<code>static</code> 付きでローカル変数にすると <strong>関数の中だけど寿命はプログラム全体</strong> という変な変数になり、毎回作り直さずに済みます。</p>
-<p><code>std::snprintf</code> は C 言語由来の文字列フォーマット関数。<code>"Score: %d"</code> の <code>%d</code> が整数の差し込み口。C++ にも <code>std::format</code> (C++20) という新しいやり方がありますが、ここではより馴染みのある書き方を選びました。</p>
+<span class="cpp-note__title">C++ メモ — なぜ乱数を GameMemory に入れるのか</span>
+<p>普通は <code>std::mt19937</code> を使いますが、状態を <code>GameMemory</code> の外（<code>static</code> 変数など）に
+置くと、ホットリロードやリプレイで「唯一の状態」から漏れます。MitiruEngine は GameMemory 1 個を memcpy する
+だけで巻き戻し・再生できる設計なので、<strong>乱数シードも GameMemory に入れる</strong> のが筋です。ここでは
+最小の LCG（線形合同法）で十分。</p>
+<p><code>std::snprintf(buf, n, "Score: %d", x)</code> は <code>%d</code> に整数を差し込む C 由来のフォーマット関数。
+<code>&lt;cstdio&gt;</code> が要ります。</p>
 </aside>
-<p><code>mitiru run</code> で動作確認:</p>
+<p><code>mitiru run</code>（または <code>mitiru watch</code> 中に保存）で動作確認:</p>
 <figure class="tutorial-figure">
   <img src="images/05-finished.svg" alt="完成画面: 左上に Score 表示、プレイヤー矩形と目標の黄色い円" loading="lazy">
-  <figcaption>左上にスコア、画面のどこかに目標 (黄色い円)。プレイヤーが触れるとスコアが増えて目標が別の位置に出る。</figcaption>
+  <figcaption>左上にスコア、画面のどこかに目標（黄色い円）。プレイヤーが触れるとスコアが増えて目標が別の位置に出る。</figcaption>
 </figure>
 <hr>
 <h2 id="何が分かったか">何が分かったか</h2>
 <ul>
-<li><code>Game::update(dt)</code> と <code>Game::draw(Screen&amp;)</code> の 2 つに <strong>C++ だけで</strong> ゲームの中身が書ける。</li>
-<li>入力 / 状態 / 描画は別レイヤーじゃなく、同じクラスのメソッドとして並ぶ。プロトタイプ段階ではこれで充分。</li>
-<li>HTML / CSS / JS は <strong>このチュートリアルでは 1 行も書いていない</strong>。MitiruEngine の標準形はこの方向です。</li>
+<li>ゲームの状態は <strong><code>GameMemory</code> 構造体に集約</strong>し、<code>on_update</code> / <code>on_draw</code> の 2 つに C++ だけでロジックを書く。</li>
+<li>入力は <code>InputSnapshot</code>（読み取り専用）、副作用は <code>FrameIntents</code>（host へのお願い）。host の object は直接呼ばない。</li>
+<li><code>mitiru watch</code> で <strong>編集が即反映</strong>される。状態は GameMemory に閉じ込めているので reload を跨いで生き残る。</li>
+<li>HTML / CSS / JS は <strong>このチュートリアルでは 1 行も書いていない</strong>。</li>
 </ul>
-<p>CEF (HTML / CSS) は HUD やメニューの <strong>見た目</strong> を凝りたくなったときに使います。それは <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/">02 画面に UI を出す</a> で扱います。</p>
+<p>HUD やメニューの <strong>見た目</strong> を HTML/CSS で凝りたくなったら、次の <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/">02 画面に UI を出す</a> へ。
+実は <code>mitiru new</code> の雛形には最初から HUD が付いているので、02 ではその仕組みを読み解いて作り替えます。</p>
 <h2 id="次の一歩">次の一歩</h2>
 <ul>
-<li>プレイヤーを <strong>画像</strong> にする: <code>Screen::drawSprite</code> に置き換える。</li>
-<li><strong>時間制限</strong> を入れる: <code>Game::onStart</code> で開始時刻を覚え、<code>update</code> で残り時間を計算、<code>draw</code> で表示。</li>
-<li><strong>シーン遷移</strong>: タイトル → ゲーム → 結果の 3 シーンに分けたい場合は <code>SceneRouter</code> を使います。<code>examples/hello_scene/</code> が短い実例です。</li>
+<li>プレイヤーを <strong>画像</strong> にする: <code>Texture::fromFile</code> + <code>screen-&gt;drawSprite(...)</code>。<code>examples/anchor</code> 等が実例。</li>
+<li><strong>時間制限</strong>: <code>GameMemory</code> に経過秒を持ち、<code>on_draw</code> で残り時間を表示。</li>
+<li><strong>動く実物</strong>: <code>examples/breakout</code> / <code>examples/anchor</code> は同じ DLL 形式を、より薄い <code>Game.hpp</code> ラッパで書いたものです。</li>
 </ul>
 
       
@@ -648,8 +581,8 @@
     <li><a href="#できあがるもの">できあがるもの</a></li>
     <li><a href="#手順-1-ひな型を作る">手順 1: ひな型を作る</a></li>
     <li><a href="#手順-2-そのまま走らせて確認">手順 2: そのまま走らせて確認</a></li>
-    <li><a href="#手順-3-プレイヤーを置く">手順 3: プレイヤーを置く</a></li>
-    <li><a href="#手順-4-動かす">手順 4: 動かす</a></li>
+    <li><a href="#手順-3-中身を読む--gamememory--on_update--on_draw">手順 3: 中身を読む — GameMemory / on_update / on_draw</a></li>
+    <li><a href="#手順-4-速度を変えてホットリロードを体感する">手順 4: 速度を変えてホットリロードを体感する</a></li>
     <li><a href="#手順-5-画面の端でぶつかる">手順 5: 画面の端でぶつかる</a></li>
     <li><a href="#手順-6-目標を出してスコアを足す">手順 6: 目標を出してスコアを足す</a></li>
     <li><a href="#何が分かったか">何が分かったか</a></li>

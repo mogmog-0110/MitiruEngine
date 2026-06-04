@@ -21,6 +21,26 @@ build/examples/hello_game/hello_game.exe
 | `hello_cef_overlay` | ~80 行 | CEF を有効化して **静的な HTML/CSS HUD** を上に重ねる最小例 |
 | **`hello_game`** | ~310 行 | **C++ gameplay + HTML/CSS HUD + live state push (StateStore bridge)** — engine flagship pattern showcase |
 
+### Game-as-DLL サンプル (ADR 0005)
+
+`mitiru_host.exe` が runtime に load する SHARED library 形式のゲーム。`MITIRU_GAME(...)` で
+入口を 1 行宣言し、`Game.hpp` の薄いラッパ (`Input` / `Hud` / `Screen`) で書く。HUD は zero-JS の
+`data-m-*` バインダ、効果音は `hud.play(...)` の intent。これが現行の canonical な書き方。
+
+| Example | 何を見せるか |
+|---|---|
+| **`breakout`** | 旗艦サンプル。物理 / 当たり判定 / 手触り (粒子・シェイク・残像) / zero-JS HUD / 効果音を 1 本に |
+| `dodge` | 初心者向け最小ゲーム (避けゲー) |
+| `anchor` | 制約パズル。「触れた anchor へしか動けない」一行ルール + deterministic hazard。incubator の kept-concept を現行アーキへ port した demo |
+| `showcase_platformer` | 横スクロール。replay-as-test を bit-exact で通す決定論ゲーム |
+
+```bash
+# 例: breakout を build して host で起動
+cmake --build build --config Debug --target breakout
+build/examples/mitiru_host/mitiru_host.exe build/examples/mitiru_host/breakout/breakout.dll
+# anchor / dodge / showcase_platformer も同様 (target 名 = dll 名)
+```
+
 ## 「これを見て」と言える 1 本: `hello_game`
 
 `examples/hello_game/` が engine の **「HTML/CSS で UI が書ける C++ engine」軸 (差別化軸 1)** を最小限で見せる例:

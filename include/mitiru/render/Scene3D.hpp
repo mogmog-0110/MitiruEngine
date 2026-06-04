@@ -8,6 +8,7 @@
 
 #include <sgc/math/Vec3.hpp>
 
+#include "CpuTexture.hpp"
 #include "Light.hpp"
 #include "Material.hpp"
 #include "Mesh.hpp"
@@ -38,6 +39,15 @@ public:
 		sgc::Vec3f rotation{};                   ///< オイラー角回転（ラジアン）
 		sgc::Vec3f scale{1.0f, 1.0f, 1.0f};     ///< スケール
 		int nodeId = -1;                         ///< ソースノードID（選択ハイライト用）
+		/// @brief 前フレームの（変形済み）メッシュ（#18、任意・非所有）。
+		/// @details クロス/スキニング/モーフなど同 nodeId でも頂点が変わる変形体で正しい velocity を
+		///          出すために、前フレームの頂点位置を持つ同トポロジ Mesh を渡す。null なら剛体扱い。
+		///          呼び出し側が前フレーム Mesh を保持する。
+		const Mesh* prevMesh = nullptr;
+		/// @brief base-color テクスチャ（#17、任意・非所有）。
+		/// @details 非 null かつ valid なら、`DeferredPipeline` が頂点 UV を補間してこれをサンプルし
+		///          `pixel.albedo` に書く。null なら従来どおり `material.diffuse` のベタ塗り。
+		const CpuTexture* albedoTexture = nullptr;
 	};
 
 	/// @brief デフォルトコンストラクタ

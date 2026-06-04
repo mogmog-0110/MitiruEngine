@@ -62,6 +62,14 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		m_window->width(), m_window->height());
 	m_screen = std::make_unique<Screen>(logicalSize.width, logicalSize.height);
 
+	// headless (窓なし・NullDevice) では GPU バックバッファが無いので、Screen に
+	// ソフトウェアフレームバッファを張る。これで draw() が CPU ラスタライズされ、
+	// capture() が中身のあるフレームを返せる (#43: AI 自動回しの画面キャプチャ)。
+	if (config.headless)
+	{
+		m_screen->enableSoftwareFramebuffer();
+	}
+
 	m_logicalWidth = logicalSize.width;
 	m_logicalHeight = logicalSize.height;
 

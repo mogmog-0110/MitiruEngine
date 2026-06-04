@@ -6,9 +6,11 @@
 ///          DeferredPipelineのジオメトリパスで書き込み、ライティングパスで読み出す。
 
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <vector>
 
+#include <sgc/math/Vec2.hpp>
 #include <sgc/math/Vec3.hpp>
 #include <sgc/types/Color.hpp>
 
@@ -23,6 +25,18 @@ struct GBufferPixel
 	sgc::Vec3f normal{0.0f, 1.0f, 0.0f}; ///< 法線ベクトル（正規化済み）
 	sgc::Colorf albedo{0.0f, 0.0f, 0.0f, 1.0f}; ///< アルベド色
 	float depth = 1.0f;               ///< 深度値 [0, 1]（1.0 = 最大深度）
+
+	/// @brief 画面内モーションベクタ（前フレームからの移動量、ピクセル単位）
+	/// @details 前フレームの clip 座標と現フレーム clip 座標の screen-space 差分。
+	///          temporal reprojection（前フレーム結果の再投影）の前提。輪郭線・TAA・
+	///          motion blur で「フレーム間で同じ点を辿る」ために使う。未書き込み時は 0。
+	sgc::Vec2f velocity{0.0f, 0.0f};
+
+	/// @brief オブジェクト ID（輪郭線のフレーム間追跡用）
+	/// @details `0 = 背景（書き込み無し）`。ジオメトリパスは `Scene3D::RenderObject::nodeId`
+	///          を `+1` して焼き込む（nodeId 0 と背景 0 を区別するため）。velocity で位置を
+	///          reproject した上で、線ピクセルが同一オブジェクト由来かをこの ID で判定できる。
+	std::uint32_t objectId{0};
 };
 
 /// @brief ディファードレンダリング用Gバッファ（ソフトウェア実装）

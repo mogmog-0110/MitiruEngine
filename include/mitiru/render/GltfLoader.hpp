@@ -21,18 +21,41 @@
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/Vertex3D.hpp>
 
-/// cgltf 実装ガード — ヘッダーオンリーエンジンのため inline 関数内で定義
-#ifndef MITIRU_CGLTF_IMPL_GUARD
-#define MITIRU_CGLTF_IMPL_GUARD
-#define CGLTF_IMPLEMENTATION
-#endif
+/// cgltf の実装は src/cgltf_impl.cpp に集約（vendor glue、#16）。ここは宣言のみ include
+/// するので、複数 TU から本ヘッダを include しても重複定義リンクエラーにならない。
 #include <cgltf.h>
+
+/// stb_image は宣言のみ（実装は src/stb_impl.cpp）。埋め込みテクスチャの decode に使う（#17）。
+#include <stb_image.h>
 
 namespace mitiru::render
 {
 
 namespace detail
 {
+
+/// @brief 埋め込み（buffer_view）画像を stb_image で RGBA8 にデコードする（#17）。
+/// @details glb の埋め込みテクスチャのみ対応（外部 URI / data URI は未対応 → 空 CpuTexture）。
+///          cgltf_load_buffers 済み前提（buffer->data が埋まっている）。
+[[nodiscard]] inline CpuTexture decodeEmbeddedImage(const cgltf_image* img)
+{
+	CpuTexture tex;
+	if (img == nullptr || img->buffer_view == nullptr) { return tex; }
+	const cgltf_buffer_view* bv = img->buffer_view;
+	if (bv->buffer == nullptr || bv->buffer->data == nullptr || bv->size == 0) { return tex; }
+
+	const auto* bytes = static_cast<const unsigned char*>(bv->buffer->data) + bv->offset;
+	int w = 0, h = 0, comp = 0;
+	unsigned char* pixels =
+		stbi_load_from_memory(bytes, static_cast<int>(bv->size), &w, &h, &comp, 4);
+	if (pixels == nullptr) { return tex; }
+
+	tex.width = w;
+	tex.height = h;
+	tex.rgba.assign(pixels, pixels + static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4u);
+	stbi_image_free(pixels);
+	return tex;
+}
 
 /// @brief cgltfアクセサから浮動小数点値を安全に読み取る
 [[nodiscard]] inline float readFloat(const cgltf_accessor* accessor, cgltf_size index, cgltf_size component)
@@ -84,6 +107,26 @@ namespace detail
 	return {buf[0], buf[1]};
 }
 
+/// @brief アクセサから 16 float (列優先) を読み、row-major sgc::Mat4f に転置して返す (#23a)。
+/// @details glTF の行列は列優先で格納される。sgc::Mat4f は行優先 (m[row][col]) なので転置する。
+[[nodiscard]] inline sgc::Mat4f readMat4ColumnMajor(const cgltf_accessor* accessor, cgltf_size index)
+{
+	float buf[16] = {0};
+	sgc::Mat4f out = sgc::Mat4f::identity();
+	if (accessor && index < accessor->count &&
+	    cgltf_accessor_read_float(accessor, index, buf, 16))
+	{
+		for (int c = 0; c < 4; ++c)
+		{
+			for (int r = 0; r < 4; ++r)
+			{
+				out.m[r][c] = buf[c * 4 + r];  // 列優先 buf[col*4+row] → 行優先 m[row][col]
+			}
+		}
+	}
+	return out;
+}
+
 /// @brief cgltfアクセサからインデックスを読み取る
 [[nodiscard]] inline uint32_t readIndex(const cgltf_accessor* accessor, cgltf_size index)
 {
@@ -125,15 +168,24 @@ namespace detail
 	const cgltf_accessor* posAccessor = nullptr;
 	const cgltf_accessor* normAccessor = nullptr;
 	const cgltf_accessor* uvAccessor = nullptr;
+	const cgltf_accessor* jointsAccessor = nullptr;   ///< JOINTS_0 (#23a)
+	const cgltf_accessor* weightsAccessor = nullptr;  ///< WEIGHTS_0 (#23a)
 
 	for (cgltf_size i = 0; i < prim.attributes_count; ++i)
 	{
 		const auto& attr = prim.attributes[i];
+		/// JOINTS_0 / WEIGHTS_0 は index 0 のみ採用 (4 ボーン束縛、glTF 標準)。
 		switch (attr.type)
 		{
 		case cgltf_attribute_type_position: posAccessor = attr.data; break;
 		case cgltf_attribute_type_normal:   normAccessor = attr.data; break;
 		case cgltf_attribute_type_texcoord: uvAccessor = attr.data; break;
+		case cgltf_attribute_type_joints:
+			if (attr.index == 0) { jointsAccessor = attr.data; }
+			break;
+		case cgltf_attribute_type_weights:
+			if (attr.index == 0) { weightsAccessor = attr.data; }
+			break;
 		default: break;
 		}
 	}
@@ -154,6 +206,26 @@ namespace detail
 		v.normal = normAccessor ? readVec3(normAccessor, i) : sgc::Vec3f{0, 0, 0};
 		v.texCoord = uvAccessor ? readVec2(uvAccessor, i) : sgc::Vec2f{0, 0};
 		v.color = sgc::Colorf{1, 1, 1, 1};
+	}
+
+	/// スキン束縛 (JOINTS_0 / WEIGHTS_0) を読み取る (#23a)。両方揃っている時のみ。
+	if (jointsAccessor && weightsAccessor &&
+	    jointsAccessor->count == vertexCount && weightsAccessor->count == vertexCount)
+	{
+		result.skin.resize(vertexCount);
+		for (cgltf_size i = 0; i < vertexCount; ++i)
+		{
+			cgltf_uint j[4] = {0, 0, 0, 0};
+			float w[4] = {0, 0, 0, 0};
+			cgltf_accessor_read_uint(jointsAccessor, i, j, 4);
+			cgltf_accessor_read_float(weightsAccessor, i, w, 4);
+			auto& s = result.skin[i];
+			for (int k = 0; k < 4; ++k)
+			{
+				s.joints[k] = static_cast<std::uint32_t>(j[k]);
+				s.weights[k] = w[k];
+			}
+		}
 	}
 
 	/// インデックスを読み取る
@@ -197,6 +269,32 @@ namespace detail
 				result.vertices[i2].normal = n;
 			}
 		}
+	}
+
+	/// モーフターゲット (blend shape) のデルタを読む (#24)。各 target の POSITION/NORMAL delta。
+	for (cgltf_size t = 0; t < prim.targets_count; ++t)
+	{
+		const auto& target = prim.targets[t];
+		const cgltf_accessor* posDelta = nullptr;
+		const cgltf_accessor* normDelta = nullptr;
+		for (cgltf_size a = 0; a < target.attributes_count; ++a)
+		{
+			const auto& attr = target.attributes[a];
+			if (attr.type == cgltf_attribute_type_position) { posDelta = attr.data; }
+			else if (attr.type == cgltf_attribute_type_normal) { normDelta = attr.data; }
+		}
+		GltfMorphTarget gt;
+		if (posDelta && posDelta->count == vertexCount)
+		{
+			gt.positionDelta.resize(vertexCount);
+			for (cgltf_size i = 0; i < vertexCount; ++i) { gt.positionDelta[i] = readVec3(posDelta, i); }
+		}
+		if (normDelta && normDelta->count == vertexCount)
+		{
+			gt.normalDelta.resize(vertexCount);
+			for (cgltf_size i = 0; i < vertexCount; ++i) { gt.normalDelta[i] = readVec3(normDelta, i); }
+		}
+		result.morphTargets.push_back(std::move(gt));
 	}
 
 	/// マテリアルインデックス
@@ -264,6 +362,7 @@ namespace detail
 			{
 				const auto* img = pbr.base_color_texture.texture->image;
 				gmat.baseColorTexturePath = img->uri ? img->uri : "";
+				gmat.baseColorTexture = detail::decodeEmbeddedImage(img);   // #17: 埋め込みを decode
 			}
 		}
 
@@ -283,6 +382,12 @@ namespace detail
 		GltfMeshData gMesh;
 		gMesh.name = mesh.name ? mesh.name : "";
 
+		/// モーフ名 (VRM は日本語) を抽出する (#24)。primitive.morphTargets と同順。
+		for (cgltf_size t = 0; t < mesh.target_names_count; ++t)
+		{
+			gMesh.morphTargetNames.push_back(mesh.target_names[t] ? mesh.target_names[t] : "");
+		}
+
 		for (cgltf_size j = 0; j < mesh.primitives_count; ++j)
 		{
 			auto prim = detail::convertPrimitive(mesh.primitives[j]);
@@ -301,6 +406,49 @@ namespace detail
 		if (!gMesh.primitives.empty())
 		{
 			scene.meshes.push_back(std::move(gMesh));
+		}
+	}
+
+	/// ノード階層 (ボーン) を抽出する (#23a)。index は gltfData->nodes 配列基準。
+	scene.nodes.resize(gltfData->nodes_count);
+	for (cgltf_size i = 0; i < gltfData->nodes_count; ++i)
+	{
+		const auto& n = gltfData->nodes[i];
+		auto& gn = scene.nodes[i];
+		gn.name = n.name ? n.name : "";
+		gn.parent = n.parent ? static_cast<int>(n.parent - gltfData->nodes) : -1;
+		gn.mesh = n.mesh ? static_cast<int>(n.mesh - gltfData->meshes) : -1;   // #25
+		gn.skin = n.skin ? static_cast<int>(n.skin - gltfData->skins) : -1;   // #25
+		if (n.has_translation) { gn.translation = {n.translation[0], n.translation[1], n.translation[2]}; }
+		if (n.has_rotation) { gn.rotation = {n.rotation[0], n.rotation[1], n.rotation[2], n.rotation[3]}; }
+		if (n.has_scale) { gn.scale = {n.scale[0], n.scale[1], n.scale[2]}; }
+		gn.children.reserve(n.children_count);
+		for (cgltf_size c = 0; c < n.children_count; ++c)
+		{
+			gn.children.push_back(static_cast<int>(n.children[c] - gltfData->nodes));
+		}
+	}
+
+	/// スキン (joints + inverseBindMatrices) を抽出する (#23a)。
+	scene.skins.resize(gltfData->skins_count);
+	for (cgltf_size i = 0; i < gltfData->skins_count; ++i)
+	{
+		const auto& sk = gltfData->skins[i];
+		auto& gs = scene.skins[i];
+		gs.name = sk.name ? sk.name : "";
+		gs.skeletonRoot = sk.skeleton ? static_cast<int>(sk.skeleton - gltfData->nodes) : -1;
+		gs.joints.reserve(sk.joints_count);
+		for (cgltf_size j = 0; j < sk.joints_count; ++j)
+		{
+			gs.joints.push_back(static_cast<int>(sk.joints[j] - gltfData->nodes));
+		}
+		if (sk.inverse_bind_matrices)
+		{
+			gs.inverseBindMatrices.resize(sk.joints_count);
+			for (cgltf_size j = 0; j < sk.joints_count; ++j)
+			{
+				gs.inverseBindMatrices[j] = detail::readMat4ColumnMajor(sk.inverse_bind_matrices, j);
+			}
 		}
 	}
 

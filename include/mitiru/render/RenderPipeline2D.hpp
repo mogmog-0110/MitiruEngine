@@ -223,9 +223,16 @@ public:
 	/// @param key  テクスチャ識別キー（通常 &Texture）
 	/// @param w,h  テクスチャ寸法（ピクセル）
 	/// @param rgba RGBA8 ピクセル（w*h*4 bytes、行優先）
+	/// @param contentMayChange 同 key・同寸でも中身が毎回変わり得る動的テクスチャか。
+	///        false (既定): ポインタ key が内容を一意に決める静的テクスチャ (drawSprite の
+	///        render::Texture 等)。cache hit は即返し、**毎フレームの全画素ハッシュを行わない**。
+	///        true: 同アドレスを使い回す動的バッファ (drawPixelGrid 等)。内容ハッシュ (#19b) で
+	///        変化を検出して再アップロードする。静的テクスチャに true を渡すと巨大シートを毎フレーム
+	///        ハッシュして CPU を浪費するので注意。
 	/// @return 1 以上のハンドル。未対応 backend / 失敗時は 0
 	std::uint32_t ensureSpriteTexture(const void* key, int w, int h,
-	                                  const std::uint8_t* rgba);
+	                                  const std::uint8_t* rgba,
+	                                  bool contentMayChange = false);
 
 	/// @brief texHandle のテクスチャをバインドして頂点バッチを描画する（uUseTexture=1）
 	/// @param vertices Vertex2D 頂点（UV 付き）
@@ -563,9 +570,10 @@ private:
 		Microsoft::WRL::ComPtr<ID3D12Resource>       tex;     ///< default heap (PSR)
 		Microsoft::WRL::ComPtr<ID3D12Resource>       upload;  ///< upload heap 中間
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvHeap; ///< 1-slot SRV heap
-		int         w   = 0;
-		int         h   = 0;
-		const void* key = nullptr;
+		int           w   = 0;
+		int           h   = 0;
+		const void*   key = nullptr;
+		std::uint64_t contentHash = 0;  ///< pixel 内容の FNV-1a。内容変化で再アップロード判定 (#19b)
 	};
 	std::vector<Dx12SpriteTexture> m_dx12SpriteTextures;              ///< index+1 = handle
 	std::unordered_map<const void*, std::uint32_t> m_dx12SpriteTexLookup; ///< key → index

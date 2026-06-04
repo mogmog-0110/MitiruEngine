@@ -33,6 +33,7 @@
 
 #include <mitiru/core/Color.hpp>
 #include <mitiru/core/Screen.hpp>
+#include <mitiru/debug/ToolRegistry.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru
@@ -143,14 +144,8 @@ private:
 	const module::InputSnapshot* s_;
 };
 
-/// コードから開ける「別窓のツール」(hud.open(Tool::X) で host に spawn を頼む)。
-/// ゲーム窓は汚さず、必要なときだけ OS レベルの別窓で立ち上がる (pulled UI、ADR 0014)。
-enum class Tool
-{
-	Inspector,      ///< 状態 inspector — hud.watch() で出した観察データを全部見る
-	InputMonitor,   ///< 入力モニタ — inspector の "input" にフォーカス
-	TimeTravel,     ///< タイムトラベル scrubber — inspector の "timetravel" にフォーカス
-};
+// `Tool` enum + 開ける窓の registry (kToolTable) は <mitiru/debug/ToolRegistry.hpp>
+// に置き、host 側 (openTool) と共有している。
 
 /// 画面 (HUD) へ値を送る + 音を鳴らす + ツール窓を開く (`FrameIntents` の薄いビュー)。
 class Hud
@@ -181,11 +176,9 @@ public:
 	/// 別窓のツールを開くよう host に頼む (必要なときだけ呼ぶ — 既定では何も開かない)。
 	void open(Tool t) noexcept
 	{
-		switch (t)
+		for (const auto& spec : detail::kToolTable)
 		{
-		case Tool::Inspector:    s_->requestToolWindow("inspector", ""); break;
-		case Tool::InputMonitor: s_->requestToolWindow("inspector", "--inspectable input"); break;
-		case Tool::TimeTravel:   s_->requestToolWindow("inspector", "--inspectable timetravel"); break;
+			if (spec.tool == t) { s_->requestToolWindow(spec.exe, spec.args); return; }
 		}
 	}
 	/// 任意のツール窓を名前で開く (host が mitiru_<tool>.exe を探す)。上級者向け。

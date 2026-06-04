@@ -19,6 +19,8 @@
 // 将来: `mitiru-cli run [--watch]` が project/module.toml を解決して
 // 等価な argv を自動構築する。
 
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -26,12 +28,15 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <mitiru/Mitiru.hpp>
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/MiniaudioEngine.hpp>
+#include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
 #include <mitiru/replay/Player.hpp>
 #include <mitiru/replay/Recorder.hpp>
@@ -84,6 +89,12 @@ public:
 		playByIdEx(id, vol, 1.0f, fadeIn, /*music=*/true, loop);
 	}
 	void stopMusicFade(float fadeOutSec) override { m_engine.stopMusicFade(fadeOutSec); }
+
+	// 再生中 voice のメーターを miniaudio backend からそのまま中継 (mitiru_mixer 窓用)。
+	[[nodiscard]] std::vector<mitiru::audio::ChannelMeter> meterChannels() const override
+	{
+		return m_engine.meterChannels();
+	}
 
 private:
 	void playByIdEx(std::string_view id, float volume, float pitch, float fadeIn,
@@ -172,6 +183,15 @@ struct CliArgs
 	float                 loFiDither = 1.0f;   // --lofi-dither S
 	int                   httpPort = 0;        // --http-port <N>: EngineHttpServer を listen 開始 (ADR 0011)
 	bool                  console  = false;    // --console: HTTP + default browser で console.html 自動表示
+	bool                  noCef    = false;    // --no-cef: CEF を起動しない (完全ネイティブ描画の game 用、起動軽量化)
+	std::string           captureDir;          // --capture-dir <d>: 毎 N フレーム PNG を吐く先 (#43)
+	int                   captureEvery = 0;    // --capture-every <N>: N フレームごとに 1 枚 (0=off)
+	bool                  headless = false;    // --headless: ウィンドウ無しで走らせる (AI 自動回し)
+	float                 speed    = 1.0f;     // --speed <N>: time scale 倍率 (固定 dt × N で早回し)
+	int                   maxFrames = 0;       // --max-frames <N>: N フレーム走ったら自動終了 (0=無制限)
+	bool                  fixedSize = false;   // --fixed-size: ユーザのウィンドウリサイズを禁止 (#44)
+	std::string           inputScript;         // --input-script <f>: in-process 入力注入 (#43-1)
+	std::vector<mitiru::Tool> openTools;       // --inspect <name>: 起動時に開くツール独立窓 (ADR 0014)
 };
 
 CliArgs parseArgs(int argc, char* argv[])
@@ -225,6 +245,56 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--console")
 		{
 			out.console = true;
+		}
+		else if (a == "--no-cef")
+		{
+			// 完全ネイティブ描画の game (HTML UI を使わない) は CEF を起動しないことで
+			// Chromium コールドブートの起動スパイク + GPU/renderer サブプロセス常駐を避ける。
+			out.noCef = true;
+		}
+		else if (a == "--capture-dir")
+		{
+			if (i + 1 < argc) { out.captureDir = argv[++i]; }
+		}
+		else if (a == "--capture-every")
+		{
+			if (i + 1 < argc) { try { out.captureEvery = std::stoi(argv[++i]); } catch (...) {} }
+		}
+		else if (a == "--headless")
+		{
+			out.headless = true;
+		}
+		else if (a == "--speed")
+		{
+			if (i + 1 < argc) { try { out.speed = std::stof(argv[++i]); } catch (...) {} }
+		}
+		else if (a == "--max-frames")
+		{
+			if (i + 1 < argc) { try { out.maxFrames = std::stoi(argv[++i]); } catch (...) {} }
+		}
+		else if (a == "--fixed-size")
+		{
+			out.fixedSize = true;
+		}
+		else if (a == "--input-script")
+		{
+			if (i + 1 < argc) { out.inputScript = argv[++i]; }
+		}
+		else if (a == "--inspect")
+		{
+			// --inspect [inspector|input|timetravel] (省略時 inspector)。
+			// host を書く人が「この窓を使う」と決めた物だけ開く (ADR 0014)。
+			mitiru::Tool t = mitiru::Tool::Inspector;
+			if (i + 1 < argc && argv[i + 1][0] != '-')
+			{
+				const std::string name{argv[++i]};
+				if      (name == "input")      { t = mitiru::Tool::InputMonitor; }
+				else if (name == "timetravel") { t = mitiru::Tool::TimeTravel; }
+				else if (name == "scene")      { t = mitiru::Tool::SceneTree; }
+				else if (name == "perf")       { t = mitiru::Tool::Perf; }
+				else if (name == "mixer")      { t = mitiru::Tool::AudioMixer; }
+			}
+			out.openTools.push_back(t);
 		}
 		else if (a == "--size")
 		{
@@ -325,6 +395,19 @@ void printUsage()
 		"  --lofi-dither S  ディザ強度 (既定 1.0, 0=ディザ無し)\n"
 		"  --http-port N    EngineHttpServer を 127.0.0.1:N で開始 (runtime コントロール, ADR 0011)\n"
 		"  --console        HTTP 起動 + 既定ブラウザで control panel を自動表示 (port 既定 8090)\n"
+		"  --no-cef         CEF を起動しない (完全ネイティブ描画の game 用・起動軽量化)\n"
+		"  --capture-dir D  毎 N フレームのフレームを PNG 連番で D に吐く (AI 視覚検証, #43)\n"
+		"  --capture-every N  上記の間隔 (フレーム数。--capture-dir 指定時の既定 30)\n"
+		"  --headless       ウィンドウ無しで走らせる (AI 自動プレイの裏回し)\n"
+		"  --speed N        time scale 倍率 (固定 dt × N で早回し。長いプレイの自動回し用)\n"
+		"  --max-frames N   N フレーム走ったら自動終了 (headless 自動回しの停止条件, #43)\n"
+		"  --fixed-size     ユーザのウィンドウリサイズを禁止 (固定解像度運用, #44)\n"
+		"  --input-script F 入力スクリプト F を in-process 注入 (OS 入力を経由せず他アプリに漏れない, #43)\n"
+		"                   形式: 1 行 '<frame> <down|up> <KEY>' (# でコメント)。KEY=Left/Right/Up/Down/\n"
+		"                   Space/Enter/Escape/英数字1字/生 VK 整数。実キーボードは無視される\n"
+		"  --inspect [name] ツール独立窓を起動時に開く (name=inspector|input|timetravel, 既定 inspector)\n"
+		"                   ※ host を書く人が main.cpp で mitiru::debug::openTool(Tool::X) と\n"
+		"                     直接書けば、欲しい窓だけコードで指定できる (ADR 0014)\n"
 		"  --help, -h       this message\n"
 		"\n"
 		"hotkeys (runtime, Windows):\n"
@@ -438,6 +521,16 @@ inline void doScreenshot(mitiru::Engine& engine)
 inline void pollHostHotkeys(mitiru::Engine& engine)
 {
 #ifdef _WIN32
+	// host hotkey は GetAsyncKeyState (グローバル) で読むため、自プロセスのウィンドウが
+	// 前面の時だけ処理する。さもないと別アプリで作業中の F7-F12 を奪ってしまう
+	// (ゲーム入力自体は WM_KEYDOWN でフォーカス限定済みだが、ここだけグローバルだった)。
+	HWND fg = GetForegroundWindow();
+	DWORD fgPid = 0;
+	GetWindowThreadProcessId(fg, &fgPid);
+	if (fgPid != GetCurrentProcessId())
+	{
+		return;
+	}
 	if (justPressed(VK_F12))
 	{
 		doScreenshot(engine);
@@ -484,6 +577,91 @@ struct WatcherState
 	int                             pollEvery  = 15;       // frame 数; 60fps で約 250ms
 	bool                            initialized = false;
 };
+
+// ── 入力スクリプト (#43-1, in-process 注入) ────────────────────────────────
+// OS 入力 (SendInput) を経由せず InputSnapshot を直接書き換えるので、他アプリにキーが
+// 漏れない・headless でも効く・決定的。実キーボードはスクリプト実行中は無視される。
+
+/// KEY 名 → 仮想キーコード。1字英数字は ASCII 大文字 / 数字、名前は主要キー、生 VK 整数も可。
+inline int keyNameToVk(const std::string& s)
+{
+	if (s.empty()) { return -1; }
+	if (s.size() == 1)
+	{
+		char c = s[0];
+		if (c >= 'a' && c <= 'z') { c = static_cast<char>(c - 'a' + 'A'); }
+		if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
+		{
+			return static_cast<int>(static_cast<unsigned char>(c));
+		}
+	}
+	std::string u = s;
+	for (auto& c : u) { c = static_cast<char>(std::toupper(static_cast<unsigned char>(c))); }
+	if (u == "LEFT")  { return 0x25; }
+	if (u == "UP")    { return 0x26; }
+	if (u == "RIGHT") { return 0x27; }
+	if (u == "DOWN")  { return 0x28; }
+	if (u == "SPACE") { return 0x20; }
+	if (u == "ENTER" || u == "RETURN") { return 0x0D; }
+	if (u == "ESCAPE" || u == "ESC")   { return 0x1B; }
+	if (u == "SHIFT") { return 0x10; }
+	try { return std::stoi(s, nullptr, 0); } catch (...) { return -1; }
+}
+
+struct InputScriptEvent { int frame; int vk; bool down; };
+
+/// スクリプトを毎フレーム適用し InputSnapshot のキー配列を上書きするプレイヤ。
+struct InputScriptPlayer
+{
+	std::vector<InputScriptEvent> events;  // frame 昇順
+	std::size_t cursor = 0;
+	int frame = 0;
+	bool held[256] = {};
+
+	void apply(mitiru::module::InputSnapshot& snap)
+	{
+		bool prev[256];
+		std::memcpy(prev, held, sizeof(prev));
+		while (cursor < events.size() && events[cursor].frame <= frame)
+		{
+			const auto& e = events[cursor++];
+			if (e.vk >= 0 && e.vk < 256) { held[e.vk] = e.down; }
+		}
+		for (int v = 0; v < 256; ++v)
+		{
+			snap.keysDown[v]         = held[v] ? 1 : 0;
+			snap.keysJustPressed[v]  = (held[v] && !prev[v]) ? 1 : 0;
+			snap.keysJustReleased[v] = (!held[v] && prev[v]) ? 1 : 0;
+		}
+		++frame;
+	}
+};
+
+/// '<frame> <down|up> <KEY>' 形式 (# でコメント) を読む。失敗時 false。
+inline bool loadInputScript(const std::string& path, InputScriptPlayer& out)
+{
+	std::ifstream f(path);
+	if (!f) { return false; }
+	std::string line;
+	while (std::getline(f, line))
+	{
+		const auto h = line.find('#');
+		if (h != std::string::npos) { line = line.substr(0, h); }
+		std::istringstream is(line);
+		int frame = 0;
+		std::string act, key;
+		if (!(is >> frame >> act >> key)) { continue; }
+		const int vk = keyNameToVk(key);
+		if (vk < 0) { continue; }
+		const bool down = (act == "down" || act == "d" || act == "DOWN");
+		const bool up   = (act == "up" || act == "u" || act == "UP");
+		if (!down && !up) { continue; }
+		out.events.push_back({frame, vk, down});
+	}
+	std::stable_sort(out.events.begin(), out.events.end(),
+		[](const InputScriptEvent& a, const InputScriptEvent& b) { return a.frame < b.frame; });
+	return true;
+}
 
 }  // namespace
 
@@ -536,7 +714,15 @@ int main(int argc, char* argv[])
 		cfg.minWindowHeight = floorH > 48  ? floorH : 48;
 	}
 	cfg.vsync           = true;
-	cfg.enableCef       = true;
+	cfg.enableCef       = !args.noCef;   // --no-cef: 完全ネイティブ game は CEF 抜きで軽量起動
+	cfg.timeScale       = args.speed;    // --speed: 固定 dt × N 早回し (#43)
+	if (args.fixedSize) { cfg.windowResizable = false; }   // --fixed-size: リサイズ禁止 (#44)
+	if (args.headless)                   // --headless: 窓なし自動回し。vsync/CEF を切って最速で (#43)
+	{
+		cfg.headless  = true;
+		cfg.vsync     = false;
+		cfg.enableCef = false;
+	}
 	// EngineHttpServer (ADR 0011): --http-port > 0 か --console で HTTP listen を開始。
 	// 127.0.0.1 限定。--console は既定ブラウザで control panel HTML を自動表示する (phase 3)。
 	if (args.httpPort > 0 || args.console)
@@ -614,6 +800,24 @@ int main(int argc, char* argv[])
 	//   (2) --watch 時のみ: DLL mtime を polling して L3 ホットリロード
 	// キャプチャした WatcherState はこのスタックフレームに置く。Engine::runModule が
 	// ループ終了までブロックするので lifetime は問題ない。
+	// --capture-dir/--capture-every (#43): 既定を補完してディレクトリを作る。
+	// 片方だけ指定でも有効化（dir 省略→"captures"、every 省略→30）。
+	std::string captureDir = args.captureDir;
+	int captureEvery = args.captureEvery;
+	if (!captureDir.empty() && captureEvery <= 0) { captureEvery = 30; }
+	if (captureEvery > 0 && captureDir.empty()) { captureDir = "captures"; }
+	const bool captureOn = (captureEvery > 0 && !captureDir.empty());
+	if (captureOn)
+	{
+		std::error_code cec;
+		std::filesystem::create_directories(captureDir, cec);
+		std::fprintf(stderr, "[mitiru_host] capture: every %d frame -> %s/\n",
+		             captureEvery, captureDir.c_str());
+	}
+	int captureFrame = 0;   // 経過フレーム数 (onFrameStart クロージャが進める)
+	int captureSeq = 0;     // 保存連番
+	int totalFrame = 0;     // 総フレーム数 (--max-frames 判定用)
+
 	WatcherState watcher;
 	if (args.watch)
 	{
@@ -627,9 +831,31 @@ int main(int argc, char* argv[])
 		             watcher.dllPath.string().c_str());
 	}
 
-	cfg.onFrameStart = [&watcher, watchOn = args.watch](mitiru::Engine& engine)
+	cfg.onFrameStart = [&watcher, watchOn = args.watch,
+	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
+	                    maxFrames = args.maxFrames, &totalFrame]
+	                   (mitiru::Engine& engine)
 	{
 		pollHostHotkeys(engine);
+
+		// --max-frames (#43): 指定フレーム数に達したら停止を要求 (headless 自動回しの終了条件)。
+		if (maxFrames > 0 && ++totalFrame > maxFrames) { engine.requestStop(); }
+
+		// --capture-every (#43): N フレームごとに直近フレームを PNG 連番で吐く。
+		// onFrameStart は描画前なので「前フレームの提示結果」を保存する (AI 視覚検証には十分)。
+		if (captureOn && (captureFrame++ % captureEvery == 0))
+		{
+			const int w = engine.captureWidth();
+			const int h = engine.captureHeight();
+			const auto rgba = engine.capture();
+			if (w > 0 && h > 0 && !rgba.empty())
+			{
+				char name[32];
+				std::snprintf(name, sizeof(name), "frame_%06d.png", captureSeq++);
+				const std::string path = captureDir + "/" + name;
+				(void)mitiru::render::savePixelsToPng(rgba.data(), w, h, path);
+			}
+		}
 
 		if (!watchOn) { return; }
 		if (++watcher.pollTick < watcher.pollEvery) { return; }
@@ -780,6 +1006,45 @@ int main(int argc, char* argv[])
 	std::fprintf(stderr,
 		"[mitiru_host] hotkeys: F7=step F8=pause/play F9=time-scale F10=lofi F12=screenshot+clipboard\n");
 #endif
+
+	// ── デバッグ独立窓のオプトイン (アトミックツール哲学、ADR 0014) ──────────────
+	// 「このデバッグ機能を使いたい」と host を書く人が決めた窓だけ開く。要らなければ
+	// 何も書かない = 何も出ない (pulled UI)。game のキー入力とは無関係に host 側で制御。
+	//
+	//   例: 状態 inspector を常に開きたい host にするなら、ここに直接書く:
+	//       mitiru::debug::openTool(mitiru::Tool::Inspector);
+	//       mitiru::debug::openTool(mitiru::Tool::TimeTravel);
+	//
+	// この参照 host では CLI (--inspect <name>) で選べるようにしてある。新しいツール窓は
+	// ToolRegistry.hpp の kToolTable に 1 行足せば、ここの呼び出しはそのまま使える。
+	for (const mitiru::Tool t : args.openTools)
+	{
+		mitiru::debug::openTool(t);  // producerPid=0 → この host プロセスを監視
+	}
+
+	// --input-script (#43-1): in-process でキーを注入する。replay (--replay) 使用時は
+	// そちらの moduleInputOverride が優先なので設定しない。runModule がブロックするので
+	// scriptPlayer の lifetime はこのスタックフレームで足りる。
+	InputScriptPlayer scriptPlayer;
+	if (args.replayPath.empty() && !args.inputScript.empty())
+	{
+		if (loadInputScript(args.inputScript, scriptPlayer))
+		{
+			std::fprintf(stderr, "[mitiru_host] input-script: %zu events from %s\n",
+			             scriptPlayer.events.size(), args.inputScript.c_str());
+			cfg.moduleInputOverride =
+				[&scriptPlayer](mitiru::module::InputSnapshot& snap) -> bool
+				{
+					scriptPlayer.apply(snap);   // 実キーボードを上書き (注入のみ有効)
+					return true;
+				};
+		}
+		else
+		{
+			std::fprintf(stderr, "mitiru_host: cannot open --input-script: %s\n",
+			             args.inputScript.c_str());
+		}
+	}
 
 	engine.runModule(args.dllPath, cfg);
 

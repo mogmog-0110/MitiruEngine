@@ -33,6 +33,7 @@ add_subdirectory(hello_game)
 add_subdirectory(showcase_platformer)
 add_subdirectory(breakout)
 add_subdirectory(dodge)
+add_subdirectory(anchor)
 add_subdirectory(mitiru_launcher)
 add_subdirectory(mitiru_dev_companion)
 add_subdirectory(mitiru_renderer)
@@ -43,6 +44,10 @@ add_subdirectory(mitiru_subsys_input)
 add_subdirectory(mitiru_subsys_scene)
 add_subdirectory(mitiru_audio)
 add_subdirectory(mitiru_inspector)
+add_subdirectory(mitiru_scene_tree)
+add_subdirectory(mitiru_replay)
+add_subdirectory(mitiru_perf)
+add_subdirectory(mitiru_mixer)
 
 # MYSHOOTER / my_shooter are dev-only skeletons excluded from the public
 # release snapshot. Guard with EXISTS so the prod top-level build (which lacks

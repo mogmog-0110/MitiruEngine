@@ -6,6 +6,9 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
+
+#include <mitiru/audio/AudioMeter.hpp>
 
 namespace mitiru::audio
 {
@@ -87,6 +90,12 @@ public:
 		(void)fadeOutSec;
 		stopMusic();
 	}
+
+	/// @brief 再生中チャンネルのメーター読みを列挙する (任意)
+	/// @details mitiru_mixer 窓の per-channel VU 用。既定は空 = 列挙非対応の
+	///          実装はそのまま動く (非純粋)。再生中 voice を持つ実装が override する。
+	/// @return チャンネルごとの { 種別, 実効レベル } の配列
+	[[nodiscard]] virtual std::vector<ChannelMeter> meterChannels() const { return {}; }
 };
 
 } // namespace mitiru::audio

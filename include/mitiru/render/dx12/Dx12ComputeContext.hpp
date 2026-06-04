@@ -62,8 +62,9 @@ public:
     static constexpr UINT kCbvCount = 4u;
 
     /// @brief SRV / UAV テーブル内のディスクリプタ数
+    /// @details UAV は 8 枠（u0..u7）。GPU 駆動コンピュート（PB-MPM 等）が 4 枠で足りないため拡張 (#26)。
     static constexpr UINT kSrvCount = 4u;
-    static constexpr UINT kUavCount = 4u;
+    static constexpr UINT kUavCount = 8u;
 
     /// @brief ルートパラメータのインデックス定数
     static constexpr UINT kRootIdxCbv0   = 0u;  ///< b0
@@ -89,7 +90,9 @@ public:
     {
         if (!device) return false;
         m_device = device;
-        return buildRootSignature();
+        if (!buildRootSignature()) return false;
+        buildDispatchSignature();   // #26: 間接ディスパッチ用 CommandSignature（失敗しても dispatch は可能）
+        return true;
     }
 
     /// @brief HLSL 文字列からコンピュートシェーダーをコンパイルし PSO を生成する
@@ -181,38 +184,55 @@ public:
     /// @return 成功時 true
     bool dispatch(UINT groupsX, UINT groupsY, UINT groupsZ)
     {
-        if (!m_cmdList || !m_rootSig || !m_pso) return false;
-
-        m_cmdList->SetComputeRootSignature(m_rootSig.Get());
-        m_cmdList->SetPipelineState(m_pso.Get());
-
-        for (UINT i = 0; i < kCbvCount; ++i)
-        {
-            if (m_cbvSet[i])
-            {
-                m_cmdList->SetComputeRootConstantBufferView(i, m_cbvAddrs[i]);
-            }
-        }
-
-        if (m_srvTableSet)
-        {
-            m_cmdList->SetComputeRootDescriptorTable(kRootIdxSrvTbl, m_srvTableHandle);
-        }
-
-        if (m_uavTableSet)
-        {
-            m_cmdList->SetComputeRootDescriptorTable(kRootIdxUavTbl, m_uavTableHandle);
-        }
-
+        if (!bindForDispatch()) return false;
         m_cmdList->Dispatch(groupsX, groupsY, groupsZ);
         return true;
     }
+
+    /// @brief 間接ディスパッチを記録する（GPU 上の引数バッファでスレッドグループ数を駆動）(#26)。
+    /// @details `argBuffer` の `offset` から 12 バイト（uint3 = ThreadGroupCountX/Y/Z）を読む。
+    ///          粒子数に応じた ExecuteIndirect（PB-MPM の bukkit タイリング等）で使う。
+    /// @param argBuffer DISPATCH 引数バッファ（D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT に遷移済みであること）
+    /// @param offset    argBuffer 内のバイトオフセット（既定 0）
+    /// @return 成功時 true（CommandSignature 未構築なら false）
+    bool dispatchIndirect(ID3D12Resource* argBuffer, UINT64 offset = 0)
+    {
+        if (!argBuffer || !m_dispatchSig) return false;
+        if (!bindForDispatch()) return false;
+        m_cmdList->ExecuteIndirect(m_dispatchSig.Get(), 1, argBuffer, offset, nullptr, 0);
+        return true;
+    }
+
+    /// @brief 構造化バッファ UAV ディスクリプタを CPU ハンドルへ作る（テーブル詰めヘルパ）(#26c)。
+    /// @param resource    UAV 対象バッファ
+    /// @param cpuHandle   書き込み先（シェーダ可視ヒープ上の CPU ハンドル）
+    /// @param numElements 要素数
+    /// @param strideBytes 1 要素のバイト数
+    void createStructuredBufferUav(ID3D12Resource* resource,
+                                   D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+                                   UINT numElements, UINT strideBytes) const
+    {
+        if (!m_device || !resource) return;
+        D3D12_UNORDERED_ACCESS_VIEW_DESC d = {};
+        d.ViewDimension              = D3D12_UAV_DIMENSION_BUFFER;
+        d.Format                     = DXGI_FORMAT_UNKNOWN;
+        d.Buffer.FirstElement        = 0;
+        d.Buffer.NumElements         = numElements;
+        d.Buffer.StructureByteStride = strideBytes;
+        d.Buffer.CounterOffsetInBytes = 0;
+        d.Buffer.Flags               = D3D12_BUFFER_UAV_FLAG_NONE;
+        m_device->CreateUnorderedAccessView(resource, nullptr, &d, cpuHandle);
+    }
+
+    /// @brief 間接ディスパッチ用 CommandSignature が構築済みか。
+    [[nodiscard]] bool hasDispatchSignature() const noexcept { return m_dispatchSig != nullptr; }
 
     /// @brief すべての GPU リソースを解放し未初期化状態に戻す
     void destroy()
     {
         m_pso.Reset();
         m_rootSig.Reset();
+        m_dispatchSig.Reset();
         m_device     = nullptr;
         m_cmdList    = nullptr;
         m_shaderHash = 0;
@@ -307,6 +327,46 @@ private:
         return true;
     }
 
+    /// @brief root sig / PSO / CBV / テーブルをコマンドリストへ束縛する（dispatch 系共通）。
+    bool bindForDispatch()
+    {
+        if (!m_cmdList || !m_rootSig || !m_pso) return false;
+
+        m_cmdList->SetComputeRootSignature(m_rootSig.Get());
+        m_cmdList->SetPipelineState(m_pso.Get());
+
+        for (UINT i = 0; i < kCbvCount; ++i)
+        {
+            if (m_cbvSet[i])
+            {
+                m_cmdList->SetComputeRootConstantBufferView(i, m_cbvAddrs[i]);
+            }
+        }
+        if (m_srvTableSet)
+        {
+            m_cmdList->SetComputeRootDescriptorTable(kRootIdxSrvTbl, m_srvTableHandle);
+        }
+        if (m_uavTableSet)
+        {
+            m_cmdList->SetComputeRootDescriptorTable(kRootIdxUavTbl, m_uavTableHandle);
+        }
+        return true;
+    }
+
+    /// @brief 間接ディスパッチ用 CommandSignature（DISPATCH 1 引数・ストライド 16）を構築する (#26)。
+    void buildDispatchSignature()
+    {
+        D3D12_INDIRECT_ARGUMENT_DESC arg = {};
+        arg.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+
+        D3D12_COMMAND_SIGNATURE_DESC csd = {};
+        csd.ByteStride       = 16;   // uint3 + パディング（典型的な dispatch 引数バッファに合わせる）
+        csd.NumArgumentDescs = 1;
+        csd.pArgumentDescs   = &arg;
+        // DISPATCH のみのシグネチャは root signature 不要（nullptr）。
+        m_device->CreateCommandSignature(&csd, nullptr, IID_PPV_ARGS(m_dispatchSig.GetAddressOf()));
+    }
+
     /// @brief FNV-1a 64 bit でヌル終端文字列をハッシュする
     [[nodiscard]] static std::size_t hashString(const char* str) noexcept
     {
@@ -327,6 +387,7 @@ private:
     ID3D12GraphicsCommandList*   m_cmdList  = nullptr;    ///< 借用ポインタ（所有しない）
     ComPtr<ID3D12RootSignature>  m_rootSig;               ///< 汎用コンピュートルートシグネチャ
     ComPtr<ID3D12PipelineState>  m_pso;                   ///< コンピュート PSO
+    ComPtr<ID3D12CommandSignature> m_dispatchSig;         ///< 間接ディスパッチ用 (#26)
 
     std::size_t m_shaderHash = 0;                         ///< 最後にコンパイルしたソースのハッシュ
 

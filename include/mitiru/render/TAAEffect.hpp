@@ -45,6 +45,7 @@ constexpr std::string_view TAA_RESOLVE_PS = R"hlsl(
 Texture2D currentTexture : register(t0);
 Texture2D historyTexture : register(t1);
 Texture2D depthTexture : register(t2);
+Texture2D velocityTexture : register(t3);   // 画面内モーションベクタ (UV単位)。未バインド時は 0。
 SamplerState linearClampSampler : register(s0);
 SamplerState pointClampSampler : register(s1);
 
@@ -118,9 +119,12 @@ float4 PSMain(PSInput input) : SV_TARGET
 	float3 currentColor = currentTexture.Sample(
 		pointClampSampler, input.texCoord).rgb;
 
-	// 深度ベースの簡易リプロジェクション
-	// （モーションベクター未使用、前フレームUV ≒ 現フレームUV）
-	float2 historyUV = uv;
+	// モーションベクタによるリプロジェクション。velocity は画面内移動量(UV単位)で、
+	// 前フレームの同じ点は historyUV = uv - velocity にある。velocityTexture が未バインド
+	// なら velocity=0 となり historyUV = uv（従来の「動かない」挙動）に縮退する。
+	float2 velocity = velocityTexture.Sample(
+		pointClampSampler, input.texCoord).xy * motionScale;
+	float2 historyUV = uv - velocity;
 	float3 historyColor = historyTexture.Sample(
 		linearClampSampler, historyUV).rgb;
 
@@ -245,6 +249,16 @@ public:
 		ID3D11ShaderResourceView* depthSRV) noexcept
 	{
 		m_depthSRV = depthSRV;
+	}
+
+	/// @brief 速度(モーションベクタ)SRVを設定する
+	/// @details 画面内移動量を UV 単位で格納したテクスチャ。設定すると history を
+	///          `uv - velocity` で reproject し、動く物体のゴースト/にじみを抑える。
+	///          未設定(null)なら velocity=0 扱いで従来挙動に縮退する（後方互換）。
+	void setVelocitySRV(
+		ID3D11ShaderResourceView* velocitySRV) noexcept
+	{
+		m_velocitySRV = velocitySRV;
 	}
 
 	/// @brief 設定を変更する
@@ -419,13 +433,14 @@ private:
 		context->IASetPrimitiveTopology(
 			D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		/// テクスチャ設定: t0=現在, t1=ヒストリー, t2=深度
-		ID3D11ShaderResourceView* srvs[3] = {
+		/// テクスチャ設定: t0=現在, t1=ヒストリー, t2=深度, t3=速度(未設定なら null=velocity0)
+		ID3D11ShaderResourceView* srvs[4] = {
 			currentSRV,
 			m_historyRT.srv.Get(),
-			m_depthSRV
+			m_depthSRV,
+			m_velocitySRV
 		};
-		context->PSSetShaderResources(0, 3, srvs);
+		context->PSSetShaderResources(0, 4, srvs);
 
 		/// サンプラー設定: s0=リニア, s1=ポイント
 		ID3D11SamplerState* samplers[2] = {
@@ -442,10 +457,10 @@ private:
 		context->Draw(3, 0);
 
 		/// SRVクリア
-		ID3D11ShaderResourceView* nullSRVs[3] = {
-			nullptr, nullptr, nullptr
+		ID3D11ShaderResourceView* nullSRVs[4] = {
+			nullptr, nullptr, nullptr, nullptr
 		};
-		context->PSSetShaderResources(0, 3, nullSRVs);
+		context->PSSetShaderResources(0, 4, nullSRVs);
 	}
 
 	/// @brief ヒストリーバッファへリゾルブ結果をコピーする
@@ -486,12 +501,14 @@ private:
 		context->IASetPrimitiveTopology(
 			D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		ID3D11ShaderResourceView* srvs[3] = {
+		// 同じ resolve PS を使うため velocity も t3 に揃える（未設定なら null=velocity0）。
+		ID3D11ShaderResourceView* srvs[4] = {
 			currentSRV,
 			nullptr,  // ヒストリーは出力先なのでバインドしない
-			m_depthSRV
+			m_depthSRV,
+			m_velocitySRV
 		};
-		context->PSSetShaderResources(0, 3, srvs);
+		context->PSSetShaderResources(0, 4, srvs);
 
 		ID3D11SamplerState* samplers[2] = {
 			m_linearClampSampler.Get(),
@@ -504,10 +521,10 @@ private:
 
 		context->Draw(3, 0);
 
-		ID3D11ShaderResourceView* nullSRVs[3] = {
-			nullptr, nullptr, nullptr
+		ID3D11ShaderResourceView* nullSRVs[4] = {
+			nullptr, nullptr, nullptr, nullptr
 		};
-		context->PSSetShaderResources(0, 3, nullSRVs);
+		context->PSSetShaderResources(0, 4, nullSRVs);
 	}
 
 	/// @brief テクスチャをコピーする（パススルー描画）
@@ -788,6 +805,7 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 
 	/// 深度SRV（外部から設定、所有権なし）
 	ID3D11ShaderResourceView* m_depthSRV = nullptr;
+	ID3D11ShaderResourceView* m_velocitySRV = nullptr;
 
 	/// Haltonジッターシーケンス
 	std::array<std::array<float, 2>, kJitterSamples>

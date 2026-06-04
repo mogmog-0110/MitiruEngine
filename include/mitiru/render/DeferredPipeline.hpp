@@ -10,6 +10,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <sgc/math/Mat4.hpp>
@@ -18,6 +21,7 @@
 #include <sgc/types/Color.hpp>
 
 #include <mitiru/render/Camera3D.hpp>
+#include <mitiru/render/CpuTexture.hpp>
 #include <mitiru/render/GBuffer.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/Material.hpp>
@@ -55,9 +59,12 @@ public:
 	                const ShadowMapConfig& shadowConfig = {})
 	{
 		m_gBuffer.initialize(width, height);
+		m_prevGBuffer.initialize(width, height);   // #6: 前フレーム GBuffer
 		m_shadowMap.initialize(shadowConfig);
 		m_width = width;
 		m_height = height;
+		m_hasPrevFrame = false;
+		m_prevWorld.clear();
 	}
 
 	/// @brief 初期化済みかどうかを取得する
@@ -78,6 +85,15 @@ public:
 		return m_gBuffer;
 	}
 
+	/// @brief 前フレームの Gバッファを取得する（#6: temporal coherence 用）
+	/// @details depth / normal / objectId / velocity を前フレーム分そのまま読める。
+	///          初回フレームは空（clear 済み）。輪郭線の reproject 先で
+	///          `objectId_{t-1}` 等を参照して correspondence を検証するのに使う。
+	[[nodiscard]] const GBuffer& previousGBuffer() const noexcept
+	{
+		return m_prevGBuffer;
+	}
+
 	/// @brief シーンをディファードパイプラインで描画する
 	/// @param scene 描画するシーン
 	/// @param camera 使用するカメラ
@@ -86,13 +102,20 @@ public:
 	///   1. シャドウ深度パス: 最初のディレクショナルライトでシャドウマップを生成
 	///   2. ジオメトリパス:   全メッシュをGバッファに書き込む
 	///   3. ライティングパス: Gバッファ + シャドウマップからピクセル色を計算して出力
+	/// @param culledNodeIds 任意。ここに含まれる nodeId のオブジェクトは描画スキップ（#5b LOD 配線）。
+	///        `LODManager::update()` → `collectCulledNodeIds()` の結果を渡すと遠方が省ける。
 	void render(const Scene3D& scene,
 	            const Camera3D& camera,
-	            RenderTexture& output)
+	            RenderTexture& output,
+	            const std::unordered_set<int>* culledNodeIds = nullptr)
 	{
 		MITIRU_LOG_TRACE("DeferredPipeline",
 			"render enter, w=" + std::to_string(m_width) + " h=" + std::to_string(m_height));
 		output.clear(m_clearColor);
+
+		/// #6: 現フレームを書く前に、前回の結果を prev へ退避する（ping-pong）。
+		///     これで描画中も previousGBuffer() から前フレーム属性を読める。
+		std::swap(m_gBuffer, m_prevGBuffer);
 		m_gBuffer.clear();
 
 		/// カメラのビュー射影行列を計算する
@@ -107,6 +130,7 @@ public:
 			m_shadowMap.beginShadowPass(*dirLight);
 			for (const auto& obj : scene.objects())
 			{
+				if (isCulled(obj, culledNodeIds)) { continue; }
 				if (obj.mesh && obj.mesh->vertexCount() > 0)
 				{
 					const sgc::Mat4f world = buildWorldMatrix(obj);
@@ -117,19 +141,46 @@ public:
 		}
 
 		/// パス2: ジオメトリパス（GBufferへの書き込み）
+		std::unordered_map<int, sgc::Mat4f> curWorld;   // #7: 次フレームの prev 用
 		for (const auto& obj : scene.objects())
 		{
 			if (!obj.mesh || obj.mesh->vertexCount() == 0)
 			{
 				continue;
 			}
+			if (isCulled(obj, culledNodeIds)) { continue; }   // #5b: LOD カリング
 
 			const sgc::Mat4f world = buildWorldMatrix(obj);
-			geometryPass(*obj.mesh, world, obj.material, vp);
+			// nodeId(-1=未設定) → objectId(0=背景)。0 と区別するため +1 して焼き込む。
+			const std::uint32_t objectId =
+				obj.nodeId < 0 ? 0u : static_cast<std::uint32_t>(obj.nodeId) + 1u;
+
+			// #7: velocity 用に前フレームの MVP を用意する。nodeId で前フレーム world を
+			//     引けた時だけ velocity を書く（初回 / 未マッチ / nodeId 未設定は 0 のまま）。
+			sgc::Mat4f prevMvp;
+			const sgc::Mat4f* prevMvpPtr = nullptr;
+			if (m_hasPrevFrame && obj.nodeId >= 0)
+			{
+				const auto it = m_prevWorld.find(obj.nodeId);
+				if (it != m_prevWorld.end())
+				{
+					prevMvp = m_prevVP * it->second;
+					prevMvpPtr = &prevMvp;
+				}
+			}
+			if (obj.nodeId >= 0) { curWorld[obj.nodeId] = world; }
+
+			geometryPass(*obj.mesh, world, obj.material, vp, objectId, prevMvpPtr, obj.prevMesh,
+			             obj.albedoTexture);
 		}
 
 		/// パス3: ライティングパス（GBuffer→RenderTexture）
 		lightingPass(scene, camera, output, dirLight);
+
+		/// #7: 今フレームの VP / world を次フレームの「前フレーム」として保存する。
+		m_prevVP = vp;
+		m_prevWorld = std::move(curWorld);
+		m_hasPrevFrame = true;
 		MITIRU_LOG_TRACE("DeferredPipeline", "render complete");
 	}
 
@@ -148,6 +199,14 @@ private:
 			}
 		}
 		return nullptr;
+	}
+
+	/// @brief このオブジェクトが LOD カリング集合に含まれるか（#5b）。
+	[[nodiscard]] static bool isCulled(const Scene3D::RenderObject& obj,
+	                                   const std::unordered_set<int>* culledNodeIds) noexcept
+	{
+		return culledNodeIds != nullptr && obj.nodeId >= 0 &&
+		       culledNodeIds->count(obj.nodeId) > 0;
 	}
 
 	/// @brief Scene3D::RenderObjectからワールド行列を構築する
@@ -172,21 +231,34 @@ private:
 	void geometryPass(const Mesh& mesh,
 	                  const sgc::Mat4f& world,
 	                  const Material& material,
-	                  const sgc::Mat4f& vp)
+	                  const sgc::Mat4f& vp,
+	                  std::uint32_t objectId = 0,
+	                  const sgc::Mat4f* prevMvp = nullptr,
+	                  const Mesh* prevMesh = nullptr,
+	                  const CpuTexture* albedoTex = nullptr)
 	{
 		const sgc::Mat4f mvp = vp * world;
 		const auto& verts = mesh.vertices();
 		const auto& indices = mesh.indices();
+
+		// #18: 変形メッシュ（クロス/スキニング/モーフ）は同 nodeId でも頂点が変わるので、
+		//      前フレームの頂点位置から velocity を出す。同サイズの prevMesh があれば使う。
+		const std::vector<Vertex3D>* prevVerts =
+			(prevMesh != nullptr && prevMesh->vertices().size() == verts.size())
+				? &prevMesh->vertices() : nullptr;
+		auto prevPos = [&](std::size_t idx) -> const sgc::Vec3f* {
+			return prevVerts ? &(*prevVerts)[idx].position : nullptr;
+		};
 
 		if (!indices.empty())
 		{
 			for (std::size_t i = 0; i + 2 < indices.size(); i += 3)
 			{
 				rasterizeGeometryTriangle(
-					verts[indices[i]],
-					verts[indices[i + 1]],
-					verts[indices[i + 2]],
-					world, mvp, material);
+					verts[indices[i]], verts[indices[i + 1]], verts[indices[i + 2]],
+					world, mvp, material, objectId, prevMvp,
+					prevPos(indices[i]), prevPos(indices[i + 1]), prevPos(indices[i + 2]),
+					albedoTex);
 			}
 		}
 		else
@@ -194,12 +266,25 @@ private:
 			for (std::size_t i = 0; i + 2 < verts.size(); i += 3)
 			{
 				rasterizeGeometryTriangle(
-					verts[i],
-					verts[i + 1],
-					verts[i + 2],
-					world, mvp, material);
+					verts[i], verts[i + 1], verts[i + 2],
+					world, mvp, material, objectId, prevMvp,
+					prevPos(i), prevPos(i + 1), prevPos(i + 2),
+					albedoTex);
 			}
 		}
+	}
+
+	/// @brief 頂点を MVP でピクセル座標へ射影する（velocity 計算の補助）。
+	/// @return w がほぼ 0（カメラ背後）の場合 ok=false。
+	struct ProjectedPoint { float x, y; bool ok; };
+	[[nodiscard]] ProjectedPoint projectToPixel(
+		const sgc::Mat4f& mvp, const sgc::Vec3f& p) const noexcept
+	{
+		const sgc::Vec4f c = mvp * sgc::Vec4f{p.x, p.y, p.z, 1.0f};
+		if (std::abs(c.w) < 1e-6f) { return {0.0f, 0.0f, false}; }
+		const float ndcX = c.x / c.w, ndcY = c.y / c.w;
+		return {(ndcX + 1.0f) * 0.5f * static_cast<float>(m_width),
+		        (1.0f - ndcY) * 0.5f * static_cast<float>(m_height), true};
 	}
 
 	/// @brief ジオメトリパス用三角形ラスタライザ
@@ -215,7 +300,13 @@ private:
 		const Vertex3D& vc,
 		const sgc::Mat4f& world,
 		const sgc::Mat4f& mvp,
-		const Material& material)
+		const Material& material,
+		std::uint32_t objectId = 0,
+		const sgc::Mat4f* prevMvp = nullptr,
+		const sgc::Vec3f* prevPosA = nullptr,
+		const sgc::Vec3f* prevPosB = nullptr,
+		const sgc::Vec3f* prevPosC = nullptr,
+		const CpuTexture* albedoTex = nullptr)
 	{
 		/// クリップ座標に変換する
 		const sgc::Vec4f ca = mvp * sgc::Vec4f{va.position.x, va.position.y, va.position.z, 1.0f};
@@ -250,6 +341,19 @@ private:
 		const sgc::Vec3f normA = world.transformVector(va.normal).normalized();
 		const sgc::Vec3f normB = world.transformVector(vb.normal).normalized();
 		const sgc::Vec3f normC = world.transformVector(vc.normal).normalized();
+
+		/// #7: 前フレームのスクリーン座標（velocity 用）。prevMvp が無い / カメラ背後なら無効。
+		/// #18: prevPos* があれば前フレームの頂点位置を使う（変形メッシュ対応）。無ければ現頂点位置
+		///      （剛体: 同じ頂点が prev 変換で動いた分だけが velocity）。
+		ProjectedPoint prevA{}, prevB{}, prevC{};
+		bool hasVelocity = false;
+		if (prevMvp != nullptr)
+		{
+			prevA = projectToPixel(*prevMvp, prevPosA ? *prevPosA : va.position);
+			prevB = projectToPixel(*prevMvp, prevPosB ? *prevPosB : vb.position);
+			prevC = projectToPixel(*prevMvp, prevPosC ? *prevPosC : vc.position);
+			hasVelocity = prevA.ok && prevB.ok && prevC.ok;
+		}
 
 		/// バウンディングボックスを計算する
 		const int minX = std::max(0, std::min({pax, pbx, pcx}));
@@ -287,7 +391,28 @@ private:
 				pixel.depth = depth;
 				pixel.position = worldA * wa + worldB * wb + worldC * wc;
 				pixel.normal = (normA * wa + normB * wb + normC * wc).normalized();
-				pixel.albedo = material.diffuse;
+				// #17: テクスチャがあれば頂点 UV を補間してサンプル、無ければ diffuse ベタ塗り。
+				if (albedoTex != nullptr && albedoTex->valid())
+				{
+					const float u = wa * va.texCoord.x + wb * vb.texCoord.x + wc * vc.texCoord.x;
+					const float v = wa * va.texCoord.y + wb * vb.texCoord.y + wc * vc.texCoord.y;
+					pixel.albedo = albedoTex->sampleNearest(u, v);
+				}
+				else
+				{
+					pixel.albedo = material.diffuse;
+				}
+				pixel.objectId = objectId;
+
+				/// #7: velocity = 現ピクセル − 同一表面点の前フレームスクリーン座標（ピクセル単位）。
+				///     前フレームの頂点スクリーン座標を現フレームの重心座標で補間する。
+				if (hasVelocity)
+				{
+					const float prevX = wa * prevA.x + wb * prevB.x + wc * prevC.x;
+					const float prevY = wa * prevA.y + wb * prevB.y + wc * prevC.y;
+					pixel.velocity = {(static_cast<float>(x) + 0.5f) - prevX,
+					                  (static_cast<float>(y) + 0.5f) - prevY};
+				}
 
 				/// 深度テストを行ってGBufferに書き込む
 				const auto& existing = m_gBuffer.readPixel(x, y);
@@ -380,6 +505,14 @@ private:
 	ShadowMap m_shadowMap;
 	/// @brief Gバッファ
 	GBuffer m_gBuffer;
+	/// @brief 前フレーム Gバッファ（#6: ping-pong）
+	GBuffer m_prevGBuffer;
+	/// @brief 前フレームの VP 行列（#7: velocity 計算用）
+	sgc::Mat4f m_prevVP;
+	/// @brief 前フレームの nodeId → world 行列（#7: velocity 計算用）
+	std::unordered_map<int, sgc::Mat4f> m_prevWorld;
+	/// @brief 前フレームの情報が揃っているか（初回は false → velocity 0）
+	bool m_hasPrevFrame = false;
 	/// @brief 出力幅
 	int m_width = 0;
 	/// @brief 出力高さ

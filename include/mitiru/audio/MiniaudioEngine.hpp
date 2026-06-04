@@ -12,6 +12,8 @@
 #include <string_view>
 #include <vector>
 
+#include <mitiru/audio/AudioMeter.hpp>
+
 namespace mitiru::audio {
 
 /// @brief miniaudioベースのオーディオエンジン
@@ -205,6 +207,24 @@ public:
 	void resume() {
 		if (!m_initialized) return;
 		ma_engine_start(&m_engine);
+	}
+
+	/// @brief 再生中チャンネルのメーター読みを列挙する
+	/// @details BGM (m_music) + 終了前の one-shot SE を、それぞれの設定実効音量で
+	///          報告する。mitiru_mixer 窓の per-channel VU 用 (host が host_module 経由で読む)。
+	/// @return チャンネルごとの { 種別, レベル } の配列
+	[[nodiscard]] std::vector<ChannelMeter> meterChannels() const {
+		std::vector<ChannelMeter> out;
+		if (!m_initialized) { return out; }
+		if (m_musicActive && ma_sound_is_playing(&m_music)) {
+			out.push_back(ChannelMeter{"music", ma_sound_get_volume(&m_music)});
+		}
+		for (const auto& s : m_oneShots) {
+			if (!ma_sound_at_end(s.get())) {
+				out.push_back(ChannelMeter{"se", ma_sound_get_volume(s.get())});
+			}
+		}
+		return out;
 	}
 
 private:

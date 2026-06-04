@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。中身は C&#43;&#43; で持って、見た目は HTML/CSS、つなぎは薄い state push。RPG のメニューやアクションのカットインの土台になるパターン。">
+<meta name="description" content="C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。ロジックは C&#43;&#43;、UI は HTML/CSS、つなぎは StateWriter &#43; data-m-* の宣言バインダ。手書き JS はゼロ。">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="02 画面に UI を出す | MitiruEngine">
-<meta property="og:description" content="C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。中身は C&#43;&#43; で持って、見た目は HTML/CSS、つなぎは薄い state push。RPG のメニューやアクションのカットインの土台になるパターン。">
+<meta property="og:description" content="C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。ロジックは C&#43;&#43;、UI は HTML/CSS、つなぎは StateWriter &#43; data-m-* の宣言バインダ。手書き JS はゼロ。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="02 画面に UI を出す | MitiruEngine">
-<meta name="twitter:description" content="C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。中身は C&#43;&#43; で持って、見た目は HTML/CSS、つなぎは薄い state push。RPG のメニューやアクションのカットインの土台になるパターン。">
+<meta name="twitter:description" content="C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。ロジックは C&#43;&#43;、UI は HTML/CSS、つなぎは StateWriter &#43; data-m-* の宣言バインダ。手書き JS はゼロ。">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -371,41 +371,36 @@
     </p>
     
     <h1 class="page-article__title">02 画面に UI を出す</h1>
-    <p class="page-article__lede">C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。中身は C&#43;&#43; で持って、見た目は HTML/CSS、つなぎは薄い state push。RPG のメニューやアクションのカットインの土台になるパターン。</p>
+    <p class="page-article__lede">C&#43;&#43; で動いているゲームの上に、HTML/CSS で作った HUD を重ねる。ロジックは C&#43;&#43;、UI は HTML/CSS、つなぎは StateWriter &#43; data-m-* の宣言バインダ。手書き JS はゼロ。</p>
   </header>
 
   
   <aside class="page-summary">
     <h2 class="page-summary__h">このページで分かること</h2>
     <ul>
-      <li>mitiru new (デフォルトテンプレート) で CEF 入りのひな型を作る</li><li>C&#43;&#43; で値を持って、StateStore で JS に push する</li><li>JS は state を受け取って DOM を書き換えるだけ。ゲームのロジックは書かない</li>
+      <li>mitiru new の雛形には最初から透過 HUD が付いている。その仕組みを読み解く</li><li>C&#43;&#43; は on_update で StateWriter に名前付きの値を push するだけ</li><li>HTML は data-m-* 属性で値を映すだけ。手書き JavaScript は書かない</li>
     </ul>
   </aside>
   
 
   <div class="page-with-toc">
     <div class="page-article__body">
-      <p><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> で作った C++ ゲームの上に、HTML/CSS で組んだ <strong>見た目だけのレイヤー</strong> を重ねるチュートリアルです。HUD バー、ダイアログ、メニューなど、Web のデザイン資産を活かしたい部分はここに乗ります。</p>
-<p>このチュートリアルでは「中身は C++、画面は HTML / CSS、橋渡しは薄く」という MitiruEngine の標準形を実際のコードで体験します。</p>
-<p>時間の目安は <strong>20 〜 25 分</strong>。<strong>先に <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> を済ませてください</strong> ── このチュートリアルは 01 で書いた純 C++ コードに UI を被せる前提で進みます。</p>
-<aside class="cpp-note">
-<span class="cpp-note__title">C++ がはじめての方へ</span>
-<p>01 と同じく、要所に <strong>C++ メモ</strong> を置きます。今回は HTML / CSS / JavaScript も少しだけ出てきますが、いずれも「見た目を作る」「値を受け取って画面に貼る」だけの簡単な部分です。</p>
-</aside>
+      <p><a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> で動かした C++ ゲームの上に、HTML/CSS の <strong>見た目だけのレイヤー</strong> を重ねます。HUD バー、ダイアログ、メニューなど、Web のデザイン資産を活かしたい部分はここに乗ります。</p>
+<p>実は <code>mitiru new</code> の雛形には<strong>最初から透過 HUD が付いています</strong>。このチュートリアルでは、その仕組み（C++ の <code>StateWriter</code> と HTML の <code>data-m-*</code>）を読み解き、HUD に「経過時間」を足します。<strong>手書きの JavaScript は 1 行も書きません</strong>。</p>
+<p>時間の目安は <strong>15 〜 20 分</strong>。<strong>先に <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> を済ませてください</strong>。</p>
 <hr>
 <h2 id="できあがるもの">できあがるもの</h2>
 <ul>
-<li>黒い背景の上に、C++ で描いた水色の矩形 (前のチュートリアルと同じプレイヤー)</li>
-<li>画面の上に、HTML/CSS で組んだ HUD バー</li>
-<li>HUD には「経過時間」が表示され、毎フレーム C++ から更新される</li>
+<li>暗い背景の上を動く水色の矩形プレイヤー（01 と同じ、C++ 描画）</li>
+<li>画面左上の半透明 HUD バー（HTML/CSS）</li>
+<li>HUD に座標と「経過時間」が出て、毎フレーム C++ から更新される</li>
 </ul>
 <figure class="tutorial-figure">
-  <img src="images/finished.svg" alt="完成画面: 暗背景に水色矩形が描かれ、上部に半透明の HUD バーが乗って 00:12 と表示されている" loading="lazy">
-  <figcaption>C++ が描いた背景 + プレイヤー (Native レンダ) の上に、CSS で組んだ HUD (CEF レイヤー) が乗る。HUD の時計は C++ から push される。</figcaption>
+  <img src="images/finished.svg" alt="完成画面: 暗背景に水色矩形、左上に半透明 HUD バーが座標と 00:12 を表示" loading="lazy">
+  <figcaption>C++ が描いた背景 + プレイヤー（native レンダ）の上に、CSS の HUD（CEF レイヤー）が乗る。値は C++ から push される。</figcaption>
 </figure>
 <hr>
 <h2 id="役割分担をはっきりさせる">役割分担をはっきりさせる</h2>
-<p>書き始める前に、それぞれの担当を整理します。これがすべての判断のもとになります。</p>
 <table>
   <thead>
       <tr>
@@ -415,221 +410,123 @@
   </thead>
   <tbody>
       <tr>
-          <td>経過時間を数える</td>
-          <td><strong>C++</strong> (<code>Game::update</code>)</td>
+          <td>経過時間を数える / 座標を持つ</td>
+          <td><strong>C++</strong>（<code>on_update</code>、状態は <code>GameMemory</code>）</td>
       </tr>
       <tr>
           <td>プレイヤーや背景の描画</td>
-          <td><strong>C++</strong> (<code>Game::draw</code>)</td>
+          <td><strong>C++</strong>（<code>on_draw</code>）</td>
       </tr>
       <tr>
           <td>HUD のレイアウトと見た目</td>
           <td><strong>HTML / CSS</strong></td>
       </tr>
       <tr>
-          <td>HUD に値を書き込む</td>
-          <td><strong>JS</strong> (受け取って DOM に貼るだけ)</td>
+          <td>HUD に値を映す</td>
+          <td><strong><code>data-m-*</code> 属性</strong>（宣言バインダが自動でやる）</td>
       </tr>
       <tr>
-          <td>「次は何が起きるか」を決める</td>
-          <td><strong>C++</strong>。JS では決めない</td>
+          <td>「次に何が起きるか」を決める</td>
+          <td><strong>C++</strong>。HTML/JS では決めない</td>
       </tr>
   </tbody>
 </table>
-<p><strong>ゲームのロジックを JS に書かない</strong>、これが一番大事です。JS は受け取って表示するだけ。HTML / CSS / JS は <strong>「画面のレイアウトと見た目を作るための道具」</strong> だと割り切ってください。値を進めるとか、勝敗を判定するとか、そういう仕事は C++ にぜんぶ寄せます。</p>
+<p><strong>ゲームのロジックを HTML/JS 側に書かない</strong>、これが一番大事です。C++ が名前付きの値を push し、HTML はその値を <code>data-m-*</code> で映すだけ。間をつなぐ JavaScript は<strong>エンジン同梱のバインダ</strong>（<code>mitiru_bind.js</code>）が担うので、<strong>あなたは JS を書きません</strong>。</p>
 <aside class="cpp-note">
 <span class="cpp-note__title">設計メモ — なぜ役割を分けるのか</span>
-<p>「全部 C++ で書けばいいのでは?」と思うかもしれません。実際 [01](../01-action-prototype/) ではそうしました。それでも CEF を使う理由は <strong>HTML / CSS のほうが見た目を作りやすい</strong> から。グラデーション、半透明、フォントの組版、アニメーション、レスポンシブ ── Web の道具は何十年も磨かれてきました。これらを C++ でゼロから書くのはコスパが悪いです。</p>
-<p>でも <strong>ゲームのルールまで HTML 側に書くと迷子になります</strong>。「いま HP がいくつなのか」を C++ と JS が両方持ってしまうと、片方を更新し忘れた瞬間に表示と中身がズレ、デバッグが地獄になります。これを避けるために「<strong>真実は C++ にだけ置く、JS はそれを映すだけ</strong>」と決めておく、というのが今回の話です。</p>
+<p>「全部 C++ で描けばいいのでは?」とも思えますが、グラデーション・半透明・組版・アニメーションは HTML/CSS のほうが圧倒的に作りやすい。一方で <strong>ゲームのルールまで HTML 側に持つと、状態が C++ と HTML に二重化して必ずズレます</strong>。だから「真実は C++ にだけ置き、HTML はそれを映すだけ」と決めます。値の受け渡しを宣言的な <code>data-m-*</code> に寄せると、その規律が構造的に守られます（手書き JS で状態を持てない）。</p>
 </aside>
 <hr>
-<h2 id="手順-1-ひな型を作る">手順 1: ひな型を作る</h2>
-<p>CEF を含むデフォルトテンプレートでひな型を作ります。</p>
+<h2 id="手順-1-雛形を作って走らせる">手順 1: 雛形を作って走らせる</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru new my-ui
 </span></span><span class="line"><span class="cl"><span class="nb">cd</span> my-ui
-</span></span></code></pre></div><figure class="tutorial-figure">
-  <img src="images/01-folder.svg" alt="生成された my-ui/ フォルダの中身: src/main.cpp, assets/scene.html, mitiru.toml, .gitignore, README.md" loading="lazy">
-  <figcaption>デフォルトテンプレートには assets/scene.html が含まれる。これが CEF が読み込む HTML。</figcaption>
-</figure>
+</span></span><span class="line"><span class="cl">mitiru watch
+</span></span></code></pre></div><p>矢印キーで矩形が動き、左上の HUD に座標が出ます。<strong>この HUD はすでに動いています</strong> ── 次の手順でその中身を読みます。
+（<code>mitiru watch</code> なら、以降の編集は保存した瞬間に反映されます。）</p>
 <hr>
-<h2 id="手順-2-そのまま走らせる">手順 2: そのまま走らせる</h2>
-<p>中身を変える前に、ひな型を走らせて初期画面を確認します。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru run
-</span></span></code></pre></div><figure class="tutorial-figure">
-  <img src="images/02-default.svg" alt="ひな型を走らせた直後: グラデーション背景にプロジェクト名が中央表示" loading="lazy">
-  <figcaption>デフォルトのシーンは HTML/CSS だけで描かれている。C++ 側はまだ何も描いていない。</figcaption>
-</figure>
-<p>ここまでで、CEF レイヤーが画面に乗ることが確認できました。</p>
-<hr>
-<h2 id="手順-3-c-で背景とプレイヤーを描く">手順 3: C++ で背景とプレイヤーを描く</h2>
-<p><code>src/main.cpp</code> を開いて、C++ で背景と矩形を描くコードに書き換えます。<a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/">01</a> と同じ流儀です。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="n">m_elapsed</span> <span class="o">+=</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.10f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
-</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="n">w</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">-</span> <span class="mi">24</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">-</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">48</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.75f</span><span class="p">,</span> <span class="mf">0.95f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">m_elapsed</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">};</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Engine</span> <span class="n">engine</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">MyGame</span> <span class="n">game</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">EngineConfig</span> <span class="n">cfg</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">title</span>         <span class="o">=</span> <span class="s">&#34;My UI&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowWidth</span>   <span class="o">=</span> <span class="mi">800</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">windowHeight</span>  <span class="o">=</span> <span class="mi">600</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">cefStartUrl</span>   <span class="o">=</span> <span class="s">&#34;assets/scene.html&#34;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">cfg</span><span class="p">.</span><span class="n">skipDefaultFont</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">engine</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">game</span><span class="p">,</span> <span class="n">cfg</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p>ここまでで <code>mitiru run</code> すると、ひな型の HUD はそのままで、C++ の描画は HTML の <strong>下</strong> に隠れてしまいます。HTML が画面いっぱいに不透明な背景を持っているからです。次の手順で HTML を「透ける HUD」に作り直します。</p>
-<hr>
-<h2 id="手順-4-html-を透ける-hudに作り変える">手順 4: HTML を「透ける HUD」に作り変える</h2>
-<p><code>assets/scene.html</code> を開いて、画面いっぱいの背景をやめ、上部に細い HUD バーだけを残すように書き換えます。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;ja&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;utf-8&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>My UI<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">style</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">html</span><span class="o">,</span> <span class="nt">body</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">margin</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">height</span><span class="p">:</span> <span class="mi">100</span><span class="kt">%</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">background</span><span class="p">:</span> <span class="kc">transparent</span><span class="p">;</span>          <span class="c">/* 中身が透ける */</span>
-</span></span><span class="line"><span class="cl">    <span class="k">font-family</span><span class="p">:</span> <span class="s2">&#34;Noto Sans JP&#34;</span><span class="p">,</span> <span class="s2">&#34;Hiragino Sans&#34;</span><span class="p">,</span> <span class="s2">&#34;Yu Gothic&#34;</span><span class="p">,</span> <span class="n">system-ui</span><span class="p">,</span> <span class="kc">sans-serif</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">color</span><span class="p">:</span> <span class="mh">#fff</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">overflow</span><span class="p">:</span> <span class="kc">hidden</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nc">hud</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">position</span><span class="p">:</span> <span class="kc">fixed</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">top</span><span class="p">:</span> <span class="mi">16</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">left</span><span class="p">:</span> <span class="mi">16</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">padding</span><span class="p">:</span> <span class="mi">6</span><span class="kt">px</span> <span class="mi">14</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">background</span><span class="p">:</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="k">border</span><span class="p">:</span> <span class="mi">1</span><span class="kt">px</span> <span class="kc">solid</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mf">0.18</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="k">border-radius</span><span class="p">:</span> <span class="mi">8</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">backdrop-filter</span><span class="p">:</span> <span class="nb">blur</span><span class="p">(</span><span class="mi">6</span><span class="kt">px</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">    <span class="k">font-size</span><span class="p">:</span> <span class="mi">14</span><span class="kt">px</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">letter-spacing</span><span class="p">:</span> <span class="mf">0.04</span><span class="kt">em</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nc">hud__label</span> <span class="p">{</span> <span class="k">opacity</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">;</span> <span class="k">margin-right</span><span class="p">:</span> <span class="mf">0.6</span><span class="kt">em</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nc">hud__value</span> <span class="p">{</span> <span class="k">font-weight</span><span class="p">:</span> <span class="mi">700</span><span class="p">;</span> <span class="k">font-variant-numeric</span><span class="p">:</span> <span class="n">tabular-nums</span><span class="p">;</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">style</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+<h2 id="手順-2-html-側を読む--data-m--だけで値が映る">手順 2: HTML 側を読む — data-m-* だけで値が映る</h2>
+<p>雛形の <code>assets/scene.html</code> の本体はこれだけです。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- data-m-tpl は {名前} を push された値に差し替える。data-m-show は真偽で表示を切り替える。 --&gt;</span>
 </span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hud&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hud__label&#34;</span><span class="p">&gt;</span>TIME<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hud__value&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;hud-time&#34;</span><span class="p">&gt;</span>00:00<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">data-m-tpl</span><span class="o">=</span><span class="s">&#34;位置  X {view.x}   Y {view.y}&#34;</span><span class="p">&gt;</span>位置  X 640   Y 360<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;moving&#34;</span> <span class="na">data-m-show</span><span class="o">=</span><span class="s">&#34;view.moving&#34;</span><span class="p">&gt;</span>— 移動中 —<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;../../../web/mitiru_runtime/mitiru_runtime.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// C++ から push された scene.time を受け取って DOM に貼るだけ。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 「次に何をするか」は決めない。決めるのは C++ 側。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nb">window</span><span class="p">.</span><span class="nx">mitiru</span><span class="p">.</span><span class="nx">onStateChange</span><span class="p">(</span><span class="s1">&#39;scene.time&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">value</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;hud-time&#39;</span><span class="p">).</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">});</span>
-</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- バインダ本体。mitiru build が mitiru_runtime/* を隣にコピーする（編集も commit も不要）。 --&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;mitiru_runtime/mitiru_cef_state.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;mitiru_runtime/mitiru_bind.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
 </span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
-</span></span></code></pre></div><p><code>background: transparent</code> にしたことで、HTML レイヤーの下にいる C++ の描画 (背景 + プレイヤー矩形) が見えるようになります。HUD は画面の左上に半透明の小さなバーとして残ります。</p>
-<p><code>mitiru run</code> でこの段階を確認:</p>
-<figure class="tutorial-figure">
-  <img src="images/04-hud-zero.svg" alt="C++ の背景とプレイヤー矩形の上に、半透明の HUD バーが TIME 00:00 と表示している" loading="lazy">
-  <figcaption>C++ で描いた背景の上に HUD バーが乗る。まだ 00:00 のまま動かない。</figcaption>
-</figure>
-<hr>
-<h2 id="手順-5-c-から値を-push-する">手順 5: C++ から値を push する</h2>
-<p><code>src/main.cpp</code> を書き足して、毎フレーム経過時間を <code>scene.time</code> という名前で JS に push します。</p>
-<p><code>#include</code> と <code>MyGame</code> を次のように変更してください。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/Mitiru.hpp&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/cef/StateStore.hpp&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;cstdio&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyGame</span> <span class="k">final</span> <span class="o">:</span> <span class="k">public</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Game</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="n">mitiru</span><span class="o">::</span><span class="n">Size</span> <span class="n">layout</span><span class="p">(</span><span class="kt">int</span> <span class="n">w</span><span class="p">,</span> <span class="kt">int</span> <span class="n">h</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">};</span> <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">onStart</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="c1">// CEF コンテキストから StateStore を作る。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// これが C++ → JS の唯一の経路になる。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">if</span> <span class="p">(</span><span class="k">auto</span><span class="o">*</span> <span class="n">eng</span> <span class="o">=</span> <span class="n">engine</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="p">(</span><span class="k">auto</span><span class="o">*</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">eng</span><span class="o">-&gt;</span><span class="n">cefContext</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">                <span class="n">m_store</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">-&gt;</span><span class="n">makeStateStore</span><span class="p">();</span>
-</span></span><span class="line"><span class="cl">            <span class="p">}</span>
-</span></span><span class="line"><span class="cl">        <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="kt">float</span> <span class="n">dt</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="n">m_elapsed</span> <span class="o">+=</span> <span class="n">dt</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">        <span class="c1">// &#34;MM:SS&#34; に整形して JS 側に push する。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">const</span> <span class="kt">int</span> <span class="n">total</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">m_elapsed</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">        <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>
-</span></span><span class="line"><span class="cl">        <span class="n">std</span><span class="o">::</span><span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&#34;%02d:%02d&#34;</span><span class="p">,</span> <span class="n">total</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="n">total</span> <span class="o">%</span> <span class="mi">60</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">m_store</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="n">m_store</span><span class="o">-&gt;</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;scene.time&#34;</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">{</span><span class="n">buf</span><span class="p">});</span>
-</span></span><span class="line"><span class="cl">        <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">w</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">width</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">        <span class="k">const</span> <span class="kt">float</span> <span class="n">h</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">height</span><span class="p">());</span>
-</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.10f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
-</span></span><span class="line"><span class="cl">        <span class="n">s</span><span class="p">.</span><span class="n">drawRect</span><span class="p">({</span><span class="n">w</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">-</span> <span class="mi">24</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="mf">0.5f</span> <span class="o">-</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">48</span><span class="p">},</span> <span class="p">{</span><span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.75f</span><span class="p">,</span> <span class="mf">0.95f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
-</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">m_elapsed</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">mitiru</span><span class="o">::</span><span class="n">cef</span><span class="o">::</span><span class="n">StateStore</span><span class="o">&gt;</span> <span class="n">m_store</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">};</span>
 </span></span></code></pre></div><p>ポイント:</p>
 <ul>
-<li>C++ 側は値を <strong>持って整形して push する</strong> だけ。HTML の <code>&lt;span&gt;</code> の存在も、CSS のスタイルも知らない。</li>
-<li>JS 側は <code>mitiru.onStateChange</code> で値を <strong>受け取って DOM に書き込む</strong> だけ。「経過時間を進める」 判断はしていない。</li>
-<li>名前 (<code>scene.time</code>) を介して薄くつないでいる。これが <strong>signal-only bridge</strong> です。</li>
+<li><code>data-m-tpl=&quot;... {view.x} ...&quot;</code> … <code>{view.x}</code> が C++ から push された値に差し替わります。</li>
+<li><code>data-m-show=&quot;view.moving&quot;</code> … その値が真のあいだだけ要素を表示します。</li>
+<li><code>&lt;script&gt;</code> は <strong>エンジン同梱のバインダ 2 本だけ</strong>。あなたが書く <code>&lt;script&gt;</code> はありません。</li>
 </ul>
-<aside class="cpp-note">
-<span class="cpp-note__title">C++ メモ — std::unique_ptr とポインタチェーン</span>
-<p><code>std::unique_ptr&lt;StateStore&gt; m_store;</code> は「<strong>所有権をもったポインタ</strong>」です。普通のポインタ <code>StateStore*</code> と違って、<code>m_store</code> が寿命を終えるとき (このクラスが破棄されるとき) に、指し示している <code>StateStore</code> 本体も自動で <code>delete</code> されます。<strong>「メモリの開放を書き忘れる」</strong> 種の事故を構造的に防ぐ仕組みです。</p>
-<p><code>engine()-&gt;cefContext()</code> のように <code>-&gt;</code> でつないでいくのは「ポインタ越しにメンバを呼ぶ」記法。<code>auto* eng = engine()</code> で受けて <code>if (eng)</code> でチェックしているのは、<strong>null ポインタを使うとクラッシュする</strong> から。<code>engine()</code> は呼ぶタイミングによっては <code>nullptr</code> を返すこともあるので、こうやって守ります。</p>
-<p><code>m_store-&gt;set("scene.time", std::string{buf});</code> の <code>std::string{buf}</code> は「C 文字列の <code>buf</code> から C++ の <code>std::string</code> を作る」式。<code>{...}</code> はコンストラクタ呼び出しです。</p>
-</aside>
-<p>もう一度 <code>mitiru run</code>:</p>
+<p>CSS で <code>html, body { background: transparent; pointer-events: none; }</code> にしているので、HUD の下に C++ の描画が透けて見え、クリックはゲームへ抜けます。</p>
+<hr>
+<h2 id="手順-3-c-側を読む--statewriter-で名前付きの値を-push">手順 3: C++ 側を読む — StateWriter で名前付きの値を push</h2>
+<p>雛形の <code>on_update</code> の末尾で、HUD に映る値を push しています。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/bridge/StateWriter.hpp&gt;</span><span class="cp">   </span><span class="c1">// ファイル先頭の include に入っている
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">// on_update の中（移動処理のあと）:
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">mitiru</span><span class="o">::</span><span class="n">bridge</span><span class="o">::</span><span class="n">StateWriter</span> <span class="n">w</span><span class="p">(</span><span class="n">intents</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.x&#34;</span><span class="p">,</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">playerX</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.y&#34;</span><span class="p">,</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">playerY</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.moving&#34;</span><span class="p">,</span> <span class="n">left</span> <span class="o">||</span> <span class="n">right</span> <span class="o">||</span> <span class="n">up</span> <span class="o">||</span> <span class="n">down</span><span class="p">);</span>
+</span></span></code></pre></div><p><code>StateWriter</code> は <code>FrameIntents</code>（host へのお願いを書く器）に値を積むだけのもの。host がそれを CEF 側へ流し、<code>data-m-*</code> バインダが DOM を更新します。<strong>C++ は HTML の <code>&lt;span&gt;</code> も CSS も知りません</strong>。名前（<code>view.x</code> など）でだけ繋がっています ── これが signal-only bridge です。</p>
+<hr>
+<h2 id="手順-4-hud-に経過時間を足す">手順 4: HUD に「経過時間」を足す</h2>
+<p>仕上げに時計を足します。まず <code>GameMemory</code> に経過秒を持たせ、<code>on_update</code> で <code>MM:SS</code> に整形して push します。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">GameMemory</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">playerX</span> <span class="o">=</span> <span class="mf">640.0f</span><span class="p">,</span> <span class="n">playerY</span> <span class="o">=</span> <span class="mf">360.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span> <span class="n">elapsed</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>          <span class="c1">// ★ 追加
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// on_update の中:
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">mem</span><span class="p">.</span><span class="n">elapsed</span> <span class="o">+=</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="k">const</span> <span class="kt">int</span> <span class="n">total</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">elapsed</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl"><span class="n">std</span><span class="o">::</span><span class="n">snprintf</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">),</span> <span class="s">&#34;%02d:%02d&#34;</span><span class="p">,</span> <span class="n">total</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="n">total</span> <span class="o">%</span> <span class="mi">60</span><span class="p">);</span>   <span class="c1">// &lt;cstdio&gt;
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">bridge</span><span class="o">::</span><span class="n">StateWriter</span> <span class="n">w</span><span class="p">(</span><span class="n">intents</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.x&#34;</span><span class="p">,</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">playerX</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.y&#34;</span><span class="p">,</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">mem</span><span class="p">.</span><span class="n">playerY</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.moving&#34;</span><span class="p">,</span> <span class="n">left</span> <span class="o">||</span> <span class="n">right</span> <span class="o">||</span> <span class="n">up</span> <span class="o">||</span> <span class="n">down</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.time&#34;</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>          <span class="c1">// ★ 追加（文字列）
+</span></span></span></code></pre></div><p>次に <code>assets/scene.html</code> の HUD に 1 行足すだけ。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hud&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">data-m-tpl</span><span class="o">=</span><span class="s">&#34;TIME  {view.time}&#34;</span><span class="p">&gt;</span>TIME  00:00<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>   <span class="c">&lt;!-- ★ 追加 --&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">data-m-tpl</span><span class="o">=</span><span class="s">&#34;位置  X {view.x}   Y {view.y}&#34;</span><span class="p">&gt;</span>位置  X 640   Y 360<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;moving&#34;</span> <span class="na">data-m-show</span><span class="o">=</span><span class="s">&#34;view.moving&#34;</span><span class="p">&gt;</span>— 移動中 —<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre></div><p>保存すると（<code>mitiru watch</code> 中なら即時）、HUD の時計が毎秒進みます。</p>
 <figure class="tutorial-figure">
-  <img src="images/05-finished.svg" alt="HUD バーの TIME 表示が 00:12 のように毎秒更新されている完成画面" loading="lazy">
-  <figcaption>HUD の時計が毎秒動く。値の進行は C++、見た目の更新は JS、両者の連絡は名前 1 個だけ。</figcaption>
+  <img src="images/05-finished.svg" alt="HUD バーが TIME 00:12 と座標を表示し、毎秒更新されている完成画面" loading="lazy">
+  <figcaption>HUD の時計が毎秒動く。値の進行は C++、表示は data-m-*、つなぎは名前 1 個だけ。手書き JS はゼロ。</figcaption>
 </figure>
+<aside class="cpp-note">
+<span class="cpp-note__title">C++ メモ — snprintf と文字列の push</span>
+<p><code>std::snprintf(buf, n, "%02d:%02d", m, s)</code> は <code>%02d</code> が「2 桁・ゼロ埋め」の整数差し込み。<code>&lt;cstdio&gt;</code> が要ります。<code>w.set("view.time", buf)</code> は <code>const char*</code> を受ける overload で、そのまま文字列として push されます。</p>
+</aside>
 <hr>
 <h2 id="何が分かったか">何が分かったか</h2>
 <ul>
-<li><strong>見た目の凝った部分は HTML / CSS</strong> に置ける。グラデーションも <code>backdrop-filter</code> も、Web の道具がそのまま使えます。</li>
-<li><strong>値の本体は C++</strong> にあります。JS はそれを表示するだけで、状態は持たない。</li>
-<li>C++ と JS のあいだは <strong>state 名 1 個</strong> で繋がっています。複雑なメッセージプロトコルは要りません。</li>
+<li><strong>見た目の凝った部分は HTML / CSS</strong>。グラデーションも <code>backdrop-filter</code> も Web の道具がそのまま使えます。</li>
+<li><strong>値の本体は C++</strong>。<code>GameMemory</code> に持ち、<code>StateWriter</code> で名前付きに push するだけ。</li>
+<li>C++ と HTML は <strong>state 名 1 個</strong>（<code>view.time</code> など）で繋がります。<strong>手書き JavaScript は書きません</strong> ── つなぎは <code>data-m-*</code> バインダが担います。</li>
 </ul>
 <h2 id="やってはいけないパターン">やってはいけないパターン</h2>
 <ul>
-<li>JS 側で <code>setInterval</code> を使って自前で時計を進める ── 状態の二重管理になり、画面と中身がズレた瞬間にデバッグが地獄になります。<strong>時計は C++ 側だけ</strong>。</li>
-<li>HTML / CSS / JS に当たり判定やゲームのルールを書く ── HTML/CSS は <strong>画面の構造とデザイン</strong> を表現するための道具で、ゲームのルールを記述する道具ではありません。混ぜると見た目を直したいだけのつもりがゲームの挙動も壊す、という事故が起きます。<strong>ルールは C++ 側だけ</strong>。</li>
+<li><strong>HTML/JS 側で状態を持つ / 進める</strong>（<code>setInterval</code> で自前の時計を回す等）── 状態が二重化して必ずズレます。時計は C++ 側だけ。</li>
+<li><strong>HTML/JS に当たり判定やゲームのルールを書く</strong> ── HTML/CSS は画面の構造とデザインの道具で、ルールの記述場所ではありません。混ぜると「見た目を直したいだけ」で挙動が壊れます。ルールは C++ 側だけ。</li>
 </ul>
 <h2 id="次の一歩">次の一歩</h2>
 <ul>
-<li><strong>複数の値を push</strong> してみる: <code>scene.score</code> や <code>player.hp</code> も同じ書き方で増やせます。</li>
-<li><strong>画面を切り替える</strong>: 別の HTML ファイルに <code>cefStartUrl</code> を差し替えるか、JS 側で別の <code>&lt;div&gt;</code> を表示する、どちらでも作れます。シーンの遷移ロジックは C++ 側 (<code>SceneRouter</code>) に置くのが定石です。</li>
-<li><strong>JS から C++ に「クリックされた」と通知する</strong>: <code>window.mitiru.dispatch('action.next')</code> を JS から呼んで、C++ 側で <code>store-&gt;onAction(&quot;action.next&quot;, ...)</code> で受ければ、ボタン UI から C++ のロジックを動かせます。これも signal-only — JS は「何が起きたか」しか伝えません。</li>
+<li><strong>値を増やす</strong>: <code>view.score</code> や <code>view.hp</code> も同じく <code>w.set(...)</code> + <code>data-m-tpl</code> で足せます。</li>
+<li><strong>条件表示</strong>: <code>data-m-show=&quot;view.gameover&quot;</code> で勝敗モーダルを出し分ける（実例は <code>examples/breakout</code> の scene.html）。</li>
+<li><strong>HTML から C++ へ通知</strong>: ボタンに <code>data-m-action=&quot;game.restart&quot;</code> を付け、C++ 側で <code>input-&gt;actionEvents</code> を見れば、UI クリックから C++ のロジックを動かせます。これも signal-only — HTML は「何が起きたか」しか伝えません。</li>
 </ul>
 
       
@@ -641,11 +538,10 @@
   <ul>
     <li><a href="#できあがるもの">できあがるもの</a></li>
     <li><a href="#役割分担をはっきりさせる">役割分担をはっきりさせる</a></li>
-    <li><a href="#手順-1-ひな型を作る">手順 1: ひな型を作る</a></li>
-    <li><a href="#手順-2-そのまま走らせる">手順 2: そのまま走らせる</a></li>
-    <li><a href="#手順-3-c-で背景とプレイヤーを描く">手順 3: C++ で背景とプレイヤーを描く</a></li>
-    <li><a href="#手順-4-html-を透ける-hudに作り変える">手順 4: HTML を「透ける HUD」に作り変える</a></li>
-    <li><a href="#手順-5-c-から値を-push-する">手順 5: C++ から値を push する</a></li>
+    <li><a href="#手順-1-雛形を作って走らせる">手順 1: 雛形を作って走らせる</a></li>
+    <li><a href="#手順-2-html-側を読む--data-m--だけで値が映る">手順 2: HTML 側を読む — data-m-* だけで値が映る</a></li>
+    <li><a href="#手順-3-c-側を読む--statewriter-で名前付きの値を-push">手順 3: C++ 側を読む — StateWriter で名前付きの値を push</a></li>
+    <li><a href="#手順-4-hud-に経過時間を足す">手順 4: HUD に「経過時間」を足す</a></li>
     <li><a href="#何が分かったか">何が分かったか</a></li>
     <li><a href="#やってはいけないパターン">やってはいけないパターン</a></li>
     <li><a href="#次の一歩">次の一歩</a></li>

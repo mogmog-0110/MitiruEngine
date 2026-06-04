@@ -630,11 +630,63 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				out[name] = cef::json{{"title", title}, {"state", state}};
 				palette.push_back({{"name", name}, {"title", title}});
 			}
-			m_moduleInspectorSnapshot->write(out);
+			// 即時 write せずキャッシュ。perf/audio 併記と throttle write は下の
+			// host-owned 観察ブロックが担う (game export 無しでも perf が動くように)。
+			m_lastInspectorOut = std::move(out);
+			m_inspectorDirty   = true;
 			if (m_moduleStateStore)
 			{
 				m_moduleStateStore->set("view.palette.items", palette);
 			}
+		}
+	}
+
+	// host 所有の観察 (perf / audio) を ~10Hz で snapshot に併記する。game inspectable
+	// とは別 cadence — 常時変化するので digest gate に乗せず wall-clock で計測して書く。
+	// ツール窓 (mitiru_perf / mitiru_mixer) が同じ SharedSnapshot を読む (ADR 0014)。
+	if (m_moduleInspectorSnapshot)
+	{
+		const auto now = std::chrono::steady_clock::now();
+		if (m_havePerfTp)
+		{
+			const float dtMs =
+				std::chrono::duration<float, std::milli>(now - m_lastPerfTp).count();
+			if (dtMs > 0.0f)
+			{
+				const float fps = 1000.0f / dtMs;
+				m_emaFps      = m_emaFps > 0.0f ? (m_emaFps * 0.9f + fps * 0.1f) : fps;
+				m_lastFrameMs = dtMs;
+			}
+		}
+		m_lastPerfTp = now;
+		m_havePerfTp = true;
+
+		if (m_inspectorDirty || ++m_toolWriteAccum >= 6)   // 即時 or ~10Hz
+		{
+			m_inspectorDirty = false;
+			m_toolWriteAccum = 0;
+
+			cef::json out = m_lastInspectorOut.is_object()
+				? m_lastInspectorOut : cef::json::object();
+			out["perf"] = cef::json{
+				{"title", "Performance"},
+				{"state", cef::json{{"fps", static_cast<int>(m_emaFps + 0.5f)},
+				                    {"frameMs", m_lastFrameMs}}}};
+			// 再生中チャンネルのメーター (任意)。列挙非対応の audio engine は空配列。
+			cef::json channels = cef::json::array();
+			if (m_audioEngine)
+			{
+				for (const auto& m : m_audioEngine->meterChannels())
+				{
+					channels.push_back(cef::json{{"kind", m.kind}, {"level", m.level}});
+				}
+			}
+			out["audio"] = cef::json{
+				{"title", "Audio"},
+				{"state", cef::json{{"masterVolume", masterVolume()},
+				                    {"engine", m_audioEngine ? "active" : "none"},
+				                    {"channels", std::move(channels)}}}};
+			m_moduleInspectorSnapshot->write(out);
 		}
 	}
 

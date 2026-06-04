@@ -374,7 +374,7 @@
   <aside class="page-summary">
     <h2 class="page-summary__h">このページで分かること</h2>
     <ul>
-      <li>ウィンドウを開く / 入力を取る / シーンを切り替える / 図形を描く / CEF オーバーレイを載せる、の 5 パターン</li><li>全部 mitiru target を target_link_libraries するだけ</li><li>Mode A 純 C&#43;&#43; が 4 本、Mode B (CEF) が 1 本</li>
+      <li>最小サンプル (hello_*): ウィンドウ / 入力 / シーン / 図形 / CEF オーバーレイの 5 パターン</li><li>Game-as-DLL サンプル: breakout / anchor / dodge などの実際に遊べる 1 本もの (現行の canonical な書き方)</li><li>最小は exe 直起動、DLL ものは mitiru_host か mitiru run で起動</li>
     </ul>
   </aside>
   
@@ -433,13 +433,68 @@
 </article>
 </div>
 </section>
+<h2 id="game-as-dll-サンプル実際に遊べる-1-本もの">Game-as-DLL サンプル（実際に遊べる 1 本もの）</h2>
+<p><code>mitiru_host.exe</code> が load する DLL 形式のゲーム。flat な state 構造体に <code>update</code> / <code>draw</code> を書いて
+<code>MITIRU_GAME(...)</code> で入口を 1 行宣言し、HUD は HTML/CSS（手書き JS なし）、効果音は intent。
+これが現行の canonical な書き方です。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target breakout
+</span></span><span class="line"><span class="cl">build<span class="se">\e</span>xamples<span class="se">\m</span>itiru_host<span class="se">\m</span>itiru_host.exe build<span class="se">\e</span>xamples<span class="se">\m</span>itiru_host<span class="se">\b</span>reakout<span class="se">\b</span>reakout.dll
+</span></span><span class="line"><span class="cl"><span class="c1"># anchor / dodge / hello_game / showcase_platformer も target 名 = dll 名で同様</span>
+</span></span></code></pre></div><section class="example-gallery" aria-label="dll-examples">
+<div class="examples-grid">
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">breakout</h3>
+<p class="example-card__kind example-card__kind--cef">旗艦サンプル</p>
+<p class="example-card__desc">王道ブロック崩し。物理 / 当たり判定 / 手触り（粒子・画面シェイク・残像）/ zero-JS の HUD / 効果音 intent を 1 本にまとめた参照実装。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/breakout/breakout_dll.cpp">breakout_dll.cpp →</a></p>
+</div>
+</article>
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">anchor</h3>
+<p class="example-card__kind example-card__kind--cef">制約パズル</p>
+<p class="example-card__desc">「触れた anchor へしか動けない」一行ルールの計画パズル。記憶が移動資源になり、決定論的な追っ手を時間で避ける。zero-JS HUD + 効果音 intent。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/anchor/anchor_dll.cpp">anchor_dll.cpp →</a></p>
+</div>
+</article>
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">hello_game</h3>
+<p class="example-card__kind example-card__kind--cef">最小ゲーム</p>
+<p class="example-card__desc">プレイヤー / 敵 / HP / タイマーの gameplay は C++、HP バーや残り時間の HUD は HTML/CSS。両者は <code>view.hud.*</code> の signal-only bridge で繋がる最小の 1 本。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_game/hello_game_dll.cpp">hello_game_dll.cpp →</a></p>
+</div>
+</article>
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">dodge</h3>
+<p class="example-card__kind example-card__kind--cef">初心者向け</p>
+<p class="example-card__desc">降ってくる障害物を避けるだけの最小ゲーム。Game-as-DLL の入門に。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/dodge/dodge_dll.cpp">dodge_dll.cpp →</a></p>
+</div>
+</article>
+<article class="example-card">
+<div class="example-card__body">
+<h3 class="example-card__title">showcase_platformer</h3>
+<p class="example-card__kind example-card__kind--cef">決定論 + リプレイ</p>
+<p class="example-card__desc">横スクロールアクション。入力と乱数 seed を記録し、replay-as-test を bit-exact で通す決定論ゲームの例。</p>
+<p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/showcase_platformer/showcase_platformer_dll.cpp">showcase_platformer_dll.cpp →</a></p>
+</div>
+</article>
+</div>
+</section>
 
       
     </div>
     
     <aside class="page-toc" aria-label="このページの目次">
       <h2>このページの目次</h2>
-      <nav id="TableOfContents"></nav>
+      <nav id="TableOfContents">
+  <ul>
+    <li><a href="#game-as-dll-サンプル実際に遊べる-1-本もの">Game-as-DLL サンプル（実際に遊べる 1 本もの）</a></li>
+  </ul>
+</nav>
     </aside>
     
   </div>

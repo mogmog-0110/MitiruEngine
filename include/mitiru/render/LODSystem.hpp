@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #ifdef _WIN32
@@ -77,7 +78,28 @@ struct LODObject
 	std::string groupId;             ///< LODグループID
 	float position[3] = {};          ///< オブジェクトのワールド位置
 	std::uint32_t currentLevel = 0;  ///< 現在のLODレベル
+	/// @brief 対応する描画オブジェクトの nodeId（`Scene3D::RenderObject::nodeId` と一致させる）。
+	/// @details これで LOD 判定結果を描画ループへ橋渡しできる。-1 = 未対応（橋渡し対象外）。
+	int nodeId = -1;
+	/// @brief カリング出力。`update()` が最低LODより遠いと判定したら true。
+	/// @details レンダラはこれを読んで描画をスキップする（true なら描かない）。
+	///          毎フレーム `update()` が再計算するので呼び出し側でのリセット不要。
+	bool culled = false;
 };
+
+/// @brief カリングされた LODObject の nodeId 集合を集める（描画ループへ渡す橋渡し）。
+/// @details `LODManager::update()` 後に呼び、`DeferredPipeline::render(..., &culled)` に渡すと
+///          遠方オブジェクトの描画をスキップできる。nodeId<0（未対応）は除外。
+[[nodiscard]] inline std::unordered_set<int> collectCulledNodeIds(
+	const std::vector<LODObject>& objects)
+{
+	std::unordered_set<int> out;
+	for (const auto& o : objects)
+	{
+		if (o.culled && o.nodeId >= 0) { out.insert(o.nodeId); }
+	}
+	return out;
+}
 
 /// @brief LODマネージャー
 /// @details カメラ距離に応じて最適なLODレベルを選択する。
@@ -298,9 +320,12 @@ public:
 				m_transitionCount++;
 			}
 
-			/// 最低LODより遠い場合はカリングされたとみなす
+			/// 最低LODより遠い場合はカリング対象とし、出力フラグに反映する。
+			/// レンダラはこの obj.culled を読んで描画をスキップできる（従来は
+			/// カウンタ加算のみでフラグが無く、遠方も最低LODで描画され続けていた）。
 			const auto& lastLevel = group.levels.back();
-			if (dist > lastLevel.maxDistance)
+			obj.culled = (dist > lastLevel.maxDistance);
+			if (obj.culled)
 			{
 				m_drawCallsSaved++;
 			}

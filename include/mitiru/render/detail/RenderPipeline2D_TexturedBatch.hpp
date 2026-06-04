@@ -14,7 +14,7 @@ namespace mitiru::render
 {
 
 inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
-	const void* key, int w, int h, const std::uint8_t* rgba)
+	const void* key, int w, int h, const std::uint8_t* rgba, bool contentMayChange)
 {
 	if (!m_valid || !m_useDx12Path || !m_dx12NativeDevice ||
 	    w <= 0 || h <= 0 || rgba == nullptr)
@@ -24,16 +24,46 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 
 	auto* device = m_dx12NativeDevice.Get();
 
-	// ── キャッシュ判定: key+(w,h) が一致すれば再アップロードしない ──
-	auto it = m_dx12SpriteTexLookup.find(key);
-	if (it != m_dx12SpriteTexLookup.end())
+	// ── 静的テクスチャ (contentMayChange=false): ポインタ key が内容を一意に決める ──
+	// (drawSprite の render::Texture 等)。cache hit は即返し、毎フレームの全画素ハッシュを避ける。
+	// 巨大スプライトシートを毎フレーム描く一般ケースでの CPU 浪費 (regression) を防ぐ。
+	if (!contentMayChange)
 	{
-		const auto& cached = m_dx12SpriteTextures[it->second];
-		if (cached.tex && cached.w == w && cached.h == h)
+		auto sit = m_dx12SpriteTexLookup.find(key);
+		if (sit != m_dx12SpriteTexLookup.end())
 		{
-			return it->second + 1;
+			const auto& cached = m_dx12SpriteTextures[sit->second];
+			if (cached.tex && cached.w == w && cached.h == h)
+			{
+				return sit->second + 1;
+			}
 		}
-		// 寸法が変わった: 同スロットに作り直す (下のアップロードへ落ちる)。
+	}
+
+	// ── 動的テクスチャ (contentMayChange=true): pixel 内容の指紋 (FNV-1a 64bit) で変化検出 (#19b) ──
+	// 同じアドレスに毎フレーム作り直す動的テクスチャ (drawPixelGrid 等) で古い GPU 内容を防ぐ。
+	// 静的パスではここを通らない (上で即返し済み)。
+	std::uint64_t contentHash = 1469598103934665603ull;
+	if (contentMayChange)
+	{
+		const std::size_t bytes = static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4u;
+		for (std::size_t i = 0; i < bytes; ++i)
+		{
+			contentHash ^= static_cast<std::uint64_t>(rgba[i]);
+			contentHash *= 1099511628211ull;
+		}
+
+		// キャッシュ判定: key+(w,h)+内容ハッシュ が一致すれば再アップロードしない。
+		auto it = m_dx12SpriteTexLookup.find(key);
+		if (it != m_dx12SpriteTexLookup.end())
+		{
+			const auto& cached = m_dx12SpriteTextures[it->second];
+			if (cached.tex && cached.w == w && cached.h == h && cached.contentHash == contentHash)
+			{
+				return it->second + 1;
+			}
+			// 寸法 or 内容が変わった: 同スロットに作り直す (下のアップロードへ落ちる)。
+		}
 	}
 
 	// ── default-heap texture (COPY_DEST) を作る ──
@@ -150,11 +180,15 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	entry.w       = w;
 	entry.h       = h;
 	entry.key     = key;
+	entry.contentHash = contentHash;
 
+	// 既存 key なら同スロット上書き (寸法/内容変化)、無ければ新規追加。
+	// (static/dynamic どちらの経路からも到達するため、ここで lookup し直す)
 	std::uint32_t index;
-	if (it != m_dx12SpriteTexLookup.end())
+	auto storeIt = m_dx12SpriteTexLookup.find(key);
+	if (storeIt != m_dx12SpriteTexLookup.end())
 	{
-		index = it->second;
+		index = storeIt->second;
 		m_dx12SpriteTextures[index] = std::move(entry);
 	}
 	else
@@ -264,7 +298,7 @@ namespace mitiru::render
 // 非 Windows backend は textured batch 未対応 (supportsTexturedBatch()==false)。
 // Screen は per-pixel fallback を使うため、これらは呼ばれない安全スタブ。
 inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
-	const void*, int, int, const std::uint8_t*)
+	const void*, int, int, const std::uint8_t*, bool)
 {
 	return 0;
 }

@@ -23,6 +23,8 @@
 #include <filesystem>
 #include <string>
 
+#include <mitiru/debug/ToolRegistry.hpp>
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -149,6 +151,41 @@ inline bool openInspectable(const std::string& name, int producerPid = 0)
 		safe.push_back(c);
 	}
 	return spawnInspector(producerPid, "--inspectable " + safe);
+}
+
+/// @brief host 側コードからツール独立ウィンドウを 1 つ開く (ADR 0014、これが正面の入口)
+/// @details main.cpp など host を書く人が「このデバッグ窓を使う」と決めた時に呼ぶ。
+///          共有 registry (ToolRegistry.hpp の kToolTable) を引いて該当 exe を spawn する。
+///          ゲームのキー入力とは無関係 — 欲しい窓の行を書いた host だけがその窓を開く。
+/// @param t        開く窓 (Tool::Inspector / InputMonitor / TimeTravel / 今後追加分)
+/// @param producerPid 監視対象プロセス (0 = 自プロセス = game DLL を載せた host)
+/// @return 起動成功で true (exe が見つからなければ false で無害)
+inline bool openTool(Tool t, int producerPid = 0)
+{
+	for (const auto& spec : detail::kToolTable)
+	{
+		if (spec.tool == t) { return spawnTool(spec.exe, producerPid, spec.args); }
+	}
+	return false;
+}
+
+/// @brief openTool に追加引数を付けて開く (例: replay scrubber に .mtrr path を渡す)。
+/// @details registry の既定 args の後ろに extraArgs を足して spawn する。Tool 窓が
+///          producer 監視でなく特定ファイルを開く場合 (replay 等) に使う。
+inline bool openTool(Tool t, const std::string& extraArgs, int producerPid = 0)
+{
+	for (const auto& spec : detail::kToolTable)
+	{
+		if (spec.tool != t) { continue; }
+		std::string args = spec.args;
+		if (!extraArgs.empty())
+		{
+			if (!args.empty()) { args += ' '; }
+			args += extraArgs;
+		}
+		return spawnTool(spec.exe, producerPid, args);
+	}
+	return false;
 }
 
 }  // namespace mitiru::debug

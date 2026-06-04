@@ -595,6 +595,17 @@ private:
 	// disk-write を丸ごと省く (inspector は同じ内容を読み続けるので観測結果は不変)。
 	std::uint64_t                            m_lastInspectorDigest = 0;
 
+	// host 所有の観察 (perf / audio) を game inspectable と併記して書くためのキャッシュ。
+	// game export とは別 cadence (常時変化) なので throttle write する (ADR 0014 tool windows:
+	// mitiru_perf / mitiru_mixer が同じ SharedSnapshot を読む)。
+	cef::json                                m_lastInspectorOut = cef::json::object();
+	bool                                     m_inspectorDirty = false;
+	int                                      m_toolWriteAccum = 0;
+	std::chrono::steady_clock::time_point    m_lastPerfTp{};
+	bool                                     m_havePerfTp = false;
+	float                                    m_emaFps = 0.0f;       ///< 平滑 update fps
+	float                                    m_lastFrameMs = 0.0f;
+
 	// 次の on_update 向けに queue した CEF JS 由来の action event。StateStore の
 	// handler は CEF UI thread で発火するが on_update は engine main thread で
 	// 走るため mutex で保護する。

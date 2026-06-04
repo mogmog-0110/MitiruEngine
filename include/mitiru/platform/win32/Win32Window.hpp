@@ -98,9 +98,12 @@ public:
 			/// Windowed: 通常のリサイズ可能ウィンドウ。`resizable=false` の
 			/// 時は WS_THICKFRAME / WS_MAXIMIZEBOX を外して固定サイズに。
 			const UINT dpi = systemDpi();
-			const DWORD style = m_resizable
+			// WS_VISIBLE で生成時から可視にする（Borderless が WS_POPUP|WS_VISIBLE なのと対称。#22）。
+			// 以前は不可視生成 + ShowWindow も無く、host 以外の standalone 消費者で窓が出ない罠だった。
+			const DWORD style = (m_resizable
 				? WS_OVERLAPPEDWINDOW
-				: (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
+				: (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX))
+				| WS_VISIBLE;
 			RECT rect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
 			adjustWindowRectForDpi(&rect, style, FALSE, 0, dpi);
 

@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0091 NEW)
 
 project(MitiruEngine
-	VERSION 0.7.4
+	VERSION 0.8.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -125,6 +125,18 @@ elseif(EMSCRIPTEN)
 	target_compile_options(tinyobj_impl PRIVATE -w)
 endif()
 
+# ── cgltf implementation (static library、#16: 重複定義回避) ────────
+add_library(cgltf_impl STATIC src/cgltf_impl.cpp)
+target_include_directories(cgltf_impl PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/cgltf>
+)
+target_compile_features(cgltf_impl PUBLIC cxx_std_20)
+if(MSVC)
+	target_compile_options(cgltf_impl PRIVATE /W0 /FS)
+elseif(EMSCRIPTEN)
+	target_compile_options(cgltf_impl PRIVATE -w)
+endif()
+
 # ── miniaudio implementation (static library) ───────────────────
 # Emscripten では WebAudioEngine を使うため miniaudio は不要
 if(NOT EMSCRIPTEN)
@@ -175,7 +187,7 @@ target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
 
 target_compile_features(mitiru ${MITIRU_TARGET_SCOPE} cxx_std_20)
 if(EMSCRIPTEN)
-	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl tinyobj_impl)
+	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl tinyobj_impl cgltf_impl)
 	target_link_options(mitiru ${MITIRU_TARGET_SCOPE}
 		-sUSE_WEBGL2=1
 		-sFULL_ES3=1
@@ -192,7 +204,7 @@ if(EMSCRIPTEN)
 		target_link_options(mitiru ${MITIRU_TARGET_SCOPE} -sUSE_WEBGPU=1)
 	endif()
 else()
-	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl tinyobj_impl miniaudio_impl)
+	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl tinyobj_impl cgltf_impl miniaudio_impl)
 
 	# MITIRU_ENABLE_GNS=ON 時のみ GNS をリンク + MITIRU_HAS_GNS=1 を伝搬
 	if(MITIRU_ENABLE_GNS)
