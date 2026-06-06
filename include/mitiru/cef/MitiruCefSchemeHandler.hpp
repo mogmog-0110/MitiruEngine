@@ -32,6 +32,8 @@
 #include "include/cef_response.h"
 #include "include/cef_scheme.h"
 
+#include <mitiru/asset/AssetPack.hpp> // vfs::readGlobal / hasGlobalMount (runtime pack, ADR 0016)
+
 // 生成された埋め込みアセットヘッダー
 // EmbedAssets.cmake が OUTPUT_DIR (= CMAKE_CURRENT_BINARY_DIR/generated) を
 // インクルードパスに追加するため、ファイル名のみで参照する。
@@ -188,6 +190,18 @@ public:
         if (f != std::string::npos) virtualPath = virtualPath.substr(0, f);
 
         const std::string mime = mimeTypeForPath(virtualPath);
+
+        // 0. runtime pack (assets.mtpak) が mount されていれば、それを正本とする (ADR 0016)。
+        //    秘匿配布: pack 中に無いものは disk を覗かせず 404。dev (未 mount) では従来経路。
+        if (mitiru::vfs::hasGlobalMount())
+        {
+            if (auto packed = mitiru::vfs::readGlobal(virtualPath))
+            {
+                return new MitiruCefResourceHandler(
+                    std::span<const uint8_t>(*packed), mime);
+            }
+            return new MitiruCefResourceHandler({}, "text/plain");
+        }
 
         // 1. 埋め込みアセットを試みる
         const auto embedded = mitiru::assets::lookup(virtualPath);

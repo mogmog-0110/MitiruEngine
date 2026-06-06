@@ -5,10 +5,10 @@
 /// @details メモリ上のPNGデータまたはファイルパスからTextureを生成する。
 ///          stb_imageの実装はsrc/stb_impl.cppに分離されている。
 
+#include <mitiru/asset/AssetPack.hpp>  // vfs::readGlobal (pack 秘匿配布 / disk fallback)
 #include <mitiru/render/Texture.hpp>
 
 #include <cstdint>
-#include <fstream>
 #include <string>
 #include <vector>
 
@@ -48,16 +48,13 @@ public:
 	/// @return デコードされたTexture（失敗時は空テクスチャ）
 	[[nodiscard]] static Texture fromFile(const std::string& path)
 	{
-		std::ifstream ifs(path, std::ios::binary | std::ios::ate);
-		if (!ifs)
+		// pack が mount 済みなら pack から、未 mount (dev) なら disk から読む (ADR 0016)。
+		const auto buf = mitiru::vfs::readGlobal(path, path);
+		if (!buf)
 		{
 			return {};
 		}
-		const auto size = ifs.tellg();
-		ifs.seekg(0);
-		std::vector<std::uint8_t> buf(static_cast<std::size_t>(size));
-		ifs.read(reinterpret_cast<char*>(buf.data()), size);
-		return fromMemory(buf.data(), static_cast<int>(buf.size()));
+		return fromMemory(buf->data(), static_cast<int>(buf->size()));
 	}
 
 	/// @brief stb_imageのエラーメッセージを取得する

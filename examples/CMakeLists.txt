@@ -29,25 +29,30 @@ add_subdirectory(hello_cef_overlay)
 # $<TARGET_FILE_DIR:mitiru_host>/hello_game/ and references mitiru_host's
 # location during configure-time generator expression resolution.
 add_subdirectory(mitiru_host)
+add_subdirectory(mitiru_start)
 add_subdirectory(hello_game)
 add_subdirectory(showcase_platformer)
 add_subdirectory(breakout)
 add_subdirectory(dodge)
 add_subdirectory(anchor)
+add_subdirectory(windy_cloth)
+add_subdirectory(sim_seam_demo)
+add_subdirectory(gpu_sim_seam)
+add_subdirectory(face_sdf)
+add_subdirectory(pbmpm)
+add_subdirectory(fluidtetris)
 add_subdirectory(mitiru_launcher)
 add_subdirectory(mitiru_dev_companion)
-add_subdirectory(mitiru_renderer)
+# サブシステム単独起動 (軸③)。
 add_subdirectory(mitiru_subsys_renderer)
 add_subdirectory(mitiru_subsys_replay)
 add_subdirectory(mitiru_subsys_audio)
 add_subdirectory(mitiru_subsys_input)
 add_subdirectory(mitiru_subsys_scene)
-add_subdirectory(mitiru_audio)
-add_subdirectory(mitiru_inspector)
-add_subdirectory(mitiru_scene_tree)
-add_subdirectory(mitiru_replay)
-add_subdirectory(mitiru_perf)
-add_subdirectory(mitiru_mixer)
+# ツール窓は汎用 CEF ホスト mitiru_tool_cef --page <name> に統一 (ADR 0014)。
+# 旧個別 exe (mitiru_perf/mixer/scene_tree/replay/inspector) と旧 subsystem 種
+# (mitiru_renderer/audio) は退役。
+add_subdirectory(mitiru_tool_cef)
 
 # MYSHOOTER / my_shooter are dev-only skeletons excluded from the public
 # release snapshot. Guard with EXISTS so the prod top-level build (which lacks

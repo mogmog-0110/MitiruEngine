@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <mitiru/asset/AssetPack.hpp>        // vfs::readAssetText (pack 配布 / disk fallback)
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/pixel/PixelFont.hpp> // decodeUtf8 共有
 
@@ -43,11 +44,12 @@ public:
 	/// @brief .fnt ファイルを読み、PNG ページを同ディレクトリ基準で読み込む。
 	[[nodiscard]] bool loadFile(const std::string& fntPath)
 	{
-		std::ifstream ifs(fntPath, std::ios::binary);
-		if (!ifs) { m_error = "cannot open " + fntPath; return false; }
-		std::stringstream ss; ss << ifs.rdbuf();
+		// pack 配布時はパックから、dev は disk から (.fnt 本文)。PNG ページは
+		// loadFromString 内の Texture::fromFile が同様に pack 経由で読む (ADR 0016)。
+		auto text = mitiru::vfs::readAssetText(fntPath);
+		if (!text) { m_error = "cannot open " + fntPath; return false; }
 		const std::string baseDir = std::filesystem::path(fntPath).parent_path().string();
-		return loadFromString(ss.str(), baseDir);
+		return loadFromString(*text, baseDir);
 	}
 
 	/// @brief .fnt テキストを解析し、PNG ページを baseDir 基準で読み込む。

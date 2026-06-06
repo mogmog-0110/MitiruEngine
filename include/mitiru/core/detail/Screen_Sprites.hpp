@@ -67,11 +67,73 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 		// handle==0（アップロード失敗）は per-pixel fallback へ落ちる。
 	}
 
+	const auto& px = texture.pixels();
+
+	// ── 高速パス: ソフトウェアフレームバッファ直接 blit (#46a) ──
+	// headless (NullDevice + SW-FB) では従来 per-pixel emitRect が 1 スプライト数百万回の
+	// 関数呼び出しになり、sprite 多用ゲームで 1 フレーム数秒に落ちていた。dest 画素を走査して
+	// source を nearest サンプルし m_pixels へ直接ブレンドする (数十〜百倍速)。
+	if (hasSoftwareFramebuffer() && m_width > 0 && m_height > 0 &&
+	    dstRect.width() > 0.0f && dstRect.height() > 0.0f)
+	{
+		// submit 順 (z 順) 維持: この sprite より前に積まれた rect/text/shape を先に
+		// m_pixels へ焼いてから直書きする。さもないと「全 rect は present で後段 flush」
+		// となり sprite が常に下/上で固定され重なり順が壊れる。batch が空なら安価。
+		flushCurrentBatch();
+		if (!m_shapeRenderer.vertices().empty())
+		{
+			rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
+			m_shapeRenderer.flush();
+		}
+		// currentTransform（kRootScale / カメラ等）を dst に適用する。GPU パスと同じ変換を
+		// SW-FB でも通さないと scale 付きゲームが 2 倍/見切れになる。回転は fast blit 非対応の
+		// ため AABB 近似（translate+scale は厳密）。
+		const sgc::Rectf d = applyTransform(dstRect);
+		if (d.width() <= 0.0f || d.height() <= 0.0f) { return; }
+		const int dx0 = std::max(0, static_cast<int>(d.x()));
+		const int dy0 = std::max(0, static_cast<int>(d.y()));
+		const int dx1 = std::min(m_width,  static_cast<int>(d.x() + d.width()  + 0.999f));
+		const int dy1 = std::min(m_height, static_cast<int>(d.y() + d.height() + 0.999f));
+		const float su = static_cast<float>(sw) / d.width();
+		const float sv = static_cast<float>(sh) / d.height();
+		auto cl = [](float v) -> std::uint8_t {
+			return static_cast<std::uint8_t>(std::max(0.0f, std::min(255.0f, v * 255.0f)));
+		};
+		for (int dy = dy0; dy < dy1; ++dy)
+		{
+			int syi = static_cast<int>((static_cast<float>(dy) - d.y()) * sv);
+			syi = std::min(sh - 1, std::max(0, syi));
+			const int ty = sy0 + syi;
+			for (int dx = dx0; dx < dx1; ++dx)
+			{
+				int sxi = static_cast<int>((static_cast<float>(dx) - d.x()) * su);
+				sxi = std::min(sw - 1, std::max(0, sxi));
+				if (flipX) { sxi = sw - 1 - sxi; }
+				const int tx = sx0 + sxi;
+				const std::size_t i = static_cast<std::size_t>((ty * texW + tx) * 4);
+				if (i + 3 >= px.size()) { continue; }
+				const std::uint8_t sa = px[i + 3];
+				if (sa < 128) { continue; }   // 1-bit alpha cutout（従来挙動）
+				const float a  = (sa / 255.0f) * tintColor.a;
+				const float sr = (px[i]     / 255.0f) * tintColor.r;
+				const float sg = (px[i + 1] / 255.0f) * tintColor.g;
+				const float sb = (px[i + 2] / 255.0f) * tintColor.b;
+				const std::size_t d =
+					(static_cast<std::size_t>(dy) * m_width + static_cast<std::size_t>(dx)) * 4;
+				m_pixels[d]     = cl(sr * a + (m_pixels[d]     / 255.0f) * (1.0f - a));
+				m_pixels[d + 1] = cl(sg * a + (m_pixels[d + 1] / 255.0f) * (1.0f - a));
+				m_pixels[d + 2] = cl(sb * a + (m_pixels[d + 2] / 255.0f) * (1.0f - a));
+				m_pixels[d + 3] = 255;
+			}
+		}
+		++m_drawCallCount;
+		return;
+	}
+
 	// ── fallback: per-pixel emitRect（テクスチャをサンプルできない backend 用）──
 	const float scaleX = dstRect.width()  / static_cast<float>(sw);
 	const float scaleY = dstRect.height() / static_cast<float>(sh);
 	const int step = std::max(1, static_cast<int>(1.0f / std::min(scaleX, scaleY)));
-	const auto& px = texture.pixels();
 	for (int ry = 0; ry < sh; ry += step)
 	{
 		for (int rx = 0; rx < sw; rx += step)

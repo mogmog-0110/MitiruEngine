@@ -91,6 +91,12 @@ public:
 		stopMusic();
 	}
 
+	/// @brief 毎フレーム 1 回呼ばれる定期メンテナンス (任意、既定 no-op)。
+	/// @details 終了した one-shot voice の回収や、fade-out 完了後の voice 解放など、
+	///          「再生のたび」ではなく「時間経過で」掃除すべきものをここで行う (#51)。
+	///          固定ステップ (約 60Hz) の cadence で呼ばれる前提。
+	virtual void update() {}
+
 	/// @brief 再生中チャンネルのメーター読みを列挙する (任意)
 	/// @details mitiru_mixer 窓の per-channel VU 用。既定は空 = 列挙非対応の
 	///          実装はそのまま動く (非純粋)。再生中 voice を持つ実装が override する。

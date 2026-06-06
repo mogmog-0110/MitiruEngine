@@ -42,6 +42,7 @@
 #include <wrl/client.h>
 
 #include <mitiru/gfx/dx12/Dx12Device.hpp>
+#include <mitiru/cef/CefUploadPlanner.hpp>   // planUploadPlacements (#29、GPU 非依存の純ロジック)
 
 // CefRect 型を使うために CEF ヘッダーをインクルードする
 #include "include/cef_render_handler.h"
@@ -249,11 +250,52 @@ public:
             return;
         }
 
-        // ── コピーコマンドリストを準備する ───────────────────────
+        const size_t srcStride = static_cast<size_t>(m_width) * 4;
+
+        // ── 各 dirty rect にアップロードバッファ内の独立オフセットを割り当てる (#29) ──
+        // 旧実装は全 rect を offset=0 に書いていたため、ループ内の memcpy が前 rect の
+        // 転送元ピクセルを GPU 実行 (ループ後の ExecuteCommandLists) 前に上書きし、
+        // 全コピーが「最後の rect」を読んでしまった (別位置にゲージ縞が複製)。
+        // rect ごとに 512B 整列 (PLACED_FOOTPRINT.Offset) の独立領域へ書き、コピーの
+        // src.Offset もそこを指すようにすれば、同一実行内で全コピーが正しい元を読む。
+        const size_t bufferSize = m_uploadRowPitch * static_cast<size_t>(m_height);
+        bool overflow = false;
+        const std::vector<UploadPlacement> placed =
+            planUploadPlacements(dirtyRects, m_width, m_height, bufferSize, overflow);
+        if (overflow)
+        {
+            // 整列オーバーヘッドでバッファに収まらない稀ケース: フル転送に退避。
+            upload(data, width, height);
+            return;
+        }
+        if (placed.empty()) { return; }
+
+        // ── 全 rect をバッファへ一括書き込み (各 rect は自分の offset へ) ──
+        void* mapped = nullptr;
+        D3D12_RANGE readRange{0, 0};
+        if (FAILED(m_uploadBuffer->Map(0, &readRange, &mapped))) { return; }
+        for (const auto& p : placed)
+        {
+            const size_t rectRowBytes = static_cast<size_t>(p.width) * 4;
+            for (int y = 0; y < p.height; ++y)
+            {
+                const uint8_t* srcRow = data
+                    + static_cast<size_t>(p.y + y) * srcStride
+                    + static_cast<size_t>(p.x) * 4;
+                uint8_t* dstRow = static_cast<uint8_t*>(mapped) + p.offset
+                    + static_cast<size_t>(y) * p.rowPitch;
+                std::memcpy(dstRow, srcRow, rectRowBytes);
+            }
+        }
+        const size_t writtenEnd = placed.back().offset
+            + placed.back().rowPitch * static_cast<size_t>(placed.back().height);
+        D3D12_RANGE written{0, writtenEnd};
+        m_uploadBuffer->Unmap(0, &written);
+
+        // ── コピーコマンドリストを準備し、全 rect のコピーを記録する ──
         ComPtr<ID3D12CommandAllocator> alloc;
         m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
             IID_PPV_ARGS(&alloc));
-
         ComPtr<ID3D12GraphicsCommandList> cl;
         m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
             alloc.Get(), nullptr, IID_PPV_ARGS(&cl));
@@ -267,56 +309,8 @@ public:
         b.Transition.Subresource = 0;
         cl->ResourceBarrier(1, &b);
 
-        const size_t srcStride = static_cast<size_t>(m_width) * 4;
-
-        for (const auto& rect : dirtyRects)
+        for (const auto& p : placed)
         {
-            // 矩形をクランプしてテクスチャ範囲外を防ぐ
-            const int x0 = rect.x;
-            const int y0 = rect.y;
-            const int x1 = x0 + rect.width;
-            const int y1 = y0 + rect.height;
-            if (x0 < 0 || y0 < 0 || x1 > m_width || y1 > m_height ||
-                rect.width <= 0 || rect.height <= 0)
-            {
-                continue; // 不正な矩形はスキップ
-            }
-
-            // ── アップロードバッファに矩形ピクセルを書く ──────────
-            // 戦略: 各矩形を独立してバッファ先頭 (offset=0) から書く。
-            // Footprint は rect.width × rect.height。
-            // 行ピッチは m_uploadRowPitch (256 バイトアライン済み) を流用する。
-            //
-            // 注意: この方式では矩形を順次処理する (前の矩形を上書き可)。
-            // GPU への CopyTextureRegion は cl に積むだけで、ExecuteCommandLists
-            // 前には実行されないため、各矩形の書き込みと発行を対にすることで
-            // 正しく動作する。
-
-            void* mapped = nullptr;
-            D3D12_RANGE readRange{0, 0};
-            if (FAILED(m_uploadBuffer->Map(0, &readRange, &mapped)))
-            {
-                continue;
-            }
-
-            const size_t rectRowBytes = static_cast<size_t>(rect.width) * 4;
-            for (int y = 0; y < rect.height; ++y)
-            {
-                const uint8_t* srcRow =
-                    data + static_cast<size_t>(y0 + y) * srcStride
-                         + static_cast<size_t>(x0) * 4;
-                uint8_t* dstRow =
-                    static_cast<uint8_t*>(mapped)
-                    + static_cast<size_t>(y) * m_uploadRowPitch;
-                std::memcpy(dstRow, srcRow, rectRowBytes);
-            }
-
-            const size_t writtenEnd =
-                static_cast<size_t>(rect.height - 1) * m_uploadRowPitch + rectRowBytes;
-            D3D12_RANGE written{0, writtenEnd};
-            m_uploadBuffer->Unmap(0, &written);
-
-            // ── CopyTextureRegion — src は Footprint (rect サイズ) ──
             D3D12_TEXTURE_COPY_LOCATION dst{};
             dst.pResource        = m_texture.Get();
             dst.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
@@ -325,15 +319,14 @@ public:
             D3D12_TEXTURE_COPY_LOCATION src{};
             src.pResource                          = m_uploadBuffer.Get();
             src.Type                               = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-            src.PlacedFootprint.Offset             = 0;
+            src.PlacedFootprint.Offset             = p.offset;
             src.PlacedFootprint.Footprint.Format   = DXGI_FORMAT_B8G8R8A8_UNORM;
-            src.PlacedFootprint.Footprint.Width    = static_cast<UINT>(rect.width);
-            src.PlacedFootprint.Footprint.Height   = static_cast<UINT>(rect.height);
+            src.PlacedFootprint.Footprint.Width    = static_cast<UINT>(p.width);
+            src.PlacedFootprint.Footprint.Height   = static_cast<UINT>(p.height);
             src.PlacedFootprint.Footprint.Depth    = 1;
-            src.PlacedFootprint.Footprint.RowPitch = static_cast<UINT>(m_uploadRowPitch);
+            src.PlacedFootprint.Footprint.RowPitch = static_cast<UINT>(p.rowPitch);
 
-            // テクスチャの貼り付け先 (x0, y0) に矩形をコピーする
-            cl->CopyTextureRegion(&dst, x0, y0, 0, &src, nullptr);
+            cl->CopyTextureRegion(&dst, p.x, p.y, 0, &src, nullptr);
         }
 
         // Barrier: COPY_DEST → SHADER_RESOURCE (一度だけ発行)
@@ -366,7 +359,8 @@ public:
     ///  - 拡大時は texture を sampler で補間 (LINEAR で滑らか)
     ///  - drag 中 deferred resize なら、texture aspect は前 paint のまま
     ///    window が伸縮しても fit-rect が滑らかに追従 → 中身は静止
-    void composite(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, int windowW, int windowH)
+    void composite(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, int windowW, int windowH,
+                   const float clearRGBA[4] = nullptr)
     {
         if (!m_initialized || !m_pipeline || !m_texture ||
             !m_compositeAlloc || !m_compositeCl)
@@ -433,6 +427,26 @@ public:
             static_cast<LONG>(offX + fitW),
             static_cast<LONG>(offY + fitH)
         };
+        // letterbox/pillarbox の余白を clearColor で塗る (fit-rect の外側のみ)。
+        // fit-rect は触らないので game の 2D-under-CEF は保持される。余白に
+        // backbuffer の素 (黒) が残る不具合 (端の黒帯) を防ぐ。
+        if (clearRGBA != nullptr && (offX > 0.5f || offY > 0.5f))
+        {
+            D3D12_RECT bars[4];
+            int nbars = 0;
+            if (offY > 0.5f)
+            {
+                bars[nbars++] = {0, 0, windowW, static_cast<LONG>(offY + 0.5f)};
+                bars[nbars++] = {0, static_cast<LONG>(offY + fitH), windowW, windowH};
+            }
+            if (offX > 0.5f)
+            {
+                bars[nbars++] = {0, 0, static_cast<LONG>(offX + 0.5f), windowH};
+                bars[nbars++] = {static_cast<LONG>(offX + fitW), 0, windowW, windowH};
+            }
+            m_compositeCl->ClearRenderTargetView(rtvHandle, clearRGBA, nbars, bars);
+        }
+
         m_compositeCl->RSSetViewports(1, &vp);
         m_compositeCl->RSSetScissorRects(1, &sci);
 
@@ -727,6 +741,7 @@ float4 main(PSIn i) : SV_Target
     {
         return (size + 255) & ~size_t{255};
     }
+
 
     // ── メンバー ─────────────────────────────────────────────────
     ID3D12Device*        m_device = nullptr;

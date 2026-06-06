@@ -17,11 +17,19 @@ if(MSVC)
 	target_compile_options(mitiru_host PRIVATE /bigobj)
 endif()
 
-# WIN32 subsystem requires WinMain; main.cpp also exports a plain main()
-# fallback. We rely on the linker picking the right one.
-# Override to CONSOLE so argv/stdout work as expected for a CLI launcher.
+# subsystem: dev はコンソール (argv/stdout/ログが見える)。配布は MITIRU_HOST_GUI=ON で
+# GUI subsystem にしてコンソール窓を出さない (mitiru dist が設定)。entry は main() のまま
+# (/ENTRY:mainCRTStartup) なので argv 処理は不変。
 if(WIN32)
-	set_target_properties(mitiru_host PROPERTIES WIN32_EXECUTABLE OFF)
+	if(MITIRU_HOST_GUI)
+		# 明示的に GUI subsystem。entry は main() のまま (/ENTRY:mainCRTStartup)。
+		set_target_properties(mitiru_host PROPERTIES WIN32_EXECUTABLE ON)
+		target_link_options(mitiru_host PRIVATE
+			/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
+	else()
+		set_target_properties(mitiru_host PROPERTIES WIN32_EXECUTABLE OFF)
+		target_link_options(mitiru_host PRIVATE /SUBSYSTEM:CONSOLE)
+	endif()
 endif()
 
 # Deploy CEF runtime + helper exe next to mitiru_host.exe — the host owns

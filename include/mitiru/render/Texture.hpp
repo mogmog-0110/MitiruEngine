@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <mitiru/asset/AssetPack.hpp> // vfs::readGlobal (pack 秘匿配布 / disk fallback, ADR 0016)
 #include <stb_image.h> // 宣言のみ。実装は src/stb_impl.cpp (mitiru が INTERFACE-link 済み)。
 
 namespace mitiru::render
@@ -46,8 +47,12 @@ public:
 	/// @return 成功時 Texture、失敗時 nullopt
 	[[nodiscard]] static std::optional<Texture> fromFile(const std::string& path)
 	{
+		// pack が mount 済みなら pack から、未 mount (dev) なら disk から読む (ADR 0016)。
+		const auto bytes = mitiru::vfs::readGlobal(path, path);
+		if (!bytes) { return std::nullopt; }
 		int w = 0, h = 0, channels = 0;
-		unsigned char* data = stbi_load(path.c_str(), &w, &h, &channels, 4); // 強制 RGBA
+		unsigned char* data = stbi_load_from_memory(
+			bytes->data(), static_cast<int>(bytes->size()), &w, &h, &channels, 4); // 強制 RGBA
 		if (data == nullptr || w <= 0 || h <= 0)
 		{
 			if (data != nullptr) { stbi_image_free(data); }

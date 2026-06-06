@@ -31,9 +31,11 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <mitiru/Mitiru.hpp>
+#include <mitiru/asset/AssetPack.hpp> // vfs: pack mount / readGlobal (ADR 0016)
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/MiniaudioEngine.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
@@ -90,6 +92,9 @@ public:
 	}
 	void stopMusicFade(float fadeOutSec) override { m_engine.stopMusicFade(fadeOutSec); }
 
+	// 毎フレームの定期掃除 (終了 SE voice 回収 + fade-out 完了 music の解放、#51)。
+	void update() override { m_engine.update(); }
+
 	// 再生中 voice のメーターを miniaudio backend からそのまま中継 (mitiru_mixer 窓用)。
 	[[nodiscard]] std::vector<mitiru::audio::ChannelMeter> meterChannels() const override
 	{
@@ -102,25 +107,67 @@ private:
 	{
 		for (const char* ext : {".wav", ".ogg", ".mp3"})
 		{
-			const auto p = m_baseDir / (std::string(id) + ext);
-			if (std::filesystem::exists(p))
+			const auto        p   = m_baseDir / (std::string(id) + ext);
+			const std::string key = p.generic_string();
+
+			// 再生に渡す実ファイルパスを決める。pack mount 時はパックから取り出した
+			// temp ファイル、dev (未 mount) 時は disk のファイル (ADR 0016)。
+			std::string playPath;
+			if (mitiru::vfs::hasGlobalMount())
 			{
-				if (music) { m_engine.playMusicEx(p.string(), volume, loop, fadeIn); }
-				else
-				{
-					m_engine.playSoundEx(p.string(), volume, pitch, fadeIn);
-					// #34 BGM ducking heuristic: 閾値超の大音量 SE で BGM を一瞬引っ込める。
-					if (volume >= kDuckSeThreshold)
-					{
-						m_engine.duckMusic(kDuckMul, kDuckSec);
-					}
-				}
-				return;
+				playPath = materializeFromPack(key, ext);
 			}
+			else if (std::filesystem::exists(p))
+			{
+				playPath = p.string();
+			}
+			if (playPath.empty()) { continue; }
+
+			if (music) { m_engine.playMusicEx(playPath, volume, loop, fadeIn); }
+			else
+			{
+				m_engine.playSoundEx(playPath, volume, pitch, fadeIn);
+				// #34 BGM ducking heuristic: 閾値超の大音量 SE で BGM を一瞬引っ込める。
+				if (volume >= kDuckSeThreshold)
+				{
+					m_engine.duckMusic(kDuckMul, kDuckSec);
+				}
+			}
+			return;
 		}
 		std::fprintf(stderr, "[mitiru_host] sound id not found under %s: %.*s\n",
 		             m_baseDir.string().c_str(),
 		             static_cast<int>(id.size()), id.data());
+	}
+
+	/// pack 中の音声 (key) を %TEMP% に一度だけ取り出し、その path を返す。
+	/// 配布物にバラ音声を置かないための経路 (ADR 0016)。pack に無ければ空。
+	std::string materializeFromPack(const std::string& key, const char* ext)
+	{
+		if (auto it = m_audioTemp.find(key); it != m_audioTemp.end()) { return it->second; }
+		const auto bytes = mitiru::vfs::readGlobal(key);
+		if (!bytes) { return {}; }
+		// key の FNV-1a で安定した temp 名を作る (run 跨ぎで再利用)。
+		std::uint64_t h = 1469598103934665603ULL;
+		for (unsigned char c : key) { h = (h ^ c) * 1099511628211ULL; }
+		char name[64];
+		std::snprintf(name, sizeof(name), "mitiru_aud_%016llx%s",
+		              static_cast<unsigned long long>(h), ext);
+		const auto out = std::filesystem::temp_directory_path() / name;
+		std::error_code ec;
+		if (!std::filesystem::exists(out, ec))
+		{
+			std::ofstream f(out, std::ios::binary | std::ios::trunc);
+			if (!f) { return {}; }
+			if (!bytes->empty())
+			{
+				f.write(reinterpret_cast<const char*>(bytes->data()),
+				        static_cast<std::streamsize>(bytes->size()));
+			}
+		}
+		const std::string s = out.string();
+		m_audioTemp.emplace(key, s);
+		return s;
 	}
 
 	// #34 ducking パラメータ。閾値以上の SE 音量で BGM を mul 倍にし、sec で復帰。
@@ -128,8 +175,9 @@ private:
 	static constexpr float kDuckMul         = 0.5f;
 	static constexpr float kDuckSec         = 0.4f;
 
-	std::filesystem::path          m_baseDir;
-	mitiru::audio::MiniaudioEngine m_engine;
+	std::filesystem::path                        m_baseDir;
+	mitiru::audio::MiniaudioEngine               m_engine;
+	std::unordered_map<std::string, std::string> m_audioTemp;  ///< pack→temp 取り出しキャッシュ
 };
 
 }  // namespace
@@ -147,6 +195,24 @@ void anchorCwdToExeDir(const char* argv0)
 		std::filesystem::path(argv0), ec);
 	if (ec) { return; }
 	std::filesystem::current_path(canon.parent_path(), ec);
+}
+
+/// exe と同じ場所の <exeStem>.mtargs があれば、その中身を argv[1..] 相当の
+/// token 列として読む (引数なし起動 = ダブルクリック / Steam 用)。空白区切りで
+/// 分割し、先頭 token は通常 game DLL の相対パス。`mitiru dist --exe` が生成する。
+std::vector<std::string> readSidecarArgs(const char* argv0)
+{
+	std::vector<std::string> tokens;
+	if (argv0 == nullptr) { return tokens; }
+	std::error_code ec;
+	const auto exe = std::filesystem::absolute(std::filesystem::path(argv0), ec);
+	if (ec) { return tokens; }
+	const auto side = exe.parent_path() / (exe.stem().string() + ".mtargs");
+	std::ifstream f(side);
+	if (!f) { return tokens; }
+	std::string tok;
+	while (f >> tok) { tokens.push_back(tok); }
+	return tokens;
 }
 
 /// DLL パスから "file:///./<dll_dir>/assets/scene.html" を組み立てる。
@@ -190,7 +256,9 @@ struct CliArgs
 	float                 speed    = 1.0f;     // --speed <N>: time scale 倍率 (固定 dt × N で早回し)
 	int                   maxFrames = 0;       // --max-frames <N>: N フレーム走ったら自動終了 (0=無制限)
 	bool                  fixedSize = false;   // --fixed-size: ユーザのウィンドウリサイズを禁止 (#44)
+	bool                  noPauseUnfocused = false; // --no-pause-unfocused: 非フォーカスでもフルレート継続 (vsync off)
 	std::string           inputScript;         // --input-script <f>: in-process 入力注入 (#43-1)
+	std::string           inputRecordPath;     // --input-record <f>: 実入力を input-script 形式で録画 (#45)
 	std::vector<mitiru::Tool> openTools;       // --inspect <name>: 起動時に開くツール独立窓 (ADR 0014)
 };
 
@@ -264,6 +332,10 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.headless = true;
 		}
+		else if (a == "--no-pause-unfocused")
+		{
+			out.noPauseUnfocused = true;
+		}
 		else if (a == "--speed")
 		{
 			if (i + 1 < argc) { try { out.speed = std::stof(argv[++i]); } catch (...) {} }
@@ -279,6 +351,10 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--input-script")
 		{
 			if (i + 1 < argc) { out.inputScript = argv[++i]; }
+		}
+		else if (a == "--input-record")
+		{
+			if (i + 1 < argc) { out.inputRecordPath = argv[++i]; }
 		}
 		else if (a == "--inspect")
 		{
@@ -385,6 +461,7 @@ void printUsage()
 		"options:\n"
 		"  --watch          poll DLL file mtime, hot-reload on change\n"
 		"  --size WxH       override window size (e.g. --size 800x500)\n"
+		"  --no-pause-unfocused  keep running at full rate when window is unfocused (#46b)\n"
 		"  --url <url>      override CEF start URL\n"
 		"  --font <mode>    none|latin|kana|japanese — native draw 用フォント\n"
 		"                   (既定 none = フォント skip・起動高速。日本語 native text を\n"
@@ -405,6 +482,7 @@ void printUsage()
 		"  --input-script F 入力スクリプト F を in-process 注入 (OS 入力を経由せず他アプリに漏れない, #43)\n"
 		"                   形式: 1 行 '<frame> <down|up> <KEY>' (# でコメント)。KEY=Left/Right/Up/Down/\n"
 		"                   Space/Enter/Escape/英数字1字/生 VK 整数。実キーボードは無視される\n"
+		"  --input-record F 実プレイの入力を input-script 形式で F に録画 (--input-script で再生可, #45)\n"
 		"  --inspect [name] ツール独立窓を起動時に開く (name=inspector|input|timetravel, 既定 inspector)\n"
 		"                   ※ host を書く人が main.cpp で mitiru::debug::openTool(Tool::X) と\n"
 		"                     直接書けば、欲しい窓だけコードで指定できる (ADR 0014)\n"
@@ -608,6 +686,28 @@ inline int keyNameToVk(const std::string& s)
 	try { return std::stoi(s, nullptr, 0); } catch (...) { return -1; }
 }
 
+/// 仮想キーコード → 名前（keyNameToVk の逆。--input-record の出力に使う）。
+inline std::string vkToName(int vk)
+{
+	switch (vk)
+	{
+	case 0x25: return "Left";
+	case 0x26: return "Up";
+	case 0x27: return "Right";
+	case 0x28: return "Down";
+	case 0x20: return "Space";
+	case 0x0D: return "Enter";
+	case 0x1B: return "Escape";
+	case 0x10: return "Shift";
+	default: break;
+	}
+	if ((vk >= 'A' && vk <= 'Z') || (vk >= '0' && vk <= '9'))
+	{
+		return std::string(1, static_cast<char>(vk));
+	}
+	return std::to_string(vk);  // 名前の無いキーは生 VK 整数
+}
+
 struct InputScriptEvent { int frame; int vk; bool down; };
 
 /// スクリプトを毎フレーム適用し InputSnapshot のキー配列を上書きするプレイヤ。
@@ -649,8 +749,16 @@ inline bool loadInputScript(const std::string& path, InputScriptPlayer& out)
 		if (h != std::string::npos) { line = line.substr(0, h); }
 		std::istringstream is(line);
 		int frame = 0;
+		std::string t2, t3;
+		if (!(is >> frame >> t2 >> t3)) { continue; }
+		// 両形式を許す: "<frame> <down|up> <KEY>" と "<frame> <KEY> <down|up>"。
+		// (--input-record の出力は後者。#45 の例 `120 Z down` もこれ。)
+		auto isAct = [](const std::string& s) {
+			return s == "down" || s == "d" || s == "DOWN" || s == "up" || s == "u" || s == "UP";
+		};
 		std::string act, key;
-		if (!(is >> frame >> act >> key)) { continue; }
+		if (isAct(t2)) { act = t2; key = t3; }
+		else           { key = t2; act = t3; }
 		const int vk = keyNameToVk(key);
 		if (vk < 0) { continue; }
 		const bool down = (act == "down" || act == "d" || act == "DOWN");
@@ -669,7 +777,26 @@ int main(int argc, char* argv[])
 {
 	anchorCwdToExeDir(argc > 0 ? argv[0] : nullptr);
 
-	const CliArgs args = parseArgs(argc, argv);
+	// 引数なし起動 (ダブルクリック / Steam) のときは sidecar <exe>.mtargs から
+	// argv を補う。これで mitiru_host を <game>.exe にリネーム配布できる。
+	std::vector<std::string> synthArgs;
+	std::vector<char*>       synthPtr;
+	int                      useArgc = argc;
+	char**                   useArgv = argv;
+	if (argc < 2)
+	{
+		auto side = readSidecarArgs(argc > 0 ? argv[0] : nullptr);
+		if (!side.empty())
+		{
+			synthArgs.push_back(argc > 0 ? std::string(argv[0]) : std::string("mitiru_host"));
+			for (auto& s : side) { synthArgs.push_back(s); }
+			for (auto& s : synthArgs) { synthPtr.push_back(s.data()); }
+			useArgc = static_cast<int>(synthPtr.size());
+			useArgv = synthPtr.data();
+		}
+	}
+
+	const CliArgs args = parseArgs(useArgc, useArgv);
 	if (args.helpRequested) { printUsage(); return args.dllPath.empty() ? 1 : 0; }
 
 	// --state-diff A B: DLL 不要。2 つの .mtrr の GameMemory blob を byte 比較し、
@@ -700,6 +827,40 @@ int main(int argc, char* argv[])
 		return 2;
 	}
 
+	// 秘匿配布 (ADR 0016): DLL の隣に assets.mtpak があれば mount。以後 CEF (app://) も
+	// native loader (Texture/ImageLoader) も音声も vfs::readGlobal 経由で pack から読む。
+	std::string packedAppUrl;
+	{
+		const auto packPath =
+			std::filesystem::path(args.dllPath).parent_path() / "assets.mtpak";
+		if (std::filesystem::exists(packPath, ec) && !ec)
+		{
+			if (auto pack = mitiru::vfs::AssetPack::open(packPath))
+			{
+				mitiru::vfs::mountGlobal(std::move(*pack));
+				// header-only の mount static は host / game DLL / CEF helper で別インスタンス。
+				// 環境変数で pack パスを共有し、各モジュールが lazy mount する (境界越え)。
+				const auto absPack = std::filesystem::absolute(packPath, ec);
+				const std::string packEnv = (ec ? packPath : absPack).string();
+#ifdef _WIN32
+				_putenv_s("MITIRU_ASSET_PACK", packEnv.c_str());
+#else
+				setenv("MITIRU_ASSET_PACK", packEnv.c_str(), 1);
+#endif
+				// pack キーは cwd 相対の "<gameDir>/assets/...". CEF の virtualPath を
+				// それに合わせるため <gameDir> を cwd からの相対で前置する。
+				const auto rel = std::filesystem::relative(
+					std::filesystem::path(args.dllPath).parent_path(),
+					std::filesystem::current_path(), ec);
+				const auto under = (ec || rel.empty())
+					? std::filesystem::path(args.dllPath).parent_path() : rel;
+				packedAppUrl = "app://" + under.generic_string() + "/assets/scene.html";
+				std::fprintf(stdout, "[mitiru_host] asset pack mounted: %s\n",
+				             packPath.string().c_str());
+			}
+		}
+	}
+
 	mitiru::EngineConfig cfg;
 	cfg.title           = "mitiru_host";
 	cfg.windowWidth     = args.widthOverride  > 0 ? args.widthOverride  : 1280;
@@ -714,6 +875,7 @@ int main(int argc, char* argv[])
 		cfg.minWindowHeight = floorH > 48  ? floorH : 48;
 	}
 	cfg.vsync           = true;
+	if (args.noPauseUnfocused) { cfg.vsync = false; }  // 背面でもフルレート (present の vsync 待ちを回避)
 	cfg.enableCef       = !args.noCef;   // --no-cef: 完全ネイティブ game は CEF 抜きで軽量起動
 	cfg.timeScale       = args.speed;    // --speed: 固定 dt × N 早回し (#43)
 	if (args.fixedSize) { cfg.windowResizable = false; }   // --fixed-size: リサイズ禁止 (#44)
@@ -722,6 +884,7 @@ int main(int argc, char* argv[])
 		cfg.headless  = true;
 		cfg.vsync     = false;
 		cfg.enableCef = false;
+		cfg.deterministic = true;  // 固定 clock で run 間を決定的に (1 host frame = 1 fixed-step)
 	}
 	// EngineHttpServer (ADR 0011): --http-port > 0 か --console で HTTP listen を開始。
 	// 127.0.0.1 限定。--console は既定ブラウザで control panel HTML を自動表示する (phase 3)。
@@ -773,7 +936,7 @@ int main(int argc, char* argv[])
 	}
 	cfg.cefStartUrl     = !args.cefUrlOverride.empty()
 		? args.cefUrlOverride
-		: defaultCefUrlFor(args.dllPath);
+		: (!packedAppUrl.empty() ? packedAppUrl : defaultCefUrlFor(args.dllPath));
 
 	// MITIRU_AUTOTEST_FRAMES は autotest の猶予を延ばし、スクショ発火前に CEF が
 	// scene.html を読み込む時間を確保する。Engine::run の applyAutoTestEnv() は既定
@@ -893,9 +1056,14 @@ int main(int argc, char* argv[])
 
 	// SoundIntents (ADR 0008) を実際に鳴らすため audio engine を接続する。id は
 	// game の配置先 assets/audio/ ディレクトリ (DLL の隣) に対して解決する。
-	const auto audioDir =
-		std::filesystem::path(args.dllPath).parent_path() / "assets" / "audio";
-	engine.setAudioEngine(std::make_shared<FileAudioEngine>(audioDir));
+	// headless (自動テスト / AI 回し) では音が不要かつ #52 の音声スレッド競合を避けるため
+	// audio engine を作らない (sound intent は no-op、決定的 sim には無影響)。
+	if (!args.headless)
+	{
+		const auto audioDir =
+			std::filesystem::path(args.dllPath).parent_path() / "assets" / "audio";
+		engine.setAudioEngine(std::make_shared<FileAudioEngine>(audioDir));
+	}
 
 	// ── replay-as-test (軸 4) ──────────────────────────────────────────
 	// --record: 毎フレームの InputSnapshot と game が push した view.* 状態を .mtrr に
@@ -935,6 +1103,39 @@ int main(int argc, char* argv[])
 					recorder.record(frameIdx++, snap, blob.data(),
 					                static_cast<std::uint32_t>(blob.size()));
 				}
+			};
+	}
+
+	// --input-record (#45): 実プレイの入力エッジを input-script 形式で書き出す。
+	// `--input-script` で再生でき、#43 の headless+capture と組めば完全自動回帰テストになる。
+	// 既存の onModuleFrameRecorded (--record) があれば chain する。lifetime は runModule 内。
+	std::ofstream inputRecOut;
+	std::uint32_t inputRecFrame = 0;
+	if (!args.inputRecordPath.empty())
+	{
+		inputRecOut.open(args.inputRecordPath, std::ios::binary);
+		if (!inputRecOut)
+		{
+			std::fprintf(stderr, "mitiru_host: cannot open --input-record file: %s\n",
+			             args.inputRecordPath.c_str());
+			return 2;
+		}
+		inputRecOut << "# mitiru input-script (--input-record). 形式: <frame> <KEY> <down|up>\n";
+		std::fprintf(stderr, "[mitiru_host] input recording → %s\n", args.inputRecordPath.c_str());
+		auto prev = cfg.onModuleFrameRecorded;   // --record と併用時は chain
+		cfg.onModuleFrameRecorded =
+			[&inputRecOut, &inputRecFrame, prev](const mitiru::module::InputSnapshot& snap,
+			                                     const mitiru::module::FrameIntents& fi)
+			{
+				if (prev) { prev(snap, fi); }
+				for (int vk = 0; vk < 256; ++vk)
+				{
+					if (snap.keysJustPressed[vk])
+						inputRecOut << inputRecFrame << ' ' << vkToName(vk) << " down\n";
+					if (snap.keysJustReleased[vk])
+						inputRecOut << inputRecFrame << ' ' << vkToName(vk) << " up\n";
+				}
+				++inputRecFrame;
 			};
 	}
 
@@ -1046,7 +1247,12 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	engine.runModule(args.dllPath, cfg);
+	if (!engine.runModule(args.dllPath, cfg))
+	{
+		// module load 失敗 (MITIRU_GAME 入口無し等)。理由は runModule が stderr に出済み。
+		// 非ゼロで返すとランチャー .bat が pause してユーザがエラーを読める。
+		return 3;
+	}
 
 	// Replay 検証: 観測可能な最終状態を出力する。--expect 指定時はキー単位で diff し、
 	// 不一致があれば非ゼロ終了する (CI リグレッションゲート)。

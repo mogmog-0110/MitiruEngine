@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ja" data-base="/">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>01 クリッカー — クリックで増える数字 | MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="黒猫ネコニャーと一緒に、いちばんやさしいゲーム『クリッカー』を作る。C&#43;&#43; でループを書く → HTML/CSS で見た目を作る → C&#43;&#43; で味付け、という MitiruEngine の基本の流れを最初から最後まで体験する。">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-clicker/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-clicker/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="01 クリッカー — クリックで増える数字 | MitiruEngine">
+<meta property="og:description" content="黒猫ネコニャーと一緒に、いちばんやさしいゲーム『クリッカー』を作る。C&#43;&#43; でループを書く → HTML/CSS で見た目を作る → C&#43;&#43; で味付け、という MitiruEngine の基本の流れを最初から最後まで体験する。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorials/01-clicker/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="01 クリッカー — クリックで増える数字 | MitiruEngine">
+<meta name="twitter:description" content="黒猫ネコニャーと一緒に、いちばんやさしいゲーム『クリッカー』を作る。C&#43;&#43; でループを書く → HTML/CSS で見た目を作る → C&#43;&#43; で味付け、という MitiruEngine の基本の流れを最初から最後まで体験する。">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
+  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+</head>
+<body>
+  <header class="site-header">
+  <div class="container site-header__inner">
+    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
+      <span class="site-header__brand-mark" aria-hidden="true">M</span>
+      <span class="site-header__brand-name">MitiruEngine</span>
+    </a>
+    <input type="checkbox"
+           id="nav-toggle"
+           class="nav-toggle"
+           role="button"
+           aria-label="メニュー"
+           aria-controls="primary-nav">
+    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6"  x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </label>
+    <nav class="site-nav" id="primary-nav" aria-label="primary">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorials/">チュートリアル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/chapters/">できること</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
+      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
+      
+<button type="button"
+        class="search-trigger"
+        id="site-search-trigger"
+        aria-label="サイト内検索"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="site-search-dialog">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle>
+    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+  </svg>
+  <span class="visually-hidden">サイト内検索</span>
+</button>
+
+<div class="search-dialog"
+     id="site-search-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="site-search-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="search-dialog__backdrop" data-search-close></div>
+  <div class="search-dialog__panel" role="document">
+    <div class="search-dialog__header">
+      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
+      <button type="button"
+              class="search-dialog__close"
+              data-search-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div id="site-search" class="search-dialog__body"></div>
+  </div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
+<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('site-search-trigger');
+    var dialog  = document.getElementById('site-search-dialog');
+    if (!trigger || !dialog) return;
+
+    var mountPoint = dialog.querySelector('#site-search');
+    var closers    = dialog.querySelectorAll('[data-search-close]');
+    var docEl      = document.documentElement;
+    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
+    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
+    var i18nStrings = {
+      placeholder:       "ドキュメントを検索…",
+      clear_search:      "クリア",
+      load_more:         "さらに読み込む",
+      search_label:      "サイト内検索",
+      filters_label:     "Filters",
+      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
+      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
+      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
+      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
+      searching:         "検索中…"
+    };
+
+    var instance = null;
+    var lastFocus = null;
+
+    function ensureInstance() {
+      if (instance) return instance;
+      if (typeof window.PagefindUI !== 'function') return null;
+      instance = new window.PagefindUI({
+        element:        mountPoint,
+        showSubResults: true,
+        showImages:     false,
+        excerptLength:  30,
+        resetStyles:    false,
+        bundlePath:     pagefindBundlePath,
+        translations:   i18nStrings,
+        autofocus:      true
+      });
+      return instance;
+    }
+
+    function openDialog() {
+      lastFocus = document.activeElement;
+      dialog.hidden = false;
+      
+      requestAnimationFrame(function () {
+        dialog.classList.add('is-open');
+        document.body.classList.add('search-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        ensureInstance();
+        var input = dialog.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
+    }
+
+    function closeDialog() {
+      dialog.classList.remove('is-open');
+      document.body.classList.remove('search-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      
+      setTimeout(function () {
+        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
+        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+      }, 200);
+    }
+
+    trigger.addEventListener('click', function () {
+      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
+    });
+
+    closers.forEach(function (el) {
+      el.addEventListener('click', closeDialog);
+    });
+
+    function getTabbable() {
+      var panel = dialog.querySelector('.search-dialog__panel');
+      if (!panel) return [];
+      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
+        return !el.hasAttribute('hidden') && el.offsetParent !== null;
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      var open = dialog.classList.contains('is-open');
+      if (e.key === 'Escape' && open) {
+        closeDialog();
+        return;
+      }
+      
+      
+      
+      if (e.key === 'Tab' && open) {
+        var nodes = getTabbable();
+        if (nodes.length === 0) { e.preventDefault(); return; }
+        var first = nodes[0], last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (open) {
+          var input = dialog.querySelector('.pagefind-ui__search-input');
+          if (input) input.focus();
+        } else {
+          openDialog();
+        }
+      }
+    });
+  })();
+</script>
+
+      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="visually-hidden">GitHub</span>
+      </a>
+      
+      <button type="button"
+              class="shortcuts-trigger"
+              data-shortcuts-open
+              aria-haspopup="dialog"
+              aria-controls="shortcuts-dialog"
+              aria-label="Keyboard shortcuts"
+              title="?">
+        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
+      </button>
+      <button type="button"
+              class="theme-toggle"
+              id="theme-toggle"
+              aria-pressed="false"
+              aria-label="ダークモード切替">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2"  x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+          <line x1="2"  y1="12" x2="4"  y2="12"></line>
+          <line x1="20" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
+          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+<script>
+  (function () {
+    var navBox = document.getElementById('nav-toggle');
+    var themeBtn = document.getElementById('theme-toggle');
+
+    if (navBox) {
+      
+      
+      
+      navBox.addEventListener('change', function () {
+        if (navBox.checked) {
+          document.body.classList.add('is-nav-open');
+        } else {
+          document.body.classList.remove('is-nav-open');
+        }
+      });
+    }
+
+    function isDark() {
+      var current = document.documentElement.getAttribute('data-theme');
+      if (current === 'dark' || current === 'light') return current === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function syncThemeButton() {
+      if (!themeBtn) return;
+      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
+    }
+
+    
+    
+    syncThemeButton();
+
+    if (themeBtn) {
+      themeBtn.addEventListener('click', function () {
+        var root = document.documentElement;
+        var current = root.getAttribute('data-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var next;
+        if (current === 'dark') {
+          next = 'light';
+        } else if (current === 'light') {
+          next = 'dark';
+        } else {
+          next = prefersDark ? 'light' : 'dark';
+        }
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {   }
+        syncThemeButton();
+      });
+    }
+  })();
+</script>
+
+  <main class="site-main" data-pagefind-body>
+    
+
+
+
+
+<article class="page-article container">
+  <header class="page-article__header">
+    
+    <p class="page-eyebrow">
+      <a href="https://mogmog-0110.github.io/MitiruEngine/">MitiruEngine</a>
+    </p>
+    
+    <h1 class="page-article__title">01 クリッカー — クリックで増える数字</h1>
+    <p class="page-article__lede">黒猫ネコニャーと一緒に、いちばんやさしいゲーム『クリッカー』を作る。C&#43;&#43; でループを書く → HTML/CSS で見た目を作る → C&#43;&#43; で味付け、という MitiruEngine の基本の流れを最初から最後まで体験する。</p>
+  </header>
+
+  
+  <aside class="page-summary">
+    <h2 class="page-summary__h">このページで分かること</h2>
+    <ul>
+      <li>mitiru new → mitiru watch でプロジェクトを立ち上げ、ホットリロードで育てる</li><li>クリックで数字が増えるだけの最小ゲームを C&#43;&#43; で作る</li><li>見た目（数字・ボタン）は HTML/CSS に載せ替える（手書き JS なし）</li><li>案内役は黒猫ネコニャー。むずかしい文法は途中の『C&#43;&#43; メモ』で補足</li>
+    </ul>
+  </aside>
+  
+
+  <div class="page-with-toc">
+    <div class="page-article__body">
+      <p>このシリーズの案内役を紹介するにゃん。</p>
+<aside class="neko-intro">
+<p>🐈‍⬛ <strong>ネコニャー</strong>「やあ、ボクはネコニャー。MitiruEngine とプログラミングにちょっと詳しい黒猫だにゃん。これからきみと一緒に、いろんなジャンルのゲームを<strong>やさしい順</strong>に作っていくにゃん。記念すべき一本目は<strong>クリッカー</strong>。画面をクリックすると数字が増える、それだけのゲームだにゃん。<br>『そんなの簡単すぎ』と思うかもにゃ。でもこの一本で、<strong>プロジェクトの作りかた・C++ のループ・HTML で見た目を作る・ホットリロード</strong>っていう、MitiruEngine の基本が全部さわれるにゃん。あせらず行こうにゃ🐾」</p>
+</aside>
+<p>時間の目安は <strong>30 分くらい</strong>。先に <a href="https://mogmog-0110.github.io/MitiruEngine/getting-started/">はじめに</a> を済ませて、<code>mitiru doctor</code> が緑になっているのを確認しておいてにゃん。</p>
+<aside class="cpp-note">
+<span class="cpp-note__title">C++ がはじめての人へ</span>
+<p>このチュートリアルは <strong>C++ を触ったことがなくても進める</strong> ように書いてあるにゃん。むずかしい文法が出てきたら、その場で「C++ メモ」の箱が説明するにゃん。慣れている人は読み飛ばして OK にゃ。</p>
+</aside>
+<hr>
+<h2 id="できあがるもの">できあがるもの</h2>
+<ul>
+<li>画面をクリックすると <strong>数字が +1</strong> されるだけのクリッカー</li>
+<li>まずは C++ だけで「クリックした回数ぶん四角が積み上がる」状態にする</li>
+<li>そのあと、HTML/CSS で <strong>大きな数字とボタン</strong> をちゃんと表示する</li>
+<li>最後に C++ を足して「ほっといても少しずつ増える（放置要素）」を入れる</li>
+</ul>
+<hr>
+<h2 id="手順-1-プロジェクトを作る">手順 1: プロジェクトを作る</h2>
+<blockquote>
+<p>🐈‍⬛「まずは作業場所を用意するにゃん。ターミナル（PowerShell でも OK）でこう打つにゃ」</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru new my-clicker
+</span></span><span class="line"><span class="cl"><span class="nb">cd</span> my-clicker
+</span></span></code></pre></div><p><code>mitiru new</code> は <strong>ゲーム DLL</strong> のひな型を一式作ってくれるにゃん。<code>mitiru_host</code>（エンジン本体の実行ファイル）が、この DLL を読み込んで動かす、という仕組みだにゃ。</p>
+<p>できたフォルダの中で、きみが触るのは基本この 3 つだけ：</p>
+<table>
+  <thead>
+      <tr>
+          <th>ファイル</th>
+          <th>役割</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>src/main.cpp</code></td>
+          <td>ゲームの中身（C++）</td>
+      </tr>
+      <tr>
+          <td><code>assets/scene.html</code></td>
+          <td>見た目（HTML/CSS）</td>
+      </tr>
+      <tr>
+          <td><code>mitiru.toml</code></td>
+          <td>設定（ウィンドウサイズ・使うエンジンの版）</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="手順-2-とりあえず動かす">手順 2: とりあえず動かす</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru watch
+</span></span></code></pre></div><blockquote>
+<p>🐈‍⬛「<code>mitiru run</code> でも起動できるけど、チュートリアル中は <strong><code>mitiru watch</code></strong> がおすすめにゃん。<code>src/</code> を保存した瞬間に、<strong>ゲームを止めずに</strong>新しいコードへ差し替わるにゃ。これを『ホットリロード』って呼ぶにゃん。状態（さっきまでの数字とか）も残ったまま入れ替わる、これが MitiruEngine の自慢の機能だにゃ🐾」</p>
+</blockquote>
+<p>初回はエンジンの取り込みとビルドで少し時間がかかるにゃん（数分）。2 回目以降は数秒で立ち上がるにゃ。ウィンドウが出てきたら成功だにゃん。</p>
+<aside class="cpp-note">
+<span class="cpp-note__title">ローカルのエンジンを使って速くする（任意）</span>
+<p>エンジン本体をすでに手元に置いている人は、起動前に環境変数 <code>MITIRU_ENGINE_ROOT</code> をそのフォルダに向けると、取り込みを待たずに済むにゃん。<br>PowerShell: <code>$env:MITIRU_ENGINE_ROOT="C:\path\to\MitiruEngine"</code></p>
+</aside>
+<hr>
+<h2 id="手順-3-中身を読む--ゲームは-3-つの部品でできている">手順 3: 中身を読む — ゲームは 3 つの部品でできている</h2>
+<p><code>src/main.cpp</code> を開くにゃん。MitiruEngine のゲームは、ざっくり <strong>3 つの部品</strong> でできているにゃ。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/module/Game.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/core/Screen.hpp&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">Clicker</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// ① 状態（ゲームが覚えておく値）
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Input</span> <span class="n">in</span><span class="p">,</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Hud</span> <span class="n">hud</span><span class="p">,</span> <span class="kt">float</span> <span class="n">dt</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// ② 毎フレームの処理（入力・ルール）
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">screen</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// ③ 描画（画面に出す）
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">MITIRU_GAME</span><span class="p">(</span><span class="n">Clicker</span><span class="p">)</span>   <span class="c1">// この 1 行で DLL の入口ができる
+</span></span></span></code></pre></div><ul>
+<li><strong>① 状態</strong>：<code>struct</code> の中に書いた変数。ここに置いた値だけがホットリロードを越えて生き残るにゃん。</li>
+<li><strong>② <code>update</code></strong>：1 フレーム（1/60 秒）ごとに 1 回呼ばれる。キーやマウスを見て、ルールを進めるにゃ。</li>
+<li><strong>③ <code>draw</code></strong>：画面に四角や色を出すところ。状態を<strong>読むだけ</strong>にしておくのがコツにゃん。</li>
+</ul>
+<aside class="cpp-note">
+<span class="cpp-note__title">C++ メモ: <code>struct</code> って？</span>
+<p><code>struct Clicker { ... };</code> は「Clicker という名前の<strong>箱の設計図</strong>」を作る宣言にゃん。中に変数（覚えておく値）と関数（処理）をまとめられるにゃ。最後の <code>;</code>（セミコロン）を忘れやすいので注意にゃん。</p>
+</aside>
+<aside class="cpp-note">
+<span class="cpp-note__title">C++ メモ: <code>MITIRU_GAME(Clicker)</code> の正体</span>
+<p>これは「Clicker をゲームとしてエンジンに登録する」おまじないにゃん。中では DLL の入口関数が自動で書かれているにゃ。きみは <code>update</code> と <code>draw</code> を書くだけでよくて、難しい配線は全部この 1 行が引き受けるにゃん。</p>
+</aside>
+<hr>
+<h2 id="手順-4-c-だけでクリッカーのループ">手順 4: C++ だけでクリッカーのループ</h2>
+<blockquote>
+<p>🐈‍にゃー「いよいよ中身を書くにゃん。まだ HTML は使わないにゃ。<strong>クリックで数字が増えて、増えたぶん四角が積み上がる</strong>ところまでを C++ だけで作るにゃん」</p>
+</blockquote>
+<p><code>src/main.cpp</code> の <code>struct Clicker { ... }</code> を、まるごとこう書き換えてみるにゃん。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">struct</span> <span class="nc">Clicker</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// ① 状態
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kt">long</span> <span class="kt">long</span> <span class="n">count</span>    <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>   <span class="c1">// クリックした回数
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kt">int</span>       <span class="n">perClick</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>   <span class="c1">// 1 クリックで増える量
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// ② 毎フレーム
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Input</span> <span class="n">in</span><span class="p">,</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Hud</span> <span class="n">hud</span><span class="p">,</span> <span class="kt">float</span> <span class="n">dt</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">pressed</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">Escape</span><span class="p">))</span> <span class="p">{</span> <span class="n">hud</span><span class="p">.</span><span class="n">quit</span><span class="p">();</span> <span class="p">}</span>   <span class="c1">// ESC で終了
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">mousePressed</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>              <span class="c1">// 左クリックした瞬間
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="n">count</span> <span class="o">+=</span> <span class="n">perClick</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// ③ 描画
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kt">void</span> <span class="nf">draw</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Screen</span><span class="o">&amp;</span> <span class="n">screen</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">screen</span><span class="p">.</span><span class="n">clear</span><span class="p">(</span><span class="n">sgc</span><span class="o">::</span><span class="n">Colorf</span><span class="p">{</span><span class="mf">0.06f</span><span class="p">,</span> <span class="mf">0.07f</span><span class="p">,</span> <span class="mf">0.12f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>  <span class="c1">// 暗い背景
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 中央に「クリックの的」になる四角（まだただの飾り）
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">screen</span><span class="p">.</span><span class="n">drawRect</span><span class="p">(</span><span class="n">sgc</span><span class="o">::</span><span class="n">Rectf</span><span class="p">{</span><span class="mf">540.0f</span><span class="p">,</span> <span class="mf">280.0f</span><span class="p">,</span> <span class="mf">200.0f</span><span class="p">,</span> <span class="mf">160.0f</span><span class="p">},</span>
+</span></span><span class="line"><span class="cl">                        <span class="n">sgc</span><span class="o">::</span><span class="n">Colorf</span><span class="p">{</span><span class="mf">0.20f</span><span class="p">,</span> <span class="mf">0.45f</span><span class="p">,</span> <span class="mf">0.65f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// count のぶんだけ小さい四角を下に積む（最大 200 個）
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">const</span> <span class="kt">long</span> <span class="kt">long</span> <span class="n">shown</span> <span class="o">=</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="mi">200</span> <span class="o">?</span> <span class="nl">count</span> <span class="p">:</span> <span class="mi">200</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="p">(</span><span class="kt">long</span> <span class="kt">long</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">shown</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">const</span> <span class="kt">float</span> <span class="n">x</span> <span class="o">=</span> <span class="mf">60.0f</span> <span class="o">+</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">40</span><span class="p">)</span> <span class="o">*</span> <span class="mf">14.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">            <span class="k">const</span> <span class="kt">float</span> <span class="n">y</span> <span class="o">=</span> <span class="mf">540.0f</span> <span class="o">+</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span> <span class="o">/</span> <span class="mi">40</span><span class="p">)</span> <span class="o">*</span> <span class="mf">14.0f</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">            <span class="n">screen</span><span class="p">.</span><span class="n">drawRect</span><span class="p">(</span><span class="n">sgc</span><span class="o">::</span><span class="n">Rectf</span><span class="p">{</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mf">10.0f</span><span class="p">,</span> <span class="mf">10.0f</span><span class="p">},</span>
+</span></span><span class="line"><span class="cl">                            <span class="n">sgc</span><span class="o">::</span><span class="n">Colorf</span><span class="p">{</span><span class="mf">0.95f</span><span class="p">,</span> <span class="mf">0.80f</span><span class="p">,</span> <span class="mf">0.30f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">});</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span></code></pre></div><p>保存すると、<code>mitiru watch</code> が走っていれば一瞬でリロードされるにゃん。画面をクリックして、黄色い四角が増えていけば成功だにゃ🐾</p>
+<figure class="tutorial-figure">
+  <img src="images/step4-cpp.png" alt="暗い背景に青い四角と、画面下に積み上がった黄色い小さな四角の列" loading="lazy">
+  <figcaption>C++ だけの状態。クリックぶんだけ黄色い四角が積み上がる。背景は <code>screen.clear()</code> の色、青い四角と黄色い四角は <code>drawRect()</code>。まだ文字は無い。</figcaption>
+</figure>
+<aside class="cpp-note">
+<span class="cpp-note__title">C++ メモ: <code>in.mousePressed(0)</code> と『瞬間』</span>
+<p><code>mousePressed(0)</code> は「左ボタン（0 番）を<strong>押した瞬間だけ</strong> true」になるにゃん。押しっぱなしで反応してほしいなら <code>mouseDown(0)</code> にゃ。クリッカーは 1 回押す＝1 回数えたいので『瞬間』の方を使うにゃん。</p>
+</aside>
+<aside class="cpp-note">
+<span class="cpp-note__title">C++ メモ: <code>count < 200 ? count : 200</code>（三項演算子）</span>
+<p><code>A ? B : C</code> は「A が正しければ B、ちがえば C」という<strong>短い if</strong> にゃん。ここでは「count が 200 未満ならその数、そうでなければ 200」＝<strong>表示は 200 個で打ち止め</strong>、という意味にゃ。<code>%</code> は割った余り、<code>/</code> は整数の割り算で、四角を 40 個ごとに改行して並べているにゃん。</p>
+</aside>
+<hr>
+<h2 id="手順-5-ホットリロードを体感する">手順 5: ホットリロードを体感する</h2>
+<blockquote>
+<p>🐈‍⬛「ここで MitiruEngine のうれしさを味わうにゃん。<code>mitiru watch</code> は止めずに、さっきの <code>perClick</code> の <code>= 1</code> を <code>= 5</code> に変えて保存してみるにゃ」</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">perClick</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>   <span class="c1">// 1 → 5 に変えて保存
+</span></span></span></code></pre></div><p>ゲームは<strong>落ちずに</strong>、次のクリックから +5 になるにゃん。しかも今まで貯めた <code>count</code> は<strong>そのまま残っている</strong>はずにゃ。これは状態（<code>struct</code> の中身）を host 側が握っていて、コードだけ差し替えているからにゃん。普通のエンジンだと作り直し→再起動になりがちなところを、MitiruEngine は止めずにやれるにゃ🐾</p>
+<p>確認できたら <code>perClick</code> は <code>1</code> に戻しておくにゃん。</p>
+<hr>
+<h2 id="手順-6-見た目を-htmlcss-に載せ替える">手順 6: 見た目を HTML/CSS に載せ替える</h2>
+<blockquote>
+<p>🐈‍にゃー「四角を積むのは雰囲気は出たけど、クリッカーなら<strong>大きな数字</strong>がほしいにゃん。文字や UI は HTML/CSS の得意分野だから、ここからは見た目を HTML に引っ越すにゃ。しかも<strong>手書きの JavaScript はゼロ</strong>でいけるにゃん」</p>
+</blockquote>
+<p>仕組みはこうにゃん：</p>
+<ol>
+<li>C++ 側は毎フレーム「<code>count</code> はこの値だよ」と <strong>名前つきで HTML に渡す</strong>だけ</li>
+<li>HTML 側は「ここに <code>count</code> を出して」と <strong>印（<code>data-m-text</code>）を書くだけ</strong></li>
+<li>あいだの配線はエンジン同梱の <strong><code>mitiru_bind.js</code></strong> が全部やる（きみは JS を書かない）</li>
+</ol>
+<h3 id="6-1-c-から数字を渡す">6-1. C++ から数字を渡す</h3>
+<p><code>update</code> の最後に、1 行足すにゃん。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Input</span> <span class="n">in</span><span class="p">,</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Hud</span> <span class="n">hud</span><span class="p">,</span> <span class="kt">float</span> <span class="n">dt</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">pressed</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">Escape</span><span class="p">))</span> <span class="p">{</span> <span class="n">hud</span><span class="p">.</span><span class="n">quit</span><span class="p">();</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">mousePressed</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="p">{</span> <span class="n">count</span> <span class="o">+=</span> <span class="n">perClick</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="n">hud</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.hud.count&#34;</span><span class="p">,</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">count</span><span class="p">));</span>   <span class="c1">// ← HTML へ渡す
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
+</span></span></code></pre></div><p><code>hud.set(&quot;view.hud.count&quot;, ...)</code> は「<code>view.hud.count</code> という名前で、この数を HTML に届けて」という意味にゃん。</p>
+<h3 id="6-2-html-に表示の印を書く">6-2. HTML に表示の印を書く</h3>
+<p><code>assets/scene.html</code> の <code>&lt;body&gt;</code> を、こう書き換えるにゃん。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;clicker&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;count&#34;</span> <span class="na">data-m-text</span><span class="o">=</span><span class="s">&#34;view.hud.count&#34;</span><span class="p">&gt;</span>0<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">button</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;tap&#34;</span> <span class="na">data-m-action</span><span class="o">=</span><span class="s">&#34;game.tap&#34;</span><span class="p">&gt;</span>タップ！<span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- この 2 行が C++↔HTML の配線。手書き JS は無し --&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;mitiru_runtime/mitiru_cef_state.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;mitiru_runtime/mitiru_bind.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span></code></pre></div><ul>
+<li><code>data-m-text=&quot;view.hud.count&quot;</code> … ここに、C++ が送った <code>view.hud.count</code> の値が<strong>自動で</strong>入るにゃん。</li>
+<li><code>data-m-action=&quot;game.tap&quot;</code> … このボタンを押すと、C++ に「<code>game.tap</code> っていうアクションが来たよ」と伝わるにゃ。</li>
+</ul>
+<p>少し CSS で見た目を整えるにゃん（<code>&lt;style&gt;</code> の中に追記）：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-css" data-lang="css"><span class="line"><span class="cl">  <span class="p">.</span><span class="nc">clicker</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">position</span><span class="p">:</span> <span class="kc">absolute</span><span class="p">;</span> <span class="n">inset</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">display</span><span class="p">:</span> <span class="kc">flex</span><span class="p">;</span> <span class="k">flex-direction</span><span class="p">:</span> <span class="kc">column</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">align-items</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span> <span class="k">justify-content</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">gap</span><span class="p">:</span> <span class="mi">24</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nc">count</span> <span class="p">{</span> <span class="k">font-size</span><span class="p">:</span> <span class="mi">96</span><span class="kt">px</span><span class="p">;</span> <span class="k">font-weight</span><span class="p">:</span> <span class="mi">800</span><span class="p">;</span> <span class="k">text-shadow</span><span class="p">:</span> <span class="mi">0</span> <span class="mi">2</span><span class="kt">px</span> <span class="mi">12</span><span class="kt">px</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mf">.6</span><span class="p">);</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nc">tap</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">font-size</span><span class="p">:</span> <span class="mi">24</span><span class="kt">px</span><span class="p">;</span> <span class="k">padding</span><span class="p">:</span> <span class="mi">16</span><span class="kt">px</span> <span class="mi">40</span><span class="kt">px</span><span class="p">;</span> <span class="k">border</span><span class="p">:</span> <span class="kc">none</span><span class="p">;</span> <span class="k">border-radius</span><span class="p">:</span> <span class="mi">16</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">background</span><span class="p">:</span> <span class="mh">#3aa0d8</span><span class="p">;</span> <span class="k">color</span><span class="p">:</span> <span class="mh">#fff</span><span class="p">;</span> <span class="k">cursor</span><span class="p">:</span> <span class="kc">pointer</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">pointer-events</span><span class="p">:</span> <span class="kc">auto</span><span class="p">;</span>      <span class="c">/* ボタンはクリックを受け取る */</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span></code></pre></div><aside class="cpp-note">
+<span class="cpp-note__title">なぜ <code>pointer-events: auto;</code> が要るの？</span>
+<p>ひな型の HTML は全体が <code>pointer-events: none</code>（クリックを下のゲームに素通しさせる）になっているにゃん。だから<strong>押したいボタンだけ</strong> <code>auto</code> に戻して、クリックを受け取れるようにするにゃ。</p>
+</aside>
+<h3 id="6-3-ボタンのクリックを-c-で受ける">6-3. ボタンのクリックを C++ で受ける</h3>
+<p>画面どこでもクリック、に加えて <strong>HTML ボタン経由</strong>でも増やせるようにするにゃん。<code>update</code> をこう：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">mousePressed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">action</span><span class="p">(</span><span class="s">&#34;game.tap&#34;</span><span class="p">))</span>   <span class="c1">// ← どちらでも +1
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="n">count</span> <span class="o">+=</span> <span class="n">perClick</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span></code></pre></div><p>保存してリロード。大きな数字が真ん中に出て、「タップ！」ボタンでも画面クリックでも増えれば、見た目づくりは完成だにゃん🎉</p>
+<figure class="tutorial-figure">
+  <img src="images/step6-cef.png" alt="画面中央に大きな白い数字 139、その下に 6 / 秒、青い『タップ！』ボタン。背景に C++ で描いた四角が透けている" loading="lazy">
+  <figcaption>HTML/CSS を載せた状態。大きな数字「139」と「タップ！」ボタンは HTML（<code>data-m-text</code> / <code>data-m-action</code>）。C++ が数えた値が手書き JS ゼロで反映される。下に透けている四角は C++ の描画層で、HTML が<strong>その上に重なって</strong>合成されている。</figcaption>
+</figure>
+<blockquote>
+<p>🐈‍⬛「これがきみの言う『CEF で見た目を作る』ところまでにゃん。C++ は数を数えるだけ、見た目は HTML、配線は <code>data-m-*</code>。役割がきれいに分かれてるにゃ🐾」</p>
+</blockquote>
+<hr>
+<h2 id="手順-7-c-を足して放置ゲームにする">手順 7: C++ を足して『放置ゲーム』にする</h2>
+<blockquote>
+<p>🐈‍にゃー「見た目ができたら、あとは C++ を足してゲームを良くしていくにゃん。クリッカーの定番、<strong>ほっといても増える</strong>を入れるにゃ」</p>
+</blockquote>
+<p>状態に「毎秒増える量」を足して、<code>update</code> で時間ぶん加算するにゃん。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">    <span class="kt">long</span> <span class="kt">long</span> <span class="n">count</span>    <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span>       <span class="n">perClick</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">float</span>     <span class="n">perSec</span>   <span class="o">=</span> <span class="mf">2.0f</span><span class="p">;</span>   <span class="c1">// 毎秒これだけ増える（放置要素）
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kt">float</span>     <span class="n">carry</span>    <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>   <span class="c1">// 端数を貯めておく入れもの
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">update</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Input</span> <span class="n">in</span><span class="p">,</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">Hud</span> <span class="n">hud</span><span class="p">,</span> <span class="kt">float</span> <span class="n">dt</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">pressed</span><span class="p">(</span><span class="n">mitiru</span><span class="o">::</span><span class="n">Key</span><span class="o">::</span><span class="n">Escape</span><span class="p">))</span> <span class="p">{</span> <span class="n">hud</span><span class="p">.</span><span class="n">quit</span><span class="p">();</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">mousePressed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">||</span> <span class="n">in</span><span class="p">.</span><span class="n">action</span><span class="p">(</span><span class="s">&#34;game.tap&#34;</span><span class="p">))</span> <span class="p">{</span> <span class="n">count</span> <span class="o">+=</span> <span class="n">perClick</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// 経過時間ぶん、ちょっとずつ増やす
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">carry</span> <span class="o">+=</span> <span class="n">perSec</span> <span class="o">*</span> <span class="n">dt</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">while</span> <span class="p">(</span><span class="n">carry</span> <span class="o">&gt;=</span> <span class="mf">1.0f</span><span class="p">)</span> <span class="p">{</span> <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">carry</span> <span class="o">-=</span> <span class="mf">1.0f</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="n">hud</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.hud.count&#34;</span><span class="p">,</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">count</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">        <span class="n">hud</span><span class="p">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#34;view.hud.perSec&#34;</span><span class="p">,</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">perSec</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span></code></pre></div><p>HTML に「毎秒 +N」表示も足すにゃん：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;rate&#34;</span><span class="p">&gt;&lt;</span><span class="nt">span</span> <span class="na">data-m-text</span><span class="o">=</span><span class="s">&#34;view.hud.perSec&#34;</span><span class="p">&gt;</span>0<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span> / 秒<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre></div><aside class="cpp-note">
+<span class="cpp-note__title">C++ メモ: <code>dt</code> と『端数くり越し』</span>
+<p><code>dt</code> は「前のフレームからの経過秒」にゃん（だいたい 0.016 秒）。<code>perSec * dt</code> は 1 フレームぶんの増加で、たいてい 1 未満の小数にゃ。<code>count</code> は整数なので、小数を <code>carry</code> に貯めて、1 を超えたぶんだけ <code>count</code> に移しているにゃん。これで『毎秒きっかり 2 増える』が作れるにゃ。</p>
+</aside>
+<p>これでもう立派なクリッカーにゃん。ここから先は、きみのアイデアしだいにゃ：</p>
+<ul>
+<li>ボタンを押すたび <code>perSec</code> が増える「アップグレード」を <code>data-m-action</code> で追加</li>
+<li><code>count</code> が一定を超えたら背景色を変える（<code>draw</code> で分岐）</li>
+<li>セーブ／ロードを足して、閉じても続きから（→ これは別レッスンで扱うにゃん）</li>
+</ul>
+<hr>
+<h2 id="ちょっと寄り道-独立ウィンドウで中身をのぞく">ちょっと寄り道: 独立ウィンドウで中身をのぞく</h2>
+<blockquote>
+<p>🐈‍⬛「最後に MitiruEngine らしい小ネタを 1 つにゃん。ゲームを止めずに<strong>状態をのぞく窓</strong>を開けるにゃ」</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru run --inspect
+</span></span></code></pre></div><p>別ウィンドウが開いて、<code>count</code> がリアルタイムで動くのが見えるにゃん。MitiruEngine は「必要なものだけ別の窓に出す」考え方で、巨大なエディタを開かなくていいのが特徴だにゃ。この独立ウィンドウたちは、後のレッスンでもっと活躍するにゃん🐾</p>
+<hr>
+<h2 id="まとめ">まとめ</h2>
+<p>このレッスンでできるようになったこと：</p>
+<ul>
+<li><code>mitiru new</code> → <code>mitiru watch</code> で<strong>プロジェクトを立ち上げて育てる</strong></li>
+<li><code>update</code>／<code>draw</code>／状態（<code>struct</code>）という<strong>ゲームの 3 部品</strong></li>
+<li><strong>C++ でループ</strong> → <strong>HTML/CSS で見た目</strong>（手書き JS なし、<code>data-m-*</code>）→ <strong>C++ で味付け</strong> の流れ</li>
+<li><strong>ホットリロード</strong>で止めずに育てる感覚</li>
+</ul>
+<blockquote>
+<p>🐈‍にゃー「おつかれさまにゃん！ これが MitiruEngine の基本の呼吸だにゃ。次のレッスンは少し見た目が難しくなる<strong>ノベル／アドベンチャー</strong>。テキスト窓と立ち絵と選択肢を HTML で組むにゃん。またボクが案内するにゃ🐾」</p>
+</blockquote>
+<div class="tutorial-nav">
+  <a class="tutorial-nav__next" href="../02-novel/">次へ: 02 ノベル →</a>
+</div>
+
+      
+    </div>
+    
+    <aside class="page-toc" aria-label="このページの目次">
+      <h2>このページの目次</h2>
+      <nav id="TableOfContents">
+  <ul>
+    <li><a href="#できあがるもの">できあがるもの</a></li>
+    <li><a href="#手順-1-プロジェクトを作る">手順 1: プロジェクトを作る</a></li>
+    <li><a href="#手順-2-とりあえず動かす">手順 2: とりあえず動かす</a></li>
+    <li><a href="#手順-3-中身を読む--ゲームは-3-つの部品でできている">手順 3: 中身を読む — ゲームは 3 つの部品でできている</a></li>
+    <li><a href="#手順-4-c-だけでクリッカーのループ">手順 4: C++ だけでクリッカーのループ</a></li>
+    <li><a href="#手順-5-ホットリロードを体感する">手順 5: ホットリロードを体感する</a></li>
+    <li><a href="#手順-6-見た目を-htmlcss-に載せ替える">手順 6: 見た目を HTML/CSS に載せ替える</a>
+      <ul>
+        <li><a href="#6-1-c-から数字を渡す">6-1. C++ から数字を渡す</a></li>
+        <li><a href="#6-2-html-に表示の印を書く">6-2. HTML に表示の印を書く</a></li>
+        <li><a href="#6-3-ボタンのクリックを-c-で受ける">6-3. ボタンのクリックを C++ で受ける</a></li>
+      </ul>
+    </li>
+    <li><a href="#手順-7-c-を足して放置ゲームにする">手順 7: C++ を足して『放置ゲーム』にする</a></li>
+    <li><a href="#ちょっと寄り道-独立ウィンドウで中身をのぞく">ちょっと寄り道: 独立ウィンドウで中身をのぞく</a></li>
+    <li><a href="#まとめ">まとめ</a></li>
+  </ul>
+</nav>
+    </aside>
+    
+  </div>
+</article>
+
+  </main>
+  <footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__col">
+      <p class="site-footer__brand">
+        <span class="site-footer__brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 24 L4 8 L10 14 L16 8 L22 14 L28 8 L28 24"/>
+          </svg>
+        </span>
+        MitiruEngine
+      </p>
+      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
+      <p class="site-footer__build" aria-label="built with">
+        <code>built_with</code>
+        <span class="site-footer__build-chip">C++20</span>
+        <span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
+        <span class="site-footer__build-chip site-footer__build-chip--data">JSON</span>
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">ライセンス</h2>
+      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
+      <p class="site-footer__hint">
+        <kbd>?</kbd> でショートカット一覧
+      </p>
+    </div>
+    <div class="site-footer__col">
+      <h2 class="site-footer__h">状態</h2>
+      <p>0.x 系・実験段階。API はまだ変わります。</p>
+      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
+      <p class="site-footer__easter" aria-hidden="true">
+        <span class="site-footer__easter-prompt"><code>$ echo &quot;hello, world&quot;</code></span>
+        <span class="site-footer__easter-cursor">_</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+  
+
+<div class="shortcuts-dialog"
+     id="shortcuts-dialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shortcuts-dialog-title"
+     data-pagefind-ignore
+     hidden>
+  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
+  <div class="shortcuts-dialog__panel" role="document">
+    <div class="shortcuts-dialog__header">
+      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
+        キーボードショートカット
+      </h2>
+      <button type="button"
+              class="shortcuts-dialog__close"
+              data-shortcuts-close
+              aria-label="閉じる">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="shortcuts-dialog__body">
+      <dl class="shortcuts-list">
+        <div class="shortcuts-list__row">
+          <dt><kbd>?</kbd></dt>
+          <dd>このヘルプを開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>ダイアログを閉じる</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
+          <dd>サイト内検索を開く</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
+          <dd>ホームへ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>c</kbd></dt>
+          <dd>チャプター一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
+          <dd>アーキテクチャ一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
+          <dd>チュートリアル一覧へ</dd>
+        </div>
+        <div class="shortcuts-list__row">
+          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
+          <dd>はじめてのページへ</dd>
+        </div>
+      </dl>
+      <p class="shortcuts-dialog__foot">
+        
+          入力中（テキストフィールド・コード編集）は無効です。
+        
+      </p>
+    </div>
+  </div>
+</div>
+
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
+  <script src="https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js" defer></script>
+</body>
+</html>

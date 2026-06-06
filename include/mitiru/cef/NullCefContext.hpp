@@ -14,6 +14,11 @@
 // InputState は CEF 無しでも存在する
 #include <mitiru/input/InputState.hpp>
 
+// cef::json (= nlohmann::json) は CEF 非依存。CEF あり build では StateStore 等が
+// alias を定義するが、CEF 無し build では Engine の inspector 集約 (cef::json) が
+// 解決できるよう、ここで unconditionally に定義する。重複 alias は同一なので無害。
+#include <nlohmann/json.hpp>
+
 // DX12 型の前方宣言 (Windows 非依存ヘッダーから参照してもよい)
 #if defined(_WIN32)
 struct ID3D12GraphicsCommandList;
@@ -23,6 +28,9 @@ namespace mitiru::gfx::dx12 { class Dx12Device; }
 
 namespace mitiru::cef
 {
+
+/// nlohmann::json の alias。CEF あり build (StateStore 等) と同名。
+using json = ::nlohmann::json;
 
 /// @brief CEF 無しビルド向けの no-op ファサード
 /// @details MitiruCefContext と同じ public API を持つ。
@@ -99,6 +107,9 @@ public:
     void loadHtml(const std::string& /*html*/,
                   const std::string& /*baseUrl*/ = "about:blank")        {}
     void executeJavaScript(const std::string& /*code*/)                  {}
+
+    // ── ナビゲーション コールバック ──────────────────────────
+    void setLoadEndCallback(std::function<void(std::string_view /*url*/)> /*cb*/) {}
 
     // ── ブリッジ ──────────────────────────────────────────────
     void registerHandler(const std::string& /*name*/, HandlerFn /*fn*/)  {}

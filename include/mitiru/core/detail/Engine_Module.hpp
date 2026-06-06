@@ -12,6 +12,7 @@
 ///   - 必要なら StateStore + SharedSnapshot を遅延生成
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <string>
@@ -158,12 +159,21 @@ MITIRU_INLINE mitiru::cef::StateStore* mitiru::Engine::moduleStateStore() noexce
 
 // ── runModule (stack-local adapter Game) ───────────────────────────────────
 
-MITIRU_INLINE void mitiru::Engine::runModule(
+MITIRU_INLINE bool mitiru::Engine::runModule(
 	const std::filesystem::path& modulePath, const EngineConfig& configIn)
 {
 	if (!loadModule(modulePath))
 	{
-		return;
+		// 黙って return すると「窓が出ず exit 0」で原因不明になる (#hello-game)。
+		// 理由を明示し false を返す → host は非ゼロ終了 → ランチャー .bat が pause する。
+		std::fprintf(stderr,
+			"mitiru: ゲームモジュールの読み込みに失敗しました: %s\n"
+			"  理由: %s\n"
+			"  ヒント: その DLL に MITIRU_GAME(YourType) の入口がありますか? 旧 mitiru::Game 継承＋\n"
+			"  自前 main() の Mode-A ゲームは現行 host (DLL モジュール方式) では動きません。\n",
+			modulePath.string().c_str(),
+			m_moduleHost ? m_moduleHost->lastError().c_str() : "module host 未生成");
+		return false;
 	}
 
 	// stack-local な Game adapter。既存の engine main loop を ADR 0005 の
@@ -240,6 +250,7 @@ MITIRU_INLINE void mitiru::Engine::runModule(
 	ModuleAdapter adapter(this);
 	run(adapter, configIn);
 	unloadModule();
+	return true;
 }
 
 // ── Accessors ──────────────────────────────────────────────────────────────
@@ -293,6 +304,15 @@ namespace mitiru::module::detail
 
 MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 {
+	// Inspector / perf / mixer のツール窓が読む SharedSnapshot の producer は、
+	// CEF の有無に関係なく必ず起動する。これより下は CEF が準備でき次第 early-return
+	// するので、ここで先に作っておかないと --no-cef のとき producer が永久に立たず、
+	// 独立ウィンドウが「waiting for producer」のままになる (ADR 0014)。
+	if (!m_moduleInspectorSnapshot)
+	{
+		m_moduleInspectorSnapshot = std::make_unique<observe::SharedSnapshot>();
+	}
+
 	if (m_moduleStateStore)
 	{
 		return;  // 接続済み
@@ -358,12 +378,7 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 			return cef::json{{"ok", true}, {"queued", true}};
 		});
 
-	// Inspector SharedSnapshot — mitiru_inspector.exe の sub-window が poll する
-	// %TEMP%\mitiru_inspector_<pid>.json を書き出す。
-	if (!m_moduleInspectorSnapshot)
-	{
-		m_moduleInspectorSnapshot = std::make_unique<observe::SharedSnapshot>();
-	}
+	// (Inspector SharedSnapshot の producer は関数先頭で CEF 非依存に作成済み)
 }
 
 MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
@@ -534,6 +549,10 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		{
 			const auto& req = intents->toolRequests[i];
 			if (req.tool[0] == '\0') { continue; }
+			// 重複 spawn 防止: hud.open(Tool::X) を毎フレーム update で呼んでも窓は 1 回だけ
+			// 開く。これで「どこに置くか」を気にせず、開きたい所で呼べる (pulled UI のまま)。
+			std::string key = std::string{req.tool} + '|' + std::string{req.args};
+			if (!m_spawnedToolKeys.insert(std::move(key)).second) { continue; }
 			(void)mitiru::debug::spawnTool(std::string{req.tool}, 0, std::string{req.args});
 		}
 	}
@@ -720,6 +739,10 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			mitiru::module::applySoundIntent(*m_audioEngine, intents->soundIntents[i]);
 		}
 	}
+
+	// 毎フレームの audio 定期掃除 (#51): 終了 SE voice 回収 + fade-out music 解放。
+	// 再生有無に関わらず呼ぶ (静かな区間でも ended voice が滞留しないように)。
+	if (m_audioEngine) { m_audioEngine->update(); }
 
 	// VisualIntent (#33、v7): tint を Screen::pushTint に流す。kind=0 は no-op。
 	// future: shake/hitstop は game-side state なのでここでは扱わない (game が同じ

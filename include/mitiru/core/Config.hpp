@@ -103,12 +103,11 @@ struct EngineConfig
 	};
 	ResizeMode resizeMode = ResizeMode::Actual;
 
-	/// @brief フレーム冒頭で device 経由で issued される clear color。
-	/// @details DLL 内 `screen->clear(...)` は m_clearColor を更新するが
-	///          実際の ClearRenderTargetView は frame 頭で device->m_clearColor
-	///          を使って発行されるため、DLL からの per-frame 上書きは効かない。
-	///          host (mitiru_host 等) でゲーム本体の背景色を統一したい場合は
-	///          このフィールドに値を設定する。default は黒 (後方互換)。
+	/// @brief 背景クリア色の「初期値」。
+	/// @details Engine::run 起動時に一度だけ screen->clearColor() に設定される。
+	///          以後はゲームの draw() 内 `screen->clear(色)` が背景色を制御し、その色が
+	///          次フレーム頭で device の ClearRenderTargetView に反映される（1 フレーム遅れ）。
+	///          ゲームが clear() を呼ばなければ、この既定色が背景として残る。default は黒。
 	sgc::Colorf backgroundColor{0.0f, 0.0f, 0.0f, 1.0f};
 
 	/// @brief ローファイ・ポストFX（低解像レンダー + パレット量子化 + Bayer ディザ）。

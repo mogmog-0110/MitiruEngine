@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0091 NEW)
 
 project(MitiruEngine
-	VERSION 0.8.0
+	VERSION 0.8.1
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -48,6 +48,13 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 option(MITIRU_DISABLE_CEF
     "Build engine without CEF support (consumer needs no libcef.dll). \
 Useful for pure Mode A games (headless / console / 3D action / tools)."
+    OFF)
+
+# MITIRU_HOST_GUI=ON: mitiru_host を GUI subsystem でリンクし、配布時にコンソール窓を
+# 出さない (entry は main() のまま)。Default OFF — dev はコンソールでログを見る。
+# `mitiru dist` が ON で configure する。
+option(MITIRU_HOST_GUI
+    "Link mitiru_host as a GUI-subsystem exe (no console window) for distribution."
     OFF)
 
 if(NOT MITIRU_DISABLE_CEF)

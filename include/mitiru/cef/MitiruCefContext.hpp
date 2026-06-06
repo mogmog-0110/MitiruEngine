@@ -230,7 +230,8 @@ public:
     void composite(
         mitiru::gfx::Dx12Device& device,
         int width,
-        int height)
+        int height,
+        const float clearRGBA[4] = nullptr)
     {
         if (!m_initialized || !m_visible)
         {
@@ -246,7 +247,7 @@ public:
         {
             return;
         }
-        m_texture.composite(rt->rtvHandle(), width, height);
+        m_texture.composite(rt->rtvHandle(), width, height, clearRGBA);
     }
 
     // ── フレームレート制御 ────────────────────────────────────────

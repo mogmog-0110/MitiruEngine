@@ -39,10 +39,39 @@
 namespace mitiru::debug
 {
 
-// Mitiru Saturn — 全ツール窓で統一する基調色 (silver bg / ink / muted)。
-inline constexpr sgc::Colorf kToolBg{0.784f, 0.784f, 0.784f, 1.0f};
-inline constexpr sgc::Colorf kToolInk{0.063f, 0.063f, 0.063f, 1.0f};
-inline constexpr sgc::Colorf kToolMuted{0.290f, 0.290f, 0.290f, 1.0f};
+// 全ツール窓で統一する基調色 (Apple-light / クリーン、2026-06-06 刷新)。
+// 純白地 + ヘアライン区切り + グレー文字 + 1 色の青アクセント。塗りバーは廃止。
+inline constexpr sgc::Colorf kToolBg{1.0f, 1.0f, 1.0f, 1.0f};             // 地: 純白
+inline constexpr sgc::Colorf kToolPanel{0.965f, 0.965f, 0.975f, 1.0f};    // パネル/グラフ面 (薄グレー)
+inline constexpr sgc::Colorf kToolHairline{0.886f, 0.886f, 0.906f, 1.0f}; // 区切りの細線
+inline constexpr sgc::Colorf kToolInk{0.106f, 0.106f, 0.118f, 1.0f};      // 見出し/本文 (濃グレー)
+inline constexpr sgc::Colorf kToolMuted{0.557f, 0.557f, 0.576f, 1.0f};    // 補足 (中グレー)
+inline constexpr sgc::Colorf kToolAccent{0.039f, 0.518f, 1.0f, 1.0f};     // Apple blue #0A84FF
+// 後方互換 (旧 filled header は廃止。直接参照する古いコード保険)。
+inline constexpr sgc::Colorf kToolHeader = kToolBg;
+inline constexpr sgc::Colorf kToolHeaderText = kToolInk;
+
+/// @brief 全ツール窓共通の Apple-light ヘッダを描く。
+/// @details 左に小さな青アクセント、太めの title、下に 1px ヘアライン。title の y は
+///          明示指定で上端クリップを防ぐ。SharedSnapshot を読まない窓 (replay 等) も
+///          これを呼べば見た目が揃う。
+/// @return body 描画を始めてよい y。
+inline float drawToolHeader(mitiru::Screen& screen, const char* title, float screenW)
+{
+	const float padX      = 20.0f;
+	const float titleTop  = 18.0f;
+	const float titleSize = screenW < 420.0f ? 18.0f : 20.0f;
+	// 青アクセントの小さな点 (title 左)。
+	screen.drawRect(sgc::Rectf{padX, titleTop + 4.0f, 9.0f, 9.0f}, kToolAccent);
+	// title 本体。
+	screen.drawTextInRect(sgc::Rectf{padX + 18.0f, titleTop, screenW - padX - 18.0f, titleSize + 8.0f},
+	                      title, kToolInk, titleSize,
+	                      mitiru::Screen::TextAlignH::Left, mitiru::Screen::TextAlignV::Top);
+	// ヘアライン区切り。
+	const float lineY = titleTop + titleSize + 16.0f;
+	screen.drawRect(sgc::Rectf{0.0f, lineY, screenW, 1.0f}, kToolHairline);
+	return lineY + 18.0f;
+}
 
 /// @brief 独立ツール窓 (観察系) の共通土台。
 class ToolWindowApp : public mitiru::Game
@@ -92,23 +121,25 @@ protected:
 	// ── サブクラス用 helper ──────────────────────────────────────────────
 	[[nodiscard]] float screenW() const noexcept { return m_screenW; }
 	[[nodiscard]] float screenH() const noexcept { return m_screenH; }
-	/// body 開始 y (header 高 36px + 余白)。
-	[[nodiscard]] static constexpr float bodyTop() noexcept { return 48.0f; }
+	/// body 開始 y (ヘアラインヘッダの下端 + 余白)。
+	[[nodiscard]] static constexpr float bodyTop() noexcept { return 78.0f; }
+	/// 左パディング (全ツール共通の左端)。
+	[[nodiscard]] static constexpr float padX() noexcept { return 20.0f; }
 	/// 狭い窓では 1 段小さい font (SDF atlas 整合) を返す。
 	[[nodiscard]] float scaledFont(float wide, float narrow) const noexcept
 	{
 		return m_screenW < 420.0f ? narrow : wide;
 	}
 
-	/// 左寄せ 1 行テキストを描き、次行の y を返す。
+	/// 左寄せ 1 行テキストを描き、次行の y を返す（行間ゆったりめ、被り防止）。
 	float line(mitiru::Screen& screen, const std::string& s, float x, float y,
 	           float size, sgc::Colorf col)
 	{
-		screen.drawTextInRect(sgc::Rectf{x, y, m_screenW - x - 12.0f, size + 6.0f},
+		screen.drawTextInRect(sgc::Rectf{x, y, m_screenW - x - padX(), size + 10.0f},
 		                      s.c_str(), col, size,
 		                      mitiru::Screen::TextAlignH::Left,
 		                      mitiru::Screen::TextAlignV::Top);
-		return y + size + 6.0f;
+		return y + size + 13.0f;
 	}
 
 private:
@@ -137,22 +168,17 @@ private:
 
 	void drawHeader(mitiru::Screen& screen)
 	{
-		const float h = 36.0f;
-		screen.drawRect(sgc::Rectf{0.0f, h - 1.0f, m_screenW, 1.0f}, kToolInk);
-		std::string title = std::string{"MitiruEngine — "} + windowTitle();
-		screen.drawTextInRect(sgc::Rectf{12.0f, 8.0f, m_screenW - 24.0f, h - 12.0f},
-		                      title.c_str(), kToolInk, scaledFont(16.0f, 12.0f),
-		                      mitiru::Screen::TextAlignH::Left,
-		                      mitiru::Screen::TextAlignV::Top);
+		drawToolHeader(screen, windowTitle(), m_screenW);
 	}
 
 	void drawWaiting(mitiru::Screen& screen)
 	{
-		const std::string msg = (m_overridePath || m_producerPid)
-			? "waiting for producer..."
-			: "no source — pass <pid> or --file <path>";
-		screen.drawTextInRect(sgc::Rectf{12.0f, bodyTop(), m_screenW - 24.0f, 28.0f},
-		                      msg.c_str(), kToolMuted, 16.0f,
+		// Latin atlas のため ASCII 表示。
+		const char* msg = (m_overridePath || m_producerPid)
+			? "waiting for the game..."
+			: "no source - pass <pid> or --file <path>";
+		screen.drawTextInRect(sgc::Rectf{padX(), bodyTop(), m_screenW - padX() * 2.0f, 28.0f},
+		                      msg, kToolMuted, 16.0f,
 		                      mitiru::Screen::TextAlignH::Left,
 		                      mitiru::Screen::TextAlignV::Top);
 	}

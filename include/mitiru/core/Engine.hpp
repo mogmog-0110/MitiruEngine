@@ -36,6 +36,7 @@
 #include <thread>
 #include <fstream>
 #include <map>
+#include <set>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -351,8 +352,9 @@ public:
 	/// @details
 	///   - 内部で stack-local Game adapter を立て、`run(adapter, config)` を呼ぶ
 	///   - ループ終了後 `unloadModule()` を呼ぶ
-	///   - module load 失敗時は no-op で return (engine 自体は init しない)
-	void runModule(const std::filesystem::path& modulePath,
+	///   - module load 失敗時は stderr に理由を出して false を返す (engine は init しない)
+	/// @return 成功で true。MITIRU_GAME 入口無し等の load 失敗で false → host は非ゼロ終了を。
+	bool runModule(const std::filesystem::path& modulePath,
 	               const EngineConfig& configIn = {});
 
 	/// @brief 現在 module が load されているか
@@ -558,6 +560,7 @@ private:
 	float m_voiceVolume  = 1.0f;
 	CefContext m_cefContext;                              ///< CEF 統合ファサード (Win32+DX12 のみ実体、他は no-op)
 	std::map<std::string, std::string> m_gameFlags;  ///< ゲームフラグストア (HTTP API用)
+	std::set<std::string> m_spawnedToolKeys;         ///< 既に開いたツール窓 (tool|args) — 重複 spawn 防止
 	std::atomic<bool> m_shouldStop{false};            ///< 停止要求フラグ (スレッドセーフ)
 	bool m_initialized = false;                      ///< 初期化済みフラグ
 	int m_pendingResizeW = 0;                        ///< modal-loop drag 中の defer 先 (WM_EXITSIZEMOVE で flush)

@@ -192,13 +192,11 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	// =====================================================================
 
 	m_screen->resetDrawCallCount();
-	// config.backgroundColor を渡すことで、host 側で hello_game 等の bg を
-	// 統一できる。DLL 内 `screen->clear(...)` は m_clearColor を更新するだけ
-	// で device の ClearRenderTargetView には届かない (frame 頭で sync された
-	// 値が使われる) ので、ここで明示的に config の値を流す。
-	m_screen->clear(m_config.backgroundColor);
-
-	// screen.clear()のクリア色をGPUデバイスに同期する
+	// device の ClearRenderTargetView は frame 頭で screen->clearColor() を sync して使う。
+	// DLL の draw() 内 `screen->clear(色)` は clearColor を更新し、それが「次フレーム頭」で
+	// device に反映される (1 フレーム遅れだが体感できない)。clearColor の初期値は
+	// EngineConfig::backgroundColor で、Engine::run の起動時に一度だけ設定する。
+	// → ゲームが clear() を呼べばその色が背景になり、呼ばなければ config の既定が残る。
 	if (m_device && m_screen)
 	{
 		const auto& cc = m_screen->clearColor();
@@ -329,9 +327,11 @@ MITIRU_INLINE void mitiru::Engine::tickCefComposite()
 #if defined(_WIN32) && defined(MITIRU_HAS_CEF)
 	if (auto* dx12Dev = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
 	{
+		const auto& cc = m_screen->clearColor();
+		const float clearRGBA[4] = { cc.r, cc.g, cc.b, cc.a };
 		m_cefContext.composite(
 			*dx12Dev,
-			m_window->width(), m_window->height());
+			m_window->width(), m_window->height(), clearRGBA);
 	}
 #endif
 }

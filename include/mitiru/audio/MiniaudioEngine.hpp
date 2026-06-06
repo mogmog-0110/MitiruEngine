@@ -159,6 +159,21 @@ public:
 		m_musicActive = true;
 	}
 
+	/// @brief 毎フレームの定期メンテナンス (#51)。
+	/// @details (a) 終了した one-shot voice を毎フレーム回収する (従来は次の SE 再生時
+	///          まで遅延 → 静かな区間で ended voice が滞留した)。(b) stopMusicFade で
+	///          仕掛けた fade-out の残フレームを減算し、完了したら music voice を uninit
+	///          する (従来は uninit されず、無音のまま loop voice が走り続けていた)。
+	///          固定ステップ (~60Hz) の cadence で呼ばれる前提。
+	void update() {
+		if (!m_initialized) { return; }
+		// #52: 毎フレーム reap は uninit 頻度が高く (特に --speed 倍速 headless)、間欠
+		// クラッシュ (0xC0000005) の容疑となった。~30 フレームに 1 回へ間引く (静かな
+		// 区間でも ~0.5s で回収・churn は 1/30)。終了済み voice のみ uninit する点は不変。
+		if (++m_reapTick >= 30) { m_reapTick = 0; reapFinishedOneShots(); }
+		if (m_musicFadeOutFrames > 0 && --m_musicFadeOutFrames == 0) { stopMusic(); }
+	}
+
 	/// @brief BGM を停止する
 	void stopMusic() {
 		if (m_musicActive) {
@@ -166,6 +181,7 @@ public:
 			ma_sound_uninit(&m_music);
 			m_musicActive = false;
 		}
+		m_musicFadeOutFrames = 0;
 	}
 
 	/// @brief fade-out しながら BGM を停止する (#20)。
@@ -180,8 +196,10 @@ public:
 		ma_sound_set_fade_in_milliseconds(
 			&m_music, ma_sound_get_volume(&m_music), 0.0f,
 			static_cast<ma_uint64>(fadeOutSec * 1000.0f));
-		// fade 終了後の自動 uninit は miniaudio が直接提供しないため、後続 stopMusic 呼び出しで
-		// 解放する (それまでは fade が走り続け、無音化して再生は継続)。
+		// fade 終了後の自動 uninit は miniaudio が直接提供しないため、update() が残フレームを
+		// 数えて完了時に stopMusic() する (#51)。これが無いと無音の loop voice が走り続けた。
+		// +6 frame の余裕で fade を確実に鳴らし切る。約 60Hz 前提。
+		m_musicFadeOutFrames = static_cast<int>(fadeOutSec * 60.0f) + 6;
 	}
 
 	/// @brief BGM を一時的に mul 倍へ下げ、durSec かけて元の音量へ戻す (#34、ducking heuristic)。
@@ -251,6 +269,8 @@ private:
 	bool m_initialized = false;
 	ma_sound m_music{};
 	bool m_musicActive = false;
+	int  m_musicFadeOutFrames = 0;  ///< >0 の間 update() が減算し、0 で music を uninit (#51)
+	int  m_reapTick = 0;            ///< update() の reap 間引きカウンタ (#52)
 	std::vector<std::unique_ptr<ma_sound>> m_oneShots;
 };
 
