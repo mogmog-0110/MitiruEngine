@@ -2,10 +2,10 @@
  *  ?         — open the shortcuts help modal
  *  Esc       — close help modal
  *  g h       — go to /
- *  g c       — go to /chapters/
+ *  g f       — go to /features.html (機能リファレンス)
  *  g a       — go to /architecture/
- *  g t       — go to /tutorials/
- *  g s       — go to /getting-started/
+ *  g t       — go to /tutorial.html (はじめてのゲーム)
+ *  g s       — go to /install.html (インストール)
  * Ignored when the user is typing in an input/textarea or has a modifier
  * key held (so Cmd-?, Ctrl-G, etc. keep their browser meaning).
  */
@@ -98,10 +98,10 @@
       var key = (e.key || '').toLowerCase();
       var routes = {
         h: '',
-        c: 'chapters/',
+        f: 'features.html',
         a: 'architecture/',
-        t: 'tutorials/',
-        s: 'getting-started/'
+        t: 'tutorial.html',
+        s: 'install.html'
       };
       if (Object.prototype.hasOwnProperty.call(routes, key)) {
         e.preventDefault();

@@ -2,29 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/getting-started/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/01-clicker/</loc>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/hybrid-runtime/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/drawing/</loc>
-    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/01-action-prototype/</loc>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/input/</loc>
-    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/tutorials/02-text-ui/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/bridge-api/</loc>
   </url><url>
@@ -32,34 +16,19 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/</loc>
-    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/architecture/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/examples/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/scene/</loc>
-    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/profiling/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/audio/</loc>
-    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/save-load/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/ui/</loc>
-    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/chapters/save/</loc>
-    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/</loc>
   </url><url>
@@ -147,10 +116,9 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/</loc>
-    <lastmod>2026-05-17T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/categories/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/tags/</loc>
   </url>
