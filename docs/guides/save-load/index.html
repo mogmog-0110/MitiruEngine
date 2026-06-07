@@ -443,13 +443,14 @@
 </span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">hp</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">gold</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">chapterIndex</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">NLOHMANN_DEFINE_TYPE_INTRUSIVE</span><span class="p">(</span><span class="n">SaveV1</span><span class="p">,</span> <span class="n">playerName</span><span class="p">,</span> <span class="n">hp</span><span class="p">,</span> <span class="n">gold</span><span class="p">,</span> <span class="n">chapterIndex</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl"><span class="p">};</span>
-</span></span><span class="line"><span class="cl"><span class="n">NLOHMANN_DEFINE_TYPE_INTRUSIVE</span><span class="p">(</span><span class="n">SaveV1</span><span class="p">,</span> <span class="n">playerName</span><span class="p">,</span> <span class="n">hp</span><span class="p">,</span> <span class="n">gold</span><span class="p">,</span> <span class="n">chapterIndex</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="c1">// namespace mygame
 </span></span></span></code></pre></div><p><code>NLOHMANN_DEFINE_TYPE_INTRUSIVE</code> は <strong>構造体の中で</strong> 書きます。これで nlohmann/json が自動で <code>to_json</code> / <code>from_json</code> を生やしてくれます。</p>
 <h2 id="手順-3-書く読むを呼んでみる-まだ-v1-だけ">手順 3: 書く・読むを呼んでみる (まだ v1 だけ)</h2>
-<p><code>src/main.cpp</code> を開いて以下の内容に書き換えます。</p>
+<p>セーブ・ロードを行う関数を書きます。ゲーム本体 (DLL) では、<code>update()</code> の中のセーブ操作 (キー入力やメニュー選択) からこれを呼びます。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;fstream&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp">
 </span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/data/SaveSchema.hpp&gt;</span><span class="cp">
@@ -457,7 +458,7 @@
 </span></span></span><span class="line"><span class="cl"><span class="cp"></span>
 </span></span><span class="line"><span class="cl"><span class="k">namespace</span> <span class="n">data</span> <span class="o">=</span> <span class="n">mitiru</span><span class="o">::</span><span class="n">data</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">saveAndLoadDemo</span><span class="p">()</span> <span class="p">{</span>
 </span></span><span class="line"><span class="cl">  <span class="c1">// currentVersion=1、まだ migration なし
 </span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">data</span><span class="o">::</span><span class="n">SaveSchema</span><span class="o">&lt;</span><span class="n">mygame</span><span class="o">::</span><span class="n">SaveV1</span><span class="o">&gt;</span> <span class="n">schema</span><span class="p">{</span> <span class="cm">/*currentVersion=*/</span><span class="mi">1</span> <span class="p">};</span>
 </span></span><span class="line"><span class="cl">
@@ -468,24 +469,23 @@
 </span></span><span class="line"><span class="cl">  <span class="n">s</span><span class="p">.</span><span class="n">gold</span> <span class="o">=</span> <span class="mi">120</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">  <span class="n">s</span><span class="p">.</span><span class="n">chapterIndex</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">blob</span> <span class="o">=</span> <span class="n">schema</span><span class="p">.</span><span class="n">serialize</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">blob</span> <span class="o">=</span> <span class="n">schema</span><span class="p">.</span><span class="n">toJsonString</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl">  <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span><span class="p">(</span><span class="s">&#34;save_01.json&#34;</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">blob</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  <span class="c1">// 読む
 </span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">in</span><span class="p">(</span><span class="s">&#34;save_01.json&#34;</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl">  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">json</span><span class="p">((</span><span class="n">std</span><span class="o">::</span><span class="n">istreambuf_iterator</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">in</span><span class="p">)),</span> <span class="p">{});</span>
-</span></span><span class="line"><span class="cl">  <span class="k">auto</span> <span class="n">loaded</span> <span class="o">=</span> <span class="n">schema</span><span class="p">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="n">loaded</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;loaded: &#34;</span> <span class="o">&lt;&lt;</span> <span class="n">loaded</span><span class="o">-&gt;</span><span class="n">playerName</span>
-</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; hp=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">loaded</span><span class="o">-&gt;</span><span class="n">hp</span>
-</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; gold=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">loaded</span><span class="o">-&gt;</span><span class="n">gold</span>
-</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; ch=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">loaded</span><span class="o">-&gt;</span><span class="n">chapterIndex</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">auto</span> <span class="n">loaded</span> <span class="o">=</span> <span class="n">schema</span><span class="p">.</span><span class="n">fromJsonString</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="n">loaded</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">v</span> <span class="o">=</span> <span class="o">*</span><span class="n">loaded</span><span class="p">.</span><span class="n">value</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;loaded: &#34;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">playerName</span>
+</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; hp=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">hp</span>
+</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; gold=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">gold</span>
+</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; ch=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">chapterIndex</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">  <span class="p">}</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p><code>schema.serialize()</code> は <strong>メタ情報 (version) と本体を 1 つの JSON にまとめた blob</strong> を返します。ファイル名や保存場所は呼び出し側の自由。</p>
-<p>ビルドして実行:</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru run
-</span></span></code></pre></div><p><code>save_01.json</code> が生成され、<code>loaded: プレイヤー1号 hp=80 gold=120 ch=3</code> のような出力が出れば OK です。</p>
+</span></span></code></pre></div><p><code>schema.toJsonString()</code> は <strong>メタ情報 (version) と本体を 1 つの JSON にまとめた blob</strong> を返します。読み戻す <code>fromJsonString()</code> は <code>FromJsonResult&lt;T&gt;</code> を返し、<code>ok()</code> が真なら <code>*loaded.value</code> に値、失敗なら <code>loaded.error</code> にメッセージが入ります。ファイル名や保存場所は呼び出し側の自由。</p>
+<p>ゲームに組み込んで <code>mitiru run</code> で動かし、<code>save_01.json</code> が生成され、<code>loaded: プレイヤー1号 hp=80 gold=120 ch=3</code> のような出力が出れば OK です。</p>
 <h2 id="手順-4-スキーマを変える-v2">手順 4: スキーマを変える (v2)</h2>
 <p>リリースから数か月、「ゴールドだけだと味気ない、銀貨を追加したい」「チュートリアル進行を別フラグで持ちたい」となったとします。</p>
 <p>新しい型 <code>SaveV2</code> を <code>src/save_types.hpp</code> に <strong>古い型と共存させて</strong> 追加します。古い <code>SaveV1</code> は削除しません。</p>
@@ -498,43 +498,37 @@
 </span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">silver</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>          <span class="c1">// 新フィールド
 </span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kt">int</span> <span class="n">chapterIndex</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl">    <span class="kt">bool</span> <span class="n">tutorialDone</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span> <span class="c1">// 新フィールド
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">};</span>
-</span></span><span class="line"><span class="cl"><span class="n">NLOHMANN_DEFINE_TYPE_INTRUSIVE</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">    <span class="n">SaveV2</span><span class="p">,</span> <span class="n">playerName</span><span class="p">,</span> <span class="n">hp</span><span class="p">,</span> <span class="n">gold</span><span class="p">,</span> <span class="n">silver</span><span class="p">,</span> <span class="n">chapterIndex</span><span class="p">,</span> <span class="n">tutorialDone</span><span class="p">);</span>
-</span></span></code></pre></div><h2 id="手順-4-マイグレーションを書く">手順 4: マイグレーションを書く</h2>
-<p>「v1 で保存された JSON を v2 の形に変換する」関数を 1 つ書きます。これが <code>MigrationChain</code> に登録される単位です。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;mitiru/data/MigrationChain.hpp&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
-</span></span><span class="line"><span class="cl"><span class="n">data</span><span class="o">::</span><span class="n">MigrationChain</span><span class="o">&lt;</span><span class="n">mygame</span><span class="o">::</span><span class="n">SaveV2</span><span class="o">&gt;</span> <span class="n">migrations</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="n">migrations</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">nlohmann</span><span class="o">::</span><span class="n">json</span><span class="o">&amp;</span> <span class="n">v1</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// v1 → v2: 新フィールドを default 値で埋める
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">auto</span> <span class="n">v2</span> <span class="o">=</span> <span class="n">v1</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">v2</span><span class="p">[</span><span class="s">&#34;silver&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">v2</span><span class="p">[</span><span class="s">&#34;tutorialDone&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">v2</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">});</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">data</span><span class="o">::</span><span class="n">SaveSchema</span><span class="o">&lt;</span><span class="n">mygame</span><span class="o">::</span><span class="n">SaveV2</span><span class="o">&gt;</span> <span class="n">schemaV2</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="cm">/*currentVersion=*/</span><span class="mi">2</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">migrations</span><span class="p">)</span>
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl">    <span class="n">NLOHMANN_DEFINE_TYPE_INTRUSIVE</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">        <span class="n">SaveV2</span><span class="p">,</span> <span class="n">playerName</span><span class="p">,</span> <span class="n">hp</span><span class="p">,</span> <span class="n">gold</span><span class="p">,</span> <span class="n">silver</span><span class="p">,</span> <span class="n">chapterIndex</span><span class="p">,</span> <span class="n">tutorialDone</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl"><span class="p">};</span>
-</span></span></code></pre></div><p><code>migrations.add(1, ...)</code> の <code>1</code> は「<strong>from バージョン</strong>」。「ファイルに version=1 と書いてあったら、このラムダを通せば v2 になる」という意味です。</p>
-<p>複数段のマイグレーション (v1 → v2 → v3) を書きたいときは、<code>migrations.add(1, ...)</code> と <code>migrations.add(2, ...)</code> の 2 つを登録すれば、SaveSchema が自動で順番に適用します。</p>
+</span></span></code></pre></div><h2 id="手順-4-マイグレーションを書く">手順 4: マイグレーションを書く</h2>
+<p>「v1 で保存された JSON を v2 の形に変換する」関数を 1 つ書きます。これが <code>MigrationChain</code> に登録される単位です。<code>MigrationChain</code> は <code>&lt;mitiru/data/SaveSchema.hpp&gt;</code> に含まれるので追加の include は不要です。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">data</span><span class="o">::</span><span class="n">SaveSchema</span><span class="o">&lt;</span><span class="n">mygame</span><span class="o">::</span><span class="n">SaveV2</span><span class="o">&gt;</span> <span class="n">schemaV2</span><span class="p">{</span> <span class="cm">/*currentVersion=*/</span><span class="mi">2</span> <span class="p">};</span>
+</span></span><span class="line"><span class="cl"><span class="n">schemaV2</span><span class="p">.</span><span class="n">migrations</span><span class="p">().</span><span class="n">addStep</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">[](</span><span class="n">nlohmann</span><span class="o">::</span><span class="n">json</span> <span class="n">data</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// v1 → v2: 新フィールドを default 値で埋める
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="n">data</span><span class="p">[</span><span class="s">&#34;silver&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">data</span><span class="p">[</span><span class="s">&#34;tutorialDone&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">data</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span></code></pre></div><p><code>addStep(1, 2, ...)</code> は「<strong>version 1 の data をこのラムダに通すと version 2 になる</strong>」という登録です。ラムダが受け取るのは envelope ではなく <code>data</code> 部分そのもの。</p>
+<p>複数段のマイグレーション (v1 → v2 → v3) は <code>addStep(1, 2, ...).addStep(2, 3, ...)</code> とチェーンして登録すれば、読み込み時に必要な段だけ順番に適用されます。</p>
 <h2 id="手順-5-読み戻してv1-が-v2-として読めるか確認">手順 5: 読み戻して、v1 が v2 として読めるか確認</h2>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// 既存の save_01.json (v1) を SchemaV2 で読み戻す
 </span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">in</span><span class="p">(</span><span class="s">&#34;save_01.json&#34;</span><span class="p">);</span>
 </span></span><span class="line"><span class="cl"><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">json</span><span class="p">((</span><span class="n">std</span><span class="o">::</span><span class="n">istreambuf_iterator</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">in</span><span class="p">)),</span> <span class="p">{});</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">loaded</span> <span class="o">=</span> <span class="n">schemaV2</span><span class="p">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">loaded</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;loaded as V2: &#34;</span> <span class="o">&lt;&lt;</span> <span class="n">loaded</span><span class="o">-&gt;</span><span class="n">playerName</span>
-</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; gold=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">loaded</span><span class="o">-&gt;</span><span class="n">gold</span>
-</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; silver=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">loaded</span><span class="o">-&gt;</span><span class="n">silver</span>         <span class="c1">// 0
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>              <span class="o">&lt;&lt;</span> <span class="s">&#34; tutorialDone=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">loaded</span><span class="o">-&gt;</span><span class="n">tutorialDone</span> <span class="c1">// false
+</span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">loaded</span> <span class="o">=</span> <span class="n">schemaV2</span><span class="p">.</span><span class="n">fromJsonString</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">loaded</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">v</span> <span class="o">=</span> <span class="o">*</span><span class="n">loaded</span><span class="p">.</span><span class="n">value</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;loaded as V2: &#34;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">playerName</span>
+</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; gold=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">gold</span>
+</span></span><span class="line"><span class="cl">              <span class="o">&lt;&lt;</span> <span class="s">&#34; silver=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">silver</span>         <span class="c1">// 0
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>              <span class="o">&lt;&lt;</span> <span class="s">&#34; tutorialDone=&#34;</span> <span class="o">&lt;&lt;</span> <span class="n">v</span><span class="p">.</span><span class="n">tutorialDone</span> <span class="c1">// false
 </span></span></span><span class="line"><span class="cl"><span class="c1"></span>              <span class="o">&lt;&lt;</span> <span class="s">&#34;</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><p><code>loaded-&gt;silver</code> は <code>0</code>、<code>loaded-&gt;tutorialDone</code> は <code>false</code> で復元されます。<strong>プログラマーは &ldquo;v1 の JSON を読んでいる&rdquo; ことを意識せずに済みます</strong> 。古いセーブを壊さず、機能を増やせるのがこの仕組みの売りです。</p>
-<p>これ以降は <code>schemaV2.serialize()</code> で書き出せば、新規セーブは v2 として保存されます。</p>
+</span></span></code></pre></div><p><code>silver</code> は <code>0</code>、<code>tutorialDone</code> は <code>false</code> で復元されます。<strong>プログラマーは &ldquo;v1 の JSON を読んでいる&rdquo; ことを意識せずに済みます</strong> 。古いセーブを壊さず、機能を増やせるのがこの仕組みの売りです。</p>
+<p>これ以降は <code>schemaV2.toJsonString()</code> で書き出せば、新規セーブは v2 として保存されます。</p>
 <hr>
 <h2 id="ui-と組み合わせるとき">UI と組み合わせるとき</h2>
 <p>セーブのスロット選択 UI は CEF 側 HTML で組み、「セーブする」「スロットを選んでロード」のイベントだけを <code>cefQuery</code> で C++ に送ります。スロットの中身 (時刻、章タイトル、プレイ時間) は C++ がディスクから読んだ後、<code>executeJavaScript</code> か state push で JS に渡します。</p>

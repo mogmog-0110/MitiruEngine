@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>time travel</title>
+<link rel="stylesheet" href="tool.css">
+<style>
+  .frame{ margin-top:16px; font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .frame small{ font-size:14px; font-weight:500; color:var(--muted); margin-left:8px; }
+  .scrub{ margin-top:14px; height:16px; background:#fff; box-shadow:var(--sink);
+          position:relative; cursor:pointer; }
+  .scrub .cur{ position:absolute; top:0; width:5px; height:16px; background:var(--accent); }
+  .chan{ margin-top:18px; }
+  .chan h3{ font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;
+            display:flex; justify-content:space-between; }
+  .chan h3 b{ color:var(--ink); font-variant-numeric:tabular-nums; }
+  .chan .panel{ margin-top:6px; padding:8px; }
+  canvas{ display:block; width:100%; height:64px; }
+  .hint{ position:fixed; left:20px; right:20px; bottom:16px; color:var(--muted); font-size:13px; }
+  .note{ margin-top:30px; color:var(--muted); font-size:13px; line-height:1.6; }
+</style>
+</head>
+<body class="is-waiting">
+  <header><span class="dot"></span><h1>time travel</h1></header>
+  <div class="body">
+    <div class="frame"><span id="at">--</span><small>/ <span id="cap">0</span> frames in buffer</small></div>
+    <div class="scrub" id="scrub"><div class="cur" id="cursor"></div></div>
+    <div id="chans"></div>
+  </div>
+  <div class="wait">waiting for time-travel data…<div class="note">ゲームが <code>hud.watch("timetravel", …)</code> で<br>履歴 (capacity + *History 配列) を export すると表示されます。</div></div>
+  <div class="hint">← / →  scrub · drag the bar · (read-only, never freezes the game)</div>
+
+<script>
+  let S=null, at=0;     // at = scrub 位置 (0..len-1)、null は live (最新)
+  function channels(st){
+    return Object.keys(st).filter(k=>/History$/.test(k) && Array.isArray(st[k]));
+  }
+  function spark(canvas, arr, cursor){
+    const dpr=devicePixelRatio||1, w=canvas.clientWidth, h=canvas.clientHeight;
+    canvas.width=w*dpr; canvas.height=h*dpr; const x=canvas.getContext('2d'); x.scale(dpr,dpr);
+    x.clearRect(0,0,w,h);
+    if(!arr.length) return;
+    let mn=Math.min(...arr), mx=Math.max(...arr); if(mx===mn){mx=mn+1;}
+    x.strokeStyle='#000080'; x.lineWidth=2; x.lineJoin='round'; x.beginPath();
+    for(let i=0;i<arr.length;i++){ const px=w*i/(arr.length-1||1), py=h-2-((arr[i]-mn)/(mx-mn))*(h-4); i?x.lineTo(px,py):x.moveTo(px,py); }
+    x.stroke();
+    // scrub cursor
+    const cx=w*cursor/(arr.length-1||1);
+    x.strokeStyle='#c8002c'; x.lineWidth=1; x.beginPath(); x.moveTo(cx,0); x.lineTo(cx,h); x.stroke();
+  }
+  function render(){
+    if(!S) return;
+    const st=S, chs=channels(st);
+    const len = chs.length ? st[chs[0]].length : 0;
+    if(!len){ return; }
+    at = Math.max(0, Math.min(len-1, at));
+    document.getElementById('at').textContent = at+1;
+    document.getElementById('cap').textContent = st.capacity ?? len;
+    document.getElementById('cursor').style.left = (len>1?at/(len-1)*100:0)+'%';
+    const host=document.getElementById('chans');
+    host.innerHTML = chs.map(k=>{
+      const label=k.replace(/History$/,'');
+      return `<div class="chan"><h3>${label}<b data-k="${k}"></b></h3><div class="panel"><canvas data-k="${k}"></canvas></div></div>`;
+    }).join('');
+    for(const k of chs){
+      host.querySelector(`b[data-k="${k}"]`).textContent = st[k][at];
+      spark(host.querySelector(`canvas[data-k="${k}"]`), st[k], at);
+    }
+  }
+  window.applySnapshot=function(env){
+    const st = env && env.snap && env.snap.timetravel && env.snap.timetravel.state;
+    const ok = env && env.ready && st && channels(st).length;
+    document.body.classList.toggle('is-waiting', !ok);
+    if(!ok){ S=null; return; }
+    const len = st[channels(st)[0]].length;
+    const wasLive = (S===null) || (at>= (channels(S).length?S[channels(S)[0]].length-1:0));
+    S=st; if(wasLive) at=len-1;   // live 追従。scrub 中は位置を保つ
+    render();
+  };
+  addEventListener('keydown',e=>{ if(!S)return; if(e.key==='ArrowRight'){at++;render();} else if(e.key==='ArrowLeft'){at--;render();} });
+  document.getElementById('scrub').addEventListener('click',e=>{
+    if(!S)return; const chs=channels(S), len=chs.length?S[chs[0]].length:0; if(!len)return;
+    const r=e.currentTarget.getBoundingClientRect(); at=Math.round((e.clientX-r.left)/r.width*(len-1)); render();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>replay</title>
+<link rel="stylesheet" href="tool.css">
+<style>
+  .file{ margin-top:6px; font-size:13px; color:var(--muted); }
+  .counter{ margin-top:18px; font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .counter small{ font-size:14px; font-weight:500; color:var(--muted); margin-left:8px; }
+  .scrub{ margin-top:14px; height:16px; background:#fff; box-shadow:var(--sink);
+          position:relative; cursor:pointer; }
+  .scrub .cur{ position:absolute; top:0; width:5px; height:16px; background:var(--accent); }
+  .strip{ margin-top:10px; height:44px; background:#fff; box-shadow:var(--sink);
+          display:flex; align-items:flex-end; overflow:hidden; padding:2px; }
+  .strip i{ flex:1 1 0; background:var(--accent); opacity:.7; min-width:0; }
+  .keys{ margin-top:18px; display:flex; flex-wrap:wrap; gap:6px; min-height:30px; }
+  .chip{ background:var(--bg2); box-shadow:var(--raise); color:var(--ink); padding:3px 10px;
+         font-size:13px; font-weight:700; }
+  .chip.empty{ box-shadow:var(--sink); color:var(--muted); font-weight:400; background:#fff; }
+  .det{ margin-top:14px; }
+  .hint{ position:fixed; left:20px; right:20px; bottom:16px; color:var(--muted); font-size:13px; }
+  .err{ margin-top:30px; color:#c8002c; font-size:15px; }
+</style>
+</head>
+<body class="is-waiting">
+  <header><span class="dot"></span><h1>replay</h1></header>
+  <div class="body">
+    <div class="file" id="file"></div>
+    <div id="err" class="err" style="display:none"></div>
+    <div id="main" style="display:none">
+      <div class="counter"><span id="cur">1</span><small>/ <span id="total">0</span></small></div>
+      <div class="scrub" id="scrub"><div class="cur" id="cursor"></div></div>
+      <div class="strip" id="strip"></div>
+      <div class="label">held keys</div>
+      <div class="keys" id="keys"></div>
+      <div class="det kv" id="det"></div>
+    </div>
+  </div>
+  <div class="wait">waiting for a recording…</div>
+  <div class="hint">← / →  step · Home/End  jump · (read-only)</div>
+
+<script>
+  let F=[], cur=0;
+  function esc(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  function render(){
+    if(!F.length) return;
+    cur = Math.max(0, Math.min(F.length-1, cur));
+    const f = F[cur];
+    document.getElementById('cur').textContent = cur+1;
+    document.getElementById('cursor').style.left = (F.length>1 ? cur/(F.length-1)*100 : 0)+'%';
+    const keys = document.getElementById('keys');
+    keys.innerHTML = (f.k && f.k.length)
+      ? f.k.map(k=>`<span class="chip">${esc(k)}</span>`).join('')
+      : '<span class="chip empty">(none)</span>';
+    document.getElementById('det').innerHTML =
+      `<div class="row"><span class="k">frame</span><span class="v">${f.i}</span></div>`+
+      `<div class="row"><span class="k">mouse</span><span class="v">(${f.mx}, ${f.my})${f.mb?' · '+esc(f.mb):''}</span></div>`+
+      `<div class="row"><span class="k">gamepad</span><span class="v">${f.pad?'connected':'—'}</span></div>`;
+  }
+  let loaded=false;
+  window.applyReplay = function(d){
+    if(loaded) return;          // 二重初期化を弾く (C++ は毎 tick push) — scrub 位置を保つ
+    loaded=true;
+    document.getElementById('file').textContent = d.file || '';
+    if(d.error){
+      document.body.classList.remove('is-waiting');
+      const e=document.getElementById('err'); e.style.display='block'; e.textContent = d.error;
+      return;
+    }
+    F = d.frames || [];
+    if(!F.length){ document.getElementById('err').style.display='block';
+      document.getElementById('err').textContent='empty recording (0 frames)'; document.body.classList.remove('is-waiting'); return; }
+    document.body.classList.remove('is-waiting');
+    document.getElementById('main').style.display='block';
+    document.getElementById('total').textContent = F.length;
+    // 入力活動 strip (held key 数で高さ)
+    const strip=document.getElementById('strip');
+    const N=Math.min(F.length, 200), step=F.length/N;
+    let html=''; for(let i=0;i<N;i++){ const fr=F[Math.floor(i*step)]; const h=fr.k?Math.min(100,fr.k.length*30+8):2; html+=`<i style="height:${h}%"></i>`; }
+    strip.innerHTML=html;
+    render();
+  };
+  addEventListener('keydown', e=>{
+    if(!F.length) return;
+    if(e.key==='ArrowRight'){ cur++; render(); }
+    else if(e.key==='ArrowLeft'){ cur--; render(); }
+    else if(e.key==='Home'){ cur=0; render(); }
+    else if(e.key==='End'){ cur=F.length-1; render(); }
+  });
+  document.getElementById('scrub').addEventListener('click', e=>{
+    if(!F.length) return;
+    const r=e.currentTarget.getBoundingClientRect();
+    cur=Math.round((e.clientX-r.left)/r.width*(F.length-1)); render();
+  });
+</script>
+</body>
+</html>

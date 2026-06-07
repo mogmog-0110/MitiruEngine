@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <title>breakout — Mitiru Saturn</title>
+    <link rel="stylesheet" href="mitiru_runtime/mitiru_base.css">
+    <link rel="stylesheet" href="mitiru_runtime/mitiru_tokens.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+    <style>
+        /* breakout HUD — Mitiru Saturn。SCORE / LIVES / LEVEL と勝敗モーダルのみ。
+           gameplay は C++ DLL が view.hud.* を push、ここは data-m-* で表示するだけ
+           (手書き JS ゼロ)。tokens は上で import。 */
+        :root {
+            --bg:        #c8c8c8;
+            --surface:   #d8d8d8;
+            --text:      #101010;
+            --mute:      #4a4a4a;
+            --accent:    #c8002c;
+            --accent-hi: #a30022;
+            --border:    #101010;
+            --disp: "Press Start 2P", "Arial Narrow", "Courier New", monospace;
+            --body: "Arial Narrow", "Helvetica Neue Condensed", "MS Gothic", monospace;
+        }
+        /* 透明 + クリック透過は <body class="mitiru-overlay"> (mitiru_base.css) が担当。 */
+        html, body {
+            margin: 0; width: 100vw; height: 100vh;
+            color: var(--text);
+            font-family: var(--body); font-variant-numeric: tabular-nums;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        .panel {
+            position: absolute; top: 20px;
+            background: var(--surface); border: 1px solid var(--border);
+            padding: 9px 16px;
+            box-shadow: inset 2px 2px 0 #fff, inset -2px -2px 0 #6a6a6a;
+        }
+        .cap {
+            font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+            color: var(--mute); margin: 0 0 4px;
+        }
+        .val {
+            font-family: var(--disp); font-size: 22px; line-height: 1.1;
+            color: var(--text); font-variant-numeric: tabular-nums;
+        }
+        .panel--score { left: 22px;  min-width: 150px; }
+        .panel--lives { left: 50%; transform: translateX(-50%); text-align: center; min-width: 120px; }
+        .panel--level { right: 22px; text-align: right; min-width: 96px; }
+        .hearts { font-family: var(--body); font-size: 22px; color: var(--accent); letter-spacing: 2px; line-height: 1.1; min-height: 24px; }
+
+        .hint {
+            position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+            font-size: 13px; color: var(--mute); white-space: nowrap;
+        }
+        .hint kbd {
+            background: var(--surface); border: 1px solid var(--border);
+            padding: 1px 6px; font-family: inherit; font-size: 12px; color: var(--text);
+            box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #6a6a6a; margin: 0 2px;
+        }
+
+        /* 勝敗モーダル */
+        .overlay {
+            position: absolute; inset: 0; display: none;
+            align-items: center; justify-content: center;
+            background: rgba(200, 200, 200, 0.78);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            pointer-events: auto;
+        }
+        .overlay.is-visible { display: flex; }
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            box-shadow: inset 3px 3px 0 #fff, inset -3px -3px 0 #6a6a6a, 0 6px 0 rgba(0,0,0,0.18);
+            padding: 30px 40px; text-align: center; min-width: 300px;
+            animation: enter 200ms steps(2, end);
+        }
+        @keyframes enter { 0% { transform: translateY(10px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+        .card__title { font-family: var(--disp); font-size: 24px; margin: 0 0 10px; }
+        .card__title--win  { color: var(--text); }
+        .card__title--lose { color: var(--accent); }
+        .card__sub { font-size: 13px; color: var(--mute); margin-bottom: 22px; }
+        button.restart {
+            font-family: var(--disp); font-size: 12px; letter-spacing: 0.06em;
+            padding: 9px 20px; border: 1px solid var(--border);
+            background: var(--accent); color: #fff; cursor: pointer;
+            box-shadow: inset 2px 2px 0 rgba(255,255,255,.45), inset -2px -2px 0 rgba(0,0,0,.45);
+        }
+        button.restart:hover  { background: var(--accent-hi); }
+        button.restart:active { transform: translate(1px, 1px); }
+
+        @media (max-width: 720px) {
+            .val { font-size: 18px; } .hearts { font-size: 18px; }
+            .panel { padding: 7px 12px; }
+            .panel--score { min-width: 110px; } .panel--level { min-width: 80px; }
+        }
+        @media (max-height: 320px) { .hint { display: none; } }
+    </style>
+</head>
+<body class="mitiru-overlay">
+    <div class="panel panel--score">
+        <div class="cap">SCORE</div>
+        <div class="val" data-m-text="view.hud.score">0</div>
+    </div>
+
+    <div class="panel panel--lives">
+        <div class="cap">LIVES</div>
+        <div class="hearts" data-m-text="view.hud.hearts">&#9829;&#9829;&#9829;</div>
+    </div>
+
+    <div class="panel panel--level">
+        <div class="cap">LEVEL</div>
+        <div class="val"><span data-m-text="view.hud.level">1</span></div>
+    </div>
+
+    <div class="hint">move <kbd>mouse</kbd> to control the paddle &nbsp;·&nbsp; <kbd>ESC</kbd> quit</div>
+
+    <!-- 勝敗モーダル。over で表示、outcome で WIN/LOSE を出し分け、ボタンで restart 通知。
+         すべて data-m-* — JavaScript は書いていない。 -->
+    <div class="overlay" data-m-class="is-visible: view.hud.over">
+        <div class="card">
+            <h1 class="card__title card__title--win"  data-m-show="view.hud.outcome == win">YOU WIN!</h1>
+            <h1 class="card__title card__title--lose" data-m-show="view.hud.outcome == lose">GAME OVER</h1>
+            <div class="card__sub" data-m-show="view.hud.outcome == win">全ブロックを壊した</div>
+            <div class="card__sub" data-m-show="view.hud.outcome == lose">ボールを落とし切った</div>
+            <button class="restart" data-m-action="game.restart">[ Restart ]</button>
+        </div>
+    </div>
+
+    <!-- bridge transport + 宣言バインダ (engine runtime、game code ではない) -->
+    <script src="mitiru_runtime/mitiru_cef_state.js"></script>
+    <script src="mitiru_runtime/mitiru_bind.js"></script>
+</body>
+</html>

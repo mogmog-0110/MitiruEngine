@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>inspector</title>
+<link rel="stylesheet" href="tool.css">
+</head>
+<body class="is-waiting">
+  <header><span class="dot"></span><h1>inspector</h1></header>
+  <div class="body" id="b"></div>
+  <div class="wait">waiting for the game…</div>
+
+<script>
+  // perf / audio は専用窓 (perf / mixer) があるので inspector では出さない。
+  const SKIP = new Set(['perf','audio']);
+  function esc(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  function val(v){
+    if(v===null) return 'null';
+    if(Array.isArray(v)){
+      // primitive 配列は中身を列挙、オブジェクト配列は件数 (詳細は scene tree で)
+      if(v.every(function(x){ return typeof x !== 'object' || x===null; }))
+        return '[ ' + v.map(esc).join(', ') + ' ]';
+      return v.length + ' items';
+    }
+    if(typeof v==='object'){
+      // ネストした object は中身を inline 要約 ({2} のような数字を出さない)
+      var parts = Object.keys(v).map(function(k){
+        var x = v[k];
+        return esc(k) + ' ' + (x !== null && typeof x==='object' ? '…' : esc(x));
+      });
+      var s = parts.join('  ·  ');
+      return s.length > 64 ? s.slice(0, 62) + '…' : s;
+    }
+    return esc(v);
+  }
+  window.applySnapshot=function(env){
+    const snap = env && env.snap;
+    const keys = snap ? Object.keys(snap).filter(k=>!SKIP.has(k)) : [];
+    document.body.classList.toggle('is-waiting', !(env && env.ready && keys.length));
+    if(!keys.length){ return; }
+    let html='';
+    for(const k of keys){
+      const entry = snap[k] || {};
+      const title = (entry && entry.title) || k;
+      const state = (entry && typeof entry.state==='object') ? entry.state : entry;
+      html += `<div class="section-title">${esc(title)}</div><div class="kv">`;
+      if(state && typeof state==='object' && !Array.isArray(state)){
+        for(const [kk,vv] of Object.entries(state))
+          html += `<div class="row"><span class="k">${esc(kk)}</span><span class="v">${val(vv)}</span></div>`;
+      } else if(Array.isArray(state)){
+        state.forEach((vv,i)=> html += `<div class="row"><span class="k">[${i}]</span><span class="v">${val(vv)}</span></div>`);
+      } else {
+        html += `<div class="row"><span class="v">${val(state)}</span></div>`;
+      }
+      html += `</div>`;
+    }
+    document.getElementById('b').innerHTML = html;
+  };
+</script>
+</body>
+</html>

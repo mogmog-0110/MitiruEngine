@@ -1,0 +1,53 @@
+/* 全ツール窓 共通 Win95/98 同人質感スタイル (CEF/HTML 版)。
+   グレー地 + 立体ベベル枠 + 沈んだ well + ネイビーのタイトルバー。 */
+:root{
+  --bg:#c0c0c0; --bg2:#d4d0c8; --ink:#0a0a0a; --muted:#4a4a4a;
+  --accent:#000080; --accent2:#1084d0; --well:#ffffff; --track:#9a9a9a;
+  /* Win95 の 2px ベベル */
+  --raise: inset -1px -1px 0 #0a0a0a, inset 1px 1px 0 #ffffff,
+           inset -2px -2px 0 #808080, inset 2px 2px 0 #dfdfdf;
+  --sink:  inset 1px 1px 0 #808080, inset -1px -1px 0 #ffffff,
+           inset 2px 2px 0 #404040, inset -2px -2px 0 #dfdfdf;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ height:100%; }
+body{
+  background:var(--bg); color:var(--ink);
+  font:400 13px/1.4 "MS Sans Serif",Tahoma,Geneva,system-ui,sans-serif;
+  padding:8px; user-select:none; overflow-x:hidden;
+}
+
+/* タイトルバー (窓内のネイビー帯) */
+header{
+  display:flex; align-items:center; gap:7px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  padding:4px 8px; margin:-8px -8px 10px; /* body padding を打ち消して上端まで */
+}
+header .dot{ width:14px; height:14px; background:#c0c0c0; box-shadow:var(--raise); flex:0 0 auto; }
+header h1{ font-size:14px; font-weight:700; color:#fff; letter-spacing:.3px;
+           text-shadow:1px 1px 0 rgba(0,0,0,.4); }
+
+/* 本文の枠 (外周ベベル) */
+.body{ background:var(--bg); box-shadow:var(--raise); padding:12px; }
+
+.muted{ color:var(--muted); }
+.label{ margin-top:16px; font-size:12px; font-weight:700; color:var(--ink); }
+/* 沈んだ well (グラフ/数値表示の凹み面) */
+.panel{ margin-top:8px; background:var(--well); box-shadow:var(--sink); padding:8px; }
+
+/* waiting */
+.wait{ margin-top:40px; text-align:center; color:var(--muted); font-size:13px; display:none; }
+body.is-waiting .wait{ display:block; }
+body.is-waiting .body{ opacity:.5; }
+
+.num{ font-variant-numeric:tabular-nums; }
+
+/* key/value 表 (inspector) — 沈んだリスト */
+.kv{ margin-top:8px; background:var(--well); box-shadow:var(--sink); padding:4px 8px; }
+.kv .row{ display:flex; padding:4px 0; border-bottom:1px dotted #b0b0b0; }
+.kv .row:last-child{ border-bottom:0; }
+.kv .k{ flex:0 0 42%; color:var(--muted); }
+.kv .v{ flex:1 1 auto; color:var(--ink); font-variant-numeric:tabular-nums;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.section-title{ margin-top:16px; font-size:14px; font-weight:700;
+                background:var(--bg2); box-shadow:var(--raise); padding:3px 8px; }
