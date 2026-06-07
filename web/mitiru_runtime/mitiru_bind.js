@@ -24,6 +24,7 @@
  *   data-m-attr="src: {path}; …"  任意属性に値をバインド (画像 src / title / aria 等)
  *   data-m-action="name"          クリック/入力で dispatch(name, arg) (HTML → C++ 入力)
  *     data-m-arg="path"             dispatch に載せる値 (repeat 内なら item の値。例: 押した項目の id)
+ *       data-m-arg="'hard'" / "42"    引用符は文字列リテラル、数値はそのまま値 (難易度ボタン等)
  *     フォーム要素 (input/select) は現在値を自動で arg に載せる (スライダー/選択 等の設定 UI)
  *   data-m-flash="field"          値が変わった瞬間に m-flash クラスを一瞬付与 (CSS 発火用)
  *   data-m-tween="path"           数値が変わったとき ~300ms でカウントアップ/ダウン表示
@@ -165,7 +166,7 @@
     if (d.mPos != null)   { applyPos(el, d.mPos, d.mRot, d.mAnchor, item); }
     if (d.mFlash != null) { applyFlash(el, d.mFlash, item); }
     if (d.mAttr != null)  { applyAttr(el, d.mAttr, item); }
-    if (d.mArg != null)   { el._marg = resolve(d.mArg, item); }   // dispatch に載せる値 (item スコープ対応)
+    if (d.mArg != null)   { el._marg = argValue(d.mArg, item); }  // dispatch に載せる値 (item スコープ対応)
   }
 
   // data-m-attr="src: {path}; title: {path}" — 任意属性に値をバインド (画像 src 等)。
@@ -189,10 +190,18 @@
     }
     return undefined;
   }
+  // data-m-arg の値解釈: 引用符 'x' / "x" は文字列リテラル、数値リテラルは Number、
+  // それ以外は state path (repeat 内なら item フィールド) として解決する。
+  function argValue(spec, item) {
+    var m = /^\s*(['"])([\s\S]*)\1\s*$/.exec(spec);
+    if (m) { return m[2]; }
+    if (/^\s*-?\d+(\.\d+)?\s*$/.test(spec)) { return Number(spec); }
+    return resolve(spec, item);
+  }
   // dispatch に載せる引数: data-m-arg があればその値 (item スコープは _marg)、無ければフォーム値。
   function actionArg(el) {
     if (el.dataset.mArg != null) {
-      return (el._marg !== undefined) ? el._marg : resolve(el.dataset.mArg, null);
+      return (el._marg !== undefined) ? el._marg : argValue(el.dataset.mArg, null);
     }
     return formValue(el);
   }
