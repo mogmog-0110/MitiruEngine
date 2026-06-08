@@ -68,6 +68,7 @@
 #include <mitiru/util/ImageWriter.hpp>
 #include <mitiru/observe/Snapshot.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
+#include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/platform/WindowFactory.hpp>
 #include <mitiru/ecs/MitiruWorld.hpp>
@@ -369,6 +370,20 @@ public:
 	/// @brief DLL が申告した GameMemory のバイト数 (ADR 0013、0=未申告)
 	[[nodiscard]] std::uint32_t moduleMemorySize() const noexcept;
 
+	/// @brief time-travel: ring に貯めた N フレーム前の GameMemory bytes を取得 (ADR 0017)
+	/// @param offsetFromNewest 0 = 最新, 1 = 1 フレーム前, ...。範囲外は nullptr。
+	[[nodiscard]] const std::uint8_t* moduleMemoryRingAt(std::size_t offsetFromNewest) const noexcept;
+
+	/// @brief time-travel ring が現在保持しているフレーム数 (ADR 0017)
+	[[nodiscard]] std::size_t moduleMemoryRingSize() const noexcept;
+
+	/// @brief time-travel rewind: live GameMemory を過去 bytes で memcpy 上書きする (ADR 0017)
+	/// @details host が scrub command を受けて呼ぶ。size が GameMemory サイズと一致しない /
+	///          live が無い場合は false (live を壊さない)。game DLL は rewind を知らない
+	///          — 次フレームの on_update が復元された state を「現在」として淡々と進める。
+	/// @return 上書きに成功したら true
+	bool rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept;
+
 	/// @brief module-mode で engine 所有の CEF StateStore (lazy created)
 	/// @details CEF init 後 + module load 後にのみ non-null。ADR 0005 により
 	///          DLL は直接これに触らず、`FrameIntents::statePushes` 経由で
@@ -382,6 +397,7 @@ private:
 	void buildModuleInputSnapshot();       ///< m_inputState + action queue から m_moduleInputSnapshot を構築
 	void zeroModuleFrameIntents();         ///< 各 on_update 呼び出し前に m_moduleFrameIntents をクリア
 	void drainModuleFrameIntents();        ///< on_update 後に DLL が要求した side-effect を適用
+	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を time-travel ring へ push (ADR 0017)
 
 	/// @brief 1フレーム分のゲームループを実行する
 	/// @details run()から呼ばれる。Emscriptenではemscripten_set_main_loop_argのコールバック。
@@ -583,6 +599,7 @@ private:
 	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
 	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (ADR 0013、0=未申告)
+	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② time-travel、ADR 0017)
 
 	// host→DLL signal flow 用の per-frame POD scratch buffer。struct 合計が
 	// ~50KB ある上、module を一切 load しない Engine instance まで肥大化させたく

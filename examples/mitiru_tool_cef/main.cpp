@@ -13,11 +13,13 @@
 #include <fstream>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <nlohmann/json.hpp>
 
 #include <mitiru/Mitiru.hpp>
 #include <mitiru/debug/ToolWindowApp.hpp>      // parseToolArgs / kToolBg
+#include <mitiru/observe/ScrubControlChannel.hpp>  // time-travel click-to-scrub (ADR 0017)
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/replay/Player.hpp>            // .mtrr 読み込み (replay mode)
 #include <mitiru/module/ModuleApi.hpp>         // InputSnapshot
@@ -57,6 +59,9 @@ public:
 
 	void update(float dt) override
 	{
+		// time-travel ページの click-to-scrub 逆チャネルを (CEF 準備でき次第) 1 回配線する。
+		ensureScrubHandler();
+
 		// replay モード (.mtrr): .mtrr は 1 回だけ load して JSON をキャッシュし、
 		// 毎 tick その文字列を push (CEF ページのロード完了タイミングに依存しないため)。
 		// JS 側は二重初期化を弾くので user の scrub 位置は保たれる。
@@ -125,6 +130,35 @@ private:
 		env["snap"]  = m_last;
 		cef->executeJavaScript(
 			"window.applySnapshot && window.applySnapshot(" + env.dump() + ");");
+	}
+
+	// time-travel: timetravel.html の graph click → window.cefQuery("timetravel.scrub|<offset>")
+	// を受けて、監視中ゲーム(host pid)宛に scrub command を書く (ADR 0017、click-to-scrub)。
+	// host が ScrubControlReader で読み、GameMemory を過去 bytes へ巻き戻す。1 度だけ登録する。
+	void ensureScrubHandler()
+	{
+		if (m_scrubHandlerRegistered || !m_pid) { return; }
+		auto* eng = engine();
+		if (!eng) { return; }
+		auto* cef = eng->cefContext();
+		if (!cef || !cef->isInitialized()) { return; }  // CEF 準備待ち
+
+		if (!m_scrubWriter) { m_scrubWriter.emplace(*m_pid); }  // host pid 宛 writer
+		cef->registerHandler("timetravel.scrub",
+			[this](std::string_view payload) -> std::string
+			{
+				// payload = offsetFromNewest (0 = 最新)。
+				int off = 0;
+				try { off = std::stoi(std::string{payload}); }
+				catch (...) { return "{}"; }
+				if (off < 0) { off = 0; }
+				if (m_scrubWriter)
+				{
+					m_scrubWriter->write({{"scrubTo", off}, {"seq", ++m_scrubSeq}});
+				}
+				return "{}";
+			});
+		m_scrubHandlerRegistered = true;
 	}
 
 	void pushReplay()
@@ -208,6 +242,11 @@ private:
 	bool                                                   m_haveMtime{false};
 	bool                                                   m_everRead{false};
 	float                                                  m_pollAccum{0.0f};
+
+	// time-travel click-to-scrub (ADR 0017)
+	std::optional<mitiru::observe::ScrubControlWriter>     m_scrubWriter;
+	long                                                   m_scrubSeq{0};
+	bool                                                   m_scrubHandlerRegistered{false};
 };
 
 }  // namespace

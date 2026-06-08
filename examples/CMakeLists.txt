@@ -34,6 +34,7 @@ add_subdirectory(hello_game)
 add_subdirectory(showcase_platformer)
 add_subdirectory(breakout)
 add_subdirectory(dodge)
+add_subdirectory(timetravel_demo)
 add_subdirectory(anchor)
 # 研究中 example (未コミット dir / snapshot 非同梱) は EXISTS ガードで取り込む。
 # dev tree に dir が在れば従来どおりビルド、無い clone / prod では静かにスキップ。

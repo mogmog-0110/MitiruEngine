@@ -71,7 +71,11 @@ namespace mitiru::module
 ///   - v10: FrameIntents 末尾に toolRequests[] を追加 (ADR 0014)。DLL が「この独立ウィンドウの
 ///     ツール (inspector 等) を開いて」と host に頼み、host が別 exe を spawn する。必要なときだけ
 ///     コードから tool 窓を配置できる (pulled UI)。末尾追記で v≤9 module は後方安全。
-constexpr std::uint32_t kCurrentApiVersion = 10;
+///   - v11: ModuleApi 末尾に seriesProbes[] を追加 (ADR 0017)。DLL が「GameMemory から
+///     このスカラーを引く純関数」を申告し、host が GameMemory ring に適用して time-travel の
+///     観測系列 (HP 履歴など) を自動生成する。手動 Snapshot push を廃し、観測も rewind も
+///     replay も単一の GameMemory 源に統一する。末尾追記 + zero-init で v≤10 module は後方安全。
+constexpr std::uint32_t kCurrentApiVersion = 11;
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
@@ -406,6 +410,27 @@ static_assert(std::is_standard_layout_v<FrameIntents>,
 static_assert(std::is_trivially_copyable_v<InputSnapshot>,
               "InputSnapshot も同上 (host → game の POD push)");
 
+// ── 観測 probe (ABI v11、ADR 0017) ───────────────────────────────────────
+
+/// @brief GameMemory から追跡スカラーを引く純関数 (C 生関数ポインタ = POD = ADR 0005 安全)
+/// @details host が GameMemory bytes へのポインタを渡して呼ぶ。読むのは GameMemory のみ
+///          (static / 外部状態を読むと replay 非再現になる)。capture を持たない lambda は
+///          暗黙変換可、capture ありは変換不可でコンパイル拒否される (footgun 防止)。
+using SeriesProbeFn = double (*)(const void* gameMemory);
+
+/// @brief 「GameMemory のこの値を time-travel graph で追って」という DLL → host の宣言 (v11)。
+/// @details DLL が load 時に申告する (毎フレーム不要)。host が GameMemoryRing の各フレームに
+///          accessor を適用して系列を作り、SeriesMarkers で節目を抽出して inspector に出す。
+struct SeriesProbe
+{
+	char          name[32];      ///< 系列 id (例: "hp")、null 終端
+	char          title[48];     ///< 人間向けラベル (例: "HP")、null 終端
+	SeriesProbeFn accessor;      ///< GameMemory → double。null = 無効スロット
+	double        threshold;     ///< hasThreshold=1 のとき danger ライン跨ぎを marker に
+	std::uint8_t  hasThreshold;  ///< 1 = threshold 跨ぎ判定を行う
+	std::uint8_t  _pad[7];
+};
+
 // ── ModuleApi callback table ─────────────────────────────────────────────
 
 /// @brief DLL → host へ届ける callback table
@@ -441,6 +466,11 @@ struct ModuleApi
 	///          host は GameMemory を記録せず観測 view.* にフォールバックする。host は replay
 	///          記録時にこのサイズだけ opaque に memcpy する (中身は parse しない = ADR 0005)。
 	std::uint32_t memorySize;
+
+	/// @brief 観測 probe テーブル (ABI v11、ADR 0017)。末尾追記なので v≤10 module は後方安全
+	///        (zero-init で seriesProbeCount=0 = 観測なし)。`MITIRU_GAME_SERIES` が埋める。
+	std::int32_t seriesProbeCount;
+	SeriesProbe  seriesProbes[8];
 };
 
 /// @brief DLL が export すべき load 関数のシグネチャ

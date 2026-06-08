@@ -256,6 +256,16 @@ void registerGame(ModuleApi* api, void** memory)
 		"MITIRU_GAME(T): T に update(Input, Hud, float) / update(Input, float) / draw(Screen&) の"
 		"いずれも見つかりません。メソッド名と引数 (型・dt・大文字小文字) を確認してください。");
 
+	// GameMemory は flat POD 必須 (ADR 0017)。host が GameMemory を bytes として memcpy で
+	// 記録・rewind するため、ポインタ (std::vector/std::string/std::deque 等) を含むと
+	// time-travel / replay が再現しない。固定長コンテナに置き換えること。
+	static_assert(std::is_trivially_copyable_v<T>,
+		"MITIRU_GAME(T): GameMemory は flat POD (trivially_copyable) である必要があります。"
+		"std::vector / std::string / std::deque 等のヒープ所有メンバを mitiru::FixedVec<T,N> / "
+		"mitiru::FixedString<N> (#include <mitiru/core/FixedVec.hpp>) に置き換えてください。"
+		"観測ログ等の非 gameplay state は GameMemory の外 (DLL 内 static) へ。理由: host が "
+		"GameMemory を bytes で memcpy 記録・rewind するため (ADR 0005/0017)。");
+
 	if (api == nullptr || memory == nullptr) { return; }
 	if (*memory == nullptr) { *memory = new T{}; }   // reload 時はホストが既存 pointer を渡す
 	api->version     = kCurrentApiVersion;
@@ -263,12 +273,20 @@ void registerGame(ModuleApi* api, void** memory)
 	api->on_update   = &gameUpdate<T>;
 	api->on_draw     = &gameDraw<T>;
 	api->on_shutdown = &gameShutdown<T>;
-	// flat POD なら録画再生の対象として byte 数を申告する (ADR 0013)。
-	// vector/string 等を持つ非 POD な状態なら申告しない (観測 view.* にフォールバック)。
-	if constexpr (std::is_trivially_copyable_v<T>)
-	{
-		api->memorySize = static_cast<std::uint32_t>(sizeof(T));
-	}
+	// GameMemory は flat POD 保証済み (上の static_assert)。録画再生・time-travel・rewind の
+	// 単一 state 源として byte 数を無条件に申告する (ADR 0013/0017)。
+	api->memorySize       = static_cast<std::uint32_t>(sizeof(T));
+	api->seriesProbeCount = 0;  // MITIRU_GAME_SERIES が観測 probe を上書きする
+}
+
+/// @brief 観測 probe テーブルを ModuleApi に詰める (MITIRU_GAME_SERIES が使う)。
+inline void registerSeriesProbes(ModuleApi* api, const SeriesProbe* probes, std::size_t n)
+{
+	if (api == nullptr || probes == nullptr) { return; }
+	const std::size_t cap = sizeof(api->seriesProbes) / sizeof(api->seriesProbes[0]);
+	const std::size_t count = (n < cap) ? n : cap;
+	for (std::size_t i = 0; i < count; ++i) { api->seriesProbes[i] = probes[i]; }
+	api->seriesProbeCount = static_cast<std::int32_t>(count);
 }
 
 template<class T>
@@ -297,11 +315,33 @@ void unregisterGame(void* memory) { delete static_cast<T*>(memory); }
 		mitiru::module::detail::unregisterGame<GameType>(memory);             \
 	}
 
-/// ゲームを録画再生 (replay-as-test) の対象として明示宣言する。`GameType` が flat POD
-/// (heap ポインタ無し) でなければ分かりやすいメッセージ付きで compile error にする
-/// — 意図せず std::vector 等を足して replay 対象から黙って外れる事故を防ぐ。中身は MITIRU_GAME と同じ。
-#define MITIRU_GAME_RECORDABLE(GameType)                                       \
-	static_assert(std::is_trivially_copyable_v<GameType>,                     \
-		#GameType " を録画 (replay-as-test) 対象にするには flat POD である必要があります"  \
-		" — std::vector / std::string 等を固定長配列に置き換えてください");                 \
-	MITIRU_GAME(GameType)
+/// 旧名の後方互換エイリアス。flat POD 必須は MITIRU_GAME 自体に統合された (ADR 0017) ので
+/// 中身は同じ。新規コードは MITIRU_GAME を使ってよい。
+#define MITIRU_GAME_RECORDABLE(GameType) MITIRU_GAME(GameType)
+
+/// MITIRU_GAME に加えて time-travel 観測 probe を宣言する (ADR 0017)。
+/// GameMemory から double を引く capture 無しの純関数を列挙すると、host が GameMemoryRing の
+/// 各フレームに適用して HP 履歴等の系列を自動生成し、inspector の time-travel graph に出す。
+/// 作者が手で履歴を貯めたり JSON を組んだりする必要はない。
+///
+/// @code
+///   double hpProbe(const void* m){ return static_cast<const MyMem*>(m)->hp; }
+///   MITIRU_GAME_SERIES(MyMem,
+///       { "hp", "HP",       &hpProbe, 35.0, 1 },   // 35 を下抜けたら danger marker
+///       { "x",  "Player X", &xProbe,  0.0,  0 });
+/// @endcode
+#define MITIRU_GAME_SERIES(GameType, ...)                                      \
+	extern "C" MITIRU_GAME_EXPORT                                              \
+	void mitiru_module_load(mitiru::module::ModuleApi* api, void** memory)     \
+	{                                                                         \
+		mitiru::module::detail::registerGame<GameType>(api, memory);          \
+		const mitiru::module::SeriesProbe _mitiruProbes[] = { __VA_ARGS__ };   \
+		mitiru::module::detail::registerSeriesProbes(                         \
+			api, _mitiruProbes,                                               \
+			sizeof(_mitiruProbes) / sizeof(_mitiruProbes[0]));                \
+	}                                                                         \
+	extern "C" MITIRU_GAME_EXPORT                                              \
+	void mitiru_module_unload(void* memory)                                   \
+	{                                                                         \
+		mitiru::module::detail::unregisterGame<GameType>(memory);             \
+	}

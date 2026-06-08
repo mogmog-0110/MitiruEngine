@@ -39,6 +39,7 @@
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/MiniaudioEngine.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
+#include <mitiru/observe/ScrubControlChannel.hpp>  // time-travel click-to-scrub (ADR 0017)
 #include <mitiru/render/SaveScreenshotPng.hpp>
 #include <mitiru/replay/Player.hpp>
 #include <mitiru/replay/Recorder.hpp>
@@ -994,12 +995,35 @@ int main(int argc, char* argv[])
 		             watcher.dllPath.string().c_str());
 	}
 
+	// time-travel scrub: inspector(timetravel.html → tool_cef)が書く scrub command を
+	// 毎フレーム読み、過去フレームの GameMemory へ巻き戻す (ADR 0017、click-to-scrub)。
+	// reader は host 側 = rewind は host の責務 (game DLL は pure を保つ、ADR 0005)。
+	mitiru::observe::ScrubControlReader scrubReader;  // 自プロセス pid 宛 (inspector が host pid に書く)
+	long scrubLastSeq = 0;
+
 	cfg.onFrameStart = [&watcher, watchOn = args.watch,
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
-	                    maxFrames = args.maxFrames, &totalFrame]
+	                    maxFrames = args.maxFrames, &totalFrame,
+	                    &scrubReader, &scrubLastSeq]
 	                   (mitiru::Engine& engine)
 	{
 		pollHostHotkeys(engine);
+
+		// time-travel rewind (ADR 0017): inspector の graph click → scrub command を適用。
+		// 単調 seq で重複適用を防ぐ。次フレームの on_update が復元 state を「現在」として進める。
+		if (auto cmd = scrubReader.poll())
+		{
+			const long seq = cmd->value("seq", 0L);
+			if (seq > scrubLastSeq)
+			{
+				scrubLastSeq = seq;
+				const std::size_t off = static_cast<std::size_t>(cmd->value("scrubTo", 0));
+				if (const std::uint8_t* past = engine.moduleMemoryRingAt(off))
+				{
+					engine.rewindModuleMemory(past, engine.moduleMemorySize());
+				}
+			}
+		}
 
 		// --max-frames (#43): 指定フレーム数に達したら停止を要求 (headless 自動回しの終了条件)。
 		if (maxFrames > 0 && ++totalFrame > maxFrames) { engine.requestStop(); }

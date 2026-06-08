@@ -25,6 +25,8 @@
 #include <mitiru/debug/DebugPrint.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
+#include <mitiru/observe/GameMemoryRing.hpp>
+#include <mitiru/observe/SeriesMarkers.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
 
@@ -147,6 +149,9 @@ MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept
 MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& modulePath)
 {
 	unloadModule();
+	// 旧 layout の GameMemory bytes を破棄する。struct を編集して hot reload すると
+	// sizeof が変わり得るので、古い ring 内容への rewind は復元を壊す (ADR 0017)。
+	m_moduleMemoryRing.clear();
 	return loadModule(modulePath);
 }
 
@@ -216,6 +221,10 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				              m_engine->m_moduleFrameIntents.get());
 			}
 
+			// on_update 後の確定 GameMemory を time-travel ring に記録 (ADR 0017)。
+			// replay の state slot と同一 bytes。観測 (probe 系列) と rewind の単一源。
+			m_engine->recordModuleMemoryFrame();
+
 			m_engine->drainModuleFrameIntents();
 
 			// Replay record hook (axis 4): このフレームの input + 結果の intents を
@@ -273,6 +282,38 @@ MITIRU_INLINE void* mitiru::Engine::moduleMemory() const noexcept
 MITIRU_INLINE std::uint32_t mitiru::Engine::moduleMemorySize() const noexcept
 {
 	return m_moduleMemorySize;
+}
+
+// ── time-travel: GameMemory ring 記録 + rewind (ADR 0017) ──────────────────
+
+MITIRU_INLINE void mitiru::Engine::recordModuleMemoryFrame()
+{
+	if (m_moduleMemorySize == 0 || m_moduleMemory == nullptr) { return; }  // 非 flat POD / 未 load
+	if (m_moduleMemoryRing.frameSize() != m_moduleMemorySize)
+	{
+		m_moduleMemoryRing.configure(m_moduleMemorySize, 300);  // 60fps × 5sec
+	}
+	m_moduleMemoryRing.push(m_moduleMemory, m_moduleMemorySize);
+}
+
+MITIRU_INLINE const std::uint8_t*
+mitiru::Engine::moduleMemoryRingAt(std::size_t offsetFromNewest) const noexcept
+{
+	return m_moduleMemoryRing.at(offsetFromNewest);
+}
+
+MITIRU_INLINE std::size_t mitiru::Engine::moduleMemoryRingSize() const noexcept
+{
+	return m_moduleMemoryRing.size();
+}
+
+MITIRU_INLINE bool
+mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept
+{
+	if (m_moduleMemory == nullptr || bytes == nullptr) { return false; }
+	if (size == 0 || size != m_moduleMemorySize) { return false; }  // size guard (reload 防御)
+	std::memcpy(m_moduleMemory, bytes, size);
+	return true;
 }
 
 // ── Per-frame signal flow helper 群 (private; ModuleAdapter が呼ぶ) ────────
@@ -705,6 +746,69 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				{"state", cef::json{{"masterVolume", masterVolume()},
 				                    {"engine", m_audioEngine ? "active" : "none"},
 				                    {"channels", std::move(channels)}}}};
+
+			// time-travel: GameMemory ring × probe で観測系列を自動生成する (ADR 0017)。
+			// 作者は手で履歴を貯めず probe 関数を 1 つ宣言するだけ。ダウンサンプルせず
+			// 全フレームを送るので、inspector の graph index がそのまま ring offset になり
+			// click-to-scrub → rewind が 1:1 で対応する (SharedSnapshot は temp file 経由なので
+			// FrameIntents の 3968B 制約を受けない)。
+			if (m_moduleApi.seriesProbeCount > 0 && m_moduleMemoryRing.size() >= 2)
+			{
+				const std::size_t frames = m_moduleMemoryRing.size();
+				const std::int32_t probeCap = static_cast<std::int32_t>(
+					sizeof(m_moduleApi.seriesProbes) / sizeof(m_moduleApi.seriesProbes[0]));
+				const std::int32_t pc = std::min(m_moduleApi.seriesProbeCount, probeCap);
+
+				cef::json ttState;
+				ttState["capacity"] = static_cast<int>(frames);
+				cef::json markersJson = cef::json::array();
+				bool markersDone = false;
+
+				for (std::int32_t p = 0; p < pc; ++p)
+				{
+					const auto& probe = m_moduleApi.seriesProbes[p];
+					if (probe.accessor == nullptr || probe.name[0] == '\0') { continue; }
+
+					// ring を oldest → newest に走査し probe を適用 (graph 左端=最古)。
+					std::vector<double> series;
+					series.reserve(frames);
+					for (std::size_t k = 0; k < frames; ++k)
+					{
+						const std::uint8_t* bytes = m_moduleMemoryRing.at(frames - 1 - k);
+						if (bytes != nullptr) { series.push_back(probe.accessor(bytes)); }
+					}
+
+					cef::json arr = cef::json::array();
+					for (const double v : series) { arr.push_back(v); }
+					// html は /History$/ のキーを channel として検出する (例 "hpHistory")。
+					ttState[std::string{probe.name} + "History"] = std::move(arr);
+
+					// 最初の probe から節目 (edge + danger 閾値跨ぎ) を marker にする。
+					if (!markersDone)
+					{
+						observe::MarkerOpts opts;
+						opts.wantEdges  = true;
+						opts.epsilon    = 0.5;
+						opts.maxMarkers = 24;
+						if (probe.hasThreshold)
+						{
+							opts.hasThreshold = true;
+							opts.threshold    = probe.threshold;
+						}
+						for (const auto& m : observe::extractMarkers(series, opts))
+						{
+							markersJson.push_back(cef::json{
+								{"o", m.offsetFromNewest},
+								{"v", m.value},
+								{"k", static_cast<int>(m.kind)}});
+						}
+						markersDone = true;
+					}
+				}
+				ttState["markers"] = std::move(markersJson);
+				out["timetravel"] = cef::json{{"title", "Time travel"}, {"state", std::move(ttState)}};
+			}
+
 			m_moduleInspectorSnapshot->write(out);
 		}
 	}
