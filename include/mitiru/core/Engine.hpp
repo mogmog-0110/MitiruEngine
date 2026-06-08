@@ -384,6 +384,16 @@ public:
 	/// @return 上書きに成功したら true
 	bool rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept;
 
+	/// @brief 反実仮想フォーク (ADR 0018): 現 GameMemory を保存 → 台本 input で on_update を
+	///        frameCount 回 headless 実行 (draw / intents drain なし = 副作用ゼロ) → 結果を
+	///        reflected JSON 文字列で返す → GameMemory を保存値へ復元する。
+	/// @details AI の「この入力を続けたらどうなる?」を実際に試して比較できる。決定論は
+	///          各 inputs[i].rngSeed で制御。GameMemory が単一 flat-POD + on_update が純関数
+	///          だから副作用なく試行→復元できる (ADR 0017 の配当)。reflection 未宣言なら "{}"。
+	/// @param inputs     frameCount 個の InputSnapshot 台本
+	/// @param frameCount 進めるフレーム数
+	[[nodiscard]] std::string branchModuleMemory(const module::InputSnapshot* inputs, int frameCount);
+
 	/// @brief module-mode で engine 所有の CEF StateStore (lazy created)
 	/// @details CEF init 後 + module load 後にのみ non-null。ADR 0005 により
 	///          DLL は直接これに触らず、`FrameIntents::statePushes` 経由で

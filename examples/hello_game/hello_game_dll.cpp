@@ -240,6 +240,13 @@ double playerXProbe(const void* m) { return static_cast<const HelloGameMemory*>(
 
 }  // namespace hello_game
 
+// GameMemory の構造を host に申告する (ADR 0018)。AI が窓を開かず全状態を構造的に読める。
+// 要素 struct を内側から先に: Vec2 → Enemy (Vec2 を含む) → HelloGameMemory。
+MITIRU_REFLECT_STRUCT(hello_game::Vec2, x, y);
+MITIRU_REFLECT_STRUCT(hello_game::Enemy, pos, respawnIn, alive);
+MITIRU_REFLECT(hello_game::HelloGameMemory,
+	player, enemies, hp, remaining, gameOver, hitFlash, hitCount, frame);
+
 // これ 1 つで DLL の入口 + time-travel 観測が出来る。`--inspect timetravel` で HP 履歴を見られる。
 MITIRU_GAME_SERIES(hello_game::HelloGameMemory,
 	{ "hp", "HP",       &hello_game::hpProbe,      static_cast<double>(hello_game::kLowHp), 1 },

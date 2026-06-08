@@ -135,6 +135,11 @@ double hpProbe(const void* m)      { return static_cast<const TtDemo*>(m)->hp; }
 double playerXProbe(const void* m) { return static_cast<const TtDemo*>(m)->playerX; }
 }  // namespace
 
+// GameMemory の全フィールドを host に申告する (ADR 0018)。これで AI が窓を開かず
+// 全状態 (player 座標・HP・全 hazard の位置) を構造的に読める。要素 struct (Hazard) を先に。
+MITIRU_REFLECT_STRUCT(Hazard, x, y, vy);
+MITIRU_REFLECT(TtDemo, playerX, playerY, hazards, hp, hitFlash, spawnIn, frame);
+
 // これ 1 つで DLL の入口 + time-travel 観測が出来る (ADR 0017)。
 // host が GameMemory ring × probe で HP / X 履歴を自動生成し、inspector に出す。
 MITIRU_GAME_SERIES(TtDemo,

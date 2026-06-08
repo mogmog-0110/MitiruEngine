@@ -26,6 +26,7 @@
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
+#include <mitiru/observe/Reflect.hpp>
 #include <mitiru/observe/SeriesMarkers.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
@@ -314,6 +315,39 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 	if (size == 0 || size != m_moduleMemorySize) { return false; }  // size guard (reload 防御)
 	std::memcpy(m_moduleMemory, bytes, size);
 	return true;
+}
+
+MITIRU_INLINE std::string
+mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int frameCount)
+{
+	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0
+	    || m_moduleApi.on_update == nullptr || inputs == nullptr || frameCount <= 0)
+	{
+		return "{}";
+	}
+
+	// 現 GameMemory を退避 (試行後に bit-exact 復元する)。
+	std::vector<std::uint8_t> saved(m_moduleMemorySize);
+	std::memcpy(saved.data(), m_moduleMemory, m_moduleMemorySize);
+
+	// 台本入力で on_update を frameCount 回回す。draw/present/intents drain は一切しない
+	// (= sound/state push 等の副作用が外に出ない)。intents は使い捨て (~50KB なので heap)。
+	auto intents = std::make_unique<module::FrameIntents>();
+	for (int i = 0; i < frameCount; ++i)
+	{
+		std::memset(intents.get(), 0, sizeof(module::FrameIntents));
+		m_moduleApi.on_update(m_moduleMemory, Engine::kFixedDt, &inputs[i], intents.get());
+	}
+
+	// 試行後の state を reflected JSON に。
+	nlohmann::json state = observe::reflectToJson(
+		static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
+		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
+		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+
+	// GameMemory を試行前へ復元 (live は何も変わらなかったことになる)。
+	std::memcpy(m_moduleMemory, saved.data(), m_moduleMemorySize);
+	return state.dump();
 }
 
 // ── Per-frame signal flow helper 群 (private; ModuleAdapter が呼ぶ) ────────
@@ -807,6 +841,18 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				}
 				ttState["markers"] = std::move(markersJson);
 				out["timetravel"] = cef::json{{"title", "Time travel"}, {"state", std::move(ttState)}};
+			}
+
+			// AI Lens: GameMemory 全フィールドを reflection で構造化 (ADR 0018)。
+			// game が MITIRU_REFLECT を宣言してれば、AI が窓を開かず全状態を構造的に読める。
+			if (m_moduleApi.reflectFieldCount > 0 && m_moduleMemory != nullptr && m_moduleMemorySize > 0)
+			{
+				out["gameMemory"] = cef::json{
+					{"title", "Game memory"},
+					{"state", observe::reflectToJson(
+						static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
+						m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
+						m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount)}};
 			}
 
 			m_moduleInspectorSnapshot->write(out);

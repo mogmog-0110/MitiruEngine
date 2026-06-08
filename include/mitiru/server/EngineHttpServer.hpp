@@ -125,6 +125,14 @@ struct EngineCallbacks
 	std::function<float()>          runtimeGetTimeScale;
 	std::function<bool()>           runtimeToggleLofi; ///< 戻り値 = toggle 後の lofi enabled
 	std::function<bool()>           runtimeIsLofiEnabled;
+
+	// ── AI Lens (ADR 0018) ─────────────────────────────────────────
+	// reflected GameMemory を構造的に read / diff / what-if する AI 向け面。
+	std::function<std::string()>                       aiState;     ///< 現フレームの reflected JSON
+	std::function<std::string(int)>                    aiStateAt;   ///< ring N フレーム前の reflected JSON
+	std::function<std::string(int, int)>               aiStateDiff; ///< reflectDiff(ring.at(from), at(to))
+	std::function<std::string(const std::string&, int)> aiBranch;   ///< (keysCsv, frames) → 反実仮想結果
+	std::function<int()>                               aiRingSize;  ///< time-travel ring の保持フレーム数
 };
 
 /// @brief エンジン組み込みHTTP APIサーバー
@@ -341,6 +349,9 @@ private:
 			if (path == "/api/debug/errors")      { handleGetErrors(req, resp); return; }
 			if (path == "/api/debug/log")         { handleGetLog(req, resp); return; }
 			if (path == "/api/project/info")      { handleProjectInfo(req, resp); return; }
+			if (path == "/api/ai/state")          { handleAiState(req, resp); return; }
+			if (path == "/api/ai/diff")           { handleAiDiff(req, resp); return; }
+			if (path == "/api/ai/ringsize")       { handleAiRingSize(req, resp); return; }
 
 			if (path.rfind("/api/commands/", 0) == 0 && path.size() > 14)
 			{
@@ -365,6 +376,7 @@ private:
 			if (path == "/api/editor/focus")         { handleFocusNode(req, resp); return; }
 			if (path == "/api/game/run")             { handleRunGame(req, resp); return; }
 			if (path == "/api/game/stop")            { handleStopGame(req, resp); return; }
+			if (path == "/api/ai/branch")            { handleAiBranch(req, resp); return; }
 
 			if (path.rfind("/api/scene/node/", 0) == 0 && path.find("/trait") != std::string::npos
 				&& path.find("/trait/") == std::string::npos)
@@ -426,6 +438,59 @@ private:
 		json += "}";
 		resp.status = 200;
 		resp.setBody(json);
+	}
+
+	// ── AI Lens (ADR 0018) ────────────────────────────────────────
+	// reflected GameMemory を構造的に read / diff / what-if する AI 向け面。
+	// callback が未配線 (game に MITIRU_REFLECT が無い等) なら 503。
+
+	void handleAiState(const HttpRequest& req, HttpResponse& resp)
+	{
+		const auto frame = observe::getParam(req.params, "frame");
+		if (frame.has_value())  // 過去フレーム (ring offset)
+		{
+			if (!m_callbacks.aiStateAt)
+			{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired"})"); return; }
+			int off = 0;
+			try { off = std::stoi(*frame); }
+			catch (...) { resp.status = 400; resp.setBody(R"({"error":"frame must be an integer"})"); return; }
+			resp.status = 200; resp.setBody(m_callbacks.aiStateAt(off));
+			return;
+		}
+		if (!m_callbacks.aiState)
+		{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
+		resp.status = 200; resp.setBody(m_callbacks.aiState());
+	}
+
+	void handleAiDiff(const HttpRequest& req, HttpResponse& resp)
+	{
+		if (!m_callbacks.aiStateDiff)
+		{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired"})"); return; }
+		int from = 1, to = 0;  // 既定: 1 フレーム前 → 現在
+		try {
+			if (auto f = observe::getParam(req.params, "from"); f.has_value()) { from = std::stoi(*f); }
+			if (auto t = observe::getParam(req.params, "to");   t.has_value()) { to   = std::stoi(*t); }
+		} catch (...) { resp.status = 400; resp.setBody(R"({"error":"from/to must be integers"})"); return; }
+		resp.status = 200; resp.setBody(m_callbacks.aiStateDiff(from, to));
+	}
+
+	void handleAiRingSize(const HttpRequest&, HttpResponse& resp)
+	{
+		const int n = m_callbacks.aiRingSize ? m_callbacks.aiRingSize() : 0;
+		resp.status = 200; resp.setBody("{\"ringSize\":" + std::to_string(n) + "}");
+	}
+
+	void handleAiBranch(const HttpRequest& req, HttpResponse& resp)
+	{
+		if (!m_callbacks.aiBranch)
+		{ resp.status = 503; resp.setBody(R"({"error":"branch not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
+		const auto keys = detail::extractJsonString(req.body, "keys", "");
+		int frames = 30;
+		try { frames = std::stoi(detail::extractJsonString(req.body, "frames", "30")); }
+		catch (...) { frames = 30; }
+		if (frames < 1)   { frames = 1; }
+		if (frames > 600) { frames = 600; }  // 上限 10 秒 @60fps
+		resp.status = 200; resp.setBody(m_callbacks.aiBranch(keys, frames));
 	}
 
 	// ── コントロールパネル HTML (ADR 0011 phase 2) ─────────────────

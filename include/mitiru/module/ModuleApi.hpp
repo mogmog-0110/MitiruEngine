@@ -39,6 +39,8 @@
 #include <cstdint>
 #include <type_traits>
 
+#include <mitiru/module/Reflection.hpp>  // FieldDescriptor / ReflectSchema (ADR 0018)
+
 // Forward declare engine types so the header is light. Concrete definitions
 // come from the engine when the DLL links against `Mitiru::mitiru`.
 namespace mitiru { class Screen; }
@@ -75,7 +77,11 @@ namespace mitiru::module
 ///     このスカラーを引く純関数」を申告し、host が GameMemory ring に適用して time-travel の
 ///     観測系列 (HP 履歴など) を自動生成する。手動 Snapshot push を廃し、観測も rewind も
 ///     replay も単一の GameMemory 源に統一する。末尾追記 + zero-init で v≤10 module は後方安全。
-constexpr std::uint32_t kCurrentApiVersion = 11;
+///   - v12: ModuleApi 末尾に reflectFields[] + reflectSchemas[] を追加 (ADR 0018)。DLL が
+///     GameMemory の全フィールドの名前・型・オフセットを申告し、host が GameMemory バイト列
+///     (現フレーム + ring の過去) を構造化 JSON 化して AI に全状態を開放する (probe の拡張)。
+///     末尾追記 + zero-init で v≤11 module は後方安全 (reflectFieldCount=0 = 非対応)。
+constexpr std::uint32_t kCurrentApiVersion = 12;
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
@@ -471,6 +477,14 @@ struct ModuleApi
 	///        (zero-init で seriesProbeCount=0 = 観測なし)。`MITIRU_GAME_SERIES` が埋める。
 	std::int32_t seriesProbeCount;
 	SeriesProbe  seriesProbes[8];
+
+	/// @brief GameMemory リフレクション記述表 (ABI v12、ADR 0018)。末尾追記で v≤11 後方安全
+	///        (zero-init で reflectFieldCount=0 = 非対応)。`MITIRU_REFLECT` が埋める。host が
+	///        GameMemory バイト列を構造化 JSON 化して AI に全状態を開放する。
+	std::int32_t  reflectFieldCount;
+	FieldDescriptor reflectFields[64];   ///< トップ GameMemory のフィールド
+	std::int32_t  reflectSchemaCount;
+	ReflectSchema reflectSchemas[8];     ///< FixedVec<struct,N> の要素型スキーマ (1 段ネスト)
 };
 
 /// @brief DLL が export すべき load 関数のシグネチャ

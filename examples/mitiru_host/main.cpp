@@ -887,12 +887,22 @@ int main(int argc, char* argv[])
 		cfg.enableCef = false;
 		cfg.deterministic = true;  // 固定 clock で run 間を決定的に (1 host frame = 1 fixed-step)
 	}
-	// EngineHttpServer (ADR 0011): --http-port > 0 か --console で HTTP listen を開始。
-	// 127.0.0.1 限定。--console は既定ブラウザで control panel HTML を自動表示する (phase 3)。
-	if (args.httpPort > 0 || args.console)
+	// EngineHttpServer (ADR 0011 + AI Lens ADR 0018): --http-port > 0 / --console / 環境変数
+	// MITIRU_AI が立ってれば HTTP listen を開始 (127.0.0.1 限定)。MITIRU_AI は AI が zero-config で
+	// /api/ai/state・/diff・/branch を叩けるようにする opt-in (port は MITIRU_AI_PORT、既定 8090)。
+	const char* aiEnv = std::getenv("MITIRU_AI");
+	const bool  aiOptIn = (aiEnv != nullptr && aiEnv[0] != '\0' && std::string{aiEnv} != "0");
+	if (args.httpPort > 0 || args.console || aiOptIn)
 	{
 		cfg.enableHttpApi = true;
 		cfg.httpApiPort   = (args.httpPort > 0) ? args.httpPort : 8090;
+		if (aiOptIn && args.httpPort <= 0)
+		{
+			if (const char* aiPort = std::getenv("MITIRU_AI_PORT"); aiPort != nullptr && aiPort[0] != '\0')
+			{
+				try { cfg.httpApiPort = std::stoi(aiPort); } catch (...) { /* 既定 8090 のまま */ }
+			}
+		}
 	}
 #ifdef _WIN32
 	if (args.console)

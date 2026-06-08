@@ -248,6 +248,10 @@ inline constexpr bool kHasGameEntry =
 	requires(T& g, float dt) { g.update(dt); } ||
 	requires(T& g, mitiru::Screen& s) { g.draw(s); };
 
+/// @brief GameMemory リフレクション記述子 (ADR 0018)。`MITIRU_REFLECT` が特殊化する。
+///        既定は no-op (reflection 非宣言 game は reflectFieldCount=0 のまま)。
+template<class T> struct ReflectionOf { static void fillApi(ModuleApi*) noexcept {} };
+
 /// `mitiru_module_load` の中身。状態を確保し callback table を埋める。
 template<class T>
 void registerGame(ModuleApi* api, void** memory)
@@ -275,8 +279,11 @@ void registerGame(ModuleApi* api, void** memory)
 	api->on_shutdown = &gameShutdown<T>;
 	// GameMemory は flat POD 保証済み (上の static_assert)。録画再生・time-travel・rewind の
 	// 単一 state 源として byte 数を無条件に申告する (ADR 0013/0017)。
-	api->memorySize       = static_cast<std::uint32_t>(sizeof(T));
-	api->seriesProbeCount = 0;  // MITIRU_GAME_SERIES が観測 probe を上書きする
+	api->memorySize        = static_cast<std::uint32_t>(sizeof(T));
+	api->seriesProbeCount  = 0;  // MITIRU_GAME_SERIES が観測 probe を上書きする
+	api->reflectFieldCount = 0;  // MITIRU_REFLECT が reflection 記述子を上書きする
+	api->reflectSchemaCount = 0;
+	ReflectionOf<T>::fillApi(api);  // MITIRU_REFLECT 済みなら GameMemory 構造を申告 (ADR 0018)
 }
 
 /// @brief 観測 probe テーブルを ModuleApi に詰める (MITIRU_GAME_SERIES が使う)。
@@ -287,6 +294,25 @@ inline void registerSeriesProbes(ModuleApi* api, const SeriesProbe* probes, std:
 	const std::size_t count = (n < cap) ? n : cap;
 	for (std::size_t i = 0; i < count; ++i) { api->seriesProbes[i] = probes[i]; }
 	api->seriesProbeCount = static_cast<std::int32_t>(count);
+}
+
+/// @brief reflection 記述子表 + 登録簿の要素 schema を ModuleApi に詰める (MITIRU_REFLECT が使う)。
+inline void registerReflection(ModuleApi* api, const FieldDescriptor* fields, std::int32_t n)
+{
+	if (api == nullptr || fields == nullptr) { return; }
+	const std::int32_t fcap =
+		static_cast<std::int32_t>(sizeof(api->reflectFields) / sizeof(api->reflectFields[0]));
+	const std::int32_t fc = (n < fcap) ? n : fcap;
+	for (std::int32_t i = 0; i < fc; ++i) { api->reflectFields[i] = fields[i]; }
+	api->reflectFieldCount = fc;
+
+	const auto&        reg  = ::mitiru::module::reflectSchemaRegistry();
+	const std::int32_t scap =
+		static_cast<std::int32_t>(sizeof(api->reflectSchemas) / sizeof(api->reflectSchemas[0]));
+	std::int32_t sc = static_cast<std::int32_t>(reg.size());
+	if (sc > scap) { sc = scap; }
+	for (std::int32_t i = 0; i < sc; ++i) { api->reflectSchemas[i] = reg[static_cast<std::size_t>(i)]; }
+	api->reflectSchemaCount = sc;
 }
 
 template<class T>
@@ -345,3 +371,75 @@ void unregisterGame(void* memory) { delete static_cast<T*>(memory); }
 	{                                                                         \
 		mitiru::module::detail::unregisterGame<GameType>(memory);             \
 	}
+
+// ── GameMemory リフレクション (ADR 0018) ──────────────────────────────────
+// MITIRU_REFLECT(Type, field...) で GameMemory の全フィールドを host に申告する。
+// host が GameMemory バイト列 (現フレーム + time-travel ring の過去) を構造化 JSON 化し、
+// AI が全状態を読めるようになる。MITIRU_GAME / MITIRU_GAME_SERIES と併用する。
+//
+//   MITIRU_REFLECT_STRUCT(ns::Enemy, x, y, alive);   // FixedVec の要素 struct を先に
+//   MITIRU_REFLECT(ns::Memory, player, hp, enemies); // GameMemory 本体 (全部グローバル scope)
+//
+// 内部: __VA_ARGS__ の各フィールド名に makeFieldDescriptor<decltype(member)>(#member, offsetof)
+// を適用する bounded FOR_EACH (最大 16 フィールド)。
+
+#define MITIRU_RFL_CAT_(a, b) a##b
+#define MITIRU_RFL_CAT(a, b)  MITIRU_RFL_CAT_(a, b)
+#define MITIRU_RFL_EXPAND(x)  x
+
+// 1 メンバ → FieldDescriptor (型は decltype、offset は offsetof で自動導出)
+#define MITIRU_RFL_MK(Type, member)                                            \
+	::mitiru::module::makeFieldDescriptor<                                     \
+		std::remove_reference_t<decltype(((Type*)nullptr)->member)>>(          \
+		#member, static_cast<std::uint32_t>(offsetof(Type, member)))
+
+// bounded FOR_EACH: M(T,f1), M(T,f2), ... をカンマ区切りで展開 (最大 16)
+#define MITIRU_FE_1(M, T, a)       M(T, a)
+#define MITIRU_FE_2(M, T, a, ...)  M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_1(M, T, __VA_ARGS__))
+#define MITIRU_FE_3(M, T, a, ...)  M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_2(M, T, __VA_ARGS__))
+#define MITIRU_FE_4(M, T, a, ...)  M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_3(M, T, __VA_ARGS__))
+#define MITIRU_FE_5(M, T, a, ...)  M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_4(M, T, __VA_ARGS__))
+#define MITIRU_FE_6(M, T, a, ...)  M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_5(M, T, __VA_ARGS__))
+#define MITIRU_FE_7(M, T, a, ...)  M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_6(M, T, __VA_ARGS__))
+#define MITIRU_FE_8(M, T, a, ...)  M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_7(M, T, __VA_ARGS__))
+#define MITIRU_FE_9(M, T, a, ...)  M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_8(M, T, __VA_ARGS__))
+#define MITIRU_FE_10(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_9(M, T, __VA_ARGS__))
+#define MITIRU_FE_11(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_10(M, T, __VA_ARGS__))
+#define MITIRU_FE_12(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_11(M, T, __VA_ARGS__))
+#define MITIRU_FE_13(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_12(M, T, __VA_ARGS__))
+#define MITIRU_FE_14(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_13(M, T, __VA_ARGS__))
+#define MITIRU_FE_15(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_14(M, T, __VA_ARGS__))
+#define MITIRU_FE_16(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_15(M, T, __VA_ARGS__))
+
+#define MITIRU_FE_PICK(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,NAME,...) NAME
+#define MITIRU_FOR_EACH(M, T, ...)                                             \
+	MITIRU_RFL_EXPAND(MITIRU_FE_PICK(__VA_ARGS__,                              \
+		MITIRU_FE_16, MITIRU_FE_15, MITIRU_FE_14, MITIRU_FE_13, MITIRU_FE_12,  \
+		MITIRU_FE_11, MITIRU_FE_10, MITIRU_FE_9, MITIRU_FE_8, MITIRU_FE_7,     \
+		MITIRU_FE_6, MITIRU_FE_5, MITIRU_FE_4, MITIRU_FE_3, MITIRU_FE_2,       \
+		MITIRU_FE_1)(M, T, __VA_ARGS__))
+
+/// FixedVec<Struct,N> の要素 struct を先に宣言する (host が要素を 1 段ネスト JSON 化できる)。
+/// グローバル scope で、型は完全修飾名で書くこと (例 MITIRU_REFLECT_STRUCT(ns::Enemy, x, y))。
+#define MITIRU_REFLECT_STRUCT(Type, ...)                                       \
+	namespace mitiru { namespace module {                                      \
+		template<> struct ReflectName<Type> {                                  \
+			static constexpr const char* value = #Type; };                    \
+	} }                                                                        \
+	static const bool MITIRU_RFL_CAT(_mitiruSchema_, __COUNTER__) =            \
+		::mitiru::module::registerSchema(#Type,                               \
+			{ MITIRU_FOR_EACH(MITIRU_RFL_MK, Type, __VA_ARGS__) })
+
+/// GameMemory のフィールドを host に申告する。グローバル scope、完全修飾名で。
+#define MITIRU_REFLECT(Type, ...)                                              \
+	namespace mitiru { namespace module { namespace detail {                   \
+		template<> struct ReflectionOf<Type> {                                 \
+			static void fillApi(::mitiru::module::ModuleApi* api) {            \
+				const ::mitiru::module::FieldDescriptor _mitiruFields[] = {    \
+					MITIRU_FOR_EACH(MITIRU_RFL_MK, Type, __VA_ARGS__) };       \
+				::mitiru::module::detail::registerReflection(api, _mitiruFields,\
+					static_cast<std::int32_t>(                                \
+						sizeof(_mitiruFields) / sizeof(_mitiruFields[0])));   \
+			}                                                                  \
+		};                                                                     \
+	} } }
