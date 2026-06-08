@@ -2,6 +2,8 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/hybrid-runtime/</loc>
@@ -10,11 +12,15 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/bridge-api/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-adapter/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/architecture/</loc>
   </url><url>
@@ -22,101 +28,245 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-animation/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/profiling/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-asset/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/save-load/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-assets/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-audio/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-bridge/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/</loc>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-bridge-detail/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-camera/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/guides/scope/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-cef/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-cef-bridges/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-control/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-core/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-data/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-debug/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-dev/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-ecs/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-effects/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-fsm/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-game/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-geom/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-gfx/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-gfx-dx12/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-i18n/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-input/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-juice/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-keys/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-live2d/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-math/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-module/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-module-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-narrative/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-network/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-observe/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-physics/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-physics2d/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-physics3d/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-platform/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-render/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-render-dx12/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-render-lofi/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-render-pixel/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-replay/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-resource/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-save/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-scene/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-screen_detail/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-script/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-server/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-server-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-sprite/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-time/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-time-detail/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-ui/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-ui-layoutpresets/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-util/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-validate/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-vfs/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-vn/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/api/mitiru-world/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/categories/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/en/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/</loc>
   </url><url>

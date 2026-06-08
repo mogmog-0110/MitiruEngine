@@ -100,7 +100,7 @@
       <div class="api__row"><code>void draw(Screen&amp; s)</code><span>描画</span></div>
     </div>
     <div class="callout">
-      <p><strong>なぜ <code>struct</code>？</strong> エンジンはこのゲーム状態を<strong>まるごとコピーして保存／復元</strong>します（ホットリロード・タイムトラベル・録画）。だからトップの状態は「ただのデータ」── 仮想関数やポインタを持たない素直な型 ── であってほしい。中で使う部品（敵・弾など）は普通に <code>class</code> で書いて構いません。トップだけ素直に保つ住み分けです。</p>
+      <p><strong>なぜ <code>struct</code>？</strong> エンジンはこのゲーム状態を<strong>まるごとコピーして保存／復元</strong>します（ホットリロード・タイムトラベル・録画）。だからトップの状態は「ただのデータ」── 仮想関数やポインタを持たない flat POD ── である<strong>必要があります</strong>（守られているか <code>MITIRU_GAME</code> がコンパイル時に確認）。可変長は <code>mitiru::FixedVec&lt;T,N&gt;</code> を使い、中で使う部品（敵・弾など）は普通に <code>class</code> で書いて構いません。トップだけ素直に保つ住み分けです。</p>
     </div>
   </div>
 </section>
@@ -236,7 +236,7 @@ s.drawGroup({px, py}, spinDeg, [&amp;](<span class="t">Screen</span>&amp; g) {
     }
 };</pre></div>
     <p class="kv"><code>render::Texture</code> には <code>solid(w,h,col)</code>（単色）や <code>checker(...)</code>（市松）もあり、画像が無くても試せます。<strong>ピクセルを自前で作って</strong>表示したいときは <code>s.drawPixelGrid({x,y,w,h}, pixels, pw, ph)</code> ── RGBA8 のバッファをそのまま 1 枚の絵として描けます（自作ラスタライザや手続き的生成向け）。</p>
-    <div class="callout"><p><strong>flat POD と画像の両立。</strong> <code>Texture</code> をメンバに持つと状態は flat POD ではなくなり、録画リプレイ（→ <a href="#random">⑨</a>）の対象から外れます。録画も画像も両方欲しいときは、画像はグローバル／別オブジェクトに分け、トップの <code>struct</code> には座標やフレーム番号など「数値だけ」を残します。</p></div>
+    <div class="callout"><p><strong>flat POD と画像の両立。</strong> <code>Texture</code> をトップの <code>struct</code> のメンバに持つと flat POD ではなくなり、<code>MITIRU_GAME</code> が<strong>コンパイルエラー</strong>にします（録画・タイムトラベルの単一 state を守るため → <a href="#random">⑨</a>）。画像はグローバル／別オブジェクトに分け、トップの <code>struct</code> には座標やフレーム番号など「数値だけ」を残します。</p></div>
   </div>
 </section>
 
@@ -289,9 +289,8 @@ s.drawGroup({px, py}, spinDeg, [&amp;](<span class="t">Screen</span>&amp; g) {
 <span class="k">int</span>   dmg   = rng.nextInt(10, 50);  <span class="c">// 10〜50 の整数</span>
 <span class="k">float</span> angle = rng.nextFloat(0, 6.28f);
 <span class="k">bool</span>  crit  = rng.nextBool(0.15f);  <span class="c">// 15% で true</span></pre></div>
-    <p class="kv">ゲーム状態が flat POD（<code>std::vector</code> / <code>std::string</code> を持たず固定長配列だけ）なら、<strong>入力と種を記録して同じプレイを完全再生</strong>できます ── リプレイがそのまま<strong>回帰テスト</strong>になります。明示するには:</p>
-    <div class="code"><span class="code__lang">cpp</span><pre><span class="t">MITIRU_GAME_RECORDABLE</span>(MyGame)   <span class="c">// flat POD でなければコンパイルエラーで知らせる</span></pre></div>
-    <p class="kv">録画は <code>mitiru run --record</code>、再生は <code>mitiru replay</code>。1 フレームずつ巻き戻して見るには <a href="#tools">⑬</a> の <code>replay</code> / <code>timetravel</code> 窓を使います。</p>
+    <p class="kv">ゲーム状態（トップの <code>struct</code>）は <strong>flat POD 必須</strong>です ── <code>std::vector</code> / <code>std::string</code> の代わりに <code>mitiru::FixedVec&lt;T,N&gt;</code> / <code>FixedString&lt;N&gt;</code> を使います。<code>MITIRU_GAME(MyGame)</code> がこれをコンパイル時に確認するので、うっかりポインタを混ぜたら<strong>その場でエラー</strong>になり、録画・タイムトラベルから黙って外れることがありません。これで<strong>入力と種を記録して同じプレイを完全再生</strong>でき ── リプレイがそのまま<strong>回帰テスト</strong>になります。</p>
+    <p class="kv">録画は <code>mitiru run --record</code>、再生は <code>mitiru replay</code>。過去フレームを<strong>グラフのクリックでその瞬間に巻き戻す</strong>には <a href="#tools">⑬</a> の <code>timetravel</code> 窓を使います（<code>--inspect timetravel</code>）。</p>
   </div>
 </section>
 

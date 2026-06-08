@@ -1,1 +1,3 @@
 User-agent: *
+Allow: /
+Sitemap: https://mogmog-0110.github.io/MitiruEngine/sitemap.xml

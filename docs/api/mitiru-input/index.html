@@ -423,6 +423,13 @@
           </li>
         
           <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"
+               >
+              mitiru::camera
+            </a>
+          </li>
+        
+          <li>
             <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"
                >
               mitiru::cef
@@ -465,6 +472,13 @@
           </li>
         
           <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"
+               >
+              mitiru::dev
+            </a>
+          </li>
+        
+          <li>
             <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"
                >
               mitiru::ecs
@@ -489,6 +503,13 @@
             <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"
                >
               mitiru::game
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"
+               >
+              mitiru::geom
             </a>
           </li>
         
@@ -521,6 +542,20 @@
           </li>
         
           <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"
+               >
+              mitiru::juice
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"
+               >
+              mitiru::keys
+            </a>
+          </li>
+        
+          <li>
             <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"
                >
               mitiru::live2d
@@ -531,6 +566,20 @@
             <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"
                >
               mitiru::math
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"
+               >
+              mitiru::module
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"
+               >
+              mitiru::module::detail
             </a>
           </li>
         
@@ -598,9 +647,37 @@
           </li>
         
           <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"
+               >
+              mitiru::render::lofi
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"
+               >
+              mitiru::render::pixel
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"
+               >
+              mitiru::replay
+            </a>
+          </li>
+        
+          <li>
             <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"
                >
               mitiru::resource
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"
+               >
+              mitiru::save
             </a>
           </li>
         
@@ -615,6 +692,13 @@
             <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"
                >
               mitiru::screen_detail
+            </a>
+          </li>
+        
+          <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"
+               >
+              mitiru::script
             </a>
           </li>
         
@@ -682,6 +766,13 @@
           </li>
         
           <li>
+            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"
+               >
+              mitiru::vfs
+            </a>
+          </li>
+        
+          <li>
             <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"
                >
               mitiru::vn
@@ -713,6 +804,9 @@
 <tr><td><a href="#struct-stringtransparenthash"><code>StringTransparentHash</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-bridgeactionrouter"><code>BridgeActionRouter</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#class-bridgeinputadapter"><code>BridgeInputAdapter</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#struct-bind"><code>Bind</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-inputbindings"><code>InputBindings</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-sdlgamepadinput"><code>SdlGamepadInput</code></a></td><td>class</td><td>19</td></tr>
 </tbody></table>
 <details class="api-class" id="struct-stringtransparenthash" open>
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StringTransparentHash</code> <span class="api-class__count">4</span></summary>
@@ -748,6 +842,50 @@
 <div class="api-method"><code>BridgeInputAdapter&amp; operator=(BridgeInputAdapter&amp;&amp;) = delete</code></div>
 <div class="api-method"><code>void mapSignalToAction(std::string signalName, std::string actionName)</code></div>
 <div class="api-method"><code>void unmapSignal(std::string_view signalName)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bind" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Bind</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>enum `Kind : std::uint8_t` { None = 0, GamepadButton, GamepadAxis, Key }</code></div>
+<div class="api-method"><code>Kind kind = None</code></div>
+<div class="api-method"><code>std::uint32_t value = 0</code></div>
+<div class="api-method"><code>std::int8_t axisSign = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-inputbindings" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">InputBindings</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void add(std::string action, Bind b)</code></div>
+<div class="api-method"><code>void clear(std::string_view action)</code></div>
+<div class="api-method"><code>void clearAll()</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;Bind&gt;* bindsOf(std::string_view action) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isPressed(const mitiru::module::InputSnapshot&amp; s, std::string_view action) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isJustPressed(const mitiru::module::InputSnapshot&amp; s, std::string_view action) const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-sdlgamepadinput" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SdlGamepadInput</code> <span class="api-class__count">19</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>~SdlGamepadInput()</code></div>
+<div class="api-method"><code>bool init()</code></div>
+<div class="api-method"><code>void shutdown()</code></div>
+<div class="api-method"><code>void update()</code></div>
+<div class="api-method"><code>void endTick() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool connected() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t buttonsDown() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t buttonsJustPressed() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t buttonsJustReleased() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float axis(int axisIndex) const noexcept</code></div>
+<div class="api-method"><code>bool init() noexcept</code></div>
+<div class="api-method"><code>void shutdown() noexcept</code></div>
+<div class="api-method"><code>void update() noexcept</code></div>
+<div class="api-method"><code>void endTick() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool connected() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t buttonsDown() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t buttonsJustPressed() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t buttonsJustReleased() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float axis(int) const noexcept</code></div>
 </div>
 </details>
 <hr>
