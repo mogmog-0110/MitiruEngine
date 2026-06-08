@@ -5,23 +5,24 @@
 <title>scene tree</title>
 <link rel="stylesheet" href="tool.css">
 <style>
-  .tree{ margin-top:8px; padding:8px 10px; background:#fff; box-shadow:var(--sink);
-         font:400 14px/1.0 "Consolas",ui-monospace,"Courier New",monospace; }
+  .tree{ margin-top:8px; padding:8px 10px; background:#ffffff; box-shadow:none;
+         border:1px solid #e6e7ea;
+         font:400 14px/1.0 'IBM Plex Mono','Consolas',monospace; }
   .row{ display:flex; align-items:center; height:24px; white-space:nowrap; }
-  /* インデント + 点線コネクタ (Win95 Explorer 風) */
+  /* インデント + 罫線コネクタ (極細グレー罫) */
   .indent{ width:18px; height:24px; flex:0 0 18px; }
-  .indent.line{ background-image:linear-gradient(#b8b8b8 1px, transparent 1px);
+  .indent.line{ background-image:linear-gradient(#c9cbd0 1px, transparent 1px);
                 background-size:1px 2px; background-position:9px 0; background-repeat:repeat-y; }
   /* [+]/[-] 開閉ボックス */
   .tog{ width:15px; height:15px; flex:0 0 15px; margin-right:5px; cursor:pointer;
         display:flex; align-items:center; justify-content:center;
-        background:#fff; border:1px solid #808080; font-size:11px; line-height:1; color:#000;
-        font-family:monospace; user-select:none; }
+        background:#ffffff; border:1px solid #c9cbd0; font-size:11px; line-height:1; color:#1a1c1f;
+        font-family:'IBM Plex Mono','Consolas',monospace; user-select:none; }
   .tog.leaf{ border:0; background:transparent; cursor:default; }
-  .key{ color:#000; font-weight:700; }
-  .colon{ color:#888; margin:0 5px; }
-  .val{ color:#000080; font-weight:700; }
-  .obj-hint{ color:#888; margin-left:7px; font-weight:400; }
+  .key{ color:#1a1c1f; font-weight:700; }
+  .colon{ color:#999da4; margin:0 5px; }
+  .val{ color:#1a1c1f; font-weight:600; }
+  .obj-hint{ color:#999da4; margin-left:7px; font-weight:400; }
   .children.collapsed{ display:none; }
 </style>
 </head>

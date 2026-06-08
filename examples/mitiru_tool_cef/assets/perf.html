@@ -30,10 +30,10 @@
     const x=c.getContext('2d'); x.scale(dpr,dpr); x.clearRect(0,0,w,h);
     let mx=75; for(const v of hist) mx=Math.max(mx,v*1.1);
     const by=h-(60/mx)*h;
-    x.strokeStyle='#d4d4da'; x.lineWidth=1; x.beginPath(); x.moveTo(0,by); x.lineTo(w,by); x.stroke();
-    x.fillStyle='#a0a0a8'; x.font='12px -apple-system,Segoe UI,sans-serif'; x.fillText('60',w-22,by-6);
+    x.strokeStyle='#e6e7ea'; x.lineWidth=1; x.beginPath(); x.moveTo(0,by); x.lineTo(w,by); x.stroke();
+    x.fillStyle='#999da4'; x.font="12px 'IBM Plex Mono','Consolas',monospace"; x.fillText('60',w-22,by-6);
     if(hist.length>=2){
-      x.strokeStyle='#000080'; x.lineWidth=2; x.lineJoin='round'; x.beginPath();
+      x.strokeStyle='#1a1c1f'; x.lineWidth=2; x.lineJoin='round'; x.beginPath();
       for(let i=0;i<hist.length;i++){ const px=w*i/(CAP-1), py=h-(hist[i]/mx)*h; i?x.lineTo(px,py):x.moveTo(px,py); }
       x.stroke();
     }

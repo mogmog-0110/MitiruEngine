@@ -5,18 +5,22 @@
 <title>time travel</title>
 <link rel="stylesheet" href="tool.css">
 <style>
-  .frame{ margin-top:16px; font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; }
-  .frame small{ font-size:14px; font-weight:500; color:var(--muted); margin-left:8px; }
-  .scrub{ margin-top:14px; height:16px; background:#fff; box-shadow:var(--sink);
-          position:relative; cursor:pointer; }
-  .scrub .cur{ position:absolute; top:0; width:5px; height:16px; background:var(--accent); }
+  /* テクニカルノート再テーマ: 色は ink(#1a1c1f)/sub(#6e7077)/faint(#999da4)/rule-soft(#e6e7ea) のみ。
+     彩度色・影・グラデ・ベベルは使わない。等幅は --mono (IBM Plex Mono)。 */
+  .frame{ margin-top:16px; font-family:var(--mono); font-size:22px; font-weight:600;
+          color:var(--ink); font-variant-numeric:tabular-nums; }
+  .frame small{ font-family:var(--mono); font-size:14px; font-weight:400; color:var(--faint); margin-left:8px; }
+  .scrub{ margin-top:14px; height:16px; background:var(--wash); box-shadow:none;
+          border:1px solid var(--rule-soft); position:relative; cursor:pointer; }
+  .scrub .cur{ position:absolute; top:0; width:3px; height:16px; background:var(--ink); }
   .chan{ margin-top:18px; }
-  .chan h3{ font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;
-            display:flex; justify-content:space-between; }
+  .chan h3{ font-family:var(--mono); font-size:13px; color:var(--faint); text-transform:uppercase;
+            letter-spacing:.5px; display:flex; justify-content:space-between; }
   .chan h3 b{ color:var(--ink); font-variant-numeric:tabular-nums; }
-  .chan .panel{ margin-top:6px; padding:8px; }
+  .chan .panel{ margin-top:6px; padding:8px; background:var(--well); border:1px solid var(--rule-soft); }
   canvas{ display:block; width:100%; height:64px; }
-  .hint{ position:fixed; left:20px; right:20px; bottom:16px; color:var(--muted); font-size:13px; }
+  .hint{ position:fixed; left:20px; right:20px; bottom:16px; font-family:var(--mono);
+         color:var(--faint); font-size:13px; }
   .note{ margin-top:30px; color:var(--muted); font-size:13px; line-height:1.6; }
 </style>
 </head>
@@ -41,12 +45,16 @@
     x.clearRect(0,0,w,h);
     if(!arr.length) return;
     let mn=Math.min(...arr), mx=Math.max(...arr); if(mx===mn){mx=mn+1;}
-    x.strokeStyle='#000080'; x.lineWidth=2; x.lineJoin='round'; x.beginPath();
+    // データ線: ink (彩度色なし)。等幅 font は canvas に文字描画が無いので未設定。
+    x.font="11px 'IBM Plex Mono','Consolas',monospace";
+    x.strokeStyle='#1a1c1f'; x.lineWidth=2; x.lineJoin='round'; x.beginPath();
     for(let i=0;i<arr.length;i++){ const px=w*i/(arr.length-1||1), py=h-2-((arr[i]-mn)/(mx-mn))*(h-4); i?x.lineTo(px,py):x.moveTo(px,py); }
     x.stroke();
-    // scrub cursor
+    // scrub cursor: 赤を使わず ink の破線で表現 (データ線と区別)。
     const cx=w*cursor/(arr.length-1||1);
-    x.strokeStyle='#c8002c'; x.lineWidth=1; x.beginPath(); x.moveTo(cx,0); x.lineTo(cx,h); x.stroke();
+    x.strokeStyle='#1a1c1f'; x.lineWidth=1; x.setLineDash([3,3]);
+    x.beginPath(); x.moveTo(cx,0); x.lineTo(cx,h); x.stroke();
+    x.setLineDash([]);
   }
   function render(){
     if(!S) return;
