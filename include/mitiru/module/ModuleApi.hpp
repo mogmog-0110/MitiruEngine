@@ -81,7 +81,7 @@ namespace mitiru::module
 ///     GameMemory の全フィールドの名前・型・オフセットを申告し、host が GameMemory バイト列
 ///     (現フレーム + ring の過去) を構造化 JSON 化して AI に全状態を開放する (probe の拡張)。
 ///     末尾追記 + zero-init で v≤11 module は後方安全 (reflectFieldCount=0 = 非対応)。
-constexpr std::uint32_t kCurrentApiVersion = 12;
+constexpr std::uint32_t kCurrentApiVersion = 13;  // v13: InputSnapshot.audioTimeSec (音声クロック)
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
@@ -167,6 +167,13 @@ struct InputSnapshot
 	// host が EngineConfig::randomSeed を毎フレーム供給。replay 時は記録値が再投入され
 	// bit-exact に復元される。DLL は `mitiru::Random rng(input->rngSeed)` で seed する。
 	std::uint64_t rngSeed;                     ///< session 固定の決定論 seed (0 = 未供給)
+
+	// ── 音声クロック (ABI v13 で追記) ─────────────────────────────────
+	// host の audio backend が再生したサンプル位置 (秒)。リズムゲーム等がフレーム dt
+	// 積算ではなく音声クロック基準で判定するために使う。0 = 非対応 backend (Null/headless
+	// 等) → game は dt 積算へフォールバック。replay 時は末尾の moduleInputOverride が
+	// snapshot 全体を記録値で置換するので、再生でも同じ値が流れ bit-exact 性が保たれる。
+	double audioTimeSec;
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)
@@ -330,6 +337,17 @@ struct FrameIntents
 		s = SoundIntent{};
 		copyStr(s.id, id, sizeof(s.id));
 		s.category = 0; s.volume = volume; s.pitchScale = 1.0f;
+	}
+	/// 効果音をピッチ指定で鳴らす (pitch 0.5..2.0 程度、1.0=原音)。1 つの SE を音階で鳴らす
+	/// リズムゲーム等で使う。pitch は再生レート変更 (= 音程と長さが同時に変わる)。
+	void playSound(const char* id, float volume, float pitch) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		copyStr(s.id, id, sizeof(s.id));
+		s.category = 0; s.volume = volume; s.pitchScale = (pitch > 0.0f) ? pitch : 1.0f;
 	}
 
 	/// 画面を一瞬色フラッシュさせる (被弾演出など)。host が Screen::pushTint に渡す。

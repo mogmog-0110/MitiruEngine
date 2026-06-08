@@ -83,6 +83,18 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	// DLL が申告した GameMemory サイズを保持 (ADR 0013)。v≤8 DLL は未設定 ⇒ zero-init の 0。
 	m_moduleMemorySize = m_moduleApi.memorySize;
 
+	// reflection を申告したのに memorySize=0 だと reflectToJson が bounds 外で全 skip し
+	// /api/ai/state が {} を返す。原因が分かりにくいので一度だけ警告する (R-01)。
+	// non-POD game でも api->memorySize = sizeof(GameMemory) を申告すれば現フレーム観測は可
+	// (reflectToJson は申告した offset のスカラーしか触らない)。ring/diff/branch は flat POD 必須。
+	if (m_moduleApi.reflectFieldCount > 0 && m_moduleMemorySize == 0)
+	{
+		std::fprintf(stderr,
+			"[ai] warning: MITIRU_REFLECT で %d field 申告されていますが api->memorySize が 0 です。"
+			"/api/ai/state は空 {} になります。api->memorySize = sizeof(GameMemory) を申告してください。\n",
+			static_cast<int>(m_moduleApi.reflectFieldCount));
+	}
+
 	// version check。
 	if (m_moduleApi.version == 0u || m_moduleApi.version > module::kCurrentApiVersion)
 	{
@@ -464,6 +476,10 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 	// 決定論 seed を供給 (ADR 0012)。replay 時は末尾の moduleInputOverride が
 	// snapshot 全体を記録値で置換するので、ここで入れた値は再生時に記録 seed に戻る。
 	snap->rngSeed = m_config.randomSeed;
+
+	// 音声クロック (ABI v13)。host の audio backend の再生サンプル位置を供給。replay 時は
+	// 末尾の moduleInputOverride が記録値で上書きするので bit-exact 性は保たれる。
+	snap->audioTimeSec = (m_audioEngine != nullptr) ? m_audioEngine->masterTimeSec() : 0.0;
 
 	// Keys (256 VK codes)。internal を覗かず InputState API を使う —
 	// InputState の engine refactor の自由度を保つため。

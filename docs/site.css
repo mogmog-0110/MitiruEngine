@@ -1,0 +1,230 @@
+/* ============================================================
+   site.css — MitiruEngine 紹介サイト (テクニカル・ノートテーマ)
+   作者ポートフォリオ (mogmog-0110.github.io) と同じ視覚言語:
+   等幅フォントのラベル / 細罫線の区画 / ページ全体を枠で囲む。
+   陰影・色・グラデ・ベベルは使わず、線と余白と書体だけで構成する。
+   ============================================================ */
+
+:root {
+    --paper:     #fcfcfb;
+    --ink:       #1a1c1f;   /* 見出し・強調 */
+    --ink-body:  #33363b;   /* 本文 */
+    --ink-sub:   #6e7077;   /* 副次情報 */
+    --ink-faint: #999da4;   /* キャプション・ラベル */
+    --rule:      #c9cbd0;   /* 区画の罫線 */
+    --rule-soft: #e6e7ea;   /* 内側の罫線 */
+    --wash:      #f4f4f2;   /* 見出し帯・ラベル面 */
+
+    --mono: 'IBM Plex Mono', 'Noto Sans JP', 'Consolas', monospace;
+    --sans: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', system-ui, sans-serif;
+
+    --w: 1080px;
+    --pad-x: clamp(1.2rem, 3.5vw, 2.4rem);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+html, body { background: var(--paper); color: var(--ink-body); }
+
+body {
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.95;
+    font-feature-settings: "palt";
+    letter-spacing: 0.015em;
+    -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--ink); color: var(--paper); }
+a { color: inherit; }
+img { max-width: 100%; height: auto; display: block; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+.skip-link {
+    position: absolute; left: -9999px; top: 0; z-index: 200;
+    background: var(--ink); color: var(--paper);
+    font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.1em;
+    padding: 0.6rem 1.2rem; text-decoration: none;
+}
+.skip-link:focus { left: 0; }
+
+/* ── 枠：ページ全体を 1px の罫で囲む ──────────── */
+.frame {
+    max-width: var(--w);
+    margin: clamp(0.8rem, 2vw, 1.6rem) auto;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+}
+
+/* ── ヘッダー ─────────────────────────────── */
+.site-head { border-bottom: 1px solid var(--rule); }
+.site-head .inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; padding: 1.1rem var(--pad-x); flex-wrap: wrap;
+}
+.brand {
+    font-family: var(--mono); font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.06em; color: var(--ink); text-decoration: none;
+    transition: color 0.15s; white-space: nowrap;
+}
+.brand:hover { color: var(--ink-sub); }
+.brand .ver { color: var(--ink-faint); font-weight: 500; margin-left: 0.6em; }
+
+.menu {
+    display: flex; flex-wrap: wrap; list-style: none;
+    gap: 0.5rem clamp(0.9rem, 2.2vw, 1.5rem); align-items: center;
+}
+.menu a {
+    font-family: var(--mono); font-size: 0.72rem; font-weight: 500;
+    letter-spacing: 0.06em; color: var(--ink-sub); text-decoration: none;
+    transition: color 0.15s; white-space: nowrap;
+}
+.menu a::before { content: "."; color: var(--ink-faint); }
+.menu a:hover { color: var(--ink); }
+.menu a.current { color: var(--ink); text-decoration: underline; text-underline-offset: 5px; }
+.menu a.ext::after { content: " ↗"; color: var(--ink-faint); }
+
+/* ── ページ見出し（下層ページ）────────────────── */
+.page-head { padding: clamp(2rem, 5vw, 3.2rem) var(--pad-x); border-bottom: 1px solid var(--rule); }
+.page-head .file-line, .hero .file-line {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em;
+    color: var(--ink-faint); margin-bottom: 1.4rem;
+}
+.page-head h1 {
+    font-size: clamp(1.6rem, 4.5vw, 2.4rem); font-weight: 700;
+    line-height: 1.4; letter-spacing: 0.06em; color: var(--ink);
+}
+.page-head .lede { margin-top: 1.2rem; max-width: 42em; color: var(--ink-sub); }
+
+/* ── hero（index トップ）：テキストのみ ─────────── */
+.hero { padding: clamp(2.4rem, 6vw, 4.4rem) var(--pad-x); border-bottom: 1px solid var(--rule); }
+.hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3rem); font-weight: 700;
+    line-height: 1.32; letter-spacing: 0.04em; color: var(--ink); max-width: 18em;
+}
+.hero .role {
+    margin-top: 1.3rem; font-family: var(--mono); font-size: 0.84rem;
+    color: var(--ink-sub); letter-spacing: 0.02em; max-width: 46em;
+}
+.hero .cta { margin-top: 1.8rem; display: flex; flex-wrap: wrap; gap: 0.6rem 1.6rem; }
+.hero .cta a {
+    font-family: var(--mono); font-size: 0.82rem; font-weight: 500; color: var(--ink);
+    text-decoration: none; border-bottom: 1px solid var(--ink); padding-bottom: 2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+.hero .cta a:hover { color: var(--ink-sub); border-color: var(--ink-sub); }
+
+/* ── 扉リンク（index の索引）─────────────────── */
+.doors { display: grid; grid-template-columns: 1fr 1fr; }
+.door {
+    display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 1rem;
+    padding: 1.3rem var(--pad-x); border-bottom: 1px solid var(--rule);
+    text-decoration: none; transition: background 0.15s;
+}
+.door:nth-child(odd) { border-right: 1px solid var(--rule); }
+.door:hover { background: var(--wash); }
+.door .door-no { font-family: var(--mono); font-size: 0.74rem; font-weight: 500; color: var(--ink-faint); padding-top: 0.45em; }
+.door .door-name { display: block; font-family: var(--mono); font-size: 0.98rem; font-weight: 600; letter-spacing: 0.05em; color: var(--ink); margin-bottom: 0.25rem; }
+.door .door-desc { display: block; font-size: 0.84rem; line-height: 1.8; color: var(--ink-sub); }
+@media (max-width: 720px) { .doors { grid-template-columns: 1fr; } .door:nth-child(odd) { border-right: none; } }
+
+/* ── セクション（見出し帯 + 本文区画）─────────── */
+.sections { counter-reset: sec; }
+.sec { border-bottom: 1px solid var(--rule); }
+main > .sections:last-child > .sec:last-child, main > .sec:last-child { border-bottom: none; }
+.sec > h2 {
+    font-family: var(--mono); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em;
+    color: var(--ink); padding: 0.7rem var(--pad-x); border-bottom: 1px solid var(--rule-soft); background: var(--wash);
+}
+.sections .sec { counter-increment: sec; }
+.sections .sec > h2::before { content: "§" counter(sec); color: var(--ink-faint); margin-right: 1.4em; }
+.sec-body { padding: clamp(1.4rem, 3.5vw, 2rem) var(--pad-x); }
+.sec-body > p { margin-bottom: 1.2rem; max-width: 44em; }
+.sec-body > p:last-child { margin-bottom: 0; }
+.sec-body h3 { font-family: var(--mono); font-size: 0.92rem; font-weight: 600; letter-spacing: 0.06em; color: var(--ink); margin: 2.2rem 0 0.7rem; }
+.sec-body h3::before { content: "— "; color: var(--ink-faint); }
+.sec-body h3:first-child { margin-top: 0; }
+.sec-body h4 { font-size: 0.85rem; font-weight: 600; letter-spacing: 0.06em; color: var(--ink); margin: 1.8rem 0 0.5rem; }
+.sec-body ul, .sec-body ol { margin: 0 0 1.2rem 1.3em; }
+.sec-body li { margin-bottom: 0.35rem; }
+.sec-body strong { color: var(--ink); font-weight: 600; }
+.sec-body a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--ink-faint); text-underline-offset: 3px; transition: text-decoration-color 0.2s; }
+.sec-body a:hover { text-decoration-color: var(--ink); }
+
+/* ── メタ行 / 注記 ───────────────────────── */
+.meta-line { font-family: var(--mono); font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; color: var(--ink-faint); margin-bottom: 1.2rem; }
+.meta-line span + span::before { content: "·"; margin: 0 0.7em; color: var(--rule); }
+.note { font-size: 0.84rem; color: var(--ink-sub); border-left: 2px solid var(--rule); padding: 0.1rem 0 0.1rem 1.2rem; margin: 1.4rem 0; }
+.note strong { color: var(--ink); }
+
+/* ── リンク行 ───────────────────────────── */
+.link-row { display: flex; flex-wrap: wrap; gap: 0.4rem 2rem; margin-top: 1.3rem; }
+.link-row a { font-family: var(--mono); font-size: 0.8rem; font-weight: 500; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); padding-bottom: 2px; transition: color 0.15s, border-color 0.15s; }
+.link-row a:hover { color: var(--ink-sub); border-color: var(--ink-sub); }
+
+/* ── 数値（統計の行）────────────────────── */
+.figures { display: flex; flex-wrap: wrap; margin: 0.4rem 0 1.6rem; }
+.figure { padding: 0.2rem 2.2rem 0.2rem 0; margin-right: 2.2rem; border-right: 1px solid var(--rule-soft); }
+.figure:last-child { border-right: none; margin-right: 0; padding-right: 0; }
+.figure b { display: block; font-family: var(--mono); font-size: 1.5rem; font-weight: 600; color: var(--ink); line-height: 1.5; }
+.figure span { font-family: var(--mono); font-size: 0.66rem; font-weight: 500; letter-spacing: 0.1em; color: var(--ink-faint); }
+
+/* ── 図版 ──────────────────────────────── */
+figure.plate { margin: 1.6rem 0; }
+figure.plate img, figure.plate video { width: 100%; border: 1px solid var(--rule-soft); }
+figure.plate figcaption { font-family: var(--mono); font-size: 0.72rem; line-height: 1.9; color: var(--ink-faint); margin-top: 0.6rem; }
+.plate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1.6rem 0; }
+
+/* ── code / pre ─────────────────────────── */
+code { font-family: var(--mono); font-size: 0.84em; background: var(--wash); padding: 0.1em 0.45em; color: var(--ink-body); }
+pre { background: var(--wash); border: 1px solid var(--rule-soft); padding: 1.1rem 1.3rem; overflow-x: auto; font-family: var(--mono); font-size: 0.78rem; line-height: 1.7; margin: 1.4rem 0; color: var(--ink-body); }
+pre code { background: none; padding: 0; font-size: inherit; }
+pre .c { color: var(--ink-faint); }              /* コメント */
+pre .k { color: var(--ink); font-weight: 600; }  /* キーワード */
+pre .s { color: var(--ink-sub); }                /* 文字列リテラル */
+pre .t { color: var(--ink); }                    /* 型名 */
+kbd {
+    font-family: var(--mono); font-size: 0.78em; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 3px; padding: 0.1em 0.45em; box-shadow: inset 0 -2px 0 var(--rule-soft);
+}
+
+/* ── 定義表（API / スペック表）─────────────── */
+.spec { list-style: none; margin: 1.4rem 0 !important; border: 1px solid var(--rule-soft); }
+.spec li { display: grid; grid-template-columns: 220px minmax(0, 1fr); border-bottom: 1px solid var(--rule-soft); margin: 0 !important; }
+.spec li:last-child { border-bottom: none; }
+.spec .k { font-family: var(--mono); font-size: 0.76rem; font-weight: 500; color: var(--ink); padding: 0.7rem 1.1rem; border-right: 1px solid var(--rule-soft); background: var(--wash); }
+.spec .v { font-size: 0.88rem; color: var(--ink-body); padding: 0.62rem 1.2rem; }
+@media (max-width: 600px) {
+    .spec li { grid-template-columns: 1fr; }
+    .spec .k { border-right: none; border-bottom: 1px solid var(--rule-soft); padding: 0.5rem 1.1rem; }
+}
+
+/* ── 機能カード（mini-grid）────────────────── */
+.mini-grid { list-style: none; margin: 1.4rem 0 !important; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--rule-soft); border-left: 1px solid var(--rule-soft); }
+.mini { border-right: 1px solid var(--rule-soft); border-bottom: 1px solid var(--rule-soft); margin: 0 !important; padding: 1rem 1.2rem; }
+.mini h4 { font-family: var(--mono); font-size: 0.84rem; font-weight: 600; letter-spacing: 0.04em; color: var(--ink); margin: 0 0 0.4rem; }
+.mini h4 .en { color: var(--ink-faint); font-weight: 500; font-size: 0.82em; margin-left: 0.5em; }
+.mini p { font-size: 0.82rem; line-height: 1.8; color: var(--ink-sub); margin: 0; }
+@media (max-width: 600px) { .mini-grid { grid-template-columns: 1fr; } }
+
+/* ── フッター ───────────────────────────── */
+.site-foot { border-top: 1px solid var(--rule); padding: 1.4rem var(--pad-x); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem 2rem; }
+.site-foot p { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); }
+.site-foot .links { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; }
+.site-foot a { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-sub); text-decoration: none; border-bottom: 1px solid var(--rule); padding-bottom: 1px; }
+.site-foot a:hover { color: var(--ink); border-color: var(--ink); }
+
+/* ── back-to-top ───────────────────────── */
+.back-to-top {
+    position: fixed; right: 1.4rem; bottom: 1.4rem; width: 40px; height: 40px;
+    background: var(--paper); border: 1px solid var(--rule);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-sub); text-decoration: none; font-family: var(--mono);
+    opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 90;
+}
+.back-to-top.visible { opacity: 1; pointer-events: auto; }
+.back-to-top:hover { color: var(--ink); border-color: var(--ink); }
+
+@media (max-width: 720px) { body { font-size: 14.5px; } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }

@@ -72,6 +72,22 @@ curl -X POST http://127.0.0.1:8090/api/ai/branch -d '{"keys":"Right","frames":"3
 
 詳細は [TIME_TRAVEL.md](TIME_TRAVEL.md) と ADR 0017 / ADR 0018 を参照。
 
+## non-POD ゲームでも「現フレーム観測」だけは段階導入できる
+
+既存ゲームの GameMemory が `std::vector` / `std::string` を含む (= flat POD でない) 場合でも、
+**現フレームの構造的観測 (`/api/ai/state`) だけ**なら全面 flat POD 化の前に導入できる:
+
+- `MITIRU_GAME` を使わず手動 `mitiru_module_load` で `api->memorySize = sizeof(GameMemory)` を申告し、
+  主要な**スカラー**フィールドだけ `makeFieldDescriptor<T>(name, offset)` で `reflectFields` に申告する
+  (`std::vector` 等は申告しない → `reflectToJson` が触らないので安全)。
+- ⚠️ `api->memorySize` を申告しないと `/api/ai/state` は空 `{}` を返す (offset 読みの境界に使うため)。
+  reflection を宣言したのに `memorySize=0` だと engine が起動時に警告を出す。
+- ⚠️ **ring / diff / branch は flat POD 必須**。これらは GameMemory を `memcpy` で退避・復元するので、
+  非 POD だとポインタが壊れる。non-POD game では使わないこと (現フレーム観測のみ)。
+
+全面 flat POD 化すれば time-travel・replay・branch も含めて全部使える。観測だけ先に得て、
+あとから flat POD へ移行する、という段階導入が可能。
+
 ## まとめ
 
 - ゲーム状態を flat POD (`FixedVec` / `FixedString` で固定長化) にする。

@@ -20,23 +20,17 @@ endif()
 # Build one:
 #     cmake --build build --config Debug --target hello_window
 
-add_subdirectory(hello_window)
-add_subdirectory(hello_input)
-add_subdirectory(hello_scene)
-add_subdirectory(hello_shapes)
-add_subdirectory(hello_cef_overlay)
-# mitiru_host MUST come before hello_game — the latter installs its DLL into
-# $<TARGET_FILE_DIR:mitiru_host>/hello_game/ and references mitiru_host's
-# location during configure-time generator expression resolution.
+# ── ゲームサンプルは全撤去 (再設計待ち、2026-06-09) ────────────────────
+# 旧サンプル (hello_window/input/scene/shapes/cef_overlay, hello_game, breakout,
+# anchor, dodge, showcase_platformer) は「おもちゃ感が強く真面目なエンジンに不向き」
+# との判断で削除。エンジンの証明は差別化デモ (timetravel_demo) と本物のゲーム
+# (FLUID DROP 等) に寄せる方針 (証明の置き方は未確定)。
+#
+# mitiru_host は timetravel_demo より前に置く (後者が $<TARGET_FILE_DIR:mitiru_host>/
+# 配下へ DLL を install し、configure 時に host の位置を参照するため)。
 add_subdirectory(mitiru_host)
 add_subdirectory(mitiru_start)
-add_subdirectory(hello_game)
-add_subdirectory(01_move)            # 学習ラダー第1段「動かす」
-add_subdirectory(showcase_platformer)
-add_subdirectory(breakout)
-add_subdirectory(dodge)
-add_subdirectory(timetravel_demo)
-add_subdirectory(anchor)
+add_subdirectory(timetravel_demo)   # 差別化デモ (time-travel / AI Lens、ADR 0017/0018)
 # 研究中 example (未コミット dir / snapshot 非同梱) は EXISTS ガードで取り込む。
 # dev tree に dir が在れば従来どおりビルド、無い clone / prod では静かにスキップ。
 foreach(_lab windy_cloth sim_seam_demo gpu_sim_seam face_sdf pbmpm fluidtetris)

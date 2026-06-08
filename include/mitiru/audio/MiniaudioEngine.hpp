@@ -131,6 +131,17 @@ public:
 		return ma_engine_get_volume(const_cast<ma_engine*>(&m_engine));
 	}
 
+	/// @brief マスター再生クロック (秒)。デバイスが再生した PCM フレーム位置 / サンプルレート。
+	/// @details リズムゲーム等が判定の基準時刻に使う (ADR 0008 拡張)。ma_engine の global time は
+	///          サウンドの有無に関わらずデバイス稼働中ずっと進む。未初期化時は 0。
+	[[nodiscard]] double masterTimeSec() const noexcept {
+		if (!m_initialized) return 0.0;
+		auto* e = const_cast<ma_engine*>(&m_engine);
+		const ma_uint32 sr = ma_engine_get_sample_rate(e);
+		if (sr == 0) return 0.0;
+		return static_cast<double>(ma_engine_get_time_in_pcm_frames(e)) / static_cast<double>(sr);
+	}
+
 	/// @brief BGM を再生する（ループ・音量指定）
 	/// @details 永続 ma_sound を 1 つだけ持ち、再生のたびに前の BGM を停止・破棄する。
 	///          ストリーミング再生 (MA_SOUND_FLAG_STREAM) で長尺ファイルでも省メモリ。

@@ -102,6 +102,9 @@ public:
 		return m_engine.meterChannels();
 	}
 
+	// マスター再生クロック (秒) を miniaudio から中継。game が音声クロック基準で判定するため。
+	[[nodiscard]] double masterTimeSec() const noexcept override { return m_engine.masterTimeSec(); }
+
 private:
 	void playByIdEx(std::string_view id, float volume, float pitch, float fadeIn,
 	                bool music, bool loop)

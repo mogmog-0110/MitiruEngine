@@ -133,6 +133,10 @@ public:
 	/// 決定論 seed (録画再生で bit-exact 再現するため、乱数は mitiru::Random rng(in.rngSeed()) で seed する)。
 	std::uint64_t rngSeed() const noexcept { return s_->rngSeed; }
 
+	/// 音声クロック (秒、ABI v13)。host の audio backend の再生サンプル位置。0 = 非対応 (Null/
+	/// headless 等) → game はフレーム dt 積算へフォールバックすること。録画再生でも再現する。
+	double audioTime() const noexcept { return s_->audioTimeSec; }
+
 	/// 生の InputSnapshot へのアクセス (全 256 キー走査など、ラッパで足りない高度用途の escape hatch)。
 	const module::InputSnapshot* raw() const noexcept { return s_; }
 
@@ -159,6 +163,8 @@ public:
 	void set(const char* key, const char* v) noexcept { s_->pushString(key, v); }
 
 	void play(const char* soundId, float volume = 1.0f) noexcept { s_->playSound(soundId, volume); }
+	/// 音をピッチ付きで鳴らす (pitch 0.5..2.0、1.0=原音)。1 つの SE を音階で鳴らすリズムゲーム等。
+	void play(const char* soundId, float volume, float pitch) noexcept { s_->playSound(soundId, volume, pitch); }
 	void quit() noexcept { s_->requestStop = 1; }   ///< ゲームを終了する
 
 	// ── 演出 / デバッグ (必要なときだけ呼ぶ — pulled UI、ゲーム窓は汚さない) ──

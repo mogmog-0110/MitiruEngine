@@ -1,6 +1,7 @@
 // mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
+#include <cstdio>
 #include <cstring>
 #include <sstream>
 #include <vector>
@@ -108,5 +109,13 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 	if (!m_httpServer->init(port))
 	{
 		m_httpServer.reset();
+	}
+	else
+	{
+		// listen 開始の合図 (AI / 自動化が polling をやめて叩き始められる、R-02)。
+		std::fprintf(stderr,
+			"[ai] HTTP API listening on 127.0.0.1:%d "
+			"(/api/status, /api/ai/state, /api/ai/diff, /api/ai/branch)\n",
+			port);
 	}
 }
