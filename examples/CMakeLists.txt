@@ -31,6 +31,7 @@ add_subdirectory(hello_cef_overlay)
 add_subdirectory(mitiru_host)
 add_subdirectory(mitiru_start)
 add_subdirectory(hello_game)
+add_subdirectory(01_move)            # 学習ラダー第1段「動かす」
 add_subdirectory(showcase_platformer)
 add_subdirectory(breakout)
 add_subdirectory(dodge)
