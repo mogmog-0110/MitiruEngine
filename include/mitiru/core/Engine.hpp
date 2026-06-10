@@ -159,8 +159,11 @@ public:
 	[[nodiscard]] std::vector<std::uint8_t> capture() const;
 
 	/// @brief capture() が返す pixel buffer の幅 (px)
+	/// @details capture() と同じ分岐: software framebuffer 優先、次に window 実寸。
+	///          論理 Screen サイズ ≠ ウィンドウ実寸のゲーム (縮小描画等) で必須。
 	[[nodiscard]] int captureWidth() const noexcept
 	{
+		if (m_screen && m_screen->hasSoftwareFramebuffer()) { return m_screen->width(); }
 		if (m_window) { return m_window->width(); }
 		if (m_screen) { return m_screen->width(); }
 		return 0;
@@ -169,6 +172,7 @@ public:
 	/// @brief capture() が返す pixel buffer の高さ (px)
 	[[nodiscard]] int captureHeight() const noexcept
 	{
+		if (m_screen && m_screen->hasSoftwareFramebuffer()) { return m_screen->height(); }
 		if (m_window) { return m_window->height(); }
 		if (m_screen) { return m_screen->height(); }
 		return 0;

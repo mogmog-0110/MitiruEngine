@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MitiruEngine — AI と作る（観測と検証）</title>
+  <meta name="description" content="MitiruEngine の観測・検証 API。実行中のゲームの画面・状態・音を構造化 JSON で外から読め、AI エージェントが「書く→観る→直す→検証する」を一人で回せる。mitiru verify と mitiru mcp。">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AI と作る（観測と検証） — MitiruEngine">
+  <meta property="og:description" content="実行中のゲームを HTTP で観測する。画面は draw list で「意味」ごと読め、修正は mitiru verify が機械的に判定する。">
+  <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/ai.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="app">
+  <aside class="sidebar">
+    <a class="side-brand" href="index.html"><span class="mark">M</span>MitiruEngine<span class="ver">v0.12.0</span></a>
+    <nav class="side-nav" aria-label="サイト内ナビ">
+      <div class="grp">はじめに</div>
+      <a href="index.html"><span class="n">トップ</span></a>
+      <a href="install.html"><span class="n">インストール</span></a>
+      <a href="tutorial.html"><span class="n">はじめてのゲーム</span></a>
+      <div class="grp">このページ</div>
+      <a href="#loop"><span class="n">ループの形</span></a>
+      <a href="#enable"><span class="n">有効化</span></a>
+      <a href="#see"><span class="n">画面を意味で読む</span></a>
+      <a href="#state"><span class="n">状態を読む</span></a>
+      <a href="#verify"><span class="n">検証する</span></a>
+      <a href="#mcp"><span class="n">Claude Code から</span></a>
+      <a href="#api"><span class="n">API 一覧</span></a>
+      <a href="#why"><span class="n">なぜできるか</span></a>
+      <div class="grp">リファレンス</div>
+      <a href="features.html"><span class="n">機能</span></a>
+      <a href="ui.html"><span class="n">画面を作る</span></a>
+      <a class="current" href="ai.html"><span class="n">AI と作る</span></a>
+      <a href="distribute.html"><span class="n">配布する</span></a>
+      <a href="api/"><span class="n">API</span></a>
+      <a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener"><span class="n">GitHub</span></a>
+    </nav>
+    <div class="side-foot">
+      <a class="btn btn--primary" href="install.html">▶ はじめる</a>
+      <small>C++20 · Windows</small>
+    </div>
+  </aside>
+
+  <div class="content">
+    <main id="main">
+      <!-- ── ページ見出し ───────────────────────── -->
+      <section class="page-head">
+        <div class="wrap">
+          <p class="kicker">Observability / AI</p>
+          <h1>AI と作る — 観測と検証</h1>
+          <p class="lede">実行中のゲームの<strong>画面・状態・音</strong>を、HTTP で外から構造化 JSON として読める。画面はピクセルではなく「何をどこに描いたか」の <strong>draw list</strong> で渡り、修正の正しさは <code>mitiru verify</code> が機械的に判定する。AI エージェントが「書く → 観る → 直す → 検証する」を<strong>人間の目を借りずに</strong>一周できる。もちろん人間や CI から使ってもいい。</p>
+        </div>
+      </section>
+
+      <div class="wrap">
+        <div class="prose">
+
+          <!-- ── ループ ──────────────────────────── -->
+          <h2 id="loop">ループの形 — 観る・突き合わせる・検証する</h2>
+          <p>従来は「AI がコードを書き、人間が実行結果を見て指摘する」だった。このエンジンでは結果の観測と判定も機械側に渡せる。</p>
+<pre>コードを直す  <span class="c">--&gt;</span>  mitiru verify        <span class="c"># build + 起動 + 判定が 1 コマンド</span>
+画面を観る    <span class="c">--&gt;</span>  GET /api/ai/frame    <span class="c"># draw list ("HP 79" がどの矩形か)</span>
+状態を読む    <span class="c">--&gt;</span>  GET /api/ai/state    <span class="c"># 全フィールドの構造化 JSON</span>
+原因を絞る    <span class="c">--&gt;</span>  GET /api/ai/diff     <span class="c"># フレーム間で何が変わったか</span>
+正しさを示す  <span class="c">--&gt;</span>  mitiru verify --replay  <span class="c"># bit-exact 再現で機械判定</span></pre>
+
+          <!-- ── 有効化 ──────────────────────────── -->
+          <h2 id="enable">有効化 — 環境変数 1 個</h2>
+          <p>環境変数 <code>MITIRU_AI=1</code> を立てて起動するだけ。ゲーム側のコード変更は要らない。host が <code>127.0.0.1:8090</code>（変更は <code>MITIRU_AI_PORT</code>）で HTTP API を開く。ローカル限定で、普段の起動では一切開かない。</p>
+<pre><span class="k">set</span> MITIRU_AI=1
+mitiru run
+<span class="c"># stderr に → [ai] HTTP API listening on 127.0.0.1:8090</span></pre>
+
+          <!-- ── 画面 ────────────────────────────── -->
+          <h2 id="see">画面を「意味」で読む — /api/ai/frame</h2>
+          <p>スクリーンショットの画素から座標を推測する必要はない。<code>/api/ai/frame</code> は、そのフレームに<strong>どの描画 API が・どの矩形に・何を</strong>描いたかを返す。テキスト描画は内容ごと載る。以下はサンプルゲームの実測そのまま。</p>
+<pre>{"frameNumber":8652,"screen":{"width":1280,"height":720},
+ "drawCalls":[
+   {"call":"drawRect",  "x":24, "y":24, "w":360,   "h":22},
+   {"call":"drawRect",  "x":24, "y":24, "w":284.4, "h":22},
+   {"call":"drawText",  "x":398,"y":22, "w":110,   "h":22, "text":"HP 79"},
+   {"call":"drawCircle","x":618,"y":338,"w":44,    "h":44},
+   ...
+ ],
+ "screenshot":{"width":640,"height":360,"pngBase64":"..."}}</pre>
+          <p>HP バーの外枠が幅 360、中身が 284.4 — つまり <strong>残り 79%</strong> だと、画像処理なしで読める。縮小 PNG も同じレスポンスに入る（<code>?screenshot=0</code> で省略可）。PNG には <a href="ui.html">HTML / CSS の HUD</a> も合成済みで、プレイヤーが見ている画面そのものが渡る。</p>
+          <p class="note">初回の呼び出しで記録が始まる（エントリは次フレームから）。音も同様に <code>/api/ai/audio</code> で「どの SE / BGM が・いつ・どの音量と pitch で鳴ったか」を構造化で読める。</p>
+
+          <!-- ── 状態 ────────────────────────────── -->
+          <h2 id="state">状態を読む — state / diff / branch</h2>
+          <p>ゲームの全状態は 1 個の flat POD（<code>GameMemory</code>）にある。<code>MITIRU_REFLECT</code> でフィールドを申告すると、host が現フレームの状態を丸ごと JSON 化して返す。</p>
+<pre>GET /api/ai/state            <span class="c"># {"hearts":3,"pos_x":32.0,"scene":0,...} 全フィールド</span>
+GET /api/ai/diff?from=0&amp;to=60 <span class="c"># 60 フレームで変わった値だけ</span>
+POST /api/ai/branch          <span class="c"># この状態から「←を 30 フレーム押したら?」を別世界で実行</span></pre>
+          <p>「画面では HP バーが 79% なのに state の hp は 83」── そういう<strong>見た目と内部のズレ</strong>が、frame と state の突き合わせで一発で見つかる。</p>
+
+          <!-- ── 検証 ────────────────────────────── -->
+          <h2 id="verify">検証する — mitiru verify</h2>
+          <p>「直した、たぶん動く」を禁止できる。<code>mitiru verify</code> は build → 起動 → 観測 → 判定までを 1 コマンドで実行し、結果を JSON 1 個と exit code で返す。CI にそのまま置ける。</p>
+<pre>mitiru verify                       <span class="c"># build + 起動 + screenshot 取得</span>
+mitiru verify --golden ref.png      <span class="c"># 基準画像と画素比較</span>
+mitiru verify --replay play.mtrr    <span class="c"># 録画した操作を bit-exact 再現できるか</span>
+
+<span class="c"># → {"build":"ok","verdict":"pass",...}   exit 0=pass / 1=fail / 2=build error</span></pre>
+          <p>リプレイ検証は決定論（同じ入力 → 同じ結果）の上に立っているので、「修正前に録った操作が修正後も同じ結果になるか」を<strong>バイト単位</strong>で判定する。視覚は golden 画像、ロジックはリプレイ、と二方向から機械検証できる。</p>
+
+          <!-- ── MCP ─────────────────────────────── -->
+          <h2 id="mcp">Claude Code から使う — mitiru mcp</h2>
+          <p><code>mitiru mcp</code> が上の API 群を MCP（Model Context Protocol）のツールとして公開する。設定はプロジェクトの <code>.mcp.json</code> に 1 行。</p>
+<pre>{"mcpServers": {"mitiru": {"command": "mitiru", "args": ["mcp"]}}}</pre>
+          <p>これで AI エージェントの手元に <code>game_state</code> / <code>frame</code> / <code>screenshot</code> / <code>simulate_input</code>（入力注入）/ <code>pause</code> / <code>step</code>（コマ送り）/ <code>verify</code> などのツールが生える。エージェントは自分でゲームを動かし、コマ送りで観察し、判定まで取る。</p>
+
+          <!-- ── API 一覧 ────────────────────────── -->
+          <h2 id="api">API 一覧</h2>
+          <table class="spectable">
+            <tbody>
+              <tr><td>GET /api/ai/frame</td><td>draw list（描画 API・矩形・テキスト内容）+ 縮小 PNG</td></tr>
+              <tr><td>GET /api/ai/state</td><td>GameMemory 全フィールドの構造化 JSON</td></tr>
+              <tr><td>GET /api/ai/diff</td><td>2 フレーム間の状態差分</td></tr>
+              <tr><td>POST /api/ai/branch</td><td>反実仮想 — この状態から別入力で N フレーム実行</td></tr>
+              <tr><td>GET /api/ai/audio</td><td>最近の音イベント（SE / BGM の再生・停止・音量・pitch）</td></tr>
+              <tr><td>GET /api/screenshot</td><td>画面 PNG（HTML HUD 合成済み、width/height でリサイズ）</td></tr>
+              <tr><td>POST /api/input/simulate</td><td>入力注入 — 外からゲームを操作する</td></tr>
+              <tr><td>POST /api/runtime/pause · step · timescale</td><td>ポーズ・コマ送り・倍速</td></tr>
+              <tr><td>GET /api/scene/tree · /api/health</td><td>シーンツリー / 生存確認</td></tr>
+            </tbody>
+          </table>
+          <p>詳細な手順とつまずきやすい点はリポジトリの <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/AI_WORKFLOW.md" target="_blank" rel="noopener">docs/AI_WORKFLOW.md</a> にある。</p>
+
+          <!-- ── なぜ ────────────────────────────── -->
+          <h2 id="why">なぜできるか — flat POD と決定論の果実</h2>
+          <p>この一式は後付けのプラグインではなく、設計の帰結として生えている。</p>
+          <ul>
+            <li><strong>状態が 1 個の flat POD</strong> だから、全状態の JSON 化・フレーム間 diff・過去への巻き戻し・別世界での再実行（branch）が、同じ 1 つのメモリ領域に対する操作として実装できる。状態が数千のオブジェクトに散っているエンジンでは、この「全状態を読む」が原理的に作れない。</li>
+            <li><strong>実行が決定論的</strong> だから、「同じ入力なら同じ結果」を前提に、リプレイがそのまま回帰テストになる。AI の修正が何かを壊していないかを、人間の目視ではなくバイト比較で判定できる。</li>
+            <li><strong>HUD が HTML / CSS</strong> だから、スクリーンショットには UI まで含めた「プレイヤーが見る画面」がそのまま写る。</li>
+          </ul>
+          <p>土台の考え方は <a href="features.html">機能リファレンス</a> の巻き戻し・リプレイの章と、リポジトリの <code>docs/FLAT_POD.md</code> に詳しい。</p>
+
+        </div>
+      </div>
+    </main>
+
+    <footer class="content-foot">
+      <div class="wrap">
+        <span>© MitiruEngine</span>
+        <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+        <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+        <a href="install.html">インストール</a>
+      </div>
+    </footer>
+  </div>
+</div>
+</body>
+</html>

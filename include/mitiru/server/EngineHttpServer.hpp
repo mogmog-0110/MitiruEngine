@@ -70,6 +70,7 @@ public:
 #include <string>
 #include <string_view>
 #include <thread>
+#include <utility>
 #include <vector>
 
 // ── 分割済みモジュール ──
@@ -151,6 +152,10 @@ struct EngineCallbacks
 
 	// ── AI 音観測 (/api/ai/audio) ────────────────────────────────
 	std::function<std::string(int)> audioLogJson; ///< 最新 max 件の音イベント JSON
+
+	// ── capture() の実寸 ─────────────────────────────────────────
+	// 論理 Screen サイズ ≠ ウィンドウ実寸のゲームで screenshot の stride ズレを防ぐ。
+	std::function<std::pair<int, int>()> captureDims; ///< capture() が返す pixel buffer の (幅, 高さ)
 };
 
 /// @brief エンジン組み込みHTTP APIサーバー
@@ -594,6 +599,14 @@ private:
 
 	// ── AI フレーム観測 (/api/ai/frame) ────────────────────────────
 
+	/// @brief capture() が返す pixel buffer の実寸。callback 未配線時は論理 Screen にフォールバック。
+	[[nodiscard]] std::pair<int, int> captureSourceDims() const
+	{
+		if (m_callbacks.captureDims) { return m_callbacks.captureDims(); }
+		const auto* screen = m_callbacks.getScreen();
+		return {screen ? screen->width() : 0, screen ? screen->height() : 0};
+	}
+
 	/// @brief screenshot JSON 断片を組み立てる。失敗時は空文字。
 	/// @details reqW/reqH の片方指定はアスペクト維持で補完する。
 	[[nodiscard]] std::string buildScreenshotJson(int srcW, int srcH, int reqW, int reqH)
@@ -651,7 +664,9 @@ private:
 			int reqW = 640, reqH = 0;
 			if (const auto p = observe::getParam(req.params, "width"))  { try { reqW = std::stoi(*p); } catch (...) {} }
 			if (const auto p = observe::getParam(req.params, "height")) { try { reqH = std::stoi(*p); } catch (...) {} }
-			const auto shot = buildScreenshotJson(w, h, reqW, reqH);
+			// PNG は capture() の実寸で組む ("screen" フィールドの論理寸法とは別物)。
+			const auto [cw, ch] = captureSourceDims();
+			const auto shot = buildScreenshotJson(cw, ch, reqW, reqH);
 			if (!shot.empty()) { json += "," + shot; }
 		}
 
@@ -915,9 +930,9 @@ refresh(); setInterval(refresh, 500);
 		const auto pixels = m_callbacks.capture();
 		if (pixels.empty()) { resp.status = 404; resp.setBody(R"({"error":"no screenshot available"})"); return; }
 
-		const auto* screen = m_callbacks.getScreen();
-		const int w = screen ? screen->width() : 0;
-		const int h = screen ? screen->height() : 0;
+		// 寸法は capture() の実寸 (window) を使う。論理 Screen サイズで解釈すると
+		// 縮小描画ゲーム (論理≠実寸) で stride がズレて画像が崩れる。
+		const auto [w, h] = captureSourceDims();
 		if (w <= 0 || h <= 0) { resp.status = 500; resp.setBody(R"({"error":"invalid screen dimensions"})"); return; }
 
 		const auto wParam = observe::getParam(req.params, "width");

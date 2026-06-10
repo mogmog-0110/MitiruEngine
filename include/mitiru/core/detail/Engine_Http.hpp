@@ -102,6 +102,11 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		return branchModuleMemory(seq.data(), frames);
 	};
 
+	// screenshot の実寸 (論理 Screen ≠ window のゲームで stride ズレを防ぐ)。
+	cb.captureDims = [this]() -> std::pair<int, int> {
+		return {captureWidth(), captureHeight()};
+	};
+
 	// AI 音観測 (/api/ai/audio): 適用済み SoundIntent の固定リングを JSON で返す。
 	cb.audioLogJson = [this](int max) -> std::string {
 		const std::size_t m = max > 0 ? static_cast<std::size_t>(max) : 64;
