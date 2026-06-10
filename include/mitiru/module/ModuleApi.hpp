@@ -351,6 +351,28 @@ struct FrameIntents
 	}
 
 	/// 画面を一瞬色フラッシュさせる (被弾演出など)。host が Screen::pushTint に渡す。
+	/// BGM を再生する (category=1)。host が assets/audio/<id>.wav をストリーム再生する。
+	/// loop=true でループ。連続トラックなので 1 回呼べばよい (毎フレーム呼ばない)。
+	void playMusic(const char* id, float volume = 1.0f, bool loop = true) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		copyStr(s.id, id, sizeof(s.id));
+		s.category = 1; s.volume = volume; s.loop = loop ? 1 : 0; s.pitchScale = 1.0f;
+	}
+	/// 再生中の BGM を停止する (fadeOutSec > 0 でフェードアウト)。
+	void stopMusic(float fadeOutSec = 0.0f) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		s.category = 1; s.stop = 1; s.fadeOutSec = fadeOutSec;
+	}
+
+	/// 画面を一瞬色フラッシュさせる (被弾演出など)。host が Screen::pushTint に渡す。
 	void pushTint(float r, float g, float b, float a, float durationSec) noexcept
 	{
 		const int cap = static_cast<int>(sizeof(visualIntents) / sizeof(visualIntents[0]));

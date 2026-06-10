@@ -1,21 +1,53 @@
-MIT License
-
+MitiruEngine License (Source-Available, Use-Permitted)
 Copyright (c) 2026 mogmog-0110
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+日本語の要約（正式な効力は下の英文条項が持ちます）:
+  - このエンジンを使って自分のゲーム / アプリを作り、配布することは自由です
+    （商用も可）。ソースを読むことも自由です。
+  - エンジン本体の改変・フォーク・（ライブラリ / SDK としての）再配布は
+    許可していません。必要な場合は著作権者に連絡してください。
+  - external/ 配下の第三者コンポーネントは、各自のライセンス（MIT / BSD 等）
+    に従います。本ライセンスはそれらを制限・変更しません。
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+----------------------------------------------------------------------
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+This license governs use of the original source code of MitiruEngine
+(the "Software") authored by the copyright holder. Third-party components
+bundled with the Software (see the "external/" directory and the license
+files therein) are licensed separately under their own terms; nothing in
+this license restricts, alters, or overrides those terms.
+
+1. Grant of use.
+   You are granted a non-exclusive, worldwide, royalty-free license to:
+   (a) use the Software, in source or compiled form, to develop, build,
+       run, and distribute your own applications and games — including
+       for commercial purposes; and
+   (b) view and read the source code of the Software.
+
+2. Restrictions.
+   Except as expressly permitted in Section 1, you may NOT:
+   (a) modify, adapt, translate, or create derivative works of the
+       Software;
+   (b) redistribute, republish, mirror, sublicense, sell, or otherwise
+       make the Software available to third parties as a standalone
+       library, SDK, engine, or source distribution — whether modified
+       or unmodified. (Distributing your own application that
+       incorporates the Software is permitted under Section 1.)
+   (c) remove or alter any copyright, license, or attribution notices in
+       the Software.
+
+   Requests for modification, fork, or redistribution rights may be sent
+   to the copyright holder, who may grant them in writing.
+
+3. Reservation of rights.
+   All rights not expressly granted herein are reserved by the copyright
+   holder.
+
+4. No warranty.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

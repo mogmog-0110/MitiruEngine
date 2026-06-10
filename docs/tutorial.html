@@ -3,87 +3,93 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>はじめてのゲーム — MitiruEngine</title>
+  <title>MitiruEngine — はじめてのゲーム</title>
   <meta name="description" content="C++ だけで最初のゲーム（ドッジゲーム）を作る MitiruEngine の入門ノート。状態を 1 個の struct に置き、update で動かし、draw で描く。ホットリロード・観察窓・HTML/CSS HUD まで 1 本で。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="はじめてのゲーム — MitiruEngine">
+  <meta property="og:title" content="MitiruEngine — はじめてのゲーム">
   <meta property="og:description" content="C++ だけで最初のゲーム（ドッジゲーム）を作る入門ノート。状態は 1 個の struct、update で動かし、draw で描く。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorial.html">
-  <meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
-  <meta name="twitter:card" content="summary_large_image">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="site.css">
   <link rel="icon" href="favicon.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">本文へスキップ</a>
 
-<div class="frame">
-  <header class="site-head">
-    <div class="inner">
-      <a class="brand" href="index.html">MitiruEngine<span class="ver">v0.10.1</span></a>
-      <ul class="menu">
-        <li><a href="index.html#features">できること</a></li>
-        <li><a class="current" href="tutorial.html">はじめてのゲーム</a></li>
-        <li><a href="features.html">機能</a></li>
-        <li><a href="ui.html">画面を作る</a></li>
-        <li><a href="distribute.html">配布</a></li>
-        <li><a href="install.html">インストール</a></li>
-        <li><a href="api/">API</a></li>
-        <li><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></li>
-        <li><a class="ext" href="https://mogmog-0110.github.io/portfolio.html">作者</a></li>
-      </ul>
+<div class="app">
+  <aside class="sidebar">
+    <a class="side-brand" href="index.html"><span class="mark">M</span>MitiruEngine<span class="ver">v0.11.0</span></a>
+    <nav class="side-nav" aria-label="サイト内ナビ">
+      <div class="grp">はじめに</div>
+      <a href="index.html"><span class="n">トップ</span></a>
+      <a href="install.html"><span class="n">インストール</span></a>
+      <a class="current" href="tutorial.html"><span class="n">はじめてのゲーム</span></a>
+      <div class="grp">このページ</div>
+      <a href="#goal"><span class="n">作るもの</span></a>
+      <a href="#flow"><span class="n">開発の流れ</span></a>
+      <a href="#model"><span class="n">3 つの考え方</span></a>
+      <a href="#step1"><span class="n">Step 1 — 作る</span></a>
+      <a href="#step2"><span class="n">Step 2 — 状態</span></a>
+      <a href="#step3"><span class="n">Step 3 — update</span></a>
+      <a href="#step4"><span class="n">Step 4 — draw</span></a>
+      <a href="#step5"><span class="n">Step 5 — 動かす</span></a>
+      <a href="#full"><span class="n">全コード</span></a>
+      <a href="#observe"><span class="n">観察する</span></a>
+      <a href="#debug"><span class="n">バグを直す</span></a>
+      <a href="#toolbox"><span class="n">道具箱</span></a>
+      <a href="#next"><span class="n">HTML / CSS へ</span></a>
+      <div class="grp">リファレンス</div>
+      <a href="features.html"><span class="n">機能</span></a>
+      <a href="ui.html"><span class="n">画面を作る</span></a>
+      <a href="distribute.html"><span class="n">配布する</span></a>
+      <a href="api/"><span class="n">API</span></a>
+      <a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener"><span class="n">GitHub</span></a>
+    </nav>
+    <div class="side-foot">
+      <a class="btn btn--primary" href="install.html">▶ はじめる</a>
+      <small>C++20 · Windows</small>
     </div>
-  </header>
+  </aside>
 
-  <main id="main">
-    <section class="page-head">
-      <p class="file-line">// tutorial — はじめてのゲーム</p>
-      <h1>C++ だけで、最初のゲームを作る。</h1>
-      <p class="lede">この 1 本で「ドッジゲーム」を作ります。落ちてくるブロックを左右に動いてよけるだけの単純なゲームです。覚えるのは <code>struct</code>・<code>update</code>・<code>draw</code> の 3 つだけ。書く → 動かす → 観察する → 直す、という本物の開発ループをそのままなぞります。読み終わる頃には、自分のゲームを作る土台ができています。</p>
-    </section>
+  <div class="content">
+    <main id="main">
+      <section class="page-head">
+        <div class="wrap">
+          <p class="kicker">TUTORIAL</p>
+          <h1>はじめてのゲーム</h1>
+          <p class="lede">この 1 本で「ドッジゲーム」を作ります。落ちてくるブロックを左右に動いてよけるだけの単純なゲームです。覚えるのは <code>struct</code>・<code>update</code>・<code>draw</code> の 3 つだけ。書く → 動かす → 観察する → 直す、という本物の開発ループをそのままなぞります。読み終わる頃には、自分のゲームを作る土台ができています。</p>
+        </div>
+      </section>
 
-    <div class="sections">
+      <div class="wrap">
+        <div class="prose">
 
-      <!-- ── 完成イメージ ─────────────────────── -->
-      <section class="sec" id="goal">
-        <h2>作るもの — ドッジゲーム</h2>
-        <div class="sec-body">
+          <!-- ── 作るもの ─────────────────────────── -->
+          <h2 id="goal">作るもの — ドッジゲーム</h2>
           <p>落ちてくる赤いブロックを、下の水色の自機でよけるだけのゲームです。画面の文字も四角も、全部 C++ で描きます。まずは完成形を見てください。</p>
-          <figure class="plate">
+          <figure>
             <img src="assets/dodge.png" alt="ドッジゲームのプレイ画面。暗い背景に落ちてくる赤いブロック、下に水色の自機、左上に SCORE 21 の文字">
             <figcaption>この記事で作るゲーム（実機スクリーンショット）。落ちてくる赤いブロックを下の水色の自機でよける。SCORE・ブロック・自機、すべて C++ の <code>draw</code> が描いたもの。</figcaption>
           </figure>
-          <p class="note"><strong>このページの「ドッジゲーム」は、<code>mitiru new my-dodge</code> で作る自分のプロジェクト</strong>です。同梱サンプルを動かすのではなく、空のひな型から自分で書き上げます。</p>
-        </div>
-      </section>
+          <div class="note"><strong>このページの「ドッジゲーム」は、<code>mitiru new my-dodge</code> で作る自分のプロジェクト</strong>です。同梱サンプルを動かすのではなく、空のひな型から自分で書き上げます。</div>
 
-      <!-- ── 開発の流れ 4 ステップ ──────────────── -->
-      <section class="sec" id="flow">
-        <h2>開発の流れ — 4 ステップのくり返し</h2>
-        <div class="sec-body">
+          <!-- ── 開発の流れ ───────────────────────── -->
+          <h2 id="flow">開発の流れ — 4 ステップのくり返し</h2>
           <p>ゲーム開発は「書く → 動かす → 確かめる → 直す」のくり返しです。MitiruEngine はこのループを速く回せます。</p>
-          <ul class="mini-grid">
-            <li class="mini"><h4>① 作る <span class="en">new</span></h4><p><code>mitiru new</code> でプロジェクトのひな型を作る。C++ ファイルが 1 つあるだけのシンプルな構成。</p></li>
-            <li class="mini"><h4>② 動かす <span class="en">watch</span></h4><p><code>mitiru watch</code> で起動。コードを保存した瞬間、<strong>ゲームを止めずに</strong>反映（ホットリロード）。</p></li>
-            <li class="mini"><h4>③ 観察する <span class="en">inspect</span></h4><p><code>mitiru run --inspect perf</code> で<strong>別ウィンドウ</strong>を開き、fps などを見ながら作る。</p></li>
-            <li class="mini"><h4>④ 直す <span class="en">iterate</span></h4><p>数字や条件を変えて保存 → すぐ②に戻る。このループを何度も回してゲームを育てる。</p></li>
-          </ul>
-        </div>
-      </section>
+          <div class="cards">
+            <div class="card"><div class="ico">🆕</div><h3>① 作る<span class="en">new</span></h3><p><code>mitiru new</code> でプロジェクトのひな型を作る。C++ ファイルが 1 つあるだけのシンプルな構成。</p></div>
+            <div class="card"><div class="ico">▶️</div><h3>② 動かす<span class="en">watch</span></h3><p><code>mitiru watch</code> で起動。コードを保存した瞬間、<strong>ゲームを止めずに</strong>反映（ホットリロード）。</p></div>
+            <div class="card"><div class="ico">🔍</div><h3>③ 観察する<span class="en">inspect</span></h3><p><code>mitiru run --inspect perf</code> で<strong>別ウィンドウ</strong>を開き、fps などを見ながら作る。</p></div>
+            <div class="card"><div class="ico">🔧</div><h3>④ 直す<span class="en">iterate</span></h3><p>数字や条件を変えて保存 → すぐ②に戻る。このループを何度も回してゲームを育てる。</p></div>
+          </div>
 
-      <!-- ── 3 つの考え方 ─────────────────────── -->
-      <section class="sec" id="model">
-        <h2>考え方 — ゲームは 3 つでできている</h2>
-        <div class="sec-body">
+          <!-- ── 3 つの考え方 ─────────────────────── -->
+          <h2 id="model">考え方 — ゲームは 3 つでできている</h2>
           <p>どんなゲームも、だいたいこの 3 つの組み合わせでできています。</p>
-          <ul class="mini-grid">
-            <li class="mini"><h4>状態を持つ <span class="en">struct</span></h4><p>自機の位置・スコア・ブロックの場所など「いまどうなっているか」を 1 つの <code>struct</code> にまとめて持つ。</p></li>
-            <li class="mini"><h4>動かす <span class="en">update</span></h4><p>毎フレーム呼ばれる関数。キー入力を読んで自機を動かし、ブロックを落とし、当たり判定をする。</p></li>
-            <li class="mini"><h4>描く <span class="en">draw</span></h4><p>毎フレーム呼ばれる関数。いまの状態を見て、四角や文字を画面に描く。</p></li>
-          </ul>
+          <div class="cards">
+            <div class="card"><div class="ico">📦</div><h3>状態を持つ<span class="en">struct</span></h3><p>自機の位置・スコア・ブロックの場所など「いまどうなっているか」を 1 つの <code>struct</code> にまとめて持つ。</p></div>
+            <div class="card"><div class="ico">⚙️</div><h3>動かす<span class="en">update</span></h3><p>毎フレーム呼ばれる関数。キー入力を読んで自機を動かし、ブロックを落とし、当たり判定をする。</p></div>
+            <div class="card"><div class="ico">🎨</div><h3>描く<span class="en">draw</span></h3><p>毎フレーム呼ばれる関数。いまの状態を見て、四角や文字を画面に描く。</p></div>
+          </div>
           <p>エンジンが毎フレーム、自動でこのループを回します:</p>
 <pre><span class="c">  入力 (キー・マウス)</span>
         │
@@ -100,13 +106,9 @@
   <span class="c">画面 (1280 × 720)</span>
         ↺  <span class="c">1 秒に約 60 回くり返す</span></pre>
           <p>あなたが書くのは <strong><code>update</code> と <code>draw</code> の 2 つの中身だけ</strong>。残りはエンジンの仕事です。状態を <code>struct</code> に置いて、<code>update</code> で動かして、<code>draw</code> で描く — どんなゲームもこの 3 つの組み合わせです。</p>
-        </div>
-      </section>
 
-      <!-- ── Step 1: プロジェクトを作る ──────────── -->
-      <section class="sec" id="step1">
-        <h2>Step 1 — プロジェクトを作る</h2>
-        <div class="sec-body">
+          <!-- ── Step 1 ───────────────────────────── -->
+          <h2 id="step1">Step 1 — プロジェクトを作る</h2>
 <pre>mitiru new my-dodge
 cd my-dodge</pre>
           <p><code>mitiru new</code> を実行すると、<code>my-dodge/</code> の中にプロジェクトのひな型ができます。書き換えるのは <strong><code>src/main.cpp</code></strong> ただ 1 つ。最初の数行はこう書きはじめます。<code>using namespace mitiru;</code> と書いておくと、<code>Key</code> や <code>color</code> を短く書けます。</p>
@@ -114,48 +116,40 @@ cd my-dodge</pre>
 <span class="k">#include</span> &lt;mitiru/module/Game.hpp&gt;      <span class="c">// ゲームの入口・Input・Hud・Screen・色</span>
 <span class="k">#include</span> &lt;mitiru/core/Random.hpp&gt;       <span class="c">// 乱数 mitiru::Random</span>
 <span class="k">using namespace</span> mitiru;</pre>
-          <p class="note"><strong>乱数は <code>mitiru::Random</code>。</strong> <code>Random rng;</code> と置いて <code>rng.nextInt(1, 6)</code> / <code>rng.nextFloat(0, 1)</code> / <code>rng.nextBool(0.3f)</code> のように使います。このゲームでもブロックを出す位置決めに使います。</p>
-        </div>
-      </section>
+          <div class="note"><strong>乱数は <code>mitiru::Random</code>。</strong> <code>Random rng;</code> と置いて <code>rng.nextInt(1, 6)</code> / <code>rng.nextFloat(0, 1)</code> / <code>rng.nextBool(0.3f)</code> のように使います。このゲームでもブロックを出す位置決めに使います。</div>
 
-      <!-- ── Step 2: 状態を struct に ────────────── -->
-      <section class="sec" id="step2">
-        <h2>Step 2 — 状態を struct に書く</h2>
-        <div class="sec-body">
+          <!-- ── Step 2 ───────────────────────────── -->
+          <h2 id="step2">Step 2 — 状態を struct に書く</h2>
           <p>このゲームが覚えておくのは「自機の位置」「落ちてくるブロック」「スコア」など。全部 1 つの <code>struct</code> に入れます。乱数の <code>rng</code> もメンバとして持っておきます。</p>
 <pre><span class="c">// 落ちてくるブロック 1 個分</span>
-<span class="k">struct</span> Block { <span class="k">float</span> x, y; <span class="k">bool</span> alive; };
+<span class="k">struct</span> <span class="t">Block</span> { <span class="k">float</span> x, y; <span class="k">bool</span> alive; };
 
-<span class="k">struct</span> DodgeGame {
+<span class="k">struct</span> <span class="t">DodgeGame</span> {
     <span class="k">float</span>  playerX = 640;      <span class="c">// 自機の左右位置</span>
-    Block  blocks[24] {};       <span class="c">// ブロックは最大 24 個（全部 alive=false で開始）</span>
+    <span class="t">Block</span>  blocks[24] {};       <span class="c">// ブロックは最大 24 個（全部 alive=false で開始）</span>
     <span class="k">int</span>    score = 0;
     <span class="k">bool</span>   over = false;        <span class="c">// ゲームオーバーか</span>
     <span class="k">float</span>  spawnIn = 0.0f;       <span class="c">// 次のブロックを出すまでの残り秒</span>
-    Random rng;                 <span class="c">// 乱数（エンジン付属）</span>
+    <span class="t">Random</span> rng;                 <span class="c">// 乱数（エンジン付属）</span>
     <span class="c">// ↓ update / draw はこの下に書く</span>
 };</pre>
           <p><strong>ポイント:</strong> 状態をこの 1 つの struct にまとめておくと、エンジンがこれを預かってくれます。だから後で「コードを書き換えても状態は保ったまま」「プレイを録画して再生」「過去に巻き戻す」といった便利機能がそのまま使えます（今は気にしなくて OK）。</p>
           <div class="note">
             <p><strong>なぜ <code>class</code> じゃなく <code>struct</code>?</strong> C++ では両者はほぼ同じ（既定の公開／非公開が違うだけ）で、<code>struct</code> でもメンバ関数（<code>update</code>／<code>draw</code>）は持てます。ここで <code>struct</code> なのには<strong>エンジンの仕組み上の理由</strong>があります。エンジンは<strong>このゲーム状態をまるごとコピーして保存／復元</strong>します（タイムトラベルやホットリロード）。そのためトップのゲーム状態は「ただのデータ」＝<strong>仮想関数やエンジンへのポインタを持たない、コピーできる素直な型（flat POD）</strong>であってほしい。<code>struct</code> はその「これは素のデータ」という意思表示です。<strong>中で使う部品（敵・弾・UI など）は普通に <code>class</code> で書いて構いません</strong> — トップの状態だけ素直に保つ、という住み分けです。</p>
           </div>
-        </div>
-      </section>
 
-      <!-- ── Step 3: update ─────────────────── -->
-      <section class="sec" id="step3">
-        <h2>Step 3 — 動かす（update）を書く</h2>
-        <div class="sec-body">
+          <!-- ── Step 3 ───────────────────────────── -->
+          <h2 id="step3">Step 3 — 動かす（update）を書く</h2>
           <p>毎フレーム呼ばれます。<code>in</code> から入力を読み、<code>dt</code>（前フレームからの経過秒）を使って動かします。やることは 3 つ — <strong>① 自機を動かす ② ときどきブロックを出す ③ ブロックを落として当たり判定</strong>。<code>struct</code> のメンバ関数として書きます。</p>
-<pre><span class="k">void</span> update(Input in, <span class="k">float</span> dt) {
+<pre><span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt) {
     <span class="k">if</span> (over) {                                <span class="c">// ゲームオーバー中は Space で再開だけ</span>
-        <span class="k">if</span> (in.pressed(Key::Space)) { *<span class="k">this</span> = DodgeGame{}; }
+        <span class="k">if</span> (in.pressed(<span class="t">Key</span>::Space)) { *<span class="k">this</span> = <span class="t">DodgeGame</span>{}; }
         <span class="k">return</span>;
     }
 
     <span class="c">// ① 矢印キーで自機を左右に（画面外に出ないよう制限）</span>
-    <span class="k">if</span> (in.down(Key::Left))  playerX -= 520 * dt;
-    <span class="k">if</span> (in.down(Key::Right)) playerX += 520 * dt;
+    <span class="k">if</span> (in.down(<span class="t">Key</span>::Left))  playerX -= 520 * dt;
+    <span class="k">if</span> (in.down(<span class="t">Key</span>::Right)) playerX += 520 * dt;
     <span class="k">if</span> (playerX &lt; 28)   playerX = 28;
     <span class="k">if</span> (playerX &gt; 1252) playerX = 1252;
 
@@ -163,18 +157,18 @@ cd my-dodge</pre>
     spawnIn -= dt;
     <span class="k">if</span> (spawnIn &lt;= 0) {
         spawnIn = 0.55f;
-        <span class="k">for</span> (Block&amp; b : blocks)
+        <span class="k">for</span> (<span class="t">Block</span>&amp; b : blocks)
             <span class="k">if</span> (!b.alive) { b.alive = <span class="k">true</span>; b.x = rng.nextFloat(40, 1200); b.y = -44; <span class="k">break</span>; }
     }
 
     <span class="c">// ③ ブロックを落として、自機に当たったか調べる</span>
-    <span class="k">for</span> (Block&amp; b : blocks) {
+    <span class="k">for</span> (<span class="t">Block</span>&amp; b : blocks) {
         <span class="k">if</span> (!b.alive) <span class="k">continue</span>;
         b.y += 330 * dt;                       <span class="c">// 下へ落とす</span>
         <span class="k">if</span> (b.y &gt; 720) { b.alive = <span class="k">false</span>; <span class="k">continue</span>; }   <span class="c">// 下に抜けたら消す</span>
         <span class="c">// 当たり判定はエンジンに任せる</span>
-        sgc::Rectf player{playerX - 28, 660, 56, 24};   <span class="c">// {x, y, 幅, 高さ}</span>
-        sgc::Rectf block{b.x, b.y, 44, 44};
+        sgc::<span class="t">Rectf</span> player{playerX - 28, 660, 56, 24};   <span class="c">// {x, y, 幅, 高さ}</span>
+        sgc::<span class="t">Rectf</span> block{b.x, b.y, 44, 44};
         <span class="k">if</span> (player.intersects(block)) over = <span class="k">true</span>;
     }
     score += 1;   <span class="c">// 生き残るほどスコアが増える</span>
@@ -182,18 +176,14 @@ cd my-dodge</pre>
           <p><strong>入力の読み方:</strong> <code>in.down(Key::Left)</code> は「押されている間ずっと true」、<code>in.pressed(Key::Space)</code> は「押した瞬間だけ true」。キーは名前で書けます。</p>
           <p><strong>ブロックを出す:</strong> <code>blocks</code> は最大 24 個の置き場。空いている（<code>!alive</code>）枠を 1 つ見つけて <code>alive = true</code> にし、出現 x を <code>rng.nextFloat(40, 1200)</code> でランダムに決めます。<strong>やり直し</strong>は <code>*this = DodgeGame{};</code>（状態をまるごと初期値に戻す）の 1 行で済みます。</p>
           <p><strong>当たり判定はエンジンが持っています。</strong> 四角どうしが重なったかは <code>sgc::Rectf</code>（<code>{x, y, 幅, 高さ}</code>）の <code>.intersects(他の矩形)</code> で一発。点が矩形の中にあるかは <code>.contains(点)</code>。</p>
-        </div>
-      </section>
 
-      <!-- ── Step 4: draw ──────────────────── -->
-      <section class="sec" id="step4">
-        <h2>Step 4 — 描く（draw）を書く</h2>
-        <div class="sec-body">
+          <!-- ── Step 4 ───────────────────────────── -->
+          <h2 id="step4">Step 4 — 描く（draw）を書く</h2>
           <p>毎フレーム呼ばれます。<code>s</code>（画面）に四角と文字を描きます。座標は左上が (0, 0)、右下が (1280, 720) です。</p>
-<pre><span class="k">void</span> draw(Screen&amp; s) {
+<pre><span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
     s.drawRect(0, 0, 1280, 720, hex(0x14182A));     <span class="c">// 背景を塗る</span>
 
-    <span class="k">for</span> (Block&amp; b : blocks)                        <span class="c">// ブロック (赤い四角)</span>
+    <span class="k">for</span> (<span class="t">Block</span>&amp; b : blocks)                        <span class="c">// ブロック (赤い四角)</span>
         <span class="k">if</span> (b.alive) s.drawRect(b.x, b.y, 44, 44, color::Red);
 
     s.drawRectCentered(playerX, 672, 56, 24, color::Cyan);   <span class="c">// 自機 (水色)</span>
@@ -207,23 +197,18 @@ cd my-dodge</pre>
     }
 }</pre>
           <p><strong>描き方:</strong> <code>s.drawRect(x, y, 幅, 高さ, 色)</code> で四角、<code>s.text("文字", x, y, 色, 大きさ)</code> で文字。色は <code>color::Red</code> のような名前か、<code>hex(0x14182A)</code> のように 16 進で書けます。<code>drawRectCentered</code> は (x, y) を中心にして描く版です。</p>
-
           <p><strong>コードを足すごとに、画面はこう育ちます</strong>（下はすべて、上で書いた <code>draw</code> を実際に動かして撮った画面です）:</p>
-          <div class="plate-grid">
-            <figure class="plate"><img src="assets/feat_build0.png" alt="暗い背景に水色の自機だけがある画面" loading="lazy"><figcaption>① 背景 + 自機 — <code>drawRect</code> / <code>drawRectCentered</code></figcaption></figure>
-            <figure class="plate"><img src="assets/feat_build1.png" alt="赤いブロックが3つ加わった画面" loading="lazy"><figcaption>② ブロックを描く — <code>drawRect</code>（赤）</figcaption></figure>
-            <figure class="plate"><img src="assets/feat_build2.png" alt="左上に SCORE 128 の文字が加わった画面" loading="lazy"><figcaption>③ スコアを描く — <code>s.text(...)</code></figcaption></figure>
-            <figure class="plate"><img src="assets/feat_build3.png" alt="画面が暗転し GAME OVER と表示された画面" loading="lazy"><figcaption>④ ゲームオーバー表示 — <code>if (over) { ... }</code></figcaption></figure>
+          <div class="cards">
+            <figure><img src="assets/feat_build0.png" alt="暗い背景に水色の自機だけがある画面" loading="lazy"><figcaption>① 背景 + 自機 — <code>drawRect</code> / <code>drawRectCentered</code></figcaption></figure>
+            <figure><img src="assets/feat_build1.png" alt="赤いブロックが3つ加わった画面" loading="lazy"><figcaption>② ブロックを描く — <code>drawRect</code>（赤）</figcaption></figure>
+            <figure><img src="assets/feat_build2.png" alt="左上に SCORE 128 の文字が加わった画面" loading="lazy"><figcaption>③ スコアを描く — <code>s.text(...)</code></figcaption></figure>
+            <figure><img src="assets/feat_build3.png" alt="画面が暗転し GAME OVER と表示された画面" loading="lazy"><figcaption>④ ゲームオーバー表示 — <code>if (over) { ... }</code></figcaption></figure>
           </div>
-        </div>
-      </section>
 
-      <!-- ── Step 5: 仕上げて動かす ──────────────── -->
-      <section class="sec" id="step5">
-        <h2>Step 5 — 仕上げて動かす</h2>
-        <div class="sec-body">
+          <!-- ── Step 5 ───────────────────────────── -->
+          <h2 id="step5">Step 5 — 仕上げて動かす</h2>
           <p>最後に 1 行、このゲームを DLL の入口に結びつけます。</p>
-<pre>MITIRU_GAME(DodgeGame)   <span class="c">// これだけ</span></pre>
+<pre><span class="t">MITIRU_GAME</span>(DodgeGame)   <span class="c">// これだけ</span></pre>
           <p><strong><code>MITIRU_GAME</code> って何をしてるの?</strong> MitiruEngine では、書いたゲームは <strong>DLL（差し替え可能な部品）</strong>としてビルドされ、<code>mitiru_host</code> という実行ファイルがそれを読み込んで動かします。ホストとゲームの間は「ここを呼んでね」という<strong>決まった入口関数</strong>でやり取りします。<code>MITIRU_GAME(DodgeGame)</code> は、その<strong>入口関数を自動で書いてくれる</strong>マクロです。中では「<code>DodgeGame</code> を 1 個作って、毎フレーム <code>update</code> と <code>draw</code> を呼んでね」という配線が展開されます。だから<strong>書くのは <code>update</code> と <code>draw</code> だけ</strong>でよく、面倒な入口の決まり文句（C の関数シグネチャや <code>extern "C"</code> など）は一切書かずに済みます。この「ゲーム＝差し替え可能な DLL」という形が、次に出てくる<strong>ホットリロード</strong>を可能にしています。</p>
 <pre>mitiru run</pre>
           <p>窓が開いて、ゲームが動きます。矢印キーで自機を動かして、赤いブロックをよけてみてください。</p>
@@ -234,23 +219,19 @@ cd my-dodge</pre>
           <p>仕組みはこうです。コードを保存すると、<strong>ゲームの DLL だけが素早く再ビルド</strong>され（数秒）、走っている <code>mitiru_host</code> がそれを<strong>その場で差し替えます</strong>。ホストは再起動しないので、<strong>いまの状態（スコア・ブロックの位置など）はそのまま残ります</strong>。「作り直して最初から」ではなく「遊んだまま中身だけ入れ替わる」のがホットリロードです。状態が消えないのは、状態を <code>struct DodgeGame</code> にまとめて<strong>エンジンが預かっている</strong>からです。</p>
           <p>試しに <code>mitiru watch</code> 中に、ブロックの落下速度 <code>330</code> を <code>500</code> に変えて保存してみましょう。ゲームは落ちずに、その場で難しくなります。</p>
 
-          <ul class="spec">
-            <li><span class="k">再起動して直す</span><span class="v">直す → ビルド → <strong>再起動</strong> → 場面を作り直して確認。<strong>状態が消える</strong>（スコアは 0、ブロックも無し）。さっき確かめたかった場面まで、もう一度遊んで戻るところから。</span></li>
-            <li><span class="k">mitiru watch</span><span class="v">直して<strong>保存</strong> → 数秒で差し替え → そのまま続行。<strong>状態はそのまま</strong>。スコアもブロックの位置も残ったまま、変えた数字（落下速度）だけが効く。</span></li>
-          </ul>
+          <table class="spectable">
+            <tr><td>再起動して直す</td><td>直す → ビルド → <strong>再起動</strong> → 場面を作り直して確認。<strong>状態が消える</strong>（スコアは 0、ブロックも無し）。さっき確かめたかった場面まで、もう一度遊んで戻るところから。</td></tr>
+            <tr><td>mitiru watch</td><td>直して<strong>保存</strong> → 数秒で差し替え → そのまま続行。<strong>状態はそのまま</strong>。スコアもブロックの位置も残ったまま、変えた数字（落下速度）だけが効く。</td></tr>
+          </table>
 
-          <figure class="plate">
+          <figure>
             <img src="assets/dodge.png" alt="実行中のドッジゲーム。暗い背景に複数の赤いブロックが落ちてきて、下に水色の自機、左上に SCORE 21" loading="lazy">
             <figcaption>mitiru_host で実際に動かした画面（実機スクリーンショット）。SCORE・ブロック・自機、全部さっき書いた C++ の <code>draw</code> が描いたもの。</figcaption>
           </figure>
-          <p class="note">数字を少し変えて、すぐ確認できる。これが「② 動かす → ④ 直す」を速く回せる理由です。難易度の調整も、このループの中でそのままできます。</p>
-        </div>
-      </section>
+          <div class="note">数字を少し変えて、すぐ確認できる。これが「② 動かす → ④ 直す」を速く回せる理由です。難易度の調整も、このループの中でそのままできます。</div>
 
-      <!-- ── 全コード ──────────────────────── -->
-      <section class="sec" id="full">
-        <h2>全コード — このまま貼れば動く</h2>
-        <div class="sec-body">
+          <!-- ── 全コード ─────────────────────────── -->
+          <h2 id="full">全コード — このまま貼れば動く</h2>
           <p>ここまでの Step 1〜4 を 1 つにまとめた<strong>そのまま遊べる全コード</strong>です。<code>src/main.cpp</code> を<strong>丸ごとこれに置き換えて</strong> <code>mitiru run</code>。新しい行は 1 つもありません — 上のステップで書いたものを順に並べただけです。</p>
 <pre><span class="k">#include</span> &lt;string&gt;
 <span class="k">#include</span> &lt;mitiru/module/Game.hpp&gt;      <span class="c">// ゲームの入口・Input・Hud・Screen・色</span>
@@ -258,25 +239,25 @@ cd my-dodge</pre>
 <span class="k">using namespace</span> mitiru;
 
 <span class="c">// 落ちてくるブロック 1 個分</span>
-<span class="k">struct</span> Block { <span class="k">float</span> x, y; <span class="k">bool</span> alive; };
+<span class="k">struct</span> <span class="t">Block</span> { <span class="k">float</span> x, y; <span class="k">bool</span> alive; };
 
-<span class="k">struct</span> DodgeGame {
+<span class="k">struct</span> <span class="t">DodgeGame</span> {
     <span class="k">float</span>  playerX = 640;      <span class="c">// 自機の左右位置</span>
-    Block  blocks[24] {};       <span class="c">// ブロックは最大 24 個</span>
+    <span class="t">Block</span>  blocks[24] {};       <span class="c">// ブロックは最大 24 個</span>
     <span class="k">int</span>    score = 0;
     <span class="k">bool</span>   over = false;        <span class="c">// ゲームオーバーか</span>
     <span class="k">float</span>  spawnIn = 0.0f;       <span class="c">// 次のブロックを出すまでの残り秒</span>
-    Random rng;                 <span class="c">// 乱数（エンジン付属）</span>
+    <span class="t">Random</span> rng;                 <span class="c">// 乱数（エンジン付属）</span>
 
-    <span class="k">void</span> update(Input in, <span class="k">float</span> dt) {
+    <span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt) {
         <span class="k">if</span> (over) {                                <span class="c">// ゲームオーバー中は Space で再開だけ</span>
-            <span class="k">if</span> (in.pressed(Key::Space)) { *<span class="k">this</span> = DodgeGame{}; }
+            <span class="k">if</span> (in.pressed(<span class="t">Key</span>::Space)) { *<span class="k">this</span> = <span class="t">DodgeGame</span>{}; }
             <span class="k">return</span>;
         }
 
         <span class="c">// ① 矢印キーで自機を左右に（画面外に出ない）</span>
-        <span class="k">if</span> (in.down(Key::Left))  playerX -= 520 * dt;
-        <span class="k">if</span> (in.down(Key::Right)) playerX += 520 * dt;
+        <span class="k">if</span> (in.down(<span class="t">Key</span>::Left))  playerX -= 520 * dt;
+        <span class="k">if</span> (in.down(<span class="t">Key</span>::Right)) playerX += 520 * dt;
         <span class="k">if</span> (playerX &lt; 28)   playerX = 28;
         <span class="k">if</span> (playerX &gt; 1252) playerX = 1252;
 
@@ -284,25 +265,25 @@ cd my-dodge</pre>
         spawnIn -= dt;
         <span class="k">if</span> (spawnIn &lt;= 0) {
             spawnIn = 0.55f;
-            <span class="k">for</span> (Block&amp; b : blocks)
+            <span class="k">for</span> (<span class="t">Block</span>&amp; b : blocks)
                 <span class="k">if</span> (!b.alive) { b.alive = <span class="k">true</span>; b.x = rng.nextFloat(40, 1200); b.y = -44; <span class="k">break</span>; }
         }
 
         <span class="c">// ③ ブロックを落として当たり判定</span>
-        <span class="k">for</span> (Block&amp; b : blocks) {
+        <span class="k">for</span> (<span class="t">Block</span>&amp; b : blocks) {
             <span class="k">if</span> (!b.alive) <span class="k">continue</span>;
             b.y += 330 * dt;
             <span class="k">if</span> (b.y &gt; 720) { b.alive = <span class="k">false</span>; <span class="k">continue</span>; }
-            sgc::Rectf player{playerX - 28, 660, 56, 24};   <span class="c">// {x, y, 幅, 高さ}</span>
-            sgc::Rectf block{b.x, b.y, 44, 44};
+            sgc::<span class="t">Rectf</span> player{playerX - 28, 660, 56, 24};   <span class="c">// {x, y, 幅, 高さ}</span>
+            sgc::<span class="t">Rectf</span> block{b.x, b.y, 44, 44};
             <span class="k">if</span> (player.intersects(block)) over = <span class="k">true</span>;
         }
         score += 1;   <span class="c">// 生き残るほどスコアが増える</span>
     }
 
-    <span class="k">void</span> draw(Screen&amp; s) {
+    <span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
         s.drawRect(0, 0, 1280, 720, hex(0x14182A));     <span class="c">// 背景を塗る</span>
-        <span class="k">for</span> (Block&amp; b : blocks)                        <span class="c">// ブロック (赤い四角)</span>
+        <span class="k">for</span> (<span class="t">Block</span>&amp; b : blocks)                        <span class="c">// ブロック (赤い四角)</span>
             <span class="k">if</span> (b.alive) s.drawRect(b.x, b.y, 44, 44, color::Red);
         s.drawRectCentered(playerX, 672, 56, 24, color::Cyan);   <span class="c">// 自機 (水色)</span>
         s.text(<span class="s">"SCORE "</span> + std::to_string(score), 24, 20, color::White, 24);
@@ -313,29 +294,25 @@ cd my-dodge</pre>
     }
 };
 
-MITIRU_GAME(DodgeGame)   <span class="c">// これ 1 行で DLL の入口が出来る</span></pre>
+<span class="t">MITIRU_GAME</span>(DodgeGame)   <span class="c">// これ 1 行で DLL の入口が出来る</span></pre>
           <p>これで完成です。<code>mitiru run</code> で窓が開き、矢印キーで自機を動かしてブロックをよけられます。当たると GAME OVER、Space でやり直し。<strong>まずはこれを動かしてから</strong>、数字（落下速度 <code>330</code>、出現間隔 <code>0.55</code>、自機速度 <code>520</code>）を変えて、<code>mitiru watch</code> で手応えを確かめてみてください。</p>
-          <p class="note">上のステップは「考え方」を分けて説明したもの。実際に動かすときは、この全コードをそのまま貼るのが早い。動いたら、さっきのステップを読み返すと「あの説明はここの話だったのか」と腑に落ちます。</p>
-        </div>
-      </section>
+          <div class="note">上のステップは「考え方」を分けて説明したもの。実際に動かすときは、この全コードをそのまま貼るのが早い。動いたら、さっきのステップを読み返すと「あの説明はここの話だったのか」と腑に落ちます。</div>
 
-      <!-- ── ③ 観察する ──────────────────────── -->
-      <section class="sec" id="observe">
-        <h2>③ 観察する — 別ウィンドウで中身をのぞく</h2>
-        <div class="sec-body">
+          <!-- ── 観察する ─────────────────────────── -->
+          <h2 id="observe">③ 観察する — 別ウィンドウで中身をのぞく</h2>
           <p>ゲームを作っていると「いま何 fps 出てる?」が気になります（とくにブロックを増やしたり描画を足したとき、重くなってないか確かめたい）。MitiruEngine は、巨大なエディタを開く代わりに <strong>必要な情報だけを小さな独立ウィンドウ</strong>に出します。試しに、フレームレートを見る <code>perf</code> 窓を開いてみましょう。</p>
 
           <h3>コードから開く（おすすめ）</h3>
           <p>窓は<strong>ゲームのコードから開きます</strong>。<code>update</code> に渡される <code>hud</code> に「この窓を開いて」とお願いするだけ:</p>
-<pre><span class="k">void</span> update(Input in, Hud hud, <span class="k">float</span> dt) {
-    hud.open(Tool::Perf);   <span class="c">// perf ウィンドウを開く</span>
+<pre><span class="k">void</span> update(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">float</span> dt) {
+    hud.open(<span class="t">Tool</span>::Perf);   <span class="c">// perf ウィンドウを開く</span>
     <span class="c">// …いつもの update…</span>
 }</pre>
           <div class="note">
             <p><strong>どこに書けばいい?</strong> <code>update</code> は毎フレーム呼ばれますが、<strong>同じ窓は 1 回しか開きません</strong>（エンジンが重複を弾きます）。だから <code>init()</code> に置いても <code>update</code> に置いても OK — <strong>開きたい所に 1 行書くだけ</strong>。「特定の状況になったら開く」なら <code>if (over) hud.open(Tool::Inspector);</code> のように条件の中に書けます。</p>
           </div>
 
-          <figure class="plate">
+          <figure>
             <img src="assets/tool-perf.png" alt="独立した perf ウィンドウ。大きく 60 fps、その下に 16.62 ms / frame、下半分に fps の折れ線グラフと 60 の基準線" loading="lazy">
             <figcaption>ゲームとは別に開く perf ウィンドウ（実機スクリーンショット）。この窓自体も <strong>HTML / CSS で作られています</strong>。</figcaption>
           </figure>
@@ -354,11 +331,11 @@ MITIRU_GAME(DodgeGame)   <span class="c">// これ 1 行で DLL の入口が出�
 
           <h3>いま開ける独立ウィンドウ</h3>
           <p>どれもゲーム画面とは<strong>別の小さな窓</strong>で開くので、ゲームの見た目を汚しません。<code>--inspect &lt;名前&gt;</code> または <code>hud.open(Tool::…)</code> で開きます。最初は <code>perf</code> だけ覚えれば十分、残りは困ったときの道具です:</p>
-          <div class="plate-grid">
-            <figure class="plate"><img src="assets/tool-inspect.png" alt="inspector ウィンドウ。Player セクションに hp 80・score 1240・state running、Scene セクションに camera・enemies・player" loading="lazy"><figcaption><code>inspector</code> — ゲームの状態（HP・スコア等、自分で見せたい値）をのぞく</figcaption></figure>
-            <figure class="plate"><img src="assets/tool-timetravel.png" alt="time travel ウィンドウ。120 frames のスクラブバーと HP・X の履歴グラフ" loading="lazy"><figcaption><code>timetravel</code> — 過去フレームに巻き戻して状態の移り変わりを見る</figcaption></figure>
-            <figure class="plate"><img src="assets/tool-mixer.png" alt="mixer ウィンドウ。master volume 80% の縦フェーダーと M/S/S の VU バー" loading="lazy"><figcaption><code>mixer</code> — 音量や再生中の音を見る</figcaption></figure>
-            <figure class="plate"><img src="assets/tool-scene.png" alt="scene tree ウィンドウ。JSON の階層をインデントで表示" loading="lazy"><figcaption><code>scene</code> — 状態の階層構造をツリーで見る</figcaption></figure>
+          <div class="cards">
+            <figure><img src="assets/tool-inspect.png" alt="inspector ウィンドウ。Player セクションに hp 80・score 1240・state running、Scene セクションに camera・enemies・player" loading="lazy"><figcaption><code>inspector</code> — ゲームの状態（HP・スコア等、自分で見せたい値）をのぞく</figcaption></figure>
+            <figure><img src="assets/tool-timetravel.png" alt="time travel ウィンドウ。120 frames のスクラブバーと HP・X の履歴グラフ" loading="lazy"><figcaption><code>timetravel</code> — 過去フレームに巻き戻して状態の移り変わりを見る</figcaption></figure>
+            <figure><img src="assets/tool-mixer.png" alt="mixer ウィンドウ。master volume 80% の縦フェーダーと M/S/S の VU バー" loading="lazy"><figcaption><code>mixer</code> — 音量や再生中の音を見る</figcaption></figure>
+            <figure><img src="assets/tool-scene.png" alt="scene tree ウィンドウ。JSON の階層をインデントで表示" loading="lazy"><figcaption><code>scene</code> — 状態の階層構造をツリーで見る</figcaption></figure>
           </div>
           <p>これが「必要なものだけ画面に出す」という MitiruEngine の考え方です。巨大なエディタは開かず、<strong>1 ツール＝1 つの関心事＝1 つの窓</strong>。</p>
 
@@ -371,19 +348,15 @@ MITIRU_GAME(DodgeGame)   <span class="c">// これ 1 行で DLL の入口が出�
           <p>同じ仕組みの延長で、<strong>AI（や外部ツール）にゲームの全状態を読ませる</strong>こともできます。<code>struct</code> の中で <code>MITIRU_REFLECT</code> を宣言し、環境変数 <code>MITIRU_AI=1</code> を付けて起動するだけ:</p>
 <pre>MITIRU_AI=1 mitiru run</pre>
           <p>すると <code>/api/ai/state</code>（現在の全状態を JSON で）・<code>/api/ai/diff</code>（前との差分）・<code>/api/ai/branch</code>（「この入力を続けたら?」の反実仮想）が無設定で生えます。<strong>1 個の <code>struct</code> に状態を置く</strong>という最初の判断が、巻き戻しも録画も AI 観測も同じ土台から生んでいます（詳しくは <a href="features.html">機能リファレンス</a> へ）。</p>
-        </div>
-      </section>
 
-      <!-- ── ④ 直す ──────────────────────────── -->
-      <section class="sec" id="debug">
-        <h2>④ 直す — バグを窓で見つけて直す</h2>
-        <div class="sec-body">
+          <!-- ── 直す ─────────────────────────────── -->
+          <h2 id="debug">④ 直す — バグを窓で見つけて直す</h2>
           <p>道具が役に立つのは、<strong>バグに詰まったとき</strong>です。練習として、わざとおかしな動きを入れて、窓で原因を見つけて直すまでをやってみます。</p>
 
           <h3>おかしな動きを入れてみる</h3>
           <p>ブロックの落下速度を、うっかり毎フレーム足し続けてしまった、という想定です（<code>=</code> のつもりが <code>+=</code>）。<code>struct DodgeGame</code> に <code>float fallSpeed = 330.0f;</code> を足して、落下処理をこう書きます:</p>
 <pre>fallSpeed += 4.0f;                 <span class="c">// 毎フレーム +4 ずつ増えてしまう</span>
-<span class="k">for</span> (Block&amp; b : blocks) {
+<span class="k">for</span> (<span class="t">Block</span>&amp; b : blocks) {
     <span class="k">if</span> (b.alive) b.y += fallSpeed * dt;
 }</pre>
           <p>最初の数秒は普通に遊べますが、すぐにブロックが避けられない速さになります。画面を見ても、なぜ加速するのかは分かりません。<strong>数字が見えないから</strong>です。</p>
@@ -401,7 +374,7 @@ hud.watch(<span class="s">"game"</span>, <span class="s">"Dodge"</span>, buf);  
           <h3>③ 直す</h3>
           <p><code>+=</code> をやめて、毎フレーム同じ値にすれば直ります:</p>
 <pre>fallSpeed = 330.0f;                <span class="c">// 毎フレーム同じ速さに戻す</span>
-<span class="k">for</span> (Block&amp; b : blocks) {
+<span class="k">for</span> (<span class="t">Block</span>&amp; b : blocks) {
     <span class="k">if</span> (b.alive) b.y += fallSpeed * dt;
 }</pre>
           <p><code>mitiru watch</code> で動かしていれば、保存した瞬間に反映されます。inspector を開いたまま見ると、<code>fallSpeed</code> が増えなくなったのが確認できます。流れはいつもこれ — <strong>perf で切り分け → inspector で値を見る → 直す → 窓で確認</strong>。中が見えると、原因にたどり着きやすくなります。</p>
@@ -409,51 +382,43 @@ hud.watch(<span class="s">"game"</span>, <span class="s">"Dodge"</span>, buf);  
           <div class="note">
             <p><strong>便利機能: コードからスクショ。</strong> 「この瞬間の画面を残したい」ときは、<code>hud.screenshot();</code> を 1 行呼ぶだけで、そのフレームの画面が画像ファイルに保存されます。たとえば <code>if (over) hud.screenshot();</code> でゲームオーバーの瞬間だけ自動保存、といった使い方ができます（バグ報告や、AI に画面を見せて確認してもらうのにも便利）。</p>
           </div>
-        </div>
-      </section>
 
-      <!-- ── 道具箱 ──────────────────────────── -->
-      <section class="sec" id="toolbox">
-        <h2>道具箱 — 覚えておくと便利な道具</h2>
-        <div class="sec-body">
+          <!-- ── 道具箱 ───────────────────────────── -->
+          <h2 id="toolbox">道具箱 — 覚えておくと便利な道具</h2>
           <p>ゲームを書くとき、触るのは主に <strong>3 つのオブジェクト</strong>だけです。<code>update(Input in, Hud hud, float dt)</code> の <code>in</code> と <code>hud</code>、そして <code>draw(Screen&amp; s)</code> の <code>s</code>。それぞれ「よく使う道具」を並べておきます — <strong>この一覧がエンジンでできることのだいたい全部</strong>です。困ったらここに戻ってきてください。</p>
 
           <h3><code>in</code> — 入力を読む（Input）</h3>
-          <ul class="spec">
-            <li><span class="k">in.down(Key::Left)</span><span class="v">キーが押されている間ずっと true（移動など）</span></li>
-            <li><span class="k">in.pressed(Key::Space)</span><span class="v">押した<strong>瞬間</strong>だけ true（ジャンプ・決定など）</span></li>
-            <li><span class="k">in.released(Key::Z)</span><span class="v">離した瞬間だけ true</span></li>
-            <li><span class="k">in.mouseDown(0) / mousePressed(0)</span><span class="v">マウス左ボタン（0=左 1=右 2=中）</span></li>
-            <li><span class="k">in.mouseX() / mouseY()</span><span class="v">マウス座標</span></li>
-            <li><span class="k">in.padDown(Pad::A) / leftStick()</span><span class="v">ゲームパッド（つながっていれば自動で使える）</span></li>
-          </ul>
+          <table class="spectable">
+            <tr><td>in.down(Key::Left)</td><td>キーが押されている間ずっと true（移動など）</td></tr>
+            <tr><td>in.pressed(Key::Space)</td><td>押した<strong>瞬間</strong>だけ true（ジャンプ・決定など）</td></tr>
+            <tr><td>in.released(Key::Z)</td><td>離した瞬間だけ true</td></tr>
+            <tr><td>in.mouseDown(0) / mousePressed(0)</td><td>マウス左ボタン（0=左 1=右 2=中）</td></tr>
+            <tr><td>in.mouseX() / mouseY()</td><td>マウス座標</td></tr>
+            <tr><td>in.padDown(Pad::A) / leftStick()</td><td>ゲームパッド（つながっていれば自動で使える）</td></tr>
+          </table>
 
           <h3><code>hud</code> — 画面に送る・音・演出・道具（Hud）</h3>
-          <ul class="spec">
-            <li><span class="k">hud.set("view.hud.score", score)</span><span class="v">HTML の表示へ値を送る（次の章で詳しく）</span></li>
-            <li><span class="k">hud.play("hit")</span><span class="v">効果音を鳴らす（<code>hud.play("bgm", 0.6f)</code> で音量指定）</span></li>
-            <li><span class="k">hud.flash(color::White)</span><span class="v">画面を一瞬フラッシュ（被弾演出など）</span></li>
-            <li><span class="k">hud.screenshot()</span><span class="v"><strong>その瞬間の画面を画像保存</strong>。<code>if (over) hud.screenshot();</code> でゲームオーバーだけ自動保存</span></li>
-            <li><span class="k">hud.open(Tool::Inspector)</span><span class="v">独立ウィンドウを開く（何度呼んでも 1 回だけ開く）</span></li>
-            <li><span class="k">hud.watch("game", "Dodge", json)</span><span class="v">inspector に好きな値を送る（さっきのデバッグで使ったもの）</span></li>
-            <li><span class="k">hud.quit()</span><span class="v">ゲームを終了する</span></li>
-          </ul>
+          <table class="spectable">
+            <tr><td>hud.set("view.hud.score", score)</td><td>HTML の表示へ値を送る（次の章で詳しく）</td></tr>
+            <tr><td>hud.play("hit")</td><td>効果音を鳴らす（<code>hud.play("bgm", 0.6f)</code> で音量指定）</td></tr>
+            <tr><td>hud.flash(color::White)</td><td>画面を一瞬フラッシュ（被弾演出など）</td></tr>
+            <tr><td>hud.screenshot()</td><td><strong>その瞬間の画面を画像保存</strong>。<code>if (over) hud.screenshot();</code> でゲームオーバーだけ自動保存</td></tr>
+            <tr><td>hud.open(Tool::Inspector)</td><td>独立ウィンドウを開く（何度呼んでも 1 回だけ開く）</td></tr>
+            <tr><td>hud.watch("game", "Dodge", json)</td><td>inspector に好きな値を送る（さっきのデバッグで使ったもの）</td></tr>
+            <tr><td>hud.quit()</td><td>ゲームを終了する</td></tr>
+          </table>
 
           <h3><code>s</code> — 画面に描く（Screen）</h3>
-          <ul class="spec">
-            <li><span class="k">s.fillScreen(hex(0x14182A))</span><span class="v">背景をひと色で塗る</span></li>
-            <li><span class="k">s.drawRect(x, y, w, h, color::Red)</span><span class="v">四角を描く（<code>drawRectCentered</code> は中心指定版）</span></li>
-            <li><span class="k">s.text("SCORE", x, y, color::White, 24)</span><span class="v">文字を描く</span></li>
-            <li><span class="k">s.drawSprite(tex, {x, y, w, h})</span><span class="v">画像（スプライト）を描く</span></li>
-          </ul>
-          <p class="note">ぜんぶ一気に覚えなくて OK。「こういうことできないかな?」と思ったらこの一覧を見る、くらいで十分です。入力は <code>in</code>、音や演出や道具は <code>hud</code>、描画は <code>s</code> — <strong>3 つのどれか</strong>に必ず入っています。</p>
-        </div>
-      </section>
+          <table class="spectable">
+            <tr><td>s.fillScreen(hex(0x14182A))</td><td>背景をひと色で塗る</td></tr>
+            <tr><td>s.drawRect(x, y, w, h, color::Red)</td><td>四角を描く（<code>drawRectCentered</code> は中心指定版）</td></tr>
+            <tr><td>s.text("SCORE", x, y, color::White, 24)</td><td>文字を描く</td></tr>
+            <tr><td>s.drawSprite(tex, {x, y, w, h})</td><td>画像（スプライト）を描く</td></tr>
+          </table>
+          <div class="note">ぜんぶ一気に覚えなくて OK。「こういうことできないかな?」と思ったらこの一覧を見る、くらいで十分です。入力は <code>in</code>、音や演出や道具は <code>hud</code>、描画は <code>s</code> — <strong>3 つのどれか</strong>に必ず入っています。</div>
 
-      <!-- ── 次のステップ: HTML / CSS ─────────────── -->
-      <section class="sec" id="next">
-        <h2>次のステップ — 見た目を HTML / CSS にする</h2>
-        <div class="sec-body">
+          <!-- ── HTML / CSS へ ────────────────────── -->
+          <h2 id="next">次のステップ — 見た目を HTML / CSS にする</h2>
           <p>いまスコアは <code>s.text(...)</code> で C++ から直接描いています。これを <strong>HTML と CSS の HUD に置き換えられます</strong>。ゲームのルール（C++）はそのまま、<strong>見た目だけ</strong>を Web の書き方で作り直せます。</p>
 
           <h3>画面はどこに書く? — assets/scene.html</h3>
@@ -492,7 +457,7 @@ hud.watch(<span class="s">"game"</span>, <span class="s">"Dodge"</span>, buf);  
 
           <h3>C++ から値を送る（どこに書く?）</h3>
           <p>送るのは <code>update</code> の中です。値を送るには <code>hud</code> が要るので、<code>update</code> の引数を <strong><code>(Input in, Hud hud, float dt)</code></strong> に変えて（<code>Hud hud</code> を足すだけ）、中で <code>hud.set(...)</code> を呼びます。<code>src/main.cpp</code> の <code>update</code> をこう直します:</p>
-<pre><span class="k">void</span> update(Input in, Hud hud, <span class="k">float</span> dt) {   <span class="c">// ← Hud hud を足した</span>
+<pre><span class="k">void</span> update(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">float</span> dt) {   <span class="c">// ← Hud hud を足した</span>
     <span class="c">// …これまでの中身（自機を動かす・ブロック・当たり判定）はそのまま…</span>
 
     hud.set(<span class="s">"view.hud.score"</span>, score);          <span class="c">// ← この 1 行を足す。scene.html の同じ名前へ届く</span>
@@ -501,39 +466,27 @@ hud.watch(<span class="s">"game"</span>, <span class="s">"Dodge"</span>, buf);  
 
           <p><strong>これだけ。</strong> C++ は <code>hud.set("名前", 値)</code> で送る、HTML は <code>data-m-text="名前"</code> で受ける — <strong>つなぎの JavaScript は 1 行も要りません</strong>。あとは CSS を盛れば、影・角丸・グラデ・アニメ付きの HUD になります。「GAME OVER」をフェードインのモーダルにするのも、ボタンで Restart するのも同じ要領です。</p>
 
-          <div class="link-row">
-            <a href="ui.html">HTML / CSS で画面を作る</a>
-            <a href="features.html">機能リファレンス</a>
-            <a href="index.html">トップに戻る</a>
+          <div class="cta">
+            <a class="btn btn--primary" href="ui.html">HTML / CSS で画面を作る</a>
+            <a class="btn btn--ghost" href="features.html">機能リファレンス</a>
+            <a class="btn btn--ghost" href="index.html">トップに戻る</a>
           </div>
-          <p class="note">おつかれさまでした。「作る → 動かす → 観察する → 直す」、この 4 つのくり返しが MitiruEngine の進め方です。<code>struct</code>・<code>update</code>・<code>draw</code> の 3 つと、ホットリロード、独立ウィンドウ。ここまで来たら、もう自分のゲームを作りはじめられます。</p>
+          <div class="note">おつかれさまでした。「作る → 動かす → 観察する → 直す」、この 4 つのくり返しが MitiruEngine の進め方です。<code>struct</code>・<code>update</code>・<code>draw</code> の 3 つと、ホットリロード、独立ウィンドウ。ここまで来たら、もう自分のゲームを作りはじめられます。</div>
+
         </div>
-      </section>
+      </div>
+    </main>
 
-    </div>
-  </main>
-
-  <footer class="site-foot">
-    <p>© MitiruEngine</p>
-    <span class="links">
-      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
-      <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
-      <a href="install.html">インストール</a>
-      <a href="https://mogmog-0110.github.io/portfolio.html">作者のポートフォリオ</a>
-    </span>
-  </footer>
+    <footer class="content-foot">
+      <div class="wrap">
+        <span>© MitiruEngine</span>
+        <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+        <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+        <a href="install.html">インストール</a>
+      </div>
+    </footer>
+  </div>
 </div>
-
-<a class="back-to-top" href="#main" aria-label="先頭へ戻る">↑</a>
-<script>
-  (function(){
-    var btt = document.querySelector('.back-to-top');
-    if(!btt) return;
-    addEventListener('scroll', function(){
-      if(scrollY > 600) btt.classList.add('visible'); else btt.classList.remove('visible');
-    }, {passive:true});
-  })();
-</script>
 </body>
 </html>

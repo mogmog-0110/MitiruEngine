@@ -165,6 +165,10 @@ public:
 	void play(const char* soundId, float volume = 1.0f) noexcept { s_->playSound(soundId, volume); }
 	/// 音をピッチ付きで鳴らす (pitch 0.5..2.0、1.0=原音)。1 つの SE を音階で鳴らすリズムゲーム等。
 	void play(const char* soundId, float volume, float pitch) noexcept { s_->playSound(soundId, volume, pitch); }
+	/// BGM を再生する (連続トラック、既定ループ)。開始時に 1 回呼べばよい。毎フレーム呼ばない。
+	void music(const char* id, bool loop = true, float volume = 1.0f) noexcept { s_->playMusic(id, volume, loop); }
+	/// 再生中の BGM を停止する (fadeOutSec > 0 でフェードアウト)。
+	void stopMusic(float fadeOutSec = 0.0f) noexcept { s_->stopMusic(fadeOutSec); }
 	void quit() noexcept { s_->requestStop = 1; }   ///< ゲームを終了する
 
 	// ── 演出 / デバッグ (必要なときだけ呼ぶ — pulled UI、ゲーム窓は汚さない) ──

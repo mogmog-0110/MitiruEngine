@@ -3,161 +3,143 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine — C++ ゲームエンジン</title>
-  <meta name="description" content="ゲームのルールは C++、メニューや HUD は HTML / CSS。状態を 1 個の flat POD に置くことで、巻き戻し・録画再生・AI による全状態観測が同じ仕組みから生える軽量 C++ ゲームエンジン。2D / 3D 対応。">
+  <title>MitiruEngine — ちょうどいい、C++ ゲームエンジン</title>
+  <meta name="description" content="ちょうどいい、C++ ゲームエンジン。ルールは C++、画面は HTML / CSS。巻き戻し・録画・AI 観測まで付く、個人開発の軽量ゲームエンジン。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MitiruEngine — C++ ゲームエンジン">
-  <meta property="og:description" content="ルールは C++、画面は HTML / CSS。状態は 1 個の flat POD。巻き戻し・録画・AI 観測が無料で付く軽量 C++ ゲームエンジン。">
+  <meta property="og:title" content="MitiruEngine — ちょうどいい、C++ ゲームエンジン">
+  <meta property="og:description" content="ルールは C++、画面は HTML / CSS。個人で作っている軽量な C++ ゲームエンジン。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/">
-  <meta name="twitter:card" content="summary_large_image">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="site.css">
   <link rel="icon" href="favicon.svg">
 </head>
 <body>
 <a class="skip-link" href="#main">本文へスキップ</a>
 
-<div class="frame">
-  <header class="site-head">
-    <div class="inner">
-      <a class="brand" href="index.html">MitiruEngine<span class="ver">v0.10.1</span></a>
-      <ul class="menu">
-        <li><a href="#features">できること</a></li>
-        <li><a href="tutorial.html">はじめてのゲーム</a></li>
-        <li><a href="features.html">機能</a></li>
-        <li><a href="ui.html">画面を作る</a></li>
-        <li><a href="distribute.html">配布</a></li>
-        <li><a href="install.html">インストール</a></li>
-        <li><a href="api/">API</a></li>
-        <li><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></li>
-        <li><a class="ext" href="https://mogmog-0110.github.io/portfolio.html">作者</a></li>
-      </ul>
-    </div>
-  </header>
-
-  <main id="main">
-    <!-- ── hero ─────────────────────────────── -->
-    <section class="hero">
-      <p class="file-line">// MitiruEngine — C++20 game engine</p>
-      <h1>ゲームのルールは C++、画面は HTML / CSS。</h1>
-      <p class="role">状態を <b>1 個の flat POD</b> に置く軽量 C++ ゲームエンジン。2D も 3D も。全部入りエディタを持たず、必要な道具だけを個別ウィンドウに出す。決定的な実行と壊れにくさを土台に、巻き戻し・録画再生・AI による全状態観測が同じ仕組みから生えてくる。</p>
-      <div class="cta">
-        <a href="install.html">はじめる →</a>
-        <a href="tutorial.html">初心者ガイド</a>
-        <a href="features.html">機能リファレンス</a>
-      </div>
-    </section>
-
-    <!-- ── 索引（扉）────────────────────────── -->
-    <nav class="doors" aria-label="主要ページ">
-      <a class="door" href="tutorial.html">
-        <span class="door-no">01</span>
-        <span><span class="door-name">はじめてのゲーム</span><span class="door-desc">作って動かすまでを 1 本のチュートリアルで。</span></span>
-      </a>
-      <a class="door" href="features.html">
-        <span class="door-no">02</span>
-        <span><span class="door-name">機能リファレンス</span><span class="door-desc">描画・入力・音・演出・当たり判定の逆引き。</span></span>
-      </a>
-      <a class="door" href="ui.html">
-        <span class="door-no">03</span>
-        <span><span class="door-name">画面を作る</span><span class="door-desc">HTML / CSS で HUD・メニューを作る (JS 不要)。</span></span>
-      </a>
-      <a class="door" href="distribute.html">
-        <span class="door-no">04</span>
-        <span><span class="door-name">配布する</span><span class="door-desc">1 つの zip にまとめて配る。中身も隠せる。</span></span>
-      </a>
+<div class="app">
+  <aside class="sidebar">
+    <a class="side-brand" href="index.html"><span class="mark">M</span>MitiruEngine<span class="ver">v0.11.0</span></a>
+    <nav class="side-nav" aria-label="サイト内ナビ">
+      <div class="grp">はじめに</div>
+      <a class="current" href="index.html"><span class="n">トップ</span></a>
+      <a href="install.html"><span class="n">インストール</span></a>
+      <a href="tutorial.html"><span class="n">はじめてのゲーム</span></a>
+      <div class="grp">このページ</div>
+      <a href="#spec"><span class="n">動作環境</span></a>
+      <a href="#demo"><span class="n">コードで見る</span></a>
+      <a href="#why"><span class="n">なぜ MitiruEngine?</span></a>
+      <a href="#make"><span class="n">何が作れる</span></a>
+      <div class="grp">リファレンス</div>
+      <a href="features.html"><span class="n">機能</span></a>
+      <a href="ui.html"><span class="n">画面を作る</span></a>
+      <a href="distribute.html"><span class="n">配布する</span></a>
+      <a href="api/"><span class="n">API</span></a>
+      <a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener"><span class="n">GitHub</span></a>
     </nav>
+    <div class="side-foot">
+      <a class="btn btn--primary" href="install.html">▶ はじめる</a>
+      <small>C++20 · Windows</small>
+    </div>
+  </aside>
 
-    <div class="sections">
-      <!-- ── できること ─────────────────────── -->
-      <section class="sec" id="features">
-        <h2>できること</h2>
-        <div class="sec-body">
-          <p>小〜中規模のゲームに要るものは、ひととおり揃えてあります。使うものだけ取り出して使えます。</p>
-          <ul class="mini-grid">
-            <li class="mini"><h4>HTML / CSS で画面 <span class="en">web-ui</span></h4><p>メニューや HUD を Web と同じ書き方で。CSS アニメーションもそのまま。手書き JS は不要。</p></li>
-            <li class="mini"><h4>2D も 3D も <span class="en">2d / 3d</span></h4><p>スプライト・タイルマップの 2D から、3D モデル表示まで扱えます。</p></li>
-            <li class="mini"><h4>手応えのある演出 <span class="en">juice</span></h4><p>パーティクル・画面の揺れ・一瞬止まる演出で操作の手応えを足せます。</p></li>
-            <li class="mini"><h4>音 <span class="en">audio</span></h4><p>効果音・BGM を鳴らせます。</p></li>
-            <li class="mini"><h4>コマンドひとつ <span class="en">cli</span></h4><p><code>mitiru new</code> で作って <code>mitiru run</code> で動かす。エディタは好きなもので。</p></li>
-            <li class="mini"><h4>書き換えながら動かす <span class="en">hot reload</span></h4><p>保存すると、ゲームを止めず状態を保ったまま反映。</p></li>
-            <li class="mini"><h4>土台がそろっている <span class="en">batteries</span></h4><p>セーブ・入力 (キー / マウス / パッド)・通信などの部品が同梱。</p></li>
-            <li class="mini"><h4>AI が全状態を読める <span class="en">AI Lens</span></h4><p>フィールドを宣言するだけで、現在も過去も JSON で読める。差分・反実仮想まで。</p></li>
-          </ul>
+  <div class="content">
+    <main id="main">
+      <section class="hero">
+        <div class="wrap">
+          <span class="kicker">個人で作っている、軽量な C++ ゲームエンジン</span>
+          <h1><span class="hl">ちょうどいい</span>、C++ ゲームエンジン。</h1>
+          <p class="lede">ルールは C++、画面は HTML / CSS。音や画像、AI を使ったゲームやアプリを、小さなコードで楽しく作れる軽量なゲームエンジンです。2D も 3D も。</p>
+          <div class="cta">
+            <a class="btn btn--primary" href="install.html">▶ はじめる</a>
+            <a class="btn btn--ghost" href="tutorial.html">初心者ガイド</a>
+            <a class="btn btn--ghost" href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">ダウンロード</a>
+          </div>
         </div>
       </section>
 
-      <!-- ── 核心: flat POD ─────────────────── -->
-      <section class="sec" id="flat-pod">
-        <h2>核心 — 状態は 1 個の flat POD</h2>
-        <div class="sec-body">
-          <p>ゲームの状態を <strong>1 つの平坦な構造体</strong>（<code>FixedVec</code> / <code>FixedString</code> で固定長化）に置く。たったこれだけで、本来は別々に作り込む重い機能が <strong>同じ <code>memcpy</code> + 記述子から追加コストなしで</strong> 生えてきます。制約が機能を生んでいる——これが MitiruEngine の核心です。</p>
-          <ul class="mini-grid">
-            <li class="mini"><h4>巻き戻して観察 <span class="en">time-travel</span></h4><p>毎フレームの状態をそのまま記録。1 フレームずつ巻き戻して「なぜ HP が 50 になった」を原因の 1 行まで追えます。</p></li>
-            <li class="mini"><h4>録画してテストに <span class="en">replay-as-test</span></h4><p>入力と乱数の種を記録し、同じプレイを bit-exact に再現。リプレイがそのまま<strong>回帰テスト</strong>に。</p></li>
-            <li class="mini"><h4>AI が全状態を読む <span class="en">AI Lens</span></h4><p><code>MITIRU_REFLECT</code> で宣言 → <code>MITIRU_AI=1</code> で <code>/api/ai/state</code>・<code>/diff</code>・<code>/branch</code>。AI が状態を読み・差分し・「この入力を続けたら?」を試せます。</p></li>
-            <li class="mini"><h4>コンパイルが守る <span class="en">guarded</span></h4><p><code>MITIRU_GAME</code> が flat POD をコンパイル時に強制。うっかりポインタを混ぜたらその場でエラー。構造保証が崩れません。</p></li>
-          </ul>
-          <p class="note"><strong>1 つの設計判断</strong>が差別化の土台になっている、という考え方。詳しくは <a href="features.html#ai">機能リファレンス §AI Lens</a> へ。</p>
+      <!-- 動作環境 (spec) -->
+      <section class="band">
+        <div class="wrap">
+          <h2 class="simple-h2" id="spec">動作環境</h2>
+          <table class="spectable" style="max-width:640px;">
+            <tr><td>対応 OS</td><td>Windows 10 / 11（x64）</td></tr>
+            <tr><td>言語</td><td>C++20</td></tr>
+            <tr><td>画面 (UI)</td><td>HTML / CSS（CEF）または C++ から直接描画</td></tr>
+            <tr><td>ライセンス</td><td>独自ライセンス（使用は自由 / 改変・再配布は不可）</td></tr>
+            <tr><td>最新版</td><td>v0.11.0</td></tr>
+            <tr><td>入手</td><td><a href="install.html">installer.exe / zip</a> ・ <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">GitHub Releases</a></td></tr>
+          </table>
         </div>
       </section>
 
-      <!-- ── 迷わなさ ───────────────────────── -->
-      <section class="sec" id="atomic">
-        <h2>必要なものしか、画面に出さない</h2>
-        <div class="sec-body">
-          <p>巨大なエディタの全機能に圧倒されることがありません。<strong>1 つの道具 = 1 つの関心事 = 1 つのウィンドウ</strong>。要るものが、要るときに出ます。</p>
-          <ul class="mini-grid">
-            <li class="mini"><h4>道具は別ウィンドウ <span class="en">sub-window</span></h4><p>デバッグ道具は別の OS ウィンドウで開きます。ゲーム画面は汚れず、スクショに余計なものが映りません。</p></li>
-            <li class="mini"><h4>止めずに書き換え <span class="en">hot reload</span></h4><p><code>mitiru watch</code> で、保存のたびに止めず・状態を保ったまま反映。HTML / CSS の編集もすぐ画面に。</p></li>
-            <li class="mini"><h4>部品ごとに単独起動 <span class="en">per-system</span></h4><p>描画だけ・音だけ、と見たい部品を単独で立ち上げ。全体を起動せず触りたい部分だけ。</p></li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- ── はじめる ───────────────────────── -->
-      <section class="sec" id="start">
-        <h2>はじめる</h2>
-        <div class="sec-body">
-          <p><code>mitiru new</code> から <code>mitiru run</code> まで、触るファイルは C++ と HTML の 2 つだけ。</p>
-<pre><span class="c"># 新規プロジェクトを作って動かす</span>
+      <!-- コードで見る -->
+      <section class="band soft">
+        <div class="wrap">
+          <h2 class="simple-h2" id="demo">コードで見る</h2>
+          <p style="color:var(--ink-mute);margin-top:.4rem;">状態を <code>struct</code> に置いて、<code>update</code> と <code>draw</code> を書くだけ。<code>mitiru run</code> ですぐ動きます。</p>
+          <div class="demo" style="margin-top:1.1rem;">
+<pre><span class="c">// 矢印キーで動かすだけのゲーム</span>
+<span class="k">struct</span> <span class="t">MyGame</span> {
+    <span class="k">float</span> x = 600, y = 360;
+    <span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt) {
+        <span class="k">if</span> (in.down(<span class="t">Key</span>::Right)) x += 320 * dt;
+        <span class="k">if</span> (in.down(<span class="t">Key</span>::Left))  x -= 320 * dt;
+    }
+    <span class="k">void</span> draw(<span class="t">Screen</span>& s) {
+        s.fillCircle(x, y, 24, color::Cyan);
+    }
+};
+<span class="t">MITIRU_GAME</span>(MyGame)</pre>
+            <figure class="shot"><img src="assets/dodge.png" alt="このエンジンで作ったゲームのプレイ画面"></figure>
+          </div>
+<pre style="margin-top:1.1rem;"><span class="c"># 作って、動かす</span>
 mitiru new my-game
 cd my-game
 mitiru run</pre>
-          <div class="link-row">
-            <a href="install.html">インストール手順</a>
-            <a href="tutorial.html">初心者ガイド</a>
-            <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">最新リリース ↗</a>
-          </div>
-          <p class="meta-line"><span>C++20</span><span>Windows</span><span>MIT License</span><span>v0.10.1</span></p>
         </div>
       </section>
-    </div>
-  </main>
 
-  <footer class="site-foot">
-    <p>© MitiruEngine</p>
-    <span class="links">
-      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
-      <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
-      <a href="install.html">インストール</a>
-      <a href="https://mogmog-0110.github.io/portfolio.html">作者のポートフォリオ</a>
-    </span>
-  </footer>
+      <!-- なぜ MitiruEngine? -->
+      <section class="band">
+        <div class="wrap">
+          <h2 class="simple-h2" id="why">なぜ MitiruEngine?</h2>
+          <ul class="points">
+            <li><b>ソース公開・使うのは自由。</b> ゲーム作りに自由に使えて（商用も可）、中身も読めます。ただしエンジン本体の改変・再配布は不可。</li>
+            <li><b>軽量で、すぐ動く。</b> ゲーム本体は DLL 1 個（約 0.2 MB）。<code>mitiru new</code> → <code>mitiru run</code> で起動します。</li>
+            <li><b>HTML / CSS で UI が書ける。</b> メニューや HUD を Web ページと同じ書き方で。手書き JavaScript は不要。<a href="ui.html">画面を作る →</a></li>
+            <li><b>巻き戻し・録画・AI 観測がついてくる。</b> 状態を 1 個の「flat POD」に置くだけで、同じ仕組みからまとめて。<a href="features.html#ai">くわしく →</a></li>
+            <li><b>必要なものだけ。</b> 巨大なエディタは開きません。道具は 1 つにつき 1 ウィンドウ。<a href="features.html#tools">道具を見る →</a></li>
+            <li><b>決定論 + リプレイ。</b> 同じ入力なら必ず同じ結果。録画がそのまま回帰テストになります。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 何が作れる -->
+      <section class="band soft">
+        <div class="wrap">
+          <h2 class="simple-h2" id="make">何が作れる</h2>
+          <ul class="points">
+            <li><b>2D ゲーム</b> — アクション・パズル・ノベルなど。スプライトやタイルマップを扱えます。</li>
+            <li><b>3D 表示</b> — glTF モデルの読み込みと表示。</li>
+            <li><b>プロトタイプ / ゲームジャム</b> — 速い起動とホットリロードで、思いついたものをすぐ試せます。</li>
+            <li><b>プログラミング学習</b> — C++ で「動くもの」をすぐ作れる、教材としても。</li>
+            <li><b>ツール / ビジュアライザ</b> — HTML / CSS の UI と C++ のロジックを組み合わせて。</li>
+          </ul>
+          <p style="margin-top:1.2rem;">同梱のデモ <code>timetravel_demo</code> で、巻き戻し・AI 観測の挙動を実際に触れます。</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="content-foot">
+      <div class="wrap">
+        <p class="foot-note">個人で開発している、軽量な C++ ゲームエンジンです。気軽に触って、気になったら GitHub をのぞいてみてください。</p>
+        <span>© MitiruEngine</span>
+        <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+        <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+        <a href="install.html">インストール</a>
+      </div>
+    </footer>
+  </div>
 </div>
-
-<a class="back-to-top" href="#main" aria-label="先頭へ戻る">↑</a>
-<script>
-  (function(){
-    var btt = document.querySelector('.back-to-top');
-    if(!btt) return;
-    addEventListener('scroll', function(){
-      if(scrollY > 600) btt.classList.add('visible'); else btt.classList.remove('visible');
-    }, {passive:true});
-  })();
-</script>
 </body>
 </html>
