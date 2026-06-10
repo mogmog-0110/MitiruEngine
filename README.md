@@ -14,6 +14,7 @@ C++ のゲームエンジンです。UI（メニューや HUD）は HTML/CSS で
 - できること (チャプター) : <https://mogmog-0110.github.io/MitiruEngine/chapters/>
 - API リファレンス : <https://mogmog-0110.github.io/MitiruEngine/api/>
 - アーキテクチャ : <https://mogmog-0110.github.io/MitiruEngine/architecture/>
+- AI ワークフロー : [docs/AI_WORKFLOW.md](docs/AI_WORKFLOW.md) — `MITIRU_AI=1` で AI エージェントが画面・状態・音を観測し `mitiru verify` / `mitiru mcp` で検証するループ
 
 ドキュメントは日本語で書かれています。
 

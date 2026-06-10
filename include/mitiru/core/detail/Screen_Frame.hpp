@@ -29,6 +29,7 @@ inline void mitiru::Screen::renderUI(const ui::UINode& root, const ui::UITheme& 
 inline void mitiru::Screen::resetDrawCallCount() noexcept
 {
 	m_drawCallCount = 0;
+	m_drawLog.clear(); // AI 観測用 draw log もフレーム毎にリセット (capacity は維持)
 }
 
 inline void mitiru::Screen::resize(int width, int height) noexcept

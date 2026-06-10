@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <stack>
 #include <string>
 #include <string_view>
@@ -42,6 +43,18 @@ enum class PixelArtFilter; ///< forward decl。完全な定義は RenderPipeline
 
 namespace mitiru
 {
+
+/// @brief AI 観測用 draw log の 1 エントリ (/api/ai/frame)
+/// @details call は静的文字列リテラルを指す。text はテキスト描画の先頭バイトのみ保持。
+struct DrawLogEntry
+{
+	float x = 0.0f;        ///< 描画矩形 左上 X
+	float y = 0.0f;        ///< 描画矩形 左上 Y
+	float w = 0.0f;        ///< 描画矩形 幅
+	float h = 0.0f;        ///< 描画矩形 高さ
+	const char* call = ""; ///< 描画 API 名 (例 "drawRect")
+	char text[48] = {};    ///< テキスト描画の内容 (UTF-8、先頭 47 byte で切る)
+};
 
 /// @brief 描画サーフェス
 /// @details ゲームの draw() に渡される描画インターフェース。
@@ -823,6 +836,20 @@ public:
 	/// @brief 描画コール数をリセットする
 	void resetDrawCallCount() noexcept;
 
+	/// @brief AI 観測用 draw log を有効化 / 無効化する (/api/ai/frame)
+	/// @details 有効化時に容量を予約する。記録はフレームリセット以降に積まれる。
+	void setDrawLogEnabled(bool enabled)
+	{
+		m_drawLogEnabled = enabled;
+		if (enabled && m_drawLog.capacity() < kDrawLogCap) { m_drawLog.reserve(kDrawLogCap); }
+	}
+
+	/// @brief draw log が有効か
+	[[nodiscard]] bool drawLogEnabled() const noexcept { return m_drawLogEnabled; }
+
+	/// @brief 当フレームの draw log を取得する
+	[[nodiscard]] const std::vector<DrawLogEntry>& drawLog() const noexcept { return m_drawLog; }
+
 	/// @brief 最後に設定されたクリア色を取得する
 	[[nodiscard]] const sgc::Colorf& clearColor() const noexcept
 	{
@@ -1007,6 +1034,14 @@ private:
 	bool m_softwareFb = false;               ///< ソフトウェアフレームバッファ有効フラグ
 	std::vector<std::uint8_t> m_pixels;      ///< ソフトウェアフレームバッファ（RGBA8）
 
+	// ── AI 観測用 draw log (/api/ai/frame) ──────────────────────────
+	// ABI 注意: Screen* は DLL 境界を渡る (gameDraw)。既存メンバのオフセットを
+	// 変えないため、新規メンバは必ずクラス末尾に追加すること (ABI v14)。
+	bool m_drawLogEnabled = false;            ///< draw log の記録フラグ
+	std::vector<DrawLogEntry> m_drawLog;      ///< 当フレームの draw log (有効時のみ、capacity 維持で再利用)
+	bool m_drawLogSuppress = false;           ///< テキスト内部のグリフ矩形を記録から除外するフラグ
+	static constexpr std::size_t kDrawLogCap = 1024; ///< draw log の 1 フレーム上限 (超過分は捨てる)
+
 public:
 	/// @brief ソフトウェアフレームバッファを有効化する
 	/// @details headlessモードでのピクセル検証に使用する。
@@ -1100,10 +1135,35 @@ private:
 		++m_drawCallCount;
 	}
 
+	/// @brief テキスト描画内部のグリフ矩形が draw log を汚さないようにする RAII ガード
+	struct DrawLogSuppress
+	{
+		explicit DrawLogSuppress(Screen& s) noexcept
+			: m_s(s), m_prev(s.m_drawLogSuppress) { s.m_drawLogSuppress = true; }
+		~DrawLogSuppress() noexcept { m_s.m_drawLogSuppress = m_prev; }
+		DrawLogSuppress(const DrawLogSuppress&) = delete;
+		DrawLogSuppress& operator=(const DrawLogSuppress&) = delete;
+	private:
+		Screen& m_s;
+		bool m_prev;
+	};
+
+	/// @brief draw log へ 1 エントリ記録する（有効時のみ。上限超過は黙って捨てる）
+	void recordDrawLog(const sgc::Rectf& bounds, const char* callName, std::string_view text = {})
+	{
+		if (!m_drawLogEnabled || m_drawLogSuppress || m_drawLog.size() >= kDrawLogCap) { return; }
+		DrawLogEntry e{bounds.x(), bounds.y(), bounds.width(), bounds.height(), callName, {}};
+		const std::size_t n = std::min(text.size(), sizeof(e.text) - 1);
+		if (n > 0) { std::memcpy(e.text, text.data(), n); }
+		e.text[n] = '\0';
+		m_drawLog.push_back(e);
+	}
+
 	/// @brief 描画領域のバリデーションを実行する（バリデーター接続時のみ）
 	void validateDrawCall(const sgc::Rectf& bounds, const char* callName)
 	{
 		if (m_validator) { m_validator->onDrawCall(bounds, callName); }
+		recordDrawLog(bounds, callName);
 	}
 
 	/// @brief 色値のバリデーションを実行する（バリデーター接続時のみ）
@@ -1113,14 +1173,17 @@ private:
 	}
 
 	/// @brief テキスト描画のバリデーションを実行する（バリデーター接続時のみ）
+	/// @details text を渡すと draw log にも内容が記録される (AI 観測用)。
 	void validateTextDraw(const sgc::Vec2f& pos, float w, float h,
-	                      const char* callName, const sgc::Colorf& color)
+	                      const char* callName, const sgc::Colorf& color,
+	                      std::string_view text = {})
 	{
 		if (m_validator)
 		{
 			m_validator->onTextDraw(pos, w, h, callName);
 			m_validator->onColor(color, callName, sgc::Rectf{pos.x, pos.y, w, h});
 		}
+		recordDrawLog(sgc::Rectf{pos.x, pos.y, w, h}, callName, text);
 	}
 
 	/// @brief テキスト幅超過のバリデーションを実行する（バリデーター接続時のみ）

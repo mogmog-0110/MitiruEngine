@@ -47,8 +47,10 @@ inline void mitiru::Screen::drawText(const sgc::Vec2f& position, std::string_vie
 {
 	{
 		const auto sz = measureText(text, fontSize);
-		validateTextDraw(position, sz.x, sz.y, "drawText", color);
+		validateTextDraw(position, sz.x, sz.y, "drawText", color, text);
 	}
+	// グリフ内部の矩形描画は draw log に出さない (テキストは上の 1 エントリで代表)。
+	const DrawLogSuppress logGuard(*this);
 	if (m_activeFont && m_activeFont->font && m_activeFont->drawFn)
 	{
 		m_activeFont->drawFn(m_activeFont->font, *this, position.x, position.y, text, fontSize, color);
@@ -242,8 +244,10 @@ inline void mitiru::Screen::drawTextHQ(const sgc::Vec2f& position, std::string_v
 	{
 		const float tw = static_cast<float>(text.size()) * fontSize;
 		const float th = fontSize;
-		validateTextDraw(position, tw, th, "drawTextHQ", color);
+		validateTextDraw(position, tw, th, "drawTextHQ", color, text);
 	}
+	// グリフ内部の矩形描画は draw log に出さない (テキストは上の 1 エントリで代表)。
+	const DrawLogSuppress logGuard(*this);
 	const int scale = std::max(1, static_cast<int>(fontSize) / 8);
 	const int cellW = 8 * scale;
 	const int cellH = 8 * scale;

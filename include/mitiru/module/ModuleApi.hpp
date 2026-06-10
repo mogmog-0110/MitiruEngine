@@ -81,7 +81,10 @@ namespace mitiru::module
 ///     GameMemory の全フィールドの名前・型・オフセットを申告し、host が GameMemory バイト列
 ///     (現フレーム + ring の過去) を構造化 JSON 化して AI に全状態を開放する (probe の拡張)。
 ///     末尾追記 + zero-init で v≤11 module は後方安全 (reflectFieldCount=0 = 非対応)。
-constexpr std::uint32_t kCurrentApiVersion = 13;  // v13: InputSnapshot.audioTimeSec (音声クロック)
+///   - v14: Screen 末尾に AI 観測用 draw log メンバを追加 (/api/ai/frame)。Screen* は
+///     gameDraw で DLL 境界を渡るため layout 拡張 = ABI break。末尾追加なので
+///     旧 module (v≤13) は新 host 上で安全 (旧 offset 不変、draw log に載らないだけ)。
+constexpr std::uint32_t kCurrentApiVersion = 14;  // v14: Screen 末尾 draw log (AI フレーム観測)
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";

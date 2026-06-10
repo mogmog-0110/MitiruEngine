@@ -69,6 +69,7 @@
 #include <mitiru/observe/Snapshot.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
+#include <mitiru/observe/AudioLog.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/platform/WindowFactory.hpp>
 #include <mitiru/ecs/MitiruWorld.hpp>
@@ -621,6 +622,7 @@ private:
 	// object の pointer を一切持たないよう engine 所有とする (ADR 0005)。
 	std::unique_ptr<cef::StateStore>        m_moduleStateStore;
 	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
+	observe::AudioLog                        m_audioLog; ///< AI 観測用 音イベントログ (/api/ai/audio)
 	// 直近に書き出した inspector export 内容の FNV-1a hash。同一なら parse+rebuild+
 	// disk-write を丸ごと省く (inspector は同じ内容を読み続けるので観測結果は不変)。
 	std::uint64_t                            m_lastInspectorDigest = 0;

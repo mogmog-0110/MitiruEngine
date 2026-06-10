@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 /// @file ObserveRouter.hpp
-/// @brief 観測サーバーのHTTPルーティング
+/// @brief 観測サーバーのHTTPルーティング (廃止予定 — ADR 0019)
+/// @details @deprecated 新規コードでは EngineHttpServer (/api/observe/*) を使うこと。
 
 #include <mutex>
 #include <string>

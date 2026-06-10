@@ -902,7 +902,11 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		// category / stop / loop / volume の解釈は applySoundIntent に集約 (ADR 0008)。
 		for (std::int32_t i = 0; i < n; ++i)
 		{
-			mitiru::module::applySoundIntent(*m_audioEngine, intents->soundIntents[i]);
+			const auto& si = intents->soundIntents[i];
+			mitiru::module::applySoundIntent(*m_audioEngine, si);
+			// AI 観測ログ (/api/ai/audio): 適用済み intent をそのまま記録する。
+			m_audioLog.push(frameNumber(), si.id, si.category, si.loop, si.stop,
+			                si.volume, si.pitchScale);
 		}
 	}
 

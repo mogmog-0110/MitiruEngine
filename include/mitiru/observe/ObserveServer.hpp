@@ -1,8 +1,10 @@
 ﻿#pragma once
 
 /// @file ObserveServer.hpp
-/// @brief AI観測サーバー
-/// @details HTTP経由でAIエージェントがゲーム状態を問い合わせるためのサーバー。
+/// @brief AI観測サーバー (廃止予定 — ADR 0019)
+/// @details @deprecated 新規コードでは EngineHttpServer (/api/observe/*) を使うこと。
+///          ObserveServer/ObserveRouter/observe::HttpServer は次フェーズで削除する。
+///          HTTP経由でAIエージェントがゲーム状態を問い合わせるためのサーバー。
 ///          HttpServerとObserveRouterを統合し、ワンコールで起動できるAPIを提供する。
 
 #include <cstdint>

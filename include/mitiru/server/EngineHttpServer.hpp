@@ -82,6 +82,8 @@ public:
 #include <mitiru/input/InputInjector.hpp>
 #include <mitiru/observe/JsonEscape.hpp>
 #include <mitiru/observe/QueryParser.hpp>
+#include <mitiru/observe/SnapshotSchema.hpp>
+#include <mitiru/util/Base64.hpp>
 #include <mitiru/core/Clock.hpp>
 #include <mitiru/core/Screen.hpp>
 
@@ -133,6 +135,22 @@ struct EngineCallbacks
 	std::function<std::string(int, int)>               aiStateDiff; ///< reflectDiff(ring.at(from), at(to))
 	std::function<std::string(const std::string&, int)> aiBranch;   ///< (keysCsv, frames) → 反実仮想結果
 	std::function<int()>                               aiRingSize;  ///< time-travel ring の保持フレーム数
+
+	// ── Inspector 観測 (ADR 0019) ─────────────────────────────────
+	// Inspector key-value ストアへの read-only アクセス。
+	// nullptr = Inspector 未配線 → 503 を返す。
+	std::function<std::string(const std::string&)> inspectorQuery;   ///< prefix でフィルタ (空=全件)
+	std::function<std::string(std::size_t)>        inspectorAt;      ///< back=N の過去スナップショット
+	std::function<std::size_t()>                   inspectorDepth;   ///< 現在の履歴エントリ数
+	std::function<std::size_t()>                   inspectorCapacity; ///< 履歴の最大容量
+
+	// ── AI フレーム観測 (/api/ai/frame) ──────────────────────────
+	// Screen の draw log (何をどこに描いたか) への read-only アクセス。
+	std::function<void(bool)>    drawLogEnable; ///< draw log 記録の on/off
+	std::function<std::string()> drawLogJson;   ///< 当フレームの draw log JSON 配列
+
+	// ── AI 音観測 (/api/ai/audio) ────────────────────────────────
+	std::function<std::string(int)> audioLogJson; ///< 最新 max 件の音イベント JSON
 };
 
 /// @brief エンジン組み込みHTTP APIサーバー
@@ -353,6 +371,15 @@ private:
 			if (path == "/api/ai/diff")           { handleAiDiff(req, resp); return; }
 			if (path == "/api/ai/ringsize")       { handleAiRingSize(req, resp); return; }
 
+			// ── Inspector / 観測 (ADR 0019) ──────────────────────────────────
+			if (path == "/api/ai/frame")            { handleAiFrame(req, resp); return; }
+			if (path == "/api/ai/audio")            { handleAiAudio(req, resp); return; }
+			if (path == "/api/health")              { handleHealth(req, resp); return; }
+			if (path == "/api/observe/schema")      { handleObserveSchema(req, resp); return; }
+			if (path == "/api/observe/inspect")     { handleObserveInspect(req, resp); return; }
+			if (path == "/api/observe/inspect/at")  { handleObserveInspectAt(req, resp); return; }
+			if (path == "/api/observe/inspect/depth") { handleObserveInspectDepth(req, resp); return; }
+
 			if (path.rfind("/api/commands/", 0) == 0 && path.size() > 14)
 			{
 				handleCommandsByCategory(req, resp);
@@ -491,6 +518,162 @@ private:
 		if (frames < 1)   { frames = 1; }
 		if (frames > 600) { frames = 600; }  // 上限 10 秒 @60fps
 		resp.status = 200; resp.setBody(m_callbacks.aiBranch(keys, frames));
+	}
+
+	// ── Inspector / 観測エンドポイント (ADR 0019) ──────────────────
+
+	/// @brief GET /api/health — frame + elapsed を返す簡易ヘルスチェック
+	void handleHealth(const HttpRequest&, HttpResponse& resp)
+	{
+		std::string json = R"({"status":"ok")";
+		if (m_callbacks.getFrameNumber)
+		{
+			json += ",\"frameNumber\":" + std::to_string(m_callbacks.getFrameNumber());
+			const auto* clk = m_callbacks.getClock();
+			if (clk) { json += ",\"elapsed\":" + std::to_string(clk->elapsed()); }
+		}
+		json += "}";
+		resp.status = 200;
+		resp.setBody(json);
+	}
+
+	/// @brief GET /api/observe/schema — SnapshotSchema の JSON Schema を返す
+	void handleObserveSchema(const HttpRequest&, HttpResponse& resp)
+	{
+		resp.status = 200;
+		resp.setBody(observe::SnapshotSchema::schemaJson());
+	}
+
+	/// @brief GET /api/observe/inspect[?prefix=<p>] — Inspector key-value クエリ
+	/// @details prefix パラメータがあればプレフィックスフィルタ、なければ全件返す。
+	void handleObserveInspect(const HttpRequest& req, HttpResponse& resp)
+	{
+		if (!m_callbacks.inspectorQuery)
+		{
+			resp.status = 503;
+			resp.setBody(R"({"error":"inspector not wired"})");
+			return;
+		}
+		const auto prefix = observe::getParam(req.params, "prefix").value_or("");
+		resp.status = 200;
+		resp.setBody(m_callbacks.inspectorQuery(prefix));
+	}
+
+	/// @brief GET /api/observe/inspect/at[?back=<N>] — 過去スナップショットを返す
+	/// @details back=0 が最新コミット、back=1 がその前。負数・非数は 400。
+	void handleObserveInspectAt(const HttpRequest& req, HttpResponse& resp)
+	{
+		if (!m_callbacks.inspectorAt)
+		{
+			resp.status = 503;
+			resp.setBody(R"({"error":"inspector not wired"})");
+			return;
+		}
+		const auto backParam = observe::getParam(req.params, "back");
+		std::size_t back = 0;
+		if (backParam.has_value())
+		{
+			long long signed_back = 0;
+			try { signed_back = std::stoll(*backParam); }
+			catch (...) { resp.status = 400; resp.setBody(R"({"error":"invalid 'back' parameter"})"); return; }
+			if (signed_back < 0) { resp.status = 400; resp.setBody(R"({"error":"invalid 'back' parameter"})"); return; }
+			back = static_cast<std::size_t>(signed_back);
+		}
+		resp.status = 200;
+		resp.setBody(m_callbacks.inspectorAt(back));
+	}
+
+	/// @brief GET /api/observe/inspect/depth — Inspector 履歴の depth と capacity を返す
+	void handleObserveInspectDepth(const HttpRequest&, HttpResponse& resp)
+	{
+		const std::size_t depth = m_callbacks.inspectorDepth ? m_callbacks.inspectorDepth() : 0;
+		const std::size_t cap   = m_callbacks.inspectorCapacity ? m_callbacks.inspectorCapacity() : 0;
+		resp.status = 200;
+		resp.setBody("{\"depth\":" + std::to_string(depth) + ",\"capacity\":" + std::to_string(cap) + "}");
+	}
+
+	// ── AI フレーム観測 (/api/ai/frame) ────────────────────────────
+
+	/// @brief screenshot JSON 断片を組み立てる。失敗時は空文字。
+	/// @details reqW/reqH の片方指定はアスペクト維持で補完する。
+	[[nodiscard]] std::string buildScreenshotJson(int srcW, int srcH, int reqW, int reqH)
+	{
+		const auto pixels = m_callbacks.capture();
+		if (pixels.empty() || srcW <= 0 || srcH <= 0) { return {}; }
+		if (reqW > 0 && reqH <= 0) { reqH = (reqW * srcH) / srcW; }
+		if (reqH > 0 && reqW <= 0) { reqW = (reqH * srcW) / srcH; }
+		int outW = srcW, outH = srcH;
+		std::vector<std::uint8_t> src = pixels;
+		if (reqW > 0 && reqH > 0 && (reqW != srcW || reqH != srcH))
+		{
+			src = detail::resizePixels(pixels, srcW, srcH, reqW, reqH);
+			outW = reqW; outH = reqH;
+		}
+		const auto png = detail::encodePng(src.data(), outW, outH);
+		if (png.empty()) { return {}; }
+		return "\"screenshot\":{\"width\":" + std::to_string(outW) +
+		       ",\"height\":" + std::to_string(outH) +
+		       ",\"pngBase64\":\"" + util::Base64::encode(png) + "\"}";
+	}
+
+	/// @brief GET /api/ai/frame — draw list + 縮小 screenshot を 1 レスポンスで返す
+	/// @details 初回呼び出しで draw log 記録を有効化する (エントリは次フレームから)。
+	///          ?screenshot=0 で PNG 省略、width/height で縮小指定 (既定 width=640)。
+	void handleAiFrame(const HttpRequest& req, HttpResponse& resp)
+	{
+		if (!m_callbacks.drawLogEnable || !m_callbacks.drawLogJson)
+		{
+			resp.status = 503;
+			resp.setBody(R"({"error":"frame observe not wired"})");
+			return;
+		}
+
+		std::string json = "{";
+		if (m_callbacks.getFrameNumber)
+		{ json += "\"frameNumber\":" + std::to_string(m_callbacks.getFrameNumber()) + ","; }
+
+		const auto* screen = m_callbacks.getScreen();
+		const int w = screen ? screen->width() : 0;
+		const int h = screen ? screen->height() : 0;
+		json += "\"screen\":{\"width\":" + std::to_string(w) + ",\"height\":" + std::to_string(h) + "},";
+
+		if (!m_drawLogActive)
+		{
+			m_callbacks.drawLogEnable(true);
+			m_drawLogActive = true;
+			json += "\"note\":\"draw log enabled; entries appear from the next frame\",";
+		}
+		json += "\"drawCalls\":" + m_callbacks.drawLogJson();
+
+		const bool wantShot = observe::getParam(req.params, "screenshot").value_or("1") != "0";
+		if (wantShot && m_callbacks.capture)
+		{
+			int reqW = 640, reqH = 0;
+			if (const auto p = observe::getParam(req.params, "width"))  { try { reqW = std::stoi(*p); } catch (...) {} }
+			if (const auto p = observe::getParam(req.params, "height")) { try { reqH = std::stoi(*p); } catch (...) {} }
+			const auto shot = buildScreenshotJson(w, h, reqW, reqH);
+			if (!shot.empty()) { json += "," + shot; }
+		}
+
+		json += "}";
+		resp.status = 200;
+		resp.setBody(json);
+	}
+
+	/// @brief GET /api/ai/audio[?max=N] — 最近の音イベント (SoundIntent 適用記録) を返す
+	void handleAiAudio(const HttpRequest& req, HttpResponse& resp)
+	{
+		if (!m_callbacks.audioLogJson)
+		{
+			resp.status = 503;
+			resp.setBody(R"({"error":"audio log not wired"})");
+			return;
+		}
+		int max = 64;
+		if (const auto p = observe::getParam(req.params, "max"))
+		{ try { max = std::stoi(*p); } catch (...) {} }
+		resp.status = 200;
+		resp.setBody(m_callbacks.audioLogJson(max));
 	}
 
 	// ── コントロールパネル HTML (ADR 0011 phase 2) ─────────────────
@@ -1240,6 +1423,7 @@ refresh(); setInterval(refresh, 500);
 	int m_port = 0;
 
 	EngineCallbacks m_callbacks;
+	bool m_drawLogActive = false; ///< /api/ai/frame 初回呼び出しで draw log を有効化済みか
 	CommandSystem* m_commandSystem = nullptr;
 	InputInjector* m_inputInjector = nullptr;
 	std::map<std::string, std::string>* m_flags = nullptr;

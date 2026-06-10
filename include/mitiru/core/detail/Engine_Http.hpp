@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/observe/JsonEscape.hpp>
 #include <mitiru/observe/Reflect.hpp>
 #include <mitiru/observe/ReflectDiff.hpp>
 
@@ -99,6 +100,35 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 			}
 		}
 		return branchModuleMemory(seq.data(), frames);
+	};
+
+	// AI 音観測 (/api/ai/audio): 適用済み SoundIntent の固定リングを JSON で返す。
+	cb.audioLogJson = [this](int max) -> std::string {
+		const std::size_t m = max > 0 ? static_cast<std::size_t>(max) : 64;
+		return "{\"total\":" + std::to_string(m_audioLog.totalCount()) +
+		       ",\"events\":" + m_audioLog.toJson(m) + "}";
+	};
+
+	// AI フレーム観測 (/api/ai/frame): Screen の draw log を on/off + JSON 直列化。
+	cb.drawLogEnable = [this](bool on) { if (m_screen) { m_screen->setDrawLogEnabled(on); } };
+	cb.drawLogJson = [this]() -> std::string {
+		if (m_screen == nullptr) { return "[]"; }
+		const auto& log = m_screen->drawLog();
+		std::string out = "[";
+		bool first = true;
+		for (const auto& e : log)
+		{
+			if (!first) { out += ","; }
+			first = false;
+			out += "{\"call\":\"";
+			out += e.call;
+			out += "\",\"x\":" + std::to_string(e.x) + ",\"y\":" + std::to_string(e.y)
+			     + ",\"w\":" + std::to_string(e.w) + ",\"h\":" + std::to_string(e.h);
+			if (e.text[0] != '\0') { out += ",\"text\":\"" + observe::jsonEscape(e.text) + "\""; }
+			out += "}";
+		}
+		out += "]";
+		return out;
 	};
 
 	m_httpServer->setCallbacks(cb);
