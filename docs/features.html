@@ -214,7 +214,7 @@ s.drawGroup({px, py}, spinDeg, [&amp;](<span class="t">Screen</span>&amp; g) {
 
             <!-- ── ⑧ パッド ───────────────────────────── -->
             <h2 id="pad">ゲームパッド — コントローラ</h2>
-            <p>XInput 対応パッド（Xbox 系）に対応しています。つながっていれば <code>in</code> から読めます。</p>
+            <p>Xbox 系（XInput）も <strong>DualShock 4 などの DirectInput 系</strong>も、何も設定せずそのまま動きます（v0.13 から既定で有効）。機種の違いはエンジンが吸収するので、ゲーム側は同じ API を読むだけです。</p>
 <pre><span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt) {
     <span class="k">if</span> (!in.padConnected()) <span class="k">return</span>;
 
@@ -259,9 +259,10 @@ MITIRU_AI=1 mitiru run</pre>
             <!-- ── ⑩ 音 ──────────────────────────────── -->
             <h2 id="sound">⑥ 音 — 効果音・BGM</h2>
             <p>音は <code>hud</code> から id で鳴らします（鳴らしたい瞬間に呼ぶだけ）。<code>update(Input in, Hud hud, float dt)</code> の形にして:</p>
-<pre>hud.play(<span class="s">"hit"</span>);          <span class="c">// id で鳴らす</span>
-hud.play(<span class="s">"bgm"</span>, 0.6f);     <span class="c">// 第 2 引数は音量（0.0 … 1.0）</span></pre>
-            <p>id（<code>"hit"</code> など）は、プロジェクトの音声アセットに対応づけられます。再生中の音や全体音量は <a href="#tools">⑧ デバッグ窓</a> の <code>mixer</code> 窓で確認できます。</p>
+<pre>hud.play(<span class="s">"hit"</span>);                <span class="c">// SE を id で鳴らす（第 2 引数は音量）</span>
+hud.play(<span class="s">"hit"</span>, 0.8f, 1.1f);     <span class="c">// 第 3 引数はピッチ — 連発しても痩せない散らし</span>
+hud.music(<span class="s">"bgm_field"</span>, <span class="k">true</span>);    <span class="c">// BGM はこちら。ループ再生で、リスタートしても途切れない</span></pre>
+            <p>id は <code>assets/audio/&lt;id&gt;.wav</code> に対応します。再生中の音や全体音量は <a href="#tools">⑧ デバッグ窓</a> の <code>mixer</code> 窓で確認できます。</p>
             <figure><img src="assets/tool-mixer.png" alt="mixer ツール窓。マスター音量フェーダーと再生中チャンネルの VU メーター" loading="lazy"><figcaption><code>mixer</code> 窓 — マスター音量と再生中チャンネルの VU。</figcaption></figure>
 
             <!-- ── ⑪ 演出 ─────────────────────────────── -->
