@@ -31,6 +31,12 @@ endif()
 add_subdirectory(mitiru_host)
 add_subdirectory(mitiru_start)
 add_subdirectory(timetravel_demo)   # 差別化デモ (time-travel / AI Lens、ADR 0017/0018)
+# hookline: サンプル再建の試作 (2026-06-11 凍結、dev-only)。snapshot 非同梱。
+# 凍結理由 = 「いかにも AI が作ったゲーム」感: プレースホルダー幾何美術 + 合成音 +
+# チェックリスト設計で、作家性 (具体的な美学への決断・手の入った素材) が無い。
+# 公開物は美学へのコミットが先、機構は後 (FLUID DROP = 流体が美学、サチ = 手描きドット)。
+# tutorial/ の段階コーパス (S1-S7 全過程) は教材原稿として価値が残るので保持。
+add_subdirectory(hookline)
 # 研究中 example (未コミット dir / snapshot 非同梱) は EXISTS ガードで取り込む。
 # dev tree に dir が在れば従来どおりビルド、無い clone / prod では静かにスキップ。
 foreach(_lab windy_cloth sim_seam_demo gpu_sim_seam face_sdf pbmpm fluidtetris)

@@ -261,6 +261,8 @@ struct CliArgs
 	int                   maxFrames = 0;       // --max-frames <N>: N フレーム走ったら自動終了 (0=無制限)
 	bool                  fixedSize = false;   // --fixed-size: ユーザのウィンドウリサイズを禁止 (#44)
 	bool                  noPauseUnfocused = false; // --no-pause-unfocused: 非フォーカスでもフルレート継続 (vsync off)
+	bool                  noVsync = false;     // --no-vsync: present の vsync 待ちを切る (素のフレームコスト計測, #53)
+	bool                  perf    = false;     // --perf: 実フレーム時間の統計を定期表示 (#53)
 	std::string           inputScript;         // --input-script <f>: in-process 入力注入 (#43-1)
 	std::string           inputRecordPath;     // --input-record <f>: 実入力を input-script 形式で録画 (#45)
 	std::vector<mitiru::Tool> openTools;       // --inspect <name>: 起動時に開くツール独立窓 (ADR 0014)
@@ -339,6 +341,14 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--no-pause-unfocused")
 		{
 			out.noPauseUnfocused = true;
+		}
+		else if (a == "--no-vsync")
+		{
+			out.noVsync = true;
+		}
+		else if (a == "--perf")
+		{
+			out.perf = true;
 		}
 		else if (a == "--speed")
 		{
@@ -466,6 +476,9 @@ void printUsage()
 		"  --watch          poll DLL file mtime, hot-reload on change\n"
 		"  --size WxH       override window size (e.g. --size 800x500)\n"
 		"  --no-pause-unfocused  keep running at full rate when window is unfocused (#46b)\n"
+		"  --no-vsync       present の vsync 待ちを切る (フレームコストの素を計測する用, #53)\n"
+		"  --perf           実フレーム時間の統計 (avg/p50/p95/max) を 600 フレームごとに表示 (#53)\n"
+		"                   GPU 実機の描画コスト計測は windowed + --perf --no-vsync で\n"
 		"  --url <url>      override CEF start URL\n"
 		"  --font <mode>    none|latin|kana|japanese — native draw 用フォント\n"
 		"                   (既定 none = フォント skip・起動高速。日本語 native text を\n"
@@ -880,6 +893,7 @@ int main(int argc, char* argv[])
 	}
 	cfg.vsync           = true;
 	if (args.noPauseUnfocused) { cfg.vsync = false; }  // 背面でもフルレート (present の vsync 待ちを回避)
+	if (args.noVsync)          { cfg.vsync = false; }  // --no-vsync: 素のフレームコスト計測 (#53)
 	cfg.enableCef       = !args.noCef;   // --no-cef: 完全ネイティブ game は CEF 抜きで軽量起動
 	cfg.timeScale       = args.speed;    // --speed: 固定 dt × N 早回し (#43)
 	if (args.fixedSize) { cfg.windowResizable = false; }   // --fixed-size: リサイズ禁止 (#44)
@@ -984,6 +998,13 @@ int main(int argc, char* argv[])
 	if (!captureDir.empty() && captureEvery <= 0) { captureEvery = 30; }
 	if (captureEvery > 0 && captureDir.empty()) { captureDir = "captures"; }
 	const bool captureOn = (captureEvery > 0 && !captureDir.empty());
+	// #53: headless では capture が読むフレームだけ SW ラスタライズする (観測フレーム gating)。
+	// capture 無しの自動回しは on-demand のみ (HTTP screenshot 等は 1 フレーム遅れで追従)。
+	// CPU ラスタライズはピクセル数比例で重く、これを省くと --speed の早回しが実時間でも速くなる。
+	if (args.headless)
+	{
+		cfg.swRasterizeEvery = captureOn ? captureEvery : 0;
+	}
 	if (captureOn)
 	{
 		std::error_code cec;
@@ -994,6 +1015,37 @@ int main(int argc, char* argv[])
 	int captureFrame = 0;   // 経過フレーム数 (onFrameStart クロージャが進める)
 	int captureSeq = 0;     // 保存連番
 	int totalFrame = 0;     // 総フレーム数 (--max-frames 判定用)
+
+	// --perf (#53): onFrameStart 間隔 = 1 host frame の実時間。600 フレームごとに統計を出す。
+	struct PerfStats
+	{
+		std::vector<double> samples;                    // 当ウィンドウのフレーム時間 (ms)
+		std::chrono::steady_clock::time_point last{};
+		bool hasLast = false;
+
+		void report()
+		{
+			if (samples.empty()) { return; }
+			std::vector<double> s = samples;
+			std::sort(s.begin(), s.end());
+			double sum = 0.0;
+			for (const double v : s) { sum += v; }
+			const auto pct = [&s](double p) {
+				return s[static_cast<std::size_t>(p * static_cast<double>(s.size() - 1))];
+			};
+			const double avg = sum / static_cast<double>(s.size());
+			std::fprintf(stderr,
+				"[mitiru_host] perf: %zu frames  avg %.2f ms (%.1f fps)  p50 %.2f  p95 %.2f  max %.2f\n",
+				s.size(), avg, 1000.0 / avg, pct(0.50), pct(0.95), s.back());
+			samples.clear();
+		}
+	};
+	PerfStats perfStats;
+	if (args.perf && cfg.vsync)
+	{
+		std::fprintf(stderr,
+			"[mitiru_host] perf: vsync ON のため present 待ちを含みます (素の描画コストは --no-vsync 併用)\n");
+	}
 
 	WatcherState watcher;
 	if (args.watch)
@@ -1017,9 +1069,24 @@ int main(int argc, char* argv[])
 	cfg.onFrameStart = [&watcher, watchOn = args.watch,
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
 	                    maxFrames = args.maxFrames, &totalFrame,
+	                    perfOn = args.perf, &perfStats,
 	                    &scrubReader, &scrubLastSeq]
 	                   (mitiru::Engine& engine)
 	{
+		// --perf (#53): 前回 onFrameStart からの実時間 = 1 host frame のコスト。
+		if (perfOn)
+		{
+			const auto now = std::chrono::steady_clock::now();
+			if (perfStats.hasLast)
+			{
+				perfStats.samples.push_back(
+					std::chrono::duration<double, std::milli>(now - perfStats.last).count());
+				if (perfStats.samples.size() >= 600) { perfStats.report(); }
+			}
+			perfStats.last = now;
+			perfStats.hasLast = true;
+		}
+
 		pollHostHotkeys(engine);
 
 		// time-travel rewind (ADR 0017): inspector の graph click → scrub command を適用。
@@ -1195,6 +1262,7 @@ int main(int argc, char* argv[])
 		}
 		cfg.enableCef = false;   // ヘッドレス決定的再実行
 		cfg.headless  = true;
+		cfg.swRasterizeEvery = 0;  // 照合は GameMemory のみで pixels は読まない (#53)
 		cfg.moduleInputOverride =
 			[&player, &engine, &recordedMem, &frameHasRecord](mitiru::module::InputSnapshot& snap) -> bool
 			{
@@ -1290,6 +1358,9 @@ int main(int argc, char* argv[])
 		// 非ゼロで返すとランチャー .bat が pause してユーザがエラーを読める。
 		return 3;
 	}
+
+	// --perf: 端数ウィンドウの統計を出してから終了処理へ (#53)。
+	if (args.perf) { perfStats.report(); }
 
 	// Replay 検証: 観測可能な最終状態を出力する。--expect 指定時はキー単位で diff し、
 	// 不一致があれば非ゼロ終了する (CI リグレッションゲート)。

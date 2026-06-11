@@ -76,6 +76,9 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 	if (hasSoftwareFramebuffer() && m_width > 0 && m_height > 0 &&
 	    dstRect.width() > 0.0f && dstRect.height() > 0.0f)
 	{
+		// 観測しないフレーム (#53): blit のピクセルループを丸ごと省く。
+		// fallback (per-pixel emitRect) に落とすと逆に遅いのでここで return。
+		if (!m_swFbActive) { ++m_drawCallCount; return; }
 		// submit 順 (z 順) 維持: この sprite より前に積まれた rect/text/shape を先に
 		// m_pixels へ焼いてから直書きする。さもないと「全 rect は present で後段 flush」
 		// となり sprite が常に下/上で固定され重なり順が壊れる。batch が空なら安価。

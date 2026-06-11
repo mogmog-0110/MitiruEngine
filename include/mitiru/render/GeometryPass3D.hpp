@@ -153,10 +153,12 @@ public:
 	void begin(ID3D11DeviceContext* ctx)
 	{
 		const float far1[4]  = {1.0f, 1.0f, 1.0f, 1.0f};
-		const float zero4[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+		// 背景法線は CPU GBuffer の既定値 (0,1,0) と揃える。ゼロベクトルだと
+		// ContourDetect の 1-dot(n,n) が背景同士で 1.0 になり、背景全面が輪郭扱いになる。
+		const float bgNormal[4] = {0.0f, 1.0f, 0.0f, 1.0f};
 		const UINT  zeroU[4] = {0u, 0u, 0u, 0u};
 		ctx->ClearRenderTargetView(m_depthRT.rtv.Get(), far1);
-		ctx->ClearRenderTargetView(m_normalRT.rtv.Get(), zero4);
+		ctx->ClearRenderTargetView(m_normalRT.rtv.Get(), bgNormal);
 		// R32_UINT への ClearRenderTargetView は float[4] のビット列を書き込む。
 		// 全ゼロ float = 全ゼロビット = uint 0（背景）なので objectId クリアに使える。
 		ctx->ClearRenderTargetView(m_objectIdRT.rtv.Get(), reinterpret_cast<const float*>(zeroU));

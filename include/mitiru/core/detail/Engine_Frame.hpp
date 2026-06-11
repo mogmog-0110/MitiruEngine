@@ -10,6 +10,12 @@ MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::capture() const
 {
 	if (m_screen && m_screen->hasSoftwareFramebuffer())
 	{
+		// gating 中 (#53) に未ラスタライズのフレームを読まれたら、次フレームの
+		// ラスタライズを要求しておく (連続 polling 消費者は 1 フレーム遅れで追従)。
+		if (!m_screen->softwareFbActive())
+		{
+			m_screen->requestSwRasterizeNext();
+		}
 		return m_screen->pixels();
 	}
 	if (!m_device || !m_screen)
@@ -180,6 +186,23 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 {
 	MITIRU_ZONE_NAMED("Engine::Render");
 	auto& game = *m_loopGame;
+
+	// SW-FB 観測フレーム gating (#53): capture が読むフレームだけ CPU ラスタライズする。
+	// host の --capture-every N は onFrameStart (描画前) で前フレームを読むため、
+	// 「次の host frame で読まれる」描画フレーム = frameNumber() % N == 0 が観測対象。
+	// (frameNumber は直前の tickFixedUpdatePhase の tick() で +1 済み = 描画フレーム+1)
+	if (m_screen && m_screen->hasSoftwareFramebuffer())
+	{
+		const int every = m_config.swRasterizeEvery;
+		bool active = true;
+		if (every != 1)
+		{
+			const bool wanted = m_screen->consumeSwRasterizeRequest();
+			active = wanted ||
+				(every > 1 && (m_clock->frameNumber() % static_cast<std::uint64_t>(every)) == 0);
+		}
+		m_screen->setSoftwareFbActive(active);
+	}
 
 	// =====================================================================
 	// 描画パイプライン (統一パス)

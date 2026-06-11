@@ -52,3 +52,13 @@ if(WIN32)
 			"$<TARGET_FILE_DIR:mitiru_host>/MitiruEngine_Launcher.bat"
 		COMMENT "mitiru_host: deploying MitiruEngine_Launcher.bat to build dir")
 endif()
+
+# SDL2 backend 有効時は SDL2.dll を host の隣へ deploy する (DS4 等 DirectInput パッド対応)。
+# SDL2::SDL2 は shared imported target なので TARGET_FILE = SDL2.dll。
+if(WIN32 AND TARGET SDL2::SDL2)
+	add_custom_command(TARGET mitiru_host POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"$<TARGET_FILE:SDL2::SDL2>"
+			"$<TARGET_FILE_DIR:mitiru_host>/SDL2.dll"
+		COMMENT "mitiru_host: deploying SDL2.dll (DirectInput gamepad support)")
+endif()

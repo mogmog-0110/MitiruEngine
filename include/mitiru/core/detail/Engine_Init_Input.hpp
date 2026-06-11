@@ -27,20 +27,21 @@ MITIRU_INLINE void mitiru::Engine::applyInjectedInput()
 		switch (cmd.type)
 		{
 		case InputCommandType::KeyDown:
-			m_inputState.setKeyDown(cmd.keyCode, true);
+			// injected 版: focus 喪失の clearHeldKeys に消されない (背景実行の AI 操作を守る)。
+			m_inputState.setKeyDownInjected(cmd.keyCode, true);
 			break;
 		case InputCommandType::KeyUp:
-			m_inputState.setKeyDown(cmd.keyCode, false);
+			m_inputState.setKeyDownInjected(cmd.keyCode, false);
 			break;
 		case InputCommandType::MouseMove:
 			m_inputState.setMousePosition(cmd.mouseX, cmd.mouseY);
 			break;
 		case InputCommandType::MouseDown:
-			m_inputState.setMouseButtonDown(
+			m_inputState.setMouseButtonDownInjected(
 				static_cast<MouseButton>(cmd.mouseButton), true);
 			break;
 		case InputCommandType::MouseUp:
-			m_inputState.setMouseButtonDown(
+			m_inputState.setMouseButtonDownInjected(
 				static_cast<MouseButton>(cmd.mouseButton), false);
 			break;
 		}

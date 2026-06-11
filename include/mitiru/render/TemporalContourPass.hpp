@@ -57,6 +57,8 @@ cbuffer TCParams : register(b0)
     uint  UseHysteresis;
     uint  FloorRawGate;
     uint  FirstFrame;       // 1 = 履歴なし → raw を返す
+    float AlphaMotionFalloff; // EMA 履歴重みの velocity 減衰（CPU 版と同一）
+    float3 _pad;
 };
 
 struct PSInput { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
@@ -78,7 +80,13 @@ float PSMain(PSInput i) : SV_TARGET
     }
 
     float hist = PrevStable.SampleLevel(LinearClamp, srcUV, 0);
-    float s = raw * (1.0 - Alpha) + hist * Alpha;      // EMA
+    float speed = length(vel * ScreenSize);            // pixel 速度
+    float alphaEff = Alpha;
+    if (AlphaMotionFalloff > 0.0)                      // 移動エッジは履歴を弱めてぼやけ抑制
+    {
+        alphaEff *= saturate(1.0 - AlphaMotionFalloff * speed);
+    }
+    float s = raw * (1.0 - alphaEff) + hist * alphaEff; // EMA
 
     if (UseHysteresis != 0 && hist >= TauOn)
     {
@@ -97,7 +105,6 @@ float PSMain(PSInput i) : SV_TARGET
             float cap = TauOn;
             if (FloorMotionFalloff > 0.0)
             {
-                float speed = length(vel * ScreenSize);     // pixel 速度
                 cap *= saturate(1.0 - FloorMotionFalloff * speed);
             }
             s = max(s, min(hist, cap));
@@ -122,6 +129,7 @@ VSOut VSMain(uint id : SV_VertexID)
 struct TemporalContourPassParams
 {
     float alpha = 0.8f;
+    float alphaMotionFalloff = 0.0f; // EMA 履歴重みの velocity 減衰（0 = 従来挙動）
     float tauOn = 0.5f;
     float floorMotionFalloff = 0.0f;
     float rawGateThreshold = 0.1f;
@@ -173,6 +181,7 @@ public:
         cb.useHysteresis = m_params.useHysteresis ? 1u : 0u;
         cb.floorRawGate = m_params.floorRawGate ? 1u : 0u;
         cb.firstFrame = firstFrame ? 1u : 0u;
+        cb.alphaMotionFalloff = m_params.alphaMotionFalloff;
 
         D3D11_MAPPED_SUBRESOURCE m{};
         if (SUCCEEDED(ctx->Map(m_cb.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &m)))
@@ -215,6 +224,7 @@ private:
         float alpha, tauOn, floorMotionFalloff, rawGateThreshold;
         float texelX, texelY, screenX, screenY;
         std::uint32_t useObjId, useHysteresis, floorRawGate, firstFrame;
+        float alphaMotionFalloff, pad0, pad1, pad2;
     };
     struct RTData { ComPtr<ID3D11Texture2D> texture; ComPtr<ID3D11ShaderResourceView> srv; ComPtr<ID3D11RenderTargetView> rtv; };
 

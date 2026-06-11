@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0091 NEW)
 
 project(MitiruEngine
-	VERSION 0.12.0
+	VERSION 0.13.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -308,6 +308,15 @@ endif()
 
 # ── Optional backend detection (Emscripten ではスキップ) ────
 if(NOT EMSCRIPTEN)
+# SDL2 は DualShock 4 等 DirectInput 系パッドの生命線 (XInput は箱コン系のみ)。
+# システムに無ければ external/sdl2/ (tools/fetch_sdl2.py が置く) を自動検出する。
+if(NOT SDL2_DIR)
+	file(GLOB _mitiru_sdl2_local "${CMAKE_CURRENT_SOURCE_DIR}/external/sdl2/SDL2-*/cmake")
+	if(_mitiru_sdl2_local)
+		list(GET _mitiru_sdl2_local 0 SDL2_DIR)
+		message(STATUS "SDL2: using vendored copy at ${SDL2_DIR}")
+	endif()
+endif()
 find_package(SDL2 2.0.10 QUIET)
 if(SDL2_FOUND)
 	message(STATUS "SDL2 found (${SDL2_VERSION}) - enabling SDL2 backend")
@@ -315,6 +324,11 @@ if(SDL2_FOUND)
 	# 副次効果として SDL2main.lib への link が不要になる。
 	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_SDL2=1 SDL_MAIN_HANDLED=1)
 	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} SDL2::SDL2)
+elseif(WIN32)
+	# 黙って劣化させない — DS4 が効かない host が静かに生まれるのを防ぐ。
+	message(WARNING
+		"SDL2 が見つかりません。DualShock 4 等の DirectInput 系ゲームパッドが効かない host になります。\n"
+		"  対処: python tools/fetch_sdl2.py を実行してから configure し直してください。")
 endif()
 
 find_package(glfw3 3.3 QUIET)

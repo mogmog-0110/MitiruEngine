@@ -11,7 +11,8 @@
 ///          GPU 完結の輪郭線パイプラインを構成する。
 ///
 /// 近傍の境界クランプは Clamp サンプラに任せる（CPU の `clampCoord` 相当）。背景画素は
-/// normal=0 / depth=1 のため、シルエット（物体 vs 背景）は深度差・法線差の双方で立つ。
+/// normal=(0,1,0) / depth=1（CPU `GBufferPixel` 既定値と同一規約）のため、シルエット
+/// （物体 vs 背景）は主に深度差で立ち、背景同士では輪郭が立たない。
 /// 前面の線細化（front-side thinning）は CPU 版にも無いため未実装（パリティ優先、将来課題）。
 /// @note GPU バックエンド有り環境での smoke 前提（headless では shader 文字列 + API の compile-check のみ）。
 

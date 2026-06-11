@@ -38,6 +38,11 @@ namespace mitiru::render
 struct TemporalContourParams
 {
 	float alpha = 0.8f;          ///< EMA 履歴重み [0,1]（0=生のみ / 1=履歴のみ）
+	/// @brief EMA 履歴重みの velocity 減衰係数。0 = 減衰なし（従来挙動）。
+	/// @details 移動量に応じて履歴重みを下げる: `alphaEff = alpha * clamp(1 - falloff*|velocity|, 0, 1)`。
+	///          速く動く線で履歴の再サンプリングが motion blur 状のぼやけ（線の太り）になるのを抑え、
+	///          静止部は従来どおり強い履歴で flicker を抑える（要 useVelocity）。
+	float alphaMotionFalloff = 0.0f;
 	bool  useVelocity = true;    ///< false: reproject せず同一画素の履歴を使う（ablation）
 	bool  useObjId = true;       ///< false: objectId gate を無効化（ablation）
 	bool  useHysteresis = true;  ///< false: ヒステリシス床なし
@@ -104,7 +109,13 @@ public:
 
 				const float hist = bilinear(prevStable, w, h, sx, sy);
 				const std::size_t i = static_cast<std::size_t>(y * w + x);
-				float s = rawContour[i] * (1.0f - p.alpha) + hist * p.alpha;   // EMA
+				const float speed = std::sqrt(vx * vx + vy * vy);
+				float alphaEff = p.alpha;
+				if (p.alphaMotionFalloff > 0.0f)   // 移動エッジは履歴を弱めて EMA のぼやけを抑える
+				{
+					alphaEff *= std::clamp(1.0f - p.alphaMotionFalloff * speed, 0.0f, 1.0f);
+				}
+				float s = rawContour[i] * (1.0f - alphaEff) + hist * alphaEff;   // EMA
 				// #10 option c: 現フレームの raw が近傍に無い画素は床を適用しない
 				//   （完全に動き去った線の trailing halo を構造的に除去）。
 				const bool floorAllowed =
@@ -114,7 +125,6 @@ public:
 					float floorCap = p.tauOn;
 					if (p.floorMotionFalloff > 0.0f)   // #9: 移動エッジは床を弱めて halo を抑える
 					{
-						const float speed = std::sqrt(vx * vx + vy * vy);
 						floorCap *= std::clamp(1.0f - p.floorMotionFalloff * speed, 0.0f, 1.0f);
 					}
 					s = std::max(s, std::min(hist, floorCap));   // ヒステリシス床（velocity 認識）

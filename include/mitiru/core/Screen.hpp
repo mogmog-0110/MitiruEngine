@@ -1379,6 +1379,35 @@ private:
 			m_pixels[i * 4 + 3] = a;
 		}
 	}
+
+public:
+	/// @brief 今フレーム SW ラスタライズを行うかを設定する (#53 観測フレーム gating)
+	/// @details engine が毎フレーム頭で駆動する。false の間は clear/flush/present/
+	///          sprite blit が m_pixels に触れず、直前のラスタライズ結果が残る。
+	///          SW-FB 無効時は無意味 (windowed には影響しない)。
+	void setSoftwareFbActive(bool active) noexcept { m_swFbActive = active; }
+
+	/// @brief 今フレーム SW ラスタライズが有効か
+	[[nodiscard]] bool softwareFbActive() const noexcept
+	{
+		return m_softwareFb && m_swFbActive;
+	}
+
+	/// @brief 次フレームの SW ラスタライズを要求する (gating 中の on-demand 消費者用)
+	void requestSwRasterizeNext() noexcept { m_swFbWantNext = true; }
+
+	/// @brief on-demand 要求を取り出してクリアする (engine の frame 頭で消費)
+	[[nodiscard]] bool consumeSwRasterizeRequest() noexcept
+	{
+		const bool want = m_swFbWantNext;
+		m_swFbWantNext = false;
+		return want;
+	}
+
+private:
+	// ABI 注意: Screen* は DLL 境界を渡る。既存メンバのオフセット維持のため末尾追加 (ABI v15)。
+	bool m_swFbActive = true;    ///< 今フレーム SW ラスタライズを行うか (#53)
+	bool m_swFbWantNext = false; ///< capture() 等が次フレームのラスタライズを要求したか
 };
 
 } // namespace mitiru

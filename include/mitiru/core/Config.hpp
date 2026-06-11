@@ -139,6 +139,14 @@ struct EngineConfig
 		{1280, 720},
 	};
 	bool headless = false;                 ///< ヘッドレスモード（ウィンドウなし）
+	/// @brief headless SW フレームバッファの CPU ラスタライズ間隔 (#53)。
+	/// @details 1 = 毎フレーム (既定・従来挙動)。N>1 = capture が読むフレーム
+	///          だけラスタライズ (--capture-every N と同じ周期)。0 = 自動では
+	///          行わない (capture() が stale を検知したら次フレームだけ実施)。
+	///          ラスタライズはフルスクリーン CPU 描画でピクセル数に比例して
+	///          重い (640x480 で数 ms〜) ため、観測しないフレームを省くと
+	///          headless の自動回しが大幅に速くなる。sim の決定性には無関係。
+	int swRasterizeEvery = 1;
 	/// @brief 決定論的モード（固定 dt = 1/targetTps）。
 	/// @details インタラクティブ実行では `false` 推奨（実時間 dt）。`true` だと
 	///          高 refresh rate モニタで accumulator が 1/60 ずつしか積まれず、

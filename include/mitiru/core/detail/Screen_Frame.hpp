@@ -16,7 +16,8 @@ inline void mitiru::Screen::clear(const sgc::Colorf& color)
 	m_clearColor = color;
 	m_spriteBatch.begin();
 	m_curTexHandle = 0; // フレーム頭で run 状態をリセット（ADR 0009）
-	if (m_softwareFb) { clearFramebuffer(); }
+	// 観測しないフレームは clear も skip し、直前のラスタライズ結果を保持する (#53)
+	if (m_softwareFb && m_swFbActive) { clearFramebuffer(); }
 	++m_drawCallCount;
 }
 
@@ -61,7 +62,7 @@ inline void mitiru::Screen::flushCurrentBatch()
 					m_spriteBatch.vertices(), m_spriteBatch.indices());
 			}
 		}
-		if (m_softwareFb)
+		if (m_softwareFb && m_swFbActive)
 		{
 			rasterizeTriangles(m_spriteBatch.vertices(), m_spriteBatch.indices());
 		}
@@ -103,7 +104,7 @@ inline void mitiru::Screen::present()
 	}
 
 	/// ソフトウェアフレームバッファへのラスタライズ（spriteBatch は flush 済み）
-	if (m_softwareFb && !m_shapeRenderer.vertices().empty())
+	if (m_softwareFb && m_swFbActive && !m_shapeRenderer.vertices().empty())
 	{
 		rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
 	}

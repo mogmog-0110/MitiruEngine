@@ -84,7 +84,10 @@ namespace mitiru::module
 ///   - v14: Screen 末尾に AI 観測用 draw log メンバを追加 (/api/ai/frame)。Screen* は
 ///     gameDraw で DLL 境界を渡るため layout 拡張 = ABI break。末尾追加なので
 ///     旧 module (v≤13) は新 host 上で安全 (旧 offset 不変、draw log に載らないだけ)。
-constexpr std::uint32_t kCurrentApiVersion = 14;  // v14: Screen 末尾 draw log (AI フレーム観測)
+///   - v15: Screen 末尾に SW ラスタライズ gating フラグを追加 (#53)。headless で
+///     capture が読まないフレームの CPU ラスタライズを省く。末尾追加なので
+///     旧 module (v≤14) は新 host 上で安全 (旧挙動 = 毎フレームラスタライズのまま)。
+constexpr std::uint32_t kCurrentApiVersion = 15;  // v15: Screen 末尾 SW ラスタライズ gating (#53)
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";

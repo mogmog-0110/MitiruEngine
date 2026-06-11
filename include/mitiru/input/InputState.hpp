@@ -108,10 +108,42 @@ public:
 	///          edge を発火する (game logic 側に「キー離された」通知が届く)。
 	void clearHeldKeys() noexcept
 	{
-		m_keys.fill(false);
-		m_mouseButtons.fill(false);
+		// 注入キー (AI / replay が injector 経由で押したもの) は消さない。
+		// このクリアは「実キーボードの離し損ね」対策であり、バックグラウンドの
+		// ゲームを外部から操作するケース (MITIRU_AI) を壊してはいけない。
+		for (std::size_t i = 0; i < m_keys.size(); ++i)
+		{
+			if (!m_injectedKeys[i]) { m_keys[i] = false; }
+		}
+		for (std::size_t i = 0; i < m_mouseButtons.size(); ++i)
+		{
+			if (!m_injectedMouse[i]) { m_mouseButtons[i] = false; }
+		}
 		m_rawDeltaX = 0.0f;
 		m_rawDeltaY = 0.0f;
+	}
+
+	/// @brief 注入入力としてキー状態を設定する (clearHeldKeys の対象外になる)
+	/// @details injector (HTTP /api/input/simulate、replay 再生) 専用。
+	///          実ウィンドウイベントの setKeyDown が来たらそのキーは実入力扱いに戻る。
+	void setKeyDownInjected(int keyCode, bool down) noexcept
+	{
+		if (keyCode >= 0 && keyCode < MAX_KEYS)
+		{
+			m_keys[static_cast<std::size_t>(keyCode)] = down;
+			m_injectedKeys[static_cast<std::size_t>(keyCode)] = down;
+		}
+	}
+
+	/// @brief 注入入力としてマウスボタン状態を設定する (clearHeldKeys の対象外)
+	void setMouseButtonDownInjected(MouseButton button, bool down) noexcept
+	{
+		const auto idx = static_cast<std::size_t>(button);
+		if (idx < m_mouseButtons.size())
+		{
+			m_mouseButtons[idx] = down;
+			m_injectedMouse[idx] = down;
+		}
 	}
 
 	/// @brief 1 つの fixed-step tick が終わった直後に呼び、エッジを「消化」する
@@ -284,6 +316,8 @@ public:
 		if (keyCode >= 0 && keyCode < MAX_KEYS)
 		{
 			m_keys[static_cast<std::size_t>(keyCode)] = down;
+			// 実ウィンドウイベントが来たキーは実入力扱いに戻す。
+			m_injectedKeys[static_cast<std::size_t>(keyCode)] = false;
 		}
 	}
 
@@ -321,6 +355,8 @@ public:
 		if (index < MAX_MOUSE_BUTTONS)
 		{
 			m_mouseButtons[index] = down;
+			// 実ウィンドウイベントが来たボタンは実入力扱いに戻す。
+			m_injectedMouse[index] = false;
 		}
 	}
 
@@ -336,6 +372,8 @@ private:
 	bool  m_mouseCaptured; ///< カーソルキャプチャ要求フラグ（OS副作用なし、Win32Window が参照）
 	float m_rawDeltaX;     ///< キャプチャ中の蓄積生デルタX（beginFrame でリセット）
 	float m_rawDeltaY;     ///< キャプチャ中の蓄積生デルタY（beginFrame でリセット）
+	std::array<bool, MAX_KEYS> m_injectedKeys{};            ///< injector 由来の押下 (focus 喪失クリア対象外)
+	std::array<bool, MAX_MOUSE_BUTTONS> m_injectedMouse{};  ///< injector 由来のボタン (同上)
 };
 
 } // namespace mitiru
