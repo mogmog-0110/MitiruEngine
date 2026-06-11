@@ -36,7 +36,10 @@ add_subdirectory(timetravel_demo)   # 差別化デモ (time-travel / AI Lens、A
 # チェックリスト設計で、作家性 (具体的な美学への決断・手の入った素材) が無い。
 # 公開物は美学へのコミットが先、機構は後 (FLUID DROP = 流体が美学、サチ = 手描きドット)。
 # tutorial/ の段階コーパス (S1-S7 全過程) は教材原稿として価値が残るので保持。
-add_subdirectory(hookline)
+# snapshot 非同梱のため EXISTS ガード必須 (無条件参照は public の configure を壊す)。
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hookline/CMakeLists.txt")
+	add_subdirectory(hookline)
+endif()
 # 研究中 example (未コミット dir / snapshot 非同梱) は EXISTS ガードで取り込む。
 # dev tree に dir が在れば従来どおりビルド、無い clone / prod では静かにスキップ。
 foreach(_lab windy_cloth sim_seam_demo gpu_sim_seam face_sdf pbmpm fluidtetris)
