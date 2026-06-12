@@ -155,7 +155,7 @@ s.drawGroup({px, py}, spinDeg, [&amp;](<span class="t">Screen</span>&amp; g) {
             <p>いちばん簡単な描き方は id 指定です（v0.15）。<code>assets/sprites/hero.png</code> を置いたら:</p>
 <pre>s.sprite(<span class="s">"hero"</span>, x, y);          <span class="c">// これだけ。読み込み・キャッシュはエンジンがやる</span>
 s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍サイズ</span></pre>
-            <p>音の <code>hud.play("hit")</code> と同じ「ファイルを置いて id で呼ぶ」規約です。ファイルが無ければ初回に 1 行だけ警告が出ます。細かい制御（回転・切り出し・ティント）が要るときは <code>Texture</code> を自分で持ちます。読み込みは重いので <code>init()</code> で 1 回だけ——<code>draw()</code> の中で毎フレーム読み込まないこと。</p>
+            <p>音の <code>hud.play("hit")</code> と同じ「ファイルを置いて id で呼ぶ」規約です。ファイルが無ければ初回に 1 行だけ警告が出ます。<strong>PNG を上書き保存すると実行中のゲームに約 0.5 秒で反映されます</strong>（v0.17 — 絵を描きながら、隣でゲームが生き返る）。細かい制御（回転・切り出し・ティント）が要るときは <code>Texture</code> を自分で持ちます。読み込みは重いので <code>init()</code> で 1 回だけ——<code>draw()</code> の中で毎フレーム読み込まないこと。</p>
             <figure><img src="assets/feat_sprite.png" alt="スプライト・ティント・スプライトシート切り出し・drawPixelGrid の実行画面" loading="lazy"><figcaption>実際に動かした GPU 描画。左から <code>drawSprite</code>（テクスチャ）/ ティント乗算 / スプライトシートの 1 コマ切り出し / <code>drawPixelGrid</code>（手続き生成ピクセル）。</figcaption></figure>
 <pre><span class="k">#include</span> &lt;mitiru/render/Texture.hpp&gt;
 
@@ -222,6 +222,7 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍
 <span class="k">if</span> (in.cancelPressed())  back();     <span class="c">// Escape + パッド B / Back</span>
 <span class="t">Stick</span> m = in.move();                 <span class="c">// 矢印 + WASD + 十字キー + 左スティック統合 (-1..1)</span>
 x += m.x * 320 * dt;                 <span class="c">// これだけで全デバイス対応の移動</span></pre>
+            <p>メニューの上下送り（スティック倒しっぱなしのリピート含む）は <code>mitiru::MenuCursor</code>（v0.17）を状態に持って <code>cursor.updateVertical(in, 項目数, dt)</code> を呼ぶだけ。POD なので巻き戻しにも乗ります。</p>
 
             <!-- ── ⑨ AI Lens と決定論 ─────────────────── -->
             <h2 id="ai">⑤ 乱数・決定論・AI Lens — 1 個の flat POD から生える</h2>
@@ -255,6 +256,10 @@ MITIRU_AI=1 mitiru run</pre>
             <div class="note"><strong>1 つの設計判断が差別化の土台になっている。</strong> 状態を 1 個の flat POD に置くという制約が、巻き戻し・録画リプレイ・AI 可視化という別々の機能を、追加コストなしで同じ仕組みから生やしています。詳しい思想は <a href="index.html#flat-pod">トップの「状態は 1 個の flat POD」</a> へ。</div>
 
             <!-- ── ⑩ 音 ──────────────────────────────── -->
+            <h3>巻き戻して、直して、そこから再生（v0.17）</h3>
+            <p>エンジンは直近 5 秒の<strong>状態と入力</strong>を常時保持しています。バグの瞬間を見つけたら巻き戻し、コードを直して保存（ホットリロード）すると、<strong>同じ入力がそこから再適用され、直したコードでバグの瞬間をもう一度見られます</strong>。再現手順を頑張る時代の終わりです。状態が 1 個の flat POD だからできる、このエンジン固有の開発ループです。</p>
+
+            <!-- ── ⑥ 音 ─────────────────────────────── -->
             <h2 id="sound">⑥ 音 — 効果音・BGM</h2>
             <p>音は <code>hud</code> から id で鳴らします（鳴らしたい瞬間に呼ぶだけ）。<code>update(Input in, Hud hud, float dt)</code> の形にして:</p>
 <pre>hud.play(<span class="s">"hit"</span>);                <span class="c">// SE を id で鳴らす（第 2 引数は音量）</span>
@@ -328,6 +333,12 @@ hud.set(<span class="s">"view.boss.active"</span>, <span class="k">true</span>);
 
             <!-- ── ⑭ 当たり判定 ───────────────────────── -->
             <h2 id="collision">⑨ 当たり判定 — 矩形の交差・点の内包</h2>
+            <p>タイルマップの上を動くなら、衝突解決ごと 1 つの関数でできます（v0.17）:</p>
+<pre><span class="c">// 移動量 dx,dy をタイル衝突で解決した位置 + どの面に当たったかが返る (貫通しない)</span>
+<span class="k">auto</span> r = mitiru::moveAndCollide(x, y, w, h, dx, dy, 16.0f,
+    [&amp;](<span class="k">int</span> tx, <span class="k">int</span> ty) { <span class="k">return</span> map.solid(tx, ty); });
+x = r.x; y = r.y;
+<span class="k">if</span> (r.hitDown) onGround = <span class="k">true</span>;   <span class="c">// 着地</span></pre>
             <p>四角どうしが重なったか・点が四角の中にあるかは、自分で座標を比べなくても <code>sgc::Rectf</code> のメソッドで一発です。</p>
 <pre>sgc::<span class="t">Rectf</span> player{playerX - 28, 660, 56, 24};   <span class="c">// {x, y, 幅, 高さ}</span>
 sgc::<span class="t">Rectf</span> block {b.x, b.y, 44, 44};

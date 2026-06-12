@@ -186,6 +186,8 @@ cd my-dodge</pre>
 
           <h3>ホットリロード — 止めずにコードを差し替える</h3>
           <p><code>mitiru run</code> の代わりに <strong><code>mitiru watch</code></strong> で起動してみてください。すると、<code>src/</code> のコードを<strong>保存した瞬間</strong>に、ゲームを<strong>止めずに</strong>新しいコードへ差し替わります。これを<strong>ホットリロード</strong>と呼びます。</p>
+          <p>書き間違えてビルドが壊れても大丈夫 — <strong>エラーがゲーム画面の上に赤い帯で出ます</strong>（v0.17）。ゲームは前のコードで動き続け、直して保存すれば帯は消えます。コンソールと往復する必要はありません。</p>
+          <figure><img src="assets/feat-error-banner.png" alt="ビルドエラーがゲーム画面上部に赤い帯で表示されている実機スクリーンショット" loading="lazy"><figcaption>ビルドが壊れるとゲーム画面にエラー帯。ゲームは止まらない。</figcaption></figure>
 <pre>mitiru watch     <span class="c"># 保存するたびに、止めずに反映</span></pre>
           <p>仕組みはこうです。コードを保存すると、<strong>ゲームの DLL だけが素早く再ビルド</strong>され（数秒）、走っている <code>mitiru_host</code> がそれを<strong>その場で差し替えます</strong>。ホストは再起動しないので、<strong>いまの状態（スコア・ブロックの位置など）はそのまま残ります</strong>。「作り直して最初から」ではなく「遊んだまま中身だけ入れ替わる」のがホットリロードです。状態が消えないのは、状態を <code>struct DodgeGame</code> にまとめて<strong>エンジンが預かっている</strong>からです。</p>
           <p>試しに <code>mitiru watch</code> 中に、ブロックの落下速度 <code>330</code> を <code>500</code> に変えて保存してみましょう。ゲームは落ちずに、その場で難しくなります。</p>
