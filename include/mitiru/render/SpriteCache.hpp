@@ -7,6 +7,9 @@
 /// で注入する。id は `assets/sprites/<id>.png` に解決される (audio の
 /// `assets/audio/<id>.wav` と同じ id 規約)。ロード失敗は id 単位で初回のみ
 /// warnOnce し、以後 nullptr を返す (毎フレームのディスク再試行はしない)。
+///
+/// pollReload() で PNG のホットリロードに対応する (Engine が ~0.5 秒周期で呼ぶ)。
+/// 音は対応不要 — SE は再生ごとにファイルを読む (既にホット)、music はストリーム保持中でロック。
 
 #include <filesystem>
 #include <string>
@@ -20,10 +23,11 @@
 namespace mitiru::render
 {
 
-/// @brief sprite id → Texture の遅延ロードキャッシュ
+/// @brief sprite id → Texture の遅延ロードキャッシュ (ホットリロード対応)
 /// @details テクスチャの所有はこのキャッシュ (= host) 側。unordered_map の
-///          値ポインタは rehash で無効化されないため、返した Texture* は
-///          キャッシュ生存中ずっと有効。
+///          値はノード安定 (rehash で再配置されない) なので、返した Texture* は
+///          キャッシュ生存中ずっと有効。pollReload() は同じスロットの Texture を
+///          上書きするためポインタは変わらず、次の描画から新ピクセルが見える。
 class SpriteCache
 {
 public:
@@ -50,21 +54,55 @@ public:
 			return nullptr;
 		}
 		std::string key(id);
-		if (const auto it = m_textures.find(key); it != m_textures.end())
+		if (const auto it = m_entries.find(key); it != m_entries.end())
 		{
-			return it->second.valid() ? &it->second : nullptr;
+			return it->second.tex.valid() ? &it->second.tex : nullptr;
 		}
-		const std::string path = (m_baseDir / (key + ".png")).generic_string();
-		Texture tex = ImageLoader::fromFile(path);
-		if (!tex.valid())
+		const std::filesystem::path path = m_baseDir / (key + ".png");
+		Entry entry;
+		entry.tex = ImageLoader::fromFile(path.generic_string());
+		// 書き込み途中/欠落でも次回 poll で拾えるよう mtime を記録 (stat 失敗は既定値のまま)
+		std::error_code ec;
+		entry.mtime = std::filesystem::last_write_time(path, ec);
+		if (!entry.tex.valid())
 		{
 			// 黙った非表示は原因不明になるので id 単位で初回のみ警告 (R-01 級)
 			mitiru::debug::warnOnce("sprite.id:" + key,
-				"スプライト画像が見つからない/読めない: " + path);
+				"スプライト画像が見つからない/読めない: " + path.generic_string());
 		}
 		// 失敗も空 Texture のままキャッシュする (毎フレームのディスク再試行を防ぐ)
-		const auto it = m_textures.emplace(std::move(key), std::move(tex)).first;
-		return it->second.valid() ? &it->second : nullptr;
+		const auto it = m_entries.emplace(std::move(key), std::move(entry)).first;
+		return it->second.tex.valid() ? &it->second.tex : nullptr;
+	}
+
+	/// @brief 全ロード済みエントリの mtime を stat し、変更があれば同じスロットへ再読込する
+	/// @details 失敗 id (前回 nullptr) も再試行する = 後から PNG を置いたら出る。
+	///          消失/書き込み途中で読めない瞬間は旧 Texture を維持し次回 poll へ。
+	void pollReload()
+	{
+		for (auto& [key, entry] : m_entries)
+		{
+			const std::filesystem::path path = m_baseDir / (key + ".png");
+			std::error_code ec;
+			const auto mtime = std::filesystem::last_write_time(path, ec);
+			if (ec)
+			{
+				continue; // 消えた/ロック中 → 旧 Texture を維持 (clobber しない)
+			}
+			// 失敗 id は mtime に関係なく再試行、成功済みは mtime 変化時のみ
+			if (entry.tex.valid() && mtime == entry.mtime)
+			{
+				continue;
+			}
+			Texture fresh = ImageLoader::fromFile(path.generic_string());
+			if (!fresh.valid())
+			{
+				continue; // 書き込み途中等 → mtime も据え置きで次回 poll に再試行
+			}
+			// 同じスロットを上書き → resolver が返した Texture* は安定。新寸法はそのまま採用。
+			entry.tex = std::move(fresh);
+			entry.mtime = mtime;
+		}
 	}
 
 	/// @brief Screen::setSpriteResolver へ渡す C 関数ポインタ (ctx = SpriteCache*)
@@ -74,8 +112,15 @@ public:
 	}
 
 private:
-	std::filesystem::path m_baseDir = "assets/sprites";   ///< 既定は cwd 相対
-	std::unordered_map<std::string, Texture> m_textures;  ///< id → Texture (失敗は空 Texture)
+	/// @brief キャッシュエントリ (Texture + 読込時の mtime)
+	struct Entry
+	{
+		Texture tex;                               ///< 失敗時は空 Texture
+		std::filesystem::file_time_type mtime{};   ///< 読込時のファイル更新時刻
+	};
+
+	std::filesystem::path m_baseDir = "assets/sprites";  ///< 既定は cwd 相対
+	std::unordered_map<std::string, Entry> m_entries;    ///< id → Entry (失敗は空 Texture)
 };
 
 } // namespace mitiru::render

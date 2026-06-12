@@ -126,6 +126,7 @@ struct EngineCallbacks
 	std::function<bool()>           runtimeIsPaused;
 	std::function<void()>           runtimeStep;        ///< paused 時に 1 フレーム進める
 	std::function<void(float)>      runtimeSetTimeScale;
+	std::function<bool(std::uint32_t)> runtimeResim;  ///< k フレーム前へ巻き戻して記録入力で再生 (ADR 0021)
 	std::function<float()>          runtimeGetTimeScale;
 	std::function<bool()>           runtimeToggleLofi; ///< 戻り値 = toggle 後の lofi enabled
 	std::function<bool()>           runtimeIsLofiEnabled;
@@ -398,6 +399,7 @@ private:
 			if (path == "/api/runtime/pause")     { handleRuntimePause(req, resp); return; }
 			if (path == "/api/runtime/step")      { handleRuntimeStep(req, resp); return; }
 			if (path == "/api/runtime/timescale") { handleRuntimeTimeScale(req, resp); return; }
+			if (path == "/api/runtime/resim") { handleRuntimeResim(req, resp); return; }
 			if (path == "/api/runtime/lofi")      { handleRuntimeLofi(req, resp); return; }
 			if (path == "/api/runtime/quit")      { handleRuntimeQuit(req, resp); return; }
 			if (path == "/api/command")              { handleCommand(req, resp); return; }
@@ -460,6 +462,7 @@ private:
 	void handleRuntimePause(const HttpRequest&, HttpResponse& resp);
 	void handleRuntimeStep(const HttpRequest&, HttpResponse& resp);
 	void handleRuntimeTimeScale(const HttpRequest& req, HttpResponse& resp);
+	void handleRuntimeResim(const HttpRequest& req, HttpResponse& resp);
 	void handleRuntimeLofi(const HttpRequest&, HttpResponse& resp);
 	void handleRuntimeQuit(const HttpRequest&, HttpResponse& resp);
 	void handleCommand(const HttpRequest& req, HttpResponse& resp);

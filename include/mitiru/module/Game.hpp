@@ -34,6 +34,8 @@
 #include <mitiru/core/Color.hpp>
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/core/PodTiming.hpp>  // POD タイマー/トゥイーン (GameMemory に埋めて使う)
+#include <mitiru/core/MenuCursor.hpp>  // メニューのスティック/十字ナビ (POD)
+#include <mitiru/core/Collide2D.hpp>   // タイルマップ AABB 移動解決 (moveAndCollide)
 #include <mitiru/debug/ToolRegistry.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/ModuleApi.hpp>
@@ -230,8 +232,11 @@ public:
 	/// 決定論 seed (録画再生で bit-exact 再現するため、乱数は mitiru::Random rng(in.rngSeed()) で seed する)。
 	std::uint64_t rngSeed() const noexcept { return s_->rngSeed; }
 
-	/// 音声クロック (秒、ABI v13)。host の audio backend の再生サンプル位置。0 = 非対応 (Null/
-	/// headless 等) → game はフレーム dt 積算へフォールバックすること。録画再生でも再現する。
+	/// 音声クロック (秒、ABI v13)。host の audio backend の再生サンプル位置。
+	/// **契約**: 0 = 未準備/非対応 (起動直後の数フレームや Null/headless) → game は
+	/// フレーム dt 積算へフォールバックすること。**非ゼロになった後は単調非減少を
+	/// engine が保証する** (backend の供給の谷でも巻き戻らない)。録画再生でも再現する。
+	/// リズムゲームの同期は「audioTime()<=0 の間は dt クロック、以降は緩く lerp」が定石。
 	double audioTime() const noexcept { return s_->audioTimeSec; }
 
 	/// 生の InputSnapshot へのアクセス (全 256 キー走査など、ラッパで足りない高度用途の escape hatch)。

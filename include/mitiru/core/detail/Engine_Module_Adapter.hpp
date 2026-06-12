@@ -82,6 +82,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 		{
 			m_engine->ensureModuleCefBindings();
 			m_engine->buildModuleInputSnapshot();
+			m_engine->applyResimInputOverride();  // resim 中は記録入力で上書き (ADR 0021)
 			m_engine->zeroModuleFrameIntents();
 
 			// ランタイム時間制御: timeScale 乗算 + paused/stepFrames。
@@ -123,6 +124,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			// on_update 後の確定 GameMemory を time-travel ring に記録 (ADR 0017)。
 			// replay の state slot と同一 bytes。観測 (probe 系列) と rewind の単一源。
 			m_engine->recordModuleMemoryFrame();
+			m_engine->recordModuleInputFrame();  // 入力も同じ窓で ring 保持 (ADR 0021)
 
 			m_engine->drainModuleFrameIntents();
 
@@ -315,7 +317,15 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 
 	// 音声クロック (ABI v13)。host の audio backend の再生サンプル位置を供給。replay 時は
 	// 末尾の moduleInputOverride が記録値で上書きするので bit-exact 性は保たれる。
-	snap->audioTimeSec = (m_audioEngine != nullptr) ? m_audioEngine->masterTimeSec() : 0.0;
+	// audio master clock (ABI v13)。契約 (R-03, oscar-rythm): 0 = backend 未準備
+	// (game は dt 積算へフォールバックする)。非ゼロになった後は **単調非減少** を
+	// engine が保証する — backend がチャンク供給の谷で一瞬小さい値を返しても、
+	// game の同期ロジック (snap/lerp) が拍を巻き戻さないようにここで clamp する。
+	{
+		const double raw = (m_audioEngine != nullptr) ? m_audioEngine->masterTimeSec() : 0.0;
+		if (raw > m_lastAudioTimeSec) { m_lastAudioTimeSec = raw; }
+		snap->audioTimeSec = m_lastAudioTimeSec;
+	}
 
 	// Keys (256 VK codes)。internal を覗かず InputState API を使う —
 	// InputState の engine refactor の自由度を保つため。

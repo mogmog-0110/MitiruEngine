@@ -151,6 +151,27 @@ inline void mitiru::server::EngineHttpServer::handleRuntimeStep(const HttpReques
 	resp.setBody(R"({"success":true})");
 }
 
+// Rewind-Edit-Replay (ADR 0021): k フレーム前へ巻き戻し、記録済み入力で再生する。
+// ホットリロード後に呼べば「同じ入力・新しいコード」でバグの瞬間を再現できる。
+inline void mitiru::server::EngineHttpServer::handleRuntimeResim(const HttpRequest& req, HttpResponse& resp)
+{
+	if (!m_callbacks.runtimeResim)
+	{
+		resp.status = 503;
+		resp.setBody(R"({"success":false,"message":"resim not wired"})");
+		return;
+	}
+	const auto raw = detail::extractJsonString(req.body, "frames");
+	std::uint32_t k = 0;
+	try { k = static_cast<std::uint32_t>(std::stoul(raw)); }
+	catch (...) { resp.status = 400; resp.setBody(R"({"success":false,"message":"frames must be a positive integer"})"); return; }
+	if (k == 0) { resp.status = 400; resp.setBody(R"({"success":false,"message":"frames must be >= 1"})"); return; }
+	const bool ok = m_callbacks.runtimeResim(k);
+	resp.status = ok ? 200 : 409;
+	resp.setBody(std::string("{\"success\":") + (ok ? "true" : "false") +
+	             ",\"frames\":" + std::to_string(k) + "}");
+}
+
 inline void mitiru::server::EngineHttpServer::handleRuntimeTimeScale(const HttpRequest& req, HttpResponse& resp)
 {
 	if (!m_callbacks.runtimeSetTimeScale)

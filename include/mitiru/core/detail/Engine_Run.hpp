@@ -58,6 +58,11 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		}
 	}
 
+	/// ビルドエラー帯 (mitiru watch): CLI がビルド失敗時に書くエラーファイルを
+	/// フレームループ内で poll → 存在する間だけ最前面に帯を描く (Engine_Frame.hpp の
+	/// tickRenderPhase 末尾)。path 未設定 (通常起動) なら完全 no-op。
+	m_errorBanner.setFile(config.errorBannerFile);
+
 	const auto logicalSize = game.layout(
 		m_window->width(), m_window->height());
 	m_screen = std::make_unique<Screen>(logicalSize.width, logicalSize.height);

@@ -258,6 +258,14 @@ struct EngineConfig
 	bool persistSettings = false;          ///< 起動時に settings.json を読み込み、変更時に保存する
 	std::string settingsFileName = "settings.json"; ///< 設定ファイル名 (%APPDATA%/<title>/ 配下に配置)
 
+	// ── ビルドエラー帯 (mitiru watch、host 内部設定 — DLL ABI 非通過) ──
+	/// @brief CLI がビルド失敗時に書くエラーファイルのパス (空=機能 OFF)
+	/// @details `mitiru watch` がビルド失敗時に
+	///          `<project>/build/.mitiru_build_error.txt` を書き、成功時に削除する。
+	///          engine は ~0.5 秒毎に mtime を poll し、ファイルが存在する間だけ
+	///          画面上部に半透明のエラー帯を描く (console を見なくても気付ける)。
+	std::string errorBannerFile;
+
 	// ── ランタイム時間制御 (host が toggle する debug 用) ───────────────
 	/// @brief on_update に渡す dt の乗数。0=停止と同等、1=通常速。負値は未定義。
 	float timeScale = 1.0f;

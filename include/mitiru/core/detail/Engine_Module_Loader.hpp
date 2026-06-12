@@ -17,6 +17,7 @@
 
 #include <mitiru/cef/StateStore.hpp>
 #include <mitiru/core/Game.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
@@ -241,9 +242,15 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 		m_moduleActionEvents->events.clear();
 	}
 
-	// 旧 layout の GameMemory bytes を破棄する。struct を編集して hot reload すると
-	// sizeof が変わり得るので、古い ring 内容への rewind は復元を壊す (ADR 0017)。
-	m_moduleMemoryRing.clear();
+	// GameMemory サイズが不変なら ring を温存する (ADR 0021: rewind → 編集 → reload → resim
+	// の合流に必要)。サイズが変わったら旧 layout bytes への rewind は復元を壊すため破棄
+	// (同サイズの field 並べ替えは検出不能 — v17 save と同じ既知のエッジ)。
+	// InputRing は layout 非依存なので常に温存する。
+	if (m_moduleMemoryRing.frameSize() != m_moduleMemorySize)
+	{
+		m_moduleMemoryRing.clear();
+		m_resimQueue.clear(); m_resimCursor = 0; m_resimSnapSize = 0;  // 進行中 resim も破棄
+	}
 
 	// sprite(id) の解決基準を新 DLL の隣へ更新する (loadModule と同じ規約、ABI v16)。
 	m_spriteCache.setBaseDir(modulePath.parent_path() / "assets" / "sprites");
@@ -302,6 +309,72 @@ MITIRU_INLINE const std::uint8_t*
 mitiru::Engine::moduleMemoryRingAt(std::size_t offsetFromNewest) const noexcept
 {
 	return m_moduleMemoryRing.at(offsetFromNewest);
+}
+
+// ── Rewind-Edit-Replay (ADR 0021) ──────────────────────────────────────────
+
+MITIRU_INLINE void mitiru::Engine::recordModuleInputFrame()
+{
+	if (!m_moduleInputSnapshot) { return; }
+	constexpr std::uint32_t kSnapSize = sizeof(module::InputSnapshot);
+	if (m_moduleInputRing.frameSize() != kSnapSize)
+	{
+		m_moduleInputRing.configure(kSnapSize, 300);  // GameMemoryRing と同窓 (60fps × 5sec)
+	}
+	m_moduleInputRing.push(m_moduleInputSnapshot.get(), kSnapSize);
+}
+
+MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept
+{
+	constexpr std::uint32_t kSnapSize = sizeof(module::InputSnapshot);
+	const std::size_t memFrames = m_moduleMemoryRing.size();
+	const std::size_t inFrames  = m_moduleInputRing.size();
+	if (m_moduleMemorySize == 0 || memFrames == 0 || inFrames == 0)
+	{
+		debug::warnOnce("resim.unavailable",
+		                "resim 不可: flat POD 未申告か、巻き戻し ring がまだ空 (reload 直後など)");
+		return false;
+	}
+	if (k >= memFrames || k > inFrames)
+	{
+		// ring の窓 (既定 5 秒) を超えた要求は窓内へ丸める
+		k = static_cast<std::uint32_t>((std::min)(memFrames - 1, inFrames));
+		debug::warnOnce("resim.clamp", "resim: 要求が ring の窓を超えたため丸めた");
+	}
+	if (k == 0) { return false; }
+
+	const std::uint8_t* past = m_moduleMemoryRing.at(k);
+	if (past == nullptr || !rewindModuleMemory(past, m_moduleMemorySize)) { return false; }
+
+	// state[k フレーム前] から進めるための入力列 = InputRing の (k-1)〜0 フレーム前 (古い順)。
+	// 再生中の push で ring が上書きされるため、ここで線形バッファへ退避する (~6KB×k)。
+	try { m_resimQueue.assign(static_cast<std::size_t>(k) * kSnapSize, 0); }
+	catch (...) { return false; }
+	for (std::uint32_t i = 0; i < k; ++i)
+	{
+		const std::uint8_t* snap = m_moduleInputRing.at(k - 1 - static_cast<std::size_t>(i));
+		if (snap == nullptr) { m_resimQueue.clear(); return false; }
+		std::memcpy(m_resimQueue.data() + static_cast<std::size_t>(i) * kSnapSize,
+		            snap, kSnapSize);
+	}
+	m_resimCursor   = 0;
+	m_resimSnapSize = kSnapSize;
+	return true;
+}
+
+MITIRU_INLINE void mitiru::Engine::applyResimInputOverride()
+{
+	if (m_resimSnapSize == 0 || !m_moduleInputSnapshot) { return; }
+	const std::size_t total = m_resimQueue.size() / m_resimSnapSize;
+	if (m_resimCursor >= total)
+	{
+		// 使い切り → ライブ入力へシームレス復帰
+		m_resimQueue.clear(); m_resimCursor = 0; m_resimSnapSize = 0;
+		return;
+	}
+	std::memcpy(m_moduleInputSnapshot.get(),
+	            m_resimQueue.data() + m_resimCursor * m_resimSnapSize, m_resimSnapSize);
+	++m_resimCursor;
 }
 
 MITIRU_INLINE std::size_t mitiru::Engine::moduleMemoryRingSize() const noexcept

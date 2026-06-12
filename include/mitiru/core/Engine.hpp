@@ -96,6 +96,8 @@ namespace mitiru::cef { class StateStore; }
 #include <mitiru/module/SoundIntentRouter.hpp>
 // VisualIntentFx は member (m_moduleVisualFx) として保持するため完全型が必要
 #include <mitiru/module/VisualIntentFx.hpp>
+// ErrorBanner は member (m_errorBanner) として保持するため完全型が必要
+#include <mitiru/debug/ErrorBanner.hpp>
 namespace mitiru::render { class PostProcessManager; }
 
 #include <mitiru/server/EngineHttpServer.hpp>
@@ -408,6 +410,17 @@ public:
 		m_saveLoadOverride = std::move(fn);
 	}
 
+	// ── Rewind-Edit-Replay (ADR 0021): 巻き戻して、直して、そこから再生 ──────
+	/// @brief k フレーム前へ巻き戻し、そこから記録済み入力で再生する (resim)。
+	/// @details GameMemory を ring の k フレーム前へ rewind し、以後 k フレームは
+	///          ライブ入力の代わりに InputRing の記録を on_update へ供給する。
+	///          コードをホットリロードしてから呼べば「同じ入力・新しいコード」で
+	///          バグの瞬間をもう一度見られる。使い切ったらライブ入力へ復帰。
+	/// @return 開始できたら true (ring 不足 / 非 flat POD は false + 一回警告)
+	bool resimFromFramesAgo(std::uint32_t k) noexcept;
+	/// @brief resim 再生中か (残りフレームがあるか)
+	[[nodiscard]] bool resimActive() const noexcept { return m_resimCursor < m_resimQueue.size() / m_resimSnapSize && m_resimSnapSize != 0; }
+
 	/// @brief 反実仮想フォーク (ADR 0018): 現 GameMemory を保存 → 台本 input で on_update を
 	///        frameCount 回 headless 実行 (draw / intents drain なし = 副作用ゼロ) → 結果を
 	///        reflected JSON 文字列で返す → GameMemory を保存値へ復元する。
@@ -432,6 +445,8 @@ private:
 	void zeroModuleFrameIntents();         ///< 各 on_update 呼び出し前に m_moduleFrameIntents をクリア
 	void drainModuleFrameIntents();        ///< on_update 後に DLL が要求した side-effect を適用
 	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を time-travel ring へ push (ADR 0017)
+	void recordModuleInputFrame();         ///< on_update 後に InputSnapshot bytes を InputRing へ push (ADR 0021)
+	void applyResimInputOverride();        ///< resim 中、構築済み snapshot を記録入力で上書きする (ADR 0021)
 
 	/// @brief 1フレーム分のゲームループを実行する
 	/// @details run()から呼ばれる。Emscriptenではemscripten_set_main_loop_argのコールバック。
@@ -634,6 +649,11 @@ private:
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
 	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (ADR 0013、0=未申告)
 	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② time-travel、ADR 0017)
+	observe::GameMemoryRing               m_moduleInputRing;        ///< 過去フレームの InputSnapshot bytes (ADR 0021 resim 用、同 ring を再利用)
+	std::vector<std::uint8_t>             m_resimQueue;             ///< resim 開始時に ring から退避した入力列 (再生中の ring 上書きと無縁)
+	std::size_t                           m_resimCursor   = 0;      ///< 次に供給する resim 入力の index
+	std::size_t                           m_resimSnapSize = 0;      ///< 1 入力のバイト数 (0 = resim 非アクティブ)
+	double                                m_lastAudioTimeSec = 0.0; ///< audioTime 単調非減少保証用 (R-03、backend の谷を clamp)
 	std::function<bool(const char*)>      m_saveLoadOverride;       ///< replay の load 代用フック (ADR 0020、host 内部)
 
 	// host→DLL signal flow 用の per-frame POD scratch buffer。struct 合計が
@@ -649,7 +669,9 @@ private:
 	observe::AudioLog                        m_audioLog; ///< AI 観測用 音イベントログ (/api/ai/audio)
 	module::SoundIntentRouter                m_soundIntentRouter; ///< BGM 同 id 連打の冪等化 (直前 music を記憶)
 	module::VisualIntentFx                   m_moduleVisualFx;    ///< fade/shake/hitstop の host 側演出状態 (kind 2-5)
+	debug::ErrorBanner                       m_errorBanner;       ///< watch のビルドエラー帯 (errorBannerFile)
 	render::SpriteCache                      m_spriteCache;       ///< sprite(id) 用 id→Texture キャッシュ (Screen へ resolver 注入、ABI v16)
+	std::uint64_t                            m_spritePollCounter = 0; ///< sprite ホットリロードの poll 間引き用フレームカウンタ
 	// 直近に書き出した inspector export 内容の FNV-1a hash。同一なら parse+rebuild+
 	// disk-write を丸ごと省く (inspector は同じ内容を読み続けるので観測結果は不変)。
 	std::uint64_t                            m_lastInspectorDigest = 0;

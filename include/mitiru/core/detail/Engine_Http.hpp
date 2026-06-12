@@ -36,6 +36,7 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 	cb.runtimeStep          = [this]() { stepOneFrame(); };
 	cb.runtimeSetTimeScale  = [this](float s) { setTimeScale(s); };
 	cb.runtimeGetTimeScale  = [this]() -> float { return timeScale(); };
+	cb.runtimeResim = [this](std::uint32_t k) { return resimFromFramesAgo(k); };
 	cb.runtimeToggleLofi    = [this]() -> bool { toggleLofi(); return isLofiEnabled(); };
 	cb.runtimeIsLofiEnabled = [this]() -> bool { return isLofiEnabled(); };
 

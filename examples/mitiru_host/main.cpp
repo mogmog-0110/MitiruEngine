@@ -277,6 +277,7 @@ struct CliArgs
 	std::string           inputScript;         // --input-script <f>: in-process 入力注入 (#43-1)
 	std::string           inputRecordPath;     // --input-record <f>: 実入力を input-script 形式で録画 (#45)
 	std::vector<mitiru::Tool> openTools;       // --inspect <name>: 起動時に開くツール独立窓 (ADR 0014)
+	std::string           errorFile;           // --error-file <f>: mitiru watch のビルドエラー帯 (存在中だけ表示)
 };
 
 CliArgs parseArgs(int argc, char* argv[])
@@ -380,6 +381,10 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--input-record")
 		{
 			if (i + 1 < argc) { out.inputRecordPath = argv[++i]; }
+		}
+		else if (a == "--error-file")
+		{
+			if (i + 1 < argc) { out.errorFile = argv[++i]; }
 		}
 		else if (a == "--inspect")
 		{
@@ -511,6 +516,8 @@ void printUsage()
 		"                   形式: 1 行 '<frame> <down|up> <KEY>' (# でコメント)。KEY=Left/Right/Up/Down/\n"
 		"                   Space/Enter/Escape/英数字1字/生 VK 整数。実キーボードは無視される\n"
 		"  --input-record F 実プレイの入力を input-script 形式で F に録画 (--input-script で再生可, #45)\n"
+		"  --error-file F   ビルドエラーファイル F を監視し、存在する間だけ画面上部に帯を表示\n"
+		"                   (mitiru watch が自動指定。直して保存 → ビルド成功で帯が消える)\n"
 		"  --inspect [name] ツール独立窓を起動時に開く (name=inspector|input|timetravel, 既定 inspector)\n"
 		"                   ※ host を書く人が main.cpp で mitiru::debug::openTool(Tool::X) と\n"
 		"                     直接書けば、欲しい窓だけコードで指定できる (ADR 0014)\n"
@@ -907,6 +914,7 @@ int main(int argc, char* argv[])
 	if (args.noVsync)          { cfg.vsync = false; }  // --no-vsync: 素のフレームコスト計測 (#53)
 	cfg.enableCef       = !args.noCef;   // --no-cef: 完全ネイティブ game は CEF 抜きで軽量起動
 	cfg.timeScale       = args.speed;    // --speed: 固定 dt × N 早回し (#43)
+	cfg.errorBannerFile = args.errorFile; // --error-file: mitiru watch のビルドエラー帯 (空=OFF)
 	if (args.fixedSize) { cfg.windowResizable = false; }   // --fixed-size: リサイズ禁止 (#44)
 	if (args.headless)                   // --headless: 窓なし自動回し。vsync/CEF を切って最速で (#43)
 	{

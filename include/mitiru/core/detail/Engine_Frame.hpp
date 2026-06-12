@@ -47,6 +47,13 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 		m_loopConfig->onFrameStart(*this);
 	}
 
+	// sprite ホットリロード: ~0.5 秒に 1 回 (30 frame 毎) mtime を poll する。
+	// 毎フレーム stat しない。常時有効 (watch モード限定にしない。stat は数個で害なし)。
+	if (++m_spritePollCounter % 30 == 0)
+	{
+		m_spriteCache.pollReload();
+	}
+
 	if (!tickInputPollPhase())
 	{
 		return;
@@ -268,6 +275,17 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	// 全画面 tint オーバーレイ (#31)。被弾点滅 / フラッシュ / グレー化等。
 	// game/scene draw の末尾で重ねるので 2D / 3D どちらの上にも乗る。
 	m_screen->renderTint();
+
+	// ビルドエラー帯 (mitiru watch): tint / 演出 FX より後 = 最前面。CLI がビルド
+	// 失敗時に書くエラーファイルを ~0.5 秒毎に poll し、存在する間だけ上部に帯を
+	// 描く。直して保存 → ビルド成功でファイルが消え、次の poll で帯も消える。
+	if (m_errorBanner.enabled())
+	{
+		const double nowSec = std::chrono::duration<double>(
+			std::chrono::steady_clock::now().time_since_epoch()).count();
+		m_errorBanner.poll(nowSec);
+		m_errorBanner.drawTo(*m_screen);
+	}
 }
 
 MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
