@@ -1,5 +1,12 @@
 ﻿#pragma once
 
+// ⚠ 800 行ルールの記録 (リファクタ P4): 本ファイルは 200+ の draw API 宣言 +
+// 1-3 行の薄い inline ラッパのみで、実装本体は末尾 include の detail/Screen_*.hpp
+// 8 ファイルに分割済み。単一クラスの公開 API 表面は宣言を分割できないため、
+// 行数超過は構造的限界として許容 (in-class に 12 行超の実装体は存在しない)。
+// ⚠ ABI: Screen* は gameDraw() で DLL 境界を渡る。メンバ追加は必ず class 末尾 +
+// ModuleApi の kCurrentApiVersion を上げること (v14 事故の教訓)。
+
 /// @file Screen.hpp
 /// @brief 描画サーフェス
 /// @details レンダラーへの描画コマンドを抽象化するサーフェスクラス。

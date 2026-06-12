@@ -16,7 +16,10 @@
 #include <cstdio>
 #include <vector>
 
-#include <mitiru/Mitiru.hpp>
+// アンブレラ廃止 (リファクタ P2) — 使うものだけ明示 include
+#include <mitiru/core/Engine.hpp>
+#include <mitiru/core/Game.hpp>
+#include <mitiru/core/Config.hpp>
 
 namespace {
 

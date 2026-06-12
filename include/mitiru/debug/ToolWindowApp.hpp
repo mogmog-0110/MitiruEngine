@@ -33,7 +33,10 @@
 
 #include <nlohmann/json.hpp>
 
-#include <mitiru/Mitiru.hpp>
+// アンブレラ廃止 (リファクタ P2) — 使うものだけ明示 include
+#include <mitiru/core/Engine.hpp>
+#include <mitiru/core/Game.hpp>
+#include <mitiru/core/Config.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
 
 namespace mitiru::debug

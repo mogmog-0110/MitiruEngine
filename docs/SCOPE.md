@@ -64,7 +64,7 @@ Game DLL は純関数に近い形で実装される: `(memory, input, dt) → (m
 
 これは ADR 0001 の `signal-only` 規約を **DLL 境界にも一般化** したもの。「engine.foo() で何でも済む」誘惑を構造的に消し、host capability の追加を常に明示的にする。
 
-**実装の reference**: `examples/hello_game/hello_game_dll.cpp` (game side) + `examples/mitiru_host/main.cpp` (host side)。`mitiru_host --watch path/to/game.dll` で **L3 hot reload** (state preserved across code swap) が動く。
+**実装の reference**: `examples/timetravel_demo/timetravel_demo_dll.cpp` (game side) + `examples/mitiru_host/main.cpp` (host side)。`mitiru_host --watch path/to/game.dll` で **L3 hot reload** (state preserved across code swap) が動く。
 
 **副次的効果**: `InspectableRegistry` (lambda-based) は **non-DLL モード専用** に縮退した。DLL 側は `FrameIntents::exportedInspectables[]` に pre-serialized JSON を push し、engine が SharedSnapshot に write する経路に統一されたため、旧 step 5 (「Inspectable registry を DLL-aware 化」) の課題は構造的に解消された。
 

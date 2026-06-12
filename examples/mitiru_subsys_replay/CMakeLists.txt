@@ -16,3 +16,7 @@ target_link_libraries(mitiru_subsys_replay PRIVATE mitiru)
 if(COMMAND mitiru_add_cef_game)
     mitiru_add_cef_game(mitiru_subsys_replay)
 endif()
+
+if(MSVC)
+	target_compile_options(mitiru_subsys_replay PRIVATE /bigobj)
+endif()

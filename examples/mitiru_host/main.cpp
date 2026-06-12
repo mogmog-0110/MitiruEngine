@@ -34,7 +34,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include <mitiru/Mitiru.hpp>
+// アンブレラ廃止 (リファクタ P2) — 使うものだけ明示 include
+#include <mitiru/core/Engine.hpp>
+#include <mitiru/core/Game.hpp>
+#include <mitiru/core/Config.hpp>
 #include <mitiru/asset/AssetPack.hpp> // vfs: pack mount / readGlobal (ADR 0016)
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/MiniaudioEngine.hpp>

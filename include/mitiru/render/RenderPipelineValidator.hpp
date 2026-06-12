@@ -14,7 +14,7 @@
 
 #ifdef _WIN32
 #include <mitiru/render/Renderer3D_DX12.hpp>
-#include <mitiru/render/PBRShaders.hpp>
+#include <mitiru/render/PBRShaders_tables.hpp>
 #endif
 
 namespace mitiru::render

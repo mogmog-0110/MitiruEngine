@@ -7,7 +7,7 @@
 ///       `@scene` / `@bg` / `@char` / `@if` / dialogue などを含む `.scenario`
 ///       ファイルから `ScenarioNode` 列を生成し `ScenarioExecutor` で実行する。
 ///       C++ コード中でプログラム的にコマンド列を組み立てたい場合は
-///       `mitiru::game::VNScript` (`include/mitiru/game/VNGameHybrid.hpp`)
+///       旧 game::VNScript (game/ モジュールは 2026-06-12 に attic/p3-module-cuts へ退避)
 ///       を使うこと。両者は別系統。テキスト DSL 優先 = 本ファイル、
 ///       proceduralコマンド積み = VNGameHybrid。
 /// @details テキストベースのDSLをトークン化・パース・ステップ実行する。

@@ -20,7 +20,7 @@
 #     `~/MitiruEngine` の Config.cmake が読み込まれてしまう。
 #
 #   Phase B (このファイルが読込後、実際の engine 検出) — 候補リストを組み立てて
-#     先頭から順に `CMakeLists.txt` と `include/mitiru/Mitiru.hpp` を
+#     先頭から順に `CMakeLists.txt` と `include/mitiru/module/Game.hpp` を
 #     持つかチェック、最初に該当したものを採用。順序:
 #       1. MITIRU_ENGINE_DIR (CMake キャッシュ変数、明示固定の推奨手段)
 #       2. MitiruEngine_ROOT (find_package 規約 env / find_package arg)
@@ -76,7 +76,7 @@ list(REMOVE_DUPLICATES _mitiru_candidates)
 set(MitiruEngine_DIR "")
 foreach(_cand IN LISTS _mitiru_candidates)
 	if(EXISTS "${_cand}/CMakeLists.txt"
-	   AND EXISTS "${_cand}/include/mitiru/Mitiru.hpp")
+	   AND EXISTS "${_cand}/include/mitiru/module/Game.hpp")
 		set(MitiruEngine_DIR "${_cand}")
 		break()
 	endif()

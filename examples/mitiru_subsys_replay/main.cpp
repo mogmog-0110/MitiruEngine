@@ -39,7 +39,10 @@
 #include <string>
 #include <vector>
 
-#include <mitiru/Mitiru.hpp>
+// アンブレラ廃止 (リファクタ P2) — 使うものだけ明示 include
+#include <mitiru/core/Engine.hpp>
+#include <mitiru/core/Game.hpp>
+#include <mitiru/core/Config.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
 #include <mitiru/replay/Player.hpp>

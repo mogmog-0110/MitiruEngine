@@ -118,77 +118,47 @@ UI を HTML/CSS で書かず、純 C++ で完結したい場合は `mitiru.toml`
 
 ---
 
-## 最小のゲームコード (純 C++)
+## 最小のゲームコード
 
-`mitiru new` が `src/main.cpp` にこういうのを置きます。置き換える出発点として使ってください:
+ゲームは「状態の struct + update + draw」だけで書けます。これが現在の推奨形です:
 
 ```cpp
-#include <cmath>
-#include <mitiru/Mitiru.hpp>
+#include <mitiru/module/Game.hpp>
+using namespace mitiru;
 
-class MyGame final : public mitiru::Game
+struct MyGame
 {
-public:
-    void update(float dt) override
+    // 状態はここに置くだけ。flat POD ならホットリロード・巻き戻し・
+    // リプレイが何もしなくても全部乗ります。
+    float x = 640.0f;
+    float y = 360.0f;
+
+    void update(Input in, float dt)
     {
-        m_elapsed += dt;
-        if (hasInput() && input().isKeyJustPressed(mitiru::KeyCode::Escape))
-        {
-            if (auto* eng = engine()) eng->requestStop();
-        }
+        constexpr float kSpeed = 320.0f;  // ← mitiru watch 中に書き換えて保存してみてください
+        if (in.down(Key::Right)) x += kSpeed * dt;
+        if (in.down(Key::Left))  x -= kSpeed * dt;
+        if (in.down(Key::Down))  y += kSpeed * dt;
+        if (in.down(Key::Up))    y -= kSpeed * dt;
     }
 
-    void draw(mitiru::Screen& screen) override
+    void draw(Screen& s)
     {
-        screen.clear(sgc::Colorf{0.04f, 0.05f, 0.09f, 1.0f});
-
-        const float w = static_cast<float>(screen.width());
-        const float h = static_cast<float>(screen.height());
-
-        const bool  boost = hasInput() && input().isKeyDown(mitiru::KeyCode::Space);
-        const float pulse = 0.5f + 0.5f * std::sin(m_elapsed * 2.0f);
-        const float size  = 80.0f + (boost ? 60.0f : 20.0f) * pulse;
-
-        screen.drawRect(
-            sgc::Rectf{w * 0.5f - size * 0.5f, h * 0.5f - size * 0.5f, size, size},
-            sgc::Colorf{0.30f, 0.95f, 0.85f, 0.9f});
-
-        screen.drawTextInRect(
-            sgc::Rectf{0.0f, 24.0f, w, 32.0f},
-            "Hello, Mitiru!",
-            sgc::Colorf{0.95f, 0.97f, 1.0f, 1.0f},
-            24.0f,
-            mitiru::Screen::TextAlignH::Center, mitiru::Screen::TextAlignV::Top);
+        s.fillScreen(hex(0x14182A));
+        s.fillCircle(x, y, 24.0f, color::Cyan);
     }
-
-    [[nodiscard]] mitiru::Size layout(int outsideW, int outsideH) override
-    {
-        return {outsideW, outsideH};
-    }
-
-private:
-    float m_elapsed = 0.0f;
 };
 
-int main()
-{
-    mitiru::Engine engine;
-    MyGame        game;
-
-    mitiru::EngineConfig cfg;
-    // 純 C++ runtime: CEF を完全に切る (libcef.dll に依存しない)。
-    cfg.enableCef = false;
-    // Latin-only atlas → 起動 ~1 s (デフォルトの日本語 atlas は ~15 s)。
-    cfg.fontAtlasRanges = mitiru::EngineConfig::FontAtlas::Latin;
-
-    engine.run(game, cfg);
-    return 0;
-}
+MITIRU_GAME(MyGame)  // これ 1 行で DLL の入口が生成されます
 ```
 
-`cfg.title` / `cfg.windowWidth` / `cfg.windowHeight` は **書かなくて OK** です。`mitiru build` が `mitiru.toml` の `[window]` を C++ ヘッダに焼き込みます。
+ゲームは DLL としてビルドされ、ホスト (`mitiru run` が起動する実行体) が
+毎フレーム入力を渡し、状態を保持します。コードを保存すると DLL だけが
+リロードされ、**状態は生きたまま挙動が変わります** (`mitiru watch`)。
 
-CEF を使う場合の `cefStartUrl` も同様に、`mitiru.toml` の `[cef] start_url` から自動で焼き込まれます。HTML/CSS で UI を書く実例は `examples/hello_game/` を参照。
+API の全体像は [機能リファレンス](https://mogmog-0110.github.io/MitiruEngine/features.html) に
+コピペできる形で並んでいます。HTML/CSS で HUD を作る例は同梱の
+`examples/timetravel_demo/` を参照してください。
 
 ---
 
@@ -210,7 +180,7 @@ my-game/
 
 ## 次に何を見るか
 
-- [`examples/hello_game/`](../examples/hello_game/) — C++ gameplay + HTML/CSS HUD の動く showcase
+- [`examples/timetravel_demo/`](../examples/timetravel_demo/) — flat POD 状態 + 巻き戻し + HTML/CSS HUD の動く showcase
 - [Reading Order — 次に読むべきページ](READING_ORDER.md)
 - [Scope & Identity — engine の identity / 4 軸 / target user](SCOPE.md)
 - [Architecture — エンジン全体の設計](ARCHITECTURE.md)

@@ -40,13 +40,8 @@ add_subdirectory(timetravel_demo)   # 差別化デモ (time-travel / AI Lens、A
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hookline/CMakeLists.txt")
 	add_subdirectory(hookline)
 endif()
-# 研究中 example (未コミット dir / snapshot 非同梱) は EXISTS ガードで取り込む。
-# dev tree に dir が在れば従来どおりビルド、無い clone / prod では静かにスキップ。
-foreach(_lab windy_cloth sim_seam_demo gpu_sim_seam face_sdf pbmpm fluidtetris)
-	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_lab}/CMakeLists.txt")
-		add_subdirectory(${_lab})
-	endif()
-endforeach()
+# 研究 example は 2026-06-12 に E:/user/research へ搬出 (リファクタ P1)。
+# fluidtetris は attic/fluidtetris ブランチへ退避 (本体は Fluid-Drop repo で公開済)。
 add_subdirectory(mitiru_launcher)
 add_subdirectory(mitiru_dev_companion)
 # サブシステム単独起動 (軸③)。
@@ -60,12 +55,3 @@ add_subdirectory(mitiru_subsys_scene)
 # (mitiru_renderer/audio) は退役。
 add_subdirectory(mitiru_tool_cef)
 
-# MYSHOOTER / my_shooter are dev-only skeletons excluded from the public
-# release snapshot. Guard with EXISTS so the prod top-level build (which lacks
-# these dirs) configures cleanly; the dev tree has them and still builds them.
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/MYSHOOTER/CMakeLists.txt")
-	add_subdirectory(MYSHOOTER)
-endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/my_shooter/CMakeLists.txt")
-	add_subdirectory(my_shooter)
-endif()

@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0091 NEW)
 
 project(MitiruEngine
-	VERSION 0.13.0
+	VERSION 0.14.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -652,7 +652,9 @@ else()
 	option(MITIRU_BUILD_TESTS "Build tests" OFF)
 endif()
 
-if(MITIRU_BUILD_TESTS)
+if(MITIRU_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
+	# EXISTS ガード: 公開 snapshot は tests/ を同梱しない。無条件参照だと
+	# 公開リポジトリの top-level configure が壊れる (verify_snapshot_build.py が検出する事故クラス)。
 	enable_testing()
 	add_subdirectory(tests)
 endif()

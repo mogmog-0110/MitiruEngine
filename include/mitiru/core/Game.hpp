@@ -1,9 +1,11 @@
 #pragma once
 
 /// @file Game.hpp
-/// @brief ゲームインターフェース定義
-/// @details Mitiruエンジンのコアとなるゲーム抽象インターフェース。
-///          ユーザーはこのクラスを継承して update / draw / layout を実装する。
+/// @brief Engine 内部の駆動インターフェース (旧 Mode A 基底)
+/// @details Engine のメインループが駆動する抽象。**ゲーム作者はこれを継承しない** —
+///          作法は DLL 一本 (ADR 0015、`module/Game.hpp` の MITIRU_GAME)。
+///          現在の継承者は ModuleAdapter (DLL ブリッジ) と内部ハーネス
+///          (subsys 例 / ToolWindowApp) のみ。
 
 #include <string>
 
