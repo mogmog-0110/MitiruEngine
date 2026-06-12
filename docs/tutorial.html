@@ -18,7 +18,7 @@
 <div class="page">
   <header class="topbar"><div class="bar">
     <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine<span class="ver">v0.17.0</span></a>
-    <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a class="current" href="tutorial.html">チュートリアル</a><a href="features.html">機能</a><a href="ui.html">画面</a><a href="ai.html">AI</a><a href="distribute.html">配布</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
+    <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a class="current" href="tutorial.html">チュートリアル</a><a href="features.html">機能</a><a href="ui.html">画面</a><a href="ai.html">AI</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
   </div></header>
 <div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#goal">作るもの</a><a href="#flow">開発の流れ</a><a href="#model">3 つの考え方</a><a href="#step1">Step 1 — 作る</a><a href="#step2">Step 2 — 状態</a><a href="#step3">Step 3 — update</a><a href="#step4">Step 4 — draw</a><a href="#step5">Step 5 — 動かす</a><a href="#full">全コード</a><a href="#observe">観察する</a><a href="#debug">バグを直す</a><a href="#toolbox">道具箱</a><a href="#next">HTML / CSS へ</a></div></div>
 <div class="content">
@@ -310,6 +310,16 @@ cd my-dodge</pre>
             <figure><img src="assets/tool-mixer.png" alt="mixer ウィンドウ。master volume 80% の縦フェーダーと M/S/S の VU バー" loading="lazy"><figcaption><code>mixer</code> — 音量や再生中の音を見る</figcaption></figure>
             <figure><img src="assets/tool-scene.png" alt="scene tree ウィンドウ。JSON の階層をインデントで表示" loading="lazy"><figcaption><code>scene</code> — 状態の階層構造をツリーで見る</figcaption></figure>
           </div>
+          <p>スクリーンショットの 4 つを含めて、窓は全部で <strong>7 種類</strong>あります:</p>
+          <ul>
+            <li><code>inspector</code>（<code>Tool::Inspector</code>）— ゲームの状態をのぞく。<code>hud.watch</code> で送った観察データを全部見る。</li>
+            <li><code>input</code>（<code>Tool::InputMonitor</code>）— キー・マウス・パッドの入力の生値を見る。</li>
+            <li><code>timetravel</code>（<code>Tool::TimeTravel</code>）— 過去フレームへ巻き戻して状態の移り変わりを見る。</li>
+            <li><code>scene</code>（<code>Tool::SceneTree</code>）— 観察データの階層構造をツリーで見る。</li>
+            <li><code>replay</code>（<code>Tool::Replay</code>）— 録画ファイル（.mtrr）を 1 フレームずつ観る。<code>hud.open(Tool::Replay)</code> で開く。</li>
+            <li><code>perf</code>（<code>Tool::Perf</code>）— fps と 1 フレームの処理時間（ms）を見る。さっき開いた窓。</li>
+            <li><code>mixer</code>（<code>Tool::AudioMixer</code>）— 全体音量と再生中の音の VU を見る。</li>
+          </ul>
           <p>これが「必要なものだけ画面に出す」という MitiruEngine の考え方です。巨大なエディタは開かず、<strong>1 ツール＝1 つの関心事＝1 つの窓</strong>。</p>
 
           <h3>巻き戻して観察する — timetravel</h3>
