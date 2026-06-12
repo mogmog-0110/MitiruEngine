@@ -91,7 +91,10 @@ namespace mitiru::module
 ///     resolver (C 関数ポインタ + ctx) を注入し、game は `s.sprite("hero", x, y)` だけで
 ///     assets/sprites/<id>.png を描ける。末尾追加なので旧 module (v≤15) は新 host 上で
 ///     安全 (resolver メンバに触らないだけ)。
-constexpr std::uint32_t kCurrentApiVersion = 16;  // v16: Screen 末尾に sprite resolver (sprite(id) 1 行描画)
+///   - v17: FrameIntents 末尾に save/load intent を追加 (ADR 0020)。hud.save("slot0") で
+///     host が GameMemory bytes をファイルへ memcpy、load で復元 (rewind と同一機構)。
+///     replay 中の load は記録済み state blob で代用され bit-exact を保つ。末尾追記で後方安全。
+constexpr std::uint32_t kCurrentApiVersion = 17;  // v17: FrameIntents 末尾に save/load intent (ADR 0020)
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
@@ -245,6 +248,7 @@ constexpr std::uint8_t kVisualIntentFadeOut = 2;  ///< 画面を r,g,b へ durSe
 constexpr std::uint8_t kVisualIntentFadeIn  = 3;  ///< r,g,b の覆いを durSec かけて晴らす
 constexpr std::uint8_t kVisualIntentShake   = 4;  ///< 画面揺れ (a=振幅px、durSec で減衰。host が決定論オフセット生成)
 constexpr std::uint8_t kVisualIntentHitStop = 5;  ///< durSec 秒だけ更新停止 (dt=0 で update が呼ばれ続ける)
+constexpr std::uint8_t kVisualIntentLetterbox = 6;  ///< レターボックス帯 (a=目標量 0..1、durSec で遷移。イベント演出)
 
 struct SoundIntent
 {
@@ -311,7 +315,30 @@ struct FrameIntents
 	std::int32_t      toolRequestCount;
 	RequestToolWindow toolRequests[4];
 
+	// ── セーブ/ロード intent (ABI v17 末尾追記、ADR 0020) ────────────────────
+	// save = host が GameMemory bytes を save/<slot>.msav へ書く。
+	// load = host がファイルから GameMemory へ memcpy (rewind と同一機構)。
+	// replay 中の load は記録済み state blob で代用される (ファイル不参照 = bit-exact 保証)。
+	std::uint8_t saveRequest;     ///< 1 = このフレームで save
+	std::uint8_t loadRequest;     ///< 1 = このフレームで load
+	std::uint8_t _padSave[2];
+	char         saveSlot[28];    ///< slot 名 ([a-zA-Z0-9_-]、null 終端)
+	char         loadSlot[28];
+
 	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
+	/// GameMemory をスロットへセーブするよう host に頼む (ADR 0020)。
+	void requestSave(const char* slot) noexcept
+	{
+		saveRequest = 1;
+		copyStr(saveSlot, slot, sizeof(saveSlot));
+	}
+	/// スロットから GameMemory を復元するよう host に頼む (ADR 0020)。
+	void requestLoad(const char* slot) noexcept
+	{
+		loadRequest = 1;
+		copyStr(loadSlot, slot, sizeof(loadSlot));
+	}
+
 	// HUD へ値を送る / 音を鳴らす、を 1 行で書くためのヘルパ。中の固定長スロット詰め
 	// (空き探し・上限チェック・null 終端) はここに隠す。これが無いと game 側が毎回
 	// memset / strncpy で手書きする羽目になり、初心者には厳しい。

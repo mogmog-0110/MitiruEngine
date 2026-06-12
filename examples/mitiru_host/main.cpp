@@ -1272,6 +1272,8 @@ int main(int argc, char* argv[])
 	std::size_t   memSizeRecorded = 0;
 	std::size_t   memSizeCurrent  = 0;
 	bool          frameHasRecord  = false;  // この frame に対応する記録 state を読めたか (EOF frame 除外)
+	bool          loadSubstFailed = false;  // replay 中の load 代用が不能 (blob 無し録画、ADR 0020)
+	std::uint32_t loadSubstFailFrame = 0;
 
 	if (!args.replayPath.empty())
 	{
@@ -1330,6 +1332,30 @@ int main(int argc, char* argv[])
 				}
 				++replayFrame;
 			};
+		// replay 中の load intent はファイルを読まず、当該フレームの記録済み GameMemory blob
+		// で代用する (ADR 0020) — 録画後にセーブファイルが上書きされても bit-exact が保たれる。
+		// blob 無し録画 (旧 .mtrr / memorySize=0) では代用不能 → 明示 FAIL (A3 と同じ思想)。
+		engine.setSaveLoadOverride(
+			[&engine, &recordedMem, &replayFrame, &frameHasRecord,
+			 &loadSubstFailed, &loadSubstFailFrame](const char* /*slot*/) -> bool
+			{
+				// EOF 後のフレーム (記録対応なし) は検証対象外 — 何も適用せずスキップ。
+				if (!frameHasRecord) { return true; }
+				const std::uint32_t memSize = engine.moduleMemorySize();
+				if (memSize == 0 ||
+				    recordedMem.size() != static_cast<std::size_t>(memSize))
+				{
+					if (!loadSubstFailed)
+					{
+						loadSubstFailed    = true;
+						loadSubstFailFrame = replayFrame;
+					}
+					engine.requestStop();
+					return true;  // replay 中は失敗してもファイル load にフォールバックしない
+				}
+				(void)engine.rewindModuleMemory(recordedMem.data(), memSize);
+				return true;
+			});
 	}
 
 	// record と replay はどちらも固定 dt (1/targetTps) で走らせ、dt 列を一致させる
@@ -1400,6 +1426,17 @@ int main(int argc, char* argv[])
 		std::string finalState = "{}";
 		if (auto* store = engine.moduleStateStore()) { finalState = store->snapshotJson(2); }
 		std::fprintf(stdout, "%s\n", finalState.c_str());
+
+		// replay 中の load 代用不能 (ADR 0020)。検証ゼロのまま exit 0 にしない (false-green 防止)。
+		if (loadSubstFailed)
+		{
+			std::fprintf(stderr,
+			             "replay state: FAIL — load intent at frame %u: 記録に GameMemory blob が"
+			             "無く代用できません (blob 無し録画 / memorySize=0)。\n"
+			             "  対処: flat POD GameMemory (memorySize 申告) のうえ --record で録り直してください。\n",
+			             loadSubstFailFrame);
+			return 1;
+		}
 
 		// GameMemory 再現の verdict (flat POD game のみ)。bit-exact なら軸④ 構造保証の証明。
 		if (memSizeMismatch)

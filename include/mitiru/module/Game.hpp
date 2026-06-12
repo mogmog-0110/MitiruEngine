@@ -98,6 +98,17 @@ struct Binding
 	Pad pads[2];    ///< 同上 (パッドボタン)。未使用は 0 のまま
 };
 
+/// 2D カメラ (POD)。GameMemory に置けば巻き戻し・リプレイ対象に自動編入。
+/// update でカメラ位置を動かし、draw の冒頭で `s.applyCamera(mem.cam)`、
+/// 末尾 (HUD など画面固定要素の前) で `s.endCamera()`。
+/// update / draw で同じ変換を二重実装するバグ源 (カメラ計算の重複) を消すための一元化。
+struct Camera
+{
+	float x    = 0.0f;   ///< 注視点 (world 座標)。画面中央に来る
+	float y    = 0.0f;
+	float zoom = 1.0f;   ///< 1 = 等倍、2 = 2 倍拡大
+};
+
 /// 文字 → Key 変換。英字の仮想キーコードは大文字 ('A'..'Z') のみ有効なので、
 /// 英小文字は自動で大文字化する (`key('a') == Key::A`)。数字 '0'..'9' はそのまま。
 [[nodiscard]] constexpr Key key(char c) noexcept
@@ -317,6 +328,21 @@ public:
 	{
 		s_->pushVisual(module::kVisualIntentHitStop, 0, 0, 0, 0, seconds);
 	}
+	/// レターボックス (上下の黒帯)。イベント・カットシーンの定番。amount は帯の量 (0..1)、
+	/// seconds かけて遷移する。戻すときは `hud.letterbox(0.0f)`。
+	void letterbox(float amount01, float seconds = 0.4f) noexcept
+	{
+		s_->pushVisual(module::kVisualIntentLetterbox, 0, 0, 0, amount01, seconds);
+	}
+
+	// ── セーブ/ロード (ADR 0020 — セーブ = GameMemory の memcpy) ───────────
+	/// GameMemory をまるごとスロットへセーブする (`save/<slot>.msav`)。
+	/// flat POD だからセーブ = スナップショット。巻き戻し・リプレイと同一機構。
+	void save(const char* slot = "slot0") noexcept { s_->requestSave(slot); }
+	/// スロットから GameMemory を復元する。GameMemory の struct を変更した後の
+	/// 旧セーブは安全のため拒否される (初回 1 回警告)。リプレイ中は記録済み state で
+	/// 代用されるため、セーブファイルが変わっていても再現は壊れない。
+	void load(const char* slot = "slot0") noexcept { s_->requestLoad(slot); }
 	/// このフレームのスクリーンショットを保存する。
 	void screenshot() noexcept { s_->requestScreenshotNow(); }
 	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。

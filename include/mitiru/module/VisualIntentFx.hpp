@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file VisualIntentFx.hpp
-/// @brief VisualIntent kind 2-5 (FadeOut / FadeIn / Shake / HitStop) の host 側演出状態
+/// @brief VisualIntent kind 2-6 (FadeOut / FadeIn / Shake / HitStop / Letterbox) の host 側演出状態
 /// @details
 /// DLL は intent を書くだけ (ADR 0005)。host (Engine) がこのクラスを 1 個所有し、
 /// 毎フレーム advance(dt) で進めて描画 / dt 供給へ反映する。演出は観測対象外なので
@@ -49,11 +49,11 @@ struct FadeOverlay
 	float a = 0.0f;
 };
 
-/// @brief kind 2-5 の演出状態機械。Engine が所有し ModuleAdapter が毎フレーム駆動する。
+/// @brief kind 2-6 の演出状態機械。Engine が所有し ModuleAdapter が毎フレーム駆動する。
 class VisualIntentFx
 {
 public:
-	/// @brief intent 1 件を取り込む。kind 2-5 を消費したら true (1=Tint は呼び側が処理)。
+	/// @brief intent 1 件を取り込む。kind 2-6 を消費したら true (1=Tint は呼び側が処理)。
 	bool applyIntent(const VisualIntent& vi) noexcept
 	{
 		switch (vi.kind)
@@ -89,6 +89,19 @@ public:
 			// 重ね掛けは加算でなく max — 二重発火で異常に長く止まらないように
 			if (vi.durSec > m_hitStopRemainSec) { m_hitStopRemainSec = vi.durSec; }
 			return true;
+		case kVisualIntentLetterbox:
+		{
+			// 現在量 → 目標量 (a を 0..1 に clamp) を durSec で線形遷移。到達後は保持。
+			float target = vi.a;
+			if (target < 0.0f) { target = 0.0f; }
+			if (target > 1.0f) { target = 1.0f; }
+			m_lbFrom    = m_lbAmount;
+			m_lbTo      = target;
+			m_lbDurSec  = vi.durSec;
+			m_lbElapsed = 0.0f;
+			if (m_lbDurSec <= 0.0f) { m_lbAmount = target; }  // 尺 0 = 即座に反映
+			return true;
+		}
 		default:
 			return false;  // 0=None / 1=Tint / 未知 kind はここでは扱わない
 		}
@@ -106,6 +119,15 @@ public:
 			float t = m_fadeElapsed / m_fadeDurSec;
 			if (t > 1.0f) { t = 1.0f; }
 			m_fadeAlpha = m_fadeFrom + (m_fadeTo - m_fadeFrom) * t;
+		}
+
+		// letterbox: from → to を durSec で線形補間。到達後は to を維持 (fade と同パターン)。
+		if (m_lbDurSec > 0.0f && m_lbElapsed < m_lbDurSec)
+		{
+			m_lbElapsed += dt;
+			float t = m_lbElapsed / m_lbDurSec;
+			if (t > 1.0f) { t = 1.0f; }
+			m_lbAmount = m_lbFrom + (m_lbTo - m_lbFrom) * t;
 		}
 
 		// shake: 残量を減らす (振幅は currentShakeAmplitude が残量比で線形減衰)
@@ -148,6 +170,9 @@ public:
 	/// @brief hitstop 中か (module へ渡す dt を 0 にするべきか)
 	[[nodiscard]] bool hitStopActive() const noexcept { return m_hitStopRemainSec > 0.0f; }
 
+	/// @brief 現在のレターボックス量 (0=帯無し / 1=最大帯)
+	[[nodiscard]] float letterboxAmount() const noexcept { return m_lbAmount; }
+
 private:
 	// fade 覆い: from → to を durSec で補間し、到達後は to で保持する
 	float m_fadeR = 0.0f, m_fadeG = 0.0f, m_fadeB = 0.0f;
@@ -164,6 +189,13 @@ private:
 
 	// hitstop
 	float m_hitStopRemainSec = 0.0f;
+
+	// letterbox: from → to を durSec で補間し、到達後は to で保持する
+	float m_lbAmount  = 0.0f;  ///< 現在量 (0=帯無し / 1=最大帯)
+	float m_lbFrom    = 0.0f;
+	float m_lbTo      = 0.0f;
+	float m_lbDurSec  = 0.0f;
+	float m_lbElapsed = 0.0f;
 };
 
 }  // namespace mitiru::module

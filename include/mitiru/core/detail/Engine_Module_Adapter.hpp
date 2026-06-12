@@ -24,6 +24,7 @@
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/debug/DebugPrint.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/module/GameMemorySave.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
@@ -156,6 +157,19 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			}
 
 			if (shaking) { screen.popTransform(); }
+
+			// Letterbox (kind=6): 上下黒帯。transform 外なので shake 非影響。
+			// fade 覆いより先に描く = 帯の上に fade が乗る。
+			const float lb = fx.letterboxAmount();
+			if (lb > 0.0f)
+			{
+				const float w    = static_cast<float>(screen.width());
+				const float h    = static_cast<float>(screen.height());
+				const float band = h * 0.12f * lb;  // 上下それぞれの帯高さ (px)
+				const sgc::Colorf black{0.0f, 0.0f, 0.0f, 1.0f};
+				screen.drawRect(sgc::Rectf{0.0f, 0.0f, w, band}, black);
+				screen.drawRect(sgc::Rectf{0.0f, h - band, w, band}, black);
+			}
 
 			// FadeOut/FadeIn (kind=2/3) の覆い。transform の外で描くので shake に
 			// 影響されず、fadeIn が来るまで全画面を覆い続ける。
@@ -477,6 +491,73 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		}
 	}
 
+	// セーブ/ロード intent — セーブ = GameMemory bytes の memcpy (ADR 0020、v17)。
+	// save: GameMemory → save/<slot>.msav (cwd 基準、tmp→rename の atomic 書き)。
+	// load: ファイル → GameMemory memcpy + ring clear (rewind と同一機構)。
+	if (intents->saveRequest != 0)
+	{
+		const std::string slot = module::save::sanitizeSlot(intents->saveSlot);
+		if (slot.empty())
+		{
+			mitiru::debug::warnOnce("save.slot.empty",
+				"hud.save: slot 名が不正です (使える文字: a-zA-Z0-9_-) — 無視");
+		}
+		else if (m_moduleMemory == nullptr || m_moduleMemorySize == 0)
+		{
+			mitiru::debug::warnOnce("save.no-memory",
+				"hud.save: GameMemory が未申告 (memorySize=0) のためセーブできません");
+		}
+		else
+		{
+			const auto path = std::filesystem::path("save") / (slot + ".msav");
+			if (!module::save::saveGameMemory(path, m_moduleMemory, m_moduleMemorySize,
+			                                  module::kCurrentApiVersion))
+			{
+				mitiru::debug::warnOnce("save.write." + slot,
+					"hud.save: 書き込みに失敗しました: " + path.string());
+			}
+		}
+	}
+	if (intents->loadRequest != 0)
+	{
+		const std::string slot = module::save::sanitizeSlot(intents->loadSlot);
+		if (slot.empty())
+		{
+			mitiru::debug::warnOnce("load.slot.empty",
+				"hud.load: slot 名が不正です (使える文字: a-zA-Z0-9_-) — 無視");
+		}
+		else
+		{
+			// replay 代用フック (ADR 0020 の核心): override が true を返したら記録済み
+			// state blob を適用済みなのでファイルは読まない — セーブファイルが録画後に
+			// 上書きされていても bit-exact が構造保証される。
+			const bool substituted = m_saveLoadOverride && m_saveLoadOverride(slot.c_str());
+			bool       applied     = substituted;
+			if (!substituted)
+			{
+				const auto path  = std::filesystem::path("save") / (slot + ".msav");
+				const auto bytes = module::save::loadGameMemory(path, m_moduleMemorySize);
+				if (bytes.has_value()
+				    && rewindModuleMemory(bytes->data(),
+				                          static_cast<std::uint32_t>(bytes->size())))
+				{
+					applied = true;
+				}
+				else
+				{
+					// 不在 / 形式不正 / サイズ不一致 (struct 変更後の旧セーブ) は拒否 —
+					// 化けた state を黙って流し込まない (ADR 0020 失敗モード表)。
+					mitiru::debug::warnOnce("load.reject." + slot,
+						"hud.load: ロード拒否 (ファイル不在 / 形式不正 / GameMemory サイズ不一致): "
+						+ path.string());
+				}
+			}
+			// 適用成功時は time-travel ring を破棄する。load 前の履歴は別時間軸の bytes で、
+			// そこへの rewind は復元を壊す (reloadModule の ring clear と同じ理由、ADR 0017)。
+			if (applied) { m_moduleMemoryRing.clear(); }
+		}
+	}
+
 	// Tool window spawn 要求 — DLL → host → 別 exe を spawn する (ADR 0014)。
 	// game は Engine* を持てない (ADR 0005) ので「このツール窓を開いて」と intent で頼み、
 	// host が mitiru_<tool>.exe を別窓で起動する (必要なときだけ・pulled UI)。exe が
@@ -767,8 +848,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// 再生有無に関わらず呼ぶ (静かな区間でも ended voice が滞留しないように)。
 	if (m_audioEngine) { m_audioEngine->update(); }
 
-	// VisualIntent (#33、v7): kind=1 (Tint) は Screen::pushTint へ、kind 2-5
-	// (FadeOut/FadeIn/Shake/HitStop) は VisualIntentFx へ流す。kind=0 は no-op。
+	// VisualIntent (#33、v7): kind=1 (Tint) は Screen::pushTint へ、kind 2-6
+	// (FadeOut/FadeIn/Shake/HitStop/Letterbox) は VisualIntentFx へ流す。kind=0 は no-op。
 	// FX の適用 (覆い描画・shake transform・dt=0 gating) は ModuleAdapter が行う。
 	if (intents->visualIntentCount > 0 && m_screen)
 	{
@@ -788,7 +869,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			}
 			else
 			{
-				(void)m_moduleVisualFx.applyIntent(vi);  // kind 2-5 (それ以外は no-op)
+				(void)m_moduleVisualFx.applyIntent(vi);  // kind 2-6 (それ以外は no-op)
 			}
 		}
 	}

@@ -790,6 +790,19 @@ public:
 	/// @brief 変換をポップする
 	void popTransform();
 
+	/// @brief 2D カメラを適用する (注視点 camX,camY が画面中央・zoom 倍)。
+	/// draw 冒頭で呼び、HUD 等の画面固定要素を描く前に endCamera() で外す。
+	/// update / draw でのカメラ変換二重実装 (バグ源) を消すための一元化。
+	/// メンバ追加なし (変換スタックのみ使用) = ABI 影響なし。
+	void applyCamera(float camX, float camY, float zoom = 1.0f)
+	{
+		const float cx = static_cast<float>(width())  * 0.5f;
+		const float cy = static_cast<float>(height()) * 0.5f;
+		pushTransform(cx - camX * zoom, cy - camY * zoom, zoom, zoom);
+	}
+	/// @brief applyCamera を外す (popTransform の別名 — 対で読めるように)。
+	void endCamera() { popTransform(); }
+
 	/// @brief 矩形に現在の変換を適用する
 	/// @param rect 入力矩形
 	/// @return 変換後の矩形（軸整列バウンディング）

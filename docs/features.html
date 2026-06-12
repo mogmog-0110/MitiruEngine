@@ -18,7 +18,7 @@
 
 <div class="page">
   <header class="topbar"><div class="bar">
-    <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine<span class="ver">v0.15.0</span></a>
+    <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine<span class="ver">v0.16.0</span></a>
     <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a href="tutorial.html">チュートリアル</a><a class="current" href="features.html">機能</a><a href="ui.html">画面</a><a href="ai.html">AI</a><a href="distribute.html">配布</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
   </div></header>
 <div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#basic">① 基本形</a><a href="#shapes">② 図形・色・文字</a><a href="#transform">③ 変換・スプライト</a><a href="#input">④ 入力・パッド</a><a href="#ai">⑤ 乱数・AI Lens</a><a href="#sound">⑥ 音・演出</a><a href="#htmlui">⑦ HTML / CSS UI</a><a href="#tools">⑧ デバッグ窓</a><a href="#collision">⑨ 当たり判定・設定</a></div></div>
@@ -271,7 +271,17 @@ hud.music(<span class="s">"bgm_boss"</span>, <span class="k">true</span>, 1.0f, 
 hud.shake(0.3f, 8.0f);            <span class="c">// 画面揺れ 0.3 秒・振幅 8px（v0.15。リプレイも bit-exact）</span>
 hud.hitStop(0.08f);               <span class="c">// ヒットストップ — 0.08 秒だけ時が止まる（撃破・パリィの手応え）</span>
 hud.fadeOut(0.4f);                <span class="c">// 画面を黒で覆う。場面転換は fadeOut → 切替 → fadeIn(0.4f)</span>
-hud.screenshot();                 <span class="c">// その瞬間の画面を画像保存（if (over) hud.screenshot(); など）</span></pre>
+hud.letterbox(0.8f, 0.4f);        <span class="c">// 上下の黒帯（イベント・カットシーン。戻すのは letterbox(0)）(v0.16)</span></pre>
+            <h3>セーブ・カメラ（v0.16）</h3>
+            <p>状態が flat POD だから、<strong>セーブはまるごとコピー 1 行</strong>です。カメラも宣言して使うだけ:</p>
+<pre>hud.save(<span class="s">"slot0"</span>);              <span class="c">// GameMemory をまるごとセーブ（巻き戻し・リプレイと同一機構）</span>
+hud.load(<span class="s">"slot0"</span>);              <span class="c">// 復元。リプレイ再生中でも再現が壊れない設計</span>
+
+<span class="c">// 状態に mitiru::Camera cam; を持って:</span>
+s.applyCamera(cam.x, cam.y, cam.zoom);  <span class="c">// draw 冒頭。注視点が画面中央に</span>
+<span class="c">// ... world を描く ...</span>
+s.endCamera();                          <span class="c">// HUD 等の画面固定要素はこの後に</span></pre>
+<pre>hud.screenshot();                 <span class="c">// その瞬間の画面を画像保存（if (over) hud.screenshot(); など）</span></pre>
             <h3>画面揺れを自分で書きたい場合</h3>
             <p><code>hud.shake()</code> で足りないこだわり（方向性のある揺れ等）は手書きもできます。状態に <code>float shake;</code> を持ち、被弾で <code>shake = 1.0f</code>、毎フレーム減衰させて、<code>draw</code> で全体をオフセットします。</p>
 <pre><span class="c">// update: 被弾したら shake = 1.0f; 毎フレーム減らす</span>

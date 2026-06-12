@@ -33,6 +33,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <thread>
 #include <fstream>
 #include <map>
@@ -398,6 +399,15 @@ public:
 	/// @return 上書きに成功したら true
 	bool rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept;
 
+	/// @brief replay 用の load 代用フック (ADR 0020)。host 内部 API — DLL 境界を跨がず ABI 影響なし。
+	/// @details load intent の drain 直前に sanitize 済み slot 名で呼ばれる。true を返すと
+	///          通常のファイル load をスキップする (replay 側が記録済み state blob を適用済みの意)。
+	///          replay 中はセーブファイルを一切参照しない — 録画後に上書きされても bit-exact が保たれる。
+	void setSaveLoadOverride(std::function<bool(const char* slot)> fn)
+	{
+		m_saveLoadOverride = std::move(fn);
+	}
+
 	/// @brief 反実仮想フォーク (ADR 0018): 現 GameMemory を保存 → 台本 input で on_update を
 	///        frameCount 回 headless 実行 (draw / intents drain なし = 副作用ゼロ) → 結果を
 	///        reflected JSON 文字列で返す → GameMemory を保存値へ復元する。
@@ -624,6 +634,7 @@ private:
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
 	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (ADR 0013、0=未申告)
 	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② time-travel、ADR 0017)
+	std::function<bool(const char*)>      m_saveLoadOverride;       ///< replay の load 代用フック (ADR 0020、host 内部)
 
 	// host→DLL signal flow 用の per-frame POD scratch buffer。struct 合計が
 	// ~50KB ある上、module を一切 load しない Engine instance まで肥大化させたく
