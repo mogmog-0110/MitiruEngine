@@ -26,6 +26,10 @@
  *     data-m-arg="path"             dispatch に載せる値 (repeat 内なら item の値。例: 押した項目の id)
  *       data-m-arg="'hard'" / "42"    引用符は文字列リテラル、数値はそのまま値 (難易度ボタン等)
  *     フォーム要素 (input/select) は現在値を自動で arg に載せる (スライダー/選択 等の設定 UI)
+ *   data-m-input="path"           <input> のテキスト入力を C++ へ届ける (名前欄 等)
+ *                                 確定時 (Enter / blur) に action "input:<path>" +
+ *                                 payload {"value":"<入力値>"} を dispatch。IME 変換中は送らない
+ *     data-m-input-live (属性のみ)  入力の度にも送る (150ms デバウンス)
  *   data-m-flash="field"          値が変わった瞬間に m-flash クラスを一瞬付与 (CSS 発火用)
  *   data-m-tween="path"           数値が変わったとき ~300ms でカウントアップ/ダウン表示
  *                                 (data-m-format=int|kmb に対応。data-m-text と同一要素では tween が優先)
@@ -79,6 +83,31 @@
   // 「実在する最長プレフィックス」で判定する: 長い方から getState を試し、最初に
   // 値が見つかったところがキー。残りは JSON を辿る。
   // item スコープがある場合はまず item の中を辿る (item は素の object)。
+  // mdebug 用: 未知 path は即警告しない (起動直後は「まだ push されてないだけ」が普通)。
+  // 3 秒後に再判定し、その時点でも prefix が見つからない path だけ 1 回警告する。
+  var pendingUnknown = Object.create(null);
+  var unknownTimerArmed = false;
+  function hasAnyPrefix(path) {
+    var segs = String(path).split('.');
+    for (var n = segs.length; n >= 1; n--) {
+      if (mitiru.getState(segs.slice(0, n).join('.')) !== undefined) { return true; }
+    }
+    return false;
+  }
+  function warnUnknownPath(path) {
+    if (!DEBUG || pendingUnknown[path]) { return; }
+    pendingUnknown[path] = true;
+    if (unknownTimerArmed) { return; }
+    unknownTimerArmed = true;
+    setTimeout(function () {
+      Object.keys(pendingUnknown).forEach(function (p) {
+        if (!hasAnyPrefix(p)) {
+          warn('未知の state パス "' + p + '" — C++ 側で push されていません (typo か push 漏れ)');
+        }
+      });
+    }, 3000);
+  }
+
   function resolve(path, item) {
     var segs = String(path).split('.');
     if (item != null) {
@@ -100,6 +129,7 @@
         return v;
       }
     }
+    warnUnknownPath(String(path));
     return undefined;
   }
 
@@ -222,6 +252,55 @@
     });
   }
 
+  // ── HTML → C++ テキスト入力 (data-m-input) ──
+  // 確定時 (Enter / blur) に action "input:<path>" + payload {"value":"<入力値>"} を送る。
+  // data-m-input-live 付きなら input の度にも送る (150ms デバウンス)。
+  // IME 変換中 (compositionstart〜compositionend) は送らず、確定後の値だけ送る。
+  var INPUT_DEBOUNCE_MS = 150;
+  function sendInput(el) {
+    if (el._mintimer) { clearTimeout(el._mintimer); el._mintimer = null; }  // 確定送信は live の予約を破棄
+    if (typeof mitiru.dispatch === 'function') {
+      mitiru.dispatch('input:' + el.dataset.mInput, { value: el.value });
+    }
+  }
+  function scheduleLiveInput(el) {
+    if (el._mintimer) { clearTimeout(el._mintimer); }
+    el._mintimer = setTimeout(function () { el._mintimer = null; sendInput(el); }, INPUT_DEBOUNCE_MS);
+  }
+  function wireInputs(root) {
+    var list = [];
+    if (root.dataset && root.dataset.mInput != null) { list.push(root); }
+    var found = root.querySelectorAll ? root.querySelectorAll('[data-m-input]') : [];
+    for (var i = 0; i < found.length; i++) { list.push(found[i]); }
+    var wired = 0;
+    list.forEach(function (el) {
+      if (el._minwired) { return; }
+      el._minwired = true;
+      wired++;
+      var live = el.dataset.mInputLive != null;
+      el.addEventListener('compositionstart', function () { el._mcomposing = true; });
+      el.addEventListener('compositionend', function () {
+        el._mcomposing = false;
+        if (live) { scheduleLiveInput(el); }   // 変換確定後の値を live で 1 回送る
+      });
+      el.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' || e.isComposing || el._mcomposing) { return; }
+        sendInput(el);
+      });
+      el.addEventListener('blur', function () {
+        if (el._mcomposing) { return; }
+        sendInput(el);
+      });
+      if (live) {
+        el.addEventListener('input', function () {
+          if (el._mcomposing) { return; }
+          scheduleLiveInput(el);
+        });
+      }
+    });
+    return wired;
+  }
+
   // data-m-flash="field": 値が前回から変わったら m-flash クラスを一瞬付ける
   // (CSS keyframe を発火 → マージのポップ等)。初回は記録のみで発火しない。
   function applyFlash(el, path, item) {
@@ -328,6 +407,7 @@
     node.addEventListener('animationend', function () { node.classList.remove('m-enter'); }, { once: true });
     this.list.appendChild(node);
     wireActions(node);   // repeat 内の data-m-action も配線 (item の値を載せて dispatch)
+    wireInputs(node);    // repeat 内の data-m-input も配線
     return { el: node, _case: cas, binds: collectBinds(node, true) };
   };
   Repeat.prototype._bind = function (slot, item) {
@@ -450,6 +530,9 @@
     // 要素は _makeSlot で都度配線する。
     wireActions(document);
 
+    // HTML → C++: data-m-input のテキスト入力を配線 (確定値を dispatch)。
+    var inputCount = wireInputs(document);
+
     var pending = false;
     function flush() {
       pending = false;
@@ -462,7 +545,7 @@
       mitiru.onStateChange(key, schedule);   // retained: 購読時に即発火 → 初期描画も走る
     });
     schedule();
-    warn('bound', topBinds.length, 'elements,', repeats.length, 'repeats; keys:', Object.keys(subscribed));
+    warn('bound', topBinds.length, 'elements,', repeats.length, 'repeats,', inputCount, 'inputs; keys:', Object.keys(subscribed));
   }
 
   if (document.readyState === 'loading') {

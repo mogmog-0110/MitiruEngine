@@ -162,7 +162,7 @@ inline bool openInspectable(const std::string& name, int producerPid = 0)
 /// @return 起動成功で true (exe が見つからなければ false で無害)
 inline bool openTool(Tool t, int producerPid = 0)
 {
-	for (const auto& spec : detail::kToolTable)
+	for (const auto& spec : mitiru::detail::kToolTable)
 	{
 		if (spec.tool == t) { return spawnTool(spec.exe, producerPid, spec.args); }
 	}
@@ -174,7 +174,7 @@ inline bool openTool(Tool t, int producerPid = 0)
 ///          producer 監視でなく特定ファイルを開く場合 (replay 等) に使う。
 inline bool openTool(Tool t, const std::string& extraArgs, int producerPid = 0)
 {
-	for (const auto& spec : detail::kToolTable)
+	for (const auto& spec : mitiru::detail::kToolTable)
 	{
 		if (spec.tool != t) { continue; }
 		std::string args = spec.args;

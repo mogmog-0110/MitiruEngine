@@ -230,7 +230,7 @@ public:
 			const float fontSize = 16.0f;
 			const float tx = rect.x() + skin.padding.left;
 			const float ty = rect.y() + (rect.height() - fontSize) * 0.5f;
-			screen.drawText({tx, ty}, text, elemState.textColor, fontSize);
+			screen.text(text, tx, ty, elemState.textColor, fontSize);
 		}
 	}
 
@@ -301,7 +301,7 @@ public:
 		// 話者名
 		if (!speaker.empty())
 		{
-			screen.drawText({leftMargin, yOffset}, speaker, speakerColor, 14.0f);
+			screen.text(speaker, leftMargin, yOffset, speakerColor, 14.0f);
 			yOffset += 18.0f;
 		}
 
@@ -398,7 +398,7 @@ private:
 		// テキスト
 		const float tx = npRect.x() + 8.0f;
 		const float ty = npRect.y() + (npRect.height() - config.nameFontSize) * 0.5f;
-		screen.drawText({tx, ty}, speaker, config.nameTextColor, config.nameFontSize);
+		screen.text(speaker, tx, ty, config.nameTextColor, config.nameFontSize);
 	}
 
 	// ── 待機アイコン描画 ──────────────────────────────────────
@@ -560,11 +560,8 @@ private:
 				const std::size_t lineLen = std::min(
 					remaining, static_cast<std::size_t>(maxCharsPerLine));
 
-				screen.drawText(
-					{area.x(), y},
-					text.substr(pos, lineLen),
-					color,
-					fontSize);
+				screen.text(text.substr(pos, lineLen),
+				            area.x(), y, color, fontSize);
 
 				pos += lineLen;
 				y += lineHeight;

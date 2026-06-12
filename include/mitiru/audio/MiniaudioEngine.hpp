@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <mitiru/audio/AudioMeter.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 
 namespace mitiru::audio {
 
@@ -103,6 +104,9 @@ public:
 		auto snd = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            nullptr, nullptr, snd.get()) != MA_SUCCESS) {
+			// 黙った無音は原因不明になるので path 単位で初回のみ警告 (R-01 級)
+			mitiru::debug::warnOnce("audio.se:" + path,
+				"音声ファイルが見つからない/読めない: " + path);
 			return;
 		}
 		ma_sound_set_volume(snd.get(), volume);
@@ -158,6 +162,9 @@ public:
 		stopMusic();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_STREAM,
 		                            nullptr, nullptr, &m_music) != MA_SUCCESS) {
+			// 黙った無音は原因不明になるので path 単位で初回のみ警告 (R-01 級)
+			mitiru::debug::warnOnce("audio.music:" + path,
+				"音声ファイルが見つからない/読めない: " + path);
 			return;
 		}
 		ma_sound_set_looping(&m_music, loop ? MA_TRUE : MA_FALSE);

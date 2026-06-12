@@ -20,10 +20,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <string>
 #include <type_traits>
 #include <vector>
 
 #include <mitiru/core/FixedVec.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 
 namespace mitiru::module
 {
@@ -87,6 +89,12 @@ template <std::size_t N> struct IsFixedString<mitiru::FixedString<N>> : std::tru
 {
 	static constexpr std::size_t cap = N;
 };
+
+/// @brief MITIRU_REFLECT / MITIRU_REFLECT_STRUCT のフィールド数超過 (>16) を compile error
+///        にする番兵。17 個以上を書くと MITIRU_FOR_EACH がこの削除済み関数を選び、
+///        「use of deleted function ...Max16Fields...」が出る — 関数名がそのまま対処法:
+///        フィールドを 16 個以下に分割するか、ネスト部分を MITIRU_REFLECT_STRUCT へ切り出す。
+inline FieldDescriptor mitiruReflect_Max16Fields_SplitOrUseReflectStruct() = delete;
 
 /// @brief 固定長 buffer への安全コピー (null 終端保証)
 inline void copyTag(char* dst, std::size_t cap, const char* src)
@@ -167,6 +175,14 @@ inline bool registerSchema(const char* typeName, std::initializer_list<FieldDesc
 	ReflectSchema s{};
 	detail::copyTag(s.typeName, sizeof(s.typeName), typeName);
 	const std::int32_t cap = static_cast<std::int32_t>(sizeof(s.fields) / sizeof(s.fields[0]));
+	if (static_cast<std::int32_t>(fields.size()) > cap)
+	{
+		// 黙って切り捨てない: 17 個目以降は inspector / AI に出ない。
+		const char* name = (typeName != nullptr) ? typeName : "";
+		mitiru::debug::warnOnce(std::string("reflect.schema.fields.") + name,
+			std::string("MITIRU_REFLECT_STRUCT ") + name +
+			": フィールドが上限 16 個を超えています。17 個目以降は inspector / AI へ出ません");
+	}
 	std::int32_t i = 0;
 	for (const auto& f : fields) { if (i >= cap) { break; } s.fields[i++] = f; }
 	s.fieldCount = i;

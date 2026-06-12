@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 cmake_policy(SET CMP0091 NEW)
 
 project(MitiruEngine
-	VERSION 0.14.0
+	VERSION 0.15.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -324,6 +324,12 @@ if(SDL2_FOUND)
 	# 副次効果として SDL2main.lib への link が不要になる。
 	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_SDL2=1 SDL_MAIN_HANDLED=1)
 	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} SDL2::SDL2)
+	# imported target はディレクトリスコープ。consumer (add_subdirectory でエンジンを取り込む
+	# プロジェクト) の CMakeLists からも `TARGET SDL2::SDL2` で参照できるよう昇格する
+	# (これが無いと consumer 側の SDL2.dll deploy が静かに skip され、host が起動時に死ぬ)。
+	if(TARGET SDL2::SDL2)
+		set_target_properties(SDL2::SDL2 PROPERTIES IMPORTED_GLOBAL TRUE)
+	endif()
 elseif(WIN32)
 	# 黙って劣化させない — DS4 が効かない host が静かに生まれるのを防ぐ。
 	message(WARNING

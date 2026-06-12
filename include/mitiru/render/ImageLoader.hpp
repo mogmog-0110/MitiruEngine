@@ -6,6 +6,7 @@
 ///          stb_imageの実装はsrc/stb_impl.cppに分離されている。
 
 #include <mitiru/asset/AssetPack.hpp>  // vfs::readGlobal (pack 秘匿配布 / disk fallback)
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/Texture.hpp>
 
 #include <cstdint>
@@ -52,9 +53,17 @@ public:
 		const auto buf = mitiru::vfs::readGlobal(path, path);
 		if (!buf)
 		{
+			// 黙って空 Texture を返すと原因不明になるので path 単位で初回のみ警告 (R-01 級)
+			mitiru::debug::warnOnce("image:" + path, "画像を読み込めない: " + path);
 			return {};
 		}
-		return fromMemory(buf->data(), static_cast<int>(buf->size()));
+		Texture tex = fromMemory(buf->data(), static_cast<int>(buf->size()));
+		if (!tex.valid())
+		{
+			// 読めたがデコード失敗 (壊れた PNG 等) も同様に初回のみ警告
+			mitiru::debug::warnOnce("image:" + path, "画像を読み込めない: " + path);
+		}
+		return tex;
 	}
 
 	/// @brief stb_imageのエラーメッセージを取得する

@@ -315,5 +315,5 @@ inline void mitiru::scene::SpriteNode::onDraw(Screen& screen) const
 
 inline void mitiru::scene::LabelNode::onDraw(Screen& screen) const
 {
-	screen.drawText(position, text, color, fontSize);
+	screen.text(text, position.x, position.y, color, fontSize);
 }

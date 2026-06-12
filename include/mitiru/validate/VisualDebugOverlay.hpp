@@ -156,11 +156,11 @@ public:
 			screen.drawRect(sgc::Rectf{4.0f, 4.0f, 200.0f, 36.0f}, bgColor);
 
 			const std::string fpsText = "FPS: " + std::to_string(static_cast<int>(m_fps));
-			screen.drawText({8.0f, 6.0f}, fpsText, textColor, 8.0f);
+			screen.text(fpsText, 8.0f, 6.0f, textColor, 8.0f);
 
 			const std::string drawText = "Draws: " +
 				std::to_string(validator.stats().totalDrawCalls);
-			screen.drawText({8.0f, 20.0f}, drawText, textColor, 8.0f);
+			screen.text(drawText, 8.0f, 20.0f, textColor, 8.0f);
 		}
 
 		// ── 問題リスト（下パネル） ───────────────────────────
@@ -175,10 +175,8 @@ public:
 			screen.drawRect(sgc::Rectf{4.0f, panelY, sw - 8.0f, panelH}, panelBg);
 
 			const sgc::Colorf titleColor{1.0f, 0.6f, 0.0f, 1.0f};
-			screen.drawText(
-				{8.0f, panelY + 2.0f},
-				"Issues: " + std::to_string(issues.size()),
-				titleColor, 8.0f);
+			screen.text("Issues: " + std::to_string(issues.size()),
+			            8.0f, panelY + 2.0f, titleColor, 8.0f);
 
 			const sgc::Colorf warnColor{1.0f, 1.0f, 0.0f, 1.0f};
 			const sgc::Colorf errColor{1.0f, 0.3f, 0.3f, 1.0f};
@@ -196,9 +194,8 @@ public:
 					msg = msg.substr(0, 77) + "...";
 				}
 
-				screen.drawText(
-					{12.0f, panelY + 16.0f + static_cast<float>(i) * 14.0f},
-					msg, color, 8.0f);
+				screen.text(msg, 12.0f, panelY + 16.0f + static_cast<float>(i) * 14.0f,
+				            color, 8.0f);
 			}
 		}
 	}

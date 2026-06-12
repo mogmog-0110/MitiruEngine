@@ -203,7 +203,7 @@ public:
 
 			const std::string title = "Log Viewer [F11] (" +
 				std::to_string(entryCount()) + " entries)";
-			screen.drawText({panelX + 4.0f, 10.0f}, title, {0.8f, 0.8f, 0.8f, 1.0f}, 8.0f);
+			screen.text(title, panelX + 4.0f, 10.0f, {0.8f, 0.8f, 0.8f, 1.0f}, 8.0f);
 			return;
 		}
 
@@ -223,7 +223,7 @@ public:
 		const std::string title = "Log Viewer [F11]  Entries: " +
 			std::to_string(entryCount()) +
 			(m_autoScroll ? "  [AUTO]" : "  [PAUSED]");
-		screen.drawText({panelX + 4.0f, panelY + 3.0f}, title, {0.9f, 0.9f, 0.9f, 1.0f}, 8.0f);
+		screen.text(title, panelX + 4.0f, panelY + 3.0f, {0.9f, 0.9f, 0.9f, 1.0f}, 8.0f);
 
 		// フィルタ情報バー
 		if (!m_filterCategory.empty() || !m_filterText.empty())
@@ -231,9 +231,8 @@ public:
 			std::string filterInfo = "Filter:";
 			if (!m_filterCategory.empty()) filterInfo += " cat=" + m_filterCategory;
 			if (!m_filterText.empty()) filterInfo += " text=" + m_filterText;
-			screen.drawText(
-				{panelX + 4.0f, panelY + 20.0f},
-				filterInfo, {0.5f, 0.8f, 1.0f, 0.8f}, 8.0f);
+			screen.text(filterInfo, panelX + 4.0f, panelY + 20.0f,
+			            {0.5f, 0.8f, 1.0f, 0.8f}, 8.0f);
 		}
 
 		// ログ行の描画
@@ -270,7 +269,7 @@ public:
 				"[" + entry.category + "] " +
 				entry.message;
 
-			screen.drawText({panelX + 4.0f, curY}, line, color, 8.0f);
+			screen.text(line, panelX + 4.0f, curY, color, 8.0f);
 			curY += lineH;
 		}
 

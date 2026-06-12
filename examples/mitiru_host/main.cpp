@@ -231,6 +231,14 @@ std::string defaultCefUrlFor(const std::filesystem::path& dllPath)
 	                                            std::filesystem::current_path(), ec);
 	std::filesystem::path under = (ec || rel.empty()) ? dllPath.parent_path() : rel;
 	auto asset = under / "assets" / "scene.html";
+	// 不在は従来完全沈黙だった (HUD だけ出ない画面になり原因が追えない)。起動時に 1 行だけ知らせる。
+	if (!std::filesystem::exists(dllPath.parent_path() / "assets" / "scene.html", ec))
+	{
+		std::fprintf(stderr,
+			"[mitiru_host] note: HUD 用の scene.html が見つかりません: %s\n"
+			"  (HUD 無しでゲーム本体は動きます。HTML/CSS の HUD を使う場合はこの場所に置いてください)\n",
+			(dllPath.parent_path() / "assets" / "scene.html").string().c_str());
+	}
 	std::string url = "file:///./";
 	url += asset.generic_string();
 	return url;
@@ -1150,7 +1158,14 @@ int main(int argc, char* argv[])
 			if (!ok)
 			{
 				std::fprintf(stderr,
-					"[mitiru_host] reload FAILED — continuing with old code\n");
+					"[mitiru_host] reload FAILED — 旧コードのまま継続します (状態は保持)。\n");
+				const std::string why = engine.moduleLoadError();
+				if (!why.empty())
+				{
+					std::fprintf(stderr, "  理由: %s\n", why.c_str());
+				}
+				std::fprintf(stderr,
+					"  ビルドエラー等を修正して保存すれば自動で再試行します。\n");
 			}
 			else
 			{
@@ -1253,6 +1268,9 @@ int main(int argc, char* argv[])
 	std::uint32_t memDivergeFrame = 0;
 	bool          memDiverged     = false;
 	bool          memCompared     = false;
+	bool          memSizeMismatch = false;   // 録画時と GameMemory サイズが違う (struct 変更)
+	std::size_t   memSizeRecorded = 0;
+	std::size_t   memSizeCurrent  = 0;
 	bool          frameHasRecord  = false;  // この frame に対応する記録 state を読めたか (EOF frame 除外)
 
 	if (!args.replayPath.empty())
@@ -1284,7 +1302,8 @@ int main(int argc, char* argv[])
 		// on_update 後の live GameMemory を退避した記録値と照合する (frame 整合済み)。
 		// EOF frame は記録対応が無いので比較しない (stale な recordedMem との誤検出を防ぐ)。
 		cfg.onModuleFrameRecorded =
-			[&engine, &recordedMem, &replayFrame, &memDivergeFrame, &memDiverged, &memCompared, &frameHasRecord]
+			[&engine, &recordedMem, &replayFrame, &memDivergeFrame, &memDiverged, &memCompared,
+			 &frameHasRecord, &memSizeMismatch, &memSizeRecorded, &memSizeCurrent]
 			(const mitiru::module::InputSnapshot&, const mitiru::module::FrameIntents&)
 			{
 				if (!frameHasRecord) { return; }
@@ -1299,6 +1318,15 @@ int main(int argc, char* argv[])
 						memDiverged     = true;
 						memDivergeFrame = replayFrame;
 					}
+				}
+				else if (memSize > 0 && !recordedMem.empty() &&
+				         recordedMem.size() != static_cast<std::size_t>(memSize))
+				{
+					// サイズ不一致 = GameMemory struct が録画時から変更された。黙って
+					// スキップすると false-green (検証ゼロで exit 0) になるため明示 FAIL へ。
+					memSizeMismatch = true;
+					memSizeRecorded = recordedMem.size();
+					memSizeCurrent  = memSize;
 				}
 				++replayFrame;
 			};
@@ -1374,6 +1402,17 @@ int main(int argc, char* argv[])
 		std::fprintf(stdout, "%s\n", finalState.c_str());
 
 		// GameMemory 再現の verdict (flat POD game のみ)。bit-exact なら軸④ 構造保証の証明。
+		if (memSizeMismatch)
+		{
+			// 比較ゼロのまま exit 0 すると「検証されてないのに成功」に見える (false-green)。
+			std::fprintf(stderr,
+			             "replay state: FAIL — GameMemory size mismatch (recorded %zu bytes, "
+			             "current %zu bytes)\n"
+			             "  GameMemory struct が録画時から変更されています。この録画では検証できません。\n"
+			             "  対処: --record で基準リプレイを録り直してください。\n",
+			             memSizeRecorded, memSizeCurrent);
+			return 1;
+		}
 		if (memCompared)
 		{
 			if (memDiverged)

@@ -49,9 +49,10 @@ namespace mitiru::module
 ///   3. `unload()`      — FreeLibrary + temp file 削除
 ///   4. (または destructor — unload と同じ)
 ///
-/// reload は「unload() → load(source)」を新しい temp filename で行う。
-/// ModuleApi callback を保持する host code は、unload と次の load の間で
-/// それを破棄しなければならない (関数 pointer は古い DLL に属する)。
+/// reload は「別 ModuleHost で load(source) → move 代入で差し替え」(先ロード・
+/// 後差し替え) が正規。temp filename が一意なので同一 source でも並走 load できる。
+/// move 代入 / unload は FreeLibrary するだけ — ModuleApi callback を保持する
+/// host code は、その時点で古い関数 pointer を破棄しなければならない。
 class ModuleHost
 {
 public:
@@ -237,6 +238,15 @@ public:
 	[[nodiscard]] const std::string& lastError() const noexcept
 	{
 		return m_lastError;
+	}
+
+	/// @brief loader (Engine) 側で判定した失敗理由を記録する。
+	/// @details reload の「先ロード・後差し替え」では一時 host で新 DLL を検証する。
+	///          その load 失敗 / ABI version 拒否の理由を、caller が参照する正規の
+	///          置き場 (= 現役 host の lastError) へ引き継ぐために使う。
+	void setLastError(std::string message)
+	{
+		m_lastError = std::move(message);
 	}
 
 private:

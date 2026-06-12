@@ -404,7 +404,7 @@ private:
 				widget.bounds.y() + (widget.bounds.height() - fontSize) * 0.5f
 			};
 			const sgc::Colorf textColor{1.0f, 1.0f, 1.0f, 1.0f};
-			screen.drawText(textPos, widget.label, textColor, fontSize);
+			screen.text(widget.label, textPos.x, textPos.y, textColor, fontSize);
 		}
 	}
 

@@ -1,6 +1,17 @@
 #pragma once
 // mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
 
+// drawText はゲーム作者向けに [[deprecated]] だが、本ファイルはその実装本体と
+// drawTextClipped / drawTextInRect 等の委譲元なので、ここでの内部呼び出しに限り
+// deprecation 警告を抑制する (ファイル末尾で pop)。
+#if defined(_MSC_VER)
+#  pragma warning(push)
+#  pragma warning(disable : 4996)
+#elif defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 inline void mitiru::Screen::setTrueTypeFont(void* font, TtDrawFunc drawFn, TtMeasureFunc measureFn) noexcept
 {
 	m_ttFont = font;
@@ -363,3 +374,9 @@ inline void mitiru::Screen::drawTextSpaced(const sgc::Vec2f& position, std::stri
 	                                    position.x, position.y,
 	                                    scale, color, letterSpacing);
 }
+
+#if defined(_MSC_VER)
+#  pragma warning(pop)
+#elif defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic pop
+#endif

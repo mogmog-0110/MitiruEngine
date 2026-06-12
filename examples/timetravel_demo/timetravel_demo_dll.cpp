@@ -79,7 +79,10 @@ struct TtDemo
 			h.x  = 40.0f + random() * (kScreenW - 80.0f);
 			h.y  = -30.0f;
 			h.vy = 180.0f + random() * 220.0f;
-			hazards.push_back(h);
+			if (!hazards.push_back(h))
+			{
+				// 満杯 (kMaxHaz): このフレームの生成は見送る
+			}
 		}
 
 		// 危険物を落とす + 当たり判定。当たったら HP を減らす。

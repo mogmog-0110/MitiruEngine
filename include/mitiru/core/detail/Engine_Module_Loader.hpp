@@ -59,6 +59,8 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 		return false;
 	}
 
+	// loadFn 前の pointer を控える — null から確保されたか (fresh load) を後で判定する。
+	void* const memoryBefore = m_moduleMemory;
 	loadFn(&m_moduleApi, &m_moduleMemory);
 
 	// DLL が申告した GameMemory サイズを保持 (ADR 0013)。v≤8 DLL は未設定 ⇒ zero-init の 0。
@@ -76,11 +78,28 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 			static_cast<int>(m_moduleApi.reflectFieldCount));
 	}
 
-	// version check。
+	// version check。拒否時は DLL が確保したばかりの memory を unloadFn で DLL に
+	// 返却してから unload する (リーク解消)。返却は fresh 確保時のみ — 温存 memory を
+	// 渡す reload は reloadModule 側で先ロード検証されるため、ここでは触らない。
 	if (m_moduleApi.version == 0u || m_moduleApi.version > module::kCurrentApiVersion)
 	{
+		const std::uint32_t dllVersion = m_moduleApi.version;
+		if (memoryBefore == nullptr && m_moduleMemory != nullptr)
+		{
+			if (auto unloadFn = m_moduleHost->unloadFn())
+			{
+				try { unloadFn(m_moduleMemory); }
+				catch (...) {}
+			}
+			m_moduleMemory     = nullptr;
+			m_moduleMemorySize = 0;
+		}
 		m_moduleHost->unload();
 		m_moduleApi = module::ModuleApi{};
+		m_moduleHost->setLastError(
+			"ABI バージョン不一致: DLL=v" + std::to_string(dllVersion) +
+			", host=v" + std::to_string(module::kCurrentApiVersion) +
+			" (kCurrentApiVersion)。エンジン or プロジェクトの再ビルドが必要");
 		return false;
 	}
 
@@ -98,7 +117,13 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 		m_moduleActionEvents = std::make_unique<ModuleActionEventBuffer>();
 	}
 
-	if (m_moduleApi.on_init != nullptr)
+	// sprite(id) の解決基準を DLL 隣接の assets/sprites にする (audio の
+	// assets/audio/<id>.wav と同じ「DLL の隣」規約、ABI v16)。
+	m_spriteCache.setBaseDir(modulePath.parent_path() / "assets" / "sprites");
+
+	// on_init は「memory が新規確保された時」のみ呼ぶ (Game.hpp registerGame の設計意図)。
+	// 温存 memory を渡された場合に呼ぶと T::init() が user 状態をリセットし得る。
+	if (m_moduleApi.on_init != nullptr && memoryBefore == nullptr)
 	{
 		m_moduleApi.on_init(m_moduleMemory);
 	}
@@ -126,6 +151,11 @@ MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept
 		catch (...) {}
 	}
 
+	// unloadFn は DLL 側 delete — 解放済み pointer を保持し続けると次の load で
+	// 「非 null なら再利用」に渡って use-after-free になる (A5)。必ず null へ戻す。
+	m_moduleMemory     = nullptr;
+	m_moduleMemorySize = 0;
+
 	m_moduleApi = module::ModuleApi{};
 	m_moduleHost->unload();
 
@@ -142,11 +172,89 @@ MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept
 
 MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& modulePath)
 {
-	unloadModule();
+	// 旧 module が無いなら通常 load と同じ (memory は null から確保され on_init が走る)。
+	if (!m_moduleHost || !m_moduleHost->isLoaded())
+	{
+		m_moduleMemoryRing.clear();
+		return loadModule(modulePath);
+	}
+
+	// ── 先ロード・後差し替え (A1) ──────────────────────────────────────────
+	// 旧 DLL を生かしたまま、新 DLL を一時 host で load + API 解決 + version 検証
+	// まで済ませる。途中で失敗したら旧 module / 旧 memory には一切触らず false を
+	// 返す → host は「old code で継続」できる。temp copy 名が一意なので同一 source
+	// でも独立 module として並走 load できる (ModuleHost の copy strategy)。
+	module::ModuleHost newHost;
+	if (!newHost.load(modulePath))
+	{
+		m_moduleHost->setLastError(newHost.lastError());
+		return false;
+	}
+
+	const auto loadFn = newHost.loadFn();
+	if (loadFn == nullptr)
+	{
+		m_moduleHost->setLastError("新 DLL に load entry symbol がありません");
+		return false;  // newHost destructor が FreeLibrary + temp 削除
+	}
+
+	// 既存 GameMemory pointer を渡す — registerGame は非 null なら再利用する (状態温存)。
+	module::ModuleApi newApi{};
+	newApi.version = module::kCurrentApiVersion;
+	void* const memoryBefore = m_moduleMemory;
+	void*       memory       = m_moduleMemory;
+	loadFn(&newApi, &memory);
+
+	if (newApi.version == 0u || newApi.version > module::kCurrentApiVersion)
+	{
+		// 新 DLL が fresh 確保した場合のみ新 DLL 自身に返却する。温存 memory は
+		// 旧 module が継続使用するため絶対に解放しない。
+		if (memoryBefore == nullptr && memory != nullptr)
+		{
+			if (auto unloadFn = newHost.unloadFn())
+			{
+				try { unloadFn(memory); }
+				catch (...) {}
+			}
+		}
+		m_moduleHost->setLastError(
+			"ABI バージョン不一致: DLL=v" + std::to_string(newApi.version) +
+			", host=v" + std::to_string(module::kCurrentApiVersion) +
+			" (kCurrentApiVersion)。エンジン or プロジェクトの再ビルドが必要");
+		return false;
+	}
+
+	// ── 差し替え ──────────────────────────────────────────────────────────
+	// 旧 DLL は unloadFn (DLL 側 delete) を呼ばず FreeLibrary のみ。GameMemory の
+	// 所有は host が続投する = 状態温存の正規化 (解放済み pointer の再利用ではない)。
+	// 旧 on_shutdown も呼ばない — GameMemory は flat POD 契約 (ADR 0017) で DLL 側に
+	// 解放すべきリソースを持たないし、T::shutdown() が状態を壊す余地も残さない。
+	*m_moduleHost      = std::move(newHost);  // move 代入が旧 handle を FreeLibrary する
+	m_moduleApi        = newApi;
+	m_moduleMemory     = memory;
+	m_moduleMemorySize = newApi.memorySize;
+
+	// 旧 DLL の code を参照しうる pending event は破棄する (unloadModule と同じ理由)。
+	if (m_moduleActionEvents)
+	{
+		std::lock_guard lock(m_moduleActionEvents->mu);
+		m_moduleActionEvents->events.clear();
+	}
+
 	// 旧 layout の GameMemory bytes を破棄する。struct を編集して hot reload すると
 	// sizeof が変わり得るので、古い ring 内容への rewind は復元を壊す (ADR 0017)。
 	m_moduleMemoryRing.clear();
-	return loadModule(modulePath);
+
+	// sprite(id) の解決基準を新 DLL の隣へ更新する (loadModule と同じ規約、ABI v16)。
+	m_spriteCache.setBaseDir(modulePath.parent_path() / "assets" / "sprites");
+
+	// memory 温存 reload では on_init を呼ばない (T::init() が user 状態をリセットし得る)。
+	// 旧 memory が無く fresh 確保された時だけ初回 load と同様に呼ぶ。
+	if (memoryBefore == nullptr && newApi.on_init != nullptr)
+	{
+		newApi.on_init(memory);
+	}
+	return true;
 }
 
 // ── moduleStateStore accessor ──────────────────────────────────────────────
@@ -241,4 +349,12 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 	// GameMemory を試行前へ復元 (live は何も変わらなかったことになる)。
 	std::memcpy(m_moduleMemory, saved.data(), m_moduleMemorySize);
 	return state.dump();
+}
+
+// ── moduleLoadError ────────────────────────────────────────────────────────
+// ModuleHost は Engine.hpp では前方宣言 (pimpl) のため、ここで定義する。
+
+MITIRU_INLINE std::string mitiru::Engine::moduleLoadError() const
+{
+	return m_moduleHost ? m_moduleHost->lastError() : std::string{};
 }

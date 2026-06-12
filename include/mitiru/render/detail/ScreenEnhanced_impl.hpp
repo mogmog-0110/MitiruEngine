@@ -19,10 +19,10 @@ inline void ScreenEnhanced::drawSdfText(const sgc::Vec2f& pos, std::string_view 
 		/// SDF パスではフォントアトラスから距離フィールドを参照して
 		/// ピクセルシェーダーで滑らかなエッジを生成する。
 		/// 現在は GPU シェーダー統合前のためフォールバック。
-		m_screen.drawText(pos, text, color, fontSize);
+		m_screen.text(text, pos.x, pos.y, color, fontSize);
 		return;
 	}
-	m_screen.drawText(pos, text, color, fontSize);
+	m_screen.text(text, pos.x, pos.y, color, fontSize);
 }
 
 /// @brief アウトライン付き SDF テキスト描画
@@ -50,9 +50,8 @@ inline void ScreenEnhanced::drawSdfTextWithShadow(const sgc::Vec2f& pos, std::st
                                                   const sgc::Vec2f& shadowOffset)
 {
 	/// シャドウを先に描画する（背面）
-	m_screen.drawText(
-		{pos.x + shadowOffset.x, pos.y + shadowOffset.y},
-		text, shadowColor, fontSize);
+	m_screen.text(text, pos.x + shadowOffset.x, pos.y + shadowOffset.y,
+	              shadowColor, fontSize);
 	/// 本体テキストを描画する
 	drawSdfText(pos, text, fontSize, textColor);
 }
@@ -575,10 +574,9 @@ inline void ScreenEnhanced::drawSdfTextOutlineFallback(const sgc::Vec2f& pos, st
 	};
 	for (const auto& off : offsets)
 	{
-		m_screen.drawText({pos.x + off.x, pos.y + off.y},
-		                  text, outlineColor, fontSize);
+		m_screen.text(text, pos.x + off.x, pos.y + off.y, outlineColor, fontSize);
 	}
-	m_screen.drawText(pos, text, textColor, fontSize);
+	m_screen.text(text, pos.x, pos.y, textColor, fontSize);
 }
 
 /// @brief ツールチップの矢印三角形を描画する

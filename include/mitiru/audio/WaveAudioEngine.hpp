@@ -10,6 +10,7 @@
 #include <unordered_map>
 
 #include <mitiru/audio/AudioEngine.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -78,6 +79,9 @@ public:
 		const auto it = m_soundPaths.find(std::string(id));
 		if (it == m_soundPaths.end())
 		{
+			// 未登録 id の黙った無音は原因不明になるので id 単位で初回のみ警告 (R-01 級)
+			mitiru::debug::warnOnce("audio.id:" + std::string(id),
+				"音声ファイルが見つからない/読めない: " + std::string(id) + " (未登録 id)");
 			return;
 		}
 
@@ -117,6 +121,9 @@ public:
 		const auto it = m_soundPaths.find(std::string(id));
 		if (it == m_soundPaths.end())
 		{
+			// 未登録 id の黙った無音は原因不明になるので id 単位で初回のみ警告 (R-01 級)
+			mitiru::debug::warnOnce("audio.id:" + std::string(id),
+				"音声ファイルが見つからない/読めない: " + std::string(id) + " (未登録 id)");
 			return;
 		}
 

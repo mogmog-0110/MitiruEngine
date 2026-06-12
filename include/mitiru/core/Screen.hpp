@@ -316,6 +316,7 @@ public:
 	                          float radius = 8.0f, float thickness = 1.0f);
 
 	/// @brief 扇形（パイ）を描画する
+	/// @note 角度の単位は**ラジアン** (度ではない)。度で書きたいときは mitiru::deg(90) で変換。
 	/// @param center 中心座標
 	/// @param radius 半径
 	/// @param startAngle 開始角度（ラジアン、0=右）
@@ -325,6 +326,7 @@ public:
 	             float startAngle, float endAngle, const sgc::Colorf& color);
 
 	/// @brief 円弧を描画する
+	/// @note 角度の単位は**ラジアン** (度ではない)。度で書きたいときは mitiru::deg(90) で変換。
 	/// @param center 中心座標
 	/// @param radius 半径
 	/// @param startAngle 開始角度（ラジアン）
@@ -366,10 +368,13 @@ public:
 	              const sgc::Colorf& color, float thickness = 1.0f);
 
 	/// @brief テキストを描画する
+	/// @deprecated レイアウト境界を無視してはみ出すため使用禁止。クリップ付きの
+	///             drawTextInRect / drawTextClipped (または糖衣 text()) を使うこと。
 	/// @param position 描画位置（左上）
 	/// @param text テキスト内容
 	/// @param color 描画色
 	/// @param fontSize フォントサイズ（8の倍数でスケーリング）
+	[[deprecated("drawTextInRect / drawTextClipped を使うこと (レイアウト境界を無視するため)")]]
 	void drawText(const sgc::Vec2f& position, std::string_view text,
 	              const sgc::Colorf& color, float fontSize = 16.0f);
 
@@ -531,6 +536,7 @@ public:
 	                      float tl, float tr, float br, float bl);
 
 	/// @brief 回転した矩形を描画する
+	/// @note こちらの角度の単位は**度** (drawArc / drawPie / pushRotation のラジアンと異なる)。
 	/// @param rect 矩形領域
 	/// @param color 描画色
 	/// @param angleDeg 回転角度（度）
@@ -775,6 +781,7 @@ public:
 	void pushTransform(const Transform2D& t);
 
 	/// @brief ピボット周りの回転をプッシュする便利関数
+	/// @note 角度の単位は**ラジアン** (度ではない)。度で書きたいときは mitiru::deg(90) で変換。
 	/// @param rad 回転角度（ラジアン）
 	/// @param pivotX ピボットX（入力座標系）
 	/// @param pivotY ピボットY（入力座標系）
@@ -800,6 +807,7 @@ public:
 	}
 
 	/// @brief グループ描画（変換をまとめて適用する）
+	/// @note こちらの角度の単位は**度** (pushRotation のラジアンと異なる)。
 	/// @param position グループの平行移動オフセット
 	/// @param rotationDeg 回転角度（度）— グループ原点（position）まわりで回転
 	/// @param drawFn グループ内の描画コールバック
@@ -1332,8 +1340,8 @@ private:
 		case ui::UIRole::ScoreLabel:
 			if (!node.text().empty())
 			{
-				drawText({bounds.x() + style.padding, bounds.y() + style.padding},
-				         node.text(), style.foreground, style.fontSize);
+				text(node.text(), bounds.x() + style.padding, bounds.y() + style.padding,
+				     style.foreground, style.fontSize);
 			}
 			break;
 		case ui::UIRole::Button:
@@ -1342,7 +1350,7 @@ private:
 				const float textW = static_cast<float>(node.text().size()) * style.fontSize;
 				const float tx = bounds.x() + (bounds.width() - textW) * 0.5f;
 				const float ty = bounds.y() + (bounds.height() - style.fontSize) * 0.5f;
-				drawText({tx, ty}, node.text(), style.foreground, style.fontSize);
+				text(node.text(), tx, ty, style.foreground, style.fontSize);
 			}
 			break;
 		case ui::UIRole::ProgressBar:
@@ -1415,6 +1423,43 @@ private:
 	// ABI 注意: Screen* は DLL 境界を渡る。既存メンバのオフセット維持のため末尾追加 (ABI v15)。
 	bool m_swFbActive = true;    ///< 今フレーム SW ラスタライズを行うか (#53)
 	bool m_swFbWantNext = false; ///< capture() 等が次フレームのラスタライズを要求したか
+
+public:
+	// ── sprite(id) 1 行描画 (ABI v16) ─────────────────────────────────
+	/// @brief sprite id → Texture* を解決するコールバック型 (host が ctx 付きで注入)
+	using SpriteResolveFunc = const render::Texture* (*)(void* ctx, const char* id);
+
+	/// @brief sprite resolver を注入する (host/Engine が呼ぶ。fn=nullptr で解除)
+	void setSpriteResolver(SpriteResolveFunc fn, void* ctx) noexcept
+	{
+		m_spriteResolveFn  = fn;
+		m_spriteResolveCtx = ctx;
+	}
+
+	/// @brief id のスプライトを等倍で描く。id は assets/sprites/<id>.png に対応
+	///        (audio の hud.play(id) と同じ id 規約)。
+	void sprite(const char* id, float x, float y)
+	{
+		sprite(id, x, y, 1.0f);
+	}
+
+	/// @brief id のスプライトを scale 倍で描く ((x,y) 左上基準)。
+	/// @details resolver 未注入 (旧 host / headless) や未解決 id は何も描かない
+	///          (クラッシュ禁止。解決失敗の警告は resolver 側が 1 回出す)。
+	void sprite(const char* id, float x, float y, float scale)
+	{
+		if (m_spriteResolveFn == nullptr) { return; }
+		const render::Texture* tex = m_spriteResolveFn(m_spriteResolveCtx, id);
+		if (tex == nullptr || !tex->valid()) { return; }
+		drawSprite(*tex, sgc::Rectf{x, y,
+		                            static_cast<float>(tex->width()) * scale,
+		                            static_cast<float>(tex->height()) * scale});
+	}
+
+private:
+	// ABI 注意: Screen* は DLL 境界を渡る。既存メンバのオフセット維持のため末尾追加 (ABI v16)。
+	SpriteResolveFunc m_spriteResolveFn  = nullptr; ///< sprite id resolver (host 注入、未注入は no-op)
+	void*             m_spriteResolveCtx = nullptr; ///< resolver の ctx (host 所有、非所有)
 };
 
 } // namespace mitiru

@@ -87,7 +87,11 @@ namespace mitiru::module
 ///   - v15: Screen 末尾に SW ラスタライズ gating フラグを追加 (#53)。headless で
 ///     capture が読まないフレームの CPU ラスタライズを省く。末尾追加なので
 ///     旧 module (v≤14) は新 host 上で安全 (旧挙動 = 毎フレームラスタライズのまま)。
-constexpr std::uint32_t kCurrentApiVersion = 15;  // v15: Screen 末尾 SW ラスタライズ gating (#53)
+///   - v16: Screen 末尾に sprite resolver (sprite(id) 1 行描画)。host が id→Texture の
+///     resolver (C 関数ポインタ + ctx) を注入し、game は `s.sprite("hero", x, y)` だけで
+///     assets/sprites/<id>.png を描ける。末尾追加なので旧 module (v≤15) は新 host 上で
+///     安全 (resolver メンバに触らないだけ)。
+constexpr std::uint32_t kCurrentApiVersion = 16;  // v16: Screen 末尾に sprite resolver (sprite(id) 1 行描画)
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
@@ -223,19 +227,24 @@ struct InspectableExport
 ///          書くだけ。host が所有する audio engine が再生する。id は host が
 ///          assets/audio/ からロードした論理名 (拡張子抜きファイル名)。
 /// @brief 「この画面演出をやって」という DLL → host の intent (#33、v7 追加)。
-/// @details kind = 0:None / 1:Tint (色フラッシュ)。将来 shake / hitstop を追加可。
-///          tint は host が `Screen::pushTint({r,g,b,a}, durSec)` に直接渡す。
+/// @details kind = 0:None / 1:Tint / 2:FadeOut / 3:FadeIn / 4:Shake / 5:HitStop。
+///          フィールドは kind ごとに読み替える (定数の下の表を参照)。
+///          struct レイアウトは v7 から不変 — kind 追加は ABI 安全 (旧 host は未知 kind を無視)。
 struct VisualIntent
 {
-	std::uint8_t kind;       ///< 0 = none、1 = Tint
+	std::uint8_t kind;       ///< kVisualIntent* (下の定数)
 	std::uint8_t _pad[3];
-	float        r, g, b, a; ///< Tint 色 (a は初期 alpha、時間で fade)
+	float        r, g, b, a; ///< 意味は kind 依存 (Tint=色+初期alpha / Fade=色 / Shake=a が振幅px)
 	float        durSec;     ///< 効果尺 (秒)
 	float        _reserved;  ///< 8byte 境界 padding + 将来用
 };
 
-constexpr std::uint8_t kVisualIntentNone = 0;
-constexpr std::uint8_t kVisualIntentTint = 1;
+constexpr std::uint8_t kVisualIntentNone    = 0;
+constexpr std::uint8_t kVisualIntentTint    = 1;  ///< 色フラッシュ (r,g,b,a=初期alpha、durSec で減衰)
+constexpr std::uint8_t kVisualIntentFadeOut = 2;  ///< 画面を r,g,b へ durSec かけて覆う
+constexpr std::uint8_t kVisualIntentFadeIn  = 3;  ///< r,g,b の覆いを durSec かけて晴らす
+constexpr std::uint8_t kVisualIntentShake   = 4;  ///< 画面揺れ (a=振幅px、durSec で減衰。host が決定論オフセット生成)
+constexpr std::uint8_t kVisualIntentHitStop = 5;  ///< durSec 秒だけ更新停止 (dt=0 で update が呼ばれ続ける)
 
 struct SoundIntent
 {
@@ -359,7 +368,8 @@ struct FrameIntents
 	/// 画面を一瞬色フラッシュさせる (被弾演出など)。host が Screen::pushTint に渡す。
 	/// BGM を再生する (category=1)。host が assets/audio/<id>.wav をストリーム再生する。
 	/// loop=true でループ。連続トラックなので 1 回呼べばよい (毎フレーム呼ばない)。
-	void playMusic(const char* id, float volume = 1.0f, bool loop = true) noexcept
+	void playMusic(const char* id, float volume = 1.0f, bool loop = true,
+	               float crossfadeSec = 0.0f) noexcept
 	{
 		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
 		if (soundIntentCount >= cap) { return; }
@@ -367,6 +377,9 @@ struct FrameIntents
 		s = SoundIntent{};
 		copyStr(s.id, id, sizeof(s.id));
 		s.category = 1; s.volume = volume; s.loop = loop ? 1 : 0; s.pitchScale = 1.0f;
+		// crossfade: 新曲側の fade-in 秒。旧曲のフェードアウトは host (SoundIntentRouter) が
+		// 「別 id へ切り替わった」ことを検知して同じ秒数で自動発行する。
+		s.fadeInSec = crossfadeSec;
 	}
 	/// 再生中の BGM を停止する (fadeOutSec > 0 でフェードアウト)。
 	void stopMusic(float fadeOutSec = 0.0f) noexcept
@@ -381,11 +394,18 @@ struct FrameIntents
 	/// 画面を一瞬色フラッシュさせる (被弾演出など)。host が Screen::pushTint に渡す。
 	void pushTint(float r, float g, float b, float a, float durationSec) noexcept
 	{
+		pushVisual(kVisualIntentTint, r, g, b, a, durationSec);
+	}
+
+	/// 任意 kind の視覚演出 intent を積む (フィールドの意味は kVisualIntent* の表を参照)。
+	void pushVisual(std::uint8_t kind, float r, float g, float b, float a,
+	                float durationSec) noexcept
+	{
 		const int cap = static_cast<int>(sizeof(visualIntents) / sizeof(visualIntents[0]));
 		if (visualIntentCount >= cap) { return; }
 		VisualIntent& v = visualIntents[visualIntentCount++];
 		v = VisualIntent{};
-		v.kind = kVisualIntentTint;
+		v.kind = kind;
 		v.r = r; v.g = g; v.b = b; v.a = a; v.durSec = durationSec;
 	}
 

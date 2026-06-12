@@ -42,7 +42,7 @@ public:
 		std::string_view text, float fontSize,
 		const sgc::Vec2f& pos, const sgc::Colorf& color) override
 	{
-		m_screen.drawText(pos, text, color, fontSize);
+		m_screen.text(text, pos.x, pos.y, color, fontSize);
 	}
 
 	/// @brief テキストを中央揃えで描画する
@@ -56,7 +56,7 @@ public:
 	{
 		const auto size = measure(text, fontSize);
 		const sgc::Vec2f pos{center.x - size.x * 0.5f, center.y - size.y * 0.5f};
-		m_screen.drawText(pos, text, color, fontSize);
+		m_screen.text(text, pos.x, pos.y, color, fontSize);
 	}
 
 	// ── ITextMeasure ──

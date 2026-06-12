@@ -33,13 +33,17 @@
 
 #include <mitiru/core/Color.hpp>
 #include <mitiru/core/Screen.hpp>
+#include <mitiru/core/PodTiming.hpp>  // POD タイマー/トゥイーン (GameMemory に埋めて使う)
 #include <mitiru/debug/ToolRegistry.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru
 {
 
 /// よく使うキー (値は Windows の仮想キーコード)。一覧に無いキーも `Key{0x..}` で渡せる。
+/// 注意: 英字の VK は大文字 ('A'=0x41..'Z') のみ。`Key{'a'}` (小文字) は別の値になり
+/// 一致しない — 文字から作るときは `key('a')` ヘルパを使う (自動で大文字化する)。
 enum class Key : int
 {
 	Left = 0x25, Up = 0x26, Right = 0x27, Down = 0x28,
@@ -65,6 +69,41 @@ enum class Pad : std::uint32_t
 
 /// スティックの傾き (各成分 -1..1)。
 struct Stick { float x, y; };
+
+/// 度 → ラジアン変換。Screen の drawArc / drawPie / pushRotation はラジアン指定なので、
+/// 度で書きたいときは `deg(90)` のように包んで渡す (drawRectRotated / drawGroup は度のまま)。
+[[nodiscard]] constexpr float deg(float degrees) noexcept
+{
+	return degrees * (3.14159265358979323846f / 180.0f);
+}
+
+/// アクションマップの 1 行 — 「論理アクション → キー/パッドの束」。
+/// 表は constexpr 定数 (DLL 焼き込み) か GameMemory のどちらかに置くこと
+/// (リバインド UI を作るなら GameMemory に置けば、キー設定変更も記録/巻き戻し対象になる)。
+/// 未使用スロットは 0 のままで無害 (Key 0 = 無効 VK、Pad 0 = 空ビット)。
+///
+/// ```cpp
+/// enum class Act : std::uint8_t { Jump, Confirm };
+/// static constexpr mitiru::Binding<Act> kMap[] = {
+///     { Act::Jump,    { Key::Space, Key::W, Key::Up },    { Pad::A } },
+///     { Act::Confirm, { Key::Space, Key::Z, Key::Enter }, { Pad::A, Pad::Start } },
+/// };
+/// // update 内: if (in.pressed(kMap, Act::Jump)) jump();
+/// ```
+template <typename Act>
+struct Binding
+{
+	Act act;        ///< 論理アクション (ゲーム定義の enum)
+	Key keys[4];    ///< この内どれかが該当すれば成立 (OR)。未使用は 0 のまま
+	Pad pads[2];    ///< 同上 (パッドボタン)。未使用は 0 のまま
+};
+
+/// 文字 → Key 変換。英字の仮想キーコードは大文字 ('A'..'Z') のみ有効なので、
+/// 英小文字は自動で大文字化する (`key('a') == Key::A`)。数字 '0'..'9' はそのまま。
+[[nodiscard]] constexpr Key key(char c) noexcept
+{
+	return (c >= 'a' && c <= 'z') ? static_cast<Key>(c - 'a' + 'A') : static_cast<Key>(c);
+}
 
 /// 入力の読み取り (`InputSnapshot` の薄いビュー)。コピーは安全 (ポインタ 1 個)。
 class Input
@@ -130,6 +169,53 @@ public:
 	float leftTrigger()  const noexcept { return s_->gamepadAxes[4]; }
 	float rightTrigger() const noexcept { return s_->gamepadAxes[5]; }
 
+	// ── アクションマップ (キーもパッドも 1 つの名前で。表 = 操作仕様書) ──────
+	/// 表の中で act に束ねたキー/パッドのどれかが「押されている間」true。
+	template <typename Act, std::size_t N>
+	bool down(const Binding<Act> (&map)[N], Act act) const noexcept
+	{
+		return boundAny(map, N, act, s_->keysDown, s_->gamepadButtonsDown);
+	}
+	/// 同じく「押した瞬間」true (キー/パッドどちらのエッジでも)。
+	template <typename Act, std::size_t N>
+	bool pressed(const Binding<Act> (&map)[N], Act act) const noexcept
+	{
+		return boundAny(map, N, act, s_->keysJustPressed, s_->gamepadButtonsJustPressed);
+	}
+	/// 同じく「離した瞬間」true。可変ジャンプの頭打ち等。
+	template <typename Act, std::size_t N>
+	bool released(const Binding<Act> (&map)[N], Act act) const noexcept
+	{
+		return boundAny(map, N, act, s_->keysJustReleased, s_->gamepadButtonsJustReleased);
+	}
+
+	// ── 定番セット (宣言ゼロで動く既定。例外が出てきたら Binding 表へ) ────────
+	/// 「決定」を押した瞬間 (Space / Z / Enter + パッド A / Start)。メニュー送り等。
+	bool confirmPressed() const noexcept
+	{
+		return pressed(Key::Space) || pressed(Key::Z) || pressed(Key::Enter) ||
+		       padPressed(Pad::A) || padPressed(Pad::Start);
+	}
+	/// 「キャンセル」を押した瞬間 (Escape + パッド B / Back)。
+	bool cancelPressed() const noexcept
+	{
+		return pressed(Key::Escape) || padPressed(Pad::B) || padPressed(Pad::Back);
+	}
+	/// 移動入力の合成 (矢印 + WASD + 十字キー + 左スティック)。各成分 -1..1。
+	/// `x += in.move().x * speed * dt` だけで全デバイス対応の移動になる。
+	Stick move() const noexcept
+	{
+		float x = s_->gamepadAxes[0];
+		float y = s_->gamepadAxes[1];
+		if (down(Key::Left)  || down(Key::A) || padDown(Pad::Left))  { x -= 1.0f; }
+		if (down(Key::Right) || down(Key::D) || padDown(Pad::Right)) { x += 1.0f; }
+		if (down(Key::Up)    || down(Key::W) || padDown(Pad::Up))    { y -= 1.0f; }
+		if (down(Key::Down)  || down(Key::S) || padDown(Pad::Down))  { y += 1.0f; }
+		x = (x < -1.0f) ? -1.0f : (x > 1.0f ? 1.0f : x);
+		y = (y < -1.0f) ? -1.0f : (y > 1.0f ? 1.0f : y);
+		return { x, y };
+	}
+
 	/// 決定論 seed (録画再生で bit-exact 再現するため、乱数は mitiru::Random rng(in.rngSeed()) で seed する)。
 	std::uint64_t rngSeed() const noexcept { return s_->rngSeed; }
 
@@ -144,6 +230,25 @@ private:
 	static bool held(int vk, const std::uint8_t* table) noexcept
 	{
 		return vk >= 0 && vk < 256 && table[vk] != 0;
+	}
+	/// Binding 表の線形走査 (N は十数行が普通なので十分速い)。同一 act の複数行は OR 合成。
+	template <typename Act>
+	static bool boundAny(const Binding<Act>* map, std::size_t n, Act act,
+	                     const std::uint8_t* keyTable, std::uint32_t padMask) noexcept
+	{
+		for (std::size_t i = 0; i < n; ++i)
+		{
+			if (map[i].act != act) { continue; }
+			for (const Key k : map[i].keys)
+			{
+				if ((int)k != 0 && held((int)k, keyTable)) { return true; }
+			}
+			for (const Pad p : map[i].pads)
+			{
+				if ((padMask & static_cast<std::uint32_t>(p)) != 0) { return true; }
+			}
+		}
+		return false;
 	}
 	const module::InputSnapshot* s_;
 };
@@ -162,11 +267,27 @@ public:
 	void set(const char* key, bool v)        noexcept { s_->pushBool(key, v); }
 	void set(const char* key, const char* v) noexcept { s_->pushString(key, v); }
 
-	void play(const char* soundId, float volume = 1.0f) noexcept { s_->playSound(soundId, volume); }
+	/// 効果音を鳴らす。volume は 0..1 (1=原音量)。**volume 0 = 無音** (鳴らしたくない時は
+	/// 呼ばないのが普通だが、変数で 0 が来ても最大音量にはならない)。
+	void play(const char* soundId, float volume = 1.0f) noexcept
+	{
+		s_->playSound(soundId, clampVolume(volume));
+	}
 	/// 音をピッチ付きで鳴らす (pitch 0.5..2.0、1.0=原音)。1 つの SE を音階で鳴らすリズムゲーム等。
-	void play(const char* soundId, float volume, float pitch) noexcept { s_->playSound(soundId, volume, pitch); }
-	/// BGM を再生する (連続トラック、既定ループ)。開始時に 1 回呼べばよい。毎フレーム呼ばない。
-	void music(const char* id, bool loop = true, float volume = 1.0f) noexcept { s_->playMusic(id, volume, loop); }
+	/// **volume 0 = 無音**。pitch 0 は無意味なので、明示した pitch <= 0 は 1.0 (原音) に丸められる。
+	void play(const char* soundId, float volume, float pitch) noexcept
+	{
+		s_->playSound(soundId, clampVolume(volume), pitch);
+	}
+	/// BGM を再生する (連続トラック、既定ループ)。同じ id なら毎フレーム呼んでも安全 —
+	/// host が直前と同じ id / loop / volume の BGM を重複再生しない (冪等)。**volume 0 = 無音**。
+	/// crossfadeSec > 0 なら、別の BGM が再生中のとき旧曲をフェードアウトしつつ新曲を
+	/// フェードインする (場面転換の定番が 1 行になる)。
+	void music(const char* id, bool loop = true, float volume = 1.0f,
+	           float crossfadeSec = 0.0f) noexcept
+	{
+		s_->playMusic(id, clampVolume(volume), loop, crossfadeSec);
+	}
 	/// 再生中の BGM を停止する (fadeOutSec > 0 でフェードアウト)。
 	void stopMusic(float fadeOutSec = 0.0f) noexcept { s_->stopMusic(fadeOutSec); }
 	void quit() noexcept { s_->requestStop = 1; }   ///< ゲームを終了する
@@ -174,6 +295,28 @@ public:
 	// ── 演出 / デバッグ (必要なときだけ呼ぶ — pulled UI、ゲーム窓は汚さない) ──
 	/// 画面を一瞬 c 色にフラッシュさせる (被弾演出など)。
 	void flash(Color c, float seconds = 0.18f) noexcept { s_->pushTint(c.r, c.g, c.b, c.a, seconds); }
+	/// 画面を黒 (または c 色) で覆っていく。シーン転換の出口。
+	void fadeOut(float seconds = 0.4f, Color c = {0, 0, 0, 1}) noexcept
+	{
+		s_->pushVisual(module::kVisualIntentFadeOut, c.r, c.g, c.b, 1.0f, seconds);
+	}
+	/// 覆いを晴らしていく。シーン転換の入口 (fadeOut と対で使う)。
+	void fadeIn(float seconds = 0.4f, Color c = {0, 0, 0, 1}) noexcept
+	{
+		s_->pushVisual(module::kVisualIntentFadeIn, c.r, c.g, c.b, 1.0f, seconds);
+	}
+	/// 画面を揺らす (被弾・着地・爆発)。magnitude は振幅 px。決定論は host が保証する
+	/// (ゲーム側で乱数を引く必要なし = リプレイも bit-exact)。
+	void shake(float seconds = 0.3f, float magnitude = 8.0f) noexcept
+	{
+		s_->pushVisual(module::kVisualIntentShake, 0, 0, 0, magnitude, seconds);
+	}
+	/// ヒットストップ (seconds の間 dt=0 で時が止まる。update は呼ばれ続ける)。
+	/// 撃破・パリィの手応えが 1 行になる。
+	void hitStop(float seconds = 0.08f) noexcept
+	{
+		s_->pushVisual(module::kVisualIntentHitStop, 0, 0, 0, 0, seconds);
+	}
 	/// このフレームのスクリーンショットを保存する。
 	void screenshot() noexcept { s_->requestScreenshotNow(); }
 	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。
@@ -197,6 +340,11 @@ public:
 	void runJs(const char* code) noexcept { s_->runJs(code); }
 
 private:
+	/// 明示 volume <= 0 を実質無音 (0.0001) に丸める。intent の wire 上では 0 が
+	/// 「未指定 = 既定音量 1.0」に予約されているため (zero-init 互換、SoundIntentRouter)、
+	/// 「無音」は 0 でなく可聴未満の微小値で表す。
+	static constexpr float clampVolume(float v) noexcept { return v > 0.0f ? v : 0.0001f; }
+
 	module::FrameIntents* s_;
 };
 
@@ -312,6 +460,11 @@ inline void registerReflection(ModuleApi* api, const FieldDescriptor* fields, st
 	if (api == nullptr || fields == nullptr) { return; }
 	const std::int32_t fcap =
 		static_cast<std::int32_t>(sizeof(api->reflectFields) / sizeof(api->reflectFields[0]));
+	if (n > fcap)
+	{
+		mitiru::debug::warnOnce("reflect.fields.overflow",
+			"reflection のフィールド申告が ModuleApi の上限を超えています。超過分は無視されます");
+	}
 	const std::int32_t fc = (n < fcap) ? n : fcap;
 	for (std::int32_t i = 0; i < fc; ++i) { api->reflectFields[i] = fields[i]; }
 	api->reflectFieldCount = fc;
@@ -320,7 +473,14 @@ inline void registerReflection(ModuleApi* api, const FieldDescriptor* fields, st
 	const std::int32_t scap =
 		static_cast<std::int32_t>(sizeof(api->reflectSchemas) / sizeof(api->reflectSchemas[0]));
 	std::int32_t sc = static_cast<std::int32_t>(reg.size());
-	if (sc > scap) { sc = scap; }
+	if (sc > scap)
+	{
+		// 黙って切り捨てない: 9 個目以降の要素 struct は inspector / AI に出ない。
+		mitiru::debug::warnOnce("reflect.schemas.overflow",
+			"MITIRU_REFLECT_STRUCT の登録が上限 8 個を超えています。"
+			"9 個目以降の要素 struct は inspector / AI へ出ません");
+		sc = scap;
+	}
 	for (std::int32_t i = 0; i < sc; ++i) { api->reflectSchemas[i] = reg[static_cast<std::size_t>(i)]; }
 	api->reflectSchemaCount = sc;
 }
@@ -421,9 +581,20 @@ void unregisterGame(void* memory) { delete static_cast<T*>(memory); }
 #define MITIRU_FE_15(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_14(M, T, __VA_ARGS__))
 #define MITIRU_FE_16(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_15(M, T, __VA_ARGS__))
 
-#define MITIRU_FE_PICK(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,NAME,...) NAME
+// MITIRU_REFLECT / MITIRU_REFLECT_STRUCT は最大 16 フィールド。17 個以上 (24 個まで) は
+// MITIRU_FE_ERR が選ばれ、削除済み関数
+// `mitiruReflect_Max16Fields_SplitOrUseReflectStruct` (Reflection.hpp) の使用エラーになる
+// — 関数名がそのまま対処法: フィールドを分割するか、ネスト部分を MITIRU_REFLECT_STRUCT
+// へ切り出す。25 個以上はプリプロセッサ構造上ここで拾えず、別の compile error になる。
+#define MITIRU_FE_ERR(M, T, ...)                                               \
+	::mitiru::module::detail::mitiruReflect_Max16Fields_SplitOrUseReflectStruct()
+
+#define MITIRU_FE_PICK(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16, \
+	_17,_18,_19,_20,_21,_22,_23,_24,NAME,...) NAME
 #define MITIRU_FOR_EACH(M, T, ...)                                             \
 	MITIRU_RFL_EXPAND(MITIRU_FE_PICK(__VA_ARGS__,                              \
+		MITIRU_FE_ERR, MITIRU_FE_ERR, MITIRU_FE_ERR, MITIRU_FE_ERR,            \
+		MITIRU_FE_ERR, MITIRU_FE_ERR, MITIRU_FE_ERR, MITIRU_FE_ERR,            \
 		MITIRU_FE_16, MITIRU_FE_15, MITIRU_FE_14, MITIRU_FE_13, MITIRU_FE_12,  \
 		MITIRU_FE_11, MITIRU_FE_10, MITIRU_FE_9, MITIRU_FE_8, MITIRU_FE_7,     \
 		MITIRU_FE_6, MITIRU_FE_5, MITIRU_FE_4, MITIRU_FE_3, MITIRU_FE_2,       \

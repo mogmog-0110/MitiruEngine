@@ -65,6 +65,7 @@
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/input/GamepadInput.hpp>
 #include <mitiru/input/SdlGamepadInput.hpp>
+#include <mitiru/render/SpriteCache.hpp>
 #include <mitiru/util/ImageWriter.hpp>
 #include <mitiru/observe/Snapshot.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
@@ -90,6 +91,10 @@ namespace mitiru::module { class ModuleHost; }
 namespace mitiru::cef { class StateStore; }
 // IAudioEngine は applyVolumes() で setVolume() を呼ぶため完全型が必要
 #include <mitiru/audio/AudioEngine.hpp>
+// SoundIntentRouter は member (m_soundIntentRouter) として保持するため完全型が必要
+#include <mitiru/module/SoundIntentRouter.hpp>
+// VisualIntentFx は member (m_moduleVisualFx) として保持するため完全型が必要
+#include <mitiru/module/VisualIntentFx.hpp>
 namespace mitiru::render { class PostProcessManager; }
 
 #include <mitiru/server/EngineHttpServer.hpp>
@@ -338,19 +343,23 @@ public:
 	///   - 直後に `api.on_init` が non-null なら呼び出す
 	bool loadModule(const std::filesystem::path& modulePath);
 
-	/// @brief 現在 load 済みの module を unload する。call safe (未 load なら no-op)
-	/// @details on_shutdown を呼び、FreeLibrary し、callback table を null 化する。
-	///          memory は破棄しない (reload で再利用される; 完全に手放すには
-	///          `discardModuleMemory()` を別途呼ぶこと — v0.2.0 では未提供)
+	/// @brief 現在 load 済みの module を unload する (最終終了用)。call safe (未 load なら no-op)
+	/// @details on_shutdown → unloadFn (DLL 側が memory を delete) → FreeLibrary →
+	///          memory pointer を null 化する。**memory はここで破棄される** —
+	///          状態を保ったまま入れ替えるのは reloadModule の役目 (こちらは unloadFn を呼ばない)。
 	void unloadModule() noexcept;
 
-	/// @brief 現在の module を unload して新しい (or 同じ) path から再 load
+	/// @brief 新 DLL を先に load し、成功した時だけ現在の module と差し替える (hot reload)
 	/// @param modulePath 新 DLL の path
-	/// @return 成功なら true。失敗時 module は unloaded 状態に置かれる
+	/// @return 成功なら true。**失敗時は旧 module がそのまま動き続ける** (理由は moduleLoadError())
 	/// @details
-	///   - 既存 memory pointer は新 DLL に渡される (state 維持)
-	///   - rebuild 直後の DLL を hot-swap するための主用途
+	///   - 既存 memory pointer は新 DLL に渡される (state 維持)。旧 DLL の unloadFn /
+	///     on_shutdown は呼ばない (呼ぶと memory が delete され UAF になる)
+	///   - 新規確保時のみ on_init が走る (reload では走らない = init() で状態が戻らない)
 	bool reloadModule(const std::filesystem::path& modulePath);
+
+	/// @brief 直近の module load / reload 失敗の理由 (人間向け 1 行)。成功時は空
+	[[nodiscard]] std::string moduleLoadError() const;
 
 	/// @brief module を load してから main loop を回す統合エントリ
 	/// @param modulePath 元 DLL の path
@@ -627,6 +636,9 @@ private:
 	std::unique_ptr<cef::StateStore>        m_moduleStateStore;
 	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
 	observe::AudioLog                        m_audioLog; ///< AI 観測用 音イベントログ (/api/ai/audio)
+	module::SoundIntentRouter                m_soundIntentRouter; ///< BGM 同 id 連打の冪等化 (直前 music を記憶)
+	module::VisualIntentFx                   m_moduleVisualFx;    ///< fade/shake/hitstop の host 側演出状態 (kind 2-5)
+	render::SpriteCache                      m_spriteCache;       ///< sprite(id) 用 id→Texture キャッシュ (Screen へ resolver 注入、ABI v16)
 	// 直近に書き出した inspector export 内容の FNV-1a hash。同一なら parse+rebuild+
 	// disk-write を丸ごと省く (inspector は同じ内容を読み続けるので観測結果は不変)。
 	std::uint64_t                            m_lastInspectorDigest = 0;

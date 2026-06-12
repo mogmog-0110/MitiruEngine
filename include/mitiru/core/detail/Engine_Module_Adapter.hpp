@@ -23,6 +23,7 @@
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/debug/DebugPrint.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
@@ -99,6 +100,17 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				}
 			}
 
+			// HitStop (kind=5): 残量がある間 module へ渡す dt を 0 にする (update は
+			// 呼び続ける)。intent は決定論的な module 出力なので replay でも同じ
+			// フレームで発火し、固定ステップ dt で減衰するため bit-exact が保たれる。
+			// fade/shake もここで実時間 (固定ステップ) で進める — 演出は engine 側状態
+			// であり GameMemory には入れない (観測対象外)。
+			{
+				auto& fx = m_engine->m_moduleVisualFx;
+				if (fx.hitStopActive()) { effectiveDt = 0.0f; }
+				fx.advance(dt);
+			}
+
 			const auto& api = m_engine->moduleApi();
 			if (api.on_update != nullptr)
 			{
@@ -126,10 +138,34 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 
 		void draw(Screen& screen) override
 		{
+			const auto& fx = m_engine->m_moduleVisualFx;
+
+			// Shake (kind=4): game 描画全体を frame index ベースの決定的オフセットで
+			// 平行移動する (乱数なし — リプレイ bit-exact)。
+			const bool shaking = fx.shakeActive();
+			if (shaking)
+			{
+				const auto off = fx.shakeOffset(m_engine->frameNumber());
+				screen.pushTransform(off.dx, off.dy);
+			}
+
 			const auto& api = m_engine->moduleApi();
 			if (api.on_draw != nullptr)
 			{
 				api.on_draw(m_engine->moduleMemory(), &screen);
+			}
+
+			if (shaking) { screen.popTransform(); }
+
+			// FadeOut/FadeIn (kind=2/3) の覆い。transform の外で描くので shake に
+			// 影響されず、fadeIn が来るまで全画面を覆い続ける。
+			const auto ov = fx.overlay();
+			if (ov.a > 0.0f)
+			{
+				screen.drawRect(sgc::Rectf{0.0f, 0.0f,
+				                           static_cast<float>(screen.width()),
+				                           static_cast<float>(screen.height())},
+				                sgc::Colorf{ov.r, ov.g, ov.b, ov.a});
 			}
 		}
 
@@ -388,6 +424,36 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 {
 	auto* intents = m_moduleFrameIntents.get();
 	if (intents == nullptr) { return; }
+
+	// 上限到達の検知 (R-01 級・初回のみ)。DLL 側 helper は満杯時に黙って drop するため、
+	// count == 容量 を「超過分が落ちた可能性あり」として一度だけ知らせる。
+	// int 比較 3 つだけなので hot path への影響は無視できる (warnOnce は到達時のみ呼ぶ)。
+	{
+		constexpr std::int32_t kPushCap = static_cast<std::int32_t>(
+			sizeof(intents->statePushes) / sizeof(intents->statePushes[0]));
+		constexpr std::int32_t kWatchCap = static_cast<std::int32_t>(
+			sizeof(intents->exportedInspectables) / sizeof(intents->exportedInspectables[0]));
+		constexpr std::int32_t kSoundCap = static_cast<std::int32_t>(
+			sizeof(intents->soundIntents) / sizeof(intents->soundIntents[0]));
+		if (intents->statePushCount >= kPushCap)
+		{
+			mitiru::debug::warnOnce("intents.statePush.cap",
+				"HUD 更新が 1 フレーム " + std::to_string(kPushCap)
+				+ " 件の上限に到達 — 超過分は落ちている");
+		}
+		if (intents->exportedInspectableCount >= kWatchCap)
+		{
+			mitiru::debug::warnOnce("intents.watch.cap",
+				"watch が 1 フレーム " + std::to_string(kWatchCap)
+				+ " 件の上限に到達 — 超過分は落ちている");
+		}
+		if (intents->soundIntentCount >= kSoundCap)
+		{
+			mitiru::debug::warnOnce("intents.sound.cap",
+				"sound 再生要求が 1 フレーム " + std::to_string(kSoundCap)
+				+ " 件の上限に到達 — 超過分は落ちている");
+		}
+	}
 
 	// 単純な flag 群
 	if (intents->requestStop) { requestStop(); }
@@ -686,10 +752,11 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			static_cast<std::int32_t>(sizeof(intents->soundIntents) /
 			                          sizeof(intents->soundIntents[0])));
 		// category / stop / loop / volume の解釈は applySoundIntent に集約 (ADR 0008)。
+		// BGM の同 id 連打は router が冪等化する (毎フレーム hud.music("bgm") を許容)。
 		for (std::int32_t i = 0; i < n; ++i)
 		{
 			const auto& si = intents->soundIntents[i];
-			mitiru::module::applySoundIntent(*m_audioEngine, si);
+			if (!m_soundIntentRouter.apply(*m_audioEngine, si)) { continue; }  // dedupe skip
 			// AI 観測ログ (/api/ai/audio): 適用済み intent をそのまま記録する。
 			m_audioLog.push(frameNumber(), si.id, si.category, si.loop, si.stop,
 			                si.volume, si.pitchScale);
@@ -700,9 +767,9 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// 再生有無に関わらず呼ぶ (静かな区間でも ended voice が滞留しないように)。
 	if (m_audioEngine) { m_audioEngine->update(); }
 
-	// VisualIntent (#33、v7): tint を Screen::pushTint に流す。kind=0 は no-op。
-	// future: shake/hitstop は game-side state なのでここでは扱わない (game が同じ
-	// visualIntents を自分で読む将来拡張点)。
+	// VisualIntent (#33、v7): kind=1 (Tint) は Screen::pushTint へ、kind 2-5
+	// (FadeOut/FadeIn/Shake/HitStop) は VisualIntentFx へ流す。kind=0 は no-op。
+	// FX の適用 (覆い描画・shake transform・dt=0 gating) は ModuleAdapter が行う。
 	if (intents->visualIntentCount > 0 && m_screen)
 	{
 		const std::int32_t n = std::min<std::int32_t>(
@@ -712,9 +779,16 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		for (std::int32_t i = 0; i < n; ++i)
 		{
 			const auto& vi = intents->visualIntents[i];
-			if (vi.kind == mitiru::module::kVisualIntentTint && vi.durSec > 0.0f)
+			if (vi.kind == mitiru::module::kVisualIntentTint)
 			{
-				m_screen->pushTint(sgc::Colorf{vi.r, vi.g, vi.b, vi.a}, vi.durSec);
+				if (vi.durSec > 0.0f)
+				{
+					m_screen->pushTint(sgc::Colorf{vi.r, vi.g, vi.b, vi.a}, vi.durSec);
+				}
+			}
+			else
+			{
+				(void)m_moduleVisualFx.applyIntent(vi);  // kind 2-5 (それ以外は no-op)
 			}
 		}
 	}

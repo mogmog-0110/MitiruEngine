@@ -174,7 +174,7 @@ public:
 		const float fps = (m_lastFrameMs > 0.001f) ? (1000.0f / m_lastFrameMs) : 0.0f;
 		const sgc::Colorf fpsColor = fpsToColor(fps);
 		const std::string fpsText = "FPS: " + formatFloat(fps, 1) + "  (" + formatFloat(m_lastFrameMs, 2) + "ms)";
-		screen.drawText({ox + 4.0f, oy + 4.0f}, fpsText, fpsColor, 16.0f);
+		screen.text(fpsText, ox + 4.0f, oy + 4.0f, fpsColor, 16.0f);
 
 		// フレーム時間グラフ
 		drawFrameGraph(screen, ox + 4.0f, oy + 24.0f, kOverlayWidth - 8.0f, 60.0f);
@@ -199,7 +199,7 @@ public:
 		screen.drawRect(sgc::Rectf{ox, oy, panelW, panelH}, bgColor);
 
 		// タイトル
-		screen.drawText({ox + 8.0f, oy + 8.0f}, "Profiler Timeline", {1.0f, 1.0f, 1.0f, 1.0f}, 16.0f);
+		screen.text("Profiler Timeline", ox + 8.0f, oy + 8.0f, {1.0f, 1.0f, 1.0f, 1.0f}, 16.0f);
 
 		// タイムライン（セクション毎にネスト深度に応じた帯を描画）
 		const float timelineY = oy + 32.0f;
@@ -226,18 +226,16 @@ public:
 
 			// セクション名とタイミング
 			const std::string label = name + " " + formatFloat(stats.durationMs, 2) + "ms";
-			screen.drawText(
-				{ox + 82.0f + indent, curY + 2.0f},
-				label, {1.0f, 1.0f, 1.0f, 0.9f}, 8.0f);
+			screen.text(label, ox + 82.0f + indent, curY + 2.0f,
+			            {1.0f, 1.0f, 1.0f, 0.9f}, 8.0f);
 
 			// 統計（min/max/avg）
 			const std::string statsText =
 				"min:" + formatFloat(stats.minMs, 2) +
 				" max:" + formatFloat(stats.maxMs, 2) +
 				" avg:" + formatFloat(stats.avgMs, 2);
-			screen.drawText(
-				{ox + 82.0f + indent + barW + 4.0f, curY + 2.0f},
-				statsText, {0.7f, 0.7f, 0.7f, 0.8f}, 8.0f);
+			screen.text(statsText, ox + 82.0f + indent + barW + 4.0f, curY + 2.0f,
+			            {0.7f, 0.7f, 0.7f, 0.8f}, 8.0f);
 
 			curY += barHeight;
 		}
@@ -451,7 +449,7 @@ private:
 			screen.drawRect(sgc::Rectf{x, curY, barW, barH - 2.0f}, color);
 
 			const std::string label = s.name + " " + formatFloat(s.durationMs, 2) + "ms";
-			screen.drawText({x + 2.0f, curY + 1.0f}, label, {1.0f, 1.0f, 1.0f, 0.9f}, 8.0f);
+			screen.text(label, x + 2.0f, curY + 1.0f, {1.0f, 1.0f, 1.0f, 0.9f}, 8.0f);
 
 			curY += barH;
 		}

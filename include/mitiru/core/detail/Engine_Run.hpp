@@ -62,6 +62,10 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		m_window->width(), m_window->height());
 	m_screen = std::make_unique<Screen>(logicalSize.width, logicalSize.height);
 
+	// sprite(id) 1 行描画の resolver を注入する (ABI v16)。基準 dir は loadModule が
+	// DLL 隣接の assets/sprites に設定済み (module 無しは cwd 相対の既定のまま)。
+	m_screen->setSpriteResolver(&render::SpriteCache::resolve, &m_spriteCache);
+
 	// 背景色の初期値を config から設定する（以後はゲームの draw() 内 screen->clear() が制御）。
 	m_screen->clear(config.backgroundColor);
 
@@ -212,6 +216,7 @@ MITIRU_INLINE void mitiru::Engine::stepFrames(
 			m_window->width(), m_window->height());
 		m_screen = std::make_unique<Screen>(
 			logicalSize.width, logicalSize.height);
+		m_screen->setSpriteResolver(&render::SpriteCache::resolve, &m_spriteCache);
 
 		/// headlessモードではソフトウェアフレームバッファを自動有効化
 		m_screen->enableSoftwareFramebuffer();
@@ -261,6 +266,7 @@ MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::runAndCapture(
 	initialize(config);
 	const auto logicalSize = game.layout(m_window->width(), m_window->height());
 	m_screen = std::make_unique<Screen>(logicalSize.width, logicalSize.height);
+	m_screen->setSpriteResolver(&render::SpriteCache::resolve, &m_spriteCache);
 	createRenderPipeline(logicalSize.width, logicalSize.height);
 	game.setInputState(&m_inputState);
 	game.setEngine(this);

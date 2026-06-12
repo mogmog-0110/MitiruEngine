@@ -44,7 +44,9 @@ struct FixedVec
 	constexpr void                      clear() noexcept { count = 0; }
 
 	/// @brief 末尾追加。容量超過時は捨てて false を返す (例外なし)。
-	constexpr bool push_back(const T& v) noexcept
+	/// @return 追加できたら true、満杯で捨てたら false。黙った取りこぼしを防ぐため
+	///         [[nodiscard]] — 戻り値を見て分岐するか、full() を先に確認すること。
+	[[nodiscard]] constexpr bool push_back(const T& v) noexcept
 	{
 		if (count >= N) { return false; }
 		data[count++] = v;

@@ -70,7 +70,7 @@ public:
                 drawProgressBar(screen, sx, sy, elem);
                 break;
             case WorldUIType::Label:
-                screen.drawText({sx, sy}, elem.text, elem.textColor, elem.fontSize);
+                screen.text(elem.text, sx, sy, elem.textColor, elem.fontSize);
                 break;
             case WorldUIType::Icon:
                 screen.drawCircle({sx, sy}, elem.iconSize * 0.5f, elem.iconColor);
