@@ -9,6 +9,7 @@
 /// 直して保存 → ビルド成功でファイルが消え、帯も消える。
 /// poll ロジックと描画 (drawTo) は分離されており、ロジック単体でテストできる。
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -67,30 +68,56 @@ public:
 		reload();
 	}
 
-	/// @brief 上部に半透明濃赤帯 + エラー行を描く (active でなければ no-op)。
-	/// @details ScreenT は width()/drawRect/drawTextInRect を持つこと (テストは mock 可)。
+	/// @brief 画面を暗転させ、中央に「ビルド失敗」カードを出す (active でなければ no-op)。
+	/// @details ここはゲームの一部ではない（エンジンからの通知）ので、ゲーム画面に
+	///          薄い帯を重ねるのではなく、画面全体を暗くして中央の読みやすいカードに
+	///          まとめる。直して保存すれば消える。ScreenT は width()/height()/
+	///          drawRect/drawTextInRect を持つこと (テストは mock 可)。
 	template <class ScreenT>
 	void drawTo(ScreenT& screen) const
 	{
 		if (m_lines.empty()) { return; }
-		const float w       = static_cast<float>(screen.width());
-		const float lineH   = 20.0f;
-		const float pad     = 10.0f;
-		const float titleH  = 24.0f;
-		const float bandH   = pad * 2.0f + titleH
-		                    + lineH * static_cast<float>(m_lines.size());
-		screen.drawRect(sgc::Rectf{0.0f, 0.0f, w, bandH},
-		                sgc::Colorf{0.55f, 0.05f, 0.08f, 0.92f});
-		screen.drawTextInRect(sgc::Rectf{pad, pad, w - pad * 2.0f, titleH},
-		                      "BUILD FAILED — 保存すると再ビルドされます",
-		                      sgc::Colorf{1.0f, 0.85f, 0.85f, 1.0f}, 18.0f);
-		float y = pad + titleH;
+		const float W = static_cast<float>(screen.width());
+		const float H = static_cast<float>(screen.height());
+
+		// ① 画面全体を暗転 = 「これはゲームではなくエンジンの通知」と一目で分かる。
+		screen.drawRect(sgc::Rectf{0.0f, 0.0f, W, H}, sgc::Colorf{0.04f, 0.04f, 0.06f, 0.72f});
+
+		// レイアウト。
+		const float padX    = 36.0f;
+		const float padY    = 30.0f;
+		const float accentH = 6.0f;
+		const float titleH  = 40.0f;
+		const float lineH   = 28.0f;
+		const float hintH   = 26.0f;
+		const float gap     = 14.0f;
+		const float cardW   = std::min(W - 60.0f, 1080.0f);
+		const float bodyH   = lineH * static_cast<float>(m_lines.size());
+		const float cardH   = padY * 2.0f + titleH + gap + bodyH + gap + hintH;
+		const float cardX   = (W - cardW) * 0.5f;
+		const float cardY   = (H - cardH) * 0.5f;
+		const float innerW  = cardW - padX * 2.0f;
+
+		// ② 中央カード + 上の赤いアクセント。
+		screen.drawRect(sgc::Rectf{cardX, cardY, cardW, cardH}, sgc::Colorf{0.13f, 0.12f, 0.15f, 0.98f});
+		screen.drawRect(sgc::Rectf{cardX, cardY, cardW, accentH}, sgc::Colorf{0.86f, 0.20f, 0.24f, 1.0f});
+
+		// ③ 見出し → エラー行 → ヒント。
+		const float x = cardX + padX;
+		float y = cardY + padY;
+		screen.drawTextInRect(sgc::Rectf{x, y, innerW, titleH}, "ビルド失敗",
+		                      sgc::Colorf{1.0f, 0.55f, 0.55f, 1.0f}, 30.0f);
+		y += titleH + gap;
 		for (const auto& line : m_lines)
 		{
-			screen.drawTextInRect(sgc::Rectf{pad, y, w - pad * 2.0f, lineH},
-			                      line, sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}, 14.0f);
+			screen.drawTextInRect(sgc::Rectf{x, y, innerW, lineH}, line,
+			                      sgc::Colorf{0.92f, 0.92f, 0.95f, 1.0f}, 16.0f);
 			y += lineH;
 		}
+		y += gap;
+		screen.drawTextInRect(sgc::Rectf{x, y, innerW, hintH},
+		                      "直して保存すると、自動で再ビルドして続きから再開します",
+		                      sgc::Colorf{0.66f, 0.68f, 0.74f, 1.0f}, 15.0f);
 	}
 
 private:

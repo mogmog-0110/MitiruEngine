@@ -62,3 +62,15 @@ if(WIN32 AND TARGET SDL2::SDL2)
 			"$<TARGET_FILE_DIR:mitiru_host>/SDL2.dll"
 		COMMENT "mitiru_host: deploying SDL2.dll (DirectInput gamepad support)")
 endif()
+
+# 同梱の日本語フォント (normal=M+ Rounded 1c / retro=PixelMplus) を host の隣へ配る。
+# initFont が exe 相対で解決するので、native 描画 (エラー帯・ゲーム内テキスト) が日本語可。
+foreach(_jpfont "MPLUSRounded1c-Regular.ttf" "PixelMplus12-Regular.ttf")
+	if(EXISTS "${CMAKE_SOURCE_DIR}/assets/fonts/${_jpfont}")
+		add_custom_command(TARGET mitiru_host POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				"${CMAKE_SOURCE_DIR}/assets/fonts/${_jpfont}"
+				"$<TARGET_FILE_DIR:mitiru_host>/assets/fonts/${_jpfont}"
+			COMMENT "mitiru_host: deploying bundled JP font (${_jpfont})")
+	endif()
+endforeach()

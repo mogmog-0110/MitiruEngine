@@ -31,6 +31,11 @@ endif()
 add_subdirectory(mitiru_host)
 add_subdirectory(mitiru_start)
 add_subdirectory(timetravel_demo)   # 差別化デモ (time-travel / AI Lens、ADR 0017/0018)
+# catch: チュートリアルの題材 (スプライト入門)。仮素材のため dev-only・snapshot 非同梱。
+# EXISTS ガード必須 (allowlist 非追加なので release snapshot には catch/ が無い)。
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/catch/CMakeLists.txt")
+	add_subdirectory(catch)
+endif()
 # hookline: サンプル再建の試作 (2026-06-11 凍結、dev-only)。snapshot 非同梱。
 # 凍結理由 = 「いかにも AI が作ったゲーム」感: プレースホルダー幾何美術 + 合成音 +
 # チェックリスト設計で、作家性 (具体的な美学への決断・手の入った素材) が無い。

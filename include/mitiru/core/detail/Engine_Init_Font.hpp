@@ -2,6 +2,7 @@
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/resource/AssetPath.hpp>
 
 #include <fstream>
 
@@ -12,7 +13,21 @@ MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 	// フォント検索パスリスト（日本語対応フォントを優先）
 	std::vector<std::string> searchPaths;
 	if (!userPath.empty()) { searchPaths.push_back(userPath); }
+	// 同梱の日本語フォントを最優先で探す。既定は普通フォント (M+ Rounded 1c)、
+	// その後にレトロ (PixelMplus) を fallback として見る。CMake が host exe の隣へ
+	// 配るので exe 相対を先に、その後リポジトリ相対も見る。これでネイティブ描画
+	// (drawTextInRect 等) が日本語可になる — CascadiaMono 等の日本語非対応 mono
+	// より先に拾わせるのが肝。host は --font-face で fontPath を明示指定する。
+	const std::string exeFontDir = mitiru::resource::AssetPath::executableDir();
+	searchPaths.push_back(exeFontDir + "/assets/fonts/MPLUSRounded1c-Regular.ttf");
+	searchPaths.push_back(exeFontDir + "/assets/fonts/PixelMplus12-Regular.ttf");
 	searchPaths.insert(searchPaths.end(), {
+		"assets/fonts/MPLUSRounded1c-Regular.ttf",
+		"../assets/fonts/MPLUSRounded1c-Regular.ttf",
+		"../../assets/fonts/MPLUSRounded1c-Regular.ttf",
+		"assets/fonts/PixelMplus12-Regular.ttf",
+		"../assets/fonts/PixelMplus12-Regular.ttf",
+		"../../assets/fonts/PixelMplus12-Regular.ttf",
 		"assets/fonts/default.ttf",
 		"../assets/fonts/default.ttf",
 		"../../assets/fonts/default.ttf",

@@ -36,6 +36,7 @@
 
 // アンブレラ廃止 (リファクタ P2) — 使うものだけ明示 include
 #include <mitiru/core/Engine.hpp>
+#include <mitiru/resource/AssetPath.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
 #include <mitiru/asset/AssetPack.hpp> // vfs: pack mount / readGlobal (ADR 0016)
@@ -257,7 +258,8 @@ struct CliArgs
 	std::string           expectPath;          // --expect <f>: 最終 view.* 状態を検証
 	std::string           stateDiffA;          // --state-diff <a> <b>: 2 録画の分岐 frame を報告
 	std::string           stateDiffB;
-	std::string           fontMode;            // --font none|latin|kana|japanese (空=none=フォント skip)
+	std::string           fontMode;            // --font none|latin|kana|japanese (空=既定=かな)
+	std::string           fontFace;            // --font-face normal|retro (空=normal=M+ Rounded)
 	bool                  loFi = false;        // --lofi: 低解像+量子化+Bayerディザ
 	int                   loFiW = 320, loFiH = 240; // --lofi-size WxH
 	int                   loFiBitsR = 5, loFiBitsG = 6, loFiBitsB = 5; // --lofi-bits R,G,B (既定 RGB565)
@@ -319,6 +321,10 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--font")
 		{
 			if (i + 1 < argc) { out.fontMode = argv[++i]; }
+		}
+		else if (a == "--font-face")
+		{
+			if (i + 1 < argc) { out.fontFace = argv[++i]; }
 		}
 		else if (a == "--http-port")
 		{
@@ -496,7 +502,8 @@ void printUsage()
 		"  --perf           実フレーム時間の統計 (avg/p50/p95/max) を 600 フレームごとに表示 (#53)\n"
 		"                   GPU 実機の描画コスト計測は windowed + --perf --no-vsync で\n"
 		"  --url <url>      override CEF start URL\n"
-		"  --font <mode>    none|latin|kana|japanese — native draw 用フォント\n"
+		"  --font <mode>    none|latin|kana|japanese — native draw 用フォント (既定 kana)\n"
+		"  --font-face <f>  normal|retro — 普通(M+ Rounded) / レトロ(PixelMplus) (既定 normal)\n"
 		"                   (既定 none = フォント skip・起動高速。日本語 native text を\n"
 		"                    出すなら japanese)\n"
 		"  --lofi           低解像描画+パレット量子化+Bayerディザ (DX12, DirectX5期の質感)\n"
@@ -950,20 +957,28 @@ int main(int argc, char* argv[])
 		ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 	}
 #endif
-	// フォント: 既定はスキップ (起動高速。HTML/CEF UI なら日本語もそちらで出せる)。
-	// native draw (drawTextInRect 等) で日本語/かなを描きたい game は
-	// --font japanese|kana を指定する (エンジンが該当 glyph の SDF atlas を生成)。
+	// フォント: 既定で同梱の日本語フォント (PixelMplus) を読み、native draw
+	// (drawTextInRect 等) でも日本語が出せる。かなは SDF atlas、漢字は TTF
+	// 直描画 fallback なので起動は軽い。最速・純レトロ (8x8 ビットマップ ASCII)
+	// で起動したい時は --font none。全漢字を SDF 化したい時は --font japanese。
 	using FontAtlas = mitiru::EngineConfig::FontAtlas;
-	if (args.fontMode.empty() || args.fontMode == "none")
+	if (args.fontMode == "none")
 	{
 		cfg.skipDefaultFont = true;
 	}
 	else
 	{
 		cfg.skipDefaultFont = false;
-		if      (args.fontMode == "latin") { cfg.fontAtlasRanges = FontAtlas::Latin; }
-		else if (args.fontMode == "kana")  { cfg.fontAtlasRanges = FontAtlas::Kana; }
-		else                                { cfg.fontAtlasRanges = FontAtlas::Japanese; }
+		if      (args.fontMode == "latin")    { cfg.fontAtlasRanges = FontAtlas::Latin; }
+		else if (args.fontMode == "japanese") { cfg.fontAtlasRanges = FontAtlas::Japanese; }
+		else                                   { cfg.fontAtlasRanges = FontAtlas::Kana; }  // 既定 (空 / "kana")
+
+		// フォントフェイス: 既定 normal = M+ Rounded 1c (普通の丸ゴシック)、
+		// retro = PixelMplus (ファミコン風ピクセル)。exe 隣の同梱フォントを解決する。
+		const std::string faceFile = (args.fontFace == "retro")
+			? "assets/fonts/PixelMplus12-Regular.ttf"
+			: "assets/fonts/MPLUSRounded1c-Regular.ttf";
+		cfg.fontPath = mitiru::resource::AssetPath::resolve(faceFile);
 	}
 	// Mitiru Saturn 標準背景 — シルバーグレー (#c8c8c8)。エンジン同梱の全 surface
 	// (hello_game / launcher / companion) はこのシルバー地に HUD を描き、Saturn の
