@@ -36,6 +36,11 @@
       <div class="wrap">
         <div class="prose">
 
+          <figure>
+            <img src="assets/ui_hud.png" alt="HTML / CSS で組んだゲーム HUD の例。左上に『SCORE 12,800』、画面中央に角丸の CLEAR! モーダル（金色のタイトル・サブテキスト・『もう一度』ボタン）が、背後の暗いゲーム画面に重なっている。">
+            <figcaption>HTML / CSS で組んだ HUD の例。スコア表示も中央の CLEAR! モーダルも、見た目はすべて CSS（角丸・影・グラデ・背景ぼかし）。つなぎの JavaScript は書いていません——作り方はこのページの通りで、まとめは <a href="#example">下の完成例</a>に。</figcaption>
+          </figure>
+
           <!-- ── 仕組み ──────────────────────────── -->
           <h2 id="how">仕組み — 値は一方通行で流れる</h2>
           <p>状態を持つのは C++ だけ。C++ → 画面は「値を push する」、画面 → C++ は「操作を通知する」。この 2 方向しかない。ゲームの状態を HTML 側に持たせないので、表示がズレない。</p>
