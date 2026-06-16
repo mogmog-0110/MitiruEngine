@@ -67,7 +67,7 @@ mitiru run</pre>
 
           <h3>ルールを C++ で書く</h3>
           <p>状態を <code>struct</code> にまとめ、<code>update</code> に毎フレームの処理を書きます。入力は <code>in.down(...)</code> で読み、画面に出したい値は <code>hud.set(...)</code> で送ります。</p>
-<pre><span class="k">#include</span> &lt;mitiru/module/Game.hpp&gt;
+<pre><span class="k">#include</span> &lt;mitiru.hpp&gt;
 <span class="k">using namespace</span> mitiru;
 
 <span class="k">struct</span> <span class="t">MyGame</span> {
@@ -80,7 +80,7 @@ mitiru run</pre>
         hud.set(<span class="s">"view.hud.score"</span>, score);         <span class="c">// 画面へ送る</span>
     }
     <span class="k">void</span> draw(<span class="t">Screen</span>&amp; screen) {
-        screen.drawRect(sgc::Rectf{x, 320, 48, 48}, sgc::Colorf{1,1,1,1});
+        screen.drawRect({x, 320, 48, 48}, {1, 1, 1, 1});
     }
 };
 <span class="t">MITIRU_GAME</span>(MyGame)   <span class="c">// これで DLL の入口が出来る</span></pre>

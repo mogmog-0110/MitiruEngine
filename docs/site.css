@@ -132,7 +132,8 @@ section.band.soft{ background:var(--panel); border-top:1px solid var(--line-soft
 @media (max-width:560px){ .imgrow{ grid-template-columns:repeat(2,1fr); } }
 
 /* ── カードグリッド ─────────────────────── */
-.cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(248px,1fr)); gap:1rem; }
+/* minmax は content 幅(1080px)で 4 枚が 1 行に収まる値に。248px だと 4 枚が 3+1 に折れる */
+.cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(214px,1fr)); gap:1rem; }
 .card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
   padding:1.3rem; box-shadow:var(--shadow); transition:border-color .15s, box-shadow .15s, transform .15s;
   text-decoration:none; color:var(--ink-body); display:block; }

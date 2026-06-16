@@ -299,7 +299,7 @@ cd my-catch</pre>
             <figcaption>実機の録画（左＝エディタ / 中央＝ゲーム / 右＝観察窓）。<code>mitiru watch</code> で走らせたまま <code>hud.open(Tool::Inspector);</code> を打って保存すると、その場で右の窓が開き、<code>playerX</code>・<code>score</code>・<code>frame</code> といった状態がそのまま映ります。窓を開くのにコマンドは要りません。この窓自体も HTML / CSS で出来ています。</figcaption>
           </figure>
           <p>窓に並ぶフィールドは、<code>MITIRU_REFLECT(CatchGame, playerX, score, …)</code> という 1 行で「この値を見せて」と申告します。自分で計算した途中の値を見たいときは、<code>hud.watch("game", "Catch", "…")</code> で名前を付けて送れば、同じ窓に出ます。値の移り変わりをグラフでも見たいときは、入口を <code>MITIRU_GAME</code> から <code>MITIRU_GAME_SERIES</code> に変えます（<a href="#full">全文</a>はその形にしてあります）。</p>
-          <p>観察窓のほかにも、入力の生の値・過去のフレームへの巻き戻し・録画の再生・fps の計測・音量メーターなどの窓があり、どれも <code>hud.open(Tool::…)</code> の <code>Tool::</code> を変えれば開きます。大きなエディタを開く代わりに、1 つの窓は 1 つの関心事だけを映す、という作りです。それぞれの窓と、AI にゲームの全状態を読ませる AI Lens は、<a href="features.html#tools">機能リファレンスのデバッグ窓</a>・<a href="features.html#ai">AI Lens の章</a>にまとめてあります。</p>
+          <p>観察窓のほかにも、入力の生の値・過去のフレームへの巻き戻し・録画の再生・fps の計測・音量メーターなどの窓があり、どれも <code>hud.open(Tool::…)</code> の <code>Tool::</code> を変えれば開きます。大きなエディタを開く代わりに、1 つの窓は 1 つの関心事だけを映す、という作りです。それぞれの窓は、<a href="features.html#tools">機能リファレンスのデバッグ窓</a>にまとめてあります。</p>
 
           <!-- ── 時間を巻き戻す ───────────────────── -->
           <h2 id="timetravel" class="step-head">時間を巻き戻す</h2>
@@ -313,7 +313,7 @@ cd my-catch</pre>
           <!-- ── なぜ動くか ───────────────────────── -->
           <h2 id="why" class="step-head">巻き戻し・録画・観察を支える仕組み</h2>
           <p>ホットリロードで状態が消えないのも、窓に状態がそのまま映るのも、録画したプレイを完全に再現できるのも、出どころは 1 つです。ゲームの状態を 1 個の <code>struct</code> にまとめて、それをエンジンが預かっているからです。</p>
-          <p>エンジンはこの <code>struct</code> をまるごとコピーして、保存したり復元したりします。だから、預かった状態を新しいコードへそのまま渡せますし、毎フレームの状態を記録して過去へ巻き戻せますし、AI に全状態を読ませることもできます。これが成り立つには、状態が「まるごとコピーできる素直なデータ」であってほしいのです。具体的には、ポインタや <code>std::vector</code> を持たない型のこと（C++ では POD ＝ Plain Old Data などと呼ばれます。MitiruEngine が発明した概念ではありません）。<code>CatchGame</code> をその形に保っているのは、このためです。</p>
+          <p>エンジンはこの <code>struct</code> をまるごとコピーして、保存したり復元したりします。だから、預かった状態を新しいコードへそのまま渡せますし、毎フレームの状態を記録して過去へ巻き戻せます。これが成り立つには、状態が「まるごとコピーできる素直なデータ」であってほしいのです。具体的には、ポインタや <code>std::vector</code> を持たない型のことです。<code>CatchGame</code> をその形に保っているのは、このためです。</p>
           <figure>
             <svg class="dgm" viewBox="0 0 540 250" width="100%" style="max-width:540px" role="img" aria-label="状態を1個のstructにまとめるとバイト列になり、まるごとコピーできる。だからホットリロード・巻き戻し・録画再生が同じ仕組みから出てくる">
               <defs><marker id="a5" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>

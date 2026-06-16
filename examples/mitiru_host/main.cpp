@@ -269,6 +269,7 @@ struct CliArgs
 	int                   loFiBitsR = 5, loFiBitsG = 6, loFiBitsB = 5; // --lofi-bits R,G,B (既定 RGB565)
 	float                 loFiDither = 1.0f;   // --lofi-dither S
 	int                   httpPort = 0;        // --http-port <N>: EngineHttpServer を listen 開始 (ADR 0011)
+	int                   cefDebugPort = 0;    // --cef-debug-port <N>: CEF remote-debugging-port を開く (CDP 実ポインタ検証, E-02)
 	bool                  console  = false;    // --console: HTTP + default browser で console.html 自動表示
 	bool                  noCef    = false;    // --no-cef: CEF を起動しない (完全ネイティブ描画の game 用、起動軽量化)
 	std::string           captureDir;          // --capture-dir <d>: 毎 N フレーム PNG を吐く先 (#43)
@@ -339,6 +340,14 @@ CliArgs parseArgs(int argc, char* argv[])
 			{
 				try { out.httpPort = std::stoi(argv[++i]); }
 				catch (...) { out.httpPort = 0; }
+			}
+		}
+		else if (a == "--cef-debug-port")
+		{
+			if (i + 1 < argc)
+			{
+				try { out.cefDebugPort = std::stoi(argv[++i]); }
+				catch (...) { out.cefDebugPort = 0; }
 			}
 		}
 		else if (a == "--console")
@@ -967,6 +976,7 @@ int main(int argc, char* argv[])
 	if (args.noPauseUnfocused) { cfg.vsync = false; }  // 背面でもフルレート (present の vsync 待ちを回避)
 	if (args.noVsync)          { cfg.vsync = false; }  // --no-vsync: 素のフレームコスト計測 (#53)
 	cfg.enableCef       = !args.noCef;   // --no-cef: 完全ネイティブ game は CEF 抜きで軽量起動
+	cfg.cefRemoteDebuggingPort = args.cefDebugPort; // --cef-debug-port: CDP(実ポインタ検証/chrome-devtools)
 	cfg.timeScale       = args.speed;    // --speed: 固定 dt × N 早回し (#43)
 	cfg.errorBannerFile = args.errorFile; // --error-file: mitiru watch のビルドエラー帯 (空=OFF)
 	if (args.fixedSize) { cfg.windowResizable = false; }   // --fixed-size: リサイズ禁止 (#44)
