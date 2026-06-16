@@ -32,6 +32,8 @@ a{ color:var(--accent-deep); text-decoration:none; }
 a:hover{ text-decoration:underline; }
 img{ max-width:100%; height:auto; display:block; }
 ::selection{ background:var(--accent-soft); }
+/* コード枠は地色が濃く構文色も付くので、選択時は白文字＋濃色背景に上書きして読めるようにする */
+pre::selection, pre *::selection{ background:#33506f; color:#fff; }
 :focus-visible{ outline:2px solid var(--accent-deep); outline-offset:3px; border-radius:4px; }
 .skip-link{ position:absolute; left:-9999px; background:var(--ink); color:#fff; padding:.6rem 1.1rem; border-radius:8px; font-weight:600; }
 .skip-link:focus{ left:1rem; top:1rem; z-index:100; }

@@ -43,6 +43,10 @@
 namespace mitiru
 {
 
+// 図形の基本型の短い別名 — 作者は sgc:: を書かなくてよい (色 Color は <mitiru/core/Color.hpp>)。
+using Rect = sgc::Rectf;   ///< 矩形 {x, y, 幅, 高さ}
+using Vec2 = sgc::Vec2f;   ///< 2D 座標 / ベクトル
+
 /// よく使うキー (値は Windows の仮想キーコード)。一覧に無いキーも `Key{0x..}` で渡せる。
 /// 注意: 英字の VK は大文字 ('A'=0x41..'Z') のみ。`Key{'a'}` (小文字) は別の値になり
 /// 一致しない — 文字から作るときは `key('a')` ヘルパを使う (自動で大文字化する)。
