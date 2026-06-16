@@ -31,7 +31,7 @@
     <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine</a>
     <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a class="current" href="tutorial.html">チュートリアル</a><a href="features.html">機能</a><a href="ui.html">画面</a><a href="ai.html">AI</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
   </div></header>
-<div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#goal">作るもの</a><a href="#proto">動かす</a><a href="#game">ゲームにする</a><a href="#download">画像</a><a href="#art">絵を入れる</a><a href="#tune">数字を調整</a><a href="#inspect">窓を開く</a><a href="#why">仕組み</a><a href="#hud">HTML / CSS</a><a href="#full">全コード</a><a href="#toolbox">関数一覧</a></div></div>
+<div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#goal">作るもの</a><a href="#proto">動かす</a><a href="#game">ゲームにする</a><a href="#download">画像</a><a href="#art">絵を入れる</a><a href="#tune">数字を調整</a><a href="#inspect">窓を開く</a><a href="#timetravel">巻き戻し</a><a href="#why">仕組み</a><a href="#hud">HTML / CSS</a><a href="#full">全コード</a><a href="#toolbox">関数一覧</a></div></div>
 <div class="content">
     <main id="main">
       <section class="page-head">
@@ -300,6 +300,15 @@ cd my-catch</pre>
           </figure>
           <p>窓に並ぶフィールドは、<code>MITIRU_REFLECT(CatchGame, playerX, score, …)</code> という 1 行で「この値を見せて」と申告します。自分で計算した途中の値を見たいときは、<code>hud.watch("game", "Catch", "…")</code> で名前を付けて送れば、同じ窓に出ます。値の移り変わりをグラフでも見たいときは、入口を <code>MITIRU_GAME</code> から <code>MITIRU_GAME_SERIES</code> に変えます（<a href="#full">全文</a>はその形にしてあります）。</p>
           <p>観察窓のほかにも、入力の生の値・過去のフレームへの巻き戻し・録画の再生・fps の計測・音量メーターなどの窓があり、どれも <code>hud.open(Tool::…)</code> の <code>Tool::</code> を変えれば開きます。大きなエディタを開く代わりに、1 つの窓は 1 つの関心事だけを映す、という作りです。それぞれの窓と、AI にゲームの全状態を読ませる AI Lens は、<a href="features.html#tools">機能リファレンスのデバッグ窓</a>・<a href="features.html#ai">AI Lens の章</a>にまとめてあります。</p>
+
+          <!-- ── 時間を巻き戻す ───────────────────── -->
+          <h2 id="timetravel" class="step-head">時間を巻き戻す</h2>
+          <p>観察窓で「今」の状態が見えるなら、次は「過去」です。<code>hud.open(Tool::TimeTravel)</code> に変えると、時間軸の窓が開きます。<code>score</code> や <code>playerX</code> の移り変わりがグラフになり、グラフの過去をクリックすると、ゲームがその瞬間の状態へ<strong>まるごと巻き戻ります</strong>。プレイヤーの位置も、落ちている星も、その時のまま再現されます。</p>
+          <figure>
+            <img src="assets/catch_timetravel.webp" alt="左にゲーム、右にタイムトラベル窓。ふつうに遊ぶと右の窓に playerX の履歴グラフが伸び、グラフの過去をクリックするとゲームがその瞬間の状態へ巻き戻り、プレイヤーの位置も画面もその時のまま再現される実機の録画" loading="lazy" decoding="async">
+            <figcaption>実機の録画（左＝ゲーム / 右＝タイムトラベル窓）。遊ぶと右の窓に <code>playerX</code> の履歴グラフが伸びます。グラフの過去をクリックすると、ゲームがその瞬間の状態へ巻き戻り、そのまま続きを動かせます。バグった瞬間まで戻って、直して、そこから試す、という直し方ができます。</figcaption>
+          </figure>
+          <p>窓を切り替えるのに要るのは <code>Tool::</code> を変える 1 か所だけです。観察窓・タイムトラベル・入力モニタなど、見たいものに合わせて窓を選びます。これができるのも、状態を 1 個にまとめてエンジンが預かっているからです — その仕組みを次で説明します。</p>
 
           <!-- ── なぜ動くか ───────────────────────── -->
           <h2 id="why" class="step-head">巻き戻し・録画・観察を支える仕組み</h2>
