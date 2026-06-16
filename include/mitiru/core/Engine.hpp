@@ -219,6 +219,13 @@ public:
 	void stepOneFrame() noexcept       { ++mutableConfig().stepFrames; }
 	void setTimeScale(float s) noexcept { mutableConfig().timeScale = s; }
 	[[nodiscard]] float timeScale() const noexcept { return config().timeScale; }
+	/// ツール窓 (hud.open / RequestToolWindow) の spawn を無効化する。録画・CI・headless で
+	/// 望まないツール窓 (CEF) がメイン画面に出るのを防ぐ。state は engine 所有。
+	void setSuppressToolWindows(bool b) noexcept { m_suppressToolWindows = b; }
+	[[nodiscard]] bool suppressToolWindows() const noexcept { return m_suppressToolWindows; }
+	/// spawn するツール窓 (tool_cef) の初期座標を指定する。録画で観察窓を実画面に出さず
+	/// 最初から負の X 等へ出すため。既定 INT_MIN は OS 任せ (従来どおり)。
+	void setToolWindowPos(int x, int y) noexcept { m_toolWinX = x; m_toolWinY = y; }
 
 	// lo-fi post-FX (ADR #30: シーン毎の hi-res / lofi 切替):
 	void setLofiEnabled(bool e) noexcept { mutableConfig().loFi.enabled = e; }
@@ -626,6 +633,9 @@ private:
 	CefContext m_cefContext;                              ///< CEF 統合ファサード (Win32+DX12 のみ実体、他は no-op)
 	std::map<std::string, std::string> m_gameFlags;  ///< ゲームフラグストア (HTTP API用)
 	std::set<std::string> m_spawnedToolKeys;         ///< 既に開いたツール窓 (tool|args) — 重複 spawn 防止
+	bool                  m_suppressToolWindows = false;  ///< true = tool 窓 spawn を全無効 (録画/CI、setSuppressToolWindows)
+	int                   m_toolWinX = (-2147483647 - 1); ///< spawn する tool 窓の初期 X (INT_MIN=OS任せ)
+	int                   m_toolWinY = (-2147483647 - 1); ///< spawn する tool 窓の初期 Y
 	std::atomic<bool> m_shouldStop{false};            ///< 停止要求フラグ (スレッドセーフ)
 	bool m_initialized = false;                      ///< 初期化済みフラグ
 	int m_pendingResizeW = 0;                        ///< modal-loop drag 中の defer 先 (WM_EXITSIZEMOVE で flush)

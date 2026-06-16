@@ -573,7 +573,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// host が mitiru_<tool>.exe を別窓で起動する (必要なときだけ・pulled UI)。exe が
 	// 見つからなければ無害に no-op。inspector へは host 自身の pid を渡し、game が
 	// exportedInspectables に出した state をそのまま観測させる (SharedSnapshot 経由)。
-	if (intents->toolRequestCount > 0)
+	if (!m_suppressToolWindows && intents->toolRequestCount > 0)
 	{
 		const std::int32_t n = std::min<std::int32_t>(
 			intents->toolRequestCount,
@@ -587,7 +587,13 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			// 開く。これで「どこに置くか」を気にせず、開きたい所で呼べる (pulled UI のまま)。
 			std::string key = std::string{req.tool} + '|' + std::string{req.args};
 			if (!m_spawnedToolKeys.insert(std::move(key)).second) { continue; }
-			(void)mitiru::debug::spawnTool(std::string{req.tool}, 0, std::string{req.args});
+			// setToolWindowPos が指定されていれば spawn 引数へ --window-pos を足す (録画で実画面に出さない)。
+			std::string spawnArgs{req.args};
+			if (m_toolWinX != (-2147483647 - 1))
+			{
+				spawnArgs += " --window-pos " + std::to_string(m_toolWinX) + " " + std::to_string(m_toolWinY);
+			}
+			(void)mitiru::debug::spawnTool(std::string{req.tool}, 0, spawnArgs);
 		}
 	}
 

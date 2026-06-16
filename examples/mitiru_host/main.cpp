@@ -253,6 +253,10 @@ struct CliArgs
 	bool                  helpRequested = false;
 	int                   widthOverride  = 0;  // 0 = 既定 1280
 	int                   heightOverride = 0;  // 0 = 既定 720
+	int                   winPosX = (-2147483647 - 1);  // --window-pos X Y: 窓の初期座標 (既定=CW_USEDEFAULT)
+	int                   winPosY = (-2147483647 - 1);  // 実画面に一瞬も出さず最初から指定位置へ (録画支援)
+	int                   toolWinX = (-2147483647 - 1); // --tool-window-pos X Y: spawn する tool 窓の初期座標
+	int                   toolWinY = (-2147483647 - 1);
 	std::string           recordPath;          // --record <f>: .mtrr を書き出す
 	std::string           replayPath;          // --replay-test <f>: ヘッドレス再実行
 	std::string           expectPath;          // --expect <f>: 最終 view.* 状態を検証
@@ -280,6 +284,9 @@ struct CliArgs
 	std::string           inputRecordPath;     // --input-record <f>: 実入力を input-script 形式で録画 (#45)
 	std::vector<mitiru::Tool> openTools;       // --inspect <name>: 起動時に開くツール独立窓 (ADR 0014)
 	std::string           errorFile;           // --error-file <f>: mitiru watch のビルドエラー帯 (存在中だけ表示)
+	std::string           pauseControl;        // --pause-control <f>: ファイルが "1" の間だけ pause (録画支援, フォーカス不要)
+	std::string           inputFreezeControl;  // --input-freeze-control <f>: "1" の間だけ入力を無効化 (プレイヤー静止・世界は進行, 録画支援)
+	bool                  noToolWindows = false; // --no-tool-windows: hud.open 等のツール窓 spawn を全無効 (録画/CI でメイン画面への割込防止)
 };
 
 CliArgs parseArgs(int argc, char* argv[])
@@ -391,6 +398,36 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--error-file")
 		{
 			if (i + 1 < argc) { out.errorFile = argv[++i]; }
+		}
+		else if (a == "--pause-control")
+		{
+			if (i + 1 < argc) { out.pauseControl = argv[++i]; }
+		}
+		else if (a == "--input-freeze-control")
+		{
+			if (i + 1 < argc) { out.inputFreezeControl = argv[++i]; }
+		}
+		else if (a == "--no-tool-windows")
+		{
+			out.noToolWindows = true;
+		}
+		else if (a == "--window-pos")
+		{
+			// --window-pos X Y: 窓を最初からこの座標に出す (負の X = 仮想ディスプレイ等)
+			if (i + 2 < argc)
+			{
+				try { out.winPosX = std::stoi(argv[i + 1]); out.winPosY = std::stoi(argv[i + 2]); i += 2; }
+				catch (...) {}
+			}
+		}
+		else if (a == "--tool-window-pos")
+		{
+			// --tool-window-pos X Y: spawn する tool 窓 (CEF) もこの座標に出す (録画で実画面に出さない)
+			if (i + 2 < argc)
+			{
+				try { out.toolWinX = std::stoi(argv[i + 1]); out.toolWinY = std::stoi(argv[i + 2]); i += 2; }
+				catch (...) {}
+			}
 		}
 		else if (a == "--inspect")
 		{
@@ -525,6 +562,14 @@ void printUsage()
 		"  --input-record F 実プレイの入力を input-script 形式で F に録画 (--input-script で再生可, #45)\n"
 		"  --error-file F   ビルドエラーファイル F を監視し、存在する間だけ画面上部に帯を表示\n"
 		"                   (mitiru watch が自動指定。直して保存 → ビルド成功で帯が消える)\n"
+		"  --pause-control F ファイル F が \"1\" の間だけ pause (dt=0, 描画継続)。フォーカス不要。\n"
+		"                   録画で「編集中は静止、ビルド後に再開」を作るのに使う\n"
+		"  --input-freeze-control F  ファイル F が \"1\" の間だけ入力を無効化 (--input-script と併用)。\n"
+		"                   プレイヤーは静止するが engine は進む (星などは動く)。録画支援\n"
+		"  --no-tool-windows  hud.open 等のツール窓 (CEF) spawn を全無効。録画/CI で\n"
+		"                   望まない窓がメイン画面に出るのを防ぐ\n"
+		"  --window-pos X Y ゲーム窓を最初からこの座標に出す (実画面に一瞬も出さない)。\n"
+		"                   負の X = 仮想ディスプレイ等。録画支援\n"
 		"  --inspect [name] ツール独立窓を起動時に開く (name=inspector|input|timetravel, 既定 inspector)\n"
 		"                   ※ host を書く人が main.cpp で mitiru::debug::openTool(Tool::X) と\n"
 		"                     直接書けば、欲しい窓だけコードで指定できる (ADR 0014)\n"
@@ -907,6 +952,8 @@ int main(int argc, char* argv[])
 	cfg.title           = "mitiru_host";
 	cfg.windowWidth     = args.widthOverride  > 0 ? args.widthOverride  : 1280;
 	cfg.windowHeight    = args.heightOverride > 0 ? args.heightOverride :  720;
+	cfg.windowX         = args.winPosX;   // --window-pos (既定 INT_MIN = OS 任せ)
+	cfg.windowY         = args.winPosY;
 	// resize 安全: 要求サイズの半分を floor にする (極端な潰れだけ防ぎ、指定サイズは
 	// 超えない)。game 窓 / launcher / 760x80 の companion bar を同じ host が起動するので、
 	// 固定値でなく要求サイズ基準にして「floor > 指定」で窓が開けない事態を避ける。
@@ -1100,11 +1147,17 @@ int main(int argc, char* argv[])
 	mitiru::observe::ScrubControlReader scrubReader;  // 自プロセス pid 宛 (inspector が host pid に書く)
 	long scrubLastSeq = 0;
 
+	// --pause-control (録画支援): ファイルが "1" の間だけ engine を pause (dt=0, 描画継続)。
+	// フォーカス不要・scrub-control と同じ思想。自動録画で「編集中は静止」を作るのに使う。
+	const std::string pauseControlFile = args.pauseControl;
+	int pauseControlTick = 0;
+
 	cfg.onFrameStart = [&watcher, watchOn = args.watch,
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
 	                    maxFrames = args.maxFrames, &totalFrame,
 	                    perfOn = args.perf, &perfStats,
-	                    &scrubReader, &scrubLastSeq]
+	                    &scrubReader, &scrubLastSeq,
+	                    &pauseControlFile, &pauseControlTick]
 	                   (mitiru::Engine& engine)
 	{
 		// --perf (#53): 前回 onFrameStart からの実時間 = 1 host frame のコスト。
@@ -1122,6 +1175,13 @@ int main(int argc, char* argv[])
 		}
 
 		pollHostHotkeys(engine);
+
+		// --pause-control: 数フレームごとにファイルを見て pause 状態を反映 (録画で編集中を静止させる)。
+		if (!pauseControlFile.empty() && (++pauseControlTick % 4 == 0))
+		{
+			std::ifstream pf(pauseControlFile);
+			if (pf) { char c = 0; pf.get(c); engine.setPaused(c == '1'); }
+		}
 
 		// time-travel rewind (ADR 0017): inspector の graph click → scrub command を適用。
 		// 単調 seq で重複適用を防ぐ。次フレームの on_update が復元 state を「現在」として進める。
@@ -1198,6 +1258,8 @@ int main(int argc, char* argv[])
 	};
 
 	mitiru::Engine engine;
+	engine.setSuppressToolWindows(args.noToolWindows);  // --no-tool-windows: 録画/CI でツール窓を出さない
+	engine.setToolWindowPos(args.toolWinX, args.toolWinY);  // --tool-window-pos: 観察窓も実画面に出さない
 
 	// SoundIntents (ADR 0008) を実際に鳴らすため audio engine を接続する。id は
 	// game の配置先 assets/audio/ ディレクトリ (DLL の隣) に対して解決する。
@@ -1418,10 +1480,29 @@ int main(int argc, char* argv[])
 		{
 			std::fprintf(stderr, "[mitiru_host] input-script: %zu events from %s\n",
 			             scriptPlayer.events.size(), args.inputScript.c_str());
+			const std::string freezeFile = args.inputFreezeControl;
 			cfg.moduleInputOverride =
-				[&scriptPlayer](mitiru::module::InputSnapshot& snap) -> bool
+				[&scriptPlayer, freezeFile, frzTick = 0, frozen = false]
+				(mitiru::module::InputSnapshot& snap) mutable -> bool
 				{
 					scriptPlayer.apply(snap);   // 実キーボードを上書き (注入のみ有効)
+					// --input-freeze-control: "1" の間は入力を全消し → プレイヤー静止。
+					// engine は走るので星などは動き続ける (録画で「編集中はプレイヤーだけ止める」)。
+					if (!freezeFile.empty())
+					{
+						if (++frzTick % 4 == 0)
+						{
+							std::ifstream pf(freezeFile);
+							if (pf) { char c = 0; pf.get(c); frozen = (c == '1'); }
+						}
+						if (frozen)
+						{
+							for (int v = 0; v < 256; ++v)
+							{
+								snap.keysDown[v] = 0; snap.keysJustPressed[v] = 0; snap.keysJustReleased[v] = 0;
+							}
+						}
+					}
 					return true;
 				};
 		}

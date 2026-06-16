@@ -300,6 +300,7 @@ private:
 		int           w   = 0;
 		int           h   = 0;
 		const void*   key = nullptr;
+		const void*   srcPtr = nullptr; ///< アップロード元 pixel データの先頭。差し替え(sprite hot-reload)検出用
 		std::uint64_t contentHash = 0;  ///< pixel 内容の FNV-1a。内容変化で再アップロード判定 (#19b)
 	};
 	std::vector<Dx12SpriteTexture> m_dx12SpriteTextures;              ///< index+1 = handle

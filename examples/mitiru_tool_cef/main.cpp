@@ -259,6 +259,7 @@ int main(int argc, char* argv[])
 	// --page <name> を抜き取り、残りを共通 arg parser (pid / --file) に渡す。
 	std::string page = "perf";
 	std::optional<std::string> mtrr;
+	int winX = (-2147483647 - 1), winY = (-2147483647 - 1);  // --window-pos X Y (既定=OS任せ)
 	std::vector<char*> rest;
 	rest.push_back(argv[0]);
 	for (int i = 1; i < argc; ++i)
@@ -266,6 +267,7 @@ int main(int argc, char* argv[])
 		const std::string a = argv[i];
 		if (a == "--page" && i + 1 < argc) { page = argv[++i]; }
 		else if (a == "--mtrr" && i + 1 < argc) { mtrr = argv[++i]; }
+		else if (a == "--window-pos" && i + 2 < argc) { winX = std::atoi(argv[++i]); winY = std::atoi(argv[++i]); }
 		else { rest.push_back(argv[i]); }
 	}
 	// replay (.mtrr) は file/pid 不要なので parse をスキップして良い。
@@ -294,6 +296,8 @@ int main(int argc, char* argv[])
 	cfg.title           = title.c_str();   // run() 中 生存。
 	cfg.windowWidth     = 400;
 	cfg.windowHeight    = 620;
+	cfg.windowX         = winX;   // --window-pos: 実画面に出さず最初から指定位置へ (録画支援)
+	cfg.windowY         = winY;
 	cfg.minWindowWidth  = 300;
 	cfg.minWindowHeight = 360;
 	cfg.vsync           = true;

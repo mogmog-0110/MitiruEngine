@@ -24,19 +24,22 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 
 	auto* device = m_dx12NativeDevice.Get();
 
-	// ── 静的テクスチャ (contentMayChange=false): ポインタ key が内容を一意に決める ──
+	// ── 静的テクスチャ (contentMayChange=false): key(ポインタ) + 寸法 + pixel 先頭ポインタ で判定 ──
 	// (drawSprite の render::Texture 等)。cache hit は即返し、毎フレームの全画素ハッシュを避ける。
 	// 巨大スプライトシートを毎フレーム描く一般ケースでの CPU 浪費 (regression) を防ぐ。
+	// srcPtr も照合する理由: sprite hot-reload は同じ Texture スロットに別画像を読み直すため key は
+	// 不変だが pixels().data() が変わる。これを見ないと古い GPU テクスチャを返し続ける (実バグだった)。
 	if (!contentMayChange)
 	{
 		auto sit = m_dx12SpriteTexLookup.find(key);
 		if (sit != m_dx12SpriteTexLookup.end())
 		{
 			const auto& cached = m_dx12SpriteTextures[sit->second];
-			if (cached.tex && cached.w == w && cached.h == h)
+			if (cached.tex && cached.w == w && cached.h == h && cached.srcPtr == rgba)
 			{
 				return sit->second + 1;
 			}
+			// srcPtr が変わった = 内容差し替え (hot-reload) → 下のアップロードで作り直す
 		}
 	}
 
@@ -180,6 +183,7 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	entry.w       = w;
 	entry.h       = h;
 	entry.key     = key;
+	entry.srcPtr  = rgba;
 	entry.contentHash = contentHash;
 
 	// 既存 key なら同スロット上書き (寸法/内容変化)、無ければ新規追加。

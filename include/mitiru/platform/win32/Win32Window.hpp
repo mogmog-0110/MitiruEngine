@@ -47,7 +47,8 @@ public:
 	///                  WS_THICKFRAME/WS_MAXIMIZEBOX を外して固定サイズ)
 	explicit Win32Window(std::string_view title, int width, int height,
 		DisplayMode displayMode = DisplayMode::Windowed,
-		bool resizable = true)
+		bool resizable = true,
+		int posX = CW_USEDEFAULT, int posY = CW_USEDEFAULT)
 		: m_width(width)
 		, m_height(height)
 		, m_displayMode(displayMode)
@@ -127,10 +128,11 @@ public:
 				}
 			}
 
+			// posX/posY が指定されていれば最初からそこに出す (実画面に一瞬も出さない)。
 			m_hwnd = CreateWindowExW(
 				0, CLASS_NAME, wideTitle.c_str(),
 				style,
-				CW_USEDEFAULT, CW_USEDEFAULT,
+				posX, posY,
 				windowWidth, windowHeight,
 				nullptr, nullptr, GetModuleHandleW(nullptr), this);
 

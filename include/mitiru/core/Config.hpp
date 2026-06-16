@@ -58,6 +58,11 @@ struct EngineConfig
 	std::string title = "Mitiru Game";     ///< ウィンドウタイトル
 	int windowWidth = 1920;                ///< ウィンドウ幅（Windowed モード時）
 	int windowHeight = 1080;               ///< ウィンドウ高さ（Windowed モード時）
+	/// @brief 窓の初期スクリーン座標 (既定 = CW_USEDEFAULT = OS 任せ)。
+	/// @details 録画・自動化で「実画面に一瞬も出さず、最初から指定位置(仮想ディスプレイ等)に
+	///          出す」ために使う。値=INT_MIN(=CW_USEDEFAULT) のままなら従来どおり OS 任せ。
+	int windowX = (-2147483647 - 1);       ///< CW_USEDEFAULT 相当 (INT_MIN)
+	int windowY = (-2147483647 - 1);       ///< CW_USEDEFAULT 相当 (INT_MIN)
 
 	/// @brief リサイズ時の最小クライアントサイズ (0 = 制限なし)
 	/// @details ユーザが枠を drag で縮めても、この client px 未満には縮まない

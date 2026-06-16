@@ -92,7 +92,8 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			m_window = win32Plat->createWindowExtended(
 				config.title, winW, winH,
 				config.displayMode,
-				config.windowResizable);
+				config.windowResizable,
+				config.windowX, config.windowY);
 		}
 		else
 		{

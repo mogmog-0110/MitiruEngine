@@ -46,9 +46,10 @@ public:
 	/// @brief DisplayMode + resizable 指定版
 	[[nodiscard]] std::unique_ptr<IWindow> createWindowExtended(
 		std::string_view title, int width, int height,
-		DisplayMode mode, bool resizable)
+		DisplayMode mode, bool resizable,
+		int posX = CW_USEDEFAULT, int posY = CW_USEDEFAULT)
 	{
-		auto window = std::make_unique<Win32Window>(title, width, height, mode, resizable);
+		auto window = std::make_unique<Win32Window>(title, width, height, mode, resizable, posX, posY);
 		window->show();
 		return window;
 	}
