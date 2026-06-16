@@ -39,8 +39,24 @@
           <!-- ── 仕組み ──────────────────────────── -->
           <h2 id="how">仕組み — 値は一方通行で流れる</h2>
           <p>状態を持つのは C++ だけ。C++ → 画面は「値を push する」、画面 → C++ は「操作を通知する」。この 2 方向しかない。ゲームの状態を HTML 側に持たせないので、表示がズレない。</p>
-<pre>C++  <span class="c">--&gt;</span>  値を push  <span class="c">--&gt;</span>  HTML が data-m-* で表示
-HTML <span class="c">--&gt;</span>  操作を通知  <span class="c">--&gt;</span>  C++ がルールを決める</pre>
+          <figure>
+            <svg class="dgm" viewBox="0 0 560 230" width="100%" style="max-width:560px" role="img" aria-label="C++ と HTML 画面の値の流れ。C++ は hud.set で値を push し HTML が data-m-text で表示、HTML は data-m-action で操作を通知し C++ が in.action で受ける">
+              <defs><marker id="u1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="boxy" x="14" y="80" width="176" height="72" rx="4"/>
+              <text class="lbl" x="102" y="112" text-anchor="middle">C++</text>
+              <text class="sub" x="102" y="134" text-anchor="middle">状態とルール</text>
+              <rect class="boxy" x="370" y="80" width="176" height="72" rx="4"/>
+              <text class="lbl" x="458" y="112" text-anchor="middle">HTML / CSS</text>
+              <text class="sub" x="458" y="134" text-anchor="middle">画面（HUD）</text>
+              <line class="arr" x1="190" y1="100" x2="368" y2="100" marker-end="url(#u1)"/>
+              <text class="sub"  x="279" y="54" text-anchor="middle">値を push</text>
+              <text class="mono" x="279" y="74" text-anchor="middle">hud.set　→　data-m-text</text>
+              <line class="arr" x1="368" y1="132" x2="190" y2="132" marker-end="url(#u1)"/>
+              <text class="sub"  x="279" y="166" text-anchor="middle">操作を通知</text>
+              <text class="mono" x="279" y="186" text-anchor="middle">data-m-action　→　in.action</text>
+            </svg>
+            <figcaption>値は一方通行で流れます。C++ → 画面は「値を push する」（<code>hud.set</code> → <code>data-m-text</code>）、画面 → C++ は「操作を通知する」（<code>data-m-action</code> → <code>in.action</code>）。この 2 方向だけで、状態は常に C++ 側にあります。</figcaption>
+          </figure>
 
           <h3>どのファイルに書く</h3>
           <p>画面（HUD・メニュー）は <code>assets/scene.html</code> に書く。これが HTML のエントリポイントで、エンジンがゲーム画面の上に重ねる。CSS はその <code>&lt;style&gt;</code> の中（別ファイルにしても良い）。C++ 側の <code>hud.set(...)</code> は <code>update(Input in, Hud hud, float dt)</code> の中に書く（送るには引数の <code>Hud hud</code> が要る）。完成形のファイル全体は <a href="#example">下の完成例</a>を見てほしい。</p>
