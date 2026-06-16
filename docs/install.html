@@ -44,11 +44,35 @@
             <li><strong><code>installer.exe</code> を実行</strong> ── ダブルクリックすると、C++ ビルドツール（MSVC Build Tools・CMake・Windows SDK）と <code>mitiru</code> コマンドが入り、PATH に通ります。ツールを自分で管理したい人は、Build Tools を手動で入れて <code>mitiru</code> に PATH を通すだけでも構いません。</li>
             <li><strong>プロジェクトを作って動かす</strong> ── PATH を反映させるため <strong>新しいターミナル</strong>を開いてから実行します。</li>
           </ol>
+          <figure>
+            <svg class="dgm" viewBox="0 0 760 110" width="100%" style="max-width:760px" role="img" aria-label="インストールの流れ。zip を展開 → installer.exe → mitiru new → mitiru run → ゲーム窓">
+              <defs><marker id="i1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="box"  x="11"  y="30" width="130" height="50" rx="4"/>
+              <text class="lbl"  x="76"  y="60" text-anchor="middle">zip を展開</text>
+              <rect class="box"  x="163" y="30" width="130" height="50" rx="4"/>
+              <text class="mono" x="228" y="59" text-anchor="middle">installer.exe</text>
+              <rect class="boxy" x="315" y="30" width="130" height="50" rx="4"/>
+              <text class="mono" x="380" y="59" text-anchor="middle">mitiru new</text>
+              <rect class="boxy" x="467" y="30" width="130" height="50" rx="4"/>
+              <text class="mono" x="532" y="59" text-anchor="middle">mitiru run</text>
+              <rect class="box"  x="619" y="30" width="130" height="50" rx="4"/>
+              <text class="lbl"  x="684" y="60" text-anchor="middle">ゲーム窓</text>
+              <line class="arr" x1="141" y1="55" x2="161" y2="55" marker-end="url(#i1)"/>
+              <line class="arr" x1="293" y1="55" x2="313" y2="55" marker-end="url(#i1)"/>
+              <line class="arr" x1="445" y1="55" x2="465" y2="55" marker-end="url(#i1)"/>
+              <line class="arr" x1="597" y1="55" x2="617" y2="55" marker-end="url(#i1)"/>
+            </svg>
+            <figcaption>インストールの流れ。zip を展開 → <code>installer.exe</code> で道具と <code>mitiru</code> コマンドが入る → <code>mitiru new</code> でプロジェクト → <code>mitiru run</code> でゲーム窓が開きます。</figcaption>
+          </figure>
 <pre><span class="c"># 新規プロジェクトを作って動かす</span>
 mitiru new my-game
 <span class="k">cd</span> my-game
 mitiru run</pre>
           <p>ウィンドウが開いてゲームのひな形が動きます。<code>mitiru run</code> は<strong>ビルドして 1 回起動する</strong>コマンド。作り込み中は <code>mitiru watch</code> を使うと、<strong>コードを保存するたびに自動でビルドし直し、ゲームを止めずに反映</strong>されます（＝ホットリロード）。</p>
+          <figure>
+            <img src="assets/showcase.webp" alt="mitiru new の既定テンプレートで出る画面。暗い紫のグラデーション背景、中央にキャラ（C++ 描画）、右上に HTML/CSS の HUD パネル（X / Y / TAPS とボタン）、左上にタイトル文字" loading="lazy">
+            <figcaption><code>mitiru new</code> の既定で出る画面です。背景・キャラ・タイトル文字は C++ の描画、右上の HUD（X / Y / TAPS とボタン）は HTML / CSS。これが出発点になります。</figcaption>
+          </figure>
 
           <p class="note"><strong>初回ビルドだけ、5〜10 分かかります。</strong> HTML UI 用の CEF ラッパライブラリと header-only のエンジン本体を一度だけコンパイルするためです（Chromium 本体はビルド済みのものをそのまま使います）。2 回目以降は数秒。エディタは Visual Studio / VS Code / Vim / メモ帳、好きなもので構いません。うまくいかないときは <code>mitiru doctor</code> で環境を診断できます。</p>
 

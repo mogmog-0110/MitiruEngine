@@ -29,7 +29,7 @@
         <div class="wrap">
           <p class="kicker">FEATURES</p>
           <h1>機能リファレンス</h1>
-          <p class="lede">MitiruEngine でできることを、コピペできるコード付きで並べた逆引きの一覧です。「丸を描きたい」「パッドを読みたい」「音を鳴らしたい」——やりたいことから探してください。触る相手は基本 3 つ、<code>update(Input in, Hud hud, float dt)</code> の <code>in</code> と <code>hud</code>、<code>draw(Screen&amp; s)</code> の <code>s</code> だけです。座標は左上が <code>(0, 0)</code>、標準の画面は <code>1280 × 720</code>。長さの単位はピクセル、角度は関数により度（deg）かラジアン（rad）——各節に明記します。まだ何も作っていなければ、先に <a href="tutorial.html">はじめてのゲーム</a> で土台を作ると読みやすくなります。</p>
+          <p class="lede">MitiruEngine でできることを、コピペできるコード付きで並べた逆引きの一覧です。「丸を描きたい」「パッドを読みたい」「音を鳴らしたい」——やりたいことから探せます。触る相手は基本 3 つ、<code>update(Input in, Hud hud, float dt)</code> の <code>in</code> と <code>hud</code>、<code>draw(Screen&amp; s)</code> の <code>s</code> だけです。座標は左上が <code>(0, 0)</code>、標準の画面は <code>1280 × 720</code>。長さの単位はピクセル、角度は関数により度（deg）かラジアン（rad）——各節に明記します。まだ何も作っていなければ、先に <a href="tutorial.html">はじめてのゲーム</a> で土台を作ると読みやすくなります。</p>
         </div>
       </section>
 
@@ -40,7 +40,7 @@
             <!-- ── ① 骨組み ───────────────────────────── -->
             <h2 id="basic">① ゲームの骨組み — struct / update / draw</h2>
             <p>ゲームの状態を 1 つの <code>struct</code> に持ち、<code>update</code> で動かし、<code>draw</code> で描く。最後に <code>MITIRU_GAME</code> を 1 行。これだけで動きます。</p>
-<pre><span class="k">#include</span> &lt;mitiru/module/Game.hpp&gt;
+<pre><span class="k">#include</span> &lt;mitiru.hpp&gt;
 <span class="k">using namespace</span> mitiru;
 
 <span class="k">struct</span> <span class="t">MyGame</span> {
@@ -82,7 +82,7 @@
     s.fillCircle(900, 200, 48, color::Yellow);         <span class="c">// (cx, cy) 中心・半径 r の円</span>
     s.line(0, 0, 1280, 720, color::White, 3);          <span class="c">// (x0,y0)-(x1,y1) の線（太さ 3）</span>
 }</pre>
-            <p>もっと種類が要るときは、矩形を <code>sgc::Rectf{x, y, w, h}</code>、座標を <code>sgc::Vec2f{x, y}</code> で渡します。下はすべて <code>Screen</code> のメソッドです。</p>
+            <p>もっと種類が要るときは、矩形を <code>Rect{x, y, w, h}</code>、座標を <code>Vec2{x, y}</code> で渡します。下はすべて <code>Screen</code> のメソッドです。</p>
             <table class="spectable">
               <tr><td>s.drawRectFrame({x,y,w,h}, col, 2)</td><td>四角の枠線（太さ指定）</td></tr>
               <tr><td>s.drawRoundedRect({x,y,w,h}, col, 8)</td><td>角丸四角（半径 8）。枠版 <code>drawRoundedRectFrame</code></td></tr>
@@ -91,14 +91,14 @@
               <tr><td>s.drawRing({cx,cy}, outer, inner, col)</td><td>リング（ドーナツ）</td></tr>
               <tr><td>s.drawArc({cx,cy}, r, a0, a1, col, 2)</td><td>円弧（角度は rad、0 = 右）</td></tr>
               <tr><td>s.drawPie({cx,cy}, r, a0, a1, col)</td><td>扇形（rad）</td></tr>
-              <tr><td>s.drawTriangle(p0, p1, p2, col)</td><td>塗り三角形（p は Vec2f）</td></tr>
-              <tr><td>s.drawPolygon(points, col)</td><td>凸多角形（<code>std::vector&lt;sgc::Vec2f&gt;</code>）</td></tr>
+              <tr><td>s.drawTriangle(p0, p1, p2, col)</td><td>塗り三角形（p は Vec2）</td></tr>
+              <tr><td>s.drawPolygon(points, col)</td><td>凸多角形（<code>std::vector&lt;Vec2&gt;</code>）</td></tr>
               <tr><td>s.drawRectRotated({x,y,w,h}, col, deg)</td><td>回転した四角（角度は度）</td></tr>
               <tr><td>s.drawGradientRect({x,y,w,h}, top, bottom)</td><td>上→下グラデ。横版 <code>drawGradientRectH</code>、4 隅版 <code>drawGradientRect4</code></td></tr>
               <tr><td>s.drawRectPattern(rect, type, cell, c1, c2)</td><td>市松・ストライプ・ドット（<code>Screen::PatternType</code>）</td></tr>
               <tr><td>s.drawDashedLine(from, to, th, dash, gap, col)</td><td>破線</td></tr>
             </table>
-            <div class="note"><strong>sgc::Rectf と sgc::Vec2f とは。</strong> エンジンが使う「矩形」と「2D 座標」の型です。<code>sgc::Rectf{x, y, 幅, 高さ}</code>、<code>sgc::Vec2f{x, y}</code> と波かっこで作るだけ。<code>#include &lt;mitiru/module/Game.hpp&gt;</code> で一緒に使えるようになります。当たり判定にも同じ <code>Rectf</code> を使います（→ <a href="#collision">⑯ 当たり判定</a>）。</div>
+            <div class="note"><strong>Rect と Vec2 とは。</strong> エンジンが使う「矩形」と「2D 座標」の型です。<code>Rect{x, y, 幅, 高さ}</code>、<code>Vec2{x, y}</code> と波かっこで作るだけ。<code>#include &lt;mitiru.hpp&gt;</code> で一緒に使えるようになります。当たり判定にも同じ <code>Rect</code> を使います（→ <a href="#collision">⑯ 当たり判定</a>）。</div>
 
             <!-- ── ③ 色 ──────────────────────────────── -->
             <h2 id="color">③ 色 — 色の書き方</h2>
@@ -167,7 +167,7 @@ s.drawGroup({px, py}, spinDeg, [&amp;](<span class="t">Screen</span>&amp; g) {
             <p>最も基本的な描き方は id 指定です。<code>assets/sprites/hero.png</code> を置いたら:</p>
 <pre>s.sprite(<span class="s">"hero"</span>, x, y);          <span class="c">// これだけ。読み込み・キャッシュはエンジンがやる</span>
 s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍サイズ</span></pre>
-            <p>音の <code>hud.play("hit")</code> と同じ「ファイルを置いて id で呼ぶ」規約です。ファイルが無ければ初回に 1 行だけ警告が出ます。<strong>PNG を上書き保存すると実行中のゲームに約 0.5 秒で反映されます</strong>（絵を描きながら、隣でゲームが生き返る）。細かい制御（回転・切り出し・ティント）が要るときは <code>Texture</code> を自分で持ちます。読み込みは重いので <code>init()</code> で 1 回だけ——<code>draw()</code> の中で毎フレーム読み込まないこと。</p>
+            <p>音の <code>hud.play("hit")</code> と同じ「ファイルを置いて id で呼ぶ」規約です。ファイルが無ければ初回に 1 行だけ警告が出ます。<strong>PNG を上書き保存すると実行中のゲームに約 0.5 秒で反映されます</strong>（絵を描きながら結果を確認できます）。細かい制御（回転・切り出し・ティント）が要るときは <code>Texture</code> を自分で持ちます。読み込みは重いので <code>init()</code> で 1 回だけ——<code>draw()</code> の中で毎フレーム読み込まないこと。</p>
             <figure><img src="assets/feat_sprite.png" alt="スプライト・ティント・スプライトシート切り出し・drawPixelGrid の実行画面" loading="lazy"><figcaption>実際に動かした GPU 描画。左から <code>drawSprite</code>（テクスチャ）/ ティント乗算 / スプライトシートの 1 コマ切り出し / <code>drawPixelGrid</code>（手続き生成ピクセル）。</figcaption></figure>
 <pre><span class="k">#include</span> &lt;mitiru/render/Texture.hpp&gt;
 
@@ -260,7 +260,7 @@ x += m.x * 320 * dt;                 <span class="c">// これだけで全デバ
             <!-- ── ⑩ AI Lens と決定論 ─────────────────── -->
             <h2 id="ai">⑩ 乱数・決定論・AI Lens — 1 個の flat POD から生える</h2>
             <p>乱数は <code>mitiru::Random</code> で。毎フレーム同じ入力なら必ず同じ結果（決定論）になるよう、種を <code>in.rngSeed()</code> から取ると、プレイを録画して完全に再現できます。</p>
-<pre><span class="k">#include</span> &lt;mitiru/core/Random.hpp&gt;
+<pre><span class="k">#include</span> &lt;mitiru.hpp&gt;
 
 <span class="t">Random</span> rng(in.rngSeed());        <span class="c">// 録画リプレイで bit-exact に再現したいときは種をここから</span>
 <span class="k">int</span>   dmg   = rng.nextInt(10, 50);  <span class="c">// 10〜50 の整数</span>
@@ -294,7 +294,7 @@ MITIRU_AI=1 mitiru run</pre>
 
             <!-- ── 巻き戻し → ホットリロード → 再適用 ── -->
             <h3 id="resim">巻き戻して、直して、そこから再生</h3>
-            <p>エンジンは直近 5 秒の<strong>状態と入力</strong>を常時保持しています。バグの瞬間を見つけたら巻き戻し、コードを直して保存（ホットリロード）すると、<strong>同じ入力がそこから再適用され、直したコードでバグの瞬間をもう一度見られます</strong>。再現手順を頑張る時代の終わりです。状態が 1 個の flat POD だからできる、このエンジン固有の開発ループです。</p>
+            <p>エンジンは直近 5 秒の<strong>状態と入力</strong>を常時保持しています。バグの瞬間を見つけたら巻き戻し、コードを直して保存（ホットリロード）すると、<strong>同じ入力がそこから再適用され、直したコードでバグの瞬間をもう一度見られます</strong>。再現手順を手で組み立て直す必要がありません。状態が 1 個の flat POD だからできる、このエンジン固有の開発ループです。</p>
 
             <!-- ── ⑪ 音 ─────────────────────────────── -->
             <h2 id="sound">⑪ 音 — 効果音・BGM</h2>
@@ -408,12 +408,12 @@ mitiru audio           <span class="c"># 音だけ — 440Hz トーン + レベ�
     [&amp;](<span class="k">int</span> tx, <span class="k">int</span> ty) { <span class="k">return</span> map.solid(tx, ty); });
 x = r.x; y = r.y;
 <span class="k">if</span> (r.hitDown) onGround = <span class="k">true</span>;   <span class="c">// 着地</span></pre>
-            <p>四角どうしが重なったか・点が四角の中にあるかは、自分で座標を比べなくても <code>sgc::Rectf</code> のメソッドで一発です。</p>
-<pre>sgc::<span class="t">Rectf</span> player{playerX - 28, 660, 56, 24};   <span class="c">// {x, y, 幅, 高さ}</span>
-sgc::<span class="t">Rectf</span> block {b.x, b.y, 44, 44};
+            <p>四角どうしが重なったか・点が四角の中にあるかは、自分で座標を比べなくても <code>Rect</code> のメソッドで一発です。</p>
+<pre><span class="t">Rect</span> player{playerX - 28, 660, 56, 24};   <span class="c">// {x, y, 幅, 高さ}</span>
+<span class="t">Rect</span> block {b.x, b.y, 44, 44};
 
 <span class="k">if</span> (player.intersects(block)) over = <span class="k">true</span>;     <span class="c">// 矩形どうしの交差</span>
-<span class="k">if</span> (block.contains(sgc::Vec2f{mx, my})) hit();    <span class="c">// 点が矩形内か（クリック判定）</span></pre>
+<span class="k">if</span> (block.contains(Vec2{mx, my})) hit();    <span class="c">// 点が矩形内か（クリック判定）</span></pre>
             <p>円どうしなら距離で <code>dx*dx + dy*dy &lt;= (r1+r2)*(r1+r2)</code>（<code>std::sqrt</code> を避けると速い）。クリック判定は「マウス座標を含む矩形/円があるか」を <code>contains</code> や距離で調べるだけです。</p>
 
             <!-- ── ⑰ 設定 ─────────────────────────────── -->
@@ -421,7 +421,7 @@ sgc::<span class="t">Rectf</span> block {b.x, b.y, 44, 44};
             <p>ウィンドウサイズや HTML UI の有無は、プロジェクト直下の <code>mitiru.toml</code> で決めます。<code>mitiru new</code> がひな型を作ります。よく触るキーはこのあたり。</p>
 <pre>[project]
 name   = <span class="s">"my-game"</span>
-engine = <span class="s">"0.19.0"</span>      <span class="c"># 使うエンジンの版。mitiru update で最新に上げる</span>
+engine = <span class="s">"0.21.0"</span>      <span class="c"># 使うエンジンの版。mitiru update で最新に上げる</span>
 
 [window]
 width  = 1280
