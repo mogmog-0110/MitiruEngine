@@ -1,82 +1,98 @@
 # MitiruEngine
 
-C++ のゲームエンジンです。UI（メニューや HUD）は HTML/CSS で作れます。
+軽量な C++ ゲームエンジン。ルールは C++、画面は HTML / CSS で書きます。
 
-- **UI を HTML/CSS で。** ゲームのロジック（シーン進行・状態・ノベル分岐・物理・AI）は C++ で書きます。メニューや HUD は HTML/CSS で組めるので、Web のデザイン資産がそのまま生きます。
-- **ヘッダだけで動く。** プリビルドの .lib を配って回る必要はありません。CMake の FetchContent で取り込んで、`Mitiru::mitiru` を link するだけ。
-- **C++20、Windows がメイン。** Linux と Mac でも一応動きますが、踏み固められているのは Windows + MSVC 2022。
+「必要なものしか画面に出さない」という考え方で作っています。Unity / Godot のような全機能を 1 画面に集めた mega editor の対極で、1 ツール = 1 関心事 = 1 ウィンドウ。GUI editor は提供せず、CLI を入口の中心に置きます。IDE は任意で、メモ帳でも開発できます。
 
-## ドキュメントとサンプル
+ゲーム本体はホットリロードできる DLL です。host（`mitiru_host`）がそれを読み込んでメインループを回します。状態は 1 個の flat-POD な `struct` にまとめ、それをエンジンが預かります。この 1 点から、巻き戻し・録画・観察・セーブが同じ仕組みで出てきます。
 
-- 公式ページ : <https://mogmog-0110.github.io/MitiruEngine/>
-- はじめに : <https://mogmog-0110.github.io/MitiruEngine/getting-started/>
-- チュートリアル : <https://mogmog-0110.github.io/MitiruEngine/tutorials/>
-- できること (チャプター) : <https://mogmog-0110.github.io/MitiruEngine/chapters/>
-- API リファレンス : <https://mogmog-0110.github.io/MitiruEngine/api/>
-- アーキテクチャ : <https://mogmog-0110.github.io/MitiruEngine/architecture/>
-- AI ワークフロー : [docs/AI_WORKFLOW.md](docs/AI_WORKFLOW.md) — `MITIRU_AI=1` で AI エージェントが画面・状態・音を観測し `mitiru verify` / `mitiru mcp` で検証するループ
+- 対応 OS: Windows 10 / 11（x64）
+- 言語: C++20
+- 入力: キーボード / マウス / ゲームパッド（Xbox 系・DualShock 4 など、設定不要）
+- 画面 (UI): HTML / CSS（CEF）または C++ から直接描画
+- 公式サイト: https://mogmog-0110.github.io/MitiruEngine/
 
-ドキュメントは日本語で書かれています。
+## なぜ MitiruEngine か
 
-## さっと触ってみる
+- **HTML / CSS で UI が書ける。** メニューや HUD を Web ページと同じ書き方で組めます。`data-m-*` の宣言的バインダがあり、つなぎの JavaScript は書きません。
+- **タイムトラベル inspector。** 毎フレームの状態を記録し、過去の瞬間へゲームをまるごと巻き戻して観察できます。「なぜこの値になったか」を遡って 1 行を特定できます。
+- **決定論 + リプレイ。** 同じ入力なら同じ結果になります。録画した入力がそのまま回帰テストになります。
+- **各 subsystem を単独起動できる。** Renderer / Audio / Input / Scene などを、ゲーム全体を立ち上げずに個別の CLI コマンドで動かせます。
+- **状態が 1 個の flat POD。** エンジンが状態を読み・差分を取り・巻き戻せるので、観察も AI 連携も同じ源から成立します。Claude Code / Codex などの AI エージェントが、この状態に対して開発できます。
+- **道具は 1 つにつき 1 ウィンドウ。** 巨大なエディタは開きません。観察窓・入力モニタ・タイムトラベルなどは別々の OS ウィンドウとして独立します。
+- **ホットリロード。** C++ も HTML / CSS も、保存した瞬間に走行中のゲームへ反映されます。状態は保たれます。
 
-```bash
-git clone --recursive https://github.com/mogmog-0110/MitiruEngine.git
-cd MitiruEngine
-cmake --preset default
-cmake --build build --config Debug
-```
-
-詳しい手順は [はじめに](https://mogmog-0110.github.io/MitiruEngine/getting-started/) を、動くサンプルは [サンプル](https://mogmog-0110.github.io/MitiruEngine/examples/) を見てください。
-
-## 自分のゲームから使う
-
-ゲームは **DLL 形式** で書きます（`mitiru_host` が読み込んで動かす）。`mitiru` CLI が一級市民です。
+## クイックスタート
 
 ```bash
-mitiru new my_game     # ゲーム DLL の雛形を作る
-cd my_game
-mitiru run             # ビルドして mitiru_host で起動
-mitiru watch           # src/ を編集すると state を保ったままホットリロード
+mitiru new my-game
+cd my-game
+mitiru run
 ```
 
-雛形の `src/main.cpp` は、状態を `GameMemory` 構造体にまとめ、`mitiru_module_load` で host に
-配線する DLL 形式です。host が state ポインタを所有するので、
+`mitiru new` の既定テンプレートは、描画・入力・HTML/CSS の HUD・HTML ボタンを 1 画面で見せるショーケースです。`mitiru run` の代わりに `mitiru watch` で起動すると、`src/` を編集して保存するたびに、状態を保ったままホットリロードします。
 
-- **ホットリロード**: コードだけ差し替えても状態が生き残る
-- **タイムトラベル / 自動リプレイ**: GameMemory を memcpy するだけで巻き戻し・bit-exact 再生
+ゲームの最小形は、状態の `struct` に `update` と `draw` を書くだけです。
 
-が成立します（ADR 0005）。HUD は HTML/CSS で手書き JS なし（`StateWriter` で名前付きの値を push し、
-`data-m-*` の宣言バインダが描画）。最短の手順は
-[はじめに](https://mogmog-0110.github.io/MitiruEngine/getting-started/)、
-動くサンプルは [サンプル](https://mogmog-0110.github.io/MitiruEngine/examples/)
-（`breakout` / `anchor` / `hello_game`）を参照。
+```cpp
+#include <mitiru.hpp>
+using namespace mitiru;
 
-> **旧・静的リンク経路は非推奨（deprecated）**。以前は `mitiru::Game` を継承して `engine.run()` で
-> エンジンを自分の exe に静的リンクする書き方も提供していましたが、タイムトラベル・リプレイ・
-> ホットリロードといった差別化機能が DLL 形式を前提とするため、**DLL 形式に一本化**します。
-> 既存の静的リンクプロジェクトは当面動きますが、新規は `mitiru new` の DLL 形式で始めてください。
+struct MyGame {
+    float x = 640, y = 360;
 
-## 何が同梱されているか
+    void update(Input in, float dt) {
+        x += in.move().x * 600 * dt;   // 矢印 / WASD / 左スティックが合流する
+    }
+    void draw(Screen& s) {
+        s.fillCircle(x, y, 24, color::Cyan);
+    }
+};
+MITIRU_GAME(MyGame)   // この struct をゲームの入口にする
+```
 
-- 2D / 3D の描画パイプライン (DX11 / DX12 / Vulkan / OpenGL / WebGL / Null から自動選択)
-- CEF 統合 (`include/mitiru/cef/...`) — UI / HUD を HTML/CSS で書くため
-- ノベル VM (`include/mitiru/vn/...`) — シナリオを JSON で書ける
-- セーブ / ロード (`include/mitiru/data/SaveSchema.hpp`) — JSON ベース、スキーマ migration 付き
-- 入力抽象 (Win32 / SDL2 / GLFW)
-- オーディオ (miniaudio ベース)
-- Tracy プロファイラとのフック
-- Catch2 ベースの単体・統合テスト
-- 動作検証用ツール (`include/mitiru/validate/...`)
+`update(Input in, Hud hud, float dt)` のように `Hud hud` を足すと、HTML への値の送信や観察窓を扱えます。
 
-## 状態
+## HTML / CSS で UI を書く
 
-**0.x 系。実験段階。**
+スコアなどの表示を C++ から HTML の HUD に渡せます。HTML 側は `data-m-text="名前"` で受け、C++ 側は `hud.set("名前", 値)` で送ります。名前を一致させるのが唯一の約束で、つなぎの JavaScript は要りません。
 
-API はまだ変わります。`v0.1.0` のタグで取れる範囲では安定していますが、`main` ブランチを直接追うと API 変更を踏むことがあります。
+```html
+<!-- scene.html -->
+<div class="hud">SCORE <span data-m-text="view.hud.score">0</span></div>
+```
 
-`v0.x` のあいだは「壊さないように努力する」レベル。`v1.0` でロックします。
+```cpp
+void update(Input in, Hud hud, float dt) {
+    // …
+    hud.set("view.hud.score", score);   // scene.html の同じ名前へ届く
+}
+```
+
+`scene.html` と CSS もホットリロードの対象です。DLL を再ビルドせずに、保存した瞬間に画面が更新されます。
+
+## 主な機能
+
+- 2D 描画（スプライト / タイルマップ / グラデーション / 図形 / テキスト）と最小限の 3D（glTF の読み込みと表示）
+- 矩形・点の当たり判定（物理ブリッジ Box2D / Jolt は任意で有効化）
+- HTML / CSS の UI オーバーレイ（CEF）と `data-m-*` 宣言的バインダ
+- 状態を 1 個の flat POD に置く設計（`MITIRU_GAME` / `MITIRU_GAME_SERIES`）
+- タイムトラベル inspector・観察窓・入力モニタ・録画再生などのデバッグ窓（`hud.open(Tool::…)` で開く）
+- 決定論的リプレイ（入力 + 乱数 seed の記録・再生）
+- 各 subsystem の単独起動
+- ホットリロード（C++ / HTML / CSS）
+- AI 観測 API（状態の構造化 JSON・フレーム間の差分・別世界での再実行）
+- 配布フォルダの生成（`mitiru dist`、コンソールを出さない exe + ランタイム同梱）
+
+## リンク
+
+- 公式サイト: https://mogmog-0110.github.io/MitiruEngine/
+- チュートリアル（小さなゲームを 1 本作る）: https://mogmog-0110.github.io/MitiruEngine/tutorial.html
+- 機能リファレンス: https://mogmog-0110.github.io/MitiruEngine/features.html
+- AI 連携: https://mogmog-0110.github.io/MitiruEngine/ai.html
+- ダウンロード（GitHub Releases）: https://github.com/mogmog-0110/MitiruEngine/releases/latest
+- CLI リポジトリ: https://github.com/mogmog-0110/mitiru-cli
 
 ## ライセンス
 
-Source-available（使用は自由・改変/再配布は不可）。エンジンを使って自分のゲーム / アプリを作り配布することは自由です（商用可）が、エンジン本体の改変・フォーク・再配布は許可していません。詳細は `LICENSE` ファイルを見てください。`external/` 配下の第三者コンポーネントは各自のライセンス（MIT / BSD 等）に従います。
+ソース公開のライセンスです。ゲーム制作には自由に使えます（商用も可）。ただしエンジン本体の改変・再配布はできません。詳細は `LICENSE` を参照してください。
