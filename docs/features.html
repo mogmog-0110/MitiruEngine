@@ -18,7 +18,7 @@
 
 <div class="page">
   <header class="topbar"><div class="bar">
-    <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine<span class="ver">v0.18.0</span></a>
+    <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine</a>
     <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a href="tutorial.html">チュートリアル</a><a class="current" href="features.html">機能</a><a href="ui.html">画面</a><a href="ai.html">AI</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
   </div></header>
 <div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#basic">① 基本形</a><a href="#shapes">② 図形</a><a href="#color">③ 色</a><a href="#text">④ 文字</a><a href="#transform">⑤ 変換</a><a href="#sprite">⑥ スプライト</a><a href="#gltf">⑦ 3D</a><a href="#input">⑧ 入力</a><a href="#pad">⑨ パッド</a><a href="#ai">⑩ 乱数・AI Lens</a><a href="#sound">⑪ 音</a><a href="#juice">⑫ 演出</a><a href="#htmlui">⑬ HTML / CSS UI</a><a href="#tools">⑭ デバッグ窓</a><a href="#subsys">⑮ 単独起動</a><a href="#collision">⑯ 当たり判定</a><a href="#config">⑰ 設定</a></div></div>
@@ -164,10 +164,10 @@ s.drawGroup({px, py}, spinDeg, [&amp;](<span class="t">Screen</span>&amp; g) {
 
             <!-- ── ⑥ スプライト ───────────────────────── -->
             <h2 id="sprite">⑥ 画像・スプライト — 画像を描く</h2>
-            <p>いちばん簡単な描き方は id 指定です（v0.15）。<code>assets/sprites/hero.png</code> を置いたら:</p>
+            <p>最も基本的な描き方は id 指定です。<code>assets/sprites/hero.png</code> を置いたら:</p>
 <pre>s.sprite(<span class="s">"hero"</span>, x, y);          <span class="c">// これだけ。読み込み・キャッシュはエンジンがやる</span>
 s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍サイズ</span></pre>
-            <p>音の <code>hud.play("hit")</code> と同じ「ファイルを置いて id で呼ぶ」規約です。ファイルが無ければ初回に 1 行だけ警告が出ます。<strong>PNG を上書き保存すると実行中のゲームに約 0.5 秒で反映されます</strong>（v0.17 — 絵を描きながら、隣でゲームが生き返る）。細かい制御（回転・切り出し・ティント）が要るときは <code>Texture</code> を自分で持ちます。読み込みは重いので <code>init()</code> で 1 回だけ——<code>draw()</code> の中で毎フレーム読み込まないこと。</p>
+            <p>音の <code>hud.play("hit")</code> と同じ「ファイルを置いて id で呼ぶ」規約です。ファイルが無ければ初回に 1 行だけ警告が出ます。<strong>PNG を上書き保存すると実行中のゲームに約 0.5 秒で反映されます</strong>（絵を描きながら、隣でゲームが生き返る）。細かい制御（回転・切り出し・ティント）が要るときは <code>Texture</code> を自分で持ちます。読み込みは重いので <code>init()</code> で 1 回だけ——<code>draw()</code> の中で毎フレーム読み込まないこと。</p>
             <figure><img src="assets/feat_sprite.png" alt="スプライト・ティント・スプライトシート切り出し・drawPixelGrid の実行画面" loading="lazy"><figcaption>実際に動かした GPU 描画。左から <code>drawSprite</code>（テクスチャ）/ ティント乗算 / スプライトシートの 1 コマ切り出し / <code>drawPixelGrid</code>（手続き生成ピクセル）。</figcaption></figure>
 <pre><span class="k">#include</span> &lt;mitiru/render/Texture.hpp&gt;
 
@@ -223,7 +223,7 @@ r3d.endFrame();</pre>
 
             <!-- ── ⑨ パッド ───────────────────────────── -->
             <h2 id="pad">⑨ ゲームパッド — コントローラ</h2>
-            <p>Xbox 系（XInput）も <strong>DualShock 4 などの DirectInput 系</strong>も、何も設定せずそのまま動きます（v0.13 から既定で有効）。機種の違いはエンジンが吸収するので、ゲーム側は同じ API を読むだけです。</p>
+            <p>Xbox 系（XInput）も <strong>DualShock 4 などの DirectInput 系</strong>も、何も設定せずそのまま動きます（既定で有効）。機種の違いはエンジンが吸収するので、ゲーム側は同じ API を読むだけです。</p>
 <pre><span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt) {
     <span class="k">if</span> (!in.padConnected()) <span class="k">return</span>;
 
@@ -234,7 +234,7 @@ r3d.endFrame();</pre>
 }</pre>
             <p>ボタンは <code>Pad::Up/Down/Left/Right/Start/Back/A/B/X/Y/LB/RB/LStick/RStick</code>。スティックは <code>leftStick() / rightStick()</code>（<code>{x, y}</code>）、トリガーは <code>leftTrigger() / rightTrigger()</code>。</p>
 
-            <h3>キーもパッドも、1 つの名前で（v0.15）</h3>
+            <h3>キーもパッドも、1 つの名前で</h3>
             <p>「ジャンプは Space でも W でもパッドの A でも」——その束ねを毎回 if で書く必要はありません。<strong>表が 1 枚あれば、表がそのまま操作仕様書になります</strong>:</p>
 <pre><span class="k">enum class</span> <span class="t">Act</span> : uint8_t { Jump, Throw, Pause };
 
@@ -254,7 +254,7 @@ r3d.endFrame();</pre>
 <span class="k">if</span> (in.cancelPressed())  back();     <span class="c">// Escape + パッド B / Back</span>
 <span class="t">Stick</span> m = in.move();                 <span class="c">// 矢印 + WASD + 十字キー + 左スティック統合 (-1..1)</span>
 x += m.x * 320 * dt;                 <span class="c">// これだけで全デバイス対応の移動</span></pre>
-            <p>メニューの上下送り（スティック倒しっぱなしのリピート含む）は <code>mitiru::MenuCursor</code>（v0.17）を状態に持って <code>cursor.updateVertical(in, 項目数, dt)</code> を呼ぶだけ。POD なので巻き戻しにも乗ります。</p>
+            <p>メニューの上下送り（スティック倒しっぱなしのリピート含む）は <code>mitiru::MenuCursor</code>を状態に持って <code>cursor.updateVertical(in, 項目数, dt)</code> を呼ぶだけ。POD なので巻き戻しにも乗ります。</p>
             <p>レシピ: キー設定をゲーム中に変えられるようにする（リバインド）手順は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/INPUT_REBIND_RECIPE.md" target="_blank" rel="noopener">docs/INPUT_REBIND_RECIPE.md（GitHub）</a> にまとまっています。</p>
 
             <!-- ── ⑩ AI Lens と決定論 ─────────────────── -->
@@ -293,7 +293,7 @@ MITIRU_AI=1 mitiru run</pre>
             <div class="note"><strong>1 つの設計判断が差別化の土台になっている。</strong> 状態を 1 個の flat POD に置くという制約が、巻き戻し・録画リプレイ・AI 可視化という別々の機能を、追加コストなしで同じ仕組みから生やしています。詳しい思想は <a href="ai.html#why">AI ページの「なぜできるか — flat POD と決定論の果実」</a> へ。</div>
 
             <!-- ── 巻き戻し → ホットリロード → 再適用 ── -->
-            <h3 id="resim">巻き戻して、直して、そこから再生（v0.17）</h3>
+            <h3 id="resim">巻き戻して、直して、そこから再生</h3>
             <p>エンジンは直近 5 秒の<strong>状態と入力</strong>を常時保持しています。バグの瞬間を見つけたら巻き戻し、コードを直して保存（ホットリロード）すると、<strong>同じ入力がそこから再適用され、直したコードでバグの瞬間をもう一度見られます</strong>。再現手順を頑張る時代の終わりです。状態が 1 個の flat POD だからできる、このエンジン固有の開発ループです。</p>
 
             <!-- ── ⑪ 音 ─────────────────────────────── -->
@@ -302,7 +302,7 @@ MITIRU_AI=1 mitiru run</pre>
 <pre>hud.play(<span class="s">"hit"</span>);                <span class="c">// SE を id で鳴らす（第 2 引数は音量）</span>
 hud.play(<span class="s">"hit"</span>, 0.8f, 1.1f);     <span class="c">// 第 3 引数はピッチ — 連発しても痩せない散らし</span>
 hud.music(<span class="s">"bgm_field"</span>, <span class="k">true</span>);    <span class="c">// BGM はこちら。ループ再生で、リスタートしても途切れない</span>
-hud.music(<span class="s">"bgm_boss"</span>, <span class="k">true</span>, 1.0f, 0.5f); <span class="c">// 0.5 秒クロスフェードで曲変更 (v0.15)</span>
+hud.music(<span class="s">"bgm_boss"</span>, <span class="k">true</span>, 1.0f, 0.5f); <span class="c">// 0.5 秒クロスフェードで曲変更</span>
 hud.stopMusic(0.5f);             <span class="c">// BGM を止める（0.5 秒フェードアウト。引数 0 で即停止）</span></pre>
             <p>id は <code>assets/audio/&lt;id&gt;.wav</code> に対応します。再生中の音や全体音量は <a href="#tools">⑭ デバッグ窓</a> の <code>mixer</code> 窓で確認できます。</p>
             <h3>音に合わせる — in.audioTime()</h3>
@@ -315,11 +315,11 @@ hud.stopMusic(0.5f);             <span class="c">// BGM を止める（0.5 秒�
             <h2 id="juice">⑫ 手応えの演出 — フラッシュ・画面揺れ・スクショ</h2>
             <p>操作の「手応え」は <code>hud</code> の一発エフェクトと、<code>draw</code> 側のちょっとした工夫で足せます。</p>
 <pre>hud.flash(color::White, 0.18f);   <span class="c">// 画面を一瞬その色にフラッシュ（被弾・ボス登場）</span>
-hud.shake(0.3f, 8.0f);            <span class="c">// 画面揺れ 0.3 秒・振幅 8px（v0.15。リプレイも bit-exact）</span>
+hud.shake(0.3f, 8.0f);            <span class="c">// 画面揺れ 0.3 秒・振幅 8px（リプレイも bit-exact）</span>
 hud.hitStop(0.08f);               <span class="c">// ヒットストップ — 0.08 秒だけ時が止まる（撃破・パリィの手応え）</span>
 hud.fadeOut(0.4f);                <span class="c">// 画面を黒で覆う。場面転換は fadeOut → 切替 → fadeIn(0.4f)</span>
-hud.letterbox(0.8f, 0.4f);        <span class="c">// 上下の黒帯（イベント・カットシーン。戻すのは letterbox(0)）(v0.16)</span></pre>
-            <h3>セーブ・カメラ（v0.16）</h3>
+hud.letterbox(0.8f, 0.4f);        <span class="c">// 上下の黒帯（イベント・カットシーン。戻すのは letterbox(0)）</span></pre>
+            <h3>セーブ・カメラ</h3>
             <p>状態が flat POD だから、<strong>セーブはまるごとコピー 1 行</strong>です。カメラも宣言して使うだけ:</p>
 <pre>hud.save(<span class="s">"slot0"</span>);              <span class="c">// GameMemory をまるごとセーブ（巻き戻し・リプレイと同一機構）</span>
 hud.load(<span class="s">"slot0"</span>);              <span class="c">// 復元。リプレイ再生中でも再現が壊れない設計</span>
@@ -402,7 +402,7 @@ mitiru audio           <span class="c"># 音だけ — 440Hz トーン + レベ�
 
             <!-- ── ⑯ 当たり判定 ───────────────────────── -->
             <h2 id="collision">⑯ 当たり判定 — 矩形の交差・点の内包</h2>
-            <p>タイルマップの上を動くなら、衝突解決ごと 1 つの関数でできます（v0.17）:</p>
+            <p>タイルマップの上を動くなら、衝突解決ごと 1 つの関数でできます:</p>
 <pre><span class="c">// 移動量 dx,dy をタイル衝突で解決した位置 + どの面に当たったかが返る (貫通しない)</span>
 <span class="k">auto</span> r = mitiru::moveAndCollide(x, y, w, h, dx, dy, 16.0f,
     [&amp;](<span class="k">int</span> tx, <span class="k">int</span> ty) { <span class="k">return</span> map.solid(tx, ty); });
@@ -421,7 +421,7 @@ sgc::<span class="t">Rectf</span> block {b.x, b.y, 44, 44};
             <p>ウィンドウサイズや HTML UI の有無は、プロジェクト直下の <code>mitiru.toml</code> で決めます。<code>mitiru new</code> がひな型を作ります。よく触るキーはこのあたり。</p>
 <pre>[project]
 name   = <span class="s">"my-game"</span>
-engine = <span class="s">"0.18.0"</span>      <span class="c"># 使うエンジンの版。mitiru update で最新に上げる</span>
+engine = <span class="s">"0.19.0"</span>      <span class="c"># 使うエンジンの版。mitiru update で最新に上げる</span>
 
 [window]
 width  = 1280
@@ -433,11 +433,11 @@ enabled = <span class="k">false</span>        <span class="c"># 任意: HTML/CSS
             <p><code>[cef] enabled = false</code> にすると、HTML UI を使わない代わりに配布物から Chromium が丸ごと外れて軽くなります（→ <a href="distribute.html">配布する</a>）。完成したら <code>mitiru dist</code> で、そのまま動く配布フォルダになります。</p>
 
             <div class="cards">
-              <div class="card"><div class="ico">🎮</div><h3>はじめてのゲーム<span class="en">tutorial</span></h3><p>「ドッジゲーム」を最後まで作って、骨組みから手応えまで一気に通します。</p></div>
-              <div class="card"><div class="ico">🖥️</div><h3>画面を作る<span class="en">html ui</span></h3><p>HUD を HTML / CSS で。<code>data-m-*</code> の主な属性と作例。</p></div>
-              <div class="card"><div class="ico">📚</div><h3>API リファレンス<span class="en">api</span></h3><p>全クラス・全メソッドの正確な定義。逆引きの裏付けに。</p></div>
+              <div class="card"><h3>はじめてのゲーム<span class="en">tutorial</span></h3><p>「スター・キャッチ」を最後まで作り、骨組みから手応えまで通す。</p></div>
+              <div class="card"><h3>画面を作る<span class="en">html ui</span></h3><p>HUD を HTML / CSS で。<code>data-m-*</code> の主な属性と作例。</p></div>
+              <div class="card"><h3>API リファレンス<span class="en">api</span></h3><p>全クラス・全メソッドの正確な定義。逆引きの裏付けに。</p></div>
             </div>
-            <div class="note"><strong>次は手を動かす番。</strong> <a href="tutorial.html">はじめてのゲーム</a> で「ドッジゲーム」を最後まで作るか、<a href="ui.html">画面を作る</a> で HUD を HTML/CSS にしてみてください。困ったらこのページに戻って逆引きを。</div>
+            <div class="note"><a href="tutorial.html">はじめてのゲーム</a> で「スター・キャッチ」を最後まで作るか、<a href="ui.html">画面を作る</a> で HUD を HTML / CSS に置き換える。</div>
 
           </div>
         </div>
