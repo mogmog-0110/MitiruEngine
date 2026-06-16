@@ -269,7 +269,7 @@ struct CliArgs
 	int                   loFiBitsR = 5, loFiBitsG = 6, loFiBitsB = 5; // --lofi-bits R,G,B (既定 RGB565)
 	float                 loFiDither = 1.0f;   // --lofi-dither S
 	int                   httpPort = 0;        // --http-port <N>: EngineHttpServer を listen 開始 (ADR 0011)
-	int                   cefDebugPort = 0;    // --cef-debug-port <N>: CEF remote-debugging-port を開く (CDP 実ポインタ検証, E-02)
+	int                   cefDebugPort = 0;    // --cef-debug-port <N>: CEF remote debugging を開く (chrome-devtools / CDP で実機テスト)
 	bool                  console  = false;    // --console: HTTP + default browser で console.html 自動表示
 	bool                  noCef    = false;    // --no-cef: CEF を起動しない (完全ネイティブ描画の game 用、起動軽量化)
 	std::string           captureDir;          // --capture-dir <d>: 毎 N フレーム PNG を吐く先 (#43)
@@ -557,6 +557,7 @@ void printUsage()
 		"  --lofi-bits R,G,B  量子化ビット数 (既定 5,6,5=RGB565 / 3,3,2=256色相当)\n"
 		"  --lofi-dither S  ディザ強度 (既定 1.0, 0=ディザ無し)\n"
 		"  --http-port N    EngineHttpServer を 127.0.0.1:N で開始 (runtime コントロール, ADR 0011)\n"
+		"  --cef-debug-port N  CEF remote debugging を 127.0.0.1:N で開く (chrome-devtools / CDP 実機テスト)\n"
 		"  --console        HTTP 起動 + 既定ブラウザで control panel を自動表示 (port 既定 8090)\n"
 		"  --no-cef         CEF を起動しない (完全ネイティブ描画の game 用・起動軽量化)\n"
 		"  --capture-dir D  毎 N フレームのフレームを PNG 連番で D に吐く (AI 視覚検証, #43)\n"
@@ -976,7 +977,7 @@ int main(int argc, char* argv[])
 	if (args.noPauseUnfocused) { cfg.vsync = false; }  // 背面でもフルレート (present の vsync 待ちを回避)
 	if (args.noVsync)          { cfg.vsync = false; }  // --no-vsync: 素のフレームコスト計測 (#53)
 	cfg.enableCef       = !args.noCef;   // --no-cef: 完全ネイティブ game は CEF 抜きで軽量起動
-	cfg.cefRemoteDebuggingPort = args.cefDebugPort; // --cef-debug-port: CDP(実ポインタ検証/chrome-devtools)
+	cfg.cefRemoteDebuggingPort = args.cefDebugPort;  // --cef-debug-port: 0 以外で CEF remote debugging を開く
 	cfg.timeScale       = args.speed;    // --speed: 固定 dt × N 早回し (#43)
 	cfg.errorBannerFile = args.errorFile; // --error-file: mitiru watch のビルドエラー帯 (空=OFF)
 	if (args.fixedSize) { cfg.windowResizable = false; }   // --fixed-size: リサイズ禁止 (#44)

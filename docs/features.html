@@ -19,7 +19,7 @@
 <div class="page">
   <header class="topbar"><div class="bar">
     <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine</a>
-    <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a href="tutorial.html">チュートリアル</a><a class="current" href="features.html">機能</a><a href="ui.html">画面</a><a href="ai.html">AI 連携</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
+    <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a href="tutorial.html">チュートリアル</a><a class="current" href="features.html">機能</a><a href="ui.html">画面</a><a href="3d.html">3D</a><a href="ai.html">AI 連携</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
   </div></header>
 <div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#basic">① 基本形</a><a href="#shapes">② 図形</a><a href="#color">③ 色</a><a href="#text">④ 文字</a><a href="#transform">⑤ 変換</a><a href="#sprite">⑥ スプライト</a><a href="#gltf">⑦ 3D</a><a href="#input">⑧ 入力</a><a href="#pad">⑨ パッド</a><a href="#ai">⑩ 乱数・AI Lens</a><a href="#sound">⑪ 音</a><a href="#juice">⑫ 演出</a><a href="#htmlui">⑬ HTML / CSS UI</a><a href="#tools">⑭ デバッグ窓</a><a href="#subsys">⑮ 単独起動</a><a href="#collision">⑯ 当たり判定</a><a href="#config">⑰ 設定</a></div></div>
 <div class="content">
@@ -188,24 +188,29 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍
             <div class="note"><strong>flat POD と画像の両立。</strong> <code>Texture</code> をトップの <code>struct</code> のメンバに持つと flat POD ではなくなり、<code>MITIRU_GAME</code> がコンパイルエラーにします（録画・タイムトラベルの単一 state を守るため → <a href="#ai">⑩ AI Lens と決定論</a>）。画像はグローバル／別オブジェクトに分け、トップの <code>struct</code> には座標やフレーム番号など「数値だけ」を残します。</div>
 
             <!-- ── ⑦ 3D ──────────────────────────────── -->
-            <h2 id="gltf">⑦ 3D 表示 — glTF（最小限）</h2>
-            <p>正直に書くと、MitiruEngine の正面は 2D + HTML/CSS で、3D は最小限です。エンジン内部に DX11 の 3D レンダラー（Phong / トゥーンシェーディング）と glTF 読み込み（静的メッシュ + スキニング）があり、<strong>ホスト側の C++</strong> から使えます。ゲーム DLL の <code>draw(Screen&amp; s)</code> に 3D の API はまだ生えていません——ふだんのゲーム作りで 2D と並べて使える太い機能ではなく、自前ホストを書く人向けの素材という位置づけです。</p>
-<pre><span class="k">#include</span> &lt;mitiru/render/Renderer3D.hpp&gt;
-<span class="k">#include</span> &lt;mitiru/render/GltfLoader.hpp&gt;
+            <h2 id="gltf">⑦ 3D 表示 — 2D の上にのせる</h2>
+            <p>正直に書くと、MitiruEngine の正面は 2D + HTML/CSS で、3D は「2D に混ぜる」位置づけです。やり方は素直で、3D シーンを CPU のソフトレンダラー <code>DeferredPipeline</code> で 1 枚の画像（<code>RenderTexture</code>）に焼き、それを <code>Screen::drawPixelGrid</code> で画面へ貼ります。ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で完結し、状態は数値だけなので決定的——録画も巻き戻しもそのまま効きます。</p>
+<pre><span class="k">#include</span> &lt;mitiru/render/DeferredPipeline.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/render/Scene3D.hpp&gt;
+<span class="k">namespace</span> r = mitiru::render;
 
-<span class="c">// ホスト側 C++（DX11）。Screen の 2D API とは別の層です。</span>
-<span class="k">auto</span> mesh = mitiru::render::loadGltfMeshFromFile(<span class="s">"model.gltf"</span>);
+<span class="c">// 道具はグローバル（state ではない）。init() で 1 回だけ初期化。</span>
+<span class="k">static</span> r::<span class="t">DeferredPipeline</span> g_pipe;
+<span class="k">static</span> r::<span class="t">RenderTexture</span>    g_frame{512, 288};
+<span class="k">static</span> <span class="k">const</span> r::<span class="t">Mesh</span> g_cube = r::<span class="t">Mesh</span>::createCube(1.0f);
 
-mitiru::render::<span class="t">Renderer3D</span> r3d;
-r3d.initialize(dx11Device, {1280, 720});
+<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
+    r::<span class="t">Scene3D</span> scene;
+    scene.addObject({&amp;g_cube, r::<span class="t">Material</span>::defaultMaterial(), {0,0,0}, {0,t,0}, {1,1,1}});
+    scene.addLight(r::<span class="t">Light</span>::directional({-0.5f, -1, -0.4f}));
+    r::<span class="t">Camera3D</span> cam; cam.setPosition({0, 4, 8}); cam.setTarget({0, 0, 0});
+    g_pipe.render(scene, cam, g_frame);                  <span class="c">// CPU で 1 枚に焼く</span>
 
-<span class="c">// 毎フレーム</span>
-r3d.beginFrame({0.2f, 0.3f, 0.4f, 1.0f});
-r3d.setCamera(camera);                                            <span class="c">// render::Camera3D</span>
-r3d.setLight(mitiru::render::<span class="t">Light</span>::directional({0, -1, 0.5f}));
-r3d.drawMesh(*mesh, worldMat, material);
-r3d.endFrame();</pre>
-            <p>ノード階層・マテリアル・スキンまで含めたシーン全体が要るときは <code>loadGltfSceneFromFile</code> が <code>GltfSceneData</code> を返します。期待値は先に揃えておいてください——「glTF を読んで表示できる」が現状のすべてです。</p>
+    s.drawPixelGrid(<span class="t">Rect</span>{0,0,1280,720},                  <span class="c">// 2D としてそのまま貼る</span>
+        (<span class="k">const</span> std::uint32_t*)g_frame.pixels().data(),
+        g_frame.width(), g_frame.height());
+}</pre>
+            <p>立方体・球・板のほか、<code>loadGltfMeshFromFile("model.gltf")</code> で読み込んだメッシュも同じ <code>Scene3D</code> に並べられます。動くデモと、影付きの完全なコードは <a href="3d.html">3D のページ</a> にまとめました。大量ポリゴンを実時間で回す本格 3D は対象外——あくまで 2D に 3D を混ぜる道具です。</p>
 
             <!-- ── ⑧ 入力 ─────────────────────────────── -->
             <h2 id="input">⑧ キーボード・マウス — 入力を読む（Input）</h2>

@@ -101,6 +101,15 @@
 			if (nested[i].parentNode) { nested[i].parentNode.removeChild(nested[i]); }
 		}
 
+		// ステージが CSS transform: scale(...) で拡縮されている場合、ghost を body 直下に
+		// 置くと scale が外れて中身が等倍描画され、見た目が実画面より大きく/小さく出る。
+		// 論理サイズ (offset*) と実サイズ (rect) の比で effective scale を求め、ghost にも
+		// 同じ scale をかけて見た目を一致させる。scale 無しのゲームでは offset==rect なので
+		// scale=1 となり従来と完全に同じ挙動 (後方互換)。
+		const logicalW = visualRoot.offsetWidth || rect.width;
+		const logicalH = visualRoot.offsetHeight || rect.height;
+		const scale = (logicalW > 0) ? (rect.width / logicalW) : 1;
+
 		// inline style で固定配置 (CSS 特異度に依存しない)
 		const st = ghost.style;
 		st.position = 'fixed';
@@ -109,9 +118,10 @@
 		st.left = '0';
 		st.top = '0';
 		st.margin = '0';
-		st.width = rect.width + 'px';
-		st.height = rect.height + 'px';
-		st.transform = 'translate(-50%, -50%)';
+		st.width = logicalW + 'px';
+		st.height = logicalH + 'px';
+		st.transformOrigin = 'center center';
+		st.transform = 'translate(-50%, -50%) scale(' + scale + ')';
 		st.opacity = '0.88';
 		st.filter = 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.5))';
 		st.transition = '';

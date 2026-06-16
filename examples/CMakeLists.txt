@@ -31,6 +31,9 @@ endif()
 add_subdirectory(mitiru_host)
 add_subdirectory(mitiru_start)
 add_subdirectory(timetravel_demo)   # 差別化デモ (time-travel / AI Lens、ADR 0017/0018)
+# hello3d: 3D ゲームデモ (CPU ソフトレンダラー DeferredPipeline を drawPixelGrid で 2D に
+# 合成)。GPU 3D 経路に頼らず draw(Screen&) だけで完結。allowlist 同梱なので無条件参照。
+add_subdirectory(hello3d)
 # catch: チュートリアルの題材 (スプライト入門)。仮素材のため dev-only・snapshot 非同梱。
 # EXISTS ガード必須 (allowlist 非追加なので release snapshot には catch/ が無い)。
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/catch/CMakeLists.txt")

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MitiruEngine — 3D も 2D の上にのせて</title>
+  <meta name="description" content="MitiruEngine で 3D ゲームを作る。3D シーンを CPU のソフトレンダラーで 1 枚の画像に焼き、Screen::drawPixelGrid で 2D の上に合成する。状態は数値だけなので決定的——録画・巻き戻し・リプレイもそのまま効く。実際に動くデモと、そのコードを掲載。">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MitiruEngine — 3D も 2D の上にのせて">
+  <meta property="og:description" content="3D シーンを CPU で 1 枚の画像に焼き、2D の上に合成する。状態は数値だけなので決定的。動くデモとコードを掲載。">
+  <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/3d.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine</a>
+    <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a href="tutorial.html">チュートリアル</a><a href="features.html">機能</a><a href="ui.html">画面</a><a class="current" href="3d.html">3D</a><a href="ai.html">AI 連携</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
+  </div></header>
+<div class="content">
+    <main id="main">
+      <!-- ── ページ見出し ───────────────────────── -->
+      <section class="page-head">
+        <div class="wrap">
+          <p class="kicker">3D</p>
+          <h1>3D も、2D の上にのせて出す</h1>
+          <p class="lede">MitiruEngine の正面は 2D + HTML/CSS ですが、3D も出せます。やり方は素直で、3D のシーンを CPU のソフトレンダラーで 1 枚の画像に焼き、その画像を <code>Screen</code> にそのまま貼るだけ。重い GPU の 3D 経路に頼らないので、2D の描画と同じ並びに 3D が混ざります。状態は「数値だけ」なので<strong>完全に決定的</strong>——録画も巻き戻しも、2D ゲームと同じように効きます。</p>
+        </div>
+      </section>
+
+      <section class="band">
+        <div class="wrap">
+          <div class="prose">
+
+            <!-- ── 動くデモ ───────────────────────────── -->
+            <figure>
+              <img src="assets/hello3d.webp" alt="MitiruEngine で動く 3D デモ。足場の上に回転する立方体と周回する球、奥に色とりどりのピラーが立ち、それぞれが地面に影を落とす。カメラがゆっくり周回する。左上に『MitiruEngine 3D』の文字、左下に『arrow keys move the cube』のヒント。">
+              <figcaption>同梱サンプル <code>hello3d</code> をそのまま録画したものです。地面・回る立方体・追従して周回する球・奥のピラー——すべて影付きで、カメラが周回します。矢印キーで中央の立方体を動かせます。文字（HUD）は 2D で、3D の上に重なっています。</figcaption>
+            </figure>
+
+            <!-- ── やっていること ─────────────────────── -->
+            <h2 id="how">やっていること — 3D を 1 枚の画像にして 2D へ貼る</h2>
+            <p>3D の絵は、エンジン内蔵のソフトレンダラー <code>DeferredPipeline</code> が CPU で計算します（影・陰影・ハイライトまで）。出力先は画面ではなく <code>RenderTexture</code>——ただのピクセルの入れ物です。あとはそのピクセルを <code>Screen::drawPixelGrid</code> で画面へ貼れば、3D が 2D の 1 枚絵になります。HUD やメニューは、その上にいつもの 2D で重ねます。</p>
+            <figure>
+              <svg class="dgm" viewBox="0 0 760 124" width="100%" style="max-width:760px" role="img" aria-label="3D 合成の流れ。Scene3D（メッシュとライト）→ DeferredPipeline が CPU で計算 → RenderTexture（1 枚の画像）→ drawPixelGrid → 画面。HUD の 2D 文字は画面の上に重なる。">
+                <defs><marker id="d1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+                <rect class="box"  x="11"  y="22" width="130" height="54" rx="4"/>
+                <text class="lbl"  x="76"  y="46" text-anchor="middle">Scene3D</text>
+                <text class="sub"  x="76"  y="63" text-anchor="middle">メッシュ + ライト</text>
+                <rect class="boxy" x="163" y="22" width="130" height="54" rx="4"/>
+                <text class="mono" x="228" y="46" text-anchor="middle">DeferredPipeline</text>
+                <text class="sub"  x="228" y="63" text-anchor="middle">CPU で計算</text>
+                <rect class="box"  x="315" y="22" width="130" height="54" rx="4"/>
+                <text class="mono" x="380" y="46" text-anchor="middle">RenderTexture</text>
+                <text class="sub"  x="380" y="63" text-anchor="middle">1 枚の画像</text>
+                <rect class="boxy" x="467" y="22" width="130" height="54" rx="4"/>
+                <text class="mono" x="532" y="49" text-anchor="middle">drawPixelGrid</text>
+                <rect class="box"  x="619" y="22" width="130" height="54" rx="4"/>
+                <text class="lbl"  x="684" y="49" text-anchor="middle">画面</text>
+                <line class="arr" x1="141" y1="49" x2="161" y2="49" marker-end="url(#d1)"/>
+                <line class="arr" x1="293" y1="49" x2="313" y2="49" marker-end="url(#d1)"/>
+                <line class="arr" x1="445" y1="49" x2="465" y2="49" marker-end="url(#d1)"/>
+                <line class="arr" x1="597" y1="49" x2="617" y2="49" marker-end="url(#d1)"/>
+                <text class="sub"  x="684" y="100" text-anchor="middle">＋ HUD は 2D で上へ</text>
+                <line class="arr" x1="684" y1="88" x2="684" y2="78" marker-end="url(#d1)"/>
+              </svg>
+              <figcaption>3D は <code>DeferredPipeline</code> が CPU で 1 枚の画像（<code>RenderTexture</code>）に焼き、<code>drawPixelGrid</code> で画面へ。HUD は 2D で上に重ねます。</figcaption>
+            </figure>
+
+            <!-- ── コード ─────────────────────────────── -->
+            <h2 id="code">コード — ふだんのゲームと同じ形</h2>
+            <p>ゲームの形は 2D とまったく同じです。状態は <code>struct</code> に数値だけを持ち、<code>update</code> で動かし、<code>draw</code> で描く。3D を描くための道具（メッシュやパイプライン）は「描く部品」であって状態ではないので、<code>struct</code> の外（グローバル）に置きます——録画・巻き戻しのために、状態は数値だけに保つ決まりです（→ <a href="features.html#ai">決定論</a>）。</p>
+<pre><span class="k">#include</span> &lt;mitiru.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/render/DeferredPipeline.hpp&gt;   <span class="c">// CPU ソフトレンダラー</span>
+<span class="k">#include</span> &lt;mitiru/render/Scene3D.hpp&gt;            <span class="c">// メッシュ + ライトの入れ物</span>
+<span class="k">using namespace</span> mitiru;
+<span class="k">namespace</span> r = mitiru::render;
+
+<span class="c">// 3D を描く道具は状態ではない → グローバルに置く（struct には入れない）</span>
+<span class="k">static</span> r::<span class="t">DeferredPipeline</span> g_pipe;
+<span class="k">static</span> r::<span class="t">RenderTexture</span>    g_frame{512, 288};      <span class="c">// 3D を焼く先（16:9）</span>
+<span class="k">static</span> <span class="k">const</span> r::<span class="t">Mesh</span> g_cube   = r::<span class="t">Mesh</span>::createCube(1.0f);
+<span class="k">static</span> <span class="k">const</span> r::<span class="t">Mesh</span> g_ground = r::<span class="t">Mesh</span>::createPlane(14.0f, 14.0f);
+
+<span class="k">struct</span> <span class="t">Hello3D</span> {
+    <span class="k">float</span> t = 0, cubeX = 0, cubeZ = 0;          <span class="c">// 状態は数値だけ（決定的）</span>
+
+    <span class="k">void</span> init() {
+        g_pipe.initialize(512, 288, r::<span class="t">ShadowMapConfig</span>{1024, 12.0f});  <span class="c">// 影マップ</span>
+    }
+
+    <span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt) {
+        t += dt;                                  <span class="c">// カメラ周回・立方体の回転に使う</span>
+        <span class="k">if</span> (in.down(<span class="t">Key</span>::Left))  cubeX -= 4.5f * dt;   <span class="c">// 矢印キーで立方体を動かす</span>
+        <span class="k">if</span> (in.down(<span class="t">Key</span>::Right)) cubeX += 4.5f * dt;
+    }
+
+    <span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
+        <span class="c">// 1) 3D シーンを組んで、CPU で 1 枚の画像に焼く</span>
+        r::<span class="t">Scene3D</span> scene;
+        r::<span class="t">Material</span> mat = r::<span class="t">Material</span>::defaultMaterial();
+        scene.addObject({&amp;g_ground, mat, {0,0,0}, {0,0,0}, {1,1,1}});
+        scene.addObject({&amp;g_cube,   mat, {cubeX, 0.65f, cubeZ}, {0, t, 0}, {1,1,1}});
+        scene.addLight(r::<span class="t">Light</span>::directional({-0.5f, -1, -0.4f}));
+
+        r::<span class="t">Camera3D</span> cam;
+        cam.setPosition({std::sin(t * 0.3f) * 11, 6.5f, std::cos(t * 0.3f) * 11});
+        cam.setTarget({0, 0.8f, 0});
+        cam.setAspectRatio(512.0f / 288.0f);
+        g_pipe.render(scene, cam, g_frame);       <span class="c">// → g_frame に焼ける</span>
+
+        <span class="c">// 2) 焼いた画像を 2D としてそのまま画面へ貼る</span>
+        s.drawPixelGrid(<span class="t">Rect</span>{0, 0, 1280, 720},
+            (<span class="k">const</span> std::uint32_t*)g_frame.pixels().data(),
+            g_frame.width(), g_frame.height());
+
+        <span class="c">// 3) HUD は 2D。3D の上に普通に重なる</span>
+        s.text(<span class="s">"MitiruEngine 3D"</span>, 28, 22, color::White, 30);
+    }
+};
+
+<span class="t">MITIRU_GAME</span>(Hello3D)</pre>
+            <p>完全版（影を落とすピラーや、立方体を追従して周回する球まで入ったもの）は、リポジトリの <code>examples/hello3d/</code> にあります。上のデモはそれをそのまま動かしたものです。</p>
+            <div class="note"><strong>決定的だから、録画も巻き戻しも効く。</strong> 3D の絵は「時刻 <code>t</code> と立方体の位置」だけから決まります。状態が数値だけなら、エンジンはそれを丸ごと保存・復元できる——つまりこの 3D ゲームも、2D と同じくホットリロード・タイムトラベル・リプレイの対象になります（→ <a href="features.html#ai">⑩ 決定論</a>）。GPU のフレームに依存しないので、結果はどの環境でも同じです。</div>
+
+            <!-- ── 向き・不向き ───────────────────────── -->
+            <h2 id="fit">向いていること・いないこと</h2>
+            <p>これは「2D に 3D を混ぜる」「小〜中規模の 3D を出す」ための道具です。CPU で 1 ピクセルずつ計算するので、内部解像度は控えめ（デモは 512×288 を画面いっぱいに拡大）にして、形のはっきりした絵に向きます。</p>
+            <table class="spectable">
+              <tr><td>向いている</td><td>2D ゲームに 3D の小物・背景・ミニ表示を混ぜる／立方体・球・板・読み込んだメッシュを並べる程度の 3D／決定論や巻き戻しが要る 3D</td></tr>
+              <tr><td>向いていない</td><td>大量ポリゴンや高解像度を実時間で回す本格 3D／GPU シェーダー前提の重い表現。MitiruEngine の正面はあくまで 2D + HTML/CSS です</td></tr>
+            </table>
+            <p>「3D ゲームエンジン」ではなく、「2D エンジンで 3D も出せる」という位置づけです。やりたいことが本格 3D に寄るなら、別のエンジンの方が向いています——そこは正直に。</p>
+
+            <div class="cards">
+              <div class="card"><h3>はじめてのゲーム<span class="en">tutorial</span></h3><p>まず 2D で骨組み（struct / update / draw）を通すと、上のコードが読みやすくなります。</p></div>
+              <div class="card"><h3>機能リファレンス<span class="en">features</span></h3><p>図形・文字・画像・入力・音・演出。やりたいことから逆引き。</p></div>
+              <div class="card"><h3>画面を作る<span class="en">html ui</span></h3><p>HUD やメニューは HTML / CSS で。3D の上に重ねる UI もこちら。</p></div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="content-foot">
+      <div class="wrap">
+        <span>© MitiruEngine</span>
+        <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+        <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+        <a href="install.html">インストール</a>
+      </div>
+    </footer>
+  </div>
+</div>
+</body>
+</html>
