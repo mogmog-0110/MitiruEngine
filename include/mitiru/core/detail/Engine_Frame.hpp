@@ -357,6 +357,32 @@ MITIRU_INLINE void mitiru::Engine::tickCefComposite()
 		return;
 	}
 
+	// HTML/CSS ホットリロード: scene.html (file:// URL) を監視し、保存されたら CEF を再ロードする。
+	// 作者が scene.html を書き換えて保存すると、再ビルド無しで画面 (HUD) がその場で更新される。
+	// 初回だけ起動 URL から監視パスと更新時刻を取り、以後 12 フレームごとに mtime を見る。
+	if (!m_htmlWatchInit)
+	{
+		m_htmlWatchInit = true;
+		const std::string& u = config().cefStartUrl;
+		if (u.rfind("file:///", 0) == 0)   // file:// のみ (packed app:// は対象外)
+		{
+			m_htmlWatchPath = std::filesystem::path(u.substr(8));  // "file:///" を剥がす
+			std::error_code ec;
+			m_htmlWatchMtime = std::filesystem::last_write_time(m_htmlWatchPath, ec);
+			if (ec) { m_htmlWatchPath.clear(); }
+		}
+	}
+	if (!m_htmlWatchPath.empty() && (++m_htmlWatchTick % 12 == 0))
+	{
+		std::error_code ec;
+		const auto mt = std::filesystem::last_write_time(m_htmlWatchPath, ec);
+		if (!ec && mt != m_htmlWatchMtime)
+		{
+			m_htmlWatchMtime = mt;
+			m_cefContext.loadUrl(config().cefStartUrl);   // ページを再ロード (binder も再バインド)
+		}
+	}
+
 	/// CEF UI レイヤーをバックバッファに重ねて描画する
 	/// (2D/3D/PostFX の後、present の前)
 	m_cefContext.doMessageLoopWork();

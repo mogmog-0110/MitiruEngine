@@ -636,6 +636,11 @@ private:
 	bool                  m_suppressToolWindows = false;  ///< true = tool 窓 spawn を全無効 (録画/CI、setSuppressToolWindows)
 	int                   m_toolWinX = (-2147483647 - 1); ///< spawn する tool 窓の初期 X (INT_MIN=OS任せ)
 	int                   m_toolWinY = (-2147483647 - 1); ///< spawn する tool 窓の初期 Y
+	// HTML/CSS ホットリロード: scene.html (file:// URL) を監視し、保存で CEF を再ロード
+	std::filesystem::path           m_htmlWatchPath;          ///< 監視する scene.html (空=無効)
+	std::filesystem::file_time_type m_htmlWatchMtime{};       ///< 最終更新時刻
+	bool                            m_htmlWatchInit = false;  ///< 初回 init 済みか
+	int                             m_htmlWatchTick = 0;      ///< poll 間引き用
 	std::atomic<bool> m_shouldStop{false};            ///< 停止要求フラグ (スレッドセーフ)
 	bool m_initialized = false;                      ///< 初期化済みフラグ
 	int m_pendingResizeW = 0;                        ///< modal-loop drag 中の defer 先 (WM_EXITSIZEMOVE で flush)

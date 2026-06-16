@@ -387,6 +387,10 @@ cd my-catch</pre>
 }</pre>
           <p>名前 <code>"view.hud.score"</code> は、<code>scene.html</code> の <code>data-m-text="view.hud.score"</code> と完全に一致させてください。これが C++ と画面をつなぐ唯一の約束です。あとは要らなくなった <code>s.text("SCORE …")</code> を <code>draw</code> から消せば、表示が HTML の HUD に切り替わります。C++ は <code>hud.set("名前", 値)</code> で送り、HTML は <code>data-m-text="名前"</code> で受ける。つなぎの JavaScript は 1 行も要りません。あとは CSS を盛れば、影・角丸・グラデ・アニメ付きの HUD になります。</p>
           <p><strong>HTML と CSS も、ホットリロードできます。</strong> <code>scene.html</code> や CSS を書き換えて保存すると、ゲームを止めずに画面がその場で更新されます。こちらは DLL の再ビルドも要らず、保存した瞬間に反映されます。レイアウト・色・余白を、走らせたまま詰められます。</p>
+          <figure>
+            <img src="assets/catch_htmlhud.webp" alt="左に scene.html のエディタ、右にゲーム。空の scene.html に SCORE を表示する HUD の div を 1 行足して保存すると、再ビルドせずゲームの右上に HTML/CSS の HUD がその場で出る実機の録画" loading="lazy" decoding="async">
+            <figcaption>実機の録画（左＝<code>scene.html</code> / 右＝ゲーム）。空の <code>scene.html</code> に <code>data-m-text="view.hud.score"</code> を持つ HUD を足して保存すると、再ビルドせずに HTML / CSS の HUD（右上）がその場で出ます。値は <code>hud.set</code> で送ったスコアです（左上の C++ の <code>s.text</code> と同じ値）。</figcaption>
+          </figure>
 
           <!-- ── 全コード ─────────────────────────── -->
           <h2 id="full" class="step-head">全コード</h2>
