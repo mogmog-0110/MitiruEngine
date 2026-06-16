@@ -31,7 +31,7 @@
     <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine</a>
     <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a class="current" href="tutorial.html">チュートリアル</a><a href="features.html">機能</a><a href="ui.html">画面</a><a href="ai.html">AI</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
   </div></header>
-<div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#goal">作るもの</a><a href="#proto">動かす</a><a href="#game">ゲームにする</a><a href="#download">画像</a><a href="#art">絵を入れる</a><a href="#tune">数字を調整</a><a href="#inspect">窓を開く</a><a href="#why">なぜ動くか</a><a href="#hud">HTML / CSS</a><a href="#full">全コード</a><a href="#toolbox">道具箱</a></div></div>
+<div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#goal">作るもの</a><a href="#proto">動かす</a><a href="#game">ゲームにする</a><a href="#download">画像</a><a href="#art">絵を入れる</a><a href="#tune">数字を調整</a><a href="#inspect">窓を開く</a><a href="#why">仕組み</a><a href="#hud">HTML / CSS</a><a href="#full">全コード</a><a href="#toolbox">関数一覧</a></div></div>
 <div class="content">
     <main id="main">
       <section class="page-head">
@@ -56,7 +56,7 @@
 
           <!-- ── 動かす ───────────────────────────── -->
           <h2 id="proto" class="step-head">プレイヤーを動かす</h2>
-          <p>最初に、プレイヤーを左右に動かすところを作ります。新しいプロジェクトを作ります。</p>
+          <p>最初に、プレイヤーを左右に動かすところを作ります。まずは Mitiru CLI で新しいプロジェクトを作ります。</p>
 <pre>mitiru new my-catch
 cd my-catch</pre>
           <p>書き換えるのは <code>src/main.cpp</code> です。次のように書きます。</p>
@@ -85,8 +85,67 @@ cd my-catch</pre>
             <li><strong><code>draw(Screen&amp; s)</code></strong> ── これも毎フレーム呼ばれます。<code>s</code> が画面で、<code>s</code> に対して図形や画像を描きます。</li>
             <li><strong><code>MITIRU_GAME(CatchGame)</code></strong> ── この <code>struct</code> を「ゲーム本体」としてエンジンに登録します。これで <code>mitiru run</code> が <code>CatchGame</code> を動かせるようになります。</li>
           </ul>
+          <figure>
+            <svg class="dgm" viewBox="0 0 540 210" width="100%" style="max-width:540px" role="img" aria-label="フレームループ。入力→update（状態を進める）→draw（状態を描く）→画面 を 1 秒に約 60 回くり返す＝60 FPS">
+              <defs><marker id="a3" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="boxy" x="20" y="40" width="92" height="46" rx="3"/>
+              <text class="lbl" x="66" y="60" text-anchor="middle">入力</text>
+              <text class="sub" x="66" y="76" text-anchor="middle">キー・マウス</text>
+              <rect class="box" x="160" y="40" width="120" height="46" rx="3"/>
+              <text class="lbl" x="220" y="60" text-anchor="middle">update</text>
+              <text class="sub" x="220" y="76" text-anchor="middle">状態を進める</text>
+              <rect class="box" x="328" y="40" width="120" height="46" rx="3"/>
+              <text class="lbl" x="388" y="60" text-anchor="middle">draw</text>
+              <text class="sub" x="388" y="76" text-anchor="middle">状態を描く</text>
+              <rect class="boxy" x="480" y="40" width="48" height="46" rx="3"/>
+              <text class="lbl" x="504" y="60" text-anchor="middle">画面</text>
+              <line class="arr" x1="112" y1="63" x2="158" y2="63" marker-end="url(#a3)"/>
+              <line class="arr" x1="280" y1="63" x2="326" y2="63" marker-end="url(#a3)"/>
+              <line class="arr" x1="448" y1="63" x2="478" y2="63" marker-end="url(#a3)"/>
+              <path class="arr" d="M504,86 L504,150 L66,150 L66,88" marker-end="url(#a3)"/>
+              <text class="lbl" x="285" y="172" text-anchor="middle">1 秒に約 60 回くり返す　＝　60 FPS</text>
+            </svg>
+            <figcaption>エンジンは毎フレーム、入力を読み <code>update</code> で状態を進め、<code>draw</code> で描きます。これを 1 秒に約 60 回くり返します（その回数が <strong>FPS</strong>）。<code>dt</code> は 1 フレームの長さ（秒）です。</figcaption>
+          </figure>
           <p>動きの肝は <code>in.move()</code> です。これは移動入力を 1 つにまとめて返します（<code>.x</code> と <code>.y</code> が各 −1〜1）。矢印キー・WASD・ゲームパッドの左スティックが、すべてこの 1 つに合流します。だから <code>playerX += in.move().x * 600 * dt</code> と書くだけで、どの入力でも左右移動になります。速度の <code>600</code> はいったん直に書いておき、あとで触りやすい場所に出します。</p>
-          <p>描画の <code>s.drawRect(矩形, 色)</code> は四角を描きます。矩形は <code>{左上x, 左上y, 幅, 高さ}</code>、色は <code>{r, g, b, a}</code>（各 0〜1）で、ここでは紫を指定しています。絵はまだ無いので、四角をプレイヤーに見立てています。</p>
+          <p>描画の <code>s.drawRect(矩形, 色)</code> は四角を描きます。矩形は <code>{左上x, 左上y, 幅, 高さ}</code>、色は <code>{r, g, b, a}</code>（各 0〜1）で、ここでは紫を指定しています。絵はまだ無いので、四角をプレイヤーに見立てています。座標と矩形の数え方は、図にするとこうです。</p>
+          <figure>
+            <svg class="dgm" viewBox="0 0 480 290" width="100%" style="max-width:470px" role="img" aria-label="画面の2D座標。左上が(0,0)、右下が(1280,720)。xは右、yは下に増える。スプライトやdrawRectは左上の座標で置く">
+              <defs><marker id="a1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="box" x="60" y="44" width="370" height="208" rx="3"/>
+              <line class="arr" x1="60" y1="30" x2="190" y2="30" marker-end="url(#a1)"/>
+              <text class="mono" x="196" y="34">x →（右）</text>
+              <line class="arr" x1="46" y1="44" x2="46" y2="168" marker-end="url(#a1)"/>
+              <text class="mono" x="20" y="120">y ↓</text>
+              <circle cx="60" cy="44" r="3.5" fill="#c4ab7c"/>
+              <text class="lbl" x="66" y="40">(0, 0)</text>
+              <text class="sub" x="332" y="246">(1280, 720)</text>
+              <rect class="boxy" x="250" y="150" width="78" height="62" rx="2"/>
+              <circle cx="250" cy="150" r="3.5" fill="#e8a33d"/>
+              <text class="lbl" x="256" y="146">(x, y)</text>
+              <text class="sub" x="258" y="186">スプライト</text>
+              <line class="ln" x1="250" y1="150" x2="182" y2="112"/>
+              <text class="mono" x="92" y="108">sprite(id, x, y)</text>
+              <text class="mono" x="92" y="124">＝左上をここに置く</text>
+            </svg>
+            <figcaption>画面の座標。左上が (0, 0)、右下が (1280, 720)。x は右、y は<strong>下</strong>に増えます（数学とは上下が逆）。<code>sprite</code> も <code>drawRect</code> も「左上の座標」で置きます。</figcaption>
+          </figure>
+          <figure>
+            <svg class="dgm" viewBox="0 0 440 200" width="100%" style="max-width:430px" role="img" aria-label="矩形 Rect は 左上(x,y) と 幅w・高さh の 4 つの数で決まる">
+              <defs><marker id="a2" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker>
+              <marker id="a2s" markerWidth="9" markerHeight="9" refX="3" refY="3" orient="auto"><path d="M6,0 L0,3 L6,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="boxy" x="130" y="60" width="210" height="110" rx="2"/>
+              <circle cx="130" cy="60" r="4" fill="#e8a33d"/>
+              <text class="lbl" x="62" y="54">(x, y)</text>
+              <line class="ln" x1="100" y1="56" x2="128" y2="60"/>
+              <line class="arr" x1="130" y1="38" x2="340" y2="38" marker-start="url(#a2s)" marker-end="url(#a2)"/>
+              <text class="lbl" x="218" y="32">w（幅）</text>
+              <line class="arr" x1="360" y1="60" x2="360" y2="170" marker-start="url(#a2s)" marker-end="url(#a2)"/>
+              <text class="lbl" x="368" y="120">h（高さ）</text>
+              <text class="mono" x="160" y="120">Rect{x, y, w, h}</text>
+            </svg>
+            <figcaption>矩形 <code>Rect</code> は「左上の <code>(x, y)</code>」と「幅 <code>w</code>・高さ <code>h</code>」の 4 つの数で決まります。<code>s.drawRect({x, y, w, h}, 色)</code> でこの四角を描きます。</figcaption>
+          </figure>
 
           <!-- ── ゲームにする ─────────────────────── -->
           <h2 id="game" class="step-head">落ちてくる星でゲームにする</h2>
@@ -146,6 +205,20 @@ cd my-catch</pre>
     }
 }</pre>
           <p>当たり判定はエンジンが持っています。<code>Rect</code> は矩形（<code>{x, y, 幅, 高さ}</code>）です。<code>Rect</code> どうしが重なったかは <code>player.intersects(box)</code> で調べられます（点が矩形に入っているかは <code>.contains()</code>）。ここでは「プレイヤーの判定枠」と「落下物の枠」が重なったら、星なら <code>score</code> を増やし、爆弾なら <code>over</code> を立てています。やり直しは <code>*this = CatchGame{};</code>（状態をまるごと初期値に戻す）の 1 行です。再開の <code>in.confirmPressed()</code> は、決定（Space / Z / Enter / パッド A）を押した瞬間に <code>true</code> になります。</p>
+          <figure>
+            <svg class="dgm" viewBox="0 0 460 220" width="100%" style="max-width:450px" role="img" aria-label="2つの矩形が重なっているかは player.intersects(box) で分かる。点が矩形に入っているかは contains">
+              <rect class="box" x="80" y="50" width="150" height="120" rx="2"/>
+              <text class="sub" x="92" y="44">player（判定枠）</text>
+              <rect class="box" x="180" y="96" width="120" height="100" rx="2"/>
+              <text class="sub" x="240" y="212" text-anchor="middle">box（落下物）</text>
+              <rect x="180" y="96" width="50" height="74" fill="#e8a33d" fill-opacity="0.32" stroke="#e8a33d" stroke-width="1.5"/>
+              <line class="ln" x1="205" y1="133" x2="358" y2="100"/>
+              <text class="lbl" x="362" y="98">重なっている</text>
+              <text class="mono" x="362" y="116">player.intersects(box)</text>
+              <text class="mono" x="362" y="132">＝ true</text>
+            </svg>
+            <figcaption>2 つの矩形が重なっているかは <code>player.intersects(box)</code> で分かります（重なっていれば <code>true</code>）。点が矩形の中にあるかは <code>rect.contains(点)</code> です。当たり判定はこれだけで済みます。</figcaption>
+          </figure>
           <p><code>draw</code> 側も、星はまだ四角で仮置きします。絵はこの次で入れます。</p>
 <pre><span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
     <span class="k">for</span> (<span class="t">Item</span>&amp; it : items)
@@ -160,7 +233,7 @@ cd my-catch</pre>
           <!-- ── 画像 ─────────────────────────────── -->
           <h2 id="download" class="step-head">画像を 4 枚用意する</h2>
           <p>絵を入れる前に、画像を 4 枚そろえます。下の画像をそのまま使えます。クリックで保存して、プロジェクトの <code>assets/sprites/</code> に同じ名前（player.png / player_happy.png / star.png / bomb.png）で置いてください。自分で描き替えても、名前さえ合えば動きます。</p>
-          <div class="cards">
+          <div class="imgrow">
             <figure><a href="assets/sprite_player.png" download="player.png"><img src="assets/sprite_player.png" alt="player.png" style="height:120px;width:auto" loading="lazy"></a><figcaption><a href="assets/sprite_player.png" download="player.png">player.png</a><br><span class="en">96 × 130 / ふだんの姿</span></figcaption></figure>
             <figure><a href="assets/sprite_player_happy.png" download="player_happy.png"><img src="assets/sprite_player_happy.png" alt="player_happy.png" style="height:120px;width:auto" loading="lazy"></a><figcaption><a href="assets/sprite_player_happy.png" download="player_happy.png">player_happy.png</a><br><span class="en">星を取った直後の表情</span></figcaption></figure>
             <figure><a href="assets/sprite_star.png" download="star.png"><img src="assets/sprite_star.png" alt="star.png" style="height:80px;width:auto" loading="lazy"></a><figcaption><a href="assets/sprite_star.png" download="star.png">star.png</a><br><span class="en">56 × 56 / 取ると +SCORE</span></figcaption></figure>
@@ -229,9 +302,30 @@ cd my-catch</pre>
           <p>観察窓のほかにも、入力の生の値・過去のフレームへの巻き戻し・録画の再生・fps の計測・音量メーターなどの窓があり、どれも <code>hud.open(Tool::…)</code> の <code>Tool::</code> を変えれば開きます。大きなエディタを開く代わりに、1 つの窓は 1 つの関心事だけを映す、という作りです。それぞれの窓と、AI にゲームの全状態を読ませる AI Lens は、<a href="features.html#tools">機能リファレンスのデバッグ窓</a>・<a href="features.html#ai">AI Lens の章</a>にまとめてあります。</p>
 
           <!-- ── なぜ動くか ───────────────────────── -->
-          <h2 id="why" class="step-head">なぜ、これが全部できるのか</h2>
+          <h2 id="why" class="step-head">巻き戻し・録画・観察を支える仕組み</h2>
           <p>ホットリロードで状態が消えないのも、窓に状態がそのまま映るのも、録画したプレイを完全に再現できるのも、出どころは 1 つです。ゲームの状態を 1 個の <code>struct</code> にまとめて、それをエンジンが預かっているからです。</p>
-          <p>エンジンはこの <code>struct</code> をまるごとコピーして、保存したり復元したりします。だから、預かった状態を新しいコードへそのまま渡せますし、毎フレームの状態を記録して過去へ巻き戻せますし、AI に全状態を読ませることもできます。これが成り立つには、状態が「まるごとコピーできる素直なデータ」であってほしいのです。具体的には、ポインタや <code>std::vector</code> を持たない型のこと（C++ では POD などと呼ばれます）。<code>CatchGame</code> をその形に保っているのは、このためです。</p>
+          <p>エンジンはこの <code>struct</code> をまるごとコピーして、保存したり復元したりします。だから、預かった状態を新しいコードへそのまま渡せますし、毎フレームの状態を記録して過去へ巻き戻せますし、AI に全状態を読ませることもできます。これが成り立つには、状態が「まるごとコピーできる素直なデータ」であってほしいのです。具体的には、ポインタや <code>std::vector</code> を持たない型のこと（C++ では POD ＝ Plain Old Data などと呼ばれます。MitiruEngine が発明した概念ではありません）。<code>CatchGame</code> をその形に保っているのは、このためです。</p>
+          <figure>
+            <svg class="dgm" viewBox="0 0 540 250" width="100%" style="max-width:540px" role="img" aria-label="状態を1個のstructにまとめるとバイト列になり、まるごとコピーできる。だからホットリロード・巻き戻し・録画再生が同じ仕組みから出てくる">
+              <defs><marker id="a5" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="boxy" x="20" y="80" width="150" height="90" rx="3"/>
+              <text class="lbl" x="95" y="112" text-anchor="middle">ゲームの状態</text>
+              <text class="sub" x="95" y="132" text-anchor="middle">1 個の struct</text>
+              <text class="sub" x="95" y="150" text-anchor="middle">＝ ただのバイト列</text>
+              <line class="arr" x1="170" y1="125" x2="302" y2="125" marker-end="url(#a5)"/>
+              <text class="sub" x="236" y="116" text-anchor="middle">まるごとコピー</text>
+              <rect class="box" x="312" y="36" width="208" height="48" rx="3"/>
+              <text class="lbl" x="326" y="58">ホットリロード</text>
+              <text class="sub" x="326" y="74">新コードへ状態を渡す</text>
+              <rect class="box" x="312" y="101" width="208" height="48" rx="3"/>
+              <text class="lbl" x="326" y="123">巻き戻し</text>
+              <text class="sub" x="326" y="139">過去のコピーへ戻す</text>
+              <rect class="box" x="312" y="166" width="208" height="48" rx="3"/>
+              <text class="lbl" x="326" y="188">録画再生</text>
+              <text class="sub" x="326" y="204">同じ入力で再現する</text>
+            </svg>
+            <figcaption>状態を 1 個の <code>struct</code> にまとめておくと、それは「まるごとコピーできるバイト列」になります。エンジンはこれをコピーして渡したり戻したりするだけ。だから<strong>ホットリロード・巻き戻し・録画再生</strong>が、同じ 1 つの仕組みから出てきます。</figcaption>
+          </figure>
           <p>絵をゲームが持たず、<code>"player"</code> のような名前（id）で参照しているのも、ここに効いています。画像そのものはエンジン側がまとめて持ち、ゲームは名前の文字列を渡すだけなので、<code>struct</code> は重いデータを抱えず、素直なまま保てます。</p>
           <p>「何が反映されて、何が残るか」も、ここから決まります。値がコードに焼き込まれるものか、実行中の状態かで、3 つに分かれます。</p>
           <table class="spectable">
@@ -283,6 +377,7 @@ cd my-catch</pre>
     hud.set(<span class="s">"view.hud.score"</span>, score);   <span class="c">// scene.html の同じ名前へ届く</span>
 }</pre>
           <p>名前 <code>"view.hud.score"</code> は、<code>scene.html</code> の <code>data-m-text="view.hud.score"</code> と完全に一致させてください。これが C++ と画面をつなぐ唯一の約束です。あとは要らなくなった <code>s.text("SCORE …")</code> を <code>draw</code> から消せば、表示が HTML の HUD に切り替わります。C++ は <code>hud.set("名前", 値)</code> で送り、HTML は <code>data-m-text="名前"</code> で受ける。つなぎの JavaScript は 1 行も要りません。あとは CSS を盛れば、影・角丸・グラデ・アニメ付きの HUD になります。</p>
+          <p><strong>HTML と CSS も、ホットリロードできます。</strong> <code>scene.html</code> や CSS を書き換えて保存すると、ゲームを止めずに画面がその場で更新されます。こちらは DLL の再ビルドも要らず、保存した瞬間に反映されます。レイアウト・色・余白を、走らせたまま詰められます。</p>
 
           <!-- ── 全コード ─────────────────────────── -->
           <h2 id="full" class="step-head">全コード</h2>
@@ -421,7 +516,7 @@ cd my-catch</pre>
           </details>
 
           <!-- ── 道具箱 ───────────────────────────── -->
-          <h2 id="toolbox" class="step-head">道具箱</h2>
+          <h2 id="toolbox" class="step-head">よく使う関数（in / hud / s）</h2>
           <p>ゲームを書くとき、触るのは主に 3 つのオブジェクトです。<code>update(Input in, Hud hud, float dt)</code> の <code>in</code> と <code>hud</code>、そして <code>draw(Screen&amp; s)</code> の <code>s</code>。よく使うものを並べておきます。一度に覚える必要はなく、必要になったときに見てください。</p>
 
           <h3><code>in</code> — 入力を読む（Input）</h3>

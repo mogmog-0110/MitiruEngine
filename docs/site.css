@@ -123,6 +123,14 @@ section.band.soft{ background:var(--panel); border-top:1px solid var(--line-soft
 .prose figure img{ width:100%; border-radius:var(--radius); border:1px solid var(--line); box-shadow:var(--shadow); }
 .prose figcaption{ font-size:.85rem; color:var(--ink-mute); margin-top:.55rem; }
 
+/* ── 画像を等間隔で横並び（数が決まった列挙が 3+1 で崩れないように）── */
+.imgrow{ display:grid; grid-template-columns:repeat(4,1fr); gap:1rem 1.2rem; margin:1.4rem 0; align-items:end; }
+.imgrow figure{ margin:0; text-align:center; }
+.imgrow figure img{ width:auto; max-width:100%; max-height:118px; border:1px solid var(--line);
+  border-radius:10px; box-shadow:var(--shadow); display:inline-block; }
+.imgrow figcaption{ margin-top:.5rem; }
+@media (max-width:560px){ .imgrow{ grid-template-columns:repeat(2,1fr); } }
+
 /* ── カードグリッド ─────────────────────── */
 .cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(248px,1fr)); gap:1rem; }
 .card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
