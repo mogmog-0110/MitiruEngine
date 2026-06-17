@@ -28,7 +28,7 @@
         <div class="wrap">
           <p class="kicker">3D</p>
           <h1>3D も、2D の上にのせて出す</h1>
-          <p class="lede">MitiruEngine の正面は 2D + HTML/CSS ですが、3D も出せます。やり方は素直で、3D のシーンを CPU のソフトレンダラーで 1 枚の画像に焼き、その画像を <code>Screen</code> にそのまま貼るだけ。重い GPU の 3D 経路に頼らないので、2D の描画と同じ並びに 3D が混ざります。状態は「数値だけ」なので<strong>完全に決定的</strong>——録画も巻き戻しも、2D ゲームと同じように効きます。</p>
+          <p class="lede">MitiruEngine の正面は 2D + HTML/CSS ですが、3D も出せます。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp;)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> でメッシュを置くだけ。あとはエンジンの GPU 3D レンダラーが、アンチエイリアス（MSAA）と影（シャドウマップ）付きで描きます。2D の HUD はその上に重なります。状態は「数値だけ」なので<strong>完全に決定的</strong>——録画も巻き戻しも、2D ゲームと同じように効きます。</p>
         </div>
       </section>
 
