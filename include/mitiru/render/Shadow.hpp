@@ -70,13 +70,20 @@ public:
     /// @brief 現在のライト方向ベクトルを返す
     [[nodiscard]] sgc::Vec3f lightDirection() const noexcept { return m_lightDir; }
 
-    /// @brief ライト空間 view 行列を計算する (右手系 lookAt)
+    /// @brief ライト空間 view 行列を計算する (左手系 lookAt)
     /// @param sceneFocus シャドウのフォーカス点 (ワールド座標)
     /// @return ライト視点の view 行列
     /// @details
     ///   eye = sceneFocus - normalize(lightDir) * 50
     ///   target = sceneFocus
     ///   worldUp = (0, 1, 0)。ライト方向が Y 軸と平行なときは Z 軸にフォールバック。
+    ///
+    ///   左手系 (glm::lookAtLH と同規約) で組む。メインカメラは glm::lookAtLH +
+    ///   perspectiveLH_ZO、lightProjectionMatrix は Z[0,1] かつ「正の view z」前提
+    ///   (z'=(z-near)/(far-near)) のため、view も左手系でなければ整合しない。
+    ///   sgc::Mat4f::lookAt は右手系で visible geometry の view z が負になり、
+    ///   投影後の深度が全て負 → viewport で 0 にクランプ → SampleCmp が常に
+    ///   「影なし」を返してシャドウが一切出なくなる。
     [[nodiscard]] sgc::Mat4f lightViewMatrix(const sgc::Vec3f& sceneFocus) const noexcept
     {
         const float len = std::sqrt(
@@ -100,7 +107,17 @@ public:
             ? sgc::Vec3f{ 0.0f, 0.0f, 1.0f }
             : sgc::Vec3f{ 0.0f, 1.0f, 0.0f };
 
-        return sgc::Mat4f::lookAt(eye, sceneFocus, worldUp);
+        // 左手系 lookAt: forward はシーンへ向かう (target - eye)。
+        const sgc::Vec3f forward = (sceneFocus - eye).normalized();
+        const sgc::Vec3f right   = worldUp.cross(forward).normalized();
+        const sgc::Vec3f up      = forward.cross(right);
+
+        return sgc::Mat4f{
+            right.x,   right.y,   right.z,   -right.dot(eye),
+            up.x,      up.y,      up.z,      -up.dot(eye),
+            forward.x, forward.y, forward.z, -forward.dot(eye),
+            0.0f,      0.0f,      0.0f,       1.0f
+        };
     }
 
     /// @brief ライト空間 projection 行列を計算する (DX12 スタイル Z[0,1])

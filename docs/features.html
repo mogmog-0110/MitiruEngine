@@ -189,7 +189,7 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍
 
             <!-- ── ⑦ 3D ──────────────────────────────── -->
             <h2 id="gltf">⑦ 3D 表示 — 2D の上にのせる</h2>
-            <p>正直に書くと、MitiruEngine の正面は 2D + HTML/CSS で、3D は「2D に混ぜる」位置づけです。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> で組み込みメッシュ（"cube" / "sphere" / "plane"）を置くだけ。エンジンの GPU 3D レンダラーが<strong>アンチエイリアス（MSAA）</strong>付きで描き、2D の HUD はその上に重なります。</p>
+            <p>正直に書くと、MitiruEngine の正面は 2D + HTML/CSS で、3D は「2D に混ぜる」位置づけです。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> で組み込みメッシュ（"cube" / "sphere" / "plane"）を置くだけ。エンジンの GPU 3D レンダラーが<strong>アンチエイリアス（MSAA）と影（シャドウマップ）</strong>付きで描き、2D の HUD はその上に重なります。</p>
 <pre><span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
     s.clear(hex(0x111521));                           <span class="c">// 3D の背景色</span>
 

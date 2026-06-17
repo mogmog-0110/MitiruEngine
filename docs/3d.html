@@ -38,13 +38,13 @@
 
             <!-- ── 動くデモ ───────────────────────────── -->
             <figure>
-              <img src="assets/hello3d.webp" alt="MitiruEngine で動く 3D デモ。足場の上に回転する立方体と追従して周回する球、奥に色とりどりのピラーが並ぶ。カメラがゆっくり周回する。エッジはなめらかにアンチエイリアスされている。左上に『MitiruEngine 3D』の文字、左下に『arrow keys move the cube』のヒント。">
-              <figcaption>同梱サンプル <code>hello3d</code> をそのまま録画したものです。足場・回る立方体・追従して周回する球・奥のピラーを、エンジンの GPU 3D レンダラーが <strong>アンチエイリアス（MSAA）付き</strong>で描いています。矢印キーで中央の立方体を動かせます。文字（HUD）は 2D で、3D の上に重なっています。</figcaption>
+              <img src="assets/hello3d.webp" alt="MitiruEngine で動く 3D デモ。足場の上に回転する立方体と追従して周回する球、奥に色とりどりのピラーが並ぶ。それぞれが足場にやわらかい影を落としている。カメラがゆっくり周回する。エッジはなめらかにアンチエイリアスされている。左上に『MitiruEngine 3D』の文字、左下に『arrow keys move the cube』のヒント。">
+              <figcaption>同梱サンプル <code>hello3d</code> をそのまま録画したものです。足場・回る立方体・追従して周回する球・奥のピラーを、エンジンの GPU 3D レンダラーが <strong>アンチエイリアス（MSAA）と影（シャドウマップ）付き</strong>で描いています。矢印キーで中央の立方体を動かせます。文字（HUD）は 2D で、3D の上に重なっています。</figcaption>
             </figure>
 
             <!-- ── やっていること ─────────────────────── -->
             <h2 id="how">やっていること — draw の中で s.drawMesh するだけ</h2>
-            <p>3D は、ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> で組み込みメッシュ（立方体・球・板）を置くだけです。あとはエンジンの GPU 3D レンダラーが <strong>アンチエイリアス（MSAA）</strong>付きで描きます。HUD やメニューは、その 3D の上にいつもの 2D（<code>s.text</code> など）で重ねます。</p>
+            <p>3D は、ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> で組み込みメッシュ（立方体・球・板）を置くだけです。あとはエンジンの GPU 3D レンダラーが <strong>アンチエイリアス（MSAA）と影（シャドウマップ）</strong>付きで描きます。<code>s.light3D</code> で光の向きを変えると、影もその向きに伸びます。HUD やメニューは、その 3D の上にいつもの 2D（<code>s.text</code> など）で重ねます。</p>
             <figure>
               <svg class="dgm" viewBox="0 0 760 120" width="100%" style="max-width:760px" role="img" aria-label="3D の流れ。draw(Screen&) の中で s.camera3D / s.drawMesh を呼ぶ → エンジンの GPU 3D レンダラー（MSAA）→ 画面。2D の HUD は画面の上に重なる。">
                 <defs><marker id="d1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>

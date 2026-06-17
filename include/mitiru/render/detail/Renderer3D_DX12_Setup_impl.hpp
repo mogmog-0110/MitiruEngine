@@ -57,13 +57,6 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		throw std::runtime_error("DX12 Dx12ShadowMap initialize failed");
 	}
 
-	// シャドウパス用 PSO (depth-only, no PS)
-	try {
-		createShadowPSO();
-	} catch (const std::exception& e) {
-		throw std::runtime_error(
-			std::string("DX12 createShadowPSO: ") + e.what());
-	}
 	try {
 		compileShaders();
 	} catch (const std::exception& e) {
@@ -73,6 +66,16 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		createRootSignature();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createRootSignature: ") + e.what());
+	}
+	// シャドウパス用 PSO (depth-only, no PS)。
+	// VS (m_toonVS) と root signature を流用するため、compileShaders /
+	// createRootSignature の後でなければ早期 return して PSO が作られない
+	// (= renderShadowPass が毎フレーム no-op になり影が一切出ない)。
+	try {
+		createShadowPSO();
+	} catch (const std::exception& e) {
+		throw std::runtime_error(
+			std::string("DX12 createShadowPSO: ") + e.what());
 	}
 	try {
 		createMainPSO();
