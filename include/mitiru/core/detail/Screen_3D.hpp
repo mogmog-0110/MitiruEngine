@@ -75,6 +75,10 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 		m_renderer3D->setCamera(cam);
 		m_renderer3D->setLight(
 			render::Light::directional(m_light3DDir, m_light3DColor));
+		// 既定は普通の Phong シェーディング (なめらかな陰影)。トゥーン調の
+		// セル塗り + 輪郭線は出さない。
+		m_renderer3D->setShaderMode(render::ShaderMode3D::Phong);
+		m_renderer3D->setOutlineEnabled(false);
 		// 影を有効化 (オブジェクトが地面に接地して見える)。光と同じ向きで落とす。
 		m_renderer3D->setShadowEnabled(true);
 		m_renderer3D->setShadowDirection(m_light3DDir);
