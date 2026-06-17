@@ -16,6 +16,7 @@
 #include <Windows.h>
 
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <memory>
@@ -591,21 +592,26 @@ private:
 	/// @brief D3D12デバイスとDXGIファクトリを生成する
 	void createDevice()
 	{
+		// D3D12 デバッグレイヤー(検証用)。環境によっては D3D12SDKLayers.dll が 0xc0000005 で
+		// クラッシュし、Debug ビルドの consumer ゲームを巻き込んで落とす。既定 OFF にし、
+		// グラフィクス検証時のみ MITIRU_D3D12_DEBUG=1 で opt-in する。
+		bool d3d12Debug = false;
 #ifdef _DEBUG
-		/// デバッグレイヤーの有効化
-		ComPtr<ID3D12Debug> debugController;
-		if (SUCCEEDED(D3D12GetDebugInterface(
-			IID_PPV_ARGS(debugController.GetAddressOf()))))
+		if (const char* e = std::getenv("MITIRU_D3D12_DEBUG"); e != nullptr && e[0] != '\0' && e[0] != '0')
 		{
-			debugController->EnableDebugLayer();
+			d3d12Debug = true;
+			ComPtr<ID3D12Debug> debugController;
+			if (SUCCEEDED(D3D12GetDebugInterface(
+				IID_PPV_ARGS(debugController.GetAddressOf()))))
+			{
+				debugController->EnableDebugLayer();
+			}
 		}
 #endif
 
 		/// DXGIファクトリの生成
 		UINT dxgiFactoryFlags = 0;
-#ifdef _DEBUG
-		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-#endif
+		if (d3d12Debug) { dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG; }
 
 		HRESULT hr = CreateDXGIFactory2(
 			dxgiFactoryFlags,

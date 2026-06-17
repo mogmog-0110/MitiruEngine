@@ -126,6 +126,9 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		/// DX12ではendFrame()でバックバッファ上にHUD/UIが描画される
 		/// DX11ではno-op
 		m_renderer3D->setOverlayScreen(m_screen.get());
+		/// Screen の 3D facade (s.drawMesh) も同じレンダラーへ繋ぐ。
+		/// これで MITIRU_GAME の draw(Screen&) から直接 3D が描ける。
+		m_screen->setRenderer3D(m_renderer3D.get());
 	}
 
 	/// CEF を初期化する (DX12 バックエンド + Win32 のみ。
@@ -283,6 +286,7 @@ MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::runAndCapture(
 	{
 		game.setRenderer3D(m_renderer3D.get());
 		m_renderer3D->setOverlayScreen(m_screen.get());
+		m_screen->setRenderer3D(m_renderer3D.get());
 	}
 
 	std::vector<std::uint8_t> capturedPixels;

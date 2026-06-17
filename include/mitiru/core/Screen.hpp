@@ -25,6 +25,7 @@
 
 #include <sgc/types/Color.hpp>
 #include <sgc/math/Vec2.hpp>
+#include <sgc/math/Vec3.hpp>
 #include <sgc/math/Rect.hpp>
 
 #include <mitiru/gfx/GfxTypes.hpp>
@@ -44,6 +45,7 @@
 namespace mitiru::render
 {
 class RenderPipeline2D;
+class IRenderer3D;         ///< forward decl。3D facade (drawMesh) 用。定義は IRenderer3D.hpp。
 enum class PixelArtFilter; ///< forward decl。完全な定義は RenderPipeline2D.hpp。
 } // namespace mitiru::render
 
@@ -1469,10 +1471,43 @@ public:
 		                            static_cast<float>(tex->height()) * scale});
 	}
 
+	// ── 3D (組み込みメッシュを 2D の下に重ねる、ABI v17) ─────────────────
+	// GPU 3D レンダラー (Renderer3D_DX12) に薄く委譲する facade。draw(Screen&) の中で
+	// camera3D → drawMesh を呼ぶだけで 3D が出る。最初の drawMesh が遅延 beginFrame し、
+	// その後 Engine が endFrame/finalize する。2D 描画 (drawRect/text 等) はそのまま 3D の
+	// 上に HUD として重なる。host/headless で 3D 非対応なら全て no-op。
+	/// @brief 3D レンダラーを注入する (Engine が呼ぶ。未注入なら 3D API は no-op)
+	void setRenderer3D(render::IRenderer3D* renderer) noexcept { m_renderer3D = renderer; }
+
+	/// @brief GPU 3D が利用可能か
+	[[nodiscard]] bool has3D() const noexcept;
+
+	/// @brief カメラを設定する (視点・注視点・縦画角[度])。drawMesh の前に。未設定は既定見下ろし。
+	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, float fovDeg = 55.0f) noexcept;
+
+	/// @brief 平行光源を設定する (進む向き + 色)。未設定は斜め上からの白色光。
+	void light3D(const sgc::Vec3f& direction,
+	             const sgc::Colorf& color = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}) noexcept;
+
+	/// @brief 組み込みメッシュ ("cube" / "sphere" / "plane") を位置・スケール・回転(度)・色で描く。
+	void drawMesh(const char* shape, const sgc::Vec3f& position,
+	              const sgc::Vec3f& scale  = sgc::Vec3f{1.0f, 1.0f, 1.0f},
+	              const sgc::Vec3f& rotDeg = sgc::Vec3f{0.0f, 0.0f, 0.0f},
+	              const sgc::Colorf& color = sgc::Colorf{0.80f, 0.80f, 0.85f, 1.0f});
+
 private:
 	// ABI 注意: Screen* は DLL 境界を渡る。既存メンバのオフセット維持のため末尾追加 (ABI v16)。
 	SpriteResolveFunc m_spriteResolveFn  = nullptr; ///< sprite id resolver (host 注入、未注入は no-op)
 	void*             m_spriteResolveCtx = nullptr; ///< resolver の ctx (host 所有、非所有)
+
+	// ── 3D facade 状態 (ABI v17、末尾追加) ───────────────────────────────
+	render::IRenderer3D* m_renderer3D = nullptr;   ///< 3D レンダラー (Engine 注入、非所有)
+	bool        m_3dStarted    = false;            ///< 当フレームで beginFrame 済みか (drawMesh 遅延起動)
+	sgc::Vec3f  m_cam3DEye      {6.0f, 5.0f, 8.0f};
+	sgc::Vec3f  m_cam3DTarget   {0.0f, 0.5f, 0.0f};
+	float       m_cam3DFovDeg   = 55.0f;
+	sgc::Vec3f  m_light3DDir    {-0.5f, -1.0f, -0.4f};
+	sgc::Colorf m_light3DColor  {1.0f, 0.97f, 0.92f, 1.0f};
 };
 
 } // namespace mitiru
@@ -1490,6 +1525,7 @@ private:
 #include <mitiru/core/detail/Screen_Text.hpp>
 #include <mitiru/core/detail/Screen_Styled.hpp>
 #include <mitiru/core/detail/Screen_PixelGrid.hpp>
+#include <mitiru/core/detail/Screen_3D.hpp>
 
 // ── DrawCallValidator のメソッド実装（Screen 完全型が必要） ──────────
 

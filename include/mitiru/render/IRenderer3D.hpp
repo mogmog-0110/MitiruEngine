@@ -177,6 +177,12 @@ public:
 	/// @param mode シェーダーモード
 	virtual void setShaderMode([[maybe_unused]] ShaderMode3D mode) {}
 
+	// ── 影（DX12で実装、DX11ではno-op） ──
+	/// @brief 影（シャドウマップ）の有効/無効を設定する
+	virtual void setShadowEnabled(bool /*enabled*/) {}
+	/// @brief 影を落とす平行光の向きを設定する（通常はライトの direction と揃える）
+	virtual void setShadowDirection(const sgc::Vec3f& /*dir*/) {}
+
 	// ── アウトライン（DX12で実装、DX11ではno-op） ──
 
 	/// @brief アウトライン描画の有効/無効を設定する

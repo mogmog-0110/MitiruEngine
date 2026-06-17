@@ -1,6 +1,6 @@
-# hello3d — 3D ゲームのデモ (CPU ソフトレンダラーを drawPixelGrid で 2D に合成)。
+# hello3d — 3D ゲームのデモ (GPU 3D facade: s.camera3D / s.drawMesh)。
 #
-# 実行:  mitiru_host.exe hello3d/hello3d.dll
+# 実行:  mitiru_host.exe hello3d/hello3d.dll --no-cef
 
 add_library(hello3d SHARED hello3d_dll.cpp)
 target_link_libraries(hello3d PRIVATE mitiru)

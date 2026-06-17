@@ -286,6 +286,15 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 		m_errorBanner.poll(nowSec);
 		m_errorBanner.drawTo(*m_screen);
 	}
+
+	// 3D facade (s.drawMesh / 直接 renderer3D 経路) が使われたフレームは、2D の蓄積が
+	// 終わったここで endFrame する (MSAA resolve + tonemap + 2D Screen を overlay 合成)。
+	// drawMesh が遅延 beginFrame するだけなので、フレームを閉じるのは engine の役目。
+	// 閉じて GPU 実行する finalizeFrame は tickPresentPhase が呼ぶ。
+	if (m_renderer3D && m_renderer3D->isFrameActive())
+	{
+		m_renderer3D->endFrame();
+	}
 }
 
 MITIRU_INLINE void mitiru::Engine::tickPresentPhase()

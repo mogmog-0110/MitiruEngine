@@ -67,22 +67,18 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 		return;
 	}
 
-	/// バックバッファを取得する
+	/// バックバッファを取得する (存在確認のみ)。
+	/// Present↔RenderTarget の遷移は Dx12Device::beginFrame/endFrame が一元管理する。
+	/// ここで再度 Present→RenderTarget バリアを張ると、同じ backbuffer に二重遷移が
+	/// 乗り (device がフレーム頭で既に RENDER_TARGET にしている)、debug layer が
+	/// コマンドリストを丸ごと落として clear 色しか出なくなる。3D の描画は、すでに
+	/// RENDER_TARGET 状態のバックバッファへ resolve/tonemap/overlay するだけでよい。
 	auto* backBufferBase = swapChain->backBuffer();
 	auto* backBuffer = static_cast<gfx::Dx12RenderTarget*>(backBufferBase);
 	if (!backBuffer)
 	{
 		return;
 	}
-
-	/// バリア: Present -> RenderTarget
-	D3D12_RESOURCE_BARRIER barrier = {};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = backBuffer->nativeResource();
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	m_graphicsCmdList->ResourceBarrier(1, &barrier);
 
 	/// shadow map を毎フレーム depth=1.0 にクリアする (ENG-103)。
 	/// shadow が無効でも clear だけは走らせる必要がある — clear しないと
@@ -361,20 +357,8 @@ inline void Renderer3D_DX12::finalizeFrame()
 	}
 	m_needsFinalize = false;
 
-	/// バリア: RenderTarget -> Present
-	auto* swapChain = m_device->getSwapChain();
-	auto* backBuffer = static_cast<gfx::Dx12RenderTarget*>(
-		swapChain->backBuffer());
-
-	D3D12_RESOURCE_BARRIER barrier = {};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = backBuffer->nativeResource();
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	m_graphicsCmdList->ResourceBarrier(1, &barrier);
-
-	/// コマンドリストを閉じて実行する
+	/// RenderTarget→Present の遷移は直後に呼ばれる Dx12Device::endFrame が行う。
+	/// ここで張ると二重バリアになるので、描画コマンドを閉じて実行するだけにする。
 	m_graphicsCmdList->Close();
 	ID3D12CommandList* lists[] = {m_graphicsCmdList.Get()};
 	m_device->commandQueue()->ExecuteCommandLists(1, lists);

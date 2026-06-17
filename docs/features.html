@@ -189,28 +189,22 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍
 
             <!-- ── ⑦ 3D ──────────────────────────────── -->
             <h2 id="gltf">⑦ 3D 表示 — 2D の上にのせる</h2>
-            <p>正直に書くと、MitiruEngine の正面は 2D + HTML/CSS で、3D は「2D に混ぜる」位置づけです。やり方は素直で、3D シーンを CPU のソフトレンダラー <code>DeferredPipeline</code> で 1 枚の画像（<code>RenderTexture</code>）に焼き、それを <code>Screen::drawPixelGrid</code> で画面へ貼ります。ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で完結し、状態は数値だけなので決定的——録画も巻き戻しもそのまま効きます。</p>
-<pre><span class="k">#include</span> &lt;mitiru/render/DeferredPipeline.hpp&gt;
-<span class="k">#include</span> &lt;mitiru/render/Scene3D.hpp&gt;
-<span class="k">namespace</span> r = mitiru::render;
+            <p>正直に書くと、MitiruEngine の正面は 2D + HTML/CSS で、3D は「2D に混ぜる」位置づけです。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> で組み込みメッシュ（"cube" / "sphere" / "plane"）を置くだけ。エンジンの GPU 3D レンダラーが<strong>アンチエイリアス（MSAA）</strong>付きで描き、2D の HUD はその上に重なります。</p>
+<pre><span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
+    s.clear(hex(0x111521));                           <span class="c">// 3D の背景色</span>
 
-<span class="c">// 道具はグローバル（state ではない）。init() で 1 回だけ初期化。</span>
-<span class="k">static</span> r::<span class="t">DeferredPipeline</span> g_pipe;
-<span class="k">static</span> r::<span class="t">RenderTexture</span>    g_frame{512, 288};
-<span class="k">static</span> <span class="k">const</span> r::<span class="t">Mesh</span> g_cube = r::<span class="t">Mesh</span>::createCube(1.0f);
+    <span class="c">// カメラと光（drawMesh の前に）</span>
+    s.camera3D({std::sin(t)*13, 8.5f, std::cos(t)*13}, {0, 0.4f, 0}, 54); <span class="c">// 視点・注視点・画角</span>
+    s.light3D({-0.5f, -1, -0.4f});                    <span class="c">// 平行光の向き</span>
 
-<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
-    r::<span class="t">Scene3D</span> scene;
-    scene.addObject({&amp;g_cube, r::<span class="t">Material</span>::defaultMaterial(), {0,0,0}, {0,t,0}, {1,1,1}});
-    scene.addLight(r::<span class="t">Light</span>::directional({-0.5f, -1, -0.4f}));
-    r::<span class="t">Camera3D</span> cam; cam.setPosition({0, 4, 8}); cam.setTarget({0, 0, 0});
-    g_pipe.render(scene, cam, g_frame);                  <span class="c">// CPU で 1 枚に焼く</span>
+    <span class="c">// 組み込みメッシュを 位置・大きさ・回転(度)・色 で置く</span>
+    s.drawMesh(<span class="s">"cube"</span>,   {0, -0.15f, 0}, {14, 0.3f, 14}, {0,0,0}, hex(0x3A4250)); <span class="c">// 足場</span>
+    s.drawMesh(<span class="s">"cube"</span>,   {0, 0.7f, 0}, {1.4f,1.4f,1.4f}, {0, t*60, 0}, hex(0xEA5535));
+    s.drawMesh(<span class="s">"sphere"</span>, {2.7f, 0.9f, 0}, {1.2f,1.2f,1.2f}, {0,0,0}, hex(0x4C95F2));
 
-    s.drawPixelGrid(<span class="t">Rect</span>{0,0,1280,720},                  <span class="c">// 2D としてそのまま貼る</span>
-        (<span class="k">const</span> std::uint32_t*)g_frame.pixels().data(),
-        g_frame.width(), g_frame.height());
+    s.text(<span class="s">"3D + 2D HUD"</span>, 28, 22, color::White, 28);  <span class="c">// HUD は 2D で上へ</span>
 }</pre>
-            <p>立方体・球・板のほか、<code>loadGltfMeshFromFile("model.gltf")</code> で読み込んだメッシュも同じ <code>Scene3D</code> に並べられます。動くデモと、影付きの完全なコードは <a href="3d.html">3D のページ</a> にまとめました。大量ポリゴンを実時間で回す本格 3D は対象外——あくまで 2D に 3D を混ぜる道具です。</p>
+            <p>立方体・球・板の組み込みメッシュのほか、<code>loadGltfMeshFromFile("model.gltf")</code> で読み込んだメッシュも並べられます。動くデモと完全なコードは <a href="3d.html">3D のページ</a> にまとめました。大量ポリゴンや凝ったシェーダー前提の本格 3D は対象外——あくまで 2D に 3D を混ぜる道具です。</p>
 
             <!-- ── ⑧ 入力 ─────────────────────────────── -->
             <h2 id="input">⑧ キーボード・マウス — 入力を読む（Input）</h2>

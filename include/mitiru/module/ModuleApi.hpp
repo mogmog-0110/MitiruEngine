@@ -94,7 +94,8 @@ namespace mitiru::module
 ///   - v17: FrameIntents 末尾に save/load intent を追加 (ADR 0020)。hud.save("slot0") で
 ///     host が GameMemory bytes をファイルへ memcpy、load で復元 (rewind と同一機構)。
 ///     replay 中の load は記録済み state blob で代用され bit-exact を保つ。末尾追記で後方安全。
-constexpr std::uint32_t kCurrentApiVersion = 17;  // v17: FrameIntents 末尾に save/load intent (ADR 0020)
+constexpr std::uint32_t kCurrentApiVersion = 18;  // v18: Screen 末尾に 3D facade メンバ (s.camera3D/s.drawMesh)
+                                                  // v17: FrameIntents 末尾に save/load intent (ADR 0020)
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";

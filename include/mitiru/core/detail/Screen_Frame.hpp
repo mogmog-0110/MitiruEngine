@@ -31,6 +31,7 @@ inline void mitiru::Screen::resetDrawCallCount() noexcept
 {
 	m_drawCallCount = 0;
 	m_drawLog.clear(); // AI 観測用 draw log もフレーム毎にリセット (capacity は維持)
+	m_3dStarted = false; // 3D facade: 次フレームの最初の drawMesh で beginFrame し直す
 }
 
 inline void mitiru::Screen::resize(int width, int height) noexcept
