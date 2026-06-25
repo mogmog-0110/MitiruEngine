@@ -306,6 +306,13 @@ private:
 	std::vector<Dx12SpriteTexture> m_dx12SpriteTextures;              ///< index+1 = handle
 	std::unordered_map<const void*, std::uint32_t> m_dx12SpriteTexLookup; ///< key → index
 
+	// ensureSpriteTexture の single-slot キャッシュ（直前と同じ texture なら map find を省く）。
+	const void*         m_lastSpriteTexKey    = nullptr;
+	int                 m_lastSpriteTexW      = 0;
+	int                 m_lastSpriteTexH      = 0;
+	const std::uint8_t* m_lastSpriteTexSrc    = nullptr;
+	std::uint32_t       m_lastSpriteTexHandle = 0;   ///< 0 = empty
+
 public:
 	/// @brief RGBA8ピクセルバッファをGPUにアップロードし、クワッドとして描画する
 	/// @details (pw, ph) が前回と異なる場合のみテクスチャを再確保する。
@@ -345,6 +352,11 @@ private:
 	std::uint32_t m_sdfIbCapacity = 0;                   ///< SDF IB容量（バイト）
 
 	/// ── DX12 基本 2D パス用メンバ ─────────────────────────
+	/// ring 深さ。hot path の submit は slot = m_dx12Slot を使い、その slot を
+	/// 前回使った GPU 完了 (= kDx12Ring 個前の submit) だけ待つ。直前ではなく
+	/// N 個前を待つので CPU は最大 kDx12Ring submit 先行でき、CPU/GPU が重なる。
+	static constexpr int kDx12Ring = 3;
+
 	gfx::Dx12Device* m_dx12Device = nullptr;                         ///< DX12 デバイス（非所有）
 	Microsoft::WRL::ComPtr<ID3D12Device>         m_dx12NativeDevice;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue>   m_dx12Queue;
@@ -352,14 +364,14 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12Pipeline;
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12VsBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12PsBlob;
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12VertexBuffer; ///< upload heap
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12IndexBuffer;  ///< upload heap
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12ConstantBuffer; ///< エイリアス用 (resize で参照)
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12VsCb;         ///< projection matrix CB
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12PsCb;         ///< uUseTexture CB
+	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12VertexBuffer[kDx12Ring]; ///< upload heap (slot 別)
+	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12IndexBuffer[kDx12Ring];  ///< upload heap (slot 別)
+	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12ConstantBuffer; ///< エイリアス用 (未使用)
+	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12VsCb;         ///< projection CB (共有、resize でのみ更新)
+	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12PsCb[kDx12Ring]; ///< uUseTexture CB (slot 別)
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dx12SrvHeap;      ///< null SRV 用
-	std::uint32_t m_dx12VbCapacity = 0;
-	std::uint32_t m_dx12IbCapacity = 0;
+	std::uint32_t m_dx12VbCapacity[kDx12Ring] = {};
+	std::uint32_t m_dx12IbCapacity[kDx12Ring] = {};
 
 	/// ── DX12 pixel-grid point-filter パス用メンバ（createFromDx12 で eager 初期化）─
 	/// 別 root signature が必要な理由: DX12 の static sampler は root signature
@@ -392,17 +404,23 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12SdfCircleVsBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12SdfCirclePsBlob;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12SdfCirclePso;
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfVertexBuffer;
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfIndexBuffer;
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfStyleCb;
-	std::uint32_t m_dx12SdfVbCapacity = 0;
-	std::uint32_t m_dx12SdfIbCapacity = 0;
+	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfVertexBuffer[kDx12Ring];
+	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfIndexBuffer[kDx12Ring];
+	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfStyleCb[kDx12Ring];
+	std::uint32_t m_dx12SdfVbCapacity[kDx12Ring] = {};
+	std::uint32_t m_dx12SdfIbCapacity[kDx12Ring] = {};
 
-	/// ── DX12 共通: 永続コマンドリスト + fence ──────────
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_dx12Alloc;
+	/// ── DX12 共通: ring allocator + 単一コマンドリスト + fence ──────────
+	/// allocator は slot 別 (GPU 使用中の allocator を Reset しないため)。command
+	/// list は 1 本で十分 (Close 後すぐ別 allocator で Reset 可能。記録済みコマンドは
+	/// allocator のメモリに在り GPU が読む)。fence は単調増加 1 本で、slot ごとの
+	/// 最後の signal 値を m_dx12SlotSignal に控える。
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_dx12Alloc[kDx12Ring];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_dx12Cl;
 	Microsoft::WRL::ComPtr<ID3D12Fence>               m_dx12Fence;
 	UINT64                                            m_dx12FenceValue = 0;
+	UINT64                                            m_dx12SlotSignal[kDx12Ring] = {}; ///< slot を最後に submit した fence 値
+	int                                               m_dx12Slot = 0;   ///< 次に使う ring slot
 	HANDLE                                            m_dx12FenceEvent = nullptr;
 
 	/// @brief upload heap の ID3D12Resource を作成する
@@ -425,8 +443,15 @@ private:
 		ID3DBlob* vs, ID3DBlob* ps,
 		const D3D12_INPUT_ELEMENT_DESC* layout, UINT layoutCount);
 
-	/// @brief 前回発行した command list の GPU 完了を待機する
+	/// @brief 発行済み全 command list の GPU 完了を待機する (drain。cold path / resize 用)
 	void waitDx12Fence();
+
+	/// @brief 指定 ring slot を最後に使った submit の GPU 完了だけ待機する (hot path 用)
+	void waitForDx12Slot(int slot);
+
+	/// @brief hot path 共通: 次の ring slot を確保し、その slot の前回 GPU 完了を待つ
+	/// @return 使用する slot index
+	[[nodiscard]] int acquireDx12Slot();
 
 	/// @brief SDF ルートシグネチャ + PSO を遅延初期化する
 	void ensureDx12SdfResources(

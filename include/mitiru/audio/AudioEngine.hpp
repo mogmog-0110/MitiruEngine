@@ -108,6 +108,33 @@ public:
 	///          再生位置を持たないバックエンド (Null/headless 等) は既定 0 を返す → game 側は
 	///          0 のときフレーム dt 積算にフォールバックする。
 	[[nodiscard]] virtual double masterTimeSec() const noexcept { return 0.0; }
+
+	// ── v19 拡張 (oscar-rythm リズム同期): 出力レイテンシ / BGM transport / 予約 ──
+	//    いずれも既定 (no-op / 0) で、対応しない backend はそのまま動く (非純粋)。
+
+	/// @brief 出力レイテンシ (秒)。デバイスバッファに積んでから実際に音が出るまでの遅延。
+	/// @details masterTimeSec() はデバイスへ送った位置 (耳より先行) なので、判定を耳基準へ
+	///          補正したいリズムゲームに供給する。耳の位置 = masterTimeSec() - outputLatencySec()。
+	///          取得できない backend は 0 を返す。
+	[[nodiscard]] virtual double outputLatencySec() const noexcept { return 0.0; }
+
+	/// @brief 再生中の BGM を一時停止する (再生位置は保持。resumeMusic で続きから)。
+	virtual void pauseMusic() {}
+	/// @brief pauseMusic で止めた BGM を続きから再開する。
+	virtual void resumeMusic() {}
+	/// @brief 再生中の BGM を指定位置 (秒) へシークする。
+	virtual void seekMusic(double positionSec) { (void)positionSec; }
+
+	/// @brief 効果音を「マスタークロック上の時刻 atSec」にサンプル精度で予約再生する。
+	/// @details atSec は masterTimeSec() と同じクロックの絶対時刻。フレーム量子化を避け、
+	///          backend のサンプル単位で発火させる。予約に対応しない backend は既定で即時再生に
+	///          フォールバックする (ジッタは乗るが鳴る)。
+	/// @param id サウンドID  @param atSec 発火時刻 (秒)  @param volume 音量  @param pitchScale ピッチ
+	virtual void playSoundScheduled(std::string_view id, double atSec, float volume, float pitchScale)
+	{
+		(void)atSec;
+		playSoundEx(id, volume, pitchScale, 0.0f);
+	}
 };
 
 } // namespace mitiru::audio

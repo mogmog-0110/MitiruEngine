@@ -40,3 +40,10 @@
 #include <mitiru_mml/WavReader.hpp>
 #include <mitiru_mml/Sf2File.hpp>
 #include <mitiru_mml/SfzFile.hpp>
+// 音質強化（レゾナンスフィルタ + マスター/バスエフェクト + ステレオミックス）
+#include <mitiru_mml/Biquad.hpp>
+#include <mitiru_mml/Delay.hpp>
+#include <mitiru_mml/Chorus.hpp>
+#include <mitiru_mml/Equalizer.hpp>
+#include <mitiru_mml/Compressor.hpp>
+#include <mitiru_mml/MixBus.hpp>

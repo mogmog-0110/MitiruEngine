@@ -98,4 +98,160 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 	m_renderer3D->drawMesh(detail::builtin3DMesh(shape), world, material);
 }
 
+inline bool Screen::loadSplatScene(const char* path)
+{
+	if (m_renderer3D == nullptr) { return false; }
+	return m_renderer3D->loadSplatScene(path);
+}
+
+inline bool Screen::splatBounds(sgc::Vec3f& center, float& radius)
+{
+	if (m_renderer3D == nullptr) { return false; }
+	float cx = 0.0f, cy = 0.0f, cz = 0.0f, r = 1.0f;
+	m_renderer3D->splatBounds(cx, cy, cz, r);
+	center = sgc::Vec3f{cx, cy, cz};
+	radius = r;
+	return true;
+}
+
+inline void Screen::drawSplats()
+{
+	if (!has3D()) { return; }
+
+	// drawMesh と同じく最初の 3D 呼び出しでフレームを開く + カメラを設定する。
+	if (!m_3dStarted)
+	{
+		m_renderer3D->beginFrame(m_clearColor);
+		const float aspect = (m_height > 0)
+			? static_cast<float>(m_width) / static_cast<float>(m_height)
+			: 16.0f / 9.0f;
+		constexpr float kDeg = 3.14159265358979f / 180.0f;
+		const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, {0.0f, 1.0f, 0.0f},
+		                           m_cam3DFovDeg * kDeg, aspect, 0.1f, 500.0f);
+		m_renderer3D->setCamera(cam);
+		m_3dStarted = true;
+	}
+	m_renderer3D->drawSplats();
+}
+
+inline void Screen::drawLive2D(const char* model3jsonPath)
+{
+	if (!has3D()) { return; }
+
+	// drawSplats と同じく最初の 3D 呼び出しでフレームを開く (endFrame で tonemap→Live2D 合成が走る)。
+	if (!m_3dStarted)
+	{
+		m_renderer3D->beginFrame(m_clearColor);
+		const float aspect = (m_height > 0)
+			? static_cast<float>(m_width) / static_cast<float>(m_height)
+			: 16.0f / 9.0f;
+		constexpr float kDeg = 3.14159265358979f / 180.0f;
+		const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, {0.0f, 1.0f, 0.0f},
+		                           m_cam3DFovDeg * kDeg, aspect, 0.1f, 500.0f);
+		m_renderer3D->setCamera(cam);
+		m_3dStarted = true;
+	}
+	m_renderer3D->drawLive2D(model3jsonPath);
+}
+
+inline void Screen::enableNeuralFx(bool enabled, float strength)
+{
+	if (m_renderer3D) { m_renderer3D->enableNeuralFx(enabled, strength); }
+}
+
+inline void Screen::enableRelight(bool enabled, float lightX, float lightY, float strength, float rim)
+{
+	if (m_renderer3D) { m_renderer3D->enableRelight(enabled, lightX, lightY, strength, rim); }
+}
+
+inline void Screen::setRelightDepthModel(const char* path)
+{
+	if (m_renderer3D) { m_renderer3D->setRelightDepthModel(path); }
+}
+
+inline void Screen::live2dLookAt(float nx, float ny)
+{
+	if (m_renderer3D) { m_renderer3D->live2dLookAt(nx, ny); }
+}
+
+inline void Screen::live2dTap()
+{
+	if (m_renderer3D) { m_renderer3D->live2dTap(); }
+}
+
+inline void Screen::live2dStage(const char* bg, const char* gear, const char* close)
+{
+	if (m_renderer3D) { m_renderer3D->live2dStage(bg, gear, close); }
+}
+
+// ── ニューラル現像 (M3): 3D フレームを ONNX+DirectML で 2D 絵画へ ──────────
+// 重い ORT は IRenderer3D の裏 (host 側) でのみコンパイルされる。ここは仮想呼び出し
+// + drawPixelGrid だけの薄い facade なので、ゲーム DLL は ORT に依存しない。
+
+inline void Screen::developToStyle(const char* onnxPath)
+{
+	if (m_renderer3D != nullptr) { m_renderer3D->requestDevelop(onnxPath); }
+}
+
+inline bool Screen::styleReady() const
+{
+	return (m_renderer3D != nullptr) && m_renderer3D->styleReady();
+}
+
+inline void Screen::clearStyle()
+{
+	if (m_renderer3D != nullptr) { m_renderer3D->clearDevelop(); }
+}
+
+inline void Screen::bakeStyle()
+{
+	if (m_renderer3D != nullptr) { m_renderer3D->bakeStyleToSplats(); }
+}
+
+inline void Screen::resetSplats()
+{
+	if (m_renderer3D != nullptr) { m_renderer3D->resetSplatColors(); }
+}
+
+inline float Screen::bakedFraction()
+{
+	return (m_renderer3D != nullptr) ? m_renderer3D->bakedFraction() : 0.0f;
+}
+
+inline void Screen::captureTarget()
+{
+	if (m_renderer3D != nullptr) { m_renderer3D->captureTargetFromStyle(); }
+}
+
+inline void Screen::showTarget(bool on)
+{
+	if (m_renderer3D != nullptr) { m_renderer3D->setShowTarget(on); }
+}
+
+inline bool Screen::hasTarget()
+{
+	return (m_renderer3D != nullptr) && m_renderer3D->hasTarget();
+}
+
+inline float Screen::matchScore()
+{
+	return (m_renderer3D != nullptr) ? m_renderer3D->matchScore() : 0.0f;
+}
+
+inline bool Screen::projectToScreen(const sgc::Vec3f& world, float& sx, float& sy)
+{
+	float u = -1.0f, v = -1.0f;
+	const bool on = (m_renderer3D != nullptr) && m_renderer3D->worldToScreen(world.x, world.y, world.z, u, v);
+	sx = u * static_cast<float>(m_width);
+	sy = v * static_cast<float>(m_height);
+	return on;
+}
+
+inline void Screen::drawStyle(float strength)
+{
+	// 実際の全画面 α合成は renderer の post-process (blitStyleDx12, FXAA 後・overlay 前) が
+	// 物理解像度で行う。ここは強度を渡すだけ — 毎フレーム呼ぶこと (0=3D / 1=完全 2D)。
+	if (m_renderer3D != nullptr) { m_renderer3D->setStyleStrength(strength); }
+}
+
 } // namespace mitiru

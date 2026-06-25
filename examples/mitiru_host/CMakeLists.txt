@@ -63,6 +63,22 @@ if(WIN32 AND TARGET SDL2::SDL2)
 		COMMENT "mitiru_host: deploying SDL2.dll (DirectInput gamepad support)")
 endif()
 
+# ONNX Runtime + DirectML ランタイム DLL を host の隣へ deploy する (GPU ニューラル post-process)。
+# onnxruntime.dll は DirectML.dll に依存し、provider_shared は EP 解決に要る。
+if(WIN32)
+	# engine root は examples/mitiru_host から見て ../../ (CLI ビルドでも CMAKE_SOURCE_DIR に依存しない)
+	get_filename_component(_ort_bin "${CMAKE_CURRENT_SOURCE_DIR}/../../external/onnxruntime/bin" ABSOLUTE)
+	foreach(_ortdll "onnxruntime.dll" "onnxruntime_providers_shared.dll" "DirectML.dll")
+		if(EXISTS "${_ort_bin}/${_ortdll}")
+			add_custom_command(TARGET mitiru_host POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy_if_different
+					"${_ort_bin}/${_ortdll}"
+					"$<TARGET_FILE_DIR:mitiru_host>/${_ortdll}"
+				COMMENT "mitiru_host: deploying ${_ortdll} (ONNX Runtime / DirectML)")
+		endif()
+	endforeach()
+endif()
+
 # 同梱の日本語フォント (normal=M+ Rounded 1c / retro=PixelMplus) を host の隣へ配る。
 # initFont が exe 相対で解決するので、native 描画 (エラー帯・ゲーム内テキスト) が日本語可。
 foreach(_jpfont "MPLUSRounded1c-Regular.ttf" "PixelMplus12-Regular.ttf")

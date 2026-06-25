@@ -63,9 +63,14 @@ inline void mitiru::server::EngineHttpServer::handleAiBranch(const HttpRequest& 
 	if (!m_callbacks.aiBranch)
 	{ resp.status = 503; resp.setBody(R"({"error":"branch not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
 	const auto keys = detail::extractJsonString(req.body, "keys", "");
-	int frames = 30;
-	try { frames = std::stoi(detail::extractJsonString(req.body, "frames", "30")); }
-	catch (...) { frames = 30; }
+	// frames は数値 ({"frames":300}) でも文字列 ({"frames":"300"}) でも受ける。
+	// 数値を先に試し、拾えなければ ("frames" が文字列 or 欠落) 文字列として読む。
+	int frames = detail::extractJsonInt(req.body, "frames", -1);
+	if (frames < 0)
+	{
+		try { frames = std::stoi(detail::extractJsonString(req.body, "frames", "30")); }
+		catch (...) { frames = 30; }
+	}
 	if (frames < 1)   { frames = 1; }
 	if (frames > 600) { frames = 600; }  // 上限 10 秒 @60fps
 	resp.status = 200; resp.setBody(m_callbacks.aiBranch(keys, frames));

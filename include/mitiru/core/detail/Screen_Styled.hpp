@@ -35,7 +35,7 @@ inline void mitiru::Screen::drawStyledRect(
 	const auto local = mitiru::screen_detail::styleTransformToMatrix(style.transform, cx, cy);
 	const mitiru::render::Transform2D world = currentTransform() * local;
 
-	render::StyledRectBatch batch;
+	static thread_local render::StyledRectBatch batch;  // 描画間で確保を使い回す
 	batch.begin();
 	batch.addRect(rect, style, world);
 	batch.end();
@@ -57,7 +57,7 @@ inline void mitiru::Screen::drawStyledCircle(
 		style.transform, center.x, center.y);
 	const mitiru::render::Transform2D world = currentTransform() * local;
 
-	render::StyledCircleBatch batch;
+	static thread_local render::StyledCircleBatch batch;  // 描画間で確保を使い回す
 	batch.begin();
 	batch.addCircle(center, radius, style, world);
 	batch.end();
@@ -79,7 +79,7 @@ inline void mitiru::Screen::drawShape(
 		st.transform, s.center.x, s.center.y);
 	const mitiru::render::Transform2D world = currentTransform() * local;
 
-	render::StyledCircleBatch batch;
+	static thread_local render::StyledCircleBatch batch;  // 描画間で確保を使い回す
 	batch.begin();
 	batch.addEllipse(s.center, s.rx, s.ry, st, world);
 	batch.end();

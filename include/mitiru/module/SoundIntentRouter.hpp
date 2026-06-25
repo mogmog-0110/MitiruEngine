@@ -33,6 +33,20 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s)
 {
 	const bool isMusic = (s.category == 1);  // 1 = BGM
 
+	// v19: BGM transport (pause/resume/seek)。id 不要 — 再生中の BGM に作用する。
+	// play/stop より先に判定する (transport intent は id 空・stop 0 で来る)。
+	if (isMusic && s.transport != 0)
+	{
+		switch (s.transport)
+		{
+			case 1: engine.pauseMusic();         break;  // pause
+			case 2: engine.resumeMusic();        break;  // resume
+			case 3: engine.seekMusic(s.seekSec); break;  // seek
+			default:                             break;
+		}
+		return;
+	}
+
 	if (s.stop != 0)
 	{
 		// fade 0 は素の stop に落とす (backend によって fade(0) の扱いが違い得るため従来挙動を維持)
@@ -53,8 +67,9 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s)
 
 	const float vol   = (s.volume     > 0.0f) ? s.volume     : 1.0f;  // 0 = 未指定 → 既定
 	const float pitch = (s.pitchScale > 0.0f) ? s.pitchScale : 1.0f;  // 0 = 未指定 → 1.0
-	if (isMusic) { engine.playMusicEx(s.id, vol, s.loop != 0, s.fadeInSec); }
-	else         { engine.playSoundEx(s.id, vol, pitch,           s.fadeInSec); }
+	if (isMusic)                  { engine.playMusicEx(s.id, vol, s.loop != 0, s.fadeInSec); }
+	else if (s.scheduleSec > 0.0) { engine.playSoundScheduled(s.id, s.scheduleSec, vol, pitch); }  // v19 サンプル精度予約
+	else                          { engine.playSoundEx(s.id, vol, pitch, s.fadeInSec); }
 }
 
 /// @brief SoundIntent の host 側 router。BGM (category=1) の同 id 連打を冪等化する。

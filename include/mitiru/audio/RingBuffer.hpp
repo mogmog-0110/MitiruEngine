@@ -186,11 +186,13 @@ private:
 		return n + 1;
 	}
 
-	std::size_t m_capacity;                           ///< バッファ容量（2の累乗）
-	std::size_t m_mask;                               ///< インデックスマスク (capacity - 1)
-	std::unique_ptr<T[]> m_buffer;                    ///< データバッファ
-	std::atomic<std::size_t> m_readPos{0};            ///< 読み出し位置
-	std::atomic<std::size_t> m_writePos{0};           ///< 書き込み位置
+	std::size_t m_capacity;                           ///< バッファ容量（2の累乗、構築後不変）
+	std::size_t m_mask;                               ///< インデックスマスク (capacity - 1、不変)
+	std::unique_ptr<T[]> m_buffer;                    ///< データバッファ（不変ポインタ）
+
+	/// 各カーソルを別キャッシュラインへ（producer/consumer の false sharing 回避）。
+	alignas(64) std::atomic<std::size_t> m_readPos{0};   ///< 読み出し位置（consumer が書く）
+	alignas(64) std::atomic<std::size_t> m_writePos{0};  ///< 書き込み位置（producer が書く）
 };
 
 } // namespace mitiru::audio

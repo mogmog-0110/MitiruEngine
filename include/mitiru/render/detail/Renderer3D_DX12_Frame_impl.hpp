@@ -28,6 +28,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_drawCallCount = 0;
 	m_frameActive = true;
 	m_outlineCommands.clear();
+	m_transparentCommands.clear();
 	m_skyboxDrawnThisFrame = false;
 	// 前フレームの shadow casters をスナップして当フレーム描画分をクリア
 	m_shadowCommandsPrev = std::move(m_shadowCommands);
@@ -176,6 +177,13 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 		drawSkyboxIfNeededDx12();
 	}
 
+	/// 半透明 (diffuse.a < 1) は即時描画せず、不透明の後に OIT パスへ回す (順序非依存)
+	if (material.diffuse.a < 1.0f && m_oitTransparentPSO)
+	{
+		m_transparentCommands.push_back({&mesh, worldTransform, material});
+		return;
+	}
+
 	/// PSO 選択（ShaderMode + multi-light + outline mode の組み合わせ）
 	const bool useMulti = m_useMultiLight && !m_lights.empty() && m_multiLightPSO;
 	if (auto* pso = selectMainPSO())
@@ -299,6 +307,99 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 	}
 }
 
+/// @brief 半透明メッシュ 1 個を accum/reveal へ記録する (PSO は呼び出し側が設定済み)。
+/// @details drawMesh の不透明描画列と同じ CB/SRV/VB-IB バインドを使い、PSO だけ透明用。
+inline void Renderer3D_DX12::recordTransparentMesh(const Mesh& mesh,
+                                                   const sgc::Mat4f& world,
+                                                   const Material& material)
+{
+	if (mesh.vertexCount() == 0) { return; }
+	const auto cbT = uploadTransformCB(world);
+	const auto cbL = uploadLightingCB(material);
+	if (cbT == 0 || cbL == 0) { return; }
+
+	const auto& verts = mesh.vertices();
+	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
+	const void* key = static_cast<const void*>(&mesh);
+	auto& vb = m_meshVBCache[key];
+	if (!vb.resource || vb.size != vbSize)
+	{
+		vb.resource = createUploadBuffer(vbSize);
+		vb.size = vbSize;
+		if (vb.resource) { uploadToBuffer(vb.resource.Get(), verts.data(), vbSize); }
+	}
+	if (!vb.resource) { return; }
+	D3D12_VERTEX_BUFFER_VIEW vbv = {};
+	vbv.BufferLocation = vb.resource->GetGPUVirtualAddress();
+	vbv.SizeInBytes = vbSize;
+	vbv.StrideInBytes = sizeof(Vertex3D);
+	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
+
+	m_graphicsCmdList->SetGraphicsRootConstantBufferView(0, cbT);
+	m_graphicsCmdList->SetGraphicsRootConstantBufferView(1, cbL);
+	const auto cbS = uploadShadowCB();
+	if (cbS != 0) { m_graphicsCmdList->SetGraphicsRootConstantBufferView(3, cbS); }
+
+	ID3D12DescriptorHeap* heaps[] = { m_albedoSrvHeap.Get() };
+	m_graphicsCmdList->SetDescriptorHeaps(1, heaps);
+	const auto srv = writeMainSrvTable(material.albedoTexture);
+	if (srv.ptr != 0) { m_graphicsCmdList->SetGraphicsRootDescriptorTable(4, srv); }
+
+	const auto& indices = mesh.indices();
+	if (!indices.empty())
+	{
+		const UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint32_t));
+		auto& ib = m_meshIBCache[key];
+		if (!ib.resource || ib.size != ibSize)
+		{
+			ib.resource = createUploadBuffer(ibSize);
+			ib.size = ibSize;
+			if (ib.resource) { uploadToBuffer(ib.resource.Get(), indices.data(), ibSize); }
+		}
+		if (!ib.resource) { return; }
+		D3D12_INDEX_BUFFER_VIEW ibv = {};
+		ibv.BufferLocation = ib.resource->GetGPUVirtualAddress();
+		ibv.SizeInBytes = ibSize;
+		ibv.Format = DXGI_FORMAT_R32_UINT;
+		m_graphicsCmdList->IASetIndexBuffer(&ibv);
+		m_graphicsCmdList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
+	}
+	else
+	{
+		m_graphicsCmdList->DrawInstanced(static_cast<UINT>(verts.size()), 1, 0, 0);
+	}
+	++m_drawCallCount;
+}
+
+/// @brief 半透明 OIT パス。溜めた透明メッシュを accum/reveal へ蓄積し MSAA color へ合成する。
+inline void Renderer3D_DX12::renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE msaaColorRtv,
+                                                   D3D12_CPU_DESCRIPTOR_HANDLE dsv)
+{
+	// accum=0 / reveal=1 にクリアし、accum+reveal+(読み取り専用 depth) を bind。
+	m_oit.beginAccumulate(m_graphicsCmdList.Get(), &dsv);
+
+	D3D12_VIEWPORT vp = {};
+	vp.Width = m_config.viewportWidth;
+	vp.Height = m_config.viewportHeight;
+	vp.MaxDepth = 1.0f;
+	m_graphicsCmdList->RSSetViewports(1, &vp);
+	D3D12_RECT sc = {0, 0, static_cast<LONG>(m_config.viewportWidth),
+	                       static_cast<LONG>(m_config.viewportHeight)};
+	m_graphicsCmdList->RSSetScissorRects(1, &sc);
+
+	m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
+	m_graphicsCmdList->SetPipelineState(m_oitTransparentPSO.Get());
+	m_graphicsCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	for (const auto& cmd : m_transparentCommands)
+	{
+		recordTransparentMesh(*cmd.mesh, cmd.world, cmd.material);
+	}
+
+	// accum/reveal を resolve して MSAA color (HDR) へ over 合成する。
+	m_oit.composite(m_graphicsCmdList.Get(), msaaColorRtv);
+}
+
 /// @brief フレーム終了処理（アウトラインパス + バリア + コマンド実行）
 inline void Renderer3D_DX12::endFrame()
 {
@@ -306,6 +407,15 @@ inline void Renderer3D_DX12::endFrame()
 	if (!m_initialized || !m_graphicsCmdList)
 	{
 		return;
+	}
+
+	// 半透明 OIT: 不透明 (MSAA color + depth) の後、resolve/tonemap の前に HDR で合成する。
+	if (!m_transparentCommands.empty() && m_oitTransparentPSO &&
+	    m_msaaColorRtvHeap && m_dsvHeap)
+	{
+		renderTransparentPass(
+			m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart(),
+			m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	/// MSAA color RT (FP16) を HDR intermediate に Resolve し、
@@ -331,6 +441,21 @@ inline void Renderer3D_DX12::endFrame()
 	/// renderOverlay2D() より「前」に走らせて HUD/UI text に FXAA ブラーを
 	/// かけないようにする (2D 文字は pixel-perfect なまま残す)。
 	drawFXAAPass();
+
+	/// ニューラル現像 (M3): 現像済み 2D 画像をバックバッファへ全画面 α合成する
+	/// (FXAA 後・overlay2D 前 = HUD は 2D 絵の上に残る)。strength=0 のとき no-op。
+	blitStyleDx12();
+
+	/// Live2D (自前 D3D12 レンダラ): tonemap 後の backbuffer へ 2D オーバーレイ描画。
+	/// (HUD overlay より前 = HUD は Live2D の上に残る)。要求が無ければ no-op。
+	drawLive2DDx12();
+
+	/// DirectML in-pipeline ニューラル後処理: backbuffer を CPU 往復なしで推論加工。
+	/// (Live2D の後・HUD overlay の前 = HUD は加工されない)。無効なら no-op。
+	neuralFxTickDx12();
+
+	/// ニューラル・リライティング (Live2D の後・HUD overlay の前)。無効なら no-op。
+	relightTickDx12();
 
 	/// 2Dオーバーレイパス（HUD/UI描画）
 	if (m_overlayScreen && m_overlay2DPSO)

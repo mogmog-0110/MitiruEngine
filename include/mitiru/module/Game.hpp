@@ -243,6 +243,19 @@ public:
 	/// リズムゲームの同期は「audioTime()<=0 の間は dt クロック、以降は緩く lerp」が定石。
 	double audioTime() const noexcept { return s_->audioTimeSec; }
 
+	/// 音声出力レイテンシ (秒、ABI v19)。デバイスバッファに積んでから実際に耳へ届くまでの遅延。
+	/// 0 = 不明 (Null/headless 等)。判定窓の耳基準補正に使う。
+	double audioLatency() const noexcept { return s_->audioLatencySec; }
+
+	/// 実際に耳へ届いている音声クロック位置 (秒、ABI v19)。= audioTime() - audioLatency()。
+	/// **リズムゲームの判定はこの earTime() を基準にすると出力レイテンシ分のズレが構造的に消える**
+	/// (audioTime() はデバイスへ送った位置 = 耳より先行)。audioTime() が未準備 (<=0) の間は 0。
+	double earTime() const noexcept
+	{
+		const double t = s_->audioTimeSec - s_->audioLatencySec;
+		return (s_->audioTimeSec > 0.0 && t > 0.0) ? t : 0.0;
+	}
+
 	/// 生の InputSnapshot へのアクセス (全 256 キー走査など、ラッパで足りない高度用途の escape hatch)。
 	const module::InputSnapshot* raw() const noexcept { return s_; }
 
@@ -310,7 +323,27 @@ public:
 	}
 	/// 再生中の BGM を停止する (fadeOutSec > 0 でフェードアウト)。
 	void stopMusic(float fadeOutSec = 0.0f) noexcept { s_->stopMusic(fadeOutSec); }
+	/// 再生中の BGM を一時停止する (再生位置を保持。resumeMusic で続きから。会話チュートリアルで
+	/// BGM を止めて間を取る等。stopMusic と違い曲は破棄されない)。
+	void pauseMusic() noexcept { s_->pauseMusic(); }
+	/// pauseMusic で止めた BGM を続きから再開する。
+	void resumeMusic() noexcept { s_->resumeMusic(); }
+	/// 再生中の BGM を指定位置 (秒) へシークする。
+	void seekMusic(float positionSec) noexcept { s_->seekMusic(positionSec); }
+	/// 効果音を「音声クロック上の時刻 atSec」にサンプル精度で予約再生する (リズムゲームの
+	/// 「次の拍でこの音」)。atSec は in.audioTime() と同じ基準の絶対時刻。毎フレーム判定で鳴らすと
+	/// フレーム量子化 (~16ms) のジッタが乗るが、これは host が音声サンプル単位で発火させる。
+	/// **volume 0 = 無音**。pitch <= 0 は 1.0 (原音) に丸める。
+	void playAt(const char* soundId, double atSec, float volume = 1.0f, float pitch = 1.0f) noexcept
+	{
+		s_->scheduleSound(soundId, atSec, clampVolume(volume), pitch);
+	}
 	void quit() noexcept { s_->requestStop = 1; }   ///< ゲームを終了する
+
+	// ── つむぎ: タイムライン織り (ADR 0005 signal-only。host/engine が実処理) ──
+	void weaveBegin() noexcept  { s_->weaveBegin = 1; }   ///< 現状態を共通祖先 A にして糸取りを始める
+	void spinThread() noexcept  { s_->weaveSpin = 1; }    ///< 現状態を 1 本の糸として保存し A へ戻る
+	void weave() noexcept       { s_->weaveCommit = 1; }  ///< 全糸を織って 1 つの世界に確定する
 
 	// ── 演出 / デバッグ (必要なときだけ呼ぶ — pulled UI、ゲーム窓は汚さない) ──
 	/// 画面を一瞬 c 色にフラッシュさせる (被弾演出など)。

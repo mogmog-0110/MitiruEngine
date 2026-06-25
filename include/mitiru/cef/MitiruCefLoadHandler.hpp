@@ -12,6 +12,8 @@
 
 #include "include/cef_load_handler.h"
 
+#include <mitiru/cef/CefErrorPage.hpp>
+
 namespace mitiru::cef
 {
 
@@ -60,14 +62,24 @@ public:
 
     void OnLoadError(
         CefRefPtr<CefBrowser>  /*browser*/,
-        CefRefPtr<CefFrame>    /*frame*/,
+        CefRefPtr<CefFrame>    frame,
         ErrorCode              errorCode,
-        const CefString&       /*errorText*/,
-        const CefString&       /*failedUrl*/) override
+        const CefString&       errorText,
+        const CefString&       failedUrl) override
     {
         m_loading   = false;
         m_hasError  = true;
         m_errorCode = static_cast<int>(errorCode);
+
+        // Chromium 既定のエラーページの代わりに自前ページを出す。
+        // ERR_ABORTED (-3) は通常の遷移中断 (loadUrl 連打/リダイレクト)。ここで
+        // 再ロードすると無限ループになるので無視する。メインフレームのみ差し替え、
+        // 自前ページ自体の失敗による再帰も防ぐ (data: で始まる URL は無視)。
+        if (errorCode == ERR_ABORTED || !frame || !frame->IsMain()) { return; }
+        const std::string url = failedUrl.ToString();
+        if (url.rfind("data:", 0) == 0) { return; }
+        frame->LoadURL(buildErrorDataUri(url, errorText.ToString(),
+                                         static_cast<int>(errorCode)));
     }
 
 private:

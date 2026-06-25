@@ -243,6 +243,75 @@ public:
 	///          ImGui描画を追記した後にfinalizeFrame()で閉じて実行する。
 	///          DX11ではno-op。
 	virtual void finalizeFrame() {}
+
+	// ── 3D Gaussian Splatting (M1、DX12 で実装、それ以外は no-op) ──────────
+	/// @brief .splat シーンを読み込んで GPU にアップロードする (一度だけ)。失敗時 false。
+	virtual bool loadSplatScene(const char* /*path*/) { return false; }
+	/// @brief 読み込み済みスプラットシーンを現在のカメラで描画する (beginFrame 後)。
+	virtual void drawSplats() {}
+	/// @brief 読み込み済みシーンの境界球 (重心 + 半径)。カメラ自動フレーミング用。
+	virtual void splatBounds(float& cx, float& cy, float& cz, float& r) const { cx = cy = cz = 0.0f; r = 1.0f; }
+
+	// ── Live2D (Cubism Framework 駆動 + 自前 D3D12 レンダラ、DX12+Cubism で実装、それ以外は no-op) ──
+	/// @brief Live2D モデル (model3.json) を描く要求。初回に Framework が moc/テクスチャ/モーション/
+	///        物理/エフェクトを一括ロードし、以後毎フレーム更新 (公式サンプル相当) + 描画する。
+	virtual void drawLive2D(const char* /*model3jsonPath*/) {}
+	/// @brief Live2D の注視先 (nx,ny∈[-1,1])。頭/目/体がマウス等に追従する。
+	virtual void live2dLookAt(float /*nx*/, float /*ny*/) {}
+	/// @brief Live2D のタップ操作。TapBody (無ければ idle) グループのモーションを再生する。
+	virtual void live2dTap() {}
+	/// @brief 公式 LAppView 相当のステージ画像 (背景/歯車/閉じる)。drawLive2D より前に一度設定する。
+	virtual void live2dStage(const char* /*bg*/, const char* /*gear*/, const char* /*close*/) {}
+
+	// ── DirectML in-pipeline ニューラル後処理 (DX12+DirectML で実装) ──
+	/// @brief backbuffer に DirectML 推論を CPU 往復なしで適用する on/off + 強度 (0..2)。
+	virtual void enableNeuralFx(bool /*enabled*/, float /*strength*/ = 0.5f) {}
+
+	/// @brief ニューラル・リライティング on/off + 光源方向 (lx,ly∈[-1,1]) + 陰影/リム強度。
+	/// @details 平面 Live2D から法線を推定し可動光源で再ライティング (従来は照明固定で不可能)。
+	virtual void enableRelight(bool /*enabled*/, float /*lightX*/ = 0.4f, float /*lightY*/ = 0.4f,
+	                           float /*strength*/ = 0.6f, float /*rim*/ = 0.5f) {}
+	/// @brief リライト用の単眼深度モデル (ONNX) パスを設定する。
+	virtual void setRelightDepthModel(const char* /*path*/) {}
+
+	// ── ニューラル現像 (M3、DX12+DirectML で実装、それ以外は no-op) ──────────
+	/// @brief 次の安全境界で現在のフレームを style モデルで 2D 化するよう要求する。
+	virtual void requestDevelop(const char* /*modelPath*/) {}
+	/// @brief engine フレーム頭 (backbuffer=PRESENT) で呼ぶ: 要求があれば readback+推論。
+	virtual void tickDevelop() {}
+	/// @brief 現像済み状態を解除して 3D 表示へ戻す。
+	virtual void clearDevelop() {}
+	/// @brief 現像済み 2D 画像が利用可能か。
+	[[nodiscard]] virtual bool styleReady() const { return false; }
+	/// @brief 現像済み 2D 画像 (RGBA8、tight) の先頭。未準備なら nullptr。
+	[[nodiscard]] virtual const std::uint8_t* styleImageData() const { return nullptr; }
+	/// @brief 現像済み 2D 画像の幅・高さ。
+	[[nodiscard]] virtual int styleImageW() const { return 0; }
+	[[nodiscard]] virtual int styleImageH() const { return 0; }
+	/// @brief 現像 2D の全画面合成強度 (0=3D / 1=完全 2D)。post-process で blit される。
+	virtual void setStyleStrength(float /*strength*/) {}
+
+	// ── 現像焼き込み (M4: 2D 絵画を 3D スプラットへ、DX12 で実装) ──────────
+	/// @brief 直前の現像 2D を、その現像視点から見えるスプラットへ色として焼き込む。
+	virtual void bakeStyleToSplats() {}
+	/// @brief スプラット色を元の写実色へ戻す (焼き込み解除)。
+	virtual void resetSplatColors() {}
+	/// @brief 焼き込み済みスプラットの割合 (0..1、塗り達成率)。
+	[[nodiscard]] virtual float bakedFraction() const { return 0.0f; }
+
+	// ── 現像合わせ (お題再現パズル、DX12 で実装) ──────────────
+	/// @brief 現在の現像 2D を「お題」として保存する。
+	virtual void captureTargetFromStyle() {}
+	/// @brief blit でお題(true)／自分の現像(false)を表示する。
+	virtual void setShowTarget(bool /*b*/) {}
+	/// @brief お題が保存済みか。
+	[[nodiscard]] virtual bool hasTarget() const { return false; }
+	/// @brief 現在の現像 2D とお題の一致度 (0..1)。
+	[[nodiscard]] virtual float matchScore() const { return 0.0f; }
+
+	/// @brief ワールド座標を現在のカメラで画面正規化座標 (u,v ∈ 0..1, 左上原点) へ射影する。
+	/// @return 視錐台内 (手前かつ画面内) なら true。アナモルフォーズ等の射影パズル用。
+	virtual bool worldToScreen(float /*wx*/, float /*wy*/, float /*wz*/, float& u, float& v) const { u = v = -1.0f; return false; }
 };
 
 } // namespace mitiru::render

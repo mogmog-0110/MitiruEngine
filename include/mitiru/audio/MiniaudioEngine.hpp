@@ -47,9 +47,11 @@ public:
 		, m_initialized(other.m_initialized)
 		, m_music(other.m_music)
 		, m_musicActive(other.m_musicActive)
+		, m_musicPaused(other.m_musicPaused)
 		, m_oneShots(std::move(other.m_oneShots)) {
 		other.m_initialized = false;
 		other.m_musicActive = false;
+		other.m_musicPaused = false;
 	}
 
 	MiniaudioEngine& operator=(MiniaudioEngine&& other) noexcept {
@@ -62,9 +64,11 @@ public:
 			m_initialized = other.m_initialized;
 			m_music = other.m_music;
 			m_musicActive = other.m_musicActive;
+			m_musicPaused = other.m_musicPaused;
 			m_oneShots = std::move(other.m_oneShots);
 			other.m_initialized = false;
 			other.m_musicActive = false;
+			other.m_musicPaused = false;
 		}
 		return *this;
 	}
@@ -121,6 +125,32 @@ public:
 		m_oneShots.push_back(std::move(snd));
 	}
 
+	/// @brief 効果音を「マスタークロック上の絶対時刻 atSec」にサンプル精度で予約再生する (v19)。
+	/// @details ma_engine のグローバルクロックが atSec に達した瞬間に backend がミックスを開始する
+	///          (フレーム量子化なし)。atSec <= 現在時刻 なら即時再生される。
+	void playSoundScheduled(const std::string& path, double atSec, float volume, float pitchScale) {
+		if (!m_initialized) { return; }
+		reapFinishedOneShots();
+		auto snd = std::make_unique<ma_sound>();
+		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
+		                            nullptr, nullptr, snd.get()) != MA_SUCCESS) {
+			mitiru::debug::warnOnce("audio.se:" + path,
+				"音声ファイルが見つからない/読めない: " + path);
+			return;
+		}
+		ma_sound_set_volume(snd.get(), volume);
+		if (pitchScale > 0.0f && pitchScale != 1.0f) {
+			ma_sound_set_pitch(snd.get(), pitchScale);
+		}
+		const ma_uint32 sr = ma_engine_get_sample_rate(&m_engine);
+		if (atSec > 0.0 && sr > 0) {
+			ma_sound_set_start_time_in_pcm_frames(
+				snd.get(), static_cast<ma_uint64>(atSec * static_cast<double>(sr)));
+		}
+		ma_sound_start(snd.get());
+		m_oneShots.push_back(std::move(snd));
+	}
+
 	/// @brief マスターボリュームを設定する
 	/// @param volume ボリューム [0.0, 1.0]
 	void setMasterVolume(float volume) {
@@ -144,6 +174,22 @@ public:
 		const ma_uint32 sr = ma_engine_get_sample_rate(e);
 		if (sr == 0) return 0.0;
 		return static_cast<double>(ma_engine_get_time_in_pcm_frames(e)) / static_cast<double>(sr);
+	}
+
+	/// @brief 出力レイテンシ (秒)。デバイスの内部バッファ (period × periodSize) / sampleRate。
+	/// @details masterTimeSec() はデバイスへ送った位置なので、実際に耳へ届くのはこの値だけ後。
+	///          リズムゲームが判定窓を耳基準へ補正するのに使う。device 固定値で毎フレーム同じ。
+	[[nodiscard]] double outputLatencySec() const noexcept {
+		if (!m_initialized) return 0.0;
+		auto* e = const_cast<ma_engine*>(&m_engine);
+		ma_device* dev = ma_engine_get_device(e);
+		if (dev == nullptr) { return 0.0; }
+		const ma_uint32 sr = dev->playback.internalSampleRate;
+		if (sr == 0) { return 0.0; }
+		const ma_uint64 bufFrames =
+			static_cast<ma_uint64>(dev->playback.internalPeriodSizeInFrames) *
+			static_cast<ma_uint64>(dev->playback.internalPeriods);
+		return static_cast<double>(bufFrames) / static_cast<double>(sr);
 	}
 
 	/// @brief BGM を再生する（ループ・音量指定）
@@ -175,6 +221,7 @@ public:
 		}
 		ma_sound_start(&m_music);
 		m_musicActive = true;
+		m_musicPaused = false;
 	}
 
 	/// @brief 毎フレームの定期メンテナンス (#51)。
@@ -200,6 +247,7 @@ public:
 			m_musicActive = false;
 		}
 		m_musicFadeOutFrames = 0;
+		m_musicPaused = false;
 	}
 
 	/// @brief fade-out しながら BGM を停止する (#20)。
@@ -231,6 +279,28 @@ public:
 		ma_sound_set_volume(&m_music, ducked);
 		ma_sound_set_fade_in_milliseconds(
 			&m_music, ducked, current, static_cast<ma_uint64>(durSec * 1000.0f));
+	}
+
+	/// @brief 再生中の BGM を一時停止する (v19)。ma_sound_stop は再生位置を保持するので、
+	///        resumeMusic() で続きから鳴る (uninit する stopMusic() とは別物)。
+	void pauseMusic() {
+		if (!m_initialized || !m_musicActive || m_musicPaused) { return; }
+		ma_sound_stop(&m_music);
+		m_musicPaused = true;
+	}
+
+	/// @brief pauseMusic() で止めた BGM を続きから再開する (v19)。
+	void resumeMusic() {
+		if (!m_initialized || !m_musicActive || !m_musicPaused) { return; }
+		ma_sound_start(&m_music);
+		m_musicPaused = false;
+	}
+
+	/// @brief 再生中の BGM を指定位置 (秒) へシークする (v19)。一時停止中でも位置だけ移せる。
+	void seekMusic(double positionSec) {
+		if (!m_initialized || !m_musicActive) { return; }
+		if (positionSec < 0.0) { positionSec = 0.0; }
+		ma_sound_seek_to_second(&m_music, static_cast<float>(positionSec));
 	}
 
 	/// @brief 全サウンドを停止する
@@ -287,6 +357,7 @@ private:
 	bool m_initialized = false;
 	ma_sound m_music{};
 	bool m_musicActive = false;
+	bool m_musicPaused = false;      ///< pauseMusic() 中か (resumeMusic() で false。v19)
 	int  m_musicFadeOutFrames = 0;  ///< >0 の間 update() が減算し、0 で music を uninit (#51)
 	int  m_reapTick = 0;            ///< update() の reap 間引きカウンタ (#52)
 	std::vector<std::unique_ptr<ma_sound>> m_oneShots;

@@ -33,12 +33,12 @@ inline constexpr int kCellSize = 8;
 	return nullptr;
 }
 
-/// @brief UTF-8 文字列を Unicode コードポイント列にデコードする。
-/// @details 不正バイトは U+FFFD 相当としてスキップ（堅牢性優先）。
-[[nodiscard]] inline std::vector<std::uint32_t> decodeUtf8(std::string_view s)
+/// @brief UTF-8 文字列を 1 コードポイントずつ sink へ渡す（ヒープ確保なし）。
+/// @details 不正バイトはスキップ（堅牢性優先）。
+/// @param sink void(std::uint32_t cp)
+template <typename Sink>
+inline void forEachCodepoint(std::string_view s, Sink&& sink)
 {
-	std::vector<std::uint32_t> out;
-	out.reserve(s.size());
 	std::size_t i = 0;
 	while (i < s.size())
 	{
@@ -59,8 +59,17 @@ inline constexpr int kCellSize = 8;
 			cp = (cp << 6) | (bk & 0x3F);
 		}
 		i += static_cast<std::size_t>(extra) + 1;
-		if (ok) out.push_back(cp);
+		if (ok) { sink(cp); }
 	}
+}
+
+/// @brief UTF-8 文字列を Unicode コードポイント列にデコードする。
+/// @details 不正バイトはスキップ（堅牢性優先）。
+[[nodiscard]] inline std::vector<std::uint32_t> decodeUtf8(std::string_view s)
+{
+	std::vector<std::uint32_t> out;
+	out.reserve(s.size());
+	forEachCodepoint(s, [&out](std::uint32_t cp) { out.push_back(cp); });
 	return out;
 }
 
@@ -72,14 +81,13 @@ struct PixelSize { int w = 0; int h = 0; };
 [[nodiscard]] inline PixelSize measurePixelText(std::string_view text, int scale)
 {
 	if (scale < 1) scale = 1;
-	const auto cps = decodeUtf8(text);
 	int x = 0, maxW = 0, lines = 1;
-	for (const auto cp : cps)
+	forEachCodepoint(text, [&](std::uint32_t cp)
 	{
-		if (cp == '\n') { maxW = (x > maxW) ? x : maxW; x = 0; ++lines; continue; }
+		if (cp == '\n') { maxW = (x > maxW) ? x : maxW; x = 0; ++lines; return; }
 		const auto* g = glyphFor(cp);
 		x += (g ? g->advance : 4) * scale;
-	}
+	});
 	maxW = (x > maxW) ? x : maxW;
 	return { maxW, lines * kCellSize * scale };
 }
@@ -93,11 +101,10 @@ template <typename Sink>
 inline void forEachPixel(std::string_view text, int originX, int originY, int scale, Sink&& sink)
 {
 	if (scale < 1) scale = 1;
-	const auto cps = decodeUtf8(text);
 	int penX = originX, penY = originY;
-	for (const auto cp : cps)
+	forEachCodepoint(text, [&](std::uint32_t cp)
 	{
-		if (cp == '\n') { penX = originX; penY += kCellSize * scale; continue; }
+		if (cp == '\n') { penX = originX; penY += kCellSize * scale; return; }
 		const auto* g = glyphFor(cp);
 		if (g != nullptr)
 		{
@@ -115,7 +122,7 @@ inline void forEachPixel(std::string_view text, int originX, int originY, int sc
 			}
 		}
 		penX += (g ? g->advance : 4) * scale;
-	}
+	});
 }
 
 } // namespace mitiru::render::pixel

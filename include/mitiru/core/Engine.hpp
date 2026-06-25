@@ -73,6 +73,7 @@
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/AudioLog.hpp>
 #include <mitiru/module/ModuleApi.hpp>
+#include <mitiru/module/Merge.hpp>  // つむぎ: 決定論3-wayマージ (weaveModuleMemory 用)
 #include <mitiru/platform/WindowFactory.hpp>
 #include <mitiru/ecs/MitiruWorld.hpp>
 #include <mitiru/scene/MitiruScene.hpp>
@@ -401,6 +402,15 @@ public:
 	/// @brief time-travel ring が現在保持しているフレーム数 (ADR 0017)
 	[[nodiscard]] std::size_t moduleMemoryRingSize() const noexcept;
 
+	/// @brief 2 つの GameMemory blob を MITIRU_REFLECT 記述子で field 単位 diff し JSON 配列で返す。
+	/// @details replay 回帰の divergence report 用 — 「どの field が録画値から変わったか」を出す。
+	///          MITIRU_REFLECT 未宣言 / サイズ 0 なら "[]"。blob は moduleMemorySize() バイト前提。
+	[[nodiscard]] std::string reflectDiffBlobs(const void* a, const void* b) const;
+
+	/// @brief GameMemory blob を MITIRU_REFLECT 記述子で {field: value} JSON 化して返す。
+	/// @details fuzz の不変条件チェック等、外から field 値を読むため。未宣言 / サイズ 0 なら "{}"。
+	[[nodiscard]] std::string reflectBlobJson(const void* blob) const;
+
 	/// @brief time-travel rewind: live GameMemory を過去 bytes で memcpy 上書きする (ADR 0017)
 	/// @details host が scrub command を受けて呼ぶ。size が GameMemory サイズと一致しない /
 	///          live が無い場合は false (live を壊さない)。game DLL は rewind を知らない
@@ -437,6 +447,15 @@ public:
 	/// @param inputs     frameCount 個の InputSnapshot 台本
 	/// @param frameCount 進めるフレーム数
 	[[nodiscard]] std::string branchModuleMemory(const module::InputSnapshot* inputs, int frameCount);
+
+	/// @brief つむぎの核: 現 GameMemory を共通祖先 A とし、台本入力 X / Y を別々に headless
+	///        シムして 2 つの分岐 blob を作り、reflection ベースの 3-way マージで 1 つに織り
+	///        合わせて live GameMemory へ確定する。衝突は MergeReport で返す。
+	/// @details branchModuleMemory と同じ副作用ゼロのシム (draw/intents drain なし) を A から
+	///          2 回行い、merge3 で畳む。flat-POD + reflection + 決定論ゆえに厳密・再現可能。
+	///          reflection 未宣言 / サイズ 0 / 入力不正なら no-op + 空レポート (live 不変)。
+	module::MergeReport weaveModuleMemory(const module::InputSnapshot* inputsX, int framesX,
+	                                      const module::InputSnapshot* inputsY, int framesY);
 
 	/// @brief module-mode で engine 所有の CEF StateStore (lazy created)
 	/// @details CEF init 後 + module load 後にのみ non-null。ADR 0005 により
@@ -608,6 +627,11 @@ private:
 	std::unique_ptr<render::IRenderer3D> m_renderer3D;            ///< 3Dレンダラー (DX11/DX12統一)
 	std::shared_ptr<render::PostProcessManager> m_postProcess;   ///< ポストプロセスマネージャー (Win32のみ生成)
 	InputInjector m_inputInjector;                   ///< 入力インジェクター
+	/// 同一フレームに来た inject の「押して離す」(tap) の離す側を 1 フレーム遅らせる退避。
+	/// HTTP の action="press" は KeyDown+KeyUp を同時に積むため、そのまま適用すると
+	/// 同フレームで打ち消し合い just-pressed エッジが出ない (ワープ等のタップが無効になる)。
+	std::vector<int> m_deferredInjectKeyUps;         ///< 翌フレームで離す key (tap の遅延 release)
+	std::vector<int> m_deferredInjectMouseUps;       ///< 翌フレームで離す mouse button (同上)
 	InputState m_inputState;                         ///< 現在の入力状態
 #ifdef _WIN32
 	GamepadInput m_gamepad;                          ///< XInput ゲームパッド (module InputSnapshot へ供給, #12)
@@ -663,6 +687,9 @@ private:
 	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
 	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (ADR 0013、0=未申告)
+	std::vector<std::uint8_t>             m_weaveAncestor;          ///< つむぎ: 織りの共通祖先 A (空=セッション外)
+	std::vector<std::vector<std::uint8_t>> m_weaveThreads;          ///< つむぎ: spin で確定した糸 (終端状態 blob)
+	int                                    m_weaveEpoch = 0;        ///< つむぎ: weave 完了の単調カウンタ (game の演出トリガ用)
 	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② time-travel、ADR 0017)
 	observe::GameMemoryRing               m_moduleInputRing;        ///< 過去フレームの InputSnapshot bytes (ADR 0021 resim 用、同 ring を再利用)
 	std::vector<std::uint8_t>             m_resimQueue;             ///< resim 開始時に ring から退避した入力列 (再生中の ring 上書きと無縁)

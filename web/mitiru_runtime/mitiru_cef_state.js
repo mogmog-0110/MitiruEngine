@@ -34,6 +34,20 @@
 		_invokeAll(_stateListeners[key], value, 'onStateChange:' + key);
 	};
 
+	// 1 回の IPC で複数 key を受ける batch 版 (C++ StateStore::flushBatch と対)。
+	// pairs = [[key, value], ...]。配列順に per-key 適用するので N 回の _onChange と等価。
+	_state._onChangeBatch = function(pairs)
+	{
+		if (!pairs) { return; }
+		for (let i = 0; i < pairs.length; ++i)
+		{
+			const key   = pairs[i][0];
+			const value = pairs[i][1];
+			_retained[key] = value;
+			_invokeAll(_stateListeners[key], value, 'onStateChange:' + key);
+		}
+	};
+
 	_state._onEvent = function(name, payload)
 	{
 		_invokeAll(_eventListeners[name], payload, 'on:' + name);

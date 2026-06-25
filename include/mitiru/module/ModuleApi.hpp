@@ -94,7 +94,23 @@ namespace mitiru::module
 ///   - v17: FrameIntents 末尾に save/load intent を追加 (ADR 0020)。hud.save("slot0") で
 ///     host が GameMemory bytes をファイルへ memcpy、load で復元 (rewind と同一機構)。
 ///     replay 中の load は記録済み state blob で代用され bit-exact を保つ。末尾追記で後方安全。
-constexpr std::uint32_t kCurrentApiVersion = 18;  // v18: Screen 末尾に 3D facade メンバ (s.camera3D/s.drawMesh)
+///   - v19: audio engine v2 (oscar-rythm リズム同期の根治)。3 点を末尾追記:
+///     (1) InputSnapshot 末尾に audioLatencySec — host audio backend の出力レイテンシ (秒)。
+///         masterTime はデバイスへ送った位置 = 耳より先行。判定を耳基準に補正できるよう
+///         「バッファ→耳」の遅延を供給する。earTime = audioTime - audioLatency。
+///     (2) SoundIntent 末尾に transport/seekSec — BGM の pause/resume/seek (会話チュートリアルで
+///         BGM を止めて間を取る等)。host が ma_sound_stop/start/seek へ写像する。
+///     (3) SoundIntent 末尾に scheduleSec — 「この音をこの音声クロック時刻で鳴らす」サンプル精度
+///         予約 (miniaudio set_start_time)。毎フレーム clock>=t 発火のフレーム量子化 (~16ms) を消す。
+///     いずれも POD 末尾追記 + host zero-init。
+///
+/// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。上の各 version の
+///       「後方安全」記述は *struct layout の追記方針* の説明であって、**古い DLL を runtime で
+///       受理する意味ではない**。配列要素 (SoundIntent 等) が後の version で太ると soundIntents[] の
+///       stride = 後続 field の offset がズレ、旧 DLL を新 host で動かすと silent 破損するため、
+///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
+constexpr std::uint32_t kCurrentApiVersion = 20;  // v20: つむぎ タイムライン織り intent (weaveBegin/Spin/Commit)
+                                                  // v18: Screen 末尾に 3D facade メンバ (s.camera3D/s.drawMesh)
                                                   // v17: FrameIntents 末尾に save/load intent (ADR 0020)
 
 /// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
@@ -188,6 +204,15 @@ struct InputSnapshot
 	// 等) → game は dt 積算へフォールバック。replay 時は末尾の moduleInputOverride が
 	// snapshot 全体を記録値で置換するので、再生でも同じ値が流れ bit-exact 性が保たれる。
 	double audioTimeSec;
+
+	// ── 音声出力レイテンシ (ABI v19 で追記) ───────────────────────────────
+	// host の audio backend が「デバイスバッファに積んでから実際にスピーカーから出る」までの
+	// 遅延 (秒)。audioTimeSec はデバイスへ送った位置なので、耳に届く位置は audioTimeSec から
+	// この値だけ過去になる。リズムゲームは判定窓を耳基準へ補正するのにこれを使う:
+	//   耳に届いている位置 earTime = audioTimeSec - audioLatencySec (Input::earTime())。
+	// 0 = 不明 (Null/headless 等) → game は従来どおり audioTimeSec で判定する。device 固定値なので
+	// 毎フレーム同じ。replay 時も moduleInputOverride が記録値で上書きするので再現する。
+	double audioLatencySec;
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)
@@ -263,6 +288,12 @@ struct SoundIntent
 	float        pitchScale;  ///< 0=未指定→1.0、0.5..2.0 程度。SE 用 (BGM は無視可)。
 	float        fadeInSec;   ///< > 0 で再生開始時に 0→volume へ fade-in (BGM/SE 両用)。
 	float        fadeOutSec;  ///< stop=1 のとき > 0 で volume→0 fade-out してから停止。
+	// v19 で末尾に追加 (後方安全: 既存 offset 不変、host が zero-init)。
+	std::uint8_t transport;   ///< BGM transport: 0=なし / 1=pause / 2=resume / 3=seek (category=1 のみ)。
+	std::uint8_t _pad2[3];
+	float        seekSec;     ///< transport=3 (seek) の目標位置 (秒)。
+	double       scheduleSec; ///< > 0 で「この音声クロック時刻 (Input::audioTime と同基準) に鳴らす」
+	                          ///< サンプル精度予約 (SE 用)。0 = 即時再生。
 };
 
 /// @brief 「このツール窓を開いて」という DLL → host の intent (ADR 0014、v10 追加)。
@@ -278,8 +309,9 @@ struct RequestToolWindow
 
 /// @brief 1 フレーム分の DLL → host への要求 (intent)
 /// @details
-/// 全 field は **毎フレーム host が zero-init してから** on_update に渡す。
-/// DLL は必要な field だけ書き込む。次フレームには値は残らない。
+/// host が毎フレーム頭で `FrameIntents::reset()` する。DLL は helper (pushInt /
+/// playSound / requestSave …) で必要な intent だけを積み、helper が count を進める。
+/// reader (host) は各配列を [0, count) しか読まない。
 struct FrameIntents
 {
 	std::uint8_t requestStop;       ///< 1 = engine.requestStop() を呼ぶ
@@ -325,6 +357,37 @@ struct FrameIntents
 	std::uint8_t _padSave[2];
 	char         saveSlot[28];    ///< slot 名 ([a-zA-Z0-9_-]、null 終端)
 	char         loadSlot[28];
+
+	// ── つむぎ: タイムライン織り intent (ABI v20 末尾追記、ADR 0005 signal-only) ──
+	// begin = 現 live を共通祖先 A に設定 + 糸クリア。spin = 現 live を 1 本の糸として
+	// 保存し A へ巻き戻す。weave = 全糸を 3-way マージ (merge3) して live へ確定。
+	std::uint8_t weaveBegin;    ///< 1 = 祖先 A を現 live に設定 + 糸クリア
+	std::uint8_t weaveSpin;     ///< 1 = 現 live を糸として保存 + A へ巻き戻し
+	std::uint8_t weaveCommit;   ///< 1 = 全糸を織って live へ確定
+	std::uint8_t _padWeave[1];
+
+	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
+	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
+	void reset() noexcept
+	{
+		requestStop = 0;
+		requestScreenshot = 0;
+		paletteToggle = 0;
+		statePushCount = 0;
+		exportedInspectableCount = 0;
+		jsToExecuteLen = 0;
+		jsToExecute[0] = '\0';
+		soundIntentCount = 0;
+		visualIntentCount = 0;
+		toolRequestCount = 0;
+		saveRequest = 0;
+		loadRequest = 0;
+		saveSlot[0] = '\0';
+		loadSlot[0] = '\0';
+		weaveBegin = 0;
+		weaveSpin = 0;
+		weaveCommit = 0;
+	}
 
 	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
 	/// GameMemory をスロットへセーブするよう host に頼む (ADR 0020)。
@@ -419,6 +482,29 @@ struct FrameIntents
 		s.category = 1; s.stop = 1; s.fadeOutSec = fadeOutSec;
 	}
 
+	/// 再生中の BGM を一時停止する (再生位置を保持。停止とは違い resume で続きから鳴る、v19)。
+	/// 会話形式チュートリアルで BGM を止めて間を取る等。
+	void pauseMusic() noexcept { pushTransport(1, 0.0f); }
+	/// pauseMusic で止めた BGM を続きから再開する (v19)。
+	void resumeMusic() noexcept { pushTransport(2, 0.0f); }
+	/// 再生中の BGM を指定位置 (秒) へシークする (v19)。
+	void seekMusic(float positionSec) noexcept { pushTransport(3, positionSec); }
+
+	/// 効果音を「音声クロック上の時刻 atSec」にサンプル精度で鳴らす予約 (v19)。
+	/// atSec は Input::audioTime() と同じ音声クロック基準の絶対時刻。毎フレーム clock>=t を
+	/// 見て発火するとフレーム量子化 (~16ms) のジッタが乗るが、これは host が audio backend の
+	/// サンプル単位で発火させるので低ジッタ。リズムゲームの「次の拍でこの音」に使う。
+	void scheduleSound(const char* id, double atSec, float volume = 1.0f, float pitch = 1.0f) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		copyStr(s.id, id, sizeof(s.id));
+		s.category = 0; s.volume = volume; s.pitchScale = (pitch > 0.0f) ? pitch : 1.0f;
+		s.scheduleSec = (atSec > 0.0) ? atSec : 0.0;
+	}
+
 	/// 画面を一瞬色フラッシュさせる (被弾演出など)。host が Screen::pushTint に渡す。
 	void pushTint(float r, float g, float b, float a, float durationSec) noexcept
 	{
@@ -481,6 +567,15 @@ struct FrameIntents
 	}
 
 private:
+	/// BGM transport intent (pause/resume/seek) を 1 件積む。id 不要 (現 BGM に作用)。
+	void pushTransport(std::uint8_t transportKind, float seekSec) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		s.category = 1; s.transport = transportKind; s.seekSec = seekSec;
+	}
 	/// 空き state-push スロットを 1 つ確保して key を書く。満杯なら nullptr。
 	StatePushItem* nextStatePush() noexcept
 	{

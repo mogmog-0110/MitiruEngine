@@ -3,8 +3,13 @@ cmake_minimum_required(VERSION 3.21)
 # CMP0091: MSVC runtime library policy (needed for MITIRU_DIST static CRT)
 cmake_policy(SET CMP0091 NEW)
 
+# #56: vcpkg applocal の pwsh パスが版固定でキャッシュされ pwsh 自動更新で stale 化する問題を
+# 是正する (版非依存 alias へ固定)。vcpkg toolchain の find_program より前に実行する必要があるため
+# project() より前に include する。
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
+
 project(MitiruEngine
-	VERSION 0.22.0
+	VERSION 0.23.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -524,6 +529,94 @@ else()
 	endif()
 endif()
 
+# ── Live2D Cubism Framework (D3D12 headless path: model+motion+physics+effects) ─────
+# 上のブロックは OpenGL レンダラ用 (GLEW 必須)。こちらは Framework の非描画ソースだけを
+# ビルド (Rendering/* と Updater/scheduler を除外、GLEW 非依存) し、自前の D3D12 レンダラ
+# (dx12/DX12Live2D.hpp) が描画する。公式サンプル相当の model3.json ロード・motion3.json 再生・
+# physics・目パチ/呼吸・ドラッグ追従を Framework が担う (src/live2d/Live2DModel.cpp)。
+# Core は Framework 内で Live2D::Cubism::Core 名前空間にラップされる。静的 Core lib (/MD) をリンク。
+if(CUBISM_SDK_DIR AND WIN32
+   AND EXISTS "${CUBISM_CORE_PATH}/include/Live2DCubismCore.h"
+   AND EXISTS "${CUBISM_CORE_PATH}/lib/windows/x86_64/143/Live2DCubismCore_MD.lib"
+   AND EXISTS "${CUBISM_FW_SRC}/CubismFramework.hpp")
+	if(NOT TARGET Live2DCubismCore)
+		add_library(Live2DCubismCore STATIC IMPORTED)
+		set_target_properties(Live2DCubismCore PROPERTIES
+			IMPORTED_LOCATION_DEBUG          "${CUBISM_CORE_PATH}/lib/windows/x86_64/143/Live2DCubismCore_MDd.lib"
+			IMPORTED_LOCATION_RELEASE        "${CUBISM_CORE_PATH}/lib/windows/x86_64/143/Live2DCubismCore_MD.lib"
+			IMPORTED_LOCATION_RELWITHDEBINFO "${CUBISM_CORE_PATH}/lib/windows/x86_64/143/Live2DCubismCore_MD.lib"
+			IMPORTED_LOCATION_MINSIZEREL     "${CUBISM_CORE_PATH}/lib/windows/x86_64/143/Live2DCubismCore_MD.lib"
+			INTERFACE_INCLUDE_DIRECTORIES    "${CUBISM_CORE_PATH}/include")
+	endif()
+
+	# 非描画 Framework ソース (Rendering/* と *Updater/CubismUpdateScheduler は除外)
+	if(NOT TARGET Live2DCubismFrameworkD3D)
+		set(CUBISM_FW_D3D_SOURCES
+			"${CUBISM_FW_SRC}/CubismCdiJson.cpp"
+			"${CUBISM_FW_SRC}/CubismDefaultParameterId.cpp"
+			"${CUBISM_FW_SRC}/CubismFramework.cpp"
+			"${CUBISM_FW_SRC}/CubismModelSettingJson.cpp"
+			"${CUBISM_FW_SRC}/Effect/CubismBreath.cpp"
+			"${CUBISM_FW_SRC}/Effect/CubismEyeBlink.cpp"
+			"${CUBISM_FW_SRC}/Effect/CubismPose.cpp"
+			"${CUBISM_FW_SRC}/Id/CubismId.cpp"
+			"${CUBISM_FW_SRC}/Id/CubismIdManager.cpp"
+			"${CUBISM_FW_SRC}/Math/CubismMath.cpp"
+			"${CUBISM_FW_SRC}/Math/CubismMatrix44.cpp"
+			"${CUBISM_FW_SRC}/Math/CubismModelMatrix.cpp"
+			"${CUBISM_FW_SRC}/Math/CubismTargetPoint.cpp"
+			"${CUBISM_FW_SRC}/Math/CubismVector2.cpp"
+			"${CUBISM_FW_SRC}/Math/CubismViewMatrix.cpp"
+			"${CUBISM_FW_SRC}/Model/CubismMoc.cpp"
+			"${CUBISM_FW_SRC}/Model/CubismModel.cpp"
+			"${CUBISM_FW_SRC}/Model/CubismModelMultiplyAndScreenColor.cpp"
+			"${CUBISM_FW_SRC}/Model/CubismModelUserData.cpp"
+			"${CUBISM_FW_SRC}/Model/CubismModelUserDataJson.cpp"
+			"${CUBISM_FW_SRC}/Motion/ACubismMotion.cpp"
+			"${CUBISM_FW_SRC}/Motion/CubismExpressionMotion.cpp"
+			"${CUBISM_FW_SRC}/Motion/CubismExpressionMotionManager.cpp"
+			"${CUBISM_FW_SRC}/Motion/CubismMotion.cpp"
+			"${CUBISM_FW_SRC}/Motion/CubismMotionJson.cpp"
+			"${CUBISM_FW_SRC}/Motion/CubismMotionManager.cpp"
+			"${CUBISM_FW_SRC}/Motion/CubismMotionQueueEntry.cpp"
+			"${CUBISM_FW_SRC}/Motion/CubismMotionQueueManager.cpp"
+			"${CUBISM_FW_SRC}/Physics/CubismPhysics.cpp"
+			"${CUBISM_FW_SRC}/Physics/CubismPhysicsJson.cpp"
+			# csmBlendMode は Rendering/ 配下だが GL 非依存のブレンドモードデータ (CubismModel が参照)
+			"${CUBISM_FW_SRC}/Rendering/csmBlendMode.cpp"
+			"${CUBISM_FW_SRC}/Type/csmRectF.cpp"
+			"${CUBISM_FW_SRC}/Type/csmString.cpp"
+			"${CUBISM_FW_SRC}/Utils/CubismDebug.cpp"
+			"${CUBISM_FW_SRC}/Utils/CubismJson.cpp"
+			"${CUBISM_FW_SRC}/Utils/CubismString.cpp"
+			# 自前グルー: アロケータ + StaticRelease スタブ + Framework 起動 + Live2DModel pimpl 実装
+			"${CMAKE_CURRENT_SOURCE_DIR}/src/live2d/Live2DModel.cpp"
+		)
+		add_library(Live2DCubismFrameworkD3D STATIC ${CUBISM_FW_D3D_SOURCES})
+		# 自前グルー (src/live2d/Live2DModel.cpp) は C++20 機能を使う。独立 STATIC lib は
+		# エンジン本体の標準を継承しないため明示する (未設定だと MSVC 既定 C++14 で nested-namespace が落ちる)。
+		target_compile_features(Live2DCubismFrameworkD3D PRIVATE cxx_std_20)
+		target_include_directories(Live2DCubismFrameworkD3D PUBLIC
+			"${CUBISM_FW_SRC}"
+			"${CUBISM_CORE_PATH}/include"
+			"${CMAKE_CURRENT_SOURCE_DIR}/include")
+		target_compile_definitions(Live2DCubismFrameworkD3D PUBLIC MITIRU_HAS_CUBISM_FRAMEWORK=1)
+		target_link_libraries(Live2DCubismFrameworkD3D PUBLIC Live2DCubismCore)
+		if(MSVC)
+			target_compile_options(Live2DCubismFrameworkD3D PRIVATE /utf-8 /FS /W0)
+			set_property(TARGET Live2DCubismFrameworkD3D PROPERTY
+				MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+		endif()
+	endif()
+
+	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} Live2DCubismFrameworkD3D)
+	target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
+		"${CUBISM_CORE_PATH}/include")
+	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE}
+		MITIRU_HAS_CUBISM_CORE=1 MITIRU_HAS_CUBISM_FRAMEWORK=1)
+	message(STATUS "Live2D Cubism Framework (D3D12 headless path) enabled")
+endif()
+
 # ── Jolt Physics (optional 3D physics engine) ─────────────────
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/jolt/CMakeLists.txt"
    OR EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/jolt/Build/CMakeLists.txt")
@@ -618,6 +711,28 @@ if(WIN32)
 	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_DX11=1 MITIRU_HAS_DX12=1)
 	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE}
 		d3d11 d3d12 dxgi d3dcompiler ws2_32 winmm xinput)
+
+	# ── ONNX Runtime + DirectML EP (GPU ニューラル post-process, NeuralStyle.hpp) ──
+	# 実体は IRenderer3D の裏 (host が DX12 レンダラを生成する側) でのみコンパイルされる。
+	# ゲーム DLL は仮想呼び出しのみで ORT シンボルを参照しない。
+	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime/lib/onnxruntime.lib")
+		target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
+			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime/include>)
+		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE}
+			"${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime/lib/onnxruntime.lib")
+		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_ONNX=1)
+	endif()
+
+	# ── DirectML SDK (raw DirectML in-pipeline neural post-process, DX12DirectML.hpp) ──
+	# RT を CPU 往復なしでテンソル化し、自前の DirectML グラフをパイプライン内で回す。
+	# DirectML.dll は ONNX Runtime 同梱版 (=1.15.4) を host が既に deploy 済み。
+	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/directml/lib/DirectML.lib")
+		target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
+			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/directml/include>)
+		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE}
+			"${CMAKE_CURRENT_SOURCE_DIR}/external/directml/lib/DirectML.lib")
+		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_DIRECTML=1)
+	endif()
 endif()
 
 # MSVC: /FSで並列コンパイル時のPDBロックを回避、/utf-8でUTF-8ソースを正しく解釈

@@ -430,6 +430,14 @@ MITIRU_INLINE bool mitiru::Engine::tickAutoCaptureAndEndFrame()
 			m_autoTestCaptured = true;
 		}
 
+		// ニューラル現像 (M3): present 直前 = backbuffer に最新フレームがあり PRESENT 状態。
+		// 要求があれば直前フレームを readback → ONNX+DirectML で 2D 化する (auto-test
+		// キャプチャと同じ安全境界)。要求が無ければ内部で即 return するので毎フレーム無害。
+		if (m_renderer3D)
+		{
+			m_renderer3D->tickDevelop();
+		}
+
 		m_device->endFrame();
 	}
 

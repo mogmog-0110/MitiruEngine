@@ -3,6 +3,7 @@
 /// @brief 波形合成エンジン
 /// @details ノート番号と波形タイプからPCMサンプルを生成する。
 
+#include <mitiru_mml/Biquad.hpp>
 #include <mitiru_mml/MmlTypes.hpp>
 #include <algorithm>
 #include <cmath>
@@ -130,6 +131,10 @@ public:
 		bool useFm = false;            ///< FM合成使用
 		FmPreset fmPreset{};           ///< FMプリセット
 		bool useAdsr = false;          ///< ADSR使用
+		// レゾナンス付きローパス（減算合成）。硬い矩形/鋸/FM の倍音を削って太く温かい音にする。
+		bool useFilter = false;        ///< レゾナンスフィルタ使用
+		float filterCutoffHz = 4000.0f;///< カットオフ周波数(Hz)
+		float filterResonance = 2.0f;  ///< レゾナンス Q（0.707=フラット、>1 で共鳴ピーク）
 	};
 
 	/// @brief 拡張パラメータによるPCMサンプル生成
@@ -163,6 +168,14 @@ public:
 
 		// FMフィードバック用: ボイスごとに前サンプル値を保持
 		float prevSample[2] = { 0.0f, 0.0f };
+
+		// レゾナンス付きローパス（減算合成）。ノート全体で状態を引き継ぐので 1 度だけ設計する。
+		Biquad filter;
+		const bool useFilter = params.useFilter && params.filterCutoffHz > 0.0f;
+		if (useFilter)
+		{
+			filter.set(BiquadType::LowPass, sr, params.filterCutoffHz, params.filterResonance);
+		}
 
 		for (std::uint32_t i = 0; i < numSamples; ++i)
 		{
@@ -224,6 +237,12 @@ public:
 				sampleSum += s;
 			}
 			sampleSum /= static_cast<float>(numVoices);
+
+			// レゾナンスフィルタ（オシレータ → フィルタ → アンプ の順、減算合成の定石）
+			if (useFilter)
+			{
+				sampleSum = filter.process(sampleSum);
+			}
 
 			// キャリアエンベロープ
 			float env = 1.0f;

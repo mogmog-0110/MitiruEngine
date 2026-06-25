@@ -14,7 +14,7 @@ namespace mitiru_mml
 class WavWriter
 {
 public:
-	/// @brief PCMバッファからWAVバイト列を生成する
+	/// @brief PCMバッファからWAVバイト列を生成する（モノラル）
 	/// @param pcm 16bit モノラルPCMデータ
 	/// @param sampleRate サンプルレート
 	/// @return WAVファイルのバイト列
@@ -22,7 +22,20 @@ public:
 		const PcmBuffer& pcm,
 		std::uint32_t sampleRate = 44100)
 	{
-		constexpr std::uint16_t CHANNELS = 1;
+		return toWav(pcm, sampleRate, 1);
+	}
+
+	/// @brief チャンネル数指定で WAV を生成する。
+	/// @param pcm 16bit PCM。channels=2 のとき L,R 交互の interleaved（MixBus::renderStereo の出力）
+	/// @param sampleRate サンプルレート
+	/// @param channels チャンネル数（1=モノラル / 2=ステレオ）
+	/// @return WAVファイルのバイト列
+	[[nodiscard]] static std::vector<std::uint8_t> toWav(
+		const PcmBuffer& pcm,
+		std::uint32_t sampleRate,
+		std::uint16_t channels)
+	{
+		const std::uint16_t CHANNELS = (channels < 1) ? 1 : channels;
 		constexpr std::uint16_t BITS = 16;
 		const auto dataSize = static_cast<std::uint32_t>(pcm.size() * sizeof(std::int16_t));
 		const std::uint32_t fileSize = 44 + dataSize;

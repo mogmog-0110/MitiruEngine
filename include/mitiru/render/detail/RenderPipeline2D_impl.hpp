@@ -123,6 +123,9 @@ inline void RenderPipeline2D::resize(float width, float height)
 
 	if (m_useDx12Path && m_dx12VsCb)
 	{
+		// 共有 projection CB を書く前に全 in-flight を drain する
+		// (in-flight submit が旧 CB を読んでいる最中の上書きを防ぐ)。
+		waitDx12Fence();
 		// CRITICAL: 実 runtime の VS constant buffer は m_dx12VsCb。
 		// m_dx12ConstantBuffer は "エイリアス用" コメントの dead pointer
 		// (init で populate されない) — そっちを update してた古い resize

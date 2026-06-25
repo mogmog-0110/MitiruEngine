@@ -327,6 +327,11 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 		snap->audioTimeSec = m_lastAudioTimeSec;
 	}
 
+	// 音声出力レイテンシ (ABI v19)。device 固定値なので毎フレーム同じ。判定を耳基準へ
+	// 補正したいリズムゲームが earTime = audioTimeSec - audioLatencySec で使う。0 = 不明。
+	// replay 時は moduleInputOverride が記録値で上書きするので再現する。
+	snap->audioLatencySec = (m_audioEngine != nullptr) ? m_audioEngine->outputLatencySec() : 0.0;
+
 	// Keys (256 VK codes)。internal を覗かず InputState API を使う —
 	// InputState の engine refactor の自由度を保つため。
 	for (int vk = 0; vk < 256; ++vk)
@@ -440,7 +445,7 @@ MITIRU_INLINE void mitiru::Engine::zeroModuleFrameIntents()
 {
 	if (m_moduleFrameIntents)
 	{
-		*m_moduleFrameIntents = module::FrameIntents{};
+		m_moduleFrameIntents->reset();
 	}
 }
 
@@ -481,6 +486,82 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 
 	// 単純な flag 群
 	if (intents->requestStop) { requestStop(); }
+
+	// つむぎ: タイムライン織り (begin/spin/weave)。flat-POD GameMemory を「糸」として扱う。
+	if (m_moduleMemory != nullptr && m_moduleMemorySize > 0)
+	{
+		const auto* live = static_cast<const std::uint8_t*>(m_moduleMemory);
+		const std::size_t sz = m_moduleMemorySize;
+		if (intents->weaveBegin && m_weaveAncestor.empty())  // 冪等: 祖先未設定の時だけ糸取り開始
+		{
+			m_weaveAncestor.assign(live, live + sz);
+			m_weaveThreads.clear();
+		}
+		if (intents->weaveSpin && m_weaveAncestor.size() == sz)   // 現 live を糸として保存 → A へ巻き戻し
+		{
+			m_weaveThreads.emplace_back(live, live + sz);
+			std::memcpy(m_moduleMemory, m_weaveAncestor.data(), sz);
+		}
+		if (intents->weaveCommit && m_weaveAncestor.size() == sz && m_moduleApi.reflectFieldCount > 0)
+		{
+			// 現 live も最後の糸 (まだ spin してない最終スレッド) として含めて pairwise に織る。
+			std::vector<std::vector<std::uint8_t>> threads = m_weaveThreads;
+			threads.emplace_back(live, live + sz);
+			std::vector<std::uint8_t> woven = threads[0];
+			std::vector<std::uint8_t> tmp(sz);
+			int totalConflicts = 0;
+			for (std::size_t i = 1; i < threads.size(); ++i)
+			{
+				module::MergeReport rep;
+				module::merge3(m_moduleApi.reflectFields,
+				               static_cast<std::size_t>(m_moduleApi.reflectFieldCount),
+				               m_weaveAncestor.data(), woven.data(), threads[i].data(),
+				               tmp.data(), sz, rep);
+				totalConflicts += static_cast<int>(rep.conflicts.size());
+				woven.swap(tmp);
+			}
+			std::memcpy(m_moduleMemory, woven.data(), sz);
+			// もつれ(衝突)数を game へ通知: reflect に "weaveConflicts" (i32) が在れば書き込む。
+			// game はこれを読んで もつれ glyph 表示 / stage 完了ブロック等に使う (ADR0005: host→game POD push)。
+			for (int fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
+			{
+				const module::FieldDescriptor& f = m_moduleApi.reflectFields[fi];
+				if (std::strcmp(f.name, "weaveConflicts") == 0
+				    && f.offset + sizeof(int) <= sz)
+				{
+					std::memcpy(static_cast<std::uint8_t*>(m_moduleMemory) + f.offset,
+					            &totalConflicts, sizeof(int));
+					break;
+				}
+			}
+			// weave 完了を game へ通知する単調カウンタ ("weaveEpoch" i32)。game は前回値との
+			// 差分で「織り終えた瞬間」を検知し演出 (織りアニメ) を起動する。
+			++m_weaveEpoch;
+			for (int fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
+			{
+				const module::FieldDescriptor& f = m_moduleApi.reflectFields[fi];
+				if (std::strcmp(f.name, "weaveEpoch") == 0 && f.offset + sizeof(int) <= sz)
+				{
+					std::memcpy(static_cast<std::uint8_t*>(m_moduleMemory) + f.offset,
+					            &m_weaveEpoch, sizeof(int));
+					break;
+				}
+			}
+			m_weaveThreads.clear();
+			m_weaveAncestor.clear();
+		}
+		// 糸の本数 (spin 済み糸数) を毎フレーム game へ通知 ("weaveThreadCount" i32、HUD のステップ表示用)。
+		const int weaveThreadCnt = static_cast<int>(m_weaveThreads.size());
+		for (int fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
+		{
+			const module::FieldDescriptor& f = m_moduleApi.reflectFields[fi];
+			if (std::strcmp(f.name, "weaveThreadCount") == 0 && f.offset + sizeof(int) <= sz)
+			{
+				std::memcpy(static_cast<std::uint8_t*>(m_moduleMemory) + f.offset, &weaveThreadCnt, sizeof(int));
+				break;
+			}
+		}
+	}
 
 	// Screenshot — host が capture + filename を処理する。
 	if (intents->requestScreenshot)
@@ -612,19 +693,21 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			intents->statePushCount,
 			static_cast<std::int32_t>(sizeof(intents->statePushes) /
 			                          sizeof(intents->statePushes[0])));
+		// この frame の全 push を溜めて 1 回の executeJavaScript に畳む (per-key IPC 削減)。
 		for (std::int32_t i = 0; i < n; ++i)
 		{
 			const auto& item = intents->statePushes[i];
-			const std::string key{item.key};
+			const std::string_view key{item.key};
 			switch (item.kind)
 			{
-			case 1: m_moduleStateStore->set(key, item.intVal); break;
-			case 2: m_moduleStateStore->set(key, item.floatVal); break;
-			case 3: m_moduleStateStore->set(key, static_cast<bool>(item.intVal)); break;
-			case 4: m_moduleStateStore->set(key, std::string{item.strVal}); break;
+			case 1: m_moduleStateStore->setBatched(key, item.intVal); break;
+			case 2: m_moduleStateStore->setBatched(key, item.floatVal); break;
+			case 3: m_moduleStateStore->setBatched(key, static_cast<bool>(item.intVal)); break;
+			case 4: m_moduleStateStore->setBatched(key, std::string{item.strVal}); break;
 			default: break;  // kind=0 (null) は今は意図的に no-op
 			}
 		}
+		m_moduleStateStore->flushBatch();
 	}
 
 	// Exported inspectable — DLL が毎フレーム埋める。engine が SharedSnapshot +

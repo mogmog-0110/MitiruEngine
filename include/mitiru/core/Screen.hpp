@@ -1495,6 +1495,75 @@ public:
 	              const sgc::Vec3f& rotDeg = sgc::Vec3f{0.0f, 0.0f, 0.0f},
 	              const sgc::Colorf& color = sgc::Colorf{0.80f, 0.80f, 0.85f, 1.0f});
 
+	/// @brief 3D Gaussian Splatting シーン (.splat) を読み込む (一度だけ、init 等で)。失敗時 false。
+	bool loadSplatScene(const char* path);
+	/// @brief 読み込み済みスプラットを現在の camera3D で描く (drawMesh と同じく遅延 beginFrame)。
+	void drawSplats();
+	/// @brief 読み込み済みシーンの境界球 (重心 center + 半径 radius)。カメラ自動フレーミング用。失敗時 false。
+	bool splatBounds(sgc::Vec3f& center, float& radius);
+
+	/// @brief Live2D モデル (model3.json) を Framework + 自前 D3D12 レンダラで描く。毎フレーム呼ぶ。
+	/// @details 初回に moc/テクスチャ/モーション/物理/エフェクトを一括ロードし、以後毎フレーム公式
+	///          サンプル相当の更新 (idle/tap モーション・物理・目パチ・呼吸・追従) + 2D オーバーレイ描画。
+	void drawLive2D(const char* model3jsonPath);
+
+	/// @brief DirectML 推論を backbuffer に CPU 往復なしで適用する後処理の on/off + 強度 (0..2)。
+	/// @details 描画したフレームを pack→DirectML→unpack→合成でパイプライン内推論加工する。
+	///          strength = 輝度アンシャープの強度 (HUD スライダーで可変)。
+	void enableNeuralFx(bool enabled, float strength = 0.5f);
+
+	/// @brief ニューラル・リライティング on/off + 光源方向 (lx,ly∈[-1,1]) + 陰影/リム強度。
+	/// @details 平面 Live2D 描画から法線を推定し可動光源で再ライティング。従来 Live2D は照明が
+	///          テクスチャ固定で動かせないが、推論で「描かれていない立体形状」を補い光に反応させる。
+	void enableRelight(bool enabled, float lightX = 0.4f, float lightY = 0.4f,
+	                   float strength = 0.6f, float rim = 0.5f);
+
+	/// @brief リライトの立体形状推定に使う単眼深度モデル (ONNX) のパス。一度だけ呼べばよい。
+	void setRelightDepthModel(const char* path);
+
+	/// @brief Live2D の注視先 (nx,ny∈[-1,1])。マウス座標を渡すと頭/目/体が追従する。
+	void live2dLookAt(float nx, float ny);
+
+	/// @brief Live2D のタップ操作。TapBody (無ければ idle) グループのモーションを 1 つ再生する。
+	void live2dTap();
+
+	/// @brief 公式サンプル相当のステージ画像 (背景/歯車/閉じる) を設定する。drawLive2D より前に一度呼ぶ。
+	void live2dStage(const char* bg, const char* gear, const char* close);
+
+	// ── ニューラル現像 (M3): 3D フレームを ONNX+DirectML で 2D 絵画へ「現像」する ──
+	/// @brief 次の安全境界で現在の 3D フレームを style モデル (.onnx) で 2D 化するよう要求する。
+	/// @details 推論は GPU (DirectML)。完了後 styleReady() が true になり、drawStyle() で表示できる。
+	void developToStyle(const char* onnxPath);
+	/// @brief 現像済み 2D 画像が利用可能か。
+	[[nodiscard]] bool styleReady() const;
+	/// @brief 現像済み 2D 画像を画面全体に描く (strength 1=完全 2D、途中は 3D の上に半透明で重なる)。
+	void drawStyle(float strength = 1.0f);
+	/// @brief 現像を解除して 3D 表示へ戻す。
+	void clearStyle();
+
+	// ── 現像焼き込み (M4): 2D 絵画を 3D スプラットへ焼く / 戻す ──
+	/// @brief 直前の現像 2D を、その現像視点から見えるスプラットへ色として焼き込む (2D→3D)。
+	/// @details 複数視点から焼くと写実点群が「歩ける 3D ニューラル絵画」へ変わっていく。
+	void bakeStyle();
+	/// @brief スプラット色を元の写実色へ戻す (焼き込み解除)。
+	void resetSplats();
+	/// @brief 焼き込み済みスプラットの割合 (0..1)。塗り達成率の表示・判定に。
+	[[nodiscard]] float bakedFraction();
+
+	// ── 現像合わせ (お題再現パズル) ──
+	/// @brief 現在の現像 2D を「お題」として保存する。
+	void captureTarget();
+	/// @brief 画面にお題(true)／自分の現像(false)を表示する (比較用)。
+	void showTarget(bool on);
+	/// @brief お題が保存済みか。
+	[[nodiscard]] bool hasTarget();
+	/// @brief 現在の現像 2D とお題の一致度 (0..1)。
+	[[nodiscard]] float matchScore();
+
+	/// @brief ワールド座標を現在の camera3D で画面ピクセル座標へ射影する (drawSplats/drawMesh の後)。
+	/// @param[out] sx,sy 画面ピクセル座標 (左上原点)。@return 画面内なら true。
+	bool projectToScreen(const sgc::Vec3f& world, float& sx, float& sy);
+
 private:
 	// ABI 注意: Screen* は DLL 境界を渡る。既存メンバのオフセット維持のため末尾追加 (ABI v16)。
 	SpriteResolveFunc m_spriteResolveFn  = nullptr; ///< sprite id resolver (host 注入、未注入は no-op)

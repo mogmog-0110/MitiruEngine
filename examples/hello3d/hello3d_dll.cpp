@@ -87,6 +87,13 @@ struct Hello3D
                        hexa((col << 8) | 0xFF));
         }
 
+        // ── 半透明キューブ 3 枚 (OIT デモ) ──
+        // alpha<1 なので Weighted-Blended OIT パスへ回り、重なっても描画順に依存せず
+        // 正しく合成される。不透明（足場・ピラー）には深度で正しく遮蔽される。
+        s.drawMesh("cube", {-0.7f, 2.6f,  0.3f}, {1.9f, 1.9f, 1.9f}, {0,0,0}, hexa(0xE03B3B82)); // 赤
+        s.drawMesh("cube", { 0.0f, 2.6f,  0.0f}, {1.9f, 1.9f, 1.9f}, {0,0,0}, hexa(0x3BE05B82)); // 緑
+        s.drawMesh("cube", { 0.7f, 2.6f, -0.3f}, {1.9f, 1.9f, 1.9f}, {0,0,0}, hexa(0x3B7BE082)); // 青
+
         // ── 2D の HUD (3D の上に重なる) ──
         s.text("MitiruEngine 3D", 28, 22, color::White, 30);
         s.text("arrow keys move the cube", 28,

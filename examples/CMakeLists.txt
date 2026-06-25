@@ -39,17 +39,10 @@ add_subdirectory(hello3d)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/catch/CMakeLists.txt")
 	add_subdirectory(catch)
 endif()
-# hookline: サンプル再建の試作 (2026-06-11 凍結、dev-only)。snapshot 非同梱。
-# 凍結理由 = 「いかにも AI が作ったゲーム」感: プレースホルダー幾何美術 + 合成音 +
-# チェックリスト設計で、作家性 (具体的な美学への決断・手の入った素材) が無い。
-# 公開物は美学へのコミットが先、機構は後 (FLUID DROP = 流体が美学、サチ = 手描きドット)。
-# tutorial/ の段階コーパス (S1-S7 全過程) は教材原稿として価値が残るので保持。
-# snapshot 非同梱のため EXISTS ガード必須 (無条件参照は public の configure を壊す)。
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hookline/CMakeLists.txt")
-	add_subdirectory(hookline)
-endif()
-# 研究 example は 2026-06-12 に E:/user/research へ搬出 (リファクタ P1)。
-# fluidtetris は attic/fluidtetris ブランチへ退避 (本体は Fluid-Drop repo で公開済)。
+# 大型ゲームは examples に置かない (ここはエンジン demo / subsystem 起動のみ)。
+# - hookline: 凍結サンプル (2026-06-26 にエンジン repo から削除、git 履歴に残存)。
+# - fluidtetris: 本体は Fluid-Drop repo で公開済。
+# - 研究 example は 2026-06-12 に E:/user/research へ搬出 (リファクタ P1)。
 add_subdirectory(mitiru_launcher)
 add_subdirectory(mitiru_dev_companion)
 # サブシステム単独起動 (軸③)。

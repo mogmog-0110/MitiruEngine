@@ -1,20 +1,20 @@
 # MitiruEngine Architecture Overview
 
-> **Runtime model.** MitiruEngine is **dual-mode** (canonical declaration in
-> [SCOPE.md](SCOPE.md)). Both modes ship as first-class targets:
+> ℹ️ 主要な駆動・バックエンド記述を現行モデルに更新済（旧「`Game` 継承 + 自前 `main()`」
+> authoring → **DLL-only**、backend auto → **DX12 優先**、audio/input → **intent / snapshot**）。
+> レイヤー構造の図は現行と一致。細部に旧記述が残る場合は実装を正とする。
+
+> **Authoring & runtime model.** ゲームは **`MITIRU_GAME(YourType)` で書く DLL**（ADR 0015）。
+> host (`mitiru_host.exe`) が C-ABI 越しに load し、毎フレーム POD でやり取りする（ADR 0005）。
+> 旧「`Game` 継承 + 自前 `main()`」(Mode A authoring) は廃止。**gameplay は常に C++（DLL）**。
 >
-> - **Mode A — Native (C++ only):** the layers below, end to end. Gameplay
->   is C++. No CEF process, no JavaScript runtime, no HTML. Targets headless,
->   console (planned), mobile (planned), and 3D action.
-> - **Mode B — Hybrid (Mode A + CEF + JS):** Mode A's full stack **plus** an
->   optional CEF host layer (`include/mitiru/cef/`) and a JS runtime
->   (`web/mitiru_runtime/`). Gameplay is primarily HTML / CSS / JS; C++
->   provides platform services through typed bridges. Desktop only.
+> - **CEF なし:** 下の層をそのまま native 実行（headless / console / 3D action 等）。
+> - **CEF あり (Mode B):** 上に CEF host (`include/mitiru/cef/`) + JS runtime
+>   (`web/mitiru_runtime/`) を載せ、**UI/HUD を HTML/CSS** で描く。**gameplay は JS でなく C++ のまま**で、
+>   bridge は signal-only（C++→JS=state push、JS→C++=action event）。`EngineConfig::enableCef`。
 >
-> This document describes the C++ layers shared by both modes. For the
-> JS / JSON / C++ boundary rules used in Mode B, see
-> [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md); for the JS module catalog see
-> [WEB_RUNTIME.md](WEB_RUNTIME.md).
+> JS / JSON / C++ の境界規約は [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)、JS モジュール一覧は
+> [WEB_RUNTIME.md](WEB_RUNTIME.md)。
 
 ## Layer Stack
 
@@ -33,7 +33,7 @@ native engine and are inert when `EngineConfig::enableCef = false`.
 |  StateStore, MitiruCefRenderHandler, ...                 |
 +----------------------------------------------------------+
 |  APPLICATION LAYER                                       |
-|  User Games (Game subclass)  |  sample::AsteroidGame    |
+|  User Games (MITIRU_GAME DLL, ADR 0015)  | examples/*   |
 +----------------------------------------------------------+
 |  SGC BRIDGE LAYER  (mitiru::bridge)                      |
 |  Adapts ShiggyGameCore (sgc) into Mitiru types.          |
@@ -109,7 +109,7 @@ native engine and are inert when `EngineConfig::enableCef = false`.
 | `core/Screen` | render/SpriteBatch, render/ShapeRenderer, render/TextRenderer | 2D drawing API for games |
 | `ecs/MitiruWorld` | sgc::ecs::World, observe/SemanticLabel | Entity management with metadata |
 | `scene/MitiruScene` | core/Screen, ecs/MitiruWorld | Scene lifecycle (enter/exit/update/draw) |
-| `render/Renderer3D` | gfx/dx11/*, render/Mesh, render/Camera3D, render/Light | 3D mesh rendering (Phong/Toon/NPR) |
+| `render/Renderer3D` | gfx/IDevice (DX12 本命), render/Mesh, render/Camera3D, render/Light | 3D mesh rendering (Phong/Toon/NPR/WBOIT) |
 | `render/RenderPipeline2D` | gfx/IDevice, gfx/IBuffer | GPU submission of 2D draw commands |
 | `bridge/*` | sgc (ShiggyGameCore) | Adapted APIs for AI, physics, animation, etc. |
 | `vn/*` | core/Screen, audio, resource | Visual novel engine (40+ modules) |
@@ -167,7 +167,7 @@ Game::draw(Screen&)
   +-- renderer3D()->endFrame()
         +-- 2D overlay (Screen::present on top of 3D)
 
---- Post-Processing (DX11, optional) ---
+--- Post-Processing (optional) ---
   |
   +-- PostProcessManager::beginScene()  Redirect to offscreen RT
   +-- PostProcessManager::endScene()    Apply effects, blit to backbuffer
@@ -192,8 +192,12 @@ For DX12, `Renderer3D_DX12` manages the overlay automatically via `setOverlayScr
 
 ## Audio Pipeline Flow
 
+> **現行 (ADR 0008):** DLL ゲームは `AudioEngine` を直接呼ばない。`FrameIntents` に `SoundIntent` を
+> 積み（`hud.play("click")`）、host が `SoundIntentRouter` 経由で下記の audio engine を駆動する。
+> 下図は host 側 (engine 内部) の経路。
+
 ```
-Game code
+Host (SoundIntentRouter)
   |
   +-- AudioEngine::playSE("click.wav")
   |     +-- WaveAudioEngine / SoftAudioEngine / NullAudioEngine
@@ -219,6 +223,11 @@ Audio Output Backends:
 ---
 
 ## Input Pipeline Flow
+
+> **現行 (ADR 0005/0012):** DLL ゲームは `InputState` を直接見ない。host が毎フレーム `InputState` から
+> POD の `InputSnapshot`（256 キー/マウス/パッド + action event + rngSeed + audioTime）を組んで
+> `on_update` に渡す。キー再割り当ては `Game.hpp` の `Binding<Act>`（GameMemory に置く）— 下図の
+> `InputMapper` は非推奨。`InputRecorder/Replayer` 相当は host 側の replay 機構（記録した InputSnapshot 再投入）。
 
 ```
 OS Events (WM_KEYDOWN, SDL_Event, etc.)
@@ -298,6 +307,11 @@ mitiru::vn module (40+ headers)
 ### Engine (mitiru::core::Engine)
 The central coordinator. `Engine::run()` initializes the platform, window, and GPU device according to `EngineConfig`, then drives the main loop: `pollEvents` -> `clock.tick` -> `game.update` -> `sceneManager.currentScene().onUpdate` -> `screen.clear` -> `game.draw` -> `sceneManager.currentScene().onDraw` -> `device.beginFrame` -> `screen.present` -> `device.endFrame`. A headless `stepFrames()` path skips window/GPU setup and activates a software rasterizer inside `Screen` for pixel-level testing.
 
+> **DLL モジュールの場合 (ADR 0005/0015):** `game.update`/`game.draw` は `Engine::runModule` 内の
+> stack-local `ModuleAdapter`。これが host のループを C-ABI へ橋渡しし、`InputSnapshot` を組んで
+> `on_update(memory, dt, input, intents)` を呼び、`FrameIntents` を drain、`on_draw(memory, Screen*)` を呼ぶ。
+> `game.update` を継承クラスで実装する旧 Mode-A の形は現行 host では使わない。
+
 ### Screen (mitiru::Screen)
 The drawing surface passed to `Game::draw()`. It accumulates draw commands into `SpriteBatch` (quads/sprites) and `ShapeRenderer` (lines, triangles, circles). On `present()` the accumulated vertex data is forwarded to `RenderPipeline2D` for GPU submission, or rasterized in software when the headless framebuffer is active. Screen has no awareness of the underlying GPU backend.
 
@@ -357,10 +371,10 @@ Engine::run()
 ```
 Windows?
   yes -> Win32Window present?
-           yes -> Dx11Device
+           yes -> Dx12Device  (本命。生成失敗時は Dx11Device へ fallback)
            no  -> NullDevice
   no  -> Emscripten?
-           yes -> WebGLDevice
+           yes -> WebGLDevice  (WebGPU backend も存在)
            no  -> MITIRU_HAS_VULKAN && MITIRU_HAS_GLFW && GlfwWindow?
                     yes -> VulkanDevice
                     no  -> MITIRU_HAS_OPENGL && Sdl2Window?
@@ -368,7 +382,7 @@ Windows?
                              no  -> NullDevice
 ```
 
-Explicit backend selection (`Backend::Dx11`, `Backend::Vulkan`, etc.) throws `std::runtime_error` when the required window type or compile flag is absent, rather than silently falling back.
+Explicit backend selection (`Backend::Dx12`, `Backend::Vulkan`, etc.) throws `std::runtime_error` when the required window type or compile flag is absent, rather than silently falling back.
 
 ---
 
@@ -388,7 +402,7 @@ The 16 bridges cover: AI (BehaviorTree/UtilityAI/GOAP/A*), Animation, DebugDraw,
 
 | Platform      | Window        | Graphics   | Audio             |
 |---------------|---------------|------------|-------------------|
-| Windows       | Win32Window   | DX11/DX12  | Win32AudioOutput  |
+| Windows       | Win32Window   | DX12 (DX11 fallback) | Win32AudioOutput / miniaudio |
 | Linux/macOS   | GlfwWindow    | Vulkan     | SoftAudioEngine   |
 | Linux/macOS   | Sdl2Window    | OpenGL     | Sdl2Audio         |
 | Web (WASM)    | EmscriptenWindow | WebGL2  | SoftAudioEngine   |

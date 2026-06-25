@@ -306,6 +306,11 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 		m_dx12PgTexReady = false; // texture は COPY_DEST 状態で開始する
 	}
 
+	// cold path: 共有 upload (m_dx12PgUpload) / slot 0 buffer を書く前に全 in-flight を
+	// drain する。前 frame の GPU が m_dx12PgUpload を copy source として読み終える前に
+	// CPU が上書きする hazard を防ぐ。
+	waitDx12Fence();
+
 	// ── 2. pixel data を upload heap にコピーする (row-pitch aligned) ──────────
 	{
 		const UINT rowPitch =
@@ -344,24 +349,23 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 
 	const auto vbSize = static_cast<std::uint32_t>(4 * sizeof(Vertex2D));
 	const auto ibSize = static_cast<std::uint32_t>(6 * sizeof(std::uint32_t));
-	updateDx12Buffer(m_dx12VertexBuffer, m_dx12VbCapacity, verts, vbSize);
-	updateDx12Buffer(m_dx12IndexBuffer,  m_dx12IbCapacity, quadIdx, ibSize);
+	// drain 済みなので slot 0 の buffer を安全に使える。
+	updateDx12Buffer(m_dx12VertexBuffer[0], m_dx12VbCapacity[0], verts, vbSize);
+	updateDx12Buffer(m_dx12IndexBuffer[0],  m_dx12IbCapacity[0], quadIdx, ibSize);
 
 	// ── 4. PS constant buffer を更新する: uUseTexture = 1.0f ─────────────────
 	const float psConst[4] = {1.0f, 0.0f, 0.0f, 0.0f};
-	updateCbDx12(m_dx12PsCb.Get(), psConst, sizeof(psConst));
+	updateCbDx12(m_dx12PsCb[0].Get(), psConst, sizeof(psConst));
 
-	// ── 5. 前 frame を待ってから command を記録する ───────────────────
-	waitDx12Fence();
-
+	// ── 5. command を記録する (冒頭で drain 済み) ───────────────────
 	auto* swapChain = m_dx12Device->getSwapChain();
 	if (!swapChain) return;
 	auto* rt = dynamic_cast<gfx::Dx12RenderTarget*>(swapChain->backBuffer());
 	if (!rt) return;
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
-	m_dx12Alloc->Reset();
-	m_dx12Cl->Reset(m_dx12Alloc.Get(), activePso);
+	m_dx12Alloc[0]->Reset();
+	m_dx12Cl->Reset(m_dx12Alloc[0].Get(), activePso);
 
 	// texture を遷移: PIXEL_SHADER_RESOURCE → COPY_DEST
 	// 初回使用時はスキップ: texture は COPY_DEST 状態で作成済み。
@@ -419,7 +423,7 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 	m_dx12Cl->SetGraphicsRootConstantBufferView(
 		0, m_dx12VsCb->GetGPUVirtualAddress());
 	m_dx12Cl->SetGraphicsRootConstantBufferView(
-		1, m_dx12PsCb->GetGPUVirtualAddress());
+		1, m_dx12PsCb[0]->GetGPUVirtualAddress());
 
 	ID3D12DescriptorHeap* heaps[] = { m_dx12PgSrvHeap.Get() };
 	m_dx12Cl->SetDescriptorHeaps(1, heaps);
@@ -443,29 +447,19 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 	m_dx12Cl->RSSetScissorRects(1, &sci);
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = m_dx12VertexBuffer->GetGPUVirtualAddress();
+	vbv.BufferLocation = m_dx12VertexBuffer[0]->GetGPUVirtualAddress();
 	vbv.SizeInBytes    = vbSize;
 	vbv.StrideInBytes  = sizeof(Vertex2D);
 	m_dx12Cl->IASetVertexBuffers(0, 1, &vbv);
 
 	D3D12_INDEX_BUFFER_VIEW ibv = {};
-	ibv.BufferLocation = m_dx12IndexBuffer->GetGPUVirtualAddress();
+	ibv.BufferLocation = m_dx12IndexBuffer[0]->GetGPUVirtualAddress();
 	ibv.SizeInBytes    = ibSize;
 	ibv.Format         = DXGI_FORMAT_R32_UINT;
 	m_dx12Cl->IASetIndexBuffer(&ibv);
 
 	m_dx12Cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	m_dx12Cl->DrawIndexedInstanced(6, 1, 0, 0, 0);
-
-	// ── 6. uUseTexture = 0.0f に戻す ────────────────────────────────────
-	// CB のパッチは Close/Execute の *後* に行う。戻した値が *次の* batch draw に
-	// 見えるようにするため。CB write は CPU 側 (upload heap map) で起こるため、
-	// たった今 submit した GPU read と race してはならない。
-	// 解決策: まず close + execute、次に fence を signal、その後 CB を戻す
-	// (fence は GPU が旧値の読み取りを完了したことを保証する — ただし signal は
-	// execute の *後* なので、restore は次の waitDx12Fence より前に起こる)。
-	// 実際には次の submitBatch* 呼び出しがどのみち上書きするため CB restore は
-	// 安全だが、state の clean さのため一応行っている。
 
 	m_dx12Cl->Close();
 
@@ -474,12 +468,14 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 
 	++m_dx12FenceValue;
 	m_dx12Queue->Signal(m_dx12Fence.Get(), m_dx12FenceValue);
+	m_dx12SlotSignal[0] = m_dx12FenceValue;
 
-	// fence signal の後に PS constant buffer を戻す (安全: 次の submit* 呼び出しは
-	// CB に再び触れる前に waitDx12Fence する)。
+	// ── 6. uUseTexture = 0.0f に戻す ────────────────────────────────────
+	// drain して GPU の旧値読み取り完了を待ってから slot 0 CB を戻す
+	// (次の submitBatch* がどのみち上書きするが state を clean に保つ)。
 	waitDx12Fence();
 	const float psConst0[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-	updateCbDx12(m_dx12PsCb.Get(), psConst0, sizeof(psConst0));
+	updateCbDx12(m_dx12PsCb[0].Get(), psConst0, sizeof(psConst0));
 }
 
 } // namespace mitiru::render

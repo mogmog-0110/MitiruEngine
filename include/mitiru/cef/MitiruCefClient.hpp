@@ -17,6 +17,7 @@
 #include <mitiru/cef/MitiruCefLifeSpanHandler.hpp>
 #include <mitiru/cef/MitiruCefLoadHandler.hpp>
 #include <mitiru/cef/MitiruCefRenderHandler.hpp>
+#include <mitiru/cef/MitiruCefResourceRequestHandler.hpp>
 
 namespace mitiru::cef
 {
@@ -36,6 +37,7 @@ public:
         m_lifespanHandler= new MitiruCefLifeSpanHandler();
         m_displayHandler = new MitiruCefDisplayHandler();
         m_menuHandler    = new MitiruCefContextMenuHandler();
+        m_resourceReqHandler = new MitiruCefResourceRequestHandler();
         m_bridge         = std::make_shared<MitiruCefBridge>();
 
         // メッセージルーターを初期化する
@@ -93,6 +95,20 @@ public:
         return false;
     }
 
+    /// file:// 本文の読み込みを横取りし、読めなければ自前エラーページを 200 で返す
+    /// (Chromium デフォルトエラーページのフラッシュを根絶。詳細は同ハンドラー参照)。
+    CefRefPtr<CefResourceRequestHandler> GetResourceRequestHandler(
+        CefRefPtr<CefBrowser> /*browser*/,
+        CefRefPtr<CefFrame>   /*frame*/,
+        CefRefPtr<CefRequest> /*request*/,
+        bool                  /*is_navigation*/,
+        bool                  /*is_download*/,
+        const CefString&      /*request_initiator*/,
+        bool&                 /*disable_default_handling*/) override
+    {
+        return m_resourceReqHandler;
+    }
+
     // OnRenderProcessTerminated は CEF バージョンによりシグネチャが異なるため省略
     // router->OnRenderProcessTerminated(browser) を呼ぶと pending query がキャンセルされる
 
@@ -102,6 +118,7 @@ private:
     CefRefPtr<MitiruCefLifeSpanHandler>  m_lifespanHandler;
     CefRefPtr<MitiruCefDisplayHandler>   m_displayHandler;
     CefRefPtr<MitiruCefContextMenuHandler> m_menuHandler;
+    CefRefPtr<MitiruCefResourceRequestHandler> m_resourceReqHandler;
     std::shared_ptr<MitiruCefBridge>     m_bridge;
     CefRefPtr<CefMessageRouterBrowserSide> m_router;
 

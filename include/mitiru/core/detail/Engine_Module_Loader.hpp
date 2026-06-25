@@ -26,6 +26,7 @@
 #include <mitiru/module/SoundIntentRouter.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/Reflect.hpp>
+#include <mitiru/observe/ReflectDiff.hpp>
 #include <mitiru/observe/SeriesMarkers.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
@@ -82,7 +83,10 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	// version check。拒否時は DLL が確保したばかりの memory を unloadFn で DLL に
 	// 返却してから unload する (リーク解消)。返却は fresh 確保時のみ — 温存 memory を
 	// 渡す reload は reloadModule 側で先ロード検証されるため、ここでは触らない。
-	if (m_moduleApi.version == 0u || m_moduleApi.version > module::kCurrentApiVersion)
+	// ABI は完全一致を要求する。古い DLL (version < host) も弾く: SoundIntent 等の配列要素が
+	// 後の version で太ると soundIntents[] の stride = 後続 FrameIntents field の offset がズレ、
+	// 旧 DLL を新 host で動かすと silent 破損/クラッシュするため (D1)。新 (version > host) も同様に拒否。
+	if (m_moduleApi.version != module::kCurrentApiVersion)
 	{
 		const std::uint32_t dllVersion = m_moduleApi.version;
 		if (memoryBefore == nullptr && m_moduleMemory != nullptr)
@@ -206,7 +210,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	void*       memory       = m_moduleMemory;
 	loadFn(&newApi, &memory);
 
-	if (newApi.version == 0u || newApi.version > module::kCurrentApiVersion)
+	if (newApi.version != module::kCurrentApiVersion)  // 完全一致要求 (D1、上の load 経路と同じ理由)
 	{
 		// 新 DLL が fresh 確保した場合のみ新 DLL 自身に返却する。温存 memory は
 		// 旧 module が継続使用するため絶対に解放しない。
@@ -291,6 +295,34 @@ MITIRU_INLINE void* mitiru::Engine::moduleMemory() const noexcept
 MITIRU_INLINE std::uint32_t mitiru::Engine::moduleMemorySize() const noexcept
 {
 	return m_moduleMemorySize;
+}
+
+MITIRU_INLINE std::string mitiru::Engine::reflectDiffBlobs(const void* a, const void* b) const
+{
+	// 2 つの GameMemory blob を field 単位で diff (replay 回帰の divergence report)。
+	if (a == nullptr || b == nullptr || m_moduleMemorySize == 0 ||
+	    m_moduleApi.reflectFieldCount <= 0)
+	{
+		return "[]";  // MITIRU_REFLECT 未宣言 / 未 load
+	}
+	const auto ja = observe::reflectToJson(static_cast<const std::uint8_t*>(a), m_moduleMemorySize,
+		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
+		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+	const auto jb = observe::reflectToJson(static_cast<const std::uint8_t*>(b), m_moduleMemorySize,
+		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
+		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+	return observe::reflectDiff(ja, jb).dump();
+}
+
+MITIRU_INLINE std::string mitiru::Engine::reflectBlobJson(const void* blob) const
+{
+	if (blob == nullptr || m_moduleMemorySize == 0 || m_moduleApi.reflectFieldCount <= 0)
+	{
+		return "{}";
+	}
+	return observe::reflectToJson(static_cast<const std::uint8_t*>(blob), m_moduleMemorySize,
+		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
+		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount).dump();
 }
 
 // ── time-travel: GameMemory ring 記録 + rewind (ADR 0017) ──────────────────
@@ -422,6 +454,44 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 	// GameMemory を試行前へ復元 (live は何も変わらなかったことになる)。
 	std::memcpy(m_moduleMemory, saved.data(), m_moduleMemorySize);
 	return state.dump();
+}
+
+MITIRU_INLINE mitiru::module::MergeReport
+mitiru::Engine::weaveModuleMemory(const module::InputSnapshot* inputsX, int framesX,
+                                  const module::InputSnapshot* inputsY, int framesY)
+{
+	module::MergeReport report;
+	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.on_update == nullptr
+	    || m_moduleApi.reflectFieldCount <= 0 || inputsX == nullptr || framesX <= 0
+	    || inputsY == nullptr || framesY <= 0)
+	{
+		return report;  // 織れない条件は no-op (live 不変)
+	}
+	const std::uint32_t sz = m_moduleMemorySize;
+	std::vector<std::uint8_t> A(sz), X(sz), Y(sz), merged(sz);
+	std::memcpy(A.data(), m_moduleMemory, sz);   // 共通祖先 = 現 live
+
+	// A から台本入力を回して分岐結果 blob を捕捉 (branchModuleMemory と同じ副作用ゼロのシム)。
+	auto simBranch = [&](const module::InputSnapshot* in, int n, std::vector<std::uint8_t>& out)
+	{
+		std::memcpy(m_moduleMemory, A.data(), sz);
+		auto intents = std::make_unique<module::FrameIntents>();
+		for (int i = 0; i < n; ++i)
+		{
+			std::memset(intents.get(), 0, sizeof(module::FrameIntents));
+			m_moduleApi.on_update(m_moduleMemory, Engine::kFixedDt, &in[i], intents.get());
+		}
+		std::memcpy(out.data(), m_moduleMemory, sz);
+	};
+	simBranch(inputsX, framesX, X);
+	simBranch(inputsY, framesY, Y);
+
+	// 3-way マージして live GameMemory へ確定 (これだけが live を変える)。
+	module::merge3(m_moduleApi.reflectFields,
+	               static_cast<std::size_t>(m_moduleApi.reflectFieldCount),
+	               A.data(), X.data(), Y.data(), merged.data(), sz, report);
+	std::memcpy(m_moduleMemory, merged.data(), sz);
+	return report;
 }
 
 // ── moduleLoadError ────────────────────────────────────────────────────────

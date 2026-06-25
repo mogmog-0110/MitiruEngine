@@ -36,6 +36,7 @@
 
 // アンブレラ廃止 (リファクタ P2) — 使うものだけ明示 include
 #include <mitiru/core/Engine.hpp>
+#include <mitiru/cef/CefErrorPage.hpp>  // scene.html 不在時に自前エラーページ data URI を直接開く (CEF 未使用なら空ヘッダ)
 #include <mitiru/resource/AssetPath.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
@@ -109,9 +110,19 @@ public:
 	// マスター再生クロック (秒) を miniaudio から中継。game が音声クロック基準で判定するため。
 	[[nodiscard]] double masterTimeSec() const noexcept override { return m_engine.masterTimeSec(); }
 
+	// v19: 出力レイテンシ / BGM transport / サンプル精度予約を miniaudio backend へ中継。
+	[[nodiscard]] double outputLatencySec() const noexcept override { return m_engine.outputLatencySec(); }
+	void pauseMusic() override { m_engine.pauseMusic(); }
+	void resumeMusic() override { m_engine.resumeMusic(); }
+	void seekMusic(double positionSec) override { m_engine.seekMusic(positionSec); }
+	void playSoundScheduled(std::string_view id, double atSec, float vol, float pitch) override
+	{
+		playByIdEx(id, vol, pitch, 0.0f, /*music=*/false, false, atSec);
+	}
+
 private:
 	void playByIdEx(std::string_view id, float volume, float pitch, float fadeIn,
-	                bool music, bool loop)
+	                bool music, bool loop, double scheduleSec = 0.0)
 	{
 		for (const char* ext : {".wav", ".ogg", ".mp3"})
 		{
@@ -132,6 +143,12 @@ private:
 			if (playPath.empty()) { continue; }
 
 			if (music) { m_engine.playMusicEx(playPath, volume, loop, fadeIn); }
+			else if (scheduleSec > 0.0)
+			{
+				// v19: サンプル精度予約 (リズムゲームの「次の拍で鳴らす」)。ducking は予約発火を
+				// 先取りできないので付けない (即時 SE 用)。
+				m_engine.playSoundScheduled(playPath, scheduleSec, volume, pitch);
+			}
 			else
 			{
 				m_engine.playSoundEx(playPath, volume, pitch, fadeIn);
@@ -239,6 +256,15 @@ std::string defaultCefUrlFor(const std::filesystem::path& dllPath)
 			"[mitiru_host] note: HUD 用の scene.html が見つかりません: %s\n"
 			"  (HUD 無しでゲーム本体は動きます。HTML/CSS の HUD を使う場合はこの場所に置いてください)\n",
 			(dllPath.parent_path() / "assets" / "scene.html").string().c_str());
+#if defined(_WIN32) && defined(MITIRU_HAS_CEF)
+		// 不在が確定しているので file:// を読みに行かない。読みに行くと CEF が
+		// デフォルトのエラーページを一瞬出してから OnLoadError が自前ページへ差し替える
+		// (フラッシュ)。最初から自前エラーページ (data URI) を開けばデフォルトは一切出ない。
+		const std::string sceneUrl =
+			"file:///" + (dllPath.parent_path() / "assets" / "scene.html").generic_string();
+		return mitiru::cef::buildErrorDataUri(
+			sceneUrl, "scene.html が見つかりません (DLL の隣の assets/ に置いてください)", -6);
+#endif
 	}
 	std::string url = "file:///./";
 	url += asset.generic_string();
@@ -275,6 +301,7 @@ struct CliArgs
 	std::string           captureDir;          // --capture-dir <d>: 毎 N フレーム PNG を吐く先 (#43)
 	int                   captureEvery = 0;    // --capture-every <N>: N フレームごとに 1 枚 (0=off)
 	bool                  headless = false;    // --headless: ウィンドウ無しで走らせる (AI 自動回し)
+	bool                  weaveSelftest = false; // --weave-selftest: weaveModuleMemory を実走実証 (つむぎ)
 	float                 speed    = 1.0f;     // --speed <N>: time scale 倍率 (固定 dt × N で早回し)
 	int                   maxFrames = 0;       // --max-frames <N>: N フレーム走ったら自動終了 (0=無制限)
 	bool                  fixedSize = false;   // --fixed-size: ユーザのウィンドウリサイズを禁止 (#44)
@@ -282,6 +309,7 @@ struct CliArgs
 	bool                  noVsync = false;     // --no-vsync: present の vsync 待ちを切る (素のフレームコスト計測, #53)
 	bool                  perf    = false;     // --perf: 実フレーム時間の統計を定期表示 (#53)
 	std::string           inputScript;         // --input-script <f>: in-process 入力注入 (#43-1)
+	std::string           stateTrace;          // --state-trace <f>: 毎フレーム reflect 状態を JSONL 出力 (offset read = non-POD でも安全)
 	std::string           inputRecordPath;     // --input-record <f>: 実入力を input-script 形式で録画 (#45)
 	std::vector<mitiru::Tool> openTools;       // --inspect <name>: 起動時に開くツール独立窓 (ADR 0014)
 	std::string           errorFile;           // --error-file <f>: mitiru watch のビルドエラー帯 (存在中だけ表示)
@@ -368,6 +396,10 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			if (i + 1 < argc) { try { out.captureEvery = std::stoi(argv[++i]); } catch (...) {} }
 		}
+		else if (a == "--weave-selftest")
+		{
+			out.weaveSelftest = true;
+		}
 		else if (a == "--headless")
 		{
 			out.headless = true;
@@ -399,6 +431,10 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--input-script")
 		{
 			if (i + 1 < argc) { out.inputScript = argv[++i]; }
+		}
+		else if (a == "--state-trace")
+		{
+			if (i + 1 < argc) { out.stateTrace = argv[++i]; }
 		}
 		else if (a == "--input-record")
 		{
@@ -569,6 +605,8 @@ void printUsage()
 		"  --input-script F 入力スクリプト F を in-process 注入 (OS 入力を経由せず他アプリに漏れない, #43)\n"
 		"                   形式: 1 行 '<frame> <down|up> <KEY>' (# でコメント)。KEY=Left/Right/Up/Down/\n"
 		"                   Space/Enter/Escape/英数字1字/生 VK 整数。実キーボードは無視される\n"
+		"  --state-trace F  毎フレーム reflect 状態を JSONL で F に出力 (offset read=非POD でも安全)。\n"
+		"                   --input-script と併用し解の軌跡/HP 推移を後解析 (Stage Doctor 等)\n"
 		"  --input-record F 実プレイの入力を input-script 形式で F に録画 (--input-script で再生可, #45)\n"
 		"  --error-file F   ビルドエラーファイル F を監視し、存在する間だけ画面上部に帯を表示\n"
 		"                   (mitiru watch が自動指定。直して保存 → ビルド成功で帯が消える)\n"
@@ -1163,7 +1201,9 @@ int main(int argc, char* argv[])
 	const std::string pauseControlFile = args.pauseControl;
 	int pauseControlTick = 0;
 
+	int weaveTick = 0;   // --weave-selftest 用フレームカウンタ
 	cfg.onFrameStart = [&watcher, watchOn = args.watch,
+	                    weaveSelftest = args.weaveSelftest, &weaveTick,
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
 	                    maxFrames = args.maxFrames, &totalFrame,
 	                    perfOn = args.perf, &perfStats,
@@ -1212,6 +1252,28 @@ int main(int argc, char* argv[])
 
 		// --max-frames (#43): 指定フレーム数に達したら停止を要求 (headless 自動回しの終了条件)。
 		if (maxFrames > 0 && ++totalFrame > maxFrames) { engine.requestStop(); }
+
+		// --weave-selftest (つむぎ): warmup 後に weaveModuleMemory を実走実証。現 live を共通祖先
+		// A とし、LEFT 分岐 / UP 分岐を別々にシム → 3-way マージ → live に確定。reflect で before/
+		// after を出し、2 つの糸が織り込まれた (a=1 かつ b=1) ことを headless で示す。
+		if (weaveSelftest && ++weaveTick == 30)
+		{
+			std::fprintf(stderr, "[weave] before: %s\n",
+			             engine.reflectBlobJson(engine.moduleMemory()).c_str());
+			mitiru::module::InputSnapshot inX{};
+			inX.keysDown[0x25] = 1; inX.keysJustPressed[0x25] = 1;   // LEFT → 横の糸 (a)
+			mitiru::module::InputSnapshot inY{};
+			inY.keysDown[0x26] = 1; inY.keysJustPressed[0x26] = 1;   // UP   → 縦の糸 (b)
+			const auto rep = engine.weaveModuleMemory(&inX, 1, &inY, 1);
+			std::fprintf(stderr, "[weave] after : %s\n",
+			             engine.reflectBlobJson(engine.moduleMemory()).c_str());
+			std::fprintf(stderr, "[weave] conflicts: %zu\n", rep.conflicts.size());
+			for (const auto& c : rep.conflicts)
+			{
+				std::fprintf(stderr, "[weave]   conflict: %s\n", c.field.c_str());
+			}
+			engine.requestStop();
+		}
 
 		// --capture-every (#43): N フレームごとに直近フレームを PNG 連番で吐く。
 		// onFrameStart は描画前なので「前フレームの提示結果」を保存する (AI 視覚検証には十分)。
@@ -1370,6 +1432,8 @@ int main(int argc, char* argv[])
 	bool          frameHasRecord  = false;  // この frame に対応する記録 state を読めたか (EOF frame 除外)
 	bool          loadSubstFailed = false;  // replay 中の load 代用が不能 (blob 無し録画、ADR 0020)
 	std::uint32_t loadSubstFailFrame = 0;
+	std::string   memDivergeDiff;           // divergence 時の field 単位 diff JSON (MITIRU_REFLECT 済みなら)
+	std::string   finalReflect;             // 終端時の reflect 状態 JSON (fuzz の不変条件チェック用)
 
 	if (!args.replayPath.empty())
 	{
@@ -1383,13 +1447,15 @@ int main(int argc, char* argv[])
 		cfg.headless  = true;
 		cfg.swRasterizeEvery = 0;  // 照合は GameMemory のみで pixels は読まない (#53)
 		cfg.moduleInputOverride =
-			[&player, &engine, &recordedMem, &frameHasRecord](mitiru::module::InputSnapshot& snap) -> bool
+			[&player, &engine, &recordedMem, &frameHasRecord, &finalReflect](mitiru::module::InputSnapshot& snap) -> bool
 			{
 				std::uint32_t fidx = 0;
 				mitiru::module::InputSnapshot rec{};
 				if (!player.readNextWithState(rec, recordedMem, fidx))  // 記録 GameMemory を退避
 				{
 					frameHasRecord = false;
+					// module 生存中に最終 reflect 状態を捕捉 (ループ後は解放され得る)
+					finalReflect = engine.reflectBlobJson(engine.moduleMemory());
 					engine.requestStop();   // EOF → ヘッドレスループを終了
 					return false;
 				}
@@ -1401,7 +1467,7 @@ int main(int argc, char* argv[])
 		// EOF frame は記録対応が無いので比較しない (stale な recordedMem との誤検出を防ぐ)。
 		cfg.onModuleFrameRecorded =
 			[&engine, &recordedMem, &replayFrame, &memDivergeFrame, &memDiverged, &memCompared,
-			 &frameHasRecord, &memSizeMismatch, &memSizeRecorded, &memSizeCurrent]
+			 &frameHasRecord, &memSizeMismatch, &memSizeRecorded, &memSizeCurrent, &memDivergeDiff]
 			(const mitiru::module::InputSnapshot&, const mitiru::module::FrameIntents&)
 			{
 				if (!frameHasRecord) { return; }
@@ -1415,6 +1481,8 @@ int main(int argc, char* argv[])
 					{
 						memDiverged     = true;
 						memDivergeFrame = replayFrame;
+						// どの field が録画値から変わったか (divergence report)。
+						memDivergeDiff  = engine.reflectDiffBlobs(recordedMem.data(), mem);
 					}
 				}
 				else if (memSize > 0 && !recordedMem.empty() &&
@@ -1485,20 +1553,46 @@ int main(int argc, char* argv[])
 	// そちらの moduleInputOverride が優先なので設定しない。runModule がブロックするので
 	// scriptPlayer の lifetime はこのスタックフレームで足りる。
 	InputScriptPlayer scriptPlayer;
+	bool scriptLoaded = false;
 	if (args.replayPath.empty() && !args.inputScript.empty())
 	{
-		if (loadInputScript(args.inputScript, scriptPlayer))
+		scriptLoaded = loadInputScript(args.inputScript, scriptPlayer);
+		if (scriptLoaded)
 		{
 			std::fprintf(stderr, "[mitiru_host] input-script: %zu events from %s\n",
 			             scriptPlayer.events.size(), args.inputScript.c_str());
-			const std::string freezeFile = args.inputFreezeControl;
-			cfg.moduleInputOverride =
-				[&scriptPlayer, freezeFile, frzTick = 0, frozen = false]
-				(mitiru::module::InputSnapshot& snap) mutable -> bool
+		}
+		else
+		{
+			std::fprintf(stderr, "mitiru_host: cannot open --input-script: %s\n",
+			             args.inputScript.c_str());
+		}
+	}
+
+	// --state-trace: 毎フレーム reflect 状態を JSONL で追記する。reflectBlobJson は offset read
+	// のみ = non-POD GameMemory (std::vector 等) でも安全 (recording/ring と違い memcpy しない)。
+	// replay 時は別経路なので無効。Stage Doctor 等が「解の軌跡/HP 推移」を後で解析できる。
+	std::ofstream stateTraceOut;
+	if (args.replayPath.empty() && !args.stateTrace.empty())
+	{
+		stateTraceOut.open(args.stateTrace, std::ios::trunc);
+		std::fprintf(stderr, stateTraceOut ? "[mitiru_host] state-trace -> %s\n"
+		                                   : "mitiru_host: cannot open --state-trace: %s\n",
+		             args.stateTrace.c_str());
+	}
+
+	// script 注入 か trace のどちらかが要るとき per-frame override を仕込む。
+	if (args.replayPath.empty() && (scriptLoaded || stateTraceOut.is_open()))
+	{
+		const std::string freezeFile = args.inputFreezeControl;
+		cfg.moduleInputOverride =
+			[&scriptPlayer, &engine, &stateTraceOut, scriptLoaded, freezeFile, frzTick = 0, frozen = false]
+			(mitiru::module::InputSnapshot& snap) mutable -> bool
+			{
+				if (scriptLoaded)
 				{
 					scriptPlayer.apply(snap);   // 実キーボードを上書き (注入のみ有効)
 					// --input-freeze-control: "1" の間は入力を全消し → プレイヤー静止。
-					// engine は走るので星などは動き続ける (録画で「編集中はプレイヤーだけ止める」)。
 					if (!freezeFile.empty())
 					{
 						if (++frzTick % 4 == 0)
@@ -1514,14 +1608,14 @@ int main(int argc, char* argv[])
 							}
 						}
 					}
-					return true;
-				};
-		}
-		else
-		{
-			std::fprintf(stderr, "mitiru_host: cannot open --input-script: %s\n",
-			             args.inputScript.c_str());
-		}
+				}
+				// このフレームの reflect 状態を 1 行追記 (offset read = non-POD でも安全)。
+				if (stateTraceOut.is_open())
+				{
+					stateTraceOut << engine.reflectBlobJson(engine.moduleMemory()) << '\n';
+				}
+				return scriptLoaded;
+			};
 	}
 
 	if (!engine.runModule(args.dllPath, cfg))
@@ -1571,12 +1665,22 @@ int main(int argc, char* argv[])
 			{
 				std::fprintf(stderr, "replay state: GameMemory DIVERGED at frame %u (%u frames)\n",
 				             memDivergeFrame, replayFrame);
+				// どの field が変わったか (MITIRU_REFLECT 済みの game のみ。"[]" は記述子無し)
+				if (!memDivergeDiff.empty() && memDivergeDiff != "[]")
+				{
+					std::fprintf(stderr, "replay diff: %s\n", memDivergeDiff.c_str());
+				}
 			}
 			else
 			{
 				std::fprintf(stderr, "replay state: GameMemory reproduced bit-exact (%u frames)\n",
 				             replayFrame);
 			}
+		}
+		// fuzz 等が field 単位の不変条件をチェックできるよう最終 reflect 状態を出す。
+		if (!finalReflect.empty() && finalReflect != "{}")
+		{
+			std::fprintf(stdout, "replay final: %s\n", finalReflect.c_str());
 		}
 		if (memDiverged) { return 1; }  // 再現失敗 = CI gate fail
 

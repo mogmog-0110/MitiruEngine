@@ -135,37 +135,41 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 		nullptr, &nullSrv,
 		pipeline.m_dx12SrvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	/// ── upload heap バッファ (VB / IB / CB) ─────────
+	/// ── upload heap バッファ (VB / IB / PS CB) を slot 別に確保 ─────────
 	constexpr std::uint32_t INITIAL_VB = 65536;
 	constexpr std::uint32_t INITIAL_IB = 32768;
-	pipeline.m_dx12VertexBuffer =
-		createUploadBufferDx12(device, INITIAL_VB);
-	pipeline.m_dx12IndexBuffer =
-		createUploadBufferDx12(device, INITIAL_IB);
-	pipeline.m_dx12VbCapacity = INITIAL_VB;
-	pipeline.m_dx12IbCapacity = INITIAL_IB;
+	const float psConst[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	for (int i = 0; i < kDx12Ring; ++i)
+	{
+		pipeline.m_dx12VertexBuffer[i] = createUploadBufferDx12(device, INITIAL_VB);
+		pipeline.m_dx12IndexBuffer[i]  = createUploadBufferDx12(device, INITIAL_IB);
+		pipeline.m_dx12VbCapacity[i]   = INITIAL_VB;
+		pipeline.m_dx12IbCapacity[i]   = INITIAL_IB;
+		/// PS CB は 256 バイトアライン必須
+		pipeline.m_dx12PsCb[i] = createUploadBufferDx12(device, 256);
+		pipeline.updateCbDx12(pipeline.m_dx12PsCb[i].Get(), psConst, sizeof(psConst));
+	}
 
-	/// CB は 256 バイトアラインが必要
+	/// projection CB は全 slot 共有 (resize でのみ更新)
 	pipeline.m_dx12VsCb = createUploadBufferDx12(device, 256);
-	pipeline.m_dx12PsCb = createUploadBufferDx12(device, 256);
 	const auto ortho = OrthoMatrix::create(screenWidth, screenHeight);
 	pipeline.updateCbDx12(
 		pipeline.m_dx12VsCb.Get(), ortho.m, sizeof(ortho.m));
-	const float psConst[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	pipeline.updateCbDx12(
-		pipeline.m_dx12PsCb.Get(), psConst, sizeof(psConst));
 
-	/// ── persistent command allocator + list + fence ─
-	if (FAILED(device->CreateCommandAllocator(
-			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(&pipeline.m_dx12Alloc))))
+	/// ── ring allocator + 単一 command list + fence ─
+	for (int i = 0; i < kDx12Ring; ++i)
 	{
-		throw std::runtime_error(
-			"RenderPipeline2D: CreateCommandAllocator failed");
+		if (FAILED(device->CreateCommandAllocator(
+				D3D12_COMMAND_LIST_TYPE_DIRECT,
+				IID_PPV_ARGS(&pipeline.m_dx12Alloc[i]))))
+		{
+			throw std::runtime_error(
+				"RenderPipeline2D: CreateCommandAllocator failed");
+		}
 	}
 	if (FAILED(device->CreateCommandList(
 			0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-			pipeline.m_dx12Alloc.Get(), nullptr,
+			pipeline.m_dx12Alloc[0].Get(), nullptr,
 			IID_PPV_ARGS(&pipeline.m_dx12Cl))))
 	{
 		throw std::runtime_error(
@@ -344,15 +348,15 @@ inline void RenderPipeline2D::submitBatchDx12(
 		return;
 	}
 
-	/// 前回実行を待つ (初回は GetCompletedValue == 0 == FenceValue で即 return)
-	waitDx12Fence();
+	/// ring slot を確保し、その slot の前回 GPU 完了だけ待つ (直前ではない)
+	const int s = acquireDx12Slot();
 
 	/// uUseTexture = 0 を明示する (直前の textured batch / pixel-grid から漏れた
 	/// 1 で頂点カラー描画がテクスチャサンプルされるのを防ぐ。ADR 0009)。
-	/// waitDx12Fence 後なので前 GPU 読み取りとは race しない。
+	/// slot s 専用 CB を使うので前 GPU 読み取りとは race しない。
 	{
 		const float psOff[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-		updateCbDx12(m_dx12PsCb.Get(), psOff, sizeof(psOff));
+		updateCbDx12(m_dx12PsCb[s].Get(), psOff, sizeof(psOff));
 	}
 
 	const auto vbSize = static_cast<std::uint32_t>(
@@ -361,10 +365,10 @@ inline void RenderPipeline2D::submitBatchDx12(
 		indices.size() * sizeof(std::uint32_t));
 
 	updateDx12Buffer(
-		m_dx12VertexBuffer, m_dx12VbCapacity,
+		m_dx12VertexBuffer[s], m_dx12VbCapacity[s],
 		vertices.data(), vbSize);
 	updateDx12Buffer(
-		m_dx12IndexBuffer, m_dx12IbCapacity,
+		m_dx12IndexBuffer[s], m_dx12IbCapacity[s],
 		indices.data(), ibSize);
 
 	/// 現在のバックバッファ RTV を取得する (device->beginFrame が
@@ -376,9 +380,9 @@ inline void RenderPipeline2D::submitBatchDx12(
 	if (!rt) return;
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
-	/// コマンドリストを記録する
-	m_dx12Alloc->Reset();
-	m_dx12Cl->Reset(m_dx12Alloc.Get(), m_dx12Pipeline.Get());
+	/// コマンドリストを記録する (slot s の allocator で Reset)
+	m_dx12Alloc[s]->Reset();
+	m_dx12Cl->Reset(m_dx12Alloc[s].Get(), m_dx12Pipeline.Get());
 
 	m_dx12Cl->SetGraphicsRootSignature(m_dx12RootSig.Get());
 	m_dx12Cl->SetPipelineState(m_dx12Pipeline.Get());
@@ -386,7 +390,7 @@ inline void RenderPipeline2D::submitBatchDx12(
 	m_dx12Cl->SetGraphicsRootConstantBufferView(
 		0, m_dx12VsCb->GetGPUVirtualAddress());
 	m_dx12Cl->SetGraphicsRootConstantBufferView(
-		1, m_dx12PsCb->GetGPUVirtualAddress());
+		1, m_dx12PsCb[s]->GetGPUVirtualAddress());
 
 	ID3D12DescriptorHeap* heaps[] = { m_dx12SrvHeap.Get() };
 	m_dx12Cl->SetDescriptorHeaps(1, heaps);
@@ -408,13 +412,13 @@ inline void RenderPipeline2D::submitBatchDx12(
 	m_dx12Cl->RSSetScissorRects(1, &sci);
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = m_dx12VertexBuffer->GetGPUVirtualAddress();
+	vbv.BufferLocation = m_dx12VertexBuffer[s]->GetGPUVirtualAddress();
 	vbv.SizeInBytes = vbSize;
 	vbv.StrideInBytes = sizeof(Vertex2D);
 	m_dx12Cl->IASetVertexBuffers(0, 1, &vbv);
 
 	D3D12_INDEX_BUFFER_VIEW ibv = {};
-	ibv.BufferLocation = m_dx12IndexBuffer->GetGPUVirtualAddress();
+	ibv.BufferLocation = m_dx12IndexBuffer[s]->GetGPUVirtualAddress();
 	ibv.SizeInBytes = ibSize;
 	ibv.Format = DXGI_FORMAT_R32_UINT;
 	m_dx12Cl->IASetIndexBuffer(&ibv);
@@ -431,6 +435,7 @@ inline void RenderPipeline2D::submitBatchDx12(
 
 	++m_dx12FenceValue;
 	m_dx12Queue->Signal(m_dx12Fence.Get(), m_dx12FenceValue);
+	m_dx12SlotSignal[s] = m_dx12FenceValue;
 }
 
 inline void RenderPipeline2D::submitStyledBatchDx12(
@@ -460,21 +465,22 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 			m_dx12SdfCirclePso);
 	}
 
-	waitDx12Fence();
+	/// ring slot を確保し、その slot の前回 GPU 完了だけ待つ
+	const int s = acquireDx12Slot();
 
-	/// スタイル定数を更新
-	updateCbDx12(m_dx12SdfStyleCb.Get(), &style, sizeof(StyleConstants));
+	/// スタイル定数を更新 (slot s 専用 CB)
+	updateCbDx12(m_dx12SdfStyleCb[s].Get(), &style, sizeof(StyleConstants));
 
-	/// VB / IB 更新
+	/// VB / IB 更新 (slot s 専用)
 	const auto vbSize = static_cast<std::uint32_t>(
 		vertices.size() * sizeof(StyledVertex2D));
 	const auto ibSize = static_cast<std::uint32_t>(
 		indices.size() * sizeof(std::uint32_t));
 	updateDx12Buffer(
-		m_dx12SdfVertexBuffer, m_dx12SdfVbCapacity,
+		m_dx12SdfVertexBuffer[s], m_dx12SdfVbCapacity[s],
 		vertices.data(), vbSize);
 	updateDx12Buffer(
-		m_dx12SdfIndexBuffer, m_dx12SdfIbCapacity,
+		m_dx12SdfIndexBuffer[s], m_dx12SdfIbCapacity[s],
 		indices.data(), ibSize);
 
 	/// RTV 取得
@@ -487,8 +493,8 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 
 	auto* pso = isRect ? m_dx12SdfRectPso.Get() : m_dx12SdfCirclePso.Get();
 
-	m_dx12Alloc->Reset();
-	m_dx12Cl->Reset(m_dx12Alloc.Get(), pso);
+	m_dx12Alloc[s]->Reset();
+	m_dx12Cl->Reset(m_dx12Alloc[s].Get(), pso);
 
 	m_dx12Cl->SetGraphicsRootSignature(m_dx12SdfRootSig.Get());
 	m_dx12Cl->SetPipelineState(pso);
@@ -496,7 +502,7 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 	m_dx12Cl->SetGraphicsRootConstantBufferView(
 		0, m_dx12VsCb->GetGPUVirtualAddress());
 	m_dx12Cl->SetGraphicsRootConstantBufferView(
-		1, m_dx12SdfStyleCb->GetGPUVirtualAddress());
+		1, m_dx12SdfStyleCb[s]->GetGPUVirtualAddress());
 
 	m_dx12Cl->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
@@ -513,13 +519,13 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 	m_dx12Cl->RSSetScissorRects(1, &sci);
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = m_dx12SdfVertexBuffer->GetGPUVirtualAddress();
+	vbv.BufferLocation = m_dx12SdfVertexBuffer[s]->GetGPUVirtualAddress();
 	vbv.SizeInBytes = vbSize;
 	vbv.StrideInBytes = sizeof(StyledVertex2D);
 	m_dx12Cl->IASetVertexBuffers(0, 1, &vbv);
 
 	D3D12_INDEX_BUFFER_VIEW ibv = {};
-	ibv.BufferLocation = m_dx12SdfIndexBuffer->GetGPUVirtualAddress();
+	ibv.BufferLocation = m_dx12SdfIndexBuffer[s]->GetGPUVirtualAddress();
 	ibv.SizeInBytes = ibSize;
 	ibv.Format = DXGI_FORMAT_R32_UINT;
 	m_dx12Cl->IASetIndexBuffer(&ibv);
@@ -536,6 +542,7 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 
 	++m_dx12FenceValue;
 	m_dx12Queue->Signal(m_dx12Fence.Get(), m_dx12FenceValue);
+	m_dx12SlotSignal[s] = m_dx12FenceValue;
 }
 
 inline void RenderPipeline2D::ensureDx12SdfResources(
@@ -581,24 +588,31 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 		}
 	}
 
-	/// StyleConstants CB (1 個だけで Rect/Circle を使い回す)
-	if (!m_dx12SdfStyleCb)
+	/// StyleConstants CB (Rect/Circle 共用、slot 別)
+	if (!m_dx12SdfStyleCb[0])
 	{
 		const std::uint32_t cbSize =
 			(sizeof(StyleConstants) + 255) & ~std::uint32_t{255};
-		m_dx12SdfStyleCb = createUploadBufferDx12(device, cbSize);
+		for (int i = 0; i < kDx12Ring; ++i)
+			m_dx12SdfStyleCb[i] = createUploadBufferDx12(device, cbSize);
 	}
 
-	/// VB / IB (Rect/Circle で共用)
-	if (!m_dx12SdfVertexBuffer)
+	/// VB / IB (Rect/Circle 共用、slot 別)
+	if (!m_dx12SdfVertexBuffer[0])
 	{
-		m_dx12SdfVertexBuffer = createUploadBufferDx12(device, 65536);
-		m_dx12SdfVbCapacity = 65536;
+		for (int i = 0; i < kDx12Ring; ++i)
+		{
+			m_dx12SdfVertexBuffer[i] = createUploadBufferDx12(device, 65536);
+			m_dx12SdfVbCapacity[i] = 65536;
+		}
 	}
-	if (!m_dx12SdfIndexBuffer)
+	if (!m_dx12SdfIndexBuffer[0])
 	{
-		m_dx12SdfIndexBuffer = createUploadBufferDx12(device, 32768);
-		m_dx12SdfIbCapacity = 32768;
+		for (int i = 0; i < kDx12Ring; ++i)
+		{
+			m_dx12SdfIndexBuffer[i] = createUploadBufferDx12(device, 32768);
+			m_dx12SdfIbCapacity[i] = 32768;
+		}
 	}
 
 	/// シェーダー + PSO (初回のみ)
@@ -750,6 +764,26 @@ inline void RenderPipeline2D::waitDx12Fence()
 			m_dx12FenceValue, m_dx12FenceEvent);
 		WaitForSingleObject(m_dx12FenceEvent, INFINITE);
 	}
+}
+
+inline void RenderPipeline2D::waitForDx12Slot(int slot)
+{
+	if (!m_dx12Fence || !m_dx12FenceEvent) return;
+	// この slot を最後に使った submit の完了だけ待つ。target==0 は未使用 slot。
+	const UINT64 target = m_dx12SlotSignal[slot];
+	if (target != 0 && m_dx12Fence->GetCompletedValue() < target)
+	{
+		m_dx12Fence->SetEventOnCompletion(target, m_dx12FenceEvent);
+		WaitForSingleObject(m_dx12FenceEvent, INFINITE);
+	}
+}
+
+inline int RenderPipeline2D::acquireDx12Slot()
+{
+	const int s = m_dx12Slot;
+	waitForDx12Slot(s);
+	m_dx12Slot = (s + 1) % kDx12Ring;
+	return s;
 }
 
 } // namespace mitiru::render

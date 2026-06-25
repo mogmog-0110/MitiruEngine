@@ -31,13 +31,22 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	// 不変だが pixels().data() が変わる。これを見ないと古い GPU テクスチャを返し続ける (実バグだった)。
 	if (!contentMayChange)
 	{
+		// 直前と同じ texture (key,w,h,srcPtr) なら map find を省く。
+		if (m_lastSpriteTexHandle != 0 && key == m_lastSpriteTexKey &&
+		    w == m_lastSpriteTexW && h == m_lastSpriteTexH && rgba == m_lastSpriteTexSrc)
+		{
+			return m_lastSpriteTexHandle;
+		}
 		auto sit = m_dx12SpriteTexLookup.find(key);
 		if (sit != m_dx12SpriteTexLookup.end())
 		{
 			const auto& cached = m_dx12SpriteTextures[sit->second];
 			if (cached.tex && cached.w == w && cached.h == h && cached.srcPtr == rgba)
 			{
-				return sit->second + 1;
+				const std::uint32_t handle = sit->second + 1;
+				m_lastSpriteTexKey = key; m_lastSpriteTexW = w; m_lastSpriteTexH = h;
+				m_lastSpriteTexSrc = rgba; m_lastSpriteTexHandle = handle;
+				return handle;
 			}
 			// srcPtr が変わった = 内容差し替え (hot-reload) → 下のアップロードで作り直す
 		}
@@ -68,6 +77,8 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 			// 寸法 or 内容が変わった: 同スロットに作り直す (下のアップロードへ落ちる)。
 		}
 	}
+
+	m_lastSpriteTexHandle = 0;   // upload で slot が変わるので inline cache を無効化
 
 	// ── default-heap texture (COPY_DEST) を作る ──
 	D3D12_HEAP_PROPERTIES texHp = {};
@@ -139,10 +150,11 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 		newTex.Get(), &srvDesc,
 		newSrvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	// ── copy + barrier(COPY_DEST→PSR) を記録・実行・待機 (初回のみ同期) ──
+	// ── copy + barrier(COPY_DEST→PSR) を記録・実行・待機 (cache miss 時の同期 upload) ──
+	// cold path: 全 in-flight を drain してから slot 0 の allocator を使う。
 	waitDx12Fence();
-	m_dx12Alloc->Reset();
-	m_dx12Cl->Reset(m_dx12Alloc.Get(), nullptr); // copy のみ; PSO 不要
+	m_dx12Alloc[0]->Reset();
+	m_dx12Cl->Reset(m_dx12Alloc[0].Get(), nullptr); // copy のみ; PSO 不要
 
 	D3D12_TEXTURE_COPY_LOCATION copyDst = {};
 	copyDst.pResource        = newTex.Get();
@@ -173,6 +185,7 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	m_dx12Queue->ExecuteCommandLists(1, lists);
 	++m_dx12FenceValue;
 	m_dx12Queue->Signal(m_dx12Fence.Get(), m_dx12FenceValue);
+	m_dx12SlotSignal[0] = m_dx12FenceValue;
 	waitDx12Fence();
 
 	// ── キャッシュ格納 (寸法変化なら同スロット上書き) ──
@@ -224,18 +237,19 @@ inline void RenderPipeline2D::submitTexturedBatch(
 		pso     = m_dx12PointPipeline.Get();
 	}
 
-	waitDx12Fence();
+	// ring slot を確保し、その slot の前回 GPU 完了だけ待つ
+	const int s = acquireDx12Slot();
 
-	// uUseTexture = 1 (waitDx12Fence 後なので前 GPU 読み取りと race しない)。
+	// uUseTexture = 1 (slot s 専用 CB なので前 GPU 読み取りと race しない)。
 	{
 		const float psOn[4] = {1.0f, 0.0f, 0.0f, 0.0f};
-		updateCbDx12(m_dx12PsCb.Get(), psOn, sizeof(psOn));
+		updateCbDx12(m_dx12PsCb[s].Get(), psOn, sizeof(psOn));
 	}
 
 	const auto vbSize = static_cast<std::uint32_t>(vertices.size() * sizeof(Vertex2D));
 	const auto ibSize = static_cast<std::uint32_t>(indices.size() * sizeof(std::uint32_t));
-	updateDx12Buffer(m_dx12VertexBuffer, m_dx12VbCapacity, vertices.data(), vbSize);
-	updateDx12Buffer(m_dx12IndexBuffer,  m_dx12IbCapacity, indices.data(),  ibSize);
+	updateDx12Buffer(m_dx12VertexBuffer[s], m_dx12VbCapacity[s], vertices.data(), vbSize);
+	updateDx12Buffer(m_dx12IndexBuffer[s],  m_dx12IbCapacity[s], indices.data(),  ibSize);
 
 	auto* swapChain = m_dx12Device->getSwapChain();
 	if (!swapChain) { return; }
@@ -243,13 +257,13 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	if (!rt) { return; }
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
-	m_dx12Alloc->Reset();
-	m_dx12Cl->Reset(m_dx12Alloc.Get(), pso);
+	m_dx12Alloc[s]->Reset();
+	m_dx12Cl->Reset(m_dx12Alloc[s].Get(), pso);
 
 	m_dx12Cl->SetGraphicsRootSignature(rootSig);
 	m_dx12Cl->SetPipelineState(pso);
 	m_dx12Cl->SetGraphicsRootConstantBufferView(0, m_dx12VsCb->GetGPUVirtualAddress());
-	m_dx12Cl->SetGraphicsRootConstantBufferView(1, m_dx12PsCb->GetGPUVirtualAddress());
+	m_dx12Cl->SetGraphicsRootConstantBufferView(1, m_dx12PsCb[s]->GetGPUVirtualAddress());
 
 	ID3D12DescriptorHeap* heaps[] = { entry.srvHeap.Get() };
 	m_dx12Cl->SetDescriptorHeaps(1, heaps);
@@ -271,13 +285,13 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	m_dx12Cl->RSSetScissorRects(1, &sci);
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = m_dx12VertexBuffer->GetGPUVirtualAddress();
+	vbv.BufferLocation = m_dx12VertexBuffer[s]->GetGPUVirtualAddress();
 	vbv.SizeInBytes    = vbSize;
 	vbv.StrideInBytes  = sizeof(Vertex2D);
 	m_dx12Cl->IASetVertexBuffers(0, 1, &vbv);
 
 	D3D12_INDEX_BUFFER_VIEW ibv = {};
-	ibv.BufferLocation = m_dx12IndexBuffer->GetGPUVirtualAddress();
+	ibv.BufferLocation = m_dx12IndexBuffer[s]->GetGPUVirtualAddress();
 	ibv.SizeInBytes    = ibSize;
 	ibv.Format         = DXGI_FORMAT_R32_UINT;
 	m_dx12Cl->IASetIndexBuffer(&ibv);
@@ -290,6 +304,7 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	m_dx12Queue->ExecuteCommandLists(1, lists);
 	++m_dx12FenceValue;
 	m_dx12Queue->Signal(m_dx12Fence.Get(), m_dx12FenceValue);
+	m_dx12SlotSignal[s] = m_dx12FenceValue;
 	// uUseTexture の 0 への復帰は次の submitBatchDx12 が冒頭で行う (ADR 0009)。
 }
 

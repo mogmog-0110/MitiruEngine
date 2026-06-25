@@ -53,6 +53,23 @@ namespace mitiru::cef
 
 using json = ::nlohmann::json;
 
+/// @brief string_view で heterogeneous lookup するための透過ハッシュ。
+/// @details std::string キーの map を、string_view から std::string を確保せずに
+///          find できる (C++20 の透過 lookup)。std::string / const char* も
+///          string_view に変換して同一ハッシュを返す。
+struct TransparentStringHash
+{
+	using is_transparent = void;
+	[[nodiscard]] std::size_t operator()(std::string_view sv) const noexcept
+	{
+		return std::hash<std::string_view>{}(sv);
+	}
+};
+
+/// @brief 保持 state の map 型 (透過 lookup 対応)。
+using StateMap =
+	std::unordered_map<std::string, json, TransparentStringHash, std::equal_to<>>;
+
 /// @brief 型付き C++↔JS reactive state + event bridge。
 class StateStore
 {
@@ -85,10 +102,73 @@ public:
 		std::string snapshot;
 		{
 			std::lock_guard lock(m_mutex);
-			m_state[std::string(key)] = encoded;
+			// 既存 key は find で当てて std::string 確保を避ける (透過 lookup)。
+			if (auto it = m_state.find(key); it != m_state.end())
+			{
+				it->second = encoded;
+			}
+			else
+			{
+				m_state.emplace(std::string(key), encoded);
+			}
 			snapshot = encoded.dump();
 		}
 		pushJs("_onChange", keyJson(key), snapshot);
+	}
+
+	/// @brief set() と同じく m_state を即時更新するが、JS push は溜めて
+	///        flushBatch() で 1 回の executeJavaScript にまとめる。
+	/// @details 毎フレーム多数の key を push する HUD の per-key IPC を 1 回に畳む。
+	///          値の dump は error_handler=replace で行い、ゲーム由来の非 UTF-8 byte が
+	///          throw して batch 全体を巻き添えにしないようにする (不正 byte は U+FFFD)。
+	///          flushBatch() を呼ぶまで JS には届かない。m_state (get/snapshot の真値) は
+	///          即時更新される。
+	template <typename T>
+	void setBatched(std::string_view key, const T& value)
+	{
+		const json encoded = value;
+		{
+			std::lock_guard lock(m_mutex);
+			if (auto it = m_state.find(key); it != m_state.end())
+			{
+				it->second = encoded;
+			}
+			else
+			{
+				m_state.emplace(std::string(key), encoded);
+			}
+		}
+		constexpr auto kReplace = json::error_handler_t::replace;
+		const std::string keyEnc = json(std::string(key)).dump(-1, ' ', false, kReplace);
+		const std::string valEnc = encoded.dump(-1, ' ', false, kReplace);
+		if (!m_pendingBatch.empty()) { m_pendingBatch += ','; }
+		m_pendingBatch.reserve(m_pendingBatch.size() + keyEnc.size() + valEnc.size() + 3);
+		m_pendingBatch += '[';
+		m_pendingBatch += keyEnc;
+		m_pendingBatch += ',';
+		m_pendingBatch += valEnc;
+		m_pendingBatch += ']';
+	}
+
+	/// @brief 溜めた setBatched の変更を 1 回の executeJavaScript で flush する。
+	/// @details pending が空なら何もしない。新しい mitiru_cef_state.js では
+	///          `_onChangeBatch` を 1 回呼び、古いキャッシュ JS (batch 関数なし) では
+	///          `_onChange` を JS 側ループで per-key 適用する — どちらでも IPC は 1 回。
+	void flushBatch()
+	{
+		if (m_pendingBatch.empty()) { return; }
+		std::string pairs;
+		pairs.swap(m_pendingBatch);
+		if (!m_executeJs) { return; }
+		std::string code;
+		code.reserve(200 + pairs.size());
+		code += "if(window.mitiru&&window.mitiru._state){var _b=[";
+		code += pairs;
+		code += "];var _s=window.mitiru._state;"
+		        "if(_s._onChangeBatch){_s._onChangeBatch(_b);}"
+		        "else if(_s._onChange){for(var _i=0;_i<_b.length;_i++){"
+		        "_s._onChange(_b[_i][0],_b[_i][1]);}}}";
+		m_executeJs(code);
 	}
 
 	/// @brief 最後に set した値を取得する。
@@ -96,7 +176,7 @@ public:
 	[[nodiscard]] std::optional<T> get(std::string_view key) const
 	{
 		std::lock_guard lock(m_mutex);
-		const auto it = m_state.find(std::string(key));
+		const auto it = m_state.find(key);
 		if (it == m_state.end())
 		{
 			return std::nullopt;
@@ -115,7 +195,7 @@ public:
 	[[nodiscard]] std::optional<json> getJson(std::string_view key) const
 	{
 		std::lock_guard lock(m_mutex);
-		const auto it = m_state.find(std::string(key));
+		const auto it = m_state.find(key);
 		if (it == m_state.end())
 		{
 			return std::nullopt;
@@ -126,7 +206,7 @@ public:
 	[[nodiscard]] bool has(std::string_view key) const
 	{
 		std::lock_guard lock(m_mutex);
-		return m_state.contains(std::string(key));
+		return m_state.contains(key);
 	}
 
 	void clearState()
@@ -149,7 +229,7 @@ public:
 	/// ```
 	void replayRetainedState()
 	{
-		std::unordered_map<std::string, json> snapshot;
+		StateMap snapshot;
 		{
 			std::lock_guard lock(m_mutex);
 			snapshot = m_state;
@@ -477,9 +557,11 @@ private:
 	ExecuteJsFn                               m_executeJs;
 	RegisterHandlerFn                         m_registerHandler;
 	mutable std::mutex                        m_mutex;
-	std::unordered_map<std::string, json>     m_state;
+	StateMap                                  m_state;
 	std::unordered_map<std::string, ActionFn> m_actions;
 	FallbackActionFn                          m_fallbackAction;
+	/// setBatched が溜める JS array 要素 ("[k,v],[k,v],...")。host frame thread 専用。
+	std::string                               m_pendingBatch;
 };
 
 } // namespace mitiru::cef

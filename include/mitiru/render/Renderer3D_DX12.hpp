@@ -57,11 +57,33 @@
 #include <mitiru/render/LightArrayCB.hpp>
 #include <mitiru/render/SkyboxShaders.hpp>
 
+// 3D Gaussian Splatting (M1)。**ファイルスコープで**先に include する必要がある
+// (DX12Splat.hpp は class body 内 .inl のため、これらの namespace 宣言を class
+//  内へ入れないよう、ここで先に取り込んでおく = skybox と同じ作法)。
+#include <mitiru/render/SplatScene.hpp>
+#include <mitiru/render/dx12/DX12SplatShaders.hpp>
+#include <mitiru/render/NeuralStyle.hpp>
+#ifdef MITIRU_HAS_DIRECTML
+#include <cstdio>
+#include <DirectML.h>   // raw DirectML (in-pipeline neural post-process, DX12DirectML.hpp)
+#include <mitiru/render/dx12/DX12NeuralFx.hpp>   // DirectML in-pipeline ニューラル後処理 (zero readback)
+#include <mitiru/render/dx12/DX12NeuralRelight.hpp>   // ニューラル・リライティング (平面→法線推定→動的光源)
+#include <mitiru/render/NeuralDepth.hpp>              // ORT+DML 単眼深度 (キャラ立体形状の推論)
+#endif
+#ifdef MITIRU_HAS_CUBISM_CORE
+#include <mitiru/render/dx12/DX12Live2D.hpp>   // 自前 D3D12 Live2D レンダラ (namespace-scope class)
+#endif
+#ifdef MITIRU_HAS_CUBISM_FRAMEWORK
+#include <mitiru/render/live2d/Live2DModel.hpp>   // Framework 駆動の Live2D モデル (motion/physics/effects)
+#endif
+
 #include <mitiru/render/Shadow.hpp>
 
 #include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/dx12/DX12FXAAShaders.hpp>
+#include <mitiru/render/dx12/DX12OitTransparentPS.hpp>
+#include <mitiru/render/dx12/WeightedBlendedOIT.hpp>
 #include <mitiru/render/dx12/DX12MultiLightShaders.hpp>
 #include <mitiru/render/dx12/DX12Tonemap.hpp>
 #include <mitiru/render/dx12/DX12ShaderModePS.hpp>
@@ -366,6 +388,18 @@ private:
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Skybox.hpp> // NOLINT(build/include)
 
+	// 3D Gaussian Splatting 描画 (M1) も同じ .inl パターンで分離
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12Splat.hpp> // NOLINT(build/include)
+
+	// ニューラル現像 (M3: ORT+DirectML で 3D フレームを 2D 絵画へ) も .inl で分離
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12Neural.hpp> // NOLINT(build/include)
+
+	// raw DirectML (in-pipeline ニューラル後処理: RT→tensor→DML→tensor→RT, CPU 往復なし)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12DirectML.hpp> // NOLINT(build/include)
+
 	// ─────────────────────────────────────────────────────────
 	//  メンバ変数
 	// ─────────────────────────────────────────────────────────
@@ -499,6 +533,18 @@ private:
 	/// アウトラインパス用の遅延描画コマンド
 	std::vector<OutlineDrawCommand> m_outlineCommands;
 
+	/// ── 半透明 OIT (Weighted-Blended) ──────────────────────
+	/// material.diffuse.a < 1 のメッシュを溜め、不透明の後にまとめて accum/reveal へ
+	/// 蓄積→composite する。深度は不透明と共有 (読み取り専用テスト)。順序非依存。
+	struct TransparentDraw { const Mesh* mesh; sgc::Mat4f world; Material material; };
+	std::vector<TransparentDraw>  m_transparentCommands;
+	dx12::WeightedBlendedOIT      m_oit;
+	ComPtr<ID3D12PipelineState>   m_oitTransparentPSO;
+	void createOitResources();   ///< OIT の accum/reveal + 透明 PSO を生成 (initialize から)
+	void recordTransparentMesh(const Mesh& mesh, const sgc::Mat4f& world, const Material& material);
+	void renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE msaaColorRtv,
+	                           D3D12_CPU_DESCRIPTOR_HANDLE dsv);  ///< endFrame から呼ぶ OIT パス
+
 	/// 2Dオーバーレイ
 	ComPtr<ID3D12PipelineState> m_overlay2DPSO;       ///< 2Dオーバーレイ用PSO
 	ComPtr<ID3D12RootSignature> m_overlay2DRootSig;   ///< 2Dオーバーレイ用ルートシグネチャ
@@ -572,7 +618,262 @@ private:
 	ComPtr<ID3D12Resource>      m_skyboxVB;            ///< cube vertex buffer
 	ComPtr<ID3D12Resource>      m_skyboxIB;            ///< cube index buffer
 	ComPtr<ID3D12Resource>      m_skyboxCb;            ///< CbSkyTransform
+
+	/// ── 3D Gaussian Splatting (M1、DX12Splat.hpp が使う) ───────────────
+	ComPtr<ID3D12Resource>       m_splatBuffer;        ///< UPLOAD: StructuredBuffer<SplatGPU>
+	UINT                         m_splatCount = 0;     ///< スプラット数
+	ComPtr<ID3D12DescriptorHeap> m_splatSrvHeap;       ///< shader-visible: t0=splat, t1=order
+	ComPtr<ID3D12Resource>       m_splatCb;            ///< カメラ CB (view/proj/params)
+	ComPtr<ID3D12Resource>       m_splatIndexBuf;      ///< UPLOAD: 深度ソート済み index (毎フレーム更新)
+	ComPtr<ID3D12RootSignature>  m_splatRootSig;
+	ComPtr<ID3D12PipelineState>  m_splatPSO;
+	std::vector<float>           m_splatPos;           ///< CPU 位置 (3*N、深度ソート用)
+	std::vector<std::uint32_t>   m_splatOrder;         ///< CPU ソート済み index
+	std::vector<float>           m_splatKey;           ///< CPU 深度² (ソートキー、再利用)
+	std::vector<std::uint32_t>   m_splatHist;          ///< 深度バケットソートのヒストグラム (再利用)
+	float                        m_splatCenter[3] = {0.0f, 0.0f, 0.0f};  ///< シーン重心 (自動フレーミング)
+	float                        m_splatRadius = 1.0f;                    ///< シーン境界球半径
+	bool                         m_splatReady = false;         ///< シーン読込済み
+	bool                         m_splatPipelineReady = false; ///< PSO/rootsig/CB 構築済み
+
+	/// ── ニューラル現像 (M3、DX12Neural.hpp が使う) ───────────────────
+	NeuralStyle                  m_neuralStyle;        ///< ORT + DirectML EP セッション
+#ifdef MITIRU_HAS_DIRECTML
+	ComPtr<IDMLDevice>           m_dmlDevice;          ///< raw DirectML device (m_d3dDevice を共有)
+	bool                         m_dmlInitTried = false;   ///< device 生成を試したか (一度だけ)
+	Dx12NeuralPostFx             m_neuralFx;           ///< in-pipeline ニューラル後処理 (zero readback)
+	Dx12NeuralRelight            m_relight;            ///< ニューラル・リライティング (平面→法線→動的光源)
+	NeuralDepth                  m_depthNet;           ///< ORT+DML 単眼深度 (キャラ立体形状)
+	std::string                  m_relightModel;       ///< depth.onnx パス (demo が設定)
+	unsigned                     m_relightFrame = 0;   ///< 深度更新の間引きカウンタ
+#endif
+#ifdef MITIRU_HAS_CUBISM_CORE
+	Dx12Live2D                   m_live2d;             ///< 自前 D3D12 Live2D レンダラ (描画のみ)
+	bool                         m_live2dReq = false;  ///< 描画要求 (game.draw が毎フレーム立てる)
+	bool                         m_live2dReload = false;   ///< モデル切替で再 load する
+	std::string                  m_live2dPath;         ///< model3.json パス
+	std::string                  m_live2dStageBg, m_live2dStageGear, m_live2dStageClose;  ///< 公式ステージ画像
+	float                        m_live2dDragX = 0.0f, m_live2dDragY = 0.0f;  ///< 注視先 (マウス追従)
+	bool                         m_live2dTap = false;  ///< タップ要求 (次フレームで TapBody 再生)
+#endif
+#ifdef MITIRU_HAS_CUBISM_FRAMEWORK
+	live2d::Live2DModel          m_live2dModel;        ///< Framework: model3.json/motion/physics/effects
+#endif
+	std::string                  m_developModel;       ///< 要求された style モデルパス
+	bool                         m_developRequest = false;  ///< 次の安全境界で現像する
+	bool                         m_styleReady = false;      ///< 現像済み 2D 画像が有効
+	std::vector<std::uint8_t>    m_styleImage;         ///< 現像 2D 画像 (RGBA8、tight)
+	int                          m_styleW = 0;
+	int                          m_styleH = 0;
+	std::vector<std::uint8_t>    m_targetImage;        ///< お題 2D 画像 (RGBA8、現像合わせゲーム用)
+	bool                         m_targetReady = false;
+	bool                         m_showTarget = false;       ///< blit でお題を表示 (現像との比較)
+	float                        m_styleStrength = 0.0f;     ///< 現像 2D 合成強度 (0=3D / 1=2D)
+	bool                         m_styleTexDirty = false;    ///< blit テクスチャ再アップロード要
+	bool                         m_styleTexUploaded = false; ///< テクスチャに一度でも書いたか
+	bool                         m_styleBlitReady = false;   ///< blit PSO/rootsig 構築済み
+	int                          m_styleTexW = 0;
+	int                          m_styleTexH = 0;
+	ComPtr<ID3D12Resource>       m_styleTex;                 ///< DEFAULT: 現像 2D テクスチャ
+	ComPtr<ID3D12Resource>       m_styleUpload;              ///< UPLOAD: テクスチャ転送元
+	ComPtr<ID3D12DescriptorHeap> m_styleSrvHeap;             ///< shader-visible: t0=現像テクスチャ
+	ComPtr<ID3D12RootSignature>  m_styleBlitRootSig;
+	ComPtr<ID3D12PipelineState>  m_styleBlitPSO;
+
+	/// ── 現像焼き込み (M4: 2D 絵画を 3D スプラットへ焼く) ───────────────
+	glm::mat4                    m_developView{1.0f};   ///< 現像時の view (焼き込み射影用)
+	glm::mat4                    m_developProj{1.0f};   ///< 現像時の proj
+	bool                         m_bakeRequest = false;
+	bool                         m_resetRequest = false;
+	std::vector<float>           m_splatOrigRgb;        ///< 元の splat 色 (3*N、リセット用)
+	std::vector<std::uint8_t>    m_splatBaked;          ///< 焼き込み済みフラグ (N、達成率用)
+	int                          m_bakedTotal = 0;      ///< 焼き込み済み splat 数
 public:
+	/// @brief .splat シーンを読み込んで GPU にアップロードする (IRenderer3D)
+	bool loadSplatScene(const char* path) override { return loadSplatSceneDx12(path); }
+	/// @brief 読み込み済みスプラットを現在のカメラで描画する (IRenderer3D)
+	void drawSplats() override { drawSplatsDx12(); }
+	void splatBounds(float& cx, float& cy, float& cz, float& r) const override
+	{ cx = m_splatCenter[0]; cy = m_splatCenter[1]; cz = m_splatCenter[2]; r = m_splatRadius; }
+
+	/// ── ニューラル現像 (M3, IRenderer3D) ──
+	void requestDevelop(const char* modelPath) override { requestDevelopDx12(modelPath); }
+	void tickDevelop() override { ensureDirectMLDx12(); tickDevelopDx12(); relightDepthTickDx12(); }
+	void clearDevelop() override { m_styleReady = false; }
+
+	// ── Live2D (Framework 駆動 + 自前 D3D12 レンダラ、MITIRU_HAS_CUBISM_CORE) ──
+	void drawLive2D(const char* model3jsonPath) override { requestLive2DDx12(model3jsonPath); }
+	void live2dLookAt(float nx, float ny) override
+	{
+#ifdef MITIRU_HAS_CUBISM_CORE
+		m_live2dDragX = nx; m_live2dDragY = ny;
+#else
+		(void)nx; (void)ny;
+#endif
+	}
+	void live2dTap() override
+	{
+#ifdef MITIRU_HAS_CUBISM_CORE
+		m_live2dTap = true;
+#endif
+	}
+	void live2dStage(const char* bg, const char* gear, const char* close) override
+	{
+#ifdef MITIRU_HAS_CUBISM_CORE
+		m_live2dStageBg    = (bg != nullptr) ? bg : "";
+		m_live2dStageGear  = (gear != nullptr) ? gear : "";
+		m_live2dStageClose = (close != nullptr) ? close : "";
+#else
+		(void)bg; (void)gear; (void)close;
+#endif
+	}
+	void requestLive2DDx12(const char* model3jsonPath)
+	{
+#ifdef MITIRU_HAS_CUBISM_CORE
+		const std::string p = (model3jsonPath != nullptr) ? model3jsonPath : "";
+		if (m_live2d.ready() && p != m_live2dPath) { m_live2dReload = true; }   // モデルが変わった → 再 load
+		m_live2dPath = p;
+		m_live2dReq = !m_live2dPath.empty();
+#else
+		(void)model3jsonPath;
+#endif
+	}
+	/// @brief endFrame (tonemap 後) に backbuffer へ Live2D を 2D オーバーレイ描画する。
+	/// @details 初回はここで Framework がモデルをロード (moc/tex/motion/physics/effects) し、自前 D3D12
+	///          レンダラの GPU リソースを構築する。毎フレーム Framework が更新 → レンダラが描画。
+	void drawLive2DDx12()
+	{
+#ifdef MITIRU_HAS_CUBISM_FRAMEWORK
+		if (!m_live2dReq || !m_graphicsCmdList || m_d3dDevice == nullptr) { return; }
+		if (m_live2dReload)
+		{
+			if (m_device != nullptr) { m_device->waitForGpu(); }   // GPU 完了を待ってから旧リソース解放
+			m_live2dModel.unload();
+			m_live2d = Dx12Live2D{};
+			m_live2dReload = false;
+		}
+		if (!m_live2d.ready())
+		{
+			if (!m_live2dModel.ready() && !m_live2dModel.load(m_live2dPath.c_str())) { return; }
+			auto* core = static_cast<csmModel*>(m_live2dModel.coreModel());
+			if (core == nullptr) { return; }
+			std::vector<const char*> texs;
+			for (int i = 0; i < m_live2dModel.textureCount(); ++i) { texs.push_back(m_live2dModel.texturePath(i)); }
+			if (texs.empty()) { return; }
+			if (!m_live2dStageBg.empty())   // 公式 LAppView 相当のステージ (背景/歯車/閉じる)
+			{
+				m_live2d.setStage(m_live2dStageBg.c_str(), m_live2dStageGear.c_str(), m_live2dStageClose.c_str());
+			}
+			m_live2d.load(m_d3dDevice, m_graphicsCmdList.Get(), core, texs.data(), static_cast<int>(texs.size()));
+		}
+		if (!m_live2d.ready()) { return; }
+
+		if (m_live2dTap) { m_live2dModel.tap(); m_live2dTap = false; }
+		m_live2dModel.update(m_live2dDragX, m_live2dDragY);   // motion/physics/effects/csmUpdateModel
+
+		auto* sc  = m_device->getSwapChain();
+		auto* bb  = static_cast<gfx::Dx12RenderTarget*>(sc->backBuffer());
+		auto  rtv = bb->rtvHandle();
+		const auto bbDesc = bb->nativeResource()->GetDesc();
+		m_live2d.render(m_graphicsCmdList.Get(), rtv,
+		                static_cast<int>(bbDesc.Width), static_cast<int>(bbDesc.Height),
+		                static_cast<int>(sc->currentBackBufferIndex()));
+#endif
+	}
+
+	// ── DirectML in-pipeline ニューラル後処理 (zero readback) ──
+	void enableNeuralFx(bool e, float strength) override
+	{
+#ifdef MITIRU_HAS_DIRECTML
+		m_neuralFx.setEnabled(e);
+		m_neuralFx.setStrength(strength);
+#else
+		(void)e; (void)strength;
+#endif
+	}
+	/// @brief endFrame (Live2D 後) に backbuffer へ DirectML 後処理を適用する。
+	void neuralFxTickDx12()
+	{
+#ifdef MITIRU_HAS_DIRECTML
+		if (!m_neuralFx.enabled() || !m_graphicsCmdList || m_d3dDevice == nullptr) { return; }
+		if (!ensureDirectMLDx12()) { return; }
+		auto* bb = static_cast<gfx::Dx12RenderTarget*>(m_device->getSwapChain()->backBuffer());
+		const auto d = bb->nativeResource()->GetDesc();
+		const int w = static_cast<int>(d.Width), h = static_cast<int>(d.Height);
+		if (!m_neuralFx.ensure(m_d3dDevice, m_dmlDevice.Get(), m_graphicsCmdList.Get(), w, h)) { return; }
+		m_neuralFx.apply(m_graphicsCmdList.Get(), bb->nativeResource(), bb->rtvHandle(), w, h);
+#endif
+	}
+	// ── ニューラル・リライティング (平面 Live2D → 推定法線 → 動的光源) ──
+	void enableRelight(bool e, float lightX, float lightY, float strength, float rim) override
+	{
+#ifdef MITIRU_HAS_DIRECTML
+		m_relight.setEnabled(e);
+		m_relight.setLight(lightX, lightY);
+		m_relight.setParams(strength, rim, 6.0f);
+#else
+		(void)e; (void)lightX; (void)lightY; (void)strength; (void)rim;
+#endif
+	}
+	void relightTickDx12()
+	{
+#ifdef MITIRU_HAS_DIRECTML
+		if (!m_relight.enabled() || !m_graphicsCmdList || m_d3dDevice == nullptr) { return; }
+		auto* bb = static_cast<gfx::Dx12RenderTarget*>(m_device->getSwapChain()->backBuffer());
+		const auto d = bb->nativeResource()->GetDesc();
+		const int w = static_cast<int>(d.Width), h = static_cast<int>(d.Height);
+		if (!m_relight.ensure(m_d3dDevice, m_graphicsCmdList.Get(), w, h)) { return; }
+		m_relight.apply(m_graphicsCmdList.Get(), bb->nativeResource(), bb->rtvHandle(), w, h);
+#endif
+	}
+	void setRelightDepthModel(const char* path) override { if (path) m_relightModel = path; }
+	/// @brief フレーム境界 (tickDevelop) で前フレームを readPixels → キャラ領域クロップ → ORT 深度推論
+	///        → relight へ深度を渡す。間引き (数フレームに1回) で stall を抑える。深度未取得時は relight が
+	///        輝度プロキシにフォールバックする。
+	void relightDepthTickDx12()
+	{
+#ifdef MITIRU_HAS_ONNX
+		if (!m_relight.enabled() || m_relightModel.empty() || m_device == nullptr) { return; }
+		const unsigned f = m_relightFrame++;
+		if (f < 180u) { return; }                  // 起動直後はスキップ (CEF scene ロードを優先)
+		if ((f % 30u) != 0u) { return; }           // 30 フレームに 1 回 (stall を抑える、キャラはゆっくり)
+		if (!m_depthNet.ensure(m_relightModel)) { return; }
+		const int w = static_cast<int>(m_config.viewportWidth), h = static_cast<int>(m_config.viewportHeight);
+		if (w <= 0 || h <= 0) { return; }
+		m_device->waitForGpu();
+		std::vector<std::uint8_t> frame = m_device->readPixels(w, h);
+		if (static_cast<int>(frame.size()) < w * h * 4) { return; }
+		// キャラ領域クロップ (公式フレーミングで中央列に立つ): x∈[0.40,0.62], y∈[0.04,0.97]
+		if (m_depthNet.infer(frame.data(), w, h, 0.40f, 0.04f, 0.62f, 0.97f))
+		{
+			float x0, y0, x1, y1; m_depthNet.cropRect(x0, y0, x1, y1);
+			m_relight.setDepth(m_depthNet.depth().data(), m_depthNet.depthW(), m_depthNet.depthH(), x0, y0, x1, y1);
+		}
+#endif
+	}
+	bool styleReady() const override { return m_styleReady; }
+	const std::uint8_t* styleImageData() const override { return m_styleReady ? m_styleImage.data() : nullptr; }
+	int styleImageW() const override { return m_styleW; }
+	int styleImageH() const override { return m_styleH; }
+	void setStyleStrength(float s) override { setStyleStrengthDx12(s); }
+	void bakeStyleToSplats() override { m_bakeRequest = true; }
+	void resetSplatColors() override { m_resetRequest = true; }
+	float bakedFraction() const override { return m_splatCount ? static_cast<float>(m_bakedTotal) / static_cast<float>(m_splatCount) : 0.0f; }
+	// ── 現像合わせ (お題再現パズル) ──
+	void captureTargetFromStyle() override { captureTargetDx12(); }
+	void setShowTarget(bool b) override { if (b != m_showTarget) { m_showTarget = b; m_styleTexDirty = true; } }
+	bool hasTarget() const override { return m_targetReady; }
+	float matchScore() const override { return matchScoreDx12(); }
+	bool worldToScreen(float wx, float wy, float wz, float& u, float& v) const override
+	{
+		const glm::vec4 clip = m_projMatrix * m_viewMatrix * glm::vec4(wx, wy, wz, 1.0f);
+		if (clip.w <= 0.0001f) { u = v = -1.0f; return false; }
+		const float nx = clip.x / clip.w, ny = clip.y / clip.w;
+		u = nx * 0.5f + 0.5f;
+		v = 0.5f - 0.5f * ny;   // NDC y↑ → 画面 v↓
+		return (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f);
+	}
+
 	/// @brief このフレームで3D描画が行われたかを返す
 	[[nodiscard]] bool isFrameActive() const noexcept override { return m_frameActive; }
 	/// @brief フレームアクティブフラグをリセットする（Engine側で毎フレーム呼ぶ）

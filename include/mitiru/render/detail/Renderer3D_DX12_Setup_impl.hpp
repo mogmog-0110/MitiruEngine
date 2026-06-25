@@ -118,7 +118,72 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	// 無効でも QueryInterface は通る (メッセージが来ないだけ)。
 	m_d3dDevice->QueryInterface(IID_PPV_ARGS(m_infoQueue.GetAddressOf()));
 
+	// 半透明 OIT (accum/reveal MSAA RT + 透明 PSO)。root sig / depth / MSAA 確定後。
+	try {
+		createOitResources();
+	} catch (const std::exception& e) {
+		throw std::runtime_error(std::string("DX12 createOitResources: ") + e.what());
+	}
+
 	m_initialized = true;
+}
+
+/// @brief 半透明 OIT のリソースを生成する (WeightedBlendedOIT + 透明 PSO)。
+/// @details accum/reveal は MSAA color と同じ 4x。透明 PSO は main VS + WBOIT PS、
+///          main root signature を流用、深度は読み取り専用 (DepthWrite=ZERO) で不透明を
+///          遮蔽する。composite 先は MSAA color (FP16 HDR) なので tonemap 前に重なる。
+inline void Renderer3D_DX12::createOitResources()
+{
+	const UINT w = static_cast<UINT>(m_config.viewportWidth);
+	const UINT h = static_cast<UINT>(m_config.viewportHeight);
+	if (w == 0 || h == 0) { return; }
+
+	// accum(RGBA16F)/reveal(R16F) を MSAA で。composite 先 = MSAA color (FP16)。
+	m_oit.initialize(m_d3dDevice, w, h,
+	                 DXGI_FORMAT_R16G16B16A16_FLOAT, MSAA_SAMPLE_COUNT);
+
+	// 透明ジオメトリ PSO: main VS + WBOIT PS。
+	Microsoft::WRL::ComPtr<ID3DBlob> vs, ps, err;
+	D3DCompile(DX12_DEFAULT_VS_3D, std::strlen(DX12_DEFAULT_VS_3D), nullptr, nullptr,
+	           nullptr, "VSMain", "vs_5_0", 0, 0, vs.GetAddressOf(), err.GetAddressOf());
+	D3DCompile(DX12_OIT_TRANSPARENT_PS_3D, std::strlen(DX12_OIT_TRANSPARENT_PS_3D), nullptr,
+	           nullptr, nullptr, "PSMain", "ps_5_0", 0, 0, ps.GetAddressOf(), err.GetAddressOf());
+	if (!vs || !ps)
+	{
+		throw std::runtime_error("createOitResources: D3DCompile (transparent) failed");
+	}
+
+	const D3D12_INPUT_ELEMENT_DESC layout[] = {
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC pd{};
+	pd.pRootSignature = m_rootSignature.Get();
+	pd.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
+	pd.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
+	dx12::WeightedBlendedOIT::fillAccumulateBlend(pd.BlendState);
+	pd.SampleMask = UINT_MAX;
+	pd.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+	pd.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;   // 透明は両面見せる
+	pd.RasterizerState.DepthClipEnable = TRUE;
+	pd.DepthStencilState.DepthEnable = TRUE;
+	pd.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;  // 読み取り専用
+	pd.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	pd.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	pd.InputLayout = {layout, 4};
+	pd.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	pd.NumRenderTargets = 2;
+	pd.RTVFormats[0] = dx12::WeightedBlendedOIT::accumFormat();
+	pd.RTVFormats[1] = dx12::WeightedBlendedOIT::revealFormat();
+	pd.SampleDesc.Count = MSAA_SAMPLE_COUNT;
+	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(
+			&pd, IID_PPV_ARGS(m_oitTransparentPSO.GetAddressOf()))))
+	{
+		throw std::runtime_error("createOitResources: CreateGraphicsPipelineState (transparent) failed");
+	}
 }
 
 /// @brief ビューポートサイズを変更する
