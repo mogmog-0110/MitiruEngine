@@ -27,7 +27,6 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 
 	m_drawCallCount = 0;
 	m_frameActive = true;
-	m_outlineCommands.clear();
 	m_transparentCommands.clear();
 	m_skyboxDrawnThisFrame = false;
 	// 前フレームの shadow casters をスナップして当フレーム描画分をクリア
@@ -45,8 +44,12 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 
 	// GPU は前フレームの ring を読み終えているので reset OK
 	m_uploadRing.beginFrame(frameIndex);
-	// アルベド SRV カーソルもフレームの先頭で 0 に
+	// アルベド SRV cursor を自 frame partition の先頭へ
+	// (in-flight の前フレーム分 descriptor を上書きしない)
+	m_albedoSrvBase   = frameIndex * m_albedoSrvCapacity;
 	m_albedoSrvCursor = 0;
+	// N フレーム参照の無い mesh VB/IB を退役させる
+	evictStaleMeshBuffers();
 
 	/// Dx12Device::beginFrame()が既にフェンス待機済み
 	/// GPU完了後に前フレームの一時リソースを解放する
@@ -209,22 +212,12 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 	/// 頂点バッファをキャッシュまたはアップロードする
 	const auto& verts = mesh.vertices();
 	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
-	const void* meshKey = static_cast<const void*>(&mesh);
 
-	auto& cachedVB = m_meshVBCache[meshKey];
-	if (!cachedVB.resource || cachedVB.size != vbSize)
-	{
-		cachedVB.resource = createUploadBuffer(vbSize);
-		cachedVB.size = vbSize;
-		if (cachedVB.resource)
-		{
-			uploadToBuffer(cachedVB.resource.Get(), verts.data(), vbSize);
-		}
-	}
-	if (!cachedVB.resource) { return; }
+	auto* vb = acquireMeshBuffer(m_meshVBCache, mesh, verts.data(), vbSize);
+	if (!vb) { return; }
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = cachedVB.resource->GetGPUVirtualAddress();
+	vbv.BufferLocation = vb->GetGPUVirtualAddress();
 	vbv.SizeInBytes = vbSize;
 	vbv.StrideInBytes = sizeof(Vertex3D);
 	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
@@ -262,20 +255,11 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 		const UINT ibSize = static_cast<UINT>(
 			indices.size() * sizeof(uint32_t));
 
-		auto& cachedIB = m_meshIBCache[meshKey];
-		if (!cachedIB.resource || cachedIB.size != ibSize)
-		{
-			cachedIB.resource = createUploadBuffer(ibSize);
-			cachedIB.size = ibSize;
-			if (cachedIB.resource)
-			{
-				uploadToBuffer(cachedIB.resource.Get(), indices.data(), ibSize);
-			}
-		}
-		if (!cachedIB.resource) { return; }
+		auto* ib = acquireMeshBuffer(m_meshIBCache, mesh, indices.data(), ibSize);
+		if (!ib) { return; }
 
 		D3D12_INDEX_BUFFER_VIEW ibv = {};
-		ibv.BufferLocation = cachedIB.resource->GetGPUVirtualAddress();
+		ibv.BufferLocation = ib->GetGPUVirtualAddress();
 		ibv.SizeInBytes = ibSize;
 		ibv.Format = DXGI_FORMAT_R32_UINT;
 		m_graphicsCmdList->IASetIndexBuffer(&ibv);
@@ -290,15 +274,6 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 	}
 
 	++m_drawCallCount;
-
-	/// アウトラインパス用にコマンドを記録する
-	if (m_config.enableOutline && m_outlinePSO)
-	{
-		OutlineDrawCommand cmd;
-		cmd.mesh = &mesh;
-		cmd.worldTransform = worldTransform;
-		m_outlineCommands.push_back(cmd);
-	}
 
 	/// シャドウキャスター記録（次フレームの shadow pass で使われる）
 	if (m_shadowEnabled)
@@ -320,17 +295,10 @@ inline void Renderer3D_DX12::recordTransparentMesh(const Mesh& mesh,
 
 	const auto& verts = mesh.vertices();
 	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
-	const void* key = static_cast<const void*>(&mesh);
-	auto& vb = m_meshVBCache[key];
-	if (!vb.resource || vb.size != vbSize)
-	{
-		vb.resource = createUploadBuffer(vbSize);
-		vb.size = vbSize;
-		if (vb.resource) { uploadToBuffer(vb.resource.Get(), verts.data(), vbSize); }
-	}
-	if (!vb.resource) { return; }
+	auto* vb = acquireMeshBuffer(m_meshVBCache, mesh, verts.data(), vbSize);
+	if (!vb) { return; }
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = vb.resource->GetGPUVirtualAddress();
+	vbv.BufferLocation = vb->GetGPUVirtualAddress();
 	vbv.SizeInBytes = vbSize;
 	vbv.StrideInBytes = sizeof(Vertex3D);
 	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
@@ -349,16 +317,10 @@ inline void Renderer3D_DX12::recordTransparentMesh(const Mesh& mesh,
 	if (!indices.empty())
 	{
 		const UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint32_t));
-		auto& ib = m_meshIBCache[key];
-		if (!ib.resource || ib.size != ibSize)
-		{
-			ib.resource = createUploadBuffer(ibSize);
-			ib.size = ibSize;
-			if (ib.resource) { uploadToBuffer(ib.resource.Get(), indices.data(), ibSize); }
-		}
-		if (!ib.resource) { return; }
+		auto* ib = acquireMeshBuffer(m_meshIBCache, mesh, indices.data(), ibSize);
+		if (!ib) { return; }
 		D3D12_INDEX_BUFFER_VIEW ibv = {};
-		ibv.BufferLocation = ib.resource->GetGPUVirtualAddress();
+		ibv.BufferLocation = ib->GetGPUVirtualAddress();
 		ibv.SizeInBytes = ibSize;
 		ibv.Format = DXGI_FORMAT_R32_UINT;
 		m_graphicsCmdList->IASetIndexBuffer(&ibv);
@@ -432,9 +394,6 @@ inline void Renderer3D_DX12::endFrame()
 	{
 		drawPostProcessOutline();
 	}
-
-	/// アウトラインパス完了後にコマンドバッファをクリアする
-	m_outlineCommands.clear();
 
 	/// FXAA ポストプロセス AA (ENG-104)
 	/// outline までの 3D シーン色に対して fast approximate AA を適用する。

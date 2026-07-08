@@ -8,13 +8,13 @@
 #
 #   include(${MitiruEngine_DIR}/cmake/MitiruAssets.cmake)
 #
-#   mitiru_assets(kaerucrape_art
+#   mitiru_assets(my_game_art
 #       SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/assets-src
 #       OUT_DIR     ${CMAKE_CURRENT_BINARY_DIR}/assets/images
 #   )
 #
 #   # Wire the output dir into your game at build time.
-#   add_dependencies(my_game kaerucrape_art)
+#   add_dependencies(my_game my_game_art)
 #
 # Or, one-line convenience that both creates the aggregate target AND
 # attaches it to an existing target:

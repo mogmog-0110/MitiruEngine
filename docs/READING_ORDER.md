@@ -4,9 +4,9 @@ Where to start, depending on who you are and what you're doing.
 
 ## Newcomer — human
 
-1. **`README.md`** — タグライン + 4 軸 + CLI quickstart
+1. **`README.md`** — タグライン + 特徴 + CLI quickstart
 2. **`docs/GETTING_STARTED.md`** — `mitiru` CLI を入れて最初のプロジェクトを作る
-3. **`docs/SCOPE.md`** — canonical identity statement、4 軸、target user
+3. **`docs/SCOPE.md`** — canonical identity statement、差別化機能の定義、target user
 4. **`examples/hello_game/`** — C++ gameplay + HTML/CSS HUD の動く showcase
 5. **`docs/ARCHITECTURE.md`** — エンジン全体の設計、deeper dive
 
@@ -14,7 +14,7 @@ Templates (`templates/`) は参照用。日常のプロジェクト作成は `mi
 
 ## Newcomer — LLM (Claude Code, Copilot CLI, etc.)
 
-1. **`CLAUDE.md`** (project root) — engine 規約、アトミックツール哲学、4 軸 — **必須**
+1. **`CLAUDE.md`** (project root) — engine 規約、アトミックツール哲学、差別化機能の定義 — **必須**
 2. **`docs/SCOPE.md`** — canonical engine identity、out-of-scope の明示
 3. **`.claude/rules/`** — 担当エリアの rule ファイル
 4. **`docs/API_QUICKREF.md`** — よく使う API のチャート
@@ -23,29 +23,30 @@ Templates (`templates/`) は参照用。日常のプロジェクト作成は `mi
 
 ---
 
-## エンジンの 4 軸を理解する
+## エンジンの差別化機能を理解する
 
-`docs/SCOPE.md` の "4 つの独自軸" を読む。実装フェーズ別に:
+`docs/SCOPE.md` の「5 つの独自軸」の章 (定義の場) を読む。機能別の入口:
 
-| 軸 | Phase | 入口の doc |
-|---|---|---|
-| 1. HTML/CSS で UI が書ける C++ engine | P1 | `examples/hello_game/`、`docs/CEF_STATE_BRIDGE.md` |
-| 2. タイムトラベル inspector | P2 | `docs/REPLAY_DEBUGGER.md` (P2 で更新) |
-| 3. 全 system 単独起動 | P3 | (未着手 — P3 で `docs/SUBSYSTEM_ISOLATION.md` 追加予定) |
-| 4. Deterministic + 自動リプレイ | P4 | `docs/REPLAY_DEBUGGER.md` (P4 で更新) |
+| 機能 | 入口の doc |
+|---|---|
+| HTML/CSS で UI が書ける C++ engine | `examples/hello_game/`、`docs/CEF_STATE_BRIDGE.md` |
+| 巻き戻し (タイムトラベル窓) | `docs/TIME_TRAVEL.md`、`docs/REPLAY_DEBUGGER.md` |
+| 全 system 単独起動 | `docs/SUBSYSTEMS.md` |
+| 録画リプレイ | `docs/REPLAY_DEBUGGER.md`、`docs/recipe-replay-as-test.md` |
+| 別窓ツール | `docs/TOOL_WINDOWS.md` |
 
 ---
 
 ## 新規 feature を追加する
 
-1. **`docs/SCOPE.md`** — out-of-scope に該当しないか、4 軸のどれを強化するかを確認
+1. **`docs/SCOPE.md`** — out-of-scope に該当しないか、差別化機能のどれを強化するかを確認
 2. **`docs/ARCHITECTURE.md`** — 該当レイヤーを特定
 3. **`include/mitiru/<module>/`** — 既存ヘッダを読む
 4. **`.claude/rules/mitiru-engine.md`** — coding conventions、hot-path discipline、validation tools
 5. **`.claude/rules/test-standards.md`** — Catch2 パターン
 6. **`tests/mitiru/Test*.cpp`** — 既存テストをコピー出発点に
 
-## HTML/CSS UI を追加する (軸 1)
+## HTML/CSS UI を追加する
 
 1. **`examples/hello_game/`** — canonical pattern (C++ StateStore + HTML subscribe)
 2. **`docs/CEF_STATE_BRIDGE.md`** — bridge mechanics
@@ -63,7 +64,7 @@ Templates (`templates/`) は参照用。日常のプロジェクト作成は `mi
 
 ## Investigating a bug in the UI layer
 
-1. Inspector window を開いて該当 state を確認 (P2 以降 — `mitiru inspect <subject>`)
+1. Inspector window を開いて該当 state を確認 (`mitiru inspect <subject>`)
 2. **Real User Path Smoke (RUP-S)** で再現 — 内部 API 呼び出しじゃなく real PointerEvent dispatch
 3. 証拠スクショを `specs/.../evidence/` に保存
 4. **根本原因を直す**。対症療法禁止 — `.claude/rules/definition-of-done.md`
@@ -78,9 +79,9 @@ CLI を使わずに既存 CMake プロジェクトに足したい場合は `docs
 
 ## 歴史的文書 (旧 dual-mode 時代、現役じゃない)
 
-以下は 2026-05 の方針転換 (ADR 0001 / 0002) より前の文書。**新規開発時は読まないでください** — 古い「Mode A / Mode B」「JS gameplay」前提で書かれている:
+以下は 2026-05 の方針転換より前の文書。**新規開発時は読まないでください** — 古い「JS gameplay」前提で書かれている:
 
-- `docs/HYBRID_RUNTIME.md` — Mode B 前提。歴史的経緯のみ
+- `docs/HYBRID_RUNTIME.md` — HTML UI 構成 (CEF あり) 前提。歴史的経緯のみ
 - `docs/NARRATIVE_VMS.md` — JS narrative VM の選定。`vn::ScenarioScript` (C++) のみ使用
 
-新方針の canonical は **`docs/SCOPE.md`** + **`CLAUDE.md`** + 関連 ADR。
+新方針の canonical は **`docs/SCOPE.md`** + **`CLAUDE.md`** + **`docs/ARCHITECTURE.md`**。

@@ -11,7 +11,9 @@
  *   overlay.unregister(entityId)
  *   overlay.setEnabled(bool)
  *   overlay.render(ctx2d)               — ゲーム描画後に毎 frame 呼ぶ
- *   overlay.bindKeyToggle(window, 'F3') — 任意のキーボード toggle
+ *
+ * toggle の入力割当はゲーム窓に持たせない — host C++ (ToolRegistry) か
+ * ページ内 UI から setEnabled() を呼ぶ。
  *
  * EntityDebugInfo shape:
  *   {
@@ -68,12 +70,12 @@
    */
   function drawLabel(ctx, text, px, py, canvasWidth, canvasHeight) {
     ctx.save();
-    ctx.font = '11px monospace';
+    ctx.font = '18px monospace'; // 18px+ ルール (可読最小サイズ)
     ctx.textBaseline = 'bottom';
 
     const metrics = ctx.measureText(text);
     const textW = metrics.width;
-    const textH = 12; // 11px mono の ascent 近似値
+    const textH = 19; // 18px mono の ascent 近似値
 
     // label と 1 px outline の両方が canvas 内に収まるよう clamp する
     const clampedX = Math.max(2, Math.min(px, canvasWidth  - textW - 2));
@@ -192,20 +194,6 @@
         drawLabel(ctx, label, labelX, labelY, canvasWidth, canvasHeight);
       }
     }
-  };
-
-  /**
-   * F3 (または任意のキー) の toggle を window に bind する。
-   * @param {Window}  win       attach 先の window object。
-   * @param {string}  key       監視するキー (例 'F3')。
-   */
-  InspectorOverlay.prototype.bindKeyToggle = function (win, key) {
-    const self = this;
-    win.addEventListener('keydown', function (e) {
-      if (e.key === key) {
-        self.setEnabled(!self._enabled);
-      }
-    });
   };
 
   // ── export ──────────────────────────────────────────────────────────────────

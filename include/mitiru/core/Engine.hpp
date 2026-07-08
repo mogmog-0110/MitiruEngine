@@ -51,6 +51,7 @@
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/gfx/GfxFactory.hpp>
 #include <mitiru/render/TrueTypeScreenRenderer.hpp>
+#include <mitiru/render/GlyphAtlasRenderer.hpp>
 #include <mitiru/render/SdfFont.hpp>
 #include <mitiru/vn/TrueTypeFont.hpp>
 #include <mitiru/gfx/IDevice.hpp>
@@ -59,6 +60,7 @@
 #include <mitiru/render/RenderPipeline2D.hpp>
 #ifdef _WIN32
 #include <mitiru/gfx/dx12/Dx12LoFiTarget.hpp>
+#include <mitiru/gfx/dx12/Dx12MsaaTarget.hpp>
 #endif
 #include <mitiru/input/InputInjector.hpp>
 #include <mitiru/input/InputRecorder.hpp>
@@ -73,7 +75,6 @@
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/AudioLog.hpp>
 #include <mitiru/module/ModuleApi.hpp>
-#include <mitiru/module/Merge.hpp>  // つむぎ: 決定論3-wayマージ (weaveModuleMemory 用)
 #include <mitiru/platform/WindowFactory.hpp>
 #include <mitiru/ecs/MitiruWorld.hpp>
 #include <mitiru/scene/MitiruScene.hpp>
@@ -83,7 +84,7 @@
 
 // 前方宣言 -- raw/shared pointer で保持し、Engine からは method を呼ばない
 namespace mitiru::validate { class TemporalInvariantChecker; }
-namespace mitiru::observe { class StructuredDiff; class CausalChain; }
+namespace mitiru::observe { class CausalChain; }
 // ModuleHost は pimpl 方式: 完全型は mitiru/module/ModuleHost.hpp に置く
 // (<windows.h> を引き込む)。WIN32 macro 汚染を実際の host code
 // (Engine_Module.hpp + tests) のみに限定するため Engine.hpp consumer からは隠す。
@@ -187,6 +188,16 @@ public:
 		return 0;
 	}
 
+	/// @brief ゲーム窓の画面上の矩形 (枠込みの外側) を取得する。取得できたら true。
+	/// @details 別のツール窓をこの窓へ吸着・追従させる (ドッキング) ために host が使う。
+	[[nodiscard]] bool gameWindowRect(int& x, int& y, int& w, int& h) const
+	{
+		return m_window ? m_window->getWindowRect(x, y, w, h) : false;
+	}
+
+	/// @brief ウィンドウ (非所有、null もあり得る)。ドックしたツール窓が自窓を動かすのに使う。
+	[[nodiscard]] IWindow* window() noexcept { return m_window.get(); }
+
 	/// @brief GPU付きでNフレーム実行し、スクリーンショットをキャプチャする
 	/// @param game ゲームインスタンス
 	/// @param frameCount 実行フレーム数
@@ -261,7 +272,6 @@ public:
 	bool saveSettings() noexcept;
 
 	void setTemporalChecker(validate::TemporalInvariantChecker* checker) noexcept;
-	void setDiffTracker(observe::StructuredDiff* tracker) noexcept;
 	void setCausalChain(observe::CausalChain* chain) noexcept;
 
 	/// @brief ポストプロセスマネージャーを取得する
@@ -280,6 +290,9 @@ public:
 
 	/// @brief フルスクリーン/ウィンドウを切り替える (Win32 のみ)
 	void setFullscreen(bool enable) noexcept;
+
+	/// @brief ウィンドウアイコンを .ico ファイルで設定する (headless では no-op)
+	void setWindowIcon(std::string_view icoPath) noexcept;
 
 	/// @brief 現在フルスクリーンかどうか (Win32 のみ)
 	[[nodiscard]] bool isFullscreen() const noexcept;
@@ -367,6 +380,8 @@ public:
 	///   - 既存 memory pointer は新 DLL に渡される (state 維持)。旧 DLL の unloadFn /
 	///     on_shutdown は呼ばない (呼ぶと memory が delete され UAF になる)
 	///   - 新規確保時のみ on_init が走る (reload では走らない = init() で状態が戻らない)
+	///   - 例外: 新 DLL の memorySize が旧と違う時は温存を放棄する (旧割当を越える
+	///     read/write の防止)。旧 DLL を正規 unload → fresh 確保 + on_init。stderr に 1 行警告
 	bool reloadModule(const std::filesystem::path& modulePath);
 
 	/// @brief 直近の module load / reload 失敗の理由 (人間向け 1 行)。成功時は空
@@ -411,12 +426,45 @@ public:
 	/// @details fuzz の不変条件チェック等、外から field 値を読むため。未宣言 / サイズ 0 なら "{}"。
 	[[nodiscard]] std::string reflectBlobJson(const void* blob) const;
 
+	/// @brief 分岐 byte offset を当該フレームで最後に書いた phase 名を game へ問い合わせる
+	///        (`mitiru why` の causal 層、optional)。
+	/// @details game が `mitiru_why_blame_at` を export していれば呼ぶ (ADR0005: host→DLL pull)。
+	///          未対応 game / 未 load なら nullptr。返り値は game 所有の静的文字列で即読み前提。
+	[[nodiscard]] const char* queryModuleWriteBlame(std::uint32_t offset) const;
+
 	/// @brief time-travel rewind: live GameMemory を過去 bytes で memcpy 上書きする (ADR 0017)
 	/// @details host が scrub command を受けて呼ぶ。size が GameMemory サイズと一致しない /
 	///          live が無い場合は false (live を壊さない)。game DLL は rewind を知らない
 	///          — 次フレームの on_update が復元された state を「現在」として淡々と進める。
 	/// @return 上書きに成功したら true
 	bool rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept;
+
+	/// @brief 過去フレームで静止する (scrub-hold)。offsetFromNewest は「何フレーム前か」(0=最新)。
+	/// @details 別窓のシークバーをドラッグしている間、host がこれを呼ぶ。以降 applyScrubHold()
+	///          が毎フレームそのフレームを復元し、ゲームの前進と記録を止める (静止して眺められる)。
+	void setScrubHold(std::size_t offsetFromNewest) noexcept
+	{
+		m_scrubHold       = true;
+		m_scrubHoldOffset = offsetFromNewest;
+	}
+
+	/// @brief scrub-hold を解除し、いま表示しているフレームから再生を再開する。
+	void clearScrubHold() noexcept { m_scrubHold = false; }
+
+	/// @brief scrub-hold 中か。
+	[[nodiscard]] bool scrubHoldActive() const noexcept { return m_scrubHold; }
+
+	/// @brief scrub-hold 中なら選択フレームを live GameMemory へ復元し true を返す。
+	/// @details update() の先頭で呼ぶ。true の間は on_update と記録をスキップして静止させる。
+	bool applyScrubHold() noexcept
+	{
+		if (!m_scrubHold) { return false; }
+		if (const std::uint8_t* past = moduleMemoryRingAt(m_scrubHoldOffset))
+		{
+			rewindModuleMemory(past, moduleMemorySize());
+		}
+		return true;
+	}
 
 	/// @brief replay 用の load 代用フック (ADR 0020)。host 内部 API — DLL 境界を跨がず ABI 影響なし。
 	/// @details load intent の drain 直前に sanitize 済み slot 名で呼ばれる。true を返すと
@@ -448,15 +496,6 @@ public:
 	/// @param frameCount 進めるフレーム数
 	[[nodiscard]] std::string branchModuleMemory(const module::InputSnapshot* inputs, int frameCount);
 
-	/// @brief つむぎの核: 現 GameMemory を共通祖先 A とし、台本入力 X / Y を別々に headless
-	///        シムして 2 つの分岐 blob を作り、reflection ベースの 3-way マージで 1 つに織り
-	///        合わせて live GameMemory へ確定する。衝突は MergeReport で返す。
-	/// @details branchModuleMemory と同じ副作用ゼロのシム (draw/intents drain なし) を A から
-	///          2 回行い、merge3 で畳む。flat-POD + reflection + 決定論ゆえに厳密・再現可能。
-	///          reflection 未宣言 / サイズ 0 / 入力不正なら no-op + 空レポート (live 不変)。
-	module::MergeReport weaveModuleMemory(const module::InputSnapshot* inputsX, int framesX,
-	                                      const module::InputSnapshot* inputsY, int framesY);
-
 	/// @brief module-mode で engine 所有の CEF StateStore (lazy created)
 	/// @details CEF init 後 + module load 後にのみ non-null。ADR 0005 により
 	///          DLL は直接これに触らず、`FrameIntents::statePushes` 経由で
@@ -467,8 +506,9 @@ private:
 	// ── Module-mode per-frame helper 群 (runModule 内の ModuleAdapter が呼ぶ) ──
 	// detail/Engine_Module.hpp で out-of-class 定義する。
 	void ensureModuleCefBindings();        ///< CEF 準備完了後に StateStore + SharedSnapshot を遅延生成
-	void buildModuleInputSnapshot();       ///< m_inputState + action queue から m_moduleInputSnapshot を構築
+	void buildModuleInputSnapshot(float dt); ///< m_inputState + action queue + 実効 dt/論理解像度 から m_moduleInputSnapshot を構築 (v21)
 	void zeroModuleFrameIntents();         ///< 各 on_update 呼び出し前に m_moduleFrameIntents をクリア
+	void applyModuleRestartIntent();       ///< on_update 直後・ring 記録前に restart intent を適用 (§8-4: memset 0 → on_init)
 	void drainModuleFrameIntents();        ///< on_update 後に DLL が要求した side-effect を適用
 	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を time-travel ring へ push (ADR 0017)
 	void recordModuleInputFrame();         ///< on_update 後に InputSnapshot bytes を InputRing へ push (ADR 0021)
@@ -612,7 +652,10 @@ private:
 	std::unique_ptr<render::RenderPipeline2D> m_renderPipeline; ///< 2Dレンダリングパイプライン
 #ifdef _WIN32
 	std::unique_ptr<gfx::Dx12LoFiTarget> m_loFiTarget; ///< ローファイ・ポストFX（DX12のみ・config で opt-in）
+	std::unique_ptr<gfx::Dx12MsaaTarget> m_msaaTarget; ///< 2D 4x MSAA 中間 RT（DX12のみ・config で既定 ON）
 #endif
+	bool m_prevFrame3DUsed = false;     ///< 前フレームで 3D を使ったか（2D MSAA の draw() 前 gate 用）
+	bool m_msaa2dActiveThisFrame = false; ///< 当フレームで 2D MSAA override を張ったか（resolve する目印）
 	int m_logicalWidth = 0;                          ///< Screen論理幅 (layout()で決定、固定)
 	int m_logicalHeight = 0;                         ///< Screen論理高さ (layout()で決定、固定)
 	// Debug overlay 用データ
@@ -621,9 +664,10 @@ private:
 	float m_dbgRawMx = 0, m_dbgRawMy = 0;
 	float m_dbgPostPollMx = 0, m_dbgPostPollMy = 0;
 	float m_dbgScaledMx = 0, m_dbgScaledMy = 0;
-	std::unique_ptr<vn::TrueTypeFont> m_ttfFont;     ///< TTFフォント (Engine管理・SDF非対応グリフのフォールバック)
-	std::unique_ptr<render::SdfFontAtlas> m_sdfAtlas; ///< SDFフォントアトラス
-	render::SdfTextRenderer m_sdfRenderer;            ///< SDFテキストレンダラー
+	std::unique_ptr<vn::TrueTypeFont> m_ttfFont;     ///< TTFフォント (既定文字描画の供給元)
+	render::GlyphAtlasRenderer m_glyphRenderer;      ///< 既定の文字描画
+	std::unique_ptr<render::SdfFontAtlas> m_sdfAtlas; ///< SDFフォントアトラス (effect API 用)
+	render::SdfTextRenderer m_sdfRenderer;            ///< SDFテキストレンダラー (effect API 用)
 	std::unique_ptr<render::IRenderer3D> m_renderer3D;            ///< 3Dレンダラー (DX11/DX12統一)
 	std::shared_ptr<render::PostProcessManager> m_postProcess;   ///< ポストプロセスマネージャー (Win32のみ生成)
 	InputInjector m_inputInjector;                   ///< 入力インジェクター
@@ -644,7 +688,6 @@ private:
 	ecs::MitiruWorld* m_world = nullptr;             ///< ECSワールド (非所有)
 	scene::MitiruSceneManager* m_sceneManager = nullptr; ///< シーンマネージャー (非所有)
 	validate::TemporalInvariantChecker* m_temporalChecker = nullptr; ///< 時系列不変条件チェッカー (非所有)
-	observe::StructuredDiff* m_diffTracker = nullptr;   ///< 構造化差分トラッカー (非所有)
 	observe::CausalChain* m_causalChain = nullptr;      ///< 因果チェーン (非所有)
 	std::unique_ptr<server::EngineHttpServer> m_httpServer; ///< 組み込みHTTP APIサーバー
 	std::shared_ptr<audio::IAudioEngine> m_audioEngine;  ///< オーディオエンジン (オプション)
@@ -655,6 +698,7 @@ private:
 	float m_seVolume     = 1.0f;
 	float m_voiceVolume  = 1.0f;
 	CefContext m_cefContext;                              ///< CEF 統合ファサード (Win32+DX12 のみ実体、他は no-op)
+	bool m_cefInitFailed = false;                         ///< H-20: CEF init 失敗 (stderr 通知済み、画面帯の表示条件)
 	std::map<std::string, std::string> m_gameFlags;  ///< ゲームフラグストア (HTTP API用)
 	std::set<std::string> m_spawnedToolKeys;         ///< 既に開いたツール窓 (tool|args) — 重複 spawn 防止
 	bool                  m_suppressToolWindows = false;  ///< true = tool 窓 spawn を全無効 (録画/CI、setSuppressToolWindows)
@@ -687,10 +731,9 @@ private:
 	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
 	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (ADR 0013、0=未申告)
-	std::vector<std::uint8_t>             m_weaveAncestor;          ///< つむぎ: 織りの共通祖先 A (空=セッション外)
-	std::vector<std::vector<std::uint8_t>> m_weaveThreads;          ///< つむぎ: spin で確定した糸 (終端状態 blob)
-	int                                    m_weaveEpoch = 0;        ///< つむぎ: weave 完了の単調カウンタ (game の演出トリガ用)
 	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② time-travel、ADR 0017)
+	bool                                  m_scrubHold       = false; ///< 別窓のバーで過去フレームに静止中か
+	std::size_t                           m_scrubHoldOffset = 0;     ///< 静止しているフレーム (何フレーム前か、0=最新)
 	observe::GameMemoryRing               m_moduleInputRing;        ///< 過去フレームの InputSnapshot bytes (ADR 0021 resim 用、同 ring を再利用)
 	std::vector<std::uint8_t>             m_resimQueue;             ///< resim 開始時に ring から退避した入力列 (再生中の ring 上書きと無縁)
 	std::size_t                           m_resimCursor   = 0;      ///< 次に供給する resim 入力の index
@@ -706,7 +749,8 @@ private:
 
 	// Module-mode の CEF StateStore + Inspector SharedSnapshot — DLL が host
 	// object の pointer を一切持たないよう engine 所有とする (ADR 0005)。
-	std::unique_ptr<cef::StateStore>        m_moduleStateStore;
+	// shared_ptr なのは CEF の load-end callback が weak 捕捉するため (H-19)。
+	std::shared_ptr<cef::StateStore>        m_moduleStateStore;
 	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
 	observe::AudioLog                        m_audioLog; ///< AI 観測用 音イベントログ (/api/ai/audio)
 	module::SoundIntentRouter                m_soundIntentRouter; ///< BGM 同 id 連打の冪等化 (直前 music を記憶)

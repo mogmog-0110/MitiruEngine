@@ -33,7 +33,6 @@
  *   setVolume('master', 0.5) は全 category を半分にする。
  *   setVolume('se', 0) は他の category に影響を与えず SE を mute する。
  *
- * Implements spec: docs/feedback-from-kaerucrape/NF-02
  */
 (function(global)
 {

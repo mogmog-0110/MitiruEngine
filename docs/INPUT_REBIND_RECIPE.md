@@ -1,10 +1,11 @@
-# Recipe: キーリバインドを GameMemory に置く
+# Recipe: キーリバインドをゲーム状態 (`GameMemory`) に置く
 
-`mitiru::Binding<Act>` 表 (アクションマップ) を constexpr 定数ではなく GameMemory に置くと、
-キー設定の変更それ自体が記録・巻き戻し・リプレイ・セーブの対象になる — flat POD (ADR 0017)
-の追加配当を実例で示すレシピ。
+`mitiru::Binding<Act>` 表 (アクションマップ) を constexpr 定数ではなく、ゲームの全状態を
+1 個の struct にまとめたもの (型名 `GameMemory`) に置くと、キー設定の変更それ自体が
+記録・巻き戻し・リプレイ・セーブの対象になる — ポインタも `std::vector` も持たない
+丸ごとコピーできる struct (= flat POD) 設計の追加配当を実例で示すレシピ。
 
-## 1. 方針: いつ constexpr で、いつ GameMemory か
+## 1. 方針: いつ constexpr で、いつゲームの全状態か
 
 | 置き場所 | 向くケース |
 |---|---|
@@ -12,10 +13,11 @@
 | `GameMemory` のメンバ配列 | リバインド UI を持つ。設定変更も state の一部として扱う |
 
 注意: 表を「非記録ソース」(設定ファイル直読み・DLL 内 static の書き換え) から変更すると、
-リプレイ時にその変更が再現されず録画が割れる。GameMemory 経由なら host が毎フレーム
-bytes ごと記録するため**構造的に安全** — リバインド操作を含めて bit-exact に再現される。
+リプレイ時にその変更が再現されず録画が割れる。ゲームの全状態経由なら host が毎フレーム
+bytes ごと記録するため**構造的に安全** — リバインド操作を含めて 1 bit も違わず
+(bit-exact) 再現される。
 
-## 2. レシピ: GameMemory に Binding 配列
+## 2. レシピ: ゲームの全状態に Binding 配列
 
 `Input::pressed` のアクションマップ版は配列参照を取る
 (`bool pressed(const Binding<Act> (&map)[N], Act act)` — `Game.hpp`)。
@@ -46,7 +48,7 @@ MITIRU_GAME(MyGame)
 
 ## 3. リバインド UI
 
-### HTML 側 (zero-JS — `mitiru_bind.js` の data-m-* だけ)
+### HTML 側 (JavaScript を 1 行も書かない — `mitiru_bind.js` の data-m-* だけ)
 
 ```html
 <div class="row">
@@ -55,8 +57,9 @@ MITIRU_GAME(MyGame)
 </div>
 ```
 
-ボタン click は翌フレームの `InputSnapshot.actionEvents` に載って DLL に届く。
-action event も InputSnapshot の一部 = 記録対象なので、リバインド UI 操作ごと再現される。
+ボタン click は翌フレーム、1 フレーム分の入力をまとめた POD struct (`InputSnapshot`) の
+`actionEvents` に載って DLL に届く。action event も `InputSnapshot` の一部 = 記録対象なので、
+リバインド UI 操作ごと再現される。
 
 ### C++ 側 (~15 行)
 
@@ -85,7 +88,7 @@ void update(mitiru::Input in, mitiru::Hud hud, float dt) {
 }
 ```
 
-`rebindTarget` も GameMemory のメンバなので、「変更ボタンを押して入力待ちの瞬間」へ
+`rebindTarget` もゲームの全状態のメンバなので、「変更ボタンを押して入力待ちの瞬間」へ
 巻き戻すことすらできる。
 
 ## 4. キー名表示はゲーム側で持つ
@@ -111,13 +114,13 @@ static const char* keyName(mitiru::Key k) {
 }
 ```
 
-(表示専用 helper であり gameplay state ではないので、GameMemory の外で問題ない。)
+(表示専用 helper であり gameplay state ではないので、ゲームの全状態の外で問題ない。)
 
 ## 5. セーブにも自動で乗る
 
-セーブ = GameMemory まるごとの memcpy (ADR 0020、`hud.save("slot0")`) なので、
+セーブ = ゲームの全状態まるごとの memcpy (`hud.save("slot0")`) なので、
 **リバインド結果は何もしなくてもセーブに含まれる**。「キーコンフィグの保存処理」という
-コードはこのレシピには存在しない — 表を GameMemory に置いた時点で、記録・巻き戻し・
+コードはこのレシピには存在しない — 表をゲームの全状態に置いた時点で、記録・巻き戻し・
 リプレイ・セーブの 4 つが同じ 1 機構 (bytes の memcpy) で片付いている。
 
 関連: `docs/FLAT_POD.md` / `docs/TIME_TRAVEL.md` / `docs/BINDING.md`

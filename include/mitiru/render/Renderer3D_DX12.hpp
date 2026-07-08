@@ -62,6 +62,7 @@
 //  内へ入れないよう、ここで先に取り込んでおく = skybox と同じ作法)。
 #include <mitiru/render/SplatScene.hpp>
 #include <mitiru/render/dx12/DX12SplatShaders.hpp>
+#include <mitiru/render/dx12/DX12SplatSort.hpp>
 #include <mitiru/render/NeuralStyle.hpp>
 #ifdef MITIRU_HAS_DIRECTML
 #include <cstdio>
@@ -80,6 +81,7 @@
 #include <mitiru/render/Shadow.hpp>
 
 #include <mitiru/debug/TracyZones.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/dx12/DX12FXAAShaders.hpp>
 #include <mitiru/render/dx12/DX12OitTransparentPS.hpp>
@@ -136,8 +138,8 @@ public:
 	Renderer3D_DX12& operator=(const Renderer3D_DX12&) = delete;
 
 	/// ムーブ禁止（内部リソースがthisを参照する可能性）
-	Renderer3D_DX12(Renderer3D_DX12&&) noexcept = default;
-	Renderer3D_DX12& operator=(Renderer3D_DX12&&) noexcept = default;
+	Renderer3D_DX12(Renderer3D_DX12&&) = delete;
+	Renderer3D_DX12& operator=(Renderer3D_DX12&&) = delete;
 
 	/// @brief レンダラー設定
 	struct Config
@@ -164,6 +166,12 @@ public:
 	/// @param width 新しい幅
 	/// @param height 新しい高さ
 	void resize(float width, float height);
+
+	/// @brief IRenderer3D 経由の resize (物理 px)
+	void resize(int width, int height) override
+	{
+		resize(static_cast<float>(width), static_cast<float>(height));
+	}
 
 	/// @brief フレーム開始処理
 	/// @param clearColor バックバッファのクリア色
@@ -373,6 +381,16 @@ private:
 	/// @brief トリプルバッファリングのフレーム数
 	static constexpr uint32_t FRAME_COUNT = 3;
 
+	/// メッシュバッファキャッシュ entry（毎フレーム再生成を防止）
+	/// NOTE: .inl 内 helper (acquireMeshBuffer) の引数型のため include より前に定義する
+	struct CachedBuffer
+	{
+		ComPtr<ID3D12Resource> resource;
+		UINT size = 0;
+		uint64_t revision      = 0;  ///< Mesh::revision() — 内容改変/アドレス再利用の失効検知
+		uint64_t lastUsedFrame = 0;  ///< 最終参照フレーム（eviction 用）
+	};
+
 	// ─────────────────────────────────────────────────────────
 	//  PSO生成・リソース生成・描画ヘルパー（別ファイルに分離）
 	//  NOTE: これは class body 内への意図的な .inl include である。
@@ -423,7 +441,6 @@ private:
 
 	/// PSO（Pipeline State Objects）
 	ComPtr<ID3D12PipelineState> m_mainPSO;           ///< メイン（トゥーン）PSO
-	ComPtr<ID3D12PipelineState> m_outlinePSO;         ///< アウトラインPSO（背面膨張・未使用）
 	ComPtr<ID3D12PipelineState> m_outlinePostPSO;     ///< ポストプロセスアウトラインPSO（モード0）
 	ComPtr<ID3D12PipelineState> m_outlinePostPSOs[OUTLINE_MODE_COUNT]; ///< モード別PSOスロット(1-4)
 	ComPtr<ID3D12PipelineState> m_fresnelMainPSO;    ///< Fresnel付きメインPSO（モード5）
@@ -484,8 +501,6 @@ private:
 	/// コンパイル済みシェーダー
 	std::optional<gfx::Dx12Shader> m_toonVS;
 	std::optional<gfx::Dx12Shader> m_toonPS;
-	std::optional<gfx::Dx12Shader> m_outlineVS;
-	std::optional<gfx::Dx12Shader> m_outlinePS;
 	std::optional<gfx::Dx12Shader> m_outlinePostVS;
 	std::optional<gfx::Dx12Shader> m_outlinePostPS;
 	std::optional<gfx::Dx12Shader> m_outlinePostPS_Laplacian;   ///< モード1
@@ -503,12 +518,7 @@ private:
 	ComPtr<ID3D12Resource> m_normalBuffer;
 	ComPtr<ID3D12DescriptorHeap> m_normalRTVHeap;  ///< 法線RT用RTVヒープ
 
-	/// メッシュバッファキャッシュ（毎フレーム再生成を防止）
-	struct CachedBuffer
-	{
-		ComPtr<ID3D12Resource> resource;
-		UINT size = 0;
-	};
+	/// メッシュバッファキャッシュ（struct CachedBuffer は class 冒頭で定義）
 	std::unordered_map<const void*, CachedBuffer> m_meshVBCache; ///< 頂点バッファキャッシュ
 	std::unordered_map<const void*, CachedBuffer> m_meshIBCache; ///< インデックスバッファキャッシュ
 
@@ -530,9 +540,6 @@ private:
 	/// シーンアンビエント色（initialize 時に config.defaultAmbient で初期化）
 	sgc::Colorf m_sceneAmbient{0.5f, 0.5f, 0.5f, 1.0f};
 
-	/// アウトラインパス用の遅延描画コマンド
-	std::vector<OutlineDrawCommand> m_outlineCommands;
-
 	/// ── 半透明 OIT (Weighted-Blended) ──────────────────────
 	/// material.diffuse.a < 1 のメッシュを溜め、不透明の後にまとめて accum/reveal へ
 	/// 蓄積→composite する。深度は不透明と共有 (読み取り専用テスト)。順序非依存。
@@ -551,6 +558,8 @@ private:
 	std::optional<gfx::Dx12Shader> m_overlay2DVS;     ///< 2Dオーバーレイ用頂点シェーダー
 	std::optional<gfx::Dx12Shader> m_overlay2DPS;     ///< 2Dオーバーレイ用ピクセルシェーダー
 	const Screen* m_overlayScreen = nullptr;           ///< 2Dオーバーレイ用Screen（非所有）
+	std::vector<Overlay2DVertex> m_overlay2DVerts;    ///< 頂点 scratch（clear+reserve で毎フレーム再利用、hot path 確保なし）
+	std::vector<std::uint32_t> m_overlay2DIndices;    ///< インデックス scratch（同上）
 
 	/// 描画統計
 	int m_drawCallCount = 0;
@@ -589,10 +598,13 @@ private:
 	std::vector<ShadowCaster> m_shadowCommandsPrev;   ///< 前フレーム — shadow pass で使う
 
 	/// ── アルベドテクスチャ（material.albedoTexture）─────────
-	/// shader-visible SRV ヒープ。1 フレームの drawMesh 数だけ SRV を append し、
-	/// beginFrame で cursor = 0 にリセット。
+	/// shader-visible SRV ヒープ。frame index で partition し、GPU が in-flight の
+	/// 前フレーム分 descriptor を読んでいる間に上書きしない。beginFrame で
+	/// cursor を自 frame partition の先頭にリセット。
+	static constexpr UINT kAlbedoSrvPerFrame = 256;  ///< 1 frame 分（2 SRV/draw → 128 draw）
 	ComPtr<ID3D12DescriptorHeap>                 m_albedoSrvHeap;
-	UINT                                         m_albedoSrvCapacity  = 0;
+	UINT                                         m_albedoSrvCapacity  = 0;  ///< 1 frame 分の実効 capacity
+	UINT                                         m_albedoSrvBase      = 0;  ///< 現 frame partition の先頭 slot
 	UINT                                         m_albedoSrvCursor    = 0;
 	UINT                                         m_albedoSrvIncrement = 0;
 	dx12::Dx12Texture2D                          m_defaultWhiteTexture;
@@ -602,7 +614,7 @@ private:
 	/// ── Skybox（DX11 と機能パリティ）─────────────────────────
 	Cubemap                     m_skyboxCubemap;
 	bool                        m_skyboxEnabled         = false;
-	bool                        m_skyboxPipelineReady   = false; ///< PSO/RootSig/VB/IB/CB
+	bool                        m_skyboxPipelineReady   = false; ///< PSO/RootSig/VB/IB
 	bool                        m_skyboxTextureReady    = false; ///< TextureCube/Upload/SRV
 	bool                        m_skyboxNeedsUpload     = false;
 	bool                        m_skyboxTextureInPSR    = false; ///< テクスチャが PIXEL_SHADER_RESOURCE 状態か
@@ -617,20 +629,19 @@ private:
 	ComPtr<ID3D12PipelineState> m_skyboxPSO;           ///< skybox 専用 PSO
 	ComPtr<ID3D12Resource>      m_skyboxVB;            ///< cube vertex buffer
 	ComPtr<ID3D12Resource>      m_skyboxIB;            ///< cube index buffer
-	ComPtr<ID3D12Resource>      m_skyboxCb;            ///< CbSkyTransform
+	// CbSkyTransform は m_uploadRing から per-frame 切り出し (専用 CB 無し)
 
 	/// ── 3D Gaussian Splatting (M1、DX12Splat.hpp が使う) ───────────────
 	ComPtr<ID3D12Resource>       m_splatBuffer;        ///< UPLOAD: StructuredBuffer<SplatGPU>
 	UINT                         m_splatCount = 0;     ///< スプラット数
 	ComPtr<ID3D12DescriptorHeap> m_splatSrvHeap;       ///< shader-visible: t0=splat, t1=order
 	ComPtr<ID3D12Resource>       m_splatCb;            ///< カメラ CB (view/proj/params)
-	ComPtr<ID3D12Resource>       m_splatIndexBuf;      ///< UPLOAD: 深度ソート済み index (毎フレーム更新)
 	ComPtr<ID3D12RootSignature>  m_splatRootSig;
 	ComPtr<ID3D12PipelineState>  m_splatPSO;
-	std::vector<float>           m_splatPos;           ///< CPU 位置 (3*N、深度ソート用)
-	std::vector<std::uint32_t>   m_splatOrder;         ///< CPU ソート済み index
-	std::vector<float>           m_splatKey;           ///< CPU 深度² (ソートキー、再利用)
-	std::vector<std::uint32_t>   m_splatHist;          ///< 深度バケットソートのヒストグラム (再利用)
+	std::vector<float>           m_splatPos;           ///< CPU 位置 (3*N、neural 現像で使用)
+	sgc::Vec3f                   m_splatSortCam{};     ///< 前回ソート時のカメラ位置 (静止フレーム検出)
+	bool                         m_splatSorted = false;///< GPU 深度ソートを一度でも実行したか (シーン読込でリセット)
+	SplatDepthSortGpu            m_splatSort;          ///< GPU 深度ソート (compute)。order を生成
 	float                        m_splatCenter[3] = {0.0f, 0.0f, 0.0f};  ///< シーン重心 (自動フレーミング)
 	float                        m_splatRadius = 1.0f;                    ///< シーン境界球半径
 	bool                         m_splatReady = false;         ///< シーン読込済み
@@ -826,7 +837,14 @@ public:
 		m_relight.apply(m_graphicsCmdList.Get(), bb->nativeResource(), bb->rtvHandle(), w, h);
 #endif
 	}
-	void setRelightDepthModel(const char* path) override { if (path) m_relightModel = path; }
+	void setRelightDepthModel(const char* path) override
+	{
+#ifdef MITIRU_HAS_DIRECTML
+		if (path) m_relightModel = path;
+#else
+		(void)path;
+#endif
+	}
 	/// @brief フレーム境界 (tickDevelop) で前フレームを readPixels → キャラ領域クロップ → ORT 深度推論
 	///        → relight へ深度を渡す。間引き (数フレームに1回) で stall を抑える。深度未取得時は relight が
 	///        輝度プロキシにフォールバックする。

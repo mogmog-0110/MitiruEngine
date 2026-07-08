@@ -220,13 +220,16 @@ inline void mitiru::Screen::drawCircle(const sgc::Vec2f& center, float radius, c
 		validateColor(color, "drawCircle", bounds);
 	}
 	const auto t = currentTransform();
+	// 半径が大きいほど分割数を増やし、大きな円が多角形に (facet) 見えないようにする。
+	const auto segFor = [](float rr) { return std::clamp(static_cast<int>(rr) + 16, 24, 160); };
 	if (t.isIdentity())
 	{
-		m_shapeRenderer.drawCircle(center, radius, color);
+		m_shapeRenderer.drawCircle(center, radius, color, segFor(radius));
 	}
 	else
 	{
-		m_shapeRenderer.drawCircle(t.apply(center), radius * t.avgScale(), color);
+		const float rr = radius * t.avgScale();
+		m_shapeRenderer.drawCircle(t.apply(center), rr, color, segFor(rr));
 	}
 	++m_drawCallCount;
 }
@@ -336,4 +339,52 @@ inline void mitiru::Screen::drawCircleFrame(const sgc::Vec2f& center, float radi
 {
 	constexpr float kTwoPi = 6.28318530717958647692f;
 	drawArc(center, radius, 0.0f, kTwoPi, color, thickness);
+}
+
+inline void mitiru::Screen::glowLine(float x1, float y1, float x2, float y2,
+                                      const sgc::Colorf& color, float coreWidth, float glowWidth)
+{
+	{
+		const sgc::Rectf bounds{std::min(x1, x2) - glowWidth * 0.5f,
+		                        std::min(y1, y2) - glowWidth * 0.5f,
+		                        std::abs(x2 - x1) + glowWidth,
+		                        std::abs(y2 - y1) + glowWidth};
+		validateDrawCall(bounds, "glowLine");
+		validateColor(color, "glowLine", bounds);
+	}
+	// halo (淡い太線) → core (明るい細線) の順に重ねる
+	sgc::Colorf halo = color;
+	halo.a = color.a * 0.16f;
+	emitLine({x1, y1}, {x2, y2}, halo, glowWidth);
+	emitLine({x1, y1}, {x2, y2}, color, coreWidth);
+	++m_drawCallCount;
+}
+
+inline void mitiru::Screen::glowRing(float cx, float cy, float r, const sgc::Colorf& color,
+                                      float coreWidth, float glowWidth, int segments)
+{
+	{
+		const sgc::Rectf bounds{cx - r - glowWidth, cy - r - glowWidth,
+		                        (r + glowWidth) * 2.0f, (r + glowWidth) * 2.0f};
+		validateDrawCall(bounds, "glowRing");
+		validateColor(color, "glowRing", bounds);
+	}
+	constexpr float kTwoPi = 6.28318530717958647692f;
+	sgc::Colorf halo = color;
+	halo.a = color.a * 0.16f;
+	const int segs = std::max(segments, 3);
+	// hot path: 前点を保持して線分を継ぎ足す (確保なし)
+	float px = cx + r;
+	float py = cy;
+	for (int i = 1; i <= segs; ++i)
+	{
+		const float ang = kTwoPi * static_cast<float>(i) / static_cast<float>(segs);
+		const float x = cx + std::cos(ang) * r;
+		const float y = cy + std::sin(ang) * r;
+		emitLine({px, py}, {x, y}, halo, glowWidth);
+		emitLine({px, py}, {x, y}, color, coreWidth);
+		px = x;
+		py = y;
+	}
+	++m_drawCallCount;
 }

@@ -46,7 +46,6 @@
  *   --mitiru-locale-font を書く。mitiru_tokens.css / app CSS は次で参照する:
  *       body { font-family: var(--mitiru-locale-font, inherit); }
  *
- * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-07
  */
 (function(global)
 {

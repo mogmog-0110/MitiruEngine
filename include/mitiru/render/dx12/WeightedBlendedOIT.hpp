@@ -13,7 +13,8 @@
 ///      RTV0=accumFormat() / RTV1=revealFormat()、深度は読み取り専用 (DepthWrite=ZERO)。
 ///   2. oit.beginAccumulate(cl, dsv) → 透明メッシュを上記 PSO で描画 → oit.composite(cl, outRtv)。
 ///
-/// MSAA には依存しない (single-sample 前提)。MSAA 経路は composite 前に resolve すること。
+/// MSAA 対応: initialize() の sampleCount > 1 で accum/reveal を MSAA で蓄積し、
+/// composite() 内で single-sample へ resolve してから合成する (呼び側の事前 resolve 不要)。
 
 #ifdef _WIN32
 
@@ -99,6 +100,23 @@ PSOut PSMain(PSIn i)
 	}
 
 	[[nodiscard]] bool isInitialized() const noexcept { return m_initialized; }
+
+	/// @brief accum/reveal RT を新サイズで再生成する (composite PSO は流用)。未初期化なら no-op。
+	/// @details GPU idle を保証してから呼ぶこと。
+	void resize(UINT width, UINT height)
+	{
+		if (!m_initialized || width == 0 || height == 0) { return; }
+		if (width == m_width && height == m_height) { return; }
+		m_width  = width;
+		m_height = height;
+		m_accum.Reset();
+		m_reveal.Reset();
+		m_accumResolved.Reset();
+		m_revealResolved.Reset();
+		m_rtvHeap.Reset();
+		m_srvHeap.Reset();
+		createTargets(width, height);
+	}
 
 	/// @brief accum=0 / reveal=1 にクリアし、accum+reveal を RT に、dsv を読み取り専用深度に bind。
 	/// @details この後、呼び出し側が透明 PSO で透明メッシュを描画する。

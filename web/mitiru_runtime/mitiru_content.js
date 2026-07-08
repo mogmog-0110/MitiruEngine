@@ -8,8 +8,8 @@
  *   default の base dir:  'assets/content/'
  *   chapter path:         '<baseDir><scene>/<chapter>.json'
  *
- *     mitiru.content.path('cooking', 'ch01')
- *       → 'assets/content/cooking/ch01.json'
+ *     mitiru.content.path('novel', 'ch01')
+ *       → 'assets/content/novel/ch01.json'
  *
  * ── Schema registry ────────────────────────────────────────────────────────
  *   registerSchema(name, validator) — validator は parse 済み JSON を受け取り、
@@ -45,7 +45,6 @@
  *     "mitiru.content: <path> — <schemaName|validator>: <reason>"
  *   これにより production の log scraping で network 失敗と schema 失敗を区別できる。
  *
- * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-16
  */
 (function(global)
 {

@@ -84,12 +84,11 @@ struct EngineConfig
 	bool vsync = true;                     ///< 垂直同期 (DX12 SwapChain Present interval)
 	int targetFps = 0;                     ///< フレームレート上限 (0=無制限。vsync が ON の場合は vsync が優先)
 
-	/// @brief ユーザがウィンドウ枠でリサイズできるか
-	/// @details false にすると WS_THICKFRAME / WS_MAXIMIZEBOX が外れ、
-	///          固定サイズの window になる。Siv3D の `WindowStyle::Fixed`
-	///          に相当。ピクセルアート / 固定解像度ゲームで誤リサイズ
-	///          を防ぎたい場合に使う。
-	bool windowResizable = true;
+	/// @brief ユーザがウィンドウ枠でリサイズできるか (既定: 固定サイズ)
+	/// @details 既定は false = 固定サイズ (WS_THICKFRAME / WS_MAXIMIZEBOX を外す。
+	///          Siv3D の `WindowStyle::Fixed` に相当)。固定解像度のゲーム/デモが
+	///          誤ってリサイズされて崩れるのを防ぐ。リサイズを許すゲームは true にする。
+	bool windowResizable = false;
 
 	/// @brief 動的リサイズ時の logical screen size の扱い
 	/// @details Siv3D の `Scene::SetResizeMode` に相当する3-mode 切替:
@@ -137,6 +136,17 @@ struct EngineConfig
 	};
 	LoFiConfig loFi;                   ///< ローファイ・ポストFX 設定
 
+	/// @brief 2D 描画の 4x MSAA アンチエイリアス（DX12 のみ）。既定 ON。
+	/// @details 回転した塗り図形・三角形・多角形・線・円の輪郭を、4x MSAA の中間
+	///          カラー RT でサンプル単位のカバレッジ平滑化してから提示する。軸並行の
+	///          矩形はもともと綺麗だが、回転や斜辺がジャギー（階段状）になる問題の
+	///          根本対策。
+	///          lo-fi（粗い網点質感）／3D 描画フレーム／ポストプロセス使用時は自動的に
+	///          バイパスされる（それらは独自の合成経路を持つ）。4x MSAA 非対応の稀な
+	///          環境では自動的に 1x へフォールバックする（無効化されるだけで落ちない）。
+	///          メモリ増は概算 幅×高さ×4サンプル×4byte（1920×1080 で約 33MB）。
+	bool antialiasing2D = true;
+
 	/// @brief ゲーム側で選択可能な解像度プリセット
 	/// @details 設定 UI のドロップダウン用。空ならプリセット非表示。
 	std::vector<std::pair<int,int>> resolutionPresets = {
@@ -165,6 +175,12 @@ struct EngineConfig
 	gfx::Backend gfxBackend = gfx::Backend::Auto;  ///< グラフィックスバックエンド
 	bool enableObserver = true;            ///< オブザーバー機能の有効化
 	int observePort = 0;                   ///< オブザーバーポート（0=自動割当）
+
+	/// @brief 巻き戻しでさかのぼれるフレーム数 = リングバッファの長さ (0 = 未指定)
+	/// @details 何フレーム前まで巻き戻せるか。優先順位は host の `--rewind-frames N` >
+	///          game の `MITIRU_REWIND_BUFFER(N)` 宣言 > 既定 300 (60fps で約 5 秒)。
+	///          大きくするほど過去まで戻せるが、GameMemory バイト数 × この数だけメモリを使う。
+	std::uint32_t timeTravelBufferFrames = 0;
 	bool enableDiffTracking = false;       ///< 構造化差分トラッキング有効化
 	bool enableCausalTracking = false;     ///< 因果チェーン追跡有効化
 	bool enableTemporalValidation = false; ///< 時系列不変条件チェック有効化
@@ -222,11 +238,14 @@ struct EngineConfig
 	std::string cefStartUrl;               ///< 起動時に開く URL (空=about:blank)
 	int cefRemoteDebuggingPort = 0;        ///< 0 以外で chrome-devtools MCP が http://localhost:<port>
 	                                       ///< に attach 可能 (E-02)。開発ビルドのみで有効化推奨。
+	bool cefAllowRemoteUrls = false;       ///< true で loadUrl / cefStartUrl に http(s) 等リモート URL を
+	                                       ///< 許可する (C-5)。既定は app:// / file:// / data: / about: のみ。
 
 	/// @brief CEF ページが fetch / XHR で読み込めるローカルディレクトリ追加分
-	/// @details 既定動作 (空ベクター) でも `file:///` から sibling ファイルを読む
-	///          ことは `--allow-file-access-from-files` + `--disable-web-security`
-	///          で有効になっているため、多くの consumer はこれを設定する必要はない。
+	/// @details 既定動作 (空ベクター) でも **Debug build** は `file:///` から
+	///          sibling ファイルを読める (`--allow-file-access-from-files` +
+	///          `--disable-web-security` は Debug のみ付与)。Release で fetch /
+	///          XHR を使うページは `app://` 経由で配信すること。
 	///
 	///          より厳格に `app://` カスタムスキーム経由で配信したい場合 (CORS 完全
 	///          対応・サンドボックス強化) に追加のルートを宣言する。指定した各

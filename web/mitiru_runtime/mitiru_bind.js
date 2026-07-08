@@ -15,10 +15,15 @@
  *                             → 要素ごとに data-m-fields の列名へ割り当て
  *
  * ── バインド語彙 (HTML の data-m-* 属性) ────────────────────────────────
- *   data-m-text="path"            textContent にパスの値 (+ data-m-format=int|kmb|pct|time|comma)
+ *   data-m-text="path"            textContent にパスの値
+ *                                 (+ data-m-format=int|kmb|pct|time|comma|f2|secs|x100|pct01|ago)
  *   data-m-tpl="… {path} …"       テンプレ文字列 ({path} / {path:fmt} を埋める)
- *   data-m-show="path"            真のとき表示 ("path == v" / "!=" / "!path" / 数値比較 "< > <= >=" 可)
- *   data-m-hide="path"            show の反転
+ *   data-m-show="cond[; cond]"    真のとき表示 ("path == v" / "!=" / "!path" / 数値比較 "< > <= >=" 可)
+ *                                 ";" 区切りは AND、条件内の "|" は OR
+ *   data-m-hide="cond[; cond]"    show の反転
+ *   data-m-enabled="cond[; cond]" 全条件 真 で活性 (それ以外 disabled)。ボタン/フォーム用
+ *   data-m-disabled="cond[; cond]" 全条件 真 で不活性
+ *   data-m-value="path"           <input>/<select> の値へ状態を書き戻す (C++→JS)。focus 中は skip
  *   data-m-class="cls: path; …"   真のときクラス付与
  *   data-m-style="prop: {path}u"  スタイル束縛 (例 "width: {view.boss.pct}%")
  *   data-m-attr="src: {path}; …"  任意属性に値をバインド (画像 src / title / aria 等)
@@ -26,6 +31,18 @@
  *     data-m-arg="path"             dispatch に載せる値 (repeat 内なら item の値。例: 押した項目の id)
  *       data-m-arg="'hard'" / "42"    引用符は文字列リテラル、数値はそのまま値 (難易度ボタン等)
  *     フォーム要素 (input/select) は現在値を自動で arg に載せる (スライダー/選択 等の設定 UI)
+ *     data-m-payload='{"k":{path}}' payload を JSON テンプレで組む (arg より優先)。{path} は
+ *                                 state / item の値が JSON 型のまま埋まる (文字列は自動 quote)。
+ *                                 {$value} は prompt 結果かフォーム現在値。注: コンパクト区切り
+ *                                 リストの field は文字列になる (JSON リストは型を保つ)
+ *     data-m-confirm="text"         dispatch 前に確認 (mitiru.modal.confirm → window.confirm 代替)
+ *       data-m-confirm-title="t"      確認ダイアログの見出し
+ *     data-m-prompt="title"         dispatch 前に文字列入力 (mitiru.modal.prompt)。結果は {$value}。
+ *       data-m-prompt-message / data-m-prompt-default
+ *       data-m-prompt-pattern="re"    不一致は再入力、cancel で dispatch 中止
+ *   data-m-toast="path"           {kind,message} の変化でトースト表示 — textContent=message、
+ *                                 kind-<kind> + is-visible を付与し data-m-toast-ms (既定 4000)
+ *                                 後に is-visible を外す (CSS transition 用)
  *   data-m-input="path"           <input> のテキスト入力を C++ へ届ける (名前欄 等)
  *                                 確定時 (Enter / blur) に action "input:<path>" +
  *                                 payload {"value":"<入力値>"} を dispatch。IME 変換中は送らない
@@ -149,8 +166,22 @@
     if (spec === 'pct') { return (Number(v) || 0) + '%'; }
     if (spec === 'time') { var ts = Math.max(0, Math.floor(Number(v) || 0)); return Math.floor(ts / 60) + ':' + ('0' + (ts % 60)).slice(-2); }
     if (spec === 'comma') { return (Math.floor(Number(v) || 0)).toLocaleString('en-US'); }
+    if (spec === 'f2')    { return (Number(v) || 0).toFixed(2); }
+    if (spec === 'secs')  { return ((Number(v) || 0) / 1000).toFixed(1); }             // ms → 秒 1 桁
+    if (spec === 'x100')  { return String(Math.round(clamp01(Number(v) || 0) * 100)); } // 0..1 → 0..100
+    if (spec === 'pct01') { return (Math.round(clamp01(Number(v) || 0) * 10000) / 100) + '%'; }
+    if (spec === 'ago') {                                                               // unix 秒 → 相対時刻
+      var at = Math.floor(Number(v) || 0);
+      if (!at) { return ''; }
+      var d = Math.max(0, Math.floor(Date.now() / 1000) - at);
+      if (d < 60)    { return d + 's ago'; }
+      if (d < 3600)  { return Math.floor(d / 60) + 'm ago'; }
+      if (d < 86400) { return Math.floor(d / 3600) + 'h ago'; }
+      return Math.floor(d / 86400) + 'd ago';
+    }
     return v == null ? '' : String(v);
   }
+  function clamp01(n) { return n < 0 ? 0 : (n > 1 ? 1 : n); }
 
   // "… {path} … {path:fmt} …" を埋める。
   function renderTpl(tpl, item) {
@@ -189,14 +220,50 @@
     if (d.mTween != null) { applyTween(el, d.mTween, item); }
     else if (d.mText != null) { el.textContent = fmt(resolve(d.mText, item), d.mFormat); }
     if (d.mTpl != null)   { el.textContent = renderTpl(d.mTpl, item); }
-    if (d.mShow != null)  { el.style.display = evalCond(d.mShow, item) ? '' : 'none'; }
-    if (d.mHide != null)  { el.style.display = evalCond(d.mHide, item) ? 'none' : ''; }
+    if (d.mShow != null)  { el.style.display = evalCondList(d.mShow, item) ? '' : 'none'; }
+    if (d.mHide != null)  { el.style.display = evalCondList(d.mHide, item) ? 'none' : ''; }
+    if (d.mEnabled != null)  { el.disabled = !evalCondList(d.mEnabled, item); }
+    if (d.mDisabled != null) { el.disabled = evalCondList(d.mDisabled, item); }
     if (d.mClass != null) { applyClass(el, d.mClass, item); }
     if (d.mStyle != null) { applyStyle(el, d.mStyle, item); }
     if (d.mPos != null)   { applyPos(el, d.mPos, d.mRot, d.mAnchor, item); }
     if (d.mFlash != null) { applyFlash(el, d.mFlash, item); }
     if (d.mAttr != null)  { applyAttr(el, d.mAttr, item); }
+    if (d.mValue != null) { applyValue(el, d.mValue, item); }
+    if (d.mToast != null) { applyToast(el, d.mToast, item); }
     if (d.mArg != null)   { el._marg = argValue(d.mArg, item); }  // dispatch に載せる値 (item スコープ対応)
+    if (d.mPayload != null) { el._mitem = item; }                 // payload はクリック時に item で組む
+  }
+
+  // data-m-value="path": フォーム値への書き戻し (C++→JS)。入力中の上書きはしない。
+  function applyValue(el, path, item) {
+    if (document.activeElement === el) { return; }
+    var v = resolve(path, item);
+    if (el.type === 'checkbox') { el.checked = truthy(v); return; }
+    var s = v == null ? '' : String(v);
+    if (el.value !== s) { el.value = s; }
+  }
+
+  // data-m-toast="path": {kind,message} の変化で表示 → data-m-toast-ms 後に閉じる。
+  function applyToast(el, path, item) {
+    var v = resolve(path, item);
+    var raw;
+    try { raw = JSON.stringify(v); } catch (e) { raw = String(v); }
+    if (el._mtoast === raw) { return; }
+    el._mtoast = raw;
+    var msg = (v && v.message) ? String(v.message) : '';
+    if (!msg) { return; }
+    var kind = (v && v.kind) ? String(v.kind) : 'info';
+    if (el._mtoastKind) { el.classList.remove(el._mtoastKind); }
+    el._mtoastKind = 'kind-' + kind;
+    el.textContent = msg;
+    el.classList.add(el._mtoastKind, 'is-visible');
+    var ms = Number(el.dataset.mToastMs) || 4000;
+    if (el._mtoastTimer) { clearTimeout(el._mtoastTimer); }
+    el._mtoastTimer = setTimeout(function () {
+      el._mtoastTimer = null;
+      el.classList.remove('is-visible');
+    }, ms);
   }
 
   // data-m-attr="src: {path}; title: {path}" — 任意属性に値をバインド (画像 src 等)。
@@ -235,6 +302,71 @@
     }
     return formValue(el);
   }
+
+  // data-m-payload='{"k":{path}}' を JSON テンプレとして埋める。{path} は state / item の値が
+  // JSON 型のまま入る (文字列なら quote 付き)。{$value} は prompt 結果 / フォーム現在値。
+  function buildPayload(el, value) {
+    var s = String(el.dataset.mPayload);
+    s = s.replace(/\{\$value\}/g, function () {
+      return JSON.stringify(value === undefined ? null : value);
+    });
+    s = s.replace(/\{([A-Za-z_][\w.]*)(:[a-zA-Z0-9]+)?\}/g, function (_, p, f) {
+      var v = resolve(p, el._mitem != null ? el._mitem : null);
+      if (f) { return JSON.stringify(fmt(v, f.slice(1))); }
+      return JSON.stringify(v === undefined ? null : v);
+    });
+    try { return JSON.parse(s); } catch (e) { return s; }
+  }
+
+  // 確認 / 入力ガード。mitiru.modal (mitiru_modal.js) を優先し、無ければ native dialog、
+  // それも無ければ素通し (headless テスト等)。
+  function askConfirm(el) {
+    var text = el.dataset.mConfirm;
+    if (mitiru.modal && typeof mitiru.modal.confirm === 'function') {
+      return mitiru.modal.confirm({ title: el.dataset.mConfirmTitle || '', body: text });
+    }
+    if (typeof global.confirm === 'function') { return Promise.resolve(global.confirm(text)); }
+    return Promise.resolve(true);
+  }
+  function promptOnce(el, current) {
+    if (mitiru.modal && typeof mitiru.modal.prompt === 'function') {
+      return mitiru.modal.prompt({
+        title: el.dataset.mPrompt,
+        body: el.dataset.mPromptMessage || '',
+        defaultValue: current,
+      });
+    }
+    if (typeof global.prompt === 'function') {
+      return Promise.resolve(global.prompt(el.dataset.mPrompt, current));
+    }
+    return Promise.resolve(null);
+  }
+  function askPrompt(el) {
+    var pat = null;
+    try { pat = el.dataset.mPromptPattern ? new RegExp(el.dataset.mPromptPattern) : null; }
+    catch (e) { pat = null; }
+    function ask(current) {
+      return promptOnce(el, current).then(function (v) {
+        if (v == null) { return undefined; }        // cancel → dispatch しない
+        if (pat && !pat.test(v)) { return ask(v); } // 不一致 → 入力値を保って再入力
+        return v;
+      });
+    }
+    return ask(el.dataset.mPromptDefault || '');
+  }
+  function fireAction(el, value) {
+    if (typeof mitiru.dispatch !== 'function') { return; }
+    var arg;
+    if (el.dataset.mPayload != null) {
+      arg = buildPayload(el, value !== undefined ? value : formValue(el));
+    } else if (value !== undefined) {
+      arg = value;
+    } else {
+      arg = actionArg(el);
+    }
+    mitiru.dispatch(el.dataset.mAction, arg);
+  }
+
   function wireActions(root) {
     var list = [];
     if (root.dataset && root.dataset.mAction != null) { list.push(root); }
@@ -247,7 +379,16 @@
       if (t === 'input' && (el.type === 'range' || el.type === 'text' || el.type === 'number')) { ev = 'input'; }
       else if (t === 'select' || (t === 'input' && (el.type === 'checkbox' || el.type === 'radio'))) { ev = 'change'; }
       el.addEventListener(ev, function () {
-        if (typeof mitiru.dispatch === 'function') { mitiru.dispatch(el.dataset.mAction, actionArg(el)); }
+        if (el.disabled) { return; }
+        if (el.dataset.mConfirm != null) {
+          askConfirm(el).then(function (ok) { if (ok) { fireAction(el, undefined); } });
+          return;
+        }
+        if (el.dataset.mPrompt != null) {
+          askPrompt(el).then(function (v) { if (v !== undefined) { fireAction(el, v); } });
+          return;
+        }
+        fireAction(el, undefined);
       });
     });
   }
@@ -314,6 +455,16 @@
     el._mflash = cur;
   }
 
+  // 複合条件: ";" 区切りは AND、条件内の "|" は OR。単一条件は evalCond へ委譲。
+  function evalCondList(spec, item) {
+    return String(spec).split(';').every(function (andTerm) {
+      if (!andTerm.trim()) { return true; }
+      return andTerm.split('|').some(function (orTerm) {
+        return evalCond(orTerm, item);
+      });
+    });
+  }
+
   function evalCond(expr, item) {
     expr = expr.trim();
     if (expr[0] === '!') { return !truthy(resolve(expr.slice(1).trim(), item)); }
@@ -373,9 +524,11 @@
     this.templates = {};       // case -> <template>、'' -> 既定
     this.pool = [];            // index プール (keyField 無し時)
     this.byKey = Object.create(null);  // key プール (keyField 有り時)
-    var tpls = container.querySelectorAll(':scope > template');
-    for (var i = 0; i < tpls.length; i++) {
-      this.templates[tpls[i].dataset.mCase || ''] = tpls[i];
+    // 直下の <template> を集める (:scope 非対応環境でも動く手動走査)。
+    for (var c = container.firstElementChild; c; c = c.nextElementSibling) {
+      if ((c.tagName || '').toLowerCase() === 'template') {
+        this.templates[c.dataset.mCase || ''] = c;
+      }
     }
     this.list = document.createElement('div');   // 実体の入れ物 (template の後ろ)
     this.list.style.display = 'contents';
@@ -469,7 +622,7 @@
   };
 
   // ── バインディング収集 ──
-  var SELECTOR = '[data-m-text],[data-m-tpl],[data-m-show],[data-m-hide],[data-m-class],[data-m-style],[data-m-pos],[data-m-flash],[data-m-attr],[data-m-action],[data-m-tween]';
+  var SELECTOR = '[data-m-text],[data-m-tpl],[data-m-show],[data-m-hide],[data-m-class],[data-m-style],[data-m-pos],[data-m-flash],[data-m-attr],[data-m-action],[data-m-tween],[data-m-enabled],[data-m-disabled],[data-m-value],[data-m-toast]';
 
   // node 配下の (item スコープ用) 単純バインド要素を集める。repeat はネスト不可とする。
   function collectBinds(root, includeSelf) {
@@ -521,7 +674,8 @@
       if (el.closest('[data-m-repeat]')) { continue; }   // repeat 内は item 解決に任せる
       topBinds.push(el);
       var dd = el.dataset;
-      ['mText', 'mTpl', 'mShow', 'mHide', 'mClass', 'mStyle', 'mAttr', 'mArg', 'mTween'].forEach(function (a) {
+      ['mText', 'mTpl', 'mShow', 'mHide', 'mClass', 'mStyle', 'mAttr', 'mArg', 'mTween',
+       'mEnabled', 'mDisabled', 'mValue', 'mToast'].forEach(function (a) {
         if (dd[a] != null) { keysIn(dd[a]).forEach(function (k) { subscribed[k] = true; }); }
       });
     }

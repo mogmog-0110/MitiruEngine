@@ -40,7 +40,6 @@
  *     'chat:scroll'   { atBottom }
  *     'chat:choice:pick' { option, index }
  *
- * 仕様: docs/feedback-from-kaerucrape/2026-04-24.md F-10
  */
 (function(global)
 {

@@ -10,15 +10,15 @@
  *
  * 使い方 (Mode A / C++ gameplay):
  * @code
- *   mitiru::world::AnchoredEntity crepe{
+ *   mitiru::world::AnchoredEntity player{
  *       .anchor       = {100.f, 200.f},
  *       .spriteOffset = {0.f, 0.f, 64.f, 64.f},
  *       .hitboxOffset = {16.f, 16.f, 32.f, 32.f},
- *       .name         = "crepe",
+ *       .name         = "player",
  *   };
- *   auto sprite = crepe.getSpriteWorldRect();  // {100, 200, 64, 64}
- *   auto hitbox = crepe.getHitboxWorldRect();  // {116, 216, 32, 32}
- *   crepe.setAnchor({150.f, 200.f});           // both rects shift by +50 x
+ *   auto sprite = player.getSpriteWorldRect();  // {100, 200, 64, 64}
+ *   auto hitbox = player.getHitboxWorldRect();  // {116, 216, 32, 32}
+ *   player.setAnchor({150.f, 200.f});           // both rects shift by +50 x
  * @endcode
  */
 

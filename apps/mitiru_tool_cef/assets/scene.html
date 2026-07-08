@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>scene tree</title>
+<link rel="stylesheet" href="tool.css">
+<style>
+  .tree{ margin-top:8px; padding:8px 10px; background:#ffffff; box-shadow:none;
+         border:1px solid #e6e7ea;
+         font:400 14px/1.0 'IBM Plex Mono','Consolas',monospace; }
+  .row{ display:flex; align-items:center; height:24px; white-space:nowrap; }
+  /* インデント + 罫線コネクタ (極細グレー罫) */
+  .indent{ width:18px; height:24px; flex:0 0 18px; }
+  .indent.line{ background-image:linear-gradient(#c9cbd0 1px, transparent 1px);
+                background-size:1px 2px; background-position:9px 0; background-repeat:repeat-y; }
+  /* [+]/[-] 開閉ボックス */
+  .tog{ width:15px; height:15px; flex:0 0 15px; margin-right:5px; cursor:pointer;
+        display:flex; align-items:center; justify-content:center;
+        background:#ffffff; border:1px solid #c9cbd0; font-size:11px; line-height:1; color:#1a1c1f;
+        font-family:'IBM Plex Mono','Consolas',monospace; user-select:none; }
+  .tog.leaf{ border:0; background:transparent; cursor:default; }
+  .key{ color:#1a1c1f; font-weight:700; }
+  .colon{ color:#999da4; margin:0 5px; }
+  .val{ color:#1a1c1f; font-weight:600; }
+  .obj-hint{ color:#999da4; margin-left:7px; font-weight:400; }
+  .children.collapsed{ display:none; }
+</style>
+</head>
+<body class="is-waiting" data-m-class="is-waiting: !tree.count">
+  <header><span class="dot"></span><h1>scene tree</h1></header>
+  <div class="body"><div class="tree" data-m-tree="tool.snap" data-m-tree-root="scene"></div></div>
+  <div class="wait">waiting for the game…</div>
+
+<script src="mitiru_runtime/mitiru_cef_state.js"></script>
+<script src="mitiru_runtime/mitiru_bind.js"></script>
+<script src="mitiru_runtime/mitiru_bind_tools.js"></script>
+</body>
+</html>

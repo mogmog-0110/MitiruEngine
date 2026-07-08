@@ -59,7 +59,7 @@
 
 **ギャップ**:
 - **汎用の `StateMachine<T>` テンプレート** が無い (型安全 transition、guard、entry/exit action、history、nested state machine 等)
-- KaeruCrape cooking の 15 状態を C++ で書こうとすると、enum + switch + bool フラグの組み合わせになり保守性が低い
+- 15 状態級の minigame state machine を C++ で書こうとすると、enum + switch + bool フラグの組み合わせになり保守性が低い
 - NodeGraph はあるが gameplay state machine よりは behavior tree / visual script 寄り、軽量 FSM 用途にはオーバースペック
 
 **優先度**: **P0** (cooking / battle / dialogue / mini-game 全てに必要な原始的 building block)

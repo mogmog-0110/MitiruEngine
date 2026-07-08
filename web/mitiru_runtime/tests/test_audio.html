@@ -92,8 +92,8 @@
 
 	var TEST_MANIFEST = {
 		se:    { confirm: 'assets/se/confirm.ogg', cancel: 'assets/se/cancel.ogg' },
-		bgm:   { title:   'assets/bgm/title.ogg',  cooking: 'assets/bgm/cooking.ogg' },
-		voice: { sachi_01: 'assets/voice/sachi_01.ogg' },
+		bgm:   { title:   'assets/bgm/title.ogg',  battle: 'assets/bgm/battle.ogg' },
+		voice: { hero_01: 'assets/voice/hero_01.ogg' },
 	};
 
 	// ── 1. setManifest — inline object ───────────────────────────
@@ -228,7 +228,7 @@
 		var firstCount = AudioStub._instances.length;
 		t.assert(firstCount >= 1, 'first bgm play creates audio node');
 
-		a.bgm('cooking', { fadeMs: 0 });
+		a.bgm('battle', { fadeMs: 0 });
 		t.assert(AudioStub._instances.length > firstCount, 'crossfade creates second audio node');
 
 		restoreAudio();
@@ -305,7 +305,7 @@
 		var u1 = a.on('stop',      function(d) { stops.push(d); });
 		var u2 = a.on('voice:end', function(d) { voiceEnds.push(d); });
 
-		a.voice('sachi_01');
+		a.voice('hero_01');
 		a.stop('voice');
 
 		t.assert(stops.some(function(d) { return d.category === 'voice'; }), 'stop event for voice');
@@ -327,7 +327,7 @@
 
 		a.se('confirm');
 		a.bgm('title', { fadeMs: 0 });
-		a.voice('sachi_01');
+		a.voice('hero_01');
 		a.stopAll();
 
 		t.assert(categories.indexOf('se')    >= 0, 'se stopped');
@@ -391,7 +391,7 @@
 		t.assert(bgmNode !== undefined, 'bgm node exists');
 
 		// voice 開始 — bgm は duck されるはず。
-		a.voice('sachi_01');
+		a.voice('hero_01');
 		t.assertClose(bgmNode.volume, 0.25, 0.01, 'bgm ducked to 0.25');
 
 		// voice 終了を発火 — bgm は戻るはず。
@@ -437,13 +437,13 @@
 		var unsub = a.on('bgm:change', function(d) { changes.push(d); });
 
 		a.bgm('title',   { fadeMs: 0 });
-		a.bgm('cooking', { fadeMs: 0 });
+		a.bgm('battle', { fadeMs: 0 });
 
 		t.assert(changes.length >= 2, 'two bgm:change events');
 		t.assertEq(changes[0].from, null,    'first from is null');
 		t.assertEq(changes[0].to,   'title', 'first to is title');
 		t.assertEq(changes[1].from, 'title', 'second from is title');
-		t.assertEq(changes[1].to,   'cooking');
+		t.assertEq(changes[1].to,   'battle');
 
 		unsub();
 		restoreAudio();
@@ -462,14 +462,14 @@
 		var u1 = a.on('voice:start', function(d) { starts.push(d); });
 		var u2 = a.on('voice:end',   function(d) { ends.push(d); });
 
-		a.voice('sachi_01');
+		a.voice('hero_01');
 		t.assertEq(starts.length, 1, 'voice:start fired');
-		t.assertEq(starts[0].key, 'sachi_01');
+		t.assertEq(starts[0].key, 'hero_01');
 
 		var voiceNode = AudioStub._instances[AudioStub._instances.length - 1];
 		voiceNode.triggerEnded();
 		t.assertEq(ends.length, 1, 'voice:end fired on audio ended');
-		t.assertEq(ends[0].key, 'sachi_01');
+		t.assertEq(ends[0].key, 'hero_01');
 
 		u1(); u2();
 		restoreAudio();

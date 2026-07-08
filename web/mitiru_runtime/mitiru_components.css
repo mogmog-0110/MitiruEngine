@@ -1,8 +1,8 @@
 /*!
  * mitiru_components.css — MitiruEngine shared visual primitives
  *
- * F-12 / F-13 の起点ファイル。KaeruCrape の各モックアップが毎回 SVG / CSS で
- * 再実装していた "diner の定番パーツ" を 1 箇所に集約する。F-02 の component
+ * F-12 / F-13 の起点ファイル。各ゲームのモックアップが毎回 SVG / CSS で
+ * 再実装していた定番パーツを 1 箇所に集約する。F-02 の component
  * library 本体は別ファイルになる見込みだが、visual-signature に直結する
  * 個別コンポーネントはまず本ファイルに追加していく。
  *
@@ -563,7 +563,7 @@
 	line-height: 1;
 }
 .mitiru-ingredient-shelf-tile__label {
-	font-size: 10px;
+	font-size: 18px; /* 18px+ ルール。縮小は .m-compact (ファイル末尾) で opt-in */
 	color: var(--mitiru-text-mute, #8a7865);
 	font-family: var(--mitiru-font-body, sans-serif);
 }
@@ -571,8 +571,8 @@
 
 /* ── §10 HUD note ─────────────────────────────────────────────
  * <div class="mitiru-hud-note">
- *   <div class="mitiru-hud-note__title">Order #3</div>
- *   <div class="mitiru-hud-note__body">Butter crepe x 2</div>
+ *   <div class="mitiru-hud-note__title">Quest #3</div>
+ *   <div class="mitiru-hud-note__body">Herbs x 2</div>
  * </div>
  * data-urgency="high"  -> 左側の赤バー + pulse アニメーション
  * data-urgency="low"   -> 左側のグレーバー
@@ -621,8 +621,8 @@
 /* ───────────────────────────────────────────────────────────────────
  * 14. Chat bubble — mitiru-chat / mitiru-chat-bubble (F-10)
  *
- * 種類別 bubble を並べるスクロール可能な chat 面。KaeruCrape の
- * heroines-laptop メッセージ UI や、dating-sim / phone 風 view で使う。
+ * 種類別 bubble を並べるスクロール可能な chat 面。メッセンジャー風 UI や、
+ * dating-sim / phone 風 view で使う。
  *
  * Tokens:
  *   --mitiru-chat-bg / -pad / -gap / -radius / -max
@@ -698,7 +698,7 @@
 }
 .mitiru-chat-bubble__time {
 	display: block;
-	font-size: 0.68rem;
+	font-size: 18px; /* 18px+ ルール。縮小は .m-compact で opt-in */
 	opacity: 0.5;
 	margin-top: 2px;
 	text-align: right;
@@ -1051,7 +1051,7 @@
 
 .mitiru-preloader__label {
 	margin-top: 6px;
-	font-size: 12px;
+	font-size: 18px; /* 18px+ ルール。縮小は .m-compact で opt-in */
 	color: var(--mitiru-text-mute, #666666);
 	line-height: 1.4;
 }
@@ -1104,7 +1104,7 @@
 	);
 	color: var(--mitiru-placeholder-label-fg);
 	font-family: var(--mitiru-font-mono, monospace);
-	font-size: 11px;
+	font-size: 18px; /* 18px+ ルール。縮小は .m-compact で opt-in */
 	box-sizing: border-box;
 }
 .mitiru-art-placeholder::after {
@@ -1234,7 +1234,7 @@ img.mitiru-art-placeholder:not(.mitiru-art-placeholder--shown)::after { content:
 	--m-btn-fg:     #fff;
 	--m-btn-border: #d32f2f;
 }
-.m-btn--sm { padding: 4px 12px; font-size: var(--mitiru-text-xs, 0.75rem); }
+.m-btn--sm { padding: 4px 12px; font-size: 18px; } /* 18px+ ルール。縮小は .m-compact で opt-in */
 .m-btn--lg { padding: 12px 28px; font-size: var(--mitiru-text-lg, 1.1rem); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1612,3 +1612,16 @@ img.mitiru-art-placeholder:not(.mitiru-art-placeholder--shown)::after { content:
 	font-weight:   bold;
 	margin-bottom: 4px;
 }
+
+
+/* ───────────────────────────────────────────────────────────────────
+ * 縮小 opt-in — .m-compact
+ *
+ * ライブラリ既定の最小文字サイズは 18px (可読性ルール)。旧 10-12px の
+ * 密度が要るゲームは任意の親 (body 等) に .m-compact を付けて opt-in する。
+ * ─────────────────────────────────────────────────────────────────── */
+.m-compact .mitiru-ingredient-shelf-tile__label { font-size: 10px; }
+.m-compact .mitiru-chat-bubble__time            { font-size: 0.68rem; }
+.m-compact .mitiru-preloader__label             { font-size: 12px; }
+.m-compact .mitiru-art-placeholder              { font-size: 11px; }
+.m-compact .m-btn--sm                           { font-size: var(--mitiru-text-xs, 0.75rem); }

@@ -1,7 +1,7 @@
 /*!
  * mitiru_test_harness.js — 共通テストハーネス (E-05)
  *
- * KaeruCrape の 9 ファイル x `cooking_*.test.html` で再発明されていた
+ * 各ゲームの `*.test.html` で再発明されていた
  * IIFE + <pre id="results"> + assert(name, cond) 構造を engine 側に持ち上げる。
  *
  * 使い方 (games/<name>/assets/tests/foo.test.html):

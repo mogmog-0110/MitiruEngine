@@ -42,6 +42,7 @@
 #include <wrl/client.h>
 #include <mitiru/gfx/dx12/Dx12Device.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
+#include <mitiru/gfx/dx12/Dx12MsaaTarget.hpp>
 #pragma comment(lib, "d3dcompiler.lib")
 #endif
 
@@ -362,12 +363,13 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue>   m_dx12Queue;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature>  m_dx12RootSig;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12Pipeline;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12PipelineMsaa; ///< 4x MSAA 変種 (中間 RT が 4x のとき使用)
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12VsBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12PsBlob;
 	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12VertexBuffer[kDx12Ring]; ///< upload heap (slot 別)
 	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12IndexBuffer[kDx12Ring];  ///< upload heap (slot 別)
 	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12ConstantBuffer; ///< エイリアス用 (未使用)
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12VsCb;         ///< projection CB (共有、resize でのみ更新)
+	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12VsCb;         ///< projection CB (共有。書換は resize のみ、waitDx12Fence で全 in-flight drain 後に限る)
 	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12PsCb[kDx12Ring]; ///< uUseTexture CB (slot 別)
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dx12SrvHeap;      ///< null SRV 用
 	std::uint32_t m_dx12VbCapacity[kDx12Ring] = {};
@@ -384,6 +386,7 @@ private:
 	/// フォールバックする (draw() 内での遅延初期化は禁止 — エンジン規約)。
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_dx12PointRootSig; ///< point-filter root sig
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_dx12PointPipeline; ///< point-filter PSO
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_dx12PointPipelineMsaa; ///< point-filter 4x MSAA 変種
 
 	/// @brief pixel-grid 用 point-filter root signature + PSO を eager に構築する
 	/// @details createFromDx12 から base PSO 構築直後に呼ばれる。失敗時は
@@ -401,9 +404,11 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12SdfRectVsBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12SdfRectPsBlob;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12SdfRectPso;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12SdfRectPsoMsaa;   ///< SDF 矩形 4x MSAA 変種
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12SdfCircleVsBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12SdfCirclePsBlob;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12SdfCirclePso;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12SdfCirclePsoMsaa; ///< SDF 円 4x MSAA 変種
 	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfVertexBuffer[kDx12Ring];
 	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfIndexBuffer[kDx12Ring];
 	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfStyleCb[kDx12Ring];
@@ -437,8 +442,21 @@ private:
 		const void* data, std::uint32_t bytes);
 
 	/// @brief 2D 用 PSO を生成する (alpha blend, no depth, triangle list)
+	/// @param sampleCount RT の MSAA サンプル数 (1=非MS, 4=4x MSAA)。RTV の
+	///        SampleDesc.Count と一致させないと draw で失敗するため、submit 側は
+	///        描画先 RT の sampleCount() に合わせて 1x/4x PSO を選ぶ。
 	[[nodiscard]] static Microsoft::WRL::ComPtr<ID3D12PipelineState>
 	buildDx12Pso(ID3D12Device* device,
+		ID3D12RootSignature* rootSig,
+		ID3DBlob* vs, ID3DBlob* ps,
+		const D3D12_INPUT_ELEMENT_DESC* layout, UINT layoutCount,
+		UINT sampleCount = 1);
+
+	/// @brief 既存の 1x PSO と同一構成の 4x MSAA 変種を try で構築する (失敗時 null)。
+	/// @details MSAA 中間 RT へ 2D を描く際に使う。4x 非対応環境では null のまま残り、
+	///          submit 側が該当描画をスキップして 1x フォールバックへ委ねる。
+	[[nodiscard]] static Microsoft::WRL::ComPtr<ID3D12PipelineState>
+	tryBuildDx12PsoMsaa(ID3D12Device* device,
 		ID3D12RootSignature* rootSig,
 		ID3DBlob* vs, ID3DBlob* ps,
 		const D3D12_INPUT_ELEMENT_DESC* layout, UINT layoutCount);
@@ -454,11 +472,13 @@ private:
 	[[nodiscard]] int acquireDx12Slot();
 
 	/// @brief SDF ルートシグネチャ + PSO を遅延初期化する
+	/// @param cachedPsoMsaa 1x PSO と並べて構築する 4x MSAA 変種の格納先 (4x 非対応時 null)
 	void ensureDx12SdfResources(
 		std::string_view vsSource, std::string_view psSource,
 		Microsoft::WRL::ComPtr<ID3DBlob>& cachedVs,
 		Microsoft::WRL::ComPtr<ID3DBlob>& cachedPs,
-		Microsoft::WRL::ComPtr<ID3D12PipelineState>& cachedPso);
+		Microsoft::WRL::ComPtr<ID3D12PipelineState>& cachedPso,
+		Microsoft::WRL::ComPtr<ID3D12PipelineState>& cachedPsoMsaa);
 
 	/// @brief DX12 で基本 2D バッチ描画を実行する
 	void submitBatchDx12(

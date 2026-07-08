@@ -154,7 +154,7 @@ void ensureSkyboxTextureDx12()
 	m_skyboxTextureReady = true;
 }
 
-/// @brief skybox 用 root sig / PSO / VS / PS / cube VB / IB / CB を構築する
+/// @brief skybox 用 root sig / PSO / VS / PS / cube VB / IB を構築する
 /// @details cubemap の内容には依存しない。renderer 寿命中に一度だけ作って
 ///          流用する。
 void ensureSkyboxPipelineDx12()
@@ -312,23 +312,7 @@ void ensureSkyboxPipelineDx12()
 	if (!makeUploadBuffer(sizeof(cubeVerts), cubeVerts, m_skyboxVB)) return;
 	if (!makeUploadBuffer(sizeof(cubeIdx), cubeIdx, m_skyboxIB)) return;
 
-	// ── 8. transform CB（dynamic、毎フレーム更新）────────────
-	{
-		D3D12_HEAP_PROPERTIES uph = {}; uph.Type = D3D12_HEAP_TYPE_UPLOAD;
-		D3D12_RESOURCE_DESC d = {};
-		d.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		// alignof 256 for CB
-		d.Width = 256;
-		d.Height = 1; d.DepthOrArraySize = 1; d.MipLevels = 1;
-		d.SampleDesc.Count = 1; d.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		if (FAILED(m_d3dDevice->CreateCommittedResource(
-				&uph, D3D12_HEAP_FLAG_NONE, &d,
-				D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-				IID_PPV_ARGS(m_skyboxCb.GetAddressOf()))))
-		{
-			return;
-		}
-	}
+	// transform CB は m_uploadRing から毎フレーム切り出す (専用リソース不要)
 
 	m_skyboxPipelineReady = true;
 }
@@ -388,7 +372,7 @@ void uploadSkyboxTextureDx12()
 }
 
 /// @brief skybox を描画する（beginFrame 内、メッシュ描画の前）
-/// @details MRT (backbuffer + normal) → single RTV (backbuffer) に切替えて
+/// @details MRT (MSAA color + normal) → single RTV (MSAA color) に切替えて
 ///          skybox を描画し、終わったら MRT に戻す。
 void drawSkyboxIfNeededDx12()
 {
@@ -418,29 +402,21 @@ void drawSkyboxIfNeededDx12()
 	toHLSL(cb.viewNoTrans, view);
 	toHLSL(cb.projection,  proj);
 
-	void* mapped = nullptr;
-	D3D12_RANGE rr = {0, 0};
-	if (SUCCEEDED(m_skyboxCb->Map(0, &rr, &mapped)))
-	{
-		std::memcpy(mapped, &cb, sizeof(cb));
-		D3D12_RANGE wr = {0, sizeof(cb)};
-		m_skyboxCb->Unmap(0, &wr);
-	}
+	// CB は uploadRing から per-frame 切り出す (in-flight 前フレームの読取と競合しない)
+	const auto skyCbAlloc = m_uploadRing.upload(&cb, sizeof(cb), 256);
+	if (!skyCbAlloc.valid()) return;
 
-	// バックバッファのみに RT を切り替える
-	auto* swapChainSky = m_device->getSwapChain();
-	auto* backBuffer   = static_cast<gfx::Dx12RenderTarget*>(swapChainSky->backBuffer());
-	auto rtvHandle     = backBuffer->rtvHandle();
-	auto dsvHandle     = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
-	m_graphicsCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+	// MSAA HDR color のみ + 深度に RT を切り替える (PSO の FP16 / 4x MSAA と一致)
+	auto msaaRtv   = m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
+	auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	m_graphicsCmdList->OMSetRenderTargets(1, &msaaRtv, FALSE, &dsvHandle);
 
 	// skybox 用 root sig / PSO / バインディング
 	m_graphicsCmdList->SetGraphicsRootSignature(m_skyboxRootSig.Get());
 	m_graphicsCmdList->SetPipelineState(m_skyboxPSO.Get());
 	m_graphicsCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(
-		0, m_skyboxCb->GetGPUVirtualAddress());
+	m_graphicsCmdList->SetGraphicsRootConstantBufferView(0, skyCbAlloc.gpuAddr);
 
 	ID3D12DescriptorHeap* heaps[] = { m_skyboxSrvHeap.Get() };
 	m_graphicsCmdList->SetDescriptorHeaps(1, heaps);
@@ -461,9 +437,9 @@ void drawSkyboxIfNeededDx12()
 
 	m_graphicsCmdList->DrawIndexedInstanced(36, 1, 0, 0, 0);
 
-	// MRT (backbuffer + normal + DSV) を元に戻し、main root sig / main PSO に戻す
+	// MRT (MSAA color + normal + DSV) を元に戻し、main root sig / main PSO に戻す
 	auto normalRtv = m_normalRTVHeap->GetCPUDescriptorHandleForHeapStart();
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2] = { rtvHandle, normalRtv };
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2] = { msaaRtv, normalRtv };
 	m_graphicsCmdList->OMSetRenderTargets(2, rtvHandles, FALSE, &dsvHandle);
 
 	m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());

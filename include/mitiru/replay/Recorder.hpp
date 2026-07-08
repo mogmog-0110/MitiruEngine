@@ -7,17 +7,17 @@
 /// append-only binary file に書き出し、後で `mitiru::replay::Player` から
 /// 同じ列を再生できるようにする。
 ///
-/// **File format (v3)**:
+/// **File format (v4)**:
 ///
 /// @code
 ///   header (40 bytes):
 ///       char[4]  magic            = "MTRR"          ; off 0
-///       uint32_t version          = 3               ; off 4
+///       uint32_t version          = 4               ; off 4
 ///       uint32_t frameSize        = sizeof(InputSnapshot) ; off 8
 ///       uint32_t frameCount       = total frames    ; off 12 (seek-back at close)
 ///       uint64_t rngSeed          = recording seed   ; off 16
 ///       uint64_t recordedAtUnixMs = wall clock at open ; off 24
-///       uint64_t reserved         = 0               ; off 32
+///       uint64_t abiVersion       = kWireApiVersion (数値 + build 指紋) ; off 32 (v21+ で記録。旧録画は 0 = 不明)
 ///
 ///   frame record (variable, repeated):
 ///       uint32_t frameIdx
@@ -30,7 +30,12 @@
 /// v2 → v3 は後方互換なし (frame record に stateLen + state を追加した)。
 /// v2/v1 file は version mismatch で graceful reject (再録画前提)。
 ///
-/// **state blob とは**: caller (e.g. subsys_replay demo) が「自分の game state を
+/// **ABI 不一致録画の拒否**: ABI bump で InputSnapshot のサイズが変わると header の
+/// frameSize が現 sizeof(InputSnapshot) と一致せず、Player::open が FrameSizeMismatch で
+/// 拒否する (format version が同じでも再生不能 = 再録画が必要)。off 32 の abiVersion は
+/// 診断用 — host が拒否メッセージに記録時 ABI を表示するために読む (0 = 記録時 ABI 不明)。
+///
+/// **state blob とは**: caller (e.g. mitiru_host の --record) が「自分の game state を
 /// memcpy / serialize したもの」。engine は中身を一切解釈しない (汎用)。
 /// これにより「同 input・異コード」で state がどの frame から分岐したかを
 /// `Player::diffState()` が判定できる (axis 4 / AI 回帰判定)。
@@ -73,7 +78,7 @@ constexpr std::size_t   kOffFrameSize  = 8;
 constexpr std::size_t   kOffFrameCount = 12;
 constexpr std::size_t   kOffRngSeed    = 16;
 constexpr std::size_t   kOffRecordedAt = 24;
-constexpr std::size_t   kOffReserved   = 32;
+constexpr std::size_t   kOffAbiVersion = 32;  ///< 記録時の wire version (指紋入り、0 = 不明)。診断用
 
 /// @brief fnv1a-32 starting seed (single source of truth)
 constexpr std::uint32_t kFnvSeed  = 0x811c9dc5u;
@@ -139,13 +144,13 @@ public:
 		const std::uint32_t ver   = kFormatVersion;
 		const std::uint32_t fs    = static_cast<std::uint32_t>(sizeof(module::InputSnapshot));
 		const std::uint32_t fc0   = 0;  // close() で seek-back して上書きする
-		const std::uint64_t rsvd  = 0;
+		const std::uint64_t abi   = module::kWireApiVersion;  // 診断用 (frameSize 不一致時の表示、指紋入り)
 		std::memcpy(header + kOffVersion,    &ver,            sizeof(ver));
 		std::memcpy(header + kOffFrameSize,  &fs,             sizeof(fs));
 		std::memcpy(header + kOffFrameCount, &fc0,            sizeof(fc0));
 		std::memcpy(header + kOffRngSeed,    &m_rngSeed,      sizeof(m_rngSeed));
 		std::memcpy(header + kOffRecordedAt, &m_recordedAtMs, sizeof(m_recordedAtMs));
-		std::memcpy(header + kOffReserved,   &rsvd,           sizeof(rsvd));
+		std::memcpy(header + kOffAbiVersion, &abi,            sizeof(abi));
 		m_out.write(reinterpret_cast<const char*>(header), kHeaderBytes);
 		m_frameCount = 0;
 		return m_out.good();

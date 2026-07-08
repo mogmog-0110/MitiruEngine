@@ -37,7 +37,9 @@
 #endif
 
 #include <chrono>
+#include <cstdio>
 #include <functional>
+#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
@@ -121,21 +123,35 @@ public:
         CefRefPtr<MitiruCefApp> app = new MitiruCefApp();
         if (!CefInitialize(mainArgs, settings, app, nullptr))
         {
+            std::fprintf(stderr,
+                "[mitiru][cef] CefInitialize failed (log: %s)\n", logPath.c_str());
             return false;
         }
 
         m_client = new MitiruCefClient();
 
-        if (!m_browser.create(m_client, width, height, startUrl))
+        // 起動 URL も loadUrl と同じ allowlist を通す (C-5)
+        std::string effectiveUrl = startUrl;
+        if (!isUrlAllowed(effectiveUrl))
         {
-            CefShutdown();
+            std::fprintf(stderr,
+                "[mitiru][cef] start URL denied (remote scheme, opt-in: allowRemoteUrls): %s\n",
+                effectiveUrl.c_str());
+            effectiveUrl = "about:blank";
+        }
+
+        if (!m_browser.create(m_client, width, height, effectiveUrl))
+        {
+            std::fprintf(stderr, "[mitiru][cef] browser create failed\n");
+            closeAndShutdownCef();
             return false;
         }
 
         if (!m_texture.initialize(device, width, height))
         {
-            m_browser.close();
-            CefShutdown();
+            std::fprintf(stderr,
+                "[mitiru][cef] UI texture init failed (%dx%d)\n", width, height);
+            closeAndShutdownCef();
             return false;
         }
 
@@ -155,20 +171,7 @@ public:
             return;
         }
         m_initialized = false;
-
-        m_browser.close();
-        // LifeSpanHandler::OnBeforeClose が発火するまで待機する
-        // isCreated() が false になった = ブラウザが実際に閉じられた
-        for (int i = 0; i < 100 &&
-             m_client && m_client->lifespanHandler()->isCreated(); ++i)
-        {
-            CefDoMessageLoopWork();
-        }
-
-        // CefShutdown 前にすべての CefRefPtr を解放する (shutdown_checker 対策)
-        m_browser.onClosed(); // m_browser / m_host を null に
-        m_client = nullptr;   // renderHandler / lifespanHandler 等を解放
-        CefShutdown();
+        closeAndShutdownCef();
     }
 
     // ── 毎フレーム API ────────────────────────────────────────
@@ -398,13 +401,30 @@ public:
     // ── ナビゲーション ────────────────────────────────────────
 
     /// @brief URL に遷移する
+    /// @details scheme allowlist (C-5): app:// / file:// / data: / about: のみ。
+    ///          http(s) 等のリモート URL は setAllowRemoteUrls(true) の明示
+    ///          opt-in が無い限り deny (stderr 1 行)。
     void loadUrl(const std::string& url)
     {
-        if (m_initialized)
+        if (!m_initialized)
         {
-            m_browser.loadUrl(url);
+            return;
         }
+        if (!isUrlAllowed(url))
+        {
+            std::fprintf(stderr,
+                "[mitiru][cef] loadUrl denied (remote scheme, opt-in: allowRemoteUrls): %s\n",
+                url.c_str());
+            return;
+        }
+        m_browser.loadUrl(url);
     }
+
+    /// @brief リモート URL (http/https 等) の読込を許可する (既定 false)
+    void setAllowRemoteUrls(bool allow) noexcept { m_allowRemoteUrls = allow; }
+
+    /// @brief リモート URL が許可されているかを返す
+    [[nodiscard]] bool allowRemoteUrls() const noexcept { return m_allowRemoteUrls; }
 
     /// @brief HTML 文字列を直接読み込む
     void loadHtml(const std::string& html, const std::string& baseUrl = "about:blank")
@@ -465,21 +485,24 @@ public:
     ///   auto store = ctx.makeStateStore();
     ///   store->set("stats.hp", 100);   // 以降ロード完了時に自動再送
     /// ```
-    [[nodiscard]] std::unique_ptr<StateStore> makeStateStore()
+    [[nodiscard]] std::shared_ptr<StateStore> makeStateStore()
     {
-        auto store = std::make_unique<StateStore>(
+        auto store = std::make_shared<StateStore>(
             [this](const std::string& js) { executeJavaScript(js); },
             [this](const std::string& name, HandlerFn fn)
             {
                 registerHandler(name, std::move(fn));
             });
 
-        // lambda 用に生ポインタを保持する。store の所有権は呼び出し側にあり、
-        // この context より長生きさせる責任がある (ゲームと同じライフタイム)。
-        StateStore* raw = store.get();
-        setLoadEndCallback([raw](std::string_view /*url*/)
+        // weak 捕捉 — store が context より先に死んでもロード完了時は no-op
+        // (H-19: 生ポインタ捕捉による UAF を構造で排除)。
+        std::weak_ptr<StateStore> weak = store;
+        setLoadEndCallback([weak](std::string_view /*url*/)
         {
-            raw->replayRetainedState();
+            if (auto s = weak.lock())
+            {
+                s->replayRetainedState();
+            }
         });
 
         return store;
@@ -543,7 +566,42 @@ public:
     }
 
 private:
+    /// @brief allowlist 判定 — ローカル scheme のみ許可 (C-5)
+    [[nodiscard]] bool isUrlAllowed(const std::string& url) const noexcept
+    {
+        if (m_allowRemoteUrls)
+        {
+            return true;
+        }
+        return url.rfind("app://", 0) == 0
+            || url.rfind("file://", 0) == 0
+            || url.rfind("data:", 0) == 0
+            || url.rfind("about:", 0) == 0;
+    }
+
+    /// @brief browser close → OnBeforeClose 待ちポンプ → ref 解放 → CefShutdown
+    /// @details shutdown() と initialize() 失敗パスで共通。ポンプ無しの即
+    ///          CefShutdown は shutdown_checker assert / browser リークになる。
+    ///          browser 未生成でも安全 (close / onClosed は null ガード済み)。
+    void closeAndShutdownCef()
+    {
+        m_browser.close();
+        // LifeSpanHandler::OnBeforeClose が発火するまで待機する
+        // isCreated() が false になった = ブラウザが実際に閉じられた
+        for (int i = 0; i < 100 &&
+             m_client && m_client->lifespanHandler()->isCreated(); ++i)
+        {
+            CefDoMessageLoopWork();
+        }
+
+        // CefShutdown 前にすべての CefRefPtr を解放する (shutdown_checker 対策)
+        m_browser.onClosed(); // m_browser / m_host を null に
+        m_client = nullptr;   // renderHandler / lifespanHandler 等を解放
+        CefShutdown();
+    }
+
     bool                       m_initialized           = false;
+    bool                       m_allowRemoteUrls       = false; ///< C-5: http(s) 読込の明示 opt-in
     bool                       m_inputEnabled          = true;  ///< false なら handleInput が CEF への転送をスキップ
     bool                       m_visible               = true;  ///< false なら composite が早期 return (overlay 非表示)
     bool                       m_autoFocusOnFirstPaint = true;  ///< H-08: 初回ペイント / setInputEnabled(true) で自動 SetFocus

@@ -143,9 +143,10 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Scene;
 		node.sourceLine = line;
+		auto& sc = node.payload.emplace<SceneParams>();
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::String)
 		{
-			node.sceneName = tokens[pos].text;
+			sc.name = tokens[pos].text;
 			++pos;
 		}
 		skipToEndOfLine(tokens, pos);
@@ -159,20 +160,21 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Background;
 		node.sourceLine = line;
+		auto& bg = node.payload.emplace<BackgroundParams>();
 
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::String)
 		{
-			node.background.file = tokens[pos].text;
+			bg.file = tokens[pos].text;
 			++pos;
 		}
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::Identifier)
 		{
-			node.background.transition = tokens[pos].text;
+			bg.transition = tokens[pos].text;
 			++pos;
 		}
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::Number)
 		{
-			node.background.duration = static_cast<float>(tokens[pos].numValue);
+			bg.duration = static_cast<float>(tokens[pos].numValue);
 			++pos;
 		}
 		skipToEndOfLine(tokens, pos);
@@ -189,11 +191,12 @@ private:
 		else if (audioType == "se") node.type = ScenarioCommandType::Se;
 		else node.type = ScenarioCommandType::Voice;
 		node.sourceLine = line;
-		node.audio.type = audioType;
+		auto& au = node.payload.emplace<AudioParams>();
+		au.type = audioType;
 
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::String)
 		{
-			node.audio.file = tokens[pos].text;
+			au.file = tokens[pos].text;
 			++pos;
 		}
 		skipToEndOfLine(tokens, pos);
@@ -207,10 +210,11 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Character;
 		node.sourceLine = line;
+		auto& ch = node.payload.emplace<CharacterParams>();
 
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::String)
 		{
-			node.character.name = tokens[pos].text;
+			ch.name = tokens[pos].text;
 			++pos;
 		}
 
@@ -223,27 +227,27 @@ private:
 
 			if (text == "show")
 			{
-				node.character.show = true;
+				ch.show = true;
 			}
 			else if (text == "hide")
 			{
-				node.character.show = false;
+				ch.show = false;
 			}
 			else if (text == "left" || text == "center" || text == "right" ||
 					 text == "far_left" || text == "far_right")
 			{
-				node.character.position = text;
+				ch.position = text;
 			}
 			else if (text == "fade" || text == "dissolve" || text == "slide" || text == "none")
 			{
-				node.character.transition = text;
+				ch.transition = text;
 			}
 			else if (tokens[pos].type == ScenarioTokenType::Identifier)
 			{
 				// その他の識別子は表情として解釈
-				if (node.character.expression.empty())
+				if (ch.expression.empty())
 				{
-					node.character.expression = text;
+					ch.expression = text;
 				}
 			}
 			++pos;
@@ -259,6 +263,7 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Choice;
 		node.sourceLine = line;
+		auto& cp = node.payload.emplace<ChoiceParams>();
 
 		skipToEndOfLine(tokens, pos); // @choice の行末をスキップ
 
@@ -299,7 +304,7 @@ private:
 						++pos;
 					}
 				}
-				node.choices.push_back(std::move(entry));
+				cp.entries.push_back(std::move(entry));
 				skipToEndOfLine(tokens, pos);
 			}
 			else
@@ -324,13 +329,14 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Script;
 		node.sourceLine = line;
+		auto& sp = node.payload.emplace<ScriptParams>();
 
 		// `@script` Command の直後は (lexer 仕様により) 改行を経由せず
 		// すぐに `ScriptBody` トークンが続く。Newline トークンを emit しない
 		// 設計のため `skipToEndOfLine` は呼ばずに直接 ScriptBody を期待する。
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::ScriptBody)
 		{
-			node.scriptBody = tokens[pos].text;
+			sp.body = tokens[pos].text;
 			++pos;
 		}
 
@@ -352,12 +358,13 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Label;
 		node.sourceLine = line;
+		auto& lp = node.payload.emplace<LabelParams>();
 
 		if (pos < tokens.size() &&
 			(tokens[pos].type == ScenarioTokenType::Identifier ||
 			 tokens[pos].type == ScenarioTokenType::String))
 		{
-			node.labelName = tokens[pos].text;
+			lp.name = tokens[pos].text;
 			++pos;
 		}
 		skipToEndOfLine(tokens, pos);
@@ -371,12 +378,13 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Jump;
 		node.sourceLine = line;
+		auto& lp = node.payload.emplace<LabelParams>();
 
 		if (pos < tokens.size() &&
 			(tokens[pos].type == ScenarioTokenType::Identifier ||
 			 tokens[pos].type == ScenarioTokenType::String))
 		{
-			node.labelName = tokens[pos].text;
+			lp.name = tokens[pos].text;
 			++pos;
 		}
 		skipToEndOfLine(tokens, pos);
@@ -390,10 +398,11 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Set;
 		node.sourceLine = line;
+		auto& st = node.payload.emplace<SetParams>();
 
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::Identifier)
 		{
-			node.setParams.variable = tokens[pos].text;
+			st.variable = tokens[pos].text;
 			++pos;
 		}
 
@@ -403,12 +412,12 @@ private:
 		{
 			if (tokens[pos].type == ScenarioTokenType::String)
 			{
-				node.setParams.value = tokens[pos].text;
+				st.value = tokens[pos].text;
 				++pos;
 			}
 			else
 			{
-				node.setParams.value = collectRestOfLine(tokens, pos);
+				st.value = collectRestOfLine(tokens, pos);
 				return node; // collectRestOfLineが既にposを進めている
 			}
 		}
@@ -423,9 +432,10 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::If;
 		node.sourceLine = line;
+		auto& ip = node.payload.emplace<IfParams>();
 
 		// 条件式を行末まで取得
-		node.ifParams.condition = collectRestOfLine(tokens, pos);
+		ip.condition = collectRestOfLine(tokens, pos);
 
 		// フラットな構造で保持。@else / @endif は独立ノードとして emit され、
 		// ScenarioExecutor::skipToEndif / skipToElseOrEndif が走査する。
@@ -464,10 +474,11 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Wait;
 		node.sourceLine = line;
+		auto& wp = node.payload.emplace<WaitParams>();
 
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::Number)
 		{
-			node.waitDuration = static_cast<float>(tokens[pos].numValue);
+			wp.duration = static_cast<float>(tokens[pos].numValue);
 			++pos;
 		}
 		skipToEndOfLine(tokens, pos);
@@ -481,15 +492,16 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Transition;
 		node.sourceLine = line;
+		auto& tp = node.payload.emplace<TransitionParams>();
 
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::Identifier)
 		{
-			node.transition.type = tokens[pos].text;
+			tp.type = tokens[pos].text;
 			++pos;
 		}
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::Number)
 		{
-			node.transition.duration = static_cast<float>(tokens[pos].numValue);
+			tp.duration = static_cast<float>(tokens[pos].numValue);
 			++pos;
 		}
 		skipToEndOfLine(tokens, pos);
@@ -503,23 +515,24 @@ private:
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Dialogue;
 		node.sourceLine = tokens[pos].line;
+		auto& dp = node.payload.emplace<DialogueParams>();
 
 		if (tokens[pos].type == ScenarioTokenType::Identifier)
 		{
 			// speaker "text" 形式
-			node.dialogue.speaker = tokens[pos].text;
+			dp.speaker = tokens[pos].text;
 			++pos;
 
 			if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::String)
 			{
-				node.dialogue.text = tokens[pos].text;
+				dp.text = tokens[pos].text;
 				++pos;
 			}
 		}
 		else if (tokens[pos].type == ScenarioTokenType::String)
 		{
 			// "text" のみ（ナレーション）
-			node.dialogue.text = tokens[pos].text;
+			dp.text = tokens[pos].text;
 			++pos;
 		}
 

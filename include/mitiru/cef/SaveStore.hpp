@@ -16,7 +16,7 @@
 ///
 /// auto store = ctx.makeStateStore();
 /// mitiru::cef::SaveStore saves(*store, {
-///     .dir       = getSaveRoot() / "kaerucrape",
+///     .dir       = getSaveRoot() / "my_game",
 ///     .maxSlots  = 10,
 /// });
 /// // `saves` keeps itself registered for the lifetime of the object.

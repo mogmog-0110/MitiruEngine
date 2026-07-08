@@ -222,6 +222,30 @@ public:
 #endif
 	}
 
+	/// @brief write-blame symbol を解決する (optional、`mitiru why` opt-in game のみ)。不在なら nullptr。
+	[[nodiscard]] ModuleWhyBlameFn whyBlameAtFn() const noexcept
+	{
+#if defined(_WIN32)
+		if (m_handle == nullptr) { return nullptr; }
+		auto* p = ::GetProcAddress(m_handle, kWhyBlameSymbol);
+		return reinterpret_cast<ModuleWhyBlameFn>(p);
+#else
+		return nullptr;
+#endif
+	}
+
+	/// @brief 巻き戻しバッファ長 symbol を解決する (optional、MITIRU_REWIND_BUFFER 宣言時のみ)。不在なら nullptr。
+	[[nodiscard]] ModuleRewindBufferFn rewindBufferFramesFn() const noexcept
+	{
+#if defined(_WIN32)
+		if (m_handle == nullptr) { return nullptr; }
+		auto* p = ::GetProcAddress(m_handle, kRewindBufferSymbol);
+		return reinterpret_cast<ModuleRewindBufferFn>(p);
+#else
+		return nullptr;
+#endif
+	}
+
 	/// @brief 元 DLL の path (load() に渡された値)。未 load なら空。
 	[[nodiscard]] const std::filesystem::path& sourcePath() const noexcept
 	{

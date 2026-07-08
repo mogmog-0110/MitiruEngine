@@ -91,74 +91,34 @@ MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 	}
 	if (!m_ttfFont || !m_ttfFont->valid()) { m_ttfFont.reset(); return; }
 
-	// SDFフォントアトラスを構築
+	// SDF アトラスは文字エフェクト用。
 	initSdfFont(std::move(sdfFontData));
 
-	if (m_sdfRenderer.ready())
-	{
-		// SDF描画 + TrueTypeFontフォールバックのハイブリッドコールバック
-		m_screen->setTrueTypeFont(m_ttfFont.get(),
-			[](void* f, Screen& s, float x, float y,
-			   std::string_view text, float fontSize, const sgc::Colorf& color) {
-				auto* font = static_cast<vn::TrueTypeFont*>(f);
-				auto* engine = font->userData<Engine>();
-				if (engine != nullptr && engine->m_sdfRenderer.ready()
-					&& engine->sdfContainsAll(text))
-				{
-					engine->m_sdfRenderer.drawTextSoftware(s, text, x, y, fontSize, color);
-				}
-				else
-				{
-					render::TrueTypeScreenRenderer::drawText(*font, s, x, y, text, fontSize, color);
-				}
-			},
-			[](void* f, std::string_view text, float fontSize) -> sgc::Vec2f {
-				auto* font = static_cast<vn::TrueTypeFont*>(f);
-				auto* engine = font->userData<Engine>();
-				if (engine != nullptr && engine->m_sdfRenderer.ready()
-					&& engine->sdfContainsAll(text))
-				{
-					const auto sz = engine->m_sdfRenderer.measureText(text, fontSize);
-					return {sz.width, sz.height};
-				}
-				return {
-					render::TrueTypeScreenRenderer::measureWidth(*font, text, fontSize),
-					render::TrueTypeScreenRenderer::measureHeight(*font, fontSize)
-				};
-			});
+	// 既定の文字描画と計測を GlyphAtlasRenderer に任せる。
+	m_screen->setTrueTypeFont(m_ttfFont.get(),
+		[](void* f, Screen& s, float x, float y,
+		   std::string_view text, float fontSize, const sgc::Colorf& color) {
+			auto* font = static_cast<vn::TrueTypeFont*>(f);
+			auto* engine = font->userData<Engine>();
+			if (engine != nullptr)
+			{
+				engine->m_glyphRenderer.drawString(s, *font, text, x, y, fontSize, color);
+			}
+		},
+		[](void* f, std::string_view text, float fontSize) -> sgc::Vec2f {
+			return render::GlyphAtlasRenderer::measure(
+				*static_cast<vn::TrueTypeFont*>(f), text, fontSize);
+		});
 
-		// TrueTypeFontにEngine*を保持させる（コールバックからアクセス用）
-		m_ttfFont->setUserData(this);
-	}
-	else
-	{
-		// SDFが使えない場合はTrueTypeFont直接描画
-		m_screen->setTrueTypeFont(m_ttfFont.get(),
-			[](void* f, Screen& s, float x, float y,
-			   std::string_view text, float fontSize, const sgc::Colorf& color) {
-				render::TrueTypeScreenRenderer::drawText(
-					*static_cast<vn::TrueTypeFont*>(f), s, x, y, text, fontSize, color);
-			},
-			[](void* f, std::string_view text, float fontSize) -> sgc::Vec2f {
-				auto* font = static_cast<vn::TrueTypeFont*>(f);
-				return {
-					render::TrueTypeScreenRenderer::measureWidth(*font, text, fontSize),
-					render::TrueTypeScreenRenderer::measureHeight(*font, fontSize)
-				};
-			});
-	}
+	// 描画コールバックから Engine を辿れるようにする。
+	m_ttfFont->setUserData(this);
 }
 
 MITIRU_INLINE void mitiru::Engine::initSdfFont(std::vector<std::uint8_t> fontData)
 {
 	try
 	{
-		// SDF padding を 12 に引き上げ (旧 6)。16px 表示スケール (32px atlas の
-		// 0.5x) では padding が半分に縮む — 6px padding は 3px になり、
-		// smoothstep の edge AA が細い縦 stroke (l / i / | / 数字) を綺麗に
-		// render するには狭すぎる。12px padding なら 0.5x で実効 6px となり、
-		// 小サイズ text を crisp に render できる。
-		// ASCII のみなら atlas texture は ~15% 増。許容範囲のコスト。
+		// SDF padding は 12。表示を縮めても、細い縦線 (l / i / 数字) の輪郭を保てる幅。
 		m_sdfAtlas = std::make_unique<render::SdfFontAtlas>(
 			std::move(fontData), 32.0f, 12);
 

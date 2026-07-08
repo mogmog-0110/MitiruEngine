@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.23.0
+	VERSION 0.24.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -758,9 +758,14 @@ endif()
 
 # Examples removed — all demos/studio migrated out (CEF integration pending)
 
-# ── Examples (トップレベルビルド時のみ) ─────────────────────────────
+# ── Apps + Examples (トップレベルビルド時のみ) ──────────────────────
+# apps/ = 製品・インフラ (host / launcher / tool 窓)、examples/ = ゲームサンプル。
+# apps/ が先 (examples/ の DLL 群が mitiru_host の場所を configure 時に参照する)。
 # ゲームプロジェクトは別リポジトリで管理する (MitiruEngine はライブラリ)。
 if(PROJECT_IS_TOP_LEVEL AND NOT EMSCRIPTEN)
+	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/apps/CMakeLists.txt")
+		add_subdirectory(apps)
+	endif()
 	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/CMakeLists.txt")
 		add_subdirectory(examples)
 	endif()
@@ -840,7 +845,7 @@ if(MITIRU_ENABLE_CPACK AND WIN32 AND PROJECT_IS_TOP_LEVEL)
 	if(TARGET mitiru_launcher)
 		install(TARGETS mitiru_launcher RUNTIME DESTINATION mitiru_launcher COMPONENT runtime
 		                                LIBRARY DESTINATION mitiru_launcher COMPONENT runtime)
-		install(DIRECTORY examples/mitiru_launcher/assets/
+		install(DIRECTORY apps/mitiru_launcher/assets/
 		        DESTINATION mitiru_launcher/assets COMPONENT runtime
 		        PATTERN "*.html"
 		        PATTERN "*.css"

@@ -16,6 +16,8 @@
 #include <Windows.h>
 
 #include <algorithm>
+#include <cstdint>
+#include <vector>
 #include <functional>
 #include <memory>
 #include <string>
@@ -158,6 +160,7 @@ public:
 			DestroyWindow(m_hwnd);
 			m_hwnd = nullptr;
 		}
+		destroyLoadedIcons();
 	}
 
 	/// コピー禁止
@@ -217,6 +220,44 @@ public:
 			CP_UTF8, 0, title.data(), static_cast<int>(title.size()),
 			wideTitle.data(), wideLen);
 		SetWindowTextW(m_hwnd, wideTitle.c_str());
+	}
+
+	/// @brief ウィンドウアイコンを .ico ファイルで設定する
+	/// @param icoPath .ico ファイルのパス (UTF-8)
+	/// @details LR_LOADFROMFILE で読み、WM_SETICON (BIG/SMALL) に反映する。
+	///          読めない場合は既定 (WNDCLASS の hIcon) のまま黙って継続する。
+	void setIcon(std::string_view icoPath) override
+	{
+		if (!m_hwnd || icoPath.empty()) { return; }
+
+		const int wideLen = MultiByteToWideChar(
+			CP_UTF8, 0, icoPath.data(), static_cast<int>(icoPath.size()), nullptr, 0);
+		std::wstring widePath(static_cast<std::size_t>(wideLen), L'\0');
+		MultiByteToWideChar(
+			CP_UTF8, 0, icoPath.data(), static_cast<int>(icoPath.size()),
+			widePath.data(), wideLen);
+
+		// 変数名 small は禁止 (rpcndr.h が small を char へ #define する)
+		HICON bigIcon = static_cast<HICON>(LoadImageW(
+			nullptr, widePath.c_str(), IMAGE_ICON, 0, 0,
+			LR_LOADFROMFILE | LR_DEFAULTSIZE));
+		HICON smallIcon = static_cast<HICON>(LoadImageW(
+			nullptr, widePath.c_str(), IMAGE_ICON,
+			GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
+			LR_LOADFROMFILE));
+
+		if (bigIcon)
+		{
+			SendMessageW(m_hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(bigIcon));
+		}
+		if (smallIcon)
+		{
+			SendMessageW(m_hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(smallIcon));
+		}
+		// 旧 HICON は WM_SETICON 反映後に解放する (window は参照を差し替え済み)。
+		destroyLoadedIcons();
+		m_iconBig   = bigIcon;
+		m_iconSmall = smallIcon;
 	}
 
 	/// @brief ウィンドウの閉じ要求を設定する
@@ -333,6 +374,60 @@ public:
 		m_minClientH = h;
 	}
 
+	/// @brief 窓の画面上の矩形 (枠込みの外側) を返す。ドッキングの追従に使う。
+	bool getWindowRect(int& x, int& y, int& w, int& h) const override
+	{
+		RECT r{};
+		if (m_hwnd == nullptr || !GetWindowRect(m_hwnd, &r)) { return false; }
+		x = r.left; y = r.top; w = r.right - r.left; h = r.bottom - r.top;
+		return true;
+	}
+
+	/// @brief 窓を (x,y) サイズ (w,h) へ動かす。z-order・フォーカスは変えない (ドック追従用)。
+	void moveWindow(int x, int y, int w, int h) override
+	{
+		if (m_hwnd != nullptr)
+		{
+			SetWindowPos(m_hwnd, nullptr, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+		}
+	}
+
+	/// @brief クリックしてもフォーカスを奪わない窓にする (WS_EX_NOACTIVATE)。
+	void setNoActivate() override
+	{
+		if (m_hwnd != nullptr)
+		{
+			const LONG_PTR ex = GetWindowLongPtrW(m_hwnd, GWL_EXSTYLE);
+			SetWindowLongPtrW(m_hwnd, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE);
+		}
+	}
+
+	/// @brief 常に最前面に置く (WS_EX_TOPMOST)。ドックしたシークバーが背面へ潜らないように。
+	void setTopmost() override
+	{
+		if (m_hwnd != nullptr)
+		{
+			SetWindowPos(m_hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+			             SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+		}
+	}
+
+	/// @brief HWND を整数で返す (ドック窓が「この窓の真下」に z-order 挿入するため)。
+	[[nodiscard]] std::uintptr_t nativeHandle() const override
+	{
+		return reinterpret_cast<std::uintptr_t>(m_hwnd);
+	}
+
+	/// @brief aboveWindow の真下に (x,y,w,h) で置く。z-order で直後に差し込む (割り込み防止)。
+	void dockBelow(std::uintptr_t aboveWindow, int x, int y, int w, int h) override
+	{
+		if (m_hwnd == nullptr) { return; }
+		HWND above = reinterpret_cast<HWND>(aboveWindow);
+		// aboveWindow が無効ならただ移動 (z-order 据え置き)。
+		const HWND insertAfter = (above != nullptr && IsWindow(above)) ? above : HWND_TOP;
+		SetWindowPos(m_hwnd, insertAfter, x, y, w, h, SWP_NOACTIVATE);
+	}
+
 	/// @brief Win32 modal resize loop 中も engine を tick させるための callback
 	/// @details ユーザが window 枠を drag すると Windows は `DefWindowProc` 内で
 	///          modal loop に入り、main thread を block する → engine main loop
@@ -394,6 +489,10 @@ private:
 		wc.lpfnWndProc = windowProc;
 		wc.hInstance = GetModuleHandleW(nullptr);
 		wc.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
+		// 既定 icon を明示 (未設定だと taskbar 等で見た目が不定)。個別差し替えは setIcon。
+		// 32512 = IDI_APPLICATION (非 UNICODE 構成でも W 版に合わせ MAKEINTRESOURCEW 直指定)
+		wc.hIcon   = LoadIconW(nullptr, MAKEINTRESOURCEW(32512));
+		wc.hIconSm = LoadIconW(nullptr, MAKEINTRESOURCEW(32512));
 		wc.lpszClassName = CLASS_NAME;
 
 		if (!RegisterClassExW(&wc))
@@ -524,27 +623,37 @@ private:
 		/// --- キーボード入力 ---
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
+		{
+			const int kc = mapVirtualKey(wParam);
+			// hardware で押している key を覚える (focus 喪失時にまとめて release するため)。
+			if (std::find(m_heldKeys.begin(), m_heldKeys.end(), kc) == m_heldKeys.end())
+			{ m_heldKeys.push_back(kc); }
 			if (m_inputInjector)
 			{
-				m_inputInjector->inject(InputCommand{InputCommandType::KeyDown, mapVirtualKey(wParam)});
+				m_inputInjector->inject(InputCommand{InputCommandType::KeyDown, kc});
 			}
 			else if (m_inputState)
 			{
-				m_inputState->setKeyDown(mapVirtualKey(wParam), true);
+				m_inputState->setKeyDown(kc, true);
 			}
 			return 0;
+		}
 
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
+		{
+			const int kc = mapVirtualKey(wParam);
+			m_heldKeys.erase(std::remove(m_heldKeys.begin(), m_heldKeys.end(), kc), m_heldKeys.end());
 			if (m_inputInjector)
 			{
-				m_inputInjector->inject(InputCommand{InputCommandType::KeyUp, mapVirtualKey(wParam)});
+				m_inputInjector->inject(InputCommand{InputCommandType::KeyUp, kc});
 			}
 			else if (m_inputState)
 			{
-				m_inputState->setKeyDown(mapVirtualKey(wParam), false);
+				m_inputState->setKeyDown(kc, false);
 			}
 			return 0;
+		}
 
 		/// --- focus 喪失 --------------------------------------------------
 		/// ユーザが alt-tab で離れた (または dev companion のような別 window を
@@ -553,7 +662,15 @@ private:
 		/// — 典型的な "矢印キー stuck" bug。ここでクリアし、game に正しい
 		/// release edge が届くようにする。
 		case WM_KILLFOCUS:
+			// focus が外れると Windows は WM_KEYUP を配送しなくなる。押していた key を
+			// injector 経路でも release する (注入 KeyUp)。AI 注入入力は触らない。
+			if (m_inputInjector)
+			{
+				for (const int kc : m_heldKeys)
+				{ m_inputInjector->inject(InputCommand{InputCommandType::KeyUp, kc}); }
+			}
 			if (m_inputState) { m_inputState->clearHeldKeys(); }
+			m_heldKeys.clear();
 			return 0;
 
 		/// --- マウス移動 ---
@@ -622,6 +739,11 @@ private:
 				m_inputInjector->inject(InputCommand{InputCommandType::MouseUp, 0, static_cast<int>(MouseButton::Middle)});
 			else if (m_inputState)
 				m_inputState->setMouseButtonDown(MouseButton::Middle, false);
+			return 0;
+		case WM_MOUSEWHEEL:
+			// ホイールの回転量 (符号付き、120 = 1 ノッチ) を今フレームのデルタとして積む。
+			if (m_inputState)
+				m_inputState->addMouseWheelDelta(static_cast<float>(static_cast<short>(HIWORD(wParam))));
 			return 0;
 
 		default:
@@ -757,7 +879,16 @@ private:
 		}
 	}
 
+	/// @brief setIcon で LoadImageW した HICON を解放する (未設定なら no-op)
+	void destroyLoadedIcons() noexcept
+	{
+		if (m_iconBig)   { DestroyIcon(m_iconBig);   m_iconBig = nullptr; }
+		if (m_iconSmall) { DestroyIcon(m_iconSmall); m_iconSmall = nullptr; }
+	}
+
 	HWND m_hwnd = nullptr;            ///< ウィンドウハンドル
+	HICON m_iconBig = nullptr;        ///< setIcon で読んだ ICON_BIG (所有)
+	HICON m_iconSmall = nullptr;      ///< setIcon で読んだ ICON_SMALL (所有)
 	int m_width = 0;                  ///< クライアント領域の幅
 	int m_height = 0;                 ///< クライアント領域の高さ
 	DisplayMode m_displayMode = DisplayMode::Windowed;
@@ -783,6 +914,7 @@ private:
 	bool m_shouldClose = false;            ///< 閉じ要求フラグ
 	InputState* m_inputState = nullptr;   ///< 入力状態転送先（非所有）
 	InputInjector* m_inputInjector = nullptr; ///< 入力インジェクター（非所有）。非nullの場合はinject()経由でイベント発行
+	std::vector<int> m_heldKeys;              ///< hardware で今押している key (focus 喪失時に release してstuckを防ぐ)
 	ResizeCallback m_resizeCallback;      ///< リサイズコールバック
 	std::function<void()> m_tickCallback;  ///< modal-loop tick (drag-resize 中の engine 駆動)
 	std::function<void()> m_modalResizeEndCallback; ///< WM_EXITSIZEMOVE で 1 回呼ぶ deferred full resize

@@ -16,6 +16,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "ScenarioScript_Types.hpp"
@@ -71,7 +72,7 @@ public:
 		{
 			if (m_nodes[i].type == ScenarioCommandType::Label)
 			{
-				m_labelMap[m_nodes[i].labelName] = i;
+				m_labelMap[std::get<LabelParams>(m_nodes[i].payload).name] = i;
 			}
 		}
 	}
@@ -273,33 +274,37 @@ private:
 		switch (node.type)
 		{
 		case ScenarioCommandType::Scene:
-			m_currentScene = node.sceneName;
-			if (m_callback) m_callback->onScene(node.sceneName);
+		{
+			const auto& sc = std::get<SceneParams>(node.payload);
+			m_currentScene = sc.name;
+			if (m_callback) m_callback->onScene(sc.name);
 			break;
+		}
 
 		case ScenarioCommandType::Background:
-			if (m_callback) m_callback->onBackground(node.background);
+			if (m_callback) m_callback->onBackground(std::get<BackgroundParams>(node.payload));
 			break;
 
 		case ScenarioCommandType::Bgm:
 		case ScenarioCommandType::Se:
 		case ScenarioCommandType::Voice:
-			if (m_callback) m_callback->onAudio(node.audio);
+			if (m_callback) m_callback->onAudio(std::get<AudioParams>(node.payload));
 			break;
 
 		case ScenarioCommandType::Character:
-			if (m_callback) m_callback->onCharacter(node.character);
+			if (m_callback) m_callback->onCharacter(std::get<CharacterParams>(node.payload));
 			break;
 
 		case ScenarioCommandType::Dialogue:
 			++m_currentDialogueIndex;
 			if (m_callback)
 			{
-				m_callback->onDialogue(node.dialogue.speaker, node.dialogue.text);
+				const auto& d = std::get<DialogueParams>(node.payload);
+				m_callback->onDialogue(d.speaker, d.text);
 				// インラインタグ自動解析 ("[wait=500]" 等)。games は onDialogueParsed を
 				// override して plain text + tag 列を受け取る。tags 空なら nop override が走る。
-				auto [plain, tags] = parseInlineTags(node.dialogue.text);
-				m_callback->onDialogueParsed(node.dialogue.speaker, plain, tags);
+				auto [plain, tags] = parseInlineTags(d.text);
+				m_callback->onDialogueParsed(d.speaker, plain, tags);
 			}
 			break;
 
@@ -308,18 +313,24 @@ private:
 			break;
 
 		case ScenarioCommandType::Label:
-			if (m_callback) m_callback->onLabel(node.labelName);
+			if (m_callback) m_callback->onLabel(std::get<LabelParams>(node.payload).name);
 			break;
 
 		case ScenarioCommandType::Jump:
-			if (m_callback) m_callback->onJump(node.labelName);
-			jumpToLabel(node.labelName);
+		{
+			const auto& lp = std::get<LabelParams>(node.payload);
+			if (m_callback) m_callback->onJump(lp.name);
+			jumpToLabel(lp.name);
 			break;
+		}
 
 		case ScenarioCommandType::Set:
-			if (m_callback) m_callback->onSetVariable(node.setParams.variable, node.setParams.value);
-			applySetToFlagManager(node.setParams.variable, node.setParams.value);
+		{
+			const auto& st = std::get<SetParams>(node.payload);
+			if (m_callback) m_callback->onSetVariable(st.variable, st.value);
+			applySetToFlagManager(st.variable, st.value);
 			break;
+		}
 
 		case ScenarioCommandType::If:
 			executeIf(node);
@@ -335,15 +346,15 @@ private:
 			break;
 
 		case ScenarioCommandType::Wait:
-			if (m_callback) m_callback->onWait(node.waitDuration);
+			if (m_callback) m_callback->onWait(std::get<WaitParams>(node.payload).duration);
 			break;
 
 		case ScenarioCommandType::Transition:
-			if (m_callback) m_callback->onTransition(node.transition);
+			if (m_callback) m_callback->onTransition(std::get<TransitionParams>(node.payload));
 			break;
 
 		case ScenarioCommandType::Script:
-			if (m_scriptExecutor) m_scriptExecutor(node.scriptBody);
+			if (m_scriptExecutor) m_scriptExecutor(std::get<ScriptParams>(node.payload).body);
 			break;
 		}
 	}
@@ -351,14 +362,15 @@ private:
 	/// @brief 選択肢コマンドを実行する
 	void executeChoice(const ScenarioNode& node)
 	{
-		m_pendingChoices = node.choices;
+		const auto& entries = std::get<ChoiceParams>(node.payload).entries;
+		m_pendingChoices = entries;
 
 		if (m_callback)
 		{
-			int selected = m_callback->onChoice(node.choices);
-			if (selected >= 0 && static_cast<std::size_t>(selected) < node.choices.size())
+			int selected = m_callback->onChoice(entries);
+			if (selected >= 0 && static_cast<std::size_t>(selected) < entries.size())
 			{
-				const auto& label = node.choices[static_cast<std::size_t>(selected)].label;
+				const auto& label = entries[static_cast<std::size_t>(selected)].label;
 				if (!label.empty())
 				{
 					jumpToLabel(label);
@@ -379,7 +391,7 @@ private:
 		bool result = false;
 		if (m_conditionEvaluator)
 		{
-			result = m_conditionEvaluator(node.ifParams.condition);
+			result = m_conditionEvaluator(std::get<IfParams>(node.payload).condition);
 		}
 
 		if (!result)

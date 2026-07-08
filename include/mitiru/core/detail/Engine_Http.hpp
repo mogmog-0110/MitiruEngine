@@ -1,6 +1,7 @@
 // mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <sstream>
@@ -95,6 +96,14 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		{
 			std::memset(&seq[i], 0, sizeof(module::InputSnapshot));
 			seq[i].rngSeed = m_config.randomSeed;
+			// 台本合成の契約 (v21): effectiveDt は合成側が明示する (0 = 進まない)。
+			// 論理解像度も live と同じ値を供給する (layout 依存ロジックの what-if 一致)。
+			seq[i].effectiveDt = Engine::kFixedDt;
+			if (m_moduleInputSnapshot)
+			{
+				seq[i].logicalW = m_moduleInputSnapshot->logicalW;
+				seq[i].logicalH = m_moduleInputSnapshot->logicalH;
+			}
 			for (const int vk : vks)
 			{
 				if (vk >= 0 && vk < 256) { seq[i].keysDown[vk] = 1; if (i == 0) { seq[i].keysJustPressed[vk] = 1; } }
@@ -144,6 +153,18 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 
 	if (!m_httpServer->init(port))
 	{
+		// 無言で握りつぶすと --console / MITIRU_AI が沈黙 polling に陥る (H-10、R-01/R-02)。
+#ifdef _WIN32
+		std::fprintf(stderr,
+			"[ai] HTTP API 起動失敗: 127.0.0.1:%d を listen できません (WSAGetLastError=%d)。"
+			"port 衝突の可能性 — /api/* は無効です。\n",
+			port, WSAGetLastError());
+#else
+		std::fprintf(stderr,
+			"[ai] HTTP API 起動失敗: 127.0.0.1:%d を listen できません (errno=%d)。"
+			"port 衝突の可能性 — /api/* は無効です。\n",
+			port, errno);
+#endif
 		m_httpServer.reset();
 	}
 	else

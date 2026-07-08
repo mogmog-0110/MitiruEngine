@@ -82,6 +82,82 @@ PSOutput PSMain(PSInput input)
 }
 )hlsl";
 
+/// @brief MRT 用 Fresnel Toon PS — OutlineMode::Fresnel でメイン PS を差し替える
+///        DX12_TOON_PS_3D にシルエット付近 (NdotV 小) の暗化を加えた変種。
+///        DX11 世代 TOON_PS_3D_FRESNEL は LightSpacePos 無しで VS-PS linkage が
+///        不成立だったため、DX12 VS の出力 signature に合わせてここへ移植。
+inline constexpr const char* DX12_TOON_PS_3D_FRESNEL = R"hlsl(
+cbuffer CbLighting : register(b1)
+{
+    float3 LightDir;    float _pad0;
+    float3 LightColor;  float _pad1;
+    float3 AmbientColor; float _pad2;
+    float3 CameraPos;   float _pad3;
+    float4 MaterialDiffuse;
+    float4 MaterialSpecular;
+    float  MaterialShininess;
+    float3 _pad4;
+};
+
+Texture2D    g_albedo : register(t0);
+SamplerState g_samp   : register(s0);
+
+// LightSpacePos は VS が出力するため PSInput でも宣言してレジスタ整合を取る。
+struct PSInput
+{
+    float4 Position      : SV_POSITION;
+    float3 WorldPos      : TEXCOORD0;
+    float3 WorldNorm     : TEXCOORD1;
+    float2 TexCoord      : TEXCOORD2;
+    float4 LightSpacePos : TEXCOORD3;
+    float4 Color         : COLOR0;
+};
+
+struct PSOutput
+{
+    float4 Color  : SV_TARGET0;
+    float4 Normal : SV_TARGET1;
+};
+
+PSOutput PSMain(PSInput input)
+{
+    float3 N = normalize(input.WorldNorm);
+    float3 L = normalize(-LightDir);
+    float3 V = normalize(CameraPos - input.WorldPos);
+
+    float4 texSample = g_albedo.Sample(g_samp, input.TexCoord);
+    float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb;
+
+    // アンビエント
+    float3 ambient = AmbientColor * albedo;
+
+    // ディフューズ — NdotL を 3 段階に量子化（toon 帯）
+    float rawNdotL = saturate(dot(N, L));
+    float toon = (rawNdotL > 0.5) ? 1.0 : (rawNdotL > 0.15) ? 0.6 : 0.3;
+    float3 diffuse = LightColor * albedo * toon;
+
+    // ハイライト
+    float3 H = normalize(L + V);
+    float NdotH = saturate(dot(N, H));
+    float specFactor = pow(NdotH, max(MaterialShininess, 1.0)) * 0.3;
+    float3 specular = LightColor * MaterialSpecular.rgb * specFactor;
+
+    // Fresnel リム — シルエット付近 (NdotV 小) を暗化してアウトラインに
+    float NdotV = saturate(dot(N, V));
+    float fresnelEdge = 1.0 - smoothstep(0.0, 0.4, NdotV);
+    float3 outlineColor = float3(0.08, 0.06, 0.04);
+
+    float3 finalColor = ambient + diffuse + specular;
+    finalColor = lerp(finalColor, outlineColor, fresnelEdge * 0.95);
+    float alpha = MaterialDiffuse.a * input.Color.a * texSample.a;
+
+    PSOutput o;
+    o.Color = float4(finalColor, alpha);
+    o.Normal = float4(N * 0.5 + 0.5, NdotV);
+    return o;
+}
+)hlsl";
+
 /// @brief MRT 用 Phong PS — 単一光源 Lambert + Phong + albedo テクスチャ + shadow PCF
 inline constexpr const char* DX12_PHONG_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)

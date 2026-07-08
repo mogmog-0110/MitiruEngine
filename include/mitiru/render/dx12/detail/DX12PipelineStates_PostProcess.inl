@@ -489,13 +489,13 @@ void renderOverlay2D()
 		return;
 	}
 
-	/// Overlay2DVertex配列を構築する
-	std::vector<Overlay2DVertex> vertices;
-	vertices.reserve(totalVerts);
+	/// Overlay2DVertex配列を構築する（member scratch を clear+reserve で再利用 — 毎フレーム確保しない）
+	m_overlay2DVerts.clear();
+	m_overlay2DVerts.reserve(totalVerts);
 
 	for (const auto& v : spriteBatchVerts)
 	{
-		vertices.push_back({
+		m_overlay2DVerts.push_back({
 			v.position.x, v.position.y,
 			v.texCoord.x, v.texCoord.y,
 			v.color.r, v.color.g, v.color.b, v.color.a
@@ -505,7 +505,7 @@ void renderOverlay2D()
 	const auto shapeBaseIndex = static_cast<std::uint32_t>(spriteBatchVerts.size());
 	for (const auto& v : shapeVerts)
 	{
-		vertices.push_back({
+		m_overlay2DVerts.push_back({
 			v.position.x, v.position.y,
 			v.texCoord.x, v.texCoord.y,
 			v.color.r, v.color.g, v.color.b, v.color.a
@@ -513,12 +513,13 @@ void renderOverlay2D()
 	}
 
 	/// インデックス配列を構築する（ShapeRendererのインデックスはオフセット）
-	std::vector<std::uint32_t> indices;
-	indices.reserve(totalIndices);
-	indices.insert(indices.end(), spriteBatchIndices.begin(), spriteBatchIndices.end());
+	m_overlay2DIndices.clear();
+	m_overlay2DIndices.reserve(totalIndices);
+	m_overlay2DIndices.insert(m_overlay2DIndices.end(),
+	                          spriteBatchIndices.begin(), spriteBatchIndices.end());
 	for (auto idx : shapeIndices)
 	{
-		indices.push_back(idx + shapeBaseIndex);
+		m_overlay2DIndices.push_back(idx + shapeBaseIndex);
 	}
 
 	/// MRTを解除してバックバッファのみにする
@@ -570,8 +571,8 @@ void renderOverlay2D()
 	m_graphicsCmdList->SetGraphicsRootConstantBufferView(0, cbAlloc.gpuAddr);
 
 	/// 頂点バッファを ring 経由で確保
-	const UINT vbSize = static_cast<UINT>(vertices.size() * sizeof(Overlay2DVertex));
-	const auto vbAlloc = m_uploadRing.upload(vertices.data(), vbSize, 4);
+	const UINT vbSize = static_cast<UINT>(m_overlay2DVerts.size() * sizeof(Overlay2DVertex));
+	const auto vbAlloc = m_uploadRing.upload(m_overlay2DVerts.data(), vbSize, 4);
 	if (!vbAlloc.valid()) return;
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
@@ -581,8 +582,8 @@ void renderOverlay2D()
 	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
 
 	/// インデックスバッファを ring 経由で確保
-	const UINT ibSize = static_cast<UINT>(indices.size() * sizeof(std::uint32_t));
-	const auto ibAlloc = m_uploadRing.upload(indices.data(), ibSize, 4);
+	const UINT ibSize = static_cast<UINT>(m_overlay2DIndices.size() * sizeof(std::uint32_t));
+	const auto ibAlloc = m_uploadRing.upload(m_overlay2DIndices.data(), ibSize, 4);
 	if (!ibAlloc.valid()) return;
 
 	D3D12_INDEX_BUFFER_VIEW ibv = {};
@@ -593,7 +594,7 @@ void renderOverlay2D()
 
 	/// 描画実行
 	m_graphicsCmdList->DrawIndexedInstanced(
-		static_cast<UINT>(indices.size()), 1, 0, 0, 0);
+		static_cast<UINT>(m_overlay2DIndices.size()), 1, 0, 0, 0);
 }
 
 // ─────────────────────────────────────────────────────────────

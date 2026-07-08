@@ -364,6 +364,17 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 	if (!rt) return;
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
+	// MSAA 中間 RT へ描くときは MSAA 変種へ差し替える (linear/point の選択は維持。
+	// root signature はサンプル数非依存なので activeRootSig はそのまま)。
+	if (rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount))
+	{
+		const bool usingPoint = (activePso == m_dx12PointPipeline.Get());
+		ID3D12PipelineState* msaa = usingPoint ? m_dx12PointPipelineMsaa.Get()
+		                                       : m_dx12PipelineMsaa.Get();
+		if (!msaa) return; // MSAA 変種が無い — 安全にスキップ
+		activePso = msaa;
+	}
+
 	m_dx12Alloc[0]->Reset();
 	m_dx12Cl->Reset(m_dx12Alloc[0].Get(), activePso);
 

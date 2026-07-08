@@ -1,104 +1,75 @@
 # Examples
 
-MitiruEngine の挙動を最小限で見せるサンプル集。`mitiru` CLI を使わず、リポジトリのトップで CMake から直接ビルドできる:
+MitiruEngine の機能を **1 章 = 1 機能** で見せる教材カリキュラム (規格:
+[`docs/EXAMPLE_STANDARD.md`](../docs/EXAMPLE_STANDARD.md))。ゲームは全て **DLL 形式**:
+`MITIRU_GAME(T)` で入口を 1 行宣言した SHARED library を `mitiru_host.exe` が load して
+main loop を駆動する。
 
 ```bash
 cmake --preset default
-cmake --build build --config Debug --target hello_game
-build/examples/hello_game/hello_game.exe
+cmake --build build --config Debug --target welcome   # mitiru_host も依存で一緒に build される
+build/apps/mitiru_host/mitiru_host.exe build/apps/mitiru_host/welcome/welcome.dll
 ```
 
-`mitiru new` テンプレートが内部的に参考にしているのもこの中身。
+各 DLL は `build/apps/mitiru_host/<name>/<name>.dll` に deploy される (assets/ も同じ dir へ)。
+CEF runtime (`libcef.dll` + `icudtl.dat` + `MitiruCefHelper.exe` + locales 等) は POST_BUILD で
+自動配置される — 手で何かをコピーする必要はない。`--watch` を付けると hot reload
+(state 保持)、host の全オプションは `mitiru_host.exe --help`。
 
-## カタログ
+## 章 (基礎 — この表の並び = 学習順)
 
-| Example | 規模 | 何を見せるか |
+| 章 | 何を見せるか | 状態 |
 |---|---|---|
-| `hello_window` | ~20 行 | エンジン boot + ウィンドウ open + フレームループ |
-| `hello_input` | ~40 行 | `input().isKeyDown / isKeyJustPressed` 系 API + 入力反応 |
-| `hello_shapes` | ~50 行 | `Screen::drawRect` / `drawCircle` 等の 2D 描画プリミティブ |
-| `hello_scene` | ~80 行 | scene graph / 子 entity の階層配置 + transform |
-| `hello_cef_overlay` | ~80 行 | CEF を有効化して **静的な HTML/CSS HUD** を上に重ねる最小例 |
-| **`hello_game`** | ~310 行 | **C++ gameplay + HTML/CSS HUD + live state push (StateStore bridge)** — engine flagship pattern showcase |
+| [`welcome`](welcome/welcome_dll.cpp) | ようこそ画面 — 額装した浮世絵 (写楽) を主役に、大きな題字 / 案内文 / 朱印を 1 画面に。画像 (drawSprite) / 見栄えする文字 (drawTextWithShadow・drawTextBold) / 図形 (角丸の額縁) / 動き (絵の上下ゆれ・朱印の回転) をまとめて見せる第一章 | ✅ |
+| [`shapes`](shapes/shapes_dll.cpp) | 図形カタログ — rect / circle / line / gradient / dashedLine / 三角形 (drawTriangle) / 多角形 (drawPolygon で五角形・六角形) を 4 列 x 2 段のグリッドに | ✅ |
+| [`text`](text/text_dll.cpp) | テキスト描画 — 枠内の整列 (drawTextInRect) / 文字サイズ / 色 / 折り返し (drawTextWrapped) / はみ出しの省略 (drawTextClipped) を、余白をとった区画で 1 つずつ | ✅ |
+| [`input`](input/input_dll.cpp) | 入力を図で見せる — キーボード図の押されたキーが光る / マウス軌跡 / パッド配置図。押す・動かすと視覚で分かる（InputSnapshot 経由、キー名の文字列は出さない） | ✅ |
+| [`motion`](motion/motion_dll.cpp) | イージング (動きの緩急) の格子 — 列に Linear / EaseInOut / EaseIn / EaseOut、行に 位置 / 大きさ / 回転 / 透明度。1 つのイージング曲線が各プロパティをどう動かすかを一望する。位置の目盛りが速さの変化を形で見せる。dt (前フレームからの経過秒) の使い方も | ✅ |
+| [`sprites`](sprites/sprites_dll.cpp) | スプライト (画像) を描く — 赤べこ (会津の郷土玩具) の 大きさ / 回転 / 左右反転 / 半透明 の見本と、矢印キーで歩く赤べこ (進む向きで反転・脚が交互に動く歩行アニメ) | ✅ |
+| [`camera`](camera/camera_dll.cpp) | 追従カメラ (FollowCam) — 赤べこがマウスの方へ画面より広い牧場を歩き、視点が deadzone + 先読み + world clamp で滑らかに追ってスクロールする。木と赤べこは接地 y で前後が入れ替わる | ✅ |
+| [`audio`](audio/audio_dll.cpp) | 音を視覚化 — 鳴らすと弾ける（SE の音程を色つきリング / BGM は回るディスクで再生・一時停止・フェードを表現）。状態テキストなし、`hud.play()` / `hud.music()` でエンジンに再生を依頼 | ✅ |
 
-### Game-as-DLL サンプル (ADR 0005)
+## 章 (看板)
 
-`mitiru_host.exe` が runtime に load する SHARED library 形式のゲーム。`MITIRU_GAME(...)` で
-入口を 1 行宣言し、`Game.hpp` の薄いラッパ (`Input` / `Hud` / `Screen`) で書く。HUD は zero-JS の
-`data-m-*` バインダ、効果音は `hud.play(...)` の intent。これが現行の canonical な書き方。
+| 章 | 何を見せるか | 状態 |
+|---|---|---|
+| [`html_hud`](html_hud/html_hud_dll.cpp) | ひとつの C++ の値を HTML の複数表示に同時束縛（手書き JS ゼロ）— 動かすと全部連動。下は C++ がネイティブ描画するスライダー（操作源）、上は同じ値を映す 6 つの HTML/CSS 表示（大きな数字・円形ゲージ・横バー・色面・セグメント pips・折れ線）。スライダーを動かすと 6 つが一斉に同じ水準へ動く。値は `hud.set` で push し、`data-m-text/style/class/repeat/spark-push` が反映する。JavaScript を 1 行も書かない | ✅ |
+| [`html_menu`](html_menu/html_menu_dll.cpp) | HTML の操作 → C++ が反応（html_hud の逆向き）— HTML パネルを触ると C++ が描く図形が変わる（色 / 形 / 数 / 縁取り・拡大トグル / リセット confirm）。HTML→C++ は `data-m-action` の信号のみ、状態は C++ 所有、JavaScript を 1 行も書かない | ✅ |
+| [`observe`](observe/observe_dll.cpp) | MITIRU_REFLECT + watch — 状態を外から観測 | ✅ |
+| [`rewind`](rewind/rewind_dll.cpp) | 巻き戻し — 状態を 1 つの struct に置き、見たい値を申告するだけで過去へ戻せる。`--inspect timetravel` 付きで起動 | ✅ |
+| [`restart_save`](restart_save/restart_save_dll.cpp) | `hud.requestRestart()` + セーブ / ロード (`.msav` ファイル) | ✅ |
+| [`scene3d`](scene3d/scene3d_dll.cpp) | GPU 3D シーン — 平行光の影 + WBOIT 半透明 + skybox | ✅ |
+
+## Subsystem 単独起動デモ — [`subsys/`](subsys/)
+
+各 subsystem を engine 全体なしで立ち上げる単体 exe ([`docs/SUBSYSTEMS.md`](../docs/SUBSYSTEMS.md))。
+`mitiru renderer` / `audio` / `input` / `scene` CLI コマンドが launch するのはこれら。
+exe は従来どおり `build/examples/mitiru_subsys_<name>/` に出る。
 
 | Example | 何を見せるか |
 |---|---|
-| **`breakout`** | 旗艦サンプル。物理 / 当たり判定 / 手触り (粒子・シェイク・残像) / zero-JS HUD / 効果音を 1 本に |
-| `dodge` | 初心者向け最小ゲーム (避けゲー) |
-| `anchor` | 制約パズル。「触れた anchor へしか動けない」一行ルール + deterministic hazard。incubator の kept-concept を現行アーキへ port した demo |
-| `showcase_platformer` | 横スクロール。replay-as-test を bit-exact で通す決定論ゲーム |
+| `subsys/mitiru_subsys_renderer` | renderer のみ (CEF / audio 無し、cold-start < 1s)。grid + 往復 rect の視覚 smoke |
+| `subsys/mitiru_subsys_audio` | audio のみ。440Hz sine + 実出力 RMS のレベルメーター (5 秒で自動終了) |
+| `subsys/mitiru_subsys_input` | input のみ。256 VK の live grid + mouse 状態 + press ログ |
+| `subsys/mitiru_subsys_scene` | scene loop のみ。12 entity の積分 + 縁反射 |
 
-```bash
-# 例: breakout を build して host で起動
-cmake --build build --config Debug --target breakout
-build/examples/mitiru_host/mitiru_host.exe build/examples/mitiru_host/breakout/breakout.dll
-# anchor / dodge / showcase_platformer も同様 (target 名 = dll 名)
-```
+## 検証用 / 凍結中
 
-## 「これを見て」と言える 1 本: `hello_game`
+| Example | 状態 |
+|---|---|
+| `why_demo` | `mitiru why` (replay 分岐の根本原因特定) の検証用ミニゲーム (dev 専用) |
+| `neon_asteroids` | ネオン Asteroids ローグライク (~1400 行)。**開発凍結中** — コードに触らない |
 
-`examples/hello_game/` が engine の **「HTML/CSS で UI が書ける C++ engine」軸 (差別化軸 1)** を最小限で見せる例:
+## インフラ (host / tool) — `apps/` 所在
 
-- **C++ 側** (`main.cpp`): player / enemy / HP / timer の gameplay state を保持
-- **HTML/CSS 側** (`assets/scene.html`): HP bar / 残り時間 / Game Over overlay を描画
-- **bridge** (`mitiru::cef::StateStore`): C++ → JS で `view.hud.*` を push
-- **逆方向**: HTML の Restart ボタンが `mitiru.dispatch('game.restart')` で C++ に届く
+製品・開発基盤は [`apps/`](../apps/) にある (examples は教材とデモ専用)。host 本体
+`mitiru_host` のほか `mitiru_launcher` / `mitiru_dev_companion` / `mitiru_start` /
+`mitiru_tool_cef`。詳細は各 dir と `docs/`。
 
-```
-[C++ gameplay loop]                    [HTML/CSS HUD]
-        │                                   │
-        │  store.set("view.hud.hp", 80) ──→ │ HP bar 更新
-        │  store.set("view.hud.time", 22)──→│ timer 更新
-        │                                   │
-        │ ←── mitiru.dispatch("game.restart")│ Restart button
-        ▼                                   ▼
-   gameplay 状態                         画面更新
-```
+## 最小の書き方
 
-これが engine の **canonical な書き方** — gameplay は C++、UI は HTML/CSS、間は signal-only bridge。
-
-## ビルド + 実行
-
-```bash
-cmake --build build --config Debug --target hello_game
-build/examples/hello_game/hello_game.exe
-```
-
-CEF runtime (`libcef.dll` + `icudtl.dat` + `MitiruCefHelper.exe` + locales 等) は `CMakeLists.txt` の POST_BUILD で自動配置される。手で何かをコピーする必要はない。
-
-### 操作
-
-- **矢印キー**: プレイヤー (シアン四角) を移動
-- **ESC**: 終了
-- 4 つの敵 (赤四角) がプレイヤーに寄ってくる。接触で HP -10、敵は 2 秒で復活
-- 30 秒生存で勝利、HP=0 で敗北、いずれも Restart ボタンで再開
-
-### Debug 操作 (`MITIRU_DEBUG=1` 環境変数 / `mitiru debug` で起動時のみ)
-
-- **F1**: pause トグル — gameplay state freeze + 上部に `❚❚ PAUSED` overlay
-- **F2**: 1 フレームだけ進める (pause 中のみ)
-- 右下に **Input Monitor** パネルが常時表示:
-  - 現在 held のキー (チップ表示)
-  - マウス座標 + マウスボタン
-  - 直近 8 件の just-pressed イベント (timestamp 付き履歴)
-
-pause 中も draw() は継続するので、screenshot を撮るのに最適。
-Input Monitor は pause 中も live で動くので、「**F1 を本当に押せてるか**」「**このキーボードでこのキーが反応するか**」を即確認できる。
-これらは P2 (time-travel inspector) の最小単位でもある。
-
-## CEF を使わない最小例
-
-CEF を切って純 C++ で動かしたい場合は `hello_window` / `hello_input` / `hello_shapes` / `hello_scene` を参考に:
-
-```cpp
-mitiru::EngineConfig cfg;
-cfg.enableCef = false;  // libcef.dll への依存も消える
-```
-
-詳細は `docs/GETTING_STARTED.md`。
+`MITIRU_GAME(T)` の T にはゲームの全状態を入れ、まるごとコピーできる形 (flat POD、
+trivially copyable) に保つ。`std::vector` / `std::string` の代わりに `mitiru::FixedVec` /
+`mitiru::FixedString` を使う — host が状態を bytes のまま記録し、巻き戻しと録画リプレイに
+そのまま使うため。詳細は [`docs/GETTING_STARTED.md`](../docs/GETTING_STARTED.md)
+と `include/mitiru/module/Game.hpp` 冒頭のコード例。

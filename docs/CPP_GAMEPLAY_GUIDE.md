@@ -1,15 +1,14 @@
 # C++ Gameplay Guide — MitiruEngine
 
 > **対象読者**: MitiruEngine 上で **初めて C++ gameplay を書く** 開発者。
-> consumer 側ゲーム (例: KaeruCrape) の作者が、エンジンが提供する P0 プリミティブを
+> consumer 側ゲームの作者が、エンジンが提供する基本プリミティブを
 > 組み合わせてシーン遷移・状態管理・タイマー・UI signal 配線を行うための入口ガイド。
 
 ---
 
 ## 1. Overview
 
-MitiruEngine は 2026-05-14 の [ADR 0001](adr/0001-cpp-gameplay-cef-view-only.md) で
-**Siv3D ロールモデル** に寄せた C++ engine 路線にピボットした。
+MitiruEngine は 2026-05-14 に **Siv3D ロールモデル** に寄せた C++ engine 路線へピボットした。
 gameplay の決定権は **すべて C++** にあり、CEF (HTML/CSS/JS) は **View 専用** に格下げされた。
 
 3 行で整理すると:
@@ -22,17 +21,16 @@ gameplay の決定権は **すべて C++** にあり、CEF (HTML/CSS/JS) は **V
 
 関連 doc:
 
-- [ADR 0001 — C++ gameplay / CEF view-only](adr/0001-cpp-gameplay-cef-view-only.md)
 - [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md) — レイヤー分担の歴史的経緯
 - [BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md) — bridge 責務定義 (signal-only)
-- [cpp-gameplay-api-gaps.md](cpp-gameplay-api-gaps.md) — P0/P1 ロードマップ
+- [cpp-gameplay-api-gaps.md](cpp-gameplay-api-gaps.md) — gameplay プリミティブのロードマップ
 - [examples/cpp_gameplay_minimal/](../examples/cpp_gameplay_minimal/) — 動く最小例
 
 ---
 
 ## 2. 最小例
 
-`examples/cpp_gameplay_minimal/main.cpp` が **headless で動く最小ループ** を実装している。
+`examples/cpp_gameplay_minimal/main.cpp` が **ウィンドウを出さずに (headless) 動く最小ループ** を実装している。
 ビルド:
 
 ```bash
@@ -326,7 +324,7 @@ if (result.ok()) {
 
 ## 5. アンチパターン
 
-ADR 0001 / BRIDGE_API_CONTRACT.md と整合する 5 つの NG パターン。
+BRIDGE_API_CONTRACT.md と整合する 5 つの NG パターン。
 
 - **JS で state machine を持つな**
   「料理の状態は cooking.js が管理する」は禁止。`StateMachine<CookState>` を C++ に置く。
@@ -339,7 +337,7 @@ ADR 0001 / BRIDGE_API_CONTRACT.md と整合する 5 つの NG パターン。
   `signal: "scene.goto.cooking"` のような **transition を JS に書かせる signal 名** を作らないこと。
 
 - **bridge を太らせて gameplay 関数の RPC にするな**
-  `signal: "game.canWrapCrepe?"` のような問い合わせ / 計算依頼は NG。
+  `signal: "game.canOpenDoor?"` のような問い合わせ / 計算依頼は NG。
   gameplay の判定は C++ 内で完結させ、結果だけ `view.*` に push する。
 
 - **逆方向に: C++ が JS に「次に何を考えるか」を聞くな**
@@ -352,7 +350,6 @@ ADR 0001 / BRIDGE_API_CONTRACT.md と整合する 5 つの NG パターン。
 
 ## 6. References
 
-- [ADR 0001 — C++ gameplay / CEF view-only](adr/0001-cpp-gameplay-cef-view-only.md)
 - [docs/HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)
 - [docs/BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md)
 - [docs/cpp-gameplay-api-gaps.md](cpp-gameplay-api-gaps.md)

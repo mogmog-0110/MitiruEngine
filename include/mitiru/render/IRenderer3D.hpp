@@ -73,6 +73,10 @@ public:
 	/// @brief 初期化済みかどうかを返す
 	[[nodiscard]] virtual bool isInitialized() const noexcept = 0;
 
+	/// @brief 内部 RT を新しい backbuffer サイズ (物理 px) へ追従させる
+	/// @details 既定 no-op。swapchain resize 後・次の beginFrame 前に呼ぶこと。
+	virtual void resize(int /*width*/, int /*height*/) {}
+
 	/// @brief フレーム描画を開始する
 	/// @param clearColor バックバッファのクリア色
 	virtual void beginFrame(const sgc::Colorf& clearColor = {0.2f, 0.2f, 0.3f, 1.0f}) = 0;

@@ -149,8 +149,8 @@ enum class KeyCode : int
 };
 
 /// --- コンパイル時不変条件 ---
-/// @details 既存コンシューマ（KaeruCrape, hato, Mathlands, pandd-dodo）が
-///          リテラル値に依存しているため、Win32 VK との整合性を機械的に保証する。
+/// @details 既存の consumer ゲームがリテラル値に依存しているため、
+///          Win32 VK との整合性を機械的に保証する。
 static_assert(static_cast<int>(KeyCode::Left) == 37,    "KeyCode::Left must equal VK_LEFT (0x25)");
 static_assert(static_cast<int>(KeyCode::Up) == 38,      "KeyCode::Up must equal VK_UP (0x26)");
 static_assert(static_cast<int>(KeyCode::Right) == 39,   "KeyCode::Right must equal VK_RIGHT (0x27)");

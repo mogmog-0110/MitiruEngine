@@ -5,7 +5,6 @@
  * game-state blob を保持する。localStorage (dev / web の fallback) と
  * CEF file-bridge backend (production、実質的なサイズ上限なし) をサポート。
  *
- * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-11
  *
  * ── API ─────────────────────────────────────────────────────────────────────
  *   mitiru.save.SCHEMA_VERSION            number — 保存形式変更時に上げる
@@ -36,20 +35,13 @@
  *   save.list    {}
  *   save.delete  {slot}
  *
- *   TODO(engine): StateStore に正式な disk-backed save handler を実装する。
- *   C++ 登録 stub の signature:
+ *   C++ 実装: include/mitiru/cef/SaveStore.hpp (StateStore に上記 4 handler を
+ *   登録し atomic file I/O へマップ)。handler 未登録なら mitiru.dispatch が
+ *   reject し、本 module は localStorage へ fallback する。
  *
- *     ctx.registerHandler("save.write",  [](const std::string& payload) -> std::string);
- *     ctx.registerHandler("save.read",   [](const std::string& payload) -> std::string);
- *     ctx.registerHandler("save.list",   [](const std::string& payload) -> std::string);
- *     ctx.registerHandler("save.delete", [](const std::string& payload) -> std::string);
- *
- *   全 handler は JSON string (dispatch からの payload) を受け取り、JSON string を
- *   返さねばならない。write/delete は `{"ok":true}` を返す。read は保存された
- *   blob JSON か `null` を返す。list は {slot,exists,meta} object の配列を返す。
- *
- *   C++ handler が未登録なら mitiru.dispatch は reject する — この module は
- *   その error を捕捉し、自動的に localStorage に fallback する。
+ * ── 正典宣言 (docs/adr/0022) ─────────────────────────────────────────────────
+ *   本ファイルが save bridge の正典。bridges/_generated/save.generated.js は
+ *   codegen 忠実度検証専用の fixture で、runtime 使用禁止。
  *
  * ── Supersedes ───────────────────────────────────────────────────────────────
  *   mitiru.state.save / .load / .listSlots (F-03) は per-key の一時的な state

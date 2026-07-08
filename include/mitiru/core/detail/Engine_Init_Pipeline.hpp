@@ -54,6 +54,13 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 		m_device->onResize(w, h);
 	}
 
+	// 3D レンダラの内部 RT (depth/MSAA/HDR/FXAA/OIT) は backbuffer と同寸が前提。
+	// device->onResize (GPU 待機 + swapchain resize) の後、物理 px で追従させる。
+	if (m_renderer3D)
+	{
+		m_renderer3D->resize(w, h);
+	}
+
 #ifdef _WIN32
 	// マウス drag 中は重い re-layout を遅延させる。WM_SIZE ごとに CSS @media が
 	// 再走して HTML layout が snap し、logical 座標系がずれて native sprite が

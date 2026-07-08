@@ -86,6 +86,7 @@ void ensureSplatPipelineDx12()
 	if (FAILED(m_d3dDevice->CreateCommittedResource(&uph, D3D12_HEAP_FLAG_NONE, &d,
 	        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_splatCb.GetAddressOf())))) { return; }
 
+	if (!m_splatSort.init(m_d3dDevice)) { return; }   // GPU 深度ソート compute pipeline
 	m_splatPipelineReady = true;
 }
 
@@ -104,13 +105,12 @@ bool loadSplatSceneDx12(const char* path)
 	m_splatRadius = scene.radius;   // シーンを自動フレーミングするための境界球
 	const UINT64 bytes = static_cast<UINT64>(m_splatCount) * sizeof(SplatGPU);
 
-	// CPU 位置 + 深度ソート用バッファ
+	// CPU 位置 (neural 現像 DX12Neural.hpp が使用)。深度ソートは GPU 側 (m_splatSort)。
 	m_splatPos.resize(static_cast<std::size_t>(m_splatCount) * 3);
-	m_splatOrder.resize(m_splatCount);
-	m_splatKey.resize(m_splatCount);
 	m_splatOrigRgb.resize(static_cast<std::size_t>(m_splatCount) * 3);   // 焼き込みリセット用
 	m_splatBaked.assign(m_splatCount, 0);   // 達成率トラッキング
 	m_bakedTotal = 0;
+	m_splatSorted = false;   // 新シーン: 次の draw で必ず一度ソートさせる
 	for (UINT i = 0; i < m_splatCount; ++i)
 	{
 		m_splatPos[i * 3 + 0] = scene.splats[i].pos[0];
@@ -119,7 +119,6 @@ bool loadSplatSceneDx12(const char* path)
 		m_splatOrigRgb[i * 3 + 0] = scene.splats[i].rgb[0];
 		m_splatOrigRgb[i * 3 + 1] = scene.splats[i].rgb[1];
 		m_splatOrigRgb[i * 3 + 2] = scene.splats[i].rgb[2];
-		m_splatOrder[i] = i;
 	}
 
 	D3D12_HEAP_PROPERTIES uph = {}; uph.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -137,22 +136,8 @@ bool loadSplatSceneDx12(const char* path)
 	D3D12_RANGE wr = {0, static_cast<SIZE_T>(bytes)};
 	m_splatBuffer->Unmap(0, &wr);
 
-	// 深度ソート index バッファ (UPLOAD、毎フレーム書き換え)。初期 = 0..N-1。
-	D3D12_RESOURCE_DESC di = {};
-	di.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	di.Width = static_cast<UINT64>(m_splatCount) * sizeof(std::uint32_t);
-	di.Height = 1; di.DepthOrArraySize = 1; di.MipLevels = 1;
-	di.SampleDesc.Count = 1; di.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	m_splatIndexBuf.Reset();
-	if (FAILED(m_d3dDevice->CreateCommittedResource(&uph, D3D12_HEAP_FLAG_NONE, &di,
-	        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_splatIndexBuf.GetAddressOf())))) { return false; }
-	void* ip = nullptr; D3D12_RANGE r0 = {0, 0};
-	if (SUCCEEDED(m_splatIndexBuf->Map(0, &r0, &ip)))
-	{
-		std::memcpy(ip, m_splatOrder.data(), m_splatOrder.size() * sizeof(std::uint32_t));
-		D3D12_RANGE wr2 = {0, m_splatOrder.size() * sizeof(std::uint32_t)};
-		m_splatIndexBuf->Unmap(0, &wr2);
-	}
+	// 深度ソート order バッファ (GPU compute が毎フレーム生成する DEFAULT-heap UAV)。
+	if (!m_splatSort.setCount(m_d3dDevice, m_splatCount)) { return false; }
 
 	// shader-visible SRV ヒープ (2 SRV: t0=splat, t1=order)
 	D3D12_DESCRIPTOR_HEAP_DESC hd = {};
@@ -177,7 +162,7 @@ bool loadSplatSceneDx12(const char* path)
 	cpu.ptr += inc;
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvO = srv;
 	srvO.Buffer.StructureByteStride = sizeof(std::uint32_t);
-	m_d3dDevice->CreateShaderResourceView(m_splatIndexBuf.Get(), &srvO, cpu);  // t1 = order
+	m_d3dDevice->CreateShaderResourceView(m_splatSort.orderBuffer(), &srvO, cpu);  // t1 = GPU order
 
 	m_splatReady = true;
 	return true;
@@ -191,45 +176,21 @@ void drawSplatsDx12()
 	if (!m_splatReady || !m_splatPipelineReady || !m_graphicsCmdList) { return; }
 	if (!m_splatPSO || !m_splatRootSig || m_splatCount == 0) { return; }
 
-	// 深度ソート (CPU、奥→手前): camPos からの距離² をキーに index を並べ替え、毎フレーム転送。
+	// 深度ソート (GPU compute、奥→手前): camPos が動いたフレームだけ再ソートする。
+	// キーは camPos からの距離² だけに依存するので、カメラ静止時は前フレームの
+	// order をそのまま使う (compute dispatch を丸ごと省ける)。sort は m_splatBuffer
+	// (StructuredBuffer<SplatGPU>) の pos を GPU 上で直接読み、order を生成する
+	// (CPU 走査も PCIe 転送もゼロ)。生成後に order を UAV→SRV へ遷移して VS が読む。
+	const float cx = m_cameraPosition.x, cy = m_cameraPosition.y, cz = m_cameraPosition.z;
+	const float mdx = cx - m_splatSortCam.x, mdy = cy - m_splatSortCam.y, mdz = cz - m_splatSortCam.z;
+	if (!m_splatSorted || (mdx * mdx + mdy * mdy + mdz * mdz) > 0.0f)
 	{
-		const float cx = m_cameraPosition.x, cy = m_cameraPosition.y, cz = m_cameraPosition.z;
-		const float* P = m_splatPos.data();
-		float* K = m_splatKey.data();
-		float kmin = 1e30f, kmax = -1e30f;
-		for (UINT i = 0; i < m_splatCount; ++i)
-		{
-			const float dx = P[i*3+0]-cx, dy = P[i*3+1]-cy, dz = P[i*3+2]-cz;
-			K[i] = dx*dx + dy*dy + dz*dz;
-			if (K[i] < kmin) { kmin = K[i]; }
-			if (K[i] > kmax) { kmax = K[i]; }
-		}
-		// 深度バケットソート O(N): 数百万 splat でも実時間 (奥=K大 を bucket0、手前=K小 を末尾)。
-		// std::sort(O(N log N)) は ~5M で重い。バケット内順不同だが合成にはほぼ無影響。
-		constexpr int NB = 2048;
-		m_splatHist.assign(NB + 1, 0u);
-		const float inv = (kmax > kmin) ? static_cast<float>(NB - 1) / (kmax - kmin) : 0.0f;
-		for (UINT i = 0; i < m_splatCount; ++i)
-		{
-			int b = (NB - 1) - static_cast<int>((K[i] - kmin) * inv);
-			b = (b < 0) ? 0 : (b >= NB ? NB - 1 : b);
-			++m_splatHist[static_cast<std::size_t>(b) + 1];
-		}
-		for (int b = 0; b < NB; ++b) { m_splatHist[static_cast<std::size_t>(b) + 1] += m_splatHist[static_cast<std::size_t>(b)]; }
-		for (UINT i = 0; i < m_splatCount; ++i)
-		{
-			int b = (NB - 1) - static_cast<int>((K[i] - kmin) * inv);
-			b = (b < 0) ? 0 : (b >= NB ? NB - 1 : b);
-			m_splatOrder[m_splatHist[static_cast<std::size_t>(b)]++] = i;
-		}
-		void* ip = nullptr; D3D12_RANGE r0 = {0, 0};
-		if (SUCCEEDED(m_splatIndexBuf->Map(0, &r0, &ip)))
-		{
-			std::memcpy(ip, m_splatOrder.data(), m_splatOrder.size() * sizeof(std::uint32_t));
-			D3D12_RANGE w = {0, m_splatOrder.size() * sizeof(std::uint32_t)};
-			m_splatIndexBuf->Unmap(0, &w);
-		}
+		m_splatSortCam = m_cameraPosition;
+		m_splatSorted = true;
+		m_splatSort.encode(m_graphicsCmdList.Get(), m_splatBuffer->GetGPUVirtualAddress(),
+		                   static_cast<UINT>(sizeof(SplatGPU)), 0u, cx, cy, cz);
 	}
+	m_splatSort.toShaderResource(m_graphicsCmdList.Get());   // order を VS が読める SRV 状態へ
 
 	// カメラ CB を更新 (view/proj は skybox と同じ row-vector 規約で toHLSL)
 	struct alignas(16) SplatCb { float view[4][4]; float proj[4][4]; float params[4]; };

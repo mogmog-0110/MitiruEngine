@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace mitiru::vn
@@ -122,25 +123,50 @@ struct DialogueParams
 	std::string text;						///< テキスト
 };
 
+/// @brief シーンコマンドのパラメータ (Scene)
+struct SceneParams
+{
+	std::string name;						///< シーン名
+};
+
+/// @brief ラベル/ジャンプのパラメータ (Label, Jump)
+struct LabelParams
+{
+	std::string name;						///< ラベル名
+};
+
+/// @brief 選択肢コマンドのパラメータ (Choice)
+struct ChoiceParams
+{
+	std::vector<ScenarioChoiceEntry> entries;	///< 選択肢エントリ
+};
+
+/// @brief 待機コマンドのパラメータ (Wait)
+struct WaitParams
+{
+	float duration = 0.0f;					///< 待機時間
+};
+
+/// @brief スクリプトブロックのパラメータ (Script: @script ... @endscript の verbatim body)
+struct ScriptParams
+{
+	std::string body;						///< スクリプト本体
+};
+
+/// @brief コマンド種別ごとのパラメータ。type に対応する 1 つだけを保持する。
+///        monostate = 追加ペイロード無し (Else / EndIf)。
+using ScenarioPayload = std::variant<
+	std::monostate,
+	SceneParams, BackgroundParams, AudioParams, CharacterParams,
+	DialogueParams, ChoiceParams, LabelParams, SetParams,
+	IfParams, WaitParams, TransitionParams, ScriptParams>;
+
 /// @brief シナリオコマンドノード
 struct ScenarioNode
 {
-	ScenarioCommandType type;
+	ScenarioCommandType type{};
 	std::size_t sourceLine = 0;				///< ソース行番号
-
-	// コマンド種別に応じたパラメータ（typeに対応するものだけ有効）
-	std::string sceneName;					///< Scene
-	BackgroundParams background;			///< Background
-	AudioParams audio;						///< Bgm, Se, Voice
-	CharacterParams character;				///< Character
-	DialogueParams dialogue;				///< Dialogue
-	std::vector<ScenarioChoiceEntry> choices;		///< Choice
-	std::string labelName;					///< Label, Jump
-	SetParams setParams;					///< Set
-	IfParams ifParams;						///< If
-	float waitDuration = 0.0f;				///< Wait
-	TransitionParams transition;			///< Transition
-	std::string scriptBody;					///< Script: @script ... @endscript の verbatim body
+	ScenarioPayload payload;				///< type に対応するパラメータ (該当無しは monostate)
 };
 
 } // namespace mitiru::vn

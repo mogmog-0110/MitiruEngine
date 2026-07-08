@@ -1,6 +1,6 @@
 # MitiruCefGameHelper.cmake — CEF ゲーム配置の POST_BUILD ヘルパー
 #
-# 各ゲーム (horror-novel-ai / hamster-watt / kaerucrape …) が
+# 各 CEF ゲームが
 # CMakeLists.txt 末尾でやっていた「mitiru_runtime 同期 + CEF DLL/リソース配置 +
 # MitiruCefHelper.exe コピー」の同一 ~30 行ブロックを 1 関数にまとめる。
 #
@@ -11,7 +11,7 @@
 #   mitiru_register_cef_game(TARGET my_game)
 #
 # WEB_RUNTIME_DEST のデフォルトは ${CMAKE_CURRENT_SOURCE_DIR}/web/mitiru_runtime。
-# hamster-watt のように assets/ui/shared/mitiru_runtime に置きたい場合は明示指定:
+# assets/ui/shared/mitiru_runtime に置きたい場合は明示指定:
 #   mitiru_register_cef_game(
 #       TARGET my_game
 #       WEB_RUNTIME_DEST "${CMAKE_CURRENT_SOURCE_DIR}/assets/ui/shared/mitiru_runtime")

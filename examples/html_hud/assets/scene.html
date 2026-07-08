@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>html_hud</title>
+<style>
+  /* この HTML は、C++ が描くゲーム画面 (紙白の背景 + スライダー) の上に重ねる透明なページ。
+     マウス操作は下の C++ が読み取るので、この重ね面はクリックを受け取らない (pointer-events: none)。
+     この HTML 自身は値を一切覚えない。C++ が送ってくる view.level という 1 つの数値を、
+     6 つの表示 (ゲージ・数字・バー・pips・色・折れ線) へ同時に映すだけ。
+     JavaScript は 1 行も書かず、下に付けた data-m-... 属性だけで表示が更新される。 */
+  html, body { margin: 0; height: 100vh; width: 100vw; overflow: hidden;
+               background: transparent; pointer-events: none;
+               color: #1d1d1f; font-family: -apple-system, "Segoe UI", sans-serif;
+               font-variant-numeric: tabular-nums; }
+
+  /* 画面の上 58px (章の名札) と下 34px (操作の説明帯) は C++ が描くので、そこには重ねない。
+     さらにその下に残る帯に、C++ が描くスライダーが入る。 */
+  .hud { position: absolute; inset: 58px 0 34px 0;
+         display: flex; flex-direction: column; align-items: center; }
+
+  /* ── 中央上: 円形ゲージ + 中央の大きな数字。弧と数字が同じ値を映す ── */
+  .hero  { margin-top: 18px; }
+  .gauge { position: relative; width: 236px; height: 236px; border-radius: 50%;
+           --fill: #0a84ff; --track: #e6ebf3;
+           background: conic-gradient(var(--fill) 0 0%, var(--track) 0% 100%);
+           display: flex; align-items: center; justify-content: center;
+           box-shadow: 0 14px 40px rgba(20, 30, 50, .10); transition: box-shadow .25s ease; }
+  .gauge.low  { --fill: #e8338a; }
+  .gauge.high { --fill: #1fa654; }
+  .gauge-hole { position: absolute; inset: 26px; border-radius: 50%; background: #fbfcfe;
+                box-shadow: inset 0 2px 8px rgba(20, 30, 50, .06); }
+  .value { position: relative; z-index: 1; font-size: 96px; font-weight: 700;
+           letter-spacing: -4px; color: #0a84ff; transition: color .25s ease; }
+  .value.low  { color: #e8338a; }
+  .value.high { color: #1fa654; }
+
+  /* ── 下段: 同じ値の別表現 4 つ (横バー / pips / 色面 / 折れ線) ── */
+  .row  { display: flex; gap: 44px; margin-top: 34px; align-items: center; }
+  .tile { width: 176px; height: 120px; display: flex; align-items: center; justify-content: center; }
+
+  /* 横バー (値を幅 % で映す) */
+  .bar { width: 100%; height: 26px; border-radius: 13px; background: #e6ebf3;
+         box-shadow: inset 0 1px 3px rgba(20, 30, 50, .08); overflow: hidden; }
+  .bar-fill { display: block; height: 100%; width: 0%; border-radius: 13px; background: #0a84ff; }
+  .bar-fill.low  { background: #e8338a; }
+  .bar-fill.high { background: #1fa654; }
+
+  /* セグメント pips (10 個中 N 点灯) */
+  .pips { display: flex; gap: 7px; }
+  .pip  { width: 13px; height: 34px; border-radius: 5px; background: #e6ebf3; transition: background .12s ease; }
+  .pip.lit { background: #0a84ff; }
+
+  /* 色面 (低 = 桃 / 中 = 青 / 高 = 緑) */
+  .swatch { width: 96px; height: 96px; border-radius: 22px; background: #0a84ff;
+            box-shadow: 0 8px 22px rgba(10, 132, 255, .28);
+            transition: background .25s ease, box-shadow .25s ease; }
+  .swatch.low  { background: #e8338a; box-shadow: 0 8px 22px rgba(232, 51, 138, .28); }
+  .swatch.high { background: #1fa654; box-shadow: 0 8px 22px rgba(31, 166, 84, .28); }
+
+  /* 折れ線 (値の履歴) */
+  .spark { width: 176px; height: 96px; display: block; border-radius: 12px;
+           background: rgba(255, 255, 255, .6); border: 1px solid #e6ebf3; }
+</style>
+</head>
+<body>
+  <div class="hud">
+
+    <!-- 中央上: 円形ゲージ (弧) + 中央の大きな数字。どちらも同じ view.level を映す。
+         data-m-style … C++ の値を CSS に差し込む (弧の角度 = level%)
+         data-m-text  … 要素の文字を C++ の値にする (中央の数字)
+         data-m-class … 条件が真のときだけ class を付ける (低い=桃 / 高い=緑 に色替え) -->
+    <div class="hero">
+      <div class="gauge"
+           data-m-style="background: conic-gradient(var(--fill) 0 {view.level}%, var(--track) {view.level}% 100%)"
+           data-m-class="low: view.level < 33; high: view.level >= 66">
+        <div class="gauge-hole"></div>
+        <div class="value" data-m-text="view.level" data-m-format="int"
+             data-m-class="low: view.level < 33; high: view.level >= 66">0</div>
+      </div>
+    </div>
+
+    <!-- 下段: 同じ view.level を別の形で見せる 4 つ。上のゲージ / 数字と一斉に動く。
+         data-m-repeat     … C++ が送った配列 (view.pips) の数だけ <template> を複製する (pips)
+         data-m-spark-push … 値が届くたびに折れ線グラフへ点を 1 つ足す (spark) -->
+    <div class="row">
+      <div class="tile">
+        <div class="bar">
+          <span class="bar-fill" data-m-style="width: {view.level}%"
+                data-m-class="low: view.level < 33; high: view.level >= 66"></span>
+        </div>
+      </div>
+      <div class="tile">
+        <div class="pips" data-m-repeat="view.pips">
+          <template><i class="pip" data-m-class="lit: on"></i></template>
+        </div>
+      </div>
+      <div class="tile">
+        <div class="swatch" data-m-class="low: view.level < 33; high: view.level >= 66"></div>
+      </div>
+      <div class="tile">
+        <canvas class="spark" data-m-spark-push="view.level" data-m-spark-cap="90"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ここから下はエンジンに付属する JS。data-m-... を読み取って表示を自動で更新する部品で、
+       自分では 1 行も書かない (この 3 つ以外に JavaScript は無い)。 -->
+  <script src="mitiru_runtime/mitiru_cef_state.js"></script>
+  <script src="mitiru_runtime/mitiru_bind.js"></script>
+  <script src="mitiru_runtime/mitiru_bind_tools.js"></script>
+</body>
+</html>

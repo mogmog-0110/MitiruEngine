@@ -100,6 +100,15 @@ void renderShadowPass()
 	m_graphicsCmdList->SetPipelineState(m_shadowPSO.Get());
 	m_graphicsCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+	// b3 (CbShadow): VS が LightSpacePos 算出で読むため depth-only パスでも
+	// bind 必須。未 bind の root CBV アクセスは UB で、WARP では
+	// device removed (0x887A0005) になる。
+	const auto shadowPassCb = uploadShadowCB();
+	if (shadowPassCb != 0)
+	{
+		m_graphicsCmdList->SetGraphicsRootConstantBufferView(3, shadowPassCb);
+	}
+
 	// shadow ライト視点で CbTransform を組み直す
 	auto uploadShadowTransform = [&](const sgc::Mat4f& world)
 		-> D3D12_GPU_VIRTUAL_ADDRESS
@@ -158,22 +167,25 @@ void renderShadowPass()
 }
 
 /// @brief アルベド SRV 用 shader-visible heap を作る
-/// @details capacity 256 — drawMesh の上限。フレーム内で append、beginFrame で
-///          cursor をリセットする。
+/// @details kAlbedoSrvPerFrame × FRAME_COUNT を確保し frame index で partition
+///          する。GPU が in-flight の前フレーム分 descriptor を読んでいる間に
+///          CreateShaderResourceView で上書きしないため。beginFrame で cursor を
+///          自 frame partition の先頭にリセットする。
 void createAlbedoSrvHeap()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC hd = {};
 	hd.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	hd.NumDescriptors = 256;
+	hd.NumDescriptors = kAlbedoSrvPerFrame * FRAME_COUNT;
 	hd.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	if (FAILED(m_d3dDevice->CreateDescriptorHeap(
 			&hd, IID_PPV_ARGS(m_albedoSrvHeap.GetAddressOf()))))
 	{
 		throw std::runtime_error("CreateDescriptorHeap albedo SRV failed");
 	}
-	m_albedoSrvCapacity  = hd.NumDescriptors;
+	m_albedoSrvCapacity  = kAlbedoSrvPerFrame;
 	m_albedoSrvIncrement = m_d3dDevice->GetDescriptorHandleIncrementSize(
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	m_albedoSrvBase      = 0;
 	m_albedoSrvCursor    = 0;
 }
 
@@ -216,12 +228,20 @@ void ensureDefaultWhiteTexture()
 }
 
 /// @brief 現在の draw 用に { albedo SRV, shadow SRV } を heap に書いて gpu handle を返す
-/// @details 2 スロット分の連続範囲。cursor は +2 される。
+/// @details 2 スロット分の連続範囲を自 frame partition 内に書く。cursor は +2。
 ///          失敗時は gpuHandle.ptr = 0。
 [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE writeMainSrvTable(const Texture* tex)
 {
 	D3D12_GPU_DESCRIPTOR_HANDLE invalid = {0};
-	if (m_albedoSrvCursor + 1 >= m_albedoSrvCapacity) return invalid;
+	if (m_albedoSrvCursor + 1 >= m_albedoSrvCapacity)
+	{
+		// 超過 draw は table 未更新のまま = 直前 draw のテクスチャ流用になる
+		mitiru::debug::warnOnce("dx12.mainSrvTable.full",
+			"3D SRV heap 超過: 1 フレーム "
+			+ std::to_string(m_albedoSrvCapacity / 2)
+			+ " draw まで。以降の draw は直前のアルベド/シャドウ SRV を流用する");
+		return invalid;
+	}
 
 	// --- t0: albedo ---
 	const dx12::Dx12Texture2D* t = nullptr;
@@ -236,9 +256,10 @@ void ensureDefaultWhiteTexture()
 		t = &m_defaultWhiteTexture;
 	}
 
+	const UINT slot = m_albedoSrvBase + m_albedoSrvCursor;
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu0 =
 		m_albedoSrvHeap->GetCPUDescriptorHandleForHeapStart();
-	cpu0.ptr += static_cast<SIZE_T>(m_albedoSrvCursor)
+	cpu0.ptr += static_cast<SIZE_T>(slot)
 		* static_cast<SIZE_T>(m_albedoSrvIncrement);
 	t->createSRV(m_d3dDevice, cpu0);
 
@@ -269,7 +290,7 @@ void ensureDefaultWhiteTexture()
 
 	D3D12_GPU_DESCRIPTOR_HANDLE gpu =
 		m_albedoSrvHeap->GetGPUDescriptorHandleForHeapStart();
-	gpu.ptr += static_cast<UINT64>(m_albedoSrvCursor)
+	gpu.ptr += static_cast<UINT64>(slot)
 		* static_cast<UINT64>(m_albedoSrvIncrement);
 	m_albedoSrvCursor += 2;
 	return gpu;
@@ -332,70 +353,65 @@ void ensureDefaultWhiteTexture()
 	return a.valid() ? a.gpuAddr : 0;
 }
 
-/// @brief アウトラインパスでメッシュを描画する
-/// @param cmd 描画コマンド
-void drawOutlineMesh(const OutlineDrawCommand& cmd)
-{
-	if (!cmd.mesh || cmd.mesh->vertexCount() == 0)
-	{
-		return;
-	}
-
-	/// トランスフォーム CB を ring buffer から切り出す
-	const auto cbTransformAddr = uploadTransformCB(cmd.worldTransform);
-	if (cbTransformAddr == 0)
-	{
-		return;
-	}
-
-	/// 頂点バッファを ring buffer から切り出してアップロード
-	const auto& verts = cmd.mesh->vertices();
-	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
-	const auto vbAlloc = m_uploadRing.upload(verts.data(), vbSize, 4);
-	if (!vbAlloc.valid())
-	{
-		return;
-	}
-
-	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = vbAlloc.gpuAddr;
-	vbv.SizeInBytes    = vbSize;
-	vbv.StrideInBytes  = sizeof(Vertex3D);
-	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
-
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(0, cbTransformAddr);
-
-	/// インデックス付きまたは非インデックスの描画を実行する
-	const auto& indices = cmd.mesh->indices();
-	if (!indices.empty())
-	{
-		const UINT ibSize = static_cast<UINT>(
-			indices.size() * sizeof(uint32_t));
-		const auto ibAlloc = m_uploadRing.upload(indices.data(), ibSize, 4);
-		if (!ibAlloc.valid())
-		{
-			return;
-		}
-
-		D3D12_INDEX_BUFFER_VIEW ibv = {};
-		ibv.BufferLocation = ibAlloc.gpuAddr;
-		ibv.SizeInBytes    = ibSize;
-		ibv.Format         = DXGI_FORMAT_R32_UINT;
-		m_graphicsCmdList->IASetIndexBuffer(&ibv);
-
-		m_graphicsCmdList->DrawIndexedInstanced(
-			static_cast<UINT>(indices.size()), 1, 0, 0, 0);
-	}
-	else
-	{
-		m_graphicsCmdList->DrawInstanced(
-			static_cast<UINT>(verts.size()), 1, 0, 0);
-	}
-}
-
 // ─────────────────────────────────────────────────────────────
 //  ユーティリティ
 // ─────────────────────────────────────────────────────────────
+
+/// @brief mesh の VB/IB cache entry を取得する（失効時は作り直す）
+/// @details 失効 = サイズ変化 or Mesh::revision 変化（内容改変・アドレス再利用）。
+///          旧リソースは in-flight フレームが読み終わるまで deferRelease で生存させる。
+/// @return 使用可能なリソース（生成失敗時 nullptr）
+[[nodiscard]] ID3D12Resource* acquireMeshBuffer(
+	std::unordered_map<const void*, CachedBuffer>& cache,
+	const Mesh& mesh, const void* data, UINT sizeBytes)
+{
+	auto& entry = cache[static_cast<const void*>(&mesh)];
+	if (!entry.resource || entry.size != sizeBytes
+	    || entry.revision != mesh.revision())
+	{
+		if (entry.resource && m_device)
+		{
+			m_device->deferRelease(entry.resource);
+		}
+		entry.resource = createUploadBuffer(sizeBytes);
+		entry.size     = sizeBytes;
+		entry.revision = mesh.revision();
+		if (entry.resource)
+		{
+			uploadToBuffer(entry.resource.Get(), data, sizeBytes);
+		}
+	}
+	entry.lastUsedFrame = m_frameCounter;
+	return entry.resource.Get();
+}
+
+/// @brief 長期間参照の無い mesh VB/IB を deferRelease で退役させる
+/// @details beginFrame で毎フレーム呼ぶ。破棄済み Mesh の entry を掃除して
+///          GPU メモリ漏れとアドレス再利用時の stale ヒットを防ぐ。
+void evictStaleMeshBuffers()
+{
+	constexpr uint64_t kKeepFrames = FRAME_COUNT + 2;
+	auto sweep = [&](std::unordered_map<const void*, CachedBuffer>& cache)
+	{
+		for (auto it = cache.begin(); it != cache.end();)
+		{
+			if (m_frameCounter - it->second.lastUsedFrame > kKeepFrames)
+			{
+				if (it->second.resource && m_device)
+				{
+					m_device->deferRelease(it->second.resource);
+				}
+				it = cache.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+	};
+	sweep(m_meshVBCache);
+	sweep(m_meshIBCache);
+}
 
 /// @brief アップロードヒープにバッファリソースを生成する
 /// @param sizeBytes バッファサイズ（バイト）

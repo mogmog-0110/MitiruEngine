@@ -80,10 +80,10 @@ mitiru new myGame --force      <span class="c"># 既存フォルダを上書き<
 mitiru build --release   <span class="c"># Release ビルド</span></pre>
 
           <h3 id="cmd-run">mitiru run — 実行する</h3>
-          <p>ビルドしてからプロジェクトを起動します。<code>--inspect</code> でゲームと並走するツールウィンドウを 1 枚開けます（ゲーム終了とともに閉じます）。<code>--record</code> でその回の入力を記録すれば、あとで <code>mitiru replay --test --game</code> の回帰テストに使えます。</p>
+          <p>ビルドしてからプロジェクトを起動します。<code>--inspect</code> でゲームと並走するツールウィンドウを 1 枚開けます（ゲーム終了とともに閉じます）。<code>--record</code> でその回の入力を入力記録ファイル（.mtrr）に保存すれば、あとで <code>mitiru replay --test --game</code> の回帰テストに使えます。</p>
 <pre>mitiru run                        <span class="c"># ビルドして起動</span>
 mitiru run --inspect              <span class="c"># gameplay inspector を並走</span>
-mitiru run --inspect timetravel   <span class="c"># タイムトラベル窓 (perf / inspector / timetravel</span>
+mitiru run --inspect timetravel   <span class="c"># 巻き戻し窓 (perf / inspector / timetravel</span>
                                   <span class="c">#   / mixer / scene / replay / input から選択)</span>
 mitiru run --console              <span class="c"># ブラウザに実行時コントロールパネルを開く</span>
 mitiru run --record session.mtrr  <span class="c"># 入力を記録 (replay --test --game 用)</span></pre>
@@ -105,7 +105,7 @@ mitiru ui --state mock.json   <span class="c"># {"view.hp": 80} のような JSO
 mitiru ui --port 9000         <span class="c"># ポート変更</span></pre>
 
           <h3 id="cmd-lint">mitiru lint — バインドのズレを静的に検出する</h3>
-          <p>scene.html の <code>data-m-*</code> バインドと C++ 側の push を突き合わせ、C↔HTML 境界で黙って失敗するもの（C++ が一度も push しないキー、壊れたマークアップ、binder スクリプトの欠落など）を実行前に検出します。既定は警告のみで、CI 用に <code>--strict</code> があります。</p>
+          <p>scene.html の <code>data-m-*</code> バインドと C++ 側の push を突き合わせ、C↔HTML 境界で黙って失敗するもの（C++ が一度も push しないキー、壊れたマークアップ、binder（C++ の値を HTML に自動で流し込む仕組み）スクリプトの欠落など）を実行前に検出します。既定は警告のみで、CI 用に <code>--strict</code> があります。</p>
 <pre>mitiru lint            <span class="c"># 警告を表示</span>
 mitiru lint --strict   <span class="c"># 検出があれば非ゼロ終了 (CI 向け)</span></pre>
 
@@ -113,7 +113,7 @@ mitiru lint --strict   <span class="c"># 検出があれば非ゼロ終了 (CI �
           <h2 id="check">確かめる</h2>
 
           <h3 id="cmd-verify">mitiru verify — ヘッドレスで合否を出す</h3>
-          <p>ビルド → <code>MITIRU_AI=1</code> で起動 → 指定フレーム待機 → スクリーンショット取得 → 終了、までを人手なしで実行し、結果を 1 つの JSON で stdout に出力します。終了コードは 0=合格 / 1=不合格 / 2=ビルドエラー。golden 画像との比較やリプレイ再生後の検証もできます。</p>
+          <p>ビルド → <code>MITIRU_AI=1</code> で起動 → 指定フレーム待機 → スクリーンショット取得 → 終了、までを人手なしで実行し、結果を 1 つの JSON で stdout に出力します。終了コードは 0=合格 / 1=不合格 / 2=ビルドエラー。golden 画像（正解として保存した基準画像）との比較やリプレイ再生後の検証もできます。</p>
 <pre>mitiru verify                        <span class="c"># ビルド + スモークテスト</span>
 mitiru verify --golden ref.png       <span class="c"># golden 画像と比較 (既定閾値 95%)</span>
 mitiru verify --replay session.mtrr  <span class="c"># リプレイ再生後にスクリーンショット</span>
@@ -147,7 +147,7 @@ mitiru inspect 12345 --all                  <span class="c"># 3 つの観測窓�
 <pre>mitiru renderer</pre>
 
           <h3 id="cmd-input">mitiru input — 入力だけ</h3>
-          <p>キーボード・マウスを捕捉し、エンジンが毎フレーム見ている InputSnapshot をそのまま可視化します。レンダラもシーン管理も動きません。</p>
+          <p>キーボード・マウスを捕捉し、エンジンが毎フレーム見ている <code>InputSnapshot</code>（1 フレーム分の入力をまとめた struct）をそのまま可視化します。レンダラもシーン管理も動きません。</p>
 <pre>mitiru input</pre>
 
           <h3 id="cmd-scene">mitiru scene — シーン管理だけ</h3>

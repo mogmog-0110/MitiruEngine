@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>html_menu</title>
+<style>
+  /* この HTML は、C++ が描くゲーム画面 (紙白の背景 + 右側の図形) の上に重ねる透明なページ。
+     図形は C++ が描くので、この重ね面では左の操作パネルだけがクリックを受け取る
+     (パネルだけ pointer-events を有効に戻す)。この HTML 自身は値を一切覚えない。
+     パネルを触ると data-m-action が C++ へ操作を伝え、状態は C++ が持って図形へ反映する。
+     JavaScript は 1 行も書かない。 */
+  html, body { margin: 0; height: 100vh; width: 100vw; overflow: hidden;
+               background: transparent; pointer-events: none;
+               color: #1d1d1f; font-family: -apple-system, "Segoe UI", sans-serif; }
+
+  /* 左の操作パネル (白系・上品)。ここだけクリックを受ける。 */
+  .panel { position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+           width: 320px; pointer-events: auto; background: rgba(255, 255, 255, .96);
+           border: 1px solid #d8dee9; border-radius: 14px; padding: 22px 24px;
+           box-shadow: 0 12px 36px rgba(29, 29, 31, .12); }
+  .group { margin-bottom: 18px; }
+  .group:last-child { margin-bottom: 0; }
+  .label { font-size: 15px; color: #6b7280; margin-bottom: 8px; letter-spacing: .08em; }
+  .label b { color: #0a84ff; }
+
+  /* いろ: 色見本のボタン列。背景色は C++ が送った hex、選択中は濃い縁 (sel) が付く */
+  .swatches { display: flex; gap: 10px; }
+  .swatch { width: 44px; height: 44px; border-radius: 11px; border: 2px solid transparent;
+            cursor: pointer; padding: 0; box-shadow: 0 2px 8px rgba(29, 29, 31, .12);
+            transition: transform .12s ease, border-color .12s ease; }
+  .swatch.sel { border-color: #1d1d1f; transform: scale(1.08); }
+
+  /* かたち: 形の選択ボタン。選択中は青 (sel) */
+  .shapes { display: flex; gap: 10px; }
+  .shape-btn { flex: 1; font: inherit; font-size: 16px; padding: 10px 0; cursor: pointer;
+               color: #1d1d1f; background: #f1f4f9; border: 2px solid transparent;
+               border-radius: 9px; transition: all .12s ease; }
+  .shape-btn.sel { border-color: #0a84ff; color: #0a84ff; background: #eaf3ff; font-weight: 700; }
+
+  /* かず: スライダー 1 本。動かすと値を C++ へ送る (data-m-action)。位置は C++ の値で戻る */
+  input[type=range] { width: 100%; accent-color: #0a84ff; cursor: pointer; height: 24px; }
+
+  /* トグル 2 つ: 押すと C++ 側の ON/OFF が反転する。ON の見た目 (on) も、C++ が返してきた値で決まる */
+  .toggles { display: flex; gap: 10px; }
+  .toggle { flex: 1; font: inherit; font-size: 16px; padding: 10px 0; cursor: pointer;
+            color: #4b5563; background: #f1f4f9; border: 1px solid #d8dee9;
+            border-radius: 9px; transition: all .12s ease; }
+  .toggle.on { color: #fff; background: #0a84ff; border-color: #0a84ff; font-weight: 700; }
+
+  /* リセット: 全部を初期状態に戻す操作。いきなり実行せず data-m-confirm で確認ダイアログを 1 枚挟む */
+  .reset { width: 100%; font: inherit; font-size: 16px; padding: 11px 0; cursor: pointer;
+           color: #b4232a; background: #fff; border: 1px solid #f0c9cb; border-radius: 9px; }
+  .reset:hover { background: #fdf2f2; }
+
+  /* 確認ダイアログ (data-m-confirm) を出す付属 JS が使うクラス。ここで最小限の見た目を与える */
+  .mitiru-modal-root { position: fixed; inset: 0; display: flex;
+                       align-items: center; justify-content: center; pointer-events: auto; }
+  .mitiru-modal-backdrop { position: absolute; inset: 0; background: rgba(29, 29, 31, .35); }
+  .mitiru-modal { position: relative; background: #ffffff; border: 1px solid #d8dee9;
+                  border-radius: 12px; padding: 20px 24px;
+                  width: min(420px, calc(100vw - 64px));
+                  box-shadow: 0 12px 36px rgba(29, 29, 31, .18); }
+  .mitiru-modal__title { margin: 0 0 8px; font-size: 20px; }
+  .mitiru-modal__body  { font-size: 17px; color: #4b5563; margin-bottom: 18px; }
+  .mitiru-modal__close { position: absolute; top: 8px; right: 12px; border: 0;
+                         background: transparent; color: #6b7280; font-size: 18px; cursor: pointer; }
+  .mitiru-modal__actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .mitiru-modal__btn { font: inherit; font-size: 16px; padding: 7px 20px; cursor: pointer;
+                       border: 1px solid #c9d1de; border-radius: 8px;
+                       background: #f5f7fa; color: #1d1d1f; }
+</style>
+</head>
+<body>
+  <div class="panel">
+
+    <!-- いろ: C++ が送った view.colors の数だけ <template> を複製して色見本ボタンを並べる (data-m-repeat)。
+         ボタンを押すと pick.color という操作を、どの色か ({"id":...}) を添えて C++ へ送る -->
+    <div class="group">
+      <div class="label">いろ</div>
+      <div class="swatches" data-m-repeat="view.colors">
+        <template>
+          <button class="swatch"
+                  data-m-action="pick.color" data-m-payload='{"id":{id}}'
+                  data-m-style="background: #{hex}"
+                  data-m-attr="title: {name}"
+                  data-m-class="sel: sel"></button>
+        </template>
+      </div>
+    </div>
+
+    <!-- かたち: view.shapes の数だけ形ボタンを並べる。押すと pick.shape を C++ へ送る -->
+    <div class="group">
+      <div class="label">かたち</div>
+      <div class="shapes" data-m-repeat="view.shapes">
+        <template>
+          <button class="shape-btn"
+                  data-m-action="pick.shape" data-m-payload='{"id":{id}}'
+                  data-m-text="name" data-m-class="sel: sel"></button>
+        </template>
+      </div>
+    </div>
+
+    <!-- かず: スライダーを動かすと set.count を C++ へ送る。つまみの位置は、C++ が返す view.count に合わせて戻る -->
+    <div class="group">
+      <div class="label">かず <b data-m-text="view.count">3</b></div>
+      <input type="range" min="1" max="5" step="1"
+             data-m-action="set.count" data-m-payload='{"v":{$value}}'
+             data-m-value="view.count">
+    </div>
+
+    <!-- かたむき: 図形の傾き (度)。同じスライダーの仕組みで set.tilt を送る -->
+    <div class="group">
+      <div class="label">かたむき <b data-m-text="view.tilt">0</b>°</div>
+      <input type="range" min="0" max="45" step="1"
+             data-m-action="set.tilt" data-m-payload='{"v":{$value}}'
+             data-m-value="view.tilt">
+    </div>
+
+    <!-- すきま: 図形どうしの間隔。set.gap を送る -->
+    <div class="group">
+      <div class="label">すきま <b data-m-text="view.gap">150</b></div>
+      <input type="range" min="90" max="180" step="1"
+             data-m-action="set.gap" data-m-payload='{"v":{$value}}'
+             data-m-value="view.gap">
+    </div>
+
+    <!-- トグル: 押すと toggle.outline / toggle.big を C++ へ送る。ON の見た目は C++ が返す view.outline / view.big で決まる -->
+    <div class="group toggles">
+      <button class="toggle" data-m-action="toggle.outline" data-m-class="on: view.outline">ふちどり</button>
+      <button class="toggle" data-m-action="toggle.big" data-m-class="on: view.big">おおきく</button>
+      <button class="toggle" data-m-action="toggle.shadow" data-m-class="on: view.shadow">かげ</button>
+    </div>
+
+    <!-- リセット: data-m-confirm の確認ダイアログで OK を押したときだけ reset を C++ へ送る -->
+    <div class="group">
+      <button class="reset"
+              data-m-action="reset"
+              data-m-confirm="さいしょの じょうたいに もどしますか?"
+              data-m-confirm-title="かくにん">リセット</button>
+    </div>
+
+  </div>
+
+  <!-- ここから下はエンジンに付属する JS。HTML の操作を C++ へ届けたり、確認ダイアログを出したりする部品。
+       自分では 1 行も書かない (この 3 つ以外に JavaScript は無い)。 -->
+  <script src="mitiru_runtime/mitiru_cef_state.js"></script>
+  <script src="mitiru_runtime/mitiru_modal.js"></script>
+  <script src="mitiru_runtime/mitiru_bind.js"></script>
+</body>
+</html>

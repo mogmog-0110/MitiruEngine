@@ -128,7 +128,8 @@ using namespace mitiru;
 
 struct MyGame
 {
-    // 状態はここに置くだけ。flat POD ならホットリロード・巻き戻し・
+    // 状態はここに置くだけ。ポインタや std::vector を持たない丸ごとコピー
+    // できる struct (= flat POD) なら、ホットリロード・巻き戻し・
     // リプレイが何もしなくても全部乗ります。
     float x = 640.0f;
     float y = 360.0f;
@@ -158,7 +159,7 @@ MITIRU_GAME(MyGame)  // これ 1 行で DLL の入口が生成されます
 
 API の全体像は [機能リファレンス](https://mogmog-0110.github.io/MitiruEngine/features.html) に
 コピペできる形で並んでいます。HTML/CSS で HUD を作る例は同梱の
-`examples/timetravel_demo/` を参照してください。
+`examples/rewind/` を参照してください。
 
 ---
 
@@ -170,7 +171,7 @@ my-game/
 ├── src/
 │   └── main.cpp        # ゲーム本体
 ├── assets/
-│   └── scene.html      # Mode B 用の初期 HTML
+│   └── scene.html      # HTML/CSS UI 用の初期 HTML
 └── build/              # mitiru build が生成 (gitignore 推奨)
 ```
 
@@ -180,9 +181,9 @@ my-game/
 
 ## 次に何を見るか
 
-- [`examples/timetravel_demo/`](../examples/timetravel_demo/) — flat POD 状態 + 巻き戻し + HTML/CSS HUD の動く showcase
+- [`examples/rewind/`](../examples/rewind/) — flat POD 状態 + 巻き戻し + HTML/CSS HUD の動く showcase
 - [Reading Order — 次に読むべきページ](READING_ORDER.md)
-- [Scope & Identity — engine の identity / 4 軸 / target user](SCOPE.md)
+- [Scope & Identity — engine の identity / 特徴 / target user](SCOPE.md)
 - [Architecture — エンジン全体の設計](ARCHITECTURE.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
 

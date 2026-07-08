@@ -42,19 +42,19 @@ struct EmbeddedAssetData
 ///
 /// @code
 /// // 生成されたヘッダー（tools/embed_asset.pyで生成）
-/// namespace kaeru::assets {
-/// inline constexpr uint8_t strawberry_obj[] = { 0x23, 0x20, ... };
-/// inline constexpr size_t strawberry_obj_size = sizeof(strawberry_obj);
+/// namespace my_game::assets {
+/// inline constexpr uint8_t player_obj[] = { 0x23, 0x20, ... };
+/// inline constexpr size_t player_obj_size = sizeof(player_obj);
 /// }
 ///
 /// // 初期化時に登録
 /// mitiru::resource::EmbeddedAssets::instance().registerAsset(
-///     "models/strawberry.obj",
-///     kaeru::assets::strawberry_obj,
-///     kaeru::assets::strawberry_obj_size);
+///     "models/player.obj",
+///     my_game::assets::player_obj,
+///     my_game::assets::player_obj_size);
 ///
 /// // 使用時
-/// auto data = mitiru::resource::EmbeddedAssets::instance().get("models/strawberry.obj");
+/// auto data = mitiru::resource::EmbeddedAssets::instance().get("models/player.obj");
 /// if (data.valid()) {
 ///     auto mesh = mitiru::render::loadObjFromString(data.asStringView());
 /// }
@@ -70,7 +70,7 @@ public:
 	}
 
 	/// @brief アセットを登録する
-	/// @param name アセット名（パス形式推奨: "models/strawberry.obj"）
+	/// @param name アセット名（パス形式推奨: "models/player.obj"）
 	/// @param data バイトデータへのポインタ（静的寿命であること）
 	/// @param size データサイズ（バイト）
 	void registerAsset(const std::string& name, const uint8_t* data, std::size_t size)

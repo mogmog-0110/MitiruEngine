@@ -104,6 +104,8 @@ public:
 
     // ── ナビゲーション ────────────────────────────────────────
     void loadUrl(const std::string& /*url*/)                              {}
+    void setAllowRemoteUrls(bool /*allow*/) noexcept                      {}
+    [[nodiscard]] bool allowRemoteUrls() const noexcept { return false; }
     void loadHtml(const std::string& /*html*/,
                   const std::string& /*baseUrl*/ = "about:blank")        {}
     void executeJavaScript(const std::string& /*code*/)                  {}

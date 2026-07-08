@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>replay</title>
+<link rel="stylesheet" href="tool.css">
+<style>
+  /* テクニカルノートテーマ (tool.css と統一)。グレースケール / フラット / 等幅。 */
+  .file{ margin-top:6px; font-family:var(--mono); font-size:13px; color:var(--muted); }
+  .counter{ margin-top:18px; font-family:var(--mono); font-size:22px; font-weight:600; color:var(--ink);
+            font-variant-numeric:tabular-nums; }
+  .counter small{ font-size:14px; font-weight:500; color:var(--faint); margin-left:8px; }
+  .scrub{ margin-top:14px; height:16px; background:var(--paper); border:1px solid var(--rule-soft);
+          position:relative; cursor:pointer; }
+  .scrub .cur{ position:absolute; top:0; width:3px; height:16px; background:#1a1c1f; }
+  .strip{ margin-top:10px; height:44px; background:var(--paper); border:1px solid var(--rule-soft);
+          display:flex; align-items:flex-end; overflow:hidden; padding:2px; }
+  .strip i{ flex:1 1 0; background:#1a1c1f; opacity:.7; min-width:0; }
+  .keys{ margin-top:18px; display:flex; flex-wrap:wrap; gap:6px; min-height:30px; }
+  .chip{ background:var(--wash); border:1px solid var(--rule); color:var(--ink); padding:3px 10px;
+         font-family:var(--mono); font-size:13px; font-weight:600; }
+  .chip.empty{ background:var(--paper); border:1px solid var(--rule-soft); color:var(--faint); font-weight:400; }
+  .det{ margin-top:14px; }
+  .hint{ position:fixed; left:20px; right:20px; bottom:16px; color:var(--faint); font-family:var(--mono); font-size:13px; }
+  .err{ margin-top:30px; color:var(--ink); font-family:var(--mono); font-size:15px; }
+</style>
+</head>
+<body class="is-waiting" data-m-class="is-waiting: !replay.loaded">
+  <header><span class="dot"></span><h1>replay</h1></header>
+  <div class="body">
+    <div class="file" data-m-text="replay.file"></div>
+    <div class="err" data-m-show="replay.error" data-m-text="replay.error"></div>
+    <div data-m-show="replay.ok" style="display:none">
+      <div class="counter"><span data-m-text="replay.cur">1</span><small>/ <span
+        data-m-text="replay.total">0</span></small></div>
+      <div class="scrub" data-m-replay-scrub><div class="cur" data-m-style="left: {replay.pct}%"></div></div>
+      <div class="strip" data-m-repeat="replay.strip">
+        <template><i data-m-style="height: {h}%"></i></template>
+      </div>
+      <div class="label">held keys</div>
+      <div class="keys">
+        <span class="chip empty" data-m-show="!replay.keys.length">(none)</span>
+        <div style="display:contents" data-m-repeat="replay.keys">
+          <template><span class="chip" data-m-text="k"></span></template>
+        </div>
+      </div>
+      <div class="det kv">
+        <div class="row"><span class="k">frame</span><span class="v"
+          data-m-text="replay.frame.i"></span></div>
+        <div class="row"><span class="k">mouse</span><span class="v"><span
+          data-m-tpl="({replay.frame.mx}, {replay.frame.my})"></span><span
+          data-m-show="replay.frame.mb" data-m-tpl=" · {replay.frame.mb}"></span></span></div>
+        <div class="row"><span class="k">gamepad</span><span class="v"><span
+          data-m-show="replay.frame.pad">connected</span><span
+          data-m-hide="replay.frame.pad">—</span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="wait">waiting for a recording…</div>
+  <div class="hint">← / →  step · Home/End  jump · (read-only)</div>
+
+<script src="mitiru_runtime/mitiru_cef_state.js"></script>
+<script src="mitiru_runtime/mitiru_bind.js"></script>
+<script src="mitiru_runtime/mitiru_bind_tools.js"></script>
+</body>
+</html>

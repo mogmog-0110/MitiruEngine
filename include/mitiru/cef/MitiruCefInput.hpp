@@ -100,8 +100,16 @@ private:
             m_prevRDown = rdown;
         }
 
-        // マウスホイール: InputState にホイールデルタ API が未実装のため、
-        // 将来 InputState::mouseWheelDelta() が追加されたら実装する。
+        // マウスホイール: 今フレームの回転量を CEF に渡してページをスクロールさせる。
+        const float wheel = input.mouseWheelDelta();
+        if (wheel != 0.0f)
+        {
+            CefMouseEvent ev;
+            ev.x = mx;
+            ev.y = my;
+            ev.modifiers = buildModifiers(input);
+            host->SendMouseWheelEvent(ev, 0, static_cast<int>(wheel));
+        }
     }
 
     // ── キーボード ─────────────────────────────────────────────

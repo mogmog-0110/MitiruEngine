@@ -9,10 +9,6 @@
 
 #include <cstdint>
 
-#include <sgc/math/Mat4.hpp>
-
-#include <mitiru/render/Mesh.hpp>
-
 namespace mitiru::render
 {
 
@@ -80,17 +76,6 @@ struct alignas(256) DX12CbLighting
 	float materialSpecular[4]{};  ///< マテリアル鏡面色 (rgba)
 	float materialShininess = 32.0f;  ///< マテリアル光沢度
 	float _pad[3]{};              ///< パディング
-};
-
-// ─────────────────────────────────────────────────────────────
-//  アウトラインパス用の遅延描画コマンド
-// ─────────────────────────────────────────────────────────────
-
-/// @brief アウトライン描画コマンド（メッシュとワールド行列のペア）
-struct OutlineDrawCommand
-{
-	const Mesh* mesh = nullptr;     ///< 描画対象メッシュ（非所有）
-	sgc::Mat4f worldTransform{};    ///< ワールド変換行列
 };
 
 } // namespace mitiru::render

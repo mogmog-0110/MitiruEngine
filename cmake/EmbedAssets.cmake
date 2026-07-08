@@ -13,7 +13,7 @@
 #     BASE_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/assets"
 #     FILES
 #       assets/ui/title.html
-#       assets/ui/cooking.html
+#       assets/ui/menu.html
 #       assets/css/main.css
 #   )
 # ─────────────────────────────────────────────────────────────────────────────

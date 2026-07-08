@@ -80,26 +80,28 @@ public:
 			return false;
 		}
 
+		// header field は検証より先に全て読む — 拒否時も呼び出し側が
+		// recordedAbiVersion() / recordedFrameSize() で拒否理由を診断できる。
 		std::uint32_t ver = 0;
-		std::uint32_t fs  = 0;
-		std::memcpy(&ver, header + kOffVersion,   sizeof(ver));
-		std::memcpy(&fs,  header + kOffFrameSize, sizeof(fs));
-
-		if (ver != kFormatVersion)
-		{
-			// v1 (や v2 以外) は非対応 — 再録画が必要。
-			m_lastError = PlayerError::VersionMismatch;
-			return false;
-		}
-		if (fs != sizeof(module::InputSnapshot))
-		{
-			m_lastError = PlayerError::FrameSizeMismatch;
-			return false;
-		}
-
+		std::memcpy(&ver,           header + kOffVersion,    sizeof(ver));
+		std::memcpy(&m_frameSize,   header + kOffFrameSize,  sizeof(m_frameSize));
 		std::memcpy(&m_totalFrames, header + kOffFrameCount, sizeof(std::uint32_t));
 		std::memcpy(&m_rngSeed,     header + kOffRngSeed,    sizeof(m_rngSeed));
 		std::memcpy(&m_recordedAt,  header + kOffRecordedAt, sizeof(m_recordedAt));
+		std::memcpy(&m_recordedAbi, header + kOffAbiVersion, sizeof(m_recordedAbi));
+
+		if (ver != kFormatVersion)
+		{
+			// 非対応 format — 再録画が必要。
+			m_lastError = PlayerError::VersionMismatch;
+			return false;
+		}
+		if (m_frameSize != sizeof(module::InputSnapshot))
+		{
+			// 別 ABI 世代の録画 (InputSnapshot サイズ不一致) — 再録画が必要。
+			m_lastError = PlayerError::FrameSizeMismatch;
+			return false;
+		}
 
 		m_lastError  = PlayerError::None;
 		m_eof        = false;
@@ -219,6 +221,13 @@ public:
 	/// @brief 記録時刻 (unix ms)
 	[[nodiscard]] std::uint64_t recordedAt() const noexcept { return m_recordedAt; }
 
+	/// @brief 記録時の ABI version (kCurrentApiVersion)。0 = header に記録なし (不明)。
+	///        open が FrameSizeMismatch で拒否した時のエラー表示用 (open 失敗後も読める)。
+	[[nodiscard]] std::uint64_t recordedAbiVersion() const noexcept { return m_recordedAbi; }
+
+	/// @brief header に書かれた 1 frame の InputSnapshot バイト数 (open 失敗後も読める)。
+	[[nodiscard]] std::uint32_t recordedFrameSize() const noexcept { return m_frameSize; }
+
 	/// @brief idempotent close
 	void close()
 	{
@@ -229,6 +238,8 @@ public:
 		m_rngSeed     = 0;
 		m_totalFrames = 0;
 		m_recordedAt  = 0;
+		m_recordedAbi = 0;
+		m_frameSize   = 0;
 	}
 
 	/// @brief file が open 中か
@@ -344,6 +355,8 @@ private:
 	std::uint64_t m_rngSeed{0};
 	std::uint32_t m_totalFrames{0};
 	std::uint64_t m_recordedAt{0};
+	std::uint64_t m_recordedAbi{0};  ///< header off 32 (記録時 kCurrentApiVersion、0 = 不明)
+	std::uint32_t m_frameSize{0};    ///< header off 8 (記録時 sizeof(InputSnapshot))
 };
 
 }  // namespace mitiru::replay

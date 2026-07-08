@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>rewind</title>
+<style>
+  /* ゲーム窓の下に付く YouTube 風シークバー: ▶/⏸ ボタン + 明るいトラック + 赤い塗り + 丸いつまみ。 */
+  html, body{ margin:0; height:100%; overflow:hidden; background:#eef0f3;
+              font-family:system-ui, -apple-system, sans-serif; }
+  .wrap{ position:absolute; inset:0; display:flex; align-items:center; gap:14px; padding:0 18px; }
+
+  /* 再生 / 一時停止ボタン (赤い丸) */
+  .pp{ width:32px; height:32px; flex:0 0 auto; border:none; border-radius:50%;
+       background:#e0224b; cursor:pointer; position:relative; padding:0; }
+  .playing .pp::before, .playing .pp::after{ content:''; position:absolute; top:50%; width:4px; height:13px;
+       background:#fff; transform:translateY(-50%); border-radius:1px; }   /* ⏸ 二本線 */
+  .playing .pp::before{ left:11px; }  .playing .pp::after{ left:17px; }
+  .paused .pp::before{ content:''; position:absolute; top:50%; left:12px; transform:translateY(-50%);
+       border-style:solid; border-width:7px 0 7px 12px;
+       border-color:transparent transparent transparent #fff; }             /* ▶ 三角 */
+
+  .bar{ position:relative; flex:1; height:100%; cursor:pointer; touch-action:none; }
+  .track{ position:absolute; left:0; right:0; top:50%; height:6px; transform:translateY(-50%);
+          background:#c4c8cf; border-radius:4px; transition:height .12s; }
+  .fill{ position:absolute; left:0; top:50%; height:6px; transform:translateY(-50%);
+         background:#e0224b; border-radius:4px; transition:height .12s; pointer-events:none; }
+  .knob{ position:absolute; top:50%; width:16px; height:16px; margin-left:-8px; transform:translateY(-50%);
+         background:#e0224b; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.28); pointer-events:none;
+         transition:width .12s, height .12s, margin-left .12s; }
+  .bar:hover .track, .bar:hover .fill{ height:9px; }
+  .bar:hover .knob{ width:20px; height:20px; margin-left:-10px; }
+
+  .wait{ position:absolute; inset:0; background:#eef0f3; }
+  body:not(.is-waiting) .wait{ display:none; }
+</style>
+</head>
+<body class="is-waiting playing" data-m-rewind="tool.snap.rewind.state" data-m-class="is-waiting: !tt.ok">
+  <div class="wrap">
+    <button class="pp" data-m-tt-playpause aria-label="再生 / 一時停止"></button>
+    <div class="bar" data-m-tt-scrub>
+      <div class="track"></div>
+      <div class="fill" data-m-style="width: {tt.pct}%"></div>
+      <div class="knob" data-m-style="left: {tt.pct}%"></div>
+    </div>
+  </div>
+  <div class="wait"></div>
+
+<script src="mitiru_runtime/mitiru_cef_state.js"></script>
+<script src="mitiru_runtime/mitiru_bind.js"></script>
+<script src="mitiru_runtime/mitiru_bind_tools.js"></script>
+</body>
+</html>

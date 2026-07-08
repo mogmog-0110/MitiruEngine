@@ -113,80 +113,6 @@ void createMainPSO()
 }
 
 // ─────────────────────────────────────────────────────────────
-//  アウトラインPSO
-// ─────────────────────────────────────────────────────────────
-
-/// @brief アウトラインPSOを生成する
-/// @details 前面カリング（背面膨張アウトライン）、深度テスト有効・書き込み無効
-void createOutlinePSO()
-{
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-
-	/// ルートシグネチャ
-	psoDesc.pRootSignature = m_rootSignature.Get();
-
-	/// シェーダー
-	psoDesc.VS = m_outlineVS->shaderBytecode();
-	psoDesc.PS = m_outlinePS->shaderBytecode();
-
-	/// 入力レイアウト
-	D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
-	UINT inputCount = 0;
-	getInputLayout(inputLayout, inputCount);
-	psoDesc.InputLayout.pInputElementDescs = inputLayout;
-	psoDesc.InputLayout.NumElements = inputCount;
-
-	/// ラスタライザ: 前面カリング（背面だけ描画 -> アウトラインに見える）
-	/// DepthBias: アウトラインの背面をメインパスの前面より奥に押し出す
-	psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
-	psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
-	psoDesc.RasterizerState.DepthBias = 5000;
-	psoDesc.RasterizerState.DepthBiasClamp = 0.0f;
-	psoDesc.RasterizerState.SlopeScaledDepthBias = 2.0f;
-	psoDesc.RasterizerState.DepthClipEnable = TRUE;
-	psoDesc.RasterizerState.MultisampleEnable = FALSE;
-	psoDesc.RasterizerState.AntialiasedLineEnable = FALSE;
-	psoDesc.RasterizerState.ForcedSampleCount = 0;
-	psoDesc.RasterizerState.ConservativeRaster =
-		D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-	/// ブレンド: 不透明
-	psoDesc.BlendState.AlphaToCoverageEnable = FALSE;
-	psoDesc.BlendState.IndependentBlendEnable = FALSE;
-	psoDesc.BlendState.RenderTarget[0].BlendEnable = FALSE;
-	psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask =
-		D3D12_COLOR_WRITE_ENABLE_ALL;
-
-	/// 深度ステンシル: 深度テスト有効、深度書き込み無効
-	/// アウトラインはメインパスのメッシュの背後に隠れるべきだが、
-	/// 深度バッファを汚さないことで正しいオクルージョンを維持する
-	psoDesc.DepthStencilState.DepthEnable = TRUE;
-	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-	psoDesc.DepthStencilState.StencilEnable = FALSE;
-
-	/// サンプルマスク・トポロジ・フォーマット
-	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	psoDesc.NumRenderTargets = 1;
-	// ENG-106 HDR: back-extrusion outline は MSAA color (FP16) に書き込む
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	// 4x MSAA — 共有 depth と sample count を揃える (ENG-105 v2)
-	psoDesc.SampleDesc.Count = MSAA_SAMPLE_COUNT;
-	psoDesc.SampleDesc.Quality = 0;
-
-	HRESULT hr = m_d3dDevice->CreateGraphicsPipelineState(
-		&psoDesc, IID_PPV_ARGS(m_outlinePSO.GetAddressOf()));
-	if (FAILED(hr))
-	{
-		throw std::runtime_error(
-			"Renderer3D_DX12: CreateGraphicsPipelineState (outline) failed");
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
 //  深度バッファ・法線バッファ
 // ─────────────────────────────────────────────────────────────
 
@@ -571,6 +497,35 @@ void createOutlinePostProcess()
 	createFresnelMainPSO();
 }
 
+/// @brief outline post の SRV (深度/法線) を現在の depth/normal リソースへ貼り直す
+/// @details resize で depth/normal を再生成した直後に呼ぶ。heap は流用しスロット 0/1 のみ更新。
+void updateOutlinePostSRVs()
+{
+	if (!m_depthSRVHeap || !m_depthBuffer || !m_normalBuffer) return;
+
+	auto srvIncrementSize = m_d3dDevice->GetDescriptorHandleIncrementSize(
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	auto srvStart = m_depthSRVHeap->GetCPUDescriptorHandleForHeapStart();
+
+	/// スロット0: 深度SRV (MSAA)
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	m_d3dDevice->CreateShaderResourceView(
+		m_depthBuffer.Get(), &srvDesc, srvStart);
+
+	/// スロット1: 法線SRV (MSAA)
+	D3D12_SHADER_RESOURCE_VIEW_DESC normalSrvDesc = {};
+	normalSrvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	normalSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+	normalSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	D3D12_CPU_DESCRIPTOR_HANDLE normalSrvHandle = srvStart;
+	normalSrvHandle.ptr += srvIncrementSize;
+	m_d3dDevice->CreateShaderResourceView(
+		m_normalBuffer.Get(), &normalSrvDesc, normalSrvHandle);
+}
+
 // ─────────────────────────────────────────────────────────────
 //  色バッファコピーリソース
 // ─────────────────────────────────────────────────────────────
@@ -740,6 +695,12 @@ void createFresnelMainPSO()
 	// 4x MSAA — 共有 depth/normal の sample count に揃える (ENG-105 v2)
 	psoDesc.SampleDesc.Count = MSAA_SAMPLE_COUNT;
 
-	m_d3dDevice->CreateGraphicsPipelineState(
+	// 失敗を無言 fallback にしない — 黒画面より起動失敗 (main PSO と同じ流儀)
+	HRESULT hr = m_d3dDevice->CreateGraphicsPipelineState(
 		&psoDesc, IID_PPV_ARGS(m_fresnelMainPSO.GetAddressOf()));
+	if (FAILED(hr))
+	{
+		throw std::runtime_error(
+			"Renderer3D_DX12: CreateGraphicsPipelineState (fresnel) failed");
+	}
 }

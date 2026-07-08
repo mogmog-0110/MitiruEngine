@@ -5,6 +5,7 @@
 /// @details 頂点データとインデックスデータを保持する3Dメッシュクラス。
 ///          プリミティブ生成用のファクトリメソッドも提供する。
 
+#include <atomic>
 #include <cfloat>
 #include <cmath>
 #include <cstdint>
@@ -36,6 +37,7 @@ public:
 	void setVertices(std::vector<Vertex3D> vertices)
 	{
 		m_vertices = std::move(vertices);
+		m_revision = nextRevision();
 	}
 
 	/// @brief インデックスデータを設定する
@@ -43,6 +45,14 @@ public:
 	void setIndices(std::vector<uint32_t> indices)
 	{
 		m_indices = std::move(indices);
+		m_revision = nextRevision();
+	}
+
+	/// @brief 内容の世代番号（改変ごとに process 全体で一意の値へ更新）
+	/// @details GPU 側 VB/IB cache の失効判定用。アドレス再利用でも衝突しない。
+	[[nodiscard]] uint64_t revision() const noexcept
+	{
+		return m_revision;
 	}
 
 	/// @brief 頂点数を取得する
@@ -269,8 +279,16 @@ public:
 	}
 
 private:
+	/// @brief process 全体で単調増加する世代番号を払い出す
+	[[nodiscard]] static uint64_t nextRevision() noexcept
+	{
+		static std::atomic<uint64_t> counter{0};
+		return counter.fetch_add(1, std::memory_order_relaxed) + 1;
+	}
+
 	std::vector<Vertex3D> m_vertices;   ///< 頂点データ
 	std::vector<uint32_t> m_indices;    ///< インデックスデータ
+	uint64_t m_revision = 0;            ///< 内容世代（0 = 未設定）
 };
 
 } // namespace mitiru::render

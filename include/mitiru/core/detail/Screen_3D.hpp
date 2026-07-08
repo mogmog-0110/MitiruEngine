@@ -56,6 +56,18 @@ inline void Screen::light3D(const sgc::Vec3f& direction,
 	m_light3DColor = color;
 }
 
+inline void Screen::skybox3D(const sgc::Colorf& zenith, const sgc::Colorf& nadir) noexcept
+{
+	// cubemap 構築 + GPU upload は重いので、色が変わった時だけ再反映 flag を立てる。
+	if (!m_sky3DRequested || zenith != m_sky3DZenith || nadir != m_sky3DNadir)
+	{
+		m_sky3DRequested = true;
+		m_sky3DApplied   = false;
+		m_sky3DZenith    = zenith;
+		m_sky3DNadir     = nadir;
+	}
+}
+
 inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
                              const sgc::Vec3f& scale, const sgc::Vec3f& rotDeg,
                              const sgc::Colorf& color)
@@ -82,6 +94,13 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 		// 影を有効化 (オブジェクトが地面に接地して見える)。光と同じ向きで落とす。
 		m_renderer3D->setShadowEnabled(true);
 		m_renderer3D->setShadowDirection(m_light3DDir);
+		// skybox3D() 済みなら最遠面の空を張る (色が変わった時だけ cubemap を作り直す)。
+		if (m_sky3DRequested && !m_sky3DApplied)
+		{
+			m_renderer3D->setSkybox(
+				render::Cubemap::verticalGradient(64, m_sky3DZenith, m_sky3DNadir));
+			m_sky3DApplied = true;
+		}
 		m_3dStarted = true;
 	}
 

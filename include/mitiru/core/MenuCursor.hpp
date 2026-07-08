@@ -21,7 +21,8 @@
 /// padPressed / leftStick を呼ぶ)。Key / Pad は opaque enum 前方宣言 + VK/ビット値の
 /// 直書きで参照する (値は Win32 VK / XInput ビット由来の境界 ABI で不変)。
 ///
-/// 軸の向きは Input::move() と同じ (+y = 下、+x = 右)。
+/// 左スティック生値は +y=上・+x=右 (エンジン規約 = gamepadAxes)。updateVertical は
+/// 内部で Y を符号反転し「スティック上 = カーソル上 (-1)」にする。
 /// 1 個の MenuCursor は縦か横どちらか一方を回すこと (タイマー共有のため)。
 /// グリッドメニューは縦横 1 個ずつ置く。
 
@@ -60,7 +61,7 @@ struct MenuCursor
 	                   float repeatDelay = 0.4f, float repeatRate = 0.12f)
 	{
 		namespace dm = detail::menu;
-		const float axis = in.leftStick().y;
+		const float axis = -in.leftStick().y;   // 生値 +y=上 → 内部の +y=下 系へ反転
 		const int step = stepOf(in, axis, prevAxisY, dt, repeatDelay, repeatRate,
 		                        dm::kVkUp, dm::kVkW, dm::kPadUp,
 		                        dm::kVkDown, dm::kVkS, dm::kPadDown);

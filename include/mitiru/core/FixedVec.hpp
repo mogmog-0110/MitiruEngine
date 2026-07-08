@@ -43,6 +43,10 @@ struct FixedVec
 	[[nodiscard]] constexpr bool        full() const noexcept { return count >= N; }
 	constexpr void                      clear() noexcept { count = 0; }
 
+	/// @brief 末尾を削って要素数を n にする (n が今より小さいときだけ縮める。大きい値は無視)。
+	///        undo/redo の「やり直しで先に進んでいた分を捨てる」等に使う。
+	constexpr void                      truncate(std::size_t n) noexcept { if (n < count) { count = n; } }
+
 	/// @brief 末尾追加。容量超過時は捨てて false を返す (例外なし)。
 	/// @return 追加できたら true、満杯で捨てたら false。黙った取りこぼしを防ぐため
 	///         [[nodiscard]] — 戻り値を見て分岐するか、full() を先に確認すること。

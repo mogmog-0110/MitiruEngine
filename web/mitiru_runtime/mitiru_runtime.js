@@ -3,7 +3,7 @@
  *
  * CEF / ブラウザ 両方で動く、ゲーム UI が共通で必要とするユーティリティ。
  * IIFE で `window.mitiru` (グローバル) に機能を足すだけ。ESM 不使用 —
- * 利用元ゲーム (KaeruCrape ほか) が生スクリプトで読み込んでいるため。
+ * 利用元ゲームが生スクリプトで読み込んでいるため。
  *
  * 使い方 (games/<name>/assets/ui/index.html):
  *
@@ -78,8 +78,7 @@
 	};
 
 	// ── E-04: JSON loader with schema + required + freeze ───────
-	// KaeruCrape cooking_balance.js / cooking_recipes.js / cooking_style.js の
-	// 共通パターン:
+	// balance / recipes / style 等の data JSON loader に共通するパターン:
 	//   - fetch (または XHR fallback) で GET
 	//   - data.schema_version が opts.schema と一致するか確認
 	//   - opts.required の dot-path がすべて存在するか確認

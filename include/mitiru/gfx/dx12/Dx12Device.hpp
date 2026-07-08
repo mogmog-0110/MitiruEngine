@@ -605,6 +605,18 @@ private:
 				IID_PPV_ARGS(debugController.GetAddressOf()))))
 			{
 				debugController->EnableDebugLayer();
+
+				// MITIRU_D3D12_GBV=1 で GPU-Based Validation を追加有効化する
+				// (device removed の原因操作を特定する診断用 opt-in)
+				if (const char* g = std::getenv("MITIRU_D3D12_GBV");
+				    g != nullptr && g[0] != '\0' && g[0] != '0')
+				{
+					ComPtr<ID3D12Debug1> debug1;
+					if (SUCCEEDED(debugController.As(&debug1)))
+					{
+						debug1->SetEnableGPUBasedValidation(TRUE);
+					}
+				}
 			}
 		}
 #endif
@@ -623,8 +635,17 @@ private:
 		}
 
 		/// ハードウェアアダプタの取得
+		/// MITIRU_D3D12_WARP=1 で列挙を飛ばし WARP を強制する (golden 検証用 opt-in)
+		bool forceWarp = false;
+		if (const char* w = std::getenv("MITIRU_D3D12_WARP");
+		    w != nullptr && w[0] != '\0' && w[0] != '0')
+		{
+			forceWarp = true;
+		}
+
 		ComPtr<IDXGIAdapter1> adapter;
 		for (UINT i = 0;
+		     !forceWarp &&
 		     m_factory->EnumAdapters1(i, adapter.ReleaseAndGetAddressOf()) !=
 		     DXGI_ERROR_NOT_FOUND;
 		     ++i)

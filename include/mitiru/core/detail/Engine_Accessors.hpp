@@ -107,11 +107,6 @@ MITIRU_INLINE void mitiru::Engine::setTemporalChecker(validate::TemporalInvarian
 	m_temporalChecker = checker;
 }
 
-MITIRU_INLINE void mitiru::Engine::setDiffTracker(observe::StructuredDiff* tracker) noexcept
-{
-	m_diffTracker = tracker;
-}
-
 MITIRU_INLINE void mitiru::Engine::setCausalChain(observe::CausalChain* chain) noexcept
 {
 	m_causalChain = chain;

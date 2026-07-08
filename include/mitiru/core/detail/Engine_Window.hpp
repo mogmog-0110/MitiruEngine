@@ -15,6 +15,12 @@ MITIRU_INLINE void mitiru::Engine::setFullscreen(bool enable) noexcept
 #endif
 }
 
+MITIRU_INLINE void mitiru::Engine::setWindowIcon(std::string_view icoPath) noexcept
+{
+	// IWindow の仮想 default が no-op なので headless / 非 Win32 でも安全。
+	if (m_window) { m_window->setIcon(icoPath); }
+}
+
 MITIRU_INLINE bool mitiru::Engine::isFullscreen() const noexcept
 {
 #ifdef _WIN32

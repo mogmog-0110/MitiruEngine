@@ -16,6 +16,7 @@
 #endif
 #include <Windows.h>
 
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 
@@ -23,6 +24,54 @@
 
 namespace mitiru::cef
 {
+
+namespace detail
+{
+
+/// @brief "prefix<PID>suffix" 形のファイル名から PID を取り出す。形が違えば 0。
+inline DWORD parsePidFrom(
+    const std::string& name, const std::string& prefix, const std::string& suffix)
+{
+    if (name.size() <= prefix.size() + suffix.size())              { return 0; }
+    if (name.compare(0, prefix.size(), prefix) != 0)               { return 0; }
+    if (name.compare(name.size() - suffix.size(),
+                     suffix.size(), suffix) != 0)                  { return 0; }
+    const std::string digits =
+        name.substr(prefix.size(), name.size() - prefix.size() - suffix.size());
+    if (digits.empty() ||
+        digits.find_first_not_of("0123456789") != std::string::npos) { return 0; }
+    return static_cast<DWORD>(std::strtoul(digits.c_str(), nullptr, 10));
+}
+
+/// @brief PID のプロセスが生きているか (best-effort)。
+inline bool isProcessAlive(DWORD pid)
+{
+    HANDLE h = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (h) { ::CloseHandle(h); return true; }
+    // 開けないが実在 (別権限) の可能性 → 生存扱いで消さない
+    return ::GetLastError() == ERROR_ACCESS_DENIED;
+}
+
+/// @brief 過去起動が残した cef_cache_<PID> / cef_<PID>.log を best-effort 削除する。
+/// @details 自 PID と生存プロセスの分は残す。削除失敗 (使用中等) は無視 —
+///          次回起動で再試行される。
+inline void cleanupStaleCefArtifacts(const std::filesystem::path& exeDir)
+{
+    const DWORD self = ::GetCurrentProcessId();
+    std::error_code ec;
+    std::filesystem::directory_iterator it(exeDir, ec), end;
+    for (; !ec && it != end; it.increment(ec))
+    {
+        const std::string name = it->path().filename().string();
+        DWORD pid = parsePidFrom(name, "cef_cache_", "");
+        if (pid == 0) { pid = parsePidFrom(name, "cef_", ".log"); }
+        if (pid == 0 || pid == self || isProcessAlive(pid)) { continue; }
+        std::error_code rmEc;
+        std::filesystem::remove_all(it->path(), rmEc);
+    }
+}
+
+} // namespace detail
 
 /// @brief CefSettings を OSR (オフスクリーンレンダリング) 向けに構築する
 /// @param exeDir              実行ファイルのあるディレクトリ (subprocess / resource の基点)
@@ -57,15 +106,17 @@ inline CefSettings buildCefSettings(
     s.windowless_rendering_enabled = 1;
 
     // ── サンドボックス ─────────────────────────────────────
-    // 開発フェーズではサンドボックスを無効にする。
-    // 本番リリース時は CefSandboxInfo を適切に設定すること。
+    // single-process 運用 (MitiruCefApp 参照) では Chromium sandbox を併用
+    // できないため no_sandbox は必然。multi-process 化する際に CefSandboxInfo
+    // と合わせて再検討する。
     s.no_sandbox = 1;
 
     // ── ログ + キャッシュ (PID で分離) ─────────────────────
     // 複数の mitiru_host が同時起動するケース (launcher + game +
     // dev_companion など) で同じ exeDir/cef_cache を取り合うと CEF が
     // 真っ白 / 真っ黒 のまま動かなくなる。PID を suffix にして per-process
-    // で分ける。古い cache は OS の temp 同様 累積 — 必要なら別ツールで掃除。
+    // で分ける。過去起動の残骸は起動時に best-effort 掃除する。
+    detail::cleanupStaleCefArtifacts(exeDir);
     const DWORD pid = ::GetCurrentProcessId();
     const std::string pidSuffix = "_" + std::to_string(pid);
 

@@ -66,7 +66,7 @@
               <tr><td>void update(float dt)</td><td>時間だけで動かすとき</td></tr>
               <tr><td>void draw(Screen&amp; s)</td><td>描画</td></tr>
             </table>
-            <div class="note"><strong>なぜ struct か。</strong> エンジンはこのゲーム状態をまるごとコピーして保存／復元します（ホットリロード・タイムトラベル・録画）。だからトップの状態は「ただのデータ」——仮想関数やポインタを持たない flat POD——である必要があります（守られているか <code>MITIRU_GAME</code> がコンパイル時に確認）。可変長は <code>mitiru::FixedVec&lt;T,N&gt;</code> を使い、中で使う部品（敵・弾など）は普通に <code>class</code> で書いて構いません。トップだけ素直に保つ住み分けです（→ <a href="#ai">⑩ AI Lens と決定論</a>）。</div>
+            <div class="note"><strong>なぜ struct か。</strong> エンジンはこのゲーム状態をまるごとコピーして保存／復元します（ホットリロード・巻き戻し・録画）。だからトップの状態は「ただのデータ」——仮想関数やポインタを持たない flat POD——である必要があります（守られているか <code>MITIRU_GAME</code> がコンパイル時に確認）。可変長は <code>mitiru::FixedVec&lt;T,N&gt;</code> を使い、中で使う部品（敵・弾など）は普通に <code>class</code> で書いて構いません。トップだけ素直に保つ住み分けです（→ <a href="#ai">⑩ AI Lens と決定論</a>）。</div>
 
             <!-- ── ② 図形 ─────────────────────────────── -->
             <h2 id="shapes">② 図形を描く — 四角・円・線・多角形</h2>
@@ -185,7 +185,7 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍
     }
 };</pre>
             <p><code>render::Texture</code> には <code>solid(w,h,col)</code>（単色）や <code>checker(...)</code>（市松）もあり、画像が無くても試せます。ピクセルを自前で作って表示したいときは <code>s.drawPixelGrid({x,y,w,h}, pixels, pw, ph)</code>——RGBA8 のバッファをそのまま 1 枚の絵として描けます（自作ラスタライザや手続き的生成向け）。</p>
-            <div class="note"><strong>flat POD と画像の両立。</strong> <code>Texture</code> をトップの <code>struct</code> のメンバに持つと flat POD ではなくなり、<code>MITIRU_GAME</code> がコンパイルエラーにします（録画・タイムトラベルの単一 state を守るため → <a href="#ai">⑩ AI Lens と決定論</a>）。画像はグローバル／別オブジェクトに分け、トップの <code>struct</code> には座標やフレーム番号など「数値だけ」を残します。</div>
+            <div class="note"><strong>flat POD と画像の両立。</strong> <code>Texture</code> をトップの <code>struct</code> のメンバに持つと flat POD ではなくなり、<code>MITIRU_GAME</code> がコンパイルエラーにします（録画・巻き戻しの単一 state を守るため → <a href="#ai">⑩ AI Lens と決定論</a>）。画像はグローバル／別オブジェクトに分け、トップの <code>struct</code> には座標やフレーム番号など「数値だけ」を残します。</div>
 
             <!-- ── ⑦ 3D ──────────────────────────────── -->
             <h2 id="gltf">⑦ 3D 表示 — 2D の上にのせる</h2>
@@ -306,7 +306,7 @@ x += m.x * 320 * dt;                 <span class="c">// これだけで全デバ
 <span class="k">bool</span>  crit  = rng.nextBool(0.15f);  <span class="c">// 15% で true</span></pre>
 
             <h3>flat POD という 1 つの制約</h3>
-            <p>ゲーム状態（トップの <code>struct</code>）は flat POD 必須です——<code>std::vector</code> / <code>std::string</code> の代わりに <code>mitiru::FixedVec&lt;T,N&gt;</code> / <code>FixedString&lt;N&gt;</code> を使います。<code>MITIRU_GAME(MyGame)</code> がこれをコンパイル時に確認するので、うっかりポインタを混ぜたらその場でエラーになり、録画・タイムトラベルから黙って外れることがありません。状態が 1 個の平坦な構造体に収まっているからこそ、本来は別々に作り込む重い機能が、同じ <code>memcpy</code> と記述子から追加コストなしで生えてきます。</p>
+            <p>ゲーム状態（トップの <code>struct</code>）は flat POD 必須です——<code>std::vector</code> / <code>std::string</code> の代わりに <code>mitiru::FixedVec&lt;T,N&gt;</code> / <code>FixedString&lt;N&gt;</code> を使います。<code>MITIRU_GAME(MyGame)</code> がこれをコンパイル時に確認するので、うっかりポインタを混ぜたらその場でエラーになり、録画・巻き戻しから黙って外れることがありません。状態が 1 個の平坦な構造体に収まっているからこそ、本来は別々に作り込む重い機能が、同じ <code>memcpy</code> と記述子から追加コストなしで生えてきます。</p>
             <figure>
               <svg class="dgm" viewBox="0 0 720 228" width="100%" style="max-width:720px" role="img" aria-label="1 個の flat POD（GameMemory）から、巻き戻し・録画リプレイ・AI Lens の 3 つが同じ memcpy と記述子で生える図">
                 <defs><marker id="p1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
@@ -330,13 +330,13 @@ x += m.x * 320 * dt;                 <span class="c">// これだけで全デバ
               <figcaption>状態を 1 個の flat POD に置く——それだけで、巻き戻し・録画リプレイ・AI 可視化が<strong>同じ <code>memcpy</code> と記述子</strong>から生えます。別々に作り込むはずの重い機能が、1 つの制約の副産物になります。</figcaption>
             </figure>
             <table class="spectable">
-              <tr><td>入力と種を記録</td><td>同じプレイを bit-exact に再生。リプレイがそのまま回帰テストに（<code>mitiru run --record</code> / <code>mitiru replay</code>）</td></tr>
+              <tr><td>入力と種を記録</td><td>同じプレイを 1 bit も違わず（bit-exact）再生。リプレイがそのまま回帰テストに（<code>mitiru run --record</code> / <code>mitiru replay</code>）</td></tr>
               <tr><td>毎フレームの状態を記録</td><td>過去フレームへ巻き戻して「なぜ HP が 50 になった」を原因の 1 行まで追える（→ <a href="#tools">⑭</a> の <code>timetravel</code>）</td></tr>
               <tr><td>MITIRU_REFLECT で宣言</td><td>同じ flat POD を構造化 JSON として外から読める（下記 AI Lens）</td></tr>
             </table>
 
             <h3>AI Lens — 同じ flat POD から、AI も全状態を読める</h3>
-            <p>フィールドを <code>MITIRU_REFLECT(MyGame, player, enemies, hp)</code> と宣言すると、エンジンが GameMemory を構造化 JSON にします。<code>MITIRU_AI=1 mitiru run</code> で localhost API が立ち、現在・差分・反実仮想を叩けます。巻き戻し・録画とまったく同じ 1 つの flat POD から、AI 可視化まで生えています。</p>
+            <p>フィールドを <code>MITIRU_REFLECT(MyGame, player, enemies, hp)</code> と宣言すると、エンジンがゲームの全状態（<code>GameMemory</code>）を構造化 JSON にします。<code>MITIRU_AI=1 mitiru run</code> で localhost API が立ち、現在・差分・反実仮想を叩けます。巻き戻し・録画とまったく同じ 1 つの flat POD から、AI 可視化まで生えています。</p>
 <pre><span class="c">// ゲーム状態のフィールドを宣言するだけ（コードの追加はこれだけ）</span>
 <span class="t">MITIRU_REFLECT</span>(MyGame, player, enemies, hp);</pre>
 <pre><span class="c"># AI 用 API を立てて起動（zero-config）</span>
@@ -381,7 +381,7 @@ hud.fadeOut(0.4f);                <span class="c">// 画面を黒で覆う。場
 hud.letterbox(0.8f, 0.4f);        <span class="c">// 上下の黒帯（イベント・カットシーン。戻すのは letterbox(0)）</span></pre>
             <h3>セーブ・カメラ</h3>
             <p>状態が flat POD だから、<strong>セーブはまるごとコピー 1 行</strong>です。カメラも宣言して使うだけ:</p>
-<pre>hud.save(<span class="s">"slot0"</span>);              <span class="c">// GameMemory をまるごとセーブ（巻き戻し・リプレイと同一機構）</span>
+<pre>hud.save(<span class="s">"slot0"</span>);              <span class="c">// ゲームの全状態をまるごとセーブ（巻き戻し・リプレイと同一機構）</span>
 hud.load(<span class="s">"slot0"</span>);              <span class="c">// 復元。リプレイ再生中でも再現が壊れない設計</span>
 
 <span class="c">// 状態に mitiru::Camera cam; を持って:</span>
@@ -422,14 +422,14 @@ hud.set(<span class="s">"view.boss.active"</span>, <span class="k">true</span>);
 &lt;div class=<span class="s">"hud"</span>&gt;SCORE &lt;span data-m-text=<span class="s">"view.hud.score"</span>&gt;0&lt;/span&gt;&lt;/div&gt;
 &lt;div class=<span class="s">"boss"</span> data-m-show=<span class="s">"view.boss.active"</span>&gt;…&lt;/div&gt;</pre>
             <p>ボタンの click は <code>data-m-action="restart"</code> → C++ 側で <code>in.action("restart")</code> で受けます。<code>data-m-text / tpl / show / class / style / repeat …</code> の主な属性と作例は <a href="ui.html">画面を作る</a> に。観察用の値を inspector 窓へ送るなら <code>hud.watch("game", "Dodge", json)</code>、どうしても生 JS が要るときの逃げ道は <code>hud.runJs(code)</code>。</p>
-            <div class="note"><strong>サンプルで動きを見たいとき。</strong> ゲーム本体は C++、HUD は HTML / CSS という構成は、同梱の <code>timetravel_demo</code> など各サンプルでそのまま確認できます。<code>mitiru new</code> で作るひな型も最初からこの形です。</div>
+            <div class="note"><strong>サンプルで動きを見たいとき。</strong> ゲーム本体は C++、HUD は HTML / CSS という構成は、同梱の <code>rewind</code> など各サンプルでそのまま確認できます。<code>mitiru new</code> で作るひな型も最初からこの形です。</div>
 
             <!-- ── ⑭ ツール窓 ─────────────────────────── -->
             <h2 id="tools">⑭ デバッグ窓 — 必要な道具だけ、別ウィンドウで</h2>
             <p>巨大なエディタは開きません。fps を見たい・状態を覗きたい——欲しい道具だけを小さな独立ウィンドウで開きます。ゲーム画面は汚れず、スクショに余計なものが映りません。どれも HTML/CSS で出来た別ウィンドウです。</p>
             <figure><img src="assets/tool-perf.png" alt="perf 窓: fps と frame time のグラフ" loading="lazy"><figcaption><code>Perf</code> — fps / フレーム時間</figcaption></figure>
             <figure><img src="assets/tool-inspect.png" alt="inspector 窓: 送った値の一覧" loading="lazy"><figcaption><code>Inspector</code> — 観察データ一覧</figcaption></figure>
-            <figure><img src="assets/tool-timetravel.png" alt="time travel 窓: 過去フレームのスクラブ" loading="lazy"><figcaption><code>TimeTravel</code> — 巻き戻し</figcaption></figure>
+            <figure><img src="assets/tool-timetravel.png" alt="巻き戻し窓: 過去フレームをコマ送りで行き来" loading="lazy"><figcaption><code>TimeTravel</code> — 巻き戻し</figcaption></figure>
             <figure><img src="assets/tool-scene.png" alt="scene tree 窓: 状態の階層ツリー" loading="lazy"><figcaption><code>SceneTree</code> — 階層ツリー</figcaption></figure>
             <figure><img src="assets/tool-mixer.png" alt="mixer 窓: 音量と VU" loading="lazy"><figcaption><code>AudioMixer</code> — 音量・VU</figcaption></figure>
 <pre>hud.open(<span class="t">Tool</span>::Perf);        <span class="c">// 開きたい所に 1 行（何度呼んでも 1 回だけ開く）</span>

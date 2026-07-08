@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>inspector</title>
+<link rel="stylesheet" href="tool.css">
+</head>
+<body class="is-waiting" data-m-class="is-waiting: !kv.count">
+  <header><span class="dot"></span><h1>inspector</h1></header>
+  <!-- perf / audio は専用窓 (perf / mixer)、rewind は巻き戻し窓があるので inspector では出さない -->
+  <div class="body" data-m-kv="tool.snap" data-m-kv-skip="perf,audio,rewind"></div>
+  <div class="wait">waiting for the game…</div>
+
+<script src="mitiru_runtime/mitiru_cef_state.js"></script>
+<script src="mitiru_runtime/mitiru_bind.js"></script>
+<script src="mitiru_runtime/mitiru_bind_tools.js"></script>
+</body>
+</html>

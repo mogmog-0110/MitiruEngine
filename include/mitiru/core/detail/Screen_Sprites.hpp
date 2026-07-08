@@ -7,6 +7,79 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 	drawSprite(texture, dstRect, sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f});
 }
 
+// 文字を CPU 側で描く場面か (テクスチャ描画が使えず、画面バッファへ直接書けるとき)。
+inline bool mitiru::Screen::softwareTextPath() const noexcept
+{
+	const bool gpuTextured = (m_pipeline != nullptr) && m_pipeline->supportsTexturedBatch();
+	return !gpuTextured && hasSoftwareFramebuffer();
+}
+
+// グリフアトラスの 1 コマをソフトウェアフレームバッファへ塗る (文字用)。
+inline void mitiru::Screen::blitAtlasGlyph(const render::Texture& atlas, const sgc::Rectf& dstRect,
+                                           const sgc::Rectf& srcRect, const sgc::Colorf& color)
+{
+	if (!atlas.valid() || !hasSoftwareFramebuffer() || m_width <= 0 || m_height <= 0) { return; }
+	if (dstRect.width() <= 0.0f || dstRect.height() <= 0.0f) { return; }
+	validateDrawCall(dstRect, "text");
+	// 観測しないフレームは塗らない (#53)。
+	if (!m_swFbActive) { ++m_drawCallCount; return; }
+
+	const int texW = atlas.width();
+	const int texH = atlas.height();
+	const int sx0 = std::clamp(static_cast<int>(srcRect.x()), 0, texW);
+	const int sy0 = std::clamp(static_cast<int>(srcRect.y()), 0, texH);
+	const int sw  = std::min(static_cast<int>(srcRect.width()),  texW - sx0);
+	const int sh  = std::min(static_cast<int>(srcRect.height()), texH - sy0);
+	if (sw <= 0 || sh <= 0) { return; }
+
+	// 描画順を保つため、先に積んだ図形をフレームバッファへ焼く。
+	flushCurrentBatch();
+	if (!m_shapeRenderer.vertices().empty())
+	{
+		rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
+		m_shapeRenderer.flush();
+	}
+
+	// カメラ/スケール変換を適用する (回転は矩形近似)。
+	const sgc::Rectf d = applyTransform(dstRect);
+	if (d.width() <= 0.0f || d.height() <= 0.0f) { return; }
+	const int dx0 = std::max(0, static_cast<int>(d.x()));
+	const int dy0 = std::max(0, static_cast<int>(d.y()));
+	const int dx1 = std::min(m_width,  static_cast<int>(d.x() + d.width()  + 0.999f));
+	const int dy1 = std::min(m_height, static_cast<int>(d.y() + d.height() + 0.999f));
+	const float su = static_cast<float>(sw) / d.width();
+	const float sv = static_cast<float>(sh) / d.height();
+	const auto& px = atlas.pixels();
+	auto cl = [](float v) -> std::uint8_t {
+		return static_cast<std::uint8_t>(std::max(0.0f, std::min(255.0f, v * 255.0f)));
+	};
+	for (int dy = dy0; dy < dy1; ++dy)
+	{
+		int syi = static_cast<int>((static_cast<float>(dy) - d.y()) * sv);
+		syi = std::min(sh - 1, std::max(0, syi));
+		const int ty = sy0 + syi;
+		for (int dx = dx0; dx < dx1; ++dx)
+		{
+			int sxi = static_cast<int>((static_cast<float>(dx) - d.x()) * su);
+			sxi = std::min(sw - 1, std::max(0, sxi));
+			const int tx = sx0 + sxi;
+			const std::size_t i = static_cast<std::size_t>((ty * texW + tx) * 4);
+			if (i + 3 >= px.size()) { continue; }
+			const std::uint8_t cov = px[i + 3];
+			if (cov == 0) { continue; }
+			const float a = (cov / 255.0f) * color.a;
+			if (a <= 0.0f) { continue; }
+			const std::size_t o =
+				(static_cast<std::size_t>(dy) * m_width + static_cast<std::size_t>(dx)) * 4;
+			m_pixels[o]     = cl(color.r * a + (m_pixels[o]     / 255.0f) * (1.0f - a));
+			m_pixels[o + 1] = cl(color.g * a + (m_pixels[o + 1] / 255.0f) * (1.0f - a));
+			m_pixels[o + 2] = cl(color.b * a + (m_pixels[o + 2] / 255.0f) * (1.0f - a));
+			m_pixels[o + 3] = 255;
+		}
+	}
+	++m_drawCallCount;
+}
+
 // テクスチャ全体をティント付きで描く（= 全面 srcRect への委譲）。
 inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc::Rectf& dstRect,
                                        const sgc::Colorf& tintColor)
@@ -19,9 +92,7 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 	           tintColor, false);
 }
 
-// スプライトシートの 1 コマ（srcRect）を ティント / 左右反転付きで描く。
-//   • DX12 path: 本物のテクスチャ付きクワッドを texture-keyed バッチに emit（ADR 0009）。
-//   • それ以外（software / DX11 / WebGL / Null）: 従来の per-pixel emitRect に fallback。
+// スプライトシートの 1 コマ (srcRect) を、色かけ・左右反転付きで描く。
 inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc::Rectf& dstRect,
                                        const sgc::Rectf& srcRect, const sgc::Colorf& tintColor,
                                        bool flipX)
@@ -37,7 +108,7 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 	const int sh  = std::min(static_cast<int>(srcRect.height()), texH - sy0);
 	if (sw <= 0 || sh <= 0) return;
 
-	// ── 高速パス: DX12 textured batch（1 コマ = 1 クワッド）──
+	// テクスチャをそのまま 1 枚のスプライトとして描けるとき。
 	if (m_pipeline != nullptr && m_pipeline->supportsTexturedBatch())
 	{
 		const std::uint32_t handle = m_pipeline->ensureSpriteTexture(
@@ -64,33 +135,26 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 			drawSpriteTexturedQuad(handle, corners, uvs, tintColor);
 			return;
 		}
-		// handle==0（アップロード失敗）は per-pixel fallback へ落ちる。
+		// 用意できなかったときは下の方法で描く。
 	}
 
 	const auto& px = texture.pixels();
 
-	// ── 高速パス: ソフトウェアフレームバッファ直接 blit (#46a) ──
-	// headless (NullDevice + SW-FB) では従来 per-pixel emitRect が 1 スプライト数百万回の
-	// 関数呼び出しになり、sprite 多用ゲームで 1 フレーム数秒に落ちていた。dest 画素を走査して
-	// source を nearest サンプルし m_pixels へ直接ブレンドする (数十〜百倍速)。
+	// 画面バッファへ直接書き込む描き方 (ソフトウェア描画のとき)。出力先の画素ごとに
+	// 元画像から色を拾って重ねる。
 	if (hasSoftwareFramebuffer() && m_width > 0 && m_height > 0 &&
 	    dstRect.width() > 0.0f && dstRect.height() > 0.0f)
 	{
-		// 観測しないフレーム (#53): blit のピクセルループを丸ごと省く。
-		// fallback (per-pixel emitRect) に落とすと逆に遅いのでここで return。
+		// 記録しないフレームは、描かずに終える。
 		if (!m_swFbActive) { ++m_drawCallCount; return; }
-		// submit 順 (z 順) 維持: この sprite より前に積まれた rect/text/shape を先に
-		// m_pixels へ焼いてから直書きする。さもないと「全 rect は present で後段 flush」
-		// となり sprite が常に下/上で固定され重なり順が壊れる。batch が空なら安価。
+		// 重なり順を保つため、この絵より前に積んだ図形を先に画面へ焼いてから書き込む。
 		flushCurrentBatch();
 		if (!m_shapeRenderer.vertices().empty())
 		{
 			rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
 			m_shapeRenderer.flush();
 		}
-		// currentTransform（kRootScale / カメラ等）を dst に適用する。GPU パスと同じ変換を
-		// SW-FB でも通さないと scale 付きゲームが 2 倍/見切れになる。回転は fast blit 非対応の
-		// ため AABB 近似（translate+scale は厳密）。
+		// 拡大・移動・カメラの変換を適用する (回転は外接矩形で近似)。
 		const sgc::Rectf d = applyTransform(dstRect);
 		if (d.width() <= 0.0f || d.height() <= 0.0f) { return; }
 		const int dx0 = std::max(0, static_cast<int>(d.x()));
@@ -116,7 +180,7 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 				const std::size_t i = static_cast<std::size_t>((ty * texW + tx) * 4);
 				if (i + 3 >= px.size()) { continue; }
 				const std::uint8_t sa = px[i + 3];
-				if (sa < 128) { continue; }   // 1-bit alpha cutout（従来挙動）
+				if (sa < 128) { continue; }   // ほぼ透明な画素は飛ばす
 				const float a  = (sa / 255.0f) * tintColor.a;
 				const float sr = (px[i]     / 255.0f) * tintColor.r;
 				const float sg = (px[i + 1] / 255.0f) * tintColor.g;
@@ -133,7 +197,7 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 		return;
 	}
 
-	// ── fallback: per-pixel emitRect（テクスチャをサンプルできない backend 用）──
+	// 上の 2 つが使えないときは、画素ごとに小さな矩形で描く。
 	const float scaleX = dstRect.width()  / static_cast<float>(sw);
 	const float scaleY = dstRect.height() / static_cast<float>(sh);
 	const int step = std::max(1, static_cast<int>(1.0f / std::min(scaleX, scaleY)));

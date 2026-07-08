@@ -56,6 +56,62 @@ struct ReflectSchema
 static_assert(std::is_trivially_copyable_v<FieldDescriptor>, "FieldDescriptor は POD (DLL 境界)");
 static_assert(std::is_trivially_copyable_v<ReflectSchema>,   "ReflectSchema は POD (DLL 境界)");
 
+/// @brief reflect 記述子から GameMemory layout hash (FNV-1a 64) を作る (ADR 0024 追記)。
+/// @details field の名前・型 tag・offset・要素情報と、FixedVec<struct,N> の要素 schema を
+///          畳む。サイズ照合では素通りする「同サイズの field 並べ替え / float↔int」を
+///          .msav ロードと reload の状態温存判定で検出する。
+///          戻り値 0 = reflection 未宣言 (照合 skip の番兵)。宣言済みで偶然 0 になった場合は
+///          1 に丸める (0 の意味を汚さない)。
+[[nodiscard]] inline std::uint64_t layoutHash(
+	const FieldDescriptor* fields, std::int32_t fieldCount,
+	const ReflectSchema* schemas, std::int32_t schemaCount) noexcept
+{
+	if (fields == nullptr || fieldCount <= 0) { return 0; }
+	std::uint64_t h = 1469598103934665603ull;
+	const auto fold = [&h](const void* p, std::size_t n) noexcept
+	{
+		const auto* b = static_cast<const unsigned char*>(p);
+		for (std::size_t i = 0; i < n; ++i) { h ^= b[i]; h *= 1099511628211ull; }
+	};
+	const auto foldStr = [&fold](const char* s, std::size_t cap) noexcept
+	{
+		std::size_t n = 0;
+		while (n < cap && s[n] != '\0') { ++n; }
+		fold(s, n);
+		const unsigned char sep = 0;  // 区切り (連結の曖昧さ防止)
+		fold(&sep, 1);
+	};
+	const auto foldU32 = [&fold](std::uint32_t v) noexcept { fold(&v, sizeof(v)); };
+	const auto foldField = [&](const FieldDescriptor& f) noexcept
+	{
+		foldStr(f.name,     sizeof(f.name));
+		foldStr(f.typeTag,  sizeof(f.typeTag));
+		foldStr(f.elemType, sizeof(f.elemType));
+		foldU32(f.offset);
+		foldU32(f.elemSize);
+		foldU32(f.elemCount);
+		foldU32(f.countOffset);
+		foldU32(f.hasCount);
+	};
+	for (std::int32_t i = 0; i < fieldCount; ++i) { foldField(fields[i]); }
+	if (schemas != nullptr && schemaCount > 0)
+	{
+		for (std::int32_t s = 0; s < schemaCount; ++s)
+		{
+			const ReflectSchema& sc = schemas[s];
+			foldStr(sc.typeName, sizeof(sc.typeName));
+			std::int32_t fc = sc.fieldCount;
+			const std::int32_t cap =
+				static_cast<std::int32_t>(sizeof(sc.fields) / sizeof(sc.fields[0]));
+			if (fc > cap) { fc = cap; }
+			if (fc < 0)   { fc = 0; }
+			foldU32(static_cast<std::uint32_t>(fc));
+			for (std::int32_t j = 0; j < fc; ++j) { foldField(sc.fields[j]); }
+		}
+	}
+	return (h != 0) ? h : 1;
+}
+
 namespace detail
 {
 
@@ -70,8 +126,9 @@ template <> struct ScalarTag<short>              { static constexpr const char* 
 template <> struct ScalarTag<unsigned short>     { static constexpr const char* tag = "u16"; };
 template <> struct ScalarTag<int>                { static constexpr const char* tag = "i32"; };
 template <> struct ScalarTag<unsigned int>       { static constexpr const char* tag = "u32"; };
-template <> struct ScalarTag<long>               { static constexpr const char* tag = "i32"; }; // Win: 32bit
-template <> struct ScalarTag<unsigned long>      { static constexpr const char* tag = "u32"; };
+// long は LLP64 (Win) で 32bit / LP64 (Linux/mac) で 64bit — sizeof で分岐する
+template <> struct ScalarTag<long>               { static constexpr const char* tag = sizeof(long) == 8 ? "i64" : "i32"; };
+template <> struct ScalarTag<unsigned long>      { static constexpr const char* tag = sizeof(long) == 8 ? "u64" : "u32"; };
 template <> struct ScalarTag<long long>          { static constexpr const char* tag = "i64"; };
 template <> struct ScalarTag<unsigned long long> { static constexpr const char* tag = "u64"; };
 

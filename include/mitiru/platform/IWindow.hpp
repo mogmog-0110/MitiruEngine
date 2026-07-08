@@ -4,6 +4,7 @@
 /// @brief ウィンドウ抽象インターフェース
 /// @details プラットフォーム固有のウィンドウ操作を抽象化する。
 
+#include <cstdint>
 #include <functional>
 #include <string_view>
 
@@ -39,6 +40,11 @@ public:
 	/// @param title 新しいタイトル文字列
 	virtual void setTitle(std::string_view title) = 0;
 
+	/// @brief ウィンドウアイコンを .ico ファイルで設定する
+	/// @param icoPath .ico ファイルのパス (UTF-8)
+	/// @details デフォルトは no-op（headless / アイコン概念のない実装向け）。
+	virtual void setIcon(std::string_view /*icoPath*/) {}
+
 	/// @brief ウィンドウの閉じ要求を設定する
 	virtual void requestClose() = 0;
 
@@ -69,6 +75,32 @@ public:
 	/// @details 枠 drag でこの client サイズ未満へ縮められないようにする。
 	///          デフォルトはno-op（最小サイズを強制しない実装向け）。
 	virtual void setMinClientSize(int /*w*/, int /*h*/) {}
+
+	/// @brief ウィンドウの画面上の矩形 (枠込みの外側) を取得する。
+	/// @details 別のツール窓をこの窓に吸着・追従させる (ドッキング) ために、画面位置を知るのに使う。
+	///          取得できたら true。デフォルトは非対応で false。
+	virtual bool getWindowRect(int& /*x*/, int& /*y*/, int& /*w*/, int& /*h*/) const { return false; }
+
+	/// @brief ウィンドウを画面上の (x,y) サイズ (w,h) へ動かす。ドックしたツール窓の追従に使う。
+	/// @details フォーカスや z-order は変えない。デフォルトは no-op。
+	virtual void moveWindow(int /*x*/, int /*y*/, int /*w*/, int /*h*/) {}
+
+	/// @brief クリックしてもキーボードフォーカスを奪わない窓にする (WS_EX_NOACTIVATE 相当)。
+	/// @details ドックしたツール窓 (シークバー等) をクリックしてもゲームが操作を保つ。デフォルトは no-op。
+	virtual void setNoActivate() {}
+
+	/// @brief 常に最前面に置く (WS_EX_TOPMOST 相当)。ドックしたシークバーが背面に潜らないように。
+	/// @details デフォルトは no-op。
+	virtual void setTopmost() {}
+
+	/// @brief OS ネイティブのウィンドウハンドル (Win32 は HWND)。無ければ 0。
+	/// @details ドックしたツール窓を「この窓の真下」に z-order 挿入するために使う。
+	[[nodiscard]] virtual std::uintptr_t nativeHandle() const { return 0; }
+
+	/// @brief 指定ウィンドウ (aboveWindow) の真下に、位置 (x,y) サイズ (w,h) で置く。
+	/// @details z-order で aboveWindow の直後に差し込むので、間に他の窓が割り込まない。
+	///          aboveWindow が 0 なら z-order を変えずに移動のみ。デフォルトは no-op。
+	virtual void dockBelow(std::uintptr_t /*aboveWindow*/, int /*x*/, int /*y*/, int /*w*/, int /*h*/) {}
 };
 
 } // namespace mitiru

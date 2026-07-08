@@ -1,7 +1,7 @@
 /*!
  * mitiru_drag.js — pointer-event drag engine (E-03)
  *
- * KaeruCrape `cooking_drag.js` (257 LOC) を game-agnostic にポートしたもの。
+ * 各ゲームで再発明されがちな drag 処理を game-agnostic に提供する。
  * ADR-006 "pointer-event DnD" の rationale 通り、HTML5 native drag は
  * capturing phase で preventDefault → pointer-events ベースで完結する。
  *

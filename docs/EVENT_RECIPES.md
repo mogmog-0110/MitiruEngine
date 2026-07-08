@@ -6,7 +6,7 @@
 カットシーンの形 (タイムライン式か、状態機械式か、スクリプト式か) はゲームごとに違い、
 エンジンが 1 つの型を押し付けるとゲームの型を縛る。代わりに、揃っている小さい部品 —
 `Timer` / `Tween01` (PodTiming.hpp)、`hud.letterbox` / `fadeOut` / `fadeIn` / `music`
-(視覚・音 intent)、`Camera` + `applyCamera` — を **enum + switch の素朴な状態機械**で
+(視覚・音のエンジンへの依頼)、`Camera` + `applyCamera` — を **enum + switch の素朴な状態機械**で
 組み合わせる。この文書はその定番の組み方 3 つを示す。
 手書きで状態爆発していた部分 (帯量の tween、ズームの tween、会話ボックスの表示制御)
 が部品でどれだけ薄くなるかが要点。
@@ -61,13 +61,14 @@ struct GameMemory {
 ```
 
 手書き比較: 帯量の補間変数 (barT) とズームの補間変数 (zoomT) を別々に進めて
-draw 側でも同じ計算を繰り返す書き方は不要になる。帯は intent 1 行、ズームは
+draw 側でも同じ計算を繰り返す書き方は不要になる。帯はエンジンへの依頼 1 行、ズームは
 `Tween01` 1 個 + `applyCamera` で update/draw の二重実装が消える。
 
 ## レシピ B: 会話シーン (JS ゼロ)
 
 会話ボックスの見た目は HTML/CSS の領分。C++ は「表示するか」「何行目か」だけ持つ。
-JS は 1 行も書かない — `data-m-show` / `data-m-text` で binder が DOM を更新する。
+JS は 1 行も書かない — `data-m-show` / `data-m-text` を書いておくと、C++ が送った値を
+HTML に自動で流し込む仕組み (binder) が DOM を更新する。
 
 HTML 側:
 
@@ -133,16 +134,16 @@ struct GameMemory {
 };
 ```
 
-## 注意: どの値を GameMemory に置くか
+## 注意: どの値を `GameMemory` に置くか
 
 | 値 | 置き場所 | 理由 |
 |---|---|---|
-| Phase enum / `Tween01` / `Timer` / `Camera` | **GameMemory** | ゲーム状態。巻き戻し・リプレイに乗せる (ADR 0017) |
-| 帯量・fade 残量・shake 残量・クロスフェード進行 | **host (intent 経由)** | 演出の途中経過であってゲーム状態ではない。観測・rewind の対象はゲーム状態のみに保つ |
-| セリフ本文・BGM の id | **DLL 焼き込み (static constexpr)** | コンテンツであって状態ではない。GameMemory にはインデックスだけ |
+| Phase enum / `Tween01` / `Timer` / `Camera` | **`GameMemory`** | ゲーム状態。巻き戻し・リプレイに乗せる |
+| 帯量・fade 残量・shake 残量・クロスフェード進行 | **host (エンジンへの依頼経由)** | 演出の途中経過であってゲーム状態ではない。観測・巻き戻しの対象はゲーム状態のみに保つ |
+| セリフ本文・BGM の id | **DLL 焼き込み (static constexpr)** | コンテンツであって状態ではない。`GameMemory` にはインデックスだけ |
 
 `hud.letterbox(0.15f, 0.4f)` を呼んだ後、帯がどこまで開いたかをゲームは知らないし
 知る必要もない — 知りたくなったら、それは演出ではなくゲームルールに昇格した
-合図なので、`Tween01` を GameMemory に置いて自分で進める (レシピ A のカメラと同じ形)。
+合図なので、`Tween01` を `GameMemory` に置いて自分で進める (レシピ A のカメラと同じ形)。
 逆に Phase や `Tween01` を host 側 (static 変数等) に逃がすと、巻き戻したのに
 カットシーンだけ進み続ける、という再現性バグになる。境界はこの表で固定する。

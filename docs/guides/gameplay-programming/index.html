@@ -388,7 +388,7 @@
       <h1 id="c-gameplay-guide--mitiruengine">C++ Gameplay Guide — MitiruEngine</h1>
 <blockquote>
 <p><strong>対象読者</strong>: MitiruEngine 上で <strong>初めて C++ gameplay を書く</strong> 開発者。
-consumer 側ゲーム (例: KaeruCrape) の作者が、エンジンが提供する P0 プリミティブを
+consumer 側ゲームの作者が、エンジンが提供する P0 プリミティブを
 組み合わせてシーン遷移・状態管理・タイマー・UI signal 配線を行うための入口ガイド。</p>
 </blockquote>
 <hr>
@@ -740,7 +740,7 @@ JS には「ボタンが押された」だけ言わせて、<strong>どの scene
 </li>
 <li>
 <p><strong>bridge を太らせて gameplay 関数の RPC にするな</strong>
-<code>signal: &quot;game.canWrapCrepe?&quot;</code> のような問い合わせ / 計算依頼は NG。
+<code>signal: &quot;game.canOpenDoor?&quot;</code> のような問い合わせ / 計算依頼は NG。
 gameplay の判定は C++ 内で完結させ、結果だけ <code>view.*</code> に push する。</p>
 </li>
 <li>

@@ -1,12 +1,12 @@
 # Bridge API Contract — MitiruEngine CEF Bridge 責務定義
 
-> **関連**: [ADR 0001](adr/0001-cpp-gameplay-cef-view-only.md) — C++ gameplay + CEF は View 専用
+> **関連**: [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md) — C++ gameplay + CEF は View 専用
 
 ---
 
 ## 1. 責務定義
 
-ADR 0001 のアーキテクチャピボット (2026-05-14) により、bridge は **薄い signal 層** として再定義された。
+アーキテクチャ方針の転換 (2026-05-14、gameplay は C++・CEF は view 専用) により、bridge は **薄い signal 層** として再定義された。
 
 ### 1.1 JS → C++ で許可される用途
 
@@ -113,7 +113,7 @@ save bridge の C++ dispatch handler:
 
 ## 3. 新責務での API surface
 
-ADR 0001 に従い、bridge は以下の 2 カテゴリのみを持つ。
+この方針に従い、bridge は以下の 2 カテゴリのみを持つ。
 
 ### 3.1 JS → C++ request handler 命名規則
 
@@ -403,7 +403,7 @@ DOM 描画のためだけに必要な一時的な表示状態は JS に持って
 
 ## 7. 参照
 
-- [ADR 0001](adr/0001-cpp-gameplay-cef-view-only.md) — アーキテクチャピボット決定
+- [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md) — アーキテクチャ方針 (C++ gameplay + CEF は view 専用)
 - `include/mitiru/cef/MitiruCefBridge.hpp` — 低レベル transport 実装
 - `include/mitiru/cef/StateStore.hpp` — typed state/event 層
 - `include/mitiru/cef/AudioBridge.hpp` — audio handler 実装例

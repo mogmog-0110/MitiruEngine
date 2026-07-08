@@ -1,7 +1,7 @@
 /*!
  * mitiru_debug.js — engine-side debug bridge (E-08 / E-09)
  *
- * KaeruCrape feedback:
+ * 提供 API:
  *   E-08  `window.mitiru.debug.snapshot()`  — 構造化 state snapshot
  *   E-09  `window.mitiru.debug.postLog()`   — post() ring buffer
  *
@@ -13,9 +13,9 @@
  *   <script>
  *     // モジュール毎に slice を register する。
  *     // 戻り値 (plain object / JSON-safe) が snapshot() に組み込まれる。
- *     mitiru.debug.register('cooking', () => ({
- *         state:   CookingState.current(),
- *         queue:   OrderQueue.toJSON(),
+ *     mitiru.debug.register('scene', () => ({
+ *         state:   SceneState.current(),
+ *         queue:   EventQueue.toJSON(),
  *         selected: Cursor.selectedDragId,
  *     }));
  *

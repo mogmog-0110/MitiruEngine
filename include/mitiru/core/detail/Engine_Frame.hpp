@@ -1,7 +1,10 @@
 // mitiru::Engine の detail header — 直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
+#include <cstdlib>
+
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/core/detail/FixedStepPlan.hpp>
 #include <mitiru/debug/TracyZones.hpp>
 
 // ── per-frame ループ本体と screen capture の class 外定義 ──────
@@ -89,10 +92,16 @@ MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
 	/// endTick() に任せ、render rate と update rate を独立させる。
 	m_window->pollEvents();
 	applyInjectedInput();
+	// headless (自動回し/CI) では物理パッドを開かない — SdlGamepadInput の lazy init が
+	// DS4 を占有し、ユーザーが別アプリで使用中の実機入力を吸ってしまうため。
+	// 入力は --input-script / injected input が正であり、実デバイス不要。
+	if (!m_config.headless)
+	{
 #ifdef _WIN32
-	m_gamepad.update(); // XInput を毎フレーム 1 回ポーリング (#12, edge 検出は内部 prev/curr)
+		m_gamepad.update(); // XInput を毎フレーム 1 回ポーリング (#12, edge 検出は内部 prev/curr)
 #endif
-	m_sdlGamepad.update(); // SDL_GameController (#32) — DS4/DS5 等。SDL2 無し時は no-op
+		m_sdlGamepad.update(); // SDL_GameController (#32) — DS4/DS5 等。SDL2 無し時は no-op
+	}
 
 	// DEBUG: pollEvents直後のマウス座標を保存
 	{
@@ -153,7 +162,7 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 	/// 壁時計dtを取得し、スパイラルオブデス防止でキャップ
 	const float rawDt = m_clock->tick();
 	const float frameTime = std::min(rawDt, kMaxDelta);
-	m_accumulator += frameTime;
+	m_accumulator += frameTime * m_config.timeScale;   // timeScale はステップ数を増減 (dt は固定)
 
 	/// 固定タイムステップで更新 (最大スキップ制限付き)
 	///
@@ -164,8 +173,11 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 	///   - 1 render frame に複数 tick 走るケースでも、各 tick 末で endTick が
 	///     prev=curr を進めれば「1 物理入力 = 1 just-pressed observation」を
 	///     保証できる。
-	int steps = 0;
-	while (m_accumulator >= kFixedDt && steps < kMaxFrameSkip)
+	const int stepCap = m_config.deterministic
+	                        ? detail::deterministicStepCap(kMaxFrameSkip, m_config.timeScale)
+	                        : kMaxFrameSkip;
+	const int planned = detail::planFixedSteps(m_accumulator, kFixedDt, stepCap);
+	for (int steps = 0; steps < planned; ++steps)
 	{
 		game.update(kFixedDt);
 
@@ -185,7 +197,6 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		// tint 残量を fixed step で減衰 (#31)。決定論的に動く。
 		if (m_screen) { m_screen->advanceTint(kFixedDt); }
 		m_accumulator -= kFixedDt;
-		++steps;
 	}
 }
 
@@ -263,6 +274,45 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	}
 #endif
 
+#ifdef _WIN32
+	// 2D MSAA: pure-2D フレームのとき、ゲーム描画を MSAA 中間 RT へ向け、
+	// present 後に実バックバッファへ resolve する。回転した塗り図形・三角形・多角形・
+	// 線・円・スプライトの輪郭を平滑化する (サンプル数は Dx12MsaaTarget::kSampleCount)。
+	//
+	// override は必ず game.draw() の *前* に張る: Screen は switchToTexture /
+	// pushClipRect / setBlendMode で draw() 中に textured/sprite バッチを即 flush する
+	// ため、present 時点で override を張ると draw() 中フラッシュ分が実バックバッファへ落ち、
+	// 後段の resolve に上書きされて消える (実スワップチェーンでスプライトが全消しになる回帰)。
+	//
+	// gate: config + !lo-fi + !postprocess + DX12 + 「前フレームが 3D 未使用」。当フレームの
+	// 3D 使用可否は draw() 前には未知なので前フレームで代理判定する。万一この frame で 3D が
+	// 使われても、renderer3D->endFrame() の前 (下記) で override を外し resolve を諦める安全策で
+	// 守る。MITIRU_MSAA2D=0 で実行時に無効化 (トラブルシュート / 明示 1x)。
+	m_msaa2dActiveThisFrame = false;
+	static const bool s_msaa2dEnvOff = [] {
+		const char* e = std::getenv("MITIRU_MSAA2D");
+		return e != nullptr && e[0] == '0' && e[1] == '\0';
+	}();
+	if (m_config.antialiasing2D && !s_msaa2dEnvOff && !m_prevFrame3DUsed
+		&& !m_config.loFi.enabled
+		&& (!m_postProcess || !m_postProcess->isEnabled()) && m_window && m_screen)
+	{
+		if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
+		{
+			if (!m_msaaTarget) { m_msaaTarget = std::make_unique<gfx::Dx12MsaaTarget>(); }
+			const int bw = m_window->width();
+			const int bh = m_window->height();
+			if (m_msaaTarget->ensure(dx12->nativeDevice(), dx12->commandQueue(), bw, bh))
+			{
+				const auto& cc = m_screen->clearColor();
+				const float clear[4] = { cc.r, cc.g, cc.b, cc.a };
+				m_msaaTarget->beginFrame(dx12->getSwapChain(), clear);
+				m_msaa2dActiveThisFrame = true;
+			}
+		}
+	}
+#endif
+
 	game.draw(*m_screen);
 
 	// debug overlay 削除済み (マウス座標問題は解決)
@@ -287,6 +337,33 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 		m_errorBanner.drawTo(*m_screen);
 	}
 
+	// H-20: CEF init 失敗の可視化 — 無言の UI 無し画面を防ぐ (エンジン通知)。
+	if (m_cefInitFailed)
+	{
+		const float W = static_cast<float>(m_screen->width());
+		m_screen->drawRect(sgc::Rectf{0.0f, 0.0f, W, 28.0f},
+		                   sgc::Colorf{0.55f, 0.10f, 0.12f, 0.92f});
+		m_screen->drawTextInRect(sgc::Rectf{8.0f, 2.0f, W - 16.0f, 24.0f},
+		                         "UI 初期化失敗 (CEF) — 詳細は stderr / cef ログ",
+		                         sgc::Colorf{1.0f, 0.92f, 0.92f, 1.0f}, 16.0f);
+	}
+
+#ifdef _WIN32
+	// 2D→3D 遷移フレーム安全策: 前フレームが 2D で MSAA override を張った直後に、この
+	// フレームで 3D が使われた場合、renderer3D->endFrame() の resolve が backBuffer() を
+	// dest にする — override が張られたままだと 4x MSAA RT を resolve dest にして失敗する。
+	// override を実バックバッファへ戻し、この frame の 2D resolve は諦める (2D は次フレーム
+	// から prev3D=true で MSAA を張らず 1x で正しく描く)。稀な遷移 1 フレームのみ。
+	if (m_msaa2dActiveThisFrame && m_renderer3D && m_renderer3D->isFrameActive())
+	{
+		if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
+		{
+			if (auto* sc = dx12->getSwapChain()) { sc->clearBackBufferOverride(); }
+		}
+		m_msaa2dActiveThisFrame = false;
+	}
+#endif
+
 	// 3D facade (s.drawMesh / 直接 renderer3D 経路) が使われたフレームは、2D の蓄積が
 	// 終わったここで endFrame する (MSAA resolve + tonemap + 2D Screen を overlay 合成)。
 	// drawMesh が遅延 beginFrame するだけなので、フレームを閉じるのは engine の役目。
@@ -308,6 +385,12 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 	// 3D描画が行われたフレームの処理
 	const bool renderer3DUsed = m_renderer3D
 		&& m_renderer3D->isFrameActive();
+
+	// 次フレームの MSAA gate 用に「このフレームが 3D を使ったか」を控える。
+	// (MSAA override は draw() より前に張る必要があり、その時点で当フレームの 3D
+	//  使用可否は未知のため、前フレームの結果で判定する。tickRenderPhase 参照)
+	m_prevFrame3DUsed = renderer3DUsed;
+
 	if (!renderer3DUsed)
 	{
 		if (m_renderer3D && m_renderer3D->isInitialized())
@@ -325,6 +408,22 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 		}
 		m_screen->present();
 	}
+
+#ifdef _WIN32
+	// 2D MSAA resolve: override を外し、4x MSAA → 実バックバッファへ解決する。
+	// この後の CEF composite / present は resolve 済みバックバッファに正しく乗る
+	// (順序: 2D → resolve → CEF composite → present)。override は draw() 前 (tickRenderPhase)
+	// に張ってあるので、draw() 中に flush された textured/sprite バッチも MSAA RT に入り、
+	// この resolve に含まれる (実スワップチェーンでスプライトが消える回帰の根治)。
+	if (m_msaa2dActiveThisFrame && m_msaaTarget)
+	{
+		if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
+		{
+			m_msaaTarget->resolve(dx12->getSwapChain());
+		}
+		m_msaa2dActiveThisFrame = false;
+	}
+#endif
 
 #ifdef _WIN32
 	// ローファイ・ポストFX: 低解像 RT を量子化+Bayerディザしながら実バックバッファへ拡大。

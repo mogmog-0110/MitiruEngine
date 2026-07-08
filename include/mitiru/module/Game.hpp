@@ -29,6 +29,7 @@
 /// の C-ABI そのままで、ホスト側は何も変わらない。
 
 #include <cstdint>
+#include <cstring>
 #include <type_traits>
 
 #include <mitiru/core/Color.hpp>
@@ -223,7 +224,7 @@ public:
 	Stick move() const noexcept
 	{
 		float x = s_->gamepadAxes[0];
-		float y = s_->gamepadAxes[1];
+		float y = -s_->gamepadAxes[1];   // スティック生値は +y=上。move() は画面系 (+y=下) なので反転
 		if (down(Key::Left)  || down(Key::A) || padDown(Pad::Left))  { x -= 1.0f; }
 		if (down(Key::Right) || down(Key::D) || padDown(Pad::Right)) { x += 1.0f; }
 		if (down(Key::Up)    || down(Key::W) || padDown(Pad::Up))    { y -= 1.0f; }
@@ -340,11 +341,6 @@ public:
 	}
 	void quit() noexcept { s_->requestStop = 1; }   ///< ゲームを終了する
 
-	// ── つむぎ: タイムライン織り (ADR 0005 signal-only。host/engine が実処理) ──
-	void weaveBegin() noexcept  { s_->weaveBegin = 1; }   ///< 現状態を共通祖先 A にして糸取りを始める
-	void spinThread() noexcept  { s_->weaveSpin = 1; }    ///< 現状態を 1 本の糸として保存し A へ戻る
-	void weave() noexcept       { s_->weaveCommit = 1; }  ///< 全糸を織って 1 つの世界に確定する
-
 	// ── 演出 / デバッグ (必要なときだけ呼ぶ — pulled UI、ゲーム窓は汚さない) ──
 	/// 画面を一瞬 c 色にフラッシュさせる (被弾演出など)。
 	void flash(Color c, float seconds = 0.18f) noexcept { s_->pushTint(c.r, c.g, c.b, c.a, seconds); }
@@ -385,6 +381,10 @@ public:
 	/// 旧セーブは安全のため拒否される (初回 1 回警告)。リプレイ中は記録済み state で
 	/// 代用されるため、セーブファイルが変わっていても再現は壊れない。
 	void load(const char* slot = "slot0") noexcept { s_->requestLoad(slot); }
+	/// ゲームを最初からやり直す (GameMemory を unload なしで fresh 再構築、§8-4)。
+	/// update 内の `*this = MyGame{}` 手運びの代わり。host が memset 0 → init() を適用する。
+	/// intent なので replay / resim では update が同フレームで再発行し bit-exact に再現される。
+	void requestRestart() noexcept { s_->requestRestart(); }
 	/// このフレームのスクリーンショットを保存する。
 	void screenshot() noexcept { s_->requestScreenshotNow(); }
 	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。
@@ -424,6 +424,11 @@ template<class T>
 void gameInit(void* mem)
 {
 	if (mem == nullptr) { return; }
+	// 既定値イメージを static に 1 部だけ持つ (static 初期化で padding まで 0 化済み)。
+	// 初回 load でも restart intent (§8-4) でも、この copy で NSDMI 既定値へ確実に戻る。
+	// padding byte も決定論になる (ring / replay の memcmp 対象)。
+	static const T kFresh{};
+	std::memcpy(mem, &kFresh, sizeof(T));
 	T& g = *static_cast<T*>(mem);
 	if constexpr (requires { g.init(); }) { g.init(); }
 	else { (void)g; }
@@ -498,7 +503,7 @@ void registerGame(ModuleApi* api, void** memory)
 
 	if (api == nullptr || memory == nullptr) { return; }
 	if (*memory == nullptr) { *memory = new T{}; }   // reload 時はホストが既存 pointer を渡す
-	api->version     = kCurrentApiVersion;
+	api->version     = kWireApiVersion;  // 数値 + build 指紋 (H-1/H-4)。host は完全一致のみ受理
 	api->on_init     = &gameInit<T>;
 	api->on_update   = &gameUpdate<T>;
 	api->on_draw     = &gameDraw<T>;
@@ -557,6 +562,35 @@ template<class T>
 void unregisterGame(void* memory) { delete static_cast<T*>(memory); }
 
 }  // namespace module::detail
+
+namespace module
+{
+
+/// @brief member pointer から SeriesProbe を合成する (§8-1)。MITIRU_SERIES_FIELD の実体。
+/// @details accessor は capture 無し lambda の関数ポインタ変換 (= C 関数ポインタ) なので
+///          DLL 境界に安全 (ADR 0005)。offset / 型は member pointer から自動導出される。
+template <class T, auto MemberPtr>
+[[nodiscard]] inline SeriesProbe makeSeriesProbe(const char* name, const char* title,
+                                                 double threshold = 0.0,
+                                                 bool hasThreshold = false) noexcept
+{
+	using M = std::remove_cv_t<std::remove_reference_t<
+		decltype(static_cast<const T*>(nullptr)->*MemberPtr)>>;
+	static_assert(std::is_arithmetic_v<M>,
+		"MITIRU_SERIES_FIELD: 数値 field (int / float / double 等) のみ系列化できます");
+	SeriesProbe p{};
+	detail::copyTag(p.name,  sizeof(p.name),  name);
+	detail::copyTag(p.title, sizeof(p.title), title);
+	p.accessor = [](const void* mem) noexcept -> double
+	{
+		return static_cast<double>(static_cast<const T*>(mem)->*MemberPtr);
+	};
+	p.threshold    = threshold;
+	p.hasThreshold = hasThreshold ? 1 : 0;
+	return p;
+}
+
+}  // namespace module
 }  // namespace mitiru
 
 #if defined(_WIN32)
@@ -609,6 +643,22 @@ void unregisterGame(void* memory) { delete static_cast<T*>(memory); }
 	{                                                                         \
 		mitiru::module::detail::unregisterGame<GameType>(memory);             \
 	}
+
+/// probe 関数の手書き (cast 定型文) を消す糖衣 (§8-1)。field 名だけで系列化する —
+/// offset / 型は member pointer から自動導出。MITIRU_GAME_SERIES の要素として使う。
+///
+/// @code
+///   MITIRU_GAME_SERIES(MyGame,
+///       MITIRU_SERIES_FIELD_DANGER(MyGame, hp, "HP", 35.0),  // 35 下抜けで danger marker
+///       MITIRU_SERIES_FIELD(MyGame, score));                 // ラベル = field 名
+/// @endcode
+#define MITIRU_SERIES_FIELD(GameType, field)                                   \
+	::mitiru::module::makeSeriesProbe<GameType, &GameType::field>(#field, #field)
+
+/// 同上 + 人間向けラベルと danger 閾値 (閾値跨ぎが time-travel marker になる)。
+#define MITIRU_SERIES_FIELD_DANGER(GameType, field, title, thresholdValue)     \
+	::mitiru::module::makeSeriesProbe<GameType, &GameType::field>(              \
+		#field, title, thresholdValue, true)
 
 // ── GameMemory リフレクション (ADR 0018) ──────────────────────────────────
 // MITIRU_REFLECT(Type, field...) で GameMemory の全フィールドを host に申告する。

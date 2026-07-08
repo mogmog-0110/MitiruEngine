@@ -594,7 +594,7 @@
 <ul>
 <li><code>view.hud.set</code>      (hp=80, gold=120)</li>
 <li><code>view.dialog.show</code>  (speaker=Maria, line=&quot;&hellip;&quot;, typewriter=true)</li>
-<li><code>view.animation.play</code> (target=#crepe, name=flip, duration=400ms)</li>
+<li><code>view.animation.play</code> (target=#hero, name=flip, duration=400ms)</li>
 <li><code>view.dom.swap</code>     (region=order_panel, html_template=order_card, data=&hellip;)</li>
 <li><code>view.scene.switch</code> (id=kitchen, transition=fade, duration=600ms)</li>
 </ul>
@@ -744,7 +744,7 @@ C++ hosts CEF and provides native services. When a specific JS system
 becomes hot or needs hardware-adjacent access, it is <em>promoted</em> to a C++
 system via the bridge.&rdquo;</p>
 </blockquote>
-<p>これは「Electron + native backend」モデルだった。KaeruCrape の cooking
+<p>これは「Electron + native backend」モデルだった。minigame の
 state machine、drag-and-drop、scripted-scene VM、HUD logic、scene router は
 すべて V8 inside CEF で動いていた。</p>
 <h3 id="旧-decision-matrix--js-first">(旧) Decision matrix — JS first</h3>

@@ -83,11 +83,6 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		throw std::runtime_error(std::string("DX12 createMainPSO: ") + e.what());
 	}
 	try {
-		createOutlinePSO();
-	} catch (const std::exception& e) {
-		throw std::runtime_error(std::string("DX12 createOutlinePSO: ") + e.what());
-	}
-	try {
 		createDepthBuffer();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createDepthBuffer: ") + e.what());
@@ -196,11 +191,23 @@ inline void Renderer3D_DX12::resize(float width, float height)
 		return;
 	}
 
+	if (m_initialized &&
+	    width == m_config.viewportWidth && height == m_config.viewportHeight)
+	{
+		return;
+	}
+
 	m_config.viewportWidth = width;
 	m_config.viewportHeight = height;
 
 	if (m_initialized)
 	{
+		/// GPU が参照中のリソースを破棄しないよう完了を待つ
+		if (m_device)
+		{
+			m_device->waitForGpu();
+		}
+
 		/// 深度 + 法線 + MSAA color バッファを再生成する (ENG-105 v2)
 		m_depthBuffer.Reset();
 		m_dsvHeap.Reset();
@@ -211,6 +218,15 @@ inline void Renderer3D_DX12::resize(float width, float height)
 		createDepthBuffer();
 		/// FXAA intermediate (backbuffer サイズ) を再生成する
 		createFXAAIntermediate();
+		/// outline post の深度/法線 SRV を再生成後のリソースへ貼り直す
+		updateOutlinePostSRVs();
+		/// 色コピーバッファ (backbuffer サイズ) + モード3/4 SRV ヒープを再生成する
+		m_colorCopyBuffer.Reset();
+		m_colorEdgeSRVHeap.Reset();
+		m_depthColorSRVHeap.Reset();
+		createColorCopyBuffer();
+		/// OIT accum/reveal を新サイズで再生成する (composite PSO は流用)
+		m_oit.resize(static_cast<UINT>(width), static_cast<UINT>(height));
 	}
 }
 
@@ -230,7 +246,6 @@ inline void Renderer3D_DX12::destroy()
 
 	m_frameTempResources.clear();
 	for (auto& v : m_perFrameTempResources) v.clear();
-	m_outlineCommands.clear();
 	m_graphicsCmdList.Reset();
 
 	for (uint32_t i = 0; i < FRAME_COUNT; ++i)
@@ -239,7 +254,6 @@ inline void Renderer3D_DX12::destroy()
 	}
 
 	m_mainPSO.Reset();
-	m_outlinePSO.Reset();
 	m_outlinePostPSO.Reset();
 	for (auto& p : m_outlinePostPSOs) p.Reset();
 	m_fresnelMainPSO.Reset();

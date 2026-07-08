@@ -88,6 +88,11 @@ inline void mitiru::Screen::drawSpriteTexturedQuad(
 	++m_drawCallCount;
 }
 
+inline void mitiru::Screen::flushSpriteBatch()
+{
+	flushCurrentBatch();
+}
+
 inline void mitiru::Screen::present()
 {
 	/// 現在のバッチ（頂点カラー or textured run）を submit し、空で開き直す

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/BackendInit.hpp>
 
 #include <fstream>
@@ -64,7 +65,9 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			config.title, winW, winH,
 			GlfwGraphicsMode::OpenGL);
 #else
-		// GLFW が利用不可の場合、DX11 にフォールバック
+		// GLFW 不在時は黙って変えない。fallback は明示する (ADR 0023)
+		mitiru::debug::warnOnce("gfx.glfw.opengl.fallback",
+			"指定 backend OpenGL は GLFW 不在で使用不可、Dx11 に変更");
 		m_config.gfxBackend = gfx::Backend::Dx11;
 		m_window = m_platform->createWindow(
 			config.title, winW, winH);
@@ -78,6 +81,9 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			config.title, winW, winH,
 			GlfwGraphicsMode::Vulkan);
 #else
+		// GLFW 不在時は黙って変えない。fallback は明示する (ADR 0023)
+		mitiru::debug::warnOnce("gfx.glfw.vulkan.fallback",
+			"指定 backend Vulkan は GLFW 不在で使用不可、Dx11 に変更");
 		m_config.gfxBackend = gfx::Backend::Dx11;
 		m_window = m_platform->createWindow(
 			config.title, winW, winH);

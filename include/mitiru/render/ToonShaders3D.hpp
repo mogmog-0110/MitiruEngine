@@ -522,73 +522,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 }
 )hlsl";
 
-/// @brief アウトラインモード6: Fresnel（N.Vリム効果）付きトゥーンPS
-/// @details ポストプロセスではなく、メインのトゥーンPSにN.Vリムライト効果を追加。
-///          シルエット付近を暗化してアウトラインとして機能させる。
-constexpr const char* TOON_PS_3D_FRESNEL = R"hlsl(
-cbuffer CbLighting : register(b1)
-{
-    float3 LightDir;    float _pad0;
-    float3 LightColor;  float _pad1;
-    float3 AmbientColor; float _pad2;
-    float3 CameraPos;   float _pad3;
-    float4 MaterialDiffuse;
-    float4 MaterialSpecular;
-    float MaterialShininess;
-    float3 _pad4;
-};
-
-struct PSInput
-{
-    float4 Position  : SV_POSITION;
-    float3 WorldPos  : TEXCOORD0;
-    float3 WorldNorm : TEXCOORD1;
-    float2 TexCoord  : TEXCOORD2;
-    float4 Color     : COLOR0;
-};
-
-struct PSOutput
-{
-    float4 Color  : SV_TARGET0;
-    float4 Normal : SV_TARGET1;
-};
-
-PSOutput PSMain(PSInput input)
-{
-    PSOutput output;
-
-    float3 N = normalize(input.WorldNorm);
-    float3 L = normalize(-LightDir);
-    float3 V = normalize(CameraPos - input.WorldPos);
-
-    // アンビエント
-    float3 ambient = AmbientColor * MaterialDiffuse.rgb;
-
-    // ディフューズ — NdotLを量子化
-    float rawNdotL = max(dot(N, L), 0.0);
-    float toon = (rawNdotL > 0.5) ? 1.0 : (rawNdotL > 0.15) ? 0.6 : 0.3;
-    float3 diffuse = LightColor * MaterialDiffuse.rgb * toon;
-
-    // スペキュラー
-    float3 H = normalize(L + V);
-    float NdotH = max(dot(N, H), 0.0);
-    float specFactor = pow(NdotH, MaterialShininess) * 0.3;
-    float3 specular = LightColor * MaterialSpecular.rgb * specFactor;
-
-    // Fresnel: シルエット付近（NdotV小）を暗化してアウトラインに
-    float NdotV = max(dot(N, V), 0.0);
-    float fresnelEdge = 1.0 - smoothstep(0.0, 0.4, NdotV);
-    float3 outlineColor = float3(0.08, 0.06, 0.04);
-
-    float3 finalColor = ambient + diffuse + specular;
-    finalColor = lerp(finalColor, outlineColor, fresnelEdge * 0.95);
-    float alpha = MaterialDiffuse.a * input.Color.a;
-
-    output.Color = float4(finalColor * input.Color.rgb, alpha);
-    output.Normal = float4(N * 0.5 + 0.5, NdotV);
-
-    return output;
-}
-)hlsl";
+// アウトラインモード6 (Fresnel) の PS は DX12 VS の出力 signature に合わせた
+// MRT 変種 DX12_TOON_PS_3D_FRESNEL (dx12/DX12ShaderModePS.hpp) へ移行済み。
 
 } // namespace mitiru::render

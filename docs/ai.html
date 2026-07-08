@@ -79,7 +79,7 @@ mitiru run
 
           <!-- ── 状態 ────────────────────────────── -->
           <h2 id="state">状態を読む — state / diff / branch</h2>
-          <p>ゲームの全状態は 1 個の flat POD（<code>GameMemory</code>）にあります。<code>MITIRU_REFLECT</code> でフィールドを申告すると、host が現フレームの状態を丸ごと JSON 化して返します。</p>
+          <p>ゲームの全状態は、ポインタを持たない丸ごとコピーできる 1 個の struct（flat POD、型名 <code>GameMemory</code>）にあります。<code>MITIRU_REFLECT</code> でフィールドを申告すると、host が現フレームの状態を丸ごと JSON 化して返します。</p>
 <pre>GET /api/ai/state            <span class="c"># {"hearts":3,"pos_x":32.0,"scene":0,...} 全フィールド</span>
 GET /api/ai/diff?from=0&amp;to=60 <span class="c"># 60 フレームで変わった値だけ</span>
 POST /api/ai/branch          <span class="c"># この状態から「←を 30 フレーム押したら?」を別世界で実行</span></pre>
@@ -90,10 +90,10 @@ POST /api/ai/branch          <span class="c"># この状態から「←を 30 �
           <p>「直した、たぶん動く」を禁止できます。<code>mitiru verify</code> は build → 起動 → 観測 → 判定までを 1 コマンドで実行し、結果を JSON 1 個と exit code で返します。CI にそのまま置けます。</p>
 <pre>mitiru verify                       <span class="c"># build + 起動 + screenshot 取得</span>
 mitiru verify --golden ref.png      <span class="c"># 基準画像と画素比較</span>
-mitiru verify --replay play.mtrr    <span class="c"># 録画した操作を bit-exact 再現できるか</span>
+mitiru verify --replay play.mtrr    <span class="c"># 録画した操作を 1 bit も違わず (bit-exact) 再現できるか</span>
 
 <span class="c"># → {"build":"ok","verdict":"pass",...}   exit 0=pass / 1=fail / 2=build error</span></pre>
-          <p>リプレイ検証は決定論（同じ入力 → 同じ結果）の上に立っているので、「修正前に録った操作が修正後も同じ結果になるか」を<strong>バイト単位</strong>で判定します。視覚は golden 画像、ロジックはリプレイ、と二方向から機械検証できます。</p>
+          <p>リプレイ検証は決定論（同じ入力 → 同じ結果）の上に立っているので、「修正前に録った操作が修正後も同じ結果になるか」を<strong>バイト単位</strong>で判定します。視覚は golden 画像（正解として保存した基準画像）、ロジックはリプレイ、と二方向から機械検証できます。</p>
 
           <!-- ── MCP ─────────────────────────────── -->
           <h2 id="mcp">Claude Code から使う — mitiru mcp</h2>
@@ -109,7 +109,7 @@ mitiru verify --replay play.mtrr    <span class="c"># 録画した操作を bit-
           <table class="spectable">
             <tbody>
               <tr><td>GET /api/ai/frame</td><td>draw list（描画 API・矩形・テキスト内容）+ 縮小 PNG。初回呼び出しで記録開始</td></tr>
-              <tr><td>GET /api/ai/state</td><td>GameMemory 全フィールドの構造化 JSON</td></tr>
+              <tr><td>GET /api/ai/state</td><td>ゲームの全状態（<code>GameMemory</code>）全フィールドの構造化 JSON</td></tr>
               <tr><td>GET /api/ai/diff?from=&amp;to=</td><td>2 フレーム間の状態差分</td></tr>
               <tr><td>GET /api/ai/audio?max=N</td><td>最近の音イベント（SE / BGM の再生・停止・音量・pitch）</td></tr>
               <tr><td>GET /api/ai/ringsize</td><td>状態リングの記録フレーム数（どこまで遡れるか）</td></tr>

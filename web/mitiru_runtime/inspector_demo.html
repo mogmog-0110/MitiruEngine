@@ -14,7 +14,7 @@
 </head>
 <body>
   <h1>InspectorOverlay — Manual Demo</h1>
-  <p>Press <kbd>F3</kbd> to toggle the inspector overlay on/off.</p>
+  <p><button id="toggle">Toggle inspector overlay</button></p>
   <canvas id="c" width="640" height="360"></canvas>
   <div id="info">Inspector: OFF</div>
 
@@ -60,7 +60,10 @@
       };
     });
 
-    overlay.bindKeyToggle(window, 'F3');
+    // toggle はページ内 UI から (キー割当はゲーム窓に持たせない)
+    document.getElementById('toggle').addEventListener('click', function () {
+      overlay.setEnabled(!overlay.isEnabled());
+    });
 
     // ── animation loop ─────────────────────────────────────────────────────────
 
@@ -85,7 +88,7 @@
       overlay.render(ctx);
 
       // label を更新
-      infoEl.textContent = 'Inspector: ' + (overlay.isEnabled() ? 'ON  (F3 to toggle)' : 'OFF (F3 to toggle)');
+      infoEl.textContent = 'Inspector: ' + (overlay.isEnabled() ? 'ON' : 'OFF');
     }
 
     function loop() {

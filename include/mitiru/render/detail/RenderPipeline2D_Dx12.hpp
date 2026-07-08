@@ -115,6 +115,13 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 		vsBlob.Get(), psBlob.Get(), layout,
 		static_cast<UINT>(std::size(layout)));
 
+	/// 4x MSAA 変種を eager に構築する (2D アンチエイリアス用の中間 RT 経路)。
+	/// 4x 非対応環境では null のまま残り、submit 側が 1x へフォールバックする。
+	pipeline.m_dx12PipelineMsaa = tryBuildDx12PsoMsaa(
+		device, pipeline.m_dx12RootSig.Get(),
+		vsBlob.Get(), psBlob.Get(), layout,
+		static_cast<UINT>(std::size(layout)));
+
 	/// ── SRV heap (null SRV 1 個: テクスチャ未使用パス) ─
 	D3D12_DESCRIPTOR_HEAP_DESC dhd = {};
 	dhd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -335,6 +342,11 @@ inline void RenderPipeline2D::buildDx12PointFilterResources(
 		return;
 	}
 
+	/// point-filter の 4x MSAA 変種 (sprite / pixel-grid が MSAA RT へ描くとき使う)。
+	/// 失敗時は null のまま残り、submit 側で 1x フォールバックが選ばれる。
+	m_dx12PointPipelineMsaa = tryBuildDx12PsoMsaa(
+		device, rootSig.Get(), vsBlob, psBlob, layout, layoutCount);
+
 	m_dx12PointRootSig  = std::move(rootSig);
 	m_dx12PointPipeline = std::move(pso);
 }
@@ -380,12 +392,21 @@ inline void RenderPipeline2D::submitBatchDx12(
 	if (!rt) return;
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
+	/// 描画先 RT の MSAA サンプル数に合わせて PSO を選ぶ。MSAA 中間 RT のときは
+	/// SampleDesc.Count を合わせた変種を使う (RTV とサンプル数が不一致だと draw が失敗する)。
+	ID3D12PipelineState* pso = m_dx12Pipeline.Get();
+	if (rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount))
+	{
+		if (!m_dx12PipelineMsaa) return; // MSAA 変種が無いのに MSAA RT — 安全にスキップ
+		pso = m_dx12PipelineMsaa.Get();
+	}
+
 	/// コマンドリストを記録する (slot s の allocator で Reset)
 	m_dx12Alloc[s]->Reset();
-	m_dx12Cl->Reset(m_dx12Alloc[s].Get(), m_dx12Pipeline.Get());
+	m_dx12Cl->Reset(m_dx12Alloc[s].Get(), pso);
 
 	m_dx12Cl->SetGraphicsRootSignature(m_dx12RootSig.Get());
-	m_dx12Cl->SetPipelineState(m_dx12Pipeline.Get());
+	m_dx12Cl->SetPipelineState(pso);
 
 	m_dx12Cl->SetGraphicsRootConstantBufferView(
 		0, m_dx12VsCb->GetGPUVirtualAddress());
@@ -455,14 +476,14 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 		ensureDx12SdfResources(
 			vsSource, psSource,
 			m_dx12SdfRectVsBlob, m_dx12SdfRectPsBlob,
-			m_dx12SdfRectPso);
+			m_dx12SdfRectPso, m_dx12SdfRectPsoMsaa);
 	}
 	else
 	{
 		ensureDx12SdfResources(
 			vsSource, psSource,
 			m_dx12SdfCircleVsBlob, m_dx12SdfCirclePsBlob,
-			m_dx12SdfCirclePso);
+			m_dx12SdfCirclePso, m_dx12SdfCirclePsoMsaa);
 	}
 
 	/// ring slot を確保し、その slot の前回 GPU 完了だけ待つ
@@ -491,7 +512,15 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 	if (!rt) return;
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
-	auto* pso = isRect ? m_dx12SdfRectPso.Get() : m_dx12SdfCirclePso.Get();
+	/// 描画先 RT の MSAA サンプル数に合わせて 1x / MSAA PSO を選ぶ。
+	ID3D12PipelineState* pso = isRect ? m_dx12SdfRectPso.Get()
+	                                  : m_dx12SdfCirclePso.Get();
+	if (rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount))
+	{
+		pso = isRect ? m_dx12SdfRectPsoMsaa.Get()
+		             : m_dx12SdfCirclePsoMsaa.Get();
+		if (!pso) return; // MSAA 変種が無いのに MSAA RT — 安全にスキップ
+	}
 
 	m_dx12Alloc[s]->Reset();
 	m_dx12Cl->Reset(m_dx12Alloc[s].Get(), pso);
@@ -549,7 +578,8 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 	std::string_view vsSource, std::string_view psSource,
 	Microsoft::WRL::ComPtr<ID3DBlob>& cachedVs,
 	Microsoft::WRL::ComPtr<ID3DBlob>& cachedPs,
-	Microsoft::WRL::ComPtr<ID3D12PipelineState>& cachedPso)
+	Microsoft::WRL::ComPtr<ID3D12PipelineState>& cachedPso,
+	Microsoft::WRL::ComPtr<ID3D12PipelineState>& cachedPsoMsaa)
 {
 	auto* device = m_dx12NativeDevice.Get();
 
@@ -648,6 +678,12 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 			device, m_dx12SdfRootSig.Get(),
 			cachedVs.Get(), cachedPs.Get(),
 			layout, static_cast<UINT>(std::size(layout)));
+
+		/// 1x と並べて 4x MSAA 変種を構築する (MSAA 中間 RT 経路。4x 非対応時 null)。
+		cachedPsoMsaa = tryBuildDx12PsoMsaa(
+			device, m_dx12SdfRootSig.Get(),
+			cachedVs.Get(), cachedPs.Get(),
+			layout, static_cast<UINT>(std::size(layout)));
 	}
 }
 
@@ -713,7 +749,8 @@ inline Microsoft::WRL::ComPtr<ID3D12PipelineState>
 RenderPipeline2D::buildDx12Pso(ID3D12Device* device,
 	ID3D12RootSignature* rootSig,
 	ID3DBlob* vs, ID3DBlob* ps,
-	const D3D12_INPUT_ELEMENT_DESC* layout, UINT layoutCount)
+	const D3D12_INPUT_ELEMENT_DESC* layout, UINT layoutCount,
+	UINT sampleCount)
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psd = {};
 	psd.pRootSignature = rootSig;
@@ -735,6 +772,9 @@ RenderPipeline2D::buildDx12Pso(ID3D12Device* device,
 	psd.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	psd.RasterizerState.FrontCounterClockwise = FALSE;
 	psd.RasterizerState.DepthClipEnable = TRUE;
+	/// MSAA RT (sampleCount>1) では MultisampleEnable=TRUE。線プリミティブの
+	/// quadrilateral AA を有効化する (塗り三角形のエッジ AA は RT が MS なら常に効く)。
+	psd.RasterizerState.MultisampleEnable = (sampleCount > 1) ? TRUE : FALSE;
 
 	psd.DepthStencilState.DepthEnable = FALSE;
 	psd.DepthStencilState.StencilEnable = FALSE;
@@ -743,7 +783,8 @@ RenderPipeline2D::buildDx12Pso(ID3D12Device* device,
 	psd.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psd.NumRenderTargets = 1;
 	psd.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psd.SampleDesc.Count = 1;
+	psd.SampleDesc.Count = sampleCount;
+	psd.SampleDesc.Quality = 0;
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> pso;
 	if (FAILED(device->CreateGraphicsPipelineState(
@@ -751,6 +792,29 @@ RenderPipeline2D::buildDx12Pso(ID3D12Device* device,
 	{
 		throw std::runtime_error(
 			"RenderPipeline2D: CreateGraphicsPipelineState failed");
+	}
+	return pso;
+}
+
+inline Microsoft::WRL::ComPtr<ID3D12PipelineState>
+RenderPipeline2D::tryBuildDx12PsoMsaa(ID3D12Device* device,
+	ID3D12RootSignature* rootSig,
+	ID3DBlob* vs, ID3DBlob* ps,
+	const D3D12_INPUT_ELEMENT_DESC* layout, UINT layoutCount)
+{
+	if (!device || !rootSig || !vs || !ps || !layout || layoutCount == 0)
+	{
+		return {};
+	}
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> pso;
+	try
+	{
+		pso = buildDx12Pso(device, rootSig, vs, ps, layout, layoutCount,
+			gfx::Dx12MsaaTarget::kSampleCount);
+	}
+	catch (...)
+	{
+		pso.Reset();
 	}
 	return pso;
 }

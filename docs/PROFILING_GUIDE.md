@@ -57,7 +57,7 @@ no-ops when `MITIRU_HAS_TRACY` is undefined.
 | `Engine::FixedUpdate`      | `include/mitiru/core/detail/Engine_Frame.hpp:125`           | `MITIRU_ZONE_NAMED`   | 固定タイムステップアキュムレータループ。`game.update()` と現在シーンの `onUpdate()` を含む。 |
 | `Engine::Render`           | `include/mitiru/core/detail/Engine_Frame.hpp:161`           | `MITIRU_ZONE_NAMED`   | `Screen::clear` から `game.draw()`、`Scene::onDraw()` までの 2D/3D 描画蓄積。`device->beginFrame()` も含む。 |
 | `Engine::Present`          | `include/mitiru/core/detail/Engine_Frame.hpp:206`           | `MITIRU_ZONE_NAMED`   | `Screen::present()` と PostFX、3D レンダラーの `finalizeFrame()`。GPU コマンド送信が中心。 |
-| `Engine::CefComposite`     | `include/mitiru/core/detail/Engine_Frame.hpp:245`           | `MITIRU_ZONE_NAMED`   | CEF UI レイヤーのメッセージループ処理、入力転送、テクスチャアップロード、バックバッファ合成。Mode B 専用。 |
+| `Engine::CefComposite`     | `include/mitiru/core/detail/Engine_Frame.hpp:245`           | `MITIRU_ZONE_NAMED`   | CEF UI レイヤーのメッセージループ処理、入力転送、テクスチャアップロード、バックバッファ合成。HTML UI 構成 (CEF あり) 専用。 |
 | `Engine::AutoCapture`      | `include/mitiru/core/detail/Engine_Frame.hpp:271`           | `MITIRU_ZONE_NAMED`   | 自律テストモードのスクリーンショット保存と `device->endFrame()`。通常運用では `endFrame()` のみで軽量。 |
 | `Engine::HttpPoll`         | `include/mitiru/core/detail/Engine_Frame.hpp:311`           | `MITIRU_ZONE_NAMED`   | HTTP API サーバーのポーリングと、vsync OFF 時のフレームレートキャップ用 `sleep_for`。 |
 | `SmallFunction::invoke`    | `include/mitiru/time/detail/SmallFunction.hpp:79`           | `MITIRU_ZONE_NAMED`   | Wraps every call of the type-erased callable. Hot path. |
@@ -140,9 +140,9 @@ Limitations 参照) のため、ここでは「どこに重点的に時間を使
 - **`Engine::MouseScaling`** — Win32 のみで意味のある軽量フェーズ。ほぼ常に
   サブマイクロ秒オーダーで完結する。`dynamic_cast<Win32Window*>` が支配的なら
   これは設計上正常 (代替手段は ABI 変更を伴うため温存)。
-- **`Engine::CefComposite`** — Mode B 専用。`m_cefContext.isInitialized()`
-  が false の場合は早期 return するため、Mode A 純ネイティブ運用ではほぼ
-  ゼロ。Mode B でも CEF が dirty frame を持たない静的画面ではアップロードが
+- **`Engine::CefComposite`** — HTML UI 構成専用。`m_cefContext.isInitialized()`
+  が false の場合は早期 return するため、native 構成 (CEF なし) の純ネイティブ運用ではほぼ
+  ゼロ。HTML UI 構成でも CEF が dirty frame を持たない静的画面ではアップロードが
   スキップされ軽量。
 - **`Engine::AutoCapture`** — 自律テストモード以外では `device->endFrame()`
   の呼び出しだけ。通常運用では `Engine::Present` と並ぶ軽量ゾーン。
@@ -213,7 +213,7 @@ build/examples/cef_minimal/Debug/mitiru_cef_minimal.exe
 `tools/site/capture_examples.py` の `auto-test` strategy がこのフックを
 使って 4 つの CEF サンプル (`cef_minimal` / `cef_overlay` / `cef_state_bridge`
 / `cef_transition`) を撮影する。Win32 `PrintWindow` フォールバックよりも
-GPU コンポジット結果を正確に取得でき、ヘッドレス CI でも動作する。
+GPU コンポジット結果を正確に取得でき、ヘッドレス (ウィンドウを出さない) CI でも動作する。
 
 ### 注意点
 
@@ -235,7 +235,7 @@ GPU コンポジット結果を正確に取得でき、ヘッドレス CI でも
   現状の DX11/DX12/Vulkan/OpenGL バックエンドにはまだ統合されていない。
   GPU 時間を見たい場合は当面 PIX / RenderDoc / NSight などのベンダーツールを
   併用する。
-- **Mode B (CEF) のレンダリングは外部プロセスで動く**。`Engine::CefComposite`
+- **HTML UI 構成 (CEF) のレンダリングは外部プロセスで動く**。`Engine::CefComposite`
   はホスト側のアップロード/コンポジットしか見えないので、CEF サブプロセス内の
   HTML レイアウトコストはこの計装からは可視化できない。Chrome DevTools の
   Performance パネルで別途プロファイルすること。

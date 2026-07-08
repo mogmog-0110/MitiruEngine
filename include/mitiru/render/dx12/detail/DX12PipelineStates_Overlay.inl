@@ -269,7 +269,7 @@ void pollD3D12Validation()
 		std::vector<char> buf(sz);
 		auto* msg = reinterpret_cast<D3D12_MESSAGE*>(buf.data());
 		if (FAILED(m_infoQueue->GetMessage(i, msg, &sz))) continue;
-		// ERROR (2) / CORRUPTION (1) / WARNING (3) を記録、INFO (4) はスキップ
+		// CORRUPTION (0) / ERROR (1) / WARNING (2) を記録、INFO (3) / MESSAGE (4) はスキップ
 		if (msg->Severity > D3D12_MESSAGE_SEVERITY_WARNING) continue;
 		if (log)
 		{

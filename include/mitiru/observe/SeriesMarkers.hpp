@@ -20,7 +20,7 @@
 ///   組んで渡す)。観測層を engine の他部分から疎に保つ。
 /// - offsetFromNewest は GameMemoryRing.at() と同一規約 (0 = newest)。cursor snap が直結。
 /// - 純関数・決定論的・例外を投げない。allocation は sampleCount/系列長で有界。
-/// - JSON は hand-rolled (StructuredDiff に倣う)。InspectableExport の char json[3968] に
+/// - JSON は hand-rolled。InspectableExport の char json[3968] に
 ///   収める制約があり、nlohmann 依存も持ち込まないため。
 
 #include <algorithm>

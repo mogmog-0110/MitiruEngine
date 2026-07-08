@@ -1,58 +1,96 @@
-# MitiruEngine consumer samples
+# MitiruEngine examples — 章立てカリキュラム (規格: docs/EXAMPLE_STANDARD.md)
 #
-# The previous sample set was retired in Round 39 pending a redesigned
-# example collection. New samples will be added back here under
-# `examples/<name>/CMakeLists.txt` and linked with:
-#
-#   target_link_libraries(<game> PRIVATE Mitiru::mitiru)
-#
-# Skipped automatically when mitiru target is unavailable (e.g. Emscripten
-# builds selecting a different entry path).
+# 章は 1 機能 1 DLL の教材。追加は mitiru_add_example(<name>) 1 行
+# (+ tests/CMakeLists.txt の _example_e2e_chapters に 1 行で headless E2E も付く)。
+# 学習順序は名前でなく docs/EXAMPLE_STANDARD.md の章立てと examples/README.md の表が持つ。
 
 if(NOT TARGET mitiru)
 	message(STATUS "examples/ skipped: mitiru target not defined")
 	return()
 endif()
 
-# v0.1.1 examples — minimum runnable samples linked against the mitiru target.
-# Build all:
-#     cmake --build build --config Debug
-# Build one:
-#     cmake --build build --config Debug --target hello_window
+# 章 example を 1 行で追加する:
+#   mitiru_add_example(welcome)
+#     - <name>/<name>_dll.cpp を SHARED (game DLL) でビルド
+#     - mitiru_host の隣 (<host dir>/<name>/) へ deploy — host は相対 path で load できる
+#     - <name>/assets/ があれば同じ dir へ source-tracked stamp 経由で配る
+function(mitiru_add_example name)
+	add_library(${name} SHARED "${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}_dll.cpp")
+	target_link_libraries(${name} PRIVATE mitiru)
+	if(MSVC)
+		target_compile_options(${name} PRIVATE /bigobj)
+	endif()
+	if(NOT TARGET mitiru_host)
+		return()
+	endif()
+	set(_dir "$<TARGET_FILE_DIR:mitiru_host>/${name}")
+	set_target_properties(${name} PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY "${_dir}"
+		LIBRARY_OUTPUT_DIRECTORY "${_dir}")
+	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${name}/assets")
+		file(GLOB_RECURSE _assets CONFIGURE_DEPENDS
+			"${CMAKE_CURRENT_SOURCE_DIR}/${name}/assets/*")
+		set(_stamp "${CMAKE_CURRENT_BINARY_DIR}/${name}_assets.stamp")
+		add_custom_command(
+			OUTPUT  "${_stamp}"
+			COMMAND ${CMAKE_COMMAND} -E copy_directory
+				"${CMAKE_CURRENT_SOURCE_DIR}/${name}/assets" "${_dir}/assets"
+			COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
+			DEPENDS ${_assets}
+			VERBATIM
+			COMMENT "${name}: deploying assets/ (source-tracked)")
+		add_custom_target(${name}_assets ALL DEPENDS "${_stamp}")
+		add_dependencies(${name} ${name}_assets)
+	endif()
+	# assets/scene.html がある章はエンジン付属 binder/bridge JS も deploy する
+	# (単一源 web/mitiru_runtime/ からの build-time copy。in-repo 複製は drift 源なので禁止)
+	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${name}/assets/scene.html")
+		set(_cefjs
+			"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_cef_state.js"
+			"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_bind.js"
+			"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_bind_tools.js"
+			"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_modal.js")
+		set(_cefjs_stamp "${CMAKE_CURRENT_BINARY_DIR}/${name}_cefjs.stamp")
+		add_custom_command(
+			OUTPUT  "${_cefjs_stamp}"
+			COMMAND ${CMAKE_COMMAND} -E make_directory "${_dir}/assets/mitiru_runtime"
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_cefjs} "${_dir}/assets/mitiru_runtime"
+			COMMAND ${CMAKE_COMMAND} -E touch "${_cefjs_stamp}"
+			DEPENDS ${_cefjs}
+			VERBATIM
+			COMMENT "${name}: deploying mitiru_runtime JS (source-tracked)")
+		add_custom_target(${name}_cefjs ALL DEPENDS "${_cefjs_stamp}")
+		add_dependencies(${name} ${name}_cefjs)
+	endif()
+	add_dependencies(${name} mitiru_host)
+endfunction()
 
-# ── ゲームサンプルは全撤去 (再設計待ち、2026-06-09) ────────────────────
-# 旧サンプル (hello_window/input/scene/shapes/cef_overlay, hello_game, breakout,
-# anchor, dodge, showcase_platformer) は「おもちゃ感が強く真面目なエンジンに不向き」
-# との判断で削除。エンジンの証明は差別化デモ (timetravel_demo) と本物のゲーム
-# (FLUID DROP 等) に寄せる方針 (証明の置き方は未確定)。
-#
-# mitiru_host は timetravel_demo より前に置く (後者が $<TARGET_FILE_DIR:mitiru_host>/
-# 配下へ DLL を install し、configure 時に host の位置を参照するため)。
-add_subdirectory(mitiru_host)
-add_subdirectory(mitiru_start)
-add_subdirectory(timetravel_demo)   # 差別化デモ (time-travel / AI Lens、ADR 0017/0018)
-# hello3d: 3D ゲームデモ (CPU ソフトレンダラー DeferredPipeline を drawPixelGrid で 2D に
-# 合成)。GPU 3D 経路に頼らず draw(Screen&) だけで完結。allowlist 同梱なので無条件参照。
-add_subdirectory(hello3d)
-# catch: チュートリアルの題材 (スプライト入門)。仮素材のため dev-only・snapshot 非同梱。
-# EXISTS ガード必須 (allowlist 非追加なので release snapshot には catch/ が無い)。
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/catch/CMakeLists.txt")
-	add_subdirectory(catch)
+# ── 章 (docs/EXAMPLE_STANDARD.md の章立て順) ────────────────────────────────
+mitiru_add_example(welcome)
+mitiru_add_example(shapes)
+mitiru_add_example(text)
+mitiru_add_example(input)
+mitiru_add_example(motion)
+mitiru_add_example(sprites)
+mitiru_add_example(camera)         # 追従カメラ (FollowCam): 画面より広い世界を deadzone + 先読みで追う
+mitiru_add_example(audio)
+mitiru_add_example(html_hud)       # 最小の操作シーン (C++ ネイティブ描画の箱庭) に HTML HUD を重ねる: ゲーム状態が text/tween/style/class/repeat を駆動、JS ゼロ (軸①、ADR 0005/0007)
+mitiru_add_example(html_menu)      # binder 応用: list / dispatch / confirm
+mitiru_add_example(observe)
+mitiru_add_example(rewind)         # time-travel inspector (軸②、ADR 0017/0018)
+mitiru_add_example(restart_save)   # requestRestart + .msav (ADR 0020/0024)
+mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
+
+# ── 検証用 (従来形式のまま) ─────────────────────────────────────────────────
+# why_demo: `mitiru why`(分岐根本原因特定) の検証用 (dev 専用、snapshot 非同梱)。
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/why_demo/CMakeLists.txt")
+	add_subdirectory(why_demo)
+endif()
+# neon_asteroids: NeonVector の発光ラインを持ち込んだ Asteroids (dev 専用、snapshot 非同梱)。
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/neon_asteroids/CMakeLists.txt")
+	add_subdirectory(neon_asteroids)
 endif()
 # 大型ゲームは examples に置かない (ここはエンジン demo / subsystem 起動のみ)。
-# - hookline: 凍結サンプル (2026-06-26 にエンジン repo から削除、git 履歴に残存)。
-# - fluidtetris: 本体は Fluid-Drop repo で公開済。
-# - 研究 example は 2026-06-12 に E:/user/research へ搬出 (リファクタ P1)。
-add_subdirectory(mitiru_launcher)
-add_subdirectory(mitiru_dev_companion)
-# サブシステム単独起動 (軸③)。
-add_subdirectory(mitiru_subsys_renderer)
-add_subdirectory(mitiru_subsys_replay)
-add_subdirectory(mitiru_subsys_audio)
-add_subdirectory(mitiru_subsys_input)
-add_subdirectory(mitiru_subsys_scene)
-# ツール窓は汎用 CEF ホスト mitiru_tool_cef --page <name> に統一 (ADR 0014)。
-# 旧個別 exe (mitiru_perf/mixer/scene_tree/replay/inspector) と旧 subsystem 種
-# (mitiru_renderer/audio) は退役。
-add_subdirectory(mitiru_tool_cef)
 
+# ── subsystem 単独起動 (軸③、単体 exe) ─────────────────────────────────────
+add_subdirectory(subsys)

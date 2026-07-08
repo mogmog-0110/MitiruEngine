@@ -33,7 +33,6 @@
  *   back() は pop して前の entry へ navigate する — back() はスタックに push しないので
  *   無限ループ防止ガードは不要。
  *
- * 仕様: docs/feedback-from-kaerucrape/2026-04-24.md F-01
  */
 (function(global)
 {

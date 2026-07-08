@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>mixer</title>
+<link rel="stylesheet" href="tool.css">
+<style>
+  /* メーター表示 — テクニカルノートテーマ (完全グレースケール。レベルは濃淡で表現) */
+  .master{ display:flex; align-items:flex-end; gap:16px; margin-top:14px; }
+  .fader{ width:46px; height:200px; background:#ffffff; border:1px solid #e6e7ea; box-shadow:none;
+          position:relative; overflow:hidden; }
+  .fader .fill{ position:absolute; left:2px; right:2px; bottom:2px; background:#1a1c1f; }
+  .pct{ font-family:'IBM Plex Mono','Consolas',monospace; font-size:28px; font-weight:600;
+        color:#1a1c1f; font-variant-numeric:tabular-nums; }
+  .vu{ display:flex; gap:12px; margin-top:8px; }
+  .ch{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .ch .bar{ width:24px; height:200px; background:#f4f4f2; border:1px solid #e6e7ea; box-shadow:none;
+            position:relative; overflow:hidden; }
+  .ch .bar .fill{ position:absolute; left:2px; right:2px; bottom:2px; background:#6e7077; }
+  .ch .bar .fill.music{ background:#1a1c1f; }
+  .ch .tag{ font-family:'IBM Plex Mono','Consolas',monospace; font-size:13px; color:#999da4; }
+  .cols{ display:flex; gap:40px; margin-top:14px; align-items:flex-start; }
+</style>
+</head>
+<body class="is-waiting" data-m-class="is-waiting: !tool.snap.audio.state">
+  <header><span class="dot"></span><h1>mixer</h1></header>
+  <div class="body">
+    <div class="cols">
+      <div>
+        <div class="label" style="margin-top:0">master</div>
+        <div class="master">
+          <div class="fader"><div class="fill"
+            data-m-style="height: {tool.snap.audio.state.masterVolume:pct01}"></div></div>
+          <div class="pct"><span data-m-text="tool.snap.audio.state.masterVolume"
+            data-m-format="x100">--</span>%</div>
+        </div>
+        <div class="muted" style="margin-top:14px">engine: <span
+          data-m-text="tool.snap.audio.state.engine"
+          data-m-show="tool.snap.audio.state.engine">—</span><span
+          data-m-hide="tool.snap.audio.state.engine">none</span></div>
+      </div>
+      <div>
+        <div class="label" style="margin-top:0">channels · VU</div>
+        <div class="vu" data-m-repeat="tool.snap.audio.state.channels">
+          <template>
+            <div class="ch">
+              <div class="bar"><div class="fill"
+                data-m-style="height: {level:pct01}"
+                data-m-class="music: kind == music"></div></div>
+              <div class="tag"><span data-m-show="kind == music">M</span><span
+                data-m-hide="kind == music">S</span></div>
+            </div>
+          </template>
+        </div>
+        <div class="muted" style="margin-top:10px"
+          data-m-show="tool.snap.audio.state; !tool.snap.audio.state.channels.length">(silent)</div>
+      </div>
+    </div>
+  </div>
+  <div class="wait">waiting for the game…</div>
+
+<script src="mitiru_runtime/mitiru_cef_state.js"></script>
+<script src="mitiru_runtime/mitiru_bind.js"></script>
+<script src="mitiru_runtime/mitiru_bind_tools.js"></script>
+</body>
+</html>

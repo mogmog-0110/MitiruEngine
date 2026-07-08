@@ -1,7 +1,8 @@
 # AI ワークフロー — AI エージェントがゲームを観測・検証する
 
 MitiruEngine は「AI がコードを書き、実行結果を AI 自身が観て、直し、正しさを機械的に検証する」
-ループをエンジン標準機能として提供する。状態が 1 個の flat POD ([FLAT_POD.md](FLAT_POD.md)) に
+ループをエンジン標準機能として提供する。状態が、ポインタも `std::vector` も持たない
+丸ごとコピーできる 1 個の struct (= flat POD、[FLAT_POD.md](FLAT_POD.md)) に
 集約され、実行が決定論的だからできること。
 
 ## 有効化 (zero-config)
@@ -20,7 +21,7 @@ mitiru run
 
 | エンドポイント | 内容 |
 |---|---|
-| `GET /api/ai/state` | GameMemory 全フィールドの構造化 JSON (`MITIRU_REFLECT` 宣言時) |
+| `GET /api/ai/state` | ゲームの全状態 (1 個の struct) の全フィールドを構造化した JSON (`MITIRU_REFLECT` 宣言時) |
 | `GET /api/ai/diff?from=N&to=M` | リング内 2 フレーム間の状態差分 |
 | `POST /api/ai/branch` | 反実仮想実行 —「この状態から N フレーム別入力なら?」 |
 | `GET /api/ai/frame` | **draw list** (何をどこに描いたか + テキスト内容) + 縮小 screenshot |
@@ -81,7 +82,7 @@ exit code が結果 (0=pass / 1=fail / 2=build error)。CI にそのまま置け
 1. AI がコードを修正 → `mitiru verify` で build + 起動
 2. `frame` で画面の意味を読み、`game_state` で内部状態と突き合わせる
 3. ズレていれば `state_diff` / `branch` で原因フレームを特定して修正
-4. `mitiru verify --replay` で bit-exact、`--golden` で見た目を機械検証
+4. `mitiru verify --replay` で 1 bit も違わず一致するか (bit-exact) を、`--golden` で正解として保存した基準画像 (golden) と見た目が一致するかを機械検証
 
 録画 (`mitiru run --record`) → 修正 → リプレイ検証の流れは
 [GETTING_STARTED.md](GETTING_STARTED.md) も参照。

@@ -2,9 +2,9 @@
 #
 # Usage (ゲーム側):
 #   find_package(Mitiru CONFIG REQUIRED)       # or add_subdirectory(engine)
-#   add_executable(MingePort WIN32 src/main.cpp)
-#   target_link_libraries(MingePort PRIVATE Mitiru::mitiru)
-#   mitiru_add_cef_game(MingePort)             # ← これだけで CEF 一式配置
+#   add_executable(MyGame WIN32 src/main.cpp)
+#   target_link_libraries(MyGame PRIVATE Mitiru::mitiru)
+#   mitiru_add_cef_game(MyGame)                # ← これだけで CEF 一式配置
 #
 # これで以下が自動で行われる:
 #   - CEF::libcef と CEF::libcef_dll_wrapper のリンク

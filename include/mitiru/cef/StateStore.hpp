@@ -131,6 +131,9 @@ public:
 			std::lock_guard lock(m_mutex);
 			if (auto it = m_state.find(key); it != m_state.end())
 			{
+				// 値が不変なら push しない: batch に積まず flushBatch を空で終わらせる。
+				// 静的 HUD フレームは cross-process IPC ゼロになる。
+				if (it->second == encoded) { return; }
 				it->second = encoded;
 			}
 			else

@@ -85,10 +85,17 @@ public:
         command_line->AppendSwitch("enable-begin-frame-scheduling");
         // ポップアップを無効化 (ゲームではポップアップウィンドウ不要)
         command_line->AppendSwitch("disable-popup-blocking");
-        // ローカルファイル (file:///) からのクロスオリジンアクセスを許可
-        // CEF 97 以降 CefBrowserSettings からこれらが削除されたためフラグで設定
+#ifndef NDEBUG
+        // Debug のみ: file:/// からの XHR / fetch とクロスオリジンを許可。
+        // CEF 97 以降 CefBrowserSettings からこれらが削除されたためフラグで設定。
+        // Release では付けない — ローカル資産は CORS 対応の app:// スキーム
+        // (registerAppScheme / cefAdditionalAssetDirs) で配信する。
+        // 注意: mitiru.fetch / mitiru.loadJson (mitiru_runtime.js) は file://
+        // ページからの JSON 読込にこのスイッチへ依存する。Release では
+        // cefStartUrl を app:// にすること。
         command_line->AppendSwitch("allow-file-access-from-files");
         command_line->AppendSwitch("disable-web-security");
+#endif
         // ログ削減
         command_line->AppendSwitch("disable-logging");
         // single-process 運用では V8 Proxy resolver が初期化できず、CEF が
@@ -112,6 +119,7 @@ public:
         //   (Debug libcef.dll 同梱) が要る。minimal 配布のままでは非現実的なため
         //   single-process で運用する。sandbox/isolation は失われるが、ゲーム HUD
         //   用途 (file:// のみ) では問題ない。
+        // Release での multi-process 化は別課題 (CRT mismatch は Release では発生しない)。
         command_line->AppendSwitch("single-process");
     }
 

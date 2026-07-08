@@ -7,6 +7,7 @@
 
 #include <miniaudio.h>
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -36,42 +37,12 @@ public:
 		}
 	}
 
-	// コピー禁止
+	// コピー・ムーブ禁止。ma_engine / ma_sound は自己参照ポインタを持ち、稼働中の
+	// device thread が旧アドレスを参照し続けるため byte-copy による move は成立しない。
 	MiniaudioEngine(const MiniaudioEngine&) = delete;
 	MiniaudioEngine& operator=(const MiniaudioEngine&) = delete;
-
-	// ムーブ可能。ma_engine / ma_sound は内部に自己参照ポインタを持つため、move 後の
-	// 旧オブジェクトは必ず無効化する (m_initialized=false)。
-	MiniaudioEngine(MiniaudioEngine&& other) noexcept
-		: m_engine(other.m_engine)
-		, m_initialized(other.m_initialized)
-		, m_music(other.m_music)
-		, m_musicActive(other.m_musicActive)
-		, m_musicPaused(other.m_musicPaused)
-		, m_oneShots(std::move(other.m_oneShots)) {
-		other.m_initialized = false;
-		other.m_musicActive = false;
-		other.m_musicPaused = false;
-	}
-
-	MiniaudioEngine& operator=(MiniaudioEngine&& other) noexcept {
-		if (this != &other) {
-			if (m_initialized) {
-				releaseVoices();
-				ma_engine_uninit(&m_engine);
-			}
-			m_engine = other.m_engine;
-			m_initialized = other.m_initialized;
-			m_music = other.m_music;
-			m_musicActive = other.m_musicActive;
-			m_musicPaused = other.m_musicPaused;
-			m_oneShots = std::move(other.m_oneShots);
-			other.m_initialized = false;
-			other.m_musicActive = false;
-			other.m_musicPaused = false;
-		}
-		return *this;
-	}
+	MiniaudioEngine(MiniaudioEngine&&) = delete;
+	MiniaudioEngine& operator=(MiniaudioEngine&&) = delete;
 
 	/// @brief 初期化成功したか
 	[[nodiscard]] bool isInitialized() const noexcept { return m_initialized; }
@@ -90,7 +61,7 @@ public:
 	}
 
 	/// @brief 音量指定で one-shot SE を再生する
-	/// @details ma_sound を 1 つ生成して再生し、終了済みのものは次回再生時に reap する。
+	/// @details ma_sound を 1 つ生成して再生し、終了済みのものは retire 経由で遅延解放する。
 	///          ma_engine_play_sound はマスター音量のみで per-sound 音量を扱えないため、
 	///          per-sound 音量が要る場合はこちらを使う。
 	/// @param path ファイルパス
@@ -215,6 +186,7 @@ public:
 		}
 		ma_sound_set_looping(&m_music, loop ? MA_TRUE : MA_FALSE);
 		ma_sound_set_volume(&m_music, volume);
+		m_musicBaseVolume = volume;  // duck の復帰先として本来の音量を記憶
 		if (fadeInSec > 0.0f) {
 			ma_sound_set_fade_in_milliseconds(
 				&m_music, 0.0f, volume, static_cast<ma_uint64>(fadeInSec * 1000.0f));
@@ -225,17 +197,14 @@ public:
 	}
 
 	/// @brief 毎フレームの定期メンテナンス (#51)。
-	/// @details (a) 終了した one-shot voice を毎フレーム回収する (従来は次の SE 再生時
-	///          まで遅延 → 静かな区間で ended voice が滞留した)。(b) stopMusicFade で
-	///          仕掛けた fade-out の残フレームを減算し、完了したら music voice を uninit
-	///          する (従来は uninit されず、無音のまま loop voice が走り続けていた)。
-	///          固定ステップ (~60Hz) の cadence で呼ばれる前提。
+	/// @details (a) 終了した one-shot voice を retire リストへ移し、kRetireDelay 経過後に
+	///          uninit する (#52 根治: device thread が mix 中に触れうる期間を確実に過ぎて
+	///          から解放する遅延解放)。(b) stopMusicFade で仕掛けた fade-out の残フレームを
+	///          減算し、完了したら music voice を uninit する (従来は uninit されず、無音の
+	///          まま loop voice が走り続けていた)。固定ステップ (~60Hz) の cadence 前提。
 	void update() {
 		if (!m_initialized) { return; }
-		// #52: 毎フレーム reap は uninit 頻度が高く (特に --speed 倍速 headless)、間欠
-		// クラッシュ (0xC0000005) の容疑となった。~30 フレームに 1 回へ間引く (静かな
-		// 区間でも ~0.5s で回収・churn は 1/30)。終了済み voice のみ uninit する点は不変。
-		if (++m_reapTick >= 30) { m_reapTick = 0; reapFinishedOneShots(); }
+		reapFinishedOneShots();
 		if (m_musicFadeOutFrames > 0 && --m_musicFadeOutFrames == 0) { stopMusic(); }
 	}
 
@@ -273,12 +242,16 @@ public:
 	void duckMusic(float mul, float durSec) {
 		if (!m_initialized || !m_musicActive) { return; }
 		if (mul <= 0.0f || mul >= 1.0f || durSec <= 0.0f) { return; }
-		const float current = ma_sound_get_volume(&m_music);
-		const float ducked  = current * mul;
-		// 即 ducked にし、durSec かけて current へ fade in する → 一瞬下がってじわっと戻る。
+		// 復帰先は「本来の音量 (base)」であって「現在の音量」ではない。current を基準に
+		// すると、SE 連打で duck 中に再 duck され base より小さい値へ ×mul が重なり、
+		// BGM が雪だるま式に 0 へ落ちて消える (実機バグ)。base 基準なら何度押しても
+		// 「base×mul へ落として base へ戻す」で一定に保たれる。
+		const float base   = m_musicBaseVolume;
+		const float ducked = base * mul;
+		// 即 ducked にし、durSec かけて base へ fade in する → 一瞬下がってじわっと戻る。
 		ma_sound_set_volume(&m_music, ducked);
 		ma_sound_set_fade_in_milliseconds(
-			&m_music, ducked, current, static_cast<ma_uint64>(durSec * 1000.0f));
+			&m_music, ducked, base, static_cast<ma_uint64>(durSec * 1000.0f));
 	}
 
 	/// @brief 再生中の BGM を一時停止する (v19)。ma_sound_stop は再生位置を保持するので、
@@ -334,11 +307,29 @@ public:
 	}
 
 private:
-	/// @brief 終了済みの one-shot ma_sound を破棄する
+	/// @brief 解放待ちの one-shot voice (#52)。
+	/// @details ma_sound_at_end 検出後も device thread が同一 mix 周期内で voice に
+	///          触れている可能性があるため、即 uninit せず retiredAt から待機させる。
+	struct RetiredVoice {
+		std::unique_ptr<ma_sound> snd;
+		std::chrono::steady_clock::time_point retiredAt;
+	};
+
+	/// 遅延解放の待機時間。device の 1 mix 周期 (数十 ms) を確実に上回る値 (#52)。
+	static constexpr std::chrono::milliseconds kRetireDelay{400};
+
+	/// @brief 終了済み one-shot を retire へ移し、待機を終えた retire を解放する (#52)
 	void reapFinishedOneShots() {
+		retireFinishedOneShots();
+		drainRetired();
+	}
+
+	/// @brief 終了済みの one-shot を retire リストへ移す (uninit はまだしない)
+	void retireFinishedOneShots() {
+		const auto now = std::chrono::steady_clock::now();
 		for (auto it = m_oneShots.begin(); it != m_oneShots.end();) {
 			if (ma_sound_at_end(it->get())) {
-				ma_sound_uninit(it->get());
+				m_retired.push_back(RetiredVoice{std::move(*it), now});
 				it = m_oneShots.erase(it);
 			} else {
 				++it;
@@ -346,21 +337,42 @@ private:
 		}
 	}
 
-	/// @brief 全 voice (BGM + one-shot) を解放する
+	/// @brief retire から kRetireDelay 経過した voice を uninit する
+	void drainRetired() {
+		const auto now = std::chrono::steady_clock::now();
+		for (auto it = m_retired.begin(); it != m_retired.end();) {
+			if (now - it->retiredAt >= kRetireDelay) {
+				ma_sound_uninit(it->snd.get());
+				it = m_retired.erase(it);
+			} else {
+				++it;
+			}
+		}
+	}
+
+	/// @brief 待機中の retire を待たず同期的に全 uninit する (shutdown 専用)
+	void flushRetired() {
+		for (auto& r : m_retired) { ma_sound_uninit(r.snd.get()); }
+		m_retired.clear();
+	}
+
+	/// @brief 全 voice (BGM + one-shot + retire 待ち) を解放する (shutdown 専用)
 	void releaseVoices() {
 		stopMusic();
 		for (auto& s : m_oneShots) { ma_sound_uninit(s.get()); }
 		m_oneShots.clear();
+		flushRetired();
 	}
 
 	ma_engine m_engine{};
 	bool m_initialized = false;
 	ma_sound m_music{};
 	bool m_musicActive = false;
+	float m_musicBaseVolume = 1.0f;  ///< duck していない本来の BGM 音量。duck の復帰先 (#34 の雪だるま化防止)
 	bool m_musicPaused = false;      ///< pauseMusic() 中か (resumeMusic() で false。v19)
 	int  m_musicFadeOutFrames = 0;  ///< >0 の間 update() が減算し、0 で music を uninit (#51)
-	int  m_reapTick = 0;            ///< update() の reap 間引きカウンタ (#52)
 	std::vector<std::unique_ptr<ma_sound>> m_oneShots;
+	std::vector<RetiredVoice> m_retired;  ///< 遅延解放待ち (#52)
 };
 
 } // namespace mitiru::audio

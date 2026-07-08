@@ -3,9 +3,9 @@
 /// @file AnimatedSprite.hpp
 /// @brief 再生 state machine 付きの frame-sequence sprite (G-06)
 ///
-/// **動機。** pandd-dodo の character は per-frame delay 値 (Aseprite や GIF
-/// 形式が生成するもの) で駆動される animated sprite を必要とする。engine には
-/// 専用の animated-sprite class が無く、各 game が accumulator logic と state
+/// **動機。** character animation は per-frame delay 値 (Aseprite や GIF
+/// 形式が生成するもの) で駆動される animated sprite を必要とする。engine に
+/// 専用の animated-sprite class が無いと、各 game が accumulator logic と state
 /// 管理を再実装する羽目になる。
 /// `AnimatedSprite` が accumulator・state machine・speed scaling を所有するので、
 /// game は `update(dt)` と `currentFrame()` を呼ぶだけでよい。

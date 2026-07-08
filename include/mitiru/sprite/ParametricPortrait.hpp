@@ -3,11 +3,10 @@
 /// @file ParametricPortrait.hpp
 /// @brief 量子化した実数値入力で選択する sprite variant の N 次元 grid (G-01)
 ///
-/// **動機。** pandd-dodo の character は連続値の stat (motivation・weight・jump)
-/// で見た目が駆動される。元の
-/// `CharacterAttributes::getMotivationAppearance()` のコードは各 stat を
-/// {-1, 0, +1} に map し、`1_0_-1.PNG` のような filename を組み立てていた。
-/// どの game もこの pattern を再発明する。
+/// **動機。** 育成シム系の character は連続値の stat (motivation・weight・jump)
+/// で見た目が駆動される。素朴に書くと各 stat を
+/// {-1, 0, +1} に map し、`1_0_-1.PNG` のような filename を組み立てる
+/// コードになり、どの game もこの pattern を再発明する。
 /// `ParametricPortrait` が量子化・path-template の置換・per-path の texture
 /// cache を所有するので、game は `select(values)` を呼ぶだけでよい。
 ///
@@ -18,7 +17,7 @@
 /// - 空 / 失敗した load は stderr に報告し空の `Texture` を返す。game は asset
 ///   欠落で crash してはならない。
 ///
-/// **使い方 (3 軸 pandd-dodo portrait):**
+/// **使い方 (3 軸 portrait):**
 /// ```cpp
 ///   using mitiru::sprite::ParametricPortrait;
 ///   using mitiru::render::Texture;
@@ -61,7 +60,7 @@ namespace mitiru::sprite
 
 /// @brief 量子化した実数値入力に基づき、variant の N 次元 grid から
 ///        texture を 1 つ選ぶ。
-/// @tparam N_AXES 独立した量子化軸の数 (例: pandd-dodo portrait なら 3)。
+/// @tparam N_AXES 独立した量子化軸の数 (例: 上の portrait 例なら 3)。
 template <std::size_t N_AXES>
 class ParametricPortrait
 {

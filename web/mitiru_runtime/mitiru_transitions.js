@@ -38,7 +38,6 @@
  *   page-fold, card-fold,
  *   walk-through
  *
- * Implements spec: docs/feedback-from-kaerucrape/2026-04-24.md F-05
  */
 (function (global)
 {

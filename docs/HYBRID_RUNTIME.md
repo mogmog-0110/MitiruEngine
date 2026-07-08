@@ -6,7 +6,6 @@
 > 並行作業中の関連 doc:
 > - bridge の具体的 API: [`BRIDGE_API_CONTRACT.md`](BRIDGE_API_CONTRACT.md)
 > - C++ gameplay API の不足リスト: [`cpp-gameplay-api-gaps.md`](cpp-gameplay-api-gaps.md)
-> - ADR: `docs/adr/*-cpp-gameplay-cef-view-only.md`
 
 MitiruEngine は **C++ ゲームエンジン** である。CEF は綺麗な HTML / CSS UI
 を低コストで作れる **見た目のレイヤー** として残す。両者は **薄い signal
@@ -128,7 +127,7 @@ C++ が gameplay state を更新したあと、CEF に「画面をこう変え�
 許される送信例:
 - `view.hud.set`      (hp=80, gold=120)
 - `view.dialog.show`  (speaker=Maria, line="...", typewriter=true)
-- `view.animation.play` (target=#crepe, name=flip, duration=400ms)
+- `view.animation.play` (target=#hero, name=flip, duration=400ms)
 - `view.dom.swap`     (region=order_panel, html_template=order_card, data=...)
 - `view.scene.switch` (id=kitchen, transition=fade, duration=600ms)
 
@@ -246,14 +245,14 @@ C++ に移す。詳細な移行リストは [`cpp-gameplay-api-gaps.md`](cpp-gam
 
 ### (旧) 基本姿勢
 
-> "MitiruEngine in Mode B is intentionally a hybrid runtime: C++ provides
+> "MitiruEngine with CEF enabled is intentionally a hybrid runtime: C++ provides
 > platform services, CEF hosts a JavaScript game runtime, and the two talk
 > over a typed bridge. Most gameplay code in MitiruEngine is JavaScript.
 > C++ hosts CEF and provides native services. When a specific JS system
 > becomes hot or needs hardware-adjacent access, it is *promoted* to a C++
 > system via the bridge."
 
-これは「Electron + native backend」モデルだった。KaeruCrape の cooking
+これは「Electron + native backend」モデルだった。minigame の
 state machine、drag-and-drop、novel VM、HUD logic、scene router は
 すべて V8 inside CEF で動いていた。
 
@@ -298,9 +297,9 @@ JS fallback を残す形だった。
 このパスも廃止。設計者の iteration は JSON データと C++ hot reload
 (または開発時の `imgui` ライブツール) で吸収する方針に変わる。
 
-### (旧) Mode A / Mode B の分離
+### (旧) 二構成 (CEF なし / CEF あり) の分離
 
-旧 doc は「Mode A (Native C++ only)」と「Mode B (Hybrid, JS gameplay)」
-の二モード制を取っていた。新方針では実質的に **Mode A 寄りに一本化**
-し、CEF は「Mode A で使える追加の view 表現手段」という位置付けに変わ
+旧 doc は「Native C++ only」と「Hybrid (JS gameplay)」
+の二モード制を取っていた。新方針では実質的に **native 構成 (CEF なし) 寄りに一本化**
+し、CEF は「C++ native ゲームに追加できる view 表現手段」という位置付けに変わ
 る。`SCOPE.md` の記述は別タスクで再整理予定。

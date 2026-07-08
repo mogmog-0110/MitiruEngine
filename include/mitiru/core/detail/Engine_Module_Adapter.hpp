@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <memory>
 #include <string>
 
 #include <mitiru/cef/StateStore.hpp>
@@ -46,6 +47,16 @@ inline void copyBounded(char (&dst)[N], const std::string& src) noexcept
 	const std::size_t n   = src.size() < cap ? src.size() : cap;
 	if (n > 0) { std::memcpy(dst, src.data(), n); }
 	if (N > 0) { dst[n] = '\0'; }
+}
+
+/// @brief 固定長 buffer の bounded strlen。DLL からの wire buffer は null 終端を
+///        信頼しない (exportedInspectables と同基準の境界防御)。
+template <std::size_t N>
+[[nodiscard]] inline std::size_t boundedLen(const char (&s)[N]) noexcept
+{
+	std::size_t l = 0;
+	while (l < N && s[l] != '\0') { ++l; }
+	return l;
 }
 
 }  // namespace mitiru::module::detail
@@ -81,45 +92,30 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 		void update(float dt) override
 		{
 			m_engine->ensureModuleCefBindings();
-			m_engine->buildModuleInputSnapshot();
+			// 過去フレームで静止 (scrub-hold): 別窓のバーで過去を選んでいる間は、その
+			// フレームを毎フレーム復元して止める。ゲームを前進させず記録もしない。
+			if (m_engine->applyScrubHold()) { return; }
+			// 実効 dt (pause/hitStop gating) も snapshot 構築時に書き込む (v21、H-3)。
+			m_engine->buildModuleInputSnapshot(dt);
 			m_engine->applyResimInputOverride();  // resim 中は記録入力で上書き (ADR 0021)
 			m_engine->zeroModuleFrameIntents();
 
-			// ランタイム時間制御: timeScale 乗算 + paused/stepFrames。
-			// paused 中 stepFrames>0 なら 1 フレームだけ通常 dt で進める。
-			auto& cfg = m_engine->mutableConfig();
-			float effectiveDt = dt * cfg.timeScale;
-			if (cfg.paused)
+			const auto& api  = m_engine->moduleApi();
+			const auto* snap = m_engine->m_moduleInputSnapshot.get();
+			if (api.on_update != nullptr && snap != nullptr)
 			{
-				if (cfg.stepFrames > 0)
-				{
-					effectiveDt = dt;
-					--cfg.stepFrames;
-				}
-				else
-				{
-					effectiveDt = 0.0f;
-				}
-			}
-
-			// HitStop (kind=5): 残量がある間 module へ渡す dt を 0 にする (update は
-			// 呼び続ける)。intent は決定論的な module 出力なので replay でも同じ
-			// フレームで発火し、固定ステップ dt で減衰するため bit-exact が保たれる。
-			// fade/shake もここで実時間 (固定ステップ) で進める — 演出は engine 側状態
-			// であり GameMemory には入れない (観測対象外)。
-			{
-				auto& fx = m_engine->m_moduleVisualFx;
-				if (fx.hitStopActive()) { effectiveDt = 0.0f; }
-				fx.advance(dt);
-			}
-
-			const auto& api = m_engine->moduleApi();
-			if (api.on_update != nullptr)
-			{
-				api.on_update(m_engine->moduleMemory(), effectiveDt,
-				              m_engine->m_moduleInputSnapshot.get(),
+				// dt は snapshot の値を渡す (v21、H-3)。live は build 時の実効値、
+				// replay / resim は override が再投入した記録値 — dt gating も記録系の
+				// 内側になり、GUI 録画 (F8 pause / hitStop 込み) → headless 再生が
+				// bit-exact に成立する。
+				api.on_update(m_engine->moduleMemory(), snap->effectiveDt, snap,
 				              m_engine->m_moduleFrameIntents.get());
 			}
+
+			// restart (§8-4) は ring 記録より前に適用する — ring のフレーム N = 次フレームの
+			// memory_in が成立する。intent は (GameMemory, InputSnapshot) の純関数出力なので、
+			// replay / resim では update が同フレームで再発行し bit-exact に再現される。
+			m_engine->applyModuleRestartIntent();
 
 			// on_update 後の確定 GameMemory を time-travel ring に記録 (ADR 0017)。
 			// replay の state slot と同一 bytes。観測 (probe 系列) と rewind の単一源。
@@ -249,7 +245,7 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 		// map へ取り込む。CEF 有効時は準備完了まで待つ。
 		if (!m_config.enableCef && !m_moduleStateStore)
 		{
-			m_moduleStateStore = std::make_unique<cef::StateStore>(
+			m_moduleStateStore = std::make_shared<cef::StateStore>(
 				[](const std::string&) {},
 				[](const std::string&, cef::StateStore::HandlerFn) {});
 		}
@@ -257,7 +253,7 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 	}
 
 	auto* cef = &m_cefContext;
-	m_moduleStateStore = std::make_unique<cef::StateStore>(
+	m_moduleStateStore = std::make_shared<cef::StateStore>(
 		[cef](const std::string& code) { cef->executeJavaScript(code); },
 		[cef](const std::string& name, cef::StateStore::HandlerFn fn) {
 			cef->registerHandler(name, std::move(fn));
@@ -266,9 +262,14 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 	// ページが (再)読み込みされたら保持済み state を全て再送する。これで
 	// ページ読込前に push された値の取りこぼしが無くなり、game 側の heartbeat
 	// 再 push が不要になる (hot reload 後も即座に最新状態が出る)。
+	// weak 捕捉 — store 破棄後 (CEF shutdown ポンプ中等) にロード完了が
+	// 来ても no-op (H-19: 生ポインタ捕捉による UAF を構造で排除)。
 	{
-		auto* store = m_moduleStateStore.get();
-		cef->setLoadEndCallback([store](std::string_view) { store->replayRetainedState(); });
+		std::weak_ptr<cef::StateStore> weak = m_moduleStateStore;
+		cef->setLoadEndCallback([weak](std::string_view)
+		{
+			if (auto s = weak.lock()) { s->replayRetainedState(); }
+		});
 	}
 
 	// engine 所有の action handler — capture が reload 時に dangle する (ADR 0005,
@@ -306,10 +307,43 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 	// (Inspector SharedSnapshot の producer は関数先頭で CEF 非依存に作成済み)
 }
 
-MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
+MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 {
 	auto* snap = m_moduleInputSnapshot.get();
 	if (snap == nullptr) { return; }
+
+	// ── 実効 dt / pause (ABI v21、H-3) ─────────────────────────────────
+	// pause / hitStop の dt gating は simulation 入力なので snapshot に載せる。
+	// 末尾の moduleInputOverride (replay) / applyResimInputOverride (resim) が
+	// snapshot 全体を記録値で置換するため、再生時は記録された実効 dt が再投入される。
+	// paused 中 stepFrames>0 なら 1 フレームだけ通常 dt で進める (従来意味論のまま)。
+	{
+		float        effectiveDt = dt;
+		std::uint8_t paused      = m_config.paused ? 1u : 0u;
+		if (m_config.paused)
+		{
+			if (m_config.stepFrames > 0) { --m_config.stepFrames; }
+			else                         { effectiveDt = 0.0f; }
+		}
+		// HitStop (kind=5): 残量がある間 module へ渡す dt を 0 にする (update は
+		// 呼び続ける)。intent は決定論的な module 出力なので replay でも同じ
+		// フレームで発火する。fade/shake もここで実時間 (固定ステップ) で進める —
+		// 演出は engine 側状態であり GameMemory には入れない (観測対象外)。
+		if (m_moduleVisualFx.hitStopActive()) { effectiveDt = 0.0f; }
+		m_moduleVisualFx.advance(dt);
+		snap->effectiveDt = effectiveDt;
+		snap->paused      = paused;
+	}
+
+	// ── 論理解像度 (ABI v21、§8-5) ──────────────────────────────────────
+	// Screen の logical size を毎フレーム供給。game は kScreenW/kScreenH の自前
+	// constexpr を持たなくてよい。replay 時は記録値が再投入される (resize も記録系の内側)。
+	{
+		const int w = (m_screen != nullptr) ? m_screen->width()  : 0;
+		const int h = (m_screen != nullptr) ? m_screen->height() : 0;
+		snap->logicalW = static_cast<std::uint16_t>(std::clamp(w, 0, 65535));
+		snap->logicalH = static_cast<std::uint16_t>(std::clamp(h, 0, 65535));
+	}
 
 	// 決定論 seed を供給 (ADR 0012)。replay 時は末尾の moduleInputOverride が
 	// snapshot 全体を記録値で置換するので、ここで入れた値は再生時に記録 seed に戻る。
@@ -411,26 +445,40 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot()
 	}
 
 	// queue 済み action event (CEF UI thread 由来) を POD buffer へ drain する。
+	// wire 上限 (name 64B / payload 256B) を超える event は **切り詰めず破棄** する —
+	// 半端に切れた JSON を game に渡すと parse 失敗が game 側の謎バグに化けるため
+	// (warnOnce で通知、R-01)。
 	snap->actionEventCount = 0;
 	if (m_moduleActionEvents)
 	{
 		std::lock_guard lock(m_moduleActionEvents->mu);
-		const auto take = std::min<std::size_t>(
-			m_moduleActionEvents->events.size(),
-			sizeof(snap->actionEvents) / sizeof(snap->actionEvents[0]));
-		for (std::size_t i = 0; i < take; ++i)
+		const std::size_t slotCap =
+			sizeof(snap->actionEvents) / sizeof(snap->actionEvents[0]);
+		std::size_t  taken   = 0;
+		std::int32_t emitted = 0;
+		for (; taken < m_moduleActionEvents->events.size()
+		       && emitted < static_cast<std::int32_t>(slotCap); ++taken)
 		{
-			const auto& [name, payloadJson] = m_moduleActionEvents->events[i];
-			module::detail::copyBounded(snap->actionEvents[i].name, name);
-			module::detail::copyBounded(snap->actionEvents[i].payloadJson, payloadJson);
+			const auto& [name, payloadJson] = m_moduleActionEvents->events[taken];
+			if (name.size() >= sizeof(snap->actionEvents[0].name)
+			    || payloadJson.size() >= sizeof(snap->actionEvents[0].payloadJson))
+			{
+				mitiru::debug::warnOnce("action.event.oversize",
+					"CEF action '" + name.substr(0, 32) + "' の name/payload が wire 上限 "
+					"(64/256B) を超過 — event を破棄 (payload を小さくするか分割する)");
+				continue;
+			}
+			module::detail::copyBounded(snap->actionEvents[emitted].name, name);
+			module::detail::copyBounded(snap->actionEvents[emitted].payloadJson, payloadJson);
+			++emitted;
 		}
-		snap->actionEventCount = static_cast<std::int32_t>(take);
-		// 消費した event を破棄する。溢れた分は次フレームに残す。
-		if (take > 0)
+		snap->actionEventCount = emitted;
+		// 消費 (破棄含む) した event を取り除く。溢れた分は次フレームに残す。
+		if (taken > 0)
 		{
 			m_moduleActionEvents->events.erase(
 				m_moduleActionEvents->events.begin(),
-				m_moduleActionEvents->events.begin() + static_cast<std::ptrdiff_t>(take));
+				m_moduleActionEvents->events.begin() + static_cast<std::ptrdiff_t>(taken));
 		}
 	}
 
@@ -447,6 +495,25 @@ MITIRU_INLINE void mitiru::Engine::zeroModuleFrameIntents()
 	{
 		m_moduleFrameIntents->reset();
 	}
+}
+
+// restart intent (§8-4): GameMemory を unload せず初期状態から fresh 再構築する。
+// ring 記録前に適用するので ring frame N = 再構築後 bytes = 次フレーム memory_in が
+// 保たれる (単一 timeline のまま — ring は破棄しない。restart 前への rewind も正当)。
+// memset 0 で padding byte まで決定論化し、on_init (MITIRU_GAME の gameInit) が
+// static な既定値イメージを memcpy して NSDMI 既定値へ戻す。
+MITIRU_INLINE void mitiru::Engine::applyModuleRestartIntent()
+{
+	auto* intents = m_moduleFrameIntents.get();
+	if (intents == nullptr || intents->restartRequest == 0) { return; }
+	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.on_init == nullptr)
+	{
+		mitiru::debug::warnOnce("restart.unavailable",
+			"hud.requestRestart: GameMemory 未申告 (memorySize=0) か on_init 不在のため無視");
+		return;
+	}
+	std::memset(m_moduleMemory, 0, m_moduleMemorySize);
+	m_moduleApi.on_init(m_moduleMemory);
 }
 
 MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
@@ -487,82 +554,6 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// 単純な flag 群
 	if (intents->requestStop) { requestStop(); }
 
-	// つむぎ: タイムライン織り (begin/spin/weave)。flat-POD GameMemory を「糸」として扱う。
-	if (m_moduleMemory != nullptr && m_moduleMemorySize > 0)
-	{
-		const auto* live = static_cast<const std::uint8_t*>(m_moduleMemory);
-		const std::size_t sz = m_moduleMemorySize;
-		if (intents->weaveBegin && m_weaveAncestor.empty())  // 冪等: 祖先未設定の時だけ糸取り開始
-		{
-			m_weaveAncestor.assign(live, live + sz);
-			m_weaveThreads.clear();
-		}
-		if (intents->weaveSpin && m_weaveAncestor.size() == sz)   // 現 live を糸として保存 → A へ巻き戻し
-		{
-			m_weaveThreads.emplace_back(live, live + sz);
-			std::memcpy(m_moduleMemory, m_weaveAncestor.data(), sz);
-		}
-		if (intents->weaveCommit && m_weaveAncestor.size() == sz && m_moduleApi.reflectFieldCount > 0)
-		{
-			// 現 live も最後の糸 (まだ spin してない最終スレッド) として含めて pairwise に織る。
-			std::vector<std::vector<std::uint8_t>> threads = m_weaveThreads;
-			threads.emplace_back(live, live + sz);
-			std::vector<std::uint8_t> woven = threads[0];
-			std::vector<std::uint8_t> tmp(sz);
-			int totalConflicts = 0;
-			for (std::size_t i = 1; i < threads.size(); ++i)
-			{
-				module::MergeReport rep;
-				module::merge3(m_moduleApi.reflectFields,
-				               static_cast<std::size_t>(m_moduleApi.reflectFieldCount),
-				               m_weaveAncestor.data(), woven.data(), threads[i].data(),
-				               tmp.data(), sz, rep);
-				totalConflicts += static_cast<int>(rep.conflicts.size());
-				woven.swap(tmp);
-			}
-			std::memcpy(m_moduleMemory, woven.data(), sz);
-			// もつれ(衝突)数を game へ通知: reflect に "weaveConflicts" (i32) が在れば書き込む。
-			// game はこれを読んで もつれ glyph 表示 / stage 完了ブロック等に使う (ADR0005: host→game POD push)。
-			for (int fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
-			{
-				const module::FieldDescriptor& f = m_moduleApi.reflectFields[fi];
-				if (std::strcmp(f.name, "weaveConflicts") == 0
-				    && f.offset + sizeof(int) <= sz)
-				{
-					std::memcpy(static_cast<std::uint8_t*>(m_moduleMemory) + f.offset,
-					            &totalConflicts, sizeof(int));
-					break;
-				}
-			}
-			// weave 完了を game へ通知する単調カウンタ ("weaveEpoch" i32)。game は前回値との
-			// 差分で「織り終えた瞬間」を検知し演出 (織りアニメ) を起動する。
-			++m_weaveEpoch;
-			for (int fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
-			{
-				const module::FieldDescriptor& f = m_moduleApi.reflectFields[fi];
-				if (std::strcmp(f.name, "weaveEpoch") == 0 && f.offset + sizeof(int) <= sz)
-				{
-					std::memcpy(static_cast<std::uint8_t*>(m_moduleMemory) + f.offset,
-					            &m_weaveEpoch, sizeof(int));
-					break;
-				}
-			}
-			m_weaveThreads.clear();
-			m_weaveAncestor.clear();
-		}
-		// 糸の本数 (spin 済み糸数) を毎フレーム game へ通知 ("weaveThreadCount" i32、HUD のステップ表示用)。
-		const int weaveThreadCnt = static_cast<int>(m_weaveThreads.size());
-		for (int fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
-		{
-			const module::FieldDescriptor& f = m_moduleApi.reflectFields[fi];
-			if (std::strcmp(f.name, "weaveThreadCount") == 0 && f.offset + sizeof(int) <= sz)
-			{
-				std::memcpy(static_cast<std::uint8_t*>(m_moduleMemory) + f.offset, &weaveThreadCnt, sizeof(int));
-				break;
-			}
-		}
-	}
-
 	// Screenshot — host が capture + filename を処理する。
 	if (intents->requestScreenshot)
 	{
@@ -600,9 +591,12 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		}
 		else
 		{
+			// layout hash (MITIRU_REFLECT 由来) を header に格納 — ロード時にサイズ照合を
+			// 素通りする「同サイズの field 並べ替え / 型変更」を拒否できる (ADR 0024 追記)。
 			const auto path = std::filesystem::path("save") / (slot + ".msav");
 			if (!module::save::saveGameMemory(path, m_moduleMemory, m_moduleMemorySize,
-			                                  module::kCurrentApiVersion))
+			                                  module::kWireApiVersion,
+			                                  module::moduleLayoutHash(m_moduleApi)))
 			{
 				mitiru::debug::warnOnce("save.write." + slot,
 					"hud.save: 書き込みに失敗しました: " + path.string());
@@ -627,7 +621,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			if (!substituted)
 			{
 				const auto path  = std::filesystem::path("save") / (slot + ".msav");
-				const auto bytes = module::save::loadGameMemory(path, m_moduleMemorySize);
+				const auto bytes = module::save::loadGameMemory(
+					path, m_moduleMemorySize, module::moduleLayoutHash(m_moduleApi));
 				if (bytes.has_value()
 				    && rewindModuleMemory(bytes->data(),
 				                          static_cast<std::uint32_t>(bytes->size())))
@@ -636,10 +631,10 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				}
 				else
 				{
-					// 不在 / 形式不正 / サイズ不一致 (struct 変更後の旧セーブ) は拒否 —
-					// 化けた state を黙って流し込まない (ADR 0020 失敗モード表)。
+					// 不在 / 形式不正 / サイズ・layout 不一致 (struct 変更後の旧セーブ) は
+					// 拒否 — 化けた state を黙って流し込まない (ADR 0020 失敗モード表)。
 					mitiru::debug::warnOnce("load.reject." + slot,
-						"hud.load: ロード拒否 (ファイル不在 / 形式不正 / GameMemory サイズ不一致): "
+						"hud.load: ロード拒否 (ファイル不在 / 形式不正 / GameMemory サイズ・layout 不一致): "
 						+ path.string());
 				}
 			}
@@ -694,16 +689,19 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			static_cast<std::int32_t>(sizeof(intents->statePushes) /
 			                          sizeof(intents->statePushes[0])));
 		// この frame の全 push を溜めて 1 回の executeJavaScript に畳む (per-key IPC 削減)。
+		// key / strVal は bounded 読み — DLL からの wire buffer は null 終端を信頼しない
+		// (exportedInspectables の boundedLen と同基準の境界防御)。
 		for (std::int32_t i = 0; i < n; ++i)
 		{
 			const auto& item = intents->statePushes[i];
-			const std::string_view key{item.key};
+			const std::string_view key{item.key, module::detail::boundedLen(item.key)};
 			switch (item.kind)
 			{
 			case 1: m_moduleStateStore->setBatched(key, item.intVal); break;
 			case 2: m_moduleStateStore->setBatched(key, item.floatVal); break;
 			case 3: m_moduleStateStore->setBatched(key, static_cast<bool>(item.intVal)); break;
-			case 4: m_moduleStateStore->setBatched(key, std::string{item.strVal}); break;
+			case 4: m_moduleStateStore->setBatched(key,
+				std::string{item.strVal, module::detail::boundedLen(item.strVal)}); break;
 			default: break;  // kind=0 (null) は今は意図的に no-op
 			}
 		}
@@ -732,17 +730,18 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				digest *= 1099511628211ull;
 			}
 		};
-		const auto boundedLen = [](const char* p, std::size_t cap)
+		// jsonLen も game 申告値 — buffer サイズへ clamp してから読む (境界防御)。
+		const auto clampedJsonLen = [](const module::InspectableExport& e) noexcept
 		{
-			std::size_t l = 0;
-			while (l < cap && p[l] != '\0') { ++l; }
-			return l;
+			const auto cap = static_cast<std::int32_t>(sizeof(e.json));
+			return (e.jsonLen < 0) ? 0 : (e.jsonLen > cap ? cap : e.jsonLen);
 		};
 		for (std::int32_t i = 0; i < n; ++i)
 		{
 			const auto& exp = intents->exportedInspectables[i];
-			fold(exp.name, boundedLen(exp.name, sizeof(exp.name)));
-			if (exp.jsonLen > 0) { fold(exp.json, static_cast<std::size_t>(exp.jsonLen)); }
+			fold(exp.name, module::detail::boundedLen(exp.name));
+			const std::int32_t jl = clampedJsonLen(exp);
+			if (jl > 0) { fold(exp.json, static_cast<std::size_t>(jl)); }
 		}
 
 		if (digest != m_lastInspectorDigest)
@@ -755,14 +754,15 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			for (std::int32_t i = 0; i < n; ++i)
 			{
 				const auto& exp = intents->exportedInspectables[i];
-				const std::string name{exp.name};
-				const std::string title{exp.title};
+				const std::string name{exp.name, module::detail::boundedLen(exp.name)};
+				const std::string title{exp.title, module::detail::boundedLen(exp.title)};
+				const std::int32_t jl = clampedJsonLen(exp);
 				cef::json state;
 				try
 				{
-					state = exp.jsonLen > 0
+					state = jl > 0
 						? cef::json::parse(std::string{exp.json,
-						                               static_cast<std::size_t>(exp.jsonLen)})
+						                               static_cast<std::size_t>(jl)})
 						: cef::json::object();
 				}
 				catch (...)
@@ -829,12 +829,10 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				                    {"engine", m_audioEngine ? "active" : "none"},
 				                    {"channels", std::move(channels)}}}};
 
-			// time-travel: GameMemory ring × probe で観測系列を自動生成する (ADR 0017)。
-			// 作者は手で履歴を貯めず probe 関数を 1 つ宣言するだけ。ダウンサンプルせず
-			// 全フレームを送るので、inspector の graph index がそのまま ring offset になり
-			// click-to-scrub → rewind が 1:1 で対応する (SharedSnapshot は temp file 経由なので
-			// FrameIntents の 3968B 制約を受けない)。
-			if (m_moduleApi.seriesProbeCount > 0 && m_moduleMemoryRing.size() >= 2)
+			// 過去フレームの記録: GameMemory ring があれば、別窓のシークバーで過去へ戻せる。
+			// probe を宣言していれば値の履歴も一緒に送る (任意)。全フレームを送るので、
+			// バーの位置がそのまま「何フレーム前か」に 1:1 で対応する。
+			if (m_moduleMemoryRing.size() >= 2 && m_moduleMemorySize > 0)
 			{
 				const std::size_t frames = m_moduleMemoryRing.size();
 				const std::int32_t probeCap = static_cast<std::int32_t>(
@@ -888,15 +886,23 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 					}
 				}
 				ttState["markers"] = std::move(markersJson);
-				out["timetravel"] = cef::json{{"title", "Time travel"}, {"state", std::move(ttState)}};
+				out["rewind"] = cef::json{{"title", "巻き戻し"}, {"state", std::move(ttState)}};
 			}
 
 			// AI Lens: GameMemory 全フィールドを reflection で構造化 (ADR 0018)。
 			// game が MITIRU_REFLECT を宣言してれば、AI が窓を開かず全状態を構造的に読める。
 			if (m_moduleApi.reflectFieldCount > 0 && m_moduleMemory != nullptr && m_moduleMemorySize > 0)
 			{
+				// フィールド名を宣言順 (MITIRU_REFLECT の並び) で列挙して渡す。JSON object は key を
+				// ソートしてしまうので、観測窓が「コード順」で表示できるよう順序を配列で別に添える。
+				cef::json fieldOrder = cef::json::array();
+				for (std::uint32_t fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
+				{
+					fieldOrder.push_back(m_moduleApi.reflectFields[fi].name);
+				}
 				out["gameMemory"] = cef::json{
 					{"title", "Game memory"},
+					{"order", std::move(fieldOrder)},
 					{"state", observe::reflectToJson(
 						static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
 						m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,

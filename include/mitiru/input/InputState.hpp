@@ -76,6 +76,12 @@ public:
 		return { m_mouseX, m_mouseY };
 	}
 
+	/// @brief このフレームに回したマウスホイール量 (+ = 奥/上、120 = 1 ノッチ)。フレーム頭で 0 に戻る。
+	[[nodiscard]] float mouseWheelDelta() const noexcept { return m_mouseWheel; }
+
+	/// @brief マウスホイールの回転を積む (Win32 の WM_MOUSEWHEEL などから呼ぶ)
+	void addMouseWheelDelta(float delta) noexcept { m_mouseWheel += delta; }
+
 	/// @brief 明示的に prev を curr に揃える (テスト / バッチ実行用)
 	/// @details ランタイムでは `endTick()` が tick 末で prev を進めるため、
 	///          render-loop の頭で本メソッドを呼ぶ必要はない。実際 144Hz vsync +
@@ -98,6 +104,7 @@ public:
 		m_prevMouseY = m_mouseY;
 		m_rawDeltaX = 0.0f;
 		m_rawDeltaY = 0.0f;
+		m_mouseWheel = 0.0f;
 	}
 
 	/// @brief 全ての held key / mouse button を「離された」状態にする
@@ -121,6 +128,7 @@ public:
 		}
 		m_rawDeltaX = 0.0f;
 		m_rawDeltaY = 0.0f;
+		m_mouseWheel = 0.0f;
 	}
 
 	/// @brief 注入入力としてキー状態を設定する (clearHeldKeys の対象外になる)
@@ -164,6 +172,7 @@ public:
 		/// 2 回目以降が同じ delta を観測するとカメラ等が過剰回転する。
 		m_rawDeltaX = 0.0f;
 		m_rawDeltaY = 0.0f;
+		m_mouseWheel = 0.0f;
 		m_prevMouseX = m_mouseX;
 		m_prevMouseY = m_mouseY;
 	}
@@ -372,6 +381,7 @@ private:
 	bool  m_mouseCaptured; ///< カーソルキャプチャ要求フラグ（OS副作用なし、Win32Window が参照）
 	float m_rawDeltaX;     ///< キャプチャ中の蓄積生デルタX（beginFrame でリセット）
 	float m_rawDeltaY;     ///< キャプチャ中の蓄積生デルタY（beginFrame でリセット）
+	float m_mouseWheel = 0.0f;  ///< このフレームの累積ホイール量（beginFrame / endTick でリセット）
 	std::array<bool, MAX_KEYS> m_injectedKeys{};            ///< injector 由来の押下 (focus 喪失クリア対象外)
 	std::array<bool, MAX_MOUSE_BUTTONS> m_injectedMouse{};  ///< injector 由来のボタン (同上)
 };

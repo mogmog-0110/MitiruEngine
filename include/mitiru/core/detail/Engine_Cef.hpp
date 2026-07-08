@@ -51,10 +51,20 @@ MITIRU_INLINE void mitiru::Engine::initializeCef(const EngineConfig& config)
 	const int w = config.windowWidth  > 0 ? config.windowWidth  : m_window->width();
 	const int h = config.windowHeight > 0 ? config.windowHeight : m_window->height();
 
+	// C-5: リモート URL (http/https) は既定 deny。config で明示 opt-in のみ許可。
+	m_cefContext.setAllowRemoteUrls(config.cefAllowRemoteUrls);
+
 	if (!m_cefContext.initialize(*dx12Device, exeDir, logPath, w, h,
 	                             startUrl, config.cefRemoteDebuggingPort))
 	{
+		// H-20: 無言で UI 無し画面を出さない — stderr 1 行 + 失敗フラグ。
+		// 詳細原因は MitiruCefContext::initialize が段階別に stderr へ出す。
+		// 以降の CEF 呼び出しは isInitialized()==false で全て no-op (安全)。
+		std::fprintf(stderr,
+			"[mitiru] CEF init failed — HTML UI は無効で続行 (log: %s)\n",
+			logPath.c_str());
 		OutputDebugStringA("[CEF] initialize() returned false\n");
+		m_cefInitFailed = true;
 	}
 	else if (config.cefRemoteDebuggingPort > 0)
 	{

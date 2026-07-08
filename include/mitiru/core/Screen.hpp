@@ -297,6 +297,29 @@ public:
 		                    static_cast<float>(height()) + 256.0f}, color);
 	}
 
+	// ── 発光ベクター描画 ───────────────────────────────
+	// halo (淡い太線、alpha ×0.16) の上に core (明るい細線) を重ねる 2 パス。
+	// Additive blend (setBlendMode) と併用するとネオン発光になる。
+
+	/// @brief 発光線分を描く。
+	/// @param color core の色 (halo は同色 alpha ×0.16)
+	/// @param coreWidth core (明るい細線) の太さ
+	/// @param glowWidth halo (淡い太線) の太さ
+	void glowLine(float x1, float y1, float x2, float y2, const sgc::Colorf& color,
+	              float coreWidth = 2.0f, float glowWidth = 4.4f);
+
+	/// @brief 発光リングを描く。円周を segments 本の発光線分で近似する。
+	/// @param segments 分割数 (3 未満は 3 に丸める)
+	void glowRing(float cx, float cy, float r, const sgc::Colorf& color,
+	              float coreWidth = 2.0f, float glowWidth = 4.4f, int segments = 20);
+
+	/// @brief (x1,y1)-(x2,y2) を破線で結ぶ (drawDashedLine の float 糖衣)。
+	void dashedLine(float x1, float y1, float x2, float y2, const sgc::Colorf& color,
+	                float width = 2.0f, float dashLen = 9.0f, float gapLen = 6.0f)
+	{
+		drawDashedLine(sgc::Vec2f{x1, y1}, sgc::Vec2f{x2, y2}, width, dashLen, gapLen, color);
+	}
+
 	/// @brief 矩形の枠線を描画する
 	/// @param rect 矩形領域
 	/// @param color 枠線色
@@ -749,6 +772,17 @@ public:
 	                const sgc::Colorf& tintColor = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f},
 	                bool flipX = false);
 
+	/// @brief グリフアトラスの 1 コマをソフトウェアフレームバッファへ塗る (文字用)。
+	/// @param atlas グリフアトラス (RGB=白, A=濃さ)
+	/// @param dstRect 描画先矩形 (スクリーン座標)
+	/// @param srcRect アトラス内のソース領域 (ピクセル単位)
+	/// @param color 文字色
+	void blitAtlasGlyph(const render::Texture& atlas, const sgc::Rectf& dstRect,
+	                    const sgc::Rectf& srcRect, const sgc::Colorf& color);
+
+	/// @brief 文字を CPU 側で描く場面か (テクスチャ描画が使えず、画面バッファへ直接書けるとき)。
+	[[nodiscard]] bool softwareTextPath() const noexcept;
+
 	/// @brief UIノードツリーを描画する
 	/// @param root UIツリーのルートノード
 	/// @param theme 描画に使用するテーマ
@@ -844,6 +878,9 @@ public:
 	/// @brief フレーム描画を完了し、GPU送信する
 	/// @details SpriteBatch/ShapeRendererの蓄積データをRenderPipeline2Dに送る。
 	void present();
+
+	/// @brief 蓄積中のスプライトバッチを今すぐ送信する。
+	void flushSpriteBatch();
 
 	/// @brief サーフェス幅を取得する
 	[[nodiscard]] int width() const noexcept
@@ -991,13 +1028,26 @@ private:
 			m_spriteBatch.drawRect(sgc::Rectf{nx, ny, nw, nh}, color);
 			return;
 		}
-		// 回転を含む: 4隅を変換して2三角形クワッドとして emit
+		// 回転を含む: 4 隅を変換する。回転した塗り矩形を 1 つの対角線で 2 三角形に割ると、
+		// MSAA 下でその対角辺に沿って被覆が僅かに足りず、角付近に縫い目 (背景が透ける) が
+		// 出る角度がある。不透明のときは両方の対角線で分割し (4 三角形)、片方の対角の隙間を
+		// もう片方が必ず塞ぐようにする。半透明は重ね塗りで濃くなるので 1 枚のクワッドで描く。
 		const auto p0 = t.apply(rect.x(), rect.y());
 		const auto p1 = t.apply(rect.x() + rect.width(), rect.y());
 		const auto p2 = t.apply(rect.x() + rect.width(), rect.y() + rect.height());
 		const auto p3 = t.apply(rect.x(), rect.y() + rect.height());
-		m_shapeRenderer.drawTriangle(p0, p1, p2, color);
-		m_shapeRenderer.drawTriangle(p0, p2, p3, color);
+		if (color.a >= 0.999f)
+		{
+			m_shapeRenderer.drawTriangle(p0, p1, p2, color);   // 対角 p0-p2 で 2 枚
+			m_shapeRenderer.drawTriangle(p0, p2, p3, color);
+			m_shapeRenderer.drawTriangle(p1, p2, p3, color);   // 対角 p1-p3 で 2 枚 (隙間を塞ぐ)
+			m_shapeRenderer.drawTriangle(p1, p3, p0, color);
+		}
+		else
+		{
+			const sgc::Vec2f quad[4] = { p0, p1, p2, p3 };
+			m_shapeRenderer.drawPolygon(quad, color);
+		}
 	}
 
 	/// @brief 現在のtransformを適用して三角形をemitする
@@ -1489,6 +1539,11 @@ public:
 	void light3D(const sgc::Vec3f& direction,
 	             const sgc::Colorf& color = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}) noexcept;
 
+	/// @brief 縦グラデーションの空 (skybox) を設定する (天頂色 → 地平色)。drawMesh より前に呼ぶ。
+	/// @details 呼ばなければ空は出ない (clear 色のまま)。cubemap の再構築は色が変わった時だけ —
+	///          毎フレーム同じ色で呼んでもコストはかからない。
+	void skybox3D(const sgc::Colorf& zenith, const sgc::Colorf& nadir) noexcept;
+
 	/// @brief 組み込みメッシュ ("cube" / "sphere" / "plane") を位置・スケール・回転(度)・色で描く。
 	void drawMesh(const char* shape, const sgc::Vec3f& position,
 	              const sgc::Vec3f& scale  = sgc::Vec3f{1.0f, 1.0f, 1.0f},
@@ -1577,6 +1632,12 @@ private:
 	float       m_cam3DFovDeg   = 55.0f;
 	sgc::Vec3f  m_light3DDir    {-0.5f, -1.0f, -0.4f};
 	sgc::Colorf m_light3DColor  {1.0f, 0.97f, 0.92f, 1.0f};
+
+	// ── skybox facade 状態 (末尾追加) ────────────────────────────────────
+	bool        m_sky3DRequested = false;          ///< skybox3D() が呼ばれたか
+	bool        m_sky3DApplied   = false;          ///< renderer へ setSkybox 反映済みか
+	sgc::Colorf m_sky3DZenith    {0.0f, 0.0f, 0.0f, 1.0f};
+	sgc::Colorf m_sky3DNadir     {0.0f, 0.0f, 0.0f, 1.0f};
 };
 
 } // namespace mitiru

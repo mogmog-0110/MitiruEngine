@@ -48,12 +48,17 @@ public:
 	/// @param rtvHandle RTVデスクリプタハンドル
 	/// @param width バッファ幅
 	/// @param height バッファ高さ
+	/// @param sampleCount MSAA サンプル数 (1=非マルチサンプル、4=4x MSAA)。
+	///        多重サンプルテクスチャの場合、null desc で CreateRenderTargetView が
+	///        TEXTURE2DMS RTV を自動生成する。PSO 側の SampleDesc.Count はこの値と
+	///        一致させる必要がある (sampleCount() で照会できる)。
 	/// @return 生成されたレンダーターゲット
 	[[nodiscard]] static Dx12RenderTarget createFromBackBuffer(
 		ID3D12Device* device,
 		ID3D12Resource* resource,
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle,
-		int width, int height)
+		int width, int height,
+		int sampleCount = 1)
 	{
 		if (!device || !resource)
 		{
@@ -66,6 +71,7 @@ public:
 		rt.m_rtvHandle = rtvHandle;
 		rt.m_width = width;
 		rt.m_height = height;
+		rt.m_sampleCount = sampleCount;
 
 		/// RTVを生成する
 		device->CreateRenderTargetView(resource, nullptr, rtvHandle);
@@ -106,6 +112,14 @@ public:
 		return m_resource;
 	}
 
+	/// @brief この RT の MSAA サンプル数を取得する
+	/// @details 2D パイプラインはこの値を見て PSO の SampleDesc.Count を切り替える
+	///          (1x 実バックバッファ vs 4x MSAA 中間 RT)。既定 1。
+	[[nodiscard]] int sampleCount() const noexcept
+	{
+		return m_sampleCount;
+	}
+
 	/// @brief リソースをクリアする（リサイズ前に必要）
 	void release() noexcept
 	{
@@ -118,6 +132,7 @@ private:
 	ITexture* m_texture = nullptr;                     ///< 関連テクスチャ（非所有）
 	int m_width = 0;                                   ///< 幅
 	int m_height = 0;                                  ///< 高さ
+	int m_sampleCount = 1;                             ///< MSAA サンプル数 (1=非MS, 4=4x)
 };
 
 } // namespace mitiru::gfx

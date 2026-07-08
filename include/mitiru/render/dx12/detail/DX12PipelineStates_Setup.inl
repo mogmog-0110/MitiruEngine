@@ -48,8 +48,6 @@ void compileShaders()
 	m_toonVS = gfx::Dx12Shader::createVertexShader(DX12_DEFAULT_VS_3D, "VSMain");
 	// DX12 メインパスは MRT + t0 albedo を扱う独自 Toon PS を使う
 	m_toonPS = gfx::Dx12Shader::createPixelShader(DX12_TOON_PS_3D, "PSMain");
-	m_outlineVS = gfx::Dx12Shader::createVertexShader(OUTLINE_VS_3D, "VSMain");
-	m_outlinePS = gfx::Dx12Shader::createPixelShader(OUTLINE_PS_3D, "PSMain");
 	m_outlinePostVS = gfx::Dx12Shader::createVertexShader(OUTLINE_POST_VS, "VSMain");
 	m_outlinePostPS = gfx::Dx12Shader::createPixelShader(OUTLINE_POST_PS, "PSMain");
 
@@ -62,8 +60,9 @@ void compileShaders()
 		OUTLINE_POST_PS_COLOR_EDGE, "PSMain");
 	m_outlinePostPS_DepthColor = gfx::Dx12Shader::createPixelShader(
 		OUTLINE_POST_PS_DEPTH_COLOR, "PSMain");
+	// Fresnel も DX12 VS の出力 signature (LightSpacePos 含む) に合わせた MRT 変種を使う
 	m_fresnelToonPS = gfx::Dx12Shader::createPixelShader(
-		TOON_PS_3D_FRESNEL, "PSMain");
+		DX12_TOON_PS_3D_FRESNEL, "PSMain");
 
 	// FXAA ポストプロセス PS (ENG-104) — VS は OUTLINE_POST_VS を流用
 	m_fxaaPS = gfx::Dx12Shader::createPixelShader(DX12_FXAA_PS_3D, "PSMain");
