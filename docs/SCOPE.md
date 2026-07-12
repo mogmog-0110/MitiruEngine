@@ -145,7 +145,7 @@ engine 本体に実装済み。ツール窓の一覧と開き方: [`docs/TOOL_WI
 
 ---
 
-## Module status (current as of 2026-05-20)
+## Module status
 
 | Module group | Status | Notes |
 |---|---|---|
@@ -202,18 +202,17 @@ engine 本体に実装済み。ツール窓の一覧と開き方: [`docs/TOOL_WI
 
 ---
 
-## Roadmap (5 つの節目, ~11-17 months)
+## 開発の節目 (milestones)
 
-| 節目 | Duration | Goal |
-|---|---|---|
-| **docs / 哲学** | 1〜2 weeks | docs / philosophy commit (this file is part of it) |
-| **HTML/CSS UI** | 1〜2 months | CLI integration + HTML UI sample polish |
-| **巻き戻し** | 2〜3 months | 巻き戻し inspector implementation |
-| **単独起動** | 2〜3 months | Per-system isolation refactor |
-| **録画リプレイ** | 3〜4 months | Deterministic + auto-replay |
-| **仕上げ** | 1〜2 months | Submission polish (portfolio package) |
+以下の節目を順に実装してきた。現行リリースで一通り揃っている:
 
-節目の境界 = 自然な pivot point。各節目の終了時点で portfolio として提出可能な状態を保つ。
+- **docs / 哲学** — docs / philosophy commit (this file is part of it)
+- **HTML/CSS UI** — CLI integration + HTML UI samples
+- **巻き戻し** — 巻き戻し inspector
+- **単独起動** — per-system isolation
+- **録画リプレイ** — deterministic + auto-replay
+
+各節目の終了時点で portfolio として提出可能な状態を保つ方針。
 
 ---
 

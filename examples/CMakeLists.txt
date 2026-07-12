@@ -81,6 +81,18 @@ mitiru_add_example(rewind)         # time-travel inspector (軸②、ADR 0017/00
 mitiru_add_example(restart_save)   # requestRestart + .msav (ADR 0020/0024)
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
 
+# ── チュートリアル頁の題材ゲーム ───────────────────────────────────────────
+# beko_run: 赤べこの横スクロールアクション。カリキュラム章 (1 機能 1 DLL) ではなく
+# site/homepage/tutorial.html の実演用。複数ソースに分けるので独立 CMakeLists を持つ。
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/beko_run/CMakeLists.txt")
+	add_subdirectory(beko_run)
+endif()
+
+# hello_preview: `mitiru new` (hello テンプレ) の画面キャプチャ用 (install.html の頁生成専用)。
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hello_preview/hello_preview_dll.cpp")
+	mitiru_add_example(hello_preview)
+endif()
+
 # ── 検証用 (従来形式のまま) ─────────────────────────────────────────────────
 # why_demo: `mitiru why`(分岐根本原因特定) の検証用 (dev 専用、snapshot 非同梱)。
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/why_demo/CMakeLists.txt")

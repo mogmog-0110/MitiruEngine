@@ -18,17 +18,36 @@
 
 <div class="page">
   <header class="topbar"><div class="bar">
-    <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine</a>
-    <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a href="tutorial.html">チュートリアル</a><a href="features.html">機能</a><a href="ui.html">画面</a><a class="current" href="3d.html">3D</a><a href="ai.html">AI 連携</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
+    <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.24</span>
   </div></header>
-<div class="content">
+<div class="shell">
+    <aside class="sidebar"><nav>
+      <div class="grp">はじめる</div>
+      <a href="index.html">トップ</a>
+      <a href="install.html">インストール</a>
+      <a href="tutorial.html">はじめてのゲーム</a>
+      <a href="samples.html">サンプル</a>
+      <div class="grp">リファレンス</div>
+      <a href="features.html">機能</a>
+      <a href="ui.html">画面 (HTML / CSS)</a>
+      <a class="active" href="3d.html">3D</a>
+      <a href="ai.html">AI 連携</a>
+      <a href="cli.html">CLI</a>
+      <div class="grp">配布・API</div>
+      <a href="distribute.html">配布</a>
+      <a href="api/">API リファレンス</a>
+    </nav></aside>
+    <div class="content">
     <main id="main">
       <!-- ── ページ見出し ───────────────────────── -->
       <section class="page-head">
         <div class="wrap">
           <p class="kicker">3D</p>
-          <h1>3D も、2D の上にのせて出す</h1>
-          <p class="lede">MitiruEngine の正面は 2D + HTML/CSS ですが、3D も出せます。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp;)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> でメッシュを置くだけ。あとはエンジンの GPU 3D レンダラーが、アンチエイリアス（MSAA）と影（シャドウマップ）付きで描きます。2D の HUD はその上に重なります。状態は「数値だけ」なので<strong>完全に決定的</strong>——録画も巻き戻しも、2D ゲームと同じように効きます。</p>
+          <h1>3D 表示</h1>
+          <p class="lede">MitiruEngine の正面は 2D + HTML/CSS ですが、3D も出せます。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp;)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> でメッシュを置くだけ。あとはエンジンの GPU 3D レンダラーが、アンチエイリアス（MSAA）と影（シャドウマップ）付きで描きます。2D の HUD はその上に重なります。状態は「数値だけ」なので<strong>同じ入力なら同じ結果</strong>——録画も巻き戻しも、2D ゲームと同じように効きます。</p>
         </div>
       </section>
 
@@ -43,7 +62,7 @@
             </figure>
 
             <!-- ── やっていること ─────────────────────── -->
-            <h2 id="how">やっていること — draw の中で s.drawMesh するだけ</h2>
+            <h2 id="how">やっていること</h2>
             <p>3D は、ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> で組み込みメッシュ（立方体・球・板）を置くだけです。あとはエンジンの GPU 3D レンダラーが <strong>アンチエイリアス（MSAA）と影（シャドウマップ）</strong>付きで描きます。<code>s.light3D</code> で光の向きを変えると、影もその向きに伸びます。HUD やメニューは、その 3D の上にいつもの 2D（<code>s.text</code> など）で重ねます。</p>
             <figure>
               <svg class="dgm" viewBox="0 0 760 120" width="100%" style="max-width:760px" role="img" aria-label="3D の流れ。draw(Screen&) の中で s.camera3D / s.drawMesh を呼ぶ → エンジンの GPU 3D レンダラー（MSAA）→ 画面。2D の HUD は画面の上に重なる。">
@@ -68,8 +87,8 @@
             </figure>
 
             <!-- ── コード ─────────────────────────────── -->
-            <h2 id="code">コード — ふだんのゲームと同じ形</h2>
-            <p>ゲームの形は 2D とまったく同じです。状態は <code>struct</code> に数値だけを持ち、<code>update</code> で動かし、<code>draw</code> で描く。3D を描くための道具（メッシュ・カメラ）はエンジンが持っているので、ゲーム側に重い <code>struct</code> メンバは要りません。状態が数値だけなら、同じ操作で同じ動きになる（→ <a href="features.html#ai">決定論</a>・録画・巻き戻し）。</p>
+            <h2 id="code">コード</h2>
+            <p>ゲームの形は 2D とまったく同じです。状態は <code>struct</code> に数値だけを持ち、<code>update</code> で動かし、<code>draw</code> で描く。3D を描くための道具（メッシュ・カメラ）はエンジンが持っているので、ゲーム側に重い <code>struct</code> メンバは要りません。状態が数値だけなら、同じ操作で同じ動きになる（→ <a href="features.html#ai">同じ入力なら同じ結果</a>・録画・巻き戻し）。</p>
 <pre><span class="k">#include</span> &lt;mitiru.hpp&gt;
 <span class="k">#include</span> &lt;cmath&gt;
 <span class="k">using namespace</span> mitiru;
@@ -103,16 +122,16 @@
 
 <span class="t">MITIRU_GAME</span>(Hello3D)</pre>
             <p>完全版（奥のピラーや、立方体を追従して周回する球まで入ったもの）は、リポジトリの <code>examples/scene3d/</code> にあります。上のデモはそれをそのまま動かしたものです。</p>
-            <div class="note"><strong>状態が数値だけ → 録画も巻き戻しも効く。</strong> ゲームの状態は「時刻 <code>t</code> と立方体の位置」だけ。エンジンはこの状態（ポインタを持たない 1 個の struct = flat POD）をまるごと保存・復元できるので、この 3D ゲームも 2D と同じくホットリロード・巻き戻し・リプレイの対象になります（→ <a href="features.html#ai">⑩ 決定論</a>）。絵は毎フレーム同じ状態から描き直されます。</div>
+            <div class="note"><strong>状態が数値だけ → 録画も巻き戻しも効く。</strong> ゲームの状態は「時刻 <code>t</code> と立方体の位置」だけ。エンジンはこの状態（ポインタを持たない、数値だけの 1 個の struct）をまるごと保存・復元できるので、この 3D ゲームも 2D と同じくホットリロード・巻き戻し・リプレイの対象になります（→ <a href="features.html#ai">⑩ 乱数・巻き戻し・AI 連携</a>）。絵は毎フレーム同じ状態から描き直されます。</div>
 
-            <!-- ── 向き・不向き ───────────────────────── -->
-            <h2 id="fit">向いていること・いないこと</h2>
-            <p>GPU で描くのでエッジはなめらか（MSAA）ですが、これは「2D に 3D を混ぜる」「小〜中規模の 3D を出す」ための道具です。立方体・球・板の組み込みメッシュと、読み込んだメッシュを並べる程度を想定しています。</p>
+            <!-- ── いまの 3D と、これから ─────────────────── -->
+            <h2 id="fit">いまの 3D と、これから</h2>
+            <p>GPU で描くのでエッジはなめらか（MSAA）です。いまの 3D は「2D に 3D を混ぜる」「小〜中規模の 3D を出す」ための道具で、立方体・球・板の組み込みメッシュや読み込んだメッシュを並べ、影・半透明（WBOIT）・skybox まで扱えます。</p>
             <table class="spectable">
-              <tr><td>向いている</td><td>2D ゲームに 3D の小物・背景・ミニ表示を混ぜる／立方体・球・板・読み込んだメッシュを並べる 3D／決定論や巻き戻しが要る 3D</td></tr>
-              <tr><td>向いていない</td><td>大量ポリゴンや凝ったシェーダーを前提にした本格 3D。MitiruEngine の正面はあくまで 2D + HTML/CSS です</td></tr>
+              <tr><td>いまできること</td><td>2D ゲームに 3D の小物・背景・ミニ表示を混ぜる／立方体・球・板・読み込んだメッシュを並べる／影・半透明・skybox／同じ結果の再現や巻き戻しが要る 3D</td></tr>
+              <tr><td>これから</td><td>3D はまだ育てている途中です。表現できることは今後さらに拡充していく予定です</td></tr>
             </table>
-            <p>「3D ゲームエンジン」ではなく、「2D エンジンで 3D も出せる」という位置づけです。やりたいことが本格 3D に寄るなら、別のエンジンの方が向いています——そこは正直に。</p>
+            <p>位置づけは「2D エンジンで 3D も出せる」。正面はあくまで 2D + HTML/CSS ですが、その 3D も同じ状態モデル（ポインタを持たない、数値だけの 1 個の struct）に乗るので、2D と同じく録画・巻き戻し・ホットリロードがそのまま効きます。</p>
 
             <div class="cards">
               <div class="card"><h3>はじめてのゲーム<span class="en">tutorial</span></h3><p>まず 2D で骨組み（struct / update / draw）を通すと、上のコードが読みやすくなります。</p></div>
@@ -134,6 +153,10 @@
         <a href="install.html">インストール</a>
       </div>
     </footer>
+    </div>
+    <aside class="toc">
+      <div class="t">このページ</div>
+    </aside>
   </div>
 </div>
 </body>

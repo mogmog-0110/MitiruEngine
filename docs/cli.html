@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine — コマンドリファレンス</title>
-  <meta name="description" content="mitiru CLI の全コマンドリファレンス。new / build / run / watch / ui / verify / replay / mcp / inspect / dist など、1 コマンド = 1 関心事で揃えた 23 コマンドを一覧と使用例つきで説明します。">
+  <meta name="description" content="mitiru CLI の全コマンドリファレンス。new / build / run / watch / ui / verify / replay / mcp / inspect / dist など、1 コマンド 1 つの仕事に絞った 23 コマンドを一覧と使用例つきで説明します。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine — コマンドリファレンス">
-  <meta property="og:description" content="mitiru CLI の全コマンド。1 コマンド = 1 関心事で揃えた 23 コマンドを一覧と使用例つきで説明。">
+  <meta property="og:description" content="mitiru CLI の全コマンド。1 コマンド 1 つの仕事に絞った 23 コマンドを一覧と使用例つきで説明。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/cli.html">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="site.css">
@@ -18,17 +18,36 @@
 
 <div class="page">
   <header class="topbar"><div class="bar">
-    <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine</a>
-    <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a href="tutorial.html">チュートリアル</a><a href="features.html">機能</a><a href="ui.html">画面</a><a href="3d.html">3D</a><a href="ai.html">AI 連携</a><a href="distribute.html">配布</a><a class="current" href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
+    <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.24</span>
   </div></header>
-<div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#list">一覧</a><a href="#daily">つくる・動かす</a><a href="#check">確かめる</a><a href="#subsys">単独起動</a><a href="#ship">配る・整える</a></div></div>
-<div class="content">
+
+<div class="shell">
+    <aside class="sidebar"><nav>
+      <div class="grp">はじめる</div>
+      <a href="index.html">トップ</a>
+      <a href="install.html">インストール</a>
+      <a href="tutorial.html">はじめてのゲーム</a>
+      <a href="samples.html">サンプル</a>
+      <div class="grp">リファレンス</div>
+      <a href="features.html">機能</a>
+      <a href="ui.html">画面 (HTML / CSS)</a>
+      <a href="3d.html">3D</a>
+      <a href="ai.html">AI 連携</a>
+      <a class="active" href="cli.html">CLI</a>
+      <div class="grp">配布・API</div>
+      <a href="distribute.html">配布</a>
+      <a href="api/">API リファレンス</a>
+    </nav></aside>
+    <div class="content">
     <main id="main">
       <section class="page-head">
         <div class="wrap">
           <p class="kicker">CLI</p>
           <h1>コマンドリファレンス</h1>
-          <p class="lede">MitiruEngine の入口は <code>mitiru</code> コマンドです。エディタの巨大なメニューの代わりに、<strong>1 コマンド = 1 関心事</strong>で揃えた 23 個のコマンドだけがあります。作る・動かす・確かめる・配る ── やりたいことの数だけコマンドがあり、それ以上はありません。</p>
+          <p class="lede">MitiruEngine の入口は <code>mitiru</code> コマンドです。エディタの巨大なメニューの代わりに、<strong>1 コマンド 1 つの仕事</strong>に絞った 23 個のコマンドだけがあります。作る・動かす・確かめる・配る ── やりたいことの数だけコマンドがあり、それ以上はありません。</p>
         </div>
       </section>
 
@@ -48,7 +67,7 @@
             <tr><td><a href="#cmd-ui"><code>ui</code></a></td><td>HTML/CSS の UI をビルドなしでブラウザ即プレビュー</td></tr>
             <tr><td><a href="#cmd-lint"><code>lint</code></a></td><td>scene.html の data-m-* と C++ の push を静的に突き合わせ</td></tr>
             <tr><td><a href="#cmd-verify"><code>verify</code></a></td><td>ヘッドレスでビルド・起動・スクリーンショット → 合否を JSON で出力</td></tr>
-            <tr><td><a href="#cmd-replay"><code>replay</code></a></td><td>入力リプレイの記録・再生・回帰テスト（決定論）</td></tr>
+            <tr><td><a href="#cmd-replay"><code>replay</code></a></td><td>入力リプレイの記録・再生・回帰テスト（同じ入力なら同じ結果）</td></tr>
             <tr><td><a href="#cmd-mcp"><code>mcp</code></a></td><td>MCP サーバーを起動して AI ツールにゲームを観測・操作させる</td></tr>
             <tr><td><a href="#cmd-inspect"><code>inspect</code></a></td><td>実行中のゲームに別ウィンドウの inspector を後付けする</td></tr>
             <tr><td><a href="#cmd-renderer"><code>renderer</code></a></td><td>レンダラだけを単独起動</td></tr>
@@ -120,7 +139,7 @@ mitiru verify --replay session.mtrr  <span class="c"># リプレイ再生後に�
 mitiru verify --frames 600 --json    <span class="c"># 10 秒待機、JSON を整形出力</span></pre>
 
           <h3 id="cmd-replay">mitiru replay — 記録・再生・回帰テスト</h3>
-          <p>決定論リプレイの専用コマンドです。記録した入力ストリームはセッションをビットまで同一に再現します。<code>--record</code> / <code>--replay</code> / <code>--test</code> のどれか 1 つを指定します。<code>--test --game</code> は窓も CEF も出さずにこのプロジェクトのゲームを回し、最終状態の JSON を出力する ── そのまま回帰テストになります（記録は <code>mitiru run --record</code> で）。</p>
+          <p>同じ入力なら同じ結果になるリプレイの専用コマンドです。記録した入力ストリームはセッションをビットまで同一に再現します。<code>--record</code> / <code>--replay</code> / <code>--test</code> のどれか 1 つを指定します。<code>--test --game</code> は窓も CEF も出さずにこのプロジェクトのゲームを回し、最終状態の JSON を出力する ── そのまま回帰テストになります（記録は <code>mitiru run --record</code> で）。</p>
 <pre>mitiru replay --record demo.mtrr            <span class="c"># 記録 (デモ用サブシステム)</span>
 mitiru replay --replay demo.mtrr            <span class="c"># 再生</span>
 mitiru replay --test session.mtrr --game    <span class="c"># このゲームをヘッドレス回帰テスト</span>
@@ -147,7 +166,7 @@ mitiru inspect 12345 --all                  <span class="c"># 3 つの観測窓�
 <pre>mitiru renderer</pre>
 
           <h3 id="cmd-input">mitiru input — 入力だけ</h3>
-          <p>キーボード・マウスを捕捉し、エンジンが毎フレーム見ている <code>InputSnapshot</code>（1 フレーム分の入力をまとめた struct）をそのまま可視化します。レンダラもシーン管理も動きません。</p>
+          <p>キーボード・マウスを捕捉し、エンジンが毎フレーム見ている入力（1 フレーム分をまとめたもの）をそのまま可視化します。レンダラもシーン管理も動きません。</p>
 <pre>mitiru input</pre>
 
           <h3 id="cmd-scene">mitiru scene — シーン管理だけ</h3>
@@ -191,7 +210,7 @@ mitiru update --check   <span class="c"># 確認のみ、何も変更しない</
 mitiru update --yes     <span class="c"># 確認なしで適用 (自動化用)</span></pre>
 
           <h3 id="cmd-self-update">mitiru self-update — CLI 自体を更新する</h3>
-          <p><code>mitiru.exe</code> そのものを最新リリースに差し替えます。プロジェクトが使うエンジンの版数は別の関心事なので、そちらは <code>mitiru update</code> です。</p>
+          <p><code>mitiru.exe</code> そのものを最新リリースに差し替えます。プロジェクトが使うエンジンの版数は別の話なので、そちらは <code>mitiru update</code> です。</p>
 <pre>mitiru self-update           <span class="c"># 最新をダウンロードして差し替え</span>
 mitiru self-update --check   <span class="c"># 確認のみ</span></pre>
 
@@ -223,6 +242,15 @@ mitiru menu   <span class="c"># 明示起動 (mitiru m でも可)</span></pre>
         <a href="install.html">インストール</a>
       </div>
     </footer>
+    </div>
+    <aside class="toc">
+      <div class="t">このページ</div>
+      <a href="#list">一覧</a>
+      <a href="#daily">つくる・動かす</a>
+      <a href="#check">確かめる</a>
+      <a href="#subsys">単独起動</a>
+      <a href="#ship">配る・整える</a>
+    </aside>
   </div>
 </div>
 </body>

@@ -21,24 +21,16 @@ gameplay の決定権は **すべて C++** にあり、CEF (HTML/CSS/JS) は **V
 
 関連 doc:
 
-- [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md) — レイヤー分担の歴史的経緯
+- [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md) — レイヤー分担 (C++ gameplay + CEF view)
 - [BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md) — bridge 責務定義 (signal-only)
-- [cpp-gameplay-api-gaps.md](cpp-gameplay-api-gaps.md) — gameplay プリミティブのロードマップ
-- [examples/cpp_gameplay_minimal/](../examples/cpp_gameplay_minimal/) — 動く最小例
+- [examples/html_menu/](../examples/html_menu/) — HTML の操作を C++ が受ける動くサンプル
 
 ---
 
 ## 2. 最小例
 
-`examples/cpp_gameplay_minimal/main.cpp` が **ウィンドウを出さずに (headless) 動く最小ループ** を実装している。
-ビルド:
-
-```bash
-cmake --preset default
-cmake --build build --config Debug --target mitiru_cpp_gameplay_minimal
-```
-
-main loop のスケルトンはこれだけ:
+gameplay 側の main loop は、これだけのスケルトンで回る。プリミティブを継ぐだけで、
+ウィンドウを出さない (headless) ループとしても動く:
 
 ```cpp
 mitiru::scene::SceneRouter        router;
@@ -352,8 +344,7 @@ BRIDGE_API_CONTRACT.md と整合する 5 つの NG パターン。
 
 - [docs/HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)
 - [docs/BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md)
-- [docs/cpp-gameplay-api-gaps.md](cpp-gameplay-api-gaps.md)
-- [examples/cpp_gameplay_minimal/main.cpp](../examples/cpp_gameplay_minimal/main.cpp)
+- [examples/html_menu/](../examples/html_menu/) — HTML 操作 → C++ 反応の動くサンプル
 
 ヘッダ:
 

@@ -378,177 +378,341 @@
 
   <div class="page-with-toc">
     <div class="page-article__body">
-      <h1 id="mitiruengine--scope-and-mode-declaration">MitiruEngine — Scope and Mode Declaration</h1>
+      <h1 id="mitiruengine--scope-and-identity">MitiruEngine — Scope and Identity</h1>
 <blockquote>
-<p><strong>Canonical statement.</strong> When other docs (README.md, HYBRID_RUNTIME.md,
-ARCHITECTURE.md, GETTING_STARTED.md) appear to disagree with this file,
-<strong>this file wins.</strong> The other docs are being aligned over time.</p>
+<p><strong>Canonical statement.</strong> When other docs (README.md, ARCHITECTURE.md,
+GETTING_STARTED.md, etc.) appear to disagree with this file, <strong>this file
+wins.</strong> Other docs are aligned over time.</p>
 </blockquote>
 <h2 id="tldr">TL;DR</h2>
-<p>MitiruEngine is a <strong>dual-mode game engine</strong>. Both modes are first-class:</p>
-<ul>
-<li><strong>Mode A — Native (C++ only):</strong> for console, mobile, 3D action, headless, and any non-CEF target.</li>
-<li><strong>Mode B — Hybrid (Mode A + CEF + JS):</strong> for desktop narrative / management / sim games and AI-assisted development.</li>
-</ul>
-<p>Neither mode is deprecated. Neither will be deprecated in the foreseeable roadmap.</p>
+<p><strong>MitiruEngine は「必要なものしか画面に出さない」C++ game framework です。</strong></p>
+<p>Unity / Godot のような全機能 mega editor の対極を志す。1 ツール = 1 関心事 = 1 ウィンドウ。CLI が一級市民。GUI editor は提供しない。</p>
+<p>ターゲットは <strong>コードが読める自学者 / 真剣な初心者</strong> — Scratch レベル未経験者向けではない。</p>
 <hr>
-<h2 id="mode-a--native">Mode A — Native</h2>
-<p><strong>What it is.</strong> Pure C++ game using <code>mitiru::Game</code>, <code>mitiru::Engine</code>, <code>mitiru::Screen</code> and the rest of the <code>include/mitiru/</code> tree. No CEF process. No JavaScript runtime. No HTML.</p>
-<p><strong>Targets.</strong></p>
+<h2 id="core-philosophy">Core philosophy</h2>
+<h3 id="1-アトミックツール哲学-atomic-tools">1. アトミックツール哲学 (Atomic Tools)</h3>
+<blockquote>
+<p><strong>必要なものしか画面に出さない。文脈外の機能は視界に存在させない。</strong></p>
+</blockquote>
+<p>すべての design 決定がここから派生する。具体的には:</p>
 <ul>
-<li>Desktop (Windows / Linux / macOS)</li>
-<li><strong>Console</strong> (planned: Xbox / PS5 via DX12, Switch via Vulkan)</li>
-<li><strong>Mobile</strong> (planned: evaluate Metal vs Vulkan mobile)</li>
-<li>Headless / server / test</li>
-<li>3D action / twitch genres where 60 fps deterministic loop matters</li>
+<li><strong>Mega editor / mega inspector は作らない</strong>: Unity / Godot の 50 panel が同時に見える状態の対極</li>
+<li><strong>1 ツール = 1 関心事 = 1 ウィンドウ</strong>: AviUtl 流。Renderer / Audio / FSM / Scene Tree など別ウィンドウ</li>
+<li><strong>デフォルトでは何も開かない</strong>: pushed UI じゃなく pulled UI。開発者が必要に応じて窓を開く</li>
+<li><strong>CLI が一級市民</strong>: <code>mitiru new/build/run/debug/inspect</code> で全機能アクセス可能</li>
+<li><strong>IDE は optional</strong>: VS / VS Code / Vim / Helix / メモ帳 でも開発できる</li>
+<li><strong>エンジンも機能別に独立</strong>: Renderer 単独で動く、Audio 単独で動く</li>
 </ul>
-<p><strong>Provided by Mode A.</strong></p>
+<h3 id="2-code-first-inspector-for-observation-only">2. Code-first, inspector for observation only</h3>
+<p>GUI editor は提供しない。authoring は全て <strong>コード</strong> で行う。</p>
+<p>ただし <strong>inspector window 群</strong> は提供する。これは「<strong>書き換える GUI</strong>」ではなく「<strong>観察する GUI</strong>」:</p>
 <ul>
-<li><code>core</code> — Engine loop, Screen API, <code>Game</code> base</li>
-<li><code>gfx</code> — DX11 / DX12 / Vulkan / OpenGL / WebGL / Null backends behind <code>IDevice</code></li>
-<li><code>platform</code> — Win32 / GLFW / SDL2 / Emscripten windows</li>
-<li><code>scene</code>, <code>ecs</code> — scene graph + ECS (entt + sgc bridge)</li>
-<li><code>physics</code> — Box2D / Jolt</li>
-<li><code>render</code> — full 2D + 3D pipeline (Phong, Toon, NPR, Shadow, SSS, particle compute when complete)</li>
-<li><code>audio</code> — miniaudio + MitiruMML</li>
-<li><code>input</code>, <code>network</code>, <code>vn</code> (native), <code>ai</code>, <code>animation</code>, <code>scripting</code>, etc.</li>
+<li>✗ Editor (Unity / Godot のインスペクタ) = state を書き換える GUI</li>
+<li>✓ <strong>Inspector</strong> (Chrome DevTools 系) = state を観察する GUI</li>
 </ul>
-<p><strong>When to choose Mode A.</strong></p>
+<p>inspector は読み取り専用。authoring は code、observation は inspector。</p>
+<h3 id="3-c-for-gameplay-cef-for-uiinspector-overlay">3. C++ for gameplay, CEF for UI/inspector overlay</h3>
+<p>2026-05 に確定:</p>
 <ul>
-<li>Shipping to console or mobile (Mode B unavailable: CEF is desktop-only)</li>
-<li>3D action / twitch genres (CEF round-trip latency unacceptable)</li>
-<li>Server-side simulation / headless tests</li>
-<li>You prefer one language for the whole game</li>
+<li><strong>gameplay logic (シーン、ゲームルール、状態機械、シミュレーション、入力解釈、save/load、AI、物理) は全 C++</strong></li>
+<li><strong>CEF は UI / HUD / 演出 / inspector window</strong> の表示レイヤー</li>
+<li><strong>bridge は signal-only</strong> に薄く保つ (JS → C++ は input/UI イベント通知、C++ → JS は state push のみ)</li>
 </ul>
+<p>同じく 2026-05 に確定:</p>
+<ul>
+<li><strong>Lua / NodeGraph scripting は削除済み</strong></li>
+</ul>
+<h3 id="4-host-game-境界は-c-only-signal-flow">4. Host-Game 境界は C-only signal flow</h3>
+<p>2026-05-20 に確定、v0.2.0 で実装完了:</p>
+<p>Game DLL は純関数に近い形で実装される: <code>(memory, input, dt) → (memory', render, intents)</code></p>
+<ul>
+<li><strong>Game DLL は host (engine) の object pointer を一切持たない</strong> (<code>Engine*</code> も <code>Screen subsystem*</code> も)</li>
+<li><strong>Host は毎フレーム POD で必要データを push</strong> する (1 フレーム分の入力をまとめた <code>InputSnapshot</code> / dt / Screen 引数)</li>
+<li><strong>Game の side effect は <code>FrameIntents</code> (エンジンへの依頼を書く欄) 経由で「お願い」</strong> する (<code>requestStop</code>, <code>executeJs</code>, etc.)</li>
+<li>結果: hot reload が構造的に安全、巻き戻し / リプレイがゲームの全状態 (1 個の struct) の serialize で完結、ABI drift が POD version field で検出可能</li>
+</ul>
+<p>これは「gameplay は C++、CEF は表示のみ」の <code>signal-only</code> 規約を <strong>DLL 境界にも一般化</strong> したもの。「engine.foo() で何でも済む」誘惑を構造的に消し、host capability の追加を常に明示的にする。</p>
+<p><strong>実装の reference</strong>: <code>examples/rewind/rewind_dll.cpp</code> (game side) + <code>apps/mitiru_host/main.cpp</code> (host side)。<code>mitiru_host --watch path/to/game.dll</code> で <strong>L3 hot reload</strong> (state preserved across code swap) が動く。</p>
+<p><strong>副次的効果</strong>: <code>InspectableRegistry</code> (lambda-based) は <strong>non-DLL モード専用</strong> に縮退した。DLL 側は <code>FrameIntents::exportedInspectables[]</code> に pre-serialized JSON を push し、engine が SharedSnapshot に write する経路に統一されたため、旧 step 5 (「Inspectable registry を DLL-aware 化」) の課題は構造的に解消された。</p>
+<h3 id="meta-rule-既存資産の都合より哲学を優先">Meta-rule: 既存資産の都合より哲学を優先</h3>
+<p>新機能や refactor の design 判断は <strong>常に哲学から始める</strong>。「既存コードに合うから」「これが楽だから」は design 理由にならない。詳細は <a href="../CLAUDE.md"><code>CLAUDE.md</code></a> の Meta-rule セクション。</p>
 <hr>
-<h2 id="mode-b--hybrid">Mode B — Hybrid</h2>
-<p><strong>What it is.</strong> Mode A&rsquo;s full native runtime, plus Chromium Embedded Framework (CEF) hosting an HTML / CSS / JS / JSON game runtime. Game logic primarily lives in JavaScript. C++ provides platform services and is exposed to JS through typed bridges (<code>StateStore</code>, <code>AudioBridge</code>, <code>SaveStore</code>, …).</p>
-<p><strong>Targets.</strong> Desktop only (Windows / Linux / macOS). CEF is not available for console or mobile.</p>
-<p><strong>Adds on top of Mode A.</strong></p>
-<ul>
-<li><code>include/mitiru/cef/</code> — CEF process host, <code>MitiruCefContext</code>, <code>StateStore</code>, render handler</li>
-<li><code>include/mitiru/bridge/</code> (CEF-side subset) — typed bridges for JS ↔ C++</li>
-<li><code>web/mitiru_runtime/</code> — JS runtime modules (<code>mitiru.audio</code>, <code>mitiru.save</code>, <code>mitiru.novel</code>, <code>mitiru.input</code>, …)</li>
-</ul>
-<p><strong>When to choose Mode B.</strong></p>
-<ul>
-<li>UI is the dominant cost center (narrative, management, simulation, dialogue-heavy)</li>
-<li>AI-assisted development matters (LLMs generate HTML / CSS / JS faster than they generate C++ UI code)</li>
-<li>Iteration speed &gt; runtime efficiency</li>
-<li>Desktop-only ship is acceptable</li>
-</ul>
+<h2 id="target-user">Target user</h2>
+<table>
+  <thead>
+      <tr>
+          <th>想定する</th>
+          <th>想定しない</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>コード書ける自学者 (raylib / Love2D / Pyxel ユーザー層)</td>
+          <td>Scratch レベルプログラミング未経験者</td>
+      </tr>
+      <tr>
+          <td>C++ 初心者だが tutorial で追える程度</td>
+          <td>Unity / Godot で「クリックで動く」を求める層</td>
+      </tr>
+      <tr>
+          <td>「裏側で何が起きてるか見える」のを価値とする層</td>
+          <td>大規模 AAA チーム開発</td>
+      </tr>
+      <tr>
+          <td>個人開発 / 小規模インディー</td>
+          <td>console / mobile target を必要とする</td>
+      </tr>
+  </tbody>
+</table>
+<p>target が違えば philosophy も違うので、外す target には <strong>無理に対応しない</strong> ことを scope 宣言とする。</p>
 <hr>
-<h2 id="module-status-matrix">Module status matrix</h2>
+<h2 id="5-つの独自軸-differentiators">5 つの独自軸 (Differentiators)</h2>
+<p>raylib / Love2D / Pyxel など既存 minimal engine 群との差別化として 5 軸を持つ。実装は段階的:</p>
+<blockquote>
+<p><strong>外向けの語り方</strong>: 「5 軸」「軸 N」は内部の設計指針としての呼び名。公開文書・サイト・README
+では軸番号ではなく機能名そのもの (「HTML/CSS UI」「巻き戻し」「単独起動」「録画リプレイ」
+「別窓ツール」) で語る。この章はその定義の場としてのみ軸番号を使う。</p>
+</blockquote>
+<h3 id="軸-1-htmlcss-で-ui-が書ける-c-engine">軸 1: HTML/CSS で UI が書ける C++ engine</h3>
+<p>CEF 統合済み。<strong>ゲーム本体は C++、UI / HUD / メニューは HTML/CSS</strong> で書ける。</p>
+<ul>
+<li>raylib / Love2D / Pyxel は独自 UI 描画で Web スキル流用不可</li>
+<li>Unity / Unreal はネイティブ UI で Web スキル無効</li>
+<li>MitiruEngine は Web 開発者の知識がそのまま使える</li>
+</ul>
+<h3 id="軸-2-タイムトラベル-inspector">軸 2: タイムトラベル inspector</h3>
+<p>state を毎フレーム ring buffer に記録。inspector で<strong>過去のフレームに巻き戻して観察</strong>できる。</p>
+<ul>
+<li>「なぜ HP が 50 になったか」を 30 フレーム前まで戻って原因の 1 行を特定</li>
+<li>既存 engine に存在しない発想</li>
+<li>Bret Victor &ldquo;Inventing on Principle&rdquo; の game engine 化</li>
+</ul>
+<h3 id="軸-3-全-system-単独起動">軸 3: 全 system 単独起動</h3>
+<p>Renderer / Audio / Physics / Input / Scene などが <strong>個別 CLI コマンドで起動可能</strong>:</p>
+<pre tabindex="0"><code>mitiru renderer --scene test.json    # renderer だけ動かす
+mitiru audio --play hit.wav          # audio だけ動かす
+mitiru physics --world test.json     # physics だけ動かす
+</code></pre><p>engine 内部が「機能別に小さく分解されている」ことが学習者から見える。Unix philosophy の engine 内 ver。</p>
+<h3 id="軸-4-deterministic--自動リプレイ">軸 4: Deterministic + 自動リプレイ</h3>
+<p>入力 (キー / マウス) + 乱数 seed を毎プレイ自動記録 → <strong>完全再現可能</strong>。</p>
+<ul>
+<li>バグ報告: 再現手順を文字で書く代わりに replay file を送れる</li>
+<li>speedrun: 自動 replay 動画化</li>
+<li>教育: 上級プレイヤーの replay をそのまま教材化</li>
+</ul>
+<h3 id="軸-5-modular-sub-window-architecture">軸 5: Modular sub-window architecture</h3>
+<p>ゲーム本体は <strong>メインウィンドウ</strong>、debug ツールや inspector は <strong>サブウィンドウ</strong> として OS-level に独立する設計。</p>
+<ul>
+<li>✓ Main window は gameplay 専用 — screenshot に debug 情報が映り込まない</li>
+<li>✓ 1 ツール = 1 OS window (Input Monitor / Time-travel Inspector / Scene Tree など)</li>
+<li>✓ default では何も開かない、必要な debug mode の opt-in でのみ spawn</li>
+<li>✓ マルチモニタユーザーに革命的 (debug 画面を 2nd モニタへ追い出せる)</li>
+<li>✓ アトミックツール哲学の OS-window レベル実装</li>
+</ul>
+<p>engine 本体に実装済み。ツール窓の一覧と開き方: <a href="TOOL_WINDOWS.md"><code>docs/TOOL_WINDOWS.md</code></a>。</p>
+<hr>
+<h2 id="module-status-current-as-of-2026-05-20">Module status (current as of 2026-05-20)</h2>
 <table>
   <thead>
       <tr>
           <th>Module group</th>
-          <th style="text-align: center">Mode A</th>
-          <th style="text-align: center">Mode B</th>
           <th>Status</th>
+          <th>Notes</th>
       </tr>
   </thead>
   <tbody>
       <tr>
           <td><code>core</code>, <code>gfx</code>, <code>platform</code>, <code>scene</code>, <code>ecs</code>, <code>audio</code>, <code>input</code>, <code>asset</code>, <code>resource</code>, <code>data</code>, <code>control</code>, <code>util</code>, <code>math</code>, <code>i18n</code>, <code>observe</code>, <code>debug</code>, <code>validate</code></td>
-          <td style="text-align: center">✓</td>
-          <td style="text-align: center">✓</td>
           <td>Stable</td>
+          <td></td>
       </tr>
       <tr>
-          <td><code>render</code> — 2D pipeline + basic 3D</td>
-          <td style="text-align: center">✓</td>
-          <td style="text-align: center">✓</td>
+          <td><code>render</code> — 2D pipeline + 3D Phong/Toon</td>
           <td>Stable</td>
+          <td></td>
       </tr>
       <tr>
-          <td><code>render</code> — compute paths (<code>ParticleCollision</code>, <code>SubsurfaceScatter</code>, <code>ShadowPass3D</code> advanced)</td>
-          <td style="text-align: center">✓</td>
-          <td style="text-align: center">—</td>
-          <td><strong>Incomplete</strong> (TODO compute shaders); to be completed for Mode A console / 3D roadmap</td>
+          <td><code>render</code> — DX12 HDR / MSAA / FXAA / Shadow</td>
+          <td>Stable</td>
+          <td>2026-05 polished</td>
       </tr>
       <tr>
           <td><code>physics</code> — Box2D, Jolt</td>
-          <td style="text-align: center">✓</td>
-          <td style="text-align: center">optional</td>
           <td>Stable</td>
+          <td></td>
       </tr>
       <tr>
           <td><code>vn</code> (native)</td>
-          <td style="text-align: center">✓</td>
-          <td style="text-align: center">optional</td>
-          <td>Stable (40+ modules)</td>
-      </tr>
-      <tr>
-          <td><code>vn</code> — JS implementation (<code>web/mitiru_runtime/mitiru_novel.js</code>)</td>
-          <td style="text-align: center">—</td>
-          <td style="text-align: center">✓</td>
-          <td>Stable, parallel to native vn</td>
+          <td>Stable</td>
+          <td></td>
       </tr>
       <tr>
           <td><code>network</code> — TCP, lobby, state sync</td>
-          <td style="text-align: center">✓</td>
-          <td style="text-align: center">optional</td>
           <td>Stable</td>
+          <td></td>
       </tr>
       <tr>
           <td><code>network</code> — <code>ReliableUDP</code>, GameNetworkingSockets</td>
-          <td style="text-align: center">✓</td>
-          <td style="text-align: center">—</td>
-          <td><strong>Incomplete</strong> (TODO callbacks); to be completed for multiplayer 3D roadmap</td>
+          <td>Incomplete</td>
+          <td>TODO callbacks</td>
       </tr>
       <tr>
-          <td><code>cef</code>, <code>web/mitiru_runtime/</code>, CEF-side bridges</td>
-          <td style="text-align: center">—</td>
-          <td style="text-align: center">✓</td>
+          <td><code>cef</code>, CEF-side bridges</td>
           <td>Stable</td>
+          <td>role shifted to UI overlay + inspector</td>
       </tr>
       <tr>
-          <td><code>ai</code>, <code>animation</code>, <code>scripting</code>, <code>ui</code>, <code>sprite</code>, <code>effects</code>, <code>live2d</code>, <code>server</code></td>
-          <td style="text-align: center">✓</td>
-          <td style="text-align: center">✓</td>
+          <td><code>bridge</code> (signal-only)</td>
           <td>Stable</td>
+          <td>view-push pattern unified</td>
+      </tr>
+      <tr>
+          <td>Gameplay primitives (FSM, Timer, SceneRouter, BridgeViewPush, JsonBinding, SaveSchema, ContentLoader, SchemaValidator, etc.)</td>
+          <td>Stable</td>
+          <td>2026-05 added</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="removed--deprecated">Removed / deprecated</h3>
+<table>
+  <thead>
+      <tr>
+          <th></th>
+          <th>Reason</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Lua scripting</td>
+          <td>2026-05 の方針確定で削除</td>
+      </tr>
+      <tr>
+          <td>NodeGraph scripting</td>
+          <td>2026-05 の方針確定で削除</td>
+      </tr>
+      <tr>
+          <td>JS gameplay path (旧「JS-first」路線)</td>
+          <td>2026-05 の方針転換 — CEF now UI overlay only</td>
+      </tr>
+      <tr>
+          <td><code>mitiru.novel</code> JS VM</td>
+          <td>native vn modules used instead</td>
       </tr>
   </tbody>
 </table>
 <hr>
 <h2 id="out-of-scope-explicit-non-goals">Out of scope (explicit non-goals)</h2>
 <ul>
-<li><strong>Visual editor.</strong> Use Godot or Unity if you need a built-in scene editor.</li>
-<li><strong>New JSON DSLs.</strong> The HYBRID_RUNTIME §4 decision matrix (data → JSON, interactive → JS, hot → C++) is final.</li>
-<li><strong>Browser-only ship.</strong> Mode A supports Emscripten; Mode B requires CEF (desktop). Neither is a pure web ship target.</li>
-<li><strong>Heavy-handed scope cuts.</strong> Earlier proposals to deprecate 3D / ECS / multi-backend / network were rejected on 2026-05-04. Both modes evolve forward.</li>
+<li><strong>GUI Visual editor.</strong> Atomic-tools 哲学に反する。Unity / Godot を使うべき</li>
+<li><strong>Block-based scripting (Scratch / Blueprint 系).</strong> GUI authoring と同じ理由</li>
+<li><strong>Scratch レベル未経験者の取り込み.</strong> Target 違い (上記 Target user 参照)</li>
+<li><strong>Console / mobile target.</strong> Windows-first scope。CEF が desktop-only な以上両立困難</li>
+<li><strong>Vulkan / Metal backend.</strong> 当面なし。DX12 本命 + DX11 明示 fallback で十分</li>
+<li><strong>JSON で gameplay logic を宣言する DSL.</strong> 純データ (novel script / i18n / balance / save) のみ JSON、interaction は C++</li>
+<li><strong>AI が JS gameplay を生成する元路線.</strong> 2026-05 に廃止済み</li>
+<li><strong>Heavy-handed scope cuts to existing modules.</strong> 削除済み (Lua/NodeGraph/JS gameplay) 以外は維持</li>
 </ul>
 <hr>
-<h2 id="roadmap-snapshot">Roadmap snapshot</h2>
-<p><strong>Mode A</strong></p>
-<ul>
-<li>Complete render compute paths (Particle, SSS, Shadow advanced)</li>
-<li>Complete ReliableUDP + GameNetworkingSockets for multiplayer</li>
-<li>Console preparation: DX12 polish for Xbox / PS5; Vulkan polish for Switch</li>
-<li>Mobile preparation: evaluate Metal vs Vulkan-mobile backend</li>
-</ul>
-<p><strong>Mode B</strong></p>
-<ul>
-<li><del>Bridge code generator (<code>bridge.json</code> → C++ + JS pair, eliminates manual sync)</del> — done 2026-05-04 (<code>tools/generate_bridge.py</code>, see <code>docs/BRIDGE_CODEGEN.md</code>)</li>
-<li>vitest for JS unit tests (started 2026-05-04 with <code>mitiru.save</code> — <code>web/mitiru_runtime/*.js</code> coverage to grow)</li>
-<li><del>Hot-reload first-class, documented</del> — done 2026-05-04 (promoted <code>tools/mitiru_serve.py</code> in README, HYBRID_RUNTIME, READING_ORDER)</li>
-<li>State replay debugger via <code>observe/CausalChain</code> + <code>Snapshot</code> → CEF DevTools</li>
-</ul>
-<p><strong>Both</strong></p>
-<ul>
-<li>Documentation re-alignment (this file is part of that effort)</li>
-<li><del><code>docs/API_CATALOG.md</code> split into LLM-friendly chunks + compressed index</del> — done 2026-05-04 (<code>docs/api/&lt;module&gt;.md</code> + <code>docs/api/_index.jsonl</code> via <code>tools/generate_api_chunks.py</code>)</li>
-<li><code>.claude/rules/</code> audit (completed 2026-05-04: 21 → 11 files; stale generic-template rules removed; see <code>.claude/docs/rules-reference.md</code>)</li>
-<li><code>MITIRU_HEADER_ONLY</code> switchable model to allow per-module <code>.cpp</code> separation (consumer build-time relief)</li>
-</ul>
+<h2 id="tooling-philosophy-cli-first">Tooling philosophy (CLI-first)</h2>
+<p><code>mitiru</code> CLI が engine のエントリポイント:</p>
+<table>
+  <thead>
+      <tr>
+          <th>コマンド</th>
+          <th>用途</th>
+          <th>導入の節目</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>mitiru new &lt;name&gt;</code></td>
+          <td>新規プロジェクト雛形</td>
+          <td>既存 (CLI 統合で polish)</td>
+      </tr>
+      <tr>
+          <td><code>mitiru build</code></td>
+          <td>ビルド (CMake 隠蔽)</td>
+          <td>既存 (CLI 統合で polish)</td>
+      </tr>
+      <tr>
+          <td><code>mitiru run</code></td>
+          <td>実行</td>
+          <td>既存 (CLI 統合で polish)</td>
+      </tr>
+      <tr>
+          <td><code>mitiru debug</code></td>
+          <td>デバッグ + inspector 起動</td>
+          <td><strong>CLI 統合で新規</strong></td>
+      </tr>
+      <tr>
+          <td><code>mitiru inspect &lt;subject&gt;</code></td>
+          <td>個別 inspector window</td>
+          <td><strong>巻き戻し inspector と同時に実装</strong></td>
+      </tr>
+      <tr>
+          <td><code>mitiru renderer/audio/physics/input/...</code></td>
+          <td>subsystem 単独起動</td>
+          <td><strong>単独起動の節目で実装</strong></td>
+      </tr>
+      <tr>
+          <td><code>mitiru replay &lt;file&gt;</code></td>
+          <td>replay 再生</td>
+          <td><strong>録画リプレイの節目で実装</strong></td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>「CLI で全機能アクセス可能」を engine の保証条件にする。</strong> IDE は optional。</p>
+<hr>
+<h2 id="roadmap-5-つの節目-11-17-months">Roadmap (5 つの節目, ~11-17 months)</h2>
+<table>
+  <thead>
+      <tr>
+          <th>節目</th>
+          <th>Duration</th>
+          <th>Goal</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>docs / 哲学</strong></td>
+          <td>1〜2 weeks</td>
+          <td>docs / philosophy commit (this file is part of it)</td>
+      </tr>
+      <tr>
+          <td><strong>HTML/CSS UI</strong></td>
+          <td>1〜2 months</td>
+          <td>CLI integration + HTML UI sample polish</td>
+      </tr>
+      <tr>
+          <td><strong>巻き戻し</strong></td>
+          <td>2〜3 months</td>
+          <td>巻き戻し inspector implementation</td>
+      </tr>
+      <tr>
+          <td><strong>単独起動</strong></td>
+          <td>2〜3 months</td>
+          <td>Per-system isolation refactor</td>
+      </tr>
+      <tr>
+          <td><strong>録画リプレイ</strong></td>
+          <td>3〜4 months</td>
+          <td>Deterministic + auto-replay</td>
+      </tr>
+      <tr>
+          <td><strong>仕上げ</strong></td>
+          <td>1〜2 months</td>
+          <td>Submission polish (portfolio package)</td>
+      </tr>
+  </tbody>
+</table>
+<p>節目の境界 = 自然な pivot point。各節目の終了時点で portfolio として提出可能な状態を保つ。</p>
 <hr>
 <h2 id="reading-next">Reading next</h2>
 <ul>
-<li>New to the engine? → <code>docs/READING_ORDER.md</code></li>
-<li>Building a Mode A game? → <code>docs/ARCHITECTURE.md</code>, <code>include/mitiru/core/Engine.hpp</code></li>
-<li>Building a game? → <code>mitiru new</code>（DLL 形式）+ getting-started / tutorials。HUD は <code>docs/HYBRID_UI_GUIDE.md</code></li>
-<li>LLM agent? → <code>CLAUDE.md</code>, then this file, then <code>docs/HYBRID_RUNTIME.md §2</code> (decision matrix)</li>
+<li>新規開発者 → <code>docs/READING_ORDER.md</code></li>
+<li>engine 全体の設計 → <code>docs/ARCHITECTURE.md</code>、ツール窓 → <code>docs/TOOL_WINDOWS.md</code></li>
+<li>CLI 使い方 → <code>docs/GETTING_STARTED.md</code></li>
+<li>LLM agent → <code>CLAUDE.md</code> + このファイル</li>
 </ul>
 
     </div>
@@ -558,11 +722,33 @@ ARCHITECTURE.md, GETTING_STARTED.md) appear to disagree with this file,
       <nav id="TableOfContents">
   <ul>
     <li><a href="#tldr">TL;DR</a></li>
-    <li><a href="#mode-a--native">Mode A — Native</a></li>
-    <li><a href="#mode-b--hybrid">Mode B — Hybrid</a></li>
-    <li><a href="#module-status-matrix">Module status matrix</a></li>
+    <li><a href="#core-philosophy">Core philosophy</a>
+      <ul>
+        <li><a href="#1-アトミックツール哲学-atomic-tools">1. アトミックツール哲学 (Atomic Tools)</a></li>
+        <li><a href="#2-code-first-inspector-for-observation-only">2. Code-first, inspector for observation only</a></li>
+        <li><a href="#3-c-for-gameplay-cef-for-uiinspector-overlay">3. C++ for gameplay, CEF for UI/inspector overlay</a></li>
+        <li><a href="#4-host-game-境界は-c-only-signal-flow">4. Host-Game 境界は C-only signal flow</a></li>
+        <li><a href="#meta-rule-既存資産の都合より哲学を優先">Meta-rule: 既存資産の都合より哲学を優先</a></li>
+      </ul>
+    </li>
+    <li><a href="#target-user">Target user</a></li>
+    <li><a href="#5-つの独自軸-differentiators">5 つの独自軸 (Differentiators)</a>
+      <ul>
+        <li><a href="#軸-1-htmlcss-で-ui-が書ける-c-engine">軸 1: HTML/CSS で UI が書ける C++ engine</a></li>
+        <li><a href="#軸-2-タイムトラベル-inspector">軸 2: タイムトラベル inspector</a></li>
+        <li><a href="#軸-3-全-system-単独起動">軸 3: 全 system 単独起動</a></li>
+        <li><a href="#軸-4-deterministic--自動リプレイ">軸 4: Deterministic + 自動リプレイ</a></li>
+        <li><a href="#軸-5-modular-sub-window-architecture">軸 5: Modular sub-window architecture</a></li>
+      </ul>
+    </li>
+    <li><a href="#module-status-current-as-of-2026-05-20">Module status (current as of 2026-05-20)</a>
+      <ul>
+        <li><a href="#removed--deprecated">Removed / deprecated</a></li>
+      </ul>
+    </li>
     <li><a href="#out-of-scope-explicit-non-goals">Out of scope (explicit non-goals)</a></li>
-    <li><a href="#roadmap-snapshot">Roadmap snapshot</a></li>
+    <li><a href="#tooling-philosophy-cli-first">Tooling philosophy (CLI-first)</a></li>
+    <li><a href="#roadmap-5-つの節目-11-17-months">Roadmap (5 つの節目, ~11-17 months)</a></li>
     <li><a href="#reading-next">Reading next</a></li>
   </ul>
 </nav>

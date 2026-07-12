@@ -1,21 +1,18 @@
 # Hybrid Runtime — where does game code live?
 
-> **Pivot 2026-05-14.** この doc は新方針 (C++ gameplay + CEF view-only)
-> を一次情報として記述する。以前の「gameplay の大半は JS で書く」前提は
-> 章末の [Historical (pre-pivot)](#historical-pre-pivot) に退避した。
-> 並行作業中の関連 doc:
+> **方針。** gameplay は C++、CEF は表示レイヤー。この doc はその境界の分担を記述する。
+> 関連 doc:
 > - bridge の具体的 API: [`BRIDGE_API_CONTRACT.md`](BRIDGE_API_CONTRACT.md)
-> - C++ gameplay API の不足リスト: [`cpp-gameplay-api-gaps.md`](cpp-gameplay-api-gaps.md)
+> - C++ gameplay の書き方: [`CPP_GAMEPLAY_GUIDE.md`](CPP_GAMEPLAY_GUIDE.md)
 
 MitiruEngine は **C++ ゲームエンジン** である。CEF は綺麗な HTML / CSS UI
 を低コストで作れる **見た目のレイヤー** として残す。両者は **薄い signal
 層** で繋ぎ、gameplay state はすべて C++ 側に置く。
 
 > Companion docs:
-> - [HYBRID_UI_GUIDE.md](HYBRID_UI_GUIDE.md) — CEF vs native **UI** choice
 > - [ARCHITECTURE.md](ARCHITECTURE.md) — the C++ layer stack
-> - [WEB_RUNTIME.md](WEB_RUNTIME.md) — `mitiru.*` JS module catalog (view-side のみ)
-> - [CEF_STATE_BRIDGE.md](CEF_STATE_BRIDGE.md) — bridge 実装の現状
+> - [BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md) — bridge の signal-only 契約
+> - [CPP_GAMEPLAY_GUIDE.md](CPP_GAMEPLAY_GUIDE.md) — C++ gameplay を書く入口
 
 ---
 
@@ -220,86 +217,3 @@ MitiruEngine は:
   ジャンルがある。その場合は view も C++ で組む。
 - **ビジュアルエディタ前提のワークフロー** — 本エンジンに内蔵エディタは
   ない。
-
----
-
-## 7. 旧 doc からの移行ガイド
-
-旧方針 (「gameplay の大半は JS で書く」) のコードベースは段階的に
-C++ に移す。詳細な移行リストは [`cpp-gameplay-api-gaps.md`](cpp-gameplay-api-gaps.md)
-を参照。要点:
-
-- 既存の JS gameplay (cooking 等) は「現状維持 → 新規 feature は C++ で
-  書く」「触る機会があれば C++ に移管」の漸進方針。一度に全部書き直さ
-  ない。
-- bridge の `mitiru.dispatch('xxx.method', payload)` のうち、副作用付き
-  高レベル呼び出しは廃止候補。event 発火と view update に分解する。
-- promotion checklist (旧 §3) は廃止。新規 system は最初から C++ で書く。
-
----
-
-## Historical (pre-pivot)
-
-> ここから下は **2026-05-14 のピボット前** の記述。歴史的経緯の参照用
-> としてのみ残す。新規開発の判断には使わない。
-
-### (旧) 基本姿勢
-
-> "MitiruEngine with CEF enabled is intentionally a hybrid runtime: C++ provides
-> platform services, CEF hosts a JavaScript game runtime, and the two talk
-> over a typed bridge. Most gameplay code in MitiruEngine is JavaScript.
-> C++ hosts CEF and provides native services. When a specific JS system
-> becomes hot or needs hardware-adjacent access, it is *promoted* to a C++
-> system via the bridge."
-
-これは「Electron + native backend」モデルだった。minigame の
-state machine、drag-and-drop、novel VM、HUD logic、scene router は
-すべて V8 inside CEF で動いていた。
-
-### (旧) Decision matrix — JS first
-
-| Feature type                                | Default home |
-|---------------------------------------------|:-:|
-| Menu / dialog / HUD / settings              | JS |
-| Novel / dialogue / cutscene                 | JS (`mitiru.novel`) |
-| Minigame state machine (cooking, puzzle)    | JS |
-| Drag-and-drop, pointer-based interaction    | JS |
-| Per-frame animation                         | JS (WAAPI) |
-| Input routing                               | JS (`mitiru.input`) |
-| Audio playback                              | JS API → C++ mixer |
-| Save file I/O                               | JS API → C++ SaveStore |
-
-新方針ではこのうち gameplay 寄りのもの (state machine、interaction、
-input routing) は C++ に移し、JS に残るのは「見た目の表現」のみとなる。
-
-### (旧) Promotion path: JS → C++
-
-旧方針では JS で書いた system が以下のいずれかに該当したときに C++ に
-「昇格」させる pattern を採用していた:
-
-1. Hot path cost > 1 ms / frame in V8
-2. Determinism required (replay / netcode)
-3. Needs C++-only data (ECS, audio buffer, GPU texture)
-4. Cross-game reuse
-5. Security / cheating surface
-
-promotion checklist は schema 駆動の bridge codegen
-(`tools/generate_bridge.py`) を使って paired C++ / JS wrapper を生成し、
-JS fallback を残す形だった。
-
-**新方針ではこの promotion path は廃止**。新規 system は最初から C++
-で書き、bridge は signal-only。fallback も持たない。
-
-### (旧) Demotion: C++ → JS
-
-> Designers need to iterate / Hot-reload / Over-engineered
-
-このパスも廃止。設計者の iteration は JSON データと C++ hot reload
-(または開発時の `imgui` ライブツール) で吸収する方針に変わる。
-
-### (旧) 二構成 (CEF なし / CEF あり) の分離
-
-旧 doc は「Native C++ only」と「Hybrid (JS gameplay)」
-の二モード制を取っていた。新方針では実質的に **native 構成 (CEF なし) 寄りに一本化**
-し、CEF は「C++ native ゲームに追加できる view 表現手段」という位置付けに変わ
-る。`SCOPE.md` の記述は別タスクで再整理予定。

@@ -15,8 +15,8 @@
 >   (`web/mitiru_runtime/`) を載せ、**UI/HUD を HTML/CSS** で描く。**gameplay は JS でなく C++ のまま**で、
 >   bridge は signal-only（C++→JS=state push、JS→C++=action event）。`EngineConfig::enableCef`。
 >
-> JS / JSON / C++ の境界規約は [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)、JS モジュール一覧は
-> [WEB_RUNTIME.md](WEB_RUNTIME.md)。
+> JS / JSON / C++ の境界規約は [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)、
+> JS runtime モジュールの実体は `web/mitiru_runtime/`。
 
 ## Layer Stack
 
@@ -29,7 +29,7 @@ native engine and are inert when `EngineConfig::enableCef = false`.
 +----------------------------------------------------------+
 |  CEF / WEB RUNTIME  (CEF only)                           |
 |  web/mitiru_runtime/*.js  -- mitiru.audio / .save / ...  |
-|  HTML / CSS / JS gameplay loaded by CefStartUrl          |
+|  HTML / CSS UI loaded by CefStartUrl                     |
 +----------------------------------------------------------+
 |  CEF HOST + JS BRIDGES  (CEF only)                       |
 |  mitiru::cef::*  -- MitiruCefContext, AudioBridge,       |
@@ -301,8 +301,7 @@ mitiru::vn module (40+ headers)
 > `web/mitiru_runtime/legacy/mitiru_novel.js` (**legacy — 新規使用禁止**)
 > and was used by games in the HTML UI configuration that render their VN
 > through CEF rather than the native `vn` module. The two implementations are
-> intentionally not parity-locked — see [NARRATIVE_VMS.md](NARRATIVE_VMS.md)
-> for the partition contract.
+> intentionally not parity-locked; new work uses the native `vn` module.
 
 ---
 

@@ -89,10 +89,9 @@ C++ → JS push は `MitiruCefBridge::executeJavaScript(browser, code)` で任�
 
 C++ → JS push は `executeJavaScript` 経由でオーバーレイ `<div>` の CSS を直接操作する。
 
-### 2.5 bridge スキーマ定義 (`bridges/`)
+### 2.5 save bridge の handler
 
-`bridges/save.bridge.json`, `bridges/telemetry.bridge.json` — 検証用スキーマ。
-正規実装は `web/mitiru_runtime/` の JS。C++ dispatch が必要な method は JSON に `jsOnly: false` (暗黙) で定義されている。
+正規実装は `web/mitiru_runtime/` の JS と `include/mitiru/cef/SaveStore.hpp` (C++ 側)。
 
 save bridge の C++ dispatch handler:
 
@@ -408,5 +407,5 @@ DOM 描画のためだけに必要な一時的な表示状態は JS に持って
 - `include/mitiru/cef/StateStore.hpp` — typed state/event 層
 - `include/mitiru/cef/AudioBridge.hpp` — audio handler 実装例
 - `include/mitiru/cef/SceneTransition.hpp` — シーン遷移実装例
-- `bridges/save.bridge.json` — save bridge スキーマ定義
+- `include/mitiru/cef/SaveStore.hpp` — save スロット I/O
 - `web/mitiru_runtime/` — JS side runtime 実装

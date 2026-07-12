@@ -18,11 +18,30 @@
 
 <div class="page">
   <header class="topbar"><div class="bar">
-    <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine</a>
-    <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a href="tutorial.html">チュートリアル</a><a href="features.html">機能</a><a class="current" href="ui.html">画面</a><a href="3d.html">3D</a><a href="ai.html">AI 連携</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
+    <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.24</span>
   </div></header>
-<div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#how">仕組み</a><a href="#show">値を表示する</a><a href="#attrs">全属性</a><a href="#input">操作を伝える</a><a href="#repeat">リストを並べる</a><a href="#example">完成例</a><a href="#gotcha">つまずきやすい点</a></div></div>
-<div class="content">
+
+<div class="shell">
+    <aside class="sidebar"><nav>
+      <div class="grp">はじめる</div>
+      <a href="index.html">トップ</a>
+      <a href="install.html">インストール</a>
+      <a href="tutorial.html">はじめてのゲーム</a>
+      <a href="samples.html">サンプル</a>
+      <div class="grp">リファレンス</div>
+      <a href="features.html">機能</a>
+      <a class="active" href="ui.html">画面 (HTML / CSS)</a>
+      <a href="3d.html">3D</a>
+      <a href="ai.html">AI 連携</a>
+      <a href="cli.html">CLI</a>
+      <div class="grp">配布・API</div>
+      <a href="distribute.html">配布</a>
+      <a href="api/">API リファレンス</a>
+    </nav></aside>
+    <div class="content">
     <main id="main">
       <!-- ── ページ見出し ───────────────────────── -->
       <section class="page-head">
@@ -37,12 +56,12 @@
         <div class="prose">
 
           <figure>
-            <img src="assets/ui_hud.png" alt="HTML / CSS で組んだゲーム HUD の例。左上に『SCORE 12,800』、画面中央に角丸の CLEAR! モーダル（金色のタイトル・サブテキスト・『もう一度』ボタン）が、背後の暗いゲーム画面に重なっている。">
-            <figcaption>HTML / CSS で組んだ HUD の例。スコア表示も中央の CLEAR! モーダルも、見た目はすべて CSS（角丸・影・グラデ・背景ぼかし）。つなぎの JavaScript は書いていません——作り方はこのページの通りで、まとめは <a href="#example">下の完成例</a>に。</figcaption>
+            <img src="assets/beko_gameplay.webp" alt="赤べこの横スクロールゲームの記録。左上の古銭カウンタ（コイン画像＋『N / 18』）が古銭を拾うたびに増え、ゴールに着くと画面中央に『クリア！』が暗転とともに出る。どちらも HTML / CSS で描いている。" loading="lazy" decoding="async">
+            <figcaption>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこの記録。左上の古銭カウンタが拾うたびに増え、ゴールで中央の「クリア！」が出ます。どちらも見た目はすべて HTML / CSS（角丸・影・背景の暗転・拡大アニメ）で、C++ が値を push しているだけ。つなぎの JavaScript は書いていません——作り方はこのページの通り、まとめは <a href="#example">下の完成例</a>に。</figcaption>
           </figure>
 
           <!-- ── 仕組み ──────────────────────────── -->
-          <h2 id="how">仕組み — 値は一方通行で流れる</h2>
+          <h2 id="how">仕組み</h2>
           <p>状態を持つのは C++ だけ。C++ → 画面は「値を push する」、画面 → C++ は「操作を通知する」。この 2 方向しかない。ゲームの状態を HTML 側に持たせないので、表示がズレない。</p>
           <figure>
             <svg class="dgm" viewBox="0 0 560 230" width="100%" style="max-width:560px" role="img" aria-label="C++ と HTML 画面の値の流れ。C++ は hud.set で値を push し HTML が data-m-text で表示、HTML は data-m-action で操作を通知し C++ が in.action で受ける">
@@ -72,7 +91,7 @@
 &lt;script src="mitiru_runtime/mitiru_bind.js"&gt;&lt;/script&gt;       <span class="c">&lt;!-- 同期役 --&gt;</span></pre>
 
           <!-- ── 値を表示する ────────────────────── -->
-          <h2 id="show">値を表示する — C++ の値を画面へ</h2>
+          <h2 id="show">値を表示する</h2>
           <p>C++ で <code>hud.set("view.…", 値)</code> と push した値を、HTML 側で同じ名前を指して受け取る。<code>data-m-*</code> は HTML 標準の「data 属性」を使った目印で、「この要素に、この名前の値を結びつけて」という意味。たとえば <code>data-m-text="view.hud.score"</code> なら、<strong>「この要素の中身（テキスト）に <code>view.hud.score</code> の値を入れて」</strong>という指示になる。</p>
 
           <h3>C++ で push する</h3>
@@ -92,8 +111,8 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
           <p class="note"><code>data-m-text</code> の初期値（上の <code>0</code>）は、まだ値が来ていないときに見えるフォールバック。書いておくと画面が一瞬空っぽにならない。</p>
 
           <!-- ── 全属性 ────────────────────────── -->
-          <h2 id="attrs">全属性 — data-m-* の全語彙</h2>
-          <p><code>data-m-*</code> は「HTML のこの場所と、C++ のこの値を結びつけて」という<strong>印</strong>。<code>data-m-text</code> だけ覚えれば、たいていの HUD は組める。他の属性は必要になったら下の表から足す。binder の語彙はこの表と <a href="#repeat">リスト用の子属性</a>で<strong>全部</strong> ── どの例も貼り付ければそのまま動く。</p>
+          <h2 id="attrs">全属性</h2>
+          <p><code>data-m-*</code> は「HTML のこの場所と、C++ のこの値を結びつけて」という<strong>印</strong>。<code>data-m-text</code> だけ覚えれば、たいていの HUD は組める。他の属性は必要になったら下の表から足す。よく使う語彙はこの表と <a href="#repeat">リスト用の子属性</a>にまとまっています ── どの例も貼り付ければそのまま動く。</p>
           <table class="spectable">
             <tbody>
               <tr><td>data-m-text</td><td>指した値を、その要素の中身（テキスト）として出す。いちばん基本。<br><code>&lt;span data-m-text="view.hud.score"&gt;0&lt;/span&gt;</code></td></tr>
@@ -138,7 +157,7 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
 &lt;span data-m-text="view.score" data-m-tween="view.score"&gt;0&lt;/span&gt;</pre>
 
           <!-- ── 操作を伝える ────────────────────── -->
-          <h2 id="input">操作を伝える — ボタンの click を C++ へ</h2>
+          <h2 id="input">操作を伝える</h2>
           <p>画面 → C++ は「操作の通知」だけ。ボタンに <code>data-m-action</code> を付けると、押された合図が C++ に届く。中の処理（ゲームのルール）は C++ が決める。</p>
 <pre>&lt;button data-m-action="start"&gt;はじめる&lt;/button&gt;
 &lt;button data-m-action="select" data-m-arg="'hard'"&gt;むずかしい&lt;/button&gt;</pre>
@@ -155,7 +174,7 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
     setName(in.actionPayload("input:profile.name"));  <span class="c">// {"value":"入力された文字"}</span></pre>
 
           <!-- ── くり返し ────────────────────────── -->
-          <h2 id="repeat">リストを並べる — data-m-repeat</h2>
+          <h2 id="repeat">リストを並べる</h2>
           <p>手札・インベントリ・ランキングのような可変リストは <code>data-m-repeat</code> と <code>&lt;template&gt;</code> で。要素は使い回されるので、毎フレーム更新しても重くならない。</p>
 <pre>&lt;div class="hand" data-m-repeat="view.hand"&gt;
   &lt;template&gt;
@@ -203,52 +222,57 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
           </table>
 
           <!-- ── 完成例 ──────────────────────────── -->
-          <h2 id="example">完成例 — まるごと 1 枚の HUD</h2>
-          <p>スコア表示と勝敗のモーダルを 1 つにした <code>assets/scene.html</code>。<strong>手書きの JavaScript は 1 行もない</strong>。C++ が <code>view.hud.*</code> を push し、<code>data-m-*</code> が表示するだけ。見た目は普通の CSS。</p>
+          <h2 id="example">完成例</h2>
+          <p>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこが使っている <code>assets/scene.html</code>。左上の古銭カウンタと、ゴール時の「クリア！」を、これだけで作っています。<strong>手書きの JavaScript は 1 行もありません</strong>。C++ が <code>view.coins</code> / <code>view.total</code> / <code>view.cleared</code> を push し、<code>data-m-*</code> が受けるだけ。見た目は普通の CSS。</p>
+          <figure>
+            <img src="assets/ui_beko_hud.png" alt="赤べこのゲーム画面。左上に古銭カウンタの丸いピル（コイン画像＋『12 / 18』）、画面中央に暗転を背にした『クリア！』の大きな文字。どちらも下の scene.html と hud.set が作っている" loading="lazy">
+            <figcaption>下のコードが実際に作る画面。左上の古銭カウンタ（<code>data-m-text</code>）も、中央の「クリア！」（<code>data-m-class</code> で暗転＋拡大）も、この <code>scene.html</code> と CSS だけ。C++ は値を push しているだけです。</figcaption>
+          </figure>
 <pre><span class="c">&lt;!-- assets/scene.html --&gt;</span>
 &lt;!doctype html&gt;
-&lt;html lang="ja"&gt;
-&lt;head&gt;
-  &lt;meta charset="utf-8"&gt;
+&lt;html lang="ja"&gt;&lt;head&gt;&lt;meta charset="utf-8"&gt;
   &lt;style&gt;
-    body { margin: 0; font-family: sans-serif; color: #fff; }
-    .hud { position: absolute; top: 16px; left: 20px; font-size: 28px; }
-    <span class="c">/* 勝敗モーダル。is-on が付いたときだけ出す */</span>
-    .modal { position: absolute; inset: 0; display: none;
-             align-items: center; justify-content: center;
-             background: rgba(0,0,0,.6); }
-    .modal.is-on { display: flex; }
-    .card { background: #1b2030; padding: 32px 48px; border-radius: 12px; text-align: center; }
-    button { margin-top: 16px; padding: 10px 24px; cursor: pointer; }
+    body { margin: 0; background: transparent; font-family: sans-serif; }
+    <span class="c">/* 古銭カウンタ（左上の丸いピル）*/</span>
+    .coins { position: absolute; top: 14px; left: 16px;
+             display: flex; align-items: center; gap: 8px;
+             padding: 6px 16px; border-radius: 999px;
+             background: rgba(255,252,246,.82);
+             color: #7a5320; font-weight: 700; font-size: 22px; }
+    .coins img { width: 26px; height: 26px; }
+    <span class="c">/* 「クリア！」。show が付いたときだけ暗転して出す */</span>
+    .clear { position: absolute; inset: 0; opacity: 0;
+             display: flex; align-items: center; justify-content: center;
+             background: rgba(20,20,30,0); transition: .45s; }
+    .clear.show { background: rgba(20,20,30,.42); opacity: 1; }
+    .clear span { color: #fff; font-size: 74px; font-weight: 800;
+                  transform: scale(.82); transition: transform .45s; }
+    .clear.show span { transform: scale(1); }
   &lt;/style&gt;
-&lt;/head&gt;
-&lt;body&gt;
-  <span class="c">&lt;!-- スコア（C++ の hud.set("view.hud.score", …) が反映される）--&gt;</span>
-  &lt;div class="hud"&gt;SCORE &lt;span data-m-text="view.hud.score"&gt;0&lt;/span&gt;&lt;/div&gt;
-
-  <span class="c">&lt;!-- over が真のとき is-on が付いて表示。outcome で文言を出し分け --&gt;</span>
-  &lt;div class="modal" data-m-class="is-on: view.hud.over"&gt;
-    &lt;div class="card"&gt;
-      &lt;h1 data-m-show="view.hud.outcome == win"&gt;CLEAR!&lt;/h1&gt;
-      &lt;h1 data-m-show="view.hud.outcome == lose"&gt;GAME OVER&lt;/h1&gt;
-      &lt;button data-m-action="restart"&gt;もう一度&lt;/button&gt;
-    &lt;/div&gt;
+&lt;/head&gt;&lt;body&gt;
+  <span class="c">&lt;!-- 古銭カウンタ（C++ の hud.set("view.coins" / "view.total", …) が反映される）--&gt;</span>
+  &lt;div class="coins"&gt;
+    &lt;img src="sprites/coin.png"&gt;
+    &lt;span data-m-text="view.coins"&gt;0&lt;/span&gt; / &lt;span data-m-text="view.total"&gt;0&lt;/span&gt;
   &lt;/div&gt;
+
+  <span class="c">&lt;!-- view.cleared が真のとき show が付いて「クリア！」が出る --&gt;</span>
+  &lt;div class="clear" data-m-class="show: view.cleared &gt; 0"&gt;&lt;span&gt;クリア！&lt;/span&gt;&lt;/div&gt;
 
   <span class="c">&lt;!-- エンジン付属の 2 つ。mitiru build が隣に自動コピーする --&gt;</span>
   &lt;script src="mitiru_runtime/mitiru_cef_state.js"&gt;&lt;/script&gt;
   &lt;script src="mitiru_runtime/mitiru_bind.js"&gt;&lt;/script&gt;
-&lt;/body&gt;
-&lt;/html&gt;</pre>
-          <p>C++ 側はこれを push するだけ。</p>
-<pre>hud.set("view.hud.score", score);
-hud.set("view.hud.over", over);
-hud.set("view.hud.outcome", won ? "win" : "lose");
-<span class="k">if</span> (in.action("restart")) reset();   <span class="c">// ボタンの click はここで受ける</span></pre>
-          <p>CSS は普通の Web と同じ。影・角丸・グラデ・<code>@keyframes</code> アニメ・<code>backdrop-filter</code> のぼかしまでそのまま使える（中身は本物のブラウザエンジン）。スコアの数字を <code>data-m-tween</code> でカウントアップさせたり、モーダルの登場を CSS アニメにしたり ── 見た目はすべて HTML / CSS 側で完結する。</p>
+&lt;/body&gt;&lt;/html&gt;</pre>
+          <p>C++ 側（<code>game.cpp</code>）はこれを push するだけ。</p>
+<pre><span class="k">void</span> BekoRun::pushHud(<span class="t">Hud</span> hud) <span class="k">const</span> {
+    hud.set(<span class="s">"view.coins"</span>, coins);
+    hud.set(<span class="s">"view.total"</span>, NCOIN);
+    hud.set(<span class="s">"view.cleared"</span>, cleared ? 1 : 0);   <span class="c">// 真偽は 0 / 1 で送る</span>
+}</pre>
+          <p>CSS は普通の Web と同じ。影・角丸・<code>@keyframes</code> アニメ・<code>backdrop-filter</code> のぼかしまでそのまま使える（中身は本物のブラウザエンジン）。古銭の数字を <code>data-m-tween</code> でカウントアップさせたり、「クリア！」の登場を CSS アニメにしたり ── 見た目はすべて HTML / CSS 側で完結します。</p>
 
           <!-- ── つまずき ────────────────────────── -->
-          <h2 id="gotcha">つまずきやすい点 — 出ないときは名前を疑う</h2>
+          <h2 id="gotcha">つまずきやすい点</h2>
           <p>C++ が一度も push していない名前を <code>data-m-*</code> で指すと、<strong>エラーは出ず</strong>、HTML に書いた初期値がそのまま残る。「値が変わらない」ときは、まず C++ の <code>set</code> とスペルが一致しているか確認する。</p>
           <ul>
             <li>C++ の <code>"view.hud.score"</code> と HTML の <code>data-m-text="view.hud.score"</code> は <strong>完全一致</strong>が必要。</li>
@@ -256,7 +280,7 @@ hud.set("view.hud.outcome", won ? "win" : "lose");
           </ul>
           <p>スペル違いを<strong>機械的に見つける</strong>方法も 2 つある。コミット前に <code>mitiru lint</code> を回すと、HTML の <code>data-m-*</code> キーが C++ で <code>set</code> したキーと食い違っていないか照合する。実行中に確かめたいときは <code>&lt;body data-m-debug&gt;</code> を付けるか、シーンを <code>?mdebug=1</code> で開くと、未知のキーがコンソールに出る。</p>
           <p class="note"><strong>JavaScript を書いてもいい。</strong> <code>data-m-*</code> だけで HUD は組めるが、凝った演出を自分で作りたくなれば JavaScript も書ける（中身は本物のブラウザエンジン）。ふだんは書かずに作り、必要になったら手を伸ばせる。</p>
-          <p><a href="tutorial.html">はじめてのゲーム</a>（C++ だけのスター・キャッチ）で土台を作ってから、HUD を HTML に置き換えるのがおすすめ。属性の組み合わせは <a href="features.html#htmlui">機能リファレンス §HTML / CSS で画面</a> でも引ける。</p>
+          <p><a href="tutorial.html">はじめてのゲーム</a>（C++ だけの赤べこの横スクロール）で土台を作ってから、HUD を HTML に置き換えるのがおすすめ。属性の組み合わせは <a href="features.html#htmlui">機能リファレンス §HTML / CSS で画面</a> でも引ける。</p>
 
         </div>
       </div>
@@ -271,6 +295,17 @@ hud.set("view.hud.outcome", won ? "win" : "lose");
         <a href="install.html">インストール</a>
       </div>
     </footer>
+    </div>
+    <aside class="toc">
+      <div class="t">このページ</div>
+      <a href="#how">仕組み</a>
+      <a href="#show">値を表示する</a>
+      <a href="#attrs">全属性</a>
+      <a href="#input">操作を伝える</a>
+      <a href="#repeat">リストを並べる</a>
+      <a href="#example">完成例</a>
+      <a href="#gotcha">つまずきやすい点</a>
+    </aside>
   </div>
 </div>
 </body>

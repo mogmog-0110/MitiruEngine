@@ -1,8 +1,6 @@
 # イベント/カットシーン レシピ集
 
-イベント枠を「フレームワーク」としてエンジンに入れることは却下済み
-([UX_AUDIT_2026_06_12.md](UX_AUDIT_2026_06_12.md) Wave5 /
-[INTUITIVE_API_PROPOSALS.md](INTUITIVE_API_PROPOSALS.md) #11)。
+イベント枠を「フレームワーク」としてエンジンに入れることは、意図的に見送っている。
 カットシーンの形 (タイムライン式か、状態機械式か、スクリプト式か) はゲームごとに違い、
 エンジンが 1 つの型を押し付けるとゲームの型を縛る。代わりに、揃っている小さい部品 —
 `Timer` / `Tween01` (PodTiming.hpp)、`hud.letterbox` / `fadeOut` / `fadeIn` / `music`

@@ -381,7 +381,7 @@
   <div class="page-with-toc">
     <div class="page-article__body">
       <p><code>examples/&lt;name&gt;/</code> 以下に置かれた、コピペで動かせる最小サンプル集です。
-ゲームをこれで作るというよりは、「このの機能を呼ぶ最小コード」を 1 ファイルにまとめた <strong>読むため</strong> のサンプル群。</p>
+ゲームをこれで作るというよりは、「この機能を呼ぶ最小コード」を 1 ファイルにまとめた <strong>読むため</strong> のサンプル群。</p>
 <p>ビルド:</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --preset default
 </span></span><span class="line"><span class="cl">cmake --build build --config Debug --target hello_window
@@ -393,7 +393,7 @@
 <article class="example-card">
 <div class="example-card__body">
 <h3 class="example-card__title">hello_window</h3>
-<p class="example-card__kind example-card__kind--engine">Mode A · 純 C++</p>
+<p class="example-card__kind example-card__kind--engine">純 C++（CEF なし）</p>
 <p class="example-card__desc">最小構成。800×600 のウィンドウを開き、"Hello, Mitiru!" を画面中央に表示する。ESC で終了。CEF を切って (<code>enableCef = false</code>) Latin atlas にすると、コールド起動 1 秒未満。</p>
 <p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_window/main.cpp">main.cpp →</a></p>
 </div>
@@ -401,7 +401,7 @@
 <article class="example-card">
 <div class="example-card__body">
 <h3 class="example-card__title">hello_input</h3>
-<p class="example-card__kind example-card__kind--engine">Mode A · 純 C++</p>
+<p class="example-card__kind example-card__kind--engine">純 C++（CEF なし）</p>
 <p class="example-card__desc">64×64 の四角を矢印キー / WASD で動かす。<code>input().isKeyDown()</code> を <code>update(dt)</code> から呼んで、速度ベクトルを積分する、ふつうの per-frame 入力ループ。</p>
 <p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_input/main.cpp">main.cpp →</a></p>
 </div>
@@ -409,7 +409,7 @@
 <article class="example-card">
 <div class="example-card__body">
 <h3 class="example-card__title">hello_scene</h3>
-<p class="example-card__kind example-card__kind--engine">Mode A · 純 C++</p>
+<p class="example-card__kind example-card__kind--engine">純 C++（CEF なし）</p>
 <p class="example-card__desc">タイトル → ゲーム → ゲームオーバーの 3 シーンをスペースキーで遷移する。<code>SceneRouter</code> + <code>Scene</code> 派生クラスの最小例。</p>
 <p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_scene/main.cpp">main.cpp →</a></p>
 </div>
@@ -417,7 +417,7 @@
 <article class="example-card">
 <div class="example-card__body">
 <h3 class="example-card__title">hello_shapes</h3>
-<p class="example-card__kind example-card__kind--engine">Mode A · 純 C++</p>
+<p class="example-card__kind example-card__kind--engine">純 C++（CEF なし）</p>
 <p class="example-card__desc">矩形 5 + 円 2 を <code>drawRect</code> / <code>drawCircle</code> で並べ、<code>sin(t)</code> で半径と色相を脈動させる。<code>mitiru::Screen</code> の C++ 直接描画の最小例。</p>
 <p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_shapes/main.cpp">main.cpp →</a></p>
 </div>
@@ -425,7 +425,7 @@
 <article class="example-card">
 <div class="example-card__body">
 <h3 class="example-card__title">hello_cef_overlay</h3>
-<p class="example-card__kind example-card__kind--cef">Mode B · CEF オーバーレイ</p>
+<p class="example-card__kind example-card__kind--cef">CEF オーバーレイ（HTML UI 構成）</p>
 <p class="example-card__desc">C++ で背景矩形を描いた上に、HTML/CSS の半透明 HUD を CEF オーバーレイとして重ねる。<code>cefStartUrl</code> + <code>assets/scene.html</code> のコピー手順入り。</p>
 <p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/hello_cef_overlay/main.cpp">main.cpp →</a></p>
 </div>
@@ -434,10 +434,10 @@
 </section>
 <h2 id="game-as-dll-サンプル実際に遊べる-1-本もの">Game-as-DLL サンプル（実際に遊べる 1 本もの）</h2>
 <p><code>mitiru_host.exe</code> が load する DLL 形式のゲーム。flat な state 構造体に <code>update</code> / <code>draw</code> を書いて
-<code>MITIRU_GAME(...)</code> で入口を 1 行宣言し、HUD は HTML/CSS（手書き JS なし）、効果音は intent。
-これが現行の canonical な書き方です。</p>
+<code>MITIRU_GAME(...)</code> で入口を 1 行宣言し、HUD は HTML/CSS（手書き JS なし）、効果音は
+<code>SoundIntent</code>（エンジンへの依頼）で鳴らす。これが現行の canonical な書き方です。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --build build --config Debug --target breakout
-</span></span><span class="line"><span class="cl">build<span class="se">\e</span>xamples<span class="se">\m</span>itiru_host<span class="se">\m</span>itiru_host.exe build<span class="se">\e</span>xamples<span class="se">\m</span>itiru_host<span class="se">\b</span>reakout<span class="se">\b</span>reakout.dll
+</span></span><span class="line"><span class="cl">build<span class="se">\a</span>pps<span class="se">\m</span>itiru_host<span class="se">\m</span>itiru_host.exe build<span class="se">\a</span>pps<span class="se">\m</span>itiru_host<span class="se">\b</span>reakout<span class="se">\b</span>reakout.dll
 </span></span><span class="line"><span class="cl"><span class="c1"># anchor / dodge / hello_game / showcase_platformer も target 名 = dll 名で同様</span>
 </span></span></code></pre></div><section class="example-gallery" aria-label="dll-examples">
 <div class="examples-grid">
@@ -445,7 +445,7 @@
 <div class="example-card__body">
 <h3 class="example-card__title">breakout</h3>
 <p class="example-card__kind example-card__kind--cef">旗艦サンプル</p>
-<p class="example-card__desc">王道ブロック崩し。物理 / 当たり判定 / 手触り（粒子・画面シェイク・残像）/ zero-JS の HUD / 効果音 intent を 1 本にまとめた参照実装。</p>
+<p class="example-card__desc">王道ブロック崩し。物理 / 当たり判定 / 手触り（粒子・画面シェイク・残像）/ JavaScript を 1 行も書かない HUD / 効果音 `SoundIntent` を 1 本にまとめた参照実装。</p>
 <p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/breakout/breakout_dll.cpp">breakout_dll.cpp →</a></p>
 </div>
 </article>
@@ -453,7 +453,7 @@
 <div class="example-card__body">
 <h3 class="example-card__title">anchor</h3>
 <p class="example-card__kind example-card__kind--cef">制約パズル</p>
-<p class="example-card__desc">「触れた anchor へしか動けない」一行ルールの計画パズル。記憶が移動資源になり、決定論的な追っ手を時間で避ける。zero-JS HUD + 効果音 intent。</p>
+<p class="example-card__desc">「触れた anchor へしか動けない」一行ルールの計画パズル。記憶が移動資源になり、決定論的な追っ手を時間で避ける。JavaScript を書かない HUD + 効果音 `SoundIntent`。</p>
 <p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/anchor/anchor_dll.cpp">anchor_dll.cpp →</a></p>
 </div>
 </article>
@@ -477,7 +477,7 @@
 <div class="example-card__body">
 <h3 class="example-card__title">showcase_platformer</h3>
 <p class="example-card__kind example-card__kind--cef">決定論 + リプレイ</p>
-<p class="example-card__desc">横スクロールアクション。入力と乱数 seed を記録し、replay-as-test を bit-exact で通す決定論ゲームの例。</p>
+<p class="example-card__desc">横スクロールアクション。入力と乱数 seed を記録し、replay-as-test を 1 bit も違わず（bit-exact）通す決定論ゲームの例。</p>
 <p class="example-card__desc"><a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/examples/showcase_platformer/showcase_platformer_dll.cpp">showcase_platformer_dll.cpp →</a></p>
 </div>
 </article>

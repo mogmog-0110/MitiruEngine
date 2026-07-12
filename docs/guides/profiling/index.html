@@ -469,7 +469,7 @@ no-ops when <code>MITIRU_HAS_TRACY</code> is undefined.</p>
           <td><code>Engine::CefComposite</code></td>
           <td><code>include/mitiru/core/detail/Engine_Frame.hpp:245</code></td>
           <td><code>MITIRU_ZONE_NAMED</code></td>
-          <td>CEF UI レイヤーのメッセージループ処理、入力転送、テクスチャアップロード、バックバッファ合成。Mode B 専用。</td>
+          <td>CEF UI レイヤーのメッセージループ処理、入力転送、テクスチャアップロード、バックバッファ合成。HTML UI 構成 (CEF あり) 専用。</td>
       </tr>
       <tr>
           <td><code>Engine::AutoCapture</code></td>
@@ -571,9 +571,9 @@ Scene の <code>onDraw()</code> がここに集約されるので、コンテン
 <li><strong><code>Engine::MouseScaling</code></strong> — Win32 のみで意味のある軽量フェーズ。ほぼ常に
 サブマイクロ秒オーダーで完結する。<code>dynamic_cast&lt;Win32Window*&gt;</code> が支配的なら
 これは設計上正常 (代替手段は ABI 変更を伴うため温存)。</li>
-<li><strong><code>Engine::CefComposite</code></strong> — Mode B 専用。<code>m_cefContext.isInitialized()</code>
-が false の場合は早期 return するため、Mode A 純ネイティブ運用ではほぼ
-ゼロ。Mode B でも CEF が dirty frame を持たない静的画面ではアップロードが
+<li><strong><code>Engine::CefComposite</code></strong> — HTML UI 構成専用。<code>m_cefContext.isInitialized()</code>
+が false の場合は早期 return するため、native 構成 (CEF なし) の純ネイティブ運用ではほぼ
+ゼロ。HTML UI 構成でも CEF が dirty frame を持たない静的画面ではアップロードが
 スキップされ軽量。</li>
 <li><strong><code>Engine::AutoCapture</code></strong> — 自律テストモード以外では <code>device-&gt;endFrame()</code>
 の呼び出しだけ。通常運用では <code>Engine::Present</code> と並ぶ軽量ゾーン。</li>
@@ -601,16 +601,72 @@ Scene の <code>onDraw()</code> がここに集約されるので、コンテン
 完全に独自色にしたい場合は <code>MITIRU_ZONE_COLOR(&quot;Name&quot;, 0xRRGGBB)</code> を使う。</p>
 <p>命名規約は <code>Subsystem::Operation</code> を推奨。Tracy の Statistics ビューで
 <code>Engine::*</code> や <code>MySystem::*</code> でフィルタしやすくするため。</p>
+<h2 id="auto-test-capture-env-var-hook">Auto-Test Capture (Env Var Hook)</h2>
+<p>エンジンの <code>Engine::run()</code> は、起動時に下記 2 つの環境変数を自動で読み取り、
+<code>EngineConfig::autoTestMode</code> を有効化する。CI スクリーンショット / ギャラリー
+キャプチャ / smoke ベースライン取得のためのフックで、ソース側に変更を入れずに
+任意の consumer exe を「指定フレーム数だけ走らせて PNG 保存→終了」させられる。</p>
+<table>
+  <thead>
+      <tr>
+          <th>変数</th>
+          <th>値</th>
+          <th>効果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>MITIRU_AUTOTEST</code></td>
+          <td><code>1</code> (または <code>true</code> / 非空 / 非 <code>0</code>)</td>
+          <td><code>autoTestMode = true</code> / <code>autoTestExitAfter = true</code> / <code>autoTestFrames = 120</code> を適用 (~2 秒 @ 60 fps)</td>
+      </tr>
+      <tr>
+          <td><code>MITIRU_AUTOTEST_OUTPUT</code></td>
+          <td>絶対パス推奨のディレクトリ</td>
+          <td><code>autoTestOutputDir</code> を上書き。生成物は <code>&lt;dir&gt;/auto_test.png</code> と <code>&lt;dir&gt;/auto_test_report.json</code></td>
+      </tr>
+  </tbody>
+</table>
+<p>実装は <a href="../include/mitiru/core/Config.hpp"><code>include/mitiru/core/Config.hpp</code></a>
+の <code>EngineConfig::applyAutoTestEnv()</code>。<code>Engine::run()</code> 冒頭で自動的に呼ばれる。
+プログラム側で明示的に <code>cfg.autoTestMode = true</code> を設定済みの場合は env var が
+<strong>上書きしない</strong> (ユーザー設定優先)。出力ディレクトリだけは env で常に強制
+上書きされる (capture script は <code>MITIRU_AUTOTEST_OUTPUT</code> を絶対パスでセット
+することで、起動 CWD が不定でも安全に成果物を回収できる)。</p>
+<h3 id="使用例">使用例</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># CI / capture script から:</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MITIRU_AUTOTEST</span><span class="o">=</span><span class="m">1</span> <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span><span class="nv">MITIRU_AUTOTEST_OUTPUT</span><span class="o">=</span>C:/build/screenshots/cef_minimal <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>build/examples/cef_minimal/Debug/mitiru_cef_minimal.exe
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 結果:</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#   C:/build/screenshots/cef_minimal/auto_test.png</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#   C:/build/screenshots/cef_minimal/auto_test_report.json</span>
+</span></span></code></pre></div><p><code>tools/site/capture_examples.py</code> の <code>auto-test</code> strategy がこのフックを
+使って 4 つの CEF サンプル (<code>cef_minimal</code> / <code>cef_overlay</code> / <code>cef_state_bridge</code>
+/ <code>cef_transition</code>) を撮影する。Win32 <code>PrintWindow</code> フォールバックよりも
+GPU コンポジット結果を正確に取得でき、ヘッドレス (ウィンドウを出さない) CI でも動作する。</p>
+<h3 id="注意点">注意点</h3>
+<ul>
+<li><strong><code>MITIRU_AUTOTEST_OUTPUT</code> には絶対パスを渡すこと</strong>。相対パスは exe の起動
+CWD に依存するため信頼できない。capture script 側で常に絶対パスを生成する。</li>
+<li>env var フックは <code>EngineConfig</code> を経由する consumer (<code>engine.run(game, cfg)</code>)
+にのみ作用する。<code>examples/cpp_gameplay_minimal</code> のように Engine を使わない
+純粋な headless ミニ exe には効かないため、これらは引き続き stdout strategy
+で撮影する。</li>
+<li><code>applyAutoTestEnv()</code> はテスト / 専用 main から再評価したい場合に直接呼べる。
+既定では <code>Engine::run()</code> が一度だけ呼ぶ。</li>
+</ul>
 <h2 id="known-limitations">Known Limitations</h2>
 <ul>
-<li><strong>本番ハードウェアでの計測は未実施</strong>。エンジンコアの主要フェーズは
-計装済みで no-op gate も検証済みだが、実機キャプチャによるベースライン
-数値はまだ公開できる形に揃っていない。</li>
+<li><strong>本番ハードウェアでの計測は未実施</strong>。Engine_Frame 9 ゾーン + 既存 2 ゾーン
+は計装済みで no-op gate も検証済みだが、実機キャプチャによるベースライン
+数値の公開は保留中。</li>
 <li><strong>GPU 側のゾーンは未計装</strong>。Tracy には GPU タイムスタンプ機構があるが、
 現状の DX11/DX12/Vulkan/OpenGL バックエンドにはまだ統合されていない。
 GPU 時間を見たい場合は当面 PIX / RenderDoc / NSight などのベンダーツールを
 併用する。</li>
-<li><strong>Mode B (CEF) のレンダリングは外部プロセスで動く</strong>。<code>Engine::CefComposite</code>
+<li><strong>HTML UI 構成 (CEF) のレンダリングは外部プロセスで動く</strong>。<code>Engine::CefComposite</code>
 はホスト側のアップロード/コンポジットしか見えないので、CEF サブプロセス内の
 HTML レイアウトコストはこの計装からは可視化できない。Chrome DevTools の
 Performance パネルで別途プロファイルすること。</li>
@@ -639,6 +695,12 @@ Performance パネルで別途プロファイルすること。</li>
     <li><a href="#sbo-vs-heap-profile-recipe">SBO vs Heap Profile Recipe</a></li>
     <li><a href="#interpreting-engine_frame-zones">Interpreting Engine_Frame Zones</a></li>
     <li><a href="#adding-new-zones">Adding New Zones</a></li>
+    <li><a href="#auto-test-capture-env-var-hook">Auto-Test Capture (Env Var Hook)</a>
+      <ul>
+        <li><a href="#使用例">使用例</a></li>
+        <li><a href="#注意点">注意点</a></li>
+      </ul>
+    </li>
     <li><a href="#known-limitations">Known Limitations</a></li>
     <li><a href="#see-also">See Also</a></li>
   </ul>

@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine — 機能リファレンス</title>
-  <meta name="description" content="MitiruEngine の機能をコード付きで一覧。図形・文字・画像の描画、入力、音、演出、HTML/CSS UI、デバッグ窓、サブシステム単独起動、AI Lens、決定論。書きたいことから逆引きできる機能リファレンス。">
+  <meta name="description" content="MitiruEngine の機能をコード付きで一覧。図形・文字・画像の描画、入力、音、演出、HTML/CSS UI、デバッグ窓、サブシステム単独起動、AI 連携、巻き戻し。書きたいことから逆引きできる機能リファレンス。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine — 機能リファレンス">
-  <meta property="og:description" content="MitiruEngine の機能をコード付きで一覧。図形・文字・画像の描画、入力、音、演出、HTML/CSS UI、デバッグ窓、サブシステム単独起動、AI Lens、決定論。書きたいことから逆引きできる機能リファレンス。">
+  <meta property="og:description" content="MitiruEngine の機能をコード付きで一覧。図形・文字・画像の描画、入力、音、演出、HTML/CSS UI、デバッグ窓、サブシステム単独起動、AI 連携、巻き戻し。書きたいことから逆引きできる機能リファレンス。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/features.html">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="site.css">
@@ -18,11 +18,30 @@
 
 <div class="page">
   <header class="topbar"><div class="bar">
-    <a class="brand" href="index.html"><span class="mark">M</span>MitiruEngine</a>
-    <nav><a href="index.html">トップ</a><a href="install.html">インストール</a><a href="tutorial.html">チュートリアル</a><a class="current" href="features.html">機能</a><a href="ui.html">画面</a><a href="3d.html">3D</a><a href="ai.html">AI 連携</a><a href="distribute.html">配布</a><a href="cli.html">CLI</a><a href="api/">API</a><a class="ext" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a></nav>
+    <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.24</span>
   </div></header>
-<div class="subnav"><div class="bar"><span class="lbl">このページ:</span><a href="#basic">① 基本形</a><a href="#shapes">② 図形</a><a href="#color">③ 色</a><a href="#text">④ 文字</a><a href="#transform">⑤ 変換</a><a href="#sprite">⑥ スプライト</a><a href="#gltf">⑦ 3D</a><a href="#input">⑧ 入力</a><a href="#pad">⑨ パッド</a><a href="#ai">⑩ 乱数・AI Lens</a><a href="#sound">⑪ 音</a><a href="#juice">⑫ 演出</a><a href="#htmlui">⑬ HTML / CSS UI</a><a href="#tools">⑭ デバッグ窓</a><a href="#subsys">⑮ 単独起動</a><a href="#collision">⑯ 当たり判定</a><a href="#config">⑰ 設定</a></div></div>
-<div class="content">
+
+<div class="shell">
+    <aside class="sidebar"><nav>
+      <div class="grp">はじめる</div>
+      <a href="index.html">トップ</a>
+      <a href="install.html">インストール</a>
+      <a href="tutorial.html">はじめてのゲーム</a>
+      <a href="samples.html">サンプル</a>
+      <div class="grp">リファレンス</div>
+      <a class="active" href="features.html">機能</a>
+      <a href="ui.html">画面 (HTML / CSS)</a>
+      <a href="3d.html">3D</a>
+      <a href="ai.html">AI 連携</a>
+      <a href="cli.html">CLI</a>
+      <div class="grp">配布・API</div>
+      <a href="distribute.html">配布</a>
+      <a href="api/">API リファレンス</a>
+    </nav></aside>
+    <div class="content">
     <main id="main">
       <!-- ── ページ見出し ───────────────────────── -->
       <section class="page-head">
@@ -38,7 +57,7 @@
           <div class="prose">
 
             <!-- ── ① 骨組み ───────────────────────────── -->
-            <h2 id="basic">① ゲームの骨組み — struct / update / draw</h2>
+            <h2 id="basic">① ゲームの骨組み</h2>
             <p>ゲームの状態を 1 つの <code>struct</code> に持ち、<code>update</code> で動かし、<code>draw</code> で描く。最後に <code>MITIRU_GAME</code> を 1 行。これだけで動きます。</p>
 <pre><span class="k">#include</span> &lt;mitiru.hpp&gt;
 <span class="k">using namespace</span> mitiru;
@@ -66,10 +85,10 @@
               <tr><td>void update(float dt)</td><td>時間だけで動かすとき</td></tr>
               <tr><td>void draw(Screen&amp; s)</td><td>描画</td></tr>
             </table>
-            <div class="note"><strong>なぜ struct か。</strong> エンジンはこのゲーム状態をまるごとコピーして保存／復元します（ホットリロード・巻き戻し・録画）。だからトップの状態は「ただのデータ」——仮想関数やポインタを持たない flat POD——である必要があります（守られているか <code>MITIRU_GAME</code> がコンパイル時に確認）。可変長は <code>mitiru::FixedVec&lt;T,N&gt;</code> を使い、中で使う部品（敵・弾など）は普通に <code>class</code> で書いて構いません。トップだけ素直に保つ住み分けです（→ <a href="#ai">⑩ AI Lens と決定論</a>）。</div>
+            <div class="note"><strong>なぜ struct か。</strong> エンジンはこのゲーム状態をまるごとコピーして保存／復元します（ホットリロード・巻き戻し・録画）。だからトップの状態は、仮想関数やポインタを持たない「ただのデータ」である必要があります（守られているか <code>MITIRU_GAME</code> がコンパイル時に確認）。可変長は <code>mitiru::FixedVec&lt;T,N&gt;</code> を使い、中で使う部品（敵・弾など）は普通に <code>class</code> で書いて構いません。トップだけ素直に保つ住み分けです（→ <a href="#ai">⑩ 乱数・巻き戻し・AI 連携</a>）。</div>
 
             <!-- ── ② 図形 ─────────────────────────────── -->
-            <h2 id="shapes">② 図形を描く — 四角・円・線・多角形</h2>
+            <h2 id="shapes">② 図形を描く</h2>
             <p>いちばんよく使う図形は、座標を直接渡すだけで描けます（初心者向けの簡単版）。下は実際の描画結果です。</p>
             <figure><img src="assets/feat_shapes.png" alt="四角・角丸四角・円・リング・三角・線を並べた描画結果" loading="lazy"><figcaption>四角 / 角丸 / 円 / リング / 三角 / 線</figcaption></figure>
             <figure><img src="assets/feat_gradient.png" alt="縦・横・4隅のグラデーション矩形" loading="lazy"><figcaption>グラデ（縦・横・4 隅）</figcaption></figure>
@@ -101,7 +120,7 @@
             <div class="note"><strong>Rect と Vec2 とは。</strong> エンジンが使う「矩形」と「2D 座標」の型です。<code>Rect{x, y, 幅, 高さ}</code>、<code>Vec2{x, y}</code> と波かっこで作るだけ。<code>#include &lt;mitiru.hpp&gt;</code> で一緒に使えるようになります。当たり判定にも同じ <code>Rect</code> を使います（→ <a href="#collision">⑯ 当たり判定</a>）。</div>
 
             <!-- ── ③ 色 ──────────────────────────────── -->
-            <h2 id="color">③ 色 — 色の書き方</h2>
+            <h2 id="color">③ 色</h2>
             <p>色は 0–255・16 進・名前で作れます。型はすべて <code>mitiru::Color</code>。</p>
 <pre>rgb(200, 0, 44)          <span class="c">// 0–255 の RGB（不透明）</span>
 rgba(255, 255, 0, 128)   <span class="c">// RGBA（a=0 透明 … 255 不透明）= 半透明の黄</span>
@@ -113,7 +132,7 @@ color::Blue   color::Yellow color::Orange color::Cyan   color::Clear  <span clas
             <p>半透明にしたいときは <code>Color c = color::Red; c.a = 0.3f;</code> のように <code>.a</code>（0.0–1.0）を下げます。重ね塗りや残像・影に便利です。</p>
 
             <!-- ── ④ 文字 ─────────────────────────────── -->
-            <h2 id="text">④ 文字を描く — テキスト</h2>
+            <h2 id="text">④ 文字を描く</h2>
             <p>いちばん簡単なのは <code>s.text(...)</code>。枠に収めて整列したいときは <code>drawTextInRect</code> を使います（はみ出しは自動で <code>…</code> に省略され、レイアウトが崩れません）。</p>
             <figure><img src="assets/feat_text.png" alt="通常テキスト・アウトライン付き・影付きの描画結果" loading="lazy"><figcaption>上から <code>s.text</code> / <code>drawTextOutlined</code>（縁取り）/ <code>drawTextWithShadow</code>（影）の実描画。</figcaption></figure>
 <pre>s.text(<span class="c">/* str */</span> <span class="s">"SCORE "</span> + std::to_string(score), 24, 20, color::White, 24);  <span class="c">// (文字, x, y, 色, 大きさ)</span>
@@ -144,7 +163,7 @@ atlas = <span class="s">"japanese"</span>   <span class="c"># latin = 英数の�
             <div class="note"><strong>凝った文字は HTML/CSS が得意。</strong> スコア表示やメニューのような UI 文字は、C++ で描くより <a href="ui.html">HTML / CSS の HUD</a> にしたほうが、フォント・影・アニメを自由に付けられます。ゲーム世界の中に出す文字（ダメージ数値など）は C++ で、UI の文字は HTML で——と使い分けるのがおすすめです。</div>
 
             <!-- ── ⑤ 変換 ─────────────────────────────── -->
-            <h2 id="transform">⑤ 移動・回転・拡大 — 座標変換</h2>
+            <h2 id="transform">⑤ 移動・回転・拡大</h2>
             <p>一時的に座標系をずらす／回す／拡大すると、同じ描画コードを使い回せます。<code>push…</code> と <code>popTransform()</code> は必ずペアで。</p>
             <figure><img src="assets/feat_rotation.png" alt="同じ四角を角度を変えて重ねた回転の描画結果" loading="lazy"><figcaption>同じ四角を <code>drawRectRotated</code> で少しずつ回して重ねたもの（<code>pushRotation</code> でも同じ）。</figcaption></figure>
 <pre>s.pushTransform(camX, camY);          <span class="c">// 平行移動（カメラのスクロールに）</span>
@@ -163,7 +182,7 @@ s.drawGroup({px, py}, spinDeg, [&amp;](<span class="t">Screen</span>&amp; g) {
             <p><code>pushTransform(tx, ty, sx, sy)</code> なら拡大縮小も同時に。複数 <code>push</code> は重ねられます（最後に積んだものが先に効く）。必ず同じ数だけ <code>popTransform()</code> してください。</p>
 
             <!-- ── ⑥ スプライト ───────────────────────── -->
-            <h2 id="sprite">⑥ 画像・スプライト — 画像を描く</h2>
+            <h2 id="sprite">⑥ 画像・スプライト</h2>
             <p>最も基本的な描き方は id 指定です。<code>assets/sprites/hero.png</code> を置いたら:</p>
 <pre>s.sprite(<span class="s">"hero"</span>, x, y);          <span class="c">// これだけ。読み込み・キャッシュはエンジンがやる</span>
 s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍サイズ</span></pre>
@@ -185,10 +204,10 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍
     }
 };</pre>
             <p><code>render::Texture</code> には <code>solid(w,h,col)</code>（単色）や <code>checker(...)</code>（市松）もあり、画像が無くても試せます。ピクセルを自前で作って表示したいときは <code>s.drawPixelGrid({x,y,w,h}, pixels, pw, ph)</code>——RGBA8 のバッファをそのまま 1 枚の絵として描けます（自作ラスタライザや手続き的生成向け）。</p>
-            <div class="note"><strong>flat POD と画像の両立。</strong> <code>Texture</code> をトップの <code>struct</code> のメンバに持つと flat POD ではなくなり、<code>MITIRU_GAME</code> がコンパイルエラーにします（録画・巻き戻しの単一 state を守るため → <a href="#ai">⑩ AI Lens と決定論</a>）。画像はグローバル／別オブジェクトに分け、トップの <code>struct</code> には座標やフレーム番号など「数値だけ」を残します。</div>
+            <div class="note"><strong>画像と「ただのデータ」の両立。</strong> <code>Texture</code> をトップの <code>struct</code> のメンバに持つと「ただのデータ」でなくなり、<code>MITIRU_GAME</code> がコンパイルエラーにします（録画・巻き戻しのために状態を 1 個に保つため → <a href="#ai">⑩ 乱数・巻き戻し・AI 連携</a>）。画像はグローバル／別オブジェクトに分け、トップの <code>struct</code> には座標やフレーム番号など「数値だけ」を残します。</div>
 
             <!-- ── ⑦ 3D ──────────────────────────────── -->
-            <h2 id="gltf">⑦ 3D 表示 — 2D の上にのせる</h2>
+            <h2 id="gltf">⑦ 3D 表示</h2>
             <p>正直に書くと、MitiruEngine の正面は 2D + HTML/CSS で、3D は「2D に混ぜる」位置づけです。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> で組み込みメッシュ（"cube" / "sphere" / "plane"）を置くだけ。エンジンの GPU 3D レンダラーが<strong>アンチエイリアス（MSAA）と影（シャドウマップ）</strong>付きで描き、2D の HUD はその上に重なります。</p>
 <pre><span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
     s.clear(hex(0x111521));                           <span class="c">// 3D の背景色</span>
@@ -207,7 +226,7 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍
             <p>立方体・球・板の組み込みメッシュのほか、<code>loadGltfMeshFromFile("model.gltf")</code> で読み込んだメッシュも並べられます。動くデモと完全なコードは <a href="3d.html">3D のページ</a> にまとめました。大量ポリゴンや凝ったシェーダー前提の本格 3D は対象外——あくまで 2D に 3D を混ぜる道具です。</p>
 
             <!-- ── ⑧ 入力 ─────────────────────────────── -->
-            <h2 id="input">⑧ キーボード・マウス — 入力を読む（Input）</h2>
+            <h2 id="input">⑧ キーボード・マウス</h2>
             <p><code>in</code> から読みます。「押している間」と「押した瞬間」は別メソッドです——移動は <code>down</code>、ジャンプや決定は <code>pressed</code>。</p>
 <pre><span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt) {
     <span class="k">if</span> (in.down(<span class="t">Key</span>::Left))   x -= 320 * dt;   <span class="c">// 押されている間ずっと true</span>
@@ -260,7 +279,7 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍
             <p>HTML のボタンから届いた合図は <code>in.action("name")</code> でそのフレームだけ <code>true</code>（→ <a href="#htmlui">⑬ HTML / CSS で画面</a>・<a href="ui.html">画面を作る</a>）。値付きなら <code>in.actionPayload("name")</code>。</p>
 
             <!-- ── ⑨ パッド ───────────────────────────── -->
-            <h2 id="pad">⑨ ゲームパッド — コントローラ</h2>
+            <h2 id="pad">⑨ ゲームパッド</h2>
             <p>Xbox 系（XInput）も <strong>DualShock 4 などの DirectInput 系</strong>も、何も設定せずそのまま動きます（既定で有効）。機種の違いはエンジンが吸収するので、ゲーム側は同じ API を読むだけです。</p>
 <pre><span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt) {
     <span class="k">if</span> (!in.padConnected()) <span class="k">return</span>;
@@ -292,51 +311,51 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍
 <span class="k">if</span> (in.cancelPressed())  back();     <span class="c">// Escape + パッド B / Back</span>
 <span class="t">Stick</span> m = in.move();                 <span class="c">// 矢印 + WASD + 十字キー + 左スティック統合 (-1..1)</span>
 x += m.x * 320 * dt;                 <span class="c">// これだけで全デバイス対応の移動</span></pre>
-            <p>メニューの上下送り（スティック倒しっぱなしのリピート含む）は <code>mitiru::MenuCursor</code>を状態に持って <code>cursor.updateVertical(in, 項目数, dt)</code> を呼ぶだけ。POD なので巻き戻しにも乗ります。</p>
+            <p>メニューの上下送り（スティック倒しっぱなしのリピート含む）は <code>mitiru::MenuCursor</code>を状態に持って <code>cursor.updateVertical(in, 項目数, dt)</code> を呼ぶだけ。ただのデータなので巻き戻しにも乗ります。</p>
             <p>レシピ: キー設定をゲーム中に変えられるようにする（リバインド）手順は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/INPUT_REBIND_RECIPE.md" target="_blank" rel="noopener">docs/INPUT_REBIND_RECIPE.md（GitHub）</a> にまとまっています。</p>
 
-            <!-- ── ⑩ AI Lens と決定論 ─────────────────── -->
-            <h2 id="ai">⑩ 乱数・決定論・AI Lens — 1 個の flat POD から生える</h2>
-            <p>乱数は <code>mitiru::Random</code> で。毎フレーム同じ入力なら必ず同じ結果（決定論）になるよう、種を <code>in.rngSeed()</code> から取ると、プレイを録画して完全に再現できます。</p>
+            <!-- ── ⑩ 乱数・巻き戻し・AI 連携 ─────────────────── -->
+            <h2 id="ai">⑩ 乱数・巻き戻し・AI 連携</h2>
+            <p>乱数は <code>mitiru::Random</code> で。毎フレーム同じ入力なら必ず同じ結果になるよう、種を <code>in.rngSeed()</code> から取ると、プレイを録画してそっくり再現できます。</p>
 <pre><span class="k">#include</span> &lt;mitiru.hpp&gt;
 
-<span class="t">Random</span> rng(in.rngSeed());        <span class="c">// 録画リプレイで bit-exact に再現したいときは種をここから</span>
+<span class="t">Random</span> rng(in.rngSeed());        <span class="c">// 録画リプレイで 1 bit まで同じに再現したいときは種をここから</span>
 <span class="k">int</span>   dmg   = rng.nextInt(10, 50);  <span class="c">// 10〜50 の整数</span>
 <span class="k">float</span> angle = rng.nextFloat(0, 6.28f);
 <span class="k">bool</span>  crit  = rng.nextBool(0.15f);  <span class="c">// 15% で true</span></pre>
 
-            <h3>flat POD という 1 つの制約</h3>
-            <p>ゲーム状態（トップの <code>struct</code>）は flat POD 必須です——<code>std::vector</code> / <code>std::string</code> の代わりに <code>mitiru::FixedVec&lt;T,N&gt;</code> / <code>FixedString&lt;N&gt;</code> を使います。<code>MITIRU_GAME(MyGame)</code> がこれをコンパイル時に確認するので、うっかりポインタを混ぜたらその場でエラーになり、録画・巻き戻しから黙って外れることがありません。状態が 1 個の平坦な構造体に収まっているからこそ、本来は別々に作り込む重い機能が、同じ <code>memcpy</code> と記述子から追加コストなしで生えてきます。</p>
+            <h3>状態は「ただのデータ」に保つ</h3>
+            <p>ゲーム状態（トップの <code>struct</code>）は「ただのデータ」——数値だけのかたまり——である必要があります。<code>std::vector</code> / <code>std::string</code> の代わりに <code>mitiru::FixedVec&lt;T,N&gt;</code> / <code>FixedString&lt;N&gt;</code> を使います。<code>MITIRU_GAME(MyGame)</code> がこれをコンパイル時に確認するので、うっかりポインタを混ぜたらその場でエラーになり、録画・巻き戻しから黙って外れることがありません。状態が 1 個のかたまりに収まっているからこそ、本来は別々に作り込む重い機能が、同じ「まるごとコピー」から追加コストなしで生えてきます。</p>
             <figure>
-              <svg class="dgm" viewBox="0 0 720 228" width="100%" style="max-width:720px" role="img" aria-label="1 個の flat POD（GameMemory）から、巻き戻し・録画リプレイ・AI Lens の 3 つが同じ memcpy と記述子で生える図">
+              <svg class="dgm" viewBox="0 0 720 228" width="100%" style="max-width:720px" role="img" aria-label="ゲームの状態のかたまりから、巻き戻し・録画リプレイ・AI 連携の 3 つが同じコピーの仕組みで生える図">
                 <defs><marker id="p1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
                 <rect class="boxy" x="18" y="84" width="186" height="62" rx="4"/>
-                <text class="lbl" x="111" y="110" text-anchor="middle">GameMemory</text>
-                <text class="sub" x="111" y="130" text-anchor="middle">1 個の flat POD</text>
-                <text class="mono" x="330" y="22" text-anchor="middle">同じ memcpy / 記述子</text>
+                <text class="lbl" x="111" y="110" text-anchor="middle">ゲームの状態</text>
+                <text class="sub" x="111" y="130" text-anchor="middle">数値だけのかたまり</text>
+                <text class="mono" x="330" y="22" text-anchor="middle">同じ「まるごとコピー」</text>
                 <rect class="box" x="470" y="20" width="232" height="50" rx="4"/>
                 <text class="lbl" x="586" y="42" text-anchor="middle">巻き戻し</text>
                 <text class="sub" x="586" y="60" text-anchor="middle">過去フレームへ memcpy</text>
                 <rect class="box" x="470" y="89" width="232" height="50" rx="4"/>
                 <text class="lbl" x="586" y="111" text-anchor="middle">録画リプレイ</text>
-                <text class="sub" x="586" y="129" text-anchor="middle">入力＋種で bit-exact</text>
+                <text class="sub" x="586" y="129" text-anchor="middle">入力＋種で 1 bit まで同じ</text>
                 <rect class="box" x="470" y="158" width="232" height="50" rx="4"/>
-                <text class="lbl" x="586" y="180" text-anchor="middle">AI Lens</text>
+                <text class="lbl" x="586" y="180" text-anchor="middle">AI 連携</text>
                 <text class="sub" x="586" y="198" text-anchor="middle">構造化 JSON で読む</text>
                 <line class="arr" x1="204" y1="108" x2="468" y2="46"  marker-end="url(#p1)"/>
                 <line class="arr" x1="204" y1="115" x2="468" y2="114" marker-end="url(#p1)"/>
                 <line class="arr" x1="204" y1="122" x2="468" y2="182" marker-end="url(#p1)"/>
               </svg>
-              <figcaption>状態を 1 個の flat POD に置く——それだけで、巻き戻し・録画リプレイ・AI 可視化が<strong>同じ <code>memcpy</code> と記述子</strong>から生えます。別々に作り込むはずの重い機能が、1 つの制約の副産物になります。</figcaption>
+              <figcaption>状態を数値だけの 1 個のかたまりに置く——それだけで、巻き戻し・録画リプレイ・AI からの読み取りが<strong>同じ「まるごとコピー」</strong>から生えます。別々に作り込むはずの重い機能が、1 つの決めごとの副産物になります。</figcaption>
             </figure>
             <table class="spectable">
-              <tr><td>入力と種を記録</td><td>同じプレイを 1 bit も違わず（bit-exact）再生。リプレイがそのまま回帰テストに（<code>mitiru run --record</code> / <code>mitiru replay</code>）</td></tr>
-              <tr><td>毎フレームの状態を記録</td><td>過去フレームへ巻き戻して「なぜ HP が 50 になった」を原因の 1 行まで追える（→ <a href="#tools">⑭</a> の <code>timetravel</code>）</td></tr>
-              <tr><td>MITIRU_REFLECT で宣言</td><td>同じ flat POD を構造化 JSON として外から読める（下記 AI Lens）</td></tr>
+              <tr><td>入力と種を記録</td><td>同じプレイを 1 bit も違わず再生。リプレイがそのまま回帰テストに（<code>mitiru run --record</code> / <code>mitiru replay</code>）</td></tr>
+              <tr><td>毎フレームの状態を記録</td><td>過去フレームへ巻き戻して「なぜ HP が 50 になったか」を原因の 1 行まで追える（→ <a href="#tools">⑭</a> の巻き戻し窓）</td></tr>
+              <tr><td>MITIRU_REFLECT で宣言</td><td>同じ状態を JSON として外から読める（下記「AI から読む」）</td></tr>
             </table>
 
-            <h3>AI Lens — 同じ flat POD から、AI も全状態を読める</h3>
-            <p>フィールドを <code>MITIRU_REFLECT(MyGame, player, enemies, hp)</code> と宣言すると、エンジンがゲームの全状態（<code>GameMemory</code>）を構造化 JSON にします。<code>MITIRU_AI=1 mitiru run</code> で localhost API が立ち、現在・差分・反実仮想を叩けます。巻き戻し・録画とまったく同じ 1 つの flat POD から、AI 可視化まで生えています。</p>
+            <h3>AI から全状態を読む</h3>
+            <p>フィールドを <code>MITIRU_REFLECT(MyGame, player, enemies, hp)</code> と宣言すると、エンジンがゲームの全状態を構造化 JSON にします。<code>MITIRU_AI=1 mitiru run</code> で手元の API が立ち、現在・差分・別入力での試行を叩けます。巻き戻し・録画とまったく同じ 1 つの状態から、AI からの読み取りまで生えています。</p>
 <pre><span class="c">// ゲーム状態のフィールドを宣言するだけ（コードの追加はこれだけ）</span>
 <span class="t">MITIRU_REFLECT</span>(MyGame, player, enemies, hp);</pre>
 <pre><span class="c"># AI 用 API を立てて起動（zero-config）</span>
@@ -344,20 +363,20 @@ MITIRU_AI=1 mitiru run</pre>
             <table class="spectable">
               <tr><td>GET /api/ai/state</td><td>現在の全状態を構造化 JSON で（<code>player</code> / <code>enemies</code> / <code>hp</code> …）</td></tr>
               <tr><td>GET /api/ai/diff</td><td>フレーム間で何が変わったかの差分</td></tr>
-              <tr><td>POST /api/ai/branch</td><td>反実仮想——「この入力を続けたら?」を live を壊さず試行</td></tr>
+              <tr><td>POST /api/ai/branch</td><td>もし別の入力だったら——「この入力を続けたら?」を今の実行を壊さず試す</td></tr>
             </table>
             <p>敵リストのような「struct の配列」を読ませるときは、要素の struct を <code>MITIRU_REFLECT_STRUCT</code> で先に宣言します（どちらもグローバルスコープに書く）:</p>
 <pre><span class="c">// FixedVec&lt;Enemy, N&gt; の要素 struct を先に（ネストは 1 段。登録は 8 個まで）</span>
 <span class="t">MITIRU_REFLECT_STRUCT</span>(Enemy, x, y, alive);
 <span class="t">MITIRU_REFLECT</span>(MyGame, player, enemies, hp);   <span class="c">// 本体。各マクロ最大 16 フィールド</span></pre>
-            <div class="note"><strong>1 つの設計判断が差別化の土台になっている。</strong> 状態を 1 個の flat POD に置くという制約が、巻き戻し・録画リプレイ・AI 可視化という別々の機能を、追加コストなしで同じ仕組みから生やしています。詳しい思想は <a href="ai.html#why">AI ページの「なぜできるか — flat POD と決定論の果実」</a> へ。</div>
+            <div class="note"><strong>1 つの設計判断が土台になっている。</strong> 状態を数値だけの 1 個のかたまりに置くという決めごとが、巻き戻し・録画リプレイ・AI からの読み取りという別々の機能を、追加コストなしで同じ仕組みから生やしています。詳しくは <a href="ai.html#why">AI ページの「なぜできるか」</a> へ。</div>
 
             <!-- ── 巻き戻し → ホットリロード → 再適用 ── -->
             <h3 id="resim">巻き戻して、直して、そこから再生</h3>
-            <p>エンジンは直近 5 秒の<strong>状態と入力</strong>を常時保持しています。バグの瞬間を見つけたら巻き戻し、コードを直して保存（ホットリロード）すると、<strong>同じ入力がそこから再適用され、直したコードでバグの瞬間をもう一度見られます</strong>。再現手順を手で組み立て直す必要がありません。状態が 1 個の flat POD だからできる、このエンジン固有の開発ループです。</p>
+            <p>エンジンは直近 5 秒の<strong>状態と入力</strong>を常時保持しています。バグの瞬間を見つけたら巻き戻し、コードを手直しして保存（ホットリロード）すると、<strong>同じ入力がそこから再び流れ、新しいコードでバグの瞬間をもう一度見られます</strong>。再現手順を手で組み立て直す必要がありません。状態を 1 個のかたまりに置いているからできる、このエンジンならではの開発ループです。</p>
 
             <!-- ── ⑪ 音 ─────────────────────────────── -->
-            <h2 id="sound">⑪ 音 — 効果音・BGM</h2>
+            <h2 id="sound">⑪ 音</h2>
             <p>音は <code>hud</code> から id で鳴らします（鳴らしたい瞬間に呼ぶだけ）。<code>update(Input in, Hud hud, float dt)</code> の形にして:</p>
 <pre>hud.play(<span class="s">"hit"</span>);                <span class="c">// SE を id で鳴らす（第 2 引数は音量）</span>
 hud.play(<span class="s">"hit"</span>, 0.8f, 1.1f);     <span class="c">// 第 3 引数はピッチ — 連発しても痩せない散らし</span>
@@ -372,15 +391,15 @@ hud.stopMusic(0.5f);             <span class="c">// BGM を止める（0.5 秒�
             <figure><img src="assets/tool-mixer.png" alt="mixer ツール窓。マスター音量フェーダーと再生中チャンネルの VU メーター" loading="lazy"><figcaption><code>mixer</code> 窓 — マスター音量と再生中チャンネルの VU。</figcaption></figure>
 
             <!-- ── ⑫ 演出 ─────────────────────────────── -->
-            <h2 id="juice">⑫ 手応えの演出 — フラッシュ・画面揺れ・スクショ</h2>
+            <h2 id="juice">⑫ 手応えの演出</h2>
             <p>操作の「手応え」は <code>hud</code> の一発エフェクトと、<code>draw</code> 側のちょっとした工夫で足せます。</p>
 <pre>hud.flash(color::White, 0.18f);   <span class="c">// 画面を一瞬その色にフラッシュ（被弾・ボス登場）</span>
-hud.shake(0.3f, 8.0f);            <span class="c">// 画面揺れ 0.3 秒・振幅 8px（リプレイも bit-exact）</span>
+hud.shake(0.3f, 8.0f);            <span class="c">// 画面揺れ 0.3 秒・振幅 8px（リプレイでも 1 bit まで同じ）</span>
 hud.hitStop(0.08f);               <span class="c">// ヒットストップ — 0.08 秒だけ時が止まる（撃破・パリィの手応え）</span>
 hud.fadeOut(0.4f);                <span class="c">// 画面を黒で覆う。場面転換は fadeOut → 切替 → fadeIn(0.4f)</span>
 hud.letterbox(0.8f, 0.4f);        <span class="c">// 上下の黒帯（イベント・カットシーン。戻すのは letterbox(0)）</span></pre>
             <h3>セーブ・カメラ</h3>
-            <p>状態が flat POD だから、<strong>セーブはまるごとコピー 1 行</strong>です。カメラも宣言して使うだけ:</p>
+            <p>状態がまるごとコピーできるから、<strong>セーブはコピー 1 行</strong>です。カメラも宣言して使うだけ:</p>
 <pre>hud.save(<span class="s">"slot0"</span>);              <span class="c">// ゲームの全状態をまるごとセーブ（巻き戻し・リプレイと同一機構）</span>
 hud.load(<span class="s">"slot0"</span>);              <span class="c">// 復元。リプレイ再生中でも再現が壊れない設計</span>
 
@@ -400,7 +419,7 @@ s.endCamera();                          <span class="c">// HUD 等の画面固�
 s.drawRectCentered(px + ox, py + oy, 40, 40, color::White);</pre>
             <p>パーティクル（粒子）も「位置・速度・寿命を持つ小さな四角の配列を <code>update</code> で進めて <code>draw</code> で描く」だけ。寿命が尽きたら <code>alive=false</code> にして枠を再利用すれば、確保しっぱなしで軽く回せます。</p>
             <h3>クールダウン・演出の進行 — Timer / Tween01</h3>
-            <p>「<code>t += dt; if (t &gt; x)</code>」の手書きパターンは <code>mitiru::Timer</code> / <code>mitiru::Tween01</code> で置き換えられます。どちらも flat POD なので状態の <code>struct</code> にそのまま埋められ、巻き戻し・リプレイに自動で乗ります。</p>
+            <p>「<code>t += dt; if (t &gt; x)</code>」の手書きパターンは <code>mitiru::Timer</code> / <code>mitiru::Tween01</code> で置き換えられます。どちらもただのデータなので状態の <code>struct</code> にそのまま埋められ、巻き戻し・リプレイに自動で乗ります。</p>
 <pre><span class="k">struct</span> <span class="t">MyGame</span> {
     mitiru::<span class="t">Timer</span>   spawnTimer;   <span class="c">// 0.5 秒ごとに敵を出す</span>
     mitiru::<span class="t">Tween01</span> fadeIn;       <span class="c">// 1.2 秒かけて 0→1</span>
@@ -413,7 +432,7 @@ s.drawRectCentered(px + ox, py + oy, 40, 40, color::White);</pre>
             <p>レシピ: カットシーン（移動 → セリフ → フェード）のような組み合わせの手順は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/EVENT_RECIPES.md" target="_blank" rel="noopener">docs/EVENT_RECIPES.md（GitHub）</a> にまとまっています。</p>
 
             <!-- ── ⑬ HTML UI ──────────────────────────── -->
-            <h2 id="htmlui">⑬ HTML / CSS で画面 — HUD・メニューを Web で</h2>
+            <h2 id="htmlui">⑬ HTML / CSS で画面</h2>
             <p>スコア表示・メニュー・ダイアログは、C++ で描くより HTML / CSS が得意です。C++ は値を「送る」だけ、HTML 側は <code>data-m-*</code> 属性で「受け取る」だけ——つなぎの JavaScript は不要です。</p>
 <pre><span class="c">// C++: 名前を付けて値を送る</span>
 hud.set(<span class="s">"view.hud.score"</span>, score);   <span class="c">// int / float / bool / const char* に対応</span>
@@ -425,11 +444,11 @@ hud.set(<span class="s">"view.boss.active"</span>, <span class="k">true</span>);
             <div class="note"><strong>サンプルで動きを見たいとき。</strong> ゲーム本体は C++、HUD は HTML / CSS という構成は、同梱の <code>rewind</code> など各サンプルでそのまま確認できます。<code>mitiru new</code> で作るひな型も最初からこの形です。</div>
 
             <!-- ── ⑭ ツール窓 ─────────────────────────── -->
-            <h2 id="tools">⑭ デバッグ窓 — 必要な道具だけ、別ウィンドウで</h2>
+            <h2 id="tools">⑭ デバッグ窓</h2>
             <p>巨大なエディタは開きません。fps を見たい・状態を覗きたい——欲しい道具だけを小さな独立ウィンドウで開きます。ゲーム画面は汚れず、スクショに余計なものが映りません。どれも HTML/CSS で出来た別ウィンドウです。</p>
             <figure><img src="assets/tool-perf.png" alt="perf 窓: fps と frame time のグラフ" loading="lazy"><figcaption><code>Perf</code> — fps / フレーム時間</figcaption></figure>
             <figure><img src="assets/tool-inspect.png" alt="inspector 窓: 送った値の一覧" loading="lazy"><figcaption><code>Inspector</code> — 観察データ一覧</figcaption></figure>
-            <figure><img src="assets/tool-timetravel.png" alt="巻き戻し窓: 過去フレームをコマ送りで行き来" loading="lazy"><figcaption><code>TimeTravel</code> — 巻き戻し</figcaption></figure>
+            <figure><img src="assets/tool-timetravel.png" alt="巻き戻し窓: 過去フレームをコマ送りで行き来" loading="lazy"><figcaption><code>Rewind</code> — 巻き戻し</figcaption></figure>
             <figure><img src="assets/tool-scene.png" alt="scene tree 窓: 状態の階層ツリー" loading="lazy"><figcaption><code>SceneTree</code> — 階層ツリー</figcaption></figure>
             <figure><img src="assets/tool-mixer.png" alt="mixer 窓: 音量と VU" loading="lazy"><figcaption><code>AudioMixer</code> — 音量・VU</figcaption></figure>
 <pre>hud.open(<span class="t">Tool</span>::Perf);        <span class="c">// 開きたい所に 1 行（何度呼んでも 1 回だけ開く）</span>
@@ -437,7 +456,7 @@ hud.set(<span class="s">"view.boss.active"</span>, <span class="k">true</span>);
             <table class="spectable">
               <tr><td>Tool::Perf</td><td>fps / フレーム時間。重くなっていないか</td></tr>
               <tr><td>Tool::Inspector</td><td><code>hud.watch(...)</code> で送った値を一覧</td></tr>
-              <tr><td>Tool::TimeTravel</td><td>過去フレームへ巻き戻して状態の推移を見る</td></tr>
+              <tr><td>Tool::Rewind</td><td>過去フレームへ巻き戻して状態の推移を見る</td></tr>
               <tr><td>Tool::Replay</td><td>録画（.mtrr）をフレーム単位で再生</td></tr>
               <tr><td>Tool::SceneTree</td><td>観察データの階層構造をツリー表示</td></tr>
               <tr><td>Tool::AudioMixer</td><td>音量・再生中チャンネルの VU</td></tr>
@@ -445,14 +464,14 @@ hud.set(<span class="s">"view.boss.active"</span>, <span class="k">true</span>);
             </table>
             <p>コードを変えずに一時的に覗くだけなら、起動時に <code>mitiru run --inspect perf</code>。普段はコードから（どの窓を使うか残って分かりやすい）、ちょい見はコマンド、と使い分けます。これらの窓自体もすべて HTML/CSS で出来ています。</p>
             <h3>グラフに出す系列を宣言する — MITIRU_GAME_SERIES</h3>
-            <p><code>TimeTravel</code> 窓のグラフに「HP の推移」を出すのに、履歴を自分で貯める必要はありません。<code>MITIRU_GAME</code> の<strong>代わりに</strong> <code>MITIRU_GAME_SERIES</code> を書いて観測 probe（状態から <code>double</code> を 1 個返す純関数）を宣言すると、ホストが毎フレームの状態履歴に probe を適用して系列を自動生成します。</p>
+            <p><code>Rewind</code> 窓のグラフに「HP の推移」を出すのに、履歴を自分で貯める必要はありません。<code>MITIRU_GAME</code> の<strong>代わりに</strong> <code>MITIRU_GAME_SERIES</code> を書いて観測 probe（状態から <code>double</code> を 1 個返す純関数）を宣言すると、ホストが毎フレームの状態履歴に probe を適用して系列を自動生成します。</p>
 <pre><span class="k">double</span> hpProbe(<span class="k">const void</span>* m) { <span class="k">return</span> <span class="k">static_cast</span>&lt;<span class="k">const</span> <span class="t">MyGame</span>*&gt;(m)-&gt;hp; }
 
 <span class="t">MITIRU_GAME_SERIES</span>(MyGame,
     { <span class="s">"hp"</span>, <span class="s">"HP"</span>, &amp;hpProbe, 35.0, 1 });  <span class="c">// 末尾 2 つ: しきい値 35 + 跨ぎ判定 ON（下抜けで danger marker）</span></pre>
 
             <!-- ── ⑮ サブシステム単独起動 ─────────────── -->
-            <h2 id="subsys">⑮ サブシステム単独起動 — 1 関心事 = 1 exe</h2>
+            <h2 id="subsys">⑮ サブシステム単独起動</h2>
             <p>エンジンを構成するサブシステムは、それぞれ単独の exe として起動できます。ゲームロジックも HTML UI（Chromium）も読み込まず、その層「だけ」が窓に出ます。「描画が壊れたのか、ゲームが壊れたのか」の切り分けや、エンジンが毎フレーム何を見ているかの確認に使います。</p>
 <pre>mitiru renderer        <span class="c"># 描画パイプラインだけ — グリッド + 往復する矩形のテストパターン</span>
 mitiru input           <span class="c"># 入力だけ — 256 キーのライブグリッド + マウス + 押下ログ</span>
@@ -461,7 +480,7 @@ mitiru audio           <span class="c"># 音だけ — 440Hz トーン + レベ�
             <p>実体は <code>mitiru_subsys_renderer.exe</code> などの小さな exe で、配布 zip に <code>mitiru.exe</code> と並んで同梱されています。終了は基本 ESC。各サブシステムが何を切り出しているかの詳細は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/SUBSYSTEMS.md" target="_blank" rel="noopener">docs/SUBSYSTEMS.md（GitHub）</a> に。</p>
 
             <!-- ── ⑯ 当たり判定 ───────────────────────── -->
-            <h2 id="collision">⑯ 当たり判定 — 矩形の交差・点の内包</h2>
+            <h2 id="collision">⑯ 当たり判定</h2>
             <p>タイルマップの上を動くなら、衝突解決ごと 1 つの関数でできます:</p>
 <pre><span class="c">// 移動量 dx,dy をタイル衝突で解決した位置 + どの面に当たったかが返る (貫通しない)</span>
 <span class="k">auto</span> r = mitiru::moveAndCollide(x, y, w, h, dx, dy, 16.0f,
@@ -477,11 +496,11 @@ x = r.x; y = r.y;
             <p>円どうしなら距離で <code>dx*dx + dy*dy &lt;= (r1+r2)*(r1+r2)</code>（<code>std::sqrt</code> を避けると速い）。クリック判定は「マウス座標を含む矩形/円があるか」を <code>contains</code> や距離で調べるだけです。</p>
 
             <!-- ── ⑰ 設定 ─────────────────────────────── -->
-            <h2 id="config">⑰ プロジェクト設定 — mitiru.toml</h2>
+            <h2 id="config">⑰ プロジェクト設定</h2>
             <p>ウィンドウサイズや HTML UI の有無は、プロジェクト直下の <code>mitiru.toml</code> で決めます。<code>mitiru new</code> がひな型を作ります。よく触るキーはこのあたり。</p>
 <pre>[project]
 name   = <span class="s">"my-game"</span>
-engine = <span class="s">"0.23.0"</span>      <span class="c"># 使うエンジンの版。mitiru update で最新に上げる</span>
+engine = <span class="s">"0.24.0"</span>      <span class="c"># 使うエンジンの版。mitiru update で最新に上げる</span>
 
 [window]
 width  = 1280
@@ -493,11 +512,11 @@ enabled = <span class="k">false</span>        <span class="c"># 任意: HTML/CSS
             <p><code>[cef] enabled = false</code> にすると、HTML UI を使わない代わりに配布物から Chromium が丸ごと外れて軽くなります（→ <a href="distribute.html">配布する</a>）。完成したら <code>mitiru dist</code> で、そのまま動く配布フォルダになります。</p>
 
             <div class="cards">
-              <div class="card"><h3>はじめてのゲーム<span class="en">tutorial</span></h3><p>「スター・キャッチ」を最後まで作り、骨組みから手応えまで通す。</p></div>
+              <div class="card"><h3>はじめてのゲーム<span class="en">tutorial</span></h3><p>赤べこの横スクロールを最後まで作り、骨組みから手応えまで通す。</p></div>
               <div class="card"><h3>画面を作る<span class="en">html ui</span></h3><p>HUD を HTML / CSS で。<code>data-m-*</code> の主な属性と作例。</p></div>
               <div class="card"><h3>API リファレンス<span class="en">api</span></h3><p>全クラス・全メソッドの正確な定義。逆引きの裏付けに。</p></div>
             </div>
-            <div class="note"><a href="tutorial.html">はじめてのゲーム</a> で「スター・キャッチ」を最後まで作るか、<a href="ui.html">画面を作る</a> で HUD を HTML / CSS に置き換える。</div>
+            <div class="note"><a href="tutorial.html">はじめてのゲーム</a> で赤べこの横スクロールを最後まで作るか、<a href="ui.html">画面を作る</a> で HUD を HTML / CSS に置き換える。</div>
 
           </div>
         </div>
@@ -513,6 +532,27 @@ enabled = <span class="k">false</span>        <span class="c"># 任意: HTML/CSS
         <a href="install.html">インストール</a>
       </div>
     </footer>
+    </div>
+    <aside class="toc">
+      <div class="t">このページ</div>
+      <a href="#basic">① 基本形</a>
+      <a href="#shapes">② 図形</a>
+      <a href="#color">③ 色</a>
+      <a href="#text">④ 文字</a>
+      <a href="#transform">⑤ 変換</a>
+      <a href="#sprite">⑥ スプライト</a>
+      <a href="#gltf">⑦ 3D</a>
+      <a href="#input">⑧ 入力</a>
+      <a href="#pad">⑨ パッド</a>
+      <a href="#ai">⑩ 乱数・AI 連携</a>
+      <a href="#sound">⑪ 音</a>
+      <a href="#juice">⑫ 演出</a>
+      <a href="#htmlui">⑬ HTML / CSS UI</a>
+      <a href="#tools">⑭ デバッグ窓</a>
+      <a href="#subsys">⑮ 単独起動</a>
+      <a href="#collision">⑯ 当たり判定</a>
+      <a href="#config">⑰ 設定</a>
+    </aside>
   </div>
 </div>
 </body>

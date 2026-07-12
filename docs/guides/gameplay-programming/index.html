@@ -375,26 +375,18 @@
   </header>
 
   
-  <aside class="page-summary">
-    <h2 class="page-summary__h">このページで分かること</h2>
-    <ul>
-      <li>C&#43;&#43; で gameplay を書く流れ</li><li>Scene / StateMachine / Timer の組み合わせ</li><li>header-only エンジンを consumer から呼ぶ手順</li>
-    </ul>
-  </aside>
-  
 
   <div class="page-with-toc">
     <div class="page-article__body">
       <h1 id="c-gameplay-guide--mitiruengine">C++ Gameplay Guide — MitiruEngine</h1>
 <blockquote>
 <p><strong>対象読者</strong>: MitiruEngine 上で <strong>初めて C++ gameplay を書く</strong> 開発者。
-consumer 側ゲームの作者が、エンジンが提供する P0 プリミティブを
+consumer 側ゲームの作者が、エンジンが提供する基本プリミティブを
 組み合わせてシーン遷移・状態管理・タイマー・UI signal 配線を行うための入口ガイド。</p>
 </blockquote>
 <hr>
 <h2 id="1-overview">1. Overview</h2>
-<p>MitiruEngine は 2026-05-14 のアーキテクチャピボットで
-<strong>Siv3D ロールモデル</strong> に寄せた C++ engine 路線にピボットした。
+<p>MitiruEngine は 2026-05-14 に <strong>Siv3D ロールモデル</strong> に寄せた C++ engine 路線へピボットした。
 gameplay の決定権は <strong>すべて C++</strong> にあり、CEF (HTML/CSS/JS) は <strong>View 専用</strong> に格下げされた。</p>
 <p>3 行で整理すると:</p>
 <ol>
@@ -406,19 +398,17 @@ gameplay 関数の RPC は禁止。</li>
 </ol>
 <p>関連 doc:</p>
 <ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — C++ gameplay / CEF view-only の設計判断</li>
 <li><a href="HYBRID_RUNTIME.md">HYBRID_RUNTIME.md</a> — レイヤー分担の歴史的経緯</li>
 <li><a href="BRIDGE_API_CONTRACT.md">BRIDGE_API_CONTRACT.md</a> — bridge 責務定義 (signal-only)</li>
-<li><a href="cpp-gameplay-api-gaps.md">cpp-gameplay-api-gaps.md</a> — P0/P1 ロードマップ</li>
+<li><a href="cpp-gameplay-api-gaps.md">cpp-gameplay-api-gaps.md</a> — gameplay プリミティブのロードマップ</li>
+<li><a href="../examples/cpp_gameplay_minimal/">examples/cpp_gameplay_minimal/</a> — 動く最小例</li>
 </ul>
 <hr>
 <h2 id="2-最小例">2. 最小例</h2>
-<p>以下は <strong>headless で動く最小ループ</strong> のスケルトン (動くサンプルは Round 39 で刷新中)。
-新しいプロジェクトに貼り付けるなら:</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mitiru new my-game
-</span></span><span class="line"><span class="cl"><span class="nb">cd</span> my-game
-</span></span><span class="line"><span class="cl"><span class="c1"># src/main.cpp を下のスケルトンに置き換える</span>
-</span></span><span class="line"><span class="cl">mitiru run
+<p><code>examples/cpp_gameplay_minimal/main.cpp</code> が <strong>ウィンドウを出さずに (headless) 動く最小ループ</strong> を実装している。
+ビルド:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cmake --preset default
+</span></span><span class="line"><span class="cl">cmake --build build --config Debug --target mitiru_cpp_gameplay_minimal
 </span></span></code></pre></div><p>main loop のスケルトンはこれだけ:</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">scene</span><span class="o">::</span><span class="n">SceneRouter</span>        <span class="n">router</span><span class="p">;</span>
 </span></span><span class="line"><span class="cl"><span class="n">mitiru</span><span class="o">::</span><span class="n">input</span><span class="o">::</span><span class="n">BridgeActionRouter</span> <span class="n">actions</span><span class="p">;</span>
@@ -723,7 +713,7 @@ JS には「ボタンが押された」だけ言わせて、<strong>どの scene
 </ul>
 <hr>
 <h2 id="5-アンチパターン">5. アンチパターン</h2>
-<p>アーキテクチャ方針 / <code>docs/BRIDGE_API_CONTRACT.md</code> と整合する 5 つの NG パターン。</p>
+<p>BRIDGE_API_CONTRACT.md と整合する 5 つの NG パターン。</p>
 <ul>
 <li>
 <p><strong>JS で state machine を持つな</strong>
@@ -753,10 +743,10 @@ C++ → JS は <strong>常に決定済みの表示指示</strong>。<code>emit(&
 <hr>
 <h2 id="6-references">6. References</h2>
 <ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — C++ gameplay / CEF view-only の設計判断</li>
 <li><a href="HYBRID_RUNTIME.md">docs/HYBRID_RUNTIME.md</a></li>
 <li><a href="BRIDGE_API_CONTRACT.md">docs/BRIDGE_API_CONTRACT.md</a></li>
 <li><a href="cpp-gameplay-api-gaps.md">docs/cpp-gameplay-api-gaps.md</a></li>
+<li><a href="../examples/cpp_gameplay_minimal/main.cpp">examples/cpp_gameplay_minimal/main.cpp</a></li>
 </ul>
 <p>ヘッダ:</p>
 <ul>

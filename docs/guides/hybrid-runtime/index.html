@@ -375,13 +375,6 @@
   </header>
 
   
-  <aside class="page-summary">
-    <h2 class="page-summary__h">このページで分かること</h2>
-    <ul>
-      <li>C&#43;&#43; / CEF / JSON 3 層の責務</li><li>signal-only bridge の設計理由</li><li>Mode A / Mode B の使い分け</li>
-    </ul>
-  </aside>
-  
 
   <div class="page-with-toc">
     <div class="page-article__body">
@@ -394,7 +387,6 @@
 <ul>
 <li>bridge の具体的 API: <a href="BRIDGE_API_CONTRACT.md"><code>BRIDGE_API_CONTRACT.md</code></a></li>
 <li>C++ gameplay API の不足リスト: <a href="cpp-gameplay-api-gaps.md"><code>cpp-gameplay-api-gaps.md</code></a></li>
-<li>設計判断のサマリ: <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a></li>
 </ul>
 </blockquote>
 <p>MitiruEngine は <strong>C++ ゲームエンジン</strong> である。CEF は綺麗な HTML / CSS UI
@@ -414,7 +406,7 @@
 <pre tabindex="0"><code>┌──────────────────────────────────────────────────────────────┐
 │  GAME LOGIC  (C++)                                            │
 │  ─────────────────────────────────────────────────────────── │
-│  ▸ scene flow         ▸ minigame state     ▸ scripted-scene VM│
+│  ▸ scene flow         ▸ minigame state     ▸ novel VM         │
 │  ▸ UI state (model)   ▸ dialogue trees     ▸ interaction      │
 │  ▸ save / load model  ▸ AI / pathfinding   ▸ physics          │
 │  ─────────  すべて C++ で実装。state は C++ が単独所有  ────── │
@@ -474,7 +466,7 @@
           <td>状態と遷移は C++。CEF には「今この絵を出して」と指示するだけ。</td>
       </tr>
       <tr>
-          <td><strong>Scripted scene / dialogue VM</strong></td>
+          <td><strong>Novel / dialogue VM</strong></td>
           <td style="text-align: center"><strong>C++</strong></td>
           <td>スクリプトは JSON、VM (進行・分岐・条件評価) は C++。</td>
       </tr>
@@ -649,7 +641,7 @@ MitiruEngine の強みは「LLM が書きやすい言語を選んだ」ことで
       <tr>
           <td><strong>Scenario / scripted content</strong></td>
           <td><strong>JSON + C++ interpreter</strong></td>
-          <td>Scenario script は JSON、VM は C++。</td>
+          <td>Novel script は JSON、VM は C++。</td>
       </tr>
       <tr>
           <td><strong>Interactive gameplay</strong> (per-frame logic, state machine)</td>
@@ -737,7 +729,7 @@ C++ に移す。詳細な移行リストは <a href="cpp-gameplay-api-gaps.md"><
 </blockquote>
 <h3 id="旧-基本姿勢">(旧) 基本姿勢</h3>
 <blockquote>
-<p>&ldquo;MitiruEngine in Mode B is intentionally a hybrid runtime: C++ provides
+<p>&ldquo;MitiruEngine with CEF enabled is intentionally a hybrid runtime: C++ provides
 platform services, CEF hosts a JavaScript game runtime, and the two talk
 over a typed bridge. Most gameplay code in MitiruEngine is JavaScript.
 C++ hosts CEF and provides native services. When a specific JS system
@@ -745,7 +737,7 @@ becomes hot or needs hardware-adjacent access, it is <em>promoted</em> to a C++
 system via the bridge.&rdquo;</p>
 </blockquote>
 <p>これは「Electron + native backend」モデルだった。minigame の
-state machine、drag-and-drop、scripted-scene VM、HUD logic、scene router は
+state machine、drag-and-drop、novel VM、HUD logic、scene router は
 すべて V8 inside CEF で動いていた。</p>
 <h3 id="旧-decision-matrix--js-first">(旧) Decision matrix — JS first</h3>
 <table>
@@ -761,8 +753,8 @@ state machine、drag-and-drop、scripted-scene VM、HUD logic、scene router は
           <td style="text-align: center">JS</td>
       </tr>
       <tr>
-          <td>Scripted scene / dialogue / cutscene</td>
-          <td style="text-align: center">JS (<code>mitiru.novel</code> 旧 API)</td>
+          <td>Novel / dialogue / cutscene</td>
+          <td style="text-align: center">JS (<code>mitiru.novel</code>)</td>
       </tr>
       <tr>
           <td>Minigame state machine (cooking, puzzle)</td>
@@ -813,10 +805,10 @@ JS fallback を残す形だった。</p>
 </blockquote>
 <p>このパスも廃止。設計者の iteration は JSON データと C++ hot reload
 (または開発時の <code>imgui</code> ライブツール) で吸収する方針に変わる。</p>
-<h3 id="旧-mode-a--mode-b-の分離">(旧) Mode A / Mode B の分離</h3>
-<p>旧 doc は「Mode A (Native C++ only)」と「Mode B (Hybrid, JS gameplay)」
-の二モード制を取っていた。新方針では実質的に <strong>Mode A 寄りに一本化</strong>
-し、CEF は「Mode A で使える追加の view 表現手段」という位置付けに変わ
+<h3 id="旧-二構成-cef-なし--cef-あり-の分離">(旧) 二構成 (CEF なし / CEF あり) の分離</h3>
+<p>旧 doc は「Native C++ only」と「Hybrid (JS gameplay)」
+の二モード制を取っていた。新方針では実質的に <strong>native 構成 (CEF なし) 寄りに一本化</strong>
+し、CEF は「C++ native ゲームに追加できる view 表現手段」という位置付けに変わ
 る。<code>SCOPE.md</code> の記述は別タスクで再整理予定。</p>
 
     </div>
@@ -844,7 +836,7 @@ JS fallback を残す形だった。</p>
         <li><a href="#旧-decision-matrix--js-first">(旧) Decision matrix — JS first</a></li>
         <li><a href="#旧-promotion-path-js--c">(旧) Promotion path: JS → C++</a></li>
         <li><a href="#旧-demotion-c--js">(旧) Demotion: C++ → JS</a></li>
-        <li><a href="#旧-mode-a--mode-b-の分離">(旧) Mode A / Mode B の分離</a></li>
+        <li><a href="#旧-二構成-cef-なし--cef-あり-の分離">(旧) 二構成 (CEF なし / CEF あり) の分離</a></li>
       </ul>
     </li>
   </ul>

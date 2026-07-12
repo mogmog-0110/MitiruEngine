@@ -200,29 +200,26 @@ void MySystem::update(float dt) {
 ### 使用例
 
 ```bash
-# CI / capture script から:
+# CI / capture script から (host が DLL を load する構成):
 MITIRU_AUTOTEST=1 \
-MITIRU_AUTOTEST_OUTPUT=C:/build/screenshots/cef_minimal \
-build/examples/cef_minimal/Debug/mitiru_cef_minimal.exe
+MITIRU_AUTOTEST_OUTPUT=C:/build/screenshots/html_hud \
+build/apps/mitiru_host/mitiru_host.exe build/apps/mitiru_host/html_hud/html_hud.dll
 
 # 結果:
-#   C:/build/screenshots/cef_minimal/auto_test.png
-#   C:/build/screenshots/cef_minimal/auto_test_report.json
+#   C:/build/screenshots/html_hud/auto_test.png
+#   C:/build/screenshots/html_hud/auto_test_report.json
 ```
 
-`tools/site/capture_examples.py` の `auto-test` strategy がこのフックを
-使って 4 つの CEF サンプル (`cef_minimal` / `cef_overlay` / `cef_state_bridge`
-/ `cef_transition`) を撮影する。Win32 `PrintWindow` フォールバックよりも
-GPU コンポジット結果を正確に取得でき、ヘッドレス (ウィンドウを出さない) CI でも動作する。
+Win32 `PrintWindow` フォールバックよりも GPU コンポジット結果を正確に取得でき、
+ヘッドレス (ウィンドウを出さない) CI でも動作する。
 
 ### 注意点
 
 - **`MITIRU_AUTOTEST_OUTPUT` には絶対パスを渡すこと**。相対パスは exe の起動
   CWD に依存するため信頼できない。capture script 側で常に絶対パスを生成する。
 - env var フックは `EngineConfig` を経由する consumer (`engine.run(game, cfg)`)
-  にのみ作用する。`examples/cpp_gameplay_minimal` のように Engine を使わない
-  純粋な headless ミニ exe には効かないため、これらは引き続き stdout strategy
-  で撮影する。
+  にのみ作用する。Engine を使わず自前ループで回す純粋な headless ミニ exe には
+  効かないため、その種の exe は stdout strategy で撮影する。
 - `applyAutoTestEnv()` はテスト / 専用 main から再評価したい場合に直接呼べる。
   既定では `Engine::run()` が一度だけ呼ぶ。
 

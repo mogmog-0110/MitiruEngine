@@ -53,13 +53,6 @@ exe は従来どおり `build/examples/mitiru_subsys_<name>/` に出る。
 | `subsys/mitiru_subsys_input` | input のみ。256 VK の live grid + mouse 状態 + press ログ |
 | `subsys/mitiru_subsys_scene` | scene loop のみ。12 entity の積分 + 縁反射 |
 
-## 検証用 / 凍結中
-
-| Example | 状態 |
-|---|---|
-| `why_demo` | `mitiru why` (replay 分岐の根本原因特定) の検証用ミニゲーム (dev 専用) |
-| `neon_asteroids` | ネオン Asteroids ローグライク (~1400 行)。**開発凍結中** — コードに触らない |
-
 ## インフラ (host / tool) — `apps/` 所在
 
 製品・開発基盤は [`apps/`](../apps/) にある (examples は教材とデモ専用)。host 本体

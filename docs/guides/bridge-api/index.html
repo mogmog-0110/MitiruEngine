@@ -375,23 +375,16 @@
   </header>
 
   
-  <aside class="page-summary">
-    <h2 class="page-summary__h">このページで分かること</h2>
-    <ul>
-      <li>JS と C&#43;&#43; をつなぐ最小の bridge 仕様</li><li>JS から C&#43;&#43; にイベントを送る形</li><li>C&#43;&#43; から JS に view 命令を返す形</li>
-    </ul>
-  </aside>
-  
 
   <div class="page-with-toc">
     <div class="page-article__body">
       <h1 id="bridge-api-contract--mitiruengine-cef-bridge-責務定義">Bridge API Contract — MitiruEngine CEF Bridge 責務定義</h1>
 <blockquote>
-<p><strong>関連</strong>: <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — C++ gameplay + CEF は View 専用</p>
+<p><strong>関連</strong>: <a href="HYBRID_RUNTIME.md">HYBRID_RUNTIME.md</a> — C++ gameplay + CEF は View 専用</p>
 </blockquote>
 <hr>
 <h2 id="1-責務定義">1. 責務定義</h2>
-<p>2026-05-14 のアーキテクチャピボット (gameplay は C++、CEF は view 専用) により、bridge は <strong>薄い signal 層</strong> として再定義された。</p>
+<p>アーキテクチャ方針の転換 (2026-05-14、gameplay は C++・CEF は view 専用) により、bridge は <strong>薄い signal 層</strong> として再定義された。</p>
 <h3 id="11-js--c-で許可される用途">1.1 JS → C++ で許可される用途</h3>
 <table>
   <thead>
@@ -595,7 +588,7 @@ JS 側からは <code>window.cefQuery({ request: &quot;handler|payload&quot;, on
 </blockquote>
 <hr>
 <h2 id="3-新責務での-api-surface">3. 新責務での API surface</h2>
-<p>アーキテクチャ方針に従い、bridge は以下の 2 カテゴリのみを持つ。</p>
+<p>この方針に従い、bridge は以下の 2 カテゴリのみを持つ。</p>
 <h3 id="31-js--c-request-handler-命名規則">3.1 JS → C++ request handler 命名規則</h3>
 <p><strong>形式</strong>: <code>&lt;カテゴリ&gt;.&lt;アクション&gt;</code></p>
 <p><strong>許可カテゴリ</strong>:</p>
@@ -634,7 +627,7 @@ ui.button             // ボタンクリック通知
 ui.menu.select        // メニュー項目選択通知
 ui.slider.change      // スライダー値変更通知
 ui.dialog.close       // ダイアログ閉じる操作通知
-ui.option.select      // 選択肢 (ダイアログ等) 選択通知
+ui.option.select      // 選択肢 (ノベル等) 選択通知
 </code></pre><p><strong>payload スキーマ</strong>: JSON。 <code>|</code> セパレータは低レベル transport の実装詳細であり、
 新規 handler は JSON payload を使うこと。</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsonc" data-lang="jsonc"><span class="line"><span class="cl"><span class="c1">// input.pointer 例
@@ -675,7 +668,7 @@ ui.option.select      // 選択肢 (ダイアログ等) 選択通知
       </tr>
       <tr>
           <td><code>view.dialog.*</code></td>
-          <td>ダイアログ表示制御 (会話 / カットシーン等)</td>
+          <td>ダイアログ / ノベル表示制御</td>
           <td><code>view.dialog.show</code>, <code>view.dialog.speaker</code>, <code>view.dialog.text</code></td>
       </tr>
       <tr>
@@ -849,7 +842,7 @@ ui.option.select      // 選択肢 (ダイアログ等) 選択通知
 <hr>
 <h2 id="7-参照">7. 参照</h2>
 <ul>
-<li><a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a> — レイヤー構成と設計判断</li>
+<li><a href="HYBRID_RUNTIME.md">HYBRID_RUNTIME.md</a> — アーキテクチャ方針 (C++ gameplay + CEF は view 専用)</li>
 <li><code>include/mitiru/cef/MitiruCefBridge.hpp</code> — 低レベル transport 実装</li>
 <li><code>include/mitiru/cef/StateStore.hpp</code> — typed state/event 層</li>
 <li><code>include/mitiru/cef/AudioBridge.hpp</code> — audio handler 実装例</li>
