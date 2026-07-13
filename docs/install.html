@@ -89,8 +89,8 @@ mitiru new my-game
 mitiru run</pre>
           <p>ウィンドウが開いてゲームのひな形が動きます。<code>mitiru run</code> は<strong>ビルドして 1 回起動する</strong>コマンド。作り込み中は <code>mitiru watch</code> を使うと、<strong>コードを保存するたびに自動でビルドし直し、ゲームを止めずに反映</strong>されます（＝ホットリロード）。</p>
           <figure>
-            <img src="assets/hello_showcase.webp" alt="mitiru new の既定テンプレートで出る画面。左に北斎「神奈川沖浪裏」の画像、白い四角・青い角丸・緑の円、色とりどりの跳ねるボール、「Hello, MitiruEngine!」のタイトルと説明文、右下に HTML / CSS の操作パネル（count ボタン・Lock・重力スライダー・ポンボタン）" loading="lazy">
-            <figcaption><code>mitiru new</code> の既定で出る画面です。浮世絵・図形・跳ねるボール・パーティクル・タイトル文字は C++ の描画、右下の操作パネル（count / Lock / 重力スライダー / ポン）は HTML / CSS。値は HTML ↔ C++ を往復し、つなぎの JavaScript は書きません。これが出発点になります。</figcaption>
+            <img src="assets/welcome_showcase.webp" alt="mitiru new の既定テンプレートで出る画面。左に額装した北斎「凱風快晴」の赤富士・肉球ロゴ・矢印キーで歩く赤べこ・舞い落ちる桜、右に HTML / CSS の操作パネル（4 つの図形・「赤べこの速さ」スライダー・「桜を降らせる」チェック・「おすと たまる」ボタンとゲージ）" loading="lazy">
+            <figcaption><code>mitiru new</code> の既定で出る画面です。額装した赤富士・ロゴ・矢印キーで歩く赤べこ・舞い落ちる桜は C++ の描画、右の操作パネル（図形・スライダー・チェック・ボタン・ゲージ）は HTML / CSS。値は HTML ↔ C++ を往復し、つなぎの JavaScript は書きません。これが出発点になります。</figcaption>
           </figure>
 
           <p class="note"><strong>初回ビルドだけ、5〜10 分かかります。</strong> HTML UI 用の CEF ラッパライブラリと header-only のエンジン本体を一度だけコンパイルするためです（Chromium 本体はビルド済みのものをそのまま使います）。2 回目以降は数秒。エディタは Visual Studio / VS Code / Vim / メモ帳、好きなもので構いません。うまくいかないときは <code>mitiru doctor</code> で環境を診断できます。</p>

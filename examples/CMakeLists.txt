@@ -93,6 +93,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hello_preview/hello_preview_dll.cpp")
 	mitiru_add_example(hello_preview)
 endif()
 
+# welcome_start: `mitiru new` の新既定 (welcome) テンプレの実演体 = 画面キャプチャ用
+# (install.html の頁生成専用)。左は C++ 描画の絵、右は HTML/CSS の操作パネル。
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/welcome_start/welcome_start_dll.cpp")
+	mitiru_add_example(welcome_start)
+endif()
+
 # ── 検証用 (従来形式のまま) ─────────────────────────────────────────────────
 # why_demo: `mitiru why`(分岐根本原因特定) の検証用 (dev 専用、snapshot 非同梱)。
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/why_demo/CMakeLists.txt")
