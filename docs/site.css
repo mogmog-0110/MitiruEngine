@@ -169,6 +169,14 @@ figure.wide img, .hero-shot img{ max-width:1120px; }
 .imgrow figcaption{ margin-top:.5rem; }
 @media (max-width:560px){ .imgrow{ grid-template-columns:repeat(2,1fr); } }
 
+/* ── ツール窓のギャラリー (縦長スクショを実解像度以下でグリッド表示、引き伸ばさない) ── */
+.winrow{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1.1rem 1.2rem; margin:1.4rem 0; align-items:start; }
+.winrow figure{ margin:0; text-align:center; }
+.winrow figure img{ width:100%; max-width:300px; height:auto; border:1px solid var(--line);
+  border-radius:10px; box-shadow:var(--shadow); display:inline-block; }
+.winrow figcaption{ margin-top:.5rem; }
+@media (max-width:560px){ .winrow{ grid-template-columns:repeat(2,1fr); } }
+
 /* ── カードグリッド (やわらかいピンク地) ── */
 .cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(214px,1fr)); gap:1rem; }
 .card{ background:var(--accent-soft); border:1px solid transparent; border-radius:var(--radius);

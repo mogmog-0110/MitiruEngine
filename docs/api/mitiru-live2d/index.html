@@ -1,9 +1,9 @@
-<!DOCTYPE html>
-<html lang="ja" data-base="/">
+<!doctype html>
+<html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mitiru::live2d | MitiruEngine</title>
+  <title>mitiru::live2d — MitiruEngine</title>
   
 
 
@@ -47,757 +47,161 @@
 
 
 
-  <link rel="icon" type="image/svg+xml" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="https://mogmog-0110.github.io/MitiruEngine/favicon-32.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="https://mogmog-0110.github.io/MitiruEngine/favicon-180.png">
-  <link rel="alternate icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.ico">
-  <meta name="color-scheme" content="light dark">
-  <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('theme');
-        if (t === 'dark' || t === 'light') {
-          document.documentElement.setAttribute('data-theme', t);
-        }
-      } catch (e) {   }
-    })();
-  </script>
-  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/main.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
 </head>
 <body>
-  <header class="site-header">
-  <div class="container site-header__inner">
-    <a class="site-header__brand" href="https://mogmog-0110.github.io/MitiruEngine/">
-      <span class="site-header__brand-mark" aria-hidden="true">M</span>
-      <span class="site-header__brand-name">MitiruEngine</span>
-    </a>
-    <input type="checkbox"
-           id="nav-toggle"
-           class="nav-toggle"
-           role="button"
-           aria-label="メニュー"
-           aria-controls="primary-nav">
-    <label for="nav-toggle" class="nav-toggle__label" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <line x1="3" y1="6"  x2="21" y2="6"></line>
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
-      </svg>
-    </label>
-    <nav class="site-nav" id="primary-nav" aria-label="primary">
-      <a href="https://mogmog-0110.github.io/MitiruEngine/">ホーム</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/tutorial.html">はじめてのゲーム</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/features.html">機能リファレンス</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/examples/">サンプル</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/architecture/">アーキテクチャ</a>
-      <a href="https://mogmog-0110.github.io/MitiruEngine/api/">API</a>
-      
-<button type="button"
-        class="search-trigger"
-        id="site-search-trigger"
-        aria-label="サイト内検索"
-        aria-haspopup="dialog"
-        aria-expanded="false"
-        aria-controls="site-search-dialog">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <circle cx="11" cy="11" r="7"></circle>
-    <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
-  </svg>
-  <span class="visually-hidden">サイト内検索</span>
-</button>
+<a class="skip-link" href="#main">本文へスキップ</a>
 
-<div class="search-dialog"
-     id="site-search-dialog"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="site-search-title"
-     data-pagefind-ignore
-     hidden>
-  <div class="search-dialog__backdrop" data-search-close></div>
-  <div class="search-dialog__panel" role="document">
-    <div class="search-dialog__header">
-      <h2 id="site-search-title" class="search-dialog__title">サイト内検索</h2>
-      <button type="button"
-              class="search-dialog__close"
-              data-search-close
-              aria-label="閉じる">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div id="site-search" class="search-dialog__body"></div>
-  </div>
-</div>
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.24</span>
+  </div></header>
 
-
-
-<link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.css">
-<script src="https://mogmog-0110.github.io/MitiruEngine/pagefind/pagefind-ui.js" defer></script>
-
-<script>
-  (function () {
-    var trigger = document.getElementById('site-search-trigger');
-    var dialog  = document.getElementById('site-search-dialog');
-    if (!trigger || !dialog) return;
-
-    var mountPoint = dialog.querySelector('#site-search');
-    var closers    = dialog.querySelectorAll('[data-search-close]');
-    var docEl      = document.documentElement;
-    var lang       = (docEl.getAttribute('lang') || 'en').toLowerCase();
-    var pagefindBundlePath = "https://mogmog-0110.github.io/MitiruEngine/pagefind/";
-    var i18nStrings = {
-      placeholder:       "ドキュメントを検索…",
-      clear_search:      "クリア",
-      load_more:         "さらに読み込む",
-      search_label:      "サイト内検索",
-      filters_label:     "Filters",
-      zero_results:      "「[SEARCH_TERM]」に一致する結果はありません",
-      many_results:      "[SEARCH_TERM] の検索結果 [COUNT] 件",
-      one_result:        "[SEARCH_TERM] の検索結果 [COUNT] 件",
-      alt_search:        "代わりに [DISPLAY_QUERY] の結果を表示しています",
-      search_suggestion: "[SEARCH_TERM] の検索結果はありません。[DISPLAY_QUERY] でお試しください",
-      searching:         "検索中…"
-    };
-
-    var instance = null;
-    var lastFocus = null;
-
-    function ensureInstance() {
-      if (instance) return instance;
-      if (typeof window.PagefindUI !== 'function') return null;
-      instance = new window.PagefindUI({
-        element:        mountPoint,
-        showSubResults: true,
-        showImages:     false,
-        excerptLength:  30,
-        resetStyles:    false,
-        bundlePath:     pagefindBundlePath,
-        translations:   i18nStrings,
-        autofocus:      true
-      });
-      return instance;
-    }
-
-    function openDialog() {
-      lastFocus = document.activeElement;
-      dialog.hidden = false;
-      
-      requestAnimationFrame(function () {
-        dialog.classList.add('is-open');
-        document.body.classList.add('search-open');
-        trigger.setAttribute('aria-expanded', 'true');
-        ensureInstance();
-        var input = dialog.querySelector('.pagefind-ui__search-input');
-        if (input) input.focus();
-      });
-    }
-
-    function closeDialog() {
-      dialog.classList.remove('is-open');
-      document.body.classList.remove('search-open');
-      trigger.setAttribute('aria-expanded', 'false');
-      
-      setTimeout(function () {
-        if (!dialog.classList.contains('is-open')) dialog.hidden = true;
-        if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
-      }, 200);
-    }
-
-    trigger.addEventListener('click', function () {
-      if (dialog.classList.contains('is-open')) closeDialog(); else openDialog();
-    });
-
-    closers.forEach(function (el) {
-      el.addEventListener('click', closeDialog);
-    });
-
-    function getTabbable() {
-      var panel = dialog.querySelector('.search-dialog__panel');
-      if (!panel) return [];
-      var sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-      return Array.prototype.filter.call(panel.querySelectorAll(sel), function (el) {
-        return !el.hasAttribute('hidden') && el.offsetParent !== null;
-      });
-    }
-
-    document.addEventListener('keydown', function (e) {
-      var open = dialog.classList.contains('is-open');
-      if (e.key === 'Escape' && open) {
-        closeDialog();
-        return;
-      }
-      
-      
-      
-      if (e.key === 'Tab' && open) {
-        var nodes = getTabbable();
-        if (nodes.length === 0) { e.preventDefault(); return; }
-        var first = nodes[0], last = nodes[nodes.length - 1];
-        var active = document.activeElement;
-        if (e.shiftKey && active === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && active === last) {
-          e.preventDefault();
-          first.focus();
-        } else if (!dialog.contains(active)) {
-          e.preventDefault();
-          first.focus();
-        }
-        return;
-      }
-      
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault();
-        if (open) {
-          var input = dialog.querySelector('.pagefind-ui__search-input');
-          if (input) input.focus();
-        } else {
-          openDialog();
-        }
-      }
-    });
-  })();
-</script>
-
-      <a class="site-nav__github" href="https://github.com/mogmog-0110/MitiruEngine" aria-label="GitHub">
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.36c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.72-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.62 7.62 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span class="visually-hidden">GitHub</span>
-      </a>
-      
-      <button type="button"
-              class="shortcuts-trigger"
-              data-shortcuts-open
-              aria-haspopup="dialog"
-              aria-controls="shortcuts-dialog"
-              aria-label="Keyboard shortcuts"
-              title="?">
-        <kbd class="shortcuts-trigger__kbd" aria-hidden="true">?</kbd>
-      </button>
-      <button type="button"
-              class="theme-toggle"
-              id="theme-toggle"
-              aria-pressed="false"
-              aria-label="ダークモード切替">
-        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="4"></circle>
-          <line x1="12" y1="2"  x2="12" y2="4"></line>
-          <line x1="12" y1="20" x2="12" y2="22"></line>
-          <line x1="4.93" y1="4.93"  x2="6.34"  y2="6.34"></line>
-          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
-          <line x1="2"  y1="12" x2="4"  y2="12"></line>
-          <line x1="20" y1="12" x2="22" y2="12"></line>
-          <line x1="4.93"  y1="19.07" x2="6.34"  y2="17.66"></line>
-          <line x1="17.66" y1="6.34"  x2="19.07" y2="4.93"></line>
-        </svg>
-      </button>
-    </nav>
-  </div>
-</header>
-<script>
-  (function () {
-    var navBox = document.getElementById('nav-toggle');
-    var themeBtn = document.getElementById('theme-toggle');
-
-    if (navBox) {
-      
-      
-      
-      navBox.addEventListener('change', function () {
-        if (navBox.checked) {
-          document.body.classList.add('is-nav-open');
-        } else {
-          document.body.classList.remove('is-nav-open');
-        }
-      });
-    }
-
-    function isDark() {
-      var current = document.documentElement.getAttribute('data-theme');
-      if (current === 'dark' || current === 'light') return current === 'dark';
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-
-    function syncThemeButton() {
-      if (!themeBtn) return;
-      themeBtn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
-    }
-
-    
-    
-    syncThemeButton();
-
-    if (themeBtn) {
-      themeBtn.addEventListener('click', function () {
-        var root = document.documentElement;
-        var current = root.getAttribute('data-theme');
-        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var next;
-        if (current === 'dark') {
-          next = 'light';
-        } else if (current === 'light') {
-          next = 'dark';
-        } else {
-          next = prefersDark ? 'light' : 'dark';
-        }
-        root.setAttribute('data-theme', next);
-        try { localStorage.setItem('theme', next); } catch (e) {   }
-        syncThemeButton();
-      });
-    }
-  })();
-</script>
-
-  <main class="site-main" data-pagefind-body>
-    
-<div class="api-page container">
-  <aside class="api-sidebar" aria-label="名前空間">
-  <details class="api-sidebar__collapsible" open>
-    <summary>名前空間</summary>
-    <nav>
-      <ul>
-        
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"
-               >
-              mitiru
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"
-               >
-              mitiru::adapter
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"
-               >
-              mitiru::animation
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"
-               >
-              mitiru::asset
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"
-               >
-              mitiru::assets
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"
-               >
-              mitiru::audio
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"
-               >
-              mitiru::bridge
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"
-               >
-              mitiru::bridge::detail
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"
-               >
-              mitiru::camera
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"
-               >
-              mitiru::cef
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"
-               >
-              mitiru::cef::bridges
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"
-               >
-              mitiru::control
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"
-               >
-              mitiru::core
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"
-               >
-              mitiru::data
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"
-               >
-              mitiru::debug
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"
-               >
-              mitiru::dev
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"
-               >
-              mitiru::ecs
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"
-               >
-              mitiru::effects
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"
-               >
-              mitiru::fsm
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"
-               >
-              mitiru::game
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"
-               >
-              mitiru::geom
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"
-               >
-              mitiru::gfx
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"
-               >
-              mitiru::gfx::dx12
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"
-               >
-              mitiru::i18n
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"
-               >
-              mitiru::input
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"
-               >
-              mitiru::juice
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"
-               >
-              mitiru::keys
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"
-               aria-current="page" class="is-active">
-              mitiru::live2d
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"
-               >
-              mitiru::math
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"
-               >
-              mitiru::module
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"
-               >
-              mitiru::module::detail
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"
-               >
-              mitiru::narrative
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"
-               >
-              mitiru::network
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"
-               >
-              mitiru::observe
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"
-               >
-              mitiru::physics
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"
-               >
-              mitiru::physics2d
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"
-               >
-              mitiru::physics3d
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"
-               >
-              mitiru::platform
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"
-               >
-              mitiru::render
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"
-               >
-              mitiru::render::dx12
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"
-               >
-              mitiru::render::lofi
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"
-               >
-              mitiru::render::pixel
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"
-               >
-              mitiru::replay
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"
-               >
-              mitiru::resource
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"
-               >
-              mitiru::save
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"
-               >
-              mitiru::scene
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"
-               >
-              mitiru::screen_detail
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"
-               >
-              mitiru::script
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"
-               >
-              mitiru::server
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"
-               >
-              mitiru::server::detail
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"
-               >
-              mitiru::sprite
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"
-               >
-              mitiru::time
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"
-               >
-              mitiru::time::detail
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"
-               >
-              mitiru::ui
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"
-               >
-              mitiru::ui::LayoutPresets
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"
-               >
-              mitiru::util
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"
-               >
-              mitiru::validate
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"
-               >
-              mitiru::vfs
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"
-               >
-              mitiru::vn
-            </a>
-          </li>
-        
-          <li>
-            <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"
-               >
-              mitiru::world
-            </a>
-          </li>
-        
-      </ul>
-    </nav>
-  </details>
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"><code>mitiru::assets</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"><code>mitiru::bridge::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"><code>mitiru::cef</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"><code>mitiru::cef::bridges</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"><code>mitiru::core</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"><code>mitiru::game</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"><code>mitiru::gfx::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/" class="active"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"><code>mitiru::physics2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"><code>mitiru::ui::LayoutPresets</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
 </aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::live2d</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 53 items).</p>
+</div></section>
 
-  <article class="api-page__article">
-    <header>
-      <h1>mitiru::live2d</h1>
-      <p class="api-page__description">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 53 items).</p>
-    </header>
-    <div class="api-page__content">
-      <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 53 items).</p>
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 53 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -888,127 +292,11 @@
 <hr>
 <p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
 
-    </div>
-  </article>
-  
-<aside class="api-toc" aria-label="このページ内">
-  <p class="api-toc__title">このページ内</p>
-  <nav id="TableOfContents"></nav>
-</aside>
+</div></div></section>
 
-
-</div>
-
-  </main>
-  <footer class="site-footer">
-  <div class="container site-footer__inner">
-    <div class="site-footer__col">
-      <p class="site-footer__brand">
-        <span class="site-footer__brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 24 L4 8 L10 14 L16 8 L22 14 L28 8 L28 24"/>
-          </svg>
-        </span>
-        MitiruEngine
-      </p>
-      <p class="site-footer__copy">&copy; 2026 MitiruEngine contributors.</p>
-      <p class="site-footer__build" aria-label="built with">
-        <code>built_with</code>
-        <span class="site-footer__build-chip">C++20</span>
-        <span class="site-footer__build-chip site-footer__build-chip--web">HTML</span>
-        <span class="site-footer__build-chip site-footer__build-chip--data">JSON</span>
-      </p>
-    </div>
-    <div class="site-footer__col">
-      <h2 class="site-footer__h">ライセンス</h2>
-      <p>MIT。詳しくは <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/LICENSE">LICENSE</a> を見てください。</p>
-      <p class="site-footer__hint">
-        <kbd>?</kbd> でショートカット一覧
-      </p>
-    </div>
-    <div class="site-footer__col">
-      <h2 class="site-footer__h">状態</h2>
-      <p>0.x 系・実験段階。API はまだ変わります。</p>
-      <p><a href="https://github.com/mogmog-0110/MitiruEngine">github.com/mogmog-0110/MitiruEngine</a></p>
-      <p class="site-footer__easter" aria-hidden="true">
-        <span class="site-footer__easter-prompt"><code>$ echo &quot;hello, world&quot;</code></span>
-        <span class="site-footer__easter-cursor">_</span>
-      </p>
-    </div>
-  </div>
-</footer>
-
-  
-
-<div class="shortcuts-dialog"
-     id="shortcuts-dialog"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="shortcuts-dialog-title"
-     data-pagefind-ignore
-     hidden>
-  <div class="shortcuts-dialog__backdrop" data-shortcuts-close></div>
-  <div class="shortcuts-dialog__panel" role="document">
-    <div class="shortcuts-dialog__header">
-      <h2 id="shortcuts-dialog-title" class="shortcuts-dialog__title">
-        キーボードショートカット
-      </h2>
-      <button type="button"
-              class="shortcuts-dialog__close"
-              data-shortcuts-close
-              aria-label="閉じる">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div class="shortcuts-dialog__body">
-      <dl class="shortcuts-list">
-        <div class="shortcuts-list__row">
-          <dt><kbd>?</kbd></dt>
-          <dd>このヘルプを開く</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>Esc</kbd></dt>
-          <dd>ダイアログを閉じる</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>Ctrl</kbd> + <kbd>K</kbd></dt>
-          <dd>サイト内検索を開く</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>h</kbd></dt>
-          <dd>ホームへ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>f</kbd></dt>
-          <dd>機能リファレンスへ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>a</kbd></dt>
-          <dd>アーキテクチャ一覧へ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>t</kbd></dt>
-          <dd>はじめてのゲームへ</dd>
-        </div>
-        <div class="shortcuts-list__row">
-          <dt><kbd>g</kbd> <kbd>s</kbd></dt>
-          <dd>インストールへ</dd>
-        </div>
-      </dl>
-      <p class="shortcuts-dialog__foot">
-        
-          入力中（テキストフィールド・コード編集）は無効です。
-        
-      </p>
+      </main>
     </div>
   </div>
 </div>
-
-  <script src="https://mogmog-0110.github.io/MitiruEngine/js/scroll-fade.js" defer></script>
-  <script src="https://mogmog-0110.github.io/MitiruEngine/js/keyboard-shortcuts.js" defer></script>
-  <script src="https://mogmog-0110.github.io/MitiruEngine/js/card-tilt.js" defer></script>
 </body>
 </html>

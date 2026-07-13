@@ -4,29 +4,13 @@
   <url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/guides/hybrid-runtime/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/guides/gameplay-programming/</loc>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/guides/bridge-api/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/guides/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/architecture/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/examples/</loc>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/</loc>
   </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/guides/profiling/</loc>
-  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/guides/save-load/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/</loc>
   </url><url>
@@ -37,8 +21,6 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/</loc>
-  </url><url>
-    <loc>https://mogmog-0110.github.io/MitiruEngine/guides/scope/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/</loc>
   </url><url>

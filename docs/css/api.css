@@ -1,0 +1,82 @@
+/* ============================================================
+   api.css — API リファレンス専用の追加スタイル。
+   ホームページの site.css を土台に読み込み、その CSS 変数
+   (--accent / --ink / --line / --mono …) を使って API 固有の
+   コンポーネント (名前空間一覧・クラス表・折りたたみ・メソッド行) を
+   ホームページと同じピンク基調に揃える。site.css が定義する
+   .page/.topbar/.shell/.sidebar/.content/.prose はそのまま流用する。
+   ============================================================ */
+
+/* 左サイドバー: 名前空間一覧 (site.css の .sidebar を継承しつつ微調整) */
+.sidebar .back{ display:block; color:var(--ink-mute); font-size:.82rem; padding:.2rem .7rem .6rem; }
+.sidebar .back:hover{ color:var(--accent-deep); text-decoration:none; }
+.sidebar a code{ font-family:var(--mono); font-size:.82rem; background:transparent; padding:0; }
+.sidebar a.active code{ color:var(--accent-deep); }
+
+/* API 本文の見出し (名前空間名を等幅で) */
+.api-body h1 code, .page-head h1 code.ns{ font-family:var(--mono); font-size:.92em; background:var(--code-bg);
+  border:1px solid var(--line); border-radius:var(--radius-sm); padding:.05em .4em; }
+
+/* フィルタ検索ボックス */
+.api-search{ margin:0 0 1.5rem; padding:1rem 1.1rem; background:var(--accent-soft);
+  border:1px solid var(--line); border-radius:var(--radius); }
+.api-search input[type="search"]{ width:100%; padding:.6rem .9rem; font:inherit; font-size:1rem;
+  border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink);
+  min-height:40px; -webkit-appearance:none; appearance:none; }
+.api-search input[type="search"]:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.api-search__hint{ margin:.55rem 0 0; font-size:.82rem; color:var(--ink-mute); }
+.api-search__empty{ margin:1rem 0; padding:.75rem 1rem; background:var(--accent-soft);
+  border-left:3px solid var(--accent); color:var(--ink-body); font-size:.92rem; }
+
+/* 名前空間インデックス (カードのグリッド) */
+.api-namespace-list{ list-style:none; padding:0; margin:0; display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:.7rem; }
+.api-namespace-list__item{ padding:.85rem 1rem; border:1px solid var(--line); border-radius:var(--radius);
+  background:var(--panel); transition:border-color .1s ease, box-shadow .1s ease; }
+.api-namespace-list__item:hover{ border-color:var(--accent); box-shadow:var(--shadow-hover); }
+.api-namespace-list__link{ display:block; font-family:var(--mono); font-weight:600; color:var(--ink);
+  font-size:.97rem; word-break:break-word; }
+.api-namespace-list__link:hover{ color:var(--accent-deep); text-decoration:none; }
+.api-namespace-list__link code{ background:transparent; padding:0; font-size:inherit; }
+.api-namespace-list__meta{ display:block; margin-top:.25rem; font-size:.82rem; color:var(--ink-mute); }
+
+/* 名前空間ページの導入文は page-head の lede と重複するので本文側は隠す */
+.api-body .api-namespace__lede{ display:none; }
+.api-index__lede{ margin:0 0 1.5rem; color:var(--ink-body); font-size:1rem; }
+.api-index__lede code, .api-namespace__lede code{ background:var(--code-bg); padding:.1em .35em; border-radius:3px; font-size:.9em; }
+
+/* クラス索引テーブル */
+.api-class-index{ width:100%; border-collapse:collapse; margin:0 0 2.2rem; font-size:.92rem; }
+.api-class-index thead th{ text-align:left; padding:.55rem .7rem; border-bottom:2px solid var(--line);
+  font-weight:600; color:var(--ink-body); font-size:.85rem; letter-spacing:.02em; text-transform:uppercase; }
+.api-class-index td{ padding:.4rem .7rem; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+.api-class-index tr:hover td{ background:var(--code-bg); }
+.api-class-index td:first-child{ width:60%; font-family:var(--mono); }
+.api-class-index td:nth-child(2){ color:var(--ink-mute); font-size:.86rem; }
+.api-class-index td:nth-child(3){ color:var(--ink-mute); font-size:.86rem; width:5rem; }
+
+/* クラスごとの折りたたみブロック */
+.api-class{ margin:0 0 .9rem; border:1px solid var(--line); border-radius:var(--radius);
+  background:var(--panel); overflow:hidden; }
+.api-class[open]{ box-shadow:var(--shadow); }
+.api-class__summary{ list-style:none; cursor:pointer; padding:.7rem 1rem; display:flex; align-items:center;
+  gap:.6rem; background:var(--code-bg); border-bottom:1px solid transparent; user-select:none; min-height:40px; }
+.api-class__summary::-webkit-details-marker{ display:none; }
+.api-class__summary::marker{ content:''; }
+.api-class__summary::before{ content:'\25B6'; color:var(--ink-mute); font-size:.7rem; transition:transform .1s ease; }
+.api-class[open] > .api-class__summary::before{ transform:rotate(90deg); }
+.api-class[open] > .api-class__summary{ border-bottom-color:var(--line-soft); }
+.api-class__kind{ font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-mute); font-weight:600; }
+.api-class__name{ font-family:var(--mono); font-size:.98rem; background:transparent; padding:0; color:var(--ink); }
+.api-class__count{ margin-left:auto; font-size:.78rem; color:var(--ink-mute); background:var(--bg);
+  padding:.1rem .5rem; border-radius:999px; border:1px solid var(--line); }
+.api-class__body{ padding:.4rem .4rem .6rem; }
+.api-class__empty{ margin:.5rem .8rem; color:var(--ink-mute); font-style:italic; font-size:.9rem; }
+
+/* メソッド行 */
+.api-method{ padding:.32rem .8rem; border-bottom:1px solid var(--line-soft); }
+.api-method:last-child{ border-bottom:none; }
+.api-method code{ background:transparent; padding:0; font-family:var(--mono); font-size:.84rem;
+  color:var(--ink); white-space:pre-wrap; word-break:break-word; }
+
+.api-source-note{ margin:2.5rem 0 0; font-size:.85rem; color:var(--ink-mute); }

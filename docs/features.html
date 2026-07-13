@@ -388,7 +388,7 @@ hud.stopMusic(0.5f);             <span class="c">// BGM を止める（0.5 秒�
             <p>リズムゲームの判定は、フレームの <code>dt</code> 積算ではなく音声側のクロック <code>in.audioTime()</code>（秒）に合わせます。契約は 2 つ——<strong>0 のあいだは「未準備」</strong>（起動直後の数フレームや音声デバイス無し。その間は <code>dt</code> 積算で代用する）、<strong>一度非ゼロになったら単調非減少</strong>（巻き戻らないことをエンジンが保証。録画再生でも同じ値が再現されます）。</p>
 <pre><span class="k">double</span> t = in.audioTime();   <span class="c">// 0 = 未準備 → dt 積算でしのぐ。非ゼロ後は巻き戻らない</span>
 <span class="k">if</span> (t > 0) { judgeNote(t); }</pre>
-            <figure><img src="assets/tool-mixer.png" alt="mixer ツール窓。マスター音量フェーダーと再生中チャンネルの VU メーター" loading="lazy"><figcaption><code>mixer</code> 窓 — マスター音量と再生中チャンネルの VU。</figcaption></figure>
+            <div class="winrow"><figure><img src="assets/tool-mixer.png" alt="mixer ツール窓。マスター音量フェーダーと再生中チャンネルの VU メーター" loading="lazy"><figcaption><code>mixer</code> 窓 — マスター音量と再生中チャンネルの VU。</figcaption></figure></div>
 
             <!-- ── ⑫ 演出 ─────────────────────────────── -->
             <h2 id="juice">⑫ 手応えの演出</h2>
@@ -446,11 +446,13 @@ hud.set(<span class="s">"view.boss.active"</span>, <span class="k">true</span>);
             <!-- ── ⑭ ツール窓 ─────────────────────────── -->
             <h2 id="tools">⑭ デバッグ窓</h2>
             <p>巨大なエディタは開きません。fps を見たい・状態を覗きたい——欲しい道具だけを小さな独立ウィンドウで開きます。ゲーム画面は汚れず、スクショに余計なものが映りません。どれも HTML/CSS で出来た別ウィンドウです。</p>
-            <figure><img src="assets/tool-perf.png" alt="perf 窓: fps と frame time のグラフ" loading="lazy"><figcaption><code>Perf</code> — fps / フレーム時間</figcaption></figure>
-            <figure><img src="assets/tool-inspect.png" alt="inspector 窓: 送った値の一覧" loading="lazy"><figcaption><code>Inspector</code> — 観察データ一覧</figcaption></figure>
-            <figure><img src="assets/tool-timetravel.png" alt="巻き戻し窓: 過去フレームをコマ送りで行き来" loading="lazy"><figcaption><code>Rewind</code> — 巻き戻し</figcaption></figure>
-            <figure><img src="assets/tool-scene.png" alt="scene tree 窓: 状態の階層ツリー" loading="lazy"><figcaption><code>SceneTree</code> — 階層ツリー</figcaption></figure>
-            <figure><img src="assets/tool-mixer.png" alt="mixer 窓: 音量と VU" loading="lazy"><figcaption><code>AudioMixer</code> — 音量・VU</figcaption></figure>
+            <div class="winrow">
+              <figure><img src="assets/tool-perf.png" alt="perf 窓: fps と frame time のグラフ" loading="lazy"><figcaption><code>Perf</code> — fps / フレーム時間</figcaption></figure>
+              <figure><img src="assets/tool-inspect.png" alt="inspector 窓: 送った値の一覧" loading="lazy"><figcaption><code>Inspector</code> — 観察データ一覧</figcaption></figure>
+              <figure><img src="assets/tool-timetravel.png" alt="巻き戻し窓: 過去フレームをコマ送りで行き来" loading="lazy"><figcaption><code>Rewind</code> — 巻き戻し</figcaption></figure>
+              <figure><img src="assets/tool-scene.png" alt="scene tree 窓: 状態の階層ツリー" loading="lazy"><figcaption><code>SceneTree</code> — 階層ツリー</figcaption></figure>
+              <figure><img src="assets/tool-mixer.png" alt="mixer 窓: 音量と VU" loading="lazy"><figcaption><code>AudioMixer</code> — 音量・VU</figcaption></figure>
+            </div>
 <pre>hud.open(<span class="t">Tool</span>::Perf);        <span class="c">// 開きたい所に 1 行（何度呼んでも 1 回だけ開く）</span>
 <span class="k">if</span> (over) hud.open(<span class="t">Tool</span>::Inspector);   <span class="c">// 条件付きでも OK</span></pre>
             <table class="spectable">
