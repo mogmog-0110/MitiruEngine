@@ -4,6 +4,7 @@
 /// @brief ClodRenderer の初期化・資源生成 (caps gate / PSO / バッファ / heap)
 
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/render/dx12/clod/ClodImport.hpp>
 
 namespace mitiru::render::clod
 {
@@ -337,7 +338,31 @@ inline void ClodRenderer::rebuildDescriptorHeap()
 inline int ClodRenderer::ensureModel(const char* path)
 {
 	if (const auto it = m_registry.find(path); it != m_registry.end()) { return it->second; }
-	const auto blob = vfs::readGlobal(path);
+
+	// OBJ / glTF / GLB は `<source>.clod` cache 経由で読む (初回にここで変換)。
+	// pack 配布時は変換せず、同梱済みの cache を探すだけ。
+	std::string clodPath(path);
+	if (isImportableModelPath(clodPath))
+	{
+		if (vfs::hasGlobalMount())
+		{
+			clodPath += ".clod";
+		}
+		else
+		{
+			std::string err;
+			if (const auto cached = ensureClodCache(clodPath, err)) { clodPath = *cached; }
+			else
+			{
+				debug::warnOnce(std::string("clod.import.") + path,
+				                ("clod: モデル変換に失敗: " + err).c_str());
+				m_registry.emplace(path, -1);
+				return -1;
+			}
+		}
+	}
+
+	const auto blob = vfs::readGlobal(clodPath);
 	int idx = -1;
 	if (blob && !blob->empty())
 	{

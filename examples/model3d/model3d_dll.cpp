@@ -66,6 +66,7 @@ struct Model3D
 		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 
 		// 26 万ポリゴンの宮殿を 1 行で。詳細度 (LOD) は距離から自動で決まる
+		// (.obj / .gltf / .glb を渡すと初回だけ隣へ .clod cache を作って読む)
 		s.drawModel("model3d/assets/sponza/sponza.clod", {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
 
 		chapterTitle(s, "3D Model");

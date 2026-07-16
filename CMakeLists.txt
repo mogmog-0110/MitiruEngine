@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.26.1
+	VERSION 0.27.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -149,6 +149,29 @@ elseif(EMSCRIPTEN)
 	target_compile_options(cgltf_impl PRIVATE -w)
 endif()
 
+# ── meshoptimizer + clod import (static library) ─────────────────
+# drawModel の import cache (OBJ/glTF → .clod 初回変換)。clusterlod.h の
+# 実装 TU と meshoptimizer 本体をここに閉じ込める。
+file(GLOB _meshopt_sources ${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src/*.cpp)
+add_library(meshopt_impl STATIC ${_meshopt_sources} src/clod_import_impl.cpp)
+target_include_directories(meshopt_impl PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src>
+)
+target_include_directories(meshopt_impl PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cgltf
+	${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/demo
+	${CMAKE_CURRENT_SOURCE_DIR}/external/sgc/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/stb
+)
+target_compile_features(meshopt_impl PUBLIC cxx_std_20)
+if(MSVC)
+	target_compile_options(meshopt_impl PRIVATE /W0 /FS /utf-8)
+elseif(EMSCRIPTEN)
+	target_compile_options(meshopt_impl PRIVATE -w)
+endif()
+
 # ── miniaudio implementation (static library) ───────────────────
 # Emscripten では WebAudioEngine を使うため miniaudio は不要
 if(NOT EMSCRIPTEN)
@@ -216,7 +239,7 @@ if(EMSCRIPTEN)
 		target_link_options(mitiru ${MITIRU_TARGET_SCOPE} -sUSE_WEBGPU=1)
 	endif()
 else()
-	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl tinyobj_impl cgltf_impl miniaudio_impl)
+	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl tinyobj_impl cgltf_impl miniaudio_impl meshopt_impl)
 
 	# MITIRU_ENABLE_GNS=ON 時のみ GNS をリンク + MITIRU_HAS_GNS=1 を伝搬
 	if(MITIRU_ENABLE_GNS)
