@@ -1550,6 +1550,11 @@ public:
 	              const sgc::Vec3f& rotDeg = sgc::Vec3f{0.0f, 0.0f, 0.0f},
 	              const sgc::Colorf& color = sgc::Colorf{0.80f, 0.80f, 0.85f, 1.0f});
 
+	/// @brief 大規模 3D モデル (.clod) を位置・Y回転(度)・スケールで描く。自動 LOD。
+	/// @param path .clod への vfs パス。DX12 + SM6.6 が無い環境では no-op。
+	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg = 0.0f,
+	               float scale = 1.0f);
+
 	/// @brief 3D Gaussian Splatting シーン (.splat) を読み込む (一度だけ、init 等で)。失敗時 false。
 	bool loadSplatScene(const char* path);
 	/// @brief 読み込み済みスプラットを現在の camera3D で描く (drawMesh と同じく遅延 beginFrame)。
@@ -1620,6 +1625,9 @@ public:
 	bool projectToScreen(const sgc::Vec3f& world, float& sx, float& sy);
 
 private:
+	/// @brief 最初の 3D 描画でフレームを開く (drawMesh / drawModel 共通の遅延起動)
+	void ensure3DFrame();
+
 	// ABI 注意: Screen* は DLL 境界を渡る。既存メンバのオフセット維持のため末尾追加 (ABI v16)。
 	SpriteResolveFunc m_spriteResolveFn  = nullptr; ///< sprite id resolver (host 注入、未注入は no-op)
 	void*             m_spriteResolveCtx = nullptr; ///< resolver の ctx (host 所有、非所有)

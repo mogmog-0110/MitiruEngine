@@ -120,7 +120,102 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		throw std::runtime_error(std::string("DX12 createOitResources: ") + e.what());
 	}
 
+	// clod 世界ジオメトリパス (SM6.6 が無い環境では supported()==false で縮退)
+	m_clod.waitIdle = [this] { if (m_device != nullptr) { m_device->waitForGpu(); } };
+	if (m_clod.initialize(m_d3dDevice, FRAME_COUNT))
+	{
+		createClodInjectPso();
+	}
+
 	m_initialized = true;
+}
+
+/// @brief clod inject の root sig + PSO (fullscreen、SV_Depth 書きで depth-tested 合成)
+inline void Renderer3D_DX12::createClodInjectPso()
+{
+	static constexpr const char* kInjectHlsl = R"(
+Texture2D<float4> ClodColor : register(t0);
+StructuredBuffer<uint2> VisBuf : register(t1);
+cbuffer CB : register(b0) { uint2 dims; }
+struct VSOut { float4 pos : SV_Position; };
+VSOut VSMain(uint vid : SV_VertexID)
+{
+	float2 uv = float2((vid << 1) & 2, vid & 2);
+	VSOut o;
+	o.pos = float4(uv * 2.0 - 1.0, 0.0, 1.0);
+	o.pos.y = -o.pos.y;
+	return o;
+}
+struct PSOut { float4 color : SV_Target; float depth : SV_Depth; };
+PSOut PSMain(VSOut i)
+{
+	uint2 p = uint2(i.pos.xy);
+	uint2 v = VisBuf[p.y * dims.x + p.x];
+	if ((v.x | v.y) == 0) { discard; }
+	PSOut o;
+	o.color = float4(ClodColor.Load(int3(p, 0)).rgb, 1.0);
+	o.depth = 1.0 - float(v.y >> 2) / 1073741823.0;
+	return o;
+}
+)";
+	// root: [0] = SRV table (t0,t1)、[1] = 32bit 定数 (画面寸法)
+	D3D12_DESCRIPTOR_RANGE range = {};
+	range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	range.NumDescriptors = 2;
+	range.BaseShaderRegister = 0;
+	D3D12_ROOT_PARAMETER prm[2] = {};
+	prm[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	prm[0].DescriptorTable.NumDescriptorRanges = 1;
+	prm[0].DescriptorTable.pDescriptorRanges = &range;
+	prm[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	prm[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	prm[1].Constants.ShaderRegister = 0;
+	prm[1].Constants.Num32BitValues = 2;
+	prm[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	D3D12_ROOT_SIGNATURE_DESC rsd = {};
+	rsd.NumParameters = 2;
+	rsd.pParameters = prm;
+	ComPtr<ID3DBlob> sig, err;
+	if (FAILED(D3D12SerializeRootSignature(&rsd, D3D_ROOT_SIGNATURE_VERSION_1, &sig, &err)))
+	{
+		return;
+	}
+	if (FAILED(m_d3dDevice->CreateRootSignature(0, sig->GetBufferPointer(), sig->GetBufferSize(),
+	                                            IID_PPV_ARGS(&m_clodInjectRS))))
+	{
+		return;
+	}
+
+	const auto vs = gfx::Dx12Shader::createVertexShader(kInjectHlsl, "VSMain");
+	const auto ps = gfx::Dx12Shader::createPixelShader(kInjectHlsl, "PSMain");
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {};
+	pd.pRootSignature = m_clodInjectRS.Get();
+	pd.VS = { vs.bytecode().data(), vs.bytecode().size() };
+	pd.PS = { ps.bytecode().data(), ps.bytecode().size() };
+	pd.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+	pd.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	pd.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+	pd.DepthStencilState.DepthEnable = TRUE;
+	pd.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	pd.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	pd.SampleMask = UINT_MAX;
+	pd.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	pd.NumRenderTargets = 1;
+	pd.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	pd.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	pd.SampleDesc.Count = MSAA_SAMPLE_COUNT;
+	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(&pd, IID_PPV_ARGS(&m_clodInjectPSO))))
+	{
+		m_clodInjectPSO.Reset();
+		return;
+	}
+
+	D3D12_DESCRIPTOR_HEAP_DESC hd = {};
+	hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	hd.NumDescriptors = 2;
+	hd.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	m_d3dDevice->CreateDescriptorHeap(&hd, IID_PPV_ARGS(&m_clodInjectHeap));
 }
 
 /// @brief 半透明 OIT のリソースを生成する (WeightedBlendedOIT + 透明 PSO)。

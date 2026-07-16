@@ -129,7 +129,8 @@ namespace mitiru::module
 ///       受理する意味ではない**。配列要素 (SoundIntent 等) が後の version で太ると soundIntents[] の
 ///       stride = 後続 field の offset がズレ、旧 DLL を新 host で動かすと silent 破損するため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 21;  // v21: dt/論理解像度の InputSnapshot 統合 (ADR 0024)
+constexpr std::uint32_t kCurrentApiVersion = 22;  // v22: Screen::drawModel + IRenderer3D 末尾 virtual (ADR 0027)
+                                                  // v21: dt/論理解像度の InputSnapshot 統合 (ADR 0024)
                                                   // v20 の weave intent は v21 内で撤去 (未リリース窓、ADR 0024 撤去節)
                                                   // v19: audio engine v2 (audioLatencySec / transport / scheduleSec)
 

@@ -41,6 +41,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	}
 
 	const uint32_t frameIndex = swapChain->currentBackBufferIndex();
+	m_frameCursor = frameIndex;   // clod パスの upload ring 用
 
 	// GPU は前フレームの ring を読み終えているので reset OK
 	m_uploadRing.beginFrame(frameIndex);
@@ -150,6 +151,7 @@ inline void Renderer3D_DX12::setCamera(const Camera3D& camera)
 	m_projMatrix = perspective(camera.fov(), camera.aspectRatio(),
 		camera.nearClip(), camera.farClip());
 	m_cameraPosition = camera.position();
+	m_clodCamera = camera;   // clod パスは自前の行列規約で再構成する
 }
 
 /// @brief メッシュを描画する
@@ -371,6 +373,10 @@ inline void Renderer3D_DX12::endFrame()
 		return;
 	}
 
+	// clod 世界ジオメトリ: offscreen に描いて depth-tested inject で
+	// MSAA HDR + depth へ合成する (以降の OIT / resolve が上に乗る)。ADR 0027
+	renderClodPass();
+
 	// 半透明 OIT: 不透明 (MSAA color + depth) の後、resolve/tonemap の前に HDR で合成する。
 	if (!m_transparentCommands.empty() && m_oitTransparentPSO &&
 	    m_msaaColorRtvHeap && m_dsvHeap)
@@ -428,6 +434,67 @@ inline void Renderer3D_DX12::endFrame()
 	// ただし、Engine経由で使われない場合（単体テスト等）に備えて
 	// m_needsFinalize フラグで制御する。
 	m_needsFinalize = true;
+}
+
+/// @brief clod 世界ジオメトリパス: 記録 → depth-tested inject 合成
+inline void Renderer3D_DX12::renderClodPass()
+{
+	if (!m_clod.supported() || !m_clod.hasWork() || !m_clodInjectPSO ||
+	    !m_msaaColorRtvHeap || !m_dsvHeap)
+	{
+		m_clod.endFrame();
+		return;
+	}
+	MITIRU_ZONE_NAMED("Render::Dx12::ClodPass");
+	auto* cmd = m_graphicsCmdList.Get();
+	const auto width = static_cast<uint32_t>(m_config.viewportWidth);
+	const auto height = static_cast<uint32_t>(m_config.viewportHeight);
+	const float dir[3] = { m_light.direction.x, m_light.direction.y, m_light.direction.z };
+	const float col[3] = { m_light.color.r, m_light.color.g, m_light.color.b };
+	m_clod.record(cmd, m_clodCamera, dir, col, 0.30f, width, height, m_frameCursor);
+
+	// inject: clod の color + visbuffer 深度を MSAA HDR + depth へ (両方向 depth test)
+	if (m_clodInjectKey != m_clod.colorTexture())
+	{
+		const UINT inc =
+			m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		auto cpu = m_clodInjectHeap->GetCPUDescriptorHandleForHeapStart();
+		D3D12_SHADER_RESOURCE_VIEW_DESC sv = {};
+		sv.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		sv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		sv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		sv.Texture2D.MipLevels = 1;
+		m_d3dDevice->CreateShaderResourceView(m_clod.colorTexture(), &sv, cpu);
+		cpu.ptr += inc;
+		D3D12_SHADER_RESOURCE_VIEW_DESC bv = {};
+		bv.Format = DXGI_FORMAT_UNKNOWN;
+		bv.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		bv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		bv.Buffer.NumElements = width * height;
+		bv.Buffer.StructureByteStride = 8;
+		m_d3dDevice->CreateShaderResourceView(m_clod.visBuffer(), &bv, cpu);
+		m_clodInjectKey = m_clod.colorTexture();
+	}
+
+	m_clod.transitionForInject(cmd);
+	cmd->SetGraphicsRootSignature(m_clodInjectRS.Get());
+	cmd->SetPipelineState(m_clodInjectPSO.Get());
+	ID3D12DescriptorHeap* heaps[] = { m_clodInjectHeap.Get() };
+	cmd->SetDescriptorHeaps(1, heaps);
+	cmd->SetGraphicsRootDescriptorTable(0, m_clodInjectHeap->GetGPUDescriptorHandleForHeapStart());
+	const uint32_t dims[2] = { width, height };
+	cmd->SetGraphicsRoot32BitConstants(1, 2, dims, 0);
+	const auto rtv = m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
+	const auto dsv = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	cmd->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+	const D3D12_VIEWPORT vp = { 0, 0, static_cast<float>(width), static_cast<float>(height), 0, 1 };
+	const D3D12_RECT sc = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
+	cmd->RSSetViewports(1, &vp);
+	cmd->RSSetScissorRects(1, &sc);
+	cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	cmd->DrawInstanced(3, 1, 0, 0);
+	m_clod.transitionAfterInject(cmd);
+	m_clod.endFrame();
 }
 
 /// @brief コマンドリストを閉じてGPU実行する（Engine::endFrame前に呼ぶ）

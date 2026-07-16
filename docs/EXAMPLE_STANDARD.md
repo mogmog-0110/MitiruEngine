@@ -11,7 +11,7 @@
 | 帯 | 章 (学習順) |
 |---|---|
 | 基礎 | welcome / shapes / text / input / motion / sprites / camera / audio |
-| 看板 | html_hud / html_menu / observe / rewind / restart_save / scene3d |
+| 看板 | html_hud / html_menu / observe / rewind / restart_save / scene3d / model3d |
 | 別枠 | `examples/subsys/` — renderer / audio / input / scene の単独起動 exe ([SUBSYSTEMS.md](SUBSYSTEMS.md)) |
 
 ## 契約 (MUST)

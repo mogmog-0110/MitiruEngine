@@ -39,6 +39,7 @@ CEF runtime (`libcef.dll` + `icudtl.dat` + `MitiruCefHelper.exe` + locales 等) 
 | [`rewind`](rewind/rewind_dll.cpp) | 巻き戻し — 状態を 1 つの struct に置き、見たい値を申告するだけで過去へ戻せる。`--inspect timetravel` 付きで起動 | ✅ |
 | [`restart_save`](restart_save/restart_save_dll.cpp) | `hud.requestRestart()` + セーブ / ロード (`.msav` ファイル) | ✅ |
 | [`scene3d`](scene3d/scene3d_dll.cpp) | GPU 3D シーン — 平行光の影 + WBOIT 半透明 + skybox | ✅ |
+| [`model3d`](model3d/model3d_dll.cpp) | 大きな 3D モデル — 13 万ポリゴンの火山島を `drawModel` 1 行で描く。詳細度 (LOD) は距離から自動で決まり、切り替えは見えない | ✅ |
 
 ## Subsystem 単独起動デモ — [`subsys/`](subsys/)
 

@@ -316,6 +316,18 @@ public:
 	/// @brief ワールド座標を現在のカメラで画面正規化座標 (u,v ∈ 0..1, 左上原点) へ射影する。
 	/// @return 視錐台内 (手前かつ画面内) なら true。アナモルフォーズ等の射影パズル用。
 	virtual bool worldToScreen(float /*wx*/, float /*wy*/, float /*wz*/, float& u, float& v) const { u = v = -1.0f; return false; }
+
+	// ── clod 仮想ジオメトリ (ADR 0027、DX12 のみ。vtable 末尾固定) ──────
+	/// @brief .clod モデルのインスタンスを描画する (大規模静的ジオメトリ)。
+	/// @param path .clod への vfs パス。未対応バックエンドでは no-op。
+	virtual void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+	                       float scale)
+	{
+		(void)path;
+		(void)position;
+		(void)rotYDeg;
+		(void)scale;
+	}
 };
 
 } // namespace mitiru::render

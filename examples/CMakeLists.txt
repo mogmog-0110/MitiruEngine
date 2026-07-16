@@ -80,6 +80,7 @@ mitiru_add_example(observe)
 mitiru_add_example(rewind)         # time-travel inspector (軸②、ADR 0017/0018)
 mitiru_add_example(restart_save)   # requestRestart + .msav (ADR 0020/0024)
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
+mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD (ADR 0027)
 
 # ── チュートリアル頁の題材ゲーム ───────────────────────────────────────────
 # beko_run: 赤べこの横スクロールアクション。カリキュラム章 (1 機能 1 DLL) ではなく

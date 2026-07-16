@@ -68,41 +68,43 @@ inline void Screen::skybox3D(const sgc::Colorf& zenith, const sgc::Colorf& nadir
 	}
 }
 
+/// @brief 最初の 3D 描画でフレームを開く (clear 色は screen->clear() と共有)
+inline void Screen::ensure3DFrame()
+{
+	if (m_3dStarted) { return; }
+	m_renderer3D->beginFrame(m_clearColor);
+	const float aspect = (m_height > 0)
+		? static_cast<float>(m_width) / static_cast<float>(m_height)
+		: 16.0f / 9.0f;
+	constexpr float kDeg = 3.14159265358979f / 180.0f;
+	const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, {0.0f, 1.0f, 0.0f},
+	                           m_cam3DFovDeg * kDeg, aspect, 0.1f, 500.0f);
+	m_renderer3D->setCamera(cam);
+	m_renderer3D->setLight(
+		render::Light::directional(m_light3DDir, m_light3DColor));
+	// 既定は普通の Phong シェーディング (なめらかな陰影)。トゥーン調の
+	// セル塗り + 輪郭線は出さない。
+	m_renderer3D->setShaderMode(render::ShaderMode3D::Phong);
+	m_renderer3D->setOutlineEnabled(false);
+	// 影を有効化 (オブジェクトが地面に接地して見える)。光と同じ向きで落とす。
+	m_renderer3D->setShadowEnabled(true);
+	m_renderer3D->setShadowDirection(m_light3DDir);
+	// skybox3D() 済みなら最遠面の空を張る (色が変わった時だけ cubemap を作り直す)。
+	if (m_sky3DRequested && !m_sky3DApplied)
+	{
+		m_renderer3D->setSkybox(
+			render::Cubemap::verticalGradient(64, m_sky3DZenith, m_sky3DNadir));
+		m_sky3DApplied = true;
+	}
+	m_3dStarted = true;
+}
+
 inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
                              const sgc::Vec3f& scale, const sgc::Vec3f& rotDeg,
                              const sgc::Colorf& color)
 {
 	if (!has3D()) { return; }
-
-	// 最初の drawMesh でフレームを開く (clear 色は screen->clear() と共有)。
-	if (!m_3dStarted)
-	{
-		m_renderer3D->beginFrame(m_clearColor);
-		const float aspect = (m_height > 0)
-			? static_cast<float>(m_width) / static_cast<float>(m_height)
-			: 16.0f / 9.0f;
-		constexpr float kDeg = 3.14159265358979f / 180.0f;
-		const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, {0.0f, 1.0f, 0.0f},
-		                           m_cam3DFovDeg * kDeg, aspect, 0.1f, 500.0f);
-		m_renderer3D->setCamera(cam);
-		m_renderer3D->setLight(
-			render::Light::directional(m_light3DDir, m_light3DColor));
-		// 既定は普通の Phong シェーディング (なめらかな陰影)。トゥーン調の
-		// セル塗り + 輪郭線は出さない。
-		m_renderer3D->setShaderMode(render::ShaderMode3D::Phong);
-		m_renderer3D->setOutlineEnabled(false);
-		// 影を有効化 (オブジェクトが地面に接地して見える)。光と同じ向きで落とす。
-		m_renderer3D->setShadowEnabled(true);
-		m_renderer3D->setShadowDirection(m_light3DDir);
-		// skybox3D() 済みなら最遠面の空を張る (色が変わった時だけ cubemap を作り直す)。
-		if (m_sky3DRequested && !m_sky3DApplied)
-		{
-			m_renderer3D->setSkybox(
-				render::Cubemap::verticalGradient(64, m_sky3DZenith, m_sky3DNadir));
-			m_sky3DApplied = true;
-		}
-		m_3dStarted = true;
-	}
+	ensure3DFrame();
 
 	constexpr float kDeg = 3.14159265358979f / 180.0f;
 	const sgc::Mat4f world =
@@ -115,6 +117,14 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 	render::Material material;
 	material.diffuse = color;
 	m_renderer3D->drawMesh(detail::builtin3DMesh(shape), world, material);
+}
+
+inline void Screen::drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+                              float scale)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->drawModel(path, position, rotYDeg, scale);
 }
 
 inline bool Screen::loadSplatScene(const char* path)

@@ -44,6 +44,7 @@
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/GlmBridge.hpp>
 #include <mitiru/render/Light.hpp>
+#include <mitiru/render/dx12/clod/ClodRenderer.hpp>
 #include <mitiru/render/Material.hpp>
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/ToonShaders3D.hpp>
@@ -208,6 +209,22 @@ public:
 	void drawMesh(const Mesh& mesh,
 	              const sgc::Mat4f& worldTransform,
 	              const Material& material) override;
+
+	/// @brief .clod モデルのインスタンスを積む (clod 世界ジオメトリパス、ADR 0027)
+	/// @param path .clod への vfs パス
+	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+	               float scale) override
+	{
+		/// drawMesh を一度も呼ばないフレームでも skybox が出るように
+		/// drawMesh 側と同じ遅延描画をここでも行う (フラグ共有で二重描画なし)
+		if (m_skyboxEnabled && !m_skyboxDrawnThisFrame && m_skyboxCubemap.valid())
+		{
+			ensureSkyboxPipelineDx12();
+			ensureSkyboxTextureDx12();
+			drawSkyboxIfNeededDx12();
+		}
+		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
+	}
 
 	/// @brief フレーム終了処理（アウトラインパス + バリア + コマンド実行）
 	void endFrame() override;
@@ -539,6 +556,20 @@ private:
 
 	/// シーンアンビエント色（initialize 時に config.defaultAmbient で初期化）
 	sgc::Colorf m_sceneAmbient{0.5f, 0.5f, 0.5f, 1.0f};
+
+	/// ── clod 世界ジオメトリパス (ADR 0027) ──────────────────
+	/// 大規模静的モデル (.clod) を endFrame 先頭で offscreen に描き、
+	/// depth-tested な inject で MSAA HDR + depth へ合成する
+	clod::ClodRenderer m_clod;
+	Camera3D m_clodCamera{ {0, 0, 5}, {0, 0, 0}, {0, 1, 0},
+	                       0.7853982f, 16.0f / 9.0f, 0.1f, 500.0f };
+	uint32_t m_frameCursor = 0;   ///< beginFrame で確定するフレーム index (upload ring 用)
+	ComPtr<ID3D12RootSignature> m_clodInjectRS;
+	ComPtr<ID3D12PipelineState> m_clodInjectPSO;
+	ComPtr<ID3D12DescriptorHeap> m_clodInjectHeap;   ///< [0]=clod color SRV [1]=visbuffer SRV
+	ID3D12Resource* m_clodInjectKey = nullptr;       ///< heap が指す color tex (作り直し検知)
+	void createClodInjectPso();     ///< inject の root sig + PSO (initialize から)
+	void renderClodPass();          ///< endFrame 先頭: clod 記録 + inject 合成
 
 	/// ── 半透明 OIT (Weighted-Blended) ──────────────────────
 	/// material.diffuse.a < 1 のメッシュを溜め、不透明の後にまとめて accum/reveal へ
