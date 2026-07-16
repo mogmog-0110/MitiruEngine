@@ -1,4 +1,4 @@
-// model3d — 大きな 3D モデル (.clod) の中を歩く
+// model3d — 大きな 3D モデル (glTF) の中を歩く
 // 実行すると: 26 万ポリゴンの宮殿 (Sponza) を一人称で歩き回れる。マウスで見回し、WASD で移動
 // 関連 API: drawModel / camera3D / hud.lockMouse / in.mouseDeltaX / skybox3D
 
@@ -65,9 +65,9 @@ struct Model3D
 		s.light3D({-0.4f, -0.85f, -0.3f}, hex(0xFFF4E0));
 		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 
-		// 26 万ポリゴンの宮殿を 1 行で。詳細度 (LOD) は距離から自動で決まる
-		// (.obj / .gltf / .glb を渡すと初回だけ隣へ .clod cache を作って読む)
-		s.drawModel("model3d/assets/sponza/sponza.clod", {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
+		// 26 万ポリゴンの宮殿 (glTF) をそのまま 1 行で。初回だけ隣に変換キャッシュを
+		// 作り、以後の起動はそれを読む。詳細度 (LOD) は距離から自動で決まる
+		s.drawModel("model3d/assets/sponza/sponza.gltf", {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
 
 		chapterTitle(s, "3D Model");
 		chapterControls(s, "WASD: あるく　マウス: みまわす　Shift: はしる　Esc: おわる");

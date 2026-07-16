@@ -2573,10 +2573,10 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 
           <h2 id="model3d">3D モデル</h2>
           <figure><img src="assets/examples/model3d.png" alt="3D モデルのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/model3d</code>）。26 万ポリゴンの宮殿を一人称で歩き回る。</figcaption></figure>
-          <p>大きな 3D モデルを <code>drawModel</code> 1 行で置き、その中を一人称で歩きます。舞台は実在の標準シーン Crytek Sponza (26 万ポリゴン)。マウスで見回し (カーソルは <code>hud.lockMouse</code> でロック)、WASD で歩き、Shift で走ります。詳細度 (LOD) は距離から GPU 上で自動で決まります。モデルは .obj / .gltf / .glb をそのまま渡せます (初回だけ隣に変換キャッシュ .clod を作り、以後はそれを読みます)。</p>
+          <p>普通のモデルファイル (glTF) を <code>drawModel</code> 1 行でそのまま置き、その中を一人称で歩きます。舞台は実在の標準シーン Crytek Sponza (26 万ポリゴン、glTF で同梱)。初回の起動だけ隣に変換キャッシュを作り、以後はそれを読みます — Blender 等から書き出した .gltf / .glb / .obj がそのまま使えます。マウスで見回し (カーソルは <code>hud.lockMouse</code> でロック)、WASD で歩き、Shift で走ります。詳細度 (LOD) は距離から GPU 上で自動で決まります。</p>
           <p class="note"><strong>使う道具:</strong> <code>drawModel</code> / <code>camera3D</code> / <code>hud.lockMouse</code> / <code>in.mouseDeltaX</code> / <code>in.move</code></p>
           <p class="codelabel"><code>examples/model3d/model3d_dll.cpp</code> ── 全 78 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/model3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// model3d — 大きな 3D モデル (.clod) の中を歩く</span>
+<pre class="fullsrc"><span class="c">// model3d — 大きな 3D モデル (glTF) の中を歩く</span>
 <span class="c">// 実行すると: 26 万ポリゴンの宮殿 (Sponza) を一人称で歩き回れる。マウスで見回し、WASD で移動</span>
 <span class="c">// 関連 API: drawModel / camera3D / hud.lockMouse / in.mouseDeltaX / skybox3D</span>
 
@@ -2643,9 +2643,9 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 		s.light3D({-0.4f, -0.85f, -0.3f}, hex(0xFFF4E0));
 		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 
-		<span class="c">// 26 万ポリゴンの宮殿を 1 行で。詳細度 (LOD) は距離から自動で決まる</span>
-		<span class="c">// (.obj / .gltf / .glb を渡すと初回だけ隣へ .clod cache を作って読む)</span>
-		s.drawModel(<span class="s">"model3d/assets/sponza/sponza.clod"</span>, {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
+		<span class="c">// 26 万ポリゴンの宮殿 (glTF) をそのまま 1 行で。初回だけ隣に変換キャッシュを</span>
+		<span class="c">// 作り、以後の起動はそれを読む。詳細度 (LOD) は距離から自動で決まる</span>
+		s.drawModel(<span class="s">"model3d/assets/sponza/sponza.gltf"</span>, {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
 
 		chapterTitle(s, <span class="s">"3D Model"</span>);
 		chapterControls(s, <span class="s">"WASD: あるく　マウス: みまわす　Shift: はしる　Esc: おわる"</span>);

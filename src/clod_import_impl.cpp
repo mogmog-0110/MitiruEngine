@@ -241,6 +241,10 @@ bool loadGltfModel(const std::string& path, ImportModel& out, std::string& error
 	};
 
 	std::map<uint32_t, size_t> subOf;
+	// 同じ node 内で複数 primitive が頂点 accessor を共有するのは普通なので、
+	// (node, accessor 組) ごとに 1 回だけ頂点を積む
+	std::map<std::tuple<const cgltf_node*, const cgltf_accessor*, const cgltf_accessor*,
+	                    const cgltf_accessor*>, uint32_t> vertexBaseOf;
 	for (cgltf_size ni = 0; ni < data->nodes_count; ++ni)
 	{
 		const cgltf_node& node = data->nodes[ni];
@@ -265,8 +269,13 @@ bool loadGltfModel(const std::string& path, ImportModel& out, std::string& error
 			}
 			if (aPos == nullptr) { continue; }
 
-			const auto base = static_cast<uint32_t>(out.positions.size() / 3);
-			const auto vc = static_cast<size_t>(aPos->count);
+			const auto vertexKey = std::make_tuple(&node, aPos, aUv, aNrm);
+			const auto known = vertexBaseOf.find(vertexKey);
+			const bool appendVerts = (known == vertexBaseOf.end());
+			const auto base = appendVerts ? static_cast<uint32_t>(out.positions.size() / 3)
+			                              : known->second;
+			if (appendVerts) { vertexBaseOf.emplace(vertexKey, base); }
+			const auto vc = appendVerts ? static_cast<size_t>(aPos->count) : 0;
 			for (size_t v = 0; v < vc; ++v)
 			{
 				float p[3] = {0, 0, 0};
