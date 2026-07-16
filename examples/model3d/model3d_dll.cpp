@@ -24,11 +24,13 @@ struct Model3D
 
 	void update(Input in, Hud hud, float dt)
 	{
+		if (in.pressed(Key::Escape)) { hud.quit(); }   // Esc で終わる
+
 		hud.lockMouse();   // 毎フレーム宣言でカーソルをロック (FPS 視線)
 
 		// マウスで見回す。上下は真上・真下の手前で止める
 		constexpr float sens = 0.15f;   // 1px あたりの回転角 (度)
-		yawDeg   += in.mouseDeltaX() * sens;
+		yawDeg   -= in.mouseDeltaX() * sens;
 		pitchDeg -= in.mouseDeltaY() * sens;
 		if (pitchDeg >  89.0f) { pitchDeg =  89.0f; }
 		if (pitchDeg < -89.0f) { pitchDeg = -89.0f; }
@@ -36,10 +38,11 @@ struct Model3D
 		// WASD で視線の向きへ歩く (in.move() が WASD/矢印/スティックを合成する)
 		constexpr float kDeg = 3.14159265f / 180.0f;
 		const float fx = std::sin(yawDeg * kDeg), fz = std::cos(yawDeg * kDeg);
+		const float rx = -fz, rz = fx;   // 視線の右手方向
 		const Stick m = in.move();
 		const float speed = in.down(Key::Shift) ? 6.0f : 3.0f;   // m/s (Shift で走る)
-		px += (fx * -m.y + fz * m.x) * speed * dt;
-		pz += (fz * -m.y - fx * m.x) * speed * dt;
+		px += (fx * -m.y + rx * m.x) * speed * dt;
+		pz += (fz * -m.y + rz * m.x) * speed * dt;
 
 		// 壁の外へ出ない範囲に収める (この章は当たり判定を持たない)
 		if (px < -17.5f) { px = -17.5f; }
@@ -66,7 +69,7 @@ struct Model3D
 		s.drawModel("model3d/assets/sponza/sponza.clod", {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
 
 		chapterTitle(s, "3D Model");
-		chapterControls(s, "WASD: あるく　マウス: みまわす　Shift: はしる");
+		chapterControls(s, "WASD: あるく　マウス: みまわす　Shift: はしる　Esc: おわる");
 	}
 };
 

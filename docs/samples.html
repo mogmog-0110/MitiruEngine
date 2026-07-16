@@ -2575,7 +2575,7 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
           <figure><img src="assets/examples/model3d.png" alt="3D モデルのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/model3d</code>）。26 万ポリゴンの宮殿を一人称で歩き回る。</figcaption></figure>
           <p>大きな 3D モデル (.clod 形式) を <code>drawModel</code> 1 行で置き、その中を一人称で歩きます。舞台は実在の標準シーン Crytek Sponza (26 万ポリゴン)。マウスで見回し (カーソルは <code>hud.lockMouse</code> でロック)、WASD で歩き、Shift で走ります。詳細度 (LOD) は距離から GPU 上で自動で決まります。</p>
           <p class="note"><strong>使う道具:</strong> <code>drawModel</code> / <code>camera3D</code> / <code>hud.lockMouse</code> / <code>in.mouseDeltaX</code> / <code>in.move</code></p>
-          <p class="codelabel"><code>examples/model3d/model3d_dll.cpp</code> ── 全 74 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/model3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/model3d/model3d_dll.cpp</code> ── 全 77 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/model3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// model3d — 大きな 3D モデル (.clod) の中を歩く</span>
 <span class="c">// 実行すると: 26 万ポリゴンの宮殿 (Sponza) を一人称で歩き回れる。マウスで見回し、WASD で移動</span>
 <span class="c">// 関連 API: drawModel / camera3D / hud.lockMouse / in.mouseDeltaX / skybox3D</span>
@@ -2602,11 +2602,13 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 
 	<span class="k">void</span> update(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">float</span> dt)
 	{
+		<span class="k">if</span> (in.pressed(<span class="t">Key</span>::Escape)) { hud.quit(); }   <span class="c">// Esc で終わる</span>
+
 		hud.lockMouse();   <span class="c">// 毎フレーム宣言でカーソルをロック (FPS 視線)</span>
 
 		<span class="c">// マウスで見回す。上下は真上・真下の手前で止める</span>
 		<span class="k">constexpr</span> <span class="k">float</span> sens = 0.15f;   <span class="c">// 1px あたりの回転角 (度)</span>
-		yawDeg   += in.mouseDeltaX() * sens;
+		yawDeg   -= in.mouseDeltaX() * sens;
 		pitchDeg -= in.mouseDeltaY() * sens;
 		<span class="k">if</span> (pitchDeg &gt;  89.0f) { pitchDeg =  89.0f; }
 		<span class="k">if</span> (pitchDeg &lt; -89.0f) { pitchDeg = -89.0f; }
@@ -2614,10 +2616,11 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 		<span class="c">// WASD で視線の向きへ歩く (in.move() が WASD/矢印/スティックを合成する)</span>
 		<span class="k">constexpr</span> <span class="k">float</span> kDeg = 3.14159265f / 180.0f;
 		<span class="k">const</span> <span class="k">float</span> fx = std::sin(yawDeg * kDeg), fz = std::cos(yawDeg * kDeg);
+		<span class="k">const</span> <span class="k">float</span> rx = -fz, rz = fx;   <span class="c">// 視線の右手方向</span>
 		<span class="k">const</span> <span class="t">Stick</span> m = in.move();
 		<span class="k">const</span> <span class="k">float</span> speed = in.down(<span class="t">Key</span>::Shift) ? 6.0f : 3.0f;   <span class="c">// m/s (Shift で走る)</span>
-		px += (fx * -m.y + fz * m.x) * speed * dt;
-		pz += (fz * -m.y - fx * m.x) * speed * dt;
+		px += (fx * -m.y + rx * m.x) * speed * dt;
+		pz += (fz * -m.y + rz * m.x) * speed * dt;
 
 		<span class="c">// 壁の外へ出ない範囲に収める (この章は当たり判定を持たない)</span>
 		<span class="k">if</span> (px &lt; -17.5f) { px = -17.5f; }
@@ -2644,7 +2647,7 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 		s.drawModel(<span class="s">"model3d/assets/sponza/sponza.clod"</span>, {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
 
 		chapterTitle(s, <span class="s">"3D Model"</span>);
-		chapterControls(s, <span class="s">"WASD: あるく　マウス: みまわす　Shift: はしる"</span>);
+		chapterControls(s, <span class="s">"WASD: あるく　マウス: みまわす　Shift: はしる　Esc: おわる"</span>);
 	}
 };
 
