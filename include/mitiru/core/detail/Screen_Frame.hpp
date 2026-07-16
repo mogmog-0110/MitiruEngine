@@ -1,6 +1,8 @@
 #pragma once
 // mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
 
+#include <mitiru/render/IRenderer3D.hpp>
+
 inline void mitiru::Screen::setPipeline(render::RenderPipeline2D* pipeline) noexcept
 {
 	m_pipeline = pipeline;
@@ -32,6 +34,7 @@ inline void mitiru::Screen::resetDrawCallCount() noexcept
 	m_drawCallCount = 0;
 	m_drawLog.clear(); // AI 観測用 draw log もフレーム毎にリセット (capacity は維持)
 	m_3dStarted = false; // 3D facade: 次フレームの最初の drawMesh で beginFrame し直す
+	m_overlayRunUsed = 0; // 3D フレームの 2D 蓄積もフレーム毎にリセット
 }
 
 inline void mitiru::Screen::resize(int width, int height) noexcept
@@ -44,12 +47,36 @@ inline void mitiru::Screen::resize(int width, int height) noexcept
 // painter 順を保つため、頂点カラー run と textured run の切替で現バッチを
 // flush+submit する。RenderPipeline2D の完全型が要るためここ（detail）で定義。
 
+inline bool mitiru::Screen::deferring3DOverlay() const noexcept
+{
+	return m_3dStarted && m_renderer3D != nullptr
+		&& m_renderer3D->hasOverlaySupport();
+}
+
+inline mitiru::Screen::OverlayRun& mitiru::Screen::appendOverlayRun(OverlayRun::Kind kind)
+{
+	if (m_overlayRunUsed == m_overlayRuns.size()) { m_overlayRuns.emplace_back(); }
+	OverlayRun& run = m_overlayRuns[m_overlayRunUsed++];
+	run.kind = kind;
+	run.texHandle = 0;
+	run.verts.clear();
+	run.indices.clear();
+	return run;
+}
+
 inline void mitiru::Screen::flushCurrentBatch()
 {
 	m_spriteBatch.end();
 	if (!m_spriteBatch.vertices().empty())
 	{
-		if (m_pipeline && m_pipeline->isValid())
+		if (deferring3DOverlay())
+		{
+			OverlayRun& run = appendOverlayRun(OverlayRun::Kind::Batch);
+			run.texHandle = m_curTexHandle;
+			run.verts = m_spriteBatch.vertices();
+			run.indices = m_spriteBatch.indices();
+		}
+		else if (m_pipeline && m_pipeline->isValid())
 		{
 			if (m_curTexHandle != 0)
 			{
@@ -119,19 +146,79 @@ inline void mitiru::Screen::present()
 	m_shapeRenderer.flush();
 }
 
+inline void mitiru::Screen::present3DOverlay()
+{
+	flushCurrentBatch();
+	if (!m_shapeRenderer.vertices().empty())
+	{
+		OverlayRun& run = appendOverlayRun(OverlayRun::Kind::Batch);
+		run.verts = m_shapeRenderer.vertices();
+		run.indices = m_shapeRenderer.indices();
+		if (m_softwareFb && m_swFbActive)
+		{
+			rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
+		}
+		m_shapeRenderer.flush();
+	}
+	if (m_pipeline && m_pipeline->isValid())
+	{
+		for (std::size_t i = 0; i < m_overlayRunUsed; ++i)
+		{
+			const OverlayRun& run = m_overlayRuns[i];
+			switch (run.kind)
+			{
+			case OverlayRun::Kind::Batch:
+				if (run.texHandle != 0)
+				{
+					m_pipeline->submitTexturedBatch(run.verts, run.indices, run.texHandle);
+				}
+				else
+				{
+					m_pipeline->submitBatch(run.verts, run.indices);
+				}
+				break;
+			case OverlayRun::Kind::PushClip: m_pipeline->pushScissorRect(run.clip); break;
+			case OverlayRun::Kind::PopClip:  m_pipeline->popScissorRect(); break;
+			case OverlayRun::Kind::Blend:    m_pipeline->setBlendMode(run.blend); break;
+			}
+		}
+	}
+	m_overlayRunUsed = 0;
+}
+
+/// 開いているバッチと図形を閉じて送る (3D フレーム中は蓄積へ)
+inline void mitiru::Screen::closeBatchesForStateChange()
+{
+	flushCurrentBatch();
+	if (!m_shapeRenderer.vertices().empty())
+	{
+		if (deferring3DOverlay())
+		{
+			OverlayRun& run = appendOverlayRun(OverlayRun::Kind::Batch);
+			run.verts = m_shapeRenderer.vertices();
+			run.indices = m_shapeRenderer.indices();
+		}
+		else
+		{
+			m_pipeline->submitBatch(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
+		}
+		m_shapeRenderer.flush();
+	}
+}
+
 inline void mitiru::Screen::pushClipRect(const sgc::Rectf& rect)
 {
 	if (m_pipeline)
 	{
-		// クリップ変更前にバッチをフラッシュする（textured run も正しく閉じる）
-		flushCurrentBatch();
-		if (!m_shapeRenderer.vertices().empty())
+		closeBatchesForStateChange();
+		if (deferring3DOverlay())
 		{
-			m_pipeline->submitBatch(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
-			m_shapeRenderer.flush();
+			appendOverlayRun(OverlayRun::Kind::PushClip).clip = rect;
 		}
-
-		m_pipeline->pushScissorRect(rect);
+		else
+		{
+			m_pipeline->pushScissorRect(rect);
+		}
 	}
 }
 
@@ -139,15 +226,15 @@ inline void mitiru::Screen::popClipRect()
 {
 	if (m_pipeline)
 	{
-		// クリップ変更前にバッチをフラッシュする（textured run も正しく閉じる）
-		flushCurrentBatch();
-		if (!m_shapeRenderer.vertices().empty())
+		closeBatchesForStateChange();
+		if (deferring3DOverlay())
 		{
-			m_pipeline->submitBatch(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
-			m_shapeRenderer.flush();
+			appendOverlayRun(OverlayRun::Kind::PopClip);
 		}
-
-		m_pipeline->popScissorRect();
+		else
+		{
+			m_pipeline->popScissorRect();
+		}
 	}
 }
 
@@ -155,14 +242,14 @@ inline void mitiru::Screen::setBlendMode(gfx::BlendMode mode)
 {
 	if (m_pipeline)
 	{
-		// ブレンド変更前にバッチをフラッシュする（textured run も正しく閉じる）
-		flushCurrentBatch();
-		if (!m_shapeRenderer.vertices().empty())
+		closeBatchesForStateChange();
+		if (deferring3DOverlay())
 		{
-			m_pipeline->submitBatch(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
-			m_shapeRenderer.flush();
+			appendOverlayRun(OverlayRun::Kind::Blend).blend = mode;
 		}
-
-		m_pipeline->setBlendMode(mode);
+		else
+		{
+			m_pipeline->setBlendMode(mode);
+		}
 	}
 }

@@ -455,6 +455,12 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 	{
 		m_renderer3D->finalizeFrame();
 	}
+
+	/// 3D フレームの HUD/2D はここで 3D の上へ描く (蓄積分の replay)
+	if (renderer3DUsed && m_renderer3D->hasOverlaySupport() && m_screen)
+	{
+		m_screen->present3DOverlay();
+	}
 }
 
 MITIRU_INLINE void mitiru::Engine::tickCefComposite()

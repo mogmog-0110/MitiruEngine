@@ -131,7 +131,7 @@ private:
 	UINT m_frameCount = 3;
 
 	ClodScene m_scene;
-	std::map<std::string, int> m_registry;   ///< vfs パス → model index (-1 = 失敗の負キャッシュ)
+	std::map<std::string, int, std::less<>> m_registry;   ///< vfs パス → model index (-1 = 失敗の負キャッシュ)
 	std::vector<PendingInstance> m_pending;
 	uint32_t m_gpuSceneRevision = 0xFFFFFFFFu;   ///< GPU 静的バッファが反映済みの revision
 

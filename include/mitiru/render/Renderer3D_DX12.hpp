@@ -583,15 +583,6 @@ private:
 	void renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE msaaColorRtv,
 	                           D3D12_CPU_DESCRIPTOR_HANDLE dsv);  ///< endFrame から呼ぶ OIT パス
 
-	/// 2Dオーバーレイ
-	ComPtr<ID3D12PipelineState> m_overlay2DPSO;       ///< 2Dオーバーレイ用PSO
-	ComPtr<ID3D12RootSignature> m_overlay2DRootSig;   ///< 2Dオーバーレイ用ルートシグネチャ
-	std::optional<gfx::Dx12Shader> m_overlay2DVS;     ///< 2Dオーバーレイ用頂点シェーダー
-	std::optional<gfx::Dx12Shader> m_overlay2DPS;     ///< 2Dオーバーレイ用ピクセルシェーダー
-	const Screen* m_overlayScreen = nullptr;           ///< 2Dオーバーレイ用Screen（非所有）
-	std::vector<Overlay2DVertex> m_overlay2DVerts;    ///< 頂点 scratch（clear+reserve で毎フレーム再利用、hot path 確保なし）
-	std::vector<std::uint32_t> m_overlay2DIndices;    ///< インデックス scratch（同上）
-
 	/// 描画統計
 	int m_drawCallCount = 0;
 	bool m_frameActive = false;  ///< このフレームでbeginFrame()が呼ばれたか
@@ -927,11 +918,6 @@ public:
 	[[nodiscard]] bool isFrameActive() const noexcept override { return m_frameActive; }
 	/// @brief フレームアクティブフラグをリセットする（Engine側で毎フレーム呼ぶ）
 	void resetFrameActive() noexcept override { m_frameActive = false; }
-
-	/// @brief 2Dオーバーレイ用のScreen参照を設定する
-	/// @param screen Screenへのポインタ（nullptrで解除）
-	/// @details endFrame()でバックバッファ上に2D HUD/UIを描画するために使用する。
-	void setOverlayScreen(const Screen* screen) noexcept override { m_overlayScreen = screen; }
 
 	/// @brief 複数ライトを設定する（DX12）
 	/// @details kMaxLights を超える分は捨てる。useMultiLight=true の時のみ

@@ -40,7 +40,7 @@ struct ClodModel
 	uint32_t groupBase = 0;
 	uint32_t groupCount = 0;
 	uint32_t bvhRoot = 0;
-	float radius = 0.0f;   ///< 原点中心 bake 後の包含球半径
+	float radius = 0.0f;   ///< インスタンス原点基準の包含球半径
 };
 
 /// @brief .clod モデル群の CPU シーン
@@ -96,7 +96,7 @@ private:
 		return expected == size;
 	}
 
-	/// @brief 頂点/クラスタ/グループを原点中心へ bake しつつ連結配列へ積む
+	/// @brief 頂点/クラスタ/グループをファイル座標のまま連結配列へ積む
 	void appendGeometry(const ClodFileHeader& h, const uint8_t* data, ClodModel& model)
 	{
 		const uint8_t* base = data + sizeof(ClodFileHeader);
@@ -110,12 +110,15 @@ private:
 			reinterpret_cast<const uint8_t*>(pClusters) + static_cast<size_t>(h.clusterCount) * sizeof(ClodCluster));
 		const uint8_t* pTris = reinterpret_cast<const uint8_t*>(pVerts) + static_cast<size_t>(h.vertIdxCount) * 4;
 
-		float ctr[3];
-		for (int k = 0; k < 3; ++k) { ctr[k] = (h.boundsMin[k] + h.boundsMax[k]) * 0.5f; }
+		// 頂点はファイルの座標のまま積む (タイル敷き詰め等で原点が意味を持つ)。
+		// 包含球はインスタンス原点基準: bbox 半径 + 中心までの距離で保守的に取る
 		{
+			float ctr[3];
+			for (int k = 0; k < 3; ++k) { ctr[k] = (h.boundsMin[k] + h.boundsMax[k]) * 0.5f; }
 			const float e[3] = { h.boundsMax[0] - h.boundsMin[0], h.boundsMax[1] - h.boundsMin[1],
 			                     h.boundsMax[2] - h.boundsMin[2] };
-			model.radius = 0.5f * std::sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]);
+			model.radius = 0.5f * std::sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2])
+			             + std::sqrt(ctr[0] * ctr[0] + ctr[1] * ctr[1] + ctr[2] * ctr[2]);
 		}
 
 		const auto vertexBase = static_cast<uint32_t>(m_positions.size() / 3);
@@ -125,24 +128,18 @@ private:
 		const auto triBase = static_cast<uint32_t>(m_clusterTris.size());
 		const auto matBase = static_cast<uint32_t>(m_materials.size());
 
-		for (uint32_t i = 0; i < h.vertexCount; ++i)
-		{
-			for (int k = 0; k < 3; ++k) { m_positions.push_back(pPos[i * 3 + k] - ctr[k]); }
-		}
+		m_positions.insert(m_positions.end(), pPos, pPos + static_cast<size_t>(h.vertexCount) * 3);
 		m_normals.insert(m_normals.end(), pNorm, pNorm + static_cast<size_t>(h.vertexCount) * 3);
 		m_uvs.insert(m_uvs.end(), pUv, pUv + static_cast<size_t>(h.vertexCount) * 2);
 		for (uint32_t i = 0; i < h.groupCount; ++i)
 		{
-			ClodGroup g = pGroups[i];
-			for (int k = 0; k < 3; ++k) { g.center[k] -= ctr[k]; }
-			m_groups.push_back(g);
+			m_groups.push_back(pGroups[i]);
 		}
 		for (uint32_t i = 0; i < h.clusterCount; ++i)
 		{
 			ClodCluster c = pClusters[i];
 			c.ownGroup += static_cast<int32_t>(groupBase);
 			if (c.refined >= 0) { c.refined += static_cast<int32_t>(groupBase); }
-			for (int k = 0; k < 3; ++k) { c.cull[k] -= ctr[k]; }
 			c.vertOffset += vertIdxBase;
 			c.triOffset += triBase;
 			c.materialId += matBase;

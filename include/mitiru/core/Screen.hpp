@@ -879,6 +879,9 @@ public:
 	/// @details SpriteBatch/ShapeRendererの蓄積データをRenderPipeline2Dに送る。
 	void present();
 
+	/// @brief 3D 使用フレームの 2D 蓄積分を 3D の上へ描く（Engine が 3D 確定後に呼ぶ）
+	void present3DOverlay();
+
 	/// @brief 蓄積中のスプライトバッチを今すぐ送信する。
 	void flushSpriteBatch();
 
@@ -963,6 +966,23 @@ private:
 	sgc::Colorf m_clearColor{0.0f, 0.0f, 0.0f, 1.0f};  ///< クリア色
 	render::SpriteBatch m_spriteBatch;       ///< スプライトバッチ（現在開いている run のジオメトリ）
 	std::uint32_t m_curTexHandle = 0;        ///< 現在の run のテクスチャハンドル（0=頂点カラー, ADR 0009）
+
+	/// 3D 使用フレームの 2D 描画 1 区間。present3DOverlay() が 3D の後に描く
+	struct OverlayRun
+	{
+		enum class Kind : std::uint8_t { Batch, PushClip, PopClip, Blend };
+		Kind kind = Kind::Batch;
+		std::uint32_t texHandle = 0;                  ///< Batch: 0=頂点カラー
+		sgc::Rectf clip{0.0f, 0.0f, 0.0f, 0.0f};      ///< PushClip 用
+		gfx::BlendMode blend = gfx::BlendMode::Alpha; ///< Blend 用
+		std::vector<render::Vertex2D> verts;
+		std::vector<std::uint32_t> indices;
+	};
+	std::vector<OverlayRun> m_overlayRuns;   ///< 当フレームの蓄積 run
+	std::size_t m_overlayRunUsed = 0;        ///< 有効 run 数（要素は再利用）
+	[[nodiscard]] bool deferring3DOverlay() const noexcept;
+	OverlayRun& appendOverlayRun(OverlayRun::Kind kind);
+	void closeBatchesForStateChange();
 	render::ShapeRenderer m_shapeRenderer;   ///< シェイプレンダラー
 	render::StyledRectBatch m_styledRectBatch;         ///< SDF矩形バッチ
 	render::StyledCircleBatch m_styledCircleBatch;     ///< SDF円/楕円バッチ

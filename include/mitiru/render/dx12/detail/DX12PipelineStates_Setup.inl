@@ -82,10 +82,6 @@ void compileShaders()
 		DX12_UNLIT_PS_3D, "PSMain");
 	m_flatPS = gfx::Dx12Shader::createPixelShader(
 		DX12_FLAT_PS_3D, "PSMain");
-
-	// 2Dオーバーレイ用シェーダー
-	m_overlay2DVS = gfx::Dx12Shader::createVertexShader(OVERLAY2D_VS, "VSMain");
-	m_overlay2DPS = gfx::Dx12Shader::createPixelShader(OVERLAY2D_PS, "PSMain");
 }
 
 // ─────────────────────────────────────────────────────────────

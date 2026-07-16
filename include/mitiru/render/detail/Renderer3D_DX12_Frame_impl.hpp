@@ -422,11 +422,7 @@ inline void Renderer3D_DX12::endFrame()
 	/// ニューラル・リライティング (Live2D の後・HUD overlay の前)。無効なら no-op。
 	relightTickDx12();
 
-	/// 2Dオーバーレイパス（HUD/UI描画）
-	if (m_overlayScreen && m_overlay2DPSO)
-	{
-		renderOverlay2D();
-	}
+	// HUD/2D は Engine が finalizeFrame 後に Screen::present3DOverlay() で描く。
 
 	// ここではコマンドリストを閉じない。
 	// Engineが ImGui 描画をコマンドリストに追記した後、

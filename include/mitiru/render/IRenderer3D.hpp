@@ -221,13 +221,9 @@ public:
 
 	// ── 2Dオーバーレイ（DX12で実装、DX11ではno-op） ──
 
-	/// @brief 2Dオーバーレイ用のScreen参照を設定する
-	/// @param screen Screenへのポインタ（nullptrで解除）
-	virtual void setOverlayScreen(const Screen* /*screen*/) {}
-
-	/// @brief endFrame()内で2Dオーバーレイを自動描画するかどうかを返す
-	/// @details trueの場合、Engineは screen->present() をスキップする（レンダラーが処理する）
-	///          falseの場合、Engineが screen->present() を呼んで2D描画をGPU送信する
+	/// @brief 3D フレームの 2D を後段で重ねられるかを返す
+	/// @details true の場合、Engine は draw() 中の 2D を蓄積し、3D 確定後に
+	///          Screen::present3DOverlay() で 3D の上へ描く。false は従来の present()
 	[[nodiscard]] virtual bool hasOverlaySupport() const noexcept { return false; }
 
 	/// @brief 現在開いているコマンドリストを取得する（DX12用、ImGui描画挿入用）

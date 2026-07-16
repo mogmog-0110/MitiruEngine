@@ -20,7 +20,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.24</span>
+    <span class="ver">v0.25</span>
   </div></header>
 
 <div class="shell">
@@ -2571,6 +2571,92 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 <span class="t">MITIRU_GAME</span>(Scene3D);
 </pre>
 
+          <h2 id="model3d">3D モデル</h2>
+          <figure><img src="assets/examples/model3d.png" alt="3D モデルのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/model3d</code>）。島が地平線まで続く海の上を飛ぶ。合計 5 千万ポリゴン級。</figcaption></figure>
+          <p>大きな 3D モデル (.clod 形式) を <code>drawModel</code> で描きます。10 万ポリゴンの島タイルを毎フレーム 700 枚以上、海の上に隙間なく並べます。合計は 5 千万ポリゴン級ですが、詳細度 (LOD) が距離から GPU 上で自動で決まるので軽く、切り替えの継ぎ目は見えません。うえ・したで飛行高度を変えると、近くの島の岩肌から遠くの島の群れまで見え方が変わります。</p>
+          <p class="note"><strong>使う道具:</strong> <code>drawModel</code> / <code>camera3D</code> / <code>light3D</code> / <code>skybox3D</code></p>
+          <p class="codelabel"><code>examples/model3d/model3d_dll.cpp</code> ── 全 79 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/model3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// model3d — 大きな 3D モデル (.clod) を drawModel で並べる</span>
+<span class="c">// 実行すると: 島が地平線まで続く海の上を飛ぶ。合計 5 千万ポリゴン級でも、遠い島ほど自動で粗くなるので軽い</span>
+<span class="c">// 関連 API: drawModel / camera3D / light3D / skybox3D (自動 LOD の大規模モデル)</span>
+
+<span class="k">#include</span> &lt;cmath&gt;
+<span class="k">#include</span> &lt;mitiru.hpp&gt;
+<span class="k">#include</span> <span class="s">"../common/chapter_hud.hpp"</span>
+
+<span class="k">using</span> <span class="k">namespace</span> mitiru;
+
+<span class="c">// タイル 1 枚 = 16x16 の島モデル (10 万ポリ、examples/model3d/tools/gen_terrain.py で生成)。</span>
+<span class="c">// 毎フレーム 700 枚以上を drawModel で敷き詰める。詳細度 (LOD) は距離から自動で決まる。</span>
+<span class="k">struct</span> <span class="t">Model3D</span>
+{
+	<span class="k">float</span> t = 0.0f;        <span class="c">// 飛行の経過時間</span>
+	<span class="k">float</span> altitude = 7.0f; <span class="c">// 飛行高度 (うえ・した で変更)</span>
+
+	<span class="k">void</span> init()
+	{
+		t = 0.0f;
+		altitude = 7.0f;
+	}
+
+	<span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt)
+	{
+		t += dt;
+		<span class="k">constexpr</span> <span class="k">float</span> climb = 4.0f;
+		<span class="k">if</span> (in.down(<span class="t">Key</span>::Up))   { altitude += climb * dt; }
+		<span class="k">if</span> (in.down(<span class="t">Key</span>::Down)) { altitude -= climb * dt; }
+		<span class="k">if</span> (altitude &lt; 1.6f)  { altitude = 1.6f; }
+		<span class="k">if</span> (altitude &gt; 24.0f) { altitude = 24.0f; }
+	}
+
+	<span class="c">// タイル番号から見た目を決める (乱数を使わず毎回同じ景色になる)</span>
+	static <span class="k">unsigned</span> cellHash(<span class="k">int</span> x, <span class="k">int</span> z)
+	{
+		<span class="k">unsigned</span> h = <span class="k">static_cast</span>&lt;<span class="k">unsigned</span>&gt;(x) * 374761393u
+		           + <span class="k">static_cast</span>&lt;<span class="k">unsigned</span>&gt;(z) * 668265263u;
+		h = (h ^ (h &gt;&gt; 13)) * 1274126177u;
+		<span class="k">return</span> h ^ (h &gt;&gt; 16);
+	}
+
+	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
+	{
+		s.clear(hex(0xDCE9F5));   <span class="c">// 3D が使えない環境 (画面なしの自動テストなど) ではこの色のまま</span>
+
+		<span class="c">// まっすぐ北へ飛ぶカメラ。やや下を向いて、島の列と海と空を入れる</span>
+		<span class="k">const</span> <span class="k">float</span> camZ = t * 4.0f;
+		s.camera3D({0.0f, altitude, camZ},
+		           {0.0f, altitude * 0.45f, camZ + 18.0f}, 58.0f);
+		s.light3D({-0.55f, -0.8f, -0.35f}, hex(0xFFF7EA));
+		s.skybox3D(hex(0x6FA8E4), hex(0xC9DCEB));
+
+		<span class="c">// カメラの周りにタイルを隙間なく敷き詰める。飛んだ分だけ前方に増える</span>
+		<span class="k">constexpr</span> <span class="k">float</span> spacing = 16.0f;   <span class="c">// タイル一辺</span>
+		<span class="k">const</span> <span class="k">int</span> baseZ = <span class="k">static_cast</span>&lt;<span class="k">int</span>&gt;(std::floor(camZ / spacing));
+		<span class="k">for</span> (<span class="k">int</span> gz = -1; gz &lt;= 26; ++gz)
+		{
+			<span class="k">for</span> (<span class="k">int</span> gx = -13; gx &lt;= 13; ++gx)
+			{
+				<span class="k">const</span> <span class="k">unsigned</span> h = cellHash(gx, baseZ + gz);
+				<span class="k">const</span> <span class="k">float</span> rot = <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(h % 4u) * 90.0f;  <span class="c">// 4 方位のどれか</span>
+				<span class="k">const</span> <span class="k">char</span>* tile = <span class="s">"model3d/assets/sea.clod"</span>;          <span class="c">// 3 割は島なしの海</span>
+				<span class="k">if</span> (h % 10u &gt;= 3u)
+				{
+					tile = (h &amp; 16u) ? <span class="s">"model3d/assets/island_a.clod"</span>
+					                 : <span class="s">"model3d/assets/island_b.clod"</span>;
+				}
+				s.drawModel(tile, {gx * spacing, 0.0f, (baseZ + gz) * spacing}, rot);
+			}
+		}
+
+		chapterTitle(s, <span class="s">"3D Model"</span>);
+		chapterControls(s, <span class="s">"うえ・した: たかさ"</span>);
+	}
+};
+
+<span class="c">// 実行:  mitiru_host.exe model3d/model3d.dll</span>
+<span class="t">MITIRU_GAME</span>(<span class="t">Model3D</span>);
+</pre>
+
         </div>
       </div>
     </main>
@@ -2600,6 +2686,7 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
       <a href="#rewind">巻き戻し</a>
       <a href="#restart_save">セーブ</a>
       <a href="#scene3d">3D シーン</a>
+      <a href="#model3d">3D モデル</a>
     </aside>
   </div>
 </div>

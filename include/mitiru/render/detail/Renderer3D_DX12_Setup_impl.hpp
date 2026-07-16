@@ -102,12 +102,6 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createTonemapPipeline: ") + e.what());
 	}
-	try {
-		createOverlay2D();
-	} catch (const std::exception& e) {
-		throw std::runtime_error(std::string("DX12 createOverlay2D: ") + e.what());
-	}
-
 	// D3D12 InfoQueue を確保し、runtime 検証エラーを毎フレーム
 	// ファイルへダンプする (ENG-105 v2 MSAA debug)。Debug layer が
 	// 無効でも QueryInterface は通る (メッセージが来ないだけ)。
@@ -352,8 +346,6 @@ inline void Renderer3D_DX12::destroy()
 	m_outlinePostPSO.Reset();
 	for (auto& p : m_outlinePostPSOs) p.Reset();
 	m_fresnelMainPSO.Reset();
-	m_overlay2DPSO.Reset();
-	m_overlay2DRootSig.Reset();
 	m_outlinePostRootSig.Reset();
 	m_colorCopyBuffer.Reset();
 	m_colorEdgeSRVHeap.Reset();
