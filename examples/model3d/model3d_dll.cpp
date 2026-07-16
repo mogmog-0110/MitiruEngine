@@ -1,6 +1,6 @@
-// model3d — 大きな 3D モデル (.clod) を drawModel で並べる
-// 実行すると: 島が地平線まで続く海の上を飛ぶ。合計 5 千万ポリゴン級でも、遠い島ほど自動で粗くなるので軽い
-// 関連 API: drawModel / camera3D / light3D / skybox3D (自動 LOD の大規模モデル)
+// model3d — 大きな 3D モデル (.clod) の中を歩く
+// 実行すると: 26 万ポリゴンの宮殿 (Sponza) を一人称で歩き回れる。マウスで見回し、WASD で移動
+// 関連 API: drawModel / camera3D / hud.lockMouse / in.mouseDeltaX / skybox3D
 
 #include <cmath>
 #include <mitiru.hpp>
@@ -8,70 +8,65 @@
 
 using namespace mitiru;
 
-// タイル 1 枚 = 16x16 の島モデル (10 万ポリ、examples/model3d/tools/gen_terrain.py で生成)。
-// 毎フレーム 700 枚以上を drawModel で敷き詰める。詳細度 (LOD) は距離から自動で決まる。
+// 宮殿は Crytek Sponza (CC BY 3.0、assets/sponza/CREDITS.md)。drawModel の
+// scale 0.01 でメートル単位の世界に置き、目の高さ 1.7m で歩く。
 struct Model3D
 {
-	float t = 0.0f;        // 飛行の経過時間
-	float altitude = 7.0f; // 飛行高度 (うえ・した で変更)
+	float px = -14.0f, py = 1.7f, pz = 0.0f;  // 目の位置 (m)
+	float yawDeg = 90.0f;                     // 視線の左右 (90 = +X の廊下方向)
+	float pitchDeg = 0.0f;                    // 視線の上下
 
 	void init()
 	{
-		t = 0.0f;
-		altitude = 7.0f;
+		px = -14.0f; py = 1.7f; pz = 0.0f;
+		yawDeg = 90.0f; pitchDeg = 0.0f;
 	}
 
-	void update(Input in, float dt)
+	void update(Input in, Hud hud, float dt)
 	{
-		t += dt;
-		constexpr float climb = 4.0f;
-		if (in.down(Key::Up))   { altitude += climb * dt; }
-		if (in.down(Key::Down)) { altitude -= climb * dt; }
-		if (altitude < 1.6f)  { altitude = 1.6f; }
-		if (altitude > 24.0f) { altitude = 24.0f; }
-	}
+		hud.lockMouse();   // 毎フレーム宣言でカーソルをロック (FPS 視線)
 
-	// タイル番号から見た目を決める (乱数を使わず毎回同じ景色になる)
-	static unsigned cellHash(int x, int z)
-	{
-		unsigned h = static_cast<unsigned>(x) * 374761393u
-		           + static_cast<unsigned>(z) * 668265263u;
-		h = (h ^ (h >> 13)) * 1274126177u;
-		return h ^ (h >> 16);
+		// マウスで見回す。上下は真上・真下の手前で止める
+		constexpr float sens = 0.15f;   // 1px あたりの回転角 (度)
+		yawDeg   += in.mouseDeltaX() * sens;
+		pitchDeg -= in.mouseDeltaY() * sens;
+		if (pitchDeg >  89.0f) { pitchDeg =  89.0f; }
+		if (pitchDeg < -89.0f) { pitchDeg = -89.0f; }
+
+		// WASD で視線の向きへ歩く (in.move() が WASD/矢印/スティックを合成する)
+		constexpr float kDeg = 3.14159265f / 180.0f;
+		const float fx = std::sin(yawDeg * kDeg), fz = std::cos(yawDeg * kDeg);
+		const Stick m = in.move();
+		const float speed = in.down(Key::Shift) ? 6.0f : 3.0f;   // m/s (Shift で走る)
+		px += (fx * -m.y + fz * m.x) * speed * dt;
+		pz += (fz * -m.y - fx * m.x) * speed * dt;
+
+		// 壁の外へ出ない範囲に収める (この章は当たり判定を持たない)
+		if (px < -17.5f) { px = -17.5f; }
+		if (px >  16.5f) { px =  16.5f; }
+		if (pz < -10.0f) { pz = -10.0f; }
+		if (pz >   9.5f) { pz =   9.5f; }
 	}
 
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0xDCE9F5));   // 3D が使えない環境 (画面なしの自動テストなど) ではこの色のまま
 
-		// まっすぐ北へ飛ぶカメラ。やや下を向いて、島の列と海と空を入れる
-		const float camZ = t * 4.0f;
-		s.camera3D({0.0f, altitude, camZ},
-		           {0.0f, altitude * 0.45f, camZ + 18.0f}, 58.0f);
-		s.light3D({-0.55f, -0.8f, -0.35f}, hex(0xFFF7EA));
-		s.skybox3D(hex(0x6FA8E4), hex(0xC9DCEB));
+		// 視線の向きを目の位置 + 単位ベクトルで camera3D に渡す
+		constexpr float kDeg = 3.14159265f / 180.0f;
+		const float cp = std::cos(pitchDeg * kDeg);
+		const float dx = std::sin(yawDeg * kDeg) * cp;
+		const float dy = std::sin(pitchDeg * kDeg);
+		const float dz = std::cos(yawDeg * kDeg) * cp;
+		s.camera3D({px, py, pz}, {px + dx, py + dy, pz + dz}, 70.0f);
+		s.light3D({-0.4f, -0.85f, -0.3f}, hex(0xFFF4E0));
+		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 
-		// カメラの周りにタイルを隙間なく敷き詰める。飛んだ分だけ前方に増える
-		constexpr float spacing = 16.0f;   // タイル一辺
-		const int baseZ = static_cast<int>(std::floor(camZ / spacing));
-		for (int gz = -1; gz <= 26; ++gz)
-		{
-			for (int gx = -13; gx <= 13; ++gx)
-			{
-				const unsigned h = cellHash(gx, baseZ + gz);
-				const float rot = static_cast<float>(h % 4u) * 90.0f;  // 4 方位のどれか
-				const char* tile = "model3d/assets/sea.clod";          // 3 割は島なしの海
-				if (h % 10u >= 3u)
-				{
-					tile = (h & 16u) ? "model3d/assets/island_a.clod"
-					                 : "model3d/assets/island_b.clod";
-				}
-				s.drawModel(tile, {gx * spacing, 0.0f, (baseZ + gz) * spacing}, rot);
-			}
-		}
+		// 26 万ポリゴンの宮殿を 1 行で。詳細度 (LOD) は距離から自動で決まる
+		s.drawModel("model3d/assets/sponza/sponza.clod", {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
 
 		chapterTitle(s, "3D Model");
-		chapterControls(s, "うえ・した: たかさ");
+		chapterControls(s, "WASD: あるく　マウス: みまわす　Shift: はしる");
 	}
 };
 

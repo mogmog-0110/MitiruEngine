@@ -828,7 +828,9 @@ private:
 			return;
 		}
 
-		const bool wantCapture = m_inputState->isCursorCaptured();
+		// 前面でない間は適用しない (alt-tab 中に他アプリのカーソルを掴まない)
+		const bool focused = (GetForegroundWindow() == m_hwnd);
+		const bool wantCapture = focused && m_inputState->isCursorCaptured();
 
 		if (!m_captureActive && wantCapture)
 		{

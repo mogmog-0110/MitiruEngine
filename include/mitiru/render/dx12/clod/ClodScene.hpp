@@ -6,6 +6,7 @@
 ///          revision が進み、GPU 側 (ClodRenderer) が静的バッファを作り直す。
 
 #include <mitiru/asset/AssetPack.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/dx12/clod/ClodFormat.hpp>
 
 #include <algorithm>
@@ -189,10 +190,20 @@ private:
 		if (const auto it = m_textureIndex.find(key); it != m_textureIndex.end()) { return it->second; }
 
 		const auto blob = vfs::readGlobal(path);
-		if (!blob || blob->empty()) { m_textureIndex.emplace(key, 0xFFFFFFFFu); return 0xFFFFFFFFu; }
+		if (!blob || blob->empty())
+		{
+			debug::warnOnce("clod.tex." + path, ("clod: texture が読めません: " + path).c_str());
+			m_textureIndex.emplace(key, 0xFFFFFFFFu);
+			return 0xFFFFFFFFu;
+		}
 		int w = 0, h = 0, comp = 0;
 		auto* img = stbi_load_from_memory(blob->data(), static_cast<int>(blob->size()), &w, &h, &comp, 4);
-		if (img == nullptr) { m_textureIndex.emplace(key, 0xFFFFFFFFu); return 0xFFFFFFFFu; }
+		if (img == nullptr)
+		{
+			debug::warnOnce("clod.tex." + path, ("clod: texture を decode できません: " + path).c_str());
+			m_textureIndex.emplace(key, 0xFFFFFFFFu);
+			return 0xFFFFFFFFu;
+		}
 
 		CpuTexture tex;
 		tex.width = static_cast<uint32_t>(w);

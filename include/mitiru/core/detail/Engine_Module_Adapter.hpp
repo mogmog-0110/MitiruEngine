@@ -380,6 +380,10 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 	auto [mx, my] = m_inputState.mousePosition();
 	snap->mouseX = mx;
 	snap->mouseY = my;
+	// v23: 移動量。カーソルロック中は platform 蓄積の生デルタが返る
+	auto [mdx, mdy] = m_inputState.mouseDelta();
+	snap->mouseDeltaX = mdx;
+	snap->mouseDeltaY = mdy;
 	for (int i = 0; i < 3; ++i)
 	{
 		const auto btn = static_cast<MouseButton>(i);
@@ -672,6 +676,10 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			(void)mitiru::debug::spawnTool(std::string{req.tool}, 0, spawnArgs);
 		}
 	}
+
+	// カーソルロック (v23) — 毎フレーム宣言。platform 層 (applyCursorCapture) が
+	// 遷移を検出して OS へ適用する。自動実行では m_allowCursorCapture=false で無効。
+	m_inputState.setCursorCaptured(m_allowCursorCapture && intents->wantMouseLock != 0);
 
 	// Palette の表示状態 — engine 所有の flag を CEF へ push する。
 	if (intents->paletteToggle && m_moduleStateStore)

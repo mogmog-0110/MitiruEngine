@@ -135,6 +135,8 @@ public:
 
 	float mouseX() const noexcept { return s_->mouseX; }
 	float mouseY() const noexcept { return s_->mouseY; }
+	float mouseDeltaX() const noexcept { return s_->mouseDeltaX; }  ///< このフレームの移動量 (px、右が正)
+	float mouseDeltaY() const noexcept { return s_->mouseDeltaY; }  ///< 同 (下が正)。ロック中も動く (FPS 視線)
 	bool  mouseDown(int button = 0) const noexcept   ///< 押されている間 (0=左 1=右 2=中)
 	{
 		return button >= 0 && button < 3 && s_->mouseButtonsDown[button] != 0;
@@ -385,6 +387,8 @@ public:
 	/// update 内の `*this = MyGame{}` 手運びの代わり。host が memset 0 → init() を適用する。
 	/// intent なので replay / resim では update が同フレームで再発行し bit-exact に再現される。
 	void requestRestart() noexcept { s_->requestRestart(); }
+	/// カーソルをロックする (FPS 視線)。毎フレーム呼ぶ — 呼ばないフレームで解除される。
+	void lockMouse() noexcept { s_->requestMouseLock(); }
 	/// このフレームのスクリーンショットを保存する。
 	void screenshot() noexcept { s_->requestScreenshotNow(); }
 	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。

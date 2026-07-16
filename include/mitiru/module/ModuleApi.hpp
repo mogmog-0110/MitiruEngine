@@ -53,86 +53,36 @@ namespace mitiru::module
 {
 
 /// @brief 現在の ABI version。breaking change で bump する。
-/// @details
-///   - v1 (1e53c8d9): on_init / on_update / on_draw / on_shutdown のみ
-///   - v2 (47e0a43a): InputSnapshot, FrameIntents 追加。on_update sig 変更
-///   - v3 (47cc3cc1): StatePushItem::strVal を 160 → 3968 に拡張
-///     (launcher の view.launcher.projects 等、JSON-encoded big state push 対応)
-///   - v4 (47..): FrameIntents に soundIntents 追加 (ADR 0008)。DLL ゲームが
-///     既存 audio mixer へ「音を鳴らして」と intent を出せる。host は古い v3
-///     module の soundIntents を読まない (= 音無しで動く) ので後方安全。
-///   - v5: InputSnapshot に gamepad (XInput 主コントローラ) 状態を追加。
-///     ボタンビットマスク (down/justPressed/justReleased) + axes[6] + connected。
-///     POD 末尾への追記なので既存 field offset 不変。host が古い module に渡しても
-///     古い module は新 field を読まないだけ (後方安全)。
-///   - v6: SoundIntent 末尾に pitchScale / fadeInSec / fadeOutSec を追加。SE 個別
-///     ピッチ変更と BGM crossfade/stopfade に対応 (ADR 0008 拡張)。末尾追記で後方安全。
-///   - v7: FrameIntents 末尾に visualIntents[8] + visualIntentCount を追加。Tint 等の
-///     一発演出を intent で要求できる。末尾追記 + zero-init で v≤6 module は後方安全。
-///   - v8: InputSnapshot 末尾に rngSeed を追加 (ADR 0012)。host が決定論 seed を供給し、
-///     RNG 駆動 game も replay で bit-exact 再現できる。末尾追記で v≤7 module は後方安全。
-///   - v9: ModuleApi 末尾に memorySize を追加 (ADR 0013)。DLL が GameMemory のバイト数を
-///     申告し、host が単一 state channel (replay state slot) に GameMemory を記録できる。
-///     ②time-travel / ④replay-as-test が real DLL game で構造保証に。v≤8 module は後方安全。
-///   - v10: FrameIntents 末尾に toolRequests[] を追加 (ADR 0014)。DLL が「この独立ウィンドウの
-///     ツール (inspector 等) を開いて」と host に頼み、host が別 exe を spawn する。必要なときだけ
-///     コードから tool 窓を配置できる (pulled UI)。末尾追記で v≤9 module は後方安全。
-///   - v11: ModuleApi 末尾に seriesProbes[] を追加 (ADR 0017)。DLL が「GameMemory から
-///     このスカラーを引く純関数」を申告し、host が GameMemory ring に適用して time-travel の
-///     観測系列 (HP 履歴など) を自動生成する。手動 Snapshot push を廃し、観測も rewind も
-///     replay も単一の GameMemory 源に統一する。末尾追記 + zero-init で v≤10 module は後方安全。
-///   - v12: ModuleApi 末尾に reflectFields[] + reflectSchemas[] を追加 (ADR 0018)。DLL が
-///     GameMemory の全フィールドの名前・型・オフセットを申告し、host が GameMemory バイト列
-///     (現フレーム + ring の過去) を構造化 JSON 化して AI に全状態を開放する (probe の拡張)。
-///     末尾追記 + zero-init で v≤11 module は後方安全 (reflectFieldCount=0 = 非対応)。
-///   - v14: Screen 末尾に AI 観測用 draw log メンバを追加 (/api/ai/frame)。Screen* は
-///     gameDraw で DLL 境界を渡るため layout 拡張 = ABI break。末尾追加なので
-///     旧 module (v≤13) は新 host 上で安全 (旧 offset 不変、draw log に載らないだけ)。
-///   - v15: Screen 末尾に SW ラスタライズ gating フラグを追加 (#53)。headless で
-///     capture が読まないフレームの CPU ラスタライズを省く。末尾追加なので
-///     旧 module (v≤14) は新 host 上で安全 (旧挙動 = 毎フレームラスタライズのまま)。
-///   - v16: Screen 末尾に sprite resolver (sprite(id) 1 行描画)。host が id→Texture の
-///     resolver (C 関数ポインタ + ctx) を注入し、game は `s.sprite("hero", x, y)` だけで
-///     assets/sprites/<id>.png を描ける。末尾追加なので旧 module (v≤15) は新 host 上で
-///     安全 (resolver メンバに触らないだけ)。
-///   - v13: InputSnapshot 末尾に audioTimeSec を追加。host audio backend の再生サンプル位置
-///     (秒) を毎フレーム供給し、リズムゲームが dt 積算でなく音声クロック基準で判定できる。
-///   - v17: FrameIntents 末尾に save/load intent を追加 (ADR 0020)。hud.save("slot0") で
-///     host が GameMemory bytes をファイルへ memcpy、load で復元 (rewind と同一機構)。
-///     replay 中の load は記録済み state blob で代用され bit-exact を保つ。末尾追記で後方安全。
-///   - v18: Screen 末尾に 3D facade メンバ (s.camera3D / s.drawMesh)。Screen* は on_draw で
-///     DLL 境界を渡るため layout 拡張 = ABI break (v14/v15/v16 と同種の Screen 拡張)。
-///   - v19: audio engine v2 (oscar-rythm リズム同期の根治)。3 点を末尾追記:
-///     (1) InputSnapshot 末尾に audioLatencySec — host audio backend の出力レイテンシ (秒)。
-///         masterTime はデバイスへ送った位置 = 耳より先行。判定を耳基準に補正できるよう
-///         「バッファ→耳」の遅延を供給する。earTime = audioTime - audioLatency。
-///     (2) SoundIntent 末尾に transport/seekSec — BGM の pause/resume/seek (会話チュートリアルで
-///         BGM を止めて間を取る等)。host が ma_sound_stop/start/seek へ写像する。
-///     (3) SoundIntent 末尾に scheduleSec — 「この音をこの音声クロック時刻で鳴らす」サンプル精度
-///         予約 (miniaudio set_start_time)。毎フレーム clock>=t 発火のフレーム量子化 (~16ms) を消す。
-///     いずれも POD 末尾追記 + host zero-init。
-///   - v20: FrameIntents 末尾に つむぎ タイムライン織り intent (weaveBegin/Spin/Commit) を追加。
-///     ※ weave は v21 内で撤去 (v21 未リリースの窓で ABI から除去、ADR 0024 撤去節)。
-///   - v21: InputSnapshot 末尾に 2 点を追記 (ADR 0024):
-///     (1) effectiveDt / paused — pause・hitStop の dt gating は simulation 入力なのに
-///         記録系の外にあった (H-3)。host が実際に on_update へ渡す dt を snapshot に書き、
-///         replay / resim / branch は記録値を再投入する (GUI 録画 → headless 再生の false-red 根治)。
-///     (2) logicalW / logicalH — 論理解像度 (Screen logical size) の毎フレーム供給。
-///         サンプルの kScreenW/kScreenH 自前 constexpr を置き換える基盤 (§8-5)。
-///     あわせて暗黙 padding 2 カ所 (InputSnapshot 786→788 / SoundIntent seekSec→scheduleSec 間)
-///     を明示 pad に置換し、主要 wire struct の sizeof / offset を static_assert でピン留めした。
-///     ※ weave (v20 intent 群 + WeaveInbox) は v21 内で撤去 — consumer ゼロの
-///        ゲーム固有機構は engine に持たず game 側 (flat POD の 3-way merge) で実装する。
+/// @details 1 version = 1 行の台帳。詳細は各 field の vNN コメントと ADR。
+///   - v1: on_init / on_update / on_draw / on_shutdown
+///   - v2: InputSnapshot / FrameIntents 追加、on_update sig 変更
+///   - v3: StatePushItem::strVal 160 → 3968
+///   - v4: FrameIntents に soundIntents (ADR 0008)
+///   - v5: InputSnapshot に gamepad
+///   - v6: SoundIntent に pitchScale / fadeInSec / fadeOutSec
+///   - v7: FrameIntents に visualIntents
+///   - v8: InputSnapshot に rngSeed (ADR 0012)
+///   - v9: ModuleApi に memorySize (ADR 0013)
+///   - v10: FrameIntents に toolRequests (ADR 0014)
+///   - v11: ModuleApi に seriesProbes (ADR 0017)
+///   - v12: ModuleApi に reflectFields / reflectSchemas (ADR 0018)
+///   - v13: InputSnapshot に audioTimeSec
+///   - v14: Screen に AI 観測用 draw log (/api/ai/frame)
+///   - v15: Screen に SW ラスタライズ gating
+///   - v16: Screen に sprite resolver (s.sprite(id))
+///   - v17: FrameIntents に save / load (ADR 0020)
+///   - v18: Screen に 3D facade (s.camera3D / s.drawMesh)
+///   - v19: audioLatencySec + SoundIntent transport / seekSec / scheduleSec
+///   - v20: weave intent (v21 内で撤去、ADR 0024 撤去節)
+///   - v21: effectiveDt / paused / logicalW / logicalH + 明示 pad + sizeof/offset static_assert (ADR 0024)
+///   - v22: Screen::drawModel + IRenderer3D 末尾 virtual (ADR 0027)
+///   - v23: InputSnapshot に mouseDeltaX/Y、FrameIntents に wantMouseLock (FPS 視線)
 ///
-/// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。上の各 version の
-///       「後方安全」記述は *struct layout の追記方針* の説明であって、**古い DLL を runtime で
-///       受理する意味ではない**。配列要素 (SoundIntent 等) が後の version で太ると soundIntents[] の
-///       stride = 後続 field の offset がズレ、旧 DLL を新 host で動かすと silent 破損するため、
+/// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
+///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない —
+///       配列要素が太ると後続 field の offset がズレ silent 破損するため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 22;  // v22: Screen::drawModel + IRenderer3D 末尾 virtual (ADR 0027)
-                                                  // v21: dt/論理解像度の InputSnapshot 統合 (ADR 0024)
-                                                  // v20 の weave intent は v21 内で撤去 (未リリース窓、ADR 0024 撤去節)
-                                                  // v19: audio engine v2 (audioLatencySec / transport / scheduleSec)
+constexpr std::uint32_t kCurrentApiVersion = 23;
 
 // ── build fingerprint (H-1/H-4 短期対策、ADR 0024 追記) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -256,11 +206,10 @@ namespace gamepad
 }
 
 /// @brief 1 フレーム分の input 状態 (host → DLL の push)
-/// @details
-/// 全 256 VK code 対応。エッジ (just pressed / released) は host が
-/// 前フレームとの diff から組み立てる。DLL 側は edge も held も完全な
-/// stateless view として受け取り、自分で状態を保持しない
-/// (= replay 時の bit-exact 再現が構造保証される)。
+/// @details 全 256 VK code 対応。エッジは host が前フレーム diff から組み立て、DLL は
+/// stateless view として受け取る。replay 時は snapshot 全体が記録値で置換される
+/// (= bit-exact 再現の構造保証)。新 field は末尾へ追記 (既存 offset 不変)。
+/// field 先頭の vNN = その field が入った ABI version。
 struct InputSnapshot
 {
 	std::uint8_t keysDown[256];           ///< 1 = 現在押下中
@@ -271,59 +220,43 @@ struct InputSnapshot
 	std::uint8_t mouseButtonsDown[3];           ///< L=0, R=1, M=2
 	std::uint8_t mouseButtonsJustPressed[3];
 	std::uint8_t mouseButtonsJustReleased[3];
-	std::uint8_t _pad[3];                 ///< 明示的 padding (次の int32 の 4B align。v21 で暗黙 2B を明示化)
+	std::uint8_t _pad[3];                 ///< 4B align
 
-	/// @brief このフレームに溜まった CEF JS からの action event
+	/// このフレームに溜まった CEF JS からの action event
 	std::int32_t actionEventCount;
 	ActionEvent  actionEvents[16];
 
-	// ── gamepad (主コントローラ = XInput player 0) — ABI v5 で追記 ──────
-	// 末尾追記なので既存 field の offset は不変。非対応 platform / 未接続時は全 0。
-	std::int32_t  gamepadConnected;            ///< 1 = 接続中 (0 = 未接続/非対応)
+	// v5: gamepad (主コントローラ)。非対応 platform / 未接続時は全 0
+	std::int32_t  gamepadConnected;            ///< 1 = 接続中
 	std::uint32_t gamepadButtonsDown;          ///< gamepad:: ビットマスク (押下中)
 	std::uint32_t gamepadButtonsJustPressed;   ///< このフレームで押された
 	std::uint32_t gamepadButtonsJustReleased;  ///< このフレームで離された
 	float         gamepadAxes[6];              ///< gamepad::Axis 添字。stick [-1,1] / trigger [0,1]
 
-	// ── 決定論 RNG seed (ABI v8 で追記、ADR 0012) ─────────────────────
-	// 末尾追記なので既存 field の offset は不変。v≤7 module は読まないだけ (0)。
-	// host が EngineConfig::randomSeed を毎フレーム供給。replay 時は記録値が再投入され
-	// bit-exact に復元される。DLL は `mitiru::Random rng(input->rngSeed)` で seed する。
-	std::uint64_t rngSeed;                     ///< session 固定の決定論 seed (0 = 未供給)
+	/// v8: 決定論 seed (ADR 0012)。`mitiru::Random rng(input->rngSeed)` で使う。0 = 未供給
+	std::uint64_t rngSeed;
 
-	// ── 音声クロック (ABI v13 で追記) ─────────────────────────────────
-	// host の audio backend が再生したサンプル位置 (秒)。リズムゲーム等がフレーム dt
-	// 積算ではなく音声クロック基準で判定するために使う。0 = 非対応 backend (Null/headless
-	// 等) → game は dt 積算へフォールバック。replay 時は末尾の moduleInputOverride が
-	// snapshot 全体を記録値で置換するので、再生でも同じ値が流れ bit-exact 性が保たれる。
+	/// v13: 音声クロック (秒) = backend が再生したサンプル位置。0 = 非対応 → dt 積算へ
+	/// フォールバック。非ゼロ後は単調非減少を engine が保証する
 	double audioTimeSec;
 
-	// ── 音声出力レイテンシ (ABI v19 で追記) ───────────────────────────────
-	// host の audio backend が「デバイスバッファに積んでから実際にスピーカーから出る」までの
-	// 遅延 (秒)。audioTimeSec はデバイスへ送った位置なので、耳に届く位置は audioTimeSec から
-	// この値だけ過去になる。リズムゲームは判定窓を耳基準へ補正するのにこれを使う:
-	//   耳に届いている位置 earTime = audioTimeSec - audioLatencySec (Input::earTime())。
-	// 0 = 不明 (Null/headless 等) → game は従来どおり audioTimeSec で判定する。device 固定値なので
-	// 毎フレーム同じ。replay 時も moduleInputOverride が記録値で上書きするので再現する。
+	/// v19: 音声出力レイテンシ (秒)。耳基準の判定は earTime = audioTimeSec - この値。0 = 不明
 	double audioLatencySec;
 
-	// ── 実効 dt / pause (ABI v21 で追記、ADR 0024) ──────────────────────
-	// host が実際に on_update へ渡す dt。pause / hitStop 中は 0、通常は固定ステップ dt。
-	// dt gating は simulation 入力なので snapshot に載せる — replay / resim は記録値を
-	// そのまま再投入し、GUI 録画 (F8 pause / hitStop 演出込み) → headless 再生でも
-	// bit-exact が成立する (H-3)。game は on_update の dt 引数で同じ値を受け取る。
+	/// v21: host が on_update へ渡す実効 dt (ADR 0024)。pause / hitStop 中は 0
 	float effectiveDt;
 
-	// ── 論理解像度 (ABI v21 で追記、§8-5) ────────────────────────────────
-	// host が毎フレーム Screen の logical size を供給する。game は 1280/720 等の
-	// kScreenW/kScreenH 自前 constexpr を持たずにレイアウトできる。0 = 未供給 (screen 未生成)。
+	/// v21: 論理解像度 (Screen logical size)。0 = 未供給
 	std::uint16_t logicalW;
 	std::uint16_t logicalH;
 
-	// pause 状態 (1 = cfg.paused)。effectiveDt=0 の理由の区別用 (step 実行フレームは
-	// paused=1 かつ effectiveDt>0)。replay 時は記録値が再投入される。
+	/// v21: 1 = cfg.paused。effectiveDt=0 の理由の区別用 (step 実行は paused=1 かつ dt>0)
 	std::uint8_t paused;
-	std::uint8_t _padTail[7];             ///< 明示的 padding (struct 全体の 8B align)
+	std::uint8_t _padTail[7];             ///< 8B align
+
+	/// v23: このフレームのカーソル移動量 (px、右/下が正)。ロック中も生の移動量が入る
+	float mouseDeltaX;
+	float mouseDeltaY;
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)
@@ -423,7 +356,8 @@ struct RequestToolWindow
 /// @details
 /// host が毎フレーム頭で `FrameIntents::reset()` する。DLL は helper (pushInt /
 /// playSound / requestSave …) で必要な intent だけを積み、helper が count を進める。
-/// reader (host) は各配列を [0, count) しか読まない。
+/// reader (host) は各配列を [0, count) しか読まない。新 field は末尾へ追記
+/// (既存 offset 不変)。field 先頭の vNN = その field が入った ABI version。
 struct FrameIntents
 {
 	std::uint8_t requestStop;       ///< 1 = engine.requestStop() を呼ぶ
@@ -445,39 +379,34 @@ struct FrameIntents
 	std::int32_t jsToExecuteLen;
 	char         jsToExecute[2048];
 
-	/// @brief このフレームの sound 再生要求 (ADR 0008)。末尾に追加したので既存
-	///        field の offset は不変。struct size は増えたため kCurrentApiVersion
-	///        を 4 に bump した。
+	/// v4: sound 再生要求 (ADR 0008)
 	std::int32_t soundIntentCount;
 	SoundIntent  soundIntents[8];
 
-	/// @brief このフレームの画面演出要求 (#33、v7 追加)。SoundIntents と同じ pattern。
-	///        末尾追加なので既存 offset 不変、v≤6 module は無視されるだけ (後方安全)。
+	/// v7: 画面演出要求 (Tint / Fade / Shake / HitStop)
 	std::int32_t visualIntentCount;
 	VisualIntent visualIntents[8];
 
-	/// @brief このフレームのツール窓 spawn 要求 (ADR 0014、v10 追加)。末尾追加で v≤9 後方安全。
+	/// v10: ツール窓 spawn 要求 (ADR 0014)
 	std::int32_t      toolRequestCount;
 	RequestToolWindow toolRequests[4];
 
-	// ── セーブ/ロード intent (ABI v17 末尾追記、ADR 0020) ────────────────────
-	// save = host が GameMemory bytes を save/<slot>.msav へ書く。
-	// load = host がファイルから GameMemory へ memcpy (rewind と同一機構)。
-	// replay 中の load は記録済み state blob で代用される (ファイル不参照 = bit-exact 保証)。
+	// v17: セーブ/ロード (ADR 0020)。save = GameMemory bytes → save/<slot>.msav、
+	// load = ファイル → GameMemory memcpy。replay 中の load は記録済み state で代用される
 	std::uint8_t saveRequest;     ///< 1 = このフレームで save
 	std::uint8_t loadRequest;     ///< 1 = このフレームで load
 	std::uint8_t _padSave[2];
 	char         saveSlot[28];    ///< slot 名 ([a-zA-Z0-9_-]、null 終端)
 	char         loadSlot[28];
 
-	// ── restart intent (§8-4、v21 encoding 拡張・ADR 0024 追記) ────────────
-	// 1 = GameMemory を unload せず初期状態から fresh 再構築するよう host に頼む。
-	// host は on_update 直後・ring 記録前に memset 0 → on_init を適用する。
-	// `*this = T{}` の手運びイディオムを構造的に不要にする。InputSnapshot には
-	// 載せない — intent は (GameMemory, InputSnapshot) の純関数出力なので、
-	// replay / resim では update が同フレームで再発行して bit-exact に再現される。
+	/// v21: 1 = GameMemory を unload なしで初期状態から再構築するよう頼む (§8-4)。
+	/// host は on_update 直後・ring 記録前に memset 0 → on_init を適用する
 	std::uint8_t restartRequest;
-	std::uint8_t _padRestart[3];  ///< struct 全体の 8B align 維持
+	std::uint8_t _padRestart[3];  ///< 8B align
+
+	/// v23: 1 = カーソルロックを望む (毎フレーム宣言、立てないフレームで解除)
+	std::uint8_t wantMouseLock;
+	std::uint8_t _padMouseLock[7];  ///< 8B align 維持
 
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
@@ -498,6 +427,7 @@ struct FrameIntents
 		saveSlot[0] = '\0';
 		loadSlot[0] = '\0';
 		restartRequest = 0;
+		wantMouseLock = 0;
 	}
 
 	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
@@ -516,6 +446,8 @@ struct FrameIntents
 	/// GameMemory を初期状態から fresh 再構築するよう host に頼む (§8-4)。
 	/// unload なしで memset 0 → on_init が走る (`*this = T{}` の手運びが不要になる)。
 	void requestRestart() noexcept { restartRequest = 1; }
+	/// カーソルロックを頼む (FPS 視線)。毎フレーム呼ぶ — 呼ばないフレームで解除される。
+	void requestMouseLock() noexcept { wantMouseLock = 1; }
 
 	// HUD へ値を送る / 音を鳴らす、を 1 行で書くためのヘルパ。中の固定長スロット詰め
 	// (空き探し・上限チェック・null 終端) はここに隠す。これが無いと game 側が毎回
@@ -726,13 +658,13 @@ static_assert(std::is_trivially_copyable_v<InputSnapshot>,
 // これらの数値を変える変更は ABI break — kCurrentApiVersion の bump と、
 // .mtrr 録画 (header frameSize = sizeof(InputSnapshot)) の録り直しが必要。
 static_assert(sizeof(ActionEvent)       == 320,  "ActionEvent wire size 固定");
-static_assert(sizeof(InputSnapshot)     == 5992, "InputSnapshot wire size 固定 (v21)");
+static_assert(sizeof(InputSnapshot)     == 6000, "InputSnapshot wire size 固定 (v23: mouseDelta 追記)");
 static_assert(sizeof(StatePushItem)     == 4076, "StatePushItem wire size 固定");
 static_assert(sizeof(InspectableExport) == 4100, "InspectableExport wire size 固定");
 static_assert(sizeof(VisualIntent)      == 28,   "VisualIntent wire size 固定");
 static_assert(sizeof(SoundIntent)       == 104,  "SoundIntent wire size 固定");
 static_assert(sizeof(RequestToolWindow) == 192,  "RequestToolWindow wire size 固定");
-static_assert(sizeof(FrameIntents)      == 297632, "FrameIntents wire size 固定 (v21: restartRequest 追記)");
+static_assert(sizeof(FrameIntents)      == 297640, "FrameIntents wire size 固定 (v23)");
 
 static_assert(offsetof(InputSnapshot, mouseX)           == 768,  "InputSnapshot layout");
 static_assert(offsetof(InputSnapshot, actionEventCount) == 788,  "InputSnapshot layout (明示 pad 786-788)");
@@ -742,11 +674,13 @@ static_assert(offsetof(InputSnapshot, audioTimeSec)     == 5960, "InputSnapshot 
 static_assert(offsetof(InputSnapshot, effectiveDt)      == 5976, "InputSnapshot layout (v21)");
 static_assert(offsetof(InputSnapshot, logicalW)         == 5980, "InputSnapshot layout (v21)");
 static_assert(offsetof(InputSnapshot, paused)           == 5984, "InputSnapshot layout (v21)");
+static_assert(offsetof(InputSnapshot, mouseDeltaX)      == 5992, "InputSnapshot layout (v23)");
 static_assert(offsetof(SoundIntent, seekSec)            == 88,   "SoundIntent layout");
 static_assert(offsetof(SoundIntent, scheduleSec)        == 96,   "SoundIntent layout (明示 pad 92-96)");
 static_assert(offsetof(FrameIntents, statePushes)       == 12,     "FrameIntents layout");
 static_assert(offsetof(FrameIntents, soundIntents)      == 295736, "FrameIntents layout");
 static_assert(offsetof(FrameIntents, restartRequest)    == 297628, "FrameIntents layout (v21 restart)");
+static_assert(offsetof(FrameIntents, wantMouseLock)     == 297632, "FrameIntents layout (v23)");
 
 // ── 観測 probe (ABI v11、ADR 0017) ───────────────────────────────────────
 

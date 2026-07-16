@@ -1512,6 +1512,10 @@ int main(int argc, char* argv[])
 	mitiru::Engine engine;
 	engine.setSuppressToolWindows(args.noToolWindows);  // --no-tool-windows: 録画/CI でツール窓を出さない
 	engine.setToolWindowPos(args.toolWinX, args.toolWinY);  // --tool-window-pos: 観察窓も実画面に出さない
+	// 自動実行 (script 駆動 / replay / headless / capture) では game の wantMouseLock を
+	// OS へ適用しない — 画面外ウィンドウが実カーソルを掴む事故を防ぐ
+	engine.setAllowCursorCapture(args.inputScript.empty() && args.replayPath.empty()
+	                             && !args.headless && args.captureDir.empty());
 
 	// SoundIntents (ADR 0008) を実際に鳴らすため audio engine を接続する。id は
 	// game の配置先 assets/audio/ ディレクトリ (DLL の隣) に対して解決する。

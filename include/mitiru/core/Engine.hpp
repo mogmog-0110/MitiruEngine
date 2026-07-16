@@ -238,6 +238,9 @@ public:
 	/// spawn するツール窓 (tool_cef) の初期座標を指定する。録画で観察窓を実画面に出さず
 	/// 最初から負の X 等へ出すため。既定 INT_MIN は OS 任せ (従来どおり)。
 	void setToolWindowPos(int x, int y) noexcept { m_toolWinX = x; m_toolWinY = y; }
+	/// game の wantMouseLock (FPS 視線) を OS へ適用するかどうか。自動実行
+	/// (input-script / replay / headless) では false にして実カーソルを掴まない。
+	void setAllowCursorCapture(bool b) noexcept { m_allowCursorCapture = b; }
 
 	// lo-fi post-FX (ADR #30: シーン毎の hi-res / lofi 切替):
 	void setLofiEnabled(bool e) noexcept { mutableConfig().loFi.enabled = e; }
@@ -702,6 +705,7 @@ private:
 	std::map<std::string, std::string> m_gameFlags;  ///< ゲームフラグストア (HTTP API用)
 	std::set<std::string> m_spawnedToolKeys;         ///< 既に開いたツール窓 (tool|args) — 重複 spawn 防止
 	bool                  m_suppressToolWindows = false;  ///< true = tool 窓 spawn を全無効 (録画/CI、setSuppressToolWindows)
+	bool                  m_allowCursorCapture  = true;   ///< false = wantMouseLock を無視 (自動実行)
 	int                   m_toolWinX = (-2147483647 - 1); ///< spawn する tool 窓の初期 X (INT_MIN=OS任せ)
 	int                   m_toolWinY = (-2147483647 - 1); ///< spawn する tool 窓の初期 Y
 	// HTML/CSS ホットリロード: scene.html (file:// URL) を監視し、保存で CEF を再ロード
