@@ -14,6 +14,17 @@ if(COMMAND mitiru_add_cef_game)
 	mitiru_add_cef_game(mitiru_tool_cef)
 endif()
 
+# SDL2 backend 有効時は SDL2.dll を tool 窓 exe の隣へ deploy する (DS4 等 DirectInput パッド対応)。
+# mitiru_tool_cef は host と別ディレクトリに出るので host の deploy では兼ねられない。
+# SDL2::SDL2 は shared imported target なので TARGET_FILE = SDL2.dll。
+if(WIN32 AND TARGET SDL2::SDL2)
+	add_custom_command(TARGET mitiru_tool_cef POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"$<TARGET_FILE:SDL2::SDL2>"
+			"$<TARGET_FILE_DIR:mitiru_tool_cef>/SDL2.dll"
+		COMMENT "mitiru_tool_cef: deploying SDL2.dll (DirectInput gamepad support)")
+endif()
+
 # assets/ (各 *.html + tool.css) を source-tracked で配備 (asset 編集でも re-deploy)。
 set(_toolcef_dir "$<TARGET_FILE_DIR:mitiru_tool_cef>")
 file(GLOB_RECURSE _toolcef_assets CONFIGURE_DEPENDS
