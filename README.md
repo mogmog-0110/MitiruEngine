@@ -18,7 +18,7 @@
 
 ## なぜ MitiruEngine か
 
-- **HTML / CSS で UI が書ける。** メニューや HUD を Web ページと同じ書き方で組めます。`data-m-*` の宣言的バインダがあり、つなぎの JavaScript は書きません。
+- **HTML / CSS で UI が書ける。** メニューや HUD を Web ページと同じ書き方で組めます。C++ が送った値を `data-m-*` を書いた要素が受け取るので、つなぎの JavaScript は書きません。
 - **巻き戻し。** 毎フレームの状態を記録し、過去の瞬間へゲームをまるごと巻き戻して観察できます。「なぜこの値になったか」を遡って 1 行を特定できます。
 - **決定論 + リプレイ。** 同じ入力なら同じ結果になります。録画した入力がそのまま回帰テストになります。
 - **各 subsystem を単独起動できる。** Renderer / Audio / Input / Scene などを、ゲーム全体を立ち上げずに個別の CLI コマンドで動かせます。
@@ -82,8 +82,8 @@ void update(Input in, Hud hud, float dt) {
 <sub>同梱の <code>scene3d</code> 例。GPU 3D（半透明の順不同合成 WBOIT ＋ 影 ＋ skybox）。</sub>
 
 - 2D 描画（スプライト / タイルマップ / グラデーション / 図形 / テキスト）と 3D（glTF の読み込みと表示、影・半透明・skybox）
-- 矩形・点の当たり判定（物理ブリッジ Box2D / Jolt は任意で有効化）
-- HTML / CSS の UI オーバーレイ（CEF）と `data-m-*` 宣言的バインダ
+- 矩形・点の当たり判定（物理バックエンド Box2D / Jolt / NativeEngine は任意で有効化）
+- HTML / CSS の UI オーバーレイ（CEF）と、C++ の値を受ける `data-m-*` 属性
 - 状態を 1 個のかたまりに置く設計（`MITIRU_GAME` / `MITIRU_GAME_SERIES`）
 - 巻き戻し・観察窓・入力モニタ・録画再生などのデバッグ窓（`hud.open(Tool::…)` で開く）
 - 決定論的リプレイ（入力 + 乱数 seed の記録・再生）

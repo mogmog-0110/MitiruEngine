@@ -21,7 +21,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.27</span>
+    <span class="ver">v0.28</span>
   </div></header>
 
 <div class="shell">
@@ -65,7 +65,7 @@
             <tr><td><a href="#cmd-watch"><code>watch</code></a></td><td>src/ の変更を監視してホットリロード</td></tr>
             <tr><td><a href="#cmd-debug"><code>debug</code></a></td><td>Debug 構成 + デバッグ補助を有効にして実行</td></tr>
             <tr><td><a href="#cmd-ui"><code>ui</code></a></td><td>HTML/CSS の UI をビルドなしでブラウザ即プレビュー</td></tr>
-            <tr><td><a href="#cmd-lint"><code>lint</code></a></td><td>scene.html の data-m-* と C++ の push を静的に突き合わせ</td></tr>
+            <tr><td><a href="#cmd-lint"><code>lint</code></a></td><td>scene.html の data-m-* と C++ が送る値を静的に突き合わせ</td></tr>
             <tr><td><a href="#cmd-verify"><code>verify</code></a></td><td>ヘッドレスでビルド・起動・スクリーンショット → 合否を JSON で出力</td></tr>
             <tr><td><a href="#cmd-replay"><code>replay</code></a></td><td>入力リプレイの記録・再生・回帰テスト（同じ入力なら同じ結果）</td></tr>
             <tr><td><a href="#cmd-mcp"><code>mcp</code></a></td><td>MCP サーバーを起動して AI ツールにゲームを観測・操作させる</td></tr>
@@ -124,7 +124,7 @@ mitiru ui --state mock.json   <span class="c"># {"view.hp": 80} のような JSO
 mitiru ui --port 9000         <span class="c"># ポート変更</span></pre>
 
           <h3 id="cmd-lint">mitiru lint — バインドのズレを静的に検出する</h3>
-          <p>scene.html の <code>data-m-*</code> バインドと C++ 側の push を突き合わせ、C↔HTML 境界で黙って失敗するもの（C++ が一度も push しないキー、壊れたマークアップ、binder（C++ の値を HTML に自動で流し込む仕組み）スクリプトの欠落など）を実行前に検出します。既定は警告のみで、CI 用に <code>--strict</code> があります。</p>
+          <p>scene.html の <code>data-m-*</code> と C++ 側が送る値を突き合わせ、C++ と HTML の境目で黙って失敗するもの（C++ が一度も送らない名前、壊れたマークアップ、値を画面へ流し込むエンジン付属スクリプトの読み込み漏れなど）を実行前に検出します。既定は警告のみで、CI 用に <code>--strict</code> があります。</p>
 <pre>mitiru lint            <span class="c"># 警告を表示</span>
 mitiru lint --strict   <span class="c"># 検出があれば非ゼロ終了 (CI 向け)</span></pre>
 
@@ -170,7 +170,7 @@ mitiru inspect 12345 --all                  <span class="c"># 3 つの観測窓�
 <pre>mitiru input</pre>
 
           <h3 id="cmd-scene">mitiru scene — シーン管理だけ</h3>
-          <p>シーンの push / pop / replace と遷移・ライフサイクルの挙動を、ゲームロジック抜きで観察します。</p>
+          <p>シーンを重ねる・戻す・差し替えるときの遷移と、生成から破棄までの流れを、ゲームロジック抜きで観察します。</p>
 <pre>mitiru scene</pre>
 
           <h3 id="cmd-audio">mitiru audio — オーディオだけ</h3>

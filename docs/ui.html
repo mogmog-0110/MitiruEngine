@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine — HTML / CSS で画面を作る</title>
-  <meta name="description" content="MitiruEngine の HUD・メニューを HTML / CSS で作る方法。C++ が名前付きの値を push し、HTML 側は data-m-* 属性で受ける。つなぎの JavaScript は書く必要がない。">
+  <meta name="description" content="MitiruEngine の HUD・メニューを HTML / CSS で作る方法。C++ が名前を付けた値を送り、HTML 側は data-m-* 属性で受ける。つなぎの JavaScript は書く必要がない。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="HTML / CSS で画面を作る — MitiruEngine">
-  <meta property="og:description" content="ルールは C++、画面は HTML / CSS。C++ が値を push し、data-m-* が受ける。手書き JS は不要。">
+  <meta property="og:description" content="ルールは C++、画面は HTML / CSS。C++ が値を送り、data-m-* が受ける。手書き JS は不要。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/ui.html">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="site.css">
@@ -21,7 +21,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.27</span>
+    <span class="ver">v0.28</span>
   </div></header>
 
 <div class="shell">
@@ -48,7 +48,7 @@
         <div class="wrap">
           <p class="kicker">HTML / CSS UI</p>
           <h1>HTML / CSS で画面を作る</h1>
-          <p class="lede">ゲームのルールは C++、画面（スコア表示・メニュー・ダイアログ）は <strong>HTML と CSS</strong> で書く。C++ が名前付きの値を push し、HTML 側は <code>data-m-*</code> 属性で受けるだけなので、つなぎ役の <strong>JavaScript を書く必要がない</strong>。あとはエンジン同梱の binder が画面を自動で同期する。</p>
+          <p class="lede">ゲームのルールは C++、画面（スコア表示・メニュー・ダイアログ）は <strong>HTML と CSS</strong> で書く。C++ が名前を付けた値を送り、HTML 側は <code>data-m-*</code> 属性で受けるだけなので、つなぎ役の <strong>JavaScript を書く必要がない</strong>。あとはエンジン付属の部品が画面を自動で合わせる。</p>
         </div>
       </section>
 
@@ -57,14 +57,14 @@
 
           <figure>
             <img src="assets/beko_gameplay.webp" alt="赤べこの横スクロールゲームの記録。左上の古銭カウンタ（コイン画像＋『N / 18』）が古銭を拾うたびに増え、ゴールに着くと画面中央に『クリア！』が暗転とともに出る。どちらも HTML / CSS で描いている。" loading="lazy" decoding="async">
-            <figcaption>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこの記録。左上の古銭カウンタが拾うたびに増え、ゴールで中央の「クリア！」が出ます。どちらも見た目はすべて HTML / CSS（角丸・影・背景の暗転・拡大アニメ）で、C++ が値を push しているだけ。つなぎの JavaScript は書いていません——作り方はこのページの通り、まとめは <a href="#example">下の完成例</a>に。</figcaption>
+            <figcaption>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこの記録。左上の古銭カウンタが拾うたびに増え、ゴールで中央の「クリア！」が出ます。どちらも見た目はすべて HTML / CSS（角丸・影・背景の暗転・拡大アニメ）で、C++ が値を送っているだけ。つなぎの JavaScript は書いていません——作り方はこのページの通り、まとめは <a href="#example">下の完成例</a>に。</figcaption>
           </figure>
 
           <!-- ── 仕組み ──────────────────────────── -->
           <h2 id="how">仕組み</h2>
-          <p>状態を持つのは C++ だけ。C++ → 画面は「値を push する」、画面 → C++ は「操作を通知する」。この 2 方向しかない。ゲームの状態を HTML 側に持たせないので、表示がズレない。</p>
+          <p>状態を持つのは C++ だけ。C++ → 画面は「値を送る」、画面 → C++ は「操作を通知する」。この 2 方向しかない。ゲームの状態を HTML 側に持たせないので、表示がズレない。</p>
           <figure>
-            <svg class="dgm" viewBox="0 0 560 230" width="100%" style="max-width:560px" role="img" aria-label="C++ と HTML 画面の値の流れ。C++ は hud.set で値を push し HTML が data-m-text で表示、HTML は data-m-action で操作を通知し C++ が in.action で受ける">
+            <svg class="dgm" viewBox="0 0 560 230" width="100%" style="max-width:560px" role="img" aria-label="C++ と HTML 画面の値の流れ。C++ は hud.set で値を送り HTML が data-m-text で表示、HTML は data-m-action で操作を通知し C++ が in.action で受ける">
               <defs><marker id="u1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
               <rect class="boxy" x="14" y="80" width="176" height="72" rx="4"/>
               <text class="lbl" x="102" y="112" text-anchor="middle">C++</text>
@@ -73,13 +73,13 @@
               <text class="lbl" x="458" y="112" text-anchor="middle">HTML / CSS</text>
               <text class="sub" x="458" y="134" text-anchor="middle">画面（HUD）</text>
               <line class="arr" x1="190" y1="100" x2="368" y2="100" marker-end="url(#u1)"/>
-              <text class="sub"  x="279" y="54" text-anchor="middle">値を push</text>
+              <text class="sub"  x="279" y="54" text-anchor="middle">値を送る</text>
               <text class="mono" x="279" y="74" text-anchor="middle">hud.set　→　data-m-text</text>
               <line class="arr" x1="368" y1="132" x2="190" y2="132" marker-end="url(#u1)"/>
               <text class="sub"  x="279" y="166" text-anchor="middle">操作を通知</text>
               <text class="mono" x="279" y="186" text-anchor="middle">data-m-action　→　in.action</text>
             </svg>
-            <figcaption>値は一方通行で流れます。C++ → 画面は「値を push する」（<code>hud.set</code> → <code>data-m-text</code>）、画面 → C++ は「操作を通知する」（<code>data-m-action</code> → <code>in.action</code>）。この 2 方向だけで、状態は常に C++ 側にあります。</figcaption>
+            <figcaption>値は一方通行で流れます。C++ → 画面は「値を送る」（<code>hud.set</code> → <code>data-m-text</code>）、画面 → C++ は「操作を通知する」（<code>data-m-action</code> → <code>in.action</code>）。この 2 方向だけで、状態は常に C++ 側にあります。</figcaption>
           </figure>
 
           <h3>どのファイルに書く</h3>
@@ -92,9 +92,9 @@
 
           <!-- ── 値を表示する ────────────────────── -->
           <h2 id="show">値を表示する</h2>
-          <p>C++ で <code>hud.set("view.…", 値)</code> と push した値を、HTML 側で同じ名前を指して受け取る。<code>data-m-*</code> は HTML 標準の「data 属性」を使った目印で、「この要素に、この名前の値を結びつけて」という意味。たとえば <code>data-m-text="view.hud.score"</code> なら、<strong>「この要素の中身（テキスト）に <code>view.hud.score</code> の値を入れて」</strong>という指示になる。</p>
+          <p>C++ で <code>hud.set("view.…", 値)</code> と送った値を、HTML 側で同じ名前を指して受け取る。<code>data-m-*</code> は HTML 標準の「data 属性」を使った目印で、「この要素に、この名前の値を結びつけて」という意味。たとえば <code>data-m-text="view.hud.score"</code> なら、<strong>「この要素の中身（テキスト）に <code>view.hud.score</code> の値を入れて」</strong>という指示になる。</p>
 
-          <h3>C++ で push する</h3>
+          <h3>C++ から値を送る</h3>
 <pre>hud.set("view.hud.score", score);   <span class="c">// 数値</span>
 hud.set("view.hud.combo", combo);
 hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// 真偽</span></pre>
@@ -129,8 +129,8 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
               <tr><td>data-m-input</td><td>テキスト入力欄（名前入力等）。Enter / フォーカスアウトで確定値が C++ に届く。IME 変換中は送らない。<br><code>&lt;input data-m-input="profile.name"&gt;</code></td></tr>
               <tr><td>data-m-input-live</td><td><code>data-m-input</code> に添えると、確定前も入力の度に送る（150ms 間引き）。検索欄など。<br><code>&lt;input data-m-input="search.q" data-m-input-live&gt;</code></td></tr>
               <tr><td>data-m-repeat</td><td>可変リストを <code>&lt;template&gt;</code> で並べる。子属性（<code>fields / sep / fsep / type / case / key / pos / rot / leave</code>）は →<a href="#repeat">リストを並べる</a>。<br><code>&lt;div data-m-repeat="view.hand"&gt;&lt;template&gt;…&lt;/template&gt;&lt;/div&gt;</code></td></tr>
-              <tr><td>data-m-debug</td><td>開発用。<code>&lt;body data-m-debug&gt;</code>（か URL に <code>?mdebug=1</code>）で、C++ が push していない未知の名前をコンソールに警告する。</td></tr>
-              <tr><td>m-flash / m-enter / m-leave</td><td>属性ではなく、binder が<strong>自動で付けるクラス</strong>。値の変化（flash）・リスト項目の登場（enter）・退場（leave）を CSS アニメの起点にできる。</td></tr>
+              <tr><td>data-m-debug</td><td>開発用。<code>&lt;body data-m-debug&gt;</code>（か URL に <code>?mdebug=1</code>）で、C++ が送っていない未知の名前をコンソールに警告する。</td></tr>
+              <tr><td>m-flash / m-enter / m-leave</td><td>属性ではなく、エンジンが<strong>自動で付けるクラス</strong>。値の変化（flash）・リスト項目の登場（enter）・退場（leave）を CSS アニメの起点にできる。</td></tr>
             </tbody>
           </table>
 
@@ -187,7 +187,7 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
           <p class="note">リストの中では、項目のフィールドを <code>view.…</code> を付けず<strong>そのまま</strong>（<code>data-m-text="name"</code>）指す。C++ 側の送り方の本名は <code>StateWriter</code> ── <code>array()</code> / <code>list()</code> で組み立てて <code>hud.set</code> で送る（→<a href="features.html#htmlui">機能リファレンス §HTML / CSS で画面</a>）。</p>
 
           <h3>大量の要素はコンパクト区切りで — data-m-fields</h3>
-          <p>毎フレーム動く大量の要素（弾・敵・コイン）は、JSON ではなく<strong>区切り文字列</strong>で送るほうが軽い。C++ が <code>"2,80,120;1,300,60"</code> のように push し、HTML 側は <code>data-m-fields</code> で各列に名前を付けて受ける。</p>
+          <p>毎フレーム動く大量の要素（弾・敵・コイン）は、JSON ではなく<strong>区切り文字列</strong>で送るほうが軽い。C++ が <code>"2,80,120;1,300,60"</code> のように送り、HTML 側は <code>data-m-fields</code> で各列に名前を付けて受ける。</p>
 <pre><span class="c">&lt;!-- C++: hud.set("view.scene", "2,80,120;1,300,60");  列は t,x,y --&gt;</span>
 &lt;div class="field" data-m-repeat="view.scene" data-m-fields="t,x,y"&gt;
   &lt;template data-m-case="1"&gt;&lt;div class="coin"  data-m-pos="x,y"&gt;&lt;/div&gt;&lt;/template&gt;
@@ -223,10 +223,10 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
 
           <!-- ── 完成例 ──────────────────────────── -->
           <h2 id="example">完成例</h2>
-          <p>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこが使っている <code>assets/scene.html</code>。左上の古銭カウンタと、ゴール時の「クリア！」を、これだけで作っています。<strong>手書きの JavaScript は 1 行もありません</strong>。C++ が <code>view.coins</code> / <code>view.total</code> / <code>view.cleared</code> を push し、<code>data-m-*</code> が受けるだけ。見た目は普通の CSS。</p>
+          <p>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこが使っている <code>assets/scene.html</code>。左上の古銭カウンタと、ゴール時の「クリア！」を、これだけで作っています。<strong>手書きの JavaScript は 1 行もありません</strong>。C++ が <code>view.coins</code> / <code>view.total</code> / <code>view.cleared</code> を送り、<code>data-m-*</code> が受けるだけ。見た目は普通の CSS。</p>
           <figure>
             <img src="assets/ui_beko_hud.png" alt="赤べこのゲーム画面。左上に古銭カウンタの丸いピル（コイン画像＋『12 / 18』）、画面中央に暗転を背にした『クリア！』の大きな文字。どちらも下の scene.html と hud.set が作っている" loading="lazy">
-            <figcaption>下のコードが実際に作る画面。左上の古銭カウンタ（<code>data-m-text</code>）も、中央の「クリア！」（<code>data-m-class</code> で暗転＋拡大）も、この <code>scene.html</code> と CSS だけ。C++ は値を push しているだけです。</figcaption>
+            <figcaption>下のコードが実際に作る画面。左上の古銭カウンタ（<code>data-m-text</code>）も、中央の「クリア！」（<code>data-m-class</code> で暗転＋拡大）も、この <code>scene.html</code> と CSS だけ。C++ は値を送っているだけです。</figcaption>
           </figure>
 <pre><span class="c">&lt;!-- assets/scene.html --&gt;</span>
 &lt;!doctype html&gt;
@@ -263,7 +263,7 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
   &lt;script src="mitiru_runtime/mitiru_cef_state.js"&gt;&lt;/script&gt;
   &lt;script src="mitiru_runtime/mitiru_bind.js"&gt;&lt;/script&gt;
 &lt;/body&gt;&lt;/html&gt;</pre>
-          <p>C++ 側（<code>game.cpp</code>）はこれを push するだけ。</p>
+          <p>C++ 側（<code>game.cpp</code>）はこれを送るだけ。</p>
 <pre><span class="k">void</span> BekoRun::pushHud(<span class="t">Hud</span> hud) <span class="k">const</span> {
     hud.set(<span class="s">"view.coins"</span>, coins);
     hud.set(<span class="s">"view.total"</span>, NCOIN);
@@ -273,7 +273,7 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
 
           <!-- ── つまずき ────────────────────────── -->
           <h2 id="gotcha">つまずきやすい点</h2>
-          <p>C++ が一度も push していない名前を <code>data-m-*</code> で指すと、<strong>エラーは出ず</strong>、HTML に書いた初期値がそのまま残る。「値が変わらない」ときは、まず C++ の <code>set</code> とスペルが一致しているか確認する。</p>
+          <p>C++ が一度も送っていない名前を <code>data-m-*</code> で指すと、<strong>エラーは出ず</strong>、HTML に書いた初期値がそのまま残る。「値が変わらない」ときは、まず C++ の <code>set</code> とスペルが一致しているか確認する。</p>
           <ul>
             <li>C++ の <code>"view.hud.score"</code> と HTML の <code>data-m-text="view.hud.score"</code> は <strong>完全一致</strong>が必要。</li>
             <li>見た目（色・余白・アニメ）は CSS の領分。値が来ているのに見えないときは CSS を疑う。</li>

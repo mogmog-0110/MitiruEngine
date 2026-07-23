@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.27.1
+	VERSION 0.28.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -668,6 +668,55 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/box2d/CMakeLists.txt")
 	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} box2d)
 else()
 	message(STATUS "Box2D v3 not found - 2D physics bridge disabled (stub)")
+endif()
+
+# ── NativeEngine physics backend (周期境界を持つ自作剛体エンジン) — opt-in ──
+# 他の物理 backend に無い能力: 端が反対側へ繋がる周期境界の世界と、決定的な結果。
+# アダプタは include/mitiru/physics/NativePhysicsBridge.hpp (scene::ISystem)。
+#
+# 2 段構えの opt-in — configure で build するかを決め、link で「見えるか」を決める:
+#   cmake --preset default -DMITIRU_USE_NATIVEPHYS=ON      # NativeEngine を build
+#   target_link_libraries(mygame PRIVATE mitiru_nativephys)  # 使う target だけ
+# mitiru 本体には何も足さない (define も include path も)。link しない target では
+# アダプタは no-op のままなので、既存 build は ON にしても再ビルドされない。
+#
+# ソースの在り処 (上から順に探す):
+#   -DMITIRU_NATIVEPHYS_ROOT=<path> / external/NativeEngine (submodule) / 環境変数 NATIVEENGINE_ROOT
+option(MITIRU_USE_NATIVEPHYS "Build the NativeEngine physics backend (opt-in per target via mitiru_nativephys)" OFF)
+set(MITIRU_NATIVEPHYS_ROOT "" CACHE PATH "Path to the NativeEngine repo root (empty = auto-detect)")
+if(MITIRU_USE_NATIVEPHYS)
+	set(_nativephys_root "${MITIRU_NATIVEPHYS_ROOT}")
+	if(NOT _nativephys_root)
+		if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/NativeEngine/src/world.cpp")
+			set(_nativephys_root "${CMAKE_CURRENT_SOURCE_DIR}/external/NativeEngine")
+		elseif(DEFINED ENV{NATIVEENGINE_ROOT})
+			set(_nativephys_root "$ENV{NATIVEENGINE_ROOT}")
+		endif()
+	endif()
+
+	if(EXISTS "${_nativephys_root}/src/world.cpp")
+		message(STATUS "NativeEngine physics backend: ${_nativephys_root}")
+		add_library(NativeEngine STATIC
+			"${_nativephys_root}/src/world.cpp"
+			"${_nativephys_root}/src/physics_world.cpp")
+		target_include_directories(NativeEngine PUBLIC "${_nativephys_root}/src")
+		target_compile_features(NativeEngine PUBLIC cxx_std_17)
+		if(MSVC)
+			target_compile_options(NativeEngine PRIVATE /utf-8)
+		endif()
+
+		# 使う target が link するもの。sgc 型の binding header (C++20) を運ぶ。
+		add_library(mitiru_nativephys INTERFACE)
+		target_link_libraries(mitiru_nativephys INTERFACE NativeEngine sgc::sgc)
+		target_include_directories(mitiru_nativephys INTERFACE "${_nativephys_root}/mitiru")
+		target_compile_definitions(mitiru_nativephys INTERFACE MITIRU_HAS_NATIVEPHYS=1)
+		target_compile_features(mitiru_nativephys INTERFACE cxx_std_20)
+	else()
+		message(WARNING "MITIRU_USE_NATIVEPHYS=ON but NativeEngine sources not found"
+			" (tried MITIRU_NATIVEPHYS_ROOT, external/NativeEngine, \$ENV{NATIVEENGINE_ROOT})")
+	endif()
+else()
+	message(STATUS "NativeEngine physics backend disabled (-DMITIRU_USE_NATIVEPHYS=ON to build it)")
 endif()
 
 # ── Tracy Profiler (optional) ──────────────────────────────────

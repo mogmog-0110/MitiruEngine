@@ -20,7 +20,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub ↗</a>
-    <span class="ver">v0.27</span>
+    <span class="ver">v0.28</span>
   </div></header>
   <div class="shell">
     <aside class="sidebar"><nav>
@@ -107,7 +107,7 @@ mitiru run</pre>
       <section class="band">
         <div class="wrap">
           <h2 class="simple-h2" id="samples">サンプル</h2>
-          <p style="color:var(--ink-mute);margin-top:.4rem;">機能をひとつずつ見せる、同梱のサンプル集です。どれも実行画面をそのまま撮ったもの。番号順に読むと、図形・文字・入力から、音・カメラ・HTML の画面・3D までひととおり触れます。</p>
+          <p style="color:var(--ink-mute);margin-top:.4rem;">機能をひとつずつ見せる、同梱のサンプル集です。どれも実行画面をそのまま撮ったもので、<a href="samples.html">サンプル集</a>にコード全文を載せています。</p>
           <div class="gallery">
             <a class="gcard" href="samples.html#welcome"><img src="assets/examples/welcome.png" alt="ようこそ画面のサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>ようこそ画面</b><span class="en">welcome</span></div><p class="gc-desc">絵・文字・図形・動きをまとめて。額装した浮世絵と歩く赤べこ。</p></div></a>
             <a class="gcard" href="samples.html#shapes"><img src="assets/examples/shapes.png" alt="図形のサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>図形</b><span class="en">shapes</span></div><p class="gc-desc">四角・円・線・グラデ・多角形。描ける図形のカタログ。</p></div></a>
@@ -132,20 +132,13 @@ mitiru run</pre>
       <section class="band soft">
         <div class="wrap">
           <h2 class="simple-h2" id="why">特徴</h2>
-          <p>ソースは公開していて、作ったゲームは商用でも自由に使えます（エンジン本体の改変・再配布だけはご遠慮ください）。ゲーム本体は 0.2 MB ほどの DLL がひとつ。<code>mitiru new</code> でひな型を作り、<code>mitiru run</code> で動きます。</p>
-          <p>メニューや HUD は、Web ページと同じ HTML / CSS で書けます。つなぎの JavaScript を手で書く必要はありません。ゲームのルールを書く C++ と、画面のレイアウトを作る HTML / CSS を、それぞれ得意なまま分けて置いておけます（<a href="ui.html">画面を作る</a>）。</p>
-          <p>作っている途中で「もう少し速く」「もう少しゆっくり」と手触りを詰めたくなったら、コードを保存するだけでその場に反映されます。うまくいかなかった瞬間まで数秒ぶん巻き戻し、直して、同じ操作をそこからもう一度流す、という直し方もできます。バグの再現手順を組み立て直す手間が要りません。セーブやリプレイ、走らせたまま状態を覗く仕組みも、ゲームの状態を「まるごとコピーできる、数値だけのひとかたまり」にしておくと、そこから素直についてきます（<a href="ai.html">くわしく</a>）。</p>
-          <p>大きなエディタは開きません。使う道具はひとつにつきひとつの窓、ふだんは何も出さず、必要になったものだけ呼び出します（<a href="features.html#tools">道具を見る</a>）。</p>
-        </div>
-      </section>
-
-      <!-- 何が作れる -->
-      <section class="band soft">
-        <div class="wrap">
-          <h2 class="simple-h2" id="make">作れるもの</h2>
-          <p>アクション、パズル、ノベルといった 2D のゲームが主な守備範囲です。スプライトやタイルマップを扱えます。3D も、glTF のモデルを読み込んで 2D の上にのせるくらいの範囲なら出せます。</p>
-          <p>起動が速く、コードを保存すればその場で反映されるので、ゲームジャムや思いつきのプロトタイプにも向いています。C++ で「動くもの」がすぐ手元に出るぶん、学習の題材にもなります。HTML / CSS の画面と C++ のロジックを組み合わせれば、ゲーム以外のツールやビジュアライザも作れます。</p>
-          <p style="margin-top:1.2rem;">どれも <a href="samples.html">サンプル集</a> に実行画面とコード全文を載せています。</p>
+          <ul class="points">
+            <li><b>ルールは C++、画面は HTML / CSS。</b>メニューや HUD は Web ページと同じ書き方で作れます（<a href="ui.html">画面を作る</a>）。</li>
+            <li><b>保存すると、その場で反映されます。</b>手触りを詰めるあいだ、走らせたままで直せます。</li>
+            <li><b>数秒前まで巻き戻して、直して、もう一度流せます。</b>バグの再現手順を組み立て直す手間が要りません（<a href="ai.html">くわしく</a>）。</li>
+            <li><b>大きなエディタは開きません。</b>道具はひとつにつきひとつの窓、必要なときだけ呼び出します（<a href="features.html#tools">道具を見る</a>）。</li>
+            <li><b>ゲーム本体は 0.2 MB ほどの DLL がひとつ。</b>ソースは公開していて、作ったゲームは商用でも自由に使えます。</li>
+          </ul>
         </div>
       </section>
     </main>
@@ -167,7 +160,6 @@ mitiru run</pre>
       <a href="#demo">コード</a>
       <a href="#samples">サンプル</a>
       <a href="#why">特徴</a>
-      <a href="#make">作れるもの</a>
     </aside>
   </div>
 </div>
