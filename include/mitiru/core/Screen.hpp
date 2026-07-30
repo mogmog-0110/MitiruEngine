@@ -1575,6 +1575,20 @@ public:
 	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg = 0.0f,
 	               float scale = 1.0f);
 
+	/// @brief アニメ付き 3D モデル (.glb/.gltf) をクリップ名と時間 (秒) で描く (ADR 0028)。
+	/// @details 時間は自分のゲーム状態で足す: `t += dt` して毎フレーム渡す (ループ再生)。
+	///          クリップ名は Blender の Action 名。空文字/不在はポーズ無し (レストポーズ)。
+	///          こちらは動くもの用 — 動かない大規模背景は 4 引数の drawModel を使う。
+	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+	               float scale, const char* clipName, float clipTimeSec);
+
+	/// @brief 2 つのクリップを混ぜてアニメ付き 3D モデルを描く (ADR 0028)。
+	/// @details mix = 0 で clipA だけ、1 で clipB だけ。歩き↔待機の切り替わりを
+	///          滑らかにするのに使う (crossfade)。
+	void drawModelBlend(const char* path, const sgc::Vec3f& position, float rotYDeg,
+	                    float scale, const char* clipA, float timeA,
+	                    const char* clipB, float timeB, float mix);
+
 	/// @brief 3D Gaussian Splatting シーン (.splat) を読み込む (一度だけ、init 等で)。失敗時 false。
 	bool loadSplatScene(const char* path);
 	/// @brief 読み込み済みスプラットを現在の camera3D で描く (drawMesh と同じく遅延 beginFrame)。

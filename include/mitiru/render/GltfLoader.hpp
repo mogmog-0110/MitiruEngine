@@ -5,6 +5,7 @@
 /// @details cgltfを使用してglTFファイルをパースし、エンジンのMeshオブジェクトに変換する。
 ///          ObjLoader.hppと同じパターン（optional返却）を踏襲する。
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -17,6 +18,7 @@
 #include <sgc/math/Vec3.hpp>
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/Vertex3D.hpp>
@@ -449,6 +451,71 @@ namespace detail
 			{
 				gs.inverseBindMatrices[j] = detail::readMat4ColumnMajor(sk.inverse_bind_matrices, j);
 			}
+		}
+	}
+
+	/// アニメーションクリップを抽出する (ADR 0028)。T/R/S チャンネルのみ (morph weights は skip)。
+	scene.animations.reserve(gltfData->animations_count);
+	for (cgltf_size i = 0; i < gltfData->animations_count; ++i)
+	{
+		const auto& anim = gltfData->animations[i];
+		GltfAnimationClip clip;
+		clip.name = anim.name ? anim.name : "";
+
+		for (cgltf_size c = 0; c < anim.channels_count; ++c)
+		{
+			const auto& ch = anim.channels[c];
+			if (ch.target_node == nullptr || ch.sampler == nullptr) { continue; }
+			if (ch.sampler->input == nullptr || ch.sampler->output == nullptr) { continue; }
+
+			GltfAnimationChannel gc;
+			gc.nodeIndex = static_cast<int>(ch.target_node - gltfData->nodes);
+			int comps = 3;
+			switch (ch.target_path)
+			{
+			case cgltf_animation_path_type_translation: gc.path = GltfAnimPath::Translation; break;
+			case cgltf_animation_path_type_rotation:    gc.path = GltfAnimPath::Rotation; comps = 4; break;
+			case cgltf_animation_path_type_scale:       gc.path = GltfAnimPath::Scale; break;
+			default: continue;  // weights (morph) 等は v1 対象外
+			}
+
+			/// CUBICSPLINE は 3 値/キー (in-tangent, 値, out-tangent)。中央値のみ Linear として読む。
+			const bool cubic = (ch.sampler->interpolation == cgltf_interpolation_type_cubic_spline);
+			gc.interpolation = (ch.sampler->interpolation == cgltf_interpolation_type_step)
+			                       ? GltfAnimInterp::Step
+			                       : GltfAnimInterp::Linear;
+			if (cubic)
+			{
+				debug::warnOnce("gltf.anim.cubicspline",
+				                "glTF CUBICSPLINE 補間は Linear へ縮退します (ADR 0028 v1)");
+			}
+
+			const cgltf_size keyCount = ch.sampler->input->count;
+			const cgltf_size valueCount = ch.sampler->output->count;
+			const cgltf_size expected = cubic ? keyCount * 3 : keyCount;
+			if (keyCount == 0 || valueCount != expected) { continue; }  // 不整合は捨てる
+
+			gc.times.resize(keyCount);
+			gc.values.resize(keyCount);
+			for (cgltf_size k = 0; k < keyCount; ++k)
+			{
+				float t = 0.0f;
+				cgltf_accessor_read_float(ch.sampler->input, k, &t, 1);
+				gc.times[k] = t;
+
+				float buf[4] = {0, 0, 0, 0};
+				const cgltf_size vi = cubic ? (k * 3 + 1) : k;
+				cgltf_accessor_read_float(ch.sampler->output, vi, buf,
+				                          static_cast<cgltf_size>(comps));
+				gc.values[k] = {buf[0], buf[1], buf[2], buf[3]};
+			}
+			clip.durationSec = std::max(clip.durationSec, gc.times.back());
+			clip.channels.push_back(std::move(gc));
+		}
+
+		if (!clip.channels.empty())
+		{
+			scene.animations.push_back(std::move(clip));
 		}
 	}
 

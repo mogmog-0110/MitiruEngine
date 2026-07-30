@@ -16,9 +16,12 @@
 #endif
 #include <Windows.h>
 
+#include <array>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <fstream>
+#include <map>
 #include <unordered_map>
 #include <memory>
 #include <optional>
@@ -64,6 +67,15 @@
 #include <mitiru/render/SplatScene.hpp>
 #include <mitiru/render/dx12/DX12SplatShaders.hpp>
 #include <mitiru/render/dx12/DX12SplatSort.hpp>
+
+// スキンアニメ付き glTF モデル (ADR 0028)。DX12SkinnedModel.hpp (class body 内 .inl)
+// が使う namespace 宣言をここで先に取り込む (splat と同じ作法)。
+#include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/render/AnimationSampler.hpp>
+#include <mitiru/render/GltfLoader.hpp>
+#include <mitiru/render/GltfMaterialConverter.hpp>
+#include <mitiru/render/Skinning.hpp>
+#include <mitiru/render/Texture.hpp>
 #include <mitiru/render/NeuralStyle.hpp>
 #ifdef MITIRU_HAS_DIRECTML
 #include <cstdio>
@@ -226,6 +238,15 @@ public:
 		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
 	}
 
+	/// @brief スキンアニメ付き glTF モデルを forward パスで描く (ADR 0028)
+	void drawSkinnedModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+	                      float scale, const char* clipA, float timeA,
+	                      const char* clipB, float timeB, float blend01) override
+	{
+		drawSkinnedModelImpl(path, position, rotYDeg, scale, clipA, timeA, clipB, timeB,
+		                     blend01);
+	}
+
 	/// @brief フレーム終了処理（アウトラインパス + バリア + コマンド実行）
 	void endFrame() override;
 
@@ -237,6 +258,14 @@ public:
 	[[nodiscard]] int drawCallCount() const noexcept override
 	{
 		return m_drawCallCount;
+	}
+
+	/// @brief mesh VB/IB の committed resource 生成回数 (累計、デバッグ計測用)
+	/// @details 毎フレーム頂点更新でもスロット warm-up 後は増えないことを
+	///          golden test が検証する (ADR 0028 失敗モード #5)。
+	[[nodiscard]] uint64_t meshBufferCreates() const noexcept
+	{
+		return m_meshBufferCreates;
 	}
 
 	/// @brief アウトライン描画の有効/無効を設定する
@@ -402,7 +431,9 @@ private:
 	/// NOTE: .inl 内 helper (acquireMeshBuffer) の引数型のため include より前に定義する
 	struct CachedBuffer
 	{
-		ComPtr<ID3D12Resource> resource;
+		ComPtr<ID3D12Resource> resource;             ///< 現行バッファ (bind と shadow の find() 経路が読む)
+		ComPtr<ID3D12Resource> slots[FRAME_COUNT];   ///< 同サイズ動的 mesh 用の回転 slot (遅延生成、ADR 0028)
+		uint32_t activeSlot    = 0;                  ///< slots の現在位置
 		UINT size = 0;
 		uint64_t revision      = 0;  ///< Mesh::revision() — 内容改変/アドレス再利用の失効検知
 		uint64_t lastUsedFrame = 0;  ///< 最終参照フレーム（eviction 用）
@@ -426,6 +457,10 @@ private:
 	// 3D Gaussian Splatting 描画 (M1) も同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Splat.hpp> // NOLINT(build/include)
+
+	// スキンアニメ付き glTF モデル (ADR 0028) も同じ .inl パターンで分離
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12SkinnedModel.hpp> // NOLINT(build/include)
 
 	// ニューラル現像 (M3: ORT+DirectML で 3D フレームを 2D 絵画へ) も .inl で分離
 	// NOLINTNEXTLINE(google-build-namespaces)

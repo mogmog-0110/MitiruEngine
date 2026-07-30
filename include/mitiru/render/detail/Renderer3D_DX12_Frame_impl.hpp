@@ -29,6 +29,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_frameActive = true;
 	m_transparentCommands.clear();
 	m_skyboxDrawnThisFrame = false;
+	m_skinnedPoolCursor = 0;  // スキン描画 pool を巻き戻す (ADR 0028)
 	// 前フレームの shadow casters をスナップして当フレーム描画分をクリア
 	m_shadowCommandsPrev = std::move(m_shadowCommands);
 	m_shadowCommands.clear();

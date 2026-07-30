@@ -127,6 +127,25 @@ inline void Screen::drawModel(const char* path, const sgc::Vec3f& position, floa
 	m_renderer3D->drawModel(path, position, rotYDeg, scale);
 }
 
+inline void Screen::drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+                              float scale, const char* clipName, float clipTimeSec)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->drawSkinnedModel(path, position, rotYDeg, scale, clipName, clipTimeSec,
+	                               nullptr, 0.0f, 0.0f);
+}
+
+inline void Screen::drawModelBlend(const char* path, const sgc::Vec3f& position, float rotYDeg,
+                                   float scale, const char* clipA, float timeA,
+                                   const char* clipB, float timeB, float mix)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->drawSkinnedModel(path, position, rotYDeg, scale, clipA, timeA, clipB,
+	                               timeB, mix);
+}
+
 inline bool Screen::loadSplatScene(const char* path)
 {
 	if (m_renderer3D == nullptr) { return false; }

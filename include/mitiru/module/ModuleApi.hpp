@@ -77,12 +77,14 @@ namespace mitiru::module
 ///   - v21: effectiveDt / paused / logicalW / logicalH + 明示 pad + sizeof/offset static_assert (ADR 0024)
 ///   - v22: Screen::drawModel + IRenderer3D 末尾 virtual (ADR 0027)
 ///   - v23: InputSnapshot に mouseDeltaX/Y、FrameIntents に wantMouseLock (FPS 視線)
+///   - v24: Screen::drawModel(clip,time) / drawModelBlend + IRenderer3D 末尾 virtual
+///          drawSkinnedModel (ADR 0028)
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない —
 ///       配列要素が太ると後続 field の offset がズレ silent 破損するため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 23;
+constexpr std::uint32_t kCurrentApiVersion = 24;
 
 // ── build fingerprint (H-1/H-4 短期対策、ADR 0024 追記) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、

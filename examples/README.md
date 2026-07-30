@@ -40,6 +40,7 @@ CEF runtime (`libcef.dll` + `icudtl.dat` + `MitiruCefHelper.exe` + locales 等) 
 | [`restart_save`](restart_save/restart_save_dll.cpp) | `hud.requestRestart()` + セーブ / ロード (`.msav` ファイル) | ✅ |
 | [`scene3d`](scene3d/scene3d_dll.cpp) | GPU 3D シーン — 平行光の影 + WBOIT 半透明 + skybox | ✅ |
 | [`model3d`](model3d/model3d_dll.cpp) | 大きな 3D モデル — 26 万ポリゴンの宮殿 (Crytek Sponza、glTF) を `drawModel` 1 行でそのまま置き、一人称で歩き回る。.gltf/.glb/.obj は初回だけ隣に変換キャッシュを作って読む。マウス視線 (`hud.lockMouse`) と WASD 移動、詳細度 (LOD) は距離から自動 | ✅ |
+| [`anim3d`](anim3d/anim3d_dll.cpp) | キャラクターを歩かせる — リグ付き glTF (Khronos Fox) のクリップ名と時間を `drawModelBlend` に渡すだけで骨格アニメが動く。WASD で歩かせると待機と歩きがなめらかに混ざる。時間は自分の状態で `t += dt` するだけなので巻き戻しにもそのまま乗る | ✅ |
 
 ## Subsystem 単独起動デモ — [`subsys/`](subsys/)
 

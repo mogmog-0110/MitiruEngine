@@ -359,29 +359,64 @@ void ensureDefaultWhiteTexture()
 
 /// @brief mesh の VB/IB cache entry を取得する（失効時は作り直す）
 /// @details 失効 = サイズ変化 or Mesh::revision 変化（内容改変・アドレス再利用）。
-///          旧リソースは in-flight フレームが読み終わるまで deferRelease で生存させる。
+///          **同サイズの内容改変** (毎フレームの CPU スキニング等、ADR 0028) は
+///          FRAME_COUNT 周期の slot 回転 + memcpy のみで済ませ、committed resource を
+///          毎フレーム作らない。slot N の次の書き込みは N+FRAME_COUNT フレーム後で、
+///          Dx12Device::beginFrame の fence がその間の GPU 読み完了を保証している
+///          (upload ring が依存しているのと同じ保証)。
+///          サイズ変化時の旧リソースは in-flight が読み終わるまで deferRelease で生存させる。
 /// @return 使用可能なリソース（生成失敗時 nullptr）
 [[nodiscard]] ID3D12Resource* acquireMeshBuffer(
 	std::unordered_map<const void*, CachedBuffer>& cache,
 	const Mesh& mesh, const void* data, UINT sizeBytes)
 {
 	auto& entry = cache[static_cast<const void*>(&mesh)];
-	if (!entry.resource || entry.size != sizeBytes
-	    || entry.revision != mesh.revision())
+	entry.lastUsedFrame = m_frameCounter;
+
+	if (entry.resource && entry.size == sizeBytes && entry.revision == mesh.revision())
 	{
-		if (entry.resource && m_device)
+		return entry.resource.Get();  // 不変 (静的 mesh の通常経路)
+	}
+
+	if (entry.resource && entry.size == sizeBytes)
+	{
+		// 同サイズで内容だけ変わった動的 mesh → slot 回転 (warm-up 後は生成ゼロ)
+		entry.activeSlot = (entry.activeSlot + 1) % FRAME_COUNT;
+		auto& slot = entry.slots[entry.activeSlot];
+		if (!slot)
 		{
-			m_device->deferRelease(entry.resource);
+			slot = createUploadBuffer(sizeBytes);
+			++m_meshBufferCreates;
 		}
-		entry.resource = createUploadBuffer(sizeBytes);
-		entry.size     = sizeBytes;
-		entry.revision = mesh.revision();
-		if (entry.resource)
+		if (slot)
 		{
-			uploadToBuffer(entry.resource.Get(), data, sizeBytes);
+			uploadToBuffer(slot.Get(), data, sizeBytes);
+			entry.resource = slot;
+			entry.revision = mesh.revision();
+			return entry.resource.Get();
+		}
+		// slot 生成失敗 → 従来 slow path へ落とす
+	}
+
+	// 初回 or サイズ変化: 全 slot を退役して作り直す
+	if (m_device)
+	{
+		if (entry.resource) { m_device->deferRelease(entry.resource); }
+		for (auto& s : entry.slots)
+		{
+			if (s) { m_device->deferRelease(s); s.Reset(); }
 		}
 	}
-	entry.lastUsedFrame = m_frameCounter;
+	entry.resource   = createUploadBuffer(sizeBytes);
+	++m_meshBufferCreates;
+	entry.slots[0]   = entry.resource;  // 次の同サイズ改変からここを起点に回転する
+	entry.activeSlot = 0;
+	entry.size       = sizeBytes;
+	entry.revision   = mesh.revision();
+	if (entry.resource)
+	{
+		uploadToBuffer(entry.resource.Get(), data, sizeBytes);
+	}
 	return entry.resource.Get();
 }
 
@@ -397,9 +432,13 @@ void evictStaleMeshBuffers()
 		{
 			if (m_frameCounter - it->second.lastUsedFrame > kKeepFrames)
 			{
-				if (it->second.resource && m_device)
+				if (m_device)
 				{
-					m_device->deferRelease(it->second.resource);
+					if (it->second.resource) { m_device->deferRelease(it->second.resource); }
+					for (auto& s : it->second.slots)
+					{
+						if (s) { m_device->deferRelease(s); }
+					}
 				}
 				it = cache.erase(it);
 			}
