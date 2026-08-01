@@ -32,8 +32,8 @@ struct Anim3D
 		if (moving)
 		{
 			constexpr float k = 0.70710678f;
-			const float vx = (-m.x + m.y) * k;
-			const float vz = (m.x + m.y) * k;
+			const float vx = (m.x + m.y) * k;
+			const float vz = (-m.x + m.y) * k;
 			constexpr float speed = 1.4f;   // m/s (Walk クリップの歩幅に合わせた速さ)
 			px += vx * speed * dt;
 			pz += vz * speed * dt;

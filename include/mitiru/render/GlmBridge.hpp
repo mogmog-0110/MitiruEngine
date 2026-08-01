@@ -45,14 +45,14 @@ inline void toColumnMajor(float dst[4][4], const glm::mat4& m) {
 	std::memcpy(dst, glm::value_ptr(m), sizeof(float) * 16);
 }
 
-/// @brief glmでLookAt行列を作成（左手座標系）
+/// @brief glmでLookAt行列を作成（右手座標系 — 北 (-z) を向くと東 (+x) が画面右、ADR 0029）
 inline glm::mat4 lookAt(const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up) {
-	return glm::lookAtLH(toGlm(eye), toGlm(target), toGlm(up));
+	return glm::lookAtRH(toGlm(eye), toGlm(target), toGlm(up));
 }
 
-/// @brief glmで透視投影行列を作成（左手座標系、DX深度範囲[0,1]）
+/// @brief glmで透視投影行列を作成（右手座標系、DX深度範囲[0,1]）
 inline glm::mat4 perspective(float fovRadians, float aspect, float nearZ, float farZ) {
-	return glm::perspectiveLH_ZO(fovRadians, aspect, nearZ, farZ);
+	return glm::perspectiveRH_ZO(fovRadians, aspect, nearZ, farZ);
 }
 
 /// @brief glmでモデル行列を作成（Translation * RotationYXZ * Scale）
