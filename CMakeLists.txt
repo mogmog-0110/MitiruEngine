@@ -719,6 +719,37 @@ else()
 	message(STATUS "NativeEngine physics backend disabled (-DMITIRU_USE_NATIVEPHYS=ON to build it)")
 endif()
 
+# ── makina-core (optional) ────────────────────────────────────
+# The CSG solid modeller's headless core. Header-only and dependency-free, so it is an include
+# path and nothing else.
+#
+# The dependency runs one way only: makina-core knows nothing about the engine (PLAN.md 3.1).
+# Wiring it the other way round would put a GPU and a window behind every one of its tests.
+#
+# It includes <nlohmann/json.hpp>, which this tree already vendors, so the engine's copy is the one
+# that gets used rather than a second one on the include path.
+set(MITIRU_MAKINA_ROOT "" CACHE PATH "Path to makina-core (the CSG solid modeller core)")
+set(_makina_root "")
+foreach(_candidate "${MITIRU_MAKINA_ROOT}"
+                   "${CMAKE_CURRENT_SOURCE_DIR}/external/makina-core"
+                   "${CMAKE_CURRENT_SOURCE_DIR}/../MakinaModeler/makina-core"
+                   "${CMAKE_CURRENT_SOURCE_DIR}/../makina/makina-core")
+	if(_candidate AND EXISTS "${_candidate}/include/makina/Eval.hpp")
+		set(_makina_root "${_candidate}")
+		break()
+	endif()
+endforeach()
+
+if(_makina_root)
+	message(STATUS "makina-core found at ${_makina_root} - CSG solids enabled")
+	target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
+		$<BUILD_INTERFACE:${_makina_root}/include>)
+	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_MAKINA=1)
+else()
+	message(STATUS "makina-core not found - CSG solids disabled"
+		" (-DMITIRU_MAKINA_ROOT=<path> to enable)")
+endif()
+
 # ── Tracy Profiler (optional) ──────────────────────────────────
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/tracy/public/TracyClient.cpp")
 	message(STATUS "Tracy found - enabling profiler")

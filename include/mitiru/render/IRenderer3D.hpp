@@ -316,6 +316,20 @@ public:
 	// ── clod 仮想ジオメトリ (ADR 0027、DX12 のみ) ──────
 	/// @brief .clod モデルのインスタンスを描画する (大規模静的ジオメトリ)。
 	/// @param path .clod への vfs パス。未対応バックエンドでは no-op。
+	/// @brief Makina の CSG ソリッド（焼き済み）を置く
+	/// @param bakeManifestPath .csgbake.json への**ファイルパス**（vfs ではない —
+	///        bake は DXIL を隣から読むので、実在するディレクトリに展開されていること）
+	/// @param timeSec モーションの時刻 (秒、Makina D-15)。トラックを持つ立体を live に
+	///        焼いてあればその時刻の姿で描く。静止した立体や焼き込みの bake では無視される
+	/// @details 既定は何もしない。DX12 かつ MITIRU_HAS_MAKINA のビルドだけが実装を持つ。
+	///          他のバックエンドで黙って消えるのは drawModel と同じ扱いで、
+	///          「無い機能は絵から抜ける」がこのインターフェースの規約である。
+	virtual void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
+	                       float rotYDeg, float scale, float timeSec)
+	{
+		(void)bakeManifestPath; (void)position; (void)rotYDeg; (void)scale; (void)timeSec;
+	}
+
 	virtual void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
 	                       float scale)
 	{
@@ -346,6 +360,48 @@ public:
 		(void)timeB;
 		(void)blend01;
 	}
+
+	// ── 3 軸回転の rigid glb (ABI v26、DX12 のみ。vtable 末尾固定) ──────────────
+	/// @brief glTF/glb を forward パスで 3 軸回転して描く (viewmodel / 傾く小物用)。
+	/// @details rotDeg は drawMesh と同じ {pitch, yaw, roll} 度。骨があっても
+	///          レストポーズの剛体として描く。未対応バックエンドでは no-op。
+	virtual void drawModelRot(const char* path, const sgc::Vec3f& position,
+	                          const sgc::Vec3f& rotDeg, float scale)
+	{
+		(void)path;
+		(void)position;
+		(void)rotDeg;
+		(void)scale;
+	}
+
+	// ── 絵づくり (ABI v27、DX12 のみ。vtable 末尾固定) ─────────────────────────
+	/// @brief アウトラインの線幅 (px) と検出しきい値を設定する
+	/// @details しきい値が小さいほど線が増える。未対応バックエンドでは no-op。
+	virtual void setOutlineParams(float widthPx, float threshold)
+	{
+		(void)widthPx;
+		(void)threshold;
+	}
+
+	/// @brief トゥーンの影部でアルベドに掛ける係数を設定する
+	/// @details 未対応バックエンドでは no-op。
+	virtual void setToonShadowTint(const sgc::Colorf& tint) { (void)tint; }
+
+	/// @brief 距離フォグを設定する (ABI v28)
+	/// @details nearDist から farDist にかけて color へ染める。未対応では no-op。
+	virtual void setFog(bool enabled, const sgc::Colorf& color, float nearDist,
+	                    float farDist)
+	{
+		(void)enabled;
+		(void)color;
+		(void)nearDist;
+		(void)farDist;
+	}
+
+	/// @brief 以後の描画が影を落とすかを切り替える (ABI v29)
+	/// @details 一人称の武器のように、画面には出るが世界には影を落とさないものに使う。
+	///          フレーム頭で true に戻る。未対応では no-op。
+	virtual void setShadowCaster(bool enabled) { (void)enabled; }
 };
 
 } // namespace mitiru::render

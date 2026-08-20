@@ -21,11 +21,15 @@ cbuffer CbLighting : register(b1)
     float4 MaterialSpecular;
     float  MaterialShininess;
     float3 _pad4;
+    float4 FogColor;
+    float4 FogParams;
+    float4 MaterialParams;
 };
 
 Texture2D                g_albedo  : register(t0);
 Texture2D                g_shadow  : register(t1);
 SamplerState             g_samp    : register(s0);
+SamplerState             g_sampPoint : register(s2);
 SamplerComparisonState   g_pcf     : register(s1);
 
 struct PSInput
@@ -44,7 +48,8 @@ float samplePCF(float3 ndc)
 {
     float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
     float depthRef = ndc.z - 0.001;
-    if (any(uv < 0) || any(uv > 1)) return 1.0;
+    // 光の錐台の外は影なし。奥行きも見る (遠方クリップ面の外は影マップに何も無い)
+    if (any(uv < 0) || any(uv > 1) || ndc.z < 0.0 || ndc.z > 1.0) return 1.0;
     float shadow = 0.0;
     const float texelSize = 1.0 / 1024.0;
     [unroll] for (int y = -1; y <= 1; ++y)
@@ -59,7 +64,9 @@ PSOut PSMain(PSInput input)
     float3 N = normalize(input.WorldNorm);
     float3 L = normalize(-LightDir);
     float3 V = normalize(CameraPos - input.WorldPos);
-    float4 texSample = g_albedo.Sample(g_samp, input.TexCoord);
+    float4 texSample = (MaterialParams.y > 0.5)
+        ? g_albedo.Sample(g_sampPoint, input.TexCoord)
+        : g_albedo.Sample(g_samp, input.TexCoord);
     float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb;
     float3 lsNdc = input.LightSpacePos.xyz / max(input.LightSpacePos.w, 1e-4);
     float shadow = samplePCF(lsNdc);

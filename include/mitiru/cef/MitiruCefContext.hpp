@@ -58,9 +58,21 @@
 #include <mitiru/cef/MitiruCefTexture.hpp>
 #include <mitiru/input/InputState.hpp>
 
+// MITIRU_CEF_NO_DX12DEVICE — Dx12Device を取る便宜オーバーロードを外す。
+//
+// この UI 層が要るのは ID3D12Device / ID3D12CommandQueue / RTV ハンドルだけで、
+// Dx12Device 版はエンジン自身のために置いてある短縮形にすぎない。ところが型を名前で
+// 受けている以上ヘッダは include され、Dx12Device は IDevice / Dx12SwapChain /
+// Win32Window / sgc まで芋づるで引く。つまり**自前のデバイスを持つ側は、使わない
+// スタックを丸ごと通す羽目になる** — API を D3D12 まで下げても include が下がって
+// いなければ、分離は名目だけである。
+//
+// エンジンは何も定義しない (既定で便宜版が付く)。外して使う側だけが宣言する。
+#if !defined(MITIRU_CEF_NO_DX12DEVICE)
 #include <mitiru/gfx/dx12/Dx12Device.hpp>
 #include <mitiru/gfx/dx12/Dx12RenderTarget.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
+#endif
 
 namespace mitiru::cef
 {
@@ -97,7 +109,8 @@ public:
     ///                            開発ビルドのみで使うこと。
     /// @return 成功したか
     bool initialize(
-        mitiru::gfx::Dx12Device& device,
+        ID3D12Device*                  device,
+        ID3D12CommandQueue*            queue,
         const std::string&             exeDir,
         const std::string&             logPath,
         int                            width,
@@ -147,7 +160,7 @@ public:
             return false;
         }
 
-        if (!m_texture.initialize(device, width, height))
+        if (!m_texture.initialize(device, queue, width, height))
         {
             std::fprintf(stderr,
                 "[mitiru][cef] UI texture init failed (%dx%d)\n", width, height);
@@ -224,6 +237,58 @@ public:
         }
     }
 
+#if !defined(MITIRU_CEF_NO_DX12DEVICE)
+    /// @brief 初期化 — エンジンのデバイスから
+    /// @details 生ハンドル版へ委譲する。UI 層がデバイスの型ではなく D3D12 に依存する
+    ///          ようにしてあるので、自前の DX12 を持つ側もこの層を使える。
+    bool initialize(
+        mitiru::gfx::Dx12Device& device,
+        const std::string&             exeDir,
+        const std::string&             logPath,
+        int                            width,
+        int                            height,
+        const std::string&             startUrl            = "about:blank",
+        int                            remoteDebuggingPort = 0)
+    {
+        return initialize(device.nativeDevice(), device.commandQueue(), exeDir, logPath,
+                          width, height, startUrl, remoteDebuggingPort);
+    }
+#endif
+
+    /// @brief UI レイヤーを、渡された RTV にアルファ合成する
+    /// @details スワップチェーンを持たない側のための入口。テクスチャ側は元から RTV
+    ///          ハンドルしか見ていないので、ここは取り出す手間を省いているだけである。
+    void composite(
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv,
+        int                         width,
+        int                         height,
+        const float                 clearRGBA[4] = nullptr)
+    {
+        if (!m_initialized || !m_visible)
+        {
+            return; // 非表示 → backbuffer に重ね合わせない
+        }
+        m_texture.composite(rtv, width, height, clearRGBA);
+    }
+
+    /// @brief UI レイヤーを、呼び出し側のコマンドリストに記録する
+    /// @details 提出はしない。自前のフレームループを持つ側は、自分の begin/end の間で
+    ///          これを呼べば、バックバッファの状態遷移も提出も 1 回のままで済む。
+    void recordComposite(
+        ID3D12GraphicsCommandList*  cl,
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv,
+        int                         width,
+        int                         height,
+        const float                 clearRGBA[4] = nullptr)
+    {
+        if (!m_initialized || !m_visible)
+        {
+            return;
+        }
+        m_texture.recordComposite(cl, rtv, width, height, clearRGBA);
+    }
+
+#if !defined(MITIRU_CEF_NO_DX12DEVICE)
     /// @brief UI レイヤーをバックバッファにアルファ合成する
     /// @details スワップチェーンから現在の RTV を取得して自己完結型の
     ///          コマンドリストで描画する。
@@ -252,6 +317,7 @@ public:
         }
         m_texture.composite(rt->rtvHandle(), width, height, clearRGBA);
     }
+#endif
 
     // ── フレームレート制御 ────────────────────────────────────────
 
@@ -525,10 +591,7 @@ public:
     ///          texture が old size のまま old content を 1:1 表示し、余白に
     ///          engine clear color が見える (letterbox)。CEF が新 dim で paint
     ///          したら自動的に viewport が拡大する。stretch / 判定ズレなし。
-    void resize(
-        mitiru::gfx::Dx12Device& device,
-        int width,
-        int height)
+    void resize(int width, int height)
     {
         if (!m_initialized || (width == m_width && height == m_height))
         {
@@ -537,7 +600,44 @@ public:
         m_width  = width;
         m_height = height;
         m_browser.resize(width, height); // WasResized + Invalidate
-        m_texture.resize(device, width, height); // pending mark
+        m_texture.resize(width, height); // pending mark
+    }
+
+#if !defined(MITIRU_CEF_NO_DX12DEVICE)
+    /// @brief リサイズ — エンジンのデバイスから (引数の device は元から使っていない)
+    void resize(mitiru::gfx::Dx12Device& /*device*/, int width, int height)
+    {
+        resize(width, height);
+    }
+#endif
+
+    /// @brief ウィンドウ座標 (mx,my) が UI の上にあるか
+    /// @details 透明なページの上にゲームや 3D ビューを置く構成では、ホストは毎フレーム
+    ///          「このクリックは UI のものか、下のものか」を決めなければならない。
+    ///          板の矩形を C++ 側に持つとレイアウトと二重管理になり、パネルを 1 枚
+    ///          足した日に静かにズレる。ここでは**ページ自身の不透明度**を見る。
+    ///
+    /// @param threshold これ以上のアルファを UI とみなす。既定の 8 は、影や薄い
+    ///                  オーバーレイの縁を UI 扱いしないための余裕である。0 にすると
+    ///                  `rgba(0,0,0,0.01)` の装飾までクリックを奪う。
+    ///
+    ///          まだ一度も paint していない間は false を返す。ページが出ていないのに
+    ///          入力を奪うのは、起動直後の数フレームを操作不能にすることに等しい。
+    [[nodiscard]] bool pointerOverUi(int mx, int my, std::uint8_t threshold = 8) const
+    {
+        if (!m_initialized || !m_visible || !m_client)
+        {
+            return false;
+        }
+        auto* handler = m_client->renderHandler();
+        if (handler == nullptr || !handler->hasEverPainted())
+        {
+            return false;
+        }
+        int cx = 0;
+        int cy = 0;
+        m_texture.mapWindowToCef(mx, my, cx, cy);
+        return handler->alphaAt(cx, cy) >= threshold;
     }
 
     // ── アクセサー ────────────────────────────────────────────

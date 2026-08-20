@@ -36,6 +36,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <system_error>
@@ -120,8 +121,16 @@ private:
 };
 
 /// @brief host 側 — 自プロセス宛の scrub control file を polling 読み (reader)
-/// @details mtime が前回読みより新しい時だけ parse して返す。filesystem だけに依存する
-///          header-only 実装。
+/// @details 中身が前回読みから変わった時だけ返す。filesystem だけに依存する header-only 実装。
+///
+///          @b mtime では判定できない：以前は「mtime が変わっていなければ読まない」だったが、
+///          **連続した 2 つの write が同じ mtime を持つことがある**（NTFS の記録粒度）。
+///          そうなると 2 通目が黙って落ちる。スクラバーをドラッグしている最中はまさに
+///          連続した write が飛ぶので、「たまに 1 コマンド効かない」として出る。
+///
+///          実際に踏んだ：`monotonic seq lets the host skip stale commands` が
+///          全 2,729 件のゲートでだけ落ちた（テスト自体は 0.03 秒で終わり、
+///          2 つの write が同じ tick に入った）。単体で走らせると通るので取りこぼされていた。
 class ScrubControlReader
 {
 public:
@@ -137,28 +146,34 @@ public:
 	{
 	}
 
-	/// @brief 最新の command を試し読みする。mtime が前回読みより新しい時だけ返す
+	/// @brief 最新の command を試し読みする。中身が前回読みから変わった時だけ返す
+	/// @details 毎 tick 読む。control file は数十バイトで、ここを節約して
+	///          コマンドを落とす方がはるかに高くつく。
 	[[nodiscard]] std::optional<nlohmann::json> poll()
 	{
 		std::error_code ec;
 		if (!std::filesystem::exists(m_path, ec)) { return std::nullopt; }
 
-		const auto mt = std::filesystem::last_write_time(m_path, ec);
-		if (ec) { return std::nullopt; }
-		if (m_haveLastMtime && mt == m_lastMtime) { return std::nullopt; }
-
-		try
+		std::string text;
 		{
 			std::ifstream in(m_path, std::ios::binary);
 			if (!in) { return std::nullopt; }
-			auto j = nlohmann::json::parse(in);
-			m_lastMtime     = mt;
-			m_haveLastMtime = true;
+			text.assign((std::istreambuf_iterator<char>(in)),
+			            std::istreambuf_iterator<char>());
+		}
+		if (text.empty() || (m_haveLast && text == m_lastText)) { return std::nullopt; }
+
+		try
+		{
+			auto j = nlohmann::json::parse(text);
+			m_lastText = std::move(text);
+			m_haveLast = true;
 			return j;
 		}
 		catch (...)
 		{
-			// rename 途中の race / truncated read。次 tick で再試行する。
+			// rename 途中の race / truncated read。m_lastText を更新しないので、
+			// 完全な内容が置かれた次の tick で読み直せる。
 			return std::nullopt;
 		}
 	}
@@ -167,9 +182,9 @@ public:
 	[[nodiscard]] const std::filesystem::path& path() const noexcept { return m_path; }
 
 private:
-	std::filesystem::path           m_path;
-	std::filesystem::file_time_type m_lastMtime{};
-	bool                            m_haveLastMtime{false};
+	std::filesystem::path m_path;
+	std::string           m_lastText;
+	bool                  m_haveLast{false};
 };
 
 }  // namespace mitiru::observe

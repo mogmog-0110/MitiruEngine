@@ -110,6 +110,15 @@ void createMainPSO()
 	createModeVariant(m_phongPS, m_phongPSO, "phong");
 	createModeVariant(m_unlitPS, m_unlitPSO, "unlit");
 	createModeVariant(m_flatPS,  m_flatPSO,  "flat");
+
+	/// 両面 (glTF doubleSided) 用の双子。カリングだけ切って同じ PS で作る。
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	psoDesc.PS = m_toonPS->shaderBytecode();
+	createModeVariant(m_toonPS,       m_mainPSONoCull,       "main/nocull");
+	createModeVariant(m_multiLightPS, m_multiLightPSONoCull, "multi-light/nocull");
+	createModeVariant(m_phongPS,      m_phongPSONoCull,      "phong/nocull");
+	createModeVariant(m_unlitPS,      m_unlitPSONoCull,      "unlit/nocull");
+	createModeVariant(m_flatPS,       m_flatPSONoCull,       "flat/nocull");
 }
 
 // ─────────────────────────────────────────────────────────────

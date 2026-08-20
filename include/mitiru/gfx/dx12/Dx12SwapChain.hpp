@@ -213,6 +213,9 @@ private:
 		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		desc.BufferCount = FRAME_COUNT;
 		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		/// 窓よりバッファが大きい時は左上を 1:1 で見せる (既定の STRETCH は引き伸ばす)。
+		/// バッファを窓より大きめに確保しておけば、リサイズ中に ResizeBuffers を呼ばずに済む。
+		desc.Scaling = DXGI_SCALING_NONE;
 		desc.Flags = m_tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
 		ComPtr<IDXGISwapChain1> swapChain1;

@@ -24,27 +24,37 @@ inline bool ClodRenderer::initialize(ID3D12Device* device, UINT frameCount)
 	return true;
 }
 
-inline bool ClodRenderer::checkCaps(ID3D12Device* device) const
+inline const char* clodUnsupportedReason(ID3D12Device* device)
 {
+	if (device == nullptr) { return "clod: no device"; }
+
 	D3D12_FEATURE_DATA_D3D12_OPTIONS7 opt7 = {};
 	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &opt7, sizeof(opt7))) ||
 	    opt7.MeshShaderTier < D3D12_MESH_SHADER_TIER_1)
 	{
-		debug::warnOnce("clod.caps", "clod: mesh shaders unavailable - drawModel disabled");
-		return false;
+		return "clod: mesh shaders unavailable - drawModel disabled";
 	}
 	D3D12_FEATURE_DATA_D3D12_OPTIONS1 opt1 = {};
 	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &opt1, sizeof(opt1))) ||
 	    !opt1.Int64ShaderOps)
 	{
-		debug::warnOnce("clod.caps", "clod: int64 shader ops unavailable - drawModel disabled");
-		return false;
+		return "clod: int64 shader ops unavailable - drawModel disabled";
 	}
 	D3D12_FEATURE_DATA_SHADER_MODEL sm = { D3D_SHADER_MODEL_6_6 };
 	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &sm, sizeof(sm))) ||
 	    sm.HighestShaderModel < D3D_SHADER_MODEL_6_6)
 	{
-		debug::warnOnce("clod.caps", "clod: shader model 6.6 unavailable - drawModel disabled");
+		return "clod: shader model 6.6 unavailable - drawModel disabled";
+	}
+	return nullptr;
+}
+
+inline bool ClodRenderer::checkCaps(ID3D12Device* device) const
+{
+	const char* why = clodUnsupportedReason(device);
+	if (why != nullptr)
+	{
+		debug::warnOnce("clod.caps", why);
 		return false;
 	}
 	return true;

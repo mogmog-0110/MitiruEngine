@@ -10,11 +10,17 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <string_view>
 #include <vector>
 
 #include <mitiru/audio/AudioMeter.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
+
+#if defined(MA_HAS_WASAPI) && defined(_WIN32)
+// outputLatencySec() が OS ミキサ側のレイテンシを IAudioClient へ直接尋ねるため。
+#include <audioclient.h>
+#endif
 
 namespace mitiru::audio {
 
@@ -23,8 +29,13 @@ namespace mitiru::audio {
 ///          IAudioEngineインターフェースとは独立したスタンドアロン実装。
 class MiniaudioEngine {
 public:
-	MiniaudioEngine() {
+	/// @param periodMs デバイスへ 1 回に積むフレーム数 (ミリ秒)。0 = backend の既定。
+	/// @details 既定の 10ms は 3 期ぶんで 30ms の遅れになる。音に合わせて叩く遊びでは、
+	///          押した手応えも音の出も丸ごとその分遅れる。ハードウェアの下限は 2ms 前後
+	///          あるので、4ms あれば取りこぼしの余裕を残したまま 12ms まで詰められる。
+	explicit MiniaudioEngine(ma_uint32 periodMs = 4) {
 		ma_engine_config config = ma_engine_config_init();
+		config.periodSizeInMilliseconds = periodMs;
 		if (ma_engine_init(&config, &m_engine) == MA_SUCCESS) {
 			m_initialized = true;
 		}
@@ -32,6 +43,7 @@ public:
 
 	~MiniaudioEngine() {
 		if (m_initialized) {
+			releaseLoops();
 			releaseVoices();
 			ma_engine_uninit(&m_engine);
 		}
@@ -96,6 +108,63 @@ public:
 		m_oneShots.push_back(std::move(snd));
 	}
 
+	/// @brief 効果音をループ再生する。停止するまで鳴り続ける。
+	/// @details one-shot と違い path で覚えておき、stopSoundLoop で止める。長押しの
+	///          「押している間ずっと」のように、長さが入力で決まる音に使う。短い音を
+	///          継ぎ足して伸ばすと継ぎ目が聴こえ、離した瞬間にぶつっと切れる。
+	///          同じ path が鳴っている間の再呼び出しは、頭から鳴らし直さず音量と
+	///          ピッチだけを寄せる (BGM の同 id 冪等と同じ扱い)。鳴らしながら音量を
+	///          調整する用途で、呼ぶたびに曲が頭へ戻ると調整にならないため。
+	void playSoundLoop(const std::string& path, float volume, float pitchScale, float fadeInSec) {
+		if (!m_initialized) { return; }
+		if (auto it = m_loops.find(path); it != m_loops.end()) {
+			// 音量は短い ramp で寄せる。即値で変えるとザッというズレ音が乗る。
+			ma_sound_set_fade_in_milliseconds(it->second.get(), -1.0f, volume, 40);
+			ma_sound_set_pitch(it->second.get(), (pitchScale > 0.0f) ? pitchScale : 1.0f);
+			return;
+		}
+		auto snd = std::make_unique<ma_sound>();
+		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
+		                            nullptr, nullptr, snd.get()) != MA_SUCCESS) {
+			mitiru::debug::warnOnce("audio.loop:" + path,
+				"音声ファイルが見つからない/読めない: " + path);
+			return;
+		}
+		ma_sound_set_looping(snd.get(), MA_TRUE);
+		ma_sound_set_volume(snd.get(), volume);
+		if (pitchScale > 0.0f && pitchScale != 1.0f) {
+			ma_sound_set_pitch(snd.get(), pitchScale);
+		}
+		if (fadeInSec > 0.0f) {
+			ma_sound_set_fade_in_milliseconds(
+				snd.get(), 0.0f, volume, static_cast<ma_uint64>(fadeInSec * 1000.0f));
+		}
+		ma_sound_start(snd.get());
+		m_loops[path] = std::move(snd);
+	}
+
+	/// @brief ループ再生中の効果音を止める。fadeOutSec > 0 で減衰させてから止める。
+	/// @details 減衰させる場合も ma_sound はここで解放せず、次の update() で回収する。
+	///          鳴っている最中に uninit すると device thread が解放済みを触る。
+	void stopSoundLoop(const std::string& path, float fadeOutSec) {
+		auto it = m_loops.find(path);
+		if (it == m_loops.end()) { return; }
+		if (fadeOutSec > 0.0f) {
+			ma_sound_set_fade_in_milliseconds(it->second.get(), -1.0f, 0.0f,
+				static_cast<ma_uint64>(fadeOutSec * 1000.0f));
+			ma_sound_set_stop_time_in_pcm_frames(
+				it->second.get(),
+				ma_engine_get_time_in_pcm_frames(&m_engine)
+					+ static_cast<ma_uint64>(fadeOutSec * ma_engine_get_sample_rate(&m_engine)));
+			ma_sound_set_looping(it->second.get(), MA_FALSE);
+			m_fading.push_back(std::move(it->second));
+		} else {
+			ma_sound_stop(it->second.get());
+			ma_sound_uninit(it->second.get());
+		}
+		m_loops.erase(it);
+	}
+
 	/// @brief 効果音を「マスタークロック上の絶対時刻 atSec」にサンプル精度で予約再生する (v19)。
 	/// @details ma_engine のグローバルクロックが atSec に達した瞬間に backend がミックスを開始する
 	///          (フレーム量子化なし)。atSec <= 現在時刻 なら即時再生される。
@@ -147,9 +216,11 @@ public:
 		return static_cast<double>(ma_engine_get_time_in_pcm_frames(e)) / static_cast<double>(sr);
 	}
 
-	/// @brief 出力レイテンシ (秒)。デバイスの内部バッファ (period × periodSize) / sampleRate。
-	/// @details masterTimeSec() はデバイスへ送った位置なので、実際に耳へ届くのはこの値だけ後。
-	///          リズムゲームが判定窓を耳基準へ補正するのに使う。device 固定値で毎フレーム同じ。
+	/// @brief 出力レイテンシ (秒)。masterTimeSec() はデバイスへ送った位置なので、耳へ届くのはこの値だけ後。
+	/// @details 自前のバッファ (period × periodSize) の先に、OS のミキサがもう一段ある。
+	///          共有モードの WASAPI では後者が 10ms 前後あり、無視すると判定窓が実際より
+	///          手前に来る。プレイヤーは音に合わせて叩くので、そのずれがそのまま「遅く
+	///          叩いている」判定になる。デバイスへ直接尋ねて足す。
 	[[nodiscard]] double outputLatencySec() const noexcept {
 		if (!m_initialized) return 0.0;
 		auto* e = const_cast<ma_engine*>(&m_engine);
@@ -157,10 +228,8 @@ public:
 		if (dev == nullptr) { return 0.0; }
 		const ma_uint32 sr = dev->playback.internalSampleRate;
 		if (sr == 0) { return 0.0; }
-		const ma_uint64 bufFrames =
-			static_cast<ma_uint64>(dev->playback.internalPeriodSizeInFrames) *
-			static_cast<ma_uint64>(dev->playback.internalPeriods);
-		return static_cast<double>(bufFrames) / static_cast<double>(sr);
+		return static_cast<double>(deviceBufferFrames(dev)) / static_cast<double>(sr)
+		     + backendLatencySec(dev);
 	}
 
 	/// @brief BGM を再生する（ループ・音量指定）
@@ -205,6 +274,13 @@ public:
 	void update() {
 		if (!m_initialized) { return; }
 		reapFinishedOneShots();
+		// 減衰させて止めたループ音を回収する。鳴り終わってから uninit する。
+		for (std::size_t i = m_fading.size(); i-- > 0;) {
+			if (ma_sound_at_end(m_fading[i].get()) || !ma_sound_is_playing(m_fading[i].get())) {
+				ma_sound_uninit(m_fading[i].get());
+				m_fading.erase(m_fading.begin() + static_cast<std::ptrdiff_t>(i));
+			}
+		}
 		if (m_musicFadeOutFrames > 0 && --m_musicFadeOutFrames == 0) { stopMusic(); }
 	}
 
@@ -307,6 +383,45 @@ public:
 	}
 
 private:
+	/// @brief 実際に確保されたデバイスバッファ (フレーム)。
+	/// @details WASAPI の共有モードでは、要求した period × periods がそのまま通るとは
+	///          限らない。internalPeriodSizeInFrames は要求値のままなので、確保された
+	///          側の値がある場合はそちらを使う。
+	[[nodiscard]] static ma_uint64 deviceBufferFrames(ma_device* dev) noexcept {
+#if defined(MA_HAS_WASAPI) && defined(_WIN32)
+		if (dev->pContext != nullptr && dev->pContext->backend == ma_backend_wasapi
+		    && dev->wasapi.actualBufferSizeInFramesPlayback > 0) {
+			return dev->wasapi.actualBufferSizeInFramesPlayback;
+		}
+#endif
+		return static_cast<ma_uint64>(dev->playback.internalPeriodSizeInFrames) *
+		       static_cast<ma_uint64>(dev->playback.internalPeriods);
+	}
+
+	/// @brief backend が自前バッファの外側に持つレイテンシ (秒)。分からない backend は 0。
+	/// @details WASAPI の共有モードは OS 側のミキサを経由し、その 1 期ぶんが後段に乗る。
+	///          GetStreamLatency はドライバによっては 0 を返すので、返らない場合は
+	///          GetDevicePeriod の既定値で埋める。
+	[[nodiscard]] static double backendLatencySec(ma_device* dev) noexcept {
+#if defined(MA_HAS_WASAPI) && defined(_WIN32)
+		if (dev->pContext == nullptr || dev->pContext->backend != ma_backend_wasapi) { return 0.0; }
+		auto* client = static_cast<IAudioClient*>(dev->wasapi.pAudioClientPlayback);
+		if (client == nullptr) { return 0.0; }
+		REFERENCE_TIME rt = 0;
+		if (SUCCEEDED(client->GetStreamLatency(&rt)) && rt > 0) {
+			return static_cast<double>(rt) * 1e-7;   // REFERENCE_TIME は 100ns 単位
+		}
+		REFERENCE_TIME defaultPeriod = 0, minPeriod = 0;
+		if (SUCCEEDED(client->GetDevicePeriod(&defaultPeriod, &minPeriod)) && defaultPeriod > 0) {
+			return static_cast<double>(defaultPeriod) * 1e-7;
+		}
+		return 0.0;
+#else
+		(void)dev;
+		return 0.0;
+#endif
+	}
+
 	/// @brief 解放待ちの one-shot voice (#52)。
 	/// @details ma_sound_at_end 検出後も device thread が同一 mix 周期内で voice に
 	///          触れている可能性があるため、即 uninit せず retiredAt から待機させる。
@@ -357,6 +472,14 @@ private:
 	}
 
 	/// @brief 全 voice (BGM + one-shot + retire 待ち) を解放する (shutdown 専用)
+	/// @brief 鳴っているループ音をすべて解放する。
+	void releaseLoops() {
+		for (auto& kv : m_loops) { ma_sound_stop(kv.second.get()); ma_sound_uninit(kv.second.get()); }
+		m_loops.clear();
+		for (auto& s2 : m_fading) { ma_sound_uninit(s2.get()); }
+		m_fading.clear();
+	}
+
 	void releaseVoices() {
 		stopMusic();
 		for (auto& s : m_oneShots) { ma_sound_uninit(s.get()); }
@@ -371,6 +494,8 @@ private:
 	float m_musicBaseVolume = 1.0f;  ///< duck していない本来の BGM 音量。duck の復帰先 (#34 の雪だるま化防止)
 	bool m_musicPaused = false;      ///< pauseMusic() 中か (resumeMusic() で false。v19)
 	int  m_musicFadeOutFrames = 0;  ///< >0 の間 update() が減算し、0 で music を uninit (#51)
+	std::unordered_map<std::string, std::unique_ptr<ma_sound>> m_loops;  ///< 鳴らしっぱなしのループ音 (path で引く)
+	std::vector<std::unique_ptr<ma_sound>> m_fading;                   ///< 減衰させて止めた最中のループ音
 	std::vector<std::unique_ptr<ma_sound>> m_oneShots;
 	std::vector<RetiredVoice> m_retired;  ///< 遅延解放待ち (#52)
 };

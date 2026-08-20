@@ -141,8 +141,9 @@ void createRootSignature()
 	rootParams[4].DescriptorTable.pDescriptorRanges   = srvRanges;
 	rootParams[4].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	/// s0: linear + repeat / s1: comparison(less) for PCF
-	D3D12_STATIC_SAMPLER_DESC samplers[2] = {};
+	/// s0: linear + repeat / s1: comparison(less) for PCF / s2: point + repeat
+	/// s2 は glTF が NEAREST を宣言した資産用。ドット絵を線形補間で溶かさない。
+	D3D12_STATIC_SAMPLER_DESC samplers[3] = {};
 	// s0
 	samplers[0].Filter           = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
 	samplers[0].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -165,11 +166,22 @@ void createRootSignature()
 	samplers[1].MaxLOD           = D3D12_FLOAT32_MAX;
 	samplers[1].ShaderRegister   = 1;
 	samplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	// s2 — 最近傍サンプラ
+	samplers[2].Filter           = D3D12_FILTER_MIN_MAG_MIP_POINT;
+	samplers[2].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	samplers[2].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	samplers[2].AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	samplers[2].ComparisonFunc   = D3D12_COMPARISON_FUNC_ALWAYS;
+	samplers[2].BorderColor      = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+	samplers[2].MinLOD           = 0.0f;
+	samplers[2].MaxLOD           = D3D12_FLOAT32_MAX;
+	samplers[2].ShaderRegister   = 2;
+	samplers[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
 	rootSigDesc.NumParameters     = 5;
 	rootSigDesc.pParameters       = rootParams;
-	rootSigDesc.NumStaticSamplers = 2;
+	rootSigDesc.NumStaticSamplers = 3;
 	rootSigDesc.pStaticSamplers   = samplers;
 	rootSigDesc.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |

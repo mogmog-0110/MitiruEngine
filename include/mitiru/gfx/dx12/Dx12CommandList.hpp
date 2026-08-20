@@ -30,7 +30,9 @@
 #include <mitiru/gfx/IDescriptorHeap.hpp>
 #include <mitiru/gfx/IRenderTarget.hpp>
 #include <mitiru/gfx/IPipeline.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/gfx/dx12/Dx12Buffer.hpp>
+#include <mitiru/gfx/dx12/Dx12ComputePipeline.hpp>
 #include <mitiru/gfx/dx12/Dx12DescriptorHeap.hpp>
 #include <mitiru/gfx/dx12/Dx12Pipeline.hpp>
 #include <mitiru/gfx/dx12/Dx12RenderTarget.hpp>
@@ -194,9 +196,33 @@ public:
 			return;
 		}
 
+		/// コンピュートは結び付け先のルートシグネチャが別系統なので、先に分岐する。
+		if (pipeline->isCompute())
+		{
+			auto* computePipeline = dynamic_cast<Dx12ComputePipeline*>(pipeline);
+			if (!computePipeline)
+			{
+				::mitiru::debug::warnOnce(
+					"dx12.setPipeline.compute.foreign",
+					"Dx12CommandList::setPipeline: isCompute() だが Dx12ComputePipeline "
+					"ではないパイプラインが渡された。描画は行われない");
+				return;
+			}
+			m_commandList->SetPipelineState(computePipeline->nativePSO());
+			m_commandList->SetComputeRootSignature(
+				static_cast<ID3D12RootSignature*>(computePipeline->rootSignature()));
+			return;
+		}
+
 		auto* dx12Pipeline = dynamic_cast<Dx12Pipeline*>(pipeline);
 		if (!dx12Pipeline)
 		{
+			/// 黙って戻ると、直前の PSO のまま描画が続いて「なぜか前のシェーダーで
+			/// 描かれる」という追いにくい症状になる。
+			::mitiru::debug::warnOnce(
+				"dx12.setPipeline.foreign",
+				"Dx12CommandList::setPipeline: DX12 以外のパイプラインが渡された。"
+				"直前の PSO のままになる");
 			return;
 		}
 
@@ -444,6 +470,103 @@ public:
 		m_commandList->SetGraphicsRootConstantBufferView(
 			paramIndex,
 			static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(gpuVirtualAddress));
+	}
+
+	// ── コンピュート ────────────────────────────────────────────
+
+	/// @brief コンピュートシェーダーを起動する
+	void dispatch(
+		uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override
+	{
+		if (!m_recording)
+		{
+			return;
+		}
+		m_commandList->Dispatch(groupCountX, groupCountY, groupCountZ);
+	}
+
+	/// @brief コンピュート用ルートシグネチャを設定する
+	void setComputeRootSignature(void* rootSignature) override
+	{
+		if (!m_recording || !rootSignature)
+		{
+			return;
+		}
+		m_commandList->SetComputeRootSignature(
+			static_cast<ID3D12RootSignature*>(rootSignature));
+	}
+
+	/// @brief コンピュート用ルートデスクリプタテーブルを設定する
+	void setComputeRootDescriptorTable(
+		uint32_t paramIndex, GpuDescriptorHandle handle) override
+	{
+		if (!m_recording)
+		{
+			return;
+		}
+		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = {};
+		gpuHandle.ptr = handle.ptr;
+		m_commandList->SetComputeRootDescriptorTable(paramIndex, gpuHandle);
+	}
+
+	/// @brief コンピュート用ルート定数バッファビューを設定する
+	void setComputeRootCBV(
+		uint32_t paramIndex, uint64_t gpuVirtualAddress) override
+	{
+		if (!m_recording)
+		{
+			return;
+		}
+		m_commandList->SetComputeRootConstantBufferView(
+			paramIndex,
+			static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(gpuVirtualAddress));
+	}
+
+	/// @brief コンピュート用ルートシェーダーリソースビューを設定する
+	void setComputeRootSRV(
+		uint32_t paramIndex, uint64_t gpuVirtualAddress) override
+	{
+		if (!m_recording)
+		{
+			return;
+		}
+		m_commandList->SetComputeRootShaderResourceView(
+			paramIndex,
+			static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(gpuVirtualAddress));
+	}
+
+	/// @brief コンピュート用ルートアンオーダードアクセスビューを設定する
+	void setComputeRootUAV(
+		uint32_t paramIndex, uint64_t gpuVirtualAddress) override
+	{
+		if (!m_recording)
+		{
+			return;
+		}
+		m_commandList->SetComputeRootUnorderedAccessView(
+			paramIndex,
+			static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(gpuVirtualAddress));
+	}
+
+	/// @brief UAV バリアを発行する
+	/// @param resource 対象リソース (nullptr なら全 UAV)
+	void uavBarrier(ITexture* resource) override
+	{
+		if (!m_recording)
+		{
+			return;
+		}
+
+		auto* dx12Tex = dynamic_cast<Dx12Texture*>(resource);
+
+		D3D12_RESOURCE_BARRIER barrier = {};
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		/// pResource が null の UAV バリアは「すべての UAV アクセス」へのバリアという
+		/// D3D12 の規定。resource が渡されなかった場合も、順序を保証しないより
+		/// 全体に掛けるほうが安全側。
+		barrier.UAV.pResource = dx12Tex ? dx12Tex->nativeResource() : nullptr;
+		m_commandList->ResourceBarrier(1, &barrier);
 	}
 
 	/// @brief 内部のID3D12GraphicsCommandListを取得する

@@ -205,6 +205,30 @@ public:
     [[nodiscard]] uint64_t totalPaintNanos() const noexcept { return m_totalPaintNanos.load(); }
     /// @brief 直近 OnPaint で触れたバイト数 (dirty area * 4)
     [[nodiscard]] uint64_t lastPaintBytes()  const noexcept { return m_lastPaintBytes.load(); }
+
+    /// @brief CEF 論理座標 (x,y) のアルファ値。ページが無ければ 0。
+    /// @details ホストは「ポインタが UI の上か、素通しの穴の上か」を知る必要がある。
+    ///          板の位置を C++ 側に写すとレイアウトと二重管理になり、パネルを 1 枚
+    ///          足した日にズレる。**ページ自身の不透明度が答え**であって、それは
+    ///          ここにある -- OSR は CPU バッファに描くので、追加のリードバックは要らない。
+    ///
+    ///          front を見るのは takePixels() が swap した後の「いま画面に出ている絵」が
+    ///          そちらだからで、まだ 1 度も paint していない間は 0 (= どこも UI でない)。
+    [[nodiscard]] std::uint8_t alphaAt(int x, int y) const
+    {
+        std::lock_guard lock(m_mutex);
+        if (x < 0 || y < 0 || x >= m_width || y >= m_height)
+        {
+            return 0;
+        }
+        const std::size_t index = (static_cast<std::size_t>(y) * static_cast<std::size_t>(m_width)
+                                   + static_cast<std::size_t>(x)) * 4u + 3u;  // BGRA の A
+        if (index >= m_front.size())
+        {
+            return 0;
+        }
+        return m_front[index];
+    }
     /// @brief 直近 OnPaint の dirty ピクセル面積
     [[nodiscard]] uint64_t lastDirtyArea()   const noexcept { return m_lastDirtyArea.load(); }
 

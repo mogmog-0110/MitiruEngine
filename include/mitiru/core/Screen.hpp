@@ -1555,6 +1555,12 @@ public:
 	/// @brief カメラを設定する (視点・注視点・縦画角[度])。drawMesh の前に。未設定は既定見下ろし。
 	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, float fovDeg = 55.0f) noexcept;
 
+	/// @brief ロール付きカメラ (ABI v25)。rollDeg は視線軸まわりの傾き (度)。
+	/// @details 走りのリーン・スライドのバンク等に。0 で水平。
+	///          正 = カメラが右へ傾く (右肩下がり。地平線は画面で右上がりに見える)。
+	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, float fovDeg,
+	              float rollDeg) noexcept;
+
 	/// @brief 平行光源を設定する (進む向き + 色)。未設定は斜め上からの白色光。
 	void light3D(const sgc::Vec3f& direction,
 	             const sgc::Colorf& color = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}) noexcept;
@@ -1564,11 +1570,55 @@ public:
 	///          毎フレーム同じ色で呼んでもコストはかからない。
 	void skybox3D(const sgc::Colorf& zenith, const sgc::Colorf& nadir) noexcept;
 
+	/// @brief セル塗り (明部/影部の 2 トーン) にする (ABI v27)。既定は滑らかな陰影。
+	/// @param shadowTint 影部でアルベドに掛ける係数。落ち影も同じ 2 トーンに乗る。
+	/// @details drawMesh / drawModel より前に呼ぶ。
+	void toon3D(bool enabled,
+	            const sgc::Colorf& shadowTint = sgc::Colorf{0.60f, 0.64f, 0.76f, 1.0f}) noexcept;
+
+	/// @brief 輪郭線を引く (ABI v27)。
+	/// @param widthPx 線の太さ (ピクセル)。@param threshold 検出しきい値 (小さいほど線が増える)。
+	/// @param depthOnly 深度の段差だけを見る。既定は色の変化も拾うので、模様のあるテクスチャを
+	///        貼った面では模様そのものが線として出る。物の輪郭だけが欲しい場合は true。
+	void outline3D(bool enabled, float widthPx = 1.5f, float threshold = 0.12f,
+	               bool depthOnly = false) noexcept;
+
+	/// @brief 距離フォグを掛ける (ABI v28)。既定は無し。
+	/// @param nearDist かかり始める距離。@param farDist 完全に color へ染まる距離。
+	/// @details 空の色に合わせると遠景が地平へ溶ける。drawMesh / drawModel より前に呼ぶ。
+	void fog3D(bool enabled, const sgc::Colorf& color = sgc::Colorf{0.7f, 0.78f, 0.86f, 1.0f},
+	           float nearDist = 30.0f, float farDist = 90.0f) noexcept;
+
+	/// @brief 以後の 3D 描画が世界へ影を落とすかを切り替える。
+	/// @details 一人称の武器のように、画面には出るが影は落とさないものを false で挟む。
+	///          フレーム頭で true に戻るので、戻し忘れは次フレームへ持ち越さない。
+	void shadowCaster3D(bool enabled);
+
 	/// @brief 組み込みメッシュ ("cube" / "sphere" / "plane") を位置・スケール・回転(度)・色で描く。
 	void drawMesh(const char* shape, const sgc::Vec3f& position,
 	              const sgc::Vec3f& scale  = sgc::Vec3f{1.0f, 1.0f, 1.0f},
 	              const sgc::Vec3f& rotDeg = sgc::Vec3f{0.0f, 0.0f, 0.0f},
 	              const sgc::Colorf& color = sgc::Colorf{0.80f, 0.80f, 0.85f, 1.0f});
+
+	/// @brief 組み込みメッシュ ("cube" / "sphere" / "plane") をテクスチャ付きで描く。
+	/// @details メッシュ固有の UV をそのまま使うため、テクスチャを繰り返して貼ることはできない。
+	void drawMesh(const char* shape, const sgc::Vec3f& position, const sgc::Vec3f& scale,
+	              const sgc::Vec3f& rotDeg, const render::Texture& texture,
+	              const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f});
+
+	/// @brief Makina の CSG ソリッド (.csgbake.json) を位置・Y回転(度)・スケールで描く。
+	/// @details 距離場をそのままレイマーチするので、メッシュ化を経ない。DX12 +
+	///          makina-core のあるビルド以外では何も描かない (drawModel と同じ規約)。
+	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
+	               float rotYDeg = 0.0f, float scale = 1.0f);
+
+	/// @brief 動く CSG ソリッドを時刻 (秒) で描く (Makina D-15)。
+	/// @details Makina で関節にキーを打ち `makina_bake --live` で焼いた立体は、この時刻の
+	///          姿で出る。時間は drawModel のクリップと同じく自分のゲーム状態で足す
+	///          (`t += dt`)。モーションの長さを超えた時刻は最後のキーの姿で止まるので、
+	///          ループさせたければ fmod する。静止した立体・焼き込みの bake では 4 引数と同じ。
+	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
+	               float rotYDeg, float scale, float timeSec);
 
 	/// @brief 大規模 3D モデル (.clod) を位置・Y回転(度)・スケールで描く。自動 LOD。
 	/// @param path .clod への vfs パス。DX12 + SM6.6 が無い環境では no-op。
@@ -1588,6 +1638,12 @@ public:
 	void drawModelBlend(const char* path, const sgc::Vec3f& position, float rotYDeg,
 	                    float scale, const char* clipA, float timeA,
 	                    const char* clipB, float timeB, float mix);
+
+	/// @brief 3D モデル (.glb/.gltf) を 3 軸回転して描く (ABI v26)。
+	/// @details rotDeg は drawMesh と同じ {pitch, yaw, roll} 度。手に持つ道具や
+	///          傾いた小物など、Y 回転だけでは足りないものに使う。
+	void drawModel(const char* path, const sgc::Vec3f& position,
+	               const sgc::Vec3f& rotDeg, float scale = 1.0f);
 
 	/// @brief 3D Gaussian Splatting シーン (.splat) を読み込む (一度だけ、init 等で)。失敗時 false。
 	bool loadSplatScene(const char* path);
@@ -1680,6 +1736,23 @@ private:
 	bool        m_sky3DApplied   = false;          ///< renderer へ setSkybox 反映済みか
 	sgc::Colorf m_sky3DZenith    {0.0f, 0.0f, 0.0f, 1.0f};
 	sgc::Colorf m_sky3DNadir     {0.0f, 0.0f, 0.0f, 1.0f};
+
+	// ── カメラ up (ABI v25 末尾追加) ─────────────────────────────────────
+	sgc::Vec3f  m_cam3DUp        {0.0f, 1.0f, 0.0f};  ///< roll 込みの up (camera3D が計算)
+
+	// ── 絵づくり (ABI v27 末尾追加) ──────────────────────────────────────
+	bool  m_toon3D          = false;   ///< セル塗り (段階陰影) にするか
+	bool  m_outline3D       = false;   ///< 輪郭線を引くか
+	float m_outlineWidthPx  = 1.5f;    ///< 輪郭線の太さ (ピクセル)
+	float m_outlineThresh   = 0.12f;   ///< 輪郭検出のしきい値 (小さいほど線が増える)
+	bool  m_outlineDepthOnly = false;  ///< 深度の段差だけを見る (色の変化を拾わない)
+	sgc::Colorf m_toonShadowTint{0.60f, 0.64f, 0.76f, 1.0f};  ///< 影部の色 (乗算係数)
+
+	// ── 距離フォグ (ABI v28 末尾追加) ────────────────────────────────────
+	bool        m_fog3D      = false;
+	sgc::Colorf m_fog3DColor {0.7f, 0.78f, 0.86f, 1.0f};
+	float       m_fog3DNear  = 30.0f;
+	float       m_fog3DFar   = 90.0f;
 };
 
 } // namespace mitiru

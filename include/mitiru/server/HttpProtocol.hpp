@@ -81,6 +81,21 @@ inline void setNonBlocking(SocketHandle sock)
 #endif
 }
 
+/// @brief ソケットをブロッキングに戻す
+/// @details accept で得たソケットは待ち受け側のノンブロッキング設定を引き継ぐ。その
+///          ままだとデータが未着の recv が即座に失敗で戻り、SO_RCVTIMEO も効かない
+///          (ノンブロッキングでは待たない)。読み切りたい側で明示的に戻す。
+inline void setBlocking(SocketHandle sock)
+{
+#ifdef _WIN32
+	u_long mode = 0;
+	ioctlsocket(sock, FIONBIO, &mode);
+#else
+	const int flags = fcntl(sock, F_GETFL, 0);
+	fcntl(sock, F_SETFL, flags & ~O_NONBLOCK);
+#endif
+}
+
 /// @brief ソケットを閉じる
 inline void closeSocket(SocketHandle sock) noexcept
 {

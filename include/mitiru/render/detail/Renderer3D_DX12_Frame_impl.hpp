@@ -30,6 +30,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_transparentCommands.clear();
 	m_skyboxDrawnThisFrame = false;
 	m_skinnedPoolCursor = 0;  // スキン描画 pool を巻き戻す (ADR 0028)
+	m_shadowCasterEnabled = true;
 	// 前フレームの shadow casters をスナップして当フレーム描画分をクリア
 	m_shadowCommandsPrev = std::move(m_shadowCommands);
 	m_shadowCommands.clear();
@@ -183,16 +184,21 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 		drawSkyboxIfNeededDx12();
 	}
 
-	/// 半透明 (diffuse.a < 1) は即時描画せず、不透明の後に OIT パスへ回す (順序非依存)
-	if (material.diffuse.a < 1.0f && m_oitTransparentPSO)
+	/// 半透明は即時描画せず、不透明の後に OIT パスへ回す (順序非依存)。
+	/// glTF が Blend を宣言していれば拡散色が不透明でも半透明として扱う。
+	/// Mask は抜き (PS の clip) なので不透明パスのまま。
+	const bool wantsBlend = (material.alphaMode == Material::AlphaMode::Blend) ||
+	                        (material.alphaMode != Material::AlphaMode::Mask &&
+	                         material.diffuse.a < 1.0f);
+	if (wantsBlend && m_oitTransparentPSO)
 	{
 		m_transparentCommands.push_back({&mesh, worldTransform, material});
 		return;
 	}
 
-	/// PSO 選択（ShaderMode + multi-light + outline mode の組み合わせ）
+	/// PSO 選択（ShaderMode + multi-light + outline mode + 両面の組み合わせ）
 	const bool useMulti = m_useMultiLight && !m_lights.empty() && m_multiLightPSO;
-	if (auto* pso = selectMainPSO())
+	if (auto* pso = selectMainPSO(material.doubleSided))
 	{
 		m_graphicsCmdList->SetPipelineState(pso);
 	}
@@ -279,7 +285,7 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 	++m_drawCallCount;
 
 	/// シャドウキャスター記録（次フレームの shadow pass で使われる）
-	if (m_shadowEnabled)
+	if (m_shadowEnabled && m_shadowCasterEnabled)
 	{
 		m_shadowCommands.push_back({&mesh, worldTransform});
 	}
@@ -378,6 +384,12 @@ inline void Renderer3D_DX12::endFrame()
 	// MSAA HDR + depth へ合成する (以降の OIT / resolve が上に乗る)。ADR 0027
 	renderClodPass();
 
+#ifdef MITIRU_HAS_MAKINA
+	// Makina の CSG ソリッド: MSAA HDR + depth へ直接レイマーチする。clod と同じく
+	// 不透明の一部なので OIT より前。深度を書くので、後続の半透明は正しく隠れる。
+	renderCsgPass();
+#endif
+
 	// 半透明 OIT: 不透明 (MSAA color + depth) の後、resolve/tonemap の前に HDR で合成する。
 	if (!m_transparentCommands.empty() && m_oitTransparentPSO &&
 	    m_msaaColorRtvHeap && m_dsvHeap)
@@ -432,6 +444,82 @@ inline void Renderer3D_DX12::endFrame()
 	// m_needsFinalize フラグで制御する。
 	m_needsFinalize = true;
 }
+
+#ifdef MITIRU_HAS_MAKINA
+inline void Renderer3D_DX12::renderCsgPass()
+{
+	if (m_csgQueue.empty())
+	{
+		return;
+	}
+	MITIRU_ZONE_NAMED("Render::Dx12::CsgPass");
+	auto* cmd = m_graphicsCmdList.Get();
+	if (cmd == nullptr || !m_msaaColorRtvHeap || !m_dsvHeap)
+	{
+		m_csgQueue.clear();
+		return;
+	}
+
+	// パスは自分の PSO とシザーを持つが、ターゲットの束縛は呼び手の仕事
+	// (CsgRenderPass::draw の契約)。OIT と同じ MSAA HDR + depth に書く。
+	const D3D12_CPU_DESCRIPTOR_HANDLE rtv =
+		m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
+	const D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	cmd->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+
+	D3D12_VIEWPORT vp = {};
+	vp.Width = m_config.viewportWidth;
+	vp.Height = m_config.viewportHeight;
+	vp.MaxDepth = 1.0f;
+	cmd->RSSetViewports(1, &vp);
+
+	const sgc::Vec3f lightDir = m_light.direction;
+
+	for (const QueuedSolid& q : m_csgQueue)
+	{
+		CsgEntry& entry = m_csgCache[q.manifest];
+		if (entry.failed)
+		{
+			continue;
+		}
+		if (!entry.pass.ready())
+		{
+			// 初回だけ読む。マニフェストがシーン名を知っているので、シーンは隣から。
+			const std::size_t slash = q.manifest.find_last_of("/\\");
+			const std::string dir =
+				slash == std::string::npos ? std::string(".") : q.manifest.substr(0, slash);
+			if (!entry.bake.loadFromFile(q.manifest) ||
+			    !entry.solid.loadFromFile(dir + "/" + entry.bake.sceneName()) ||
+			    !entry.pass.initialize(m_d3dDevice, entry.solid, entry.bake, {}))
+			{
+				entry.failed = true;
+				std::fprintf(stderr,
+				             "[mitiru][csg] could not stand up '%s': %s\n",
+				             q.manifest.c_str(),
+				             entry.pass.error().empty() ? "load failed"
+				                                        : entry.pass.error().c_str());
+				continue;
+			}
+		}
+		csg::CsgDrawDesc desc;
+		desc.position = q.position;
+		desc.rotationYDeg = q.rotYDeg;
+		desc.scale = q.scale;
+		// live に焼いた立体 (D-15) だけが今フレームの姿を要る。焼き込みの bake には
+		// 渡さない — 渡しても読まれないが、毎フレームの平坦化を払う理由が無い。
+		const makina::EvalProgram* program =
+			entry.bake.live() ? &entry.solid.programAt(q.timeSec) : nullptr;
+		if (!entry.pass.draw(cmd, m_clodCamera, lightDir, desc,
+		                     static_cast<int>(m_config.viewportWidth),
+		                     static_cast<int>(m_config.viewportHeight), program))
+		{
+			std::fprintf(stderr, "[mitiru][csg] draw refused: %s\n",
+			             entry.pass.error().c_str());
+		}
+	}
+	m_csgQueue.clear();
+}
+#endif
 
 /// @brief clod 世界ジオメトリパス: 記録 → depth-tested inject 合成
 inline void Renderer3D_DX12::renderClodPass()
@@ -548,9 +636,19 @@ inline void Renderer3D_DX12::setLights(std::span<const Light> lights)
 }
 
 /// @brief 現在の (shaderMode, useMultiLight, outlineMode) に対する PSO を選ぶ
-inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO() const noexcept
+inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO(bool doubleSided) const noexcept
 {
+	// 両面は同じ PS のカリング無し双子を使う。双子が無い場合だけ片面へ落とす。
+	const auto pick = [doubleSided](const ComPtr<ID3D12PipelineState>& one,
+	                                const ComPtr<ID3D12PipelineState>& both)
+		-> ID3D12PipelineState*
+	{
+		if (doubleSided && both) { return both.Get(); }
+		return one.Get();
+	};
+
 	// Fresnel は OutlineMode 由来で main PSO を差し替える既存仕様
+	// (Fresnel は輪郭専用で両面の双子を持たない)
 	if (m_outlineMode == OutlineMode::Fresnel && m_fresnelMainPSO)
 	{
 		return m_fresnelMainPSO.Get();
@@ -558,17 +656,23 @@ inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO() const noexcept
 	// multi-light は ShaderMode より優先
 	if (m_useMultiLight && !m_lights.empty() && m_multiLightPSO)
 	{
-		return m_multiLightPSO.Get();
+		return pick(m_multiLightPSO, m_multiLightPSONoCull);
 	}
 	switch (m_shaderMode)
 	{
-	case ShaderMode3D::Phong: if (m_phongPSO) return m_phongPSO.Get(); break;
-	case ShaderMode3D::Unlit: if (m_unlitPSO) return m_unlitPSO.Get(); break;
-	case ShaderMode3D::Flat:  if (m_flatPSO)  return m_flatPSO.Get();  break;
+	case ShaderMode3D::Phong:
+		if (m_phongPSO) { return pick(m_phongPSO, m_phongPSONoCull); }
+		break;
+	case ShaderMode3D::Unlit:
+		if (m_unlitPSO) { return pick(m_unlitPSO, m_unlitPSONoCull); }
+		break;
+	case ShaderMode3D::Flat:
+		if (m_flatPSO) { return pick(m_flatPSO, m_flatPSONoCull); }
+		break;
 	case ShaderMode3D::Toon:
 	default: break;
 	}
-	return m_mainPSO.Get(); // フォールバック: toon
+	return pick(m_mainPSO, m_mainPSONoCull); // フォールバック: toon
 }
 
 } // namespace mitiru::render

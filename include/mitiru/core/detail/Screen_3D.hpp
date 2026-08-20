@@ -47,6 +47,32 @@ inline void Screen::camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target,
 	m_cam3DEye    = eye;
 	m_cam3DTarget = target;
 	m_cam3DFovDeg = fovDeg;
+	m_cam3DUp     = {0.0f, 1.0f, 0.0f};
+}
+
+inline void Screen::camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target,
+                             float fovDeg, float rollDeg) noexcept
+{
+	m_cam3DEye    = eye;
+	m_cam3DTarget = target;
+	m_cam3DFovDeg = fovDeg;
+	// up を視線軸まわりに rollDeg 回す: up' = up·cosθ + (f×up)·sinθ
+	constexpr float kDeg = 3.14159265358979f / 180.0f;
+	sgc::Vec3f f{target.x - eye.x, target.y - eye.y, target.z - eye.z};
+	const float fl = std::sqrt(f.x * f.x + f.y * f.y + f.z * f.z);
+	if (fl < 1e-6f) { m_cam3DUp = {0.0f, 1.0f, 0.0f}; return; }
+	f = {f.x / fl, f.y / fl, f.z / fl};
+	// 真上/真下を向いた時は基準 up を +z へ逃がす (縮退回避)
+	const sgc::Vec3f base = (f.y > 0.999f || f.y < -0.999f)
+		? sgc::Vec3f{0.0f, 0.0f, 1.0f} : sgc::Vec3f{0.0f, 1.0f, 0.0f};
+	const sgc::Vec3f fxu{f.y * base.z - f.z * base.y,
+	                     f.z * base.x - f.x * base.z,
+	                     f.x * base.y - f.y * base.x};
+	const float c = std::cos(rollDeg * kDeg);
+	const float s = std::sin(rollDeg * kDeg);
+	m_cam3DUp = {base.x * c + fxu.x * s,
+	             base.y * c + fxu.y * s,
+	             base.z * c + fxu.z * s};
 }
 
 inline void Screen::light3D(const sgc::Vec3f& direction,
@@ -68,6 +94,37 @@ inline void Screen::skybox3D(const sgc::Colorf& zenith, const sgc::Colorf& nadir
 	}
 }
 
+inline void Screen::toon3D(bool enabled, const sgc::Colorf& shadowTint) noexcept
+{
+	m_toon3D        = enabled;
+	m_toonShadowTint = shadowTint;
+}
+
+inline void Screen::fog3D(bool enabled, const sgc::Colorf& color, float nearDist,
+                          float farDist) noexcept
+{
+	m_fog3D      = enabled;
+	m_fog3DColor = color;
+	m_fog3DNear  = nearDist;
+	m_fog3DFar   = farDist;
+}
+
+inline void Screen::shadowCaster3D(bool enabled)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->setShadowCaster(enabled);
+}
+
+inline void Screen::outline3D(bool enabled, float widthPx, float threshold,
+                              bool depthOnly) noexcept
+{
+	m_outline3D       = enabled;
+	m_outlineWidthPx  = widthPx;
+	m_outlineThresh   = threshold;
+	m_outlineDepthOnly = depthOnly;
+}
+
 /// @brief 最初の 3D 描画でフレームを開く (clear 色は screen->clear() と共有)
 inline void Screen::ensure3DFrame()
 {
@@ -77,15 +134,22 @@ inline void Screen::ensure3DFrame()
 		? static_cast<float>(m_width) / static_cast<float>(m_height)
 		: 16.0f / 9.0f;
 	constexpr float kDeg = 3.14159265358979f / 180.0f;
-	const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, {0.0f, 1.0f, 0.0f},
+	const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, m_cam3DUp,
 	                           m_cam3DFovDeg * kDeg, aspect, 0.1f, 500.0f);
 	m_renderer3D->setCamera(cam);
 	m_renderer3D->setLight(
 		render::Light::directional(m_light3DDir, m_light3DColor));
-	// 既定は普通の Phong シェーディング (なめらかな陰影)。トゥーン調の
-	// セル塗り + 輪郭線は出さない。
-	m_renderer3D->setShaderMode(render::ShaderMode3D::Phong);
-	m_renderer3D->setOutlineEnabled(false);
+	m_renderer3D->setShaderMode(m_toon3D ? render::ShaderMode3D::Toon
+	                                     : render::ShaderMode3D::Phong);
+	if (m_toon3D) { m_renderer3D->setToonShadowTint(m_toonShadowTint); }
+	m_renderer3D->setFog(m_fog3D, m_fog3DColor, m_fog3DNear, m_fog3DFar);
+	m_renderer3D->setOutlineEnabled(m_outline3D);
+	if (m_outline3D)
+	{
+		m_renderer3D->setOutlineMode(m_outlineDepthOnly ? render::OutlineMode::DepthSobel
+		                                                : render::OutlineMode::DepthColorCombo);
+		m_renderer3D->setOutlineParams(m_outlineWidthPx, m_outlineThresh);
+	}
 	// 影を有効化 (オブジェクトが地面に接地して見える)。光と同じ向きで落とす。
 	m_renderer3D->setShadowEnabled(true);
 	m_renderer3D->setShadowDirection(m_light3DDir);
@@ -119,6 +183,41 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 	m_renderer3D->drawMesh(detail::builtin3DMesh(shape), world, material);
 }
 
+inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
+                             const sgc::Vec3f& scale, const sgc::Vec3f& rotDeg,
+                             const render::Texture& texture, const sgc::Colorf& tint)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+
+	constexpr float kDeg = 3.14159265358979f / 180.0f;
+	const sgc::Mat4f world =
+		sgc::Mat4f::translation(position) *
+		sgc::Mat4f::rotationY(rotDeg.y * kDeg) *
+		sgc::Mat4f::rotationX(rotDeg.x * kDeg) *
+		sgc::Mat4f::rotationZ(rotDeg.z * kDeg) *
+		sgc::Mat4f::scaling(scale);
+
+	render::Material material;
+	material.diffuse = tint;
+	material.albedoTexture = &texture;
+	m_renderer3D->drawMesh(detail::builtin3DMesh(shape), world, material);
+}
+
+inline void Screen::drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
+                              float rotYDeg, float scale)
+{
+	drawSolid(bakeManifestPath, position, rotYDeg, scale, 0.0f);
+}
+
+inline void Screen::drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
+                              float rotYDeg, float scale, float timeSec)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->drawSolid(bakeManifestPath, position, rotYDeg, scale, timeSec);
+}
+
 inline void Screen::drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
                               float scale)
 {
@@ -144,6 +243,14 @@ inline void Screen::drawModelBlend(const char* path, const sgc::Vec3f& position,
 	ensure3DFrame();
 	m_renderer3D->drawSkinnedModel(path, position, rotYDeg, scale, clipA, timeA, clipB,
 	                               timeB, mix);
+}
+
+inline void Screen::drawModel(const char* path, const sgc::Vec3f& position,
+                              const sgc::Vec3f& rotDeg, float scale)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->drawModelRot(path, position, rotDeg, scale);
 }
 
 inline bool Screen::loadSplatScene(const char* path)

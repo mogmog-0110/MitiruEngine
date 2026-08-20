@@ -39,6 +39,12 @@ struct PendingInstance
 };
 
 /// @brief clod 世界ジオメトリパスの GPU 実装
+/// @brief drawModel がこの device で動かない理由。動くなら nullptr
+/// @details ClodRenderer::checkCaps の中身をここに出してある。テストが同じ判定を
+///          自前で書き直すと、caps の条件が増えたときに片方だけ古くなるため。
+///          戻り値は静的文字列なので寿命を気にしなくてよい。
+[[nodiscard]] const char* clodUnsupportedReason(ID3D12Device* device);
+
 class ClodRenderer
 {
 	template <typename T>

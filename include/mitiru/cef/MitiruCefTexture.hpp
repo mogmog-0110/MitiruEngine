@@ -41,7 +41,19 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 
+// MITIRU_CEF_NO_DX12DEVICE — Dx12Device を取る便宜オーバーロードを外す。
+//
+// この UI 層が要るのは ID3D12Device / ID3D12CommandQueue / RTV ハンドルだけで、
+// Dx12Device 版はエンジン自身のために置いてある短縮形にすぎない。ところが型を名前で
+// 受けている以上ヘッダは include され、Dx12Device は IDevice / Dx12SwapChain /
+// Win32Window / sgc まで芋づるで引く。つまり**自前のデバイスを持つ側は、使わない
+// スタックを丸ごと通す羽目になる** — API を D3D12 まで下げても include が下がって
+// いなければ、分離は名目だけである。
+//
+// エンジンは何も定義しない (既定で便宜版が付く)。外して使う側だけが宣言する。
+#if !defined(MITIRU_CEF_NO_DX12DEVICE)
 #include <mitiru/gfx/dx12/Dx12Device.hpp>
+#endif
 #include <mitiru/cef/CefUploadPlanner.hpp>   // planUploadPlacements (#29、GPU 非依存の純ロジック)
 
 // CefRect 型を使うために CEF ヘッダーをインクルードする
@@ -86,16 +98,39 @@ public:
 
     /// @brief 初期化 — テクスチャと合成パイプラインを作成する
     /// @return 成功したか (失敗は例外でも通知される)
-    bool initialize(gfx::Dx12Device& device, int width, int height)
+    /// @brief 初期化 — D3D12 のハンドルだけを受け取る版
+    /// @details こちらが本体で、Dx12Device を取る版はこれを呼ぶ。
+    ///
+    ///          合成に要るのはデバイスとキューと RTV だけで、スワップチェーンも
+    ///          ウィンドウも要らない。それでも Dx12Device を要求すると、この UI 層は
+    ///          「エンジンのゲーム用デバイスを持っているもの」にしか使えなくなる。
+    ///          姉妹プロジェクトの Makina は自前の DX12 を持っていて UI だけを借りたい
+    ///          ので、借りられる形にしてある。実測して 3 箇所だった -- nativeDevice /
+    ///          commandQueue / getSwapChain で、最後の 1 つは composite 側にある。
+    bool initialize(ID3D12Device* device, ID3D12CommandQueue* queue, int width, int height)
     {
-        m_device = device.nativeDevice();
-        m_queue  = device.commandQueue();
-        resize(device, width, height);
+        if (device == nullptr || queue == nullptr)
+        {
+            std::fprintf(stderr,
+                "[mitiru][cef] MitiruCefTexture::initialize: device or queue is null\n");
+            return false;
+        }
+        m_device = device;
+        m_queue  = queue;
+        resize(width, height);
         createPipeline();
         createCompositeResources();
         m_initialized = true;
         return true;
     }
+
+#if !defined(MITIRU_CEF_NO_DX12DEVICE)
+    /// @brief 初期化 — エンジンのデバイスから
+    bool initialize(gfx::Dx12Device& device, int width, int height)
+    {
+        return initialize(device.nativeDevice(), device.commandQueue(), width, height);
+    }
+#endif
 
     [[nodiscard]] bool isInitialized() const noexcept { return m_initialized; }
 
@@ -117,7 +152,16 @@ public:
     /// pending 中は古いテクスチャがそのまま使われ、composite は
     /// 古いサイズの内容を window に bilinear stretch する (一時的ながら
     /// 内容は維持される)。
+#if !defined(MITIRU_CEF_NO_DX12DEVICE)
     void resize(gfx::Dx12Device& /*device*/, int width, int height)
+    {
+        resize(width, height);
+    }
+#endif
+
+    /// @brief リサイズ — デバイスを要らない形にしたもの
+    /// @details 元から引数の device は使っていなかった。
+    void resize(int width, int height)
     {
         if (width <= 0 || height <= 0) { return; }
         if (width == m_width && height == m_height && m_texture)
@@ -206,6 +250,12 @@ public:
     ///    window が伸縮しても fit-rect が滑らかに追従 → 中身は静止
     void composite(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, int windowW, int windowH,
                    const float clearRGBA[4] = nullptr);
+
+    /// @brief 合成を、渡されたコマンドリストに記録する (提出はしない)
+    /// @details 自前のフレームループを持つ側のための入口。Reset / Close / 完了待ちは
+    ///          呼び出し側の仕事で、ここではしない。
+    void recordComposite(ID3D12GraphicsCommandList* cl, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle,
+                         int windowW, int windowH, const float clearRGBA[4] = nullptr);
 
 private:
     // ── DX12 リソース作成 (実装本体は detail/MitiruCefTexture_impl.hpp) ──

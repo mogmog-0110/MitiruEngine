@@ -266,17 +266,15 @@ private:
 
 	void handleConnection(SocketHandle clientSocket)
 	{
+		setBlocking(clientSocket);
 		setRecvTimeout(clientSocket, kRecvTimeoutMs);
 
-		std::string rawRequest(kMaxRequestSize, '\0');
-		const auto bytesRead = recv(clientSocket, rawRequest.data(),
-		                            static_cast<int>(rawRequest.size()) - 1, 0);
-		if (bytesRead <= 0)
+		std::string rawRequest;
+		if (!receiveRequest(clientSocket, rawRequest))
 		{
 			closeSocket(clientSocket);
 			return;
 		}
-		rawRequest.resize(static_cast<std::size_t>(bytesRead));
 
 		const auto request = parseRequest(rawRequest);
 		HttpResponse response;
@@ -295,6 +293,66 @@ private:
 		send(clientSocket, reinterpret_cast<const char*>(rawResponse.data()),
 		     static_cast<int>(rawResponse.size()), 0);
 		closeSocket(clientSocket);
+	}
+
+	/// @brief ヘッダ終端まで、続けて Content-Length ぶんのボディまでを読み切る。
+	/// @details TCP は境界を保たないので、ヘッダとボディが別のセグメントで届くことがある。
+	///          1 回の recv だけで済ませると、そのときボディが空のまま処理され、POST が
+	///          「body が無い」と拒否される。届く量は送り手のタイミング次第なので、必要な
+	///          長さが揃うまで読み続ける以外に確実な方法はない。
+	/// @return ヘッダ終端まで読めたら true。切断・タイムアウト・上限超過なら false。
+	[[nodiscard]] static bool receiveRequest(SocketHandle sock, std::string& out)
+	{
+		char buf[4096];
+		out.clear();
+		std::size_t headerEnd = std::string::npos;
+		while (true)
+		{
+			if (headerEnd == std::string::npos) { headerEnd = out.find("\r\n\r\n"); }
+			if (headerEnd != std::string::npos)
+			{
+				const auto len = contentLengthOf(std::string_view(out).substr(0, headerEnd));
+				if (out.size() >= headerEnd + 4 + len) { return true; }
+			}
+			if (out.size() >= static_cast<std::size_t>(kMaxRequestSize)) { return false; }
+
+			const auto n = recv(sock, buf, static_cast<int>(sizeof(buf)), 0);
+			if (n <= 0) { return headerEnd != std::string::npos; }
+			out.append(buf, static_cast<std::size_t>(n));
+		}
+	}
+
+	/// @brief ヘッダ部から Content-Length を取り出す。無ければ 0。
+	[[nodiscard]] static std::size_t contentLengthOf(std::string_view headers)
+	{
+		constexpr std::string_view kName = "content-length:";
+		for (std::size_t pos = 0; pos < headers.size();)
+		{
+			const auto end = headers.find("\r\n", pos);
+			const auto line = headers.substr(pos, (end == std::string_view::npos ? headers.size() : end) - pos);
+			if (line.size() > kName.size())
+			{
+				bool match = true;
+				for (std::size_t i = 0; i < kName.size(); ++i)
+				{
+					const char c = line[i];
+					if ((c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c) != kName[i]) { match = false; break; }
+				}
+				if (match)
+				{
+					std::size_t value = 0;
+					for (const char c : line.substr(kName.size()))
+					{
+						if (c >= '0' && c <= '9') { value = value * 10 + static_cast<std::size_t>(c - '0'); }
+						else if (c != ' ' && c != '\t') { break; }
+					}
+					return value;
+				}
+			}
+			if (end == std::string_view::npos) { break; }
+			pos = end + 2;
+		}
+		return 0;
 	}
 
 	// ── HTTPパース ──────────────────────────────

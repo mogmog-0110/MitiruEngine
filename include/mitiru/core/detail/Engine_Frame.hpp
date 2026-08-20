@@ -425,8 +425,29 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 	}
 #endif
 
+	/// ポストプロセスチェーンを実行し、バックバッファに出力する
+	m_device->endPostProcess();
+
+	/// 3Dレンダラーのコマンドリストを閉じて実行する
+	if (m_renderer3D && m_renderer3D->isFrameActive())
+	{
+		m_renderer3D->finalizeFrame();
+	}
+
+	/// 3D フレームの HUD/2D は蓄積してあるのでここで replay する。
+	/// lo-fi 有効時は resolve より前 = 低解像 RT の中へ描く (HUD も世界と同じ粒になる)。
+	const bool overlayPending =
+		(renderer3DUsed && m_renderer3D->hasOverlaySupport() && m_screen);
+	bool overlayDone = false;
 #ifdef _WIN32
+	if (overlayPending && m_config.loFi.enabled && m_loFiTarget && m_loFiTarget->ready())
+	{
+		m_screen->present3DOverlay();
+		overlayDone = true;
+	}
+
 	// ローファイ・ポストFX: 低解像 RT を量子化+Bayerディザしながら実バックバッファへ拡大。
+	// 3D コマンドが lofi RT (override 先) に落ちてから resolve する必要があるためこの位置。
 	if (m_config.loFi.enabled && m_loFiTarget && m_loFiTarget->ready() && m_window)
 	{
 		if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
@@ -440,6 +461,9 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 			p.ditherStrength = m_config.loFi.ditherStrength;
 			p.doQuantize = m_config.loFi.quantize ? 1.0f : 0.0f;
 			p.doDither = m_config.loFi.dither ? 1.0f : 0.0f;
+			p.soft = m_config.loFi.softUpscale ? 1.0f : 0.0f;
+			p.viFilter = m_config.loFi.viFilter ? 1.0f : 0.0f;
+			p.gamma = m_config.loFi.gamma;
 			const int fullW = m_window->width(), fullH = m_window->height();
 			m_loFiTarget->resolve(dx12->getSwapChain(), fullW, fullH, p);
 			if (m_renderPipeline) m_renderPipeline->setViewportSize(fullW, fullH); // viewport を戻す
@@ -447,17 +471,7 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 	}
 #endif
 
-	/// ポストプロセスチェーンを実行し、バックバッファに出力する
-	m_device->endPostProcess();
-
-	/// 3Dレンダラーのコマンドリストを閉じて実行する
-	if (m_renderer3D && m_renderer3D->isFrameActive())
-	{
-		m_renderer3D->finalizeFrame();
-	}
-
-	/// 3D フレームの HUD/2D はここで 3D の上へ描く (蓄積分の replay)
-	if (renderer3DUsed && m_renderer3D->hasOverlaySupport() && m_screen)
+	if (overlayPending && !overlayDone)
 	{
 		m_screen->present3DOverlay();
 	}

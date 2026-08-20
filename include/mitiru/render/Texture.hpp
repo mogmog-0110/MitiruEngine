@@ -48,7 +48,8 @@ public:
 	[[nodiscard]] static std::optional<Texture> fromFile(const std::string& path)
 	{
 		// pack が mount 済みなら pack から、未 mount (dev) なら disk から読む (ADR 0016)。
-		const auto bytes = mitiru::vfs::readGlobal(path, path);
+		// diskPath は渡さない — 渡すと MITIRU_ASSET_ROOT の解決を素通りする。
+		const auto bytes = mitiru::vfs::readGlobal(path);
 		if (!bytes) { return std::nullopt; }
 		int w = 0, h = 0, channels = 0;
 		unsigned char* data = stbi_load_from_memory(

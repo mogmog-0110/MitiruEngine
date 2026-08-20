@@ -77,7 +77,7 @@ public:
 
 	void playSound(std::string_view id) override { playByIdEx(id, 1.0f, 1.0f, 0.0f, /*music=*/false, false); }
 	void playSound(std::string_view id, float vol) override { playByIdEx(id, vol, 1.0f, 0.0f, false, false); }
-	void stopSound(std::string_view) override {}      // SE 一括 stop: 個別 id 追跡は未対応
+	void stopSound(std::string_view id) override { stopSoundFade(id, 0.0f); }
 	void playMusic(std::string_view id) override { playByIdEx(id, 1.0f, 1.0f, 0.0f, /*music=*/true, true); }
 	void playMusic(std::string_view id, float vol, bool loop) override { playByIdEx(id, vol, 1.0f, 0.0f, true, loop); }
 	void stopMusic() override { m_engine.stopMusic(); }
@@ -89,9 +89,17 @@ public:
 	{
 		playByIdEx(id, vol, pitch, fadeIn, /*music=*/false, false);
 	}
-	void stopSoundFade(std::string_view, float) override
+	void stopSoundFade(std::string_view id, float fadeOutSec) override
 	{
-		// SE は id 別追跡が無いので fade 無し stop と同じ振る舞い (id stop も v1 未対応)。
+		// 止められるのは playSoundLoop で鳴らしたものだけ。one-shot は id で覚えていない。
+		const auto it = m_loopPaths.find(std::string(id));
+		if (it == m_loopPaths.end()) { return; }
+		m_engine.stopSoundLoop(it->second, fadeOutSec);
+		m_loopPaths.erase(it);
+	}
+	void playSoundLoop(std::string_view id, float vol, float pitch, float fadeIn) override
+	{
+		playByIdEx(id, vol, pitch, fadeIn, /*music=*/false, /*loop=*/true);
 	}
 	void playMusicEx(std::string_view id, float vol, bool loop, float fadeIn) override
 	{
@@ -144,6 +152,12 @@ private:
 			if (playPath.empty()) { continue; }
 
 			if (music) { m_engine.playMusicEx(playPath, volume, loop, fadeIn); }
+			else if (loop)
+			{
+				// 止めるときに id から実ファイルを引けるよう覚えておく。
+				m_loopPaths[std::string(id)] = playPath;
+				m_engine.playSoundLoop(playPath, volume, pitch, fadeIn);
+			}
 			else if (scheduleSec > 0.0)
 			{
 				// v19: サンプル精度予約 (リズムゲームの「次の拍で鳴らす」)。ducking は予約発火を
@@ -230,6 +244,7 @@ private:
 	static constexpr float kDuckSec         = 0.4f;
 
 	std::filesystem::path                        m_baseDir;
+	std::unordered_map<std::string, std::string> m_loopPaths;  ///< ループ再生中の id → 実ファイル
 	mitiru::audio::MiniaudioEngine               m_engine;
 	std::unordered_map<std::string, std::string> m_audioTemp;  ///< pack→temp 取り出しキャッシュ
 	std::uint64_t m_packStamp     = 0;      ///< pack 指紋 (size/mtime FNV 混合)
@@ -362,6 +377,9 @@ struct CliArgs
 	int                   loFiW = 320, loFiH = 240; // --lofi-size WxH
 	int                   loFiBitsR = 5, loFiBitsG = 6, loFiBitsB = 5; // --lofi-bits R,G,B (既定 RGB565)
 	float                 loFiDither = 1.0f;   // --lofi-dither S
+	bool                  loFiHard = false;    // --lofi-hard: 柔らか拡大を切りニアレストにする
+	bool                  loFiVi = false;      // --lofi-vi: 映像出力段の de-dither + divot
+	float                 loFiGamma = 1.0f;    // --lofi-gamma: 出力ガンマ (1 で素通し)
 	int                   httpPort = 0;        // --http-port <N>: EngineHttpServer を listen 開始 (ADR 0011)
 	int                   cefDebugPort = 0;    // --cef-debug-port <N>: CEF remote debugging を開く (chrome-devtools / CDP で実機テスト)
 	bool                  console  = false;    // --console: HTTP + default browser で console.html 自動表示
@@ -596,6 +614,21 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.loFi = true;
 		}
+		else if (a == "--lofi-hard")
+		{
+			out.loFiHard = true;
+			out.loFi = true;
+		}
+		else if (a == "--lofi-vi")
+		{
+			out.loFiVi = true;
+			out.loFi = true;
+		}
+		else if (a == "--lofi-gamma")
+		{
+			if (i + 1 < argc) { out.loFiGamma = std::strtof(argv[++i], nullptr); }
+			out.loFi = true;
+		}
 		else if (a == "--lofi-size")
 		{
 			if (i + 1 < argc)
@@ -694,7 +727,9 @@ void printUsage()
 		"  --rewind-frames N  巻き戻せるフレーム数 (既定 300 = 約 5 秒。60fps 基準)\n"
 		"  --input-script F 入力スクリプト F を in-process 注入 (OS 入力を経由せず他アプリに漏れない)\n"
 		"                   形式: 1 行 '<frame> <down|up> <KEY>' (# でコメント)。KEY=Left/Right/Up/Down/\n"
-		"                   Space/Enter/Escape/英数字1字/生 VK 整数。実キーボードは無視される\n"
+		"                   Space/Enter/Escape/英数字1字/MouseL/MouseR/MouseM/生 VK 整数。\n"
+		"                   '<frame> move <dx> <dy> [frames]' でマウス delta (FPS 視線) も注入できる。\n"
+		"                   実キーボード・実マウスは無視される\n"
 		"  --state-trace F  MITIRU_REFLECT で申告したフィールド値を毎フレーム JSONL で F に出力。\n"
 		"                   --input-script と併用し、プレイの軌跡や HP 推移を後から解析できる\n"
 		"  --input-record F 実プレイの入力を input-script 形式で F に録画 (--input-script で再生可)\n"
@@ -908,6 +943,10 @@ inline int keyNameToVk(const std::string& s)
 	if (u == "ENTER" || u == "RETURN") { return 0x0D; }
 	if (u == "ESCAPE" || u == "ESC")   { return 0x1B; }
 	if (u == "SHIFT") { return 0x10; }
+	if (u == "TAB")   { return 0x09; }
+	if (u == "CTRL" || u == "CONTROL") { return 0x11; }
+	if (u == "ALT")   { return 0x12; }
+	if (u == "BACK" || u == "BACKSPACE") { return 0x08; }
 	try { return std::stoi(s, nullptr, 0); } catch (...) { return -1; }
 }
 
@@ -920,6 +959,10 @@ inline std::string vkToName(int vk)
 	case 0x26: return "Up";
 	case 0x27: return "Right";
 	case 0x28: return "Down";
+	case 0x08: return "Back";
+	case 0x09: return "Tab";
+	case 0x11: return "Ctrl";
+	case 0x12: return "Alt";
 	case 0x20: return "Space";
 	case 0x0D: return "Enter";
 	case 0x1B: return "Escape";
@@ -951,24 +994,48 @@ inline const char* playerErrorName(mitiru::replay::PlayerError e)
 	return "unknown";
 }
 
-struct InputScriptEvent { int frame; int vk; bool down; };
+struct InputScriptEvent
+{
+	enum Kind { Key, MouseBtn, MouseMove };
+	int  frame;
+	Kind kind;
+	int  a;      // Key: vk / MouseBtn: 0=L 1=R 2=M / MouseMove: dx
+	int  b;      // Key・MouseBtn: down=1 up=0 / MouseMove: dy
+};
 
-/// スクリプトを毎フレーム適用し InputSnapshot のキー配列を上書きするプレイヤ。
+/// スクリプトを毎フレーム適用し InputSnapshot のキー・マウスを上書きするプレイヤ。
+/// 実キーボード・実マウスは無視される (注入のみ有効 = 決定的)。
 struct InputScriptPlayer
 {
 	std::vector<InputScriptEvent> events;  // frame 昇順
 	std::size_t cursor = 0;
 	int frame = 0;
 	bool held[256] = {};
+	bool heldBtn[3] = {};
 
 	void apply(mitiru::module::InputSnapshot& snap)
 	{
 		bool prev[256];
+		bool prevBtn[3];
 		std::memcpy(prev, held, sizeof(prev));
+		std::memcpy(prevBtn, heldBtn, sizeof(prevBtn));
+		float moveX = 0.0f, moveY = 0.0f;
 		while (cursor < events.size() && events[cursor].frame <= frame)
 		{
 			const auto& e = events[cursor++];
-			if (e.vk >= 0 && e.vk < 256) { held[e.vk] = e.down; }
+			switch (e.kind)
+			{
+			case InputScriptEvent::Key:
+				if (e.a >= 0 && e.a < 256) { held[e.a] = (e.b != 0); }
+				break;
+			case InputScriptEvent::MouseBtn:
+				if (e.a >= 0 && e.a < 3) { heldBtn[e.a] = (e.b != 0); }
+				break;
+			case InputScriptEvent::MouseMove:
+				moveX += static_cast<float>(e.a);
+				moveY += static_cast<float>(e.b);
+				break;
+			}
 		}
 		for (int v = 0; v < 256; ++v)
 		{
@@ -976,11 +1043,21 @@ struct InputScriptPlayer
 			snap.keysJustPressed[v]  = (held[v] && !prev[v]) ? 1 : 0;
 			snap.keysJustReleased[v] = (!held[v] && prev[v]) ? 1 : 0;
 		}
+		for (int i = 0; i < 3; ++i)
+		{
+			snap.mouseButtonsDown[i]         = heldBtn[i] ? 1 : 0;
+			snap.mouseButtonsJustPressed[i]  = (heldBtn[i] && !prevBtn[i]) ? 1 : 0;
+			snap.mouseButtonsJustReleased[i] = (!heldBtn[i] && prevBtn[i]) ? 1 : 0;
+		}
+		snap.mouseDeltaX = moveX;
+		snap.mouseDeltaY = moveY;
 		++frame;
 	}
 };
 
-/// '<frame> <down|up> <KEY>' 形式 (# でコメント) を読む。失敗時 false。
+/// '<frame> <down|up> <KEY>' / '<frame> move <dx> <dy> [frames]' 形式 (# でコメント) を読む。
+/// KEY には MouseL / MouseR / MouseM も使える。move は視線用のマウス delta を
+/// そのフレームに注入する ([frames] 指定で連続フレームへ同 delta を展開)。失敗時 false。
 inline bool loadInputScript(const std::string& path, InputScriptPlayer& out)
 {
 	std::ifstream f(path);
@@ -994,6 +1071,23 @@ inline bool loadInputScript(const std::string& path, InputScriptPlayer& out)
 		int frame = 0;
 		std::string t2, t3;
 		if (!(is >> frame >> t2 >> t3)) { continue; }
+		auto lower = [](std::string s) {
+			for (auto& c : s) { c = static_cast<char>(std::tolower(static_cast<unsigned char>(c))); }
+			return s;
+		};
+		if (lower(t2) == "move")
+		{
+			int dx = 0, dy = 0, count = 1;
+			try { dx = std::stoi(t3); } catch (...) { continue; }
+			if (!(is >> dy)) { continue; }
+			if (!(is >> count)) { count = 1; }
+			if (count < 1) { count = 1; }
+			for (int k = 0; k < count; ++k)
+			{
+				out.events.push_back({frame + k, InputScriptEvent::MouseMove, dx, dy});
+			}
+			continue;
+		}
 		// 両形式を許す: "<frame> <down|up> <KEY>" と "<frame> <KEY> <down|up>"。
 		// (--input-record の出力は後者。#45 の例 `120 Z down` もこれ。)
 		auto isAct = [](const std::string& s) {
@@ -1002,12 +1096,19 @@ inline bool loadInputScript(const std::string& path, InputScriptPlayer& out)
 		std::string act, key;
 		if (isAct(t2)) { act = t2; key = t3; }
 		else           { key = t2; act = t3; }
-		const int vk = keyNameToVk(key);
-		if (vk < 0) { continue; }
 		const bool down = (act == "down" || act == "d" || act == "DOWN");
 		const bool up   = (act == "up" || act == "u" || act == "UP");
 		if (!down && !up) { continue; }
-		out.events.push_back({frame, vk, down});
+		const std::string mk = lower(key);
+		if (mk == "mousel" || mk == "mouser" || mk == "mousem")
+		{
+			const int idx = (mk == "mousel") ? 0 : (mk == "mouser") ? 1 : 2;
+			out.events.push_back({frame, InputScriptEvent::MouseBtn, idx, down ? 1 : 0});
+			continue;
+		}
+		const int vk = keyNameToVk(key);
+		if (vk < 0) { continue; }
+		out.events.push_back({frame, InputScriptEvent::Key, vk, down ? 1 : 0});
 	}
 	std::stable_sort(out.events.begin(), out.events.end(),
 		[](const InputScriptEvent& a, const InputScriptEvent& b) { return a.frame < b.frame; });
@@ -1090,12 +1191,34 @@ int main(int argc, char* argv[])
 		return 2;
 	}
 
-	// 秘匿配布 (ADR 0016): DLL の隣に assets.mtpak があれば mount。以後 CEF (app://) も
-	// native loader (Texture/ImageLoader) も音声も vfs::readGlobal 経由で pack から読む。
+	// dev の vfs 相対パス解決の基準 = game DLL の隣 (cwd は exe 位置に固定済みのため、
+	// deploy dir と exe dir が違う配置でも "assets/..." が game の assets に届くように)。
+	// pack と同じく env 共有 — host / game DLL / CEF helper の各インスタンスに効く。
+	{
+		const auto absDll = std::filesystem::absolute(args.dllPath, ec);
+		const std::string rootEnv =
+			(ec ? args.dllPath : absDll).parent_path().string();
+#ifdef _WIN32
+		_putenv_s("MITIRU_ASSET_ROOT", rootEnv.c_str());
+#else
+		setenv("MITIRU_ASSET_ROOT", rootEnv.c_str(), 1);
+#endif
+	}
+
+	// 秘匿配布 (ADR 0016): まず自分の exe に連結されたパックを探し、無ければ DLL の隣の
+	// assets.mtpak を使う。以後 CEF (app://) も native loader (Texture/ImageLoader) も
+	// 音声も vfs::readGlobal 経由で pack から読む。exe 連結なら配布物からパックの
+	// ファイルが消え、exe 1 つに資産が入る (CEF のランタイムは別途要る)。
 	std::string packedAppUrl;
 	{
-		const auto packPath =
+		auto packPath =
 			std::filesystem::path(args.dllPath).parent_path() / "assets.mtpak";
+		const auto selfExe = std::filesystem::absolute(
+			std::filesystem::path(argv[0]), ec);
+		if (!ec && mitiru::vfs::AssetPack::open(selfExe).has_value())
+		{
+			packPath = selfExe;
+		}
 		if (std::filesystem::exists(packPath, ec) && !ec)
 		{
 			if (auto pack = mitiru::vfs::AssetPack::open(packPath))
@@ -1217,6 +1340,9 @@ int main(int argc, char* argv[])
 		cfg.loFi.colorBitsG    = args.loFiBitsG;
 		cfg.loFi.colorBitsB    = args.loFiBitsB;
 		cfg.loFi.ditherStrength= args.loFiDither;
+		cfg.loFi.softUpscale   = !args.loFiHard;
+		cfg.loFi.viFilter      = args.loFiVi;
+		cfg.loFi.gamma         = args.loFiGamma;
 	}
 	cfg.cefStartUrl     = !args.cefUrlOverride.empty()
 		? args.cefUrlOverride

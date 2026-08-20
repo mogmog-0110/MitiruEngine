@@ -48,6 +48,17 @@ namespace mitiru::render
 	mat.diffuseTexturePath = gltfMat.baseColorTexturePath;
 	mat.normalTexturePath = gltfMat.normalTexturePath;
 
+	/// 描画状態に効く指定はそのまま持ち越す (抜き・両面・最近傍)
+	switch (gltfMat.alphaMode)
+	{
+	case GltfAlphaMode::Mask:  mat.alphaMode = Material::AlphaMode::Mask;  break;
+	case GltfAlphaMode::Blend: mat.alphaMode = Material::AlphaMode::Blend; break;
+	default:                   mat.alphaMode = Material::AlphaMode::Opaque; break;
+	}
+	mat.alphaCutoff   = gltfMat.alphaCutoff;
+	mat.doubleSided   = gltfMat.doubleSided;
+	mat.nearestFilter = gltfMat.nearestFilter;
+
 	return mat;
 }
 

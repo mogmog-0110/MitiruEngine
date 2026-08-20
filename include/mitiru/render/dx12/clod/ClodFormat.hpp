@@ -130,6 +130,6 @@ inline constexpr uint32_t kClodListCap = 1u << 20;
 /// @brief BVH 走査キュー容量 (shader の QUEUE_CAP と一致)
 inline constexpr uint32_t kClodQueueCap = 1u << 22;
 /// @brief 同時メッシュ上限 (shader の meshOf/decodeIdx unroll と一致)
-inline constexpr uint32_t kClodMaxMeshes = 6;
+inline constexpr uint32_t kClodMaxMeshes = 16;
 
 } // namespace mitiru::render::clod

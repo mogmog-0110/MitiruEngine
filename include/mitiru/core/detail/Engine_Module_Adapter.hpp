@@ -600,7 +600,9 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			const auto path = std::filesystem::path("save") / (slot + ".msav");
 			if (!module::save::saveGameMemory(path, m_moduleMemory, m_moduleMemorySize,
 			                                  module::kWireApiVersion,
-			                                  module::moduleLayoutHash(m_moduleApi)))
+			                                  module::moduleLayoutHash(m_moduleApi),
+			                                  m_moduleApi.reflectFields,
+			                                  m_moduleApi.reflectFieldCount))
 			{
 				mitiru::debug::warnOnce("save.write." + slot,
 					"hud.save: 書き込みに失敗しました: " + path.string());
@@ -635,11 +637,27 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				}
 				else
 				{
-					// 不在 / 形式不正 / サイズ・layout 不一致 (struct 変更後の旧セーブ) は
-					// 拒否 — 化けた state を黙って流し込まない (ADR 0020 失敗モード表)。
-					mitiru::debug::warnOnce("load.reject." + slot,
-						"hud.load: ロード拒否 (ファイル不在 / 形式不正 / GameMemory サイズ・layout 不一致): "
-						+ path.string());
+					// 層が変わった記録は、名前と形が一致するフィールドだけ移して救う。
+					// 移せないフィールドは現在の初期値のまま残る (化けさせない)。
+					std::int32_t moved = 0;
+					const auto migrated = module::save::migrateGameMemory(
+						path, m_moduleMemory, m_moduleMemorySize,
+						m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount, &moved);
+					if (migrated.has_value()
+					    && rewindModuleMemory(migrated->data(),
+					                          static_cast<std::uint32_t>(migrated->size())))
+					{
+						applied = true;
+						mitiru::debug::warnOnce("load.migrate." + slot,
+							"hud.load: 記録の層が変わっているため " + std::to_string(moved)
+							+ " 個のフィールドだけ移しました: " + path.string());
+					}
+					else
+					{
+						mitiru::debug::warnOnce("load.reject." + slot,
+							"hud.load: ロード拒否 (ファイル不在 / 形式不正 / 移せるフィールドが無い): "
+							+ path.string());
+					}
 				}
 			}
 			// 適用成功時は time-travel ring を破棄する。load 前の履歴は別時間軸の bytes で、

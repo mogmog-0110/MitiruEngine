@@ -82,6 +82,8 @@ mitiru_add_example(restart_save)   # requestRestart + .msav (ADR 0020/0024)
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
 mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD (ADR 0027)
 mitiru_add_example(anim3d)         # 骨格アニメ: drawModelBlend + クリップ時間 (ADR 0028)
+mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
+mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane を並べて撮る
 
 # ── チュートリアル頁の題材ゲーム ───────────────────────────────────────────
 # beko_run: 赤べこの横スクロールアクション。カリキュラム章 (1 機能 1 DLL) ではなく

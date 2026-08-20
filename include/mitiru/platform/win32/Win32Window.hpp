@@ -183,17 +183,22 @@ public:
 	///          ゲームループをブロックしない。毎フレーム applyCursorCapture() を呼ぶ。
 	void pollEvents() override
 	{
+		/// 枠 drag / 窓移動中の tick は window procedure の中から呼ばれる。深さ 1 に制限する。
+		if (m_inPollEvents) { return; }
+		m_inPollEvents = true;
 		MSG msg = {};
 		while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			if (msg.message == WM_QUIT)
 			{
 				m_shouldClose = true;
+				m_inPollEvents = false;
 				return;
 			}
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 		}
+		m_inPollEvents = false;
 		applyCursorCapture();
 	}
 
@@ -265,6 +270,11 @@ public:
 	{
 		m_shouldClose = true;
 	}
+
+	/// @brief 閉じ要求を取り消す
+	/// @details WM_CLOSE は `m_shouldClose` を立てるだけで窓を壊さないので、閉じる前に確認を
+	///          挟む host や、閉じた窓を復帰させる game がこれで無かったことにできる。
+	void cancelClose() noexcept { m_shouldClose = false; }
 
 	/// @brief ランタイムでフルスクリーン/ウィンドウを切り替える
 	/// @param enable true=ボーダーレスフルスクリーン, false=ウィンドウ
@@ -428,6 +438,12 @@ public:
 		SetWindowPos(m_hwnd, insertAfter, x, y, w, h, SWP_NOACTIVATE);
 	}
 
+	/// @brief この窓を閉じたときに WM_QUIT を投げるかを決める (既定 true)
+	/// @details WM_QUIT はスレッド単位なので、複数の窓を作っては閉じるアプリでは、閉じた窓が
+	///          残した WM_QUIT を次に作った窓の pollEvents が拾い、開いた直後の窓が
+	///          shouldClose() を返す。窓が 1 つだけのアプリは既定のままでよい。
+	void setQuitOnDestroy(bool enabled) noexcept { m_quitOnDestroy = enabled; }
+
 	/// @brief Win32 modal resize loop 中も engine を tick させるための callback
 	/// @details ユーザが window 枠を drag すると Windows は `DefWindowProc` 内で
 	///          modal loop に入り、main thread を block する → engine main loop
@@ -438,6 +454,93 @@ public:
 	void setTickCallback(std::function<void()> cb) noexcept
 	{
 		m_tickCallback = std::move(cb);
+	}
+
+	/// @brief クライアント領域のどこを掴んでもタイトルバーと同じにドラッグできるようにする
+	/// @details 窓そのものを動かすことが主役の consumer 向け。マウスをクライアント入力に
+	///          使っている consumer では、この設定でクライアント側のマウスメッセージが
+	///          届かなくなるので有効にしないこと。既定は off。
+	void setDragByClientArea(bool enabled) noexcept { m_dragByClientArea = enabled; }
+
+	/// @brief リサイズ可否を生成後に切り替える
+	/// @details 1 枚の窓を作り替えながら使い回す consumer 向け。WS_THICKFRAME はスタイルなので
+	///          生成時に決まるが、縁の当たり判定 (borderless の hit test 含む) はこれを見る。
+	void setResizable(bool resizable) noexcept
+	{
+		m_resizable = resizable;
+		if (m_hwnd == nullptr)
+		{
+			return;
+		}
+		LONG style = GetWindowLongW(m_hwnd, GWL_STYLE);
+		if (resizable)
+		{
+			style |= WS_THICKFRAME;
+		}
+		else
+		{
+			style &= ~WS_THICKFRAME;
+		}
+		SetWindowLongW(m_hwnd, GWL_STYLE, style);
+		SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0,
+		             SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+	}
+
+	/// @brief キャプションと縁の絵を消し、描画面を窓の全面にする
+	/// @details スタイルは残して WM_NCCALCSIZE の計算だけ変えるので、taskbar・最小化・
+	///          スナップ・OS のドラッグループは本物のまま。閉じる/最小化ボタンは consumer が
+	///          描き、その位置を @ref setHitTestOverride で HTCLOSE / HTREDUCE として返せば、
+	///          クリックは OS の同じ経路 (SC_CLOSE → WM_CLOSE 等) を通る。
+	///          最大化だけは外す: 全面クライアントの窓を最大化すると縁の分だけ画面から
+	///          はみ出すため。
+	void setBorderless(bool enabled) noexcept
+	{
+		m_borderless = enabled;
+		if (m_hwnd == nullptr)
+		{
+			return;
+		}
+		LONG style = GetWindowLongW(m_hwnd, GWL_STYLE);
+		if (enabled)
+		{
+			style &= ~WS_MAXIMIZEBOX;
+		}
+		SetWindowLongW(m_hwnd, GWL_STYLE, style);
+		SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0,
+		             SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+		if (enabled)
+		{
+			extendFrameForShadow();
+		}
+	}
+
+	/// @brief borderless 時の当たり判定を consumer が差し込む
+	/// @param cb (窓ローカル x, y) を受け、HTCLOSE / HTREDUCE / HTCLIENT 等を返す。
+	///           0 を返すと既定 (縁のリサイズ判定 → 残りは掴んでドラッグ) に任せる
+	void setHitTestOverride(std::function<LRESULT(int, int)> cb) noexcept
+	{
+		m_hitTestOverride = std::move(cb);
+	}
+
+	/// @brief タイトルバーの背景色を変える (Windows 11 以降)
+	/// @details DWMWA_CAPTION_COLOR。対応しない OS では黙って何もしない。枠もボタンも
+	///          本物のまま、色だけがゲームの画面に馴染む。
+	void setCaptionColor(std::uint8_t r, std::uint8_t g, std::uint8_t b) noexcept
+	{
+		using SetAttrFn = HRESULT(WINAPI*)(HWND, DWORD, LPCVOID, DWORD);
+		const HMODULE dwm = LoadLibraryW(L"dwmapi.dll");
+		if (dwm == nullptr)
+		{
+			return;
+		}
+		if (auto setAttr =
+		        reinterpret_cast<SetAttrFn>(GetProcAddress(dwm, "DwmSetWindowAttribute")))
+		{
+			constexpr DWORD kCaptionColor = 35;   // DWMWA_CAPTION_COLOR (Win11 22000+)
+			const COLORREF color = RGB(r, g, b);
+			setAttr(m_hwnd, kCaptionColor, &color, sizeof(color));
+		}
+		FreeLibrary(dwm);
 	}
 
 	/// @brief 現在 modal resize loop (枠 drag) 中か
@@ -474,6 +577,56 @@ private:
 	/// @brief ウィンドウクラス名
 	static constexpr const wchar_t* CLASS_NAME = L"MitiruWindowClass";
 
+	/// @brief exe に埋まっている icon 資源のうち Explorer が選ぶのと同じ 1 つの資源名
+	/// @return 資源が無ければ nullptr (呼び出し側で既定 icon へ落とす)
+	/// @details ID を 1 と決め打たない。Explorer は RT_GROUP_ICON の最若名を採るので、
+	///          `IDI_APP 101 ICON "..."` のように書かれた exe でも同じものが出る。
+	static LPWSTR executableIconName()
+	{
+		const HMODULE self = GetModuleHandleW(nullptr);
+		struct Pick
+		{
+			LPWSTR name = nullptr;
+			bool numeric = true;
+		} pick;
+
+		EnumResourceNamesW(
+			self, reinterpret_cast<LPCWSTR>(RT_GROUP_ICON),
+			[](HMODULE, LPCWSTR, LPWSTR name, LONG_PTR param) -> BOOL {
+				Pick& best = *reinterpret_cast<Pick*>(param);
+				const bool numeric = IS_INTRESOURCE(name);
+				// 数値名は数値名同士で小さい方、文字列名しか無ければ最初のもの。
+				const bool better =
+					best.name == nullptr ||
+					(numeric && (!best.numeric ||
+					             reinterpret_cast<ULONG_PTR>(name) <
+					                 reinterpret_cast<ULONG_PTR>(best.name)));
+				if (better)
+				{
+					best.name = name;
+					best.numeric = numeric;
+				}
+				return TRUE;
+			},
+			reinterpret_cast<LONG_PTR>(&pick));
+
+		return pick.name;
+	}
+
+	/// @brief exe の icon 資源を指定寸法で読む (0,0 は既定寸法)
+	/// @details 大小を別々に読むのは、.ico に入っている 16px 用の絵を taskbar と title bar に
+	///          出すため。1 つの HICON を使い回すと大きい絵を縮めたものになる。
+	static HICON loadExecutableIcon(LPWSTR name, int cx, int cy)
+	{
+		if (name == nullptr)
+		{
+			return nullptr;
+		}
+		return static_cast<HICON>(
+			LoadImageW(GetModuleHandleW(nullptr), name, IMAGE_ICON, cx, cy,
+			           (cx == 0 && cy == 0) ? LR_DEFAULTSIZE : 0));
+	}
+
 	/// @brief ウィンドウクラスを登録する（一度だけ）
 	static void registerWindowClass()
 	{
@@ -489,10 +642,15 @@ private:
 		wc.lpfnWndProc = windowProc;
 		wc.hInstance = GetModuleHandleW(nullptr);
 		wc.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
-		// 既定 icon を明示 (未設定だと taskbar 等で見た目が不定)。個別差し替えは setIcon。
+		// exe が自前の icon 資源を持つならそれを使う。Explorer が exe に出すものと窓・taskbar の
+		// ものが食い違うのを防ぐためで、.rc を足す以外に game 側の呼び出しは要らない。
 		// 32512 = IDI_APPLICATION (非 UNICODE 構成でも W 版に合わせ MAKEINTRESOURCEW 直指定)
-		wc.hIcon   = LoadIconW(nullptr, MAKEINTRESOURCEW(32512));
-		wc.hIconSm = LoadIconW(nullptr, MAKEINTRESOURCEW(32512));
+		LPWSTR iconName = executableIconName();
+		HICON bigIcon = loadExecutableIcon(iconName, 0, 0);
+		HICON smallIcon = loadExecutableIcon(iconName, GetSystemMetrics(SM_CXSMICON),
+		                                     GetSystemMetrics(SM_CYSMICON));
+		wc.hIcon   = bigIcon ? bigIcon : LoadIconW(nullptr, MAKEINTRESOURCEW(32512));
+		wc.hIconSm = smallIcon ? smallIcon : wc.hIcon;
 		wc.lpszClassName = CLASS_NAME;
 
 		if (!RegisterClassExW(&wc))
@@ -546,13 +704,67 @@ private:
 	{
 		switch (msg)
 		{
+		case WM_NCCALCSIZE:
+			/// borderless: クライアント領域を窓の全面に広げる。スタイル (WS_CAPTION 等) は
+			/// 残したまま計算だけを変えるので、taskbar・最小化アニメーション・スナップ・
+			/// DWM の影といった「本物の窓」の挙動は全部生きる。消えるのは絵としての
+			/// キャプションと縁だけで、その面は consumer が描く。
+			if (m_borderless && wParam == TRUE)
+			{
+				return 0;
+			}
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
+		case WM_NCHITTEST:
+		{
+			if (m_borderless)
+			{
+				return borderlessHitTest(hwnd, lParam);
+			}
+			/// クライアント領域だけをタイトルバー扱いに読み替える。縁 (HTLEFT 等) や
+			/// 閉じる・最小化ボタン (HTCLOSE 等) は DefWindowProc の答えのまま残るので、
+			/// リサイズもボタンも今までどおり働く。
+			if (m_dragByClientArea)
+			{
+				const LRESULT hit = DefWindowProcW(hwnd, msg, wParam, lParam);
+				return (hit == HTCLIENT) ? HTCAPTION : hit;
+			}
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+		}
+
+		/// borderless の描いたボタン。押した時ではなく**離した時の位置**で効かせるので、
+		/// 押してからボタンの外へ逃げれば取り消しになる (本物のボタンと同じ作法)。
+		/// DefWindowProc 自身の追跡はカーソルの実座標を読むため、ここで肩代わりする。
+		case WM_NCLBUTTONDOWN:
+			if (m_borderless && (wParam == HTCLOSE || wParam == HTREDUCE))
+			{
+				return 0;
+			}
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
+		case WM_NCLBUTTONUP:
+			if (m_borderless && wParam == HTCLOSE)
+			{
+				PostMessageW(hwnd, WM_CLOSE, 0, 0);
+				return 0;
+			}
+			if (m_borderless && wParam == HTREDUCE)
+			{
+				ShowWindow(hwnd, SW_MINIMIZE);
+				return 0;
+			}
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
 		case WM_CLOSE:
 			m_shouldClose = true;
 			return 0;
 
 		case WM_DESTROY:
 			m_shouldClose = true;
-			PostQuitMessage(0);
+			if (m_quitOnDestroy)
+			{
+				PostQuitMessage(0);
+			}
 			return 0;
 
 		case WM_GETMINMAXINFO:
@@ -610,13 +822,25 @@ private:
 			/// modal 中に deferred されていた full resize (logical / CEF) を発火
 			if (m_modalResizeEndCallback) { m_modalResizeEndCallback(); }
 			/// 反映後 1 frame 引いて即座に画面更新
-			if (m_tickCallback) { m_tickCallback(); }
+			runTickCallbackOnce();
 			return 0;
 
 		case WM_TIMER:
-			if (wParam == kModalTickTimerId && m_tickCallback)
+			if (wParam == kModalTickTimerId)
 			{
-				m_tickCallback();
+				runTickCallbackOnce();
+			}
+			return 0;
+
+		/// --- drag 中は「窓が動いたとき」にも描き直す ---
+		/// timer だけだと 16ms に 1 回しか描かないのに、窓はマウスの報告レート (125Hz 以上) で
+		/// 動き続ける。描いた時の位置と、その絵が画面に出る時の位置がずれるので、窓の中身が
+		/// 世界へ固定されている consumer では中身が引きずられて見える。timer も残す。
+		/// マウスを止めたまま掴んでいる間も時間は進めなければならないため。
+		case WM_MOVE:
+			if (m_inModalLoop)
+			{
+				runTickCallbackOnce();
 			}
 			return 0;
 
@@ -914,6 +1138,7 @@ public:
 	int m_mouseMoveCount = 0;         ///< DEBUG: WM_MOUSEMOVE受信回数
 private:
 	bool m_shouldClose = false;            ///< 閉じ要求フラグ
+	bool m_quitOnDestroy = true;           ///< 破棄時に WM_QUIT を投げるか (setQuitOnDestroy)
 	InputState* m_inputState = nullptr;   ///< 入力状態転送先（非所有）
 	InputInjector* m_inputInjector = nullptr; ///< 入力インジェクター（非所有）。非nullの場合はinject()経由でイベント発行
 	std::vector<int> m_heldKeys;              ///< hardware で今押している key (focus 喪失時に release してstuckを防ぐ)
@@ -921,7 +1146,85 @@ private:
 	std::function<void()> m_tickCallback;  ///< modal-loop tick (drag-resize 中の engine 駆動)
 	std::function<void()> m_modalResizeEndCallback; ///< WM_EXITSIZEMOVE で 1 回呼ぶ deferred full resize
 	bool m_inModalLoop = false;            ///< WM_ENTERSIZEMOVE..WM_EXITSIZEMOVE
+	bool m_dragByClientArea = false;       ///< クライアント領域掴みドラッグ (setDragByClientArea)
+	bool m_borderless = false;             ///< 全面クライアント (setBorderless)
+	std::function<LRESULT(int, int)> m_hitTestOverride; ///< borderless 時の consumer 当たり判定
+
+	/// @brief borderless の窓に DWM の影を残す
+	/// @details WM_NCCALCSIZE を 0 にすると影も消えるが、フレームを 1px だけクライアントへ
+	///          張り出させると戻る。張り出した分は不透明な描画の下に隠れて見えない。
+	void extendFrameForShadow() noexcept
+	{
+		using ExtendFn = HRESULT(WINAPI*)(HWND, const void*);
+		const HMODULE dwm = LoadLibraryW(L"dwmapi.dll");
+		if (dwm == nullptr)
+		{
+			return;
+		}
+		if (auto extend =
+		        reinterpret_cast<ExtendFn>(GetProcAddress(dwm, "DwmExtendFrameIntoClientArea")))
+		{
+			struct { int l; int r; int t; int b; } margins{0, 0, 1, 0};
+			extend(m_hwnd, &margins);
+		}
+		FreeLibrary(dwm);
+	}
+
+	/// @brief borderless 時の WM_NCHITTEST
+	/// @details 優先順: consumer の override (描いたボタン等) → リサイズの縁 → 掴んでドラッグ。
+	///          縁の判定はスタイルに WS_THICKFRAME がある窓 (resizable) だけ。
+	[[nodiscard]] LRESULT borderlessHitTest(HWND hwnd, LPARAM lParam) const noexcept
+	{
+		POINT p{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+		RECT r{};
+		GetWindowRect(hwnd, &r);
+		const int lx = p.x - r.left;
+		const int ly = p.y - r.top;
+
+		if (m_hitTestOverride)
+		{
+			const LRESULT hit = m_hitTestOverride(lx, ly);
+			if (hit != 0)
+			{
+				return hit;
+			}
+		}
+
+		if ((GetWindowLongW(hwnd, GWL_STYLE) & WS_THICKFRAME) != 0)
+		{
+			constexpr int kGrip = 8;
+			const int w = r.right - r.left;
+			const int h = r.bottom - r.top;
+			const bool left = lx < kGrip;
+			const bool right = lx >= w - kGrip;
+			const bool top = ly < kGrip;
+			const bool bottom = ly >= h - kGrip;
+			if (top && left) { return HTTOPLEFT; }
+			if (top && right) { return HTTOPRIGHT; }
+			if (bottom && left) { return HTBOTTOMLEFT; }
+			if (bottom && right) { return HTBOTTOMRIGHT; }
+			if (left) { return HTLEFT; }
+			if (right) { return HTRIGHT; }
+			if (top) { return HTTOP; }
+			if (bottom) { return HTBOTTOM; }
+		}
+
+		return m_dragByClientArea ? HTCAPTION : HTCLIENT;
+	}
+	/// tick callback は内部で pollEvents() を呼ぶ。そこから WM_TIMER が再配送されると
+	/// frame が入れ子になり、DX12 の command list / fence と CEF の pump が壊れる。
+	bool m_inTickCallback = false;
+	bool m_inPollEvents = false;
 	static constexpr UINT_PTR kModalTickTimerId = 0x4D54; // 'MT'
+
+	/// @brief tick callback を再入なしで 1 回だけ呼ぶ
+	void runTickCallbackOnce()
+	{
+		if (m_inTickCallback || !m_tickCallback) { return; }
+		m_inTickCallback = true;
+		m_tickCallback();
+		m_inTickCallback = false;
+	}
 };
 
 } // namespace mitiru

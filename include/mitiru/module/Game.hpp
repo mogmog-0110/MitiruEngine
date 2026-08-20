@@ -315,6 +315,21 @@ public:
 	{
 		s_->playSound(soundId, clampVolume(volume), pitch);
 	}
+	/// 効果音をループ再生する。stopLoop で止めるまで鳴り続ける。
+	/// 長押しのように「押している間ずっと」鳴らしたい音に使う。短い音を継ぎ足して
+	/// 伸ばすと継ぎ目が聴こえ、離した瞬間に切れる。同じ id が鳴っている間の再呼び出しは
+	/// 鳴らし直さず音量とピッチだけを寄せる (音量スライダーの試聴のように、鳴らしたまま
+	/// 音量を動かせる)。
+	void playLoop(const char* soundId, float volume = 1.0f, float pitch = 1.0f,
+	              float fadeInSec = 0.0f) noexcept
+	{
+		s_->loopSound(soundId, clampVolume(volume), pitch, fadeInSec);
+	}
+	/// playLoop で鳴らしている音を止める。releaseSec > 0 で減衰させてから止める。
+	void stopLoop(const char* soundId, float releaseSec = 0.0f) noexcept
+	{
+		s_->stopSoundId(soundId, releaseSec);
+	}
 	/// BGM を再生する (連続トラック、既定ループ)。同じ id なら毎フレーム呼んでも安全 —
 	/// host が直前と同じ id / loop / volume の BGM を重複再生しない (冪等)。**volume 0 = 無音**。
 	/// crossfadeSec > 0 なら、別の BGM が再生中のとき旧曲をフェードアウトしつつ新曲を

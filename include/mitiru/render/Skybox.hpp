@@ -126,7 +126,7 @@ public:
 	/// @brief Skybox を描画する（Camera3D 版）
 	void drawDx11(ID3D11DeviceContext* ctx, const Camera3D& camera) const
 	{
-		drawDx11(ctx, camera.viewMatrix(), camera.projectionMatrix());
+		drawDx11(ctx, camera.viewMatrix(), camera.projectionMatrixZO());
 	}
 
 	/// @brief Skybox を描画する（view+proj 直接版）

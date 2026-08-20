@@ -31,6 +31,9 @@ namespace mitiru::vfs
 inline constexpr char     kMagic[6]      = {'M', 'T', 'P', 'A', 'K', '\0'};
 inline constexpr uint16_t kVersion       = 1;
 inline constexpr uint16_t kFlagScrambled = 0x1;
+// exe へ連結したときのフッタの印。パックは exe 本体の後ろに置くしかない (前に置くと
+// 実行形式が壊れる) ので、位置はファイル末尾のフッタから逆引きする。
+inline constexpr char     kAppendMagic[8] = {'M', 'T', 'P', 'A', 'K', 'E', 'X', 'E'};
 inline constexpr uint8_t  kXorKey        = 0x5A;  // 難読化用の固定値 (暗号ではない)
 
 /// パスを '/' 区切りに正規化し、先頭 "./" を落とす。
@@ -68,7 +71,15 @@ public:
 	                  bool                                                                scramble = true);
 
 	/// 既存の .mtpak を開いて index を読む。形式違いなら nullopt。
+	/// ファイル先頭の .mtpak として開き、駄目なら exe 連結のフッタを探して開く。
+	/// 呼ぶ側は「この exe に埋めたか、隣に置いたか」を気にしなくてよい。
 	[[nodiscard]] static std::optional<AssetPack> open(const std::filesystem::path& file);
+
+	/// exe の末尾へ .mtpak を連結する。配布物を 1 ファイルへ寄せるためのもの。
+	/// すでに連結済みの exe には足さない (二重に埋めると、どちらを読んでいるのか
+	/// 外から分からなくなる)。
+	[[nodiscard]] static bool appendTo(const std::filesystem::path& exeFile,
+	                                   const std::filesystem::path& packFile);
 
 	[[nodiscard]] bool contains(std::string_view path) const
 	{
@@ -80,6 +91,17 @@ public:
 	/// 論理パスの中身を取り出す (scramble 済みなら復元)。無ければ nullopt。
 	[[nodiscard]] std::optional<std::vector<uint8_t>> read(std::string_view path) const;
 
+	/// 目次にあるエントリの大きさ。無ければ 0。中身を読まずに指紋を作る用途のため。
+	[[nodiscard]] uint64_t sizeOf(std::string_view path) const
+	{
+		const std::string np = normalizePath(path);
+		for (const auto& e : m_entries)
+		{
+			if (e.path == np) { return e.size; }
+		}
+		return 0;
+	}
+
 	[[nodiscard]] std::vector<std::string> list() const
 	{
 		std::vector<std::string> out;
@@ -90,6 +112,7 @@ public:
 
 private:
 	std::filesystem::path  m_file;
+	uint64_t               m_baseOffset = 0;   ///< exe 連結時の pack 先頭位置
 	std::vector<PackEntry> m_entries;
 	bool                   m_scrambled = false;
 };
@@ -150,17 +173,35 @@ inline std::optional<AssetPack> AssetPack::open(const std::filesystem::path& fil
 	std::ifstream f(file, std::ios::binary);
 	if (!f) { return std::nullopt; }
 
+	uint64_t base = 0;
 	char magic[6] = {};
 	f.read(magic, 6);
-	if (f.gcount() != 6 || std::memcmp(magic, kMagic, 6) != 0) { return std::nullopt; }
+	if (f.gcount() != 6 || std::memcmp(magic, kMagic, 6) != 0)
+	{
+		// 先頭が .mtpak でなければ、exe 連結のフッタ (末尾 16 バイト) を探す。
+		f.clear();
+		f.seekg(0, std::ios::end);
+		const auto fileSize = static_cast<uint64_t>(f.tellg());
+		if (fileSize < 32) { return std::nullopt; }
+		f.seekg(static_cast<std::streamoff>(fileSize - 16));
+		char foot[16] = {};
+		f.read(foot, 16);
+		if (f.gcount() != 16 || std::memcmp(foot + 8, kAppendMagic, 8) != 0) { return std::nullopt; }
+		std::memcpy(&base, foot, 8);
+		if (base >= fileSize - 16) { return std::nullopt; }
+		f.seekg(static_cast<std::streamoff>(base));
+		f.read(magic, 6);
+		if (f.gcount() != 6 || std::memcmp(magic, kMagic, 6) != 0) { return std::nullopt; }
+	}
 
 	(void)detail::ru16(f);  // version
 	const uint16_t flags = detail::ru16(f);
 	const uint32_t count = detail::ru32(f);
 
 	AssetPack pack;
-	pack.m_file      = file;
-	pack.m_scrambled = (flags & kFlagScrambled) != 0;
+	pack.m_file       = file;
+	pack.m_baseOffset = base;
+	pack.m_scrambled  = (flags & kFlagScrambled) != 0;
 	for (uint32_t i = 0; i < count; ++i)
 	{
 		const uint16_t len = detail::ru16(f);
@@ -186,12 +227,43 @@ inline std::optional<std::vector<uint8_t>> AssetPack::read(std::string_view path
 
 	std::ifstream f(m_file, std::ios::binary);
 	if (!f) { return std::nullopt; }
-	f.seekg(static_cast<std::streamoff>(e->offset));
+	// scramble は pack 内の相対 offset で掛かっている。連結ぶんは seek にだけ足す。
+	f.seekg(static_cast<std::streamoff>(m_baseOffset + e->offset));
 	std::vector<uint8_t> data(e->size);
 	if (e->size != 0) { f.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(e->size)); }
 	if (static_cast<uint64_t>(f.gcount()) != e->size) { return std::nullopt; }
 	if (m_scrambled) { xorScramble(data, e->offset); }
 	return data;
+}
+
+inline bool AssetPack::appendTo(const std::filesystem::path& exeFile,
+                                const std::filesystem::path& packFile)
+{
+	{
+		std::ifstream probe(exeFile, std::ios::binary);
+		if (!probe) { return false; }
+		probe.seekg(0, std::ios::end);
+		const auto sz = static_cast<uint64_t>(probe.tellg());
+		if (sz >= 16)
+		{
+			probe.seekg(static_cast<std::streamoff>(sz - 16));
+			char foot[16] = {};
+			probe.read(foot, 16);
+			if (probe.gcount() == 16 && std::memcmp(foot + 8, kAppendMagic, 8) == 0) { return false; }
+		}
+	}
+	std::ifstream in(packFile, std::ios::binary);
+	if (!in) { return false; }
+	std::ofstream out(exeFile, std::ios::binary | std::ios::app);
+	if (!out) { return false; }
+	out.seekp(0, std::ios::end);
+	const auto base = static_cast<uint64_t>(out.tellp());
+	out << in.rdbuf();
+	char foot[16];
+	std::memcpy(foot, &base, 8);
+	std::memcpy(foot + 8, kAppendMagic, 8);
+	out.write(foot, 16);
+	return static_cast<bool>(out);
 }
 
 // ── グローバル mount (段階2、ADR 0016) ──────────────────────────
@@ -211,6 +283,34 @@ inline bool& globalMountTried()
 {
 	static bool tried = false;
 	return tried;
+}
+
+/// dev (未 mount) の相対パス解決の基準。host が MITIRU_ASSET_ROOT に game DLL の
+/// 隣を入れる (cwd は exe 位置に固定されるため、cwd 相対だけだと game assets に届かない)。
+/// pack と同じく env 経由 — header-only の static は host / DLL / CEF helper で
+/// 別インスタンスになるので、env が唯一の module 跨ぎ共有点。
+inline const std::filesystem::path& globalDiskRoot()
+{
+	static const std::filesystem::path root = [] {
+		const char* env = std::getenv("MITIRU_ASSET_ROOT");
+		return (env != nullptr && env[0] != '\0') ? std::filesystem::path(env)
+		                                          : std::filesystem::path{};
+	}();
+	return root;
+}
+
+/// disk から 1 ファイル読む (readGlobal の下請け)。開けない/読み損ねは nullopt。
+[[nodiscard]] inline std::optional<std::vector<uint8_t>>
+readDiskFile(const std::filesystem::path& p)
+{
+	std::ifstream f(p, std::ios::binary | std::ios::ate);
+	if (!f) { return std::nullopt; }
+	const auto end = f.tellg();
+	f.seekg(0);
+	std::vector<uint8_t> buf(end > 0 ? static_cast<std::size_t>(end) : 0);
+	if (!buf.empty()) { f.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(buf.size())); }
+	if (f.bad()) { return std::nullopt; }
+	return buf;
 }
 
 /// 未 mount なら、環境変数 MITIRU_ASSET_PACK が指す .mtpak を 1 度だけ開いて mount する。
@@ -258,17 +358,18 @@ readGlobal(std::string_view logicalPath, const std::filesystem::path& diskPath =
 		// disk を覗かせない)。
 		return std::nullopt;
 	}
-	// dev (未 mount): disk から読む。
-	const std::filesystem::path p =
-		diskPath.empty() ? std::filesystem::path{normalizePath(logicalPath)} : diskPath;
-	std::ifstream f(p, std::ios::binary | std::ios::ate);
-	if (!f) { return std::nullopt; }
-	const auto end = f.tellg();
-	f.seekg(0);
-	std::vector<uint8_t> buf(end > 0 ? static_cast<std::size_t>(end) : 0);
-	if (!buf.empty()) { f.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(buf.size())); }
-	if (f.bad()) { return std::nullopt; }
-	return buf;
+	// dev (未 mount): disk から読む。相対 logical は MITIRU_ASSET_ROOT (host が game DLL の
+	// 隣を指す) を先に見て、無ければ従来どおり cwd 相対 (examples の章 prefix 流儀)。
+	if (diskPath.empty())
+	{
+		const std::filesystem::path rel{normalizePath(logicalPath)};
+		if (const auto& root = detail::globalDiskRoot(); !root.empty() && rel.is_relative())
+		{
+			if (auto buf = detail::readDiskFile(root / rel)) { return buf; }
+		}
+		return detail::readDiskFile(rel);
+	}
+	return detail::readDiskFile(diskPath);
 }
 
 // ── ゲーム向け公開アセット読み込み API (ADR 0016) ───────────────

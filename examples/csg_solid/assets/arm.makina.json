@@ -1,0 +1,107 @@
+{
+  "format": "makina-scene",
+  "version": 1,
+  "nextId": 9,
+  "materials": [
+    {
+      "id": 0,
+      "diffuse": [
+        214,
+        170,
+        130
+      ],
+      "alpha": 1.0,
+      "ambient": 0.1,
+      "specular": 0.15,
+      "shininess": 30.0,
+      "emission": 0.0,
+      "texture": null
+    }
+  ],
+  "root": {
+    "id": 1,
+    "op": "SceneRoot",
+    "name": "arm",
+    "children": [
+      {
+        "id": 2,
+        "op": "Merge",
+        "name": "arm",
+        "material": 0,
+        "children": [
+          {
+            "id": 3,
+            "op": "Cylinder",
+            "name": "upper arm",
+            "capPoint": 0.0,
+            "basePoint": -1.0,
+            "radius": 0.14
+          },
+          {
+            "id": 4,
+            "op": "Joint",
+            "name": "elbow",
+            "pivotX": 0.0,
+            "pivotY": 0.0,
+            "pivotZ": 0.0,
+            "degree": 0.0,
+            "axis": "Z",
+            "children": [
+              {
+                "id": 5,
+                "op": "Sphere",
+                "name": "elbow cap",
+                "radius": 0.15
+              },
+              {
+                "id": 6,
+                "op": "Cylinder",
+                "name": "forearm",
+                "capPoint": 1.0,
+                "basePoint": 0.0,
+                "radius": 0.12
+              },
+              {
+                "id": 7,
+                "op": "Translate",
+                "name": "to wrist",
+                "x": 0.0,
+                "y": 1.0,
+                "z": 0.0,
+                "children": [
+                  {
+                    "id": 8,
+                    "op": "Sphere",
+                    "name": "hand",
+                    "radius": 0.17
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "animation": [
+    {
+      "node": 4,
+      "param": "degree",
+      "interp": "catmullrom",
+      "keys": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          -90.0
+        ],
+        [
+          2.0,
+          0.0
+        ]
+      ]
+    }
+  ]
+}

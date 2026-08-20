@@ -58,7 +58,9 @@ void ensureSkyboxTextureDx12()
 		texDesc.Height           = static_cast<UINT>(faceSize);
 		texDesc.DepthOrArraySize = kCubemapFaceCount;
 		texDesc.MipLevels        = 1;
-		texDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+		// 色テクスチャなので sRGB で置く。UNORM で置くとトーンマップ側のガンマと二重にかかり、
+		// 彩度の高い色ほど白へ寄る。
+		texDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		texDesc.SampleDesc.Count = 1;
 		texDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
@@ -111,7 +113,7 @@ void ensureSkyboxTextureDx12()
 		}
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
-		srv.Format                      = DXGI_FORMAT_R8G8B8A8_UNORM;
+		srv.Format                      = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		srv.ViewDimension               = D3D12_SRV_DIMENSION_TEXTURECUBE;
 		srv.Shader4ComponentMapping     = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srv.TextureCube.MipLevels       = 1;
@@ -350,7 +352,7 @@ void uploadSkyboxTextureDx12()
 		src.pResource        = m_skyboxUpload.Get();
 		src.Type             = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 		src.PlacedFootprint.Offset = static_cast<UINT64>(face) * m_skyboxFaceStride;
-		src.PlacedFootprint.Footprint.Format    = DXGI_FORMAT_R8G8B8A8_UNORM;
+		src.PlacedFootprint.Footprint.Format    = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		src.PlacedFootprint.Footprint.Width     = static_cast<UINT>(m_skyboxFaceSize);
 		src.PlacedFootprint.Footprint.Height    = static_cast<UINT>(m_skyboxFaceSize);
 		src.PlacedFootprint.Footprint.Depth     = 1;

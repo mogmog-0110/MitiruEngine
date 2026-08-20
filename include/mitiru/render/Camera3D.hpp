@@ -169,8 +169,14 @@ public:
 		return sgc::Mat4f::lookAt(m_position, m_target, m_up);
 	}
 
-	/// @brief 射影行列を計算する
+	/// @brief 射影行列を計算する（**深度 [-1,1]** — OpenGL / WebGL 規約）
 	/// @return 透視投影行列または正射影行列
+	/// @warning **この戻り値を D3D11 / D3D12 に渡してはいけない。**
+	///          D3D のクリップ空間は 0 <= z <= w 固定なので、[-1,1] 行列を渡すと
+	///          錐台の手前側 (深度 2*near*far/(near+far) より近い側) がクリップされ、
+	///          残った部分も他パスと**別の深度値を書く** — 同じ距離のメッシュより
+	///          必ず小さい z を書くので、深度テストで常に手前に来る。
+	///          D3D 経路では projectionMatrixZO() を使うこと。
 	[[nodiscard]] sgc::Mat4f projectionMatrix() const noexcept
 	{
 		if (m_isOrthographic)
@@ -183,11 +189,44 @@ public:
 		return sgc::Mat4f::perspective(m_fov, m_aspectRatio, m_nearClip, m_farClip);
 	}
 
-	/// @brief ビュー×射影行列を計算する
+	/// @brief 射影行列を計算する（**深度 [0,1]** — D3D 規約）
+	/// @return 透視投影行列または正射影行列
+	/// @details GlmBridge::perspective (glm::perspectiveRH_ZO) と要素まで一致する。
+	///          ここで glm を呼ばないのは Camera3D に glm 依存を持ち込まないため。
+	///          一致は TestCamera3D の "projection depth range" が毎回検査している。
+	[[nodiscard]] sgc::Mat4f projectionMatrixZO() const noexcept
+	{
+		if (m_isOrthographic)
+		{
+			// 正射影は sgc 版が [-1,1]。z 行だけ [0,1] に潰す。
+			sgc::Mat4f m = sgc::Mat4f::orthographic(m_orthoLeft, m_orthoRight, m_orthoBottom,
+			                                        m_orthoTop, m_nearClip, m_farClip);
+			m.m[2][2] = 1.0f / (m_nearClip - m_farClip);
+			m.m[2][3] = m_nearClip / (m_nearClip - m_farClip);
+			return m;
+		}
+		const float tanHalf = std::tan(m_fov / 2.0f);
+		const float range = m_nearClip - m_farClip;
+		return sgc::Mat4f{
+			1.0f / (m_aspectRatio * tanHalf), 0.0f,           0.0f,                        0.0f,
+			0.0f,                             1.0f / tanHalf, 0.0f,                        0.0f,
+			0.0f,                             0.0f,           m_farClip / range,           (m_farClip * m_nearClip) / range,
+			0.0f,                             0.0f,           -1.0f,                       0.0f
+		};
+	}
+
+	/// @brief ビュー×射影行列を計算する（**深度 [-1,1]**）
 	/// @return ビュー射影合成行列
+	/// @warning projectionMatrix() と同じ制約。D3D では viewProjectionMatrixZO()。
 	[[nodiscard]] sgc::Mat4f viewProjectionMatrix() const noexcept
 	{
 		return projectionMatrix() * viewMatrix();
+	}
+
+	/// @brief ビュー×射影行列を計算する（**深度 [0,1]** — D3D 規約）
+	[[nodiscard]] sgc::Mat4f viewProjectionMatrixZO() const noexcept
+	{
+		return projectionMatrixZO() * viewMatrix();
 	}
 
 	// ── スクリーン座標変換 ─────────────────────────────────

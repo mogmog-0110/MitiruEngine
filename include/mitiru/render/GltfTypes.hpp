@@ -56,6 +56,14 @@ struct GltfMeshData
 	std::vector<std::string> morphTargetNames;     ///< モーフ名 (VRM は日本語モーフ名)。primitive.morphTargets と同順 (#24)
 };
 
+/// @brief glTF の不透明度の扱い (alphaMode)
+enum class GltfAlphaMode
+{
+	Opaque,   ///< アルファを無視して不透明で描く
+	Mask,     ///< alphaCutoff 未満の画素を捨てる (葉・柵・格子)
+	Blend,    ///< 半透明として合成する
+};
+
 /// @brief glTF マテリアルデータ (PBR metallic-roughness)
 struct GltfMaterialData
 {
@@ -66,6 +74,11 @@ struct GltfMaterialData
 	std::string baseColorTexturePath;              ///< ベースカラーテクスチャパス（外部 URI 等）
 	std::string normalTexturePath;                 ///< 法線マップパス
 	CpuTexture  baseColorTexture;                  ///< デコード済みベースカラー（埋め込み glb のみ。#17）
+	GltfAlphaMode alphaMode = GltfAlphaMode::Opaque;  ///< 不透明度の扱い
+	float alphaCutoff = 0.5f;                      ///< Mask のしきい値
+	bool doubleSided = false;                      ///< 真なら背面カリングを切る
+	/// 基本色テクスチャの拡大フィルタが NEAREST か。ドット絵資産はここが真になる。
+	bool nearestFilter = false;
 };
 
 /// @brief glTF ノード (ボーン階層 / TRS)。VRM はノード名がボーン名 (UTF-8) (#23a)。

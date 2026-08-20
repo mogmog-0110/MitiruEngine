@@ -130,6 +130,10 @@ struct EngineConfig
 		int colorBitsG = 6;            ///< G チャンネル量子化ビット数
 		int colorBitsB = 5;            ///< B チャンネル量子化ビット数
 		float ditherStrength = 1.0f;   ///< ディザ強度（0=無し, 1=量子化 1 段ぶん）
+		bool softUpscale = true;       ///< 拡大: true=柔らか (テクセル量子化のままバイリニア。
+		                               ///<        実機の映像出力の滲みに近い) / false=硬いニアレスト
+		bool viFilter = false;         ///< 映像出力段の de-dither + divot。ON なら拡大はニアレスト固定
+		float gamma = 1.0f;            ///< 出力ガンマ（1 で素通し）
 
 		/// @brief 全チャンネルを同一ビット数に設定する（例 256色相当なら 3/3/2 を個別指定）。
 		void setUniformBits(int bits) noexcept { colorBitsR = colorBitsG = colorBitsB = bits; }

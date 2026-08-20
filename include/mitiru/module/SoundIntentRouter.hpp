@@ -12,7 +12,7 @@
 /// SoundIntent のフィールド解釈:
 ///   - category: 0=SE, 1=BGM, 2=Voice (BGM のみ playMusic 経路、他は playSound 経路)
 ///   - stop:     1 なら再生でなく停止 (BGM→stopMusic / SE→stopSound)
-///   - loop:     BGM のループ可否
+///   - loop:     ループ再生するか (BGM / SE 共通)
 ///   - volume:   0.0–1.0。0 (zero-init の既定) は「未指定 = 既定音量」とみなし 1.0 とする。
 ///               FrameIntents は毎フレーム zero-init されるため、音量を設定しない game が
 ///               無音化する footgun を防ぐ。
@@ -68,6 +68,7 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s)
 	const float vol   = (s.volume     > 0.0f) ? s.volume     : 1.0f;  // 0 = 未指定 → 既定
 	const float pitch = (s.pitchScale > 0.0f) ? s.pitchScale : 1.0f;  // 0 = 未指定 → 1.0
 	if (isMusic)                  { engine.playMusicEx(s.id, vol, s.loop != 0, s.fadeInSec); }
+	else if (s.loop != 0)         { engine.playSoundLoop(s.id, vol, pitch, s.fadeInSec); }        // v22 長さが入力で決まる音
 	else if (s.scheduleSec > 0.0) { engine.playSoundScheduled(s.id, s.scheduleSec, vol, pitch); }  // v19 サンプル精度予約
 	else                          { engine.playSoundEx(s.id, vol, pitch, s.fadeInSec); }
 }

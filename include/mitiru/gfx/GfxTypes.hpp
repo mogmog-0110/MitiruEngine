@@ -112,4 +112,39 @@ struct CpuDescriptorHandle
 /// @brief フェンス値
 using FenceValue = uint64_t;
 
+/// @brief ルートパラメータ種別
+/// @details コンピュートパイプラインが要求するリソースの結び付け方。
+///          D3D12 のルートパラメータと Vulkan の descriptor set layout binding の
+///          共通部分だけを表す — 両者で意味が一致するものに限っているので、
+///          バックエンドを増やすときにここを作り直す必要がない。
+enum class RootParamType : uint8_t
+{
+	ConstantBuffer,   ///< 定数バッファ (D3D12: root CBV / Vulkan: uniform buffer)
+	ShaderResource,   ///< 読み取り専用バッファ (D3D12: root SRV / Vulkan: storage buffer read)
+	UnorderedAccess,  ///< 読み書きバッファ (D3D12: root UAV / Vulkan: storage buffer)
+	DescriptorTable   ///< デスクリプタテーブル (D3D12) / descriptor set (Vulkan)
+};
+
+/// @brief ルートパラメータ 1 個の記述
+struct RootParam
+{
+	RootParamType type = RootParamType::ConstantBuffer;  ///< 種別
+	uint32_t shaderRegister = 0;                          ///< レジスタ番号 (b0/t0/u0 の 0)
+	uint32_t descriptorCount = 1;                         ///< DescriptorTable のときの個数
+	/// @brief DescriptorTable が並べるレンジの種別
+	/// @details DescriptorTable 以外では無視される。
+	RootParamType tableRangeType = RootParamType::ShaderResource;
+};
+
+/// @brief コンピュートパイプライン記述子
+/// @details ルートシグネチャを呼び出し側が宣言する点が graphics 側と異なる。
+///          Dx12Pipeline はルートシグネチャを内部で固定しているが、
+///          コンピュートは用途ごとに要求するリソースが違うので固定できない。
+struct ComputePipelineDesc
+{
+	class IShader* computeShader = nullptr;  ///< コンピュートシェーダー
+	const RootParam* rootParams = nullptr;   ///< ルートパラメータ配列
+	uint32_t rootParamCount = 0;             ///< ルートパラメータ数
+};
+
 } // namespace mitiru::gfx

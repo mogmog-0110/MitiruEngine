@@ -79,12 +79,18 @@ namespace mitiru::module
 ///   - v23: InputSnapshot に mouseDeltaX/Y、FrameIntents に wantMouseLock (FPS 視線)
 ///   - v24: Screen::drawModel(clip,time) / drawModelBlend + IRenderer3D 末尾 virtual
 ///          drawSkinnedModel (ADR 0028)
+///   - v25: Screen::camera3D(eye, target, fov, rollDeg) + Screen 末尾メンバ m_cam3DUp
+///   - v26: Screen::drawModel(path, pos, rotDeg, scale) + IRenderer3D 末尾 virtual drawModelRot
+///   - v27: Screen::toon3D / outline3D + Screen 末尾メンバ 4 個 + IRenderer3D 末尾 virtual
+///          setOutlineParams
+///   - v28: Screen::fog3D + Screen 末尾メンバ 4 個 + IRenderer3D 末尾 virtual setFog
+///   - v29: Screen::shadowCaster3D + IRenderer3D 末尾 virtual setShadowCaster
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない —
 ///       配列要素が太ると後続 field の offset がズレ silent 破損するため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 24;
+constexpr std::uint32_t kCurrentApiVersion = 29;
 
 // ── build fingerprint (H-1/H-4 短期対策、ADR 0024 追記) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -537,6 +543,31 @@ struct FrameIntents
 	void resumeMusic() noexcept { pushTransport(2, 0.0f); }
 	/// 再生中の BGM を指定位置 (秒) へシークする (v19)。
 	void seekMusic(float positionSec) noexcept { pushTransport(3, positionSec); }
+
+	/// 効果音をループ再生する (v22)。stopSoundId で止めるまで鳴り続ける。
+	void loopSound(const char* id, float volume = 1.0f, float pitch = 1.0f,
+	               float fadeInSec = 0.0f) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		copyStr(s.id, id, sizeof(s.id));
+		s.category = 0; s.loop = 1; s.volume = volume;
+		s.pitchScale = (pitch > 0.0f) ? pitch : 1.0f;
+		s.fadeInSec = fadeInSec;
+	}
+
+	/// 鳴っている効果音を id で止める (v22)。fadeOutSec > 0 で減衰させてから止める。
+	void stopSoundId(const char* id, float fadeOutSec = 0.0f) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		copyStr(s.id, id, sizeof(s.id));
+		s.category = 0; s.stop = 1; s.fadeOutSec = fadeOutSec;
+	}
 
 	/// 効果音を「音声クロック上の時刻 atSec」にサンプル精度で鳴らす予約 (v19)。
 	/// atSec は Input::audioTime() と同じ音声クロック基準の絶対時刻。毎フレーム clock>=t を

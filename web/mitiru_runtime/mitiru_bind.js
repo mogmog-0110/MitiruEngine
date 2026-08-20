@@ -232,6 +232,7 @@
     if (d.mValue != null) { applyValue(el, d.mValue, item); }
     if (d.mToast != null) { applyToast(el, d.mToast, item); }
     if (d.mArg != null)   { el._marg = argValue(d.mArg, item); }  // dispatch に載せる値 (item スコープ対応)
+    if (d.mDrag != null)  { el._mdragValue = resolve(d.mDrag, item); }  // 掴んだときに運ぶ値 (mousedown 時に読み直さない: スロットは使い回される)
     if (d.mPayload != null) { el._mitem = item; }                 // payload はクリック時に item で組む
   }
 
@@ -378,8 +379,12 @@
       var t = (el.tagName || '').toLowerCase(), ev = 'click';
       if (t === 'input' && (el.type === 'range' || el.type === 'text' || el.type === 'number')) { ev = 'input'; }
       else if (t === 'select' || (t === 'input' && (el.type === 'checkbox' || el.type === 'radio'))) { ev = 'change'; }
-      el.addEventListener(ev, function () {
+      el.addEventListener(ev, function (e) {
         if (el.disabled) { return; }
+        // 入れ子の action 要素は内側だけが撃つ。行 (select.pick) の中に折りたたみの
+        // ハンドル (tree.toggle) を置いた Makina のアウトライナで、ハンドルを押すと選択も
+        // 動いた -- click は親へ泡立つ。二重 dispatch を期待するページは無い。
+        if (e && e.stopPropagation) { e.stopPropagation(); }
         if (el.dataset.mConfirm != null) {
           askConfirm(el).then(function (ok) { if (ok) { fireAction(el, undefined); } });
           return;
@@ -561,6 +566,7 @@
     this.list.appendChild(node);
     wireActions(node);   // repeat 内の data-m-action も配線 (item の値を載せて dispatch)
     wireInputs(node);    // repeat 内の data-m-input も配線
+    wireDrag(node);      // repeat 内の data-m-drag も配線
     return { el: node, _case: cas, binds: collectBinds(node, true) };
   };
   Repeat.prototype._bind = function (slot, item) {
@@ -622,6 +628,74 @@
   };
 
   // ── バインディング収集 ──
+  // ── ドラッグ&ドロップ (data-m-drag / data-m-drop) ─────────────────────────
+  //
+  //   data-m-drag="field"   この要素を掴めるようにする。field は掴んだ物を識別する値
+  //                         (repeat 内なら item のフィールド、外なら state path)
+  //   data-m-drop="action"  この要素に落とせるようにする。落ちたら
+  //                         dispatch(action, {from: 掴んだ値, to: この要素の data-m-arg})
+  //
+  // HTML5 の draggable は使わない。OSR (CEF off-screen) では native の
+  // StartDragging / DragTarget* をホストが実装しないと dragstart すら発火せず、
+  // 「ページは正しいのにドラッグだけ死んでいる」という一番追いにくい壊れ方をする。
+  // マウスは既に届いているので、mousedown / mousemove / mouseup だけで組む。
+  //
+  // 4px 動くまではドラッグ扱いしない。行は data-m-action のクリックも持っていて、
+  // 閾値なしでは選択のつもりのクリックが全部ドラッグに化ける。
+  var dragState = null;   // {value, el, x, y, moved}
+  function wireDrag(root) {
+    // root 自身も候補に入れる。querySelectorAll は子孫しか返さないので、repeat の行の
+    // ように data-m-drag がスロット要素そのものに付くと、これ無しでは毎回 0 件配線に
+    // なる (collectBinds の includeSelf と同じ理由)。
+    var found = [];
+    if (root.matches && root.matches('[data-m-drag]')) { found.push(root); }
+    var q = root.querySelectorAll ? root.querySelectorAll('[data-m-drag]') : [];
+    for (var i = 0; i < q.length; i++) { found.push(q[i]); }
+    for (var i = 0; i < found.length; i++) {
+      (function (el) {
+        if (el._mdragWired) { return; }
+        el._mdragWired = true;
+        el.addEventListener('mousedown', function (e) {
+          if (e.button !== 0) { return; }
+          // _mdragValue は applyBindings が束縛のたびに焼き直す (_marg と同じ流儀)。
+          // ここで resolve し直さないのは、repeat のスロットが使い回されるからで、
+          // 配線時の item はもう別の行かもしれない。
+          dragState = { value: el._mdragValue,
+                        el: el, x: e.clientX, y: e.clientY, moved: false };
+        });
+      })(found[i]);
+    }
+  }
+  document.addEventListener('mousemove', function (e) {
+    if (!dragState) { return; }
+    if (!dragState.moved) {
+      var dx = e.clientX - dragState.x, dy = e.clientY - dragState.y;
+      if (dx * dx + dy * dy < 16) { return; }
+      dragState.moved = true;
+      dragState.el.classList.add('m-dragging');
+    }
+    var over = e.target && e.target.closest ? e.target.closest('[data-m-drop]') : null;
+    var marked = document.querySelectorAll('.m-drop-hover');
+    for (var i = 0; i < marked.length; i++) { marked[i].classList.remove('m-drop-hover'); }
+    if (over && over !== dragState.el) { over.classList.add('m-drop-hover'); }
+  });
+  document.addEventListener('mouseup', function (e) {
+    if (!dragState) { return; }
+    var st = dragState;
+    dragState = null;
+    st.el.classList.remove('m-dragging');
+    var marked = document.querySelectorAll('.m-drop-hover');
+    for (var i = 0; i < marked.length; i++) { marked[i].classList.remove('m-drop-hover'); }
+    if (!st.moved) { return; }             // クリックだった。data-m-action に任せる
+    var over = e.target && e.target.closest ? e.target.closest('[data-m-drop]') : null;
+    if (!over || over === st.el) { return; }
+    // _marg も束縛のたびに焼き直されている。落ち先の「いまの」中身が入っている。
+    var to = over._marg;
+    if (typeof mitiru.dispatch === 'function') {
+      mitiru.dispatch(over.dataset.mDrop, { from: st.value, to: to });
+    }
+  });
+
   var SELECTOR = '[data-m-text],[data-m-tpl],[data-m-show],[data-m-hide],[data-m-class],[data-m-style],[data-m-pos],[data-m-flash],[data-m-attr],[data-m-action],[data-m-tween],[data-m-enabled],[data-m-disabled],[data-m-value],[data-m-toast]';
 
   // node 配下の (item スコープ用) 単純バインド要素を集める。repeat はネスト不可とする。
@@ -656,6 +730,18 @@
             document.body.hasAttribute('data-m-debug') ||
             /[?&]mdebug=1/.test(location.search);
 
+    // data-m-show の要素は、最初の状態が届くまで隠しておく。素の HTML は全要素が
+    // 見えているので、そのままだと起動直後に UI が全部一瞬映ってから消える。
+    // data-m-hide (真のとき隠す) は既定で見えているのが正しいので触らない。
+    //
+    // この script は body の末尾で読まれるため、実行より前に最初のペイントが走る
+    // ことがある。その 1 枚も消したいページは、head の style に
+    //   html:not(.m-ready) [data-m-show]{display:none !important;}
+    // を書いておく。m-ready はここで付けるので、束縛後は inline の display が生きる。
+    var preHide = document.querySelectorAll('[data-m-show]');
+    for (var ph = 0; ph < preHide.length; ph++) { preHide[ph].style.display = 'none'; }
+    document.documentElement.classList.add('m-ready');
+
     var topBinds = [];   // repeat の外側 (item スコープ無し)
     var repeats = [];
     var subscribed = Object.create(null);
@@ -683,6 +769,7 @@
     // HTML → C++: data-m-action を dispatch に配線 (ユーザーは JS 不要)。repeat 内の
     // 要素は _makeSlot で都度配線する。
     wireActions(document);
+    wireDrag(document);
 
     // HTML → C++: data-m-input のテキスト入力を配線 (確定値を dispatch)。
     var inputCount = wireInputs(document);

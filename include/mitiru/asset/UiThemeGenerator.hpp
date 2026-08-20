@@ -376,7 +376,7 @@ public:
 		// スライダー（3つの値）
 		for (float val : {0.0f, 0.5f, 1.0f})
 		{
-			float xPos = margin + (sliderW + margin) * static_cast<float>(&val - &(*std::begin({0.0f, 0.5f, 1.0f})));
+			/// 列位置は val からそのまま出る (0.0/0.5/1.0 → 0/1/2)。
 			embedWidget(builder, config, margin + (sliderW + margin) * static_cast<int>(val * 2), y, sliderW, sliderH,
 				[&](){ return generateSlider(config, sliderW, sliderH, val); });
 		}

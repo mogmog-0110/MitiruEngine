@@ -201,16 +201,50 @@ inline void MitiruCefTexture::composite(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle,
     m_compositeAlloc->Reset();
     m_compositeCl->Reset(m_compositeAlloc.Get(), nullptr);
 
-    m_compositeCl->SetGraphicsRootSignature(m_rootSig.Get());
-    m_compositeCl->SetPipelineState(m_pipeline.Get());
+    recordComposite(m_compositeCl.Get(), rtvHandle, windowW, windowH, clearRGBA);
+
+    m_compositeCl->Close();
+
+    ID3D12CommandList* lists[] = {m_compositeCl.Get()};
+    m_queue->ExecuteCommandLists(1, lists);
+
+    // フェンスをシグナルして次フレームの待機に使う
+    ++m_compositeFenceValue;
+    m_queue->Signal(m_compositeFence.Get(), m_compositeFenceValue);
+}
+
+/// @brief 合成の描画コマンドを、渡されたコマンドリストに記録する
+/// @details composite() の中身のうち、記録の部分だけを取り出したもの。呼び出し側が自分の
+///          コマンドリストを持っているなら、そこへ混ぜられる -- 提出とフェンスがフレーム
+///          あたり 1 回増えないほうが素直で、バックバッファの状態遷移を呼び出し側の
+///          begin/end の外に出さずに済む。
+///
+///          リストの Reset / Close はしない。GPU の完了待ちもしない。それは呼び出し側の
+///          フレームの都合で、ここで勝手にやると二重に待つことになる。
+inline void MitiruCefTexture::recordComposite(ID3D12GraphicsCommandList* cl,
+                                              D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle,
+                                              int windowW, int windowH,
+                                              const float clearRGBA[4])
+{
+    if (cl == nullptr || !m_initialized || !m_pipeline || !m_texture)
+    {
+        return;
+    }
+    if (windowW <= 0 || windowH <= 0 || m_width <= 0 || m_height <= 0)
+    {
+        return;
+    }
+
+    cl->SetGraphicsRootSignature(m_rootSig.Get());
+    cl->SetPipelineState(m_pipeline.Get());
 
     // SRV デスクリプタヒープをバインドする
     ID3D12DescriptorHeap* heaps[] = {m_srvHeap.Get()};
-    m_compositeCl->SetDescriptorHeaps(1, heaps);
-    m_compositeCl->SetGraphicsRootDescriptorTable(
+    cl->SetDescriptorHeaps(1, heaps);
+    cl->SetGraphicsRootDescriptorTable(
         0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
 
-    m_compositeCl->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+    cl->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     // ── Aspect-fit rect (letterbox/pillarbox 中央配置) ─────────
     // window aspect が texture より wide なら 上下フル + 左右 pad (pillar)
@@ -263,22 +297,14 @@ inline void MitiruCefTexture::composite(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle,
             bars[nbars++] = {0, 0, static_cast<LONG>(offX + 0.5f), windowH};
             bars[nbars++] = {static_cast<LONG>(offX + fitW), 0, windowW, windowH};
         }
-        m_compositeCl->ClearRenderTargetView(rtvHandle, clearRGBA, nbars, bars);
+        cl->ClearRenderTargetView(rtvHandle, clearRGBA, nbars, bars);
     }
 
-    m_compositeCl->RSSetViewports(1, &vp);
-    m_compositeCl->RSSetScissorRects(1, &sci);
+    cl->RSSetViewports(1, &vp);
+    cl->RSSetScissorRects(1, &sci);
 
-    m_compositeCl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    m_compositeCl->DrawInstanced(3, 1, 0, 0); // fit 矩形を覆う三角形 (NDC -1..1)
-    m_compositeCl->Close();
-
-    ID3D12CommandList* lists[] = {m_compositeCl.Get()};
-    m_queue->ExecuteCommandLists(1, lists);
-
-    // フェンスをシグナルして次フレームの待機に使う
-    ++m_compositeFenceValue;
-    m_queue->Signal(m_compositeFence.Get(), m_compositeFenceValue);
+    cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    cl->DrawInstanced(3, 1, 0, 0); // fit 矩形を覆う三角形 (NDC -1..1)
 }
 
 /// @brief GPU テクスチャ・SRV・アップロードヒープを作成する

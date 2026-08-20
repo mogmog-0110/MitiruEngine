@@ -211,7 +211,8 @@ public:
 
 		/// 描画定数を更新する
 		ParticleRenderConstants renderCB;
-		renderCB.viewProjection = camera.viewProjectionMatrix();
+		// D3D 規約 [0,1]。[-1,1] 版を渡すとパーティクルが常にメッシュの手前に来る。
+		renderCB.viewProjection = camera.viewProjectionMatrixZO();
 		renderCB.cameraRight = camera.rightDirection();
 		renderCB.cameraUp = camera.upDirection();
 

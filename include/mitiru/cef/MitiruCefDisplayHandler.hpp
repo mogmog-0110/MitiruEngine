@@ -10,6 +10,7 @@
 #endif
 #include <Windows.h>
 
+#include <cstdio>
 #include <string>
 
 #include "include/cef_display_handler.h"
@@ -36,6 +37,11 @@ public:
         const std::string msg = prefix + message.ToString()
             + "  (" + source.ToString() + ":" + std::to_string(line) + ")\n";
         OutputDebugStringA(msg.c_str());
+        // stderr にも出す。OutputDebugString はデバッガが繋がっていないと**どこにも
+        // 残らない**ので、headless の実行やスクリプト検査ではページ側の悲鳴が完全に
+        // 消える。この層の失敗は元々「画面は出ているのに何も起きない」という顔をするので、
+        // 唯一の手掛かりを見えない場所に置いておく理由がない。
+        std::fputs(msg.c_str(), stderr);
         return false; // false = CEF に通常ログも行わせる
     }
 

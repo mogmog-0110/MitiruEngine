@@ -1,0 +1,12 @@
+{
+  "format": "makina-bake",
+  "live": true,
+  "maxStackDepth": 3,
+  "programNodes": 7,
+  "ps": "arm.ps.cso",
+  "scene": "arm.makina.json",
+  "sceneHash": "894429d136f9af9c",
+  "shading": "scene_engine.hlsl",
+  "version": 1,
+  "vs": "arm.vs.cso"
+}

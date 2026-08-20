@@ -82,7 +82,8 @@ public:
 		texDesc.Height           = static_cast<UINT>(m_height);
 		texDesc.DepthOrArraySize = 1;
 		texDesc.MipLevels        = 1;
-		texDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+		// sRGB は resource / CopyTextureRegion の footprint / SRV の 3 箇所で一致必須
+		texDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		texDesc.SampleDesc.Count = 1;
 		texDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
@@ -146,7 +147,7 @@ public:
 		csrc.pResource                          = upload.Get();
 		csrc.Type                               = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 		csrc.PlacedFootprint.Offset             = 0;
-		csrc.PlacedFootprint.Footprint.Format   = DXGI_FORMAT_R8G8B8A8_UNORM;
+		csrc.PlacedFootprint.Footprint.Format   = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		csrc.PlacedFootprint.Footprint.Width    = static_cast<UINT>(m_width);
 		csrc.PlacedFootprint.Footprint.Height   = static_cast<UINT>(m_height);
 		csrc.PlacedFootprint.Footprint.Depth    = 1;
@@ -176,7 +177,7 @@ public:
 	{
 		if (!m_texture) return;
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
-		srv.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
+		srv.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		srv.ViewDimension           = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srv.Texture2D.MipLevels     = 1;

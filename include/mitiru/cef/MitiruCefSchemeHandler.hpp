@@ -75,7 +75,24 @@ public:
         int64_t&               responseLength,
         CefString&             /*redirectUrl*/) override
     {
-        response->SetMimeType(m_mime);
+        // MIME type と charset は別々に渡す。CefResponse::SetMimeType が期待するのは型だけで、
+        // "text/html; charset=utf-8" をまとめて渡すと Chromium はその全体を未知の型として扱い、
+        // ページを **プレーンテキストとして表示する**。HTML は出るが DOM は無く、スクリプトも
+        // 走らないので、症状は「画面には出ているのにボタンが効かない」になる。
+        const std::size_t semi = m_mime.find(';');
+        if (semi == std::string::npos)
+        {
+            response->SetMimeType(m_mime);
+        }
+        else
+        {
+            response->SetMimeType(m_mime.substr(0, semi));
+            const std::size_t eq = m_mime.find('=', semi);
+            if (eq != std::string::npos)
+            {
+                response->SetCharset(m_mime.substr(eq + 1));
+            }
+        }
         response->SetStatus(200);
         responseLength = static_cast<int64_t>(m_data.size());
     }

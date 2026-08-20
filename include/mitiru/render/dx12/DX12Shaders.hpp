@@ -35,7 +35,13 @@ struct alignas(256) DX12CbLighting
 	float materialDiffuse[4]{};   ///< マテリアル拡散色 (rgba)
 	float materialSpecular[4]{};  ///< マテリアル鏡面色 (rgba)
 	float materialShininess = 32.0f;  ///< マテリアル光沢度
-	float _pad[3]{};              ///< パディング
+	/// 影部の色 (トゥーン時のみ使用)。暗くするだけでなく色相を寄せるため rgb で持つ。
+	float shadowTint[3]{0.60f, 0.64f, 0.76f};
+	float fogColor[4]{};              ///< 距離フォグの色 (a は未使用)
+	/// x=かかり始める距離 y=完全に染まる距離 z=有効フラグ (0/1)
+	float fogParams[4]{};
+	/// マテリアル由来の描画指定。x=alphaCutoff y=最近傍(0/1) z=抜き有効(0/1) w=予備
+	float materialParams[4]{0.5f, 0.0f, 0.0f, 0.0f};
 };
 
 } // namespace mitiru::render

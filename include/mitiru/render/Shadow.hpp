@@ -78,12 +78,16 @@ public:
     ///   target = sceneFocus
     ///   worldUp = (0, 1, 0)。ライト方向が Y 軸と平行なときは Z 軸にフォールバック。
     ///
-    ///   左手系 (glm::lookAtLH と同規約) で組む。メインカメラは glm::lookAtLH +
-    ///   perspectiveLH_ZO、lightProjectionMatrix は Z[0,1] かつ「正の view z」前提
-    ///   (z'=(z-near)/(far-near)) のため、view も左手系でなければ整合しない。
+    ///   左手系 (glm::lookAtLH と同規約) で組む。理由は lightProjectionMatrix 側にある:
+    ///   あれは Z[0,1] かつ「view z が正」前提 (z'=(z-near)/(far-near)) なので、
+    ///   view も左手系でなければ符号が合わない。
     ///   sgc::Mat4f::lookAt は右手系で visible geometry の view z が負になり、
     ///   投影後の深度が全て負 → viewport で 0 にクランプ → SampleCmp が常に
     ///   「影なし」を返してシャドウが一切出なくなる。
+    ///
+    ///   ここはライト空間だけの話で、メインカメラとは無関係である。
+    ///   メインカメラは GlmBridge::lookAt = glm::lookAtRH、
+    ///   GlmBridge::perspective = glm::perspectiveRH_ZO、つまり**右手系**。
     [[nodiscard]] sgc::Mat4f lightViewMatrix(const sgc::Vec3f& sceneFocus) const noexcept
     {
         const float len = std::sqrt(

@@ -24,6 +24,12 @@ public:
 	/// @details D3D12パイプラインに紐づくルートシグネチャを取得する。
 	///          DX11/Null等のバックエンドではnullptrを返す。
 	[[nodiscard]] virtual void* rootSignature() const { return nullptr; }
+
+	/// @brief コンピュートパイプラインかどうかを判定する
+	/// @return コンピュートなら true、グラフィックスなら false
+	/// @details 結び付け先が graphics か compute かでルート引数の設定 API が分かれるため、
+	///          呼び出し側がどちらを使うか判断できる必要がある。
+	[[nodiscard]] virtual bool isCompute() const noexcept { return false; }
 };
 
 } // namespace mitiru::gfx

@@ -21,6 +21,8 @@
 
 // DX12 型の前方宣言 (Windows 非依存ヘッダーから参照してもよい)
 #if defined(_WIN32)
+struct ID3D12Device;
+struct ID3D12CommandQueue;
 struct ID3D12GraphicsCommandList;
 struct D3D12_CPU_DESCRIPTOR_HANDLE;
 namespace mitiru::gfx::dx12 { class Dx12Device; }
@@ -72,6 +74,21 @@ public:
     {
         return false; // CEF なし → 常に失敗
     }
+
+    /// @brief 生ハンドル版 — 本物と同じ入口を、CEF 無しビルドにも用意しておく
+    /// @details 片方にしかない入口は、CEF ありでは通ってなしでは落ちるコードを許してしまう。
+    bool initialize(
+        ID3D12Device*       /*device*/,
+        ID3D12CommandQueue* /*queue*/,
+        const std::string&  /*exeDir*/,
+        const std::string&  /*logPath*/,
+        int                 /*width*/,
+        int                 /*height*/,
+        const std::string&  /*startUrl*/            = "about:blank",
+        int                 /*remoteDebuggingPort*/ = 0)
+    {
+        return false; // CEF なし → 常に失敗
+    }
 #endif
 
     void shutdown()           {}
@@ -89,11 +106,28 @@ public:
         int                         /*height*/)
     {}
 
+    void recordComposite(
+        ID3D12GraphicsCommandList*  /*cl*/,
+        D3D12_CPU_DESCRIPTOR_HANDLE /*rtvHandle*/,
+        int                         /*width*/,
+        int                         /*height*/,
+        const float                 /*clearRGBA*/[4] = nullptr)
+    {}
+
+    void composite(
+        D3D12_CPU_DESCRIPTOR_HANDLE /*rtvHandle*/,
+        int                         /*width*/,
+        int                         /*height*/,
+        const float                 /*clearRGBA*/[4] = nullptr)
+    {}
+
     void resize(
         mitiru::gfx::dx12::Dx12Device& /*device*/,
         int /*width*/,
         int /*height*/)
     {}
+
+    void resize(int /*width*/, int /*height*/) {}
 #endif
 
     void handleInput(const InputState& /*input*/) {}

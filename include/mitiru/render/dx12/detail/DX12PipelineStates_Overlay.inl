@@ -112,10 +112,8 @@ void drawPostProcessOutline()
 	CbOutline cb;
 	cb.texelSizeX = 1.0f / m_config.viewportWidth;
 	cb.texelSizeY = 1.0f / m_config.viewportHeight;
-	// outline は 1px 幅、閾値高めで spurious エッジを抑制 (ENG-104)。
-	// 3px 幅は MSAA 無しの環境で目に痛いほどジャギーが出る。
-	cb.outlineWidth = 1.0f;
-	cb.threshold = 0.30f;
+	cb.outlineWidth = m_outlineWidthPx;
+	cb.threshold = m_outlineThresh;
 
 	const auto outlineCb = m_uploadRing.upload(&cb, sizeof(CbOutline), 256);
 	if (outlineCb.valid())

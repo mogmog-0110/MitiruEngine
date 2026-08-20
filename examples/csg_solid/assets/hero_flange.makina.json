@@ -1,0 +1,253 @@
+{
+  "format": "makina-scene",
+  "version": 1,
+  "units": "meter",
+  "coordinates": "right-handed-y-up",
+  "angles": "degrees",
+  "source": { "tool": "gsf2json", "file": "hero_flange.gsf" },
+  "nextId": 27,
+  "root": {
+    "id": 1,
+    "op": "SceneRoot",
+    "name": "Scene",
+    "light_0": "enabled",
+    "light_1": "disabled",
+    "light_2": "disabled",
+    "light_3": "disabled",
+    "light_4": "disabled",
+    "light_5": "disabled",
+    "light_6": "disabled",
+    "light_7": "disabled",
+    "children": [
+      {
+        "id": 2,
+        "op": "Difference",
+        "name": "Difference",
+        "children": [
+          {
+            "id": 3,
+            "op": "Merge",
+            "name": "Merge",
+            "children": [
+              {
+                "id": 4,
+                "op": "Cylinder",
+                "name": "Cylinder",
+                "material": 0,
+                "capPoint": 0.25,
+                "basePoint": -0.25,
+                "radius": 2.0
+              },
+              {
+                "id": 5,
+                "op": "Cylinder",
+                "name": "Cylinder",
+                "material": 0,
+                "capPoint": 0.45,
+                "basePoint": 0.24,
+                "radius": 0.9
+              },
+              {
+                "id": 6,
+                "op": "Cylinder",
+                "name": "Cylinder",
+                "material": 0,
+                "capPoint": 0.25,
+                "basePoint": 0.16,
+                "radius": 2.16
+              }
+            ]
+          },
+          {
+            "id": 7,
+            "op": "Cylinder",
+            "name": "Cylinder",
+            "material": 0,
+            "capPoint": 0.95,
+            "basePoint": -0.75,
+            "radius": 0.55
+          },
+          {
+            "id": 8,
+            "op": "Merge",
+            "name": "Merge",
+            "children": [
+              {
+                "id": 9,
+                "op": "Translate",
+                "name": "Translate",
+                "x": 1.45,
+                "y": 0.0,
+                "z": 0.0,
+                "children": [
+                  {
+                    "id": 10,
+                    "op": "Cylinder",
+                    "name": "Cylinder",
+                    "material": 0,
+                    "capPoint": 0.75,
+                    "basePoint": -0.75,
+                    "radius": 0.18
+                  }
+                ]
+              },
+              {
+                "id": 11,
+                "op": "Translate",
+                "name": "Translate",
+                "x": 0.725,
+                "y": 0.0,
+                "z": 1.255736835,
+                "children": [
+                  {
+                    "id": 12,
+                    "op": "Cylinder",
+                    "name": "Cylinder",
+                    "material": 0,
+                    "capPoint": 0.75,
+                    "basePoint": -0.75,
+                    "radius": 0.18
+                  }
+                ]
+              },
+              {
+                "id": 13,
+                "op": "Translate",
+                "name": "Translate",
+                "x": -0.725,
+                "y": 0.0,
+                "z": 1.255736835,
+                "children": [
+                  {
+                    "id": 14,
+                    "op": "Cylinder",
+                    "name": "Cylinder",
+                    "material": 0,
+                    "capPoint": 0.75,
+                    "basePoint": -0.75,
+                    "radius": 0.18
+                  }
+                ]
+              },
+              {
+                "id": 15,
+                "op": "Translate",
+                "name": "Translate",
+                "x": -1.45,
+                "y": 0.0,
+                "z": 0.0,
+                "children": [
+                  {
+                    "id": 16,
+                    "op": "Cylinder",
+                    "name": "Cylinder",
+                    "material": 0,
+                    "capPoint": 0.75,
+                    "basePoint": -0.75,
+                    "radius": 0.18
+                  }
+                ]
+              },
+              {
+                "id": 17,
+                "op": "Translate",
+                "name": "Translate",
+                "x": -0.725,
+                "y": 0.0,
+                "z": -1.255736835,
+                "children": [
+                  {
+                    "id": 18,
+                    "op": "Cylinder",
+                    "name": "Cylinder",
+                    "material": 0,
+                    "capPoint": 0.75,
+                    "basePoint": -0.75,
+                    "radius": 0.18
+                  }
+                ]
+              },
+              {
+                "id": 19,
+                "op": "Translate",
+                "name": "Translate",
+                "x": 0.725,
+                "y": 0.0,
+                "z": -1.255736835,
+                "children": [
+                  {
+                    "id": 20,
+                    "op": "Cylinder",
+                    "name": "Cylinder",
+                    "material": 0,
+                    "capPoint": 0.75,
+                    "basePoint": -0.75,
+                    "radius": 0.18
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": 21,
+            "op": "Translate",
+            "name": "Translate",
+            "x": 0.0,
+            "y": 0.23,
+            "z": 0.0,
+            "children": [
+              {
+                "id": 22,
+                "op": "Torus",
+                "name": "Torus",
+                "material": 0,
+                "majorRadius": 1.15,
+                "minorRadius": 0.13
+              }
+            ]
+          },
+          {
+            "id": 23,
+            "op": "Translate",
+            "name": "Translate",
+            "x": 0.0,
+            "y": 0.25,
+            "z": 0.0,
+            "children": [
+              {
+                "id": 24,
+                "op": "Torus",
+                "name": "Torus",
+                "material": 0,
+                "majorRadius": 2.16,
+                "minorRadius": 0.1
+              }
+            ]
+          },
+          {
+            "id": 25,
+            "op": "Translate",
+            "name": "Translate",
+            "x": 0.0,
+            "y": -0.55,
+            "z": 0.0,
+            "children": [
+              {
+                "id": 26,
+                "op": "Cylinder",
+                "name": "Cylinder",
+                "material": 0,
+                "capPoint": 0.34,
+                "basePoint": -0.34,
+                "radius": 1.55
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "materials": [
+    { "id": 0, "diffuse": [255, 255, 0], "alpha": 1.0, "ambient": 0.1, "specular": 0.0, "shininess": 1.0, "emission": 0.0, "texture": null }
+  ]
+}

@@ -150,15 +150,18 @@ void applyTonemap()
 	auto rtv = bb->rtvHandle();
 	m_graphicsCmdList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
 
+	// viewport は出力先 (backbuffer) の実サイズに合わせる。lo-fi 有効時の override 先は
+	// 低解像 RT なので、ここで HDR フル解像 → 低解像への縮小も兼ねる
+	const auto bbDesc = bb->nativeResource()->GetDesc();
 	D3D12_VIEWPORT vp = {};
-	vp.Width    = static_cast<float>(m_config.viewportWidth);
-	vp.Height   = static_cast<float>(m_config.viewportHeight);
+	vp.Width    = static_cast<float>(bbDesc.Width);
+	vp.Height   = static_cast<float>(bbDesc.Height);
 	vp.MaxDepth = 1.0f;
 	m_graphicsCmdList->RSSetViewports(1, &vp);
 
 	D3D12_RECT scissor = {};
-	scissor.right  = static_cast<LONG>(m_config.viewportWidth);
-	scissor.bottom = static_cast<LONG>(m_config.viewportHeight);
+	scissor.right  = static_cast<LONG>(bbDesc.Width);
+	scissor.bottom = static_cast<LONG>(bbDesc.Height);
 	m_graphicsCmdList->RSSetScissorRects(1, &scissor);
 
 	m_graphicsCmdList->SetGraphicsRootSignature(m_tonemapRootSig.Get());
@@ -373,6 +376,14 @@ void drawFXAAPass()
 	auto* bbPost = static_cast<gfx::Dx12RenderTarget*>(swapChainPost->backBuffer());
 	if (!bbPost) return;
 
+	// 出力先が実バックバッファでない (lo-fi の低解像 RT 等) 間は適用しない —
+	// intermediate とのサイズ不一致で CopyResource が壊れるし、低解像の絵に AA は不要
+	{
+		const auto d = bbPost->nativeResource()->GetDesc();
+		if (static_cast<float>(d.Width)  != m_config.viewportWidth ||
+		    static_cast<float>(d.Height) != m_config.viewportHeight) { return; }
+	}
+
 	// ─── 1. backbuffer → COPY_SOURCE ───────────────────────────
 	D3D12_RESOURCE_BARRIER preCopy = {};
 	preCopy.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -527,6 +538,28 @@ void drawFXAAPass()
 
 	/// マテリアル光沢度
 	cb.materialShininess = material.shininess;
+
+	/// 影部の色 (トゥーン時のみ意味を持つ)
+	cb.shadowTint[0] = m_toonShadowTint.r;
+	cb.shadowTint[1] = m_toonShadowTint.g;
+	cb.shadowTint[2] = m_toonShadowTint.b;
+
+	/// 距離フォグ
+	cb.fogColor[0] = m_fogColor.r;
+	cb.fogColor[1] = m_fogColor.g;
+	cb.fogColor[2] = m_fogColor.b;
+	cb.fogColor[3] = 1.0f;
+	cb.fogParams[0] = m_fogNear;
+	cb.fogParams[1] = m_fogFar;
+	cb.fogParams[2] = m_fogOn ? 1.0f : 0.0f;
+	cb.fogParams[3] = 0.0f;
+
+	/// マテリアル由来の描画指定 (glTF の alphaMode / sampler をそのまま反映する)
+	cb.materialParams[0] = material.alphaCutoff;
+	cb.materialParams[1] = material.nearestFilter ? 1.0f : 0.0f;
+	cb.materialParams[2] =
+		(material.alphaMode == Material::AlphaMode::Mask) ? 1.0f : 0.0f;
+	cb.materialParams[3] = 0.0f;
 
 	auto a = m_uploadRing.upload(&cb, sizeof(DX12CbLighting), 256);
 	return a.valid() ? a.gpuAddr : 0;

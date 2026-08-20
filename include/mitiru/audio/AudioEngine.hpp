@@ -75,6 +75,13 @@ public:
 		(void)pitchScale; (void)fadeInSec;
 		playSound(id, volume);
 	}
+	/// @brief 効果音をループ再生する (v22)。止めるまで鳴り続ける。
+	/// @details 長押しのように長さが入力で決まる音のための入口。既定は one-shot に
+	///          落として鳴らす (対応していない実装でも無音にはならない)。
+	virtual void playSoundLoop(std::string_view id, float volume, float pitchScale, float fadeInSec)
+	{
+		playSoundEx(id, volume, pitchScale, fadeInSec);
+	}
 	virtual void stopSoundFade(std::string_view id, float fadeOutSec)
 	{
 		(void)fadeOutSec;

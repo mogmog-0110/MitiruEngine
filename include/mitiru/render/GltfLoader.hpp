@@ -109,6 +109,19 @@ namespace detail
 	return {buf[0], buf[1]};
 }
 
+/// @brief cgltf アクセサから頂点カラーを読み取る (COLOR_0)。
+/// @details VEC3 / VEC4 のどちらでも受ける。正規化 ubyte / ushort は cgltf が 0-1 へ直す。
+///          成分が 3 つのときの alpha は 1。
+[[nodiscard]] inline sgc::Colorf readColor(const cgltf_accessor* accessor, cgltf_size index)
+{
+	float buf[4] = {1, 1, 1, 1};
+	if (accessor && index < accessor->count)
+	{
+		cgltf_accessor_read_float(accessor, index, buf, 4);
+	}
+	return {buf[0], buf[1], buf[2], buf[3]};
+}
+
 /// @brief アクセサから 16 float (列優先) を読み、row-major sgc::Mat4f に転置して返す (#23a)。
 /// @details glTF の行列は列優先で格納される。sgc::Mat4f は行優先 (m[row][col]) なので転置する。
 [[nodiscard]] inline sgc::Mat4f readMat4ColumnMajor(const cgltf_accessor* accessor, cgltf_size index)
@@ -172,11 +185,12 @@ namespace detail
 	const cgltf_accessor* uvAccessor = nullptr;
 	const cgltf_accessor* jointsAccessor = nullptr;   ///< JOINTS_0 (#23a)
 	const cgltf_accessor* weightsAccessor = nullptr;  ///< WEIGHTS_0 (#23a)
+	const cgltf_accessor* colorAccessor = nullptr;    ///< COLOR_0 (頂点に焼いた陰影)
 
 	for (cgltf_size i = 0; i < prim.attributes_count; ++i)
 	{
 		const auto& attr = prim.attributes[i];
-		/// JOINTS_0 / WEIGHTS_0 は index 0 のみ採用 (4 ボーン束縛、glTF 標準)。
+		/// JOINTS_0 / WEIGHTS_0 / COLOR_0 は index 0 のみ採用 (glTF 標準)。
 		switch (attr.type)
 		{
 		case cgltf_attribute_type_position: posAccessor = attr.data; break;
@@ -187,6 +201,9 @@ namespace detail
 			break;
 		case cgltf_attribute_type_weights:
 			if (attr.index == 0) { weightsAccessor = attr.data; }
+			break;
+		case cgltf_attribute_type_color:
+			if (attr.index == 0) { colorAccessor = attr.data; }
 			break;
 		default: break;
 		}
@@ -207,7 +224,8 @@ namespace detail
 		v.position = readVec3(posAccessor, i);
 		v.normal = normAccessor ? readVec3(normAccessor, i) : sgc::Vec3f{0, 0, 0};
 		v.texCoord = uvAccessor ? readVec2(uvAccessor, i) : sgc::Vec2f{0, 0};
-		v.color = sgc::Colorf{1, 1, 1, 1};
+		/// COLOR_0 は基本色へ乗算される (glTF 仕様)。VEC3 なら alpha は 1。
+		v.color = colorAccessor ? readColor(colorAccessor, i) : sgc::Colorf{1, 1, 1, 1};
 	}
 
 	/// スキン束縛 (JOINTS_0 / WEIGHTS_0) を読み取る (#23a)。両方揃っている時のみ。
@@ -365,7 +383,46 @@ namespace detail
 				const auto* img = pbr.base_color_texture.texture->image;
 				gmat.baseColorTexturePath = img->uri ? img->uri : "";
 				gmat.baseColorTexture = detail::decodeEmbeddedImage(img);   // #17: 埋め込みを decode
+
+				/// 拡大フィルタの指定を拾う。ドット絵の資産は NEAREST を宣言してくる。
+				constexpr cgltf_int kGlNearest = 9728;
+				const auto* smp = pbr.base_color_texture.texture->sampler;
+				gmat.nearestFilter = (smp != nullptr && smp->mag_filter == kGlNearest);
 			}
+		}
+
+		/// 不透明度の扱いと両面描画。既定値のまま出力される資産が多いので素直に従う。
+		switch (mat.alpha_mode)
+		{
+		case cgltf_alpha_mode_mask:  gmat.alphaMode = GltfAlphaMode::Mask;  break;
+		case cgltf_alpha_mode_blend: gmat.alphaMode = GltfAlphaMode::Blend; break;
+		default:                     gmat.alphaMode = GltfAlphaMode::Opaque; break;
+		}
+		gmat.alphaCutoff  = mat.alpha_cutoff;
+		gmat.doubleSided  = (mat.double_sided != 0);
+
+		/// 陰影なしを Emission で作った資産の受け皿。基本色テクスチャが無く emissive にだけ
+		/// 絵が貼られている場合、それを基本色として読む。基本色係数が黒なら emissive 係数へ差し替える。
+		if (gmat.baseColorTexture.rgba.empty() && mat.emissive_texture.texture != nullptr &&
+		    mat.emissive_texture.texture->image != nullptr)
+		{
+			const auto* img = mat.emissive_texture.texture->image;
+			gmat.baseColorTexturePath = img->uri ? img->uri : "";
+			gmat.baseColorTexture = detail::decodeEmbeddedImage(img);
+			const float emissive = mat.emissive_factor[0] + mat.emissive_factor[1] +
+			                       mat.emissive_factor[2];
+			const float base = std::max({gmat.baseColor.r, gmat.baseColor.g, gmat.baseColor.b});
+			if (base < 0.02f && emissive > 0.0f)
+			{
+				gmat.baseColor = {mat.emissive_factor[0], mat.emissive_factor[1],
+				                  mat.emissive_factor[2], gmat.baseColor.a};
+			}
+			/// 陰影なしの絵なので金属では扱わない (metallic の既定 1.0 は拡散色を消す)
+			gmat.metallic = 0.0f;
+			gmat.roughness = 1.0f;
+			debug::warnOnce("gltf.material.emissive_as_base." + gmat.name,
+			                "基本色テクスチャが無く emissive にだけ絵がある — 基本色として読む: " +
+			                    gmat.name);
 		}
 
 		if (mat.normal_texture.texture && mat.normal_texture.texture->image)

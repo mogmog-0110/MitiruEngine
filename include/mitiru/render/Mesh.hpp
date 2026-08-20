@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /// @file Mesh.hpp
 /// @brief 3Dメッシュデータ
@@ -271,7 +271,10 @@ public:
 			{{-hw, 0,  hh}, {0, 1, 0}, {0, 1}, sgc::Colorf::white()},
 		};
 
-		std::vector<uint32_t> idx = {0, 1, 2, 0, 2, 3};
+		// 0,1,2 / 0,2,3 だと幾何学的な表が -Y を向き、宣言した法線 (0,+1,0) と食い違う。
+		// メッシュ用パイプラインの既定は背面カリングなので、法線の側 (上) から見ると
+		// この面ごと消える -- 「plane だけ描画されない」の正体。表裏は法線に合わせる。
+		std::vector<uint32_t> idx = {0, 2, 1, 0, 3, 2};
 
 		mesh.setVertices(std::move(verts));
 		mesh.setIndices(std::move(idx));

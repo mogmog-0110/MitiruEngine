@@ -81,6 +81,16 @@ function(mitiru_add_cef_game target)
             set_target_properties(${_helper_target} PROPERTIES
                 FOLDER "cef"
                 MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+            # HELPER_SOURCE は普通このエンジンの src/cef_subprocess_main.cpp で、日本語の
+            # コメントが入っている。/utf-8 が無いと MSVC は CP932 として読み、2 バイト目が
+            # 改行を飲んで後続行が壊れる -- 出るのは「class 宣言の public が構文エラー」
+            # という、原因から最も遠い顔をしたエラーである。
+            #
+            # エンジン自身のビルドでは全体に /utf-8 が効いているので、この抜けは
+            # **外から使ったときにだけ**現れる。実際 Makina が最初に踏んだ。
+            if(MSVC)
+                target_compile_options(${_helper_target} PRIVATE /utf-8)
+            endif()
         endif()
     else()
         # Default: use engine-shipped MitiruCefHelper (already defined by engine/CMakeLists.txt).

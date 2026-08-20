@@ -13,5 +13,8 @@ add_subdirectory(mitiru_host)
 add_subdirectory(mitiru_start)
 add_subdirectory(mitiru_launcher)
 add_subdirectory(mitiru_dev_companion)
+# 1 ファイル配布: 自己展開ランチャーと、その梱包ツール。
+add_subdirectory(mitiru_selfrun)
+add_subdirectory(mitiru_selfpack)
 # ツール窓は汎用 CEF ホスト mitiru_tool_cef --page <name> に統一 (ADR 0014)。
 add_subdirectory(mitiru_tool_cef)

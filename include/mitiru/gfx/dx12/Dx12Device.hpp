@@ -212,7 +212,13 @@ public:
 		dstLoc.PlacedFootprint.Footprint.Depth = 1;
 		dstLoc.PlacedFootprint.Footprint.RowPitch = rowPitch;
 
-		tempCmdList->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
+		// 左上の要求領域だけを写す。バッファは窓より大きいことがある (リサイズ中の
+		// 作り直しを避けるため) ので、全面コピーだと footprint と食い違う。
+		D3D12_BOX srcBox = {};
+		srcBox.right = static_cast<UINT>(width);
+		srcBox.bottom = static_cast<UINT>(height);
+		srcBox.back = 1;
+		tempCmdList->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, &srcBox);
 
 		/// バリア: CopySrc → Present
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
@@ -557,6 +563,23 @@ public:
 		return m_deferredReleases.size();
 	}
 
+	/// @brief 垂直同期を設定する
+	/// @details 既定は ON。枠を掴んでいる間など「vblank を待つより今の位置に合った絵を出す方が
+	///          正しい」場面のために切り替えられるようにしてある。
+	void setVSync(bool enabled) noexcept
+	{
+		if (m_swapChain)
+		{
+			m_swapChain->setVSync(enabled);
+		}
+	}
+
+	/// @brief 現在の垂直同期状態
+	[[nodiscard]] bool isVSyncEnabled() const noexcept
+	{
+		return m_swapChain ? m_swapChain->isVSyncEnabled() : true;
+	}
+
 	/// @brief ウィンドウリサイズに対応する
 	/// @param w 新しいクライアント領域幅
 	/// @param h 新しいクライアント領域高さ
@@ -568,6 +591,9 @@ public:
 		{
 			m_swapChain->resize(w, h);
 		}
+		// 生成時にしか入っていないと、名前が「ウィンドウ幅」なのに窓を追わない値になる。
+		m_width = w;
+		m_height = h;
 	}
 
 private:

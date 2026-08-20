@@ -37,6 +37,19 @@ struct Material
 	float metallic = 0.0f;                            ///< PBR メタリック [0,1]
 	float roughness = 1.0f;                           ///< PBR ラフネス [0,1]
 
+	/// @brief 不透明度の扱い (glTF alphaMode 相当)
+	enum class AlphaMode
+	{
+		Opaque,   ///< アルファを無視して不透明で描く
+		Mask,     ///< alphaCutoff 未満の画素を捨てる (葉・柵・格子)
+		Blend,    ///< 半透明として合成する
+	};
+	AlphaMode alphaMode = AlphaMode::Opaque;          ///< 不透明度の扱い
+	float alphaCutoff = 0.5f;                         ///< Mask のしきい値
+	bool doubleSided = false;                         ///< 真なら背面カリングを切る
+	/// アルベドを最近傍で拾うか。ドット絵の資産で線形補間に溶かされるのを防ぐ。
+	bool nearestFilter = false;
+
 	/// @brief アルベド（ディフューズ）テクスチャ — 非所有ポインタ
 	/// @details 非 null の時、バックエンドはこの `Texture` を GPU にアップロードして
 	///          ピクセルシェーダーで t0 にバインドする。null なら 1x1 白テクスチャを

@@ -153,7 +153,7 @@ void decodeIdx(uint item, out uint inst, out uint ci)
 {
     uint meshCount = asuint(counts.x);
     uint m = 0;
-    [unroll] for (uint k = 1; k < 6; ++k)
+    [unroll] for (uint k = 1; k < 16; ++k)
         if (k < meshCount && item >= MeshTable[k].itemBase) { m = k; }
     MeshRec mt = MeshTable[m];
     uint rel = item - mt.itemBase;
@@ -165,12 +165,12 @@ void decodeItem(uint item, out uint inst, out uint ci, out Inst I)
     decodeIdx(item, inst, ci);
     I = Instances[inst];
 }
-// inst → メッシュ index (≤ 6 なので線形走査で十分)
+// inst → メッシュ index (≤ 16 なので線形走査で十分)
 uint meshOf(uint inst)
 {
     uint meshCount = asuint(counts.x);
     uint m = 0;
-    [unroll] for (uint k = 1; k < 6; ++k)
+    [unroll] for (uint k = 1; k < 16; ++k)
         if (k < meshCount && inst >= MeshTable[k].instBase) { m = k; }
     return m;
 }

@@ -12,8 +12,9 @@
 
 /// @brief 同時ロードできるスキンモデル数の上限
 static constexpr int kMaxSkinnedModels = 32;
-/// @brief 1 フレームに描けるスキン prim 数の上限 (pool サイズ)
-static constexpr uint32_t kMaxSkinnedDrawsPerFrame = 64;
+/// @brief 1 フレームに描けるスキン prim 数の上限 (pool サイズ)。
+///        群れ物は「数十体 × 数 prim (マテリアル数)」を消費するのでこの規模が要る
+static constexpr uint32_t kMaxSkinnedDrawsPerFrame = 256;
 /// @brief 1 スキンの joint 数上限 (超過は剛体 fallback)
 static constexpr uint32_t kMaxSkinJoints = 256;
 
@@ -178,6 +179,34 @@ void drawSkinnedModelImpl(const char* path, const sgc::Vec3f& position, float ro
                           float scale, const char* clipA, float timeA,
                           const char* clipB, float timeB, float blend01)
 {
+	constexpr float kDeg2Rad = 0.017453292519943295f;
+	drawSkinnedModelWorldImpl(path,
+	                          sgc::Mat4f::translation(position) *
+	                              sgc::Mat4f::rotationY(rotYDeg * kDeg2Rad) *
+	                              sgc::Mat4f::scaling(scale),
+	                          clipA, timeA, clipB, timeB, blend01);
+}
+
+/// @brief 3 軸回転の rigid glb 描画 (IRenderer3D::drawModelRot)。rot は drawMesh と同じ
+///        {pitch, yaw, roll} 度・Ry→Rx→Rz 順
+void drawModelRotImpl(const char* path, const sgc::Vec3f& position,
+                      const sgc::Vec3f& rotDeg, float scale)
+{
+	constexpr float kDeg2Rad = 0.017453292519943295f;
+	drawSkinnedModelWorldImpl(path,
+	                          sgc::Mat4f::translation(position) *
+	                              sgc::Mat4f::rotationY(rotDeg.y * kDeg2Rad) *
+	                              sgc::Mat4f::rotationX(rotDeg.x * kDeg2Rad) *
+	                              sgc::Mat4f::rotationZ(rotDeg.z * kDeg2Rad) *
+	                              sgc::Mat4f::scaling(scale),
+	                          "", 0.0f, nullptr, 0.0f, 0.0f);
+}
+
+/// @brief instanceWorld 指定の描画本体
+void drawSkinnedModelWorldImpl(const char* path, const sgc::Mat4f& instanceWorld,
+                               const char* clipA, float timeA,
+                               const char* clipB, float timeB, float blend01)
+{
 	if (path == nullptr) { return; }
 	const int idx = ensureSkinnedModel(path);
 	if (idx < 0) { return; }
@@ -197,11 +226,6 @@ void drawSkinnedModelImpl(const char* path, const sgc::Vec3f& position, float ro
 		                  blend01);
 	}
 	const auto world = computeWorldPose(model.nodes, pose);
-
-	constexpr float kDeg2Rad = 0.017453292519943295f;
-	const auto instanceWorld = sgc::Mat4f::translation(position) *
-	                           sgc::Mat4f::rotationY(rotYDeg * kDeg2Rad) *
-	                           sgc::Mat4f::scaling(scale);
 
 	for (const auto& prim : model.prims)
 	{

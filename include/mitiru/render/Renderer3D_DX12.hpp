@@ -45,6 +45,11 @@
 #include <mitiru/gfx/dx12/Dx12Shader.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
 #include <mitiru/render/Camera3D.hpp>
+#ifdef MITIRU_HAS_MAKINA
+#include <mitiru/render/csg/CsgBake.hpp>
+#include <mitiru/render/csg/CsgRenderPass.hpp>
+#include <mitiru/render/csg/CsgSolid.hpp>
+#endif
 #include <mitiru/render/GlmBridge.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/dx12/clod/ClodRenderer.hpp>
@@ -222,6 +227,21 @@ public:
 	              const sgc::Mat4f& worldTransform,
 	              const Material& material) override;
 
+#ifdef MITIRU_HAS_MAKINA
+	/// @brief Makina の CSG ソリッドを積む。実描画は endFrame の renderCsgPass
+	/// @details 積むだけなのは drawModel と同じ理由 — 呼ばれた時点ではまだ不透明パスの
+	///          途中で、MSAA ターゲットへ直接割り込むと以降の OIT / resolve の前提が崩れる。
+	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position, float rotYDeg,
+	               float scale, float timeSec) override
+	{
+		if (bakeManifestPath == nullptr || !(scale > 0.0f))
+		{
+			return;
+		}
+		m_csgQueue.push_back(QueuedSolid{ bakeManifestPath, position, rotYDeg, scale, timeSec });
+	}
+#endif
+
 	/// @brief .clod モデルのインスタンスを積む (clod 世界ジオメトリパス、ADR 0027)
 	/// @param path .clod への vfs パス
 	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
@@ -245,6 +265,13 @@ public:
 	{
 		drawSkinnedModelImpl(path, position, rotYDeg, scale, clipA, timeA, clipB, timeB,
 		                     blend01);
+	}
+
+	/// @brief 3 軸回転の rigid glb を forward パスで描く (ABI v26)
+	void drawModelRot(const char* path, const sgc::Vec3f& position,
+	                  const sgc::Vec3f& rotDeg, float scale) override
+	{
+		drawModelRotImpl(path, position, rotDeg, scale);
 	}
 
 	/// @brief フレーム終了処理（アウトラインパス + バリア + コマンド実行）
@@ -291,6 +318,29 @@ public:
 	[[nodiscard]] OutlineMode outlineMode() const noexcept override
 	{
 		return m_outlineMode;
+	}
+
+	/// @brief アウトラインの線幅 (px) と検出しきい値を設定する
+	void setOutlineParams(float widthPx, float threshold) noexcept override
+	{
+		m_outlineWidthPx = (widthPx < 1.0f) ? 1.0f : widthPx;
+		m_outlineThresh  = (threshold < 0.001f) ? 0.001f : threshold;
+	}
+
+	/// @brief トゥーン時の影色 (乗算係数) を設定する
+	void setToonShadowTint(const sgc::Colorf& tint) noexcept override
+	{
+		m_toonShadowTint = tint;
+	}
+
+	/// @brief 距離フォグを設定する
+	void setFog(bool enabled, const sgc::Colorf& color, float nearDist,
+	            float farDist) noexcept override
+	{
+		m_fogOn = enabled;
+		m_fogColor = color;
+		m_fogNear = nearDist;
+		m_fogFar = (farDist > nearDist + 0.01f) ? farDist : (nearDist + 0.01f);
 	}
 
 	/// @brief tonemap exposure を設定する (ENG-106)
@@ -501,6 +551,19 @@ private:
 	/// アウトラインモード
 	OutlineMode m_outlineMode = OutlineMode::DepthSobel;
 
+	/// アウトラインの線幅 (px) と検出しきい値
+	float m_outlineWidthPx = 1.0f;
+	float m_outlineThresh  = 0.30f;
+
+	/// トゥーン時の影色 (乗算係数)
+	sgc::Colorf m_toonShadowTint{0.60f, 0.64f, 0.76f, 1.0f};
+
+	/// 距離フォグ
+	sgc::Colorf m_fogColor{0.7f, 0.78f, 0.86f, 1.0f};
+	float m_fogNear = 30.0f;
+	float m_fogFar  = 90.0f;
+	bool  m_fogOn   = false;
+
 	/// 色バッファコピー用リソース（モード3,4で使用）
 	ComPtr<ID3D12Resource> m_colorCopyBuffer;
 	ComPtr<ID3D12DescriptorHeap> m_colorEdgeSRVHeap;   ///< モード3用: [色,法線,dummy]
@@ -513,6 +576,30 @@ private:
 	// 両方から異なる typed view を作れるようにする (v1 が壊れた原因の 1 つ
 	// として疑った format 強指定を回避)。
 	static constexpr UINT MSAA_SAMPLE_COUNT = 4;
+
+#ifdef MITIRU_HAS_MAKINA
+	/// 1 立体 = 1 PSO なので、シーンごとに solid + bake + pass を丸ごと持つ。
+	/// failed を覚えるのは、壊れたマニフェストを毎フレーム開き直して
+	/// 毎フレーム同じ警告を吐かないため。
+	struct CsgEntry
+	{
+		csg::CsgSolid solid;
+		csg::CsgBake bake;
+		csg::CsgRenderPass pass;
+		bool failed = false;
+	};
+	struct QueuedSolid
+	{
+		std::string manifest;
+		sgc::Vec3f position;
+		float rotYDeg;
+		float scale;
+		float timeSec;   ///< モーションの時刻 (D-15)。live でない bake は読まない
+	};
+	std::unordered_map<std::string, CsgEntry> m_csgCache;
+	std::vector<QueuedSolid> m_csgQueue;
+	void renderCsgPass();
+#endif
 	ComPtr<ID3D12Resource>       m_msaaColorBuffer;   ///< 4x MSAA color RT (ENG-106: FP16)
 	ComPtr<ID3D12DescriptorHeap> m_msaaColorRtvHeap;  ///< 上記の RTV ヒープ
 
@@ -639,10 +726,18 @@ private:
 	ComPtr<ID3D12PipelineState>    m_unlitPSO;
 	ComPtr<ID3D12PipelineState>    m_flatPSO;
 
+	/// 両面描画 (glTF doubleSided) 用。上と同じ PS でカリングだけ切った双子。
+	ComPtr<ID3D12PipelineState>    m_mainPSONoCull;
+	ComPtr<ID3D12PipelineState>    m_multiLightPSONoCull;
+	ComPtr<ID3D12PipelineState>    m_phongPSONoCull;
+	ComPtr<ID3D12PipelineState>    m_unlitPSONoCull;
+	ComPtr<ID3D12PipelineState>    m_flatPSONoCull;
+
 	/// ── 指向性シャドウマップ ──────────────────────────────
 	DirectionalShadow         m_directionalShadow;
 	dx12::Dx12ShadowMap       m_shadowMap;
 	bool                      m_shadowEnabled = false;
+	bool                      m_shadowCasterEnabled = true;  ///< 以後の描画が影を落とすか
 	bool                      m_shadowDrawnThisFrame = false;
 	ComPtr<ID3D12PipelineState> m_shadowPSO;  ///< depth-only PSO (PS なし)
 	std::optional<gfx::Dx12Shader> m_shadowVS; ///< shadow パス用 VS（メインと同じ）
@@ -658,7 +753,7 @@ private:
 	/// shader-visible SRV ヒープ。frame index で partition し、GPU が in-flight の
 	/// 前フレーム分 descriptor を読んでいる間に上書きしない。beginFrame で
 	/// cursor を自 frame partition の先頭にリセット。
-	static constexpr UINT kAlbedoSrvPerFrame = 256;  ///< 1 frame 分（2 SRV/draw → 128 draw）
+	static constexpr UINT kAlbedoSrvPerFrame = 1024;  ///< 1 frame 分（2 SRV/draw → 512 draw。群れ物は 200+ draw/frame になる）
 	ComPtr<ID3D12DescriptorHeap>                 m_albedoSrvHeap;
 	UINT                                         m_albedoSrvCapacity  = 0;  ///< 1 frame 分の実効 capacity
 	UINT                                         m_albedoSrvBase      = 0;  ///< 現 frame partition の先頭 slot
@@ -988,6 +1083,15 @@ public:
 	/// @brief シャドウマップを有効/無効にする（DX12）
 	void setShadowEnabled(bool enabled) noexcept { m_shadowEnabled = enabled; }
 
+	/// @brief 以後の描画が影を落とすかを切り替える。フレーム頭で true に戻る。
+	void setShadowCaster(bool enabled) noexcept override { m_shadowCasterEnabled = enabled; }
+
+	/// @brief 当フレームに影キャスタとして記録された描画の数
+	[[nodiscard]] std::size_t shadowCasterCount() const noexcept
+	{
+		return m_shadowCommands.size();
+	}
+
 	/// @brief シャドウマップが有効か
 	[[nodiscard]] bool isShadowEnabled() const noexcept { return m_shadowEnabled; }
 
@@ -1011,7 +1115,8 @@ public:
 
 private:
 	/// @brief 現在の (shaderMode, useMultiLight, outlineMode) に対する PSO を選ぶ
-	[[nodiscard]] ID3D12PipelineState* selectMainPSO() const noexcept;
+	/// @param doubleSided 真なら背面カリングを切った双子を返す (glTF doubleSided)
+	[[nodiscard]] ID3D12PipelineState* selectMainPSO(bool doubleSided = false) const noexcept;
 
 public:
 

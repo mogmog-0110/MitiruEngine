@@ -497,10 +497,19 @@ bool isImportableModelPath(std::string_view path) noexcept
 std::optional<std::string> ensureClodCache(const std::string& sourcePath, std::string& error)
 {
 	namespace fs = std::filesystem;
-	const fs::path src(sourcePath);
-	const fs::path cache(sourcePath + ".clod");
-
+	fs::path src(sourcePath);
 	std::error_code ec;
+	// 相対パスの解決規約は vfs::readGlobal と揃える (cwd → MITIRU_ASSET_ROOT)
+	if (src.is_relative() && !fs::exists(src, ec))
+	{
+		if (const char* root = std::getenv("MITIRU_ASSET_ROOT"); root != nullptr && root[0] != '\0')
+		{
+			const fs::path rooted = fs::path(root) / src;
+			if (fs::exists(rooted, ec)) { src = rooted; }
+		}
+	}
+	const fs::path cache(src.string() + ".clod");
+
 	if (!fs::exists(src, ec))
 	{
 		error = "モデルファイルがありません: " + sourcePath;
@@ -515,17 +524,18 @@ std::optional<std::string> ensureClodCache(const std::string& sourcePath, std::s
 	             src.filename().string().c_str(), cache.filename().string().c_str());
 
 	ImportModel model;
-	const std::string ext = lowerExt(sourcePath);
+	const std::string srcStr = src.string();
+	const std::string ext = lowerExt(srcStr);
 	const bool loaded = (ext == ".obj")
-		? loadObjModel(sourcePath, model, error)
-		: loadGltfModel(sourcePath, model, error);
+		? loadObjModel(srcStr, model, error)
+		: loadGltfModel(srcStr, model, error);
 	if (!loaded) { return std::nullopt; }
 	computeMissingNormals(model);
 
 	std::vector<uint8_t> bytes;
 	if (!buildClodBytes(model, bytes, error)) { return std::nullopt; }
 
-	const fs::path tmp(sourcePath + ".clod.tmp");
+	const fs::path tmp(srcStr + ".clod.tmp");
 	{
 		std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
 		if (!f) { error = "cache を書けません: " + tmp.string(); return std::nullopt; }

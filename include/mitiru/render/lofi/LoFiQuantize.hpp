@@ -68,4 +68,34 @@ namespace detail
 	};
 }
 
+// ── 映像出力段 (VI) 相当のフィルタ ────────────────────────────────────
+// 低ビットのフレームバッファへディザして書いた絵から、走査出力の途中で網点を解き、
+// 縁の跳ねを潰す。結果は網点の見える絵ではなく、にじんで柔らかい絵になる。
+
+/// @brief de-dither: 上位 5bit で 8 近傍と比べ、差を ±1 に丸めて足し戻す。
+/// @param center  中心画素の 1 チャンネル (0..255)
+/// @param around  8 近傍の同チャンネル (0..255)。順序は結果に影響しない
+/// @return 0..255。中心の下位 3bit は捨て、近傍との関係で埋め直す
+[[nodiscard]] inline int deDitherChannel(int center,
+                                         const std::array<int, 8>& around) noexcept
+{
+	const int c5 = center >> 3;
+	int accum = 0;
+	for (const int n : around)
+	{
+		const int d = (n >> 3) - c5;
+		accum += (d < -1) ? -1 : ((d > 1) ? 1 : d);
+	}
+	const int v = (center & 0xF8) + accum;
+	return (v < 0) ? 0 : ((v > 255) ? 255 : v);
+}
+
+/// @brief divot: 横 3 タップの中央値。中心が外れ値のときだけ値が動く。
+[[nodiscard]] inline int median3(int a, int b, int c) noexcept
+{
+	const int lo = (a < c) ? a : c;
+	const int hi = (a < c) ? c : a;
+	return (b < lo) ? lo : ((b > hi) ? hi : b);
+}
+
 } // namespace mitiru::render::lofi
