@@ -56,7 +56,7 @@
         <div class="prose">
 
           <figure>
-            <img src="assets/beko_gameplay.webp" alt="赤べこの横スクロールゲームの記録。左上の古銭カウンタ（コイン画像＋『N / 18』）が古銭を拾うたびに増え、ゴールに着くと画面中央に『クリア！』が暗転とともに出る。どちらも HTML / CSS で描いている。" loading="lazy" decoding="async">
+            <img src="assets/beko_gameplay.webp" alt="赤べこの横スクロールゲームの記録。左上の古銭カウンタ（コイン画像＋『N / 18』）が古銭を拾うたびに増え、ゴールに着くと画面中央に『クリア！』が暗転とともに出る。どちらも HTML / CSS で描いている。" loading="lazy" decoding="async" width="680" height="382">
             <figcaption>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこの記録。左上の古銭カウンタが拾うたびに増え、ゴールで中央の「クリア！」が出ます。どちらも見た目はすべて HTML / CSS（角丸・影・背景の暗転・拡大アニメ）で、C++ が値を送っているだけ。つなぎの JavaScript は書いていません。作り方はこのページの通り、まとめは <a href="#example">下の完成例</a>に。</figcaption>
           </figure>
 
@@ -225,7 +225,7 @@ hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// �
           <h2 id="example">完成例</h2>
           <p>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこが使っている <code>assets/scene.html</code>。左上の古銭カウンタと、ゴール時の「クリア！」を、これだけで作っています。<strong>手書きの JavaScript は 1 行もありません</strong>。C++ が <code>view.coins</code> / <code>view.total</code> / <code>view.cleared</code> を送り、<code>data-m-*</code> が受けるだけ。見た目は普通の CSS。</p>
           <figure>
-            <img src="assets/ui_beko_hud.png" alt="赤べこのゲーム画面。左上に古銭カウンタの丸いピル（コイン画像＋『12 / 18』）、画面中央に暗転を背にした『クリア！』の大きな文字。どちらも下の scene.html と hud.set が作っている" loading="lazy">
+            <img src="assets/ui_beko_hud.png" alt="赤べこのゲーム画面。左上に古銭カウンタの丸いピル（コイン画像＋『12 / 18』）、画面中央に暗転を背にした『クリア！』の大きな文字。どちらも下の scene.html と hud.set が作っている" loading="lazy" width="1280" height="720">
             <figcaption>下のコードが実際に作る画面。左上の古銭カウンタ（<code>data-m-text</code>）も、中央の「クリア！」（<code>data-m-class</code> で暗転＋拡大）も、この <code>scene.html</code> と CSS だけ。C++ は値を送っているだけです。</figcaption>
           </figure>
 <pre><span class="c">&lt;!-- assets/scene.html --&gt;</span>

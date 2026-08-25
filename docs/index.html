@@ -44,7 +44,7 @@
       <section class="hero">
         <div class="wrap hero-grid">
           <div class="hero-copy">
-            <img class="hero-logo" src="assets/logo.png" alt="MitiruEngine" width="340">
+            <img class="hero-logo" src="assets/logo.png" alt="MitiruEngine" width="2400" height="447">
             <h1><span class="hl">ちょうどいい</span>、C++ ゲームエンジン。</h1>
             <p class="lede">ルールは C++、画面は HTML / CSS。音や画像、AI を使ったゲームやアプリを、小さなコードで楽しく作れる軽量なゲームエンジンです。2D が主役、最小限の 3D も。</p>
             <div class="cta">
@@ -108,7 +108,7 @@
     }
 };
 <span class="t">MITIRU_GAME</span>(MyGame)</pre>
-            <figure class="shot"><img src="assets/examples/welcome.png" alt="同梱サンプル「ようこそ画面」の実行画面。額装した浮世絵、大きな題字、HTML/CSS のパネル、歩く赤べこ" loading="lazy"><figcaption>同梱サンプルのひとつ。絵・文字・図形と、HTML/CSS のパネルを 1 画面に。</figcaption></figure>
+            <figure class="shot"><img src="assets/examples/welcome.png" alt="同梱サンプル「ようこそ画面」の実行画面。額装した浮世絵、大きな題字、HTML/CSS のパネル、歩く赤べこ" loading="lazy" width="1280" height="720"><figcaption>同梱サンプルのひとつ。絵・文字・図形と、HTML/CSS のパネルを 1 画面に。</figcaption></figure>
           </div>
 <pre style="margin-top:1.1rem;"><span class="c"># 作って、動かす</span>
 mitiru new my-game
@@ -123,21 +123,21 @@ mitiru run</pre>
           <h2 class="simple-h2" id="samples">サンプル</h2>
           <p style="color:var(--ink-mute);margin-top:.4rem;">機能をひとつずつ見せる、同梱のサンプル集です。どれも実行画面をそのまま撮ったもので、<a href="samples.html">サンプル集</a>にコード全文を載せています。</p>
           <div class="gallery">
-            <a class="gcard" href="samples.html#welcome"><img src="assets/examples/welcome.png" alt="ようこそ画面のサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>ようこそ画面</b><span class="en">welcome</span></div><p class="gc-desc">絵・文字・図形・動きをまとめて。額装した浮世絵と歩く赤べこ。</p></div></a>
-            <a class="gcard" href="samples.html#shapes"><img src="assets/examples/shapes.png" alt="図形のサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>図形</b><span class="en">shapes</span></div><p class="gc-desc">四角・円・線・グラデ・多角形。描ける図形のカタログ。</p></div></a>
-            <a class="gcard" href="samples.html#text"><img src="assets/examples/text.png" alt="文字のサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>文字</b><span class="en">text</span></div><p class="gc-desc">枠内の整列、折り返し、はみ出しの省略。文字を崩さず出す。</p></div></a>
-            <a class="gcard" href="samples.html#input"><img src="assets/examples/input.png" alt="入力のサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>入力</b><span class="en">input</span></div><p class="gc-desc">キーボード・マウス・パッドを図で。押すと光る。</p></div></a>
-            <a class="gcard" href="samples.html#motion"><img src="assets/examples/motion.png" alt="動きのサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>動き</b><span class="en">motion</span></div><p class="gc-desc">イージングの緩急を格子で。位置・大きさ・回転・透明度。</p></div></a>
-            <a class="gcard" href="samples.html#sprites"><img src="assets/examples/sprites.png" alt="スプライトのサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>スプライト</b><span class="en">sprites</span></div><p class="gc-desc">赤べこの拡大・回転・反転・半透明と、歩くアニメ。</p></div></a>
-            <a class="gcard" href="samples.html#camera"><img src="assets/examples/camera.png" alt="カメラのサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>カメラ</b><span class="en">camera</span></div><p class="gc-desc">画面より広い牧場を、先読みしながら追ってスクロール。</p></div></a>
-            <a class="gcard" href="samples.html#audio"><img src="assets/examples/audio.png" alt="音のサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>音</b><span class="en">audio</span></div><p class="gc-desc">効果音を色つきリングで、BGM を回るディスクで視覚化。</p></div></a>
-            <a class="gcard" href="samples.html#html_hud"><img src="assets/examples/html_hud.png" alt="HTML HUD のサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>HTML の HUD</b><span class="en">html_hud</span></div><p class="gc-desc">C++ のひとつの値を、6 つの HTML 表示へ同時に。JavaScript ゼロ。</p></div></a>
-            <a class="gcard" href="samples.html#html_menu"><img src="assets/examples/html_menu.png" alt="HTML メニューのサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>HTML のメニュー</b><span class="en">html_menu</span></div><p class="gc-desc">HTML パネルを触ると C++ の図形が変わる。こちらも JavaScript ゼロ。</p></div></a>
-            <a class="gcard" href="samples.html#observe"><img src="assets/examples/observe.png" alt="観察のサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>観察</b><span class="en">observe</span></div><p class="gc-desc">走らせたまま、赤べこの内部の状態（空腹・気分）を覗く。</p></div></a>
-            <a class="gcard" href="samples.html#rewind"><img src="assets/examples/rewind.png" alt="巻き戻しのサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>巻き戻し</b><span class="en">rewind</span></div><p class="gc-desc">積んだブロックを、数秒前の状態へまるごと戻す。</p></div></a>
-            <a class="gcard" href="samples.html#restart_save"><img src="assets/examples/restart_save.png" alt="セーブのサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>セーブ</b><span class="en">restart_save</span></div><p class="gc-desc">お絵かきをセーブ・ロード、もどす・やりなおす、さいしょから。</p></div></a>
-            <a class="gcard" href="samples.html#scene3d"><img src="assets/examples/scene3d.png" alt="3D シーンのサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>3D シーン</b><span class="en">scene3d</span></div><p class="gc-desc">GPU 3D。影・アンチエイリアス・半透明・skybox。</p></div></a>
-            <a class="gcard" href="samples.html#model3d"><img src="assets/examples/model3d.png" alt="3D モデルのサンプル" loading="lazy"><div class="gc-body"><div class="gc-name"><b>3D モデル</b><span class="en">model3d</span></div><p class="gc-desc">26 万ポリの宮殿を一人称で歩く。マウス視線 + WASD。</p></div></a>
+            <a class="gcard" href="samples.html#welcome"><img src="assets/examples/welcome.png" alt="ようこそ画面のサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>ようこそ画面</b><span class="en">welcome</span></div><p class="gc-desc">絵・文字・図形・動きをまとめて。額装した浮世絵と歩く赤べこ。</p></div></a>
+            <a class="gcard" href="samples.html#shapes"><img src="assets/examples/shapes.png" alt="図形のサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>図形</b><span class="en">shapes</span></div><p class="gc-desc">四角・円・線・グラデ・多角形。描ける図形のカタログ。</p></div></a>
+            <a class="gcard" href="samples.html#text"><img src="assets/examples/text.png" alt="文字のサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>文字</b><span class="en">text</span></div><p class="gc-desc">枠内の整列、折り返し、はみ出しの省略。文字を崩さず出す。</p></div></a>
+            <a class="gcard" href="samples.html#input"><img src="assets/examples/input.png" alt="入力のサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>入力</b><span class="en">input</span></div><p class="gc-desc">キーボード・マウス・パッドを図で。押すと光る。</p></div></a>
+            <a class="gcard" href="samples.html#motion"><img src="assets/examples/motion.png" alt="動きのサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>動き</b><span class="en">motion</span></div><p class="gc-desc">イージングの緩急を格子で。位置・大きさ・回転・透明度。</p></div></a>
+            <a class="gcard" href="samples.html#sprites"><img src="assets/examples/sprites.png" alt="スプライトのサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>スプライト</b><span class="en">sprites</span></div><p class="gc-desc">赤べこの拡大・回転・反転・半透明と、歩くアニメ。</p></div></a>
+            <a class="gcard" href="samples.html#camera"><img src="assets/examples/camera.png" alt="カメラのサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>カメラ</b><span class="en">camera</span></div><p class="gc-desc">画面より広い牧場を、先読みしながら追ってスクロール。</p></div></a>
+            <a class="gcard" href="samples.html#audio"><img src="assets/examples/audio.png" alt="音のサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>音</b><span class="en">audio</span></div><p class="gc-desc">効果音を色つきリングで、BGM を回るディスクで視覚化。</p></div></a>
+            <a class="gcard" href="samples.html#html_hud"><img src="assets/examples/html_hud.png" alt="HTML HUD のサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>HTML の HUD</b><span class="en">html_hud</span></div><p class="gc-desc">C++ のひとつの値を、6 つの HTML 表示へ同時に。JavaScript ゼロ。</p></div></a>
+            <a class="gcard" href="samples.html#html_menu"><img src="assets/examples/html_menu.png" alt="HTML メニューのサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>HTML のメニュー</b><span class="en">html_menu</span></div><p class="gc-desc">HTML パネルを触ると C++ の図形が変わる。こちらも JavaScript ゼロ。</p></div></a>
+            <a class="gcard" href="samples.html#observe"><img src="assets/examples/observe.png" alt="観察のサンプル" loading="lazy" width="1666" height="720"><div class="gc-body"><div class="gc-name"><b>観察</b><span class="en">observe</span></div><p class="gc-desc">走らせたまま、赤べこの内部の状態（空腹・気分）を覗く。</p></div></a>
+            <a class="gcard" href="samples.html#rewind"><img src="assets/examples/rewind.png" alt="巻き戻しのサンプル" loading="lazy" width="1296" height="829"><div class="gc-body"><div class="gc-name"><b>巻き戻し</b><span class="en">rewind</span></div><p class="gc-desc">積んだブロックを、数秒前の状態へまるごと戻す。</p></div></a>
+            <a class="gcard" href="samples.html#restart_save"><img src="assets/examples/restart_save.png" alt="セーブのサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>セーブ</b><span class="en">restart_save</span></div><p class="gc-desc">お絵かきをセーブ・ロード、もどす・やりなおす、さいしょから。</p></div></a>
+            <a class="gcard" href="samples.html#scene3d"><img src="assets/examples/scene3d.png" alt="3D シーンのサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>3D シーン</b><span class="en">scene3d</span></div><p class="gc-desc">GPU 3D。影・アンチエイリアス・半透明・skybox。</p></div></a>
+            <a class="gcard" href="samples.html#model3d"><img src="assets/examples/model3d.png" alt="3D モデルのサンプル" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>3D モデル</b><span class="en">model3d</span></div><p class="gc-desc">26 万ポリの宮殿を一人称で歩く。マウス視線 + WASD。</p></div></a>
           </div>
         </div>
       </section>

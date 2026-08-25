@@ -90,10 +90,10 @@
             <!-- ── ② 図形 ─────────────────────────────── -->
             <h2 id="shapes">② 図形を描く</h2>
             <p>いちばんよく使う図形は、座標を直接渡すだけで描けます（初心者向けの簡単版）。下は実際の描画結果です。</p>
-            <figure><img src="assets/feat_shapes.png" alt="四角・角丸四角・円・リング・三角・線を並べた描画結果" loading="lazy"><figcaption>四角 / 角丸 / 円 / リング / 三角 / 線</figcaption></figure>
-            <figure><img src="assets/feat_gradient.png" alt="縦・横・4隅のグラデーション矩形" loading="lazy"><figcaption>グラデ（縦・横・4 隅）</figcaption></figure>
-            <figure><img src="assets/feat_pattern.png" alt="市松・横ストライプ・ドットのパターン塗り" loading="lazy"><figcaption>パターン（市松 / 縞 / ドット）</figcaption></figure>
-            <figure><img src="assets/feat_arc.png" alt="扇形と円弧" loading="lazy"><figcaption>扇形 / 円弧</figcaption></figure>
+            <figure><img src="assets/feat_shapes.png" alt="四角・角丸四角・円・リング・三角・線を並べた描画結果" loading="lazy" width="540" height="200"><figcaption>四角 / 角丸 / 円 / リング / 三角 / 線</figcaption></figure>
+            <figure><img src="assets/feat_gradient.png" alt="縦・横・4隅のグラデーション矩形" loading="lazy" width="540" height="200"><figcaption>グラデ（縦・横・4 隅）</figcaption></figure>
+            <figure><img src="assets/feat_pattern.png" alt="市松・横ストライプ・ドットのパターン塗り" loading="lazy" width="540" height="200"><figcaption>パターン（市松 / 縞 / ドット）</figcaption></figure>
+            <figure><img src="assets/feat_arc.png" alt="扇形と円弧" loading="lazy" width="540" height="200"><figcaption>扇形 / 円弧</figcaption></figure>
 <pre><span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
     s.fillScreen(hex(0x14182A));                       <span class="c">// 背景をひと色で塗る</span>
     s.drawRect(40, 40, 120, 80, color::Red);           <span class="c">// (x, y) 左上から w×h の四角</span>
@@ -134,7 +134,7 @@ color::Blue   color::Yellow color::Orange color::Cyan   color::Clear  <span clas
             <!-- ── ④ 文字 ─────────────────────────────── -->
             <h2 id="text">④ 文字を描く</h2>
             <p>いちばん簡単なのは <code>s.text(...)</code>。枠に収めて整列したいときは <code>drawTextInRect</code> を使います（はみ出しは自動で <code>…</code> に省略され、レイアウトが崩れません）。</p>
-            <figure><img src="assets/feat_text.png" alt="通常テキスト・アウトライン付き・影付きの描画結果" loading="lazy"><figcaption>上から <code>s.text</code> / <code>drawTextOutlined</code>（縁取り）/ <code>drawTextWithShadow</code>（影）の実描画。</figcaption></figure>
+            <figure><img src="assets/feat_text.png" alt="通常テキスト・アウトライン付き・影付きの描画結果" loading="lazy" width="540" height="200"><figcaption>上から <code>s.text</code> / <code>drawTextOutlined</code>（縁取り）/ <code>drawTextWithShadow</code>（影）の実描画。</figcaption></figure>
 <pre>s.text(<span class="c">/* str */</span> <span class="s">"SCORE "</span> + std::to_string(score), 24, 20, color::White, 24);  <span class="c">// (文字, x, y, 色, 大きさ)</span>
 
 <span class="c">// 枠 {x,y,w,h} の中で中央寄せ。alignH / alignV で位置を選ぶ。</span>
@@ -165,7 +165,7 @@ atlas = <span class="s">"japanese"</span>   <span class="c"># latin = 英数の�
             <!-- ── ⑤ 変換 ─────────────────────────────── -->
             <h2 id="transform">⑤ 移動・回転・拡大</h2>
             <p>一時的に座標系をずらす／回す／拡大すると、同じ描画コードを使い回せます。<code>push…</code> と <code>popTransform()</code> は必ずペアで。</p>
-            <figure><img src="assets/feat_rotation.png" alt="同じ四角を角度を変えて重ねた回転の描画結果" loading="lazy"><figcaption>同じ四角を <code>drawRectRotated</code> で少しずつ回して重ねたもの（<code>pushRotation</code> でも同じ）。</figcaption></figure>
+            <figure><img src="assets/feat_rotation.png" alt="同じ四角を角度を変えて重ねた回転の描画結果" loading="lazy" width="540" height="200"><figcaption>同じ四角を <code>drawRectRotated</code> で少しずつ回して重ねたもの（<code>pushRotation</code> でも同じ）。</figcaption></figure>
 <pre>s.pushTransform(camX, camY);          <span class="c">// 平行移動（カメラのスクロールに）</span>
 drawWorld(s);                         <span class="c">// この中の描画はすべて camX,camY ずれる</span>
 s.popTransform();
@@ -187,7 +187,7 @@ s.drawGroup({px, py}, spinDeg, [&amp;](<span class="t">Screen</span>&amp; g) {
 <pre>s.sprite(<span class="s">"hero"</span>, x, y);          <span class="c">// これだけ。読み込み・キャッシュはエンジンがやる</span>
 s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);    <span class="c">// 2 倍サイズ</span></pre>
             <p>音の <code>hud.play("hit")</code> と同じ「ファイルを置いて id で呼ぶ」規約です。ファイルが無ければ初回に 1 行だけ警告が出ます。<strong>PNG を上書き保存すると実行中のゲームに約 0.5 秒で反映されます</strong>（絵を描きながら結果を確認できます）。細かい制御（回転・切り出し・ティント）が要るときは <code>Texture</code> を自分で持ちます。読み込みは重いので <code>init()</code> で 1 回だけ。<code>draw()</code> の中で毎フレーム読み込まないこと。</p>
-            <figure><img src="assets/feat_sprite.png" alt="スプライト・ティント・スプライトシート切り出し・drawPixelGrid の実行画面" loading="lazy"><figcaption>実際に動かした GPU 描画。左から <code>drawSprite</code>（テクスチャ）/ ティント乗算 / スプライトシートの 1 コマ切り出し / <code>drawPixelGrid</code>（手続き生成ピクセル）。</figcaption></figure>
+            <figure><img src="assets/feat_sprite.png" alt="スプライト・ティント・スプライトシート切り出し・drawPixelGrid の実行画面" loading="lazy" width="1060" height="272"><figcaption>実際に動かした GPU 描画。左から <code>drawSprite</code>（テクスチャ）/ ティント乗算 / スプライトシートの 1 コマ切り出し / <code>drawPixelGrid</code>（手続き生成ピクセル）。</figcaption></figure>
 <pre><span class="k">#include</span> &lt;mitiru/render/Texture.hpp&gt;
 
 <span class="k">struct</span> <span class="t">MyGame</span> {
@@ -388,7 +388,7 @@ hud.stopMusic(0.5f);             <span class="c">// BGM を止める（0.5 秒�
             <p>リズムゲームの判定は、フレームの <code>dt</code> 積算ではなく音声側のクロック <code>in.audioTime()</code>（秒）に合わせます。契約は 2 つ。<strong>0 のあいだは「未準備」</strong>（起動直後の数フレームや音声デバイス無し。その間は <code>dt</code> 積算で代用する）、一度非ゼロになったら単調非減少（巻き戻らないことをエンジンが保証。録画再生でも同じ値が再現されます）。</p>
 <pre><span class="k">double</span> t = in.audioTime();   <span class="c">// 0 = 未準備 → dt 積算でしのぐ。非ゼロ後は巻き戻らない</span>
 <span class="k">if</span> (t > 0) { judgeNote(t); }</pre>
-            <div class="winrow"><figure><img src="assets/tool-mixer.png" alt="mixer ツールウィンドウ。マスター音量フェーダーと再生中チャンネルの VU メーター" loading="lazy"><figcaption><code>mixer</code> 窓：マスター音量と再生中チャンネルの VU。</figcaption></figure></div>
+            <div class="winrow"><figure><img src="assets/tool-mixer.png" alt="mixer ツールウィンドウ。マスター音量フェーダーと再生中チャンネルの VU メーター" loading="lazy" width="416" height="659"><figcaption><code>mixer</code> 窓：マスター音量と再生中チャンネルの VU。</figcaption></figure></div>
 
             <!-- ── ⑫ 演出 ─────────────────────────────── -->
             <h2 id="juice">⑫ 手応えの演出</h2>
@@ -447,11 +447,11 @@ hud.set(<span class="s">"view.boss.active"</span>, <span class="k">true</span>);
             <h2 id="tools">⑭ デバッグウィンドウ</h2>
             <p>巨大なエディタは開きません。fps を見たい・状態を覗きたい。欲しい道具だけを小さな独立ウィンドウで開きます。ゲーム画面は汚れず、スクショに余計なものが映りません。どれも HTML/CSS で出来た別ウィンドウです。</p>
             <div class="winrow">
-              <figure><img src="assets/tool-perf.png" alt="perf 窓: fps と frame time のグラフ" loading="lazy"><figcaption><code>Perf</code>：fps / フレーム時間</figcaption></figure>
-              <figure><img src="assets/tool-inspect.png" alt="inspector 窓: 送った値の一覧" loading="lazy"><figcaption><code>Inspector</code>：観察データ一覧</figcaption></figure>
-              <figure><img src="assets/tool-timetravel.png" alt="巻き戻しウィンドウ: 過去フレームをコマ送りで行き来" loading="lazy"><figcaption><code>Rewind</code>：巻き戻し</figcaption></figure>
-              <figure><img src="assets/tool-scene.png" alt="scene tree 窓: 状態の階層ツリー" loading="lazy"><figcaption><code>SceneTree</code>：階層ツリー</figcaption></figure>
-              <figure><img src="assets/tool-mixer.png" alt="mixer 窓: 音量と VU" loading="lazy"><figcaption><code>AudioMixer</code>：音量・VU</figcaption></figure>
+              <figure><img src="assets/tool-perf.png" alt="perf 窓: fps と frame time のグラフ" loading="lazy" width="416" height="659"><figcaption><code>Perf</code>：fps / フレーム時間</figcaption></figure>
+              <figure><img src="assets/tool-inspect.png" alt="inspector 窓: 送った値の一覧" loading="lazy" width="416" height="659"><figcaption><code>Inspector</code>：観察データ一覧</figcaption></figure>
+              <figure><img src="assets/tool-timetravel.png" alt="巻き戻しウィンドウ: 過去フレームをコマ送りで行き来" loading="lazy" width="416" height="659"><figcaption><code>Rewind</code>：巻き戻し</figcaption></figure>
+              <figure><img src="assets/tool-scene.png" alt="scene tree 窓: 状態の階層ツリー" loading="lazy" width="416" height="659"><figcaption><code>SceneTree</code>：階層ツリー</figcaption></figure>
+              <figure><img src="assets/tool-mixer.png" alt="mixer 窓: 音量と VU" loading="lazy" width="416" height="659"><figcaption><code>AudioMixer</code>：音量・VU</figcaption></figure>
             </div>
 <pre>hud.open(<span class="t">Tool</span>::Perf);        <span class="c">// 開きたい所に 1 行（何度呼んでも 1 回だけ開く）</span>
 <span class="k">if</span> (over) hud.open(<span class="t">Tool</span>::Inspector);   <span class="c">// 条件付きでも OK</span></pre>

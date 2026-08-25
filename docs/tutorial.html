@@ -82,7 +82,7 @@
           <h2 id="goal">作るもの</h2>
           <p>完成形がこれです。赤べこ・小法師・幟・石畳・古銭はすべて画像（スプライト）、空は <code>draw</code> で描くグラデーションです。矢印キーで歩き、Space で跳びます。小法師は上から踏むと倒せて、横から当たると少し戻されます。古銭を拾うと左上のカウンタが増え、右端の幟に触れるとクリアです。左上のカウンタと「クリア！」は、あとで HTML/CSS の HUD に置き換えます。</p>
           <figure>
-            <img src="assets/beko_gameplay.webp" alt="赤べこの横スクロールアクションのプレイの様子。赤べこが石畳の上を歩き、古銭を拾い、起き上がり小法師の間を跳んでいく" loading="lazy" decoding="async">
+            <img src="assets/beko_gameplay.webp" alt="赤べこの横スクロールアクションのプレイの様子。赤べこが石畳の上を歩き、古銭を拾い、起き上がり小法師の間を跳んでいく" loading="lazy" decoding="async" width="680" height="382">
             <figcaption>これから作るゲーム（実機の記録）。赤べこ・小法師・幟・石畳・古銭はスプライト、空は <code>drawGradientRect</code>、左上のカウンタは HTML/CSS の HUD です。</figcaption>
           </figure>
           <div class="note">このページのゲームは <code>examples/beko_run/</code> にそのまま入っています。ビルドして <code>mitiru_host beko_run/beko_run.dll</code> で遊べます。インストールがまだなら <a href="install.html">インストール</a>を先にどうぞ。全文は<a href="#full">最後</a>に置いてあります。</div>
@@ -157,7 +157,7 @@ px += vx * dt;
 <span class="k">for</span> (<span class="k">const</span> Plat&amp; p : kPlats)
     <span class="k">if</span> (hitBox(p.x, p.y, p.w, p.h)) { <span class="c">/* 左右どちらから当たったかで押し戻す */</span> }</pre>
           <a class="samplelink" href="samples.html#input">
-            <img src="assets/examples/input.png" alt="" loading="lazy">
+            <img src="assets/examples/input.png" alt="" loading="lazy" width="1280" height="720">
             <span class="t">サンプル「input（入力）」<small>キー・マウス・パッドの読み方だけを扱う最小の例を、動くコードと実行画面で。</small></span>
             <span class="arrow">→</span>
           </a>
@@ -189,7 +189,7 @@ px += vx * dt;
 s.drawSprite(tex, dstRect, whole(tex), color::White.withAlpha(a), faceLeft);</pre>
           <p>画像そのものはエンジン側がまとめて持ちます。ゲームの状態 <code>struct</code> には画像を入れず、読み込んだ画像はファイルの外に一度だけ置いておきます。こうしておくと状態が「数値だけ」の素直なデータに保て、あとの巻き戻しや観察ウィンドウがそのまま効きます。</p>
           <a class="samplelink" href="samples.html#sprites">
-            <img src="assets/examples/sprites.png" alt="" loading="lazy">
+            <img src="assets/examples/sprites.png" alt="" loading="lazy" width="1280" height="720">
             <span class="t">サンプル「sprites」<small>画像の描画・反転・拡大縮小だけを扱う最小の例を、動くコードと実行画面で。</small></span>
             <span class="arrow">→</span>
           </a>
@@ -203,7 +203,7 @@ s.applyCamera(camX, SCR_H * 0.5f);    <span class="c">// 注視点 camX を画�
 s.endCamera();                        <span class="c">// カメラを戻す</span></pre>
           <p><code>camX</code> は赤べこの位置に合わせて動かし、世界の端では止めます。これで赤べこが画面の真ん中あたりに居続け、背景がスクロールします。</p>
           <a class="samplelink" href="samples.html#camera">
-            <img src="assets/examples/camera.png" alt="" loading="lazy">
+            <img src="assets/examples/camera.png" alt="" loading="lazy" width="1280" height="720">
             <span class="t">サンプル「camera（追従カメラ）」<small>画面より広い世界を、先読みしながらなめらかに追う例を、動くコードと実行画面で。</small></span>
             <span class="arrow">→</span>
           </a>
@@ -243,7 +243,7 @@ s.endCamera();                        <span class="c">// カメラを戻す</spa
           <p>ゲームができると、今度は手触りが気になります。跳びが低い、重力が重い、空の色が違う。こうした「何度も値を変えて確かめる」作業のために、ホットリロードがあります。<code>mitiru watch</code>（または <code>--watch</code>）で走らせておくと、ソースを保存した瞬間に、ゲームを止めずに新しいコードへ差し替わります。</p>
           <p>下は、走らせたまま（左）エディタで空の色の定数を書き換えて保存すると、（右）ゲームの空がその場で変わる様子です。ゲームは止まらず、古銭のカウントも赤べこの位置もそのままに、空の色だけが切り替わります。再起動していないので、拾った古銭は数え続けています。</p>
           <figure>
-            <img src="assets/beko_hotreload.webp" alt="左のエディタで空のグラデーションの色（定数 hex）を書き換えて保存すると、右の走っているゲームの空が青から夕焼けの橙に変わり、古銭のカウントは数え続け、赤べこも進み続ける記録" loading="lazy" decoding="async">
+            <img src="assets/beko_hotreload.webp" alt="左のエディタで空のグラデーションの色（定数 hex）を書き換えて保存すると、右の走っているゲームの空が青から夕焼けの橙に変わり、古銭のカウントは数え続け、赤べこも進み続ける記録" loading="lazy" decoding="async" width="1000" height="330">
             <figcaption>左＝エディタ / 右＝ゲーム。<code>draw</code> の空の色の定数を書き換えて保存すると、走っているゲームの空がその場で変わります。<strong>再起動していないので、古銭のカウントも位置もそのまま</strong>です。数値・色・ロジックはこうして止めずに詰められます。</figcaption>
           </figure>
           <p>書き間違えてビルドが壊れても大丈夫です。エラーが画面に出て、ゲームは前のコードのまま動き続けます。直して保存すれば元に戻るので、コンソールと往復する必要はありません。HTML と CSS の見た目も同じように、保存した瞬間に反映されます（そちらは再ビルドすら要りません）。</p>
@@ -255,12 +255,12 @@ s.endCamera();                        <span class="c">// カメラを戻す</spa
 <span class="t">MITIRU_REFLECT</span>(BekoRun, px, py, vx, vy, onGround, coins, cleared);</pre>
           <p>あとは <code>--inspect</code> を付けて起動すると、ゲームの隣に観察ウィンドウが開き、申告したフィールドがライブで並びます。</p>
           <figure>
-            <img src="assets/beko_inspect.webp" alt="左にゲーム、右に観察ウィンドウの2画面。赤べこが左右に動き跳ぶたび、右の窓の px・py・vx・vy・onGround・coins・cleared がライブで変わる実機の記録" loading="lazy" decoding="async">
+            <img src="assets/beko_inspect.webp" alt="左にゲーム、右に観察ウィンドウの2画面。赤べこが左右に動き跳ぶたび、右の窓の px・py・vx・vy・onGround・coins・cleared がライブで変わる実機の記録" loading="lazy" decoding="async" width="860" height="572">
             <figcaption>実機の記録（左＝ゲーム / 右＝観察ウィンドウ）。<code>MITIRU_REFLECT</code> で申告したフィールドが、ゲームの隣でそのまま動きます。赤べこが跳ぶと <code>vy</code> がマイナスに振れ、着地で <code>onGround</code> が <code>true</code> に戻る — 目に見えない数字が見えます。この窓自体も HTML / CSS で出来ています。</figcaption>
           </figure>
           <p>観察ウィンドウのほかにも、入力の生の値・過去への巻き戻し・fps・音量メーターなどの窓があり、どれも見たいものに合わせて選べます。大きなエディタを開く代わりに、1 つの窓は 1 つの関心事だけを映す、という作りです。</p>
           <a class="samplelink" href="samples.html#observe">
-            <img src="assets/examples/observe.png" alt="" loading="lazy">
+            <img src="assets/examples/observe.png" alt="" loading="lazy" width="1666" height="720">
             <span class="t">サンプル「observe（観察）」<small>赤べこの内部の値を観察ウィンドウで覗く例を、動くコードと実行画面でもっと詳しく。</small></span>
             <span class="arrow">→</span>
           </a>
@@ -272,12 +272,12 @@ s.endCamera();                        <span class="c">// カメラを戻す</spa
 <span class="t">MITIRU_REWIND_BUFFER</span>(600);</pre>
           <p><code>--inspect rewind</code> で起動すると、ゲームの下にシークバーが出ます。バーを過去へ動かすと、ゲームがその瞬間の状態へ<strong>まるごと戻ります</strong>。赤べこの位置も、足場も、その時のまま再現されます。</p>
           <figure>
-            <img src="assets/beko_rewind.webp" alt="左にゲーム、右に巻き戻しのシークバー。シークバーを過去へ動かすと、ゲームがその瞬間の状態へ戻り、赤べこや足場の位置がその時のまま再現される実機の記録" loading="lazy" decoding="async">
+            <img src="assets/beko_rewind.webp" alt="左にゲーム、右に巻き戻しのシークバー。シークバーを過去へ動かすと、ゲームがその瞬間の状態へ戻り、赤べこや足場の位置がその時のまま再現される実機の記録" loading="lazy" decoding="async" width="900" height="309">
             <figcaption>実機の記録（左＝ゲーム / 右＝巻き戻しのシークバー）。シークバーを動かすと、ゲームがその瞬間の状態へ戻ります。バグった瞬間まで戻して、直して、そこから試す — という直し方ができます。</figcaption>
           </figure>
           <p>観察も巻き戻しも、申告の 1 行を足すだけで効きます。これができるのは、状態を 1 個にまとめてエンジンが預かっているからです。その仕組みを次で説明します。</p>
           <a class="samplelink" href="samples.html#rewind">
-            <img src="assets/examples/rewind.png" alt="" loading="lazy">
+            <img src="assets/examples/rewind.png" alt="" loading="lazy" width="1296" height="829">
             <span class="t">サンプル「rewind（巻き戻し）」<small>積んだブロックを過去へ戻す例を、動くコードと実行画面でもっと詳しく。</small></span>
             <span class="arrow">→</span>
           </a>
@@ -329,7 +329,7 @@ s.endCamera();                        <span class="c">// カメラを戻す</spa
 &lt;div class=<span class="s">"clear"</span> data-m-class=<span class="s">"show: view.cleared &gt; 0"</span>&gt;&lt;span&gt;クリア！&lt;/span&gt;&lt;/div&gt;</pre>
           <p>あとは CSS を盛れば、影・角丸・アニメ付きの HUD になります。gameplay の左上の丸いカウンタも、クリア時のふわっと出る文字も、この CSS です。<strong>HTML と CSS もホットリロードできる</strong>ので、余白や色を走らせたまま詰められます。詳しくは <a href="ui.html">画面 (HTML / CSS)</a> にあります。</p>
           <a class="samplelink" href="samples.html#html_hud">
-            <img src="assets/examples/html_hud.png" alt="" loading="lazy">
+            <img src="assets/examples/html_hud.png" alt="" loading="lazy" width="1280" height="720">
             <span class="t">サンプル「html_hud」<small>C++ の 1 つの値を HTML の 6 つの表示へ同時に映す例を、動くコードと実行画面でもっと詳しく。</small></span>
             <span class="arrow">→</span>
           </a>
