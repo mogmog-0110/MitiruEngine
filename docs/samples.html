@@ -54,7 +54,7 @@
         <div class="prose">
 
           <h2 id="welcome">ようこそ</h2>
-          <figure><img src="assets/examples/welcome.png" alt="ようこそのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/welcome</code>）。画像・文字・図形・UI・動きを 1 画面に。</figcaption></figure>
+          <figure><img src="assets/examples/welcome.webp" alt="ようこそのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/welcome</code>）。画像・文字・図形・UI・動きを 1 画面に。</figcaption></figure>
           <p>額装した浮世絵（北斎「凱風快晴」）とロゴ、右の白いカードに触って試せる図形・スライダー・チェックボックス・ボタンを並べた 1 画面です。手前の赤べこは矢印キーで歩き（速さは右のスライダーに連動）、マウスには蛍がついてきて、UI 以外をクリックすると波紋が広がります。draw の中で部品を順に重ねて 1 画面を組み立てます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawSprite</code> / <code>drawRoundedRect</code> / <code>drawTextInRect</code> / <code>in.move</code> / <code>in.mouseDown</code> / <code>Timer::every</code></p>
           <p class="codelabel"><code>examples/welcome/welcome_dll.cpp</code>。全 455 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/welcome" target="_blank" rel="noopener">GitHub &#8599;</a></p>
@@ -2572,7 +2572,7 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 </pre>
 
           <h2 id="model3d">3D モデル</h2>
-          <figure><img src="assets/examples/model3d.png" alt="3D モデルのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/model3d</code>）。26 万ポリゴンの宮殿を一人称で歩き回る。</figcaption></figure>
+          <figure><img src="assets/examples/model3d.webp" alt="3D モデルのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/model3d</code>）。26 万ポリゴンの宮殿を一人称で歩き回る。</figcaption></figure>
           <p>普通のモデルファイル (glTF) を <code>drawModel</code> 1 行でそのまま置き、その中を一人称で歩きます。舞台は実在の標準シーン Crytek Sponza (26 万ポリゴン、glTF で同梱)。初回の起動だけ隣に変換キャッシュを作り、以後はそれを読みます。Blender 等から書き出した .gltf / .glb / .obj がそのまま使えます。マウスで見回し (カーソルは <code>hud.lockMouse</code> でロック)、WASD で歩き、Shift で走ります。詳細度 (LOD) は距離から GPU 上で自動で決まります。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawModel</code> / <code>camera3D</code> / <code>hud.lockMouse</code> / <code>in.mouseDeltaX</code> / <code>in.move</code></p>
           <p class="codelabel"><code>examples/model3d/model3d_dll.cpp</code>。全 78 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/model3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
