@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine — 3D も 2D の上にのせて</title>
+  <title>MitiruEngine：3D も 2D の上にのせて</title>
   <meta name="description" content="MitiruEngine で 3D ゲームを作る。draw(Screen&) の中で s.camera3D / s.drawMesh を呼ぶだけで、エンジンの GPU 3D レンダラーがアンチエイリアス(MSAA)付きで描く。HUD は 2D で上に重なる。状態は数値だけなので録画・巻き戻しも効く。実際に動くデモとコードを掲載。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MitiruEngine — 3D も 2D の上にのせて">
+  <meta property="og:title" content="MitiruEngine：3D も 2D の上にのせて">
   <meta property="og:description" content="draw(Screen&) の中で s.drawMesh するだけ。GPU 3D を MSAA 付きで描き、2D HUD を上に重ねる。動くデモとコードを掲載。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/3d.html">
   <meta name="twitter:card" content="summary_large_image">
@@ -21,7 +21,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
 <div class="shell">
     <aside class="sidebar"><nav>
@@ -47,7 +47,7 @@
         <div class="wrap">
           <p class="kicker">3D</p>
           <h1>3D 表示</h1>
-          <p class="lede">MitiruEngine の正面は 2D + HTML/CSS ですが、3D も出せます。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp;)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> でメッシュを置くだけ。あとはエンジンの GPU 3D レンダラーが、アンチエイリアス（MSAA）と影（シャドウマップ）付きで描きます。2D の HUD はその上に重なります。状態は「数値だけ」なので<strong>同じ入力なら同じ結果</strong>——録画も巻き戻しも、2D ゲームと同じように効きます。</p>
+          <p class="lede">MitiruEngine の正面は 2D + HTML/CSS ですが、3D も出せます。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp;)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> でメッシュを置くだけ。あとはエンジンの GPU 3D レンダラーが、アンチエイリアス（MSAA）と影（シャドウマップ）付きで描きます。2D の HUD はその上に重なります。状態は「数値だけ」なので<strong>同じ入力なら同じ結果</strong>です。録画も巻き戻しも、2D ゲームと同じように効きます。</p>
         </div>
       </section>
 
@@ -58,7 +58,7 @@
             <!-- ── 動くデモ ───────────────────────────── -->
             <figure>
               <img src="assets/hello3d.webp" alt="MitiruEngine で動く 3D デモ。足場の上に回転する立方体と追従して周回する球、奥に色とりどりのピラーが並ぶ。それぞれが足場にやわらかい影を落としている。カメラがゆっくり周回する。エッジはなめらかにアンチエイリアスされている。左上に『MitiruEngine 3D』の文字、左下に『arrow keys move the cube』のヒント。">
-              <figcaption>同梱サンプル <code>scene3d</code> をそのまま録画したものです。足場・回る立方体・追従して周回する球・奥のピラーを、エンジンの GPU 3D レンダラーが <strong>アンチエイリアス（MSAA）と影（シャドウマップ）付き</strong>で描いています。矢印キーで中央の立方体を動かせます。文字（HUD）は 2D で、3D の上に重なっています。</figcaption>
+              <figcaption>同梱サンプル <code>scene3d</code> をそのまま録画したものです。足場・回る立方体・追従して周回する球・奥のピラーを、エンジンの GPU 3D レンダラーが アンチエイリアス（MSAA）と影（シャドウマップ）付きで描いています。矢印キーで中央の立方体を動かせます。文字（HUD）は 2D で、3D の上に重なっています。</figcaption>
             </figure>
 
             <!-- ── やっていること ─────────────────────── -->
@@ -125,7 +125,7 @@
             <div class="note"><strong>状態が数値だけ → 録画も巻き戻しも効く。</strong> ゲームの状態は「時刻 <code>t</code> と立方体の位置」だけ。エンジンはこの状態（ポインタを持たない、数値だけの 1 個の struct）をまるごと保存・復元できるので、この 3D ゲームも 2D と同じくホットリロード・巻き戻し・リプレイの対象になります（→ <a href="features.html#ai">⑩ 乱数・巻き戻し・AI 連携</a>）。絵は毎フレーム同じ状態から描き直されます。</div>
 
             <!-- ── 大きなモデルを置く ─────────────────── -->
-            <h2 id="model">大きなモデルを置く — drawModel</h2>
+            <h2 id="model">大きなモデルを置く：drawModel</h2>
             <p>Blender 等から書き出したモデルファイル (.gltf / .glb / .obj) は、<code>s.drawModel</code> にそのまま渡せます。初回の起動だけ隣に変換キャッシュを作り、以後はそれを読みます。数十万ポリゴンのモデルでも、詳細度 (LOD) が距離から GPU 上で自動で決まるので軽く、切り替えの継ぎ目は見えません。</p>
 <pre><span class="c">// 26 万ポリゴンの宮殿を 1 行で。初回だけ自動で変換キャッシュを作る</span>
 s.drawModel(<span class="s">"assets/sponza/sponza.gltf"</span>, {0, 0, 0}, 0.0f, 0.01f);</pre>

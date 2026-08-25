@@ -103,7 +103,7 @@ CEF 統合済み。**ゲーム本体は C++、UI / HUD / メニューは HTML/CS
 - Unity / Unreal はネイティブ UI で Web スキル無効
 - MitiruEngine は Web 開発者の知識がそのまま使える
 
-### 軸 2: タイムトラベル inspector
+### 軸 2: 巻き戻しウィンドウ
 
 state を毎フレーム ring buffer に記録。inspector で**過去のフレームに巻き戻して観察**できる。
 
@@ -141,7 +141,7 @@ engine 内部が「機能別に小さく分解されている」ことが学習�
 - ✓ マルチモニタユーザーに革命的 (debug 画面を 2nd モニタへ追い出せる)
 - ✓ アトミックツール哲学の OS-window レベル実装
 
-engine 本体に実装済み。ツール窓の一覧と開き方: [`docs/TOOL_WINDOWS.md`](TOOL_WINDOWS.md)。
+engine 本体に実装済み。ツールウィンドウの一覧と開き方: [`docs/TOOL_WINDOWS.md`](TOOL_WINDOWS.md)。
 
 ---
 
@@ -219,6 +219,6 @@ engine 本体に実装済み。ツール窓の一覧と開き方: [`docs/TOOL_WI
 ## Reading next
 
 - 新規開発者 → `docs/READING_ORDER.md`
-- engine 全体の設計 → `docs/ARCHITECTURE.md`、ツール窓 → `docs/TOOL_WINDOWS.md`
+- engine 全体の設計 → `docs/ARCHITECTURE.md`、ツールウィンドウ → `docs/TOOL_WINDOWS.md`
 - CLI 使い方 → `docs/GETTING_STARTED.md`
 - LLM agent → `CLAUDE.md` + このファイル

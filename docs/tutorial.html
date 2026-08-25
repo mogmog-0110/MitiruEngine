@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine — はじめてのゲーム</title>
-  <meta name="description" content="C++ だけで小さな横スクロールアクション「赤べこの旅」を作る入門ノート。歩く・跳ぶの最小から始め、ステージ・絵・カメラを足してゲームにし、走らせたまま数字を直すホットリロード、状態を覗く観察窓、過去へ戻る巻き戻し、HTML/CSS の HUD へと進みます。">
+  <title>MitiruEngine：はじめてのゲーム</title>
+  <meta name="description" content="C++ だけで小さな横スクロールアクション「赤べこの旅」を作る入門ノート。歩く・跳ぶの最小から始め、ステージ・絵・カメラを足してゲームにし、走らせたまま数字を直すホットリロード、状態を覗く観察ウィンドウ、過去へ戻る巻き戻し、HTML/CSS の HUD へと進みます。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MitiruEngine — はじめてのゲーム">
-  <meta property="og:description" content="C++ だけで小さな横スクロールアクションを作る入門ノート。動く最小から、絵・カメラ・ホットリロード・観察窓・巻き戻し・HTML HUD へ。">
+  <meta property="og:title" content="MitiruEngine：はじめてのゲーム">
+  <meta property="og:description" content="C++ だけで小さな横スクロールアクションを作る入門ノート。動く最小から、絵・カメラ・ホットリロード・観察ウィンドウ・巻き戻し・HTML HUD へ。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorial.html">
   <link rel="stylesheet" href="site.css">
   <link rel="icon" href="favicon.svg">
@@ -45,7 +45,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
 
 <div class="shell">
@@ -112,7 +112,7 @@
             </svg>
             <figcaption>エンジンは毎フレーム、入力を読み <code>update</code> で状態を進め、<code>draw</code> で描きます。<code>dt</code> は 1 フレームの長さ（秒）で、<code>update(Input in, float dt)</code> の形で渡ってきます。</figcaption>
           </figure>
-          <p>ゲームの「状態」は 1 つの <code>struct</code> にまとめます。赤べこのこのゲームなら、赤べこの位置・速度・向き、敵、カメラ、古銭の数などです。数値と配列だけで持ち、ポインタや <code>std::vector</code> は持ちません（この形が、あとで出てくる巻き戻しや観察窓を支えます。理由は<a href="#why">仕組み</a>で説明します）。</p>
+          <p>ゲームの「状態」は 1 つの <code>struct</code> にまとめます。赤べこのこのゲームなら、赤べこの位置・速度・向き、敵、カメラ、古銭の数などです。数値と配列だけで持ち、ポインタや <code>std::vector</code> は持ちません（この形が、あとで出てくる巻き戻しや観察ウィンドウを支えます。理由は<a href="#why">仕組み</a>で説明します）。</p>
 
           <!-- ── 歩く・跳ぶ ───────────────────────── -->
           <h2 id="move" class="step-head">赤べこを歩かせる・跳ばせる</h2>
@@ -187,7 +187,7 @@ px += vx * dt;
 <span class="c">// 描く。最後の faceLeft で左右反転、withAlpha で被弾中の点滅</span>
 <span class="k">const</span> render::Texture&amp; tex = kBeko[step];
 s.drawSprite(tex, dstRect, whole(tex), color::White.withAlpha(a), faceLeft);</pre>
-          <p>画像そのものはエンジン側がまとめて持ちます。ゲームの状態 <code>struct</code> には画像を入れず、読み込んだ画像はファイルの外に一度だけ置いておきます。こうしておくと状態が「数値だけ」の素直なデータに保て、あとの巻き戻しや観察窓がそのまま効きます。</p>
+          <p>画像そのものはエンジン側がまとめて持ちます。ゲームの状態 <code>struct</code> には画像を入れず、読み込んだ画像はファイルの外に一度だけ置いておきます。こうしておくと状態が「数値だけ」の素直なデータに保て、あとの巻き戻しや観察ウィンドウがそのまま効きます。</p>
           <a class="samplelink" href="samples.html#sprites">
             <img src="assets/examples/sprites.png" alt="" loading="lazy">
             <span class="t">サンプル「sprites」<small>画像の描画・反転・拡大縮小だけを扱う最小の例を、動くコードと実行画面で。</small></span>
@@ -239,7 +239,7 @@ s.endCamera();                        <span class="c">// カメラを戻す</spa
           <p>ここまでで、遊べる横スクロールアクションが動いています。ここから先は、このゲームを題材に、エンジンの機能を順に見ていきます。</p>
 
           <!-- ── ホットリロード ───────────────────── -->
-          <h2 id="hotreload" class="step-head">数字を調整する — ホットリロード</h2>
+          <h2 id="hotreload" class="step-head">数字を調整する：ホットリロード</h2>
           <p>ゲームができると、今度は手触りが気になります。跳びが低い、重力が重い、空の色が違う。こうした「何度も値を変えて確かめる」作業のために、ホットリロードがあります。<code>mitiru watch</code>（または <code>--watch</code>）で走らせておくと、ソースを保存した瞬間に、ゲームを止めずに新しいコードへ差し替わります。</p>
           <p>下は、走らせたまま（左）エディタで空の色の定数を書き換えて保存すると、（右）ゲームの空がその場で変わる様子です。ゲームは止まらず、古銭のカウントも赤べこの位置もそのままに、空の色だけが切り替わります。再起動していないので、拾った古銭は数え続けています。</p>
           <figure>
@@ -248,26 +248,26 @@ s.endCamera();                        <span class="c">// カメラを戻す</spa
           </figure>
           <p>書き間違えてビルドが壊れても大丈夫です。エラーが画面に出て、ゲームは前のコードのまま動き続けます。直して保存すれば元に戻るので、コンソールと往復する必要はありません。HTML と CSS の見た目も同じように、保存した瞬間に反映されます（そちらは再ビルドすら要りません）。</p>
 
-          <!-- ── 観察窓 ───────────────────────────── -->
-          <h2 id="inspect" class="step-head">状態を覗く — 観察窓</h2>
+          <!-- ── 観察ウィンドウ ───────────────────────────── -->
+          <h2 id="inspect" class="step-head">状態を覗く：観察ウィンドウ</h2>
           <p>画面を見ても分からないことがあります。当たり判定が思ったように働かない、ある値が少しずつずれていく。数字が画面に出ていないと、原因が見えません。そんなときは、状態をそのまま映す窓を開きます。窓に出したいフィールドを <code>MITIRU_REFLECT</code> の 1 行で申告するだけです。</p>
-<pre><span class="c">// 観察窓に映す状態のフィールドを申告する</span>
+<pre><span class="c">// 観察ウィンドウに映す状態のフィールドを申告する</span>
 <span class="t">MITIRU_REFLECT</span>(BekoRun, px, py, vx, vy, onGround, coins, cleared);</pre>
-          <p>あとは <code>--inspect</code> を付けて起動すると、ゲームの隣に観察窓が開き、申告したフィールドがライブで並びます。</p>
+          <p>あとは <code>--inspect</code> を付けて起動すると、ゲームの隣に観察ウィンドウが開き、申告したフィールドがライブで並びます。</p>
           <figure>
-            <img src="assets/beko_inspect.webp" alt="左にゲーム、右に観察窓の2画面。赤べこが左右に動き跳ぶたび、右の窓の px・py・vx・vy・onGround・coins・cleared がライブで変わる実機の記録" loading="lazy" decoding="async">
-            <figcaption>実機の記録（左＝ゲーム / 右＝観察窓）。<code>MITIRU_REFLECT</code> で申告したフィールドが、ゲームの隣でそのまま動きます。赤べこが跳ぶと <code>vy</code> がマイナスに振れ、着地で <code>onGround</code> が <code>true</code> に戻る — 目に見えない数字が見えます。この窓自体も HTML / CSS で出来ています。</figcaption>
+            <img src="assets/beko_inspect.webp" alt="左にゲーム、右に観察ウィンドウの2画面。赤べこが左右に動き跳ぶたび、右の窓の px・py・vx・vy・onGround・coins・cleared がライブで変わる実機の記録" loading="lazy" decoding="async">
+            <figcaption>実機の記録（左＝ゲーム / 右＝観察ウィンドウ）。<code>MITIRU_REFLECT</code> で申告したフィールドが、ゲームの隣でそのまま動きます。赤べこが跳ぶと <code>vy</code> がマイナスに振れ、着地で <code>onGround</code> が <code>true</code> に戻る — 目に見えない数字が見えます。この窓自体も HTML / CSS で出来ています。</figcaption>
           </figure>
-          <p>観察窓のほかにも、入力の生の値・過去への巻き戻し・fps・音量メーターなどの窓があり、どれも見たいものに合わせて選べます。大きなエディタを開く代わりに、1 つの窓は 1 つの関心事だけを映す、という作りです。</p>
+          <p>観察ウィンドウのほかにも、入力の生の値・過去への巻き戻し・fps・音量メーターなどの窓があり、どれも見たいものに合わせて選べます。大きなエディタを開く代わりに、1 つの窓は 1 つの関心事だけを映す、という作りです。</p>
           <a class="samplelink" href="samples.html#observe">
             <img src="assets/examples/observe.png" alt="" loading="lazy">
-            <span class="t">サンプル「observe（観察）」<small>赤べこの内部の値を観察窓で覗く例を、動くコードと実行画面でもっと詳しく。</small></span>
+            <span class="t">サンプル「observe（観察）」<small>赤べこの内部の値を観察ウィンドウで覗く例を、動くコードと実行画面でもっと詳しく。</small></span>
             <span class="arrow">→</span>
           </a>
 
           <!-- ── 巻き戻し ─────────────────────────── -->
           <h2 id="rewind" class="step-head">時間を巻き戻す</h2>
-          <p>観察窓で「今」が見えるなら、次は「過去」です。<code>MITIRU_REWIND_BUFFER</code> を 1 行足すと、エンジンが毎フレームの状態を記録します。</p>
+          <p>観察ウィンドウで「今」が見えるなら、次は「過去」です。<code>MITIRU_REWIND_BUFFER</code> を 1 行足すと、エンジンが毎フレームの状態を記録します。</p>
 <pre><span class="c">// 巻き戻し用に、毎フレームの状態を 600 フレーム分（約 10 秒）記録する</span>
 <span class="t">MITIRU_REWIND_BUFFER</span>(600);</pre>
           <p><code>--inspect rewind</code> で起動すると、ゲームの下にシークバーが出ます。バーを過去へ動かすと、ゲームがその瞬間の状態へ<strong>まるごと戻ります</strong>。赤べこの位置も、足場も、その時のまま再現されます。</p>
@@ -302,7 +302,7 @@ s.endCamera();                        <span class="c">// カメラを戻す</spa
               <text class="lbl" x="326" y="123">巻き戻し</text>
               <text class="sub" x="326" y="139">過去のコピーへ戻す</text>
               <rect class="box" x="312" y="166" width="208" height="48" rx="3"/>
-              <text class="lbl" x="326" y="188">観察窓</text>
+              <text class="lbl" x="326" y="188">観察ウィンドウ</text>
               <text class="sub" x="326" y="204">今の値を映す</text>
             </svg>
             <figcaption>状態を 1 個の <code>struct</code> にまとめておくと、それは「まるごとコピーできる素直なデータ」になります。エンジンはこれをコピーして渡したり戻したりするだけ。だから<strong>ホットリロード・巻き戻し・観察</strong>が、同じ 1 つの仕組みから出てきます。</figcaption>
@@ -603,7 +603,7 @@ void BekoRun::draw(Screen&amp; s) const
 }</pre>
           </details>
           <details class="codefold">
-            <summary>beko_run_dll.cpp <span class="en">— DLL の入口 + 観察窓/巻き戻しの申告（16 行）</span></summary>
+            <summary>beko_run_dll.cpp <span class="en">— DLL の入口 + 観察ウィンドウ/巻き戻しの申告（16 行）</span></summary>
 <pre><span class="c">// beko_run — 赤べこの横スクロールアクション（会津のみち）。</span>
 <span class="c">//   level.hpp  … ステージのデータ（寸法・足場・敵・古銭）</span>
 <span class="c">//   sprites.hpp… 画像の読み込みと石畳の描画</span>
@@ -626,7 +626,7 @@ MITIRU_GAME(BekoRun);</pre>
           <h2 id="toolbox" class="step-head">よく使う関数（in / hud / s）</h2>
           <p>ゲームを書くとき、触るのは主に 3 つです。<code>update(Input in, Hud hud, float dt)</code> の <code>in</code> と <code>hud</code>、そして <code>draw(Screen&amp; s)</code> の <code>s</code>。よく使うものを並べておきます。一度に覚える必要はなく、要るときに見てください。</p>
 
-          <h3><code>in</code> — 入力を読む（Input）</h3>
+          <h3><code>in</code>：入力を読む（Input）</h3>
           <table class="spectable">
             <tr><td>in.move()</td><td>移動入力を 1 つに合成（矢印 / WASD / 左スティック）。<code>.x .y</code> 各 −1〜1</td></tr>
             <tr><td>in.pressed(Key::Space)</td><td>押した瞬間だけ true（ジャンプなど）。<code>in.released(...)</code> は離した瞬間</td></tr>
@@ -636,16 +636,16 @@ MITIRU_GAME(BekoRun);</pre>
             <tr><td>in.padDown(Pad::A) / leftStick()</td><td>ゲームパッド（つながっていれば自動で使えます）</td></tr>
           </table>
 
-          <h3><code>hud</code> — 送る・鳴らす・窓（Hud）</h3>
+          <h3><code>hud</code>：送る・鳴らす・窓（Hud）</h3>
           <table class="spectable">
             <tr><td>hud.set("view.coins", coins)</td><td>HTML の表示へ値を送る（<code>data-m-text</code> が受ける）</td></tr>
             <tr><td>hud.play("hit")</td><td>効果音を鳴らす（<code>hud.play("hit", 0.6f)</code> で音量指定）</td></tr>
-            <tr><td>hud.open(Tool::Inspector)</td><td>観察窓などを開く（何度呼んでも 1 回だけ開く）</td></tr>
+            <tr><td>hud.open(Tool::Inspector)</td><td>観察ウィンドウなどを開く（何度呼んでも 1 回だけ開く）</td></tr>
             <tr><td>hud.screenshot()</td><td>その瞬間の画面を画像保存</td></tr>
             <tr><td>hud.quit()</td><td>ゲームを終了する</td></tr>
           </table>
 
-          <h3><code>s</code> — 画面に描く（Screen）</h3>
+          <h3><code>s</code>：画面に描く（Screen）</h3>
           <table class="spectable">
             <tr><td>s.drawSprite(tex, dst, src)</td><td>画像を描く。<code>dst</code> に置き、<code>src</code> は画像のどこを使うか。末尾に <code>tint, flipH</code> も</td></tr>
             <tr><td>s.drawRect({x, y, w, h}, color)</td><td>四角を描く（色は <code>Color{r,g,b,a}</code> か <code>color::Red</code>）</td></tr>
@@ -684,7 +684,7 @@ MITIRU_GAME(BekoRun);</pre>
       <a href="#camera">横スクロール</a>
       <a href="#files">ファイル分け</a>
       <a href="#hotreload">ホットリロード</a>
-      <a href="#inspect">観察窓</a>
+      <a href="#inspect">観察ウィンドウ</a>
       <a href="#rewind">巻き戻し</a>
       <a href="#why">仕組み</a>
       <a href="#hud">HTML / CSS</a>

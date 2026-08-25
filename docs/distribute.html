@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine — 配布する</title>
+  <title>MitiruEngine：配布する</title>
   <meta name="description" content="MitiruEngine で作ったゲームを人に渡す方法。mitiru dist 一発で、ランタイム同梱・コンソール窓の出ない配布フォルダができます。--pack で中身を隠す、ネイティブ / CEF で配布サイズを選べます。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MitiruEngine — 配布する">
+  <meta property="og:title" content="MitiruEngine：配布する">
   <meta property="og:description" content="mitiru dist 一発で、ランタイム同梱・無コンソールの配布フォルダ。--pack で中身を隠し、ネイティブ / CEF で配布サイズを選べる。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/distribute.html">
   <meta name="twitter:card" content="summary_large_image">
@@ -21,7 +21,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
 
 <div class="shell">
@@ -96,17 +96,17 @@ data/                    <span class="c"># ランタイム一式 (移動・削�
           <p class="note"><strong>暗号化ではなく難読化</strong>です。カジュアルな覗き見を防ぐ目的で、強い秘匿が必要な用途には向きません。</p>
 
           <!-- ── §3 配布サイズ ────────────────────── -->
-          <h2 id="size">配布サイズ — HTML UI を使うかで変わる</h2>
-          <p>配布物の大きさは、HTML / CSS の UI を使うか（＝Chromium を同梱するか）で決まります。<code>mitiru.toml</code> で <code>[cef] enabled = false</code> にすると、<code>mitiru dist</code> は Chromium を丸ごと外した <strong>ネイティブ構成</strong>で組みます。</p>
+          <h2 id="size">配布サイズ：HTML UI を使うかで変わる</h2>
+          <p>配布物の大きさは、HTML / CSS の UI を使うか（＝Chromium を同梱するか）で決まります。<code>mitiru.toml</code> で <code>[cef] enabled = false</code> にすると、<code>mitiru dist</code> は Chromium を丸ごと外した ネイティブ構成で組みます。</p>
 
           <table class="spectable">
             <tr>
               <td>ネイティブ</td>
-              <td>C++ 描画のみ。<code>[cef] enabled = false</code> — 配布サイズ 約 <strong>30 MB</strong></td>
+              <td>C++ 描画のみ。<code>[cef] enabled = false</code> — 配布サイズ 約 30 MB</td>
             </tr>
             <tr>
               <td>CEF</td>
-              <td>HTML UI あり（Chromium 同梱）。既定（指定なし）— 配布サイズ 約 <strong>300 MB</strong></td>
+              <td>HTML UI あり（Chromium 同梱）。既定（指定なし）— 配布サイズ 約 300 MB</td>
             </tr>
           </table>
 

@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine — インストール</title>
+  <title>MitiruEngine：インストール</title>
   <meta name="description" content="MitiruEngine のインストール手順。Windows 10 / 11 向け。zip を展開して遊ぶ・自分のゲームを作る、容量と速さの実測値。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MitiruEngine — インストール">
+  <meta property="og:title" content="MitiruEngine：インストール">
   <meta property="og:description" content="MitiruEngine のインストール手順。Windows 10 / 11 向け。zip を展開して遊ぶ・自分のゲームを作る、容量と速さの実測値。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/install.html">
   <meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
@@ -22,7 +22,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
 
 <div class="shell">
@@ -48,7 +48,7 @@
         <div class="wrap">
           <p class="kicker">INSTALL</p>
           <h1>はじめかた / インストール</h1>
-          <p class="lede">前提は <strong>Windows 10 / 11</strong> だけ。下の手順で <code>mitiru</code> コマンドが入り、自分のゲームを作りはじめられます。触るファイルは C++ と HTML の 2 つだけ。<span style="color:var(--ink-mute)">（Linux / Mac は今後対応予定）</span></p>
+          <p class="lede">前提は Windows 10 / 11 だけ。下の手順で <code>mitiru</code> コマンドが入り、自分のゲームを作りはじめられます。触るファイルは C++ と HTML の 2 つだけ。<span style="color:var(--ink-mute)">（Linux / Mac は今後対応予定）</span></p>
         </div>
       </section>
 
@@ -59,9 +59,9 @@
           <h2 id="install">インストール手順</h2>
           <p>必要なものは 3 ステップで揃います。すでに入っている物は自動で飛ばすので、何度実行しても安全です。</p>
           <ol>
-            <li><strong>zip をダウンロードして展開</strong> ── <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">最新リリース</a> から zip を落として、好きな場所に展開します。</li>
-            <li><strong><code>installer.exe</code> を実行</strong> ── ダブルクリックすると、C++ ビルドツール（MSVC Build Tools・CMake・Windows SDK）と <code>mitiru</code> コマンドが入り、PATH に通ります。ツールを自分で管理したい人は、Build Tools を手動で入れて <code>mitiru</code> に PATH を通すだけでも構いません。</li>
-            <li><strong>プロジェクトを作って動かす</strong> ── PATH を反映させるため <strong>新しいターミナル</strong>を開いてから実行します。</li>
+            <li><strong>zip をダウンロードして展開</strong>。<a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">最新リリース</a> から zip を落として、好きな場所に展開します。</li>
+            <li><strong><code>installer.exe</code> を実行</strong>。ダブルクリックすると、C++ ビルドツール（MSVC Build Tools・CMake・Windows SDK）と <code>mitiru</code> コマンドが入り、PATH に通ります。ツールを自分で管理したい人は、Build Tools を手動で入れて <code>mitiru</code> に PATH を通すだけでも構いません。</li>
+            <li><strong>プロジェクトを作って動かす</strong>。PATH を反映させるため 新しいターミナルを開いてから実行します。</li>
           </ol>
           <figure>
             <svg class="dgm" viewBox="0 0 760 110" width="100%" style="max-width:760px" role="img" aria-label="インストールの流れ。zip を展開 → installer.exe → mitiru new → mitiru run → ゲーム窓">
@@ -87,7 +87,7 @@
 mitiru new my-game
 <span class="k">cd</span> my-game
 mitiru run</pre>
-          <p>ウィンドウが開いてゲームのひな形が動きます。<code>mitiru run</code> は<strong>ビルドして 1 回起動する</strong>コマンド。作り込み中は <code>mitiru watch</code> を使うと、<strong>コードを保存するたびに自動でビルドし直し、ゲームを止めずに反映</strong>されます（＝ホットリロード）。</p>
+          <p>ウィンドウが開いてゲームのひな形が動きます。<code>mitiru run</code> はビルドして 1 回起動するコマンド。作り込み中は <code>mitiru watch</code> を使うと、<strong>コードを保存するたびに自動でビルドし直し、ゲームを止めずに反映</strong>されます（＝ホットリロード）。</p>
           <figure>
             <img src="assets/welcome_showcase.webp" alt="mitiru new の既定テンプレートで出る画面。左に額装した北斎「凱風快晴」の赤富士・肉球ロゴ・矢印キーで歩く赤べこ・舞い落ちる桜、右に HTML / CSS の操作パネル（4 つの図形・「赤べこの速さ」スライダー・「桜を降らせる」チェック・「おすと たまる」ボタンとゲージ）" loading="lazy">
             <figcaption><code>mitiru new</code> の既定で出る画面です。額装した赤富士・ロゴ・矢印キーで歩く赤べこ・舞い落ちる桜は C++ の描画、右の操作パネル（図形・スライダー・チェック・ボタン・ゲージ）は HTML / CSS。値は HTML ↔ C++ を往復し、つなぎの JavaScript は書きません。これが出発点になります。</figcaption>
@@ -105,8 +105,8 @@ mitiru run</pre>
 
           <!-- ── 書くのは 2 ファイル ─────────────── -->
           <h2 id="two-files">書くのは、2 つのファイルだけ</h2>
-          <p>インストールが済んだら、あとはこの流れ。<code>mitiru new</code> で作られるのは <strong>2 つのファイル</strong>だけ ── <code>src/</code> の C++（ゲームのルール）と、<code>assets/</code> の HTML（画面の表示）です。</p>
-          <p class="note"><strong>はじめてゲームを作るなら</strong> ── <a href="tutorial.html">C++ だけで作る初心者ガイド</a> から始めるのがおすすめ（難しい文法なし、赤べこの横スクロールを 1 本作る）。下は要点だけの早見表。</p>
+          <p>インストールが済んだら、あとはこの流れ。<code>mitiru new</code> で作られるのは 2 つのファイルだけです。<code>src/</code> の C++（ゲームのルール）と、<code>assets/</code> の HTML（画面の表示）です。</p>
+          <p class="note"><strong>はじめてゲームを作るなら</strong>。<a href="tutorial.html">C++ だけで作る初心者ガイド</a> から始めるのがおすすめ（難しい文法なし、赤べこの横スクロールを 1 本作る）。下は要点だけの早見表。</p>
 
           <h3>ルールを C++ で書く</h3>
           <p>状態を <code>struct</code> にまとめ、<code>update</code> に毎フレームの処理を書きます。入力は <code>in.down(...)</code> で読み、画面に出したい値は <code>hud.set(...)</code> で送ります。</p>
@@ -142,7 +142,7 @@ mitiru run</pre>
 
           <!-- ── 容量と速さ（実測）─────────────────── -->
           <h2 id="size">容量と速さ（実測）</h2>
-          <p>掲載しているのは <strong>実測値</strong>です。書いたゲームは <strong>0.2 MB の DLL ひとつ</strong>になります。エンジンは header-only ── ゲーム側にコンパイルで溶け込むので、別途配る engine ライブラリはありません。成果物は、その DLL とエンジン実行環境だけです。</p>
+          <p>掲載しているのは 実測値です。書いたゲームは 0.2 MB の DLL ひとつになります。エンジンは header-only です。ゲーム側にコンパイルで溶け込むので、別途配る engine ライブラリはありません。成果物は、その DLL とエンジン実行環境だけです。</p>
 
           <div class="cards">
             <div class="card"><h3>0.2 MB<span class="en">ゲーム本体 (DLL)</span></h3><p>書いたコードはこの 1 ファイルに。エンジンは header-only でここに溶け込みます。</p></div>
@@ -156,11 +156,11 @@ mitiru run</pre>
           <table class="spectable">
             <tr>
               <td>ネイティブ<br>[cef] enabled = false</td>
-              <td>ゲーム本体（DLL）＋ 実行環境 ＋ DirectX のシェーダコンパイラ。<strong>Chromium は一切なし</strong>。約 <strong>30 MB</strong>。</td>
+              <td>ゲーム本体（DLL）＋ 実行環境 ＋ DirectX のシェーダコンパイラ。Chromium は一切なし。約 30 MB。</td>
             </tr>
             <tr>
               <td>HTML UI あり<br>（CEF）</td>
-              <td>上に加えて、HTML / CSS を描くための <strong>CEF（Chromium）</strong> 一式（<code>libcef.dll</code> だけで 211 MB）。約 <strong>305 MB</strong>。</td>
+              <td>上に加えて、HTML / CSS を描くための CEF（Chromium） 一式（<code>libcef.dll</code> だけで 211 MB）。約 305 MB。</td>
             </tr>
             <tr>
               <td>ダウンロード<br>（zip）</td>
@@ -172,7 +172,7 @@ mitiru run</pre>
             </tr>
           </table>
 
-          <p class="note"><strong>CEF って何？</strong> <strong>Chromium Embedded Framework</strong> ── Web ブラウザ Chrome の中身（Chromium）を、アプリに組み込むための技術です。MitiruEngine は、メニューや HUD を <strong>本物のブラウザエンジンで描いている</strong>から、Web の表現（CSS の影・グラデ・アニメ）がそのまま使えます。その代わり容量とメモリは「ブラウザ 1 個ぶん」かかる。<strong>だから opt-in</strong> ── HTML UI を使わなければ、まるごと外れて約 30 MB に戻ります。「Web で UI を書ける」と「軽い」を、状況で選べる、ということです。</p>
+          <p class="note"><strong>CEF って何？</strong> Chromium Embedded Framework。Web ブラウザ Chrome の中身（Chromium）を、アプリに組み込むための技術です。MitiruEngine は、メニューや HUD を <strong>本物のブラウザエンジンで描いている</strong>から、Web の表現（CSS の影・グラデ・アニメ）がそのまま使えます。その代わり容量とメモリは「ブラウザ 1 個ぶん」かかる。だから opt-in。HTML UI を使わなければ、まるごと外れて約 30 MB に戻ります。「Web で UI を書ける」と「軽い」を、状況で選べる、ということです。</p>
 
           <h3>速さ</h3>
           <ul>

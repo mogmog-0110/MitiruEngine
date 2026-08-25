@@ -8,12 +8,12 @@ perf / mixer / input) は、ゲーム本体とは **別の OS ウィンドウ** 
 
 ## 基本思想: 欲しい窓の行だけ書く
 
-- ツール窓を開く判断は **host を書く人 (`main.cpp`) が C++ で持つ**。「このデバッグ機能を
+- ツールウィンドウを開く判断は **host を書く人 (`main.cpp`) が C++ で持つ**。「このデバッグ機能を
   使いたいから、この行を書く」 → 書いた窓だけ出る。要らなければ何も書かない = 何も出ない
   (pulled UI)。
-- **ゲームのキー入力には割り当てない**。実ゲームは全キーを gameplay に使うので、ツール窓を
+- **ゲームのキー入力には割り当てない**。実ゲームは全キーを gameplay に使うので、ツールウィンドウを
   ゲーム内キーで開くとキー設計と競合する。トリガーは常にゲーム入力の外 (host コード / CLI)。
-- ツール窓は読み取り専用。動作中ゲームが push する観察データ (snapshot) を描くだけで、
+- ツールウィンドウは読み取り専用。動作中ゲームが push する観察データ (snapshot) を描くだけで、
   ゲーム側の state を書き換えたり、ゲームを freeze させたりしない。
 
 ## 開き方
@@ -31,7 +31,7 @@ hud.open(mitiru::Tool::Perf);   // Game.hpp の update() 内など
 
 // main.cpp、engine.runModule(...) の直前あたり:
 mitiru::debug::openTool(mitiru::Tool::Inspector);   // 状態 inspector
-mitiru::debug::openTool(mitiru::Tool::TimeTravel);  // 巻き戻し (タイムトラベル窓)
+mitiru::debug::openTool(mitiru::Tool::TimeTravel);  // 巻き戻しウィンドウ
 // 要らない窓は書かない。
 ```
 
@@ -44,7 +44,7 @@ mitiru::debug::openTool(mitiru::Tool::Replay, "run.mtrr");
 
 ### 参照 host の CLI から
 
-`mitiru_host` は `--inspect <name>` で起動時にツール窓を開けます (複数指定可):
+`mitiru_host` は `--inspect <name>` で起動時にツールウィンドウを開けます (複数指定可):
 
 ```
 mitiru_host game.dll --inspect inspector --inspect perf
@@ -85,9 +85,9 @@ mitiru inspect [pid]
 
 新しい exe は不要です。全窓が `tool_cef` の page なので、HTML を 1 枚足せば窓が増えます。
 
-## ツール窓 ≠ subsystem 単独起動
+## ツールウィンドウ ≠ subsystem 単独起動
 
-ツール窓 (上記) は「動作中ゲームを観察する別窓」です。これと別に、
-**subsystem 単独起動** (1 サブシステムだけを単体で走らせる) があります。これはデバッグ窓
+ツールウィンドウ (上記) は「動作中ゲームを観察する別窓」です。これと別に、
+**subsystem 単独起動** (1 サブシステムだけを単体で走らせる) があります。これはデバッグウィンドウ
 ではなく、`mitiru_subsys_*` を `mitiru audio | input | renderer | scene` (+ 決定的な
 record/playback の `mitiru replay`) で起動するものです。両者は混同しないでください。

@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine — AI エージェントと作る</title>
+  <title>MitiruEngine：AI エージェントと作る</title>
   <meta name="description" content="MitiruEngine は Claude Code や Codex などの AI エージェントとの開発を正面から支えます。実行中のゲームの画面・状態・音を読みやすい JSON で受け取れて、修正が正しいかを mitiru verify が機械的に判定。ゲームの状態をまるごとコピーできる 1 個のかたまりに置く設計から生えた、ネイティブの仕組みです。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="AI エージェントと作る — MitiruEngine">
+  <meta property="og:title" content="AI エージェントと作る：MitiruEngine">
   <meta property="og:description" content="Claude Code / Codex との開発を全面支援。画面・状態・音を JSON で読み、修正は mitiru verify が機械判定。状態をまるごとコピーできる設計から生えたネイティブの仕組み。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/ai.html">
   <meta name="twitter:card" content="summary_large_image">
@@ -21,7 +21,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
 
 <div class="shell">
@@ -59,10 +59,10 @@
           <h2 id="native">できること</h2>
           <p>多くのエンジンでは、AI にゲームの状態を見せるのに、専用の書き出しコードを足す必要があります。MitiruEngine では、ゲームの状態がもともと 1 個のかたまりにまとまっていて、それをエンジンが預かっています。だから、AI が読む・巻き戻す・別の入力で試す、といった仕組みが<strong>同じ 1 つの状態から</strong>出てきます。ゲームのコードを汚さずに、AI に見える範囲を広げられるのが要点です。</p>
           <ul>
-            <li><strong>状態を読む</strong> ── すべての値を JSON で。フレーム間で変わった分だけも取れます。</li>
-            <li><strong>画面を読む</strong> ── 画素ではなく「何を・どこに描いたか」の一覧で。</li>
-            <li><strong>巻き戻して試す</strong> ── 記録した状態へ戻し、別の入力でやり直す。</li>
-            <li><strong>修正したものを判定する</strong> ── <code>mitiru verify</code> が、ビルド・起動・観測・判定を 1 コマンドで。</li>
+            <li><strong>状態を読む</strong>。すべての値を JSON で。フレーム間で変わった分だけも取れます。</li>
+            <li><strong>画面を読む</strong>。画素ではなく「何を・どこに描いたか」の一覧で。</li>
+            <li><strong>巻き戻して試す</strong>。記録した状態へ戻し、別の入力でやり直す。</li>
+            <li><strong>修正したものを判定する</strong>。<code>mitiru verify</code> が、ビルド・起動・観測・判定を 1 コマンドで。</li>
           </ul>
 
           <!-- ── 開発の流れ ──────────────────────────── -->
@@ -93,7 +93,7 @@ mitiru run
    ...
  ],
  "screenshot":{"width":640,"height":360,"pngBase64":"..."}}</pre>
-          <p>HP バーの外枠が幅 360、中身が 284.4 ── つまり<strong>残り 79%</strong> だと、画像処理なしで読めます。縮小した PNG も同じ返事に入ります（<code>?screenshot=0</code> で省略可）。PNG には <a href="ui.html">HTML / CSS の HUD</a> も合成済みで、プレイヤーが見ている画面そのものが渡ります。</p>
+          <p>HP バーの外枠が幅 360、中身が 284.4 で、<strong>残り 79%</strong> だと、画像処理なしで読めます。縮小した PNG も同じ返事に入ります（<code>?screenshot=0</code> で省略可）。PNG には <a href="ui.html">HTML / CSS の HUD</a> も合成済みで、プレイヤーが見ている画面そのものが渡ります。</p>
           <p class="note">初回の呼び出しで記録が始まります（中身は次のフレームから）。音も同じように <code>/api/ai/audio</code> で「どの効果音 / BGM が・いつ・どの音量と高さで鳴ったか」を読めます。</p>
 
           <!-- ── 状態 ────────────────────────────── -->
@@ -102,7 +102,7 @@ mitiru run
 <pre>GET /api/ai/state            <span class="c"># {"hearts":3,"pos_x":32.0,"scene":0,...} すべての値</span>
 GET /api/ai/diff?from=0&amp;to=60 <span class="c"># 60 フレームで変わった値だけ</span>
 POST /api/ai/branch          <span class="c"># この状態から「←を 30 フレーム押したら?」を別に試す</span></pre>
-          <p>「画面では HP バーが 79% なのに、状態の hp は 83」── そういう<strong>見た目と中身のズレ</strong>が、画面と状態を突き合わせると一発で見つかります。</p>
+          <p>「画面では HP バーが 79% なのに、状態の hp は 83」。この見た目と中身のズレが、画面と状態を突き合わせると一発で見つかります。</p>
 
           <!-- ── 検証 ────────────────────────────── -->
           <h2 id="verify">検証する</h2>
@@ -122,9 +122,9 @@ mitiru verify --replay play.mtrr    <span class="c"># 録画した操作を 1 bi
 
           <!-- ── API 一覧 ────────────────────────── -->
           <h2 id="api">API 一覧</h2>
-          <p>host が開く HTTP の口の全量です。AI のループで普段使うのは上の 2 グループで、下の 2 グループはブラウザの操作盤やツール窓が使っている口です ── 同じサーバーに同居しているので、必要なら直接叩けます。</p>
+          <p>host が開く HTTP の口の全量です。AI のループで普段使うのは上の 2 グループで、下の 2 グループはブラウザの操作盤やツールウィンドウが使っている口です。同じサーバーに同居しているので、必要なら直接叩けます。</p>
 
-          <h3>観測 — 画面・状態・音を読む</h3>
+          <h3>観測：画面・状態・音を読む</h3>
           <table class="spectable">
             <tbody>
               <tr><td>GET /api/ai/frame</td><td>何をどこに描いたかの一覧（描画の種類・位置・文字の内容）＋ 縮小 PNG。初回呼び出しで記録開始</td></tr>
@@ -138,10 +138,10 @@ mitiru verify --replay play.mtrr    <span class="c"># 録画した操作を 1 bi
             </tbody>
           </table>
 
-          <h3>実行制御 — 動かす・止める・巻き戻す</h3>
+          <h3>実行制御：動かす・止める・巻き戻す</h3>
           <table class="spectable">
             <tbody>
-              <tr><td>POST /api/input/simulate</td><td>入力の注入 ── 外からゲームを操作する</td></tr>
+              <tr><td>POST /api/input/simulate</td><td>入力の注入。外からゲームを操作する</td></tr>
               <tr><td>POST /api/runtime/pause</td><td>ポーズを切り替える</td></tr>
               <tr><td>POST /api/runtime/step</td><td>1 フレームだけ進める（コマ送り）</td></tr>
               <tr><td>POST /api/runtime/timescale</td><td>倍速・スロー（<code>{"value":0.25}</code>）</td></tr>
@@ -152,11 +152,11 @@ mitiru verify --replay play.mtrr    <span class="c"># 録画した操作を 1 bi
             </tbody>
           </table>
 
-          <h3>検査 — ツール窓と同じのぞき窓</h3>
+          <h3>検査：ツールウィンドウと同じのぞきウィンドウ</h3>
           <table class="spectable">
             <tbody>
               <tr><td>GET /api/observe/schema</td><td>観測データの形（JSON Schema）</td></tr>
-              <tr><td>GET /api/observe/inspect?prefix=</td><td>観察窓の値の一覧（prefix で絞り込み）</td></tr>
+              <tr><td>GET /api/observe/inspect?prefix=</td><td>観察ウィンドウの値の一覧（prefix で絞り込み）</td></tr>
               <tr><td>GET /api/observe/inspect/at?back=N</td><td>N 個前の過去のスナップショット</td></tr>
               <tr><td>GET /api/observe/inspect/depth</td><td>記録している履歴の深さと容量</td></tr>
               <tr><td>GET /api/scene · /api/scene/tree</td><td>シーン全体 / シーンツリー</td></tr>
@@ -168,7 +168,7 @@ mitiru verify --replay play.mtrr    <span class="c"># 録画した操作を 1 bi
             </tbody>
           </table>
 
-          <h3>操作盤・シーン編集 — ブラウザの操作盤が使う口</h3>
+          <h3>操作盤・シーン編集：ブラウザの操作盤が使う口</h3>
           <table class="spectable">
             <tbody>
               <tr><td>GET /console</td><td>ブラウザの操作盤（HTML。<code>/</code> でも開く）</td></tr>

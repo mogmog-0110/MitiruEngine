@@ -212,6 +212,7 @@ pre code{ background:none; color:inherit; padding:0; font-size:inherit; border-r
 pre .c{ color:#9aa2ad; } pre .k{ color:#c8368b; } pre .s{ color:#3a9b63; } pre .t{ color:#3178b4; }
 /* サンプルの全文コード: 高さを区切って内部スクロール（ページが伸びすぎないように） */
 .codelabel{ font-size:.84rem; color:var(--ink-mute); margin:0 0 .45rem; }
+.fieldlabel{ font-weight:600; }
 pre.fullsrc{ max-height:34rem; overflow:auto; }
 .prose pre,.demo pre{ margin:0; height:100%; }
 kbd{ font-family:var(--mono); font-size:.82em; background:#fff; border:1px solid var(--line);

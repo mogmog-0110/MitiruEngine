@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine — ちょうどいい、C++ ゲームエンジン</title>
+  <title>MitiruEngine：ちょうどいい、C++ ゲームエンジン</title>
   <meta name="description" content="ちょうどいい、C++ ゲームエンジン。ルールは C++、画面は HTML / CSS。巻き戻して直せる、軽量な C++ ゲームエンジン。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MitiruEngine — ちょうどいい、C++ ゲームエンジン">
+  <meta property="og:title" content="MitiruEngine：ちょうどいい、C++ ゲームエンジン">
   <meta property="og:description" content="ルールは C++、画面は HTML / CSS。軽量な C++ ゲームエンジン。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/">
   <link rel="stylesheet" href="site.css">
@@ -20,7 +20,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub ↗</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
   <div class="shell">
     <aside class="sidebar"><nav>
@@ -56,8 +56,22 @@
           <figure class="hero-shot">
             <img src="assets/examples/scene3d.png" width="1280" height="720"
                  alt="MitiruEngine の 3D サンプル。影と半透明のついた立方体やピラーが地面に並び、やわらかい影を落とす">
-            <figcaption>同梱サンプル <code>scene3d</code> の実行画面 — GPU 3D、影とアンチエイリアス、半透明。</figcaption>
+            <figcaption>同梱サンプル <code>scene3d</code> の実行画面。GPU 3D、影とアンチエイリアス、半透明。</figcaption>
           </figure>
+        </div>
+      </section>
+
+      <!-- このエンジンで作ったゲーム -->
+      <section class="band soft">
+        <div class="wrap">
+          <h2 class="simple-h2" id="made">このエンジンで作ったゲーム</h2>
+          <p style="color:var(--ink-mute);margin-top:.4rem;">機能サンプルではなく、実際に遊べる形まで作ったものです。下は「オスカーのガーデニング」です。まいたリズムを次の小節で返すタイミングゲームで、庭はネイティブ描画、会話と結果は HTML / CSS、ゲームの全状態は 1 個の <code>struct</code> です。</p>
+          <div class="gallery">
+            <div class="gcard"><img src="assets/made/oscar_title.webp" alt="庭の柵に吊るされた木の立て札にゲームの題字が出ているタイトル演出" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>題字</b><span class="en">title</span></div><p class="gc-desc">タイトル画面を置かず、庭の立て札で題を出す。</p></div></div>
+            <div class="gcard"><img src="assets/made/oscar_play.webp" alt="右端の種袋から種がまかれ、芽が判定線のじょうろへ向かって流れてくる本編の画面" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>本編</b><span class="en">play</span></div><p class="gc-desc">まいた種が 1 小節かけて判定線へ届く。</p></div></div>
+            <div class="gcard"><img src="assets/made/oscar_bloom.webp" alt="じょうろが芽に水をかけ、水をやった順に白い花が咲きそろっていく場面" loading="lazy" width="1280" height="720"><div class="gc-body"><div class="gc-name"><b>手本</b><span class="en">demo</span></div><p class="gc-desc">拍が合うと花が咲く。結果は点数でなく本数で言う。</p></div></div>
+          </div>
+          <p style="color:var(--ink-mute);margin-top:1.1rem;">ほかに、ノベルゲーム「ハトを育てよう」、クッキング × ノベル「かえるくれーぷ」、流体シミュレーションを消し方に組み込んだ落ちものパズル「FLUID DROP」がこのエンジンで動いています（<a href="https://mogmog-0110.github.io/portfolio.html" target="_blank" rel="noopener">作品一覧</a>）。</p>
         </div>
       </section>
 

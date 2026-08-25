@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine — サンプル集</title>
+  <title>MitiruEngine：サンプル集</title>
   <meta name="description" content="MitiruEngine の同梱サンプルを、実行画面・要点のコード・かんたんな解説つきで一覧。図形・文字・入力から、音・カメラ・HTML の画面・3D まで、1 章 = 1 機能で並べています。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="サンプル集 — MitiruEngine">
+  <meta property="og:title" content="サンプル集：MitiruEngine">
   <meta property="og:description" content="同梱サンプルを実行画面・要点コード・解説つきで一覧。1 章 = 1 機能。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/samples.html">
   <link rel="stylesheet" href="site.css">
@@ -20,7 +20,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
 
 <div class="shell">
@@ -56,9 +56,9 @@
           <h2 id="welcome">ようこそ</h2>
           <figure><img src="assets/examples/welcome.png" alt="ようこそのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/welcome</code>）。画像・文字・図形・UI・動きを 1 画面に。</figcaption></figure>
           <p>額装した浮世絵（北斎「凱風快晴」）とロゴ、右の白いカードに触って試せる図形・スライダー・チェックボックス・ボタンを並べた 1 画面です。手前の赤べこは矢印キーで歩き（速さは右のスライダーに連動）、マウスには蛍がついてきて、UI 以外をクリックすると波紋が広がります。draw の中で部品を順に重ねて 1 画面を組み立てます。</p>
-          <p class="note"><strong>使う道具:</strong> <code>drawSprite</code> / <code>drawRoundedRect</code> / <code>drawTextInRect</code> / <code>in.move</code> / <code>in.mouseDown</code> / <code>Timer::every</code></p>
-          <p class="codelabel"><code>examples/welcome/welcome_dll.cpp</code> ── 全 455 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/welcome" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// welcome — MitiruEngine の第一章。1 画面で「画像・文字・図形・UI 操作・動き」をまとめて見せる歓迎デモ。</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawSprite</code> / <code>drawRoundedRect</code> / <code>drawTextInRect</code> / <code>in.move</code> / <code>in.mouseDown</code> / <code>Timer::every</code></p>
+          <p class="codelabel"><code>examples/welcome/welcome_dll.cpp</code>。全 455 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/welcome" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// welcome。MitiruEngine の第一章。1 画面で「画像・文字・図形・UI 操作・動き」をまとめて見せる歓迎デモ。</span>
 <span class="c">// 実行すると: 左に額装した赤富士 (画像) とブランドロゴ、右に触って試せる小さな機能見本 (図形の並び・</span>
 <span class="c">//             ドラッグできるスライダー・押せるボタン) を清潔に並べる。手前の赤べこは矢印キーで歩き、</span>
 <span class="c">//             マウスには蛍がついてきて、ボタン/スライダー以外をクリックすると波紋が広がる。</span>
@@ -229,7 +229,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
 		<span class="k">const</span> <span class="k">bool</span>  onButton   = inButton(mx, my);
 		<span class="k">const</span> <span class="k">bool</span>  onCheckbox = inCheckbox(mx, my);
 
-		<span class="c">// マウスを追う蛍 — 少し遅れてカーソルへ寄るので「ついてくる」ように見える。</span>
+		<span class="c">// マウスを追う蛍。少し遅れてカーソルへ寄るので「ついてくる」ように見える。</span>
 		<span class="k">const</span> <span class="k">float</span> k = std::min(1.0f, dt * 6.5f);
 		fx += (mx - fx) * k;
 		fy += (my - fy) * k;
@@ -264,7 +264,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
 		<span class="k">if</span> (clickEdge &amp;&amp; onCheckbox) { petalsOn = !petalsOn; }
 
 		<span class="c">// 波紋: クリックの瞬間にその場所へ 1 つ出す。ただしボタン/スライダー/チェックの上では</span>
-		<span class="c">//       出さない (UI 操作と波紋を重ねない — 触った所が二重に反応すると分かりにくいため)。</span>
+		<span class="c">//       出さない (UI 操作と波紋を重ねない。触った所が二重に反応すると分かりにくいため)。</span>
 		<span class="k">if</span> (clickEdge &amp;&amp; !onButton &amp;&amp; !onSlider &amp;&amp; !onCheckbox)
 		{
 			<span class="k">int</span> slot = 0;                                    <span class="c">// 一番古い (age 最大の) 枠を使い回す</span>
@@ -329,25 +329,25 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
 	{
 		<span class="k">const</span> <span class="k">float</span> b = kShapeBottom;
 
-		<span class="c">// 角丸四角 (青) — 60x60。</span>
+		<span class="c">// 角丸四角 (青)。60x60。</span>
 		s.drawRoundedRect(<span class="t">Rect</span>{kShapeCx[0] - 30.0f, b - 60.0f, 60.0f, 60.0f}, theme::kBlue, 15.0f);
 
-		<span class="c">// 円 (緑) — 直径 62。下端がそろうよう中心を b-31 に置く。</span>
+		<span class="c">// 円 (緑)。直径 62。下端がそろうよう中心を b-31 に置く。</span>
 		s.fillCircle(kShapeCx[1], b - 31.0f, 31.0f, theme::kGreen);
 
-		<span class="c">// 縦長カプセル (橙) — 幅 42・高さ 66。角丸を幅の半分にして丸い縦棒に。</span>
+		<span class="c">// 縦長カプセル (橙)。幅 42・高さ 66。角丸を幅の半分にして丸い縦棒に。</span>
 		s.drawRoundedRect(<span class="t">Rect</span>{kShapeCx[2] - 21.0f, b - 66.0f, 42.0f, 66.0f}, theme::kOrange, 21.0f);
 
-		<span class="c">// 三角形 (桃) — 頂点を上に、底辺を下端にそろえる。3 点を drawTriangle に渡す。</span>
+		<span class="c">// 三角形 (桃)。頂点を上に、底辺を下端にそろえる。3 点を drawTriangle に渡す。</span>
 		<span class="k">const</span> <span class="t">Vec2</span> apex {kShapeCx[3],         b - 58.0f};
 		<span class="k">const</span> <span class="t">Vec2</span> left {kShapeCx[3] - 33.0f, b};
 		<span class="k">const</span> <span class="t">Vec2</span> right{kShapeCx[3] + 33.0f, b};
 		s.drawTriangle(apex, left, right, theme::kPink);
 	}
 
-	<span class="c">// 右ゾーンの下地カード。前回の失敗は「同じ大きさの影を斜めにずらす」と角丸の隅に</span>
-	<span class="c">// 影が三日月形に覗くこと。根治は影を横にずらさない (真下だけ)・カードと同じ幅と角丸に</span>
-	<span class="c">// すること。すると影の角がカードの角の真下にぴったり重なり、下辺に薄い帯としてだけ見え、</span>
+	<span class="c">// 右ゾーンの下地カード。影は横にずらさず真下だけに置き、カードと同じ幅・同じ角丸にする。</span>
+	<span class="c">// 斜めにずらすと角丸の隅に影が三日月形に覗く。真下だけなら影の角がカードの角の</span>
+	<span class="c">// 真下にぴったり重なり、下辺に薄い帯としてだけ見え、</span>
 	<span class="c">// 横や上の角には決してはみ出さない。2 枚重ねて下ほど濃く滲ませる。</span>
 	<span class="k">void</span> panelCard(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
@@ -357,7 +357,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
 		<span class="c">// はみ出さない。細い帯を内側に置く前案は角丸の端が浮いて見えたので、この手つきに直す。</span>
 		s.drawRoundedRect(<span class="t">Rect</span>{kCardX, kCardY + 7.0f, kCardW, kCardH}, rgba(28, 32, 44, 12), kCardR);
 		s.drawRoundedRect(<span class="t">Rect</span>{kCardX, kCardY + 3.0f, kCardW, kCardH}, rgba(28, 32, 44, 18), kCardR);
-		<span class="c">// カード本体 (白)。枠線は付けない — 下辺の帯影だけで背景から浮かせる。</span>
+		<span class="c">// カード本体 (白)。枠線は付けない。下辺の帯影だけで背景から浮かせる。</span>
 		s.drawRoundedRect(body, kPanelFill, kCardR);
 	}
 
@@ -372,10 +372,10 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
 	<span class="c">// 2 段目: スライダー。1 行目の左にラベル・右に今の値、その下に列いっぱいの溝とハンドル。</span>
 	<span class="k">void</span> slider(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
-		<span class="c">// ラベル (左) — このスライダーが赤べこの歩く速さを決めることを示す。</span>
+		<span class="c">// ラベル (左)。このスライダーが赤べこの歩く速さを決めることを示す。</span>
 		cardLabel(s, <span class="t">Rect</span>{kColL, kSliderRowY, kColW * 0.6f, 24.0f}, <span class="s">"赤べこの速さ"</span>);
 
-		<span class="c">// 値 (右) — 溝の位置を 20〜300 の数に読み替えて、行の右端にそろえる。</span>
+		<span class="c">// 値 (右)。溝の位置を 20〜300 の数に読み替えて、行の右端にそろえる。</span>
 		<span class="k">const</span> <span class="k">int</span> speed = <span class="k">static_cast</span>&lt;<span class="k">int</span>&gt;(20.0f + sliderT * 280.0f + 0.5f);
 		<span class="k">char</span> buf[16];
 		std::snprintf(buf, sizeof(buf), <span class="s">"%d"</span>, speed);
@@ -417,7 +417,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
 		<span class="k">if</span> (petalsOn)
 		{
 			s.drawRoundedRect(box, theme::kBlue, 7.0f);            <span class="c">// 塗り (青)</span>
-			<span class="c">// 白いレ点 — 左中→底の角→右上 の 2 本の線で描く。</span>
+			<span class="c">// 白いレ点。左中→底の角→右上 の 2 本の線で描く。</span>
 			s.drawLine(<span class="t">Vec2</span>{kCheckX +  6.0f, kCheckY + 15.0f}, <span class="t">Vec2</span>{kCheckX + 12.0f, kCheckY + 21.0f},
 			           color::White, 3.0f);
 			s.drawLine(<span class="t">Vec2</span>{kCheckX + 12.0f, kCheckY + 21.0f}, <span class="t">Vec2</span>{kCheckX + 22.0f, kCheckY +  8.0f},
@@ -518,9 +518,9 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
           <h2 id="shapes">図形</h2>
           <figure><img src="assets/examples/shapes.png" alt="図形のサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/shapes</code>）。四角・円・線・グラデ・多角形。</figcaption></figure>
           <p>四角・円・線・グラデーション・破線・三角形・多角形（五角形／六角形）を、座標を渡すだけで描きます。多角形は頂点を円周上に並べて作り、<code>drawPolygon</code> にまとめて渡します。</p>
-          <p class="note"><strong>使う道具:</strong> <code>drawRect</code> / <code>drawRoundedRect</code> / <code>fillCircle</code> / <code>drawRing</code> / <code>drawGradientRect</code> / <code>dashedLine</code> / <code>drawTriangle</code> / <code>drawPolygon</code></p>
-          <p class="codelabel"><code>examples/shapes/shapes_dll.cpp</code> ── 全 113 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/shapes" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// shapes — 図形描画のカタログ。基本の図形を 4 列 x 2 段のマスに並べて見せる</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawRect</code> / <code>drawRoundedRect</code> / <code>fillCircle</code> / <code>drawRing</code> / <code>drawGradientRect</code> / <code>dashedLine</code> / <code>drawTriangle</code> / <code>drawPolygon</code></p>
+          <p class="codelabel"><code>examples/shapes/shapes_dll.cpp</code>。全 113 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/shapes" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// shapes。図形描画のカタログ。基本の図形を 4 列 x 2 段のマスに並べて見せる</span>
 <span class="c">// 実行すると: 紙白の画面に rect / circle / line / gradient / 破線 / 三角形 / 多角形 (五角形・六角形) が並ぶ</span>
 <span class="c">// 関連 API: drawRect / fillCircle / line / drawGradientRect / dashedLine / drawTriangle / drawPolygon</span>
 
@@ -638,9 +638,9 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
           <h2 id="text">文字</h2>
           <figure><img src="assets/examples/text.png" alt="文字のサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/text</code>）。整列・折り返し・はみ出しの省略。</figcaption></figure>
           <p>枠のどこに文字を置くか（左上・中央・右下）の整列、文字サイズ・色、単語での折り返し、枠に収まらない行の末尾を「…」にするはみ出し省略を、区画ごとに見せます。文字が枠からあふれない書き方の見本です。</p>
-          <p class="note"><strong>使う道具:</strong> <code>drawTextInRect</code> / <code>drawTextWrapped</code> / <code>drawTextClipped</code> / <code>text</code></p>
-          <p class="codelabel"><code>examples/text/text_dll.cpp</code> ── 全 116 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/text" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// text — 文字をあつかう主な機能を、余白をとった区画で 1 つずつ見せる</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawTextInRect</code> / <code>drawTextWrapped</code> / <code>drawTextClipped</code> / <code>text</code></p>
+          <p class="codelabel"><code>examples/text/text_dll.cpp</code>。全 116 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/text" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// text。文字をあつかう主な機能を、余白をとった区画で 1 つずつ見せる</span>
 <span class="c">// 実行すると: 上段に「枠のどこに文字を置くか」(整列) の大きな見本、</span>
 <span class="c">//             下段に 文字サイズ / 色 / 折り返し / はみ出しの省略 の見本が並ぶ</span>
 <span class="c">// 使う機能: drawTextInRect (整列) / drawTextWrapped (折り返し)</span>
@@ -761,9 +761,9 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
           <h2 id="input">入力</h2>
           <figure><img src="assets/examples/input.png" alt="入力のサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/input</code>）。キーボード・マウス・パッドの「今」。</figcaption></figure>
           <p>画面を 3 つに分け、キーボード・マウス・パッドの「今」を光らせます。押されたキーだけ青く光り、マウスは動いた跡を点で引き、パッドはスティックの傾きとボタンの押下を示します。押す・動かすと視覚で分かります。</p>
-          <p class="note"><strong>使う道具:</strong> <code>in.down</code> / <code>in.mouseDown</code> / <code>in.padDown</code> / <code>in.leftStick</code> / <code>drawRoundedRect</code></p>
-          <p class="codelabel"><code>examples/input/input_dll.cpp</code> ── 全 157 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/input" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// input — 入力の「今」を見せる章。キーボード / マウス / パッドの状態を、画面を 3 つに分けて光らせる。</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>in.down</code> / <code>in.mouseDown</code> / <code>in.padDown</code> / <code>in.leftStick</code> / <code>drawRoundedRect</code></p>
+          <p class="codelabel"><code>examples/input/input_dll.cpp</code>。全 157 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/input" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// input。入力の「今」を見せる章。キーボード / マウス / パッドの状態を、画面を 3 つに分けて光らせる。</span>
 <span class="c">//</span>
 <span class="c">// ゲームを動かす土台 (host) が毎フレーム、キー・マウス・パッドの状態を 1 つにまとめて渡してくれる。</span>
 <span class="c">// ゲーム側は、その渡された入力 (Input) を見るだけでよい。</span>
@@ -925,9 +925,9 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
           <h2 id="motion">動き</h2>
           <figure><img src="assets/examples/motion.png" alt="動きのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/motion</code>）。イージングの緩急を格子で。</figcaption></figure>
           <p>4 種のイージング（緩急の付け方）を列に、位置・大きさ・回転・透明度を行にした格子です。ひとつの曲線が各プロパティをどう動かすかを一望できます。位置の目盛りが、詰まる所ほど遅い、という速さの変化を形で見せます。前フレームからの経過秒（dt）で時間を進めます。</p>
-          <p class="note"><strong>使う道具:</strong> <code>vn::Easing::*</code> / <code>pushRotation</code> / <code>popTransform</code> / <code>withAlpha</code> / <code>in.pressed</code></p>
-          <p class="codelabel"><code>examples/motion/motion_dll.cpp</code> ── 全 122 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/motion" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// motion — 動きに緩急をつける「イージング」の見本。1 つの曲線が位置・大きさ・回転・透明度をどう動かすか</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>vn::Easing::*</code> / <code>pushRotation</code> / <code>popTransform</code> / <code>withAlpha</code> / <code>in.pressed</code></p>
+          <p class="codelabel"><code>examples/motion/motion_dll.cpp</code>。全 122 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/motion" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// motion。動きに緩急をつける「イージング」の見本。1 つの曲線が位置・大きさ・回転・透明度をどう動かすか</span>
 <span class="c">// 実行すると: 4 種のイージング (列) が、位置 / 大きさ / 回転 / 透明度 (行) を同時に動かし続ける</span>
 <span class="c">// 関連 API: mitiru::vn::Easing (linear / easeInCubic / easeOutCubic / easeInOutCubic)</span>
 
@@ -1009,7 +1009,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
 		chapterControls(s, <span class="s">"SPACE: はじめから"</span>);
 	}
 
-	<span class="c">// 位置: 横のレールの上を丸が進む。等間隔の時間で刻んだ目盛りも重ねる —</span>
+	<span class="c">// 位置: 横のレールの上を丸が進む。等間隔の時間で刻んだ目盛りも重ねる。</span>
 	<span class="c">// 目盛りが詰まっている所ほど動きが遅く、まばらな所ほど速い (速さの変化が形で見える)。</span>
 	<span class="k">void</span> drawPosition(<span class="t">Screen</span>&amp; s, <span class="k">float</span> left, <span class="k">float</span> y, <span class="k">float</span> e, <span class="k">int</span> c) <span class="k">const</span>
 	{
@@ -1054,9 +1054,9 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
           <h2 id="sprites">スプライト</h2>
           <figure><img src="assets/examples/sprites.png" alt="スプライトのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/sprites</code>）。画像の拡大・回転・反転・半透明・歩行。</figcaption></figure>
           <p>赤べこ（会津の張り子牛）のスプライトを、大きさ・回転・左右反転・半透明の見本で並べ、下段では矢印キーで歩かせます。歩くと進む向きに反転し、4 コマの脚が交互に動きます。画像はファイルから読み込んで描きます。</p>
-          <p class="note"><strong>使う道具:</strong> <code>drawSprite</code> / <code>pushRotation</code> / <code>popTransform</code> / <code>in.move</code> / <code>Timer::every</code> / <code>withAlpha</code></p>
-          <p class="codelabel"><code>examples/sprites/sprites_dll.cpp</code> ── 全 117 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/sprites" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// sprites — 画像 (スプライト) を描く章。赤べこ (会津の張り子牛) を、拡大・回転・反転・半透明で見せ、歩かせる。</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawSprite</code> / <code>pushRotation</code> / <code>popTransform</code> / <code>in.move</code> / <code>Timer::every</code> / <code>withAlpha</code></p>
+          <p class="codelabel"><code>examples/sprites/sprites_dll.cpp</code>。全 117 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/sprites" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// sprites。画像 (スプライト) を描く章。赤べこ (会津の張り子牛) を、拡大・回転・反転・半透明で見せ、歩かせる。</span>
 <span class="c">// 実行すると: 上段にスプライトの機能見本 (大きさ / 回転 / 左右反転 / 半透明)、下段で矢印キーで歩く赤べこ。</span>
 <span class="c">// 使う機能: Texture::fromFile (画像読み込み) / drawSprite (flipX・色/透明度) / pushRotation (回転) / in.move() / Timer</span>
 
@@ -1178,9 +1178,9 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kFram
           <h2 id="camera">カメラ</h2>
           <figure><img src="assets/examples/camera.png" alt="カメラのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/camera</code>）。広い牧場を先読みしながら追う。</figcaption></figure>
           <p>画面よりずっと広い牧場を、赤べこがマウスの方へ歩きます。視点が、動かない範囲（deadzone）・進む向きの先読み・なめらかな追従・牧場の外を映さない制限、をまとめて効かせて追いかけます。木と赤べこは接地する位置の順に描かれ、前後が入れ替わります。</p>
-          <p class="note"><strong>使う道具:</strong> <code>camera::FollowCam</code> / <code>cam.update</code> / <code>applyCamera</code> / <code>endCamera</code> / <code>drawSprite</code></p>
-          <p class="codelabel"><code>examples/camera/camera_dll.cpp</code> ── 全 133 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/camera" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// camera — 追従カメラ。赤べこがマウスの方へ牧場を歩き、視点が滑らかに追従してスクロールする。</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>camera::FollowCam</code> / <code>cam.update</code> / <code>applyCamera</code> / <code>endCamera</code> / <code>drawSprite</code></p>
+          <p class="codelabel"><code>examples/camera/camera_dll.cpp</code>。全 133 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/camera" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// camera。追従カメラ。赤べこがマウスの方へ牧場を歩き、視点が滑らかに追従してスクロールする。</span>
 <span class="c">// 実行すると: マウスカーソルの方へ赤べこが歩く。画面より広い牧場を、視点が deadzone + 先読みで追う。</span>
 <span class="c">// 関連 API: mitiru::camera::FollowCam (setTarget / update) / Screen::applyCamera / endCamera / drawSprite</span>
 
@@ -1318,9 +1318,9 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kTree
           <h2 id="audio">音</h2>
           <figure><img src="assets/examples/audio.png" alt="音のサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/audio</code>）。効果音のリング・BGM のディスク。</figcaption></figure>
           <p>効果音を色つきのバー、BGM を回るディスクで見せます。Z / X / C で同じ音を高さ（再生速度）だけ変えて鳴らし分け、Space で再生・一時停止・続きから、B でフェードアウト。ゲーム自身は音の仕組みを持たず、<code>hud.play</code> / <code>hud.music</code> でエンジンに再生を頼みます。</p>
-          <p class="note"><strong>使う道具:</strong> <code>hud.play</code> / <code>hud.music</code> / <code>hud.pauseMusic</code> / <code>hud.resumeMusic</code> / <code>hud.stopMusic</code> / <code>in.pressed</code></p>
-          <p class="codelabel"><code>examples/audio/audio_dll.cpp</code> ── 全 115 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/audio" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// audio — 音を鳴らし、いまどの音が鳴っているかを画面でも見せる章。</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>hud.play</code> / <code>hud.music</code> / <code>hud.pauseMusic</code> / <code>hud.resumeMusic</code> / <code>hud.stopMusic</code> / <code>in.pressed</code></p>
+          <p class="codelabel"><code>examples/audio/audio_dll.cpp</code>。全 115 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/audio" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// audio。音を鳴らし、いまどの音が鳴っているかを画面でも見せる章。</span>
 <span class="c">// 中央の暗い計器に、効果音 3 つの専用バー (Z=低い / X=中くらい / C=高い) と、</span>
 <span class="c">// BGM を表す回るディスク (再生中=回る / 一時停止=止まったまま / フェード=薄れて消える) が映る。</span>
 <span class="k">#include</span> &lt;algorithm&gt;   <span class="c">// std::max / std::min</span>
@@ -1440,9 +1440,9 @@ static <span class="t">Vec2</span> onCircle(<span class="t">Vec2</span> c, <span
           <h2 id="html_hud">HTML の HUD</h2>
           <figure><img src="assets/examples/html_hud.png" alt="HTML の HUDのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/html_hud</code>）。ひとつの値を 6 つの HTML 表示へ。</figcaption></figure>
           <p>下のスライダー（C++ が描く）を動かすと、ひとつの値が上に重なった 6 つの HTML/CSS 表示（円ゲージ・大きな数字・横バー・pips・色面・折れ線）へ一斉に伝わります。C++ は値を送るだけ、表示の更新は HTML 側の <code>data-m-*</code> 属性が受け持ち、JavaScript は 1 行も書きません。</p>
-          <p class="note"><strong>使う道具:</strong> <code>hud.set</code> / <code>data-m-text</code> / <code>data-m-style</code> / <code>data-m-class</code> / <code>data-m-spark-push</code></p>
-          <p class="codelabel"><code>examples/html_hud/html_hud_dll.cpp</code> ── 全 74 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/html_hud" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// html_hud — C++ が持っている 1 つの数値を、HTML の 6 つの表示へ同時に映す例。</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>hud.set</code> / <code>data-m-text</code> / <code>data-m-style</code> / <code>data-m-class</code> / <code>data-m-spark-push</code></p>
+          <p class="codelabel"><code>examples/html_hud/html_hud_dll.cpp</code>。全 74 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/html_hud" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// html_hud。C++ が持っている 1 つの数値を、HTML の 6 つの表示へ同時に映す例。</span>
 <span class="c">//   下のスライダー (これは C++ が描いている) を動かすと level という 1 つの値が変わり、</span>
 <span class="c">//   その値を HTML へ送ると、上に重なった 6 つの表示 (ゲージ・数字・バー・pips・色・折れ線) が</span>
 <span class="c">//   一斉に同じ値へ動く。JavaScript は 1 行も書かない。HTML に data-m-... と書いておくだけで、</span>
@@ -1521,9 +1521,9 @@ static <span class="t">Vec2</span> onCircle(<span class="t">Vec2</span> c, <span
           <h2 id="html_menu">HTML のメニュー</h2>
           <figure><img src="assets/examples/html_menu.png" alt="HTML のメニューのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/html_menu</code>）。HTML を触ると C++ の図形が変わる。</figcaption></figure>
           <p>html_hud の逆向きです。左の HTML パネルを触ると、その操作が C++ に届き、右の図形が色・形・数・傾き・ふちどりなどで変わります。HTML → C++ は <code>data-m-action</code> の信号だけを送り、状態は C++ が持ちます。リセットは確認ダイアログを 1 枚挟みます。図形はすべて C++ が描き、JavaScript は書きません。</p>
-          <p class="note"><strong>使う道具:</strong> <code>in.action</code> / <code>in.actionPayload</code> / <code>hud.set</code> / <code>data-m-action</code> / <code>data-m-payload</code> / <code>data-m-confirm</code></p>
-          <p class="codelabel"><code>examples/html_menu/html_menu_dll.cpp</code> ── 全 148 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/html_menu" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// html_menu — HTML の操作パネルを触ると、その操作が C++ に届き、C++ が描く図形が目に見えて変わる例。</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>in.action</code> / <code>in.actionPayload</code> / <code>hud.set</code> / <code>data-m-action</code> / <code>data-m-payload</code> / <code>data-m-confirm</code></p>
+          <p class="codelabel"><code>examples/html_menu/html_menu_dll.cpp</code>。全 148 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/html_menu" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// html_menu。HTML の操作パネルを触ると、その操作が C++ に届き、C++ が描く図形が目に見えて変わる例。</span>
 <span class="c">//   左のパネルで色・形・数・傾き・間隔や、ふちどり・大きさ・影を選ぶと、右側に C++ が描いた図形が</span>
 <span class="c">//   その場で変わる。JavaScript は 1 行も書かない。</span>
 <span class="c">//   前章 html_hud が「C++ → HTML (値を見せる)」なら、この章は逆向きの「HTML → C++ (操作を伝える)」。</span>
@@ -1675,16 +1675,16 @@ static <span class="t">Vec2</span> onCircle(<span class="t">Vec2</span> c, <span
 
           <h2 id="observe">観察</h2>
           <figure><img src="assets/examples/observe.png" alt="観察のサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/observe</code>）。赤べこの動きと、別窓 Inspector に並ぶ内部の値。</figcaption></figure>
-          <p>赤べこが、腹が減れば餌へ歩き、疲れれば休みます。画面に出るのは動きだけで、腹・体力・機嫌・今の行動といった内部の値は表示しません。その値は、<code>--inspect</code> で開く <strong>Inspector（MitiruEngine の観測窓）</strong>に、ゲームを止めずにライブで並びます。見せたい値を <code>MITIRU_REFLECT</code> に書くだけで、名前付きで窓に出ます。動きを見て楽しみ、値を見て理由を知る、という二面を分けて見せる章です。</p>
-          <p class="note"><strong>使う道具:</strong> <code>MITIRU_REFLECT</code> / <code>MITIRU_GAME</code> / <code>FixedVec</code> / <code>FixedString</code></p>
-          <p class="codelabel"><code>examples/observe/observe_dll.cpp</code> ── 全 224 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/observe" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// observe — 画面に見えるのは「結果」だけ、という例。</span>
+          <p>赤べこが、腹が減れば餌へ歩き、疲れれば休みます。画面に出るのは動きだけで、腹・体力・機嫌・今の行動といった内部の値は表示しません。その値は、<code>--inspect</code> で開く <strong>Inspector（MitiruEngine の観察ウィンドウ）</strong>に、ゲームを止めずにライブで並びます。見せたい値を <code>MITIRU_REFLECT</code> に書くだけで、名前付きで窓に出ます。動きを見て楽しみ、値を見て理由を知る、という二面を分けて見せる章です。</p>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>MITIRU_REFLECT</code> / <code>MITIRU_GAME</code> / <code>FixedVec</code> / <code>FixedString</code></p>
+          <p class="codelabel"><code>examples/observe/observe_dll.cpp</code>。全 224 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/observe" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// observe。画面に見えるのは「結果」だけ、という例。</span>
 <span class="c">//   ここでは赤べこ (会津の張り子牛) が、腹が減れば餌へ歩き、疲れれば休む。画面に映るのは</span>
-<span class="c">//   その動き — 首を振る / 跳ねる / 表情が変わる / 餌へ寄る — だけ。</span>
+<span class="c">//   その動き。首を振る / 跳ねる / 表情が変わる / 餌へ寄る。だけ。</span>
 <span class="c">//   一方で、なぜ今それをしているか (腹・体力・機嫌・今の行動) という内部の値は画面に出さない。</span>
 <span class="c">//   その内部の値は、ゲームを止めずに別の窓 (inspector) から live で読める。これが「観測」。</span>
 <span class="c">//   画面を見て動きを楽しみ、値を見て理由を知る、という二面を分けて見せるのがこの章の主旨。</span>
-<span class="c">// 使う機能: 状態を登録する MITIRU_REFLECT (ファイル末尾) / 観測窓つきで起動する mitiru_host --inspect</span>
+<span class="c">// 使う機能: 状態を登録する MITIRU_REFLECT (ファイル末尾) / 観察ウィンドウつきで起動する mitiru_host --inspect</span>
 
 <span class="k">#include</span> &lt;algorithm&gt;   <span class="c">// std::min / std::max</span>
 <span class="k">#include</span> &lt;cmath&gt;       <span class="c">// std::sqrt / std::sin / std::fabs</span>
@@ -1731,7 +1731,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kFood
 	<span class="k">float</span> x = kScreenW * 0.5f, y = kScreenH * 0.5f;
 	<span class="k">bool</span>  faceLeft = <span class="k">false</span>;   <span class="c">// 進む向き (左を向いているか)</span>
 
-	<span class="c">// 内部の欲求 — 行動を決める値。画面には出さず、観測窓 (inspector) だけで見える。</span>
+	<span class="c">// 内部の欲求。行動を決める値。画面には出さず、観察ウィンドウ (inspector) だけで見える。</span>
 	<span class="k">float</span> hunger = 25.0f;   <span class="c">// 0..100  時間で上がる。高くなると餌を探す</span>
 	<span class="k">float</span> energy = 100.0f;  <span class="c">// 0..100  動くと減り、休むと回復する</span>
 	<span class="k">float</span> mood   = 70.0f;   <span class="c">// 0..100  腹が満ちて元気なほど高い</span>
@@ -1741,8 +1741,8 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kFood
 	<span class="k">float</span> goalX = kScreenW * 0.5f, goalY = kScreenH * 0.5f, wanderT = 0.0f;
 	<span class="k">float</span> nodPhase = 0.0f, hopPhase = 0.0f;   <span class="c">// 首振り・跳ねのサイン波の位相</span>
 	<span class="t">FixedVec</span>&lt;<span class="t">Food</span>, 8&gt; foods;
-	<span class="k">int</span>   foodCount = 0;    <span class="c">// 今 画面に出ている餌の数 (食べると減り、時々わいて増える。観測窓で見える)</span>
-	<span class="k">int</span>   meals = 0;        <span class="c">// これまでに食べた餌の総数 (観測窓で見える)</span>
+	<span class="k">int</span>   foodCount = 0;    <span class="c">// 今 画面に出ている餌の数 (食べると減り、時々わいて増える。観察ウィンドウで見える)</span>
+	<span class="k">int</span>   meals = 0;        <span class="c">// これまでに食べた餌の総数 (観察ウィンドウで見える)</span>
 	<span class="k">float</span> spawnT = 3.0f;    <span class="c">// 次に餌がわくまでの秒</span>
 	<span class="k">unsigned</span> <span class="k">int</span> rng = 2463534242u;   <span class="c">// 決定論的な乱数 (毎回同じ動き = 巻き戻し / リプレイと相性が良い)</span>
 	<span class="k">bool</span> started = <span class="k">false</span>;
@@ -1833,7 +1833,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kFood
 		nodPhase += (2.0f + (mood / 100.0f) * 3.0f) * dt;
 		hopPhase += (5.0f + (energy / 100.0f) * 3.0f) * dt;
 
-		foodCount = <span class="k">static_cast</span>&lt;<span class="k">int</span>&gt;(foods.size());   <span class="c">// 観測窓に出す用に、今の餌の数を控える</span>
+		foodCount = <span class="k">static_cast</span>&lt;<span class="k">int</span>&gt;(foods.size());   <span class="c">// 観察ウィンドウに出す用に、今の餌の数を控える</span>
 	}
 
 	<span class="c">// 今の気分に合う頭 (表情) を選ぶ。休む→眠い / 腹ぺこ→ひもじい / 上機嫌→にっこり / それ以外→ふつう。</span>
@@ -1907,9 +1907,9 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kFood
           <h2 id="rewind">巻き戻し</h2>
           <figure><img src="assets/examples/rewind.png" alt="巻き戻しのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/rewind</code>）。積んだブロックと、別窓の巻き戻しシークバー。</figcaption></figure>
           <p>床のブロックをマウスでつまんで積みます。位置・速度・回転を持つブロックが重力・接触・まさつで振る舞います。状態を 1 つの構造体にまとめてあるので、エンジンが毎フレーム記録し、崩れても別窓のバーを動かせば物理の途中経過ごと過去のフレームへ戻せます。</p>
-          <p class="note"><strong>使う道具:</strong> <code>MITIRU_GAME</code> / <code>MITIRU_REWIND_BUFFER</code> / <code>FixedVec</code> / <code>in.mouseDown</code></p>
-          <p class="codelabel"><code>examples/rewind/rewind_dll.cpp</code> ── 全 427 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/rewind" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// rewind ―「時間を巻き戻す」を体験する章 (ブロック積み)</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>MITIRU_GAME</code> / <code>MITIRU_REWIND_BUFFER</code> / <code>FixedVec</code> / <code>in.mouseDown</code></p>
+          <p class="codelabel"><code>examples/rewind/rewind_dll.cpp</code>。全 427 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/rewind" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// rewind。「時間を巻き戻す」を体験する章 (ブロック積み)</span>
 <span class="c">//   ゲームの状態をぜんぶ 1 つの構造体にまとめておくと、エンジンが毎フレームその中身を</span>
 <span class="c">//   自動で覚えてくれる。だから、あとから好きな過去のフレームへ丸ごと戻せる。ここでは</span>
 <span class="c">//   物理 (位置・速度・回転) もその構造体に入っているので、崩れたブロックも巻き戻せる。</span>
@@ -2341,12 +2341,12 @@ inline <span class="t">FixedVec</span>&lt;<span class="t">Block</span>, kMaxBloc
           <h2 id="restart_save">セーブ</h2>
           <figure><img src="assets/examples/restart_save.png" alt="セーブのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/restart_save</code>）。描いた絵をセーブ・ロード・やり直し。</figcaption></figure>
           <p>マウスで線を描き、ボタンで もどす・やりなおす・セーブ・ロード・さいしょから を行います。もどす／やりなおすは 1 筆ごと、セーブ／ロードは今の絵をまるごとファイルへ写す・戻す、さいしょから は状態をまっさらに作り直します。</p>
-          <p class="note"><strong>使う道具:</strong> <code>hud.save</code> / <code>hud.load</code> / <code>hud.requestRestart</code> / <code>in.mouseDown</code></p>
-          <p class="codelabel"><code>examples/restart_save/restart_save_dll.cpp</code> ── 全 133 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/restart_save" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// restart_save — 描いた絵を「状態の塊」として もどす/やりなおす と セーブ/ロード する。</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>hud.save</code> / <code>hud.load</code> / <code>hud.requestRestart</code> / <code>in.mouseDown</code></p>
+          <p class="codelabel"><code>examples/restart_save/restart_save_dll.cpp</code>。全 133 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/restart_save" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// restart_save。描いた絵を「状態の塊」として もどす/やりなおす と セーブ/ロード する。</span>
 <span class="c">// 実行すると: マウスで線を描き、上のボタンで もどす / やりなおす / セーブ / ロード / さいしょから。</span>
 <span class="c">// 関連 API: Hud::save / load / requestRestart / マウス (in.mouseX / mouseY / mouseDown)</span>
-<span class="c">//   undo/redo と セーブ/ロードは同じ仕組み ―「状態を丸ごと控えて戻す」。undo/redo は 1 手ごとに</span>
+<span class="c">//   undo/redo と セーブ/ロードは同じ仕組み。「状態を丸ごと控えて戻す」。undo/redo は 1 手ごとに</span>
 <span class="c">//   控えて戻す版、セーブ/ロードはその状態をまるごとファイル (save/slot0.msav) に写す版。</span>
 
 <span class="k">#include</span> &lt;cstddef&gt;   <span class="c">// std::size_t</span>
@@ -2377,7 +2377,7 @@ inline <span class="t">FixedVec</span>&lt;<span class="t">Block</span>, kMaxBloc
 <span class="k">constexpr</span> Btn kReset = { kBar0 + 4.0f * kStep, kBtnY, kBtnW, kBtnH, <span class="s">"さいしょから"</span> };
 <span class="k">constexpr</span> <span class="k">float</span> kCanvasTop = 82.0f, kCanvasBot = kScreenH - 58.0f;   <span class="c">// 描ける範囲 (ボタンと操作帯を避ける)</span>
 
-<span class="c">// 「セーブした / ロードした」表示だけの一時値。ゲームの状態 (下の struct) には入れない ― 状態に</span>
+<span class="c">// 「セーブした / ロードした」表示だけの一時値。ゲームの状態 (下の struct) には入れない。状態に</span>
 <span class="c">// 入れるとセーブで一緒にファイルへ書かれ、ロードで復元されて「ロードしたのにセーブしたと出る」バグ</span>
 <span class="c">// になる。保存したいのは絵だけ。見せるだけの値は状態と分ける、が save/load の勘どころ。</span>
 static <span class="k">float</span>       sFlash    = 0.0f;         <span class="c">// 表示の残り時間</span>
@@ -2481,9 +2481,9 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
           <h2 id="scene3d">3D シーン</h2>
           <figure><img src="assets/examples/scene3d.png" alt="3D シーンのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/scene3d</code>）。光と影・半透明・skybox。</figcaption></figure>
           <p>3D も 2D と同じ <code>draw</code> の中で書けます。昼の空（skybox）の下、床の上を矢印キーで動く赤い立方体を、一方向の光と影つきで描きます。半透明の箱は重なっても正しく合成され、手前の不透明物には奥行きに従って隠されます。</p>
-          <p class="note"><strong>使う道具:</strong> <code>camera3D</code> / <code>light3D</code> / <code>skybox3D</code> / <code>drawMesh</code></p>
-          <p class="codelabel"><code>examples/scene3d/scene3d_dll.cpp</code> ── 全 86 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/scene3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// scene3d ―「3D シーンを描く」章</span>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>camera3D</code> / <code>light3D</code> / <code>skybox3D</code> / <code>drawMesh</code></p>
+          <p class="codelabel"><code>examples/scene3d/scene3d_dll.cpp</code>。全 86 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/scene3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// scene3d。「3D シーンを描く」章</span>
 <span class="c">//   3D の描画も、2D とまったく同じ draw(Screen&amp;) の中で書ける。</span>
 <span class="c">//   ここでは太陽のような一方向の光と影、重なっても正しく見える半透明、空の背景を出す。</span>
 <span class="c">// あそびかた: 昼の空の下、床の上を矢印キーで動く赤い立方体。球 2 つが周りを回り、半透明の箱 3 枚が重なる。</span>
@@ -2535,14 +2535,14 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 		s.light3D({-0.6f, -0.95f, -0.45f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));   <span class="c">// 背景の空: 頭上は空色 → 地平線は白</span>
 
-		<span class="c">// 床 (14x14 の薄い板)。上面がちょうど y=0 になるよう少し沈めてある ― 影を受ける面。</span>
+		<span class="c">// 床 (14x14 の薄い板)。上面がちょうど y=0 になるよう少し沈めてある。影を受ける面。</span>
 		s.drawMesh(<span class="s">"cube"</span>, {0.0f, -0.15f, 0.0f}, {14.0f, 0.3f, 14.0f}, {0, 0, 0}, hex(0xBFC8D4));
 		<span class="k">for</span> (<span class="k">const</span> Pillar&amp; p : kPillars)
 		{
 			s.drawMesh(<span class="s">"cube"</span>, {p.x, p.h * 0.5f, p.z}, {0.9f, p.h, 0.9f}, {0, 0, 0}, hex(p.col));
 		}
 
-		<span class="c">// 主役の立方体 ― プレイヤーが動かし、Y 軸まわりに回転し、床に接して立つ。</span>
+		<span class="c">// 主役の立方体。プレイヤーが動かし、Y 軸まわりに回転し、床に接して立つ。</span>
 		<span class="k">constexpr</span> <span class="k">float</span> cs = 1.4f;
 		s.drawMesh(<span class="s">"cube"</span>, {cubeX, cs * 0.5f, cubeZ}, {cs, cs, cs},
 		           {0.0f, t * 60.0f, 0.0f}, hex(0xEA5535));
@@ -2555,7 +2555,7 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 			           {1.2f, 1.2f, 1.2f}, {0, 0, 0}, (i == 0) ? hex(0x4C95F2) : hex(0xF5C842));
 		}
 
-		<span class="c">// 半透明の箱 3 枚 ― 透けている面は、重なっても描いた順番に関係なく正しい色に合成される</span>
+		<span class="c">// 半透明の箱 3 枚。透けている面は、重なっても描いた順番に関係なく正しい色に合成される</span>
 		<span class="c">// (手前にある不透明な床や柱には、奥行きに従ってちゃんと隠される)。</span>
 		s.drawMesh(<span class="s">"cube"</span>, {-0.7f, 2.6f,  0.3f}, {1.9f, 1.9f, 1.9f}, {0, 0, 0}, hexa(0xE03B3B82));
 		s.drawMesh(<span class="s">"cube"</span>, { 0.0f, 2.6f,  0.0f}, {1.9f, 1.9f, 1.9f}, {0, 0, 0}, hexa(0x3BE05B82));
@@ -2573,10 +2573,10 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 
           <h2 id="model3d">3D モデル</h2>
           <figure><img src="assets/examples/model3d.png" alt="3D モデルのサンプルの実行画面" loading="lazy"><figcaption>実行画面（<code>examples/model3d</code>）。26 万ポリゴンの宮殿を一人称で歩き回る。</figcaption></figure>
-          <p>普通のモデルファイル (glTF) を <code>drawModel</code> 1 行でそのまま置き、その中を一人称で歩きます。舞台は実在の標準シーン Crytek Sponza (26 万ポリゴン、glTF で同梱)。初回の起動だけ隣に変換キャッシュを作り、以後はそれを読みます — Blender 等から書き出した .gltf / .glb / .obj がそのまま使えます。マウスで見回し (カーソルは <code>hud.lockMouse</code> でロック)、WASD で歩き、Shift で走ります。詳細度 (LOD) は距離から GPU 上で自動で決まります。</p>
-          <p class="note"><strong>使う道具:</strong> <code>drawModel</code> / <code>camera3D</code> / <code>hud.lockMouse</code> / <code>in.mouseDeltaX</code> / <code>in.move</code></p>
-          <p class="codelabel"><code>examples/model3d/model3d_dll.cpp</code> ── 全 78 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/model3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// model3d — 大きな 3D モデル (glTF) の中を歩く</span>
+          <p>普通のモデルファイル (glTF) を <code>drawModel</code> 1 行でそのまま置き、その中を一人称で歩きます。舞台は実在の標準シーン Crytek Sponza (26 万ポリゴン、glTF で同梱)。初回の起動だけ隣に変換キャッシュを作り、以後はそれを読みます。Blender 等から書き出した .gltf / .glb / .obj がそのまま使えます。マウスで見回し (カーソルは <code>hud.lockMouse</code> でロック)、WASD で歩き、Shift で走ります。詳細度 (LOD) は距離から GPU 上で自動で決まります。</p>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawModel</code> / <code>camera3D</code> / <code>hud.lockMouse</code> / <code>in.mouseDeltaX</code> / <code>in.move</code></p>
+          <p class="codelabel"><code>examples/model3d/model3d_dll.cpp</code>。全 78 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/model3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// model3d。大きな 3D モデル (glTF) の中を歩く</span>
 <span class="c">// 実行すると: 26 万ポリゴンの宮殿 (Sponza) を一人称で歩き回れる。マウスで見回し、WASD で移動</span>
 <span class="c">// 関連 API: drawModel / camera3D / hud.lockMouse / in.mouseDeltaX / skybox3D</span>
 
