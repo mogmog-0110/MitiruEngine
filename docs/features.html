@@ -369,7 +369,7 @@ MITIRU_AI=1 mitiru run</pre>
 <pre><span class="c">// FixedVec&lt;Enemy, N&gt; の要素 struct を先に（ネストは 1 段。登録は 8 個まで）</span>
 <span class="t">MITIRU_REFLECT_STRUCT</span>(Enemy, x, y, alive);
 <span class="t">MITIRU_REFLECT</span>(MyGame, player, enemies, hp);   <span class="c">// 本体。各マクロ最大 16 フィールド</span></pre>
-            <div class="note"><strong>1 つの設計判断が土台になっている。</strong> 状態を数値だけの 1 個のかたまりに置くという決めごとが、巻き戻し・録画リプレイ・AI からの読み取りという別々の機能を、追加コストなしで同じ仕組みから生やしています。詳しくは <a href="ai.html#why">AI ページの「なぜできるか」</a> へ。</div>
+            <div class="note"><strong>1 つの設計判断から全部が出てくる。</strong> 状態を数値だけの 1 個のかたまりに置くという決めごとが、巻き戻し・録画リプレイ・AI からの読み取りという別々の機能を、追加コストなしで同じ仕組みから生やしています。詳しくは <a href="ai.html#why">AI ページの「なぜできるか」</a> へ。</div>
 
             <!-- ── 巻き戻し → ホットリロード → 再適用 ── -->
             <h3 id="resim">巻き戻して、直して、そこから再生</h3>
