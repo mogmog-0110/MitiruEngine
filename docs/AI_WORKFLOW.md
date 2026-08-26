@@ -1,4 +1,4 @@
-# AI ワークフロー — AI エージェントがゲームを観測・検証する
+# AI ワークフロー: AI エージェントがゲームを観測・検証する
 
 MitiruEngine は「AI がコードを書き、実行結果を AI 自身が観て、直し、正しさを機械的に検証する」
 ループをエンジン標準機能として提供する。状態が、ポインタも `std::vector` も持たない
@@ -26,16 +26,16 @@ mitiru run
 | `POST /api/ai/branch` | 反実仮想実行 —「この状態から N フレーム別入力なら?」 |
 | `GET /api/ai/frame` | **draw list** (何をどこに描いたか + テキスト内容) + 縮小 screenshot |
 | `GET /api/ai/audio?max=N` | 最近の音イベント (SE/BGM の再生・停止・pitch) |
-| `GET /api/screenshot?width=W` | 画面 PNG。**HTML/CSS HUD も合成済み** |
+| `GET /api/screenshot?width=W` | 画面 PNG。HTML/CSS HUD も合成済み |
 | `GET /api/scene/tree` | シーンツリー JSON |
 | `POST /api/input/simulate` | 入力注入 (AI がゲームを操作する) |
 | `POST /api/runtime/pause` / `step` / `timescale` | ポーズ・コマ送り・倍速 |
 | `GET /api/health` | 生存確認 (frame 番号 + 経過秒) |
 
-### /api/ai/frame — 画面の「意味」を読む
+### /api/ai/frame: 画面の「意味」を読む
 
 screenshot のピクセルから座標を推測する必要はない。draw list が
-「どの API で・どの矩形に・何を」描いたかを返す:
+「どの API で・どの矩形に・何を」描いたかを返す。
 
 ```json
 {"frameNumber":8652,"screen":{"width":1280,"height":720},
@@ -64,9 +64,9 @@ screenshot のピクセルから座標を推測する必要はない。draw list
 ツール: `game_state` / `state_diff` / `frame` / `screenshot` / `audio_log` /
 `simulate_input` / `pause` / `step` / `timescale` / `scene_tree` / `verify`
 
-## mitiru verify — 修正の機械的検証
+## mitiru verify: 修正の機械的検証
 
-「直した → 正しく動く」をコマンド 1 発で判定する:
+「直した → 正しく動く」をコマンド 1 発で判定する。
 
 ```bat
 mitiru verify                          # build + 起動 + screenshot 取得

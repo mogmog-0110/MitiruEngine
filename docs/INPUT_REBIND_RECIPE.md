@@ -2,7 +2,7 @@
 
 `mitiru::Binding<Act>` 表 (アクションマップ) を constexpr 定数ではなく、ゲームの全状態を
 1 個の struct にまとめたもの (型名 `GameMemory`) に置くと、キー設定の変更それ自体が
-記録・巻き戻し・リプレイ・セーブの対象になる — ポインタも `std::vector` も持たない
+記録・巻き戻し・リプレイ・セーブの対象になる。ポインタも `std::vector` も持たない
 丸ごとコピーできる struct (= flat POD) 設計の追加配当を実例で示すレシピ。
 
 ## 1. 方針: いつ constexpr で、いつゲームの全状態か
@@ -14,13 +14,13 @@
 
 注意: 表を「非記録ソース」(設定ファイル直読み・DLL 内 static の書き換え) から変更すると、
 リプレイ時にその変更が再現されず録画が割れる。ゲームの全状態経由なら host が毎フレーム
-bytes ごと記録するため**構造的に安全** — リバインド操作を含めて 1 bit も違わず
+bytes ごと記録するため構造的に安全で、リバインド操作を含めて 1 bit も違わず
 (bit-exact) 再現される。
 
 ## 2. レシピ: ゲームの全状態に Binding 配列
 
 `Input::pressed` のアクションマップ版は配列参照を取る
-(`bool pressed(const Binding<Act> (&map)[N], Act act)` — `Game.hpp`)。
+(`bool pressed(const Binding<Act> (&map)[N], Act act)`、`Game.hpp`)。
 固定長配列メンバをそのまま渡せる。`Binding<Act>` は POD (`Act` + `Key[4]` + `Pad[2]`)
 なので flat POD 制約 (`MITIRU_GAME` の static_assert) もそのまま通る。
 
@@ -48,7 +48,7 @@ MITIRU_GAME(MyGame)
 
 ## 3. リバインド UI
 
-### HTML 側 (JavaScript を 1 行も書かない — `mitiru_bind.js` の data-m-* だけ)
+### HTML 側 (JavaScript を 1 行も書かない: `mitiru_bind.js` の data-m-* だけ)
 
 ```html
 <div class="row">
@@ -119,8 +119,8 @@ static const char* keyName(mitiru::Key k) {
 ## 5. セーブにも自動で乗る
 
 セーブ = ゲームの全状態まるごとの memcpy (`hud.save("slot0")`) なので、
-**リバインド結果は何もしなくてもセーブに含まれる**。「キーコンフィグの保存処理」という
-コードはこのレシピには存在しない — 表をゲームの全状態に置いた時点で、記録・巻き戻し・
+リバインド結果は何もしなくてもセーブに含まれる。「キーコンフィグの保存処理」という
+コードはこのレシピには存在しない。表をゲームの全状態に置いた時点で、記録・巻き戻し・
 リプレイ・セーブの 4 つが同じ 1 機構 (bytes の memcpy) で片付いている。
 
 関連: `docs/FLAT_POD.md` / `docs/TIME_TRAVEL.md` / `docs/BINDING.md`

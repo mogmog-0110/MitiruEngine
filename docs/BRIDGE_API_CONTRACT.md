@@ -1,4 +1,4 @@
-# Bridge API Contract — MitiruEngine CEF Bridge 責務定義
+# Bridge API Contract: MitiruEngine CEF Bridge 責務定義
 
 > **関連**: [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md) — C++ gameplay + CEF は View 専用
 
@@ -6,7 +6,7 @@
 
 ## 1. 責務定義
 
-アーキテクチャ方針の転換 (2026-05-14、gameplay は C++・CEF は view 専用) により、bridge は **薄い signal 層** として再定義された。
+アーキテクチャ方針の転換 (2026-05-14、gameplay は C++・CEF は view 専用) により、bridge は 薄い signal 層 として再定義された。
 
 ### 1.1 JS → C++ で許可される用途
 
@@ -104,7 +104,7 @@ save bridge の C++ dispatch handler:
 
 ### 2.6 `include/mitiru/bridge/` ディレクトリ (sgc 統合 bridge 群)
 
-`UiBridge`, `DialogueBridge`, `AnimationBridge`, `PhysicsBridge` 等は **C++ 内部 bridge** であり、CEF transport とは独立している。これらは sgc ライブラリと Mitiru engine をつなぐ adapter であって、JS ↔ C++ 通信の経路には含まれない。
+`UiBridge`, `DialogueBridge`, `AnimationBridge`, `PhysicsBridge` 等は C++ 内部 bridge であり、CEF transport とは独立している。これらは sgc ライブラリと Mitiru engine をつなぐ adapter であって、JS ↔ C++ 通信の経路には含まれない。
 
 > **未確認**: `include/mitiru/bridge/` 内の bridge が CEF handler を直接登録するかどうかは、各ファイルの実装を個別確認すること。本 doc 執筆時点では C++ 内部 API として扱う。
 
@@ -187,8 +187,8 @@ ui.option.select      // 選択肢 (ノベル等) 選択通知
 
 **`set()` vs `emit()` の使い分け**:
 
-- `set(key, value)` — 遅れて購読した JS も最新値を受け取れる。HUD 値のような **保持が必要な状態** に使う
-- `emit(name, payload)` — one-shot。アニメーション発火など **保持不要のイベント** に使う
+- `set(key, value)` — 遅れて購読した JS も最新値を受け取れる。HUD 値のような 保持が必要な状態 に使う
+- `emit(name, payload)` — one-shot。アニメーション発火など 保持不要のイベント に使う
 
 **payload スキーマ例**:
 
@@ -393,8 +393,8 @@ DOM 描画のためだけに必要な一時的な表示状態は JS に持って
 既存コードを新責務に適合させる際の手順:
 
 1. JS の `window.mitiru.dispatch(action, ...)` の `action` 名を確認する
-2. action が `ui.*` / `input.*` の signal 転送であれば **適合済み** (§3.1 参照)
-3. action が gameplay state の読み書きを行っていれば **AP-1〜AP-5 該当** → C++ に移す
+2. action が `ui.*` / `input.*` の signal 転送であれば 適合済み (§3.1 参照)
+3. action が gameplay state の読み書きを行っていれば AP-1〜AP-5 該当 → C++ に移す
 4. C++ → JS push で `executeJavaScript` を直接呼んでいる箇所は、`StateStore::set()` / `StateStore::emit()` に置き換え、key を `view.*` 体系に沿って命名する
 5. `command.*` 系の handler 名は全て `ui.*` / `input.*` に改名するか削除する
 

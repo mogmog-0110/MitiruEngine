@@ -1,10 +1,10 @@
-# Tool Windows — 独立ウィンドウのデバッグツール
+# Tool Windows: 独立ウィンドウのデバッグツール
 
 MitiruEngine のデバッグ・観察ツール (inspector / 巻き戻し / scene tree / replay /
-perf / mixer / input) は、ゲーム本体とは **別の OS ウィンドウ** として立ち上がります。
-中身は全て **1 つの汎用 CEF ホスト** (`mitiru_tool_cef --page <name>`) が描く HTML/CSS で、
+perf / mixer / input) は、ゲーム本体とは 別の OS ウィンドウ として立ち上がります。
+中身は全て 1 つの汎用 CEF ホスト (`mitiru_tool_cef --page <name>`) が描く HTML/CSS で、
 `--page <name>` が `assets/<name>.html` に対応します。動作中ゲームの SharedSnapshot が
-毎フレーム push されます。この文書は **どう開くか** と **どう増やすか** をまとめます。
+毎フレーム push されます。この文書はどう開くかと、どう増やすかをまとめます。
 
 ## 基本思想: 欲しい窓の行だけ書く
 
@@ -77,7 +77,7 @@ mitiru inspect [pid]
 ## 増やし方
 
 開ける窓の単一の真実は `include/mitiru/debug/ToolRegistry.hpp` の `Tool` enum + `kToolTable`
-です。増設は **1 パターンだけ**:
+です。増設は 1 パターンだけ:
 
 1. `Tool` enum に値を 1 つ足す。
 2. `kToolTable` に 1 行足す: `{ Tool::MyTool, "tool_cef", "--page mytool" }`。
@@ -88,6 +88,6 @@ mitiru inspect [pid]
 ## ツールウィンドウ ≠ subsystem 単独起動
 
 ツールウィンドウ (上記) は「動作中ゲームを観察する別窓」です。これと別に、
-**subsystem 単独起動** (1 サブシステムだけを単体で走らせる) があります。これはデバッグウィンドウ
+subsystem 単独起動 (1 サブシステムだけを単体で走らせる) があります。これはデバッグウィンドウ
 ではなく、`mitiru_subsys_*` を `mitiru audio | input | renderer | scene` (+ 決定的な
 record/playback の `mitiru replay`) で起動するものです。両者は混同しないでください。

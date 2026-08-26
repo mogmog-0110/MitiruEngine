@@ -1,4 +1,4 @@
-# MitiruEngine — Scope and Identity
+# MitiruEngine: Scope and Identity
 
 > **Canonical statement.** When other docs (README.md, ARCHITECTURE.md,
 > GETTING_STARTED.md, etc.) appear to disagree with this file, **this file
@@ -10,7 +10,7 @@
 
 Unity / Godot のような全機能 mega editor の対極を志す。1 ツール = 1 関心事 = 1 ウィンドウ。CLI が一級市民。GUI editor は提供しない。
 
-ターゲットは **コードが読める自学者 / 真剣な初心者** — Scratch レベル未経験者向けではない。
+ターゲットは**コードが読める自学者**。Scratch レベルの未経験者向けではない。
 
 ---
 
@@ -20,40 +20,40 @@ Unity / Godot のような全機能 mega editor の対極を志す。1 ツール
 
 > **必要なものしか画面に出さない。文脈外の機能は視界に存在させない。**
 
-すべての design 決定がここから派生する。具体的には:
+すべての design 決定がここから派生する。具体的にはこうなる。
 
-- **Mega editor / mega inspector は作らない**: Unity / Godot の 50 panel が同時に見える状態の対極
-- **1 ツール = 1 関心事 = 1 ウィンドウ**: AviUtl 流。Renderer / Audio / FSM / Scene Tree など別ウィンドウ
-- **デフォルトでは何も開かない**: pushed UI じゃなく pulled UI。開発者が必要に応じて窓を開く
-- **CLI が一級市民**: `mitiru new/build/run/debug/inspect` で全機能アクセス可能
-- **IDE は optional**: VS / VS Code / Vim / Helix / メモ帳 でも開発できる
-- **エンジンも機能別に独立**: Renderer 単独で動く、Audio 単独で動く
+- **Mega editor / mega inspector は作らない**。Unity / Godot の 50 panel が同時に見える状態の対極
+- **1 ツール = 1 関心事 = 1 ウィンドウ**。AviUtl 流。Renderer / Audio / FSM / Scene Tree など別ウィンドウ
+- **デフォルトでは何も開かない**。pushed UI じゃなく pulled UI。開発者が必要に応じて窓を開く
+- **CLI が一級市民**。`mitiru new/build/run/debug/inspect` で全機能アクセス可能
+- **IDE は optional**。VS / VS Code / Vim / Helix / メモ帳 でも開発できる
+- **エンジンも機能別に独立**。Renderer 単独で動く、Audio 単独で動く
 
 ### 2. Code-first, inspector for observation only
 
-GUI editor は提供しない。authoring は全て **コード** で行う。
+GUI editor は提供しない。authoring は全てコードで行う。
 
-ただし **inspector window 群** は提供する。これは「**書き換える GUI**」ではなく「**観察する GUI**」:
+ただし **inspector window 群** は提供する。書き換える GUI ではなく、観察する GUI として。
 
-- ✗ Editor (Unity / Godot のインスペクタ) = state を書き換える GUI
-- ✓ **Inspector** (Chrome DevTools 系) = state を観察する GUI
+- Editor (Unity / Godot のインスペクタ) は state を書き換える GUI。これは作らない
+- **Inspector** (Chrome DevTools 系) は state を観察する GUI。こちらを作る
 
 inspector は読み取り専用。authoring は code、observation は inspector。
 
 ### 3. C++ for gameplay, CEF for UI/inspector overlay
 
-2026-05 に確定:
+2026-05 に確定した。
 
 - **gameplay logic (シーン、ゲームルール、状態機械、シミュレーション、入力解釈、save/load、AI、物理) は全 C++**
 - **CEF は UI / HUD / 演出 / inspector window** の表示レイヤー
 - **bridge は signal-only** に薄く保つ (JS → C++ は input/UI イベント通知、C++ → JS は state push のみ)
 
-同じく 2026-05 に確定:
+同じく 2026-05 に確定した。
 - **Lua / NodeGraph scripting は削除済み**
 
 ### 4. Host-Game 境界は C-only signal flow
 
-2026-05-20 に確定、v0.2.0 で実装完了:
+2026-05-20 に確定し、v0.2.0 で実装まで終えた。
 
 Game DLL は純関数に近い形で実装される: `(memory, input, dt) → (memory', render, intents)`
 
@@ -62,11 +62,11 @@ Game DLL は純関数に近い形で実装される: `(memory, input, dt) → (m
 - **Game の side effect は `FrameIntents` (エンジンへの依頼を書く欄) 経由で「お願い」** する (`requestStop`, `executeJs`, etc.)
 - 結果: hot reload が構造的に安全、巻き戻し / リプレイがゲームの全状態 (1 個の struct) の serialize で完結、ABI drift が POD version field で検出可能
 
-これは「gameplay は C++、CEF は表示のみ」の `signal-only` 規約を **DLL 境界にも一般化** したもの。「engine.foo() で何でも済む」誘惑を構造的に消し、host capability の追加を常に明示的にする。
+これは「gameplay は C++、CEF は表示のみ」の `signal-only` 規約を DLL 境界にも一般化 したもの。「engine.foo() で何でも済む」誘惑を構造的に消し、host capability の追加を常に明示的にする。
 
-**実装の reference**: `examples/rewind/rewind_dll.cpp` (game side) + `apps/mitiru_host/main.cpp` (host side)。`mitiru_host --watch path/to/game.dll` で **L3 hot reload** (state preserved across code swap) が動く。
+**実装の reference**: `examples/rewind/rewind_dll.cpp` (game side) + `apps/mitiru_host/main.cpp` (host side)。`mitiru_host --watch path/to/game.dll` で L3 hot reload (state preserved across code swap) が動く。
 
-**副次的効果**: `InspectableRegistry` (lambda-based) は **non-DLL モード専用** に縮退した。DLL 側は `FrameIntents::exportedInspectables[]` に pre-serialized JSON を push し、engine が SharedSnapshot に write する経路に統一されたため、旧 step 5 (「Inspectable registry を DLL-aware 化」) の課題は構造的に解消された。
+**副次的効果**: `InspectableRegistry` (lambda-based) は non-DLL モード専用 に縮退した。DLL 側は `FrameIntents::exportedInspectables[]` に pre-serialized JSON を push し、engine が SharedSnapshot に write する経路に統一されたため、旧 step 5 (「Inspectable registry を DLL-aware 化」) の課題は構造的に解消された。
 
 ### Meta-rule: 既存資産の都合より哲学を優先
 
@@ -83,13 +83,13 @@ Game DLL は純関数に近い形で実装される: `(memory, input, dt) → (m
 | 「裏側で何が起きてるか見える」のを価値とする層 | 大規模 AAA チーム開発 |
 | 個人開発 / 小規模インディー | console / mobile target を必要とする |
 
-target が違えば philosophy も違うので、外す target には **無理に対応しない** ことを scope 宣言とする。
+target が違えば philosophy も違うので、外す target には無理に対応しないことを scope 宣言とする。
 
 ---
 
 ## 5 つの独自軸 (Differentiators)
 
-raylib / Love2D / Pyxel など既存 minimal engine 群との差別化として 5 軸を持つ。実装は段階的:
+raylib / Love2D / Pyxel など既存 minimal engine 群との差別化として 5 軸を持つ。実装は段階的に進めている。
 
 > **外向けの語り方**: 「5 軸」「軸 N」は内部の設計指針としての呼び名。公開文書・サイト・README
 > では軸番号ではなく機能名そのもの (「HTML/CSS UI」「巻き戻し」「単独起動」「録画リプレイ」
@@ -97,7 +97,7 @@ raylib / Love2D / Pyxel など既存 minimal engine 群との差別化として 
 
 ### 軸 1: HTML/CSS で UI が書ける C++ engine
 
-CEF 統合済み。**ゲーム本体は C++、UI / HUD / メニューは HTML/CSS** で書ける。
+CEF 統合済み。ゲーム本体は C++、UI / HUD / メニューは HTML/CSS で書ける。
 
 - raylib / Love2D / Pyxel は独自 UI 描画で Web スキル流用不可
 - Unity / Unreal はネイティブ UI で Web スキル無効
@@ -105,7 +105,7 @@ CEF 統合済み。**ゲーム本体は C++、UI / HUD / メニューは HTML/CS
 
 ### 軸 2: 巻き戻しウィンドウ
 
-state を毎フレーム ring buffer に記録。inspector で**過去のフレームに巻き戻して観察**できる。
+state を毎フレーム ring buffer に記録。inspector で過去のフレームに巻き戻して観察できる。
 
 - 「なぜ HP が 50 になったか」を 30 フレーム前まで戻って原因の 1 行を特定
 - 既存 engine に存在しない発想
@@ -113,7 +113,7 @@ state を毎フレーム ring buffer に記録。inspector で**過去のフレ�
 
 ### 軸 3: 全 system 単独起動
 
-Renderer / Audio / Physics / Input / Scene などが **個別 CLI コマンドで起動可能**:
+Renderer / Audio / Physics / Input / Scene などが 個別 CLI コマンドで起動可能:
 
 ```
 mitiru renderer --scene test.json    # renderer だけ動かす
@@ -133,13 +133,13 @@ engine 内部が「機能別に小さく分解されている」ことが学習�
 
 ### 軸 5: Modular sub-window architecture
 
-ゲーム本体は **メインウィンドウ**、debug ツールや inspector は **サブウィンドウ** として OS-level に独立する設計。
+ゲーム本体はメインウィンドウ、debug ツールや inspector はサブウィンドウとして OS-level に独立する設計。
 
-- ✓ Main window は gameplay 専用 — screenshot に debug 情報が映り込まない
-- ✓ 1 ツール = 1 OS window (Input Monitor / Time-travel Inspector / Scene Tree など)
-- ✓ default では何も開かない、必要な debug mode の opt-in でのみ spawn
-- ✓ マルチモニタユーザーに革命的 (debug 画面を 2nd モニタへ追い出せる)
-- ✓ アトミックツール哲学の OS-window レベル実装
+- Main window は gameplay 専用。screenshot に debug 情報が映り込まない
+- 1 ツール = 1 OS window (Input Monitor / Time-travel Inspector / Scene Tree など)
+- default では何も開かない。必要な debug mode を opt-in したときだけ spawn する
+- debug 画面を 2nd モニタへ追い出せる
+- アトミックツール哲学の OS-window レベル実装
 
 engine 本体に実装済み。ツールウィンドウの一覧と開き方: [`docs/TOOL_WINDOWS.md`](TOOL_WINDOWS.md)。
 
@@ -166,7 +166,7 @@ engine 本体に実装済み。ツールウィンドウの一覧と開き方: [`
 |---|---|
 | Lua scripting | 2026-05 の方針確定で削除 |
 | NodeGraph scripting | 2026-05 の方針確定で削除 |
-| JS gameplay path (旧「JS-first」路線) | 2026-05 の方針転換 — CEF now UI overlay only |
+| JS gameplay path (旧「JS-first」路線) | 2026-05 の方針転換。CEF now UI overlay only |
 | `mitiru.novel` JS VM | native vn modules used instead |
 
 ---
@@ -186,7 +186,7 @@ engine 本体に実装済み。ツールウィンドウの一覧と開き方: [`
 
 ## Tooling philosophy (CLI-first)
 
-`mitiru` CLI が engine のエントリポイント:
+`mitiru` CLI が engine のエントリポイントになっている。
 
 | コマンド | 用途 | 導入の節目 |
 |---|---|---|
@@ -204,7 +204,7 @@ engine 本体に実装済み。ツールウィンドウの一覧と開き方: [`
 
 ## 開発の節目 (milestones)
 
-以下の節目を順に実装してきた。現行リリースで一通り揃っている:
+以下の節目を順に実装してきた。現行リリースで一通り揃っている。
 
 - **docs / 哲学** — docs / philosophy commit (this file is part of it)
 - **HTML/CSS UI** — CLI integration + HTML UI samples

@@ -1,4 +1,4 @@
-# Profiling Guide — Tracy Zones in MitiruEngine
+# Profiling Guide: Tracy Zones in MitiruEngine
 
 This guide explains how to enable Tracy profiling in MitiruEngine, capture a
 live session, and interpret zones added to the hot path. The macro set lives in
@@ -125,7 +125,7 @@ Limitations 参照) のため、ここでは「どこに重点的に時間を使
 - **`Engine::Render`** — 通常はフレーム時間の大部分を占める。`game.draw()` と
   Scene の `onDraw()` がここに集約されるので、コンテンツが重ければ最初に膨らむ
   のはここ。Tracy で子コール (drawSprite 等) が出ない場合は `MITIRU_ZONE_NAMED`
-  を計装したい draw メソッドに足すと深掘りできる。
+  を計装したい draw メソッドに足すと、その内訳まで見える。
 - **`Engine::Present`** — GPU コマンド送信と PostFX チェーン。vsync ON のとき
   は `Screen::present()` ないし `device->endFrame()` で vsync 待ちが入るため
   実時間が膨らみがちだが、これは「GPU 待ち時間」であってエンジン側の処理コスト

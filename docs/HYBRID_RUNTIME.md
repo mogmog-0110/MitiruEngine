@@ -1,13 +1,13 @@
-# Hybrid Runtime — where does game code live?
+# Hybrid Runtime: where does game code live?
 
 > **方針。** gameplay は C++、CEF は表示レイヤー。この doc はその境界の分担を記述する。
 > 関連 doc:
 > - bridge の具体的 API: [`BRIDGE_API_CONTRACT.md`](BRIDGE_API_CONTRACT.md)
 > - C++ gameplay の書き方: [`CPP_GAMEPLAY_GUIDE.md`](CPP_GAMEPLAY_GUIDE.md)
 
-MitiruEngine は **C++ ゲームエンジン** である。CEF は綺麗な HTML / CSS UI
-を低コストで作れる **見た目のレイヤー** として残す。両者は **薄い signal
-層** で繋ぎ、gameplay state はすべて C++ 側に置く。
+MitiruEngine は C++ ゲームエンジン である。CEF は綺麗な HTML / CSS UI
+を低コストで作れる見た目のレイヤーとして残す。両者は薄い signal
+層で繋ぎ、gameplay state はすべて C++ 側に置く。
 
 > Companion docs:
 > - [ARCHITECTURE.md](ARCHITECTURE.md) — the C++ layer stack
@@ -65,7 +65,7 @@ C++ 側が gameplay state を単独所有し、tick もする。CEF は表示と
 
 ---
 
-## 2. Decision matrix — where does this feature go?
+## 2. Decision matrix: where does this feature go?
 
 | Feature type                                | Home | Notes |
 |---------------------------------------------|:-:|---|
@@ -95,16 +95,16 @@ C++ 側が gameplay state を単独所有し、tick もする。CEF は表示と
 
 ---
 
-## 3. Bridge — signal-only contract
+## 3. Bridge: signal-only contract
 
-新方針の bridge は **二方向の薄い signal 層**。型付きメッセージのスキーマ
+新方針の bridge は 二方向の薄い signal 層。型付きメッセージのスキーマ
 と具体的 API は [`BRIDGE_API_CONTRACT.md`](BRIDGE_API_CONTRACT.md) を一次
 情報として参照。本 doc では役割のみ示す。
 
 ### 3.1 JS → C++ : input / UI event のみ
 
-CEF 内で起きたユーザー入力を C++ に通知するチャネル。**state を渡さない**
-— 「何が起きたか」だけを送り、「次に何をするか」は C++ が決める。
+CEF 内で起きたユーザー入力を C++ に通知するチャネル。**state を渡さない**。
+「何が起きたか」だけを送り、「次に何をするか」は C++ が決める。
 
 許される送信例:
 - `ui.button.click` (id=start_game)
@@ -114,7 +114,7 @@ CEF 内で起きたユーザー入力を C++ に通知するチャネル。**sta
 
 **禁止例:**
 - gameplay state の更新 (HP 計算結果、進行段階、所持アイテム…)
-- 「次のシーンに遷移せよ」のような決定 — C++ が決める
+- 「次のシーンに遷移せよ」のような決定。C++ が決める
 
 ### 3.2 C++ → JS : view update / 指示のみ
 
@@ -132,18 +132,18 @@ C++ が gameplay state を更新したあと、CEF に「画面をこう変え�
 - gameplay state を JS 側にキャッシュさせる (HP の整数値を JS が保持して
   計算する等)
 - ビジネスロジックを呼び出すマクロ ("complete_recipe" のような副作用
-  を伴うコマンド) — C++ 内部の関数呼び出しで完結させる
+  を伴うコマンド)。C++ 内部の関数呼び出しで完結させる
 
 ### 3.3 設計原則
 
-- **state の単独所有**: gameplay state は C++ にのみ存在する。JS 側に
+- **state の単独所有**。gameplay state は C++ にのみ存在する。JS 側に
   hold するのは「今映っている見た目の表現」だけ。
-- **冪等な view update**: 同じ `view.hud.set(hp=80)` を二回送っても結果
+- **冪等な view update**。同じ `view.hud.set(hp=80)` を二回送っても結果
   が変わらないように作る。再接続 / hot reload を容易にする。
-- **schema を切る**: 全 event / view update は型付き message とし、
+- **schema を切る**。全 event / view update は型付き message とし、
   schema は `BRIDGE_API_CONTRACT.md` に集約。野良文字列 dispatch は
   追加しない。
-- **fallback は不要**: 旧 doc にあった「C++ handler が無ければ JS 実装
+- **fallback は不要**。旧 doc にあった「C++ handler が無ければ JS 実装
   で動かす」前提は廃止。C++ が無い状況はそもそも view 単体の dev preview
   のみで、その場合は mock event を JS から流す。
 
@@ -151,11 +151,11 @@ C++ が gameplay state を更新したあと、CEF に「画面をこう変え�
 
 ## 4. なぜ「人間にも AI にも素直」なのか
 
-- **責務が一直線**: gameplay は C++、view は CEF、繋ぎは signal。新規
+- **責務が一直線**。gameplay は C++、view は CEF、繋ぎは signal。新規
   feature を書くとき迷う軸が減る。
-- **再現性 / determinism**: state が C++ 単独所有なので、replay / save
+- **再現性 / determinism**。state が C++ 単独所有なので、replay / save
   state / 自動テストが (V8 GC や DOM タイミングに依存せず) 素直に書ける。
-- **AI へのラベリングは控えめに**: LLM は C++ も JS も書ける。
+- **AI へのラベリングは控えめに**。LLM は C++ も JS も書ける。
   MitiruEngine の強みは「LLM が書きやすい言語を選んだ」ことではなく、
   「責務分割が明確で誤った場所に書くと弾けること」。AI フレンドリーで
   あることは結果であって、看板ではない。
@@ -175,17 +175,17 @@ C++ が gameplay state を更新したあと、CEF に「画面をこう変え�
 
 **Failure modes to avoid:**
 
-- **JS に gameplay state を持たせる**: 「JS 側でちょっと計算してから C++ に
+- **JS に gameplay state を持たせる**。「JS 側でちょっと計算してから C++ に
   投げる」を許すと、二箇所に真実が出来て同期バグになる。常に「event を
   C++ に発火して結果を待つ」形にする。
-- **C++ に DOM レイアウトを書く**: CSS で済むレイアウト計算を C++ から
+- **C++ に DOM レイアウトを書く**。CSS で済むレイアウト計算を C++ から
   座標で指定するのは無駄。CEF に任せる。
-- **bridge を太らせる**: 「complete_recipe」のような副作用付き高レベル
+- **bridge を太らせる**。「complete_recipe」のような副作用付き高レベル
   コマンドを bridge に乗せると、ロジックがどっちにあるか曖昧になる。
   event は「何が起きたか」、view update は「何を映すか」に限定する。
-- **Over-JSONifying**: 状態機械を JSON rule で宣言するのは ROI が合わ
+- **Over-JSONifying**。状態機械を JSON rule で宣言するのは ROI が合わ
   ない。C++ で書く。
-- **Over-C++-ifying view**: ダイアログのフェードイン tween を C++ で書く
+- **Over-C++-ifying view**。ダイアログのフェードイン tween を C++ で書く
   のは過剰。CSS / WAAPI で十分。
 
 ---
@@ -194,7 +194,7 @@ C++ が gameplay state を更新したあと、CEF に「画面をこう変え�
 
 MitiruEngine は:
 
-- **C++ ゲームエンジン** — Siv3D / Unreal-Native と同じカテゴリ。gameplay
+- C++ ゲームエンジン。Siv3D / Unreal-Native と同じカテゴリ。gameplay
   は C++ で書く。
 - **+ CEF UI レイヤー** — HUD / メニュー / 演出を HTML+CSS で素早く美しく
   作るための表示エンジン。差別化要素。

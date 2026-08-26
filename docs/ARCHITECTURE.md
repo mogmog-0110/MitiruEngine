@@ -1,28 +1,26 @@
 # MitiruEngine Architecture Overview
 
-> ℹ️ 主要な駆動・バックエンド記述を現行モデルに更新済（旧「`Game` 継承 + 自前 `main()`」
-> authoring → **DLL-only**、backend auto → **DX12 優先**、audio/input → **`FrameIntents` / `InputSnapshot`**）。
-> レイヤー構造の図は現行と一致。細部に旧記述が残る場合は実装を正とする。
+ゲームは `MITIRU_GAME(YourType)` で書く DLL として作る。host (`mitiru_host.exe`) が
+C ABI (C の関数と生データだけで会話する取り決め) 越しに load し、毎フレーム POD でやり取りする。
+gameplay は常に C++ で書き、JS では書かない。`Game` を継承して自前の `main()` を持つ旧 authoring は廃止した。
 
-> **Authoring & runtime model.** ゲームは **`MITIRU_GAME(YourType)` で書く DLL**。
-> host (`mitiru_host.exe`) が C ABI（C の関数と生データだけで会話する取り決め）越しに load し、
-> 毎フレーム POD でやり取りする。
-> 旧「`Game` 継承 + 自前 `main()`」authoring は廃止。**gameplay は常に C++（DLL）**。
->
-> - **native 構成（CEF なし、旧称 Mode A）:** 下の層をそのまま native 実行
->   （ウィンドウを出さない headless 実行 / console / 3D action 等）。
-> - **HTML UI 構成（CEF あり、旧称 Mode B）:** 上に CEF host (`include/mitiru/cef/`) + JS runtime
->   (`web/mitiru_runtime/`) を載せ、**UI/HUD を HTML/CSS** で描く。**gameplay は JS でなく C++ のまま**で、
->   bridge は signal-only（C++→JS=state push、JS→C++=action event）。`EngineConfig::enableCef`。
->
-> JS / JSON / C++ の境界規約は [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)、
-> JS runtime モジュールの実体は `web/mitiru_runtime/`。
+構成は 2 つある。
+
+- **native 構成** (CEF なし、旧称 Mode A)。下の層をそのまま native 実行する。
+  ウィンドウを出さない headless 実行、console、3D action などがここに入る。
+- **HTML UI 構成** (CEF あり、旧称 Mode B)。上に CEF host (`include/mitiru/cef/`) と
+  JS runtime (`web/mitiru_runtime/`) を載せ、UI と HUD を HTML/CSS で描く。
+  bridge は signal-only で、C++ から JS へは state push、JS から C++ へは action event だけが流れる。
+  切り替えは `EngineConfig::enableCef`。
+
+JS / JSON / C++ の境界規約は [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)、
+JS runtime モジュールの実体は `web/mitiru_runtime/`。
 
 ## Layer Stack
 
 The diagram below shows the full stack of the HTML UI configuration
-(with CEF). **The native configuration (no CEF) is identical minus the
-two layers marked `(CEF only)`** — those sit on top of the
+(with CEF). The native configuration (no CEF) is identical minus the
+two layers marked `(CEF only)`. Those sit on top of the
 native engine and are inert when `EngineConfig::enableCef = false`.
 
 ```
@@ -229,7 +227,7 @@ Audio Output Backends:
 
 > **現行:** DLL ゲームは `InputState` を直接見ない。host が毎フレーム `InputState` から
 > POD の `InputSnapshot`（256 キー/マウス/パッド + action event + rngSeed + audioTime）を組んで
-> `on_update` に渡す。キー再割り当ては `Game.hpp` の `Binding<Act>`（ゲームの状態 struct に置く）— 下図の
+> `on_update` に渡す。キー再割り当ては `Game.hpp` の `Binding<Act>`（ゲームの状態 struct に置く）。下図の
 > `InputMapper` は非推奨。`InputRecorder/Replayer` 相当は host 側の replay 機構（記録した InputSnapshot 再投入）。
 
 ```
@@ -298,7 +296,7 @@ mitiru::vn module (40+ headers)
 ```
 
 > **CEF-side parallel.** A separate JavaScript implementation lives in
-> `web/mitiru_runtime/legacy/mitiru_novel.js` (**legacy — 新規使用禁止**)
+> `web/mitiru_runtime/legacy/mitiru_novel.js` (**legacy。新規使用禁止**)
 > and was used by games in the HTML UI configuration that render their VN
 > through CEF rather than the native `vn` module. The two implementations are
 > intentionally not parity-locked; new work uses the native `vn` module.
@@ -325,7 +323,7 @@ The drawing surface passed to `Game::draw()`. It accumulates draw commands into 
 `MitiruSceneManager` maintains a stack of `MitiruScene` objects. `pushScene` / `popScene` / `replaceScene` trigger `onEnter` / `onExit` lifecycle callbacks. The Engine holds a non-owning pointer to the manager and calls `onUpdate` / `onDraw` on the top-of-stack scene each frame after delegating to `Game`.
 
 ### Bridge Layer (mitiru::bridge)
-Sixteen bridge classes (plus the umbrella `SgcBridge`) adapt subsystems from the `sgc` (ShiggyGameCore) library into Mitiru's type system. Each bridge owns the sgc objects it manages and exposes a clean Mitiru-flavored API. For example, `AiBridge` owns `sgc::bt::Node` trees and `sgc::ai::UtilitySelector` instances, translating `sgc::bt::Status` to `AiState` and forwarding A* calls unchanged. This isolates the rest of the engine from direct sgc type exposure. These bridges are used in **both configurations** — they are unrelated to the CEF-only JS bridges under `include/mitiru/cef/`.
+Sixteen bridge classes (plus the umbrella `SgcBridge`) adapt subsystems from the `sgc` (ShiggyGameCore) library into Mitiru's type system. Each bridge owns the sgc objects it manages and exposes a clean Mitiru-flavored API. For example, `AiBridge` owns `sgc::bt::Node` trees and `sgc::ai::UtilitySelector` instances, translating `sgc::bt::Status` to `AiState` and forwarding A* calls unchanged. This isolates the rest of the engine from direct sgc type exposure. These bridges are used in **both configurations**. They are unrelated to the CEF-only JS bridges under `include/mitiru/cef/`.
 
 ### Graphics Abstraction (mitiru::gfx)
 `IDevice` is the sole GPU interface. All backends implement `beginFrame`, `endFrame`, `readPixels`, and factory-constructed pipeline/buffer/shader objects through their respective `I*` interfaces. `GfxFactory::createDevice()` selects the backend at runtime according to the priority chain described below. `NullDevice` fulfils the interface with no-ops, enabling headless execution without conditional compilation at call sites.

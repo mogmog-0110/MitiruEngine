@@ -1,13 +1,13 @@
-# Flat POD — エンジンの核心
+# Flat POD: エンジンの核心
 
-> ゲームの状態を **1 つの flat な POD 構造体** に置く。それだけで、巻き戻し・録画再生・
-> AI による全状態の構造的観測が **追加コストなしで** 付いてくる。MitiruEngine の差別化機能の
+> ゲームの状態を 1 つの flat な POD 構造体 に置く。それだけで、巻き戻し・録画再生・
+> AI による全状態の構造的観測が追加コストなしで付いてくる。MitiruEngine の差別化機能の
 > ほとんどが、この 1 つの設計判断から生えている。
 
 ## flat POD とは
 
 `MITIRU_GAME(T)` に渡す型 `T` (ゲームの全状態を入れる 1 個の struct、以下 `GameMemory`) を、
-ヒープを所有しない平坦な値型にする:
+ヒープを所有しない平坦な値型にする。
 
 ```cpp
 #include <mitiru/core/FixedVec.hpp>
@@ -36,9 +36,9 @@ MITIRU_GAME(MyGame)
 
 ## なぜこれが核心なのか
 
-`GameMemory` が flat POD なら、ホストはそれを **意味を知らずに 1 個の連続バイト列として**
+`GameMemory` が flat POD なら、ホストはそれを 意味を知らずに 1 個の連続バイト列として
 扱える。`memcpy` 1 発で「状態のスナップショット」が取れる。この 1 性質から、本来は別々に
-作り込むはずの 4 つの機能が **同じ仕組みで** 生える:
+作り込むはずの 4 つの機能が同じ仕組みで生える。
 
 | 機能 | flat POD だから成り立つ理由 |
 |---|---|
@@ -53,7 +53,7 @@ MITIRU_GAME(MyGame)
 
 ## AI 可視化 (reflection) の例
 
-`GameMemory` のフィールドを宣言する:
+`GameMemory` のフィールドを宣言する。
 
 ```cpp
 MITIRU_REFLECT_STRUCT(Enemy, x, y, respawnIn, alive);     // FixedVec の要素型を先に
@@ -76,14 +76,14 @@ curl -X POST http://127.0.0.1:8090/api/ai/branch -d '{"keys":"Right","frames":"3
 ## non-POD ゲームでも「現フレーム観測」だけは段階導入できる
 
 既存ゲームの `GameMemory` が `std::vector` / `std::string` を含む (= flat POD でない) 場合でも、
-**現フレームの構造的観測 (`/api/ai/state`) だけ**なら全面 flat POD 化の前に導入できる:
+現フレームの構造的観測 (`/api/ai/state`) だけなら全面 flat POD 化の前に導入できる:
 
 - `MITIRU_GAME` を使わず手動 `mitiru_module_load` で `api->memorySize = sizeof(GameMemory)` を申告し、
-  主要な**スカラー**フィールドだけ `makeFieldDescriptor<T>(name, offset)` で `reflectFields` に申告する
+  主要なスカラーフィールドだけ `makeFieldDescriptor<T>(name, offset)` で `reflectFields` に申告する
   (`std::vector` 等は申告しない → `reflectToJson` が触らないので安全)。
-- ⚠️ `api->memorySize` を申告しないと `/api/ai/state` は空 `{}` を返す (offset 読みの境界に使うため)。
+- `api->memorySize` を申告しないと `/api/ai/state` は空 `{}` を返す (offset 読みの境界に使うため)。
   reflection を宣言したのに `memorySize=0` だと engine が起動時に警告を出す。
-- ⚠️ **ring / diff / branch は flat POD 必須**。これらは `GameMemory` を `memcpy` で退避・復元するので、
+- **ring / diff / branch は flat POD 必須**。これらは `GameMemory` を `memcpy` で退避・復元するので、
   非 POD だとポインタが壊れる。non-POD game では使わないこと (現フレーム観測のみ)。
 
 全面 flat POD 化すれば巻き戻し・replay・branch も含めて全部使える。観測だけ先に得て、
@@ -92,7 +92,7 @@ curl -X POST http://127.0.0.1:8090/api/ai/branch -d '{"keys":"Right","frames":"3
 ## まとめ
 
 - ゲーム状態を flat POD (`FixedVec` / `FixedString` で固定長化) にする。
-- すると巻き戻し・録画再生・AI 全状態観測・反実仮想が **同じ memcpy + 記述子から無料で** 生える。
+- すると巻き戻し・録画再生・AI 全状態観測・反実仮想が 同じ memcpy + 記述子から無料で 生える。
 - `MITIRU_GAME` がコンパイル時に flat POD を強制するので、構造保証が崩れない。
 
-「状態は 1 個の flat POD」——この 1 行の設計判断が MitiruEngine の差別化の土台になっている。
+状態を 1 個の flat POD に収める。この 1 行の決めごとから、巻き戻しも録画も AI からの観測も、同じ仕組みで出てくる。

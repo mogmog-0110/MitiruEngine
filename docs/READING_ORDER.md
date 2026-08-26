@@ -3,7 +3,7 @@
 Where to start, depending on who you are and what you're doing. Every link below
 points to a file included in this snapshot or to the public website.
 
-## Newcomer — human
+## Newcomer: human
 
 1. **`README.md`** — タグライン + 特徴 + CLI quickstart
 2. **`docs/GETTING_STARTED.md`** — `mitiru` CLI を入れて最初のプロジェクトを作る
@@ -15,7 +15,7 @@ points to a file included in this snapshot or to the public website.
 カメラ・HTML の画面・3D までひととおり触れます。一覧は [`examples/README.md`](../examples/README.md)。
 日常のプロジェクト作成は `mitiru new` がテンプレートを内蔵して使います。
 
-## Newcomer — LLM (Claude Code, Codex, etc.)
+## Newcomer: LLM (Claude Code, Codex, etc.)
 
 1. **`docs/SCOPE.md`** — canonical engine identity、out-of-scope の明示
 2. **`docs/ARCHITECTURE.md`** — レイヤー構造とモジュール依存
@@ -48,8 +48,8 @@ points to a file included in this snapshot or to the public website.
 
 ### bridge 設計の原則 (signal-only)
 
-- **JS → C++**: 入力 / UI イベント通知のみ (button click、menu select 等)
-- **C++ → JS**: state push + DOM 更新指示のみ
+- **JS → C++**。入力 / UI イベント通知のみ (button click、menu select 等)
+- **C++ → JS**。state push + DOM 更新指示のみ
 - **gameplay state を JS に持たせない**
 
 ---
