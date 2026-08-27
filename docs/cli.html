@@ -1,13 +1,13 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：コマンドリファレンス</title>
-  <meta name="description" content="mitiru CLI の全コマンドリファレンス。new / build / run / watch / ui / verify / replay / mcp / inspect / dist など、1 コマンド 1 つの仕事に絞った 23 コマンドを一覧と使用例つきで説明します。">
+  <meta name="description" content="MitiruEngine の制作、実行、検証、配布を担う mitiru CLI の全23コマンドを紹介します。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：コマンドリファレンス">
-  <meta property="og:description" content="mitiru CLI の全コマンド。1 コマンド 1 つの仕事に絞った 23 コマンドを一覧と使用例つきで説明。">
+  <meta property="og:description" content="MitiruEngine の制作から配布までを担う mitiru CLI の全23コマンド。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/cli.html">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="site.css">
@@ -17,239 +17,249 @@
 <a class="skip-link" href="#main">本文へスキップ</a>
 
 <div class="page">
-  <header class="topbar"><div class="bar">
-    <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
-    <span class="sp"></span>
-    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
-  </div></header>
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.31</span>
+    </div>
+  </header>
 
-<div class="shell">
-    <aside class="sidebar"><nav>
-      <div class="grp">はじめる</div>
-      <a href="index.html">トップ</a>
-      <a href="install.html">インストール</a>
-      <a href="tutorial.html">はじめてのゲーム</a>
-      <a href="samples.html">サンプル</a>
-      <div class="grp">リファレンス</div>
-      <a href="features.html">機能</a>
-      <a href="ui.html">画面 (HTML / CSS)</a>
-      <a href="3d.html">3D</a>
-      <a href="ai.html">AI 連携</a>
-      <a class="active" href="cli.html">CLI</a>
-      <div class="grp">配布・API</div>
-      <a href="distribute.html">配布</a>
-      <a href="api/">API リファレンス</a>
-    </nav></aside>
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a href="ui.html">画面 (HTML / CSS)</a>
+        <a href="3d.html">3D</a>
+        <a href="ai.html">AI 連携</a>
+        <a class="active" href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+      </nav>
+    </aside>
+
     <div class="content">
-    <main id="main">
-      <section class="page-head">
-        <div class="wrap">
-          <p class="kicker">CLI</p>
-          <h1>コマンドリファレンス</h1>
-          <p class="lede">MitiruEngine の入口は <code>mitiru</code> コマンドです。エディタの巨大なメニューの代わりに、<strong>1 コマンド 1 つの仕事</strong>に絞った 23 個のコマンドだけがあります。作る・動かす・確かめる・配る ── やりたいことの数だけコマンドがあり、それ以上はありません。</p>
-        </div>
-      </section>
+      <main id="main">
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">COMMAND LINE INTERFACE</p>
+            <h1>制作から配布まで、23のコマンドで操作する</h1>
+            <p class="lede"><code>mitiru</code> は MitiruEngine のコマンドラインインターフェースです。プロジェクト作成、実行、検証、配布などを、役割ごとに分かれたコマンドから操作できます。</p>
+            <p><a class="btn btn--primary" href="#list">全コマンドを見る</a></p>
+          </div>
+        </section>
 
-      <div class="prose">
-        <div class="wrap">
+        <div class="prose">
+          <div class="wrap">
+            <h2 id="list">全コマンド</h2>
+            <p>引数なしで実行すると、番号で操作を選べる対話ランチャーが開きます。各コマンドのオプションは <code>mitiru &lt;コマンド&gt; --help</code> で確認できます。</p>
 
-          <!-- ── §1 一覧 ─────────────────────────── -->
-          <h2 id="list">全コマンド一覧</h2>
-          <p>引数なしの <code>mitiru</code> は対話ランチャー（<code>menu</code> と同じ）になります。各コマンドは <code>mitiru &lt;コマンド&gt; --help</code> で詳しいフラグを確認できます。</p>
+            <table class="spectable">
+              <thead>
+                <tr><th>コマンド</th><th>役割</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><a href="#cmd-new"><code>new</code></a></td><td>テンプレートからプロジェクトを作成</td></tr>
+                <tr><td><a href="#cmd-build"><code>build</code></a></td><td>プロジェクトをビルド</td></tr>
+                <tr><td><a href="#cmd-run"><code>run</code></a></td><td>ビルドして実行</td></tr>
+                <tr><td><a href="#cmd-watch"><code>watch</code></a></td><td><code>src/</code> を監視してホットリロード</td></tr>
+                <tr><td><a href="#cmd-debug"><code>debug</code></a></td><td>デバッグ補助を有効にして実行</td></tr>
+                <tr><td><a href="#cmd-ui"><code>ui</code></a></td><td>HTML / CSS の画面をブラウザで確認</td></tr>
+                <tr><td><a href="#cmd-lint"><code>lint</code></a></td><td>HTML と C++ の値の受け渡しを静的検査</td></tr>
+                <tr><td><a href="#cmd-verify"><code>verify</code></a></td><td>自動実行して合否を JSON で出力</td></tr>
+                <tr><td><a href="#cmd-replay"><code>replay</code></a></td><td>入力の記録、再生、回帰テスト</td></tr>
+                <tr><td><a href="#cmd-mcp"><code>mcp</code></a></td><td>AI からゲームを観測、操作するサーバーを起動</td></tr>
+                <tr><td><a href="#cmd-inspect"><code>inspect</code></a></td><td>実行中のゲームに観察用ウィンドウを接続</td></tr>
+                <tr><td><a href="#cmd-renderer"><code>renderer</code></a></td><td>レンダラだけを起動</td></tr>
+                <tr><td><a href="#cmd-input"><code>input</code></a></td><td>入力処理だけを起動</td></tr>
+                <tr><td><a href="#cmd-scene"><code>scene</code></a></td><td>シーン管理だけを起動</td></tr>
+                <tr><td><a href="#cmd-audio"><code>audio</code></a></td><td>オーディオミキサーだけを起動</td></tr>
+                <tr><td><a href="#cmd-dist"><code>dist</code></a></td><td>配布フォルダを作成</td></tr>
+                <tr><td><a href="#cmd-doctor"><code>doctor</code></a></td><td>ビルドに必要な環境を診断</td></tr>
+                <tr><td><a href="#cmd-clean"><code>clean</code></a></td><td>ビルド成果物を削除</td></tr>
+                <tr><td><a href="#cmd-install"><code>install</code></a></td><td>Windows マシンを一括セットアップ</td></tr>
+                <tr><td><a href="#cmd-update"><code>update</code></a></td><td>プロジェクトのエンジン版数を更新</td></tr>
+                <tr><td><a href="#cmd-self-update"><code>self-update</code></a></td><td><code>mitiru.exe</code> を更新</td></tr>
+                <tr><td><a href="#cmd-menu"><code>menu</code></a></td><td>対話ランチャーを表示</td></tr>
+                <tr><td><a href="#cmd-version"><code>version</code></a></td><td>版数とプラットフォームを表示</td></tr>
+              </tbody>
+            </table>
 
-          <table class="spectable">
-            <tr><td><a href="#cmd-new"><code>new</code></a></td><td>テンプレートから新しいプロジェクトを作る</td></tr>
-            <tr><td><a href="#cmd-build"><code>build</code></a></td><td>いまのプロジェクトをビルドする</td></tr>
-            <tr><td><a href="#cmd-run"><code>run</code></a></td><td>ビルドして実行する</td></tr>
-            <tr><td><a href="#cmd-watch"><code>watch</code></a></td><td>src/ の変更を監視してホットリロード</td></tr>
-            <tr><td><a href="#cmd-debug"><code>debug</code></a></td><td>Debug 構成 + デバッグ補助を有効にして実行</td></tr>
-            <tr><td><a href="#cmd-ui"><code>ui</code></a></td><td>HTML/CSS の UI をビルドなしでブラウザ即プレビュー</td></tr>
-            <tr><td><a href="#cmd-lint"><code>lint</code></a></td><td>scene.html の data-m-* と C++ が送る値を静的に突き合わせ</td></tr>
-            <tr><td><a href="#cmd-verify"><code>verify</code></a></td><td>ヘッドレスでビルド・起動・スクリーンショット → 合否を JSON で出力</td></tr>
-            <tr><td><a href="#cmd-replay"><code>replay</code></a></td><td>入力リプレイの記録・再生・回帰テスト（同じ入力なら同じ結果）</td></tr>
-            <tr><td><a href="#cmd-mcp"><code>mcp</code></a></td><td>MCP サーバーを起動して AI ツールにゲームを観測・操作させる</td></tr>
-            <tr><td><a href="#cmd-inspect"><code>inspect</code></a></td><td>実行中のゲームに別ウィンドウの inspector を後付けする</td></tr>
-            <tr><td><a href="#cmd-renderer"><code>renderer</code></a></td><td>レンダラだけを単独起動</td></tr>
-            <tr><td><a href="#cmd-input"><code>input</code></a></td><td>入力サブシステムだけを単独起動</td></tr>
-            <tr><td><a href="#cmd-scene"><code>scene</code></a></td><td>シーン管理だけを単独起動</td></tr>
-            <tr><td><a href="#cmd-audio"><code>audio</code></a></td><td>オーディオミキサーだけを単独起動</td></tr>
-            <tr><td><a href="#cmd-dist"><code>dist</code></a></td><td>配布フォルダを組み上げる</td></tr>
-            <tr><td><a href="#cmd-doctor"><code>doctor</code></a></td><td>前提ツールが揃っているか診断</td></tr>
-            <tr><td><a href="#cmd-clean"><code>clean</code></a></td><td>ビルド成果物を削除</td></tr>
-            <tr><td><a href="#cmd-install"><code>install</code></a></td><td>まっさらなマシンを一括セットアップ</td></tr>
-            <tr><td><a href="#cmd-update"><code>update</code></a></td><td>プロジェクトのエンジン版数を最新に上げる</td></tr>
-            <tr><td><a href="#cmd-self-update"><code>self-update</code></a></td><td>mitiru コマンド自体を最新に更新</td></tr>
-            <tr><td><a href="#cmd-menu"><code>menu</code></a></td><td>番号で選ぶ対話ランチャー</td></tr>
-            <tr><td><a href="#cmd-version"><code>version</code></a></td><td>バージョン情報を表示</td></tr>
-          </table>
+            <h2 id="daily">作成と実行</h2>
 
-          <!-- ── §2 つくる・動かす ────────────────── -->
-          <h2 id="daily">つくる・動かす</h2>
+            <h3 id="cmd-new"><code>mitiru new</code>：プロジェクトを作る</h3>
+            <p><code>hello</code>、<code>clicker</code>、<code>shooter</code> の3種類からテンプレートを選び、新しいプロジェクトを作ります。ゲームは DLL としてビルドされ、<code>mitiru_host</code> から起動されます。</p>
+<pre>mitiru new myGame
+mitiru new myGame -t clicker
+mitiru new myGame --force</pre>
 
-          <h3 id="cmd-new">mitiru new：プロジェクトを作る</h3>
-          <p>テンプレートから新しいプロジェクトを 1 フォルダ作ります。テンプレートは <code>hello</code>（最小）・<code>clicker</code>（クリッカー）・<code>shooter</code>（縦シューティング）の 3 種。生成されるゲームは DLL としてビルドされ、<code>mitiru_host</code> ランチャーから起動されます。</p>
-<pre>mitiru new myGame              <span class="c"># ./myGame/ を hello テンプレートから作成</span>
-mitiru new myGame -t clicker   <span class="c"># clicker テンプレートから開始</span>
-mitiru new myGame --force      <span class="c"># 既存フォルダを上書き</span></pre>
+            <h3 id="cmd-build"><code>mitiru build</code>：ビルドする</h3>
+            <p>現在または親のディレクトリから <code>mitiru.toml</code> を探し、指定された版のエンジンソースを <code>~/.mitiru/cache/</code> に取得して、CMake の configure と build を実行します。</p>
+<pre>mitiru build
+mitiru build --release</pre>
 
-          <h3 id="cmd-build">mitiru build：ビルドする</h3>
-          <p>カレント（または親）ディレクトリの <code>mitiru.toml</code> を見つけ、指定版のエンジンソースを <code>~/.mitiru/cache/</code> に取得し、CMake の configure + build を実行します。ビルドだけが仕事で、実行はしません。</p>
-<pre>mitiru build             <span class="c"># Debug ビルド (既定)</span>
-mitiru build --release   <span class="c"># Release ビルド</span></pre>
+            <h3 id="cmd-run"><code>mitiru run</code>：ゲームを起動する</h3>
+            <p>プロジェクトをビルドして起動します。観察用ウィンドウの併用、ブラウザ上の実行時パネル、入力の記録にも対応します。</p>
+<pre>mitiru run
+mitiru run --inspect
+mitiru run --inspect rewind
+mitiru run --console
+mitiru run --record session.mtrr</pre>
+            <p><code>--inspect</code> には <code>perf</code>、<code>inspector</code>、<code>rewind</code>、<code>mixer</code>、<code>scene</code>、<code>replay</code>、<code>input</code> を指定できます。</p>
 
-          <h3 id="cmd-run">mitiru run：実行する</h3>
-          <p>ビルドしてからプロジェクトを起動します。<code>--inspect</code> でゲームと並走するツールウィンドウを 1 枚開けます（ゲーム終了とともに閉じます）。<code>--record</code> でその回の入力を入力記録ファイル（.mtrr）に保存すれば、あとで <code>mitiru replay --test --game</code> の回帰テストに使えます。</p>
-<pre>mitiru run                        <span class="c"># ビルドして起動</span>
-mitiru run --inspect              <span class="c"># gameplay inspector を並走</span>
-mitiru run --inspect rewind       <span class="c"># 巻き戻しウィンドウ (perf / inspector / rewind</span>
-                                  <span class="c">#   / mixer / scene / replay / input から選択)</span>
-mitiru run --console              <span class="c"># ブラウザに実行時コントロールパネルを開く</span>
-mitiru run --record session.mtrr  <span class="c"># 入力を記録 (replay --test --game 用)</span></pre>
+            <h3 id="cmd-watch"><code>mitiru watch</code>：変更を実行中に反映する</h3>
+            <p>一度ビルドして起動した後、<code>src/</code> の変更を監視します。再ビルドされた DLL はホストによって差し替えられ、ゲームの状態は差し替え後も維持されます。<code>assets/</code> 内の HTML、CSS、JavaScript はエンジン側で再読み込みされます。</p>
+<pre>mitiru watch
+mitiru watch --inspect rewind</pre>
 
-          <h3 id="cmd-watch">mitiru watch：ホットリロードで開発する</h3>
-          <p>一度ビルドして起動したあと、<code>src/</code> の変更のたびに再ビルドします。ホストは新しい DLL を検知してその場で差し替え、<strong>ゲームの状態は差し替え後も生き残ります</strong>。<code>assets/</code> の HTML / CSS / JS はエンジン側のホットリロードが拾います。Ctrl-C で監視終了（ゲームウィンドウも閉じます）。</p>
-<pre>mitiru watch                      <span class="c"># 保存するたび、動いたまま反映</span>
-mitiru watch --inspect rewind     <span class="c"># ツールウィンドウも並走できる</span></pre>
-
-          <h3 id="cmd-debug">mitiru debug：デバッグ補助つきで実行する</h3>
-          <p><code>mitiru run</code> の Debug 特化版です。構成を Debug に固定し、環境変数 <code>MITIRU_DEBUG=1</code> / <code>MITIRU_INSPECTOR=1</code> を立てて起動します。</p>
+            <h3 id="cmd-debug"><code>mitiru debug</code>：デバッグ設定で起動する</h3>
+            <p>Debug 構成に固定し、<code>MITIRU_DEBUG=1</code> と <code>MITIRU_INSPECTOR=1</code> を設定して起動します。</p>
 <pre>mitiru debug</pre>
 
-          <h3 id="cmd-ui">mitiru ui：UI をビルドなしでプレビューする</h3>
-          <p>C++ のビルドを一切せずに、<code>assets/</code> をローカル HTTP サーバーで配信してシーンをブラウザで開きます。<code>window.mitiru</code> ブリッジはモック実装が立つので、<code>mitiru_bind.js</code> の data-m-* バインドはエンジンなしでそのまま動きます。HTML / CSS だけを高速に往復したいときの専用コマンドです。</p>
-<pre>mitiru ui                     <span class="c"># assets/scene.html を :8137 で配信</span>
-mitiru ui assets/hud.html     <span class="c"># 特定のシーンを指定</span>
-mitiru ui --state mock.json   <span class="c"># {"view.hp": 80} のような JSON で状態を注入</span>
-mitiru ui --port 9000         <span class="c"># ポート変更</span></pre>
+            <h3 id="cmd-ui"><code>mitiru ui</code>：画面だけを確認する</h3>
+            <p>C++ をビルドせず、<code>assets/</code> をローカル HTTP サーバーから配信します。<code>window.mitiru</code> のモック実装により、<code>mitiru_bind.js</code> の <code>data-m-*</code> バインドもブラウザ上で動作します。</p>
+<pre>mitiru ui
+mitiru ui assets/hud.html
+mitiru ui --state mock.json
+mitiru ui --port 9000</pre>
 
-          <h3 id="cmd-lint">mitiru lint：バインドのズレを静的に検出する</h3>
-          <p>scene.html の <code>data-m-*</code> と C++ 側が送る値を突き合わせ、C++ と HTML の境目で黙って失敗するもの（C++ が一度も送らない名前、壊れたマークアップ、値を画面へ流し込むエンジン付属スクリプトの読み込み漏れなど）を実行前に検出します。既定は警告のみで、CI 用に <code>--strict</code> があります。</p>
-<pre>mitiru lint            <span class="c"># 警告を表示</span>
-mitiru lint --strict   <span class="c"># 検出があれば非ゼロ終了 (CI 向け)</span></pre>
+            <h3 id="cmd-lint"><code>mitiru lint</code>：値の受け渡しを検査する</h3>
+            <p><code>scene.html</code> の <code>data-m-*</code> と C++ から送る値を照合します。C++ から送られない名前、不正なマークアップ、エンジン付属スクリプトの読み込み漏れなどを実行前に検出します。</p>
+<pre>mitiru lint
+mitiru lint --strict</pre>
 
-          <!-- ── §3 確かめる ─────────────────────── -->
-          <h2 id="check">確かめる</h2>
+            <h2 id="check">自動検証と観察</h2>
 
-          <h3 id="cmd-verify">mitiru verify：ヘッドレスで合否を出す</h3>
-          <p>ビルド → <code>MITIRU_AI=1</code> で起動 → 指定フレーム待機 → スクリーンショット取得 → 終了、までを人手なしで実行し、結果を 1 つの JSON で stdout に出力します。終了コードは 0=合格 / 1=不合格 / 2=ビルドエラー。golden 画像（正解として保存した基準画像）との比較やリプレイ再生後の検証もできます。</p>
-<pre>mitiru verify                        <span class="c"># ビルド + スモークテスト</span>
-mitiru verify --golden ref.png       <span class="c"># golden 画像と比較 (既定閾値 95%)</span>
-mitiru verify --replay session.mtrr  <span class="c"># リプレイ再生後にスクリーンショット</span>
-mitiru verify --frames 600 --json    <span class="c"># 10 秒待機、JSON を整形出力</span></pre>
+            <h3 id="cmd-verify"><code>mitiru verify</code>：自動実行の結果を返す</h3>
+            <p>ビルド、<code>MITIRU_AI=1</code> での起動、指定フレームの待機、スクリーンショット取得、終了までを自動で進め、結果を JSON で標準出力へ返します。終了コードは合格が 0、不合格が 1、ビルドエラーが 2 です。</p>
+<pre>mitiru verify
+mitiru verify --golden ref.png
+mitiru verify --replay session.mtrr
+mitiru verify --frames 600 --json</pre>
+            <p><code>--golden</code> では、正解として保存した基準画像と比較します。既定の閾値は 95% です。</p>
 
-          <h3 id="cmd-replay">mitiru replay：記録・再生・回帰テスト</h3>
-          <p>同じ入力なら同じ結果になるリプレイの専用コマンドです。記録した入力ストリームはセッションをビットまで同一に再現します。<code>--record</code> / <code>--replay</code> / <code>--test</code> のどれか 1 つを指定します。<code>--test --game</code> は窓も CEF も出さずにこのプロジェクトのゲームを回し、最終状態の JSON を出力する ── そのまま回帰テストになります（記録は <code>mitiru run --record</code> で）。</p>
-<pre>mitiru replay --record demo.mtrr            <span class="c"># 記録 (デモ用サブシステム)</span>
-mitiru replay --replay demo.mtrr            <span class="c"># 再生</span>
-mitiru replay --test session.mtrr --game    <span class="c"># このゲームをヘッドレス回帰テスト</span>
-mitiru replay --test s.mtrr --expect e.json <span class="c"># 既知の最終状態と差分比較</span></pre>
+            <h3 id="cmd-replay"><code>mitiru replay</code>：入力を記録、再生する</h3>
+            <p>入力ストリームを記録し、同じセッションをビット単位で再現します。<code>--test --game</code> ではウィンドウと CEF を起動せず、ゲームの最終状態を JSON で出力します。</p>
+<pre>mitiru replay --record demo.mtrr
+mitiru replay --replay demo.mtrr
+mitiru replay --test session.mtrr --game
+mitiru replay --test s.mtrr --expect e.json</pre>
 
-          <h3 id="cmd-mcp">mitiru mcp：AI ツールにゲームを触らせる</h3>
-          <p>stdio で MCP（Model Context Protocol）を話すサーバーを起動します。Claude Code などの AI ツールから、状態取得（<code>game_state</code> / <code>state_diff</code>）・スクリーンショット・入力送信・ポーズ / 1 フレーム実行・タイムスケール変更・シーンツリー取得・verify 実行ができます。ゲーム側は <code>MITIRU_AI=1</code> で起動しておきます（ポート既定 8090、<code>--port</code> か <code>MITIRU_AI_PORT</code> で変更）。</p>
-<pre><span class="c"># Claude Code の .mcp.json に追加</span>
-{"mcpServers":{"mitiru":{"command":"mitiru","args":["mcp"]}}}</pre>
+            <h3 id="cmd-mcp"><code>mitiru mcp</code>：AI から操作できるようにする</h3>
+            <p>stdio を使う MCP（Model Context Protocol）サーバーを起動します。AI から状態取得、差分取得、スクリーンショット、入力送信、ポーズ、1フレーム実行、時間倍率の変更、シーンツリー取得、<code>verify</code> の実行ができます。</p>
+            <p>ゲームは <code>MITIRU_AI=1</code> で起動します。既定ポートは 8090 で、<code>--port</code> または <code>MITIRU_AI_PORT</code> から変更できます。</p>
+<pre>{"mcpServers":{"mitiru":{"command":"mitiru","args":["mcp"]}}}</pre>
 
-          <h3 id="cmd-inspect">mitiru inspect：実行中のゲームを後から覗く</h3>
-          <p>動いているゲームのプロセスに、<strong>別の OS ウィンドウ</strong>として inspector を後付けします。ゲームはゲームの窓のまま、観察ウィンドウは別モニタにでも置けます。pid 省略時は直近のゲームを自動検出。<code>--all</code> で gameplay / input / rewind の 3 窓を並べて開けます。</p>
-<pre>mitiru inspect                              <span class="c"># 直近のゲームを自動検出して接続</span>
-mitiru inspect 12345                        <span class="c"># pid 指定</span>
-mitiru inspect 12345 --inspectable rewind      <span class="c"># 窓を 1 種だけ指定</span>
-mitiru inspect 12345 --all                  <span class="c"># 3 つの観察ウィンドウを並べて開く</span></pre>
+            <h3 id="cmd-inspect"><code>mitiru inspect</code>：実行中のゲームを観察する</h3>
+            <p>実行中のゲームへ、別の OS ウィンドウとして inspector を接続します。プロセス ID を省略すると直近のゲームを自動検出します。<code>--all</code> では gameplay、input、rewind の3画面を開きます。</p>
+<pre>mitiru inspect
+mitiru inspect 12345
+mitiru inspect 12345 --inspectable rewind
+mitiru inspect 12345 --all</pre>
 
-          <!-- ── §4 単独起動 ─────────────────────── -->
-          <h2 id="subsys">サブシステム単独起動</h2>
-          <p>エンジンの各サブシステムは、ゲームロジックなしで <strong>1 個ずつ単独起動</strong>できます。「壊れているのはレンダラか、ゲームか」を切り分けたいとき、対象だけを起動して確かめられます。</p>
+            <h2 id="subsys">機能別の単独起動</h2>
+            <p>ゲームの処理を含めず、エンジン内の各機能を個別に起動できます。問題の発生箇所を切り分けるときにも使用できます。</p>
 
-          <h3 id="cmd-renderer">mitiru renderer：レンダラだけ</h3>
-          <p>描画パイプラインだけを起動し、グリッドとアニメーションするテストパターンを表示します。シェーダやパイプラインの調整、描画系の切り分けに使います。</p>
+            <h3 id="cmd-renderer"><code>mitiru renderer</code>：描画を確認する</h3>
+            <p>描画パイプラインだけを起動し、グリッドとアニメーションするテストパターンを表示します。</p>
 <pre>mitiru renderer</pre>
 
-          <h3 id="cmd-input">mitiru input：入力だけ</h3>
-          <p>キーボード・マウスを捕捉し、エンジンが毎フレーム見ている入力（1 フレーム分をまとめたもの）をそのまま可視化します。レンダラもシーン管理も動きません。</p>
+            <h3 id="cmd-input"><code>mitiru input</code>：入力を確認する</h3>
+            <p>キーボードとマウスの入力を取得し、エンジンがフレームごとに参照する入力を表示します。レンダラとシーン管理は起動しません。</p>
 <pre>mitiru input</pre>
 
-          <h3 id="cmd-scene">mitiru scene：シーン管理だけ</h3>
-          <p>シーンを重ねる・戻す・差し替えるときの遷移と、生成から破棄までの流れを、ゲームロジック抜きで観察します。</p>
+            <h3 id="cmd-scene"><code>mitiru scene</code>：シーン遷移を確認する</h3>
+            <p>シーンの追加、復帰、差し替えと、生成から破棄までの流れをゲームの処理なしで確認します。</p>
 <pre>mitiru scene</pre>
 
-          <h3 id="cmd-audio">mitiru audio：オーディオだけ</h3>
-          <p>オーディオミキサーだけを初期化して起動します。<code>.wav</code> / <code>.mp3</code> / <code>.flac</code> のパスを渡すと起動時に読み込みます。</p>
+            <h3 id="cmd-audio"><code>mitiru audio</code>：音声機能を確認する</h3>
+            <p>オーディオミキサーだけを初期化します。<code>.wav</code>、<code>.mp3</code>、<code>.flac</code> のパスを渡すと、起動時に読み込みます。</p>
 <pre>mitiru audio
-mitiru audio bgm.mp3   <span class="c"># 指定ファイルを読み込んで起動</span></pre>
+mitiru audio bgm.mp3</pre>
 
-          <!-- ── §5 配る・整える ──────────────────── -->
-          <h2 id="ship">配る・整える</h2>
+            <h2 id="ship">配布と環境管理</h2>
 
-          <h3 id="cmd-dist">mitiru dist：配布フォルダを作る</h3>
-          <p>Release ビルドして、ホスト・ランタイム・ゲーム DLL・アセット・ダブルクリック起動のランチャーをひとまとめにした、そのまま動く配布フォルダを組みます。詳しい構成と <code>--pack</code>（アセット梱包）は<a href="distribute.html">配布ページ</a>へ。</p>
-<pre>mitiru dist          <span class="c"># → dist/&lt;名前&gt;/ (無コンソールの &lt;名前&gt;.exe)</span>
-mitiru dist --zip    <span class="c"># zip も一緒に作る</span>
-mitiru dist --pack   <span class="c"># assets を 1 ファイルに埋め込んで隠す</span>
-mitiru dist --bat    <span class="c"># ログ確認用にコンソール表示の .bat も追加</span></pre>
+            <h3 id="cmd-dist"><code>mitiru dist</code>：配布用データを作る</h3>
+            <p>Release ビルドし、ホスト、ランタイム、ゲーム DLL、アセット、ダブルクリック起動用ランチャーを配布フォルダへまとめます。詳しい構成は<a href="distribute.html">配布ページ</a>で確認できます。</p>
+<pre>mitiru dist
+mitiru dist --zip
+mitiru dist --pack
+mitiru dist --bat</pre>
 
-          <h3 id="cmd-doctor">mitiru doctor：環境を診断する</h3>
-          <p>OS・CMake・コンパイラなど、ビルドに必要な前提が揃っているかを確認し、足りないものには入手のヒントを出します。「動かない」と思ったら最初に実行するコマンドです。</p>
+            <h3 id="cmd-doctor"><code>mitiru doctor</code>：開発環境を診断する</h3>
+            <p>OS、CMake、コンパイラなど、ビルドに必要な項目を確認します。不足している項目があれば、入手方法のヒントを表示します。</p>
 <pre>mitiru doctor</pre>
 
-          <h3 id="cmd-clean">mitiru clean：ビルド成果物を消す</h3>
-          <p>プロジェクトの <code>build/</code> を削除します。<code>--all</code> でエンジンソースのグローバルキャッシュ（<code>~/.mitiru/cache/</code>）も消し、次回ビルド時に再ダウンロードさせられます。</p>
-<pre>mitiru clean         <span class="c"># build/ を削除</span>
-mitiru clean --all   <span class="c"># エンジンキャッシュも削除</span></pre>
+            <h3 id="cmd-clean"><code>mitiru clean</code>：生成物を削除する</h3>
+            <p>プロジェクトの <code>build/</code> を削除します。<code>--all</code> を指定すると、<code>~/.mitiru/cache/</code> にあるエンジンソースのキャッシュも削除します。</p>
+<pre>mitiru clean
+mitiru clean --all</pre>
 
-          <h3 id="cmd-install">mitiru install：マシンを一括セットアップする</h3>
-          <p>まっさらな Windows マシンに、MSVC Build Tools の導入（winget）・<code>mitiru.exe</code> の配置・PATH 追加・エンジンソースの事前キャッシュをまとめて行います。リリース zip 同梱の <code>MitiruEngine_Installer.exe</code> と同じ処理です。導入済みの項目は自動でスキップし、<code>--force</code> で修復インストールができます。</p>
-<pre>mitiru install            <span class="c"># 一括セットアップ (導入済みはスキップ)</span>
-mitiru install --dry-run  <span class="c"># 計画だけ表示、何も変更しない</span>
-mitiru install --force    <span class="c"># 修復インストール</span></pre>
+            <h3 id="cmd-install"><code>mitiru install</code>：Windows をセットアップする</h3>
+            <p>MSVC Build Tools の導入、<code>mitiru.exe</code> の配置、PATH の追加、エンジンソースの事前取得をまとめて実行します。リリース zip に含まれる <code>MitiruEngine_Installer.exe</code> と同じ処理です。</p>
+<pre>mitiru install
+mitiru install --dry-run
+mitiru install --force</pre>
 
-          <h3 id="cmd-update">mitiru update：エンジンの版数を上げる</h3>
-          <p>公開リポジトリの最新リリースを調べ、<code>mitiru.toml</code> の <code>engine</code> 指定を更新します。マイナー以上の更新は互換性に影響しうるため、差分を表示して確認を取ってから適用します（コメントは保持され、engine の行だけ書き換わります）。</p>
-<pre>mitiru update           <span class="c"># 確認してから更新 + 事前取得</span>
-mitiru update --check   <span class="c"># 確認のみ、何も変更しない</span>
-mitiru update --yes     <span class="c"># 確認なしで適用 (自動化用)</span></pre>
+            <h3 id="cmd-update"><code>mitiru update</code>：エンジン版数を更新する</h3>
+            <p>公開リポジトリの最新リリースを確認し、<code>mitiru.toml</code> の <code>engine</code> 行を更新します。マイナー以上の更新では差分を表示し、確認後に適用します。ほかの行やコメントは保持されます。</p>
+<pre>mitiru update
+mitiru update --check
+mitiru update --yes</pre>
 
-          <h3 id="cmd-self-update">mitiru self-update：CLI 自体を更新する</h3>
-          <p><code>mitiru.exe</code> そのものを最新リリースに差し替えます。プロジェクトが使うエンジンの版数は別の話なので、そちらは <code>mitiru update</code> です。</p>
-<pre>mitiru self-update           <span class="c"># 最新をダウンロードして差し替え</span>
-mitiru self-update --check   <span class="c"># 確認のみ</span></pre>
+            <h3 id="cmd-self-update"><code>mitiru self-update</code>：CLIを更新する</h3>
+            <p><code>mitiru.exe</code> を最新リリースへ差し替えます。プロジェクトで使うエンジンの版数は <code>mitiru update</code> で更新します。</p>
+<pre>mitiru self-update
+mitiru self-update --check</pre>
 
-          <h3 id="cmd-menu">mitiru menu：番号で選ぶ</h3>
-          <p>コマンド名を覚えていなくても使える対話ランチャーです。いまの文脈（プロジェクトの中か外か）に応じた選択肢だけを表示し、番号で選んで実行します。引数なしの <code>mitiru</code> でも同じものが起動します（短縮形 <code>mitiru m</code>）。</p>
-<pre>mitiru        <span class="c"># 引数なしで対話ランチャー</span>
-mitiru menu   <span class="c"># 明示起動 (mitiru m でも可)</span></pre>
+            <h3 id="cmd-menu"><code>mitiru menu</code>：番号から操作を選ぶ</h3>
+            <p>現在の場所がプロジェクト内か外かを判定し、利用できる操作を番号付きで表示します。引数なしの <code>mitiru</code> と短縮形の <code>mitiru m</code> でも起動できます。</p>
+<pre>mitiru
+mitiru menu
+mitiru m</pre>
 
-          <h3 id="cmd-version">mitiru version：バージョンを表示する</h3>
-          <p>CLI のバージョンとプラットフォームを表示します。</p>
+            <h3 id="cmd-version"><code>mitiru version</code>：版数を確認する</h3>
+            <p>CLI の版数とプラットフォームを表示します。</p>
 <pre>mitiru version</pre>
 
-          <p>
-            <a href="install.html">インストール手順</a> ·
-            <a href="tutorial.html">はじめてのゲーム</a> ·
-            <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli ↗</a>
-          </p>
-
+            <div class="cta">
+              <p>
+                <a class="btn btn--primary" href="install.html">インストール手順</a>
+                <a class="btn btn--ghost" href="tutorial.html">はじめてのゲーム</a>
+                <a class="btn btn--ghost" href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli &#8599;</a>
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
 
-    <footer class="content-foot">
-      <div class="wrap">
-        <span>© MitiruEngine</span>
-        <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
-        <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
-        <a href="install.html">インストール</a>
-      </div>
-    </footer>
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+          <a href="install.html">インストール</a>
+        </div>
+      </footer>
     </div>
+
     <aside class="toc">
-      <div class="t">このページ</div>
-      <a href="#list">一覧</a>
-      <a href="#daily">つくる・動かす</a>
-      <a href="#check">確かめる</a>
-      <a href="#subsys">単独起動</a>
-      <a href="#ship">配る・整える</a>
+      <div>このページ</div>
+      <a href="#list">全コマンド</a>
+      <a href="#daily">作成と実行</a>
+      <a href="#check">自動検証と観察</a>
+      <a href="#subsys">機能別の単独起動</a>
+      <a href="#ship">配布と環境管理</a>
     </aside>
   </div>
 </div>

@@ -1,13 +1,13 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine：3D も 2D の上にのせて</title>
-  <meta name="description" content="MitiruEngine で 3D ゲームを作る。draw(Screen&) の中で s.camera3D / s.drawMesh を呼ぶだけで、エンジンの GPU 3D レンダラーがアンチエイリアス(MSAA)付きで描く。HUD は 2D で上に重なる。状態は数値だけなので録画・巻き戻しも効く。実際に動くデモとコードを掲載。">
+  <title>MitiruEngine：3D 表示</title>
+  <meta name="description" content="MitiruEngine の 3D 表示を、実行画面と C++ のコードで紹介します。GPU 3D 描画、MSAA、影、2D HUD、モデルファイルの読み込み、録画と巻き戻しに対応しています。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MitiruEngine：3D も 2D の上にのせて">
-  <meta property="og:description" content="draw(Screen&) の中で s.drawMesh するだけ。GPU 3D を MSAA 付きで描き、2D HUD を上に重ねる。動くデモとコードを掲載。">
+  <meta property="og:title" content="MitiruEngine：3D 表示">
+  <meta property="og:description" content="MitiruEngine の 3D 表示を、実行画面と C++ のコードで紹介します。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/3d.html">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="site.css">
@@ -17,155 +17,254 @@
 <a class="skip-link" href="#main">本文へスキップ</a>
 
 <div class="page">
-  <header class="topbar"><div class="bar">
-    <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
-    <span class="sp"></span>
-    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
-  </div></header>
-<div class="shell">
-    <aside class="sidebar"><nav>
-      <div class="grp">はじめる</div>
-      <a href="index.html">トップ</a>
-      <a href="install.html">インストール</a>
-      <a href="tutorial.html">はじめてのゲーム</a>
-      <a href="samples.html">サンプル</a>
-      <div class="grp">リファレンス</div>
-      <a href="features.html">機能</a>
-      <a href="ui.html">画面 (HTML / CSS)</a>
-      <a class="active" href="3d.html">3D</a>
-      <a href="ai.html">AI 連携</a>
-      <a href="cli.html">CLI</a>
-      <div class="grp">配布・API</div>
-      <a href="distribute.html">配布</a>
-      <a href="api/">API リファレンス</a>
-    </nav></aside>
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html">
+        <img class="mark" src="assets/paw.svg" alt="">
+        MitiruEngine
+      </a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.31</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a href="ui.html">画面（HTML / CSS）</a>
+        <a class="active" href="3d.html">3D</a>
+        <a href="ai.html">AI 連携</a>
+        <a href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+      </nav>
+    </aside>
+
     <div class="content">
-    <main id="main">
-      <!-- ── ページ見出し ───────────────────────── -->
-      <section class="page-head">
-        <div class="wrap">
-          <p class="kicker">3D</p>
-          <h1>3D 表示</h1>
-          <p class="lede">MitiruEngine の正面は 2D + HTML/CSS ですが、3D も出せます。やり方は素直で、ふだんのゲームの <code>draw(Screen&amp;)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> でメッシュを置くだけ。あとはエンジンの GPU 3D レンダラーが、アンチエイリアス（MSAA）と影（シャドウマップ）付きで描きます。2D の HUD はその上に重なります。状態は「数値だけ」なので<strong>同じ入力なら同じ結果</strong>です。録画も巻き戻しも、2D ゲームと同じように効きます。</p>
-        </div>
-      </section>
+      <main id="main">
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">3D</p>
+            <h1>2D と組み合わせられる 3D 表示</h1>
+            <p class="lede">MitiruEngine は、GPU による 3D 描画に対応しています。C++ の <code>draw(Screen&amp;)</code> でカメラ、光、メッシュを指定し、文字や HUD は 2D で重ねられます。</p>
+          </div>
+        </section>
 
-      <section class="band">
-        <div class="wrap">
-          <div class="prose">
+        <section class="band">
+          <div class="wrap">
+            <div class="prose">
+              <figure>
+                <img src="assets/hello3d.webp" alt="scene3d サンプルの実行画面" width="960" height="540">
+                <figcaption>同梱サンプル <code>scene3d</code> の録画です。GPU 3D レンダラーによる MSAA とシャドウマップ、矢印キーによる操作、2D HUD の重ね合わせを確認できます。</figcaption>
+              </figure>
 
-            <!-- ── 動くデモ ───────────────────────────── -->
-            <figure>
-              <img src="assets/hello3d.webp" alt="MitiruEngine で動く 3D デモ。足場の上に回転する立方体と追従して周回する球、奥に色とりどりのピラーが並ぶ。それぞれが足場にやわらかい影を落としている。カメラがゆっくり周回する。エッジはなめらかにアンチエイリアスされている。左上に『MitiruEngine 3D』の文字、左下に『arrow keys move the cube』のヒント。" width="960" height="540">
-              <figcaption>同梱サンプル <code>scene3d</code> をそのまま録画したものです。足場・回る立方体・追従して周回する球・奥のピラーを、エンジンの GPU 3D レンダラーが アンチエイリアス（MSAA）と影（シャドウマップ）付きで描いています。矢印キーで中央の立方体を動かせます。文字（HUD）は 2D で、3D の上に重なっています。</figcaption>
-            </figure>
+              <h2 id="how">描画の流れ</h2>
+              <p><code>s.camera3D</code> でカメラを設定し、<code>s.light3D</code> で平行光の向きを指定します。続いて <code>s.drawMesh</code> を呼ぶと、組み込みメッシュの立方体、球、板を配置できます。</p>
+              <p>3D は GPU 3D レンダラーが MSAA とシャドウマップ付きで描画します。その後に <code>s.text</code> などを呼び、HUD やメニューを 2D で重ねます。</p>
 
-            <!-- ── やっていること ─────────────────────── -->
-            <h2 id="how">やっていること</h2>
-            <p>3D は、ふだんのゲームの <code>draw(Screen&amp; s)</code> の中で <code>s.camera3D</code> でカメラを決め、<code>s.drawMesh</code> で組み込みメッシュ（立方体・球・板）を置くだけです。あとはエンジンの GPU 3D レンダラーが <strong>アンチエイリアス（MSAA）と影（シャドウマップ）</strong>付きで描きます。<code>s.light3D</code> で光の向きを変えると、影もその向きに伸びます。HUD やメニューは、その 3D の上にいつもの 2D（<code>s.text</code> など）で重ねます。</p>
-            <figure>
-              <svg class="dgm" viewBox="0 0 760 120" width="100%" style="max-width:760px" role="img" aria-label="3D の流れ。draw(Screen&) の中で s.camera3D / s.drawMesh を呼ぶ → エンジンの GPU 3D レンダラー（MSAA）→ 画面。2D の HUD は画面の上に重なる。">
-                <defs><marker id="d1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
-                <rect class="box"  x="18"  y="24" width="158" height="54" rx="4"/>
-                <text class="mono" x="97"  y="55" text-anchor="middle">draw(Screen&amp;)</text>
-                <rect class="boxy" x="206" y="24" width="158" height="54" rx="4"/>
-                <text class="mono" x="285" y="48" text-anchor="middle">s.drawMesh</text>
-                <text class="sub"  x="285" y="65" text-anchor="middle">メッシュを置く</text>
-                <rect class="boxy" x="394" y="24" width="158" height="54" rx="4"/>
-                <text class="lbl"  x="473" y="48" text-anchor="middle">GPU 3D</text>
-                <text class="sub"  x="473" y="65" text-anchor="middle">MSAA で描画</text>
-                <rect class="box"  x="582" y="24" width="158" height="54" rx="4"/>
-                <text class="lbl"  x="661" y="55" text-anchor="middle">画面</text>
-                <line class="arr" x1="176" y1="51" x2="204" y2="51" marker-end="url(#d1)"/>
-                <line class="arr" x1="364" y1="51" x2="392" y2="51" marker-end="url(#d1)"/>
-                <line class="arr" x1="552" y1="51" x2="580" y2="51" marker-end="url(#d1)"/>
-                <text class="sub"  x="661" y="104" text-anchor="middle">＋ HUD は 2D で上へ</text>
-                <line class="arr" x1="661" y1="92" x2="661" y2="80" marker-end="url(#d1)"/>
-              </svg>
-              <figcaption><code>s.drawMesh</code> で置いたメッシュをエンジンの GPU 3D レンダラーが MSAA 付きで描き、その上に 2D の HUD を重ねます。</figcaption>
-            </figure>
+              <figure>
+                <svg class="dgm wide" viewBox="0 0 760 120" width="100%" role="img" aria-label="draw、drawMesh、GPU 3D 描画、画面の順に処理し、最後に 2D HUD を重ねる流れ">
+                  <defs>
+                    <marker id="d1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+                      <path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/>
+                    </marker>
+                  </defs>
+                  <rect class="box" x="18" y="24" width="158" height="54" rx="4"/>
+                  <text class="mono" x="97" y="55" text-anchor="middle">draw(Screen&amp;)</text>
 
-            <!-- ── コード ─────────────────────────────── -->
-            <h2 id="code">コード</h2>
-            <p>ゲームの形は 2D とまったく同じです。状態は <code>struct</code> に数値だけを持ち、<code>update</code> で動かし、<code>draw</code> で描く。3D を描くための道具（メッシュ・カメラ）はエンジンが持っているので、ゲーム側に重い <code>struct</code> メンバは要りません。状態が数値だけなら、同じ操作で同じ動きになる（→ <a href="features.html#ai">同じ入力なら同じ結果</a>・録画・巻き戻し）。</p>
-<pre><span class="k">#include</span> &lt;mitiru.hpp&gt;
-<span class="k">#include</span> &lt;cmath&gt;
-<span class="k">using namespace</span> mitiru;
+                  <rect class="boxy" x="206" y="24" width="158" height="54" rx="4"/>
+                  <text class="mono" x="285" y="48" text-anchor="middle">s.drawMesh</text>
+                  <text class="sub" x="285" y="65" text-anchor="middle">メッシュを配置</text>
 
-<span class="k">struct</span> <span class="t">Hello3D</span> {
-    <span class="k">float</span> t = 0, cubeX = 0, cubeZ = 0;          <span class="c">// 状態は数値だけ</span>
+                  <rect class="boxy" x="394" y="24" width="158" height="54" rx="4"/>
+                  <text class="lbl" x="473" y="48" text-anchor="middle">GPU 3D</text>
+                  <text class="sub" x="473" y="65" text-anchor="middle">MSAA で描画</text>
 
-    <span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt) {
+                  <rect class="box" x="582" y="24" width="158" height="54" rx="4"/>
+                  <text class="lbl" x="661" y="55" text-anchor="middle">画面</text>
+
+                  <line class="arr" x1="176" y1="51" x2="204" y2="51" marker-end="url(#d1)"/>
+                  <line class="arr" x1="364" y1="51" x2="392" y2="51" marker-end="url(#d1)"/>
+                  <line class="arr" x1="552" y1="51" x2="580" y2="51" marker-end="url(#d1)"/>
+
+                  <text class="sub" x="661" y="104" text-anchor="middle">2D HUD を重ねる</text>
+                  <line class="arr" x1="661" y1="92" x2="661" y2="80" marker-end="url(#d1)"/>
+                </svg>
+                <figcaption><code>draw(Screen&amp;)</code> の中で 3D を描画し、その上に 2D HUD を重ねます。</figcaption>
+              </figure>
+
+              <h2 id="code">C++ の例</h2>
+              <p>ゲームの状態は <code>struct</code> に数値として保持し、<code>update</code> で更新、<code>draw</code> で描画します。次の例では、時刻と立方体の位置を状態として保存しています。</p>
+
+<pre>#include &lt;mitiru.hpp&gt;
+#include &lt;cmath&gt;
+using namespace mitiru;
+
+struct Hello3D {
+    float t = 0;
+    float cubeX = 0;
+    float cubeZ = 0;
+
+    void update(Input in, float dt) {
         t += dt;
-        <span class="k">if</span> (in.down(<span class="t">Key</span>::Left))  cubeX -= 4.5f * dt;   <span class="c">// 矢印キーで立方体を動かす</span>
-        <span class="k">if</span> (in.down(<span class="t">Key</span>::Right)) cubeX += 4.5f * dt;
+
+        if (in.down(Key::Left)) {
+            cubeX -= 4.5f * dt;
+        }
+        if (in.down(Key::Right)) {
+            cubeX += 4.5f * dt;
+        }
     }
 
-    <span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) {
-        s.clear(hex(0x111521));                   <span class="c">// 3D の背景（足場の周りの闇）</span>
+    void draw(Screen&amp; s) {
+        s.clear(hex(0x111521));
 
-        <span class="c">// カメラと光を決める（drawMesh の前に）。t で原点まわりを周回。</span>
-        <span class="k">float</span> yaw = t * 0.3f;
-        s.camera3D({std::sin(yaw)*13, 8.5f, std::cos(yaw)*13},  <span class="c">// 視点</span>
-                   {0, 0.4f, 0}, 54);                          <span class="c">// 注視点・縦画角(度)</span>
-        s.light3D({-0.5f, -1, -0.4f});                         <span class="c">// 平行光の向き</span>
+        float yaw = t * 0.3f;
+        s.camera3D(
+            {std::sin(yaw) * 13, 8.5f, std::cos(yaw) * 13},
+            {0, 0.4f, 0},
+            54
+        );
+        s.light3D({-0.5f, -1, -0.4f});
 
-        <span class="c">// 組み込みメッシュ "cube"/"sphere"/"plane" を 位置・大きさ・回転(度)・色 で</span>
-        s.drawMesh(<span class="s">"cube"</span>, {0, -0.15f, 0}, {14, 0.3f, 14}, {0,0,0}, hex(0x3A4250)); <span class="c">// 足場</span>
-        s.drawMesh(<span class="s">"cube"</span>, {cubeX, 0.7f, cubeZ}, {1.4f,1.4f,1.4f}, {0, t*60, 0}, hex(0xEA5535)); <span class="c">// 主役</span>
-        s.drawMesh(<span class="s">"sphere"</span>, {2.7f, 0.9f, 0}, {1.2f,1.2f,1.2f}, {0,0,0}, hex(0x4C95F2));
+        s.drawMesh(
+            "cube",
+            {0, -0.15f, 0},
+            {14, 0.3f, 14},
+            {0, 0, 0},
+            hex(0x3A4250)
+        );
 
-        s.text(<span class="s">"MitiruEngine 3D"</span>, 28, 22, color::White, 30);  <span class="c">// HUD は 2D で上へ</span>
+        s.drawMesh(
+            "cube",
+            {cubeX, 0.7f, cubeZ},
+            {1.4f, 1.4f, 1.4f},
+            {0, t * 60, 0},
+            hex(0xEA5535)
+        );
+
+        s.drawMesh(
+            "sphere",
+            {2.7f, 0.9f, 0},
+            {1.2f, 1.2f, 1.2f},
+            {0, 0, 0},
+            hex(0x4C95F2)
+        );
+
+        s.text(
+            "MitiruEngine 3D",
+            28,
+            22,
+            color::White,
+            30
+        );
     }
 };
 
-<span class="t">MITIRU_GAME</span>(Hello3D)</pre>
-            <p>完全版（奥のピラーや、立方体を追従して周回する球まで入ったもの）は、リポジトリの <code>examples/scene3d/</code> にあります。上のデモはそれをそのまま動かしたものです。</p>
-            <div class="note"><strong>状態が数値だけ → 録画も巻き戻しも効く。</strong> ゲームの状態は「時刻 <code>t</code> と立方体の位置」だけ。エンジンはこの状態（ポインタを持たない、数値だけの 1 個の struct）をまるごと保存・復元できるので、この 3D ゲームも 2D と同じくホットリロード・巻き戻し・リプレイの対象になります（→ <a href="features.html#ai">⑩ 乱数・巻き戻し・AI 連携</a>）。絵は毎フレーム同じ状態から描き直されます。</div>
+MITIRU_GAME(Hello3D)</pre>
 
-            <!-- ── 大きなモデルを置く ─────────────────── -->
-            <h2 id="model">大きなモデルを置く：drawModel</h2>
-            <p>Blender 等から書き出したモデルファイル (.gltf / .glb / .obj) は、<code>s.drawModel</code> にそのまま渡せます。初回の起動だけ隣に変換キャッシュを作り、以後はそれを読みます。数十万ポリゴンのモデルでも、詳細度 (LOD) が距離から GPU 上で自動で決まるので軽く、切り替えの継ぎ目は見えません。</p>
-<pre><span class="c">// 26 万ポリゴンの宮殿を 1 行で。初回だけ自動で変換キャッシュを作る</span>
-s.drawModel(<span class="s">"assets/sponza/sponza.gltf"</span>, {0, 0, 0}, 0.0f, 0.01f);</pre>
-            <figure>
-              <img src="assets/examples/model3d.webp" alt="drawModel で置いた Sponza 宮殿の回廊を一人称視点で見た画面。石壁と大理石の床、色とりどりの旗、蔦が実物のテクスチャで描かれている。" loading="lazy" width="1280" height="720">
-              <figcaption>同梱サンプル <code>model3d</code> の実行画面。glTF の宮殿 (Crytek Sponza、26 万ポリゴン) を <code>drawModel</code> 1 行で置き、マウス視線 + WASD で歩き回れます。詳しくは<a href="samples.html#model3d">サンプル集</a>へ。</figcaption>
-            </figure>
+              <p>完全版はリポジトリの <code>examples/scene3d/</code> にあります。上の録画も、このサンプルを実行したものです。</p>
 
-            <!-- ── いまの 3D と、これから ─────────────────── -->
-            <h2 id="fit">いまの 3D と、これから</h2>
-            <p>GPU で描くのでエッジはなめらか（MSAA）です。いまの 3D は「2D に 3D を混ぜる」「実物のモデルの中を歩く」ための道具で、立方体・球・板の組み込みメッシュと、モデルファイル (glTF / OBJ) の自動 LOD 描画、影・半透明（WBOIT）・skybox まで扱えます。</p>
-            <table class="spectable">
-              <tr><td>いまできること</td><td>2D ゲームに 3D の小物・背景・ミニ表示を混ぜる／モデルファイル (.gltf / .glb / .obj) を自動 LOD でそのまま置く／立方体・球・板を並べる／影・半透明・skybox／同じ結果の再現や巻き戻しが要る 3D</td></tr>
-              <tr><td>これから</td><td>3D はまだ育てている途中です。表現できることは今後さらに拡充していく予定です</td></tr>
-            </table>
-            <p>位置づけは「2D エンジンで 3D も出せる」。正面はあくまで 2D + HTML/CSS ですが、その 3D も同じ状態モデル（ポインタを持たない、数値だけの 1 個の struct）に乗るので、2D と同じく録画・巻き戻し・ホットリロードがそのまま効きます。</p>
+              <div class="note">
+                <strong>3D でも録画、巻き戻し、ホットリロードを利用できます。</strong>
+                <p>この例で保存するゲーム状態は、時刻 <code>t</code> と立方体の位置です。ポインタを含まない数値だけの <code>struct</code> を保存、復元する仕組みにより、同じ入力から同じ結果を再現します。詳細は<a href="features.html#ai">同じ入力なら同じ結果</a>を参照してください。</p>
+              </div>
 
-            <div class="cards">
-              <div class="card"><h3>はじめてのゲーム<span class="en">tutorial</span></h3><p>まず 2D で骨組み（struct / update / draw）を通すと、上のコードが読みやすくなります。</p></div>
-              <div class="card"><h3>機能リファレンス<span class="en">features</span></h3><p>図形・文字・画像・入力・音・演出。やりたいことから逆引き。</p></div>
-              <div class="card"><h3>画面を作る<span class="en">html ui</span></h3><p>HUD やメニューは HTML / CSS で。3D の上に重ねる UI もこちら。</p></div>
+              <h2 id="model">モデルファイルを表示する</h2>
+              <p>Blender などから書き出した <code>.gltf</code>、<code>.glb</code>、<code>.obj</code> は、<code>s.drawModel</code> に渡せます。初回起動時に変換キャッシュを隣へ作成し、次回以降はそのキャッシュを読み込みます。</p>
+              <p>詳細度は距離に応じて GPU 上で自動選択されます。元のページに掲載された例では、26 万ポリゴンのモデルを使用しています。</p>
+
+<pre>// 26 万ポリゴンのモデルを配置する
+s.drawModel(
+    "assets/sponza/sponza.gltf",
+    {0, 0, 0},
+    0.0f,
+    0.01f
+);</pre>
+
+              <figure>
+                <img src="assets/examples/model3d.webp" alt="model3d サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <figcaption>同梱サンプル <code>model3d</code> の実行画面です。Crytek Sponza の glTF モデルを <code>drawModel</code> で配置し、マウスと WASD で移動できます。詳しくは<a href="samples.html#model3d">サンプル集</a>を参照してください。</figcaption>
+              </figure>
+
+              <h2 id="fit">現在の対応範囲</h2>
+              <table class="spectable">
+                <tbody>
+                  <tr>
+                    <th>組み込みメッシュ</th>
+                    <td>立方体、球、板</td>
+                  </tr>
+                  <tr>
+                    <th>モデル形式</th>
+                    <td><code>.gltf</code>、<code>.glb</code>、<code>.obj</code></td>
+                  </tr>
+                  <tr>
+                    <th>描画</th>
+                    <td>MSAA、シャドウマップ、半透明（WBOIT）、skybox、自動 LOD</td>
+                  </tr>
+                  <tr>
+                    <th>2D との組み合わせ</th>
+                    <td>3D 描画の上に文字、HUD、メニューを重ねられます</td>
+                  </tr>
+                  <tr>
+                    <th>状態の保存</th>
+                    <td>録画、巻き戻し、リプレイ、ホットリロード</td>
+                  </tr>
+                  <tr>
+                    <th>今後</th>
+                    <td>3D 表現は拡充予定です</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="cards">
+                <div class="card">
+                  <h3>はじめてのゲーム</h3>
+                  <p><code>struct</code>、<code>update</code>、<code>draw</code> を使う基本構成を確認できます。</p>
+                </div>
+                <div class="card">
+                  <h3>機能リファレンス</h3>
+                  <p>図形、文字、画像、入力、音、演出の機能を確認できます。</p>
+                </div>
+                <div class="card">
+                  <h3>画面を作る</h3>
+                  <p>HUD やメニューには HTML / CSS を利用できます。</p>
+                </div>
+              </div>
+
+              <p class="note">状態の再現、巻き戻し、AI 連携については<a href="features.html#ai">乱数・巻き戻し・AI 連携</a>も参照してください。</p>
             </div>
-
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
 
-    <footer class="content-foot">
-      <div class="wrap">
-        <span>© MitiruEngine</span>
-        <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
-        <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
-        <a href="install.html">インストール</a>
-      </div>
-    </footer>
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+          <a href="install.html">インストール</a>
+        </div>
+      </footer>
     </div>
+
     <aside class="toc">
-      <div class="t">このページ</div>
+      <div>このページ</div>
+      <a href="#how">描画の流れ</a>
+      <a href="#code">C++ の例</a>
+      <a href="#model">モデルファイル</a>
+      <a href="#fit">現在の対応範囲</a>
     </aside>
   </div>
 </div>

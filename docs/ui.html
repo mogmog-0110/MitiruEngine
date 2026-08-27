@@ -1,13 +1,13 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine：HTML / CSS で画面を作る</title>
-  <meta name="description" content="MitiruEngine の HUD・メニューを HTML / CSS で作る方法。C++ が名前を付けた値を送り、HTML 側は data-m-* 属性で受ける。つなぎの JavaScript は書く必要がない。">
+  <title>MitiruEngine：HTML / CSS でゲーム画面を作る</title>
+  <meta name="description" content="MitiruEngine で HUD やメニューを作る仕組みを、実例とコードで紹介します。C++ から送った値を HTML の data-m-* 属性で受け取り、CSS で表示を整えます。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="HTML / CSS で画面を作る：MitiruEngine">
-  <meta property="og:description" content="ルールは C++、画面は HTML / CSS。C++ が値を送り、data-m-* が受ける。手書き JS は不要。">
+  <meta property="og:title" content="HTML / CSS でゲーム画面を作る：MitiruEngine">
+  <meta property="og:description" content="C++ と HTML / CSS を接続し、手書きの JavaScript なしで HUD やメニューを作る機能です。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/ui.html">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="site.css">
@@ -17,294 +17,442 @@
 <a class="skip-link" href="#main">本文へスキップ</a>
 
 <div class="page">
-  <header class="topbar"><div class="bar">
-    <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
-    <span class="sp"></span>
-    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
-  </div></header>
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
+      <span class="sp"></span>
+      <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.31</span>
+    </div>
+  </header>
 
-<div class="shell">
-    <aside class="sidebar"><nav>
-      <div class="grp">はじめる</div>
-      <a href="index.html">トップ</a>
-      <a href="install.html">インストール</a>
-      <a href="tutorial.html">はじめてのゲーム</a>
-      <a href="samples.html">サンプル</a>
-      <div class="grp">リファレンス</div>
-      <a href="features.html">機能</a>
-      <a class="active" href="ui.html">画面 (HTML / CSS)</a>
-      <a href="3d.html">3D</a>
-      <a href="ai.html">AI 連携</a>
-      <a href="cli.html">CLI</a>
-      <div class="grp">配布・API</div>
-      <a href="distribute.html">配布</a>
-      <a href="api/">API リファレンス</a>
-    </nav></aside>
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a class="active" href="ui.html">画面（HTML / CSS）</a>
+        <a href="3d.html">3D</a>
+        <a href="ai.html">AI 連携</a>
+        <a href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+      </nav>
+    </aside>
+
     <div class="content">
-    <main id="main">
-      <!-- ── ページ見出し ───────────────────────── -->
-      <section class="page-head">
+      <main id="main">
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">HTML / CSS UI</p>
+            <h1>C++ の値を HTML / CSS の画面へ</h1>
+            <p class="lede">MitiruEngine では、ゲームの状態と処理を C++ に置き、スコア表示・メニュー・ダイアログを HTML と CSS で作れます。C++ が送った値を <code>data-m-*</code> 属性で受け取るため、接続用の JavaScript は不要です。</p>
+          </div>
+        </section>
+
         <div class="wrap">
-          <p class="kicker">HTML / CSS UI</p>
-          <h1>HTML / CSS で画面を作る</h1>
-          <p class="lede">ゲームのルールは C++、画面（スコア表示・メニュー・ダイアログ）は HTML と CSS で書く。C++ が名前を付けた値を送り、HTML 側は <code>data-m-*</code> 属性で受けるだけなので、つなぎ役の <strong>JavaScript を書く必要がない</strong>。あとはエンジン付属の部品が画面を自動で合わせる。</p>
-        </div>
-      </section>
+          <div class="prose">
+            <figure>
+              <img src="assets/beko_gameplay.webp" alt="赤べこの横スクロールゲームのプレイ記録" loading="lazy" decoding="async" width="680" height="382">
+              <figcaption>「<a href="tutorial.html">はじめてのゲーム</a>」のプレイ記録です。画面表示は HTML / CSS で作り、表示する値は C++ から送っています。ページ後半の<a href="#example">完成例</a>でコードを確認できます。</figcaption>
+            </figure>
 
-      <div class="wrap">
-        <div class="prose">
+            <h2 id="how">構成</h2>
+            <p>C++ から画面へ値を送り、画面から C++ へ操作を通知します。ゲームの状態は C++ 側で管理します。</p>
 
-          <figure>
-            <img src="assets/beko_gameplay.webp" alt="赤べこの横スクロールゲームの記録。左上の古銭カウンタ（コイン画像＋『N / 18』）が古銭を拾うたびに増え、ゴールに着くと画面中央に『クリア！』が暗転とともに出る。どちらも HTML / CSS で描いている。" loading="lazy" decoding="async" width="680" height="382">
-            <figcaption>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこの記録。左上の古銭カウンタが拾うたびに増え、ゴールで中央の「クリア！」が出ます。どちらも見た目はすべて HTML / CSS（角丸・影・背景の暗転・拡大アニメ）で、C++ が値を送っているだけ。つなぎの JavaScript は書いていません。作り方はこのページの通り、まとめは <a href="#example">下の完成例</a>に。</figcaption>
-          </figure>
+            <figure>
+              <svg class="dgm" viewBox="0 0 560 230" width="100%" style="max-width:560px" role="img" aria-label="C++ と HTML 画面の間で値と操作を受け渡す構成">
+                <defs>
+                  <marker id="u1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"></path>
+                  </marker>
+                </defs>
+                <rect class="boxy" x="14" y="80" width="176" height="72" rx="4"></rect>
+                <text class="lbl" x="102" y="112" text-anchor="middle">C++</text>
+                <text class="sub" x="102" y="134" text-anchor="middle">状態と処理</text>
+                <rect class="boxy" x="370" y="80" width="176" height="72" rx="4"></rect>
+                <text class="lbl" x="458" y="112" text-anchor="middle">HTML / CSS</text>
+                <text class="sub" x="458" y="134" text-anchor="middle">画面表示</text>
+                <line class="arr" x1="190" y1="100" x2="368" y2="100" marker-end="url(#u1)"></line>
+                <text class="sub" x="279" y="54" text-anchor="middle">値を送る</text>
+                <text class="mono" x="279" y="74" text-anchor="middle">hud.set → data-m-text</text>
+                <line class="arr" x1="368" y1="132" x2="190" y2="132" marker-end="url(#u1)"></line>
+                <text class="sub" x="279" y="166" text-anchor="middle">操作を通知する</text>
+                <text class="mono" x="279" y="186" text-anchor="middle">data-m-action → in.action</text>
+              </svg>
+              <figcaption><code>hud.set</code> で表示値を送り、<code>data-m-action</code> でボタンなどの操作を返します。</figcaption>
+            </figure>
 
-          <!-- ── 仕組み ──────────────────────────── -->
-          <h2 id="how">仕組み</h2>
-          <p>状態を持つのは C++ だけ。C++ → 画面は「値を送る」、画面 → C++ は「操作を通知する」。この 2 方向しかない。ゲームの状態を HTML 側に持たせないので、表示がズレない。</p>
-          <figure>
-            <svg class="dgm" viewBox="0 0 560 230" width="100%" style="max-width:560px" role="img" aria-label="C++ と HTML 画面の値の流れ。C++ は hud.set で値を送り HTML が data-m-text で表示、HTML は data-m-action で操作を通知し C++ が in.action で受ける">
-              <defs><marker id="u1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
-              <rect class="boxy" x="14" y="80" width="176" height="72" rx="4"/>
-              <text class="lbl" x="102" y="112" text-anchor="middle">C++</text>
-              <text class="sub" x="102" y="134" text-anchor="middle">状態とルール</text>
-              <rect class="boxy" x="370" y="80" width="176" height="72" rx="4"/>
-              <text class="lbl" x="458" y="112" text-anchor="middle">HTML / CSS</text>
-              <text class="sub" x="458" y="134" text-anchor="middle">画面（HUD）</text>
-              <line class="arr" x1="190" y1="100" x2="368" y2="100" marker-end="url(#u1)"/>
-              <text class="sub"  x="279" y="54" text-anchor="middle">値を送る</text>
-              <text class="mono" x="279" y="74" text-anchor="middle">hud.set　→　data-m-text</text>
-              <line class="arr" x1="368" y1="132" x2="190" y2="132" marker-end="url(#u1)"/>
-              <text class="sub"  x="279" y="166" text-anchor="middle">操作を通知</text>
-              <text class="mono" x="279" y="186" text-anchor="middle">data-m-action　→　in.action</text>
-            </svg>
-            <figcaption>値は一方通行で流れます。C++ → 画面は「値を送る」（<code>hud.set</code> → <code>data-m-text</code>）、画面 → C++ は「操作を通知する」（<code>data-m-action</code> → <code>in.action</code>）。この 2 方向だけで、状態は常に C++ 側にあります。</figcaption>
-          </figure>
+            <h3>使用するファイル</h3>
+            <p>HUD やメニューは <code>assets/scene.html</code> に記述します。エンジンがこの HTML をゲーム画面の上に重ねます。C++ の送信処理は、引数に <code>Hud hud</code> を持つ <code>update(Input in, Hud hud, float dt)</code> などから呼び出します。</p>
 
-          <h3>どのファイルに書く</h3>
-          <p>画面（HUD・メニュー）は <code>assets/scene.html</code> に書く。これが HTML のエントリポイントで、エンジンがゲーム画面の上に重ねる。CSS はその <code>&lt;style&gt;</code> の中（別ファイルにしても良い）。C++ 側の <code>hud.set(...)</code> は <code>update(Input in, Hud hud, float dt)</code> の中に書く（送るには引数の <code>Hud hud</code> が要る）。完成形のファイル全体は <a href="#example">下の完成例</a>を見てほしい。</p>
+            <h3>実行時に読み込むファイル</h3>
+            <p><code>scene.html</code> の末尾に次の 2 行を置きます。<code>mitiru build</code> を実行すると、<code>mitiru_runtime/</code> がシーンの隣へコピーされます。</p>
 
-          <h3>読み込む 2 行</h3>
-          <p><code>scene.html</code> の末尾で、エンジン付属の部品を 2 つ読み込む。<code>mitiru build</code> が <code>mitiru_runtime/</code> をシーンの隣へ自動コピーするので、書くのはこの 2 行だけ。</p>
-<pre>&lt;script src="mitiru_runtime/mitiru_cef_state.js"&gt;&lt;/script&gt;  <span class="c">&lt;!-- 受け渡し --&gt;</span>
-&lt;script src="mitiru_runtime/mitiru_bind.js"&gt;&lt;/script&gt;       <span class="c">&lt;!-- 同期役 --&gt;</span></pre>
+<pre>&lt;script src="mitiru_runtime/mitiru_cef_state.js"&gt;&lt;/script&gt;
+&lt;script src="mitiru_runtime/mitiru_bind.js"&gt;&lt;/script&gt;</pre>
 
-          <!-- ── 値を表示する ────────────────────── -->
-          <h2 id="show">値を表示する</h2>
-          <p>C++ で <code>hud.set("view.…", 値)</code> と送った値を、HTML 側で同じ名前を指して受け取る。<code>data-m-*</code> は HTML 標準の「data 属性」を使った目印で、「この要素に、この名前の値を結びつけて」という意味。たとえば <code>data-m-text="view.hud.score"</code> なら、<strong>「この要素の中身（テキスト）に <code>view.hud.score</code> の値を入れて」</strong>という指示になる。</p>
+            <h2 id="show">値を表示する</h2>
+            <p>C++ と HTML に同じ名前を記述すると、送信した値が対応する要素へ反映されます。</p>
 
-          <h3>C++ から値を送る</h3>
-<pre>hud.set("view.hud.score", score);   <span class="c">// 数値</span>
+            <div class="split">
+              <div class="box">
+                <h3>C++</h3>
+<pre>hud.set("view.hud.score", score);
 hud.set("view.hud.combo", combo);
-hud.set("view.boss.active", <span class="k">true</span>);  <span class="c">// 真偽</span></pre>
+hud.set("view.boss.active", true);</pre>
+              </div>
 
-          <h3>HTML で受け取る</h3>
-<pre><span class="c">&lt;!-- textContent に値を入れる --&gt;</span>
-&lt;div class="hud"&gt;SCORE &lt;span data-m-text="view.hud.score"&gt;0&lt;/span&gt;&lt;/div&gt;
+              <div class="box">
+                <h3>HTML</h3>
+<pre>&lt;span data-m-text="view.hud.score"&gt;0&lt;/span&gt;
 
-<span class="c">&lt;!-- 文に埋め込む（テンプレート）--&gt;</span>
 &lt;p data-m-tpl="コンボ {view.hud.combo} 連鎖！"&gt;&lt;/p&gt;
 
-<span class="c">&lt;!-- 値が真のときだけ表示 --&gt;</span>
-&lt;div class="boss-bar" data-m-show="view.boss.active"&gt;…&lt;/div&gt;</pre>
-          <p class="note"><code>data-m-text</code> の初期値（上の <code>0</code>）は、まだ値が来ていないときに見えるフォールバック。書いておくと画面が一瞬空っぽにならない。</p>
+&lt;div data-m-show="view.boss.active"&gt;…&lt;/div&gt;</pre>
+              </div>
+            </div>
 
-          <!-- ── 全属性 ────────────────────────── -->
-          <h2 id="attrs">全属性</h2>
-          <p><code>data-m-*</code> は「HTML のこの場所と、C++ のこの値を結びつけて」という印。<code>data-m-text</code> だけ覚えれば、たいていの HUD は組める。他の属性は必要になったら下の表から足す。よく使う語彙はこの表と <a href="#repeat">リスト用の子属性</a>にまとまっています。どの例も貼り付ければそのまま動く。</p>
-          <table class="spectable">
-            <tbody>
-              <tr><td>data-m-text</td><td>指した値を、その要素の中身（テキスト）として出す。いちばん基本。<br><code>&lt;span data-m-text="view.hud.score"&gt;0&lt;/span&gt;</code></td></tr>
-              <tr><td>data-m-tpl</td><td>文の中の <code>{名前}</code> を値に置き換える。<code>{名前:fmt}</code> で整形も併用できる。<br><code>&lt;p data-m-tpl="コンボ {view.hud.combo} 連鎖！"&gt;&lt;/p&gt;</code></td></tr>
-              <tr><td>data-m-format</td><td><code>data-m-text</code> / <code>data-m-tween</code> に添えて整形。<code>comma</code>（桁区切り）・<code>kmb</code>（→1.2M）・<code>pct</code>（→62%）・<code>time</code>（秒→01:23）・<code>int</code>（小数を整数に）。<br><code>&lt;span data-m-text="view.gold" data-m-format="comma"&gt;0&lt;/span&gt;</code></td></tr>
-              <tr><td>data-m-show / data-m-hide</td><td>値が真（true や 0 以外）のとき表示／隠す。<code>== != &lt; &gt; &lt;= &gt;=</code> の条件式と <code>!名前</code> の否定も書ける。<br><code>&lt;div data-m-show="view.boss.active"&gt;…&lt;/div&gt;</code></td></tr>
-              <tr><td>data-m-class</td><td><code>クラス名: 条件</code> と書くと、条件が真のときだけそのクラスが付く（<code>;</code> 区切りで複数可）。見た目の変化は CSS 側で。<br><code>&lt;div data-m-class="danger: view.hp &lt;= 20"&gt;…&lt;/div&gt;</code></td></tr>
-              <tr><td>data-m-style</td><td>値を CSS の数値に流す。ゲージの伸び縮みなど。<br><code>&lt;div class="fill" data-m-style="width: {view.hp.pct}%"&gt;&lt;/div&gt;</code></td></tr>
-              <tr><td>data-m-attr</td><td>テキストではなく <code>src</code> や <code>title</code>・aria 系などの属性に値を入れる（<code>;</code> 区切りで複数可）。<br><code>&lt;img data-m-attr="src: {view.face}"&gt;</code></td></tr>
-              <tr><td>data-m-flash</td><td>値が変わった瞬間に <code>m-flash</code> クラスを一瞬付ける。光らせ方は CSS 側で書く。<br><code>&lt;span data-m-text="view.score" data-m-flash="view.score"&gt;0&lt;/span&gt;</code></td></tr>
-              <tr><td>data-m-tween</td><td>数値が変わったとき ~0.3 秒でなめらかにカウントアップ／ダウン（同じ要素の <code>data-m-text</code> より優先）。<br><code>&lt;span data-m-tween="view.score"&gt;0&lt;/span&gt;</code></td></tr>
-              <tr><td>data-m-action</td><td>ボタンの click を C++ に通知する（→<a href="#input">操作を伝える</a>）。<br><code>&lt;button data-m-action="start"&gt;はじめる&lt;/button&gt;</code></td></tr>
-              <tr><td>data-m-arg</td><td><code>data-m-action</code> に載せる値。引用符付きは文字列・数値はそのまま・それ以外は状態のパス（リスト内なら項目の値）。<br><code>&lt;button data-m-action="select" data-m-arg="'hard'"&gt;むずかしい&lt;/button&gt;</code></td></tr>
-              <tr><td>data-m-input</td><td>テキスト入力欄（名前入力等）。Enter / フォーカスアウトで確定値が C++ に届く。IME 変換中は送らない。<br><code>&lt;input data-m-input="profile.name"&gt;</code></td></tr>
-              <tr><td>data-m-input-live</td><td><code>data-m-input</code> に添えると、確定前も入力の度に送る（150ms 間引き）。検索欄など。<br><code>&lt;input data-m-input="search.q" data-m-input-live&gt;</code></td></tr>
-              <tr><td>data-m-repeat</td><td>可変リストを <code>&lt;template&gt;</code> で並べる。子属性（<code>fields / sep / fsep / type / case / key / pos / rot / leave</code>）は →<a href="#repeat">リストを並べる</a>。<br><code>&lt;div data-m-repeat="view.hand"&gt;&lt;template&gt;…&lt;/template&gt;&lt;/div&gt;</code></td></tr>
-              <tr><td>data-m-debug</td><td>開発用。<code>&lt;body data-m-debug&gt;</code>（か URL に <code>?mdebug=1</code>）で、C++ が送っていない未知の名前をコンソールに警告する。</td></tr>
-              <tr><td>m-flash / m-enter / m-leave</td><td>属性ではなく、エンジンが<strong>自動で付けるクラス</strong>。値の変化（flash）・リスト項目の登場（enter）・退場（leave）を CSS アニメの起点にできる。</td></tr>
-            </tbody>
-          </table>
+            <p class="note"><code>data-m-text</code> の要素内に初期値を置くと、C++ から値を受信する前も表示が空になりません。</p>
 
-          <h3>data-m-class：条件でクラスを付ける（色・アニメ）</h3>
+            <h2 id="attrs">主な属性</h2>
+            <p>基本的な HUD は <code>data-m-text</code> で作れます。条件表示、CSS の変更、入力、可変リストにも同じ方式を利用できます。</p>
+
+            <table class="spectable">
+              <tbody>
+                <tr>
+                  <td><code>data-m-text</code></td>
+                  <td>値を要素のテキストとして表示します。<br><code>&lt;span data-m-text="view.score"&gt;0&lt;/span&gt;</code></td>
+                </tr>
+                <tr>
+                  <td><code>data-m-tpl</code></td>
+                  <td><code>{名前}</code> を値に置き換えます。<br><code>&lt;p data-m-tpl="コンボ {view.combo} 連鎖！"&gt;&lt;/p&gt;</code></td>
+                </tr>
+                <tr>
+                  <td><code>data-m-format</code></td>
+                  <td><code>comma</code>、<code>kmb</code>、<code>pct</code>、<code>time</code>、<code>int</code> で数値を整形します。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-show</code><br><code>data-m-hide</code></td>
+                  <td>条件に応じて要素を表示または非表示にします。比較式と <code>!</code> による否定も使えます。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-class</code></td>
+                  <td>条件が成立したときに指定クラスを追加します。<br><code>&lt;div data-m-class="danger: view.hp &lt;= 20"&gt;…&lt;/div&gt;</code></td>
+                </tr>
+                <tr>
+                  <td><code>data-m-style</code></td>
+                  <td>値を CSS プロパティへ反映します。<br><code>&lt;div data-m-style="width: {view.hp.pct}%"&gt;&lt;/div&gt;</code></td>
+                </tr>
+                <tr>
+                  <td><code>data-m-attr</code></td>
+                  <td><code>src</code>、<code>title</code>、ARIA 属性などへ値を設定します。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-flash</code></td>
+                  <td>値が変化した直後に <code>m-flash</code> クラスを一時的に追加します。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-tween</code></td>
+                  <td>数値の変化を約 0.3 秒で補間して表示します。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-action</code></td>
+                  <td>クリックなどの操作を C++ へ通知します。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-arg</code></td>
+                  <td><code>data-m-action</code> とともに値を送ります。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-input</code></td>
+                  <td>Enter またはフォーカスアウトで入力値を送ります。IME 変換中は送信しません。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-input-live</code></td>
+                  <td>入力中の値も 150ms 間隔で送ります。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-repeat</code></td>
+                  <td><code>&lt;template&gt;</code> を使って可変リストを表示します。詳細は<a href="#repeat">リスト表示</a>で説明します。</td>
+                </tr>
+                <tr>
+                  <td><code>data-m-debug</code></td>
+                  <td>未送信の名前を開発者コンソールへ警告します。</td>
+                </tr>
+                <tr>
+                  <td><code>m-flash</code><br><code>m-enter</code><br><code>m-leave</code></td>
+                  <td>値の変化、項目の追加、項目の削除に合わせてエンジンが自動で付けるクラスです。</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h3>条件に応じて CSS クラスを付ける</h3>
 <pre>&lt;div class="hpbar" data-m-class="danger: view.hp &lt;= 20"&gt;…&lt;/div&gt;
 
 &lt;style&gt;
-  .hpbar.danger { color: red; animation: blink 1s infinite; }  <span class="c">/* danger が付くと赤点滅 */</span>
+  .hpbar.danger {
+    color: red;
+    animation: blink 1s infinite;
+  }
 &lt;/style&gt;</pre>
-          <p>hp が 20 以下になると <code>danger</code> クラスが付いて、バーが赤く点滅する。</p>
+            <p><code>view.hp</code> が 20 以下になると <code>danger</code> クラスが追加されます。</p>
 
-          <h3>data-m-style：値を CSS の数値に流す（ゲージ）</h3>
+            <h3>値を CSS プロパティへ反映する</h3>
 <pre>&lt;div class="bar"&gt;
   &lt;div class="fill" data-m-style="width: {view.hp.pct}%"&gt;&lt;/div&gt;
 &lt;/div&gt;</pre>
-          <p><code>hud.set("view.hp.pct", 62)</code> で中の <code>fill</code> の幅が 62% に。値が変われば伸び縮みする。</p>
+            <p><code>hud.set("view.hp.pct", 62)</code> を実行すると、<code>fill</code> の幅が 62% になります。</p>
 
-          <h3>data-m-flash / data-m-tween：変化を演出する</h3>
-<pre><span class="c">&lt;!-- スコアが変わるたび m-flash クラスが一瞬付く（取得演出）--&gt;</span>
-&lt;span data-m-text="view.score" data-m-flash="view.score"&gt;0&lt;/span&gt;
-&lt;style&gt; .m-flash { animation: pop .3s; } &lt;/style&gt;
+            <h3>値の変化を表示に使う</h3>
+<pre>&lt;span data-m-text="view.score"
+      data-m-flash="view.score"&gt;0&lt;/span&gt;
 
-<span class="c">&lt;!-- 0 → 新しい値へ ~0.3 秒でカウントアップ --&gt;</span>
-&lt;span data-m-text="view.score" data-m-tween="view.score"&gt;0&lt;/span&gt;</pre>
+&lt;style&gt;
+  .m-flash { animation: pop .3s; }
+&lt;/style&gt;
 
-          <!-- ── 操作を伝える ────────────────────── -->
-          <h2 id="input">操作を伝える</h2>
-          <p>画面 → C++ は「操作の通知」だけ。ボタンに <code>data-m-action</code> を付けると、押された合図が C++ に届く。中の処理（ゲームのルール）は C++ が決める。</p>
+&lt;span data-m-text="view.score"
+      data-m-tween="view.score"&gt;0&lt;/span&gt;</pre>
+
+            <h2 id="input">操作を C++ へ伝える</h2>
+            <p>ボタンに <code>data-m-action</code> を付けると、操作名が C++ へ届きます。<code>data-m-arg</code> を使えば値も添えられます。</p>
+
 <pre>&lt;button data-m-action="start"&gt;はじめる&lt;/button&gt;
-&lt;button data-m-action="select" data-m-arg="'hard'"&gt;むずかしい&lt;/button&gt;</pre>
-          <p><code>data-m-arg</code> は引用符付き（<code>'hard'</code>）なら文字列、数値（<code>42</code>）ならそのままの値、それ以外は状態のパスとして解決されて C++ に届く。スライダーやドロップダウン（<code>input</code> / <code>select</code>）に <code>data-m-action</code> を付けると、現在値が合図と一緒に渡る。設定画面の音量調整などに使える。</p>
-          <p>C++ 側は <code>update</code> の中で受ける。</p>
-<pre><span class="k">if</span> (in.action("start"))  startGame();
-<span class="k">if</span> (in.action("select")) chooseDifficulty(/* arg */);</pre>
+&lt;button data-m-action="select"
+        data-m-arg="'hard'"&gt;むずかしい&lt;/button&gt;</pre>
 
-          <h3>data-m-input：テキスト入力欄</h3>
+            <p><code>data-m-arg</code> では、引用符付きの値を文字列、数値を数値として送ります。それ以外は状態のパスとして解決されます。<code>input</code> や <code>select</code> に <code>data-m-action</code> を付けた場合は、現在値も渡されます。</p>
+
+<pre>if (in.action("start"))
+    startGame();
+
+if (in.action("select"))
+    chooseDifficulty(/* arg */);</pre>
+
+            <h3>テキスト入力</h3>
 <pre>&lt;input data-m-input="profile.name" placeholder="なまえ"&gt;
-&lt;input data-m-input="search.q" data-m-input-live&gt;  <span class="c">&lt;!-- 入力の度にも送る (150ms 間引き) --&gt;</span></pre>
-          <p>Enter かフォーカスアウトで確定し、C++ には合図 <code>input:profile.name</code> と入力値が届く。日本語の IME 変換中は送らないので、変換途中の文字列が混ざらない。</p>
-<pre><span class="k">if</span> (in.action("input:profile.name"))
-    setName(in.actionPayload("input:profile.name"));  <span class="c">// {"value":"入力された文字"}</span></pre>
+&lt;input data-m-input="search.q" data-m-input-live&gt;</pre>
 
-          <!-- ── くり返し ────────────────────────── -->
-          <h2 id="repeat">リストを並べる</h2>
-          <p>手札・インベントリ・ランキングのような可変リストは <code>data-m-repeat</code> と <code>&lt;template&gt;</code> で。要素は使い回されるので、毎フレーム更新しても重くならない。</p>
+            <p>確定時には <code>input:profile.name</code> という操作名と入力値が届きます。</p>
+
+<pre>if (in.action("input:profile.name"))
+    setName(in.actionPayload("input:profile.name"));</pre>
+
+            <h2 id="repeat">可変リストを表示する</h2>
+            <p>手札、インベントリ、ランキングなどは <code>data-m-repeat</code> と <code>&lt;template&gt;</code> で表示できます。要素は再利用されます。</p>
+
 <pre>&lt;div class="hand" data-m-repeat="view.hand"&gt;
   &lt;template&gt;
-    &lt;div class="card" data-m-action="play" data-m-arg="i"&gt;
+    &lt;div class="card"
+         data-m-action="play"
+         data-m-arg="i"&gt;
       &lt;span data-m-text="cost"&gt;&lt;/span&gt;
       &lt;span data-m-text="name"&gt;&lt;/span&gt;
     &lt;/div&gt;
   &lt;/template&gt;
 &lt;/div&gt;</pre>
-          <p class="note">リストの中では、項目のフィールドを <code>view.…</code> を付けずそのまま（<code>data-m-text="name"</code>）指す。C++ 側の送り方の本名は <code>StateWriter</code> です。<code>array()</code> / <code>list()</code> で組み立てて <code>hud.set</code> で送る（→<a href="features.html#htmlui">機能リファレンス §HTML / CSS で画面</a>）。</p>
 
-          <h3>大量の要素はコンパクト区切りで：data-m-fields</h3>
-          <p>毎フレーム動く大量の要素（弾・敵・コイン）は、JSON ではなく区切り文字列で送るほうが軽い。C++ が <code>"2,80,120;1,300,60"</code> のように送り、HTML 側は <code>data-m-fields</code> で各列に名前を付けて受ける。</p>
-<pre><span class="c">&lt;!-- C++: hud.set("view.scene", "2,80,120;1,300,60");  列は t,x,y --&gt;</span>
-&lt;div class="field" data-m-repeat="view.scene" data-m-fields="t,x,y"&gt;
-  &lt;template data-m-case="1"&gt;&lt;div class="coin"  data-m-pos="x,y"&gt;&lt;/div&gt;&lt;/template&gt;
-  &lt;template data-m-case="2"&gt;&lt;div class="enemy" data-m-pos="x,y"&gt;&lt;/div&gt;&lt;/template&gt;
+            <p class="note">リスト内では、項目のフィールドを <code>data-m-text="name"</code> のように直接指定します。C++ 側では <code>StateWriter</code> の <code>array()</code> または <code>list()</code> で組み立て、<code>hud.set</code> で送ります。詳細は<a href="features.html#htmlui">機能リファレンスの HTML / CSS 画面</a>にあります。</p>
+
+            <h3>区切り形式で送る</h3>
+            <p>毎フレーム更新する弾、敵、コインなどは、<code>"2,80,120;1,300,60"</code> のような区切り形式でも送れます。HTML 側では <code>data-m-fields</code> で各列に名前を付けます。</p>
+
+<pre>&lt;div class="field"
+     data-m-repeat="view.scene"
+     data-m-fields="t,x,y"&gt;
+  &lt;template data-m-case="1"&gt;
+    &lt;div class="coin" data-m-pos="x,y"&gt;&lt;/div&gt;
+  &lt;/template&gt;
+  &lt;template data-m-case="2"&gt;
+    &lt;div class="enemy" data-m-pos="x,y"&gt;&lt;/div&gt;
+  &lt;/template&gt;
 &lt;/div&gt;</pre>
-          <p><code>data-m-case</code> は「種類の列（既定 <code>t</code>、<code>data-m-type</code> で変更）がこの値の項目には、このテンプレートを使う」という出し分け。<code>data-m-pos</code> は項目の座標を <code>transform: translate(x,y)</code> に変換するので、要素は CSS だけで画面を動き回る。</p>
 
-          <h3>並べ替えをスライドさせる：data-m-key</h3>
-          <p><code>data-m-key</code> を付けると、要素が「何番目か」ではなく key で保持される。順位が入れ替わっても要素が作り直されないので、CSS の <code>transition</code> がそのまま「順位が滑らかに入れ替わるランキング」になる。</p>
-<pre>&lt;ol class="rank" data-m-repeat="view.rank" data-m-key="id" data-m-leave&gt;
-  &lt;template&gt;&lt;li class="row" data-m-tpl="{name} — {score}"&gt;&lt;/li&gt;&lt;/template&gt;
+            <p><code>data-m-case</code> は種類に応じてテンプレートを選びます。種類に使う列は既定で <code>t</code> です。<code>data-m-pos</code> は座標を <code>transform: translate(x,y)</code> へ変換します。</p>
+
+            <h3>並べ替えを CSS transition へつなぐ</h3>
+<pre>&lt;ol class="rank"
+    data-m-repeat="view.rank"
+    data-m-key="id"
+    data-m-leave&gt;
+  &lt;template&gt;
+    &lt;li class="row"
+        data-m-tpl="{name} — {score}"&gt;&lt;/li&gt;
+  &lt;/template&gt;
 &lt;/ol&gt;
+
 &lt;style&gt;
-  .rank .row { transition: transform .3s; }            <span class="c">/* 入れ替えがスライドに */</span>
-  .rank .row.m-enter { opacity: 0; }                   <span class="c">/* 登場 (生成直後に一瞬付く) */</span>
-  .rank .row.m-leave { animation: fadeout .3s forwards; } <span class="c">/* 退場 (終わってから削除) */</span>
+  .rank .row {
+    transition: transform .3s;
+  }
+  .rank .row.m-enter {
+    opacity: 0;
+  }
+  .rank .row.m-leave {
+    animation: fadeout .3s forwards;
+  }
 &lt;/style&gt;</pre>
 
-          <h3>repeat の子属性：一覧</h3>
-          <table class="spectable">
-            <tbody>
-              <tr><td>data-m-fields</td><td>コンパクト区切りの列名。<code>data-m-fields="t,x,y"</code>（JSON のリストなら不要）。</td></tr>
-              <tr><td>data-m-sep / data-m-fsep</td><td>項目の区切りと列の区切りを変える（既定 <code>;</code> と <code>,</code>）。</td></tr>
-              <tr><td>data-m-type</td><td>テンプレートの出し分けに使う列名（既定 <code>t</code>）。</td></tr>
-              <tr><td>data-m-case</td><td><code>&lt;template data-m-case="2"&gt;</code>。type 列がこの値の項目に使うテンプレート。</td></tr>
-              <tr><td>data-m-key</td><td>項目をこのフィールドで保持。並べ替えが CSS transition のスライドになる。</td></tr>
-              <tr><td>data-m-pos</td><td><code>data-m-pos="x,y"</code>。項目のフィールドを <code>transform: translate</code> に。</td></tr>
-              <tr><td>data-m-rot</td><td>要素に回転を付ける（度数のリテラル。<code>data-m-pos</code> と併用可）。</td></tr>
-              <tr><td>data-m-leave</td><td>消えた項目を即削除せず <code>m-leave</code> クラスを付け、CSS アニメの終了後（最長 400ms）に削除。</td></tr>
-              <tr><td>m-enter</td><td>生成直後の要素に一瞬付く自動クラス（属性ではない）。登場アニメの起点。</td></tr>
-            </tbody>
-          </table>
+            <p><code>data-m-key</code> を指定すると、項目は順番ではなくキーで保持されます。順位の変更時も要素が再作成されないため、CSS transition を利用できます。</p>
 
-          <!-- ── 完成例 ──────────────────────────── -->
-          <h2 id="example">完成例</h2>
-          <p>「<a href="tutorial.html">はじめてのゲーム</a>」の赤べこが使っている <code>assets/scene.html</code>。左上の古銭カウンタと、ゴール時の「クリア！」を、これだけで作っています。<strong>手書きの JavaScript は 1 行もありません</strong>。C++ が <code>view.coins</code> / <code>view.total</code> / <code>view.cleared</code> を送り、<code>data-m-*</code> が受けるだけ。見た目は普通の CSS。</p>
-          <figure>
-            <img src="assets/ui_beko_hud.png" alt="赤べこのゲーム画面。左上に古銭カウンタの丸いピル（コイン画像＋『12 / 18』）、画面中央に暗転を背にした『クリア！』の大きな文字。どちらも下の scene.html と hud.set が作っている" loading="lazy" width="1280" height="720">
-            <figcaption>下のコードが実際に作る画面。左上の古銭カウンタ（<code>data-m-text</code>）も、中央の「クリア！」（<code>data-m-class</code> で暗転＋拡大）も、この <code>scene.html</code> と CSS だけ。C++ は値を送っているだけです。</figcaption>
-          </figure>
-<pre><span class="c">&lt;!-- assets/scene.html --&gt;</span>
+            <h3>リスト用の属性</h3>
+            <table class="spectable">
+              <tbody>
+                <tr><td><code>data-m-fields</code></td><td>区切り形式の列名を指定します。</td></tr>
+                <tr><td><code>data-m-sep</code><br><code>data-m-fsep</code></td><td>項目と列の区切りを変更します。既定値は <code>;</code> と <code>,</code> です。</td></tr>
+                <tr><td><code>data-m-type</code></td><td>テンプレート選択に使う列名を変更します。既定値は <code>t</code> です。</td></tr>
+                <tr><td><code>data-m-case</code></td><td>指定した種類の項目に使うテンプレートを選びます。</td></tr>
+                <tr><td><code>data-m-key</code></td><td>項目を指定フィールドの値で保持します。</td></tr>
+                <tr><td><code>data-m-pos</code></td><td>2 つのフィールドを要素の移動量へ変換します。</td></tr>
+                <tr><td><code>data-m-rot</code></td><td>要素へ回転角を設定します。</td></tr>
+                <tr><td><code>data-m-leave</code></td><td>削除前に <code>m-leave</code> を付け、CSS アニメの終了後、最長 400ms で要素を削除します。</td></tr>
+                <tr><td><code>m-enter</code></td><td>生成直後の要素へ一時的に付くクラスです。</td></tr>
+              </tbody>
+            </table>
+
+            <h2 id="example">実装例</h2>
+            <p>「<a href="tutorial.html">はじめてのゲーム</a>」で使用している <code>assets/scene.html</code> の例です。C++ から <code>view.coins</code>、<code>view.total</code>、<code>view.cleared</code> を送り、HTML で受け取ります。接続用の JavaScriptは記述していません。</p>
+
+            <figure>
+              <img src="assets/ui_beko_hud.png" alt="赤べこのゲームで HTML と CSS による画面表示を使用した例" loading="lazy" width="1280" height="720">
+              <figcaption><code>data-m-text</code> と <code>data-m-class</code> を使用した実装例です。</figcaption>
+            </figure>
+
+<pre>&lt;!-- assets/scene.html --&gt;
 &lt;!doctype html&gt;
-&lt;html lang="ja"&gt;&lt;head&gt;&lt;meta charset="utf-8"&gt;
+&lt;html lang="ja"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8"&gt;
   &lt;style&gt;
-    body { margin: 0; background: transparent; font-family: sans-serif; }
-    <span class="c">/* 古銭カウンタ（左上の丸いピル）*/</span>
-    .coins { position: absolute; top: 14px; left: 16px;
-             display: flex; align-items: center; gap: 8px;
-             padding: 6px 16px; border-radius: 999px;
-             background: rgba(255,252,246,.82);
-             color: #7a5320; font-weight: 700; font-size: 22px; }
-    .coins img { width: 26px; height: 26px; }
-    <span class="c">/* 「クリア！」。show が付いたときだけ暗転して出す */</span>
-    .clear { position: absolute; inset: 0; opacity: 0;
-             display: flex; align-items: center; justify-content: center;
-             background: rgba(20,20,30,0); transition: .45s; }
-    .clear.show { background: rgba(20,20,30,.42); opacity: 1; }
-    .clear span { color: #fff; font-size: 74px; font-weight: 800;
-                  transform: scale(.82); transition: transform .45s; }
-    .clear.show span { transform: scale(1); }
+    body {
+      margin: 0;
+      background: transparent;
+      font-family: sans-serif;
+    }
+
+    .coins {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: rgba(255,252,246,.82);
+      color: #7a5320;
+      font-weight: 700;
+      font-size: 22px;
+    }
+
+    .coins img {
+      width: 26px;
+      height: 26px;
+    }
+
+    .clear {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(20,20,30,0);
+      transition: .45s;
+    }
+
+    .clear.show {
+      background: rgba(20,20,30,.42);
+      opacity: 1;
+    }
+
+    .clear span {
+      color: #fff;
+      font-size: 74px;
+      font-weight: 800;
+      transform: scale(.82);
+      transition: transform .45s;
+    }
+
+    .clear.show span {
+      transform: scale(1);
+    }
   &lt;/style&gt;
-&lt;/head&gt;&lt;body&gt;
-  <span class="c">&lt;!-- 古銭カウンタ（C++ の hud.set("view.coins" / "view.total", …) が反映される）--&gt;</span>
+&lt;/head&gt;
+&lt;body&gt;
   &lt;div class="coins"&gt;
     &lt;img src="sprites/coin.png"&gt;
-    &lt;span data-m-text="view.coins"&gt;0&lt;/span&gt; / &lt;span data-m-text="view.total"&gt;0&lt;/span&gt;
+    &lt;span data-m-text="view.coins"&gt;0&lt;/span&gt;
+    /
+    &lt;span data-m-text="view.total"&gt;0&lt;/span&gt;
   &lt;/div&gt;
 
-  <span class="c">&lt;!-- view.cleared が真のとき show が付いて「クリア！」が出る --&gt;</span>
-  &lt;div class="clear" data-m-class="show: view.cleared &gt; 0"&gt;&lt;span&gt;クリア！&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="clear"
+       data-m-class="show: view.cleared &gt; 0"&gt;
+    &lt;span&gt;クリア！&lt;/span&gt;
+  &lt;/div&gt;
 
-  <span class="c">&lt;!-- エンジン付属の 2 つ。mitiru build が隣に自動コピーする --&gt;</span>
   &lt;script src="mitiru_runtime/mitiru_cef_state.js"&gt;&lt;/script&gt;
   &lt;script src="mitiru_runtime/mitiru_bind.js"&gt;&lt;/script&gt;
-&lt;/body&gt;&lt;/html&gt;</pre>
-          <p>C++ 側（<code>game.cpp</code>）はこれを送るだけ。</p>
-<pre><span class="k">void</span> BekoRun::pushHud(<span class="t">Hud</span> hud) <span class="k">const</span> {
-    hud.set(<span class="s">"view.coins"</span>, coins);
-    hud.set(<span class="s">"view.total"</span>, NCOIN);
-    hud.set(<span class="s">"view.cleared"</span>, cleared ? 1 : 0);   <span class="c">// 真偽は 0 / 1 で送る</span>
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+
+            <p>C++ 側では、表示に使う値を次のように送ります。</p>
+
+<pre>void BekoRun::pushHud(Hud hud) const {
+    hud.set("view.coins", coins);
+    hud.set("view.total", NCOIN);
+    hud.set("view.cleared", cleared ? 1 : 0);
 }</pre>
-          <p>CSS は普通の Web と同じ。影・角丸・<code>@keyframes</code> アニメ・<code>backdrop-filter</code> のぼかしまでそのまま使える（中身は本物のブラウザエンジン）。古銭の数字を <code>data-m-tween</code> でカウントアップさせたり、「クリア！」の登場を CSS アニメにしたり。見た目はすべて HTML / CSS 側で完結します。</p>
 
-          <!-- ── つまずき ────────────────────────── -->
-          <h2 id="gotcha">つまずきやすい点</h2>
-          <p>C++ が一度も送っていない名前を <code>data-m-*</code> で指すと、エラーは出ず、HTML に書いた初期値がそのまま残る。「値が変わらない」ときは、まず C++ の <code>set</code> とスペルが一致しているか確認する。</p>
-          <ul>
-            <li>C++ の <code>"view.hud.score"</code> と HTML の <code>data-m-text="view.hud.score"</code> は 完全一致が必要。</li>
-            <li>見た目（色・余白・アニメ）は CSS の領分。値が来ているのに見えないときは CSS を疑う。</li>
-          </ul>
-          <p>スペル違いを機械的に見つける方法も 2 つある。コミット前に <code>mitiru lint</code> を回すと、HTML の <code>data-m-*</code> キーが C++ で <code>set</code> したキーと食い違っていないか照合する。実行中に確かめたいときは <code>&lt;body data-m-debug&gt;</code> を付けるか、シーンを <code>?mdebug=1</code> で開くと、未知のキーがコンソールに出る。</p>
-          <p class="note"><strong>JavaScript を書いてもいい。</strong> <code>data-m-*</code> だけで HUD は組めるが、凝った演出を自分で作りたくなれば JavaScript も書ける（中身は本物のブラウザエンジン）。ふだんは書かずに作り、必要になったら手を伸ばせる。</p>
-          <p><a href="tutorial.html">はじめてのゲーム</a>（C++ だけの赤べこの横スクロール）で土台を作ってから、HUD を HTML に置き換えるのがおすすめ。属性の組み合わせは <a href="features.html#htmlui">機能リファレンス §HTML / CSS で画面</a> でも引ける。</p>
+            <p>画面の見た目には、影、角丸、<code>@keyframes</code>、<code>backdrop-filter</code> など、ブラウザで利用できる CSS を使えます。必要であれば JavaScript も記述できます。</p>
 
+            <h2 id="gotcha">確認方法</h2>
+            <p>C++ が送っていない名前を HTML で指定してもエラーにはならず、要素内の初期値が残ります。値が更新されない場合は、次を確認します。</p>
+
+            <ul>
+              <li>C++ の <code>hud.set</code> と HTML の <code>data-m-*</code> で、名前が完全に一致しているか。</li>
+              <li>値を受信していても、CSS によって要素が見えない状態になっていないか。</li>
+            </ul>
+
+            <p><code>mitiru lint</code> を実行すると、HTML で参照している名前と C++ から送っている名前を照合できます。実行中は <code>&lt;body data-m-debug&gt;</code> を付けるか、シーンを <code>?mdebug=1</code> で開くと、未送信の名前が開発者コンソールへ表示されます。</p>
+
+            <p class="note"><code>data-m-*</code> だけでも HUD を構成できます。さらに処理が必要な場合は JavaScript も追加できます。</p>
+
+            <p><a href="tutorial.html">はじめてのゲーム</a>で基本的な制作手順を確認できます。属性の詳細は<a href="features.html#htmlui">機能リファレンスの HTML / CSS 画面</a>にも掲載しています。</p>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
 
-    <footer class="content-foot">
-      <div class="wrap">
-        <span>© MitiruEngine</span>
-        <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
-        <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
-        <a href="install.html">インストール</a>
-      </div>
-    </footer>
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+          <a href="install.html">インストール</a>
+        </div>
+      </footer>
     </div>
+
     <aside class="toc">
       <div class="t">このページ</div>
-      <a href="#how">仕組み</a>
+      <a href="#how">構成</a>
       <a href="#show">値を表示する</a>
-      <a href="#attrs">全属性</a>
+      <a href="#attrs">主な属性</a>
       <a href="#input">操作を伝える</a>
-      <a href="#repeat">リストを並べる</a>
-      <a href="#example">完成例</a>
-      <a href="#gotcha">つまずきやすい点</a>
+      <a href="#repeat">可変リスト</a>
+      <a href="#example">実装例</a>
+      <a href="#gotcha">確認方法</a>
     </aside>
   </div>
 </div>
