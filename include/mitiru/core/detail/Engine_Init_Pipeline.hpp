@@ -1,4 +1,4 @@
-// mitiru::Engine の detail header — 直接 include しない。core/Engine.hpp 経由で取り込む
+// mitiru::Engine の detail header。直接 include しない。core/Engine.hpp 経由で取り込む
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
@@ -45,7 +45,7 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 	}
 
 	// backbuffer は window client size に追従する (物理 pixel と 1:1)。
-	// この部分は modal drag 中でも走る — DXGI swap chain は window に合わせて
+	// この部分は modal drag 中でも走る。DXGI swap chain は window に合わせて
 	// 必ず resize しないと Present が stretch / glitch artifact を起こす。
 	// 重い処理 (logical layout、CEF re-layout、pipeline projection) は
 	// 後段の WM_EXITSIZEMOVE まで遅延させる。
@@ -78,11 +78,11 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 
 	// config.resizeMode に従って新しい logical size を解決する (Siv3D 相当):
 	//
-	// Actual  — logical = physical (1:1)。HTML @media が発火し、native draw は
+	// Actual。logical = physical (1:1)。HTML @media が発火し、native draw は
 	//           物理座標を使う。既定。
-	// Virtual — logical は初期値で固定、viewport = window 全体 =>
+	// Virtual。logical は初期値で固定、viewport = window 全体 =>
 	//           anisotropic stretch。論理座標で書かれた legacy game 向け。
-	// Keep    — 未対応 (letterbox 用の viewport offset が要る)。
+	// Keep。未対応 (letterbox 用の viewport offset が要る)。
 	//           当面は Virtual の semantics に fallback する。
 	mitiru::Size newLogical{w, h};
 	switch (m_config.resizeMode)
@@ -120,7 +120,7 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 
 	// CEF UI layer: browser に新サイズでの repaint を指示し、GPU texture を
 	// deferred resize 対象としてマークする。texture は寸法が一致する次の
-	// OnPaint で atomically に再生成される — その間は古い texture が描画され
+	// OnPaint で atomically に再生成される。その間は古い texture が描画され
 	// 続ける (一時的に bilinear-stretch) ため、UI が空白になることはない。
 	// (swap ロジックは MitiruCefTexture::applyPendingResize を参照。)
 #if defined(_WIN32) && defined(MITIRU_HAS_CEF)

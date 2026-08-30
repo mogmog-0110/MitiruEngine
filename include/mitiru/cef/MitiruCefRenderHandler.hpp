@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MitiruCefRenderHandler.hpp
-/// @brief CEF OSR 描画コールバック — BGRA バッファをスレッドセーフに転送する
+/// @brief CEF OSR 描画コールバック。BGRA バッファをスレッドセーフに転送する
 ///
 /// CEF は描画更新時に OnPaint() を CEF UI スレッドから呼ぶ。
 /// ゲームレンダリングスレッドは毎フレーム takePixels() で最新バッファを取り出す。
@@ -57,7 +57,7 @@ public:
     /// @brief 新しいフレームが届いているか (ゲームスレッドから呼ぶ)
     [[nodiscard]] bool isDirty() const noexcept { return m_dirty.load(); }
 
-    /// @brief OnPaint が一度でも呼ばれたか — ブラウザ準備完了の判定に使う
+    /// @brief OnPaint が一度でも呼ばれたか。ブラウザ準備完了の判定に使う
     [[nodiscard]] bool hasEverPainted() const noexcept { return m_everPainted.load(); }
 
     /// @brief 最新ピクセルと蓄積 dirty rect リストを front バッファにスワップして返す

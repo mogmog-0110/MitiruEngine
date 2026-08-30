@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file AssetPath.hpp
-/// @brief アセットパス解決 — 実行ファイルの場所を基準にパスを解決する
+/// @brief アセットパス解決。実行ファイルの場所を基準にパスを解決する
 
 #include <filesystem>
 #include <string>

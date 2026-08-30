@@ -8,17 +8,23 @@
 ///          ゲームループの poll() でノンブロッキングに動作する。
 ///          ハンドラ実装は server/detail/EngineHttp_*.hpp に分割 (末尾 include)。
 
-#ifdef __EMSCRIPTEN__
-// WASM環境ではHTTPサーバーは不要 — スタブのみ提供
+// EngineCallbacks は std::function だけの portable な束なので、定義は 1 つに
+// まとめて全 platform で共有する。WASM 用の写しを別に持つと、Engine 側で
+// フィールドが増えるたびに写しがズレて「no member named ...」で落ちる。
 #include <cstdint>
 #include <functional>
 #include <map>
 #include <string>
 #include <vector>
 
-namespace mitiru { class Game; struct EngineConfig; class Clock; class Screen; class CommandSystem; class InputInjector; }
-namespace mitiru::server {
+namespace mitiru { class Game; struct EngineConfig; class Clock; class Screen;
+class CommandSystem; class InputInjector; }
 
+namespace mitiru::server
+{
+
+/// @brief エンジンアクセス用コールバック群
+/// @details Engineクラスへの循環依存を避けるため、コールバック経由でアクセスする。
 struct EngineCallbacks
 {
 	std::function<std::uint64_t()> getFrameNumber;
@@ -28,22 +34,76 @@ struct EngineCallbacks
 	std::function<std::string()> getSnapshot;
 	std::function<void()> requestStop;
 	std::function<std::string()> getSceneJson;
-	std::function<int(const std::string&, const std::string&, int)> createNode;
-	std::function<bool(int)> deleteNode;
-	std::function<bool(int, const std::string&, const std::string&)> updateNodeProperty;
-	std::function<bool(int, const std::string&, const std::string&)> addTrait;
-	std::function<bool(int, const std::string&)> removeTrait;
-	std::function<bool(const std::string&)> saveScene;
-	std::function<bool(const std::string&)> loadScene;
-	std::function<bool(int)> selectNode;
-	std::function<bool(int)> focusNode;
+	std::function<int(const std::string& name, const std::string& type, int parentId)> createNode;
+	std::function<bool(int nodeId)> deleteNode;
+	std::function<bool(int nodeId, const std::string& prop, const std::string& value)> updateNodeProperty;
+	std::function<bool(int nodeId, const std::string& traitType, const std::string& traitData)> addTrait;
+	std::function<bool(int nodeId, const std::string& traitType)> removeTrait;
+	std::function<bool(const std::string& path)> saveScene;
+	std::function<bool(const std::string& path)> loadScene;
+	std::function<bool(int nodeId)> selectNode;
+	std::function<bool(int nodeId)> focusNode;
 	std::function<std::string()> getErrors;
 	std::function<std::string()> getLog;
 	std::function<std::string()> getProjectInfo;
 	std::function<bool()> runGame;
 	std::function<bool()> stopGame;
-	std::function<bool(float, float, float, float, float, float)> setEditorCamera;
+	std::function<bool(float yaw, float pitch, float distance, float px, float py, float pz)> setEditorCamera;
+
+	// ── runtime コントロール ─────────────────────────────
+	// `mitiru_console` GUI sub-window / 外部ツールが叩く。各 callable は
+	// 設定されてれば host が engine の対応 API へ振り分ける。
+	std::function<bool()>           runtimeTogglePause; ///< 戻り値 = toggle 後の paused
+	std::function<bool()>           runtimeIsPaused;
+	std::function<void()>           runtimeStep;        ///< paused 時に 1 フレーム進める
+	std::function<void(float)>      runtimeSetTimeScale;
+	std::function<bool(std::uint32_t)> runtimeResim;  ///< k フレーム前へ巻き戻して記録入力で再生
+	std::function<float()>          runtimeGetTimeScale;
+	std::function<bool()>           runtimeToggleLofi; ///< 戻り値 = toggle 後の lofi enabled
+	std::function<bool()>           runtimeIsLofiEnabled;
+
+	// ── AI Lens ─────────────────────────────────────────
+	// reflected GameMemory を構造的に read / diff / what-if する AI 向け面。
+	std::function<std::string()>                       aiState;     ///< 現フレームの reflected JSON
+	std::function<std::string(int)>                    aiStateAt;   ///< ring N フレーム前の reflected JSON
+	std::function<std::string(int, int)>               aiStateDiff; ///< reflectDiff(ring.at(from), at(to))
+	std::function<std::string(const std::string&, int)> aiBranch;   ///< (keysCsv, frames) → 反実仮想結果
+	std::function<int()>                               aiRingSize;  ///< time-travel ring の保持フレーム数
+
+	// ── Inspector 観測 ─────────────────────────────────
+	// Inspector key-value ストアへの read-only アクセス。
+	// nullptr = Inspector 未配線 → 503 を返す。
+	std::function<std::string(const std::string&)> inspectorQuery;   ///< prefix でフィルタ (空=全件)
+	std::function<std::string(std::size_t)>        inspectorAt;      ///< back=N の過去スナップショット
+	std::function<std::size_t()>                   inspectorDepth;   ///< 現在の履歴エントリ数
+	std::function<std::size_t()>                   inspectorCapacity; ///< 履歴の最大容量
+
+	// ── AI フレーム観測 (/api/ai/frame) ──────────────────────────
+	// Screen の draw log (何をどこに描いたか) への read-only アクセス。
+	std::function<void(bool)>    drawLogEnable; ///< draw log 記録の on/off
+	std::function<std::string()> drawLogJson;   ///< 当フレームの draw log JSON 配列
+
+	// ── AI 音観測 (/api/ai/audio) ────────────────────────────────
+	std::function<std::string(int)> audioLogJson; ///< 最新 max 件の音イベント JSON
+
+	// ── capture() の実寸 ─────────────────────────────────────────
+	// 論理 Screen サイズ ≠ ウィンドウ実寸のゲームで screenshot の stride ズレを防ぐ。
+	std::function<std::pair<int, int>()> captureDims; ///< capture() が返す pixel buffer の (幅, 高さ)
 };
+
+}  // namespace mitiru::server
+
+#ifdef __EMSCRIPTEN__
+// WASM環境ではHTTPサーバーは不要。スタブのみ提供
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <string>
+#include <vector>
+
+namespace mitiru { class Game; struct EngineConfig; class Clock; class Screen; class CommandSystem; class InputInjector; }
+namespace mitiru::server {
+
 
 class EngineHttpServer {
 public:
@@ -92,73 +152,6 @@ public:
 namespace mitiru::server
 {
 
-/// @brief エンジンアクセス用コールバック群
-/// @details Engineクラスへの循環依存を避けるため、コールバック経由でアクセスする。
-struct EngineCallbacks
-{
-	std::function<std::uint64_t()> getFrameNumber;
-	std::function<const Clock*()> getClock;
-	std::function<const Screen*()> getScreen;
-	std::function<std::vector<std::uint8_t>()> capture;
-	std::function<std::string()> getSnapshot;
-	std::function<void()> requestStop;
-	std::function<std::string()> getSceneJson;
-	std::function<int(const std::string& name, const std::string& type, int parentId)> createNode;
-	std::function<bool(int nodeId)> deleteNode;
-	std::function<bool(int nodeId, const std::string& prop, const std::string& value)> updateNodeProperty;
-	std::function<bool(int nodeId, const std::string& traitType, const std::string& traitData)> addTrait;
-	std::function<bool(int nodeId, const std::string& traitType)> removeTrait;
-	std::function<bool(const std::string& path)> saveScene;
-	std::function<bool(const std::string& path)> loadScene;
-	std::function<bool(int nodeId)> selectNode;
-	std::function<bool(int nodeId)> focusNode;
-	std::function<std::string()> getErrors;
-	std::function<std::string()> getLog;
-	std::function<std::string()> getProjectInfo;
-	std::function<bool()> runGame;
-	std::function<bool()> stopGame;
-	std::function<bool(float yaw, float pitch, float distance, float px, float py, float pz)> setEditorCamera;
-
-	// ── runtime コントロール (ADR 0011) ─────────────────────────────
-	// `mitiru_console` GUI sub-window / 外部ツールが叩く。各 callable は
-	// 設定されてれば host が engine の対応 API へ振り分ける。
-	std::function<bool()>           runtimeTogglePause; ///< 戻り値 = toggle 後の paused
-	std::function<bool()>           runtimeIsPaused;
-	std::function<void()>           runtimeStep;        ///< paused 時に 1 フレーム進める
-	std::function<void(float)>      runtimeSetTimeScale;
-	std::function<bool(std::uint32_t)> runtimeResim;  ///< k フレーム前へ巻き戻して記録入力で再生 (ADR 0021)
-	std::function<float()>          runtimeGetTimeScale;
-	std::function<bool()>           runtimeToggleLofi; ///< 戻り値 = toggle 後の lofi enabled
-	std::function<bool()>           runtimeIsLofiEnabled;
-
-	// ── AI Lens (ADR 0018) ─────────────────────────────────────────
-	// reflected GameMemory を構造的に read / diff / what-if する AI 向け面。
-	std::function<std::string()>                       aiState;     ///< 現フレームの reflected JSON
-	std::function<std::string(int)>                    aiStateAt;   ///< ring N フレーム前の reflected JSON
-	std::function<std::string(int, int)>               aiStateDiff; ///< reflectDiff(ring.at(from), at(to))
-	std::function<std::string(const std::string&, int)> aiBranch;   ///< (keysCsv, frames) → 反実仮想結果
-	std::function<int()>                               aiRingSize;  ///< time-travel ring の保持フレーム数
-
-	// ── Inspector 観測 (ADR 0019) ─────────────────────────────────
-	// Inspector key-value ストアへの read-only アクセス。
-	// nullptr = Inspector 未配線 → 503 を返す。
-	std::function<std::string(const std::string&)> inspectorQuery;   ///< prefix でフィルタ (空=全件)
-	std::function<std::string(std::size_t)>        inspectorAt;      ///< back=N の過去スナップショット
-	std::function<std::size_t()>                   inspectorDepth;   ///< 現在の履歴エントリ数
-	std::function<std::size_t()>                   inspectorCapacity; ///< 履歴の最大容量
-
-	// ── AI フレーム観測 (/api/ai/frame) ──────────────────────────
-	// Screen の draw log (何をどこに描いたか) への read-only アクセス。
-	std::function<void(bool)>    drawLogEnable; ///< draw log 記録の on/off
-	std::function<std::string()> drawLogJson;   ///< 当フレームの draw log JSON 配列
-
-	// ── AI 音観測 (/api/ai/audio) ────────────────────────────────
-	std::function<std::string(int)> audioLogJson; ///< 最新 max 件の音イベント JSON
-
-	// ── capture() の実寸 ─────────────────────────────────────────
-	// 論理 Screen サイズ ≠ ウィンドウ実寸のゲームで screenshot の stride ズレを防ぐ。
-	std::function<std::pair<int, int>()> captureDims; ///< capture() が返す pixel buffer の (幅, 高さ)
-};
 
 /// @brief エンジン組み込みHTTP APIサーバー
 class EngineHttpServer
@@ -436,7 +429,7 @@ private:
 			if (path == "/api/ai/diff")           { handleAiDiff(req, resp); return; }
 			if (path == "/api/ai/ringsize")       { handleAiRingSize(req, resp); return; }
 
-			// ── Inspector / 観測 (ADR 0019) ──────────────────────────────────
+			// ── Inspector / 観測 ──────────────────────────────────
 			if (path == "/api/ai/frame")            { handleAiFrame(req, resp); return; }
 			if (path == "/api/ai/audio")            { handleAiAudio(req, resp); return; }
 			if (path == "/api/health")              { handleHealth(req, resp); return; }
@@ -537,7 +530,7 @@ private:
 	void handleRunGame(const HttpRequest&, HttpResponse& resp);
 	void handleStopGame(const HttpRequest&, HttpResponse& resp);
 
-	// AI Lens (ADR 0018) / Inspector 観測 (ADR 0019) / AI フレーム・音観測
+	// AI Lens / Inspector 観測 / AI フレーム・音観測
 	// → detail/EngineHttp_AiHandlers.hpp
 	void handleAiState(const HttpRequest& req, HttpResponse& resp);
 	void handleAiDiff(const HttpRequest& req, HttpResponse& resp);

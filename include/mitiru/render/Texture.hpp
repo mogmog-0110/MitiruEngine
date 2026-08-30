@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <mitiru/asset/AssetPack.hpp> // vfs::readGlobal (pack 秘匿配布 / disk fallback, ADR 0016)
+#include <mitiru/asset/AssetPack.hpp> // vfs::readGlobal (pack 秘匿配布 / disk fallback)
 #include <stb_image.h> // 宣言のみ。実装は src/stb_impl.cpp (mitiru が INTERFACE-link 済み)。
 
 namespace mitiru::render
@@ -38,7 +38,7 @@ public:
 	}
 
 	/// @brief 画像ファイル (PNG/JPG/BMP/TGA 等) から Texture を読み込む。
-	/// @details stb_image 経由で RGBA8 に decode する。**consumer DLL でもそのまま使える** —
+	/// @details stb_image 経由で RGBA8 に decode する。**consumer DLL でもそのまま使える**。
 	///          `mitiru` ターゲットが `stb_impl` を INTERFACE-link しているため、stbi_load の
 	///          実装は既にリンク済み。**`STB_IMAGE_IMPLEMENTATION` を自前で定義しないこと**
 	///          (二重シンボル LNK2005 になる)。描画は `Screen::drawSprite(tex, dstRect)` を使う
@@ -47,8 +47,8 @@ public:
 	/// @return 成功時 Texture、失敗時 nullopt
 	[[nodiscard]] static std::optional<Texture> fromFile(const std::string& path)
 	{
-		// pack が mount 済みなら pack から、未 mount (dev) なら disk から読む (ADR 0016)。
-		// diskPath は渡さない — 渡すと MITIRU_ASSET_ROOT の解決を素通りする。
+		// pack が mount 済みなら pack から、未 mount (dev) なら disk から読む。
+		// diskPath は渡さない。渡すと MITIRU_ASSET_ROOT の解決を素通りする。
 		const auto bytes = mitiru::vfs::readGlobal(path);
 		if (!bytes) { return std::nullopt; }
 		int w = 0, h = 0, channels = 0;

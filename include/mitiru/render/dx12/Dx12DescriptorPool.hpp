@@ -39,7 +39,7 @@ namespace mitiru::render::dx12
 {
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DescriptorFreeList — 純粋な計算のみ、D3D12 依存なし (単体でテスト可能)
+// DescriptorFreeList。純粋な計算のみ、D3D12 依存なし (単体でテスト可能)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// @brief 連続した空き descriptor slot のひとかたまり
@@ -173,7 +173,7 @@ struct DescriptorSlot
 ///          連続した descriptor 範囲を払い出す。free した slot は即座に返却・
 ///          結合される。
 ///
-///          heap は initialize() で一度だけ作られ resize されない —
+///          heap は initialize() で一度だけ作られ resize されない。
 ///          余裕を持った capacity を前もって渡すこと (例: CBV/SRV/UAV なら 4096)。
 class Dx12DescriptorPool
 {

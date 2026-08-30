@@ -256,7 +256,7 @@ private:
 				continue;
 			}
 
-			// 通常コマンド — CommandSystem へ dispatch
+			// 通常コマンド。CommandSystem へ dispatch
 			auto result = cmdSystem.executeString(expanded);
 			results.push_back(result);
 			++i;
@@ -276,7 +276,7 @@ private:
 		const auto nameEnd = line.find(' ', nameStart + 1);
 		if (nameEnd == std::string::npos)
 		{
-			// "set name" — 空文字列を設定
+			// "set name"。空文字列を設定
 			m_variables[line.substr(nameStart + 1)] = "";
 			return;
 		}

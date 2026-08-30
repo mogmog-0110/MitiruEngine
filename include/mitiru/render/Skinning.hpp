@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Skinning.hpp
-/// @brief CPU 線形ブレンドスキニング (LBS) — ボーンポーズで base メッシュ頂点を変形する (#23b)
+/// @brief CPU 線形ブレンドスキニング (LBS)。ボーンポーズで base メッシュ頂点を変形する (#23b)
 /// @details glTF/VRM の JOINTS_0 / WEIGHTS_0 (`GltfTypes::SkinVertexBinding`) と
 ///          inverseBindMatrices、そしてボーンの **ワールドポーズ palette** を受け取り、
 ///          base (バインドポーズ) 頂点の位置 + 法線を変形した頂点列を返す。

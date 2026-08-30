@@ -282,7 +282,7 @@ public:
     /// @brief ストリームを閉じる (全ボイスを停止する)
     void close() override { allNotesOff(); m_isOpen = false; }
 
-    /// @brief IAudioStream::read — mono/stereo の float PCM を生成する
+    /// @brief IAudioStream::read。mono/stereo の float PCM を生成する
     /// @details StreamingAudioEngine の fillThreadFunc から呼ばれる。
     ///          1ch の場合は render() を直接バッファへ書き込み、
     ///          2ch の場合は 1ch をレンダリング後に左右へ複製する。
@@ -329,10 +329,10 @@ public:
         return f;
     }
 
-    /// @brief 総フレーム数 — 無限ストリームのため 0 を返す
+    /// @brief 総フレーム数。無限ストリームのため 0 を返す
     [[nodiscard]] std::size_t totalFrames() const noexcept override { return 0; }
 
-    /// @brief EOF 判定 — 無限ストリームなので常に false
+    /// @brief EOF 判定。無限ストリームなので常に false
     [[nodiscard]] bool isEof() const noexcept override { return false; }
 
     /// @brief 開いているかどうか

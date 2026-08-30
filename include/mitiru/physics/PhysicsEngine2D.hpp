@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file PhysicsEngine2D.hpp
-/// @brief 2D物理エンジン — ブロードフェーズ、ナローフェーズ、インパルス接触解決を統合
+/// @brief 2D物理エンジン。ブロードフェーズ、ナローフェーズ、インパルス接触解決を統合
 
 #include <algorithm>
 #include <cmath>

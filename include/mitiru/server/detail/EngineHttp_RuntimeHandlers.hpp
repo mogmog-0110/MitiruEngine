@@ -39,7 +39,7 @@ inline void mitiru::server::EngineHttpServer::handleStatus(const HttpRequest&, H
 	resp.setBody(json);
 }
 
-// ── コントロールパネル HTML (ADR 0011 phase 2) ─────────────────
+// ── コントロールパネル HTML ─────────────────
 // engine 自身が console.html を serve する。`mitiru_host --http-port N` 起動後、
 // ブラウザで http://127.0.0.1:N/ を開けば pause/step/scale/screenshot ボタンが
 // 並ぶ UI が出る。phase 3 で --console flag による自動ブラウザ起動を予定。
@@ -106,7 +106,7 @@ refresh(); setInterval(refresh, 500);
 	resp.setBody(kHtml);
 }
 
-// ── runtime コントロール (ADR 0011) ──────────────────────────
+// ── runtime コントロール ──────────────────────────
 
 inline void mitiru::server::EngineHttpServer::handleRuntimeStatus(const HttpRequest&, HttpResponse& resp)
 {
@@ -151,7 +151,7 @@ inline void mitiru::server::EngineHttpServer::handleRuntimeStep(const HttpReques
 	resp.setBody(R"({"success":true})");
 }
 
-// Rewind-Edit-Replay (ADR 0021): k フレーム前へ巻き戻し、記録済み入力で再生する。
+// Rewind-Edit-Replay: k フレーム前へ巻き戻し、記録済み入力で再生する。
 // ホットリロード後に呼べば「同じ入力・新しいコード」でバグの瞬間を再現できる。
 inline void mitiru::server::EngineHttpServer::handleRuntimeResim(const HttpRequest& req, HttpResponse& resp)
 {

@@ -1,4 +1,4 @@
-// shapes — 図形描画のカタログ。基本の図形を 4 列 x 2 段のマスに並べて見せる
+// shapes。図形描画のカタログ。基本の図形を 4 列 x 2 段のマスに並べて見せる
 // 実行すると: 紙白の画面に rect / circle / line / gradient / 破線 / 三角形 / 多角形 (五角形・六角形) が並ぶ
 // 関連 API: drawRect / fillCircle / line / drawGradientRect / dashedLine / drawTriangle / drawPolygon
 

@@ -4,8 +4,8 @@
 /// @brief clod 仮想ジオメトリパス (クラスタ LOD + GPU 駆動カリング + visbuffer)
 /// @details Renderer3D_DX12 が所有する世界ジオメトリパス。ゲームの drawModel
 ///          intent を集め、endFrame 先頭で offscreen (linear HDR + visbuffer) に
-///          描画する。合成は Renderer3D_DX12 側の inject パスが行う。ADR 0027。
-///          SM 6.6 (mesh shader / int64 atomics / dynamic resources) 必須 —
+///          描画する。合成は Renderer3D_DX12 側の inject パスが行う。
+///          SM 6.6 (mesh shader / int64 atomics / dynamic resources) 必須。
 ///          未対応環境では supported()==false となり全 API が no-op。
 
 #include <mitiru/render/Camera3D.hpp>

@@ -4,7 +4,7 @@
 /// @brief `window.mitiru.save.*` を backing する C++ save-slot file bridge (F-11)。
 ///
 /// web 側 module `mitiru_save.js` は `window.mitiru.dispatch` 経由で 4 つの
-/// action — `save.write` / `save.read` / `save.list` / `save.delete` — を
+/// action。`save.write` / `save.read` / `save.list` / `save.delete`。を
 /// dispatch し、C++ handler が未登録なら `localStorage` に fallback する。
 /// 本クラスは `mitiru::cef::StateStore` にこの 4 つの handler を登録し、
 /// ゲームごとの save ディレクトリ下の atomic file I/O にマップする。
@@ -25,7 +25,7 @@
 /// **File layout** (`Config::dir` 下):
 ///   - `slot_<N>.json`          commit 済み blob (data + meta + version)
 ///   - `slot_<N>.meta.json`     `save.list()` 用の小さな summary
-///   - `slot_<N>.staging.json`  一時ファイル — write 途中だけ存在する。crash
+///   - `slot_<N>.staging.json`  一時ファイル。write 途中だけ存在する。crash
 ///                              recovery がこれを拾った場合、`read()` が
 ///                              `slot_<N>.json` に昇格させる。
 ///
@@ -260,7 +260,7 @@ private:
 				+ std::to_string(m_cfg.maxFileBytes));
 		}
 
-		// payload が parse できるか検証し、meta を先に抽出する — 壊れた write を
+		// payload が parse できるか検証し、meta を先に抽出する。壊れた write を
 		// ディスクに送ると次の read を汚染してしまう。
 		json blob;
 		try { blob = json::parse(payload); }
@@ -306,7 +306,7 @@ private:
 		    !std::filesystem::exists(final_,  ec))
 		{
 			std::filesystem::rename(staging, final_, ec);
-			// ここでは ec を握り潰す — 下の存在チェックに fall through する。
+			// ここでは ec を握り潰す。下の存在チェックに fall through する。
 		}
 
 		if (!std::filesystem::exists(final_, ec))

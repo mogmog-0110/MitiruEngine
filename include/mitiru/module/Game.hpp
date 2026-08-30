@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file Game.hpp
-/// @brief 初心者向けの薄い C++ ラッパ — `void*` / 生ポインタ / VK 添字を隠す。
+/// @brief 初心者向けの薄い C++ ラッパ。`void*` / 生ポインタ / VK 添字を隠す。
 /// @details
 /// `ModuleApi.hpp` の C-ABI (`void* memory` / `InputSnapshot*` / `FrameIntents*`)
-/// はホットリロード・録画再生・POD 境界 (ADR 0005) のために必要だが、ゲーム作者が
+/// はホットリロード・録画再生・POD 境界 のために必要だが、ゲーム作者が
 /// それを直に触るのは初心者に厳しい。この header はその上に「普通のゲームフレーム
 /// ワーク」の手触りを乗せる:
 ///
@@ -24,7 +24,7 @@
 ///   MITIRU_GAME(MyGame)             // これだけで DLL の入口が出来る
 /// @endcode
 ///
-/// `init` / `update` / `draw` はすべて任意 — 書いたものだけ呼ばれる。`MyGame` が
+/// `init` / `update` / `draw` はすべて任意。書いたものだけ呼ばれる。`MyGame` が
 /// flat POD なら録画再生の対象にもなる (byte 数を自動申告)。中身は `ModuleApi.hpp`
 /// の C-ABI そのままで、ホスト側は何も変わらない。
 
@@ -44,13 +44,13 @@
 namespace mitiru
 {
 
-// 図形の基本型の短い別名 — 作者は sgc:: を書かなくてよい (色 Color は <mitiru/core/Color.hpp>)。
+// 図形の基本型の短い別名。作者は sgc:: を書かなくてよい (色 Color は <mitiru/core/Color.hpp>)。
 using Rect = sgc::Rectf;   ///< 矩形 {x, y, 幅, 高さ}
 using Vec2 = sgc::Vec2f;   ///< 2D 座標 / ベクトル
 
 /// よく使うキー (値は Windows の仮想キーコード)。一覧に無いキーも `Key{0x..}` で渡せる。
 /// 注意: 英字の VK は大文字 ('A'=0x41..'Z') のみ。`Key{'a'}` (小文字) は別の値になり
-/// 一致しない — 文字から作るときは `key('a')` ヘルパを使う (自動で大文字化する)。
+/// 一致しない。文字から作るときは `key('a')` ヘルパを使う (自動で大文字化する)。
 enum class Key : int
 {
 	Left = 0x25, Up = 0x26, Right = 0x27, Down = 0x28,
@@ -84,7 +84,7 @@ struct Stick { float x, y; };
 	return degrees * (3.14159265358979323846f / 180.0f);
 }
 
-/// アクションマップの 1 行 — 「論理アクション → キー/パッドの束」。
+/// アクションマップの 1 行。「論理アクション → キー/パッドの束」。
 /// 表は constexpr 定数 (DLL 焼き込み) か GameMemory のどちらかに置くこと
 /// (リバインド UI を作るなら GameMemory に置けば、キー設定変更も記録/巻き戻し対象になる)。
 /// 未使用スロットは 0 のままで無害 (Key 0 = 無効 VK、Pad 0 = 空ビット)。
@@ -330,7 +330,7 @@ public:
 	{
 		s_->stopSoundId(soundId, releaseSec);
 	}
-	/// BGM を再生する (連続トラック、既定ループ)。同じ id なら毎フレーム呼んでも安全 —
+	/// BGM を再生する (連続トラック、既定ループ)。同じ id なら毎フレーム呼んでも安全。
 	/// host が直前と同じ id / loop / volume の BGM を重複再生しない (冪等)。**volume 0 = 無音**。
 	/// crossfadeSec > 0 なら、別の BGM が再生中のとき旧曲をフェードアウトしつつ新曲を
 	/// フェードインする (場面転換の定番が 1 行になる)。
@@ -390,7 +390,7 @@ public:
 		s_->pushVisual(module::kVisualIntentLetterbox, 0, 0, 0, amount01, seconds);
 	}
 
-	// ── セーブ/ロード (ADR 0020 — セーブ = GameMemory の memcpy) ───────────
+	// ── セーブ/ロード (セーブ = GameMemory の memcpy) ─────────────────────
 	/// GameMemory をまるごとスロットへセーブする (`save/<slot>.msav`)。
 	/// flat POD だからセーブ = スナップショット。巻き戻し・リプレイと同一機構。
 	void save(const char* slot = "slot0") noexcept { s_->requestSave(slot); }
@@ -402,18 +402,18 @@ public:
 	/// update 内の `*this = MyGame{}` 手運びの代わり。host が memset 0 → init() を適用する。
 	/// intent なので replay / resim では update が同フレームで再発行し bit-exact に再現される。
 	void requestRestart() noexcept { s_->requestRestart(); }
-	/// カーソルをロックする (FPS 視線)。毎フレーム呼ぶ — 呼ばないフレームで解除される。
+	/// カーソルをロックする (FPS 視線)。毎フレーム呼ぶ。呼ばないフレームで解除される。
 	void lockMouse() noexcept { s_->requestMouseLock(); }
 	/// このフレームのスクリーンショットを保存する。
 	void screenshot() noexcept { s_->requestScreenshotNow(); }
 	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。
-	/// 必要なときだけ呼べばよい — inspector が開いている時にだけ映る。
+	/// 必要なときだけ呼べばよい。inspector が開いている時にだけ映る。
 	void watch(const char* name, const char* title, const char* json) noexcept
 	{
 		s_->pushInspectable(name, title, json);
 	}
 
-	/// 別窓のツールを開くよう host に頼む (必要なときだけ呼ぶ — 既定では何も開かない)。
+	/// 別窓のツールを開くよう host に頼む (必要なときだけ呼ぶ。既定では何も開かない)。
 	void open(Tool t) noexcept
 	{
 		for (const auto& spec : detail::kToolTable)
@@ -461,7 +461,7 @@ void gameUpdate(void* mem, float dt, const InputSnapshot* in, FrameIntents* out)
 	mitiru::Input input{in};
 	mitiru::Hud   hud{out};
 	// update は欲しい引数だけ受け取ればよい (使わないものは省略可)。初心者は
-	// update(Input in, float dt) だけ書けば動く — Hud (HTML UI / 音) は要るときだけ。
+	// update(Input in, float dt) だけ書けば動く。Hud (HTML UI / 音) は要るときだけ。
 	if      constexpr (requires { g.update(input, hud, dt); }) { g.update(input, hud, dt); }
 	else if constexpr (requires { g.update(input, dt); })      { g.update(input, dt); }
 	else if constexpr (requires { g.update(hud, dt); })        { g.update(hud, dt); }
@@ -498,7 +498,7 @@ inline constexpr bool kHasGameEntry =
 	requires(T& g, float dt) { g.update(dt); } ||
 	requires(T& g, mitiru::Screen& s) { g.draw(s); };
 
-/// @brief GameMemory リフレクション記述子 (ADR 0018)。`MITIRU_REFLECT` が特殊化する。
+/// @brief GameMemory リフレクション記述子。`MITIRU_REFLECT` が特殊化する。
 ///        既定は no-op (reflection 非宣言 game は reflectFieldCount=0 のまま)。
 template<class T> struct ReflectionOf { static void fillApi(ModuleApi*) noexcept {} };
 
@@ -510,7 +510,7 @@ void registerGame(ModuleApi* api, void** memory)
 		"MITIRU_GAME(T): T に update(Input, Hud, float) / update(Input, float) / draw(Screen&) の"
 		"いずれも見つかりません。メソッド名と引数 (型・dt・大文字小文字) を確認してください。");
 
-	// GameMemory は flat POD 必須 (ADR 0017)。host が GameMemory を bytes として memcpy で
+	// GameMemory は flat POD 必須。host が GameMemory を bytes として memcpy で
 	// 記録・rewind するため、ポインタ (std::vector/std::string/std::deque 等) を含むと
 	// time-travel / replay が再現しない。固定長コンテナに置き換えること。
 	static_assert(std::is_trivially_copyable_v<T>,
@@ -518,7 +518,7 @@ void registerGame(ModuleApi* api, void** memory)
 		"std::vector / std::string / std::deque 等のヒープ所有メンバを mitiru::FixedVec<T,N> / "
 		"mitiru::FixedString<N> (#include <mitiru/core/FixedVec.hpp>) に置き換えてください。"
 		"観測ログ等の非 gameplay state は GameMemory の外 (DLL 内 static) へ。理由: host が "
-		"GameMemory を bytes で memcpy 記録・rewind するため (ADR 0005/0017)。");
+		"GameMemory を bytes で memcpy 記録・rewind するため。");
 
 	if (api == nullptr || memory == nullptr) { return; }
 	if (*memory == nullptr) { *memory = new T{}; }   // reload 時はホストが既存 pointer を渡す
@@ -528,12 +528,12 @@ void registerGame(ModuleApi* api, void** memory)
 	api->on_draw     = &gameDraw<T>;
 	api->on_shutdown = &gameShutdown<T>;
 	// GameMemory は flat POD 保証済み (上の static_assert)。録画再生・time-travel・rewind の
-	// 単一 state 源として byte 数を無条件に申告する (ADR 0013/0017)。
+	// 単一 state 源として byte 数を無条件に申告する。
 	api->memorySize        = static_cast<std::uint32_t>(sizeof(T));
 	api->seriesProbeCount  = 0;  // MITIRU_GAME_SERIES が観測 probe を上書きする
 	api->reflectFieldCount = 0;  // MITIRU_REFLECT が reflection 記述子を上書きする
 	api->reflectSchemaCount = 0;
-	ReflectionOf<T>::fillApi(api);  // MITIRU_REFLECT 済みなら GameMemory 構造を申告 (ADR 0018)
+	ReflectionOf<T>::fillApi(api);  // MITIRU_REFLECT 済みなら GameMemory 構造を申告
 }
 
 /// @brief 観測 probe テーブルを ModuleApi に詰める (MITIRU_GAME_SERIES が使う)。
@@ -587,7 +587,7 @@ namespace module
 
 /// @brief member pointer から SeriesProbe を合成する (§8-1)。MITIRU_SERIES_FIELD の実体。
 /// @details accessor は capture 無し lambda の関数ポインタ変換 (= C 関数ポインタ) なので
-///          DLL 境界に安全 (ADR 0005)。offset / 型は member pointer から自動導出される。
+///          DLL 境界に安全。offset / 型は member pointer から自動導出される。
 template <class T, auto MemberPtr>
 [[nodiscard]] inline SeriesProbe makeSeriesProbe(const char* name, const char* title,
                                                  double threshold = 0.0,
@@ -632,11 +632,11 @@ template <class T, auto MemberPtr>
 		mitiru::module::detail::unregisterGame<GameType>(memory);             \
 	}
 
-/// 旧名の後方互換エイリアス。flat POD 必須は MITIRU_GAME 自体に統合された (ADR 0017) ので
+/// 旧名の後方互換エイリアス。flat POD 必須は MITIRU_GAME 自体に統合された ので
 /// 中身は同じ。新規コードは MITIRU_GAME を使ってよい。
 #define MITIRU_GAME_RECORDABLE(GameType) MITIRU_GAME(GameType)
 
-/// MITIRU_GAME に加えて time-travel 観測 probe を宣言する (ADR 0017)。
+/// MITIRU_GAME に加えて time-travel 観測 probe を宣言する。
 /// GameMemory から double を引く capture 無しの純関数を列挙すると、host が GameMemoryRing の
 /// 各フレームに適用して HP 履歴等の系列を自動生成し、inspector の time-travel graph に出す。
 /// 作者が手で履歴を貯めたり JSON を組んだりする必要はない。
@@ -663,7 +663,7 @@ template <class T, auto MemberPtr>
 		mitiru::module::detail::unregisterGame<GameType>(memory);             \
 	}
 
-/// probe 関数の手書き (cast 定型文) を消す糖衣 (§8-1)。field 名だけで系列化する —
+/// probe 関数の手書き (cast 定型文) を消す糖衣 (§8-1)。field 名だけで系列化する。
 /// offset / 型は member pointer から自動導出。MITIRU_GAME_SERIES の要素として使う。
 ///
 /// @code
@@ -679,7 +679,7 @@ template <class T, auto MemberPtr>
 	::mitiru::module::makeSeriesProbe<GameType, &GameType::field>(              \
 		#field, title, thresholdValue, true)
 
-// ── GameMemory リフレクション (ADR 0018) ──────────────────────────────────
+// ── GameMemory リフレクション ──────────────────────────────────
 // MITIRU_REFLECT(Type, field...) で GameMemory の全フィールドを host に申告する。
 // host が GameMemory バイト列 (現フレーム + time-travel ring の過去) を構造化 JSON 化し、
 // AI が全状態を読めるようになる。MITIRU_GAME / MITIRU_GAME_SERIES と併用する。
@@ -721,7 +721,7 @@ template <class T, auto MemberPtr>
 // MITIRU_REFLECT / MITIRU_REFLECT_STRUCT は最大 16 フィールド。17 個以上 (24 個まで) は
 // MITIRU_FE_ERR が選ばれ、削除済み関数
 // `mitiruReflect_Max16Fields_SplitOrUseReflectStruct` (Reflection.hpp) の使用エラーになる
-// — 関数名がそのまま対処法: フィールドを分割するか、ネスト部分を MITIRU_REFLECT_STRUCT
+//。関数名がそのまま対処法: フィールドを分割するか、ネスト部分を MITIRU_REFLECT_STRUCT
 // へ切り出す。25 個以上はプリプロセッサ構造上ここで拾えず、別の compile error になる。
 #define MITIRU_FE_ERR(M, T, ...)                                               \
 	::mitiru::module::detail::mitiruReflect_Max16Fields_SplitOrUseReflectStruct()

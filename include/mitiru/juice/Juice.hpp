@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Juice.hpp
-/// @brief 「ジュース」軽量コンポーネント — Particles / Shake / HitStop。
+/// @brief 「ジュース」軽量コンポーネント。Particles / Shake / HitStop。
 /// @details いずれもゲーム側が毎フレーム update(dt) を呼び、必要なら draw / offset を取る形。
 ///          全部 header-only / 固定プールで alloc-free。アロケーション無しの hot path 安全。
 

@@ -3,13 +3,13 @@
 /// @file WeightedBlendedOIT.hpp
 /// @brief DX12 用 Weighted-Blended Order-Independent Transparency (McGuire & Bavoil 2013)。
 /// @details 半透明をソートせず正しく合成する。透明物体を 2 枚の RT に蓄積する:
-///          - accum (RGBA16F): Σ (premultiplied color × weight)  ── 加算ブレンド
-///          - reveal (R16F):   Π (1 - alpha)                      ── 乗算ブレンド
+///          - accum (RGBA16F): Σ (premultiplied color × weight)。加算ブレンド
+///          - reveal (R16F):   Π (1 - alpha)。乗算ブレンド
 ///          深度に応じた weight を掛けるので、描画順に依存せず近似合成できる。
 ///          最後に accum/reveal をフルスクリーンで composite して背景へ重ねる。
 ///
 /// 使い方 (呼び出し側が透明ジオメトリの VS と PSO を用意する):
-///   1. 透明 PSO を作る — PS = `weightPsHlsl()`、BlendState = `fillAccumulateBlend()`、
+///   1. 透明 PSO を作る。PS = `weightPsHlsl()`、BlendState = `fillAccumulateBlend()`、
 ///      RTV0=accumFormat() / RTV1=revealFormat()、深度は読み取り専用 (DepthWrite=ZERO)。
 ///   2. oit.beginAccumulate(cl, dsv) → 透明メッシュを上記 PSO で描画 → oit.composite(cl, outRtv)。
 ///

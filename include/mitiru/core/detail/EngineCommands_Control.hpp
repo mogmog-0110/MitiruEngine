@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file EngineCommands_Control.hpp
-/// @brief 制御・ツール系コマンド登録 (ui / vn / system / editor / asset / input) — EngineCommands.hpp から分割
+/// @brief 制御・ツール系コマンド登録 (ui / vn / system / editor / asset / input)。EngineCommands.hpp から分割
 
 #include <fstream>
 #include <sstream>
@@ -18,7 +18,7 @@ namespace detail
 {
 
 // ════════════════════════════════════════════════════════
-// ui.* — UI操作
+// ui.*。UI操作
 // ════════════════════════════════════════════════════════
 
 inline void registerUICommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)
@@ -78,7 +78,7 @@ inline void registerUICommands(CommandSystem& cmd, [[maybe_unused]] Engine& engi
 }
 
 // ════════════════════════════════════════════════════════
-// vn.* — ビジュアルノベル操作
+// vn.*。ビジュアルノベル操作
 // ════════════════════════════════════════════════════════
 
 inline void registerVNCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)
@@ -199,7 +199,7 @@ inline void registerVNCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engi
 }
 
 // ════════════════════════════════════════════════════════
-// system.* — システム操作
+// system.*。システム操作
 // ════════════════════════════════════════════════════════
 
 inline void registerSystemCommands(CommandSystem& cmd, Engine& engine)
@@ -479,7 +479,7 @@ inline void registerSystemCommands(CommandSystem& cmd, Engine& engine)
 }
 
 // ════════════════════════════════════════════════════════
-// editor.* — エディター操作
+// editor.*。エディター操作
 // ════════════════════════════════════════════════════════
 
 inline void registerEditorCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)
@@ -559,7 +559,7 @@ inline void registerEditorCommands(CommandSystem& cmd, [[maybe_unused]] Engine& 
 }
 
 // ════════════════════════════════════════════════════════
-// asset.* — アセット操作
+// asset.*。アセット操作
 // ════════════════════════════════════════════════════════
 
 inline void registerAssetCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)
@@ -633,7 +633,7 @@ inline void registerAssetCommands(CommandSystem& cmd, [[maybe_unused]] Engine& e
 }
 
 // ════════════════════════════════════════════════════════
-// input.* — 入力操作
+// input.*。入力操作
 // ════════════════════════════════════════════════════════
 
 inline void registerInputCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)

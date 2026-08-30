@@ -43,7 +43,7 @@ namespace mitiru::data {
 
 /// @brief `MigrationChain::addStep` で使える合成可能な migration ヘルパー。
 ///
-/// stateless な utility class — 全メンバは出来合いの `std::function<Json(Json)>`
+/// stateless な utility class。全メンバは出来合いの `std::function<Json(Json)>`
 /// lambda を返す static factory function。キャプチャは値渡しなので、得られる op
 /// は `MigrationChain` に安全に格納できる。
 class Migration

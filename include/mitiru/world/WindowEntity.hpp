@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file WindowEntity.hpp
-/// @brief 実 OS ウィンドウ 1 枚をゲーム entity として扱う (ADR 0030)。
+/// @brief 実 OS ウィンドウ 1 枚をゲーム entity として扱う。
 /// @details `Win32Window` + `gfx::Dx12Device` + `render::RenderPipeline2D` を 1 組にまとめ、
 ///          位置/速度/重なり/z-order/最小化/close を追跡しつつ自分の描画面へ 2D 矩形を描ける。
-///          複数インスタンスの同時存在は `tests/mitiru/TestDx12MultiWindow.cpp` で確認済み。
+///          複数インスタンスの同時存在は `tests/mitiru/TestDx12MultiWindow.cpp` が押さえる。
 
 #ifdef _WIN32
 
@@ -112,7 +112,7 @@ public:
 
 	/// @brief **クライアント領域**の左上を画面座標 (x, y) に合わせる
 	/// @details 生成時の posX/posY は枠の位置なので、描画面は枠幅とタイトルバーの分だけずれる。
-	///          描画面の座標が世界の座標である使い方 (ADR 0030) では、そのずれが初期状態の
+	///          描画面の座標が世界の座標である使い方 では、そのずれが初期状態の
 	///          ずれとしてそのまま出る。差分で動かすので枠幅を知る必要はない。
 	void moveClientTo(int x, int y)
 	{

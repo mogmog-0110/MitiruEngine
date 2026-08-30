@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file PBRShaders_tables.hpp
-/// @brief PBRシェーダーコレクション（HLSL SM5.0）— シェーダ文字列のデータ表 (_tables 規約で 800 行超を許容)
+/// @brief PBRシェーダーコレクション（HLSL SM5.0）。シェーダ文字列のデータ表 (_tables 規約で 800 行超を許容)
 /// @details Cook-Torrance BRDF + IBL + 法線マッピング + シャドウマッピングの
 ///          完全なPBRパイプライン。Nadrin/PBR (MIT License) を参考に
 ///          MitiruEngineの頂点フォーマット・定数バッファレイアウトに適合させている。

@@ -99,7 +99,7 @@ public:
 
     /// @brief bridge から到着した signal を登録済み handler に dispatch する
     /// @details 未登録の signal 名は静かに無視する (例外なし)。
-    ///          内部での std::string 構築なし — transparent lookup を使用。
+    ///          内部での std::string 構築なし。transparent lookup を使用。
     /// @param signalName dispatch する signal の識別子
     /// @param payload    signal に付随するデータ (省略可、既定は空)
     /// @return 登録済み handler を呼び出した場合 true、未登録なら false
@@ -131,7 +131,7 @@ public:
 
 private:
     /// @brief signal 名 → handler テーブル
-    /// @details transparent hasher (`detail::StringTransparentHash` —
+    /// @details transparent hasher (`detail::StringTransparentHash`、
     ///          `is_transparent` タグ付き) + `std::equal_to<>` による
     ///          heterogeneous lookup で、dispatch() / unregisterHandler() 時に
     ///          std::string を構築せずに string_view のまま検索できる。

@@ -1,5 +1,5 @@
 #pragma once
-// 生成物 — 編集禁止。tools/clod_shaders/generate_blobs.py が
+// 生成物。編集禁止。tools/clod_shaders/generate_blobs.py が
 // clod_engine.hlsl (SM 6.6) から生成する DXIL blob 群。
 #include <cstdint>
 #include <cstddef>

@@ -1,5 +1,5 @@
 #pragma once
-// mitiru::gfx::VulkanDevice 用の detail header — 直接インクルードしない。gfx/vulkan/VulkanDevice.hpp 経由で取り込む
+// mitiru::gfx::VulkanDevice 用の detail header。直接インクルードしない。gfx/vulkan/VulkanDevice.hpp 経由で取り込む
 // 生成・破棄とフレームループ（readPixels / beginFrame / endFrame / リソース生成）
 
 #include <mitiru/gfx/vulkan/VulkanDevice.hpp>
@@ -78,7 +78,7 @@ inline std::vector<std::uint8_t> mitiru::gfx::VulkanDevice::readPixels(
 	VkBuffer stagingBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
 
-	/// RAII スコープガード — 関数脱出時にステージングリソースを確実に解放する
+	/// RAII スコープガード。関数脱出時にステージングリソースを確実に解放する
 	struct StagingGuard
 	{
 		VkDevice dev;

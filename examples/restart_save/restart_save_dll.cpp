@@ -1,7 +1,7 @@
-// restart_save — 描いた絵を「状態の塊」として もどす/やりなおす と セーブ/ロード する。
+// restart_save。描いた絵を「状態の塊」として もどす/やりなおす と セーブ/ロード する。
 // 実行すると: マウスで線を描き、上のボタンで もどす / やりなおす / セーブ / ロード / さいしょから。
 // 関連 API: Hud::save / load / requestRestart / マウス (in.mouseX / mouseY / mouseDown)
-//   undo/redo と セーブ/ロードは同じ仕組み ―「状態を丸ごと控えて戻す」。undo/redo は 1 手ごとに
+//   undo/redo と セーブ/ロードは同じ仕組み。「状態を丸ごと控えて戻す」。undo/redo は 1 手ごとに
 //   控えて戻す版、セーブ/ロードはその状態をまるごとファイル (save/slot0.msav) に写す版。
 
 #include <cstddef>   // std::size_t
@@ -32,7 +32,7 @@ constexpr Btn kLoad  = { kBar0 + 3.0f * kStep, kBtnY, kBtnW, kBtnH, "ロード" 
 constexpr Btn kReset = { kBar0 + 4.0f * kStep, kBtnY, kBtnW, kBtnH, "さいしょから" };
 constexpr float kCanvasTop = 82.0f, kCanvasBot = kScreenH - 58.0f;   // 描ける範囲 (ボタンと操作帯を避ける)
 
-// 「セーブした / ロードした」表示だけの一時値。ゲームの状態 (下の struct) には入れない ― 状態に
+// 「セーブした / ロードした」表示だけの一時値。ゲームの状態 (下の struct) には入れない。状態に
 // 入れるとセーブで一緒にファイルへ書かれ、ロードで復元されて「ロードしたのにセーブしたと出る」バグ
 // になる。保存したいのは絵だけ。見せるだけの値は状態と分ける、が save/load の勘どころ。
 static float       sFlash    = 0.0f;         // 表示の残り時間

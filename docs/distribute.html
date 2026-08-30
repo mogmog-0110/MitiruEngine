@@ -1,13 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MitiruEngine：ゲームを配布する</title>
-  <meta name="description" content="MitiruEngineで制作したゲームをWindows向けに配布する機能の紹介。コマンドひとつで、実行に必要なファイルをまとめたフォルダやzipを作成できます。">
+  <title>MitiruEngine：配布する</title>
+  <meta name="description" content="MitiruEngine で作ったゲームを人に渡す方法。mitiru dist 一発で、ランタイム同梱・コンソール窓の出ない配布フォルダができます。--pack で中身を隠す、ネイティブ / CEF で配布サイズを選べます。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MitiruEngine：ゲームを配布する">
-  <meta property="og:description" content="ゲームの実行ファイル、ランタイム、素材をまとめ、インストール不要の配布物を作成します。">
+  <meta property="og:title" content="MitiruEngine：配布する">
+  <meta property="og:description" content="mitiru dist 一発で、ランタイム同梱・無コンソールの配布フォルダ。--pack で中身を隠し、ネイティブ / CEF で配布サイズを選べる。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/distribute.html">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="site.css">
@@ -17,157 +17,127 @@
 <a class="skip-link" href="#main">本文へスキップ</a>
 
 <div class="page">
-  <header class="topbar">
-    <div class="bar">
-      <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
-      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.31</span>
-    </div>
-  </header>
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
 
-  <div class="shell">
-    <aside class="sidebar">
-      <nav>
-        <div class="grp">はじめる</div>
-        <a href="index.html">トップ</a>
-        <a href="install.html">インストール</a>
-        <a href="tutorial.html">はじめてのゲーム</a>
-        <a href="samples.html">サンプル</a>
-
-        <div class="grp">リファレンス</div>
-        <a href="features.html">機能</a>
-        <a href="ui.html">画面（HTML / CSS）</a>
-        <a href="3d.html">3D</a>
-        <a href="ai.html">AI 連携</a>
-        <a href="cli.html">CLI</a>
-
-        <div class="grp">配布・API</div>
-        <a class="active" href="distribute.html">配布</a>
-        <a href="api/">API リファレンス</a>
-      </nav>
-    </aside>
-
+<div class="shell">
+    <aside class="sidebar"><nav>
+      <div class="grp">はじめる</div>
+      <a href="index.html">トップ</a>
+      <a href="install.html">インストール</a>
+      <a href="tutorial.html">はじめてのゲーム</a>
+      <a href="samples.html">サンプル</a>
+      <div class="grp">リファレンス</div>
+      <a href="features.html">機能</a>
+      <a href="ui.html">画面 (HTML / CSS)</a>
+      <a href="3d.html">3D</a>
+      <a href="ai.html">AI 連携</a>
+      <a href="cli.html">CLI</a>
+      <div class="grp">配布・API</div>
+      <a class="active" href="distribute.html">配布</a>
+      <a href="api/">API リファレンス</a>
+    </nav></aside>
     <div class="content">
-      <main id="main">
-        <section class="page-head">
-          <div class="wrap">
-            <p class="kicker">DISTRIBUTE</p>
-            <h1>ゲームを渡せる形にまとめる</h1>
-            <p class="lede"><code>mitiru dist</code>を実行すると、完成したゲームをWindowsで起動できる配布フォルダが作られます。受け取った人は、追加のランタイムをインストールせず、トップにある実行ファイルをダブルクリックして遊べます。</p>
-          </div>
-        </section>
-
-        <div class="prose">
-          <div class="wrap">
-            <h2 id="how">ひとつのコマンドで配布物を作成</h2>
-            <p>プロジェクトのフォルダで<code>mitiru dist</code>を実行します。Releaseビルドの後、ゲームの実行に必要なファイルが<code>dist/&lt;名前&gt;/</code>へまとめられます。</p>
-
-            <ol class="numbered">
-              <li>プロジェクトのフォルダで<code>mitiru dist</code>を実行します。</li>
-              <li><code>dist/&lt;名前&gt;/</code>に、<code>&lt;名前&gt;.exe</code>と<code>data/</code>が作られます。</li>
-              <li>フォルダ全体、またはzipを渡します。受け取った人は<code>&lt;名前&gt;.exe</code>を起動します。</li>
-            </ol>
-
-            <h3>作成時の指定</h3>
-<pre>mitiru dist            # dist/&lt;名前&gt;/ を作成
-mitiru dist --zip      # 配布フォルダとzipを作成
-mitiru dist --pack     # assetsをひとつのファイルにまとめる
-mitiru dist --bat      # ログ確認用の.batを追加</pre>
-
-            <h3>作成されるフォルダ</h3>
-            <p><code>--pack</code>を指定した場合は、次の構成になります。トップの<code>&lt;名前&gt;.exe</code>は、コンソール画面を出さずに<code>data/mitiru_host.exe</code>を呼び出す小さなランチャーです。</p>
-
-<pre># dist/my-game/
-my-game.exe
-README.txt
-data/
-  mitiru_host.exe
-  launch.mtargs
-  my_game/
-    my_game.dll
-    assets.mtpak
-  …CEFランタイム一式</pre>
-
-            <table class="spectable">
-              <tbody>
-                <tr>
-                  <td><code>my-game.exe</code></td>
-                  <td>ダブルクリックでゲームを起動します。コンソール画面は表示しません。</td>
-                </tr>
-                <tr>
-                  <td><code>data/mitiru_host.exe</code></td>
-                  <td>ゲームを動かすホストです。</td>
-                </tr>
-                <tr>
-                  <td><code>data/launch.mtargs</code></td>
-                  <td>ウィンドウサイズなどの起動引数を保存します。</td>
-                </tr>
-                <tr>
-                  <td><code>my_game.dll</code></td>
-                  <td>機械語に変換されたゲーム本体です。</td>
-                </tr>
-                <tr>
-                  <td><code>assets.mtpak</code></td>
-                  <td>画像、HTML、CSS、JavaScript、音をまとめたファイルです。</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <p class="note"><code>data/</code>にはゲーム本体とランタイムが入っています。トップの実行ファイルと一緒に配布し、移動や削除は行いません。</p>
-
-            <h3>受け取った人の操作</h3>
-            <p>フォルダ全体をzipにするか、<code>--zip</code>で作成したzipを渡します。受け取った人はzipを展開し、<code>&lt;名前&gt;.exe</code>をダブルクリックします。必要なランタイムは配布物に含まれるため、別途インストールする必要はありません。</p>
-            <p><code>mitiru.toml</code>に記録したウィンドウサイズなどの設定は、ランチャーへ自動で反映されます。ログを確認する場合は、<code>--bat</code>でコンソール画面を表示する<code>.bat</code>も追加できます。</p>
-
-            <h2 id="pack">素材をひとつのファイルにまとめる</h2>
-            <p><code>--pack</code>を指定すると、<code>assets/</code>内のHTML、CSS、JavaScript、画像、音を<code>assets.mtpak</code>へまとめ、個別のファイルを配布物から除きます。ゲームは起動時にこのファイルから直接読み込み、展開したファイルを保存しません。</p>
-            <p><code>--pack</code>を指定しない場合は、<code>assets/</code>がフォルダのまま収録され、各ファイルを確認できます。ゲーム本体の<code>.dll</code>は機械語であり、ソースコードは配布されません。</p>
-            <p class="note"><code>assets.mtpak</code>は暗号化ではなく難読化です。内容を簡単に閲覧されることを防ぐための機能であり、強い秘匿が必要な用途には適しません。</p>
-
-            <h2 id="size">HTML UIの有無で配布サイズを選ぶ</h2>
-            <p>配布物の大きさは、HTML / CSSによるUIのためにChromiumを収録するかどうかで変わります。<code>mitiru.toml</code>で<code>[cef] enabled = false</code>を指定すると、<code>mitiru dist</code>はChromiumを含まないネイティブ構成を作成します。</p>
-
-            <table class="spectable">
-              <tbody>
-                <tr>
-                  <td>ネイティブ構成</td>
-                  <td>C++による描画のみ。<code>[cef] enabled = false</code>を指定し、配布サイズは約30 MBです。</td>
-                </tr>
-                <tr>
-                  <td>CEF構成</td>
-                  <td>HTML UIを使用し、Chromiumを収録します。指定がない場合の構成で、配布サイズは約300 MBです。</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <p>約270 MBの差はChromiumによるもので、<code>libcef.dll</code>だけで211 MBあります。HTML UIを使用する場合に必要となり、C++のみで描画する場合は収録されません。詳しい内訳は<a href="install.html#size">インストールページのサイズ表</a>にあります。</p>
-
-            <p class="note"><strong>現在の配布対象はWindows x64です。</strong> <code>mitiru dist</code>はWindows向けの実行ファイルを作成します。macOS版とLinux版は今後対応予定です。</p>
-
-            <p>
-              <a href="install.html">インストール手順</a> ·
-              <a href="tutorial.html">はじめてのゲーム</a> ·
-              <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli &#8599;</a>
-            </p>
-          </div>
-        </div>
-      </main>
-
-      <footer class="content-foot">
+    <main id="main">
+      <section class="page-head">
         <div class="wrap">
-          <span>© MitiruEngine</span>
-          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
-          <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
-          <a href="install.html">インストール</a>
+          <p class="kicker">DISTRIBUTE</p>
+          <h1>配布する</h1>
+          <p class="lede">完成したゲームは <code>mitiru dist</code> 一発で、そのまま動く配布フォルダになります。ランタイム一式は <code>data/</code> にまとめ、トップにはダブルクリックで起動する <code>&lt;名前&gt;.exe</code>（コンソール窓は出ません）だけ。受け取った相手は、インストール不要で遊べます。</p>
         </div>
-      </footer>
-    </div>
+      </section>
 
+      <div class="prose">
+        <div class="wrap">
+
+          <!-- ── §1 手順 ─────────────────────────── -->
+          <h2 id="how">コマンドひとつ</h2>
+          <p>プロジェクトのフォルダで実行します。Release ビルドが走り、<code>dist/&lt;名前&gt;/</code> に配布物が組み上がります。</p>
+
+          <ol>
+            <li>プロジェクトのフォルダで <code>mitiru dist</code> を実行する。</li>
+            <li><code>dist/&lt;名前&gt;/</code> ができる。トップの <code>&lt;名前&gt;.exe</code> と <code>data/</code> がそろう。</li>
+            <li>フォルダごと（または zip で）相手に渡す。相手は <code>&lt;名前&gt;.exe</code> をダブルクリックするだけ。</li>
+          </ol>
+
+          <h3>配布フォルダを作る</h3>
+<pre>mitiru dist            <span class="c"># → dist/&lt;名前&gt;/ (無コンソールの &lt;名前&gt;.exe)</span>
+mitiru dist --zip      <span class="c"># zip も一緒に作る</span>
+mitiru dist --pack     <span class="c"># assets を 1 ファイルに埋め込んで隠す</span>
+mitiru dist --bat      <span class="c"># ログ確認用にコンソール表示の .bat も追加</span></pre>
+
+          <p>できあがるのはこんな構成です。トップはランチャーと <code>data/</code> だけ。相手はこのフォルダ（または zip）を受け取るだけで遊べます。</p>
+<pre><span class="c"># dist/my-game/  (--pack 時)</span>
+my-game.exe              <span class="c"># ← ダブルクリックで起動 (コンソール窓なし)</span>
+README.txt
+data/                    <span class="c"># ランタイム一式 (移動・削除しない)</span>
+  mitiru_host.exe        <span class="c"># ゲームを動かすホスト</span>
+  launch.mtargs          <span class="c"># 起動引数 (ウィンドウサイズ等)</span>
+  my_game/
+    my_game.dll          <span class="c"># ゲーム本体 (機械語)</span>
+    assets.mtpak         <span class="c"># 画像・HTML・音を 1 ファイルに梱包 (中身は見えない)</span>
+  …CEF ランタイム一式      <span class="c"># HTML UI 用 (ネイティブ構成では同梱されない)</span></pre>
+          <p class="note"><code>--pack</code> を付けないときは、<code>assets/</code> フォルダのまま同梱されます（中身が見える）。トップの <code>&lt;名前&gt;.exe</code> は <code>data/mitiru_host.exe</code> を呼ぶだけの小さなランチャーです。</p>
+
+          <h3>渡す</h3>
+          <p>フォルダごと zip にして配るか、<code>--zip</code> で作った zip をそのまま渡します。相手は展開して <code>&lt;名前&gt;.exe</code> をダブルクリックするだけ。ランタイムを同梱しているので、別途のインストールは要りません。<code>data/</code> も一緒に渡してください（中身が本体です）。</p>
+          <p>ウィンドウサイズなど <code>mitiru.toml</code> の設定はランチャーに自動で反映されます。開発中にログを見たいときは <code>--bat</code> でコンソール表示の <code>.bat</code> も追加できます。</p>
+
+          <!-- ── §2 中身を隠す ────────────────────── -->
+          <h2 id="pack">中身を見せたくないとき</h2>
+          <p><code>--pack</code> を付けると、<code>assets/</code> の中身（HTML・CSS・画像・音）を <strong><code>assets.mtpak</code> という 1 つのファイルに梱包</strong>し、バラのファイルを配布物から消します。フォルダを覗いても素材が読めない・抜き出せない状態になります。ゲーム本体（<code>.dll</code>）はもともと機械語なので、ソースは出ません。</p>
+
+          <h3>挙動</h3>
+          <p>起動すると、ゲームはこのパックから直接読み込みます（展開ファイルを置きません）。対応するのは HTML / CSS / JS・画像・音です。</p>
+          <p class="note"><strong>暗号化ではなく難読化</strong>です。カジュアルな覗き見を防ぐ目的で、強い秘匿が必要な用途には向きません。</p>
+
+          <!-- ── §3 配布サイズ ────────────────────── -->
+          <h2 id="size">配布サイズ：HTML UI を使うかで変わる</h2>
+          <p>配布物の大きさは、HTML / CSS の UI を使うか（＝Chromium を同梱するか）で決まります。<code>mitiru.toml</code> で <code>[cef] enabled = false</code> にすると、<code>mitiru dist</code> は Chromium を丸ごと外した ネイティブ構成で組みます。</p>
+
+          <table class="spectable">
+            <tr>
+              <td>ネイティブ</td>
+              <td>C++ 描画のみ。<code>[cef] enabled = false</code> — 配布サイズ 約 30 MB</td>
+            </tr>
+            <tr>
+              <td>CEF</td>
+              <td>HTML UI あり（Chromium 同梱）。既定（指定なし）— 配布サイズ 約 300 MB</td>
+            </tr>
+          </table>
+
+          <p>差のぶんは、まるごと Chromium（<code>libcef.dll</code> だけで 211 MB）です。HTML UI を使うときだけ必要で、C++ だけで描くなら丸ごと不要です。詳しい内訳は <a href="install.html#size">インストールページのサイズ表</a>にあります。</p>
+
+          <p class="note"><strong>対応は Windows x64 です。</strong> <code>mitiru dist</code> が組むのは Windows 向けの実行物です。mac / Linux 版は今後対応予定です。</p>
+
+          <p>
+            <a href="install.html">インストール手順</a> ·
+            <a href="tutorial.html">はじめてのゲーム</a> ·
+            <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli ↗</a>
+          </p>
+
+        </div>
+      </div>
+    </main>
+
+    <footer class="content-foot">
+      <div class="wrap">
+        <span>© MitiruEngine</span>
+        <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+        <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+        <a href="install.html">インストール</a>
+      </div>
+    </footer>
+    </div>
     <aside class="toc">
-      <div class="term">このページ</div>
-      <a href="#how">配布物を作成</a>
-      <a href="#pack">素材をまとめる</a>
+      <div class="t">このページ</div>
+      <a href="#how">コマンドひとつ</a>
+      <a href="#pack">中身を隠す</a>
       <a href="#size">配布サイズ</a>
     </aside>
   </div>

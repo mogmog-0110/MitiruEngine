@@ -108,12 +108,18 @@ void drawPostProcessOutline()
 		float texelSizeX, texelSizeY;
 		float outlineWidth;
 		float threshold;
+		// シェーダの決め打ち (0.1 / 100) を廃止。setCamera の実値と食い違うと
+		// 線形化が歪み、同じ閾値でも距離によって効き方が変わってしまう。
+		float nearZ, farZ;
+		float _pad0, _pad1;
 	};
 	CbOutline cb;
 	cb.texelSizeX = 1.0f / m_config.viewportWidth;
 	cb.texelSizeY = 1.0f / m_config.viewportHeight;
 	cb.outlineWidth = m_outlineWidthPx;
 	cb.threshold = m_outlineThresh;
+	cb.nearZ = m_clodCamera.nearClip();
+	cb.farZ  = m_clodCamera.farClip();
 
 	const auto outlineCb = m_uploadRing.upload(&cb, sizeof(CbOutline), 256);
 	if (outlineCb.valid())

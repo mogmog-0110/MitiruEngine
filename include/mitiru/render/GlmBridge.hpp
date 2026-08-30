@@ -45,7 +45,7 @@ inline void toColumnMajor(float dst[4][4], const glm::mat4& m) {
 	std::memcpy(dst, glm::value_ptr(m), sizeof(float) * 16);
 }
 
-/// @brief glmでLookAt行列を作成（右手座標系 — 北 (-z) を向くと東 (+x) が画面右、ADR 0029）
+/// @brief glmでLookAt行列を作成（右手座標系。北 (-z) を向くと東 (+x) が画面右）
 inline glm::mat4 lookAt(const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up) {
 	return glm::lookAtRH(toGlm(eye), toGlm(target), toGlm(up));
 }

@@ -110,7 +110,7 @@ public:
 	/// @return チャンネルごとの { 種別, 実効レベル } の配列
 	[[nodiscard]] virtual std::vector<ChannelMeter> meterChannels() const { return {}; }
 
-	/// @brief マスター再生クロック (秒)。デバイスが再生したサンプル位置を返す (ADR 0008 拡張)。
+	/// @brief マスター再生クロック (秒)。デバイスが再生したサンプル位置を返す。
 	/// @details リズムゲーム等がフレーム積算ではなく音声クロック基準で判定するために使う。
 	///          再生位置を持たないバックエンド (Null/headless 等) は既定 0 を返す → game 側は
 	///          0 のときフレーム dt 積算にフォールバックする。

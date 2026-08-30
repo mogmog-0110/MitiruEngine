@@ -124,10 +124,17 @@ function(mitiru_add_cef_game target)
     endif()
 
     # --- CEF runtime binaries --------------------------------------------
-    # copy_directory は existing file を全部上書きする。大量のファイルを
-    # 個別に列挙するより安全で保守がラク。
+    # 3.26+ の copy_directory_if_different で差分だけ写す。素の copy_directory は
+    # existing file を全部上書きするので、host を relink するたびに libcef.dll
+    # (約 200MB) と locales/ 一式のフルコピーが走り、起動のたびに数百ファイルの
+    # 書き込みを待つことになる。
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.26")
+        set(_macg_copy_dir copy_directory_if_different)
+    else()
+        set(_macg_copy_dir copy_directory)
+    endif()
     add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        COMMAND ${CMAKE_COMMAND} -E ${_macg_copy_dir}
             "${CEF_BINARY_DIR}"
             "$<TARGET_FILE_DIR:${target}>"
         COMMENT "mitiru_add_cef_game: copying CEF binary runtime (libcef.dll + peers)")
@@ -152,7 +159,7 @@ function(mitiru_add_cef_game target)
         endforeach()
     else()
         add_custom_command(TARGET ${target} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            COMMAND ${CMAKE_COMMAND} -E ${_macg_copy_dir}
                 "${CEF_RESOURCE_DIR}"
                 "$<TARGET_FILE_DIR:${target}>"
             COMMENT "mitiru_add_cef_game: copying CEF resources (.pak + locales/ + icudtl.dat)")

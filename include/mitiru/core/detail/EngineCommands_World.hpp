@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file EngineCommands_World.hpp
-/// @brief ワールド状態系コマンド登録 (scene / render / audio / physics) — EngineCommands.hpp から分割
+/// @brief ワールド状態系コマンド登録 (scene / render / audio / physics)。EngineCommands.hpp から分割
 
 #include <string>
 #include <vector>
@@ -16,7 +16,7 @@ namespace detail
 {
 
 // ════════════════════════════════════════════════════════
-// scene.* — シーン操作
+// scene.*。シーン操作
 // ════════════════════════════════════════════════════════
 
 inline void registerSceneCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)
@@ -217,7 +217,7 @@ inline void registerSceneCommands(CommandSystem& cmd, [[maybe_unused]] Engine& e
 }
 
 // ════════════════════════════════════════════════════════
-// render.* — レンダリング操作
+// render.*。レンダリング操作
 // ════════════════════════════════════════════════════════
 
 inline void registerRenderCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)
@@ -366,7 +366,7 @@ inline void registerRenderCommands(CommandSystem& cmd, [[maybe_unused]] Engine& 
 }
 
 // ════════════════════════════════════════════════════════
-// audio.* — オーディオ操作
+// audio.*。オーディオ操作
 // ════════════════════════════════════════════════════════
 
 inline void registerAudioCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)
@@ -445,7 +445,7 @@ inline void registerAudioCommands(CommandSystem& cmd, [[maybe_unused]] Engine& e
 }
 
 // ════════════════════════════════════════════════════════
-// physics.* — 物理演算操作
+// physics.*。物理演算操作
 // ════════════════════════════════════════════════════════
 
 inline void registerPhysicsCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)

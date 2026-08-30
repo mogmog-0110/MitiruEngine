@@ -21,6 +21,7 @@
 #include <string>
 
 #include <mitiru/asset/AssetPack.hpp>
+#include <mitiru/platform/Utf8Args.hpp>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -169,7 +170,9 @@ int runLauncher()
 	if (!boot.args.empty())
 	{
 		const std::string& a = boot.args;
-		cmd += L" " + std::wstring(a.begin(), a.end());
+		// バイト単位で広げてはいけない。args は mitiru_boot.txt の UTF-8 で、
+		// 日本語 (--title "オスカーのガーデニング") が 1 バイト 1 文字に化ける。
+		cmd += L" " + mitiru::platform::utf8ToWide(a);
 	}
 	STARTUPINFOW si{};
 	si.cb = sizeof(si);

@@ -7,7 +7,7 @@
 ///   (a) EventLog に `type:"invariant_violation"` で emit  → 機械可読 (AI が tail)
 ///   (b) 直近違反リストを内部保持                          → 窓 / inspector 表示用
 ///
-/// ADR 0005 (GameMemory が唯一の state) との整合:
+/// GameMemory が唯一の state であることとの整合:
 /// - predicate は GameMemory の値を閉じ込めた lambda。GameMemory が唯一の
 ///   真実なので、check は決定的 (deterministic) であり、replay でも同じ違反が
 ///   同じ frame で再現する。

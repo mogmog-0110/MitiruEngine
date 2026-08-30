@@ -10,11 +10,11 @@
 ///
 /// 二段階のライフタイム:
 ///
-/// **Global** — `registerInspectable(name, title, fn)` を起動時に呼ぶ。
+/// **Global**。`registerInspectable(name, title, fn)` を起動時に呼ぶ。
 /// engine 終了まで生きる。engine 自身が "input" / "log" / "perf" などを
 /// この経路で予め登録する。
 ///
-/// **Local** — `LocalInspectable` を object メンバーとして抱える。
+/// **Local**。`LocalInspectable` を object メンバーとして抱える。
 /// コンストラクタで auto-register、デストラクタで auto-unregister。
 /// `Player` クラスが `LocalInspectable m_inspector{...}` を持てば、
 /// その Player が生きてる間だけ palette に出る。RAII で leak しない。
@@ -98,7 +98,7 @@ public:
 			entries.end());
 	}
 
-	/// @brief palette 列挙用 — name + title の組のリストを返す
+	/// @brief palette 列挙用。name + title の組のリストを返す
 	[[nodiscard]] static std::vector<std::pair<std::string, std::string>> allMeta()
 	{
 		std::lock_guard<std::mutex> lock(mutex());
@@ -141,7 +141,7 @@ public:
 		return out;
 	}
 
-	/// @brief テスト用 — 全エントリ削除
+	/// @brief テスト用。全エントリ削除
 	static void clear()
 	{
 		std::lock_guard<std::mutex> lock(mutex());

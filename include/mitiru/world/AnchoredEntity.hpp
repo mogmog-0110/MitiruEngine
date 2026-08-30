@@ -2,7 +2,7 @@
 
 /*!
  * @file AnchoredEntity.hpp
- * @brief anchor を基準にした entity の位置決め — sprite と hitbox が 1 つの原点を共有する。
+ * @brief anchor を基準にした entity の位置決め。sprite と hitbox が 1 つの原点を共有する。
  *
  * `getSpriteWorldRect()` と `getHitboxWorldRect()` はどちらも `anchor` と
  * それぞれの offset から導出される。`setAnchor()` で anchor を動かすと両 rect が
@@ -42,7 +42,7 @@ namespace mitiru::world {
  */
 struct AnchoredEntity
 {
-	/// world 空間の anchor 位置 — 位置の単一の source of truth。
+	/// world 空間の anchor 位置。位置の単一の source of truth。
 	sgc::Vec2f anchor{0.f, 0.f};
 
 	/// 可視 sprite の rect。`anchor` に対する*相対*値。

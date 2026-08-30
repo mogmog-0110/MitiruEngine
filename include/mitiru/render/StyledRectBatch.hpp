@@ -120,7 +120,7 @@ public:
         const auto v2 = worldXform.apply(x1, y1);
         const auto v3 = worldXform.apply(x0, y1);
 
-        // 元の矩形情報（シェーダーがSDF計算に使用）— 変換前のローカル座標のまま
+        // 元の矩形情報（シェーダーがSDF計算に使用）。変換前のローカル座標のまま
         const sgc::Vec4f shapeRect{rect.x(), rect.y(), rect.width(), rect.height()};
 
         // 4頂点: localUV は拡張クワッド全体に [0,1] でマッピング
@@ -359,7 +359,7 @@ public:
         const auto v2 = worldXform.apply(x1, y1);
         const auto v3 = worldXform.apply(x0, y1);
 
-        // シェイプ情報（シェーダーがSDF計算に使用）— ローカル座標のまま
+        // シェイプ情報（シェーダーがSDF計算に使用）。ローカル座標のまま
         const sgc::Vec4f shapeRect{center.x, center.y, rx, ry};
 
         // 4頂点: localUV は拡張クワッド全体に [0,1] でマッピング

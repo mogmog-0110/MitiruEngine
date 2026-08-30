@@ -1,4 +1,4 @@
-// model3d — 大きな 3D モデル (glTF) の中を歩く
+// model3d。大きな 3D モデル (glTF) の中を歩く
 // 実行すると: 26 万ポリゴンの宮殿 (Sponza) を一人称で歩き回れる。マウスで見回し、WASD で移動
 // 関連 API: drawModel / camera3D / hud.lockMouse / in.mouseDeltaX / skybox3D
 

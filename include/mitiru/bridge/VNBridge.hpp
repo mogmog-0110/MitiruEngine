@@ -246,7 +246,7 @@ private:
 	static constexpr const char* kKeyHasChoices   = "hasChoices";
 	static constexpr const char* kKeyFinished     = "finished";
 
-	// 値側でリテラル化できるもの — 毎フレーム std::string 化を避ける。
+	// 値側でリテラル化できるもの。毎フレーム std::string 化を避ける。
 	static constexpr const char* kPhaseIdleJson           = "\"Idle\"";
 	static constexpr const char* kPhaseDisplayingJson     = "\"Displaying\"";
 	static constexpr const char* kPhaseWaitingInputJson   = "\"WaitingInput\"";
@@ -257,7 +257,7 @@ private:
 	static constexpr const char* kEmptyStrJson  = "\"\"";
 	static constexpr const char* kZeroJson      = "0";
 
-	/// @brief 前回 push した状態のスナップショット — 同一なら再 push を抑止する。
+	/// @brief 前回 push した状態のスナップショット。同一なら再 push を抑止する。
 	struct StateSnapshot
 	{
 		bool        hasScene{false};
@@ -367,7 +367,7 @@ private:
 
 		if (force || next.visibleChars != m_lastPushed.visibleChars)
 		{
-			// short-form の十進数 — 小さな alloc、変化時のみ。
+			// short-form の十進数。小さな alloc、変化時のみ。
 			m_viewPush->set(kKeyVisibleChars, std::to_string(next.visibleChars));
 		}
 

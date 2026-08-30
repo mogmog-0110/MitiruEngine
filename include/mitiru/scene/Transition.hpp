@@ -6,7 +6,7 @@
 /// **動機。**
 /// `SceneTransitionManager` は scene loading と MitiruScene lifecycle に密結合した
 /// 重いシステム。game-level UI ではもっと単純で *standalone* な overlay が必要に
-/// なることが多い — 既に描かれているもの (CEF page、2D canvas、native screen)
+/// なることが多い。既に描かれているもの (CEF page、2D canvas、native screen)
 /// の上に Fade/Dissolve/Slide/Zoom/Custom effect を、scene graph に一切触れず
 /// 再生する。`Transition` がその隙間を埋める。
 ///
@@ -14,13 +14,13 @@
 /// - Header-only、GPU 依存ゼロ。class が持つのは timing state のみ。
 ///   描画は `DrawFn` callback に委譲し、caller が利用可能な primitive
 ///   (Screen、CEF StateStore、test spy) へ bind する。
-/// - `TransitionFrame` は単なる value type — renderer が必要とする全データを
+/// - `TransitionFrame` は単なる value type。renderer が必要とする全データを
 ///   1 struct に: kind、progress [0,1]、color、slide 方向、custom result。
 /// - `TransitionKind::Custom` は `EasingFn` lambda を受け取り、designer が
 ///   engine 改変なしに任意の curve (例: `smoothstep`、bounce) を供給できる。
 /// - `Color` は `mitiru::render::Color` (`sgc::Colorf` の wrapper) を再利用。
 ///   default の overlay color は不透明な黒。
-/// - delta-time 駆動 — frame-rate に完全非依存。
+/// - delta-time 駆動。frame-rate に完全非依存。
 /// - `start()` は冪等: transition 途中で呼んでも t=0 へきれいに reset される。
 ///
 /// **使い方 (黒へ Fade、0.5 秒):**
@@ -41,7 +41,7 @@
 ///   if (tr.isDone()) { /* transition finished */ }
 /// ```
 ///
-/// **使い方 (Custom easing — smoothstep):**
+/// **使い方 (Custom easing。smoothstep):**
 /// ```cpp
 ///   tr.setCustomEasing([](float t) {
 ///       return t * t * (3.0f - 2.0f * t);  // smoothstep
@@ -86,7 +86,7 @@ enum class SlideDirection
 
 /// @brief 毎フレーム DrawFn callback へ渡す snapshot。
 ///
-/// renderer から見ると全 field は read-only — 現在の transition state を
+/// renderer から見ると全 field は read-only。現在の transition state を
 /// 記述する。どう適用するかは renderer が決める。
 struct TransitionFrame
 {
@@ -205,7 +205,7 @@ public:
     /// @brief transition が active (まだ done でなく callback が登録済み) なら
     ///        DrawFn callback を発火する。
     ///
-    /// 常に最前面に描く — caller は他の全描画の *後* にこれを呼ぶべき。
+    /// 常に最前面に描く。caller は他の全描画の *後* にこれを呼ぶべき。
     void draw() const
     {
         if (!m_drawFn) return;

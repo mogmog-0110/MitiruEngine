@@ -3,8 +3,8 @@
 /// @file SoundIntentRouter.hpp
 /// @brief SoundIntent (DLL → host の intent) を IAudioEngine 操作へ写像する host 専用 glue
 /// @details
-/// ADR 0008: game は audio mixer を持たず SoundIntent を書くだけ。host がこの関数で
-/// intent を解釈し、自分が所有する IAudioEngine を駆動する (ADR 0005 整合)。
+/// game は audio mixer を持たず SoundIntent を書くだけ。host がこの関数で
+/// intent を解釈し、自分が所有する IAudioEngine を駆動する。
 ///
 /// この header は **host 側のみ** が include する。DLL は ModuleApi.hpp だけを include する
 /// ので、audio 依存が DLL 側へ漏れない。
@@ -33,7 +33,7 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s)
 {
 	const bool isMusic = (s.category == 1);  // 1 = BGM
 
-	// v19: BGM transport (pause/resume/seek)。id 不要 — 再生中の BGM に作用する。
+	// v19: BGM transport (pause/resume/seek)。id 不要。再生中の BGM に作用する。
 	// play/stop より先に判定する (transport intent は id 空・stop 0 で来る)。
 	if (isMusic && s.transport != 0)
 	{
@@ -82,7 +82,7 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s)
 ///          - crossfade: 別 id への切替で fadeInSec > 0 なら、新曲 play の前に
 ///            stopMusicFade(同じ秒数) を発行して旧曲をフェードアウトさせる。
 ///          - SE / Voice (category != 1) は常に素通しで applySoundIntent に委譲する。
-///          DLL は再生状態を知らない (ADR 0005) ので、この dedupe は host 側にしか置けない。
+///          DLL は再生状態を知らない ので、この dedupe は host 側にしか置けない。
 class SoundIntentRouter
 {
 public:

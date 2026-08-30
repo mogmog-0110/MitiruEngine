@@ -7,6 +7,8 @@ if(WIN32)
 	# (engine を link しないと CMAKE_CXX_STANDARD が伝播せず既定標準になり
 	#  <filesystem> / Win32 API がコンパイルできない)。
 	target_compile_features(mitiru_start PRIVATE cxx_std_20)
+	# engine には link しないが、純ヘッダ (platform/Utf8Args.hpp) だけ使う。
+	target_include_directories(mitiru_start PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../include")
 	target_link_options(mitiru_start PRIVATE /SUBSYSTEM:WINDOWS)
 	if(MSVC)
 		# JP コメントの CP932 誤読を防ぐ。

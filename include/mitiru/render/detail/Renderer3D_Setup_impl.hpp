@@ -13,7 +13,7 @@ namespace mitiru::render
 /// @brief レンダラーを初期化する
 /// @param device DX11デバイスへのポインタ
 /// @param cfg 設定パラメータ
-/// @param mode シェーダーモード（初期化時に直接設定 — setShaderModeの再コンパイルを回避）
+/// @param mode シェーダーモード（初期化時に直接設定。setShaderModeの再コンパイルを回避）
 inline void Renderer3D::initialize(gfx::Dx11Device* device,
 	const Renderer3DConfig& cfg,
 	ShaderMode3D mode)

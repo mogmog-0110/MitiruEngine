@@ -90,7 +90,7 @@ namespace mitiru::observe { class CausalChain; }
 // (Engine_Module.hpp + tests) のみに限定するため Engine.hpp consumer からは隠す。
 namespace mitiru::module { class ModuleHost; }
 // StateStore は mitiru/cef/StateStore.hpp に置く (nlohmann/json を引き込む)。
-// module-mode で Engine が 1 個所有する (ADR 0005)。pimpl で Engine.hpp を軽く保つ。
+// module-mode で Engine が 1 個所有する。pimpl で Engine.hpp を軽く保つ。
 namespace mitiru::cef { class StateStore; }
 // IAudioEngine は applyVolumes() で setVolume() を呼ぶため完全型が必要
 #include <mitiru/audio/AudioEngine.hpp>
@@ -242,7 +242,7 @@ public:
 	/// (input-script / replay / headless) では false にして実カーソルを掴まない。
 	void setAllowCursorCapture(bool b) noexcept { m_allowCursorCapture = b; }
 
-	// lo-fi post-FX (ADR #30: シーン毎の hi-res / lofi 切替):
+	// lo-fi post-FX (シーン毎の hi-res / lofi 切替):
 	void setLofiEnabled(bool e) noexcept { mutableConfig().loFi.enabled = e; }
 	void toggleLofi() noexcept           { auto& c = mutableConfig(); c.loFi.enabled = !c.loFi.enabled; }
 	[[nodiscard]] bool isLofiEnabled() const noexcept { return config().loFi.enabled; }
@@ -372,7 +372,7 @@ public:
 
 	/// @brief 現在 load 済みの module を unload する (最終終了用)。call safe (未 load なら no-op)
 	/// @details on_shutdown → unloadFn (DLL 側が memory を delete) → FreeLibrary →
-	///          memory pointer を null 化する。**memory はここで破棄される** —
+	///          memory pointer を null 化する。**memory はここで破棄される**。
 	///          状態を保ったまま入れ替えるのは reloadModule の役目 (こちらは unloadFn を呼ばない)。
 	void unloadModule() noexcept;
 
@@ -398,6 +398,13 @@ public:
 	///   - ループ終了後 `unloadModule()` を呼ぶ
 	///   - module load 失敗時は stderr に理由を出して false を返す (engine は init しない)
 	/// @return 成功で true。MITIRU_GAME 入口無し等の load 失敗で false → host は非ゼロ終了を。
+	/// @brief 静的リンクされたゲームを module の信号フローで走らせる (web / 単一 exe 用)。
+	/// @details DLL を経ない点以外は runModule と同じ: InputSnapshot 構築 →
+	///          on_update → intents drain → on_draw。loadFn は MITIRU_GAME が
+	///          生成する mitiru_module_load をそのまま渡す。
+	///          DLL が無いので hot-reload / reloadModule は使えない。
+	bool runModuleStatic(module::ModuleLoadFn loadFn, const EngineConfig& configIn = {});
+
 	bool runModule(const std::filesystem::path& modulePath,
 	               const EngineConfig& configIn = {});
 
@@ -410,18 +417,18 @@ public:
 	/// @brief module の persistent memory pointer (DLL が自分で `new` したもの)
 	[[nodiscard]] void* moduleMemory() const noexcept;
 
-	/// @brief DLL が申告した GameMemory のバイト数 (ADR 0013、0=未申告)
+	/// @brief DLL が申告した GameMemory のバイト数 (0=未申告)
 	[[nodiscard]] std::uint32_t moduleMemorySize() const noexcept;
 
-	/// @brief time-travel: ring に貯めた N フレーム前の GameMemory bytes を取得 (ADR 0017)
+	/// @brief time-travel: ring に貯めた N フレーム前の GameMemory bytes を取得
 	/// @param offsetFromNewest 0 = 最新, 1 = 1 フレーム前, ...。範囲外は nullptr。
 	[[nodiscard]] const std::uint8_t* moduleMemoryRingAt(std::size_t offsetFromNewest) const noexcept;
 
-	/// @brief time-travel ring が現在保持しているフレーム数 (ADR 0017)
+	/// @brief time-travel ring が現在保持しているフレーム数
 	[[nodiscard]] std::size_t moduleMemoryRingSize() const noexcept;
 
 	/// @brief 2 つの GameMemory blob を MITIRU_REFLECT 記述子で field 単位 diff し JSON 配列で返す。
-	/// @details replay 回帰の divergence report 用 — 「どの field が録画値から変わったか」を出す。
+	/// @details replay 回帰の divergence report 用。「どの field が録画値から変わったか」を出す。
 	///          MITIRU_REFLECT 未宣言 / サイズ 0 なら "[]"。blob は moduleMemorySize() バイト前提。
 	[[nodiscard]] std::string reflectDiffBlobs(const void* a, const void* b) const;
 
@@ -431,14 +438,14 @@ public:
 
 	/// @brief 分岐 byte offset を当該フレームで最後に書いた phase 名を game へ問い合わせる
 	///        (`mitiru why` の causal 層、optional)。
-	/// @details game が `mitiru_why_blame_at` を export していれば呼ぶ (ADR0005: host→DLL pull)。
+	/// @details game が `mitiru_why_blame_at` を export していれば呼ぶ (host→DLL pull)。
 	///          未対応 game / 未 load なら nullptr。返り値は game 所有の静的文字列で即読み前提。
 	[[nodiscard]] const char* queryModuleWriteBlame(std::uint32_t offset) const;
 
-	/// @brief time-travel rewind: live GameMemory を過去 bytes で memcpy 上書きする (ADR 0017)
+	/// @brief time-travel rewind: live GameMemory を過去 bytes で memcpy 上書きする
 	/// @details host が scrub command を受けて呼ぶ。size が GameMemory サイズと一致しない /
 	///          live が無い場合は false (live を壊さない)。game DLL は rewind を知らない
-	///          — 次フレームの on_update が復元された state を「現在」として淡々と進める。
+	///。次フレームの on_update が復元された state を「現在」として淡々と進める。
 	/// @return 上書きに成功したら true
 	bool rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept;
 
@@ -469,16 +476,16 @@ public:
 		return true;
 	}
 
-	/// @brief replay 用の load 代用フック (ADR 0020)。host 内部 API — DLL 境界を跨がず ABI 影響なし。
+	/// @brief replay 用の load 代用フック。host 内部 API。DLL 境界を跨がず ABI 影響なし。
 	/// @details load intent の drain 直前に sanitize 済み slot 名で呼ばれる。true を返すと
 	///          通常のファイル load をスキップする (replay 側が記録済み state blob を適用済みの意)。
-	///          replay 中はセーブファイルを一切参照しない — 録画後に上書きされても bit-exact が保たれる。
+	///          replay 中はセーブファイルを一切参照しない。録画後に上書きされても bit-exact が保たれる。
 	void setSaveLoadOverride(std::function<bool(const char* slot)> fn)
 	{
 		m_saveLoadOverride = std::move(fn);
 	}
 
-	// ── Rewind-Edit-Replay (ADR 0021): 巻き戻して、直して、そこから再生 ──────
+	// ── Rewind-Edit-Replay: 巻き戻して、直して、そこから再生 ──────
 	/// @brief k フレーム前へ巻き戻し、そこから記録済み入力で再生する (resim)。
 	/// @details GameMemory を ring の k フレーム前へ rewind し、以後 k フレームは
 	///          ライブ入力の代わりに InputRing の記録を on_update へ供給する。
@@ -489,18 +496,18 @@ public:
 	/// @brief resim 再生中か (残りフレームがあるか)
 	[[nodiscard]] bool resimActive() const noexcept { return m_resimCursor < m_resimQueue.size() / m_resimSnapSize && m_resimSnapSize != 0; }
 
-	/// @brief 反実仮想フォーク (ADR 0018): 現 GameMemory を保存 → 台本 input で on_update を
+	/// @brief 反実仮想フォーク: 現 GameMemory を保存 → 台本 input で on_update を
 	///        frameCount 回 headless 実行 (draw / intents drain なし = 副作用ゼロ) → 結果を
 	///        reflected JSON 文字列で返す → GameMemory を保存値へ復元する。
 	/// @details AI の「この入力を続けたらどうなる?」を実際に試して比較できる。決定論は
 	///          各 inputs[i].rngSeed で制御。GameMemory が単一 flat-POD + on_update が純関数
-	///          だから副作用なく試行→復元できる (ADR 0017 の配当)。reflection 未宣言なら "{}"。
+	///          だから副作用なく試行→復元できる。reflection 未宣言なら "{}"。
 	/// @param inputs     frameCount 個の InputSnapshot 台本
 	/// @param frameCount 進めるフレーム数
 	[[nodiscard]] std::string branchModuleMemory(const module::InputSnapshot* inputs, int frameCount);
 
 	/// @brief module-mode で engine 所有の CEF StateStore (lazy created)
-	/// @details CEF init 後 + module load 後にのみ non-null。ADR 0005 により
+	/// @details CEF init 後 + module load 後にのみ non-null。
 	///          DLL は直接これに触らず、`FrameIntents::statePushes` 経由で
 	///          host に push を依頼する。
 	[[nodiscard]] cef::StateStore* moduleStateStore() noexcept;
@@ -513,9 +520,9 @@ private:
 	void zeroModuleFrameIntents();         ///< 各 on_update 呼び出し前に m_moduleFrameIntents をクリア
 	void applyModuleRestartIntent();       ///< on_update 直後・ring 記録前に restart intent を適用 (§8-4: memset 0 → on_init)
 	void drainModuleFrameIntents();        ///< on_update 後に DLL が要求した side-effect を適用
-	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を time-travel ring へ push (ADR 0017)
-	void recordModuleInputFrame();         ///< on_update 後に InputSnapshot bytes を InputRing へ push (ADR 0021)
-	void applyResimInputOverride();        ///< resim 中、構築済み snapshot を記録入力で上書きする (ADR 0021)
+	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を time-travel ring へ push
+	void recordModuleInputFrame();         ///< on_update 後に InputSnapshot bytes を InputRing へ push
+	void applyResimInputOverride();        ///< resim 中、構築済み snapshot を記録入力で上書きする
 
 	/// @brief 1フレーム分のゲームループを実行する
 	/// @details run()から呼ばれる。Emscriptenではemscripten_set_main_loop_argのコールバック。
@@ -734,16 +741,16 @@ private:
 	std::unique_ptr<module::ModuleHost>   m_moduleHost;
 	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
-	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (ADR 0013、0=未申告)
-	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② time-travel、ADR 0017)
+	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (0=未申告)
+	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② time-travel)
 	bool                                  m_scrubHold       = false; ///< 別窓のバーで過去フレームに静止中か
 	std::size_t                           m_scrubHoldOffset = 0;     ///< 静止しているフレーム (何フレーム前か、0=最新)
-	observe::GameMemoryRing               m_moduleInputRing;        ///< 過去フレームの InputSnapshot bytes (ADR 0021 resim 用、同 ring を再利用)
+	observe::GameMemoryRing               m_moduleInputRing;        ///< 過去フレームの InputSnapshot bytes (resim 用、同 ring を再利用)
 	std::vector<std::uint8_t>             m_resimQueue;             ///< resim 開始時に ring から退避した入力列 (再生中の ring 上書きと無縁)
 	std::size_t                           m_resimCursor   = 0;      ///< 次に供給する resim 入力の index
 	std::size_t                           m_resimSnapSize = 0;      ///< 1 入力のバイト数 (0 = resim 非アクティブ)
 	double                                m_lastAudioTimeSec = 0.0; ///< audioTime 単調非減少保証用 (R-03、backend の谷を clamp)
-	std::function<bool(const char*)>      m_saveLoadOverride;       ///< replay の load 代用フック (ADR 0020、host 内部)
+	std::function<bool(const char*)>      m_saveLoadOverride;       ///< replay の load 代用フック (host 内部)
 
 	// host→DLL signal flow 用の per-frame POD scratch buffer。struct 合計が
 	// ~50KB ある上、module を一切 load しない Engine instance まで肥大化させたく
@@ -751,8 +758,8 @@ private:
 	std::unique_ptr<module::InputSnapshot> m_moduleInputSnapshot;
 	std::unique_ptr<module::FrameIntents>  m_moduleFrameIntents;
 
-	// Module-mode の CEF StateStore + Inspector SharedSnapshot — DLL が host
-	// object の pointer を一切持たないよう engine 所有とする (ADR 0005)。
+	// Module-mode の CEF StateStore + Inspector SharedSnapshot。DLL が host
+	// object の pointer を一切持たないよう engine 所有とする。
 	// shared_ptr なのは CEF の load-end callback が weak 捕捉するため (H-19)。
 	std::shared_ptr<cef::StateStore>        m_moduleStateStore;
 	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
@@ -767,7 +774,7 @@ private:
 	std::uint64_t                            m_lastInspectorDigest = 0;
 
 	// host 所有の観察 (perf / audio) を game inspectable と併記して書くためのキャッシュ。
-	// game export とは別 cadence (常時変化) なので throttle write する (ADR 0014 tool windows:
+	// game export とは別 cadence (常時変化) なので throttle write する (ツール窓の
 	// mitiru_perf / mitiru_mixer が同じ SharedSnapshot を読む)。
 	cef::json                                m_lastInspectorOut = cef::json::object();
 	bool                                     m_inspectorDirty = false;
@@ -780,11 +787,16 @@ private:
 	// 次の on_update 向けに queue した CEF JS 由来の action event。StateStore の
 	// handler は CEF UI thread で発火するが on_update は engine main thread で
 	// 走るため mutex で保護する。
+public:
+	/// @brief HUD (CEF / ブラウザ) から届く action の受け渡しバッファ。
+	/// @details web 版は extern "C" mitiru_web_action がここへ直接積むので public。
 	struct ModuleActionEventBuffer
 	{
 		std::mutex                                  mu;
 		std::vector<std::pair<std::string, std::string>> events; // (name, payloadJson)
 	};
+
+private:
 	std::unique_ptr<ModuleActionEventBuffer> m_moduleActionEvents;
 };
 

@@ -1,4 +1,4 @@
-// mitiru_subsys_input — エンジン全体なしで input subsystem だけを起動する最小 exe。
+// mitiru_subsys_input。エンジン全体なしで input subsystem だけを起動する最小 exe。
 //
 // ゲームロジック・CEF・audio なしで input subsystem を起動する。Engine +
 // Screen + 毎フレーム引く InputState のみ。HUD が生の 256-key VK テーブルを
@@ -7,7 +7,7 @@
 //
 // 見えるもの (Saturn パレット: 銀 bg / 黒 ink / Saturn red アクセント):
 //   - ヘッダ "input subsystem" + 最後に押した VK コードを大きく表示
-//   - 16×16 grid (256 セル) — keysDown[i] = true なら Saturn red で塗る
+//   - 16×16 grid (256 セル)。keysDown[i] = true なら Saturn red で塗る
 //   - 右パネル: mouse x/y + L/M/R ボタン状態
 //   - 下: press ログのスクロール (新しい順、最大 12 行)
 //
@@ -17,7 +17,7 @@
 #include <cstdio>
 #include <string>
 
-// アンブレラ header は使わない — 使うものだけ明示 include
+// アンブレラ header は使わない。使うものだけ明示 include
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>

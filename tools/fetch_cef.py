@@ -140,7 +140,7 @@ def main() -> int:
         return 1
 
     if not target_dir.exists():
-        # minimal だと展開後ディレクトリに "_minimal" が付く場合がある — リネームする
+        # minimal だと展開後ディレクトリに "_minimal" が付く場合がある。リネームする
         candidates = list(external_cef.glob(f"cef_binary_{args.version}_{args.platform}*"))
         dirs = [c for c in candidates if c.is_dir()]
         if dirs:

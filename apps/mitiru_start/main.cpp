@@ -1,4 +1,4 @@
-// mitiru_start — 配布用の極小 GUI ランチャ stub。
+// mitiru_start。配布用の極小 GUI ランチャ stub。
 //
 // 目的: 配布フォルダのトップに <game>.exe として置き、ダブルクリックされたら
 //   コンソール窓を一切出さずに data\mitiru_host.exe を起動する。CEF にも engine
@@ -13,6 +13,7 @@
 //
 // GUI subsystem (WinMain) なので親に console が無い → cmd 窓が一瞬も出ない。
 
+#include <mitiru/platform/Utf8Args.hpp>
 #include <windows.h>
 
 #include <filesystem>
@@ -25,7 +26,7 @@ namespace
 
 /// data\launch.mtargs を 1 行読む (空白区切りの host argv)。無ければ空。
 /// "..." で囲まれた token (--title "My Game" 等) は行ごと command line に渡り、
-/// host 側 CRT の argv 分割が quote を解釈する — ここでの分割処理は不要。
+/// host 側 CRT の argv 分割が quote を解釈する。ここでの分割処理は不要。
 std::string readLaunchArgs(const std::filesystem::path& dataDir)
 {
 	std::ifstream f(dataDir / "launch.mtargs");
@@ -40,10 +41,13 @@ std::string readLaunchArgs(const std::filesystem::path& dataDir)
 	return line;
 }
 
-/// ASCII 想定の引数を wide に広げる (相対 DLL パス + フラグのみ。非 ASCII は使わない)。
+/// launch.mtargs (UTF-8) を CreateProcessW へ渡せる UTF-16 にする。
+///
+/// バイト単位で広げてはいけない。--title に日本語を渡す配布物があり、1 バイトを
+/// 1 文字として広げると窓の表題がそのまま化ける (実際に化けた)。
 std::wstring widen(const std::string& s)
 {
-	return std::wstring(s.begin(), s.end());
+	return mitiru::platform::utf8ToWide(s);
 }
 
 }  // namespace

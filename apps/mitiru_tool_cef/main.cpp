@@ -1,4 +1,4 @@
-// mitiru_tool_cef — 独立ツール窓の汎用 CEF/HTML ホスト (ideal form)。
+// mitiru_tool_cef。独立ツール窓の汎用 CEF/HTML ホスト (ideal form)。
 //
 // CEF が assets/<page>.html を全面表示し、C++ は SharedSnapshot 全体を毎フレーム
 // window.applySnapshot(json) で JS に push するだけ。各ページは自分の関心事だけ描く。
@@ -27,12 +27,12 @@
 
 #include <nlohmann/json.hpp>
 
-// アンブレラ廃止 (リファクタ P2) — 使うものだけ明示 include
+// アンブレラ廃止 (リファクタ P2)。使うものだけ明示 include
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
 #include <mitiru/debug/ToolWindowApp.hpp>      // parseToolArgs / kToolBg
-#include <mitiru/observe/ScrubControlChannel.hpp>  // time-travel click-to-scrub (ADR 0017)
+#include <mitiru/observe/ScrubControlChannel.hpp>  // time-travel click-to-scrub
 #include <mitiru/observe/DockChannel.hpp>          // ゲーム窓への吸着・追従 (ドッキング)
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/replay/Player.hpp>            // .mtrr 読み込み (replay mode)
@@ -213,7 +213,7 @@ private:
 	}
 
 	// time-travel: timetravel.html の graph click → window.cefQuery("timetravel.scrub|<offset>")
-	// を受けて、監視中ゲーム(host pid)宛に scrub command を書く (ADR 0017、click-to-scrub)。
+	// を受けて、監視中ゲーム(host pid)宛に scrub command を書く (click-to-scrub)。
 	// host が ScrubControlReader で読み、GameMemory を過去 bytes へ巻き戻す。1 度だけ登録する。
 	void ensureScrubHandler()
 	{
@@ -339,7 +339,7 @@ private:
 	bool                                                   m_everRead{false};
 	float                                                  m_pollAccum{0.0f};
 
-	// time-travel click-to-scrub (ADR 0017)
+	// time-travel click-to-scrub
 	std::optional<mitiru::observe::ScrubControlWriter>     m_scrubWriter;
 	long                                                   m_scrubSeq{0};
 	bool                                                   m_scrubHandlerRegistered{false};
@@ -381,7 +381,7 @@ int main(int argc, char* argv[])
 	const std::string url =
 		"file:///" + (exeDir / "assets" / (page + ".html")).generic_string();
 
-	// timetravel は「ゲーム窓の下に付く横シークバー」なので横長・低背 + ゲーム窓の下辺に吸着。他ツールは縦長。
+	// rewind は「ゲーム窓の下に付く横シークバー」なので横長・低背 + ゲーム窓の下辺に吸着。他ツールは縦長。
 	const bool isSeekBar = (page == "rewind");
 	// seek-bar はゲーム窓の下辺、それ以外の道具窓 (inspector 等) は右脇に吸着する。
 	const int dockMode = isSeekBar ? 1 : 2;

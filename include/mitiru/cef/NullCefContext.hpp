@@ -75,7 +75,7 @@ public:
         return false; // CEF なし → 常に失敗
     }
 
-    /// @brief 生ハンドル版 — 本物と同じ入口を、CEF 無しビルドにも用意しておく
+    /// @brief 生ハンドル版。本物と同じ入口を、CEF 無しビルドにも用意しておく
     /// @details 片方にしかない入口は、CEF ありでは通ってなしでは落ちるコードを許してしまう。
     bool initialize(
         ID3D12Device*       /*device*/,

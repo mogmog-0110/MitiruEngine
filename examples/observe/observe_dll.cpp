@@ -1,10 +1,10 @@
-// observe — 画面に見えるのは「結果」だけ、という例。
+// observe。画面に見えるのは「結果」だけ、という例。
 //   ここでは赤べこ (会津の張り子牛) が、腹が減れば餌へ歩き、疲れれば休む。画面に映るのは
-//   その動き — 首を振る / 跳ねる / 表情が変わる / 餌へ寄る — だけ。
+//   その動き。首を振る / 跳ねる / 表情が変わる / 餌へ寄る。だけ。
 //   一方で、なぜ今それをしているか (腹・体力・機嫌・今の行動) という内部の値は画面に出さない。
 //   その内部の値は、ゲームを止めずに別の窓 (inspector) から live で読める。これが「観測」。
 //   画面を見て動きを楽しみ、値を見て理由を知る、という二面を分けて見せるのがこの章の主旨。
-// 使う機能: 状態を登録する MITIRU_REFLECT (ファイル末尾) / 観測窓つきで起動する mitiru_host --inspect
+// 使う機能: 状態を登録する MITIRU_REFLECT (ファイル末尾) / 観察ウィンドウつきで起動する mitiru_host --inspect
 
 #include <algorithm>   // std::min / std::max
 #include <cmath>       // std::sqrt / std::sin / std::fabs
@@ -51,7 +51,7 @@ struct Critter
 	float x = kScreenW * 0.5f, y = kScreenH * 0.5f;
 	bool  faceLeft = false;   // 進む向き (左を向いているか)
 
-	// 内部の欲求 — 行動を決める値。画面には出さず、観測窓 (inspector) だけで見える。
+	// 内部の欲求。行動を決める値。画面には出さず、観察ウィンドウ (inspector) だけで見える。
 	float hunger = 25.0f;   // 0..100  時間で上がる。高くなると餌を探す
 	float energy = 100.0f;  // 0..100  動くと減り、休むと回復する
 	float mood   = 70.0f;   // 0..100  腹が満ちて元気なほど高い
@@ -61,8 +61,8 @@ struct Critter
 	float goalX = kScreenW * 0.5f, goalY = kScreenH * 0.5f, wanderT = 0.0f;
 	float nodPhase = 0.0f, hopPhase = 0.0f;   // 首振り・跳ねのサイン波の位相
 	FixedVec<Food, 8> foods;
-	int   foodCount = 0;    // 今 画面に出ている餌の数 (食べると減り、時々わいて増える。観測窓で見える)
-	int   meals = 0;        // これまでに食べた餌の総数 (観測窓で見える)
+	int   foodCount = 0;    // 今 画面に出ている餌の数 (食べると減り、時々わいて増える。観察ウィンドウで見える)
+	int   meals = 0;        // これまでに食べた餌の総数 (観察ウィンドウで見える)
 	float spawnT = 3.0f;    // 次に餌がわくまでの秒
 	unsigned int rng = 2463534242u;   // 決定論的な乱数 (毎回同じ動き = 巻き戻し / リプレイと相性が良い)
 	bool started = false;
@@ -153,7 +153,7 @@ struct Critter
 		nodPhase += (2.0f + (mood / 100.0f) * 3.0f) * dt;
 		hopPhase += (5.0f + (energy / 100.0f) * 3.0f) * dt;
 
-		foodCount = static_cast<int>(foods.size());   // 観測窓に出す用に、今の餌の数を控える
+		foodCount = static_cast<int>(foods.size());   // 観察ウィンドウに出す用に、今の餌の数を控える
 	}
 
 	// 今の気分に合う頭 (表情) を選ぶ。休む→眠い / 腹ぺこ→ひもじい / 上機嫌→にっこり / それ以外→ふつう。

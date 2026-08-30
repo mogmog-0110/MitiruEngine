@@ -1,4 +1,4 @@
-// mitiru_subsys_renderer — エンジン全体なしで renderer subsystem だけを起動する最小 exe。
+// mitiru_subsys_renderer。エンジン全体なしで renderer subsystem だけを起動する最小 exe。
 //
 // ゲームロジック・CEF・audio・巻き戻し記録・inspector なしで renderer
 // subsystem を起動する。Engine + Screen + 60Hz の update/draw loop のみ。
@@ -14,7 +14,7 @@
 // 操作: ESC で終了。
 //
 // 存在理由 (全 system 単独起動の保証):
-//   - 同じ Engine class が gameplay 層なしで動く — host-game 境界が実在し、
+//   - 同じ Engine class が gameplay 層なしで動く。host-game 境界が実在し、
 //     ゲームコードに依存していないことを示す。
 //   - cold-start 予算 < 1s (CEF init なし、実描画する Latin 範囲を超える font
 //     atlas の暖機なし)。
@@ -22,7 +22,7 @@
 #include <cmath>
 #include <cstdio>
 
-// アンブレラ header は使わない — 使うものだけ明示 include
+// アンブレラ header は使わない。使うものだけ明示 include
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
@@ -144,7 +144,7 @@ int main(int /*argc*/, char* /*argv*/[])
     cfg.enableCef          = false;
     cfg.fontAtlasRanges    = mitiru::EngineConfig::FontAtlas::Latin;
     cfg.useLogicalWindowSize = true;
-    // 銀灰の Saturn surface — host 側 clear は draw 内の screen.clear() と
+    // 銀灰の Saturn surface。host 側 clear は draw 内の screen.clear() と
     // 一致させる。最初のフレーム (draw 実行前) を黒にしないため。
     cfg.backgroundColor    = kPaperBg;
 

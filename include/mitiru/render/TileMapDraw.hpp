@@ -4,7 +4,7 @@
 /// @brief タイルマップ 1 関数描画ヘルパ。
 /// @details game が row-major な int[w*h] (-1 = 空) を渡すと、tileset の各セルを
 ///          atlas index で切り出して連続 `Screen::drawSprite` する。同一 texture
-///          連続なので ADR 0009 のテクスチャバッチに合流し 1 ドローコールに集約。
+///          連続なのでテクスチャバッチに合流し 1 ドローコールに集約。
 
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/render/Texture.hpp>
@@ -56,7 +56,7 @@ inline int forEachVisibleTile(const TileAtlas& a, const int* indices, int mapW, 
 }
 
 /// @brief タイルマップを一括描画する (各非空タイル = 1 drawSprite、同一 texture なので
-///        ADR 0009 のテクスチャバッチで 1 ドローコールに合流)。
+///        テクスチャバッチで 1 ドローコールに合流)。
 inline void drawTiles(Screen& screen, const Texture& tileset, const TileAtlas& atlas,
                      const int* indices, int mapW, int mapH,
                      float worldX, float worldY,

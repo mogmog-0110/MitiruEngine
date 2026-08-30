@@ -7,14 +7,14 @@
 /// に対応する reverse channel。inspector の time-travel graph を click した時に
 /// host の GameMemory を「その frame の過去 bytes」へ巻き戻す click-to-scrub を実現する。
 ///
-/// 位置づけ (ADR 0005 / 0017 との整合):
+/// 位置づけ:
 /// - これは **debug 専用の observer→host file IPC** であって gameplay signal flow では
 ///   ない。host を介さず、SharedSnapshot と同じ temp file 流儀で完結する。
 /// - rewind は **host が** 行う (live GameMemory を過去 bytes で memcpy 上書き)。game
-///   DLL は scrub を一切知らない (ADR 0005 の純関数モデルを保つ)。reader は host 側。
+///   DLL は scrub を一切知らない。reader は host 側。
 /// - 単調増加 `seq` が前回より進んでいる command を一度だけ適用する (重複適用を防ぐ)。
 ///
-/// wire format (`mitiru_control_<pid>.json` — file 名は互換のため据え置き):
+/// wire format (`mitiru_control_<pid>.json`。file 名は互換のため据え置き):
 /// @code
 ///   { "scrubTo": 123, "seq": 5 }   // scrubTo = offsetFromNewest (0 = 最新)
 /// @endcode
@@ -72,7 +72,7 @@ inline int scrubThisPid()
 }
 }  // namespace detail
 
-/// @brief inspector 側 — 監視対象 pid の scrub control file に command を書く (writer)
+/// @brief inspector 側。監視対象 pid の scrub control file に command を書く (writer)
 /// @details atomic rename pattern (`*.tmp` に書いて rename)。host が midway read で
 ///          truncated JSON を観測しないようにする。
 class ScrubControlWriter
@@ -120,11 +120,11 @@ private:
 	std::filesystem::path m_tmpPath;
 };
 
-/// @brief host 側 — 自プロセス宛の scrub control file を polling 読み (reader)
+/// @brief host 側。自プロセス宛の scrub control file を polling 読み (reader)
 /// @details 中身が前回読みから変わった時だけ返す。filesystem だけに依存する header-only 実装。
 ///
-///          @b mtime では判定できない：以前は「mtime が変わっていなければ読まない」だったが、
-///          **連続した 2 つの write が同じ mtime を持つことがある**（NTFS の記録粒度）。
+///          @b mtime では判定できない：**連続した 2 つの write が同じ mtime を持つことが
+///          ある**（NTFS の記録粒度）。
 ///          そうなると 2 通目が黙って落ちる。スクラバーをドラッグしている最中はまさに
 ///          連続した write が飛ぶので、「たまに 1 コマンド効かない」として出る。
 ///

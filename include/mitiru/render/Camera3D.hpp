@@ -169,12 +169,12 @@ public:
 		return sgc::Mat4f::lookAt(m_position, m_target, m_up);
 	}
 
-	/// @brief 射影行列を計算する（**深度 [-1,1]** — OpenGL / WebGL 規約）
+	/// @brief 射影行列を計算する（**深度 [-1,1]**。OpenGL / WebGL 規約）
 	/// @return 透視投影行列または正射影行列
 	/// @warning **この戻り値を D3D11 / D3D12 に渡してはいけない。**
 	///          D3D のクリップ空間は 0 <= z <= w 固定なので、[-1,1] 行列を渡すと
 	///          錐台の手前側 (深度 2*near*far/(near+far) より近い側) がクリップされ、
-	///          残った部分も他パスと**別の深度値を書く** — 同じ距離のメッシュより
+	///          残った部分も他パスと**別の深度値を書く**。同じ距離のメッシュより
 	///          必ず小さい z を書くので、深度テストで常に手前に来る。
 	///          D3D 経路では projectionMatrixZO() を使うこと。
 	[[nodiscard]] sgc::Mat4f projectionMatrix() const noexcept
@@ -189,7 +189,7 @@ public:
 		return sgc::Mat4f::perspective(m_fov, m_aspectRatio, m_nearClip, m_farClip);
 	}
 
-	/// @brief 射影行列を計算する（**深度 [0,1]** — D3D 規約）
+	/// @brief 射影行列を計算する（**深度 [0,1]**。D3D 規約）
 	/// @return 透視投影行列または正射影行列
 	/// @details GlmBridge::perspective (glm::perspectiveRH_ZO) と要素まで一致する。
 	///          ここで glm を呼ばないのは Camera3D に glm 依存を持ち込まないため。
@@ -223,7 +223,7 @@ public:
 		return projectionMatrix() * viewMatrix();
 	}
 
-	/// @brief ビュー×射影行列を計算する（**深度 [0,1]** — D3D 規約）
+	/// @brief ビュー×射影行列を計算する（**深度 [0,1]**。D3D 規約）
 	[[nodiscard]] sgc::Mat4f viewProjectionMatrixZO() const noexcept
 	{
 		return projectionMatrixZO() * viewMatrix();
@@ -235,7 +235,7 @@ public:
 	/// @param worldPos ワールド座標
 	/// @param screenWidth スクリーン幅
 	/// @param screenHeight スクリーン高さ
-	/// @return スクリーン座標 (x, y) — 左上原点。z はNDC深度値。
+	/// @return スクリーン座標 (x, y)。左上原点。z はNDC深度値。
 	///         カメラ背面の点は (-1, -1, -1) を返す。
 	[[nodiscard]] sgc::Vec3f worldToScreen(const sgc::Vec3f& worldPos,
 	                                       float screenWidth,

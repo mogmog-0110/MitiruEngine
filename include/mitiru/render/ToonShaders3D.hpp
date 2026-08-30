@@ -94,7 +94,7 @@ PSOutput PSMain(PSInput input)
     // アンビエント
     float3 ambient = AmbientColor * MaterialDiffuse.rgb;
 
-    // ディフューズ — NdotLを量子化
+    // ディフューズ。NdotLを量子化
     float rawNdotL = max(dot(N, L), 0.0);
     float toon = (rawNdotL > 0.5) ? 1.0 : (rawNdotL > 0.15) ? 0.6 : 0.3;
     float3 diffuse = LightColor * MaterialDiffuse.rgb * toon;
@@ -190,7 +190,7 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 
 /// @brief ポストプロセスアウトライン用 ピクセルシェーダー（Sobelエッジ検出）
 constexpr const char* OUTLINE_POST_PS = R"hlsl(
-// MSAA 4x (ENG-105 v2) — sample 0 のみ参照
+// MSAA 4x (ENG-105 v2)。4 サンプル全部で判定し、被覆率をアルファにする
 Texture2DMS<float, 4> DepthTexture : register(t0);
 Texture2DMS<float4, 4> NormalTexture : register(t1);
 
@@ -199,6 +199,9 @@ cbuffer CbOutline : register(b0)
     float2 TexelSize;   // 1.0 / viewport size
     float OutlineWidth; // アウトライン太さ（ピクセル）
     float Threshold;    // エッジ検出閾値
+    float NearZ;        // カメラの near/far。決め打ちだと setCamera の値と食い違い、
+    float FarZ;         //   線形化が歪んで閾値の効きが距離で変わる
+    float2 _pad;
 };
 
 struct PSInput
@@ -207,14 +210,22 @@ struct PSInput
     float2 TexCoord : TEXCOORD0;
 };
 
-float sampleDepth(int2 pos)
+float linearizeDepth(float d, float nearZ, float farZ)
 {
-    return DepthTexture.Load(pos, 0);
+    return nearZ * farZ / (farZ - d * (farZ - nearZ));
 }
 
-float linearizeDepth(float d, float near, float far)
+// 1 サンプルぶんのエッジ量。一次差分 (dC-dL) は傾いた面の勾配そのものを拾い、
+// 視線すれすれの床が丸ごとエッジになる。二次差分 (dL+dR-2dC) は平面上で
+// 打ち消し合って 0 になるので、本当の段差だけが残る。
+float edgeAt(int2 pos, int w, int s)
 {
-    return near * far / (far - d * (far - near));
+    float dC = linearizeDepth(DepthTexture.Load(pos, s), NearZ, FarZ);
+    float dL = linearizeDepth(DepthTexture.Load(pos + int2(-w, 0), s), NearZ, FarZ);
+    float dR = linearizeDepth(DepthTexture.Load(pos + int2( w, 0), s), NearZ, FarZ);
+    float dU = linearizeDepth(DepthTexture.Load(pos + int2( 0,-w), s), NearZ, FarZ);
+    float dD = linearizeDepth(DepthTexture.Load(pos + int2( 0, w), s), NearZ, FarZ);
+    return max(abs(dL + dR - 2.0 * dC), abs(dU + dD - 2.0 * dC));
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
@@ -222,35 +233,29 @@ float4 PSMain(PSInput input) : SV_TARGET
     int2 pos = int2(input.Position.xy);
     int w = max(int(OutlineWidth), 1);
 
-    float nearZ = 0.1;
-    float farZ = 100.0;
-
-    // 中心基準の深度差分（二重線防止）+ NdotVフィルタ
-    float dC = linearizeDepth(sampleDepth(pos), nearZ, farZ);
-    float dL = linearizeDepth(sampleDepth(pos + int2(-w, 0)), nearZ, farZ);
-    float dR = linearizeDepth(sampleDepth(pos + int2( w, 0)), nearZ, farZ);
-    float dU = linearizeDepth(sampleDepth(pos + int2( 0,-w)), nearZ, farZ);
-    float dD = linearizeDepth(sampleDepth(pos + int2( 0, w)), nearZ, farZ);
-    float edge = max(max(abs(dC - dL), abs(dC - dR)),
-                     max(abs(dC - dU), abs(dC - dD)));
-
-    float4 normalData = NormalTexture.Load(pos, 0);
-    float NdotV = normalData.a;
-
-    if (edge > Threshold && NdotV > 0.15)
+    // 二値 (出す/出さない) だと線が 1px 階段のまま乗り、シーン本体は MSAA で
+    // 滑らかなのに輪郭だけがたつく。サンプルごとの smoothstep を平均して
+    // 被覆率アルファにする (この PSO はアルファブレンド有効)。
+    float a = 0.0;
+    [unroll] for (int s = 0; s < 4; ++s)
     {
-        return float4(0.1, 0.08, 0.06, 1.0);
+        a += smoothstep(Threshold, Threshold * 1.8, edgeAt(pos, w, s));
     }
+    a *= 0.25;
 
-    discard;
-    return float4(0, 0, 0, 0);
+    // 凹面・すれすれ面は硬い門 (NdotV > 0.15) だと境界で明滅する。滑らかに落とす。
+    float NdotV = NormalTexture.Load(pos, 0).a;
+    a *= smoothstep(0.10, 0.25, NdotV);
+
+    if (a <= 0.004) { discard; }
+    return float4(0.1, 0.08, 0.06, a);
 }
 )hlsl";
 
 /// @brief アウトラインモード2: 法線不連続検出 ピクセルシェーダー
 /// @details 法線バッファの隣接ピクセル間のdot積でエッジを検出。深度不要。
 constexpr const char* OUTLINE_POST_PS_LAPLACIAN = R"hlsl(
-// MSAA 4x (ENG-105 v2) — sample 0 のみ参照
+// MSAA 4x (ENG-105 v2)。sample 0 のみ参照
 Texture2DMS<float, 4> DepthTexture : register(t0);
 Texture2DMS<float4, 4> NormalTexture : register(t1);
 
@@ -303,7 +308,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 /// @brief アウトラインモード3: 深度Sobel + NdotVフィルタ ピクセルシェーダー
 /// @details 深度Sobelに加え、法線バッファのNdotVで凹面内部を抑制する強化版。
 constexpr const char* OUTLINE_POST_PS_DEPTH_NDOTV = R"hlsl(
-// MSAA 4x (ENG-105 v2) — sample 0 のみ参照
+// MSAA 4x (ENG-105 v2)。sample 0 のみ参照
 Texture2DMS<float, 4> DepthTexture : register(t0);
 Texture2DMS<float4, 4> NormalTexture : register(t1);
 
@@ -365,7 +370,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 /// @brief アウトラインモード4: 深度+法線 複合エッジ ピクセルシェーダー
 /// @details 深度差と法線差の両方を考慮。凹面の法線変化だけではアウトラインを引かない。
 constexpr const char* OUTLINE_POST_PS_COLOR_EDGE = R"hlsl(
-// MSAA 4x (ENG-105 v2) — sample 0 のみ参照
+// MSAA 4x (ENG-105 v2)。sample 0 のみ参照
 Texture2DMS<float, 4> DepthTexture : register(t0);
 Texture2DMS<float4, 4> NormalTexture : register(t1);
 
@@ -442,7 +447,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 /// @details 深度エッジと色エッジの両方が閾値を超えた場合のみアウトラインを描画。
 ///          偽エッジを大幅に低減する。t0に深度、t1に法線、t2に色バッファコピー。
 constexpr const char* OUTLINE_POST_PS_DEPTH_COLOR = R"hlsl(
-// MSAA 4x (ENG-105 v2) — sample 0 のみ参照
+// MSAA 4x (ENG-105 v2)。sample 0 のみ参照
 Texture2DMS<float, 4> DepthTexture : register(t0);
 Texture2DMS<float4, 4> NormalTexture : register(t1);
 Texture2D<float4> ColorTexture : register(t2);

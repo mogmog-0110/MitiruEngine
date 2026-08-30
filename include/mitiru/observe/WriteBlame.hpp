@@ -6,9 +6,9 @@
 /// `mitiru why`(分岐の根本原因特定) の causal 層 (a)。分岐が field X で出たとき「X を最後に
 /// 書いたのはどの phase か」を答えるための write-blame マップを作る。
 ///
-/// ADR 0005 準拠: DLL は host pointer を一切持たない。ゲームが自分の GameMemory bytes を渡し、
+/// DLL は host pointer を一切持たない。ゲームが自分の GameMemory bytes を渡し、
 /// phase 境界の snapshot-delta(memcpy + byte 比較)で blame を **DLL 内だけ**で構築する。
-/// determinism/replay は壊さない — マーカーは観測専用で GameMemory には何も書かない。
+/// determinism/replay は壊さない。マーカーは観測専用で GameMemory には何も書かない。
 /// per-phase の memcpy/比較コストがあるため **debug 専用**(hot path に出さない)。
 ///
 /// 使い方 (on_update 内、phase の頭で名前を付ける):
@@ -27,7 +27,7 @@
 /// 重要な性質: snapshot-delta なので帰属は「**値が変化した byte**」単位(同じ値で上書きしても記録
 /// しない)。また float のような multi-byte field は **変化した byte だけ** が帰属される(field 先頭
 /// byte が偶然 baseline と同値なら、その byte は未書込のまま)。分岐の根本原因特定にはこれで正しい
-/// — 分岐 = 値の差 = 変化した byte なので、分岐 byte は必ずその書き手に帰属される。field 単位で
+///。分岐 = 値の差 = 変化した byte なので、分岐 byte は必ずその書き手に帰属される。field 単位で
 /// 問うときは `whoWrote`(単一 byte) でなく `whoWroteRange`(field の byte 範囲) を使う。
 
 #include <cstdint>

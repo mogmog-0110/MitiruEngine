@@ -413,7 +413,7 @@ private:
 
 } // namespace mitiru::gfx
 
-// 実装本体（クラス外 inline 定義）— 末尾で detail を取り込む
+// 実装本体（クラス外 inline 定義）。末尾で detail を取り込む
 #include <mitiru/gfx/vulkan/detail/VulkanDevice_Frame.hpp>
 #include <mitiru/gfx/vulkan/detail/VulkanDevice_Init.hpp>
 #include <mitiru/gfx/vulkan/detail/VulkanDevice_SwapChain.hpp>

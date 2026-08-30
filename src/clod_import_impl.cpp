@@ -1,5 +1,5 @@
 /// @file clod_import_impl.cpp
-/// @brief drawModel の import cache 実装 — OBJ / glTF / GLB → .clod (CLD5) 変換
+/// @brief drawModel の import cache 実装。OBJ / glTF / GLB → .clod (CLD5) 変換
 /// @details clusterlod.h (meshoptimizer demo, MIT) の実装 TU をここに閉じ込める。
 ///          変換はソースの隣へ `<source>.clod` を書き、mtime 比較で再変換する。
 

@@ -1,4 +1,4 @@
-// mitiru::Engine の detail header — 直接 include 禁止。core/Engine.hpp 経由で include される
+// mitiru::Engine の detail header。直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
@@ -16,7 +16,7 @@ MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 	// 同梱の日本語フォントを最優先で探す。既定は普通フォント (M+ Rounded 1c)、
 	// その後にレトロ (PixelMplus) を fallback として見る。CMake が host exe の隣へ
 	// 配るので exe 相対を先に、その後リポジトリ相対も見る。これでネイティブ描画
-	// (drawTextInRect 等) が日本語可になる — CascadiaMono 等の日本語非対応 mono
+	// (drawTextInRect 等) が日本語可になる。CascadiaMono 等の日本語非対応 mono
 	// より先に拾わせるのが肝。host は --font-face で fontPath を明示指定する。
 	const std::string exeFontDir = mitiru::resource::AssetPath::executableDir();
 	searchPaths.push_back(exeFontDir + "/assets/fonts/MPLUSRounded1c-Regular.ttf");
@@ -33,7 +33,7 @@ MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 		"../../assets/fonts/default.ttf",
 	});
 #ifdef _WIN32
-	// Windows system fonts — Workbench に揃えた monospace を先に、その後 JP
+	// Windows system fonts。Workbench に揃えた monospace を先に、その後 JP
 	// fallback。Mono font (Cascadia / Consolas) は小サイズでも SDF rasterise
 	// に強く、Yu Gothic の細い variable stroke (inspector の 16px で smudgy /
 	// 判読不能に rendering されていた) より遥かに良い。

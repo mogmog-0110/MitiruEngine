@@ -1,13 +1,13 @@
 #pragma once
 
 /// @file GameMemorySave.hpp
-/// @brief .msav (GameMemory snapshot) の読み書き純関数 (ADR 0020)
+/// @brief .msav (GameMemory snapshot) の読み書き純関数
 /// @details セーブ = GameMemory bytes の memcpy。形式はヘッダ
 ///          {magic "MSAV", formatVersion, memorySize, abiVersion, layoutHash} + bytes。
-///          memorySize 不一致のロードは拒否する — GameMemory struct 変更後の
+///          memorySize 不一致のロードは拒否する。GameMemory struct 変更後の
 ///          旧セーブを黙って化けさせない (replay A3 と同じ思想)。v2 からは
 ///          MITIRU_REFLECT 由来の layoutHash も照合し、サイズ照合を素通りする
-///          「同サイズの field 並べ替え / 型変更」も拒否する (ADR 0024 追記)。
+///          「同サイズの field 並べ替え / 型変更」も拒否する。
 ///          書き込みは tmp → rename の atomic 置換で、中断しても既存 .msav を壊さない。
 
 #include <cstdint>
@@ -80,7 +80,7 @@ static_assert(sizeof(MsavHeader) == 32, "MsavHeader はファイル形式 — 32
 		std::filesystem::create_directories(path.parent_path(), ec);  // 既存なら no-op
 	}
 
-	// tmp に全量書いてから rename — 書込中クラッシュで半端な .msav を残さない。
+	// tmp に全量書いてから rename。書込中クラッシュで半端な .msav を残さない。
 	std::filesystem::path tmp = path;
 	tmp += ".tmp";
 	{
@@ -123,7 +123,7 @@ static_assert(sizeof(MsavHeader) == 32, "MsavHeader はファイル形式 — 32
 /// @brief .msav を読み bytes を返す。magic / 形式 / サイズ / layout が合わなければ nullopt。
 /// @param expectSize 現在の GameMemory サイズ。ヘッダの memorySize と不一致なら拒否。
 /// @param expectLayoutHash 現在の module の layout hash (module::moduleLayoutHash)。
-///        双方非 0 かつ不一致なら拒否 — 同サイズの field 並べ替え / 型変更を素通ししない。
+///        双方非 0 かつ不一致なら拒否。同サイズの field 並べ替え / 型変更を素通ししない。
 ///        どちらかが 0 (reflection 未宣言) なら従来のサイズ照合のみ (後方互換)。
 [[nodiscard]] inline std::optional<std::vector<std::uint8_t>>
 loadGameMemory(const std::filesystem::path& path, std::uint32_t expectSize,
@@ -173,7 +173,7 @@ loadGameMemory(const std::filesystem::path& path, std::uint32_t expectSize,
 
 /// @brief 層が変わった .msav から、名前と形が一致するフィールドだけを現在の memory へ移す。
 /// @details 出力は current の複製を土台にするので、記録に無い新フィールドは初期値のまま残る。
-///          形が変わったフィールド (型変更・配列の長さ変更) は移さない — 化けさせない。
+///          形が変わったフィールド (型変更・配列の長さ変更) は移さない。化けさせない。
 /// @param current 現在の GameMemory (初期化済み)。土台として複製される。
 /// @return 1 つでも移せたら移行後の bytes。表が無い / 一致ゼロなら nullopt。
 [[nodiscard]] inline std::optional<std::vector<std::uint8_t>>

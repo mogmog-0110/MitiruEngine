@@ -110,7 +110,7 @@ public:
 	void addOverride(std::string_view flag, std::string_view overridePath)
 	{
 		std::lock_guard lock(m_mutex);
-		// 重複を避ける — flag が既に登録済みなら path を更新する。
+		// 重複を避ける。flag が既に登録済みなら path を更新する。
 		for (auto& entry : m_overrides)
 		{
 			if (entry.flag == flag)

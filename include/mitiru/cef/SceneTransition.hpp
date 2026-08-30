@@ -9,7 +9,7 @@
 /// どこからでも `transitionTo()` を呼べる。
 ///
 /// **登録される handler (JS → C++):**
-/// - `__mitiru_scene_next__`  (内部用) — fade-out 前半が完了した後に発火;
+/// - `__mitiru_scene_next__`  (内部用)。fade-out 前半が完了した後に発火;
 ///                             handler が `loadUrl(pendingUrl)` を呼び "{}" を返す。
 ///
 /// **プロトコル (timer 駆動):**
@@ -221,7 +221,7 @@ private:
         switch (kind)
         {
         case Transition::Dissolve:
-            // 半透明の radial gradient — Fade と視覚的に区別できる
+            // 半透明の radial gradient。Fade と視覚的に区別できる
             return "radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 100%)";
         case Transition::Fade:
         default:
@@ -315,7 +315,7 @@ bindSceneTransition(const CefTransitionDeps& deps)
 
 /// @brief 指定した視覚効果で CEF browser を `url` へ遷移させる。
 /// @details transition が既に進行中のときにこれを呼ぶと pending URL を atomic に
-///          置き換える — 前回の fade-in は決して発火しない。
+///          置き換える。前回の fade-in は決して発火しない。
 ///
 /// @param deps        `bindSceneTransition` に渡したのと同じ deps。
 /// @param state       `bindSceneTransition` が返した state。

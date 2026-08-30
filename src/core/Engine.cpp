@@ -1,6 +1,6 @@
 // src/core/Engine.cpp
 //
-// 3-F Phase 2 (pilot module split) — `MITIRU_HEADER_ONLY=OFF` STATIC ビルド時のみ
+// 3-F Phase 2 (pilot module split)。`MITIRU_HEADER_ONLY=OFF` STATIC ビルド時のみ
 // この TU が `mitiru::Engine` の out-of-class 関数定義を 1 度だけ提供する。
 // header-only モード (default `MITIRU_HEADER_ONLY=ON`) ではこのファイルは
 // CMake のソースリストに含まれず、定義は Engine.hpp 経由で各 TU が inline で持つ。

@@ -73,7 +73,7 @@
 #include <mitiru/render/dx12/DX12SplatShaders.hpp>
 #include <mitiru/render/dx12/DX12SplatSort.hpp>
 
-// スキンアニメ付き glTF モデル (ADR 0028)。DX12SkinnedModel.hpp (class body 内 .inl)
+// スキンアニメ付き glTF モデル。DX12SkinnedModel.hpp (class body 内 .inl)
 // が使う namespace 宣言をここで先に取り込む (splat と同じ作法)。
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/AnimationSampler.hpp>
@@ -229,7 +229,7 @@ public:
 
 #ifdef MITIRU_HAS_MAKINA
 	/// @brief Makina の CSG ソリッドを積む。実描画は endFrame の renderCsgPass
-	/// @details 積むだけなのは drawModel と同じ理由 — 呼ばれた時点ではまだ不透明パスの
+	/// @details 積むだけなのは drawModel と同じ理由。呼ばれた時点ではまだ不透明パスの
 	///          途中で、MSAA ターゲットへ直接割り込むと以降の OIT / resolve の前提が崩れる。
 	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position, float rotYDeg,
 	               float scale, float timeSec) override
@@ -242,7 +242,7 @@ public:
 	}
 #endif
 
-	/// @brief .clod モデルのインスタンスを積む (clod 世界ジオメトリパス、ADR 0027)
+	/// @brief .clod モデルのインスタンスを積む (clod 世界ジオメトリパス)
 	/// @param path .clod への vfs パス
 	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
 	               float scale) override
@@ -258,7 +258,7 @@ public:
 		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
 	}
 
-	/// @brief スキンアニメ付き glTF モデルを forward パスで描く (ADR 0028)
+	/// @brief スキンアニメ付き glTF モデルを forward パスで描く
 	void drawSkinnedModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
 	                      float scale, const char* clipA, float timeA,
 	                      const char* clipB, float timeB, float blend01) override
@@ -289,7 +289,7 @@ public:
 
 	/// @brief mesh VB/IB の committed resource 生成回数 (累計、デバッグ計測用)
 	/// @details 毎フレーム頂点更新でもスロット warm-up 後は増えないことを
-	///          golden test が検証する (ADR 0028 失敗モード #5)。
+	///          golden test が検証する。
 	[[nodiscard]] uint64_t meshBufferCreates() const noexcept
 	{
 		return m_meshBufferCreates;
@@ -482,7 +482,7 @@ private:
 	struct CachedBuffer
 	{
 		ComPtr<ID3D12Resource> resource;             ///< 現行バッファ (bind と shadow の find() 経路が読む)
-		ComPtr<ID3D12Resource> slots[FRAME_COUNT];   ///< 同サイズ動的 mesh 用の回転 slot (遅延生成、ADR 0028)
+		ComPtr<ID3D12Resource> slots[FRAME_COUNT];   ///< 同サイズ動的 mesh 用の回転 slot (遅延生成)
 		uint32_t activeSlot    = 0;                  ///< slots の現在位置
 		UINT size = 0;
 		uint64_t revision      = 0;  ///< Mesh::revision() — 内容改変/アドレス再利用の失効検知
@@ -508,11 +508,11 @@ private:
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Splat.hpp> // NOLINT(build/include)
 
-	// スキンアニメ付き glTF モデル (ADR 0028) も同じ .inl パターンで分離
+	// スキンアニメ付き glTF モデル も同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12SkinnedModel.hpp> // NOLINT(build/include)
 
-	// ニューラル現像 (M3: ORT+DirectML で 3D フレームを 2D 絵画へ) も .inl で分離
+	// ニューラル現像 (ORT+DirectML で 3D フレームを 2D 絵画へ) も .inl で分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Neural.hpp> // NOLINT(build/include)
 
@@ -603,13 +603,13 @@ private:
 	ComPtr<ID3D12Resource>       m_msaaColorBuffer;   ///< 4x MSAA color RT (ENG-106: FP16)
 	ComPtr<ID3D12DescriptorHeap> m_msaaColorRtvHeap;  ///< 上記の RTV ヒープ
 
-	/// HDR intermediate (ENG-106) — single-sample FP16. MSAA color の Resolve
+	/// HDR intermediate (ENG-106)。single-sample FP16. MSAA color の Resolve
 	/// 先で、tonemap PS が SRV としてサンプリングして backbuffer に焼く。
 	ComPtr<ID3D12Resource>       m_hdrIntermediateBuffer;
 	ComPtr<ID3D12DescriptorHeap> m_hdrIntermediateRtvHeap;
 	ComPtr<ID3D12DescriptorHeap> m_hdrIntermediateSrvHeap;
 
-	/// Tonemap pass (ENG-106) — HDR FP16 → backbuffer LDR R8G8B8A8。
+	/// Tonemap pass (ENG-106)。HDR FP16 → backbuffer LDR R8G8B8A8。
 	/// ACES filmic curve + exposure + gamma 2.2。
 	std::optional<gfx::Dx12Shader> m_tonemapVS;
 	std::optional<gfx::Dx12Shader> m_tonemapPS;
@@ -661,7 +661,7 @@ private:
 	std::unordered_map<const void*, CachedBuffer> m_meshVBCache; ///< 頂点バッファキャッシュ
 	std::unordered_map<const void*, CachedBuffer> m_meshIBCache; ///< インデックスバッファキャッシュ
 
-	/// Per-frame UPLOAD ヒープリング — drawMesh の transient CB/VB/IB を集約
+	/// Per-frame UPLOAD ヒープリング。drawMesh の transient CB/VB/IB を集約
 	dx12::Dx12UploadRing m_uploadRing;
 
 	/// フレーム内の一時アップロードバッファ（定数バッファ含む）
@@ -679,7 +679,7 @@ private:
 	/// シーンアンビエント色（initialize 時に config.defaultAmbient で初期化）
 	sgc::Colorf m_sceneAmbient{0.5f, 0.5f, 0.5f, 1.0f};
 
-	/// ── clod 世界ジオメトリパス (ADR 0027) ──────────────────
+	/// ── clod 世界ジオメトリパス ──────────────────
 	/// 大規模静的モデル (.clod) を endFrame 先頭で offscreen に描き、
 	/// depth-tested な inject で MSAA HDR + depth へ合成する
 	clod::ClodRenderer m_clod;
@@ -843,7 +843,7 @@ private:
 	ComPtr<ID3D12RootSignature>  m_styleBlitRootSig;
 	ComPtr<ID3D12PipelineState>  m_styleBlitPSO;
 
-	/// ── 現像焼き込み (M4: 2D 絵画を 3D スプラットへ焼く) ───────────────
+	/// ── 現像焼き込み (2D 絵画を 3D スプラットへ焼く) ─────────────────────
 	glm::mat4                    m_developView{1.0f};   ///< 現像時の view (焼き込み射影用)
 	glm::mat4                    m_developProj{1.0f};   ///< 現像時の proj
 	bool                         m_bakeRequest = false;

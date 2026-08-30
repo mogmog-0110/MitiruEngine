@@ -42,7 +42,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 			"DX12 Dx12UploadRing initialize failed");
 	}
 
-	// アルベド SRV 用 shader-visible heap (capacity 256 — フレーム内 draw 数の上限)
+	// アルベド SRV 用 shader-visible heap (capacity 256。フレーム内 draw 数の上限)
 	try {
 		createAlbedoSrvHeap();
 	} catch (const std::exception& e) {
@@ -365,7 +365,7 @@ inline void Renderer3D_DX12::destroy()
 inline void Renderer3D_DX12::setSkybox(const Cubemap& cubemap)
 {
 	m_skyboxCubemap = cubemap;
-	// テクスチャまわりだけリセット — pipeline は流用
+	// テクスチャまわりだけリセット。pipeline は流用
 	m_skyboxTextureReady = false;
 	m_skyboxNeedsUpload  = false;
 	m_skyboxTexture.Reset();

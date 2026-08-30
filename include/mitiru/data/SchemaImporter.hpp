@@ -11,7 +11,7 @@
 ///
 /// **対応サブセット (draft-07)。**
 /// - top-level `"type": "object"` は必須。それ以外の top-level type は reject。
-/// - `"required": [field, ...]` — ここに列挙された名前は `SchemaField::required = true` になる。
+/// - `"required": [field, ...]`。ここに列挙された名前は `SchemaField::required = true` になる。
 /// - `"properties": { name: { type, minimum?, maximum?, minLength?, maxLength? } }`.
 ///   - `minimum` / `maximum` は `SchemaField::minValue` / `maxValue` に対応する。
 ///   - `minLength` / `maxLength` は **読むが破棄する**。現状エンジンの
@@ -26,7 +26,7 @@
 /// - top-level `"type"` 欠落
 /// - `"properties"` map 欠落 (field 無しの object schema は不正扱い)
 /// - `"type"` field を持たない property
-/// - property `"type"` が array (union type — 非対応)
+/// - property `"type"` が array (union type。非対応)
 /// - property `"type"` が未知の文字列
 /// - `"required"` が文字列 array でない
 ///
@@ -50,7 +50,7 @@
 /// @endcode
 ///
 /// @note Header-only。static / stateless。Hot-path 規律: per-frame code から
-///       呼ばないこと — boot 時の load や editor tooling 向け。
+///       呼ばないこと。boot 時の load や editor tooling 向け。
 
 #include <optional>
 #include <string>
@@ -73,7 +73,7 @@ namespace mitiru::data
 /// 機能を説明する人間可読メッセージが 0 個以上入る。各 warning は
 /// `"<scope>: <feature> <reason>"` 形式に従う。consumer は忠実度の喪失
 /// (例: enum constraint が黙って捨てられた) を検知したい時に `warnings` を
-/// 確認すべき。`warnings` が空でないことは失敗を意味しない — import した
+/// 確認すべき。`warnings` が空でないことは失敗を意味しない。import した
 /// `Schema` が valid なら `ok()` は true を返す。
 struct SchemaImportResult
 {

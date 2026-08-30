@@ -1,5 +1,5 @@
 #pragma once
-// mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
+// mitiru::Screen 用の detail header。直接インクルードしない。core/Screen.hpp 経由で取り込む
 
 inline void mitiru::Screen::drawGradientRectH(const sgc::Rectf& rect,
                                                const sgc::Colorf& leftColor, const sgc::Colorf& rightColor)

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file ErrorBanner.hpp
-/// @brief ビルドエラー帯 — `mitiru watch` のエラーファイルを poll して最前面に表示する
+/// @brief ビルドエラー帯。`mitiru watch` のエラーファイルを poll して最前面に表示する
 /// @details
 /// CLI はビルド失敗時に `<project>/build/.mitiru_build_error.txt` を書き、成功時に
 /// 削除する (プロトコルは CLI 側が握る)。engine は host から渡された path を

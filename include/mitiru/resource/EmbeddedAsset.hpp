@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file EmbeddedAsset.hpp
-/// @brief 埋め込みアセットレジストリ — バイナリアセットをexeに埋め込む
+/// @brief 埋め込みアセットレジストリ。バイナリアセットをexeに埋め込む
 
 #include <cstddef>
 #include <cstdint>

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MotionVectorPass.hpp
-/// @brief GPU モーションベクタ（velocity）パス — 画面内移動量を RT に焼く
+/// @brief GPU モーションベクタ（velocity）パス。画面内移動量を RT に焼く
 /// @details 各メッシュを現フレーム / 前フレームの MVP で射影し、screen-space の移動量
 ///          `velocity = curUV - prevUV`（UV 単位）を RG16F の RT に書き出す。`TAAEffect::setVelocitySRV`
 ///          に `velocitySRV()` を渡すと、TAA が `historyUV = uv - velocity` で reproject して

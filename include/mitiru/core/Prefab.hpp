@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Prefab.hpp
-/// @brief Prefabシステム — 再利用可能なNodeサブツリーテンプレート
+/// @brief Prefabシステム。再利用可能なNodeサブツリーテンプレート
 /// @details PrefabDef はノードサブツリーのスナップショットを保持し、
 ///          PrefabLibrary は登録・検索・インスタンス化・JSON入出力を提供する。
 ///
@@ -25,10 +25,10 @@ namespace mitiru
 {
 
 // =============================================================================
-// PrefabDef — 再利用可能なノードテンプレート
+// PrefabDef。再利用可能なノードテンプレート
 // =============================================================================
 
-/// @brief Prefab定義 — Nodeサブツリーのテンプレート
+/// @brief Prefab定義。Nodeサブツリーのテンプレート
 /// @details nodes[0] がルートノード。子ノードは parentId で相対的に参照する。
 ///          parentId は Prefab 内のローカルインデックス（0ベース）で管理される。
 struct PrefabDef
@@ -52,10 +52,10 @@ struct PrefabDef
 };
 
 // =============================================================================
-// PrefabLibrary — Prefabの管理・インスタンス化
+// PrefabLibrary。Prefabの管理・インスタンス化
 // =============================================================================
 
-/// @brief Prefabライブラリ — Prefabの登録・検索・インスタンス化を管理する
+/// @brief Prefabライブラリ。Prefabの登録・検索・インスタンス化を管理する
 class PrefabLibrary
 {
 public:

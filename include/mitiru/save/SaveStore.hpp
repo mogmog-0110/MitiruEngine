@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file SaveStore.hpp
-/// @brief セーブ/ロードの共通インフラ — atomic 書き込み + FNV-1a hash 破損検知。
+/// @brief セーブ/ロードの共通インフラ。atomic 書き込み + FNV-1a hash 破損検知。
 /// @details game が任意の bytes blob を slot 名で保存し、後で同じ slot から読み戻す。
 ///          temp → rename の atomic 置換で書き、置換が直接できない OS では旧データを
 ///          .bak へ退避してから差し替える (どの時点で crash しても final か .bak の

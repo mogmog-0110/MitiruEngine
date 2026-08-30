@@ -74,7 +74,7 @@ public:
 			}
 			makina::parseSceneInto(*m_scene, text);
 			// ミュートされたノードは立体の外 (makina Edit.hpp)。makina_bake は withoutMuted
-			// してから平坦化するので、こちらも読み込み時に同じ木にしておく — CPU の距離場と
+			// してから平坦化するので、こちらも読み込み時に同じ木にしておく。CPU の距離場と
 			// 焼いた絵、そして live プログラムのノード数が一致するのはこのため。
 			// フラグが立っていないシーン (ほぼ全部) では写しを取らない。
 			if (hasMuted(*m_scene))
@@ -118,7 +118,7 @@ public:
 
 	/// @brief 時刻 t の姿を平坦化した評価プログラム (D-15)
 	/// @details live に焼いたシェーダ (CsgBake::live) は葉の数値をこのバッファから読むので、
-	///          毎フレームこれを載せれば関節が動く。姿はヒープの写しに sampleInto する —
+	///          毎フレームこれを載せれば関節が動く。姿はヒープの写しに sampleInto する。
 	///          呼び出しフレームに Scene を置かないのは loadFromJson と同じ理由。
 	///          静止シーンでも同じ道を通る (トラックが無ければ休止姿勢がそのまま出る)。
 	///          同じ t が続く間は前回の結果を返す。
@@ -283,7 +283,7 @@ private:
 	}
 
 	/// @details unique_ptr なのは大きさのため（loadFromJson のコメント参照）。このクラスの
-	///          「コピーは重い、参照で回せ」という契約はそのまま — コピー不可になっただけ。
+	///          「コピーは重い、参照で回せ」という契約はそのまま。コピー不可になっただけ。
 	std::unique_ptr<makina::Scene> m_scene;
 	/// programAt の作業用。時刻 t の姿と、その平坦化
 	std::unique_ptr<makina::Scene> m_posed;

@@ -4,7 +4,7 @@
 # like any user game. Its "gameplay" is project management — listing
 # registered game DLLs and spawning child mitiru_host processes to run them.
 #
-# Per ADR 0005 the launcher DLL never calls into the engine's C++ API. All
+# The launcher DLL never calls into the engine's C++ API. All
 # host services it needs come from intent fields (state pushes, JS exec) or
 # from Win32 directly (CreateProcess, ShellExecute, GetOpenFileName,
 # SHGetKnownFolderPath) — those are not engine API.

@@ -12,7 +12,7 @@
 /// 線形部 = {a, b, c, d}、平行移動 = {tx, ty}。
 /// 点の変換: p' = { a*p.x + c*p.y + tx,  b*p.x + d*p.y + ty }
 ///
-/// 合成 (this * rhs) は先に `rhs`、次に `this` を適用する — つまり左オペランドが
+/// 合成 (this * rhs) は先に `rhs`、次に `this` を適用する。つまり左オペランドが
 /// 外側 (親) の transform となる。
 
 #include <sgc/math/Vec2.hpp>

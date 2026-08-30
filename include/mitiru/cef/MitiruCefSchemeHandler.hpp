@@ -32,7 +32,7 @@
 #include "include/cef_response.h"
 #include "include/cef_scheme.h"
 
-#include <mitiru/asset/AssetPack.hpp> // vfs::readGlobal / hasGlobalMount (runtime pack, ADR 0016)
+#include <mitiru/asset/AssetPack.hpp> // vfs::readGlobal / hasGlobalMount (runtime pack)
 
 // 生成された埋め込みアセットヘッダー
 // EmbedAssets.cmake が OUTPUT_DIR (= CMAKE_CURRENT_BINARY_DIR/generated) を
@@ -151,8 +151,8 @@ inline std::string mimeTypeForPath(std::string_view path) noexcept
 /// @details CefRegisterSchemeHandlerFactory() で "app" スキームに登録する。
 ///
 /// 優先順位:
-///   1. 埋め込みアセット (embedded_assets.hpp) — リリースビルド向け
-///   2. ディスクフォールバック (setAssetRoot で設定) — 開発時向け
+///   1. 埋め込みアセット (embedded_assets.hpp)。リリースビルド向け
+///   2. ディスクフォールバック (setAssetRoot で設定)。開発時向け
 ///   3. 空レスポンス (404相当)
 class MitiruCefSchemeHandlerFactory final : public CefSchemeHandlerFactory
 {
@@ -208,7 +208,7 @@ public:
 
         const std::string mime = mimeTypeForPath(virtualPath);
 
-        // 0. runtime pack (assets.mtpak) が mount されていれば、それを正本とする (ADR 0016)。
+        // 0. runtime pack (assets.mtpak) が mount されていれば、それを正本とする。
         //    秘匿配布: pack 中に無いものは disk を覗かせず 404。dev (未 mount) では従来経路。
         if (mitiru::vfs::hasGlobalMount())
         {
@@ -227,7 +227,7 @@ public:
             return new MitiruCefResourceHandler(embedded, mime);
         }
 
-        // 2. ディスクフォールバック — 主ルート → 追加ルートの順で検索する
+        // 2. ディスクフォールバック。主ルート → 追加ルートの順で検索する
         const auto tryRead =
             [&](const std::string& root) -> CefRefPtr<CefResourceHandler>
         {

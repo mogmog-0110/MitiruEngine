@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Key.hpp
-/// @brief mitiru::Key — KeyCode への薄いエイリアス
+/// @brief mitiru::Key。KeyCode への薄いエイリアス
 /// @details `mitiru::Key::ArrowLeft` のような名前空間限定アクセスを可能にする
 ///          薄いラッパー。実体は @ref KeyCode と同じ enum で、ABI 互換性を持つ。
 ///

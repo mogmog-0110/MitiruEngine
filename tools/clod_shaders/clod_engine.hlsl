@@ -1,4 +1,4 @@
-// clod_engine.hlsl — MitiruEngine 組み込み版 clod (cluster-LOD) シェーダ。
+// clod_engine.hlsl。MitiruEngine 組み込み版 clod (cluster-LOD) シェーダ。
 // 原本: cluster-lod-renderer/shaders/clod.hlsl。engine 差分:
 //   - CB 末尾に engineLightDir / engineLightColor (s.light3D と共有)
 //   - ResolveCS は linear のまま出力 (ガンマ無し。後段 ACES tonemap 前提)、
@@ -8,12 +8,12 @@
 // GPU 駆動 visibility buffer パイプライン:
 //   CullCS (LOD カット+錐台+two-pass HZB 遮蔽 → HW / SW 可視クラスタリスト)
 //   → PrepArgsCS (間接引数) → HW: ExecuteIndirect DispatchMesh (MS+PS) /
-//     SW: ExecuteIndirect Dispatch (SwRasterCS が固定小数ラスタ) — 双方 64bit
+//     SW: ExecuteIndirect Dispatch (SwRasterCS が固定小数ラスタ)。双方 64bit
 //   visbuffer へ InterlockedMax → HzbBuild (visbuffer 深度 → max ピラミッド)
 //   → ResolveCS (visbuffer → 法線再構成 → シェーディング → offscreen HDR)
 //   CullCS (LOD カット+錐台+two-pass HZB 遮蔽 → HW / SW 可視クラスタリスト)
 //   → PrepArgsCS (間接引数) → HW: ExecuteIndirect DispatchMesh (MS+PS) /
-//     SW: ExecuteIndirect Dispatch (SwRasterCS が固定小数ラスタ) — 双方 64bit
+//     SW: ExecuteIndirect Dispatch (SwRasterCS が固定小数ラスタ)。双方 64bit
 //   visbuffer へ InterlockedMax → HzbBuild (visbuffer 深度 → max ピラミッド)
 //   → ResolveCS (visbuffer → 面法線再構成 → シェーディング → RT)
 //
@@ -587,7 +587,7 @@ void SwRasterCS(uint gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     // bbox → pixel 範囲 (中心 = px*256+128)
     int minX = min(p0.x, min(p1.x, p2.x)), maxX = max(p0.x, max(p1.x, p2.x));
     int minY = min(p0.y, min(p1.y, p2.y)), maxY = max(p0.y, max(p1.y, p2.y));
-    // SCREEN_W/H は uint (CB 読み) — 負になり得る左辺と混ぜる前に int へ落とす
+    // SCREEN_W/H は uint (CB 読み)。負になり得る左辺と混ぜる前に int へ落とす
     int px0 = max((minX - 128 + 255) >> 8, 0), px1 = min((maxX - 128) >> 8, (int)SCREEN_W - 1);
     int py0 = max((minY - 128 + 255) >> 8, 0), py1 = min((maxY - 128) >> 8, (int)SCREEN_H - 1);
 

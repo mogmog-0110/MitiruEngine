@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MitiruCefClient.hpp
-/// @brief CefClient 実装 — 全ハンドラーを集約するアグリゲーター
+/// @brief CefClient 実装。全ハンドラーを集約するアグリゲーター
 
 #if defined(_WIN32) && defined(MITIRU_HAS_CEF)
 
@@ -80,7 +80,7 @@ public:
             PID_RENDERER, message);
     }
 
-    /// @brief ブラウザ作成完了後に呼ぶ (現在は no-op — router は自動接続)
+    /// @brief ブラウザ作成完了後に呼ぶ (現在は no-op。router は自動接続)
     void onBrowserCreated(CefRefPtr<CefBrowser> /*browser*/) {}
 
     // ── CefRequestHandler (メッセージルーター用) ─────────────────

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file ToolRegistry.hpp
-/// @brief 開ける独立ウィンドウ (inspector 等) の単一の真実 — Tool enum + spawn 表。
+/// @brief 開ける独立ウィンドウ (inspector 等) の単一の真実。Tool enum + spawn 表。
 /// @details
 /// game 側 (`Game.hpp` の `hud.open`) と host 側 (`InspectorLauncher` の `openTool`)
 /// が同じ表を共有する。プラットフォーム依存ヘッダを一切引かない (game DLL に安全)。
@@ -13,8 +13,8 @@ namespace mitiru
 {
 
 /// コードから開ける「別窓のツール」。全ツール窓は汎用 CEF ホスト mitiru_tool_cef を
-/// --page <name> で spawn して開く (ADR 0014)。ゲーム窓は汚さない。開く判断は host 側
-/// コード (main.cpp) が持つ — pulled UI。
+/// --page <name> で spawn して開く。ゲーム窓は汚さない。開く判断は host 側
+/// コード (main.cpp) が持つ。pulled UI。
 enum class Tool
 {
 	Inspector,      ///< 状態 inspector — 観察データ (hud.watch) を全部見る (--page inspect)

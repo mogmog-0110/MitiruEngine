@@ -20,7 +20,7 @@ namespace mitiru
 class Engine;  // onFrameStart コールバックの signature 用 forward decl
 
 // 後述の replay record/inject コールバック用 forward decl (host 側専用。
-// DLL ABI には含まれない — EngineConfig は game から一切見えない)。
+// DLL ABI には含まれない。EngineConfig は game から一切見えない)。
 namespace module { struct InputSnapshot; struct FrameIntents; }
 
 /// @brief グラフィックスバックエンド列挙
@@ -80,6 +80,12 @@ struct EngineConfig
 	///     物理 px = dip * (dpi/96) へ拡大してから OS に渡す。125% DPI で
 	///     windowWidth=1280 → 物理 1600 px が確保される。
 	bool useLogicalWindowSize = false;
+	/// @brief 音の置き場 (空 = 音を鳴らさない)。
+	/// @details mitiru_host は DLL の隣を見て自分で決めるので、これを使うのは
+	///          DLL を持たない静的リンク経路 (wasm)。id は
+	///          `<audioDir>/<id>.wav|.ogg|.mp3` で解決する。
+	std::string audioDir;
+
 	DisplayMode displayMode = DisplayMode::Windowed; ///< 表示モード
 	bool vsync = true;                     ///< 垂直同期 (DX12 SwapChain Present interval)
 	int targetFps = 0;                     ///< フレームレート上限 (0=無制限。vsync が ON の場合は vsync が優先)
@@ -174,7 +180,7 @@ struct EngineConfig
 	///          のように決定性を要する用途でだけ明示的に `true` にすること。
 	bool deterministic = false;
 	std::uint64_t randomSeed = 42;         ///< 決定論 RNG seed。module 経路では毎フレーム
-	                                       ///< InputSnapshot::rngSeed として DLL に渡る (ADR 0012)。
+	                                       ///< InputSnapshot::rngSeed として DLL に渡る。
 	float targetTps = 60.0f;               ///< 目標TPS（tick/秒）
 	gfx::Backend gfxBackend = gfx::Backend::Auto;  ///< グラフィックスバックエンド
 	bool enableObserver = true;            ///< オブザーバー機能の有効化
@@ -305,7 +311,7 @@ struct EngineConfig
 	// ── per-frame host hook ─────────────────────────────────────────────
 	/// @brief tickOneFrame の先頭で呼ばれる (optional)
 	/// @details Host が「main loop に割り込みたい」用途のためのフック。
-	///          典型的な用途は **DLL hot reload の file watcher** —
+	///          典型的な用途は **DLL hot reload の file watcher**。
 	///          `mitiru_host --watch` がここで DLL の mtime を polling し、
 	///          変化があれば `engine.reloadModule(path)` を呼ぶ。
 	///          設定されていなければ engine 側は no-op。
@@ -314,7 +320,7 @@ struct EngineConfig
 	// ── replay record / inject フック (axis 4: deterministic + replay-as-test) ──
 	/// @brief 毎フレーム on_update 後に呼ばれ、その frame の InputSnapshot と
 	///        FrameIntents を host へ渡す。host は Recorder へ書き出す
-	///        (`mitiru run --record`)。設定が無ければ no-op。ADR 0005 不変:
+	///        (`mitiru run --record`)。設定が無ければ no-op。不変なのは:
 	///        これは host 側 config であって DLL は一切見ない。
 	std::function<void(const module::InputSnapshot&, const module::FrameIntents&)>
 		onModuleFrameRecorded;
@@ -354,7 +360,7 @@ struct EngineConfig
 	///     している場合は env var に上書きされない (ユーザー設定優先)。
 	///   - `MITIRU_AUTOTEST_OUTPUT=<dir>` が空でない値でセットされている場合、
 	///     `autoTestOutputDir` を上書きする (こちらは現在値が既定 `"."` でも
-	///     上書きする — env var は常に明示的なオーバーライド扱い)。
+	///     上書きする。env var は常に明示的なオーバーライド扱い)。
 	///   - `Engine::run()` の冒頭で自動的に呼ばれるため、通常 consumer 側で
 	///     直接呼ぶ必要はない。テストや専用 main で env を再評価したい時に
 	///     使う。

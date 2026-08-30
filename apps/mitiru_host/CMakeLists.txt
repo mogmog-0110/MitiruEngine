@@ -3,13 +3,13 @@
 # Usage:
 #   mitiru_host.exe path/to/your_game.dll [scene.html relative to host dir]
 #
-# This is the engine's reference host process (ADR 0005, v0.2.0 step 3/N).
+# This is the engine's reference host process.
 # Future: `mitiru-cli run` will resolve a project's module.toml to call this.
 
 add_executable(mitiru_host WIN32 main.cpp)
 target_link_libraries(mitiru_host PRIVATE mitiru)
 if(WIN32)
-	# ShellExecuteA を使うため (--console 用の既定ブラウザ起動、ADR 0011 phase 3)
+	# ShellExecuteA を使うため (--console 用の既定ブラウザ起動 phase 3)
 	target_link_libraries(mitiru_host PRIVATE shell32)
 endif()
 

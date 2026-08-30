@@ -495,7 +495,7 @@ private:
 			DWORD waitResult = WaitForSingleObject(handle, 0);
 			if (waitResult == WAIT_OBJECT_0)
 			{
-				// 変更検出 — 具体的な変更はstat()ポーリングで特定する
+				// 変更検出。具体的な変更はstat()ポーリングで特定する
 				FindNextChangeNotification(handle);
 			}
 		}

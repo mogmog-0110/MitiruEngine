@@ -1,6 +1,6 @@
 #pragma once
 /// @file Json.hpp
-/// @brief JSON操作 — nlohmann/json ベース
+/// @brief JSON操作。nlohmann/json ベース
 /// @details MitiruEngineのJSON操作を nlohmann/json に移行するブリッジ。
 ///          既存のJsonBuilder/JsonReaderと互換性を保ちながら、
 ///          nlohmann::jsonの全機能にアクセス可能。

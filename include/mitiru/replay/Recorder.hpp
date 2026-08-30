@@ -33,14 +33,14 @@
 /// **ABI 不一致録画の拒否**: ABI bump で InputSnapshot のサイズが変わると header の
 /// frameSize が現 sizeof(InputSnapshot) と一致せず、Player::open が FrameSizeMismatch で
 /// 拒否する (format version が同じでも再生不能 = 再録画が必要)。off 32 の abiVersion は
-/// 診断用 — host が拒否メッセージに記録時 ABI を表示するために読む (0 = 記録時 ABI 不明)。
+/// 診断用。host が拒否メッセージに記録時 ABI を表示するために読む (0 = 記録時 ABI 不明)。
 ///
 /// **state blob とは**: caller (e.g. mitiru_host の --record) が「自分の game state を
 /// memcpy / serialize したもの」。engine は中身を一切解釈しない (汎用)。
 /// これにより「同 input・異コード」で state がどの frame から分岐したかを
 /// `Player::diffState()` が判定できる (axis 4 / AI 回帰判定)。
 ///
-/// **設計判断 (ADR 0005 と整合)**:
+/// **設計判断**:
 /// - InputSnapshot は POD なので memcpy が安全
 /// - checksum は frame-level の corruption / truncation を検出するためで、
 ///   暗号強度は不要。fnv1a-32 で十分。
@@ -64,7 +64,7 @@ namespace mitiru::replay
 constexpr char        kMagic[4]      = {'M', 'T', 'R', 'R'};
 
 /// @brief recorder/player 共通の format version
-/// @details v3 → v4: InputSnapshot に rngSeed が増えて frameSize が変わった (ADR 0012)。
+/// @details v3 → v4: InputSnapshot に rngSeed が増えて frameSize が変わった。
 ///          旧 file は version / frameSize mismatch で graceful reject (再録画前提)。
 constexpr std::uint32_t kFormatVersion = 4;
 
@@ -100,7 +100,7 @@ fnv1aAppend(std::uint32_t hash, const void* data, std::size_t len) noexcept
 }
 
 /// @brief 任意バイト列の fnv1a-32 (frame checksum)
-/// @details http://www.isthe.com/chongo/tech/comp/fnv/ — 非暗号用途
+/// @details http://www.isthe.com/chongo/tech/comp/fnv/。非暗号用途
 [[nodiscard]] inline std::uint32_t fnv1a32(const void* data, std::size_t len) noexcept
 {
 	return fnv1aAppend(kFnvSeed, data, len);

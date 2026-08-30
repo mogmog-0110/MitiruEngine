@@ -1,4 +1,4 @@
-// mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
+// mitiru::Engine 用の detail header。直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
 #include <cerrno>
@@ -31,7 +31,7 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 	server::EngineCallbacks cb;
 	server::initEngineHttpCallbacks(cb, ctx, game);
 
-	// runtime コントロール (ADR 0011): `mitiru_console` / 外部ツールから叩く。
+	// runtime コントロール: `mitiru_console` / 外部ツールから叩く。
 	cb.runtimeTogglePause   = [this]() -> bool { togglePaused(); return isPaused(); };
 	cb.runtimeIsPaused      = [this]() -> bool { return isPaused(); };
 	cb.runtimeStep          = [this]() { stepOneFrame(); };
@@ -41,7 +41,7 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 	cb.runtimeToggleLofi    = [this]() -> bool { toggleLofi(); return isLofiEnabled(); };
 	cb.runtimeIsLofiEnabled = [this]() -> bool { return isLofiEnabled(); };
 
-	// AI Lens (ADR 0018): reflected GameMemory を read / diff / what-if する AI 向け面。
+	// AI Lens: reflected GameMemory を read / diff / what-if する AI 向け面。
 	// game に MITIRU_REFLECT が無ければ reflectFieldCount==0 で "{}"/"[]" を返す。
 	cb.aiState = [this]() -> std::string {
 		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.reflectFieldCount <= 0)

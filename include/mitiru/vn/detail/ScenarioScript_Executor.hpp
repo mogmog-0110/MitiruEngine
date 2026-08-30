@@ -1,6 +1,6 @@
 #pragma once
 
-// mitiru::vn::ScenarioScript の detail ヘッダ — vn/ScenarioScript.hpp 経由で include される
+// mitiru::vn::ScenarioScript の detail ヘッダ。vn/ScenarioScript.hpp 経由で include される
 // class ScenarioExecutor のみを定義する。
 //
 // 注意: applySetToFlagManager の out-of-line 定義は

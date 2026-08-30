@@ -2,7 +2,7 @@
 
 /// @file SplatScene.hpp
 /// @brief 3D Gaussian Splatting シーンの読み込み (.splat フォーマット) と GPU 向けデータ。
-/// @details M1: 写実スプラットを MitiruEngine の DX12 レンダラーに描くための最初の部品。
+/// @details 写実スプラットを MitiruEngine の DX12 レンダラーに描くための部品。
 ///          antimatter15 `.splat` 形式 (32 B/splat、SH なし=フラット色) を読み、シェーダの
 ///          `StructuredBuffer<Splat>` レイアウトに一致する 64 B の `SplatGPU` 配列へ展開する。
 ///          詳細・ロードマップ: oscar-rythm/docs/splatting-dx12.md

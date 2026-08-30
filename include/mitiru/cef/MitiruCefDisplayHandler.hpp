@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MitiruCefDisplayHandler.hpp
-/// @brief 表示イベントハンドラー — JS console.log をデバッグ出力に転送する
+/// @brief 表示イベントハンドラー。JS console.log をデバッグ出力に転送する
 
 #if defined(_WIN32) && defined(MITIRU_HAS_CEF)
 

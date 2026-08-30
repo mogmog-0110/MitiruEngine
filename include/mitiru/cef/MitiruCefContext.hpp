@@ -58,13 +58,13 @@
 #include <mitiru/cef/MitiruCefTexture.hpp>
 #include <mitiru/input/InputState.hpp>
 
-// MITIRU_CEF_NO_DX12DEVICE — Dx12Device を取る便宜オーバーロードを外す。
+// MITIRU_CEF_NO_DX12DEVICE。Dx12Device を取る便宜オーバーロードを外す。
 //
 // この UI 層が要るのは ID3D12Device / ID3D12CommandQueue / RTV ハンドルだけで、
 // Dx12Device 版はエンジン自身のために置いてある短縮形にすぎない。ところが型を名前で
 // 受けている以上ヘッダは include され、Dx12Device は IDevice / Dx12SwapChain /
 // Win32Window / sgc まで芋づるで引く。つまり**自前のデバイスを持つ側は、使わない
-// スタックを丸ごと通す羽目になる** — API を D3D12 まで下げても include が下がって
+// スタックを丸ごと通す羽目になる**。API を D3D12 まで下げても include が下がって
 // いなければ、分離は名目だけである。
 //
 // エンジンは何も定義しない (既定で便宜版が付く)。外して使う側だけが宣言する。
@@ -123,13 +123,13 @@ public:
             return true;
         }
 
-        // CefMainArgs — HINSTANCE は GetModuleHandle(nullptr) で取得
+        // CefMainArgs。HINSTANCE は GetModuleHandle(nullptr) で取得
         CefMainArgs mainArgs(::GetModuleHandle(nullptr));
 
         const auto settings = buildCefSettings(
             exeDir, "MitiruCefHelper.exe", logPath, remoteDebuggingPort);
 
-        // app:// ディスクフォールバック — 埋め込みアセットが未生成の場合にディスクから提供
+        // app:// ディスクフォールバック。埋め込みアセットが未生成の場合にディスクから提供
         // (exeDir)/assets/ が POST_BUILD でコピーされているため常に有効
         MitiruCefSchemeHandlerFactory::setAssetRoot(exeDir + "/assets");
 
@@ -238,7 +238,7 @@ public:
     }
 
 #if !defined(MITIRU_CEF_NO_DX12DEVICE)
-    /// @brief 初期化 — エンジンのデバイスから
+    /// @brief 初期化。エンジンのデバイスから
     /// @details 生ハンドル版へ委譲する。UI 層がデバイスの型ではなく D3D12 に依存する
     ///          ようにしてあるので、自前の DX12 を持つ側もこの層を使える。
     bool initialize(
@@ -460,7 +460,7 @@ public:
     /// @brief 自動フォーカス設定を返す
     [[nodiscard]] bool autoFocusOnFirstPaint() const noexcept { return m_autoFocusOnFirstPaint; }
 
-    /// @brief MitiruCefBrowser への参照を返す (上級者向け — claimKeyboardFocus 等)
+    /// @brief MitiruCefBrowser への参照を返す (上級者向け。claimKeyboardFocus 等)
     [[nodiscard]] MitiruCefBrowser&       browser()       noexcept { return m_browser; }
     [[nodiscard]] const MitiruCefBrowser& browser() const noexcept { return m_browser; }
 
@@ -560,7 +560,7 @@ public:
                 registerHandler(name, std::move(fn));
             });
 
-        // weak 捕捉 — store が context より先に死んでもロード完了時は no-op
+        // weak 捕捉。store が context より先に死んでもロード完了時は no-op
         // (H-19: 生ポインタ捕捉による UAF を構造で排除)。
         std::weak_ptr<StateStore> weak = store;
         setLoadEndCallback([weak](std::string_view /*url*/)
@@ -604,7 +604,7 @@ public:
     }
 
 #if !defined(MITIRU_CEF_NO_DX12DEVICE)
-    /// @brief リサイズ — エンジンのデバイスから (引数の device は元から使っていない)
+    /// @brief リサイズ。エンジンのデバイスから (引数の device は元から使っていない)
     void resize(mitiru::gfx::Dx12Device& /*device*/, int width, int height)
     {
         resize(width, height);
@@ -666,7 +666,7 @@ public:
     }
 
 private:
-    /// @brief allowlist 判定 — ローカル scheme のみ許可 (C-5)
+    /// @brief allowlist 判定。ローカル scheme のみ許可 (C-5)
     [[nodiscard]] bool isUrlAllowed(const std::string& url) const noexcept
     {
         if (m_allowRemoteUrls)

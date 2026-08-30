@@ -22,7 +22,7 @@
 ///          コンテキストに注入する。ブラウザプロセス側の MitiruCefClient と
 ///          同じ js_query_function 名 ("cefQuery") を使うこと。
 ///          OnRegisterCustomSchemes はブラウザプロセスと renderer プロセスの
-///          両方で呼ばれなければならない — ここで "app" スキームを再宣言する。
+///          両方で呼ばれなければならない。ここで "app" スキームを再宣言する。
 class CefSubprocessApp final
     : public CefApp
     , public CefRenderProcessHandler

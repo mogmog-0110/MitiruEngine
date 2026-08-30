@@ -124,7 +124,7 @@ void createTonemapPipeline()
 /// @brief HDR intermediate を tonemap して backbuffer に焼く (ENG-106)
 /// @details resolveMSAAColorToHDR() の直後に呼ぶ。
 ///          HDR intermediate: RESOLVE_DEST → PIXEL_SHADER_RESOURCE
-///          backbuffer:       RENDER_TARGET (そのまま) — RTV bind
+///          backbuffer:       RENDER_TARGET (そのまま)。RTV bind
 ///          終了後: HDR intermediate を RESOLVE_DEST に戻す (次フレーム用)
 void applyTonemap()
 {
@@ -224,9 +224,9 @@ void createFXAAPipelines()
 	if (!m_fxaaPS || !m_outlinePostVS) return;
 
 	// ─── ルートシグネチャ ───────────────────────────────────────
-	// [0] descriptor table { t0 } — シーン色テクスチャ
-	// [1] CBV b0                  — FXAAParams
-	// static sampler s0           — linear / clamp
+	// [0] descriptor table { t0 }。シーン色テクスチャ
+	// [1] CBV b0。FXAAParams
+	// static sampler s0。linear / clamp
 	D3D12_DESCRIPTOR_RANGE srvRange = {};
 	srvRange.RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	srvRange.NumDescriptors     = 1;
@@ -376,7 +376,7 @@ void drawFXAAPass()
 	auto* bbPost = static_cast<gfx::Dx12RenderTarget*>(swapChainPost->backBuffer());
 	if (!bbPost) return;
 
-	// 出力先が実バックバッファでない (lo-fi の低解像 RT 等) 間は適用しない —
+	// 出力先が実バックバッファでない (lo-fi の低解像 RT 等) 間は適用しない。
 	// intermediate とのサイズ不一致で CopyResource が壊れるし、低解像の絵に AA は不要
 	{
 		const auto d = bbPost->nativeResource()->GetDesc();

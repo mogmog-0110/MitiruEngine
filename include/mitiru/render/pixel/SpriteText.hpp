@@ -1,8 +1,8 @@
 #pragma once
 /// @file SpriteText.hpp
-/// @brief SpriteFont (BMFont) を Screen に描く — 字幅可変の見出し + 縁取り + 美咲フォールバック。
-/// @details 各グリフを Screen::drawSprite でページテクスチャから blit する（ADR 0009 のテクスチャ
-///          バッチに乗る）。SpriteFont に無い文字は美咲 PixelText に自動フォールバックするので、
+/// @brief SpriteFont (BMFont) を Screen に描く。字幅可変の見出し + 縁取り + 美咲フォールバック。
+/// @details 各グリフを Screen::drawSprite でページテクスチャから blit する（テクスチャバッチに
+///          乗る）。SpriteFont に無い文字は美咲 PixelText に自動フォールバックするので、
 ///          見出しはスタイル付きスプライト字・本文や未収録漢字は等幅ドット、と混在できる。
 ///
 /// @code

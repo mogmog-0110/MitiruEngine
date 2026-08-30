@@ -282,7 +282,7 @@ void ensureDefaultWhiteTexture()
 	}
 	else
 	{
-		// shadow map init 失敗時のセーフティ — 白テクスチャを代用
+		// shadow map init 失敗時のセーフティ。白テクスチャを代用
 		ensureDefaultWhiteTexture();
 		if (!m_defaultWhiteReady) return invalid;
 		m_defaultWhiteTexture.createSRV(m_d3dDevice, cpu1);
@@ -302,7 +302,7 @@ void ensureDefaultWhiteTexture()
 	return writeMainSrvTable(tex);
 }
 
-/// @brief CbShadow (b3) — light-space view * proj を ring buffer から確保
+/// @brief CbShadow (b3)。light-space view * proj を ring buffer から確保
 /// @return GPU virtual address (0 で失敗)
 [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadShadowCB()
 {
@@ -359,7 +359,7 @@ void ensureDefaultWhiteTexture()
 
 /// @brief mesh の VB/IB cache entry を取得する（失効時は作り直す）
 /// @details 失効 = サイズ変化 or Mesh::revision 変化（内容改変・アドレス再利用）。
-///          **同サイズの内容改変** (毎フレームの CPU スキニング等、ADR 0028) は
+///          **同サイズの内容改変** (毎フレームの CPU スキニング等) は
 ///          FRAME_COUNT 周期の slot 回転 + memcpy のみで済ませ、committed resource を
 ///          毎フレーム作らない。slot N の次の書き込みは N+FRAME_COUNT フレーム後で、
 ///          Dx12Device::beginFrame の fence がその間の GPU 読み完了を保証している

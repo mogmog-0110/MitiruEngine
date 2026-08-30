@@ -1,4 +1,4 @@
-// mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
+// mitiru::Engine 用の detail header。直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>

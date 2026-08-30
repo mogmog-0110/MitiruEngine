@@ -35,7 +35,7 @@
 namespace mitiru::debug
 {
 
-/// @brief mitiru_<toolName>.exe を探して別窓 spawn する (ADR 0014、内部用)
+/// @brief mitiru_<toolName>.exe を探して別窓 spawn する (内部用)
 /// @details 探索順: 環境変数 MITIRU_<TOOLNAME>_EXE / game exe 同階層 / 開発 build tree。
 ///          ゲームの DLL は host へ intent を出すだけで、host がこれを呼んでツール窓を開く。
 /// @return 起動成功で true (exe が見つからなければ false で無害)
@@ -140,7 +140,7 @@ inline bool openInspector(int producerPid = 0)
 inline bool openInspectable(const std::string& name, int producerPid = 0)
 {
 	if (name.empty()) { return false; }
-	// コマンドライン用に backslash / quote を escape — name は JS dispatch
+	// コマンドライン用に backslash / quote を escape。name は JS dispatch
 	// payload 由来の user input。
 	std::string safe;
 	safe.reserve(name.size());
@@ -153,10 +153,10 @@ inline bool openInspectable(const std::string& name, int producerPid = 0)
 	return spawnInspector(producerPid, "--inspectable " + safe);
 }
 
-/// @brief host 側コードからツール独立ウィンドウを 1 つ開く (ADR 0014、これが正面の入口)
+/// @brief host 側コードからツール独立ウィンドウを 1 つ開く (これが正面の入口)
 /// @details main.cpp など host を書く人が「このデバッグ窓を使う」と決めた時に呼ぶ。
 ///          共有 registry (ToolRegistry.hpp の kToolTable) を引いて該当 exe を spawn する。
-///          ゲームのキー入力とは無関係 — 欲しい窓の行を書いた host だけがその窓を開く。
+///          ゲームのキー入力とは無関係。欲しい窓の行を書いた host だけがその窓を開く。
 /// @param t        開く窓 (Tool::Inspector / InputMonitor / TimeTravel / 今後追加分)
 /// @param producerPid 監視対象プロセス (0 = 自プロセス = game DLL を載せた host)
 /// @return 起動成功で true (exe が見つからなければ false で無害)

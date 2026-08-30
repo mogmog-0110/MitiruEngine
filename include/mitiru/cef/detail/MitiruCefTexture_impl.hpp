@@ -44,7 +44,7 @@ inline void MitiruCefTexture::upload(const uint8_t* data, int width, int height)
     issueFullCopy();
 }
 
-/// @brief 部分アップロード — dirty rect リストに基づき必要な矩形だけ転送する
+/// @brief 部分アップロード。dirty rect リストに基づき必要な矩形だけ転送する
 inline void MitiruCefTexture::uploadPartial(
     const uint8_t*              data,
     int                         width,
@@ -66,7 +66,7 @@ inline void MitiruCefTexture::uploadPartial(
     }
     if (didApply)
     {
-        // resize 後の texture は空白 — partial upload だけでは dirty で
+        // resize 後の texture は空白。partial upload だけでは dirty で
         // ない領域が未初期化のまま残る。このケースではフル upload() に
         // fall through する。
         upload(data, width, height);
@@ -90,11 +90,10 @@ inline void MitiruCefTexture::uploadPartial(
     const size_t srcStride = static_cast<size_t>(m_width) * 4;
 
     // ── 各 dirty rect にアップロードバッファ内の独立オフセットを割り当てる (#29) ──
-    // 旧実装は全 rect を offset=0 に書いていたため、ループ内の memcpy が前 rect の
-    // 転送元ピクセルを GPU 実行 (ループ後の ExecuteCommandLists) 前に上書きし、
-    // 全コピーが「最後の rect」を読んでしまった (別位置にゲージ縞が複製)。
     // rect ごとに 512B 整列 (PLACED_FOOTPRINT.Offset) の独立領域へ書き、コピーの
-    // src.Offset もそこを指すようにすれば、同一実行内で全コピーが正しい元を読む。
+    // src.Offset もそこを指す。全 rect が offset を共有すると、ループ内の memcpy が
+    // 前 rect の転送元ピクセルを GPU 実行 (ループ後の ExecuteCommandLists) 前に
+    // 上書きし、全コピーが「最後の rect」を読む (別位置にゲージ縞が複製される)。
     const size_t bufferSize = m_uploadRowPitch * static_cast<size_t>(m_height);
     bool overflow = false;
     const std::vector<UploadPlacement> placed =

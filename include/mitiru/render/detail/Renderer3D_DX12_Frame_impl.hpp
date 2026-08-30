@@ -29,7 +29,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_frameActive = true;
 	m_transparentCommands.clear();
 	m_skyboxDrawnThisFrame = false;
-	m_skinnedPoolCursor = 0;  // スキン描画 pool を巻き戻す (ADR 0028)
+	m_skinnedPoolCursor = 0;  // スキン描画 pool を巻き戻す
 	m_shadowCasterEnabled = true;
 	// 前フレームの shadow casters をスナップして当フレーム描画分をクリア
 	m_shadowCommandsPrev = std::move(m_shadowCommands);
@@ -88,7 +88,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	}
 
 	/// shadow map を毎フレーム depth=1.0 にクリアする (ENG-103)。
-	/// shadow が無効でも clear だけは走らせる必要がある — clear しないと
+	/// shadow が無効でも clear だけは走らせる必要がある。clear しないと
 	/// texture が 0 のまま残って PS の SampleCmp が「フラスタム内 = 全部影」
 	/// を返してシーン中央が真っ黒になる。renderShadowPass() 内で
 	/// `m_shadowEnabled && casters あり` のときだけ caster を発射し、
@@ -113,7 +113,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 		dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	const float normalClear[4] = {0.5f, 0.5f, 0.5f, 0.0f};
 	m_graphicsCmdList->ClearRenderTargetView(normalRtvHandle, normalClear, 0, nullptr);
-	// backbuffer はクリア不要 — Resolve で MSAA color が上書きする
+	// backbuffer はクリア不要。Resolve で MSAA color が上書きする
 
 	/// ビューポートとシザー矩形を設定する
 	D3D12_VIEWPORT viewport = {};
@@ -240,7 +240,7 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 	}
 	// ring buffer は frame-fence で再利用されるため明示的な resource 保持は不要
 
-	/// CbShadow (b3) — light-space view * proj
+	/// CbShadow (b3)。light-space view * proj
 	const auto cbShadowAddr = uploadShadowCB();
 	if (cbShadowAddr != 0)
 	{
@@ -381,7 +381,7 @@ inline void Renderer3D_DX12::endFrame()
 	}
 
 	// clod 世界ジオメトリ: offscreen に描いて depth-tested inject で
-	// MSAA HDR + depth へ合成する (以降の OIT / resolve が上に乗る)。ADR 0027
+	// MSAA HDR + depth へ合成する (以降の OIT / resolve が上に乗る)。
 	renderClodPass();
 
 #ifdef MITIRU_HAS_MAKINA
@@ -506,7 +506,7 @@ inline void Renderer3D_DX12::renderCsgPass()
 		desc.rotationYDeg = q.rotYDeg;
 		desc.scale = q.scale;
 		// live に焼いた立体 (D-15) だけが今フレームの姿を要る。焼き込みの bake には
-		// 渡さない — 渡しても読まれないが、毎フレームの平坦化を払う理由が無い。
+		// 渡さない。渡しても読まれないが、毎フレームの平坦化を払う理由が無い。
 		const makina::EvalProgram* program =
 			entry.bake.live() ? &entry.solid.programAt(q.timeSec) : nullptr;
 		if (!entry.pass.draw(cmd, m_clodCamera, lightDir, desc,

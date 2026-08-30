@@ -1,5 +1,5 @@
 #pragma once
-// mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
+// mitiru::Screen 用の detail header。直接インクルードしない。core/Screen.hpp 経由で取り込む
 
 // drawText はゲーム作者向けに [[deprecated]] だが、本ファイルはその実装本体と
 // drawTextClipped / drawTextInRect 等の委譲元なので、ここでの内部呼び出しに限り
@@ -142,7 +142,7 @@ inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_v
 
 	// CRITICAL: text が overflow しても fontSize を比例縮小しては「いけない」。
 	// 16 → 11.3 のような縮小は non-atlas な端数に落ちる (atlas は 32px なので
-	// 32 / 24 / 16 / 12 / 8 だけが鮮明に描ける) — 結果は狭い window で滲んだ
+	// 32 / 24 / 16 / 12 / 8 だけが鮮明に描ける)。結果は狭い window で滲んだ
 	// 読めない text になる。代わりに fontSize は保ち、ellipsis で text を
 	// truncate させる (drawTextClipped の semantics を踏襲)。これで SDF rendering を
 	// atlas-aligned な端数に保ち、任意の window 幅で可読性を維持する。
@@ -172,7 +172,7 @@ inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_v
 		}
 		else
 		{
-			// rect が "..." すら入らないほど狭い — 単一の "." に落とす
+			// rect が "..." すら入らないほど狭い。単一の "." に落とす
 			ellipsisBuf = ".";
 			drawable = ellipsisBuf;
 			size = measureText(drawable, fontSize);

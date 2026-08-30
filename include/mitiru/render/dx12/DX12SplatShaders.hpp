@@ -107,7 +107,7 @@ struct VSOut
 };
 
 // engine の ACES filmic + gamma2.2 トーンマップを打ち消す逆補正。splat 色は写真から
-// 焼き込み済みの完成 sRGB なので、本来トーンマップ不要 — 逆を掛けて忠実な色で出す。
+// 焼き込み済みの完成 sRGB なので、本来トーンマップ不要。逆を掛けて忠実な色で出す。
 // 出力 = pow(ACES(Cin), 1/2.2) なので Cin = ACES^-1(col^2.2) を渡せば最終的に col に戻る。
 float3 acesInv(float3 y)
 {

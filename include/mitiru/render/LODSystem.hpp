@@ -321,8 +321,7 @@ public:
 			}
 
 			/// 最低LODより遠い場合はカリング対象とし、出力フラグに反映する。
-			/// レンダラはこの obj.culled を読んで描画をスキップできる（従来は
-			/// カウンタ加算のみでフラグが無く、遠方も最低LODで描画され続けていた）。
+			/// レンダラはこの obj.culled を読んで描画をスキップできる。
 			const auto& lastLevel = group.levels.back();
 			obj.culled = (dist > lastLevel.maxDistance);
 			if (obj.culled)

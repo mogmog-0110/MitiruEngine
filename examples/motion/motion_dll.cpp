@@ -1,4 +1,4 @@
-// motion — 動きに緩急をつける「イージング」の見本。1 つの曲線が位置・大きさ・回転・透明度をどう動かすか
+// motion。動きに緩急をつける「イージング」の見本。1 つの曲線が位置・大きさ・回転・透明度をどう動かすか
 // 実行すると: 4 種のイージング (列) が、位置 / 大きさ / 回転 / 透明度 (行) を同時に動かし続ける
 // 関連 API: mitiru::vn::Easing (linear / easeInCubic / easeOutCubic / easeInOutCubic)
 
@@ -80,7 +80,7 @@ struct Motion
 		chapterControls(s, "SPACE: はじめから");
 	}
 
-	// 位置: 横のレールの上を丸が進む。等間隔の時間で刻んだ目盛りも重ねる —
+	// 位置: 横のレールの上を丸が進む。等間隔の時間で刻んだ目盛りも重ねる。
 	// 目盛りが詰まっている所ほど動きが遅く、まばらな所ほど速い (速さの変化が形で見える)。
 	void drawPosition(Screen& s, float left, float y, float e, int c) const
 	{

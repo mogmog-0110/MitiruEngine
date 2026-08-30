@@ -158,7 +158,7 @@ public:
 			std::memcpy(&magic, data, sizeof(magic));
 			if (magic == 0x46546C67u)
 			{
-				/// GLBとして認識 — render::loadGltfFromMemory に委譲可能
+				/// GLBとして認識。render::loadGltfFromMemory に委譲可能
 				/// ここでは簡易的にCacheMeshとしてメタデータのみ格納
 				CacheVertex v;
 				v.position = {0, 0, 0};

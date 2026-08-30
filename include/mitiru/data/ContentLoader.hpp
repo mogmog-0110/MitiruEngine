@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file ContentLoader.hpp
-/// @brief stateless な typed content loader — JSON file または in-memory JSON を 1 回の呼び出しで C++ struct へ。
+/// @brief stateless な typed content loader。JSON file または in-memory JSON を 1 回の呼び出しで C++ struct へ。
 ///
 /// **目的。** §9 data-driven authoring: balance table、dialogue script、level data、
 /// その他あらゆる read-only な authored content を JSON で宣言し、起動時または
@@ -32,7 +32,7 @@
 ///
 /// **Versioned content。** schema migration が必要な authored content には、type を
 /// `Versioned<T>` で wrap するか、`JsonBinding.hpp` の `MigrationChain<T>` を独立して
-/// 使う。ContentLoader 自体は stateless で version の概念を持たない — 薄い static
+/// 使う。ContentLoader 自体は stateless で version の概念を持たない。薄い static
 /// dispatcher である。
 ///
 /// **Opt-in schema validation。** `loadFileValidated / loadJsonValidated / loadStringValidated`
@@ -52,7 +52,7 @@ namespace mitiru::data {
 
 /// @brief typed content (balance table、dialogue script、level data 等) の stateless loader。
 ///
-/// 全 method が static — class は state を持たない。
+/// 全 method が static。class は state を持たない。
 ///
 /// 使い方:
 /// @code
@@ -76,7 +76,7 @@ public:
     /// schema に一致しない場合は error result を返す。
     ///
     /// @param path UTF-8 JSON file への絶対 / 相対 path。
-    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
+    /// @return FromJsonResult<T>。value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadFile(const std::string& path)
     {
         const auto json = loadJsonFile(path);
@@ -89,7 +89,7 @@ public:
     /// @brief parse 済みの in-memory JSON object から typed content を load する。
     ///
     /// @param json valid な nlohmann::json value。
-    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
+    /// @return FromJsonResult<T>。value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadJson(const Json& json)
     {
         return fromJsonResult<T>(json);
@@ -101,7 +101,7 @@ public:
     /// error result を返す。
     ///
     /// @param s 生 UTF-8 の JSON 文字列。
-    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
+    /// @return FromJsonResult<T>。value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadString(const std::string& s)
     {
         try {
@@ -119,7 +119,7 @@ public:
     ///
     /// @param path   UTF-8 JSON file への絶対 / 相対 path。
     /// @param schema 検証に使う Schema 定義。
-    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
+    /// @return FromJsonResult<T>。value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadFileValidated(
         const std::string& path, const Schema& schema)
     {
@@ -134,7 +134,7 @@ public:
     ///
     /// @param json   valid な nlohmann::json value。
     /// @param schema 検証に使う Schema 定義。
-    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
+    /// @return FromJsonResult<T>。value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadJsonValidated(
         const Json& json, const Schema& schema)
     {
@@ -151,7 +151,7 @@ public:
     ///
     /// @param s      生 UTF-8 の JSON 文字列。
     /// @param schema 検証に使う Schema 定義。
-    /// @return FromJsonResult<T> — value にアクセスする前に ok() を確認すること。
+    /// @return FromJsonResult<T>。value にアクセスする前に ok() を確認すること。
     [[nodiscard]] static FromJsonResult<T> loadStringValidated(
         const std::string& s, const Schema& schema)
     {

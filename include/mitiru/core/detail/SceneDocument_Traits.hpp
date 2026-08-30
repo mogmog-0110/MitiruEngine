@@ -2,7 +2,7 @@
 #pragma once
 
 /// @file SceneDocument_Traits.hpp
-/// @brief SceneDocument の Trait 層 — 合成可能な機能単位 + JSON 変換 helper
+/// @brief SceneDocument の Trait 層。合成可能な機能単位 + JSON 変換 helper
 /// @details Node / Scene (core/SceneDocument.hpp) が依存する下層。
 ///          ITrait と標準 Trait 群 (mesh/light/camera/physics/script/audio/custom)、
 ///          および Trait 内部で使う nlohmann/json helper を収める。
@@ -58,7 +58,7 @@ inline TraitJson floatArray(const float* in, int count)
 } // namespace detail
 
 // =============================================================================
-// Traits — 合成可能な機能単位
+// Traits。合成可能な機能単位
 // =============================================================================
 
 /// @brief Trait基底インターフェース
@@ -76,7 +76,7 @@ struct ITrait
 	virtual void fromJson(const std::string& json) = 0;
 };
 
-/// @brief メッシュトレイト — 見た目
+/// @brief メッシュトレイト。見た目
 struct MeshTrait : ITrait
 {
 	std::string meshPath;      ///< メッシュファイルパス
@@ -101,7 +101,7 @@ struct MeshTrait : ITrait
 	}
 };
 
-/// @brief ライトトレイト — 光
+/// @brief ライトトレイト。光
 struct LightTrait : ITrait
 {
 	std::string lightType = "directional"; ///< directional/point/spot
@@ -135,7 +135,7 @@ struct LightTrait : ITrait
 	}
 };
 
-/// @brief カメラトレイト — 視点
+/// @brief カメラトレイト。視点
 struct CameraTrait : ITrait
 {
 	float fov = 60.0f;         ///< 視野角（度）
@@ -284,7 +284,7 @@ struct AudioTrait : ITrait
 	}
 };
 
-/// @brief カスタムトレイト — ゲーム固有データ
+/// @brief カスタムトレイト。ゲーム固有データ
 struct CustomTrait : ITrait
 {
 	std::string customType;                        ///< カスタム種別名

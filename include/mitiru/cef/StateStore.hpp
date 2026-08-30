@@ -156,7 +156,7 @@ public:
 	/// @brief 溜めた setBatched の変更を 1 回の executeJavaScript で flush する。
 	/// @details pending が空なら何もしない。新しい mitiru_cef_state.js では
 	///          `_onChangeBatch` を 1 回呼び、古いキャッシュ JS (batch 関数なし) では
-	///          `_onChange` を JS 側ループで per-key 適用する — どちらでも IPC は 1 回。
+	///          `_onChange` を JS 側ループで per-key 適用する。どちらでも IPC は 1 回。
 	void flushBatch()
 	{
 		if (m_pendingBatch.empty()) { return; }
@@ -221,7 +221,7 @@ public:
 	/// @brief 保持中の全 key→value を page に再 push する。
 	/// @details OnLoadEnd hook から呼ぶことで、読み込み直後 (または hot-reload
 	///          直後) の page が、読み込み完了前に set されていた全 state を
-	///          即座に受け取れる。冪等 — JS binder は宣言的で重複配信を安全に
+	///          即座に受け取れる。冪等。JS binder は宣言的で重複配信を安全に
 	///          処理する。
 	///
 	/// **使い方:**
@@ -247,7 +247,7 @@ public:
 
 	/// @brief 現在保持中の全 key→value ペアを JSON ファイルに書き出す。
 	///
-	/// **範囲:** これは *観測可能な push 済み state* を snapshot する — `set()`
+	/// **範囲:** これは *観測可能な push 済み state* を snapshot する。`set()`
 	/// で set され現在 store に保持されている `view.*` 値 (とその他の key)。
 	/// ゲーム内部の `GameMemory` は **取得しない**; それは engine から不透明。
 	/// 完全な gameplay time-travel には、ゲームが `GameMemory` を別途
@@ -276,7 +276,7 @@ public:
 	}
 
 	/// @brief 保持中の全 key を JSON object 文字列に serialize する。
-	/// @details saveSnapshot() と同内容だが in-memory で返す — replay-as-test
+	/// @details saveSnapshot() と同内容だが in-memory で返す。replay-as-test
 	///          (axis 4) が、ゲームの観測可能な push 済み `view.*` state を
 	///          per-frame / 最終 assertion blob として捕捉するのに使う。新たな
 	///          DLL ABI hook は不要 (ゲームは HUD 用に既にこれを push している)。
@@ -333,7 +333,7 @@ public:
 		}
 
 		// lock の外で push するため entry を snapshot する (replayRetainedState
-		// と同パターン — mutex 保持中に JS dispatch を走らせてはいけない)。
+		// と同パターン。mutex 保持中に JS dispatch を走らせてはいけない)。
 		std::unordered_map<std::string, json> loaded;
 		loaded.reserve(doc.size());
 		for (const auto& [key, value] : doc.items())
@@ -416,7 +416,7 @@ public:
 	// ── C++ → JS: 一回限りの event ────────────────────────────────
 
 	/// @brief 名前付き event を `window.mitiru.on(name, ...)` listener に発火する。
-	/// @details 保持されない — 後から subscribe した listener は取りこぼす。
+	/// @details 保持されない。後から subscribe した listener は取りこぼす。
 	///          保持される値には `set()` を使う。
 	void emit(std::string_view eventName, const json& payload = json::object())
 	{
@@ -445,7 +445,7 @@ public:
 	///        `(action_name, payload)` を受け取り、任意の json (または
 	///        fire-and-forget なら `{}`) を返してよい。
 	/// @details
-	/// engine が module-mode (ADR 0005) で使う: DLL は DLL boundary 越しに
+	/// engine が module-mode で使う: DLL は DLL boundary 越しに
 	/// C++ handler を登録できないため、engine は到来した action を次フレームの
 	/// `InputSnapshot` に `ActionEvent` として queue する fallback を設置する。
 	/// これにより engine が事前に一覧を知らなくても DLL が任意の action 名に

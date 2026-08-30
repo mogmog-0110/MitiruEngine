@@ -10,22 +10,22 @@
 /// @code
 /// SceneRouter router;
 ///
-/// // Push title scene — fires TitleScene::onEnter
+/// // Push title scene。fires TitleScene::onEnter
 /// router.push(std::make_unique<TitleScene>());
 /// router.update(dt);
 ///
-/// // Push gameplay on top — fires TitleScene::onPause, GameScene::onEnter
+/// // Push gameplay on top。fires TitleScene::onPause, GameScene::onEnter
 /// router.push(std::make_unique<GameScene>());
 /// router.update(dt);   // only GameScene receives update
 ///
-/// // Pop gameplay — fires GameScene::onExit, TitleScene::onResume
+/// // Pop gameplay。fires GameScene::onExit, TitleScene::onResume
 /// router.pop();
 /// router.update(dt);   // TitleScene is top again
 /// @endcode
 ///
 /// @par Replace の挙動
 /// @code
-/// // Replace current top — fires old::onExit, new::onEnter
+/// // Replace current top。fires old::onExit, new::onEnter
 /// // onPause / onResume are NOT fired on the scene below.
 /// router.replace(std::make_unique<CreditsScene>());
 /// @endcode
@@ -103,7 +103,7 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // Per-frame (hot path — 確保ゼロ)
+    // Per-frame (hot path。確保ゼロ)
     // -----------------------------------------------------------------------
 
     /// top の scene を tick する。stack が空なら何もしない。
@@ -116,7 +116,7 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // Query (hot path — 確保ゼロ)
+    // Query (hot path。確保ゼロ)
     // -----------------------------------------------------------------------
 
     /// top の scene への raw pointer を返す。空なら nullptr。

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Tween.hpp
-/// @brief 汎用Tween/Easingシステム — UI遷移、ポップアップ、プロパティアニメーション用
+/// @brief 汎用Tween/Easingシステム。UI遷移、ポップアップ、プロパティアニメーション用
 /// @details 独立したヘッダ。Screen.hppに依存しない。
 ///          UIアニメ (通知ポップアップ、コンボ表示、遷移効果等) で使用。
 /// @note EaseFunc (関数ポインタ) を持つため GameMemory には置けない。POD 版は core/PodTiming.hpp。

@@ -169,7 +169,7 @@ public:
 	/// @param viewportHeight ビューポート高さ（px）
 	/// @param program 今フレームの姿 (CsgSolid::programAt)。live に焼いたシェーダだけが
 	///        読む。焼き込みシェーダに渡しても無視されるだけだが、live なのに無いときと
-	///        ノード数が焼いたときと違うときは拒否する — 別の木の数値を読ませると
+	///        ノード数が焼いたときと違うときは拒否する。別の木の数値を読ませると
 	///        落ちずに違う形が出る
 	/// @return 描いたか。拒否した理由は @ref error
 	[[nodiscard]] bool draw(ID3D12GraphicsCommandList* cmd, const Camera3D& camera,
@@ -260,7 +260,7 @@ public:
 		cmd->DrawInstanced(3, 1, 0, 0);
 
 		// シザーは呼び手のものに戻す。詰めたまま返すと、この後に積まれた描画が
-		// 小道具の矩形に切り取られる — 原因が遠すぎて追えない類の不具合になる。
+		// 小道具の矩形に切り取られる。原因が遠すぎて追えない類の不具合になる。
 		const D3D12_RECT full{ 0, 0, static_cast<LONG>(viewportWidth),
 			                   static_cast<LONG>(viewportHeight) };
 		cmd->RSSetScissorRects(1, &full);
@@ -369,7 +369,7 @@ private:
 	{
 		// ルート CBV 2 本 + マテリアル表 + プログラム。焼いたシェーダは評価プログラムを
 		// **コードとして**持っているが、live に焼いたもの (D-15) は葉の数値を t0 から読む。
-		// t1 のマテリアルはどちらも要る — どの面がどのマテリアルかは焼いたコードが返すが、
+		// t1 のマテリアルはどちらも要る。どの面がどのマテリアルかは焼いたコードが返すが、
 		// その中身は実行時のデータである。
 		D3D12_ROOT_PARAMETER params[6]{};
 		for (int i = 0; i < 2; ++i)
@@ -390,7 +390,7 @@ private:
 		params[4].Descriptor.ShaderRegister = 0;
 		params[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 		// t3 光源表 (scene_lights.hlsl)。シェーダが宣言している資源が束ねられていないと
-		// PSO は作れない — 光源の無い立体でも 1 件置く。
+		// PSO は作れない。光源の無い立体でも 1 件置く。
 		params[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 		params[5].Descriptor.ShaderRegister = 3;
 		params[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -450,7 +450,7 @@ private:
 
 	/// @brief マテリアル表を 1 度だけ載せる
 	/// @details 立体は読み込んだあと変わらないので、毎フレームの更新は要らない。
-	///          マテリアルが 1 つも無いシーンでも 1 件は置く — シェーダが t1 を宣言しているのに
+	///          マテリアルが 1 つも無いシーンでも 1 件は置く。シェーダが t1 を宣言しているのに
 	///          何も束ねないのは「空の表」ではなく未定義動作である。
 	bool createMaterials(ID3D12Device* device, const CsgSolid& solid)
 	{
@@ -477,7 +477,7 @@ private:
 			return fail("could not create the pigment buffer");
 		}
 		// シーンの光源。makina の Light はそのまま GPU の MkLight (scene_lights.hlsl)。無ければ
-		// 既定の 1 件を置き、gLightCount 0 でシェーダに「レンダラの光で」と言わせる —
+		// 既定の 1 件を置き、gLightCount 0 でシェーダに「レンダラの光で」と言わせる。
 		// ビューポートと同じ扱い。
 		std::vector<makina::Light> lights;
 		for (std::uint32_t i = 0; i < solid.scene().lights.count; ++i)
@@ -558,7 +558,7 @@ private:
 		cb.lightDir[0] = lightDir.x; cb.lightDir[1] = lightDir.y; cb.lightDir[2] = lightDir.z;
 
 		// fov() はラジアン（既定 1.0472 = 60 度）。度だと思って変換すると扇が 100 倍以上
-		// 狭くなり、小道具が画面を埋め尽くす — それでも「何か描けている」ので、
+		// 狭くなり、小道具が画面を埋め尽くす。それでも「何か描けている」ので、
 		// 絵を眺めるだけでは間違いに見えない。
 		cb.tanHalfFov = std::tan(camera.fov() * 0.5f);
 		cb.aspect = camera.aspectRatio();

@@ -5,7 +5,7 @@
 /// @details
 /// InputSnapshot は stateless なので「スティックを倒し続けたら一定間隔で送る」が
 /// 単体では作れない。この POD を GameMemory に置くとリピートタイマーごと記録・
-/// 巻き戻し・リプレイ対象になる (flat POD、ADR 0017)。
+/// 巻き戻し・リプレイ対象になる (flat POD)。
 ///
 /// @code
 ///   struct GameMemory { mitiru::MenuCursor cur; };

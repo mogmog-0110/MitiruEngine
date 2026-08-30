@@ -1,8 +1,8 @@
 #pragma once
 /// @file PixelText.hpp
 /// @brief 美咲フォント(8x8 ドット日本語)を Screen にピクセルパーフェクトに描く。
-/// @details 点灯ピクセルを整数サイズの矩形として drawRect で描く（ADR 0009 以降は
-///          バッチ化されるため数十文字でも 1 submit に合流）。SDF と違いアンチエイリアス
+/// @details 点灯ピクセルを整数サイズの矩形として drawRect で描く（バッチ化されるため数十文字でも
+///          1 submit に合流）。SDF と違いアンチエイリアス
 ///          されない真のドット文字。`drawText` 禁止規約の sanctioned な代替 API。
 ///
 /// @code

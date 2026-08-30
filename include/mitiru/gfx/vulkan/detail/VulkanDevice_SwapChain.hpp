@@ -1,5 +1,5 @@
 #pragma once
-// mitiru::gfx::VulkanDevice 用の detail header — 直接インクルードしない。gfx/vulkan/VulkanDevice.hpp 経由で取り込む
+// mitiru::gfx::VulkanDevice 用の detail header。直接インクルードしない。gfx/vulkan/VulkanDevice.hpp 経由で取り込む
 // スワップチェーン系（生成・破棄・再生成・フォーマット選択）
 
 #include <mitiru/gfx/vulkan/VulkanDevice.hpp>

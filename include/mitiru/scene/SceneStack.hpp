@@ -4,7 +4,7 @@
 /// @brief 「Title → Playing → Paused → Playing」のような行ったり来たりを管理する薄いスタック。
 /// @details engine は SceneId (game-side enum/int) のスタックを保持するだけ。`enter / exit / update /
 ///          draw` の実体は game が `dispatch(id, ...)` で組む。engine が scene 種類を knowing しないので
-///          ADR 0005 整合 (game 状態は game のもの)。
+///          game 状態は game のもの。
 
 #include <vector>
 

@@ -11,7 +11,7 @@
 /// 設計判断:
 /// - thread-safe (内部 mutex)。複数スレッドから安全に呼べる
 /// - ring buffer 上限 256 行。古いものから捨てる
-/// - printf-style 別エントリポイント (`printf`) を用意 — 既存 C コード移植が楽
+/// - printf-style 別エントリポイント (`printf`) を用意。既存 C コード移植が楽
 /// - 出力先 logger とは独立 (ILogger は category 付きで別 concern)
 ///
 /// @code
@@ -37,7 +37,7 @@ namespace mitiru::debug
 {
 
 /// @brief プロセス内 1 インスタンスの ring buffer
-/// @details すべて static — シングルトン (mutex 同期付き)。
+/// @details すべて static。シングルトン (mutex 同期付き)。
 ///          tests / fixture から手動 reset したい場合は `clear()`。
 class DebugPrintBuffer
 {

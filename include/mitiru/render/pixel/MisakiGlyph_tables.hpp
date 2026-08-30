@@ -1,5 +1,5 @@
 #pragma once
-// 自動生成 — tools/gen_misaki_glyphs.py が美咲ゴシック BDF から生成。手で編集しない。
+// 自動生成。tools/gen_misaki_glyphs.py が美咲ゴシック BDF から生成。手で編集しない。
 //
 // 美咲フォント (8x8, JIS第1+2水準, Unicode) by Num Kadoma。フリーソフトウェア:
 // 商用含め自由に利用・複製・改変・再配布可・無保証 (tools/fonts/misaki_LICENSE.txt)。

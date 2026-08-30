@@ -4,8 +4,8 @@
 /// @brief GameMemory に置ける flat POD のタイマー/トゥイーン。
 /// @details
 /// `t += dt; if (t > x)` の手書きパターンを置き換える最小部品。全型 trivially_copyable
-/// なので GameMemory に埋めれば巻き戻し・リプレイ対象に自動編入される (ADR 0017)。
-/// `animation/Tween.hpp` は関数ポインタを持つため GameMemory には置けない — こちらを使う。
+/// なので GameMemory に埋めれば巻き戻し・リプレイ対象に自動編入される。
+/// `animation/Tween.hpp` は関数ポインタを持つため GameMemory には置けない。こちらを使う。
 ///
 /// @code
 ///   struct GameMemory {

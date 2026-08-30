@@ -102,7 +102,7 @@ public:
 			/// 時は WS_THICKFRAME / WS_MAXIMIZEBOX を外して固定サイズに。
 			const UINT dpi = systemDpi();
 			// WS_VISIBLE で生成時から可視にする（Borderless が WS_POPUP|WS_VISIBLE なのと対称。#22）。
-			// 以前は不可視生成 + ShowWindow も無く、host 以外の standalone 消費者で窓が出ない罠だった。
+			// 不可視で生成すると、ShowWindow を呼ばない standalone 消費者で窓が出ない。
 			const DWORD style = (m_resizable
 				? WS_OVERLAPPEDWINDOW
 				: (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX))
@@ -883,7 +883,7 @@ private:
 		/// ユーザが alt-tab で離れた (または dev companion のような別 window を
 		/// クリックした) 時、Windows はこの hwnd へ WM_KEYUP を配送しなくなる。
 		/// その時点で押されていた key は InputState 内で永久に "down" のまま残る
-		/// — 典型的な "矢印キー stuck" bug。ここでクリアし、game に正しい
+		///。典型的な "矢印キー stuck" bug。ここでクリアし、game に正しい
 		/// release edge が届くようにする。
 		case WM_KILLFOCUS:
 			// focus が外れると Windows は WM_KEYUP を配送しなくなる。押していた key を

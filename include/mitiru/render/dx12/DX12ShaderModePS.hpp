@@ -13,7 +13,7 @@
 namespace mitiru::render
 {
 
-/// @brief MRT 用 Toon PS — 量子化 Lambert + リム + albedo テクスチャ
+/// @brief MRT 用 Toon PS。量子化 Lambert + リム + albedo テクスチャ
 ///        DX11 の TOON_PS_3D は単一 SV_TARGET。DX12 メインパスは MRT (color+normal)
 ///        + t0 albedo を扱うため、ここで DX12 専用の変種を用意する。
 inline constexpr const char* DX12_TOON_PS_3D = R"hlsl(
@@ -121,7 +121,7 @@ PSOutput PSMain(PSInput input)
 }
 )hlsl";
 
-/// @brief MRT 用 Fresnel Toon PS — OutlineMode::Fresnel でメイン PS を差し替える
+/// @brief MRT 用 Fresnel Toon PS。OutlineMode::Fresnel でメイン PS を差し替える
 ///        DX12_TOON_PS_3D にシルエット付近 (NdotV 小) の暗化を加えた変種。
 ///        DX11 世代 TOON_PS_3D_FRESNEL は LightSpacePos 無しで VS-PS linkage が
 ///        不成立だったため、DX12 VS の出力 signature に合わせてここへ移植。
@@ -185,7 +185,7 @@ PSOutput PSMain(PSInput input)
     // アンビエント
     float3 ambient = AmbientColor * albedo;
 
-    // ディフューズ — NdotL を 3 段階に量子化（toon 帯）
+    // ディフューズ。NdotL を 3 段階に量子化（toon 帯）
     float rawNdotL = saturate(dot(N, L));
     float toon = (rawNdotL > 0.5) ? 1.0 : (rawNdotL > 0.15) ? 0.6 : 0.3;
     float3 diffuse = LightColor * albedo * toon;
@@ -196,7 +196,7 @@ PSOutput PSMain(PSInput input)
     float specFactor = pow(NdotH, max(MaterialShininess, 1.0)) * 0.3;
     float3 specular = LightColor * MaterialSpecular.rgb * specFactor;
 
-    // Fresnel リム — シルエット付近 (NdotV 小) を暗化してアウトラインに
+    // Fresnel リム。シルエット付近 (NdotV 小) を暗化してアウトラインに
     float NdotV = saturate(dot(N, V));
     float fresnelEdge = 1.0 - smoothstep(0.0, 0.4, NdotV);
     float3 outlineColor = float3(0.08, 0.06, 0.04);
@@ -212,7 +212,7 @@ PSOutput PSMain(PSInput input)
 }
 )hlsl";
 
-/// @brief MRT 用 Phong PS — 単一光源 Lambert + Phong + albedo テクスチャ + shadow PCF
+/// @brief MRT 用 Phong PS。単一光源 Lambert + Phong + albedo テクスチャ + shadow PCF
 inline constexpr const char* DX12_PHONG_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
 {
@@ -328,7 +328,7 @@ PSOutput PSMain(PSInput input)
 }
 )hlsl";
 
-/// @brief MRT 用 Unlit PS — 頂点色 × material diffuse × albedo テクスチャ
+/// @brief MRT 用 Unlit PS。頂点色 × material diffuse × albedo テクスチャ
 inline constexpr const char* DX12_UNLIT_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
 {
@@ -390,7 +390,7 @@ PSOutput PSMain(PSInput input)
 }
 )hlsl";
 
-/// @brief MRT 用 Flat PS — 面ごと一様陰影 + albedo テクスチャ
+/// @brief MRT 用 Flat PS。面ごと一様陰影 + albedo テクスチャ
 inline constexpr const char* DX12_FLAT_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
 {

@@ -44,14 +44,14 @@ namespace mitiru::module
 /// @brief Game DLL を一つ host する。move-only。
 ///
 /// ライフサイクル:
-///   1. `load(source)`  — source を temp に copy、LoadLibrary、symbol 解決
+///   1. `load(source)`。source を temp に copy、LoadLibrary、symbol 解決
 ///   2. (caller が loadFn() を呼び ModuleApi + memory を埋める)
-///   3. `unload()`      — FreeLibrary + temp file 削除
-///   4. (または destructor — unload と同じ)
+///   3. `unload()`。FreeLibrary + temp file 削除
+///   4. (または destructor。unload と同じ)
 ///
 /// reload は「別 ModuleHost で load(source) → move 代入で差し替え」(先ロード・
 /// 後差し替え) が正規。temp filename が一意なので同一 source でも並走 load できる。
-/// move 代入 / unload は FreeLibrary するだけ — ModuleApi callback を保持する
+/// move 代入 / unload は FreeLibrary するだけ。ModuleApi callback を保持する
 /// host code は、その時点で古い関数 pointer を破棄しなければならない。
 class ModuleHost
 {
@@ -148,7 +148,7 @@ public:
 			return false;
 		}
 
-		// 成功宣言の前に entry symbol の存在を確認 — caller の「GetProcAddress
+		// 成功宣言の前に entry symbol の存在を確認。caller の「GetProcAddress
 		// が null を返したか?」という別チェックを省ける。
 		auto* loadFnPtr = ::GetProcAddress(handle, kLoadSymbol);
 		if (loadFnPtr == nullptr)

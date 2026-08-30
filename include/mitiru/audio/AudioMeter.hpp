@@ -4,7 +4,7 @@
 /// @brief オーディオメータリングの最小 POD
 /// @details 再生中チャンネルの「種別 + 実効レベル」を 1 件で表す。host が
 ///          IAudioEngine から列挙して SharedSnapshot に併記し、mitiru_mixer 窓が
-///          per-channel VU として描く (ADR 0014)。RMS 振幅ではなく各 voice の
+///          per-channel VU として描く。RMS 振幅ではなく各 voice の
 ///          設定実効音量を報告する (miniaudio が安価に出せるのは設定音量まで)。
 
 namespace mitiru::audio

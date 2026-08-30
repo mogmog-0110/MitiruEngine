@@ -1,4 +1,4 @@
-// mitiru_subsys_audio — エンジン全体なしで audio subsystem だけを起動する最小 exe。
+// mitiru_subsys_audio。エンジン全体なしで audio subsystem だけを起動する最小 exe。
 //
 // audio subsystem を単独起動する: ゲームロジック・CEF・inspector なし。
 // Engine + Screen (meter HUD 用) + audio thread で SineSynth からサンプルを
@@ -16,14 +16,14 @@
 // 操作: ESC で終了。無人キャプチャ用に 5.0s で自動終了。
 //
 // 存在理由 (全 system 単独起動の保証):
-//   - 同じ Engine class で audio subsystem のみ — renderer subsystem 例が示す
+//   - 同じ Engine class で audio subsystem のみ。renderer subsystem 例が示す
 //     のと同じ単独起動保証を、非グラフィック系で繰り返す。
 
 #include <atomic>
 #include <cmath>
 #include <miniaudio.h>
 
-// アンブレラ header は使わない — 使うものだけ明示 include
+// アンブレラ header は使わない。使うものだけ明示 include
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
@@ -49,7 +49,7 @@ void audioDataCallback(ma_device* device, void* output, const void*, ma_uint32 f
     auto* out   = static_cast<float*>(output);
     synth->render(out, frameCount, kSampleRate);
 
-    // チャンクの RMS — HUD 用の軽量レベルメーター。
+    // チャンクの RMS。HUD 用の軽量レベルメーター。
     float sumSq = 0.0f;
     for (ma_uint32 i = 0; i < frameCount; ++i) { sumSq += out[i] * out[i]; }
     const float rms = std::sqrt(sumSq / static_cast<float>(frameCount));
@@ -129,9 +129,9 @@ private:
         const float y     = (m_screenH - barH) * 0.5f;
         // トラックの外枠。
         screen.drawRect(sgc::Rectf{x - 2.0f, y - 2.0f, barW + 4.0f, barH + 4.0f}, kPaperEdge);
-        // トラック内部 — 銀の surface に対して明灰 #d8d8d8 を凹ませる。
+        // トラック内部。銀の surface に対して明灰 #d8d8d8 を凹ませる。
         screen.drawRect(sgc::Rectf{x, y, barW, barH}, sgc::Colorf{0.847f, 0.847f, 0.847f, 1.0f});
-        // フィル — gain 0.30 の sine でも見えるよう RMS を増幅。
+        // フィル。gain 0.30 の sine でも見えるよう RMS を増幅。
         const float norm = std::clamp(m_level * 4.0f, 0.0f, 1.0f);
         screen.drawRect(sgc::Rectf{x, y, barW * norm, barH}, kAmberAccent);
     }

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file ClodImport.hpp
-/// @brief drawModel の import cache — OBJ / glTF / GLB を初回に .clod へ変換する
+/// @brief drawModel の import cache。OBJ / glTF / GLB を初回に .clod へ変換する
 /// @details 変換の実体は src/clod_import_impl.cpp (meshopt_impl)。変換結果は
 ///          ソースの隣に `<source>.clod` として置き、ソースが新しくなったら作り直す。
 

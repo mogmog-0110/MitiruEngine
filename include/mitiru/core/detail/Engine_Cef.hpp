@@ -1,5 +1,5 @@
-// mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
-// ⚠ このファイルは _WIN32 と MITIRU_HAS_CEF の両方が定義されているときのみインクルードされる。
+// mitiru::Engine 用の detail header。直接インクルードしない。core/Engine.hpp 経由で取り込む
+// 注意: このファイルは _WIN32 と MITIRU_HAS_CEF の両方が定義されているときのみインクルードされる。
 #pragma once
 
 #include <cstdio>
@@ -57,7 +57,7 @@ MITIRU_INLINE void mitiru::Engine::initializeCef(const EngineConfig& config)
 	if (!m_cefContext.initialize(*dx12Device, exeDir, logPath, w, h,
 	                             startUrl, config.cefRemoteDebuggingPort))
 	{
-		// H-20: 無言で UI 無し画面を出さない — stderr 1 行 + 失敗フラグ。
+		// H-20: 無言で UI 無し画面を出さない。stderr 1 行 + 失敗フラグ。
 		// 詳細原因は MitiruCefContext::initialize が段階別に stderr へ出す。
 		// 以降の CEF 呼び出しは isInitialized()==false で全て no-op (安全)。
 		std::fprintf(stderr,

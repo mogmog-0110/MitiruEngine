@@ -26,7 +26,7 @@ class MitiruCefInput
 public:
     MitiruCefInput() = default;
 
-    /// @brief 毎フレーム呼ぶ — 前フレームとの差分イベントを送信する
+    /// @brief 毎フレーム呼ぶ。前フレームとの差分イベントを送信する
     /// @param host   対象ブラウザホスト (null なら no-op)
     /// @param input  現在の入力状態
     /// @param tex    composite 中の texture (letterbox fit-rect 逆変換に使う。

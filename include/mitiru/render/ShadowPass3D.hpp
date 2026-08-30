@@ -94,7 +94,7 @@ class ShadowPass3D {
 public:
     ShadowPass3D() = default;
 
-    /// dtor — DX11リソースを解放する
+    /// dtor。DX11リソースを解放する
     ~ShadowPass3D()
     {
 #ifdef MITIRU_HAS_DX11

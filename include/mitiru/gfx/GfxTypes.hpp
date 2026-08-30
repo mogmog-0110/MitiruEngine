@@ -115,7 +115,7 @@ using FenceValue = uint64_t;
 /// @brief ルートパラメータ種別
 /// @details コンピュートパイプラインが要求するリソースの結び付け方。
 ///          D3D12 のルートパラメータと Vulkan の descriptor set layout binding の
-///          共通部分だけを表す — 両者で意味が一致するものに限っているので、
+///          共通部分だけを表す。両者で意味が一致するものに限っているので、
 ///          バックエンドを増やすときにここを作り直す必要がない。
 enum class RootParamType : uint8_t
 {

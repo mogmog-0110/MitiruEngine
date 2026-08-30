@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file Node.hpp
-/// @brief Godot風ノードシステム — シーンツリーの基盤
+/// @brief Godot風ノードシステム。シーンツリーの基盤
 /// @details 全ゲームオブジェクトの基底クラス。親子関係、ライフサイクル管理、
 ///          Update/Draw伝播を提供する。
 ///

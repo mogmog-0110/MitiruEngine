@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file AutoScreenshot.hpp
-/// @brief 自動スクリーンショット検証 — フレーム描画後にバックバッファをキャプチャして分析
+/// @brief 自動スクリーンショット検証。フレーム描画後にバックバッファをキャプチャして分析
 /// @details Engine.capture()を使ってDX11/DX12両対応。
 ///          ピクセル分析、BMP保存、描画異常検出を提供。
 
@@ -167,7 +167,7 @@ struct ScreenshotAnalysis
 	}
 };
 
-/// @brief 自動スクリーンショットキャプチャ — Engineと連携してフレームをキャプチャ・分析・保存
+/// @brief 自動スクリーンショットキャプチャ。Engineと連携してフレームをキャプチャ・分析・保存
 /// @details 使用例:
 /// @code
 /// mitiru::Engine engine;

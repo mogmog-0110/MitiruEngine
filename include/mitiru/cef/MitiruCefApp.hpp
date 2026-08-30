@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MitiruCefApp.hpp
-/// @brief CefApp サブクラス — ブラウザプロセス起動フック
+/// @brief CefApp サブクラス。ブラウザプロセス起動フック
 
 #if defined(_WIN32) && defined(MITIRU_HAS_CEF)
 
@@ -88,7 +88,7 @@ public:
 #ifndef NDEBUG
         // Debug のみ: file:/// からの XHR / fetch とクロスオリジンを許可。
         // CEF 97 以降 CefBrowserSettings からこれらが削除されたためフラグで設定。
-        // Release では付けない — ローカル資産は CORS 対応の app:// スキーム
+        // Release では付けない。ローカル資産は CORS 対応の app:// スキーム
         // (registerAppScheme / cefAdditionalAssetDirs) で配信する。
         // 注意: mitiru.fetch / mitiru.loadJson (mitiru_runtime.js) は file://
         // ページからの JSON 読込にこのスイッチへ依存する。Release では
@@ -132,7 +132,7 @@ public:
     }
 
     // ── CefRenderProcessHandler (single-process 用) ─────────────
-    /// @brief V8/Blink の起動完了時に呼ばれる — renderer-side router を作成
+    /// @brief V8/Blink の起動完了時に呼ばれる。renderer-side router を作成
     void OnWebKitInitialized() override
     {
         CefMessageRouterConfig config;

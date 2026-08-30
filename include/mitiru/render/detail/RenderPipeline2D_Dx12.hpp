@@ -1,5 +1,5 @@
 #pragma once
-// このヘッダは RenderPipeline2D.hpp から include される — 直接 include しないこと。
+// このヘッダは RenderPipeline2D.hpp から include される。直接 include しないこと。
 
 #ifdef _WIN32
 
@@ -364,7 +364,7 @@ inline void RenderPipeline2D::submitBatchDx12(
 	const int s = acquireDx12Slot();
 
 	/// uUseTexture = 0 を明示する (直前の textured batch / pixel-grid から漏れた
-	/// 1 で頂点カラー描画がテクスチャサンプルされるのを防ぐ。ADR 0009)。
+	/// 1 で頂点カラー描画がテクスチャサンプルされるのを防ぐ)。
 	/// slot s 専用 CB を使うので前 GPU 読み取りとは race しない。
 	{
 		const float psOff[4] = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -585,7 +585,7 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 
 	/// ルートシグネチャ (共通、SDF は全種で同じレイアウト)
 	/// 0: VS CBV b0 (projection)
-	/// 1: PS CBV b1 (style constants — DX11 と同じスロット)
+	/// 1: PS CBV b1 (style constants。DX11 と同じスロット)
 	if (!m_dx12SdfRootSig)
 	{
 		D3D12_ROOT_PARAMETER params[2] = {};

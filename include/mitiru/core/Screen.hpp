@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-// ⚠ 800 行ルールの記録 (リファクタ P4): 本ファイルは 200+ の draw API 宣言 +
+// 注意 (800 行ルールの記録、リファクタ P4): 本ファイルは 200+ の draw API 宣言 +
 // 1-3 行の薄い inline ラッパのみで、実装本体は末尾 include の detail/Screen_*.hpp
 // 8 ファイルに分割済み。単一クラスの公開 API 表面は宣言を分割できないため、
 // 行数超過は構造的限界として許容 (in-class に 12 行超の実装体は存在しない)。
-// ⚠ ABI: Screen* は gameDraw() で DLL 境界を渡る。メンバ追加は必ず class 末尾 +
+// 注意 (ABI): Screen* は gameDraw() で DLL 境界を渡る。メンバ追加は必ず class 末尾 +
 // ModuleApi の kCurrentApiVersion を上げること (v14 事故の教訓)。
 
 /// @file Screen.hpp
@@ -423,7 +423,7 @@ public:
 		{
 			return m_ttMeasureFunc(m_ttFont, text, fontSize);
 		}
-		// BitmapFont — floatスケール対応
+		// BitmapFont。floatスケール対応
 		const float scale = fontSize / static_cast<float>(render::BitmapFont::GLYPH_HEIGHT);
 		const float w = render::TextRenderer::measureWidthFloat(text, scale);
 		const float h = render::TextRenderer::measureHeightFloat(scale);
@@ -836,7 +836,7 @@ public:
 		const float cy = static_cast<float>(height()) * 0.5f;
 		pushTransform(cx - camX * zoom, cy - camY * zoom, zoom, zoom);
 	}
-	/// @brief applyCamera を外す (popTransform の別名 — 対で読めるように)。
+	/// @brief applyCamera を外す (popTransform の別名。対で読めるように)。
 	void endCamera() { popTransform(); }
 
 	/// @brief 矩形に現在の変換を適用する
@@ -858,7 +858,7 @@ public:
 	/// @brief グループ描画（変換をまとめて適用する）
 	/// @note こちらの角度の単位は**度** (pushRotation のラジアンと異なる)。
 	/// @param position グループの平行移動オフセット
-	/// @param rotationDeg 回転角度（度）— グループ原点（position）まわりで回転
+	/// @param rotationDeg 回転角度（度）。グループ原点（position）まわりで回転
 	/// @param drawFn グループ内の描画コールバック
 	/// @details translation と rotation を合成した変換をスタックにプッシュしてから
 	///          drawFn を呼ぶ。drawFn 内の描画は position を原点としたローカル座標で行う。
@@ -868,7 +868,7 @@ public:
 	{
 		constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 		const float rad = rotationDeg * kDegToRad;
-		// translate(position) * rotate(rad) — local 原点まわりで回転させ、
+		// translate(position) * rotate(rad)。local 原点まわりで回転させ、
 		// その後 group 全体を `position` へ平行移動する。
 		pushTransform(Transform2D::translate(position.x, position.y) * Transform2D::rotate(rad));
 		drawFn(*this);
@@ -965,7 +965,7 @@ private:
 	float       m_tintRemainSec = 0.0f;
 	sgc::Colorf m_clearColor{0.0f, 0.0f, 0.0f, 1.0f};  ///< クリア色
 	render::SpriteBatch m_spriteBatch;       ///< スプライトバッチ（現在開いている run のジオメトリ）
-	std::uint32_t m_curTexHandle = 0;        ///< 現在の run のテクスチャハンドル（0=頂点カラー, ADR 0009）
+	std::uint32_t m_curTexHandle = 0;        ///< 現在の run のテクスチャハンドル（0=頂点カラー）
 
 	/// 3D 使用フレームの 2D 描画 1 区間。present3DOverlay() が 3D の後に描く
 	struct OverlayRun
@@ -1006,7 +1006,7 @@ private:
 		return m_transformStack.top();
 	}
 
-	// ── textured sprite batch ヘルパー（ADR 0009）─────────
+	// ── textured sprite batch ヘルパー─────────
 	// painter 順を保つため、頂点カラー run と textured run の切替で現バッチを
 	// flush+submit する。実装は detail/Screen_Frame.hpp（RenderPipeline2D の
 	// 完全型が要るため）。
@@ -1028,7 +1028,7 @@ private:
 	/// @brief 現在のtransformを適用して矩形をemitする
 	void emitRect(const sgc::Rectf& rect, const sgc::Colorf& color)
 	{
-		// 頂点カラー描画: 開いている textured run があれば閉じて順序を保つ（ADR 0009）
+		// 頂点カラー描画: 開いている textured run があれば閉じて順序を保つ
 		if (m_curTexHandle != 0) flushCurrentBatch();
 		const auto t = currentTransform();
 		if (t.isIdentity())
@@ -1102,7 +1102,7 @@ private:
 	                      const sgc::Colorf& tl, const sgc::Colorf& tr,
 	                      const sgc::Colorf& br, const sgc::Colorf& bl)
 	{
-		// 頂点カラー描画: 開いている textured run があれば閉じる（ADR 0009）
+		// 頂点カラー描画: 開いている textured run があれば閉じる
 		if (m_curTexHandle != 0) flushCurrentBatch();
 		const auto t = currentTransform();
 		if (t.isIdentity())
@@ -1566,7 +1566,7 @@ public:
 	             const sgc::Colorf& color = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}) noexcept;
 
 	/// @brief 縦グラデーションの空 (skybox) を設定する (天頂色 → 地平色)。drawMesh より前に呼ぶ。
-	/// @details 呼ばなければ空は出ない (clear 色のまま)。cubemap の再構築は色が変わった時だけ —
+	/// @details 呼ばなければ空は出ない (clear 色のまま)。cubemap の再構築は色が変わった時だけ。
 	///          毎フレーム同じ色で呼んでもコストはかからない。
 	void skybox3D(const sgc::Colorf& zenith, const sgc::Colorf& nadir) noexcept;
 
@@ -1625,14 +1625,14 @@ public:
 	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg = 0.0f,
 	               float scale = 1.0f);
 
-	/// @brief アニメ付き 3D モデル (.glb/.gltf) をクリップ名と時間 (秒) で描く (ADR 0028)。
+	/// @brief アニメ付き 3D モデル (.glb/.gltf) をクリップ名と時間 (秒) で描く。
 	/// @details 時間は自分のゲーム状態で足す: `t += dt` して毎フレーム渡す (ループ再生)。
 	///          クリップ名は Blender の Action 名。空文字/不在はポーズ無し (レストポーズ)。
-	///          こちらは動くもの用 — 動かない大規模背景は 4 引数の drawModel を使う。
+	///          こちらは動くもの用。動かない大規模背景は 4 引数の drawModel を使う。
 	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
 	               float scale, const char* clipName, float clipTimeSec);
 
-	/// @brief 2 つのクリップを混ぜてアニメ付き 3D モデルを描く (ADR 0028)。
+	/// @brief 2 つのクリップを混ぜてアニメ付き 3D モデルを描く。
 	/// @details mix = 0 で clipA だけ、1 で clipB だけ。歩き↔待機の切り替わりを
 	///          滑らかにするのに使う (crossfade)。
 	void drawModelBlend(const char* path, const sgc::Vec3f& position, float rotYDeg,

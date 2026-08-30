@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file SchemaValidator.hpp
-/// @brief JSONスキーマ検証 — AI生成コンテンツの検証用
+/// @brief JSONスキーマ検証。AI生成コンテンツの検証用
 ///
 /// スキーマ定義に基づいてJSON文字列を検証し、
 /// テンプレートJSONの自動生成も行う。

@@ -12,7 +12,7 @@
 ///          Dx12UploadRing は **frame in flight 数 (= FRAME_COUNT) の永続的な
 ///          UPLOAD ヒープ** を持ち、各フレーム内では offset 加算のみで
 ///          サブアロケーションを切り出す。フェンス完了後の `beginFrame()` で
-///          offset をリセットするだけ — GPU は前フレーム範囲の読み込みを終えている
+///          offset をリセットするだけ。GPU は前フレーム範囲の読み込みを終えている
 ///          ことが保証されているため、上書き OK。
 ///
 ///          API:

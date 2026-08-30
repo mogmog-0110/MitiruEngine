@@ -4,8 +4,8 @@
 /// @brief Renderer3D_DX12 のスキンアニメ付き glTF モデル描画実装 (部分ヘッダ、.inl)。
 /// @details Renderer3D_DX12 のクラス内部から include される (DX12Splat.hpp と同じ流儀)。
 ///          責務: glTF/glb の forward 用 registry (path → model、負キャッシュ) /
-///          クリップサンプル → CPU スキニング → 既存 drawMesh への合流 (ADR 0028)。
-///          clod (drawModel) とは別 registry — clod=静的世界、こちら=動的キャラ。
+///          クリップサンプル → CPU スキニング → 既存 drawMesh への合流。
+///          clod (drawModel) とは別 registry。clod=静的世界、こちら=動的キャラ。
 ///          ポーズは (clip, time) の純関数で、時間はゲーム側 (GameMemory) が所有する。
 ///          将来 compute スキニングへ差し替える時は skinVertices+setVertices の区間を
 ///          palette アップロード + dispatch に置き換えるだけでよい (境界 API 不変)。
@@ -245,7 +245,7 @@ void drawSkinnedModelWorldImpl(const char* path, const sgc::Mat4f& instanceWorld
 			                "スキン描画がフレーム上限に達した — 以降は skip");
 			continue;
 		}
-		// スキン prim はノード変換を無視する (glTF 仕様) — 配置は instanceWorld のみ
+		// スキン prim はノード変換を無視する (glTF 仕様)。配置は instanceWorld のみ
 		const auto& skin = model.skins[static_cast<std::size_t>(prim.skinIndex)];
 		const auto jointWorld = gatherJointWorld(world, skin);
 		auto& pool = m_skinnedPool[m_skinnedPoolCursor];

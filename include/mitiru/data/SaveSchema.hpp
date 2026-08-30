@@ -67,7 +67,7 @@ public:
         : m_currentVersion(currentVersion)
     {}
 
-    // default の copy/move は意図的 — MigrationChain は copyable。
+    // default の copy/move は意図的。MigrationChain は copyable。
     SaveSchema(const SaveSchema&)            = default;
     SaveSchema& operator=(const SaveSchema&) = default;
     SaveSchema(SaveSchema&&)                 = default;

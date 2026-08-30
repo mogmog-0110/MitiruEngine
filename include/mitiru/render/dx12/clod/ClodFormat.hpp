@@ -3,7 +3,6 @@
 /// @file ClodFormat.hpp
 /// @brief .clod v5 フォーマット定義と GPU 側 POD (clod 仮想ジオメトリパス)
 /// @details オフライン変換ツールは clod_build (PLY / OBJ+MTL → .clod)。
-///          設計: ADR 0027。
 
 #include <cstdint>
 

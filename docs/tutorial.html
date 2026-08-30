@@ -1,648 +1,695 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：はじめてのゲーム</title>
-  <meta name="description" content="C++ で横スクロールアクション「赤べこの旅」を作るチュートリアル。移動、跳躍、当たり判定、スプライト、カメラ、ホットリロード、観察ウィンドウ、巻き戻し、HTML/CSS の HUD を順に説明します。">
+  <meta name="description" content="C++ だけで小さな横スクロールアクション「赤べこの旅」を作る入門ノート。歩く・跳ぶの最小から始め、ステージ・絵・カメラを足してゲームにし、走らせたまま数字を直すホットリロード、状態を覗く観察ウィンドウ、過去へ戻る巻き戻し、HTML/CSS の HUD へと進みます。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：はじめてのゲーム">
-  <meta property="og:description" content="C++ で横スクロールアクションを制作しながら、MitiruEngine の主要機能を説明します。">
+  <meta property="og:description" content="C++ だけで小さな横スクロールアクションを作る入門ノート。動く最小から、絵・カメラ・ホットリロード・観察ウィンドウ・巻き戻し・HTML HUD へ。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/tutorial.html">
   <link rel="stylesheet" href="site.css">
   <link rel="icon" href="favicon.svg">
+  <style>
+    /* このページだけで使う、全コードの折りたたみ枠 */
+    .codefold{ margin:1.4rem 0; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+    .codefold > summary{ cursor:pointer; padding:.85rem 1.2rem; font-weight:600;
+      background:var(--panel); list-style:none; user-select:none; }
+    .codefold > summary::-webkit-details-marker{ display:none; }
+    .codefold > summary::before{ content:"▸ "; color:var(--accent-deep); }
+    .codefold[open] > summary::before{ content:"▾ "; }
+    .codefold pre{ border-radius:0; margin:0; }
+    .step-head{ margin-top:3rem; padding-top:1.4rem; border-top:2px solid var(--line); }
+    .filename{ font: 600 .82rem/1 var(--mono, monospace); color:var(--accent-deep);
+      background:var(--panel); border:1px solid var(--line); border-bottom:none;
+      display:inline-block; padding:.4rem .75rem; border-radius:6px 6px 0 0; margin-bottom:-1px; }
+    .filename + pre{ border-top-left-radius:0; }
+    /* 「詳しくはサンプル」誘導カード */
+    .samplelink{ display:flex; gap:16px; align-items:center; margin:1.5rem 0; padding:12px 16px;
+      border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+      text-decoration:none; color:inherit; transition:border-color .15s ease, box-shadow .15s ease; }
+    .samplelink:hover{ border-color:var(--accent); box-shadow:0 3px 14px rgba(0,0,0,.06); }
+    .samplelink img{ width:132px; height:auto; border-radius:6px; flex-shrink:0; border:1px solid var(--line); }
+    .samplelink .t{ font-weight:600; line-height:1.4; }
+    .samplelink .t small{ display:block; font-weight:400; color:var(--muted); margin-top:3px; }
+    .samplelink .arrow{ margin-left:auto; color:var(--accent-deep); font-weight:700; font-size:1.2rem; padding-left:8px; }
+    @media (max-width:560px){ .samplelink img{ width:96px; } }
+  </style>
 </head>
 <body>
 <a class="skip-link" href="#main">本文へスキップ</a>
 
 <div class="page">
-  <header class="topbar">
-    <div class="bar">
-      <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
-      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.31</span>
-    </div>
-  </header>
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
 
-  <div class="shell">
-    <aside class="sidebar">
-      <nav>
-        <div class="grp">はじめる</div>
-        <a href="index.html">トップ</a>
-        <a href="install.html">インストール</a>
-        <a class="active" href="tutorial.html">はじめてのゲーム</a>
-        <a href="samples.html">サンプル</a>
-
-        <div class="grp">リファレンス</div>
-        <a href="features.html">機能</a>
-        <a href="ui.html">画面 (HTML / CSS)</a>
-        <a href="3d.html">3D</a>
-        <a href="ai.html">AI 連携</a>
-        <a href="cli.html">CLI</a>
-
-        <div class="grp">配布・API</div>
-        <a href="distribute.html">配布</a>
-        <a href="api/">API リファレンス</a>
-      </nav>
-    </aside>
-
+<div class="shell">
+    <aside class="sidebar"><nav>
+      <div class="grp">はじめる</div>
+      <a href="index.html">トップ</a>
+      <a href="install.html">インストール</a>
+      <a class="active" href="tutorial.html">はじめてのゲーム</a>
+      <a href="samples.html">サンプル</a>
+      <div class="grp">リファレンス</div>
+      <a href="features.html">機能</a>
+      <a href="ui.html">画面 (HTML / CSS)</a>
+      <a href="3d.html">3D</a>
+      <a href="ai.html">AI 連携</a>
+      <a href="cli.html">CLI</a>
+      <div class="grp">配布・API</div>
+      <a href="distribute.html">配布</a>
+      <a href="api/">API リファレンス</a>
+    </nav></aside>
     <div class="content">
-      <main id="main">
-        <section class="page-head">
-          <div class="wrap">
-            <p class="kicker">TUTORIAL</p>
-            <h1>赤べこの横スクロールアクションを作る</h1>
-            <p class="lede">C++ で、歩く、跳ぶ、敵を踏む、古銭を拾う、ゴールへ進む、という小さなゲームを組み立てます。前半では移動、当たり判定、ステージ、画像、カメラを実装します。後半では、ホットリロード、観察ウィンドウ、巻き戻し、HTML/CSS の HUD を加えます。</p>
-          </div>
-        </section>
-
+    <main id="main">
+      <section class="page-head">
         <div class="wrap">
-          <article class="prose">
-            <h2 id="goal">完成するゲーム</h2>
+          <p class="kicker">TUTORIAL</p>
+          <h1>はじめてのゲーム</h1>
+          <p class="lede">C++ だけで、小さな横スクロールアクションを作ります。赤べこを矢印キーで歩かせ、Space で跳び、石畳の足場を渡り、起き上がり小法師を上から踏み、古銭を拾って、ゴールの幟を目指す — それだけのゲームです。実際に組み立てる順に進めます。まず歩いて跳ぶところから作り、ステージ・絵・カメラを足してゲームにし、そのあとで、走らせたまま数字を直すホットリロード・状態を覗く窓・過去へ戻る巻き戻し・HTML/CSS の HUD へと進みます。エンジンの機能は、それが要る場面で順に出てきます。</p>
+        </div>
+      </section>
 
-            <p>矢印キーで赤べこを動かし、Space で跳びます。起き上がり小法師は上から踏むと倒せますが、横から触れると押し戻されます。古銭を拾うとカウンタが増え、右端の幟に触れるとクリアです。</p>
+      <div class="wrap">
+        <div class="prose">
 
-            <p>赤べこ、小法師、幟、石畳、古銭はスプライトで表示します。空は <code>drawGradientRect</code> で描き、古銭カウンタとクリア表示には HTML/CSS を使います。</p>
+          <!-- ── 作るもの ─────────────────────────── -->
+          <h2 id="goal">作るもの</h2>
+          <p>完成形がこれです。赤べこ・小法師・幟・石畳・古銭はすべて画像（スプライト）、空は <code>draw</code> で描くグラデーションです。矢印キーで歩き、Space で跳びます。小法師は上から踏むと倒せて、横から当たると少し戻されます。古銭を拾うと左上のカウンタが増え、右端の幟に触れるとクリアです。左上のカウンタと「クリア！」は、あとで HTML/CSS の HUD に置き換えます。</p>
+          <figure>
+            <img src="assets/beko_gameplay.webp" alt="赤べこの横スクロールアクションのプレイの様子。赤べこが石畳の上を歩き、古銭を拾い、起き上がり小法師の間を跳んでいく" loading="lazy" decoding="async" width="680" height="382">
+            <figcaption>これから作るゲーム（実機の記録）。赤べこ・小法師・幟・石畳・古銭はスプライト、空は <code>drawGradientRect</code>、左上のカウンタは HTML/CSS の HUD です。</figcaption>
+          </figure>
+          <div class="note">このページのゲームは <code>examples/beko_run/</code> にそのまま入っています。ビルドして <code>mitiru_host beko_run/beko_run.dll</code> で遊べます。インストールがまだなら <a href="install.html">インストール</a>を先にどうぞ。全文は<a href="#full">最後</a>に置いてあります。</div>
 
-            <figure class="figbox">
-              <img class="wide" src="assets/beko_gameplay.webp" alt="赤べこの横スクロールアクションのプレイ記録" loading="lazy" decoding="async" width="680" height="382">
-              <figcaption class="figcap">完成時のプレイ記録。</figcaption>
-            </figure>
+          <!-- ── 動きの骨格 ───────────────────────── -->
+          <h2 id="loop" class="step-head">ゲームの動き方</h2>
+          <p>どんなゲームも、エンジンは毎フレーム同じことをくり返します。入力を読み、<code>update</code> で状態を進め、<code>draw</code> で状態を描く。これを 1 秒に約 60 回くり返します（その回数が <strong>FPS</strong>）。</p>
+          <figure>
+            <svg class="dgm" viewBox="0 0 540 210" width="100%" style="max-width:540px" role="img" aria-label="フレームループ。入力→update（状態を進める）→draw（状態を描く）→画面 を 1 秒に約 60 回くり返す＝60 FPS">
+              <defs><marker id="a3" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="boxy" x="20" y="40" width="92" height="46" rx="3"/>
+              <text class="lbl" x="66" y="60" text-anchor="middle">入力</text>
+              <text class="sub" x="66" y="76" text-anchor="middle">キー・パッド</text>
+              <rect class="box" x="160" y="40" width="120" height="46" rx="3"/>
+              <text class="lbl" x="220" y="60" text-anchor="middle">update</text>
+              <text class="sub" x="220" y="76" text-anchor="middle">状態を進める</text>
+              <rect class="box" x="328" y="40" width="120" height="46" rx="3"/>
+              <text class="lbl" x="388" y="60" text-anchor="middle">draw</text>
+              <text class="sub" x="388" y="76" text-anchor="middle">状態を描く</text>
+              <rect class="boxy" x="480" y="40" width="48" height="46" rx="3"/>
+              <text class="lbl" x="504" y="60" text-anchor="middle">画面</text>
+              <line class="arr" x1="112" y1="63" x2="158" y2="63" marker-end="url(#a3)"/>
+              <line class="arr" x1="280" y1="63" x2="326" y2="63" marker-end="url(#a3)"/>
+              <line class="arr" x1="448" y1="63" x2="478" y2="63" marker-end="url(#a3)"/>
+              <path class="arr" d="M504,86 L504,150 L66,150 L66,88" marker-end="url(#a3)"/>
+              <text class="lbl" x="285" y="172" text-anchor="middle">1 秒に約 60 回くり返す　＝　60 FPS</text>
+            </svg>
+            <figcaption>エンジンは毎フレーム、入力を読み <code>update</code> で状態を進め、<code>draw</code> で描きます。<code>dt</code> は 1 フレームの長さ（秒）で、<code>update(Input in, float dt)</code> の形で渡ってきます。</figcaption>
+          </figure>
+          <p>ゲームの「状態」は 1 つの <code>struct</code> にまとめます。赤べこのこのゲームなら、赤べこの位置・速度・向き、敵、カメラ、古銭の数などです。数値と配列だけで持ち、ポインタや <code>std::vector</code> は持ちません（この形が、あとで出てくる巻き戻しや観察ウィンドウを支えます。理由は<a href="#why">仕組み</a>で説明します）。</p>
 
-            <div class="note">
-              完成したコードは <code>examples/beko_run/</code> にあります。ビルド後、<code>mitiru_host beko_run/beko_run.dll</code> で実行できます。準備が済んでいない場合は、先に<a href="install.html">インストール</a>を行ってください。構成は<a href="#full">コード構成</a>でも確認できます。
-            </div>
-
-            <h2 id="loop">毎フレームの処理</h2>
-
-            <p>エンジンは入力を読み、<code>update</code> で状態を更新し、<code>draw</code> で画面を描きます。この処理を1秒に約60回繰り返します。1秒あたりの描画回数が FPS です。</p>
-
-            <figure class="figbox">
-              <svg class="dgm" viewBox="0 0 540 210" width="100%" role="img" aria-label="入力、update、draw、画面表示を毎フレーム繰り返す処理">
-                <defs>
-                  <marker id="frame-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"></path>
-                  </marker>
-                </defs>
-                <rect class="boxy" x="20" y="40" width="92" height="46" rx="3"></rect>
-                <text class="lbl" x="66" y="60" text-anchor="middle">入力</text>
-                <text class="sub" x="66" y="76" text-anchor="middle">キー・パッド</text>
-
-                <rect class="box" x="160" y="40" width="120" height="46" rx="3"></rect>
-                <text class="lbl" x="220" y="60" text-anchor="middle">update</text>
-                <text class="sub" x="220" y="76" text-anchor="middle">状態を更新</text>
-
-                <rect class="box" x="328" y="40" width="120" height="46" rx="3"></rect>
-                <text class="lbl" x="388" y="60" text-anchor="middle">draw</text>
-                <text class="sub" x="388" y="76" text-anchor="middle">状態を描画</text>
-
-                <rect class="boxy" x="480" y="40" width="48" height="46" rx="3"></rect>
-                <text class="lbl" x="504" y="60" text-anchor="middle">画面</text>
-
-                <line class="arr" x1="112" y1="63" x2="158" y2="63" marker-end="url(#frame-arrow)"></line>
-                <line class="arr" x1="280" y1="63" x2="326" y2="63" marker-end="url(#frame-arrow)"></line>
-                <line class="arr" x1="448" y1="63" x2="478" y2="63" marker-end="url(#frame-arrow)"></line>
-                <path class="arr" d="M504,86 L504,150 L66,150 L66,88" marker-end="url(#frame-arrow)"></path>
-                <text class="lbl" x="285" y="172" text-anchor="middle">1秒に約60回 ＝ 60 FPS</text>
-              </svg>
-              <figcaption class="figcap"><code>dt</code> は1フレームの長さを秒で表し、<code>update(Input in, float dt)</code> に渡されます。</figcaption>
-            </figure>
-
-            <p>赤べこの位置と速度、向き、敵、カメラ、古銭の取得状況などは、1個の <code>struct</code> にまとめます。状態には数値と固定長配列を使い、ポインタや <code>std::vector</code> は入れません。この形式は、後述するホットリロード、観察、巻き戻しに使われます。</p>
-
-            <h2 id="move">歩く・跳ぶ</h2>
-
-            <h3>入力から横方向の速度を作る</h3>
-
-            <p><code>in.move()</code> は、矢印キー、WASD、ゲームパッドの左スティックを1組の移動入力にまとめます。<code>.x</code> と <code>.y</code> の値は、それぞれ −1 から 1 です。</p>
-
-<pre><code>const float mx = in.move().x;
-vx = mx * SPEED;  // SPEED は 330
-
-if (mx &lt; -0.1f) {
-    faceLeft = true;
-} else if (mx &gt; 0.1f) {
-    faceLeft = false;
-}
-
-px += vx * dt;</code></pre>
-
-            <h3>上向きの速度と重力を加える</h3>
-
-            <p>地面にいる間に Space を押した瞬間だけ、上向きの速度を設定します。画面座標は左上が原点で、y は下へ増えるため、上向きの速度は負の値です。</p>
-
-<pre><code>if (onGround &amp;&amp; in.pressed(Key::Space)) {
-    vy = -JUMP;  // JUMP は 780
-}
-
-vy += GRAV * dt; // GRAV は 2000
-py += vy * dt;</code></pre>
-
-            <figure class="figbox">
-              <svg class="dgm" viewBox="0 0 480 240" width="100%" role="img" aria-label="左上を原点とし、xは右、yは下へ増える画面座標">
-                <defs>
-                  <marker id="axis-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"></path>
-                  </marker>
-                </defs>
-                <rect class="box" x="60" y="44" width="370" height="170" rx="3"></rect>
-                <line class="arr" x1="60" y1="30" x2="190" y2="30" marker-end="url(#axis-arrow)"></line>
-                <text class="mono" x="196" y="34">x → 右</text>
-                <line class="arr" x1="46" y1="44" x2="46" y2="150" marker-end="url(#axis-arrow)"></line>
-                <text class="mono" x="20" y="110">y ↓</text>
-                <circle cx="60" cy="44" r="3.5" fill="#c4ab7c"></circle>
-                <text class="lbl" x="66" y="40">(0, 0)</text>
-                <text class="sub" x="332" y="208">(1280, 720)</text>
-                <circle cx="230" cy="185" r="6" fill="#c33"></circle>
-                <text class="sub" x="244" y="189">地面の赤べこ</text>
-                <line class="arr" x1="230" y1="178" x2="230" y2="96" marker-end="url(#axis-arrow)"></line>
-                <text class="mono" x="238" y="140">vy = −780</text>
-                <text class="mono" x="238" y="156">上向きは負</text>
-              </svg>
-              <figcaption class="figcap">画面左上が (0, 0)、右下が (1280, 720) です。</figcaption>
-            </figure>
-
-            <h3>足場との衝突を縦、横の順に解く</h3>
-
-            <p>赤べこと足場を矩形として扱い、重なった場合は、重なった距離だけ赤べこを戻します。縦方向を先に処理すると、上から降りたときに足場の側面との衝突として扱われる問題を避けられます。</p>
-
-<pre><code>// 縦方向
-py += vy * dt;
-onGround = false;
-
-for (const Plat&amp; p : kPlats) {
-    if (hitBox(p.x, p.y, p.w, p.h)) {
-        if (vy &gt; 0.0f) {
-            py = p.y - PH * 0.5f;
-            vy = 0.0f;
-            onGround = true;
-        } else if (vy &lt; 0.0f) {
-            py = p.y + p.h + PH * 0.5f;
-            vy = 0.0f;
-        }
+          <!-- ── 歩く・跳ぶ ───────────────────────── -->
+          <h2 id="move" class="step-head">赤べこを歩かせる・跳ばせる</h2>
+          <p>まず横移動です。動きの肝は <code>in.move()</code> で、移動入力を 1 つにまとめて返します（<code>.x</code> と <code>.y</code> が各 −1〜1）。矢印キー・WASD・パッドの左スティックが、すべてこの 1 つに合流します。だから速度を掛けて足すだけで、どの入力でも左右移動になります。</p>
+<pre><span class="k">const float</span> mx = in.move().x;
+vx = mx * SPEED;                          <span class="c">// 横の速さ（SPEED は 330）</span>
+<span class="k">if</span> (mx &lt; -0.1f)      { faceLeft = <span class="k">true</span>; }   <span class="c">// 進む向きを覚える（絵の反転に使う）</span>
+<span class="k">else if</span> (mx &gt; 0.1f) { faceLeft = <span class="k">false</span>; }
+px += vx * dt;                            <span class="c">// dt を掛けて位置を進める</span></pre>
+          <p>次に跳躍です。地面にいるとき Space を押した瞬間だけ、上向きの速度を与えます。あとは毎フレーム重力で下向きに加速し、位置を進めます。座標は左上が原点で、y は<strong>下</strong>に増えるので、上向きは「マイナス」です。</p>
+<pre><span class="k">if</span> (onGround &amp;&amp; in.pressed(Key::Space)) { vy = -JUMP; }  <span class="c">// 押した瞬間だけ跳ぶ（JUMP は 780）</span>
+vy += GRAV * dt;                          <span class="c">// 重力で下へ加速（GRAV は 2000）</span>
+py += vy * dt;</pre>
+          <figure>
+            <svg class="dgm" viewBox="0 0 480 240" width="100%" style="max-width:470px" role="img" aria-label="画面の2D座標。左上が(0,0)、右下が(1280,720)。xは右、yは下に増える。上向き（ジャンプ）はyがマイナス方向">
+              <defs><marker id="a1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="box" x="60" y="44" width="370" height="170" rx="3"/>
+              <line class="arr" x1="60" y1="30" x2="190" y2="30" marker-end="url(#a1)"/>
+              <text class="mono" x="196" y="34">x →（右）</text>
+              <line class="arr" x1="46" y1="44" x2="46" y2="150" marker-end="url(#a1)"/>
+              <text class="mono" x="20" y="110">y ↓</text>
+              <circle cx="60" cy="44" r="3.5" fill="#c4ab7c"/>
+              <text class="lbl" x="66" y="40">(0, 0)</text>
+              <text class="sub" x="332" y="208">(1280, 720)</text>
+              <circle cx="230" cy="185" r="6" fill="#c33"/>
+              <text class="sub" x="244" y="189">地面の赤べこ</text>
+              <line class="arr" x1="230" y1="178" x2="230" y2="96" marker-end="url(#a1)"/>
+              <text class="mono" x="238" y="140">vy = −780</text>
+              <text class="mono" x="238" y="156">（上＝マイナス）</text>
+            </svg>
+            <figcaption>画面の座標。左上が (0, 0)、右下が (1280, 720)。x は右、y は<strong>下</strong>に増えます（数学とは上下が逆）。だから「上へ跳ぶ」は速度をマイナスにします。</figcaption>
+          </figure>
+          <p>足場との当たりは、四角どうしの重なりで調べます。小さな道具 <code>box(...)</code>（2 つの矩形が重なれば <code>true</code>）を用意しておき、赤べこと各足場が重なったら、めり込んだぶんだけ押し戻します。<strong>縦（着地）を先に、横（側面）をあとに</strong>解くのがコツです。逆にすると、薄い足場に上から降りるとき、着地する前に「側面に当たった」と誤解して横へ弾かれ、乗れません。</p>
+<pre><span class="c">// 縦：重力で落ちたあと、足場の上に乗る（vy&gt;0＝落下中）か、頭をぶつける</span>
+py += vy * dt; onGround = <span class="k">false</span>;
+<span class="k">for</span> (<span class="k">const</span> Plat&amp; p : kPlats)
+    <span class="k">if</span> (hitBox(p.x, p.y, p.w, p.h)) {
+        <span class="k">if</span> (vy &gt; 0.0f) { py = p.y - PH*0.5f; vy = 0.0f; onGround = <span class="k">true</span>; }  <span class="c">// 着地</span>
     }
-}
-
-// 横方向
+<span class="c">// 横：進んだあと、ブロックの側面で止める（縦を先に解いたので誤爆しない）</span>
 px += vx * dt;
-
-for (const Plat&amp; p : kPlats) {
-    if (hitBox(p.x, p.y, p.w, p.h)) {
-        if (vx &gt; 0.0f) {
-            px = p.x - PW * 0.5f;
-        } else if (vx &lt; 0.0f) {
-            px = p.x + p.w + PW * 0.5f;
-        }
-    }
-}</code></pre>
-
-            <a class="card" href="samples.html#input">
-              <img src="assets/examples/input.png" alt="" loading="lazy" width="1280" height="720">
-              <span class="gc-body">
-                <span class="gc-name">input（入力）</span>
-                <span class="gc-desc">キー、マウス、ゲームパッドの入力を確認できるサンプルです。</span>
-              </span>
-            </a>
-
-            <h2 id="level">配置と処理を分ける</h2>
-
-            <p>足場、敵、古銭の位置は数値の配列として <code>level.hpp</code> に置きます。配置を変えるときは数値を編集し、<code>update</code> は配列を順番に処理します。</p>
-
-<pre><code>struct Plat {
-    float x, y, w, h;
-};
-
-constexpr Plat kPlats[] = {
-    {0.0f, GROUND_Y, WORLD_W, 200.0f},
-    {620.0f, 430.0f, 180.0f, 24.0f},
-    {980.0f, 432.0f, 160.0f, 24.0f},
-    {1170.0f, 356.0f, 160.0f, 24.0f},
-    {1360.0f, 288.0f, 160.0f, 24.0f},
-    {1600.0f, 384.0f, 170.0f, 24.0f},
-    {2180.0f, 428.0f, 260.0f, 24.0f},
-    {2980.0f, 424.0f, 200.0f, 24.0f},
-};</code></pre>
-
-            <p>敵は初期位置から左右へ <code>FOE_RANGE</code> の範囲を往復します。赤べこが落下中に上から触れると敵を倒し、横から触れると赤べこを戻します。古銭は取得済みかどうかを固定長の <code>bool</code> 配列で記録します。</p>
-
-<pre><code>if (hitBox(fx, fy, fw, fh)) {
-    if (vy &gt; 0.0f &amp;&amp; (py + PH * 0.5f) &lt; f.y - kh * 0.35f) {
-        f.alive = false;
-        vy = -JUMP * 0.6f;
-    } else if (hurt &lt;= 0.0f) {
-        hurt = 0.8f;
-        px += faceLeft ? 96.0f : -96.0f;
-        vy = -260.0f;
-    }
-}
-
-for (int i = 0; i &lt; NCOIN; ++i) {
-    if (!coinGot[i] &amp;&amp; hitBox(
-        kCoins[i].x - COIN_DISP * 0.5f,
-        kCoins[i].y - COIN_DISP * 0.5f,
-        COIN_DISP,
-        COIN_DISP)) {
-        coinGot[i] = true;
-        ++coins;
-    }
-}</code></pre>
-
-            <h2 id="art">スプライトを描く</h2>
-
-            <p>PNG はゲーム開始時に読み込み、<code>drawSprite</code> で描きます。赤べこには4枚の歩行画像があり、地面を移動している間だけ、<code>Timer</code> を使って0.12秒ごとに切り替えます。進行方向は横反転で表し、被弾中は透明度を変えて点滅させます。</p>
-
-<pre><code>if (onGround &amp;&amp; std::fabs(vx) &gt; 10.0f) {
-    if (walk.every(0.12f, dt)) {
-        step = (step + 1) % 4;
-    }
-}
-
-const render::Texture&amp; tex = kBeko[step];
-s.drawSprite(
-    tex,
-    dstRect,
-    whole(tex),
-    color::White.withAlpha(a),
-    faceLeft
-);</code></pre>
-
-            <p>画像は可変長データなので、ゲーム状態の <code>struct</code> には入れません。読み込んだ画像は状態の外に置き、状態には数値と固定長配列だけを残します。</p>
-
-            <a class="card" href="samples.html#sprites">
-              <img src="assets/examples/sprites.png" alt="" loading="lazy" width="1280" height="720">
-              <span class="gc-body">
-                <span class="gc-name">sprites</span>
-                <span class="gc-desc">画像の描画、反転、拡大縮小を確認できるサンプルです。</span>
-              </span>
-            </a>
-
-            <h2 id="camera">横スクロール</h2>
-
-            <p>ゲーム内の横幅は3600で、画面幅は1280です。<code>applyCamera</code> に注視点を渡し、赤べこを追う表示にします。描画後は <code>endCamera</code> で画面固定の座標へ戻します。</p>
-
-<pre><code>s.drawGradientRect(
-    Rect{0.0f, 0.0f, SCR_W, SCR_H},
-    hex(0xBFE0F5),
-    hex(0xF3F6FA)
-);
-
-s.applyCamera(camX, SCR_H * 0.5f);
-
-// 足場、古銭、敵、赤べこを描く
-
-s.endCamera();</code></pre>
-
-            <p><code>camX</code> は赤べこの x 座標に追従させます。左右の端では、画面がゲーム内領域の外へ出ないよう値を制限します。</p>
-
-<pre><code>camX = clampf(
-    px,
-    SCR_W * 0.5f,
-    WORLD_W - SCR_W * 0.5f
-);</code></pre>
-
-            <a class="card" href="samples.html#camera">
-              <img src="assets/examples/camera.png" alt="" loading="lazy" width="1280" height="720">
-              <span class="gc-body">
-                <span class="gc-name">camera（追従カメラ）</span>
-                <span class="gc-desc">画面より広い範囲を追従表示するサンプルです。</span>
-              </span>
-            </a>
-
-            <h2 id="files">ファイル構成</h2>
-
-            <figure class="figbox">
-              <svg class="dgm" viewBox="0 0 560 250" width="100%" role="img" aria-label="level.hpp と sprites.hpp を game.hpp と game.cpp が使い、beko_run_dll.cpp が登録する構成">
-                <defs>
-                  <marker id="file-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"></path>
-                  </marker>
-                </defs>
-
-                <rect class="boxy" x="20" y="30" width="150" height="46" rx="3"></rect>
-                <text class="lbl" x="95" y="50" text-anchor="middle">level.hpp</text>
-                <text class="sub" x="95" y="66" text-anchor="middle">寸法と配置</text>
-
-                <rect class="boxy" x="20" y="150" width="150" height="46" rx="3"></rect>
-                <text class="lbl" x="95" y="170" text-anchor="middle">sprites.hpp</text>
-                <text class="sub" x="95" y="186" text-anchor="middle">画像と石畳</text>
-
-                <rect class="box" x="230" y="90" width="150" height="46" rx="3"></rect>
-                <text class="lbl" x="305" y="110" text-anchor="middle">game.hpp / .cpp</text>
-                <text class="sub" x="305" y="126" text-anchor="middle">状態・更新・描画</text>
-
-                <rect class="boxy" x="430" y="90" width="110" height="46" rx="3"></rect>
-                <text class="lbl" x="485" y="110" text-anchor="middle">…_dll.cpp</text>
-                <text class="sub" x="485" y="126" text-anchor="middle">登録</text>
-
-                <line class="arr" x1="170" y1="53" x2="228" y2="103" marker-end="url(#file-arrow)"></line>
-                <line class="arr" x1="170" y1="173" x2="228" y2="123" marker-end="url(#file-arrow)"></line>
-                <line class="arr" x1="380" y1="113" x2="428" y2="113" marker-end="url(#file-arrow)"></line>
-              </svg>
-              <figcaption class="figcap">配置、画像、ゲーム処理、DLL 登録を役割ごとに分けています。</figcaption>
-            </figure>
-
-<pre><code>#include "game.hpp"
-
-MITIRU_REFLECT(
-    BekoRun,
-    px, py, vx, vy,
-    onGround, coins, cleared
-);
-
-MITIRU_REWIND_BUFFER(600);
-MITIRU_GAME(BekoRun);</code></pre>
-
-            <p><code>MITIRU_GAME(BekoRun)</code> が <code>BekoRun</code> をゲーム本体として登録します。同じファイルで、観察対象と巻き戻し用の記録数も申告します。</p>
-
-            <h2 id="hotreload">ホットリロードで調整する</h2>
-
-            <p><code>mitiru watch</code> または <code>--watch</code> で実行すると、ソースを保存した時点で新しいコードが読み込まれます。位置や古銭の取得数など、実行中の状態は引き継がれます。</p>
-
-            <figure class="figbox">
-              <img class="wide" src="assets/beko_hotreload.webp" alt="コードを保存して実行中の表示を更新する記録" loading="lazy" decoding="async" width="1000" height="330">
-              <figcaption class="figcap">実行を続けたまま、描画に使う定数を変更しています。</figcaption>
-            </figure>
-
-            <p>ビルドに失敗した場合はエラーが画面に表示され、それまでのコードで実行が続きます。修正して保存すると、新しいコードが読み込まれます。HTML と CSS の変更も保存時に反映され、こちらは再ビルドを必要としません。</p>
-
-            <h2 id="inspect">観察ウィンドウで状態を確認する</h2>
-
-            <p><code>MITIRU_REFLECT</code> にフィールドを列挙し、<code>--inspect</code> を付けて起動すると、その値を別ウィンドウで確認できます。</p>
-
-<pre><code>MITIRU_REFLECT(
-    BekoRun,
-    px, py, vx, vy,
-    onGround, coins, cleared
-);</code></pre>
-
-            <figure class="figbox">
-              <img class="wide" src="assets/beko_inspect.webp" alt="ゲームと観察ウィンドウを並べた実行記録" loading="lazy" decoding="async" width="860" height="572">
-              <figcaption class="figcap"><code>px</code>、<code>py</code>、<code>vx</code>、<code>vy</code>、<code>onGround</code>、<code>coins</code>、<code>cleared</code> の変化を確認できます。</figcaption>
-            </figure>
-
-            <p>観察用のウィンドウには、入力値、巻き戻し、FPS、音量メーターなどもあります。用途に応じて必要なウィンドウを開きます。</p>
-
-            <a class="card" href="samples.html#observe">
-              <img src="assets/examples/observe.png" alt="" loading="lazy" width="1666" height="720">
-              <span class="gc-body">
-                <span class="gc-name">observe（観察）</span>
-                <span class="gc-desc">ゲーム状態を観察ウィンドウへ表示するサンプルです。</span>
-              </span>
-            </a>
-
-            <h2 id="rewind">過去の状態へ戻す</h2>
-
-            <p><code>MITIRU_REWIND_BUFFER</code> で記録するフレーム数を指定します。600フレームは約10秒分です。</p>
-
-<pre><code>MITIRU_REWIND_BUFFER(600);</code></pre>
-
-            <p><code>--inspect rewind</code> で起動するとシークバーが表示され、記録済みの状態へ戻せます。</p>
-
-            <figure class="figbox">
-              <img class="wide" src="assets/beko_rewind.webp" alt="ゲームと巻き戻し用シークバーを並べた実行記録" loading="lazy" decoding="async" width="900" height="309">
-              <figcaption class="figcap">記録したフレームを選び、その時点の状態を復元します。</figcaption>
-            </figure>
-
-            <a class="card" href="samples.html#rewind">
-              <img src="assets/examples/rewind.png" alt="" loading="lazy" width="1296" height="829">
-              <span class="gc-body">
-                <span class="gc-name">rewind（巻き戻し）</span>
-                <span class="gc-desc">積み上げたブロックの状態を過去へ戻すサンプルです。</span>
-              </span>
-            </a>
-
-            <h2 id="why">3つの機能に共通する状態管理</h2>
-
-            <p>ホットリロード、観察、巻き戻しでは、ゲームの状態を1個の <code>struct</code> にまとめてエンジンへ預けます。</p>
-
-            <p>エンジンは、この <code>struct</code> をまとめてコピーします。コピーを新しいコードへ渡す処理がホットリロード、各フレームのコピーを保存して復元する処理が巻き戻し、現在値を表示する処理が観察です。</p>
-
-            <p>このコピーを成立させるため、<code>BekoRun</code> には数値、<code>bool</code>、固定長配列を入れます。ポインタ、<code>std::vector</code>、画像は入れません。</p>
-
-            <figure class="figbox">
-              <svg class="dgm" viewBox="0 0 540 250" width="100%" role="img" aria-label="1個の状態をコピーし、ホットリロード、巻き戻し、観察に使う構成">
-                <defs>
-                  <marker id="state-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"></path>
-                  </marker>
-                </defs>
-
-                <rect class="boxy" x="20" y="80" width="150" height="90" rx="3"></rect>
-                <text class="lbl" x="95" y="112" text-anchor="middle">ゲーム状態</text>
-                <text class="sub" x="95" y="132" text-anchor="middle">1個の struct</text>
-                <text class="sub" x="95" y="150" text-anchor="middle">数値と固定長配列</text>
-
-                <line class="arr" x1="170" y1="125" x2="302" y2="125" marker-end="url(#state-arrow)"></line>
-                <text class="sub" x="236" y="116" text-anchor="middle">まとめてコピー</text>
-
-                <rect class="box" x="312" y="36" width="208" height="48" rx="3"></rect>
-                <text class="lbl" x="326" y="58">ホットリロード</text>
-                <text class="sub" x="326" y="74">新しいコードへ渡す</text>
-
-                <rect class="box" x="312" y="101" width="208" height="48" rx="3"></rect>
-                <text class="lbl" x="326" y="123">巻き戻し</text>
-                <text class="sub" x="326" y="139">以前のコピーを復元</text>
-
-                <rect class="box" x="312" y="166" width="208" height="48" rx="3"></rect>
-                <text class="lbl" x="326" y="188">観察ウィンドウ</text>
-                <text class="sub" x="326" y="204">現在値を表示</text>
-              </svg>
-              <figcaption class="figcap">1個の状態をコピーできる構成が、3つの機能に使われます。</figcaption>
-            </figure>
-
-            <div class="note">
-              数値、色、処理の変更はホットリロードできます。<code>struct</code> のフィールドを追加、削除、並べ替えした場合は、保存済みデータの形式が変わるため再起動します。
-            </div>
-
-            <h2 id="hud">HTML/CSS で HUD を作る</h2>
-
-            <p>古銭カウンタとクリア表示は、<code>assets/scene.html</code> をゲーム画面へ重ねて表示します。ゲームの処理は C++ に残し、表示を HTML/CSS で構成します。</p>
-
-            <p>C++ は <code>hud.set</code> で値を送り、HTML は同じ名前を <code>data-m-text</code> で受け取ります。JavaScript は必要ありません。</p>
-
-<pre><code>void BekoRun::pushHud(Hud hud) const {
-    hud.set("view.coins", coins);
-    hud.set("view.total", NCOIN);
-    hud.set("view.cleared", cleared ? 1 : 0);
-}</code></pre>
-
-<pre><code>&lt;div class="coins"&gt;
-  &lt;img src="sprites/coin.png"&gt;
-  &lt;span data-m-text="view.coins"&gt;0&lt;/span&gt;
-  /
-  &lt;span data-m-text="view.total"&gt;0&lt;/span&gt;
+<span class="k">for</span> (<span class="k">const</span> Plat&amp; p : kPlats)
+    <span class="k">if</span> (hitBox(p.x, p.y, p.w, p.h)) { <span class="c">/* 左右どちらから当たったかで押し戻す */</span> }</pre>
+          <a class="samplelink" href="samples.html#input">
+            <img src="assets/examples/input.png" alt="" loading="lazy" width="1280" height="720">
+            <span class="t">サンプル「input（入力）」<small>キー・マウス・パッドの読み方だけを扱う最小の例を、動くコードと実行画面で。</small></span>
+            <span class="arrow">→</span>
+          </a>
+
+          <!-- ── ステージのデータ ─────────────────── -->
+          <h2 id="level" class="step-head">ステージをデータにする</h2>
+          <p>足場・敵・古銭の「置き場所」は、動きのコードとは分けて、数値の表にします。ロジック（どう動くか）とデータ（どこに何を置くか）を分けておくと、ステージを直すときにロジックを触らずに済みます。このゲームでは <code>level.hpp</code> にまとめました。</p>
+<pre><span class="c">// 足場。先頭は地面、あとは飛び乗れる薄い踏み台（{x, y, 幅, 高さ}）</span>
+<span class="k">struct</span> Plat { <span class="k">float</span> x, y, w, h; };
+<span class="k">constexpr</span> Plat kPlats[] = {
+    {0.0f, GROUND_Y, WORLD_W, 200.0f},                 <span class="c">// 地面</span>
+    {620.0f, 430.0f, 180.0f, 24.0f},                   <span class="c">// 導入の台</span>
+    {980.0f, 432.0f, 160.0f, 24.0f},                   <span class="c">// 階段①</span>
+    {1170.0f, 356.0f, 160.0f, 24.0f},                  <span class="c">// 階段②</span>
+    {1360.0f, 288.0f, 160.0f, 24.0f},                  <span class="c">// 階段③（頂上）</span>
+    <span class="c">// …降りる段・広い台・ゴール前の台…</span>
+};</pre>
+          <p>敵（起き上がり小法師）や古銭も同じく座標の表です。ステージを変えたければ、この数値を書き換えるだけ。<code>update</code> 側は表を順番に見て動かすだけなので、置き場所とルールがきれいに分かれます。この「置き換えて確かめる」作業は、あとで出てくるホットリロードがいちばん活きるところです。</p>
+
+          <!-- ── 絵を出す ─────────────────────────── -->
+          <h2 id="art" class="step-head">絵を出す</h2>
+          <p>画像を描くのは <code>s.drawSprite(画像, 置く矩形, 元の矩形)</code> です。画像はゲームの隣の <code>assets/sprites/</code> に置いた PNG で、起動時に一度だけ読み込みます。赤べこは 4 枚の歩行コマを切り替え、進む向きに合わせて左右反転します。</p>
+<pre><span class="c">// 歩行コマ（地面を動く時だけ 0→1→2→3 と送る）</span>
+<span class="k">if</span> (onGround &amp;&amp; std::fabs(vx) &gt; 10.0f)
+    <span class="k">if</span> (walk.every(0.12f, dt)) { step = (step + 1) % 4; }   <span class="c">// Timer で 0.12 秒ごと</span>
+
+<span class="c">// 描く。最後の faceLeft で左右反転、withAlpha で被弾中の点滅</span>
+<span class="k">const</span> render::Texture&amp; tex = kBeko[step];
+s.drawSprite(tex, dstRect, whole(tex), color::White.withAlpha(a), faceLeft);</pre>
+          <p>画像そのものはエンジン側がまとめて持ちます。ゲームの状態 <code>struct</code> には画像を入れず、読み込んだ画像はファイルの外に一度だけ置いておきます。こうしておくと状態が「数値だけ」の素直なデータに保て、あとの巻き戻しや観察ウィンドウがそのまま効きます。</p>
+          <a class="samplelink" href="samples.html#sprites">
+            <img src="assets/examples/sprites.png" alt="" loading="lazy" width="1280" height="720">
+            <span class="t">サンプル「sprites」<small>画像の描画・反転・拡大縮小だけを扱う最小の例を、動くコードと実行画面で。</small></span>
+            <span class="arrow">→</span>
+          </a>
+
+          <!-- ── カメラ ───────────────────────────── -->
+          <h2 id="camera" class="step-head">横スクロールにする</h2>
+          <p>世界は画面よりずっと広い（このゲームは横 3600）ので、カメラで赤べこを追います。<code>applyCamera(注視点x, 注視点y)</code> を呼ぶと、以降の描画がその点を画面中央に置いた座標系になります。描き終えたら <code>endCamera()</code> で元に戻します。空や HUD はカメラの外（画面固定）で描きます。</p>
+<pre>s.drawGradientRect(...);              <span class="c">// 空（画面固定）</span>
+s.applyCamera(camX, SCR_H * 0.5f);    <span class="c">// 注視点 camX を画面中央に = 横スクロール</span>
+<span class="c">// …足場・古銭・敵・赤べこを世界座標で描く…</span>
+s.endCamera();                        <span class="c">// カメラを戻す</span></pre>
+          <p><code>camX</code> は赤べこの位置に合わせて動かし、世界の端では止めます。これで赤べこが画面の真ん中あたりに居続け、背景がスクロールします。</p>
+          <a class="samplelink" href="samples.html#camera">
+            <img src="assets/examples/camera.png" alt="" loading="lazy" width="1280" height="720">
+            <span class="t">サンプル「camera（追従カメラ）」<small>画面より広い世界を、先読みしながらなめらかに追う例を、動くコードと実行画面で。</small></span>
+            <span class="arrow">→</span>
+          </a>
+
+          <!-- ── ファイル分け ─────────────────────── -->
+          <h2 id="files" class="step-head">ファイルを分ける</h2>
+          <p>ここまでで「データ」「絵」「動き」が出そろいました。小さなゲームでも、役割ごとにファイルを分けておくと読みやすく、育てやすくなります。このゲームはこう分けています。</p>
+          <figure>
+            <svg class="dgm" viewBox="0 0 560 250" width="100%" style="max-width:560px" role="img" aria-label="beko_run のファイル構成。level.hpp（データ）と sprites.hpp（絵）を game.hpp/game.cpp（本体）が使い、beko_run_dll.cpp（入口）がまとめる">
+              <defs><marker id="a4" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="boxy" x="20" y="30" width="150" height="46" rx="3"/>
+              <text class="lbl" x="95" y="50" text-anchor="middle">level.hpp</text>
+              <text class="sub" x="95" y="66" text-anchor="middle">ステージのデータ</text>
+              <rect class="boxy" x="20" y="150" width="150" height="46" rx="3"/>
+              <text class="lbl" x="95" y="170" text-anchor="middle">sprites.hpp</text>
+              <text class="sub" x="95" y="186" text-anchor="middle">画像と石畳の描画</text>
+              <rect class="box" x="230" y="90" width="150" height="46" rx="3"/>
+              <text class="lbl" x="305" y="110" text-anchor="middle">game.hpp / .cpp</text>
+              <text class="sub" x="305" y="126" text-anchor="middle">状態・update・draw</text>
+              <rect class="boxy" x="430" y="90" width="110" height="46" rx="3"/>
+              <text class="lbl" x="485" y="110" text-anchor="middle">…_dll.cpp</text>
+              <text class="sub" x="485" y="126" text-anchor="middle">DLL の入口</text>
+              <line class="arr" x1="170" y1="53" x2="228" y2="103" marker-end="url(#a4)"/>
+              <line class="arr" x1="170" y1="173" x2="228" y2="123" marker-end="url(#a4)"/>
+              <line class="arr" x1="380" y1="113" x2="428" y2="113" marker-end="url(#a4)"/>
+            </svg>
+            <figcaption><code>level.hpp</code>（データ）と <code>sprites.hpp</code>（絵）を <code>game.hpp</code> / <code>game.cpp</code>（状態と本体）が使い、<code>beko_run_dll.cpp</code>（入口）が <code>MITIRU_GAME</code> でひとつにまとめます。データ→絵→本体→入口、と読み進められます。</figcaption>
+          </figure>
+          <p>入口のファイルはこれだけです。<code>MITIRU_GAME</code> の 1 行で、この <code>struct</code> を「ゲーム本体」としてエンジンに登録します。</p>
+<pre class="filename-wrap"><span class="filename">beko_run_dll.cpp</span></pre>
+<pre><span class="k">#include</span> <span class="s">"game.hpp"</span>
+<span class="t">MITIRU_GAME</span>(BekoRun);   <span class="c">// この struct をゲームの入口にする</span></pre>
+          <p>ここまでで、遊べる横スクロールアクションが動いています。ここから先は、このゲームに機能を足しながら進みます。</p>
+
+          <!-- ── ホットリロード ───────────────────── -->
+          <h2 id="hotreload" class="step-head">数字を調整する：ホットリロード</h2>
+          <p>ゲームができると、今度は手触りが気になります。跳びが低い、重力が重い、空の色が違う。こうした「何度も値を変えて確かめる」作業のために、ホットリロードがあります。<code>mitiru watch</code>（または <code>--watch</code>）で走らせておくと、ソースを保存した瞬間に、ゲームを止めずに新しいコードへ差し替わります。</p>
+          <p>下は、走らせたまま（左）エディタで空の色の定数を書き換えて保存すると、（右）ゲームの空がその場で変わる様子です。ゲームは止まらず、古銭のカウントも赤べこの位置もそのままに、空の色だけが切り替わります。再起動していないので、拾った古銭は数え続けています。</p>
+          <figure>
+            <img src="assets/beko_hotreload.webp" alt="左のエディタで空のグラデーションの色（定数 hex）を書き換えて保存すると、右の走っているゲームの空が青から夕焼けの橙に変わり、古銭のカウントは数え続け、赤べこも進み続ける記録" loading="lazy" decoding="async" width="1000" height="330">
+            <figcaption>左＝エディタ / 右＝ゲーム。<code>draw</code> の空の色の定数を書き換えて保存すると、走っているゲームの空がその場で変わります。<strong>再起動していないので、古銭のカウントも位置もそのまま</strong>です。数値・色・ロジックはこうして止めずに詰められます。</figcaption>
+          </figure>
+          <p>書き間違えてビルドが壊れても大丈夫です。エラーが画面に出て、ゲームは前のコードのまま動き続けます。直して保存すれば元に戻るので、コンソールと往復する必要はありません。HTML と CSS の見た目も同じように、保存した瞬間に反映されます（そちらは再ビルドすら要りません）。</p>
+
+          <!-- ── 観察ウィンドウ ───────────────────────────── -->
+          <h2 id="inspect" class="step-head">状態を覗く：観察ウィンドウ</h2>
+          <p>画面を見ても分からないことがあります。当たり判定が思ったように働かない、ある値が少しずつずれていく。数字が画面に出ていないと、原因が見えません。そんなときは、状態をそのまま映す窓を開きます。窓に出したいフィールドを <code>MITIRU_REFLECT</code> の 1 行で申告するだけです。</p>
+<pre><span class="c">// 観察ウィンドウに映す状態のフィールドを申告する</span>
+<span class="t">MITIRU_REFLECT</span>(BekoRun, px, py, vx, vy, onGround, coins, cleared);</pre>
+          <p>あとは <code>--inspect</code> を付けて起動すると、ゲームの隣に観察ウィンドウが開き、申告したフィールドがライブで並びます。</p>
+          <figure>
+            <img src="assets/beko_inspect.webp" alt="左にゲーム、右に観察ウィンドウの2画面。赤べこが左右に動き跳ぶたび、右の窓の px・py・vx・vy・onGround・coins・cleared がライブで変わる実機の記録" loading="lazy" decoding="async" width="860" height="572">
+            <figcaption>実機の記録（左＝ゲーム / 右＝観察ウィンドウ）。<code>MITIRU_REFLECT</code> で申告したフィールドが、ゲームの隣でそのまま動きます。赤べこが跳ぶと <code>vy</code> がマイナスに振れ、着地で <code>onGround</code> が <code>true</code> に戻る — 目に見えない数字が見えます。この窓自体も HTML / CSS で出来ています。</figcaption>
+          </figure>
+          <p>観察ウィンドウのほかにも、入力の生の値・過去への巻き戻し・fps・音量メーターなどの窓があり、どれも見たいものに合わせて選べます。大きなエディタを開く代わりに、1 つの窓は 1 つの関心事だけを映す、という作りです。</p>
+          <a class="samplelink" href="samples.html#observe">
+            <img src="assets/examples/observe.png" alt="" loading="lazy" width="1666" height="720">
+            <span class="t">サンプル「observe（観察）」<small>赤べこの内部の値を観察ウィンドウで覗く例を、動くコードと実行画面でもっと詳しく。</small></span>
+            <span class="arrow">→</span>
+          </a>
+
+          <!-- ── 巻き戻し ─────────────────────────── -->
+          <h2 id="rewind" class="step-head">時間を巻き戻す</h2>
+          <p>観察ウィンドウで「今」が見えるなら、次は「過去」です。<code>MITIRU_REWIND_BUFFER</code> を 1 行足すと、エンジンが毎フレームの状態を記録します。</p>
+<pre><span class="c">// 巻き戻し用に、毎フレームの状態を 600 フレーム分（約 10 秒）記録する</span>
+<span class="t">MITIRU_REWIND_BUFFER</span>(600);</pre>
+          <p><code>--inspect rewind</code> で起動すると、ゲームの下にシークバーが出ます。バーを過去へ動かすと、ゲームがその瞬間の状態へ<strong>まるごと戻ります</strong>。赤べこの位置も、足場も、その時のまま再現されます。</p>
+          <figure>
+            <img src="assets/beko_rewind.webp" alt="左にゲーム、右に巻き戻しのシークバー。シークバーを過去へ動かすと、ゲームがその瞬間の状態へ戻り、赤べこや足場の位置がその時のまま再現される実機の記録" loading="lazy" decoding="async" width="900" height="309">
+            <figcaption>実機の記録（左＝ゲーム / 右＝巻き戻しのシークバー）。シークバーを動かすと、ゲームがその瞬間の状態へ戻ります。バグった瞬間まで戻して、直して、そこから試す — という直し方ができます。</figcaption>
+          </figure>
+          <p>観察も巻き戻しも、申告の 1 行を足すだけで効きます。これができるのは、状態を 1 個にまとめてエンジンが預かっているからです。その仕組みを次で説明します。</p>
+          <a class="samplelink" href="samples.html#rewind">
+            <img src="assets/examples/rewind.png" alt="" loading="lazy" width="1296" height="829">
+            <span class="t">サンプル「rewind（巻き戻し）」<small>積んだブロックを過去へ戻す例を、動くコードと実行画面でもっと詳しく。</small></span>
+            <span class="arrow">→</span>
+          </a>
+
+          <!-- ── なぜ動くか ───────────────────────── -->
+          <h2 id="why" class="step-head">巻き戻し・観察・ホットリロードを支える仕組み</h2>
+          <p>ホットリロードで状態が消えないのも、窓に状態がそのまま映るのも、過去へ戻れるのも、出どころは 1 つです。ゲームの状態を 1 個の <code>struct</code> にまとめて、それをエンジンが預かっているからです。</p>
+          <p>エンジンはこの <code>struct</code> をまるごとコピーして、保存したり復元したりします。だから、預かった状態を新しいコードへそのまま渡せますし（ホットリロード）、毎フレームの状態を記録して過去へ戻せます（巻き戻し）。これが成り立つには、状態が「まるごとコピーできる素直なデータ」であってほしいのです。具体的には、ポインタや <code>std::vector</code> を持たない型のこと。<code>BekoRun</code> を数値と配列だけに保ち、画像をファイルの外に置いているのは、このためです。</p>
+          <figure>
+            <svg class="dgm" viewBox="0 0 540 250" width="100%" style="max-width:540px" role="img" aria-label="状態を1個のstructにまとめるとまるごとコピーでき、ホットリロード・巻き戻し・観察が同じ仕組みから出てくる">
+              <defs><marker id="a5" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"/></marker></defs>
+              <rect class="boxy" x="20" y="80" width="150" height="90" rx="3"/>
+              <text class="lbl" x="95" y="112" text-anchor="middle">ゲームの状態</text>
+              <text class="sub" x="95" y="132" text-anchor="middle">1 個の struct</text>
+              <text class="sub" x="95" y="150" text-anchor="middle">＝ 数値だけ</text>
+              <line class="arr" x1="170" y1="125" x2="302" y2="125" marker-end="url(#a5)"/>
+              <text class="sub" x="236" y="116" text-anchor="middle">まるごとコピー</text>
+              <rect class="box" x="312" y="36" width="208" height="48" rx="3"/>
+              <text class="lbl" x="326" y="58">ホットリロード</text>
+              <text class="sub" x="326" y="74">新コードへ状態を渡す</text>
+              <rect class="box" x="312" y="101" width="208" height="48" rx="3"/>
+              <text class="lbl" x="326" y="123">巻き戻し</text>
+              <text class="sub" x="326" y="139">過去のコピーへ戻す</text>
+              <rect class="box" x="312" y="166" width="208" height="48" rx="3"/>
+              <text class="lbl" x="326" y="188">観察ウィンドウ</text>
+              <text class="sub" x="326" y="204">今の値を映す</text>
+            </svg>
+            <figcaption>状態を 1 個の <code>struct</code> にまとめておくと、それは「まるごとコピーできる素直なデータ」になります。エンジンはこれをコピーして渡したり戻したりするだけ。だから<strong>ホットリロード・巻き戻し・観察</strong>が、同じ 1 つの仕組みから出てきます。</figcaption>
+          </figure>
+          <div class="note">使い分けはこうです。数値や色やロジックの調整は、止めずに何度でも。<code>struct</code> のフィールド（状態の<em>形</em>）を足したり並べ替えたりしたときだけ、再起動が安全です（形が変わると、預かっていたデータが合わなくなるため）。</div>
+
+          <!-- ── HTML / CSS ───────────────────────── -->
+          <h2 id="hud" class="step-head">見た目を HTML / CSS にする</h2>
+          <p>このゲームの左上の古銭カウンタと「クリア！」は、C++ ではなく HTML と CSS で描いています。ゲームのルール（C++）はそのままに、見た目だけを Web の書き方で作れます。エンジンは起動時に <code>assets/scene.html</code> を読み込み、ゲーム画面の上に透明なオーバーレイとして重ねます。</p>
+          <p>つなぎは 2 つ。C++ は <code>hud.set("名前", 値)</code> で値を送り、HTML は <code>data-m-text="名前"</code> で受けます。名前を一致させるだけで、あいだの JavaScript は 1 行も要りません。</p>
+<pre class="filename-wrap"><span class="filename">game.cpp（C++ 側）</span></pre>
+<pre><span class="k">void</span> BekoRun::pushHud(<span class="t">Hud</span> hud) <span class="k">const</span> {
+    hud.set(<span class="s">"view.coins"</span>, coins);       <span class="c">// scene.html の同じ名前へ届く</span>
+    hud.set(<span class="s">"view.total"</span>, NCOIN);
+    hud.set(<span class="s">"view.cleared"</span>, cleared ? 1 : 0);
+}</pre>
+<pre class="filename-wrap"><span class="filename">assets/scene.html（HTML/CSS 側）</span></pre>
+<pre><span class="c">&lt;!-- data-m-text="名前" = その名前で C++ が送った値をここに表示 --&gt;</span>
+&lt;div class=<span class="s">"coins"</span>&gt;
+  &lt;img src=<span class="s">"sprites/coin.png"</span>&gt;
+  &lt;span data-m-text=<span class="s">"view.coins"</span>&gt;0&lt;/span&gt; / &lt;span data-m-text=<span class="s">"view.total"</span>&gt;0&lt;/span&gt;
 &lt;/div&gt;
+<span class="c">&lt;!-- data-m-class="show: 条件" = 条件が真のときだけ class を付ける（クリア表示） --&gt;</span>
+&lt;div class=<span class="s">"clear"</span> data-m-class=<span class="s">"show: view.cleared &gt; 0"</span>&gt;&lt;span&gt;クリア！&lt;/span&gt;&lt;/div&gt;</pre>
+          <p>あとは CSS を盛れば、影・角丸・アニメ付きの HUD になります。gameplay の左上の丸いカウンタも、クリア時のふわっと出る文字も、この CSS です。<strong>HTML と CSS もホットリロードできる</strong>ので、余白や色を走らせたまま詰められます。詳しくは <a href="ui.html">画面 (HTML / CSS)</a> にあります。</p>
+          <a class="samplelink" href="samples.html#html_hud">
+            <img src="assets/examples/html_hud.png" alt="" loading="lazy" width="1280" height="720">
+            <span class="t">サンプル「html_hud」<small>C++ の 1 つの値を HTML の 6 つの表示へ同時に映す例を、動くコードと実行画面でもっと詳しく。</small></span>
+            <span class="arrow">→</span>
+          </a>
 
-&lt;div
-  class="clear"
-  data-m-class="show: view.cleared &gt; 0"&gt;
-  &lt;span&gt;クリア！&lt;/span&gt;
-&lt;/div&gt;</code></pre>
+          <!-- ── 全コード ─────────────────────────── -->
+          <h2 id="full" class="step-head">全コード</h2>
+          <p>このゲームの全文です。役割ごとに 5 つのファイルに分かれています。<code>examples/beko_run/</code> にそのまま入っているので、ビルドして <code>mitiru_host beko_run/beko_run.dll</code> で遊べます。長いので折りたたんであります。</p>
+          <details class="codefold">
+            <summary>level.hpp <span class="en">— ステージの寸法と配置（数値だけのデータ）（55 行）</span></summary>
+<pre><span class="c">// level.hpp — ステージの寸法と配置（ぜんぶ数値だけのデータ）。</span>
+#pragma once
 
-            <p><code>data-m-class="show: view.cleared &gt; 0"</code> は、条件が真のときに <code>show</code> クラスを付けます。HTML と CSS の変更も実行中に反映できます。詳細は<a href="ui.html">画面 (HTML / CSS)</a>にあります。</p>
+<span class="c">// 画面と物理の定数</span>
+constexpr float SCR_W = 1280.0f, SCR_H = 720.0f;
+constexpr float WORLD_W = 3600.0f;                 <span class="c">// 画面より広い世界</span>
+constexpr float GROUND_Y = 560.0f;                 <span class="c">// 地面の上端</span>
+constexpr float GRAV = 2000.0f, SPEED = 330.0f, JUMP = 780.0f;
+constexpr float PW = 58.0f, PH = 92.0f;            <span class="c">// 赤べこの当たり箱</span>
+constexpr float GOAL_X = 3440.0f;                  <span class="c">// ゴール（幟）の位置</span>
+constexpr float COIN_DISP = 40.0f;                 <span class="c">// 古銭の表示サイズ</span>
 
-            <a class="card" href="samples.html#html_hud">
-              <img src="assets/examples/html_hud.png" alt="" loading="lazy" width="1280" height="720">
-              <span class="gc-body">
-                <span class="gc-name">html_hud</span>
-                <span class="gc-desc">C++ の値を複数の HTML 表示へ反映するサンプルです。</span>
-              </span>
-            </a>
+<span class="c">// 足場。先頭は地面（切れ目なし）、あとは飛び乗れる薄い踏み台。</span>
+<span class="c">// 前半は導入の低い台 → 中盤で 3 段の階段を登り、1 段で降りる → 後半は広い台と平地。</span>
+struct Plat { float x, y, w, h; };
+constexpr Plat kPlats[] = {
+	{0.0f, GROUND_Y, WORLD_W, 200.0f},                 <span class="c">// 地面</span>
+	{620.0f, 430.0f, 180.0f, 24.0f},                   <span class="c">// 導入の台</span>
+	{980.0f, 432.0f, 160.0f, 24.0f},                   <span class="c">// 階段①</span>
+	{1170.0f, 356.0f, 160.0f, 24.0f},                  <span class="c">// 階段②</span>
+	{1360.0f, 288.0f, 160.0f, 24.0f},                  <span class="c">// 階段③（頂上）</span>
+	{1600.0f, 384.0f, 170.0f, 24.0f},                  <span class="c">// 降りる段</span>
+	{2180.0f, 428.0f, 260.0f, 24.0f},                  <span class="c">// 広い台（上に敵）</span>
+	{2980.0f, 424.0f, 200.0f, 24.0f},                  <span class="c">// ゴール前の台</span>
+};
+constexpr int NPLAT = static_cast&lt;int&gt;(sizeof(kPlats) / sizeof(kPlats[0]));
 
-            <h2 id="full">コード構成</h2>
+<span class="c">// 敵（起き上がり小法師）の初期位置。地上に散らしつつ、1 体は広い台の上。</span>
+struct FoeInit { float x, y; };
+constexpr FoeInit kFoes[] = {
+	{900.0f, GROUND_Y},    <span class="c">// 階段の手前</span>
+	{1780.0f, GROUND_Y},   <span class="c">// 降りた先</span>
+	{2300.0f, 428.0f},     <span class="c">// 広い台の上</span>
+	{2620.0f, GROUND_Y}, {2740.0f, GROUND_Y},   <span class="c">// 近い 2 体（少し難しい所）</span>
+	{3200.0f, GROUND_Y},   <span class="c">// ゴール前</span>
+};
+constexpr int NFOE = static_cast&lt;int&gt;(sizeof(kFoes) / sizeof(kFoes[0]));
+constexpr float FOE_SPEED = 46.0f;   <span class="c">// 小法師の左右の速さ</span>
+constexpr float FOE_RANGE = 64.0f;   <span class="c">// 初期位置から左右に往復する幅</span>
 
-            <p>完成版は <code>examples/beko_run/</code> の5ファイルで構成されています。</p>
+<span class="c">// 古銭の位置（中心座標）。階段を登る所ほど高く並べ、平地は拾いやすい高さに置く。</span>
+struct V2 { float x, y; };
+constexpr V2 kCoins[] = {
+	{300, 500}, {370, 458}, {450, 458}, {530, 500},   <span class="c">// 導入の山なり</span>
+	{700, 392},                                        <span class="c">// 導入の台</span>
+	{1010, 395}, {1200, 320}, {1390, 252},             <span class="c">// 階段を登る</span>
+	{1500, 468},                                        <span class="c">// 降り際の小ジャンプ</span>
+	{1670, 346},                                        <span class="c">// 降りる段の上</span>
+	{2000, 500},                                        <span class="c">// 平地の一息</span>
+	{2260, 392}, {2380, 392},                           <span class="c">// 広い台の上</span>
+	{2680, 458},                                        <span class="c">// 2 体の上を跳ぶ</span>
+	{3040, 388}, {3100, 388},                           <span class="c">// ゴール前の台</span>
+	{3300, 500}, {3380, 500},                           <span class="c">// ゴール前の地上</span>
+};
+constexpr int NCOIN = static_cast&lt;int&gt;(sizeof(kCoins) / sizeof(kCoins[0]));</pre>
+          </details>
+          <details class="codefold">
+            <summary>sprites.hpp <span class="en">— 画像の読み込みと石畳の描画（42 行）</span></summary>
+<pre><span class="c">// sprites.hpp — 画像の読み込みと石畳の描画。</span>
+<span class="c">// 画像は可変長データなので状態 struct には入れず、ここで一度だけ読む。</span>
+#pragma once
+#include &lt;algorithm&gt;
 
-            <div class="cards">
-              <section class="card">
-                <h3><code>level.hpp</code></h3>
-                <p>画面とゲーム内領域の寸法、重力、移動速度、跳躍速度、足場、敵、古銭の配置を定義します。</p>
-              </section>
+#include &lt;mitiru.hpp&gt;
+#include &lt;mitiru/render/Texture.hpp&gt;
 
-              <section class="card">
-                <h3><code>sprites.hpp</code></h3>
-                <p>赤べこ、小法師、幟、石畳、古銭の画像を読み込みます。石畳の繰り返し描画もここに置きます。</p>
-              </section>
+#include <span class="s">&quot;level.hpp&quot;</span>
 
-              <section class="card">
-                <h3><code>game.hpp</code></h3>
-                <p><code>BekoRun</code> と敵の状態を定義します。矩形の重なり判定と値の制限に使う関数も含みます。</p>
-              </section>
+using namespace mitiru;
 
-              <section class="card">
-                <h3><code>game.cpp</code></h3>
-                <p>入力、跳躍、重力、足場との衝突、敵、古銭、ゴール、カメラ、歩行アニメ、描画、HUD への送信を実装します。</p>
-              </section>
+<span class="c">// 読み込み。失敗時は value_or で空画像。</span>
+inline render::Texture loadTex(const char* p) {
+	return render::Texture::fromFile(p).value_or(render::Texture{});
+}
 
-              <section class="card">
-                <h3><code>beko_run_dll.cpp</code></h3>
-                <p><code>MITIRU_REFLECT</code>、<code>MITIRU_REWIND_BUFFER</code>、<code>MITIRU_GAME</code> を記述します。</p>
-              </section>
-            </div>
+inline const render::Texture kBeko[4] = {
+	loadTex(<span class="s">&quot;beko_run/assets/sprites/akabeko_0.png&quot;</span>), loadTex(<span class="s">&quot;beko_run/assets/sprites/akabeko_1.png&quot;</span>),
+	loadTex(<span class="s">&quot;beko_run/assets/sprites/akabeko_2.png&quot;</span>), loadTex(<span class="s">&quot;beko_run/assets/sprites/akabeko_3.png&quot;</span>),
+};
+inline const render::Texture kKoboshi = loadTex(<span class="s">&quot;beko_run/assets/sprites/koboshi.png&quot;</span>);      <span class="c">// 敵</span>
+inline const render::Texture kGoal    = loadTex(<span class="s">&quot;beko_run/assets/sprites/goal_nobori.png&quot;</span>);  <span class="c">// ゴールの幟</span>
+inline const render::Texture kStone   = loadTex(<span class="s">&quot;beko_run/assets/sprites/stone.png&quot;</span>);        <span class="c">// 石畳タイル</span>
+inline const render::Texture kCoin    = loadTex(<span class="s">&quot;beko_run/assets/sprites/coin.png&quot;</span>);          <span class="c">// 古銭</span>
 
-            <h2 id="toolbox">主な関数</h2>
+<span class="c">// 画像まるごとを指す src 矩形。</span>
+inline Rect whole(const render::Texture&amp; t) {
+	return Rect{0.0f, 0.0f, static_cast&lt;float&gt;(t.width()), static_cast&lt;float&gt;(t.height())};
+}
 
-            <h3><code>in</code>：入力</h3>
+<span class="c">// 石畳ブロックを 1 枚描く。横にタイルを敷き、地面の厚みは暗い石で埋める。</span>
+inline void drawStone(Screen&amp; s, const Plat&amp; p) {
+	const float srcW = static_cast&lt;float&gt;(kStone.width()), srcH = static_cast&lt;float&gt;(kStone.height());
+	const float bandH = std::min(p.h, 56.0f);
+	const float tileW = srcW * (bandH / srcH);          <span class="c">// 縦横比を保ったタイル幅</span>
+	for (float x = p.x; x &lt; p.x + p.w - 0.5f; x += tileW) {
+		const float w = std::min(tileW, p.x + p.w - x);
+		s.drawSprite(kStone, Rect{x, p.y, w, bandH}, Rect{0.0f, 0.0f, srcW * (w / tileW), srcH});
+	}
+	if (p.h &gt; bandH) { s.drawRect(Rect{p.x, p.y + bandH, p.w, p.h - bandH}, hex(0x6E635A)); }
+}</pre>
+          </details>
+          <details class="codefold">
+            <summary>game.hpp <span class="en">— ゲームの状態（GameMemory）と入口の宣言（37 行）</span></summary>
+<pre><span class="c">// game.hpp — ゲームの状態（GameMemory）と入口の宣言。</span>
+<span class="c">// 状態はぜんぶ数値だけの struct 1 つ。中身の処理は game.cpp に書く。</span>
+#pragma once
+#include &lt;mitiru.hpp&gt;
 
-            <table class="spectable">
-              <tbody>
-                <tr>
-                  <td><code>in.move()</code></td>
-                  <td>矢印キー、WASD、左スティックを合成し、各軸 −1〜1 の値を返します。</td>
-                </tr>
-                <tr>
-                  <td><code>in.pressed(Key::Space)</code></td>
-                  <td>キーを押したフレームだけ <code>true</code> です。<code>released</code> は離したフレームだけ <code>true</code> です。</td>
-                </tr>
-                <tr>
-                  <td><code>in.down(Key::Right)</code></td>
-                  <td>キーを押している間は <code>true</code> です。</td>
-                </tr>
-                <tr>
-                  <td><code>in.confirmPressed()</code></td>
-                  <td>Space、Z、Enter、ゲームパッドの A を決定入力として扱います。</td>
-                </tr>
-                <tr>
-                  <td><code>in.mouseDown(0)</code><br><code>mouseX()</code><br><code>mouseY()</code></td>
-                  <td>マウスボタンと座標を取得します。</td>
-                </tr>
-                <tr>
-                  <td><code>in.padDown(Pad::A)</code><br><code>leftStick()</code></td>
-                  <td>ゲームパッドのボタンと左スティックを取得します。</td>
-                </tr>
-              </tbody>
-            </table>
+#include <span class="s">&quot;level.hpp&quot;</span>
 
-            <h3><code>hud</code>：表示、音、操作</h3>
+using namespace mitiru;
 
-            <table class="spectable">
-              <tbody>
-                <tr>
-                  <td><code>hud.set("view.coins", coins)</code></td>
-                  <td>HTML へ値を送ります。</td>
-                </tr>
-                <tr>
-                  <td><code>hud.play("hit")</code></td>
-                  <td>効果音を再生します。第2引数で音量を指定できます。</td>
-                </tr>
-                <tr>
-                  <td><code>hud.open(Tool::Inspector)</code></td>
-                  <td>観察ウィンドウなどを開きます。繰り返し呼んでも1回だけ開きます。</td>
-                </tr>
-                <tr>
-                  <td><code>hud.screenshot()</code></td>
-                  <td>現在の画面を画像として保存します。</td>
-                </tr>
-                <tr>
-                  <td><code>hud.quit()</code></td>
-                  <td>ゲームを終了します。</td>
-                </tr>
-              </tbody>
-            </table>
+<span class="c">// 敵 1 体の状態。vx は左右の速さ（＋で右、−で左）。</span>
+struct Foe { float x, y, t, vx; bool alive; };
 
-            <h3><code>s</code>：描画</h3>
+struct BekoRun
+{
+	bool  init = false;
+	float px = 120.0f, py = GROUND_Y - PH * 0.5f;   <span class="c">// 赤べこの中心</span>
+	float vx = 0.0f, vy = 0.0f;
+	bool  onGround = false, faceLeft = false;
+	Timer walk; int step = 0;
+	Foe   foes[NFOE] = {};
+	float camX = SCR_W * 0.5f;
+	bool  cleared = false; float clearT = 0.0f; float hurt = 0.0f; float t = 0.0f;
+	bool  coinGot[NCOIN] = {}; int coins = 0;
 
-            <table class="spectable">
-              <tbody>
-                <tr>
-                  <td><code>s.drawSprite(tex, dst, src)</code></td>
-                  <td>画像の使用範囲を <code>src</code>、描画先を <code>dst</code> で指定します。色と横反転も指定できます。</td>
-                </tr>
-                <tr>
-                  <td><code>s.drawRect(rect, color)</code></td>
-                  <td>矩形を描きます。</td>
-                </tr>
-                <tr>
-                  <td><code>s.drawGradientRect(rect, top, bottom)</code></td>
-                  <td>上から下へ色が変化する矩形を描きます。</td>
-                </tr>
-                <tr>
-                  <td><code>s.applyCamera(x, y)</code><br><code>s.endCamera()</code></td>
-                  <td>注視点を画面中央へ移す座標変換を開始し、描画後に解除します。</td>
-                </tr>
-                <tr>
-                  <td><code>s.drawTextInRect(rect, "文字", color, size, …)</code></td>
-                  <td>指定した矩形内へ文字列を描きます。</td>
-                </tr>
-              </tbody>
-            </table>
+	void update(Input in, Hud hud, float dt);   <span class="c">// 毎フレームの動き（game.cpp）</span>
+	void draw(Screen&amp; s) const;                 <span class="c">// 毎フレームの描画（game.cpp）</span>
+	void pushHud(Hud hud) const;                <span class="c">// 状態を HTML/CSS の HUD へ送る（game.cpp）</span>
 
-            <div class="cta">
-              <a class="btn btn--primary" href="samples.html">サンプル集を見る</a>
-              <a class="btn btn--ghost" href="features.html">機能リファレンス</a>
-              <a class="btn btn--ghost" href="index.html">トップに戻る</a>
-            </div>
-          </article>
+	<span class="c">// 小さな道具（当たり判定と範囲制限）</span>
+	static float clampf(float v, float a, float b) { return v &lt; a ? a : (v &gt; b ? b : v); }
+	static bool box(float ax, float ay, float aw, float ah, float bx, float by, float bw, float bh) {
+		return ax &lt; bx + bw &amp;&amp; ax + aw &gt; bx &amp;&amp; ay &lt; by + bh &amp;&amp; ay + ah &gt; by;
+	}
+	bool hitBox(float bx, float by, float bw, float bh) const {   <span class="c">// 赤べこと矩形の重なり</span>
+		return box(px - PW * 0.5f, py - PH * 0.5f, PW, PH, bx, by, bw, bh);
+	}
+};</pre>
+          </details>
+          <details class="codefold">
+            <summary>game.cpp <span class="en">— ゲーム本体（update・draw の中身）（119 行）</span></summary>
+<pre><span class="c">// game.cpp — ゲーム本体。毎フレーム update で動かし、draw で描く。</span>
+#include <span class="s">&quot;game.hpp&quot;</span>
+#include <span class="s">&quot;sprites.hpp&quot;</span>
+
+#include &lt;cmath&gt;
+
+<span class="c">// 状態を HTML/CSS の HUD（assets/scene.html）へ送る。data-m-text / data-m-class が受け取る。</span>
+void BekoRun::pushHud(Hud hud) const
+{
+	hud.set(<span class="s">&quot;view.coins&quot;</span>, coins);
+	hud.set(<span class="s">&quot;view.total&quot;</span>, NCOIN);
+	hud.set(<span class="s">&quot;view.cleared&quot;</span>, cleared ? 1 : 0);
+}
+
+void BekoRun::update(Input in, Hud hud, float dt)
+{
+	if (!init) {   <span class="c">// 敵をデータから配置（最初は左へ歩き出す）</span>
+		init = true;
+		for (int i = 0; i &lt; NFOE; ++i) { foes[i] = {kFoes[i].x, kFoes[i].y, static_cast&lt;float&gt;(i) * 0.7f, -FOE_SPEED, true}; }
+	}
+	t += dt;
+	if (cleared) { clearT += dt; pushHud(hud); return; }
+	if (hurt &gt; 0.0f) { hurt -= dt; }
+
+	<span class="c">// 縦：ジャンプ → 重力 → 足場に着地。縦を先に解くと薄い段にもきちんと乗れる。</span>
+	if (onGround &amp;&amp; in.pressed(Key::Space)) { vy = -JUMP; }
+	vy += GRAV * dt;
+	py += vy * dt;
+	onGround = false;
+	for (int i = 0; i &lt; NPLAT; ++i) {   <span class="c">// 上から乗る／下から頭ぶつけ</span>
+		const Plat&amp; p = kPlats[i];
+		if (hitBox(p.x, p.y, p.w, p.h)) {
+			if (vy &gt; 0.0f) { py = p.y - PH * 0.5f; vy = 0.0f; onGround = true; }
+			else if (vy &lt; 0.0f) { py = p.y + p.h + PH * 0.5f; vy = 0.0f; }
+		}
+	}
+
+	<span class="c">// 横：移動（矢印/WASD/パッドを 1 本にまとめた move().x）とブロックの側面</span>
+	const float mx = in.move().x;
+	vx = mx * SPEED;
+	if (mx &lt; -0.1f) { faceLeft = true; } else if (mx &gt; 0.1f) { faceLeft = false; }
+	px += vx * dt;
+	for (int i = 0; i &lt; NPLAT; ++i) {   <span class="c">// ブロックの側面で止める</span>
+		const Plat&amp; p = kPlats[i];
+		if (hitBox(p.x, p.y, p.w, p.h)) {
+			if (vx &gt; 0.0f) { px = p.x - PW * 0.5f; } else if (vx &lt; 0.0f) { px = p.x + p.w + PW * 0.5f; }
+		}
+	}
+	px = clampf(px, PW * 0.5f, WORLD_W - PW * 0.5f);
+
+	<span class="c">// 歩行アニメ（地面を動く時だけコマ送り、空中は 1 枚）</span>
+	if (onGround &amp;&amp; std::fabs(vx) &gt; 10.0f) { if (walk.every(0.12f, dt)) { step = (step + 1) % 4; } }
+	else if (!onGround) { step = 2; } else { step = 0; }
+
+	<span class="c">// 敵。上から踏めば倒す、横から当たると戻される。</span>
+	const float kh = static_cast&lt;float&gt;(kKoboshi.height()) * 0.36f;
+	const float kw = static_cast&lt;float&gt;(kKoboshi.width()) * 0.36f;
+	for (int i = 0; i &lt; NFOE; ++i) {
+		Foe&amp; f = foes[i]; if (!f.alive) { continue; } f.t += dt;
+		<span class="c">// 左右に往復。初期位置から FOE_RANGE を超えたら折り返す。</span>
+		f.x += f.vx * dt;
+		if (f.x &lt; kFoes[i].x - FOE_RANGE) { f.x = kFoes[i].x - FOE_RANGE; f.vx = -f.vx; }
+		else if (f.x &gt; kFoes[i].x + FOE_RANGE) { f.x = kFoes[i].x + FOE_RANGE; f.vx = -f.vx; }
+		const float fx = f.x - kw * 0.32f, fy = f.y - kh * 0.72f, fw = kw * 0.64f, fh = kh * 0.72f;
+		if (hitBox(fx, fy, fw, fh)) {
+			if (vy &gt; 0.0f &amp;&amp; (py + PH * 0.5f) &lt; f.y - kh * 0.35f) { f.alive = false; vy = -JUMP * 0.6f; }
+			else if (hurt &lt;= 0.0f) { hurt = 0.8f; px += faceLeft ? 96.0f : -96.0f; vy = -260.0f; }
+		}
+	}
+
+	<span class="c">// 古銭を集める</span>
+	for (int i = 0; i &lt; NCOIN; ++i) {
+		if (coinGot[i]) { continue; }
+		if (hitBox(kCoins[i].x - COIN_DISP * 0.5f, kCoins[i].y - COIN_DISP * 0.5f, COIN_DISP, COIN_DISP)) {
+			coinGot[i] = true; ++coins;
+		}
+	}
+
+	if (px &gt; GOAL_X) { cleared = true; }                          <span class="c">// ゴール判定</span>
+	camX = clampf(px, SCR_W * 0.5f, WORLD_W - SCR_W * 0.5f);       <span class="c">// カメラ横追従</span>
+	pushHud(hud);                                                 <span class="c">// 古銭カウンタ等を HUD へ</span>
+}
+
+void BekoRun::draw(Screen&amp; s) const
+{
+	s.drawGradientRect(Rect{0.0f, 0.0f, SCR_W, SCR_H}, hex(0xBFE0F5), hex(0xF3F6FA));   <span class="c">// 空</span>
+	s.applyCamera(camX, SCR_H * 0.5f);   <span class="c">// camX を画面中央に = 横スクロール</span>
+
+	<span class="c">// ゴールの幟。石畳より先に描くと、地面が竿の根元を覆って刺さって見える。</span>
+	const float gw = static_cast&lt;float&gt;(kGoal.width()) * 0.9f, gh = static_cast&lt;float&gt;(kGoal.height()) * 0.9f;
+	s.drawSprite(kGoal, Rect{GOAL_X - gw * 0.35f, GROUND_Y + 8.0f - gh, gw, gh}, whole(kGoal));
+
+	for (int i = 0; i &lt; NPLAT; ++i) { drawStone(s, kPlats[i]); }   <span class="c">// 石畳</span>
+
+	<span class="c">// 古銭（上下に揺れ、横幅を伸縮させて回転風に）</span>
+	for (int i = 0; i &lt; NCOIN; ++i) {
+		if (coinGot[i]) { continue; }
+		const float bob = std::sin(t * 3.0f + static_cast&lt;float&gt;(i)) * 5.0f;
+		const float cw = COIN_DISP * (0.35f + 0.65f * std::fabs(std::cos(t * 2.4f + static_cast&lt;float&gt;(i))));
+		s.drawSprite(kCoin, Rect{kCoins[i].x - cw * 0.5f, kCoins[i].y - COIN_DISP * 0.5f + bob, cw, COIN_DISP}, whole(kCoin));
+	}
+
+	<span class="c">// 敵（ゆらゆら弾む）</span>
+	const float kw = static_cast&lt;float&gt;(kKoboshi.width()) * 0.36f, kh = static_cast&lt;float&gt;(kKoboshi.height()) * 0.36f;
+	for (int i = 0; i &lt; NFOE; ++i) {
+		const Foe&amp; f = foes[i]; if (!f.alive) { continue; }
+		const float bob = std::sin(f.t * 3.0f) * 4.0f;
+		s.drawSprite(kKoboshi, Rect{f.x - kw * 0.5f, f.y - kh + bob, kw, kh}, whole(kKoboshi));
+	}
+
+	<span class="c">// 赤べこ（進む向きに反転、被弾中は点滅）</span>
+	const render::Texture&amp; tex = kBeko[step];
+	const float bw = static_cast&lt;float&gt;(tex.width()) * 0.44f, bh = static_cast&lt;float&gt;(tex.height()) * 0.44f;
+	const float a = (hurt &gt; 0.0f &amp;&amp; (static_cast&lt;int&gt;(hurt * 20.0f) % 2 == 0)) ? 0.45f : 1.0f;
+	s.drawSprite(tex, Rect{px - bw * 0.5f, py - bh * 0.5f, bw, bh}, whole(tex), color::White.withAlpha(a), faceLeft);
+
+	s.endCamera();
+	<span class="c">// 古銭カウンタと「クリア！」は HTML/CSS の HUD（assets/scene.html）が描く。</span>
+}</pre>
+          </details>
+          <details class="codefold">
+            <summary>beko_run_dll.cpp <span class="en">— DLL の入口 + 観察ウィンドウ/巻き戻しの申告（16 行）</span></summary>
+<pre><span class="c">// beko_run — 赤べこの横スクロールアクション（会津のみち）。</span>
+<span class="c">//   level.hpp  … ステージのデータ（寸法・足場・敵・古銭）</span>
+<span class="c">//   sprites.hpp… 画像の読み込みと石畳の描画</span>
+<span class="c">//   game.hpp   … ゲームの状態（GameMemory）と入口の宣言</span>
+<span class="c">//   game.cpp   … ゲーム本体（update・draw の中身）</span>
+<span class="c">// このファイルは DLL の入口を作るだけ。</span>
+<span class="c">// 実行:  mitiru_host.exe beko_run/beko_run.dll</span>
+#include <span class="s">&quot;game.hpp&quot;</span>
+
+<span class="c">// inspector（別窓）に映す状態のフィールドを申告する。</span>
+MITIRU_REFLECT(BekoRun, px, py, vx, vy, onGround, coins, cleared);
+
+<span class="c">// 巻き戻し（time-travel）用に、毎フレームの状態を 600 フレーム分（約 10 秒）記録する。</span>
+MITIRU_REWIND_BUFFER(600);
+
+MITIRU_GAME(BekoRun);</pre>
+          </details>
+
+          <!-- ── 道具箱 ───────────────────────────── -->
+          <h2 id="toolbox" class="step-head">よく使う関数（in / hud / s）</h2>
+          <p>ゲームを書くとき、触るのは主に 3 つです。<code>update(Input in, Hud hud, float dt)</code> の <code>in</code> と <code>hud</code>、そして <code>draw(Screen&amp; s)</code> の <code>s</code>。よく使うものを並べておきます。一度に覚える必要はなく、要るときに見てください。</p>
+
+          <h3><code>in</code>：入力を読む（Input）</h3>
+          <table class="spectable">
+            <tr><td>in.move()</td><td>移動入力を 1 つに合成（矢印 / WASD / 左スティック）。<code>.x .y</code> 各 −1〜1</td></tr>
+            <tr><td>in.pressed(Key::Space)</td><td>押した瞬間だけ true（ジャンプなど）。<code>in.released(...)</code> は離した瞬間</td></tr>
+            <tr><td>in.down(Key::Right)</td><td>キーが押されている間ずっと true</td></tr>
+            <tr><td>in.confirmPressed()</td><td>「決定」を押した瞬間（Space / Z / Enter / パッド A）</td></tr>
+            <tr><td>in.mouseDown(0) / mouseX() / mouseY()</td><td>マウスのボタンと座標</td></tr>
+            <tr><td>in.padDown(Pad::A) / leftStick()</td><td>ゲームパッド（つながっていれば自動で使えます）</td></tr>
+          </table>
+
+          <h3><code>hud</code>：送る・鳴らす・窓（Hud）</h3>
+          <table class="spectable">
+            <tr><td>hud.set("view.coins", coins)</td><td>HTML の表示へ値を送る（<code>data-m-text</code> が受ける）</td></tr>
+            <tr><td>hud.play("hit")</td><td>効果音を鳴らす（<code>hud.play("hit", 0.6f)</code> で音量指定）</td></tr>
+            <tr><td>hud.open(Tool::Inspector)</td><td>観察ウィンドウなどを開く（何度呼んでも 1 回だけ開く）</td></tr>
+            <tr><td>hud.screenshot()</td><td>その瞬間の画面を画像保存</td></tr>
+            <tr><td>hud.quit()</td><td>ゲームを終了する</td></tr>
+          </table>
+
+          <h3><code>s</code>：画面に描く（Screen）</h3>
+          <table class="spectable">
+            <tr><td>s.drawSprite(tex, dst, src)</td><td>画像を描く。<code>dst</code> に置き、<code>src</code> は画像のどこを使うか。末尾に <code>tint, flipH</code> も</td></tr>
+            <tr><td>s.drawRect({x, y, w, h}, color)</td><td>四角を描く（色は <code>Color{r,g,b,a}</code> か <code>color::Red</code>）</td></tr>
+            <tr><td>s.drawGradientRect(rect, top, bottom)</td><td>上→下のグラデーション矩形（空・背景に）</td></tr>
+            <tr><td>s.applyCamera(x, y) / endCamera()</td><td>注視点 (x, y) を画面中央に置く座標へ切り替え／戻す（スクロール）</td></tr>
+            <tr><td>s.drawTextInRect(rect, "文字", color, size, …)</td><td>矩形に収めて文字を描く</td></tr>
+          </table>
+
+          <div class="cta">
+            <a class="btn btn--primary" href="samples.html">サンプル集を見る</a>
+            <a class="btn btn--ghost" href="features.html">機能リファレンス</a>
+            <a class="btn btn--ghost" href="index.html">トップに戻る</a>
+          </div>
+
         </div>
-      </main>
+      </div>
+    </main>
 
-      <footer class="content-foot">
-        <div class="wrap">
-          <span>© MitiruEngine</span>
-          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
-          <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
-          <a href="install.html">インストール</a>
-        </div>
-      </footer>
+    <footer class="content-foot">
+      <div class="wrap">
+        <span>© MitiruEngine</span>
+        <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+        <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+        <a href="install.html">インストール</a>
+      </div>
+    </footer>
     </div>
-
     <aside class="toc">
-      <div class="term">このページ</div>
-      <a href="#goal">完成するゲーム</a>
-      <a href="#loop">毎フレームの処理</a>
+      <div class="t">このページ</div>
+      <a href="#goal">作るもの</a>
+      <a href="#loop">動き方</a>
       <a href="#move">歩く・跳ぶ</a>
-      <a href="#level">配置と処理</a>
-      <a href="#art">スプライト</a>
+      <a href="#level">ステージ</a>
+      <a href="#art">絵を出す</a>
       <a href="#camera">横スクロール</a>
-      <a href="#files">ファイル構成</a>
+      <a href="#files">ファイル分け</a>
       <a href="#hotreload">ホットリロード</a>
       <a href="#inspect">観察ウィンドウ</a>
       <a href="#rewind">巻き戻し</a>
-      <a href="#why">状態管理</a>
-      <a href="#hud">HTML/CSS の HUD</a>
-      <a href="#full">コード構成</a>
-      <a href="#toolbox">主な関数</a>
+      <a href="#why">仕組み</a>
+      <a href="#hud">HTML / CSS</a>
+      <a href="#full">全コード</a>
+      <a href="#toolbox">関数一覧</a>
     </aside>
   </div>
 </div>

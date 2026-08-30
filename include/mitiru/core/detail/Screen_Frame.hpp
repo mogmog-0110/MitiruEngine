@@ -1,5 +1,5 @@
 #pragma once
-// mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
+// mitiru::Screen 用の detail header。直接インクルードしない。core/Screen.hpp 経由で取り込む
 
 #include <mitiru/render/IRenderer3D.hpp>
 
@@ -17,7 +17,7 @@ inline void mitiru::Screen::clear(const sgc::Colorf& color)
 {
 	m_clearColor = color;
 	m_spriteBatch.begin();
-	m_curTexHandle = 0; // フレーム頭で run 状態をリセット（ADR 0009）
+	m_curTexHandle = 0; // フレーム頭で run 状態をリセット
 	// 観測しないフレームは clear も skip し、直前のラスタライズ結果を保持する (#53)
 	if (m_softwareFb && m_swFbActive) { clearFramebuffer(); }
 	++m_drawCallCount;
@@ -43,7 +43,7 @@ inline void mitiru::Screen::resize(int width, int height) noexcept
 	m_height = height;
 }
 
-// ── textured sprite batch ヘルパー（ADR 0009）──────────────────────
+// ── textured sprite batch ヘルパー──────────────────────
 // painter 順を保つため、頂点カラー run と textured run の切替で現バッチを
 // flush+submit する。RenderPipeline2D の完全型が要るためここ（detail）で定義。
 

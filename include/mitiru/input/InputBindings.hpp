@@ -1,6 +1,6 @@
 #pragma once
 
-// ⚠ 非推奨 (2026-06-12、使い手意識監査): このヘッダは pivot 前の半製品で、本流から
+// 非推奨 (2026-06-12、使い手意識監査): このヘッダは pivot 前の半製品で、本流から
 // 不到達。ゲームの入力は module/Game.hpp の Binding 表 + in.pressed(kMap, Act) /
 // in.confirmPressed() / in.move() を使うこと。本ヘッダは P3 裁定で attic 行き候補。
 

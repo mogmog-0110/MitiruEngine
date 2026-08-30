@@ -56,7 +56,7 @@ template <typename T, typename LockPolicy = NoLock>
 class ObjectPool
 {
 public:
-	/// @brief コンストラクタ — N個のオブジェクトを事前確保する
+	/// @brief コンストラクタ。N個のオブジェクトを事前確保する
 	/// @param capacity プールの容量
 	explicit ObjectPool(std::size_t capacity)
 		: m_capacity(capacity)
@@ -74,7 +74,7 @@ public:
 		}
 	}
 
-	/// @brief デストラクタ — アクティブなオブジェクトがあればデストラクタを呼ぶ
+	/// @brief デストラクタ。アクティブなオブジェクトがあればデストラクタを呼ぶ
 	~ObjectPool()
 	{
 		// フリーリストに含まれない = アクティブなオブジェクトを破棄

@@ -147,7 +147,7 @@ public:
 		++m_drawCallCount;
 	}
 
-	/// @brief 変換済み4頂点 + UV のテクスチャ付きクワッドを蓄積する（ADR 0009）
+	/// @brief 変換済み4頂点 + UV のテクスチャ付きクワッドを蓄積する
 	/// @details corners は変換適用済みのスクリーン座標、uvs は [0,1] テクスチャ座標。
 	///          実テクスチャのバインドは RenderPipeline2D::submitTexturedBatch が行う
 	///          （このバッチは単一テクスチャ run として submit される前提）。

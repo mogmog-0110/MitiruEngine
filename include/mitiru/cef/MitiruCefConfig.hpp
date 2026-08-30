@@ -53,7 +53,7 @@ inline bool isProcessAlive(DWORD pid)
 }
 
 /// @brief 過去起動が残した cef_cache_<PID> / cef_<PID>.log を best-effort 削除する。
-/// @details 自 PID と生存プロセスの分は残す。削除失敗 (使用中等) は無視 —
+/// @details 自 PID と生存プロセスの分は残す。削除失敗 (使用中等) は無視。
 ///          次回起動で再試行される。
 inline void cleanupStaleCefArtifacts(const std::filesystem::path& exeDir)
 {

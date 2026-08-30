@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file AnimationSampler.hpp
-/// @brief glTF アニメーションクリップのポーズサンプリング (ADR 0028)。
+/// @brief glTF アニメーションクリップのポーズサンプリング。
 /// @details クリップと絶対時間 (秒) から joint のワールドポーズ行列列を組む純関数群。
-///          GPU 非依存・状態なし — 同一入力は bit-exact に同一出力 (決定論、軸②④)。
+///          GPU 非依存・状態なし。同一入力は bit-exact に同一出力 (決定論、軸②④)。
 ///          流れ: samplePose → (blendPoses) → computeWorldPose → gatherJointWorld →
 ///          `Skinning.hpp::skinVertices` へ。gatherJointWorld は skin.joints 順への
 ///          gather のみを行う。inverseBind の乗算は skinVertices 内部の責務であり、
@@ -75,7 +75,7 @@ struct NodeTRS
 	};
 }
 
-/// @brief 局所 TRS から局所行列を組む (T * R * S — glTF 仕様の合成順)。
+/// @brief 局所 TRS から局所行列を組む (T * R * S。glTF 仕様の合成順)。
 [[nodiscard]] inline sgc::Mat4f localMatrix(const NodeTRS& trs)
 {
 	return sgc::Mat4f::translation(trs.t) * quatToMat4(trs.r) * sgc::Mat4f::scaling(trs.s);

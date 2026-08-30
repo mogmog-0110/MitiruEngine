@@ -8,7 +8,7 @@
 namespace mitiru::render
 {
 
-/// @brief フラット＋アウトライン — 完全にフラットな色（グラデーションなし）
+/// @brief フラット＋アウトライン。完全にフラットな色（グラデーションなし）
 /// @details 最も2Dに近い表現。NdotLを2値化して明暗のみ。
 constexpr const char* FLAT_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
@@ -44,7 +44,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 }
 )hlsl";
 
-/// @brief ポスタライズ — 色階調を制限（ポスター調）
+/// @brief ポスタライズ。色階調を制限（ポスター調）
 constexpr const char* POSTERIZE_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
 {
@@ -84,7 +84,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 }
 )hlsl";
 
-/// @brief ハーフトーン — ドットパターン（コミック/印刷風）
+/// @brief ハーフトーン。ドットパターン（コミック/印刷風）
 constexpr const char* HALFTONE_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
 {
@@ -126,7 +126,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 }
 )hlsl";
 
-/// @brief ハッチング — 斜線描画（ペン画風）
+/// @brief ハッチング。斜線描画（ペン画風）
 constexpr const char* HATCHING_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
 {
@@ -180,7 +180,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 }
 )hlsl";
 
-/// @brief グラデーションマップ — ライティングをカスタムカラーグラデーションにマップ
+/// @brief グラデーションマップ。ライティングをカスタムカラーグラデーションにマップ
 /// @details 暖色→寒色のグラデーションで絵本風の表現
 constexpr const char* GRADIENT_MAP_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
@@ -224,7 +224,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 }
 )hlsl";
 
-/// @brief シルエット — エッジのみ描画（影絵風）
+/// @brief シルエット。エッジのみ描画（影絵風）
 constexpr const char* SILHOUETTE_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
 {
@@ -267,7 +267,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 }
 )hlsl";
 
-/// @brief 水彩風 — ソフトなグラデーション＋にじみ効果
+/// @brief 水彩風。ソフトなグラデーション＋にじみ効果
 constexpr const char* WATERCOLOR_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
 {

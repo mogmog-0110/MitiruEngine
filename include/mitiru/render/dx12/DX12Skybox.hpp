@@ -260,7 +260,7 @@ void ensureSkyboxPipelineDx12()
 	// ENG-106 HDR: skybox は MSAA color FP16 に書き込む
 	psoDesc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	psoDesc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-	// 4x MSAA — 共有 depth と sample count を揃える (ENG-105 v2)
+	// 4x MSAA。共有 depth と sample count を揃える (ENG-105 v2)
 	psoDesc.SampleDesc.Count      = 4;
 
 	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(

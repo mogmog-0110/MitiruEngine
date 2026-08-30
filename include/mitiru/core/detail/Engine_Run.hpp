@@ -1,4 +1,4 @@
-// mitiru::Engine の detail header — 直接 include 禁止。core/Engine.hpp 経由で include される
+// mitiru::Engine の detail header。直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
 #include <cstdlib>
@@ -31,7 +31,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 
 	initialize(config);
 
-	/// axis 4 — deterministic replay の記録。
+	/// axis 4。deterministic replay の記録。
 	/// MITIRU_RECORD=<path> が設定されていれば InputRecorder を起動し、
 	/// 終了時に ~Engine() で saveToFile する。
 	if (const char* recPath = std::getenv("MITIRU_RECORD"); recPath && *recPath)
@@ -40,7 +40,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		m_inputRecorder.beginRecording(config.randomSeed, /*tps=*/60);
 	}
 
-	/// axis 4 — deterministic replay の再生。
+	/// axis 4。deterministic replay の再生。
 	/// MITIRU_REPLAY=<path> が設定されていれば ReplayData を読み込んで
 	/// InputReplayer に load する。以後 applyInjectedInput が毎フレーム
 	/// replayer.getCommandsForFrame(clock.frameNumber()) を inject する。

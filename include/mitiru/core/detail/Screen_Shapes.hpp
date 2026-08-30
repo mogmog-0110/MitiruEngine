@@ -1,5 +1,5 @@
 #pragma once
-// mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
+// mitiru::Screen 用の detail header。直接インクルードしない。core/Screen.hpp 経由で取り込む
 
 inline void mitiru::Screen::drawZigzagEdge(const sgc::Rectf& rect, const render::ZigzagStyle& zs)
 {
@@ -93,7 +93,7 @@ inline void mitiru::Screen::drawRoundedRect(const sgc::Rectf& rect, const sgc::C
 	const float r = std::min(radius, std::min(rect.width(), rect.height()) * 0.5f);
 	const float x = rect.x(), y = rect.y(), w = rect.width(), h = rect.height();
 
-	// 中央の十字（矩形 3 つ）— transform は emitRect が処理する
+	// 中央の十字（矩形 3 つ）。transform は emitRect が処理する
 	emitRect(sgc::Rectf{x + r, y, w - r * 2, h}, color);
 	emitRect(sgc::Rectf{x, y + r, r, h - r * 2}, color);
 	emitRect(sgc::Rectf{x + w - r, y + r, r, h - r * 2}, color);

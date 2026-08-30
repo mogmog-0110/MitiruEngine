@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MitiruCefBrowser.hpp
-/// @brief ブラウザライフサイクル管理 — 生成/URL読込/リサイズ/クローズ
+/// @brief ブラウザライフサイクル管理。生成/URL読込/リサイズ/クローズ
 
 #if defined(_WIN32) && defined(MITIRU_HAS_CEF)
 
@@ -156,7 +156,7 @@ public:
     /// @details OSR モードでは host->SetFocus(true) を呼ばないと
     ///          SendKeyEvent がドキュメントにルーティングされない。
     ///          MitiruCefContext が初回ペイント完了時 / setInputEnabled(true)
-    ///          時に自動呼び出しする — 通常はゲーム側から直接呼ぶ必要は無い。
+    ///          時に自動呼び出しする。通常はゲーム側から直接呼ぶ必要は無い。
     ///          手動制御したい場合は setAutoFocusOnFirstPaint(false) で
     ///          自動呼び出しを抑止し、本メソッドを任意のタイミングで呼ぶ。
     void claimKeyboardFocus()

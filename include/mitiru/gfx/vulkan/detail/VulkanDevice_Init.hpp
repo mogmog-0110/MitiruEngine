@@ -1,5 +1,5 @@
 #pragma once
-// mitiru::gfx::VulkanDevice 用の detail header — 直接インクルードしない。gfx/vulkan/VulkanDevice.hpp 経由で取り込む
+// mitiru::gfx::VulkanDevice 用の detail header。直接インクルードしない。gfx/vulkan/VulkanDevice.hpp 経由で取り込む
 // 初期化系（instance / surface / 物理・論理デバイス / コマンドプール / 同期 / メモリ）
 
 #include <mitiru/gfx/vulkan/VulkanDevice.hpp>

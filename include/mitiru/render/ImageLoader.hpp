@@ -49,7 +49,7 @@ public:
 	/// @return デコードされたTexture（失敗時は空テクスチャ）
 	[[nodiscard]] static Texture fromFile(const std::string& path)
 	{
-		// pack が mount 済みなら pack から、未 mount (dev) なら disk から読む (ADR 0016)。
+		// pack が mount 済みなら pack から、未 mount (dev) なら disk から読む。
 		const auto buf = mitiru::vfs::readGlobal(path, path);
 		if (!buf)
 		{

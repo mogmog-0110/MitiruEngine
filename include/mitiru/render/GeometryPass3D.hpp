@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file GeometryPass3D.hpp
-/// @brief GPU ジオメトリパス — depth / world-normal / objectId を MRT に焼く（NPR 輪郭線の前段）
+/// @brief GPU ジオメトリパス。depth / world-normal / objectId を MRT に焼く（NPR 輪郭線の前段）
 /// @details Scene3D の各メッシュを GPU で 1 パス描画し、(0) 深度 R32_FLOAT、(1) ワールド法線
 ///          RGBA16F、(2) objectId R32_UINT を MRT に出力する。これが GPU 版輪郭抽出
 ///          （`ContourDetect` 相当の fullscreen PS、別パス）の入力になる。CPU software deferred
 ///          (`DeferredPipeline`) が CPU GBuffer に書く depth/normal/objectId の GPU 対応物で、
 ///          NPR inbox #20 (a) で欠けていた「GPU 深度/法線/objectId ターゲット」を埋める。
 ///
-/// 深度規約は CPU `DeferredPipeline` と同一 — NDC z を `ndcZ * 0.5 + 0.5` で [0,1] に写す
+/// 深度規約は CPU `DeferredPipeline` と同一。NDC z を `ndcZ * 0.5 + 0.5` で [0,1] に写す
 /// （`(ca.z/ca.w + 1) * 0.5` と等価）。これにより `ContourDetect` の depthThreshold が
 /// CPU/GPU で同じ意味を持つ。行列規約は `MotionVectorPass`/`Renderer3D` と同一（row-major、
 /// VS は `mul(vector, matrix)`）。

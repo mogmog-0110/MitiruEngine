@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Color.hpp
-/// @brief 初心者向けの色の書き方 — mitiru::Color と rgb / rgba / hex + 名前付き色。
+/// @brief 初心者向けの色の書き方。mitiru::Color と rgb / rgba / hex + 名前付き色。
 /// @details
 /// 描画 API の色は内部的には 0..1 の float (sgc::Colorf) だが、それを直接
 /// 書かせると `sgc::Colorf{0.784f, 0.0f, 0.173f, 1.0f}` のような magic number に

@@ -1,4 +1,4 @@
-// mitiru::Engine の detail header — 直接 include 禁止。core/Engine.hpp 経由で include される
+// mitiru::Engine の detail header。直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>

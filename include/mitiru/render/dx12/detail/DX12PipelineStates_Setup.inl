@@ -64,10 +64,10 @@ void compileShaders()
 	m_fresnelToonPS = gfx::Dx12Shader::createPixelShader(
 		DX12_TOON_PS_3D_FRESNEL, "PSMain");
 
-	// FXAA ポストプロセス PS (ENG-104) — VS は OUTLINE_POST_VS を流用
+	// FXAA ポストプロセス PS (ENG-104)。VS は OUTLINE_POST_VS を流用
 	m_fxaaPS = gfx::Dx12Shader::createPixelShader(DX12_FXAA_PS_3D, "PSMain");
 
-	// Tonemap (ENG-106) — HDR FP16 → backbuffer LDR
+	// Tonemap (ENG-106)。HDR FP16 → backbuffer LDR
 	m_tonemapVS = gfx::Dx12Shader::createVertexShader(DX12_TONEMAP_VS, "VSMain");
 	m_tonemapPS = gfx::Dx12Shader::createPixelShader(DX12_TONEMAP_PS, "PSMain");
 
@@ -155,7 +155,7 @@ void createRootSignature()
 	samplers[0].MaxLOD           = D3D12_FLOAT32_MAX;
 	samplers[0].ShaderRegister   = 0;
 	samplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	// s1 — PCF 比較サンプラ
+	// s1。PCF 比較サンプラ
 	samplers[1].Filter           = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
 	samplers[1].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 	samplers[1].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -166,7 +166,7 @@ void createRootSignature()
 	samplers[1].MaxLOD           = D3D12_FLOAT32_MAX;
 	samplers[1].ShaderRegister   = 1;
 	samplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	// s2 — 最近傍サンプラ
+	// s2。最近傍サンプラ
 	samplers[2].Filter           = D3D12_FILTER_MIN_MAG_MIP_POINT;
 	samplers[2].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	samplers[2].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;

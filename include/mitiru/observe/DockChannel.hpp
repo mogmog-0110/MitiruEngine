@@ -29,7 +29,7 @@ inline std::filesystem::path dockPathForPid(int hostPid)
 	     / ("mitiru_wnd_" + std::to_string(hostPid) + ".json");
 }
 
-/// @brief host 側 — 自窓の矩形を書く (writer)。変わった時だけ書けば十分。
+/// @brief host 側。自窓の矩形を書く (writer)。変わった時だけ書けば十分。
 class DockWriter
 {
 public:
@@ -65,7 +65,7 @@ private:
 	std::filesystem::path m_path, m_tmp;
 };
 
-/// @brief ツール側 — host 窓の矩形を polling 読み (reader)。mtime が変わった時だけ返す。
+/// @brief ツール側。host 窓の矩形を polling 読み (reader)。mtime が変わった時だけ返す。
 class DockReader
 {
 public:

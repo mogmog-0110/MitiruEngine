@@ -1,4 +1,4 @@
-// mitiru::Engine の detail header — 直接 include 禁止。core/Engine.hpp 経由で include される
+// mitiru::Engine の detail header。直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
 #include <cstdlib>
@@ -42,7 +42,7 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 	/// フレームレートキャップ用: 前フレーム開始時刻
 	const auto frameStart = std::chrono::steady_clock::now();
 
-	// Host hook — 通常 `mitiru_host --watch` がここで DLL の mtime を polling し、
+	// Host hook。通常 `mitiru_host --watch` がここで DLL の mtime を polling し、
 	// source 変更時に Engine::reloadModule() を起こす。per-frame state に触れる前
 	// なので安全に発火できる。
 	if (m_loopConfig && m_loopConfig->onFrameStart)
@@ -92,7 +92,7 @@ MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
 	/// endTick() に任せ、render rate と update rate を独立させる。
 	m_window->pollEvents();
 	applyInjectedInput();
-	// headless (自動回し/CI) では物理パッドを開かない — SdlGamepadInput の lazy init が
+	// headless (自動回し/CI) では物理パッドを開かない。SdlGamepadInput の lazy init が
 	// DS4 を占有し、ユーザーが別アプリで使用中の実機入力を吸ってしまうため。
 	// 入力は --input-script / injected input が正であり、実デバイス不要。
 	if (!m_config.headless)
@@ -130,10 +130,16 @@ MITIRU_INLINE void mitiru::Engine::tickMouseScalingPhase()
 	const float screenW = static_cast<float>(m_screen->width());
 	const float screenH = static_cast<float>(m_screen->height());
 
-	// Win32Windowが保持するRAW座標を直接使う (スケーリング前の値)
+	// Win32Windowが保持するRAW座標を直接使う (スケーリング前の値)。
+	// Win32 以外 (web 等) には RAW の持ち主が居ないので InputState の値をそのまま使う。
+#ifdef _WIN32
 	auto* w32 = dynamic_cast<Win32Window*>(m_window.get());
 	const float rawX = w32 ? w32->m_lastMouseX : m_inputState.mousePosition().first;
 	const float rawY = w32 ? w32->m_lastMouseY : m_inputState.mousePosition().second;
+#else
+	const float rawX = m_inputState.mousePosition().first;
+	const float rawY = m_inputState.mousePosition().second;
+#endif
 
 	m_dbgWindowW = windowW;
 	m_dbgWindowH = windowH;
@@ -337,7 +343,7 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 		m_errorBanner.drawTo(*m_screen);
 	}
 
-	// H-20: CEF init 失敗の可視化 — 無言の UI 無し画面を防ぐ (エンジン通知)。
+	// H-20: CEF init 失敗の可視化。無言の UI 無し画面を防ぐ (エンジン通知)。
 	if (m_cefInitFailed)
 	{
 		const float W = static_cast<float>(m_screen->width());
@@ -351,7 +357,7 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 #ifdef _WIN32
 	// 2D→3D 遷移フレーム安全策: 前フレームが 2D で MSAA override を張った直後に、この
 	// フレームで 3D が使われた場合、renderer3D->endFrame() の resolve が backBuffer() を
-	// dest にする — override が張られたままだと 4x MSAA RT を resolve dest にして失敗する。
+	// dest にする。override が張られたままだと 4x MSAA RT を resolve dest にして失敗する。
 	// override を実バックバッファへ戻し、この frame の 2D resolve は諦める (2D は次フレーム
 	// から prev3D=true で MSAA を張らず 1x で正しく描く)。稀な遷移 1 フレームのみ。
 	if (m_msaa2dActiveThisFrame && m_renderer3D && m_renderer3D->isFrameActive())

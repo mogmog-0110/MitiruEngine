@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <mitiru/asset/AssetPack.hpp>
+#include <mitiru/platform/Utf8Args.hpp>
 
 namespace fs = std::filesystem;
 
@@ -26,13 +27,22 @@ int main(int argc, char** argv)
 		             "usage: mitiru_selfpack <out.exe> <selfrun.exe> <distDir> <name> <exeRel> [args] [cwdRel]\n");
 		return 2;
 	}
-	const fs::path out     = argv[1];
-	const fs::path selfrun = argv[2];
-	const fs::path dir     = argv[3];
-	const std::string name = argv[4];
-	const std::string exe  = argv[5];
-	const std::string args = argc > 6 ? argv[6] : "";
-	const std::string cwd  = argc > 7 ? argv[7] : "";
+	// CRT の argv は ANSI (日本語環境では CP932) へ変換済み。ここで受ける [args] は
+	// そのまま mitiru_boot.txt へ書かれ、起動時に host の --title になるので、
+	// UTF-8 の原本から取り直さないと窓の表題が化ける (実際に化けた)。
+	const std::vector<std::string> u8 = mitiru::platform::commandLineUtf8Args();
+	const auto arg = [&](int i) -> std::string {
+		if (static_cast<std::size_t>(i) < u8.size()) { return u8[static_cast<std::size_t>(i)]; }
+		return i < argc ? std::string(argv[i]) : std::string();
+	};
+
+	const fs::path out     = fs::path(mitiru::platform::utf8ToWide(arg(1)));
+	const fs::path selfrun = fs::path(mitiru::platform::utf8ToWide(arg(2)));
+	const fs::path dir     = fs::path(mitiru::platform::utf8ToWide(arg(3)));
+	const std::string name = arg(4);
+	const std::string exe  = arg(5);
+	const std::string args = argc > 6 ? arg(6) : "";
+	const std::string cwd  = argc > 7 ? arg(7) : "";
 
 	std::error_code ec;
 	if (!fs::is_directory(dir, ec))

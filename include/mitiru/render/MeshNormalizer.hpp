@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MeshNormalizer.hpp
-/// @brief メッシュの自動正規化 — サイズ統一、底面y=0合わせ、Y-up統一
+/// @brief メッシュの自動正規化。サイズ統一、底面y=0合わせ、Y-up統一
 
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/Vertex3D.hpp>

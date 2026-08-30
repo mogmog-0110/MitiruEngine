@@ -123,7 +123,7 @@ public:
 	/// @brief snapshot ファイルの絶対パス
 	[[nodiscard]] const std::filesystem::path& path() const noexcept { return m_path; }
 
-	/// @brief inspector 側 — 任意 pid の snapshot ファイルを polling 読み
+	/// @brief inspector 側。任意 pid の snapshot ファイルを polling 読み
 	class Reader
 	{
 	public:

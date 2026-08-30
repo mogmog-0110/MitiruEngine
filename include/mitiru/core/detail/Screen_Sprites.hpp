@@ -1,5 +1,5 @@
 #pragma once
-// mitiru::Screen 用の detail header — 直接インクルードしない。core/Screen.hpp 経由で取り込む
+// mitiru::Screen 用の detail header。直接インクルードしない。core/Screen.hpp 経由で取り込む
 
 // テクスチャ全体を描く（白ティント）。
 inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc::Rectf& dstRect)

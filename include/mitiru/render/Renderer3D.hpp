@@ -193,7 +193,7 @@ public:
 	/// @brief レンダラーを初期化する
 	/// @param device DX11デバイスへのポインタ
 	/// @param cfg 設定パラメータ
-	/// @param mode シェーダーモード（初期化時に直接設定 — setShaderModeの再コンパイルを回避）
+	/// @param mode シェーダーモード（初期化時に直接設定。setShaderModeの再コンパイルを回避）
 	void initialize(gfx::Dx11Device* device,
 		const Renderer3DConfig& cfg = {},
 		ShaderMode3D mode = ShaderMode3D::Phong);
@@ -312,7 +312,7 @@ public:
 		return m_skyboxEnabled && m_skyboxImpl.hasValidCubemap();
 	}
 
-	/// @brief 内部の DX11 デバイスを返す（拡張機能用 — Skybox など）
+	/// @brief 内部の DX11 デバイスを返す（拡張機能用。Skybox など）
 	/// @details Skybox / IBL / experimental エフェクトのように Renderer3D の
 	///          外で DX11 リソースを直接構築する consumer 向け。
 	///          `initialize()` 前は nullptr。

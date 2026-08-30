@@ -1,5 +1,5 @@
 #pragma once
-// EngineHttpServer の AI Lens (ADR 0018) / Inspector 観測 (ADR 0019) / AI フレーム・音観測系ハンドラ実装。
+// EngineHttpServer の AI Lens / Inspector 観測 / AI フレーム・音観測系ハンドラ実装。
 // server/EngineHttpServer.hpp から末尾 include される (単体 include も親経由で自己完結)。
 
 #include <mitiru/server/EngineHttpServer.hpp>
@@ -18,7 +18,7 @@
 #include <mitiru/server/PngEncoder.hpp>
 #include <mitiru/util/Base64.hpp>
 
-// ── AI Lens (ADR 0018) ────────────────────────────────────────
+// ── AI Lens ────────────────────────────────────────
 // reflected GameMemory を構造的に read / diff / what-if する AI 向け面。
 // callback が未配線 (game に MITIRU_REFLECT が無い等) なら 503。
 
@@ -76,9 +76,9 @@ inline void mitiru::server::EngineHttpServer::handleAiBranch(const HttpRequest& 
 	resp.status = 200; resp.setBody(m_callbacks.aiBranch(keys, frames));
 }
 
-// ── Inspector / 観測エンドポイント (ADR 0019) ──────────────────
+// ── Inspector / 観測エンドポイント ──────────────────
 
-/// @brief GET /api/health — frame + elapsed を返す簡易ヘルスチェック
+/// @brief GET /api/health。frame + elapsed を返す簡易ヘルスチェック
 inline void mitiru::server::EngineHttpServer::handleHealth(const HttpRequest&, HttpResponse& resp)
 {
 	std::string json = R"({"status":"ok")";
@@ -93,14 +93,14 @@ inline void mitiru::server::EngineHttpServer::handleHealth(const HttpRequest&, H
 	resp.setBody(json);
 }
 
-/// @brief GET /api/observe/schema — SnapshotSchema の JSON Schema を返す
+/// @brief GET /api/observe/schema。SnapshotSchema の JSON Schema を返す
 inline void mitiru::server::EngineHttpServer::handleObserveSchema(const HttpRequest&, HttpResponse& resp)
 {
 	resp.status = 200;
 	resp.setBody(observe::SnapshotSchema::schemaJson());
 }
 
-/// @brief GET /api/observe/inspect[?prefix=<p>] — Inspector key-value クエリ
+/// @brief GET /api/observe/inspect[?prefix=<p>]。Inspector key-value クエリ
 /// @details prefix パラメータがあればプレフィックスフィルタ、なければ全件返す。
 inline void mitiru::server::EngineHttpServer::handleObserveInspect(const HttpRequest& req, HttpResponse& resp)
 {
@@ -115,7 +115,7 @@ inline void mitiru::server::EngineHttpServer::handleObserveInspect(const HttpReq
 	resp.setBody(m_callbacks.inspectorQuery(prefix));
 }
 
-/// @brief GET /api/observe/inspect/at[?back=<N>] — 過去スナップショットを返す
+/// @brief GET /api/observe/inspect/at[?back=<N>]。過去スナップショットを返す
 /// @details back=0 が最新コミット、back=1 がその前。負数・非数は 400。
 inline void mitiru::server::EngineHttpServer::handleObserveInspectAt(const HttpRequest& req, HttpResponse& resp)
 {
@@ -139,7 +139,7 @@ inline void mitiru::server::EngineHttpServer::handleObserveInspectAt(const HttpR
 	resp.setBody(m_callbacks.inspectorAt(back));
 }
 
-/// @brief GET /api/observe/inspect/depth — Inspector 履歴の depth と capacity を返す
+/// @brief GET /api/observe/inspect/depth。Inspector 履歴の depth と capacity を返す
 inline void mitiru::server::EngineHttpServer::handleObserveInspectDepth(const HttpRequest&, HttpResponse& resp)
 {
 	const std::size_t depth = m_callbacks.inspectorDepth ? m_callbacks.inspectorDepth() : 0;
@@ -180,7 +180,7 @@ inline std::string mitiru::server::EngineHttpServer::buildScreenshotJson(int src
 	       ",\"pngBase64\":\"" + util::Base64::encode(png) + "\"}";
 }
 
-/// @brief GET /api/ai/frame — draw list + 縮小 screenshot を 1 レスポンスで返す
+/// @brief GET /api/ai/frame。draw list + 縮小 screenshot を 1 レスポンスで返す
 /// @details 初回呼び出しで draw log 記録を有効化する (エントリは次フレームから)。
 ///          ?screenshot=0 で PNG 省略、width/height で縮小指定 (既定 width=640)。
 inline void mitiru::server::EngineHttpServer::handleAiFrame(const HttpRequest& req, HttpResponse& resp)
@@ -226,7 +226,7 @@ inline void mitiru::server::EngineHttpServer::handleAiFrame(const HttpRequest& r
 	resp.setBody(json);
 }
 
-/// @brief GET /api/ai/audio[?max=N] — 最近の音イベント (SoundIntent 適用記録) を返す
+/// @brief GET /api/ai/audio[?max=N]。最近の音イベント (SoundIntent 適用記録) を返す
 inline void mitiru::server::EngineHttpServer::handleAiAudio(const HttpRequest& req, HttpResponse& resp)
 {
 	if (!m_callbacks.audioLogJson)

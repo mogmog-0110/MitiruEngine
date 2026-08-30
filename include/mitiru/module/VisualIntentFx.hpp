@@ -3,7 +3,7 @@
 /// @file VisualIntentFx.hpp
 /// @brief VisualIntent kind 2-6 (FadeOut / FadeIn / Shake / HitStop / Letterbox) の host 側演出状態
 /// @details
-/// DLL は intent を書くだけ (ADR 0005)。host (Engine) がこのクラスを 1 個所有し、
+/// DLL は intent を書くだけ。host (Engine) がこのクラスを 1 個所有し、
 /// 毎フレーム advance(dt) で進めて描画 / dt 供給へ反映する。演出は観測対象外なので
 /// GameMemory には入れない (engine 側状態で完結)。
 ///
@@ -69,7 +69,7 @@ public:
 			if (m_fadeDurSec <= 0.0f) { m_fadeAlpha = 1.0f; }  // 尺 0 = 即座に覆う
 			return true;
 		case kVisualIntentFadeIn:
-			// 覆い色は現状を引き継ぐ (覆い無し状態なら intent 色 — alpha 0 なので実害なし)
+			// 覆い色は現状を引き継ぐ (覆い無し状態なら intent 色。alpha 0 なので実害なし)
 			if (m_fadeAlpha <= 0.0f) { m_fadeR = vi.r; m_fadeG = vi.g; m_fadeB = vi.b; }
 			m_fadeFrom    = m_fadeAlpha;
 			m_fadeTo      = 0.0f;
@@ -86,7 +86,7 @@ public:
 			}
 			return true;
 		case kVisualIntentHitStop:
-			// 重ね掛けは加算でなく max — 二重発火で異常に長く止まらないように
+			// 重ね掛けは加算でなく max。二重発火で異常に長く止まらないように
 			if (vi.durSec > m_hitStopRemainSec) { m_hitStopRemainSec = vi.durSec; }
 			return true;
 		case kVisualIntentLetterbox:

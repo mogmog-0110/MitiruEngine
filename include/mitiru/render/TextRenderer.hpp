@@ -32,7 +32,7 @@ namespace mitiru::render
 class TextRenderer
 {
 public:
-	/// @brief テキストを描画する（整数スケール — 後方互換）
+	/// @brief テキストを描画する（整数スケール。後方互換）
 	/// @param screen 描画先Screen
 	/// @param text 描画テキスト（ASCII）
 	/// @param x 左上X座標
@@ -47,7 +47,7 @@ public:
 		drawTextFloat(screen, text, x, y, static_cast<float>(std::max(1, scale)), color);
 	}
 
-	/// @brief テキストを描画する（floatスケール — 任意のfontSizeに対応）
+	/// @brief テキストを描画する（floatスケール。任意のfontSizeに対応）
 	/// @param screen 描画先Screen
 	/// @param text 描画テキスト（ASCII）
 	/// @param x 左上X座標

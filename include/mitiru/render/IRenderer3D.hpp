@@ -291,7 +291,7 @@ public:
 	/// @brief 現像 2D の全画面合成強度 (0=3D / 1=完全 2D)。post-process で blit される。
 	virtual void setStyleStrength(float /*strength*/) {}
 
-	// ── 現像焼き込み (M4: 2D 絵画を 3D スプラットへ、DX12 で実装) ──────────
+	// ── 現像焼き込み (2D 絵画を 3D スプラットへ、DX12 で実装) ──────────────
 	/// @brief 直前の現像 2D を、その現像視点から見えるスプラットへ色として焼き込む。
 	virtual void bakeStyleToSplats() {}
 	/// @brief スプラット色を元の写実色へ戻す (焼き込み解除)。
@@ -313,11 +313,11 @@ public:
 	/// @return 視錐台内 (手前かつ画面内) なら true。アナモルフォーズ等の射影パズル用。
 	virtual bool worldToScreen(float /*wx*/, float /*wy*/, float /*wz*/, float& u, float& v) const { u = v = -1.0f; return false; }
 
-	// ── clod 仮想ジオメトリ (ADR 0027、DX12 のみ) ──────
+	// ── clod 仮想ジオメトリ (DX12 のみ) ──────
 	/// @brief .clod モデルのインスタンスを描画する (大規模静的ジオメトリ)。
 	/// @param path .clod への vfs パス。未対応バックエンドでは no-op。
 	/// @brief Makina の CSG ソリッド（焼き済み）を置く
-	/// @param bakeManifestPath .csgbake.json への**ファイルパス**（vfs ではない —
+	/// @param bakeManifestPath .csgbake.json への**ファイルパス**（vfs ではない。
 	///        bake は DXIL を隣から読むので、実在するディレクトリに展開されていること）
 	/// @param timeSec モーションの時刻 (秒、Makina D-15)。トラックを持つ立体を live に
 	///        焼いてあればその時刻の姿で描く。静止した立体や焼き込みの bake では無視される
@@ -339,7 +339,7 @@ public:
 		(void)scale;
 	}
 
-	// ── スキンアニメ付き glTF モデル (ADR 0028、DX12 のみ。vtable 末尾固定) ──────
+	// ── スキンアニメ付き glTF モデル (DX12 のみ。vtable 末尾固定) ──────
 	/// @brief スキンアニメ付き glTF/glb を forward パスで描く (CPU スキニング v1)。
 	/// @details clipA/timeA = 再生クリップ名と絶対時間 (秒、ループ)。clipB 非 null で
 	///          A→B の crossfade (blend01: 0=A, 1=B)。clip 名が空/不在はレストポーズ。

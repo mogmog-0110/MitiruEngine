@@ -3,7 +3,7 @@
 /// @file GfxFactory.hpp
 /// @brief グラフィックスデバイスファクトリ
 /// @details Backend列挙に応じたIDevice実装を生成するファクトリ関数を提供する。
-///          Windows環境ではDX12が本命、DX11は明示fallback (ADR 0023)。
+///          Windows環境ではDX12が本命、DX11は明示fallback。
 
 #include <memory>
 #include <stdexcept>
@@ -69,8 +69,8 @@ namespace mitiru::gfx
 	case Backend::Auto:
 #ifdef _WIN32
 	{
-		/// Windows環境ではDX12を優先し、失敗時にDX11へ明示フォールバックする (ADR 0023)。
-		/// 無言 fallback 禁止 — 失敗理由と失われる機能を stderr 1 行で通知する。
+		/// Windows環境ではDX12を優先し、失敗時にDX11へ明示フォールバックする。
+		/// 無言 fallback 禁止。失敗理由と失われる機能を stderr 1 行で通知する。
 		/// 明示 Backend::Dx11 指定 (下の case) は fallback ではないため通知しない。
 		auto* win32Window = dynamic_cast<Win32Window*>(window);
 		if (win32Window)
@@ -83,14 +83,14 @@ namespace mitiru::gfx
 			{
 				debug::warnOnce("gfx.dx12.fallback",
 					std::string("gfx: DX12 生成失敗 (") + e.what()
-						+ ") — DX11 へ fallback。WBOIT/HDR/MSAA/FXAA/影は無効 (ADR 0023)");
+						+ ") — DX11 へ fallback。WBOIT/HDR/MSAA/FXAA/影は無効");
 				return std::make_unique<Dx11Device>(win32Window);
 			}
 			catch (...)
 			{
 				debug::warnOnce("gfx.dx12.fallback",
 					"gfx: DX12 生成失敗 (unknown) — DX11 へ fallback。"
-					"WBOIT/HDR/MSAA/FXAA/影は無効 (ADR 0023)");
+					"WBOIT/HDR/MSAA/FXAA/影は無効");
 				return std::make_unique<Dx11Device>(win32Window);
 			}
 		}

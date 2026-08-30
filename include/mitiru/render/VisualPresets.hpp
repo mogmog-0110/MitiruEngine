@@ -23,7 +23,7 @@ struct VisualPresets
 {
 	VisualPresets() = delete;
 
-	/// @brief モダンパネル — 控えめなシャドウ、8px 角丸、微かなグラデーション
+	/// @brief モダンパネル。控えめなシャドウ、8px 角丸、微かなグラデーション
 	[[nodiscard]] static PanelStyle modernPanel() noexcept
 	{
 		PanelStyle style;
@@ -40,7 +40,7 @@ struct VisualPresets
 		return style;
 	}
 
-	/// @brief グラスモーフィズム — フロストぼかし、半透明、薄いボーダー
+	/// @brief グラスモーフィズム。フロストぼかし、半透明、薄いボーダー
 	[[nodiscard]] static PanelStyle glassmorphism() noexcept
 	{
 		PanelStyle style;
@@ -56,7 +56,7 @@ struct VisualPresets
 		return style;
 	}
 
-	/// @brief ネオングロー — 明るいボーダーグロー
+	/// @brief ネオングロー。明るいボーダーグロー
 	[[nodiscard]] static PanelStyle neonGlow() noexcept
 	{
 		PanelStyle style;
@@ -70,7 +70,7 @@ struct VisualPresets
 		return style;
 	}
 
-	/// @brief フラットミニマル — シャドウなし、角丸なし、ソリッドカラー
+	/// @brief フラットミニマル。シャドウなし、角丸なし、ソリッドカラー
 	[[nodiscard]] static PanelStyle flatMinimal() noexcept
 	{
 		PanelStyle style;
@@ -82,7 +82,7 @@ struct VisualPresets
 		return style;
 	}
 
-	/// @brief ゲーム HUD — HUD オーバーレイ向け半透明パネル
+	/// @brief ゲーム HUD。HUD オーバーレイ向け半透明パネル
 	[[nodiscard]] static PanelStyle gameHud() noexcept
 	{
 		PanelStyle style;
@@ -95,7 +95,7 @@ struct VisualPresets
 		return style;
 	}
 
-	/// @brief ツールチップ — 小さな角丸、軽いシャドウ
+	/// @brief ツールチップ。小さな角丸、軽いシャドウ
 	[[nodiscard]] static PanelStyle tooltip() noexcept
 	{
 		PanelStyle style;
@@ -109,7 +109,7 @@ struct VisualPresets
 		return style;
 	}
 
-	/// @brief 通知パネル — タイプ別のアクセントカラー付き
+	/// @brief 通知パネル。タイプ別のアクセントカラー付き
 	/// @param type 通知タイプ
 	[[nodiscard]] static PanelStyle notification(NotificationType type) noexcept
 	{
@@ -148,7 +148,7 @@ struct VisualPresets
 		return style;
 	}
 
-	/// @brief モーダルバックドロップ — ダーク半透明オーバーレイ
+	/// @brief モーダルバックドロップ。ダーク半透明オーバーレイ
 	[[nodiscard]] static PanelStyle modalBackdrop() noexcept
 	{
 		PanelStyle style;

@@ -55,7 +55,7 @@ VSOutput VSMain(VSInput input)
     float4 viewPos = mul(View, worldPos);
     output.Position = mul(Projection, viewPos);
 
-    // ライト空間位置 — シャドウサンプル PS で参照
+    // ライト空間位置。シャドウサンプル PS で参照
     output.LightSpacePos = mul(LightViewProj, worldPos);
 
     output.TexCoord = input.TexCoord;

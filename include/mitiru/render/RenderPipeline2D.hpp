@@ -58,7 +58,7 @@ enum class PixelArtFilter
 	Point   ///< D3D12_FILTER_MIN_MAG_MIP_POINT  (シャープな pixel art)
 };
 
-/// @brief 正射影行列（列優先 column-major、float4x4 — OpenGL標準配置）
+/// @brief 正射影行列（列優先 column-major、float4x4。OpenGL標準配置）
 /// @details left=0, right=w, top=0, bottom=h, near=0, far=1
 struct OrthoMatrix
 {
@@ -132,7 +132,7 @@ public:
 		const std::vector<std::uint32_t>& indices,
 		const StyleConstants& style);
 
-	/// @brief テクスチャ付きスプライトバッチをサポートするか（ADR 0009）
+	/// @brief テクスチャ付きスプライトバッチをサポートするか
 	/// @details 現状 DX12 path のみ。false の backend では Screen が per-pixel
 	///          fallback を使う（software / DX11 / WebGL / Null）。
 	[[nodiscard]] bool supportsTexturedBatch() const noexcept
@@ -230,6 +230,8 @@ private:
 	std::unique_ptr<gfx::WebGLShader> m_glShader; ///< WebGL シェーダーオブジェクト（RAII）
 	GLuint m_glProgram = 0;   ///< WebGL 2Dシェーダープログラム
 	GLuint m_glVAO = 0;       ///< WebGL 頂点配列オブジェクト
+	gfx::BlendMode m_glBlendMode = gfx::BlendMode::Alpha; ///< 次の描画で使う合成
+	void applyGlBlendMode() const noexcept;
 	GLint m_glProjLoc = -1;   ///< uProjection uniform location
 	GLint m_glUseTexLoc = -1; ///< uUseTexture uniform location
 #endif
@@ -290,7 +292,7 @@ private:
 	int  m_dx12PgTexH     = 0;     ///< キャッシュテクスチャ高さ
 	bool m_dx12PgTexReady = false; ///< 初回 CopyTextureRegion 後に true (state = PSR)
 
-	/// ── textured sprite batch 用 永続テクスチャキャッシュ (DX12, ADR 0009) ──
+	/// ── textured sprite batch 用 永続テクスチャキャッシュ (DX12) ──
 	/// 各 entry は default-heap texture (PSR 状態) + 専用 1-slot shader-visible
 	/// SRV heap を持つ。key+(w,h) でキャッシュし、初回のみ同期アップロードする。
 	struct Dx12SpriteTexture
@@ -383,7 +385,7 @@ private:
 	///
 	/// createFromDx12 時点で linear PSO と並べて eager に構築する。構築に失敗した
 	/// 場合は nullptr のまま残り、submitPixelGridDx12 は linear へ自動
-	/// フォールバックする (draw() 内での遅延初期化は禁止 — エンジン規約)。
+	/// フォールバックする (draw() 内での遅延初期化は禁止。エンジン規約)。
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_dx12PointRootSig; ///< point-filter root sig
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_dx12PointPipeline; ///< point-filter PSO
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_dx12PointPipelineMsaa; ///< point-filter 4x MSAA 変種

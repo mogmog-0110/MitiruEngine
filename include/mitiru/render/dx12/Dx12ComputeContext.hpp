@@ -143,7 +143,7 @@ public:
     }
 
     /// @brief Dispatch を記録するコマンドリストを設定する
-    /// @param cmdList recording 中の ID3D12GraphicsCommandList（null 可 — dispatch 時にエラー）
+    /// @param cmdList recording 中の ID3D12GraphicsCommandList（null 可。dispatch 時にエラー）
     void setCommandList(ID3D12GraphicsCommandList* cmdList)
     {
         m_cmdList = cmdList;
@@ -279,7 +279,7 @@ private:
 
         D3D12_ROOT_PARAMETER params[6] = {};
 
-        // CBV 0..3 — ルートディスクリプタ（ヒープ不要、直接 GPU アドレス）
+        // CBV 0..3。ルートディスクリプタ（ヒープ不要、直接 GPU アドレス）
         for (UINT i = 0; i < kCbvCount; ++i)
         {
             params[i].ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;

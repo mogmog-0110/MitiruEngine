@@ -45,7 +45,7 @@ public:
 	[[nodiscard]] bool loadFile(const std::string& fntPath)
 	{
 		// pack 配布時はパックから、dev は disk から (.fnt 本文)。PNG ページは
-		// loadFromString 内の Texture::fromFile が同様に pack 経由で読む (ADR 0016)。
+		// loadFromString 内の Texture::fromFile が同様に pack 経由で読む。
 		auto text = mitiru::vfs::readAssetText(fntPath);
 		if (!text) { m_error = "cannot open " + fntPath; return false; }
 		const std::string baseDir = std::filesystem::path(fntPath).parent_path().string();

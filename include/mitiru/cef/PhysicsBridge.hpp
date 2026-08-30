@@ -27,7 +27,7 @@
 ///                               → `{"moves":[{"id":N,"x":n,"y":n,"angle":n},…],
 ///                                   "contacts":[{"a":N,"b":N,"aData":"str","bData":"str"},…]}`
 ///
-/// **Step ownership。** `physics.poll` が step の駆動役 — JS の
+/// **Step ownership。** `physics.poll` が step の駆動役。JS の
 /// `requestAnimationFrame` ループから呼ばれる。C++ は thread を所有しない。
 ///
 /// **使い方:**
@@ -314,7 +314,7 @@ public:
         return "{}";
     }
 
-    /// @brief physics.poll — world を step し、move + contact イベントを返す
+    /// @brief physics.poll。world を step し、move + contact イベントを返す
     std::string handlePoll(std::string_view payload)
     {
         const json p = detail::parsePayload(payload);
@@ -348,8 +348,8 @@ private:
     std::string buildPollResponse(WorldSlot& slot) const
     {
         // 逆引きを構築: native b2BodyId → (bridge bodyId, userData)。
-        // b2BodyId は素の struct。linear scan を使う (body 数は高々数百 —
-        // linear は cache に優しく、独自 hash も不要)。
+        // b2BodyId は素の struct。linear scan を使う。body 数は高々数百なので
+        // linear は cache に優しく、独自 hash も不要。
         struct ReverseEntry { uint64_t bid; std::string_view userData; };
         std::vector<std::pair<b2BodyId, ReverseEntry>> rev;
         rev.reserve(slot.bodies.size());
@@ -409,7 +409,7 @@ private:
 
 // ── stub (Box2D 未ビルド) ───────────────────────────────────────────────────
 
-/// @brief PhysicsBridgeState の stub — どの handler もエラーを返す。
+/// @brief PhysicsBridgeState の stub。どの handler もエラーを返す。
 /// @details Box2D が無くても下流コードが compile できるようにする。
 class PhysicsBridgeState
 {

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file DX12OitTransparentPS.hpp
-/// @brief 半透明メッシュ用 PS — Phong と同じシェーディングを Weighted-Blended OIT へ出力する。
+/// @brief 半透明メッシュ用 PS。Phong と同じシェーディングを Weighted-Blended OIT へ出力する。
 /// @details main の Phong PS (DX12ShaderModePS.hpp) と同一の入力 (VSOutput) / CB (b1) /
 ///          ルートシグネチャを使い、最終出力だけを `o.Color` から WBOIT の
 ///          accum(SV_TARGET0) / reveal(SV_TARGET1) に差し替える。これにより透明メッシュも

@@ -74,14 +74,14 @@ mitiru_add_example(motion)
 mitiru_add_example(sprites)
 mitiru_add_example(camera)         # 追従カメラ (FollowCam): 画面より広い世界を deadzone + 先読みで追う
 mitiru_add_example(audio)
-mitiru_add_example(html_hud)       # 最小の操作シーン (C++ ネイティブ描画の箱庭) に HTML HUD を重ねる: ゲーム状態が text/tween/style/class/repeat を駆動、JS ゼロ (軸①、ADR 0005/0007)
+mitiru_add_example(html_hud)       # 最小の操作シーン (C++ ネイティブ描画の箱庭) に HTML HUD を重ねる: ゲーム状態が text/tween/style/class/repeat を駆動、JS ゼロ (軸①)
 mitiru_add_example(html_menu)      # binder 応用: list / dispatch / confirm
 mitiru_add_example(observe)
-mitiru_add_example(rewind)         # time-travel inspector (軸②、ADR 0017/0018)
-mitiru_add_example(restart_save)   # requestRestart + .msav (ADR 0020/0024)
+mitiru_add_example(rewind)         # time-travel inspector (軸②)
+mitiru_add_example(restart_save)   # requestRestart + .msav
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
-mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD (ADR 0027)
-mitiru_add_example(anim3d)         # 骨格アニメ: drawModelBlend + クリップ時間 (ADR 0028)
+mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD
+mitiru_add_example(anim3d)         # 骨格アニメ: drawModelBlend + クリップ時間
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
 mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane を並べて撮る
 

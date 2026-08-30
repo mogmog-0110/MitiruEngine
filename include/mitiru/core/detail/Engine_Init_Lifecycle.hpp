@@ -1,4 +1,4 @@
-// mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
+// mitiru::Engine 用の detail header。直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
@@ -65,7 +65,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			config.title, winW, winH,
 			GlfwGraphicsMode::OpenGL);
 #else
-		// GLFW 不在時は黙って変えない。fallback は明示する (ADR 0023)
+		// GLFW 不在時は黙って変えない。fallback は明示する
 		mitiru::debug::warnOnce("gfx.glfw.opengl.fallback",
 			"指定 backend OpenGL は GLFW 不在で使用不可、Dx11 に変更");
 		m_config.gfxBackend = gfx::Backend::Dx11;
@@ -81,7 +81,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			config.title, winW, winH,
 			GlfwGraphicsMode::Vulkan);
 #else
-		// GLFW 不在時は黙って変えない。fallback は明示する (ADR 0023)
+		// GLFW 不在時は黙って変えない。fallback は明示する
 		mitiru::debug::warnOnce("gfx.glfw.vulkan.fallback",
 			"指定 backend Vulkan は GLFW 不在で使用不可、Dx11 に変更");
 		m_config.gfxBackend = gfx::Backend::Dx11;

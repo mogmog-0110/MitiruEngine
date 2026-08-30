@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file Reflection.hpp
-/// @brief GameMemory のフィールド構造を game が宣言し、host が構造化 JSON 化する記述子 (ADR 0018)
+/// @brief GameMemory のフィールド構造を game が宣言し、host が構造化 JSON 化する記述子
 /// @details
 /// probe (SeriesProbe = 1 スカラーの accessor) の自然な拡張。probe は「GameMemory から
 /// double を 1 つ引く」だったが、reflection は「GameMemory の全フィールドの名前・型・
 /// オフセット」を宣言する。host はこの記述子表を使って GameMemory バイト列 (現フレーム +
 /// time-travel ring の過去フレーム) を構造化 JSON に変換し、AI が全状態を読めるようにする。
 ///
-/// 設計 (ADR 0005/0017 整合):
+/// 設計:
 /// - host は GameMemory の layout を内蔵しない。**game が記述子で教える** (probe と同契約)。
 /// - FieldDescriptor は DLL 境界を memcpy で渡る POD。
 /// - v1 対応型: スカラー / FixedString / FixedVec<スカラー,N> / FixedVec<flat-struct,N>
@@ -56,7 +56,7 @@ struct ReflectSchema
 static_assert(std::is_trivially_copyable_v<FieldDescriptor>, "FieldDescriptor は POD (DLL 境界)");
 static_assert(std::is_trivially_copyable_v<ReflectSchema>,   "ReflectSchema は POD (DLL 境界)");
 
-/// @brief reflect 記述子から GameMemory layout hash (FNV-1a 64) を作る (ADR 0024 追記)。
+/// @brief reflect 記述子から GameMemory layout hash (FNV-1a 64) を作る。
 /// @details field の名前・型 tag・offset・要素情報と、FixedVec<struct,N> の要素 schema を
 ///          畳む。サイズ照合では素通りする「同サイズの field 並べ替え / float↔int」を
 ///          .msav ロードと reload の状態温存判定で検出する。
@@ -126,7 +126,7 @@ template <> struct ScalarTag<short>              { static constexpr const char* 
 template <> struct ScalarTag<unsigned short>     { static constexpr const char* tag = "u16"; };
 template <> struct ScalarTag<int>                { static constexpr const char* tag = "i32"; };
 template <> struct ScalarTag<unsigned int>       { static constexpr const char* tag = "u32"; };
-// long は LLP64 (Win) で 32bit / LP64 (Linux/mac) で 64bit — sizeof で分岐する
+// long は LLP64 (Win) で 32bit / LP64 (Linux/mac) で 64bit。sizeof で分岐する
 template <> struct ScalarTag<long>               { static constexpr const char* tag = sizeof(long) == 8 ? "i64" : "i32"; };
 template <> struct ScalarTag<unsigned long>      { static constexpr const char* tag = sizeof(long) == 8 ? "u64" : "u32"; };
 template <> struct ScalarTag<long long>          { static constexpr const char* tag = "i64"; };
@@ -149,7 +149,7 @@ template <std::size_t N> struct IsFixedString<mitiru::FixedString<N>> : std::tru
 
 /// @brief MITIRU_REFLECT / MITIRU_REFLECT_STRUCT のフィールド数超過 (>16) を compile error
 ///        にする番兵。17 個以上を書くと MITIRU_FOR_EACH がこの削除済み関数を選び、
-///        「use of deleted function ...Max16Fields...」が出る — 関数名がそのまま対処法:
+///        「use of deleted function ...Max16Fields...」が出る。関数名がそのまま対処法:
 ///        フィールドを 16 個以下に分割するか、ネスト部分を MITIRU_REFLECT_STRUCT へ切り出す。
 inline FieldDescriptor mitiruReflect_Max16Fields_SplitOrUseReflectStruct() = delete;
 

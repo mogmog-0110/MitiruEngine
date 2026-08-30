@@ -7,10 +7,10 @@
 /// host が GameMemory の **生バイト列** を毎フレーム push する。後で `at(offset)` で
 /// "n フレーム前の GameMemory bytes" を読み戻す。これが time-travel inspector の観測
 /// (probe で系列化) と rewind (live GameMemory へ memcpy で巻き戻し) の **単一源**
-/// (ADR 0017、replay の state slot と同一 bytes)。
+/// (replay の state slot と同一 bytes)。
 ///
 /// 設計判断:
-/// - host プロセスが所有する。game DLL は ring を持たない (ADR 0005 pure 維持)。
+/// - host プロセスが所有する。game DLL は ring を持たない。
 /// - frameSize = GameMemory の固定バイト数 (ModuleApi.memorySize)。`configure` で確定し、
 ///   contiguous な単一 buffer (capacity*frameSize) を 1 度だけ確保する (hot path で
 ///   alloc しない)。GameMemory が flat POD だから bytes 一致で復元できる。
@@ -27,7 +27,7 @@
 namespace mitiru::observe
 {
 
-/// @brief 固定容量の GameMemory bytes リング — 軸② time-travel 基盤
+/// @brief 固定容量の GameMemory bytes リング。軸② time-travel 基盤
 class GameMemoryRing
 {
 public:

@@ -3,13 +3,13 @@
 /// @file ModuleApi.hpp
 /// @brief Engine ↔ Game DLL の C ABI 契約 (v0.2.0 hot reload foundation)
 /// @details
-/// Game DLL は **純関数** に近い形で実装される (ADR 0005):
+/// Game DLL は **純関数** に近い形で実装される:
 ///
 /// @code
 ///   (memory_in, input_snapshot, dt) → (memory_out, render, intents)
 /// @endcode
 ///
-/// **3 つの不変条件 (ADR 0005)**:
+/// **3 つの不変条件**:
 /// 1. Game DLL は host (engine) の object pointer を一切持たない
 /// 2. Host が必要データを毎フレーム POD で push する (InputSnapshot)
 /// 3. Game の side effect は intent field 経由で「お願い」する (FrameIntents)
@@ -43,7 +43,7 @@
 #  include <yvals.h>  // _ITERATOR_DEBUG_LEVEL を確定させる (build fingerprint 用)
 #endif
 
-#include <mitiru/module/Reflection.hpp>  // FieldDescriptor / ReflectSchema (ADR 0018)
+#include <mitiru/module/Reflection.hpp>  // FieldDescriptor / ReflectSchema
 
 // Forward declare engine types so the header is light. Concrete definitions
 // come from the engine when the DLL links against `Mitiru::mitiru`.
@@ -53,32 +53,32 @@ namespace mitiru::module
 {
 
 /// @brief 現在の ABI version。breaking change で bump する。
-/// @details 1 version = 1 行の台帳。詳細は各 field の vNN コメントと ADR。
+/// @details 1 version = 1 行の台帳。詳細は各 field の vNN コメント。
 ///   - v1: on_init / on_update / on_draw / on_shutdown
 ///   - v2: InputSnapshot / FrameIntents 追加、on_update sig 変更
 ///   - v3: StatePushItem::strVal 160 → 3968
-///   - v4: FrameIntents に soundIntents (ADR 0008)
+///   - v4: FrameIntents に soundIntents
 ///   - v5: InputSnapshot に gamepad
 ///   - v6: SoundIntent に pitchScale / fadeInSec / fadeOutSec
 ///   - v7: FrameIntents に visualIntents
-///   - v8: InputSnapshot に rngSeed (ADR 0012)
-///   - v9: ModuleApi に memorySize (ADR 0013)
-///   - v10: FrameIntents に toolRequests (ADR 0014)
-///   - v11: ModuleApi に seriesProbes (ADR 0017)
-///   - v12: ModuleApi に reflectFields / reflectSchemas (ADR 0018)
+///   - v8: InputSnapshot に rngSeed
+///   - v9: ModuleApi に memorySize
+///   - v10: FrameIntents に toolRequests
+///   - v11: ModuleApi に seriesProbes
+///   - v12: ModuleApi に reflectFields / reflectSchemas
 ///   - v13: InputSnapshot に audioTimeSec
 ///   - v14: Screen に AI 観測用 draw log (/api/ai/frame)
 ///   - v15: Screen に SW ラスタライズ gating
 ///   - v16: Screen に sprite resolver (s.sprite(id))
-///   - v17: FrameIntents に save / load (ADR 0020)
+///   - v17: FrameIntents に save / load
 ///   - v18: Screen に 3D facade (s.camera3D / s.drawMesh)
 ///   - v19: audioLatencySec + SoundIntent transport / seekSec / scheduleSec
-///   - v20: weave intent (v21 内で撤去、ADR 0024 撤去節)
-///   - v21: effectiveDt / paused / logicalW / logicalH + 明示 pad + sizeof/offset static_assert (ADR 0024)
-///   - v22: Screen::drawModel + IRenderer3D 末尾 virtual (ADR 0027)
+///   - v20: weave intent (v21 内で撤去)
+///   - v21: effectiveDt / paused / logicalW / logicalH + 明示 pad + sizeof/offset static_assert
+///   - v22: Screen::drawModel + IRenderer3D 末尾 virtual
 ///   - v23: InputSnapshot に mouseDeltaX/Y、FrameIntents に wantMouseLock (FPS 視線)
 ///   - v24: Screen::drawModel(clip,time) / drawModelBlend + IRenderer3D 末尾 virtual
-///          drawSkinnedModel (ADR 0028)
+///          drawSkinnedModel
 ///   - v25: Screen::camera3D(eye, target, fov, rollDeg) + Screen 末尾メンバ m_cam3DUp
 ///   - v26: Screen::drawModel(path, pos, rotDeg, scale) + IRenderer3D 末尾 virtual drawModelRot
 ///   - v27: Screen::toon3D / outline3D + Screen 末尾メンバ 4 個 + IRenderer3D 末尾 virtual
@@ -87,12 +87,12 @@ namespace mitiru::module
 ///   - v29: Screen::shadowCaster3D + IRenderer3D 末尾 virtual setShadowCaster
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
-///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない —
+///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が太ると後続 field の offset がズレ silent 破損するため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
 constexpr std::uint32_t kCurrentApiVersion = 29;
 
-// ── build fingerprint (H-1/H-4 短期対策、ADR 0024 追記) ─────────────────────
+// ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
 // 数値 version が一致しても Debug/Release CRT・/MD//MT・toolset 系列の混成は silent な
 // heap/layout 破損になる。そこで ModuleApi::version の上位 bit へ「自分がどう
@@ -132,7 +132,7 @@ constexpr std::uint32_t kCurrentApiVersion = 29;
 }
 
 /// @brief 自ビルド構成での wire version (DLL 側は registerGame が、host 側は loader が使う)。
-///        loader は **この値の完全一致のみ受理** する — 数値一致でもビルド構成が違えば拒否。
+///        loader は **この値の完全一致のみ受理** する。数値一致でもビルド構成が違えば拒否。
 constexpr std::uint32_t kWireApiVersion = makeWireVersion(kCurrentApiVersion);
 
 // wire version の分解 (loader の拒否メッセージ / .mtrr 診断表示用)
@@ -141,20 +141,20 @@ constexpr std::uint32_t kWireApiVersion = makeWireVersion(kCurrentApiVersion);
 [[nodiscard]] constexpr bool          wireCrtIsDll(std::uint32_t v)  noexcept { return ((v >> 18) & 0x1u) != 0; }
 [[nodiscard]] constexpr std::uint32_t wireMscSeries(std::uint32_t v) noexcept { return (v >> 19) & 0x3Fu; }
 
-/// @brief load 時のエントリ関数名 — host が `GetProcAddress` で探す symbol
+/// @brief load 時のエントリ関数名。host が `GetProcAddress` で探す symbol
 constexpr const char* kLoadSymbol = "mitiru_module_load";
 
-/// @brief unload 時のエントリ関数名 (optional — 無くてもよい)
+/// @brief unload 時のエントリ関数名 (optional。無くてもよい)
 constexpr const char* kUnloadSymbol = "mitiru_module_unload";
 
-/// @brief write-blame 問い合わせ関数名 (optional — `mitiru why` に opt-in する game だけが export)。
+/// @brief write-blame 問い合わせ関数名 (optional。`mitiru why` に opt-in する game だけが export)。
 /// @details host が GetProcAddress で解決し、分岐 byte offset を渡して「最後に書いた phase 名」を
-///          引く (ADR0005: host→DLL pull、ABI/ModuleApi は不変)。
+///          引く (host→DLL pull、ABI/ModuleApi は不変)。
 constexpr const char* kWhyBlameSymbol = "mitiru_why_blame_at";
 
-/// @brief 巻き戻しバッファ長 (フレーム数) を返す関数名 (optional — MITIRU_REWIND_BUFFER で export)。
+/// @brief 巻き戻しバッファ長 (フレーム数) を返す関数名 (optional。MITIRU_REWIND_BUFFER で export)。
 /// @details host が GetProcAddress で解決し、リングバッファをこのフレーム数で作る。不在なら既定 300。
-///          (ADR0005: host→DLL pull。ModuleApi struct は不変 = 別 export なので後方互換)。
+///          (host→DLL pull。ModuleApi struct は不変 = 別 export なので後方互換)。
 constexpr const char* kRewindBufferSymbol = "mitiru_module_rewind_buffer_frames";
 
 /// @brief game が「巻き戻しで何フレーム前まで戻れるか」を宣言する (optional)。MITIRU_GAME と併記する。
@@ -241,7 +241,7 @@ struct InputSnapshot
 	std::uint32_t gamepadButtonsJustReleased;  ///< このフレームで離された
 	float         gamepadAxes[6];              ///< gamepad::Axis 添字。stick [-1,1] / trigger [0,1]
 
-	/// v8: 決定論 seed (ADR 0012)。`mitiru::Random rng(input->rngSeed)` で使う。0 = 未供給
+	/// v8: 決定論 seed。`mitiru::Random rng(input->rngSeed)` で使う。0 = 未供給
 	std::uint64_t rngSeed;
 
 	/// v13: 音声クロック (秒) = backend が再生したサンプル位置。0 = 非対応 → dt 積算へ
@@ -251,7 +251,7 @@ struct InputSnapshot
 	/// v19: 音声出力レイテンシ (秒)。耳基準の判定は earTime = audioTimeSec - この値。0 = 不明
 	double audioLatencySec;
 
-	/// v21: host が on_update へ渡す実効 dt (ADR 0024)。pause / hitStop 中は 0
+	/// v21: host が on_update へ渡す実効 dt。pause / hitStop 中は 0
 	float effectiveDt;
 
 	/// v21: 論理解像度 (Screen logical size)。0 = 未供給
@@ -303,14 +303,14 @@ struct InspectableExport
 	char         json[3968]; ///< serialize した JSON、null 終端
 };
 
-/// @brief 「この音を鳴らして」という DLL → host の intent (ADR 0008)
-/// @details ゲームは mixer / AudioEngine pointer を持たず (ADR 0005)、id を
+/// @brief 「この音を鳴らして」という DLL → host の intent
+/// @details ゲームは mixer / AudioEngine pointer を持たず、id を
 ///          書くだけ。host が所有する audio engine が再生する。id は host が
 ///          assets/audio/ からロードした論理名 (拡張子抜きファイル名)。
 /// @brief 「この画面演出をやって」という DLL → host の intent (#33、v7 追加)。
 /// @details kind = 0:None / 1:Tint / 2:FadeOut / 3:FadeIn / 4:Shake / 5:HitStop。
 ///          フィールドは kind ごとに読み替える (定数の下の表を参照)。
-///          struct レイアウトは v7 から不変 — kind 追加は ABI 安全 (旧 host は未知 kind を無視)。
+///          struct レイアウトは v7 から不変。kind 追加は ABI 安全 (旧 host は未知 kind を無視)。
 struct VisualIntent
 {
 	std::uint8_t kind;       ///< kVisualIntent* (下の定数)
@@ -349,11 +349,11 @@ struct SoundIntent
 	                          ///< サンプル精度予約 (SE 用)。0 = 即時再生。
 };
 
-/// @brief 「このツール窓を開いて」という DLL → host の intent (ADR 0014、v10 追加)。
-/// @details game は Engine* を持てない (ADR 0005) ので、独立ウィンドウのツール
+/// @brief 「このツール窓を開いて」という DLL → host の intent (v10 追加)。
+/// @details game は Engine* を持てない ので、独立ウィンドウのツール
 ///          (inspector / input monitor / time-travel など) を自分では開けない。代わりに
 ///          tool 名を書いて「開いて」と頼み、host が別 exe (mitiru_<tool>.exe) を spawn する。
-///          必要なときだけ呼ぶ — 既定では何も開かない (pulled UI、アトミックツール哲学)。
+///          必要なときだけ呼ぶ。既定では何も開かない (pulled UI、アトミックツール哲学)。
 struct RequestToolWindow
 {
 	char tool[64];   ///< ツール名 (例: "inspector")。host が mitiru_<tool>.exe を探す。null 終端。
@@ -387,7 +387,7 @@ struct FrameIntents
 	std::int32_t jsToExecuteLen;
 	char         jsToExecute[2048];
 
-	/// v4: sound 再生要求 (ADR 0008)
+	/// v4: sound 再生要求
 	std::int32_t soundIntentCount;
 	SoundIntent  soundIntents[8];
 
@@ -395,11 +395,11 @@ struct FrameIntents
 	std::int32_t visualIntentCount;
 	VisualIntent visualIntents[8];
 
-	/// v10: ツール窓 spawn 要求 (ADR 0014)
+	/// v10: ツール窓 spawn 要求
 	std::int32_t      toolRequestCount;
 	RequestToolWindow toolRequests[4];
 
-	// v17: セーブ/ロード (ADR 0020)。save = GameMemory bytes → save/<slot>.msav、
+	// v17: セーブ/ロード。save = GameMemory bytes → save/<slot>.msav、
 	// load = ファイル → GameMemory memcpy。replay 中の load は記録済み state で代用される
 	std::uint8_t saveRequest;     ///< 1 = このフレームで save
 	std::uint8_t loadRequest;     ///< 1 = このフレームで load
@@ -439,13 +439,13 @@ struct FrameIntents
 	}
 
 	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
-	/// GameMemory をスロットへセーブするよう host に頼む (ADR 0020)。
+	/// GameMemory をスロットへセーブするよう host に頼む。
 	void requestSave(const char* slot) noexcept
 	{
 		saveRequest = 1;
 		copyStr(saveSlot, slot, sizeof(saveSlot));
 	}
-	/// スロットから GameMemory を復元するよう host に頼む (ADR 0020)。
+	/// スロットから GameMemory を復元するよう host に頼む。
 	void requestLoad(const char* slot) noexcept
 	{
 		loadRequest = 1;
@@ -454,7 +454,7 @@ struct FrameIntents
 	/// GameMemory を初期状態から fresh 再構築するよう host に頼む (§8-4)。
 	/// unload なしで memset 0 → on_init が走る (`*this = T{}` の手運びが不要になる)。
 	void requestRestart() noexcept { restartRequest = 1; }
-	/// カーソルロックを頼む (FPS 視線)。毎フレーム呼ぶ — 呼ばないフレームで解除される。
+	/// カーソルロックを頼む (FPS 視線)。毎フレーム呼ぶ。呼ばないフレームで解除される。
 	void requestMouseLock() noexcept { wantMouseLock = 1; }
 
 	// HUD へ値を送る / 音を鳴らす、を 1 行で書くためのヘルパ。中の固定長スロット詰め
@@ -606,7 +606,7 @@ struct FrameIntents
 	void requestScreenshotNow() noexcept { requestScreenshot = 1; }
 
 	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。
-	/// 必要なときだけ呼べばよい — inspector が開いている時にだけ映る (pulled UI)。
+	/// 必要なときだけ呼べばよい。inspector が開いている時にだけ映る (pulled UI)。
 	void pushInspectable(const char* name, const char* title, const char* json) noexcept
 	{
 		const int cap = static_cast<int>(sizeof(exportedInspectables) / sizeof(exportedInspectables[0]));
@@ -623,7 +623,7 @@ struct FrameIntents
 	}
 
 	/// 独立ウィンドウのツール (inspector 等) を開くよう host に頼む。必要なときだけ呼ぶ。
-	/// host は mitiru_<tool>.exe を別窓で spawn する (ADR 0014)。
+	/// host は mitiru_<tool>.exe を別窓で spawn する。
 	void requestToolWindow(const char* tool, const char* args = "") noexcept
 	{
 		const int cap = static_cast<int>(sizeof(toolRequests) / sizeof(toolRequests[0]));
@@ -688,7 +688,7 @@ static_assert(std::is_trivially_copyable_v<InputSnapshot>,
 // sizeof / offsetof を数値で固定する。game 側の /Zp・#pragma pack 等で layout が
 // 変わると version 一致のまま silent 破損するため、コンパイル時に検出する。
 // (fn pointer を含む ModuleApi / SeriesProbe は memcpy wire ではないため対象外。)
-// これらの数値を変える変更は ABI break — kCurrentApiVersion の bump と、
+// これらの数値を変える変更は ABI break。kCurrentApiVersion の bump と、
 // .mtrr 録画 (header frameSize = sizeof(InputSnapshot)) の録り直しが必要。
 static_assert(sizeof(ActionEvent)       == 320,  "ActionEvent wire size 固定");
 static_assert(sizeof(InputSnapshot)     == 6000, "InputSnapshot wire size 固定 (v23: mouseDelta 追記)");
@@ -715,9 +715,9 @@ static_assert(offsetof(FrameIntents, soundIntents)      == 295736, "FrameIntents
 static_assert(offsetof(FrameIntents, restartRequest)    == 297628, "FrameIntents layout (v21 restart)");
 static_assert(offsetof(FrameIntents, wantMouseLock)     == 297632, "FrameIntents layout (v23)");
 
-// ── 観測 probe (ABI v11、ADR 0017) ───────────────────────────────────────
+// ── 観測 probe (ABI v11) ───────────────────────────────────────
 
-/// @brief GameMemory から追跡スカラーを引く純関数 (C 生関数ポインタ = POD = ADR 0005 安全)
+/// @brief GameMemory から追跡スカラーを引く純関数 (C 生関数ポインタなので POD)
 /// @details host が GameMemory bytes へのポインタを渡して呼ぶ。読むのは GameMemory のみ
 ///          (static / 外部状態を読むと replay 非再現になる)。capture を持たない lambda は
 ///          暗黙変換可、capture ありは変換不可でコンパイル拒否される (footgun 防止)。
@@ -745,7 +745,7 @@ struct ModuleApi
 	/// @brief wire version = ABI 番号 + build 指紋 (kWireApiVersion)。engine が自分の
 	///        kWireApiVersion を初期値で埋めて DLL に渡し、DLL (MITIRU_GAME の registerGame)
 	///        は自分がコンパイルされた時点の kWireApiVersion で上書きする。host は
-	///        **完全一致のみ受理** する (kCurrentApiVersion の @note、D1) — 数値一致でも
+	///        **完全一致のみ受理** する (kCurrentApiVersion の @note、D1)。数値一致でも
 	///        CRT 種別 / IDL / toolset 系列の混成 (H-1/H-4) は拒否。不一致 = 要再ビルド。
 	std::uint32_t version;
 
@@ -769,18 +769,18 @@ struct ModuleApi
 	/// @brief DLL がもうすぐ unload される直前に呼ばれる (reload 含む)。
 	void (*on_shutdown)(void* memory);
 
-	/// @brief GameMemory (DLL が *memory にセットした state) のバイト数 (ABI v9、ADR 0013)。
+	/// @brief GameMemory (DLL が *memory にセットした state) のバイト数 (ABI v9)。
 	/// @details DLL は `api->memorySize = sizeof(自分の GameMemory)` を申告する。0 = 未申告で、
 	///          host は GameMemory を記録せず観測 view.* にフォールバックする。host は replay
-	///          記録時にこのサイズだけ opaque に memcpy する (中身は parse しない = ADR 0005)。
+	///          記録時にこのサイズだけ opaque に memcpy する (中身は parse しない)。
 	std::uint32_t memorySize;
 
-	/// @brief 観測 probe テーブル (ABI v11、ADR 0017)。末尾追記なので v≤10 module は後方安全
+	/// @brief 観測 probe テーブル (ABI v11)。末尾追記なので v≤10 module は後方安全
 	///        (zero-init で seriesProbeCount=0 = 観測なし)。`MITIRU_GAME_SERIES` が埋める。
 	std::int32_t seriesProbeCount;
 	SeriesProbe  seriesProbes[8];
 
-	/// @brief GameMemory リフレクション記述表 (ABI v12、ADR 0018)。末尾追記で v≤11 後方安全
+	/// @brief GameMemory リフレクション記述表 (ABI v12)。末尾追記で v≤11 後方安全
 	///        (zero-init で reflectFieldCount=0 = 非対応)。`MITIRU_REFLECT` が埋める。host が
 	///        GameMemory バイト列を構造化 JSON 化して AI に全状態を開放する。
 	std::int32_t  reflectFieldCount;
@@ -789,7 +789,7 @@ struct ModuleApi
 	ReflectSchema reflectSchemas[8];     ///< FixedVec<struct,N> の要素型スキーマ (1 段ネスト)
 };
 
-/// @brief 申告済み reflect 記述子から GameMemory layout hash を引く (ADR 0024 追記)。
+/// @brief 申告済み reflect 記述子から GameMemory layout hash を引く。
 /// @details 0 = reflection 未宣言 (照合 skip)。.msav header / reload 状態温存判定が使う。
 [[nodiscard]] inline std::uint64_t moduleLayoutHash(const ModuleApi& api) noexcept
 {

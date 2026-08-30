@@ -10,8 +10,8 @@
 ///          シャドウ統合の視覚確認に必要十分。Phong 完全実装は将来の sub-task。
 ///
 /// ## cbuffer レイアウト
-/// - b0: cameraViewProj  (4x4) — カメラの VP
-/// - b1: lightViewProj   (4x4) — シャドウパスの VP
+/// - b0: cameraViewProj  (4x4)。カメラの VP
+/// - b1: lightViewProj   (4x4)。シャドウパスの VP
 /// - t0: shadowMap       Texture2D<float>
 /// - s0: shadowSampler   SamplerComparisonState (LESS_EQUAL)
 ///

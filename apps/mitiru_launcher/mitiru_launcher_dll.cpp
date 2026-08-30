@@ -1,6 +1,6 @@
-// mitiru_launcher — Game-as-DLL として dogfood する GUI プロジェクトマネージャ / launcher
+// mitiru_launcher。Game-as-DLL として dogfood する GUI プロジェクトマネージャ / launcher
 //
-// ADR 0005: この DLL はエンジンの C++ API を一切呼ばない。CEF への state push は
+// この DLL はエンジンの C++ API を一切呼ばない。CEF への state push は
 // 全て `FrameIntents::statePushes[]` 経由。ユーザー操作は全て
 // `InputSnapshot::actionEvents[]` で届く (エンジンが CEF dispatch を
 // `StateStore::onActionFallback` 経由でこのキューへ流す)。
@@ -13,7 +13,7 @@
 //   - [Build] ボタン: vcvars64.bat 下で cmake を起動、stdout → ログファイル
 //   - explorer / ログファイルを開く (ShellExecuteW)
 //
-// Win32 API は ADR 0005 上許容 — エンジン API ではないため。
+// Win32 API は許容。エンジン API ではないため。
 
 #include <algorithm>
 #include <array>
@@ -97,7 +97,7 @@ struct BuildResult
 	std::filesystem::path      logPath;
 };
 
-/// [+ New project] が起動する実行中の cmake reconfigure。非同期 —
+/// [+ New project] が起動する実行中の cmake reconfigure。非同期。
 /// 5-10 秒かかる configure 中も UI を固めないよう、エンジンループが毎フレーム poll する。
 struct ScaffoldJob
 {
@@ -208,7 +208,7 @@ std::optional<std::filesystem::path> detectEngineRoot(const std::filesystem::pat
 	return std::nullopt;
 }
 
-/// DLL パスから上へ辿り CMakeCache.txt を探す — それが build dir。
+/// DLL パスから上へ辿り CMakeCache.txt を探す。それが build dir。
 std::optional<std::filesystem::path> findCmakeBuildDir(const std::filesystem::path& start)
 {
 	std::filesystem::path p = start;
@@ -307,7 +307,7 @@ void saveProjects(const LauncherMemory& mem)
 }
 
 /// プロジェクトの欠けた build / source 情報を DLL パスから推測して補完。
-/// 冪等 — 空フィールドのみ書き込む。
+/// 冪等。空フィールドのみ書き込む。
 void inferProjectContext(Project& p)
 {
 	if (p.dllPath.empty()) { return; }
@@ -489,7 +489,7 @@ bool spawnBuild(LauncherMemory& mem, const Project& proj)
 		L"cmake --build \"" + buildDirW + L"\" --config Debug --target " + targetW +
 		L" > \"" + logPathW + L"\" 2>&1";
 
-	// cmd.exe /c "<inner>" — 外側の quoting が必要
+	// cmd.exe /c "<inner>"。外側の quoting が必要
 	std::wstring cmdLine = L"cmd.exe /c \"" + inner + L"\"";
 
 	STARTUPINFOW si{};
@@ -771,7 +771,7 @@ struct MyGame
 		}
 	}
 
-	// 毎フレーム呼ばれる。末尾の const が「描くだけで状態は書かない」という約束 —
+	// 毎フレーム呼ばれる。末尾の const が「描くだけで状態は書かない」という約束。
 	// draw() で状態を書くとリプレイ・巻き戻しの再現が崩れるので、コンパイラに守らせる。
 	void draw(Screen& s) const
 	{
@@ -961,7 +961,7 @@ ScaffoldStartResult scaffoldStart(LauncherMemory& mem, const std::string& name)
 
 	if (dirAlreadyExists)
 	{
-		// 以前 scaffold 済み (launcher リストで ✕ を押した — これはエントリのみ
+		// 以前 scaffold 済み (launcher リストで ✕ を押した。これはエントリのみ
 		// 削除しファイルは残す)。カスタマイズを上書きせず、リストへ再登録して
 		// cmake configure を再実行し build tree を同期させる。
 		// 既存ソースファイルはそのまま保持。
@@ -975,7 +975,7 @@ ScaffoldStartResult scaffoldStart(LauncherMemory& mem, const std::string& name)
 		}
 		std::filesystem::create_directories(dir / "assets", ec);
 
-		// ソースファイル書き込み (高速: 数 KB のテキスト — 同期で問題ない)。
+		// ソースファイル書き込み (高速: 数 KB のテキスト。同期で問題ない)。
 		{
 			std::ofstream cpp(dir / (name + ".cpp"));
 			cpp << applyTemplate(kDllTemplate, name);
@@ -990,7 +990,7 @@ ScaffoldStartResult scaffoldStart(LauncherMemory& mem, const std::string& name)
 		}
 	}
 
-	// examples/CMakeLists.txt に `add_subdirectory(name)` を追記 — 冪等。
+	// examples/CMakeLists.txt に `add_subdirectory(name)` を追記。冪等。
 	std::filesystem::path examplesCm = *mem.engineRoot / "examples" / "CMakeLists.txt";
 	if (std::filesystem::exists(examplesCm, ec))
 	{
@@ -1019,7 +1019,7 @@ ScaffoldStartResult scaffoldStart(LauncherMemory& mem, const std::string& name)
 	r.buildDir    = engineBuild.string();
 	r.buildTarget = name;
 
-	// cmake reconfigure を非同期で開始。vcvars64.bat 無しならスキップ —
+	// cmake reconfigure を非同期で開始。vcvars64.bat 無しならスキップ。
 	// 新 subdir は CMakeLists に追加済みだが、[Build] が機能する前に
 	// ユーザー自身で cmake を再実行する必要がある。
 	if (!mem.vcvarsBat.has_value()) { mem.vcvarsBat = findVcvarsBat(); }
@@ -1261,7 +1261,7 @@ void processActionEvents(LauncherMemory& mem,
 			std::filesystem::path sf = writeSessionFile(proj, pid);
 			if (!sf.empty()) { spawnCompanion(mem, proj, sf); }
 
-			// launcher は一時的な picker — atomic-tools 哲学では dev session へ
+			// launcher は一時的な picker。atomic-tools 哲学では dev session へ
 			// 引き渡した後に画面に居座るべきでない。自分を閉じる。別プロジェクトを
 			// 選びたい時、ユーザーは .bat (または将来 companion の "Switch project"
 			// メニュー) から再起動する。
@@ -1282,7 +1282,7 @@ void processActionEvents(LauncherMemory& mem,
 		else if (name == "launcher.scaffold")
 		{
 			const std::string newName = payload.value("name", "");
-			// 他の scaffold 実行中なら拒否 — 今は single-slot。
+			// 他の scaffold 実行中なら拒否。今は single-slot。
 			if (isScaffoldActive(mem))
 			{
 				pushFlash(mem, intents, "info",

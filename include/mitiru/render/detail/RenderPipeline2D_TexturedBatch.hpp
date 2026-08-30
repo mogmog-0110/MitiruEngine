@@ -1,9 +1,9 @@
 #pragma once
-// このヘッダは RenderPipeline2D.hpp から include される — 直接 include しないこと。
+// このヘッダは RenderPipeline2D.hpp から include される。直接 include しないこと。
 //
-// ADR 0009: テクスチャ付きスプライトのバッチ描画 (DX12)。
-//   • ensureSpriteTexture  — render::Texture を GPU テクスチャ+SRV にキャッシュ
-//   • submitTexturedBatch  — texHandle のテクスチャをバインドして頂点バッチを描画
+// テクスチャ付きスプライトのバッチ描画 (DX12)。
+//   • ensureSpriteTexture。render::Texture を GPU テクスチャ+SRV にキャッシュ
+//   • submitTexturedBatch。texHandle のテクスチャをバインドして頂点バッチを描画
 // base 2D root signature は既に SRV table(t0)+sampler(s0) を持ち、shader は
 // uUseTexture!=0 で t0 をサンプルする。よって shader/PSO/root sig は無改造で、
 // SRV を実テクスチャに差し替え uUseTexture=1 にするだけで textured 描画になる。
@@ -315,7 +315,7 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	++m_dx12FenceValue;
 	m_dx12Queue->Signal(m_dx12Fence.Get(), m_dx12FenceValue);
 	m_dx12SlotSignal[s] = m_dx12FenceValue;
-	// uUseTexture の 0 への復帰は次の submitBatchDx12 が冒頭で行う (ADR 0009)。
+	// uUseTexture の 0 への復帰は次の submitBatchDx12 が冒頭で行う。
 }
 
 } // namespace mitiru::render

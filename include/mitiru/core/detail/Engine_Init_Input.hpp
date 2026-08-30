@@ -1,4 +1,4 @@
-// mitiru::Engine 用の detail header — 直接インクルードしない。core/Engine.hpp 経由で取り込む
+// mitiru::Engine 用の detail header。直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
 #include <algorithm>
@@ -13,7 +13,7 @@ MITIRU_INLINE void mitiru::Engine::applyInjectedInput()
 	// Replay path: 現フレームの記録済み command を consume する前に injector へ
 	// 流し込む。そうすれば下の KeyDown / MouseMove 等の switch を live-inject された
 	// command と同じ経路で通る。これにより consumePending() 結果への recorder hook が
-	// 正直になる — replay された frame は元の frame として再記録される。
+	// 正直になる。replay された frame は元の frame として再記録される。
 	if (m_replayActive && m_clock)
 	{
 		const auto replayed = m_inputReplayer.getCommandsForFrame(

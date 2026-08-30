@@ -5,12 +5,12 @@
 ///
 /// MitiruEngine の architecture rule に従い data-driven: engine は script を
 /// 解釈し、game が各 effect (text render、image show、choice offer、stat change)
-/// の callback を提供する。engine 自身は描画しない — renderer 非依存。JSON schema
+/// の callback を提供する。engine 自身は描画しない。renderer 非依存。JSON schema
 /// と callback 契約の全体は `docs/NARRATIVE_SCRIPT.md` を参照。
 ///
 /// **設計判断 (v1):**
 /// - `ChoiceScene` は終端: `execute()` は選ばれた `next` id を返す
-///   (choice が無ければ空文字列)。外側の loop は game が回す — script 間の
+///   (choice が無ければ空文字列)。外側の loop は game が回す。script 間の
 ///   内部 recursion は無い。
 /// - `setFlag` / `statChange` は `GameContext` を in-place で変更する。callback は
 ///   変更*後*に発火するので `ctx` から更新済みの値を読める。
@@ -211,7 +211,7 @@ public:
 		for (const auto& scene : it->second.scenes)
 		{
 			std::visit([&](const auto& s) { this->dispatch(s, ctx, result); }, scene);
-			/// ChoiceScene は script を終端する — 同じ list 内で choice の後ろに
+			/// ChoiceScene は script を終端する。同じ list 内で choice の後ろに
 			/// ある scene は設計上到達不能。
 			if (std::holds_alternative<ChoiceScene>(scene))
 			{
@@ -408,7 +408,7 @@ private:
 
 	void dispatch(const SetFlagScene& s, GameContext& ctx, ExecuteResult&) const
 	{
-		/// 先に変更し、その後 callback を発火 — callback は ctx.flags を見れる。
+		/// 先に変更し、その後 callback を発火。callback は ctx.flags を見れる。
 		ctx.flags[s.name] = s.value;
 		if (m_onFlag) { m_onFlag(s.name, s.value); }
 	}

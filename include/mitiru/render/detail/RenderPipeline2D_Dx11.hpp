@@ -1,5 +1,5 @@
 #pragma once
-// This header is included by RenderPipeline2D.hpp — do not include directly.
+// This header is included by RenderPipeline2D.hpp。do not include directly.
 
 #ifdef _WIN32
 

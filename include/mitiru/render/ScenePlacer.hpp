@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file ScenePlacer.hpp
-/// @brief シーン配置ヘルパー — 1行でモデルを面の上に配置
+/// @brief シーン配置ヘルパー。1行でモデルを面の上に配置
 
 #include <mitiru/render/Scene3D.hpp>
 #include <mitiru/render/Mesh.hpp>

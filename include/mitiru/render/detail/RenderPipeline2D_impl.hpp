@@ -128,7 +128,7 @@ inline void RenderPipeline2D::resize(float width, float height)
 		waitDx12Fence();
 		// CRITICAL: 実 runtime の VS constant buffer は m_dx12VsCb。
 		// m_dx12ConstantBuffer は "エイリアス用" コメントの dead pointer
-		// (init で populate されない) — そっちを update してた古い resize
+		// (init で populate されない)。そっちを update してた古い resize
 		// は ortho 更新が runtime に届かず、resize 後に anisotropic
 		// stretch が発生する。
 		const auto ortho = OrthoMatrix::create(width, height);
@@ -279,6 +279,13 @@ inline void RenderPipeline2D::submitBatchGeneric(
 		glUniform1i(m_glUseTexLoc, 0); // テクスチャ未使用
 	}
 
+	// 2D は毎回この状態で描く。生成時に一度だけ設定していると、同じフレームの
+	// 前半で走る 3D パスが glDisable(GL_BLEND) した状態を引き継ぎ、
+	// アルファが効かなくなる (足元の楕円の影が真っ黒な塊になった)。
+	applyGlBlendMode();
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+
 	glBindVertexArray(m_glVAO);
 
 	/// VB/IBを再バインド（動的再生成されている可能性があるため）
@@ -314,9 +321,51 @@ inline void RenderPipeline2D::submitBatchGeneric(
 #endif
 }
 
+#ifdef __EMSCRIPTEN__
+/// @brief 覚えてある合成モードを GL の状態へ反映する。
+/// @details 描画のたびに呼ぶ。生成時に 1 回だけ設定すると、同じフレームの前半で
+///          走る 3D パスが glDisable(GL_BLEND) した状態を引き継いでしまう。
+inline void RenderPipeline2D::applyGlBlendMode() const noexcept
+{
+	if (m_glBlendMode == gfx::BlendMode::None)
+	{
+		glDisable(GL_BLEND);
+		return;
+	}
+	glEnable(GL_BLEND);
+	glBlendEquation(GL_FUNC_ADD);
+	switch (m_glBlendMode)
+	{
+	case gfx::BlendMode::Additive:
+		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+		break;
+	case gfx::BlendMode::Multiplicative:
+		glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_DST_ALPHA, GL_ZERO);
+		break;
+	case gfx::BlendMode::Screen:
+		glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_COLOR, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		break;
+	case gfx::BlendMode::Overlay:
+		glBlendFuncSeparate(GL_ONE, GL_SRC_COLOR, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		break;
+	case gfx::BlendMode::ColorDodge:
+		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+		break;
+	default:  // Alpha。Dx11Pipeline の同名と同じ係数。
+		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		break;
+	}
+}
+#endif
+
 /// @brief ブレンドモードを変更する
 inline void RenderPipeline2D::setBlendMode([[maybe_unused]] gfx::BlendMode mode)
 {
+#ifdef __EMSCRIPTEN__
+	// WebGL は PSO を持たないので、次の描画で使う状態として覚えておくだけ。
+	// ここが no-op のままだと、ゲームが指定した合成が黙って無視される。
+	m_glBlendMode = mode;
+#endif
 #ifdef _WIN32
 	if (!m_valid || m_useGenericPath || !m_dx11Device) return;
 

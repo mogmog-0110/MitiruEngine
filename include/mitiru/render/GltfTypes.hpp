@@ -105,7 +105,7 @@ struct GltfSkinData
 	int                           skeletonRoot = -1;     ///< skeleton ルートノード (任意, -1=未指定)
 };
 
-/// @brief アニメーションチャンネルが動かすノードプロパティ (ADR 0028)。
+/// @brief アニメーションチャンネルが動かすノードプロパティ。
 enum class GltfAnimPath : std::uint8_t
 {
 	Translation,
@@ -113,14 +113,14 @@ enum class GltfAnimPath : std::uint8_t
 	Scale,
 };
 
-/// @brief キーフレーム補間方式 (ADR 0028)。CUBICSPLINE はロード時に Linear へ縮退する。
+/// @brief キーフレーム補間方式。CUBICSPLINE はロード時に Linear へ縮退する。
 enum class GltfAnimInterp : std::uint8_t
 {
 	Linear,
 	Step,
 };
 
-/// @brief 1 ノード × 1 プロパティのキーフレーム列 (ADR 0028)。
+/// @brief 1 ノード × 1 プロパティのキーフレーム列。
 /// @details times は昇順の秒。values は T/S なら xyz (w=0)、R なら quaternion xyzw。
 ///          times と values は同数 (ローダーが不整合チャンネルを捨てる)。
 struct GltfAnimationChannel
@@ -132,7 +132,7 @@ struct GltfAnimationChannel
 	std::vector<sgc::Vec4f> values;                      ///< キー値 (T/S: xyz, R: quat xyzw)
 };
 
-/// @brief 名前付きアニメーションクリップ (ADR 0028)。Blender の Action がこれになる。
+/// @brief 名前付きアニメーションクリップ。Blender の Action がこれになる。
 struct GltfAnimationClip
 {
 	std::string name;                                    ///< クリップ名 ("Walk" 等)
@@ -147,7 +147,7 @@ struct GltfSceneData
 	std::vector<GltfMaterialData> materials;       ///< マテリアル一覧
 	std::vector<GltfNode>     nodes;               ///< ノード階層 (#23a, ボーン)
 	std::vector<GltfSkinData> skins;               ///< スキン一覧 (#23a)
-	std::vector<GltfAnimationClip> animations;     ///< アニメーションクリップ (ADR 0028)
+	std::vector<GltfAnimationClip> animations;     ///< アニメーションクリップ
 };
 
 } // namespace mitiru::render

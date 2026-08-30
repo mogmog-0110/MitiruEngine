@@ -44,7 +44,7 @@ public:
 
     /// cooldown window を開始する。通常は @c ready() 確認の直後に呼ぶ。
     /// ready でない状態で @c trigger() を呼ぶと window をリセットする
-    /// (refresh 挙動 — ほとんどの用途で意図的)。
+    /// (refresh 挙動。ほとんどの用途で意図的)。
     void trigger() noexcept {
         m_remaining = m_duration;
     }

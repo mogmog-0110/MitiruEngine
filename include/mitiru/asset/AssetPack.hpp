@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file AssetPack.hpp
-/// @brief アセットを単一ファイル (.mtpak) に詰める runtime VFS の中核 (ADR 0016)。
+/// @brief アセットを単一ファイル (.mtpak) に詰める runtime VFS の中核。
 ///
 /// 配布時に assets/ をまとめて秘匿するためのパック形式の read/write を提供する。
 /// 純粋な C++ (GPU/CEF 非依存) で、テストとツールの双方から使える。
@@ -266,7 +266,7 @@ inline bool AssetPack::appendTo(const std::filesystem::path& exeFile,
 	return static_cast<bool>(out);
 }
 
-// ── グローバル mount (段階2、ADR 0016) ──────────────────────────
+// ── グローバル mount (段階2) ──────────────────────────
 //
 // host が起動時に assets.mtpak を mountGlobal する。各 loader (画像/音/フォント/CEF)
 // は readGlobal(logicalPath) を呼ぶ: pack が mount 済みなら pack を、未 mount (dev) なら
@@ -287,7 +287,7 @@ inline bool& globalMountTried()
 
 /// dev (未 mount) の相対パス解決の基準。host が MITIRU_ASSET_ROOT に game DLL の
 /// 隣を入れる (cwd は exe 位置に固定されるため、cwd 相対だけだと game assets に届かない)。
-/// pack と同じく env 経由 — header-only の static は host / DLL / CEF helper で
+/// pack と同じく env 経由。header-only の static は host / DLL / CEF helper で
 /// 別インスタンスになるので、env が唯一の module 跨ぎ共有点。
 inline const std::filesystem::path& globalDiskRoot()
 {
@@ -372,7 +372,7 @@ readGlobal(std::string_view logicalPath, const std::filesystem::path& diskPath =
 	return detail::readDiskFile(diskPath);
 }
 
-// ── ゲーム向け公開アセット読み込み API (ADR 0016) ───────────────
+// ── ゲーム向け公開アセット読み込み API ───────────────
 //
 // ゲームは **生 std::ifstream で assets を読まず、これを使う**。pack 配布時はパックから、
 // 開発時は disk から、同じ相対パスで読める。これにより `mitiru dist --pack` で

@@ -10,10 +10,10 @@
 /// @brief 順序付き wait と callback をチェーンできる timeline。
 ///
 /// step は構築時に追加する (そこでの heap allocation は許容)。
-/// @c tick() は allocation せずに timeline を進める — cursor を動かし
+/// @c tick() は allocation せずに timeline を進める。cursor を動かし
 /// accumulator から減算するだけ。
 ///
-/// callback は @c mitiru::time::detail::SmallFunction で保持する — 48 byte
+/// callback は @c mitiru::time::detail::SmallFunction で保持する。48 byte
 /// SBO の type-erased callable。キャプチャが 48 byte までの lambda は
 /// インラインに格納される (action step ごとの heap allocation 無し)。
 ///

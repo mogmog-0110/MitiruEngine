@@ -511,7 +511,7 @@ namespace detail
 		}
 	}
 
-	/// アニメーションクリップを抽出する (ADR 0028)。T/R/S チャンネルのみ (morph weights は skip)。
+	/// アニメーションクリップを抽出する。T/R/S チャンネルのみ (morph weights は skip)。
 	scene.animations.reserve(gltfData->animations_count);
 	for (cgltf_size i = 0; i < gltfData->animations_count; ++i)
 	{
@@ -544,7 +544,7 @@ namespace detail
 			if (cubic)
 			{
 				debug::warnOnce("gltf.anim.cubicspline",
-				                "glTF CUBICSPLINE 補間は Linear へ縮退します (ADR 0028 v1)");
+				                "glTF CUBICSPLINE 補間は Linear へ縮退します");
 			}
 
 			const cgltf_size keyCount = ch.sampler->input->count;

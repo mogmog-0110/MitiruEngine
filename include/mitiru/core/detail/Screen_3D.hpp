@@ -1,5 +1,5 @@
 #pragma once
-// mitiru::Screen 用の 3D facade 実装 — 直接 include しない。core/Screen.hpp 経由。
+// mitiru::Screen 用の 3D facade 実装。直接 include しない。core/Screen.hpp 経由。
 //
 // draw(Screen&) の中で camera3D → drawMesh を呼ぶだけで GPU 3D が出る薄い層。
 // 最初の drawMesh が遅延 beginFrame し、Engine が描画後に endFrame/finalize する
@@ -405,7 +405,7 @@ inline bool Screen::projectToScreen(const sgc::Vec3f& world, float& sx, float& s
 inline void Screen::drawStyle(float strength)
 {
 	// 実際の全画面 α合成は renderer の post-process (blitStyleDx12, FXAA 後・overlay 前) が
-	// 物理解像度で行う。ここは強度を渡すだけ — 毎フレーム呼ぶこと (0=3D / 1=完全 2D)。
+	// 物理解像度で行う。ここは強度を渡すだけ。毎フレーム呼ぶこと (0=3D / 1=完全 2D)。
 	if (m_renderer3D != nullptr) { m_renderer3D->setStyleStrength(strength); }
 }
 

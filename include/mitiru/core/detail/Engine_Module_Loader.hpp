@@ -6,7 +6,7 @@
 /// @details
 /// `Engine::loadModule / unloadModule / reloadModule` の実装と、
 /// module 状態の accessor 群、time-travel 用 GameMemory ring 記録 /
-/// rewind / branch (ADR 0013 / 0017) を収める。
+/// rewind / branch を収める。
 /// per-frame signal flow は Engine_Module_Adapter.hpp 側。
 
 #include <algorithm>
@@ -93,11 +93,11 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 		return false;
 	}
 
-	// loadFn 前の pointer を控える — null から確保されたか (fresh load) を後で判定する。
+	// loadFn 前の pointer を控える。null から確保されたか (fresh load) を後で判定する。
 	void* const memoryBefore = m_moduleMemory;
 	loadFn(&m_moduleApi, &m_moduleMemory);
 
-	// DLL が申告した GameMemory サイズを保持 (ADR 0013)。v≤8 DLL は未設定 ⇒ zero-init の 0。
+	// DLL が申告した GameMemory サイズを保持。v≤8 DLL は未設定 ⇒ zero-init の 0。
 	m_moduleMemorySize = m_moduleApi.memorySize;
 
 	// reflection を申告したのに memorySize=0 だと reflectToJson が bounds 外で全 skip し
@@ -113,7 +113,7 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	}
 
 	// version check。拒否時は DLL が確保したばかりの memory を unloadFn で DLL に
-	// 返却してから unload する (リーク解消)。返却は fresh 確保時のみ — 温存 memory を
+	// 返却してから unload する (リーク解消)。返却は fresh 確保時のみ。温存 memory を
 	// 渡す reload は reloadModule 側で先ロード検証されるため、ここでは触らない。
 	// ABI は「数値 + build 指紋」の完全一致を要求する (H-1/H-4)。古い DLL (version < host)
 	// も弾く: SoundIntent 等の配列要素が後の version で太ると soundIntents[] の stride =
@@ -188,7 +188,7 @@ MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept
 		catch (...) {}
 	}
 
-	// unloadFn は DLL 側 delete — 解放済み pointer を保持し続けると次の load で
+	// unloadFn は DLL 側 delete。解放済み pointer を保持し続けると次の load で
 	// 「非 null なら再利用」に渡って use-after-free になる (A5)。必ず null へ戻す。
 	m_moduleMemory     = nullptr;
 	m_moduleMemorySize = 0;
@@ -235,7 +235,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 		return false;  // newHost destructor が FreeLibrary + temp 削除
 	}
 
-	// 既存 GameMemory pointer を渡す — registerGame は非 null なら再利用する (状態温存)。
+	// 既存 GameMemory pointer を渡す。registerGame は非 null なら再利用する (状態温存)。
 	module::ModuleApi newApi{};
 	newApi.version = module::kWireApiVersion;
 	void* memoryBefore = m_moduleMemory;  // size 変動 guard が fresh 扱いへ倒すため非 const
@@ -263,7 +263,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	// 温存 pointer の割当は旧 sizeof のまま。新 DLL の申告サイズが違うと旧割当の
 	// 末尾を越えて read/write する heap overflow になるため、状態温存を放棄する。
 	// サイズ一致でも MITIRU_REFLECT 由来の layout hash が違えば field 並べ替え /
-	// 型変更 — 旧 bytes を新 layout で解釈すると化けるため、同様に放棄する
+	// 型変更。旧 bytes を新 layout で解釈すると化けるため、同様に放棄する
 	// (reflection 未宣言 game は hash=0 = 従来のサイズ照合のみ)。
 	// 旧割当は「確保した世代の DLL」の unloadFn に返却させる (cross-CRT delete 回避)。
 	// ここは全検証通過後なので、以降の失敗で旧 module へ戻る経路は無い。
@@ -312,7 +312,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	// ── 差し替え ──────────────────────────────────────────────────────────
 	// 旧 DLL は unloadFn (DLL 側 delete) を呼ばず FreeLibrary のみ。GameMemory の
 	// 所有は host が続投する = 状態温存の正規化 (解放済み pointer の再利用ではない)。
-	// 旧 on_shutdown も呼ばない — GameMemory は flat POD 契約 (ADR 0017) で DLL 側に
+	// 旧 on_shutdown も呼ばない。GameMemory は flat POD 契約 で DLL 側に
 	// 解放すべきリソースを持たないし、T::shutdown() が状態を壊す余地も残さない。
 	*m_moduleHost      = std::move(newHost);  // move 代入が旧 handle を FreeLibrary する
 	m_moduleApi        = newApi;
@@ -326,7 +326,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 		m_moduleActionEvents->events.clear();
 	}
 
-	// GameMemory サイズ・layout が不変なら ring を温存する (ADR 0021: rewind → 編集 →
+	// GameMemory サイズ・layout が不変なら ring を温存する (rewind → 編集 →
 	// reload → resim の合流に必要)。サイズ変化 / layout hash 不一致 (state reset 済み) は
 	// 旧 layout bytes への rewind が復元を壊すため破棄する。同サイズの field 並べ替えも
 	// MITIRU_REFLECT 済みなら layout hash で検出される (未宣言 game は検出不能のまま)。
@@ -397,7 +397,7 @@ MITIRU_INLINE std::string mitiru::Engine::reflectDiffBlobs(const void* a, const 
 
 MITIRU_INLINE const char* mitiru::Engine::queryModuleWriteBlame(std::uint32_t offset) const
 {
-	// game が mitiru_why_blame_at を export していれば呼ぶ (optional・ADR0005 host→DLL pull)。
+	// game が mitiru_why_blame_at を export していれば呼ぶ (optional、host→DLL の pull)。
 	if (!m_moduleHost) { return nullptr; }
 	const auto fn = m_moduleHost->whyBlameAtFn();
 	return (fn != nullptr) ? fn(offset) : nullptr;
@@ -414,7 +414,7 @@ MITIRU_INLINE std::string mitiru::Engine::reflectBlobJson(const void* blob) cons
 		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount).dump();
 }
 
-// ── time-travel: GameMemory ring 記録 + rewind (ADR 0017) ──────────────────
+// ── time-travel: GameMemory ring 記録 + rewind ──────────────────
 
 MITIRU_INLINE void mitiru::Engine::recordModuleMemoryFrame()
 {
@@ -446,7 +446,7 @@ mitiru::Engine::moduleMemoryRingAt(std::size_t offsetFromNewest) const noexcept
 	return m_moduleMemoryRing.at(offsetFromNewest);
 }
 
-// ── Rewind-Edit-Replay (ADR 0021) ──────────────────────────────────────────
+// ── Rewind-Edit-Replay ──────────────────────────────────────────
 
 MITIRU_INLINE void mitiru::Engine::recordModuleInputFrame()
 {
@@ -542,7 +542,7 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 	// 台本入力で on_update を frameCount 回回す。draw/present/intents drain は一切しない
 	// (= sound/state push 等の副作用が外に出ない)。intents は使い捨て (~300KB なので heap)。
 	// dt は snapshot の effectiveDt を渡す (v21、H-3): 記録済み入力列なら pause/hitStop の
-	// dt gating も再現される。台本を合成する側 (HTTP 等) は effectiveDt を明示する契約 —
+	// dt gating も再現される。台本を合成する側 (HTTP 等) は effectiveDt を明示する契約。
 	// 0 のフレームは「進まない」の意味 (pause 記録の忠実な再現)。
 	auto intents = std::make_unique<module::FrameIntents>();
 	for (int i = 0; i < frameCount; ++i)

@@ -228,8 +228,9 @@ private:
 		float projection[4][4]{};
 	};
 
-	static constexpr UINT kVertexCount = 8;
-	static constexpr UINT kIndexCount  = 36;
+	// UINT は Windows の型。web でもこのヘッダは通るので、標準の型で書く。
+	static constexpr std::uint32_t kVertexCount = 8;
+	static constexpr std::uint32_t kIndexCount  = 36;
 
 #ifdef _WIN32
 

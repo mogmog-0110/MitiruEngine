@@ -79,10 +79,15 @@ inline void Screen::drawPixelGrid(
 	}
 
 	// fallback: textured batch 非対応 backend は従来 path。
+	// submitPixelGrid は Win32 専用宣言 (DX11/DX12 の焼き込み PSO)。web では
+	// textured batch が使えなかった時点で描くものが無いので、静かに抜ける
+	// (「無い機能は絵から抜ける」の規約どおり)。
+#ifdef _WIN32
 	m_pipeline->submitPixelGrid(
 		dest, pixels, pixelWidth, pixelHeight,
 		static_cast<float>(m_width),
 		static_cast<float>(m_height));
+#endif
 
 	++m_drawCallCount;
 }
@@ -120,12 +125,15 @@ inline void Screen::drawPixelGrid(
 		return;
 	}
 
-	// fallback: textured batch 非対応 backend は従来 path。
+	// fallback: textured batch 非対応 backend は従来 path (submitPixelGrid は
+	// Win32 専用宣言。web では textured batch が使えなければ描くものが無い)。
+#ifdef _WIN32
 	m_pipeline->submitPixelGrid(
 		dest, pixels, pixelWidth, pixelHeight,
 		static_cast<float>(m_width),
 		static_cast<float>(m_height),
 		filter);
+#endif
 
 	++m_drawCallCount;
 }

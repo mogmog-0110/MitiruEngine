@@ -21,7 +21,7 @@
 namespace mitiru::render
 {
 
-/// @brief Tonemap 用 VS — フルスクリーン三角形 (OUTLINE_POST_VS と同形)
+/// @brief Tonemap 用 VS。フルスクリーン三角形 (OUTLINE_POST_VS と同形)
 constexpr const char* DX12_TONEMAP_VS = R"HLSL(
 struct VSOutput
 {
@@ -38,7 +38,7 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 }
 )HLSL";
 
-/// @brief Tonemap 用 PS — ACES filmic + Exposure + Gamma 2.2
+/// @brief Tonemap 用 PS。ACES filmic + Exposure + Gamma 2.2
 /// @details exposure と gamma は CbTonemap (b0) で external から指定可。
 constexpr const char* DX12_TONEMAP_PS = R"HLSL(
 Texture2D<float4> g_hdr  : register(t0);
@@ -84,7 +84,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 }
 )HLSL";
 
-/// @brief Tonemap CB (b0) レイアウト — HLSL 側と一致させる
+/// @brief Tonemap CB (b0) レイアウト。HLSL 側と一致させる
 struct alignas(16) TonemapCB
 {
     float exposure = 1.0f;

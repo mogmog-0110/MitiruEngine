@@ -118,7 +118,7 @@ public:
 		m_shaders.erase(filepath);
 	}
 
-	/// @brief フレーム更新 — 保留中のリロードを処理する
+	/// @brief フレーム更新。保留中のリロードを処理する
 	/// @details メインループから毎フレーム呼び出す。
 	///          FileWatcher をポーリングし、変更があればリコンパイルする。
 	void update()

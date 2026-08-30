@@ -206,7 +206,7 @@ public:
 	}
 
 	/// @brief マスター再生クロック (秒)。デバイスが再生した PCM フレーム位置 / サンプルレート。
-	/// @details リズムゲーム等が判定の基準時刻に使う (ADR 0008 拡張)。ma_engine の global time は
+	/// @details リズムゲーム等が判定の基準時刻に使う。ma_engine の global time は
 	///          サウンドの有無に関わらずデバイス稼働中ずっと進む。未初期化時は 0。
 	[[nodiscard]] double masterTimeSec() const noexcept {
 		if (!m_initialized) return 0.0;
@@ -269,8 +269,8 @@ public:
 	/// @details (a) 終了した one-shot voice を retire リストへ移し、kRetireDelay 経過後に
 	///          uninit する (#52 根治: device thread が mix 中に触れうる期間を確実に過ぎて
 	///          から解放する遅延解放)。(b) stopMusicFade で仕掛けた fade-out の残フレームを
-	///          減算し、完了したら music voice を uninit する (従来は uninit されず、無音の
-	///          まま loop voice が走り続けていた)。固定ステップ (~60Hz) の cadence 前提。
+	///          減算し、完了したら music voice を uninit する。uninit しないと、無音のまま
+	///          loop voice が走り続ける。固定ステップ (~60Hz) の cadence 前提。
 	void update() {
 		if (!m_initialized) { return; }
 		reapFinishedOneShots();

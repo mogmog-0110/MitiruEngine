@@ -589,7 +589,7 @@ private:
 		}
 		// mask RT (2048², 固定)
 		if (!makeRT(device,kMaskSize,kMaskSize,m_maskTex,0,m_maskRtv,m_maskSrvIdx,true)) return false;
-		// ステージスプライト (背景/歯車/閉じる) — 公式 LAppView 相当
+		// ステージスプライト (背景/歯車/閉じる)。公式 LAppView 相当
 		if (m_hasStage) {
 			const char* sp[3]={m_stageBg.c_str(),m_stageGear.c_str(),m_stageClose.c_str()};
 			for (int s=0;s<3;++s){

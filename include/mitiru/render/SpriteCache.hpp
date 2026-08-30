@@ -9,7 +9,7 @@
 /// warnOnce し、以後 nullptr を返す (毎フレームのディスク再試行はしない)。
 ///
 /// pollReload() で PNG のホットリロードに対応する (Engine が ~0.5 秒周期で呼ぶ)。
-/// 音は対応不要 — SE は再生ごとにファイルを読む (既にホット)、music はストリーム保持中でロック。
+/// 音は対応不要。SE は再生ごとにファイルを読む (既にホット)、music はストリーム保持中でロック。
 
 #include <filesystem>
 #include <string>

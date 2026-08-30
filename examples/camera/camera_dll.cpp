@@ -1,4 +1,4 @@
-// camera — 追従カメラ。赤べこがマウスの方へ牧場を歩き、視点が滑らかに追従してスクロールする。
+// camera。追従カメラ。赤べこがマウスの方へ牧場を歩き、視点が滑らかに追従してスクロールする。
 // 実行すると: マウスカーソルの方へ赤べこが歩く。画面より広い牧場を、視点が deadzone + 先読みで追う。
 // 関連 API: mitiru::camera::FollowCam (setTarget / update) / Screen::applyCamera / endCamera / drawSprite
 

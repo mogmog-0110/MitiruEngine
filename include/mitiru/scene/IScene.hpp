@@ -31,7 +31,7 @@ namespace mitiru::scene {
 ///  - 露出した時: onResume は覆っていた scene が pop された時に発火。
 ///
 /// 全 callback は default で no-op なので、subclass は必要なものだけ override すればよい。
-/// onUpdate は pure-virtual — 全 scene は時間を扱う必要がある。
+/// onUpdate は pure-virtual。全 scene は時間を扱う必要がある。
 class IScene {
 public:
     virtual ~IScene() = default;

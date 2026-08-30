@@ -25,7 +25,7 @@ void createMainPSO()
 	psoDesc.InputLayout.pInputElementDescs = inputLayout;
 	psoDesc.InputLayout.NumElements = inputCount;
 
-	/// ラスタライザ: 背面カリング (RH view のため CCW = 表、ADR 0029)
+	/// ラスタライザ: 背面カリング (RH view のため CCW = 表)
 	psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 	psoDesc.RasterizerState.FrontCounterClockwise = TRUE;
@@ -69,7 +69,7 @@ void createMainPSO()
 	psoDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	psoDesc.BlendState.RenderTarget[1] = psoDesc.BlendState.RenderTarget[0];
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	// 4x MSAA — MRT 全 RT + depth と sample count を揃える (ENG-105 v2)
+	// 4x MSAA。MRT 全 RT + depth と sample count を揃える (ENG-105 v2)
 	psoDesc.SampleDesc.Count = MSAA_SAMPLE_COUNT;
 	psoDesc.SampleDesc.Quality = 0;
 
@@ -142,7 +142,7 @@ void createDepthBuffer()
 			"Renderer3D_DX12: CreateDescriptorHeap (DSV) failed");
 	}
 
-	/// 深度バッファリソースの生成 — 4x MSAA + TYPELESS
+	/// 深度バッファリソースの生成。4x MSAA + TYPELESS
 	/// TYPELESS にすることで DSV (D32_FLOAT) と SRV (R32_FLOAT) を両方
 	/// 作れる (ENG-105 v2)。MSAA 化に伴って format compatibility が厳しく
 	/// なる可能性があるため、TYPELESS で safe path に倒す。
@@ -191,7 +191,7 @@ void createDepthBuffer()
 		&dsvDesc,
 		m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	/// 法線バッファ（MRT RT1）の生成 — 4x MSAA
+	/// 法線バッファ（MRT RT1）の生成。4x MSAA
 	D3D12_RESOURCE_DESC normalDesc = {};
 	normalDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	normalDesc.Width = static_cast<UINT64>(m_config.viewportWidth);
@@ -232,7 +232,7 @@ void createDepthBuffer()
 	// ── MSAA color RT (ENG-105 v2 / ENG-106 HDR) ──────────────
 	// メインパスで bind するための 4x MSAA color RT。outline / FXAA 前に
 	// ResolveSubresource で HDR intermediate に焼く (旧 backbuffer 直接ではない)。
-	// ENG-106 で HDR FP16 化 — ハイライト >1.0 を保持して tonemap で 0..1 に
+	// ENG-106 で HDR FP16 化。ハイライト >1.0 を保持して tonemap で 0..1 に
 	// 圧縮する。skybox / scene PSO の RTVFormats[0] も同フォーマットに揃える。
 	D3D12_RESOURCE_DESC msaaColorDesc = normalDesc;  // 同じサイズ/サンプル数
 	msaaColorDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -324,7 +324,7 @@ void createHDRIntermediate()
 			m_hdrIntermediateRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 
-	// SRV heap (shader-visible, 1 slot) — tonemap PS が t0 で読む
+	// SRV heap (shader-visible, 1 slot)。tonemap PS が t0 で読む
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
 	srvHeapDesc.NumDescriptors = 1;
 	srvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -588,7 +588,7 @@ void createColorCopyBuffer()
 			m_d3dDevice->CreateShaderResourceView(
 				m_colorCopyBuffer.Get(), &srvDesc, start);
 
-			// t1: 法線バッファ (MSAA 4x — ENG-105 v2)
+			// t1: 法線バッファ (MSAA 4x。ENG-105 v2)
 			D3D12_CPU_DESCRIPTOR_HANDLE slot1 = start;
 			slot1.ptr += srvIncrSize;
 			D3D12_SHADER_RESOURCE_VIEW_DESC normalSrv = {};
@@ -619,7 +619,7 @@ void createColorCopyBuffer()
 		{
 			auto start = m_depthColorSRVHeap->GetCPUDescriptorHandleForHeapStart();
 
-			// t0: 深度バッファ (MSAA 4x — ENG-105 v2)
+			// t0: 深度バッファ (MSAA 4x。ENG-105 v2)
 			D3D12_SHADER_RESOURCE_VIEW_DESC depthSrv = {};
 			depthSrv.Format = DXGI_FORMAT_R32_FLOAT;
 			depthSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
@@ -627,7 +627,7 @@ void createColorCopyBuffer()
 			m_d3dDevice->CreateShaderResourceView(
 				m_depthBuffer.Get(), &depthSrv, start);
 
-			// t1: 法線バッファ (MSAA 4x — ENG-105 v2)
+			// t1: 法線バッファ (MSAA 4x。ENG-105 v2)
 			D3D12_CPU_DESCRIPTOR_HANDLE slot1 = start;
 			slot1.ptr += srvIncrSize;
 			D3D12_SHADER_RESOURCE_VIEW_DESC normalSrv = {};
@@ -673,7 +673,7 @@ void createFresnelMainPSO()
 
 	psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
-	psoDesc.RasterizerState.FrontCounterClockwise = TRUE;   // RH view (ADR 0029)
+	psoDesc.RasterizerState.FrontCounterClockwise = TRUE;   // RH view
 	psoDesc.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
 	psoDesc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 	psoDesc.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
@@ -701,10 +701,10 @@ void createFresnelMainPSO()
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	psoDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	// 4x MSAA — 共有 depth/normal の sample count に揃える (ENG-105 v2)
+	// 4x MSAA。共有 depth/normal の sample count に揃える (ENG-105 v2)
 	psoDesc.SampleDesc.Count = MSAA_SAMPLE_COUNT;
 
-	// 失敗を無言 fallback にしない — 黒画面より起動失敗 (main PSO と同じ流儀)
+	// 失敗を無言 fallback にしない。黒画面より起動失敗 (main PSO と同じ流儀)
 	HRESULT hr = m_d3dDevice->CreateGraphicsPipelineState(
 		&psoDesc, IID_PPV_ARGS(m_fresnelMainPSO.GetAddressOf()));
 	if (FAILED(hr))

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file EventLog.hpp
-/// @brief append-only JSONL event timeline — dual-readable (window + AI)
+/// @brief append-only JSONL event timeline。dual-readable (window + AI)
 /// @details
 /// `SharedSnapshot.hpp` が「現フレームの state」を 1 ファイルに上書きするのに対し、
 /// EventLog は「時間軸に沿った疎な節目イベント」を `%TEMP%/mitiru_events_<pid>.jsonl`
@@ -54,7 +54,7 @@ inline std::filesystem::path eventLogPathForPid(int pid)
 
 /// @brief 走ってる process 側 (writer)。append-only JSONL を蓄積する。
 /// @details RAII: デストラクタでストリームを閉じる。ファイルは inspector / AI が
-///          run 後も読めるよう残す (SharedSnapshot のように消さない — 履歴だから)。
+///          run 後も読めるよう残す (SharedSnapshot のように消さない。履歴だから)。
 class EventLog
 {
 public:
@@ -74,7 +74,7 @@ public:
 	{
 		m_pid  = pid;
 		m_path = eventLogPathForPid(pid);
-		// trunc: fresh per run — 前回の残骸を混ぜない
+		// trunc: fresh per run。前回の残骸を混ぜない
 		m_out.open(m_path, std::ios::binary | std::ios::trunc);
 		m_startTime = std::chrono::steady_clock::now();
 		return m_out.is_open();
@@ -117,7 +117,7 @@ public:
 	/// @brief writer の pid
 	[[nodiscard]] int pid() const noexcept { return m_pid; }
 
-	/// @brief inspector 側 — 任意 pid の JSONL を mtime-poll で tail 読みする (reader)
+	/// @brief inspector 側。任意 pid の JSONL を mtime-poll で tail 読みする (reader)
 	/// @details 直近 N 行のみ保持。SharedSnapshot::Reader と同じ mtime 判定で、
 	///          変化が無ければ何もしない。途中 write の torn line は parse 失敗で
 	///          skip する (append + flush なので部分行は次 poll で完成して読める)。
@@ -176,7 +176,7 @@ public:
 					}
 					catch (...)
 					{
-						// torn last line (mid-write) — skip; completes next poll
+						// torn last line (mid-write)。skip; completes next poll
 					}
 				}
 			}

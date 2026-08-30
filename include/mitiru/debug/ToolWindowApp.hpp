@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file ToolWindowApp.hpp
-/// @brief 独立ツール窓 exe の共通土台 (軸 5 modular sub-window、ADR 0004 / 0014)。
+/// @brief 独立ツール窓 exe の共通土台 (軸 5 modular sub-window)。
 /// @details
 /// 動作中のゲームの SharedSnapshot (`%TEMP%\mitiru_inspector_<pid>.json`) を 30Hz で
 /// polling し、Saturn 配色の header + 「waiting」状態を描く `mitiru::Game` 基底。
@@ -20,7 +20,7 @@
 ///       auto a = mitiru::debug::parseToolArgs(argc, argv);
 ///       if (!a.ok) { return 2; }
 ///       MyTool tool(a.pid, a.file);
-///       return mitiru::debug::runToolWindow(tool, "MitiruEngine — my tool");
+///       return mitiru::debug::runToolWindow(tool, "MitiruEngine。my tool");
 ///   }
 /// @endcode
 
@@ -33,7 +33,7 @@
 
 #include <nlohmann/json.hpp>
 
-// アンブレラ廃止 (リファクタ P2) — 使うものだけ明示 include
+// アンブレラ廃止 (リファクタ P2)。使うものだけ明示 include
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
@@ -115,7 +115,7 @@ public:
 	}
 
 protected:
-	/// header に出すツール名 (例 "scene tree")。"MitiruEngine — " が前置される。
+	/// header に出すツール名 (例 "scene tree")。"MitiruEngine。" が前置される。
 	[[nodiscard]] virtual const char* windowTitle() const noexcept = 0;
 
 	/// producer の最新 snapshot が来ている時の本体描画。

@@ -1,5 +1,5 @@
 #pragma once
-// このヘッダは RenderPipeline2D.hpp からインクルードされる — 直接インクルード禁止。
+// このヘッダは RenderPipeline2D.hpp からインクルードされる。直接インクルード禁止。
 
 #ifdef _WIN32
 
@@ -40,7 +40,7 @@ inline void RenderPipeline2D::submitPixelGrid(
 	if (!m_pgTexture || pw != m_pgTexW || ph != m_pgTexH)
 	{
 		// uint32_t* の pixel buffer から span<const uint8_t> を構築する。
-		// byte 順: RGBA — byte[0]=R, byte[1]=G, byte[2]=B, byte[3]=A。
+		// byte 順: RGBA。byte[0]=R, byte[1]=G, byte[2]=B, byte[3]=A。
 		// little-endian hardware では uint32_t は 0xAABBGGRR と読めるが、
 		// DXGI_FORMAT_R8G8B8A8_UNORM は byte を memory order で解釈するため、
 		// byte[0] が R に対応する。consumer はそれに従って pixel を埋めること。
@@ -187,11 +187,11 @@ inline void RenderPipeline2D::submitPixelGrid(
 //       - PixelArtFilter::Point  → m_dx12PointRootSig + m_dx12PointPipeline
 //         (createFromDx12 で base PSO と並べて eager 構築。base PSO と同じ shader
 //         / blend / input layout で、root signature の static sampler だけが
-//         異なる — D3D12_FILTER_MIN_MAG_MIP_POINT)。
+//         異なる。D3D12_FILTER_MIN_MAG_MIP_POINT)。
 //   • Fallback 規約: point variant が createFromDx12 時に構築失敗していた場合
 //     (m_dx12PointPipeline == nullptr)、Point リクエストは透過的に linear PSO へ
 //     フォールバックする。視覚品質は劣化する (pixel-art に bilinear blur) が
-//     draw 自体は完了する — point variant は品質最適化であって機能要件ではない。
+//     draw 自体は完了する。point variant は品質最適化であって機能要件ではない。
 //   • この draw path では遅延初期化を行わない (エンジン規約: draw() 内の
 //     遅延初期化 / null-skip は禁止)。
 //
@@ -207,7 +207,7 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 	// filter に基づいて root signature / PSO を選ぶ。point variant は
 	// createFromDx12 で eager 構築される; その構築が失敗していた場合 (member が null)
 	// は透過的に linear PSO へフォールバックし、Point リクエストでも draw は成立する
-	// — 失われるのは pixel-art の鮮鋭さだけで、draw 自体は失われない。
+	//。失われるのは pixel-art の鮮鋭さだけで、draw 自体は失われない。
 	ID3D12RootSignature* activeRootSig = m_dx12RootSig.Get();
 	ID3D12PipelineState* activePso     = m_dx12Pipeline.Get();
 	if (filter == PixelArtFilter::Point &&
@@ -427,7 +427,7 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 	}
 	m_dx12PgTexReady = true;
 
-	// quad を描画 — 選択した root signature + PSO (linear または point variant) を bind する。
+	// quad を描画。選択した root signature + PSO (linear または point variant) を bind する。
 	m_dx12Cl->SetGraphicsRootSignature(activeRootSig);
 	m_dx12Cl->SetPipelineState(activePso);
 

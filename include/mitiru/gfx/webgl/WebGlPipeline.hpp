@@ -247,6 +247,34 @@ private:
 				GL_DST_ALPHA, GL_ZERO);
 			glBlendEquation(GL_FUNC_ADD);
 			break;
+
+		// 以下 3 つは Dx11Pipeline と同じ近似式にする。ここが抜けていると
+		// glBlendFunc が前の描画のまま残り、同じ絵が backend で変わる。
+		case BlendMode::Screen:
+			// 1 - (1-src)*(1-dst) を src*1 + dst*(1-src) で近似する。
+			glEnable(GL_BLEND);
+			glBlendFuncSeparate(
+				GL_ONE, GL_ONE_MINUS_SRC_COLOR,
+				GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendEquation(GL_FUNC_ADD);
+			break;
+
+		case BlendMode::Overlay:
+			glEnable(GL_BLEND);
+			glBlendFuncSeparate(
+				GL_ONE, GL_SRC_COLOR,
+				GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendEquation(GL_FUNC_ADD);
+			break;
+
+		case BlendMode::ColorDodge:
+			// dst / (1-src) を加算とアルファで近似する。
+			glEnable(GL_BLEND);
+			glBlendFuncSeparate(
+				GL_SRC_ALPHA, GL_ONE,
+				GL_ONE, GL_ONE);
+			glBlendEquation(GL_FUNC_ADD);
+			break;
 		}
 	}
 

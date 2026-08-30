@@ -1,4 +1,4 @@
-// mitiru_subsys_scene — エンジン全体なしで scene loop だけを起動する最小 exe。
+// mitiru_subsys_scene。エンジン全体なしで scene loop だけを起動する最小 exe。
 //
 // ゲームロジック依存・CEF・audio なしで scene loop を起動する。
 // 12 entity の最小 "scene" を毎フレーム更新:
@@ -16,7 +16,7 @@
 #include <cstdio>
 #include <vector>
 
-// アンブレラ header は使わない — 使うものだけ明示 include
+// アンブレラ header は使わない。使うものだけ明示 include
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>

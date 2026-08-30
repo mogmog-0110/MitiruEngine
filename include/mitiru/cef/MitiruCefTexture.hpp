@@ -41,13 +41,13 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 
-// MITIRU_CEF_NO_DX12DEVICE — Dx12Device を取る便宜オーバーロードを外す。
+// MITIRU_CEF_NO_DX12DEVICE。Dx12Device を取る便宜オーバーロードを外す。
 //
 // この UI 層が要るのは ID3D12Device / ID3D12CommandQueue / RTV ハンドルだけで、
 // Dx12Device 版はエンジン自身のために置いてある短縮形にすぎない。ところが型を名前で
 // 受けている以上ヘッダは include され、Dx12Device は IDevice / Dx12SwapChain /
 // Win32Window / sgc まで芋づるで引く。つまり**自前のデバイスを持つ側は、使わない
-// スタックを丸ごと通す羽目になる** — API を D3D12 まで下げても include が下がって
+// スタックを丸ごと通す羽目になる**。API を D3D12 まで下げても include が下がって
 // いなければ、分離は名目だけである。
 //
 // エンジンは何も定義しない (既定で便宜版が付く)。外して使う側だけが宣言する。
@@ -96,17 +96,17 @@ public:
     MitiruCefTexture(const MitiruCefTexture&)            = delete;
     MitiruCefTexture& operator=(const MitiruCefTexture&) = delete;
 
-    /// @brief 初期化 — テクスチャと合成パイプラインを作成する
+    /// @brief 初期化。テクスチャと合成パイプラインを作成する
     /// @return 成功したか (失敗は例外でも通知される)
-    /// @brief 初期化 — D3D12 のハンドルだけを受け取る版
+    /// @brief 初期化。D3D12 のハンドルだけを受け取る版
     /// @details こちらが本体で、Dx12Device を取る版はこれを呼ぶ。
     ///
     ///          合成に要るのはデバイスとキューと RTV だけで、スワップチェーンも
     ///          ウィンドウも要らない。それでも Dx12Device を要求すると、この UI 層は
     ///          「エンジンのゲーム用デバイスを持っているもの」にしか使えなくなる。
     ///          姉妹プロジェクトの Makina は自前の DX12 を持っていて UI だけを借りたい
-    ///          ので、借りられる形にしてある。実測して 3 箇所だった -- nativeDevice /
-    ///          commandQueue / getSwapChain で、最後の 1 つは composite 側にある。
+    ///          ので、借りられる形にしてある。要るのは nativeDevice / commandQueue /
+    ///          getSwapChain の 3 箇所で、最後の 1 つは composite 側にある。
     bool initialize(ID3D12Device* device, ID3D12CommandQueue* queue, int width, int height)
     {
         if (device == nullptr || queue == nullptr)
@@ -125,7 +125,7 @@ public:
     }
 
 #if !defined(MITIRU_CEF_NO_DX12DEVICE)
-    /// @brief 初期化 — エンジンのデバイスから
+    /// @brief 初期化。エンジンのデバイスから
     bool initialize(gfx::Dx12Device& device, int width, int height)
     {
         return initialize(device.nativeDevice(), device.commandQueue(), width, height);
@@ -159,7 +159,7 @@ public:
     }
 #endif
 
-    /// @brief リサイズ — デバイスを要らない形にしたもの
+    /// @brief リサイズ。デバイスを要らない形にしたもの
     /// @details 元から引数の device は使っていなかった。
     void resize(int width, int height)
     {
@@ -184,7 +184,7 @@ public:
         m_pendingHeight = height;
     }
 
-    /// @brief upload() / uploadPartial() の頭で呼ぶ — 届いた paint data の
+    /// @brief upload() / uploadPartial() の頭で呼ぶ。届いた paint data の
     ///        dim と current texture dim が一致しなければ texture を作り直す。
     ///
     /// 元の実装は "pending dim と data dim が一致した時だけ" 作り直していた
@@ -213,7 +213,7 @@ public:
     /// @param data   BGRA バイト列 (width * height * 4 バイト)
     void upload(const uint8_t* data, int width, int height);
 
-    /// @brief 部分アップロード — dirty rect リストに基づき必要な矩形だけ転送する
+    /// @brief 部分アップロード。dirty rect リストに基づき必要な矩形だけ転送する
     /// @param data       BGRA フルバッファ (CEF は常にフルバッファを渡す)
     /// @param width      バッファ幅
     /// @param height     バッファ高さ
@@ -296,7 +296,7 @@ private:
     ComPtr<ID3D12RootSignature>    m_rootSig;
     ComPtr<ID3D12PipelineState>    m_pipeline;
 
-    // composite() 用永続コマンドリスト — フェンスで GPU 完了を追跡して
+    // composite() 用永続コマンドリスト。フェンスで GPU 完了を追跡して
     // アロケーターを安全にリセットする (COMMAND_ALLOCATOR_SYNC 回避)
     ComPtr<ID3D12CommandAllocator>      m_compositeAlloc;
     ComPtr<ID3D12GraphicsCommandList>   m_compositeCl;

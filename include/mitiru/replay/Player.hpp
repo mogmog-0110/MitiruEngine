@@ -80,7 +80,7 @@ public:
 			return false;
 		}
 
-		// header field は検証より先に全て読む — 拒否時も呼び出し側が
+		// header field は検証より先に全て読む。拒否時も呼び出し側が
 		// recordedAbiVersion() / recordedFrameSize() で拒否理由を診断できる。
 		std::uint32_t ver = 0;
 		std::memcpy(&ver,           header + kOffVersion,    sizeof(ver));
@@ -92,13 +92,13 @@ public:
 
 		if (ver != kFormatVersion)
 		{
-			// 非対応 format — 再録画が必要。
+			// 非対応 format。再録画が必要。
 			m_lastError = PlayerError::VersionMismatch;
 			return false;
 		}
 		if (m_frameSize != sizeof(module::InputSnapshot))
 		{
-			// 別 ABI 世代の録画 (InputSnapshot サイズ不一致) — 再録画が必要。
+			// 別 ABI 世代の録画 (InputSnapshot サイズ不一致)。再録画が必要。
 			m_lastError = PlayerError::FrameSizeMismatch;
 			return false;
 		}

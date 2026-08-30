@@ -79,7 +79,7 @@ public:
     /// @details builder は生の payload string_view を受け取り Event の instance を
     ///          返す。それが bus に publish される。
     ///          同じ signal 名を 2 回登録すると以前の mapping を上書きする
-    ///          (last-write-wins — BridgeActionRouter の semantics に倣う)。
+    ///          (last-write-wins。BridgeActionRouter の semantics に倣う)。
     /// @tparam Event publish する event 型。copy-constructible である必要がある。
     /// @param signalName CEF signal 名 (例: "ui.button.fire")。
     /// @param builder    payload を Event の instance に変換する callable。

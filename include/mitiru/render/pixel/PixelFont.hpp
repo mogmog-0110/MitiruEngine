@@ -96,7 +96,7 @@ struct PixelSize { int w = 0; int h = 0; };
 /// @param text UTF-8 文字列（改行 '\n' 可）
 /// @param originX,originY 左上原点（ピクセル）
 /// @param scale 整数拡大率
-/// @param sink void(int x, int y, int size) — 点灯ピクセル矩形を受け取る
+/// @param sink void(int x, int y, int size)。点灯ピクセル矩形を受け取る
 template <typename Sink>
 inline void forEachPixel(std::string_view text, int originX, int originY, int scale, Sink&& sink)
 {

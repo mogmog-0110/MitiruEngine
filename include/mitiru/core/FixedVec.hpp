@@ -3,7 +3,7 @@
 /// @file FixedVec.hpp
 /// @brief flat POD な固定容量コンテナ。GameMemory に入れても trivially_copyable を保つ。
 /// @details
-/// GameMemory は flat POD (= trivially_copyable) でなければならない (ADR 0017、host が
+/// GameMemory は flat POD (= trivially_copyable) でなければならない (host が
 /// bytes を memcpy で記録・rewind するため)。`std::vector` / `std::string` は内部 pointer
 /// を持つので使えない。代わりにこの固定容量コンテナを使う:
 ///
@@ -49,7 +49,7 @@ struct FixedVec
 
 	/// @brief 末尾追加。容量超過時は捨てて false を返す (例外なし)。
 	/// @return 追加できたら true、満杯で捨てたら false。黙った取りこぼしを防ぐため
-	///         [[nodiscard]] — 戻り値を見て分岐するか、full() を先に確認すること。
+	///         [[nodiscard]]。戻り値を見て分岐するか、full() を先に確認すること。
 	[[nodiscard]] constexpr bool push_back(const T& v) noexcept
 	{
 		if (count >= N) { return false; }

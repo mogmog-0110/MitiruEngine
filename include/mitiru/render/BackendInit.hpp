@@ -24,6 +24,9 @@
 #include <mitiru/core/Config.hpp>
 #include <mitiru/gfx/IDevice.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
+#ifdef __EMSCRIPTEN__
+#include <mitiru/render/Renderer3D_WebGL.hpp>
+#endif
 #include <mitiru/render/Renderer3D.hpp>
 #include <mitiru/render/RenderPipeline2D.hpp>
 
@@ -37,6 +40,13 @@
 
 namespace mitiru::render
 {
+
+#ifndef _WIN32
+// PostProcessManager は Win32 専用ヘッダ (PostProcessIntegration.hpp) にある。
+// Pipeline2DResult は他 backend でもこの型の「空の shared_ptr」を持つので、
+// 前方宣言だけあれば足りる (incomplete type の shared_ptr は合法)。
+class PostProcessManager;
+#endif
 
 /// @brief `createPipeline2DFor` の結果 - pipeline と、呼び出し側が device に
 ///        繋ぎ込むことが期待される optional な post-process manager。
@@ -114,7 +124,7 @@ struct Pipeline2DResult
 /// @brief device の backend に適した 3D renderer を構築する。
 /// @details `Engine::create3DRenderer` 内の engine 内部 dynamic_cast チェーンを
 ///          置き換える。利用可能なら DX12 を優先 (toon outline PSO が reference
-///          path)。DX11 は Win32 の明示 fallback (ADR 0023)。ここは device が既に
+///          path)。DX11 は Win32 の明示 fallback。ここは device が既に
 ///          確定した後の dispatch なので、fallback 発動の通知は GfxFactory 側で行う
 ///          (明示 Dx11 指定と区別できるのは生成時のみ)。他 backend は nullptr を
 ///          返す (3D は未実装)。
@@ -192,7 +202,7 @@ struct Pipeline2DResult
 		return dx12Renderer;
 	}
 
-	// DX11 (明示指定 or GfxFactory で fallback 済みの device — ADR 0023)。
+	// DX11 (明示指定 or GfxFactory で fallback 済みの device)。
 	// WBOIT/HDR/MSAA/FXAA/影なしの Renderer3D 経路。
 	if (backend == gfx::Backend::Dx11)
 	{
@@ -210,6 +220,16 @@ struct Pipeline2DResult
 	(void)screenHeight;
 	(void)windowWidth;
 	(void)windowHeight;
+#endif
+
+#ifdef __EMSCRIPTEN__
+	if (backend == gfx::Backend::WebGL)
+	{
+		auto webgl = std::make_unique<Renderer3D_WebGL>();
+		webgl->initialize(windowWidth, windowHeight);
+		if (webgl->isInitialized()) { return webgl; }
+		return nullptr;
+	}
 #endif
 
 	// 非Win32 / Null / OpenGL: 3D renderer は未実装

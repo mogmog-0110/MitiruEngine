@@ -1,4 +1,4 @@
-// welcome — MitiruEngine の第一章。1 画面で「画像・文字・図形・UI 操作・動き」をまとめて見せる歓迎デモ。
+// welcome。MitiruEngine の第一章。1 画面で「画像・文字・図形・UI 操作・動き」をまとめて見せる歓迎デモ。
 // 実行すると: 左に額装した赤富士 (画像) とブランドロゴ、右に触って試せる小さな機能見本 (図形の並び・
 //             ドラッグできるスライダー・押せるボタン) を清潔に並べる。手前の赤べこは矢印キーで歩き、
 //             マウスには蛍がついてきて、ボタン/スライダー以外をクリックすると波紋が広がる。
@@ -169,7 +169,7 @@ struct Welcome00
 		const bool  onButton   = inButton(mx, my);
 		const bool  onCheckbox = inCheckbox(mx, my);
 
-		// マウスを追う蛍 — 少し遅れてカーソルへ寄るので「ついてくる」ように見える。
+		// マウスを追う蛍。少し遅れてカーソルへ寄るので「ついてくる」ように見える。
 		const float k = std::min(1.0f, dt * 6.5f);
 		fx += (mx - fx) * k;
 		fy += (my - fy) * k;
@@ -204,7 +204,7 @@ struct Welcome00
 		if (clickEdge && onCheckbox) { petalsOn = !petalsOn; }
 
 		// 波紋: クリックの瞬間にその場所へ 1 つ出す。ただしボタン/スライダー/チェックの上では
-		//       出さない (UI 操作と波紋を重ねない — 触った所が二重に反応すると分かりにくいため)。
+		//       出さない (UI 操作と波紋を重ねない。触った所が二重に反応すると分かりにくいため)。
 		if (clickEdge && !onButton && !onSlider && !onCheckbox)
 		{
 			int slot = 0;                                    // 一番古い (age 最大の) 枠を使い回す
@@ -269,25 +269,25 @@ struct Welcome00
 	{
 		const float b = kShapeBottom;
 
-		// 角丸四角 (青) — 60x60。
+		// 角丸四角 (青)。60x60。
 		s.drawRoundedRect(Rect{kShapeCx[0] - 30.0f, b - 60.0f, 60.0f, 60.0f}, theme::kBlue, 15.0f);
 
-		// 円 (緑) — 直径 62。下端がそろうよう中心を b-31 に置く。
+		// 円 (緑)。直径 62。下端がそろうよう中心を b-31 に置く。
 		s.fillCircle(kShapeCx[1], b - 31.0f, 31.0f, theme::kGreen);
 
-		// 縦長カプセル (橙) — 幅 42・高さ 66。角丸を幅の半分にして丸い縦棒に。
+		// 縦長カプセル (橙)。幅 42・高さ 66。角丸を幅の半分にして丸い縦棒に。
 		s.drawRoundedRect(Rect{kShapeCx[2] - 21.0f, b - 66.0f, 42.0f, 66.0f}, theme::kOrange, 21.0f);
 
-		// 三角形 (桃) — 頂点を上に、底辺を下端にそろえる。3 点を drawTriangle に渡す。
+		// 三角形 (桃)。頂点を上に、底辺を下端にそろえる。3 点を drawTriangle に渡す。
 		const Vec2 apex {kShapeCx[3],         b - 58.0f};
 		const Vec2 left {kShapeCx[3] - 33.0f, b};
 		const Vec2 right{kShapeCx[3] + 33.0f, b};
 		s.drawTriangle(apex, left, right, theme::kPink);
 	}
 
-	// 右ゾーンの下地カード。前回の失敗は「同じ大きさの影を斜めにずらす」と角丸の隅に
-	// 影が三日月形に覗くこと。根治は影を横にずらさない (真下だけ)・カードと同じ幅と角丸に
-	// すること。すると影の角がカードの角の真下にぴったり重なり、下辺に薄い帯としてだけ見え、
+	// 右ゾーンの下地カード。影は横にずらさず真下だけに置き、カードと同じ幅・同じ角丸にする。
+	// 斜めにずらすと角丸の隅に影が三日月形に覗く。真下だけなら影の角がカードの角の
+	// 真下にぴったり重なり、下辺に薄い帯としてだけ見え、
 	// 横や上の角には決してはみ出さない。2 枚重ねて下ほど濃く滲ませる。
 	void panelCard(Screen& s) const
 	{
@@ -297,7 +297,7 @@ struct Welcome00
 		// はみ出さない。細い帯を内側に置く前案は角丸の端が浮いて見えたので、この手つきに直す。
 		s.drawRoundedRect(Rect{kCardX, kCardY + 7.0f, kCardW, kCardH}, rgba(28, 32, 44, 12), kCardR);
 		s.drawRoundedRect(Rect{kCardX, kCardY + 3.0f, kCardW, kCardH}, rgba(28, 32, 44, 18), kCardR);
-		// カード本体 (白)。枠線は付けない — 下辺の帯影だけで背景から浮かせる。
+		// カード本体 (白)。枠線は付けない。下辺の帯影だけで背景から浮かせる。
 		s.drawRoundedRect(body, kPanelFill, kCardR);
 	}
 
@@ -312,10 +312,10 @@ struct Welcome00
 	// 2 段目: スライダー。1 行目の左にラベル・右に今の値、その下に列いっぱいの溝とハンドル。
 	void slider(Screen& s) const
 	{
-		// ラベル (左) — このスライダーが赤べこの歩く速さを決めることを示す。
+		// ラベル (左)。このスライダーが赤べこの歩く速さを決めることを示す。
 		cardLabel(s, Rect{kColL, kSliderRowY, kColW * 0.6f, 24.0f}, "赤べこの速さ");
 
-		// 値 (右) — 溝の位置を 20〜300 の数に読み替えて、行の右端にそろえる。
+		// 値 (右)。溝の位置を 20〜300 の数に読み替えて、行の右端にそろえる。
 		const int speed = static_cast<int>(20.0f + sliderT * 280.0f + 0.5f);
 		char buf[16];
 		std::snprintf(buf, sizeof(buf), "%d", speed);
@@ -357,7 +357,7 @@ struct Welcome00
 		if (petalsOn)
 		{
 			s.drawRoundedRect(box, theme::kBlue, 7.0f);            // 塗り (青)
-			// 白いレ点 — 左中→底の角→右上 の 2 本の線で描く。
+			// 白いレ点。左中→底の角→右上 の 2 本の線で描く。
 			s.drawLine(Vec2{kCheckX +  6.0f, kCheckY + 15.0f}, Vec2{kCheckX + 12.0f, kCheckY + 21.0f},
 			           color::White, 3.0f);
 			s.drawLine(Vec2{kCheckX + 12.0f, kCheckY + 21.0f}, Vec2{kCheckX + 22.0f, kCheckY +  8.0f},

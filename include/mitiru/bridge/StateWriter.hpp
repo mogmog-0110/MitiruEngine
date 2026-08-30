@@ -4,11 +4,11 @@
 /// @brief CEF bridge 向け state push ヘルパー (signal-only bridge 規約準拠)
 ///
 /// 2 つのペイロード形式を提供する:
-///   1. **Scalar / Object** — JSON 文字列として statePush の kind=4 で送る
+///   1. **Scalar / Object**。JSON 文字列として statePush の kind=4 で送る
 ///      例: w.set("view.points", 42);
 ///          w.object("view.boss").set("active", true).set("pct", 88);
 ///
-///   2. **Hot list** — セミコロン区切りのコンパクト文字列 (非 JSON)
+///   2. **Hot list**。セミコロン区切りのコンパクト文字列 (非 JSON)
 ///      列名は HTML 側 data-m-fields で宣言する。
 ///      例: auto L = w.list("view.scene");
 ///          L.item().field(2).field(80).field(120).field(1);
@@ -294,7 +294,7 @@ private:
 ///        strVal 容量を超える分は **不正な JSON を吐かずに** 切り詰め、valid な
 ///        部分配列を push したうえで overflowed() を true にする。受け手
 ///        (mitiru_bind.js) が黙って空表示するより、呼び出し側で検知できる方が
-///        安全という判断。signal-only (ADR 0005) は不変。
+///        安全という判断。signal-only は不変。
 ///
 /// @example
 ///   auto a = w.array("view.hand");
