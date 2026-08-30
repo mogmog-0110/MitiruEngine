@@ -20,7 +20,7 @@
  * //   INCLUDED : jumpTo 付き backlog (pc 巻き戻し + 全 re-render)
  * //   INCLUDED : NF-10 未読 skip 追跡 & readline 統計
  * //   INCLUDED : NF-11 effect primitive (shake/flash/tint/zoom/blur/slide/fade-sprite)
- * //   DEFERRED : backlog の「time-travel 忠実度」 — jumpTo target 以前の sprite
+ * //   DEFERRED : backlog の「rewind 忠実度」 — jumpTo target 以前の sprite
  * //              位置は途中の mutation state と一致しない場合あり (Phase 2)
  * //   DEFERRED : text interpolation、choice.next を超える条件分岐、
  * //              loop、localisation key (NARRATIVE_SCRIPT.md v2 の deferral 通り)

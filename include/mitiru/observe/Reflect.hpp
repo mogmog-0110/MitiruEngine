@@ -4,7 +4,7 @@
 /// @brief GameMemory バイト列 → 構造化 JSON (host 側)
 /// @details
 /// game が `MITIRU_REFLECT` で申告した FieldDescriptor 表を使い、host が GameMemory の
-/// 生バイト列 (現フレーム or time-travel ring の過去フレーム) を nlohmann::json に変換する。
+/// 生バイト列 (現フレーム or rewind ring の過去フレーム) を nlohmann::json に変換する。
 /// AI が全フィールドを構造的に読めるようになる。host は layout を内蔵せず、記述子だけで動く
 ///。純関数・bounds-check 付き・例外を投げない。
 ///

@@ -250,7 +250,7 @@ public:
 	/// **範囲:** これは *観測可能な push 済み state* を snapshot する。`set()`
 	/// で set され現在 store に保持されている `view.*` 値 (とその他の key)。
 	/// ゲーム内部の `GameMemory` は **取得しない**; それは engine から不透明。
-	/// 完全な gameplay time-travel には、ゲームが `GameMemory` を別途
+	/// 完全な gameplay の巻き戻し には、ゲームが `GameMemory` を別途
 	/// serialize し、この snapshot と協調する必要がある。これは UI が
 	/// *表示している* ものの復元に使う。
 	///

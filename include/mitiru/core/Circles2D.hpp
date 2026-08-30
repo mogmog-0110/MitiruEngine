@@ -6,7 +6,7 @@
 ///          置ける形で書くための型。回転・任意形状・関節・連続衝突判定は持たない。
 ///
 /// physics/PhysicsEngine2D.hpp の `PhysicsWorld2D` は `unordered_map` と `std::function` を
-/// 持つため GameMemory に入らない。物理を使ったとたん、その game だけ time-travel と
+/// 持つため GameMemory に入らない。物理を使ったとたん、その game だけ巻き戻しと
 /// replay-as-test (軸 2 / 軸 4) から外れる。この型はその穴を塞ぐためにある。
 /// 回転や関節が要るなら `PhysicsWorld2D` を GameMemory の外に置く。
 ///

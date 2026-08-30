@@ -68,7 +68,7 @@ struct EngineCallbacks
 	std::function<std::string(int)>                    aiStateAt;   ///< ring N フレーム前の reflected JSON
 	std::function<std::string(int, int)>               aiStateDiff; ///< reflectDiff(ring.at(from), at(to))
 	std::function<std::string(const std::string&, int)> aiBranch;   ///< (keysCsv, frames) → 反実仮想結果
-	std::function<int()>                               aiRingSize;  ///< time-travel ring の保持フレーム数
+	std::function<int()>                               aiRingSize;  ///< rewind ring の保持フレーム数
 
 	// ── Inspector 観測 ─────────────────────────────────
 	// Inspector key-value ストアへの read-only アクセス。

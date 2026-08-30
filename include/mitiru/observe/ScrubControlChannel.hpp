@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file ScrubControlChannel.hpp
-/// @brief inspector (observer) → host への time-travel scrub 逆チャネル
+/// @brief inspector (observer) → host への rewind scrub 逆チャネル
 /// @details
 /// `SharedSnapshot.hpp` の forward channel (game→inspector, `mitiru_inspector_<pid>.json`)
-/// に対応する reverse channel。inspector の time-travel graph を click した時に
+/// に対応する reverse channel。inspector の rewind graph を click した時に
 /// host の GameMemory を「その frame の過去 bytes」へ巻き戻す click-to-scrub を実現する。
 ///
 /// 位置づけ:

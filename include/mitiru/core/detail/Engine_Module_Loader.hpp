@@ -5,7 +5,7 @@
 /// @brief Engine の module loader 部分の out-of-class 定義 (v0.2.0 step 2-3)
 /// @details
 /// `Engine::loadModule / unloadModule / reloadModule` の実装と、
-/// module 状態の accessor 群、time-travel 用 GameMemory ring 記録 /
+/// module 状態の accessor 群、rewind 用 GameMemory ring 記録 /
 /// rewind / branch を収める。
 /// per-frame signal flow は Engine_Module_Adapter.hpp 側。
 
@@ -414,7 +414,7 @@ MITIRU_INLINE std::string mitiru::Engine::reflectBlobJson(const void* blob) cons
 		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount).dump();
 }
 
-// ── time-travel: GameMemory ring 記録 + rewind ──────────────────
+// ── rewind: GameMemory ring 記録 + rewind ──────────────────
 
 MITIRU_INLINE void mitiru::Engine::recordModuleMemoryFrame()
 {

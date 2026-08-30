@@ -3,7 +3,7 @@
 /// @file ReflectDiff.hpp
 /// @brief reflected GameMemory state の field 単位 diff
 /// @details
-/// `reflectToJson` が作った 2 つの構造化 state (例 time-travel ring の frame A と B) を
+/// `reflectToJson` が作った 2 つの構造化 state (例 rewind ring の frame A と B) を
 /// path 単位で比較し、変化したフィールドだけを `[{path, from, to}]` で返す。AI の
 /// 「なぜ HP が落ちた?」が目視グラフ追いではなく構造クエリになる。純関数・例外なし。
 ///

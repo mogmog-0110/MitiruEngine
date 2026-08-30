@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file GameMemoryRing.hpp
-/// @brief host 所有の固定容量 GameMemory bytes リングバッファ (軸② time-travel の基盤)
+/// @brief host 所有の固定容量 GameMemory bytes リングバッファ (軸② rewind の基盤)
 /// @details
 /// 旧 `TimeTravelRecorder<Snapshot>` の後継。作者が手で Snapshot 型を定義する方式を捨て、
 /// host が GameMemory の **生バイト列** を毎フレーム push する。後で `at(offset)` で
-/// "n フレーム前の GameMemory bytes" を読み戻す。これが time-travel inspector の観測
+/// "n フレーム前の GameMemory bytes" を読み戻す。これが rewind inspector の観測
 /// (probe で系列化) と rewind (live GameMemory へ memcpy で巻き戻し) の **単一源**
 /// (replay の state slot と同一 bytes)。
 ///
@@ -27,7 +27,7 @@
 namespace mitiru::observe
 {
 
-/// @brief 固定容量の GameMemory bytes リング。軸② time-travel 基盤
+/// @brief 固定容量の GameMemory bytes リング。軸② rewind 基盤
 class GameMemoryRing
 {
 public:

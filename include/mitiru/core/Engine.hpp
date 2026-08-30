@@ -420,11 +420,11 @@ public:
 	/// @brief DLL が申告した GameMemory のバイト数 (0=未申告)
 	[[nodiscard]] std::uint32_t moduleMemorySize() const noexcept;
 
-	/// @brief time-travel: ring に貯めた N フレーム前の GameMemory bytes を取得
+	/// @brief rewind: ring に貯めた N フレーム前の GameMemory bytes を取得
 	/// @param offsetFromNewest 0 = 最新, 1 = 1 フレーム前, ...。範囲外は nullptr。
 	[[nodiscard]] const std::uint8_t* moduleMemoryRingAt(std::size_t offsetFromNewest) const noexcept;
 
-	/// @brief time-travel ring が現在保持しているフレーム数
+	/// @brief rewind ring が現在保持しているフレーム数
 	[[nodiscard]] std::size_t moduleMemoryRingSize() const noexcept;
 
 	/// @brief 2 つの GameMemory blob を MITIRU_REFLECT 記述子で field 単位 diff し JSON 配列で返す。
@@ -442,7 +442,7 @@ public:
 	///          未対応 game / 未 load なら nullptr。返り値は game 所有の静的文字列で即読み前提。
 	[[nodiscard]] const char* queryModuleWriteBlame(std::uint32_t offset) const;
 
-	/// @brief time-travel rewind: live GameMemory を過去 bytes で memcpy 上書きする
+	/// @brief rewind: live GameMemory を過去 bytes で memcpy 上書きする
 	/// @details host が scrub command を受けて呼ぶ。size が GameMemory サイズと一致しない /
 	///          live が無い場合は false (live を壊さない)。game DLL は rewind を知らない
 	///。次フレームの on_update が復元された state を「現在」として淡々と進める。
@@ -520,7 +520,7 @@ private:
 	void zeroModuleFrameIntents();         ///< 各 on_update 呼び出し前に m_moduleFrameIntents をクリア
 	void applyModuleRestartIntent();       ///< on_update 直後・ring 記録前に restart intent を適用 (§8-4: memset 0 → on_init)
 	void drainModuleFrameIntents();        ///< on_update 後に DLL が要求した side-effect を適用
-	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を time-travel ring へ push
+	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を rewind ring へ push
 	void recordModuleInputFrame();         ///< on_update 後に InputSnapshot bytes を InputRing へ push
 	void applyResimInputOverride();        ///< resim 中、構築済み snapshot を記録入力で上書きする
 
@@ -742,7 +742,7 @@ private:
 	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
 	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (0=未申告)
-	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② time-travel)
+	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② rewind)
 	bool                                  m_scrubHold       = false; ///< 別窓のバーで過去フレームに静止中か
 	std::size_t                           m_scrubHoldOffset = 0;     ///< 静止しているフレーム (何フレーム前か、0=最新)
 	observe::GameMemoryRing               m_moduleInputRing;        ///< 過去フレームの InputSnapshot bytes (resim 用、同 ring を再利用)

@@ -6,7 +6,7 @@
 /// @details
 /// 実装は意味のまとまりで 2 分割されている (800 行ルール):
 ///   - Engine_Module_Loader.hpp。loadModule / unloadModule / reloadModule /
-///     accessor 群 / time-travel GameMemory ring
+///     accessor 群 / rewind 用 GameMemory ring
 ///   - Engine_Module_Adapter.hpp。runModule (ModuleAdapter) と、host と game を
 ///     C の関数と生データだけで繋ぐ per-frame signal flow:
 ///       - InputSnapshot 構築 (host が input + action events を POD に詰める)

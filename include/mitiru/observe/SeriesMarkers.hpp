@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file SeriesMarkers.hpp
-/// @brief スカラー系列から「見るべきフレーム」を導く純関数群 (軸② time-travel)
+/// @brief スカラー系列から「見るべきフレーム」を導く純関数群 (軸② rewind)
 /// @details
 /// 旧 `TimeTravelMarkers.hpp` の後継。入力を `TimeTravelRecorder<Snapshot>&` + accessor
 /// から **`std::span<const double>` (oldest→newest の系列)** に一般化した。host が

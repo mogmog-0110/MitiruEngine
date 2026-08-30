@@ -512,7 +512,7 @@ void registerGame(ModuleApi* api, void** memory)
 
 	// GameMemory は flat POD 必須。host が GameMemory を bytes として memcpy で
 	// 記録・rewind するため、ポインタ (std::vector/std::string/std::deque 等) を含むと
-	// time-travel / replay が再現しない。固定長コンテナに置き換えること。
+	// 巻き戻し / replay が再現しない。固定長コンテナに置き換えること。
 	static_assert(std::is_trivially_copyable_v<T>,
 		"MITIRU_GAME(T): GameMemory は flat POD (trivially_copyable) である必要があります。"
 		"std::vector / std::string / std::deque 等のヒープ所有メンバを mitiru::FixedVec<T,N> / "
@@ -527,7 +527,7 @@ void registerGame(ModuleApi* api, void** memory)
 	api->on_update   = &gameUpdate<T>;
 	api->on_draw     = &gameDraw<T>;
 	api->on_shutdown = &gameShutdown<T>;
-	// GameMemory は flat POD 保証済み (上の static_assert)。録画再生・time-travel・rewind の
+	// GameMemory は flat POD 保証済み (上の static_assert)。録画再生・rewind の
 	// 単一 state 源として byte 数を無条件に申告する。
 	api->memorySize        = static_cast<std::uint32_t>(sizeof(T));
 	api->seriesProbeCount  = 0;  // MITIRU_GAME_SERIES が観測 probe を上書きする
@@ -636,9 +636,9 @@ template <class T, auto MemberPtr>
 /// 中身は同じ。新規コードは MITIRU_GAME を使ってよい。
 #define MITIRU_GAME_RECORDABLE(GameType) MITIRU_GAME(GameType)
 
-/// MITIRU_GAME に加えて time-travel 観測 probe を宣言する。
+/// MITIRU_GAME に加えて rewind 観測 probe を宣言する。
 /// GameMemory から double を引く capture 無しの純関数を列挙すると、host が GameMemoryRing の
-/// 各フレームに適用して HP 履歴等の系列を自動生成し、inspector の time-travel graph に出す。
+/// 各フレームに適用して HP 履歴等の系列を自動生成し、inspector の rewind graph に出す。
 /// 作者が手で履歴を貯めたり JSON を組んだりする必要はない。
 ///
 /// @code
@@ -674,14 +674,14 @@ template <class T, auto MemberPtr>
 #define MITIRU_SERIES_FIELD(GameType, field)                                   \
 	::mitiru::module::makeSeriesProbe<GameType, &GameType::field>(#field, #field)
 
-/// 同上 + 人間向けラベルと danger 閾値 (閾値跨ぎが time-travel marker になる)。
+/// 同上 + 人間向けラベルと danger 閾値 (閾値跨ぎが rewind marker になる)。
 #define MITIRU_SERIES_FIELD_DANGER(GameType, field, title, thresholdValue)     \
 	::mitiru::module::makeSeriesProbe<GameType, &GameType::field>(              \
 		#field, title, thresholdValue, true)
 
 // ── GameMemory リフレクション ──────────────────────────────────
 // MITIRU_REFLECT(Type, field...) で GameMemory の全フィールドを host に申告する。
-// host が GameMemory バイト列 (現フレーム + time-travel ring の過去) を構造化 JSON 化し、
+// host が GameMemory バイト列 (現フレーム + rewind ring の過去) を構造化 JSON 化し、
 // AI が全状態を読めるようになる。MITIRU_GAME / MITIRU_GAME_SERIES と併用する。
 //
 //   MITIRU_REFLECT_STRUCT(ns::Enemy, x, y, alive);   // FixedVec の要素 struct を先に

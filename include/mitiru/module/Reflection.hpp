@@ -6,7 +6,7 @@
 /// probe (SeriesProbe = 1 スカラーの accessor) の自然な拡張。probe は「GameMemory から
 /// double を 1 つ引く」だったが、reflection は「GameMemory の全フィールドの名前・型・
 /// オフセット」を宣言する。host はこの記述子表を使って GameMemory バイト列 (現フレーム +
-/// time-travel ring の過去フレーム) を構造化 JSON に変換し、AI が全状態を読めるようにする。
+/// rewind ring の過去フレーム) を構造化 JSON に変換し、AI が全状態を読めるようにする。
 ///
 /// 設計:
 /// - host は GameMemory の layout を内蔵しない。**game が記述子で教える** (probe と同契約)。

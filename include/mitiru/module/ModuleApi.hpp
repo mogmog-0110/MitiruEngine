@@ -351,7 +351,7 @@ struct SoundIntent
 
 /// @brief 「このツール窓を開いて」という DLL → host の intent (v10 追加)。
 /// @details game は Engine* を持てない ので、独立ウィンドウのツール
-///          (inspector / input monitor / time-travel など) を自分では開けない。代わりに
+///          (inspector / input monitor / rewind など) を自分では開けない。代わりに
 ///          tool 名を書いて「開いて」と頼み、host が別 exe (mitiru_<tool>.exe) を spawn する。
 ///          必要なときだけ呼ぶ。既定では何も開かない (pulled UI、アトミックツール哲学)。
 struct RequestToolWindow
@@ -723,7 +723,7 @@ static_assert(offsetof(FrameIntents, wantMouseLock)     == 297632, "FrameIntents
 ///          暗黙変換可、capture ありは変換不可でコンパイル拒否される (footgun 防止)。
 using SeriesProbeFn = double (*)(const void* gameMemory);
 
-/// @brief 「GameMemory のこの値を time-travel graph で追って」という DLL → host の宣言 (v11)。
+/// @brief 「GameMemory のこの値を rewind graph で追って」という DLL → host の宣言 (v11)。
 /// @details DLL が load 時に申告する (毎フレーム不要)。host が GameMemoryRing の各フレームに
 ///          accessor を適用して系列を作り、SeriesMarkers で節目を抽出して inspector に出す。
 struct SeriesProbe

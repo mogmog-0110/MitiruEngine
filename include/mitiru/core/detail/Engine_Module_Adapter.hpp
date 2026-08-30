@@ -143,7 +143,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			// replay / resim では update が同フレームで再発行し bit-exact に再現される。
 			m_engine->applyModuleRestartIntent();
 
-			// on_update 後の確定 GameMemory を time-travel ring に記録。
+			// on_update 後の確定 GameMemory を rewind ring に記録。
 			// replay の state slot と同一 bytes。観測 (probe 系列) と rewind の単一源。
 			m_engine->recordModuleMemoryFrame();
 			m_engine->recordModuleInputFrame();  // 入力も同じ窓で ring 保持
@@ -806,7 +806,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 					}
 				}
 			}
-			// 適用成功時は time-travel ring を破棄する。load 前の履歴は別時間軸の bytes で、
+			// 適用成功時は rewind ring を破棄する。load 前の履歴は別時間軸の bytes で、
 			// そこへの rewind は復元を壊す (reloadModule の ring clear と同じ理由)。
 			if (applied) { m_moduleMemoryRing.clear(); }
 		}
