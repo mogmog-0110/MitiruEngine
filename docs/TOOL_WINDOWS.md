@@ -1,20 +1,20 @@
 # Tool Windows: 独立ウィンドウのデバッグツール
 
-MitiruEngine のデバッグ・観察ツール (inspector / 巻き戻し / scene tree / replay /
-perf / mixer / input) は、ゲーム本体とは 別の OS ウィンドウ として立ち上がります。
-中身は全て 1 つの汎用 CEF ホスト (`mitiru_tool_cef --page <name>`) が描く HTML/CSS で、
-`--page <name>` が `assets/<name>.html` に対応します。動作中ゲームの SharedSnapshot が
-毎フレーム push されます。この文書はどう開くかと、どう増やすかをまとめます。
+MitiruEngineのデバッグ・観察ツール(inspector / 巻き戻し / scene tree / replay /
+perf / mixer / input)は、ゲーム本体とは 別のOSウィンドウ として立ち上がります。
+中身は全て1つの汎用CEFホスト(`mitiru_tool_cef --page <name>`)が描くHTML/CSSで、
+`--page <name>`が`assets/<name>.html`に対応します。動作中ゲームのSharedSnapshotが
+毎フレームpushされます。この文書はどう開くかと、どう増やすかをまとめます。
 
 ## 基本思想: 欲しい窓の行だけ書く
 
-- ツールウィンドウを開く判断は **host を書く人 (`main.cpp`) が C++ で持つ**。「このデバッグ機能を
+- ツールウィンドウを開く判断は **hostを書く人(`main.cpp`)がC++で持つ**。「このデバッグ機能を
   使いたいから、この行を書く」 → 書いた窓だけ出る。要らなければ何も書かない = 何も出ない
   (pulled UI)。
-- **ゲームのキー入力には割り当てない**。実ゲームは全キーを gameplay に使うので、ツールウィンドウを
-  ゲーム内キーで開くとキー設計と競合する。トリガーは常にゲーム入力の外 (host コード / CLI)。
-- ツールウィンドウは読み取り専用。動作中ゲームが push する観察データ (snapshot) を描くだけで、
-  ゲーム側の state を書き換えたり、ゲームを freeze させたりしない。
+- **ゲームのキー入力には割り当てない**。実ゲームは全キーをgameplayに使うので、ツールウィンドウを
+  ゲーム内キーで開くとキー設計と競合する。トリガーは常にゲーム入力の外(hostコード / CLI)。
+- ツールウィンドウは読み取り専用。動作中ゲームがpushする観察データ(snapshot)を描くだけで、
+  ゲーム側のstateを書き換えたり、ゲームをfreezeさせたりしない。
 
 ## 開き方
 
@@ -24,7 +24,7 @@ perf / mixer / input) は、ゲーム本体とは 別の OS ウィンドウ と�
 hud.open(mitiru::Tool::Perf);   // Game.hpp の update() 内など
 ```
 
-### host コードから (正面)
+### hostコードから(正面)
 
 ```cpp
 #include <mitiru/debug/InspectorLauncher.hpp>
@@ -35,16 +35,16 @@ mitiru::debug::openTool(mitiru::Tool::TimeTravel);  // 巻き戻しウィンド�
 // 要らない窓は書かない。
 ```
 
-`openTool` は spawn に成功すると `true`、ホストが見つからなければ `false` (無害な no-op)。
-特定ファイルを渡す窓 (replay) には引数付き版:
+`openTool`はspawnに成功すると`true`、ホストが見つからなければ`false` (無害なno-op)。
+特定ファイルを渡す窓(replay)には引数付き版:
 
 ```cpp
 mitiru::debug::openTool(mitiru::Tool::Replay, "run.mtrr");
 ```
 
-### 参照 host の CLI から
+### 参照hostのCLIから
 
-`mitiru_host` は `--inspect <name>` で起動時にツールウィンドウを開けます (複数指定可):
+`mitiru_host`は`--inspect <name>`で起動時にツールウィンドウを開けます(複数指定可):
 
 ```
 mitiru_host game.dll --inspect inspector --inspect perf
@@ -52,42 +52,42 @@ mitiru_host game.dll --inspect inspector --inspect perf
 
 `name` = `inspector` / `input` / `timetravel` / `scene` / `perf` / `mixer`。
 
-### CLI から
+### CLIから
 
 ```
 mitiru inspect [pid]
 ```
 
-`--inspectable input|timetravel` で開く page を指定、`--all` で全窓を開きます。
+`--inspectable input|timetravel`で開くpageを指定、`--all`で全窓を開きます。
 
 ## 用意されている窓
 
-どの窓も `mitiru_tool_cef --page <name>` 1 本が描きます (中身は `assets/<name>.html`)。
+どの窓も`mitiru_tool_cef --page <name>` 1本が描きます(中身は`assets/<name>.html`)。
 
 | Tool | page | 見るもの |
 |---|---|---|
-| `Perf` | `--page perf` | fps / frameMs + 折れ線グラフ |
-| `Inspector` | `--page inspect` | ゲームが `hud.watch()` で出した観察データ全部 (HP / score 等) |
-| `SceneTree` | `--page scene` | 観察データの階層構造を tree 表示 (開閉) |
-| `TimeTravel` | `--page timetravel` | 直近フレームを巻き戻す (履歴グラフ) |
-| `Replay` | `--page replay` | 入力記録ファイル (`.mtrr`) の録画を frame 単位でコマ送りで行き来 |
-| `AudioMixer` | `--page mixer` | master volume + 再生中チャンネルの per-channel VU |
+| `Perf` | `--page perf` | fps / frameMs +折れ線グラフ |
+| `Inspector` | `--page inspect` | ゲームが`hud.watch()`で出した観察データ全部(HP / score等) |
+| `SceneTree` | `--page scene` | 観察データの階層構造をtree表示(開閉) |
+| `TimeTravel` | `--page timetravel` | 直近フレームを巻き戻す(履歴グラフ) |
+| `Replay` | `--page replay` | 入力記録ファイル(`.mtrr`)の録画をframe単位でコマ送りで行き来 |
+| `AudioMixer` | `--page mixer` | master volume +再生中チャンネルのper-channel VU |
 | `InputMonitor` | `--page input` | 生の入力値 |
 
 ## 増やし方
 
-開ける窓の単一の真実は `include/mitiru/debug/ToolRegistry.hpp` の `Tool` enum + `kToolTable`
-です。増設は 1 パターンだけ:
+開ける窓の単一の真実は`include/mitiru/debug/ToolRegistry.hpp`の`Tool` enum + `kToolTable`
+です。増設は1パターンだけ:
 
-1. `Tool` enum に値を 1 つ足す。
-2. `kToolTable` に 1 行足す: `{ Tool::MyTool, "tool_cef", "--page mytool" }`。
-3. `apps/mitiru_tool_cef/assets/mytool.html` を作る (snapshot を読んで描く HTML/CSS)。
+1. `Tool` enumに値を1つ足す。
+2. `kToolTable`に1行足す: `{ Tool::MyTool, "tool_cef", "--page mytool" }`。
+3. `apps/mitiru_tool_cef/assets/mytool.html`を作る(snapshotを読んで描くHTML/CSS)。
 
-新しい exe は不要です。全窓が `tool_cef` の page なので、HTML を 1 枚足せば窓が増えます。
+新しいexeは不要です。全窓が`tool_cef`のpageなので、HTMLを1枚足せば窓が増えます。
 
-## ツールウィンドウ ≠ subsystem 単独起動
+## ツールウィンドウ ≠ subsystem単独起動
 
-ツールウィンドウ (上記) は「動作中ゲームを観察する別窓」です。これと別に、
-subsystem 単独起動 (1 サブシステムだけを単体で走らせる) があります。これはデバッグウィンドウ
-ではなく、`mitiru_subsys_*` を `mitiru audio | input | renderer | scene` (+ 決定的な
-record/playback の `mitiru replay`) で起動するものです。両者は混同しないでください。
+ツールウィンドウ(上記)は「動作中ゲームを観察する別窓」です。これと別に、
+subsystem単独起動(1サブシステムだけを単体で走らせる)があります。これはデバッグウィンドウ
+ではなく、`mitiru_subsys_*`を`mitiru audio | input | renderer | scene` (+決定的な
+record/playbackの`mitiru replay`)で起動するものです。両者は混同しないでください。

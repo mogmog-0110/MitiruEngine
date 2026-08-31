@@ -1,36 +1,36 @@
 # C++ Gameplay Guide: MitiruEngine
 
-> **対象読者**: MitiruEngine 上で 初めて C++ gameplay を書く 開発者。
-> consumer 側ゲームの作者が、エンジンが提供する基本プリミティブを
-> 組み合わせてシーン遷移・状態管理・タイマー・UI signal 配線を行うための入口ガイド。
+> **対象読者**: MitiruEngine上で 初めてC++ gameplayを書く 開発者。
+> consumer側ゲームの作者が、エンジンが提供する基本プリミティブを
+> 組み合わせてシーン遷移・状態管理・タイマー・UI signal配線を行うための入口ガイド。
 
 ---
 
 ## 1. Overview
 
-MitiruEngine は 2026-05-14 に Siv3D をロールモデルとする C++ engine 路線へピボットした。
-gameplay の決定権は すべて C++ にあり、CEF (HTML/CSS/JS) は View 専用に格下げされた。
+MitiruEngineは2026-05-14にSiv3DをロールモデルとするC++ engine路線へピボットした。
+gameplayの決定権は すべてC++にあり、CEF (HTML/CSS/JS)はView専用に格下げされた。
 
-3 行で整理すると:
+3行で整理すると:
 
-1. **Gameplay は C++**。state machine / シーン遷移 / タイマー / 判定はすべて C++ に置く。
-2. **CEF は UI/HUD/演出**。描画と「ユーザ操作の検出」だけを担当。JS で条件分岐や状態保持はしない。
-3. **Bridge は signal-only**。JS→C++ は `ui.button.start` のような「何が起きたか」だけ。
-   C++→JS は `view.<sub>.<key>` 形式の「何を表示すべきか」だけ。
-   gameplay 関数の RPC は禁止。
+1. **GameplayはC++**。state machine / シーン遷移 / タイマー / 判定はすべてC++に置く。
+2. **CEFはUI/HUD/演出**。描画と「ユーザ操作の検出」だけを担当。JSで条件分岐や状態保持はしない。
+3. **Bridgeはsignal-only**。JS→C++は`ui.button.start`のような「何が起きたか」だけ。
+   C++→JSは`view.<sub>.<key>`形式の「何を表示すべきか」だけ。
+   gameplay関数のRPCは禁止。
 
-関連 doc:
+関連doc:
 
-- [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md) — レイヤー分担 (C++ gameplay + CEF view)
-- [BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md) — bridge 責務定義 (signal-only)
-- [examples/html_menu/](../examples/html_menu/) — HTML の操作を C++ が受ける動くサンプル
+- [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md) — レイヤー分担(C++ gameplay + CEF view)
+- [BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md) — bridge責務定義(signal-only)
+- [examples/html_menu/](../examples/html_menu/) — HTMLの操作をC++が受ける動くサンプル
 
 ---
 
 ## 2. 最小例
 
-gameplay 側の main loop は、これだけのスケルトンで回る。プリミティブを継ぐだけで、
-ウィンドウを出さない (headless) ループとしても動く。
+gameplay側のmain loopは、これだけのスケルトンで回る。プリミティブを継ぐだけで、
+ウィンドウを出さない(headless)ループとしても動く。
 
 ```cpp
 mitiru::scene::SceneRouter        router;
@@ -45,36 +45,36 @@ while (!router.empty()) {
 }
 ```
 
-各 Scene は `mitiru::scene::IScene` を継承し、`onEnter / onUpdate / onExit` を実装する。
+各Sceneは`mitiru::scene::IScene`を継承し、`onEnter / onUpdate / onExit`を実装する。
 
 ---
 
-## 3. Primitives 早見表
+## 3. Primitives早見表
 
-| やりたいこと | プリミティブ | ヘッダ | 中心 API |
+| やりたいこと | プリミティブ | ヘッダ | 中心API |
 |---|---|---|---|
-| 画面遷移 (Title → Stage → Result) | `SceneRouter` + `IScene` | `mitiru/scene/SceneRouter.hpp` | `push` / `pop` / `replace` / `update` |
-| シーン内の状態 (Idle → Cook → Done) | `StateMachine<T>` | `mitiru/fsm/StateMachine.hpp` | `transition` / `setGuard` / `setOnTransition` |
+| 画面遷移(Title → Stage → Result) | `SceneRouter` + `IScene` | `mitiru/scene/SceneRouter.hpp` | `push` / `pop` / `replace` / `update` |
+| シーン内の状態(Idle → Cook → Done) | `StateMachine<T>` | `mitiru/fsm/StateMachine.hpp` | `transition` / `setGuard` / `setOnTransition` |
 | 焼き時間 / カウントダウン | `Timer` | `mitiru/time/Timer.hpp` | `tick` / `expired` / `progress` / `reset` |
 | スキル再使用待ち / レート制限 | `Cooldown` | `mitiru/time/Cooldown.hpp` | `tick` / `ready` / `trigger` |
-| 演出 (wait → action → wait …) | `Sequence` | `mitiru/time/Sequence.hpp` | `wait` / `action` / `tick` / `done` |
+| 演出(wait → action → wait …) | `Sequence` | `mitiru/time/Sequence.hpp` | `wait` / `action` / `tick` / `done` |
 | UI signal → gameplay action | `BridgeActionRouter` | `mitiru/input/BridgeActionRouter.hpp` | `registerHandler` / `unregisterHandler` / `dispatch` |
-| HUD / 演出を view に push | `BridgeViewPush` | `mitiru/bridge/BridgeViewPush.hpp` | `set` / `emit` |
-| UI signal を InputMapper Action にマージ | `BridgeInputAdapter` | `mitiru/input/BridgeInputAdapter.hpp` | `mapSignalToAction` / `unmapSignal` |
-| UI signal を型付き EventBus event に変換 | `BridgeEventBusGlue` | `mitiru/bridge/BridgeEventBusGlue.hpp` | `mapSignal` / `mapSignalToTrivial` / `unmap` |
-| C++ struct ↔ JSON シリアライズ | `JsonBinding` | `mitiru/data/JsonBinding.hpp` | `toJson` / `fromJson` / `fromJsonVersioned` / `MigrationChain<T>` |
-| Save スロットの型付き読み書き | `SaveSchema<T>` | `mitiru/data/SaveSchema.hpp` | `toJsonString` / `fromJsonString` / `migrations()` |
-| Balance / dialogue 等の JSON content 読込 | `ContentLoader<T>` | `mitiru/data/ContentLoader.hpp` | `loadFile` / `loadString` / `loadJson` |
+| HUD / 演出をviewにpush | `BridgeViewPush` | `mitiru/bridge/BridgeViewPush.hpp` | `set` / `emit` |
+| UI signalをInputMapper Actionにマージ | `BridgeInputAdapter` | `mitiru/input/BridgeInputAdapter.hpp` | `mapSignalToAction` / `unmapSignal` |
+| UI signalを型付きEventBus eventに変換 | `BridgeEventBusGlue` | `mitiru/bridge/BridgeEventBusGlue.hpp` | `mapSignal` / `mapSignalToTrivial` / `unmap` |
+| C++ struct ↔ JSONシリアライズ | `JsonBinding` | `mitiru/data/JsonBinding.hpp` | `toJson` / `fromJson` / `fromJsonVersioned` / `MigrationChain<T>` |
+| Saveスロットの型付き読み書き | `SaveSchema<T>` | `mitiru/data/SaveSchema.hpp` | `toJsonString` / `fromJsonString` / `migrations()` |
+| Balance / dialogue等のJSON content読込 | `ContentLoader<T>` | `mitiru/data/ContentLoader.hpp` | `loadFile` / `loadString` / `loadJson` |
 
-すべて header-only。include して使うだけで OK。
+すべてheader-only。includeして使うだけでOK。
 
 ---
 
 ## 4. Composition Patterns
 
-ここがメイン。プリミティブは単体ではなく 組み合わせ で gameplay を表現する。
+ここがメイン。プリミティブは単体ではなく 組み合わせ でgameplayを表現する。
 
-### Pattern A: Scene + StateMachine の二層構造
+### Pattern A: Scene + StateMachineの二層構造
 
 **意図**: 「画面の切り替え」と「画面内の状態」を 別レイヤー として扱う。
 
@@ -96,15 +96,15 @@ private:
 };
 ```
 
-- `SceneRouter` は「Title → Cooking → Result」のような **画面単位** の遷移を持つ。
-- `StateMachine<T>` は 1 シーン内 の局所状態を持つ。
-- **ハマる点**。状態が deeply nested (5 段以上) になってきたら、それは「別 scene に切り出すべきサイン」。
-  StateMachine を多段化するより `router.push(...)` した方が読みやすい。
+- `SceneRouter`は「Title → Cooking → Result」のような 画面単位 の遷移を持つ。
+- `StateMachine<T>`は1シーン内 の局所状態を持つ。
+- **ハマる点**。状態がdeeply nested (5段以上)になってきたら、それは「別sceneに切り出すべきサイン」。
+  StateMachineを多段化するより`router.push(...)`した方が読みやすい。
 
-### Pattern B: Timer + StateMachine で時間駆動の遷移
+### Pattern B: Timer + StateMachineで時間駆動の遷移
 
-**意図**: 「N 秒経ったら次の状態へ」を素直に表現する。
-`Timer.expired()` と `StateMachine.transition()` を組み合わせる。
+**意図**: 「N秒経ったら次の状態へ」を素直に表現する。
+`Timer.expired()`と`StateMachine.transition()`を組み合わせる。
 
 ```cpp
 void onUpdate(float dt) override {
@@ -117,12 +117,12 @@ void onUpdate(float dt) override {
 }
 ```
 
-- 状態に入った瞬間に `m_bakeTimer.reset()` を呼ぶ習慣をつける (前回の残り時間を引きずらない)。
-- **ハマる点**。`expired()` を毎フレーム見て副作用を発火し続けないこと。
-  `transition()` した直後は `state()` が変わっているので二重発火しないが、
-  「expired のとき何かする」ロジックは必ず状態遷移にくくる。
+- 状態に入った瞬間に`m_bakeTimer.reset()`を呼ぶ習慣をつける(前回の残り時間を引きずらない)。
+- **ハマる点**。`expired()`を毎フレーム見て副作用を発火し続けないこと。
+  `transition()`した直後は`state()`が変わっているので二重発火しないが、
+  「expiredのとき何かする」ロジックは必ず状態遷移にくくる。
 
-### Pattern C: Sequence で演出スクリプト
+### Pattern C: Sequenceで演出スクリプト
 
 **意図**: 章間カットイン / Title intro / 一連の演出のような スクリプテッド時系列 を書く。
 
@@ -137,15 +137,15 @@ m_intro
 m_intro.tick(dt);
 ```
 
-- `wait` と `action` を自由に交互に並べられる。`action` は即時実行で時間を消費しない。
-- `done()` で終了判定。終わったあとの `tick` は no-op。
-- **ハマる点**。`action` のラムダ内でその Sequence 自身を mutate しない (例: 同じ `m_intro` に `wait(...).action(...)` を追加する)。cursor 不整合の原因になる。
-  追加演出を流したいなら 別の Sequence インスタンスを用意する。
+- `wait`と`action`を自由に交互に並べられる。`action`は即時実行で時間を消費しない。
+- `done()`で終了判定。終わったあとの`tick`はno-op。
+- **ハマる点**。`action`のラムダ内でそのSequence自身をmutateしない(例: 同じ`m_intro`に`wait(...).action(...)`を追加する)。cursor不整合の原因になる。
+  追加演出を流したいなら 別のSequenceインスタンスを用意する。
 
-### Pattern D: BridgeActionRouter + Scene のディスパッチ
+### Pattern D: BridgeActionRouter + Sceneのディスパッチ
 
-**意図**: CEF (UI) から飛んでくる signal を gameplay の意思決定へ変換する境界を作る。
-JS には「ボタンが押された」だけ言わせて、どの scene に遷移するか / どんな状態変化を起こすかは C++ が決める。
+**意図**: CEF (UI)から飛んでくるsignalをgameplayの意思決定へ変換する境界を作る。
+JSには「ボタンが押された」だけ言わせて、どのsceneに遷移するか / どんな状態変化を起こすかはC++が決める。
 
 ```cpp
 m_actions.registerHandler("ui.button.start",
@@ -160,13 +160,13 @@ void onExit() override {
 }
 ```
 
-- handler 登録は **scene 単位で対称に**: `onEnter` / ctor で登録、`onExit` で `unregisterHandler`。
-- 同一 signal 名を二重登録すると **last-write-wins** で上書きされる。複数 scene が同じ signal を奪い合わないように責任分界点を決める。
-- **ハマる点**。handler 内で重い処理をしない。`dispatch()` は呼び出しスレッドで同期実行されるため、長時間ブロックすると bridge ポンプ全体が詰まる。重い処理は flag を立てて次の `onUpdate` で消化する。
+- handler登録は **scene単位で対称に**: `onEnter` / ctorで登録、`onExit`で`unregisterHandler`。
+- 同一signal名を二重登録すると **last-write-wins** で上書きされる。複数sceneが同じsignalを奪い合わないように責任分界点を決める。
+- **ハマる点**。handler内で重い処理をしない。`dispatch()`は呼び出しスレッドで同期実行されるため、長時間ブロックするとbridgeポンプ全体が詰まる。重い処理はflagを立てて次の`onUpdate`で消化する。
 
-### Pattern E: BridgeViewPush で state を view に流す
+### Pattern E: BridgeViewPushでstateをviewに流す
 
-**意図**: gameplay 側 (C++) で計算した結果を、JS は 描画するだけ に徹させる。
+**意図**: gameplay側(C++)で計算した結果を、JSは 描画するだけ に徹させる。
 
 ```cpp
 m_view.set("hp", "80");                            // → "view.cooking.hp" = "80"
@@ -174,19 +174,19 @@ m_view.set("state", "Cooking");                    // 状態ラベル
 m_view.emit("damage", "{\"amount\":12,\"crit\":true}");  // one-shot エフェクト
 ```
 
-- **`set` は retained**。最新値が保持され、後から接続した view も読み取れる (HP / score 等)。
-- **`emit` は one-shot**。その瞬間のイベント。聴いていない view には届かない (ヒットエフェクト / SE トリガ等)。
-- key は **`view.<subsystem>.<key>`** 形式に統一される (ctor の `subsystem` で prefix を固定)。
-  詳細命名規約は [BRIDGE_API_CONTRACT.md §3](BRIDGE_API_CONTRACT.md) を参照。
+- **`set`はretained**。最新値が保持され、後から接続したviewも読み取れる(HP / score等)。
+- **`emit`はone-shot**。その瞬間のイベント。聴いていないviewには届かない(ヒットエフェクト / SEトリガ等)。
+- keyは `view.<subsystem>.<key>` 形式に統一される(ctorの`subsystem`でprefixを固定)。
+  詳細命名規約は [BRIDGE_API_CONTRACT.md §3](BRIDGE_API_CONTRACT.md)を参照。
 - **ハマる点**。
-  - JS で「HP が 50 以下なら赤くする」のような判定を書きたくなったら **負け**。C++ 側で `view.cooking.hpLow = "true"` を別途 push し、JS は class を toggle するだけにする。
-  - 値はあらかじめ JSON 文字列に整形して渡す (数値は `std::to_string`、文字列は `"\"..."\""` で quote)。
+  - JSで「HPが50以下なら赤くする」のような判定を書きたくなったら 負け。C++側で`view.cooking.hpLow = "true"`を別途pushし、JSはclassをtoggleするだけにする。
+  - 値はあらかじめJSON文字列に整形して渡す(数値は`std::to_string`、文字列は`"\"..."\""`でquote)。
 
 ---
 
-### Pattern F: BridgeInputAdapter で UI ボタンとキー入力を同じ Action にする
+### Pattern F: BridgeInputAdapterでUIボタンとキー入力を同じActionにする
 
-**意図**: 「キーボードでも UI ボタンでも同じ Action として gameplay は受け取る」を仕組みで保証する。
+**意図**: 「キーボードでもUIボタンでも同じActionとしてgameplayは受け取る」を仕組みで保証する。
 
 ```cpp
 mitiru::InputMapper                   mapper;
@@ -203,13 +203,13 @@ adapter.mapSignalToAction("ui.button.fire", "Fire");
 if (mapper.isActionPressed("Fire")) { fire(); }
 ```
 
-- bridge-triggered action は **one-shot**: `isActionPressed` だけが true を返し、`isActionDown` は通常 binding と同じ意味のまま (continuous press の概念は bridge にない)。
-- フレーム末で `mapper.endFrame()` を **必ず**呼ぶ。さもないと一度発火した action が永遠に "pressed" 状態のまま居座る。
-- **ハマる点**。`mapSignalToAction` を二重登録すると `BridgeActionRouter` の last-write-wins で上書きされる。複数 signal を 1 action にしたい場合は signal 名側を増やす (例: `ui.button.fire` と `ui.gesture.tap-fire` 両方を `Fire` action にマップ → これは別 signal 名なので両方有効)。
+- bridge-triggered actionは **one-shot**: `isActionPressed`だけがtrueを返し、`isActionDown`は通常bindingと同じ意味のまま(continuous pressの概念はbridgeにない)。
+- フレーム末で`mapper.endFrame()`を 必ず呼ぶ。さもないと一度発火したactionが永遠に "pressed" 状態のまま居座る。
+- **ハマる点**。`mapSignalToAction`を二重登録すると`BridgeActionRouter`のlast-write-winsで上書きされる。複数signalを1 actionにしたい場合はsignal名側を増やす(例: `ui.button.fire`と`ui.gesture.tap-fire`両方を`Fire` actionにマップ → これは別signal名なので両方有効)。
 
-### Pattern G: BridgeEventBusGlue で UI signal を型付き event に変換
+### Pattern G: BridgeEventBusGlueでUI signalを型付きeventに変換
 
-**意図**: 「ボタンが押された」だけでなく「どのスロットか」など payload を型で保持して gameplay に届ける。
+**意図**: 「ボタンが押された」だけでなく「どのスロットか」などpayloadを型で保持してgameplayに届ける。
 
 ```cpp
 struct UiFireEvent { std::string slot; };
@@ -228,12 +228,12 @@ bus.subscribe<UiFireEvent>([](const UiFireEvent& e) {
 });
 ```
 
-- payload を捨てて event を default 構築だけしたい場合は `mapSignalToTrivial<E>(signal)`。
-- `BridgeInputAdapter` との使い分け: 「Action として押された / 離された だけ知りたい」なら Adapter、「payload を構造化したい」なら Glue。両方を併用しても OK (同じ signal 名は last-write-wins なので片方だけ)。
+- payloadを捨ててeventをdefault構築だけしたい場合は`mapSignalToTrivial<E>(signal)`。
+- `BridgeInputAdapter`との使い分け: 「Actionとして押された / 離された だけ知りたい」ならAdapter、「payloadを構造化したい」ならGlue。両方を併用してもOK (同じsignal名はlast-write-winsなので片方だけ)。
 
-### Pattern H: SaveSchema<T> + MigrationChain で save の互換性管理
+### Pattern H: SaveSchema<T> + MigrationChainでsaveの互換性管理
 
-**意図**: 「v1 で書いた save を v3 の build で読めるようにする」を 1 か所で宣言する。
+**意図**: 「v1で書いたsaveをv3のbuildで読めるようにする」を1か所で宣言する。
 
 ```cpp
 struct PlayerSave { int level; std::string name; };
@@ -259,13 +259,13 @@ auto result = schema.fromJsonString(raw);
 if (result.ok()) { auto& save = *result.value; }
 ```
 
-- envelope は `{ "version": N, "data": ... }` 形式。`toJsonString` が自動で付ける。
-- **ハマる点**。migration step は **append-only**。一度 production で書いた step を後から削ったり順序入れ替えたりすると古い save を壊す。
-- `JsonBinding` を直接使うこともできるが、save 用途は SaveSchema を経由するのが推奨。「version が混在しうるデータ」を 1 か所で表現できる。
+- envelopeは`{ "version": N, "data": ... }`形式。`toJsonString`が自動で付ける。
+- ハマる点。migration stepは **append-only**。一度productionで書いたstepを後から削ったり順序入れ替えたりすると古いsaveを壊す。
+- `JsonBinding`を直接使うこともできるが、save用途はSaveSchemaを経由するのが推奨。「versionが混在しうるデータ」を1か所で表現できる。
 
-#### Migration ヘルパー (`mitiru::data::Migration`)
+#### Migrationヘルパー(`mitiru::data::Migration`)
 
-手書きの lambda で `data["x"] = ...` を書き続けると bug の温床になる。よくある操作 (backfill / rename / remove / set / transform) は `Migration::*` 経由で 宣言的に 書ける。`compose` で 1 step に複数操作をまとめることも可能。
+手書きのlambdaで`data["x"] = ...`を書き続けるとbugの温床になる。よくある操作(backfill / rename / remove / set / transform)は`Migration::*`経由で 宣言的に 書ける。`compose`で1 stepに複数操作をまとめることも可能。
 
 ```cpp
 using mitiru::data::Migration;
@@ -284,14 +284,14 @@ schema.migrations()
     }));
 ```
 
-- すべて `std::function<Json(Json)>` を返すので `addStep` にそのまま渡せる。
-- `addStep` は `MigrationChain&` を返すので上のように fluent chain で書ける。 1 step ずつ `schema.migrations().addStep(...)` と書いても等価。
-- 引数は by value capture されるので、factory のスコープを抜けても安全。
+- すべて`std::function<Json(Json)>`を返すので`addStep`にそのまま渡せる。
+- `addStep`は`MigrationChain&`を返すので上のようにfluent chainで書ける。1 stepずつ`schema.migrations().addStep(...)`と書いても等価。
+- 引数はby value captureされるので、factoryのスコープを抜けても安全。
 - ヘッダー: `include/mitiru/data/Migration.hpp`。
 
-### Pattern I: ContentLoader<T> で balance/dialogue を 1 行ロード
+### Pattern I: ContentLoader<T>でbalance/dialogueを1行ロード
 
-**意図**: 開発者が JSON で書いた content を型として受け取り、validate/parse を毎回手書きしない。
+**意図**: 開発者がJSONで書いたcontentを型として受け取り、validate/parseを毎回手書きしない。
 
 ```cpp
 struct BalanceRow { std::string name; int cost; float winRate; };
@@ -308,35 +308,35 @@ if (result.ok()) {
 }
 ```
 
-- 失敗時の `result.error` は人間可読 (nlohmann::json の例外メッセージ or 自前メッセージ)。
-- content は 不変 が前提。書き戻したい場合は SaveSchema の方を使う。
-- runtime schema 検証は別物 (`include/mitiru/data/SchemaValidator.hpp`)。テンプレートでは型一致が静的に強制されるため、AI 生成コンテンツ等で structural な検証が要る場合のみ追加で使う。
+- 失敗時の`result.error`は人間可読(nlohmann::jsonの例外メッセージor自前メッセージ)。
+- contentは 不変 が前提。書き戻したい場合はSaveSchemaの方を使う。
+- runtime schema検証は別物(`include/mitiru/data/SchemaValidator.hpp`)。テンプレートでは型一致が静的に強制されるため、AI生成コンテンツ等でstructuralな検証が要る場合のみ追加で使う。
 
 ---
 
 ## 5. アンチパターン
 
-BRIDGE_API_CONTRACT.md と整合する 5 つの NG パターン。
+BRIDGE_API_CONTRACT.mdと整合する5つのNGパターン。
 
-- **JS で state machine を持つな**
-  「料理の状態は cooking.js が管理する」は禁止。`StateMachine<CookState>` を C++ に置く。
+- **JSでstate machineを持つな**
+  「料理の状態はcooking.jsが管理する」は禁止。`StateMachine<CookState>`をC++に置く。
 
-- **JS が条件分岐 (tutorial 完了判定 / 解放フラグ等) を持つな**
-  「tutorial done なら START を有効化」を JS で書かない。C++ が `view.title.startEnabled` を push し、JS は class を付け外しするだけにする。
+- **JSが条件分岐(tutorial完了判定 / 解放フラグ等)を持つな**
+  「tutorial doneならSTARTを有効化」をJSで書かない。C++が`view.title.startEnabled`をpushし、JSはclassを付け外しするだけにする。
 
-- **JS が「次のシーンはどこ」を判定するな**
-  `ui.button.start` を発火するのは JS の責務だが、「次は CookingScene」と決めるのは **C++ の Scene/Router** の責務。
-  `signal: "scene.goto.cooking"` のような **transition を JS に書かせる signal 名** を作らないこと。
+- **JSが「次のシーンはどこ」を判定するな**
+  `ui.button.start`を発火するのはJSの責務だが、「次はCookingScene」と決めるのは **C++のScene/Router** の責務。
+  `signal: "scene.goto.cooking"`のような transitionをJSに書かせるsignal名 を作らないこと。
 
-- **bridge を太らせて gameplay 関数の RPC にするな**
-  `signal: "game.canOpenDoor?"` のような問い合わせ / 計算依頼は NG。
-  gameplay の判定は C++ 内で完結させ、結果だけ `view.*` に push する。
+- **bridgeを太らせてgameplay関数のRPCにするな**
+  `signal: "game.canOpenDoor?"`のような問い合わせ / 計算依頼はNG。
+  gameplayの判定はC++内で完結させ、結果だけ`view.*`にpushする。
 
-- **逆方向に: C++ が JS に「次に何を考えるか」を聞くな**
-  C++ → JS は 常に決定済みの表示指示。`emit("ask.player.choice", ...)` で答えを待つような片務 RPC は禁止。
-  選択肢の提示は `set` で出し、選択結果は `BridgeActionRouter` 経由で signal として受け取る。
+- **逆方向に: C++がJSに「次に何を考えるか」を聞くな**
+  C++ → JSは 常に決定済みの表示指示。`emit("ask.player.choice", ...)`で答えを待つような片務RPCは禁止。
+  選択肢の提示は`set`で出し、選択結果は`BridgeActionRouter`経由でsignalとして受け取る。
 
-**まとめ**: JS は「描画」と「何が起きたか発火」だけ。C++ が「判断」と「何を表示するか決定」を持つ。
+**まとめ**: JSは「描画」と「何が起きたか発火」だけ。C++が「判断」と「何を表示するか決定」を持つ。
 
 ---
 
@@ -344,7 +344,7 @@ BRIDGE_API_CONTRACT.md と整合する 5 つの NG パターン。
 
 - [docs/HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)
 - [docs/BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md)
-- [examples/html_menu/](../examples/html_menu/) — HTML 操作 → C++ 反応の動くサンプル
+- [examples/html_menu/](../examples/html_menu/) — HTML操作 → C++反応の動くサンプル
 
 ヘッダ:
 

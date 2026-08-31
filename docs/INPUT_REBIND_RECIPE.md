@@ -1,28 +1,28 @@
-# Recipe: キーリバインドをゲーム状態 (`GameMemory`) に置く
+# Recipe: キーリバインドをゲーム状態(`GameMemory`)に置く
 
-`mitiru::Binding<Act>` 表 (アクションマップ) を constexpr 定数ではなく、ゲームの全状態を
-1 個の struct にまとめたもの (型名 `GameMemory`) に置くと、キー設定の変更それ自体が
-記録・巻き戻し・リプレイ・セーブの対象になる。ポインタも `std::vector` も持たない
-丸ごとコピーできる struct (= flat POD) 設計の追加配当を実例で示すレシピ。
+`mitiru::Binding<Act>`表(アクションマップ)をconstexpr定数ではなく、ゲームの全状態を
+1個のstructにまとめたもの(型名`GameMemory`)に置くと、キー設定の変更それ自体が
+記録・巻き戻し・リプレイ・セーブの対象になる。ポインタも`std::vector`も持たない
+丸ごとコピーできるstruct (= flat POD)設計の追加配当を実例で示すレシピ。
 
-## 1. 方針: いつ constexpr で、いつゲームの全状態か
+## 1. 方針: いつconstexprで、いつゲームの全状態か
 
 | 置き場所 | 向くケース |
 |---|---|
-| `static constexpr Binding<Act> kMap[]` | 操作が固定 (リバインド UI を持たない)。表 = 操作仕様書 |
-| `GameMemory` のメンバ配列 | リバインド UI を持つ。設定変更も state の一部として扱う |
+| `static constexpr Binding<Act> kMap[]` | 操作が固定(リバインドUIを持たない)。表 = 操作仕様書 |
+| `GameMemory`のメンバ配列 | リバインドUIを持つ。設定変更もstateの一部として扱う |
 
-注意: 表を「非記録ソース」(設定ファイル直読み・DLL 内 static の書き換え) から変更すると、
-リプレイ時にその変更が再現されず録画が割れる。ゲームの全状態経由なら host が毎フレーム
-bytes ごと記録するため構造的に安全で、リバインド操作を含めて 1 bit も違わず
-(bit-exact) 再現される。
+注意: 表を「非記録ソース」(設定ファイル直読み・DLL内staticの書き換え)から変更すると、
+リプレイ時にその変更が再現されず録画が割れる。ゲームの全状態経由ならhostが毎フレーム
+bytesごと記録するため構造的に安全で、リバインド操作を含めて1 bitも違わず
+(bit-exact)再現される。
 
-## 2. レシピ: ゲームの全状態に Binding 配列
+## 2. レシピ: ゲームの全状態にBinding配列
 
-`Input::pressed` のアクションマップ版は配列参照を取る
+`Input::pressed`のアクションマップ版は配列参照を取る
 (`bool pressed(const Binding<Act> (&map)[N], Act act)`、`Game.hpp`)。
-固定長配列メンバをそのまま渡せる。`Binding<Act>` は POD (`Act` + `Key[4]` + `Pad[2]`)
-なので flat POD 制約 (`MITIRU_GAME` の static_assert) もそのまま通る。
+固定長配列メンバをそのまま渡せる。`Binding<Act>`はPOD (`Act` + `Key[4]` + `Pad[2]`)
+なのでflat POD制約(`MITIRU_GAME`のstatic_assert)もそのまま通る。
 
 ```cpp
 enum class Act : std::uint8_t { Jump, Fire, ActCount };
@@ -43,12 +43,12 @@ struct MyGame {
 MITIRU_GAME(MyGame)
 ```
 
-これだけで「Space→Shift に変えた直後に巻き戻す」と割当も Space に戻り、
+これだけで「Space→Shiftに変えた直後に巻き戻す」と割当もSpaceに戻り、
 録画したリプレイは当時の割当で再生される。
 
-## 3. リバインド UI
+## 3. リバインドUI
 
-### HTML 側 (JavaScript を 1 行も書かない: `mitiru_bind.js` の data-m-* だけ)
+### HTML側(JavaScriptを1行も書かない: `mitiru_bind.js`のdata-m-* だけ)
 
 ```html
 <div class="row">
@@ -57,14 +57,14 @@ MITIRU_GAME(MyGame)
 </div>
 ```
 
-ボタン click は翌フレーム、1 フレーム分の入力をまとめた POD struct (`InputSnapshot`) の
-`actionEvents` に載って DLL に届く。action event も `InputSnapshot` の一部 = 記録対象なので、
-リバインド UI 操作ごと再現される。
+ボタンclickは翌フレーム、1フレーム分の入力をまとめたPOD struct (`InputSnapshot`)の
+`actionEvents`に載ってDLLに届く。action eventも`InputSnapshot`の一部 = 記録対象なので、
+リバインドUI操作ごと再現される。
 
-### C++ 側 (~15 行)
+### C++側(~15行)
 
-リバインドモード中は `in.raw()` (生 `InputSnapshot` への escape hatch) で
-次に押された VK を全 256 走査して拾い、表へ書く。
+リバインドモード中は`in.raw()` (生`InputSnapshot`へのescape hatch)で
+次に押されたVKを全256走査して拾い、表へ書く。
 
 ```cpp
 void update(mitiru::Input in, mitiru::Hud hud, float dt) {
@@ -88,13 +88,13 @@ void update(mitiru::Input in, mitiru::Hud hud, float dt) {
 }
 ```
 
-`rebindTarget` もゲームの全状態のメンバなので、「変更ボタンを押して入力待ちの瞬間」へ
+`rebindTarget`もゲームの全状態のメンバなので、「変更ボタンを押して入力待ちの瞬間」へ
 巻き戻すことすらできる。
 
 ## 4. キー名表示はゲーム側で持つ
 
-VK→表示名の対応はゲームの語彙 (どのキーをリバインド可にするか) に依存するので、
-小さな対応表をゲーム側に書く。エンジン API は発明しない。
+VK→表示名の対応はゲームの語彙(どのキーをリバインド可にするか)に依存するので、
+小さな対応表をゲーム側に書く。エンジンAPIは発明しない。
 
 ```cpp
 static const char* keyName(mitiru::Key k) {
@@ -114,13 +114,13 @@ static const char* keyName(mitiru::Key k) {
 }
 ```
 
-(表示専用 helper であり gameplay state ではないので、ゲームの全状態の外で問題ない。)
+(表示専用helperでありgameplay stateではないので、ゲームの全状態の外で問題ない。)
 
 ## 5. セーブにも自動で乗る
 
-セーブ = ゲームの全状態まるごとの memcpy (`hud.save("slot0")`) なので、
+セーブ = ゲームの全状態まるごとのmemcpy (`hud.save("slot0")`)なので、
 リバインド結果は何もしなくてもセーブに含まれる。「キーコンフィグの保存処理」という
 コードはこのレシピには存在しない。表をゲームの全状態に置いた時点で、記録・巻き戻し・
-リプレイ・セーブの 4 つが同じ 1 機構 (bytes の memcpy) で片付いている。
+リプレイ・セーブの4つが同じ1機構(bytesのmemcpy)で片付いている。
 
-関連: `docs/FLAT_POD.md` / `docs/TIME_TRAVEL.md` / `docs/BINDING.md`
+関連: `docs/FLAT_POD.md` / `docs/REWIND.md` / `docs/BINDING.md`

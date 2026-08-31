@@ -1,18 +1,18 @@
 # イベント/カットシーン レシピ集
 
 イベント枠を「フレームワーク」としてエンジンに入れることは、意図的に見送っている。
-カットシーンの形 (タイムライン式か、状態機械式か、スクリプト式か) はゲームごとに違い、
-エンジンが 1 つの型を押し付けるとゲームの型を縛る。代わりに、揃っている小さい部品を
-enum + switch の素朴な状態機械で組み合わせる。使う部品は `Timer` / `Tween01`
+カットシーンの形(タイムライン式か、状態機械式か、スクリプト式か)はゲームごとに違い、
+エンジンが1つの型を押し付けるとゲームの型を縛る。代わりに、揃っている小さい部品を
+enum + switchの素朴な状態機械で組み合わせる。使う部品は`Timer` / `Tween01`
 (PodTiming.hpp)、`hud.letterbox` / `fadeOut` / `fadeIn` / `music` (視覚・音のエンジンへの依頼)、
-`Camera` + `applyCamera`。この文書はその定番の組み方 3 つを示す。
-手書きで状態爆発していた部分 (帯量の tween、ズームの tween、会話ボックスの表示制御)
+`Camera` + `applyCamera`。この文書はその定番の組み方3つを示す。
+手書きで状態爆発していた部分(帯量のtween、ズームのtween、会話ボックスの表示制御)
 が部品でどれだけ薄くなるかが要点。
 
-## レシピ A: ボス登場カットイン
+## レシピA: ボス登場カットイン
 
-letterbox → カメラズーム → BGM クロスフェード → 確認キーで解除。
-帯とクロスフェードの遷移は host が持つので、ゲーム側が tween するのはカメラだけ。
+letterbox → カメラズーム → BGMクロスフェード → 確認キーで解除。
+帯とクロスフェードの遷移はhostが持つので、ゲーム側がtweenするのはカメラだけ。
 
 ```cpp
 enum class Phase : std::uint8_t { Play, BossIntro, BossFight };
@@ -58,17 +58,17 @@ struct GameMemory {
 };
 ```
 
-手書き比較: 帯量の補間変数 (barT) とズームの補間変数 (zoomT) を別々に進めて
-draw 側でも同じ計算を繰り返す書き方は不要になる。帯はエンジンへの依頼 1 行、ズームは
-`Tween01` 1 個 + `applyCamera` で update/draw の二重実装が消える。
+手書き比較: 帯量の補間変数(barT)とズームの補間変数(zoomT)を別々に進めて
+draw側でも同じ計算を繰り返す書き方は不要になる。帯はエンジンへの依頼1行、ズームは
+`Tween01` 1個 + `applyCamera`でupdate/drawの二重実装が消える。
 
-## レシピ B: 会話シーン (JS ゼロ)
+## レシピB: 会話シーン(JSゼロ)
 
-会話ボックスの見た目は HTML/CSS の領分。C++ は「表示するか」「何行目か」だけ持つ。
-JS は 1 行も書かない。`data-m-show` / `data-m-text` を書いておくと、C++ が送った値を
-HTML に自動で流し込む仕組み (binder) が DOM を更新する。
+会話ボックスの見た目はHTML/CSSの領分。C++は「表示するか」「何行目か」だけ持つ。
+JSは1行も書かない。`data-m-show` / `data-m-text`を書いておくと、C++が送った値を
+HTMLに自動で流し込む仕組み(binder)がDOMを更新する。
 
-HTML 側:
+HTML側:
 
 ```html
 <div class="m-overlay" data-m-show="ev.talking">
@@ -77,7 +77,7 @@ HTML 側:
 </div>
 ```
 
-C++ 側:
+C++側:
 
 ```cpp
 struct GameMemory {
@@ -103,13 +103,13 @@ struct GameMemory {
 ```
 
 手書き比較: 会話ボックスの表示フラグを毎フレーム描画コード側で分岐する
-(evShowBox のような) 変数は `hud.set("ev.talking", ...)` + `data-m-show` に畳まれる。
-表示の ON/OFF アニメーションを付けたければ CSS transition で足す。C++ は触らない。
+(evShowBoxのような)変数は`hud.set("ev.talking", ...)` + `data-m-show`に畳まれる。
+表示のON/OFFアニメーションを付けたければCSS transitionで足す。C++は触らない。
 
-## レシピ C: 場面転換
+## レシピC: 場面転換
 
-fadeOut → 暗転中に状態切替 → fadeIn。フェードの遷移は host が持つので、
-ゲーム側は「暗転しきるまで待つ」`Timer` 1 個だけ。
+fadeOut → 暗転中に状態切替 → fadeIn。フェードの遷移はhostが持つので、
+ゲーム側は「暗転しきるまで待つ」`Timer` 1個だけ。
 
 ```cpp
 struct GameMemory {
@@ -132,16 +132,16 @@ struct GameMemory {
 };
 ```
 
-## 注意: どの値を `GameMemory` に置くか
+## 注意: どの値を`GameMemory`に置くか
 
 | 値 | 置き場所 | 理由 |
 |---|---|---|
 | Phase enum / `Tween01` / `Timer` / `Camera` | **`GameMemory`** | ゲーム状態。巻き戻し・リプレイに乗せる |
-| 帯量・fade 残量・shake 残量・クロスフェード進行 | **host (エンジンへの依頼経由)** | 演出の途中経過であってゲーム状態ではない。観測・巻き戻しの対象はゲーム状態のみに保つ |
-| セリフ本文・BGM の id | **DLL 焼き込み (static constexpr)** | コンテンツであって状態ではない。`GameMemory` にはインデックスだけ |
+| 帯量・fade残量・shake残量・クロスフェード進行 | **host (エンジンへの依頼経由)** | 演出の途中経過であってゲーム状態ではない。観測・巻き戻しの対象はゲーム状態のみに保つ |
+| セリフ本文・BGMのid | **DLL焼き込み(static constexpr)** | コンテンツであって状態ではない。`GameMemory`にはインデックスだけ |
 
-`hud.letterbox(0.15f, 0.4f)` を呼んだ後、帯がどこまで開いたかをゲームは知らないし
+`hud.letterbox(0.15f, 0.4f)`を呼んだ後、帯がどこまで開いたかをゲームは知らないし
 知る必要もない。知りたくなったら、それは演出ではなくゲームルールに昇格した
-合図なので、`Tween01` を `GameMemory` に置いて自分で進める (レシピ A のカメラと同じ形)。
-逆に Phase や `Tween01` を host 側 (static 変数等) に逃がすと、巻き戻したのに
+合図なので、`Tween01`を`GameMemory`に置いて自分で進める(レシピAのカメラと同じ形)。
+逆にPhaseや`Tween01`をhost側(static変数等)に逃がすと、巻き戻したのに
 カットシーンだけ進み続ける、という再現性バグになる。境界はこの表で固定する。

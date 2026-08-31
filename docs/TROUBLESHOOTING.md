@@ -223,7 +223,7 @@ If you do not need audio output, the engine will fall back to `NullAudioOutput` 
 **Fix:**
 1. Use `screen.drawTextClipped()` to auto-truncate with ellipsis
 2. Use `screen.drawTextInRect()` for aligned text within a bounding box
-3. Check coordinates: `drawTextInRect({x, y, w, h}, ...)` — rect の左上が (x, y)
+3. Check coordinates: `drawTextInRect({x, y, w, h}, ...)` — rectの左上が(x, y)
 4. Measure before drawing: `auto size = screen.measureText(text, fontSize);`
 
 ### Japanese / Unicode text not displayed

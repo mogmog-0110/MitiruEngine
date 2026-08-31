@@ -1,20 +1,20 @@
 # MitiruEngine Architecture Overview
 
-ゲームは `MITIRU_GAME(YourType)` で書く DLL として作る。host (`mitiru_host.exe`) が
-C ABI (C の関数と生データだけで会話する取り決め) 越しに load し、毎フレーム POD でやり取りする。
-gameplay は常に C++ で書き、JS では書かない。`Game` を継承して自前の `main()` を持つ旧 authoring は廃止した。
+ゲームは`MITIRU_GAME(YourType)`で書くDLLとして作る。host (`mitiru_host.exe`)が
+C ABI (Cの関数と生データだけで会話する取り決め)越しにloadし、毎フレームPODでやり取りする。
+gameplayは常にC++で書き、JSでは書かない。`Game`を継承して自前の`main()`を持つ旧authoringは廃止した。
 
-構成は 2 つある。
+構成は2つある。
 
-- **native 構成** (CEF なし、旧称 Mode A)。下の層をそのまま native 実行する。
-  ウィンドウを出さない headless 実行、console、3D action などがここに入る。
-- **HTML UI 構成** (CEF あり、旧称 Mode B)。上に CEF host (`include/mitiru/cef/`) と
-  JS runtime (`web/mitiru_runtime/`) を載せ、UI と HUD を HTML/CSS で描く。
-  bridge は signal-only で、C++ から JS へは state push、JS から C++ へは action event だけが流れる。
-  切り替えは `EngineConfig::enableCef`。
+- **native構成** (CEFなし、旧称Mode A)。下の層をそのままnative実行する。
+  ウィンドウを出さないheadless実行、console、3D actionなどがここに入る。
+- **HTML UI構成** (CEFあり、旧称Mode B)。上にCEF host (`include/mitiru/cef/`)と
+  JS runtime (`web/mitiru_runtime/`)を載せ、UIとHUDをHTML/CSSで描く。
+  bridgeはsignal-onlyで、C++からJSへはstate push、JSからC++へはaction eventだけが流れる。
+  切り替えは`EngineConfig::enableCef`。
 
-JS / JSON / C++ の境界規約は [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)、
-JS runtime モジュールの実体は `web/mitiru_runtime/`。
+JS / JSON / C++の境界規約は [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)、
+JS runtimeモジュールの実体は`web/mitiru_runtime/`。
 
 ## Layer Stack
 
@@ -110,7 +110,7 @@ native engine and are inert when `EngineConfig::enableCef = false`.
 | `core/Screen` | render/SpriteBatch, render/ShapeRenderer, render/TextRenderer | 2D drawing API for games |
 | `ecs/MitiruWorld` | sgc::ecs::World, observe/SemanticLabel | Entity management with metadata |
 | `scene/MitiruScene` | core/Screen, ecs/MitiruWorld | Scene lifecycle (enter/exit/update/draw) |
-| `render/Renderer3D` | gfx/IDevice (DX12 本命), render/Mesh, render/Camera3D, render/Light | 3D mesh rendering (Phong/Toon/NPR/WBOIT) |
+| `render/Renderer3D` | gfx/IDevice (DX12本命), render/Mesh, render/Camera3D, render/Light | 3D mesh rendering (Phong/Toon/NPR/WBOIT) |
 | `render/RenderPipeline2D` | gfx/IDevice, gfx/IBuffer | GPU submission of 2D draw commands |
 | `bridge/*` | sgc (ShiggyGameCore) | Adapted APIs for AI, physics, animation, etc. |
 | `vn/*` | core/Screen, audio, resource | Visual novel engine (40+ modules) |
@@ -193,9 +193,9 @@ For DX12, `Renderer3D_DX12` manages the overlay automatically via `setOverlayScr
 
 ## Audio Pipeline Flow
 
-> **現行:** DLL ゲームは `AudioEngine` を直接呼ばない。`FrameIntents`（エンジンへの依頼を書く欄）に `SoundIntent` を
-> 積み（`hud.play("click")`）、host が `SoundIntentRouter` 経由で下記の audio engine を駆動する。
-> 下図は host 側 (engine 内部) の経路。
+> **現行:** DLLゲームは`AudioEngine`を直接呼ばない。`FrameIntents`（エンジンへの依頼を書く欄）に`SoundIntent`を
+> 積み（`hud.play("click")`）、hostが`SoundIntentRouter`経由で下記のaudio engineを駆動する。
+> 下図はhost側(engine内部)の経路。
 
 ```
 Host (SoundIntentRouter)
@@ -225,10 +225,10 @@ Audio Output Backends:
 
 ## Input Pipeline Flow
 
-> **現行:** DLL ゲームは `InputState` を直接見ない。host が毎フレーム `InputState` から
-> POD の `InputSnapshot`（256 キー/マウス/パッド + action event + rngSeed + audioTime）を組んで
-> `on_update` に渡す。キー再割り当ては `Game.hpp` の `Binding<Act>`（ゲームの状態 struct に置く）。下図の
-> `InputMapper` は非推奨。`InputRecorder/Replayer` 相当は host 側の replay 機構（記録した InputSnapshot 再投入）。
+> **現行:** DLLゲームは`InputState`を直接見ない。hostが毎フレーム`InputState`から
+> PODの`InputSnapshot`（256キー/マウス/パッド + action event + rngSeed + audioTime）を組んで
+> `on_update`に渡す。キー再割り当ては`Game.hpp`の`Binding<Act>`（ゲームの状態structに置く）。下図の
+> `InputMapper`は非推奨。`InputRecorder/Replayer`相当はhost側のreplay機構（記録したInputSnapshot再投入）。
 
 ```
 OS Events (WM_KEYDOWN, SDL_Event, etc.)
@@ -308,10 +308,10 @@ mitiru::vn module (40+ headers)
 ### Engine (mitiru::core::Engine)
 The central coordinator. `Engine::run()` initializes the platform, window, and GPU device according to `EngineConfig`, then drives the main loop: `pollEvents` -> `clock.tick` -> `game.update` -> `sceneManager.currentScene().onUpdate` -> `screen.clear` -> `game.draw` -> `sceneManager.currentScene().onDraw` -> `device.beginFrame` -> `screen.present` -> `device.endFrame`. A headless `stepFrames()` path skips window/GPU setup and activates a software rasterizer inside `Screen` for pixel-level testing.
 
-> **DLL モジュールの場合:** `game.update`/`game.draw` は `Engine::runModule` 内の
-> stack-local `ModuleAdapter`。これが host のループを C ABI へ橋渡しし、`InputSnapshot` を組んで
-> `on_update(memory, dt, input, intents)` を呼び、`FrameIntents` を drain、`on_draw(memory, Screen*)` を呼ぶ。
-> `game.update` を継承クラスで実装する旧 authoring の形は現行 host では使わない。
+> **DLLモジュールの場合:** `game.update`/`game.draw`は`Engine::runModule`内の
+> stack-local `ModuleAdapter`。これがhostのループをC ABIへ橋渡しし、`InputSnapshot`を組んで
+> `on_update(memory, dt, input, intents)`を呼び、`FrameIntents`をdrain、`on_draw(memory, Screen*)`を呼ぶ。
+> `game.update`を継承クラスで実装する旧authoringの形は現行hostでは使わない。
 
 ### Screen (mitiru::Screen)
 The drawing surface passed to `Game::draw()`. It accumulates draw commands into `SpriteBatch` (quads/sprites) and `ShapeRenderer` (lines, triangles, circles). On `present()` the accumulated vertex data is forwarded to `RenderPipeline2D` for GPU submission, or rasterized in software when the headless framebuffer is active. Screen has no awareness of the underlying GPU backend.
@@ -405,7 +405,7 @@ The 16 bridges cover: AI (BehaviorTree/UtilityAI/GOAP/A*), Animation, DebugDraw,
 
 | Platform      | Window        | Graphics   | Audio             |
 |---------------|---------------|------------|-------------------|
-| Windows       | Win32Window   | DX12 (明示 fallback: DX11) | Win32AudioOutput / miniaudio |
+| Windows       | Win32Window   | DX12 (明示fallback: DX11) | Win32AudioOutput / miniaudio |
 | Linux/macOS   | GlfwWindow    | Vulkan     | SoftAudioEngine   |
 | Linux/macOS   | Sdl2Window    | OpenGL     | Sdl2Audio         |
 | Web (WASM)    | EmscriptenWindow | WebGL2  | SoftAudioEngine   |

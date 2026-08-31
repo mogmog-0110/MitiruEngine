@@ -587,6 +587,15 @@ CliArgs parseArgs(int argc, char* argv[])
 				else if (name == "scene")      { t = mitiru::Tool::SceneTree; }
 				else if (name == "perf")       { t = mitiru::Tool::Perf; }
 				else if (name == "mixer")      { t = mitiru::Tool::AudioMixer; }
+				else if (name != "inspector")
+				{
+					// 綴り違いを黙って既定へ落とすと、頼んだ窓と別の窓が開いたまま
+					// 気づけない。開くものは変えずに、その旨だけ伝える
+					std::fprintf(stderr,
+					             "[mitiru_host] --inspect %s は不明な名前です。"
+					             "inspector を開きます (input|rewind|scene|perf|mixer)\n",
+					             name.c_str());
+				}
 			}
 			out.openTools.push_back(t);
 		}
@@ -744,7 +753,8 @@ void printUsage()
 		"                   望まない窓がメイン画面に出るのを防ぐ\n"
 		"  --window-pos X Y ゲーム窓を最初からこの座標に出す (実画面に一瞬も出さない)。\n"
 		"                   負の X = 仮想ディスプレイ等。録画支援\n"
-		"  --inspect [name] ツール独立窓を起動時に開く (name=inspector|input|rewind, 既定 inspector)\n"
+		"  --inspect [name] ツール独立窓を起動時に開く\n"
+		"                   (name=inspector|input|rewind|scene|perf|mixer, 既定 inspector)\n"
 		"                   ※ host を書く人が main.cpp で mitiru::debug::openTool(Tool::X) と\n"
 		"                     直接書けば、欲しい窓だけコードで指定できる\n"
 		"  --help, -h       this message\n"

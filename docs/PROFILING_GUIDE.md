@@ -51,15 +51,15 @@ no-ops when `MITIRU_HAS_TRACY` is undefined.
 
 | Zone name                  | Source                                                      | Macro used            | Notes                                                  |
 | -------------------------- | ----------------------------------------------------------- | --------------------- | ------------------------------------------------------ |
-| `Engine::Frame`            | `include/mitiru/core/detail/Engine_Frame.hpp:32`            | `MITIRU_ZONE_NAMED`   | 外側のフレームゾーン。`tickOneFrame()` 全体を包む。子ゾーンはすべてこの下に並ぶ。 |
-| `Engine::Input`            | `include/mitiru/core/detail/Engine_Frame.hpp:54`            | `MITIRU_ZONE_NAMED`   | `m_window->pollEvents()` と注入入力の適用。Emscripten 終了判定もここ。 |
-| `Engine::MouseScaling`     | `include/mitiru/core/detail/Engine_Frame.hpp:83`            | `MITIRU_ZONE_NAMED`   | Win32 RAW マウス座標を `Screen` 論理座標へ毎フレームスケーリングする処理。 |
-| `Engine::FixedUpdate`      | `include/mitiru/core/detail/Engine_Frame.hpp:125`           | `MITIRU_ZONE_NAMED`   | 固定タイムステップアキュムレータループ。`game.update()` と現在シーンの `onUpdate()` を含む。 |
-| `Engine::Render`           | `include/mitiru/core/detail/Engine_Frame.hpp:161`           | `MITIRU_ZONE_NAMED`   | `Screen::clear` から `game.draw()`、`Scene::onDraw()` までの 2D/3D 描画蓄積。`device->beginFrame()` も含む。 |
-| `Engine::Present`          | `include/mitiru/core/detail/Engine_Frame.hpp:206`           | `MITIRU_ZONE_NAMED`   | `Screen::present()` と PostFX、3D レンダラーの `finalizeFrame()`。GPU コマンド送信が中心。 |
-| `Engine::CefComposite`     | `include/mitiru/core/detail/Engine_Frame.hpp:245`           | `MITIRU_ZONE_NAMED`   | CEF UI レイヤーのメッセージループ処理、入力転送、テクスチャアップロード、バックバッファ合成。HTML UI 構成 (CEF あり) 専用。 |
-| `Engine::AutoCapture`      | `include/mitiru/core/detail/Engine_Frame.hpp:271`           | `MITIRU_ZONE_NAMED`   | 自律テストモードのスクリーンショット保存と `device->endFrame()`。通常運用では `endFrame()` のみで軽量。 |
-| `Engine::HttpPoll`         | `include/mitiru/core/detail/Engine_Frame.hpp:311`           | `MITIRU_ZONE_NAMED`   | HTTP API サーバーのポーリングと、vsync OFF 時のフレームレートキャップ用 `sleep_for`。 |
+| `Engine::Frame`            | `include/mitiru/core/detail/Engine_Frame.hpp:32`            | `MITIRU_ZONE_NAMED`   | 外側のフレームゾーン。`tickOneFrame()`全体を包む。子ゾーンはすべてこの下に並ぶ。 |
+| `Engine::Input`            | `include/mitiru/core/detail/Engine_Frame.hpp:54`            | `MITIRU_ZONE_NAMED`   | `m_window->pollEvents()`と注入入力の適用。Emscripten終了判定もここ。 |
+| `Engine::MouseScaling`     | `include/mitiru/core/detail/Engine_Frame.hpp:83`            | `MITIRU_ZONE_NAMED`   | Win32 RAWマウス座標を`Screen`論理座標へ毎フレームスケーリングする処理。 |
+| `Engine::FixedUpdate`      | `include/mitiru/core/detail/Engine_Frame.hpp:125`           | `MITIRU_ZONE_NAMED`   | 固定タイムステップアキュムレータループ。`game.update()`と現在シーンの`onUpdate()`を含む。 |
+| `Engine::Render`           | `include/mitiru/core/detail/Engine_Frame.hpp:161`           | `MITIRU_ZONE_NAMED`   | `Screen::clear`から`game.draw()`、`Scene::onDraw()`までの2D/3D描画蓄積。`device->beginFrame()`も含む。 |
+| `Engine::Present`          | `include/mitiru/core/detail/Engine_Frame.hpp:206`           | `MITIRU_ZONE_NAMED`   | `Screen::present()`とPostFX、3Dレンダラーの`finalizeFrame()`。GPUコマンド送信が中心。 |
+| `Engine::CefComposite`     | `include/mitiru/core/detail/Engine_Frame.hpp:245`           | `MITIRU_ZONE_NAMED`   | CEF UIレイヤーのメッセージループ処理、入力転送、テクスチャアップロード、バックバッファ合成。HTML UI構成(CEFあり)専用。 |
+| `Engine::AutoCapture`      | `include/mitiru/core/detail/Engine_Frame.hpp:271`           | `MITIRU_ZONE_NAMED`   | 自律テストモードのスクリーンショット保存と`device->endFrame()`。通常運用では`endFrame()`のみで軽量。 |
+| `Engine::HttpPoll`         | `include/mitiru/core/detail/Engine_Frame.hpp:311`           | `MITIRU_ZONE_NAMED`   | HTTP APIサーバーのポーリングと、vsync OFF時のフレームレートキャップ用`sleep_for`。 |
 | `SmallFunction::invoke`    | `include/mitiru/time/detail/SmallFunction.hpp:79`           | `MITIRU_ZONE_NAMED`   | Wraps every call of the type-erased callable. Hot path. |
 | `Sequence::action`         | `include/mitiru/time/Sequence.hpp:75`                       | `MITIRU_ZONE_NAMED`   | One zone per action step fired inside `Sequence::tick`.  |
 
@@ -116,49 +116,49 @@ benchmark, capture the offending call sites' captures and consider:
 
 ## Interpreting Engine_Frame Zones
 
-`Engine::Frame` は外側で 1 フレーム全体を包むので、Tracy の Statistics ビューで
+`Engine::Frame`は外側で1フレーム全体を包むので、TracyのStatisticsビューで
 これを基準に他ゾーンの相対比率を見るのがいちばん速い。以下、各ゾーンの定性的な
-期待値を記す。**実機ベースラインの数値は未計測** (本ドキュメント末尾の Known
-Limitations 参照) のため、ここでは「どこに重点的に時間を使っているはずか」と
+期待値を記す。**実機ベースラインの数値は未計測** (本ドキュメント末尾のKnown
+Limitations参照)のため、ここでは「どこに重点的に時間を使っているはずか」と
 いう構造的な見方だけを示す。
 
-- **`Engine::Render`** — 通常はフレーム時間の大部分を占める。`game.draw()` と
-  Scene の `onDraw()` がここに集約されるので、コンテンツが重ければ最初に膨らむ
-  のはここ。Tracy で子コール (drawSprite 等) が出ない場合は `MITIRU_ZONE_NAMED`
-  を計装したい draw メソッドに足すと、その内訳まで見える。
-- **`Engine::Present`** — GPU コマンド送信と PostFX チェーン。vsync ON のとき
-  は `Screen::present()` ないし `device->endFrame()` で vsync 待ちが入るため
-  実時間が膨らみがちだが、これは「GPU 待ち時間」であってエンジン側の処理コスト
-  ではない。CPU の純粋なコストは `Engine::Render` を見るほうが正確。
-- **`Engine::FixedUpdate`** — 固定タイムステップでは複数 step が走り得る (例:
-  144Hz vsync + 60Hz update)。スパイラルオブデス防止で `kMaxFrameSkip` に
+- **`Engine::Render`** — 通常はフレーム時間の大部分を占める。`game.draw()`と
+  Sceneの`onDraw()`がここに集約されるので、コンテンツが重ければ最初に膨らむ
+  のはここ。Tracyで子コール(drawSprite等)が出ない場合は`MITIRU_ZONE_NAMED`
+  を計装したいdrawメソッドに足すと、その内訳まで見える。
+- **`Engine::Present`** — GPUコマンド送信とPostFXチェーン。vsync ONのとき
+  は`Screen::present()`ないし`device->endFrame()`でvsync待ちが入るため
+  実時間が膨らみがちだが、これは「GPU待ち時間」であってエンジン側の処理コスト
+  ではない。CPUの純粋なコストは`Engine::Render`を見るほうが正確。
+- **`Engine::FixedUpdate`** — 固定タイムステップでは複数stepが走り得る(例:
+  144Hz vsync + 60Hz update)。スパイラルオブデス防止で`kMaxFrameSkip`に
   クリップされている。長フレームの後に幅広いゾーンを見たら累積アキュムレータ
   起因。
-- **`Engine::Input`** — `pollEvents` が支配的。ネイティブ window のキューが
-  大きいフレームではここが伸びる。Emscripten では shouldClose 判定もここで
+- **`Engine::Input`** — `pollEvents`が支配的。ネイティブwindowのキューが
+  大きいフレームではここが伸びる。EmscriptenではshouldClose判定もここで
   実行される。
-- **`Engine::MouseScaling`** — Win32 のみで意味のある軽量フェーズ。ほぼ常に
-  サブマイクロ秒オーダーで完結する。`dynamic_cast<Win32Window*>` が支配的なら
-  これは設計上正常 (代替手段は ABI 変更を伴うため温存)。
-- **`Engine::CefComposite`** — HTML UI 構成専用。`m_cefContext.isInitialized()`
-  が false の場合は早期 return するため、native 構成 (CEF なし) の純ネイティブ運用ではほぼ
-  ゼロ。HTML UI 構成でも CEF が dirty frame を持たない静的画面ではアップロードが
+- **`Engine::MouseScaling`** — Win32のみで意味のある軽量フェーズ。ほぼ常に
+  サブマイクロ秒オーダーで完結する。`dynamic_cast<Win32Window*>`が支配的なら
+  これは設計上正常(代替手段はABI変更を伴うため温存)。
+- **`Engine::CefComposite`** — HTML UI構成専用。`m_cefContext.isInitialized()`
+  がfalseの場合は早期returnするため、native構成(CEFなし)の純ネイティブ運用ではほぼ
+  ゼロ。HTML UI構成でもCEFがdirty frameを持たない静的画面ではアップロードが
   スキップされ軽量。
-- **`Engine::AutoCapture`** — 自律テストモード以外では `device->endFrame()`
-  の呼び出しだけ。通常運用では `Engine::Present` と並ぶ軽量ゾーン。
-- **`Engine::HttpPoll`** — `m_httpServer` が動いていない or アイドルなら
-  ほぼゼロ。vsync OFF + `targetFps>0` のフレームレートキャップが効くと
-  `sleep_for` の待機時間がここに乗るので、Tracy 上では「Engine::HttpPoll が
-  長い = 余裕で targetFps を達成している」と読める。
+- **`Engine::AutoCapture`** — 自律テストモード以外では`device->endFrame()`
+  の呼び出しだけ。通常運用では`Engine::Present`と並ぶ軽量ゾーン。
+- **`Engine::HttpPoll`** — `m_httpServer`が動いていないorアイドルなら
+  ほぼゼロ。vsync OFF + `targetFps>0`のフレームレートキャップが効くと
+  `sleep_for`の待機時間がここに乗るので、Tracy上では「Engine::HttpPollが
+  長い = 余裕でtargetFpsを達成している」と読める。
 
-子ゾーンの合計は `Engine::Frame` よりわずかに小さくなる (helper 関数呼び出し
+子ゾーンの合計は`Engine::Frame`よりわずかに小さくなる(helper関数呼び出し
 の薄いシーケンサ部分が外側に残るため)。乖離が大きい場合は計装されていない
-処理が `tickOneFrame()` 内に紛れていないか確認する。
+処理が`tickOneFrame()`内に紛れていないか確認する。
 
 ## Adding New Zones
 
-新規ホットパスを計装したいときは、対象関数の先頭で `MITIRU_ZONE_NAMED` を呼ぶ
-だけでよい。`MITIRU_HAS_TRACY` が未定義のビルドでは展開結果が `((void)0)` に
+新規ホットパスを計装したいときは、対象関数の先頭で`MITIRU_ZONE_NAMED`を呼ぶ
+だけでよい。`MITIRU_HAS_TRACY`が未定義のビルドでは展開結果が`((void)0)`に
 なるため、リリースビルドへの混入も気にしなくてよい。
 
 ```cpp
@@ -170,32 +170,32 @@ void MySystem::update(float dt) {
 }
 ```
 
-カテゴリ別の色分けをしたい場合は `MITIRU_ZONE_RENDER` / `MITIRU_ZONE_PHYSICS`
-/ `MITIRU_ZONE_AUDIO` / `MITIRU_ZONE_SCRIPT` / `MITIRU_ZONE_UI` のいずれかを
-使うと、`mitiru::debug::ZoneColors` に定義された色が自動で割り当てられる。
-完全に独自色にしたい場合は `MITIRU_ZONE_COLOR("Name", 0xRRGGBB)` を使う。
+カテゴリ別の色分けをしたい場合は`MITIRU_ZONE_RENDER` / `MITIRU_ZONE_PHYSICS`
+/ `MITIRU_ZONE_AUDIO` / `MITIRU_ZONE_SCRIPT` / `MITIRU_ZONE_UI`のいずれかを
+使うと、`mitiru::debug::ZoneColors`に定義された色が自動で割り当てられる。
+完全に独自色にしたい場合は`MITIRU_ZONE_COLOR("Name", 0xRRGGBB)`を使う。
 
-命名規約は `Subsystem::Operation` を推奨。Tracy の Statistics ビューで
-`Engine::*` や `MySystem::*` でフィルタしやすくするため。
+命名規約は`Subsystem::Operation`を推奨。TracyのStatisticsビューで
+`Engine::*`や`MySystem::*`でフィルタしやすくするため。
 
 ## Auto-Test Capture (Env Var Hook)
 
-エンジンの `Engine::run()` は、起動時に下記 2 つの環境変数を自動で読み取り、
-`EngineConfig::autoTestMode` を有効化する。CI スクリーンショット / ギャラリー
-キャプチャ / smoke ベースライン取得のためのフックで、ソース側に変更を入れずに
-任意の consumer exe を「指定フレーム数だけ走らせて PNG 保存→終了」させられる。
+エンジンの`Engine::run()`は、起動時に下記2つの環境変数を自動で読み取り、
+`EngineConfig::autoTestMode`を有効化する。CIスクリーンショット / ギャラリー
+キャプチャ / smokeベースライン取得のためのフックで、ソース側に変更を入れずに
+任意のconsumer exeを「指定フレーム数だけ走らせてPNG保存→終了」させられる。
 
 | 変数 | 値 | 効果 |
 |------|----|------|
-| `MITIRU_AUTOTEST` | `1` (または `true` / 非空 / 非 `0`) | `autoTestMode = true` / `autoTestExitAfter = true` / `autoTestFrames = 120` を適用 (~2 秒 @ 60 fps) |
-| `MITIRU_AUTOTEST_OUTPUT` | 絶対パス推奨のディレクトリ | `autoTestOutputDir` を上書き。生成物は `<dir>/auto_test.png` と `<dir>/auto_test_report.json` |
+| `MITIRU_AUTOTEST` | `1` (または`true` / 非空 / 非`0`) | `autoTestMode = true` / `autoTestExitAfter = true` / `autoTestFrames = 120`を適用(~2秒 @ 60 fps) |
+| `MITIRU_AUTOTEST_OUTPUT` | 絶対パス推奨のディレクトリ | `autoTestOutputDir`を上書き。生成物は`<dir>/auto_test.png`と`<dir>/auto_test_report.json` |
 
 実装は [`include/mitiru/core/Config.hpp`](../include/mitiru/core/Config.hpp)
-の `EngineConfig::applyAutoTestEnv()`。`Engine::run()` 冒頭で自動的に呼ばれる。
-プログラム側で明示的に `cfg.autoTestMode = true` を設定済みの場合は env var が
-**上書きしない** (ユーザー設定優先)。出力ディレクトリだけは env で常に強制
-上書きされる (capture script は `MITIRU_AUTOTEST_OUTPUT` を絶対パスでセット
-することで、起動 CWD が不定でも安全に成果物を回収できる)。
+の`EngineConfig::applyAutoTestEnv()`。`Engine::run()`冒頭で自動的に呼ばれる。
+プログラム側で明示的に`cfg.autoTestMode = true`を設定済みの場合はenv varが
+**上書きしない** (ユーザー設定優先)。出力ディレクトリだけはenvで常に強制
+上書きされる(capture scriptは`MITIRU_AUTOTEST_OUTPUT`を絶対パスでセット
+することで、起動CWDが不定でも安全に成果物を回収できる)。
 
 ### 使用例
 
@@ -210,32 +210,32 @@ build/apps/mitiru_host/mitiru_host.exe build/apps/mitiru_host/html_hud/html_hud.
 #   C:/build/screenshots/html_hud/auto_test_report.json
 ```
 
-Win32 `PrintWindow` フォールバックよりも GPU コンポジット結果を正確に取得でき、
-ヘッドレス (ウィンドウを出さない) CI でも動作する。
+Win32 `PrintWindow`フォールバックよりもGPUコンポジット結果を正確に取得でき、
+ヘッドレス(ウィンドウを出さない) CIでも動作する。
 
 ### 注意点
 
-- **`MITIRU_AUTOTEST_OUTPUT` には絶対パスを渡すこと**。相対パスは exe の起動
-  CWD に依存するため信頼できない。capture script 側で常に絶対パスを生成する。
-- env var フックは `EngineConfig` を経由する consumer (`engine.run(game, cfg)`)
-  にのみ作用する。Engine を使わず自前ループで回す純粋な headless ミニ exe には
-  効かないため、その種の exe は stdout strategy で撮影する。
-- `applyAutoTestEnv()` はテスト / 専用 main から再評価したい場合に直接呼べる。
-  既定では `Engine::run()` が一度だけ呼ぶ。
+- **`MITIRU_AUTOTEST_OUTPUT`には絶対パスを渡すこと**。相対パスはexeの起動
+  CWDに依存するため信頼できない。capture script側で常に絶対パスを生成する。
+- env varフックは`EngineConfig`を経由するconsumer (`engine.run(game, cfg)`)
+  にのみ作用する。Engineを使わず自前ループで回す純粋なheadlessミニexeには
+  効かないため、その種のexeはstdout strategyで撮影する。
+- `applyAutoTestEnv()`はテスト / 専用mainから再評価したい場合に直接呼べる。
+  既定では`Engine::run()`が一度だけ呼ぶ。
 
 ## Known Limitations
 
-- **本番ハードウェアでの計測は未実施**。Engine_Frame 9 ゾーン + 既存 2 ゾーン
-  は計装済みで no-op gate も検証済みだが、実機キャプチャによるベースライン
+- **本番ハードウェアでの計測は未実施**。Engine_Frame 9ゾーン +既存2ゾーン
+  は計装済みでno-op gateも検証済みだが、実機キャプチャによるベースライン
   数値の公開は保留中。
-- **GPU 側のゾーンは未計装**。Tracy には GPU タイムスタンプ機構があるが、
-  現状の DX11/DX12/Vulkan/OpenGL バックエンドにはまだ統合されていない。
-  GPU 時間を見たい場合は当面 PIX / RenderDoc / NSight などのベンダーツールを
+- **GPU側のゾーンは未計装**。TracyにはGPUタイムスタンプ機構があるが、
+  現状のDX11/DX12/Vulkan/OpenGLバックエンドにはまだ統合されていない。
+  GPU時間を見たい場合は当面PIX / RenderDoc / NSightなどのベンダーツールを
   併用する。
-- **HTML UI 構成 (CEF) のレンダリングは外部プロセスで動く**。`Engine::CefComposite`
-  はホスト側のアップロード/コンポジットしか見えないので、CEF サブプロセス内の
-  HTML レイアウトコストはこの計装からは可視化できない。Chrome DevTools の
-  Performance パネルで別途プロファイルすること。
+- **HTML UI構成(CEF)のレンダリングは外部プロセスで動く**。`Engine::CefComposite`
+  はホスト側のアップロード/コンポジットしか見えないので、CEFサブプロセス内の
+  HTMLレイアウトコストはこの計装からは可視化できない。Chrome DevToolsの
+  Performanceパネルで別途プロファイルすること。
 
 ## See Also
 
