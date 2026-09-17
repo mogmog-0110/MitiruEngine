@@ -113,16 +113,19 @@ enum class GltfAnimPath : std::uint8_t
 	Scale,
 };
 
-/// @brief キーフレーム補間方式。CUBICSPLINE はロード時に Linear へ縮退する。
+/// @brief キーフレーム補間方式。
 enum class GltfAnimInterp : std::uint8_t
 {
 	Linear,
 	Step,
+	CubicSpline,
 };
 
 /// @brief 1 ノード × 1 プロパティのキーフレーム列。
 /// @details times は昇順の秒。values は T/S なら xyz (w=0)、R なら quaternion xyzw。
 ///          times と values は同数 (ローダーが不整合チャンネルを捨てる)。
+///          CubicSpline のときのみ inTangents/outTangents が values と同数で埋まる
+///          (glTF 仕様どおり区間長でスケール済み)。それ以外の補間方式では空。
 struct GltfAnimationChannel
 {
 	int            nodeIndex = -1;                       ///< 対象ノード index (nodes 配列基準)
@@ -130,6 +133,8 @@ struct GltfAnimationChannel
 	GltfAnimInterp interpolation = GltfAnimInterp::Linear; ///< 補間方式
 	std::vector<float>      times;                       ///< キー時刻 (秒、昇順)
 	std::vector<sgc::Vec4f> values;                      ///< キー値 (T/S: xyz, R: quat xyzw)
+	std::vector<sgc::Vec4f> inTangents;                  ///< CubicSpline のみ: 各キーの in-tangent
+	std::vector<sgc::Vec4f> outTangents;                 ///< CubicSpline のみ: 各キーの out-tangent
 };
 
 /// @brief 名前付きアニメーションクリップ。Blender の Action がこれになる。

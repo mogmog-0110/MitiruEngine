@@ -22,8 +22,10 @@
 #include <optional>
 
 #include <mitiru/core/Config.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/gfx/IDevice.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
+#include <mitiru/render/NullRenderer3D.hpp>
 #ifdef __EMSCRIPTEN__
 #include <mitiru/render/Renderer3D_WebGL.hpp>
 #endif
@@ -232,7 +234,25 @@ struct Pipeline2DResult
 	}
 #endif
 
-	// 非Win32 / Null / OpenGL: 3D renderer は未実装
+	// NullDevice: headless 動作。描画は行わず drawCallCount だけ数える実体を返す。
+	if (backend == gfx::Backend::Null)
+	{
+		return std::make_unique<NullRenderer3D>();
+	}
+
+	// Vulkan / OpenGL: 3D renderer 未実装。初回のみ警告し nullptr を返す
+	// (呼び出し側は 2D のみで動作を継続する)。
+	if (backend == gfx::Backend::Vulkan)
+	{
+		mitiru::debug::warnOnce("render3d.vulkan.unsupported",
+			"Vulkan backend has no 3D renderer yet (docs/3D_RENDERING.md)");
+	}
+	else if (backend == gfx::Backend::OpenGL)
+	{
+		mitiru::debug::warnOnce("render3d.opengl.unsupported",
+			"OpenGL backend has no 3D renderer yet (docs/3D_RENDERING.md)");
+	}
+
 	return nullptr;
 }
 

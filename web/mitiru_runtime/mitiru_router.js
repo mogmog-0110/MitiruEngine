@@ -15,7 +15,7 @@
  * scene descriptor:
  *   {
  *     url:     string,           // シーン HTML へのパス (ゲームルート相対)
- *     preload: boolean,          // 予約 — console.warn を出すのみ、未実装
+ *     preload?: Array<{kind, path, key}>, // 遷移前に mitiru.preloader で読む asset (NF-04 の item 形式)
  *     in?:     function(params), // transition-in フック (シーンの DOMContentLoaded 後に実行)
  *     out?:    function(),       // transition-out フック (iframe src 変更前に実行)
  *   }
@@ -23,6 +23,8 @@
  * 遷移シーケンス:
  *   1. 現在シーンの `out()` フックを呼ぶ (あれば)
  *   2. document.body を opacity 0 へフェード (CSS transition、FADE_MS)
+ *   2'. descriptor.preload があれば mitiru.preloader.register(items) → start() を待つ
+ *       (フェードアウト後・src 設定前なので、読み込み中は暗転したまま)
  *   3. iframe src を新シーン URL に設定
  *   4. シーンページが自身の DOMContentLoaded で `mitiru.router.onSceneReady()` を呼ぶ
  *   5. document.body を opacity 1 へ戻すフェード
@@ -121,14 +123,14 @@
 		{
 			throw new Error('mitiru.router.register: descriptor.url (string) required');
 		}
-		if (descriptor.preload)
+		if (descriptor.preload && !Array.isArray(descriptor.preload))
 		{
-			console.warn('[mitiru.router] preload: true is reserved and not yet implemented for key "' + key + '"');
+			console.warn('[mitiru.router] preload for key "' + key + '" must be an array of {kind, path, key} items — ignored');
 		}
 		// immutable なコピーを保存する。
 		_registry[key] = Object.freeze({
 			url:     descriptor.url,
-			preload: descriptor.preload || false,
+			preload: Array.isArray(descriptor.preload) ? Object.freeze(descriptor.preload.slice()) : null,
 			in:      typeof descriptor.in  === 'function' ? descriptor.in  : null,
 			out:     typeof descriptor.out === 'function' ? descriptor.out : null,
 		});
@@ -162,6 +164,24 @@
 				// 2. フェードアウト。
 				_setFade(0, FADE_MS);
 				return _waitMs(FADE_MS);
+			})
+			.then(function()
+			{
+				// 2'. 暗転中に asset を読む。preloader が無いページでは読まずに進む (シーン側の遅延読みに任せる)。
+				if (!descriptor.preload || descriptor.preload.length === 0) { return; }
+				if (!mitiru.preloader)
+				{
+					console.warn('[mitiru.router] preload for "' + key + '" skipped — mitiru_preloader.js is not loaded');
+					return;
+				}
+				// 読めなかった asset はシーン側の遅延読みに任せ、遷移そのものは続ける (暗転で止めない)
+				const warnAndGo = function(e) { console.warn('[mitiru.router] preload for "' + key + '" failed — continuing:', e); };
+				try
+				{
+					mitiru.preloader.register(descriptor.preload);
+					return Promise.resolve(mitiru.preloader.start()).catch(warnAndGo);
+				}
+				catch (e) { warnAndGo(e); }
 			})
 			.then(function()
 			{

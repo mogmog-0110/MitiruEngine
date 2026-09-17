@@ -27,7 +27,8 @@ enum class PixelFormat
 	RGBA8,    ///< 8bit x 4チャンネル
 	BGRA8,    ///< 8bit x 4チャンネル（BGRA順）
 	R8,       ///< 8bit 1チャンネル
-	Depth24Stencil8  ///< 深度24bit + ステンシル8bit
+	Depth24Stencil8,  ///< 深度24bit + ステンシル8bit
+	RGBA16F   ///< 16bit float x 4チャンネル（HDR中間バッファ用）
 };
 
 /// @brief ブレンドモード

@@ -24,13 +24,21 @@
 ///   MITIRU_GAME(MyGame)             // これだけで DLL の入口が出来る
 /// @endcode
 ///
-/// `init` / `update` / `draw` はすべて任意。書いたものだけ呼ばれる。`MyGame` が
-/// flat POD なら録画再生の対象にもなる (byte 数を自動申告)。中身は `ModuleApi.hpp`
+/// `init` / `update` / `draw` はすべて任意。書いたものだけ呼ばれる。`MyGame` は flat POD 必須
+/// (host が bytes として記録・rewind・replay・セーブする単一の state 源。ADR 0017)。
+/// クラスの木や仮想関数で書きたい game は `MITIRU_GAME_OBJECTS(Game, Progress)` を使う
+/// (進行データだけ POD、場面の中身は DLL 内のオブジェクト。ADR 0040)。中身は `ModuleApi.hpp`
 /// の C-ABI そのままで、ホスト側は何も変わらない。
 
 #include <cstdint>
+#include <memory>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <string>
+#include <string_view>
 #include <type_traits>
+#include <utility>
 
 #include <mitiru/core/Color.hpp>
 #include <mitiru/core/Screen.hpp>
@@ -39,6 +47,7 @@
 #include <mitiru/core/Collide2D.hpp>   // タイルマップ AABB 移動解決 (moveAndCollide)
 #include <mitiru/debug/ToolRegistry.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru
@@ -47,6 +56,11 @@ namespace mitiru
 // 図形の基本型の短い別名。作者は sgc:: を書かなくてよい (色 Color は <mitiru/core/Color.hpp>)。
 using Rect = sgc::Rectf;   ///< 矩形 {x, y, 幅, 高さ}
 using Vec2 = sgc::Vec2f;   ///< 2D 座標 / ベクトル
+using Vec3 = sgc::Vec3f;   ///< 3D 座標 / ベクトル (デバッグ描画等)
+
+/// `Input::dt(Layer)` / `EngineConfig::layerTimeScale` の添字 (v30、§1-2)。
+/// 2..7 は予約 (ゲームが自由に使ってよいが、host は既定倍率 1.0・hitStop で停止させる)。
+enum class Layer : int { Gameplay = 0, Ui = 1 };
 
 /// よく使うキー (値は Windows の仮想キーコード)。一覧に無いキーも `Key{0x..}` で渡せる。
 /// 注意: 英字の VK は大文字 ('A'=0x41..'Z') のみ。`Key{'a'}` (小文字) は別の値になり
@@ -133,6 +147,11 @@ public:
 	bool pressed(Key k)  const noexcept { return held((int)k, s_->keysJustPressed); }   ///< 押した瞬間だけ
 	bool released(Key k) const noexcept { return held((int)k, s_->keysJustReleased); }   ///< 離した瞬間だけ
 
+	/// host が止めている種類 (0 = 動作中 / 1 = ingame ポーズメニュー / 2 = host の debug 停止 / 3 = object だけ停止)。
+	/// `MITIRU_PAUSE_LAYERS_BY_KIND` で種類ごとに動かす layer を分けられる。
+	std::uint8_t pauseKind() const noexcept { return s_->paused; }
+	bool paused() const noexcept { return s_->paused != 0; }
+
 	float mouseX() const noexcept { return s_->mouseX; }
 	float mouseY() const noexcept { return s_->mouseY; }
 	float mouseDeltaX() const noexcept { return s_->mouseDeltaX; }  ///< このフレームの移動量 (px、右が正)
@@ -177,6 +196,43 @@ public:
 			if (a[j] == '\0' && name[j] == '\0') { return s_->actionEvents[i].payloadJson; }
 		}
 		return nullptr;
+	}
+
+	// ── payload JSON の値ヘルパ (D5) ────────────────────────────────────
+	// html_hud / html_menu 等が自前で strstr していた「フラットな "key": value を 1 つ拾う」
+	// を集約する。ネストした JSON は非対応 (それが要るなら actionPayload() を自分で読む)。
+
+	/// payload の JSON から key の int 値を読む (無ければ defaultValue)。
+	int actionPayloadInt(const char* name, const char* key, int defaultValue = 0) const noexcept
+	{
+		const char* v = findJsonValue(actionPayload(name), key);
+		return (v != nullptr) ? static_cast<int>(std::strtol(v, nullptr, 10)) : defaultValue;
+	}
+	/// payload の JSON から key の float 値を読む (無ければ defaultValue)。
+	float actionPayloadFloat(const char* name, const char* key, float defaultValue = 0.0f) const noexcept
+	{
+		const char* v = findJsonValue(actionPayload(name), key);
+		return (v != nullptr) ? std::strtof(v, nullptr) : defaultValue;
+	}
+	/// payload の JSON から key の文字列値を out へコピーする。outCap に収まりきらず
+	/// 切り詰めた場合は false を返す (out 自体は切り詰めた内容で null 終端済み。
+	/// 呼び出し元が戻り値を無視しても壊れた文字列にはならない)。
+	/// エスケープは `\"` のみ簡易対応 (それ以上凝った文字列は actionPayload() を自分で読む)。
+	bool actionPayloadString(const char* name, const char* key, char* out, std::size_t outCap) const noexcept
+	{
+		if (out == nullptr || outCap == 0) { return false; }
+		out[0] = '\0';
+		const char* v = findJsonValue(actionPayload(name), key);
+		if (v == nullptr || *v != '"') { return false; }
+		++v;
+		std::size_t i = 0;
+		while (*v != '\0' && *v != '"' && i + 1 < outCap)
+		{
+			if (*v == '\\' && v[1] == '"') { ++v; }
+			out[i++] = *v++;
+		}
+		out[i] = '\0';
+		return *v == '"';  // ループを抜けた理由が outCap 不足なら (*v はまだ終端引用符でない) 切り詰め
 	}
 
 	// ── ゲームパッド (XInput 主コントローラ) ──────────────────────
@@ -239,6 +295,16 @@ public:
 	/// 決定論 seed (録画再生で bit-exact 再現するため、乱数は mitiru::Random rng(in.rngSeed()) で seed する)。
 	std::uint64_t rngSeed() const noexcept { return s_->rngSeed; }
 
+	/// layer 別の実効 dt (v30、§1-2)。`in.dt(Layer::Ui)` で HUD 用の dt を読む。
+	/// 範囲外 (負値・8 以上) は layer 0 (effectiveDt と同値) にフォールバックする。
+	float dt(Layer layer) const noexcept { return dt(static_cast<int>(layer)); }
+	/// 同上、添字直書き版 (2..7 の予約 layer 用)。
+	float dt(int layer) const noexcept
+	{
+		const int cap = static_cast<int>(sizeof(s_->dtByLayer) / sizeof(s_->dtByLayer[0]));
+		return (layer >= 0 && layer < cap) ? s_->dtByLayer[layer] : s_->effectiveDt;
+	}
+
 	/// 音声クロック (秒、ABI v13)。host の audio backend の再生サンプル位置。
 	/// **契約**: 0 = 未準備/非対応 (起動直後の数フレームや Null/headless) → game は
 	/// フレーム dt 積算へフォールバックすること。**非ゼロになった後は単調非減少を
@@ -259,13 +325,89 @@ public:
 		return (s_->audioTimeSec > 0.0 && t > 0.0) ? t : 0.0;
 	}
 
+	// ── セーブ/ロード結果・演出進行度 (ABI v33、D1/D2) ──────────────────────
+	/// 直前の `hud.save()` が成功したか (D1)。結果は 1 フレーム遅れて分かる
+	/// (intent → host 処理 → 次フレームの snapshot、非同期な処理系のため)。
+	/// まだ何もセーブしていない場合も false を返す (raw()->lastSaveResult で 0/1/2 を区別できる)。
+	bool saveSucceeded() const noexcept { return s_->lastSaveResult == 1; }
+	/// 直前の `hud.load()` が成功したか (D1)。意味論は saveSucceeded() と同じ。
+	bool loadSucceeded() const noexcept { return s_->lastLoadResult == 1; }
+	/// fadeOut/fadeIn の覆い alpha (0=覆い無し / 1=完全に覆う、D2)。fadeOut の完了は
+	/// 1.0 到達、fadeIn の完了は 0.0 到達で判定する (シーン切り替えのタイミング合わせに使う)。
+	float fadeProgress01() const noexcept { return s_->fadeProgress01; }
+
+	/// このフレームに確定した UTF-8 テキスト入力 (ABI v34、J5)。IME 確定文字を含む。
+	/// **本命は CEF の `<input>` (HTML UI)**。ここはプレイヤー名入力のような、ゲーム内の
+	/// 簡易テキスト入力用の最小手段 (32B 上限、収まらない分は切り捨て)。現状 Win32 のみ供給、
+	/// 他 platform は常に空。
+	std::string_view textInput() const noexcept
+	{
+		return std::string_view(s_->textInput, s_->textInputLen);
+	}
+
+	/// 前フレームに `hud.raycast()` / `hud.overlapSphere()` で頼んだ物理問い合わせの結果 (v37)。
+	/// `tag` で照合する。無ければ nullptr。hit == kPhysicsHitUnsupported は「host に物理 world が無い」。
+	const module::PhysicsResult* physicsResult(std::uint32_t tag) const noexcept
+	{
+		const int n = s_->physicsResultCount < 64 ? s_->physicsResultCount : 64;
+		for (int i = 0; i < n; ++i) { if (s_->physicsResults[i].tag == tag) { return &s_->physicsResults[i]; } }
+		return nullptr;
+	}
+	int physicsResultCount() const noexcept { return s_->physicsResultCount; }
+
 	/// 生の InputSnapshot へのアクセス (全 256 キー走査など、ラッパで足りない高度用途の escape hatch)。
 	const module::InputSnapshot* raw() const noexcept { return s_; }
 
 private:
 	static bool held(int vk, const std::uint8_t* table) noexcept
 	{
+		if (vk >= 'a' && vk <= 'z')
+		{
+			// Key{'a'} の罠 (D6): 英字 VK は大文字のみ有効なので小文字コードは常に無言不一致になる。
+			// この enum に小文字コードの正規メンバは存在しないため、範囲一致 = ほぼ確実に誤用。
+			mitiru::debug::warnOnce("input.key.lowercase",
+				"Key に英小文字コードが渡されました (Key{'a'} 等)。VK は大文字のみ有効です。"
+				"key('a') ヘルパ (自動大文字化) を使ってください");
+			return false;
+		}
 		return vk >= 0 && vk < 256 && table[vk] != 0;
+	}
+	/// エスケープされていない次の '"' を探す (`\"` を文字列終端と誤認しない)。
+	/// 値の中に `\"key\":` のような文字列が入っていると、素の strchr は
+	/// エスケープされた `"` を本物の区切りと取り違え、他フィールドの値の中身を
+	/// key の値として誤って拾ってしまうため findJsonValue から独立させてある。
+	static const char* nextJsonQuote(const char* p) noexcept
+	{
+		for (; *p != '\0'; ++p)
+		{
+			if (*p == '\\' && p[1] != '\0') { ++p; continue; }
+			if (*p == '"') { return p; }
+		}
+		return nullptr;
+	}
+	/// payload JSON から "key": の直後 (値の先頭) を指すポインタを返す (無ければ nullptr)。
+	/// フラットな 1 段 JSON のみ対応 (D5)。
+	static const char* findJsonValue(const char* json, const char* key) noexcept
+	{
+		if (json == nullptr || key == nullptr) { return nullptr; }
+		const std::size_t keyLen = std::strlen(key);
+		for (const char* p = json; (p = nextJsonQuote(p)) != nullptr; )
+		{
+			const char* start = p + 1;
+			if (std::strncmp(start, key, keyLen) == 0 && start[keyLen] == '"')
+			{
+				const char* after = start + keyLen + 1;
+				while (*after == ' ' || *after == '\t') { ++after; }
+				if (*after == ':')
+				{
+					++after;
+					while (*after == ' ' || *after == '\t') { ++after; }
+					return after;
+				}
+			}
+			p = start;
+		}
+		return nullptr;
 	}
 	/// Binding 表の線形走査 (N は十数行が普通なので十分速い)。同一 act の複数行は OR 合成。
 	template <typename Act>
@@ -302,6 +444,42 @@ public:
 	void set(const char* key, float v)       noexcept { s_->pushFloat(key, v); }
 	void set(const char* key, bool v)        noexcept { s_->pushBool(key, v); }
 	void set(const char* key, const char* v) noexcept { s_->pushString(key, v); }
+
+	/// 数値配列を 1 件の statePush で送る (D4)。`set()` は 1 フレーム 64 件の statePush
+	/// 上限があり、敵・弾多数の座標を毎フレーム 1 体 1 件で送る shooter 系がすぐ当たる。
+	/// 代わりに JSON 配列文字列 1 本 (`[1,2,3]`) にまとめ、statePush の消費を 1 件にする。
+	/// html 側は `window.mitiru.onStateChange(key, json)` で own parse する (data-m-text の
+	/// 自動反映は非対応)。count が strVal (3968B) に収まらない場合は収まる分だけで配列を
+	/// 閉じ、初回のみ warnOnce する。対処法: 配列を分割 key にするか送る件数を間引く。
+	void setArray(const char* key, const float* values, std::size_t count) noexcept
+	{
+		char buf[3968];
+		std::size_t pos = 0;
+		buf[pos++] = '[';
+		bool truncated = false;
+		for (std::size_t i = 0; i < count; ++i)
+		{
+			char num[32];
+			const int n = std::snprintf(num, sizeof(num), "%s%.6g",
+				(i > 0) ? "," : "", static_cast<double>(values[i]));
+			if (n < 0 || pos + static_cast<std::size_t>(n) + 2 >= sizeof(buf))
+			{
+				truncated = true;
+				break;
+			}
+			std::memcpy(buf + pos, num, static_cast<std::size_t>(n));
+			pos += static_cast<std::size_t>(n);
+		}
+		buf[pos++] = ']';
+		buf[pos] = '\0';
+		if (truncated)
+		{
+			mitiru::debug::warnOnce(std::string("hud.setArray.trunc.") + key,
+				std::string("hud.setArray: \"") + key + "\" の配列が statePush 1 件 (約 3968B) "
+				"に収まらず途中で切りました。配列を分割するか送る件数を間引いてください");
+		}
+		s_->pushString(key, buf);
+	}
 
 	/// 効果音を鳴らす。volume は 0..1 (1=原音量)。**volume 0 = 無音** (鳴らしたくない時は
 	/// 呼ばないのが普通だが、変数で 0 が来ても最大音量にはならない)。
@@ -341,6 +519,16 @@ public:
 	}
 	/// 再生中の BGM を停止する (fadeOutSec > 0 でフェードアウト)。
 	void stopMusic(float fadeOutSec = 0.0f) noexcept { s_->stopMusic(fadeOutSec); }
+	/// ボイス (台詞) を鳴らす。BGM / SE とは別の 1 本のスロットで鳴り、前の台詞が
+	/// まだ鳴っていれば重ねず差し替える。**volume 0 は「未指定」で既定の 1.0 になる** (SoundIntentRouter の契約。
+	/// 無音で鳴らす手段は無いので、鳴らしたくなければ呼ばない)。mixer 窓の「voice 一覧」に
+	/// id / 残り秒が出るのはこの経路で鳴らした音だけ (play() は SE 扱い)。
+	void voice(const char* soundId, float volume = 1.0f, float fadeInSec = 0.0f) noexcept
+	{
+		s_->playVoice(soundId, clampVolume(volume), fadeInSec);
+	}
+	/// 鳴っているボイスを止める (fadeOutSec > 0 でフェードアウト)。
+	void stopVoice(float fadeOutSec = 0.0f) noexcept { s_->stopVoice(fadeOutSec); }
 	/// 再生中の BGM を一時停止する (再生位置を保持。resumeMusic で続きから。会話チュートリアルで
 	/// BGM を止めて間を取る等。stopMusic と違い曲は破棄されない)。
 	void pauseMusic() noexcept { s_->pauseMusic(); }
@@ -377,6 +565,12 @@ public:
 	{
 		s_->pushVisual(module::kVisualIntentShake, 0, 0, 0, magnitude, seconds);
 	}
+	/// パッドを振動させる (被弾・着地)。low/high は左右モータ 0..1、seconds で線形に弱まる。
+	/// 出力だけの演出なので録画には乗らず、リプレイの一致にも影響しない。
+	void rumble(float low, float high, float seconds = 0.2f) noexcept
+	{
+		s_->pushVisual(module::kVisualIntentRumble, low, high, 0, 0, seconds);
+	}
 	/// ヒットストップ (seconds の間 dt=0 で時が止まる。update は呼ばれ続ける)。
 	/// 撃破・パリィの手応えが 1 行になる。
 	void hitStop(float seconds = 0.08f) noexcept
@@ -402,18 +596,85 @@ public:
 	/// update 内の `*this = MyGame{}` 手運びの代わり。host が memset 0 → init() を適用する。
 	/// intent なので replay / resim では update が同フレームで再発行し bit-exact に再現される。
 	void requestRestart() noexcept { s_->requestRestart(); }
-	/// カーソルをロックする (FPS 視線)。毎フレーム呼ぶ。呼ばないフレームで解除される。
-	void lockMouse() noexcept { s_->requestMouseLock(); }
+	/// カーソルロックの状態を毎フレーム宣言する (D3)。true でロック要求、false は何もしない
+	/// (= このフレームは要求を出さない)。wantMouseLock は「呼ばれたら立つ」意思表示なので、
+	/// 明示 unlock intent は無い。次フレームで呼ばなければ host が自然に解除する。
+	void setMouseLock(bool locked) noexcept { if (locked) { s_->requestMouseLock(); } }
+	/// カーソルをロックする (FPS 視線)。毎フレーム呼ぶ。呼ばないフレームで解除される
+	/// (`setMouseLock(true)` の別名。unlock したいときは単に呼ぶのをやめる)。
+	void lockMouse() noexcept { setMouseLock(true); }
 	/// このフレームのスクリーンショットを保存する。
 	void screenshot() noexcept { s_->requestScreenshotNow(); }
 	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。
 	/// 必要なときだけ呼べばよい。inspector が開いている時にだけ映る。
+	/// **消し方**: 明示の unwatch intent は無い。呼ぶのをやめると host は直近の内容を
+	/// 表示し続けるので、消したいなら「消えた」ことを表す json (空 object 等) を送る。
 	void watch(const char* name, const char* title, const char* json) noexcept
 	{
 		s_->pushInspectable(name, title, json);
 	}
 
+	// ── 物理問い合わせ job (v37、HE2 の PhysicsQueryJob 相当) ───────────────────
+	// 同期呼び出しではなく intent。結果は次フレームの `in.physicsResult(tag)` で読む (1 フレーム遅れ)。
+	// 結果は InputSnapshot に乗るので録画され、リプレイでも同じ値が返る。
+	/// レイキャストを頼む。maxDist <= 0 は無制限。満杯 (64 件) なら false。
+	bool raycast(Vec3 origin, Vec3 dir, float maxDist, std::uint32_t tag, std::uint32_t mask = 0xFFFFFFFFu) noexcept
+	{
+		module::PhysicsQuery* q = s_->nextPhysicsQuery();
+		if (q == nullptr) { return false; }
+		q->kind = module::kPhysicsQueryRaycast;
+		q->a[0] = origin.x; q->a[1] = origin.y; q->a[2] = origin.z;
+		q->b[0] = dir.x;    q->b[1] = dir.y;    q->b[2] = dir.z;
+		q->radius = maxDist; q->mask = mask; q->tag = tag;
+		return true;
+	}
+	/// 球に重なる body があるかを頼む (結果の t が件数)。満杯なら false。
+	bool overlapSphere(Vec3 center, float radius, std::uint32_t tag, std::uint32_t mask = 0xFFFFFFFFu) noexcept
+	{
+		module::PhysicsQuery* q = s_->nextPhysicsQuery();
+		if (q == nullptr) { return false; }
+		q->kind = module::kPhysicsQueryOverlapSphere;
+		q->a[0] = center.x; q->a[1] = center.y; q->a[2] = center.z;
+		q->radius = radius; q->mask = mask; q->tag = tag;
+		return true;
+	}
+
+	// ── ゲーム内 3D デバッグ描画 (v30、§9-1。必要なときだけ呼ぶ) ────────────────
+	// **録画に入るのは snapshot (入力) だけで、この intent 自体は録画されない。**
+	// リプレイ再生でデバッグ線を再現したいときは、ゲーム側が毎フレーム出し直すこと
+	// (durationSec を使っても、host が減衰させるのは live 実行中だけ)。
+	/// 線分を描く (durationSec=0 はこのフレームのみ)。
+	void debugLine(Vec3 a, Vec3 b, Color color, float durationSec = 0.0f) noexcept
+	{
+		const float pa[3]{a.x, a.y, a.z}, pb[3]{b.x, b.y, b.z}, c[4]{color.r, color.g, color.b, color.a};
+		s_->pushDebugLine(pa, pb, c, durationSec);
+	}
+	/// 箱 (中心 + 半径ベクトル) を描く。
+	void debugBox(Vec3 center, Vec3 halfExtents, Color color, float durationSec = 0.0f) noexcept
+	{
+		const float pc[3]{center.x, center.y, center.z};
+		const float he[3]{halfExtents.x, halfExtents.y, halfExtents.z};
+		const float c[4]{color.r, color.g, color.b, color.a};
+		s_->pushDebugBox(pc, he, c, durationSec);
+	}
+	/// 球を描く。
+	void debugSphere(Vec3 center, float radius, Color color, float durationSec = 0.0f) noexcept
+	{
+		const float pc[3]{center.x, center.y, center.z};
+		const float c[4]{color.r, color.g, color.b, color.a};
+		s_->pushDebugSphere(pc, radius, c, durationSec);
+	}
+	/// world 座標に文字を描く (画面へ投影した位置に出る)。
+	void debugText(Vec3 pos, const char* text, Color color, float durationSec = 0.0f) noexcept
+	{
+		const float pp[3]{pos.x, pos.y, pos.z};
+		const float c[4]{color.r, color.g, color.b, color.a};
+		s_->pushDebugText(pp, text, c, durationSec);
+	}
+
 	/// 別窓のツールを開くよう host に頼む (必要なときだけ呼ぶ。既定では何も開かない)。
+	/// **閉じ方**: game 側に閉じる intent は無い (別プロセスの独立窓なので)。ユーザーが
+	/// その窓を × で閉じる。同じツールを再度 open しても新しい窓は増えない想定 (host 側の重複起動抑止)。
 	void open(Tool t) noexcept
 	{
 		for (const auto& spec : detail::kToolTable)
@@ -478,6 +739,21 @@ void gameDraw(void* mem, mitiru::Screen* screen)
 	else { (void)g; }
 }
 
+/// @brief `on_draw_commands` の trampoline (ABI v31、ADR 0025)。game が `draw(Canvas&)` を
+/// 持つ時だけ `registerGame` がこれを配線する (POD コマンドバッファ経路)。
+template<class T>
+void gameDrawCommands(void* mem, const DrawContext* ctx, DrawCommandBuffer* out)
+{
+	if (mem == nullptr || ctx == nullptr || out == nullptr) { return; }
+	T& g = *static_cast<T*>(mem);
+	if constexpr (requires { g.draw(std::declval<mitiru::Canvas&>()); })
+	{
+		mitiru::Canvas canvas{*out, *ctx};
+		g.draw(canvas);
+	}
+	else { (void)g; }
+}
+
 template<class T>
 void gameShutdown(void* mem)
 {
@@ -527,6 +803,12 @@ void registerGame(ModuleApi* api, void** memory)
 	api->on_update   = &gameUpdate<T>;
 	api->on_draw     = &gameDraw<T>;
 	api->on_shutdown = &gameShutdown<T>;
+	// draw(Canvas&) を持つ game だけ POD コマンド経路 (ABI v31) を追加で export する。
+	// draw(Screen&) は互換のため残す (host は on_draw_commands 非 null を優先)。
+	if constexpr (requires(T& g) { g.draw(std::declval<mitiru::Canvas&>()); })
+	{
+		api->on_draw_commands = &gameDrawCommands<T>;
+	}
 	// GameMemory は flat POD 保証済み (上の static_assert)。録画再生・rewind の
 	// 単一 state 源として byte 数を無条件に申告する。
 	api->memorySize        = static_cast<std::uint32_t>(sizeof(T));
@@ -580,6 +862,151 @@ inline void registerReflection(ModuleApi* api, const FieldDescriptor* fields, st
 template<class T>
 void unregisterGame(void* memory) { delete static_cast<T*>(memory); }
 
+// ── 非 POD の game (MITIRU_GAME_OBJECTS、ADR 0040) ─────────────────────────────
+// GameMemory は進行データ P (flat POD) だけ。場面の中身 G はこの DLL の中に 1 個だけ生きる普通の
+// C++ オブジェクトで、仮想関数もヒープも使ってよい。G は「P から組み立て直せる派生物」として扱う:
+// 無ければ作る (ホットリロード直後・初回)、host が P を書き換えたら捨てて作り直す (ロード)。
+template<class G>
+std::unique_ptr<G>& objectsInstance() noexcept
+{
+	static std::unique_ptr<G> s_instance;
+	return s_instance;
+}
+
+template<class G, class P>
+G& ensureObjects(P& progress)
+{
+	auto& instance = objectsInstance<G>();
+	if (!instance)
+	{
+		instance = std::make_unique<G>();
+		if constexpr (requires { instance->build(std::as_const(progress)); }) { instance->build(std::as_const(progress)); }
+	}
+	return *instance;
+}
+
+template<class G, class P>
+void objectsInit(void* mem)
+{
+	if (mem == nullptr) { return; }
+	static const P kFresh{};
+	std::memcpy(mem, &kFresh, sizeof(P));
+	P& p = *static_cast<P*>(mem);
+	if constexpr (requires { p.init(); }) { p.init(); }
+	objectsInstance<G>().reset();  // restart でも同じ経路。次の update が新しい P から組み立てる
+}
+
+template<class G, class P>
+void objectsUpdate(void* mem, float dt, const InputSnapshot* in, FrameIntents* out)
+{
+	if (mem == nullptr || in == nullptr || out == nullptr) { return; }
+	P& p = *static_cast<P*>(mem);
+	G& g = ensureObjects<G, P>(p);
+	mitiru::Input input{in};
+	mitiru::Hud   hud{out};
+	if      constexpr (requires { g.update(p, input, hud, dt); }) { g.update(p, input, hud, dt); }
+	else if constexpr (requires { g.update(p, input, dt); })      { g.update(p, input, dt); }
+	else if constexpr (requires { g.update(p, dt); })             { g.update(p, dt); }
+	else { (void)input; (void)hud; (void)dt; }
+}
+
+template<class G, class P>
+void objectsDraw(void* mem, mitiru::Screen* screen)
+{
+	if (mem == nullptr || screen == nullptr) { return; }
+	P& p = *static_cast<P*>(mem);
+	G& g = ensureObjects<G, P>(p);
+	if constexpr (requires { g.draw(std::as_const(p), *screen); }) { g.draw(std::as_const(p), *screen); }
+	else { (void)g; }
+}
+
+template<class G, class P>
+void objectsDrawCommands(void* mem, const DrawContext* ctx, DrawCommandBuffer* out)
+{
+	if (mem == nullptr || ctx == nullptr || out == nullptr) { return; }
+	P& p = *static_cast<P*>(mem);
+	G& g = ensureObjects<G, P>(p);
+	if constexpr (requires { g.draw(std::as_const(p), std::declval<mitiru::Canvas&>()); })
+	{
+		mitiru::Canvas canvas{*out, *ctx};
+		g.draw(std::as_const(p), canvas);
+	}
+	else { (void)g; }
+}
+
+template<class G, class P>
+void objectsRebuild(void* mem, std::uint32_t /*reason*/)
+{
+	if (mem == nullptr) { return; }
+	objectsInstance<G>().reset();
+	(void)ensureObjects<G, P>(*static_cast<P*>(mem));
+}
+
+template<class G, class P>
+void objectsShutdown(void* mem)
+{
+	auto& instance = objectsInstance<G>();
+	if (instance && mem != nullptr)
+	{
+		P& p = *static_cast<P*>(mem);
+		if constexpr (requires { instance->shutdown(p); }) { instance->shutdown(p); }
+		else { (void)p; }
+	}
+	instance.reset();  // DLL unload 後に古い vtable を指すオブジェクトを残さない
+}
+
+template<class G, class P>
+inline constexpr bool kHasObjectsEntry =
+	requires(G& g, P& p, mitiru::Input in, mitiru::Hud hud, float dt) { g.update(p, in, hud, dt); } ||
+	requires(G& g, P& p, mitiru::Input in, float dt) { g.update(p, in, dt); } ||
+	requires(G& g, P& p, float dt) { g.update(p, dt); } ||
+	requires(G& g, const P& p, mitiru::Screen& s) { g.draw(p, s); };
+
+/// `MITIRU_GAME_OBJECTS` の中身。GameMemory = P を確保し、G への trampoline を埋める。
+template<class G, class P>
+void registerObjectsGame(ModuleApi* api, void** memory)
+{
+	static_assert(std::is_trivially_copyable_v<P>,
+		"MITIRU_GAME_OBJECTS(Game, Progress): Progress は flat POD (trivially_copyable) である必要があります。"
+		"セーブ・ロード・録画は Progress の bytes に対して働きます。クラスの木や std::vector は Game 側へ。");
+	static_assert(std::is_default_constructible_v<G>,
+		"MITIRU_GAME_OBJECTS(Game, Progress): Game は引数なしで構築できる必要があります (場面は build(const Progress&) で組み立てる)。");
+	// build が進行データを書き換えると、replay のロード代用 (記録済みの bytes を書き戻してから on_rebuild) で
+	// 二重に書き換わり、録画と 1 フレームで食い違う。組み立ては読むだけにする。
+	static_assert(!requires(G& g, P& p) { g.build(p); } || requires(G& g, const P& p) { g.build(p); },
+		"MITIRU_GAME_OBJECTS(Game, Progress): Game::build は const Progress& を受け取ってください "
+		"(場面の組み立ては進行データを読むだけにする。書き換えると replay が一致しなくなります)。");
+	static_assert(kHasObjectsEntry<G, P>,
+		"MITIRU_GAME_OBJECTS(Game, Progress): Game に update(Progress&, Input, Hud, float) / update(Progress&, Input, float) / "
+		"update(Progress&, float) / draw(const Progress&, Screen&) のいずれも見つかりません。");
+
+	if (api == nullptr || memory == nullptr) { return; }
+	if (*memory == nullptr) { *memory = new P{}; }   // reload 時はホストが既存 pointer を渡す
+	api->version     = kWireApiVersion;
+	api->on_init     = &objectsInit<G, P>;
+	api->on_update   = &objectsUpdate<G, P>;
+	api->on_draw     = &objectsDraw<G, P>;
+	api->on_shutdown = &objectsShutdown<G, P>;
+	api->on_rebuild  = &objectsRebuild<G, P>;
+	if constexpr (requires(G& g, const P& p) { g.draw(p, std::declval<mitiru::Canvas&>()); })
+	{
+		api->on_draw_commands = &objectsDrawCommands<G, P>;
+	}
+	api->memorySize         = static_cast<std::uint32_t>(sizeof(P));
+	api->stateFlags         = kModuleStatePartial;
+	api->seriesProbeCount   = 0;
+	api->reflectFieldCount  = 0;
+	api->reflectSchemaCount = 0;
+	ReflectionOf<P>::fillApi(api);
+}
+
+template<class G, class P>
+void unregisterObjectsGame(void* memory)
+{
+	objectsInstance<G>().reset();
+	delete static_cast<P*>(memory);
+}
+
 }  // namespace module::detail
 
 namespace module
@@ -632,9 +1059,71 @@ template <class T, auto MemberPtr>
 		mitiru::module::detail::unregisterGame<GameType>(memory);             \
 	}
 
+/// クラスの木・仮想関数・ヒープで書く game の入口 (ADR 0040)。`Progress` は flat POD の進行データ
+/// (セーブ・ロード・録画の対象 = GameMemory)、`Game` は場面の中身で、`build(const Progress&)` で
+/// 進行データから組み立て直せること。host は rewind の scrub / resim / 分岐 / 候補の並走を断る
+/// (GameMemory が全状態ではないため)。`--replay` は入力の流し直しなので、Game が決定論なら通る。
+#define MITIRU_GAME_OBJECTS(GameType, ProgressType)                                        \
+	extern "C" MITIRU_GAME_EXPORT                                                          \
+	void mitiru_module_load(mitiru::module::ModuleApi* api, void** memory)                 \
+	{                                                                                     \
+		mitiru::module::detail::registerObjectsGame<GameType, ProgressType>(api, memory);  \
+	}                                                                                     \
+	extern "C" MITIRU_GAME_EXPORT                                                          \
+	void mitiru_module_unload(void* memory)                                               \
+	{                                                                                     \
+		mitiru::module::detail::unregisterObjectsGame<GameType, ProgressType>(memory);     \
+	}
+
 /// 旧名の後方互換エイリアス。flat POD 必須は MITIRU_GAME 自体に統合された ので
 /// 中身は同じ。新規コードは MITIRU_GAME を使ってよい。
 #define MITIRU_GAME_RECORDABLE(GameType) MITIRU_GAME(GameType)
+
+/// game が「巻き戻しリングに何バイトまで使ってよいか」を宣言する (optional)。MITIRU_GAME と併記する。
+/// `MITIRU_REWIND_BUFFER(frames)` のバイト版で、対称に `ModuleHost::rewindBudgetBytesFn()` が
+/// GetProcAddress で解決する別 export (ModuleApi 自体の ABI は変えない)。
+/// 優先順位は host の `--rewind-mb N` (明示指定時) > この宣言 > 既定 512MB。
+#define MITIRU_REWIND_BUDGET(bytes)                                            \
+	extern "C" MITIRU_GAME_EXPORT                                              \
+	std::uint64_t mitiru_module_rewind_budget_bytes()                         \
+	{                                                                         \
+		return static_cast<std::uint64_t>(bytes);                             \
+	}
+
+// MITIRU_REWIND_BUFFER (フレーム数) と MITIRU_REWIND_BUDGET (バイト数) は名前だけでは
+// 単位が伝わらず取り違えやすい (D8)。単位を明示したエイリアスを併記する。中身は同じ
+// マクロへの単純委譲で、docs はこちらの名前で統一する。
+#define MITIRU_REWIND_BUFFER_FRAMES(frames) MITIRU_REWIND_BUFFER(frames)
+#define MITIRU_REWIND_BUDGET_BYTES(bytes)   MITIRU_REWIND_BUDGET(bytes)
+
+/// game が「pause 中でも dt を受け取り続けたい layer」を宣言する (optional、2-1)。
+/// MITIRU_GAME と併記する。Godot の `process_mode = PROCESS_MODE_WHEN_PAUSED` 相当で、
+/// `InputSnapshot::dtByLayer[8]` (ABI v30) の layout は変えず、`MITIRU_REWIND_BUDGET` と
+/// 同じ別 export (`ModuleHost::pauseAlwaysLayersMaskFn()`) を host が起動時に解決する。
+/// mask の bit i が立った layer i は pause 中も通常どおり dt を受け取る (ポーズメニュー
+/// 演出用)。未宣言なら mask=0 = 従来どおり pause は全 layer 共通。
+#define MITIRU_PAUSE_ALWAYS_LAYERS(mask)                                       \
+	extern "C" MITIRU_GAME_EXPORT                                              \
+	std::uint8_t mitiru_module_pause_always_layers_mask()                     \
+	{                                                                         \
+		return static_cast<std::uint8_t>(mask);                               \
+	}
+
+/// pause の種類ごとに「pause 中も dt を受け取る layer」を分けて宣言する (optional)。HE2 の
+/// layersActiveDuringIngamePause / DebugPause / ObjectPause 相当。宣言しなければ 3 種類とも
+/// `MITIRU_PAUSE_ALWAYS_LAYERS` の mask (未宣言なら 0)。種類は `Input::pauseKind()` で読める。
+#define MITIRU_PAUSE_LAYERS_BY_KIND(ingameMask, debugMask, objectMask)          \
+	extern "C" MITIRU_GAME_EXPORT                                              \
+	std::uint8_t mitiru_module_pause_layers_by_kind(std::uint8_t kind)        \
+	{                                                                         \
+		switch (kind)                                                         \
+		{                                                                     \
+		case 1:  return static_cast<std::uint8_t>(ingameMask);                \
+		case 2:  return static_cast<std::uint8_t>(debugMask);                 \
+		case 3:  return static_cast<std::uint8_t>(objectMask);                \
+		default: return 0;                                                    \
+		}                                                                     \
+	}
 
 /// MITIRU_GAME に加えて rewind 観測 probe を宣言する。
 /// GameMemory から double を引く capture 無しの純関数を列挙すると、host が GameMemoryRing の
@@ -717,25 +1206,45 @@ template <class T, auto MemberPtr>
 #define MITIRU_FE_14(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_13(M, T, __VA_ARGS__))
 #define MITIRU_FE_15(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_14(M, T, __VA_ARGS__))
 #define MITIRU_FE_16(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_15(M, T, __VA_ARGS__))
+#define MITIRU_FE_17(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_16(M, T, __VA_ARGS__))
+#define MITIRU_FE_18(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_17(M, T, __VA_ARGS__))
+#define MITIRU_FE_19(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_18(M, T, __VA_ARGS__))
+#define MITIRU_FE_20(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_19(M, T, __VA_ARGS__))
+#define MITIRU_FE_21(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_20(M, T, __VA_ARGS__))
+#define MITIRU_FE_22(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_21(M, T, __VA_ARGS__))
+#define MITIRU_FE_23(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_22(M, T, __VA_ARGS__))
+#define MITIRU_FE_24(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_23(M, T, __VA_ARGS__))
+#define MITIRU_FE_25(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_24(M, T, __VA_ARGS__))
+#define MITIRU_FE_26(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_25(M, T, __VA_ARGS__))
+#define MITIRU_FE_27(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_26(M, T, __VA_ARGS__))
+#define MITIRU_FE_28(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_27(M, T, __VA_ARGS__))
+#define MITIRU_FE_29(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_28(M, T, __VA_ARGS__))
+#define MITIRU_FE_30(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_29(M, T, __VA_ARGS__))
+#define MITIRU_FE_31(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_30(M, T, __VA_ARGS__))
+#define MITIRU_FE_32(M, T, a, ...) M(T, a), MITIRU_RFL_EXPAND(MITIRU_FE_31(M, T, __VA_ARGS__))
 
-// MITIRU_REFLECT / MITIRU_REFLECT_STRUCT は最大 16 フィールド。17 個以上 (24 個まで) は
+// MITIRU_REFLECT / MITIRU_REFLECT_STRUCT は最大 32 フィールド。33 個以上 (40 個まで) は
 // MITIRU_FE_ERR が選ばれ、削除済み関数
-// `mitiruReflect_Max16Fields_SplitOrUseReflectStruct` (Reflection.hpp) の使用エラーになる
+// `mitiruReflect_Max32Fields_SplitOrUseReflectStruct` (Reflection.hpp) の使用エラーになる
 //。関数名がそのまま対処法: フィールドを分割するか、ネスト部分を MITIRU_REFLECT_STRUCT
-// へ切り出す。25 個以上はプリプロセッサ構造上ここで拾えず、別の compile error になる。
+// へ切り出す。41 個以上はプリプロセッサ構造上ここで拾えず、別の compile error になる。
 #define MITIRU_FE_ERR(M, T, ...)                                               \
-	::mitiru::module::detail::mitiruReflect_Max16Fields_SplitOrUseReflectStruct()
+	::mitiru::module::detail::mitiruReflect_Max32Fields_SplitOrUseReflectStruct()
 
 #define MITIRU_FE_PICK(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16, \
-	_17,_18,_19,_20,_21,_22,_23,_24,NAME,...) NAME
+	_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,          \
+	_33,_34,_35,_36,_37,_38,_39,_40,NAME,...) NAME
 #define MITIRU_FOR_EACH(M, T, ...)                                             \
 	MITIRU_RFL_EXPAND(MITIRU_FE_PICK(__VA_ARGS__,                              \
 		MITIRU_FE_ERR, MITIRU_FE_ERR, MITIRU_FE_ERR, MITIRU_FE_ERR,            \
 		MITIRU_FE_ERR, MITIRU_FE_ERR, MITIRU_FE_ERR, MITIRU_FE_ERR,            \
-		MITIRU_FE_16, MITIRU_FE_15, MITIRU_FE_14, MITIRU_FE_13, MITIRU_FE_12,  \
-		MITIRU_FE_11, MITIRU_FE_10, MITIRU_FE_9, MITIRU_FE_8, MITIRU_FE_7,     \
-		MITIRU_FE_6, MITIRU_FE_5, MITIRU_FE_4, MITIRU_FE_3, MITIRU_FE_2,       \
-		MITIRU_FE_1)(M, T, __VA_ARGS__))
+		MITIRU_FE_32, MITIRU_FE_31, MITIRU_FE_30, MITIRU_FE_29, MITIRU_FE_28,  \
+		MITIRU_FE_27, MITIRU_FE_26, MITIRU_FE_25, MITIRU_FE_24, MITIRU_FE_23,  \
+		MITIRU_FE_22, MITIRU_FE_21, MITIRU_FE_20, MITIRU_FE_19, MITIRU_FE_18,  \
+		MITIRU_FE_17, MITIRU_FE_16, MITIRU_FE_15, MITIRU_FE_14, MITIRU_FE_13,  \
+		MITIRU_FE_12, MITIRU_FE_11, MITIRU_FE_10, MITIRU_FE_9, MITIRU_FE_8,    \
+		MITIRU_FE_7, MITIRU_FE_6, MITIRU_FE_5, MITIRU_FE_4, MITIRU_FE_3,       \
+		MITIRU_FE_2, MITIRU_FE_1)(M, T, __VA_ARGS__))
 
 /// FixedVec<Struct,N> の要素 struct を先に宣言する (host が要素を 1 段ネスト JSON 化できる)。
 /// グローバル scope で、型は完全修飾名で書くこと (例 MITIRU_REFLECT_STRUCT(ns::Enemy, x, y))。

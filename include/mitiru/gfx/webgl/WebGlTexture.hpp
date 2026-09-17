@@ -294,6 +294,8 @@ private:
 			return {GL_R8, GL_RED, GL_UNSIGNED_BYTE};
 		case PixelFormat::Depth24Stencil8:
 			return {GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8};
+		case PixelFormat::RGBA16F:
+			return {GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT};
 		}
 		return {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE};
 	}

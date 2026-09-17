@@ -285,6 +285,8 @@
     var path = root.dataset.mRewind;
     var scrubEl = document.querySelector('[data-m-tt-scrub]');
     var ppEl = document.querySelector('[data-m-tt-playpause]');
+    var marksEl = document.querySelector('[data-m-tt-marks]');
+    var lastMarksJson = '';
     var S = null, at = 0, paused = false, dragging = false;
 
     function setPaused(p) {
@@ -299,12 +301,33 @@
       var chs = Object.keys(st || {}).filter(function (k) { return /History$/.test(k) && Array.isArray(st[k]); });
       return chs.length ? st[chs[0]].length : 0;
     }
+    // 節目 (host の markers: {o: offsetFromNewest, v, k, label?}) をバー上のティックにする。
+    // 中身が変わった時だけ DOM を作り直す (毎 tick 同じ配列が来る)。
+    function renderMarks(len) {
+      if (!marksEl) { return; }
+      var ms = (S && Array.isArray(S.markers)) ? S.markers : [];
+      var j = JSON.stringify(ms) + '|' + len;
+      if (j === lastMarksJson) { return; }
+      lastMarksJson = j;
+      marksEl.textContent = '';
+      if (len < 2) { return; }
+      ms.forEach(function (m) {
+        var pos = (len - 1 - (m.o | 0)) / (len - 1) * 100;
+        if (pos < 0 || pos > 100) { return; }
+        var d = document.createElement('div');
+        d.className = 'mark k' + (m.k | 0) + (m.label ? ' labeled' : '');
+        d.style.left = pos + '%';
+        d.title = (m.label ? m.label + ' ' : '') + (m.o | 0) + ' フレーム前 (値 ' + m.v + ')';
+        marksEl.appendChild(d);
+      });
+    }
     function render() {
       if (!S) { return; }
       var len = frameCount(S);
       at = Math.max(0, Math.min(len - 1, at));
       publish('tt.ok', len > 1);
       publish('tt.pct', len > 1 ? at / (len - 1) * 100 : 0);
+      renderMarks(len);
     }
     // つまみの位置 (at, 0=最古) を offsetFromNewest(0=最新) に変換し、そのフレームで止める。
     function sendScrub() {

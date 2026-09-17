@@ -77,7 +77,8 @@ struct Input04
 	}
 
 	// 矢印キーの中に、その向きの三角形を描く。
-	void arrow(Screen& s, const Rect& r, int dir, Color c) const
+	template <class Surface>
+	void arrow(Surface& s, const Rect& r, int dir, Color c) const
 	{
 		const float x = r.x() + r.width() * 0.5f, y = r.y() + r.height() * 0.5f, e = 12.0f;
 		if      (dir == 1) { s.drawTriangle({x, y - e}, {x - e, y + e}, {x + e, y + e}, c); }   // 上
@@ -86,7 +87,8 @@ struct Input04
 		else               { s.drawTriangle({x + e, y}, {x - e, y - e}, {x - e, y + e}, c); }   // 右
 	}
 
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
 		s.fillScreen(theme::kPaper);
 		chapterTitle(s, "Input");
@@ -105,7 +107,7 @@ struct Input04
 			s.drawRoundedRectFrame(r, lit ? theme::kBlue : theme::kFrame, 8.0f, 1.5f);
 			const Color gc = lit ? kKeyOff : theme::kInk;
 			if (c.dir) { arrow(s, r, c.dir, gc); }
-			else if (c.cap[0]) { s.drawTextInRect(r, c.cap, gc, 22.0f, Screen::TextAlignH::Center, Screen::TextAlignV::Middle); }
+			else if (c.cap[0]) { s.drawTextInRect(r, c.cap, gc, 22.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle); }
 		}
 
 		// マウス区画: 動いた跡を薄い点で引き、いまの位置に丸を置く (どちらも区画内に収める)。
@@ -141,16 +143,18 @@ struct Input04
 			s.fillCircle(c.cx, c.cy, 22.0f, lit ? col : kKeyOff);
 			s.drawCircleFrame({c.cx, c.cy}, 22.0f, col, 1.5f);
 			s.drawTextInRect(Rect{c.cx - 22.0f, c.cy - 22.0f, 44.0f, 44.0f}, c.cap, lit ? kKeyOff : (pad ? col : theme::kSubtle),
-			                 18.0f, Screen::TextAlignH::Center, Screen::TextAlignV::Middle);
+			                 18.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 		}
 
 		// パッドが繋がっていないときは、薄い色で一言そえる。
 		if (!pad)
 			s.drawTextInRect(Rect{kPdBox.x(), kStick.y + kStickR + 16.0f, kPdBox.width(), 22.0f}, "パッド みつからない",
-			                 theme::kSubtle, 15.0f, Screen::TextAlignH::Center, Screen::TextAlignV::Middle);
+			                 theme::kSubtle, 15.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 
 		chapterControls(s, "キー: おすと図が光る　マウス: うごかす／クリック　パッド: スティックとボタン");
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 };
 
 // この構造体を DLL の入口に結びつける (これ 1 行でゲームとして読み込めるようになる)。

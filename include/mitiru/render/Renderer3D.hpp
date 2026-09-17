@@ -7,9 +7,14 @@
 ///          統合的に管理し、drawMesh()一発でメッシュを描画できる。
 ///          実装本体は detail/Renderer3D_Setup_impl.hpp / detail/Renderer3D_Draw_impl.hpp。
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <memory>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <sgc/math/Mat4.hpp>
@@ -17,12 +22,15 @@
 #include <sgc/math/Vec4.hpp>
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/GlmBridge.hpp>
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/DefaultShaders3D.hpp>
 #include <mitiru/render/ToonShaders3D.hpp>
 #include <mitiru/render/NPRShaders3D.hpp>
 #include <mitiru/render/MultiLightShaders3D.hpp>
+#include <mitiru/render/FrustumCulling.hpp>
+#include <mitiru/render/OcclusionCuller.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/LightArrayCB.hpp>
 #include <mitiru/render/Cubemap.hpp>
@@ -36,6 +44,8 @@
 #include <mitiru/gfx/IBuffer.hpp>
 #include <mitiru/gfx/IDevice.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
+#include <mitiru/render/ISceneFx.hpp>
+#include <mitiru/render/experimental/IExperimentalRenderer3D.hpp>
 
 #include <mitiru/debug/TracyZones.hpp>
 
@@ -117,9 +127,67 @@ struct Renderer3DConfig
 /// renderer.drawMesh(cubeMesh, worldMat, material);
 /// renderer.endFrame();
 /// @endcode
-class Renderer3D : public IRenderer3D
+class Renderer3D : public IRenderer3D, public ISceneFx, public IExperimentalRenderer3D
 {
 public:
+	// DX11 は ISceneFx / IExperimentalRenderer3D の大半を override せず既定 no-op のまま使う。
+	// IRenderer3D 側の後方互換転送関数と同名の virtual がここで多重継承されるため、
+	// 自分で override しないメンバは `using` で ISceneFx / IExperimentalRenderer3D 側を
+	// 明示的に選び、曖昧な名前解決を避ける（override 済みのメンバはここに列挙しない）。
+	using ISceneFx::setShadowEnabled;
+	using ISceneFx::setShadowDirection;
+	using ISceneFx::setShadowCaster;
+	using ISceneFx::setOutlineEnabled;
+	using ISceneFx::isOutlineEnabled;
+	using ISceneFx::setOutlineMode;
+	using ISceneFx::outlineMode;
+	using ISceneFx::setOutlineParams;
+	using ISceneFx::setToonShadowTint;
+	using ISceneFx::setFog;
+	using ISceneFx::setTonemapExposure;
+	using ISceneFx::tonemapExposure;
+	using ISceneFx::setTonemapGamma;
+	using ISceneFx::tonemapGamma;
+	using ISceneFx::setCascadedShadowAutoFit;
+	using ISceneFx::setShadowCascadeCount;
+	using IExperimentalRenderer3D::loadSplatScene;
+	using IExperimentalRenderer3D::drawSplats;
+	using IExperimentalRenderer3D::splatBounds;
+	using IExperimentalRenderer3D::drawLive2D;
+	using IExperimentalRenderer3D::live2dLookAt;
+	using IExperimentalRenderer3D::live2dTap;
+	using IExperimentalRenderer3D::live2dStage;
+	using IExperimentalRenderer3D::enableNeuralFx;
+	using IExperimentalRenderer3D::enableRelight;
+	using IExperimentalRenderer3D::setRelightDepthModel;
+	using IExperimentalRenderer3D::requestDevelop;
+	using IExperimentalRenderer3D::tickDevelop;
+	using IExperimentalRenderer3D::clearDevelop;
+	using IExperimentalRenderer3D::styleReady;
+	using IExperimentalRenderer3D::styleImageData;
+	using IExperimentalRenderer3D::styleImageW;
+	using IExperimentalRenderer3D::styleImageH;
+	using IExperimentalRenderer3D::setStyleStrength;
+	using IExperimentalRenderer3D::bakeStyleToSplats;
+	using IExperimentalRenderer3D::resetSplatColors;
+	using IExperimentalRenderer3D::bakedFraction;
+	using IExperimentalRenderer3D::captureTargetFromStyle;
+	using IExperimentalRenderer3D::setShowTarget;
+	using IExperimentalRenderer3D::hasTarget;
+	using IExperimentalRenderer3D::matchScore;
+	using IExperimentalRenderer3D::worldToScreen;
+	using IExperimentalRenderer3D::drawSolid;
+	using IExperimentalRenderer3D::drawModel;
+	using IExperimentalRenderer3D::drawSkinnedModel;
+	using IExperimentalRenderer3D::drawModelRot;
+
+	/// @brief queryInterface 相当: 自分自身を ISceneFx として返す
+	[[nodiscard]] ISceneFx* sceneFx() noexcept override { return this; }
+	[[nodiscard]] const ISceneFx* sceneFx() const noexcept override { return this; }
+	/// @brief queryInterface 相当: 自分自身を IExperimentalRenderer3D として返す
+	[[nodiscard]] IExperimentalRenderer3D* experimental() noexcept override { return this; }
+	[[nodiscard]] const IExperimentalRenderer3D* experimental() const noexcept override { return this; }
+
 	/// @brief デフォルトコンストラクタ
 	Renderer3D() noexcept = default;
 
@@ -128,6 +196,56 @@ public:
 	[[nodiscard]] int drawCallCount() const noexcept override
 	{
 		return m_drawCallCount;
+	}
+
+	/// @brief 視錐台カリングの有効/無効を切り替える（既定 ON）
+	void setFrustumCullingEnabled(bool enabled) noexcept override
+	{
+		m_frustumCullingEnabled = enabled;
+	}
+
+	/// @brief 視錐台カリングが有効かを返す
+	[[nodiscard]] bool isFrustumCullingEnabled() const noexcept override
+	{
+		return m_frustumCullingEnabled;
+	}
+
+	/// @brief 直前フレームでカリングされたメッシュ数を取得する
+	[[nodiscard]] int culledCount() const noexcept override
+	{
+		return m_culledCount;
+	}
+
+	/// @brief オクルージョンカリングの有効/無効を切り替える（既定 OFF）
+	/// @details ON 自体は常に要求どおり反映する。深度バッファが MSAA のときの
+	///          読み戻し不可は endFrame 側 (updateOcclusionDepth) が warnOnce 付きで
+	///          黙って無視する（isOcclusionCullingEnabled() の意味を変えないため）。
+	void setOcclusionCullingEnabled(bool enabled) noexcept override
+	{
+		m_occlusionCullingEnabled = enabled;
+	}
+
+	/// @brief 深度バッファが MSAA で、オクルージョン深度読み戻しが機能しないかを返す
+	/// @details 通常は min-depth resolve パス（フルスクリーン PS で
+	///          `Texture2DMS<float>` を Load）が MSAA 深度も読み戻すため false。
+	///          resolve 用シェーダーのコンパイルに失敗した環境でのみ true になる
+	///          （`setOcclusionCullingEnabled(true)` 自体は受理されるが
+	///          `isOccluded` 判定は常に不発＝何も隠されない）。
+	[[nodiscard]] bool isOcclusionDepthReadbackUnsupported() const noexcept
+	{
+		return m_depthIsMultisampled && m_occlusionResolvePipelineFailed;
+	}
+
+	/// @brief オクルージョンカリングが有効かを返す
+	[[nodiscard]] bool isOcclusionCullingEnabled() const noexcept override
+	{
+		return m_occlusionCullingEnabled;
+	}
+
+	/// @brief 直前フレームでオクルージョン判定によりスキップされたメッシュ数
+	[[nodiscard]] int occludedCount() const noexcept override
+	{
+		return m_occludedCount;
 	}
 
 	/// @brief 初期化済みかどうかを取得する
@@ -222,6 +340,9 @@ public:
 			camera.fov(), camera.aspectRatio(),
 			camera.nearClip(), camera.farClip());
 		m_cameraPosition = camera.position();
+		// カリング判定は描画用射影 (Z[0,1] DX 規約) と切り離し、camera 自身の
+		// GL規約 viewProjectionMatrix() から視錐台を作る (Frustum::extractFromCamera 参照)。
+		m_frustum.extractFromCamera(camera);
 	}
 
 	/// @brief DX 用 RH perspective (Z[0,1])
@@ -363,11 +484,27 @@ public:
 	              const sgc::Mat4f& worldTransform,
 	              const Material& material) override;
 
+	/// @brief 同一メッシュを複数のワールド行列で GPU instancing 描画する
+	/// @details per-instance vertex buffer (D3D11_INPUT_PER_INSTANCE_DATA) 方式。
+	///          `kInstanceBatchMax` 体ごとにバッチ分割し、視錐台カリングは
+	///          インスタンス単位（バッチ内のみを VB へ書く）で行う。
+	void drawMeshInstanced(const Mesh& mesh,
+	                       std::span<const sgc::Mat4f> worlds,
+	                       const Material* material) override;
+
 	/// @brief フレーム描画を終了する
 	/// @note アウトライン描画には ToonPipeline を使う。
 	void endFrame() override
 	{
 		m_outlineQueue.clear();
+		if (m_occlusionCullingEnabled)
+		{
+			++m_occlusionFrameCounter;
+			if (m_occlusionFrameCounter % kOcclusionUpdateInterval == 0)
+			{
+				updateOcclusionDepth();
+			}
+		}
 	}
 
 private:
@@ -417,6 +554,9 @@ private:
 	[[nodiscard]] ComPtr<ID3D11Buffer> createDynamicIndexBuffer(
 		const void* data, UINT sizeBytes);
 
+	/// @brief drawMesh 用 VB/IB を取得する（`getOrUploadAlbedoSrv` と同じ dirty 方式で CreateBuffer を回避）
+	[[nodiscard]] std::pair<ID3D11Buffer*, ID3D11Buffer*> getOrUploadMeshBuffers(const Mesh& mesh);
+
 	/// @brief テクスチャデータをGPUにアップロードする
 	void uploadTexture(const Texture& tex);
 
@@ -431,6 +571,120 @@ private:
 
 	/// @brief アウトラインパス（drawMesh内から呼ばれる、メイン描画の前に実行）
 	void drawOutlinePass(const Mesh& mesh, const sgc::Mat4f& worldTransform);
+
+	// ── オクルージョンカリング（CPU Hi-Z、前フレームの深度を使う近似）─────
+
+	/// @brief ローカル AABB をワールド変換し、外接する `CullAABB` を作る
+	/// @details 8頂点変換 + min/max。`Frustum::isMeshVisible` と同じ近似
+	///          （非一様スケール/回転でも安全、厳密な OBB ではない）。
+	[[nodiscard]] static CullAABB worldOcclusionAABB(const Mesh::AABB& local,
+	                                                 const sgc::Mat4f& world) noexcept
+	{
+		const sgc::Vec3f corners[8] = {
+			{local.min.x, local.min.y, local.min.z}, {local.max.x, local.min.y, local.min.z},
+			{local.min.x, local.max.y, local.min.z}, {local.max.x, local.max.y, local.min.z},
+			{local.min.x, local.min.y, local.max.z}, {local.max.x, local.min.y, local.max.z},
+			{local.min.x, local.max.y, local.max.z}, {local.max.x, local.max.y, local.max.z},
+		};
+		CullAABB box;
+		box.minX = box.minY = box.minZ = std::numeric_limits<float>::max();
+		box.maxX = box.maxY = box.maxZ = -std::numeric_limits<float>::max();
+		for (const auto& c : corners)
+		{
+			const auto w = world.transformPoint(c);
+			box.minX = std::min(box.minX, w.x); box.maxX = std::max(box.maxX, w.x);
+			box.minY = std::min(box.minY, w.y); box.maxY = std::max(box.maxY, w.y);
+			box.minZ = std::min(box.minZ, w.z); box.maxZ = std::max(box.maxZ, w.z);
+		}
+		return box;
+	}
+
+	/// @brief 現在の view*proj を `OcclusionCuller::isOccluded` が期待する
+	///        column-major float[16] へ変換する（`Frustum::extractFromCamera` と同じ変換）
+	/// @details DX 規約 (Z[0,1]) の `m_projMatrix` をそのまま使う。深度読み戻しも
+	///          同じ DX 規約のため、ここで GL 規約 (Z[-1,1]) に切り替えると
+	///          occlusion テストの ndcZ と Hi-Z の値域が食い違う。
+	[[nodiscard]] std::array<float, 16> occlusionViewProj() const noexcept
+	{
+		const sgc::Mat4f vp = m_projMatrix * m_viewMatrix;
+		std::array<float, 16> m{};
+		for (int c = 0; c < 4; ++c)
+		{
+			for (int r = 0; r < 4; ++r)
+			{
+				m[static_cast<std::size_t>(c * 4 + r)] = vp.m[r][c];
+			}
+		}
+		return m;
+	}
+
+	/// @brief 前フレームの深度バッファを読み戻し、間引いて OcclusionCuller に渡す
+	/// @details staging map は GPU 完了待ちを伴うためコストがある。
+	///          `kOcclusionUpdateInterval` フレームに 1 回だけ呼ぶ（endFrame から）。
+	void updateOcclusionDepth();
+
+	/// @brief MSAA 深度の min-depth resolve 用 VS/PS を（未生成なら）コンパイルする
+	void ensureOcclusionResolvePipeline();
+
+	/// @brief オクルージョン resolve 用の単一サンプル R32_FLOAT RT + staging を
+	///        (未生成、または深度と違うサイズなら) 生成し直す
+	[[nodiscard]] bool ensureOcclusionResolveTargets(UINT width, UINT height);
+
+	/// @brief MSAA 深度を min-depth resolve パスで読み戻し OcclusionCuller に渡す
+	/// @return resolve パイプラインが使えて読み戻せたら true
+	[[nodiscard]] bool resolveMultisampledOcclusionDepth(UINT width, UINT height);
+
+	// ── GPU instancing (drawMeshInstanced 用) ──────────────────
+
+	/// @brief 1インスタンス分のワールド行列（HLSL 側で `float4x4(row0..row3)` として
+	///        再構成する 4× float4）
+	struct InstanceData
+	{
+		float row0[4];
+		float row1[4];
+		float row2[4];
+		float row3[4];
+	};
+
+	/// @brief 1バッチあたりの最大インスタンス数
+	static constexpr std::size_t kInstanceBatchMax = 1024;
+
+	/// @brief sgc::Mat4f を instance vertex 属性用の行データへ変換する
+	/// @details `updateTransformCB` の cbuffer 経路 (toHLSL、暗黙転置あり) と異なり、
+	///          頂点属性からの `float4x4(row0,row1,row2,row3)` 構築は転置を伴わない。
+	///          そのため `toColumnMajor` (glm の列を行として詰める) を使い、結果として
+	///          cbuffer 経由と数値的に同じワールド変換になるようにしている。
+	[[nodiscard]] static InstanceData toInstanceData(const sgc::Mat4f& world) noexcept;
+
+	/// @brief インスタンシング用頂点シェーダー・入力レイアウトを（未生成なら）生成する
+	void ensureInstancedPipeline();
+
+	/// @brief インスタンス用頂点バッファ（`kInstanceBatchMax` 分）を（未生成なら）生成する
+	/// @return 生成済み/生成成功なら true
+	[[nodiscard]] bool ensureInstanceBuffer();
+
+	/// @brief インスタンス描画用のテクスチャ・サンプラーを束縛する（drawMesh と同じ規則）
+	void bindMaterialTexture(const Material& material);
+
+	/// @brief PS スロット0 の SRV/サンプラーを、直前にバインドした値と異なる場合だけ設定する
+	void bindAlbedoSrvIfChanged(ID3D11ShaderResourceView* srv);
+
+	/// @brief `m_instanceScratch` の内容を instance VB へ Map し 1 バッチ分draw する
+	void drawInstanceBatch(ID3D11Buffer* vb, ID3D11Buffer* ib,
+	                       UINT vertexCount, UINT indexCount);
+
+	/// @brief インスタンシング用頂点シェーダー（通常 Phong）
+	ComPtr<ID3D11VertexShader> m_instancedVS;
+	/// @brief インスタンシング用頂点シェーダー（マルチライト）
+	ComPtr<ID3D11VertexShader> m_instancedMultiVS;
+	/// @brief インスタンシング用入力レイアウト（Vertex3D + InstanceData）
+	ComPtr<ID3D11InputLayout> m_instancedInputLayout;
+	/// @brief インスタンスデータ用動的頂点バッファ（`kInstanceBatchMax` 容量で確保）
+	ComPtr<ID3D11Buffer> m_instanceVB;
+	/// @brief インスタンスデータの CPU 側スクラッチ（バッチごとに再利用、毎回 alloc しない）
+	std::vector<InstanceData> m_instanceScratch;
+	/// @brief インスタンシング用シェーダーのコンパイルに失敗したか（以後はループ描画にフォールバック）
+	bool m_instancedPipelineFailed = false;
 
 	/// @brief アウトライン描画（旧API、互換用）
 	void drawMeshOutline(const Mesh& mesh, const sgc::Mat4f& worldTransform);
@@ -460,6 +714,11 @@ private:
 
 	/// @brief 深度ステンシルビュー
 	ComPtr<ID3D11DepthStencilView> m_depthStencilView;
+	/// @brief 深度バッファがバックバッファの MSAA に合わせて複数サンプルで作られたか
+	/// @details createDepthBuffer が設定する。true の間はオクルージョン深度読み戻し
+	///          (単一サンプル前提) が使えず updateOcclusionDepth が warnOnce 付きで
+	///          スキップする（isOcclusionCullingEnabled() の意味自体は変えない）。
+	bool m_depthIsMultisampled = false;
 	/// @brief 深度ステンシルステート
 	ComPtr<ID3D11DepthStencilState> m_depthStencilState;
 	/// @brief ラスタライザステート
@@ -481,10 +740,27 @@ private:
 
 	/// Material.albedoTexture からの per-Texture* SRV キャッシュ（DX11）
 	std::unordered_map<const Texture*, ComPtr<ID3D11ShaderResourceView>> m_albedoSrvCache;
+
+	/// @brief drawMesh 用 VB/IB キャッシュの 1 エントリ（`Mesh::revision()` が変わるまで再利用）
+	struct MeshGpuBuffers
+	{
+		ComPtr<ID3D11Buffer> vb;
+		ComPtr<ID3D11Buffer> ib;   ///< インデックス無しメッシュでは常に null
+		uint64_t revision = 0;
+	};
+	/// @brief per-Mesh* VB/IB キャッシュ（DX11）。Mesh 削除後のアドレス再利用は
+	///        revision が process 全体で単調増加するため誤ヒットしない。
+	std::unordered_map<const Mesh*, MeshGpuBuffers> m_meshBufferCache;
+
 	/// @brief 現在バインドされているテクスチャSRV
 	ComPtr<ID3D11ShaderResourceView> m_currentSRV;
 	/// @brief テクスチャサンプラーステート
 	ComPtr<ID3D11SamplerState> m_samplerState;
+
+	/// @brief PS スロット0 に現在バインド済みの SRV（`bindAlbedoSrvIfChanged` の state cache）
+	ID3D11ShaderResourceView* m_boundPSSrv0 = nullptr;
+	/// @brief PS スロット0 に現在バインド済みのサンプラー（同上）
+	ID3D11SamplerState* m_boundPSSampler0 = nullptr;
 
 	/// @brief ビュー行列
 	sgc::Mat4f m_viewMatrix;
@@ -516,6 +792,28 @@ private:
 	/// @brief skybox を描画する（drawMesh の最初の呼び出しで一度だけ）
 	void drawSkyboxIfNeeded();
 
+	/// @brief オクルージョン深度読み戻し用のステージングテクスチャ（深度と同サイズ、遅延生成）
+	ComPtr<ID3D11Texture2D> m_occlusionStaging;
+	/// @brief 上記ステージングの生成済みサイズ（depth buffer が resize されたら作り直す）
+	UINT m_occlusionStagingW = 0;
+	UINT m_occlusionStagingH = 0;
+	/// @brief 間引き後の深度スクラッチ（毎回 alloc しない）
+	std::vector<float> m_occlusionDepthScratch;
+
+	/// @brief 深度バッファの SRV（MSAA 時のみ。`createDepthBuffer` が生成）
+	ComPtr<ID3D11ShaderResourceView> m_depthSRV;
+	/// @brief min-depth resolve 用 VS/PS（MSAA 深度専用、遅延コンパイル）
+	ComPtr<ID3D11VertexShader> m_occlusionResolveVS;
+	ComPtr<ID3D11PixelShader> m_occlusionResolvePS;
+	/// @brief resolve 用シェーダーのコンパイルに失敗したか（以後は resolve を諦める）
+	bool m_occlusionResolvePipelineFailed = false;
+	/// @brief resolve 先の単一サンプル R32_FLOAT RT + staging（深度と同サイズ、遅延生成）
+	ComPtr<ID3D11Texture2D> m_occlusionResolveRT;
+	ComPtr<ID3D11RenderTargetView> m_occlusionResolveRTV;
+	ComPtr<ID3D11Texture2D> m_occlusionResolveStaging;
+	UINT m_occlusionResolveW = 0;
+	UINT m_occlusionResolveH = 0;
+
 #endif // _WIN32
 
 	/// @brief 描画状態
@@ -539,6 +837,26 @@ private:
 	bool m_frameActive = false;  ///< 今フレームでbeginFrame()が呼ばれたか
 	/// @brief ドローコール数
 	int m_drawCallCount = 0;
+
+	/// @brief 視錐台（setCamera で毎回更新）
+	Frustum m_frustum;
+	/// @brief 視錐台カリング有効フラグ（既定 ON）
+	bool m_frustumCullingEnabled = true;
+	/// @brief 直前フレームでカリングされたメッシュ数
+	int m_culledCount = 0;
+
+	/// @brief オクルージョンカラー（CPU Hi-Z、前フレームの深度）。既定 OFF。
+	OcclusionCuller m_occlusionCuller;
+	bool m_occlusionCullingEnabled = false;
+	/// @brief 直前フレームでオクルージョン判定によりスキップされたメッシュ数
+	int m_occludedCount = 0;
+	/// @brief endFrame が呼ばれた回数（kOcclusionUpdateInterval ごとに深度読み戻し）
+	unsigned m_occlusionFrameCounter = 0;
+	/// @brief 深度読み戻しの間引き間隔（フレーム）。staging map は GPU 完了待ちを
+	///        伴い毎フレームは高コストなため、隠蔽判定を 1 フレーム以上遅延させて薄める。
+	static constexpr unsigned kOcclusionUpdateInterval = 4;
+	/// @brief 深度の間引きストライド（px）。Hi-Z 構築コストと隠蔽判定の粒度のトレードオフ。
+	static constexpr int kOcclusionDownsampleStride = 8;
 };
 
 } // namespace mitiru::render

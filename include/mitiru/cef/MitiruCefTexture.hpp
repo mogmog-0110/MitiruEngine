@@ -57,7 +57,9 @@
 #include <mitiru/cef/CefUploadPlanner.hpp>   // planUploadPlacements (#29、GPU 非依存の純ロジック)
 
 // CefRect 型を使うために CEF ヘッダーをインクルードする
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_render_handler.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 #pragma comment(lib, "d3dcompiler.lib")
 

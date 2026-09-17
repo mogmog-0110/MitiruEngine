@@ -431,3 +431,10 @@ All platform and graphics objects are accessed exclusively through abstract inte
 | OpenGL | `MITIRU_HAS_OPENGL` | OpenGL graphics backend |
 
 All optional dependencies degrade gracefully. When absent, null/stub implementations are used automatically.
+
+### アニメーションブレンド
+
+`IOzzAnimationSampler::blendWith(other, weight)` は2つのサンプラーを重み補間する
+（weight=0で自身、1でother、中間は線形補間）。Ozz実装は関節のローカル姿勢を
+`ozz::animation::BlendingJob` で混ぜ、Null実装（`MITIRU_HAS_OZZ`未定義時）は
+取得済みのワールド行列同士を補間する。歩行→走行のような遷移で使う。

@@ -51,6 +51,34 @@ private:
 	std::uint32_t m_size;     ///< サイズ（バイト）
 };
 
+/// @brief ヌルレンダーターゲット
+/// @details GPUリソースを持たず、幅・高さだけ保持する。RenderTargetPool のテストダブル用。
+class NullRenderTarget final : public IRenderTarget
+{
+public:
+	/// @brief コンストラクタ
+	/// @param width レンダーターゲット幅
+	/// @param height レンダーターゲット高さ
+	NullRenderTarget(int width, int height) noexcept
+		: m_width(width)
+		, m_height(height)
+	{
+	}
+
+	/// @brief レンダーターゲット幅を取得する
+	[[nodiscard]] int width() const noexcept override { return m_width; }
+
+	/// @brief レンダーターゲット高さを取得する
+	[[nodiscard]] int height() const noexcept override { return m_height; }
+
+	/// @brief 関連付けられたテクスチャを取得する（常にnullptr）
+	[[nodiscard]] ITexture* texture() noexcept override { return nullptr; }
+
+private:
+	int m_width;   ///< 幅
+	int m_height;  ///< 高さ
+};
+
 /// @brief ヌルコマンドリスト
 /// @details 全操作が何もしないコマンドリスト実装。
 class NullCommandList final : public ICommandList
@@ -139,6 +167,13 @@ public:
 	[[nodiscard]] std::unique_ptr<ICommandList> createCommandList() override
 	{
 		return std::make_unique<NullCommandList>();
+	}
+
+	/// @brief 独立したレンダーターゲットを生成する（ヌル実装、常に成功する）
+	[[nodiscard]] std::unique_ptr<IRenderTarget> createRenderTarget(
+		const RenderTargetDesc& desc) override
+	{
+		return std::make_unique<NullRenderTarget>(desc.width, desc.height);
 	}
 };
 

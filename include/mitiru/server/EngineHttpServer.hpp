@@ -69,6 +69,34 @@ struct EngineCallbacks
 	std::function<std::string(int, int)>               aiStateDiff; ///< reflectDiff(ring.at(from), at(to))
 	std::function<std::string(const std::string&, int)> aiBranch;   ///< (keysCsv, frames) → 反実仮想結果
 	std::function<int()>                               aiRingSize;  ///< rewind ring の保持フレーム数
+	// aiStatePut: {"field": value, ...} を書き戻す (3-3)。branch と同じ経路 (現フレームを
+	// 複製して書き換え、live には残さない) なので決定論も rewind ring も壊れない。
+	// statusOut に 200/400(unknown field・kind mismatch)/503(未配線) を書く。
+	std::function<std::string(const std::string& fieldsJson, int& statusOut)> aiStatePut;
+	// O6 なぜビュー: フィールドを最後に書いた phase (game opt-in) + ring 8 フレームの値推移。
+	std::function<std::string(const std::string& fieldPath)> aiWhy;
+	// 型の台帳: game が MITIRU_SPAWNER_TYPES_EXPORT で出した「置ける型」の一覧 JSON (HE2 §4)。
+	// 未対応 game でも {"supported":false,"types":[]} を返す (「型が無い」と読ませない)。
+	std::function<std::string()> aiTypes;
+	// O4 分岐候補: {"variants":[{"overrides":{...}},...], "keys":"...", "frames":N} を
+	// そのまま渡し、各案を K フレーム進めた結果 JSON をまとめて返す (整形は callback 側)。
+	std::function<std::string(const std::string& bodyJson)> aiCandidates;
+
+	// P10「1 フレームの解剖図」(/api/frame/anatomy?frame=N): 入力→書かれたフィールド(blame付き)
+	// →描画コマンド→音を 1 レスポンスで返す。既存の why/diff/drawLog/audioLog を束ねるだけの
+	// callback で、新しい状態は持たない (Engine_Http.hpp 側の実装コメント参照)。
+	std::function<std::string(int framesAgo)> frameAnatomy;
+
+	// ── 分岐エディタ (ADR 0035): 残す / 捨てる ──────────────────────
+	// aiStatePut は毎回「複製→書き換え→読む→復元」で live には残らない (前述コメント参照)。
+	// commit は同じ書き換えを復元せずそのまま live GameMemory へ確定する ("残す" = O3 の
+	// 「以後の起動・録画はこの新しい状態を正史として扱う」の GameMemory 版。Spawner JSON への
+	// 追加の書き戻しは Game 側が `module::writeBackFieldsToJson` を使って自分で行う対象で、
+	// host はここでは行わない (Host-Game 境界は signal-only。host はどの JSON ファイルが
+	// どの struct を生んだかを知らない))。discard は何もせず現在の live state を返すだけ
+	// (ADR 0035 の「捨てる: 何もしない」を明示的な HTTP 応答として揃える)。
+	std::function<std::string(const std::string& fieldsJson, int& statusOut)> aiCommit;
+	std::function<std::string()>                                             aiDiscard;
 
 	// ── Inspector 観測 ─────────────────────────────────
 	// Inspector key-value ストアへの read-only アクセス。
@@ -428,6 +456,9 @@ private:
 			if (path == "/api/ai/state")          { handleAiState(req, resp); return; }
 			if (path == "/api/ai/diff")           { handleAiDiff(req, resp); return; }
 			if (path == "/api/ai/ringsize")       { handleAiRingSize(req, resp); return; }
+			if (path == "/api/ai/why")            { handleAiWhy(req, resp); return; }
+			if (path == "/api/ai/types")          { handleAiTypes(req, resp); return; }
+			if (path == "/api/frame/anatomy")     { handleFrameAnatomy(req, resp); return; }
 
 			// ── Inspector / 観測 ──────────────────────────────────
 			if (path == "/api/ai/frame")            { handleAiFrame(req, resp); return; }
@@ -463,6 +494,9 @@ private:
 			if (path == "/api/game/run")             { handleRunGame(req, resp); return; }
 			if (path == "/api/game/stop")            { handleStopGame(req, resp); return; }
 			if (path == "/api/ai/branch")            { handleAiBranch(req, resp); return; }
+			if (path == "/api/ai/commit")            { handleAiCommit(req, resp); return; }
+			if (path == "/api/ai/discard")           { handleAiDiscard(req, resp); return; }
+			if (path == "/api/ai/candidates")        { handleAiCandidates(req, resp); return; }
 
 			if (path.rfind("/api/scene/node/", 0) == 0 && path.find("/trait") != std::string::npos
 				&& path.find("/trait/") == std::string::npos)
@@ -482,6 +516,7 @@ private:
 			}
 			if (path == "/api/editor/camera")   { handleSetCamera(req, resp); return; }
 			if (path == "/api/editor/select")    { handleSelectNode(req, resp); return; }
+			if (path == "/api/ai/state")         { handleAiStatePut(req, resp); return; }
 		}
 
 		if (req.method == "DELETE")
@@ -536,6 +571,13 @@ private:
 	void handleAiDiff(const HttpRequest& req, HttpResponse& resp);
 	void handleAiRingSize(const HttpRequest&, HttpResponse& resp);
 	void handleAiBranch(const HttpRequest& req, HttpResponse& resp);
+	void handleAiStatePut(const HttpRequest& req, HttpResponse& resp);
+	void handleAiCommit(const HttpRequest& req, HttpResponse& resp);
+	void handleAiDiscard(const HttpRequest& req, HttpResponse& resp);
+	void handleAiWhy(const HttpRequest& req, HttpResponse& resp);
+	void handleAiTypes(const HttpRequest& req, HttpResponse& resp);
+	void handleAiCandidates(const HttpRequest& req, HttpResponse& resp);
+	void handleFrameAnatomy(const HttpRequest& req, HttpResponse& resp);
 	void handleHealth(const HttpRequest&, HttpResponse& resp);
 	void handleObserveSchema(const HttpRequest&, HttpResponse& resp);
 	void handleObserveInspect(const HttpRequest& req, HttpResponse& resp);

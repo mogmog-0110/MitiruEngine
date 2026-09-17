@@ -17,9 +17,14 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #ifdef __EMSCRIPTEN__
 #include <mitiru/audio/WebAudioEngine.hpp>
+#endif
+
+#ifdef _WIN32
+#include <mitiru/platform/win32/Win32Window.hpp>
 #endif
 
 #include <mitiru/cef/StateStore.hpp>
@@ -28,10 +33,13 @@
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/debug/DebugPrint.hpp>
+#include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/GameMemorySave.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
+#include <mitiru/module/detail/LayerDt.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/Reflect.hpp>
 #include <mitiru/observe/SeriesMarkers.hpp>
@@ -85,13 +93,497 @@ template <std::size_t N>
 	return l;
 }
 
+/// @brief inspector の "gameMemory" セクション ({title,order,meta,state}) を組み立てる (C15)。
+///        scrub-hold 時 (pushScrubHoldGameMemory) と通常フレームの inspector push が
+///        同じ組み立てを 2 箇所で重複させていたのを 1 箇所に集約する。
+inline cef::json buildGameMemoryJson(
+	const mitiru::module::ModuleApi& api,
+	const void*                      memory,
+	std::uint32_t                    memorySize)
+{
+	cef::json fieldOrder = cef::json::array();
+	cef::json fieldMeta  = cef::json::object();
+	for (std::uint32_t fi = 0; fi < static_cast<std::uint32_t>(api.reflectFieldCount); ++fi)
+	{
+		const auto& f = api.reflectFields[fi];
+		fieldOrder.push_back(f.name);
+		fieldMeta[f.name] = cef::json{{"typeTag", f.typeTag}, {"elemType", f.elemType}};
+	}
+	return cef::json{
+		{"title", "Game memory"},
+		{"order", std::move(fieldOrder)},
+		{"meta", std::move(fieldMeta)},
+		{"state", mitiru::observe::reflectToJson(
+			static_cast<const std::uint8_t*>(memory), memorySize,
+			api.reflectFields, api.reflectFieldCount,
+			api.reflectSchemas, api.reflectSchemaCount)}};
+}
+
+/// @brief scrub-hold 中の inspector 更新 (9-2)。on_update を呼ばず、rewind 済み GameMemory を
+///        MITIRU_REFLECT の記述子だけで読み直し、"gameMemory" キーだけ差し替えて push する。
+///        perf/audio/rewind 等の他キーは直近の out (lastInspectorOut) をそのまま残す。
+inline void pushScrubHoldGameMemory(
+	mitiru::observe::SharedSnapshot*       snapshot,
+	cef::json&                             lastInspectorOut,
+	const mitiru::module::ModuleApi&       api,
+	const void*                            memory,
+	std::uint32_t                          memorySize)
+{
+	if (snapshot == nullptr || api.reflectFieldCount <= 0 || memory == nullptr || memorySize == 0)
+	{ return; }
+
+	cef::json out = lastInspectorOut.is_object() ? lastInspectorOut : cef::json::object();
+	out["gameMemory"] = buildGameMemoryJson(api, memory, memorySize);
+	lastInspectorOut = out;
+	snapshot->write(out);
+}
+
+/// @brief `FrameIntents::debugDraws` の減衰保持 (v30、§9-1)。intent 自体は録画されない
+///        (ModuleApi.hpp の DebugDrawIntent コメント参照) ので、durationSec > 0 のものを
+///        複数フレーム描き続ける役目は host (この tracker) が担う。ModuleAdapter /
+///        StaticAdapter がそれぞれ 1 個ずつ持つ (runModule 呼び出しの生存期間 = 対局全体)。
+struct DebugDrawTracker
+{
+	struct Slot
+	{
+		mitiru::module::DebugDrawIntent draw;
+		float remain = 0.0f;
+		bool  active = false;
+	};
+	Slot slots[256];
+
+	/// このフレームの intents を取り込む。既存 slot を dt 分だけ減衰させ、
+	/// 期限切れを外してから新規分を空き slot へ入れる (満杯なら黙って捨てる)。
+	void ingest(const mitiru::module::FrameIntents& intents, float dt) noexcept
+	{
+		for (auto& s : slots)
+		{
+			if (!s.active) { continue; }
+			s.remain -= dt;
+			if (s.remain <= 0.0f) { s.active = false; }
+		}
+		const int cap = static_cast<int>(sizeof(intents.debugDraws) / sizeof(intents.debugDraws[0]));
+		const int n   = std::min<int>(intents.debugDrawCount, cap);
+		for (int i = 0; i < n; ++i)
+		{
+			for (auto& s : slots)
+			{
+				if (s.active) { continue; }
+				s.draw   = intents.debugDraws[i];
+				// durationSec=0 は「このフレームのみ」= 次の ingest で必ず期限切れにする。
+				s.remain = (s.draw.durationSec > 0.0f) ? s.draw.durationSec : dt;
+				s.active = true;
+				break;
+			}
+		}
+	}
+};
+
+/// @brief アクティブな DebugDrawTracker の内容を Screen へ重ねて描く。
+/// @details 3D カメラは game の on_draw (camera3D 呼び出し) が設定済みという前提で
+///          `Screen::projectToScreen` を使い、screen-space の線 / 円 / テキストへ落とす
+///          (専用の 3D 線描画パスが無いための実用的な近似。球は半径方向に 1 点だけ
+///          投影しておおよその画面半径を出す簡易法)。カメラ未設定 (projectToScreen が
+///          false) の draw は黙ってスキップする。
+inline void drawDebugDraws(mitiru::Screen& screen, const DebugDrawTracker& tracker) noexcept
+{
+	for (const auto& s : tracker.slots)
+	{
+		if (!s.active) { continue; }
+		const auto& d = s.draw;
+		const sgc::Colorf color{d.color[0], d.color[1], d.color[2], d.color[3]};
+
+		if (d.kind == 1)  // 線分
+		{
+			float x0, y0, x1, y1;
+			const bool on0 = screen.projectToScreen({d.a[0], d.a[1], d.a[2]}, x0, y0);
+			const bool on1 = screen.projectToScreen({d.b[0], d.b[1], d.b[2]}, x1, y1);
+			if (on0 && on1) { screen.drawLine({x0, y0}, {x1, y1}, color, 1.5f); }
+		}
+		else if (d.kind == 2)  // 箱 (8 頂点を投影して 12 辺)
+		{
+			sgc::Vec2f corners[8];
+			bool onScreen[8];
+			for (int i = 0; i < 8; ++i)
+			{
+				const float sx = d.a[0] + ((i & 1) ? d.b[0] : -d.b[0]);
+				const float sy = d.a[1] + ((i & 2) ? d.b[1] : -d.b[1]);
+				const float sz = d.a[2] + ((i & 4) ? d.b[2] : -d.b[2]);
+				float px, py;
+				onScreen[i] = screen.projectToScreen({sx, sy, sz}, px, py);
+				corners[i]  = {px, py};
+			}
+			static constexpr int kEdges[12][2] = {
+				{0,1},{2,3},{4,5},{6,7}, {0,2},{1,3},{4,6},{5,7}, {0,4},{1,5},{2,6},{3,7}};
+			for (const auto& e : kEdges)
+			{
+				if (onScreen[e[0]] && onScreen[e[1]])
+				{ screen.drawLine(corners[e[0]], corners[e[1]], color, 1.5f); }
+			}
+		}
+		else if (d.kind == 3)  // 球 (中心 + 半径方向 1 点から画面半径を近似)
+		{
+			float cx, cy, ex, ey;
+			const bool onC = screen.projectToScreen({d.a[0], d.a[1], d.a[2]}, cx, cy);
+			const bool onE = screen.projectToScreen({d.a[0] + d.b[0], d.a[1], d.a[2]}, ex, ey);
+			if (onC && onE)
+			{
+				const float dx = ex - cx, dy = ey - cy;
+				const float r  = std::sqrt(dx * dx + dy * dy);
+				screen.drawCircle({cx, cy}, r, color);
+			}
+		}
+		else if (d.kind == 4)  // 文字
+		{
+			float px, py;
+			if (screen.projectToScreen({d.a[0], d.a[1], d.a[2]}, px, py))
+			{
+				const int len = static_cast<int>(boundedLen(d.text));
+				screen.drawTextClipped({px, py, 256.0f, 24.0f},
+				                        std::string_view{d.text, static_cast<std::size_t>(len)}, color);
+			}
+		}
+	}
+}
+
+/// @brief 分岐エディタのシーンビュー (ADR 0035 O2) が使う「画面上の枠」1 個。
+/// `Canvas::beginObject(name)` でタグ付けされたコマンドの screen-space bbox を merge した結果。
+struct SceneViewObject
+{
+	std::uint32_t sourceId{};  ///< `fnv1a32(name)`。host 側で reflectFields の名前と突き合わせる
+	float x{}, y{}, w{}, h{};
+};
+
+/// @brief 現在フレームで `drainDrawCommands` が集めた `SceneViewObject` 列。draw() 直後に
+/// クリアして詰め、6 フレームに 1 度 (drainModuleFrameIntents の perf/gameMemory と同じ cadence)
+/// SharedSnapshot へ書き出す。Engine.hpp にメンバを増やさず、この header 内で完結させるための
+/// アクセサ (単一 host プロセス・単一描画スレッドという既存の前提は他の thread_local と同じ)。
+inline std::vector<SceneViewObject>& lastSceneViewObjects() noexcept
+{
+	static thread_local std::vector<SceneViewObject> objects;
+	return objects;
+}
+
+/// @brief `Canvas::beginObject(name, fieldX, fieldY)` (ADR 0035 O2/O3 追記) が明示した
+/// ドラッグ書き戻し先。`name+".x"/".y"` 規約を満たせない object (beko_run の px/py 等) 用の
+/// 上書き情報で、reflect フィールド名との自動突き合わせより優先して使う。
+struct SceneFieldMapping
+{
+	std::uint32_t sourceId{};
+	std::string   fieldX;
+	std::string   fieldY;
+};
+
+inline std::vector<SceneFieldMapping>& lastSceneFieldMappings() noexcept
+{
+	static thread_local std::vector<SceneFieldMapping> mappings;
+	return mappings;
+}
+
+/// @brief `sourceId` の bbox を `sceneOut` へ merge する (同じ id が複数コマンドに乗っていれば
+/// 外接矩形に広げる。通常は 1 object = 1 コマンドなので線形探索で十分)。
+inline void mergeSceneViewObject(std::vector<SceneViewObject>& sceneOut,
+                                  std::uint32_t sourceId, const sgc::Rectf& rect) noexcept
+{
+	for (auto& o : sceneOut)
+	{
+		if (o.sourceId != sourceId) { continue; }
+		const float x0 = std::min(o.x, rect.x()),         y0 = std::min(o.y, rect.y());
+		const float x1 = std::max(o.x + o.w, rect.x() + rect.width());
+		const float y1 = std::max(o.y + o.h, rect.y() + rect.height());
+		o.x = x0; o.y = y0; o.w = x1 - x0; o.h = y1 - y0;
+		return;
+	}
+	sceneOut.push_back(SceneViewObject{sourceId, rect.x(), rect.y(), rect.width(), rect.height()});
+}
+
+/// @brief `DrawCommandBuffer` (ADR 0025、ABI v32) を既存の `Screen` API へ 1:1 再生する。
+/// game 側で inline 展開された Screen 呼び出しが host のコンテナへ直接触るのが H-1/H-4 の
+/// 実体だったので、その inline 展開を host 側のこの関数だけに閉じ込める。
+/// @param sceneOut 非 null なら、`sourceId != 0` のコマンドの screen-space bbox を集める
+///        (ADR 0035 O2)。実際の座標変換 (camera 等) は Screen 側スタックが持つため、ここで
+///        読む `c.p[]` は「コマンド発行時点の値」であり push/popTransform を反映しない近似値。
+inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::DrawCommandBuffer& buf,
+                               mitiru::render::SpriteCache& spriteCache,
+                               std::vector<SceneViewObject>* sceneOut = nullptr) noexcept
+{
+	using mitiru::module::DrawCmdKind;
+
+	if (buf.droppedCount > 0)
+	{
+		mitiru::debug::warnOnce("draw.list.overflow",
+			"draw コマンドバッファが上限を超え、一部の描画が捨てられました");
+	}
+
+	// textPool 参照を bounded に文字列化する (offset/len が改ざん・破損していても
+	// out-of-range read をしない。v21 の bounded 読み統一と同型)。
+	const auto textOf = [&buf](std::uint32_t offset, std::uint32_t len) -> std::string_view
+	{
+		if (offset >= mitiru::module::kTextPoolBytes) { return {}; }
+		const std::uint32_t clampedLen = std::min(len, mitiru::module::kTextPoolBytes - offset);
+		return std::string_view{buf.textPool + offset, clampedLen};
+	};
+	const auto rectOf = [](const mitiru::module::DrawCommand& c) noexcept
+	{
+		return sgc::Rectf{c.p[0], c.p[1], c.p[2], c.p[3]};
+	};
+	const auto colorOf = [](const float (&c)[4]) noexcept
+	{
+		return sgc::Colorf{c[0], c[1], c[2], c[3]};
+	};
+
+	// ADR 0035 O2: sceneOut 用に PushTransform/PopTransform (translate+scale のみ) を
+	// 追いかける最小の累積変換。Screen 側の実変換 (std::stack<Transform2D>、回転込み) とは
+	// 別物の近似で、`Canvas::pushRotation` は追わない (ピボット回転までは MVP の範囲外、
+	// docs/BRANCH_EDITOR.md に明記)。beko_run の `applyCamera` のような
+	// 「1 回 push して一括 pop」の定番パターンなら screen 座標に正しく一致する。
+	struct Xform2D { float tx = 0.0f, ty = 0.0f, sx = 1.0f, sy = 1.0f; };
+	std::vector<Xform2D> xformStack;
+	xformStack.reserve(4);
+	xformStack.push_back(Xform2D{});
+	const auto applyXform = [](const Xform2D& t, const sgc::Rectf& r) noexcept
+	{
+		return sgc::Rectf{r.x() * t.sx + t.tx, r.y() * t.sy + t.ty, r.width() * t.sx, r.height() * t.sy};
+	};
+
+	// Screen の変換スタックはフレームで reset されないので、この drain が積んだ数を数えて末尾で
+	// 同じ数だけ pop する (あふれで PopTransform が捨てられていても釣り合う)。game が積んでいない
+	// 分 (host の camera 等) は pop しない。
+	int pushedDepth = 0;
+	const std::uint32_t n = std::min(buf.count, mitiru::module::kMaxDrawCommands);
+	for (std::uint32_t i = 0; i < n; ++i)
+	{
+		const auto& c = buf.commands[i];
+
+		if (sceneOut != nullptr)
+		{
+			// current(p) = outer(pushed(p)) の合成則で積む (Screen の M_new = M_old * T_push と同じ)。
+			if (c.kind == DrawCmdKind::PushTransform)
+			{
+				const Xform2D& outer = xformStack.back();
+				const Xform2D pushed{c.p[0], c.p[1], c.p[2], c.p[3]};
+				xformStack.push_back(Xform2D{
+					pushed.tx * outer.sx + outer.tx, pushed.ty * outer.sy + outer.ty,
+					outer.sx * pushed.sx, outer.sy * pushed.sy});
+			}
+			else if (c.kind == DrawCmdKind::PopTransform && xformStack.size() > 1)
+			{
+				xformStack.pop_back();
+			}
+		}
+
+		// ADR 0035 O2/O3 追記: 非描画マーカー。fieldX/fieldY 名を textPool から復元して控える
+		// (bbox マージ対象ではないので下の switch では default に落ちるだけで良い)。
+		if (sceneOut != nullptr && c.kind == DrawCmdKind::SceneFieldMap)
+		{
+			const std::string_view joined = textOf(c.textOffset, c.textLen);
+			const auto sep = joined.find('\0');
+			if (sep != std::string_view::npos)
+			{
+				lastSceneFieldMappings().push_back(SceneFieldMapping{
+					c.sourceId, std::string{joined.substr(0, sep)}, std::string{joined.substr(sep + 1)}});
+			}
+		}
+
+		// ADR 0035 O2: タグ付き (sourceId != 0) コマンドの bbox をシーンビュー用に集める。
+		// 対応する種のみ (矩形/テキスト/スプライト系は c.p[0..3] がそのまま dst rect、
+		// 円系は中心+半径から外接矩形を作る)。未対応種はピッキング対象にならないだけで
+		// 描画自体は通常どおり進む。上で追った累積変換を screen 座標化に適用する。
+		if (sceneOut != nullptr && c.sourceId != 0)
+		{
+			const Xform2D& xf = xformStack.back();
+			switch (c.kind)
+			{
+			case DrawCmdKind::Rect: case DrawCmdKind::RectFrame:
+			case DrawCmdKind::RoundedRect: case DrawCmdKind::RoundedRectFrame:
+			case DrawCmdKind::GradientRect: case DrawCmdKind::GradientRectH:
+			case DrawCmdKind::TextInRect: case DrawCmdKind::TextClipped: case DrawCmdKind::TextWrapped:
+			case DrawCmdKind::Sprite: case DrawCmdKind::SpriteRectById:
+				mergeSceneViewObject(*sceneOut, c.sourceId, applyXform(xf, rectOf(c)));
+				break;
+			case DrawCmdKind::Circle: case DrawCmdKind::CircleFrame:
+				mergeSceneViewObject(*sceneOut, c.sourceId, applyXform(xf,
+					sgc::Rectf{c.p[0] - c.p[2], c.p[1] - c.p[2], c.p[2] * 2.0f, c.p[2] * 2.0f}));
+				break;
+			case DrawCmdKind::Ellipse:
+				mergeSceneViewObject(*sceneOut, c.sourceId, applyXform(xf,
+					sgc::Rectf{c.p[0] - c.p[2], c.p[1] - c.p[3], c.p[2] * 2.0f, c.p[3] * 2.0f}));
+				break;
+			case DrawCmdKind::Ring: case DrawCmdKind::GlowRing:
+				mergeSceneViewObject(*sceneOut, c.sourceId, applyXform(xf,
+					sgc::Rectf{c.p[0] - c.p[2], c.p[1] - c.p[2], c.p[2] * 2.0f, c.p[2] * 2.0f}));
+				break;
+			case DrawCmdKind::SpriteById:
+				mergeSceneViewObject(*sceneOut, c.sourceId, applyXform(xf, sgc::Rectf{c.p[0], c.p[1], 1.0f, 1.0f}));
+				break;
+			default:
+				break;  // Line/Triangle/Polygon/GlowLine 等は矩形化の意味が薄く未対応
+			}
+		}
+
+		switch (c.kind)
+		{
+		case DrawCmdKind::PushTransform:
+			screen.pushTransform(c.p[0], c.p[1], c.p[2], c.p[3]);
+			++pushedDepth;
+			break;
+		case DrawCmdKind::PopTransform:
+			if (pushedDepth > 0)
+			{
+				screen.popTransform();
+				--pushedDepth;
+			}
+			break;
+		case DrawCmdKind::PushRotation:
+			screen.pushRotation(c.p[0], c.p[1], c.p[2]);
+			++pushedDepth;
+			break;
+		case DrawCmdKind::SetBlendMode:
+			screen.setBlendMode(static_cast<mitiru::gfx::BlendMode>(c.flags));
+			break;
+		case DrawCmdKind::Rect:
+			screen.drawRect(rectOf(c), colorOf(c.colorA));
+			break;
+		case DrawCmdKind::RectFrame:
+			screen.drawRectFrame(rectOf(c), colorOf(c.colorA), c.p[4]);
+			break;
+		case DrawCmdKind::RoundedRect:
+			screen.drawRoundedRect(rectOf(c), colorOf(c.colorA), c.p[4]);
+			break;
+		case DrawCmdKind::RoundedRectFrame:
+			screen.drawRoundedRectFrame(rectOf(c), colorOf(c.colorA), c.p[4], c.p[5]);
+			break;
+		case DrawCmdKind::GradientRect:
+			screen.drawGradientRect(rectOf(c), colorOf(c.colorA), colorOf(c.colorB));
+			break;
+		case DrawCmdKind::GradientRectH:
+			screen.drawGradientRectH(rectOf(c), colorOf(c.colorA), colorOf(c.colorB));
+			break;
+		case DrawCmdKind::Circle:
+			screen.drawCircle(sgc::Vec2f{c.p[0], c.p[1]}, c.p[2], colorOf(c.colorA));
+			break;
+		case DrawCmdKind::CircleFrame:
+			screen.drawCircleFrame(sgc::Vec2f{c.p[0], c.p[1]}, c.p[2], colorOf(c.colorA), c.p[3]);
+			break;
+		case DrawCmdKind::Ellipse:
+			screen.drawEllipse(sgc::Vec2f{c.p[0], c.p[1]}, c.p[2], c.p[3], colorOf(c.colorA));
+			break;
+		case DrawCmdKind::Ring:
+			screen.drawRing(sgc::Vec2f{c.p[0], c.p[1]}, c.p[2], c.p[3], colorOf(c.colorA));
+			break;
+		case DrawCmdKind::Line:
+			screen.drawLine(sgc::Vec2f{c.p[0], c.p[1]}, sgc::Vec2f{c.p[2], c.p[3]}, colorOf(c.colorA), c.p[4]);
+			break;
+		case DrawCmdKind::DashedLine:
+			screen.drawDashedLine(sgc::Vec2f{c.p[0], c.p[1]}, sgc::Vec2f{c.p[2], c.p[3]},
+			                      c.p[4], c.p[5], c.p[6], colorOf(c.colorA));
+			break;
+		case DrawCmdKind::Triangle:
+			screen.drawTriangle(sgc::Vec2f{c.p[0], c.p[1]}, sgc::Vec2f{c.p[2], c.p[3]},
+			                    sgc::Vec2f{c.p[4], c.p[5]}, colorOf(c.colorA));
+			break;
+		case DrawCmdKind::Polygon:
+			{
+				if (c.pointOffset >= mitiru::module::kPointPoolFloats) { break; }
+				const std::uint32_t maxPts = (mitiru::module::kPointPoolFloats - c.pointOffset) / 2;
+				const std::uint32_t pts = std::min(c.pointCount, maxPts);
+				// C2: 毎コマンド std::vector を作らず、drainDrawCommands 呼び出し間で
+				// 容量を持ち越す scratch を再利用する (inline 関数の function-local static
+				// は ODR で TU 間共有されるので Engine インスタンス単位にはならないが、
+				// 単一 host プロセスの単一描画スレッドという前提は他の drain* 実装と同じ)。
+				static thread_local std::vector<sgc::Vec2f> scratchPoly;
+				scratchPoly.clear();
+				scratchPoly.reserve(pts);
+				for (std::uint32_t k = 0; k < pts; ++k)
+				{
+					scratchPoly.emplace_back(buf.pointPool[c.pointOffset + k * 2 + 0],
+					                          buf.pointPool[c.pointOffset + k * 2 + 1]);
+				}
+				screen.drawPolygon(scratchPoly, colorOf(c.colorA));
+			}
+			break;
+		case DrawCmdKind::GlowLine:
+			screen.glowLine(c.p[0], c.p[1], c.p[2], c.p[3], colorOf(c.colorA), c.p[4], c.p[5]);
+			break;
+		case DrawCmdKind::GlowRing:
+			screen.glowRing(c.p[0], c.p[1], c.p[2], colorOf(c.colorA), c.p[3], c.p[4],
+			                static_cast<int>(c.flags));
+			break;
+		case DrawCmdKind::TextInRect:
+			screen.drawTextInRect(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA), c.p[4],
+			                      static_cast<mitiru::Screen::TextAlignH>(c.flags & 0x3u),
+			                      static_cast<mitiru::Screen::TextAlignV>((c.flags >> 2) & 0x3u),
+			                      c.p[5], c.p[6]);
+			break;
+		case DrawCmdKind::TextClipped:
+			screen.drawTextClipped(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA),
+			                       c.p[4], c.p[5], c.p[6]);
+			break;
+		case DrawCmdKind::TextWrapped:
+			screen.drawTextWrapped(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA),
+			                       c.p[4], c.p[5], c.p[6], c.p[7]);
+			break;
+		case DrawCmdKind::Sprite:
+			// c.textureHandle は game DLL 側の `&texture` (DrawCommands.hpp の note 参照)。
+			// build fingerprint が host/DLL 同一構成を保証している前提でのみ有効な読み戻し。
+			if (c.textureHandle != 0)
+			{
+				const auto* tex = reinterpret_cast<const mitiru::render::Texture*>(
+					static_cast<std::uintptr_t>(c.textureHandle));
+				screen.drawSprite(*tex,
+					sgc::Rectf{c.p[0], c.p[1], c.p[2], c.p[3]},
+					sgc::Rectf{c.p[4], c.p[5], c.p[6], c.p[7]},
+					colorOf(c.colorA),
+					(c.flags & 1u) != 0);
+			}
+			break;
+		case DrawCmdKind::SpriteById:
+			{
+				// SpriteCache::get は string_view 版 (透過ハッシュ、C1) を直接叩き、
+				// Screen::sprite(const char*) 経由の resolver 呼び出しと毎フレーム std::string
+				// 生成を回避する (SpriteRectById と同じ経路に統一)。
+				const std::string_view id = textOf(c.textOffset, c.textLen);
+				if (const auto* tex = spriteCache.get(id); tex != nullptr)
+				{
+					const float scale = c.p[2];
+					screen.drawSprite(*tex, sgc::Rectf{c.p[0], c.p[1],
+						static_cast<float>(tex->width()) * scale,
+						static_cast<float>(tex->height()) * scale});
+				}
+			}
+			break;
+		case DrawCmdKind::SpriteRectById:
+			{
+				// `Canvas::registerTexture` で id 化された sprite。SpriteById と同じ
+				// SpriteCache (id → host 所有 Texture) で解決するので、DLL の Texture
+				// アドレスは一切乗らない (ADR 0025 H-1/H-4 の textureHandle 課題の解)。
+				const std::string_view id = textOf(c.textOffset, c.textLen);
+				if (const auto* tex = spriteCache.get(id); tex != nullptr)
+				{
+					screen.drawSprite(*tex,
+						sgc::Rectf{c.p[0], c.p[1], c.p[2], c.p[3]},
+						sgc::Rectf{c.p[4], c.p[5], c.p[6], c.p[7]},
+						colorOf(c.colorA),
+						(c.flags & 1u) != 0);
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	for (; pushedDepth > 0; --pushedDepth) { screen.popTransform(); }
+}
+
 }  // namespace mitiru::module::detail
 
-// ── runModule (stack-local adapter Game) ───────────────────────────────────
 
 MITIRU_INLINE bool mitiru::Engine::runModule(
 	const std::filesystem::path& modulePath, const EngineConfig& configIn)
 {
+	// pack の mount (mountModulePackIfConfigured) は loadModule の中で m_config.packPath を読むが、
+	// configIn 全体が m_config に写るのは後の run()→initialize()。packPath だけ先に写す。
+	m_config.packPath = configIn.packPath;  // 空も写す (同じ Engine の再実行で別の pack を引きずらない)
 	if (!loadModule(modulePath))
 	{
 		// 黙って return すると「窓が出ず exit 0」で原因不明になる (#hello-game)。
@@ -117,10 +609,20 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 
 		void update(float dt) override
 		{
+			MITIRU_ZONE_NAMED("Engine::ModuleAdapter::update");
 			m_engine->ensureModuleCefBindings();
 			// 過去フレームで静止 (scrub-hold): 別窓のバーで過去を選んでいる間は、その
 			// フレームを毎フレーム復元して止める。ゲームを前進させず記録もしない。
-			if (m_engine->applyScrubHold()) { return; }
+			if (m_engine->applyScrubHold())
+			{
+				// 9-2: on_update を呼ばないので通常の gameMemory push (このファイル下方の
+				// drainModuleFrameIntents 内) が起きず、inspector が止まって見える。
+				// gameUpdate を呼ばずに reflect 記述子だけで巻き戻し後の state を push する。
+				module::detail::pushScrubHoldGameMemory(
+					m_engine->m_moduleInspectorSnapshot.get(), m_engine->m_lastInspectorOut,
+					m_engine->m_moduleApi, m_engine->m_moduleMemory, m_engine->m_moduleMemorySize);
+				return;
+			}
 			// 実効 dt (pause/hitStop gating) も snapshot 構築時に書き込む (v21、H-3)。
 			m_engine->buildModuleInputSnapshot(dt);
 			m_engine->applyResimInputOverride();  // resim 中は記録入力で上書き
@@ -150,6 +652,11 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 
 			m_engine->drainModuleFrameIntents();
 
+			// デバッグ描画 intent の取り込み (v30、§9-1)。intent は録画されないので、
+			// live 実行中だけこの tracker が減衰を持つ (replay 中は再現されない旨は
+			// Hud::debugLine のコメント参照)。
+			if (m_engine->m_moduleFrameIntents) { m_debugDraws.ingest(*m_engine->m_moduleFrameIntents, dt); }
+
 			// Replay record hook (axis 4): このフレームの input + 結果の intents を
 			// host に渡し、.mtrr へ追記できるようにする (mitiru run --record)。
 			if (m_engine->m_config.onModuleFrameRecorded
@@ -163,6 +670,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 
 		void draw(Screen& screen) override
 		{
+			MITIRU_ZONE_NAMED("Engine::ModuleAdapter::draw");
 			const auto& fx = m_engine->m_moduleVisualFx;
 
 			// Shake (kind=4): game 描画全体を frame index ベースの決定的オフセットで
@@ -175,12 +683,47 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			}
 
 			const auto& api = m_engine->moduleApi();
-			if (api.on_draw != nullptr)
+			if (api.on_draw_commands != nullptr)
+			{
+				module::DrawContext ctx{};
+				if (m_engine->m_moduleInputSnapshot)
+				{
+					ctx.logicalW = m_engine->m_moduleInputSnapshot->logicalW;
+					ctx.logicalH = m_engine->m_moduleInputSnapshot->logicalH;
+				}
+				// 328 KiB 級の buffer なのでスタックに積まず、フレームごとに count だけ
+				// 初期化して使い回す (未使用分の古いコマンドは count 外なので無害)。
+				static thread_local module::DrawCommandBuffer buf;
+				buf.count = 0;
+				buf.droppedCount = 0;
+				// textPool/pointPool も毎フレーム reset する (count と同じく per-frame pool。
+				// 未 reset だと used が単調増加し続け、いずれ枯渇して以後の文字列/頂点コマンドが
+				// 全て drop される。beko_run の drawStone (id 文字列を毎タイル push) で実際に
+				// 19 フレーム目前後から drop が発生することを確認した)。
+				buf.textPoolUsed  = 0;
+				buf.pointPoolUsed = 0;
+				api.on_draw_commands(m_engine->moduleMemory(), &ctx, &buf);
+				auto& sceneObjs = module::detail::lastSceneViewObjects();
+				sceneObjs.clear();
+				module::detail::lastSceneFieldMappings().clear();
+				module::detail::drainDrawCommands(screen, buf, m_engine->m_spriteCache, &sceneObjs);
+			}
+			else if (api.on_draw != nullptr)
 			{
 				api.on_draw(m_engine->moduleMemory(), &screen);
 			}
 
 			if (shaking) { screen.popTransform(); }
+
+			// デバッグ描画の重ね描き (v30、§9-1)。game の on_draw が camera3D を設定済みの
+			// 前提で screen-space へ投影する。shake の外 (デバッグ表示自体は揺らさない)。
+			module::detail::drawDebugDraws(screen, m_debugDraws);
+
+			// 分岐候補ゴースト (ADR 0035 O4)。live の draw() 直後に呼ぶ契約 (Engine::drawGhost と
+			// 同型)。ModuleAdapter::draw が Screen& を直接持つのはここだけなので、host の描画
+			// ループを経由せずこの場で呼べる (docs/BRANCH_EDITOR.md の「未配線」を解消)。slot が
+			// 1 つも active でなければ内部の空ループのみで実質 no-op。
+			m_engine->drawCandidateBranches(screen);
 
 			// Letterbox (kind=6): 上下黒帯。transform 外なので shake 非影響。
 			// fade 覆いより先に描く = 帯の上に fade が乗る。
@@ -214,6 +757,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 
 	private:
 		Engine* m_engine;
+		module::detail::DebugDrawTracker m_debugDraws;
 	};
 
 	ModuleAdapter adapter(this);
@@ -241,6 +785,9 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 	m_moduleApi.version = module::kWireApiVersion;
 	loadFn(&m_moduleApi, &m_moduleMemory);
 	m_moduleMemorySize = m_moduleApi.memorySize;
+	// 静的リンクには GetProcAddress で引く DLL export が無いので、MITIRU_PAUSE_ALWAYS_LAYERS
+	// 宣言は届かない (2-1)。mask=0 = pause は全 layer 共通のまま。
+	m_pauseAlwaysLayersMask = 0;
 
 	// 静的リンクでは game と engine が同じビルドなので、version の不一致は
 	// ModuleApi.hpp の取り違え (include パスの混線) 以外では起きない。
@@ -281,8 +828,16 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 
 		void update(float dt) override
 		{
+			MITIRU_ZONE_NAMED("Engine::StaticAdapter::update");
 			m_engine->ensureModuleCefBindings();
-			if (m_engine->applyScrubHold()) { return; }
+			if (m_engine->applyScrubHold())
+			{
+				// runModule 側 (ModuleAdapter) と一字一句同じ挙動にすること (9-2)。
+				module::detail::pushScrubHoldGameMemory(
+					m_engine->m_moduleInspectorSnapshot.get(), m_engine->m_lastInspectorOut,
+					m_engine->m_moduleApi, m_engine->m_moduleMemory, m_engine->m_moduleMemorySize);
+				return;
+			}
 			m_engine->buildModuleInputSnapshot(dt);
 			m_engine->applyResimInputOverride();
 			m_engine->zeroModuleFrameIntents();
@@ -297,15 +852,43 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 			m_engine->recordModuleMemoryFrame();
 			m_engine->recordModuleInputFrame();
 			m_engine->drainModuleFrameIntents();
+			// デバッグ描画 intent の取り込み (v30、§9-1)。ModuleAdapter と同じ扱い。
+			if (m_engine->m_moduleFrameIntents) { m_debugDraws.ingest(*m_engine->m_moduleFrameIntents, dt); }
 		}
 
 		void draw(Screen& screen) override
 		{
+			MITIRU_ZONE_NAMED("Engine::StaticAdapter::draw");
 			const auto& api = m_engine->moduleApi();
-			if (api.on_draw != nullptr)
+			if (api.on_draw_commands != nullptr)
+			{
+				module::DrawContext ctx{};
+				if (m_engine->m_moduleInputSnapshot)
+				{
+					ctx.logicalW = m_engine->m_moduleInputSnapshot->logicalW;
+					ctx.logicalH = m_engine->m_moduleInputSnapshot->logicalH;
+				}
+				static thread_local module::DrawCommandBuffer buf;
+				buf.count = 0;
+				buf.droppedCount = 0;
+				// textPool/pointPool も毎フレーム reset する (count と同じく per-frame pool。
+				// 未 reset だと used が単調増加し続け、いずれ枯渇して以後の文字列/頂点コマンドが
+				// 全て drop される。beko_run の drawStone (id 文字列を毎タイル push) で実際に
+				// 19 フレーム目前後から drop が発生することを確認した)。
+				buf.textPoolUsed  = 0;
+				buf.pointPoolUsed = 0;
+				api.on_draw_commands(m_engine->moduleMemory(), &ctx, &buf);
+				auto& sceneObjs = module::detail::lastSceneViewObjects();
+				sceneObjs.clear();
+				module::detail::lastSceneFieldMappings().clear();
+				module::detail::drainDrawCommands(screen, buf, m_engine->m_spriteCache, &sceneObjs);
+			}
+			else if (api.on_draw != nullptr)
 			{
 				api.on_draw(m_engine->moduleMemory(), &screen);
 			}
+			module::detail::drawDebugDraws(screen, m_debugDraws);
+			m_engine->drawCandidateBranches(screen);  // ADR 0035 O4 (runModuleStatic 経路も同様に配線)
 		}
 
 		Size layout(int outsideW, int outsideH) override
@@ -315,6 +898,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 
 	private:
 		Engine* m_engine;
+		module::detail::DebugDrawTracker m_debugDraws;
 	};
 
 	StaticAdapter adapter(this);
@@ -455,6 +1039,7 @@ MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
 
 MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 {
+	MITIRU_ZONE_NAMED("Engine::buildModuleInputSnapshot");
 	auto* snap = m_moduleInputSnapshot.get();
 	if (snap == nullptr) { return; }
 
@@ -465,7 +1050,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 	// paused 中 stepFrames>0 なら 1 フレームだけ通常 dt で進める (従来意味論のまま)。
 	{
 		float        effectiveDt = dt;
-		std::uint8_t paused      = m_config.paused ? 1u : 0u;
+		std::uint8_t paused      = m_config.paused ? m_config.pauseKind : std::uint8_t{0};
 		if (m_config.paused)
 		{
 			if (m_config.stepFrames > 0) { --m_config.stepFrames; }
@@ -475,10 +1060,44 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		// 呼び続ける)。intent は決定論的な module 出力なので replay でも同じ
 		// フレームで発火する。fade/shake もここで実時間 (固定ステップ) で進める。
 		// 演出は engine 側状態であり GameMemory には入れない (観測対象外)。
-		if (m_moduleVisualFx.hitStopActive()) { effectiveDt = 0.0f; }
+		const bool hitStop = m_moduleVisualFx.hitStopActive();
+		if (hitStop) { effectiveDt = 0.0f; }
+		// rumble: 強さは host 側演出状態から派生する出力なので GameMemory にも録画にも入れない。
+		// hitStop と同じく advance の前に読む (dt 以下の短い振動でも 1 回は送る)。
+		const bool rumbleOn = m_moduleVisualFx.rumbleActive();
+		const auto [rumbleLow, rumbleHigh] = m_moduleVisualFx.currentRumble();
 		m_moduleVisualFx.advance(dt);
+#ifdef _WIN32
+		if (rumbleOn)
+		{
+			const float low = rumbleLow, high = rumbleHigh;
+			m_gamepad.setVibration(0, low, high);
+			m_rumbleSent = true;
+		}
+		else if (m_rumbleSent)
+		{
+			m_gamepad.setVibration(0, 0.0f, 0.0f);
+			m_rumbleSent = false;
+		}
+#endif
 		snap->effectiveDt = effectiveDt;
 		snap->paused      = paused;
+		// D2: fadeOut/fadeIn の覆い alpha をそのまま供給する (Input::fadeProgress01 の説明参照)。
+		snap->fadeProgress01 = m_moduleVisualFx.overlay().a;
+
+		// ── layer 別 dt (v30、§1-2、2-1) ─────────────────────────────────
+		// timeScale (グローバル) は「1 フレームで回すステップ数」を増減させる別軸
+		// (FixedStepPlan.hpp) であり dt そのものを乗じる値ではないため、ここで
+		// もう一度掛けると二重適用になる。layerTimeScale は素の dt にだけ掛ける。
+		// pause の gating は既定で全 layer 共通だが、game が `MITIRU_PAUSE_ALWAYS_LAYERS`
+		// で宣言した layer は pause 中でも dt を受け取る (Godot PROCESS_MODE_WHEN_PAUSED
+		// 相当、ポーズメニュー演出用)。hitStop は layerFrozenByHitStop で層別に効かせる
+		// (mask の影響を受けない別軸)。実配列は Engine を持ち込まず単体テストできるよう
+		// module::detail::computeLayerDt に切り出してある。
+		const bool pausedGate = m_config.paused && effectiveDt == 0.0f;
+		module::detail::computeLayerDt(dt, pausedGate, hitStop,
+			m_config.layerTimeScale, m_config.layerFrozenByHitStop,
+			module::detail::pauseLayersMaskFor(paused, m_pauseLayersByKind), snap->dtByLayer);
 	}
 
 	// ── 論理解像度 (ABI v21、§8-5) ──────────────────────────────────────
@@ -536,6 +1155,31 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		snap->mouseButtonsDown[i]            = m_inputState.isMouseButtonDown(btn)         ? 1u : 0u;
 		snap->mouseButtonsJustPressed[i]     = m_inputState.isMouseButtonJustPressed(btn)  ? 1u : 0u;
 		snap->mouseButtonsJustReleased[i]    = m_inputState.isMouseButtonJustReleased(btn) ? 1u : 0u;
+	}
+
+	// テキスト入力 (ABI v34、J5)。本命は CEF <input> なので Win32 以外は常に空。
+	// snapshot は永続バッファなので毎フレーム全 byte 上書き (前フレームの残りを残さない)。
+	{
+		// 物理問い合わせ job (v37): 前フレームの要求に答える。replay 中は末尾の snapshot 置換で
+		// 記録値が上書きされるので、host の物理 world は再生に要らない。
+		snap->physicsResultCount = detail::answerPhysicsQueries(m_modulePhysics.get(),
+			m_pendingPhysicsQueries.data(), static_cast<int>(m_pendingPhysicsQueries.size()),
+			snap->physicsResults, static_cast<int>(sizeof(snap->physicsResults) / sizeof(snap->physicsResults[0])));
+		m_pendingPhysicsQueries.clear();
+
+		snap->textInputLen = 0;
+		snap->textInput[0] = '\0';
+#ifdef _WIN32
+		if (auto* win32 = dynamic_cast<mitiru::Win32Window*>(m_window.get()))
+		{
+			const std::string text = win32->consumeTextInput();
+			const std::size_t cap = sizeof(snap->textInput) - 1;  // null 終端分
+			const std::size_t n   = std::min(text.size(), cap);
+			std::memcpy(snap->textInput, text.data(), n);
+			snap->textInput[n]  = '\0';
+			snap->textInputLen  = static_cast<std::uint8_t>(n);
+		}
+#endif
 	}
 
 	// Gamepad。ABI v5 (#12) + #32: XInput と SDL_GameController を並走、ボタン OR、
@@ -630,6 +1274,23 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 				m_moduleActionEvents->events.begin(),
 				m_moduleActionEvents->events.begin() + static_cast<std::ptrdiff_t>(taken));
 		}
+		// D11: this をキーにした file-local map で連続持ち越しフレーム数を数える
+		// (Engine.hpp にメンバを足さずに済ませるため)。
+		static std::unordered_map<const void*, int> carryStreak;
+		int& streak = carryStreak[this];
+		if (!m_moduleActionEvents->events.empty())
+		{
+			if (++streak >= 3)
+			{
+				mitiru::debug::warnOnce("action.event.carryover",
+					"action event の持ち越しが 3 フレーム続いています。"
+					"発火頻度を下げるか、1 件の payload に纏めることを検討する");
+			}
+		}
+		else
+		{
+			streak = 0;
+		}
 	}
 
 	// Replay inject hook (axis 4): headless な `mitiru replay --test` は live 構築
@@ -658,12 +1319,25 @@ MITIRU_INLINE void mitiru::Engine::applyModuleRestartIntent()
 	if (intents == nullptr || intents->restartRequest == 0) { return; }
 	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.on_init == nullptr)
 	{
-		mitiru::debug::warnOnce("restart.unavailable",
-			"hud.requestRestart: GameMemory 未申告 (memorySize=0) か on_init 不在のため無視");
+		mitiru::debug::warnOnceFix("restart.unavailable",
+			"hud.requestRestart() が無視された",
+			"GameMemory 未申告 (ModuleApi::memorySize=0) か on_init 未実装",
+			"MITIRU_GAME マクロが memorySize を設定しているか確認し、gameInit (on_init) を実装する");
 		return;
 	}
 	std::memset(m_moduleMemory, 0, m_moduleMemorySize);
 	m_moduleApi.on_init(m_moduleMemory);
+
+	// MITIRU_REACHABLE の s_elapsed/s_reached は GameMemory とは別の DLL プロセス static
+	// state のため、上の memset+on_init では戻らない。restart のたびに host からまとめて
+	// 0 に戻す (未宣言 game は export 自体が無いので nullptr のまま何もしない)。
+	if (m_moduleHost)
+	{
+		if (auto resetFn = m_moduleHost->invariantsResetFn())
+		{
+			resetFn();
+		}
+	}
 }
 
 MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
@@ -728,40 +1402,67 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// load: ファイル → GameMemory memcpy + ring clear (rewind と同一機構)。
 	if (intents->saveRequest != 0)
 	{
+		// D1: 結果を InputSnapshot::lastSaveResult へ書く (1=成功 / 2=失敗)。m_moduleInputSnapshot
+		// は次フレームまで生存する永続バッファなので、ここで書けば次フレームの
+		// Input::saveSucceeded() がこの結果を読める (build 側はこの field を触らない)。
+		bool saveOk = false;
 		const std::string slot = module::save::sanitizeSlot(intents->saveSlot);
 		if (slot.empty())
 		{
 			mitiru::debug::warnOnce("save.slot.empty",
-				"hud.save: slot 名が不正です (使える文字: a-zA-Z0-9_-) — 無視");
+				"hud.save: slot 名が不正です (入力値: \"" + std::string(intents->saveSlot)
+				+ "\"。使える文字は a-zA-Z0-9_- のみ)。無視した");
 		}
 		else if (m_moduleMemory == nullptr || m_moduleMemorySize == 0)
 		{
 			mitiru::debug::warnOnce("save.no-memory",
-				"hud.save: GameMemory が未申告 (memorySize=0) のためセーブできません");
+				"hud.save: GameMemory が未申告 (memorySize=0) のためセーブできません。"
+				"MITIRU_GAME の GameMemory 型に状態を持たせているか確認する");
 		}
 		else
 		{
 			// layout hash (MITIRU_REFLECT 由来) を header に格納。ロード時にサイズ照合を
 			// 素通りする「同サイズの field 並べ替え / 型変更」を拒否できる。
 			const auto path = std::filesystem::path("save") / (slot + ".msav");
-			if (!module::save::saveGameMemory(path, m_moduleMemory, m_moduleMemorySize,
-			                                  module::kWireApiVersion,
-			                                  module::moduleLayoutHash(m_moduleApi),
-			                                  m_moduleApi.reflectFields,
-			                                  m_moduleApi.reflectFieldCount))
+			saveOk = module::save::saveGameMemory(path, m_moduleMemory, m_moduleMemorySize,
+			                                      module::kWireApiVersion,
+			                                      module::moduleLayoutHash(m_moduleApi),
+			                                      m_moduleApi.reflectFields,
+			                                      m_moduleApi.reflectFieldCount);
+			if (!saveOk)
 			{
 				mitiru::debug::warnOnce("save.write." + slot,
-					"hud.save: 書き込みに失敗しました: " + path.string());
+					"hud.save: 書き込みに失敗しました: " + path.string()
+					+ " (save/ ディレクトリの権限・空き容量を確認する)");
+			}
+			else if (m_config.saveRoundtripTest)
+			{
+				// --save-roundtrip-test: save → 読み戻し → 再 save が bit 一致するか (Factorio
+				// FFF #158)。累積差分に埋もれないよう検出のたびに stderr へ 1 行出す (warnOnce しない)。
+				const auto divergedField = module::save::checkSaveRoundtrip(
+					path, m_moduleMemorySize, module::kWireApiVersion,
+					module::moduleLayoutHash(m_moduleApi),
+					m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount);
+				if (divergedField.has_value())
+				{
+					std::fprintf(stderr,
+						"[mitiru] save-roundtrip: slot=%s で save/load/save が一致しない"
+						" (field=%s)\n", slot.c_str(),
+						divergedField->empty() ? "(不明)" : divergedField->c_str());
+				}
 			}
 		}
+		if (m_moduleInputSnapshot) { m_moduleInputSnapshot->lastSaveResult = saveOk ? 1u : 2u; }
 	}
 	if (intents->loadRequest != 0)
 	{
+		bool loadOk = false;
 		const std::string slot = module::save::sanitizeSlot(intents->loadSlot);
 		if (slot.empty())
 		{
 			mitiru::debug::warnOnce("load.slot.empty",
-				"hud.load: slot 名が不正です (使える文字: a-zA-Z0-9_-) — 無視");
+				"hud.load: slot 名が不正です (入力値: \"" + std::string(intents->loadSlot)
+				+ "\"。使える文字は a-zA-Z0-9_- のみ)。無視した");
 		}
 		else
 		{
@@ -809,7 +1510,10 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			// 適用成功時は rewind ring を破棄する。load 前の履歴は別時間軸の bytes で、
 			// そこへの rewind は復元を壊す (reloadModule の ring clear と同じ理由)。
 			if (applied) { m_moduleMemoryRing.clear(); }
+			loadOk = applied;
 		}
+		// D1: lastSaveResult と同じ理由で次フレームの Input::loadSucceeded() へ渡す。
+		if (m_moduleInputSnapshot) { m_moduleInputSnapshot->lastLoadResult = loadOk ? 1u : 2u; }
 	}
 
 	// Tool window spawn 要求。DLL → host → 別 exe を spawn する。
@@ -893,7 +1597,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		// 変化検知: export 内容 (name + json) を FNV-1a で畳み、前回と同一なら
 		// parse+rebuild+disk-write を丸ごと省く。inspector は同じ内容を読み続けるので
 		// skip しても観測結果は変わらず、毎フレームの temp-file 書き込みを避けられる。
-		std::uint64_t digest = 1469598103934665603ull;
+		std::uint64_t digest = 14695981039346656037ull;
 		const auto fold = [&digest](const char* p, std::size_t len)
 		{
 			for (std::size_t k = 0; k < len; ++k)
@@ -985,20 +1689,31 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			out["perf"] = cef::json{
 				{"title", "Performance"},
 				{"state", cef::json{{"fps", static_cast<int>(m_emaFps + 0.5f)},
-				                    {"frameMs", m_lastFrameMs}}}};
+				                    {"frameMs", m_lastFrameMs},
+				                    {"droppedSteps", m_droppedFixedSteps},
+				                    {"slowMotion", m_droppedFixedSteps > 0}}}};
 			// 再生中チャンネルのメーター (任意)。列挙非対応の audio engine は空配列。
 			cef::json channels = cef::json::array();
+			int voiceCount = 0;
 			if (m_audioEngine)
 			{
 				for (const auto& m : m_audioEngine->meterChannels())
 				{
-					channels.push_back(cef::json{{"kind", m.kind}, {"level", m.level}});
+					if (std::strcmp(m.kind, "voice") == 0) { ++voiceCount; }
+					// id / asset / pan / remainingSec は mixer.html の「voice 一覧」用 (K1)。
+					// 空 id / 負の残り秒は「不明」なので、行に出さない (JS 側は欠損として扱う)。
+					cef::json ch{{"kind", m.kind}, {"level", m.level}, {"pan", m.pan}};
+					if (m.id[0] != '\0')      { ch["id"] = m.id; }
+					if (m.asset[0] != '\0')   { ch["asset"] = m.asset; }
+					if (m.remainingSec >= 0.0f) { ch["remainingSec"] = m.remainingSec; }
+					channels.push_back(std::move(ch));
 				}
 			}
 			out["audio"] = cef::json{
 				{"title", "Audio"},
 				{"state", cef::json{{"masterVolume", masterVolume()},
 				                    {"engine", m_audioEngine ? "active" : "none"},
+				                    {"voiceCount", voiceCount},
 				                    {"channels", std::move(channels)}}}};
 
 			// 過去フレームの記録: GameMemory ring があれば、別窓のシークバーで過去へ戻せる。
@@ -1042,6 +1757,11 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 						opts.wantEdges  = true;
 						opts.epsilon    = 0.5;
 						opts.maxMarkers = 24;
+						// 系列名が MITIRU_ENUM の field と同名なら状態遷移の系列。enum の差 (3→4) には
+						// 意味が無いので、間引きは変化量ではなく新しい順にし、節目に名前を付ける。
+						const bool enumSeries = !series.empty() && !observe::enumSeriesName(
+							m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount, probe.name, series.back()).empty();
+						opts.preferNewest = enumSeries;
 						if (probe.hasThreshold)
 						{
 							opts.hasThreshold = true;
@@ -1049,10 +1769,17 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 						}
 						for (const auto& m : observe::extractMarkers(series, opts))
 						{
-							markersJson.push_back(cef::json{
+							cef::json mj{
 								{"o", m.offsetFromNewest},
 								{"v", m.value},
-								{"k", static_cast<int>(m.kind)}});
+								{"k", static_cast<int>(m.kind)}};
+							if (enumSeries && m.offsetFromNewest + 1 < series.size())
+							{
+								const double prev = series[series.size() - 2 - m.offsetFromNewest];
+								mj["label"] = observe::enumSeriesName(m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount, probe.name, prev)
+									+ "\xE2\x86\x92" + observe::enumSeriesName(m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount, probe.name, m.value);
+							}
+							markersJson.push_back(std::move(mj));
 						}
 						markersDone = true;
 					}
@@ -1067,18 +1794,61 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			{
 				// フィールド名を宣言順 (MITIRU_REFLECT の並び) で列挙して渡す。JSON object は key を
 				// ソートしてしまうので、観測窓が「コード順」で表示できるよう順序を配列で別に添える。
-				cef::json fieldOrder = cef::json::array();
-				for (std::uint32_t fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
+				// meta (typeTag/elemType) はトップレベル field 分だけを添える (3-2)。
+				// inspect.html の decorateGameMemorySection が enum:/range: の elemType を
+				// select / slider へ描き直す (今まで meta が届かず何もしていなかった)。
+				// 組み立て本体は buildGameMemoryJson (C15、pushScrubHoldGameMemory と共有)。
+				out["gameMemory"] = module::detail::buildGameMemoryJson(
+					m_moduleApi, m_moduleMemory, m_moduleMemorySize);
+			}
+
+			// 分岐エディタのシーンビュー (ADR 0035 O2)。draw() 側で溜めた bbox 列に、
+			// 一致する reflect フィールド名を突き合わせて添える (sourceId は名前の fnv1a32 なので、
+			// 64 件の線形探索で十分)。名前が見つからない sourceId (game 側の宣言ミス・衝突) は
+			// "field" を付けず id だけ返し、UI 側で読み取り専用表示にする。
+			const auto& sceneObjsOut = module::detail::lastSceneViewObjects();
+			if (!sceneObjsOut.empty())
+			{
+				cef::json objs = cef::json::array();
+				for (const auto& o : sceneObjsOut)
 				{
-					fieldOrder.push_back(m_moduleApi.reflectFields[fi].name);
+					cef::json entry{{"id", o.sourceId}, {"x", o.x}, {"y", o.y}, {"w", o.w}, {"h", o.h}};
+					// `beginObject(name, fieldX, fieldY)` の明示指定があれば最優先 (name+".x"/".y"
+					// 規約を満たせない beko_run の px/py のような分離 scalar 用、ADR 0035 O2/O3 追記)。
+					bool mapped = false;
+					for (const auto& fm : module::detail::lastSceneFieldMappings())
+					{
+						if (fm.sourceId != o.sourceId) { continue; }
+						entry["fieldX"] = fm.fieldX;
+						entry["fieldY"] = fm.fieldY;
+						mapped = true;
+						break;
+					}
+					if (!mapped)
+					{
+						for (std::int32_t fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
+						{
+							if (module::fnv1a32(m_moduleApi.reflectFields[fi].name) == o.sourceId)
+							{
+								entry["field"] = m_moduleApi.reflectFields[fi].name;
+								break;
+							}
+						}
+					}
+					objs.push_back(std::move(entry));
 				}
-				out["gameMemory"] = cef::json{
-					{"title", "Game memory"},
-					{"order", std::move(fieldOrder)},
-					{"state", observe::reflectToJson(
-						static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
-						m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-						m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount)}};
+				out["sceneView"] = cef::json{{"title", "シーンビュー"}, {"state", cef::json{{"objects", std::move(objs)}}}};
+			}
+
+			// O5: 直近 commit の決定論ゲート結果 (無ければキー自体を出さない、既定 waiting 表示のため)。
+			if (const auto& gate = module::detail::lastReplayGateResults(); !gate.empty())
+			{
+				cef::json runs = cef::json::array();
+				for (const auto& g : gate)
+				{
+					runs.push_back(cef::json{{"file", g.file}, {"pass", g.pass}, {"reason", g.reason}});
+				}
+				out["replayGate"] = cef::json{{"title", "決定論ゲート"}, {"state", cef::json{{"runs", std::move(runs)}}}};
 			}
 
 			m_moduleInspectorSnapshot->write(out);
@@ -1114,6 +1884,16 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		for (std::int32_t i = 0; i < n; ++i)
 		{
 			const auto& si = intents->soundIntents[i];
+			// F2: hud.playAt() は backend がサンプル精度予約に対応しない場合、
+			// SoundIntentRouter (v19、scheduleSec>0 分岐) が即時再生へフォールバックする。
+			// 無言のズレは判定タイミングのバグに見えるため一度だけ知らせる。
+			if (si.scheduleSec > 0.0 && !m_audioEngine->supportsScheduledPlayback())
+			{
+				mitiru::debug::warnOnce("hud.playAt.unsupported",
+					"hud.playAt() は現在の audio backend が予約再生 (supportsScheduledPlayback) "
+					"に対応していないため、即時再生にフォールバックしています。リズム判定に "
+					"ズレが出る場合は Miniaudio/WebAudio backend を使ってください");
+			}
 			if (!m_soundIntentRouter.apply(*m_audioEngine, si)) { continue; }  // dedupe skip
 			// AI 観測ログ (/api/ai/audio): 適用済み intent をそのまま記録する。
 			m_audioLog.push(frameNumber(), si.id, si.category, si.loop, si.stop,
@@ -1124,6 +1904,14 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// 毎フレームの audio 定期掃除 (#51): 終了 SE voice 回収 + fade-out music 解放。
 	// 再生有無に関わらず呼ぶ (静かな区間でも ended voice が滞留しないように)。
 	if (m_audioEngine) { m_audioEngine->update(); }
+
+	// 物理問い合わせ (v37): ここでは控えるだけで、答えは次の buildModuleInputSnapshot が書く
+	// (同期呼び出しにしない = ADR 0005)。
+	{
+		const int cap = static_cast<int>(sizeof(intents->physicsQueries) / sizeof(intents->physicsQueries[0]));
+		const int n   = std::min<int>(intents->physicsQueryCount, cap);
+		m_pendingPhysicsQueries.assign(intents->physicsQueries, intents->physicsQueries + (n > 0 ? n : 0));
+	}
 
 	// VisualIntent (#33、v7): kind=1 (Tint) は Screen::pushTint へ、kind 2-6
 	// (FadeOut/FadeIn/Shake/HitStop/Letterbox) は VisualIntentFx へ流す。kind=0 は no-op。

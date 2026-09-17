@@ -10,6 +10,24 @@
 namespace mitiru::render
 {
 
+/// @brief オクルージョン min-depth resolve 用のフルスクリーン三角形頂点シェーダー
+/// @details `DefaultShaders3D.hpp` の `OCCLUSION_MIN_DEPTH_RESOLVE_PS_3D` 専用。
+///          頂点バッファ不要 (`SV_VertexID` から3頂点を合成)。
+constexpr const char* kOcclusionResolveVS_3D = R"hlsl(
+struct VSOutput
+{
+    float4 Position : SV_POSITION;
+};
+
+VSOutput VSMain(uint vertexID : SV_VertexID)
+{
+    VSOutput output;
+    float2 uv = float2((vertexID << 1) & 2, vertexID & 2);
+    output.Position = float4(uv * float2(2, -2) + float2(-1, 1), 0, 1);
+    return output;
+}
+)hlsl";
+
 /// @brief レンダラーを初期化する
 /// @param device DX11デバイスへのポインタ
 /// @param cfg 設定パラメータ
@@ -310,16 +328,36 @@ inline void Renderer3D::createDepthBuffer()
 		return;
 	}
 
+	// バックバッファの MSAA サンプル数に合わせる。OMSetRenderTargets は color/depth の
+	// サンプル数が一致しないと深度が書き込まれない (実機で深度テストが無効化される)。
+	UINT sampleCount = 1;
+	UINT sampleQuality = 0;
+	if (auto* swapChain = m_device->getSwapChain())
+	{
+		sampleCount = swapChain->sampleCount();
+		sampleQuality = swapChain->sampleQuality();
+	}
+	m_depthIsMultisampled = sampleCount > 1;
+
+	// R24G8_TYPELESS にすることで DSV (D24_UNORM_S8_UINT) と SRV
+	// (R24_UNORM_X8_TYPELESS) を同じリソースから両方作れる。MSAA 深度を
+	// min-depth resolve パス (updateOcclusionDepth) がピクセルシェーダーで
+	// 読むために SRV が要る。非 MSAA 時は SRV を作らない（CopyResource で
+	// staging へ直接読み戻す既存経路のみで足りる）。
 	D3D11_TEXTURE2D_DESC texDesc = {};
 	texDesc.Width = static_cast<UINT>(m_config.viewportWidth);
 	texDesc.Height = static_cast<UINT>(m_config.viewportHeight);
 	texDesc.MipLevels = 1;
 	texDesc.ArraySize = 1;
-	texDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	texDesc.SampleDesc.Count = 1;
-	texDesc.SampleDesc.Quality = 0;
+	texDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+	texDesc.SampleDesc.Count = sampleCount;
+	texDesc.SampleDesc.Quality = sampleQuality;
 	texDesc.Usage = D3D11_USAGE_DEFAULT;
 	texDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	if (m_depthIsMultisampled)
+	{
+		texDesc.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
+	}
 
 	ComPtr<ID3D11Texture2D> depthTex;
 	HRESULT hr = m_d3dDevice->CreateTexture2D(
@@ -331,8 +369,10 @@ inline void Renderer3D::createDepthBuffer()
 	}
 
 	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-	dsvDesc.Format = texDesc.Format;
-	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	dsvDesc.ViewDimension = m_depthIsMultisampled
+		? D3D11_DSV_DIMENSION_TEXTURE2DMS
+		: D3D11_DSV_DIMENSION_TEXTURE2D;
 	dsvDesc.Texture2D.MipSlice = 0;
 
 	hr = m_d3dDevice->CreateDepthStencilView(
@@ -342,6 +382,22 @@ inline void Renderer3D::createDepthBuffer()
 	{
 		throw std::runtime_error(
 			"Renderer3D: CreateDepthStencilView failed");
+	}
+
+	m_depthSRV.Reset();
+	if (m_depthIsMultisampled)
+	{
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
+		hr = m_d3dDevice->CreateShaderResourceView(
+			depthTex.Get(), &srvDesc, m_depthSRV.GetAddressOf());
+		if (FAILED(hr))
+		{
+			// SRV が作れない環境は resolve パスを諦める
+			// (updateOcclusionDepth が warnOnce 付きでスキップする)
+			m_depthSRV.Reset();
+		}
 	}
 }
 
@@ -464,6 +520,92 @@ inline void Renderer3D::createSamplerState()
 
 	m_d3dDevice->CreateSamplerState(
 		&desc, m_samplerState.GetAddressOf());
+}
+
+/// @brief MSAA 深度の min-depth resolve 用 VS/PS を（未生成なら）コンパイルする
+inline void Renderer3D::ensureOcclusionResolvePipeline()
+{
+	if (m_occlusionResolveVS || m_occlusionResolvePipelineFailed)
+	{
+		return;
+	}
+
+	try
+	{
+		auto vsBlob = compileHLSL(kOcclusionResolveVS_3D, "VSMain", "vs_5_0");
+		auto psBlob = compileHLSL(OCCLUSION_MIN_DEPTH_RESOLVE_PS_3D, "PSMain", "ps_5_0");
+
+		ComPtr<ID3D11VertexShader> vs;
+		ComPtr<ID3D11PixelShader> ps;
+		HRESULT hr = m_d3dDevice->CreateVertexShader(
+			vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, vs.GetAddressOf());
+		if (SUCCEEDED(hr))
+		{
+			hr = m_d3dDevice->CreatePixelShader(
+				psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, ps.GetAddressOf());
+		}
+		if (FAILED(hr))
+		{
+			m_occlusionResolvePipelineFailed = true;
+			return;
+		}
+		m_occlusionResolveVS = vs;
+		m_occlusionResolvePS = ps;
+	}
+	catch (const std::exception&)
+	{
+		m_occlusionResolvePipelineFailed = true;
+	}
+}
+
+/// @brief オクルージョン resolve 用の単一サンプル R32_FLOAT RT + staging を
+///        (未生成、または深度と違うサイズなら) 生成し直す
+inline bool Renderer3D::ensureOcclusionResolveTargets(UINT width, UINT height)
+{
+	if (m_occlusionResolveRT && m_occlusionResolveW == width && m_occlusionResolveH == height)
+	{
+		return true;
+	}
+
+	D3D11_TEXTURE2D_DESC rtDesc = {};
+	rtDesc.Width = width;
+	rtDesc.Height = height;
+	rtDesc.MipLevels = 1;
+	rtDesc.ArraySize = 1;
+	rtDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	rtDesc.SampleDesc.Count = 1;
+	rtDesc.Usage = D3D11_USAGE_DEFAULT;
+	rtDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
+
+	ComPtr<ID3D11Texture2D> rtTex;
+	if (FAILED(m_d3dDevice->CreateTexture2D(&rtDesc, nullptr, rtTex.GetAddressOf())))
+	{
+		return false;
+	}
+
+	ComPtr<ID3D11RenderTargetView> rtv;
+	if (FAILED(m_d3dDevice->CreateRenderTargetView(rtTex.Get(), nullptr, rtv.GetAddressOf())))
+	{
+		return false;
+	}
+
+	D3D11_TEXTURE2D_DESC stagingDesc = rtDesc;
+	stagingDesc.Usage = D3D11_USAGE_STAGING;
+	stagingDesc.BindFlags = 0;
+	stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+	ComPtr<ID3D11Texture2D> stagingTex;
+	if (FAILED(m_d3dDevice->CreateTexture2D(&stagingDesc, nullptr, stagingTex.GetAddressOf())))
+	{
+		return false;
+	}
+
+	m_occlusionResolveRT = rtTex;
+	m_occlusionResolveRTV = rtv;
+	m_occlusionResolveStaging = stagingTex;
+	m_occlusionResolveW = width;
+	m_occlusionResolveH = height;
+	return true;
 }
 
 } // namespace mitiru::render

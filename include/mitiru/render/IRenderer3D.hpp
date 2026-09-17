@@ -1,10 +1,7 @@
 #pragma once
 
 /// @file IRenderer3D.hpp
-/// @brief 3Dレンダラー統一抽象インターフェース
-/// @details DX11(Renderer3D)とDX12(Renderer3D_DX12)を統一的に扱うための
-///          仮想インターフェース。Gameクラスは具体的なバックエンドを知らずに
-///          3D描画を行える。
+/// @brief 3D レンダラーの共通インターフェース宣言
 
 #include <span>
 
@@ -16,26 +13,9 @@
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/Material.hpp>
-
-namespace mitiru::render
-{
-
-/// @brief シェーダーモード
-enum class ShaderMode3D : uint8_t
-{
-	Phong = 0,     ///< 標準Phongシェーディング
-	Toon,          ///< セルシェーディング
-	Unlit,         ///< ライティングなし
-	Flat,          ///< フラットシェーディング
-	Posterize,     ///< ポスタリゼーション
-	Halftone,      ///< ハーフトーン
-	Hatching,      ///< ハッチング
-	GradientMap,   ///< グラデーションマップ
-	Silhouette,    ///< シルエット
-	Watercolor,    ///< 水彩風
-};
-
-} // namespace mitiru::render
+#include <mitiru/render/RendererEnums3D.hpp>
+#include <mitiru/render/ISceneFx.hpp>
+#include <mitiru/render/experimental/IExperimentalRenderer3D.hpp>
 
 namespace mitiru
 {
@@ -45,62 +25,31 @@ class Screen;
 namespace mitiru::render
 {
 
-/// @brief ポストプロセスアウトラインのモード
-/// @details IRenderer3D::setOutlineMode() で切り替える。
-///          DX12では全モードが実装され、DX11ではno-opとなる。
-enum class OutlineMode : int
-{
-	DepthSobel     = 0,  ///< 深度Sobel（線形化）— デフォルト
-	DepthLaplacian = 1,  ///< 深度Laplacian 3x3
-	DepthSobelNdotV = 2, ///< 深度Sobel + NdotVフィルタ（凹面除外）
-	ColorEdge      = 3,  ///< 色エッジ（輝度Sobel）
-	DepthColorCombo = 4, ///< 深度+色 複合（両方にエッジがある場合のみ）
-	Fresnel        = 5,  ///< Fresnel（メインシェーダー内N.Vリム効果、ポストプロセスなし）
-};
+// ShaderMode3D、OutlineMode、OUTLINE_MODE_COUNT は RendererEnums3D.hpp で定義する
 
-/// @brief アウトラインモードの総数
-constexpr int OUTLINE_MODE_COUNT = 6;
-
-/// @brief 3Dレンダラー統一インターフェース
-/// @details DX11/DX12レンダラーの共通操作を定義する。
-///          フレーム開始→カメラ/ライト設定→メッシュ描画→フレーム終了の
-///          基本フローはどのバックエンドでも同一。
+/// @brief DX11 / DX12 レンダラーの共通インターフェース
+/// @details フレーム開始、カメラとライトの設定、メッシュ描画、フレーム終了の順に呼ぶ。
 class IRenderer3D
 {
 public:
 	virtual ~IRenderer3D() = default;
 
-	/// @brief 初期化済みかどうかを返す
 	[[nodiscard]] virtual bool isInitialized() const noexcept = 0;
 
-	/// @brief 内部 RT を新しい backbuffer サイズ (物理 px) へ追従させる
-	/// @details 既定 no-op。swapchain resize 後・次の beginFrame 前に呼ぶこと。
+	/// @brief 内部 RT を backbuffer の物理 px サイズに合わせる
+	/// @details swapchain のリサイズ後、次の `beginFrame()` より前に呼ぶ。
 	virtual void resize(int /*width*/, int /*height*/) {}
 
-	/// @brief フレーム描画を開始する
-	/// @param clearColor バックバッファのクリア色
 	virtual void beginFrame(const sgc::Colorf& clearColor = {0.2f, 0.2f, 0.3f, 1.0f}) = 0;
 
-	/// @brief フレーム描画を終了する
 	virtual void endFrame() = 0;
 
-	/// @brief カメラを設定する
-	/// @param camera 3Dカメラ
 	virtual void setCamera(const Camera3D& camera) = 0;
 
-	/// @brief ライトを設定する
-	/// @param light ライト情報
 	virtual void setLight(const Light& light) = 0;
 
-	/// @brief 複数ライトを設定する
-	/// @param lights ライト配列のビュー（最大 kMaxLights 個）
-	/// @details マルチライト対応バックエンドは複数ライトをすべて使う。
-	///          単一ライト前提の既存バックエンドはデフォルト実装で
-	///          先頭ライトのみ `setLight()` 経由で使う後方互換動作。
-	///
-	///          空配列を渡すと「ライトなし（環境光のみ）」の意味になる。
-	///          配列が `kMaxLights` を超えた場合の挙動はバックエンド依存
-	///          （Renderer3D は先頭 `kMaxLights` 個のみ使用、残りは破棄）。
+	/// @brief 最大 `kMaxLights` 個のライトを設定する
+	/// @details 空配列は環境光だけを使う。単一ライトのバックエンドは先頭だけを使う。上限を超えたときの扱いはバックエンドごとに異なる。
 	virtual void setLights(std::span<const Light> lights)
 	{
 		if (!lights.empty())
@@ -109,299 +58,271 @@ public:
 		}
 	}
 
-	/// @brief マルチライトの最大サポート数
-	/// @details setLights() に渡せる最大数。GPU 側 cbuffer のサイズで決まる。
+	/// @brief GPU 側の cbuffer に合わせたライト数の上限
 	static constexpr int kMaxLights = 8;
 
-	// ── マルチライト経路の有効化（DX11/DX12 共通 API）────────────
-	// バックエンドが実体実装を持つ。デフォルトはストアのみで、
-	// drawMesh の描画パスがバックエンド側で multi-light 経路に切り替わる
-	// かは override の有無で決まる。
+	// ── マルチライト経路 ──
 
-	/// @brief マルチライト経路を有効/無効にする
-	/// @details true にすると `setLights()` で渡された全ライトを使う
-	///          multi-light シェーダー経路に切り替わる（Phong 系のみ）。
-	///          false (デフォルト) は単一光源の互換動作。
-	///          DX11 / DX12 で実装される。それ以外のバックエンドでは no-op。
+	/// @brief マルチライト経路を切り替える
+	/// @details 有効時は Phong 系で `setLights()` の全ライトを使う。対応するバックエンドは DX11 と DX12。
 	virtual void setUseMultiLight(bool /*useMulti*/) {}
 
-	/// @brief 現在マルチライト経路かを返す
 	[[nodiscard]] virtual bool useMultiLight() const noexcept { return false; }
 
-	// ── Skybox / 環境キューブマップ（DX11/DX12 共通 API）──────────
-
-	/// @brief キューブマップ skybox をセットする
-	/// @details バックエンドは内部で GPU リソースを構築し、
-	///          以降の `beginFrame()` の直後（メッシュ描画より前）に
-	///          深度=1.0 の最遠面として skybox を描画する。
-	///          DX11 / DX12 で実装される。空 cubemap を渡すと未設定状態に戻す。
-	virtual void setSkybox(const Cubemap& /*cubemap*/) {}
-
-	/// @brief skybox 描画の有効/無効
-	/// @details `setSkybox()` で cubemap がセット済みでも、これを false に
-	///          すれば一時的に skybox 描画をスキップできる。
-	virtual void setSkyboxEnabled(bool /*enabled*/) {}
-
-	/// @brief skybox 描画が有効か
-	[[nodiscard]] virtual bool isSkyboxEnabled() const noexcept { return false; }
-
-	/// @brief シーンのアンビエント色を設定する
-	/// @param color RGB アンビエント色（A は通常無視される）
-	/// @details 既存の Renderer3DConfig::defaultAmbient と同じ意味のシーン全体ベース光。
-	///          初期値はバックエンド初期化時の defaultAmbient と一致するため、
-	///          このメソッドを呼ばなければ既存挙動と同一。
-	///          DX11 / DX12 で実装され、それ以外のバックエンドでは no-op。
-	virtual void setAmbientColor(const sgc::Colorf& /*color*/) {}
-
-	/// @brief 現在のシーンアンビエント色を返す
-	/// @return 直前に setAmbientColor() で設定された色、未設定なら defaultAmbient
-	[[nodiscard]] virtual sgc::Colorf ambientColor() const noexcept
-	{
-		return sgc::Colorf{0.15f, 0.15f, 0.15f, 1.0f};
-	}
-
-	/// @brief メッシュを描画する
-	/// @param mesh 描画対象メッシュ
-	/// @param worldTransform ワールド変換行列
-	/// @param material マテリアル
 	virtual void drawMesh(const Mesh& mesh,
 	                      const sgc::Mat4f& worldTransform,
 	                      const Material& material = {}) = 0;
 
-	/// @brief フレームアクティブフラグをリセットする（Engine側で毎フレーム呼ぶ）
+	/// @brief Engine が毎フレームの最初に呼ぶ
 	virtual void resetFrameActive() noexcept = 0;
 
-	/// @brief このフレームで3D描画が行われたかを返す
+	/// @brief このフレームで 3D 描画が行われたかを返す
 	[[nodiscard]] virtual bool isFrameActive() const noexcept = 0;
 
-	/// @brief 直前フレームのドローコール数を返す
 	[[nodiscard]] virtual int drawCallCount() const noexcept = 0;
 
-	/// @brief シェーダーモードを設定する（トゥーン、フラット等）
-	/// @param mode シェーダーモード
-	virtual void setShaderMode([[maybe_unused]] ShaderMode3D mode) {}
+	// ── 視錐台カリング ──
 
-	// ── 影（DX12で実装、DX11ではno-op） ──
-	/// @brief 影（シャドウマップ）の有効/無効を設定する
-	virtual void setShadowEnabled(bool /*enabled*/) {}
-	/// @brief 影を落とす平行光の向きを設定する（通常はライトの direction と揃える）
-	virtual void setShadowDirection(const sgc::Vec3f& /*dir*/) {}
+	/// @brief 視錐台カリングを切り替える
+	/// @details DX11 と DX12 では既定で有効。無効化はカリング結果の比較に使う。
+	virtual void setFrustumCullingEnabled(bool /*enabled*/) noexcept {}
 
-	// ── アウトライン（DX12で実装、DX11ではno-op） ──
+	[[nodiscard]] virtual bool isFrustumCullingEnabled() const noexcept { return false; }
 
-	/// @brief アウトライン描画の有効/無効を設定する
-	virtual void setOutlineEnabled(bool /*enabled*/) {}
+	[[nodiscard]] virtual int culledCount() const noexcept { return 0; }
 
-	/// @brief アウトライン描画が有効かどうかを返す
-	[[nodiscard]] virtual bool isOutlineEnabled() const noexcept { return false; }
+	// ── オクルージョンカリング ──
+	// `mitiru::render::OcclusionCuller` の CPU Hi-Z で、前フレームの深度から完全に隠れたメッシュを除く。
+	// 視錐台カリングと両方が有効なときは、視錐台、オクルージョンの順に判定する。
 
-	/// @brief アウトラインモードを設定する
-	virtual void setOutlineMode(OutlineMode /*mode*/) {}
+	/// @brief オクルージョンカリングを切り替える
+	/// @details 前フレームの深度を使うため、効果は 1 フレーム遅れる。
+	virtual void setOcclusionCullingEnabled(bool /*enabled*/) noexcept {}
 
-	/// @brief 現在のアウトラインモードを返す
-	[[nodiscard]] virtual OutlineMode outlineMode() const noexcept { return OutlineMode::DepthSobel; }
+	[[nodiscard]] virtual bool isOcclusionCullingEnabled() const noexcept { return false; }
 
-	// ── HDR / tonemap (ENG-106) ─────────────────────────────────
+	[[nodiscard]] virtual int occludedCount() const noexcept { return 0; }
 
-	/// @brief 露出 (exposure) を設定する
-	/// @details ACES filmic 前の線形係数。1.0 が標準。明るくしたいなら >1、
-	///          暗くしたいなら <1。屋外シーン:0.5–1.0 / 暗所:1.5–3.0 が目安。
-	///          DX12 のみ実装。DX11 では no-op。
-	virtual void setTonemapExposure(float /*exposure*/) {}
+	/// @brief 同じメッシュを複数のワールド行列で描画する
+	/// @details 既定では `drawMesh()` を繰り返す。GPU instancing 対応バックエンドは 1 ドローコールにまとめる。
+	virtual void drawMeshInstanced(const Mesh& mesh,
+	                               std::span<const sgc::Mat4f> worlds,
+	                               const Material* material)
+	{
+		const Material& mat = material ? *material : Material{};
+		for (const auto& world : worlds)
+		{
+			drawMesh(mesh, world, mat);
+		}
+	}
 
-	/// @brief 現在の exposure 値を返す
-	[[nodiscard]] virtual float tonemapExposure() const noexcept { return 1.0f; }
+	// ── 2D オーバーレイ ──
 
-	/// @brief 出力ガンマを設定する (default 2.2 = sRGB approx)
-	/// @details tonemap 後に `pow(c, 1.0/gamma)` を掛ける。
-	virtual void setTonemapGamma(float /*gamma*/) {}
-
-	/// @brief 現在の gamma 値を返す
-	[[nodiscard]] virtual float tonemapGamma() const noexcept { return 2.2f; }
-
-	// ── 2Dオーバーレイ（DX12で実装、DX11ではno-op） ──
-
-	/// @brief 3D フレームの 2D を後段で重ねられるかを返す
-	/// @details true の場合、Engine は draw() 中の 2D を蓄積し、3D 確定後に
-	///          Screen::present3DOverlay() で 3D の上へ描く。false は従来の present()
+	/// @brief 3D の確定後に 2D を重ねられるかを返す
+	/// @details 対応時は `draw()` 中の 2D を蓄積し、`Screen::present3DOverlay()` で 3D の上に描く。
 	[[nodiscard]] virtual bool hasOverlaySupport() const noexcept { return false; }
 
-	/// @brief 現在開いているコマンドリストを取得する（DX12用、ImGui描画挿入用）
-	/// @return コマンドリストのvoidポインタ（DX11ではnullptr）
+	/// @brief DX12 で ImGui の描画を追加するため、開いているコマンドリストを返す
 	[[nodiscard]] virtual void* nativeCommandList() const noexcept { return nullptr; }
 
-	/// @brief ネイティブGPUデバイスを取得する（DX12用）
-	/// @return DX12ではDx12Device*、DX11ではnullptr
+	/// @brief DX12 では `Dx12Device*`、それ以外では nullptr を返す
 	[[nodiscard]] virtual void* nativeDevice() const noexcept { return nullptr; }
 
-	/// @brief ネイティブスワップチェーンを取得する（DX12用）
-	/// @return DX12ではDx12SwapChain*、DX11ではnullptr
+	/// @brief DX12 では `Dx12SwapChain*`、それ以外では nullptr を返す
 	[[nodiscard]] virtual void* nativeSwapChain() const noexcept { return nullptr; }
 
-	/// @brief endFrame()後のコマンドリスト最終化（バリア+実行）
-	/// @details DX12ではendFrame()がコマンドリストを開いたままにし、
-	///          ImGui描画を追記した後にfinalizeFrame()で閉じて実行する。
-	///          DX11ではno-op。
+	/// @brief ImGui の描画後にコマンドリストを閉じて実行する
+	/// @details DX12 では `endFrame()` の後に呼ぶ。
 	virtual void finalizeFrame() {}
 
-	// ── 3D Gaussian Splatting (M1、DX12 で実装、それ以外は no-op) ──────────
-	/// @brief .splat シーンを読み込んで GPU にアップロードする (一度だけ)。失敗時 false。
-	virtual bool loadSplatScene(const char* /*path*/) { return false; }
-	/// @brief 読み込み済みスプラットシーンを現在のカメラで描画する (beginFrame 後)。
-	virtual void drawSplats() {}
-	/// @brief 読み込み済みシーンの境界球 (重心 + 半径)。カメラ自動フレーミング用。
-	virtual void splatBounds(float& cx, float& cy, float& cz, float& r) const { cx = cy = cz = 0.0f; r = 1.0f; }
+	// ── queryInterface 相当 ──
 
-	// ── Live2D (Cubism Framework 駆動 + 自前 D3D12 レンダラ、DX12+Cubism で実装、それ以外は no-op) ──
-	/// @brief Live2D モデル (model3.json) を描く要求。初回に Framework が moc/テクスチャ/モーション/
-	///        物理/エフェクトを一括ロードし、以後毎フレーム更新 (公式サンプル相当) + 描画する。
-	virtual void drawLive2D(const char* /*model3jsonPath*/) {}
-	/// @brief Live2D の注視先 (nx,ny∈[-1,1])。頭/目/体がマウス等に追従する。
-	virtual void live2dLookAt(float /*nx*/, float /*ny*/) {}
-	/// @brief Live2D のタップ操作。TapBody (無ければ idle) グループのモーションを再生する。
-	virtual void live2dTap() {}
-	/// @brief 公式 LAppView 相当のステージ画像 (背景/歯車/閉じる)。drawLive2D より前に一度設定する。
-	virtual void live2dStage(const char* /*bg*/, const char* /*gear*/, const char* /*close*/) {}
+	/// @brief 絵の設定用インターフェースを返す
+	[[nodiscard]] virtual ISceneFx* sceneFx() noexcept { return nullptr; }
+	[[nodiscard]] virtual const ISceneFx* sceneFx() const noexcept { return nullptr; }
 
-	// ── DirectML in-pipeline ニューラル後処理 (DX12+DirectML で実装) ──
-	/// @brief backbuffer に DirectML 推論を CPU 往復なしで適用する on/off + 強度 (0..2)。
-	virtual void enableNeuralFx(bool /*enabled*/, float /*strength*/ = 0.5f) {}
+	/// @brief 実験的機能のインターフェースを返す
+	[[nodiscard]] virtual IExperimentalRenderer3D* experimental() noexcept { return nullptr; }
+	[[nodiscard]] virtual const IExperimentalRenderer3D* experimental() const noexcept { return nullptr; }
 
-	/// @brief ニューラル・リライティング on/off + 光源方向 (lx,ly∈[-1,1]) + 陰影/リム強度。
-	/// @details 平面 Live2D から法線を推定し可動光源で再ライティング (従来は照明固定で不可能)。
-	virtual void enableRelight(bool /*enabled*/, float /*lightX*/ = 0.4f, float /*lightY*/ = 0.4f,
-	                           float /*strength*/ = 0.6f, float /*rim*/ = 0.5f) {}
-	/// @brief リライト用の単眼深度モデル (ONNX) パスを設定する。
-	virtual void setRelightDepthModel(const char* /*path*/) {}
+	// ── `sceneFx()` と `experimental()` への後方互換転送 ──
+	// 具象クラスで転送関数と同名の override が並ぶときは、`using ISceneFx::...` などで override を優先する。
+	// virtual にしているのは、ISceneFx/IExperimentalRenderer3D を実装せずこの旧 API を直接
+	// オーバーライドする外部派生クラスでも、IRenderer3D& 経由の呼び出しが正しくディスパッチされるため。
 
-	// ── ニューラル現像 (M3、DX12+DirectML で実装、それ以外は no-op) ──────────
-	/// @brief 次の安全境界で現在のフレームを style モデルで 2D 化するよう要求する。
-	virtual void requestDevelop(const char* /*modelPath*/) {}
-	/// @brief engine フレーム頭 (backbuffer=PRESENT) で呼ぶ: 要求があれば readback+推論。
-	virtual void tickDevelop() {}
-	/// @brief 現像済み状態を解除して 3D 表示へ戻す。
-	virtual void clearDevelop() {}
-	/// @brief 現像済み 2D 画像が利用可能か。
-	[[nodiscard]] virtual bool styleReady() const { return false; }
-	/// @brief 現像済み 2D 画像 (RGBA8、tight) の先頭。未準備なら nullptr。
-	[[nodiscard]] virtual const std::uint8_t* styleImageData() const { return nullptr; }
-	/// @brief 現像済み 2D 画像の幅・高さ。
-	[[nodiscard]] virtual int styleImageW() const { return 0; }
-	[[nodiscard]] virtual int styleImageH() const { return 0; }
-	/// @brief 現像 2D の全画面合成強度 (0=3D / 1=完全 2D)。post-process で blit される。
-	virtual void setStyleStrength(float /*strength*/) {}
-
-	// ── 現像焼き込み (2D 絵画を 3D スプラットへ、DX12 で実装) ──────────────
-	/// @brief 直前の現像 2D を、その現像視点から見えるスプラットへ色として焼き込む。
-	virtual void bakeStyleToSplats() {}
-	/// @brief スプラット色を元の写実色へ戻す (焼き込み解除)。
-	virtual void resetSplatColors() {}
-	/// @brief 焼き込み済みスプラットの割合 (0..1、塗り達成率)。
-	[[nodiscard]] virtual float bakedFraction() const { return 0.0f; }
-
-	// ── 現像合わせ (お題再現パズル、DX12 で実装) ──────────────
-	/// @brief 現在の現像 2D を「お題」として保存する。
-	virtual void captureTargetFromStyle() {}
-	/// @brief blit でお題(true)／自分の現像(false)を表示する。
-	virtual void setShowTarget(bool /*b*/) {}
-	/// @brief お題が保存済みか。
-	[[nodiscard]] virtual bool hasTarget() const { return false; }
-	/// @brief 現在の現像 2D とお題の一致度 (0..1)。
-	[[nodiscard]] virtual float matchScore() const { return 0.0f; }
-
-	/// @brief ワールド座標を現在のカメラで画面正規化座標 (u,v ∈ 0..1, 左上原点) へ射影する。
-	/// @return 視錐台内 (手前かつ画面内) なら true。アナモルフォーズ等の射影パズル用。
-	virtual bool worldToScreen(float /*wx*/, float /*wy*/, float /*wz*/, float& u, float& v) const { u = v = -1.0f; return false; }
-
-	// ── clod 仮想ジオメトリ (DX12 のみ) ──────
-	/// @brief .clod モデルのインスタンスを描画する (大規模静的ジオメトリ)。
-	/// @param path .clod への vfs パス。未対応バックエンドでは no-op。
-	/// @brief Makina の CSG ソリッド（焼き済み）を置く
-	/// @param bakeManifestPath .csgbake.json への**ファイルパス**（vfs ではない。
-	///        bake は DXIL を隣から読むので、実在するディレクトリに展開されていること）
-	/// @param timeSec モーションの時刻 (秒、Makina D-15)。トラックを持つ立体を live に
-	///        焼いてあればその時刻の姿で描く。静止した立体や焼き込みの bake では無視される
-	/// @details 既定は何もしない。DX12 かつ MITIRU_HAS_MAKINA のビルドだけが実装を持つ。
-	///          他のバックエンドで黙って消えるのは drawModel と同じ扱いで、
-	///          「無い機能は絵から抜ける」がこのインターフェースの規約である。
-	virtual void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
-	                       float rotYDeg, float scale, float timeSec)
+	virtual void setSkybox(const Cubemap& cubemap) { if (auto* fx = sceneFx()) { fx->setSkybox(cubemap); } }
+	virtual void setSkyboxEnabled(bool enabled) { if (auto* fx = sceneFx()) { fx->setSkyboxEnabled(enabled); } }
+	[[nodiscard]] virtual bool isSkyboxEnabled() const noexcept
 	{
-		(void)bakeManifestPath; (void)position; (void)rotYDeg; (void)scale; (void)timeSec;
+		const auto* fx = sceneFx();
+		return fx != nullptr && fx->isSkyboxEnabled();
 	}
 
-	virtual void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
-	                       float scale)
+	virtual void setAmbientColor(const sgc::Colorf& color) { if (auto* fx = sceneFx()) { fx->setAmbientColor(color); } }
+	[[nodiscard]] virtual sgc::Colorf ambientColor() const noexcept
 	{
-		(void)path;
-		(void)position;
-		(void)rotYDeg;
-		(void)scale;
+		const auto* fx = sceneFx();
+		return fx != nullptr ? fx->ambientColor() : sgc::Colorf{0.15f, 0.15f, 0.15f, 1.0f};
 	}
 
-	// ── スキンアニメ付き glTF モデル (DX12 のみ。vtable 末尾固定) ──────
-	/// @brief スキンアニメ付き glTF/glb を forward パスで描く (CPU スキニング v1)。
-	/// @details clipA/timeA = 再生クリップ名と絶対時間 (秒、ループ)。clipB 非 null で
-	///          A→B の crossfade (blend01: 0=A, 1=B)。clip 名が空/不在はレストポーズ。
-	///          時間はゲーム側 (GameMemory) が所有し、ポーズは (clip, time) の純関数。
-	///          未対応バックエンドでは no-op。
-	virtual void drawSkinnedModel(const char* path, const sgc::Vec3f& position,
-	                              float rotYDeg, float scale,
-	                              const char* clipA, float timeA,
-	                              const char* clipB, float timeB, float blend01)
+	virtual void setShaderMode(ShaderMode3D mode) { if (auto* fx = sceneFx()) { fx->setShaderMode(mode); } }
+
+	virtual void setShadowEnabled(bool enabled) { if (auto* fx = sceneFx()) { fx->setShadowEnabled(enabled); } }
+	virtual void setShadowDirection(const sgc::Vec3f& dir) { if (auto* fx = sceneFx()) { fx->setShadowDirection(dir); } }
+	virtual void setShadowCaster(bool enabled) { if (auto* fx = sceneFx()) { fx->setShadowCaster(enabled); } }
+
+	virtual void setCascadedShadowEnabled(bool enabled) { if (auto* fx = sceneFx()) { fx->setCascadedShadowEnabled(enabled); } }
+	[[nodiscard]] virtual bool isCascadedShadowEnabled() const noexcept
 	{
-		(void)path;
-		(void)position;
-		(void)rotYDeg;
-		(void)scale;
-		(void)clipA;
-		(void)timeA;
-		(void)clipB;
-		(void)timeB;
-		(void)blend01;
+		const auto* fx = sceneFx();
+		return fx != nullptr && fx->isCascadedShadowEnabled();
 	}
 
-	// ── 3 軸回転の rigid glb (ABI v26、DX12 のみ。vtable 末尾固定) ──────────────
-	/// @brief glTF/glb を forward パスで 3 軸回転して描く (viewmodel / 傾く小物用)。
-	/// @details rotDeg は drawMesh と同じ {pitch, yaw, roll} 度。骨があっても
-	///          レストポーズの剛体として描く。未対応バックエンドでは no-op。
-	virtual void drawModelRot(const char* path, const sgc::Vec3f& position,
-	                          const sgc::Vec3f& rotDeg, float scale)
+	virtual void setOutlineEnabled(bool enabled) { if (auto* fx = sceneFx()) { fx->setOutlineEnabled(enabled); } }
+	[[nodiscard]] virtual bool isOutlineEnabled() const noexcept
 	{
-		(void)path;
-		(void)position;
-		(void)rotDeg;
-		(void)scale;
+		const auto* fx = sceneFx();
+		return fx != nullptr && fx->isOutlineEnabled();
 	}
-
-	// ── 絵づくり (ABI v27、DX12 のみ。vtable 末尾固定) ─────────────────────────
-	/// @brief アウトラインの線幅 (px) と検出しきい値を設定する
-	/// @details しきい値が小さいほど線が増える。未対応バックエンドでは no-op。
+	virtual void setOutlineMode(OutlineMode mode) { if (auto* fx = sceneFx()) { fx->setOutlineMode(mode); } }
+	[[nodiscard]] virtual OutlineMode outlineMode() const noexcept
+	{
+		const auto* fx = sceneFx();
+		return fx != nullptr ? fx->outlineMode() : OutlineMode::DepthSobel;
+	}
 	virtual void setOutlineParams(float widthPx, float threshold)
 	{
-		(void)widthPx;
-		(void)threshold;
+		if (auto* fx = sceneFx()) { fx->setOutlineParams(widthPx, threshold); }
 	}
 
-	/// @brief トゥーンの影部でアルベドに掛ける係数を設定する
-	/// @details 未対応バックエンドでは no-op。
-	virtual void setToonShadowTint(const sgc::Colorf& tint) { (void)tint; }
-
-	/// @brief 距離フォグを設定する (ABI v28)
-	/// @details nearDist から farDist にかけて color へ染める。未対応では no-op。
-	virtual void setFog(bool enabled, const sgc::Colorf& color, float nearDist,
-	                    float farDist)
+	virtual void setToonShadowTint(const sgc::Colorf& tint) { if (auto* fx = sceneFx()) { fx->setToonShadowTint(tint); } }
+	virtual void setFog(bool enabled, const sgc::Colorf& color, float nearDist, float farDist)
 	{
-		(void)enabled;
-		(void)color;
-		(void)nearDist;
-		(void)farDist;
+		if (auto* fx = sceneFx()) { fx->setFog(enabled, color, nearDist, farDist); }
 	}
 
-	/// @brief 以後の描画が影を落とすかを切り替える (ABI v29)
-	/// @details 一人称の武器のように、画面には出るが世界には影を落とさないものに使う。
-	///          フレーム頭で true に戻る。未対応では no-op。
-	virtual void setShadowCaster(bool enabled) { (void)enabled; }
+	virtual void setTonemapExposure(float exposure) { if (auto* fx = sceneFx()) { fx->setTonemapExposure(exposure); } }
+	[[nodiscard]] virtual float tonemapExposure() const noexcept
+	{
+		const auto* fx = sceneFx();
+		return fx != nullptr ? fx->tonemapExposure() : 1.0f;
+	}
+	virtual void setTonemapGamma(float gamma) { if (auto* fx = sceneFx()) { fx->setTonemapGamma(gamma); } }
+	[[nodiscard]] virtual float tonemapGamma() const noexcept
+	{
+		const auto* fx = sceneFx();
+		return fx != nullptr ? fx->tonemapGamma() : 2.2f;
+	}
+
+	virtual bool loadSplatScene(const char* path)
+	{
+		auto* ex = experimental();
+		return ex != nullptr && ex->loadSplatScene(path);
+	}
+	virtual void drawSplats() { if (auto* ex = experimental()) { ex->drawSplats(); } }
+	virtual void splatBounds(float& cx, float& cy, float& cz, float& r) const
+	{
+		if (const auto* ex = experimental()) { ex->splatBounds(cx, cy, cz, r); return; }
+		cx = cy = cz = 0.0f; r = 1.0f;
+	}
+
+	virtual void drawLive2D(const char* model3jsonPath) { if (auto* ex = experimental()) { ex->drawLive2D(model3jsonPath); } }
+	virtual void live2dLookAt(float nx, float ny) { if (auto* ex = experimental()) { ex->live2dLookAt(nx, ny); } }
+	virtual void live2dTap() { if (auto* ex = experimental()) { ex->live2dTap(); } }
+	virtual void live2dStage(const char* bg, const char* gear, const char* close)
+	{
+		if (auto* ex = experimental()) { ex->live2dStage(bg, gear, close); }
+	}
+
+	virtual void enableNeuralFx(bool enabled, float strength = 0.5f)
+	{
+		if (auto* ex = experimental()) { ex->enableNeuralFx(enabled, strength); }
+	}
+	virtual void enableRelight(bool enabled, float lightX = 0.4f, float lightY = 0.4f,
+	                    float strength = 0.6f, float rim = 0.5f)
+	{
+		if (auto* ex = experimental()) { ex->enableRelight(enabled, lightX, lightY, strength, rim); }
+	}
+	virtual void setRelightDepthModel(const char* path) { if (auto* ex = experimental()) { ex->setRelightDepthModel(path); } }
+
+	virtual void requestDevelop(const char* modelPath) { if (auto* ex = experimental()) { ex->requestDevelop(modelPath); } }
+	virtual void tickDevelop() { if (auto* ex = experimental()) { ex->tickDevelop(); } }
+	virtual void clearDevelop() { if (auto* ex = experimental()) { ex->clearDevelop(); } }
+	[[nodiscard]] virtual bool styleReady() const
+	{
+		const auto* ex = experimental();
+		return ex != nullptr && ex->styleReady();
+	}
+	[[nodiscard]] virtual const std::uint8_t* styleImageData() const
+	{
+		const auto* ex = experimental();
+		return ex != nullptr ? ex->styleImageData() : nullptr;
+	}
+	[[nodiscard]] virtual int styleImageW() const { const auto* ex = experimental(); return ex != nullptr ? ex->styleImageW() : 0; }
+	[[nodiscard]] virtual int styleImageH() const { const auto* ex = experimental(); return ex != nullptr ? ex->styleImageH() : 0; }
+	virtual void setStyleStrength(float strength) { if (auto* ex = experimental()) { ex->setStyleStrength(strength); } }
+
+	virtual void bakeStyleToSplats() { if (auto* ex = experimental()) { ex->bakeStyleToSplats(); } }
+	virtual void resetSplatColors() { if (auto* ex = experimental()) { ex->resetSplatColors(); } }
+	[[nodiscard]] virtual float bakedFraction() const
+	{
+		const auto* ex = experimental();
+		return ex != nullptr ? ex->bakedFraction() : 0.0f;
+	}
+
+	virtual void captureTargetFromStyle() { if (auto* ex = experimental()) { ex->captureTargetFromStyle(); } }
+	virtual void setShowTarget(bool b) { if (auto* ex = experimental()) { ex->setShowTarget(b); } }
+	[[nodiscard]] virtual bool hasTarget() const { const auto* ex = experimental(); return ex != nullptr && ex->hasTarget(); }
+	[[nodiscard]] virtual float matchScore() const
+	{
+		const auto* ex = experimental();
+		return ex != nullptr ? ex->matchScore() : 0.0f;
+	}
+
+	virtual bool worldToScreen(float wx, float wy, float wz, float& u, float& v) const
+	{
+		if (const auto* ex = experimental()) { return ex->worldToScreen(wx, wy, wz, u, v); }
+		u = v = -1.0f;
+		return false;
+	}
+
+	virtual void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
+	              float rotYDeg, float scale, float timeSec)
+	{
+		if (auto* ex = experimental()) { ex->drawSolid(bakeManifestPath, position, rotYDeg, scale, timeSec); }
+	}
+
+	virtual void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg, float scale)
+	{
+		if (auto* ex = experimental()) { ex->drawModel(path, position, rotYDeg, scale); }
+	}
+
+	virtual void drawSkinnedModel(const char* path, const sgc::Vec3f& position,
+	                      float rotYDeg, float scale,
+	                      const char* clipA, float timeA,
+	                      const char* clipB, float timeB, float blend01)
+	{
+		if (auto* ex = experimental())
+		{
+			ex->drawSkinnedModel(path, position, rotYDeg, scale, clipA, timeA, clipB, timeB, blend01);
+		}
+	}
+
+	virtual void drawModelRot(const char* path, const sgc::Vec3f& position,
+	                  const sgc::Vec3f& rotDeg, float scale)
+	{
+		if (auto* ex = experimental()) { ex->drawModelRot(path, position, rotDeg, scale); }
+	}
+
+	// v38 末尾追記: ISceneFx::setCascadedShadowAutoFit への転送
+	virtual void setCascadedShadowAutoFit(bool enabled, float maxDistance)
+	{
+		if (auto* fx = sceneFx()) { fx->setCascadedShadowAutoFit(enabled, maxDistance); }
+	}
+	virtual void setShadowCascadeCount(int count)
+	{
+		if (auto* fx = sceneFx()) { fx->setShadowCascadeCount(count); }
+	}
 };
 
 } // namespace mitiru::render

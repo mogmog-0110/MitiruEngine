@@ -235,6 +235,9 @@ public:
 		return mitiru_webaudio_latency();
 	}
 
+	/// @details BufferSource.start(atSec) がサンプル精度予約そのものなので常に true (#F2)。
+	[[nodiscard]] bool supportsScheduledPlayback() const noexcept override { return true; }
+
 private:
 	/// @details 起動時に音を全部読んで復号を始める。復号は非同期なので、鳴らす
 	///          瞬間に初めて頼むと最初の 1 回が落ちる。拍に合わせて鳴らすゲームでは

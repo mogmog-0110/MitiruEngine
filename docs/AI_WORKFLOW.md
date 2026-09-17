@@ -86,3 +86,17 @@ exit codeが結果(0=pass / 1=fail / 2=build error)。CIにそのまま置ける
 
 録画(`mitiru run --record`) → 修正 → リプレイ検証の流れは
 [GETTING_STARTED.md](GETTING_STARTED.md)も参照。
+
+## 自動プレイテスト: `tools/ai_playtest.py` / `tools/ai_playtest_agent.py`
+
+上記の観測APIを使って人手を介さずプレイテストする2つのスクリプト:
+
+- `tools/ai_playtest.py` — `mitiru ai-playtest` の実体。reflect された GameMemory を
+  観測しながら、engine の counterfactual `branch`(反実仮想)で候補入力を
+  「コミットせず」試し、不変条件を破る状態を探して再現入力を出す。
+- `tools/ai_playtest_agent.py` — 同じ枠組みの v2。LLM エージェント(Claude)が
+  reflect された GameMemory を意味的に読み、数値しきい値なしで「この状態は
+  仕様としておかしいか」を意味判定する。
+
+どちらもゲーム固有の閾値を書かずに済ませるための「AI が意味層を読む」設計で、
+このドキュメントの観測API・`branch`・`state_diff`の上に乗る。

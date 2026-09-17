@@ -10,11 +10,18 @@
 /// per-frame signal flow は Engine_Module_Adapter.hpp 側。
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <string>
+#include <vector>
 
+#include <mitiru/core/detail/PhysicsQueryJob.hpp>
+#include <mitiru/module/Spawner.hpp>
+#include <mitiru/asset/AssetPack.hpp>
 #include <mitiru/cef/StateStore.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
@@ -22,6 +29,7 @@
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/debug/DebugPrint.hpp>
+#include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
@@ -61,17 +69,91 @@ inline std::string describeVersionMismatch(std::uint32_t dllV, std::uint32_t hos
 	     + "。game を host と同じ構成 (Debug/Release・CRT) で再ビルドしてください";
 }
 
+/// @brief `Engine_Module_Adapter.hpp` の実体を先出し宣言 (include 順で本体がまだ見えないため。
+///        `Engine_Module.hpp` が Loader→Adapter の順に include する)。`SceneViewObject` は
+///        ポインタ引数でしか使わないので前方宣言のみで足りる。
+struct SceneViewObject;
+void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::DrawCommandBuffer& buf,
+                       mitiru::render::SpriteCache& spriteCache,
+                       std::vector<SceneViewObject>* sceneOut) noexcept;
+
 }  // namespace mitiru::module::detail
 
-// ── loadModule ─────────────────────────────────────────────────────────────
+// ── 1 ファイル配布 (P12) ─────────────────────────────────────────────────
 
-MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modulePath)
+MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured()
+{
+	std::string packPath = m_config.packPath;
+	if (packPath.empty())
+	{
+		// MITIRU_PACK (P12 の 1 ファイル配布契約: module.dll 必須) を正とする。
+		// MITIRU_ASSET_PACK (host --asset-pack の既存経路、assets 専用 pack を指す) は
+		// 後方互換のフォールバックとして読む (module.dll を同梱した pack をこちらの
+		// env 経由で渡していた既存運用を壊さないため)。両方設定されていたら
+		// MITIRU_PACK を優先し、その旨を 1 回だけ警告する (無言で片方を無視しない)。
+		const char* pack      = std::getenv("MITIRU_PACK");
+		const char* assetPack = std::getenv("MITIRU_ASSET_PACK");
+		if (pack != nullptr && pack[0] != '\0')
+		{
+			packPath = pack;
+			if (assetPack != nullptr && assetPack[0] != '\0')
+			{
+				debug::warnOnce("pack.env.both-set",
+					"MITIRU_PACK と MITIRU_ASSET_PACK が両方設定されています。"
+					"module.dll の load には MITIRU_PACK を使い、MITIRU_ASSET_PACK は無視します。");
+			}
+		}
+		else if (assetPack != nullptr && assetPack[0] != '\0')
+		{
+			packPath = assetPack;
+		}
+	}
+	if (packPath.empty()) { return {}; }
+
+	auto pack = vfs::AssetPack::open(packPath);
+	if (!pack)
+	{
+		std::fprintf(stderr, "[pack] %s を開けません (.mtpak として不正)\n", packPath.c_str());
+		return {};
+	}
+
+	// tools/make_pack.py が書く固定レイアウト: "module.dll" が唯一の実行コード、
+	// 残りは assets/**・recordings/** (どちらも readGlobal 経由で VFS mount 後に読める)。
+	auto dllBytes = pack->read("module.dll");
+	if (!dllBytes)
+	{
+		std::fprintf(stderr, "[pack] %s に module.dll がありません\n", packPath.c_str());
+		return {};
+	}
+
+	const std::filesystem::path extractedPath =
+		std::filesystem::temp_directory_path() /
+		("mitiru_pack_" + std::filesystem::path(packPath).stem().string() + ".dll");
+	std::ofstream out(extractedPath, std::ios::binary | std::ios::trunc);
+	if (!out || !out.write(reinterpret_cast<const char*>(dllBytes->data()),
+		static_cast<std::streamsize>(dllBytes->size())))
+	{
+		std::fprintf(stderr, "[pack] %s の展開に失敗しました\n", extractedPath.string().c_str());
+		return {};
+	}
+	out.close();
+
+	// assets/recordings をグローバル mount する (以後 vfs::readGlobal/readAsset がこの pack を優先)。
+	vfs::mountGlobal(std::move(*pack));
+	return extractedPath;
+}
+
+MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modulePathIn)
 {
 	// すでに module が active なら明示的 unload を要求する。
 	if (m_moduleHost && m_moduleHost->isLoaded())
 	{
 		return false;
 	}
+
+	// P12: pack 配布時は渡された modulePath を無視し、pack 内の DLL を使う。
+	const std::filesystem::path packDll = mountModulePackIfConfigured();
+	const std::filesystem::path& modulePath = !packDll.empty() ? packDll : modulePathIn;
 
 	if (!m_moduleHost)
 	{
@@ -140,6 +222,50 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 		return false;
 	}
 
+	// pause 中も dt を通す layer mask (2-1)。宣言が無い DLL は resolveSymbol が nullptr を
+	// 返すので mask=0 (従来どおり pause は全 layer 共通) のまま。
+	m_pauseAlwaysLayersMask = 0;
+	if (auto fn = m_moduleHost->pauseAlwaysLayersMaskFn())
+	{
+		m_pauseAlwaysLayersMask = fn();
+	}
+	// 種類別 (ingame/debug/object) の宣言があればそちら、無ければ 3 種類とも always mask。
+	for (std::uint8_t k = 0; k < 4; ++k) { m_pauseLayersByKind[k] = m_pauseAlwaysLayersMask; }
+	if (auto fn = m_moduleHost->pauseLayersByKindFn())
+	{
+		for (std::uint8_t k = 1; k < 4; ++k) { m_pauseLayersByKind[k] = fn(k); }
+	}
+
+	// 物理問い合わせ job (v37) が答える静的 world。--collision の JSON から箱を積む。無ければ world を持たない。
+	m_modulePhysics.reset();
+	m_pendingPhysicsQueries.clear();
+	if (!m_config.collisionPath.empty())
+	{
+		m_modulePhysics = detail::loadCollisionWorld(m_config.collisionPath);
+	}
+
+	// 型の台帳 (HE2 の GameObjectClassRegistry 相当)。load 時に 1 回 JSON にしておき、/api/ai/types は
+	// 文字列を返すだけにする (型の一覧は実行中に変わらない)。
+	m_spawnerTypesJson.clear();
+	if (auto fn = m_moduleHost->spawnerTypesFn())
+	{
+		std::vector<module::SpawnerTypeEntry> rows(module::detail::kMaxSpawnerEntries);
+		const int n = fn(rows.data(), static_cast<int>(rows.size()));
+		nlohmann::json types = nlohmann::json::array();
+		for (int i = 0; i < n && i < static_cast<int>(rows.size()); ++i)
+		{
+			const auto& r = rows[static_cast<std::size_t>(i)];
+			types.push_back({
+				{"type", std::string(r.jsonName, ::strnlen(r.jsonName, sizeof(r.jsonName)))},
+				{"caption", std::string(r.info.caption, ::strnlen(r.info.caption, sizeof(r.info.caption)))},
+				{"group", std::string(r.info.group, ::strnlen(r.info.group, sizeof(r.info.group)))},
+				{"placeable", r.info.placeable != 0},
+				{"eternal", r.info.eternal != 0},
+				{"size", r.size}});
+		}
+		m_spawnerTypesJson = nlohmann::json{{"supported", true}, {"types", std::move(types)}}.dump();
+	}
+
 	// per-frame signal flow 用の scratch buffer を遅延確保する。
 	if (!m_moduleInputSnapshot)
 	{
@@ -192,6 +318,7 @@ MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept
 	// 「非 null なら再利用」に渡って use-after-free になる (A5)。必ず null へ戻す。
 	m_moduleMemory     = nullptr;
 	m_moduleMemorySize = 0;
+	m_pauseAlwaysLayersMask = 0;
 
 	m_moduleApi = module::ModuleApi{};
 	m_moduleHost->unload();
@@ -272,21 +399,34 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	const bool layoutChanged =
 		(oldLayoutHash != 0 && newLayoutHash != 0 && oldLayoutHash != newLayoutHash);
 	bool stateReset = false;
+	// P9: layout 変動時に丸ごと初期化する代わり、reflect の名前+型が一致する field だけ
+	// 引き継ぐための旧 GameMemory の退避先 (freeReflectFields/oldApi は unloadFn で旧 memory を
+	// 返却する前に読み取っておく必要がある)。
+	std::vector<std::uint8_t> oldMemorySnapshot;
+	module::ModuleApi         oldApiSnapshot{};
 	if (memoryBefore != nullptr
 	    && (newApi.memorySize != m_moduleMemorySize || layoutChanged))
 	{
 		if (newApi.memorySize != m_moduleMemorySize)
 		{
 			std::fprintf(stderr,
-				"[module] reload: GameMemory size changed %u -> %u, state reset\n",
+				"[module] reload: GameMemory size changed %u -> %u, "
+				"reflect 一致 field のみ引き継ぎ\n",
 				m_moduleMemorySize, newApi.memorySize);
 		}
 		else
 		{
 			std::fprintf(stderr,
 				"[module] reload: GameMemory layout changed (size %u unchanged, "
-				"reflect hash mismatch), state reset\n",
+				"reflect hash mismatch), reflect 一致 field のみ引き継ぎ\n",
 				m_moduleMemorySize);
+		}
+		if (m_moduleApi.reflectFieldCount > 0)
+		{
+			oldMemorySnapshot.assign(
+				static_cast<const std::uint8_t*>(m_moduleMemory),
+				static_cast<const std::uint8_t*>(m_moduleMemory) + m_moduleMemorySize);
+			oldApiSnapshot = m_moduleApi;  // ModuleApi は POD、fields/schemas は値配列なのでコピーで足りる
 		}
 		if (m_moduleApi.on_shutdown != nullptr)
 		{
@@ -300,7 +440,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 		}
 		m_moduleMemory = nullptr;
 		// null slot を渡し直して新 DLL に fresh 確保させる。以降は初回 load と
-		// 同じ経路 (memoryBefore=null 扱いで末尾の on_init が走る)。
+		// 同じ経路 (memoryBefore=null 扱いで末尾の on_init が走り、その後 migrate で上書きする)。
 		newApi         = module::ModuleApi{};
 		newApi.version = module::kWireApiVersion;
 		memory         = nullptr;
@@ -345,6 +485,19 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	if (memoryBefore == nullptr && newApi.on_init != nullptr)
 	{
 		newApi.on_init(memory);
+	}
+	// P9: on_init 後の新 GameMemory (= 新 layout の初期値) へ、旧 GameMemory から
+	// 名前+型が一致した field だけ上書きする。一致しない field は on_init の初期値のまま。
+	if (!oldMemorySnapshot.empty() && oldApiSnapshot.reflectFieldCount > 0 &&
+	    newApi.reflectFieldCount > 0 && memory != nullptr)
+	{
+		observe::migrateReflectedMemory(
+			oldMemorySnapshot.data(), static_cast<std::uint32_t>(oldMemorySnapshot.size()),
+			oldApiSnapshot.reflectFields, oldApiSnapshot.reflectFieldCount,
+			oldApiSnapshot.reflectSchemas, oldApiSnapshot.reflectSchemaCount,
+			static_cast<std::uint8_t*>(memory), newApi.memorySize,
+			newApi.reflectFields, newApi.reflectFieldCount,
+			newApi.reflectSchemas, newApi.reflectSchemaCount);
 	}
 	return true;
 }
@@ -403,6 +556,14 @@ MITIRU_INLINE const char* mitiru::Engine::queryModuleWriteBlame(std::uint32_t of
 	return (fn != nullptr) ? fn(offset) : nullptr;
 }
 
+MITIRU_INLINE const char* mitiru::Engine::queryModuleEverWrote(std::uint32_t offset) const
+{
+	// game が mitiru_why_everwrote_at を export していれば呼ぶ (optional、host→DLL の pull)。
+	if (!m_moduleHost) { return nullptr; }
+	const auto fn = m_moduleHost->whyEverWroteAtFn();
+	return (fn != nullptr) ? fn(offset) : nullptr;
+}
+
 MITIRU_INLINE std::string mitiru::Engine::reflectBlobJson(const void* blob) const
 {
 	if (blob == nullptr || m_moduleMemorySize == 0 || m_moduleApi.reflectFieldCount <= 0)
@@ -435,7 +596,22 @@ MITIRU_INLINE void mitiru::Engine::recordModuleMemoryFrame()
 		{
 			frames = static_cast<std::size_t>(m_config.timeTravelBufferFrames);
 		}
-		m_moduleMemoryRing.configure(m_moduleMemorySize, frames);
+		// 予算バイト数: host の --rewind-mb (明示指定時) > game の MITIRU_REWIND_BUDGET 宣言 >
+		// 既定 512MB。>0 (または host 明示の 0=無制限) は XOR+RLE デルタ圧縮 ring になる。
+		std::size_t budgetBytes = 512ull * 1024ull * 1024ull;
+		if (m_moduleHost)
+		{
+			if (auto fn = m_moduleHost->rewindBudgetBytesFn())
+			{
+				const std::uint64_t declared = fn();
+				if (declared > 0) { budgetBytes = static_cast<std::size_t>(declared); }
+			}
+		}
+		if (m_config.timeTravelBudgetBytesExplicit)
+		{
+			budgetBytes = m_config.timeTravelBudgetBytes;
+		}
+		m_moduleMemoryRing.configure(m_moduleMemorySize, frames, budgetBytes);
 	}
 	m_moduleMemoryRing.push(m_moduleMemory, m_moduleMemorySize);
 }
@@ -462,19 +638,31 @@ MITIRU_INLINE void mitiru::Engine::recordModuleInputFrame()
 MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept
 {
 	constexpr std::uint32_t kSnapSize = sizeof(module::InputSnapshot);
+	if (modulePartialState())
+	{
+		debug::warnOnceFix("resim.partial-state",
+			"resim 不可: この game の GameMemory は進行データだけ (MITIRU_GAME_OBJECTS)",
+			"過去の bytes へ戻しても場面の中身 (DLL 内のオブジェクト) は戻らない",
+			"全状態を巻き戻したい game は MITIRU_GAME (flat POD) で書く");
+		return false;
+	}
 	const std::size_t memFrames = m_moduleMemoryRing.size();
 	const std::size_t inFrames  = m_moduleInputRing.size();
 	if (m_moduleMemorySize == 0 || memFrames == 0 || inFrames == 0)
 	{
-		debug::warnOnce("resim.unavailable",
-		                "resim 不可: flat POD 未申告か、巻き戻し ring がまだ空 (reload 直後など)");
+		debug::warnOnceFix("resim.unavailable",
+			"resim 不可: flat POD 未申告か、巻き戻し ring がまだ空",
+			"GameMemory が trivially copyable でない、または reload 直後で ring がまだ埋まっていない",
+			"GameMemory を flat POD にするか、数フレーム経過してから resim を呼ぶ");
 		return false;
 	}
 	if (k >= memFrames || k > inFrames)
 	{
 		// ring の窓 (既定 5 秒) を超えた要求は窓内へ丸める
 		k = static_cast<std::uint32_t>((std::min)(memFrames - 1, inFrames));
-		debug::warnOnce("resim.clamp", "resim: 要求が ring の窓を超えたため丸めた");
+		debug::warnOnceFix("resim.clamp", "resim: 要求が ring の窓を超えたため丸めた",
+			"k が rewind ring の記録済みフレーム数 (既定 5 秒分) を超えている",
+			"k を memFrames-1 以下に収めるか、EngineConfig の ring サイズを増やす");
 	}
 	if (k == 0) { return false; }
 
@@ -523,6 +711,12 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 	if (m_moduleMemory == nullptr || bytes == nullptr) { return false; }
 	if (size == 0 || size != m_moduleMemorySize) { return false; }  // size guard (reload 防御)
 	std::memcpy(m_moduleMemory, bytes, size);
+	// 場面の中身を DLL 内に持つ game (ADR 0040) は、書き戻された進行データから組み立て直す。
+	if (m_moduleApi.on_rebuild != nullptr)
+	{
+		try { m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore); }
+		catch (...) { debug::warnOnce("rebuild.threw", "on_rebuild が例外を投げました (場面の組み立て直しに失敗)"); }
+	}
 	return true;
 }
 
@@ -534,10 +728,25 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 	{
 		return "{}";
 	}
+	if (modulePartialState())
+	{
+		// 分岐は本物の on_update を回してから bytes を戻す。場面の中身は戻らないので、試すだけで壊れる。
+		debug::warnOnce("branch.partial-state",
+			"分岐 (branch) は使えません: この game は MITIRU_GAME_OBJECTS (GameMemory は進行データだけ) です");
+		return "{}";
+	}
 
-	// 現 GameMemory を退避 (試行後に bit-exact 復元する)。
-	std::vector<std::uint8_t> saved(m_moduleMemorySize);
-	std::memcpy(saved.data(), m_moduleMemory, m_moduleMemorySize);
+	// 現 GameMemory を退避 (試行後に bit-exact 復元する)。frame arena (2-1) から確保し、
+	// HTTP branch endpoint 等の頻繁な呼び出しでも heap allocation を積ませない。
+	// arena が溢れた稀なケースだけ heap にフォールバックする。
+	std::vector<std::uint8_t> savedFallback;
+	std::uint8_t* saved = static_cast<std::uint8_t*>(frameArena().alloc(m_moduleMemorySize));
+	if (saved == nullptr)
+	{
+		savedFallback.resize(m_moduleMemorySize);
+		saved = savedFallback.data();
+	}
+	std::memcpy(saved, m_moduleMemory, m_moduleMemorySize);
 
 	// 台本入力で on_update を frameCount 回回す。draw/present/intents drain は一切しない
 	// (= sound/state push 等の副作用が外に出ない)。intents は使い捨て (~300KB なので heap)。
@@ -558,7 +767,7 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
 
 	// GameMemory を試行前へ復元 (live は何も変わらなかったことになる)。
-	std::memcpy(m_moduleMemory, saved.data(), m_moduleMemorySize);
+	std::memcpy(m_moduleMemory, saved, m_moduleMemorySize);
 	return state.dump();
 }
 
@@ -568,4 +777,270 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 MITIRU_INLINE std::string mitiru::Engine::moduleLoadError() const
 {
 	return m_moduleHost ? m_moduleHost->lastError() : std::string{};
+}
+
+// ── ゴーストリプレイ (10-1) ──────────────────────────────────────────────
+
+MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& modulePath)
+{
+	if (m_ghostHost && m_ghostHost->isLoaded()) { return false; }  // 既に load 済み
+
+	if (!m_ghostHost) { m_ghostHost = std::make_unique<module::ModuleHost>(); }
+	if (!m_ghostHost->load(modulePath))
+	{
+		std::fprintf(stderr, "[ghost] load failed: %s\n", m_ghostHost->lastError().c_str());
+		return false;
+	}
+
+	const auto loadFn = m_ghostHost->loadFn();
+	if (loadFn == nullptr)
+	{
+		m_ghostHost->unload();
+		std::fprintf(stderr, "[ghost] load failed: 新 DLL に load entry symbol がありません\n");
+		return false;
+	}
+
+	// live と state を共有しないため必ず null から fresh 確保する。
+	module::ModuleApi api{};
+	api.version = module::kWireApiVersion;
+	void* memory = nullptr;
+	loadFn(&api, &memory);
+
+	// ABI/ビルド指紋は live と同じ完全一致要求 (loadModule と同じ理由、D1 / H-1/H-4)。
+	if (api.version != module::kWireApiVersion)
+	{
+		if (memory != nullptr)
+		{
+			if (auto unloadFn = m_ghostHost->unloadFn())
+			{
+				try { unloadFn(memory); }
+				catch (...) {}
+			}
+		}
+		std::fprintf(stderr, "[ghost] load failed: %s\n",
+			module::detail::describeVersionMismatch(api.version, module::kWireApiVersion).c_str());
+		m_ghostHost->unload();
+		return false;
+	}
+
+	m_ghostApi        = api;
+	m_ghostMemory     = memory;
+	m_ghostMemorySize = api.memorySize;
+	if (!m_ghostIntents) { m_ghostIntents = std::make_unique<module::FrameIntents>(); }
+	if (m_ghostApi.on_init != nullptr) { m_ghostApi.on_init(m_ghostMemory); }
+	return true;
+}
+
+MITIRU_INLINE void mitiru::Engine::unloadGhostModule() noexcept
+{
+	if (!m_ghostHost || !m_ghostHost->isLoaded()) { return; }
+
+	if (m_ghostApi.on_shutdown != nullptr)
+	{
+		try { m_ghostApi.on_shutdown(m_ghostMemory); }
+		catch (...) {}
+	}
+	if (auto unloadFn = m_ghostHost->unloadFn())
+	{
+		try { unloadFn(m_ghostMemory); }
+		catch (...) {}
+	}
+	m_ghostMemory     = nullptr;
+	m_ghostMemorySize = 0;
+	m_ghostApi        = module::ModuleApi{};
+	m_ghostHost->unload();
+}
+
+MITIRU_INLINE void mitiru::Engine::stepGhost(const module::InputSnapshot& snapshot) noexcept
+{
+	if (m_ghostMemory == nullptr || m_ghostApi.on_update == nullptr || !m_ghostIntents) { return; }
+	// ghost は観察専用。intents は使い捨てで drain しない (副作用を live や host state に及ぼさない)。
+	std::memset(m_ghostIntents.get(), 0, sizeof(module::FrameIntents));
+	m_ghostApi.on_update(m_ghostMemory, snapshot.effectiveDt, &snapshot, m_ghostIntents.get());
+}
+
+MITIRU_INLINE bool mitiru::Engine::hasGhostModule() const noexcept
+{
+	return m_ghostHost && m_ghostHost->isLoaded();
+}
+
+MITIRU_INLINE void mitiru::Engine::drawGhost(Screen& screen, float alpha) noexcept
+{
+	if (m_ghostMemory == nullptr || m_ghostApi.on_draw == nullptr) { return; }
+
+	// ghost 専用の独立 Screen へ焼く (SW ラスタライズのみ。live の pipeline を共有しない)。
+	// サイズが live と食い違ったら (起動直後 / リサイズ後) 作り直す。
+	if (!m_ghostRenderScreen
+		|| m_ghostRenderScreen->width() != screen.width()
+		|| m_ghostRenderScreen->height() != screen.height())
+	{
+		m_ghostRenderScreen = std::make_unique<Screen>(screen.width(), screen.height());
+		m_ghostRenderScreen->enableSoftwareFramebuffer();
+	}
+	Screen& gs = *m_ghostRenderScreen;
+	gs.resetDrawCallCount();
+	gs.clear(sgc::Colorf{0.0f, 0.0f, 0.0f, 0.0f});
+	try { m_ghostApi.on_draw(m_ghostMemory, &gs); }
+	catch (...) { return; }
+	gs.present();
+
+	// ghost が描いた画素だけ alpha を一律減衰させ、1 枚のスプライトとして live に合成する
+	// (未描画= alpha 0 の画素は 0 のまま = 何も足さない)。
+	m_ghostCompositeBuffer = gs.pixels();
+	const auto a = static_cast<std::uint8_t>(
+		std::clamp(alpha, 0.0f, 1.0f) * 255.0f);
+	for (std::size_t i = 3; i < m_ghostCompositeBuffer.size(); i += 4)
+	{
+		if (m_ghostCompositeBuffer[i] != 0) { m_ghostCompositeBuffer[i] = a; }
+	}
+
+	// drawSprite は「ほぼ透明はカットオフ」するため 0.5 未満の alpha が消える。
+	// blitAlphaBlended はカットオフ無しでそのまま src-over 合成する。
+	screen.blitAlphaBlended(
+		sgc::Rectf{0.0f, 0.0f,
+			static_cast<float>(screen.width()), static_cast<float>(screen.height())},
+		m_ghostCompositeBuffer.data(), gs.width(), gs.height());
+}
+
+// ── 分岐候補 (O4、ADR 0035「候補レーン」) ────────────────────────────────
+// ghost (上) と違い DLL は再 load しない。live で load 済みの m_moduleApi (同じ
+// on_update/on_draw 関数ポインタ) をそのまま使い回し、GameMemory だけ slot ごとに
+// 複製 + 上書き差分を持つ。live には一切書き込まない (branchModuleMemory と同じ契約)。
+
+MITIRU_INLINE std::string mitiru::Engine::stepCandidateBranch(std::size_t slot,
+	const std::string& overridesJson, const module::InputSnapshot* inputs, int frameCount)
+{
+	if (slot >= kMaxCandidateBranches) { return "{}"; }
+	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.on_update == nullptr
+		|| m_moduleApi.reflectFieldCount <= 0 || inputs == nullptr || frameCount <= 0)
+	{ return "{}"; }
+	if (modulePartialState())
+	{
+		debug::warnOnce("candidates.partial-state",
+			"候補の並走は使えません: この game は MITIRU_GAME_OBJECTS (GameMemory は進行データだけ) です");
+		return "{}";
+	}
+
+	CandidateBranch& c = m_candidateBranches[slot];
+	c.memory.assign(m_moduleMemorySize, std::uint8_t{0});
+	std::memcpy(c.memory.data(), m_moduleMemory, m_moduleMemorySize);
+
+	// aiStatePut (Engine_Http.hpp) と同じ書式 ({"field": value, ...})。候補は「試して
+	// 捨てる」前提の使い捨てバッファなので、1 field の失敗 (未知 field・型不一致) で全体を
+	// 捨てず、書けた分だけ反映して続行する (live には触れないので安全)。
+	if (!overridesJson.empty())
+	{
+		nlohmann::json req;
+		try { req = nlohmann::json::parse(overridesJson); } catch (...) { req = nlohmann::json::object(); }
+		if (req.is_object())
+		{
+			for (auto it = req.begin(); it != req.end(); ++it)
+			{
+				std::string err;
+				(void)observe::reflectWriteField(c.memory.data(), m_moduleMemorySize,
+					m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
+					m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount, it.key(), it.value(), err);
+			}
+		}
+	}
+
+	if (!c.intents) { c.intents = std::make_unique<module::FrameIntents>(); }
+	for (int i = 0; i < frameCount; ++i)
+	{
+		std::memset(c.intents.get(), 0, sizeof(module::FrameIntents));
+		m_moduleApi.on_update(c.memory.data(), inputs[i].effectiveDt, &inputs[i], c.intents.get());
+	}
+	c.active = true;
+
+	const nlohmann::json state = observe::reflectToJson(c.memory.data(), m_moduleMemorySize,
+		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
+		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+	return state.dump();
+}
+
+MITIRU_INLINE void mitiru::Engine::clearCandidateBranch(std::size_t slot) noexcept
+{
+	if (slot >= kMaxCandidateBranches) { return; }
+	m_candidateBranches[slot].active = false;
+}
+
+MITIRU_INLINE bool mitiru::Engine::hasCandidateBranch(std::size_t slot) const noexcept
+{
+	return slot < kMaxCandidateBranches && m_candidateBranches[slot].active;
+}
+
+MITIRU_INLINE void mitiru::Engine::drawCandidateBranches(Screen& screen, float alpha) noexcept
+{
+	// on_draw (Screen 直描画) / on_draw_commands (Canvas/DrawCommandBuffer 経路、beko_run 含む)
+	// のどちらか一方があれば候補ゴーストを描ける (docs/BRANCH_EDITOR.md「既知の制約」解消、O4 残り)。
+	if (m_moduleApi.on_draw == nullptr && m_moduleApi.on_draw_commands == nullptr) { return; }
+
+	// 色相の近似 (debug 専用の固定 4 色パレット。HSV 変換はしない): slot ごとに RGB 乗率を
+	// 変え、drawGhost と同じ blitAlphaBlended で 1 案ずつ live へ重ねる。
+	static constexpr float kTint[kMaxCandidateBranches][3] = {
+		{1.0f, 0.45f, 0.45f},  // slot 0: 赤系
+		{0.45f, 1.0f, 0.45f},  // slot 1: 緑系
+		{0.45f, 0.6f, 1.0f},   // slot 2: 青系
+		{1.0f, 1.0f, 0.4f},    // slot 3: 黄系
+	};
+	const auto a = static_cast<std::uint8_t>(std::clamp(alpha, 0.0f, 1.0f) * 255.0f);
+
+	for (std::size_t slot = 0; slot < kMaxCandidateBranches; ++slot)
+	{
+		CandidateBranch& c = m_candidateBranches[slot];
+		if (!c.active || c.memory.empty()) { continue; }
+
+		if (!c.renderScreen || c.renderScreen->width() != screen.width()
+			|| c.renderScreen->height() != screen.height())
+		{
+			c.renderScreen = std::make_unique<Screen>(screen.width(), screen.height());
+			c.renderScreen->enableSoftwareFramebuffer();
+		}
+		Screen& gs = *c.renderScreen;
+		gs.resetDrawCallCount();
+		gs.clear(sgc::Colorf{0.0f, 0.0f, 0.0f, 0.0f});
+		if (m_moduleApi.on_draw_commands != nullptr)
+		{
+			// Canvas 経路 (beko_run 等): live の ModuleAdapter::draw と同じ手順で
+			// DrawCommandBuffer を吐かせ、既存の drainDrawCommands (Engine_Module_Adapter.hpp)
+			// で候補専用の Screen へ再生する。tint/alpha は下の pixel post-process (drawGhost
+			// と同型) で一括適用するので、ここでは色を弄らずそのまま焼く。
+			module::DrawContext ctx{};
+			if (m_moduleInputSnapshot)
+			{
+				ctx.logicalW = m_moduleInputSnapshot->logicalW;
+				ctx.logicalH = m_moduleInputSnapshot->logicalH;
+			}
+			static thread_local module::DrawCommandBuffer buf;
+			buf.count = 0;
+			buf.droppedCount = 0;
+			buf.textPoolUsed  = 0;
+			buf.pointPoolUsed = 0;
+			try { m_moduleApi.on_draw_commands(c.memory.data(), &ctx, &buf); }
+			catch (...) { continue; }
+			module::detail::drainDrawCommands(gs, buf, m_spriteCache, nullptr);
+		}
+		else
+		{
+			try { m_moduleApi.on_draw(c.memory.data(), &gs); }
+			catch (...) { continue; }
+		}
+		gs.present();
+
+		c.compositeBuffer = gs.pixels();
+		const auto& tint = kTint[slot];
+		for (std::size_t i = 0; i + 3 < c.compositeBuffer.size(); i += 4)
+		{
+			if (c.compositeBuffer[i + 3] == 0) { continue; }  // 未描画画素はそのまま (0 を足さない)
+			c.compositeBuffer[i + 0] = static_cast<std::uint8_t>(c.compositeBuffer[i + 0] * tint[0]);
+			c.compositeBuffer[i + 1] = static_cast<std::uint8_t>(c.compositeBuffer[i + 1] * tint[1]);
+			c.compositeBuffer[i + 2] = static_cast<std::uint8_t>(c.compositeBuffer[i + 2] * tint[2]);
+			c.compositeBuffer[i + 3] = a;
+		}
+
+		screen.blitAlphaBlended(
+			sgc::Rectf{0.0f, 0.0f,
+				static_cast<float>(screen.width()), static_cast<float>(screen.height())},
+			c.compositeBuffer.data(), gs.width(), gs.height());
+	}
 }

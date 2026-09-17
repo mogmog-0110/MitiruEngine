@@ -18,6 +18,7 @@
 #include <string_view>
 #include <vector>
 
+#include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <webgpu/webgpu.h>
 
@@ -338,40 +339,105 @@ public:
     /// @brief フレームバッファからピクセルを読み取る（スクリーンショット用）
     /// @param width 読み取り幅
     /// @param height 読み取り高さ
-    /// @return RGBA8形式のピクセルデータ
-    /// @note WebGPUではバッファマッピングによるGPU→CPU読み出しが必要。
-    ///       非同期APIのため、同期的な読み出しは制限がある。
+    /// @return RGBA8形式のピクセルデータ。撮れなかった場合は 0 埋め (呼び出し側は
+    ///         「本物の黒画面」と区別できないが、フレーム外呼び出しは呼び出し側の
+    ///         誤用なので許容する)
+    /// @note beginFrame() 〜 endFrame() の間 (m_currentTexture が生きている間) しか
+    ///       撮れない。endFrame() は current texture を release するため、その外側で
+    ///       呼ぶと未対応 (0 埋め) になる。
     [[nodiscard]] std::vector<std::uint8_t> readPixels(
         int width, int height) const override
     {
         const auto totalBytes = static_cast<std::size_t>(width) *
                                 static_cast<std::size_t>(height) * 4;
-
-        // readPixelsはスクリーンショット用。WebGPUの非同期バッファマッピングは
-        // コールバックベースのため、同期読み出しは簡易実装とする。
-        // 本格的な実装ではバッファマッピングのコールバックチェーンが必要。
         std::vector<std::uint8_t> data(totalBytes, 0);
 
-        if (!m_device)
+        if (!m_device || !m_queue || !m_currentTexture || width <= 0 || height <= 0)
         {
             return data;
         }
 
-        // 読み出し用ステージングバッファを作成する
-        WGPUBufferDescriptor bufDesc{};
-        bufDesc.size = totalBytes;
-        bufDesc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
+        // copyTextureToBuffer の bytesPerRow は 256 の倍数でなければならない
+        // (WebGPU 仕様の制約)。実データ幅とは別に padding 込みの行幅を確保する。
+        constexpr std::uint32_t kRowAlign = 256;
+        const auto unpaddedBytesPerRow = static_cast<std::uint32_t>(width) * 4;
+        const auto paddedBytesPerRow =
+            ((unpaddedBytesPerRow + kRowAlign - 1) / kRowAlign) * kRowAlign;
+        const auto stagingSize =
+            static_cast<std::uint64_t>(paddedBytesPerRow) * static_cast<std::uint64_t>(height);
 
+        WGPUBufferDescriptor bufDesc{};
+        bufDesc.size = stagingSize;
+        bufDesc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
         WGPUBuffer stagingBuffer = wgpuDeviceCreateBuffer(m_device, &bufDesc);
         if (!stagingBuffer)
         {
             return data;
         }
 
-        // 注意: 完全な実装にはテクスチャ→バッファコピー＋非同期マッピングが必要。
-        // Emscripten WebGPUの制限により、ここでは空データを返す。
-        wgpuBufferRelease(stagingBuffer);
+        WGPUCommandEncoderDescriptor encDesc{};
+        WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(m_device, &encDesc);
 
+        WGPUImageCopyTexture src{};
+        src.texture = m_currentTexture;
+        src.mipLevel = 0;
+        src.origin = WGPUOrigin3D{0, 0, 0};
+
+        WGPUImageCopyBuffer dst{};
+        dst.buffer = stagingBuffer;
+        dst.layout.offset = 0;
+        dst.layout.bytesPerRow = paddedBytesPerRow;
+        dst.layout.rowsPerImage = static_cast<std::uint32_t>(height);
+
+        WGPUExtent3D extent{
+            static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height), 1};
+        wgpuCommandEncoderCopyTextureToBuffer(encoder, &src, &dst, &extent);
+
+        WGPUCommandBufferDescriptor cmdDesc{};
+        WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(encoder, &cmdDesc);
+        wgpuCommandEncoderRelease(encoder);
+        wgpuQueueSubmit(m_queue, 1, &cmdBuf);
+        wgpuCommandBufferRelease(cmdBuf);
+
+        struct MapCtx { bool done = false; bool ok = false; };
+        MapCtx ctx;
+        wgpuBufferMapAsync(
+            stagingBuffer, WGPUMapMode_Read, 0, stagingSize,
+            [](WGPUBufferMapAsyncStatus status, void* userdata)
+            {
+                auto* c = static_cast<MapCtx*>(userdata);
+                c->done = true;
+                c->ok = (status == WGPUBufferMapAsyncStatus_Success);
+            },
+            &ctx);
+
+        // ブラウザの WebGPU コールバックは JS イベントループ経由でしか発火しない。
+        // ASYNCIFY ビルド前提で emscripten_sleep により yield し完了を待つ
+        // (待たない場合 map 完了前に関数を抜け、常に 0 埋めを返すことになる)。
+        constexpr int kMaxWaitIters = 1000;
+        for (int i = 0; i < kMaxWaitIters && !ctx.done; ++i)
+        {
+            emscripten_sleep(1);
+        }
+
+        if (ctx.done && ctx.ok)
+        {
+            const void* mapped = wgpuBufferGetConstMappedRange(stagingBuffer, 0, stagingSize);
+            if (mapped)
+            {
+                const auto* src8 = static_cast<const std::uint8_t*>(mapped);
+                for (int y = 0; y < height; ++y)
+                {
+                    std::memcpy(
+                        data.data() + static_cast<std::size_t>(y) * unpaddedBytesPerRow,
+                        src8 + static_cast<std::size_t>(y) * paddedBytesPerRow,
+                        unpaddedBytesPerRow);
+                }
+            }
+            wgpuBufferUnmap(stagingBuffer);
+        }
+
+        wgpuBufferRelease(stagingBuffer);
         return data;
     }
 
@@ -391,6 +457,9 @@ public:
             return;
         }
 
+        // readPixels() がテクスチャ→バッファコピーに使えるよう、view だけでなく
+        // 元テクスチャも保持する (WGPUTextureView からは逆引きできない)。
+        m_currentTexture = wgpuSwapChainGetCurrentTexture(m_swapChain);
         m_currentTextureView = wgpuSwapChainGetCurrentTextureView(m_swapChain);
         if (!m_currentTextureView)
         {
@@ -406,6 +475,11 @@ public:
         {
             wgpuTextureViewRelease(m_currentTextureView);
             m_currentTextureView = nullptr;
+        }
+        if (m_currentTexture)
+        {
+            wgpuTextureRelease(m_currentTexture);
+            m_currentTexture = nullptr;
         }
     }
 

@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdint>
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include "../common/chapter_hud.hpp"  // 章ラベル + 操作帯 (全章共通の書式)
 
 using namespace mitiru;
@@ -83,4 +84,7 @@ struct Scene3D
 };
 
 // 実行:  mitiru_host.exe scene3d/scene3d.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Scene3D);
+
 MITIRU_GAME(Scene3D);

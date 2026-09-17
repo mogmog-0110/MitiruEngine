@@ -16,6 +16,7 @@
 #include <Windows.h>
 
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <deque>
@@ -31,6 +32,9 @@
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
+#include <algorithm>
+
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/gfx/IBuffer.hpp>
 #include <mitiru/gfx/ICommandList.hpp>
 #include <mitiru/gfx/IDevice.hpp>
@@ -89,6 +93,36 @@ public:
 			m_width, m_height);
 
 		createFrameResources();
+
+		// DEVICE_HUNG は同一 GPU 上の他デバイスの teardown と絡んで起きうるため、
+		// 1 台だけ作り直しても解消しない。全 Dx12Device を横断して検知・
+		// 復旧上限判定ができるよう、生存インスタンスをここで登録する。
+		s_liveDevices().push_back(this);
+	}
+
+	/// @brief windowless (offscreen) コンストラクタ (G2)。スワップチェーンを持たず、
+	///        `width`×`height` の RTV 付きテクスチャ 1 枚を描画先にする。トリプル
+	///        バッファリングはしない (headless capture 用途で並行性より単純さを優先、
+	///        `beginFrame`/`endFrame` は毎フレーム GPU 完了を待つ同期実装)。
+	///        `Dx11Device(int,int)` の DX12 版 (`gfx.headless3d` 経路)。present() は
+	///        no-op (`m_swapChain` が null であることで呼び出し側が分岐する)。
+	explicit Dx12Device(int width, int height)
+	{
+		if (width <= 0 || height <= 0)
+		{
+			throw std::runtime_error(
+				"Dx12Device: windowless width/height must be positive");
+		}
+
+		m_width = width;
+		m_height = height;
+
+		createDevice();
+		createCommandQueue();
+		createFrameResources();
+		createOffscreenTarget(width, height);
+
+		s_liveDevices().push_back(this);
 	}
 
 	/// @brief デストラクタ
@@ -105,6 +139,9 @@ public:
 			CloseHandle(m_fenceEvent);
 			m_fenceEvent = nullptr;
 		}
+
+		auto& live = s_liveDevices();
+		live.erase(std::remove(live.begin(), live.end(), this), live.end());
 	}
 
 	/// コピー禁止
@@ -122,10 +159,14 @@ public:
 	[[nodiscard]] std::vector<std::uint8_t> readPixels(
 		int width, int height) const override
 	{
-		if (!m_swapChain || width <= 0 || height <= 0)
+		if ((!m_swapChain && !m_offscreenTarget) || width <= 0 || height <= 0)
 		{
 			return {};
 		}
+		// windowless (G2): 常在状態は PRESENT ではなく RENDER_TARGET。
+		const D3D12_RESOURCE_STATES restState = m_swapChain
+			? D3D12_RESOURCE_STATE_PRESENT
+			: D3D12_RESOURCE_STATE_RENDER_TARGET;
 
 		/// リードバック用バッファを生成する
 		const auto rowPitch = static_cast<UINT>(
@@ -160,9 +201,11 @@ public:
 			return {};
 		}
 
-		/// コマンドリストでバックバッファからリードバックバッファへコピーする
-		const auto frameIndex = m_swapChain->currentBackBufferIndex();
-		auto* backBuffer = m_swapChain->getBackBufferResource(frameIndex);
+		/// コマンドリストでバックバッファ (または windowless の offscreen RT) から
+		/// リードバックバッファへコピーする
+		auto* backBuffer = m_swapChain
+			? m_swapChain->getBackBufferResource(m_swapChain->currentBackBufferIndex())
+			: m_offscreenTarget.Get();
 		if (!backBuffer)
 		{
 			return {};
@@ -191,7 +234,7 @@ public:
 		D3D12_RESOURCE_BARRIER barrier = {};
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Transition.pResource = backBuffer;
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		barrier.Transition.StateBefore = restState;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		tempCmdList->ResourceBarrier(1, &barrier);
@@ -220,9 +263,9 @@ public:
 		srcBox.back = 1;
 		tempCmdList->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, &srcBox);
 
-		/// バリア: CopySrc → Present
+		/// バリア: CopySrc → 常在状態へ戻す
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		barrier.Transition.StateAfter = restState;
 		tempCmdList->ResourceBarrier(1, &barrier);
 
 		tempCmdList->Close();
@@ -283,6 +326,27 @@ public:
 	///          PRESENT → RENDER_TARGET 状態に遷移させる。
 	void beginFrame() override
 	{
+		if (m_haltedPermanently) { return; }
+		if (checkDeviceLost()) { return; }
+
+		if (!m_swapChain)
+		{
+			// windowless (G2): スワップチェーンが無いので単一の offscreen RT を
+			// 使い回す。トリプルバッファ相当の並行性は無く、フレームごとに
+			// GPU 完了 (スロット 0 のフェンス) を待ってからクリアする
+			// (headless capture 用途で並行性より単純さを優先)。
+			if (!m_offscreenTarget) { return; }
+			waitForFrame(0);
+			m_barrierAllocators[0]->Reset();
+			m_beginBarrierCmdList->Reset(m_barrierAllocators[0].Get(), nullptr);
+			m_beginBarrierCmdList->ClearRenderTargetView(
+				m_offscreenRtvHandle, m_clearColor, 0, nullptr);
+			m_beginBarrierCmdList->Close();
+			ID3D12CommandList* offscreenLists[] = {m_beginBarrierCmdList.Get()};
+			m_commandQueue->ExecuteCommandLists(1, offscreenLists);
+			return;
+		}
+
 		const auto frameIndex = m_swapChain->currentBackBufferIndex();
 		waitForFrame(frameIndex);
 
@@ -342,8 +406,20 @@ public:
 	///          スワップチェーンのプレゼントとフェンスシグナルを行う。
 	void endFrame() override
 	{
+		if (m_haltedPermanently || m_deviceLost)
+		{
+			return;
+		}
 		if (!m_swapChain)
 		{
+			// windowless (G2): present は無い。スロット 0 のフェンスだけ進めて
+			// 次回 beginFrame の待機対象にする。
+			if (m_offscreenTarget)
+			{
+				signalFence(0);
+				processDeferredReleases();
+				checkDeviceLost();
+			}
 			return;
 		}
 
@@ -380,6 +456,10 @@ public:
 
 		/// 完了済みフェンス値の遅延解放リソースを破棄する
 		processDeferredReleases();
+
+		/// present 後にも確認する。ExecuteCommandLists/Present は GPU 側で
+		/// タイムアウトしうるため、フレームの節目ごとに検知しておく
+		checkDeviceLost();
 	}
 
 	/// @brief GPUバッファを生成する
@@ -526,6 +606,72 @@ public:
 		return m_device.Get();
 	}
 
+	// ── J7: デバイス喪失 (DEVICE_HUNG/REMOVED) 検知と復旧上限 ─────────
+
+	/// @brief 上限に達するまでの許容復旧試行回数 (プロセス全体で共有)
+	static constexpr int kMaxDeviceLossRecoveryAttempts = 3;
+
+	/// @brief このインスタンスの GPU デバイスが removed/hung かを調べて内部状態を更新する
+	/// @details `GetDeviceRemovedReason()` は removed でなければ S_OK。一度でも removed に
+	///          なったデバイスは戻らないため、以後は毎回 true を返す (再チェック不要)。
+	bool checkDeviceLost() noexcept
+	{
+		if (m_deviceLost) { return true; }
+		if (!m_device) { return false; }
+
+		const HRESULT reason = m_device->GetDeviceRemovedReason();
+		if (reason == S_OK) { return false; }
+
+		m_deviceLost = true;
+		char key[32];
+		std::snprintf(key, sizeof(key), "dx12.device.lost.%08lX", static_cast<unsigned long>(reason));
+		debug::warnOnce(key, "D3D12 デバイスが失われた (GetDeviceRemovedReason != S_OK)");
+		return true;
+	}
+
+	/// @brief このインスタンスが device-lost と確定しているか
+	[[nodiscard]] bool isDeviceLost() const noexcept { return m_deviceLost; }
+
+	/// @brief 生存している Dx12Device のうち 1 台でも device-lost かを横断確認する
+	/// @details 呼び出し側 (ホスト側の窓/デバイス管理) がここで true を得たら、
+	///          生き残っている個体だけを作り直すのではなく全台を作り直すこと
+	///          (1 台のみの作り直しは同じ hung 状態を再度踏んで無限ループする)。
+	[[nodiscard]] static bool anyDeviceLost() noexcept
+	{
+		for (const auto* dev : s_liveDevices())
+		{
+			if (dev->isDeviceLost()) { return true; }
+		}
+		return false;
+	}
+
+	/// @brief 全台作り直しの試行を 1 回記録し、新しい試行回数を返す
+	/// @details ホスト側が `anyDeviceLost()` を見て全台の再構築に入るたび 1 回呼ぶこと。
+	///          戻り値が `kMaxDeviceLossRecoveryAttempts` を超えたら再構築を諦めて
+	///          `haltAfterRecoveryExhausted()` で停止させる (無限ループの機械的な歯止め)。
+	static int recordGlobalRecoveryAttempt() noexcept
+	{
+		return ++s_globalRecoveryAttempts();
+	}
+
+	/// @brief 復旧試行が上限に達したかを返す (再構築ループに入る前に確認する)
+	[[nodiscard]] static bool recoveryAttemptsExhausted() noexcept
+	{
+		return s_globalRecoveryAttempts() >= kMaxDeviceLossRecoveryAttempts;
+	}
+
+	/// @brief 復旧を諦めて恒久的に停止する。以後 `beginFrame`/`endFrame` は何もしない
+	void haltAfterRecoveryExhausted() noexcept
+	{
+		m_deviceLost = true;
+		m_haltedPermanently = true;
+		debug::warnOnce("dx12.device.recovery_exhausted",
+			"デバイス復旧の試行上限に達した — このデバイスは以後停止する");
+	}
+
+	/// @brief 恒久停止状態か (`haltAfterRecoveryExhausted` 済み)
+	[[nodiscard]] bool isHaltedPermanently() const noexcept { return m_haltedPermanently; }
+
 	/// @brief コマンドキューを取得する
 	/// @return ID3D12CommandQueueへのポインタ
 	[[nodiscard]] ID3D12CommandQueue* commandQueue() const noexcept
@@ -538,6 +684,20 @@ public:
 	[[nodiscard]] Dx12SwapChain* getSwapChain() const noexcept
 	{
 		return m_swapChain.get();
+	}
+
+	/// @brief 現在の描画先バックバッファを取得する (G2)。
+	/// @details スワップチェーンがあればそのバックバッファ、windowless (`m_swapChain`
+	///          が null) なら offscreen RT を返す。`Renderer3D_DX12` 系はここを経由
+	///          することで `getSwapChain()->backBuffer()` の直呼びを避け、windowless
+	///          でも同じコードパスで動く。
+	[[nodiscard]] Dx12RenderTarget* currentBackBuffer() noexcept
+	{
+		if (m_swapChain)
+		{
+			return static_cast<Dx12RenderTarget*>(m_swapChain->backBuffer());
+		}
+		return m_offscreenTarget ? &m_offscreenRenderTarget : nullptr;
 	}
 
 	/// @brief リソースの遅延解放を予約する
@@ -799,6 +959,78 @@ private:
 		m_endBarrierCmdList->Close(); ///< 初期状態はクローズ
 	}
 
+	/// @brief windowless (G2) 用の offscreen RT を生成する。常在状態は
+	///        `D3D12_RESOURCE_STATE_RENDER_TARGET` (readPixels 中だけ COPY_SOURCE へ
+	///        一時遷移して戻す、`readPixels` の `restState` 分岐を参照)。
+	void createOffscreenTarget(int width, int height)
+	{
+		D3D12_HEAP_PROPERTIES heapProps = {};
+		heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+		D3D12_RESOURCE_DESC desc = {};
+		desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		desc.Width = static_cast<UINT64>(width);
+		desc.Height = static_cast<UINT>(height);
+		desc.DepthOrArraySize = 1;
+		desc.MipLevels = 1;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+		D3D12_CLEAR_VALUE clearValue = {};
+		clearValue.Format = desc.Format;
+		clearValue.Color[0] = m_clearColor[0];
+		clearValue.Color[1] = m_clearColor[1];
+		clearValue.Color[2] = m_clearColor[2];
+		clearValue.Color[3] = m_clearColor[3];
+
+		HRESULT hr = m_device->CreateCommittedResource(
+			&heapProps,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			&clearValue,
+			IID_PPV_ARGS(m_offscreenTarget.GetAddressOf()));
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(
+				"Dx12Device: windowless offscreen CreateCommittedResource failed");
+		}
+
+		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		rtvHeapDesc.NumDescriptors = 1;
+		hr = m_device->CreateDescriptorHeap(
+			&rtvHeapDesc, IID_PPV_ARGS(m_offscreenRtvHeap.GetAddressOf()));
+		if (FAILED(hr))
+		{
+			throw std::runtime_error(
+				"Dx12Device: windowless offscreen CreateDescriptorHeap failed");
+		}
+
+		m_offscreenRtvHandle = m_offscreenRtvHeap->GetCPUDescriptorHandleForHeapStart();
+		m_offscreenRenderTarget = Dx12RenderTarget::createFromBackBuffer(
+			m_device.Get(), m_offscreenTarget.Get(), m_offscreenRtvHandle, width, height);
+	}
+
+	/// @brief 生存中の Dx12Device 全台のレジストリ (J7、`anyDeviceLost` が横断参照する)
+	[[nodiscard]] static std::vector<Dx12Device*>& s_liveDevices() noexcept
+	{
+		static std::vector<Dx12Device*> devices;
+		return devices;
+	}
+
+	/// @brief プロセス全体で共有する全台再構築の試行回数 (J7)
+	[[nodiscard]] static int& s_globalRecoveryAttempts() noexcept
+	{
+		static int attempts = 0;
+		return attempts;
+	}
+
+	bool m_deviceLost = false;                                    ///< デバイス喪失確定フラグ
+	bool m_haltedPermanently = false;                             ///< 復旧上限到達後の恒久停止
+
 	ComPtr<ID3D12Device> m_device;                                ///< D3D12デバイス
 	ComPtr<IDXGIFactory4> m_factory;                              ///< DXGIファクトリ
 	ComPtr<ID3D12CommandQueue> m_commandQueue;                    ///< コマンドキュー
@@ -806,7 +1038,11 @@ private:
 	HANDLE m_fenceEvent = nullptr;                                ///< フェンスイベント
 	uint64_t m_fenceValues[FRAME_COUNT] = {};                     ///< フレーム毎のフェンス値
 	uint64_t m_currentFenceValue = 0;                             ///< 現在のフェンス値
-	std::unique_ptr<Dx12SwapChain> m_swapChain;                   ///< スワップチェーン
+	std::unique_ptr<Dx12SwapChain> m_swapChain;                   ///< スワップチェーン (windowless 時は null)
+	ComPtr<ID3D12Resource> m_offscreenTarget;                     ///< windowless (G2) の描画先 (m_swapChain が null の時だけ使う)
+	ComPtr<ID3D12DescriptorHeap> m_offscreenRtvHeap;              ///< 上記の RTV 用ヒープ (1 デスクリプタ)
+	D3D12_CPU_DESCRIPTOR_HANDLE m_offscreenRtvHandle = {};        ///< 上記の RTV ハンドル
+	Dx12RenderTarget m_offscreenRenderTarget;                     ///< 上記を IRenderTarget として包んだもの (currentBackBuffer() が返す)
 	int m_width = 0;                                               ///< ウィンドウ幅
 	int m_height = 0;                                              ///< ウィンドウ高さ
 	ComPtr<ID3D12CommandAllocator> m_barrierAllocators[FRAME_COUNT]; ///< バリア用アロケータ

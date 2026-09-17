@@ -123,7 +123,16 @@ inline void RenderPipeline2D::submitBatchDx11(
 
 	/// 描画コマンドを発行する
 	m_commandList->begin();
-	m_commandList->setViewport(viewportWidth(), viewportHeight());
+	// letterbox/pillarbox 中央寄せ: ICommandList::setViewport は TopLeftX/Y を
+	// 持たないため、offset がある場合は D3D11 へ直接 RSSetViewports する。
+	D3D11_VIEWPORT vp = {};
+	vp.TopLeftX = viewportOffsetX();
+	vp.TopLeftY = viewportOffsetY();
+	vp.Width = viewportWidth();
+	vp.Height = viewportHeight();
+	vp.MinDepth = 0.0f;
+	vp.MaxDepth = 1.0f;
+	m_dx11Context->RSSetViewports(1, &vp);
 	m_commandList->setPipeline(m_pipeline.get());
 	m_commandList->setVSConstantBuffer(0, m_constantBuffer.get());
 	if (m_psConstantBuffer)
@@ -297,8 +306,10 @@ inline void RenderPipeline2D::submitStyledBatchDx11(
 	m_sdfVertexBuffer->update(m_dx11Context, vertices.data(), vbSize);
 	m_sdfIndexBuffer->update(m_dx11Context, indices.data(), ibSize);
 
-	/// ビューポートを設定する
+	/// ビューポートを設定する（letterbox/pillarbox 中央寄せの offset を反映）
 	D3D11_VIEWPORT vp = {};
+	vp.TopLeftX = viewportOffsetX();
+	vp.TopLeftY = viewportOffsetY();
 	vp.Width = viewportWidth();
 	vp.Height = viewportHeight();
 	vp.MinDepth = 0.0f;

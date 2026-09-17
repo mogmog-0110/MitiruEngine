@@ -14,5 +14,11 @@
 <script src="mitiru_runtime/mitiru_cef_state.js"></script>
 <script src="mitiru_runtime/mitiru_bind.js"></script>
 <script src="mitiru_runtime/mitiru_bind_tools.js"></script>
+<script src="mitiru_runtime/mitiru_reflect_decorate.js"></script>
+<script>
+// Game memory 欄だけの追加装飾 (MITIRU_ENUM / MITIRU_FIELD_RANGE / MITIRU_FIELD_UI_RANGE /
+// MITIRU_FIELD_GROUP、3-2・2-2) は mitiru_reflect_decorate.js が scene.html と共有して行う。
+mitiruReflectDecorate.init();
+</script>
 </body>
 </html>

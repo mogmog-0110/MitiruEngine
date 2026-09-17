@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "sgc/math/Vec3.hpp"
+#include "mitiru/math/Spline3D.hpp"
 #include "mitiru/physics/Collider3D.hpp"
 #include "mitiru/physics/ContactSolver3D.hpp"
 #include "mitiru/physics/PhysicsWorld3D.hpp"
@@ -458,6 +459,24 @@ public:
 				body.position() + sgc::Vec3f{0, 0, s},
 				DebugColor3D::cyan()
 			});
+		}
+	}
+
+	/// @brief math::Spline3D をポリラインとして描画する
+	/// @param spline 描画対象（build() 済みであること。未 build なら何もしない）
+	/// @param segments 全長を分割する線分数（多いほど滑らかになる）
+	/// @param color 描画色
+	void drawSpline(const math::Spline3D& spline, int segments, const DebugColor3D& color) noexcept
+	{
+		if (!spline.isBuilt() || segments < 1) return;
+
+		sgc::Vec3f prev = spline.position(0.0f);
+		for (int i = 1; i <= segments; ++i)
+		{
+			const float t = static_cast<float>(i) / static_cast<float>(segments);
+			const sgc::Vec3f point = spline.position(t);
+			m_lines.push_back({prev, point, color});
+			prev = point;
 		}
 	}
 

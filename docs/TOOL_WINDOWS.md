@@ -31,7 +31,7 @@ hud.open(mitiru::Tool::Perf);   // Game.hpp の update() 内など
 
 // main.cpp、engine.runModule(...) の直前あたり:
 mitiru::debug::openTool(mitiru::Tool::Inspector);   // 状態 inspector
-mitiru::debug::openTool(mitiru::Tool::TimeTravel);  // 巻き戻しウィンドウ
+mitiru::debug::openTool(mitiru::Tool::Rewind);      // 巻き戻しウィンドウ
 // 要らない窓は書かない。
 ```
 
@@ -50,7 +50,7 @@ mitiru::debug::openTool(mitiru::Tool::Replay, "run.mtrr");
 mitiru_host game.dll --inspect inspector --inspect perf
 ```
 
-`name` = `inspector` / `input` / `timetravel` / `scene` / `perf` / `mixer`。
+`name` = `inspector` / `input` / `rewind` / `scene` / `perf` / `mixer`。
 
 ### CLIから
 
@@ -58,7 +58,7 @@ mitiru_host game.dll --inspect inspector --inspect perf
 mitiru inspect [pid]
 ```
 
-`--inspectable input|timetravel`で開くpageを指定、`--all`で全窓を開きます。
+`--inspectable input|rewind`で開くpageを指定、`--all`で全窓を開きます。
 
 ## 用意されている窓
 
@@ -69,9 +69,9 @@ mitiru inspect [pid]
 | `Perf` | `--page perf` | fps / frameMs +折れ線グラフ |
 | `Inspector` | `--page inspect` | ゲームが`hud.watch()`で出した観察データ全部(HP / score等) |
 | `SceneTree` | `--page scene` | 観察データの階層構造をtree表示(開閉) |
-| `TimeTravel` | `--page timetravel` | 直近フレームを巻き戻す(履歴グラフ) |
+| `Rewind` | `--page rewind` | 直近フレームを巻き戻す(履歴グラフ) |
 | `Replay` | `--page replay` | 入力記録ファイル(`.mtrr`)の録画をframe単位でコマ送りで行き来 |
-| `AudioMixer` | `--page mixer` | master volume +再生中チャンネルのper-channel VU |
+| `AudioMixer` | `--page mixer` | master volume +再生中チャンネルのper-channel VU +voice 一覧 (`hud.voice()` の id / 実ファイル名 / gain / pan / 残り秒) |
 | `InputMonitor` | `--page input` | 生の入力値 |
 
 ## 増やし方
@@ -91,3 +91,15 @@ mitiru inspect [pid]
 subsystem単独起動(1サブシステムだけを単体で走らせる)があります。これはデバッグウィンドウ
 ではなく、`mitiru_subsys_*`を`mitiru audio | input | renderer | scene` (+決定的な
 record/playbackの`mitiru replay`)で起動するものです。両者は混同しないでください。
+
+## ツールウィンドウ ≠ --ghost / --replay (mitiru_host自身のGUI機能)
+
+これも別窓(`mitiru_tool_cef`)ではなく、**同じゲームウィンドウの中**に既存の録画を重ねる
+`mitiru_host`本体のCLIフラグです。
+
+- `--ghost <f.mtrr>` — 同じgame DLLをもう1本ロードし、`.mtrr`の入力を1フレームずつ流し込んで
+  liveの直前に描く(10-1)。ghost用GameMemoryはliveと独立(hot reload / rewind ring / HTTPは無し)。
+- `--replay <f.mtrr>` — `--replay-test`と同じ決定的再生パスをGUI窓で流す。EOFで停止して最後の
+  フレームのまま静止する(9-3b)。
+
+両方とも`--ghost`/`--replay`単体で`mitiru_host game.dll --ghost run.mtrr`のように使う。

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Renderer3D_Draw_impl.hpp
-/// @brief Renderer3D のフレーム描画・定数バッファ更新・テクスチャ転送の実装本体（Renderer3D.hpp から機械的分割）
+/// @brief Renderer3D のフレーム描画、定数バッファ更新、テクスチャ転送の実装
 
 #include <mitiru/render/Renderer3D.hpp>
 
@@ -10,8 +10,6 @@
 namespace mitiru::render
 {
 
-/// @brief フレーム描画を開始する
-/// @param clearColor 画面クリア色
 inline void Renderer3D::beginFrame(const sgc::Colorf& clearColor)
 {
 	MITIRU_ZONE_NAMED("Render::Dx11::BeginFrame");
@@ -22,17 +20,13 @@ inline void Renderer3D::beginFrame(const sgc::Colorf& clearColor)
 
 	m_frameActive = true;
 	m_drawCallCount = 0;
+	m_culledCount = 0;
+	m_occludedCount = 0;
 	m_outlineQueue.clear();
 	m_skyboxDrawnThisFrame = false;
 
-	/// レンダーターゲットと深度バッファを設定する
-	auto* swapChain = m_device->getSwapChain();
-	if (!swapChain)
-	{
-		return;
-	}
-
-	auto* rtv = swapChain->getRenderTargetView();
+	/// windowless (G2) では swap chain がないため、実際の描画先 RTV で判定する。
+	auto* rtv = m_device->currentRenderTargetView();
 	if (rtv)
 	{
 		const float color[4] = {
@@ -52,7 +46,6 @@ inline void Renderer3D::beginFrame(const sgc::Colorf& clearColor)
 			1, &rtv, m_depthStencilView.Get());
 	}
 
-	/// ビューポートを設定する
 	D3D11_VIEWPORT vp = {};
 	vp.Width = m_config.viewportWidth;
 	vp.Height = m_config.viewportHeight;
@@ -60,14 +53,12 @@ inline void Renderer3D::beginFrame(const sgc::Colorf& clearColor)
 	vp.MaxDepth = 1.0f;
 	m_d3dContext->RSSetViewports(1, &vp);
 
-	/// シェーダーを設定する
 	m_d3dContext->VSSetShader(m_vertexShader.Get(), nullptr, 0);
 	m_d3dContext->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 	m_d3dContext->IASetPrimitiveTopology(
 		D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	/// ラスタライザが変更されていれば再作成する
 	if (m_rasterizerDirty)
 	{
 		createRasterizerState();
@@ -75,11 +66,9 @@ inline void Renderer3D::beginFrame(const sgc::Colorf& clearColor)
 	}
 	m_d3dContext->RSSetState(m_rasterizerState.Get());
 
-	/// 深度ステンシルステートを設定する
 	m_d3dContext->OMSetDepthStencilState(
 		m_depthStencilState.Get(), 0);
 
-	/// ブレンドステートを設定する
 	if (m_renderState.blendEnabled)
 	{
 		const float blendFactor[4] = {0, 0, 0, 0};
@@ -92,10 +81,6 @@ inline void Renderer3D::beginFrame(const sgc::Colorf& clearColor)
 	}
 }
 
-/// @brief メッシュを描画する
-/// @param mesh 描画するメッシュ
-/// @param worldTransform ワールド変換行列
-/// @param material マテリアル
 inline void Renderer3D::drawMesh(const Mesh& mesh,
               const sgc::Mat4f& worldTransform,
               const Material& material)
@@ -105,26 +90,40 @@ inline void Renderer3D::drawMesh(const Mesh& mesh,
 		return;
 	}
 
-	// アウトラインは無効（ポストプロセス方式で別途実装予定）
+	// world 変換したローカル AABB が視錐台の外なら描画しない。
+	if (m_frustumCullingEnabled && !m_frustum.isMeshVisible(mesh.localAABB(), worldTransform))
+	{
+		++m_culledCount;
+		return;
+	}
 
-	// skybox が必要なら最初の drawMesh の前に描画する
+	// 前フレームの深度で完全に隠れている場合は描画しない。
+	if (m_occlusionCullingEnabled && m_occlusionCuller.hasDepth())
+	{
+		const CullAABB worldBox = worldOcclusionAABB(mesh.localAABB(), worldTransform);
+		const auto viewProj = occlusionViewProj();
+		if (m_occlusionCuller.isOccluded(worldBox, viewProj.data()))
+		{
+			++m_occludedCount;
+			return;
+		}
+	}
+
+
+	// skybox は最初の drawMesh より前に描画する。
 	drawSkyboxIfNeeded();
 
-	/// トランスフォーム定数バッファを更新する
 	updateTransformCB(worldTransform);
 
-	/// ライティング定数バッファを更新する
 	updateLightingCB(material);
 
-	/// マルチライト経路ならライト配列 CB (b2) も毎フレーム更新する
+	/// マルチライト経路ではライト配列 CB を b2 にバインドする。
 	if (m_useMultiLight)
 	{
 		updateLightArrayCB();
 	}
 
-	/// テクスチャとサンプラーをバインドする
-	/// material.albedoTexture が優先。null なら setTexture / clearTexture で
-	/// 設定された m_currentSRV を使う（後方互換）。
+	/// material.albedoTexture を優先し、null の場合は setTexture または clearTexture で設定した m_currentSRV を使う。
 	ID3D11ShaderResourceView* srv = nullptr;
 	if (material.albedoTexture)
 	{
@@ -138,22 +137,10 @@ inline void Renderer3D::drawMesh(const Mesh& mesh,
 	{
 		srv = m_defaultWhiteSRV.Get();
 	}
-	if (srv)
-	{
-		m_d3dContext->PSSetShaderResources(0, 1, &srv);
-	}
-	if (m_samplerState)
-	{
-		ID3D11SamplerState* sampler = m_samplerState.Get();
-		m_d3dContext->PSSetSamplers(0, 1, &sampler);
-	}
+	bindAlbedoSrvIfChanged(srv);
 
-	/// 頂点バッファを作成してバインドする
-	const auto& verts = mesh.vertices();
-	const auto vbSize = static_cast<UINT>(
-		verts.size() * sizeof(Vertex3D));
-
-	auto vb = createDynamicVertexBuffer(verts.data(), vbSize);
+	/// Mesh が変わっていなければ VB と IB のキャッシュを再利用する。
+	const auto [vb, ib] = getOrUploadMeshBuffers(mesh);
 	if (!vb)
 	{
 		return;
@@ -161,39 +148,27 @@ inline void Renderer3D::drawMesh(const Mesh& mesh,
 
 	const UINT stride = sizeof(Vertex3D);
 	const UINT offset = 0;
-	m_d3dContext->IASetVertexBuffers(0, 1, vb.GetAddressOf(), &stride, &offset);
+	m_d3dContext->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
 
-	/// インデックスバッファを作成してバインドする（あれば）
 	const auto& indices = mesh.indices();
-	if (!indices.empty())
+	if (ib)
 	{
-		const auto ibSize = static_cast<UINT>(
-			indices.size() * sizeof(uint32_t));
-
-		auto ib = createDynamicIndexBuffer(indices.data(), ibSize);
-		if (!ib)
-		{
-			return;
-		}
-
 		m_d3dContext->IASetIndexBuffer(
-			ib.Get(), DXGI_FORMAT_R32_UINT, 0);
+			ib, DXGI_FORMAT_R32_UINT, 0);
 		m_d3dContext->DrawIndexed(
 			static_cast<UINT>(indices.size()), 0, 0);
 	}
 	else
 	{
 		m_d3dContext->Draw(
-			static_cast<UINT>(verts.size()), 0);
+			static_cast<UINT>(mesh.vertices().size()), 0);
 	}
 
 	++m_drawCallCount;
 
-	// アウトラインはdrawMesh内で完結（endFrame不要）
 }
 
 /// @brief マルチライト CB を更新して b2 にバインドする
-/// @details `useMultiLight()` が true のとき drawMesh から呼ばれる。
 inline void Renderer3D::updateLightArrayCB()
 {
 	const auto cb = LightArrayCB::fromLights(
@@ -214,14 +189,12 @@ inline void Renderer3D::updateLightArrayCB()
 	m_d3dContext->PSSetConstantBuffers(2, 1, &buf);
 }
 
-/// @brief トランスフォーム定数バッファを更新する
+/// @brief HLSL の row-major レイアウトに合わせてトランスフォーム定数バッファを更新する
 /// @param worldTransform ワールド行列
-/// @details glmを経由してHLSL互換のrow-majorレイアウトに変換する。
-///          sgc::Mat4fのメモリレイアウトがHLSLと一致しない問題を回避。
+/// @details sgc::Mat4f と HLSL のメモリレイアウトの違いを glm 経由で吸収する。
 inline void Renderer3D::updateTransformCB(const sgc::Mat4f& worldTransform)
 {
 	CbTransform cb;
-	// glm経由でHLSL互換レイアウトに変換
 	glm::mat4 world = toGlm(worldTransform);
 	glm::mat4 view  = toGlm(m_viewMatrix);
 	glm::mat4 proj  = toGlm(m_projMatrix);
@@ -243,8 +216,6 @@ inline void Renderer3D::updateTransformCB(const sgc::Mat4f& worldTransform)
 	m_d3dContext->VSSetConstantBuffers(0, 1, &buf);
 }
 
-/// @brief ライティング定数バッファを更新する
-/// @param material マテリアル
 inline void Renderer3D::updateLightingCB(const Material& material)
 {
 	CbLighting cb;
@@ -294,10 +265,6 @@ inline void Renderer3D::updateLightingCB(const Material& material)
 	m_d3dContext->PSSetConstantBuffers(1, 1, &buf);
 }
 
-/// @brief 動的頂点バッファを作成する
-/// @param data 頂点データ
-/// @param sizeBytes データサイズ
-/// @return 作成されたバッファ
 inline Renderer3D::ComPtr<ID3D11Buffer> Renderer3D::createDynamicVertexBuffer(
 	const void* data, UINT sizeBytes)
 {
@@ -314,10 +281,6 @@ inline Renderer3D::ComPtr<ID3D11Buffer> Renderer3D::createDynamicVertexBuffer(
 	return buffer;
 }
 
-/// @brief 動的インデックスバッファを作成する
-/// @param data インデックスデータ
-/// @param sizeBytes データサイズ
-/// @return 作成されたバッファ
 inline Renderer3D::ComPtr<ID3D11Buffer> Renderer3D::createDynamicIndexBuffer(
 	const void* data, UINT sizeBytes)
 {
@@ -334,8 +297,33 @@ inline Renderer3D::ComPtr<ID3D11Buffer> Renderer3D::createDynamicIndexBuffer(
 	return buffer;
 }
 
-/// @brief テクスチャデータをGPUにアップロードする
-/// @param tex アップロードするテクスチャ
+/// @brief drawMesh 用の VB と IB を取得する
+/// @details mesh.revision() がキャッシュ済みの値と異なるときだけ CreateBuffer を呼ぶ。
+inline std::pair<ID3D11Buffer*, ID3D11Buffer*> Renderer3D::getOrUploadMeshBuffers(const Mesh& mesh)
+{
+	auto& entry = m_meshBufferCache[&mesh];
+	if (entry.revision != mesh.revision())
+	{
+		const auto& verts = mesh.vertices();
+		entry.vb = createDynamicVertexBuffer(
+			verts.data(), static_cast<UINT>(verts.size() * sizeof(Vertex3D)));
+
+		const auto& indices = mesh.indices();
+		if (indices.empty())
+		{
+			entry.ib.Reset();
+		}
+		else
+		{
+			entry.ib = createDynamicIndexBuffer(
+				indices.data(), static_cast<UINT>(indices.size() * sizeof(uint32_t)));
+		}
+
+		entry.revision = mesh.revision();
+	}
+	return {entry.vb.Get(), entry.ib.Get()};
+}
+
 inline void Renderer3D::uploadTexture(const Texture& tex)
 {
 	D3D11_TEXTURE2D_DESC desc = {};
@@ -365,9 +353,8 @@ inline void Renderer3D::uploadTexture(const Texture& tex)
 		texture2D.Get(), nullptr, m_currentSRV.GetAddressOf());
 }
 
-/// @brief Material.albedoTexture 用の SRV を取得（必要なら upload + cache）
-/// @details `setTexture` の global state とは独立した per-Texture* キャッシュ。
-///          同じ `Texture*` は 1 度しかアップロードしない。
+/// @brief Material.albedoTexture 用の SRV を取得する
+/// @details setTexture の状態とは別に Texture ポインタ単位でキャッシュし、同じ Texture は 1 度だけアップロードする。
 inline ID3D11ShaderResourceView* Renderer3D::getOrUploadAlbedoSrv(const Texture* tex)
 {
 	if (!tex || !tex->valid()) return nullptr;
@@ -376,7 +363,6 @@ inline ID3D11ShaderResourceView* Renderer3D::getOrUploadAlbedoSrv(const Texture*
 	{
 		return it->second.Get();
 	}
-	// texture を upload する (uploadTexture と同様だが cache に格納する)
 	D3D11_TEXTURE2D_DESC desc = {};
 	desc.Width            = static_cast<UINT>(tex->width());
 	desc.Height           = static_cast<UINT>(tex->height());
@@ -408,12 +394,9 @@ inline ID3D11ShaderResourceView* Renderer3D::getOrUploadAlbedoSrv(const Texture*
 	return raw;
 }
 
-/// @brief アウトラインパスでメッシュを描画する
-/// @brief アウトラインパス（drawMesh内から呼ばれる、メイン描画の前に実行）
-/// シェーダー・ラスタライザを切替→描画→即座に復元
+/// @brief メイン描画の前にアウトラインを描画し、変更したステートを復元する
 inline void Renderer3D::drawOutlinePass(const Mesh& mesh, const sgc::Mat4f& worldTransform)
 {
-	// アウトラインシェーダーに切替
 	m_d3dContext->VSSetShader(m_outlineVS.Get(), nullptr, 0);
 	m_d3dContext->PSSetShader(m_outlinePS.Get(), nullptr, 0);
 	m_d3dContext->IASetInputLayout(m_outlineInputLayout.Get());
@@ -448,14 +431,13 @@ inline void Renderer3D::drawOutlinePass(const Mesh& mesh, const sgc::Mat4f& worl
 	}
 
 	restore:
-	// 即座にメインシェーダーに復元（次の行でメイン描画が行われるため）
 	m_d3dContext->VSSetShader(m_vertexShader.Get(), nullptr, 0);
 	m_d3dContext->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 	m_d3dContext->RSSetState(m_rasterizerState.Get());
 }
 
-/// @brief アウトライン描画（旧API、互換用）
+/// @brief 旧 API と互換性を保つためのアウトライン描画
 /// @param mesh 描画するメッシュ
 /// @param worldTransform ワールド変換行列
 inline void Renderer3D::drawMeshOutline(const Mesh& mesh, const sgc::Mat4f& worldTransform)
@@ -465,16 +447,13 @@ inline void Renderer3D::drawMeshOutline(const Mesh& mesh, const sgc::Mat4f& worl
 		return;
 	}
 
-	/// アウトラインシェーダーに切り替える
 	m_d3dContext->VSSetShader(m_outlineVS.Get(), nullptr, 0);
 	m_d3dContext->PSSetShader(m_outlinePS.Get(), nullptr, 0);
 	m_d3dContext->IASetInputLayout(m_outlineInputLayout.Get());
 	m_d3dContext->RSSetState(m_outlineFrontCull.Get());
 
-	/// トランスフォーム定数バッファを更新する（メインパスと同じ）
 	updateTransformCB(worldTransform);
 
-	/// 頂点バッファを作成してバインドする
 	const auto& verts = mesh.vertices();
 	auto vb = createDynamicVertexBuffer(
 		verts.data(),
@@ -489,7 +468,6 @@ inline void Renderer3D::drawMeshOutline(const Mesh& mesh, const sgc::Mat4f& worl
 	m_d3dContext->IASetVertexBuffers(
 		0, 1, vb.GetAddressOf(), &stride, &offset);
 
-	/// インデックスバッファを作成してバインドする（あれば）
 	const auto& indices = mesh.indices();
 	if (!indices.empty())
 	{
@@ -512,7 +490,392 @@ inline void Renderer3D::drawMeshOutline(const Mesh& mesh, const sgc::Mat4f& worl
 	}
 }
 
-/// @brief skybox を描画する（drawMesh の最初の呼び出しで一度だけ）
+/// @brief sgc::Mat4f をインスタンス頂点属性の行データへ変換する
+inline Renderer3D::InstanceData Renderer3D::toInstanceData(const sgc::Mat4f& world) noexcept
+{
+	// 頂点属性から作る float4x4 では暗黙の転置がないため、glm の列を row0 から row3 として格納する。
+	const glm::mat4 g = toGlm(world);
+	float colMajor[4][4];
+	toColumnMajor(colMajor, g);
+
+	InstanceData data;
+	std::memcpy(data.row0, colMajor[0], sizeof(data.row0));
+	std::memcpy(data.row1, colMajor[1], sizeof(data.row1));
+	std::memcpy(data.row2, colMajor[2], sizeof(data.row2));
+	std::memcpy(data.row3, colMajor[3], sizeof(data.row3));
+	return data;
+}
+
+/// @brief インスタンシング用の頂点シェーダーと入力レイアウトを必要なときだけ生成する
+inline void Renderer3D::ensureInstancedPipeline()
+{
+	if (m_instancedVS || m_instancedPipelineFailed)
+	{
+		return;
+	}
+
+	try
+	{
+		auto vsBlob = compileHLSL(INSTANCED_VS_3D, "VSMain", "vs_5_0");
+		auto multiVsBlob = compileHLSL(MULTI_LIGHT_VS_3D_INSTANCED, "VSMain", "vs_5_0");
+
+		const D3D11_INPUT_ELEMENT_DESC layout[] =
+		{
+			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,  D3D11_INPUT_PER_VERTEX_DATA,   0},
+			{"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA,   0},
+			{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24, D3D11_INPUT_PER_VERTEX_DATA,   0},
+			{"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA,   0},
+			{"TEXCOORD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0,  D3D11_INPUT_PER_INSTANCE_DATA, 1},
+			{"TEXCOORD", 4, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D11_INPUT_PER_INSTANCE_DATA, 1},
+			{"TEXCOORD", 5, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D11_INPUT_PER_INSTANCE_DATA, 1},
+			{"TEXCOORD", 6, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D11_INPUT_PER_INSTANCE_DATA, 1},
+		};
+
+		ComPtr<ID3D11VertexShader> vs;
+		ComPtr<ID3D11VertexShader> multiVs;
+		ComPtr<ID3D11InputLayout> layoutObj;
+		HRESULT hr = m_d3dDevice->CreateVertexShader(
+			vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, vs.GetAddressOf());
+		if (SUCCEEDED(hr))
+		{
+			hr = m_d3dDevice->CreateVertexShader(
+				multiVsBlob->GetBufferPointer(), multiVsBlob->GetBufferSize(),
+				nullptr, multiVs.GetAddressOf());
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = m_d3dDevice->CreateInputLayout(
+				layout, static_cast<UINT>(sizeof(layout) / sizeof(layout[0])),
+				vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(),
+				layoutObj.GetAddressOf());
+		}
+		if (FAILED(hr))
+		{
+			m_instancedPipelineFailed = true;
+			return;
+		}
+		m_instancedVS = vs;
+		m_instancedMultiVS = multiVs;
+		m_instancedInputLayout = layoutObj;
+	}
+	catch (const std::exception&)
+	{
+		m_instancedPipelineFailed = true;
+	}
+}
+
+/// @brief kInstanceBatchMax 個分のインスタンス頂点バッファを必要なときだけ生成する
+inline bool Renderer3D::ensureInstanceBuffer()
+{
+	if (m_instanceVB)
+	{
+		return true;
+	}
+
+	D3D11_BUFFER_DESC desc = {};
+	desc.ByteWidth = static_cast<UINT>(kInstanceBatchMax * sizeof(InstanceData));
+	desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	const HRESULT hr = m_d3dDevice->CreateBuffer(&desc, nullptr, m_instanceVB.GetAddressOf());
+	if (SUCCEEDED(hr))
+	{
+		m_instanceScratch.reserve(kInstanceBatchMax);
+	}
+	return SUCCEEDED(hr);
+}
+
+/// @brief drawMesh と同じ規則でインスタンス描画用のテクスチャとサンプラーをバインドする
+inline void Renderer3D::bindMaterialTexture(const Material& material)
+{
+	ID3D11ShaderResourceView* srv = nullptr;
+	if (material.albedoTexture)
+	{
+		srv = getOrUploadAlbedoSrv(material.albedoTexture);
+	}
+	if (!srv && m_currentSRV) { srv = m_currentSRV.Get(); }
+	if (!srv && m_defaultWhiteSRV) { srv = m_defaultWhiteSRV.Get(); }
+	bindAlbedoSrvIfChanged(srv);
+}
+
+/// @brief PS スロット 0 の SRV とサンプラーが直前の値と異なるときだけ設定する
+inline void Renderer3D::bindAlbedoSrvIfChanged(ID3D11ShaderResourceView* srv)
+{
+	if (srv && srv != m_boundPSSrv0)
+	{
+		m_d3dContext->PSSetShaderResources(0, 1, &srv);
+		m_boundPSSrv0 = srv;
+	}
+	if (m_samplerState && m_samplerState.Get() != m_boundPSSampler0)
+	{
+		ID3D11SamplerState* sampler = m_samplerState.Get();
+		m_d3dContext->PSSetSamplers(0, 1, &sampler);
+		m_boundPSSampler0 = sampler;
+	}
+}
+
+/// @brief 同じメッシュを複数のワールド行列で GPU instancing 描画する
+inline void Renderer3D::drawMeshInstanced(const Mesh& mesh,
+                                          std::span<const sgc::Mat4f> worlds,
+                                          const Material* material)
+{
+	if (!m_initialized || mesh.vertexCount() == 0 || worlds.empty())
+	{
+		return;
+	}
+
+	ensureInstancedPipeline();
+	const Material& mat = material ? *material : Material{};
+	if (!m_instancedVS || !m_instancedInputLayout || !ensureInstanceBuffer())
+	{
+		// instancing を使えない場合は drawMesh のループに切り替える。
+		for (const auto& world : worlds) { drawMesh(mesh, world, mat); }
+		return;
+	}
+
+	drawSkyboxIfNeeded();
+	updateTransformCB(sgc::Mat4f::identity());  // View/Projection のみ使う。World は各インスタンス属性側
+	updateLightingCB(mat);
+	if (m_useMultiLight) { updateLightArrayCB(); }
+	bindMaterialTexture(mat);
+
+	const auto& verts = mesh.vertices();
+	auto vb = createDynamicVertexBuffer(verts.data(), static_cast<UINT>(verts.size() * sizeof(Vertex3D)));
+	if (!vb) { return; }
+	const auto& indices = mesh.indices();
+	ComPtr<ID3D11Buffer> ib;
+	if (!indices.empty())
+	{
+		ib = createDynamicIndexBuffer(indices.data(), static_cast<UINT>(indices.size() * sizeof(uint32_t)));
+		if (!ib) { return; }
+	}
+
+	auto* vs = (m_useMultiLight && m_instancedMultiVS) ? m_instancedMultiVS.Get() : m_instancedVS.Get();
+	m_d3dContext->VSSetShader(vs, nullptr, 0);
+	m_d3dContext->IASetInputLayout(m_instancedInputLayout.Get());
+
+	for (std::size_t offset = 0; offset < worlds.size(); offset += kInstanceBatchMax)
+	{
+		const std::size_t batchCount = std::min(kInstanceBatchMax, worlds.size() - offset);
+		m_instanceScratch.clear();
+		for (std::size_t i = 0; i < batchCount; ++i)
+		{
+			const auto& world = worlds[offset + i];
+			if (m_frustumCullingEnabled && !m_frustum.isMeshVisible(mesh.localAABB(), world))
+			{
+				++m_culledCount;
+				continue;
+			}
+			if (m_occlusionCullingEnabled && m_occlusionCuller.hasDepth() &&
+			    m_occlusionCuller.isOccluded(worldOcclusionAABB(mesh.localAABB(), world),
+			                                 occlusionViewProj().data()))
+			{
+				++m_occludedCount;
+				continue;
+			}
+			if (m_instanceScratch.size() >= m_instanceScratch.capacity())
+			{
+				debug::warnOnce("render.instancing.scratch_realloc",
+					"Renderer3D: m_instanceScratch は予約容量 kInstanceBatchMax を"
+					"超えて再確保されています（インスタンス描画のホットパスで allocation 発生）");
+			}
+			m_instanceScratch.push_back(toInstanceData(world));
+		}
+		if (!m_instanceScratch.empty())
+		{
+			drawInstanceBatch(vb.Get(), ib.Get(), static_cast<UINT>(verts.size()),
+			                   static_cast<UINT>(indices.size()));
+		}
+	}
+
+	// 次の drawMesh のために通常描画用のステートへ戻す。
+	m_d3dContext->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
+	ID3D11Buffer* nullVB = nullptr;
+	const UINT zero = 0;
+	m_d3dContext->IASetVertexBuffers(1, 1, &nullVB, &zero, &zero);
+}
+
+/// @brief 1 バッチ分のインスタンスデータを Map、Unmap して描画する
+inline void Renderer3D::drawInstanceBatch(ID3D11Buffer* vb, ID3D11Buffer* ib,
+                                          UINT vertexCount, UINT indexCount)
+{
+	D3D11_MAPPED_SUBRESOURCE mapped = {};
+	if (FAILED(m_d3dContext->Map(m_instanceVB.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+	{
+		return;
+	}
+	std::memcpy(mapped.pData, m_instanceScratch.data(),
+	            m_instanceScratch.size() * sizeof(InstanceData));
+	m_d3dContext->Unmap(m_instanceVB.Get(), 0);
+
+	ID3D11Buffer* buffers[2] = {vb, m_instanceVB.Get()};
+	const UINT strides[2] = {sizeof(Vertex3D), sizeof(InstanceData)};
+	const UINT offsets[2] = {0, 0};
+	m_d3dContext->IASetVertexBuffers(0, 2, buffers, strides, offsets);
+
+	const auto instanceCount = static_cast<UINT>(m_instanceScratch.size());
+	if (ib)
+	{
+		m_d3dContext->IASetIndexBuffer(ib, DXGI_FORMAT_R32_UINT, 0);
+		m_d3dContext->DrawIndexedInstanced(indexCount, instanceCount, 0, 0, 0);
+	}
+	else
+	{
+		m_d3dContext->DrawInstanced(vertexCount, instanceCount, 0, 0);
+	}
+	++m_drawCallCount;
+}
+
+/// @brief MSAA 深度の全サンプルから最小値を取り、単一サンプルの R32_FLOAT として間引いて読み戻す
+/// @details DX11 では深度を ResolveSubresource できないため、Texture2DMS<float> を読むフルスクリーン PS で変換する。描画ステートは次の beginFrame で再設定される。
+inline bool Renderer3D::resolveMultisampledOcclusionDepth(UINT width, UINT height)
+{
+	if (!m_depthSRV) { return false; }
+
+	ensureOcclusionResolvePipeline();
+	if (!m_occlusionResolveVS || !ensureOcclusionResolveTargets(width, height))
+	{
+		return false;
+	}
+
+	// DSV を OM から外し、深度を SRV として読む。
+	ID3D11RenderTargetView* rtv = m_occlusionResolveRTV.Get();
+	m_d3dContext->OMSetRenderTargets(1, &rtv, nullptr);
+
+	D3D11_VIEWPORT vp = {};
+	vp.Width = static_cast<float>(width);
+	vp.Height = static_cast<float>(height);
+	vp.MinDepth = 0.0f;
+	vp.MaxDepth = 1.0f;
+	m_d3dContext->RSSetViewports(1, &vp);
+
+	m_d3dContext->VSSetShader(m_occlusionResolveVS.Get(), nullptr, 0);
+	m_d3dContext->PSSetShader(m_occlusionResolvePS.Get(), nullptr, 0);
+	m_d3dContext->IASetInputLayout(nullptr);
+	m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ID3D11ShaderResourceView* depthSrv = m_depthSRV.Get();
+	m_d3dContext->PSSetShaderResources(0, 1, &depthSrv);
+
+	m_d3dContext->Draw(3, 0);
+
+	// 次の深度書き込みとの競合を避けるため、SRV のバインドを外す。
+	ID3D11ShaderResourceView* nullSrv = nullptr;
+	m_d3dContext->PSSetShaderResources(0, 1, &nullSrv);
+	// PS スロット 0 を直接変更したため、drawMesh のステートキャッシュを無効にする。
+	m_boundPSSrv0 = nullptr;
+
+	m_d3dContext->CopyResource(m_occlusionResolveStaging.Get(), m_occlusionResolveRT.Get());
+
+	D3D11_MAPPED_SUBRESOURCE mapped = {};
+	if (FAILED(m_d3dContext->Map(m_occlusionResolveStaging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
+	{
+		return false;
+	}
+
+	const int stride = kOcclusionDownsampleStride;
+	const int dsW = std::max(1, static_cast<int>(width) / stride);
+	const int dsH = std::max(1, static_cast<int>(height) / stride);
+	m_occlusionDepthScratch.resize(static_cast<std::size_t>(dsW) * static_cast<std::size_t>(dsH));
+
+	const auto* base = static_cast<const std::uint8_t*>(mapped.pData);
+	for (int y = 0; y < dsH; ++y)
+	{
+		const int srcY = std::min(y * stride, static_cast<int>(height) - 1);
+		const auto* row = reinterpret_cast<const float*>(base + static_cast<std::size_t>(srcY) * mapped.RowPitch);
+		for (int x = 0; x < dsW; ++x)
+		{
+			const int srcX = std::min(x * stride, static_cast<int>(width) - 1);
+			m_occlusionDepthScratch[static_cast<std::size_t>(y) * static_cast<std::size_t>(dsW) + static_cast<std::size_t>(x)] =
+				row[srcX];
+		}
+	}
+
+	m_d3dContext->Unmap(m_occlusionResolveStaging.Get(), 0);
+	m_occlusionCuller.updateDepth(m_occlusionDepthScratch.data(), dsW, dsH);
+	return true;
+}
+
+/// @brief 深度バッファを読み戻し、間引いて OcclusionCuller に渡す
+inline void Renderer3D::updateOcclusionDepth()
+{
+	if (!m_depthStencilView)
+	{
+		return;
+	}
+	if (m_depthIsMultisampled)
+	{
+		if (!resolveMultisampledOcclusionDepth(
+			static_cast<UINT>(m_config.viewportWidth), static_cast<UINT>(m_config.viewportHeight)))
+		{
+			debug::warnOnce("render.occlusion.msaa_depth_unsupported",
+				"Renderer3D: occlusion depth readback skipped (MSAA min-depth resolve pipeline "
+				"unavailable on this device, occlusion culling has no effect)");
+		}
+		return;
+	}
+
+	ComPtr<ID3D11Resource> depthRes;
+	m_depthStencilView->GetResource(depthRes.GetAddressOf());
+	ComPtr<ID3D11Texture2D> depthTex;
+	if (FAILED(depthRes.As(&depthTex)))
+	{
+		return;
+	}
+
+	D3D11_TEXTURE2D_DESC desc = {};
+	depthTex->GetDesc(&desc);
+
+	if (!m_occlusionStaging || m_occlusionStagingW != desc.Width || m_occlusionStagingH != desc.Height)
+	{
+		D3D11_TEXTURE2D_DESC stagingDesc = desc;
+		stagingDesc.Usage = D3D11_USAGE_STAGING;
+		stagingDesc.BindFlags = 0;
+		stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		stagingDesc.MiscFlags = 0;
+		m_occlusionStaging.Reset();
+		if (FAILED(m_d3dDevice->CreateTexture2D(&stagingDesc, nullptr, m_occlusionStaging.GetAddressOf())))
+		{
+			return;
+		}
+		m_occlusionStagingW = desc.Width;
+		m_occlusionStagingH = desc.Height;
+	}
+
+	m_d3dContext->CopyResource(m_occlusionStaging.Get(), depthTex.Get());
+
+	D3D11_MAPPED_SUBRESOURCE mapped = {};
+	if (FAILED(m_d3dContext->Map(m_occlusionStaging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
+	{
+		return;
+	}
+
+	const int stride = kOcclusionDownsampleStride;
+	const int dsW = std::max(1, static_cast<int>(desc.Width) / stride);
+	const int dsH = std::max(1, static_cast<int>(desc.Height) / stride);
+	m_occlusionDepthScratch.resize(static_cast<std::size_t>(dsW) * static_cast<std::size_t>(dsH));
+
+	const auto* base = static_cast<const std::uint8_t*>(mapped.pData);
+	for (int y = 0; y < dsH; ++y)
+	{
+		const int srcY = std::min(y * stride, static_cast<int>(desc.Height) - 1);
+		const auto* row = reinterpret_cast<const std::uint32_t*>(base + static_cast<std::size_t>(srcY) * mapped.RowPitch);
+		for (int x = 0; x < dsW; ++x)
+		{
+			const int srcX = std::min(x * stride, static_cast<int>(desc.Width) - 1);
+			// D24_UNORM_S8_UINT は下位 24 bit が深度、上位 8 bit がステンシル。
+			const std::uint32_t raw = row[srcX];
+			m_occlusionDepthScratch[static_cast<std::size_t>(y) * static_cast<std::size_t>(dsW) + static_cast<std::size_t>(x)] =
+				static_cast<float>(raw & 0x00FFFFFFu) / 16777215.0f;
+		}
+	}
+
+	m_d3dContext->Unmap(m_occlusionStaging.Get(), 0);
+	m_occlusionCuller.updateDepth(m_occlusionDepthScratch.data(), dsW, dsH);
+}
+
+/// @brief 最初の drawMesh のときだけ skybox を描画する
 inline void Renderer3D::drawSkyboxIfNeeded()
 {
 	if (!m_skyboxEnabled) return;

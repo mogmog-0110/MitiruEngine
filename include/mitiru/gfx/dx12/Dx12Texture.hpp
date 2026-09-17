@@ -231,6 +231,8 @@ private:
 			return DXGI_FORMAT_R8_UNORM;
 		case PixelFormat::Depth24Stencil8:
 			return DXGI_FORMAT_D24_UNORM_S8_UINT;
+		case PixelFormat::RGBA16F:
+			return DXGI_FORMAT_R16G16B16A16_FLOAT;
 		default:
 			return DXGI_FORMAT_R8G8B8A8_UNORM;
 		}

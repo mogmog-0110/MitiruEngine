@@ -20,6 +20,7 @@
 #include <sgc/graphics/IRenderer2D.hpp>
 #include <sgc/graphics/Camera2D.hpp>
 #include <sgc/math/Mat4.hpp>
+#include <sgc/math/Rect.hpp>
 
 namespace mitiru::render
 {
@@ -101,11 +102,12 @@ public:
 		m_inner->drawBezier(p0, p1, p2, p3, color, thickness, segments);
 	}
 
-	/// @brief テキストを描画する
-	void drawText(sgc::Vec2f pos, const std::string& text,
-	              float fontSize, sgc::graphics::Color color)
+	/// @brief 矩形内にテキストを描画する
+	/// @details `m_inner` (IRenderer2D) は矩形版を持たないため rect 左上を渡すだけの薄い変換層。
+	void drawTextInRect(const sgc::Rectf& rect, const std::string& text,
+	                    float fontSize, sgc::graphics::Color color)
 	{
-		m_inner->drawText(pos, text, fontSize, color);
+		m_inner->drawText({rect.x(), rect.y()}, text, fontSize, color);
 	}
 
 	/// @brief ビュー行列を設定する

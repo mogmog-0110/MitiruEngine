@@ -12,6 +12,7 @@
 #include <mitiru/core/Config.hpp>
 #include <mitiru/gfx/IDescriptorHeap.hpp>
 #include <mitiru/gfx/IGpuFence.hpp>
+#include <mitiru/gfx/IRenderTarget.hpp>
 
 namespace mitiru::gfx
 {
@@ -161,6 +162,18 @@ public:
 	/// @details バックエンド固有のポストプロセス最終化を行う。
 	///          デフォルトはno-op。
 	virtual void endPostProcess() {}
+
+	/// @brief 独立したレンダーターゲットを生成する（RenderTargetPool 用）
+	/// @param desc 幅・高さ・フォーマット・用途フラグ
+	/// @return 生成された RT（未対応バックエンド/フォーマットでは nullptr）
+	/// @details createFence/createDescriptorHeap と同様、対応しないバックエンドは
+	///          オーバーライドせず nullptr を返せばよい（RenderTargetPool::acquire が Invalid を返す）。
+	[[nodiscard]] virtual std::unique_ptr<IRenderTarget> createRenderTarget(
+		const RenderTargetDesc& desc)
+	{
+		static_cast<void>(desc);
+		return nullptr;
+	}
 
 protected:
 	float m_clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f}; ///< フレームクリア色（setClearColorで設定）

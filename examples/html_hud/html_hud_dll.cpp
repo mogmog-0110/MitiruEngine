@@ -9,6 +9,7 @@
 #include <algorithm>   // std::clamp
 #include <cstdio>      // std::snprintf (pips を JSON 配列に組む)
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include "../common/chapter_hud.hpp"   // 章ラベル + 操作帯 + 共通パレット
 using namespace mitiru;
 
@@ -57,7 +58,8 @@ struct HtmlHud
 	// C++ が直接描くのは、背景とスライダー (レール + 塗り + つまみ) だけ。
 	// 6 つの値表示は、上に重なった HTML/CSS が受け持つ。
 	// つまり「下のスライダー = 値を決める場所」「上の HTML = その値を見せる場所」。
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
 		s.fillScreen(theme::kPaper);
 		const float thumbX = kTrackL + level / 100.0f * (kTrackR - kTrackL);
@@ -69,6 +71,11 @@ struct HtmlHud
 		chapterTitle(s, "HTML HUD");
 		chapterControls(s, "スライダーを うごかす　ESC: おわる");
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 };
 // 実行:  mitiru_host.exe html_hud/html_hud.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(HtmlHud);
+
 MITIRU_GAME(HtmlHud);

@@ -30,8 +30,8 @@ void drawPostProcessOutline()
 		(m_outlineMode == OutlineMode::ColorEdge ||
 		 m_outlineMode == OutlineMode::DepthColorCombo);
 
-	auto* swapChainPost = m_device->getSwapChain();
-	auto* bbPost = static_cast<gfx::Dx12RenderTarget*>(swapChainPost->backBuffer());
+	auto* bbPost = m_device->currentBackBuffer();
+	if (!bbPost) return;
 
 	if (needsColorCopy && m_colorCopyBuffer)
 	{

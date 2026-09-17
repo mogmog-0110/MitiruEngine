@@ -7,11 +7,13 @@
 //           in.mouseX/Y・mouseDown (マウスで UI 操作)
 
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include <mitiru/render/Texture.hpp>   // 画像 (Texture) を読み込んで drawSprite で描くため
 
 #include <algorithm>   // std::min — 蛍がマウスへ寄る割合の頭打ち
 #include <cmath>       // std::sin / std::fmod — ゆれ・舞い散りに使う
 #include <cstdio>      // std::snprintf — スライダーの値・ボタンの回数を文字にするため
+#include <type_traits> // Canvas 経路のみ registerTexture する if constexpr のため
 
 #include "../common/chapter_hud.hpp"   // 共通パレット theme::k... (白系テーマの色) を使う
 
@@ -218,7 +220,8 @@ struct Welcome00
 	// ── 描画部品 ───────────────────────────────────────────────────────────
 
 	// 赤べこ 1 匹を中心 (cx,cy)・大きさ scale・向き flip で描く。
-	static void beko(Screen& s, int frame, float cx, float cy, float scale, bool flip)
+	template <class Surface>
+	static void beko(Surface& s, int frame, float cx, float cy, float scale, bool flip)
 	{
 		const render::Texture& tex = kBeko[frame];
 		const float w = static_cast<float>(tex.width()) * scale;
@@ -230,7 +233,8 @@ struct Welcome00
 
 	// ゆっくり舞い落ちる控えめな桜。位置は経過秒 t と番号 i だけから決まる (状態を持たない)。
 	// 落ちながら左右にゆれ、少しずつ回る。画面下に消えたら上へ戻って繰り返す。
-	void petals(Screen& s) const
+	template <class Surface>
+	void petals(Surface& s) const
 	{
 		for (int i = 0; i < kPetals; ++i)
 		{
@@ -249,7 +253,8 @@ struct Welcome00
 	}
 
 	// 額に入れた絵を、絵の左上を (x,y) として描く。落ち影→額縁→マット→絵→見切り線の順に重ねる。
-	void framedArt(Screen& s, float x, float y, float artW, float artH) const
+	template <class Surface>
+	void framedArt(Surface& s, float x, float y, float artW, float artH) const
 	{
 		const float ox = x - kMatte - kFrameBand, oy = y - kMatte - kFrameBand;
 		const float ow = artW + 2.0f * (kMatte + kFrameBand), oh = artH + 2.0f * (kMatte + kFrameBand);
@@ -265,7 +270,8 @@ struct Welcome00
 
 	// 上段: 基本図形 4 つを、列を 4 等分した各セルの中心に、下端 kShapeBottom をそろえて並べる。
 	// 角丸四角 (青)・円 (緑)・縦長カプセル (橙)・三角形 (桃)。大きさをそろえて上品に見せる。
-	void shapesRow(Screen& s) const
+	template <class Surface>
+	void shapesRow(Surface& s) const
 	{
 		const float b = kShapeBottom;
 
@@ -289,7 +295,8 @@ struct Welcome00
 	// 斜めにずらすと角丸の隅に影が三日月形に覗く。真下だけなら影の角がカードの角の
 	// 真下にぴったり重なり、下辺に薄い帯としてだけ見え、
 	// 横や上の角には決してはみ出さない。2 枚重ねて下ほど濃く滲ませる。
-	void panelCard(Screen& s) const
+	template <class Surface>
+	void panelCard(Surface& s) const
 	{
 		const Rect body{kCardX, kCardY, kCardW, kCardH};
 		// 落ち影は横にずらさず「真下」だけ・カードと同じ幅と角丸で 2 枚重ねる。影の角が
@@ -303,14 +310,16 @@ struct Welcome00
 
 	// カード内の説明ラベルは全部この書式でそろえる (読みやすい濃色 kInk・18px・左そろえ)。
 	// スライダーの数値「121」などは機能上の値なので、これとは別扱い。
-	static void cardLabel(Screen& s, const Rect& r, const char* text)
+	template <class Surface>
+	static void cardLabel(Surface& s, const Rect& r, const char* text)
 	{
 		s.drawTextInRect(r, text, theme::kInk, 18.0f,
-		                 Screen::TextAlignH::Left, Screen::TextAlignV::Middle);
+		                 Surface::TextAlignH::Left, Surface::TextAlignV::Middle);
 	}
 
 	// 2 段目: スライダー。1 行目の左にラベル・右に今の値、その下に列いっぱいの溝とハンドル。
-	void slider(Screen& s) const
+	template <class Surface>
+	void slider(Surface& s) const
 	{
 		// ラベル (左)。このスライダーが赤べこの歩く速さを決めることを示す。
 		cardLabel(s, Rect{kColL, kSliderRowY, kColW * 0.6f, 24.0f}, "赤べこの速さ");
@@ -320,7 +329,7 @@ struct Welcome00
 		char buf[16];
 		std::snprintf(buf, sizeof(buf), "%d", speed);
 		s.drawTextInRect(Rect{kColL + kColW * 0.55f, kSliderRowY, kColW * 0.45f, 24.0f}, buf,
-		                 theme::kBlue, 20.0f, Screen::TextAlignH::Right, Screen::TextAlignV::Middle);
+		                 theme::kBlue, 20.0f, Surface::TextAlignH::Right, Surface::TextAlignV::Middle);
 
 		// 溝 (灰) と、左からハンドルまでの塗り (青)。列いっぱいに敷く。
 		s.drawRoundedRect(Rect{kTrackLeft, kTrackY - 3.0f, kTrackLen, 6.0f}, theme::kFrame, 3.0f);
@@ -334,7 +343,8 @@ struct Welcome00
 	}
 
 	// 下段: 押すたびに回数が増える角丸ボタン。列いっぱいの幅。押す間は 2px 沈めて反応を伝える。
-	void button(Screen& s) const
+	template <class Surface>
+	void button(Surface& s) const
 	{
 		const float dy = btnDown ? 2.0f : 0.0f;                 // 押している間だけ少し下げる
 		const Rect  face{kBtnX, kBtnY + dy, kBtnW, kBtnH};
@@ -345,13 +355,14 @@ struct Welcome00
 		char buf[24];
 		std::snprintf(buf, sizeof(buf), "count: %d", count);
 		s.drawTextInRect(face, buf, color::White, 22.0f,
-		                 Screen::TextAlignH::Center, Screen::TextAlignV::Middle);
+		                 Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 	}
 
 	// 4 段目: チェックボックス「桜を降らせる」。四角をクリックで on/off。
 	// on = 青く塗って白いレ点、off = 灰の枠だけの空箱。状態は petalsOn が持ち、draw() が桜を切り替える。
 	// 3 段目。
-	void checkbox(Screen& s) const
+	template <class Surface>
+	void checkbox(Surface& s) const
 	{
 		const Rect box{kCheckX, kCheckY, kCheckSize, kCheckSize};
 		if (petalsOn)
@@ -376,7 +387,8 @@ struct Welcome00
 	// 4 段目 (ボタンと 1 組): ゲージ「おすと たまる」。ボタンを押すたびに 0.1 溜まり、満タンで 0 へ戻る。
 	// 見出しはボタンの真上に置いて、ボタン→ゲージが 1 組だと分かるようにする。溝 + 塗りで表し、
 	// 満タンから減っている最中は塗りを淡い橙にして「今リセット中」を伝える。
-	void gaugeBar(Screen& s) const
+	template <class Surface>
+	void gaugeBar(Surface& s) const
 	{
 		// 組の見出し (ボタンの真上、他のラベルと同じ書式)。
 		cardLabel(s, Rect{kColL, kSetLabelY, kColW, 24.0f}, "おすと たまる (満タンで戻る)");
@@ -393,8 +405,20 @@ struct Welcome00
 		}
 	}
 
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
+		// Canvas は境界を跨ぐため、Texture のアドレスではなく id で描かせる必要がある
+		// (未登録だと drawSprite が DLL 内アドレスをそのまま積んでしまう)。kFuji/kLogo は
+		// SpriteCache の規約 (assets/sprites/) 外の assets/images/ 配下にあり id 化できない
+		// ため対象外のまま (アドレス直運びの Sprite に後退。ADR 0025 の既存 TODO)。
+		if constexpr (std::is_same_v<Surface, mitiru::Canvas>)
+		{
+			s.registerTexture(kBeko[0], "akabeko_0");
+			s.registerTexture(kBeko[1], "akabeko_1");
+			s.registerTexture(kBeko[2], "akabeko_2");
+			s.registerTexture(kBeko[3], "akabeko_3");
+		}
 		// 背景は上→下のゆるいグラデ (暖かい生成り → 涼しい紙白)。奥行きを出す静かな下地。
 		s.drawGradientRect(Rect{0.0f, 0.0f, kScreenW, kScreenH}, kBgTop, kBgBottom);
 		if (petalsOn) { petals(s); }   // チェックが on の時だけ桜が舞う (主役の絵や部品より奥に敷く)
@@ -408,7 +432,7 @@ struct Welcome00
 		const float capY = kArtY + artH + kMatte + kFrameBand + 8.0f;
 		s.drawTextInRect(Rect{kArtX - kMatte, capY, artW + 2.0f * kMatte, 22.0f},
 		                 "葛飾北斎「凱風快晴」富嶽三十六景", theme::kSubtle, 15.0f,
-		                 Screen::TextAlignH::Center, Screen::TextAlignV::Middle);
+		                 Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 
 		// キャプションの下にブランドロゴ (透過画像を縮小)。絵の中心にそろえて置く。
 		const float logoH = kLogoW * static_cast<float>(kLogo.height()) / static_cast<float>(kLogo.width());
@@ -446,10 +470,15 @@ struct Welcome00
 		const Rect band{0.0f, kScreenH - 34.0f, kScreenW, 34.0f};
 		s.drawRect(band, rgba(226, 231, 240, 225));
 		s.drawTextInRect(band, "矢印キーで赤べこが歩く　　右のスライダーとボタンは触って動かせる",
-		                 hex(0x3A4048), 18.0f, Screen::TextAlignH::Center, Screen::TextAlignV::Middle);
+		                 hex(0x3A4048), 18.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 };
 
 // この 1 行がゲームの入口。実行役 mitiru_host.exe がこの struct を作り、毎フレーム draw() を呼ぶ。
 // 実行:  mitiru_host.exe welcome/welcome.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Welcome00);
+
 MITIRU_GAME(Welcome00);

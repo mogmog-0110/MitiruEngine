@@ -5,7 +5,7 @@
   "programNodes": 7,
   "ps": "arm.ps.cso",
   "scene": "arm.makina.json",
-  "sceneHash": "894429d136f9af9c",
+  "sceneHash": "5bf0e340e45a2b66",
   "shading": "scene_engine.hlsl",
   "version": 1,
   "vs": "arm.vs.cso"

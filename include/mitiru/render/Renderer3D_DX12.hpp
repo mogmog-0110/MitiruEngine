@@ -16,11 +16,13 @@
 #endif
 #include <Windows.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
 #include <deque>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <unordered_map>
 #include <memory>
@@ -50,6 +52,8 @@
 #include <mitiru/render/csg/CsgRenderPass.hpp>
 #include <mitiru/render/csg/CsgSolid.hpp>
 #endif
+#include <mitiru/render/FrustumCulling.hpp>
+#include <mitiru/render/OcclusionCuller.hpp>
 #include <mitiru/render/GlmBridge.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/dx12/clod/ClodRenderer.hpp>
@@ -61,10 +65,14 @@
 
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
+#include <mitiru/render/ISceneFx.hpp>
+#include <mitiru/render/experimental/IExperimentalRenderer3D.hpp>
 #include <mitiru/render/Cubemap.hpp>
+#include <mitiru/render/IblBrdfLut.hpp>
 #include <mitiru/render/GlmBridge.hpp>
 #include <mitiru/render/LightArrayCB.hpp>
 #include <mitiru/render/SkyboxShaders.hpp>
+#include <mitiru/render/dx12/DX12PBRShaders.hpp>
 
 // 3D Gaussian Splatting (M1)。**ファイルスコープで**先に include する必要がある
 // (DX12Splat.hpp は class body 内 .inl のため、これらの namespace 宣言を class
@@ -105,6 +113,7 @@
 #include <mitiru/render/dx12/DX12OitTransparentPS.hpp>
 #include <mitiru/render/dx12/WeightedBlendedOIT.hpp>
 #include <mitiru/render/dx12/DX12MultiLightShaders.hpp>
+#include <mitiru/render/dx12/DX12OcclusionResolveShaders.hpp>
 #include <mitiru/render/dx12/DX12Tonemap.hpp>
 #include <mitiru/render/dx12/DX12ShaderModePS.hpp>
 #include <mitiru/render/dx12/DX12ShaderModeVS.hpp>
@@ -136,12 +145,24 @@ namespace mitiru::render
 /// renderer.drawMesh(cubeMesh, worldMatrix, material);
 /// renderer.endFrame();
 /// @endcode
-class Renderer3D_DX12 : public IRenderer3D
+class Renderer3D_DX12 : public IRenderer3D, public ISceneFx, public IExperimentalRenderer3D
 {
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 public:
+	/// @brief queryInterface 相当: 自分自身を ISceneFx / IExperimentalRenderer3D として返す
+	[[nodiscard]] ISceneFx* sceneFx() noexcept override { return this; }
+	[[nodiscard]] const ISceneFx* sceneFx() const noexcept override { return this; }
+	[[nodiscard]] IExperimentalRenderer3D* experimental() noexcept override { return this; }
+	[[nodiscard]] const IExperimentalRenderer3D* experimental() const noexcept override { return this; }
+
+#ifndef MITIRU_HAS_MAKINA
+	// MITIRU_HAS_MAKINA 未定義ビルドでは drawSolid を override しないため、IRenderer3D の
+	// 後方互換転送関数と IExperimentalRenderer3D の既定 no-op が同名で並び曖昧になる。
+	using IExperimentalRenderer3D::drawSolid;
+#endif
+
 	/// @brief デフォルトコンストラクタ
 	Renderer3D_DX12() {}
 
@@ -167,6 +188,13 @@ public:
 		sgc::Colorf defaultAmbient{0.5f, 0.5f, 0.5f, 1.0f};  ///< デフォルトアンビエント色
 		bool enableOutline = true;                             ///< アウトライン描画の有効化
 		float outlineThickness = 0.03f;                        ///< アウトラインの太さ
+
+		/// @brief skinned glTF 1 体あたりの joint 数上限（B8）。超過すると剛体 fallback で
+		///        描画する（warnOnce 通知）。既定 256 は `kMaxSkinJoints` ハード上限と同じ。
+		uint32_t maxSkinJoints = 256;
+		/// @brief 1 フレームに描けるスキン prim 数の上限（B8）。`kMaxSkinnedDrawsPerFrame`
+		///        (プールの物理サイズ) を超える値を渡してもそこでクランプされる。
+		uint32_t maxSkinnedDrawsPerFrame = 256;
 	};
 
 	/// @brief レンダラーを初期化する
@@ -227,6 +255,16 @@ public:
 	              const sgc::Mat4f& worldTransform,
 	              const Material& material) override;
 
+	/// @brief 同一メッシュを複数のワールド行列で GPU instancing 描画する
+	/// @details per-instance vertex buffer 方式 (DX11 と同じ設計)。PSO/シェーダー生成に
+	///          失敗した環境では drawMesh のループ呼び出しへフォールバックする。
+	void drawMeshInstanced(const Mesh& mesh,
+	                       std::span<const sgc::Mat4f> worlds,
+	                       const Material* material) override
+	{
+		drawMeshInstancedDx12(mesh, worlds, material);
+	}
+
 #ifdef MITIRU_HAS_MAKINA
 	/// @brief Makina の CSG ソリッドを積む。実描画は endFrame の renderCsgPass
 	/// @details 積むだけなのは drawModel と同じ理由。呼ばれた時点ではまだ不透明パスの
@@ -285,6 +323,45 @@ public:
 	[[nodiscard]] int drawCallCount() const noexcept override
 	{
 		return m_drawCallCount;
+	}
+
+	/// @brief 視錐台カリングの有効/無効を切り替える（既定 ON、DX11 と同じ意味論）
+	void setFrustumCullingEnabled(bool enabled) noexcept override
+	{
+		m_frustumCullingEnabled = enabled;
+	}
+
+	/// @brief 視錐台カリングが有効かを返す
+	[[nodiscard]] bool isFrustumCullingEnabled() const noexcept override
+	{
+		return m_frustumCullingEnabled;
+	}
+
+	/// @brief 直前フレームでカリングされたメッシュ（インスタンス含む）数を返す
+	[[nodiscard]] int culledCount() const noexcept override
+	{
+		return m_culledCount;
+	}
+
+	/// @brief オクルージョンカリングの有効/無効を切り替える（既定 OFF、DX11 と同じ意味論）
+	/// @details DX12 の深度は常に 4x MSAA だが、min-depth resolve パス
+	///          (`recordOcclusionResolvePass`) が毎回読み戻すため DX11 のような
+	///          MSAA punt は無い。ON 自体は常に受理する。
+	void setOcclusionCullingEnabled(bool enabled) noexcept override
+	{
+		m_occlusionCullingEnabled = enabled;
+	}
+
+	/// @brief オクルージョンカリングが有効かを返す
+	[[nodiscard]] bool isOcclusionCullingEnabled() const noexcept override
+	{
+		return m_occlusionCullingEnabled;
+	}
+
+	/// @brief 直前フレームでオクルージョン判定によりスキップされたメッシュ数
+	[[nodiscard]] int occludedCount() const noexcept override
+	{
+		return m_occludedCount;
 	}
 
 	/// @brief mesh VB/IB の committed resource 生成回数 (累計、デバッグ計測用)
@@ -504,6 +581,12 @@ private:
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Skybox.hpp> // NOLINT(build/include)
 
+	// PBR / IBL 実装 (B17) も同じ .inl パターンで分離。skybox とは独立した
+	// root signature / PSO を持つため、共有 root signature 側 (DX12PipelineStates_Setup.inl)
+	// の変更を必要としない
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/Renderer3D_DX12_PBR.hpp> // NOLINT(build/include)
+
 	// 3D Gaussian Splatting 描画 (M1) も同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Splat.hpp> // NOLINT(build/include)
@@ -519,6 +602,10 @@ private:
 	// raw DirectML (in-pipeline ニューラル後処理: RT→tensor→DML→tensor→RT, CPU 往復なし)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12DirectML.hpp> // NOLINT(build/include)
+
+	// GPU instancing (drawMeshInstanced) も同じ .inl パターンで分離
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12Instancing.hpp> // NOLINT(build/include)
 
 	// ─────────────────────────────────────────────────────────
 	//  メンバ変数
@@ -710,6 +797,85 @@ private:
 	bool m_frameActive = false;  ///< このフレームでbeginFrame()が呼ばれたか
 	bool m_needsFinalize = false; ///< endFrame後、finalizeFrame待ち
 
+	/// ── 視錐台カリング（DX11 Renderer3D と同じ意味論）─────────────
+	Frustum m_frustum;                        ///< setCamera で毎回更新
+	bool    m_frustumCullingEnabled = true;   ///< 既定 ON
+	int     m_culledCount = 0;                ///< 直前フレームでカリングされた数
+
+	/// ── オクルージョンカリング（CPU Hi-Z、DX11 Renderer3D と同じ意味論）───
+	/// 深度は常に 4x MSAA。`m_depthSRVHeap` のスロット0が既に t0=深度
+	/// (R32_FLOAT, TEXTURE2DMS) を指しているため、resolve パスはそれを
+	/// そのまま読む（新規 SRV ヒープは不要）。実体は隣接する PSO 生成ファイル群と
+	/// 同じ流儀の class-body chunk に分離してある。
+	OcclusionCuller m_occlusionCuller;
+	bool m_occlusionCullingEnabled = false;
+	int  m_occludedCount = 0;                 ///< 直前フレームでオクルージョン判定によりスキップされた数
+	unsigned m_occlusionFrameCounter = 0;     ///< kOcclusionUpdateInterval ごとに resolve を記録
+	static constexpr unsigned kOcclusionUpdateInterval = 4;
+	static constexpr int kOcclusionDownsampleStride = 8;
+	std::vector<float> m_occlusionDepthScratch;   ///< 間引き後の深度スクラッチ（毎回 alloc しない）
+
+	/// resolve 先（単一サンプル R32_FLOAT RT）と、FRAME_COUNT 個の readback バッファ
+	/// （buffer リソース、CopyTextureRegion で行ピッチ揃えして書く）。
+	/// スロット frameIndex の読み戻しは、そのスロットを次に再利用する beginFrame
+	/// （デバイス側が既にフェンス待機済み）の先頭で行う。
+	ComPtr<ID3D12Resource> m_occlusionResolveTex;
+	ComPtr<ID3D12DescriptorHeap> m_occlusionResolveRtvHeap;
+	ComPtr<ID3D12Resource> m_occlusionReadback[FRAME_COUNT];
+	bool m_occlusionReadbackPending[FRAME_COUNT]{};
+	UINT m_occlusionReadbackRowPitch = 0;
+	std::optional<gfx::Dx12Shader> m_occlusionResolvePS;
+	ComPtr<ID3D12RootSignature> m_occlusionResolveRootSig;
+	ComPtr<ID3D12PipelineState> m_occlusionResolvePSO;
+
+	/// 資源生成・resolve描画・読み戻し関数の実体は他の PSO 生成メソッドと同じ流儀で
+	/// クラス本体分割ファイルに持たせるため、ここでは宣言しない。
+
+	/// @brief ローカル AABB をワールド変換し、外接する `CullAABB` を作る
+	/// @details DX11 `Renderer3D::worldOcclusionAABB` と同じ近似（8頂点変換 + min/max）。
+	[[nodiscard]] static CullAABB worldOcclusionAABB(const Mesh::AABB& local,
+	                                                 const sgc::Mat4f& world) noexcept
+	{
+		const sgc::Vec3f corners[8] = {
+			{local.min.x, local.min.y, local.min.z}, {local.max.x, local.min.y, local.min.z},
+			{local.min.x, local.max.y, local.min.z}, {local.max.x, local.max.y, local.min.z},
+			{local.min.x, local.min.y, local.max.z}, {local.max.x, local.min.y, local.max.z},
+			{local.min.x, local.max.y, local.max.z}, {local.max.x, local.max.y, local.max.z},
+		};
+		CullAABB box;
+		box.minX = box.minY = box.minZ = std::numeric_limits<float>::max();
+		box.maxX = box.maxY = box.maxZ = -std::numeric_limits<float>::max();
+		for (const auto& c : corners)
+		{
+			const auto w = world.transformPoint(c);
+			box.minX = std::min(box.minX, w.x); box.maxX = std::max(box.maxX, w.x);
+			box.minY = std::min(box.minY, w.y); box.maxY = std::max(box.maxY, w.y);
+			box.minZ = std::min(box.minZ, w.z); box.maxZ = std::max(box.maxZ, w.z);
+		}
+		return box;
+	}
+
+	/// @brief 現在の view*proj を `OcclusionCuller::isOccluded` が期待する
+	///        column-major float[16] へ変換する
+	/// @details `m_viewMatrix`/`m_projMatrix` は既に glm（内部 column-major）で
+	///          保持しているため、DX11 のような行/列入れ替えは不要でそのまま
+	///          memcpy できる。描画に使うのと同じ行列（DX の Z[0,1] 規約）を使う
+	///          ことで、深度読み戻し値との規約を一致させる。
+	[[nodiscard]] std::array<float, 16> occlusionViewProj() const noexcept
+	{
+		const glm::mat4 vp = m_projMatrix * m_viewMatrix;
+		std::array<float, 16> m{};
+		std::memcpy(m.data(), &vp, sizeof(m));
+		return m;
+	}
+
+	/// ── GPU instancing（DX12Instancing.hpp が使う）─────────────────
+	std::optional<gfx::Dx12Shader> m_instancedVSDx12;
+	ComPtr<ID3D12PipelineState>    m_instancedPSODx12;            ///< Toon 単一光源
+	ComPtr<ID3D12PipelineState>    m_instancedMultiLightPSODx12;  ///< MultiLight Phong
+	bool                           m_instancedPipelineFailedDx12 = false;
+	std::vector<InstanceDataDx12>  m_instanceScratchDx12;
+
 	/// ── マルチライト（DX11 と機能パリティ）──────────────────
 	std::vector<Light>                      m_lights;          ///< setLights で蓄積
 	bool                                    m_useMultiLight = false;
@@ -735,7 +901,9 @@ private:
 
 	/// ── 指向性シャドウマップ ──────────────────────────────
 	DirectionalShadow         m_directionalShadow;
-	dx12::Dx12ShadowMap       m_shadowMap;
+	dx12::Dx12ShadowMap       m_shadowMap;      ///< カスケード0 (近距離、単一カスケード時は唯一のマップ)
+	dx12::Dx12ShadowMap       m_shadowMapFar;   ///< カスケード1 (遠距離、B13。cascadedShadow 無効時は未使用)
+	bool                      m_cascadedShadowEnabled = false;
 	bool                      m_shadowEnabled = false;
 	bool                      m_shadowCasterEnabled = true;  ///< 以後の描画が影を落とすか
 	bool                      m_shadowDrawnThisFrame = false;
@@ -753,7 +921,7 @@ private:
 	/// shader-visible SRV ヒープ。frame index で partition し、GPU が in-flight の
 	/// 前フレーム分 descriptor を読んでいる間に上書きしない。beginFrame で
 	/// cursor を自 frame partition の先頭にリセット。
-	static constexpr UINT kAlbedoSrvPerFrame = 1024;  ///< 1 frame 分（2 SRV/draw → 512 draw。群れ物は 200+ draw/frame になる）
+	static constexpr UINT kAlbedoSrvPerFrame = 1024;  ///< 1 frame 分（B13 で 3 SRV/draw → 341 draw。群れ物は 200+ draw/frame になる）
 	ComPtr<ID3D12DescriptorHeap>                 m_albedoSrvHeap;
 	UINT                                         m_albedoSrvCapacity  = 0;  ///< 1 frame 分の実効 capacity
 	UINT                                         m_albedoSrvBase      = 0;  ///< 現 frame partition の先頭 slot
@@ -782,6 +950,34 @@ private:
 	ComPtr<ID3D12Resource>      m_skyboxVB;            ///< cube vertex buffer
 	ComPtr<ID3D12Resource>      m_skyboxIB;            ///< cube index buffer
 	// CbSkyTransform は m_uploadRing から per-frame 切り出し (専用 CB 無し)
+
+	/// ── PBR / IBL 環境キューブマップ（B17。skybox と同じ upload パターン）───
+	/// diffuse/specular 用の畳み込み結果は CPU の Cubemap::irradiance() /
+	/// prefilterSpecular() で 1 回だけ作り、2 枚とも 1 個の SRV heap に収める。
+	Cubemap                     m_pbrEnvironmentCubemap;      ///< setEnvironment() で受けた原本
+	Cubemap                     m_pbrIrradianceCubemap;       ///< diffuse IBL 畳み込み結果
+	std::vector<Cubemap>        m_pbrPrefilteredChain;        ///< specular IBL 畳み込み結果 (mip i = roughness i/(N-1)、kPbrPrefilterMipCount 枚)
+	std::vector<UINT>           m_pbrPrefilterMipOffsets;     ///< upload buffer 内の mip ごとの先頭 offset (face 6 枚分が続く)
+	std::vector<UINT>           m_pbrPrefilterFaceStrides;    ///< mip ごとの face 1 枚分の byte 数 (placement alignment 済み)
+	std::vector<UINT>           m_pbrPrefilterAlignedRows;    ///< mip ごとの行 pitch
+	std::vector<int>            m_pbrPrefilterSizes;          ///< mip ごとの一辺
+	ComPtr<ID3D12Resource>      m_pbrBrdfLutTexture;          ///< 環境 BRDF 表 (t2、R32G32_FLOAT、kPbrBrdfLutSize^2)
+	ComPtr<ID3D12Resource>      m_pbrBrdfLutUpload;
+	bool                        m_pbrBrdfLutInPSR = false;
+	bool                        m_pbrPipelineReady        = false;
+	bool                        m_pbrEnvironmentTextureReady = false;
+	bool                        m_pbrEnvironmentNeedsUpload  = false;
+	bool                        m_pbrEnvironmentTextureInPSR = false;
+	int                         m_pbrEnvironmentFaceSize  = 0;
+	UINT                        m_pbrEnvironmentFaceStride = 0;
+	UINT                        m_pbrEnvironmentAlignedRow = 0;
+	ComPtr<ID3D12Resource>      m_pbrIrradianceTexture;       ///< default-heap TextureCube (t0)
+	ComPtr<ID3D12Resource>      m_pbrIrradianceUpload;
+	ComPtr<ID3D12Resource>      m_pbrPrefilteredTexture;      ///< default-heap TextureCube (t1)
+	ComPtr<ID3D12Resource>      m_pbrPrefilteredUpload;
+	ComPtr<ID3D12DescriptorHeap> m_pbrEnvironmentSrvHeap;     ///< 2 SRV 連続 (t0=irradiance, t1=prefiltered)
+	ComPtr<ID3D12RootSignature> m_pbrRootSig;                 ///< PBR 専用 root sig（メインとは独立）
+	ComPtr<ID3D12PipelineState> m_pbrPSO;                     ///< PBR 専用 PSO
 
 	/// ── 3D Gaussian Splatting (M1、DX12Splat.hpp が使う) ───────────────
 	ComPtr<ID3D12Resource>       m_splatBuffer;        ///< UPLOAD: StructuredBuffer<SplatGPU>
@@ -934,13 +1130,13 @@ public:
 		if (m_live2dTap) { m_live2dModel.tap(); m_live2dTap = false; }
 		m_live2dModel.update(m_live2dDragX, m_live2dDragY);   // motion/physics/effects/csmUpdateModel
 
-		auto* sc  = m_device->getSwapChain();
-		auto* bb  = static_cast<gfx::Dx12RenderTarget*>(sc->backBuffer());
+		auto* bb  = m_device->currentBackBuffer();
+		if (!bb) { return; }
 		auto  rtv = bb->rtvHandle();
 		const auto bbDesc = bb->nativeResource()->GetDesc();
 		m_live2d.render(m_graphicsCmdList.Get(), rtv,
 		                static_cast<int>(bbDesc.Width), static_cast<int>(bbDesc.Height),
-		                static_cast<int>(sc->currentBackBufferIndex()));
+		                static_cast<int>(m_device->currentFrameIndex()));
 #endif
 	}
 
@@ -960,7 +1156,8 @@ public:
 #ifdef MITIRU_HAS_DIRECTML
 		if (!m_neuralFx.enabled() || !m_graphicsCmdList || m_d3dDevice == nullptr) { return; }
 		if (!ensureDirectMLDx12()) { return; }
-		auto* bb = static_cast<gfx::Dx12RenderTarget*>(m_device->getSwapChain()->backBuffer());
+		auto* bb = m_device->currentBackBuffer();
+		if (!bb) { return; }
 		const auto d = bb->nativeResource()->GetDesc();
 		const int w = static_cast<int>(d.Width), h = static_cast<int>(d.Height);
 		if (!m_neuralFx.ensure(m_d3dDevice, m_dmlDevice.Get(), m_graphicsCmdList.Get(), w, h)) { return; }
@@ -982,7 +1179,8 @@ public:
 	{
 #ifdef MITIRU_HAS_DIRECTML
 		if (!m_relight.enabled() || !m_graphicsCmdList || m_d3dDevice == nullptr) { return; }
-		auto* bb = static_cast<gfx::Dx12RenderTarget*>(m_device->getSwapChain()->backBuffer());
+		auto* bb = m_device->currentBackBuffer();
+		if (!bb) { return; }
 		const auto d = bb->nativeResource()->GetDesc();
 		const int w = static_cast<int>(d.Width), h = static_cast<int>(d.Height);
 		if (!m_relight.ensure(m_d3dDevice, m_graphicsCmdList.Get(), w, h)) { return; }
@@ -1095,6 +1293,37 @@ public:
 	/// @brief シャドウマップが有効か
 	[[nodiscard]] bool isShadowEnabled() const noexcept { return m_shadowEnabled; }
 
+	/// @brief カスケードシャドウ (B13) を有効/無効にする。2 カスケード
+	///        (近距離 = cascadeNearHalfExtent / 遠距離 = orthoHalfExtent) を
+	///        m_directionalShadow.config().cascadeSplitDistance で切り替える。
+	///        無効時は従来の単一シャドウマップ (カスケード0のみ) と完全に同じ経路になる。
+	void setCascadedShadowEnabled(bool enabled) noexcept override
+	{
+		m_cascadedShadowEnabled = enabled;
+		int& count = m_directionalShadow.config().cascadeCount;
+		if (!enabled) { count = 1; }
+		else if (count < 2) { count = 2; }   // 3 を指定済みなら下げない
+	}
+
+	void setShadowCascadeCount(int count) override
+	{
+		const int clamped = count < 1 ? 1 : (count > 3 ? 3 : count);
+		m_directionalShadow.config().cascadeCount = clamped;
+		m_cascadedShadowEnabled = clamped > 1;
+	}
+
+	/// @brief カスケードシャドウが有効か
+	[[nodiscard]] bool isCascadedShadowEnabled() const noexcept override
+	{
+		return m_cascadedShadowEnabled;
+	}
+
+	void setCascadedShadowAutoFit(bool enabled, float maxDistance) override
+	{
+		m_directionalShadow.config().autoFitCascades    = enabled;
+		if (maxDistance > 0.0f) { m_directionalShadow.config().cascadeMaxDistance = maxDistance; }
+	}
+
 	/// @brief シャドウのライト方向を設定する
 	void setShadowDirection(const sgc::Vec3f& dir) noexcept
 	{
@@ -1141,6 +1370,15 @@ public:
 	[[nodiscard]] bool isSkyboxEnabled() const noexcept override
 	{
 		return m_skyboxEnabled && m_skyboxCubemap.valid();
+	}
+
+	/// @brief IBL 用環境キューブマップをセットする（DX12）
+	/// @details CPU 側の畳み込みと GPU アップロードは PBR モードで実際に
+	///          描画されるまで遅延する
+	void setEnvironment(const Cubemap& cubemap) override
+	{
+		m_pbrEnvironmentCubemap = cubemap;
+		m_pbrEnvironmentTextureReady = false;
 	}
 
 	/// @brief endFrame()内で2Dオーバーレイを自動描画する

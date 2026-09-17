@@ -42,6 +42,8 @@
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
+#include "launcher_seed.hpp"
+
 namespace mitiru_launcher
 {
 
@@ -1337,9 +1339,28 @@ void launcher_on_init(void* memory)
 	if (!mem.hostExePath.empty()) { mem.hostExeDir = mem.hostExePath.parent_path(); }
 	mem.engineRoot   = detectEngineRoot(mem.hostExeDir);
 
+	std::error_code ec;
+	const bool projectsFileExisted = std::filesystem::exists(mem.projectsFile, ec);
+
 	loadProjects(mem);
 	// build 情報を持たない (旧 schema) プロジェクトに補完する。
 	for (auto& p : mem.projects) { inferProjectContext(p); }
+
+	// projects.json が無い = 本当の初回起動。一覧が空だと次に何をすればいいか
+	// 迷う (docs/FIRST_TOUCH.md Scenario A step5)。zip 同梱の rewind サンプルが
+	// 見えていれば登録し、そのまま [▶ Open] できる状態にする。
+	if (!projectsFileExisted && mem.projects.empty())
+	{
+		if (auto sample = findBundledSample(mem.hostExeDir, "rewind"))
+		{
+			Project p;
+			p.name    = sample->name;
+			p.dllPath = sample->dllPath.string();
+			inferProjectContext(p);
+			mem.projects.push_back(std::move(p));
+			saveProjects(mem);
+		}
+	}
 }
 
 void launcher_on_update(void* memory, float /*dt*/,

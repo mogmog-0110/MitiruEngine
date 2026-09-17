@@ -14,6 +14,8 @@
 #define NOMINMAX
 #endif
 #include <Windows.h>
+#include <imm.h>
+#pragma comment(lib, "imm32.lib")
 
 #include <algorithm>
 #include <cstdint>
@@ -412,6 +414,20 @@ public:
 		}
 	}
 
+	/// @brief taskbar と alt-tab から外す (WS_EX_TOOLWINDOW)。会話窓のような、主窓に従属して
+	///        出入りする補助窓に使う。WS_EX_APPWINDOW と排他なので同時に落とす。
+	void setToolWindow()
+	{
+		if (m_hwnd != nullptr)
+		{
+			const LONG_PTR ex = GetWindowLongPtrW(m_hwnd, GWL_EXSTYLE);
+			SetWindowLongPtrW(m_hwnd, GWL_EXSTYLE,
+			                  (ex | WS_EX_TOOLWINDOW) & ~static_cast<LONG_PTR>(WS_EX_APPWINDOW));
+			SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0,
+			             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+		}
+	}
+
 	/// @brief 常に最前面に置く (WS_EX_TOPMOST)。ドックしたシークバーが背面へ潜らないように。
 	void setTopmost() override
 	{
@@ -520,6 +536,25 @@ public:
 	void setHitTestOverride(std::function<LRESULT(int, int)> cb) noexcept
 	{
 		m_hitTestOverride = std::move(cb);
+	}
+
+	/// @brief クライアント領域のカーソルを差し替える (WM_SETCURSOR、desktop_world 要望)
+	/// @param cursor 差し替え先。所有権は呼び出し側のまま (LoadCursor 系はシステム共有、
+	///               自前 LoadImage/CreateIconFromResource の場合は呼び出し側が解放する)。
+	///               nullptr で既定 (OS 標準の矢印等) に戻す
+	void setClientCursor(HCURSOR cursor) noexcept
+	{
+		m_clientCursor = cursor;
+	}
+
+	/// @brief このフレームに確定した UTF-8 テキストを取り出し、内部バッファを空にする (J5)
+	/// @details WM_CHAR / WM_IME_COMPOSITION(GCS_RESULTSTR) で溜めたものを engine が
+	///          毎フレーム 1 回吸い出す (action event の drain と同じ「取ったら空」契約)。
+	[[nodiscard]] std::string consumeTextInput() noexcept
+	{
+		std::string out = std::move(m_pendingTextInput);
+		m_pendingTextInput.clear();
+		return out;
 	}
 
 	/// @brief タイトルバーの背景色を変える (Windows 11 以降)
@@ -879,6 +914,54 @@ private:
 			return 0;
 		}
 
+		/// --- テキスト入力 (J5) ---------------------------------------------
+		/// 本命は CEF <input> (HTML UI)。ここは「プレイヤー名入力」等、ゲーム内の
+		/// 簡易テキスト入力向けの最小手段。確定文字だけを拾う (composition 中の
+		/// 未確定プレビューは含めない)。IME の候補ウィンドウ自体は素通しなので
+		/// DefWindowProcW に必ず渡す (自前で描かない)。
+		case WM_CHAR:
+		{
+			const wchar_t wc = static_cast<wchar_t>(wParam);
+			if (wc >= 0x20 || wc == L'\t')  // 制御文字 (Backspace/Enter 等) は既存キー入力側で扱う
+			{
+				if (IS_HIGH_SURROGATE(wc))
+				{
+					m_pendingHighSurrogate = wc;
+				}
+				else if (IS_LOW_SURROGATE(wc) && m_pendingHighSurrogate != 0)
+				{
+					const wchar_t pair[2] = {m_pendingHighSurrogate, wc};
+					appendTextInputUtf16(pair, 2);
+					m_pendingHighSurrogate = 0;
+				}
+				else
+				{
+					m_pendingHighSurrogate = 0;
+					appendTextInputUtf16(&wc, 1);
+				}
+			}
+			return 0;
+		}
+
+		/// IME が確定した文字列 (GCS_RESULTSTR)。未確定の変換中プレビュー (GCS_COMPSTR) は
+		/// 対象外 (拾うのは「確定してこのフレームに入力として渡してよい」文字のみ)。
+		case WM_IME_COMPOSITION:
+			if ((lParam & GCS_RESULTSTR) != 0)
+			{
+				if (HIMC himc = ImmGetContext(hwnd))
+				{
+					const LONG bytes = ImmGetCompositionStringW(himc, GCS_RESULTSTR, nullptr, 0);
+					if (bytes > 0)
+					{
+						std::wstring wbuf(static_cast<std::size_t>(bytes) / sizeof(wchar_t), L'\0');
+						ImmGetCompositionStringW(himc, GCS_RESULTSTR, wbuf.data(), static_cast<DWORD>(bytes));
+						appendTextInputUtf16(wbuf.data(), static_cast<int>(wbuf.size()));
+					}
+					ImmReleaseContext(hwnd, himc);
+				}
+			}
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
 		/// --- focus 喪失 --------------------------------------------------
 		/// ユーザが alt-tab で離れた (または dev companion のような別 window を
 		/// クリックした) 時、Windows はこの hwnd へ WM_KEYUP を配送しなくなる。
@@ -896,6 +979,17 @@ private:
 			if (m_inputState) { m_inputState->clearHeldKeys(); }
 			m_heldKeys.clear();
 			return 0;
+
+		/// --- カーソル差し替え (desktop_world 要望) ---
+		/// クライアント領域上でのみ横取りする。枠 (HTLEFT 等のリサイズ矢印) は
+		/// DefWindowProc に任せないと resize 操作の見た目が壊れる。
+		case WM_SETCURSOR:
+			if (m_clientCursor && LOWORD(lParam) == HTCLIENT)
+			{
+				SetCursor(m_clientCursor);
+				return TRUE;
+			}
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
 
 		/// --- マウス移動 ---
 		case WM_MOUSEMOVE:
@@ -1149,6 +1243,22 @@ private:
 	bool m_dragByClientArea = false;       ///< クライアント領域掴みドラッグ (setDragByClientArea)
 	bool m_borderless = false;             ///< 全面クライアント (setBorderless)
 	std::function<LRESULT(int, int)> m_hitTestOverride; ///< borderless 時の consumer 当たり判定
+	HCURSOR m_clientCursor = nullptr; ///< setClientCursor() で差し込まれたカーソル (nullptr=既定)
+
+	std::string m_pendingTextInput;       ///< consumeTextInput() が吸い出すまでの UTF-8 蓄積 (J5)
+	wchar_t     m_pendingHighSurrogate = 0; ///< WM_CHAR のサロゲートペア上位が来た時の一時保持
+
+	/// @brief UTF-16 文字列を UTF-8 へ変換して m_pendingTextInput に追記する
+	void appendTextInputUtf16(const wchar_t* wtext, int wlen) noexcept
+	{
+		if (wtext == nullptr || wlen <= 0) { return; }
+		const int needed = WideCharToMultiByte(CP_UTF8, 0, wtext, wlen, nullptr, 0, nullptr, nullptr);
+		if (needed <= 0) { return; }
+		const std::size_t oldSize = m_pendingTextInput.size();
+		m_pendingTextInput.resize(oldSize + static_cast<std::size_t>(needed));
+		WideCharToMultiByte(CP_UTF8, 0, wtext, wlen,
+			m_pendingTextInput.data() + oldSize, needed, nullptr, nullptr);
+	}
 
 	/// @brief borderless の窓に DWM の影を残す
 	/// @details WM_NCCALCSIZE を 0 にすると影も消えるが、フレームを 1px だけクライアントへ

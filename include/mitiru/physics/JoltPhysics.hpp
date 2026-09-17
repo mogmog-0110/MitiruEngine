@@ -203,6 +203,19 @@ public:
 		return m_objectToBroadPhase[inLayer];
 	}
 
+#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+	// JPH_PROFILE_ENABLEDビルドでは純粋仮想（プロファイラ表示用の名前）
+	const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override
+	{
+		switch (static_cast<JPH::BroadPhaseLayer::Type>(inLayer))
+		{
+		case static_cast<JPH::BroadPhaseLayer::Type>(BroadPhaseLayers::NON_MOVING): return "NON_MOVING";
+		case static_cast<JPH::BroadPhaseLayer::Type>(BroadPhaseLayers::MOVING): return "MOVING";
+		default: return "INVALID";
+		}
+	}
+#endif
+
 private:
 	JPH::BroadPhaseLayer m_objectToBroadPhase[Layers::NUM_LAYERS];
 };
@@ -844,7 +857,10 @@ public:
 		{
 			if (!bi.IsActive(id)) continue;
 
-			const auto aabb = bi.GetWorldSpaceBounds(id);
+			// AABBはBody側にしかない（BodyInterfaceにはGetWorldSpaceBounds(id)は無い）
+			JPH::BodyLockRead lock(m_physicsSystem->GetBodyLockInterface(), id);
+			if (!lock.Succeeded()) continue;
+			const auto& aabb = lock.GetBody().GetWorldSpaceBounds();
 			const auto min = fromJolt(JPH::Vec3(aabb.mMin));
 			const auto max = fromJolt(JPH::Vec3(aabb.mMax));
 

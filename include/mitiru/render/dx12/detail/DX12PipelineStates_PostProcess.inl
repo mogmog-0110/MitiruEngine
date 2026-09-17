@@ -132,9 +132,7 @@ void applyTonemap()
 	if (!m_hdrIntermediateBuffer || !m_hdrIntermediateSrvHeap) return;
 	if (!m_device) return;
 
-	auto* swapChain = m_device->getSwapChain();
-	if (!swapChain) return;
-	auto* bb = static_cast<gfx::Dx12RenderTarget*>(swapChain->backBuffer());
+	auto* bb = m_device->currentBackBuffer();
 	if (!bb || !bb->nativeResource()) return;
 
 	// HDR intermediate を PS で読めるよう SRV 状態へ遷移
@@ -371,9 +369,7 @@ void drawFXAAPass()
 	if (!m_fxaaPSO || !m_fxaaRootSig) return;
 	if (!m_fxaaIntermediate || !m_fxaaSrvHeap) return;
 
-	auto* swapChainPost = m_device->getSwapChain();
-	if (!swapChainPost) return;
-	auto* bbPost = static_cast<gfx::Dx12RenderTarget*>(swapChainPost->backBuffer());
+	auto* bbPost = m_device->currentBackBuffer();
 	if (!bbPost) return;
 
 	// 出力先が実バックバッファでない (lo-fi の低解像 RT 等) 間は適用しない。

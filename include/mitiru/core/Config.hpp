@@ -4,6 +4,7 @@
 /// @brief エンジン設定構造体
 /// @details Mitiruエンジンの初期化パラメータを保持する。
 
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
@@ -86,7 +87,7 @@ struct EngineConfig
 	///          `<audioDir>/<id>.wav|.ogg|.mp3` で解決する。
 	std::string audioDir;
 
-	DisplayMode displayMode = DisplayMode::Windowed; ///< 表示モード
+	DisplayMode displayMode = DisplayMode::Windowed; ///< [起動時のみ] 表示モード
 	bool vsync = true;                     ///< 垂直同期 (DX12 SwapChain Present interval)
 	int targetFps = 0;                     ///< フレームレート上限 (0=無制限。vsync が ON の場合は vsync が優先)
 
@@ -94,6 +95,7 @@ struct EngineConfig
 	/// @details 既定は false = 固定サイズ (WS_THICKFRAME / WS_MAXIMIZEBOX を外す。
 	///          Siv3D の `WindowStyle::Fixed` に相当)。固定解像度のゲーム/デモが
 	///          誤ってリサイズされて崩れるのを防ぐ。リサイズを許すゲームは true にする。
+	/// @brief [起動時のみ] ウィンドウ生成時のスタイルビットに焼き込まれるため、生成後の変更は反映されない。
 	bool windowResizable = false;
 
 	/// @brief 動的リサイズ時の logical screen size の扱い
@@ -163,7 +165,7 @@ struct EngineConfig
 		{1920, 1080},
 		{1280, 720},
 	};
-	bool headless = false;                 ///< ヘッドレスモード（ウィンドウなし）
+	bool headless = false;                 ///< [起動時のみ] ヘッドレスモード（ウィンドウなし）。ウィンドウ生成前に確定させる必要がある
 	/// @brief headless SW フレームバッファの CPU ラスタライズ間隔 (#53)。
 	/// @details 1 = 毎フレーム (既定・従来挙動)。N>1 = capture が読むフレーム
 	///          だけラスタライズ (--capture-every N と同じ周期)。0 = 自動では
@@ -171,7 +173,21 @@ struct EngineConfig
 	///          ラスタライズはフルスクリーン CPU 描画でピクセル数に比例して
 	///          重い (640x480 で数 ms〜) ため、観測しないフレームを省くと
 	///          headless の自動回しが大幅に速くなる。sim の決定性には無関係。
+	/// @details `--capture-dir` 運用では `mitiru_host` が `--capture-every` と同じ値を
+	///          ここへ自動設定する (apps/mitiru_host/main.cpp)。Engine を host 経由でなく
+	///          直接埋め込み、独自に PNG capture を回す場合は呼び出し側がこの値を
+	///          capture 間隔に合わせること。既定の 1 のままだと毎フレーム全画面 CPU
+	///          ラスタライズが走る (dirty rect 化は行っていない。差分が局所的でも
+	///          全画面走査になる)。
 	int swRasterizeEvery = 1;
+	/// @brief 1 フレームで描く sprite の期待数 (C4)。0 = 既定 (SpriteBatch の内部既定値、
+	///        現状 256 件) のまま。頂点バッファの初回 `reserve` を事前確保しておき、実行中の
+	///        容量拡張 (毎回の再確保) を避けたいときに、既知の期待数を入れる。
+	/// @details `Screen::applyExpectedSprites(int)` が実際の `SpriteBatch::reserveSprites()`
+	///          呼び出しへ繋ぐ。この構造体は host 側の値渡し用で、実際に Screen へ渡すのは
+	///          呼び出し側 (Screen 構築直後に `screen->applyExpectedSprites(config.expectedSprites)`
+	///          を呼ぶこと) の責務。
+	int expectedSprites = 0;
 	/// @brief 決定論的モード（固定 dt = 1/targetTps）。
 	/// @details インタラクティブ実行では `false` 推奨（実時間 dt）。`true` だと
 	///          高 refresh rate モニタで accumulator が 1/60 ずつしか積まれず、
@@ -179,29 +195,101 @@ struct EngineConfig
 	///          なる（144 Hz で 2.4 倍速）。リプレイ / ヘッドレス / 自動テスト
 	///          のように決定性を要する用途でだけ明示的に `true` にすること。
 	bool deterministic = false;
+	/// @brief `--capture-dir` 撮影中かどうか (G1)。
+	/// @details true だと `deterministic` の値に関わらず Clock を固定 dt へ強制する
+	///          (Engine::initialize 内)。PNG 書き出しは描画コストを増やすため、実時間 dt
+	///          のままだと撮影が重いフレームだけゲーム内時刻が遅れ、`--input-script` の
+	///          秒指定 (`t=<sec>`) や記録した打鍵表がずれる。host は `--capture-dir`/
+	///          `--capture-every` が有効なとき、headless かどうかに関わらずこれを true にする。
+	bool captureActive = false;
 	std::uint64_t randomSeed = 42;         ///< 決定論 RNG seed。module 経路では毎フレーム
 	                                       ///< InputSnapshot::rngSeed として DLL に渡る。
 	float targetTps = 60.0f;               ///< 目標TPS（tick/秒）
-	gfx::Backend gfxBackend = gfx::Backend::Auto;  ///< グラフィックスバックエンド
-	bool enableObserver = true;            ///< オブザーバー機能の有効化
-	int observePort = 0;                   ///< オブザーバーポート（0=自動割当）
+	gfx::Backend gfxBackend = gfx::Backend::Auto;  ///< [起動時のみ] グラフィックスバックエンド。device 生成後の切替は非対応
+	bool enableObserver = true;            ///< [起動時のみ] オブザーバー機能の有効化
+	int observePort = 0;                   ///< [起動時のみ] オブザーバーポート（0=自動割当）
 
-	/// @brief 巻き戻しでさかのぼれるフレーム数 = リングバッファの長さ (0 = 未指定)
+	/// @brief [起動時のみ] 巻き戻しでさかのぼれるフレーム数 = リングバッファの長さ (0 = 未指定)
 	/// @details 何フレーム前まで巻き戻せるか。優先順位は host の `--rewind-frames N` >
 	///          game の `MITIRU_REWIND_BUFFER(N)` 宣言 > 既定 300 (60fps で約 5 秒)。
 	///          大きくするほど過去まで戻せるが、GameMemory バイト数 × この数だけメモリを使う。
 	std::uint32_t timeTravelBufferFrames = 0;
+
+	/// @brief [起動時のみ] GameMemoryRing の予算バイト数 (0 = 無制限、従来どおり frames*frameSize を無条件確保)。
+	/// @details host の `--rewind-mb N` から渡る。>0 だと ring は XOR+RLE デルタ圧縮になり、
+	///          実バイト数がこの値を超えないよう capacity を自動で切り詰める
+	///          (`mitiru::observe::GameMemoryRing::configure` 参照)。
+	std::size_t timeTravelBudgetBytes = 0;
+
+	/// @brief `timeTravelBudgetBytes` が host の明示指定 (`--rewind-mb`) 由来かどうか。
+	/// @details false のまま (既定) だと、game の `MITIRU_REWIND_BUDGET` 宣言 > 既定 512MB の順で
+	///          `Engine_Module_Loader.hpp::recordModuleMemoryFrame` が決める。true なら
+	///          `timeTravelBudgetBytes` (0 = 無制限も含む) を無条件で使う。
+	bool timeTravelBudgetBytesExplicit = false;
+
+	/// @brief Engine::frameArena() の容量バイト数 (毎フレーム先頭で reset される bump アロケータ)。
+	/// @details `include/mitiru/core/FrameArena.hpp` 参照。hot path の一時バッファ (JSON 文字列化・
+	///          snapshot バッファ等) をここから確保すると、フレーム末で丸ごと巻き戻り allocation が
+	///          蓄積しない。既定 4 MB。
+	std::size_t frameArenaBytes = 4u * 1024u * 1024u;
 	bool enableDiffTracking = false;       ///< 構造化差分トラッキング有効化
 	bool enableCausalTracking = false;     ///< 因果チェーン追跡有効化
 	bool enableTemporalValidation = false; ///< 時系列不変条件チェック有効化
+
+	// ── 組込オラクル (N1) ────────────────────────────────────────────────
+	/// @brief 組込オラクル (NaN/Inf・range・停滞・スパイク・決定論・画面不変/黒・MITIRU_INVARIANT) の
+	///        有効/無効。既定 ON (NaN/Inf・range・スパイク・停滞・invariant は軽量なので常時実行)。
+	bool oracleEnabled = true;
+	/// @brief 停滞判定 (c): 入力が変化しているのにこの秒数だけ GameMemory が不変なら違反とする。
+	float oracleStagnantSeconds = 5.0f;
+	/// @brief 決定論オラクル (e) を有効にするか。既定 OFF (K フレーム前からの再シミュレーション +
+	///        memcmp は GameMemory サイズに比例したコストがかかるため明示 opt-in)。
+	bool oracleDeterminism = false;
+	/// @brief 決定論オラクルの実行間隔 (フレーム数)。0 なら既定 120 (2 秒 @ 60fps) を使う。
+	std::uint32_t oracleDeterminismEveryFrames = 0;
+	/// @brief 画面オラクル (f) を有効にするか。既定 OFF (capture 経路が無いと画素が取れない)。
+	bool oracleScreenCheck = false;
+	/// @brief 画面不変判定のフレーム数しきい値。
+	std::uint32_t oracleScreenStagnantFrames = 180;
+	/// @brief 機械可読な `[oracle] kind=... frame=... field=... value=...` 行を stderr へ追加出力するか。
+	/// @details 既定 OFF。人間向けの `warnOnceFix` 出力 (`[mitiru] frame N: ...`) はそのまま残し、
+	///          `mitiru-cli` の `ScanOracleLines`（`E:\user\mitiru-cli\internal\hunt\oracle.go`）が
+	///          正規表現で拾える別行として足す。ON にすると同じ違反でも毎回 (warnOnce の間引き無しで) 出す。
+	bool oracleMachineLog = false;
+	/// @brief セーブ往復検査 (`--save-roundtrip-test`)。save → 読み戻し → 再 save の 2 回の
+	///        書き込みが bit 一致するかを確認する (Factorio FFF #158 の save-load stability と同じ考え方)。
+	///        既定 OFF (通常セーブに 1 回余分な書込 + memcmp が乗るため明示 opt-in)。
+	bool saveRoundtripTest = false;
+
+	// ── 常時バグリング (P1) ──────────────────────────────────────────────
+	/// @brief 「昨日のバグ」再生用の常時短リングの長さ (秒)。0 で無効。既定 30 秒。
+	/// @details 60fps 換算でフレーム数に変換して `observe::pushBugRingFrame` の capacity に渡す。
+	/// @brief [起動時のみ] リング容量はエンジン初期化時に確保される。実行中の変更は次回起動まで反映されない。
+	float bugRingSeconds = 30.0f;
+	/// @brief host がホットキー等で「今すぐ ring を bug_<timestamp>.mtrr へ保存せよ」と要求する
+	///        フラグ。Engine 側が消費すると false に戻す (ワンショット)。
+	bool bugRingSaveRequested = false;
+	// ── 1 ファイル配布 (P12) ─────────────────────────────────────────────
+	/// @brief `.mtpak` (v1, tools/make_pack.py が書く固定レイアウト: "module.dll" + "assets/**" +
+	///        "recordings/**") から DLL とアセットを読む。空なら従来どおり disk から読む。
+	///        `Engine::loadModule` がこの path を見て、渡された modulePath を無視し pack 内の
+	///        DLL を一時展開して load する (`MITIRU_PACK` 環境変数でも同じ経路に入る、host 引数の
+	///        配線を待たずに動かすため)。
+	/// @brief [起動時のみ] loadModule 時に一度だけ参照される。実行中の切替は非対応
+	std::string packPath;
+	/// @brief [起動時のみ] 物理問い合わせ job (v37) が答える静的 collision の JSON (`--collision`)。
+	///        `[{"min":[x,y,z],"max":[x,y,z],"layer":0}, ...]` の箱の列。空なら物理 world を持たず、
+	///        結果は全部 kPhysicsHitUnsupported になる。
+	std::string collisionPath;
+
 	bool enableUIValidation = false;       ///< UIレイアウト検証有効化
-	bool enableHttpApi = false;            ///< 組み込みHTTP APIサーバー有効化
-	int httpApiPort = 8090;                ///< HTTP APIサーバーポート（デフォルト8090）
+	bool enableHttpApi = false;            ///< [起動時のみ] 組み込みHTTP APIサーバー有効化
+	int httpApiPort = 8090;                ///< [起動時のみ] HTTP APIサーバーポート（デフォルト8090）
 	bool imguiVisibleOnStart = false;      ///< ImGuiオーバーレイを起動時から表示する（Hub等向け）
 
 	// ── フォント ──
 	std::string fontPath;                  ///< TTFフォントファイルパス（空=自動検索）
-	bool skipDefaultFont = false;          ///< true なら 2D Screen のデフォルト TTF/SDF 初期化を完全スキップ
+	bool skipDefaultFont = false;          ///< [起動時のみ] true なら 2D Screen のデフォルト TTF/SDF 初期化を完全スキップ
 	                                       ///< (CEF 経由ですべての文字を描画するゲーム向け、起動 ~15 秒短縮)
 
 	/// @brief SDF フォントアトラスに含める Unicode 範囲 (bitmask)
@@ -224,6 +312,7 @@ struct EngineConfig
 		Japanese = Ascii | Hiragana | Katakana
 		         | CjkPunctuation | Fullwidth | CommonKanji,
 	};
+	/// @brief [起動時のみ] atlas 焼き込みは初回起動時の 1 回だけ行われる
 	FontAtlas fontAtlasRanges = FontAtlas::Japanese;
 
 	friend constexpr FontAtlas operator|(FontAtlas a, FontAtlas b) noexcept
@@ -243,12 +332,14 @@ struct EngineConfig
 	}
 
 	// ── CEF (Win32 + DX12 のみ) ──
-	bool enableCef = true;                 ///< CEF 初期化を行うか (false=CEF 抜きで起動、~数秒短縮)
+	bool enableCef = true;                 ///< [起動時のみ] CEF 初期化を行うか (false=CEF 抜きで起動、~数秒短縮)。
+	                                       ///< CEF はマルチプロセスで別プロセスとして起動するため後から足せない
 	std::string cefLogPath;                ///< CEF ログファイルパス (空=デフォルト: "<exeDir>/cef_debug.log")
 	std::string cefStartUrl;               ///< 起動時に開く URL (空=about:blank)
-	int cefRemoteDebuggingPort = 0;        ///< 0 以外で chrome-devtools MCP が http://localhost:<port>
-	                                       ///< に attach 可能 (E-02)。開発ビルドのみで有効化推奨。
-	bool cefAllowRemoteUrls = false;       ///< true で loadUrl / cefStartUrl に http(s) 等リモート URL を
+	int cefRemoteDebuggingPort = 0;        ///< [起動時のみ] 0 以外で chrome-devtools MCP が http://localhost:<port>
+	                                       ///< に attach 可能 (E-02)。開発ビルドのみで有効化推奨。CEF 起動時に
+	                                       ///< 子プロセスへ渡すコマンドラインフラグのため後から変更不可
+	bool cefAllowRemoteUrls = false;       ///< [起動時のみ] true で loadUrl / cefStartUrl に http(s) 等リモート URL を
 	                                       ///< 許可する (C-5)。既定は app:// / file:// / data: / about: のみ。
 
 	/// @brief CEF ページが fetch / XHR で読み込めるローカルディレクトリ追加分
@@ -301,12 +392,29 @@ struct EngineConfig
 	std::string errorBannerFile;
 
 	// ── ランタイム時間制御 (host が toggle する debug 用) ───────────────
+	static constexpr std::uint8_t kPauseKindIngame = 1;  ///< ゲームのポーズメニュー (既定)
+	static constexpr std::uint8_t kPauseKindDebug  = 2;  ///< host の F8 / console / 分岐エディタが止めた
+	static constexpr std::uint8_t kPauseKindObject = 3;  ///< オブジェクトだけ止めてカメラ等は動かす
 	/// @brief on_update に渡す dt の乗数。0=停止と同等、1=通常速。負値は未定義。
 	float timeScale = 1.0f;
 	/// @brief true なら on_update を dt=0 で呼ぶ (描画は継続)。
 	bool paused = false;
+	/// @brief paused 中の種類 (HE2 の INGAME / DEBUG / OBJECT pause 相当)。`InputSnapshot::paused` に
+	///        そのまま乗り、game は「ポーズメニュー」と「デバッグで止めた」と「オブジェクトだけ止めた」を
+	///        区別できる。pause 中も dt を通す layer は種類ごとに `MITIRU_PAUSE_LAYERS_BY_KIND` で決める。
+	std::uint8_t pauseKind = kPauseKindIngame;
 	/// @brief paused かつ > 0 のとき、1 フレームだけ通常 dt で進めて自動デクリメント。
 	int stepFrames = 0;
+
+	/// @brief layer 別の dt 倍率 (v30、§1-2)。`InputSnapshot::dtByLayer[i] = dt *
+	///        layerTimeScale[i]` として毎フレーム焼き込まれる (module::Layer / Game.hpp の
+	///        `Input::dt(Layer)` が読む)。timeScale (上記) はステップ数を増減させる別軸なので
+	///        二重にはかけない。既定は全 layer 等倍。
+	float layerTimeScale[8] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+	/// @brief hitStop 中にその layer も dt=0 にするか (v30、§1-2)。既定は layer 0
+	///        (gameplay) だけ止まり、layer 1 (UI) は動き続ける (HUD のフェード等が
+	///        hitStop で凍らない、hedgehog_study §1-2)。2..7 (予約) は安全側で凍らせる。
+	bool layerFrozenByHitStop[8] = {true, false, true, true, true, true, true, true};
 
 	// ── per-frame host hook ─────────────────────────────────────────────
 	/// @brief tickOneFrame の先頭で呼ばれる (optional)

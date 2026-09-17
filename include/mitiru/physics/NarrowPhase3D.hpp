@@ -124,6 +124,16 @@ public:
 		return result;
 	}
 
+	/// @brief ボックス同士の接触マニフォールド（最大4点）を計算する
+	/// @param a AABBコライダーA
+	/// @param b AABBコライダーB
+	/// @return マニフォールド結果（詳細は testAABBAABBManifold 参照）
+	[[nodiscard]] static ManifoldResult3D testBoxBoxManifold(
+		const AABBCollider3D& a, const AABBCollider3D& b) noexcept
+	{
+		return mitiru::physics3d::testAABBAABBManifold(a, b);
+	}
+
 	/// @brief 球とカプセルの衝突テスト
 	/// @param sphere 球
 	/// @param capsule カプセル

@@ -20,6 +20,7 @@
 
 #include "sgc/math/Vec3.hpp"
 #include "mitiru/scene/GameWorld.hpp"
+#include "mitiru/physics/CollisionDetection3D.hpp"
 #include "mitiru/physics/PhysicsBridge.hpp"
 
 namespace mitiru::physics
@@ -118,21 +119,105 @@ private:
 		// トリガー同士は衝突しない
 		if (a.rigidBody.isTrigger && b.rigidBody.isTrigger) return std::nullopt;
 
-		// 形状の組み合わせに応じて検出
-		if (a.rigidBody.shape.type == ColliderShapeType::Sphere &&
-			b.rigidBody.shape.type == ColliderShapeType::Sphere)
+		const ColliderShapeType typeA = a.rigidBody.shape.type;
+		const ColliderShapeType typeB = b.rigidBody.shape.type;
+
+		// メッシュコライダーは形状データが未実装（PhysicsBridge.hpp の MeshData 参照）
+		if (typeA == ColliderShapeType::Mesh || typeB == ColliderShapeType::Mesh)
+		{
+			return std::nullopt;
+		}
+
+		// 球-球とボックス-ボックスは接触点の作り方が専用（ボックスは最小重なり軸）なので
+		// physics3d 版に寄せず既存の実装を使い続ける
+		if (typeA == ColliderShapeType::Sphere && typeB == ColliderShapeType::Sphere)
 		{
 			return testSphereSphere(a, b);
 		}
-
-		if (a.rigidBody.shape.type == ColliderShapeType::Box &&
-			b.rigidBody.shape.type == ColliderShapeType::Box)
+		if (typeA == ColliderShapeType::Box && typeB == ColliderShapeType::Box)
 		{
 			return testAABBAABB(a, b);
 		}
 
-		// 未対応の組み合わせ
-		return std::nullopt;
+		const physics3d::ContactInfo3D info = testMixedShapes(a, b, typeA, typeB);
+		if (!info.hasContact) return std::nullopt;
+
+		CollisionPair pair;
+		pair.entityA = a.id;
+		pair.entityB = b.id;
+		pair.contactPoint = info.point;
+		pair.normal = info.normal;
+		pair.penetration = info.depth;
+		return pair;
+	}
+
+	/// @brief 異形状ペアを physics3d の判定へ振り分ける
+	/// @return 接触情報。法線は CollisionPair の規約どおり A から B へ向くよう揃えてある
+	///
+	/// @details physics3d::testSphereAABB / testCapsuleAABB はボックス側を基準に法線を返すため、
+	///          ボックスが B のときだけ符号を反転する
+	[[nodiscard]] static physics3d::ContactInfo3D testMixedShapes(
+		const EntityInfo& a, const EntityInfo& b,
+		ColliderShapeType typeA, ColliderShapeType typeB) noexcept
+	{
+		if (typeA == ColliderShapeType::Sphere && typeB == ColliderShapeType::Box)
+		{
+			auto info = physics3d::testSphereAABB(toSphere(a), toAABB(b));
+			info.normal = -info.normal;
+			return info;
+		}
+		if (typeA == ColliderShapeType::Box && typeB == ColliderShapeType::Sphere)
+		{
+			return physics3d::testSphereAABB(toSphere(b), toAABB(a));
+		}
+		if (typeA == ColliderShapeType::Sphere && typeB == ColliderShapeType::Capsule)
+		{
+			return physics3d::testSphereCapsule(toSphere(a), toCapsule(b));
+		}
+		if (typeA == ColliderShapeType::Capsule && typeB == ColliderShapeType::Sphere)
+		{
+			auto info = physics3d::testSphereCapsule(toSphere(b), toCapsule(a));
+			info.normal = -info.normal;
+			return info;
+		}
+		if (typeA == ColliderShapeType::Capsule && typeB == ColliderShapeType::Capsule)
+		{
+			return physics3d::testCapsuleCapsule(toCapsule(a), toCapsule(b));
+		}
+		if (typeA == ColliderShapeType::Capsule && typeB == ColliderShapeType::Box)
+		{
+			auto info = physics3d::testCapsuleAABB(toCapsule(a), toAABB(b));
+			info.normal = -info.normal;
+			return info;
+		}
+		if (typeA == ColliderShapeType::Box && typeB == ColliderShapeType::Capsule)
+		{
+			return physics3d::testCapsuleAABB(toCapsule(b), toAABB(a));
+		}
+		return {};
+	}
+
+	/// @brief 形状データとトランスフォームから球コライダーを組み立てる
+	[[nodiscard]] static physics3d::SphereCollider toSphere(const EntityInfo& e) noexcept
+	{
+		return {e.transform.position, std::get<SphereData>(e.rigidBody.shape.data).radius};
+	}
+
+	/// @brief 形状データとトランスフォームから軸平行ボックスを組み立てる
+	[[nodiscard]] static physics3d::AABBCollider3D toAABB(const EntityInfo& e) noexcept
+	{
+		return physics3d::AABBCollider3D::fromCenterExtents(
+			e.transform.position, std::get<BoxData>(e.rigidBody.shape.data).halfExtents);
+	}
+
+	/// @brief 形状データとトランスフォームからカプセルを組み立てる
+	/// @details height は半球間の距離（CapsuleData の定義）。PhysicsSystem3D::createBody と
+	///          同じく Y 軸整列で置く
+	[[nodiscard]] static physics3d::CapsuleCollider toCapsule(const EntityInfo& e) noexcept
+	{
+		const auto& data = std::get<CapsuleData>(e.rigidBody.shape.data);
+		const sgc::Vec3f half{0.0f, data.height * 0.5f, 0.0f};
+		return {e.transform.position - half, e.transform.position + half, data.radius};
 	}
 
 	/// @brief 球-球衝突検出

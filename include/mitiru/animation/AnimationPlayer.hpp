@@ -161,7 +161,49 @@ public:
 		return static_cast<int>(m_animations.size());
 	}
 
+	/// @brief 2つのアニメーションをトラック単位で線形ブレンドして適用する
+	/// @details Ozz-Animation が無い環境向けの CPU 実装（AnimGraph::AnimSample の
+	///          clipA/clipB/tA/tB/weight を骨レベルではなくプロパティレベルで受ける）。
+	///          両方に存在するプロパティのみ重み付き合成し、片方にしか無いものは無視する。
+	///          weight はブレンド重み（0=nameA側、1=nameB側）。
+	void blend(const std::string& nameA, float timeA, const std::string& nameB, float timeB, float weight)
+	{
+		const Animation* animA = findAnimation(nameA);
+		const Animation* animB = findAnimation(nameB);
+		if (!animA && !animB) return;
+
+		weight = std::clamp(weight, 0.0f, 1.0f);
+
+		if (animA && animB)
+		{
+			for (const auto& trackA : animA->tracks)
+			{
+				const auto itB = std::find_if(animB->tracks.begin(), animB->tracks.end(),
+					[&](const AnimTrack& t) { return t.property == trackA.property; });
+				if (itB == animB->tracks.end()) continue;
+
+				const float value = trackA.evaluate(timeA) * (1.0f - weight) + itB->evaluate(timeB) * weight;
+				if (trackA.setter) trackA.setter(value);
+			}
+			return;
+		}
+
+		const Animation* only = animA ? animA : animB;
+		const float time = animA ? timeA : timeB;
+		for (const auto& track : only->tracks)
+		{
+			if (track.setter) track.setter(track.evaluate(time));
+		}
+	}
+
 private:
+	/// @brief 名前でアニメーションを探す（無ければ nullptr）
+	[[nodiscard]] const Animation* findAnimation(const std::string& name) const
+	{
+		const auto it = m_animations.find(name);
+		return it == m_animations.end() ? nullptr : &it->second;
+	}
+
 	std::unordered_map<std::string, Animation> m_animations; ///< アニメーション辞書
 	Animation* m_current = nullptr;                           ///< 現在再生中のアニメーション
 	float m_time = 0;                                         ///< 現在時刻

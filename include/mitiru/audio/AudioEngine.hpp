@@ -142,6 +142,25 @@ public:
 		(void)atSec;
 		playSoundEx(id, volume, pitchScale, 0.0f);
 	}
+
+	/// @brief playSoundScheduled が atSec をサンプル精度で honoring するか (#F2)。
+	/// @details 既定 false: playSoundScheduled の既定実装は atSec を無視して即時再生する
+	///          フォールバックなので、呼び出し側 (hud.playAt 経路) はこれが false のとき
+	///          「予約は効かず即時再生になる」ことを warnOnce で伝えるべき。実際にサンプル
+	///          精度で予約する実装 (Miniaudio/WebAudio) だけが true を返す。
+	[[nodiscard]] virtual bool supportsScheduledPlayback() const noexcept { return false; }
+
+	// ── Voice (SoundIntent category=2、K1): BGM / SE と独立した同時 1 本の台詞スロット ──
+
+	/// @brief ボイスを鳴らす。前のボイスが鳴っていれば重ねず差し替える。
+	/// @details 専用スロットを持たない backend は既定で SE として鳴らす (鳴りはするが
+	///          差し替えにならず、meterChannels にも "voice" として出ない)。
+	virtual void playVoiceEx(std::string_view id, float volume, float pitchScale, float fadeInSec)
+	{
+		playSoundEx(id, volume, pitchScale, fadeInSec);
+	}
+	/// @brief 鳴っているボイスを止める。fadeOutSec > 0 で減衰させてから止める。
+	virtual void stopVoiceFade(float fadeOutSec) { (void)fadeOutSec; }
 };
 
 } // namespace mitiru::audio

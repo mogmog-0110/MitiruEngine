@@ -9,6 +9,7 @@
 #include <string>      // std::string (動く文字の substr)
 
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 
 #include "../common/chapter_hud.hpp"   // 章ラベルと共通パレット (theme::k... の色)
 
@@ -21,13 +22,15 @@ struct Text03
 	void update(Input, float dt) { t += dt; }
 
 	// 区画 1 つぶんの小見出し (枠の上に薄グレー) と枠線を描く共通ヘルパー。
-	void cell(Screen& s, const Rect& box, const char* caption) const
+	template <class Surface>
+	void cell(Surface& s, const Rect& box, const char* caption) const
 	{
 		s.text(caption, box.x(), box.y() - 24.0f, theme::kSubtle, 15.0f);
 		s.drawRectFrame(box, theme::kFrame, 1.0f);
 	}
 
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
 		s.fillScreen(theme::kPaper);
 		chapterTitle(s, "Text");
@@ -37,10 +40,10 @@ struct Text03
 		// 文字が枠のどこに付くのかが、名前と位置の両方で一目で分かる。
 		constexpr float boxY = 92.0f, boxW = 380.0f, boxH = 200.0f;
 		constexpr float boxX[3] = {40.0f, 450.0f, 860.0f};
-		constexpr Screen::TextAlignH alignH[3] = {
-			Screen::TextAlignH::Left, Screen::TextAlignH::Center, Screen::TextAlignH::Right};
-		constexpr Screen::TextAlignV alignV[3] = {
-			Screen::TextAlignV::Top, Screen::TextAlignV::Middle, Screen::TextAlignV::Bottom};
+		const typename Surface::TextAlignH alignH[3] = {
+			Surface::TextAlignH::Left, Surface::TextAlignH::Center, Surface::TextAlignH::Right};
+		const typename Surface::TextAlignV alignV[3] = {
+			Surface::TextAlignV::Top, Surface::TextAlignV::Middle, Surface::TextAlignV::Bottom};
 		constexpr const char* alignName[3] = {"Left Top", "Center Middle", "Right Bottom"};
 		s.text("枠のどこに置くか  drawTextInRect(align)", 40.0f, 66.0f, theme::kSubtle, 15.0f);
 		for (int i = 0; i < 3; ++i)
@@ -61,7 +64,7 @@ struct Text03
 		for (float sz : sizes)
 		{
 			s.drawTextInRect(Rect{fx[0] + 16.0f, ty, cw - 24.0f, sz * 1.4f}, "Mitiru",
-			                 theme::kInk, sz, Screen::TextAlignH::Left, Screen::TextAlignV::Top);
+			                 theme::kInk, sz, Surface::TextAlignH::Left, Surface::TextAlignV::Top);
 			ty += sz * 1.4f + 6.0f;   // 次の行は今の文字の高さぶんだけ下げる
 		}
 
@@ -74,7 +77,7 @@ struct Text03
 		for (const auto& e : sw)
 		{
 			s.drawTextInRect(Rect{fx[1] + 16.0f, coy, cw - 24.0f, 34.0f}, e.name, e.c, 26.0f,
-			                 Screen::TextAlignH::Left, Screen::TextAlignV::Middle);
+			                 Surface::TextAlignH::Left, Surface::TextAlignV::Middle);
 			coy += 42.0f;
 		}
 
@@ -108,9 +111,14 @@ struct Text03
 		std::string shown = msg.substr(0, static_cast<std::size_t>(n));
 		if (std::fmod(t, 1.0f) < 0.5f) { shown += "|"; }   // 点滅カーソル
 		s.drawTextInRect(Rect{60.0f, animBox.y(), 1160.0f, animBox.height()}, shown.c_str(),
-		                 theme::kInk, 28.0f, Screen::TextAlignH::Left, Screen::TextAlignV::Middle);
+		                 theme::kInk, 28.0f, Surface::TextAlignH::Left, Surface::TextAlignV::Middle);
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 };
 
 // 実行:  mitiru_host.exe text/text.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Text03);
+
 MITIRU_GAME(Text03);

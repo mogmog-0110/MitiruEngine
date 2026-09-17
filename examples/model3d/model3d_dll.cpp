@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include "../common/chapter_hud.hpp"
 
 using namespace mitiru;
@@ -75,4 +76,7 @@ struct Model3D
 };
 
 // 実行:  mitiru_host.exe model3d/model3d.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Model3D);
+
 MITIRU_GAME(Model3D);

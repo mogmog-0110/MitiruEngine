@@ -66,5 +66,17 @@ body.is-waiting .body{ opacity:.45; }
   padding:.35rem .7rem;
 }
 
+/* MITIRU_FIELD_GROUP でまとめた game memory の行 (mitiru_reflect_decorate.js が生成) */
+.kv .reflect-group{ border-bottom:1px solid var(--rule-soft); }
+.kv .reflect-group .row{ border-bottom:1px solid var(--rule-soft); padding-left:1rem; }
+.kv .reflect-group .row:last-child{ border-bottom:0; }
+.kv .reflect-group > summary{
+  cursor:pointer; padding:.3rem .5rem; font-family:var(--mono); font-size:.72rem;
+  color:var(--muted); list-style:none;
+}
+.kv .reflect-group > summary::-webkit-details-marker{ display:none; }
+.kv .reflect-group > summary::before{ content:'▸ '; }
+.kv .reflect-group[open] > summary::before{ content:'▾ '; }
+
 /* 大きな数値 (perf の fps 等、per-page で .num.big 等を使う場合の保険) */
 .big{ font-family:var(--mono); font-weight:600; }

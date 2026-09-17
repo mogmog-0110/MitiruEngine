@@ -2,10 +2,15 @@
 #pragma once
 
 #include <cstdlib>
+#include <cstring>
+#include <unordered_map>
+#include <vector>
 
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/detail/FixedStepPlan.hpp>
 #include <mitiru/debug/TracyZones.hpp>
+#include <mitiru/module/ModuleHost.hpp>
+#include <mitiru/observe/Oracle.hpp>
 
 // ── per-frame ループ本体と screen capture の class 外定義 ──────
 
@@ -41,6 +46,13 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 	MITIRU_ZONE_NAMED("Engine::Frame");
 	/// フレームレートキャップ用: 前フレーム開始時刻
 	const auto frameStart = std::chrono::steady_clock::now();
+
+	// フレームアリーナ (2-1): このフレームの一時確保をここで丸ごと巻き戻す。
+	frameArena().reset();
+
+	// J7: device-lost 復旧はこのフレームの他のどの処理より先に見る (m_device を
+	// 使う描画フェーズより前に、作り直すか諦めるかを確定させておく)。
+	tickDeviceLossRecoveryPhase();
 
 	// Host hook。通常 `mitiru_host --watch` がここで DLL の mtime を polling し、
 	// source 変更時に Engine::reloadModule() を起こす。per-frame state に触れる前
@@ -185,6 +197,10 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 	const int planned = detail::planFixedSteps(m_accumulator, kFixedDt, stepCap);
 	for (int steps = 0; steps < planned; ++steps)
 	{
+		// Listener フック (1-6): host が独自に呼んでいた dispatchBeforeUpdate/After を
+		// ここへ一本化した (二重発火防止)。fixed-step ごと (= game.update() 1 回ごと) に発火する。
+		dispatchBeforeUpdate();
+
 		game.update(kFixedDt);
 
 		/// シーンマネージャーが設定されている場合、現在シーンを更新
@@ -192,6 +208,8 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		{
 			m_sceneManager->currentScene()->onUpdate(kFixedDt);
 		}
+
+		dispatchAfterUpdate();
 
 		m_inputState.endTick();
 		// gamepad の edge (prev/curr) も fixed tick で前進させ、keyboard と cadence を揃える。
@@ -203,6 +221,113 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		// tint 残量を fixed step で減衰 (#31)。決定論的に動く。
 		if (m_screen) { m_screen->advanceTint(kFixedDt); }
 		m_accumulator -= kFixedDt;
+	}
+	// 上限に当たって残った時間はスローモーションとして perf に出す (2-4)。非決定論のときは
+	// 残りを捨てて追いかけをやめる (決定論では cap が timeScale+2 以上なので通常ここに来ない。
+	// 来ても捨てると replay の入力列とずれるので数えるだけ)。
+	m_droppedFixedSteps = detail::countDroppedFixedSteps(m_accumulator, kFixedDt);
+	if (m_droppedFixedSteps > 0 && !m_config.deterministic)
+	{
+		m_accumulator -= static_cast<float>(m_droppedFixedSteps) * kFixedDt;
+	}
+
+	// N1/P1/P14: 組込オラクル評価 + 常時バグリング更新。GameMemory が flat POD (reflect 申告済み)
+	// のときだけ意味を持つ。私有メンバ (m_moduleMemoryRing 等) へのアクセスが要るためこの関数の
+	// 中に直接書く。フレームをまたぐ状態 (ring / 直近ハッシュ等) は observe/Oracle.hpp 側の
+	// Engine* キー map に持たせ、Engine.hpp のクラス宣言そのものは変更しない (D11 の this キー
+	// map と同じ手法)。
+	if (m_config.oracleEnabled && m_moduleMemorySize > 0 && m_moduleMemory != nullptr)
+	{
+		const auto frameNo = static_cast<std::uint32_t>(m_clock->frameNumber());
+		observe::OracleRing& ring = observe::oracleRingFor(this);
+		ring.setMachineLogEnabled(m_config.oracleMachineLog);
+
+		observe::checkFieldsOracle(m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
+			static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize, frameNo, ring,
+			m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+
+		observe::OracleTimeState& oracleState = observe::oracleStateFor(this);
+		observe::checkFrameTimeSpikeOracle(rawDt * 1000.0f, frameNo, oracleState, ring);
+
+		if (m_moduleInputSnapshot)
+		{
+			observe::checkStagnationOracle(
+				static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
+				reinterpret_cast<const std::uint8_t*>(m_moduleInputSnapshot.get()),
+				static_cast<std::uint32_t>(sizeof(module::InputSnapshot)),
+				frameNo, kFixedDt, m_config.oracleStagnantSeconds, oracleState, ring);
+		}
+
+		if (m_moduleHost)
+		{
+			std::int32_t invCount = 0;
+			if (auto invFn = m_moduleHost->invariantsFn())
+			{
+				const module::InvariantDescriptor* invs = invFn(&invCount);
+				observe::checkInvariantsOracle(invs, invCount, m_moduleMemory, frameNo, ring);
+			}
+		}
+
+		// 決定論オラクル (e/P14、既定 OFF): K フレームごとに、K フレーム前の GameMemory +
+		// その後の記録済み入力で再シミュレーションし現在の GameMemory と memcmp する
+		// (既存の resim ring = m_moduleMemoryRing/m_moduleInputRing をそのまま流用する)。
+		if (m_config.oracleDeterminism)
+		{
+			static std::unordered_map<const void*, std::uint32_t> s_detTick;  // D11 と同じ手法
+			std::uint32_t& tick = s_detTick[this];
+			++tick;
+			const std::uint32_t k = (m_config.oracleDeterminismEveryFrames > 0)
+				? m_config.oracleDeterminismEveryFrames : 120;
+			const std::size_t memFrames = m_moduleMemoryRing.size();
+			const std::size_t inFrames  = m_moduleInputRing.size();
+			if (tick >= k && k > 0 && k < memFrames && k <= inFrames)
+			{
+				tick = 0;
+				const std::uint8_t* past = m_moduleMemoryRing.at(k);
+				std::vector<module::InputSnapshot> pastInputs(k);
+				bool haveInputs = (past != nullptr);
+				for (std::uint32_t i = 0; haveInputs && i < k; ++i)
+				{
+					const std::uint8_t* snap = m_moduleInputRing.at(k - 1 - i);
+					if (snap == nullptr) { haveInputs = false; break; }
+					std::memcpy(&pastInputs[i], snap, sizeof(module::InputSnapshot));
+				}
+				if (haveInputs)
+				{
+					std::vector<std::uint8_t> scratchFallback;
+					auto* scratch = static_cast<std::uint8_t*>(frameArena().alloc(m_moduleMemorySize));
+					if (scratch == nullptr)
+					{
+						scratchFallback.resize(m_moduleMemorySize);
+						scratch = scratchFallback.data();
+					}
+					observe::checkDeterminismOracle(m_moduleApi,
+						static_cast<std::uint8_t*>(m_moduleMemory), m_moduleMemorySize, past,
+						pastInputs.data(), static_cast<int>(k), scratch, frameNo, ring,
+						[this](std::uint32_t off) { return queryModuleWriteBlame(off); },
+						m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount);
+				}
+			}
+		}
+	}
+
+	// 常時バグリング (P1): 短い ring に毎フレーム積み、host が要求したら
+	// bug_<timestamp>.mtrr として保存する。oracle の on/off とは独立に回す。
+	if (m_config.bugRingSeconds > 0.0f)
+	{
+		const auto bugFrames = static_cast<std::uint32_t>(m_config.bugRingSeconds / kFixedDt) + 1;
+		observe::pushBugRingFrame(this, m_moduleMemory, m_moduleMemorySize,
+			m_moduleInputSnapshot.get(), static_cast<std::uint32_t>(sizeof(module::InputSnapshot)),
+			bugFrames);
+	}
+	if (m_config.bugRingSaveRequested)
+	{
+		m_config.bugRingSaveRequested = false;
+		if (!observe::saveBugRing(this))
+		{
+			debug::warnOnce("oracle.bugring.save_failed",
+				"bug ring の .mtrr 保存に失敗した (出力先ディレクトリの書き込み権限か、まだ記録が無い)");
+		}
 	}
 }
 
@@ -320,6 +445,15 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 #endif
 
 	game.draw(*m_screen);
+
+	// ゴーストリプレイ (10-1): live の直後に半透明で重ねる。drawGhost は ghost 専用の
+	// 別 Screen へ焼いてから合成するため、live 側の全画面クリアに上書きされない。
+	// stepGhost 自体は host が onFrameStart で駆動する (Engine はファイル I/O を持たない)。
+	// live 側はゴーストの存在を知らない。
+	if (m_ghostMemory != nullptr)
+	{
+		drawGhost(*m_screen);
+	}
 
 	// debug overlay 削除済み (マウス座標問題は解決)
 

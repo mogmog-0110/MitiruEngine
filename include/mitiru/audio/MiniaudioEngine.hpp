@@ -8,13 +8,16 @@
 #include <miniaudio.h>
 
 #include <chrono>
+#include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <string_view>
 #include <vector>
 
 #include <mitiru/audio/AudioMeter.hpp>
+#include <mitiru/audio/AudioTransportClock.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
 #if defined(MA_HAS_WASAPI) && defined(_WIN32)
@@ -34,10 +37,21 @@ public:
 	///          押した手応えも音の出も丸ごとその分遅れる。ハードウェアの下限は 2ms 前後
 	///          あるので、4ms あれば取りこぼしの余裕を残したまま 12ms まで詰められる。
 	explicit MiniaudioEngine(ma_uint32 periodMs = 4) {
+		// device が実際にコールバックへ渡すフレーム数を transportDataCallback 経由で
+		// 積算するため、engine 生成前に &m_engine をレジストリへ登録しておく
+		// (ma_engine_init は成功すると device thread を即座に起動しうる、#F1)。
+		{
+			std::lock_guard<std::mutex> lock(registryMutex());
+			registry()[&m_engine] = this;
+		}
 		ma_engine_config config = ma_engine_config_init();
 		config.periodSizeInMilliseconds = periodMs;
+		config.dataCallback = &MiniaudioEngine::transportDataCallback;
 		if (ma_engine_init(&config, &m_engine) == MA_SUCCESS) {
 			m_initialized = true;
+		} else {
+			std::lock_guard<std::mutex> lock(registryMutex());
+			registry().erase(&m_engine);
 		}
 	}
 
@@ -47,6 +61,8 @@ public:
 			releaseVoices();
 			ma_engine_uninit(&m_engine);
 		}
+		std::lock_guard<std::mutex> lock(registryMutex());
+		registry().erase(&m_engine);
 	}
 
 	// コピー・ムーブ禁止。ma_engine / ma_sound は自己参照ポインタを持ち、稼働中の
@@ -92,8 +108,10 @@ public:
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            nullptr, nullptr, snd.get()) != MA_SUCCESS) {
 			// 黙った無音は原因不明になるので path 単位で初回のみ警告 (R-01 級)
-			mitiru::debug::warnOnce("audio.se:" + path,
-				"音声ファイルが見つからない/読めない: " + path);
+			mitiru::debug::warnOnceFix("audio.se:" + path,
+				"音声ファイル " + path + " が見つからない/読めない",
+				"パスが assets 相対で間違っているか、対応フォーマット外",
+				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
 			return;
 		}
 		ma_sound_set_volume(snd.get(), volume);
@@ -126,8 +144,10 @@ public:
 		auto snd = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            nullptr, nullptr, snd.get()) != MA_SUCCESS) {
-			mitiru::debug::warnOnce("audio.loop:" + path,
-				"音声ファイルが見つからない/読めない: " + path);
+			mitiru::debug::warnOnceFix("audio.loop:" + path,
+				"音声ファイル " + path + " が見つからない/読めない",
+				"パスが assets 相対で間違っているか、対応フォーマット外",
+				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
 			return;
 		}
 		ma_sound_set_looping(snd.get(), MA_TRUE);
@@ -174,8 +194,10 @@ public:
 		auto snd = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            nullptr, nullptr, snd.get()) != MA_SUCCESS) {
-			mitiru::debug::warnOnce("audio.se:" + path,
-				"音声ファイルが見つからない/読めない: " + path);
+			mitiru::debug::warnOnceFix("audio.se:" + path,
+				"音声ファイル " + path + " が見つからない/読めない",
+				"パスが assets 相対で間違っているか、対応フォーマット外",
+				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
 			return;
 		}
 		ma_sound_set_volume(snd.get(), volume);
@@ -184,11 +206,149 @@ public:
 		}
 		const ma_uint32 sr = ma_engine_get_sample_rate(&m_engine);
 		if (atSec > 0.0 && sr > 0) {
+			// atSec は masterTimeSec() = m_transportClock 基準。ma_sound の開始時刻は
+			// engine 自身の内部クロックで判定されるため、両者の「今」の差分を
+			// engine クロックへ足し戻して変換する (2 つのクロックが乖離しうるため)。
+			const double targetTransportFrames = atSec * static_cast<double>(sr);
+			const double deltaFrames = targetTransportFrames - static_cast<double>(m_transportClock.frames());
+			const double targetEngineFrames =
+				static_cast<double>(ma_engine_get_time_in_pcm_frames(&m_engine)) + deltaFrames;
 			ma_sound_set_start_time_in_pcm_frames(
-				snd.get(), static_cast<ma_uint64>(atSec * static_cast<double>(sr)));
+				snd.get(), static_cast<ma_uint64>(targetEngineFrames > 0.0 ? targetEngineFrames : 0.0));
 		}
 		ma_sound_start(snd.get());
 		m_oneShots.push_back(std::move(snd));
+	}
+
+	/// @brief playSoundScheduled が atSec をサンプル精度で honoring するか (#F2)。
+	/// @details ma_sound_set_start_time_in_pcm_frames による実装なので常に true。
+	[[nodiscard]] bool supportsScheduledPlayback() const noexcept { return true; }
+
+	/// @brief path のサウンドをあらかじめ poolSize 個ぶんプールする (#F3)。
+	/// @details playPooled() の hot path (拍ごと) で make_unique<ma_sound> と
+	///          ファイル再読込を発生させないための事前確保。同じ decode 済みデータを
+	///          ma_sound_init_copy で共有するのでメモリ増は voice の管理領域のみ。
+	///          既にプール済みの path は no-op で true を返す。
+	/// @return プール作成に成功したか (ファイルが読めない場合は false)
+	bool preloadPooled(const std::string& path, std::size_t poolSize) {
+		if (!m_initialized || poolSize == 0) { return false; }
+		if (m_pools.find(path) != m_pools.end()) { return true; }
+		auto pool = std::make_unique<SoundPool>();
+		if (ma_sound_init_from_file(&m_engine, path.c_str(),
+		                            MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_NO_DEFAULT_ATTACHMENT,
+		                            nullptr, nullptr, &pool->templateSound) != MA_SUCCESS) {
+			mitiru::debug::warnOnceFix("audio.pool:" + path,
+				"プール用音声ファイル " + path + " が見つからない/読めない",
+				"パスが assets 相対で間違っているか、対応フォーマット外",
+				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
+			return false;
+		}
+		pool->voices.reserve(poolSize);
+		for (std::size_t i = 0; i < poolSize; ++i) {
+			auto voice = std::make_unique<ma_sound>();
+			if (ma_sound_init_copy(&m_engine, &pool->templateSound, 0, nullptr, voice.get()) != MA_SUCCESS) {
+				for (auto& v : pool->voices) { ma_sound_uninit(v.get()); }
+				ma_sound_uninit(&pool->templateSound);
+				return false;
+			}
+			pool->voices.push_back(std::move(voice));
+		}
+		m_pools.emplace(path, std::move(pool));
+		return true;
+	}
+
+	/// @brief プール済み SE を鳴らす (#F3)。未プールの path は playSoundEx にフォールバックする。
+	/// @details 再生中でない voice を探し、無ければ最古の voice (round robin) を奪って
+	///          頭から鳴らし直す。拍ごとに呼ばれる hot path でも allocation が発生しない。
+	void playPooled(const std::string& path, float volume, float pitchScale) {
+		if (!m_initialized) { return; }
+		auto it = m_pools.find(path);
+		if (it == m_pools.end()) { playSoundEx(path, volume, pitchScale, 0.0f); return; }
+		SoundPool& pool = *it->second;
+		ma_sound* target = nullptr;
+		for (auto& v : pool.voices) {
+			if (!ma_sound_is_playing(v.get())) { target = v.get(); break; }
+		}
+		if (target == nullptr) {
+			target = pool.voices[pool.nextIndex].get();
+			pool.nextIndex = (pool.nextIndex + 1) % pool.voices.size();
+		}
+		ma_sound_stop(target);
+		ma_sound_seek_to_pcm_frame(target, 0);
+		ma_sound_set_volume(target, volume);
+		if (pitchScale > 0.0f) { ma_sound_set_pitch(target, pitchScale); }
+		ma_sound_start(target);
+	}
+
+	/// @brief メモリ上のエンコード済み音声データから one-shot SE を再生する (#F4)。
+	/// @details %TEMP% への一時ファイル書き出しを経由せず、埋め込みリソース (RCDATA 等)
+	///          を直接鳴らすための経路。decoder はバイト列を直接参照し続けるため、
+	///          再生終了までバイト列自体もここでコピー保持する。
+	void playFromMemory(const void* data, std::size_t len, float volume, float pitchScale) {
+		if (!m_initialized || data == nullptr || len == 0) { return; }
+		reapFinishedMemorySounds();
+		auto mem = std::make_unique<MemorySound>();
+		const auto* bytes = static_cast<const std::uint8_t*>(data);
+		mem->bytes.assign(bytes, bytes + len);
+		ma_decoder_config decCfg = ma_decoder_config_init(ma_format_unknown, 0, 0);
+		if (ma_decoder_init_memory(mem->bytes.data(), mem->bytes.size(), &decCfg, &mem->decoder) != MA_SUCCESS) {
+			mitiru::debug::warnOnceFix("audio.mem.decode", "メモリ音声データのデコードに失敗しました",
+				"埋め込みバイト列が壊れているか、対応していないエンコード形式",
+				"元データのエンコード形式 (wav/ogg/mp3 等) を確認する");
+			return;
+		}
+		mem->sound = std::make_unique<ma_sound>();
+		if (ma_sound_init_from_data_source(&m_engine, &mem->decoder, 0, nullptr, mem->sound.get()) != MA_SUCCESS) {
+			ma_decoder_uninit(&mem->decoder);
+			mitiru::debug::warnOnceFix("audio.mem.sound", "メモリ音声データの初期化に失敗しました",
+				"decoder は初期化できたが ma_sound への割り当てが失敗した (未対応チャンネル構成等)",
+				"埋め込み音声データのフォーマット (サンプルレート/チャンネル数) を確認する");
+			return;
+		}
+		ma_sound_set_volume(mem->sound.get(), volume);
+		if (pitchScale > 0.0f && pitchScale != 1.0f) { ma_sound_set_pitch(mem->sound.get(), pitchScale); }
+		ma_sound_start(mem->sound.get());
+		m_memorySounds.push_back(std::move(mem));
+	}
+
+	/// @brief ボイス（同時1トラック）を再生する (#F6)。既存ボイスは頭出しせず即差し替える。
+	/// @details BGM と独立したスロットに持つ。meterChannels() が "voice" 種別として
+	///          報告するので、mixer.html は BGM (M) / ボイス (V) / SE (S) を区別できる。
+	void playVoiceEx(const std::string& path, float volume, float pitchScale, float fadeInSec) {
+		if (!m_initialized) { return; }
+		stopVoice(0.0f);
+		m_voice = std::make_unique<ma_sound>();
+		m_voicePath = path;   // meterChannels が asset 名を出すため (K1)
+		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
+		                            nullptr, nullptr, m_voice.get()) != MA_SUCCESS) {
+			mitiru::debug::warnOnceFix("audio.voice:" + path,
+				"音声ファイル " + path + " が見つからない/読めない",
+				"パスが assets 相対で間違っているか、対応フォーマット外",
+				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
+			m_voice.reset();
+			return;
+		}
+		ma_sound_set_volume(m_voice.get(), volume);
+		if (pitchScale > 0.0f && pitchScale != 1.0f) { ma_sound_set_pitch(m_voice.get(), pitchScale); }
+		if (fadeInSec > 0.0f) {
+			ma_sound_set_fade_in_milliseconds(
+				m_voice.get(), 0.0f, volume, static_cast<ma_uint64>(fadeInSec * 1000.0f));
+		}
+		ma_sound_start(m_voice.get());
+	}
+
+	/// @brief 再生中のボイスを止める (#F6)。fadeOutSec > 0 で減衰させてから止める。
+	void stopVoice(float fadeOutSec) {
+		if (!m_voice) { return; }
+		if (fadeOutSec > 0.0f) {
+			ma_sound_set_fade_in_milliseconds(m_voice.get(), -1.0f, 0.0f,
+				static_cast<ma_uint64>(fadeOutSec * 1000.0f));
+			m_fading.push_back(std::move(m_voice));
+		} else {
+			ma_sound_stop(m_voice.get());
+			ma_sound_uninit(m_voice.get());
+		}
+		m_voice.reset();
 	}
 
 	/// @brief マスターボリュームを設定する
@@ -205,15 +365,16 @@ public:
 		return ma_engine_get_volume(const_cast<ma_engine*>(&m_engine));
 	}
 
-	/// @brief マスター再生クロック (秒)。デバイスが再生した PCM フレーム位置 / サンプルレート。
-	/// @details リズムゲーム等が判定の基準時刻に使う。ma_engine の global time は
-	///          サウンドの有無に関わらずデバイス稼働中ずっと進む。未初期化時は 0。
+	/// @brief マスター再生クロック (秒)。device data callback が要求したフレーム数の積算 / サンプルレート。
+	/// @details リズムゲーム等が判定の基準時刻に使う (#F1)。ma_engine 自身の global time
+	///          (ma_engine_get_time_in_pcm_frames) は鳴っている音が無い区間で進まないことがある。
+	///          m_transportClock は device が実際に出力を要求したフレーム数だけを数えるので、
+	///          無音でも単調増加し、device が停止すれば呼ばれなくなり自然に止まる。未初期化時は 0。
 	[[nodiscard]] double masterTimeSec() const noexcept {
 		if (!m_initialized) return 0.0;
 		auto* e = const_cast<ma_engine*>(&m_engine);
 		const ma_uint32 sr = ma_engine_get_sample_rate(e);
-		if (sr == 0) return 0.0;
-		return static_cast<double>(ma_engine_get_time_in_pcm_frames(e)) / static_cast<double>(sr);
+		return m_transportClock.seconds(sr);
 	}
 
 	/// @brief 出力レイテンシ (秒)。masterTimeSec() はデバイスへ送った位置なので、耳へ届くのはこの値だけ後。
@@ -249,8 +410,10 @@ public:
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_STREAM,
 		                            nullptr, nullptr, &m_music) != MA_SUCCESS) {
 			// 黙った無音は原因不明になるので path 単位で初回のみ警告 (R-01 級)
-			mitiru::debug::warnOnce("audio.music:" + path,
-				"音声ファイルが見つからない/読めない: " + path);
+			mitiru::debug::warnOnceFix("audio.music:" + path,
+				"音声ファイル " + path + " が見つからない/読めない",
+				"パスが assets 相対で間違っているか、対応フォーマット外",
+				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
 			return;
 		}
 		ma_sound_set_looping(&m_music, loop ? MA_TRUE : MA_FALSE);
@@ -274,6 +437,7 @@ public:
 	void update() {
 		if (!m_initialized) { return; }
 		reapFinishedOneShots();
+		reapFinishedMemorySounds();
 		// 減衰させて止めたループ音を回収する。鳴り終わってから uninit する。
 		for (std::size_t i = m_fading.size(); i-- > 0;) {
 			if (ma_sound_at_end(m_fading[i].get()) || !ma_sound_is_playing(m_fading[i].get())) {
@@ -365,14 +529,18 @@ public:
 	}
 
 	/// @brief 再生中チャンネルのメーター読みを列挙する
-	/// @details BGM (m_music) + 終了前の one-shot SE を、それぞれの設定実効音量で
-	///          報告する。mitiru_mixer 窓の per-channel VU 用 (host が host_module 経由で読む)。
-	/// @return チャンネルごとの { 種別, レベル } の配列
+	/// @details BGM (m_music) + ボイス (m_voice、#F6) + 終了前の one-shot SE を、
+	///          それぞれの設定実効音量で報告する。mitiru_mixer 窓の per-channel VU 用
+	///          (host が host_module 経由で読む)。
+	/// @return チャンネルごとの { 種別, レベル } の配列 (voice は asset / pan / 残り秒も入る)
 	[[nodiscard]] std::vector<ChannelMeter> meterChannels() const {
 		std::vector<ChannelMeter> out;
 		if (!m_initialized) { return out; }
 		if (m_musicActive && ma_sound_is_playing(&m_music)) {
 			out.push_back(ChannelMeter{"music", ma_sound_get_volume(&m_music)});
+		}
+		if (m_voice && ma_sound_is_playing(m_voice.get())) {
+			out.push_back(voiceMeter());
 		}
 		for (const auto& s : m_oneShots) {
 			if (!ma_sound_at_end(s.get())) {
@@ -383,6 +551,52 @@ public:
 	}
 
 private:
+	/// @brief 再生中ボイスのメーター 1 件 (K1: mixer 窓の「voice 一覧」用)。
+	/// @details 残り秒は length - cursor。MA_SOUND_FLAG_DECODE で丸ごと展開しているので
+	///          length は O(1)。ループ指定や長さ不明なら負のまま (= 不明)。
+	[[nodiscard]] ChannelMeter voiceMeter() const {
+		ChannelMeter m{"voice", ma_sound_get_volume(m_voice.get())};
+		m.pan = ma_sound_get_pan(m_voice.get());
+		float len = 0.0f, cur = 0.0f;
+		if (!ma_sound_is_looping(m_voice.get())
+		    && ma_sound_get_length_in_seconds(m_voice.get(), &len) == MA_SUCCESS
+		    && ma_sound_get_cursor_in_seconds(m_voice.get(), &cur) == MA_SUCCESS) {
+			m.remainingSec = (len > cur) ? (len - cur) : 0.0f;
+		}
+		const std::size_t slash = m_voicePath.find_last_of("/\\");
+		const char* name = m_voicePath.c_str() + (slash == std::string::npos ? 0 : slash + 1);
+		ChannelMeter::copyTo(m.asset, sizeof(m.asset), name);
+		return m;
+	}
+
+	/// @brief この engine インスタンス群のレジストリ (ma_engine* → MiniaudioEngine*)。
+	/// @details transportDataCallback は device thread から ma_engine* しか受け取れないため、
+	///          そこから呼び出し元インスタンスへ戻すために使う。関数内 static はインライン
+	///          関数 (クラス内定義) のため TU をまたいで単一実体になる。
+	static std::unordered_map<const ma_engine*, MiniaudioEngine*>& registry() {
+		static std::unordered_map<const ma_engine*, MiniaudioEngine*> r;
+		return r;
+	}
+	static std::mutex& registryMutex() {
+		static std::mutex m;
+		return m;
+	}
+
+	/// @brief ma_engine_config.dataCallback として登録する device data callback (#F1)。
+	/// @details 通常経路 (ma_engine_data_callback_internal 相当) のミックスを行った上で、
+	///          device が要求したフレーム数を無条件に m_transportClock へ積算する。
+	///          ミックス内容 (無音か否か) に関わらず device 呼び出しそのものを数えるので、
+	///          engine 内部クロックが無音区間で止まる場合でも連続して進む。
+	static void transportDataCallback(ma_device* pDevice, void* pFramesOut, const void* pFramesIn, ma_uint32 frameCount) {
+		(void)pFramesIn;
+		auto* engine = static_cast<ma_engine*>(pDevice->pUserData);
+		ma_engine_read_pcm_frames(engine, pFramesOut, frameCount, nullptr);
+		std::lock_guard<std::mutex> lock(registryMutex());
+		if (auto it = registry().find(engine); it != registry().end()) {
+			it->second->m_transportClock.addFrames(frameCount);
+		}
+	}
+
 	/// @brief 実際に確保されたデバイスバッファ (フレーム)。
 	/// @details WASAPI の共有モードでは、要求した period × periods がそのまま通るとは
 	///          限らない。internalPeriodSizeInFrames は要求値のままなので、確保された
@@ -430,6 +644,27 @@ private:
 		std::chrono::steady_clock::time_point retiredAt;
 	};
 
+	/// @brief preloadPooled() で作った、鳴らすたびに使い回す voice の集合 (#F3)。
+	struct SoundPool {
+		ma_sound templateSound{};                        ///< ma_sound_init_copy の元
+		std::vector<std::unique_ptr<ma_sound>> voices;    ///< templateSound の複製
+		std::size_t nextIndex = 0;                        ///< 全 voice 使用中のときに奪う順番
+	};
+
+	/// @brief playFromMemory() 用の再生インスタンス (#F4)。
+	/// @details decoder はバイト列を直接参照するため、再生が終わるまで両方を同じ寿命で持つ。
+	struct MemorySound {
+		std::vector<std::uint8_t> bytes;
+		ma_decoder decoder{};
+		std::unique_ptr<ma_sound> sound;
+	};
+
+	/// @brief kRetireDelay 経過を待ってから MemorySound を解放するための保持 (#F4、#52 と同じ理由)。
+	struct RetiredMemorySound {
+		std::unique_ptr<MemorySound> mem;
+		std::chrono::steady_clock::time_point retiredAt;
+	};
+
 	/// 遅延解放の待機時間。device の 1 mix 周期 (数十 ms) を確実に上回る値 (#52)。
 	static constexpr std::chrono::milliseconds kRetireDelay{400};
 
@@ -471,6 +706,45 @@ private:
 		m_retired.clear();
 	}
 
+	/// @brief 終了済みの MemorySound を retire へ移し、待機を終えたものを解放する (#F4)
+	void reapFinishedMemorySounds() {
+		const auto now = std::chrono::steady_clock::now();
+		for (auto it = m_memorySounds.begin(); it != m_memorySounds.end();) {
+			if (ma_sound_at_end((*it)->sound.get())) {
+				m_retiredMemory.push_back(RetiredMemorySound{std::move(*it), now});
+				it = m_memorySounds.erase(it);
+			} else {
+				++it;
+			}
+		}
+		for (auto it = m_retiredMemory.begin(); it != m_retiredMemory.end();) {
+			if (now - it->retiredAt >= kRetireDelay) {
+				ma_sound_uninit(it->mem->sound.get());
+				ma_decoder_uninit(&it->mem->decoder);
+				it = m_retiredMemory.erase(it);
+			} else {
+				++it;
+			}
+		}
+	}
+
+	/// @brief 待機中の MemorySound retire を待たず同期的に全解放する (shutdown 専用)
+	void flushMemorySounds() {
+		for (auto& m : m_memorySounds) { ma_sound_uninit(m->sound.get()); ma_decoder_uninit(&m->decoder); }
+		m_memorySounds.clear();
+		for (auto& r : m_retiredMemory) { ma_sound_uninit(r.mem->sound.get()); ma_decoder_uninit(&r.mem->decoder); }
+		m_retiredMemory.clear();
+	}
+
+	/// @brief preloadPooled() で作った全プールを解放する (shutdown 専用)
+	void releasePools() {
+		for (auto& kv : m_pools) {
+			for (auto& v : kv.second->voices) { ma_sound_uninit(v.get()); }
+			ma_sound_uninit(&kv.second->templateSound);
+		}
+		m_pools.clear();
+	}
+
 	/// @brief 全 voice (BGM + one-shot + retire 待ち) を解放する (shutdown 専用)
 	/// @brief 鳴っているループ音をすべて解放する。
 	void releaseLoops() {
@@ -482,14 +756,20 @@ private:
 
 	void releaseVoices() {
 		stopMusic();
+		stopVoice(0.0f);
 		for (auto& s : m_oneShots) { ma_sound_uninit(s.get()); }
 		m_oneShots.clear();
 		flushRetired();
+		flushMemorySounds();
+		releasePools();
 	}
 
 	ma_engine m_engine{};
 	bool m_initialized = false;
+	AudioTransportClock m_transportClock;  ///< device 出力フレーム数の連続積算クロック (#F1)
 	ma_sound m_music{};
+	std::unique_ptr<ma_sound> m_voice;  ///< 再生中のボイス（同時1トラック、#F6）
+	std::string m_voicePath;            ///< m_voice の元ファイル (meterChannels の asset 名、K1)
 	bool m_musicActive = false;
 	float m_musicBaseVolume = 1.0f;  ///< duck していない本来の BGM 音量。duck の復帰先 (#34 の雪だるま化防止)
 	bool m_musicPaused = false;      ///< pauseMusic() 中か (resumeMusic() で false。v19)
@@ -498,6 +778,9 @@ private:
 	std::vector<std::unique_ptr<ma_sound>> m_fading;                   ///< 減衰させて止めた最中のループ音
 	std::vector<std::unique_ptr<ma_sound>> m_oneShots;
 	std::vector<RetiredVoice> m_retired;  ///< 遅延解放待ち (#52)
+	std::unordered_map<std::string, std::unique_ptr<SoundPool>> m_pools;  ///< preloadPooled() 済みプール (#F3)
+	std::vector<std::unique_ptr<MemorySound>> m_memorySounds;  ///< playFromMemory() 再生中 (#F4)
+	std::vector<RetiredMemorySound> m_retiredMemory;           ///< 同、遅延解放待ち (#F4)
 };
 
 } // namespace mitiru::audio

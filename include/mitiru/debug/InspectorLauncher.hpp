@@ -19,6 +19,7 @@
 /// stale (>10s) になったら自分で waiting 状態に戻る。
 
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -49,30 +50,29 @@ inline bool spawnTool(const std::string& toolName, int producerPid, const std::s
 	const std::string exeLeaf = "mitiru_" + toolName + ".exe";
 
 	// 1. 環境変数による override: MITIRU_<TOOLNAME>_EXE
+	std::string envName = "MITIRU_";
+	for (char c : toolName) { envName += static_cast<char>(std::toupper(static_cast<unsigned char>(c))); }
+	envName += "_EXE";
 	std::string exePath;
-	{
-		std::string envName = "MITIRU_";
-		for (char c : toolName) { envName += static_cast<char>(std::toupper(static_cast<unsigned char>(c))); }
-		envName += "_EXE";
-		if (const char* env = std::getenv(envName.c_str()); env && *env) { exePath = env; }
-	}
+	if (const char* env = std::getenv(envName.c_str()); env && *env) { exePath = env; }
 
 	// 2. 走っている game exe と同階層 / 3. 開発 build tree (examples/mitiru_<tool>/)
+	std::filesystem::path selfDir, sameDirCandidate, devCandidate;
 	if (exePath.empty())
 	{
 		wchar_t buf[MAX_PATH] = {};
 		if (GetModuleFileNameW(nullptr, buf, MAX_PATH) > 0)
 		{
 			std::filesystem::path self{buf};
-			auto candidate = self.parent_path() / exeLeaf;
-			if (std::filesystem::exists(candidate))
+			selfDir = self.parent_path();
+			sameDirCandidate = selfDir / exeLeaf;
+			if (std::filesystem::exists(sameDirCandidate))
 			{
-				exePath = candidate.string();
+				exePath = sameDirCandidate.string();
 			}
 			if (exePath.empty())
 			{
-				auto devCandidate = self.parent_path().parent_path()
-					/ ("mitiru_" + toolName) / exeLeaf;
+				devCandidate = selfDir.parent_path() / ("mitiru_" + toolName) / exeLeaf;
 				if (std::filesystem::exists(devCandidate))
 				{
 					exePath = devCandidate.string();
@@ -83,6 +83,12 @@ inline bool spawnTool(const std::string& toolName, int producerPid, const std::s
 
 	if (exePath.empty())
 	{
+		// 9-4: 「窓が出ない」を目視で切り分けられるよう、探した場所を全部 stderr に出す。
+		std::fprintf(stderr,
+		             "[mitiru] openTool: %s が見つかりません "
+		             "(env %s 未設定, 同階層 %ls 無し, dev tree %ls 無し)\n",
+		             exeLeaf.c_str(), envName.c_str(),
+		             sameDirCandidate.c_str(), devCandidate.c_str());
 		return false;
 	}
 
@@ -106,7 +112,13 @@ inline bool spawnTool(const std::string& toolName, int producerPid, const std::s
 		DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
 		nullptr, nullptr,
 		&si, &pi);
-	if (!ok) { return false; }
+	if (!ok)
+	{
+		std::fprintf(stderr,
+		             "[mitiru] openTool: %s の起動に失敗 (CreateProcess GetLastError=%lu, pid=%d)\n",
+		             exePath.c_str(), GetLastError(), producerPid);
+		return false;
+	}
 	CloseHandle(pi.hProcess);
 	CloseHandle(pi.hThread);
 	return true;
@@ -164,8 +176,20 @@ inline bool openTool(Tool t, int producerPid = 0)
 {
 	for (const auto& spec : mitiru::detail::kToolTable)
 	{
-		if (spec.tool == t) { return spawnTool(spec.exe, producerPid, spec.args); }
+		if (spec.tool != t) { continue; }
+		const bool ok = spawnTool(spec.exe, producerPid, spec.args);
+		if (!ok)
+		{
+			std::fprintf(stderr,
+			             "[mitiru] openTool(%s): 起動できませんでした (直前の spawnTool ログの"
+			             "探索先を確認し、exe を mitiru build で生成するか PATH/同階層に置く)\n",
+			             spec.exe);
+		}
+		return ok;
 	}
+	std::fprintf(stderr,
+	             "[mitiru] openTool: kToolTable に無い Tool 値です "
+	             "(ToolRegistry.hpp の kToolTable に該当 Tool のエントリを追加する)\n");
 	return false;
 }
 
@@ -183,8 +207,20 @@ inline bool openTool(Tool t, const std::string& extraArgs, int producerPid = 0)
 			if (!args.empty()) { args += ' '; }
 			args += extraArgs;
 		}
-		return spawnTool(spec.exe, producerPid, args);
+		const bool ok = spawnTool(spec.exe, producerPid, args);
+		if (!ok)
+		{
+			std::fprintf(stderr,
+			             "[mitiru] openTool(%s, args=\"%s\"): 起動できませんでした (直前の"
+			             "spawnTool ログの探索先を確認し、exe を mitiru build で生成するか"
+			             "PATH/同階層に置く)\n",
+			             spec.exe, args.c_str());
+		}
+		return ok;
 	}
+	std::fprintf(stderr,
+	             "[mitiru] openTool: kToolTable に無い Tool 値です "
+	             "(ToolRegistry.hpp の kToolTable に該当 Tool のエントリを追加する)\n");
 	return false;
 }
 

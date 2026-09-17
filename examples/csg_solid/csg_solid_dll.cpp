@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdint>
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include "../common/chapter_hud.hpp"  // 章ラベル + 操作帯 (全章共通の書式)
 
 using namespace mitiru;
@@ -72,4 +73,7 @@ struct CsgSolidChapter
 };
 
 // 実行:  mitiru_host.exe csg_solid/csg_solid.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(CsgSolidChapter);
+
 MITIRU_GAME(CsgSolidChapter);

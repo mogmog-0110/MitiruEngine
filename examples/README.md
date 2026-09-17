@@ -27,7 +27,7 @@ CEF runtime (`libcef.dll` + `icudtl.dat` + `MitiruCefHelper.exe` + locales等)�
 | [`motion`](motion/motion_dll.cpp) | イージング(動きの緩急)の格子：列にLinear / EaseInOut / EaseIn / EaseOut、行に 位置 / 大きさ / 回転 / 透明度。1つのイージング曲線が各プロパティをどう動かすかを一望する。位置の目盛りが速さの変化を形で見せる。dt (前フレームからの経過秒)の使い方も |
 | [`sprites`](sprites/sprites_dll.cpp) | スプライト(画像)を描く：赤べこ(会津の郷土玩具)の 大きさ / 回転 / 左右反転 / 半透明 の見本と、矢印キーで歩く赤べこ(進む向きで反転・脚が交互に動く歩行アニメ) |
 | [`camera`](camera/camera_dll.cpp) | 追従カメラ(FollowCam)：赤べこがマウスの方へ画面より広い牧場を歩き、視点がdeadzone +先読み + world clampで滑らかに追ってスクロールする。木と赤べこは接地yで前後が入れ替わる |
-| [`audio`](audio/audio_dll.cpp) | 音を視覚化：鳴らすと弾ける（SEの音程を色つきリング / BGMは回るディスクで再生・一時停止・フェードを表現）。状態テキストなし、`hud.play()` / `hud.music()`でエンジンに再生を依頼 |
+| [`audio`](audio/audio_dll.cpp) | 音を視覚化：鳴らすと弾ける（SEの音程を色つきリング / BGMは回るディスクで再生・一時停止・フェードを表現 / 台詞は吹き出し）。状態テキストなし、`hud.play()` / `hud.music()` / `hud.voice()`でエンジンに再生を依頼 |
 
 ## 章(看板)
 
@@ -38,6 +38,7 @@ CEF runtime (`libcef.dll` + `icudtl.dat` + `MitiruCefHelper.exe` + locales等)�
 | [`observe`](observe/observe_dll.cpp) | MITIRU_REFLECT + watch：状態を外から観測 |
 | [`rewind`](rewind/rewind_dll.cpp) | 巻き戻し：状態を1つのstructに置き、見たい値を申告するだけで過去へ戻せる。`--inspect rewind`付きで起動 |
 | [`restart_save`](restart_save/restart_save_dll.cpp) | `hud.requestRestart()` +セーブ / ロード(`.msav`ファイル) |
+| [`objects_kitchen`](objects_kitchen/objects_kitchen_dll.cpp) | クラスとコンポーネントで書く:`MITIRU_GAME_OBJECTS`(進行データだけ POD、場面は普通の C++。[解説](../docs/OBJECT_STYLE_GAMES.md)) |
 | [`scene3d`](scene3d/scene3d_dll.cpp) | GPU 3Dシーン：平行光の影 + WBOIT半透明 + skybox |
 | [`model3d`](model3d/model3d_dll.cpp) | 大きな3Dモデル：26万ポリゴンの宮殿(Crytek Sponza、glTF)を`drawModel` 1行でそのまま置き、一人称で歩き回る。.gltf/.glb/.objは初回だけ隣に変換キャッシュを作って読む。マウス視線(`hud.lockMouse`)とWASD移動、詳細度(LOD)は距離から自動 |
 | [`anim3d`](anim3d/anim3d_dll.cpp) | キャラクターを歩かせる：リグ付きglTF (Khronos Fox)のクリップ名と時間を`drawModelBlend`に渡すだけで骨格アニメが動く。WASDで歩かせると待機と歩きがなめらかに混ざる。時間は自分の状態で`t += dt`するだけなので巻き戻しにもそのまま乗る |
@@ -54,6 +55,14 @@ exeは従来どおり`build/examples/mitiru_subsys_<name>/`に出る。
 | `subsys/mitiru_subsys_audio` | audioのみ。440Hz sine +実出力RMSのレベルメーター(5秒で自動終了) |
 | `subsys/mitiru_subsys_input` | inputのみ。256 VKのlive grid + mouse状態 + pressログ |
 | `subsys/mitiru_subsys_scene` | scene loopのみ。12 entityの積分 +縁反射 |
+
+## デバッグ再現プローブ
+
+カリキュラムの章ではなく、特定 bug の再現・修正の効き目を数値で確認するための最小デモ。
+
+| Example | 何を見せるか |
+|---|---|
+| [`plane_probe`](plane_probe/plane_probe_dll.cpp) | #56 (「plane が描画されない」)の再現プローブ。固定カメラで cube / plane / 薄い cube を並べて1枚撮り、`--capture-dir`のPNGでどの形が画素になったかを数えで判定する |
 
 ## インフラ(host / tool)：`apps/`所在
 

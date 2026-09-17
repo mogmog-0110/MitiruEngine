@@ -5,10 +5,18 @@
 /// @details ViewProjection行列から6平面を抽出し、
 ///          AABB/球体のビジビリティテストを行う。
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <vector>
+
+#include <sgc/math/Mat4.hpp>
+#include <sgc/math/Vec3.hpp>
+
+#include <mitiru/render/Camera3D.hpp>
+#include <mitiru/render/Mesh.hpp>
 
 namespace mitiru::render
 {
@@ -136,6 +144,61 @@ public:
 	[[nodiscard]] const std::array<Plane, 6>& planes() const noexcept
 	{
 		return m_planes;
+	}
+
+	/// @brief Camera3D から直接視錐台を構築する
+	/// @details `viewProjectionMatrix()` (OpenGL規約 Z[-1,1]) を使う。DX11/DX12 の
+	///          描画用射影行列 (Z[0,1] 等、バックエンドごとに規約が違う) とは独立に
+	///          Gribb-Hartmann の前提 (row3±rowN) が成立する規約に固定するため。
+	void extractFromCamera(const Camera3D& camera) noexcept
+	{
+		const auto vp = camera.viewProjectionMatrix();
+		float m[16];
+		for (int c = 0; c < 4; ++c)
+		{
+			for (int r = 0; r < 4; ++r)
+			{
+				m[c * 4 + r] = vp.m[r][c];
+			}
+		}
+		extractFromViewProj(m);
+	}
+
+	/// @brief メッシュのローカル AABB をワールド変換した上で可視判定する
+	/// @param localAabb `Mesh::localAABB()` 相当のローカル空間 AABB
+	/// @param world ワールド変換行列
+	/// @return true: 可視（完全または部分的に視錐台内）
+	/// @details 8頂点を変換して外接する AABB を作る（非一様スケール/回転でも
+	///          安全な近似になる。厳密な OBB ではないため過剰生存はあり得るが
+	///          過剰カリング（見えるはずの物が消える）は起きない）。
+	[[nodiscard]] bool isMeshVisible(const Mesh::AABB& localAabb,
+	                                 const sgc::Mat4f& world) const noexcept
+	{
+		const sgc::Vec3f corners[8] = {
+			{localAabb.min.x, localAabb.min.y, localAabb.min.z},
+			{localAabb.max.x, localAabb.min.y, localAabb.min.z},
+			{localAabb.min.x, localAabb.max.y, localAabb.min.z},
+			{localAabb.max.x, localAabb.max.y, localAabb.min.z},
+			{localAabb.min.x, localAabb.min.y, localAabb.max.z},
+			{localAabb.max.x, localAabb.min.y, localAabb.max.z},
+			{localAabb.min.x, localAabb.max.y, localAabb.max.z},
+			{localAabb.max.x, localAabb.max.y, localAabb.max.z},
+		};
+
+		AABB worldBox;
+		worldBox.minX = worldBox.minY = worldBox.minZ = std::numeric_limits<float>::max();
+		worldBox.maxX = worldBox.maxY = worldBox.maxZ = -std::numeric_limits<float>::max();
+		for (const auto& corner : corners)
+		{
+			const auto w = world.transformPoint(corner);
+			worldBox.minX = std::min(worldBox.minX, w.x);
+			worldBox.maxX = std::max(worldBox.maxX, w.x);
+			worldBox.minY = std::min(worldBox.minY, w.y);
+			worldBox.maxY = std::max(worldBox.maxY, w.y);
+			worldBox.minZ = std::min(worldBox.minZ, w.z);
+			worldBox.maxZ = std::max(worldBox.maxZ, w.z);
+		}
+		return isBoxVisible(worldBox);
 	}
 
 private:

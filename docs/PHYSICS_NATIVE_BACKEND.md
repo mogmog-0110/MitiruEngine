@@ -56,6 +56,22 @@ runner.addSystem(std::make_unique<mitiru::physics3d::NativePhysicsSystem>(cfg), 
 ジョイント・レイキャスト・キャラクタコントローラ等はアダプタの外側の機能なので、
 `backend()`でバックエンドを直接触る。
 
+## IPhysicsWorld3Dアダプタ（ワールド直接操作したい場合）
+
+ECSを介さず`IPhysicsWorld3D`（`step`/`raycast`/`overlapSphere`/`overlapBox`/`addBody`等）
+としてワールドを直接操作したいときは`include/mitiru/physics/NativePhysicsWorld3D.hpp`の
+`NativePhysicsWorld3D`を使う（`NativePhysicsSystem`とは別物、`MITIRU_HAS_NATIVEPHYS`定義時のみ存在）。
+Jolt側の対応物は`include/mitiru/physics/JoltPhysicsWorld3D.hpp`の`JoltPhysicsWorld3D`
+（`MITIRU_HAS_JOLT`定義時のみ存在）で、内蔵`PhysicsWorld3D`と合わせて3実装が同じI/Fを満たす。
+
+`overlapBox`はNativeEngineのラッパー(`nativephys::NativePhysicsWorld`)に無いため、
+`native()`エスケープハッチ経由で`ne::PhysicsWorld::overlapBox`を直接呼ぶ。
+`raycastAll`はNativeEngine側が最近傍1件しか返さないため、他バックエンドと違い最大1件になる。
+
+3バックエンド共通の契約テストは`tests/mitiru/TestPhysicsBackends.cpp`
+（`mitiru_tests_core`と`mitiru_tests_nativephys`の両方に登録、`TestNativePhysicsBridge.cpp`と同じ
+`MITIRU_HAS_NATIVEPHYS`排他構成）。
+
 ## 注意点
 
 - **周期境界を理解しているのは物理だけ**。scene graph・カメラ・描画・engine側の
@@ -71,4 +87,7 @@ runner.addSystem(std::make_unique<mitiru::physics3d::NativePhysicsSystem>(cfg), 
   - `mitiru_tests_core` (既定ビルド): backend無しでno-opである契約
   - `mitiru_tests_nativephys` (`MITIRU_USE_NATIVEPHYS=ON`の時だけ登録): 着地・
     決定性・周期境界の回り込み・エンティティ削除でボディが消えること
+- `tests/mitiru/TestPhysicsBackends.cpp` — 同じ2target排他構成で、`IPhysicsWorld3D`
+  としての契約（raycast/overlap/layer・mask/addBody-removeBody-bodyTransform）を
+  内蔵PhysicsWorld3D・Jolt・NativeEngineの3バックエンド共通シナリオで検証
 - 実行: `ctest --test-dir build -C Debug -L nativephys`

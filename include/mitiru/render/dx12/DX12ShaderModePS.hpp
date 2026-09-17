@@ -34,6 +34,7 @@ cbuffer CbLighting : register(b1)
 
 Texture2D                g_albedo : register(t0);
 Texture2D                g_shadow : register(t1);
+Texture2D                g_shadowFar : register(t2);
 SamplerState             g_samp   : register(s0);
 SamplerState             g_sampPoint : register(s2);
 
@@ -48,6 +49,19 @@ float4 sampleAlbedo(float2 uv)
 }
 
 SamplerComparisonState   g_pcf    : register(s1);
+
+// B13 カスケードシャドウ。LightViewProj (カスケード0) は VS が読んで LightSpacePos を
+// 計算済みなのでここでは未使用、LightViewProjFar (カスケード1) は WorldPos から
+// このシェーダー自身が light-space 座標を組む。
+cbuffer CbShadow : register(b3)
+{
+    float4x4 LightViewProj;
+    float4x4 LightViewProjFar;
+    float    CascadeSplitDistance;
+    float    CascadeSplitDistance2;
+    float2   _padCascade;
+    float4x4 LightViewProjFar2;
+};
 
 struct PSInput
 {
@@ -65,7 +79,7 @@ struct PSOutput
     float4 Normal : SV_TARGET1;
 };
 
-float samplePCF(float3 ndc)
+float samplePCFTex(Texture2D shadowTex, float3 ndc)
 {
     float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
     float depthRef = ndc.z - 0.001;
@@ -80,10 +94,56 @@ float samplePCF(float3 ndc)
         [unroll]
         for (int x = -1; x <= 1; ++x)
         {
-            shadow += g_shadow.SampleCmpLevelZero(g_pcf, uv + float2(x, y) * texelSize, depthRef);
+            shadow += shadowTex.SampleCmpLevelZero(g_pcf, uv + float2(x, y) * texelSize, depthRef);
         }
     }
     return shadow / 9.0;
+}
+
+// g_shadowFar は 2 列のアトラス (左 = カスケード1、右 = カスケード2)。u を列の中へ写し、PCF の
+// タップが隣の列へはみ出さないよう列の内側に収める。
+float samplePCFAtlas(float3 ndc, float column)
+{
+    float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
+    float depthRef = ndc.z - 0.001;
+    if (any(uv < 0) || any(uv > 1) || ndc.z < 0.0 || ndc.z > 1.0) return 1.0;
+
+    const float texelV = 1.0 / 1024.0;
+    const float texelU = texelV * 0.5;
+    const float uMin = column * 0.5 + texelU * 0.5;
+    const float uMax = (column + 1.0) * 0.5 - texelU * 0.5;
+    float shadow = 0.0;
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+        {
+            float2 tap = float2(clamp((uv.x + column) * 0.5 + x * texelU, uMin, uMax), uv.y + y * texelV);
+            shadow += g_shadowFar.SampleCmpLevelZero(g_pcf, tap, depthRef);
+        }
+    }
+    return shadow / 9.0;
+}
+
+// B13: カメラ距離が CascadeSplitDistance 未満ならカスケード0 (VS 計算済みの
+// LightSpacePos)、それ以上ならカスケード1 (WorldPos から自前で計算) を使う。
+// カスケード無効時は CPU 側が CascadeSplitDistance に非常に大きい値を入れるため
+// 常にカスケード0 を通る (従来と同じ結果)。
+float sampleCascadedShadow(float3 worldPos, float4 lightSpacePos0, float distanceFromCamera)
+{
+    if (distanceFromCamera < CascadeSplitDistance)
+    {
+        float3 ndc = lightSpacePos0.xyz / max(lightSpacePos0.w, 1e-4);
+        return samplePCFTex(g_shadow, ndc);
+    }
+    if (distanceFromCamera < CascadeSplitDistance2)
+    {
+        float4 lsFar = mul(LightViewProjFar, float4(worldPos, 1.0));
+        return samplePCFAtlas(lsFar.xyz / max(lsFar.w, 1e-4), 0.0);
+    }
+    float4 lsFar2 = mul(LightViewProjFar2, float4(worldPos, 1.0));
+    return samplePCFAtlas(lsFar2.xyz / max(lsFar2.w, 1e-4), 1.0);
 }
 
 PSOutput PSMain(PSInput input)
@@ -95,8 +155,8 @@ PSOutput PSMain(PSInput input)
     float4 texSample = sampleAlbedo(input.TexCoord);
     float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb;
 
-    float3 lsNdc = input.LightSpacePos.xyz / max(input.LightSpacePos.w, 1e-4);
-    float castShadow = samplePCF(lsNdc);
+    float distToCamera = length(CameraPos - input.WorldPos);
+    float castShadow = sampleCascadedShadow(input.WorldPos, input.LightSpacePos, distToCamera);
 
     float lambert = saturate(dot(N, L)) * castShadow;
     float band = smoothstep(0.44, 0.56, lambert);
@@ -231,6 +291,7 @@ cbuffer CbLighting : register(b1)
 
 Texture2D                g_albedo  : register(t0);
 Texture2D                g_shadow  : register(t1);
+Texture2D                g_shadowFar : register(t2);
 SamplerState             g_samp    : register(s0);
 SamplerState             g_sampPoint : register(s2);
 
@@ -245,6 +306,18 @@ float4 sampleAlbedo(float2 uv)
 }
 
 SamplerComparisonState   g_pcf     : register(s1);
+
+// B13 カスケードシャドウ。DX12_TOON_PS_3D と同じ規約 (LightViewProj はここでは未使用、
+// LightViewProjFar + CascadeSplitDistance だけカスケード1 の判定/サンプルに使う)。
+cbuffer CbShadow : register(b3)
+{
+    float4x4 LightViewProj;
+    float4x4 LightViewProjFar;
+    float    CascadeSplitDistance;
+    float    CascadeSplitDistance2;
+    float2   _padCascade;
+    float4x4 LightViewProjFar2;
+};
 
 struct PSInput
 {
@@ -263,7 +336,7 @@ struct PSOutput
 };
 
 // 3x3 PCF (depth bias 込み)
-float samplePCF(float3 ndc)
+float samplePCFTex(Texture2D shadowTex, float3 ndc)
 {
     // ndc: [-1,1] xy → UV [0,1], z → DX [0,1] そのまま
     float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
@@ -280,10 +353,55 @@ float samplePCF(float3 ndc)
         for (int x = -1; x <= 1; ++x)
         {
             float2 offset = float2(x, y) * texelSize;
-            shadow += g_shadow.SampleCmpLevelZero(g_pcf, uv + offset, depthRef);
+            shadow += shadowTex.SampleCmpLevelZero(g_pcf, uv + offset, depthRef);
         }
     }
     return shadow / 9.0;
+}
+
+// g_shadowFar は 2 列のアトラス (左 = カスケード1、右 = カスケード2)。u を列の中へ写し、PCF の
+// タップが隣の列へはみ出さないよう列の内側に収める。
+float samplePCFAtlas(float3 ndc, float column)
+{
+    float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
+    float depthRef = ndc.z - 0.001;
+    if (any(uv < 0) || any(uv > 1) || ndc.z < 0.0 || ndc.z > 1.0) return 1.0;
+
+    const float texelV = 1.0 / 1024.0;
+    const float texelU = texelV * 0.5;
+    const float uMin = column * 0.5 + texelU * 0.5;
+    const float uMax = (column + 1.0) * 0.5 - texelU * 0.5;
+    float shadow = 0.0;
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+        {
+            float2 tap = float2(clamp((uv.x + column) * 0.5 + x * texelU, uMin, uMax), uv.y + y * texelV);
+            shadow += g_shadowFar.SampleCmpLevelZero(g_pcf, tap, depthRef);
+        }
+    }
+    return shadow / 9.0;
+}
+
+// B13: DX12_TOON_PS_3D の sampleCascadedShadow と同じ判定 (距離 < CascadeSplitDistance
+// でカスケード0、それ以外はカスケード1)。カスケード無効時は CPU が分割距離を
+// 非常に大きくするため常にカスケード0 (従来と同じ結果)。
+float sampleCascadedShadow(float3 worldPos, float4 lightSpacePos0, float distanceFromCamera)
+{
+    if (distanceFromCamera < CascadeSplitDistance)
+    {
+        float3 ndc = lightSpacePos0.xyz / max(lightSpacePos0.w, 1e-4);
+        return samplePCFTex(g_shadow, ndc);
+    }
+    if (distanceFromCamera < CascadeSplitDistance2)
+    {
+        float4 lsFar = mul(LightViewProjFar, float4(worldPos, 1.0));
+        return samplePCFAtlas(lsFar.xyz / max(lsFar.w, 1e-4), 0.0);
+    }
+    float4 lsFar2 = mul(LightViewProjFar2, float4(worldPos, 1.0));
+    return samplePCFAtlas(lsFar2.xyz / max(lsFar2.w, 1e-4), 1.0);
 }
 
 PSOutput PSMain(PSInput input)
@@ -295,9 +413,9 @@ PSOutput PSMain(PSInput input)
     float4 texSample = sampleAlbedo(input.TexCoord);
     float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb;
 
-    // shadow factor (1.0 = unshadowed)
-    float3 lsNdc = input.LightSpacePos.xyz / max(input.LightSpacePos.w, 1e-4);
-    float shadow = samplePCF(lsNdc);
+    // shadow factor (1.0 = 影なし)
+    float distToCamera = length(CameraPos - input.WorldPos);
+    float shadow = sampleCascadedShadow(input.WorldPos, input.LightSpacePos, distToCamera);
 
     float3 ambient = AmbientColor * albedo;
 

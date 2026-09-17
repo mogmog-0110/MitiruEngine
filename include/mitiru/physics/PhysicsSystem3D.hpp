@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -29,6 +30,7 @@
 
 #include "sgc/math/Vec3.hpp"
 #include "sgc/math/Quaternion.hpp"
+#include "mitiru/debug/TracyZones.hpp"
 #include "mitiru/scene/GameWorld.hpp"
 #include "mitiru/scene/SystemRunner.hpp"
 #include "mitiru/physics/BroadPhase3D.hpp"
@@ -65,6 +67,10 @@ struct RigidBodyComponent3D
 	bool isKinematic{false};          ///< キネマティックボディか
 	sgc::Vec3f linearVelocity{};      ///< 初期線形速度
 	sgc::Vec3f angularVelocity{};     ///< 初期角速度
+
+	bool isTrigger{false};                     ///< true ならインパルス解決せず衝突コールバックのみ発火
+	std::uint32_t layer{0};                    ///< 所属レイヤー（0-31のビットindex）
+	std::uint32_t mask{0xFFFFFFFFu};           ///< 衝突対象レイヤーマスク
 };
 
 /// @brief 物理システム設定
@@ -87,10 +93,61 @@ struct CollisionEvent3D
 	sgc::Vec3f point{};
 	sgc::Vec3f normal{};
 	float depth{0.0f};
+	bool isTrigger{false};  ///< トリガー同士/トリガーと通常体の接触なら true（押し返し無し）
 };
 
 /// @brief 衝突コールバック型
 using CollisionCallback3DEcs = std::function<void(const CollisionEvent3D&)>;
+
+/// @brief 接触の推移段階
+enum class ContactPhase3D
+{
+	Enter,  ///< このフレームで新たに接触が始まった
+	Stay,   ///< 前フレームから引き続き接触している
+	Exit    ///< このフレームで接触が終わった
+};
+
+/// @brief 接触イベント（Enter/Stay/Exit を区別する版）
+///
+/// Exit の point/normal/depth は接触が消えた瞬間の値を持たない
+/// （形状がもう重なっていない）ため既定値のままになる。
+struct ContactEvent3D
+{
+	scene::EntityId entityA{scene::INVALID_ENTITY};
+	scene::EntityId entityB{scene::INVALID_ENTITY};
+	sgc::Vec3f point{};
+	sgc::Vec3f normal{};
+	float depth{0.0f};
+	bool isTrigger{false};
+	ContactPhase3D phase{ContactPhase3D::Enter};
+};
+
+/// @brief 接触イベントコールバック型
+using ContactEventCallback3D = std::function<void(const ContactEvent3D&)>;
+
+/// @brief 1フレーム分の接触ペア記録（Enter/Stay/Exit 差分検出用）
+struct ContactPairRecord3D
+{
+	BodyId a{INVALID_BODY_ID};  ///< 常に a <= b になるよう正規化して格納する
+	BodyId b{INVALID_BODY_ID};
+	sgc::Vec3f point{};
+	sgc::Vec3f normal{};
+	float depth{0.0f};
+	bool isTrigger{false};
+
+	/// @brief (a, b, isTrigger) の組でソートするための比較関数
+	/// @details isTrigger も鍵に含める。複合ボディ (1 body に複数 collider) で trigger 用と
+	///          solid 用の collider が同じ相手ボディに同時に触れると、(a,b) だけでは
+	///          notifyContactEvents() の多重集合マージが両者を区別できず、trigger 側が
+	///          Exit した時に solid 側の record を代わりに消費してしまう (isTrigger の値が
+	///          入れ替わって通知される) ことがあった。
+	[[nodiscard]] static bool less(const ContactPairRecord3D& lhs, const ContactPairRecord3D& rhs) noexcept
+	{
+		if (lhs.a != rhs.a) return lhs.a < rhs.a;
+		if (lhs.b != rhs.b) return lhs.b < rhs.b;
+		return lhs.isTrigger < rhs.isTrigger;
+	}
+};
 
 /// @brief 3D物理ECSシステム
 ///
@@ -124,9 +181,13 @@ public:
 	}
 
 	/// @brief システム名を返す
+	/// @details ISystem::name() の戻り値は std::string 固定（SystemRunner.hpp、担当外ファイル）
+	///          なので string_view 化はできない。代わりに static キャッシュにして、
+	///          呼び出しごとの `const char*` → `std::string` 変換（strlen 走査）を省く
 	[[nodiscard]] std::string name() const override
 	{
-		return "PhysicsSystem3D";
+		static const std::string kName{"PhysicsSystem3D"};
+		return kName;
 	}
 
 	/// @brief 物理更新を実行する
@@ -134,6 +195,8 @@ public:
 	/// @param dt デルタタイム（秒）
 	void update(scene::GameWorld& gameWorld, float dt) override
 	{
+		MITIRU_ZONE_PHYSICS("PhysicsSystem3D::update");
+
 		syncToPhysics(gameWorld);
 
 		m_accumulator += dt;
@@ -149,11 +212,19 @@ public:
 
 		syncFromPhysics(gameWorld);
 		notifyCollisions();
+		notifyContactEvents();
 
 		if (m_config.enableDebugDraw)
 		{
 			gatherDebugDraw();
 		}
+	}
+
+	/// @brief 更新フェーズを明示する（既定値と同じ Sim だが、物理は Sim 固定である
+	/// ことを SystemRunner 側の意図に依存させず自己文書化するため override する）
+	[[nodiscard]] scene::UpdatePhase defaultPhase() const noexcept override
+	{
+		return scene::UpdatePhase::Sim;
 	}
 
 	// ── 設定アクセス ──────────────────────────────────────────
@@ -185,6 +256,13 @@ public:
 	void registerCollisionCallback(CollisionCallback3DEcs callback)
 	{
 		m_ecsCallbacks.push_back(std::move(callback));
+	}
+
+	/// @brief Enter/Stay/Exit を区別する接触イベントコールバックを登録する
+	/// @param callback 接触の推移段階が変わるたび呼ばれるコールバック
+	void registerContactEventCallback(ContactEventCallback3D callback)
+	{
+		m_contactEventCallbacks.push_back(std::move(callback));
 	}
 
 	// ── 拘束管理 ──────────────────────────────────────────────
@@ -254,11 +332,44 @@ public:
 	/// @brief レイキャストを実行する
 	/// @param ray レイ
 	/// @param maxDist 最大検出距離
-	/// @return ヒット結果
+	/// @param mask 対象レイヤーマスク
+	/// @return 最も近いヒット結果
 	[[nodiscard]] std::optional<RayHit3D> raycast(
-		const Ray3D& ray, float maxDist = 1e6f) const noexcept
+		const Ray3D& ray, float maxDist = 1e6f, std::uint32_t mask = 0xFFFFFFFFu) const noexcept
 	{
-		return m_world.raycast(ray, maxDist);
+		return m_world.raycast(ray, maxDist, mask);
+	}
+
+	/// @brief レイと交差する全コライダーを収集する
+	/// @param ray レイ
+	/// @param maxDist 最大検出距離
+	/// @param mask 対象レイヤーマスク
+	/// @param outHits ヒット結果の追加先（呼び出し側が確保する）
+	void raycastAll(const Ray3D& ray, float maxDist, std::uint32_t mask,
+		std::vector<RayHit3D>& outHits) const noexcept
+	{
+		m_world.raycastAll(ray, maxDist, mask, outHits);
+	}
+
+	/// @brief 球とのオーバーラップ問い合わせ
+	/// @param center 球の中心
+	/// @param radius 球の半径
+	/// @param mask 対象レイヤーマスク
+	/// @param outResults ヒット結果の追加先（呼び出し側が確保する）
+	void overlapSphere(const sgc::Vec3f& center, float radius, std::uint32_t mask,
+		std::vector<OverlapResult3D>& outResults) const noexcept
+	{
+		m_world.overlapSphere(center, radius, mask, outResults);
+	}
+
+	/// @brief AABBとのオーバーラップ問い合わせ
+	/// @param aabb 問い合わせ範囲
+	/// @param mask 対象レイヤーマスク
+	/// @param outResults ヒット結果の追加先（呼び出し側が確保する）
+	void overlapBox(const AABBCollider3D& aabb, std::uint32_t mask,
+		std::vector<OverlapResult3D>& outResults) const noexcept
+	{
+		m_world.overlapBox(aabb, mask, outResults);
 	}
 
 	/// @brief 内部のPhysicsWorld3Dへの参照を取得する（上級者向け）
@@ -356,7 +467,7 @@ private:
 		case ColliderType3D::Sphere:
 		{
 			SphereCollider sphere{transform.position, rb.colliderRadius};
-			m_world.addSphereCollider(bodyId, sphere);
+			m_world.addSphereCollider(bodyId, sphere, rb.isTrigger, rb.layer, rb.mask);
 
 			body.setSphereInertiaTensor(rb.colliderRadius);
 			break;
@@ -365,7 +476,7 @@ private:
 		{
 			const AABBCollider3D aabb = AABBCollider3D::fromCenterExtents(
 				transform.position, rb.colliderHalfExtents);
-			m_world.addAABBCollider(bodyId, aabb);
+			m_world.addAABBCollider(bodyId, aabb, rb.isTrigger, rb.layer, rb.mask);
 
 			body.setBoxInertiaTensor(rb.colliderHalfExtents);
 			break;
@@ -378,7 +489,7 @@ private:
 				transform.position + sgc::Vec3f{0, halfHeight, 0},
 				rb.colliderRadius
 			};
-			m_world.addCapsuleCollider(bodyId, capsule);
+			m_world.addCapsuleCollider(bodyId, capsule, rb.isTrigger, rb.layer, rb.mask);
 			break;
 		}
 		}
@@ -406,6 +517,15 @@ private:
 		body->setFriction(rb.friction);
 		body->setLinearDamping(rb.linearDamping);
 		body->setAngularDamping(rb.angularDamping);
+
+		// トリガー/レイヤー/マスクは実行時に変わりうるため毎フレーム同期する
+		for (auto& collider : m_world.colliders())
+		{
+			if (collider.bodyId != bodyId) continue;
+			collider.isTrigger = rb.isTrigger;
+			collider.layer = rb.layer;
+			collider.mask = rb.mask;
+		}
 	}
 
 	// ── 固定タイムステップ ────────────────────────────────────
@@ -440,27 +560,129 @@ private:
 	/// @brief ブロードフェーズを実行する
 	void runBroadPhase() noexcept
 	{
+		MITIRU_ZONE_PHYSICS("PhysicsSystem3D::runBroadPhase");
+
 		m_broadPhase.clear();
+
+		// コライダー構成（追加/削除）が変わった時だけキャッシュを作り直す。
+		// 中身が変わらない添字再利用はここで一掃されるので、古い AABB を誤って使い回すことはない
+		const std::uint64_t topology = m_world.topologyVersion();
+		if (topology != m_staticAabbCacheVersion)
+		{
+			m_staticAabbCache.assign(m_world.colliders().size(), AABBCollider3D{});
+			m_staticAabbCacheComputed.assign(m_world.colliders().size(), false);
+			m_staticAabbCacheVersion = topology;
+		}
 
 		for (std::size_t i = 0; i < m_world.colliders().size(); ++i)
 		{
 			const auto& collider = m_world.colliders()[i];
-			const AABBCollider3D aabb = PhysicsWorld3D::computeAABB(collider);
-			m_broadPhase.addProxy(collider.bodyId, i, aabb);
+			const auto* body = m_world.getBody(collider.bodyId);
+			const bool isStatic = body != nullptr && body->isStatic();
+
+			AABBCollider3D aabb;
+			if (isStatic)
+			{
+				// 静的コライダーは毎フレーム再計算せず、初回だけ計算してキャッシュを使い回す。
+				// このキャッシュは topologyVersion (add/removeCollider) でしか無効化されないため、
+				// 生成後に isStatic() な body の setPosition() を呼んで動かすと、ブロードフェーズは
+				// 古い位置の AABB を使い続ける (現状そのような呼び出し元はリポジトリ内に無い)。
+				// 動く床のような静的質量の可動体を作る場合は、この前提が崩れることに注意する。
+				if (!m_staticAabbCacheComputed[i])
+				{
+					m_staticAabbCache[i] = PhysicsWorld3D::computeAABB(collider);
+					m_staticAabbCacheComputed[i] = true;
+				}
+				aabb = m_staticAabbCache[i];
+			}
+			else
+			{
+				aabb = PhysicsWorld3D::computeAABB(collider);
+			}
+
+			m_broadPhase.addProxy(collider.bodyId, i, aabb, isStatic);
 		}
 
 		m_broadPhase.sweep();
+	}
+
+	/// @brief 単一接触点をマニフォールドとして積み、Enter/Stay/Exit 用に記録する
+	void pushManifold(const BodyCollider& colA, const BodyCollider& colB,
+		const ContactInfo3D& contact) noexcept
+	{
+		const bool isTrigger = colA.isTrigger || colB.isTrigger;
+
+		ContactManifold3D manifold;
+		manifold.bodyIdA = colA.bodyId;
+		manifold.bodyIdB = colB.bodyId;
+		manifold.point = contact.point;
+		manifold.normal = contact.normal;
+		manifold.depth = contact.depth;
+
+		if (isTrigger)
+		{
+			// トリガーは押し返さない。ContactSolver には渡さずコールバックのみ発火する
+			m_lastTriggerContacts.push_back(manifold);
+		}
+		else
+		{
+			m_lastManifolds.push_back(manifold);
+		}
+
+		recordContactPair(colA.bodyId, colB.bodyId, manifold.point, manifold.normal,
+			manifold.depth, isTrigger);
+	}
+
+	/// @brief box-box ペアの複数接触点マニフォールドを積む
+	/// @details Enter/Stay/Exit の記録は (bodyA,bodyB) キー1つに1件が前提
+	///          （ContactPairRecord3D::less）なので、点ごとには記録せずペア単位で1回だけ呼ぶ
+	void processBoxBoxPair(const BodyCollider& colA, const BodyCollider& colB) noexcept
+	{
+		const auto manifold = NarrowPhase3D::testBoxBoxManifold(colA.aabb, colB.aabb);
+		if (!manifold.hasContact) return;
+
+		const bool isTrigger = colA.isTrigger || colB.isTrigger;
+
+		for (std::size_t i = 0; i < manifold.count; ++i)
+		{
+			ContactManifold3D m;
+			m.bodyIdA = colA.bodyId;
+			m.bodyIdB = colB.bodyId;
+			m.point = manifold.points[i].point;
+			m.normal = manifold.normal;
+			m.depth = manifold.points[i].depth;
+			m.featureId = manifold.points[i].featureId;
+			m.pairPointCount = static_cast<std::uint32_t>(manifold.count);
+
+			if (isTrigger) m_lastTriggerContacts.push_back(m);
+			else m_lastManifolds.push_back(m);
+		}
+
+		recordContactPair(colA.bodyId, colB.bodyId,
+			manifold.points[0].point, manifold.normal, manifold.points[0].depth, isTrigger);
 	}
 
 	/// @brief ナローフェーズを実行し、マニフォールドを生成する
 	void runNarrowPhase() noexcept
 	{
 		m_lastManifolds.clear();
+		m_lastTriggerContacts.clear();
+		m_currentPairRecords.clear();
 
 		for (const auto& pair : m_broadPhase.candidatePairs())
 		{
 			const auto& colA = m_world.colliders()[pair.indexA];
 			const auto& colB = m_world.colliders()[pair.indexB];
+
+			// レイヤー/マスクで対象外ならナローフェーズにすら渡さない
+			if (!layersCollide(colA.layer, colA.mask, colB.layer, colB.mask)) continue;
+
+			// box-box だけは複数接触点を持てるため専用パスへ分ける
+			if (colA.type == ColliderType3D::AABB && colB.type == ColliderType3D::AABB)
+			{
+				processBoxBoxPair(colA, colB);
+				continue;
+			}
 
 			NarrowPhaseResult3D result;
 
@@ -481,11 +703,6 @@ private:
 				result = NarrowPhase3D::testSphereBox(colB.sphere, colA.aabb);
 				result.contact.normal = -result.contact.normal;
 			}
-			else if (colA.type == ColliderType3D::AABB &&
-					 colB.type == ColliderType3D::AABB)
-			{
-				result = NarrowPhase3D::testBoxBox(colA.aabb, colB.aabb);
-			}
 			else if (colA.type == ColliderType3D::Sphere &&
 					 colB.type == ColliderType3D::Capsule)
 			{
@@ -505,45 +722,129 @@ private:
 
 			if (result.contact.hasContact)
 			{
-				ContactManifold3D manifold;
-				manifold.bodyIdA = colA.bodyId;
-				manifold.bodyIdB = colB.bodyId;
-				manifold.point = result.contact.point;
-				manifold.normal = result.contact.normal;
-				manifold.depth = result.contact.depth;
-				m_lastManifolds.push_back(manifold);
+				pushManifold(colA, colB, result.contact);
 			}
 		}
 	}
 
+	/// @brief このフレームの接触ペアを記録する（Enter/Stay/Exit 判定用）
+	void recordContactPair(BodyId bodyA, BodyId bodyB,
+		const sgc::Vec3f& point, const sgc::Vec3f& normal, float depth, bool isTrigger) noexcept
+	{
+		ContactPairRecord3D record;
+		record.a = std::min(bodyA, bodyB);
+		record.b = std::max(bodyA, bodyB);
+		record.point = point;
+		record.normal = normal;
+		record.depth = depth;
+		record.isTrigger = isTrigger;
+		m_currentPairRecords.push_back(record);
+	}
+
 	// ── イベント通知 ──────────────────────────────────────────
 
-	/// @brief 衝突コールバックに通知する
+	/// @brief 衝突コールバックに通知する（通常接触 + トリガー接触の両方）
 	void notifyCollisions()
 	{
 		if (m_ecsCallbacks.empty()) return;
 
-		for (const auto& manifold : m_lastManifolds)
+		notifyCollisionList(m_lastManifolds, false);
+		notifyCollisionList(m_lastTriggerContacts, true);
+	}
+
+	/// @brief マニフォールド列を CollisionEvent3D に変換してコールバックへ渡す
+	void notifyCollisionList(const std::vector<ContactManifold3D>& manifolds, bool isTrigger)
+	{
+		for (const auto& manifold : manifolds)
 		{
 			CollisionEvent3D event;
-
-			// ボディID → エンティティID の逆引き
-			auto itA = m_bodyToEntity.find(manifold.bodyIdA);
-			auto itB = m_bodyToEntity.find(manifold.bodyIdB);
-
-			event.entityA = (itA != m_bodyToEntity.end()) ?
-				itA->second : scene::INVALID_ENTITY;
-			event.entityB = (itB != m_bodyToEntity.end()) ?
-				itB->second : scene::INVALID_ENTITY;
+			event.entityA = entityForBody(manifold.bodyIdA);
+			event.entityB = entityForBody(manifold.bodyIdB);
 			event.point = manifold.point;
 			event.normal = manifold.normal;
 			event.depth = manifold.depth;
+			event.isTrigger = isTrigger;
 
 			for (const auto& cb : m_ecsCallbacks)
 			{
 				cb(event);
 			}
 		}
+	}
+
+	/// @brief 前フレームとの接触ペア差分から Enter/Stay/Exit を通知する
+	///
+	/// @details m_currentPairRecords / m_previousPairRecords はどちらも
+	///          bodyId の組でソート済みの状態で保持し、毎フレーム swap して使い回す
+	///          （2本のバッファを行き来させるだけで allocation を避ける）。
+	void notifyContactEvents()
+	{
+		std::sort(m_currentPairRecords.begin(), m_currentPairRecords.end(), ContactPairRecord3D::less);
+		// 下のマージは多重集合なので、同じ (a, b, isTrigger) を複数の manifold が積むと Enter を件数分
+		// 出し、件数が減っただけで Exit を出す。鍵ごとに 1 件へ潰してから比較する。
+		m_currentPairRecords.erase(
+			std::unique(m_currentPairRecords.begin(), m_currentPairRecords.end(),
+				[](const ContactPairRecord3D& x, const ContactPairRecord3D& y) noexcept {
+					return !ContactPairRecord3D::less(x, y) && !ContactPairRecord3D::less(y, x);
+				}),
+			m_currentPairRecords.end());
+
+		if (!m_contactEventCallbacks.empty())
+		{
+			std::size_t i = 0, j = 0;
+			while (i < m_previousPairRecords.size() || j < m_currentPairRecords.size())
+			{
+				const bool hasPrev = i < m_previousPairRecords.size();
+				const bool hasCurr = j < m_currentPairRecords.size();
+
+				if (hasPrev && (!hasCurr ||
+					ContactPairRecord3D::less(m_previousPairRecords[i], m_currentPairRecords[j])))
+				{
+					emitContactEvent(m_previousPairRecords[i], ContactPhase3D::Exit);
+					++i;
+				}
+				else if (hasCurr && (!hasPrev ||
+					ContactPairRecord3D::less(m_currentPairRecords[j], m_previousPairRecords[i])))
+				{
+					emitContactEvent(m_currentPairRecords[j], ContactPhase3D::Enter);
+					++j;
+				}
+				else
+				{
+					emitContactEvent(m_currentPairRecords[j], ContactPhase3D::Stay);
+					++i;
+					++j;
+				}
+			}
+		}
+
+		std::swap(m_previousPairRecords, m_currentPairRecords);
+		m_currentPairRecords.clear();
+	}
+
+	/// @brief 1件の接触ペア記録をコールバックへ渡す
+	void emitContactEvent(const ContactPairRecord3D& record, ContactPhase3D phase)
+	{
+		ContactEvent3D event;
+		event.entityA = entityForBody(record.a);
+		event.entityB = entityForBody(record.b);
+		event.point = record.point;
+		event.normal = record.normal;
+		event.depth = record.depth;
+		event.isTrigger = record.isTrigger;
+		event.phase = phase;
+
+		for (const auto& cb : m_contactEventCallbacks)
+		{
+			cb(event);
+		}
+	}
+
+	/// @brief ボディID からエンティティID を逆引きする（見つからなければ INVALID_ENTITY）
+	[[nodiscard]] scene::EntityId entityForBody(BodyId bodyId) const noexcept
+	{
+		const auto it = m_bodyToEntity.find(bodyId);
+		return (it != m_bodyToEntity.end()) ? it->second : scene::INVALID_ENTITY;
 	}
 
 	// ── デバッグ描画収集 ──────────────────────────────────────
@@ -638,11 +939,30 @@ private:
 	/// @brief ボディID → エンティティID の逆引き
 	std::unordered_map<BodyId, scene::EntityId> m_bodyToEntity;
 
-	/// @brief 最後のステップで生成されたマニフォールド
+	// ── 静的コライダーAABBキャッシュ（runBroadPhase 用） ──────────
+	// 静的コライダーは形状・姿勢が変わらない前提で AABB を使い回す。
+	// m_world.topologyVersion()（コライダー追加/削除でのみ増加）が変わったときだけ全体を作り直す
+	std::vector<AABBCollider3D> m_staticAabbCache;
+	std::vector<bool> m_staticAabbCacheComputed;
+	std::uint64_t m_staticAabbCacheVersion{static_cast<std::uint64_t>(-1)};
+
+	/// @brief 最後のステップで生成されたマニフォールド（トリガー除く、ソルバー入力）
 	std::vector<ContactManifold3D> m_lastManifolds;
+
+	/// @brief 最後のステップで生成されたトリガー接触（ソルバーには渡さない）
+	std::vector<ContactManifold3D> m_lastTriggerContacts;
 
 	/// @brief ECSレベルの衝突コールバック
 	std::vector<CollisionCallback3DEcs> m_ecsCallbacks;
+
+	/// @brief Enter/Stay/Exit を区別する接触イベントコールバック
+	std::vector<ContactEventCallback3D> m_contactEventCallbacks;
+
+	/// @brief 今フレームの接触ペア（notifyContactEvents() で前フレームと比較後、swapして使い回す）
+	std::vector<ContactPairRecord3D> m_currentPairRecords;
+
+	/// @brief 前フレームの接触ペア
+	std::vector<ContactPairRecord3D> m_previousPairRecords;
 
 	/// @brief デバッグレンダラー
 	PhysicsDebugRenderer3D m_debugRenderer;

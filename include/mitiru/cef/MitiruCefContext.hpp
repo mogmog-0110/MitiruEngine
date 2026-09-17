@@ -45,6 +45,11 @@
 #include <string_view>
 #include <thread>
 
+// ここから先で生 CEF ヘッダを include する。CHECK/DCHECK 系マクロの汚染から
+// 呼び出し元 (Catch2 テスト等) を守るため CefIncludeGuardBegin/End.hpp で挟む
+// (詳細は CefIncludeGuardBegin.hpp)。
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
+
 #include "include/cef_app.h"
 #include "include/cef_base.h"
 
@@ -56,6 +61,9 @@
 #include <mitiru/cef/MitiruCefConfig.hpp>
 #include <mitiru/cef/MitiruCefInput.hpp>
 #include <mitiru/cef/MitiruCefTexture.hpp>
+
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
+
 #include <mitiru/input/InputState.hpp>
 
 // MITIRU_CEF_NO_DX12DEVICE。Dx12Device を取る便宜オーバーロードを外す。
@@ -137,7 +145,8 @@ public:
         if (!CefInitialize(mainArgs, settings, app, nullptr))
         {
             std::fprintf(stderr,
-                "[mitiru][cef] CefInitialize failed (log: %s)\n", logPath.c_str());
+                "[mitiru][cef] CefInitialize failed (log: %s を確認。MitiruCefHelper.exe が"
+                "exe と同階層に無い、または CEF ランタイム一式が未配置の可能性)\n", logPath.c_str());
             return false;
         }
 
@@ -155,7 +164,9 @@ public:
 
         if (!m_browser.create(m_client, width, height, effectiveUrl))
         {
-            std::fprintf(stderr, "[mitiru][cef] browser create failed\n");
+            std::fprintf(stderr,
+                "[mitiru][cef] browser create failed (effectiveUrl=%s。CefInitialize は成功して"
+                "いるので、URL の scheme か GPU device の状態を疑う)\n", effectiveUrl.c_str());
             closeAndShutdownCef();
             return false;
         }
@@ -163,7 +174,8 @@ public:
         if (!m_texture.initialize(device, queue, width, height))
         {
             std::fprintf(stderr,
-                "[mitiru][cef] UI texture init failed (%dx%d)\n", width, height);
+                "[mitiru][cef] UI texture init failed (%dx%d。device/queue が有効か、"
+                "0x0 等の不正なサイズを渡していないか確認する)\n", width, height);
             closeAndShutdownCef();
             return false;
         }

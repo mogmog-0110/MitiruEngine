@@ -36,6 +36,8 @@
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/Cubemap.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
+#include <mitiru/render/ISceneFx.hpp>
+#include <mitiru/render/experimental/IExperimentalRenderer3D.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/Material.hpp>
 #include <mitiru/render/GltfLoader.hpp>
@@ -161,7 +163,7 @@ inline Mat4 trs(const sgc::Vec3f& t, const sgc::Vec4f& q, const sgc::Vec3f& sc) 
 }  // namespace detail
 
 /// @brief WebGL2 の 3D レンダラ。
-class Renderer3D_WebGL final : public IRenderer3D
+class Renderer3D_WebGL final : public IRenderer3D, public ISceneFx, public IExperimentalRenderer3D
 {
 public:
 	Renderer3D_WebGL() = default;
@@ -169,6 +171,42 @@ public:
 
 	Renderer3D_WebGL(const Renderer3D_WebGL&) = delete;
 	Renderer3D_WebGL& operator=(const Renderer3D_WebGL&) = delete;
+
+	/// @brief queryInterface 相当: 自分自身を ISceneFx / IExperimentalRenderer3D として返す
+	[[nodiscard]] ISceneFx* sceneFx() noexcept override { return this; }
+	[[nodiscard]] const ISceneFx* sceneFx() const noexcept override { return this; }
+	[[nodiscard]] IExperimentalRenderer3D* experimental() noexcept override { return this; }
+	[[nodiscard]] const IExperimentalRenderer3D* experimental() const noexcept override { return this; }
+
+	// WebGL は splat/Live2D/ニューラル現像/clod 系を実装しないため、IRenderer3D の
+	// 後方互換転送関数と IExperimentalRenderer3D の既定 no-op が同名で並び曖昧になる。
+	using IExperimentalRenderer3D::loadSplatScene;
+	using IExperimentalRenderer3D::drawSplats;
+	using IExperimentalRenderer3D::splatBounds;
+	using IExperimentalRenderer3D::drawLive2D;
+	using IExperimentalRenderer3D::live2dLookAt;
+	using IExperimentalRenderer3D::live2dTap;
+	using IExperimentalRenderer3D::live2dStage;
+	using IExperimentalRenderer3D::enableNeuralFx;
+	using IExperimentalRenderer3D::enableRelight;
+	using IExperimentalRenderer3D::setRelightDepthModel;
+	using IExperimentalRenderer3D::requestDevelop;
+	using IExperimentalRenderer3D::tickDevelop;
+	using IExperimentalRenderer3D::clearDevelop;
+	using IExperimentalRenderer3D::styleReady;
+	using IExperimentalRenderer3D::styleImageData;
+	using IExperimentalRenderer3D::styleImageW;
+	using IExperimentalRenderer3D::styleImageH;
+	using IExperimentalRenderer3D::setStyleStrength;
+	using IExperimentalRenderer3D::bakeStyleToSplats;
+	using IExperimentalRenderer3D::resetSplatColors;
+	using IExperimentalRenderer3D::bakedFraction;
+	using IExperimentalRenderer3D::captureTargetFromStyle;
+	using IExperimentalRenderer3D::setShowTarget;
+	using IExperimentalRenderer3D::hasTarget;
+	using IExperimentalRenderer3D::matchScore;
+	using IExperimentalRenderer3D::drawSolid;
+	using IExperimentalRenderer3D::drawSkinnedModel;
 
 	/// @brief シェーダとオフスクリーンを作る。失敗したら isInitialized() が false のまま。
 	void initialize(int width, int height)

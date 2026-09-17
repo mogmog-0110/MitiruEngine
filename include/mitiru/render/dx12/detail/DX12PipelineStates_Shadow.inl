@@ -51,51 +51,12 @@ void createShadowPSO()
 	}
 }
 
-/// @brief シャドウパスを描画する（前フレームの shadow casters を用いる）
-/// @details beginFrame の早い段階で呼ぶ。command list が recording 中である必要あり。
-///          メインパスのターゲット復元は呼び出し側で行うこと。
-///
-///          重要: shadow が無効 / casters 不在のフレームでも必ず depth クリア
-///          (= 1.0) は実行する。clear しないと texture が 0 のままになり、PS の
-///          SampleCmpLevelZero が「ライト視錐台内の全 pixel = 影」を返して
-///          シーン中央付近の geometry が ambient (~0.20) しか効かず真っ黒
-///          になる (ENG-103)。一部 GPU では R8G8B8A8 を白として bind しても
-///          comparison sampler 経由では 1.0 を返さないため、R32_FLOAT 深度
-///          そのものを 1.0 にクリアしておく方が確実。
-void renderShadowPass()
+/// @brief 1 カスケード分の深度パスを描画する（caster 一覧を指定 view/proj で焼く）
+/// @details renderShadowPass() から 1〜2 回呼ばれる (B13)。呼び出し先の shadow map は
+///          呼び出し側が既に beginShadowPass 済み（DSV/viewport bind 完了）であること、
+///          呼び出し後に endShadowPass することの両方が呼び出し側の責務。
+void renderShadowCascade(const sgc::Mat4f& lightView, const sgc::Mat4f& lightProj)
 {
-	if (!m_shadowMap.isInitialized() || !m_shadowPSO) return;
-
-	// 1.0 クリアは常に行う (state 遷移 → ClearDSV)。
-	// caster 不在 / shadow 無効のフレームはここで return して PS には
-	// depth=1.0 の shadow map を見せる → SampleCmp が必ず 1.0 (= no shadow)。
-	m_shadowMap.beginShadowPass(m_graphicsCmdList.Get());
-
-	const bool drawCasters
-		= m_shadowEnabled && !m_shadowCommandsPrev.empty();
-	if (!drawCasters)
-	{
-		m_shadowMap.endShadowPass(m_graphicsCmdList.Get());
-		m_shadowDrawnThisFrame = true;
-		return;
-	}
-
-	// シーンフォーカスを「前フレーム casters の重心」で簡易計算
-	sgc::Vec3f focus{0, 0, 0};
-	for (const auto& c : m_shadowCommandsPrev)
-	{
-		focus.x += c.world.m[0][3];
-		focus.y += c.world.m[1][3];
-		focus.z += c.world.m[2][3];
-	}
-	const float invN = 1.0f / static_cast<float>(m_shadowCommandsPrev.size());
-	focus = {focus.x * invN, focus.y * invN, focus.z * invN};
-
-	const auto lightView = m_directionalShadow.lightViewMatrix(focus);
-	const auto lightProj = m_directionalShadow.lightProjectionMatrix();
-
-	// shadow pass は上で既に begin 済み (DSV + viewport セット + クリア完了)。
-	// ここでは PSO / root sig だけ設定して caster を発射する。
 	m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
 	m_graphicsCmdList->SetPipelineState(m_shadowPSO.Get());
 	m_graphicsCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -158,8 +119,88 @@ void renderShadowPass()
 				static_cast<UINT>(caster.mesh->vertexCount()), 1, 0, 0);
 		}
 	}
+}
 
+/// @brief シャドウパスを描画する（前フレームの shadow casters を用いる）
+/// @details beginFrame の早い段階で呼ぶ。command list が recording 中である必要あり。
+///          メインパスのターゲット復元は呼び出し側で行うこと。
+///
+///          重要: shadow が無効 / casters 不在のフレームでも必ず depth クリア
+///          (= 1.0) は実行する。clear しないと texture が 0 のままになり、PS の
+///          SampleCmpLevelZero が「ライト視錐台内の全 pixel = 影」を返して
+///          シーン中央付近の geometry が ambient (~0.20) しか効かず真っ黒
+///          になる (ENG-103)。一部 GPU では R8G8B8A8 を白として bind しても
+///          comparison sampler 経由では 1.0 を返さないため、R32_FLOAT 深度
+///          そのものを 1.0 にクリアしておく方が確実。
+///
+///          B13: setCascadedShadowEnabled(true) の間は m_shadowMap (カスケード0、
+///          cascadeNearHalfExtent の狭い ortho box) に加えて m_shadowMapFar
+///          (カスケード1、orthoHalfExtent の従来 box) も同じ caster 一覧で焼く。
+///          無効時は m_shadowMap だけを従来どおり orthoHalfExtent で焼く。
+/// @brief autoFitCascades のフレームだけ、カスケード境界と ortho の大きさをカメラから決め直す。
+///        影パスと本描画の CB の両方から呼び、同じフレームでは同じ値を見る (カメラ依存のみで冪等)
+void applyAutoCascadeFit() noexcept
+{
+	if (!m_cascadedShadowEnabled || !m_directionalShadow.config().autoFitCascades) return;
+	const sgc::Vec3f forward = (m_clodCamera.target() - m_clodCamera.position()).normalized();
+	m_directionalShadow.fitCascadesToCamera(m_clodCamera.fov(), m_clodCamera.aspectRatio(),
+	                                        m_clodCamera.nearClip(), m_clodCamera.position(), forward);
+}
+
+void renderShadowPass()
+{
+	if (!m_shadowMap.isInitialized() || !m_shadowPSO) return;
+	applyAutoCascadeFit();
+
+	const bool drawCasters
+		= m_shadowEnabled && !m_shadowCommandsPrev.empty();
+	const bool cascaded
+		= m_cascadedShadowEnabled && m_shadowMapFar.isInitialized();
+
+	// シーンフォーカスを「前フレーム casters の重心」で簡易計算 (両カスケード共通)
+	sgc::Vec3f focus{0, 0, 0};
+	if (drawCasters)
+	{
+		for (const auto& c : m_shadowCommandsPrev)
+		{
+			focus.x += c.world.m[0][3];
+			focus.y += c.world.m[1][3];
+			focus.z += c.world.m[2][3];
+		}
+		const float invN = 1.0f / static_cast<float>(m_shadowCommandsPrev.size());
+		focus = {focus.x * invN, focus.y * invN, focus.z * invN};
+	}
+	const auto lightView = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(0, focus));
+
+	// カスケード0 (単一カスケード時は唯一のマップ)。
+	// beginShadowPass が毎回 depth=1.0 クリアを行うため、caster 不在 / shadow 無効の
+	// フレームでも必ず呼ぶ (ENG-103: PS の SampleCmpLevelZero に「影なし」を見せるため)。
+	m_shadowMap.beginShadowPass(m_graphicsCmdList.Get());
+	if (drawCasters)
+	{
+		renderShadowCascade(lightView, m_directionalShadow.cascadeProjection(0, lightView));
+	}
 	m_shadowMap.endShadowPass(m_graphicsCmdList.Get());
+
+	if (cascaded)
+	{
+		// カスケード1 (遠距離)。begin/draw/end を独立して行う (カスケード0 の DSV/viewport
+		// bind を上書きしたまま draw しないよう、必ず自分の beginShadowPass の直後に描画する)。
+		m_shadowMapFar.beginShadowPass(m_graphicsCmdList.Get());
+		if (drawCasters)
+		{
+			const auto lightViewFar = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(1, focus));
+			renderShadowCascade(lightViewFar, m_directionalShadow.cascadeProjection(1, lightViewFar));
+			if (m_directionalShadow.config().cascadeCount >= 3)
+			{
+				// カスケード2 はアトラスの右列へ (renderShadowCascade は viewport を触らない)。
+				m_shadowMapFar.setColumn(m_graphicsCmdList.Get(), 1);
+				const auto lightViewFar2 = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(2, focus));
+				renderShadowCascade(lightViewFar2, m_directionalShadow.cascadeProjection(2, lightViewFar2));
+			}
+		}
+		m_shadowMapFar.endShadowPass(m_graphicsCmdList.Get());
+	}
 
 	// メイン viewport / RTV はこの後 beginFrame 側で復元される必要があるため、
 	// 呼び出し側で適切に設定し直すこと（このメソッドは shadow pass のみ責任）。
@@ -227,18 +268,19 @@ void ensureDefaultWhiteTexture()
 	return raw;
 }
 
-/// @brief 現在の draw 用に { albedo SRV, shadow SRV } を heap に書いて gpu handle を返す
-/// @details 2 スロット分の連続範囲を自 frame partition 内に書く。cursor は +2。
+/// @brief 現在の draw 用に { albedo SRV, shadow SRV(カスケード0), shadow SRV(カスケード1) }
+///        を heap に書いて gpu handle を返す
+/// @details 3 スロット分の連続範囲を自 frame partition 内に書く (B13 で 2→3)。cursor は +3。
 ///          失敗時は gpuHandle.ptr = 0。
 [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE writeMainSrvTable(const Texture* tex)
 {
 	D3D12_GPU_DESCRIPTOR_HANDLE invalid = {0};
-	if (m_albedoSrvCursor + 1 >= m_albedoSrvCapacity)
+	if (m_albedoSrvCursor + 2 >= m_albedoSrvCapacity)
 	{
 		// 超過 draw は table 未更新のまま = 直前 draw のテクスチャ流用になる
 		mitiru::debug::warnOnce("dx12.mainSrvTable.full",
 			"3D SRV heap 超過: 1 フレーム "
-			+ std::to_string(m_albedoSrvCapacity / 2)
+			+ std::to_string(m_albedoSrvCapacity / 3)
 			+ " draw まで。以降の draw は直前のアルベド/シャドウ SRV を流用する");
 		return invalid;
 	}
@@ -263,36 +305,46 @@ void ensureDefaultWhiteTexture()
 		* static_cast<SIZE_T>(m_albedoSrvIncrement);
 	t->createSRV(m_d3dDevice, cpu0);
 
-	// --- t1: shadow ---
+	// --- t1: shadow (カスケード0) ---
 	// renderShadowPass() が毎フレーム depth=1.0 にクリアする保証があるため
 	// (ENG-103)、shadow map が初期化済みなら必ず実テクスチャを bind する。
 	// 無効フレームでも texture には 1.0 が入ってるので SampleCmp は 1.0 を返す。
-	D3D12_CPU_DESCRIPTOR_HANDLE cpu1 = cpu0;
-	cpu1.ptr += static_cast<SIZE_T>(m_albedoSrvIncrement);
-	if (m_shadowMap.isInitialized() && m_shadowMap.nativeResource())
+	auto bindShadowSrv = [&](dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu) -> bool
 	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
-		srv.Format                    = DXGI_FORMAT_R32_FLOAT;
-		srv.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srv.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srv.Texture2D.MipLevels       = 1;
-		srv.Texture2D.MostDetailedMip = 0;
-		m_d3dDevice->CreateShaderResourceView(
-			m_shadowMap.nativeResource(), &srv, cpu1);
-	}
-	else
-	{
+		if (map.isInitialized() && map.nativeResource())
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
+			srv.Format                    = DXGI_FORMAT_R32_FLOAT;
+			srv.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srv.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srv.Texture2D.MipLevels       = 1;
+			srv.Texture2D.MostDetailedMip = 0;
+			m_d3dDevice->CreateShaderResourceView(map.nativeResource(), &srv, cpu);
+			return true;
+		}
 		// shadow map init 失敗時のセーフティ。白テクスチャを代用
 		ensureDefaultWhiteTexture();
-		if (!m_defaultWhiteReady) return invalid;
-		m_defaultWhiteTexture.createSRV(m_d3dDevice, cpu1);
-	}
+		if (!m_defaultWhiteReady) return false;
+		m_defaultWhiteTexture.createSRV(m_d3dDevice, cpu);
+		return true;
+	};
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu1 = cpu0;
+	cpu1.ptr += static_cast<SIZE_T>(m_albedoSrvIncrement);
+	if (!bindShadowSrv(m_shadowMap, cpu1)) return invalid;
+
+	// --- t2: shadow (カスケード1、B13) ---
+	// cascadedShadow 無効時も PS が t2 を宣言しているため常に有効な SRV を bind しておく
+	// (未初期化 SRV の read は UB)。この場合 samplePCFTex は分割距離 1e9 のため呼ばれない。
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu2 = cpu1;
+	cpu2.ptr += static_cast<SIZE_T>(m_albedoSrvIncrement);
+	if (!bindShadowSrv(m_shadowMapFar, cpu2)) return invalid;
 
 	D3D12_GPU_DESCRIPTOR_HANDLE gpu =
 		m_albedoSrvHeap->GetGPUDescriptorHandleForHeapStart();
 	gpu.ptr += static_cast<UINT64>(slot)
 		* static_cast<UINT64>(m_albedoSrvIncrement);
-	m_albedoSrvCursor += 2;
+	m_albedoSrvCursor += 3;
 	return gpu;
 }
 
@@ -303,11 +355,21 @@ void ensureDefaultWhiteTexture()
 }
 
 /// @brief CbShadow (b3)。light-space view * proj を ring buffer から確保
+/// @details B13: lightViewProj (カスケード0 = VS が読んで LightSpacePos を計算) に加え、
+///          lightViewProjFar (カスケード1) と cascadeSplitDistance を持つ。
+///          PS 側は WorldPos から lightViewProjFar を使って独自に light-space 座標を
+///          計算する (samplePCFTex 参照)。VS は既存どおり lightViewProj だけを読むため、
+///          この2フィールド追加は VS の挙動に影響しない。
 /// @return GPU virtual address (0 で失敗)
 [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadShadowCB()
 {
 	struct alignas(256) CbShadow {
 		float lightViewProj[4][4]{};
+		float lightViewProjFar[4][4]{};
+		float cascadeSplitDistance = 0.0f;
+		float cascadeSplitDistance2 = 1.0e9f;   // 3 カスケード時のみ有限 (それ以外は PS が列 1 を読まない)
+		float _padCascade[2]{};
+		float lightViewProjFar2[4][4]{};
 	};
 	CbShadow cb;
 
@@ -325,16 +387,41 @@ void ensureDefaultWhiteTexture()
 		const float invN = 1.0f / static_cast<float>(m_shadowCommandsPrev.size());
 		focus = {focus.x * invN, focus.y * invN, focus.z * invN};
 
-		const auto V = toGlm(m_directionalShadow.lightViewMatrix(focus));
-		const auto P = toGlm(m_directionalShadow.lightProjectionMatrix());
-		const glm::mat4 VP = P * V;
-		toColumnMajor(cb.lightViewProj, VP);
+		applyAutoCascadeFit();
+		const auto V0s = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(0, focus));
+		const auto V = toGlm(V0s);
+		const auto P0 = toGlm(m_directionalShadow.cascadeProjection(0, V0s));
+		toColumnMajor(cb.lightViewProj, P0 * V);
+
+		if (m_cascadedShadowEnabled && m_shadowMapFar.isInitialized())
+		{
+			const auto V1s = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(1, focus));
+			const auto V1 = toGlm(V1s);
+			const auto P1 = toGlm(m_directionalShadow.cascadeProjection(1, V1s));
+			toColumnMajor(cb.lightViewProjFar, P1 * V1);
+			cb.cascadeSplitDistance = m_directionalShadow.config().cascadeSplitDistance;
+			if (m_directionalShadow.config().cascadeCount >= 3)
+			{
+				const auto V2s = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(2, focus));
+				const auto P2 = toGlm(m_directionalShadow.cascadeProjection(2, V2s));
+				toColumnMajor(cb.lightViewProjFar2, P2 * toGlm(V2s));
+				cb.cascadeSplitDistance2 = m_directionalShadow.config().cascadeSplitDistance2;
+			}
+		}
+		else
+		{
+			// カスケード無効: 分割距離を非常に大きくして PS が常にカスケード0を選ぶようにする
+			toColumnMajor(cb.lightViewProjFar, P0 * V);
+			cb.cascadeSplitDistance = 1.0e9f;
+		}
 	}
 	else
 	{
 		// shadow 無効: 恒等行列。HLSL 側で shadow factor=1.0 になる
 		glm::mat4 I(1.0f);
 		toColumnMajor(cb.lightViewProj, I);
+		toColumnMajor(cb.lightViewProjFar, I);
+		cb.cascadeSplitDistance = 1.0e9f;
 	}
 
 	auto a = m_uploadRing.upload(&cb, sizeof(CbShadow), 256);

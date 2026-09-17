@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -181,6 +182,15 @@ public:
         m_overlayVisible = visible;
     }
 
+    /// @brief FrameArena / SceneArena の使用量をオーバーレイ表示用に設定する
+    /// @param usedBytes 使用中バイト数
+    /// @param capacityBytes 総容量バイト数
+    void setArenaUsage(std::size_t usedBytes, std::size_t capacityBytes) noexcept
+    {
+        m_arenaUsedBytes = usedBytes;
+        m_arenaCapacityBytes = capacityBytes;
+    }
+
     /// @brief フレームバジェットオーバーレイを描画する
     /// @param screen 描画先スクリーン
     /// @param x 左上X座標
@@ -195,7 +205,15 @@ public:
         }
         drawBackground(screen, x, y, w, h);
         drawTitle(screen, x, y, w);
-        drawCategoryBars(screen, x, y + 24.0f, w, h - 24.0f);
+        float bodyY = y + 24.0f;
+        float bodyH = h - 24.0f;
+        if (m_arenaCapacityBytes > 0)
+        {
+            drawArenaUsage(screen, x, bodyY, w);
+            bodyY += 18.0f;
+            bodyH -= 18.0f;
+        }
+        drawCategoryBars(screen, x, bodyY, w, bodyH);
     }
 
     // ── カテゴリ名 ───────────────────────────────────────────
@@ -268,6 +286,16 @@ private:
         screen.drawTextInRect(titleRect, buf, titleColor, 12.0f);
     }
 
+    /// @brief アリーナ使用量を 1 行で描画する
+    void drawArenaUsage(Screen& screen, float x, float y, float w) const
+    {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "Arena: %zu / %zu bytes",
+                      m_arenaUsedBytes, m_arenaCapacityBytes);
+        const sgc::Rectf rect{x + 4.0f, y, w - 8.0f, 16.0f};
+        screen.drawTextInRect(rect, buf, sgc::Colorf{0.7f, 0.9f, 1.0f, 1.0f}, 11.0f);
+    }
+
     /// @brief カテゴリバーを描画する
     void drawCategoryBars(Screen& screen, float x, float y,
                           float w, float h) const
@@ -335,6 +363,8 @@ private:
     float m_totalFrameMs = 0.0f;                    ///< フレーム全体（ミリ秒）
     std::array<float, kCategoryCount> m_categoryMs{}; ///< カテゴリ別時間（ミリ秒）
     bool m_overlayVisible = false;                  ///< オーバーレイ表示フラグ
+    std::size_t m_arenaUsedBytes = 0;               ///< FrameArena/SceneArena 使用量（バイト）
+    std::size_t m_arenaCapacityBytes = 0;           ///< FrameArena/SceneArena 総容量（バイト）
 };
 
 /// @brief RAIIカテゴリ計測スコープ

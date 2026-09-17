@@ -22,6 +22,8 @@
  *   mitiru.i18n.fontFamily(locale?)         string | null
  *   mitiru.i18n.setBaseDir(path)            default 'locales/'
  *   mitiru.i18n.setFallback(locale)         例 'en' — key 欠落時に使う
+ *   mitiru.i18n.setRTLLocales(locales)      RTL 扱いする locale 配列を差し替える (既定 ar/he/fa/ur)
+ *   mitiru.i18n.isRTL(locale?)              指定 locale (省略時は active) が RTL かどうか
  *
  * ── Locale JSON 形式 ──────────────────────────────────────────────────────
  *   flat ("menu.title": "…") か nested ({"menu": {"title": "…"}}) のどちらか。
@@ -46,6 +48,10 @@
  *   --mitiru-locale-font を書く。mitiru_tokens.css / app CSS は次で参照する:
  *       body { font-family: var(--mitiru-locale-font, inherit); }
  *
+ *
+ * ── RTL (右横書き) ────────────────────────────────────────────────────────
+ *   setLocale() 時に document.documentElement.dir へ 'rtl' / 'ltr' を自動で書く
+ *   (document が無い環境では no-op)。判定基準は setRTLLocales() で登録した集合。
  */
 (function(global)
 {
@@ -62,6 +68,7 @@
 	const _fontMap   = Object.create(null);  // locale -> css font-family
 	const _listeners = [];                   // onLocaleChange callback
 	const _bindings  = [];                   // [{root, records: [{el, key, attr, params}]}]
+	let   _rtlLocales = ['ar', 'he', 'fa', 'ur'];  // 既定の RTL 言語 (基語のみ、地域は無視)
 
 	// ── helpers ─────────────────────────────────────────────────
 	function _lookup(table, key)
@@ -101,6 +108,25 @@
 		if (!el || !el.style) { return; }
 		if (family) { el.style.setProperty('--mitiru-locale-font', family); }
 		else        { el.style.removeProperty('--mitiru-locale-font'); }
+	}
+
+	function _baseLang(locale)
+	{
+		const idx = locale.indexOf('-');
+		return (idx >= 0 ? locale.slice(0, idx) : locale).toLowerCase();
+	}
+
+	function _isRtl(locale)
+	{
+		return _rtlLocales.indexOf(_baseLang(locale)) >= 0;
+	}
+
+	function _applyDir()
+	{
+		if (typeof document === 'undefined') { return; }
+		const el = document.documentElement;
+		if (!el) { return; }
+		el.dir = _isRtl(_active) ? 'rtl' : 'ltr';
 	}
 
 	function _notifyLocaleChange(prev, next)
@@ -162,7 +188,7 @@
 		if (typeof locale !== 'string' || !locale) { throw new Error('mitiru.i18n.addLocale: locale required'); }
 		if (data === null || typeof data !== 'object') { throw new Error('mitiru.i18n.addLocale: data must be an object'); }
 		_tables[locale] = data;
-		if (!_active) { _active = locale; _applyFont(); }
+		if (!_active) { _active = locale; _applyFont(); _applyDir(); }
 	};
 
 	i18n.load = function(locale, source)
@@ -204,6 +230,7 @@
 		const prev = _active;
 		_active = locale;
 		_applyFont();
+		_applyDir();
 		_applyAll();
 		_notifyLocaleChange(prev, locale);
 	};
@@ -300,6 +327,19 @@
 	{
 		const loc = locale || _active;
 		return _fontMap[loc] || null;
+	};
+
+	i18n.setRTLLocales = function(locales)
+	{
+		if (!Array.isArray(locales)) { throw new Error('mitiru.i18n.setRTLLocales: locales must be an array'); }
+		_rtlLocales = locales.map(function(l) { return String(l).toLowerCase(); });
+		_applyDir();
+	};
+
+	i18n.isRTL = function(locale)
+	{
+		const loc = locale || _active;
+		return loc ? _isRtl(loc) : false;
 	};
 
 	// ── export ──────────────────────────────────────────────────

@@ -3,13 +3,17 @@
 /// @file EngineCommands_Control.hpp
 /// @brief 制御・ツール系コマンド登録 (ui / vn / system / editor / asset / input)。EngineCommands.hpp から分割
 
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 #include <mitiru/core/CommandSystem.hpp>
 #include <mitiru/core/detail/EngineCommands_Args.hpp>
+#include <mitiru/module/Spawner.hpp>  // spawnSourceFileHash (asset.reloaded の hash は SpawnOrigin::sourceFile と同じ値)
 
 namespace mitiru
 {
@@ -562,21 +566,35 @@ inline void registerEditorCommands(CommandSystem& cmd, [[maybe_unused]] Engine& 
 // asset.*。アセット操作
 // ════════════════════════════════════════════════════════
 
-inline void registerAssetCommands(CommandSystem& cmd, [[maybe_unused]] Engine& engine)
+/// @brief `asset.reloaded` を game へ届ける。game は on_update で actionEvents を走査し、`hash` を
+/// `SpawnOrigin::sourceFile` と突き合わせて「そのファイル由来のスロットだけ」作り直せる。
+/// path "*" は reload_all (全部作り直せ)。
+inline CommandResult notifyAssetReloaded(Engine& engine, const std::string& path)
+{
+	const std::uint32_t hash = (path == "*") ? 0u
+		: ::mitiru::module::spawnSourceFileHash(std::filesystem::path(path).filename().string());
+	const std::string payload = nlohmann::json{{"path", path}, {"hash", hash}}.dump();
+	if (!engine.pushModuleActionEvent("asset.reloaded", payload))
+	{
+		return CommandResult::ok("asset.reloaded を積めなかった (game 未ロード、または queue が満杯): " + path);
+	}
+	return CommandResult::ok("asset.reloaded を次フレームの actionEvents に積んだ: " + path);
+}
+
+inline void registerAssetCommands(CommandSystem& cmd, Engine& engine)
 {
 	// asset.reload <path>
 	{
 		CommandDef def;
 		def.name = "asset.reload";
 		def.category = "asset";
-		def.description = "Hot-reload a specific asset";
+		def.description = "game に asset.reloaded (path, hash) を ActionEvent で通知する";
 		def.usage = "asset.reload <path>";
 		def.argNames = {"path"};
 		def.argTypes = {"string"};
 		def.argRequired = {true};
-		def.execute = [](const std::vector<CommandArg>& args) -> CommandResult {
-			const auto path = detail::argString(args, 0);
-			return CommandResult::ok("Reloaded asset: " + path);
+		def.execute = [&engine](const std::vector<CommandArg>& args) -> CommandResult {
+			return notifyAssetReloaded(engine, detail::argString(args, 0));
 		};
 		cmd.registerCommand(def);
 	}
@@ -586,10 +604,10 @@ inline void registerAssetCommands(CommandSystem& cmd, [[maybe_unused]] Engine& e
 		CommandDef def;
 		def.name = "asset.reload_all";
 		def.category = "asset";
-		def.description = "Reload all changed assets";
+		def.description = "game に asset.reloaded (path=\"*\") を通知する";
 		def.usage = "asset.reload_all";
-		def.execute = [](const std::vector<CommandArg>&) -> CommandResult {
-			return CommandResult::ok("All changed assets reloaded");
+		def.execute = [&engine](const std::vector<CommandArg>&) -> CommandResult {
+			return notifyAssetReloaded(engine, "*");
 		};
 		cmd.registerCommand(def);
 	}

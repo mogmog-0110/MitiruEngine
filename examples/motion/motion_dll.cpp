@@ -6,6 +6,7 @@
 #include <cmath>       // std::fmod
 
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include <mitiru/vn/EasingFunctions.hpp>   // イージング関数 (linear / easeInCubic / easeOutCubic ...)
 
 #include "../common/chapter_hud.hpp"   // 章ラベル + 操作帯 + 共通の配色
@@ -50,7 +51,8 @@ struct Motion
 		return std::min(phase / kDur, 1.0f);
 	}
 
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
 		s.fillScreen(theme::kPaper);
 		chapterTitle(s, "Motion");
@@ -69,7 +71,7 @@ struct Motion
 			const float e      = kCols[c].ease(p);   // この列のイージングを通した進み具合
 
 			s.drawTextInRect(Rect{left, 56.0f, kColW, 26.0f}, kCols[c].name, theme::kInk, 18.0f,
-			                 Screen::TextAlignH::Center, Screen::TextAlignV::Middle);
+			                 Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 
 			drawPosition(s, left,   kRowY[0], e, c);
 			drawScale(s,    center, kRowY[1], e);
@@ -79,10 +81,13 @@ struct Motion
 
 		chapterControls(s, "SPACE: はじめから");
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 
 	// 位置: 横のレールの上を丸が進む。等間隔の時間で刻んだ目盛りも重ねる。
 	// 目盛りが詰まっている所ほど動きが遅く、まばらな所ほど速い (速さの変化が形で見える)。
-	void drawPosition(Screen& s, float left, float y, float e, int c) const
+	template <class Surface>
+	void drawPosition(Surface& s, float left, float y, float e, int c) const
 	{
 		const float x0 = left + 18.0f, len = kColW - 36.0f;
 		s.drawLine(Vec2{x0, y}, Vec2{x0 + len, y}, theme::kFrame, 2.0f);
@@ -95,7 +100,8 @@ struct Motion
 	}
 
 	// 大きさ: 枠の中で、四角形が小さく → 大きく育つ。
-	void drawScale(Screen& s, float cx, float cy, float e) const
+	template <class Surface>
+	void drawScale(Surface& s, float cx, float cy, float e) const
 	{
 		s.drawRectFrame(Rect{cx - 46.0f, cy - 46.0f, 92.0f, 92.0f}, theme::kFrame, 1.5f);
 		const float side = 10.0f + e * 72.0f;
@@ -103,7 +109,8 @@ struct Motion
 	}
 
 	// 回転: 四角形が 0 → 135 度まわる (斜めに傾いて見えるので回転が分かりやすい)。
-	void drawRotation(Screen& s, float cx, float cy, float e) const
+	template <class Surface>
+	void drawRotation(Surface& s, float cx, float cy, float e) const
 	{
 		s.pushRotation(deg(e * 135.0f), cx, cy);
 		s.drawRect(cx - 31.0f, cy - 31.0f, 62.0f, 62.0f, theme::kInk);
@@ -111,12 +118,16 @@ struct Motion
 	}
 
 	// 透明度: 四角形が透明 → 不透明へ浮かび上がる (薄い枠で位置が分かるようにしておく)。
-	void drawOpacity(Screen& s, float cx, float cy, float e) const
+	template <class Surface>
+	void drawOpacity(Surface& s, float cx, float cy, float e) const
 	{
 		const Rect box{cx - 31.0f, cy - 31.0f, 62.0f, 62.0f};
 		s.drawRectFrame(box, theme::kFrame, 1.0f);
 		s.drawRect(box, theme::kInk.withAlpha(e));
 	}
 };
+
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Motion);
 
 MITIRU_GAME(Motion);

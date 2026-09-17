@@ -19,18 +19,28 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include <mitiru/asset/detail/AssetPack_Chunk.hpp>
+#include <mitiru/asset/detail/AssetPack_Mmap.hpp>
 
 namespace mitiru::vfs
 {
 
 inline constexpr char     kMagic[6]      = {'M', 'T', 'P', 'A', 'K', '\0'};
 inline constexpr uint16_t kVersion       = 1;
+inline constexpr uint16_t kVersion2      = 2;  // chunk 分割 + 依存 pack 列挙に対応
 inline constexpr uint16_t kFlagScrambled = 0x1;
+inline constexpr uint16_t kFlagChunked   = 0x2;  // v2: blob が chunkSize 境界の chunk に分割されている
+inline constexpr uint16_t kFlagZstdChunks = 0x4;  // v2: 各 chunk が zstd 圧縮済み (util::Compression 経由)
+inline constexpr uint32_t kChunkSize     = 64 * 1024;  // v2 の chunk サイズ (mmap ページ相当の粒度)
 // exe へ連結したときのフッタの印。パックは exe 本体の後ろに置くしかない (前に置くと
 // 実行形式が壊れる) ので、位置はファイル末尾のフッタから逆引きする。
 inline constexpr char     kAppendMagic[8] = {'M', 'T', 'P', 'A', 'K', 'E', 'X', 'E'};
@@ -59,6 +69,8 @@ struct PackEntry
 	std::string path;
 	uint64_t    offset = 0;
 	uint64_t    size   = 0;
+	uint32_t    firstChunk = 0xFFFFFFFFu;  // v2 のみ有効 (v1 は未使用の目印)
+	uint32_t    chunkCount = 0;            // v2 のみ有効
 };
 
 /// @brief .mtpak の読み取り (open/read) と書き出し (write) を提供する。
@@ -91,6 +103,28 @@ public:
 	/// 論理パスの中身を取り出す (scramble 済みなら復元)。無ければ nullopt。
 	[[nodiscard]] std::optional<std::vector<uint8_t>> read(std::string_view path) const;
 
+	/// read() と違い、可能ならコピー無しで中身を覗く。v1 かつ非 scramble なら mmap した
+	/// pack ファイルへ直接 span を張る。scramble 済み / v2 で複数 chunk に跨ぐエントリは
+	/// このインスタンスの寿命の間だけ 1 回だけ復号してキャッシュし、以後はそのバッファへ
+	/// span を張る (呼び出しの都度コピーはしない、という意味でのコピー削減)。
+	[[nodiscard]] std::optional<std::span<const uint8_t>> view(std::string_view path) const;
+
+	[[nodiscard]] uint16_t version() const noexcept { return m_version; }
+
+	/// v2 pack が列挙する依存 pack 名 (拡張子無し)。PackSet がこれを見て解決する。
+	[[nodiscard]] const std::vector<std::string>& dependsOn() const noexcept { return m_dependsOn; }
+
+	[[nodiscard]] std::size_t chunkCacheHits() const noexcept { return m_chunkCache ? m_chunkCache->hits() : 0; }
+	[[nodiscard]] std::size_t chunkCacheMisses() const noexcept { return m_chunkCache ? m_chunkCache->misses() : 0; }
+
+	/// v2 (chunk 分割) 形式で書き出す。dependsOn は他 pack の名前 (拡張子無し、
+	/// 同じディレクトリの <名前>.mtpak を指す) の列挙。scramble/zstdChunks は chunk 単位で効く。
+	[[nodiscard]] static bool writeV2(const std::filesystem::path&                                    outFile,
+	                                  const std::vector<std::pair<std::string, std::vector<uint8_t>>>& entries,
+	                                  const std::vector<std::string>&                                  dependsOn = {},
+	                                  bool                                                              scramble = true,
+	                                  bool                                                              zstdChunks = false);
+
 	/// 目次にあるエントリの大きさ。無ければ 0。中身を読まずに指紋を作る用途のため。
 	[[nodiscard]] uint64_t sizeOf(std::string_view path) const
 	{
@@ -115,6 +149,28 @@ private:
 	uint64_t               m_baseOffset = 0;   ///< exe 連結時の pack 先頭位置
 	std::vector<PackEntry> m_entries;
 	bool                   m_scrambled = false;
+	uint16_t                m_version   = kVersion;  ///< v1 は既定のまま、v2 は open() で上書き
+
+	// v2 (chunk 分割) 形式のみで使う。v1 は既定値のまま触らない。
+	uint32_t                 m_chunkSize = 0;
+	bool                      m_zstdChunks = false;
+	std::vector<std::string> m_dependsOn;
+	std::vector<uint32_t>    m_chunkStoredSize;        ///< 各 chunk のディスク上サイズ (圧縮・難読化後)
+	std::vector<uint32_t>    m_chunkUncompressedSize;  ///< 各 chunk の展開後サイズ (zstd 判定用)
+	std::vector<uint64_t>    m_chunkOffset;            ///< 各 chunk の pack 先頭からの相対 offset
+
+	// 読み取り専用キャッシュなのでコピー間で共有しても安全。shared_ptr で持つことで
+	// AssetPack 自体は従来どおり値コピー可能なままにする。
+	mutable std::shared_ptr<detail::ChunkCache>                                    m_chunkCache;
+	mutable std::shared_ptr<detail::FileMap>                                       m_fileMap;
+	mutable std::shared_ptr<std::unordered_map<std::string, std::vector<uint8_t>>> m_viewFallback;
+
+	[[nodiscard]] const PackEntry* findEntry(const std::string& normalizedPath) const;
+	[[nodiscard]] std::optional<std::vector<uint8_t>> readChunked(const PackEntry& e) const;
+	[[nodiscard]] const std::vector<uint8_t>* chunkData(uint32_t idx) const;
+	[[nodiscard]] bool ensureMmap() const;
+	[[nodiscard]] std::optional<std::span<const uint8_t>> viewViaFallback(const std::string& np, const PackEntry& e) const;
+	[[nodiscard]] static std::optional<AssetPack> openV2(std::ifstream& f, const std::filesystem::path& file, uint64_t base);
 };
 
 // ── 実装 ──────────────────────────────────────────────────────
@@ -194,14 +250,20 @@ inline std::optional<AssetPack> AssetPack::open(const std::filesystem::path& fil
 		if (f.gcount() != 6 || std::memcmp(magic, kMagic, 6) != 0) { return std::nullopt; }
 	}
 
-	(void)detail::ru16(f);  // version
+	const uint16_t version = detail::ru16(f);
+	if (version == kVersion2) { return openV2(f, file, base); }
+	if (version != kVersion) { return std::nullopt; }
+
 	const uint16_t flags = detail::ru16(f);
 	const uint32_t count = detail::ru32(f);
 
 	AssetPack pack;
-	pack.m_file       = file;
-	pack.m_baseOffset = base;
-	pack.m_scrambled  = (flags & kFlagScrambled) != 0;
+	pack.m_file         = file;
+	pack.m_baseOffset   = base;
+	pack.m_version      = kVersion;
+	pack.m_scrambled    = (flags & kFlagScrambled) != 0;
+	pack.m_fileMap      = std::make_shared<detail::FileMap>();
+	pack.m_viewFallback = std::make_shared<std::unordered_map<std::string, std::vector<uint8_t>>>();
 	for (uint32_t i = 0; i < count; ++i)
 	{
 		const uint16_t len = detail::ru16(f);
@@ -210,7 +272,7 @@ inline std::optional<AssetPack> AssetPack::open(const std::filesystem::path& fil
 		const uint64_t off  = detail::ru64(f);
 		const uint64_t size = detail::ru64(f);
 		if (!f) { return std::nullopt; }
-		pack.m_entries.push_back({std::move(p), off, size});
+		pack.m_entries.push_back({std::move(p), off, size, 0xFFFFFFFFu, 0});
 	}
 	return pack;
 }
@@ -218,12 +280,9 @@ inline std::optional<AssetPack> AssetPack::open(const std::filesystem::path& fil
 inline std::optional<std::vector<uint8_t>> AssetPack::read(std::string_view path) const
 {
 	const std::string np = normalizePath(path);
-	const PackEntry*   e  = nullptr;
-	for (const auto& en : m_entries)
-	{
-		if (en.path == np) { e = &en; break; }
-	}
+	const PackEntry*  e  = findEntry(np);
 	if (e == nullptr) { return std::nullopt; }
+	if (m_version >= kVersion2) { return readChunked(*e); }
 
 	std::ifstream f(m_file, std::ios::binary);
 	if (!f) { return std::nullopt; }
@@ -265,6 +324,15 @@ inline bool AssetPack::appendTo(const std::filesystem::path& exeFile,
 	out.write(foot, 16);
 	return static_cast<bool>(out);
 }
+
+}  // namespace mitiru::vfs
+
+// v2 (chunk 分割) の書き出し / 読み込み / view / chunk キャッシュはここで定義する
+// (AssetPack のクラス定義が確定した直後、という位置づけの分割ファイル)。
+#include <mitiru/asset/detail/AssetPack_V2.hpp>
+
+namespace mitiru::vfs
+{
 
 // ── グローバル mount (段階2) ──────────────────────────
 //

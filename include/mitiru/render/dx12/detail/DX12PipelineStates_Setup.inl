@@ -94,7 +94,9 @@ void compileShaders()
 ///   - b1: CbLighting（VS/PS 共通）
 ///   - b2: CbLightArray（マルチライト PS。それ以外は参照しないだけで OK）
 ///   - b3: CbShadow（light view*proj, PS）
-///   - SRV table { t0=albedo, t1=shadow }（PS）
+///   - SRV table { t0=albedo, t1=shadow(近距離/カスケード0), t2=shadow(遠距離/カスケード1) }（PS）
+///     t2 は B13 のカスケードシャドウ用。単一カスケード時も常に bind される
+///     (writeMainSrvTable が m_shadowMapFar または白テクスチャで埋める) ため未使用でも安全
 ///   静的サンプラ s0: linear + repeat / s1: comparison(less)（PS）
 void createRootSignature()
 {
@@ -124,8 +126,8 @@ void createRootSignature()
 	rootParams[3].Descriptor.RegisterSpace  = 0;
 	rootParams[3].ShaderVisibility          = D3D12_SHADER_VISIBILITY_ALL;
 
-	/// SRV table: { t0=albedo, t1=shadow }
-	static D3D12_DESCRIPTOR_RANGE srvRanges[2] = {};
+	/// SRV table: { t0=albedo, t1=shadow(カスケード0), t2=shadow(カスケード1, B13) }
+	static D3D12_DESCRIPTOR_RANGE srvRanges[3] = {};
 	srvRanges[0].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	srvRanges[0].NumDescriptors                    = 1;
 	srvRanges[0].BaseShaderRegister                = 0; // t0
@@ -136,8 +138,13 @@ void createRootSignature()
 	srvRanges[1].BaseShaderRegister                = 1; // t1
 	srvRanges[1].RegisterSpace                     = 0;
 	srvRanges[1].OffsetInDescriptorsFromTableStart = 1;
+	srvRanges[2].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	srvRanges[2].NumDescriptors                    = 1;
+	srvRanges[2].BaseShaderRegister                = 2; // t2
+	srvRanges[2].RegisterSpace                     = 0;
+	srvRanges[2].OffsetInDescriptorsFromTableStart = 2;
 	rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	rootParams[4].DescriptorTable.NumDescriptorRanges = 2;
+	rootParams[4].DescriptorTable.NumDescriptorRanges = 3;
 	rootParams[4].DescriptorTable.pDescriptorRanges   = srvRanges;
 	rootParams[4].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;
 

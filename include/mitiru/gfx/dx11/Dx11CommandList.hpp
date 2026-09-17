@@ -271,6 +271,22 @@ public:
 		m_context->RSSetScissorRects(1, &rect);
 	}
 
+	/// @brief コンピュートシェーダーを起動する
+	/// @details CS・UAV・SRV・定数バッファのバインドは draw/drawIndexed と同じ規約で
+	///          呼び出し側が事前に `getD3DContext()` 経由で設定しておく
+	///          （`GpuParticleDx11` の直接 Dispatch 呼び出しと同じ流儀）。
+	///          ここでは D3D11 が実際にコンピュートへ対応しているため、
+	///          基底クラスの既定実装（未対応 warnOnce）を上書きして実行する。
+	void dispatch(std::uint32_t groupCountX, std::uint32_t groupCountY,
+	              std::uint32_t groupCountZ) override
+	{
+		if (!m_recording)
+		{
+			return;
+		}
+		m_context->Dispatch(groupCountX, groupCountY, groupCountZ);
+	}
+
 	/// @brief 内部のD3D11コンテキストを取得する
 	[[nodiscard]] ID3D11DeviceContext* getD3DContext() const noexcept
 	{

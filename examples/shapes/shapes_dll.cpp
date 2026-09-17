@@ -7,6 +7,7 @@
 #include <vector>      // drawPolygon に渡す頂点の配列
 
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 
 #include "../common/chapter_hud.hpp"   // 章の名前ラベルと共通パレット (theme::k... の色)
 
@@ -21,7 +22,9 @@ constexpr float kCellH  = 280.0f;   // マスの高さ
 struct Shapes02
 {
 	// 見本 1 マスぶんの枠と見出しを描く。見出しは大きめ (22px) + 濃い色ではっきり読ませる。
-	void cell(Screen& s, float x, float y, const char* name) const
+	// Screen/Canvas 両対応 (ADR 0025) にするため Surface でテンプレート化する。
+	template <class Surface>
+	void cell(Surface& s, float x, float y, const char* name) const
 	{
 		s.drawRectFrame(Rect{x, y, kCellW, kCellH}, theme::kFrame, 1.0f);
 		s.text(name, x + 14.0f, y + 10.0f, theme::kInk, 22.0f);
@@ -42,7 +45,8 @@ struct Shapes02
 	}
 
 	// 頂点をぐるりと線で結んで、多角形の枠 (ふち) を描く。
-	void outline(Screen& s, const std::vector<Vec2>& pts, const Color& c, float w) const
+	template <class Surface>
+	void outline(Surface& s, const std::vector<Vec2>& pts, const Color& c, float w) const
 	{
 		for (std::size_t i = 0; i < pts.size(); ++i)
 		{
@@ -50,7 +54,8 @@ struct Shapes02
 		}
 	}
 
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
 		s.fillScreen(theme::kPaper);
 		chapterTitle(s, "Shapes");
@@ -107,7 +112,13 @@ struct Shapes02
 		s.drawPolygon(hexa, theme::kGreen);
 		outline(s, hexa, theme::kInk, 2.0f);
 	}
+
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 };
 
 // 実行:  mitiru_host.exe shapes/shapes.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Shapes02);
+
 MITIRU_GAME(Shapes02);

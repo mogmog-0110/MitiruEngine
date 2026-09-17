@@ -7,9 +7,12 @@
 
 #include <memory>
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_client.h"
 #include "include/cef_request_handler.h"
+#include "include/cef_task.h"
 #include "include/wrapper/cef_message_router.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 #include <mitiru/cef/MitiruCefBridge.hpp>
 #include <mitiru/cef/MitiruCefContextMenuHandler.hpp>
@@ -50,7 +53,16 @@ public:
 
     ~MitiruCefClient()
     {
-        if (m_router && m_bridge)
+        // CefRefPtr の最終 Release() は、OSR ブラウザの非同期クローズ完了に
+        // 連動して CEF 内部の別スレッド (UI 以外) で起きることがある
+        // (browser 破棄が browser-process 内の別コンポーネントの解放と
+        // 連鎖するため、そのタイミングはこちらのスレッドで制御できない)。
+        // CefMessageRouterBrowserSide::RemoveHandler は無条件に
+        // CEF_REQUIRE_UI_THREAD() でチェックしているため、UI スレッド外で
+        // 呼ぶと CHECK failed: CefCurrentlyOn(TID_UI) で即 FATAL になる。
+        // UI スレッドでの呼び出しだけに限定する (UI スレッド外なら
+        // プロセス終盤で router 自体も破棄されるため取り除き漏れは無害)。
+        if (m_router && m_bridge && CefCurrentlyOn(TID_UI))
         {
             m_router->RemoveHandler(m_bridge.get());
         }

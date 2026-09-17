@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <mitiru/resource/AssetManager.hpp>
+
 namespace mitiru::resource
 {
 
@@ -51,6 +53,18 @@ public:
 		}
 
 		m_entries[path] = std::move(entry);
+	}
+
+	/// @brief AssetManager と連携して id を監視する
+	/// @param manager 連携先
+	/// @param id 変更検知時に reload する AssetManager 側の id
+	/// @param path 監視対象ファイルパス
+	/// @details 変更検知時は manager.reload(id) を呼ぶだけなので、
+	///          実際の中身差し替え・依存元への伝播・onChanged 通知は
+	///          AssetManager 側の経路（load<T>() が積んだ再ロード関数）に一本化される。
+	void watchAsset(AssetManager& manager, const std::string& id, const std::string& path)
+	{
+		watch(path, [&manager, id](const std::string&) { manager.reload(id); });
 	}
 
 	/// @brief ファイルの監視を解除する

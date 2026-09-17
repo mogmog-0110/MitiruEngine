@@ -7,8 +7,10 @@
 
 #include <string>
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_browser.h"
 #include "include/cef_client.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 #include <mitiru/cef/MitiruCefClient.hpp>
 #include <mitiru/cef/MitiruCefConfig.hpp>
@@ -62,8 +64,11 @@ public:
         // 無効なポインタを返しクラッシュする。
         m_host->WasHidden(false);
 
-        // 初回 OnPaint をトリガーして描画パイプラインを確立する
+        // 初回 OnPaint をトリガーして描画パイプラインを確立する。WasResized() 単体は
+        // タイミングによって debounce され OnPaint が出ないことがあるため、
+        // resize() と同じく Invalidate も併せて強制する。
         m_host->WasResized();
+        m_host->Invalidate(PET_VIEW);
 
         client->onBrowserCreated(m_browser);
         client->renderHandler()->setSize(width, height);

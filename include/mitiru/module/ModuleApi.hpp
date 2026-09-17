@@ -48,6 +48,7 @@
 // Forward declare engine types so the header is light. Concrete definitions
 // come from the engine when the DLL links against `Mitiru::mitiru`.
 namespace mitiru { class Screen; }
+namespace mitiru::module { struct DrawContext; struct DrawCommandBuffer; }
 
 namespace mitiru::module
 {
@@ -85,12 +86,37 @@ namespace mitiru::module
 ///          setOutlineParams
 ///   - v28: Screen::fog3D + Screen 末尾メンバ 4 個 + IRenderer3D 末尾 virtual setFog
 ///   - v29: Screen::shadowCaster3D + IRenderer3D 末尾 virtual setShadowCaster
+///   - v30: InputSnapshot に dtByLayer[8]（layer 別時間倍率、§1-2）、FrameIntents に
+///          debugDrawCount/debugDraws[256]（ゲーム内 3D デバッグ描画 intent、§9-1）
+///   - v33: InputSnapshot に lastSaveResult/lastLoadResult（Hud::save/load の成否、D1）
+///          + fadeProgress01（fadeOut/fadeIn の覆い alpha、D2）
+///   - v34: InputSnapshot に textInput[32]/textInputLen（このフレームに確定した UTF-8 テキスト入力、IME 確定含む。J5）
+///   - v35: Screen::sceneLook3D(const render::SceneLook&) + Screen 末尾メンバ 9 個（§1-12）。
+///          `render/SceneLook.hpp` の 1 POD に exposure/gamma/ambient/outline/shadow/fog を
+///          集約し、ISceneFx の既存 setter 群 (v22〜v29 で個別追加されたもの) へまとめて流す。
+///          `ISceneFx`/`IRenderer3D` に新しい virtual は 1 つも足していない (既存 setter を
+///          呼ぶだけ)。POD 末尾の `reserved[64]` を名前付きフィールドへ差し替えるだけの追加は
+///          sizeof(SceneLook) を保つ限り以後 kCurrentApiVersion を上げる理由にならない
+///          (vtable も Screen のメンバー構成も増えないため)。詳細: ADR 0036。
+///   - v36: reflectFields を 64 → 128 に拡張。struct 配列 (敵 6 体 × 5 field 等) を持つ小さな
+///          example でも 64 を使い切り、MsgQueue の待ちフレーム数 1 個で末尾 field が黙って
+///          落ちていた。InputSnapshot/FrameIntents は無変更 (録画の frameSize も同じ)。ADR 0037。
+///   - v37: 物理問い合わせ job (HE2 の PhysicsQueryJob / PhysicsRaycastJob 相当)。FrameIntents 末尾に
+///          physicsQueryCount/physicsQueries[64]、InputSnapshot 末尾に physicsResultCount/physicsResults[64]。
+///          要求は intent、結果は次フレームの InputSnapshot に乗る (= 録画に乗り、リプレイでは host の
+///          物理を回さなくても同じ結果が返る)。sizeof(InputSnapshot) が変わるので .mtrr は全部再録。ADR 0038。
+///   - v38: SceneLook の reserved から shadowCascadeAutoFit / shadowDistance / shadowCascadeCount を名前付きにし
+///          (sizeof 140 は不変)、ISceneFx 末尾に virtual setCascadedShadowAutoFit / setShadowCascadeCount、
+///          Screen 末尾メンバ 3 個。3 カスケード (近/中/遠、遠側 2 段は 1 枚のアトラス) と、カスケードの
+///          分割距離と ortho の大きさをカメラ視錐台から決める (Shadow.hpp fitCascadesToCamera)。ADR 0039。
+///          非 POD の game の入口 `MITIRU_GAME_OBJECTS(Game, Progress)` のために ModuleApi 末尾へ
+///          `stateFlags` (kModuleStatePartial) と `on_rebuild` を追記。ADR 0040。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が太ると後続 field の offset がズレ silent 破損するため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 29;
+constexpr std::uint32_t kCurrentApiVersion = 38;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -151,6 +177,12 @@ constexpr const char* kUnloadSymbol = "mitiru_module_unload";
 /// @details host が GetProcAddress で解決し、分岐 byte offset を渡して「最後に書いた phase 名」を
 ///          引く (host→DLL pull、ABI/ModuleApi は不変)。
 constexpr const char* kWhyBlameSymbol = "mitiru_why_blame_at";
+
+/// @brief 「これまでに一度でも書いた phase」問い合わせ関数名 (optional。`mitiru_why_blame_at` と
+///        同じ game が追加で export する)。「なぜ変わらないのか」に答えるための逆引き (4-4)。
+/// @details host が GetProcAddress で解決し、byte offset を渡してカンマ区切りの phase 名一覧
+///          (game 所有の静的文字列) を引く。未対応 game は symbol 自体が無い。
+constexpr const char* kEverWroteSymbol = "mitiru_why_everwrote_at";
 
 /// @brief 巻き戻しバッファ長 (フレーム数) を返す関数名 (optional。MITIRU_REWIND_BUFFER で export)。
 /// @details host が GetProcAddress で解決し、リングバッファをこのフレーム数で作る。不在なら既定 300。
@@ -213,6 +245,39 @@ namespace gamepad
 	};
 }
 
+/// @brief 物理問い合わせ 1 件 (DLL → host の intent、v37)。結果は次フレームの `InputSnapshot::physicsResults`
+///        に `tag` で対応付いて返る。host の body id は渡さない (game は `tag` だけで照合する)。
+struct PhysicsQuery
+{
+	std::uint8_t  kind;      ///< kPhysicsQuery* (下の定数)
+	std::uint8_t  _pad[3];
+	float         a[3];      ///< Raycast: 始点 / OverlapSphere: 中心
+	float         b[3];      ///< Raycast: 方向 (正規化推奨) / OverlapSphere: 未使用
+	float         radius;    ///< Raycast: 最大距離 (0 以下なら無制限) / OverlapSphere: 半径
+	std::uint32_t mask;      ///< 対象レイヤーの bit mask (0 は全レイヤー)
+	std::uint32_t tag;       ///< game が付ける照合キー
+};
+
+constexpr std::uint8_t kPhysicsQueryNone          = 0;
+constexpr std::uint8_t kPhysicsQueryRaycast       = 1;  ///< 最も近いヒット 1 件
+constexpr std::uint8_t kPhysicsQueryOverlapSphere = 2;  ///< 球に重なる body があるか (t = 件数)
+
+/// @brief 物理問い合わせの結果 1 件 (host → DLL、v37)。
+struct PhysicsResult
+{
+	std::uint32_t tag;        ///< 対応する PhysicsQuery::tag
+	std::uint8_t  hit;        ///< kPhysicsHit* (下の定数)
+	std::uint8_t  _pad[3];
+	float         point[3];   ///< Raycast: ヒット座標 (hit=1 のとき)
+	float         normal[3];  ///< Raycast: ヒット面の法線 (hit=1 のとき)
+	float         t;          ///< Raycast: 始点からの距離 / OverlapSphere: 重なった件数
+	std::uint32_t bodyLayer;  ///< Raycast: ヒットした collider のレイヤー
+};
+
+constexpr std::uint8_t kPhysicsHitNone        = 0;  ///< 当たらなかった
+constexpr std::uint8_t kPhysicsHitYes         = 1;
+constexpr std::uint8_t kPhysicsHitUnsupported = 2;  ///< host が物理 world を持たない (--collision 無し等)。「当たらない」と区別する
+
 /// @brief 1 フレーム分の input 状態 (host → DLL の push)
 /// @details 全 256 VK code 対応。エッジは host が前フレーム diff から組み立て、DLL は
 /// stateless view として受け取る。replay 時は snapshot 全体が記録値で置換される
@@ -265,6 +330,38 @@ struct InputSnapshot
 	/// v23: このフレームのカーソル移動量 (px、右/下が正)。ロック中も生の移動量が入る
 	float mouseDeltaX;
 	float mouseDeltaY;
+
+	/// v30: layer 別の実効 dt (§1-2)。layer 0 = gameplay (= effectiveDt と同値)、
+	/// layer 1 = UI（既定では hitStop で止まらない）、2..7 は予約。host が
+	/// `EngineConfig::layerTimeScale` / `layerFrozenByHitStop` を適用して書く。
+	/// pause の gating は全 layer 共通 (effectiveDt と同じ扱い)。
+	float dtByLayer[8];
+
+	/// v33: 直前の Hud::save()/load() 結果 (D1)。0=未実行 / 1=成功 / 2=失敗。
+	/// host (drainModuleFrameIntents) が処理直後に書き、次フレームの
+	/// Input::saveSucceeded()/loadSucceeded() で読める (= 1 フレーム遅れて分かる。
+	/// intent → 結果は元々非同期なのでゲームは on_update の外側で状態確認する設計)。
+	std::uint8_t lastSaveResult;
+	std::uint8_t lastLoadResult;
+	std::uint8_t _padResult[2];   ///< 4B align
+
+	/// v33: fadeOut/fadeIn の覆い alpha (0=覆い無し / 1=完全に覆う、D2)。host
+	/// (VisualIntentFx::overlay().a) をそのまま供給する。fadeOut 完了は 1.0 到達、
+	/// fadeIn 完了は 0.0 到達で判定する (tint/shake/hitStop/letterbox はここに乗らない)。
+	float fadeProgress01;
+
+	/// v34: このフレームに確定した UTF-8 テキスト入力 (IME 確定含む、J5)。本命は CEF
+	/// <input> 経由 (HTML UI)。ここはゲーム内の簡易テキスト入力 (プレイヤー名等) 用の
+	/// 最小手段。null 終端、収まらない分は切り捨て (warnOnce なし。長文入力は CEF 側へ)。
+	char textInput[32];
+	std::uint8_t textInputLen;   ///< textInput の有効バイト数 (null 終端を含まない)
+	std::uint8_t _padText[7];    ///< 8B align
+
+	/// v37: 前フレームの `FrameIntents::physicsQueries` に対する結果 (要求と同じ順、tag で照合)。
+	/// host が物理 world を持たなければ件数はそのままで hit=kPhysicsHitUnsupported。
+	std::int32_t  physicsResultCount;
+	PhysicsResult physicsResults[64];
+	std::uint8_t  _padPhysics[4];  ///< 8B align
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)
@@ -308,7 +405,7 @@ struct InspectableExport
 ///          書くだけ。host が所有する audio engine が再生する。id は host が
 ///          assets/audio/ からロードした論理名 (拡張子抜きファイル名)。
 /// @brief 「この画面演出をやって」という DLL → host の intent (#33、v7 追加)。
-/// @details kind = 0:None / 1:Tint / 2:FadeOut / 3:FadeIn / 4:Shake / 5:HitStop。
+/// @details kind = 0:None / 1:Tint / 2:FadeOut / 3:FadeIn / 4:Shake / 5:HitStop / 6:Letterbox / 7:Rumble。
 ///          フィールドは kind ごとに読み替える (定数の下の表を参照)。
 ///          struct レイアウトは v7 から不変。kind 追加は ABI 安全 (旧 host は未知 kind を無視)。
 struct VisualIntent
@@ -327,6 +424,7 @@ constexpr std::uint8_t kVisualIntentFadeIn  = 3;  ///< r,g,b の覆いを durSec
 constexpr std::uint8_t kVisualIntentShake   = 4;  ///< 画面揺れ (a=振幅px、durSec で減衰。host が決定論オフセット生成)
 constexpr std::uint8_t kVisualIntentHitStop = 5;  ///< durSec 秒だけ更新停止 (dt=0 で update が呼ばれ続ける)
 constexpr std::uint8_t kVisualIntentLetterbox = 6;  ///< レターボックス帯 (a=目標量 0..1、durSec で遷移。イベント演出)
+constexpr std::uint8_t kVisualIntentRumble    = 7;  ///< パッド振動 (r=左モータ 0..1、g=右モータ 0..1、durSec で線形減衰。未接続/headless は no-op)
 
 struct SoundIntent
 {
@@ -358,6 +456,25 @@ struct RequestToolWindow
 {
 	char tool[64];   ///< ツール名 (例: "inspector")。host が mitiru_<tool>.exe を探す。null 終端。
 	char args[128];  ///< 追加 CLI 引数 (例: "--inspectable input")。null 終端。
+};
+
+/// @brief ゲーム内 3D デバッグ描画 1 件 (DLL → host の intent、v30、§9-1)。
+/// @details kind = 1:線分 / 2:箱 / 3:球 / 4:文字。フィールドは kind ごとに読み替える
+///          (1=線分: a=始点・b=終点 / 2=箱: a=中心・b=半径ベクトル / 3=球: a=中心・b[0]=半径 /
+///          4=文字: a=位置・text 使用)。POD で snapshot でなく intent 側にあるため、
+///          **録画に入るのはこのフレームの入力だけで、この intent 自体は録画されない**
+///          (ModuleApi.hpp 冒頭の 3 不変条件どおり)。durationSec > 0 は host (Adapter) が
+///          固定長リストで持って複数フレーム描き続けるが、リプレイ再生時にゲーム DLL が
+///          毎フレーム出し直さない限りその減衰は再現されない (Hud::debugLine 等のコメント参照)。
+struct DebugDrawIntent
+{
+	std::uint8_t kind;        ///< 1=線分 2=箱 3=球 4=文字
+	std::uint8_t _pad[3];
+	float        a[3];        ///< kind 毎の意味は上表参照
+	float        b[3];        ///< kind 毎の意味は上表参照
+	float        color[4];    ///< r,g,b,a
+	float        durationSec; ///< 0 = このフレームのみ、> 0 = host が減衰させながら描き続ける
+	char         text[32];    ///< kind=4 のみ使用、null 終端
 };
 
 /// @brief 1 フレーム分の DLL → host への要求 (intent)
@@ -416,6 +533,16 @@ struct FrameIntents
 	std::uint8_t wantMouseLock;
 	std::uint8_t _padMouseLock[7];  ///< 8B align 維持
 
+	/// v30: ゲーム内 3D デバッグ描画要求 (§9-1)。host が Screen 経由で重ねて描く。
+	std::int32_t    debugDrawCount;
+	DebugDrawIntent debugDraws[256];
+	std::uint8_t    _padDebugTail[4];  ///< 8B align (double を含む SoundIntent が同居するため)
+
+	/// v37: 物理問い合わせ (HE2 の PhysicsQueryJob 相当)。host が次フレームの InputSnapshot::physicsResults へ答える。
+	std::int32_t physicsQueryCount;
+	PhysicsQuery physicsQueries[64];
+	std::uint8_t _padPhysicsTail[4];  ///< 8B align
+
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
 	void reset() noexcept
@@ -436,6 +563,8 @@ struct FrameIntents
 		loadSlot[0] = '\0';
 		restartRequest = 0;
 		wantMouseLock = 0;
+		debugDrawCount = 0;
+		physicsQueryCount = 0;
 	}
 
 	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
@@ -569,6 +698,28 @@ struct FrameIntents
 		s.category = 0; s.stop = 1; s.fadeOutSec = fadeOutSec;
 	}
 
+	/// ボイスを鳴らす (category=2)。host 側は BGM / SE と独立した 1 本のスロットで再生し、
+	/// 前のボイスが鳴っていれば頭出しせず差し替える (台詞は重ねない)。
+	void playVoice(const char* id, float volume = 1.0f, float fadeInSec = 0.0f) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		copyStr(s.id, id, sizeof(s.id));
+		s.category = 2; s.volume = volume; s.pitchScale = 1.0f; s.fadeInSec = fadeInSec;
+	}
+
+	/// 鳴っているボイスを止める (category=2、id 不要)。fadeOutSec > 0 で減衰させてから止める。
+	void stopVoice(float fadeOutSec = 0.0f) noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		s.category = 2; s.stop = 1; s.fadeOutSec = fadeOutSec;
+	}
+
 	/// 効果音を「音声クロック上の時刻 atSec」にサンプル精度で鳴らす予約 (v19)。
 	/// atSec は Input::audioTime() と同じ音声クロック基準の絶対時刻。毎フレーム clock>=t を
 	/// 見て発火するとフレーム量子化 (~16ms) のジッタが乗るが、これは host が audio backend の
@@ -634,6 +785,57 @@ struct FrameIntents
 		copyStr(r.args, args ? args : "", sizeof(r.args));
 	}
 
+	/// 線分のデバッグ描画を積む (§9-1)。durationSec=0 はこのフレームのみ。
+	void pushDebugLine(const float a[3], const float b[3], const float color[4],
+	                    float durationSec = 0.0f) noexcept
+	{
+		if (DebugDrawIntent* d = nextDebugDraw())
+		{
+			d->kind = 1;
+			for (int i = 0; i < 3; ++i) { d->a[i] = a[i]; d->b[i] = b[i]; }
+			for (int i = 0; i < 4; ++i) { d->color[i] = color[i]; }
+			d->durationSec = durationSec;
+		}
+	}
+	/// 箱 (中心 + 半径ベクトル) のデバッグ描画を積む。
+	void pushDebugBox(const float center[3], const float halfExtents[3], const float color[4],
+	                   float durationSec = 0.0f) noexcept
+	{
+		if (DebugDrawIntent* d = nextDebugDraw())
+		{
+			d->kind = 2;
+			for (int i = 0; i < 3; ++i) { d->a[i] = center[i]; d->b[i] = halfExtents[i]; }
+			for (int i = 0; i < 4; ++i) { d->color[i] = color[i]; }
+			d->durationSec = durationSec;
+		}
+	}
+	/// 球のデバッグ描画を積む。
+	void pushDebugSphere(const float center[3], float radius, const float color[4],
+	                      float durationSec = 0.0f) noexcept
+	{
+		if (DebugDrawIntent* d = nextDebugDraw())
+		{
+			d->kind = 3;
+			for (int i = 0; i < 3; ++i) { d->a[i] = center[i]; }
+			d->b[0] = radius; d->b[1] = 0.0f; d->b[2] = 0.0f;
+			for (int i = 0; i < 4; ++i) { d->color[i] = color[i]; }
+			d->durationSec = durationSec;
+		}
+	}
+	/// 文字のデバッグ描画を積む (world 座標に投影して描く)。
+	void pushDebugText(const float pos[3], const char* text, const float color[4],
+	                    float durationSec = 0.0f) noexcept
+	{
+		if (DebugDrawIntent* d = nextDebugDraw())
+		{
+			d->kind = 4;
+			for (int i = 0; i < 3; ++i) { d->a[i] = pos[i]; }
+			for (int i = 0; i < 4; ++i) { d->color[i] = color[i]; }
+			d->durationSec = durationSec;
+			copyStr(d->text, text, sizeof(d->text));
+		}
+	}
+
 	/// 生 JavaScript を CEF に実行させる (escape hatch)。HUD は data-m-* で足りるので、
 	/// data-m-* で表せない one-shot な DOM 操作 (例: hot-reload の location.reload) だけに使う。
 	void runJs(const char* code) noexcept
@@ -645,6 +847,15 @@ struct FrameIntents
 		jsToExecuteLen = i;
 	}
 
+	/// 空き物理問い合わせスロットを 1 つ確保する。満杯 (64 件) なら nullptr。結果は次フレーム。
+	PhysicsQuery* nextPhysicsQuery() noexcept
+	{
+		const int cap = static_cast<int>(sizeof(physicsQueries) / sizeof(physicsQueries[0]));
+		if (physicsQueryCount >= cap) { return nullptr; }
+		PhysicsQuery& q = physicsQueries[physicsQueryCount++];
+		q = PhysicsQuery{};
+		return &q;
+	}
 private:
 	/// BGM transport intent (pause/resume/seek) を 1 件積む。id 不要 (現 BGM に作用)。
 	void pushTransport(std::uint8_t transportKind, float seekSec) noexcept
@@ -663,6 +874,15 @@ private:
 		StatePushItem& s = statePushes[statePushCount++];
 		s = StatePushItem{};
 		return &s;
+	}
+	/// 空きデバッグ描画スロットを 1 つ確保する。満杯なら nullptr。
+	DebugDrawIntent* nextDebugDraw() noexcept
+	{
+		const int cap = static_cast<int>(sizeof(debugDraws) / sizeof(debugDraws[0]));
+		if (debugDrawCount >= cap) { return nullptr; }
+		DebugDrawIntent& d = debugDraws[debugDrawCount++];
+		d = DebugDrawIntent{};
+		return &d;
 	}
 	static void setKey(StatePushItem* s, const char* key) noexcept { copyStr(s->key, key, sizeof(s->key)); }
 	/// 固定長バッファへの null 終端コピー (src が長ければ切り詰める)。
@@ -691,13 +911,16 @@ static_assert(std::is_trivially_copyable_v<InputSnapshot>,
 // これらの数値を変える変更は ABI break。kCurrentApiVersion の bump と、
 // .mtrr 録画 (header frameSize = sizeof(InputSnapshot)) の録り直しが必要。
 static_assert(sizeof(ActionEvent)       == 320,  "ActionEvent wire size 固定");
-static_assert(sizeof(InputSnapshot)     == 6000, "InputSnapshot wire size 固定 (v23: mouseDelta 追記)");
+static_assert(sizeof(PhysicsQuery)      == 40,   "PhysicsQuery wire size 固定 (v37)");
+static_assert(sizeof(PhysicsResult)     == 40,   "PhysicsResult wire size 固定 (v37)");
+static_assert(sizeof(InputSnapshot)     == 8648, "InputSnapshot wire size 固定 (v37: physicsResults 追記)");
 static_assert(sizeof(StatePushItem)     == 4076, "StatePushItem wire size 固定");
 static_assert(sizeof(InspectableExport) == 4100, "InspectableExport wire size 固定");
 static_assert(sizeof(VisualIntent)      == 28,   "VisualIntent wire size 固定");
 static_assert(sizeof(SoundIntent)       == 104,  "SoundIntent wire size 固定");
 static_assert(sizeof(RequestToolWindow) == 192,  "RequestToolWindow wire size 固定");
-static_assert(sizeof(FrameIntents)      == 297640, "FrameIntents wire size 固定 (v23)");
+static_assert(sizeof(DebugDrawIntent)   == 80,   "DebugDrawIntent wire size 固定");
+static_assert(sizeof(FrameIntents)      == 320696, "FrameIntents wire size 固定 (v37: physicsQueries 追記)");
 
 static_assert(offsetof(InputSnapshot, mouseX)           == 768,  "InputSnapshot layout");
 static_assert(offsetof(InputSnapshot, actionEventCount) == 788,  "InputSnapshot layout (明示 pad 786-788)");
@@ -708,12 +931,25 @@ static_assert(offsetof(InputSnapshot, effectiveDt)      == 5976, "InputSnapshot 
 static_assert(offsetof(InputSnapshot, logicalW)         == 5980, "InputSnapshot layout (v21)");
 static_assert(offsetof(InputSnapshot, paused)           == 5984, "InputSnapshot layout (v21)");
 static_assert(offsetof(InputSnapshot, mouseDeltaX)      == 5992, "InputSnapshot layout (v23)");
+static_assert(offsetof(InputSnapshot, dtByLayer)        == 6000, "InputSnapshot layout (v30)");
+static_assert(offsetof(InputSnapshot, lastSaveResult)   == 6032, "InputSnapshot layout (v33)");
+static_assert(offsetof(InputSnapshot, fadeProgress01)   == 6036, "InputSnapshot layout (v33)");
+static_assert(offsetof(InputSnapshot, textInput)        == 6040, "InputSnapshot layout (v34)");
+static_assert(offsetof(InputSnapshot, textInputLen)     == 6072, "InputSnapshot layout (v34)");
+static_assert(offsetof(InputSnapshot, physicsResultCount) == 6080, "InputSnapshot layout (v37)");
+static_assert(offsetof(FrameIntents, physicsQueryCount)   == 318128, "FrameIntents layout (v37)");
 static_assert(offsetof(SoundIntent, seekSec)            == 88,   "SoundIntent layout");
 static_assert(offsetof(SoundIntent, scheduleSec)        == 96,   "SoundIntent layout (明示 pad 92-96)");
+static_assert(offsetof(DebugDrawIntent, a)              == 4,    "DebugDrawIntent layout");
+static_assert(offsetof(DebugDrawIntent, b)              == 16,   "DebugDrawIntent layout");
+static_assert(offsetof(DebugDrawIntent, color)          == 28,   "DebugDrawIntent layout");
+static_assert(offsetof(DebugDrawIntent, text)           == 48,   "DebugDrawIntent layout");
 static_assert(offsetof(FrameIntents, statePushes)       == 12,     "FrameIntents layout");
 static_assert(offsetof(FrameIntents, soundIntents)      == 295736, "FrameIntents layout");
 static_assert(offsetof(FrameIntents, restartRequest)    == 297628, "FrameIntents layout (v21 restart)");
 static_assert(offsetof(FrameIntents, wantMouseLock)     == 297632, "FrameIntents layout (v23)");
+static_assert(offsetof(FrameIntents, debugDrawCount)    == 297640, "FrameIntents layout (v30)");
+static_assert(offsetof(FrameIntents, debugDraws)        == 297644, "FrameIntents layout (v30)");
 
 // ── 観測 probe (ABI v11) ───────────────────────────────────────
 
@@ -784,10 +1020,36 @@ struct ModuleApi
 	///        (zero-init で reflectFieldCount=0 = 非対応)。`MITIRU_REFLECT` が埋める。host が
 	///        GameMemory バイト列を構造化 JSON 化して AI に全状態を開放する。
 	std::int32_t  reflectFieldCount;
-	FieldDescriptor reflectFields[64];   ///< トップ GameMemory のフィールド
+	FieldDescriptor reflectFields[128];  ///< トップ GameMemory のリーフ (v36 で 64 → 128)
 	std::int32_t  reflectSchemaCount;
 	ReflectSchema reflectSchemas[8];     ///< FixedVec<struct,N> の要素型スキーマ (1 段ネスト)
+
+	/// @brief `on_draw` の代わりに POD コマンドバッファへ積む経路 (ABI v31、ADR 0025)。
+	/// null なら未対応 (`registerGame` は game が `draw(Canvas&)` を持つ時だけ埋める)。
+	/// 両方 non-null な module では host がこちらを優先し、`on_draw` は呼ばない。
+	/// ctx / out は per-frame 引数。DLL は保持しない。末尾追記なので v≤30 module は後方安全
+	/// (zero-init で nullptr = 旧経路のまま)。
+	void (*on_draw_commands)(void* memory, const module::DrawContext* ctx,
+	                          module::DrawCommandBuffer* out) = nullptr;
+
+	/// @brief GameMemory の性質 (ABI v38、ADR 0040)。`kModuleStatePartial` が立っていれば、GameMemory は
+	/// 進行データだけで、場面の中身 (オブジェクトの木) は DLL 内に非 POD で持っている。host は
+	/// 「GameMemory = 全状態」を前提にした操作 (rewind の scrub / resim / 分岐 / 候補の並走) を断り、
+	/// セーブ・ロード・録画の blob は進行データに対して働かせる。0 = 従来どおり全状態が flat POD。
+	std::uint32_t stateFlags = 0;
+	std::uint32_t _padStateFlags = 0;
+
+	/// @brief host が GameMemory を外から書き換えた直後に呼ぶ (ロード、replay 中のロード代用)。
+	/// DLL は GameMemory (進行データ) から場面を組み立て直す。null = 不要 (全状態 POD の game)。
+	/// reason は `kModuleRebuild*`。HE2 の「配置データから作り直す」(Restart / RespawnByObjectId) に当たる。
+	void (*on_rebuild)(void* memory, std::uint32_t reason) = nullptr;
 };
+
+/// @brief `ModuleApi::stateFlags`: GameMemory は状態の一部 (進行データ) だけを持つ。
+inline constexpr std::uint32_t kModuleStatePartial = 1u << 0;
+
+/// @brief `ModuleApi::on_rebuild` の reason。
+inline constexpr std::uint32_t kModuleRebuildRestore = 1;  ///< host が GameMemory を書き戻した (ロード等)
 
 /// @brief 申告済み reflect 記述子から GameMemory layout hash を引く。
 /// @details 0 = reflection 未宣言 (照合 skip)。.msav header / reload 状態温存判定が使う。
@@ -815,6 +1077,11 @@ using ModuleUnloadFn = void (*)(void* memory);
 /// @details 引数 = GameMemory 内の byte offset。返り値 = その byte を当該フレームで最後に書いた
 ///          phase 名 (game 所有の静的文字列、host は即読みする)。未対応 game は symbol 自体が無い。
 using ModuleWhyBlameFn = const char* (*)(std::uint32_t offset);
+
+/// @brief everWrote 問い合わせ関数のシグネチャ (optional、`mitiru_why_blame_at` と対の export)。
+/// @details 引数 = GameMemory 内の byte offset。返り値 = これまでに一度でもその byte を書いた
+///          phase 名をカンマ区切りにしたもの (game 所有の静的文字列)。未対応 game は symbol 自体が無い。
+using ModuleWhyEverWroteFn = const char* (*)(std::uint32_t offset);
 
 /// @brief 巻き戻しバッファ長を返す関数のシグネチャ (optional、MITIRU_REWIND_BUFFER 用)。
 /// @details 返り値 = リングに保持するフレーム数 (0 なら既定)。未宣言 game は symbol 自体が無い。

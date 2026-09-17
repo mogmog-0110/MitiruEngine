@@ -1,12 +1,7 @@
 #pragma once
-// このヘッダは RenderPipeline2D.hpp から include される。直接 include しないこと。
-//
-// テクスチャ付きスプライトのバッチ描画 (DX12)。
-//   • ensureSpriteTexture。render::Texture を GPU テクスチャ+SRV にキャッシュ
-//   • submitTexturedBatch。texHandle のテクスチャをバインドして頂点バッチを描画
-// base 2D root signature は既に SRV table(t0)+sampler(s0) を持ち、shader は
-// uUseTexture!=0 で t0 をサンプルする。よって shader/PSO/root sig は無改造で、
-// SRV を実テクスチャに差し替え uUseTexture=1 にするだけで textured 描画になる。
+// RenderPipeline2D.hpp からだけ include する DX12 テクスチャ付きスプライトのバッチ描画実装。
+// render::Texture を GPU テクスチャと SRV にキャッシュし、texHandle のテクスチャで頂点バッチを描く。
+// 既存の SRV table（t0）と sampler（s0）を使い、uUseTexture = 1 でテクスチャを有効にする。
 
 #ifdef _WIN32
 
@@ -24,14 +19,11 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 
 	auto* device = m_dx12NativeDevice.Get();
 
-	// ── 静的テクスチャ (contentMayChange=false): key(ポインタ) + 寸法 + pixel 先頭ポインタ で判定 ──
-	// (drawSprite の render::Texture 等)。cache hit は即返し、毎フレームの全画素ハッシュを避ける。
-	// 巨大スプライトシートを毎フレーム描く一般ケースでの CPU 浪費 (regression) を防ぐ。
-	// srcPtr も照合する理由: sprite hot-reload は同じ Texture スロットに別画像を読み直すため key は
-	// 不変だが pixels().data() が変わる。これを見ないと古い GPU テクスチャを返し続ける (実バグだった)。
+	// ── 静的テクスチャ: key、寸法、pixel 先頭ポインタで変化を検出 ──
+	// 全画素のハッシュを毎フレーム計算しない。
+	// hot-reload では key が変わらないため、pixel 先頭ポインタの変化も調べる。
 	if (!contentMayChange)
 	{
-		// 直前と同じ texture (key,w,h,srcPtr) なら map find を省く。
 		if (m_lastSpriteTexHandle != 0 && key == m_lastSpriteTexKey &&
 		    w == m_lastSpriteTexW && h == m_lastSpriteTexH && rgba == m_lastSpriteTexSrc)
 		{
@@ -48,14 +40,12 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 				m_lastSpriteTexSrc = rgba; m_lastSpriteTexHandle = handle;
 				return handle;
 			}
-			// srcPtr が変わった = 内容差し替え (hot-reload) → 下のアップロードで作り直す
 		}
 	}
 
-	// ── 動的テクスチャ (contentMayChange=true): pixel 内容の指紋 (FNV-1a 64bit) で変化検出 (#19b) ──
-	// 同じアドレスに毎フレーム作り直す動的テクスチャ (drawPixelGrid 等) で古い GPU 内容を防ぐ。
-	// 静的パスではここを通らない (上で即返し済み)。
-	std::uint64_t contentHash = 1469598103934665603ull;
+	// ── 動的テクスチャ (#19b): FNV-1a 64 bit の内容ハッシュで変化を検出 ──
+	// 同じアドレスで作り直すテクスチャの更新を検出する。
+	std::uint64_t contentHash = 14695981039346656037ull;
 	if (contentMayChange)
 	{
 		const std::size_t bytes = static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4u;
@@ -65,7 +55,6 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 			contentHash *= 1099511628211ull;
 		}
 
-		// キャッシュ判定: key+(w,h)+内容ハッシュ が一致すれば再アップロードしない。
 		auto it = m_dx12SpriteTexLookup.find(key);
 		if (it != m_dx12SpriteTexLookup.end())
 		{
@@ -74,13 +63,12 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 			{
 				return it->second + 1;
 			}
-			// 寸法 or 内容が変わった: 同スロットに作り直す (下のアップロードへ落ちる)。
 		}
 	}
 
 	m_lastSpriteTexHandle = 0;   // upload で slot が変わるので inline cache を無効化
 
-	// ── default-heap texture (COPY_DEST) を作る ──
+	// ── Phase: default heap に COPY_DEST テクスチャを作成 ──
 	D3D12_HEAP_PROPERTIES texHp = {};
 	texHp.Type = D3D12_HEAP_TYPE_DEFAULT;
 
@@ -102,7 +90,7 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 		return 0;
 	}
 
-	// ── upload heap (row-pitch を 256 align) ──
+	// ── Phase: row pitch を 256 byte 境界にそろえた upload heap を作成 ──
 	const UINT rowPitch =
 		(static_cast<UINT>(w) * 4u + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u)
 		& ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
@@ -112,7 +100,6 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 		createUploadBufferDx12(device, uploadSize);
 	if (!newUpload) { return 0; }
 
-	// pixel data を upload heap へ (行ごとに aligned コピー)。
 	{
 		void* mapped = nullptr;
 		D3D12_RANGE readRange = {0, 0};
@@ -129,7 +116,7 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 		newUpload->Unmap(0, &writeRange);
 	}
 
-	// ── 1-slot shader-visible SRV heap + SRV ──
+	// ── Phase: 1 slot の shader-visible SRV heap と SRV を作成 ──
 	D3D12_DESCRIPTOR_HEAP_DESC dhd = {};
 	dhd.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	dhd.NumDescriptors = 1;
@@ -150,8 +137,8 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 		newTex.Get(), &srvDesc,
 		newSrvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	// ── copy + barrier(COPY_DEST→PSR) を記録・実行・待機 (cache miss 時の同期 upload) ──
-	// cold path: 全 in-flight を drain してから slot 0 の allocator を使う。
+	// ── Phase: copy と COPY_DEST から PSR への barrier を実行 ──
+	// cache miss のときは実行中の処理をすべて待ってから slot 0 の allocator を使う。
 	waitDx12Fence();
 	m_dx12Alloc[0]->Reset();
 	m_dx12Cl->Reset(m_dx12Alloc[0].Get(), nullptr); // copy のみ; PSO 不要
@@ -188,7 +175,7 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	m_dx12SlotSignal[0] = m_dx12FenceValue;
 	waitDx12Fence();
 
-	// ── キャッシュ格納 (寸法変化なら同スロット上書き) ──
+	// ── Phase: キャッシュへ格納 ──
 	Dx12SpriteTexture entry;
 	entry.tex     = std::move(newTex);
 	entry.upload  = std::move(newUpload);
@@ -199,8 +186,6 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	entry.srcPtr  = rgba;
 	entry.contentHash = contentHash;
 
-	// 既存 key なら同スロット上書き (寸法/内容変化)、無ければ新規追加。
-	// (static/dynamic どちらの経路からも到達するため、ここで lookup し直す)
 	std::uint32_t index;
 	auto storeIt = m_dx12SpriteTexLookup.find(key);
 	if (storeIt != m_dx12SpriteTexLookup.end())
@@ -228,7 +213,7 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	const auto& entry = m_dx12SpriteTextures[texHandle - 1];
 	if (!entry.srvHeap) { return; }
 
-	// pixel-art の鮮鋭さのため point-filter variant を優先 (無ければ linear)。
+	// pixel-art の輪郭を保つため point filter を優先し、使えないときは linear filter を使う。
 	ID3D12RootSignature* rootSig = m_dx12RootSig.Get();
 	ID3D12PipelineState* pso     = m_dx12Pipeline.Get();
 	if (m_dx12PointRootSig && m_dx12PointPipeline)
@@ -237,10 +222,10 @@ inline void RenderPipeline2D::submitTexturedBatch(
 		pso     = m_dx12PointPipeline.Get();
 	}
 
-	// ring slot を確保し、その slot の前回 GPU 完了だけ待つ
+	// ring slot を確保し、その slot を前回使った GPU 処理だけを待つ。
 	const int s = acquireDx12Slot();
 
-	// uUseTexture = 1 (slot s 専用 CB なので前 GPU 読み取りと race しない)。
+	// slot ごとの CB を使うため、前回の GPU 読み取りと競合しない。
 	{
 		const float psOn[4] = {1.0f, 0.0f, 0.0f, 0.0f};
 		updateCbDx12(m_dx12PsCb[s].Get(), psOn, sizeof(psOn));
@@ -251,13 +236,11 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	updateDx12Buffer(m_dx12VertexBuffer[s], m_dx12VbCapacity[s], vertices.data(), vbSize);
 	updateDx12Buffer(m_dx12IndexBuffer[s],  m_dx12IbCapacity[s], indices.data(),  ibSize);
 
-	auto* swapChain = m_dx12Device->getSwapChain();
-	if (!swapChain) { return; }
-	auto* rt = dynamic_cast<gfx::Dx12RenderTarget*>(swapChain->backBuffer());
+	auto* rt = dx12RenderTarget();
 	if (!rt) { return; }
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
-	// MSAA 中間 RT へ描くときは MSAA 変種へ差し替える (linear/point の選択は維持)。
+	// MSAA 中間 RT には MSAA 版を使い、linear filter と point filter の選択は維持する。
 	if (rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount))
 	{
 		const bool usingPoint = (pso == m_dx12PointPipeline.Get());
@@ -282,16 +265,21 @@ inline void RenderPipeline2D::submitTexturedBatch(
 
 	m_dx12Cl->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
+	// letterbox と pillarbox を中央に置くため、viewport と scissor に同じ offset を加える。
 	D3D12_VIEWPORT vp = {};
+	vp.TopLeftX = viewportOffsetX();
+	vp.TopLeftY = viewportOffsetY();
 	vp.Width    = viewportWidth();
 	vp.Height   = viewportHeight();
 	vp.MinDepth = 0.0f;
 	vp.MaxDepth = 1.0f;
 	m_dx12Cl->RSSetViewports(1, &vp);
 
-	D3D12_RECT sci = { 0, 0,
-		static_cast<LONG>(viewportWidth()),
-		static_cast<LONG>(viewportHeight()) };
+	D3D12_RECT sci = {
+		static_cast<LONG>(viewportOffsetX()),
+		static_cast<LONG>(viewportOffsetY()),
+		static_cast<LONG>(viewportOffsetX() + viewportWidth()),
+		static_cast<LONG>(viewportOffsetY() + viewportHeight()) };
 	m_dx12Cl->RSSetScissorRects(1, &sci);
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
@@ -315,7 +303,7 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	++m_dx12FenceValue;
 	m_dx12Queue->Signal(m_dx12Fence.Get(), m_dx12FenceValue);
 	m_dx12SlotSignal[s] = m_dx12FenceValue;
-	// uUseTexture の 0 への復帰は次の submitBatchDx12 が冒頭で行う。
+	// uUseTexture は次の submitBatchDx12 の最初で 0 に戻す。
 }
 
 } // namespace mitiru::render
@@ -324,8 +312,8 @@ inline void RenderPipeline2D::submitTexturedBatch(
 
 namespace mitiru::render
 {
-// 非 Windows backend は textured batch 未対応 (supportsTexturedBatch()==false)。
-// Screen は per-pixel fallback を使うため、これらは呼ばれない安全スタブ。
+// Windows 以外は textured batch に対応しない。
+// Screen は per-pixel fallback を使うため、これらの関数は呼ばれない。
 inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	const void*, int, int, const std::uint8_t*, bool)
 {

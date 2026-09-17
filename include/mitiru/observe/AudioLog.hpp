@@ -11,6 +11,7 @@
 #include <string>
 
 #include <mitiru/observe/JsonEscape.hpp>
+#include <mitiru/observe/NumberAppend.hpp>
 
 namespace mitiru::observe
 {
@@ -56,22 +57,25 @@ public:
 	{
 		const std::size_t held = m_count < kCap ? m_count : kCap;
 		const std::size_t n = max < held ? max : held;
-		std::string out = "[";
+		std::string out;
+		out.reserve(n * 96 + 2);  // 1 エントリの概算バイト数 (id 込み) を見込んで再確保を避ける
+		out += '[';
 		for (std::size_t i = 0; i < n; ++i)
 		{
 			// 末尾 n 件を古い順に走査する
 			const std::size_t idx = (m_count - n + i) % kCap;
 			const AudioLogEntry& e = m_buf[idx];
-			if (i > 0) { out += ","; }
-			out += "{\"frame\":" + std::to_string(e.frame) +
-			       ",\"id\":\"" + jsonEscape(e.id) + "\"" +
-			       ",\"category\":" + std::to_string(e.category) +
-			       ",\"loop\":" + std::to_string(e.loop) +
-			       ",\"stop\":" + std::to_string(e.stop) +
-			       ",\"volume\":" + std::to_string(e.volume) +
-			       ",\"pitch\":" + std::to_string(e.pitchScale) + "}";
+			if (i > 0) { out += ','; }
+			out += "{\"frame\":";      appendNumber(out, e.frame);
+			out += ",\"id\":\"";       out += jsonEscape(e.id); out += '"';
+			out += ",\"category\":";   appendNumber(out, static_cast<unsigned>(e.category));
+			out += ",\"loop\":";       appendNumber(out, static_cast<unsigned>(e.loop));
+			out += ",\"stop\":";       appendNumber(out, static_cast<unsigned>(e.stop));
+			out += ",\"volume\":";     appendNumber(out, e.volume);
+			out += ",\"pitch\":";      appendNumber(out, e.pitchScale);
+			out += '}';
 		}
-		out += "]";
+		out += ']';
 		return out;
 	}
 

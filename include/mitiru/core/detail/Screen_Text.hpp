@@ -123,8 +123,14 @@ inline void mitiru::Screen::drawTextClipped(const sgc::Rectf& rect, std::string_
 			hi = mid - 1;
 	}
 
-	const std::string truncated = std::string(text.substr(0, lo)) + "...";
-	drawText({rect.x() + padX, rect.y() + padY}, truncated, color, fontSize);
+	// C3: 省略のたびに std::string を作らず、固定長 scratch へ切り詰め文字を積む。
+	// text 自体は表示用の切り詰め目的なので scratch を超える分はそのまま捨てる
+	// (画面に入り切らない文字数なので実害はない)。
+	static thread_local char scratch[512];
+	const std::size_t n = std::min(lo, sizeof(scratch) - 4);
+	std::memcpy(scratch, text.data(), n);
+	scratch[n] = '.'; scratch[n + 1] = '.'; scratch[n + 2] = '.'; scratch[n + 3] = '\0';
+	drawText({rect.x() + padX, rect.y() + padY}, std::string_view(scratch, n + 3), color, fontSize);
 }
 
 inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_view text,
@@ -148,7 +154,9 @@ inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_v
 	// atlas-aligned な端数に保ち、任意の window 幅で可読性を維持する。
 	const auto fullSize = measureText(text, fontSize);
 	std::string_view drawable = text;
-	std::string ellipsisBuf;  // ellipsis 適用時に truncate された形を保持する
+	// C3: ellipsisBuf の std::string を毎回作らず、固定長 scratch へ切り詰め文字を積む
+	// (drawTextClipped と同じ scratch 方式)。
+	static thread_local char scratch[512];
 	sgc::Vec2f size = fullSize;
 	if (fullSize.x > innerW && !text.empty())
 	{
@@ -165,16 +173,17 @@ inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_v
 				else
 					hi = mid - 1;
 			}
-			ellipsisBuf.assign(text.substr(0, lo));
-			ellipsisBuf += "...";
-			drawable = ellipsisBuf;
+			const std::size_t n = std::min(lo, sizeof(scratch) - 4);
+			std::memcpy(scratch, text.data(), n);
+			scratch[n] = '.'; scratch[n + 1] = '.'; scratch[n + 2] = '.'; scratch[n + 3] = '\0';
+			drawable = std::string_view(scratch, n + 3);
 			size = measureText(drawable, fontSize);
 		}
 		else
 		{
 			// rect が "..." すら入らないほど狭い。単一の "." に落とす
-			ellipsisBuf = ".";
-			drawable = ellipsisBuf;
+			scratch[0] = '.'; scratch[1] = '\0';
+			drawable = std::string_view(scratch, 1);
 			size = measureText(drawable, fontSize);
 		}
 	}

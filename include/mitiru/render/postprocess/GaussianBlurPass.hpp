@@ -11,6 +11,10 @@
 
 #include <d3d11.h>
 
+#include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/gfx/GfxTypes.hpp>
+#include <mitiru/gfx/IRenderTarget.hpp>
+#include <mitiru/gfx/RenderTargetPool.hpp>
 #include <mitiru/render/postprocess/PostProcessUtils.hpp>
 #include <mitiru/render/postprocess/PostProcessPass.hpp>
 
@@ -36,21 +40,30 @@ public:
 	/// @param sampler リニアサンプラー（共有）
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
+	/// @param pool 中間RTの貸し出し元（nullptrなら従来どおり自前でRTを生成する）
 	GaussianBlurPass(
 		ID3D11Device* device,
 		const ComPtr<ID3D11VertexShader>& fullscreenVS,
 		const ComPtr<ID3D11SamplerState>& sampler,
 		std::uint32_t screenW,
-		std::uint32_t screenH)
+		std::uint32_t screenH,
+		gfx::RenderTargetPool* pool = nullptr)
 		: m_fullscreenVS(fullscreenVS)
 		, m_sampler(sampler)
 		, m_device(device)
+		, m_pool(pool)
 		, m_width(screenW)
 		, m_height(screenH)
 	{
 		m_blurPS = compilePostProcessPS(device, PP_GAUSSIAN_BLUR_PS);
 		m_cb = createConstantBuffer(device, sizeof(BlurCB));
-		m_intermediate = createRenderTarget(device, screenW, screenH);
+		acquireIntermediate(screenW, screenH);
+	}
+
+	/// @brief デストラクタ。プール由来の中間RTを返却する
+	~GaussianBlurPass() override
+	{
+		releaseIntermediate();
 	}
 
 	/// @brief ブラー設定を変更する
@@ -71,9 +84,21 @@ public:
 		// リサイズ検出: 中間バッファを再生成する
 		if (screenW != m_width || screenH != m_height)
 		{
-			m_intermediate = createRenderTarget(m_device.Get(), screenW, screenH);
+			acquireIntermediate(screenW, screenH);
 			m_width = screenW;
 			m_height = screenH;
+		}
+
+		auto* midRtv = intermediateRtv();
+		if (!midRtv)
+		{
+			// pool から借りたはずの中間RTが resolve できない
+			// (プールが handle を握ったまま entry を失った等)。
+			// 黙って null RTV へ描くとブラーだけ消えて気づきにくいので明示する。
+			debug::warnOnce("render.postprocess.gaussianblur.rt_missing",
+				"GaussianBlurPass::applyBlur: intermediate RT が取得できず"
+				"ブラーをスキップしました");
+			return;
 		}
 
 		/// 水平パス: input → intermediate
@@ -87,7 +112,7 @@ public:
 
 		drawFullscreenPass(context,
 			m_fullscreenVS.Get(), m_blurPS.Get(),
-			inputSRV, m_intermediate.rtv.Get(),
+			inputSRV, midRtv,
 			m_sampler.Get(), m_cb.Get(),
 			screenW, screenH);
 
@@ -99,7 +124,7 @@ public:
 
 		drawFullscreenPass(context,
 			m_fullscreenVS.Get(), m_blurPS.Get(),
-			m_intermediate.srv.Get(), outputRTV,
+			intermediateSRV(), outputRTV,
 			m_sampler.Get(), m_cb.Get(),
 			screenW, screenH);
 	}
@@ -122,6 +147,11 @@ public:
 	/// @brief 中間バッファのSRVを取得する（外部パスからの参照用）
 	[[nodiscard]] ID3D11ShaderResourceView* intermediateSRV() const noexcept
 	{
+		if (m_pool && m_pooledHandle != gfx::RtHandle::Invalid)
+		{
+			auto* rt = m_pool->resolve(m_pooledHandle);
+			return rt ? static_cast<ID3D11ShaderResourceView*>(rt->nativeSrv()) : nullptr;
+		}
 		return m_intermediate.srv.Get();
 	}
 
@@ -134,12 +164,58 @@ private:
 		float sigma;          ///< シグマ
 	};
 
+	/// @brief 中間バッファのRTVを取得する（pool経由/自前どちらでも同じ形で返す）
+	[[nodiscard]] ID3D11RenderTargetView* intermediateRtv() const noexcept
+	{
+		if (m_pool && m_pooledHandle != gfx::RtHandle::Invalid)
+		{
+			auto* rt = m_pool->resolve(m_pooledHandle);
+			return rt ? static_cast<ID3D11RenderTargetView*>(rt->nativeRtv()) : nullptr;
+		}
+		return m_intermediate.rtv.Get();
+	}
+
+	/// @brief 中間バッファを確保する
+	/// @details pool が使えるときは RGBA16F で借り、失敗時（未対応バックエンド等）は
+	///          従来どおり自前で PostProcessRT を生成する。
+	void acquireIntermediate(std::uint32_t w, std::uint32_t h)
+	{
+		releaseIntermediate();
+		if (m_pool)
+		{
+			m_pooledHandle = m_pool->acquire(
+				static_cast<int>(w), static_cast<int>(h), gfx::PixelFormat::RGBA16F);
+			if (m_pooledHandle != gfx::RtHandle::Invalid)
+			{
+				return;
+			}
+			// pool 枯渇（RenderTargetPool 側で既に warnOnce 済み）。
+			// 自前 RT へフォールバックすること自体も呼び出し側で残す。
+			debug::warnOnce("render.postprocess.gaussianblur.pool_exhausted",
+				"GaussianBlurPass: RenderTargetPool から中間RTを確保できず"
+				"自前確保にフォールバックしました");
+		}
+		m_intermediate = createRenderTarget(m_device.Get(), w, h);
+	}
+
+	/// @brief pool 由来の中間バッファを返却する（自前生成時は何もしない）
+	void releaseIntermediate() noexcept
+	{
+		if (m_pool && m_pooledHandle != gfx::RtHandle::Invalid)
+		{
+			m_pool->release(m_pooledHandle);
+			m_pooledHandle = gfx::RtHandle::Invalid;
+		}
+	}
+
 	ComPtr<ID3D11Device> m_device;
 	ComPtr<ID3D11VertexShader> m_fullscreenVS;
 	ComPtr<ID3D11PixelShader> m_blurPS;
 	ComPtr<ID3D11SamplerState> m_sampler;
 	ComPtr<ID3D11Buffer> m_cb;
-	PostProcessRT m_intermediate;
+	PostProcessRT m_intermediate;                              ///< pool 未使用時のみ実体を持つ
+	gfx::RenderTargetPool* m_pool = nullptr;                   ///< 中間RTの貸し出し元（nullptr可）
+	gfx::RtHandle m_pooledHandle = gfx::RtHandle::Invalid;      ///< pool 使用時の貸し出しハンドル
 	GaussianBlurConfig m_config;
 	std::uint32_t m_width = 0;
 	std::uint32_t m_height = 0;

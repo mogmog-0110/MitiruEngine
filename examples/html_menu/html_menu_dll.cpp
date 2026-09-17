@@ -11,6 +11,7 @@
 #include <cstdlib>   // std::atoi
 #include <cstring>   // std::strstr / std::strlen
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include "../common/chapter_hud.hpp"   // 章ラベル + 操作帯 (全章共通の書式)
 using namespace mitiru;
 
@@ -88,7 +89,8 @@ struct HtmlMenu
 
 	// 図形はすべて C++ が描く。パネルで選んだ値が、ここにそのまま反映される
 	// (パネル操作 → C++ の状態 → この描画、という流れの終点)。
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
 		s.drawGradientRect(Rect{0.0f, 0.0f, 1280.0f, 720.0f}, hex(0xF7F9FC), hex(0xE4EAF2));
 		const Color c = hex(kColors[color].rgb);
@@ -115,9 +117,12 @@ struct HtmlMenu
 		chapterTitle(s, "HTML Menu");
 		chapterControls(s, "左のパネルの操作が、C++ が描く図形にそのまま反映される　ESC: おわる");
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 
 	// 選択中の形で 1 つ描く (まる / しかく / さんかく)。
-	void drawFill(Screen& s, float x, float y, float r, Color c) const
+	template <class Surface>
+	void drawFill(Surface& s, float x, float y, float r, Color c) const
 	{
 		if (shape == 0)      { s.fillCircle(x, y, r, c); }
 		else if (shape == 1) { s.drawRectCentered(x, y, r * 2.0f, r * 2.0f, c); }
@@ -127,7 +132,8 @@ struct HtmlMenu
 	// ふちどり: 図形を辺から均一に d だけ外へ広げて濃色で描く (後ろに敷く)。まる・しかくは
 	// そのまま一回り大きくすればよい。さんかくは、内接円の中心から相似に広げると 3 辺が均一に
 	// d だけ外へ出て、角も鋭いまま保たれる (単純に大きくすると辺ごとに太さが変わってしまう)。
-	void drawOutline(Screen& s, float x, float y, float r, float d, Color c) const
+	template <class Surface>
+	void drawOutline(Surface& s, float x, float y, float r, float d, Color c) const
 	{
 		if (shape == 0) { s.fillCircle(x, y, r + d, c); return; }
 		if (shape == 1) { s.drawRectCentered(x, y, (r + d) * 2.0f, (r + d) * 2.0f, c); return; }
@@ -145,4 +151,7 @@ struct HtmlMenu
 };
 
 // 実行:  mitiru_host.exe html_menu/html_menu.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(HtmlMenu);
+
 MITIRU_GAME(HtmlMenu);

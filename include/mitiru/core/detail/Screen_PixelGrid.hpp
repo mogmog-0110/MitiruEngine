@@ -82,7 +82,11 @@ inline void Screen::drawPixelGrid(
 	// submitPixelGrid は Win32 専用宣言 (DX11/DX12 の焼き込み PSO)。web では
 	// textured batch が使えなかった時点で描くものが無いので、静かに抜ける
 	// (「無い機能は絵から抜ける」の規約どおり)。
+	// DX11 の submitPixelGrid は immediate context で即描くため、それより前に積まれた
+	// batched geometry (present() で drain) が後から上に乗って隠す。先に drain して
+	// 呼び出し順 = 描画順を保つ (SW framebuffer 版 blitAlphaBlended と同じ手順)。
 #ifdef _WIN32
+	closeBatchesForStateChange();
 	m_pipeline->submitPixelGrid(
 		dest, pixels, pixelWidth, pixelHeight,
 		static_cast<float>(m_width),
@@ -127,7 +131,9 @@ inline void Screen::drawPixelGrid(
 
 	// fallback: textured batch 非対応 backend は従来 path (submitPixelGrid は
 	// Win32 専用宣言。web では textured batch が使えなければ描くものが無い)。
+	// 上の overload と同じく、immediate 描画の前に batched geometry を drain する。
 #ifdef _WIN32
+	closeBatchesForStateChange();
 	m_pipeline->submitPixelGrid(
 		dest, pixels, pixelWidth, pixelHeight,
 		static_cast<float>(m_width),
@@ -135,6 +141,68 @@ inline void Screen::drawPixelGrid(
 		filter);
 #endif
 
+	++m_drawCallCount;
+}
+
+inline void Screen::blitAlphaBlended(
+	const sgc::Rectf& dest, const std::uint8_t* pixels, int pixelWidth, int pixelHeight)
+{
+	if (pixels == nullptr || pixelWidth <= 0 || pixelHeight <= 0) { return; }
+
+	// GPU pipeline 接続時は drawPixelGrid (screen-space、実 alpha ブレンド) に委譲する。
+	// isValid() も見る (flushCurrentBatch と同じ条件、Screen_Frame.hpp): pipeline オブジェクトは
+	// 存在するが内部が無効 (NullDevice 由来 / device-lost 中) なケースで、GPU 側へ投げて
+	// 無言で捨てるのではなく SW framebuffer が張ってあればそちらへフォールバックする。
+	if (m_pipeline != nullptr && m_pipeline->isValid())
+	{
+		drawPixelGrid(dest, reinterpret_cast<const std::uint32_t*>(pixels), pixelWidth, pixelHeight);
+		return;
+	}
+
+	if (!hasSoftwareFramebuffer() || m_width <= 0 || m_height <= 0
+		|| dest.width() <= 0.0f || dest.height() <= 0.0f)
+	{
+		return;
+	}
+	if (!m_swFbActive) { ++m_drawCallCount; return; }
+
+	// 描画順を保つため、先に積んだ図形をフレームバッファへ焼いてから直接ブレンドする。
+	flushCurrentBatch();
+	if (!m_shapeRenderer.vertices().empty())
+	{
+		rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
+		m_shapeRenderer.flush();
+	}
+
+	const int dx0 = std::max(0, static_cast<int>(dest.x()));
+	const int dy0 = std::max(0, static_cast<int>(dest.y()));
+	const int dx1 = std::min(m_width,  static_cast<int>(dest.x() + dest.width()  + 0.999f));
+	const int dy1 = std::min(m_height, static_cast<int>(dest.y() + dest.height() + 0.999f));
+	const float su = static_cast<float>(pixelWidth)  / dest.width();
+	const float sv = static_cast<float>(pixelHeight) / dest.height();
+	auto cl = [](float v) -> std::uint8_t {
+		return static_cast<std::uint8_t>(std::max(0.0f, std::min(255.0f, v * 255.0f)));
+	};
+	for (int dy = dy0; dy < dy1; ++dy)
+	{
+		const int sy = std::min(pixelHeight - 1,
+			std::max(0, static_cast<int>((static_cast<float>(dy) - dest.y()) * sv)));
+		for (int dx = dx0; dx < dx1; ++dx)
+		{
+			const int sx = std::min(pixelWidth - 1,
+				std::max(0, static_cast<int>((static_cast<float>(dx) - dest.x()) * su)));
+			const std::size_t i = static_cast<std::size_t>((sy * pixelWidth + sx) * 4);
+			const std::uint8_t sa = pixels[i + 3];
+			if (sa == 0) { continue; }
+			const float a = sa / 255.0f;
+			const std::size_t o =
+				(static_cast<std::size_t>(dy) * m_width + static_cast<std::size_t>(dx)) * 4;
+			m_pixels[o]     = cl((pixels[i]     / 255.0f) * a + (m_pixels[o]     / 255.0f) * (1.0f - a));
+			m_pixels[o + 1] = cl((pixels[i + 1] / 255.0f) * a + (m_pixels[o + 1] / 255.0f) * (1.0f - a));
+			m_pixels[o + 2] = cl((pixels[i + 2] / 255.0f) * a + (m_pixels[o + 2] / 255.0f) * (1.0f - a));
+			m_pixels[o + 3] = 255;
+		}
+	}
 	++m_drawCallCount;
 }
 

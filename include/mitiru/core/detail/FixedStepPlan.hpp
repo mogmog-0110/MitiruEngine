@@ -18,6 +18,16 @@ inline int planFixedSteps(float accumulator, float fixedDt, int cap) noexcept
 	return n;
 }
 
+/// 上限で頭打ちになった後も残っている「消化できなかった」ステップ数。Godot の
+/// max_physics_steps_per_frame と同じく、これが正ならゲームは実時間より遅く進んでいる
+/// (スローモーション)。非決定論モードではこのぶんの時間を捨てて追いかけるのをやめ、
+/// スパイラル (毎フレーム上限まで回して更に遅れる) を断つ。
+inline int countDroppedFixedSteps(float accumulatorAfterPlan, float fixedDt) noexcept
+{
+	if (fixedDt <= 0.0f || accumulatorAfterPlan < fixedDt) { return 0; }
+	return static_cast<int>(accumulatorAfterPlan / fixedDt);
+}
+
 /// 決定論モードのステップ上限。timeScale ぶん (+余裕) を 1 フレームで消化できる高さにする。
 /// 非決定論では壁時計遅延に対するスパイラル防止として baseCap をそのまま使う。
 inline int deterministicStepCap(int baseCap, float timeScale) noexcept

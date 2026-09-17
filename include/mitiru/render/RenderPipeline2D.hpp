@@ -473,6 +473,15 @@ private:
 	/// @return 使用する slot index
 	[[nodiscard]] int acquireDx12Slot();
 
+	/// @brief 2D submit の描画先 RT (スワップチェーンのバックバッファ、windowless なら offscreen RT)。
+	///        `getSwapChain()->backBuffer()` の直呼びだと windowless (`--headless-3d --backend dx12`)
+	///        で null になり 2D が丸ごと落ちる。Renderer3D_DX12 と同じく device の
+	///        `currentBackBuffer()` を経由する。
+	[[nodiscard]] gfx::Dx12RenderTarget* dx12RenderTarget() const noexcept
+	{
+		return m_dx12Device ? m_dx12Device->currentBackBuffer() : nullptr;
+	}
+
 	/// @brief SDF ルートシグネチャ + PSO を遅延初期化する
 	/// @param cachedPsoMsaa 1x PSO と並べて構築する 4x MSAA 変種の格納先 (4x 非対応時 null)
 	void ensureDx12SdfResources(
@@ -510,16 +519,22 @@ private:
 	float m_screenHeight = 0.0f;   ///< スクリーン論理高さ（投影行列用）
 	float m_viewportWidth = 0.0f;  ///< バックバッファ実幅（ビューポート用）
 	float m_viewportHeight = 0.0f; ///< バックバッファ実高さ（ビューポート用）
+	float m_viewportOffsetX = 0.0f; ///< letterbox/pillarbox の左端オフセット（TopLeftX）
+	float m_viewportOffsetY = 0.0f; ///< letterbox/pillarbox の上端オフセット（TopLeftY）
 	bool m_valid = false;          ///< 有効フラグ
 
 public:
 	/// @brief ビューポートサイズを設定する（バックバッファの実サイズ）
 	/// @details スクリーン論理サイズとバックバッファサイズが異なる場合に使用。
 	///          設定しない場合はスクリーン論理サイズがビューポートに使われる。
-	void setViewportSize(float w, float h) noexcept
+	/// @param offsetX,offsetY letterbox/pillarbox の中央寄せオフセット（TopLeftX/Y）。
+	///        既定 0 は従来どおり左上起点（後方互換）。
+	void setViewportSize(float w, float h, float offsetX = 0.0f, float offsetY = 0.0f) noexcept
 	{
 		m_viewportWidth = w;
 		m_viewportHeight = h;
+		m_viewportOffsetX = offsetX;
+		m_viewportOffsetY = offsetY;
 	}
 
 	/// @brief ビューポートに使用する幅を取得する
@@ -536,6 +551,18 @@ public:
 	[[nodiscard]] float viewportHeight() const noexcept
 	{
 		return m_viewportHeight > 0.0f ? m_viewportHeight : m_screenHeight;
+	}
+
+	/// @brief letterbox/pillarbox の左端オフセット（TopLeftX）を取得する
+	[[nodiscard]] float viewportOffsetX() const noexcept
+	{
+		return m_viewportOffsetX;
+	}
+
+	/// @brief letterbox/pillarbox の上端オフセット（TopLeftY）を取得する
+	[[nodiscard]] float viewportOffsetY() const noexcept
+	{
+		return m_viewportOffsetY;
 	}
 
 	/// @brief ブレンドモードを変更する

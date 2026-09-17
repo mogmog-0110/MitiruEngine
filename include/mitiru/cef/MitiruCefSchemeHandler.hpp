@@ -25,12 +25,14 @@
 #  undef GetNextSibling
 #endif
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_browser.h"
 #include "include/cef_callback.h"
 #include "include/cef_request.h"
 #include "include/cef_resource_handler.h"
 #include "include/cef_response.h"
 #include "include/cef_scheme.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 #include <mitiru/asset/AssetPack.hpp> // vfs::readGlobal / hasGlobalMount (runtime pack)
 

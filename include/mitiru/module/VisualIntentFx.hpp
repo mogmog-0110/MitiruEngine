@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstdint>
 
+#include <utility>
 #include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru::module
@@ -85,6 +86,16 @@ public:
 				m_shakeRemainSec = vi.durSec;
 			}
 			return true;
+		case kVisualIntentRumble:
+			// shake と同じく「後勝ち」。強さは残量比で線形に弱まる (currentRumble)
+			if (vi.durSec > 0.0f && (vi.r > 0.0f || vi.g > 0.0f))
+			{
+				m_rumbleLow       = vi.r;
+				m_rumbleHigh      = vi.g;
+				m_rumbleDurSec    = vi.durSec;
+				m_rumbleRemainSec = vi.durSec;
+			}
+			return true;
 		case kVisualIntentHitStop:
 			// 重ね掛けは加算でなく max。二重発火で異常に長く止まらないように
 			if (vi.durSec > m_hitStopRemainSec) { m_hitStopRemainSec = vi.durSec; }
@@ -137,6 +148,12 @@ public:
 			if (m_shakeRemainSec < 0.0f) { m_shakeRemainSec = 0.0f; }
 		}
 
+		if (m_rumbleRemainSec > 0.0f)
+		{
+			m_rumbleRemainSec -= dt;
+			if (m_rumbleRemainSec < 0.0f) { m_rumbleRemainSec = 0.0f; }
+		}
+
 		// hitstop: 実時間 (固定ステップ) で減衰
 		if (m_hitStopRemainSec > 0.0f)
 		{
@@ -159,6 +176,17 @@ public:
 	{
 		if (m_shakeRemainSec <= 0.0f || m_shakeDurSec <= 0.0f) { return 0.0f; }
 		return m_shakeAmpPx * (m_shakeRemainSec / m_shakeDurSec);
+	}
+
+	/// @brief 振動が有効か (残量 > 0)
+	[[nodiscard]] bool rumbleActive() const noexcept { return m_rumbleRemainSec > 0.0f; }
+
+	/// @brief 現在の振動強さ (左, 右)。残量比で線形減衰、無効なら (0, 0)。
+	[[nodiscard]] std::pair<float, float> currentRumble() const noexcept
+	{
+		if (m_rumbleRemainSec <= 0.0f || m_rumbleDurSec <= 0.0f) { return {0.0f, 0.0f}; }
+		const float k = m_rumbleRemainSec / m_rumbleDurSec;
+		return {m_rumbleLow * k, m_rumbleHigh * k};
 	}
 
 	/// @brief この frame index での決定的 shake オフセット
@@ -189,6 +217,12 @@ private:
 
 	// hitstop
 	float m_hitStopRemainSec = 0.0f;
+
+	// rumble
+	float m_rumbleLow       = 0.0f;
+	float m_rumbleHigh      = 0.0f;
+	float m_rumbleDurSec    = 0.0f;
+	float m_rumbleRemainSec = 0.0f;
 
 	// letterbox: from → to を durSec で補間し、到達後は to で保持する
 	float m_lbAmount  = 0.0f;  ///< 現在量 (0=帯無し / 1=最大帯)

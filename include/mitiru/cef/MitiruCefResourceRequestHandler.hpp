@@ -15,10 +15,12 @@
 #include <filesystem>
 #include <string>
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_request.h"
 #include "include/cef_resource_handler.h"
 #include "include/cef_resource_request_handler.h"
 #include "include/cef_response.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 #include <mitiru/cef/CefErrorPage.hpp>
 

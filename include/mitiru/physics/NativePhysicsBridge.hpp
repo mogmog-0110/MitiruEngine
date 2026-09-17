@@ -84,6 +84,13 @@ public:
 #endif
 	}
 
+	/// @brief 更新フェーズを明示する（既定値と同じ Sim だが、物理は Sim 固定であることを
+	/// SystemRunner 側の既定値に依存させず自己文書化するため override する）
+	[[nodiscard]] scene::UpdatePhase defaultPhase() const noexcept override
+	{
+		return scene::UpdatePhase::Sim;
+	}
+
 	/// @brief 設定を取得する。
 	[[nodiscard]] const Config& config() const noexcept { return m_cfg; }
 

@@ -24,6 +24,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <string_view>
 
 // ─────────────────────────────────────────────────────────────
@@ -173,6 +174,21 @@ public:
 	{
 		// const_cast: TracyFreeはvoid*を要求するが、アドレス記録のみで変更なし
 		MITIRU_PROFILE_FREE(const_cast<void*>(ptr));
+	}
+
+	/// @brief 7-1: `.mtrr` のフレーム番号を Tracy のタイムラインへ焼き込む。
+	/// @details TracyとリプレイのフレームIDは別座標系で、突き合わせる手段が無かった
+	///          (`docs/PROFILING_GUIDE.md` 参照)。`replay::Recorder::record()` から
+	///          録画中のみ呼ばれる想定。Plot は数値グラフとして時系列に残り、Message は
+	///          その瞬間のタイムラインへ 1 行のテキストとして刻まれる (どちらもTracy接続時
+	///          のみ意味を持つ)。Tracy無効ビルドではno-op。
+	static void tagMtrrFrame([[maybe_unused]] std::uint64_t mtrrFrameIdx) noexcept
+	{
+#ifdef MITIRU_HAS_TRACY
+		TracyPlot("mtrr.frame", static_cast<std::int64_t>(mtrrFrameIdx));
+		const std::string text = "mtrr=" + std::to_string(mtrrFrameIdx);
+		TracyMessage(text.c_str(), text.size());
+#endif
 	}
 };
 

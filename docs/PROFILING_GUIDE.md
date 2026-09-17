@@ -49,19 +49,19 @@ with zero overhead.
 The following named zones are emitted by engine code. All zones expand to
 no-ops when `MITIRU_HAS_TRACY` is undefined.
 
-| Zone name                  | Source                                                      | Macro used            | Notes                                                  |
-| -------------------------- | ----------------------------------------------------------- | --------------------- | ------------------------------------------------------ |
-| `Engine::Frame`            | `include/mitiru/core/detail/Engine_Frame.hpp:32`            | `MITIRU_ZONE_NAMED`   | 外側のフレームゾーン。`tickOneFrame()`全体を包む。子ゾーンはすべてこの下に並ぶ。 |
-| `Engine::Input`            | `include/mitiru/core/detail/Engine_Frame.hpp:54`            | `MITIRU_ZONE_NAMED`   | `m_window->pollEvents()`と注入入力の適用。Emscripten終了判定もここ。 |
-| `Engine::MouseScaling`     | `include/mitiru/core/detail/Engine_Frame.hpp:83`            | `MITIRU_ZONE_NAMED`   | Win32 RAWマウス座標を`Screen`論理座標へ毎フレームスケーリングする処理。 |
-| `Engine::FixedUpdate`      | `include/mitiru/core/detail/Engine_Frame.hpp:125`           | `MITIRU_ZONE_NAMED`   | 固定タイムステップアキュムレータループ。`game.update()`と現在シーンの`onUpdate()`を含む。 |
-| `Engine::Render`           | `include/mitiru/core/detail/Engine_Frame.hpp:161`           | `MITIRU_ZONE_NAMED`   | `Screen::clear`から`game.draw()`、`Scene::onDraw()`までの2D/3D描画蓄積。`device->beginFrame()`も含む。 |
-| `Engine::Present`          | `include/mitiru/core/detail/Engine_Frame.hpp:206`           | `MITIRU_ZONE_NAMED`   | `Screen::present()`とPostFX、3Dレンダラーの`finalizeFrame()`。GPUコマンド送信が中心。 |
-| `Engine::CefComposite`     | `include/mitiru/core/detail/Engine_Frame.hpp:245`           | `MITIRU_ZONE_NAMED`   | CEF UIレイヤーのメッセージループ処理、入力転送、テクスチャアップロード、バックバッファ合成。HTML UI構成(CEFあり)専用。 |
-| `Engine::AutoCapture`      | `include/mitiru/core/detail/Engine_Frame.hpp:271`           | `MITIRU_ZONE_NAMED`   | 自律テストモードのスクリーンショット保存と`device->endFrame()`。通常運用では`endFrame()`のみで軽量。 |
-| `Engine::HttpPoll`         | `include/mitiru/core/detail/Engine_Frame.hpp:311`           | `MITIRU_ZONE_NAMED`   | HTTP APIサーバーのポーリングと、vsync OFF時のフレームレートキャップ用`sleep_for`。 |
-| `SmallFunction::invoke`    | `include/mitiru/time/detail/SmallFunction.hpp:79`           | `MITIRU_ZONE_NAMED`   | Wraps every call of the type-erased callable. Hot path. |
-| `Sequence::action`         | `include/mitiru/time/Sequence.hpp:75`                       | `MITIRU_ZONE_NAMED`   | One zone per action step fired inside `Sequence::tick`.  |
+| Zone name                  | Source                                                                                | Macro used            | Notes                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------ |
+| `Engine::Frame`            | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickOneFrame()`                | `MITIRU_ZONE_NAMED`   | 外側のフレームゾーン。`tickOneFrame()`全体を包む。子ゾーンはすべてこの下に並ぶ。 |
+| `Engine::Input`            | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickInputPollPhase()`          | `MITIRU_ZONE_NAMED`   | `m_window->pollEvents()`と注入入力の適用。Emscripten終了判定もここ。 |
+| `Engine::MouseScaling`     | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickMouseScalingPhase()`       | `MITIRU_ZONE_NAMED`   | Win32 RAWマウス座標を`Screen`論理座標へ毎フレームスケーリングする処理。 |
+| `Engine::FixedUpdate`      | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickFixedUpdatePhase()`        | `MITIRU_ZONE_NAMED`   | 固定タイムステップアキュムレータループ。`game.update()`と現在シーンの`onUpdate()`を含む。 |
+| `Engine::Render`           | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickRenderPhase()`             | `MITIRU_ZONE_NAMED`   | `Screen::clear`から`game.draw()`、`Scene::onDraw()`までの2D/3D描画蓄積。`device->beginFrame()`も含む。 |
+| `Engine::Present`          | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickPresentPhase()`            | `MITIRU_ZONE_NAMED`   | `Screen::present()`とPostFX、3Dレンダラーの`finalizeFrame()`。GPUコマンド送信が中心。 |
+| `Engine::CefComposite`     | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickCefComposite()`            | `MITIRU_ZONE_NAMED`   | CEF UIレイヤーのメッセージループ処理、入力転送、テクスチャアップロード、バックバッファ合成。HTML UI構成(CEFあり)専用。 |
+| `Engine::AutoCapture`      | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickAutoCaptureAndEndFrame()`  | `MITIRU_ZONE_NAMED`   | 自律テストモードのスクリーンショット保存と`device->endFrame()`。通常運用では`endFrame()`のみで軽量。 |
+| `Engine::HttpPoll`         | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickHttpPollAndCap()`          | `MITIRU_ZONE_NAMED`   | HTTP APIサーバーのポーリングと、vsync OFF時のフレームレートキャップ用`sleep_for`。 |
+| `SmallFunction::invoke`    | `include/mitiru/time/detail/SmallFunction.hpp`, `SmallFunction::operator()()`          | `MITIRU_ZONE_NAMED`   | Wraps every call of the type-erased callable. Hot path. |
+| `Sequence::action`         | `include/mitiru/time/Sequence.hpp`, `Sequence::tick()`                                | `MITIRU_ZONE_NAMED`   | One zone per action step fired inside `Sequence::tick`.  |
 
 Search the codebase for additional zones with:
 
@@ -237,6 +237,50 @@ Win32 `PrintWindow`フォールバックよりもGPUコンポジット結果を�
   HTMLレイアウトコストはこの計装からは可視化できない。Chrome DevToolsの
   Performanceパネルで別途プロファイルすること。
 
+## Tracy のフレームと `.mtrr` のフレームを突き合わせる (7-1)
+
+`MITIRU_PROFILE_FRAME()` (Tracy の `FrameMark`) が刻むフレーム境界と、`.mtrr` 録画の
+`frameIdx` は**別の座標系**だった。Tracy 側は「起動してから何フレーム目か」、`.mtrr` 側は
+「録画開始から何フレーム目か」で、両者を突き合わせる手段が無く、「この録画の 3,241 フレーム目が
+遅かった」を Tracy のタイムラインで見ることができなかった。
+
+`--record` で録画している間だけ、`replay::Recorder::record()` が
+`mitiru::debug::TracyHelper::tagMtrrFrame(frameIdx)` を呼び、Tracy へ 2 つの手がかりを残す:
+
+- `TracyPlot("mtrr.frame", frameIdx)` — 数値グラフとして時系列に残る。Tracy の **Plot** ビューで
+  `mtrr.frame` を選ぶと、タイムライン上の任意の位置がどの `.mtrr` フレーム番号に対応するか読める。
+- `TracyMessage("mtrr=<n>")` — その瞬間のタイムラインへテキストとして刻まれる。**Messages** パネル
+  に一覧が並ぶので、目的のフレーム番号を検索して該当時刻へジャンプできる。
+
+非録画時 (`--record` を付けていない起動) はこの呼び出し自体が起きないため no-op。
+Tracy 非対応ビルド (`MITIRU_HAS_TRACY` 未定義) でも `tagMtrrFrame` は no-op に展開される。
+
+`.mtrr` 側からも Tracy の有無が分かるようにしてある。`apps/mitiru_host/main.cpp` の
+`buildRecordEnvTag` が envTag を `<backend>|<arch>|tracy` または `<backend>|<arch>|no-tracy`
+の形式で書く (`Recorder::writeEnvTag`)。録画ファイルだけを見て「そもそも Tracy 計装ビルドで
+録ったか」が分かる。
+
+### 突き合わせを確認する手順
+
+1. `MITIRU_HAS_TRACY=1` でビルドした host で Tracy GUI を接続する。
+2. `mitiru_host <dll> --record capture.mtrr` で数秒プレイして終了する。
+3. `Player::open("capture.mtrr")` 等で `recordedEnvTag()` を読み、末尾が `|tracy` であることを
+   確認する (`|no-tracy` ならこの手順自体が無意味な組み合わせ)。
+4. Tracy GUI の **Plot** ビューで `mtrr.frame` を開く。値が単調増加していれば録画区間全体が
+   計装されている。
+5. 遅かった `.mtrr` フレーム番号 (例: `Player`/`--replay-test` の出力や `mitiru hunt` の
+   レポートから分かった値) を **Messages** パネルで `mtrr=3241` のように検索し、該当行の時刻を
+   タイムラインへジャンプする。
+6. その時刻の `Engine::Frame` ゾーンを展開すれば、`docs/PROFILING_GUIDE.md` の
+   「Interpreting Engine_Frame Zones」節の内訳がそのまま使える。
+
+### 意図的にやらないこと
+
+`TRACY_ON_DEMAND` (起動時からの常時記録をやめ、プロファイラ接続時のみ記録するモード) は既定で
+有効にしない。記帳コストそのものは決定論オラクルの対象外 (画面/GameMemory を変えない) だが、
+フレーム時間スパイクを検出するオラクル (`oracleStagnantSeconds` 等) を接続タイミング依存で
+誤発火させうるため、opt-in のまま据え置く。
+
 ## See Also
 
 - [`include/mitiru/debug/TracyZones.hpp`](../include/mitiru/debug/TracyZones.hpp)
@@ -247,3 +291,6 @@ Win32 `PrintWindow`フォールバックよりもGPUコンポジット結果を�
   — Catch2 synthetic benchmark for SBO vs heap.
 - [`tests/mitiru/TestSmallFunctionTracy.cpp`](../tests/mitiru/TestSmallFunctionTracy.cpp)
   — regression test ensuring the zone macros stay no-op-safe.
+- [`include/mitiru/replay/Recorder.hpp`](../include/mitiru/replay/Recorder.hpp)
+  — `.mtrr` format; `record()` calls `tagMtrrFrame` during recording (7-1).
+- [`docs/DETERMINISM.md`](DETERMINISM.md) — what determinism guarantees do and do not cover.

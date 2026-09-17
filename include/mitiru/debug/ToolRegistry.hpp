@@ -24,6 +24,9 @@ enum class Tool
 	Replay,         ///< リプレイ scrubber — .mtrr 録画を frame 単位で観る (--page replay)
 	Perf,           ///< パフォーマンス — fps / frameMs を観る (--page perf)
 	AudioMixer,     ///< ミキサー — master volume + 再生中チャンネル VU (--page mixer)
+	SceneView,      ///< シーンビュー — ゲーム画面 + オブジェクト枠、ドラッグで分岐 (--page scene_view、ADR 0035 O2/O3)
+	WhyView,        ///< なぜビュー — field を選んで blame + 値推移を見る (--page why_view、ADR 0035 O6)
+	FrameView,      ///< 1 フレームの解剖図 — 入力→書込→描画→音を 1 画面 (--page frame_view、P10)
 	// ★ 独立ウィンドウを増やすとき: ここに enum 値を 1 つ足し、下の kToolTable に
 	//   1 行 ({Tool::X, "tool_cef", "--page x"}) + assets/x.html を足すだけ。
 };
@@ -42,6 +45,9 @@ inline constexpr ToolSpec kToolTable[] = {
 	{ Tool::Replay,       "tool_cef",  "--page replay" },
 	{ Tool::Perf,         "tool_cef",  "--page perf" },
 	{ Tool::AudioMixer,   "tool_cef",  "--page mixer" },
+	{ Tool::SceneView,    "tool_cef",  "--page scene_view" },
+	{ Tool::WhyView,      "tool_cef",  "--page why_view" },
+	{ Tool::FrameView,    "tool_cef",  "--page frame_view" },
 };
 }  // namespace detail
 

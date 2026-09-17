@@ -7,17 +7,18 @@
 /// append-only binary file に書き出し、後で `mitiru::replay::Player` から
 /// 同じ列を再生できるようにする。
 ///
-/// **File format (v4)**:
+/// **File format (v5、envTag 追記)**:
 ///
 /// @code
-///   header (40 bytes):
+///   ヘッダー (104 byte、v5 で envTag 追加):
 ///       char[4]  magic            = "MTRR"          ; off 0
-///       uint32_t version          = 4               ; off 4
+///       uint32_t version          = 5               ; off 4 (旧 v4 も読める、後述)
 ///       uint32_t frameSize        = sizeof(InputSnapshot) ; off 8
 ///       uint32_t frameCount       = total frames    ; off 12 (seek-back at close)
 ///       uint64_t rngSeed          = recording seed   ; off 16
 ///       uint64_t recordedAtUnixMs = wall clock at open ; off 24
 ///       uint64_t abiVersion       = kWireApiVersion (数値 + build 指紋) ; off 32 (v21+ で記録。旧録画は 0 = 不明)
+///       char[64] envTag           = 記録環境の自由記述 (例 "dx12|NVIDIA GeForce RTX 5070 Ti|x64") ; off 40 (v5+。null 終端、余りは 0 埋め)
 ///
 ///   frame record (variable, repeated):
 ///       uint32_t frameIdx
@@ -30,6 +31,10 @@
 /// v2 → v3 は後方互換なし (frame record に stateLen + state を追加した)。
 /// v2/v1 file は version mismatch で graceful reject (再録画前提)。
 ///
+/// v4 → v5 は header 末尾に envTag を足しただけで frame record layout は不変なので、
+/// `Player::open` は version 4 (40 byte header、envTag 無し) も引き続き読める
+/// (`kHeaderBytesV4` で分岐)。v4 録画の `recordedEnvTag()` は空文字を返す。
+///
 /// **ABI 不一致録画の拒否**: ABI bump で InputSnapshot のサイズが変わると header の
 /// frameSize が現 sizeof(InputSnapshot) と一致せず、Player::open が FrameSizeMismatch で
 /// 拒否する (format version が同じでも再生不能 = 再録画が必要)。off 32 の abiVersion は
@@ -39,6 +44,13 @@
 /// memcpy / serialize したもの」。engine は中身を一切解釈しない (汎用)。
 /// これにより「同 input・異コード」で state がどの frame から分岐したかを
 /// `Player::diffState()` が判定できる (axis 4 / AI 回帰判定)。
+///
+/// **stateLen=0 の間引き記録**: 大きい GameMemory (数 MB 級) を毎フレーム丸ごと書くと
+/// 録画コストが frame あたり数 ms〜十数 ms かかる。stateLen=0 は元々「state 無し」を
+/// 表す合法値なので、caller が N フレームごとにしか state を書かない (mitiru_host の
+/// `--record-state-every`) 運用も format 変更なしで成立する。stateLen=0 の frame は
+/// `Player::diffState()` / `--replay-test` の byte 比較対象から自然に外れる
+/// (recordedMem が空のまま比較条件に一致しないため)。
 ///
 /// **設計判断**:
 /// - InputSnapshot は POD なので memcpy が安全
@@ -55,6 +67,7 @@
 #include <fstream>
 #include <string>
 
+#include <mitiru/debug/TracyIntegration.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru::replay
@@ -65,11 +78,18 @@ constexpr char        kMagic[4]      = {'M', 'T', 'R', 'R'};
 
 /// @brief recorder/player 共通の format version
 /// @details v3 → v4: InputSnapshot に rngSeed が増えて frameSize が変わった。
+///          v4 → v5: header 末尾に envTag[64] を追記した (frame record は不変)。
 ///          旧 file は version / frameSize mismatch で graceful reject (再録画前提)。
-constexpr std::uint32_t kFormatVersion = 4;
+constexpr std::uint32_t kFormatVersion   = 5;
+/// @brief `Player::open` が引き続き読める旧 format (envTag 無し、header 40 byte)
+constexpr std::uint32_t kFormatVersionV4 = 4;
 
-/// @brief recorder/player 共通の header byte size (v2: 40 bytes)
-constexpr std::size_t   kHeaderBytes   = 40;
+/// @brief recorder/player 共通の header byte size (v5: 104 bytes)
+constexpr std::size_t   kHeaderBytes     = 104;
+/// @brief v4 file の header byte size (envTag が無い分だけ短い)
+constexpr std::size_t   kHeaderBytesV4   = 40;
+/// @brief envTag の byte 数 (null 終端込み、余りは 0 埋め)
+constexpr std::size_t   kEnvTagBytes     = 64;
 
 /// @brief header field offsets (single source of truth, read + write 共有)
 constexpr std::size_t   kOffMagic      = 0;
@@ -79,6 +99,7 @@ constexpr std::size_t   kOffFrameCount = 12;
 constexpr std::size_t   kOffRngSeed    = 16;
 constexpr std::size_t   kOffRecordedAt = 24;
 constexpr std::size_t   kOffAbiVersion = 32;  ///< 記録時の wire version (指紋入り、0 = 不明)。診断用
+constexpr std::size_t   kOffEnvTag     = 40;  ///< 記録環境の自由記述 (v5+ のみ、v4 file には存在しない)
 
 /// @brief fnv1a-32 starting seed (single source of truth)
 constexpr std::uint32_t kFnvSeed  = 0x811c9dc5u;
@@ -156,6 +177,24 @@ public:
 		return m_out.good();
 	}
 
+	/// @brief header の envTag 欄を書く。`open()` 直後の 1 回だけ呼ぶ想定
+	///        (host が backend/GPU を確定させたタイミングで呼べるよう、open() 自体の
+	///        引数には含めていない)。64 byte を超える分は切り詰め、null 終端する。
+	bool writeEnvTag(const std::string& tag)
+	{
+		if (!m_out.is_open()) { return false; }
+
+		char buf[kEnvTagBytes] = {};
+		const std::size_t n = tag.size() < kEnvTagBytes - 1 ? tag.size() : kEnvTagBytes - 1;
+		std::memcpy(buf, tag.data(), n);
+
+		const auto savedPos = m_out.tellp();
+		m_out.seekp(static_cast<std::streamoff>(kOffEnvTag), std::ios::beg);
+		m_out.write(buf, kEnvTagBytes);
+		m_out.seekp(savedPos);
+		return m_out.good();
+	}
+
 	/// @brief 1 frame を追記する: InputSnapshot + 任意の state blob。
 	/// @param frameIdx   論理 frame index
 	/// @param snap       この frame の input snapshot (POD memcpy)
@@ -172,6 +211,10 @@ public:
 	{
 		if (!m_out.is_open()) { return false; }
 		if (stateBlob == nullptr) { stateLen = 0; }
+
+		// 7-1: 録画中だけ Tracy のタイムラインへ mtrr フレーム番号を刻む (非録画時はここを
+		// 通らないので no-op と同義。Tracy 無効ビルドでは tagMtrrFrame 自体が no-op)。
+		debug::TracyHelper::tagMtrrFrame(frameIdx);
 
 		// レイアウト: [frameIdx u32][payload InputSnapshot][stateLen u32][state][checksum u32]
 		constexpr std::size_t kPayloadBytes = sizeof(module::InputSnapshot);

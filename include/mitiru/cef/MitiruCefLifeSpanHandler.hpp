@@ -5,7 +5,9 @@
 
 #if defined(_WIN32) && defined(MITIRU_HAS_CEF)
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_life_span_handler.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 namespace mitiru::cef
 {

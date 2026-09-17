@@ -5,6 +5,7 @@
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/BackendInit.hpp>
 
+#include <cstdlib>
 #include <fstream>
 
 // ── Engine lifecycle (initialize) のクラス外定義 ────────────────
@@ -12,6 +13,9 @@
 MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 {
 	m_config = config;
+	// G1: 撮影中は実時間 dt を使わない。以降 m_config.deterministic を見る箇所
+	// (Clock 構築・tickFixedUpdatePhase の stepCap 判定) すべてに一括で効かせる。
+	if (m_config.captureActive) { m_config.deterministic = true; }
 	m_shouldStop.store(false);
 
 	/// 設定された音量を内部状態にコピー (audio engine 生成後に applyVolumes される)
@@ -66,8 +70,10 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			GlfwGraphicsMode::OpenGL);
 #else
 		// GLFW 不在時は黙って変えない。fallback は明示する
-		mitiru::debug::warnOnce("gfx.glfw.opengl.fallback",
-			"指定 backend OpenGL は GLFW 不在で使用不可、Dx11 に変更");
+		mitiru::debug::warnOnceFix("gfx.glfw.opengl.fallback",
+			"指定 backend OpenGL は GLFW 不在で使用不可、Dx11 に変更",
+			"ビルド構成に MITIRU_HAS_GLFW が定義されていない",
+			"GLFW を find_package できる構成で再 configure するか、Dx11 backend を明示指定する");
 		m_config.gfxBackend = gfx::Backend::Dx11;
 		m_window = m_platform->createWindow(
 			config.title, winW, winH);
@@ -82,8 +88,10 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			GlfwGraphicsMode::Vulkan);
 #else
 		// GLFW 不在時は黙って変えない。fallback は明示する
-		mitiru::debug::warnOnce("gfx.glfw.vulkan.fallback",
-			"指定 backend Vulkan は GLFW 不在で使用不可、Dx11 に変更");
+		mitiru::debug::warnOnceFix("gfx.glfw.vulkan.fallback",
+			"指定 backend Vulkan は GLFW 不在で使用不可、Dx11 に変更",
+			"ビルド構成に MITIRU_HAS_GLFW が定義されていない",
+			"GLFW を find_package できる構成で再 configure するか、Dx11 backend を明示指定する");
 		m_config.gfxBackend = gfx::Backend::Dx11;
 		m_window = m_platform->createWindow(
 			config.title, winW, winH);
@@ -145,8 +153,22 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	}
 #endif
 
-	/// GPUデバイス生成
-	if (config.headless || config.gfxBackend == gfx::Backend::Null)
+	/// GPUデバイス生成。
+	/// G2: `--headless` は既定で最速の `NullDevice` (2D は SW ラスタ経由で別途描く)。
+	/// 環境変数 `MITIRU_HEADLESS_GPU3D` (opt-in) が立っている時だけ、ウィンドウ無しでも
+	/// 実 GPU デバイスを windowless に作って 3D を描き `readPixels()` で読み戻せるようにする
+	/// (`--capture-dir` で 3D シーンの PNG を撮る用途)。無条件に切り替えないのは、既存の
+	/// ctest 群 (determinism/e2e/replay_golden 等) が `--headless` の NullDevice 前提で
+	/// 大量に走っており、既定動作を変えると全て道連れで壊れるため。
+	const bool headlessGpu3D = config.headless
+		&& std::getenv("MITIRU_HEADLESS_GPU3D") != nullptr
+		&& config.gfxBackend != gfx::Backend::Null;
+	if (headlessGpu3D)
+	{
+		m_device = gfx::createWindowlessDevice3D(
+			config.gfxBackend, winW, winH);
+	}
+	else if (config.headless || config.gfxBackend == gfx::Backend::Null)
 	{
 		m_device = std::make_unique<gfx::NullDevice>();
 	}
@@ -157,7 +179,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	}
 
 	/// クロック生成
-	m_clock = std::make_unique<Clock>(config.targetTps, config.deterministic);
+	m_clock = std::make_unique<Clock>(config.targetTps, m_config.deterministic);
 
 	m_initialized = true;
 }

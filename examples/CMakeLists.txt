@@ -15,6 +15,12 @@ endif()
 #     - mitiru_host の隣 (<host dir>/<name>/) へ deploy — host は相対 path で load できる
 #     - <name>/assets/ があれば同じ dir へ source-tracked stamp 経由で配る
 function(mitiru_add_example name)
+	# 公開スナップショットは一部の example を同梱しない (教本の検証用など)。無い example を登録すると
+	# 利用者の configure が「No SOURCES given」で壊れるので、ソースが無ければ飛ばす。
+	if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}_dll.cpp")
+		message(STATUS "example ${name}: ソースが無いので飛ばす (${name}/${name}_dll.cpp)")
+		return()
+	endif()
 	add_library(${name} SHARED "${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}_dll.cpp")
 	target_link_libraries(${name} PRIVATE mitiru)
 	if(MSVC)
@@ -79,11 +85,18 @@ mitiru_add_example(html_menu)      # binder 応用: list / dispatch / confirm
 mitiru_add_example(observe)
 mitiru_add_example(rewind)         # time-travel inspector (軸②)
 mitiru_add_example(restart_save)   # requestRestart + .msav
+mitiru_add_example(objects_kitchen) # クラスとコンポーネントで書く: MITIRU_GAME_OBJECTS (進行データだけ POD、ADR 0040)
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
 mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD
 mitiru_add_example(anim3d)         # 骨格アニメ: drawModelBlend + クリップ時間
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
 mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane を並べて撮る
+
+# textbook_ch4..6: docs/textbook/index.html 第4〜6章の完成形 (M6)。examples/README.md の
+# カリキュラム表とは別枠 (教本の実機検証専用、beko_run/hello_preview と同じ位置づけ)。
+mitiru_add_example(textbook_ch4)   # 敵 + 当たり判定 + MITIRU_INVARIANT (HP は負にならない)
+mitiru_add_example(textbook_ch5)   # --record / --replay-test / --inspect rewind
+mitiru_add_example(textbook_ch6)   # 分岐エディタ: beginObject(name, fieldX, fieldY)
 
 # ── チュートリアル頁の題材ゲーム ───────────────────────────────────────────
 # beko_run: 赤べこの横スクロールアクション。カリキュラム章 (1 機能 1 DLL) ではなく

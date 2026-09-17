@@ -24,11 +24,14 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/gfx/IBuffer.hpp>
 #include <mitiru/gfx/ICommandList.hpp>
 #include <mitiru/gfx/IDevice.hpp>
+#include <mitiru/gfx/IRenderTarget.hpp>
 #include <mitiru/gfx/dx11/Dx11Buffer.hpp>
 #include <mitiru/gfx/dx11/Dx11CommandList.hpp>
+#include <mitiru/gfx/dx11/Dx11RenderTarget.hpp>
 #include <mitiru/gfx/dx11/Dx11SwapChain.hpp>
 #include <mitiru/gfx/dx11/Dx11Texture.hpp>
 #include <mitiru/platform/win32/Win32Window.hpp>
@@ -73,6 +76,27 @@ public:
 		initGpuTimer();
 	}
 
+	/// @brief windowless (offscreen) コンストラクタ (G2)。ウィンドウ / スワップチェーンを
+	///        持たず、`width`×`height` のテクスチャ 1 枚を RTV+SRV 付きで作って描画先にする。
+	///        `--headless` で 3D を描いて `readPixels()` で読み戻したい (`--capture-dir`) が、
+	///        実ウィンドウは要らない用途向け。present() は no-op (呼び出し側の endFrame が
+	///        m_swapChain の有無で分岐済み)。
+	explicit Dx11Device(int width, int height)
+	{
+		if (width <= 0 || height <= 0)
+		{
+			throw std::runtime_error(
+				"Dx11Device: windowless width/height must be positive");
+		}
+
+		createDevice();
+
+		m_offscreenTarget = std::make_unique<Dx11RenderTarget>(
+			Dx11RenderTarget::createTexture(
+				m_device.Get(), width, height, DXGI_FORMAT_R8G8B8A8_UNORM));
+		initGpuTimer();
+	}
+
 	/// @brief フレームバッファからピクセルを読み取る
 	/// @param width 読み取り幅
 	/// @param height 読み取り高さ
@@ -80,43 +104,63 @@ public:
 	[[nodiscard]] std::vector<std::uint8_t> readPixels(
 		int width, int height) const override
 	{
-		if (!m_swapChain)
-		{
-			return {};
-		}
+		ComPtr<ID3D11Texture2D> source;
 
-		/// バックバッファの取得
-		ComPtr<ID3D11Texture2D> backBuffer;
-		HRESULT hr = m_swapChain->getSwapChain()->GetBuffer(
-			0, __uuidof(ID3D11Texture2D),
-			reinterpret_cast<void**>(backBuffer.GetAddressOf()));
-		if (FAILED(hr))
+		if (m_swapChain)
 		{
-			return {};
-		}
-
-		/// MSAA バックバッファの場合はまず非MSAAに解決する
-		D3D11_TEXTURE2D_DESC bbDesc = {};
-		backBuffer->GetDesc(&bbDesc);
-		ComPtr<ID3D11Texture2D> source = backBuffer;
-		if (bbDesc.SampleDesc.Count > 1)
-		{
-			D3D11_TEXTURE2D_DESC resolvedDesc = bbDesc;
-			resolvedDesc.SampleDesc.Count = 1;
-			resolvedDesc.SampleDesc.Quality = 0;
-			resolvedDesc.Usage = D3D11_USAGE_DEFAULT;
-			resolvedDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-			resolvedDesc.CPUAccessFlags = 0;
-			resolvedDesc.MiscFlags = 0;
-			ComPtr<ID3D11Texture2D> resolved;
-			if (FAILED(m_device->CreateTexture2D(
-					&resolvedDesc, nullptr, resolved.GetAddressOf())))
+			/// バックバッファの取得
+			ComPtr<ID3D11Texture2D> backBuffer;
+			HRESULT hr = m_swapChain->getSwapChain()->GetBuffer(
+				0, __uuidof(ID3D11Texture2D),
+				reinterpret_cast<void**>(backBuffer.GetAddressOf()));
+			if (FAILED(hr))
 			{
 				return {};
 			}
-			m_context->ResolveSubresource(
-				resolved.Get(), 0, backBuffer.Get(), 0, bbDesc.Format);
-			source = resolved;
+
+			/// MSAA バックバッファの場合はまず非MSAAに解決する
+			D3D11_TEXTURE2D_DESC bbDesc = {};
+			backBuffer->GetDesc(&bbDesc);
+			source = backBuffer;
+			if (bbDesc.SampleDesc.Count > 1)
+			{
+				D3D11_TEXTURE2D_DESC resolvedDesc = bbDesc;
+				resolvedDesc.SampleDesc.Count = 1;
+				resolvedDesc.SampleDesc.Quality = 0;
+				resolvedDesc.Usage = D3D11_USAGE_DEFAULT;
+				resolvedDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+				resolvedDesc.CPUAccessFlags = 0;
+				resolvedDesc.MiscFlags = 0;
+				ComPtr<ID3D11Texture2D> resolved;
+				if (FAILED(m_device->CreateTexture2D(
+						&resolvedDesc, nullptr, resolved.GetAddressOf())))
+				{
+					return {};
+				}
+				m_context->ResolveSubresource(
+					resolved.Get(), 0, backBuffer.Get(), 0, bbDesc.Format);
+				source = resolved;
+			}
+		}
+		else if (m_offscreenTarget)
+		{
+			/// windowless (G2): RTV から実体の Resource を辿ってテクスチャを得る
+			/// (Dx11RenderTarget は生テクスチャポインタを外に出さないため)。
+			ID3D11RenderTargetView* rtv = m_offscreenTarget->getRTV();
+			if (!rtv)
+			{
+				return {};
+			}
+			ComPtr<ID3D11Resource> resource;
+			rtv->GetResource(resource.GetAddressOf());
+			if (!resource || FAILED(resource.As(&source)))
+			{
+				return {};
+			}
+		}
+		else
+		{
+			return {};
 		}
 
 		/// ステージングテクスチャの生成
@@ -129,7 +173,7 @@ public:
 
 		/// ステージングテクスチャをマップしてCPUから読み取る
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
-		hr = m_context->Map(
+		const HRESULT hr = m_context->Map(
 			staging.getTexture(), 0,
 			D3D11_MAP_READ, 0, &mapped);
 		if (FAILED(hr))
@@ -169,7 +213,11 @@ public:
 	/// @details レンダーターゲットをクリアする。
 	void beginFrame() override
 	{
-		if (!m_swapChain)
+		// windowless (G2) では m_swapChain の代わりにオフスクリーンテクスチャの RTV へ描く。
+		ID3D11RenderTargetView* rtv = m_swapChain
+			? m_swapChain->getRenderTargetView()
+			: (m_offscreenTarget ? m_offscreenTarget->getRTV() : nullptr);
+		if (!rtv)
 		{
 			return;
 		}
@@ -180,12 +228,8 @@ public:
 			m_context->End(m_gpuTimestampBegin.Get());
 		}
 
-		auto* rtv = m_swapChain->getRenderTargetView();
-		if (rtv)
-		{
-			m_context->ClearRenderTargetView(rtv, m_clearColor);
-			m_context->OMSetRenderTargets(1, &rtv, nullptr);
-		}
+		m_context->ClearRenderTargetView(rtv, m_clearColor);
+		m_context->OMSetRenderTargets(1, &rtv, nullptr);
 	}
 
 	/// @brief フレーム終了・プレゼント処理
@@ -251,6 +295,15 @@ public:
 		return m_swapChain.get();
 	}
 
+	/// @brief 現在の描画先 RTV を取得する (`m_swapChain` があればそれ、windowless (G2) なら
+	///        `m_offscreenTarget`)。`Renderer3D` (3D パイプライン) が `getSwapChain()==nullptr`
+	///        で早期 return し windowless では何も描かれなかった問題を解消する統一アクセサ。
+	[[nodiscard]] ID3D11RenderTargetView* currentRenderTargetView() const noexcept
+	{
+		if (m_swapChain) { return m_swapChain->getRenderTargetView(); }
+		return m_offscreenTarget ? m_offscreenTarget->getRTV() : nullptr;
+	}
+
 	/// @brief GPUバッファを生成する
 	/// @param bufferType バッファ種別
 	/// @param sizeBytes バッファサイズ（バイト）
@@ -275,6 +328,34 @@ public:
 		return std::make_unique<Dx11CommandList>(m_context.Get());
 	}
 
+	/// @brief 独立したレンダーターゲットを生成する（RenderTargetPool 用）
+	/// @details Depth24Stencil8 は RTV ではなく DSV+SRV の depth-only テクスチャとして作る
+	///          （`IRenderTarget::nativeDsv()` 経由でバインドする、`nativeRtv()` は常に nullptr）。
+	[[nodiscard]] std::unique_ptr<IRenderTarget> createRenderTarget(
+		const RenderTargetDesc& desc) override
+	{
+		if (desc.format == PixelFormat::Depth24Stencil8)
+		{
+			return std::make_unique<Dx11RenderTarget>(
+				Dx11RenderTarget::createDepthTexture(
+					m_device.Get(), desc.width, desc.height));
+		}
+
+		const DXGI_FORMAT fmt = toDxgiFormat(desc.format);
+		if (fmt == DXGI_FORMAT_UNKNOWN)
+		{
+			debug::warnOnceFix("gfx.dx11.create_render_target.unsupported_format",
+				"Dx11Device::createRenderTarget: 未対応の PixelFormat が指定された",
+				"toDxgiFormat に対応表がない PixelFormat を渡した",
+				"対応済みの PixelFormat を使うか、toDxgiFormat の対応表に追加する");
+			return nullptr;
+		}
+
+		return std::make_unique<Dx11RenderTarget>(
+			Dx11RenderTarget::createTexture(
+				m_device.Get(), desc.width, desc.height, fmt));
+	}
+
 	/// @brief ウィンドウリサイズに対応する
 	/// @param w 新しいクライアント領域幅
 	/// @param h 新しいクライアント領域高さ
@@ -296,8 +377,11 @@ public:
 	/// @brief 3D描画後に2D描画用にレンダーターゲットをリセットする
 	void resetRenderTargetFor2D() override
 	{
-		if (!m_context || !m_swapChain) return;
-		auto* rtv = m_swapChain->getRenderTargetView();
+		if (!m_context) return;
+		// windowless (G2) では m_swapChain の代わりにオフスクリーンテクスチャの RTV へ戻す。
+		auto* rtv = m_swapChain
+			? m_swapChain->getRenderTargetView()
+			: (m_offscreenTarget ? m_offscreenTarget->getRTV() : nullptr);
 		if (rtv)
 		{
 			// 深度バッファなしでレンダーターゲットを再設定
@@ -326,14 +410,18 @@ public:
 	/// @brief ポストプロセスチェーンを実行しバックバッファに出力する
 	void endPostProcess() override
 	{
-		if (m_postProcessManager && m_postProcessManager->isEnabled()
-			&& m_postProcessManager->isInitialized() && m_context && m_swapChain)
+		if (!m_postProcessManager || !m_postProcessManager->isEnabled()
+			|| !m_postProcessManager->isInitialized() || !m_context)
 		{
-			auto* rtv = m_swapChain->getRenderTargetView();
-			if (rtv)
-			{
-				m_postProcessManager->endScene(m_context.Get(), rtv);
-			}
+			return;
+		}
+		// windowless (G2) では m_swapChain の代わりにオフスクリーンテクスチャの RTV へ出力する。
+		auto* rtv = m_swapChain
+			? m_swapChain->getRenderTargetView()
+			: (m_offscreenTarget ? m_offscreenTarget->getRTV() : nullptr);
+		if (rtv)
+		{
+			m_postProcessManager->endScene(m_context.Get(), rtv);
 		}
 	}
 
@@ -390,7 +478,8 @@ private:
 
 	ComPtr<ID3D11Device> m_device;                   ///< D3D11デバイス
 	ComPtr<ID3D11DeviceContext> m_context;            ///< D3D11即時コンテキスト
-	std::unique_ptr<Dx11SwapChain> m_swapChain;      ///< スワップチェーン
+	std::unique_ptr<Dx11SwapChain> m_swapChain;      ///< スワップチェーン (windowless 時は null)
+	std::unique_ptr<Dx11RenderTarget> m_offscreenTarget; ///< windowless (G2) の描画先 (m_swapChain が null の時だけ使う)
 	render::PostProcessManager* m_postProcessManager = nullptr; ///< ポストプロセス（非所有）
 
 	// GPUタイムスタンプクエリ

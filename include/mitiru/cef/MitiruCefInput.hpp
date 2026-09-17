@@ -10,7 +10,9 @@
 #endif
 #include <Windows.h>
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_browser.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 #include <mitiru/cef/MitiruCefTexture.hpp>
 #include <mitiru/input/InputState.hpp>

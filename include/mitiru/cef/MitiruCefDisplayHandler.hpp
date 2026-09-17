@@ -13,7 +13,9 @@
 #include <cstdio>
 #include <string>
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_display_handler.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 namespace mitiru::cef
 {

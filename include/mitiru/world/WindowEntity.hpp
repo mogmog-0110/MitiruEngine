@@ -20,6 +20,8 @@
 #include <functional>   // tick callback 用
 #include <string>       // タイトル文字列
 #include <string_view>  // タイトル引数
+#include <utility>      // スプライトの UV 反転の swap
+#include <vector>       // スプライトの頂点
 
 #include <sgc/math/Rect.hpp>
 #include <sgc/types/Color.hpp>
@@ -30,7 +32,9 @@
 #include <mitiru/render/pixel/PixelFont.hpp>
 #include <mitiru/render/Style2D.hpp>
 #include <mitiru/render/StyledRectBatch.hpp>
+#include <mitiru/render/Texture.hpp>
 #include <mitiru/render/Transform2D.hpp>
+#include <mitiru/render/Vertex2D.hpp>
 
 namespace mitiru::world
 {
@@ -239,6 +243,104 @@ public:
 		                                    m_circleBatch.currentStyle());
 	}
 
+	/// @brief テクスチャの一部を矩形へ描く。透過はテクスチャのアルファ (straight) で抜ける
+	/// @param texture GPU 側のキャッシュは &texture をキーにするので、描いている間は同じ
+	///                アドレスに置いたままにすること (一時オブジェクトを渡すと毎フレーム
+	///                アップロードし直す)
+	/// @param localRect クライアント座標系 (左上原点、px)
+	/// @param srcRect テクスチャ内の画素矩形
+	void drawSprite(const render::Texture& texture, const sgc::Rectf& localRect,
+	                const sgc::Rectf& srcRect, bool flipX = false, bool flipY = false,
+	                const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f})
+	{
+		if (!m_pipeline.isValid() || !m_pipeline.supportsTexturedBatch() || !texture.valid())
+		{
+			return;
+		}
+		const std::uint32_t handle = m_pipeline.ensureSpriteTexture(
+		    &texture, texture.width(), texture.height(), texture.pixels().data());
+		if (handle == 0)
+		{
+			return;
+		}
+		const float tw = static_cast<float>(texture.width());
+		const float th = static_cast<float>(texture.height());
+		float u0 = srcRect.x() / tw;
+		float v0 = srcRect.y() / th;
+		float u1 = (srcRect.x() + srcRect.width()) / tw;
+		float v1 = (srcRect.y() + srcRect.height()) / th;
+		if (flipX)
+		{
+			std::swap(u0, u1);
+		}
+		if (flipY)
+		{
+			std::swap(v0, v1);
+		}
+		const float x0 = localRect.x();
+		const float y0 = localRect.y();
+		const float x1 = x0 + localRect.width();
+		const float y1 = y0 + localRect.height();
+		m_spriteVertices.assign({
+		    render::Vertex2D{sgc::Vec2f{x0, y0}, sgc::Vec2f{u0, v0}, tint},
+		    render::Vertex2D{sgc::Vec2f{x1, y0}, sgc::Vec2f{u1, v0}, tint},
+		    render::Vertex2D{sgc::Vec2f{x1, y1}, sgc::Vec2f{u1, v1}, tint},
+		    render::Vertex2D{sgc::Vec2f{x0, y1}, sgc::Vec2f{u0, v1}, tint},
+		});
+		m_pipeline.submitTexturedBatch(m_spriteVertices, kSpriteQuadIndices, handle);
+	}
+
+	/// @brief テクスチャ全体を矩形へ描く
+	void drawSprite(const render::Texture& texture, const sgc::Rectf& localRect,
+	                bool flipX = false, bool flipY = false)
+	{
+		drawSprite(texture, localRect,
+		           sgc::Rectf{0.0f, 0.0f, static_cast<float>(texture.width()),
+		                      static_cast<float>(texture.height())},
+		           flipX, flipY);
+	}
+
+	/// @brief テクスチャを等倍で矩形の左上から敷き詰める。端は切る。1 回の submit にまとめる
+	void drawSpriteTiled(const render::Texture& texture, const sgc::Rectf& area)
+	{
+		if (!m_pipeline.isValid() || !m_pipeline.supportsTexturedBatch() || !texture.valid() ||
+		    area.width() <= 0.0f || area.height() <= 0.0f)
+		{
+			return;
+		}
+		const std::uint32_t handle = m_pipeline.ensureSpriteTexture(
+		    &texture, texture.width(), texture.height(), texture.pixels().data());
+		if (handle == 0)
+		{
+			return;
+		}
+		const float tw = static_cast<float>(texture.width());
+		const float th = static_cast<float>(texture.height());
+		const sgc::Colorf white{1.0f, 1.0f, 1.0f, 1.0f};
+		m_spriteVertices.clear();
+		m_spriteIndices.clear();
+		for (float y = area.y(); y < area.y() + area.height(); y += th)
+		{
+			const float h = (std::min)(th, area.y() + area.height() - y);
+			for (float x = area.x(); x < area.x() + area.width(); x += tw)
+			{
+				const float w = (std::min)(tw, area.x() + area.width() - x);
+				const std::uint32_t base = static_cast<std::uint32_t>(m_spriteVertices.size());
+				const float u1 = w / tw;
+				const float v1 = h / th;
+				m_spriteVertices.push_back(render::Vertex2D{sgc::Vec2f{x, y}, sgc::Vec2f{0.0f, 0.0f}, white});
+				m_spriteVertices.push_back(render::Vertex2D{sgc::Vec2f{x + w, y}, sgc::Vec2f{u1, 0.0f}, white});
+				m_spriteVertices.push_back(render::Vertex2D{sgc::Vec2f{x + w, y + h}, sgc::Vec2f{u1, v1}, white});
+				m_spriteVertices.push_back(render::Vertex2D{sgc::Vec2f{x, y + h}, sgc::Vec2f{0.0f, v1}, white});
+				for (std::uint32_t i : {0u, 1u, 2u, 0u, 2u, 3u})
+				{
+					m_spriteIndices.push_back(base + i);
+				}
+			}
+		}
+		m_pipeline.submitTexturedBatch(m_spriteVertices, m_spriteIndices, handle);
+	}
+
 	/// @brief 8x8 ドットフォントで文字を矩形内に描く (UTF-8、'\n' 可)
 	/// @param bounds クライアント座標系 (左上原点、px)。この矩形から出る点は描かない
 	void drawTextInRect(const sgc::Rectf& bounds, std::string_view text, float scale,
@@ -367,6 +469,9 @@ private:
 	render::RenderPipeline2D m_pipeline;
 	render::StyledRectBatch m_rectBatch;
 	render::StyledCircleBatch m_circleBatch;
+	std::vector<render::Vertex2D> m_spriteVertices;
+	std::vector<std::uint32_t> m_spriteIndices;
+	inline static const std::vector<std::uint32_t> kSpriteQuadIndices{0, 1, 2, 0, 2, 3};
 	sgc::Rectf m_prevRect{};
 	sgc::Rectf m_curRect{};
 	int m_backBufferW = 0;

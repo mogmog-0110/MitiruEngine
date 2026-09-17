@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>why</title>
+<link rel="stylesheet" href="tool.css">
+<style>
+  .query{ display:flex; gap:.5rem; }
+  .query input[type=text]{
+    flex:1 1 auto; font-family:var(--mono); font-size:.78rem; padding:.4rem .55rem;
+    background:var(--well); border:1px solid var(--rule-soft); color:var(--ink);
+  }
+  .query button{
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.06em; padding:.4rem .8rem;
+    background:var(--wash); border:1px solid var(--rule); color:var(--ink); cursor:pointer;
+  }
+  .query button:hover{ background:var(--rule-soft); }
+  .blame{ font-family:var(--mono); font-size:.9rem; margin-top:.2rem; }
+  .blame.unsupported{ color:var(--faint); }
+  .err{ color:#a33; font-family:var(--mono); font-size:.76rem; margin-top:.5rem; display:none; }
+  .hist .row{ display:flex; padding:.3rem .5rem; border-bottom:1px solid var(--rule-soft); }
+  .hist .row:last-child{ border-bottom:0; }
+  .hist .k{ flex:0 0 30%; font-family:var(--mono); font-size:.72rem; color:var(--muted); }
+  .hist .v{ flex:1 1 auto; font-family:var(--mono); color:var(--ink); font-variant-numeric:tabular-nums; }
+  .hist .v.newest{ font-weight:600; }
+  .hint{ margin-top:.6rem; font-family:var(--mono); font-size:.7rem; color:var(--faint); }
+  /* 4-3: scene_view.html と同じ帯。分岐中 (commit/discard 前) であることをここでも見せる。 */
+  .branch-banner{
+    display:none; align-items:center; gap:.5rem; margin-bottom:.6rem; padding:.35rem .6rem;
+    background:#3a2a12; border:1px solid #b8792e; color:#e8b23d;
+    font-family:var(--mono); font-size:.72rem;
+  }
+</style>
+</head>
+<body id="body">
+  <header><span class="dot"></span><h1>why</h1></header>
+  <div class="body">
+    <div class="branch-banner" id="branchBanner"></div>
+    <div class="query">
+      <input type="text" id="field" placeholder="field (dotted path, 例: player.hp)">
+      <button id="go">問い合わせ</button>
+    </div>
+    <div class="hint">対象ゲームが `--console` (または `--http-port`) で起動している必要がある</div>
+    <div class="err" id="err"></div>
+
+    <div class="label">最後に書いた phase</div>
+    <div class="panel"><div class="blame" id="blame">field を入力して問い合わせてください</div></div>
+
+    <div class="label">この値を書く場所</div>
+    <div class="panel"><div class="blame" id="everWrote">-</div></div>
+
+    <div class="label">値の推移 (新しい順、最大 8 フレーム)</div>
+    <div class="panel"><div class="hist" id="hist"></div></div>
+  </div>
+
+<script>
+// なぜビュー (O6、ADR 0035): ゲーム側の /api/ai/why?field=<dotted path> を直接叩く。
+// 他ツール窓 (SharedSnapshot polling) と違い、フィールド名を選ぶ一問一答の対話なので
+// signal-only の push 型バインディングではなく fetch() で都度取りに行く。
+(function () {
+  const err       = document.getElementById('err');
+  const blame     = document.getElementById('blame');
+  const everWrote = document.getElementById('everWrote');
+  const hist      = document.getElementById('hist');
+  const field  = document.getElementById('field');
+  const go     = document.getElementById('go');
+
+  // main.cpp が --http-port で受けた値を window.applyConfig({httpPort}) で push する。
+  // 未指定 (単体プレビュー等) は既定 8090 (EngineHttpServer::init の既定値と同じ)。
+  let httpPort = 8090;
+  window.applyConfig = function (cfg) {
+    if (cfg && typeof cfg.httpPort === 'number' && cfg.httpPort > 0) { httpPort = cfg.httpPort; }
+  };
+
+  function showError(msg) {
+    err.textContent = msg;
+    err.style.display = 'block';
+  }
+
+  function renderHistory(entries) {
+    hist.innerHTML = '';
+    if (!Array.isArray(entries) || entries.length === 0) {
+      hist.innerHTML = '<div class="row"><div class="k">-</div><div class="v muted">履歴なし</div></div>';
+      return;
+    }
+    for (const e of entries) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const k = document.createElement('div');
+      k.className = 'k';
+      k.textContent = (e.framesAgo === 0) ? 'now' : (e.framesAgo + ' フレーム前');
+      const v = document.createElement('div');
+      v.className = 'v' + (e.framesAgo === 0 ? ' newest' : '');
+      v.textContent = JSON.stringify(e.value);
+      row.appendChild(k);
+      row.appendChild(v);
+      hist.appendChild(row);
+    }
+  }
+
+  async function query() {
+    const name = field.value.trim();
+    if (!name) { return; }
+    err.style.display = 'none';
+    blame.textContent = '問い合わせ中…';
+    try {
+      const res = await fetch('http://127.0.0.1:' + httpPort + '/api/ai/why?field=' + encodeURIComponent(name));
+      const j = await res.json();
+      if (!res.ok || j.error) {
+        showError(j.error || ('HTTP ' + res.status));
+        blame.textContent = '-';
+        renderHistory([]);
+        return;
+      }
+      if (j.blameSupported) {
+        blame.textContent = j.blame + '  (frame ' + j.frame + ')';
+        blame.classList.remove('unsupported');
+      } else {
+        // game 側が mitiru_why_blame_at を export していない: フレームと値の推移だけ表示する
+        // (ブリーフの契約どおりのフォールバック)。
+        blame.textContent = '未対応 (game が mitiru_why_blame_at を export していません)  (frame ' + j.frame + ')';
+        blame.classList.add('unsupported');
+      }
+      if (Array.isArray(j.everWrittenBy) && j.everWrittenBy.length > 0) {
+        everWrote.textContent = j.everWrittenBy.join(', ');
+      } else {
+        // 「一度も書かれていない」は「なぜ変わらないのか」への直接の答え。
+        everWrote.textContent = '(このフレームまで一度も書かれていない)';
+      }
+      renderHistory(j.history);
+    } catch (e) {
+      showError('接続失敗: ' + e.message + ' (127.0.0.1:' + httpPort + ' が listen していますか?)');
+    }
+  }
+
+  go.addEventListener('click', query);
+  field.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { query(); } });
+
+  // 4-3: /api/ai/state.branch を poll し、まだ commit/discard していない分岐があることを
+  // scene_view.html と同じ帯で見せる (この窓は特定 field の履歴しか見ないので、行ごとの
+  // 印は付けず banner だけにする)。
+  const branchBanner = document.getElementById('branchBanner');
+  function renderBranchBanner(branch) {
+    const fields = (branch && branch.fields) || [];
+    if (!branch || !branch.active || fields.length === 0) {
+      branchBanner.style.display = 'none';
+      return;
+    }
+    branchBanner.style.display = 'flex';
+    branchBanner.textContent = '分岐中: ' + fields.length + ' フィールド（残す / 捨てる）';
+  }
+  function pollBranchState() {
+    fetch('http://127.0.0.1:' + httpPort + '/api/ai/state', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { renderBranchBanner(j && j.branch); })
+      .catch(function () { /* game 側 HTTP API 未起動。次回 poll で再試行 */ });
+  }
+  setInterval(pollBranchState, 600);
+  pollBranchState();
+})();
+</script>
+</body>
+</html>

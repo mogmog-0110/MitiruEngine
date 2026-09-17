@@ -18,4 +18,5 @@
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Overlay.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_PostProcess.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Shadow.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Occlusion.inl>
 // NOLINTEND(build/include)

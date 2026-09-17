@@ -1,9 +1,7 @@
 ﻿#pragma once
 
 /// @file WaveAudioEngine.hpp
-/// @brief Windows Wave APIベースのオーディオエンジン
-/// @details PlaySound / waveOutSetVolume を使用した実オーディオ再生実装。
-///          非Windows環境ではNullAudioEngine互換の無音動作にフォールバックする。
+/// @brief Windows Wave API ベースのオーディオエンジンの宣言
 
 #include <string>
 #include <string_view>
@@ -27,26 +25,13 @@
 namespace mitiru::audio
 {
 
-/// @brief Windows Wave APIベースのオーディオエンジン
-/// @details BGMはPlaySoundのSND_LOOP、SEはPlaySoundのSND_ASYNCで再生する。
-///          ボリューム制御はwaveOutSetVolumeを使用する。
-///          非Windows環境では全操作がノーオペレーションとなる。
-///
-/// @code
-/// mitiru::audio::WaveAudioEngine audio;
-/// audio.registerSound("bgm01", "sounds/bgm01.wav");
-/// audio.registerSound("explosion", "sounds/explosion.wav");
-/// audio.playMusic("bgm01");
-/// audio.playSound("explosion");
-/// audio.setVolume(0.5f);
-/// @endcode
+/// @brief PlaySound と waveOutSetVolume を使う Windows 向けオーディオエンジン
+/// @details BGM は SND_LOOP、SE は SND_ASYNC で再生する。非 Windows 環境では何もしない。
 class WaveAudioEngine : public IAudioEngine
 {
 public:
-	/// @brief デフォルトコンストラクタ
 	WaveAudioEngine() noexcept = default;
 
-	/// @brief デストラクタ（再生中のサウンドを停止する）
 	~WaveAudioEngine() override
 	{
 #ifdef _WIN32
@@ -54,38 +39,32 @@ public:
 #endif
 	}
 
-	/// @brief コピー禁止
 	WaveAudioEngine(const WaveAudioEngine&) = delete;
-	/// @brief コピー代入禁止
 	WaveAudioEngine& operator=(const WaveAudioEngine&) = delete;
-	/// @brief ムーブコンストラクタ
 	WaveAudioEngine(WaveAudioEngine&&) noexcept = default;
-	/// @brief ムーブ代入演算子
 	WaveAudioEngine& operator=(WaveAudioEngine&&) noexcept = default;
 
-	/// @brief サウンドIDとファイルパスを登録する
-	/// @param id サウンドID
-	/// @param filePath WAVファイルのパス
+	/// @param filePath WAV ファイルのパス
 	void registerSound(std::string_view id, std::string_view filePath)
 	{
 		m_soundPaths[std::string(id)] = std::string(filePath);
 	}
 
-	/// @brief サウンドを再生する（SE用）
-	/// @param id サウンドID（registerSoundで事前登録が必要）
+	/// @brief registerSound で登録済みの SE を再生する
 	void playSound(std::string_view id) override
 	{
 #ifdef _WIN32
 		const auto it = m_soundPaths.find(std::string(id));
 		if (it == m_soundPaths.end())
 		{
-			// 未登録 id の黙った無音は原因不明になるので id 単位で初回のみ警告 (R-01 級)
-			mitiru::debug::warnOnce("audio.id:" + std::string(id),
-				"音声ファイルが見つからない/読めない: " + std::string(id) + " (未登録 id)");
+			// 未登録 ID を黙って無視すると原因を追えないため、ID ごとに初回だけ警告する（R-01 級）
+			mitiru::debug::warnOnceFix("audio.id:" + std::string(id),
+				"id " + std::string(id) + " が未登録",
+				"registerSound を呼ぶ前に playMusic/playSound を呼んだ",
+				"先に registerSound(id, path) でパスを登録する");
 			return;
 		}
 
-		/// SEはSND_ASYNCで非同期再生する
 		::PlaySoundA(
 			it->second.c_str(),
 			NULL,
@@ -97,14 +76,11 @@ public:
 #endif
 	}
 
-	/// @brief サウンドを停止する
-	/// @param id サウンドID
 	void stopSound(std::string_view id) override
 	{
 #ifdef _WIN32
 		if (m_currentSe == id)
 		{
-			/// PlaySound(NULL)で現在のサウンドを停止する
 			::PlaySoundA(NULL, NULL, 0);
 			m_currentSe.clear();
 		}
@@ -113,21 +89,21 @@ public:
 #endif
 	}
 
-	/// @brief BGMを再生する（ループ再生）
-	/// @param id BGM ID（registerSoundで事前登録が必要）
+	/// @brief registerSound で登録済みの BGM をループ再生する
 	void playMusic(std::string_view id) override
 	{
 #ifdef _WIN32
 		const auto it = m_soundPaths.find(std::string(id));
 		if (it == m_soundPaths.end())
 		{
-			// 未登録 id の黙った無音は原因不明になるので id 単位で初回のみ警告 (R-01 級)
-			mitiru::debug::warnOnce("audio.id:" + std::string(id),
-				"音声ファイルが見つからない/読めない: " + std::string(id) + " (未登録 id)");
+			// 未登録 ID を黙って無視すると原因を追えないため、ID ごとに初回だけ警告する（R-01 級）
+			mitiru::debug::warnOnceFix("audio.id:" + std::string(id),
+				"id " + std::string(id) + " が未登録",
+				"registerSound を呼ぶ前に playMusic/playSound を呼んだ",
+				"先に registerSound(id, path) でパスを登録する");
 			return;
 		}
 
-		/// BGMはSND_LOOPで無限ループ再生する
 		::PlaySoundA(
 			it->second.c_str(),
 			NULL,
@@ -140,7 +116,6 @@ public:
 #endif
 	}
 
-	/// @brief BGMを停止する
 	void stopMusic() override
 	{
 #ifdef _WIN32
@@ -153,23 +128,19 @@ public:
 #endif
 	}
 
-	/// @brief マスターボリュームを設定する
-	/// @param volume ボリューム [0.0, 1.0]
+	/// @param volume 0.0 から 1.0 のマスターボリューム
 	void setVolume(float volume) override
 	{
 		m_volume = (volume < 0.0f) ? 0.0f : (volume > 1.0f) ? 1.0f : volume;
 
 #ifdef _WIN32
-		/// waveOutSetVolumeは左右チャンネルを16bitずつ指定する
+		/// 左右チャンネルを 16 bit ずつ下位、上位の順に詰める
 		const auto level = static_cast<DWORD>(m_volume * 0xFFFF);
 		const DWORD dwVolume = (level & 0xFFFF) | ((level & 0xFFFF) << 16);
 		::waveOutSetVolume(NULL, dwVolume);
 #endif
 	}
 
-	/// @brief 指定サウンドが再生中か判定する
-	/// @param id サウンドID
-	/// @return 再生中なら true
 	[[nodiscard]] bool isPlaying(std::string_view id) const override
 	{
 		if (m_currentMusic == id && m_musicPlaying)
@@ -183,34 +154,26 @@ public:
 		return false;
 	}
 
-	/// @brief 現在のボリュームを取得する
-	/// @return ボリューム [0.0, 1.0]
+	/// @return 0.0 から 1.0 のマスターボリューム
 	[[nodiscard]] float volume() const noexcept
 	{
 		return m_volume;
 	}
 
-	/// @brief 登録済みサウンド数を取得する
-	/// @return 登録数
 	[[nodiscard]] std::size_t registeredCount() const noexcept
 	{
 		return m_soundPaths.size();
 	}
 
 private:
-	/// @brief サウンドID → ファイルパスのマップ
 	std::unordered_map<std::string, std::string> m_soundPaths;
 
-	/// @brief 現在再生中のBGM ID
 	std::string m_currentMusic;
 
-	/// @brief 現在再生中のSE ID
 	std::string m_currentSe;
 
-	/// @brief BGMが再生中か
 	bool m_musicPlaying = false;
 
-	/// @brief マスターボリューム [0.0, 1.0]
 	float m_volume = 1.0f;
 };
 

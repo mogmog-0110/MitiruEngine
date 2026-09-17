@@ -20,7 +20,9 @@
 #include <filesystem>
 #include <string>
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_app.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 namespace mitiru::cef
 {
@@ -106,9 +108,8 @@ inline CefSettings buildCefSettings(
     s.windowless_rendering_enabled = 1;
 
     // ── サンドボックス ─────────────────────────────────────
-    // single-process 運用 (MitiruCefApp 参照) では Chromium sandbox を併用
-    // できないため no_sandbox は必然。multi-process 化する際に CefSandboxInfo
-    // と合わせて再検討する。
+    // 同梱 cef_sandbox.lib は official template の /MT 系 CRT 前提で engine の
+    // /MD 系と両立するか未検証のため sandbox は未導入 (ADR 0026 §6/Wave 4)。
     s.no_sandbox = 1;
 
     // ── ログ + キャッシュ (PID で分離) ─────────────────────
@@ -120,7 +121,14 @@ inline CefSettings buildCefSettings(
     const DWORD pid = ::GetCurrentProcessId();
     const std::string pidSuffix = "_" + std::to_string(pid);
 
-    s.log_severity = LOGSEVERITY_WARNING;
+    // MITIRU_CEF_DEBUG_LOG=1 (K4 調査用): CHECK()/FATAL 失敗のメッセージを
+    // 見るため verbose にする。既定は変えない。
+    // v[0]=='1' 判定にするのは、"=0" 等で無効化したつもりが (存在するだけで)
+    // verbose になる事故を防ぐため。
+    const char* cefDebugLog = std::getenv("MITIRU_CEF_DEBUG_LOG");
+    s.log_severity = (cefDebugLog != nullptr && cefDebugLog[0] == '1')
+        ? LOGSEVERITY_VERBOSE
+        : LOGSEVERITY_WARNING;
     const auto lp  = logPath.empty()
         ? (exeDir / ("cef" + pidSuffix + ".log")).string()
         : logPath;

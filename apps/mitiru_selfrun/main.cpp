@@ -68,7 +68,7 @@ Boot parseBoot(const std::vector<uint8_t>& bytes)
 /// 古い展開物を上書きして壊すことがない。
 std::uint64_t fingerprint(const mitiru::vfs::AssetPack& pack)
 {
-	std::uint64_t h = 1469598103934665603ULL;
+	std::uint64_t h = 14695981039346656037ULL;
 	auto mix = [&h](const void* p, std::size_t n) {
 		const auto* b = static_cast<const unsigned char*>(p);
 		for (std::size_t i = 0; i < n; ++i) { h = (h ^ b[i]) * 1099511628211ULL; }

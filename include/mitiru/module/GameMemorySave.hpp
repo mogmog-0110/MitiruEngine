@@ -234,4 +234,57 @@ migrateGameMemory(const std::filesystem::path& path,
 	return out;
 }
 
+/// @brief offset の byte を含む field の名前。見つからなければ nullptr。
+[[nodiscard]] inline const char* fieldNameAtOffset(const FieldDescriptor* fields,
+                                                    std::int32_t fieldCount,
+                                                    std::uint32_t offset) noexcept
+{
+	if (fields == nullptr) { return nullptr; }
+	for (std::int32_t i = 0; i < fieldCount; ++i)
+	{
+		const FieldDescriptor& f = fields[i];
+		const std::uint64_t span = static_cast<std::uint64_t>(f.elemSize) * f.elemCount;
+		if (span == 0) { continue; }
+		if (offset >= f.offset && offset < f.offset + span) { return f.name; }
+	}
+	return nullptr;
+}
+
+/// @brief 2 つの bytes 列を比較し、最初に食い違った byte が属する field 名を返す (Factorio
+///        の desync report と同じく「最初に食い違った箇所だけ」を報告する)。
+/// @return 一致すれば nullopt。不一致なら field 名 (reflect に無ければ空文字)。
+[[nodiscard]] inline std::optional<std::string> compareRoundtripBytes(
+	const std::uint8_t* a, const std::uint8_t* b, std::uint32_t size,
+	const FieldDescriptor* fields, std::int32_t fieldCount)
+{
+	for (std::uint32_t i = 0; i < size; ++i)
+	{
+		if (a[i] != b[i])
+		{
+			const char* name = fieldNameAtOffset(fields, fieldCount, i);
+			return std::string(name != nullptr ? name : "");
+		}
+	}
+	return std::nullopt;
+}
+
+/// @brief save → 読み戻し → 再 save の 2 回の書き込みが bit 一致するかを検査する (`--save-roundtrip-test`、
+///        Factorio FFF #158 の save-load stability と同じ考え方)。呼び出し前に 1 回目の save が
+///        完了していること (path に有効な .msav がある) が前提。累積差分ではなく元の原因だけを見る
+///        ため、比較は「1 回目の読み戻し」対「2 回目の読み戻し」で行う (どちらも同じ入力から作るので、
+///        セーブ/ロード経路のどこかで導出値が変わっていない限り一致するはず)。
+/// @return 一致すれば nullopt。不一致・I/O 失敗なら食い違った field 名 (読み戻し自体の失敗時は空文字)。
+[[nodiscard]] inline std::optional<std::string> checkSaveRoundtrip(
+	const std::filesystem::path& path, std::uint32_t memSize, std::uint32_t abiVersion,
+	std::uint64_t layoutHash, const FieldDescriptor* fields, std::int32_t fieldCount)
+{
+	const auto bytes1 = loadGameMemory(path, memSize, layoutHash);
+	if (!bytes1.has_value()) { return std::string(); }
+	if (!saveGameMemory(path, bytes1->data(), memSize, abiVersion, layoutHash, fields, fieldCount))
+	{ return std::string(); }
+	const auto bytes2 = loadGameMemory(path, memSize, layoutHash);
+	if (!bytes2.has_value()) { return std::string(); }
+	return compareRoundtripBytes(bytes1->data(), bytes2->data(), memSize, fields, fieldCount);
+}
+
 }  // namespace mitiru::module::save

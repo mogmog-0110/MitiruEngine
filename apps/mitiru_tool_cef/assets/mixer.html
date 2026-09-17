@@ -20,6 +20,14 @@
   .ch .bar .fill.music{ background:#1a1c1f; }
   .ch .tag{ font-family:'IBM Plex Mono','Consolas',monospace; font-size:13px; color:#999da4; }
   .cols{ display:flex; gap:40px; margin-top:14px; align-items:flex-start; }
+  .voices{ margin-top:14px; }
+  .voices .row{ display:flex; flex-wrap:wrap; gap:4px 12px; align-items:baseline;
+                font-family:'IBM Plex Mono','Consolas',monospace; font-size:13px;
+                padding:4px 0; border-bottom:1px solid #f4f4f2; }
+  .voices .row .gain,.voices .row .pan,.voices .row .left{ color:#1a1c1f; font-variant-numeric:tabular-nums; }
+  .voices .row .gain{ min-width:40px; text-align:right; }
+  .voices .row .id{ color:#1a1c1f; font-weight:600; }
+  .voices .row .asset,.voices .row .dim{ color:#999da4; }
 </style>
 </head>
 <body class="is-waiting" data-m-class="is-waiting: !tool.snap.audio.state">
@@ -48,13 +56,32 @@
                 data-m-style="height: {level:pct01}"
                 data-m-class="music: kind == music"></div></div>
               <div class="tag"><span data-m-show="kind == music">M</span><span
-                data-m-hide="kind == music">S</span></div>
+                data-m-show="kind == voice">V</span><span
+                data-m-show="kind != music; kind != voice">S</span></div>
             </div>
           </template>
         </div>
         <div class="muted" style="margin-top:10px"
           data-m-show="tool.snap.audio.state; !tool.snap.audio.state.channels.length">(silent)</div>
       </div>
+    </div>
+    <div class="voices">
+      <div class="label">voice 一覧</div>
+      <!-- K1: hud.voice() で鳴らした台詞スロット。id は game が渡した名前、asset は実ファイル名、
+           残り秒は backend が length - cursor で出す (ループ / 不明なら欄ごと出ない)。 -->
+      <div data-m-repeat="tool.snap.audio.state.channels">
+        <template>
+          <div class="row" data-m-show="kind == voice">
+            <span class="id" data-m-text="id" data-m-show="id"></span>
+            <span class="dim" data-m-hide="id">(no id)</span>
+            <span class="asset" data-m-text="asset" data-m-show="asset"></span>
+            <span class="gain" data-m-tpl="{level:x100}%"></span>
+            <span class="pan" data-m-tpl="pan {pan:f2}"></span>
+            <span class="left" data-m-tpl="{remainingSec:f2}s left" data-m-show="remainingSec >= 0"></span>
+          </div>
+        </template>
+      </div>
+      <div class="muted" style="margin-top:6px" data-m-show="tool.snap.audio.state; !tool.snap.audio.state.voiceCount">(no voice)</div>
     </div>
   </div>
   <div class="wait">waiting for the game…</div>

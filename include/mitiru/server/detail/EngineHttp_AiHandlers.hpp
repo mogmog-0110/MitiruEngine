@@ -76,6 +76,93 @@ inline void mitiru::server::EngineHttpServer::handleAiBranch(const HttpRequest& 
 	resp.status = 200; resp.setBody(m_callbacks.aiBranch(keys, frames));
 }
 
+/// @brief PUT /api/ai/state。body {"field": value, ...} を書き戻す (3-3)。
+/// @details 実装 (branch と同じ経路) は callback 側 (Engine_Http.hpp) にある。ここは
+///          未配線 503 と、callback が決めた status をそのまま転送するだけ。
+inline void mitiru::server::EngineHttpServer::handleAiStatePut(const HttpRequest& req, HttpResponse& resp)
+{
+	if (!m_callbacks.aiStatePut)
+	{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
+	int status = 200;
+	const std::string body = m_callbacks.aiStatePut(req.body, status);
+	resp.status = status;
+	resp.setBody(body);
+}
+
+/// @brief POST /api/ai/commit。body {"field": value, ...} (aiStatePut と同じ形) を、
+/// 復元せずそのまま live GameMemory へ確定する (ADR 0035「残す」)。
+inline void mitiru::server::EngineHttpServer::handleAiCommit(const HttpRequest& req, HttpResponse& resp)
+{
+	if (!m_callbacks.aiCommit)
+	{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
+	int status = 200;
+	const std::string body = m_callbacks.aiCommit(req.body, status);
+	resp.status = status;
+	resp.setBody(body);
+}
+
+/// @brief POST /api/ai/discard。何もしない (ADR 0035「捨てる」)。live は元々未変更なので
+/// 現在の reflected state をそのまま返すだけの応答。
+inline void mitiru::server::EngineHttpServer::handleAiDiscard(const HttpRequest&, HttpResponse& resp)
+{
+	if (!m_callbacks.aiDiscard)
+	{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
+	resp.status = 200;
+	resp.setBody(m_callbacks.aiDiscard());
+}
+
+/// @brief GET /api/ai/why?field=<dotted path>。O6 なぜビュー: そのフィールドを最後に書いた
+/// phase (game opt-in、未対応なら blameSupported=false) + ring 8 フレームの値推移。
+inline void mitiru::server::EngineHttpServer::handleAiTypes(const HttpRequest&, HttpResponse& resp)
+{
+	if (!m_callbacks.aiTypes)
+	{ resp.status = 503; resp.setBody(R"({"error":"module not wired"})"); return; }
+	resp.status = 200;
+	resp.setBody(m_callbacks.aiTypes());
+}
+
+inline void mitiru::server::EngineHttpServer::handleAiWhy(const HttpRequest& req, HttpResponse& resp)
+{
+	if (!m_callbacks.aiWhy)
+	{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
+	const auto field = observe::getParam(req.params, "field");
+	if (!field.has_value() || field->empty())
+	{ resp.status = 400; resp.setBody(R"({"error":"missing required query param 'field'"})"); return; }
+	const std::string body = m_callbacks.aiWhy(*field);
+	// callback は「未知 field」も 200 の error body で返す (aiStatePut と同じ形の呼び分け不要さ
+	// を保つため)。ここでは "error" キーの有無だけ見て 400 に昇格させる。
+	resp.status = (body.find(R"("error")") != std::string::npos) ? 400 : 200;
+	resp.setBody(body);
+}
+
+/// @brief POST /api/ai/candidates。O4 分岐候補: {"variants":[...], "keys":"...", "frames":N} を
+/// そのまま callback (Engine_Http.hpp) へ渡す。整形・上限適用は callback 側の責務。
+inline void mitiru::server::EngineHttpServer::handleAiCandidates(const HttpRequest& req, HttpResponse& resp)
+{
+	if (!m_callbacks.aiCandidates)
+	{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
+	const std::string body = m_callbacks.aiCandidates(req.body);
+	resp.status = (body.find(R"("error")") != std::string::npos) ? 400 : 200;
+	resp.setBody(body);
+}
+
+/// @brief GET /api/frame/anatomy[?frame=N]。P10「1 フレームの解剖図」: 入力→書かれた
+/// フィールド(blame付き)→描画コマンド→音を 1 レスポンスで返す。N 省略/0 = 直近フレーム。
+/// N は ring の「何フレーム前か」(aiStateAt の frame パラメータと同じ意味)。
+inline void mitiru::server::EngineHttpServer::handleFrameAnatomy(const HttpRequest& req, HttpResponse& resp)
+{
+	if (!m_callbacks.frameAnatomy)
+	{ resp.status = 503; resp.setBody(R"({"error":"frame anatomy not wired"})"); return; }
+	int framesAgo = 0;
+	if (const auto p = observe::getParam(req.params, "frame"))
+	{
+		try { framesAgo = std::stoi(*p); }
+		catch (...) { resp.status = 400; resp.setBody(R"({"error":"frame must be an integer"})"); return; }
+	}
+	resp.status = 200;
+	resp.setBody(m_callbacks.frameAnatomy(framesAgo));
+}
+
 // ── Inspector / 観測エンドポイント ──────────────────
 
 /// @brief GET /api/health。frame + elapsed を返す簡易ヘルスチェック

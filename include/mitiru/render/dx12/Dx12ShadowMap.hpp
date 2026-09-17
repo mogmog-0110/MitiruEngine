@@ -57,12 +57,15 @@ public:
     /// @brief GPU リソースを初期化する
     /// @param device  DX12 デバイスポインタ
     /// @param mapSize シャドウマップの一辺ピクセル数 (例: 1024)
+    /// @param columns 横に並べる枚数。2 なら (mapSize*2) x mapSize のアトラスで、`setColumn` で描く列を選ぶ
+    ///                (3 カスケードの中距離/遠距離を SRV 1 枚に収める。root signature を増やさないため)
     /// @return 成功時 true
-    bool initialize(ID3D12Device* device, int mapSize)
+    bool initialize(ID3D12Device* device, int mapSize, int columns = 1)
     {
-        if (!device || mapSize <= 0) { return false; }
+        if (!device || mapSize <= 0 || columns <= 0) { return false; }
 
         m_mapSize = mapSize;
+        m_columns = columns;
         const auto sz = static_cast<UINT>(mapSize);
 
         // ── 深度テクスチャ ─────────────────────────────────────
@@ -72,7 +75,7 @@ public:
 
             D3D12_RESOURCE_DESC desc{};
             desc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-            desc.Width            = sz;
+            desc.Width            = sz * static_cast<UINT>(columns);
             desc.Height           = sz;
             desc.DepthOrArraySize = 1;
             desc.MipLevels        = 1;
@@ -178,12 +181,22 @@ public:
         cmd->OMSetRenderTargets(0, nullptr, FALSE, &dsv);
         cmd->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
+        setColumn(cmd, 0);
+    }
+
+    /// @brief 以後の描画先をアトラスの column 列目にする (beginShadowPass と endShadowPass の間で呼ぶ)。
+    ///        クリアは beginShadowPass が全列まとめて済ませている
+    void setColumn(ID3D12GraphicsCommandList* cmd, int column)
+    {
+        if (!cmd || !m_initialized || column < 0 || column >= m_columns) { return; }
         const auto sz = static_cast<float>(m_mapSize);
-        D3D12_VIEWPORT vp{ 0.0f, 0.0f, sz, sz, 0.0f, 1.0f };
-        D3D12_RECT     sr{ 0, 0, m_mapSize, m_mapSize };
+        D3D12_VIEWPORT vp{ sz * static_cast<float>(column), 0.0f, sz, sz, 0.0f, 1.0f };
+        D3D12_RECT     sr{ m_mapSize * column, 0, m_mapSize * (column + 1), m_mapSize };
         cmd->RSSetViewports(1, &vp);
         cmd->RSSetScissorRects(1, &sr);
     }
+
+    [[nodiscard]] int columns() const noexcept { return m_columns; }
 
     /// @brief シャドウパスを終了する
     /// @details
@@ -224,6 +237,7 @@ private:
     ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
     ComPtr<ID3D12DescriptorHeap> m_srvHeap;
     int                          m_mapSize    = 0;
+    int                                     m_columns = 1;
     bool                         m_initialized = false;
 };
 

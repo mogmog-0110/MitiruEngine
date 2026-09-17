@@ -4,7 +4,9 @@
 /// @brief Game DLL を host process に load する RAII wrapper (v0.2.0 step 2)
 /// @details
 /// Windows: LoadLibrary / GetProcAddress / FreeLibrary を OS handle と共に
-/// 寿命管理する。それ以外の OS では未実装 (load() が常に false を返す)。
+/// 寿命管理する。macOS/Linux: dlopen / dlsym / dlclose の POSIX 相当 (L1)。
+/// Metal 版 MitiruEngine が実際に動く実績があるため hot reload だけ Windows 専用の
+/// ままにする理由が無かった。両 platform とも reload-safe copy 戦略は共通 (下記)。
 ///
 /// **Reload-safe copy strategy**:
 /// 直接 `LoadLibrary("game.dll")` すると Windows は元 .dll を file lock し、
@@ -34,12 +36,63 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#elif defined(__unix__) || defined(__APPLE__)
+#include <dlfcn.h>
+#include <unistd.h>
 #endif
 
+#include <mitiru/module/Invariant.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru::module
 {
+
+/// @brief 巻き戻しリング予算バイト数を返す関数名 (optional。`MITIRU_REWIND_BUDGET` で export)。
+/// @details `kRewindBufferSymbol` (フレーム数) と対の byte 版。`ModuleApi.hpp` の ABI は
+///          変えず別 export として host→DLL pull する (host が起動時に GetProcAddress で解決)。
+///          不在なら `--rewind-mb` 明示指定 > 既定 512MB (`Engine_Module_Loader.hpp` 参照)。
+constexpr const char* kRewindBudgetSymbol = "mitiru_module_rewind_budget_bytes";
+
+/// @brief 巻き戻しリング予算バイト数を返す関数のシグネチャ (optional、`MITIRU_REWIND_BUDGET` 用)。
+using ModuleRewindBudgetFn = std::uint64_t (*)();
+
+/// @brief pause 中も dt を通す layer の mask を返す関数名 (optional。`MITIRU_PAUSE_ALWAYS_LAYERS`
+///        で export、2-1)。他の rewind 系 export と同じく host が起動時に GetProcAddress で解決する。
+///        不在なら mask=0 (既定: pause は全 layer 共通、`Engine_Module_Loader.hpp` 参照)。
+constexpr const char* kPauseAlwaysLayersSymbol = "mitiru_module_pause_always_layers_mask";
+
+/// @brief pause 中も dt を通す layer の mask を返す関数のシグネチャ (optional、`MITIRU_PAUSE_ALWAYS_LAYERS` 用)。
+using ModulePauseAlwaysLayersFn = std::uint8_t (*)();
+
+/// @brief pause の種類 (1..3) ごとの layer mask を返す関数名 (optional。`MITIRU_PAUSE_LAYERS_BY_KIND` で export)。
+constexpr const char* kPauseLayersByKindSymbol = "mitiru_module_pause_layers_by_kind";
+using ModulePauseLayersByKindFn = std::uint8_t (*)(std::uint8_t);
+
+/// @brief 型の台帳 (`SpawnerTypeEntry` の配列) を書き出す関数名 (optional。`MITIRU_SPAWNER_TYPES_EXPORT()` で export)。
+///        引数は (out, cap)、戻り値は書いた件数。型は Spawner.hpp 側 (ここでは void* で受けて Engine が読む)。
+constexpr const char* kSpawnerTypesSymbol = "mitiru_module_spawner_types";
+using ModuleSpawnerTypesFn = int (*)(void* out, int cap);
+
+/// @brief 不変条件記述子の表を返す関数名 (optional。`MITIRU_INVARIANT` + `MITIRU_INVARIANTS_EXPORT`
+///        で export、N1)。他の rewind 系 export と同じく host が起動時に GetProcAddress で解決する。
+constexpr const char* kInvariantsSymbol = "mitiru_module_invariants";
+
+/// @brief 不変条件記述子の表を返す関数のシグネチャ (optional、`MITIRU_INVARIANT` 用)。
+using ModuleInvariantsFn = const InvariantDescriptor* (*)(std::int32_t*);
+
+/// @brief MITIRU_REACHABLE の到達状態を全件リセットする関数名 (optional。
+///        `MITIRU_INVARIANTS_EXPORT` が MITIRU_REACHABLE 宣言の有無に関わらず併せて export する)。
+constexpr const char* kInvariantsResetSymbol = "mitiru_module_invariants_reset";
+
+/// @brief 不変条件到達状態リセット関数のシグネチャ (optional)。
+using ModuleInvariantsResetFn = void (*)();
+
+/// @brief 配置 JSON を POD へ焼く関数名 (optional。`MITIRU_BAKE_ASSETS` (module/Bake.hpp) で
+///        export、★4-1)。他の export と同じく host が起動時に GetProcAddress で解決する。
+constexpr const char* kBakeAssetsSymbol = "mitiru_module_bake_assets";
+
+/// @brief 配置 JSON (jsonPath) を .baked (outPath) へ焼く関数のシグネチャ (optional)。成功で true。
+using ModuleBakeAssetsFn = bool (*)(const char*, const char*);
 
 /// @brief Game DLL を一つ host する。move-only。
 ///
@@ -72,13 +125,9 @@ public:
 		: m_sourcePath(std::move(other.m_sourcePath))
 		, m_runtimePath(std::move(other.m_runtimePath))
 		, m_lastError(std::move(other.m_lastError))
-#if defined(_WIN32)
 		, m_handle(other.m_handle)
-#endif
 	{
-#if defined(_WIN32)
 		other.m_handle = nullptr;
-#endif
 	}
 
 	ModuleHost& operator=(ModuleHost&& other) noexcept
@@ -86,13 +135,11 @@ public:
 		if (this != &other)
 		{
 			unload();
-			m_sourcePath  = std::move(other.m_sourcePath);
-			m_runtimePath = std::move(other.m_runtimePath);
-			m_lastError   = std::move(other.m_lastError);
-#if defined(_WIN32)
-			m_handle      = other.m_handle;
+			m_sourcePath   = std::move(other.m_sourcePath);
+			m_runtimePath  = std::move(other.m_runtimePath);
+			m_lastError    = std::move(other.m_lastError);
+			m_handle       = other.m_handle;
 			other.m_handle = nullptr;
-#endif
 		}
 		return *this;
 	}
@@ -112,10 +159,9 @@ public:
 			return false;
 		}
 
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(__unix__) && !defined(__APPLE__)
 		(void)source;
-		m_lastError = "ModuleHost is not implemented on this platform "
-		              "(only Windows is supported in v0.2.0)";
+		m_lastError = "ModuleHost is not implemented on this platform";
 		return false;
 #else
 		std::error_code ec;
@@ -135,9 +181,10 @@ public:
 			return false;
 		}
 
+#if defined(_WIN32)
 		// Unicode-safe な path のため `LoadLibraryW`。temp filename は ASCII
 		// だが %TEMP% は非 ASCII 文字を含みうる。
-		HMODULE handle = ::LoadLibraryW(runtimePath.wstring().c_str());
+		void* handle = ::LoadLibraryW(runtimePath.wstring().c_str());
 		if (handle == nullptr)
 		{
 			const DWORD err = ::GetLastError();
@@ -147,16 +194,29 @@ public:
 			              std::to_string(err) + ")";
 			return false;
 		}
-
-		// 成功宣言の前に entry symbol の存在を確認。caller の「GetProcAddress
-		// が null を返したか?」という別チェックを省ける。
-		auto* loadFnPtr = ::GetProcAddress(handle, kLoadSymbol);
-		if (loadFnPtr == nullptr)
+#else
+		// dlopen は既定で symbol を process 全体に公開しない (RTLD_LOCAL) が、
+		// Windows の LoadLibrary もモジュール単位の名前解決なので挙動を揃えられる。
+		void* handle = ::dlopen(runtimePath.c_str(), RTLD_NOW | RTLD_LOCAL);
+		if (handle == nullptr)
 		{
-			::FreeLibrary(handle);
 			std::error_code rmEc;
 			std::filesystem::remove(runtimePath, rmEc);
-			m_lastError = "DLL is missing required export: " +
+			const char* dlErr = ::dlerror();
+			m_lastError = std::string("dlopen failed: ") + (dlErr ? dlErr : "unknown");
+			return false;
+		}
+#endif
+
+		// 成功宣言の前に entry symbol の存在を確認。caller の「symbol 解決が
+		// null を返したか?」という別チェックを省ける。
+		void* loadFnPtr = resolveSymbol(handle, kLoadSymbol);
+		if (loadFnPtr == nullptr)
+		{
+			closeHandle(handle);
+			std::error_code rmEc;
+			std::filesystem::remove(runtimePath, rmEc);
+			m_lastError = "module is missing required export: " +
 			              std::string{kLoadSymbol};
 			return false;
 		}
@@ -173,13 +233,11 @@ public:
 	/// @details FreeLibrary + temp file 削除。エラーは握り潰す (best-effort)。
 	void unload() noexcept
 	{
-#if defined(_WIN32)
 		if (m_handle != nullptr)
 		{
-			::FreeLibrary(m_handle);
+			closeHandle(m_handle);
 			m_handle = nullptr;
 		}
-#endif
 		if (!m_runtimePath.empty())
 		{
 			std::error_code ec;
@@ -191,59 +249,79 @@ public:
 
 	[[nodiscard]] bool isLoaded() const noexcept
 	{
-#if defined(_WIN32)
 		return m_handle != nullptr;
-#else
-		return false;
-#endif
 	}
 
 	/// @brief load entry symbol を解決する。未 load なら nullptr。
 	[[nodiscard]] ModuleLoadFn loadFn() const noexcept
 	{
-#if defined(_WIN32)
-		if (m_handle == nullptr) { return nullptr; }
-		auto* p = ::GetProcAddress(m_handle, kLoadSymbol);
-		return reinterpret_cast<ModuleLoadFn>(p);
-#else
-		return nullptr;
-#endif
+		return reinterpret_cast<ModuleLoadFn>(resolveSymbol(m_handle, kLoadSymbol));
 	}
 
 	/// @brief unload entry symbol を解決する。未 load または不在なら nullptr。
 	[[nodiscard]] ModuleUnloadFn unloadFn() const noexcept
 	{
-#if defined(_WIN32)
-		if (m_handle == nullptr) { return nullptr; }
-		auto* p = ::GetProcAddress(m_handle, kUnloadSymbol);
-		return reinterpret_cast<ModuleUnloadFn>(p);
-#else
-		return nullptr;
-#endif
+		return reinterpret_cast<ModuleUnloadFn>(resolveSymbol(m_handle, kUnloadSymbol));
 	}
 
 	/// @brief write-blame symbol を解決する (optional、`mitiru why` opt-in game のみ)。不在なら nullptr。
 	[[nodiscard]] ModuleWhyBlameFn whyBlameAtFn() const noexcept
 	{
-#if defined(_WIN32)
-		if (m_handle == nullptr) { return nullptr; }
-		auto* p = ::GetProcAddress(m_handle, kWhyBlameSymbol);
-		return reinterpret_cast<ModuleWhyBlameFn>(p);
-#else
-		return nullptr;
-#endif
+		return reinterpret_cast<ModuleWhyBlameFn>(resolveSymbol(m_handle, kWhyBlameSymbol));
+	}
+
+	/// @brief everWrote symbol を解決する (optional、`mitiru_why_blame_at` に追加 opt-in する game のみ)。不在なら nullptr。
+	[[nodiscard]] ModuleWhyEverWroteFn whyEverWroteAtFn() const noexcept
+	{
+		return reinterpret_cast<ModuleWhyEverWroteFn>(resolveSymbol(m_handle, kEverWroteSymbol));
 	}
 
 	/// @brief 巻き戻しバッファ長 symbol を解決する (optional、MITIRU_REWIND_BUFFER 宣言時のみ)。不在なら nullptr。
 	[[nodiscard]] ModuleRewindBufferFn rewindBufferFramesFn() const noexcept
 	{
-#if defined(_WIN32)
-		if (m_handle == nullptr) { return nullptr; }
-		auto* p = ::GetProcAddress(m_handle, kRewindBufferSymbol);
-		return reinterpret_cast<ModuleRewindBufferFn>(p);
-#else
-		return nullptr;
-#endif
+		return reinterpret_cast<ModuleRewindBufferFn>(resolveSymbol(m_handle, kRewindBufferSymbol));
+	}
+
+	/// @brief 巻き戻しリング予算バイト数 symbol を解決する (optional、MITIRU_REWIND_BUDGET 宣言時のみ)。不在なら nullptr。
+	[[nodiscard]] ModuleRewindBudgetFn rewindBudgetBytesFn() const noexcept
+	{
+		return reinterpret_cast<ModuleRewindBudgetFn>(resolveSymbol(m_handle, kRewindBudgetSymbol));
+	}
+
+	/// @brief pause 中も dt を通す layer mask symbol を解決する (optional、MITIRU_PAUSE_ALWAYS_LAYERS 宣言時のみ)。不在なら nullptr。
+	[[nodiscard]] ModulePauseAlwaysLayersFn pauseAlwaysLayersMaskFn() const noexcept
+	{
+		return reinterpret_cast<ModulePauseAlwaysLayersFn>(resolveSymbol(m_handle, kPauseAlwaysLayersSymbol));
+	}
+
+	/// @brief 型の台帳 symbol を解決する (optional、MITIRU_SPAWNER_TYPES_EXPORT 宣言時のみ)。不在なら nullptr。
+	[[nodiscard]] ModuleSpawnerTypesFn spawnerTypesFn() const noexcept
+	{
+		return reinterpret_cast<ModuleSpawnerTypesFn>(resolveSymbol(m_handle, kSpawnerTypesSymbol));
+	}
+
+	/// @brief pause の種類別 layer mask symbol を解決する (optional、MITIRU_PAUSE_LAYERS_BY_KIND 宣言時のみ)。不在なら nullptr。
+	[[nodiscard]] ModulePauseLayersByKindFn pauseLayersByKindFn() const noexcept
+	{
+		return reinterpret_cast<ModulePauseLayersByKindFn>(resolveSymbol(m_handle, kPauseLayersByKindSymbol));
+	}
+
+	/// @brief 不変条件記述子表 symbol を解決する (optional、MITIRU_INVARIANT 宣言時のみ)。不在なら nullptr。
+	[[nodiscard]] ModuleInvariantsFn invariantsFn() const noexcept
+	{
+		return reinterpret_cast<ModuleInvariantsFn>(resolveSymbol(m_handle, kInvariantsSymbol));
+	}
+
+	/// @brief 不変条件到達状態リセット symbol を解決する (optional、MITIRU_REACHABLE 宣言時のみ)。不在なら nullptr。
+	[[nodiscard]] ModuleInvariantsResetFn invariantsResetFn() const noexcept
+	{
+		return reinterpret_cast<ModuleInvariantsResetFn>(resolveSymbol(m_handle, kInvariantsResetSymbol));
+	}
+
+	/// @brief 配置 JSON を焼く symbol を解決する (optional、MITIRU_BAKE_ASSETS 宣言時のみ)。不在なら nullptr。
+	[[nodiscard]] ModuleBakeAssetsFn bakeAssetsFn() const noexcept
+	{
+		return reinterpret_cast<ModuleBakeAssetsFn>(resolveSymbol(m_handle, kBakeAssetsSymbol));
 	}
 
 	/// @brief 元 DLL の path (load() に渡された値)。未 load なら空。
@@ -274,18 +352,45 @@ public:
 	}
 
 private:
-	/// @brief 一意な temp path を作る: %TEMP%/mitiru_module_<pid>_<seq>.dll
+	/// @brief 共有ライブラリの symbol を解決する (GetProcAddress / dlsym の橋渡し)。
+	[[nodiscard]] static void* resolveSymbol(void* handle, const char* name) noexcept
+	{
+		if (handle == nullptr) { return nullptr; }
+#if defined(_WIN32)
+		return reinterpret_cast<void*>(::GetProcAddress(static_cast<HMODULE>(handle), name));
+#else
+		return ::dlsym(handle, name);
+#endif
+	}
+
+	/// @brief 共有ライブラリを閉じる (FreeLibrary / dlclose の橋渡し)。
+	static void closeHandle(void* handle) noexcept
+	{
+#if defined(_WIN32)
+		::FreeLibrary(static_cast<HMODULE>(handle));
+#else
+		::dlclose(handle);
+#endif
+	}
+
+	/// @brief 一意な temp path を作る: %TEMP%/mitiru_module_<pid>_<seq><拡張子>
+	/// @details 拡張子は Windows=.dll、macOS=.dylib、それ以外の Unix=.so。
 	static std::filesystem::path makeUniqueTempPath()
 	{
 		static std::uint64_t s_seq = 0;
 		++s_seq;
 #if defined(_WIN32)
 		const auto pid = static_cast<std::uint64_t>(::GetCurrentProcessId());
+		constexpr const char* kExt = ".dll";
+#elif defined(__APPLE__)
+		const auto pid = static_cast<std::uint64_t>(::getpid());
+		constexpr const char* kExt = ".dylib";
 #else
-		const std::uint64_t pid = 0;
+		const auto pid = static_cast<std::uint64_t>(::getpid());
+		constexpr const char* kExt = ".so";
 #endif
 		std::string filename = "mitiru_module_" + std::to_string(pid) +
-		                       "_" + std::to_string(s_seq) + ".dll";
+		                       "_" + std::to_string(s_seq) + kExt;
 		std::error_code ec;
 		auto tmp = std::filesystem::temp_directory_path(ec);
 		if (ec)
@@ -299,9 +404,7 @@ private:
 	std::filesystem::path m_sourcePath;
 	std::filesystem::path m_runtimePath;
 	std::string           m_lastError;
-#if defined(_WIN32)
-	HMODULE               m_handle{nullptr};
-#endif
+	void*                 m_handle{nullptr};
 };
 
 }  // namespace mitiru::module

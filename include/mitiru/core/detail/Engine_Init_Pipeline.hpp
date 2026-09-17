@@ -6,6 +6,47 @@
 
 // ── Render pipeline / viewport / resize の class 外定義 ─────────
 
+namespace mitiru::detail
+{
+	struct KeepViewportRect
+	{
+		float width;
+		float height;
+		float offsetX;
+		float offsetY;
+	};
+
+	// ResizeMode::Keep 用: aspect 比を保った内接矩形 (letterbox/pillarbox) を計算する。
+	// Engine::onWindowResize から切り出し済み（window/device なしで単体テストできるようにするため）。
+	[[nodiscard]] inline KeepViewportRect computeKeepViewportRect(
+		int windowW, int windowH, int logicalW, int logicalH) noexcept
+	{
+		KeepViewportRect rect{
+			static_cast<float>(windowW), static_cast<float>(windowH), 0.0f, 0.0f};
+		if (windowW <= 0 || windowH <= 0 || logicalW <= 0 || logicalH <= 0)
+		{
+			return rect;
+		}
+		const float logicalAspect = static_cast<float>(logicalW) / static_cast<float>(logicalH);
+		const float windowAspect  = static_cast<float>(windowW) / static_cast<float>(windowH);
+		if (windowAspect > logicalAspect)
+		{
+			// window の方が横長 => 高さ基準で内接、左右に pillarbox
+			rect.height  = static_cast<float>(windowH);
+			rect.width   = rect.height * logicalAspect;
+			rect.offsetX = 0.5f * (static_cast<float>(windowW) - rect.width);
+		}
+		else
+		{
+			// window の方が縦長 (または同じ) => 幅基準で内接、上下に letterbox
+			rect.width   = static_cast<float>(windowW);
+			rect.height  = rect.width / logicalAspect;
+			rect.offsetY = 0.5f * (static_cast<float>(windowH) - rect.height);
+		}
+		return rect;
+	}
+}
+
 MITIRU_INLINE void mitiru::Engine::createRenderPipeline(int screenWidth, int screenHeight)
 {
 	/// backend 固有の dispatch は render::createPipeline2DFor が担う。
@@ -82,9 +123,16 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 	//           物理座標を使う。既定。
 	// Virtual。logical は初期値で固定、viewport = window 全体 =>
 	//           anisotropic stretch。論理座標で書かれた legacy game 向け。
-	// Keep。未対応 (letterbox 用の viewport offset が要る)。
-	//           当面は Virtual の semantics に fallback する。
+	// Keep。logical は初期値で固定、viewport は aspect 比を保った
+	//           最大内接矩形 (letterbox/pillarbox)。stretch させない。
 	mitiru::Size newLogical{w, h};
+	// Keep 用: aspect 比を保った viewport サイズ + 中央寄せオフセット (letterbox/pillarbox)。
+	// RenderPipeline2D::setViewportSize が offsetX/offsetY を受け取れるようになった
+	// (B12) ので、余白を左右/上下均等に振り分けて中央寄せにする。
+	float viewportW = static_cast<float>(w);
+	float viewportH = static_cast<float>(h);
+	float viewportOffsetX = 0.0f;
+	float viewportOffsetY = 0.0f;
 	switch (m_config.resizeMode)
 	{
 	case EngineConfig::ResizeMode::Actual:
@@ -96,9 +144,20 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 		}
 		break;
 	case EngineConfig::ResizeMode::Virtual:
-	case EngineConfig::ResizeMode::Keep:    // TODO: real letterbox
 		newLogical.width  = m_logicalWidth  > 0 ? m_logicalWidth  : w;
 		newLogical.height = m_logicalHeight > 0 ? m_logicalHeight : h;
+		break;
+	case EngineConfig::ResizeMode::Keep:
+		newLogical.width  = m_logicalWidth  > 0 ? m_logicalWidth  : w;
+		newLogical.height = m_logicalHeight > 0 ? m_logicalHeight : h;
+		{
+			const auto keep = mitiru::detail::computeKeepViewportRect(
+				w, h, newLogical.width, newLogical.height);
+			viewportW       = keep.width;
+			viewportH       = keep.height;
+			viewportOffsetX = keep.offsetX;
+			viewportOffsetY = keep.offsetY;
+		}
 		break;
 	}
 
@@ -114,8 +173,7 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 		m_renderPipeline->resize(
 			static_cast<float>(newLogical.width),
 			static_cast<float>(newLogical.height));
-		m_renderPipeline->setViewportSize(
-			static_cast<float>(w), static_cast<float>(h));
+		m_renderPipeline->setViewportSize(viewportW, viewportH, viewportOffsetX, viewportOffsetY);
 	}
 
 	// CEF UI layer: browser に新サイズでの repaint を指示し、GPU texture を

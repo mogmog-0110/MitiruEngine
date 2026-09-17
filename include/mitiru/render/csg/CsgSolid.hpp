@@ -153,7 +153,7 @@ public:
 	/// @brief FNV-1a。暗号用途ではない
 	[[nodiscard]] static std::string hashOf(const std::string& text)
 	{
-		std::uint64_t h = 1469598103934665603ull;
+		std::uint64_t h = 14695981039346656037ull;
 		for (const char c : text)
 		{
 			h ^= static_cast<std::uint8_t>(c);

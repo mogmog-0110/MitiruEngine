@@ -66,9 +66,11 @@ public:
 			return false;
 		}
 
+		// v4/v5 共通の先頭 40 byte だけまず読む。version が分かってから残りの有無を決める
+		// (v5 は envTag 分だけ header が長い、v4 はここで全部読み終わっている)。
 		std::uint8_t header[kHeaderBytes] = {};
-		m_in.read(reinterpret_cast<char*>(header), kHeaderBytes);
-		if (m_in.gcount() != static_cast<std::streamsize>(kHeaderBytes))
+		m_in.read(reinterpret_cast<char*>(header), kHeaderBytesV4);
+		if (m_in.gcount() != static_cast<std::streamsize>(kHeaderBytesV4))
 		{
 			m_lastError = PlayerError::HeaderTooShort;
 			return false;
@@ -80,22 +82,41 @@ public:
 			return false;
 		}
 
+		std::uint32_t ver = 0;
+		std::memcpy(&ver, header + kOffVersion, sizeof(ver));
+		if (ver != kFormatVersion && ver != kFormatVersionV4)
+		{
+			// 非対応 format。再録画が必要。
+			m_lastError = PlayerError::VersionMismatch;
+			return false;
+		}
+
+		if (ver == kFormatVersion)
+		{
+			m_in.read(reinterpret_cast<char*>(header + kHeaderBytesV4), kHeaderBytes - kHeaderBytesV4);
+			if (m_in.gcount() != static_cast<std::streamsize>(kHeaderBytes - kHeaderBytesV4))
+			{
+				m_lastError = PlayerError::HeaderTooShort;
+				return false;
+			}
+			const char* tag = reinterpret_cast<const char*>(header + kOffEnvTag);
+			std::size_t tagLen = 0;
+			while (tagLen < kEnvTagBytes && tag[tagLen] != '\0') { ++tagLen; }
+			m_envTag.assign(tag, tagLen);
+		}
+		else
+		{
+			m_envTag.clear();  // v4 録画は envTag を持たない
+		}
+
 		// header field は検証より先に全て読む。拒否時も呼び出し側が
 		// recordedAbiVersion() / recordedFrameSize() で拒否理由を診断できる。
-		std::uint32_t ver = 0;
-		std::memcpy(&ver,           header + kOffVersion,    sizeof(ver));
 		std::memcpy(&m_frameSize,   header + kOffFrameSize,  sizeof(m_frameSize));
 		std::memcpy(&m_totalFrames, header + kOffFrameCount, sizeof(std::uint32_t));
 		std::memcpy(&m_rngSeed,     header + kOffRngSeed,    sizeof(m_rngSeed));
 		std::memcpy(&m_recordedAt,  header + kOffRecordedAt, sizeof(m_recordedAt));
 		std::memcpy(&m_recordedAbi, header + kOffAbiVersion, sizeof(m_recordedAbi));
 
-		if (ver != kFormatVersion)
-		{
-			// 非対応 format。再録画が必要。
-			m_lastError = PlayerError::VersionMismatch;
-			return false;
-		}
 		if (m_frameSize != sizeof(module::InputSnapshot))
 		{
 			// 別 ABI 世代の録画 (InputSnapshot サイズ不一致)。再録画が必要。
@@ -228,6 +249,9 @@ public:
 	/// @brief header に書かれた 1 frame の InputSnapshot バイト数 (open 失敗後も読める)。
 	[[nodiscard]] std::uint32_t recordedFrameSize() const noexcept { return m_frameSize; }
 
+	/// @brief 記録環境の自由記述 (v5+ header の envTag)。v4 録画や未設定時は空文字。
+	[[nodiscard]] const std::string& recordedEnvTag() const noexcept { return m_envTag; }
+
 	/// @brief idempotent close
 	void close()
 	{
@@ -240,6 +264,7 @@ public:
 		m_recordedAt  = 0;
 		m_recordedAbi = 0;
 		m_frameSize   = 0;
+		m_envTag.clear();
 	}
 
 	/// @brief file が open 中か
@@ -357,6 +382,7 @@ private:
 	std::uint64_t m_recordedAt{0};
 	std::uint64_t m_recordedAbi{0};  ///< header off 32 (記録時 kCurrentApiVersion、0 = 不明)
 	std::uint32_t m_frameSize{0};    ///< header off 8 (記録時 sizeof(InputSnapshot))
+	std::string   m_envTag;          ///< header off 40 (v5+。v4 録画は空文字)
 };
 
 }  // namespace mitiru::replay

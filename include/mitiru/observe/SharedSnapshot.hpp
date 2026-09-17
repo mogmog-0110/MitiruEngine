@@ -39,6 +39,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <mitiru/debug/TracyZones.hpp>
+
 #ifdef _WIN32
 #include <process.h>  // _getpid
 #else
@@ -89,16 +91,21 @@ public:
 
 	/// @brief 現フレームの snapshot を書き出す (atomic rename pattern)
 	/// @return 書き込み成功で true。エラーは silent (poll-loop を壊さないため)
+	/// @details 直前に書いた内容と一致するフレームは ofstream open + rename を丸ごと
+	///          省略する (C11)。GameMemory が変化しないフレームは珍しくなく、
+	///          disk I/O の方が dump() より支配的なコストだったため。
 	bool write(const nlohmann::json& payload)
 	{
+		MITIRU_ZONE_NAMED("observe::SharedSnapshot::write");
 		try
 		{
+			std::string serialized = payload.dump();
+			if (m_hasLast && serialized == m_lastDump) { return true; }
+
 			{
 				std::ofstream out(m_tmpPath, std::ios::binary | std::ios::trunc);
 				if (!out) { return false; }
-				// dump(0) でコンパクト。inspector 側で開いて grep したいなら
-				// dump(2) に切り替え可能だが size が 5x になるので default は compact。
-				out << payload.dump();
+				out << serialized;
 			}
 			std::error_code ec;
 			std::filesystem::rename(m_tmpPath, m_path, ec);
@@ -109,6 +116,8 @@ public:
 				std::filesystem::rename(m_tmpPath, m_path, ec);
 				if (ec) { return false; }
 			}
+			m_lastDump = std::move(serialized);  // 次回比較用に再利用 (再確保を避ける)
+			m_hasLast  = true;
 			return true;
 		}
 		catch (...)
@@ -179,6 +188,8 @@ private:
 	int                    m_pid;
 	std::filesystem::path  m_path;
 	std::filesystem::path  m_tmpPath;
+	std::string            m_lastDump;
+	bool                   m_hasLast{false};
 };
 
 }  // namespace mitiru::observe

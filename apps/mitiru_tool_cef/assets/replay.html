@@ -52,7 +52,18 @@
           data-m-show="replay.frame.mb" data-m-tpl=" · {replay.frame.mb}"></span></span></div>
         <div class="row"><span class="k">gamepad</span><span class="v"><span
           data-m-show="replay.frame.pad">connected</span><span
-          data-m-hide="replay.frame.pad">—</span></span></div>
+          data-m-hide="replay.frame.pad">(none)</span></span></div>
+      </div>
+      <div class="keys" data-m-show="replay.frame.pad">
+        <span class="chip empty" data-m-show="!replay.frame.padButtons.length">(no buttons)</span>
+        <div style="display:contents" data-m-repeat="replay.frame.padButtons">
+          <template><span class="chip" data-m-text="."></span></template>
+        </div>
+      </div>
+      <div class="det kv" data-m-show="replay.frame.pad">
+        <div class="row"><span class="k">stick L</span><span class="v" data-m-tpl="({replay.frame.padAxes.0:f2}, {replay.frame.padAxes.1:f2})"></span></div>
+        <div class="row"><span class="k">stick R</span><span class="v" data-m-tpl="({replay.frame.padAxes.2:f2}, {replay.frame.padAxes.3:f2})"></span></div>
+        <div class="row"><span class="k">trigger</span><span class="v" data-m-tpl="L {replay.frame.padAxes.4:f2} · R {replay.frame.padAxes.5:f2}"></span></div>
       </div>
     </div>
   </div>

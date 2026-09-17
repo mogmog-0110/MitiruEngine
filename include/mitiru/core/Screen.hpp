@@ -47,6 +47,8 @@ namespace mitiru::render
 class RenderPipeline2D;
 class IRenderer3D;         ///< forward decl。3D facade (drawMesh) 用。定義は IRenderer3D.hpp。
 enum class PixelArtFilter; ///< forward decl。完全な定義は RenderPipeline2D.hpp。
+struct SceneLook;           ///< forward decl (ABI v35、§1-12)。定義は SceneLook.hpp。
+                            ///< 完全型は detail/Screen_3D.hpp でのみ要る (Game.hpp との循環 include 回避)。
 } // namespace mitiru::render
 
 
@@ -751,6 +753,20 @@ public:
 	                   int pixelHeight,
 	                   render::PixelArtFilter filter);
 
+	/// @brief RGBA8バッファを画素ごとの alpha でそのまま src-over 合成する（カメラ変換なし）
+	/// @details drawSprite と違い「ほぼ透明はカットオフ」(alpha<128 を捨てる) を行わない。
+	///          alpha 0.5 未満の半透明合成 (ゴーストリプレイの重ね描き等) に使う。
+	///          GPU pipeline 接続時は drawPixelGrid に委譲する。未接続時は SW
+	///          フレームバッファへ直接ブレンドする（無ければ no-op）。
+	/// @param dest 描画先矩形（スクリーン座標、カメラ変換を尊重しない）
+	/// @param pixels RGBA8ピクセルバッファ（pixelWidth * pixelHeight 要素）
+	/// @param pixelWidth バッファ幅（ピクセル数）
+	/// @param pixelHeight バッファ高さ（ピクセル数）
+	void blitAlphaBlended(const sgc::Rectf& dest,
+	                      const std::uint8_t* pixels,
+	                      int pixelWidth,
+	                      int pixelHeight);
+
 	/// @brief テクスチャスプライトをティント色付きで描画する
 	/// @param texture テクスチャ
 	/// @param dstRect 描画先矩形
@@ -825,6 +841,8 @@ public:
 
 	/// @brief 変換をポップする
 	void popTransform();
+	/// @brief 積まれている 2D 変換の数。
+	[[nodiscard]] std::size_t transformDepth() const noexcept { return m_transformStack.size(); }
 
 	/// @brief 2D カメラを適用する (注視点 camX,camY が画面中央・zoom 倍)。
 	/// draw 冒頭で呼び、HUD 等の画面固定要素を描く前に endCamera() で外す。
@@ -930,6 +948,19 @@ public:
 	/// @param width 新しい幅
 	/// @param height 新しい高さ
 	void resize(int width, int height) noexcept;
+
+	/// @brief `EngineConfig::expectedSprites` (C4) を SpriteBatch の初回確保へ繋ぐ
+	/// @details 0 以下は no-op (SpriteBatch 自身の既定値、現状 256 件のまま)。Screen 構築直後
+	///          (最初の `begin()` より前) に呼ぶこと。`begin()` 後に容量が足りず再確保が
+	///          走っても壊れはしない (`reserveSprites()` は単なる `reserve()`) が、狙いの
+	///          「初回確保だけで済ませる」効果は薄れる。
+	void applyExpectedSprites(int expectedSprites) noexcept
+	{
+		if (expectedSprites > 0)
+		{
+			m_spriteBatch.reserveSprites(static_cast<std::size_t>(expectedSprites));
+		}
+	}
 
 	/// @brief SpriteBatchへの参照を取得する
 	[[nodiscard]] render::SpriteBatch& spriteBatch() noexcept
@@ -1594,6 +1625,11 @@ public:
 	///          フレーム頭で true に戻るので、戻し忘れは次フレームへ持ち越さない。
 	void shadowCaster3D(bool enabled);
 
+	/// @brief 「絵の設定」(露出・ガンマ・アンビエント・輪郭線・影・フォグ) を 1 個の POD で
+	///        まとめて反映する (ABI v35、§1-12)。fog3D/outline3D と同じキャッシュを共有するため、
+	///        この呼び出しの後に個別 API を呼べばそちらが最後の値として勝つ。drawMesh より前に呼ぶ。
+	void sceneLook3D(const render::SceneLook& look) noexcept;
+
 	/// @brief 組み込みメッシュ ("cube" / "sphere" / "plane") を位置・スケール・回転(度)・色で描く。
 	void drawMesh(const char* shape, const sgc::Vec3f& position,
 	              const sgc::Vec3f& scale  = sgc::Vec3f{1.0f, 1.0f, 1.0f},
@@ -1753,6 +1789,32 @@ private:
 	sgc::Colorf m_fog3DColor {0.7f, 0.78f, 0.86f, 1.0f};
 	float       m_fog3DNear  = 30.0f;
 	float       m_fog3DFar   = 90.0f;
+
+	// ── SceneLook (ABI v35 末尾追加、§1-12) ──────────────────────────────
+	// exposure/gamma/ambient/cascaded shadow/影方向の上書きは、これまで Screen に
+	// キャッシュ場所が無く renderer 側の既定値のまま触れなかった設定。sceneLook3D() が呼ばれると
+	// m_sceneShadowDirSet / m_sceneOutlineModeSet が立ち、ensure3DFrame() はそちらを優先する。
+	// outline3D() を後から呼べば m_sceneOutlineModeSet を倒して従来の depthOnly 派生に戻す
+	// (m_outline3D 等は共有キャッシュなので、呼び出し順で「最後の値」が自然に効く)。
+	// m_sceneLookSet が false の間は exposure/gamma/ambient/cascaded/caster を一切呼ばない
+	// (backend 初期値が ISceneFx の文書化された既定値と一致しない場合がある。実例:
+	// BackendInit.hpp の defaultAmbient は {0.5,0.5,0.5} だが ISceneFx の既定コメントは
+	// {0.15,0.15,0.15}。sceneLook3D() 未使用のゲームの見た目を変えないため、呼んだ時だけ反映)。
+	bool         m_sceneLookSet         = false;
+	float        m_sceneExposure        = 1.0f;
+	float        m_sceneGamma           = 2.2f;
+	sgc::Colorf  m_sceneAmbient         {0.15f, 0.15f, 0.15f, 1.0f};
+	bool         m_sceneShadowCaster    = true;
+	bool         m_sceneShadowCascaded  = false;
+	bool         m_sceneShadowEnabled   = true;
+	bool         m_sceneShadowDirSet    = false;
+	sgc::Vec3f   m_sceneShadowDir       {0.0f, -1.0f, 0.0f};
+	bool         m_sceneOutlineModeSet  = false;
+	std::int32_t m_sceneOutlineMode     = 0;
+	// v38: カスケードの視錐台自動フィット (SceneLook::shadowCascadeAutoFit / shadowDistance)
+	bool         m_sceneShadowAutoFit   = false;
+	float        m_sceneShadowDistance  = 60.0f;
+	std::uint8_t m_sceneShadowCascadeCount = 0;
 };
 
 } // namespace mitiru

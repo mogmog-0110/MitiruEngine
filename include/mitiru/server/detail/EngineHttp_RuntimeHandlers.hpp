@@ -138,7 +138,10 @@ inline void mitiru::server::EngineHttpServer::handleRuntimePause(const HttpReque
 	resp.setBody(json);
 }
 
-inline void mitiru::server::EngineHttpServer::handleRuntimeStep(const HttpRequest&, HttpResponse& resp)
+/// @brief POST /api/runtime/step。body {"frames": N} (既定 1) 分だけ stepOneFrame を積む。
+/// @details paused でなければ 400 (9-7): step は「止まっている状態で 1 コマずつ進める」操作
+///          であり、live 進行中に積んでも意味が曖昧になる。
+inline void mitiru::server::EngineHttpServer::handleRuntimeStep(const HttpRequest& req, HttpResponse& resp)
 {
 	if (!m_callbacks.runtimeStep)
 	{
@@ -146,9 +149,19 @@ inline void mitiru::server::EngineHttpServer::handleRuntimeStep(const HttpReques
 		resp.setBody(R"({"success":false,"message":"runtime control not wired"})");
 		return;
 	}
-	m_callbacks.runtimeStep();
+	const bool paused = m_callbacks.runtimeIsPaused && m_callbacks.runtimeIsPaused();
+	if (!paused)
+	{
+		resp.status = 400;
+		resp.setBody(R"msg({"success":false,"message":"paused ではありません (先に POST /api/runtime/pause で pause する)"})msg");
+		return;
+	}
+	int frames = detail::extractJsonInt(req.body, "frames", 1);
+	if (frames < 1)   { frames = 1; }
+	if (frames > 600) { frames = 600; }  // resim と同じ上限 (10 秒 @60fps)
+	for (int i = 0; i < frames; ++i) { m_callbacks.runtimeStep(); }
 	resp.status = 200;
-	resp.setBody(R"({"success":true})");
+	resp.setBody("{\"success\":true,\"frames\":" + std::to_string(frames) + "}");
 }
 
 // Rewind-Edit-Replay: k フレーム前へ巻き戻し、記録済み入力で再生する。

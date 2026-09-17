@@ -14,6 +14,7 @@
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/Material.hpp>
+#include <mitiru/render/SceneLook.hpp>
 
 namespace mitiru
 {
@@ -123,6 +124,35 @@ inline void Screen::outline3D(bool enabled, float widthPx, float threshold,
 	m_outlineWidthPx  = widthPx;
 	m_outlineThresh   = threshold;
 	m_outlineDepthOnly = depthOnly;
+	m_sceneOutlineModeSet = false;  // 個別 API 優先に戻す (sceneLook3D 由来の mode を無効化)
+}
+
+inline void Screen::sceneLook3D(const render::SceneLook& look) noexcept
+{
+	m_sceneLookSet        = true;
+	m_outline3D           = look.outline;
+	m_outlineWidthPx      = look.outlineWidthPx;
+	m_outlineThresh       = look.outlineThreshold;
+	m_sceneOutlineModeSet = true;
+	m_sceneOutlineMode    = look.outlineMode;
+
+	m_fog3D      = look.fog;
+	m_fog3DColor = sgc::Colorf{look.fogColor[0], look.fogColor[1], look.fogColor[2], 1.0f};
+	m_fog3DNear  = look.fogNear;
+	m_fog3DFar   = look.fogFar;
+
+	m_sceneExposure       = look.exposure;
+	m_sceneGamma          = look.gamma;
+	m_sceneAmbient        = sgc::Colorf{look.ambient[0], look.ambient[1], look.ambient[2], 1.0f};
+	m_sceneShadowCaster   = look.shadowCaster;
+	m_sceneShadowCascaded = look.shadowCascaded;
+	m_sceneShadowAutoFit  = look.shadowCascadeAutoFit;
+	m_sceneShadowDistance = look.shadowDistance;
+	m_sceneShadowCascadeCount = look.shadowCascadeCount;
+	m_sceneShadowEnabled  = look.shadow;
+	m_sceneShadowDirSet   = look.shadow;
+	m_sceneShadowDir = sgc::Vec3f{look.shadowDirection[0], look.shadowDirection[1],
+	                              look.shadowDirection[2]};
 }
 
 /// @brief 最初の 3D 描画でフレームを開く (clear 色は screen->clear() と共有)
@@ -146,13 +176,30 @@ inline void Screen::ensure3DFrame()
 	m_renderer3D->setOutlineEnabled(m_outline3D);
 	if (m_outline3D)
 	{
-		m_renderer3D->setOutlineMode(m_outlineDepthOnly ? render::OutlineMode::DepthSobel
-		                                                : render::OutlineMode::DepthColorCombo);
+		const render::OutlineMode outlineMode = m_sceneOutlineModeSet
+			? static_cast<render::OutlineMode>(m_sceneOutlineMode)
+			: (m_outlineDepthOnly ? render::OutlineMode::DepthSobel : render::OutlineMode::DepthColorCombo);
+		m_renderer3D->setOutlineMode(outlineMode);
 		m_renderer3D->setOutlineParams(m_outlineWidthPx, m_outlineThresh);
 	}
-	// 影を有効化 (オブジェクトが地面に接地して見える)。光と同じ向きで落とす。
-	m_renderer3D->setShadowEnabled(true);
-	m_renderer3D->setShadowDirection(m_light3DDir);
+	// 絵の設定 (§1-12、ABI v35): sceneLook3D() を呼んだ時だけ反映する。renderer 初期化時の
+	// 既定値 (backend ごとに違う。例: defaultAmbient) を SceneLook の既定値で上書きしないため、
+	// 未使用のゲームは呼び出し自体が起きず今までどおり renderer 側の既定のまま。
+	if (m_sceneLookSet)
+	{
+		m_renderer3D->setTonemapExposure(m_sceneExposure);
+		m_renderer3D->setTonemapGamma(m_sceneGamma);
+		m_renderer3D->setAmbientColor(m_sceneAmbient);
+		m_renderer3D->setCascadedShadowEnabled(m_sceneShadowCascaded);
+		m_renderer3D->setCascadedShadowAutoFit(m_sceneShadowAutoFit, m_sceneShadowDistance);
+		m_renderer3D->setShadowCascadeCount(
+			m_sceneShadowCascaded ? (m_sceneShadowCascadeCount >= 2 ? m_sceneShadowCascadeCount : 2) : 1);
+		m_renderer3D->setShadowCaster(m_sceneShadowCaster);
+	}
+	// 影を有効化 (オブジェクトが地面に接地して見える)。sceneLook3D() が明示した向きが
+	// あればそれを、無ければ従来どおり光と同じ向きで落とす。
+	m_renderer3D->setShadowEnabled(m_sceneLookSet ? m_sceneShadowEnabled : true);
+	m_renderer3D->setShadowDirection(m_sceneShadowDirSet ? m_sceneShadowDir : m_light3DDir);
 	// skybox3D() 済みなら最遠面の空を張る (色が変わった時だけ cubemap を作り直す)。
 	if (m_sky3DRequested && !m_sky3DApplied)
 	{

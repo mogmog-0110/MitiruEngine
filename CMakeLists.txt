@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.32.0
+	VERSION 0.33.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -238,6 +238,11 @@ if(EMSCRIPTEN)
 		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_WEBGPU=1)
 		target_link_options(mitiru ${MITIRU_TARGET_SCOPE} -sUSE_WEBGPU=1)
 	endif()
+
+	# web/shell.html の {{GAME_JS}} は手置換だった (docs/TODO_ENGINE_2026_09_17.md U1)。
+	# wasm game target を追加するときは mitiru_generate_wasm_shell(<target>) を
+	# 1 行足すだけで、その target の出力 dir に置換済み shell.html が並ぶ。
+	include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/WasmShell.cmake)
 else()
 	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl tinyobj_impl cgltf_impl miniaudio_impl meshopt_impl)
 
@@ -309,6 +314,29 @@ elseif(WIN32)
 		# subprocess は libcef と同じ Release CRT。プロパティで /MD を宣言し
 		# 手動フラグによる D9025 (/MDd→/MD 上書き) を避ける。
 		set_target_properties(MitiruCefHelper PROPERTIES
+			FOLDER "cef"
+			MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+
+		# ── mitiru_cef_bridge (ADR 0032 PoC) ───────────────────────
+		# CEF 接触層を常時 Release CRT (/MD) の独立 DLL に隔離できるかの
+		# 構造検証。C ABI (create/loadUrl/tick/shutdown) のみ実装、host
+		# からのリンクはまだ配線しない (main.cpp は担当外)。
+		# libcef_dll_wrapper_mdrel (既存の /MD 固定ラッパー) をそのまま再利用する。
+		add_library(mitiru_cef_bridge SHARED
+			include/mitiru/cef/detail/CefBridgeAbi.cpp)
+		target_link_libraries(mitiru_cef_bridge PRIVATE
+			CEF::libcef libcef_dll_wrapper_mdrel)
+		target_include_directories(mitiru_cef_bridge PRIVATE
+			"${CMAKE_CURRENT_SOURCE_DIR}/include"
+			"${CEF_ROOT}" "${CEF_ROOT}/include")
+		target_compile_definitions(mitiru_cef_bridge PRIVATE
+			MITIRU_HAS_CEF=1 MITIRU_CEF_BRIDGE_BUILD=1 NOMINMAX WIN32_LEAN_AND_MEAN)
+		target_compile_features(mitiru_cef_bridge PRIVATE cxx_std_20)
+		if(MSVC)
+			target_compile_options(mitiru_cef_bridge PRIVATE /utf-8 /FS /bigobj)
+		endif()
+		# helper / wrapper と同じ Release CRT に固定する (このターゲットの存在理由そのもの)。
+		set_target_properties(mitiru_cef_bridge PROPERTIES
 			FOLDER "cef"
 			MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 	endif()
@@ -844,11 +872,27 @@ if(MSVC)
 endif()
 
 # ── 配布ビルド設定 ──────────────────────────────────────────
-option(MITIRU_DIST "Enable distribution build (static CRT, LTO, no console)" OFF)
+# 配布形は「動的 CRT (/MD) + VC ランタイムを zip に同梱」(tools/release/build_windows_zip.py)。
+# prebuilt の Live2DCubismFrameworkD3D.lib と cef_sandbox 以外の CEF 一式が /MD 前提なので、
+# 静的 CRT (/MT) は Cubism を外した構成でしかリンクできない (LNK2038)。必要な人だけ明示で選ぶ。
+option(MITIRU_DIST "Enable distribution build (LTO, dynamic CRT)" OFF)
+option(MITIRU_DIST_STATIC_CRT "Distribution build with static CRT (/MT). Requires Cubism disabled" OFF)
+
+if(MITIRU_DIST_STATIC_CRT AND NOT MITIRU_DIST)
+	message(FATAL_ERROR "MITIRU_DIST_STATIC_CRT は MITIRU_DIST=ON と一緒に指定してください")
+endif()
 
 if(MITIRU_DIST)
-	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-	message(STATUS "Distribution build: static CRT, LTO enabled")
+	if(MITIRU_DIST_STATIC_CRT)
+		if(TARGET Live2DCubismFramework OR TARGET Live2DCubismFrameworkD3D)
+			message(FATAL_ERROR "MITIRU_DIST_STATIC_CRT=ON は Cubism (prebuilt /MD) とリンクできません。"
+				" Cubism を無効にするか、既定の動的 CRT 配布 (MITIRU_DIST_STATIC_CRT=OFF) を使ってください")
+		endif()
+		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+		message(STATUS "Distribution build: static CRT, LTO enabled")
+	else()
+		message(STATUS "Distribution build: dynamic CRT (VC runtime は zip に同梱), LTO enabled")
+	endif()
 
 	if(MSVC)
 		add_compile_options(/GL /O2)

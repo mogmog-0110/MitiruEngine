@@ -4,6 +4,7 @@
 
 #include <algorithm>   // std::clamp / std::min
 #include <cmath>       // std::sqrt / std::sin / std::fabs
+#include <type_traits> // Canvas 経路のみ registerTexture する if constexpr のため
 
 #include <mitiru.hpp>
 #include <mitiru/camera/FollowCam.hpp>   // 追従カメラ (deadzone + 先読み + ease + world clamp)
@@ -82,8 +83,17 @@ struct CameraDemo
 		cam.update(dt);          // deadzone / 先読み / ease / clamp をまとめて適用
 	}
 
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
+		// Canvas は境界を跨ぐため、Texture のアドレスではなく id で描かせる必要がある
+		// (未登録だと drawSprite が DLL 内アドレスをそのまま積んでしまう)。
+		if constexpr (std::is_same_v<Surface, mitiru::Canvas>)
+		{
+			s.registerTexture(kBody, "akabeko_body");
+			s.registerTexture(kHead, "akabeko_head_neutral");
+			s.registerTexture(kTree, "tree");
+		}
 		s.fillScreen(theme::kPaper);
 
 		s.applyCamera(cam.pos.x, cam.pos.y);   // 以降ワールド座標で描く → カメラ中心がスクロールする
@@ -103,15 +113,19 @@ struct CameraDemo
 		chapterTitle(s, "Follow Camera");
 		chapterControls(s, "マウスの方へ赤べこが歩く　視点が追従してスクロール　ESC: おわる");
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 
-	void drawTree(Screen& s, const Tree& t) const
+	template <class Surface>
+	void drawTree(Surface& s, const Tree& t) const
 	{
 		const float w = kTree.width() * t.scale, h = kTree.height() * t.scale;
 		const Rect dst{ t.x - w * 0.5f, t.y - h, w, h };   // 根元 (t.x, t.y) に画像の下端を合わせる
 		s.drawSprite(kTree, dst, Rect{0.0f, 0.0f, kTree.width() * 1.0f, kTree.height() * 1.0f}, color::White, false);
 	}
 
-	void drawBeko(Screen& s) const
+	template <class Surface>
+	void drawBeko(Surface& s) const
 	{
 		const float bobY = moving ? std::fabs(std::sin(bob)) * 4.0f : 0.0f;   // 歩くと上下に弾む
 		const float nod  = moving ? std::sin(bob) * 3.5f : 0.0f;              // 首を軽く振る

@@ -8,6 +8,7 @@
 #include <cstdint>   // std::uint8_t
 
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include <mitiru/core/FixedVec.hpp>    // 点と区切りを貯める固定長の配列
 
 #include "../common/chapter_hud.hpp"   // 章ラベル + 操作帯 (全章共通の書式)
@@ -48,6 +49,10 @@ struct Paint15
 	bool  drawing     = false;         // いまマウスで描いている最中か
 	bool  prevDown    = false;
 	float lastX = 0.0f, lastY = 0.0f;
+	// D1: save/load の結果は host が次フレームまで確定させないので、要求を出した
+	// フレームでは flash せず「次フレーム判定待ち」を立てるだけにする (Input::saveSucceeded 参照)。
+	bool  pendingSave = false;
+	bool  pendingLoad = false;
 
 	static bool  hit(const Btn& b, float mx, float my) { return mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h; }
 	static bool  inCanvas(float my) { return my >= kCanvasTop && my <= kCanvasBot; }
@@ -59,12 +64,17 @@ struct Paint15
 		const float mx = in.mouseX(), my = in.mouseY();
 		const bool  down = in.mouseDown(0);
 
+		// save/load の成否は host 側処理を経て次フレームの in.saveSucceeded()/loadSucceeded()
+		// で分かる。ここで確定した結果を flash する (クリックした瞬間には分からない)。
+		if (pendingSave) { pendingSave = false; flash(in.saveSucceeded() ? "セーブした" : "セーブ失敗", in.saveSucceeded() ? theme::kGreen : theme::kRed); }
+		if (pendingLoad) { pendingLoad = false; flash(in.loadSucceeded() ? "ロードした" : "ロード失敗", in.loadSucceeded() ? theme::kBlue  : theme::kRed); }
+
 		if (down && !prevDown)   // 押した瞬間: ボタンか、キャンバスかで分ける
 		{
 			if      (hit(kUndo, mx, my))  { if (liveStrokes > 0) { --liveStrokes; } }                              // 1 手戻す
 			else if (hit(kRedo, mx, my))  { if (liveStrokes < static_cast<int>(ends.size())) { ++liveStrokes; } }  // 1 手進める
-			else if (hit(kSave, mx, my))  { hud.save("slot0"); flash("セーブした", theme::kGreen); } // 今の絵をまるごとファイルへ
-			else if (hit(kLoad, mx, my))  { hud.load("slot0"); flash("ロードした", theme::kBlue); }  // ファイルから絵をまるごと戻す
+			else if (hit(kSave, mx, my))  { hud.save("slot0"); pendingSave = true; }  // 結果は次フレームで分かる
+			else if (hit(kLoad, mx, my))  { hud.load("slot0"); pendingLoad = true; }  // 同上
 			else if (hit(kReset, mx, my)) { hud.requestRestart(); sFlash = 0.0f; }     // 状態をまっさらに作り直してもらう
 			else if (inCanvas(my))
 			{
@@ -93,7 +103,8 @@ struct Paint15
 		if (sFlash > 0.0f) { sFlash -= dt; }
 	}
 
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
 		s.fillScreen(theme::kPaper);
 
@@ -119,15 +130,21 @@ struct Paint15
 		if (sFlash > 0.0f) { s.text(sFlashMsg, 24.0f, 92.0f, sFlashCol, 22); }
 		chapterControls(s, "マウスで絵を描く　ボタン: もどす / やりなおす / セーブ / ロード / さいしょから");
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 
-	void drawBtn(Screen& s, const Btn& b, Color c) const
+	template <class Surface>
+	void drawBtn(Surface& s, const Btn& b, Color c) const
 	{
 		s.drawRect(b.x, b.y, b.w, b.h, c.withAlpha(0.12f));
 		s.drawRectFrame(Rect{b.x, b.y, b.w, b.h}, c, 1.5f);
 		s.drawTextInRect(Rect{b.x, b.y, b.w, b.h}, b.label, c, 18.0f,
-		                 Screen::TextAlignH::Center, Screen::TextAlignV::Middle);
+		                 Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 	}
 };
 
 // 実行:  mitiru_host.exe restart_save/restart_save.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Paint15);
+
 MITIRU_GAME(Paint15);

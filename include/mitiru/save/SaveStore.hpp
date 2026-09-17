@@ -14,6 +14,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -124,6 +125,74 @@ public:
 	{
 		std::error_code ec;
 		return std::filesystem::remove(m_dir / (detail::sanitize(slot) + ".sav"), ec);
+	}
+
+	/// @brief 保存済み slot 名を列挙する (`.sav.tmp` / `.sav.bak` は含めない)。
+	/// @details JS 側 `mitiru.save.list()` との parity 用。slot 名は write() が
+	///          sanitize() 済みの形で返る (元の呼び出し文字列そのままとは限らない)。
+	[[nodiscard]] std::vector<std::string> list() const
+	{
+		std::vector<std::string> out;
+		std::error_code ec;
+		if (!std::filesystem::exists(m_dir, ec)) { return out; }
+		constexpr std::string_view kExt = ".sav";
+		for (const auto& entry : std::filesystem::directory_iterator(m_dir, ec))
+		{
+			if (ec) { break; }
+			if (!entry.is_regular_file(ec)) { continue; }
+			const auto name = entry.path().filename().string();
+			if (name.size() > kExt.size()
+			    && name.compare(name.size() - kExt.size(), kExt.size(), kExt) == 0)
+			{
+				out.push_back(name.substr(0, name.size() - kExt.size()));
+			}
+		}
+		std::sort(out.begin(), out.end());
+		return out;
+	}
+
+	/// @brief slot を読み、埋め込みスキーマ version が古ければ migrate を適用してから返す。
+	/// @details data 先頭 4 bytes (LE uint32) を呼び出し側スキーマ version として扱う契約
+	///          (SaveStore 自体のコンテナ format version とは別物、write() 側の責務)。
+	///          migrate は (fromVersion, bytes) → 新 bytes (先頭 4 bytes に新 version 込み)
+	///          を返す。version が進まない/縮退できない場合は現状の bytes を返して打ち切る。
+	using MigrateFn = std::function<std::vector<std::uint8_t>(
+		std::uint32_t fromVersion, const std::vector<std::uint8_t>& bytes)>;
+
+	[[nodiscard]] std::optional<std::vector<std::uint8_t>> readWithMigration(
+		std::string_view slot, std::uint32_t currentVersion, const MigrateFn& migrate) const
+	{
+		auto data = read(slot);
+		if (!data || data->size() < 4) { return data; }
+
+		std::uint32_t version = 0;
+		std::memcpy(&version, data->data(), 4);
+
+		// chain migration。version が既に見た値へ戻る循環 (A→B→A 等) や、進行不能な
+		// migrate() を kMaxSteps で打ち切った場合、currentVersion に到達しないまま
+		// 途中の data を返すと呼び出し側が誤ってそれを currentVersion 扱いで読み、
+		// セーブデータ破損につながる。到達できなかったときは nullopt を返して
+		// 「移行失敗」を呼び出し側に伝える。
+		constexpr int kMaxSteps = 64;
+		std::vector<std::uint32_t> visited;
+		visited.reserve(kMaxSteps + 1);
+		visited.push_back(version);
+		for (int step = 0; step < kMaxSteps && version != currentVersion; ++step)
+		{
+			auto migrated = migrate(version, *data);
+			if (migrated.size() < 4) { return std::nullopt; }
+			std::uint32_t nextVersion = 0;
+			std::memcpy(&nextVersion, migrated.data(), 4);
+			if (std::find(visited.begin(), visited.end(), nextVersion) != visited.end())
+			{
+				return std::nullopt;  // 循環検知
+			}
+			visited.push_back(nextVersion);
+			data    = std::move(migrated);
+			version = nextVersion;
+		}
+		if (version != currentVersion) { return std::nullopt; }  // kMaxSteps 超過で未到達
+		return data;
 	}
 
 private:

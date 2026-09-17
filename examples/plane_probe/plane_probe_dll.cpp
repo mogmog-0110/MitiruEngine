@@ -4,6 +4,7 @@
 // あそびかた: 何も操作しない。左が参照の立方体、中央が疑惑の plane、右が薄い立方体。
 
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 
 using namespace mitiru;
 
@@ -30,4 +31,7 @@ struct PlaneProbe
 
 // 実行:  mitiru_host.exe plane_probe/plane_probe.dll --max-frames 60 --capture-dir . ^
 //        --capture-every 50
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(PlaneProbe);
+
 MITIRU_GAME(PlaneProbe);

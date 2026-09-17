@@ -19,6 +19,7 @@
 #include <windows.h>   // OpenProcess: ゲーム (host) が閉じたらこのツール窓も閉じる
 #endif
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <optional>
@@ -54,6 +55,23 @@ inline const char* vkName(int vk)
 	if (vk >= '0' && vk <= '9') { static thread_local char b[2]; b[0]=static_cast<char>(vk); b[1]=0; return b; }
 	return nullptr;
 }
+
+// gamepadButtonsDown ビットマスク → 押下中ボタン名の配列 (replay の gamepad 詳細表示用)。
+inline nlohmann::json padButtonNames(std::uint32_t buttonsDown)
+{
+	using namespace mitiru::module::gamepad;
+	static const std::pair<std::uint32_t, const char*> kNames[] = {
+		{DPadUp, "DUp"}, {DPadDown, "DDown"}, {DPadLeft, "DLeft"}, {DPadRight, "DRight"},
+		{Start, "Start"}, {Back, "Back"}, {LS, "LS"}, {RS, "RS"}, {LB, "LB"}, {RB, "RB"},
+		{A, "A"}, {B, "B"}, {X, "X"}, {Y, "Y"},
+	};
+	nlohmann::json out = nlohmann::json::array();
+	for (const auto& [bit, name] : kNames)
+	{
+		if (buttonsDown & bit) { out.push_back(name); }
+	}
+	return out;
+}
 }  // namespace
 
 namespace
@@ -64,8 +82,8 @@ class ToolCef final : public mitiru::Game
 {
 public:
 	ToolCef(std::optional<int> pid, std::optional<std::string> file,
-	        std::optional<std::string> mtrr, int dockMode = 0)
-		: m_pid(pid), m_dockMode(dockMode)
+	        std::optional<std::string> mtrr, int dockMode = 0, int httpPort = 0)
+		: m_pid(pid), m_dockMode(dockMode), m_httpPort(httpPort)
 	{
 		if (file) { m_filePath = std::filesystem::path(*file); }
 		if (mtrr) { m_mtrrPath = *mtrr; }
@@ -210,6 +228,15 @@ private:
 		env["snap"]  = m_last;
 		cef->executeJavaScript(
 			"window.applySnapshot && window.applySnapshot(" + env.dump() + ");");
+
+		// why_view 等、SharedSnapshot ではなく対象ゲームの HTTP API (`/api/ai/why` 等) を
+		// 直接叩くページ向けに、--http-port の値を一度だけ渡す (O6)。他ページは無視するだけ。
+		if (m_httpPort > 0 && !m_httpPortPushed)
+		{
+			cef->executeJavaScript(
+				"window.applyConfig && window.applyConfig({httpPort:" + std::to_string(m_httpPort) + "});");
+			m_httpPortPushed = true;
+		}
 	}
 
 	// time-travel: timetravel.html の graph click → window.cefQuery("timetravel.scrub|<offset>")
@@ -292,6 +319,9 @@ private:
 				if (snap.mouseButtonsDown[2]) { mb += "M"; }
 				f["mb"]  = mb;
 				f["pad"] = snap.gamepadConnected;
+				f["padButtons"] = padButtonNames(snap.gamepadButtonsDown);
+				f["padAxes"] = { snap.gamepadAxes[0], snap.gamepadAxes[1], snap.gamepadAxes[2],
+				                 snap.gamepadAxes[3], snap.gamepadAxes[4], snap.gamepadAxes[5] };
 				frames.push_back(std::move(f));
 			}
 			out["error"] = (player.lastError() == mitiru::replay::PlayerError::None ||
@@ -323,6 +353,8 @@ private:
 
 	std::optional<int>                                     m_pid;
 	int                                                    m_dockMode = 0;         ///< 0=吸着なし 1=下辺 (seek-bar) 2=右脇 (inspector 等)
+	int                                                    m_httpPort = 0;         ///< --http-port (0=未指定、why_view 等の fetch 先)
+	bool                                                   m_httpPortPushed = false;
 	bool                                                   m_noActivateSet = false;
 	std::optional<mitiru::observe::DockReader>             m_dockReader;
 	std::uintptr_t                                         m_gameHwnd = 0;         ///< ゲーム窓の HWND (z-order 挿入用)
@@ -353,6 +385,7 @@ int main(int argc, char* argv[])
 	std::string page = "perf";
 	std::optional<std::string> mtrr;
 	int winX = (-2147483647 - 1), winY = (-2147483647 - 1);  // --window-pos X Y (既定=OS任せ)
+	int httpPort = 0;  // --http-port <N>: why_view 等が対象ゲームの /api/ai/* を叩く先 (O6)
 	std::vector<char*> rest;
 	rest.push_back(argv[0]);
 	for (int i = 1; i < argc; ++i)
@@ -361,6 +394,7 @@ int main(int argc, char* argv[])
 		if (a == "--page" && i + 1 < argc) { page = argv[++i]; }
 		else if (a == "--mtrr" && i + 1 < argc) { mtrr = argv[++i]; }
 		else if (a == "--window-pos" && i + 2 < argc) { winX = std::atoi(argv[++i]); winY = std::atoi(argv[++i]); }
+		else if (a == "--http-port" && i + 1 < argc) { httpPort = std::atoi(argv[++i]); }
 		else { rest.push_back(argv[i]); }
 	}
 	// replay (.mtrr) は file/pid 不要なので parse をスキップして良い。
@@ -378,25 +412,55 @@ int main(int argc, char* argv[])
 		std::filesystem::path(argv[0]), ec).parent_path();
 	if (!exeDir.empty()) { std::filesystem::current_path(exeDir, ec); }
 
-	const std::string url =
-		"file:///" + (exeDir / "assets" / (page + ".html")).generic_string();
+	// page 解決: 既定 7 ページ (assets/<page>.html) を最優先で見る。無ければ、hud.open() で
+	// ゲーム独自のページ名 (RushCourse の「リング取得ログ窓」等) が渡されたとみなし、
+	// game DLL の assets/ (host が --url と同じ規則で MITIRU_ASSET_ROOT に置く) を探す (9-6)。
+	// "scene?tab=memory" のように ? 以降はページへのクエリとしてそのまま URL に付ける
+	// (mitiru run --learn が game memory タブを既定で開く口。ページ名の解決には使わない)。
+	std::string pageQuery;
+	if (const auto q = page.find('?'); q != std::string::npos)
+	{
+		pageQuery = page.substr(q);
+		page = page.substr(0, q);
+	}
+	std::filesystem::path pagePath = exeDir / "assets" / (page + ".html");
+	if (!std::filesystem::exists(pagePath, ec))
+	{
+		if (const char* gameRoot = std::getenv("MITIRU_ASSET_ROOT"); gameRoot && gameRoot[0] != '\0')
+		{
+			std::filesystem::path gamePagePath =
+				std::filesystem::path(gameRoot) / "assets" / (page + ".html");
+			if (std::filesystem::exists(gamePagePath, ec)) { pagePath = std::move(gamePagePath); }
+		}
+	}
+	const std::string url = "file:///" + pagePath.generic_string() + pageQuery;
 
 	// rewind は「ゲーム窓の下に付く横シークバー」なので横長・低背 + ゲーム窓の下辺に吸着。他ツールは縦長。
-	const bool isSeekBar = (page == "rewind");
-	// seek-bar はゲーム窓の下辺、それ以外の道具窓 (inspector 等) は右脇に吸着する。
-	const int dockMode = isSeekBar ? 1 : 2;
-	ToolCef tool(args.pid, args.file, mtrr, dockMode);
+	const bool isSeekBar   = (page == "rewind");
+	// scene_view はゲーム画面 + オブジェクト枠を映すので、他の観測窓 (縦長の右脇 dock) より
+	// 広い独立ウィンドウにする (ADR 0035 O2)。吸着はしない (dockMode 0、シーンビューは
+	// 「触る」ための窓であり、常にゲーム窓の傍らに固定される観測窓とは役割が違う)。
+	const bool isSceneView = (page == "scene_view");
+	// why_view も「触る」ための対話窓 (field を選んで問い合わせる) なので scene_view と同じく
+	// ゲーム窓へ吸着しない (常時ゲーム画面の傍らに固定される観測窓とは役割が違う)。
+	const bool isWhyView   = (page == "why_view");
+	// frame_view (P10) も対象ゲームの HTTP API (/api/frame/anatomy) を直接叩く対話窓。
+	// 入力→書込→描画→音の 5 段を縦に並べるので他の観測窓より縦長にする。
+	const bool isFrameView = (page == "frame_view");
+	// seek-bar はゲーム窓の下辺、scene_view/why_view/frame_view は吸着なし、それ以外 (inspector 等) は右脇に吸着する。
+	const int dockMode = isSeekBar ? 1 : ((isSceneView || isWhyView || isFrameView) ? 0 : 2);
+	ToolCef tool(args.pid, args.file, mtrr, dockMode, httpPort);
 
 	const std::string title = isSeekBar ? std::string("rewind") : ("MitiruEngine — " + page);
 	mitiru::Engine engine;
 	mitiru::EngineConfig cfg;
 	cfg.title           = title.c_str();   // run() 中 生存。
-	cfg.windowWidth     = isSeekBar ? 1280 : 400;
-	cfg.windowHeight    = isSeekBar ? 56 : 620;
+	cfg.windowWidth     = isSeekBar ? 1280 : (isSceneView ? 900 : (isFrameView ? 640 : 400));
+	cfg.windowHeight    = isSeekBar ? 56 : (isSceneView ? 700 : (isFrameView ? 820 : 620));
 	cfg.windowX         = winX;   // --window-pos: 実画面に出さず最初から指定位置へ (録画支援)
 	cfg.windowY         = winY;
-	cfg.minWindowWidth  = isSeekBar ? 480 : 300;
-	cfg.minWindowHeight = isSeekBar ? 48 : 360;
+	cfg.minWindowWidth  = isSeekBar ? 480 : (isSceneView ? 480 : (isFrameView ? 480 : 300));
+	cfg.minWindowHeight = isSeekBar ? 48 : (isSceneView ? 360 : (isFrameView ? 480 : 360));
 	cfg.vsync           = true;
 	cfg.enableCef       = true;
 	cfg.cefStartUrl     = url;

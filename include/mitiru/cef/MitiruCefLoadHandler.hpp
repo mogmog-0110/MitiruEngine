@@ -10,7 +10,9 @@
 #include <string>
 #include <string_view>
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_load_handler.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 #include <mitiru/cef/CefErrorPage.hpp>
 

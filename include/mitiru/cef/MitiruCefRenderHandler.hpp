@@ -25,7 +25,11 @@
 #endif
 #include <Windows.h>
 
+// 生 CEF ヘッダを include する前後を挟み、CHECK/DCHECK 系マクロの汚染から
+// 呼び出し元 (Catch2 テスト等) を守る (詳細は CefIncludeGuardBegin.hpp)。
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_render_handler.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
 
 namespace mitiru::cef
 {

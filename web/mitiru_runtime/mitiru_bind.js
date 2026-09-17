@@ -552,7 +552,10 @@
         return o;
       });
     }
-    var v = parseValue(this.listPath);        // JSON 配列
+    // resolve() でネストパス (例 "tool.snap.audio.state.channels") を辿る。
+    // parseValue() は listPath をそのまま state key として getState するだけなので、
+    // ネストした JSON の奥のフィールドを指す repeat は常に undefined → 空配列になっていた。
+    var v = resolve(this.listPath);           // JSON 配列
     return Array.isArray(v) ? v : [];
   };
 

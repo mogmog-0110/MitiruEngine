@@ -26,6 +26,8 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	++m_frameCounter;
 
 	m_drawCallCount = 0;
+	m_culledCount = 0;
+	m_occludedCount = 0;
 	m_frameActive = true;
 	m_transparentCommands.clear();
 	m_skyboxDrawnThisFrame = false;
@@ -36,14 +38,16 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_shadowCommands.clear();
 	m_shadowDrawnThisFrame = false;
 
-	auto* swapChain = m_device->getSwapChain();
-	if (!swapChain)
-	{
-		return;
-	}
-
-	const uint32_t frameIndex = swapChain->currentBackBufferIndex();
+	// windowless (G2) では m_device->getSwapChain() が null になる。フレーム番号も
+	// バックバッファ取得も m_device 経由にすることで、以降はスワップチェーンの
+	// 有無を意識せず同じコードパスで描ける。
+	const uint32_t frameIndex = m_device->currentFrameIndex();
 	m_frameCursor = frameIndex;   // clod パスの upload ring 用
+
+	// このスロットのオクルージョン resolve 読み戻しを消費する。
+	// Dx12Device::beginFrame() がこのスロットの GPU 完了をフェンス待機
+	// 済みのため、追加の同期なしで安全に Map できる。
+	consumeOcclusionReadback(frameIndex);
 
 	// GPU は前フレームの ring を読み終えているので reset OK
 	m_uploadRing.beginFrame(frameIndex);
@@ -80,8 +84,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	/// 乗り (device がフレーム頭で既に RENDER_TARGET にしている)、debug layer が
 	/// コマンドリストを丸ごと落として clear 色しか出なくなる。3D の描画は、すでに
 	/// RENDER_TARGET 状態のバックバッファへ resolve/tonemap/overlay するだけでよい。
-	auto* backBufferBase = swapChain->backBuffer();
-	auto* backBuffer = static_cast<gfx::Dx12RenderTarget*>(backBufferBase);
+	auto* backBuffer = m_device->currentBackBuffer();
 	if (!backBuffer)
 	{
 		return;
@@ -154,6 +157,9 @@ inline void Renderer3D_DX12::setCamera(const Camera3D& camera)
 		camera.nearClip(), camera.farClip());
 	m_cameraPosition = camera.position();
 	m_clodCamera = camera;   // clod パスは自前の行列規約で再構成する
+	// カリング判定は描画用射影と切り離し、camera 自身の GL規約
+	// viewProjectionMatrix() から視錐台を作る（Frustum::extractFromCamera 参照）。
+	m_frustum.extractFromCamera(camera);
 }
 
 /// @brief メッシュを描画する
@@ -172,6 +178,27 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 	if (mesh.vertexCount() == 0)
 	{
 		return;
+	}
+
+	/// 視錐台カリング: world 変換したローカル AABB がカメラの外なら描かない
+	/// (DX11 Renderer3D::drawMesh と同じ意味論)
+	if (m_frustumCullingEnabled && !m_frustum.isMeshVisible(mesh.localAABB(), worldTransform))
+	{
+		++m_culledCount;
+		return;
+	}
+
+	/// オクルージョンカリング: 直近に読み戻した深度で完全に隠れているなら描かない
+	/// (DX11 Renderer3D::drawMesh と同じ意味論)
+	if (m_occlusionCullingEnabled && m_occlusionCuller.hasDepth())
+	{
+		const CullAABB worldBox = worldOcclusionAABB(mesh.localAABB(), worldTransform);
+		const auto viewProj = occlusionViewProj();
+		if (m_occlusionCuller.isOccluded(worldBox, viewProj.data()))
+		{
+			++m_occludedCount;
+			return;
+		}
 	}
 
 	/// skybox が必要なら最初の drawMesh の前に描画する
@@ -193,6 +220,19 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 	if (wantsBlend && m_oitTransparentPSO)
 	{
 		m_transparentCommands.push_back({&mesh, worldTransform, material});
+		return;
+	}
+
+	/// PBR (IBL) は共有 root signature の SRV slot が埋まっているため専用
+	/// root signature / PSO で描画する (B17)。環境キューブマップ未設定時は
+	/// drawMeshPBRDx12 が false を返すので、下の通常経路 (Toon フォールバック) へ続ける
+	if (m_shaderMode == ShaderMode3D::PBR && drawMeshPBRDx12(mesh, worldTransform, material))
+	{
+		++m_drawCallCount;
+		if (m_shadowEnabled && m_shadowCasterEnabled)
+		{
+			m_shadowCommands.push_back({&mesh, worldTransform});
+		}
 		return;
 	}
 
@@ -414,6 +454,18 @@ inline void Renderer3D_DX12::endFrame()
 		drawPostProcessOutline();
 	}
 
+	/// オクルージョン深度 resolve（`kOcclusionUpdateInterval` フレームに 1 回だけ）。
+	/// アウトラインパスと同じく深度を DEPTH_WRITE→PIXEL_SHADER_RESOURCE→DEPTH_WRITE
+	/// で往復するため、深度が DEPTH_WRITE に戻っているこの位置で呼ぶ。
+	if (m_occlusionCullingEnabled)
+	{
+		++m_occlusionFrameCounter;
+		if (m_occlusionFrameCounter % kOcclusionUpdateInterval == 0)
+		{
+			recordOcclusionResolvePass();
+		}
+	}
+
 	/// FXAA ポストプロセス AA (ENG-104)
 	/// outline までの 3D シーン色に対して fast approximate AA を適用する。
 	/// renderOverlay2D() より「前」に走らせて HUD/UI text に FXAA ブラーを
@@ -600,7 +652,7 @@ inline void Renderer3D_DX12::finalizeFrame()
 	m_device->commandQueue()->ExecuteCommandLists(1, lists);
 
 	/// 一時アップロードバッファを現在のフレームスロットに退避する
-	const uint32_t frameIndex = m_device->getSwapChain()->currentBackBufferIndex();
+	const uint32_t frameIndex = m_device->currentFrameIndex();
 	m_perFrameTempResources[frameIndex] = std::move(m_frameTempResources);
 }
 
@@ -662,15 +714,27 @@ inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO(bool doubleSided) con
 	{
 	case ShaderMode3D::Phong:
 		if (m_phongPSO) { return pick(m_phongPSO, m_phongPSONoCull); }
+		debug::warnOnce("dx12.shadermode.phong_pso_missing",
+		                "Phong PSO が未生成 — Toon にフォールバック");
 		break;
 	case ShaderMode3D::Unlit:
 		if (m_unlitPSO) { return pick(m_unlitPSO, m_unlitPSONoCull); }
+		debug::warnOnce("dx12.shadermode.unlit_pso_missing",
+		                "Unlit PSO が未生成 — Toon にフォールバック");
 		break;
 	case ShaderMode3D::Flat:
 		if (m_flatPSO) { return pick(m_flatPSO, m_flatPSONoCull); }
+		debug::warnOnce("dx12.shadermode.flat_pso_missing",
+		                "Flat PSO が未生成 — Toon にフォールバック");
 		break;
 	case ShaderMode3D::Toon:
-	default: break;
+		break;
+	default:
+		// Posterize/Halftone/Hatching/GradientMap/Silhouette 等は DX12 未実装（B9）
+		debug::warnOnce("dx12.shadermode.unimplemented." + std::to_string(static_cast<int>(m_shaderMode)),
+		                "DX12 が未実装の ShaderMode — Toon にフォールバック: mode=" +
+		                    std::to_string(static_cast<int>(m_shaderMode)));
+		break;
 	}
 	return pick(m_mainPSO, m_mainPSONoCull); // フォールバック: toon
 }

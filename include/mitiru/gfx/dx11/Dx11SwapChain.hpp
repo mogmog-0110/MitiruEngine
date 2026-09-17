@@ -92,6 +92,7 @@ public:
 			}
 		}
 		m_sampleCount = msaaCount;
+		m_sampleQuality = msaaQuality;
 
 		/// スワップチェーン記述子
 		DXGI_SWAP_CHAIN_DESC desc = {};
@@ -186,6 +187,14 @@ public:
 		return m_swapChain.Get();
 	}
 
+	/// @brief バックバッファの MSAA サンプル数を取得する（1 = 無効）
+	/// @details 深度バッファ側 (Renderer3D::createDepthBuffer) がこれに合わせないと
+	///          OMSetRenderTargets で color/depth のサンプル数が食い違い、深度が書かれない。
+	[[nodiscard]] UINT sampleCount() const noexcept { return m_sampleCount; }
+
+	/// @brief バックバッファの MSAA サンプル品質を取得する
+	[[nodiscard]] UINT sampleQuality() const noexcept { return m_sampleQuality; }
+
 private:
 	/// @brief バックバッファからレンダーターゲットを生成する
 	void createRenderTarget()
@@ -204,15 +213,13 @@ private:
 			m_device, backBuffer.Get(), m_width, m_height);
 	}
 
-	/// @brief MSAA サンプル数（1 = disabled, 2/4 = enabled）
-	[[nodiscard]] UINT sampleCount() const noexcept { return m_sampleCount; }
-
 	ID3D11Device* m_device = nullptr;               ///< D3D11デバイス（非所有）
 	ComPtr<IDXGISwapChain> m_swapChain;             ///< DXGIスワップチェーン
 	Dx11RenderTarget m_renderTarget;                 ///< バックバッファレンダーターゲット
 	int m_width = 0;                                 ///< バッファ幅
 	int m_height = 0;                                ///< バッファ高さ
-	UINT m_sampleCount = 1;                          ///< MSAA サンプル数
+	UINT m_sampleCount = 1;                          ///< MSAA サンプル数（1 = disabled, 2/4 = enabled）
+	UINT m_sampleQuality = 0;                        ///< MSAA サンプル品質
 };
 
 } // namespace mitiru::gfx

@@ -5,47 +5,33 @@
 
 #if defined(_WIN32) && defined(MITIRU_HAS_CEF)
 
+#include <mitiru/cef/CefIncludeGuardBegin.hpp>
 #include "include/cef_app.h"
 #include "include/cef_browser_process_handler.h"
 #include "include/cef_render_process_handler.h"
 #include "include/cef_command_line.h"
 #include "include/cef_scheme.h"
 #include "include/wrapper/cef_message_router.h"
+#include <mitiru/cef/CefIncludeGuardEnd.hpp>
+
+#include <cstdlib>
 
 #include <mitiru/cef/MitiruCefSchemeHandler.hpp>
 
 namespace mitiru::cef
 {
 
-/// @brief MitiruEngine 用 CefApp 実装
-/// @details ブラウザプロセスの起動設定 + **single-process モードで renderer 側
-///          の CefMessageRouterRendererSide も注入する**。
-///
-/// single-process モードの制約:
-/// `single-process` スイッチを付けているため subprocess (MitiruCefHelper.exe)
-/// は起動されない。結果、`cef_subprocess_main.cpp` の CefSubprocessApp の
-/// `OnWebKitInitialized` / `OnContextCreated` は一度も呼ばれない。
-///
-/// それにより `window.cefQuery` が JS 側に注入されず、cefQuery を使った
-/// JS→C++ ハンドラーが全て no-op になる症状が発生していた
-/// (Title 左クリック → Raising 遷移が起きない、等)。
-///
-/// 対策: 本クラスが `CefRenderProcessHandler` も兼任することで、single-process
-/// でも renderer-side router が初期化されるようにする。
-/// multi-process モードに戻す際は subprocess 側で二重初期化にならない点を確認。
+/// @brief MitiruEngine 用 CefApp 実装 (browser process 側)
+/// @details 起動設定と `app://` スキームの登録だけを持つ。renderer / GPU プロセスは別 exe
+///          (`MitiruCefHelper.exe`、`cef_subprocess_main.cpp` の CefSubprocessApp) が担い、
+///          `window.cefQuery` の注入もそちら側の `OnWebKitInitialized` が行う (ADR 0026)。
 class MitiruCefApp final
     : public CefApp
     , public CefBrowserProcessHandler
-    , public CefRenderProcessHandler
 {
 public:
     // ── CefApp ──────────────────────────────────────────────────
     CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override
-    {
-        return this;
-    }
-
-    CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler() override
     {
         return this;
     }
@@ -96,31 +82,31 @@ public:
         command_line->AppendSwitch("allow-file-access-from-files");
         command_line->AppendSwitch("disable-web-security");
 #endif
-        // ログ削減
-        command_line->AppendSwitch("disable-logging");
-        // single-process 運用では V8 Proxy resolver が初期化できず、CEF が
-        // フレーム毎に "Cannot use V8 Proxy resolver in single process mode"
-        // を stderr に吐く (system_network_context_manager.cc:863)。
-        // proxy server を direct:// 固定にして PAC 解決器の起動自体を skip
-        // させると spam が止まる。ゲーム HUD は file:// しか触らないため
-        // proxy 機能は不要。
-        command_line->AppendSwitchWithValue("proxy-server", "direct://");
-        command_line->AppendSwitch("no-proxy-server");
-        // network service 関連の追加ノイズ抑制 (どれも HUD 用途で不要)
-        command_line->AppendSwitchWithValue("log-severity", "disable");
-        // Multi-process モードでは subprocess 起動が
-        // "GPU process launch failed: error_code=63" で FATAL 終了する。
-        // 根本原因: CEF minimal 配布の libcef.dll は Release CRT (/MD) 固定で
-        //   ビルドされており、Debug build (/MDd) の consumer と CRT mismatch
-        //   を起こす。libcef_dll_wrapper を /MDd でビルド → /MD 版と混在 →
-        //   cef_sandbox.lib が参照する _CrtDbgReport が解決できない、等、
-        //   複数段階で構造的に衝突する。
-        // Debug build で multi-process CEF を動かすには CEF standard distribution
-        //   (Debug libcef.dll 同梱) が要る。minimal 配布のままでは非現実的なため
-        //   single-process で運用する。sandbox/isolation は失われるが、ゲーム HUD
-        //   用途 (file:// のみ) では問題ない。
-        // Release での multi-process 化は別課題 (CRT mismatch は Release では発生しない)。
-        command_line->AppendSwitch("single-process");
+        // ログ削減。ただし MITIRU_CEF_DEBUG_LOG=1 のときは CHECK()/FATAL 失敗の
+        // メッセージを見るため抑制しない (K4 調査用、既定の挙動は変えない)。
+        if (!isCefDebugLogEnabled())
+        {
+            command_line->AppendSwitch("disable-logging");
+        }
+        else
+        {
+            command_line->AppendSwitchWithValue("enable-logging", "stderr");
+            command_line->AppendSwitchWithValue("v", "1");
+        }
+        // network service 関連の追加ノイズ抑制 (どれも HUD 用途で不要)。
+        // MITIRU_CEF_DEBUG_LOG=1 のときは上の enable-logging と競合するため付けない。
+        if (!isCefDebugLogEnabled())
+        {
+            command_line->AppendSwitchWithValue("log-severity", "disable");
+        }
+    }
+
+    /// @details "=0" 等で無効化したつもりが (存在するだけで) verbose になる事故を
+    ///          防ぐため、値そのものを見る。
+    [[nodiscard]] static bool isCefDebugLogEnabled()
+    {
+        const char* v = std::getenv("MITIRU_CEF_DEBUG_LOG");
+        return v != nullptr && v[0] == '1';
     }
 
     // ── CefBrowserProcessHandler ──────────────────────────────
@@ -131,57 +117,7 @@ public:
         mitiru::cef::registerAppScheme();
     }
 
-    // ── CefRenderProcessHandler (single-process 用) ─────────────
-    /// @brief V8/Blink の起動完了時に呼ばれる。renderer-side router を作成
-    void OnWebKitInitialized() override
-    {
-        CefMessageRouterConfig config;
-        config.js_query_function  = "cefQuery";
-        config.js_cancel_function = "cefQueryCancel";
-        m_renderRouter = CefMessageRouterRendererSide::Create(config);
-    }
-
-    /// @brief フレーム毎の JS コンテキスト生成時に `window.cefQuery` を注入
-    void OnContextCreated(
-        CefRefPtr<CefBrowser>    browser,
-        CefRefPtr<CefFrame>      frame,
-        CefRefPtr<CefV8Context>  context) override
-    {
-        if (m_renderRouter)
-        {
-            m_renderRouter->OnContextCreated(browser, frame, context);
-        }
-    }
-
-    /// @brief フレーム破棄時に router 側も解放
-    void OnContextReleased(
-        CefRefPtr<CefBrowser>    browser,
-        CefRefPtr<CefFrame>      frame,
-        CefRefPtr<CefV8Context>  context) override
-    {
-        if (m_renderRouter)
-        {
-            m_renderRouter->OnContextReleased(browser, frame, context);
-        }
-    }
-
-    /// @brief ブラウザ→レンダラーのメッセージを router に橋渡し
-    bool OnProcessMessageReceived(
-        CefRefPtr<CefBrowser>        browser,
-        CefRefPtr<CefFrame>          frame,
-        CefProcessId                 source_process,
-        CefRefPtr<CefProcessMessage> message) override
-    {
-        if (m_renderRouter &&
-            m_renderRouter->OnProcessMessageReceived(browser, frame, source_process, message))
-        {
-            return true;
-        }
-        return false;
-    }
-
 private:
-    CefRefPtr<CefMessageRouterRendererSide> m_renderRouter;
     IMPLEMENT_REFCOUNTING(MitiruCefApp);
 };
 

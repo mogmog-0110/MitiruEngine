@@ -66,6 +66,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	const auto logicalSize = game.layout(
 		m_window->width(), m_window->height());
 	m_screen = std::make_unique<Screen>(logicalSize.width, logicalSize.height);
+	m_screen->applyExpectedSprites(config.expectedSprites);
 
 	// sprite(id) 1 行描画の resolver を注入する (ABI v16)。基準 dir は loadModule が
 	// DLL 隣接の assets/sprites に設定済み (module 無しは cwd 相対の既定のまま)。
@@ -77,7 +78,11 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	// headless (窓なし・NullDevice) では GPU バックバッファが無いので、Screen に
 	// ソフトウェアフレームバッファを張る。これで draw() が CPU ラスタライズされ、
 	// capture() が中身のあるフレームを返せる (#43: AI 自動回しの画面キャプチャ)。
-	if (config.headless)
+	// G2: ただし headless でも実 GPU device (windowless 3D, `--headless-3d`) を
+	// 持っている時は SW ラスタライズを張らない。張ると Engine::capture() が
+	// (SW framebuffer 優先の分岐で) 3D を積んだ GPU オフスクリーンではなく
+	// 空の CPU framebuffer を返してしまう。
+	if (config.headless && (!m_device || m_device->backend() == gfx::Backend::Null))
 	{
 		m_screen->enableSoftwareFramebuffer();
 	}
@@ -220,6 +225,7 @@ MITIRU_INLINE void mitiru::Engine::stepFrames(
 			m_window->width(), m_window->height());
 		m_screen = std::make_unique<Screen>(
 			logicalSize.width, logicalSize.height);
+		m_screen->applyExpectedSprites(config.expectedSprites);
 		m_screen->setSpriteResolver(&render::SpriteCache::resolve, &m_spriteCache);
 
 		/// headlessモードではソフトウェアフレームバッファを自動有効化
@@ -237,7 +243,9 @@ MITIRU_INLINE void mitiru::Engine::stepFrames(
 		applyInjectedInput();
 
 		/// 固定タイムステップで更新 (stepFramesはヘッドレス用なので
-		/// 各フレーム = 1固定ステップとして扱う)
+		/// 各フレーム = 1固定ステップとして扱う)。Listener フック (1-6) は
+		/// tickFixedUpdatePhase (Engine_Frame.hpp) と同じく 1 固定ステップごとに発火する。
+		dispatchBeforeUpdate();
 		game.update(kFixedDt);
 
 		/// シーンマネージャーが設定されている場合、現在シーンを更新
@@ -245,6 +253,8 @@ MITIRU_INLINE void mitiru::Engine::stepFrames(
 		{
 			m_sceneManager->currentScene()->onUpdate(kFixedDt);
 		}
+
+		dispatchAfterUpdate();
 
 		m_screen->resetDrawCallCount();
 		m_screen->clear();
@@ -270,6 +280,7 @@ MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::runAndCapture(
 	initialize(config);
 	const auto logicalSize = game.layout(m_window->width(), m_window->height());
 	m_screen = std::make_unique<Screen>(logicalSize.width, logicalSize.height);
+	m_screen->applyExpectedSprites(config.expectedSprites);
 	m_screen->setSpriteResolver(&render::SpriteCache::resolve, &m_spriteCache);
 	createRenderPipeline(logicalSize.width, logicalSize.height);
 	game.setInputState(&m_inputState);

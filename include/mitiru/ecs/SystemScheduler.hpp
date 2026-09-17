@@ -10,16 +10,23 @@
 #include <string>
 #include <vector>
 
+#include "mitiru/scene/UpdatePhase.hpp"
+
 namespace mitiru::ecs
 {
 
+/// @brief SystemRunner (scene) と共有するフェーズ定義
+using mitiru::scene::UpdatePhase;
+
 /// @brief システムエントリ
-/// @details 名前・優先度・更新関数をまとめた構造体。
+/// @details 名前・優先度・更新関数をまとめた構造体。phase を末尾に追加したのは
+///          既存の3引数集成体初期化 (`{"name", priority, fn}`) を壊さないため。
 struct SystemEntry
 {
 	std::string name;                        ///< システム名
-	int priority = 0;                        ///< 実行優先度（小さい値が先に実行）
+	int priority = 0;                        ///< 実行優先度（同一 phase 内で小さい値が先に実行）
 	std::function<void(float)> updateFn;     ///< 更新関数（dt を受け取る）
+	UpdatePhase phase = UpdatePhase::Sim;    ///< 更新フェーズ（省略時は既存互換の Sim）
 };
 
 /// @brief 決定論的システムスケジューラー
@@ -72,9 +79,10 @@ public:
 	{
 		/// ソート済みコピーを作成
 		auto sorted = m_systems;
-		std::sort(sorted.begin(), sorted.end(),
+		std::stable_sort(sorted.begin(), sorted.end(),
 			[](const SystemEntry& a, const SystemEntry& b)
 			{
+				if (a.phase != b.phase) return a.phase < b.phase;
 				return a.priority < b.priority;
 			});
 
@@ -126,9 +134,10 @@ private:
 	{
 		if (!m_sorted)
 		{
-			std::sort(m_systems.begin(), m_systems.end(),
+			std::stable_sort(m_systems.begin(), m_systems.end(),
 				[](const SystemEntry& a, const SystemEntry& b)
 				{
+					if (a.phase != b.phase) return a.phase < b.phase;
 					return a.priority < b.priority;
 				});
 			m_sorted = true;

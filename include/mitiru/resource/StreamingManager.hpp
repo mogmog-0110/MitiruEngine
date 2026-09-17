@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <mitiru/resource/AssetCache.hpp>
+#include <mitiru/resource/AssetManager.hpp>
 #include <mitiru/resource/ThreadPool.hpp>
 
 namespace mitiru::resource
@@ -149,6 +150,15 @@ public:
 	{
 		const std::lock_guard lock(m_mutex);
 		m_placeholder = std::move(placeholder);
+	}
+
+	/// @brief AssetManager と連携させる
+	/// @details 以後、ロード完了時に AssetManager::setContent() 経由でも
+	///          同じ id のスロットへ反映され、AssetHandle::onChanged が拾える。
+	void bindAssetManager(AssetManager& manager) noexcept
+	{
+		const std::lock_guard lock(m_mutex);
+		m_assetManager = &manager;
 	}
 
 	/// @brief アセットのストリーミングをリクエストする
@@ -398,6 +408,10 @@ private:
 			if (load.success)
 			{
 				reqIt->second.state = StreamingState::Loaded;
+				if (m_assetManager)
+				{
+					m_assetManager->setContent<T>(load.id, load.asset);
+				}
 				m_cache.put(load.id, std::move(load.asset));
 				++m_stats.completedLoads;
 			}
@@ -415,6 +429,7 @@ private:
 	AssetCache<T> m_cache;                   ///< LRU キャッシュ
 	ThreadPool m_threadPool;                 ///< ワーカースレッドプール
 	std::shared_ptr<T> m_placeholder;        ///< プレースホルダーアセット
+	AssetManager* m_assetManager = nullptr;  ///< 連携先（未設定なら従来どおり単独動作）
 
 	LoadFunction m_loadFunction;             ///< ロード関数
 

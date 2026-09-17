@@ -21,6 +21,7 @@
 /// auto transforms = sampler.getWorldTransforms();
 /// @endcode
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -60,6 +61,19 @@ struct Mat4
 		return Mat4{};
 	}
 };
+
+/// @brief 2つの行列を要素ごとに線形補間する（weight=0でa、1でb）
+/// @details Ozz実装は関節空間でBlendingJobを使うためこの関数を経由しないが、
+///          Null実装はポーズデータを持たないため取得済みの行列同士を直接混ぜる。
+[[nodiscard]] inline Mat4 lerpMat4(const Mat4& a, const Mat4& b, float weight) noexcept
+{
+	Mat4 result;
+	for (std::size_t i = 0; i < result.m.size(); ++i)
+	{
+		result.m[i] = a.m[i] + (b.m[i] - a.m[i]) * weight;
+	}
+	return result;
+}
 
 // ═════════════════════════════════════════════════════════════
 // OzzSkeleton
@@ -340,12 +354,36 @@ public:
 		return result;
 	}
 
-	void blendWith([[maybe_unused]] const IOzzAnimationSampler& other,
-	               [[maybe_unused]] float weight) override
+	void blendWith(const IOzzAnimationSampler& other, float weight) override
 	{
-		// WARNING: blendWith() は未実装です。呼び出しは無視されます。
-		// 完全実装にはozz::animation::BlendingJobが必要。
-		// otherからローカルトランスフォームを取得し、重み付きでブレンドする予定。
+		// other は同じ骨格を共有する OzzAnimationSampler でなければ関節空間の
+		// SoATransform を取り出せない（インターフェース越しには公開していない）。
+		// 型が違う／関節数が食い違う場合はブレンド未対応として無視する。
+		const auto* otherImpl = dynamic_cast<const OzzAnimationSampler*>(&other);
+		if (!otherImpl || !m_skeleton || !m_skeleton->isLoaded() ||
+		    m_locals.size() != otherImpl->m_locals.size())
+		{
+			return;
+		}
+
+		std::array<ozz::animation::BlendingJob::Layer, 2> layers;
+		layers[0].transform = ozz::make_span(m_locals);
+		layers[0].weight = 1.0f - weight;
+		layers[1].transform = ozz::make_span(otherImpl->m_locals);
+		layers[1].weight = weight;
+
+		ozz::animation::BlendingJob blendJob;
+		blendJob.layers = ozz::make_span(layers);
+		blendJob.rest_pose = m_skeleton->raw().joint_rest_poses();
+		blendJob.output = ozz::make_span(m_locals);
+		if (!blendJob.Run()) return;
+
+		// ブレンド後のローカル姿勢をワールド行列へ反映しないと getWorldTransforms() が古い値のまま
+		ozz::animation::LocalToModelJob ltmJob;
+		ltmJob.skeleton = &m_skeleton->raw();
+		ltmJob.input = ozz::make_span(m_locals);
+		ltmJob.output = ozz::make_span(m_models);
+		ltmJob.Run();
 	}
 
 	[[nodiscard]] float currentTime() const noexcept override { return m_time; }
@@ -389,6 +427,7 @@ public:
 	{
 		m_playing = false;
 		m_time = 0.0f;
+		m_hasBlend = false;
 	}
 
 	void update(float dt) override
@@ -398,22 +437,31 @@ public:
 		if (duration <= 0.0f) return;
 		m_time += dt;
 		m_time = std::fmod(m_time, duration);
+		m_hasBlend = false; // 再サンプリングしたらブレンド結果は無効
 	}
 
 	[[nodiscard]] std::vector<Mat4> getLocalTransforms() const override
 	{
-		return makeIdentityMatrices();
+		return m_hasBlend ? m_blended : makeIdentityMatrices();
 	}
 
 	[[nodiscard]] std::vector<Mat4> getWorldTransforms() const override
 	{
-		return makeIdentityMatrices();
+		return m_hasBlend ? m_blended : makeIdentityMatrices();
 	}
 
-	void blendWith([[maybe_unused]] const IOzzAnimationSampler& other,
-	               [[maybe_unused]] float weight) override
+	void blendWith(const IOzzAnimationSampler& other, float weight) override
 	{
-		// WARNING: blendWith() は未実装です。Null実装ではブレンドは無視されます。
+		// Null実装は関節ごとのポーズを持たないため、取得済みの行列同士をCPUで線形補間する
+		const auto a = getWorldTransforms();
+		const auto b = other.getWorldTransforms();
+		const std::size_t count = std::min(a.size(), b.size());
+		m_blended.resize(count);
+		for (std::size_t i = 0; i < count; ++i)
+		{
+			m_blended[i] = lerpMat4(a[i], b[i], weight);
+		}
+		m_hasBlend = true;
 	}
 
 	[[nodiscard]] float currentTime() const noexcept override { return m_time; }
@@ -431,6 +479,8 @@ private:
 	std::shared_ptr<OzzAnimation> m_animation;
 	float m_time = 0.0f;
 	bool m_playing = false;
+	std::vector<Mat4> m_blended;
+	bool m_hasBlend = false;
 };
 
 // ═════════════════════════════════════════════════════════════

@@ -1,5 +1,5 @@
 #pragma once
-// このヘッダは RenderPipeline2D.hpp から include される。直接 include しないこと。
+// RenderPipeline2D.hpp からのみ include する。
 
 #ifdef _WIN32
 
@@ -23,11 +23,11 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 	pipeline.m_dx12NativeDevice = device;
 	pipeline.m_dx12Queue = dx12Device->commandQueue();
 
-	/// ── 基本 2D ルートシグネチャ ───────────────────────
-	/// 0: VS CBV b0 (projection 4x4)
-	/// 1: PS CBV b0 (uUseTexture float4)
-	/// 2: PS SRV table t0 (albedo)
-	/// s0: static sampler (linear clamp)
+	/// ── 基本 2D ルートシグネチャ ──
+	/// 0: VS CBV b0、projection 4x4
+	/// 1: PS CBV b0、uUseTexture float4
+	/// 2: PS SRV table t0、albedo
+	/// s0: static sampler、linear clamp
 	D3D12_DESCRIPTOR_RANGE srvRange = {};
 	srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	srvRange.NumDescriptors = 1;
@@ -81,7 +81,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 			"RenderPipeline2D: CreateRootSignature failed");
 	}
 
-	/// ── シェーダーをコンパイル ───────────────────────
+	/// ── シェーダーのコンパイル ──
 	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob> psBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob> compileErr;
@@ -101,7 +101,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 	pipeline.m_dx12VsBlob = vsBlob;
 	pipeline.m_dx12PsBlob = psBlob;
 
-	/// ── PSO (base 2D) ───────────────────────────────
+	/// ── 基本 2D PSO ──
 	const D3D12_INPUT_ELEMENT_DESC layout[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,
 		  0, 0,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -115,14 +115,14 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 		vsBlob.Get(), psBlob.Get(), layout,
 		static_cast<UINT>(std::size(layout)));
 
-	/// 4x MSAA 変種を eager に構築する (2D アンチエイリアス用の中間 RT 経路)。
-	/// 4x 非対応環境では null のまま残り、submit 側が 1x へフォールバックする。
+	/// 2D の中間 RT 用に 4x MSAA PSO を先に構築する。
+	/// 4x MSAA が使えない場合は null のままにし、submit 側で 1x に切り替える。
 	pipeline.m_dx12PipelineMsaa = tryBuildDx12PsoMsaa(
 		device, pipeline.m_dx12RootSig.Get(),
 		vsBlob.Get(), psBlob.Get(), layout,
 		static_cast<UINT>(std::size(layout)));
 
-	/// ── SRV heap (null SRV 1 個: テクスチャ未使用パス) ─
+	/// ── テクスチャ未使用時の null SRV を持つ SRV heap ──
 	D3D12_DESCRIPTOR_HEAP_DESC dhd = {};
 	dhd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	dhd.NumDescriptors = 1;
@@ -142,7 +142,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 		nullptr, &nullSrv,
 		pipeline.m_dx12SrvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	/// ── upload heap バッファ (VB / IB / PS CB) を slot 別に確保 ─────────
+	/// ── slot ごとの upload heap バッファ ──
 	constexpr std::uint32_t INITIAL_VB = 65536;
 	constexpr std::uint32_t INITIAL_IB = 32768;
 	const float psConst[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -152,18 +152,18 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 		pipeline.m_dx12IndexBuffer[i]  = createUploadBufferDx12(device, INITIAL_IB);
 		pipeline.m_dx12VbCapacity[i]   = INITIAL_VB;
 		pipeline.m_dx12IbCapacity[i]   = INITIAL_IB;
-		/// PS CB は 256 バイトアライン必須
+		/// PS CB は 256 バイト境界にそろえる。
 		pipeline.m_dx12PsCb[i] = createUploadBufferDx12(device, 256);
 		pipeline.updateCbDx12(pipeline.m_dx12PsCb[i].Get(), psConst, sizeof(psConst));
 	}
 
-	/// projection CB は全 slot 共有 (resize でのみ更新)
+	/// projection CB は全 slot で共有し、resize のときだけ更新する。
 	pipeline.m_dx12VsCb = createUploadBufferDx12(device, 256);
 	const auto ortho = OrthoMatrix::create(screenWidth, screenHeight);
 	pipeline.updateCbDx12(
 		pipeline.m_dx12VsCb.Get(), ortho.m, sizeof(ortho.m));
 
-	/// ── ring allocator + 単一 command list + fence ─
+	/// ── ring allocator、command list、fence ──
 	for (int i = 0; i < kDx12Ring; ++i)
 	{
 		if (FAILED(device->CreateCommandAllocator(
@@ -194,14 +194,9 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 		CreateEventW(nullptr, FALSE, FALSE, nullptr);
 	pipeline.m_dx12FenceValue = 0;
 
-	/// ── point-filter root signature + PSO (eager build for pixel-grid) ──
-	/// MitiruEngine 規約: draw() 内での遅延初期化は禁止。pixel-grid の
-	/// PixelArtFilter::Point パスで使う root sig + PSO もここで eager に構築する。
-	/// 構築失敗時は両ポインタを nullptr のままにし、submitPixelGridDx12 は
-	/// linear PSO にフォールバックする (point variant は linear と同じ shader /
-	/// blend / 入力 layout で root sig の static sampler の Filter だけが
-	/// D3D12_FILTER_MIN_MAG_MIP_POINT に差し替わるだけなので、視覚的には
-	/// pixel-art が bilinear で滲むだけで draw 自体は成立する)。
+	/// ── pixel-grid 用 point-filter root signature と PSO ──
+	/// draw() 内での遅延初期化を避けるため、ここで構築する。
+	/// 構築できない場合は linear PSO に切り替わり、pixel-art の表示だけがにじむ。
 	pipeline.buildDx12PointFilterResources(
 		device, vsBlob.Get(), psBlob.Get(),
 		layout, static_cast<UINT>(std::size(layout)));
@@ -210,22 +205,14 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 	return pipeline;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// pixel-grid 用 point-filter root signature + PSO の eager 構築
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// createFromDx12 から base 2D PSO 構築直後に呼ばれる。base と同じ shader / blend /
-// 入力 layout を保ったまま、root sig の static sampler s0 だけ LINEAR → POINT に
-// 差し替えた variant を作る。失敗時はメンバを nullptr のままにし、
-// submitPixelGridDx12 が linear PSO へフォールバックする (機能としては成立)。
+// ── pixel-grid 用 point-filter root signature と PSO の構築 ──
+// createFromDx12 から基本 2D PSO の構築直後に呼ぶ。
+// static sampler s0 の Filter だけを LINEAR から POINT に変える。
 
 namespace detail
 {
 /// @brief point-filter 用の root signature description を組み立てる
-/// @details base 2D root sig と同じ 3 root params (VS CBV / PS CBV / SRV table)
-///          を作り、static sampler の Filter だけ POINT に差し替える。
-///          引数の配列は呼び出し側でストレージを保持する必要がある (関数 return
-///          後も D3D12_ROOT_SIGNATURE_DESC が指したまま)。
+/// @details 戻り値は引数の配列を指すため、使用が終わるまで配列を保持する。
 inline D3D12_ROOT_SIGNATURE_DESC
 makeDx12PointRootSigDesc(
 	D3D12_DESCRIPTOR_RANGE&     srvRange,
@@ -267,7 +254,6 @@ makeDx12PointRootSigDesc(
 	return rsd;
 }
 
-/// @brief root signature description をシリアライズして root signature を生成
 inline Microsoft::WRL::ComPtr<ID3D12RootSignature>
 createDx12PointRootSig(ID3D12Device* device,
                         const D3D12_ROOT_SIGNATURE_DESC& rsd)
@@ -342,8 +328,8 @@ inline void RenderPipeline2D::buildDx12PointFilterResources(
 		return;
 	}
 
-	/// point-filter の 4x MSAA 変種 (sprite / pixel-grid が MSAA RT へ描くとき使う)。
-	/// 失敗時は null のまま残り、submit 側で 1x フォールバックが選ばれる。
+	/// point-filter 用に 4x MSAA PSO も構築する。
+	/// 構築できない場合は null のままにし、submit 側で 1x に切り替える。
 	m_dx12PointPipelineMsaa = tryBuildDx12PsoMsaa(
 		device, rootSig.Get(), vsBlob, psBlob, layout, layoutCount);
 
@@ -360,12 +346,11 @@ inline void RenderPipeline2D::submitBatchDx12(
 		return;
 	}
 
-	/// ring slot を確保し、その slot の前回 GPU 完了だけ待つ (直前ではない)
+	/// ring slot を確保し、その slot を前回使った GPU 処理の完了だけを待つ。
 	const int s = acquireDx12Slot();
 
-	/// uUseTexture = 0 を明示する (直前の textured batch / pixel-grid から漏れた
-	/// 1 で頂点カラー描画がテクスチャサンプルされるのを防ぐ)。
-	/// slot s 専用 CB を使うので前 GPU 読み取りとは race しない。
+	/// 直前の描画から値が残らないよう、uUseTexture を 0 に戻す。
+	/// slot 専用 CB のため、前回の GPU 読み取りとは競合しない。
 	{
 		const float psOff[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 		updateCbDx12(m_dx12PsCb[s].Get(), psOff, sizeof(psOff));
@@ -383,17 +368,12 @@ inline void RenderPipeline2D::submitBatchDx12(
 		m_dx12IndexBuffer[s], m_dx12IbCapacity[s],
 		indices.data(), ibSize);
 
-	/// 現在のバックバッファ RTV を取得する (device->beginFrame が
-	/// 既に RENDER_TARGET 状態への barrier を発行している前提)
-	auto* swapChain = m_dx12Device->getSwapChain();
-	if (!swapChain) return;
-	auto* rt = dynamic_cast<gfx::Dx12RenderTarget*>(
-		swapChain->backBuffer());
+	/// beginFrame が RENDER_TARGET 状態への barrier を発行済みであることを前提とする。
+	auto* rt = dx12RenderTarget();
 	if (!rt) return;
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
-	/// 描画先 RT の MSAA サンプル数に合わせて PSO を選ぶ。MSAA 中間 RT のときは
-	/// SampleDesc.Count を合わせた変種を使う (RTV とサンプル数が不一致だと draw が失敗する)。
+	/// RTV と SampleDesc.Count が一致する PSO を選ぶ。
 	ID3D12PipelineState* pso = m_dx12Pipeline.Get();
 	if (rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount))
 	{
@@ -401,7 +381,6 @@ inline void RenderPipeline2D::submitBatchDx12(
 		pso = m_dx12PipelineMsaa.Get();
 	}
 
-	/// コマンドリストを記録する (slot s の allocator で Reset)
 	m_dx12Alloc[s]->Reset();
 	m_dx12Cl->Reset(m_dx12Alloc[s].Get(), pso);
 
@@ -420,16 +399,21 @@ inline void RenderPipeline2D::submitBatchDx12(
 
 	m_dx12Cl->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
+	// viewport の TopLeftX と TopLeftY に中央寄せの offset を入れ、scissor も合わせる。
 	D3D12_VIEWPORT vp = {};
+	vp.TopLeftX = viewportOffsetX();
+	vp.TopLeftY = viewportOffsetY();
 	vp.Width = viewportWidth();
 	vp.Height = viewportHeight();
 	vp.MinDepth = 0.0f;
 	vp.MaxDepth = 1.0f;
 	m_dx12Cl->RSSetViewports(1, &vp);
 
-	D3D12_RECT sci = { 0, 0,
-		static_cast<LONG>(viewportWidth()),
-		static_cast<LONG>(viewportHeight()) };
+	D3D12_RECT sci = {
+		static_cast<LONG>(viewportOffsetX()),
+		static_cast<LONG>(viewportOffsetY()),
+		static_cast<LONG>(viewportOffsetX() + viewportWidth()),
+		static_cast<LONG>(viewportOffsetY() + viewportHeight()) };
 	m_dx12Cl->RSSetScissorRects(1, &sci);
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
@@ -469,7 +453,6 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 {
 	if (!m_dx12Cl || !m_dx12Queue) return;
 
-	/// Rect/Circle のどちらかを識別して PSO を準備する
 	const bool isRect = (&cachedPso == &m_dx12SdfRectPso);
 	if (isRect)
 	{
@@ -486,13 +469,11 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 			m_dx12SdfCirclePso, m_dx12SdfCirclePsoMsaa);
 	}
 
-	/// ring slot を確保し、その slot の前回 GPU 完了だけ待つ
+	/// ring slot を確保し、その slot を前回使った GPU 処理の完了だけを待つ。
 	const int s = acquireDx12Slot();
 
-	/// スタイル定数を更新 (slot s 専用 CB)
 	updateCbDx12(m_dx12SdfStyleCb[s].Get(), &style, sizeof(StyleConstants));
 
-	/// VB / IB 更新 (slot s 専用)
 	const auto vbSize = static_cast<std::uint32_t>(
 		vertices.size() * sizeof(StyledVertex2D));
 	const auto ibSize = static_cast<std::uint32_t>(
@@ -504,15 +485,11 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 		m_dx12SdfIndexBuffer[s], m_dx12SdfIbCapacity[s],
 		indices.data(), ibSize);
 
-	/// RTV 取得
-	auto* swapChain = m_dx12Device->getSwapChain();
-	if (!swapChain) return;
-	auto* rt = dynamic_cast<gfx::Dx12RenderTarget*>(
-		swapChain->backBuffer());
+	auto* rt = dx12RenderTarget();
 	if (!rt) return;
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
-	/// 描画先 RT の MSAA サンプル数に合わせて 1x / MSAA PSO を選ぶ。
+	/// RTV のサンプル数に合わせて 1x または MSAA PSO を選ぶ。
 	ID3D12PipelineState* pso = isRect ? m_dx12SdfRectPso.Get()
 	                                  : m_dx12SdfCirclePso.Get();
 	if (rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount))
@@ -535,16 +512,21 @@ inline void RenderPipeline2D::submitStyledBatchDx12(
 
 	m_dx12Cl->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
+	// viewport の TopLeftX と TopLeftY に中央寄せの offset を入れ、scissor も合わせる。
 	D3D12_VIEWPORT vp = {};
+	vp.TopLeftX = viewportOffsetX();
+	vp.TopLeftY = viewportOffsetY();
 	vp.Width = viewportWidth();
 	vp.Height = viewportHeight();
 	vp.MinDepth = 0.0f;
 	vp.MaxDepth = 1.0f;
 	m_dx12Cl->RSSetViewports(1, &vp);
 
-	D3D12_RECT sci = { 0, 0,
-		static_cast<LONG>(viewportWidth()),
-		static_cast<LONG>(viewportHeight()) };
+	D3D12_RECT sci = {
+		static_cast<LONG>(viewportOffsetX()),
+		static_cast<LONG>(viewportOffsetY()),
+		static_cast<LONG>(viewportOffsetX() + viewportWidth()),
+		static_cast<LONG>(viewportOffsetY() + viewportHeight()) };
 	m_dx12Cl->RSSetScissorRects(1, &sci);
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
@@ -583,9 +565,9 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 {
 	auto* device = m_dx12NativeDevice.Get();
 
-	/// ルートシグネチャ (共通、SDF は全種で同じレイアウト)
-	/// 0: VS CBV b0 (projection)
-	/// 1: PS CBV b1 (style constants。DX11 と同じスロット)
+	/// SDF 共通のルートシグネチャ
+	/// 0: VS CBV b0、projection
+	/// 1: PS CBV b1、DX11 と同じ style constants
 	if (!m_dx12SdfRootSig)
 	{
 		D3D12_ROOT_PARAMETER params[2] = {};
@@ -618,7 +600,6 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 		}
 	}
 
-	/// StyleConstants CB (Rect/Circle 共用、slot 別)
 	if (!m_dx12SdfStyleCb[0])
 	{
 		const std::uint32_t cbSize =
@@ -627,7 +608,6 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 			m_dx12SdfStyleCb[i] = createUploadBufferDx12(device, cbSize);
 	}
 
-	/// VB / IB (Rect/Circle 共用、slot 別)
 	if (!m_dx12SdfVertexBuffer[0])
 	{
 		for (int i = 0; i < kDx12Ring; ++i)
@@ -645,7 +625,6 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 		}
 	}
 
-	/// シェーダー + PSO (初回のみ)
 	if (!cachedPso)
 	{
 		Microsoft::WRL::ComPtr<ID3DBlob> errBlob;
@@ -663,7 +642,7 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 				"RenderPipeline2D: SDF D3DCompile failed");
 		}
 
-		/// StyledVertex2D: pos(2) + localUV(2) + color(4) + shapeRect(4) = 48 byte
+		/// StyledVertex2D は pos 2、localUV 2、color 4、shapeRect 4 の計 48 バイト。
 		const D3D12_INPUT_ELEMENT_DESC layout[] = {
 			{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,
 			  0, 0,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -679,7 +658,8 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 			cachedVs.Get(), cachedPs.Get(),
 			layout, static_cast<UINT>(std::size(layout)));
 
-		/// 1x と並べて 4x MSAA 変種を構築する (MSAA 中間 RT 経路。4x 非対応時 null)。
+		/// 1x PSO と同時に 4x MSAA PSO も構築する。
+		/// 4x MSAA が使えない場合は null のままにする。
 		cachedPsoMsaa = tryBuildDx12PsoMsaa(
 			device, m_dx12SdfRootSig.Get(),
 			cachedVs.Get(), cachedPs.Get(),
@@ -772,8 +752,8 @@ RenderPipeline2D::buildDx12Pso(ID3D12Device* device,
 	psd.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	psd.RasterizerState.FrontCounterClockwise = FALSE;
 	psd.RasterizerState.DepthClipEnable = TRUE;
-	/// MSAA RT (sampleCount>1) では MultisampleEnable=TRUE。線プリミティブの
-	/// quadrilateral AA を有効化する (塗り三角形のエッジ AA は RT が MS なら常に効く)。
+	/// sampleCount が 1 より大きい場合は quadrilateral line AA を有効にする。
+	/// 塗り三角形の edge AA は MSAA RT なら常に有効になる。
 	psd.RasterizerState.MultisampleEnable = (sampleCount > 1) ? TRUE : FALSE;
 
 	psd.DepthStencilState.DepthEnable = FALSE;
@@ -833,7 +813,8 @@ inline void RenderPipeline2D::waitDx12Fence()
 inline void RenderPipeline2D::waitForDx12Slot(int slot)
 {
 	if (!m_dx12Fence || !m_dx12FenceEvent) return;
-	// この slot を最後に使った submit の完了だけ待つ。target==0 は未使用 slot。
+	// この slot を最後に使った submit の完了だけを待つ。
+	// target が 0 の slot は未使用。
 	const UINT64 target = m_dx12SlotSignal[slot];
 	if (target != 0 && m_dx12Fence->GetCompletedValue() < target)
 	{

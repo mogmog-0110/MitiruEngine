@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <optional>
@@ -50,6 +51,63 @@ namespace detail
 	int w = 0, h = 0, comp = 0;
 	unsigned char* pixels =
 		stbi_load_from_memory(bytes, static_cast<int>(bv->size), &w, &h, &comp, 4);
+	if (pixels == nullptr) { return tex; }
+
+	tex.width = w;
+	tex.height = h;
+	tex.rgba.assign(pixels, pixels + static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4u);
+	stbi_image_free(pixels);
+	return tex;
+}
+
+/// @brief URI のパーセントエンコーディング（%20 等、glTF の uri は RFC 3986）を復元する。
+[[nodiscard]] inline std::string percentDecode(const std::string& uri)
+{
+	std::string out;
+	out.reserve(uri.size());
+	for (std::size_t i = 0; i < uri.size(); ++i)
+	{
+		if (uri[i] == '%' && i + 2 < uri.size())
+		{
+			const auto hex = uri.substr(i + 1, 2);
+			out.push_back(static_cast<char>(std::strtoul(hex.c_str(), nullptr, 16)));
+			i += 2;
+		}
+		else
+		{
+			out.push_back(uri[i]);
+		}
+	}
+	return out;
+}
+
+/// @brief 外部 URI 画像（img->uri がファイルパス）を basePath 相対で解決して decode する（B7）。
+/// @details data URI (`data:`) はここでは扱わない（呼び出し側が空判定で弾く想定、`[-]`）。
+///          basePath が空（メモリ専用ロードで元パス不明）のときも解決できないので空を返す。
+[[nodiscard]] inline CpuTexture decodeExternalImage(const cgltf_image* img, const std::string& basePath)
+{
+	CpuTexture tex;
+	if (img == nullptr || img->uri == nullptr || basePath.empty()) { return tex; }
+	const std::string uri = img->uri;
+	if (uri.rfind("data:", 0) == 0) { return tex; }  // data URI は非対応
+
+	const std::string fullPath = basePath + percentDecode(uri);
+	std::ifstream file(fullPath, std::ios::binary | std::ios::ate);
+	if (!file.is_open())
+	{
+		debug::warnOnce("gltf.texture.external_missing." + fullPath,
+		                "glTF 外部テクスチャが読めない: " + fullPath);
+		return tex;
+	}
+	const auto fileSize = file.tellg();
+	if (fileSize <= 0) { return tex; }
+	file.seekg(0);
+	std::vector<unsigned char> fileBytes(static_cast<std::size_t>(fileSize));
+	file.read(reinterpret_cast<char*>(fileBytes.data()), fileSize);
+
+	int w = 0, h = 0, comp = 0;
+	unsigned char* pixels = stbi_load_from_memory(
+		fileBytes.data(), static_cast<int>(fileBytes.size()), &w, &h, &comp, 4);
 	if (pixels == nullptr) { return tex; }
 
 	tex.width = w;
@@ -333,9 +391,11 @@ namespace detail
 /// @brief glTFメモリデータからシーンを読み込む
 /// @param data データバッファ
 /// @param size データサイズ
+/// @param basePath 外部 URI テクスチャの相対パス解決に使う元ファイルのディレクトリ
+///                 （末尾 `/` 込み）。空なら外部 URI は解決しない（B7、従来動作のまま）。
 /// @return パース成功時はGltfSceneData、失敗時はnullopt
 [[nodiscard]] inline std::optional<GltfSceneData> loadGltfFromMemory(
-	const void* data, std::size_t size)
+	const void* data, std::size_t size, const std::string& basePath = "")
 {
 	if (!data || size == 0) { return std::nullopt; }
 
@@ -383,6 +443,10 @@ namespace detail
 				const auto* img = pbr.base_color_texture.texture->image;
 				gmat.baseColorTexturePath = img->uri ? img->uri : "";
 				gmat.baseColorTexture = detail::decodeEmbeddedImage(img);   // #17: 埋め込みを decode
+				if (!gmat.baseColorTexture.valid())
+				{
+					gmat.baseColorTexture = detail::decodeExternalImage(img, basePath);  // B7
+				}
 
 				/// 拡大フィルタの指定を拾う。ドット絵の資産は NEAREST を宣言してくる。
 				constexpr cgltf_int kGlNearest = 9728;
@@ -409,6 +473,10 @@ namespace detail
 			const auto* img = mat.emissive_texture.texture->image;
 			gmat.baseColorTexturePath = img->uri ? img->uri : "";
 			gmat.baseColorTexture = detail::decodeEmbeddedImage(img);
+			if (!gmat.baseColorTexture.valid())
+			{
+				gmat.baseColorTexture = detail::decodeExternalImage(img, basePath);  // B7
+			}
 			const float emissive = mat.emissive_factor[0] + mat.emissive_factor[1] +
 			                       mat.emissive_factor[2];
 			const float base = std::max({gmat.baseColor.r, gmat.baseColor.g, gmat.baseColor.b});
@@ -536,16 +604,12 @@ namespace detail
 			default: continue;  // weights (morph) 等は v1 対象外
 			}
 
-			/// CUBICSPLINE は 3 値/キー (in-tangent, 値, out-tangent)。中央値のみ Linear として読む。
+			/// CUBICSPLINE は 3 値/キー (in-tangent, 値, out-tangent)。
 			const bool cubic = (ch.sampler->interpolation == cgltf_interpolation_type_cubic_spline);
-			gc.interpolation = (ch.sampler->interpolation == cgltf_interpolation_type_step)
+			gc.interpolation = cubic ? GltfAnimInterp::CubicSpline
+			                   : (ch.sampler->interpolation == cgltf_interpolation_type_step)
 			                       ? GltfAnimInterp::Step
 			                       : GltfAnimInterp::Linear;
-			if (cubic)
-			{
-				debug::warnOnce("gltf.anim.cubicspline",
-				                "glTF CUBICSPLINE 補間は Linear へ縮退します");
-			}
 
 			const cgltf_size keyCount = ch.sampler->input->count;
 			const cgltf_size valueCount = ch.sampler->output->count;
@@ -554,6 +618,11 @@ namespace detail
 
 			gc.times.resize(keyCount);
 			gc.values.resize(keyCount);
+			if (cubic)
+			{
+				gc.inTangents.resize(keyCount);
+				gc.outTangents.resize(keyCount);
+			}
 			for (cgltf_size k = 0; k < keyCount; ++k)
 			{
 				float t = 0.0f;
@@ -565,6 +634,18 @@ namespace detail
 				cgltf_accessor_read_float(ch.sampler->output, vi, buf,
 				                          static_cast<cgltf_size>(comps));
 				gc.values[k] = {buf[0], buf[1], buf[2], buf[3]};
+
+				if (cubic)
+				{
+					float inBuf[4] = {0, 0, 0, 0};
+					float outBuf[4] = {0, 0, 0, 0};
+					cgltf_accessor_read_float(ch.sampler->output, k * 3, inBuf,
+					                          static_cast<cgltf_size>(comps));
+					cgltf_accessor_read_float(ch.sampler->output, k * 3 + 2, outBuf,
+					                          static_cast<cgltf_size>(comps));
+					gc.inTangents[k] = {inBuf[0], inBuf[1], inBuf[2], inBuf[3]};
+					gc.outTangents[k] = {outBuf[0], outBuf[1], outBuf[2], outBuf[3]};
+				}
 			}
 			clip.durationSec = std::max(clip.durationSec, gc.times.back());
 			clip.channels.push_back(std::move(gc));
@@ -597,7 +678,9 @@ namespace detail
 	std::vector<char> buffer(static_cast<std::size_t>(fileSize));
 	file.read(buffer.data(), fileSize);
 
-	return loadGltfFromMemory(buffer.data(), buffer.size());
+	const auto dirEnd = filePath.find_last_of("/\\");
+	const std::string basePath = (dirEnd == std::string::npos) ? "" : filePath.substr(0, dirEnd + 1);
+	return loadGltfFromMemory(buffer.data(), buffer.size(), basePath);
 }
 
 /// @brief glTFファイルから最初のメッシュを読み込む（便利関数）

@@ -12,7 +12,9 @@
 /// 音は対応不要。SE は再生ごとにファイルを読む (既にホット)、music はストリーム保持中でロック。
 
 #include <filesystem>
+#include <functional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 
@@ -22,6 +24,18 @@
 
 namespace mitiru::render
 {
+
+/// @brief `std::string` キーを `std::string_view` からも引ける透過ハッシュ (C1)。
+///        DrawCmd 再生の毎フレーム呼び出しで、キャッシュ hit 時に `std::string` を
+///        作らずに済ませるための道具 (unordered_map の透過検索には hash/equal 両方が要る)。
+struct TransparentStringHash
+{
+	using is_transparent = void;
+	[[nodiscard]] std::size_t operator()(std::string_view sv) const noexcept
+	{
+		return std::hash<std::string_view>{}(sv);
+	}
+};
 
 /// @brief sprite id → Texture の遅延ロードキャッシュ (ホットリロード対応)
 /// @details テクスチャの所有はこのキャッシュ (= host) 側。unordered_map の
@@ -46,18 +60,26 @@ public:
 	}
 
 	/// @brief id の Texture を返す (初回は <baseDir>/<id>.png を遅延ロード)
+	/// @details 透過ハッシュ (C1) により hit 時は `std::string` を作らない。miss (初回ロード)
+	///          だけ map への挿入用に 1 回 `std::string`化する。
 	/// @return 解決できた Texture (キャッシュ所有)。失敗は warnOnce 1 回 + nullptr。
+	/// @brief const char* 版。nullptr を string_view に変換すると未定義動作なので先に弾く
 	[[nodiscard]] const Texture* get(const char* id)
 	{
-		if (id == nullptr || *id == '\0')
+		return id != nullptr ? get(std::string_view{id}) : nullptr;
+	}
+
+	[[nodiscard]] const Texture* get(std::string_view id)
+	{
+		if (id.empty())
 		{
 			return nullptr;
 		}
-		std::string key(id);
-		if (const auto it = m_entries.find(key); it != m_entries.end())
+		if (const auto it = m_entries.find(id); it != m_entries.end())
 		{
 			return it->second.tex.valid() ? &it->second.tex : nullptr;
 		}
+		std::string key(id);
 		const std::filesystem::path path = m_baseDir / (key + ".png");
 		Entry entry;
 		entry.tex = ImageLoader::fromFile(path.generic_string());
@@ -120,7 +142,8 @@ private:
 	};
 
 	std::filesystem::path m_baseDir = "assets/sprites";  ///< 既定は cwd 相対
-	std::unordered_map<std::string, Entry> m_entries;    ///< id → Entry (失敗は空 Texture)
+	/// id → Entry (失敗は空 Texture)。透過ハッシュ (C1) で string_view のまま検索できる。
+	std::unordered_map<std::string, Entry, TransparentStringHash, std::equal_to<>> m_entries;
 };
 
 } // namespace mitiru::render

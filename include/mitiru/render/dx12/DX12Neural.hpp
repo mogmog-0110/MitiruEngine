@@ -348,8 +348,9 @@ void blitStyleDx12()
 	if (!m_styleTex) { return; }
 
 	// backbuffer を RTV に、viewport/scissor を実バックバッファ解像度に明示設定する
-	// (FXAA の状態に依存しない)。
-	auto* bb  = static_cast<gfx::Dx12RenderTarget*>(m_device->getSwapChain()->backBuffer());
+	// (FXAA の状態に依存しない)。windowless (G2) では offscreen RT を代わりに使う。
+	auto* bb  = m_device->currentBackBuffer();
+	if (!bb) { return; }
 	auto  rtv = bb->rtvHandle();
 	const auto bbDesc = bb->nativeResource()->GetDesc();
 	m_graphicsCmdList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);

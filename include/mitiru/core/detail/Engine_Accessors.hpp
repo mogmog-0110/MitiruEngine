@@ -32,6 +32,7 @@ MITIRU_INLINE mitiru::Engine::~Engine()
 	// FreeLibrary を呼ぶ。m_moduleHost の unique_ptr もこの後に自動破棄され、
 	// runModule() を経由しなかった場合の safety net になる。
 	unloadModule();
+	unloadGhostModule();
 
 	m_cefContext.shutdown();
 	if (m_httpServer)
@@ -218,6 +219,19 @@ MITIRU_INLINE std::string mitiru::Engine::getGameFlag(const std::string& key) co
 }
 
 // -- Private utilities ----------------------------------------------------
+
+// フレームアリーナ (2-1): 容量は EngineConfig::frameArenaBytes、初回アクセスで遅延確保する
+// (Engine の default ctor は EngineConfig を持たないため)。
+MITIRU_INLINE mitiru::FrameArena& mitiru::Engine::frameArena() noexcept
+{
+	if (!m_frameArena)
+	{
+		const std::size_t bytes = m_config.frameArenaBytes > 0
+			? m_config.frameArenaBytes : (4u * 1024u * 1024u);
+		m_frameArena = std::make_unique<FrameArena>(bytes);
+	}
+	return *m_frameArena;
+}
 
 MITIRU_INLINE float mitiru::Engine::clampVol(float v) noexcept
 {

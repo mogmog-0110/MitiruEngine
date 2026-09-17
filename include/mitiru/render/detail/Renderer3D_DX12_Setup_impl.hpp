@@ -56,6 +56,14 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	{
 		throw std::runtime_error("DX12 Dx12ShadowMap initialize failed");
 	}
+	// カスケード1 (遠距離、B13)。setCascadedShadowEnabled(false) の間は未使用のままだが、
+	// writeMainSrvTable が毎フレーム SRV table の t2 スロットを埋めるため常に初期化しておく。
+	// 2 列のアトラス: 左 = カスケード1、右 = カスケード2 (3 カスケード時のみ描く)。SRV は t2 の 1 枚のまま。
+	if (!m_shadowMapFar.initialize(m_d3dDevice,
+	                               m_directionalShadow.config().mapSize, 2))
+	{
+		throw std::runtime_error("DX12 Dx12ShadowMap (far cascade) initialize failed");
+	}
 
 	try {
 		compileShaders();
@@ -92,6 +100,12 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createOutlinePostProcess: ") + e.what());
 	}
+	// オクルージョン min-depth resolve。m_outlinePostVS（フルスクリーン三角形 VS）と
+	// m_depthSRVHeap（深度 SRV スロット0）の両方に依存するため、
+	// createOutlinePostProcess の後で呼ぶ。失敗しても致命的ではない
+	// （既定 OFF の setOcclusionCullingEnabled を呼ばなければ影響しない）ので
+	// try/catch で握り潰さず、生成失敗は関数内部で早期 return するだけにする。
+	createOcclusionResolveResources();
 	try {
 		createFXAAPipelines();
 	} catch (const std::exception& e) {
@@ -309,6 +323,12 @@ inline void Renderer3D_DX12::resize(float width, float height)
 		createFXAAIntermediate();
 		/// outline post の深度/法線 SRV を再生成後のリソースへ貼り直す
 		updateOutlinePostSRVs();
+		/// オクルージョン resolve RT + readback もビューポートサイズ依存のため作り直す
+		m_occlusionResolveTex.Reset();
+		m_occlusionResolveRtvHeap.Reset();
+		for (auto& rb : m_occlusionReadback) { rb.Reset(); }
+		for (auto& pending : m_occlusionReadbackPending) { pending = false; }
+		createOcclusionResolveResources();
 		/// 色コピーバッファ (backbuffer サイズ) + モード3/4 SRV ヒープを再生成する
 		m_colorCopyBuffer.Reset();
 		m_colorEdgeSRVHeap.Reset();
@@ -353,6 +373,12 @@ inline void Renderer3D_DX12::destroy()
 	m_rootSignature.Reset();
 	m_depthBuffer.Reset();
 	m_dsvHeap.Reset();
+	m_occlusionResolvePSO.Reset();
+	m_occlusionResolveRootSig.Reset();
+	m_occlusionResolveTex.Reset();
+	m_occlusionResolveRtvHeap.Reset();
+	for (auto& rb : m_occlusionReadback) { rb.Reset(); }
+	for (auto& pending : m_occlusionReadbackPending) { pending = false; }
 
 	m_initialized = false;
 }

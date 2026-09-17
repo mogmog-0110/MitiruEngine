@@ -5,7 +5,7 @@
   "programNodes": 25,
   "ps": "hero_flange.ps.cso",
   "scene": "hero_flange.makina.json",
-  "sceneHash": "97354c3fcd073616",
+  "sceneHash": "226288b3c7f0c594",
   "shading": "scene_engine.hlsl",
   "version": 1,
   "vs": "hero_flange.vs.cso"

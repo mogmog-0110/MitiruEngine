@@ -10,7 +10,8 @@
 /// ので、audio 依存が DLL 側へ漏れない。
 ///
 /// SoundIntent のフィールド解釈:
-///   - category: 0=SE, 1=BGM, 2=Voice (BGM のみ playMusic 経路、他は playSound 経路)
+///   - category: 0=SE, 1=BGM, 2=Voice (BGM は playMusic 経路、Voice は playVoice 経路 (同時 1 本の
+///               台詞スロット、stop は id 不要)、SE は playSound 経路)
 ///   - stop:     1 なら再生でなく停止 (BGM→stopMusic / SE→stopSound)
 ///   - loop:     ループ再生するか (BGM / SE 共通)
 ///   - volume:   0.0–1.0。0 (zero-init の既定) は「未指定 = 既定音量」とみなし 1.0 とする。
@@ -47,6 +48,8 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s)
 		return;
 	}
 
+	const bool isVoice = (s.category == 2);  // 2 = Voice (同時 1 本、id 無しで止められる)
+
 	if (s.stop != 0)
 	{
 		// fade 0 は素の stop に落とす (backend によって fade(0) の扱いが違い得るため従来挙動を維持)
@@ -54,6 +57,10 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s)
 		{
 			if (s.fadeOutSec > 0.0f) { engine.stopMusicFade(s.fadeOutSec); }
 			else                     { engine.stopMusic(); }
+		}
+		else if (isVoice)
+		{
+			engine.stopVoiceFade(s.fadeOutSec);
 		}
 		else if (s.id[0] != '\0')
 		{
@@ -68,6 +75,7 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s)
 	const float vol   = (s.volume     > 0.0f) ? s.volume     : 1.0f;  // 0 = 未指定 → 既定
 	const float pitch = (s.pitchScale > 0.0f) ? s.pitchScale : 1.0f;  // 0 = 未指定 → 1.0
 	if (isMusic)                  { engine.playMusicEx(s.id, vol, s.loop != 0, s.fadeInSec); }
+	else if (isVoice)             { engine.playVoiceEx(s.id, vol, pitch, s.fadeInSec); }         // K1 台詞スロット
 	else if (s.loop != 0)         { engine.playSoundLoop(s.id, vol, pitch, s.fadeInSec); }        // v22 長さが入力で決まる音
 	else if (s.scheduleSec > 0.0) { engine.playSoundScheduled(s.id, s.scheduleSec, vol, pitch); }  // v19 サンプル精度予約
 	else                          { engine.playSoundEx(s.id, vol, pitch, s.fadeInSec); }

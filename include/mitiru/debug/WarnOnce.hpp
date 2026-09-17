@@ -42,6 +42,26 @@ inline void warnOnce(std::string_view key, std::string_view msg)
 	std::fprintf(stderr, "[mitiru] %.*s\n", static_cast<int>(msg.size()), msg.data());
 }
 
+/// @brief `warnOnce` の 3 行テンプレ版。「何が / なぜ / どうする」を強制することで、
+///        原因不明のまま止まる失敗メッセージ (症状だけ書いて終わる warnOnce) を減らす。
+/// @details key の発火判定は `warnOnce` と共有 (同じ key なら 1 回だけ)。
+inline void warnOnceFix(std::string_view key, std::string_view what, std::string_view why, std::string_view fix)
+{
+	// 見出し付きの 3 行は帳票のようで読みにくかったので、1 文 + 対処の 2 行にする
+	std::string msg;
+	msg.reserve(what.size() + why.size() + fix.size() + 24);
+	msg += what;
+	if (!why.empty())
+	{
+		msg += " (";
+		msg += why;
+		msg += ")";
+	}
+	msg += "\n         → ";
+	msg += fix;
+	warnOnce(key, msg);
+}
+
 /// @brief テスト用: key が発火済みかを返す
 [[nodiscard]] inline bool warnOnceFired(std::string_view key)
 {

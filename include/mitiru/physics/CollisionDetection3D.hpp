@@ -17,11 +17,14 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <vector>
 
 #include "sgc/math/Vec3.hpp"
 #include "mitiru/physics/Collider3D.hpp"
+#include "mitiru/physics/RigidBody3D.hpp"
 
 namespace mitiru::physics3d
 {
@@ -32,6 +35,13 @@ struct RayHit3D
 	sgc::Vec3f point{};     ///< ヒット座標
 	sgc::Vec3f normal{};    ///< ヒット面の法線
 	float distance{0.0f};   ///< レイ始点からの距離
+};
+
+/// @brief 空間問い合わせ（オーバーラップ）のヒット結果
+struct OverlapResult3D
+{
+	BodyId bodyId{INVALID_BODY_ID};
+	std::size_t colliderIndex{0};
 };
 
 // ── 球 vs 球 ──────────────────────────────────────────────
@@ -188,6 +198,129 @@ struct RayHit3D
 	};
 
 	return info;
+}
+
+// ── AABB vs AABB マニフォールド（複数接触点）──────────────────
+
+/// @brief 接触マニフォールドの最大点数
+inline constexpr std::size_t kMaxManifoldPoints3D = 4;
+
+/// @brief マニフォールドの1接触点
+struct ManifoldPoint3D
+{
+	sgc::Vec3f point{};          ///< 接触点（ワールド空間）
+	float depth{0.0f};           ///< 貫通深度
+	std::uint32_t featureId{0};  ///< ウォームスタート引き継ぎ用の安定な特徴ID（参照面×コーナー）
+};
+
+/// @brief 複数接触点を持つマニフォールド結果
+struct ManifoldResult3D
+{
+	sgc::Vec3f normal{};
+	std::array<ManifoldPoint3D, kMaxManifoldPoints3D> points{};
+	std::size_t count{0};
+	bool hasContact{false};
+};
+
+/// @brief ベクトルの指定軸（0=x, 1=y, 2=z）の成分を返す
+[[nodiscard]] inline constexpr float axisComponent(const sgc::Vec3f& v, int axis) noexcept
+{
+	return (axis == 0) ? v.x : ((axis == 1) ? v.y : v.z);
+}
+
+/// @brief ベクトルの指定軸（0=x, 1=y, 2=z）を差し替えたコピーを返す
+[[nodiscard]] inline constexpr sgc::Vec3f withAxis(sgc::Vec3f v, int axis, float value) noexcept
+{
+	if (axis == 0) v.x = value;
+	else if (axis == 1) v.y = value;
+	else v.z = value;
+	return v;
+}
+
+/// @brief AABB同士の接触マニフォールド（最大4点）を計算する
+/// @param a AABBコライダーA
+/// @param b AABBコライダーB
+/// @return マニフォールド結果
+///
+/// @details 両者は非回転なので、参照面（分離軸側の面）でクリップした接触多角形は
+/// 必ず「法線軸以外の残り2軸の重なり区間」の矩形に退化する（一般のOBB同士のクリップの
+/// 特殊ケース）。そのため Sutherland-Hodgman による多角形クリップや、4点超の場合の
+/// 面積最大4点への間引きは不要で、区間積の4隅がそのままマニフォールドになる。
+/// 深度はどの隅でも同じ（平行な面同士の距離のため）
+[[nodiscard]] inline ManifoldResult3D testAABBAABBManifold(
+	const AABBCollider3D& a, const AABBCollider3D& b) noexcept
+{
+	ManifoldResult3D result;
+
+	const ContactInfo3D single = testAABBAABB(a, b);
+	if (!single.hasContact) return result;
+
+	result.hasContact = true;
+	result.normal = single.normal;
+
+	const int normalAxis = (std::abs(single.normal.x) > 0.5f) ? 0
+		: (std::abs(single.normal.y) > 0.5f) ? 1 : 2;
+	const int axisU = (normalAxis + 1) % 3;
+	const int axisV = (normalAxis + 2) % 3;
+
+	const float uLo = std::max(axisComponent(a.min, axisU), axisComponent(b.min, axisU));
+	const float uHi = std::min(axisComponent(a.max, axisU), axisComponent(b.max, axisU));
+	const float vLo = std::max(axisComponent(a.min, axisV), axisComponent(b.min, axisV));
+	const float vHi = std::min(axisComponent(a.max, axisV), axisComponent(b.max, axisV));
+	const float normalCoord = axisComponent(single.point, normalAxis);
+
+	// 特徴ID = 参照面（法線軸×符号、0-5）* 8 + コーナー番号。ペア内で点を安定に区別できれば
+	// よく、フレーム間で同じ隅に同じIDが振られることがウォームスタート引き継ぎに必要な条件
+	const std::uint32_t faceId = static_cast<std::uint32_t>(normalAxis) * 2u +
+		((axisComponent(single.normal, normalAxis) >= 0.0f) ? 0u : 1u);
+
+	// 一方の軸 (またはその両方) の重なり区間の幅が 0 の場合、箱同士が辺や角だけで
+	// 触れている退化ケースになる。そのまま4隅を出すと同じワールド座標の点が
+	// 2〜4個重複し、solver がその点数ぶん impulse を重み付けしてしまう。
+	// 実際に異なる位置になる隅だけを出す。
+	const bool uDegenerate = !(uHi > uLo);
+	const bool vDegenerate = !(vHi > vLo);
+
+	float us[4];
+	float vs[4];
+	std::size_t cornerCount;
+	if (uDegenerate && vDegenerate)
+	{
+		cornerCount = 1;
+		us[0] = uLo; vs[0] = vLo;
+	}
+	else if (uDegenerate)
+	{
+		cornerCount = 2;
+		us[0] = uLo; vs[0] = vLo;
+		us[1] = uLo; vs[1] = vHi;
+	}
+	else if (vDegenerate)
+	{
+		cornerCount = 2;
+		us[0] = uLo; vs[0] = vLo;
+		us[1] = uHi; vs[1] = vLo;
+	}
+	else
+	{
+		cornerCount = 4;
+		us[0] = uLo; vs[0] = vLo;
+		us[1] = uHi; vs[1] = vLo;
+		us[2] = uHi; vs[2] = vHi;
+		us[3] = uLo; vs[3] = vHi;
+	}
+
+	for (std::size_t i = 0; i < cornerCount; ++i)
+	{
+		sgc::Vec3f p = withAxis(single.point, axisU, us[i]);
+		p = withAxis(p, axisV, vs[i]);
+		p = withAxis(p, normalAxis, normalCoord);
+
+		result.points[i] = ManifoldPoint3D{p, single.depth, faceId * 8u + static_cast<std::uint32_t>(i)};
+	}
+	result.count = cornerCount;
+
+	return result;
 }
 
 // ── Ray vs Sphere ─────────────────────────────────────────
@@ -665,6 +798,32 @@ inline void closestPointsSegmentSegment(
 	SphereCollider sphereA{closestA, a.radius};
 	SphereCollider sphereB{closestB, b.radius};
 	return testSphereSphere(sphereA, sphereB);
+}
+
+/// @brief カプセルとAABBの衝突判定
+/// @param capsule カプセル
+/// @param aabb 軸平行ボックス
+/// @return 接触情報。法線は testSphereAABB と同じくボックスからカプセルへ向く
+///
+/// @details 線分とボックスの最近接点ペアには閉形式が無いため、「ボックス上への射影」と
+///          「線分上への射影」を交互に取る反復で近づける。接触は数フレームかけて
+///          解けばよく、位置補正も slop 付きなので固定回数で打ち切る
+[[nodiscard]] inline ContactInfo3D testCapsuleAABB(
+	const CapsuleCollider& capsule, const AABBCollider3D& aabb) noexcept
+{
+	constexpr int kIterations = 4;
+
+	sgc::Vec3f onSegment = closestPointOnSegment(aabb.center(), capsule.pointA, capsule.pointB);
+	for (int i = 0; i < kIterations; ++i)
+	{
+		const sgc::Vec3f onBox = closestPointOnAABB(onSegment, aabb);
+		const sgc::Vec3f next = closestPointOnSegment(onBox, capsule.pointA, capsule.pointB);
+		const bool converged = (next - onSegment).lengthSquared() < 1e-12f;
+		onSegment = next;
+		if (converged) break;
+	}
+
+	return testSphereAABB(SphereCollider{onSegment, capsule.radius}, aabb);
 }
 
 } // namespace mitiru::physics3d

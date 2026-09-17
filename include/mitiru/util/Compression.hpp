@@ -26,6 +26,7 @@
 #include <cstdint>
 #include <cstring>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -323,18 +324,26 @@ public:
 
 	/// @brief バンドルから全ファイルを展開する
 	/// @param bundle バンドルデータ
-	/// @return ファイル名とデータのマップ
-	/// @throws std::runtime_error 不正なバンドルの場合
-	[[nodiscard]] static std::map<std::string, std::vector<uint8_t>> unpack(
-		const std::vector<uint8_t>& bundle)
+	/// @param errorOut 非 null なら失敗理由を書き込む (成功時は触らない)
+	/// @return ファイル名とデータのマップ。不正なバンドルなら nullopt。
+	///         破損アセットは実行時に起こりうる通常経路のため例外にしない。
+	[[nodiscard]] static std::optional<std::map<std::string, std::vector<uint8_t>>> unpack(
+		const std::vector<uint8_t>& bundle, std::string* errorOut = nullptr)
 	{
-		validateHeader(bundle);
+		std::string error;
+		if (!validateHeader(bundle, error))
+		{
+			if (errorOut) { *errorOut = error; }
+			return std::nullopt;
+		}
 
 		const uint32_t fileCount = readU32(bundle, 8);
 
 		if (static_cast<uint64_t>(fileCount) * 28 > bundle.size() - 12)
 		{
-			throw std::runtime_error("CompressedAssetBundle: fileCount exceeds bundle size");
+			const std::string msg = "CompressedAssetBundle: fileCount exceeds bundle size";
+			if (errorOut) { *errorOut = msg; }
+			return std::nullopt;
 		}
 
 		std::map<std::string, std::vector<uint8_t>> result;
@@ -342,18 +351,26 @@ public:
 		std::size_t pos = 12;
 		for (uint32_t i = 0; i < fileCount; ++i)
 		{
-			auto [name, offset, compressedSize, originalSize, nextPos] = readTocEntry(bundle, pos);
-			pos = nextPos;
-
-			if (compressedSize > bundle.size() || offset > bundle.size() - compressedSize)
+			auto entry = readTocEntry(bundle, pos, error);
+			if (!entry)
 			{
-				throw std::runtime_error("CompressedAssetBundle::unpack: data out of bounds");
+				if (errorOut) { *errorOut = error; }
+				return std::nullopt;
+			}
+			pos = entry->nextPos;
+
+			if (entry->compressedSize > bundle.size()
+			    || entry->offset > bundle.size() - entry->compressedSize)
+			{
+				const std::string msg = "CompressedAssetBundle::unpack: data out of bounds";
+				if (errorOut) { *errorOut = msg; }
+				return std::nullopt;
 			}
 
-			result[name] = Compression::decompress(
-				bundle.data() + offset,
-				static_cast<std::size_t>(compressedSize),
-				static_cast<std::size_t>(originalSize));
+			result[entry->name] = Compression::decompress(
+				bundle.data() + entry->offset,
+				static_cast<std::size_t>(entry->compressedSize),
+				static_cast<std::size_t>(entry->originalSize));
 		}
 
 		return result;
@@ -362,60 +379,78 @@ public:
 	/// @brief バンドルから単一ファイルを展開する
 	/// @param bundle バンドルデータ
 	/// @param filename 展開するファイル名
-	/// @return 展開されたデータ
-	/// @throws std::runtime_error ファイルが見つからない場合
-	[[nodiscard]] static std::vector<uint8_t> extractFile(
-		const std::vector<uint8_t>& bundle, const std::string& filename)
+	/// @param errorOut 非 null なら失敗理由を書き込む (成功時は触らない)
+	/// @return 展開されたデータ。不正なバンドル / ファイル無しなら nullopt。
+	[[nodiscard]] static std::optional<std::vector<uint8_t>> extractFile(
+		const std::vector<uint8_t>& bundle, const std::string& filename,
+		std::string* errorOut = nullptr)
 	{
-		validateHeader(bundle);
+		std::string error;
+		if (!validateHeader(bundle, error))
+		{
+			if (errorOut) { *errorOut = error; }
+			return std::nullopt;
+		}
 
 		const uint32_t fileCount = readU32(bundle, 8);
 		std::size_t pos = 12;
 
 		for (uint32_t i = 0; i < fileCount; ++i)
 		{
-			auto [name, offset, compressedSize, originalSize, nextPos] = readTocEntry(bundle, pos);
-			pos = nextPos;
-
-			if (name == filename)
+			auto entry = readTocEntry(bundle, pos, error);
+			if (!entry)
 			{
-				if (compressedSize > bundle.size() || offset > bundle.size() - compressedSize)
+				if (errorOut) { *errorOut = error; }
+				return std::nullopt;
+			}
+			pos = entry->nextPos;
+
+			if (entry->name == filename)
+			{
+				if (entry->compressedSize > bundle.size()
+				    || entry->offset > bundle.size() - entry->compressedSize)
 				{
-					throw std::runtime_error(
-						"CompressedAssetBundle::extractFile: data out of bounds");
+					const std::string msg = "CompressedAssetBundle::extractFile: data out of bounds";
+					if (errorOut) { *errorOut = msg; }
+					return std::nullopt;
 				}
 
 				return Compression::decompress(
-					bundle.data() + offset,
-					static_cast<std::size_t>(compressedSize),
-					static_cast<std::size_t>(originalSize));
+					bundle.data() + entry->offset,
+					static_cast<std::size_t>(entry->compressedSize),
+					static_cast<std::size_t>(entry->originalSize));
 			}
 		}
 
-		throw std::runtime_error(
-			"CompressedAssetBundle::extractFile: file not found: " + filename);
+		const std::string notFoundMsg = "CompressedAssetBundle::extractFile: file not found: " + filename;
+		if (errorOut) { *errorOut = notFoundMsg; }
+		return std::nullopt;
 	}
 
 private:
-	/// @brief ヘッダを検証する
-	static void validateHeader(const std::vector<uint8_t>& bundle)
+	/// @brief ヘッダを検証する。呼び出し側が例外無しで扱えるよう bool + エラー文字列で返す。
+	[[nodiscard]] static bool validateHeader(const std::vector<uint8_t>& bundle, std::string& error)
 	{
 		if (bundle.size() < 12)
 		{
-			throw std::runtime_error("CompressedAssetBundle: bundle too small");
+			error = "CompressedAssetBundle: bundle too small";
+			return false;
 		}
 
 		const uint32_t magic = readU32(bundle, 0);
 		if (magic != kBundleMagic)
 		{
-			throw std::runtime_error("CompressedAssetBundle: invalid magic");
+			error = "CompressedAssetBundle: invalid magic";
+			return false;
 		}
 
 		const uint32_t version = readU32(bundle, 4);
 		if (version != kBundleVersion)
 		{
-			throw std::runtime_error("CompressedAssetBundle: unsupported version");
+			error = "CompressedAssetBundle: unsupported version";
+			return false;
 		}
+		return true;
 	}
 
 	/// @brief TOCエントリを読み取る
@@ -428,12 +463,13 @@ private:
 		std::size_t nextPos;
 	};
 
-	[[nodiscard]] static TocEntry readTocEntry(
-		const std::vector<uint8_t>& bundle, std::size_t pos)
+	[[nodiscard]] static std::optional<TocEntry> readTocEntry(
+		const std::vector<uint8_t>& bundle, std::size_t pos, std::string& error)
 	{
 		if (pos + 4 > bundle.size())
 		{
-			throw std::runtime_error("CompressedAssetBundle: truncated TOC");
+			error = "CompressedAssetBundle: truncated TOC";
+			return std::nullopt;
 		}
 
 		const uint32_t nameLen = readU32(bundle, pos);
@@ -441,7 +477,8 @@ private:
 
 		if (pos + nameLen + 24 > bundle.size())
 		{
-			throw std::runtime_error("CompressedAssetBundle: truncated TOC entry");
+			error = "CompressedAssetBundle: truncated TOC entry";
+			return std::nullopt;
 		}
 
 		std::string name(
@@ -455,7 +492,7 @@ private:
 		const uint64_t originalSize = readU64(bundle, pos);
 		pos += 8;
 
-		return {std::move(name), offset, compressedSize, originalSize, pos};
+		return TocEntry{std::move(name), offset, compressedSize, originalSize, pos};
 	}
 
 	/// @brief リトルエンディアンで32ビット整数を書き込む

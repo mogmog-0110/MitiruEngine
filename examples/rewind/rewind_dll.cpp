@@ -11,6 +11,7 @@
 #include <cstdint>
 
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include <mitiru/core/FixedVec.hpp>   // 長さの上限が決まった配列。ポインタを持たないので構造体ごとまるごとコピーできる
 #include "../common/chapter_hud.hpp"  // 章ラベル + 操作帯 (全章共通の書式)
 
@@ -132,7 +133,7 @@ inline Sat satBoxes(const Block& A, const Block& B)
 }
 
 // つまむブロックが最初から床に置いてある状態を作る。5 個を並べ、1 個だけ上に乗せる。
-inline FixedVec<Block, kMaxBlocks> makeInitialBlocks()
+constexpr FixedVec<Block, kMaxBlocks> makeInitialBlocks()
 {
 	FixedVec<Block, kMaxBlocks> v;
 	struct Spec { float hw, hh; };
@@ -391,7 +392,8 @@ struct Blocks
 		step(t);
 	}
 
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
 		s.fillScreen(theme::kPaper);
 		s.drawLine(Vec2{0.0f, kFloor}, Vec2{kScreenW, kFloor}, theme::kFrame, 2.0f);   // 床
@@ -418,10 +420,15 @@ struct Blocks
 		chapterTitle(s, "Rewind");
 		chapterControls(s, "マウス: ブロックをつまんで積む　（崩れたら別窓のバーで巻き戻せる）");
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 };
 
 // DLL の入口。この構造体はポインタを持たない単純なデータなので、
 // エンジンが毎フレームまるごと記録して、あとから過去へ戻せる。
 // 実行:  mitiru_host.exe rewind/rewind.dll --inspect rewind
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Blocks);
+
 MITIRU_GAME(Blocks);
 MITIRU_REWIND_BUFFER(600);   // この章は 10 秒分 (60fps) さかのぼれるようにする

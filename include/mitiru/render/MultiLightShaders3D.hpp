@@ -55,6 +55,55 @@ VSOut VSMain(VSIn i)
 }
 )HLSL";
 
+/// @brief マルチライト対応 Phong インスタンシング VS
+/// @details `MULTI_LIGHT_VS_3D` の instanced 版。差分は `DEFAULT_VS_3D` →
+///          `INSTANCED_VS_3D` と同じ（World を per-instance 頂点属性から読む）。
+///          PS は `MULTI_LIGHT_PS_3D` を共用する。
+inline constexpr const char* MULTI_LIGHT_VS_3D_INSTANCED = R"HLSL(
+cbuffer CbTransform : register(b0)
+{
+    float4x4 world;      // インスタンシング経路では未使用
+    float4x4 view;
+    float4x4 projection;
+};
+
+struct VSIn
+{
+    float3 pos    : POSITION;
+    float3 normal : NORMAL;
+    float2 uv     : TEXCOORD0;
+    float4 color  : COLOR0;
+    float4 instRow0 : TEXCOORD3;
+    float4 instRow1 : TEXCOORD4;
+    float4 instRow2 : TEXCOORD5;
+    float4 instRow3 : TEXCOORD6;
+};
+
+struct VSOut
+{
+    float4 svpos    : SV_POSITION;
+    float3 worldPos : TEXCOORD0;
+    float3 worldNrm : NORMAL;
+    float2 uv       : TEXCOORD1;
+    float4 color    : COLOR0;
+};
+
+VSOut VSMain(VSIn i)
+{
+    VSOut o;
+    float4x4 instWorld = float4x4(i.instRow0, i.instRow1, i.instRow2, i.instRow3);
+
+    float4 wp = mul(float4(i.pos, 1.0), instWorld);
+    o.worldPos = wp.xyz;
+    o.svpos = mul(mul(wp, view), projection);
+
+    o.worldNrm = normalize(mul(float4(i.normal, 0.0), instWorld).xyz);
+    o.uv = i.uv;
+    o.color = i.color;
+    return o;
+}
+)HLSL";
+
 /// @brief マルチライト Phong PS
 inline constexpr const char* MULTI_LIGHT_PS_3D = R"HLSL(
 struct LightEntry

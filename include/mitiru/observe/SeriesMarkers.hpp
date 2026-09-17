@@ -30,6 +30,9 @@
 #include <span>
 #include <string>
 #include <vector>
+#include <string_view>
+
+#include <mitiru/module/Reflection.hpp>
 
 namespace mitiru::observe
 {
@@ -61,6 +64,7 @@ struct MarkerOpts
 	bool        hasThreshold = false; ///< threshold 跨ぎ判定を行うか
 	double      threshold    = 0.0;   ///< hasThreshold=true のときの閾値
 	std::size_t maxMarkers   = 64;    ///< 上限超過時は |変化量| が大きい順に残す
+	bool        preferNewest = false; ///< true なら上限超過時に新しい順で残す (enum のように変化量に意味が無い系列用)
 };
 
 /// @brief 間引き済みの正規化系列 (inline graph 用)
@@ -206,15 +210,17 @@ inline void classifyExtrema(
 		if (r.isLocalMax)     { pushCand(MarkerKind::LocalMax,       0.0); }
 	}
 
-	// maxMarkers cap: 変化量降順で上位を残し、offsetFromNewest 降順に並べ直す
+	// maxMarkers cap: 変化量降順 (preferNewest なら新しい順) で上位を残し、offsetFromNewest 降順に並べ直す
 	if (opts.maxMarkers > 0 && cands.size() > opts.maxMarkers)
 	{
+		const bool newest = opts.preferNewest;
 		std::partial_sort(
 			cands.begin(),
 			cands.begin() + static_cast<std::ptrdiff_t>(opts.maxMarkers),
 			cands.end(),
-			[](const Candidate& a, const Candidate& b)
+			[newest](const Candidate& a, const Candidate& b)
 			{
+				if (newest) { return a.m.offsetFromNewest < b.m.offsetFromNewest; }
 				if (a.mag != b.mag) { return a.mag > b.mag; }
 				return a.m.offsetFromNewest > b.m.offsetFromNewest; // 決定論的 tie-break
 			});
@@ -232,6 +238,35 @@ inline void classifyExtrema(
 	result.reserve(cands.size());
 	for (auto& c : cands) { result.push_back(c.m); }
 	return result;
+}
+
+/// @brief 系列名と同じ名前の reflect field が `MITIRU_ENUM` (elemType "enum:A,B,...") なら、値を名前に戻す。
+/// 該当が無い・値が範囲外なら空文字。rewind の節目に「3→5」ではなく「RUN→JUMP」と出すため。
+[[nodiscard]] inline std::string enumSeriesName(const module::FieldDescriptor* fields, std::int32_t fieldCount,
+                                                std::string_view seriesName, double value)
+{
+	if (fields == nullptr) { return {}; }
+	for (std::int32_t i = 0; i < fieldCount; ++i)
+	{
+		if (seriesName != fields[i].name) { continue; }
+		std::string_view tag{fields[i].elemType};
+		if (tag.rfind("enum:", 0) != 0) { return {}; }
+		tag.remove_prefix(5);
+		const auto semi = tag.find(';');   // "enum:A,B;group:x" の形もある
+		if (semi != std::string_view::npos) { tag = tag.substr(0, semi); }
+		if (!(value >= 0.0) || value > 1e6) { return {}; }
+		std::size_t index = static_cast<std::size_t>(value + 0.5);
+		while (true)
+		{
+			const auto comma = tag.find(',');
+			const std::string_view name = tag.substr(0, comma);
+			if (index == 0) { return std::string(name); }
+			if (comma == std::string_view::npos) { return {}; }
+			tag.remove_prefix(comma + 1);
+			--index;
+		}
+	}
+	return {};
 }
 
 /// @brief 系列を間引いて min/max 正規化した sparkline を組み立てる

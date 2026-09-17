@@ -90,9 +90,30 @@ struct NodeTRS
 	return r;
 }
 
+/// @brief glTF 仕様の cubic Hermite (in-tangent/value/out-tangent、区間長でスケール済み)。
+///        u=0 で a、u=1 で b。成分ごとに独立適用 (quaternion は呼び出し側で正規化する)。
+[[nodiscard]] inline sgc::Vec4f hermite(const sgc::Vec4f& a, const sgc::Vec4f& outTanA,
+                                        const sgc::Vec4f& b, const sgc::Vec4f& inTanB,
+                                        float u, float span)
+{
+	const float u2 = u * u;
+	const float u3 = u2 * u;
+	const float h00 = 2 * u3 - 3 * u2 + 1;
+	const float h10 = u3 - 2 * u2 + u;
+	const float h01 = -2 * u3 + 3 * u2;
+	const float h11 = u3 - u2;
+	const auto lerp1 = [&](float p0, float m0, float p1, float m1)
+	{
+		return h00 * p0 + h10 * span * m0 + h01 * p1 + h11 * span * m1;
+	};
+	return {lerp1(a.x, outTanA.x, b.x, inTanB.x), lerp1(a.y, outTanA.y, b.y, inTanB.y),
+	        lerp1(a.z, outTanA.z, b.z, inTanB.z), lerp1(a.w, outTanA.w, b.w, inTanB.w)};
+}
+
 /// @brief チャンネルを時刻 t (wrap 済み) でサンプルする。
-/// @details 端の外は端キーへクランプ。STEP は直前キーを保持。Rotation は slerp、
-///          Translation/Scale は成分 lerp。空チャンネルは identity 相当を返す。
+/// @details 端の外は端キーへクランプ。STEP は直前キーを保持。CubicSpline は glTF 仕様の
+///          Hermite (回転は補間後に正規化)。それ以外の Rotation は slerp、Translation/Scale
+///          は成分 lerp。空チャンネルは identity 相当を返す。
 [[nodiscard]] inline sgc::Vec4f sampleChannel(const GltfAnimationChannel& ch, float t)
 {
 	if (ch.times.empty() || ch.values.empty())
@@ -112,6 +133,14 @@ struct NodeTRS
 	const float u = (span > 1e-8f) ? (t - t0) / span : 0.0f;
 	const auto& a = ch.values[idx - 1];
 	const auto& b = ch.values[idx];
+
+	if (ch.interpolation == GltfAnimInterp::CubicSpline &&
+	    idx < ch.outTangents.size() && (idx - 1) < ch.outTangents.size() && idx < ch.inTangents.size())
+	{
+		const auto v = hermite(a, ch.outTangents[idx - 1], b, ch.inTangents[idx], u, span);
+		return (ch.path == GltfAnimPath::Rotation) ? quatNormalize(v) : v;
+	}
+
 	if (ch.path == GltfAnimPath::Rotation)
 	{
 		return quatSlerp(quatNormalize(a), quatNormalize(b), u);

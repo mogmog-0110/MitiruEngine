@@ -2,7 +2,10 @@
 // 実行すると: 上段にスプライトの機能見本 (大きさ / 回転 / 左右反転 / 半透明)、下段で矢印キーで歩く赤べこ。
 // 使う機能: Texture::fromFile (画像読み込み) / drawSprite (flipX・色/透明度) / pushRotation (回転) / in.move() / Timer
 
+#include <type_traits>                 // Canvas 経路のみ registerTexture する if constexpr のため
+
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include <mitiru/render/Texture.hpp>   // 画像を直接渡して描く drawSprite のため
 #include "../common/chapter_hud.hpp"   // 章の名前ラベル (左上) と操作帯 (下端) の共通ヘルパー
 
@@ -63,7 +66,8 @@ struct Sprites06
 	}
 
 	// 赤べこ 1 匹を中心 (x,y)・大きさ scale で描く。flip で左右反転、tint で色/透明度、rotDeg で回転。
-	void beko(Screen& s, int frame, float x, float y, float scale,
+	template <class Surface>
+	void beko(Surface& s, int frame, float x, float y, float scale,
 	          bool flip = false, Color tint = color::White, float rotDeg = 0.0f) const
 	{
 		const render::Texture& tex = kFrames[frame];
@@ -77,15 +81,26 @@ struct Sprites06
 	}
 
 	// 機能見本のマス 1 つ (枠 + 上にラベル)。中の絵は draw() 側で描く。
-	void cell(Screen& s, int i) const
+	template <class Surface>
+	void cell(Surface& s, int i) const
 	{
 		s.drawRectFrame(Rect{kCellX[i], kCellY, kCellW, kCellH}, theme::kFrame, 1.0f);
 		s.drawTextInRect(Rect{kCellX[i], kCellY + 8.0f, kCellW, 22.0f}, kCellLbl[i],
-		                 theme::kInk, 16.0f, Screen::TextAlignH::Center, Screen::TextAlignV::Middle);
+		                 theme::kInk, 16.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 	}
 
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
+		// Canvas は境界を跨ぐため、Texture のアドレスではなく id で描かせる必要がある
+		// (未登録だと drawSprite が DLL 内アドレスをそのまま積んでしまう)。
+		if constexpr (std::is_same_v<Surface, mitiru::Canvas>)
+		{
+			s.registerTexture(kFrames[0], "akabeko_0");
+			s.registerTexture(kFrames[1], "akabeko_1");
+			s.registerTexture(kFrames[2], "akabeko_2");
+			s.registerTexture(kFrames[3], "akabeko_3");
+		}
 		s.fillScreen(theme::kPaper);
 		chapterTitle(s, "Sprites");
 
@@ -111,7 +126,12 @@ struct Sprites06
 
 		chapterControls(s, "矢印キー: 赤べこを あるかせる　（左右で むきが かわる／脚が 交互に うごく）");
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 };
 
 // 実行:  mitiru_host.exe sprites/sprites.dll
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Sprites06);
+
 MITIRU_GAME(Sprites06);

@@ -115,6 +115,11 @@ public:
 		return testHiZ(screenMinX, screenMinY, screenMaxX, screenMaxY, screenMinZ);
 	}
 
+	/// @brief 深度が一度でも投入済みか（updateDepth 未呼び出しだと Hi-Z が
+	///        全ピクセル 1.0 = far のままで isOccluded は常に false を返すため、
+	///        呼び出し側が無駄なテストをスキップする判定に使う）
+	[[nodiscard]] bool hasDepth() const noexcept { return m_width > 0 && m_height > 0; }
+
 	/// @brief 複数AABBを一括テストする
 	[[nodiscard]] CullResult testBatch(
 		const std::vector<CullAABB>& aabbs,
@@ -216,17 +221,20 @@ private:
 
 	[[nodiscard]] bool testHiZ(float minX, float minY, float maxX, float maxY, float testZ) const
 	{
-		// 適切なミップレベルを選択（AABBのスクリーンサイズに基づく）
+		// 適切なミップレベルを選択する。`m_hiZ[0]` が最も解像度の高い（1テクセル=元画像2px）
+		// ミップで、添字が増えるほど粗くなる（`buildMipChain` 参照）。AABB のスクリーン
+		// サイズが 1 テクセルに収まる最も細かいレベルを選ぶ（それより細かいと、AABB が
+		// テクセル境界をまたいで隣接テクセルの値を見落とす恐れがある）。
 		const float boxW = maxX - minX;
 		const float boxH = maxY - minY;
 		const float maxDim = std::max(boxW, boxH);
 
 		int level = 0;
-		float levelSize = static_cast<float>(std::max(m_width, m_height)) * 0.5f;
-		while (level + 1 < static_cast<int>(m_hiZ.size()) && levelSize > maxDim)
+		float texelFootprint = 2.0f;   // m_hiZ[0] の1テクセルがカバーする元画像ピクセル数
+		while (level + 1 < static_cast<int>(m_hiZ.size()) && texelFootprint < maxDim)
 		{
 			++level;
-			levelSize *= 0.5f;
+			texelFootprint *= 2.0f;
 		}
 
 		if (level >= static_cast<int>(m_hiZ.size())) { return false; }
@@ -235,8 +243,12 @@ private:
 		const float scaleX = static_cast<float>(mip.width) / static_cast<float>(m_width);
 		const float scaleY = static_cast<float>(mip.height) / static_cast<float>(m_height);
 
-		const int ix = std::clamp(static_cast<int>(minX * scaleX), 0, mip.width - 1);
-		const int iy = std::clamp(static_cast<int>(minY * scaleY), 0, mip.height - 1);
+		// AABB 中心のテクセルを引く（min 隅だと AABB がテクセル境界をまたいだときに
+		// 隣のテクセルを引いてしまう）。
+		const float centerX = (minX + maxX) * 0.5f;
+		const float centerY = (minY + maxY) * 0.5f;
+		const int ix = std::clamp(static_cast<int>(centerX * scaleX), 0, mip.width - 1);
+		const int iy = std::clamp(static_cast<int>(centerY * scaleY), 0, mip.height - 1);
 
 		const float hiZDepth = mip.data[static_cast<size_t>(iy * mip.width + ix)];
 

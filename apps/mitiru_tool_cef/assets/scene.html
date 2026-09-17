@@ -24,15 +24,59 @@
   .val{ color:#1a1c1f; font-weight:600; }
   .obj-hint{ color:#999da4; margin-left:7px; font-weight:400; }
   .children.collapsed{ display:none; }
+  /* K2: exportedInspectables (tree) と GameMemory reflect (kv) は別系統のデータ源。
+     切り替えは表示だけのローカル tab、両方とも読み取り専用のまま (docs/INSPECTOR_DATA_SOURCES.md 参照) */
+  .tabs{ display:flex; gap:2px; margin-top:8px; }
+  .tab-btn{ font:600 12px/1.6 'IBM Plex Mono','Consolas',monospace; padding:2px 10px;
+            background:#ffffff; border:1px solid #e6e7ea; color:#999da4; cursor:pointer; }
+  .tab-btn.active{ color:#1a1c1f; border-bottom-color:#ffffff; }
+  .tab-pane{ display:none; }
+  .tab-pane.active{ display:block; }
 </style>
 </head>
 <body class="is-waiting" data-m-class="is-waiting: !tree.count">
   <header><span class="dot"></span><h1>scene tree</h1></header>
-  <div class="body"><div class="tree" data-m-tree="tool.snap" data-m-tree-root="scene"></div></div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tree" type="button">tree (exportedInspectables)</button>
+    <button class="tab-btn" data-tab="memory" type="button">game memory (reflect)</button>
+  </div>
+  <div class="body">
+    <div class="tab-pane active" data-pane="tree">
+      <div class="tree" data-m-tree="tool.snap" data-m-tree-root="scene"></div>
+    </div>
+    <div class="tab-pane" data-pane="memory">
+      <div class="kv" data-m-kv="tool.snap" data-m-kv-only="gameMemory"></div>
+    </div>
+  </div>
   <div class="wait">waiting for the game…</div>
 
 <script src="mitiru_runtime/mitiru_cef_state.js"></script>
 <script src="mitiru_runtime/mitiru_bind.js"></script>
 <script src="mitiru_runtime/mitiru_bind_tools.js"></script>
+<script src="mitiru_runtime/mitiru_reflect_decorate.js"></script>
+<script>
+// game memory タブの追加装飾 (2-2・3-2) は inspect.html と共有 (mitiru_reflect_decorate.js)。
+mitiruReflectDecorate.init();
+</script>
+<script>
+// このページ専有の tab 切り替え (data-m-* の宣言的 binding には tab widget が無いため)。
+// 両ペインとも常時 data-m-tree / data-m-kv で更新され続ける。表示切替のみで読み取り専用性は変えない。
+(function () {
+	'use strict';
+	var btns = document.querySelectorAll('.tab-btn');
+	var panes = document.querySelectorAll('.tab-pane');
+	function activate(tab) {
+		btns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+		panes.forEach(function (p) { p.classList.toggle('active', p.dataset.pane === tab); });
+	}
+	btns.forEach(function (btn) {
+		btn.addEventListener('click', function () { activate(btn.dataset.tab); });
+	});
+	// ?tab=memory で初見導線 (`mitiru run --learn`) が game memory タブを既定にできる口。
+	// 呼び出し側 (host の URL 組み立て) が未対応でも、素の scene.html は従来どおり tree 既定。
+	var wantTab = new URLSearchParams(location.search).get('tab');
+	if (wantTab === 'memory') { activate('memory'); }
+})();
+</script>
 </body>
 </html>

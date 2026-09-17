@@ -8,7 +8,7 @@
 
 **MitiruEngineは「必要なものしか画面に出さない」C++ game frameworkです。**
 
-Unity / Godotのような全機能mega editorの対極を志す。1ツール = 1関心事 = 1ウィンドウ。CLIが一級市民。GUI editorは提供しない。
+Unity / Godotのような全機能mega editorの対極を志す。1ツール = 1関心事 = 1ウィンドウ。CLIが一級市民。メガエディタは提供しないが、分岐エディタ(ADR 0035)は提供する。
 
 ターゲットは**コードが読める自学者**。Scratchレベルの未経験者向けではない。
 
@@ -31,7 +31,7 @@ Unity / Godotのような全機能mega editorの対極を志す。1ツール = 1
 
 ### 2. Code-first, inspector for observation only
 
-GUI editorは提供しない。authoringは全てコードで行う。
+メガエディタは提供しない。authoringはコードと、分岐エディタ(ADR 0035: 触った結果を試してから残すか捨てるか選ぶ)で行う。
 
 ただし **inspector window群** は提供する。書き換えるGUIではなく、観察するGUIとして。
 
@@ -156,7 +156,7 @@ engine本体に実装済み。ツールウィンドウの一覧と開き方: [`d
 | `physics` — Box2D, Jolt | Stable | |
 | `vn` (native) | Stable | |
 | `network` — TCP, lobby, state sync | Stable | |
-| `network` — `ReliableUDP`, GameNetworkingSockets | Incomplete | TODO callbacks |
+| `network` — `ReliableUDP`, GameNetworkingSockets | Stable | GNS submodule + CMake probe (`MITIRU_ENABLE_GNS`) and `SteamNetConnectionStatusChanged` callback shipped; see `docs/ROADMAP_BIG_ROCKS.md` 3-B |
 | `cef`, CEF-side bridges | Stable | role shifted to UI overlay + inspector |
 | `bridge` (signal-only) | Stable | view-push pattern unified |
 | Gameplay primitives (FSM, Timer, SceneRouter, BridgeViewPush, JsonBinding, SaveSchema, ContentLoader, SchemaValidator, etc.) | Stable | 2026-05 added |
@@ -223,3 +223,41 @@ engine本体に実装済み。ツールウィンドウの一覧と開き方: [`d
 - engine全体の設計 → `docs/ARCHITECTURE.md`、ツールウィンドウ → `docs/TOOL_WINDOWS.md`
 - CLI使い方 → `docs/GETTING_STARTED.md`
 - LLM agent → `CLAUDE.md` +このファイル
+
+---
+
+## 改訂の記録（採択、2026-09-16）
+
+> 以下は [`docs/adr/0035-branch-native-editor.md`](adr/0035-branch-native-editor.md) と対になる
+> 改訂記録。2026-09-16 にユーザーが採択し、上の本文（TL;DR、Code-first 節、Out of scope）へ反映済み。以下は経緯として残す。
+
+### 改訂したい箇所
+
+現行の "Out of scope (explicit non-goals)" にある一行:
+
+> **メガエディタ (Unity/Godot型の全機能インスペクタ)。** Atomic-tools哲学に反する。ただし「分岐エディタ」(ADR 0035) は提供する。1 ツール = 1 関心事は維持し、シーンビュー・タイムライン・候補レーン・なぜビュー・inspector を別窓群として提供する
+
+を、次のように改める案:
+
+> **メガエディタ (Unity/Godot型の全機能インスペクタ)。** Atomic-tools哲学に反する。
+> ただし「分岐エディタ」(ADR 0035) は提供する — 触った結果を即座に本番へ書き込む
+> エディタではなく、触った結果を試してから残すか捨てるか選ぶ、決定論と分岐に基づく
+> 別種のツール。1 ツール = 1 関心事は維持し、シーンビュー・タイムライン・候補レーン・
+> なぜビュー・inspector を別窓群として提供する（メガエディタとしては集約しない）。
+
+### なぜ変えたいか
+
+現行の "GUI editor は提供しない" は「編集 UI 全般の否定」と「Unity/Godot 型メガエディタの否定」
+を区別せずに 1 文にまとめていた。ADR 0035 が定義する分岐エディタは、状態を書き換える GUI では
+あるが、書き換え＝即確定にしない（試してから選ぶ）という点で Unity/Godot 型のインスペクタとは
+別の設計原理に立つ。この違いを明文化しないと、分岐エディタの実装が「哲学違反」として
+毎回議論をやり直すことになる。
+
+### 変えないこと
+
+- ノードベースのビジュアルスクリプト、汎用アセットストアは引き続き非対応（`docs/adr/0035` の
+  「やらないこと」節を参照）
+- 「Editor は書き換える GUI、Inspector は観察する GUI」という区分自体は維持する。分岐エディタは
+  この 2 つの中間（書き換えるが即確定しない）として新設する第 3 の区分であり、既存 2 区分を
+  壊さない
+- target user（コードが読める自学者）は変わらない

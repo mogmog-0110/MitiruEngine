@@ -32,10 +32,20 @@ namespace mitiru::render
 class SpriteBatch
 {
 public:
+	/// @brief 期待スプライト数を事前確保する (C4)。呼ばなければ既定の `kDefaultReserveSprites`
+	/// 分だけ最初の begin() で確保される。エンティティ数が既知の呼び出し側が begin() より
+	/// 前に 1 回呼べば、フレーム前半の再確保を避けられる。
+	void reserveSprites(std::size_t expectedSprites) noexcept
+	{
+		m_vertices.reserve(expectedSprites * 4);
+		m_indices.reserve(expectedSprites * 6);
+	}
+
 	/// @brief バッチ蓄積を開始する
 	/// @note 前回のバッチデータはクリアされる
 	void begin() noexcept
 	{
+		if (m_vertices.capacity() == 0) { reserveSprites(kDefaultReserveSprites); }
 		m_vertices.clear();
 		m_indices.clear();
 		m_drawCallCount = 0;
@@ -314,6 +324,7 @@ private:
 		m_indices.push_back(baseIndex + 3);
 	}
 
+	static constexpr std::size_t kDefaultReserveSprites = 256;  ///< reserveSprites() 未呼び出し時の既定値 (C4)
 	std::vector<Vertex2D> m_vertices;       ///< 蓄積された頂点データ
 	std::vector<std::uint32_t> m_indices;   ///< 蓄積されたインデックスデータ
 	int m_drawCallCount = 0;                ///< 描画コール数

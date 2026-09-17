@@ -131,12 +131,9 @@ public:
 	/// @param path ボイスファイルパス（ベースパスからの相対パス）
 	void playVoice(std::string_view path)
 	{
-		// 前のボイスが再生中なら停止してから再開
-		m_engine.stopAll();
-		m_engine.resume();
-
+		// playVoiceEx (#F6) は BGM/SE と独立したスロットなので、BGM を止めずにボイスだけ差し替わる。
 		std::string fullPath = resolveAudioPath(path);
-		m_engine.playFile(fullPath);
+		m_engine.playVoiceEx(fullPath, 1.0f, 1.0f, 0.0f);
 
 		if (m_mixer)
 		{

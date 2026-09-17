@@ -67,7 +67,7 @@ static_assert(std::is_trivially_copyable_v<ReflectSchema>,   "ReflectSchema は 
 	const ReflectSchema* schemas, std::int32_t schemaCount) noexcept
 {
 	if (fields == nullptr || fieldCount <= 0) { return 0; }
-	std::uint64_t h = 1469598103934665603ull;
+	std::uint64_t h = 14695981039346656037ull;
 	const auto fold = [&h](const void* p, std::size_t n) noexcept
 	{
 		const auto* b = static_cast<const unsigned char*>(p);
@@ -147,11 +147,11 @@ template <std::size_t N> struct IsFixedString<mitiru::FixedString<N>> : std::tru
 	static constexpr std::size_t cap = N;
 };
 
-/// @brief MITIRU_REFLECT / MITIRU_REFLECT_STRUCT のフィールド数超過 (>16) を compile error
-///        にする番兵。17 個以上を書くと MITIRU_FOR_EACH がこの削除済み関数を選び、
-///        「use of deleted function ...Max16Fields...」が出る。関数名がそのまま対処法:
-///        フィールドを 16 個以下に分割するか、ネスト部分を MITIRU_REFLECT_STRUCT へ切り出す。
-inline FieldDescriptor mitiruReflect_Max16Fields_SplitOrUseReflectStruct() = delete;
+/// @brief MITIRU_REFLECT / MITIRU_REFLECT_STRUCT のフィールド数超過 (>32) を compile error
+///        にする番兵。33 個以上を書くと MITIRU_FOR_EACH がこの削除済み関数を選び、
+///        「use of deleted function ...Max32Fields...」が出る。関数名がそのまま対処法:
+///        フィールドを 32 個以下に分割するか、ネスト部分を MITIRU_REFLECT_STRUCT へ切り出す。
+inline FieldDescriptor mitiruReflect_Max32Fields_SplitOrUseReflectStruct() = delete;
 
 /// @brief 固定長 buffer への安全コピー (null 終端保証)
 inline void copyTag(char* dst, std::size_t cap, const char* src)
@@ -236,9 +236,10 @@ inline bool registerSchema(const char* typeName, std::initializer_list<FieldDesc
 	{
 		// 黙って切り捨てない: 17 個目以降は inspector / AI に出ない。
 		const char* name = (typeName != nullptr) ? typeName : "";
-		mitiru::debug::warnOnce(std::string("reflect.schema.fields.") + name,
-			std::string("MITIRU_REFLECT_STRUCT ") + name +
-			": フィールドが上限 16 個を超えています。17 個目以降は inspector / AI へ出ません");
+		mitiru::debug::warnOnceFix(std::string("reflect.schema.fields.") + name,
+			std::string("MITIRU_REFLECT_STRUCT ") + name + ": フィールドが上限 16 個を超えている",
+			"ReflectSchema::fields が固定長 16 (POD 境界のため可変長にできない)",
+			"17 個目以降は inspector / AI に出ない。構造体を分割するか、上位の要約 field にまとめる");
 	}
 	std::int32_t i = 0;
 	for (const auto& f : fields) { if (i >= cap) { break; } s.fields[i++] = f; }

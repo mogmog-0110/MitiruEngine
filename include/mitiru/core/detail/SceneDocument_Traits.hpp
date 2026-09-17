@@ -180,6 +180,13 @@ struct PhysicsTrait : ITrait
 	int collisionLayer = 0;                ///< 所属レイヤー (0-31)
 	int collisionMask = 0x7FFFFFFF;        ///< 衝突対象レイヤーマスク
 
+	// collisionLayer/Mask は JSON 側既定値 (0 / 0x7FFFFFFF) と
+	// RigidBodyComponent3D 側既定値 (0 / 0xFFFFFFFF) が異なるため、
+	// 「JSON に書かれていなかった」ことを区別して保持する（省略時にコンポーネント側の
+	// 既定値を上書きしないため。toJson() の出力には含めない＝この trait 自身の wire format ではない）。
+	bool hasCollisionLayer = false;
+	bool hasCollisionMask = false;
+
 	[[nodiscard]] std::string traitType() const override { return "physics"; }
 
 	[[nodiscard]] std::string toJson() const override
@@ -210,8 +217,31 @@ struct PhysicsTrait : ITrait
 		detail::readFloatArray(j, "colliderSize", colliderSize, 3);
 		detail::readFloatArray(j, "colliderOffset", colliderOffset, 3);
 		isTrigger = j.value("isTrigger", false);
+		hasCollisionLayer = j.contains("collisionLayer");
 		collisionLayer = j.value("collisionLayer", 0);
+		hasCollisionMask = j.contains("collisionMask");
 		collisionMask = j.value("collisionMask", 0x7FFFFFFF);
+	}
+
+	/// @brief collisionLayer/collisionMask を RigidBodyComponent3D 等へ反映する
+	/// @details 物理側の型（`layer`/`mask` を持つ任意の型）をテンプレートで受けて
+	///          core/detail から physics/ への include 依存を持たないようにする。
+	///          JSON に書かれていなかった場合は rb 側の既定値を保つ（上書きしない）。
+	template <typename RigidBodyLike>
+	void applyCollisionLayerMask(RigidBodyLike& rb) const
+	{
+		if (hasCollisionLayer) rb.layer = static_cast<decltype(rb.layer)>(collisionLayer);
+		if (hasCollisionMask) rb.mask = static_cast<decltype(rb.mask)>(collisionMask);
+	}
+
+	/// @brief RigidBodyComponent3D 等の layer/mask を trait 側へ取り込む（書き出し方向）
+	template <typename RigidBodyLike>
+	void captureCollisionLayerMask(const RigidBodyLike& rb)
+	{
+		collisionLayer = static_cast<int>(rb.layer);
+		collisionMask = static_cast<int>(rb.mask);
+		hasCollisionLayer = true;
+		hasCollisionMask = true;
 	}
 };
 

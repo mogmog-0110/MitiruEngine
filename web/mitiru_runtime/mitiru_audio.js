@@ -9,6 +9,9 @@
  *   mitiru.audio.setManifest(manifest | url)    sound map を読み込む (inline obj か URL string)
  *   mitiru.audio.manifest()                      現在の manifest の frozen copy
  *   mitiru.audio.play(key, opts?)                'category.key' → 再生 or 安全に no-op
+ *   mitiru.audio.playAt(key, delaySec?, opts?)   AudioContext スケジューリングで
+ *                                                 delaySec 秒後に正確に鳴らす。
+ *                                                 Promise<{stop}|null> を返す
  *   mitiru.audio.se(key, opts?)                  → play('se.' + key, opts)
  *   mitiru.audio.bgm(key, opts?)                 新 BGM へ crossfade; null で停止
  *   mitiru.audio.voice(key, opts?)               再生; 鳴っている間 BGM を duck
@@ -181,6 +184,56 @@
 		var node = new global.Audio(url);
 		node.volume = _clamp01(volume);
 		return node;
+	}
+
+	// ── AudioContext (playAt 用) ────────────────────────────────────
+	// <audio> element の play() は呼び出しから発音までの遅延がブレる (数十 ms)
+	// ため、リズムゲーム等の正確なタイミング再生には使えない。playAt() は
+	// AudioContext のサンプル精度スケジューリングで鳴らす。
+	var _audioCtx    = null;  // 遅延生成する共有 AudioContext
+	var _bufferCache = {};    // url -> decode 済み AudioBuffer の Promise
+
+	function _getAudioContext()
+	{
+		if (_audioCtx) { return _audioCtx; }
+		var Ctor = global.AudioContext || global.webkitAudioContext;
+		if (typeof Ctor !== 'function') { return null; }
+		_audioCtx = new Ctor();
+		return _audioCtx;
+	}
+
+	function _loadAudioBuffer(ctx, url)
+	{
+		if (_bufferCache[url]) { return _bufferCache[url]; }
+
+		var fetcher = (mitiru.fetch && typeof mitiru.fetch === 'function')
+			? mitiru.fetch
+			: global.fetch.bind(global);
+
+		var promise = fetcher(url)
+			.then(function(r)
+			{
+				if (!r.ok) { throw new Error('HTTP ' + r.status + ' for ' + url); }
+				return r.arrayBuffer();
+			})
+			.then(function(arrayBuffer)
+			{
+				// decodeAudioData はコールバック版 (旧仕様) と Promise 版の実装が
+				// 混在するため、どちらでも拾えるよう両対応する。
+				return new Promise(function(resolve, reject)
+				{
+					var maybePromise = ctx.decodeAudioData(arrayBuffer, resolve, reject);
+					if (maybePromise && typeof maybePromise.then === 'function')
+					{
+						maybePromise.then(resolve, reject);
+					}
+				});
+			});
+
+		// 失敗したら cache から外し、次回呼び出しで再試行できるようにする。
+		promise.catch(function() { delete _bufferCache[url]; });
+		_bufferCache[url] = promise;
+		return promise;
 	}
 
 	// ── SE node GC (再生終了した node を除去) ──────────────────────────
@@ -357,6 +410,68 @@
 
 		_emit('play', { category: category, key: key, resolved: resolved });
 		return result.node;
+	};
+
+	// ── playAt: AudioContext スケジューリング (サンプル精度) ───────────────
+	// 対象 URL は初回のみ fetch と decode を行い、以降は AudioBuffer を再利用する。
+	audio.playAt = function(fullKey, delaySec, opts)
+	{
+		opts = opts || {};
+		delaySec = (typeof delaySec === 'number' && delaySec >= 0) ? delaySec : 0;
+
+		var dotIdx   = typeof fullKey === 'string' ? fullKey.indexOf('.') : -1;
+		var category = dotIdx >= 0 ? fullKey.slice(0, dotIdx) : '';
+		var key      = dotIdx >= 0 ? fullKey.slice(dotIdx + 1) : '';
+
+		if (!category || !key)
+		{
+			console.warn('[mitiru.audio] playAt(): expected "category.key", got: ' + fullKey);
+			_emit('play', { category: category, key: key, resolved: false });
+			return Promise.resolve(null);
+		}
+
+		var url = _resolveUrl(category, key);
+		if (!url)
+		{
+			_warnOnce(fullKey);
+			_emit('play', { category: category, key: key, resolved: false });
+			return Promise.resolve(null);
+		}
+
+		var ctx = _getAudioContext();
+		if (!ctx)
+		{
+			// AudioContext 自体が無い環境 (test harness 等)。no-op だが event は発火する。
+			_emit('play', { category: category, key: key, resolved: true });
+			return Promise.resolve(null);
+		}
+
+		return _loadAudioBuffer(ctx, url).then(function(buffer)
+		{
+			var perClip = opts.volume !== undefined ? opts.volume : 1;
+			var gain = ctx.createGain();
+			gain.gain.value = _effectiveVol(category, perClip);
+			gain.connect(ctx.destination);
+
+			var source = ctx.createBufferSource();
+			source.buffer = buffer;
+			source.connect(gain);
+			source.start(ctx.currentTime + delaySec);
+
+			_emit('play', { category: category, key: key, resolved: true });
+
+			return {
+				stop: function()
+				{
+					try { source.stop(); } catch (_e) { /* 既に停止 / 未開始なら無視 */ }
+				},
+			};
+		}).catch(function(e)
+		{
+			console.warn('[mitiru.audio] playAt() failed for "' + fullKey + '": ' + e.message);
+			_emit('play', { category: category, key: key, resolved: false });
+			return null;
+		});
 	};
 
 	// ── se ────────────────────────────────────────────────────────

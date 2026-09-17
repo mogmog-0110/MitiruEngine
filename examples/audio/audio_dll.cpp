@@ -1,9 +1,12 @@
 // audio。音を鳴らし、いまどの音が鳴っているかを画面でも見せる章。
 // 中央の暗い計器に、効果音 3 つの専用バー (Z=低い / X=中くらい / C=高い) と、
-// BGM を表す回るディスク (再生中=回る / 一時停止=止まったまま / フェード=薄れて消える) が映る。
+// BGM を表す回るディスク (再生中=回る / 一時停止=止まったまま / フェード=薄れて消える)、
+// 台詞 (V) の吹き出しが映る。台詞は BGM / 効果音とは別の 1 本のスロットで鳴り、
+// 鳴っている途中でもう一度押すと重ならず言い直しになる (mixer 窓の「voice 一覧」に出るのはこれ)。
 #include <algorithm>   // std::max / std::min
 #include <cmath>       // std::sin / std::cos / std::fmod
 #include <mitiru.hpp>
+#include <mitiru/module/AutoReflect.hpp>
 #include "../common/chapter_hud.hpp"   // 章ラベル + 操作帯 + 共通の配色
 using namespace mitiru;
 
@@ -27,6 +30,7 @@ struct Audio07
 	float seGlow[3] = {0.0f, 0.0f, 0.0f};   // 各バーの残り光 (押した瞬間 1 → だんだん 0 へ)
 	float spin      = 0.0f;    // ディスクの回転角。再生中だけ進む (止めれば回転も止まる)
 	float bgmLvl    = 0.0f;    // ディスクの見える濃さ。再生=1 / 一時停止=0.5 / 停止=0 へ滑らかに寄る
+	float voiceGlow = 0.0f;    // 吹き出しの残り光。台詞は約 1.8 秒なので、その間ゆっくり消える
 	void update(Input in, Hud hud, float dt)
 	{
 		if (in.cancelPressed()) { hud.quit(); }   // ESC で終わる
@@ -50,6 +54,10 @@ struct Audio07
 		// B: 1.5 秒かけて薄れて停止する (再生位置は捨てるので、次の Space は最初から)。
 		if (in.pressed(Key::B) && bgm != Bgm::Stopped) { hud.stopMusic(1.5f); bgm = Bgm::Stopped; }
 
+		// V: 台詞を 1 本鳴らす。play() と違い専用スロットなので、連打しても重ならず言い直す。
+		if (in.pressed(Key::V)) { hud.voice("voice", 0.9f); voiceGlow = 1.0f; }
+		voiceGlow = std::max(0.0f, voiceGlow - dt / 1.8f);
+
 		// 各バーの残り光をだんだん減らす。
 		for (int i = 0; i < 3; ++i) { seGlow[i] = std::max(0.0f, seGlow[i] - dt * 2.2f); }
 
@@ -61,7 +69,8 @@ struct Audio07
 
 		if (bgm == Bgm::Playing) { spin = std::fmod(spin + dt * 2.2f, deg(360.0f)); }
 	}
-	void draw(Screen& s) const
+	template <class Surface>
+	void drawImpl(Surface& s) const
 	{
 		s.fillScreen(theme::kPaper);
 		chapterTitle(s, "Audio");
@@ -79,12 +88,23 @@ struct Audio07
 			s.drawRoundedRect(Rect{x, baseY - h, 62.0f, h}, kSeCol[i].withAlpha(0.26f + 0.74f * g), 8.0f);
 			// バーの下にキー名 (Z/X/C)。位置とキーの対応で「どれが鳴ったか」が読める。
 			s.drawTextInRect(Rect{x, baseY + 8.0f, 62.0f, 22.0f}, kSeLbl[i], theme::kCardInk.withAlpha(0.9f),
-			                 18.0f, Screen::TextAlignH::Center, Screen::TextAlignV::Middle);
+			                 18.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 			if (g > 0.0f)   // 鳴った本の上で輪が弾ける (1→0 につれ外へ広がって薄れる)
 			{
 				s.glowRing(x + 31.0f, baseY - h - 24.0f, 20.0f + 70.0f * (1.0f - g),
 				           kSeCol[i].withAlpha(0.9f * g), 2.0f, 9.0f, 44);
 			}
+		}
+
+		// 中央上: 台詞の吹き出し。鳴っている間だけ浮かび、残り時間に合わせて薄れる。
+		const Rect bubble{628.0f, 176.0f, 96.0f, 56.0f};
+		s.drawRoundedRect(bubble, theme::kCardInk.withAlpha(0.10f + 0.85f * voiceGlow), 14.0f);
+		s.drawTextInRect(bubble, "V", theme::kCard.withAlpha(0.25f + 0.75f * voiceGlow), 26.0f,
+		                 Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
+		if (voiceGlow > 0.0f)   // 吹き出しの下から広がる波紋 = 声が出ている合図
+		{
+			s.glowRing(bubble.x() + 48.0f, bubble.y() + 90.0f, 16.0f + 40.0f * (1.0f - voiceGlow),
+			           theme::kGreen.withAlpha(0.8f * voiceGlow), 2.0f, 8.0f, 40);
 		}
 
 		// 右: BGM を表す回るディスク。消えているときも位置が分かるよう、薄い外枠は常に描く。
@@ -107,9 +127,14 @@ struct Audio07
 			}
 			s.fillCircle(disc.x, disc.y, 15.0f, theme::kBlue.withAlpha(lv));   // 中心の軸
 		}
-		chapterControls(s, "Z / X / C: ひくい / なか / たかい おと　Space: BGM さいせい / いちじていし　B: フェードアウト　ESC: おわる");
+		chapterControls(s, "Z / X / C: ひくい / なか / たかい おと　V: こえ　Space: BGM さいせい / いちじていし　B: フェードアウト　ESC: おわる");
 	}
+	void draw(Screen& s) const { drawImpl(s); }
+	void draw(Canvas& c) const { drawImpl(c); }
 };
 
 // 自動テスト中は実際には音は鳴らないが、再生を頼む処理がきちんと動くことは確認できる。
+// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+MITIRU_REFLECT_AUTO(Audio07);
+
 MITIRU_GAME(Audio07);

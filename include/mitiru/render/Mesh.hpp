@@ -38,6 +38,7 @@ public:
 	{
 		m_vertices = std::move(vertices);
 		m_revision = nextRevision();
+		m_localAABB = computeAABB();
 	}
 
 	/// @brief インデックスデータを設定する
@@ -103,6 +104,16 @@ public:
 			aabb.max.z = std::max(aabb.max.z, v.position.z);
 		}
 		return aabb;
+	}
+
+	/// @brief キャッシュ済みのローカル AABB を取得する
+	/// @details `setVertices()` の時点で一度だけ計算される（視錐台カリングを
+	///          drawMesh 呼び出しごとの O(頂点数) にしないため）。頂点未設定
+	///          （空メッシュ）の場合は `computeAABB()` の既定値（min>max の
+	///          「空」を表す AABB）のままになる。
+	[[nodiscard]] const AABB& localAABB() const noexcept
+	{
+		return m_localAABB;
 	}
 
 	/// @brief 頂点データの参照を取得する
@@ -292,6 +303,7 @@ private:
 	std::vector<Vertex3D> m_vertices;   ///< 頂点データ
 	std::vector<uint32_t> m_indices;    ///< インデックスデータ
 	uint64_t m_revision = 0;            ///< 内容世代（0 = 未設定）
+	AABB m_localAABB;                   ///< ローカル AABB（setVertices 時にキャッシュ）
 };
 
 } // namespace mitiru::render

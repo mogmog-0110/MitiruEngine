@@ -147,6 +147,40 @@ public:
 	/// @brief 静的ボディかどうかを返す
 	[[nodiscard]] constexpr bool isStatic() const noexcept { return m_inverseMass == 0.0f; }
 
+	// ── スリープ ──────────────────────────────────────────────
+
+	/// @brief スリープ中かどうかを返す（静的ボディは常に false）
+	[[nodiscard]] constexpr bool isAsleep() const noexcept { return m_asleep && !isStatic(); }
+
+	/// @brief スリープを解除する
+	void wake() noexcept { m_asleep = false; m_sleepTimer = 0.0f; }
+
+	/// @brief スリープ判定タイマーを進める（ContactSolver3D::updateSleepStates から呼ばれる）
+	/// @details 並進・角速度が両方ともしきい値を下回り続けた秒数が timeToSleep を超えたら
+	///          速度をゼロにしてスリープへ入る。しきい値を超えたら即座に起こしタイマーを戻す
+	void updateSleepTimer(float dt, float linearThresholdSq, float angularThresholdSq, float timeToSleep) noexcept
+	{
+		if (isStatic()) return;
+
+		const bool slow = m_linearVelocity.lengthSquared() < linearThresholdSq &&
+			m_angularVelocity.lengthSquared() < angularThresholdSq;
+
+		if (!slow)
+		{
+			m_asleep = false;
+			m_sleepTimer = 0.0f;
+			return;
+		}
+
+		m_sleepTimer += dt;
+		if (m_sleepTimer >= timeToSleep)
+		{
+			m_asleep = true;
+			m_linearVelocity = {};
+			m_angularVelocity = {};
+		}
+	}
+
 	// ── 速度 ──────────────────────────────────────────────────
 
 	/// @brief 線形速度を取得する
@@ -254,6 +288,13 @@ public:
 	void integrate(float dt) noexcept
 	{
 		if (isStatic()) return;
+		if (m_asleep)
+		{
+			// 重力等で溜まった力をここで捨てる。捨てないと起床した瞬間に
+			// スリープ中の蓄積分がまとめて適用され速度が跳ねる
+			clearForces();
+			return;
+		}
 
 		// 線形運動
 		const sgc::Vec3f linearAcceleration = m_accumulatedForce * m_inverseMass;
@@ -317,6 +358,9 @@ private:
 	float m_friction{0.5f};
 
 	BodyId m_id{INVALID_BODY_ID};
+
+	bool m_asleep{false};
+	float m_sleepTimer{0.0f};
 };
 
 } // namespace mitiru::physics3d

@@ -12,11 +12,10 @@
 
 /// @brief 同時ロードできるスキンモデル数の上限
 static constexpr int kMaxSkinnedModels = 32;
-/// @brief 1 フレームに描けるスキン prim 数の上限 (pool サイズ)。
-///        群れ物は「数十体 × 数 prim (マテリアル数)」を消費するのでこの規模が要る
+/// @brief 1 フレームに描けるスキン prim 数のハード上限 (pool の物理サイズ)。
+///        群れ物は「数十体 × 数 prim (マテリアル数)」を消費するのでこの規模が要る。
+///        実効上限は `Config::maxSkinnedDrawsPerFrame`（B8、これでクランプ済み）
 static constexpr uint32_t kMaxSkinnedDrawsPerFrame = 256;
-/// @brief 1 スキンの joint 数上限 (超過は剛体 fallback)
-static constexpr uint32_t kMaxSkinJoints = 256;
 
 /// @brief ロード済みモデルの 1 プリミティブ
 struct SkinnedPrim
@@ -128,10 +127,11 @@ uint64_t m_meshBufferCreates = 0;                           ///< VB/IB committed
 
 			bool skinned = skinValid && !prim.skin.empty();
 			if (skinned &&
-			    model.skins[static_cast<std::size_t>(node.skin)].joints.size() > kMaxSkinJoints)
+			    model.skins[static_cast<std::size_t>(node.skin)].joints.size() > m_config.maxSkinJoints)
 			{
 				debug::warnOnce("dx12.skinned.joints." + pathStr,
-				                "joint 数が上限を超過 — 剛体で描画: " + pathStr);
+				                "joint 数が上限 (" + std::to_string(m_config.maxSkinJoints) +
+				                    ") を超過 — 剛体で描画: " + pathStr);
 				skinned = false;
 			}
 			// copy (move しない): 複数ノードが同じ mesh を参照する glTF が有効なため
@@ -239,10 +239,13 @@ void drawSkinnedModelWorldImpl(const char* path, const sgc::Mat4f& instanceWorld
 			drawMesh(prim.mesh, instanceWorld * nodeWorld, prim.material);
 			continue;
 		}
-		if (m_skinnedPoolCursor >= kMaxSkinnedDrawsPerFrame)
+		// Config の上限がプール物理サイズを超えて指定されても array の外へは出さない
+		const uint32_t effectiveLimit = std::min(m_config.maxSkinnedDrawsPerFrame, kMaxSkinnedDrawsPerFrame);
+		if (m_skinnedPoolCursor >= effectiveLimit)
 		{
 			debug::warnOnce("dx12.skinned.pool.full",
-			                "スキン描画がフレーム上限に達した — 以降は skip");
+			                "スキン描画がフレーム上限 (" + std::to_string(effectiveLimit) +
+			                    ") に達した — 以降は skip");
 			continue;
 		}
 		// スキン prim はノード変換を無視する (glTF 仕様)。配置は instanceWorld のみ
