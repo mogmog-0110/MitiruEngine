@@ -178,7 +178,7 @@ engine本体に実装済み。ツールウィンドウの一覧と開き方: [`d
 - **Block-based scripting (Scratch / Blueprint系).** GUI authoringと同じ理由
 - **Scratchレベル未経験者の取り込み.** Target違い(上記Target user参照)
 - **Console / mobile target.** Windows-first scope。CEFがdesktop-onlyな以上両立困難
-- **Vulkan / Metal backend.** 当面なし。DX12本命 + DX11明示fallbackで十分
+- **MoltenVK 経由の Vulkan (macOS).** Apple 上は Metal をネイティブに実装する方針で、開発中 (公開版にはまだ入っていない)。Vulkan は Linux 向けに gfx 層まで実装済みで、3D レンダラは無い
 - **JSONでgameplay logicを宣言するDSL.** 純データ(novel script / i18n / balance / save)のみJSON、interactionはC++
 - **AIがJS gameplayを生成する元路線.** 2026-05に廃止済み
 - **Heavy-handed scope cuts to existing modules.** 削除済み(Lua/NodeGraph/JS gameplay)以外は維持
