@@ -197,10 +197,9 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 	// ── 1. GPU resource の再確保 ──
 	if (!m_dx12PgTexture || pw != m_dx12PgTexW || ph != m_dx12PgTexH)
 	{
+		// 下で差し替える SRV ヒープは前フレームの描画がまだ参照しているので、先に読み終わりを待つ
+		waitDx12Fence();
 		// Texture は COPY_DEST 状態の default heap に置く。
-		D3D12_HEAP_PROPERTIES texHp = {};
-		texHp.Type = D3D12_HEAP_TYPE_DEFAULT;
-
 		D3D12_RESOURCE_DESC texDesc = {};
 		texDesc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		texDesc.Width            = static_cast<UINT64>(pw);
@@ -212,11 +211,9 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 		texDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		texDesc.Flags            = D3D12_RESOURCE_FLAG_NONE;
 
-		Microsoft::WRL::ComPtr<ID3D12Resource> newTex;
-		if (FAILED(device->CreateCommittedResource(
-				&texHp, D3D12_HEAP_FLAG_NONE, &texDesc,
-				D3D12_RESOURCE_STATE_COPY_DEST,
-				nullptr, IID_PPV_ARGS(&newTex))))
+		gfx::GpuResource newTex;
+		if (FAILED(gfx::createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, texDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST, nullptr, newTex)))
 		{
 			return;
 		}
@@ -227,24 +224,9 @@ inline void RenderPipeline2D::submitPixelGridDx12(
 			& ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
 		const UINT uploadSize = rowPitch * static_cast<UINT>(ph);
 
-		D3D12_HEAP_PROPERTIES upHp = {};
-		upHp.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-		D3D12_RESOURCE_DESC upDesc = {};
-		upDesc.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
-		upDesc.Width            = uploadSize;
-		upDesc.Height           = 1;
-		upDesc.DepthOrArraySize = 1;
-		upDesc.MipLevels        = 1;
-		upDesc.Format           = DXGI_FORMAT_UNKNOWN;
-		upDesc.SampleDesc.Count = 1;
-		upDesc.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		Microsoft::WRL::ComPtr<ID3D12Resource> newUpload;
-		if (FAILED(device->CreateCommittedResource(
-				&upHp, D3D12_HEAP_FLAG_NONE, &upDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr, IID_PPV_ARGS(&newUpload))))
+		gfx::GpuResource newUpload;
+		if (FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, uploadSize,
+			D3D12_RESOURCE_STATE_GENERIC_READ, newUpload)))
 		{
 			return;
 		}

@@ -167,7 +167,7 @@ private:
     static constexpr float PI = 3.14159265358979323846f;
 
     /// @brief 半径から最適な segment 数を算出する。
-    /// sqrt(radius) でスケールする: 小さい shape は少なく、大きい shape は多く。
+    /// sqrt(radius) でスケールし、小さい shape は少なく、大きい shape は多くする。
     static int adaptiveSegments(float radius)
     {
         return std::clamp(static_cast<int>(std::sqrt(radius) * 4.0f), 8, 64);
@@ -241,11 +241,11 @@ private:
         float px = point.x - center.x;
         float py = point.y - center.y;
 
-        // Scale
+        // スケール
         px *= xf.scale.x;
         py *= xf.scale.y;
 
-        // Rotate
+        // 回転
         if (xf.rotate != 0)
         {
             const float rad = xf.rotate * PI / 180.0f;
@@ -289,7 +289,7 @@ private:
                                    style.transform.translate.x != 0 ||
                                    style.transform.translate.y != 0);
 
-        // 1. Shadow pass
+        // 1. シャドウパス
         if (hasShadow)
         {
             const auto shadowStart = static_cast<uint32_t>(m_vertices.size());
@@ -303,7 +303,7 @@ private:
             }
         }
 
-        // 2. Stroke pass
+        // 2. ストロークパス
         if (hasStroke)
         {
             const auto strokeStart = static_cast<uint32_t>(m_vertices.size());
@@ -312,7 +312,7 @@ private:
                 m_vertices[i].color.a *= style.opacity;
         }
 
-        // 3. Fill pass
+        // 3. 塗りパス
         {
             const auto fillStart = static_cast<uint32_t>(m_vertices.size());
             emitFill(style.fill, 0.0f);

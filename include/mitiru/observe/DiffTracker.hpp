@@ -2,8 +2,8 @@
 
 /// @file DiffTracker.hpp
 /// @brief フレーム間状態差分トラッカー
-/// @details フレーム間の状態変化を追跡し、差分情報をAIエージェントに提供する。
-///          前フレームとの比較で変更があったkey-valueのみを抽出する。
+/// @details フレーム間の状態変化を追跡し、差分情報を AI エージェントに提供する。
+///          前フレームとの比較で変更があった key-value のみを抽出する。
 
 #include <cstdint>
 #include <map>
@@ -16,7 +16,7 @@ namespace mitiru::observe
 {
 
 /// @brief 差分エントリ
-/// @details 1つの状態変化を表す。
+/// @details 1 つの状態変化を表す。
 struct DiffEntry
 {
 	std::string key;         ///< 状態キー
@@ -24,8 +24,8 @@ struct DiffEntry
 	std::string newValue;    ///< 変更後の値（削除時は空文字列）
 	std::uint64_t frame = 0; ///< 変化が発生したフレーム番号
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -111,9 +111,9 @@ public:
 		return diffs;
 	}
 
-	/// @brief 差分エントリ一覧をJSON文字列に変換する
+	/// @brief 差分エントリ一覧を JSON 文字列に変換する
 	/// @param diffs 差分エントリの配列
-	/// @return JSON配列形式の文字列
+	/// @return JSON 配列形式の文字列
 	[[nodiscard]] static std::string toJson(const std::vector<DiffEntry>& diffs)
 	{
 		std::string json;

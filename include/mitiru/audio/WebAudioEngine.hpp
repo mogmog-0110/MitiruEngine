@@ -5,10 +5,10 @@
 /// @details __EMSCRIPTEN__ 環境でのみコンパイルされる。
 ///
 ///          音の指定はデスクトップの FileAudioEngine と同じ「id」。
-///          `<baseDir>/<id>.wav|.ogg|.mp3` を順に探し、最初に見つかった 1 本を鳴らす。
+///          `<baseDir>/<id>.wav|.ogg|.mp3|.flac` を順に探し、最初に見つかった 1 本を鳴らす。
 ///          バイト列は vfs から読む。web の素材は preload package として wasm の
-///          FS に入っていて URL では引けないので、fetch ではなくメモリから
-///          decodeAudioData へ渡す。復号した AudioBuffer は id 単位で持ち回る。
+///          FS に入っていて URL では参照できないため、fetch ではなくメモリから
+///          decodeAudioData へ渡す。復号した AudioBuffer は id 単位で保持する。
 
 #ifdef __EMSCRIPTEN__
 
@@ -23,6 +23,7 @@
 #include <emscripten.h>
 
 #include <mitiru/audio/AudioEngine.hpp>
+#include <mitiru/audio/MusicLowPassParams.hpp>
 #include <mitiru/asset/AssetPack.hpp>
 
 // ── JS 側との受け渡し ────────────────────────────────────────────────
@@ -34,9 +35,16 @@ EM_JS(void, mitiru_webaudio_init, (), {
 	var ctx = new Ctx();
 	var master = ctx.createGain();
 	master.connect(ctx.destination);
-	Module._mitiru_audio = { ctx: ctx, master: master, buffers: {}, playing: {}, pending: {}, music: null };
+	// BGM だけが通る分岐。low-pass を適用しない間は musicBus を master へ直結する。
+	var musicBus = ctx.createGain();
+	musicBus.connect(master);
+	var musicLpf = ctx.createBiquadFilter();
+	musicLpf.type = 'lowpass';
+	musicLpf.connect(master);
+	Module._mitiru_audio = { ctx: ctx, master: master, musicBus: musicBus, musicLpf: musicLpf,
+	                         buffers: {}, playing: {}, pending: {}, music: null };
 
-	// 自動再生の制限は操作で解ける。最初の操作を拾って resume する。
+	// 自動再生の制限は操作によって解除される。最初の操作を検出して resume する。
 	var wake = function () { if (ctx.state === 'suspended') { ctx.resume(); } };
 	['pointerdown', 'mousedown', 'touchend', 'keydown'].forEach(function (t) {
 		document.addEventListener(t, wake, true);
@@ -53,7 +61,7 @@ EM_JS(void, mitiru_webaudio_decode, (const char* idPtr, const std::uint8_t* data
 	a.ctx.decodeAudioData(bytes.buffer,
 		function (buf) {
 			a.buffers[id] = buf;
-			// 復号を待っている間に来ていた要求を、ここで 1 回だけ鳴らす。
+			// 復号を待っている間に受け取った要求を、ここで 1 回だけ再生する。
 			var q = a.pending[id];
 			if (q) { delete a.pending[id]; mitiru_webaudio_play_js(id, q.v, q.p, q.l, q.m, q.a); }
 		},
@@ -71,15 +79,15 @@ EM_JS(void, mitiru_webaudio_play, (const char* idPtr, float vol, float pitch, in
 	mitiru_webaudio_play_js(UTF8ToString(idPtr), vol, pitch, loop, music, at);
 });
 
-/// AudioContext が申告する出力遅延 (秒)。耳の位置は masterTimeSec から これを引いた点。
+/// AudioContext が申告する出力遅延 (秒)。実際に音が聞こえる時刻は masterTimeSec からこれを引いた時点。
 EM_JS(double, mitiru_webaudio_latency, (), {
 	var a = Module._mitiru_audio;
 	if (!a) { return 0; }
 	return (a.ctx.outputLatency || a.ctx.baseLatency || 0);
 });
 
-/// 復号済みなら鳴らし、まだなら要求を覚えておく。EM_JS の外にも置くのは、
-/// decodeAudioData の完了からも同じ経路で鳴らすため。
+/// 復号済みなら鳴らし、まだなら要求を記録しておく。EM_JS の外にも置くのは、
+/// decodeAudioData の完了時にも同じ経路で鳴らすため。
 EM_JS(void, mitiru_webaudio_define_play, (), {
 	if (window.mitiru_webaudio_play_js) { return; }
 	window.mitiru_webaudio_play_js = function (id, vol, pitch, loop, music, at) {
@@ -87,14 +95,14 @@ EM_JS(void, mitiru_webaudio_define_play, (), {
 	if (!a) { return; }
 	var buf = a.buffers[id];
 	if (!buf) {
-		// 復号中。最後の要求だけ覚えて、終わり次第 1 回鳴らす。
+		// 復号中。最後の要求だけ記録して、完了後に 1 回鳴らす。
 		if (a.buffers[id] === null) { a.pending[id] = {v: vol, p: pitch, l: loop, m: music, a: at}; }
 		return;
 	}
 	if (a.ctx.state === 'suspended') { a.ctx.resume(); }
 
 	// ループと BGM は「鳴っている最中の呼び直し = 音量とピッチの変更」。
-	// 鳴らし直すと歌や伴奏が頭へ戻る。ゲーム側はこの約束で音量調整を書いている。
+	// 鳴らし直すと歌や伴奏が先頭に戻る。ゲーム側はこの約束に基づいて音量調整を書いている。
 	if (loop || music) {
 		var cur = music ? a.music : a.playing[id];
 		if (cur) {
@@ -111,12 +119,12 @@ EM_JS(void, mitiru_webaudio_define_play, (), {
 	var g = a.ctx.createGain();
 	g.gain.value = vol;
 	src.connect(g);
-	g.connect(a.master);
+	g.connect(music ? a.musicBus : a.master);
 	// at は AudioContext の時計上の絶対時刻。0 なら即時。過ぎた時刻はその場で鳴らす
 	// (遅れて鳴らすより、拍の手がかりとして正しい)。
 	src.start((at && at > a.ctx.currentTime) ? at : 0);
 
-	// 覚えるのはループと BGM だけ。一度きりの効果音まで覚えると、連打したときに
+	// 記録するのはループと BGM だけ。一度きりの効果音まで記録すると、連打したときに
 	// 前の音を止めてしまう。
 	if (loop || music) {
 		var entry = { src: src, gain: g };
@@ -149,6 +157,22 @@ EM_JS(void, mitiru_webaudio_stop_music, (), {
 EM_JS(void, mitiru_webaudio_set_volume, (float vol), {
 	var a = Module._mitiru_audio;
 	if (a) { a.master.gain.value = vol; }
+});
+
+EM_JS(double, mitiru_webaudio_sample_rate, (), {
+	var a = Module._mitiru_audio;
+	return a ? a.ctx.sampleRate : 0;
+});
+
+/// qDb は BiquadFilterNode の lowpass が受ける dB 単位の Q (MusicLowPassParams::qWebAudioDb)。
+EM_JS(void, mitiru_webaudio_set_music_lowpass, (int bypass, float freq, float qDb), {
+	var a = Module._mitiru_audio;
+	if (!a) { return; }
+	a.musicBus.disconnect();
+	if (bypass) { a.musicBus.connect(a.master); return; }
+	a.musicLpf.frequency.value = freq;
+	a.musicLpf.Q.value = qDb;
+	a.musicBus.connect(a.musicLpf);
 });
 
 EM_JS(double, mitiru_webaudio_time, (), {
@@ -210,7 +234,7 @@ public:
 		mitiru_webaudio_set_volume(v);
 	}
 
-	/// @details Web Audio は C++ から同期に状態を問えないので安全側に倒す。
+	/// @details Web Audio は C++ から同期して状態を確認できないため、安全を優先した値を返す。
 	[[nodiscard]] bool isPlaying(std::string_view) const override { return false; }
 
 	/// @details AudioContext の時計。ゲームが音を基準に判定するときの基準になる。
@@ -219,11 +243,11 @@ public:
 		return mitiru_webaudio_time();
 	}
 
-	/// @details 譜面で鳴る時刻が決まっている音は、フレームではなく音の時計で撃つ。
+	/// @details 譜面で鳴る時刻が決まっている音は、フレームではなく音の時計に従って再生する。
 	///          atSec は masterTimeSec と同じ AudioContext の絶対時刻なので、
-	///          そのまま BufferSource.start へ渡せばサンプル精度で発火する。
-	///          ここを既定 (時刻を捨てて即時再生) のままにすると、先読みぶん
-	///          最大 0.6 秒の前倒しで鳴り、拍が崩れる。
+	///          そのまま BufferSource.start へ渡せばサンプル精度で再生される。
+	///          ここを既定 (時刻を無視して即時再生) のままにすると、先読みぶん
+	///          最大 0.6 秒早く鳴り、拍が崩れる。
 	void playSoundScheduled(std::string_view id, double atSec, float volume,
 	                        float pitchScale) override
 	{
@@ -235,12 +259,19 @@ public:
 		return mitiru_webaudio_latency();
 	}
 
+	/// @details MiniaudioEngine と同じ係数 (2 次 Butterworth、効果音は通さない) を BiquadFilterNode で掛ける。
+	void setMusicLowPass(float cutoffHz) override
+	{
+		const auto p = musicLowPassParams(cutoffHz, static_cast<float>(mitiru_webaudio_sample_rate()));
+		mitiru_webaudio_set_music_lowpass(p.bypass ? 1 : 0, p.frequencyHz, p.qWebAudioDb);
+	}
+
 	/// @details BufferSource.start(atSec) がサンプル精度予約そのものなので常に true (#F2)。
 	[[nodiscard]] bool supportsScheduledPlayback() const noexcept override { return true; }
 
 private:
 	/// @details 起動時に音を全部読んで復号を始める。復号は非同期なので、鳴らす
-	///          瞬間に初めて頼むと最初の 1 回が落ちる。拍に合わせて鳴らすゲームでは
+	///          瞬間に初めて要求すると最初の 1 回が再生されない。拍に合わせて鳴らすゲームでは
 	///          その 1 回が致命的なので、先に全部渡しておく。
 	void primeAll()
 	{
@@ -250,13 +281,13 @@ private:
 			if (ec) { break; }
 			if (!e.is_regular_file()) { continue; }
 			const auto ext = e.path().extension().string();
-			if (ext != ".wav" && ext != ".ogg" && ext != ".mp3") { continue; }
+			if (ext != ".wav" && ext != ".ogg" && ext != ".mp3" && ext != ".flac") { continue; }
 			prime(e.path().stem().string());
 		}
 	}
 
-	/// @details 復号は非同期なので、初めて使う音は頼んだそのフレームでは鳴らない。
-	///          鳴らす前に必ず prime を通しておき、2 回目以降はキャッシュから出す。
+	/// @details 復号は非同期なので、初めて使う音は要求したフレームでは鳴らない。
+	///          鳴らす前に必ず prime を呼んでおき、2 回目以降はキャッシュを利用する。
 	void fire(std::string_view id, float vol, float pitch, bool loop, bool music,
 	          double atSec = 0.0)
 	{
@@ -269,7 +300,7 @@ private:
 	bool prime(const std::string& id)
 	{
 		if (m_requested.count(id) != 0) { return true; }
-		for (const char* ext : {".wav", ".ogg", ".mp3"})
+		for (const char* ext : {".wav", ".ogg", ".mp3", ".flac"})
 		{
 			const auto bytes = mitiru::vfs::readGlobal(m_baseDir + "/" + id + ext);
 			if (!bytes || bytes->empty()) { continue; }

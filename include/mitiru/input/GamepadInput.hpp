@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file GamepadInput.hpp
-/// @brief XInputゲームパッド入力
-/// @details XInput APIを使用したゲームパッド入力の取得・管理。
-///          最大4プレイヤー対応、デッドゾーン処理、振動制御を提供する。
+/// @brief XInput ゲームパッド入力
+/// @details XInput API でゲームパッド入力を取得・管理する。
+///          最大 4 プレイヤーに対応し、デッドゾーン処理と振動制御を提供する。
 
 #ifdef _WIN32
 
@@ -55,8 +55,8 @@ enum class GamepadAxis : std::uint8_t
 	RightTrigger = 5   ///< 右トリガー
 };
 
-/// @brief XInputゲームパッド入力ハンドラ
-/// @details 最大4プレイヤーのゲームパッド状態を毎フレームポーリングする。
+/// @brief XInput ゲームパッド入力ハンドラ
+/// @details 最大 4 プレイヤーのゲームパッド状態を毎フレームポーリングする。
 ///          デッドゾーン処理とボタンエッジ検出（pressed/released）を提供する。
 ///
 /// @code
@@ -76,7 +76,7 @@ enum class GamepadAxis : std::uint8_t
 class GamepadInput
 {
 public:
-	/// @brief 最大プレイヤー数（XInputの上限）
+	/// @brief 最大プレイヤー数（XInput の上限）
 	static constexpr int MAX_PLAYERS = 4;
 
 	/// @brief デフォルトデッドゾーン閾値
@@ -170,7 +170,7 @@ public:
 	/// @brief ボタンが今フレームで押されたか（エッジ検出）
 	/// @param playerIndex プレイヤーインデックス（0 ~ 3）
 	/// @param button ボタン
-	/// @return 今フレーム押下 かつ 前フレーム非押下なら true
+	/// @return 今フレームで押されていて、前フレームで押されていなければ true
 	[[nodiscard]] bool isButtonPressed(int playerIndex, GamepadButton button) const noexcept
 	{
 		if (playerIndex < 0 || playerIndex >= MAX_PLAYERS) return false;
@@ -186,7 +186,7 @@ public:
 	/// @brief ボタンが今フレームで離されたか（エッジ検出）
 	/// @param playerIndex プレイヤーインデックス（0 ~ 3）
 	/// @param button ボタン
-	/// @return 今フレーム非押下 かつ 前フレーム押下なら true
+	/// @return 今フレームで押されておらず、前フレームで押されていれば true
 	[[nodiscard]] bool isButtonReleased(int playerIndex, GamepadButton button) const noexcept
 	{
 		if (playerIndex < 0 || playerIndex >= MAX_PLAYERS) return false;
@@ -262,7 +262,7 @@ public:
 		{
 			return 0.0f;
 		}
-		/// デッドゾーン外の範囲を [0, 1] に再マッピング
+		/// デッドゾーンの外の範囲を [0, 1] に再マッピングする
 		const float sign = (value >= 0.0f) ? 1.0f : -1.0f;
 		return sign * (absVal - threshold) / (1.0f - threshold);
 	}

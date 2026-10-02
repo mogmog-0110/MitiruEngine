@@ -1,14 +1,14 @@
 ﻿#pragma once
 
 /// @file DefaultShaders3D.hpp
-/// @brief 3D描画用デフォルトシェーダー（HLSL SM5.0）
-/// @details Phongシェーディングモデルによる頂点・ピクセルシェーダーを提供する。
-///          ディレクショナルライト1灯によるアンビエント+ディフューズ+スペキュラー照明。
+/// @brief 3D 描画用デフォルトシェーダー（HLSL SM5.0）
+/// @details Phong シェーディングモデルによる頂点・ピクセルシェーダーを提供する。
+///          ディレクショナルライト 1 灯によるアンビエント+ディフューズ+スペキュラー照明。
 
 namespace mitiru::render
 {
 
-/// @brief 3D Phong照明用 頂点シェーダー（HLSL SM5.0）
+/// @brief 3D Phong 照明用 頂点シェーダー（HLSL SM5.0）
 /// @details ワールド・ビュー・プロジェクション行列による座標変換と、
 ///          ワールド空間での法線・位置をピクセルシェーダーに渡す。
 constexpr const char* DEFAULT_VS_3D = R"hlsl(
@@ -54,7 +54,7 @@ VSOutput VSMain(VSInput input)
 }
 )hlsl";
 
-/// @brief 3D Phong照明用 インスタンシング頂点シェーダー（HLSL SM5.0）
+/// @brief 3D Phong 照明用 インスタンシング頂点シェーダー（HLSL SM5.0）
 /// @details `DEFAULT_VS_3D` の instanced 版。ワールド行列は CbTransform ではなく
 ///          per-instance 頂点属性 (InstRow0..3、`D3D11_INPUT_PER_INSTANCE_DATA`) から
 ///          読む。PS は `DEFAULT_PS_3D` を共用する（VSOutput の形が同じため）。
@@ -107,8 +107,8 @@ VSOutput VSMain(VSInput input)
 }
 )hlsl";
 
-/// @brief 3D Phong照明用 ピクセルシェーダー（HLSL SM5.0）
-/// @details ディレクショナルライト1灯によるPhongシェーディング。
+/// @brief 3D Phong 照明用 ピクセルシェーダー（HLSL SM5.0）
+/// @details ディレクショナルライト 1 灯による Phong シェーディング。
 ///          アンビエント + ディフューズ + スペキュラー成分を計算する。
 constexpr const char* DEFAULT_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
@@ -161,7 +161,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 )hlsl";
 
 /// @brief アンライト（照明なし）頂点シェーダー
-/// @details テクスチャカラーと頂点カラーのみで描画する3Dシェーダー。
+/// @details テクスチャカラーと頂点カラーのみで描画する 3D シェーダー。
 constexpr const char* UNLIT_VS_3D = R"hlsl(
 cbuffer CbTransform : register(b0)
 {

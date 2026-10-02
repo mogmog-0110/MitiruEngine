@@ -4,17 +4,17 @@
 /// @brief 独立ツール窓 exe の共通土台 (軸 5 modular sub-window)。
 /// @details
 /// 動作中のゲームの SharedSnapshot (`%TEMP%\mitiru_inspector_<pid>.json`) を 30Hz で
-/// polling し、Saturn 配色の header + 「waiting」状態を描く `mitiru::Game` 基底。
+/// polling し、Saturn 配色の header と「waiting」状態を描く `mitiru::Game` 基底。
 /// 新しい観察系ツール窓は、この基底を継承して `windowTitle()` と `drawBody()` を
 /// 実装するだけでよい (arg parse / poll / stale / chrome は基底が持つ)。
 ///
-/// 注: ファイル駆動で SharedSnapshot を読まないツール (例: .mtrr replay scrubber) は
+/// 注: ファイル駆動で SharedSnapshot を読まないツール (例:.mtrr replay scrubber) は
 /// 別の関心事なので、この基底を無理に使わず独自の Game 実装にする。
 ///
 /// @code
 ///   class MyTool final : public mitiru::debug::ToolWindowApp {
 ///       const char* windowTitle() const noexcept override { return "my tool"; }
-///       void drawBody(mitiru::Screen& s, const nlohmann::json& snap) override { ... }
+///       void drawBody(mitiru::Screen& s, const nlohmann::json& snap) override {... }
 ///   };
 ///   int main(int argc, char** argv) {
 ///       auto a = mitiru::debug::parseToolArgs(argc, argv);
@@ -33,7 +33,7 @@
 
 #include <nlohmann/json.hpp>
 
-// アンブレラ廃止 (リファクタ P2)。使うものだけ明示 include
+// アンブレラは廃止した (リファクタ P2)。使うものだけを明示して include する
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
@@ -50,15 +50,15 @@ inline constexpr sgc::Colorf kToolHairline{0.886f, 0.886f, 0.906f, 1.0f}; // 区
 inline constexpr sgc::Colorf kToolInk{0.106f, 0.106f, 0.118f, 1.0f};      // 見出し/本文 (濃グレー)
 inline constexpr sgc::Colorf kToolMuted{0.557f, 0.557f, 0.576f, 1.0f};    // 補足 (中グレー)
 inline constexpr sgc::Colorf kToolAccent{0.039f, 0.518f, 1.0f, 1.0f};     // Apple blue #0A84FF
-// 後方互換 (旧 filled header は廃止。直接参照する古いコード保険)。
+// 後方互換用 (旧 filled header は廃止した。直接参照する古いコードのための保険)。
 inline constexpr sgc::Colorf kToolHeader = kToolBg;
 inline constexpr sgc::Colorf kToolHeaderText = kToolInk;
 
-/// @brief 全ツール窓共通の Apple-light ヘッダを描く。
-/// @details 左に小さな青アクセント、太めの title、下に 1px ヘアライン。title の y は
-///          明示指定で上端クリップを防ぐ。SharedSnapshot を読まない窓 (replay 等) も
+/// @brief 全ツール窓に共通の Apple-light ヘッダを描く。
+/// @details 左に小さな青アクセント、太めの title、下に 1px のヘアライン。title の y を
+///          明示して、上端で切れるのを防ぐ。SharedSnapshot を読まない窓 (replay 等) も
 ///          これを呼べば見た目が揃う。
-/// @return body 描画を始めてよい y。
+/// @return body の描画を始めてよい y。
 inline float drawToolHeader(mitiru::Screen& screen, const char* title, float screenW)
 {
 	const float padX      = 20.0f;
@@ -115,10 +115,10 @@ public:
 	}
 
 protected:
-	/// header に出すツール名 (例 "scene tree")。"MitiruEngine。" が前置される。
+	/// header に出すツール名 (例 "scene tree")。先頭に "MitiruEngine。" が付く。
 	[[nodiscard]] virtual const char* windowTitle() const noexcept = 0;
 
-	/// producer の最新 snapshot が来ている時の本体描画。
+	/// producer の最新 snapshot が届いているときに本体を描く。
 	virtual void drawBody(mitiru::Screen& screen, const nlohmann::json& snapshot) = 0;
 
 	// ── サブクラス用 helper ──────────────────────────────────────────────
@@ -134,7 +134,7 @@ protected:
 		return m_screenW < 420.0f ? narrow : wide;
 	}
 
-	/// 左寄せ 1 行テキストを描き、次行の y を返す（行間ゆったりめ、被り防止）。
+	/// 左寄せの 1 行テキストを描き、次の行の y を返す（行間を広めに取って重なりを防ぐ）。
 	float line(mitiru::Screen& screen, const std::string& s, float x, float y,
 	           float size, sgc::Colorf col)
 	{
@@ -176,7 +176,7 @@ private:
 
 	void drawWaiting(mitiru::Screen& screen)
 	{
-		// Latin atlas のため ASCII 表示。
+		// Latin atlas なので ASCII で表示する。
 		const char* msg = (m_overridePath || m_producerPid)
 			? "waiting for the game..."
 			: "no source - pass <pid> or --file <path>";
@@ -197,7 +197,7 @@ private:
 	float                                             m_screenH{720.0f};
 };
 
-/// @brief 共通 arg parse: `<pid>` か `--file <path>`。ok=false なら usage 出力済みで終了すべき。
+/// @brief 共通の arg parse。`<pid>` か `--file <path>`。ok=false のときは usage を出力済みなので終了すべき。
 struct ToolArgs
 {
 	std::optional<int>         pid;
@@ -227,9 +227,9 @@ inline ToolArgs parseToolArgs(int argc, char* argv[])
 	return out;
 }
 
-/// @brief 任意の mitiru::Game をツール窓 chrome (Saturn / 縦窓 / Latin font) で run する。
-/// @details SharedSnapshot に乗らないツール (例 .mtrr replay scrubber) もこの bootstrap を
-///          共有して、全ツール窓の見た目を統一する。
+/// @brief 任意の mitiru::Game をツール窓の chrome (Saturn / 縦窓 / Latin font) で run する。
+/// @details SharedSnapshot を経由しないツール (例 .mtrr replay scrubber) もこの bootstrap を
+///          共有して、全ツール窓の見た目をそろえる。
 inline int runToolGame(mitiru::Game& game, const std::string& title,
                        int width = 360, int height = 720)
 {
@@ -241,8 +241,6 @@ inline int runToolGame(mitiru::Game& game, const std::string& title,
 	cfg.minWindowWidth       = 320;
 	cfg.minWindowHeight      = 360;
 	cfg.vsync                = true;
-	cfg.enableCef            = false;
-	cfg.fontAtlasRanges      = mitiru::EngineConfig::FontAtlas::Latin;
 	cfg.useLogicalWindowSize = true;   // high-DPI で文字を crisp に保つ
 	cfg.backgroundColor      = kToolBg;
 	engine.run(game, cfg);

@@ -1,4 +1,4 @@
-// Class-body chunk for Renderer3D_DX12 - included via DX12PipelineStates.hpp
+// Renderer3D_DX12 のクラス本体の断片。DX12PipelineStates.hpp から include される
 
 // ─────────────────────────────────────────────────────────────
 //  コマンドリソース生成
@@ -31,8 +31,10 @@ void createCommandResources()
 		throw std::runtime_error(
 			"Renderer3D_DX12: CreateCommandList failed");
 	}
+	m_graphicsCmdList->SetName(dx12::kRenderer3DListName);
+	dx12::registerPass3DOrder();
 
-	/// 初期状態はクローズしておく（beginFrameでリセットする）
+	/// 初期状態はクローズしておく（beginFrame でリセットする）
 	m_graphicsCmdList->Close();
 }
 
@@ -71,6 +73,21 @@ void compileShaders()
 	m_tonemapVS = gfx::Dx12Shader::createVertexShader(DX12_TONEMAP_VS, "VSMain");
 	m_tonemapPS = gfx::Dx12Shader::createPixelShader(DX12_TONEMAP_PS, "PSMain");
 
+	// SSAO (v40)。VS は OUTLINE_POST_VS を流用。cbuffer/入力の宣言は 2 本で共通
+	m_ssaoPS = gfx::Dx12Shader::createPixelShader(
+		std::string(DX12_SSAO_COMMON_HLSL) + DX12_SSAO_PS_BODY, "PSMain");
+	m_ssaoBlurPS = gfx::Dx12Shader::createPixelShader(
+		std::string(DX12_SSAO_COMMON_HLSL) + DX12_SSAO_BLUR_PS_BODY, "PSMain");
+
+	// bloom (v41)。VS と root sig は tonemap のものを流用
+	m_bloomDownPS = gfx::Dx12Shader::createPixelShader(
+		std::string(DX12_BLOOM_COMMON_HLSL) + DX12_BLOOM_DOWN_PS_BODY, "PSMain");
+	m_bloomUpPS = gfx::Dx12Shader::createPixelShader(
+		std::string(DX12_BLOOM_COMMON_HLSL) + DX12_BLOOM_UP_PS_BODY, "PSMain");
+
+	// 被写界深度 (v44)。VS と root sig は tonemap のものを流用
+	m_dofPS = gfx::Dx12Shader::createPixelShader(DX12_DOF_PS, "PSMain");
+
 	// マルチライト Phong PS（VS は TOON_VS_3D を流用）
 	m_multiLightPS = gfx::Dx12Shader::createPixelShader(
 		DX12_MULTI_LIGHT_PS_3D, "PSMain");
@@ -94,7 +111,7 @@ void compileShaders()
 ///   - b1: CbLighting（VS/PS 共通）
 ///   - b2: CbLightArray（マルチライト PS。それ以外は参照しないだけで OK）
 ///   - b3: CbShadow（light view*proj, PS）
-///   - SRV table { t0=albedo, t1=shadow(近距離/カスケード0), t2=shadow(遠距離/カスケード1) }（PS）
+///   - SRV table { t0=albedo, t1=shadow(近距離/カスケード 0), t2=shadow(遠距離/カスケード 1) }（PS）
 ///     t2 は B13 のカスケードシャドウ用。単一カスケード時も常に bind される
 ///     (writeMainSrvTable が m_shadowMapFar または白テクスチャで埋める) ため未使用でも安全
 ///   静的サンプラ s0: linear + repeat / s1: comparison(less)（PS）
@@ -102,31 +119,31 @@ void createRootSignature()
 {
 	D3D12_ROOT_PARAMETER rootParams[5] = {};
 
-	/// b0: CbTransform -- 頂点シェーダーで使用
+	/// b0: CbTransform。頂点シェーダーで使用
 	rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParams[0].Descriptor.ShaderRegister = 0;
 	rootParams[0].Descriptor.RegisterSpace = 0;
 	rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
-	/// b1: CbLighting -- VS/PSの両方で使用するためALL
+	/// b1: CbLighting。VS/PS の両方で使用するため ALL
 	rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParams[1].Descriptor.ShaderRegister = 1;
 	rootParams[1].Descriptor.RegisterSpace = 0;
 	rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	/// b2: CbLightArray -- マルチライトパスのPSで使用
+	/// b2: CbLightArray。マルチライトパスの PS で使用
 	rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParams[2].Descriptor.ShaderRegister = 2;
 	rootParams[2].Descriptor.RegisterSpace = 0;
 	rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	/// b3: CbShadow (lightViewProj) -- VS (lightSpacePos 計算) + PS (PCF サンプル)
+	/// b3: CbShadow (lightViewProj)。VS (lightSpacePos 計算) + PS (PCF サンプル)
 	rootParams[3].ParameterType            = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParams[3].Descriptor.ShaderRegister = 3;
 	rootParams[3].Descriptor.RegisterSpace  = 0;
 	rootParams[3].ShaderVisibility          = D3D12_SHADER_VISIBILITY_ALL;
 
-	/// SRV table: { t0=albedo, t1=shadow(カスケード0), t2=shadow(カスケード1, B13) }
+	/// SRV table: { t0=albedo, t1=shadow(カスケード 0), t2=shadow(カスケード 1, B13) }
 	static D3D12_DESCRIPTOR_RANGE srvRanges[3] = {};
 	srvRanges[0].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	srvRanges[0].NumDescriptors                    = 1;
@@ -148,11 +165,14 @@ void createRootSignature()
 	rootParams[4].DescriptorTable.pDescriptorRanges   = srvRanges;
 	rootParams[4].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	/// s0: linear + repeat / s1: comparison(less) for PCF / s2: point + repeat
-	/// s2 は glTF が NEAREST を宣言した資産用。ドット絵を線形補間で溶かさない。
+	/// s0: anisotropic + repeat / s1: PCF 用の comparison(less) / s2: point + repeat
+	/// s2 は glTF が NEAREST を宣言した資産用。ドット絵を線形補間でぼかさない。
+	/// s0 が異方性なのは、寝た面 (床・台) が三線形だと片方向だけ過剰にぼけ、残った方向の
+	/// 細かい階調が段の境で点々になるため。倍率は 4 (16 は差が見えず帯域を使うだけ)。
 	D3D12_STATIC_SAMPLER_DESC samplers[3] = {};
 	// s0
-	samplers[0].Filter           = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	samplers[0].Filter           = D3D12_FILTER_ANISOTROPIC;
+	samplers[0].MaxAnisotropy    = 4;
 	samplers[0].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	samplers[0].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	samplers[0].AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -231,8 +251,8 @@ void createRootSignature()
 //  入力レイアウト
 // ─────────────────────────────────────────────────────────────
 
-/// @brief Vertex3D用の入力レイアウトを取得する（内部用）
-/// @param desc 出力先の配列（4要素）
+/// @brief Vertex3D 用の入力レイアウトを取得する（内部用）
+/// @param desc 出力先の配列（4 要素）
 /// @param count 出力先の要素数
 static void getInputLayoutInternal(D3D12_INPUT_ELEMENT_DESC* desc, UINT& count)
 {

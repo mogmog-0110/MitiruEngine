@@ -4,13 +4,14 @@
 //   argv[0]  = host exe のパス
 //   argv[1]  = game DLL のパス (cwd 相対または絶対)
 //   argv[2+] = 任意フラグ:
-//                --watch         DLL ファイルの mtime を監視し変更時にリロード
-//                --url <url>     CEF 起動 URL を上書き (既定: file:///./<dll_dir>/assets/scene.html)
+//                --watch         DLL ファイルの書き換えを監視し変更時にリロード
+//
+// UI は DLL の隣の assets/ui/main.rml があれば RmlUi で重ねる (docs/UI_RMLUI.md)。
 //
 // エンジンを直接見るのは host のみ。game コードは DLL 内に閉じ、
 // ModuleApi.hpp の C-only シグナルフロー経由でエンジンと通信する。
 //
-// `--watch` は L3 ホットリロード: mtime を約 250ms ごとに監視し、変化したら
+// `--watch` は L3 ホットリロード: DLL の書き換えを監視し (asset/FileWatcher.hpp)、変化したら
 // HelloGameMemory* を生かしたまま DLL を差し替える (状態を保持)。
 //
 // Runtime hotkeys (Windows): F7 = step, F8 = pause/play, F9 = time-scale,
@@ -32,19 +33,24 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
-// アンブレラ廃止 (リファクタ P2)。使うものだけ明示 include
+// アンブレラを廃止 (リファクタ P2)。使うものだけを明示的に include
+#include <mitiru/util/PreciseWait.hpp>
 #include <mitiru/platform/Utf8Args.hpp>
+#ifdef _WIN32
+#include <mitiru/platform/win32/Win32Window.hpp>  // --no-activate: 窓を前に出さない設定点
+#endif
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/module/Spawner.hpp>
 #include <mitiru/debug/FrameBudget.hpp>  // FrameArena (2-1) の使用量を毎フレーム反映する
-#include <mitiru/cef/CefErrorPage.hpp>  // scene.html 不在時に自前エラーページ data URI を直接開く (CEF 未使用なら空ヘッダ)
 #include <mitiru/resource/AssetPath.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
 #include <mitiru/asset/AssetPack.hpp> // vfs: pack mount / readGlobal
+#include <mitiru/asset/FileWatcher.hpp>
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/MiniaudioEngine.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
@@ -54,7 +60,10 @@
 #include <mitiru/render/AsyncPngWriter.hpp>
 #include <mitiru/replay/Player.hpp>
 #include <mitiru/replay/Recorder.hpp>
+#include <mitiru/debug/CrashReport.hpp>
+#include <mitiru/debug/CrashReporter.hpp>
 #include <mitiru/module/ModuleHost.hpp>  // --bake: DLL の mitiru_module_bake_assets export を呼ぶだけの経路
+#include <mitiru/core/detail/ModuleTextInput.hpp>  // --input-script の ime 行
 
 #ifdef _WIN32
 #  ifndef NOMINMAX
@@ -72,9 +81,9 @@
 namespace
 {
 
-// FileAudioEngine。論理 sound id を game の assets/audio/ 配下のファイルに解決し
-// miniaudio で再生する host 側 IAudioEngine。game は触れず SoundIntents を
-// 書くだけ。未知の id は無言で失敗させず stderr に出す。
+// FileAudioEngine。論理 sound id を game の assets/audio/ 配下のファイルに解決し、
+// miniaudio で再生する host 側の IAudioEngine。game は操作せず、SoundIntents を
+// 書くだけ。未知の id は何も知らせずに失敗させず、stderr に出す。
 class FileAudioEngine final : public mitiru::audio::IAudioEngine
 {
 public:
@@ -90,39 +99,54 @@ public:
 	void setVolume(float v) override { m_engine.setMasterVolume(v); }
 	[[nodiscard]] bool isPlaying(std::string_view) const override { return false; }
 
-	// v6 拡張 (#19/#20): pitch / fade を route。
+	// v6 拡張 (#19/#20): pitch / fade を渡す。
 	void playSoundEx(std::string_view id, float vol, float pitch, float fadeIn) override
 	{
 		playByIdEx(id, vol, pitch, fadeIn, /*music=*/false, false);
 	}
 	void stopSoundFade(std::string_view id, float fadeOutSec) override
 	{
-		// 止められるのは playSoundLoop で鳴らしたものだけ。one-shot は id で覚えていない。
-		const auto it = m_loopPaths.find(std::string(id));
-		if (it == m_loopPaths.end()) { return; }
-		m_engine.stopSoundLoop(it->second, fadeOutSec);
-		m_loopPaths.erase(it);
+		// 停止できるのはループで再生したものだけ。one-shot は id で記録していない。
+		m_engine.stopKeyed(instanceKey(0, id), fadeOutSec);
 	}
-	void playSoundLoop(std::string_view id, float vol, float pitch, float fadeIn) override
+
+	// v45: 番号付きの再生・パン (番号 0 のループは id で取得)。
+	void playSoundInstance(std::string_view id, const mitiru::audio::SoundPlayback& p) override
 	{
-		playByIdEx(id, vol, pitch, fadeIn, /*music=*/false, /*loop=*/true);
+		if (p.handle == 0 && !p.loop)
+		{
+			playByIdEx(id, p.volume, p.pitch, p.fadeInSec, /*music=*/false, false, 0.0, p.pan);
+			return;
+		}
+		const std::string playPath = resolvePlayPath(id);
+		if (playPath.empty()) { reportMissing(id); return; }
+		m_engine.playKeyed(instanceKey(p.handle, id), playPath, {p.volume, p.pitch, p.fadeInSec, p.pan, p.loop});
 	}
+	void updateSoundInstance(std::uint32_t handle, std::string_view id, float vol, float pitch, float pan) override
+	{
+		m_engine.updateKeyed(instanceKey(handle, id), vol, pitch, pan);
+	}
+	void stopSoundInstance(std::uint32_t handle, std::string_view id, float fadeOutSec) override
+	{
+		m_engine.stopKeyed(instanceKey(handle, id), fadeOutSec);
+	}
+	void setMusicVolume(float volume) override { m_engine.setMusicVolume(volume); }
 	void playMusicEx(std::string_view id, float vol, bool loop, float fadeIn) override
 	{
 		playByIdEx(id, vol, 1.0f, fadeIn, /*music=*/true, loop);
 	}
 	void stopMusicFade(float fadeOutSec) override { m_engine.stopMusicFade(fadeOutSec); }
 
-	// 毎フレームの定期掃除 (終了 SE voice 回収 + fade-out 完了 music の解放、#51)。
+	// 毎フレームの定期的な後処理 (終了した SE voice の回収 + fade-out が完了した music の解放、#51)。
 	void update() override { m_engine.update(); }
 
-	// 再生中 voice のメーターを miniaudio backend からそのまま中継 (mitiru_mixer 窓用)。
+	// 再生中の voice のメーターを miniaudio backend からそのまま渡す (mitiru_mixer 窓用)。
 	[[nodiscard]] std::vector<mitiru::audio::ChannelMeter> meterChannels() const override
 	{
 		std::vector<mitiru::audio::ChannelMeter> out = m_engine.meterChannels();
 		for (auto& m : out)
 		{
-			// backend は path しか知らない。game が渡した論理 id はここで足す (K1)。
+			// backend が把握しているのは path だけ。game が渡した論理 id はここで追加する (K1)。
 			if (std::strcmp(m.kind, "voice") == 0)
 			{
 				mitiru::audio::ChannelMeter::copyTo(m.id, sizeof(m.id), m_voiceId.c_str());
@@ -131,20 +155,21 @@ public:
 		return out;
 	}
 
-	// マスター再生クロック (秒) を miniaudio から中継。game が音声クロック基準で判定するため。
+	// マスター再生クロック (秒) を miniaudio からそのまま渡す。game が音声クロックを基準に判定するため。
 	[[nodiscard]] double masterTimeSec() const noexcept override { return m_engine.masterTimeSec(); }
 
-	// v19: 出力レイテンシ / BGM transport / サンプル精度予約を miniaudio backend へ中継。
+	// v19: 出力レイテンシ / BGM transport / サンプル精度予約を miniaudio backend へ渡す。
 	[[nodiscard]] double outputLatencySec() const noexcept override { return m_engine.outputLatencySec(); }
 	void pauseMusic() override { m_engine.pauseMusic(); }
 	void resumeMusic() override { m_engine.resumeMusic(); }
 	void seekMusic(double positionSec) override { m_engine.seekMusic(positionSec); }
+	void setMusicLowPass(float cutoffHz) override { m_engine.setMusicLowPass(cutoffHz); }
 	void playSoundScheduled(std::string_view id, double atSec, float vol, float pitch) override
 	{
 		playByIdEx(id, vol, pitch, 0.0f, /*music=*/false, false, atSec);
 	}
 
-	// K1: Voice (category=2) は BGM/SE と独立した 1 本のスロット。id を覚えておき、
+	// K1: Voice (category=2) は BGM/SE から独立した 1 本のスロット。id を記録し、
 	// meterChannels の "voice" 行に game が渡した名前を載せる (mixer 窓の voice 一覧)。
 	void playVoiceEx(std::string_view id, float vol, float pitch, float fadeIn) override
 	{
@@ -156,11 +181,11 @@ public:
 	void stopVoiceFade(float fadeOutSec) override { m_engine.stopVoice(fadeOutSec); }
 
 private:
-	/// 論理 id を再生に渡す実ファイルパスへ解決する。pack mount 時はパックから取り出した
+	/// 論理 id を、再生に渡す実ファイルパスへ解決する。pack mount 時はパックから取り出した
 	/// temp ファイル、dev (未 mount) 時は disk のファイル。見つからなければ空。
 	std::string resolvePlayPath(std::string_view id)
 	{
-		for (const char* ext : {".wav", ".ogg", ".mp3"})
+		for (const char* ext : {".wav", ".ogg", ".mp3", ".flac"})
 		{
 			const auto        p   = m_baseDir / (std::string(id) + ext);
 			const std::string key = p.generic_string();
@@ -177,6 +202,12 @@ private:
 		return {};
 	}
 
+	/// 番号付きは番号、番号のないループは id で取得する (同じ id のループは 1 本、番号付きは何本でも)。
+	static std::string instanceKey(std::uint32_t handle, std::string_view id)
+	{
+		return (handle != 0) ? "#" + std::to_string(handle) : "id:" + std::string(id);
+	}
+
 	void reportMissing(std::string_view id) const
 	{
 		std::fprintf(stderr, "[mitiru_host] sound id not found under %s: %.*s\n",
@@ -185,28 +216,22 @@ private:
 	}
 
 	void playByIdEx(std::string_view id, float volume, float pitch, float fadeIn,
-	                bool music, bool loop, double scheduleSec = 0.0)
+	                bool music, bool loop, double scheduleSec = 0.0, float pan = 0.0f)
 	{
 		const std::string playPath = resolvePlayPath(id);
 		if (playPath.empty()) { reportMissing(id); return; }
 
 		if (music) { m_engine.playMusicEx(playPath, volume, loop, fadeIn); }
-		else if (loop)
-		{
-			// 止めるときに id から実ファイルを引けるよう覚えておく。
-			m_loopPaths[std::string(id)] = playPath;
-			m_engine.playSoundLoop(playPath, volume, pitch, fadeIn);
-		}
 		else if (scheduleSec > 0.0)
 		{
-			// v19: サンプル精度予約 (リズムゲームの「次の拍で鳴らす」)。ducking は予約発火を
-			// 先取りできないので付けない (即時 SE 用)。
+			// v19: サンプル精度予約 (リズムゲームの「次の拍で鳴らす」)。ducking は予約による再生開始を
+			// 事前に把握できないため適用しない (即時 SE 用)。
 			m_engine.playSoundScheduled(playPath, scheduleSec, volume, pitch);
 		}
 		else
 		{
-			m_engine.playSoundEx(playPath, volume, pitch, fadeIn);
-			// #34 BGM ducking heuristic: 閾値超の大音量 SE で BGM を一瞬引っ込める。
+			m_engine.playSoundEx(playPath, volume, pitch, fadeIn, pan);
+			// #34 BGM ducking heuristic: 閾値を超える大音量の SE で BGM の音量を一時的に下げる。
 			if (volume >= kDuckSeThreshold)
 			{
 				m_engine.duckMusic(kDuckMul, kDuckSec);
@@ -214,15 +239,15 @@ private:
 		}
 	}
 
-	/// pack 中の音声 (key) を %TEMP% に一度だけ取り出し、その path を返す。
-	/// 配布物にバラ音声を置かないための経路。pack に無ければ空。
+	/// pack 内の音声 (key) を %TEMP% に一度だけ取り出し、その path を返す。
+	/// 配布物に個別の音声ファイルを置かないための経路。pack に無ければ空。
 	std::string materializeFromPack(const std::string& key, const char* ext)
 	{
 		if (auto it = m_audioTemp.find(key); it != m_audioTemp.end()) { return it->second; }
 		const auto bytes = mitiru::vfs::readGlobal(key);
 		if (!bytes) { return {}; }
-		// key + pack 実体 (size/mtime) の FNV-1a で temp 名を作る。同一 pack なら
-		// run 跨ぎで再利用、pack 差し替え時は名前が変わり旧バイト再生を根治する。
+		// key + pack の実体 (size/mtime) の FNV-1a で temp 名を作る。同一の pack なら
+		// run をまたいで再利用し、pack の差し替え時は名前を変えて古いバイト列が再生される問題を解消する。
 		std::uint64_t h = 14695981039346656037ULL;
 		for (unsigned char c : key) { h = (h ^ c) * 1099511628211ULL; }
 		const std::uint64_t stamp = packStamp();
@@ -250,9 +275,9 @@ private:
 		return s;
 	}
 
-	/// pack ファイル (MITIRU_PACK。host が env を統一する前の名残で MITIRU_ASSET_PACK も
-	/// 後方互換で見る) の size + mtime から作る指紋。temp 名に混ぜ、assets.mtpak 差し替え後に
-	/// 旧 temp を掴まないようにする。初回のみ stat。
+	/// pack ファイル (MITIRU_PACK。host が env を統一する前の名残として MITIRU_ASSET_PACK も
+	/// 後方互換のため確認する) の size + mtime から作る指紋。temp 名に含め、assets.mtpak の差し替え後に
+	/// 古い temp を参照しないようにする。stat は初回のみ。
 	std::uint64_t packStamp()
 	{
 		if (m_packStampInit) { return m_packStamp; }
@@ -275,13 +300,12 @@ private:
 		return m_packStamp;
 	}
 
-	// #34 ducking パラメータ。閾値以上の SE 音量で BGM を mul 倍にし、sec で復帰。
+	// #34 ducking パラメータ。閾値以上の SE 音量で BGM を mul 倍にし、sec で元に戻す。
 	static constexpr float kDuckSeThreshold = 0.7f;
 	static constexpr float kDuckMul         = 0.5f;
 	static constexpr float kDuckSec         = 0.4f;
 
 	std::filesystem::path                        m_baseDir;
-	std::unordered_map<std::string, std::string> m_loopPaths;  ///< ループ再生中の id → 実ファイル
 	std::string m_voiceId;  ///< 直近に鳴らした voice の論理 id (meterChannels 用、K1)
 	mitiru::audio::MiniaudioEngine               m_engine;
 	std::unordered_map<std::string, std::string> m_audioTemp;  ///< pack→temp 取り出しキャッシュ
@@ -295,7 +319,7 @@ namespace
 {
 
 /// プロセスの cwd を argv[0] のディレクトリに固定する。EngineConfig 内の相対パス
-/// (cefStartUrl 等) を、どのシェルから起動しても解決できるようにするため。
+/// (書体など) を、どのシェルから起動しても解決できるようにするため。
 void anchorCwdToExeDir(const char* argv0)
 {
 	if (argv0 == nullptr) { return; }
@@ -306,10 +330,10 @@ void anchorCwdToExeDir(const char* argv0)
 	std::filesystem::current_path(canon.parent_path(), ec);
 }
 
-/// exe と同じ場所の <exeStem>.mtargs があれば、その中身を argv[1..] 相当の
-/// token 列として読む (引数なし起動 = ダブルクリック / Steam 用)。空白区切りだが
-/// "..." で囲まれた部分は空白ごと 1 token になる (--title "My Game" 等)。
-/// 先頭 token は通常 game DLL の相対パス。`mitiru dist` が生成する。
+/// exe と同じ場所に <exeStem>.mtargs があれば、その内容を argv[1..] 相当の
+/// token 列として読む (引数なしでの起動 = ダブルクリック / Steam 用)。空白区切りだが、
+/// "..." で囲まれた部分は空白を含む 1 token になる (--title "My Game" など)。
+/// 先頭の token は通常 game DLL の相対パス。`mitiru dist` が生成する。
 std::vector<std::string> readSidecarArgs(const char* argv0)
 {
 	std::vector<std::string> tokens;
@@ -320,7 +344,7 @@ std::vector<std::string> readSidecarArgs(const char* argv0)
 	const auto side = exe.parent_path() / (exe.stem().string() + ".mtargs");
 	std::ifstream f(side);
 	if (!f) { return tokens; }
-	// 簡易 quote lexer (CRT の command line 解釈と揃える。backslash-escape は非対応)。
+	// 簡易 quote lexer (CRT の command line 解釈とそろえる。backslash-escape は非対応)。
 	std::string cur;
 	bool inQuote  = false;
 	bool sawToken = false;   // 空 quote ("") も 1 token として残す
@@ -341,8 +365,8 @@ std::vector<std::string> readSidecarArgs(const char* argv0)
 }
 
 #ifdef _WIN32
-/// AppUserModelID を設定する (--appid)。taskbar のグループ化/ピン留めが exe パス
-/// でなくこの id 単位になる。shell32 から動的に引き、無い環境では黙って継続。
+/// AppUserModelID を設定する (--appid)。taskbar のグループ化/ピン留めの単位が exe パス
+/// ではなく、この id になる。shell32 から動的に取得し、存在しない環境では何も知らせずに続行する。
 void applyAppUserModelId(const std::string& id)
 {
 	const int wideLen = MultiByteToWideChar(CP_UTF8, 0, id.c_str(), -1, nullptr, 0);
@@ -361,38 +385,26 @@ void applyAppUserModelId(const std::string& id)
 }
 #endif
 
-/// DLL パスから "file:///./<dll_dir>/assets/scene.html" を組み立てる。
-/// scene.html を DLL の隣に置いた game がそのまま動くようにするため。
-std::string defaultCefUrlFor(const std::filesystem::path& dllPath)
+/// DLL の隣にある assets/ui/main.rml (RmlUi の UI 文書) を返す。存在しないか、RmlUi なしのビルドなら空。
+std::string defaultUiDocumentFor(const std::filesystem::path& dllPath)
 {
+#if defined(MITIRU_HAS_RMLUI)
 	std::error_code ec;
-	const auto rel = std::filesystem::relative(dllPath.parent_path(),
-	                                            std::filesystem::current_path(), ec);
-	std::filesystem::path under = (ec || rel.empty()) ? dllPath.parent_path() : rel;
-	auto asset = under / "assets" / "scene.html";
-	// 不在は従来完全沈黙だった (HUD だけ出ない画面になり原因が追えない)。起動時に 1 行だけ知らせる。
-	if (!std::filesystem::exists(dllPath.parent_path() / "assets" / "scene.html", ec))
+	const auto doc = dllPath.parent_path() / "assets" / "ui" / "main.rml";
+	if (std::filesystem::exists(doc, ec))
 	{
-		std::fprintf(stderr,
-			"[mitiru_host] note: HUD 用の scene.html が見つかりません: %s\n"
-			"  (HUD 無しでゲーム本体は動きます。HTML/CSS の HUD を使う場合はこの場所に置いてください)\n",
-			(dllPath.parent_path() / "assets" / "scene.html").string().c_str());
-#if defined(_WIN32) && defined(MITIRU_HAS_CEF)
-		// 不在が確定しているので file:// を読みに行かない。native 描画だけの game
-		// (章 example 等) でエラーページが画面を覆うのは「必要なものしか画面に
-		// 出さない」に反するため、透明な空ページを開く。診断は上の stderr 1 行が担う。
-		return "data:text/html,%3Cbody%20style%3D%22margin:0;background:transparent%22%3E%3C/body%3E";
-#endif
+		const std::u8string u = std::filesystem::absolute(doc, ec).generic_u8string();
+		return std::string(u.begin(), u.end());   // RmlUiHost はパスを UTF-8 で受ける
 	}
-	std::string url = "file:///./";
-	url += asset.generic_string();
-	return url;
+#else
+	(void)dllPath;
+#endif
+	return {};
 }
 
 struct CliArgs
 {
 	std::filesystem::path dllPath;
-	std::string           cefUrlOverride;
 	std::string           title;               // --title <name>: window title (空=既定 DLL 名の stem)
 	std::string           iconPath;            // --icon <f.ico>: window icon (空=既定 icon)
 	std::string           appId;               // --appid <id>: AppUserModelID (taskbar 分離、空=設定しない)
@@ -419,7 +431,7 @@ struct CliArgs
 	std::string           parseError;         // 引数の形が壊れている時の説明 (空なら正常)
 	bool                  backendSet = false; // --backend が指定された (既定値と同じ値でも由来は cli)
 	bool                  speedSet   = false; // --speed が指定された
-	std::string           fontMode;            // --font none|latin|kana|japanese (空=既定=かな)
+	std::string           fontMode;            // --font none (8x8 ビットマップ)。それ以外の値は既定の書体
 	std::string           fontFace;            // --font-face normal|retro (空=normal=M+ Rounded)
 	bool                  loFi = false;        // --lofi: 低解像+量子化+Bayerディザ
 	int                   loFiW = 320, loFiH = 240; // --lofi-size WxH
@@ -429,9 +441,7 @@ struct CliArgs
 	bool                  loFiVi = false;      // --lofi-vi: 映像出力段の de-dither + divot
 	float                 loFiGamma = 1.0f;    // --lofi-gamma: 出力ガンマ (1 で素通し)
 	int                   httpPort = 0;        // --http-port <N>: EngineHttpServer を listen 開始
-	int                   cefDebugPort = 0;    // --cef-debug-port <N>: CEF remote debugging を開く (chrome-devtools / CDP で実機テスト)
 	bool                  console  = false;    // --console: HTTP + default browser で console.html 自動表示
-	bool                  noCef    = false;    // --no-cef: CEF を起動しない (完全ネイティブ描画の game 用、起動軽量化)
 	std::string           captureDir;          // --capture-dir <d>: 毎 N フレーム PNG を吐く先 (#43)
 	int                   captureEvery = 0;    // --capture-every <N>: N フレームごとに 1 枚 (0=off)
 	bool                  headless = false;    // --headless: ウィンドウ無しで走らせる (AI 自動回し)
@@ -449,6 +459,7 @@ struct CliArgs
 	int                   rewindFrames = 0;    // --rewind-frames <N>: 巻き戻せるフレーム数 (0=既定 300)
 	int                   rewindMb = -1;       // --rewind-mb <N>: 巻き戻しリングの予算 (MB、0=無制限=非圧縮)。
 	                                           // -1=未指定 (ゲームの MITIRU_REWIND_BUDGET 宣言 > 既定 512MB)
+	int                   rewindRawMb = -1;    // --rewind-raw-mb <N>: 生で持つ上限 (MB、0=予算まで生)。-1=既定 64MB
 	int                   recordStateEvery = 60; // --record-state-every <N>: --record で state blob を書く間隔 (0=毎フレーム)
 	bool                  fixedSize = false;   // --fixed-size: ユーザのウィンドウリサイズを禁止 (#44)
 	bool                  noPauseUnfocused = false; // --no-pause-unfocused: 非フォーカスでもフルレート継続 (vsync off)
@@ -463,10 +474,13 @@ struct CliArgs
 	std::string           pauseControl;        // --pause-control <f>: ファイルが "1" の間だけ pause (録画支援, フォーカス不要)
 	std::string           inputFreezeControl;  // --input-freeze-control <f>: "1" の間だけ入力を無効化 (プレイヤー静止・世界は進行, 録画支援)
 	bool                  noToolWindows = false; // --no-tool-windows: hud.open 等のツール窓 spawn を全無効 (録画/CI でメイン画面への割込防止)
+	bool                  noActivate = false;  // --no-activate: 窓を画面外・非アクティブで出す (--input-script 等でも自動で立つ)
+	bool                  unpaced = false;     // --unpaced: 台本実行の 60Hz ペーシングを外す (#72、素の到達フレームレート計測用)
+	int                   paceFps = 60;        // --pace-fps N: 台本実行のペーシング目標 (#72、リプレイの固定ステップと同じ 60 が既定)
 	bool                  jsonOutput = false;  // --json: --replay-test の verdict を stdout に 1 行 JSON でも出す (CLI 側の正規表現パースを置換)
 	bool                  bugRingSave = false; // --bug-ring-save: 起動直後に「昨日のバグ」リングを即保存 (P1、通常は F11 ホットキー)
 	std::string           packOverride;        // --pack <file.mtpak>: 自動探索 (assets.mtpak) より優先する明示パック (P12)
-	std::string           collisionPath;       // --collision <boxes.json>: 物理問い合わせ job (v37) が答える静的な箱の列
+	std::string           collisionPath;       // --collision <terrain.json>: 物理問い合わせ job (v37) が答える静的な地形 (箱・三角形メッシュ)
 	std::string           unknownOption;       // 未知の --option (非空 = 起動拒否。typo / 廃止 flag を黙殺しない)
 };
 
@@ -498,12 +512,8 @@ CliArgs parseArgs(int argc, char* argv[])
 		}
 		else if (a == "--config-origins")
 		{
-			// §3-3: 「この設定値はどこで決まったか」を表で出して即終了する診断フラグ。
+			// §3-3: 「この設定値はどこで決まったか」を表で出し、すぐに終了する診断フラグ。
 			out.configOrigins = true;
-		}
-		else if (a == "--url")
-		{
-			if (i + 1 < argc) { out.cefUrlOverride = argv[++i]; }
 		}
 		else if (a == "--title")
 		{
@@ -527,8 +537,8 @@ CliArgs parseArgs(int argc, char* argv[])
 		}
 		else if (a == "--replay")
 		{
-			// GUI 再生: --replay-test と同じ決定的再実行だが window あり・ツール窓も開ける・
-			// --expect 判定なし・EOF で自動終了せず最後のフレームで止まる (デモ撮影用)。
+			// GUI 再生: --replay-test と同じ決定的な再実行だが、window あり・ツール窓も開ける・
+			// --expect 判定なし・EOF で自動終了せず、最後のフレームで停止する (デモ撮影用)。
 			if (i + 1 < argc) { out.replayPath = argv[++i]; out.replayGui = true; }
 		}
 		else if (a == "--json")
@@ -568,23 +578,9 @@ CliArgs parseArgs(int argc, char* argv[])
 				catch (...) { out.httpPort = 0; }
 			}
 		}
-		else if (a == "--cef-debug-port")
-		{
-			if (i + 1 < argc)
-			{
-				try { out.cefDebugPort = std::stoi(argv[++i]); }
-				catch (...) { out.cefDebugPort = 0; }
-			}
-		}
 		else if (a == "--console")
 		{
 			out.console = true;
-		}
-		else if (a == "--no-cef")
-		{
-			// 完全ネイティブ描画の game (HTML UI を使わない) は CEF を起動しないことで
-			// Chromium コールドブートの起動スパイク + GPU/renderer サブプロセス常駐を避ける。
-			out.noCef = true;
 		}
 		else if (a == "--capture-dir")
 		{
@@ -607,9 +603,9 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.backendSet = true;
 			// --backend <auto|dx11|dx12>: --headless-3d の windowless 3D 経路 (G2、
-			// gfx::createWindowlessDevice3D) が Dx11 固定になっていたのを、明示指定できるように
-			// する。Vulkan/OpenGL/WebGL/WebGPU は windowless 3D 未対応 (GfxFactory.hpp 参照) の
-			// ため受け付けない (綴り違い・未対応名は auto のまま、その旨を stderr に出す)。
+			// gfx::createWindowlessDevice3D) が Dx11 固定だったため、明示的に指定できるように
+			// する。Vulkan/OpenGL/WebGL/WebGPU は windowless 3D に対応していない (GfxFactory.hpp 参照)
+			// ため受け付けない (綴り違い・未対応の名前では auto のままとし、その旨を stderr に出す)。
 			if (i + 1 < argc)
 			{
 				const std::string name{argv[++i]};
@@ -656,11 +652,15 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			if (i + 1 < argc) { try { out.rewindMb = std::stoi(argv[++i]); } catch (...) {} }
 		}
+		else if (a == "--rewind-raw-mb")
+		{
+			if (i + 1 < argc) { try { out.rewindRawMb = std::stoi(argv[++i]); } catch (...) {} }
+		}
 		else if (a == "--oracle-determinism")
 		{
 			// --oracle-determinism [everyFrames]: P14 の決定論オラクル (resim ring + memcmp) を
-			// opt-in する。N 省略時は EngineConfig::oracleDeterminismEveryFrames=0 のまま
-			// (engine 側が既定 120 フレーム間隔を使う)。
+			// opt-in する。N の省略時は EngineConfig::oracleDeterminismEveryFrames=0 のまま
+			// (engine 側が既定の 120 フレーム間隔を使う)。
 			out.oracleDeterminism = true;
 			if (i + 1 < argc && argv[i + 1][0] != '-')
 			{
@@ -680,8 +680,8 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--synctest")
 		{
 			// GGPO SyncTest 相当 (Developer Guide の ggpo_start_synctest)。既存の決定論オラクル
-			// (resim ring + memcmp) を K=1 (毎フレーム) で回すだけなので oracle-determinism の
-			// 薄い別名として実装する。K 省略時は 1。
+			// (resim ring + memcmp) を K=1 (毎フレーム) で実行するだけなので、oracle-determinism の
+			// 単純な別名として実装する。K の省略時は 1。
 			out.synctest = true;
 			if (i + 1 < argc && argv[i + 1][0] != '-')
 			{
@@ -725,6 +725,19 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.noToolWindows = true;
 		}
+		else if (a == "--no-activate")
+		{
+			out.noActivate = true;
+		}
+		else if (a == "--unpaced")
+		{
+			out.unpaced = true;
+		}
+		else if (a == "--pace-fps")
+		{
+			if (i + 1 < argc) { out.paceFps = std::atoi(argv[++i]); }
+			if (out.paceFps <= 0) { out.parseError = "--pace-fps は 1 以上 (外すなら --unpaced)"; }
+		}
 		else if (a == "--bug-ring-save")
 		{
 			out.bugRingSave = true;
@@ -736,17 +749,17 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--collision")
 		{
 			if (i + 1 < argc) { out.collisionPath = argv[++i]; }
-			else { out.parseError = "--collision には <boxes.json> が必要です"; }
+			else { out.parseError = "--collision には <terrain.json> が必要です"; }
 		}
 		else if (a == "--replay-gate-dir")
 		{
-			// ADR 0035 O5: POST /api/ai/commit 直後に回す決定論ゲートの録画置き場
+			// ADR 0035 O5: POST /api/ai/commit の直後に実行する決定論ゲートの録画の保存場所
 			// (既定 tests/replay_golden、Engine_Http.hpp::runReplayGate の env 名と一致)。
 			if (i + 1 < argc) { out.replayGateDir = argv[++i]; }
 		}
 		else if (a == "--window-pos")
 		{
-			// --window-pos X Y: 窓を最初からこの座標に出す (負の X = 仮想ディスプレイ等)
+			// --window-pos X Y: 窓を最初からこの座標に表示する (負の X = 仮想ディスプレイなど)
 			if (i + 2 < argc)
 			{
 				try { out.winPosX = std::stoi(argv[i + 1]); out.winPosY = std::stoi(argv[i + 2]); i += 2; }
@@ -755,7 +768,7 @@ CliArgs parseArgs(int argc, char* argv[])
 		}
 		else if (a == "--tool-window-pos")
 		{
-			// --tool-window-pos X Y: spawn する tool 窓 (CEF) もこの座標に出す (録画で実画面に出さない)
+			// --tool-window-pos X Y: spawn するツール窓もこの座標に出す (録画で実画面に出さない)
 			if (i + 2 < argc)
 			{
 				try { out.toolWinX = std::stoi(argv[i + 1]); out.toolWinY = std::stoi(argv[i + 2]); i += 2; }
@@ -765,14 +778,14 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--inspect")
 		{
 			// --inspect [inspector|input|rewind] (省略時 inspector)。
-			// host を書く人が「この窓を使う」と決めた物だけ開く。
+			// host を書く人が「この窓を使う」と決めたものだけを開く。
 			mitiru::Tool t = mitiru::Tool::Inspector;
 			std::string extraArgs;
 			if (i + 1 < argc && argv[i + 1][0] != '-')
 			{
 				const std::string full{argv[++i]};
 				// "scene?tab=memory" の ? 以降はページへのクエリ。名前解決には使わず、
-				// mitiru_tool_cef へ --page ごと渡して URL に付けさせる (mitiru run --learn)。
+				// mitiru_tool へ --page ごと渡し、ページが読む (mitiru run --learn)。
 				const std::string name = full.substr(0, full.find('?'));
 				if (name.size() < full.size()) { extraArgs = "--page " + full; }
 				if      (name == "input")      { t = mitiru::Tool::InputMonitor; }
@@ -785,8 +798,8 @@ CliArgs parseArgs(int argc, char* argv[])
 				else if (name == "frame_view") { t = mitiru::Tool::FrameView; }
 				else if (name != "inspector")
 				{
-					// 綴り違いを黙って既定へ落とすと、頼んだ窓と別の窓が開いたまま
-					// 気づけない。開くものは変えずに、その旨だけ伝える
+					// 綴り違いを何も知らせずに既定値として扱うと、要求した窓とは別の窓が開いたまま
+					// 気づけない。開くものは変えず、その旨だけを伝える
 					std::fprintf(stderr,
 					             "[mitiru_host] --inspect %s は不明な名前です。"
 					             "inspector を開きます (input|rewind|scene|perf|mixer|scene_view|why_view|frame_view)\n",
@@ -798,7 +811,7 @@ CliArgs parseArgs(int argc, char* argv[])
 		}
 		else if (a == "--size")
 		{
-			// 形式: WxH 例 "800x500"。両方とも正の整数であること。
+			// 形式: WxH、例 "800x500"。両方とも正の整数であること。
 			if (i + 1 < argc)
 			{
 				std::string s{argv[++i]};
@@ -853,7 +866,7 @@ CliArgs parseArgs(int argc, char* argv[])
 		}
 		else if (a == "--lofi-bits")
 		{
-			// 形式: R,G,B 例 "5,6,5"(RGB565) / "3,3,2"(256色相当)
+			// 形式: R,G,B、例 "5,6,5"(RGB565) / "3,3,2"(256 色相当)
 			if (i + 1 < argc)
 			{
 				std::string s{argv[++i]};
@@ -874,17 +887,16 @@ CliArgs parseArgs(int argc, char* argv[])
 		}
 		else if (a.rfind("--", 0) == 0)
 		{
-			// 未知の --option は positional に流さず拒否する (typo / 廃止 flag の黙殺防止)。
+			// 未知の --option は positional として扱わず拒否する (typo / 廃止された flag を何も知らせずに無視することを防ぐ)。
 			if (out.unknownOption.empty()) { out.unknownOption = std::string(a); }
 		}
 		else if (out.dllPath.empty())
 		{
 			out.dllPath = a;
 		}
-		// DLL の後ろの位置引数 = 旧式 URL スロット。
-		else if (out.cefUrlOverride.empty())
+		else if (out.parseError.empty())
 		{
-			out.cefUrlOverride = a;
+			out.parseError = "DLL の後ろの位置引数は受け付けない: " + std::string(a);
 		}
 	}
 
@@ -897,14 +909,14 @@ CliArgs parseArgs(int argc, char* argv[])
 	return out;
 }
 
-/// 既定の --help (E8: 55 行は多すぎるので日常使う一部だけに絞る。全量は --help-all)。
+/// 既定の --help (E8: 55 行は多すぎるため、日常的に使う一部だけに絞る。全量は --help-all)。
 void printUsageShort()
 {
 	std::fprintf(stderr,
 		"usage: mitiru_host <game.dll> [options]\n"
 		"\n"
 		"common options:\n"
-		"  --watch          poll DLL file mtime, hot-reload on change\n"
+		"  --watch          hot-reload the DLL when it is rebuilt\n"
 		"  --size WxH       override window size (e.g. --size 800x500)\n"
 		"  --headless       ウィンドウ無しで走らせる (AI 自動プレイ/CI)\n"
 		"  --record F       毎フレームの入力と state を .mtrr F に記録する\n"
@@ -927,7 +939,7 @@ void printUsage(bool full)
 		"usage: mitiru_host <game.dll> [options]\n"
 		"\n"
 		"options:\n"
-		"  --watch          poll DLL file mtime, hot-reload on change\n"
+		"  --watch          hot-reload the DLL when it is rebuilt\n"
 		"  --watch-assets D 配下の .json/.baked が変わったら game に asset.reloaded {path,hash} を届ける (録画に乗る)\n"
 		"  --title <name>   window title (既定 = DLL ファイル名の stem。配布時は mitiru dist が project 名を書く)\n"
 		"  --icon <f.ico>   window icon を .ico ファイルで差し替え (Windows)\n"
@@ -937,19 +949,14 @@ void printUsage(bool full)
 		"  --no-vsync       present の vsync 待ちを切る (フレームコストの素を計測する用)\n"
 		"  --perf           実フレーム時間の統計 (avg/p50/p95/max) を 600 フレームごとに表示\n"
 		"                   GPU 実機の描画コスト計測は windowed + --perf --no-vsync で\n"
-		"  --url <url>      override CEF start URL\n"
-		"  --font <mode>    none|latin|kana|japanese — native draw 用フォント (既定 kana)\n"
+		"  --font <mode>    none = 8x8 ビットマップで描く (既定は同梱の書体。latin/kana/japanese も既定と同じ)\n"
 		"  --font-face <f>  normal|retro — 普通(M+ Rounded) / レトロ(PixelMplus) (既定 normal)\n"
-		"                   (既定 none = フォント skip・起動高速。日本語 native text を\n"
-		"                    出すなら japanese)\n"
 		"  --lofi           低解像描画+パレット量子化+Bayerディザ (DX12, DirectX5期の質感)\n"
 		"  --lofi-size WxH  内部解像度 (既定 320x240)\n"
 		"  --lofi-bits R,G,B  量子化ビット数 (既定 5,6,5=RGB565 / 3,3,2=256色相当)\n"
 		"  --lofi-dither S  ディザ強度 (既定 1.0, 0=ディザ無し)\n"
 		"  --http-port N    HTTP API を 127.0.0.1:N で開始 (実行中のゲームを外部から操作/観測)\n"
-		"  --cef-debug-port N  CEF remote debugging を 127.0.0.1:N で開く (chrome-devtools / CDP 実機テスト)\n"
 		"  --console        HTTP 起動 + 既定ブラウザで control panel を自動表示 (port 既定 8090)\n"
-		"  --no-cef         CEF を起動しない (完全ネイティブ描画の game 用・起動軽量化)\n"
 		"  --capture-dir D  毎 N フレームのフレームを PNG 連番で D に吐く (自動の見た目検証用)\n"
 		"  --capture-every N  上記の間隔 (フレーム数。--capture-dir 指定時の既定 30)\n"
 		"  --headless       ウィンドウ無しで走らせる (AI 自動プレイの裏回し)\n"
@@ -971,7 +978,9 @@ void printUsage(bool full)
 		"  --rewind-mb N    巻き戻しリングのメモリ予算 (MB、既定 512。ゲームが\n"
 		"                   MITIRU_REWIND_BUDGET を宣言していれば未指定時はそちらが優先。\n"
 		"                   0=無制限=非圧縮)。\n"
-		"                   予算内に収まらない古いフレームは XOR+RLE デルタ圧縮で切り詰める\n"
+		"                   予算に収まらない古いフレームから捨てる\n"
+		"  --rewind-raw-mb N  巻き戻しリングを生で持つ上限 (MB、既定 64)。超えると差分で\n"
+		"                   圧縮する (0=予算まで生)。半分も縮まない状態は自動で生に戻す\n"
 		"  --oracle-determinism [N]  決定論オラクル (N1e) を opt-in。K フレーム前から\n"
 		"                   resim ring で再シミュレーションし、現在の GameMemory と memcmp する\n"
 		"                   (N=実行間隔フレーム数、省略時 既定 120)。既定 OFF (GameMemory サイズに\n"
@@ -981,6 +990,8 @@ void printUsage(bool full)
 		"                   --replay と併用すれば ghost vs live の同時再生になる。\n"
 		"                   F の入力が尽きたら最後のフレームで静止する\n"
 		"  --input-script F 入力スクリプト F を in-process 注入 (OS 入力を経由せず他アプリに漏れない)\n"
+		"                   行の形式: <frame> <KEY> <down|up> / <frame> move <dx> <dy> [frames] /\n"
+		"                   <frame> pos <x> <y> [frames] (カーソルの絶対座標。frames で直線移動)\n"
 		"                   形式: 1 行 '<frame> <down|up> <KEY>' (# でコメント)。KEY=Left/Right/Up/Down/\n"
 		"                   Space/Enter/Escape/英数字1字/MouseL/MouseR/MouseM/生 VK 整数。\n"
 		"                   '<frame> move <dx> <dy> [frames]' でマウス delta (FPS 視線) も注入できる。\n"
@@ -994,10 +1005,18 @@ void printUsage(bool full)
 		"                   録画で「編集中は静止、ビルド後に再開」を作るのに使う\n"
 		"  --input-freeze-control F  ファイル F が \"1\" の間だけ入力を無効化 (--input-script と併用)。\n"
 		"                   プレイヤーは静止するが engine は進む (星などは動く)。録画支援\n"
-		"  --no-tool-windows  hud.open 等のツール窓 (CEF) spawn を全無効。録画/CI で\n"
+		"  --no-tool-windows  hud.open 等のツール窓の spawn を全無効。録画/CI で\n"
 		"                   望まない窓がメイン画面に出るのを防ぐ\n"
 		"  --window-pos X Y ゲーム窓を最初からこの座標に出す (実画面に一瞬も出さない)。\n"
 		"                   負の X = 仮想ディスプレイ等。録画支援\n"
+		"  --no-activate    窓を画面外・非アクティブで出し、フォーカスを一度も奪わない。\n"
+		"                   --input-script / --capture-dir / --headless-3d のいずれかが\n"
+		"                   指定されていれば自動で立つ (spawn するツール窓にも継承する)\n"
+		"  --unpaced        上記の台本実行で自動的に入る 60Hz ペーシングを外す。\n"
+		"                   素の到達フレームレートを測る時だけ使う (GPU を占有する)\n"
+		"  --pace-fps N     ペーシングの目標 (既定 60 = リプレイの固定ステップ)。\n"
+		"                   1 フレームが 1/N 秒より重い台本では、裏で動画を見ている人に\n"
+		"                   GPU を返すために N を下げる\n"
 		"  --replay F       .mtrr F を window ありで GUI 再生 (--inspect と併用可)。\n"
 		"                   --replay-test と違い verdict 判定はせず、EOF で自動終了せず\n"
 		"                   最後のフレームで止まる (デモ撮影・目視確認用)\n"
@@ -1011,7 +1030,8 @@ void printUsage(bool full)
 		"  --bug-ring-save  起動直後に「昨日のバグ」リング (P1) を即 .mtrr 保存。\n"
 		"                   通常は実行中に F11 で保存する (このフラグは自動化/CI 用)\n"
 		"  --pack F         資産パック F (.mtpak) を自動探索より優先してマウントする (P12)\n"
-		"  --collision F    物理問い合わせ job (hud.raycast 等) が答える静的な箱の JSON [{min,max,layer}] (v37)\n"
+		"  --collision F    物理問い合わせ job (hud.raycast 等) が答える静的な地形の JSON (v37)\n"
+		"                   [{min,max,layer}] の箱か {vertices,indices,layer} の三角形メッシュの列\n"
 		"  --replay-gate-dir D  分岐エディタ「残す」直後に回す決定論ゲートの .mtrr 置き場\n"
 		"                   (既定 tests/replay_golden。ADR 0035 O5)\n"
 		"  --expect F       --replay-test 併用: 最終 view.* state を F (JSON) と diff し、\n"
@@ -1038,13 +1058,17 @@ void printUsage(bool full)
 		"\n"
 		"environment:\n"
 		"  MITIRU_WATCH=1   same as --watch\n"
+		"  MITIRU_CRASH_DIR=D  game が落ちた時の報告 (.txt) と minidump (.dmp) の置き場\n"
+		"                   (既定 %%LOCALAPPDATA%%\\MitiruEngine\\crashes。docs/CRASH_REPORTS.md)\n"
+		"\n"
+		"exit code: 0=正常 1/2=引数・ファイル不備 3=DLL を読めない 4/5=GPU を失った 6=game が落ちて止まった\n"
 		"\n"
 		"The host loads the game DLL via Engine::loadModule and drives the\n"
 		"main loop. The DLL must export mitiru_module_load (see\n"
 		"docs/adr/0005-host-game-c-abi-signal-flow.md).\n");
 }
 
-/// @brief §3-3: 「この設定値はどこで決まったか」を追跡する 1 行。`EngineConfig` は触らず
+/// @brief §3-3: 「この設定値はどこで決まったか」を追跡する 1 行。`EngineConfig` は変更せず
 /// (ABI/決定論の都合で Config.hpp は変更禁止)、host の引数解析側だけで由来を記録する。
 struct ConfigOriginRow
 {
@@ -1053,7 +1077,7 @@ struct ConfigOriginRow
 	const char* origin;  ///< "default" / "cli(--xxx)" / "env(XXX)" のいずれか
 };
 
-/// @brief `--backend` の enum を人間可読な名前へ戻す (UE の CVar 一覧のような表示のため)。
+/// @brief `--backend` の enum を人が読める名前へ戻す (UE の CVar 一覧のように表示するため)。
 inline const char* backendDisplayName(mitiru::gfx::Backend b) noexcept
 {
 	switch (b)
@@ -1065,9 +1089,9 @@ inline const char* backendDisplayName(mitiru::gfx::Backend b) noexcept
 	}
 }
 
-/// @brief `cfg`/`args` から代表的な設定値の「値と由来」を集めて表で stdout へ出す。
-/// UE の CVar 優先順位 (console > commandline > ini > constructor) と同じ発想を、
-/// Mitiru では「録画に乗らない state を増やさない」方針のもとで host 起動時設定だけに絞って示す。
+/// @brief `cfg`/`args` から代表的な設定値の「値と由来」を集め、表として stdout へ出す。
+/// UE の CVar 優先順位 (console > commandline > ini > constructor) と同じ考え方を、
+/// Mitiru では「録画に含まれない state を増やさない」方針のもと、host の起動時設定だけに絞って示す。
 void printConfigOrigins(const CliArgs& args, const mitiru::EngineConfig& cfg,
 	const std::string& resolvedPackPath, bool aiOptIn)
 {
@@ -1084,7 +1108,7 @@ void printConfigOrigins(const CliArgs& args, const mitiru::EngineConfig& cfg,
 		args.httpPort > 0 ? "cli(--http-port)"
 			: (args.console ? "cli(--console)"
 			: (aiOptIn ? "env(MITIRU_AI/MITIRU_AI_PORT)" : "default(off)")) });
-	// host が pack を見つけられなかった時は Engine 側が MITIRU_PACK 環境変数を読む (Engine_Module_Loader)。
+	// host が pack を見つけられなかった場合は、Engine 側が MITIRU_PACK 環境変数を読む (Engine_Module_Loader)。
 	const char* packEnv = std::getenv("MITIRU_PACK");
 	const bool packFromEnv = resolvedPackPath.empty() && packEnv != nullptr && packEnv[0] != '\0';
 	rows.push_back({ "packPath",
@@ -1108,7 +1132,7 @@ void printConfigOrigins(const CliArgs& args, const mitiru::EngineConfig& cfg,
 }
 
 #ifdef _WIN32
-/// RGBA8 トップダウン pixel buffer を Windows clipboard に CF_DIB として置く。
+/// RGBA8 のトップダウン pixel buffer を Windows clipboard に CF_DIB として格納する。
 inline bool copyRgbaToClipboard(const std::uint8_t* rgba, int w, int h)
 {
 	if (!rgba || w <= 0 || h <= 0) { return false; }
@@ -1154,8 +1178,8 @@ inline bool copyRgbaToClipboard(const std::uint8_t* rgba, int w, int h)
 #endif
 
 #ifdef _WIN32
-/// 1 VK あたり、down 状態を保持して立ち下がり検出を返す。GetAsyncKeyState を毎フレーム
-/// 1 回叩く前提。
+/// 1 VK ごとに down 状態を保持し、押された瞬間を検出して返す。GetAsyncKeyState を毎フレーム
+/// 1 回呼ぶ前提。
 inline bool justPressed(int vk)
 {
 	static bool wasDown[256] = {};
@@ -1166,7 +1190,7 @@ inline bool justPressed(int vk)
 	return jp;
 }
 
-/// F12 で window バックバッファを PNG 保存 + clipboard コピー。
+/// F12 で window のバックバッファを PNG に保存 + clipboard にコピー。
 inline void doScreenshot(mitiru::Engine& engine)
 {
 	const int w = engine.captureWidth();
@@ -1199,13 +1223,13 @@ inline void doScreenshot(mitiru::Engine& engine)
 }
 #endif
 
-/// onFrameStart から毎フレーム呼ぶ host hotkey 処理。Windows のみ。
+/// onFrameStart から毎フレーム呼ぶ host の hotkey 処理。Windows のみ。
 inline void pollHostHotkeys(mitiru::Engine& engine)
 {
 #ifdef _WIN32
-	// host hotkey は GetAsyncKeyState (グローバル) で読むため、自プロセスのウィンドウが
-	// 前面の時だけ処理する。さもないと別アプリで作業中の F7-F12 を奪ってしまう
-	// (ゲーム入力自体は WM_KEYDOWN でフォーカス限定済みだが、ここだけグローバルだった)。
+	// host の hotkey は GetAsyncKeyState (グローバル) で読むため、自プロセスのウィンドウが
+	// 前面にあるときだけ処理する。そうしないと、別アプリでの作業中に F7-F12 を処理してしまう
+	// (ゲーム入力自体は WM_KEYDOWN によりフォーカス中に限定されているが、ここだけグローバルだった)。
 	HWND fg = GetForegroundWindow();
 	DWORD fgPid = 0;
 	GetWindowThreadProcessId(fg, &fgPid);
@@ -1233,7 +1257,7 @@ inline void pollHostHotkeys(mitiru::Engine& engine)
 	}
 	if (justPressed(VK_F9))
 	{
-		// 1x → 0.5x → 0.25x → 2x → 4x → 1x で巡回
+		// 1x → 0.5x → 0.25x → 2x → 4x → 1x の順で切り替える
 		static constexpr float kScales[] = { 1.0f, 0.5f, 0.25f, 2.0f, 4.0f };
 		static constexpr int N = static_cast<int>(sizeof(kScales) / sizeof(kScales[0]));
 		static int idx = 0;
@@ -1248,7 +1272,7 @@ inline void pollHostHotkeys(mitiru::Engine& engine)
 	}
 	if (justPressed(VK_F11))
 	{
-		// P1: 「昨日のバグ」リングを今すぐ保存。Engine 側がワンショットで消費する。
+		// P1: 「昨日のバグ」リングを今すぐ保存する。Engine 側がワンショットで消費する。
 		engine.mutableConfig().bugRingSaveRequested = true;
 		std::fprintf(stderr, "[mitiru_host] bug ring save requested\n");
 	}
@@ -1257,59 +1281,18 @@ inline void pollHostHotkeys(mitiru::Engine& engine)
 #endif
 }
 
-/// ファイル監視状態。onFrameStart クロージャにキャプチャされる。
-struct WatcherState
+/// --watch-assets: 変更されたファイルごとに asset.reloaded を追加する。
+inline void notifyAssetsReloaded(mitiru::asset::FileWatcher& watcher, const std::filesystem::path& dir,
+                                 mitiru::Engine& engine)
 {
-	std::filesystem::path           dllPath;
-	std::filesystem::file_time_type lastMtime{};
-	int                             pollTick   = 0;
-	int                             pollEvery  = 15;       // frame 数; 60fps で約 250ms
-	bool                            initialized = false;
-};
-
-/// --watch-assets の監視状態。onFrameStart から 15 フレームごとに mtime を見る (DLL の WatcherState と同じ間隔)。
-struct AssetWatchState
-{
-	std::filesystem::path dir;
-	std::unordered_map<std::string, std::filesystem::file_time_type> mtimes;
-	int  pollTick = 0;
-	bool initialized = false;
-	static bool watched(const std::filesystem::path& p) noexcept
+	for (const auto& changed : watcher.poll())
 	{
-		const auto ext = p.extension().string();
-		return ext == ".json" || ext == ".baked";
-	}
-};
-
-/// 変わったファイルごとに asset.reloaded を積む。初回は台帳を作るだけで通知しない。
-inline void pollAssetWatch(AssetWatchState& st, mitiru::Engine& engine)
-{
-	if (st.dir.empty()) { return; }
-	if (++st.pollTick < 15) { return; }
-	st.pollTick = 0;
-	std::error_code ec;
-	for (const auto& entry : std::filesystem::recursive_directory_iterator(st.dir, ec))
-	{
-		if (ec) { break; }
-		if (!entry.is_regular_file(ec) || !AssetWatchState::watched(entry.path())) { continue; }
-		const auto mtime = entry.last_write_time(ec);
-		if (ec) { continue; }
-		const std::string key = entry.path().generic_string();
-		auto it = st.mtimes.find(key);
-		if (it == st.mtimes.end())
-		{
-			st.mtimes.emplace(key, mtime);
-			if (!st.initialized) { continue; }  // 初回は台帳を作るだけ。以後に増えたファイルは通知する
-		}
-		else
-		{
-			if (it->second == mtime) { continue; }
-			it->second = mtime;
-		}
-		const std::string rel = std::filesystem::relative(entry.path(), st.dir, ec).generic_string();
+		std::error_code ec;
+		const std::string key = changed.generic_string();
+		const std::string rel = std::filesystem::relative(changed, dir, ec).generic_string();
 		const std::string payload = nlohmann::json{
 			{"path", ec ? key : rel},
-			{"hash", mitiru::module::spawnSourceFileHash(entry.path().filename().string())}}.dump();
+			{"hash", mitiru::module::spawnSourceFileHash(changed.filename().string())}}.dump();
 		if (!engine.pushModuleActionEvent("asset.reloaded", payload))
 		{
 			std::fprintf(stderr, "[mitiru_host] asset.reloaded を積めなかった: %s\n", key.c_str());
@@ -1319,12 +1302,62 @@ inline void pollAssetWatch(AssetWatchState& st, mitiru::Engine& engine)
 			std::fprintf(stderr, "[mitiru_host] asset.reloaded -> %s\n", key.c_str());
 		}
 	}
-	st.initialized = true;
+}
+
+/// --watch: DLL が書き換えられたら、GameMemory を保持したまま差し替える (L3 ホットリロード)。
+/// リンカがまだ使用中で拒否された (busy) 版は、FileWatcher が再度は通知しないため、次のフレームで再試行する。
+struct DllReloadState
+{
+	std::filesystem::path busyRetry;   ///< 空 = 試し直す版なし
+};
+
+inline void reloadDll(const std::filesystem::path& dll, mitiru::Engine& engine, DllReloadState& st)
+{
+	if (engine.reloadModule(dll))
+	{
+		std::fprintf(stderr, "[mitiru_host] reload OK\n");
+		st.busyRetry.clear();
+		return;
+	}
+	if (engine.moduleLoadBusy())
+	{
+		if (st.busyRetry.empty())
+		{
+			std::fprintf(stderr, "[mitiru_host] DLL はまだ書き込み中 — 次のフレームで読み直します\n");
+		}
+		st.busyRetry = dll;
+		return;
+	}
+	st.busyRetry.clear();
+	std::fprintf(stderr,
+		"[mitiru_host] reload FAILED — 旧コードのまま継続します (状態は保持)。\n");
+	const std::string why = engine.moduleLoadError();
+	if (!why.empty())
+	{
+		std::fprintf(stderr, "  理由: %s\n", why.c_str());
+	}
+	std::fprintf(stderr,
+		"  ビルドエラー等を修正して保存すれば自動で再試行します。\n");
+}
+
+inline void reloadChangedDll(mitiru::asset::FileWatcher& watcher, mitiru::Engine& engine, DllReloadState& st)
+{
+	bool changed = false;
+	for (const auto& dll : watcher.poll())
+	{
+		std::fprintf(stderr, "[mitiru_host] DLL changed — reloading\n");
+		reloadDll(dll, engine, st);
+		changed = true;
+	}
+	if (!changed && !st.busyRetry.empty())
+	{
+		reloadDll(st.busyRetry, engine, st);
+	}
 }
 
 /// 巻き戻し scrub の適用を Engine::IFrameListener 経由に移した実装 (1-6)。
 /// 別窓 (inspector) が書く scrub command を毎フレーム読み、engine の scrub-hold へ適用する。
-/// main.cpp の onFrameStart から scrub 専用ロジックを追い出し、登録だけにするのが目的。
+/// main.cpp の onFrameStart から scrub 専用ロジックを移し、登録だけにするのが目的。
 struct ScrubApplyListener final : mitiru::IFrameListener
 {
 	mitiru::observe::ScrubControlReader reader;  // 自プロセス pid 宛 (inspector が host pid に書く)
@@ -1346,7 +1379,7 @@ struct ScrubApplyListener final : mitiru::IFrameListener
 // OS 入力 (SendInput) を経由せず InputSnapshot を直接書き換えるので、他アプリにキーが
 // 漏れない・headless でも効く・決定的。実キーボードはスクリプト実行中は無視される。
 
-/// KEY 名 → 仮想キーコード。1字英数字は ASCII 大文字 / 数字、名前は主要キー、生 VK 整数も可。
+/// KEY 名 → 仮想キーコード。1 字の英数字は ASCII 大文字 / 数字、名前は主要キー、生の VK 整数も可。
 inline int keyNameToVk(const std::string& s)
 {
 	if (s.empty()) { return -1; }
@@ -1402,7 +1435,7 @@ inline std::string vkToName(int vk)
 	return std::to_string(vk);  // 名前の無いキーは生 VK 整数
 }
 
-/// PlayerError → 表示名 (--replay-test の FAIL 理由表示用)。
+/// PlayerError → 表示名 (--replay-test の FAIL 理由の表示用)。
 inline const char* playerErrorName(mitiru::replay::PlayerError e)
 {
 	using PE = mitiru::replay::PlayerError;
@@ -1420,7 +1453,7 @@ inline const char* playerErrorName(mitiru::replay::PlayerError e)
 	return "unknown";
 }
 
-/// gfx::Backend → --record の envTag に載せる短い識別子。
+/// gfx::Backend → --record の envTag に含める短い識別子。
 inline const char* gfxBackendTag(mitiru::gfx::Backend b)
 {
 	using B = mitiru::gfx::Backend;
@@ -1438,11 +1471,11 @@ inline const char* gfxBackendTag(mitiru::gfx::Backend b)
 	return "unknown";
 }
 
-/// --record の envTag を組み立てる ("backend|arch|tracy有無")。GPU adapter 名は IDevice から
-/// 取り出す経路が無く、追加するには全 backend への interface 変更が要るため見送り、
-/// 確実に取れる backend 種別と CPU arch だけを載せる。
-/// 7-1: Tracy 計装ビルドかどうかも入れる。この録画を後から Tracy キャプチャと突き合わせる
-/// (`docs/PROFILING_GUIDE.md`) とき、そもそも計装済みビルドで録ったかを envTag だけで判別できる。
+/// --record の envTag を組み立てる ("backend|arch|tracy 有無")。GPU adapter 名は IDevice から
+/// 取得する経路がなく、追加するにはすべての backend の interface を変更する必要があるため見送り、
+/// 確実に取得できる backend の種別と CPU arch だけを含める。
+/// 7-1: Tracy 計装ビルドかどうかも含める。この録画を後から Tracy キャプチャと照合する
+/// (`docs/PROFILING_GUIDE.md`) とき、計装済みビルドで録画したかを envTag だけで判別できる。
 inline std::string buildRecordEnvTag(mitiru::gfx::Backend backend)
 {
 	std::string tag = std::string(gfxBackendTag(backend)) + "|x64";
@@ -1452,30 +1485,36 @@ inline std::string buildRecordEnvTag(mitiru::gfx::Backend backend)
 
 struct InputScriptEvent
 {
-	enum Kind { Key, MouseBtn, MouseMove };
+	enum Kind { Key, MouseBtn, MouseMove, MousePos, Wheel, Ime };
 	int  frame;
 	Kind kind;
-	int  a;      // Key: vk / MouseBtn: 0=L 1=R 2=M / MouseMove: dx
-	int  b;      // Key・MouseBtn: down=1 up=0 / MouseMove: dy
+	int  a;      // Key: vk / MouseBtn: 0=L 1=R 2=M 3=X1 4=X2 / MouseMove: dx / MousePos: x / Wheel: 縦ノッチ / Ime: キャレット (byte)
+	int  b;      // Key・MouseBtn: down=1 up=0 / MouseMove: dy / MousePos: y / Wheel: 横ノッチ
+	std::string text{};  // Ime: 変換中の文字列 (UTF-8、空 = 変換していない)
 };
 
-/// スクリプトを毎フレーム適用し InputSnapshot のキー・マウスを上書きするプレイヤ。
-/// 実キーボード・実マウスは無視される (注入のみ有効 = 決定的)。
+/// スクリプトを毎フレーム適用し、InputSnapshot のキー・マウスを上書きするプレイヤー。
+/// 実キーボード・実マウスは無視される (注入だけが有効 = 決定的)。
 struct InputScriptPlayer
 {
 	std::vector<InputScriptEvent> events;  // frame 昇順
 	std::size_t cursor = 0;
 	int frame = 0;
 	bool held[256] = {};
-	bool heldBtn[3] = {};
+	bool heldBtn[5] = {};
+	// pos で指定したカーソルの絶対座標 (論理スクリーン座標)。一度指定したら、次の pos まで保持する。
+	bool  hasPos = false;
+	float posX = 0.0f, posY = 0.0f;
+	mitiru::platform::ImeCompositionUtf8 ime;  // 次の ime 行まで保持する変換中の文字列
 
 	void apply(mitiru::module::InputSnapshot& snap)
 	{
 		bool prev[256];
-		bool prevBtn[3];
+		bool prevBtn[5];
 		std::memcpy(prev, held, sizeof(prev));
 		std::memcpy(prevBtn, heldBtn, sizeof(prevBtn));
 		float moveX = 0.0f, moveY = 0.0f;
+		float wheelY = 0.0f, wheelX = 0.0f;
 		while (cursor < events.size() && events[cursor].frame <= frame)
 		{
 			const auto& e = events[cursor++];
@@ -1485,12 +1524,27 @@ struct InputScriptPlayer
 				if (e.a >= 0 && e.a < 256) { held[e.a] = (e.b != 0); }
 				break;
 			case InputScriptEvent::MouseBtn:
-				if (e.a >= 0 && e.a < 3) { heldBtn[e.a] = (e.b != 0); }
+				if (e.a >= 0 && e.a < 5) { heldBtn[e.a] = (e.b != 0); }
 				break;
 			case InputScriptEvent::MouseMove:
 				moveX += static_cast<float>(e.a);
 				moveY += static_cast<float>(e.b);
 				break;
+			case InputScriptEvent::Wheel:
+				wheelY += static_cast<float>(e.a);
+				wheelX += static_cast<float>(e.b);
+				break;
+			case InputScriptEvent::Ime:
+				ime = mitiru::platform::ImeCompositionUtf8{e.text, static_cast<std::size_t>(e.a)};
+				break;
+			case InputScriptEvent::MousePos:
+			{
+				// 実マウスと同様に、位置が動いた分は delta にも出る (delta で視点を回す game が pos でも反応する)。
+				const float nx = static_cast<float>(e.a), ny = static_cast<float>(e.b);
+				if (hasPos) { moveX += nx - posX; moveY += ny - posY; }
+				posX = nx; posY = ny; hasPos = true;
+				break;
+			}
 			}
 		}
 		for (int v = 0; v < 256; ++v)
@@ -1505,20 +1559,37 @@ struct InputScriptPlayer
 			snap.mouseButtonsJustPressed[i]  = (heldBtn[i] && !prevBtn[i]) ? 1 : 0;
 			snap.mouseButtonsJustReleased[i] = (!heldBtn[i] && prevBtn[i]) ? 1 : 0;
 		}
+		for (int i = 0; i < 2; ++i)
+		{
+			const bool now = heldBtn[3 + i], was = prevBtn[3 + i];
+			snap.mouseXButtonsDown[i]         = now ? 1 : 0;
+			snap.mouseXButtonsJustPressed[i]  = (now && !was) ? 1 : 0;
+			snap.mouseXButtonsJustReleased[i] = (!now && was) ? 1 : 0;
+		}
 		snap.mouseDeltaX = moveX;
 		snap.mouseDeltaY = moveY;
+		snap.mouseWheel  = wheelY;
+		snap.mouseWheelH = wheelX;
+		mitiru::detail::fillSnapshotIme(ime, snap);
+		if (hasPos) { snap.mouseX = posX; snap.mouseY = posY; }
 		++frame;
 	}
 };
 
-/// '<frame> <down|up> <KEY>' / '<frame> move <dx> <dy> [frames]' 形式 (# でコメント) を読む。
-/// KEY には MouseL / MouseR / MouseM も使える。move は視線用のマウス delta を
-/// そのフレームに注入する ([frames] 指定で連続フレームへ同 delta を展開)。失敗時 false。
+/// '<frame> <down|up> <KEY>' / '<frame> move <dx> <dy> [frames]' / '<frame> pos <x> <y> [frames]'
+/// / '<frame> wheel <縦ノッチ> [横ノッチ]' / '<frame> ime <変換中の文字列|-> [キャレット byte]' 形式 (# でコメント) を読む。KEY には MouseL / MouseR / MouseM /
+/// MouseX1 / MouseX2 も使える。move は視線用のマウス delta を
+/// そのフレームに注入する ([frames] の指定で、連続するフレームへ同じ delta を展開)。pos はカーソルの絶対座標
+/// (論理スクリーン座標) を指定し、次の pos まで保持する。[frames] を付けると、直前の pos からその位置まで
+/// frames フレームをかけて直線で動かす (つかんで運ぶ操作用)。失敗時は false。
 inline bool loadInputScript(const std::string& path, InputScriptPlayer& out)
 {
 	std::ifstream f(path);
 	if (!f) { return false; }
 	std::string line;
+	// pos の補間は「台本上の直前の pos」から始める (台本は frame の昇順に書く前提)。
+	bool scriptHasPos = false;
+	int  scriptPosX = 0, scriptPosY = 0;
 	while (std::getline(f, line))
 	{
 		const auto h = line.find('#');
@@ -1544,8 +1615,48 @@ inline bool loadInputScript(const std::string& path, InputScriptPlayer& out)
 			}
 			continue;
 		}
-		// 両形式を許す: "<frame> <down|up> <KEY>" と "<frame> <KEY> <down|up>"。
-		// (--input-record の出力は後者。#45 の例 `120 Z down` もこれ。)
+		if (lower(t2) == "pos")
+		{
+			int x = 0, y = 0, count = 1;
+			try { x = std::stoi(t3); } catch (...) { continue; }
+			if (!(is >> y)) { continue; }
+			if (!(is >> count)) { count = 1; }
+			if (count < 1) { count = 1; }
+			if (count == 1 || !scriptHasPos)
+			{
+				out.events.push_back({frame + count - 1, InputScriptEvent::MousePos, x, y});
+			}
+			else
+			{
+				for (int k = 1; k <= count; ++k)
+				{
+					const int ix = scriptPosX + (x - scriptPosX) * k / count;
+					const int iy = scriptPosY + (y - scriptPosY) * k / count;
+					out.events.push_back({frame + k - 1, InputScriptEvent::MousePos, ix, iy});
+				}
+			}
+			scriptPosX = x; scriptPosY = y; scriptHasPos = true;
+			continue;
+		}
+		if (lower(t2) == "wheel")
+		{
+			int notches = 0, horizontal = 0;
+			try { notches = std::stoi(t3); } catch (...) { continue; }
+			if (!(is >> horizontal)) { horizontal = 0; }
+			out.events.push_back({frame, InputScriptEvent::Wheel, notches, horizontal});
+			continue;
+		}
+		if (lower(t2) == "ime")
+		{
+			// `-` は変換の終了 (確定・取り消し)。キャレットを省くと末尾。
+			const std::string text = (t3 == "-") ? std::string{} : t3;
+			int cursor = static_cast<int>(text.size());
+			if (int c = 0; is >> c) { cursor = c; }
+			out.events.push_back({frame, InputScriptEvent::Ime, cursor, 0, text});
+			continue;
+		}
+		// 両方の形式を許可する: "<frame> <down|up> <KEY>" と "<frame> <KEY> <down|up>"。
+		// (--input-record の出力は後者。#45 の例 `120 Z down` も後者。)
 		auto isAct = [](const std::string& s) {
 			return s == "down" || s == "d" || s == "DOWN" || s == "up" || s == "u" || s == "UP";
 		};
@@ -1555,10 +1666,12 @@ inline bool loadInputScript(const std::string& path, InputScriptPlayer& out)
 		const bool down = (act == "down" || act == "d" || act == "DOWN");
 		const bool up   = (act == "up" || act == "u" || act == "UP");
 		if (!down && !up) { continue; }
+		static constexpr const char* kMouseNames[] = {"mousel", "mouser", "mousem", "mousex1", "mousex2"};
 		const std::string mk = lower(key);
-		if (mk == "mousel" || mk == "mouser" || mk == "mousem")
+		const auto mouse = std::find(std::begin(kMouseNames), std::end(kMouseNames), mk);
+		if (mouse != std::end(kMouseNames))
 		{
-			const int idx = (mk == "mousel") ? 0 : (mk == "mouser") ? 1 : 2;
+			const int idx = static_cast<int>(mouse - std::begin(kMouseNames));
 			out.events.push_back({frame, InputScriptEvent::MouseBtn, idx, down ? 1 : 0});
 			continue;
 		}
@@ -1577,8 +1690,8 @@ int main(int argc, char* argv[])
 {
 #ifdef _WIN32
 	// ログと警告は UTF-8 で書いている (ソースが /utf-8)。コンソールの既定は CP932 なので、
-	// そのままだと日本語が全部化ける。出力コードページだけ UTF-8 へ切り替え、終了時に
-	// 元へ戻す (同じ窓で続けて動く他のツールの表示を巻き込まないため)。
+	// そのままでは日本語がすべて文字化けする。出力コードページだけを UTF-8 へ切り替え、終了時に
+	// 元へ戻す (同じ窓で続けて動く他のツールの表示に影響させないため)。
 	static const UINT s_prevConsoleCP = GetConsoleOutputCP();
 	SetConsoleOutputCP(CP_UTF8);
 	std::atexit([] { SetConsoleOutputCP(s_prevConsoleCP); });
@@ -1599,8 +1712,8 @@ int main(int argc, char* argv[])
 #endif
 	anchorCwdToExeDir(argc > 0 ? argv[0] : nullptr);
 
-	// 引数なし起動 (ダブルクリック / Steam) のときは sidecar <exe>.mtargs から
-	// argv を補う。これで mitiru_host を <game>.exe にリネーム配布できる。
+	// 引数なしで起動した場合 (ダブルクリック / Steam) は、sidecar <exe>.mtargs から
+	// argv を補う。これにより mitiru_host を <game>.exe にリネームして配布できる。
 	std::vector<std::string> synthArgs;
 	std::vector<char*>       synthPtr;
 	int                      useArgc = argc;
@@ -1631,8 +1744,15 @@ int main(int argc, char* argv[])
 		             args.unknownOption.c_str());
 		return 1;
 	}
-	// ADR 0035 O5: Engine_Http.hpp::runReplayGate が同名 env を読む (未指定なら
-	// tests/replay_golden 既定のまま)。
+	// --perf の env 版。host を自分で構成しないツール (KaeruCrepe の shot.py など) から
+	// フレームレートを確認するために必要。子プロセスへ継承されることも意図している。
+	if (const char* perfEnv = std::getenv("MITIRU_PERF");
+	    perfEnv != nullptr && perfEnv[0] != '\0' && std::string_view{perfEnv} != "0")
+	{
+		args.perf = true;
+	}
+	// ADR 0035 O5: Engine_Http.hpp::runReplayGate が同名の env を読む (未指定なら
+	// tests/replay_golden が既定のまま)。
 	if (!args.replayGateDir.empty())
 	{
 #ifdef _WIN32
@@ -1643,12 +1763,12 @@ int main(int argc, char* argv[])
 	}
 
 #ifdef _WIN32
-	// --appid: window / CEF 生成より前 (最初期) に設定しないと taskbar 分離が効かない。
+	// --appid: window を生成する前 (最初期) に設定しないと、taskbar の分離が機能しない。
 	if (!args.appId.empty()) { applyAppUserModelId(args.appId); }
 #endif
 
 	// --record と --replay-test は排他 (replay 側が record callback を上書きし、
-	// 録画が黙って無効化されるため。併用の意図は成立しない)。
+	// 録画が何も知らせずに無効になるため。併用する意図は成立しない)。
 	if (!args.recordPath.empty() && !args.replayPath.empty())
 	{
 		std::fprintf(stderr,
@@ -1656,8 +1776,8 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	// --state-diff A B: DLL 不要。2 つの .mtrr の GameMemory blob を byte 比較し、
-	// 「同入力・異コードでどの frame から分岐したか」を 1 行 JSON で報告する。
+	// --state-diff A B: DLL は不要。2 つの .mtrr の GameMemory blob を byte 単位で比較し、
+	// 「同じ入力・異なるコードでどの frame から分岐したか」を 1 行の JSON で報告する。
 	if (!args.stateDiffA.empty() && !args.stateDiffB.empty())
 	{
 		const auto d = mitiru::replay::Player::diffState(args.stateDiffA, args.stateDiffB);
@@ -1707,10 +1827,10 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	// --bake <in.json> <out.baked>: DLL の reflect/spawner スキーマを使って配置 JSON を POD へ
-	// 焼くだけの経路 (★4-1)。window/GPU/CEF は一切初期化しない。game 側が `MITIRU_BAKE_ASSETS()`
-	// を export していない (未対応) 場合は理由を出して終了する (host 側で ad-hoc に焼くと DLL の
-	// 実際の sizeof(T) とずれる恐れがあるため、必ず DLL 自身にやらせる)。
+	// --bake <in.json> <out.baked>: DLL の reflect/spawner スキーマを使い、配置 JSON を POD へ
+	// 変換するだけの経路 (★4-1)。window/GPU は一切初期化しない。game 側が `MITIRU_BAKE_ASSETS()`
+	// を export していない (未対応) 場合は理由を出して終了する (host 側で ad-hoc に変換すると DLL の
+	// 実際の sizeof(T) とずれるおそれがあるため、必ず DLL 自身に処理させる)。
 	if (!args.bakeInJson.empty() && !args.bakeOutPath.empty())
 	{
 		mitiru::module::ModuleHost bakeHost;
@@ -1737,9 +1857,9 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	// dev の vfs 相対パス解決の基準 = game DLL の隣 (cwd は exe 位置に固定済みのため、
-	// deploy dir と exe dir が違う配置でも "assets/..." が game の assets に届くように)。
-	// pack と同じく env 共有。host / game DLL / CEF helper の各インスタンスに効く。
+	// dev の vfs 相対パス解決の基準 = game DLL の隣 (cwd は exe の位置に固定済みのため、
+	// deploy dir と exe dir が異なる配置でも "assets/..." が game の assets を参照できるようにする)。
+	// pack と同様に env で共有する。host と game DLL の両方に適用される。
 	{
 		const auto absDll = std::filesystem::absolute(args.dllPath, ec);
 		const std::string rootEnv =
@@ -1751,16 +1871,15 @@ int main(int argc, char* argv[])
 #endif
 	}
 
-	// 秘匿配布: まず自分の exe に連結されたパックを探し、無ければ DLL の隣の
-	// assets.mtpak を使う。exe 連結なら配布物からパックのファイルが消え、exe 1 つに
-	// 資産が入る (CEF のランタイムは別途要る)。
+	// 秘匿配布: まず自分の exe に連結されたパックを探し、なければ DLL の隣にある
+	// assets.mtpak を使う。exe に連結されていれば、配布物からパックのファイルがなくなり、exe 1 つに
+	// 資産が入る。
 	// 実際の open/mount は Engine 側 (`EngineConfig::packPath` → `mountModulePackIfConfigured`、
-	// `Engine_Module_Loader.hpp`) に一本化した。host 側で AssetPack::open して
+	// `Engine_Module_Loader.hpp`) に統一した。host 側で AssetPack::open して
 	// vfs::mountGlobal する経路は二重 mount になるため廃止し、host は「どの pack を使うか」
 	// の発見 (self-exe 連結 / assets.mtpak 隣接 / --pack 明示) だけを担う。env は
-	// `MITIRU_PACK` に統一 (旧 `MITIRU_ASSET_PACK` は Engine 側が後方互換で読むのみ、
+	// `MITIRU_PACK` に統一 (旧 `MITIRU_ASSET_PACK` は Engine 側が後方互換のため読むだけで、
 	// host からはもう書かない)。
-	std::string packedAppUrl;
 	std::string resolvedPackPath;  // 見つかった pack の絶対パス。下で cfg.packPath へ渡す
 	{
 		auto packPath =
@@ -1779,8 +1898,8 @@ int main(int argc, char* argv[])
 		if (std::filesystem::exists(packPath, ec) && !ec
 			&& mitiru::vfs::AssetPack::open(packPath).has_value())
 		{
-			// cfg.packPath は下で mitiru::EngineConfig 構築後に設定 (このブロックの時点では
-			// cfg 未構築)。ここでは発見結果だけ変数へ残す。
+			// cfg.packPath は下で mitiru::EngineConfig を構築した後に設定する (このブロックの時点では
+			// cfg は未構築)。ここでは発見結果だけを変数に残す。
 			const auto absPack = std::filesystem::absolute(packPath, ec);
 			const std::string packEnv = (ec ? packPath : absPack).string();
 			resolvedPackPath = packEnv;
@@ -1789,14 +1908,6 @@ int main(int argc, char* argv[])
 #else
 			setenv("MITIRU_PACK", packEnv.c_str(), 1);
 #endif
-			// pack キーは cwd 相対の "<gameDir>/assets/...". CEF の virtualPath を
-			// それに合わせるため <gameDir> を cwd からの相対で前置する。
-			const auto rel = std::filesystem::relative(
-				std::filesystem::path(args.dllPath).parent_path(),
-				std::filesystem::current_path(), ec);
-			const auto under = (ec || rel.empty())
-				? std::filesystem::path(args.dllPath).parent_path() : rel;
-			packedAppUrl = "app://" + under.generic_string() + "/assets/scene.html";
 			std::fprintf(stdout, "[mitiru_host] asset pack found: %s (mount は Engine 側)\n",
 			             packPath.string().c_str());
 		}
@@ -1804,19 +1915,39 @@ int main(int argc, char* argv[])
 
 	mitiru::EngineConfig cfg;
 	// P12 1 ファイル配布: 上の発見結果を Engine 側 (mountModulePackIfConfigured) へそのまま渡す。
-	// host はもう自分で AssetPack::open/mountGlobal しない (二重 mount 回避、env は MITIRU_PACK に統一)。
+	// host はもう自分で AssetPack::open/mountGlobal しない (二重 mount の回避、env は MITIRU_PACK に統一)。
 	cfg.packPath        = resolvedPackPath;
 	cfg.collisionPath   = args.collisionPath;
 	cfg.gfxBackend      = args.backend;  // --backend (既定 Auto)。--headless-3d の windowless 経路にも効く
-	// --title 未指定なら DLL ファイル名の stem (例 scene3d)。何のゲームか一目で分かる顔つき
+	// --title の未指定時は DLL ファイル名の stem (例 scene3d)。何のゲームか一目で分かる外観
 	cfg.title           = args.title.empty() ? args.dllPath.stem().string() : args.title;
 	cfg.windowWidth     = args.widthOverride  > 0 ? args.widthOverride  : 1280;
 	cfg.windowHeight    = args.heightOverride > 0 ? args.heightOverride :  720;
 	cfg.windowX         = args.winPosX;   // --window-pos (既定 INT_MIN = OS 任せ)
 	cfg.windowY         = args.winPosY;
-	// resize 安全: 要求サイズの半分を floor にする (極端な潰れだけ防ぎ、指定サイズは
-	// 超えない)。game 窓 / launcher / 760x80 の companion bar を同じ host が起動するので、
-	// 固定値でなく要求サイズ基準にして「floor > 指定」で窓が開けない事態を避ける。
+#ifdef _WIN32
+	// 台本で動かす起動は人が見ていない。窓が前面に出るとユーザーの作業を妨げるだけなので、
+	// --no-activate の指定を待たずに有効にする。env は spawn するツール窓 (別プロセス) へ継承される。
+	if (args.noActivate || !args.inputScript.empty() || !args.captureDir.empty()
+	    || args.headlessGpu3D)
+	{
+		mitiru::Win32Window::setProcessNoActivate(true);
+		_putenv_s("MITIRU_NO_ACTIVATE", "1");
+	}
+#ifdef _DEBUG
+	// 人が遊んでいる最中の device-lost は再現しないことが多く、手元に残るのはこの起動の出力だけ (#79)。
+	// 台本・リプレイ・画面外での起動は再現用なので、必要なら呼び出し側が自分で有効にする。
+	const bool interactiveLaunch = !args.noActivate && args.inputScript.empty() && args.captureDir.empty()
+		&& !args.headless && !args.headlessGpu3D && args.replayPath.empty();
+	if (interactiveLaunch && std::getenv("MITIRU_D3D12_DRED") == nullptr)
+	{
+		_putenv_s("MITIRU_D3D12_DRED", "1");
+	}
+#endif
+#endif
+	// resize の安全対策: 要求サイズの半分を floor にする (極端に小さくなることだけを防ぎ、指定サイズは
+	// 超えない)。game 窓 / launcher / 760x80 の companion bar を同じ host が起動するため、
+	// 固定値ではなく要求サイズを基準にし、「floor > 指定」で窓を開けない事態を避ける。
 	{
 		const int floorW = cfg.windowWidth  / 2;
 		const int floorH = cfg.windowHeight / 2;
@@ -1826,30 +1957,32 @@ int main(int argc, char* argv[])
 	cfg.vsync           = true;
 	if (args.noPauseUnfocused) { cfg.vsync = false; }  // 背面でもフルレート (present の vsync 待ちを回避)
 	if (args.noVsync)          { cfg.vsync = false; }  // --no-vsync: 素のフレームコスト計測 (#53)
-	cfg.enableCef       = !args.noCef;   // --no-cef: 完全ネイティブ game は CEF 抜きで軽量起動
-	cfg.cefRemoteDebuggingPort = args.cefDebugPort;  // --cef-debug-port: 0 以外で CEF remote debugging を開く
 	cfg.timeScale       = args.speed;    // --speed: 固定 dt × N 早回し (#43)
 	cfg.errorBannerFile = args.errorFile; // --error-file: mitiru watch のビルドエラー帯 (空=OFF)
 	cfg.bugRingSaveRequested = args.bugRingSave; // --bug-ring-save: 起動直後に即保存 (通常は F11)
 	if (args.fixedSize) { cfg.windowResizable = false; }   // --fixed-size: リサイズ禁止 (#44)
 	if (args.rewindFrames > 0) { cfg.timeTravelBufferFrames = static_cast<std::uint32_t>(args.rewindFrames); }   // --rewind-frames: 巻き戻しバッファ長
-	// --rewind-mb: 巻き戻しリングの予算 (MB)。明示指定 (>=0、0=無制限=非圧縮) のときだけ
-	// explicit フラグを立てる。未指定 (-1) は engine 側 (recordModuleMemoryFrame) が
+	// --rewind-mb: 巻き戻しリングの予算 (MB)。明示指定 (>=0、0=無制限=非圧縮) の場合だけ
+	// explicit フラグを立てる。未指定 (-1) の場合は engine 側 (recordModuleMemoryFrame) が
 	// game の MITIRU_REWIND_BUDGET 宣言 > 既定 512MB の順で決める。
 	if (args.rewindMb >= 0)
 	{
 		cfg.timeTravelBudgetBytes = static_cast<std::size_t>(args.rewindMb) * 1024ull * 1024ull;
 		cfg.timeTravelBudgetBytesExplicit = true;
 	}
-	// --oracle-determinism [N]: P14 決定論オラクル opt-in (既定 OFF、resim ring + memcmp の
-	// コストが GameMemory サイズに比例するため明示指定のみ有効化)。
+	if (args.rewindRawMb >= 0)
+	{
+		cfg.timeTravelRawLimitBytes = static_cast<std::size_t>(args.rewindRawMb) * 1024ull * 1024ull;
+	}
+	// --oracle-determinism [N]: P14 決定論オラクルの opt-in (既定 OFF、resim ring + memcmp の
+	// コストが GameMemory のサイズに比例するため、明示指定時だけ有効にする)。
 	if (args.oracleDeterminism)
 	{
 		cfg.oracleDeterminism = true;
 		cfg.oracleDeterminismEveryFrames = args.oracleDeterminismEveryFrames;
 	}
-	// --synctest [K]: oracle-determinism の薄い別名 (K=1 既定で毎フレーム検査)。両方指定時は
-	// より狭い間隔 (小さい方) を採用する。
+	// --synctest [K]: oracle-determinism の単純な別名 (K=1 が既定で毎フレーム検査)。両方の指定時は、
+	// より短い間隔 (小さい方) を採用する。
 	if (args.synctest)
 	{
 		cfg.oracleDeterminism = true;
@@ -1859,17 +1992,16 @@ int main(int argc, char* argv[])
 	}
 	cfg.oracleMachineLog = args.oracleLog;  // --oracle-log: mitiru-cli の ScanOracleLines 用
 	cfg.saveRoundtripTest = args.saveRoundtripTest;  // --save-roundtrip-test: save→load→save の bit 一致検査
-	if (args.headless)                   // --headless: 窓なし自動回し。vsync/CEF を切って最速で (#43)
+	if (args.headless)                   // --headless: 窓なし自動回し。vsync を切って最速で (#43)
 	{
 		cfg.headless  = true;
 		cfg.vsync     = false;
-		cfg.enableCef = false;
 		cfg.deterministic = true;  // 固定 clock で run 間を決定的に (1 host frame = 1 fixed-step)
 	}
 	if (args.headlessGpu3D)
 	{
-		// G2: Engine_Init_Lifecycle.hpp の GPU device 生成が見る opt-in 環境変数。
-		// EngineConfig にフィールドを足さず (ABI 非対象ファイルのため) 環境変数で渡す。
+		// G2: Engine_Init_Lifecycle.hpp の GPU device 生成が参照する opt-in 環境変数。
+		// EngineConfig にフィールドを追加せず (ABI 非対象ファイルのため)、環境変数で渡す。
 #ifdef _WIN32
 		_putenv_s("MITIRU_HEADLESS_GPU3D", "1");
 #else
@@ -1877,8 +2009,8 @@ int main(int argc, char* argv[])
 #endif
 	}
 	// EngineHttpServer と AI Lens: --http-port > 0 / --console / 環境変数
-	// MITIRU_AI が立ってれば HTTP listen を開始 (127.0.0.1 限定)。MITIRU_AI は AI が zero-config で
-	// /api/ai/state・/diff・/branch を叩けるようにする opt-in (port は MITIRU_AI_PORT、既定 8090)。
+	// MITIRU_AI が設定されていれば HTTP listen を開始する (127.0.0.1 限定)。MITIRU_AI は、AI が zero-config で
+	// /api/ai/state・/diff・/branch を呼べるようにする opt-in (port は MITIRU_AI_PORT、既定 8090)。
 	const char* aiEnv = std::getenv("MITIRU_AI");
 	const bool  aiOptIn = (aiEnv != nullptr && aiEnv[0] != '\0' && std::string{aiEnv} != "0");
 	if (args.httpPort > 0 || args.console || aiOptIn)
@@ -1895,21 +2027,19 @@ int main(int argc, char* argv[])
 	}
 	if (args.configOrigins)
 	{
-		// engine/window を作らず、ここまでに確定した値だけで即終了する (§3-3)。
+		// engine/window を作らず、ここまでに確定した値だけを使ってすぐに終了する (§3-3)。
 		printConfigOrigins(args, cfg, resolvedPackPath, aiOptIn);
 		return 0;
 	}
-	// --console: HTTP server は engine.run() 内で起動するため、初回フレームで listen 成功を
-	// 確認してからブラウザを開く (init 失敗時は開かない、H-10 と整合)。onFrameStart で消費。
+	// --console: HTTP server は engine.run() 内で起動するため、初回フレームで listen の成功を
+	// 確認してからブラウザを開く (init 失敗時は開かない、H-10 と整合)。onFrameStart で処理する。
 	bool consolePending  = args.console;
 	const int consolePort = cfg.httpApiPort;
-	// --icon: window は engine.runModule 内で生成されるため初回フレームで適用 (onFrameStart で消費)。
+	// --icon: window は engine.runModule 内で生成されるため、初回フレームで適用する (onFrameStart で処理)。
 	bool iconPending = !args.iconPath.empty();
-	// フォント: 既定で同梱の日本語フォント (PixelMplus) を読み、native draw
-	// (drawTextInRect 等) でも日本語が出せる。かなは SDF atlas、漢字は TTF
-	// 直描画 fallback なので起動は軽い。最速・純レトロ (8x8 ビットマップ ASCII)
-	// で起動したい時は --font none。全漢字を SDF 化したい時は --font japanese。
-	using FontAtlas = mitiru::EngineConfig::FontAtlas;
+	// フォント: 既定では同梱の日本語書体を読み、native draw (drawTextInRect など) でも
+	// 日本語を表示できる。字形は使われた分だけ生成するため、起動は軽い。8x8 ビットマップ ASCII
+	// で起動したい場合は --font none。
 	if (args.fontMode == "none")
 	{
 		cfg.skipDefaultFont = true;
@@ -1917,23 +2047,19 @@ int main(int argc, char* argv[])
 	else
 	{
 		cfg.skipDefaultFont = false;
-		if      (args.fontMode == "latin")    { cfg.fontAtlasRanges = FontAtlas::Latin; }
-		else if (args.fontMode == "japanese") { cfg.fontAtlasRanges = FontAtlas::Japanese; }
-		else                                   { cfg.fontAtlasRanges = FontAtlas::Kana; }  // 既定 (空 / "kana")
-
-		// フォントフェイス: 既定 normal = M+ Rounded 1c (普通の丸ゴシック)、
-		// retro = PixelMplus (ファミコン風ピクセル)。exe 隣の同梱フォントを解決する。
+		// フォントフェイス: 既定の normal = M+ Rounded 1c (通常の丸ゴシック)、
+		// retro = PixelMplus (ファミコン風ピクセル)。exe の隣にある同梱フォントを解決する。
 		const std::string faceFile = (args.fontFace == "retro")
 			? "assets/fonts/PixelMplus12-Regular.ttf"
 			: "assets/fonts/MPLUSRounded1c-Regular.ttf";
 		cfg.fontPath = mitiru::resource::AssetPath::resolve(faceFile);
 	}
-	// Mitiru Saturn 標準背景。シルバーグレー (#c8c8c8)。エンジン同梱の全 surface
-	// (hello_game / launcher / companion) はこのシルバー地に HUD を描き、Saturn の
-	// 統一感を出す。別の背景が欲しい game はインスタンス単位で上書きできる。
+	// Mitiru Saturn の標準背景。シルバーグレー (#c8c8c8)。エンジン同梱のすべての surface
+	// (hello_game / launcher / companion) はこのシルバーの背景に HUD を描き、Saturn の
+	// 統一感を出す。別の背景が必要な game はインスタンス単位で上書きできる。
 	cfg.backgroundColor = sgc::Colorf{0.784f, 0.784f, 0.784f, 1.0f};
 
-	// ローファイ・ポストFX: 低解像描画 + パレット量子化 + Bayer ディザ (DX12)
+	// ローファイ・ポスト FX: 低解像度での描画 + パレット量子化 + Bayer ディザ (DX12)
 	if (args.loFi)
 	{
 		cfg.loFi.enabled       = true;
@@ -1947,14 +2073,11 @@ int main(int argc, char* argv[])
 		cfg.loFi.viFilter      = args.loFiVi;
 		cfg.loFi.gamma         = args.loFiGamma;
 	}
-	cfg.cefStartUrl     = !args.cefUrlOverride.empty()
-		? args.cefUrlOverride
-		: (!packedAppUrl.empty() ? packedAppUrl : defaultCefUrlFor(args.dllPath));
+	// UI の層: DLL の隣に assets/ui/main.rml があれば RmlUi で描画する (ADR 0051)。
+	cfg.uiDocument = defaultUiDocumentFor(args.dllPath);
 
-	// MITIRU_AUTOTEST_FRAMES は autotest の猶予を延ばし、スクショ発火前に CEF が
-	// scene.html を読み込む時間を確保する。Engine::run の applyAutoTestEnv() は既定
-	// 120 (約 2s) だが、CEF コールドブート時はまだ scene.html が描けていないことがある。
-	// HUD オーバーレイを検証するスモークテストでは 600 (約 10s) に上げる。
+	// MITIRU_AUTOTEST_FRAMES は autotest でスクリーンショットを撮るまでのフレーム数を変える。
+	// Engine::run の applyAutoTestEnv() の既定は 120 (約 2s)。UI の遷移が終わった後を撮りたい時に延ばす。
 	if (const char* envFrames = std::getenv("MITIRU_AUTOTEST_FRAMES");
 	    envFrames && envFrames[0] != '\0')
 	{
@@ -1973,23 +2096,23 @@ int main(int argc, char* argv[])
 
 	// onFrameStart: 2 つの常駐ジョブを 1 つのコールバックで処理する。
 	//   (1) F12 → スクリーンショット (常時 on、Windows のみ)
-	//   (2) --watch 時のみ: DLL mtime を polling して L3 ホットリロード
-	// キャプチャした WatcherState はこのスタックフレームに置く。Engine::runModule が
-	// ループ終了までブロックするので lifetime は問題ない。
-	// --capture-dir/--capture-every (#43): 既定を補完してディレクトリを作る。
-	// 片方だけ指定でも有効化（dir 省略→"captures"、every 省略→30）。
+	//   (2) --watch 時のみ: DLL の書き換えを検知して L3 ホットリロード
+	// キャプチャした監視器はこのスタックフレームに置く。Engine::runModule が
+	// ループ終了までブロックするため、lifetime に問題はない。
+	// --capture-dir/--capture-every (#43): 既定値を補い、ディレクトリを作る。
+	// 片方だけの指定でも有効にする（dir 省略→"captures"、every 省略→30）。
 	std::string captureDir = args.captureDir;
 	int captureEvery = args.captureEvery;
 	if (!captureDir.empty() && captureEvery <= 0) { captureEvery = 30; }
 	if (captureEvery > 0 && captureDir.empty()) { captureDir = "captures"; }
 	const bool captureOn = (captureEvery > 0 && !captureDir.empty());
-	// capture 中は実時間 dt を使わず固定 dt にする (Engine::initialize が captureActive を
-	// 見て deterministic を強制する)。描画コスト (PNG 保存等) がゲーム内時間に漏れて
-	// --input-script のフレーム番号と実時刻がずれるのを防ぐ (G1)。
+	// capture 中は実時間の dt を使わず、固定 dt にする (Engine::initialize が captureActive を
+	// 参照して deterministic を強制する)。描画コスト (PNG 保存など) がゲーム内時間に影響し、
+	// --input-script のフレーム番号と実時刻がずれることを防ぐ (G1)。
 	cfg.captureActive = captureOn;
 	// #53: headless では capture が読むフレームだけ SW ラスタライズする (観測フレーム gating)。
-	// capture 無しの自動回しは on-demand のみ (HTTP screenshot 等は 1 フレーム遅れで追従)。
-	// CPU ラスタライズはピクセル数比例で重く、これを省くと --speed の早回しが実時間でも速くなる。
+	// capture なしの自動実行では on-demand のみ (HTTP screenshot などには 1 フレーム遅れて追従)。
+	// CPU ラスタライズはピクセル数に比例して重く、これを省くと --speed による高速実行が実時間でも速くなる。
 	if (args.headless)
 	{
 		cfg.swRasterizeEvery = captureOn ? captureEvery : 0;
@@ -2000,7 +2123,7 @@ int main(int argc, char* argv[])
 		std::filesystem::create_directories(captureDir, cec);
 		if (cec)
 		{
-			// 無言起動すると PNG ゼロのまま exit 0 になり得る (DoD の必須経路が消える)。
+			// 何も知らせずに起動すると、PNG が 0 枚のまま exit 0 になり得る (DoD の必須経路がなくなる)。
 			std::fprintf(stderr, "mitiru_host: cannot create --capture-dir: %s (%s)\n",
 			             captureDir.c_str(), cec.message().c_str());
 			return 2;
@@ -2012,12 +2135,12 @@ int main(int argc, char* argv[])
 	int captureSeq = 0;     // 保存連番
 	bool captureSaveFailed = false;  // PNG 保存失敗の初回報告済みフラグ (以降は黙る)
 	int totalFrame = 0;     // 総フレーム数 (--max-frames 判定用)
-	// PNG エンコード (zlib 圧縮) を専用スレッドへ逃がし、host frame を待たせない (G7)。
-	// スコープを抜けるとき (関数 return / 例外) にデストラクタが残キューを書き切って join。
+	// PNG エンコード (zlib 圧縮) を専用スレッドへ移し、host frame を待たせない (G7)。
+	// スコープを出るとき (関数 return / 例外) に、デストラクタが残りのキューを書き終えてから join する。
 	std::unique_ptr<mitiru::render::AsyncPngWriter> pngWriter;
 	if (captureOn) { pngWriter = std::make_unique<mitiru::render::AsyncPngWriter>(); }
 
-	// --perf (#53): onFrameStart 間隔 = 1 host frame の実時間。600 フレームごとに統計を出す。
+	// --perf (#53): onFrameStart の間隔 = 1 host frame の実時間。600 フレームごとに統計を出す。
 	struct PerfStats
 	{
 		std::vector<double> samples;                    // 当ウィンドウのフレーム時間 (ms)
@@ -2042,8 +2165,8 @@ int main(int argc, char* argv[])
 		}
 	};
 	PerfStats perfStats;
-	// FrameArena (2-1) の使用量を毎フレーム反映する。オーバーレイは既定非表示
-	// (F11 相当のトグルは未配線。engine.frameArena() の値を外から見えるようにする配線のみ)。
+	// FrameArena (2-1) の使用量を毎フレーム反映する。オーバーレイは既定で非表示
+	// (F11 相当のトグルは未配線。engine.frameArena() の値を外部から見えるようにする処理のみ)。
 	mitiru::debug::FrameBudget frameBudget;
 	if (args.perf && cfg.vsync)
 	{
@@ -2051,50 +2174,57 @@ int main(int argc, char* argv[])
 			"[mitiru_host] perf: vsync ON のため present 待ちを含みます (素の描画コストは --no-vsync 併用)\n");
 	}
 
-	AssetWatchState assetWatch;
+	std::filesystem::path assetWatchDir;
+	std::unique_ptr<mitiru::asset::FileWatcher> assetWatcher;
 	if (!args.watchAssetsDir.empty())
 	{
 		std::error_code aec;
-		assetWatch.dir = std::filesystem::absolute(args.watchAssetsDir, aec);
-		if (aec || !std::filesystem::is_directory(assetWatch.dir, aec))
+		assetWatchDir = std::filesystem::absolute(args.watchAssetsDir, aec);
+		assetWatcher = std::make_unique<mitiru::asset::FileWatcher>();
+		if (aec || !assetWatcher->watchDirectory(assetWatchDir, {".json", ".baked"}))
 		{
 			std::fprintf(stderr, "mitiru_host: --watch-assets のディレクトリが無い: %s\n", args.watchAssetsDir.c_str());
 			return 2;
 		}
-		std::fprintf(stderr, "[mitiru_host] watch-assets: %s (.json/.baked)\n", assetWatch.dir.string().c_str());
+		std::fprintf(stderr, "[mitiru_host] watch-assets: %s (.json/.baked)\n", assetWatchDir.string().c_str());
 	}
 
-	WatcherState watcher;
+	std::unique_ptr<mitiru::asset::FileWatcher> dllWatcher;
+	DllReloadState dllReload;
 	if (args.watch)
 	{
-		watcher.dllPath = args.dllPath;
-		// 絶対パスに解決し、cwd 変更後のリロードでもファイルを見つけられるようにする。
+		// 絶対パスに解決し、cwd の変更後にリロードする場合でもファイルを見つけられるようにする。
 		std::error_code rc;
-		auto abs = std::filesystem::absolute(args.dllPath, rc);
-		if (!rc) { watcher.dllPath = abs; }
-
-		std::fprintf(stderr, "[mitiru_host] watch mode: polling %s\n",
-		             watcher.dllPath.string().c_str());
+		auto dllPath = std::filesystem::absolute(args.dllPath, rc);
+		if (rc) { dllPath = args.dllPath; }
+		dllWatcher = std::make_unique<mitiru::asset::FileWatcher>();
+		if (!dllWatcher->watchFile(dllPath))
+		{
+			std::fprintf(stderr, "mitiru_host: --watch の DLL のフォルダを監視できない: %s\n",
+			             dllPath.string().c_str());
+			return 2;
+		}
+		std::fprintf(stderr, "[mitiru_host] watch mode: %s\n", dllPath.string().c_str());
 	}
 
-	// time-travel scrub: inspector(timetravel.html → tool_cef)が書く scrub command を
+	// time-travel scrub: rewind のツール窓 (mitiru_tool --page rewind) が書く scrub command を
 	// 毎フレーム読み、過去フレームの GameMemory へ巻き戻す (click-to-scrub)。
-	// reader は host 側 = rewind は host の責務 (game DLL は pure を保つ)。適用は
-	// ScrubApplyListener (IFrameListener) に移してあり、ここでは登録するだけ (1-6)。
+	// reader は host 側 = rewind は host の責務 (game DLL は pure を保つ)。適用処理は
+	// ScrubApplyListener (IFrameListener) に移してあり、ここでは登録だけを行う (1-6)。
 	ScrubApplyListener scrubListener;
 
-	// ドッキング: ツール窓 (シークバー等) が吸着・追従できるよう、自窓の画面矩形を broadcast する。
+	// ドッキング: ツール窓 (シークバーなど) が吸着・追従できるよう、自窓の画面矩形を broadcast する。
 	mitiru::observe::DockWriter dockWriter{mitiru::observe::detail::scrubThisPid()};
 	int dockLastX = INT_MIN, dockLastY = INT_MIN, dockLastW = 0, dockLastH = 0;
 
-	// --pause-control (録画支援): ファイルが "1" の間だけ engine を pause (dt=0, 描画継続)。
-	// フォーカス不要・scrub-control と同じ思想。自動録画で「編集中は静止」を作るのに使う。
+	// --pause-control (録画支援): ファイルが "1" の間だけ engine を pause する (dt=0, 描画継続)。
+	// フォーカスは不要で、scrub-control と同じ考え方。自動録画で「編集中は静止」を作るために使う。
 	const std::string pauseControlFile = args.pauseControl;
 	int pauseControlTick = 0;
 	char pauseControlLast = '\0';   // 前回読み値 (変化時のみ setPaused = F8/HTTP pause と共存)
 
-	// --ghost (10-1): .mtrr を開くだけここで済ませる (module load は engine 構築後、
-	// 下の方で行う)。onFrameStart のクロージャがこの3つを参照で捕まえる。
+	// --ghost (10-1):.mtrr を開く処理だけをここで行う (module load は engine の構築後、
+	// 下の方で行う)。onFrameStart のクロージャがこの 3 つを参照で捕捉する。
 	mitiru::replay::Player ghostPlayer;
 	bool                   ghostActive = false;
 	bool                   ghostEof    = false;
@@ -2108,7 +2238,35 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	cfg.onFrameStart = [&watcher, watchOn = args.watch, &assetWatch,
+	// 台本で動かす窓は画面外にあるか隠れており、DXGI は occluded な swap chain の Present を待たせない。
+	// そのままでは描画可能な限り描画して GPU を占有し、別の動画を見ているユーザーの再生が途切れる。
+	// リプレイが使う固定ステップと同じ 60Hz で待機させる。dt は元から固定なので、再現性には影響しない
+	// (待機するだけ)。元の到達フレームレートを測りたい場合は --unpaced で無効にする (#72)。
+	// --headless は NullDevice で GPU を使わないため対象外 (待機させても利用可能になる資源がない)。
+	const bool paceScripted = !args.unpaced
+		&& (!args.headless || args.headlessGpu3D)
+		&& (args.noActivate || !args.inputScript.empty() || !args.captureDir.empty()
+		    || args.headlessGpu3D);
+	const auto paceStep = std::chrono::microseconds(1000000 / args.paceFps);
+	std::chrono::steady_clock::time_point paceLastFrame{};
+
+	// game が停止したとき、人が見ていない実行 (headless / 台本 / リプレイ照合 / キャプチャ) では、待っても
+	// 誰も修正しないため、停止して exit 6 にする。GUI と --watch は停止の通知を表示したまま、新しい DLL を待つ。
+	const bool stopOnFault = !args.watch
+		&& (args.headless || !args.inputScript.empty() || captureOn
+		    || (!args.replayPath.empty() && !args.replayGui));
+	std::uint32_t handledFaults = 0;
+	mitiru::debug::CrashReporter crashReporter;
+	crashReporter.start();
+	{
+		auto& crashCtx = mitiru::debug::crashContext();
+		mitiru::debug::setCrashContextText(crashCtx.replayPath, args.replayPath);
+		mitiru::debug::setCrashContextText(crashCtx.inputScriptPath,
+		                                   args.replayPath.empty() ? args.inputScript : std::string{});
+	}
+
+	cfg.onFrameStart = [paceScripted, paceStep, &paceLastFrame,
+	                    &dllWatcher, &dllReload, &assetWatcher, &assetWatchDir,
 	                    &ghostPlayer, &ghostActive, &ghostEof,
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
 	                    &captureSaveFailed, &pngWriter,
@@ -2117,19 +2275,45 @@ int main(int argc, char* argv[])
 	                    &pauseControlFile, &pauseControlTick, &pauseControlLast,
 	                    &consolePending, consolePort,
 	                    &iconPending, iconPath = args.iconPath,
-	                    &dockWriter, &dockLastX, &dockLastY, &dockLastW, &dockLastH]
+	                    &dockWriter, &dockLastX, &dockLastY, &dockLastW, &dockLastH,
+	                    stopOnFault, &handledFaults, &crashReporter]
 	                   (mitiru::Engine& engine)
 	{
-		pollAssetWatch(assetWatch, engine);
+		if (engine.moduleFaultCount() != handledFaults)
+		{
+			handledFaults = engine.moduleFaultCount();
+			crashReporter.captureGameFault(engine.moduleFault(), engine.moduleCrashReportPath());
+			// reload 直後の猶予中に停止して差し替え前へ戻った場合は停止状態ではないため、そのまま実行を続ける。
+			if (stopOnFault && engine.moduleFaulted())
+			{
+				std::fprintf(stderr, "[mitiru_host] 人が見ていない実行なので、ここで止めます (exit %d)\n",
+				             mitiru::debug::kExitGameFaulted);
+				engine.requestStop();
+			}
+		}
 
-		// --icon: window 生成後の初回フレームで一度だけ適用 (headless では no-op)。
+		// ペーシング (#72)。--perf が測る onFrameStart の間隔に待機時間も含まれるよう、
+		// このコールバックの先頭で待つ。前フレームの開始を起点にするため、1 刻みを超えた
+		// フレームの後はすぐに次へ進む (遅れを取り戻すために最高速度で実行することはない)。
+		if (paceScripted)
+		{
+			if (paceLastFrame.time_since_epoch().count() != 0)
+			{
+				mitiru::util::waitUntil(paceLastFrame + paceStep);
+			}
+			paceLastFrame = std::chrono::steady_clock::now();
+		}
+
+		if (assetWatcher) { notifyAssetsReloaded(*assetWatcher, assetWatchDir, engine); }
+
+		// --icon: window 生成後の初回フレームで一度だけ適用する (headless では no-op)。
 		if (iconPending)
 		{
 			iconPending = false;
 			engine.setWindowIcon(iconPath);
 		}
 
-		// --perf (#53): 前回 onFrameStart からの実時間 = 1 host frame のコスト。
+		// --perf (#53): 前回の onFrameStart からの実時間 = 1 host frame のコスト。
 		if (perfOn)
 		{
 			const auto now = std::chrono::steady_clock::now();
@@ -2146,11 +2330,11 @@ int main(int argc, char* argv[])
 		pollHostHotkeys(engine);
 
 		// FrameArena (2-1): 前フレームの使用量をオーバーレイ用に反映する
-		// (reset は次の tickOneFrame 先頭で起きるため、ここで読むのは直前フレームの値)。
+		// (reset は次の tickOneFrame の先頭で行われるため、ここで読むのは直前のフレームの値)。
 		frameBudget.setArenaUsage(engine.frameArena().used(), engine.frameArena().capacity());
 
-		// --ghost (10-1): 1 host frame につき .mtrr から InputSnapshot を 1 件消費して進める。
-		// EOF に達したら以後は読まない (ghost は直前の GameMemory のまま静止して描かれ続ける)。
+		// --ghost (10-1): 1 host frame ごとに .mtrr から InputSnapshot を 1 件読み、処理を進める。
+		// EOF に達した後は読まない (ghost は直前の GameMemory のまま静止して描画され続ける)。
 		if (ghostActive && !ghostEof)
 		{
 			mitiru::module::InputSnapshot gsnap{};
@@ -2179,8 +2363,8 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		// --pause-control: 数フレームごとにファイルを見て pause 状態を反映 (録画で編集中を静止させる)。
-		// 値が前回読みから変化した時だけ上書きする (F8 / HTTP pause を毎 tick 潰さない)。
+		// --pause-control: 数フレームごとにファイルを確認し、pause 状態を反映する (録画で編集中を静止させる)。
+		// 値が前回の読み取りから変化した場合だけ上書きする (F8 / HTTP pause を毎 tick 上書きしない)。
 		if (!pauseControlFile.empty() && (++pauseControlTick % 4 == 0))
 		{
 			std::ifstream pf(pauseControlFile);
@@ -2197,10 +2381,10 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		// listener 群 (scrub 適用等) は Engine_Frame.hpp の fixed-step ループが呼ぶ
-		// (1-6)。host からここで重ねて呼ぶと二重発火になるため呼ばない。
+		// listener 群 (scrub の適用など) は Engine_Frame.hpp の fixed-step ループが呼ぶ
+		// (1-6)。host からここで重ねて呼ぶと二重に実行されるため、呼ばない。
 
-		// ドック窓の追従用: 自窓の画面矩形が変わったら broadcast する (ツール窓が読んで付いてくる)。
+		// ドック窓の追従用: 自窓の画面矩形が変わったら broadcast する (ツール窓が読み取って追従する)。
 		{
 			int wx = 0, wy = 0, ww = 0, wh = 0;
 			if (engine.gameWindowRect(wx, wy, ww, wh) &&
@@ -2214,14 +2398,15 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		// --max-frames (#43): 指定フレーム数に達したら停止を要求 (headless 自動回しの終了条件)。
-		// カウント自体は maxFrames 未指定でも進める (E10: headless 終了時の frames 要約に使う)。
+		// --max-frames (#43): 指定フレーム数に達したら停止を要求する (headless 自動実行の終了条件)。
+		// カウント自体は maxFrames の未指定時も進める (E10: headless 終了時の frames 要約に使う)。
 		++totalFrame;
 		if (maxFrames > 0 && totalFrame > maxFrames) { engine.requestStop(); }
 
-		// --capture-every (#43): N フレームごとに直近フレームを PNG 連番で吐く。
-		// onFrameStart は描画前なので「前フレームの提示結果」を保存する (AI 視覚検証には十分)。
-		if (captureOn && (captureFrame++ % captureEvery == 0))
+		// --capture-every (#43): N フレームごとに直近のフレームを PNG の連番として出力する。
+		// onFrameStart は描画前なので「前フレームの提示結果」を保存する (AI による視覚検証には十分)。
+		// 最初の onFrameStart には提示済みのフレームがまだないため数えない (1 枚目が真っ白になる)
+		if (captureOn && totalFrame > 1 && (captureFrame++ % captureEvery == 0))
 		{
 			const int w = engine.captureWidth();
 			const int h = engine.captureHeight();
@@ -2232,8 +2417,8 @@ int main(int argc, char* argv[])
 				std::snprintf(name, sizeof(name), "frame_%06d.png", captureSeq++);
 				std::string path = captureDir + "/" + name;
 				pngWriter->enqueue(path, std::move(rgba), w, h);
-				// 失敗は非同期に分かるため、フレーム側では「初回検出時」に報告する
-				// (エンコード自体は 1 フレーム以上遅れて終わる)。
+				// 失敗は非同期に判明するため、フレーム側では「初回検出時」に報告する
+				// (エンコード自体は 1 フレーム以上遅れて完了する)。
 				if (pngWriter->hadError() && !captureSaveFailed)
 				{
 					captureSaveFailed = true;   // 初回のみ報告 (毎フレーム spam しない)
@@ -2243,58 +2428,22 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		if (!watchOn) { return; }
-		if (++watcher.pollTick < watcher.pollEvery) { return; }
-		watcher.pollTick = 0;
-
-		std::error_code mtimeEc;
-		const auto mtime =
-			std::filesystem::last_write_time(watcher.dllPath, mtimeEc);
-		if (mtimeEc) { return; }
-
-		if (!watcher.initialized)
-		{
-			watcher.lastMtime   = mtime;
-			watcher.initialized = true;
-			return;
-		}
-		if (mtime > watcher.lastMtime)
-		{
-			watcher.lastMtime = mtime;
-			std::fprintf(stderr, "[mitiru_host] DLL changed — reloading\n");
-			const bool ok = engine.reloadModule(watcher.dllPath);
-			if (!ok)
-			{
-				std::fprintf(stderr,
-					"[mitiru_host] reload FAILED — 旧コードのまま継続します (状態は保持)。\n");
-				const std::string why = engine.moduleLoadError();
-				if (!why.empty())
-				{
-					std::fprintf(stderr, "  理由: %s\n", why.c_str());
-				}
-				std::fprintf(stderr,
-					"  ビルドエラー等を修正して保存すれば自動で再試行します。\n");
-			}
-			else
-			{
-				std::fprintf(stderr, "[mitiru_host] reload OK\n");
-			}
-		}
+		if (dllWatcher) { reloadChangedDll(*dllWatcher, engine, dllReload); }
 	};
 
 	mitiru::Engine engine;
 	engine.addFrameListener(&scrubListener);
 	engine.setSuppressToolWindows(args.noToolWindows);  // --no-tool-windows: 録画/CI でツール窓を出さない
 	engine.setToolWindowPos(args.toolWinX, args.toolWinY);  // --tool-window-pos: 観察窓も実画面に出さない
-	// 自動実行 (script 駆動 / replay / headless / capture) では game の wantMouseLock を
-	// OS へ適用しない。画面外ウィンドウが実カーソルを掴む事故を防ぐ
+	// 自動実行 (script 駆動 / replay / headless / capture) では、game の wantMouseLock を
+	// OS へ適用しない。画面外のウィンドウが実カーソルを捕捉する事故を防ぐ
 	engine.setAllowCursorCapture(args.inputScript.empty() && args.replayPath.empty()
 	                             && !args.headless && args.captureDir.empty());
 
-	// SoundIntents を実際に鳴らすため audio engine を接続する。id は
-	// game の配置先 assets/audio/ ディレクトリ (DLL の隣) に対して解決する。
-	// headless (自動テスト / AI 回し) では音が不要かつ #52 の音声スレッド競合を避けるため
-	// audio engine を作らない (sound intent は no-op、決定的 sim には無影響)。
+	// SoundIntents を実際に再生するため、audio engine を接続する。id は
+	// game の配置先である assets/audio/ ディレクトリ (DLL の隣) に対して解決する。
+	// headless (自動テスト / AI 実行) では音が不要で、かつ #52 の音声スレッド競合を避けるため、
+	// audio engine を作らない (sound intent は no-op、決定的な sim には影響しない)。
 	if (!args.headless)
 	{
 		const auto audioDir =
@@ -2312,7 +2461,7 @@ int main(int argc, char* argv[])
 
 	if (!args.recordPath.empty())
 	{
-		// header の seed と毎フレーム snapshot の rngSeed を一致させる。
+		// header の seed と、毎フレームの snapshot の rngSeed を一致させる。
 		if (!recorder.open(args.recordPath, cfg.randomSeed))
 		{
 			std::fprintf(stderr, "mitiru_host: cannot open record file: %s\n",
@@ -2323,10 +2472,10 @@ int main(int argc, char* argv[])
 		std::fprintf(stderr, "[mitiru_host] recording → %s (--record-state-every %d)\n",
 		             args.recordPath.c_str(), args.recordStateEvery);
 		// --record-state-every N: state blob (GameMemory 全体) は N フレームごとにだけ書く
-		// (0 = 毎フレーム = 従来)。1 MB/F で 1.4ms、8 MB で 12.5ms かかる録画コストを削るため。
-		// stateLen=0 のフレームは v4 format 上も合法 (既存 Player が既に許容する) なので
-		// format version は上げない。save/load intent が絡むフレームだけは周期を無視して
-		// 必ず state を書く (replay 側の save/load 代用が周期の谷間で失敗しないように)。
+		// (0 = 毎フレーム = 従来)。1 MB/F で 1.4ms、8 MB で 12.5ms かかる録画コストを減らすため。
+		// stateLen=0 のフレームは v4 format でも有効 (既存の Player がすでに許容する) なので、
+		// format version は上げない。save/load intent が関係するフレームだけは周期にかかわらず
+		// 必ず state を書く (replay 側での save/load の代用が周期の間で失敗しないようにする)。
 		const int stateEvery = args.recordStateEvery;
 		cfg.onModuleFrameRecorded =
 			[&recorder, &frameIdx, &engine, stateEvery](const mitiru::module::InputSnapshot& snap,
@@ -2344,8 +2493,8 @@ int main(int argc, char* argv[])
 				}
 				else if (memSize > 0 && mem != nullptr)
 				{
-					// GameMemory が申告されていれば「唯一の state」を opaque にそのまま記録する
-					// (bit-exact diffState 用)。未申告 (v≤8) は観測 view.* JSON にフォールバック。
+					// GameMemory が申告されていれば「唯一の state」を opaque のまま記録する
+					// (bit-exact diffState 用)。未申告 (v≤8) の場合は、観測した view.* JSON にフォールバックする。
 					recorder.record(frameIdx++, snap, mem, memSize);
 				}
 				else
@@ -2359,10 +2508,12 @@ int main(int argc, char* argv[])
 	}
 
 	// --input-record (#45): 実プレイの入力エッジを input-script 形式で書き出す。
-	// `--input-script` で再生でき、#43 の headless+capture と組めば完全自動回帰テストになる。
+	// `--input-script` で再生でき、#43 の headless+capture と組み合わせれば完全自動の回帰テストになる。
 	// 既存の onModuleFrameRecorded (--record) があれば chain する。lifetime は runModule 内。
 	std::ofstream inputRecOut;
 	std::uint32_t inputRecFrame = 0;
+	bool          inputRecHasPos = false;
+	int           inputRecPosX = 0, inputRecPosY = 0;
 	if (!args.inputRecordPath.empty())
 	{
 		inputRecOut.open(args.inputRecordPath, std::ios::binary);
@@ -2372,11 +2523,11 @@ int main(int argc, char* argv[])
 			             args.inputRecordPath.c_str());
 			return 2;
 		}
-		inputRecOut << "# mitiru input-script (--input-record). 形式: <frame> <KEY> <down|up>\n";
+		inputRecOut << "# mitiru input-script (--input-record). 形式: <frame> <KEY> <down|up> / <frame> pos <x> <y>\n";
 		std::fprintf(stderr, "[mitiru_host] input recording → %s\n", args.inputRecordPath.c_str());
 		auto prev = cfg.onModuleFrameRecorded;   // --record と併用時は chain
 		cfg.onModuleFrameRecorded =
-			[&inputRecOut, &inputRecFrame, prev](const mitiru::module::InputSnapshot& snap,
+			[&inputRecOut, &inputRecFrame, &inputRecHasPos, &inputRecPosX, &inputRecPosY, prev](const mitiru::module::InputSnapshot& snap,
 			                                     const mitiru::module::FrameIntents& fi)
 			{
 				if (prev) { prev(snap, fi); }
@@ -2387,12 +2538,25 @@ int main(int argc, char* argv[])
 					if (snap.keysJustReleased[vk])
 						inputRecOut << inputRecFrame << ' ' << vkToName(vk) << " up\n";
 				}
+				// カーソル位置は動いたフレームだけ、ボタンより先に書く (再生時に「その位置で押した」状態になる)。
+				const int px = static_cast<int>(snap.mouseX), py = static_cast<int>(snap.mouseY);
+				if (!inputRecHasPos || px != inputRecPosX || py != inputRecPosY)
+				{
+					inputRecOut << inputRecFrame << " pos " << px << ' ' << py << '\n';
+					inputRecPosX = px; inputRecPosY = py; inputRecHasPos = true;
+				}
+				static const char* const kBtnNames[3] = { "MouseL", "MouseR", "MouseM" };
+				for (int b = 0; b < 3; ++b)
+				{
+					if (snap.mouseButtonsJustPressed[b])  inputRecOut << inputRecFrame << ' ' << kBtnNames[b] << " down\n";
+					if (snap.mouseButtonsJustReleased[b]) inputRecOut << inputRecFrame << ' ' << kBtnNames[b] << " up\n";
+				}
 				++inputRecFrame;
 			};
 	}
 
-	// GameMemory 再現検証 (flat POD game のみ)。replay 中に on_update 後の
-	// live GameMemory を記録値と byte 照合し、単一 state channel を test oracle にする。
+	// GameMemory の再現検証 (flat POD game のみ)。replay 中に on_update 後の
+	// live GameMemory を記録値と byte 単位で照合し、単一の state channel を test oracle にする。
 	std::vector<std::uint8_t> recordedMem;
 	std::uint32_t replayFrame     = 0;
 	std::uint32_t memDivergeFrame = 0;
@@ -2403,8 +2567,8 @@ int main(int argc, char* argv[])
 	std::size_t   memSizeCurrent  = 0;
 	bool          frameHasRecord  = false;  // この frame に対応する記録 state を読めたか (EOF frame 除外)
 	bool          keyframeRestored = false; // P1: bug_*.mtrr の frame 0 キーフレームを初回だけ復元したか
-	// P1: `observe::saveBugRing` (Oracle.hpp) が書く bug_*.mtrr は frame 0 の state blob に
-	// 「ring 最古の GameMemory を post-update 状態として積んだキーフレーム」を乗せる (通常の
+	// P1: `observe::saveBugRing` (Oracle.hpp) が書く bug_*.mtrr は、frame 0 の state blob に
+	// 「ring で最も古い GameMemory を post-update 状態として格納したキーフレーム」を含める (通常の
 	// --record-state-every による周期スナップショットと wire format 上は区別できないため、
 	// 命名規約 (既定 prefix "bug_") で判定する)。
 	bool          isBugRingReplay = !args.replayPath.empty() &&
@@ -2419,7 +2583,7 @@ int main(int argc, char* argv[])
 	if (!args.replayPath.empty())
 	{
 		const bool opened = player.open(args.replayPath);
-		// リネームされた bug ring も envTag の印で見分ける (prefix は人間向けの目印でしかない)
+		// リネームされた bug ring も envTag の印で見分ける (prefix は人が確認するための目印にすぎない)
 		if (opened && player.recordedEnvTag().rfind("bugring|", 0) == 0) { isBugRingReplay = true; }
 		if (!opened)
 		{
@@ -2427,9 +2591,9 @@ int main(int argc, char* argv[])
 			             args.replayPath.c_str(), playerErrorName(player.lastError()));
 			if (player.lastError() == mitiru::replay::PlayerError::FrameSizeMismatch)
 			{
-				// 別 ABI 世代の録画は再生不能 (InputSnapshot layout が違う)。黙って
-				// 途中破綻させず、記録時 ABI を添えて入口で拒否する。header の値は
-				// wire version (build 指紋入り)。表示は数値 ABI 番号へ分解する。
+				// 別の ABI 世代の録画は再生できない (InputSnapshot layout が異なる)。何も知らせずに
+				// 途中で失敗させず、記録時の ABI を添えて入口で拒否する。header の値は
+				// wire version (build 指紋を含む)。表示時は数値の ABI 番号へ分解する。
 				const std::string recAbi = player.recordedAbiVersion() > 0
 					? "v" + std::to_string(mitiru::module::wireAbiNumber(
 						static_cast<std::uint32_t>(player.recordedAbiVersion())))
@@ -2452,8 +2616,7 @@ int main(int argc, char* argv[])
 		}
 		if (!args.replayGui)
 		{
-			cfg.enableCef = false;   // ヘッドレス決定的再実行
-			cfg.headless  = true;
+			cfg.headless  = true;   // ヘッドレス決定的再実行
 		}
 		cfg.swRasterizeEvery = 0;  // 照合は GameMemory のみで pixels は読まない (#53)
 		cfg.moduleInputOverride =
@@ -2464,12 +2627,12 @@ int main(int argc, char* argv[])
 				const auto onEof = [&]() -> bool
 				{
 					frameHasRecord = false;
-					// module 生存中に最終 reflect 状態を捕捉 (ループ後は解放され得る)
+					// module が有効な間に最終 reflect 状態を取得する (ループ後は解放される可能性がある)
 					finalReflect = engine.reflectBlobJson(engine.moduleMemory());
 					if (guiReplay)
 					{
-						// --replay (GUI): 自動終了せず、直前入力を維持したまま pause して
-						// 最後のフレームで止まる (デモ撮影・目視確認用)。
+						// --replay (GUI): 自動終了せず、直前の入力を維持したまま pause し、
+						// 最後のフレームで停止する (デモ撮影・目視確認用)。
 						engine.setPaused(true);
 						snap = lastRec;
 						return true;
@@ -2484,11 +2647,12 @@ int main(int argc, char* argv[])
 				{
 					return onEof();
 				}
+				mitiru::debug::crashContext().replayRecord.store(fidx, std::memory_order_relaxed);
 
-				// P1: bug_*.mtrr の frame 0 は「on_update 適用済み」の状態を積んだキーフレームで、
-				// rec (frame 0 の入力) は既にその状態へ反映済み。素直に on_update へ回すと
-				// 二重適用になるので、キーフレームを moduleMemory へ書き戻したうえで frame 0 は
-				// 消費済み扱いにし、frame 1 の入力を代わりに読んで返す (以後は通常の replay と同じ)。
+				// P1: bug_*.mtrr の frame 0 は「on_update 適用済み」の状態を含むキーフレームで、
+				// rec (frame 0 の入力) はすでにその状態へ反映済み。そのまま on_update へ渡すと
+				// 二重に適用されるため、キーフレームを moduleMemory へ書き戻したうえで frame 0 は
+				// 消費済みとして扱い、代わりに frame 1 の入力を読んで返す (以後は通常の replay と同じ)。
 				if (!keyframeRestored)
 				{
 					keyframeRestored = true;
@@ -2501,10 +2665,11 @@ int main(int argc, char* argv[])
 						mitiru::module::InputSnapshot recNext{};
 						if (!player.readNextWithState(recNext, recordedMem, fidxNext))
 						{
-							// キーフレームのみで後続入力が無い異常な録画。EOF 扱いで終了する。
+							// キーフレームだけで後続の入力がない異常な録画。EOF として終了する。
 							return onEof();
 						}
 						rec = recNext;
+						mitiru::debug::crashContext().replayRecord.store(fidxNext, std::memory_order_relaxed);
 					}
 				}
 
@@ -2513,8 +2678,8 @@ int main(int argc, char* argv[])
 				lastRec = rec;
 				return true;
 			};
-		// on_update 後の live GameMemory を退避した記録値と照合する (frame 整合済み)。
-		// EOF frame は記録対応が無いので比較しない (stale な recordedMem との誤検出を防ぐ)。
+		// on_update 後の live GameMemory を、退避した記録値と照合する (frame の対応は確認済み)。
+		// EOF frame には対応する記録がないため比較しない (古い recordedMem との誤検出を防ぐ)。
 		cfg.onModuleFrameRecorded =
 			[&engine, &recordedMem, &replayFrame, &memDivergeFrame, &memDiverged, &memCompared,
 			 &frameHasRecord, &memSizeMismatch, &memSizeRecorded, &memSizeCurrent, &memDivergeDiff,
@@ -2532,9 +2697,9 @@ int main(int argc, char* argv[])
 					{
 						memDiverged     = true;
 						memDivergeFrame = replayFrame;
-						// どの field が録画値から変わったか (divergence report)。
+						// どの field が録画値から変化したか (divergence report)。
 						memDivergeDiff  = engine.reflectDiffBlobs(recordedMem.data(), mem);
-						// `mitiru why`: 最初の差異 byte を最後に書いた phase を game へ問い合わせる
+						// `mitiru why`: 最初に異なる byte を最後に書いた phase を game へ問い合わせる
 						// (opt-in game のみ。mitiru_why_blame_at を export していなければ空のまま)。
 						const auto* pm = static_cast<const std::uint8_t*>(mem);
 						for (std::uint32_t i = 0; i < memSize; ++i)
@@ -2550,22 +2715,22 @@ int main(int argc, char* argv[])
 				else if (memSize > 0 && !recordedMem.empty() &&
 				         recordedMem.size() != static_cast<std::size_t>(memSize))
 				{
-					// サイズ不一致 = GameMemory struct が録画時から変更された。黙って
-					// スキップすると false-green (検証ゼロで exit 0) になるため明示 FAIL へ。
+					// サイズ不一致 = GameMemory struct が録画時から変更された。何も知らせずに
+					// スキップすると false-green (検証 0 件で exit 0) になるため、明示的に FAIL とする。
 					memSizeMismatch = true;
 					memSizeRecorded = recordedMem.size();
 					memSizeCurrent  = memSize;
 				}
 				++replayFrame;
 			};
-		// replay 中の load intent はファイルを読まず、当該フレームの記録済み GameMemory blob
-		// で代用する。録画後にセーブファイルが上書きされても bit-exact が保たれる。
-		// blob 無し録画 (旧 .mtrr / memorySize=0) では代用不能 → 明示 FAIL (A3 と同じ思想)。
+		// replay 中の load intent ではファイルを読まず、該当フレームの記録済み GameMemory blob
+		// で代用する。録画後にセーブファイルが上書きされても bit-exact を保てる。
+		// blob がない録画 (旧 .mtrr / memorySize=0) では代用できないため、明示的に FAIL とする (A3 と同じ考え方)。
 		engine.setSaveLoadOverride(
 			[&engine, &recordedMem, &replayFrame, &frameHasRecord,
 			 &loadSubstFailed, &loadSubstFailFrame](const char* /*slot*/) -> bool
 			{
-				// EOF 後のフレーム (記録対応なし) は検証対象外。何も適用せずスキップ。
+				// EOF 後のフレーム (対応する記録なし) は検証対象外。何も適用せずにスキップする。
 				if (!frameHasRecord) { return true; }
 				const std::uint32_t memSize = engine.moduleMemorySize();
 				if (memSize == 0 ||
@@ -2584,15 +2749,15 @@ int main(int argc, char* argv[])
 			});
 	}
 
-	// record と replay はどちらも固定 dt (1/targetTps) で走らせ、dt 列を一致させる
-	// → sim が bit-exact 再現する (timer 駆動の状態も含む)。
+	// record と replay はどちらも固定 dt (1/targetTps) で実行し、dt 列を一致させる
+	// → sim を bit-exact で再現する (timer 駆動の状態も含む)。
 	if (!args.recordPath.empty() || !args.replayPath.empty())
 	{
 		cfg.deterministic = true;
 	}
 
-	// --ghost (10-1): .mtrr は既に上で開いてある。ここで module だけ load する
-	// (同じ DLL のもう1本の GameMemory。--replay と組み合わせれば ghost vs live の同時再生)。
+	// --ghost (10-1):.mtrr はすでに上で開いている。ここでは module だけを load する
+	// (同じ DLL の別の GameMemory。--replay と組み合わせれば ghost vs live を同時に再生できる)。
 	if (ghostPlayer.isOpen())
 	{
 		if (!engine.loadGhostModule(args.dllPath))
@@ -2627,8 +2792,8 @@ int main(int argc, char* argv[])
 		mitiru::debug::openTool(args.openTools[k], extra);
 	}
 
-	// --input-script (#43-1): in-process でキーを注入する。replay (--replay) 使用時は
-	// そちらの moduleInputOverride が優先なので設定しない。runModule がブロックするので
+	// --input-script (#43-1): in-process でキーを注入する。replay (--replay) の使用時は
+	// そちらの moduleInputOverride が優先されるため設定しない。runModule がブロックするので、
 	// scriptPlayer の lifetime はこのスタックフレームで足りる。
 	InputScriptPlayer scriptPlayer;
 	bool scriptLoaded = false;
@@ -2648,8 +2813,8 @@ int main(int argc, char* argv[])
 	}
 
 	// --state-trace: 毎フレーム reflect 状態を JSONL で追記する。reflectBlobJson は offset read
-	// のみ = non-POD GameMemory (std::vector 等) でも安全 (recording/ring と違い memcpy しない)。
-	// replay 時は別経路なので無効。Stage Doctor 等が「解の軌跡/HP 推移」を後で解析できる。
+	// のみ = non-POD GameMemory (std::vector など) でも安全 (recording/ring と異なり memcpy しない)。
+	// replay 時は別経路なので無効。Stage Doctor などが「解の軌跡/HP 推移」を後から解析できる。
 	std::ofstream stateTraceOut;
 	if (args.replayPath.empty() && !args.stateTrace.empty())
 	{
@@ -2659,7 +2824,7 @@ int main(int argc, char* argv[])
 		             args.stateTrace.c_str());
 	}
 
-	// script 注入 か trace のどちらかが要るとき per-frame override を仕込む。
+	// script の注入か trace のいずれかが必要な場合に、per-frame override を設定する。
 	if (args.replayPath.empty() && (scriptLoaded || stateTraceOut.is_open()))
 	{
 		const std::string freezeFile = args.inputFreezeControl;
@@ -2670,7 +2835,7 @@ int main(int argc, char* argv[])
 				if (scriptLoaded)
 				{
 					scriptPlayer.apply(snap);   // 実キーボードを上書き (注入のみ有効)
-					// --input-freeze-control: "1" の間は入力を全消し → プレイヤー静止。
+					// --input-freeze-control: "1" の間は入力をすべて消去 → プレイヤーを静止させる。
 					if (!freezeFile.empty())
 					{
 						if (++frzTick % 4 == 0)
@@ -2687,7 +2852,7 @@ int main(int argc, char* argv[])
 						}
 					}
 				}
-				// このフレームの reflect 状態を 1 行追記 (offset read = non-POD でも安全)。
+				// このフレームの reflect 状態を 1 行追記する (offset read = non-POD でも安全)。
 				if (stateTraceOut.is_open())
 				{
 					stateTraceOut << engine.reflectBlobJson(engine.moduleMemory()) << '\n';
@@ -2699,12 +2864,12 @@ int main(int argc, char* argv[])
 	const auto runStart = std::chrono::steady_clock::now();
 	if (!engine.runModule(args.dllPath, cfg))
 	{
-		// module load 失敗 (MITIRU_GAME 入口無し等)。理由は runModule が stderr に出済み。
-		// 非ゼロで返すとランチャー .bat が pause してユーザがエラーを読める。
+		// module load の失敗 (MITIRU_GAME の入口がない場合など)。理由は runModule がすでに stderr に出している。
+		// 非ゼロを返すと、ランチャー .bat が pause してユーザーがエラーを読める。
 		return 3;
 	}
 
-	// --headless: hotkeys 行だけでは何フレーム動いたか分からない (E10)。終了時に要約を 1 行出す。
+	// --headless: hotkeys の行だけでは実行したフレーム数が分からない (E10)。終了時に要約を 1 行出す。
 	if (args.headless && totalFrame > 0)
 	{
 		const double elapsedMs =
@@ -2713,17 +2878,25 @@ int main(int argc, char* argv[])
 		             totalFrame, elapsedMs / totalFrame);
 	}
 
-	// --perf: 端数ウィンドウの統計を出してから終了処理へ (#53)。
+	// --perf: 端数ウィンドウの統計を出してから終了処理へ進む (#53)。
 	if (args.perf) { perfStats.report(); }
 
-	// Replay 検証: 観測可能な最終状態を出力する。--expect 指定時はキー単位で diff し、
-	// 不一致があれば非ゼロ終了する (CI リグレッションゲート)。--replay (GUI) は verdict 対象外。
+	// game が停止したまま終了した。リプレイの verdict は、途中で停止した実行には付けられない。
+	if (engine.moduleFaulted())
+	{
+		std::fprintf(stderr, "[mitiru_host] game が落ちたまま終了しました。報告: %s\n",
+		             mitiru::debug::pathToUtf8(engine.moduleCrashReportPath()).c_str());
+		return mitiru::debug::kExitGameFaulted;
+	}
+
+	// Replay 検証: 観測可能な最終状態を出力する。--expect の指定時はキー単位で diff し、
+	// 不一致があれば非ゼロで終了する (CI のリグレッションゲート)。--replay (GUI) は verdict の対象外。
 	if (!args.replayPath.empty() && !args.replayGui)
 	{
 		std::string finalState = "{}";
 		if (auto* store = engine.moduleStateStore()) { finalState = store->snapshotJson(2); }
-		// 録画環境 (envTag) を検証結果に混ぜる。他機で再現しない差分の切り分けに使う
-		// (v4 録画は recordedEnvTag() が空文字を返す)。game の JSON が壊れていたら諦める。
+		// 録画環境 (envTag) を検証結果に含める。他の機器で再現しない差分の切り分けに使う
+		// (v4 録画では recordedEnvTag() が空文字を返す)。game の JSON が壊れていた場合は処理しない。
 		try
 		{
 			nlohmann::json j = nlohmann::json::parse(finalState);
@@ -2733,8 +2906,8 @@ int main(int argc, char* argv[])
 		catch (const std::exception&) {}
 		std::fprintf(stdout, "%s\n", finalState.c_str());
 
-		// --json: verdict を stdout に 1 行 JSON でも出す (CLI 側の正規表現パース置換用、E4)。
-		// 既存の stderr テキスト行はそのまま残す (人間が読む用途/既存ツールの後方互換)。
+		// --json: verdict を stdout に 1 行の JSON としても出す (CLI 側の正規表現による解析を置き換えるため、E4)。
+		// 既存の stderr のテキスト行はそのまま残す (人が読む用途/既存ツールとの後方互換)。
 		auto emitJsonVerdict = [&](bool pass, const char* reason)
 		{
 			if (!args.jsonOutput) { return; }
@@ -2754,9 +2927,11 @@ int main(int argc, char* argv[])
 				if (!memDivergeBlame.empty()) { v["blame"] = memDivergeBlame; }
 			}
 			std::fprintf(stdout, "%s\n", v.dump().c_str());
+			// 読む側が頼りにする 1 行なので、終了処理の経路に関係なく出し切る (パイプは全バッファ)
+			std::fflush(stdout);
 		};
 
-		// replay 中の load 代用不能。検証ゼロのまま exit 0 にしない (false-green 防止)。
+		// replay 中の load を代用できない。検証 0 件のまま exit 0 にしない (false-green を防ぐ)。
 		if (loadSubstFailed)
 		{
 			std::fprintf(stderr,
@@ -2768,10 +2943,10 @@ int main(int argc, char* argv[])
 			return 1;
 		}
 
-		// GameMemory 再現の verdict (flat POD game のみ)。bit-exact なら軸④ 構造保証の証明。
+		// GameMemory 再現の verdict (flat POD game のみ)。bit-exact なら軸④の構造保証を証明できる。
 		if (memSizeMismatch)
 		{
-			// 比較ゼロのまま exit 0 すると「検証されてないのに成功」に見える (false-green)。
+			// 比較 0 件のまま exit 0 にすると「検証されていないのに成功」と見える (false-green)。
 			std::fprintf(stderr,
 			             "replay state: FAIL — state size mismatch (recorded %zu bytes, "
 			             "current %zu bytes)\n"
@@ -2782,7 +2957,7 @@ int main(int argc, char* argv[])
 			return 1;
 		}
 		// C-2: 破損 / 切断された .mtrr を false-green にしない。clean EOF 以外の read 失敗と
-		// header frame 数との不一致は、読めた分が bit-exact でも検証不成立として FAIL。
+		// header の frame 数との不一致は、読み取れた分が bit-exact でも検証不成立として FAIL とする。
 		if (player.lastError() != mitiru::replay::PlayerError::None)
 		{
 			std::fprintf(stderr,
@@ -2804,7 +2979,7 @@ int main(int argc, char* argv[])
 			emitJsonVerdict(false, "frame_count_mismatch");
 			return 1;
 		}
-		// 比較 0 件は「検証ゼロで成功風」の false-green になるため明示 FAIL。
+		// 比較 0 件は「検証していないのに成功したように見える」false-green になるため、明示的に FAIL とする。
 		if (!memCompared)
 		{
 			std::fprintf(stderr,
@@ -2821,12 +2996,12 @@ int main(int argc, char* argv[])
 				             "replay state: FAIL (diverged at frame %u of %u frames) — "
 				             "ゲームの状態が記録からずれました\n",
 				             memDivergeFrame, replayFrame);
-				// どの field が変わったか (MITIRU_REFLECT 済みの game のみ。"[]" は記述子無し)
+				// どの field が変化したか (MITIRU_REFLECT 済みの game のみ。"[]" は記述子なし)
 				if (!memDivergeDiff.empty() && memDivergeDiff != "[]")
 				{
 					std::fprintf(stderr, "replay diff: %s\n", memDivergeDiff.c_str());
 				}
-				// 分岐 byte を最後に書いた phase (`mitiru why` opt-in game のみ = 原因 phase)。
+				// 異なる byte を最後に書いた phase (`mitiru why` opt-in game のみ = 原因となった phase)。
 				if (!memDivergeBlame.empty())
 				{
 					std::fprintf(stderr, "replay blame: %s\n", memDivergeBlame.c_str());
@@ -2839,13 +3014,13 @@ int main(int argc, char* argv[])
 				             "replay state: PASS (bit-exact, %u frames) — "
 				             "全フレームでゲームの状態が記録と完全一致\n",
 				             replayFrame);
-				// --expect がある場合は後続の expect 判定が最終 verdict になる。
-				// ここで出すと --json の stdout に 2 行 verdict が乗り、消費側がどちらを
-				// 見るか一意に決まらない。
+				// --expect がある場合は、後続の expect 判定が最終 verdict になる。
+				// ここで出すと --json の stdout に 2 行の verdict が出力され、消費側がどちらを
+				// 参照するか一意に決まらない。
 				if (args.expectPath.empty()) { emitJsonVerdict(true, "bit_exact"); }
 			}
 		}
-		// fuzz 等が field 単位の不変条件をチェックできるよう最終 reflect 状態を出す。
+		// fuzz などが field 単位の不変条件を確認できるよう、最終 reflect 状態を出す。
 		if (!finalReflect.empty() && finalReflect != "{}")
 		{
 			std::fprintf(stdout, "replay final: %s\n", finalReflect.c_str());
@@ -2892,6 +3067,7 @@ int main(int argc, char* argv[])
 				{
 					nlohmann::json v{{"verdict", "FAIL"}, {"reason", "expect_mismatch"}, {"mismatches", mismatchDetail}};
 					std::fprintf(stdout, "%s\n", v.dump().c_str());
+					std::fflush(stdout);
 				}
 				return 1;
 			}
@@ -2900,6 +3076,7 @@ int main(int argc, char* argv[])
 			{
 				nlohmann::json v{{"verdict", "PASS"}, {"reason", "expect_match"}};
 				std::fprintf(stdout, "%s\n", v.dump().c_str());
+				std::fflush(stdout);
 			}
 		}
 	}

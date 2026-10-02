@@ -115,29 +115,20 @@ git submodule update --init external/sgc
 
 ---
 
-### Linux: "pulse/simple.h: No such file or directory"
+## Game Crashed ("ゲームが停止しました" / exit code 6)
 
-**Cause:** PulseAudio development headers not installed.
+**Cause:** the game DLL faulted inside a callback (null pointer, divide by zero, ...). The host caught it and stopped calling the game.
 
-**Fix:**
-
-```bash
-# Ubuntu/Debian
-sudo apt install libpulse-dev
-
-# Fedora
-sudo dnf install pulseaudio-libs-devel
-```
-
-If you do not need audio output, the engine will fall back to `NullAudioOutput` automatically.
+**Fix:** read the report (`.txt`) and open the minidump (`.dmp`) next to it in `%LOCALAPPDATA%\MitiruEngine\crashes\` (or `MITIRU_CRASH_DIR`). With `--watch`, rebuild the DLL and the host resumes. Details: `docs/CRASH_REPORTS.md`.
 
 ---
 
 ## Shader Compilation Failures
 
-### "D3DCompile failed" or "error X3000"
+### "shader compile failed" or "error X3000"
 
 **Cause:** HLSL shader source has syntax errors or the shader compiler (d3dcompiler_47.dll) is missing.
+With `MITIRU_WITH_DXC=ON` the DX12 shaders go through DXC instead; see [SHADER_COMPILER_DXC.md](SHADER_COMPILER_DXC.md).
 
 **Fix:**
 1. Ensure the Windows SDK is installed (bundled with Visual Studio Build Tools 2022 or the full IDE)
@@ -162,7 +153,7 @@ If you do not need audio output, the engine will fall back to `NullAudioOutput` 
 
 **Possible causes:**
 1. Audio device busy or disabled in Windows settings
-2. `NullAudioEngine` selected instead of `WaveAudioEngine`
+2. `NullAudioEngine` selected instead of `MiniaudioEngine` (mitiru_host does not create an audio engine with `--headless`)
 
 **Fix:**
 1. Check Windows Sound settings (right-click speaker icon -> Sound Settings)
@@ -172,9 +163,32 @@ If you do not need audio output, the engine will fall back to `NullAudioOutput` 
 ### No sound on Linux
 
 **Fix:**
-1. Install PulseAudio: `sudo apt install pulseaudio libpulse-dev`
-2. Ensure PulseAudio is running: `pulseaudio --check`
-3. If PulseAudio is not available, audio will use `NullAudioOutput` silently
+1. miniaudio loads PulseAudio / ALSA / JACK at runtime (no `-dev` packages are needed to build)
+2. Ensure a sound server or ALSA device is available: `pactl info` or `aplay -l`
+3. If no device opens, `MiniaudioOutput::initialize()` returns false and nothing plays
+
+---
+
+## Input Issues
+
+### A gamepad is detected by Windows but does nothing in the game
+
+XInput only sees Xbox-compatible pads. Other pads (DualShock / DualSense / Switch Pro / clones) go through
+SDL2's `SDL_GameController`, which needs a mapping for the pad's GUID. SDL ships mappings for common pads;
+newer models and clones may be missing.
+
+**Fix:** put `gamecontrollerdb.txt` from [SDL_GameControllerDB](https://github.com/mdqinc/SDL_GameControllerDB)
+next to the host exe (`mitiru_host.exe` or your distributed exe). It is read once when the gamepad subsystem
+starts (`SdlGamepadInput::init`), before any pad is opened. Only lines for the current OS (`platform:Windows`)
+are used; a file with none of them prints one warning to stderr. SDL's own `SDL_GAMECONTROLLERCONFIG_FILE`
+environment variable also still works.
+
+### Keys stop working (or one key stays held) while the Japanese IME is on
+
+With the IME in composition mode, Windows delivers `WM_KEYDOWN` as `VK_PROCESSKEY` (229) and the matching
+`WM_KEYUP` with the real key. `Win32Window` resolves 229 back to the real key with `ImmGetVirtualKey`, and drops it
+when the real key is unknown, so gameplay keys keep working and no phantom key 229 is held. The IME composition
+window itself still appears while typing; switch the IME off (Hankaku/Zenkaku key) during play.
 
 ---
 
@@ -231,15 +245,14 @@ If you do not need audio output, the engine will fall back to `NullAudioOutput` 
 **Cause:** The built-in `BitmapFont` only supports ASCII (printable range 0x20-0x7E).
 
 **Fix:**
-- For Japanese text, use `mitiru::vn::TrueTypeFont` with a TTF file that includes Japanese glyphs
-- Or use `mitiru::render::DxTextRenderer` (Windows only, DirectWrite-based)
-- Or use `mitiru::render::TrueTypeRenderer` with stb_truetype
+- The host loads the bundled Japanese font (`assets/fonts/MPLUSRounded1c-Regular.ttf`) unless started with `--font none`
+- To use another font, pass `--font-face` / `EngineConfig::fontPath`, or attach your own `mitiru::text::ScreenFont` (see `docs/TEXT_RENDERING.md`)
 
 ---
 
 ## DX12-Specific Issues
 
-### "CreateCommittedResource failed" or device removed
+### "GPU allocation (...) failed" or device removed
 
 **Cause:** GPU memory exhaustion or incompatible hardware.
 
@@ -262,34 +275,6 @@ If you do not need audio output, the engine will fall back to `NullAudioOutput` 
 1. These are warnings, not crashes -- they help find bugs
 2. Install the "Graphics Tools" optional feature in Windows Settings
 3. For release builds, the debug layer is disabled automatically
-
----
-
-## ImGui / F12 Debug Overlay
-
-### F12 does nothing
-
-**Cause:** ImGui is only available on Windows with DX11 backend and vendored ImGui headers present.
-
-**Fix:**
-1. Check that `external/vendored/imgui/imgui.h` exists
-2. Ensure building on Windows (`MITIRU_HAS_IMGUI` must be defined)
-3. Ensure not using DX12 or Null backend (ImGui requires DX11 currently)
-
-### ImGui overlay appears but is empty
-
-**Cause:** `Game::drawImGui()` not overridden or empty.
-
-**Fix:** Override `drawImGui()` in your game class and add ImGui widgets:
-
-```cpp
-void drawImGui() override
-{
-    ImGui::Begin("Debug");
-    ImGui::Text("Hello from ImGui!");
-    ImGui::End();
-}
-```
 
 ---
 

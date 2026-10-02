@@ -146,7 +146,7 @@ public:
 
 	/// @brief 読み込んだシーン本文のハッシュ（FNV-1a、16 桁 hex）
 	/// @details 焼いた .cso が**このシーンから**焼かれたものかを確かめるためだけにある。
-	///          照合できないと、古い .cso が読めて描けて、しかし黙って違う形になる。
+	///          照合できないと、古い .cso が読めて描けて、しかし知らないうちに違う形になる。
 	///          makina 側の `makina_bake` が同じ計算をしてマニフェストに入れている。
 	[[nodiscard]] const std::string& sourceHash() const noexcept { return m_hash; }
 

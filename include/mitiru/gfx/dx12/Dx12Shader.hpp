@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 /// @file Dx12Shader.hpp
-/// @brief DirectX 12シェーダー実装
-/// @details コンパイル済みDXIL/DXBCバイトコードを保持するIShader実装。
-///          D3D12ではPSO生成時にバイトコードを渡すため、シェーダーオブジェクトは
-///          バイトコードのコンテナとして機能する。
+/// @brief DirectX 12 シェーダー実装
+/// @details コンパイル済み DXIL/DXBC バイトコードを保持する IShader 実装。
+///          D3D12 では PSO 生成時にバイトコードを渡すため、シェーダーオブジェクトは
+///          バイトコードを入れておくコンテナとして使う。
 
 #ifdef _WIN32
 
@@ -30,31 +30,31 @@
 #pragma comment(lib, "d3dcompiler.lib")
 
 #include <mitiru/gfx/IShader.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 12シェーダー実装
-/// @details コンパイル済みHLSLバイトコードを保持する。
-///          D3D12ではID3D12PipelineState生成時にバイトコードを渡すため、
-///          DX11のようなシェーダーオブジェクトは不要。
-///
+/// @brief DirectX 12 シェーダー実装
+/// @details コンパイル済み HLSL バイトコードを保持する。
+/// D3D12 では ID3D12PipelineState 生成時にバイトコードを渡すため、
+/// DX11 のようなシェーダーオブジェクトは不要。
 /// @code
 /// auto vs = Dx12Shader::createVertexShader(hlslSource);
 /// auto ps = Dx12Shader::createPixelShader(hlslSource);
-/// // PSO生成時に vs.bytecode(), ps.bytecode() を使用
+/// // PSO 生成時に vs.bytecode(), ps.bytecode() を使用
 /// @endcode
 class Dx12Shader final : public IShader
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief 頂点シェーダーを生成するファクトリ
-	/// @param hlslSource HLSL文字列
+	/// @param hlslSource HLSL 文字列
 	/// @param entryPoint エントリーポイント名
-	/// @return 生成されたDx12Shader
+	/// @return 生成された Dx12Shader
 	[[nodiscard]] static Dx12Shader createVertexShader(
 		std::string_view hlslSource,
 		std::string_view entryPoint = "VSMain")
@@ -72,9 +72,9 @@ public:
 	}
 
 	/// @brief ピクセルシェーダーを生成するファクトリ
-	/// @param hlslSource HLSL文字列
+	/// @param hlslSource HLSL 文字列
 	/// @param entryPoint エントリーポイント名
-	/// @return 生成されたDx12Shader
+	/// @return 生成された Dx12Shader
 	[[nodiscard]] static Dx12Shader createPixelShader(
 		std::string_view hlslSource,
 		std::string_view entryPoint = "PSMain")
@@ -94,7 +94,7 @@ public:
 	/// @brief プリコンパイル済みバイトコードから生成するファクトリ
 	/// @param bytecode コンパイル済みバイトコード
 	/// @param shaderType シェーダー種別
-	/// @return 生成されたDx12Shader
+	/// @return 生成された Dx12Shader
 	[[nodiscard]] static Dx12Shader createFromBytecode(
 		std::span<const std::uint8_t> bytecode,
 		ShaderType shaderType)
@@ -112,13 +112,13 @@ public:
 	}
 
 	/// @brief コンパイル済みバイトコードを取得する
-	/// @return バイトコードのconst参照
+	/// @return バイトコードの const 参照
 	[[nodiscard]] const std::vector<std::uint8_t>& bytecode() const noexcept
 	{
 		return m_bytecode;
 	}
 
-	/// @brief D3D12_SHADER_BYTECODE構造体を取得する
+	/// @brief D3D12_SHADER_BYTECODE 構造体を取得する
 	/// @return バイトコードとサイズのペア
 	[[nodiscard]] D3D12_SHADER_BYTECODE shaderBytecode() const noexcept
 	{
@@ -132,11 +132,11 @@ private:
 	/// @brief デフォルトコンストラクタ（ファクトリからのみ使用）
 	Dx12Shader() = default;
 
-	/// @brief HLSL文字列をコンパイルする
-	/// @param source HLSL文字列
+	/// @brief HLSL 文字列をコンパイルする
+	/// @param source HLSL 文字列
 	/// @param entryPoint エントリーポイント名
 	/// @param target コンパイルターゲット（例: "vs_5_0"）
-	/// @return コンパイル済みBlob
+	/// @return コンパイル済み Blob
 	[[nodiscard]] static ComPtr<ID3DBlob> compileHLSL(
 		std::string_view source,
 		std::string_view entryPoint,
@@ -152,22 +152,12 @@ private:
 #endif
 
 		const std::string ep(entryPoint);
-		HRESULT hr = D3DCompile(
-			source.data(),
-			source.size(),
-			nullptr,
-			nullptr,
-			nullptr,
-			ep.c_str(),
-			target,
-			compileFlags,
-			0,
-			shaderBlob.GetAddressOf(),
-			errorBlob.GetAddressOf());
+		HRESULT hr = compileDx12Shader(source, ep.c_str(), target, compileFlags,
+			shaderBlob.GetAddressOf(), errorBlob.GetAddressOf());
 
 		if (FAILED(hr))
 		{
-			std::string errorMsg = "Dx12Shader: D3DCompile failed";
+			std::string errorMsg = "Dx12Shader: shader compile failed";
 			if (errorBlob)
 			{
 				errorMsg += ": ";

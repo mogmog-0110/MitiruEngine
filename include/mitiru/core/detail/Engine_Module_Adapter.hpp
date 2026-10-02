@@ -1,11 +1,11 @@
-// mitiru::Engine の detail header - 直接 include しないこと。core/Engine.hpp 経由で include される
+// mitiru::Engine の detail header。直接 include しないこと。core/Engine.hpp 経由で include される
 #pragma once
 
 /// @file Engine_Module_Adapter.hpp
 /// @brief Engine の module per-frame signal flow の out-of-class 定義 (v0.2.0 step 2-3)
 /// @details
 /// `Engine::runModule` (stack-local ModuleAdapter) と、host と game を
-/// C の関数と生データだけで繋ぐ per-frame signal flow:
+/// C の関数と生データだけでつなぐ per-frame signal flow。中身は次のとおり。
 ///   - InputSnapshot 構築 (host が input + action events を POD に詰める)
 ///   - FrameIntents drain (DLL の要求を host が解釈して engine 操作に変換)
 ///   - 必要なら StateStore + SharedSnapshot を遅延生成
@@ -27,10 +27,13 @@
 #include <mitiru/platform/win32/Win32Window.hpp>
 #endif
 
-#include <mitiru/cef/StateStore.hpp>
+#include <mitiru/bridge/StateStore.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/Screen.hpp>
+#include <mitiru/core/detail/ModuleInputDevices.hpp>
+#include <mitiru/core/detail/ModuleTextInput.hpp>
+#include <mitiru/debug/CrashReport.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/debug/DebugPrint.hpp>
 #include <mitiru/debug/TracyZones.hpp>
@@ -46,34 +49,12 @@
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-
-namespace mitiru::detail
-{
-/// ブラウザ版の action の届け先。ensureModuleCefBindings が Engine の
-/// m_moduleActionEvents を指させる。Engine は wasm 内に 1 つしか居ない。
-inline mitiru::Engine::ModuleActionEventBuffer* g_webActionSink = nullptr;
-}  // namespace mitiru::detail
-
-/// @brief HUD (ページの JS) からの action。shell が window.cefQuery を
-///        この関数へつなぐので、data-m-action は CEF 時代と同じ道を通る。
-extern "C" EMSCRIPTEN_KEEPALIVE void mitiru_web_action(const char* name,
-                                                       const char* payloadJson)
-{
-	auto* sink = mitiru::detail::g_webActionSink;
-	if (sink == nullptr || name == nullptr) { return; }
-	std::lock_guard lock(sink->mu);
-	sink->events.emplace_back(name, payloadJson != nullptr ? payloadJson : "{}");
-}
-#endif
-
 // ── Free helper 群 (file-local、Engine の method ではない) ──────────────────
 namespace mitiru::module::detail
 {
 
 /// @brief `src` を固定長 buffer に copy する。source が buffer より長くても
-///        UB を起こさず null 終端 + 切り詰めする。
+///        UB を起こさず、切り詰めて null 終端する。
 template <std::size_t N>
 inline void copyBounded(char (&dst)[N], const std::string& src) noexcept
 {
@@ -94,29 +75,28 @@ template <std::size_t N>
 }
 
 /// @brief inspector の "gameMemory" セクション ({title,order,meta,state}) を組み立てる (C15)。
-///        scrub-hold 時 (pushScrubHoldGameMemory) と通常フレームの inspector push が
-///        同じ組み立てを 2 箇所で重複させていたのを 1 箇所に集約する。
-inline cef::json buildGameMemoryJson(
-	const mitiru::module::ModuleApi& api,
-	const void*                      memory,
-	std::uint32_t                    memorySize)
+///        scrub-hold 時 (pushScrubHoldGameMemory) と通常フレームの inspector push で
+///        2 箇所に重複していた同じ組み立てを 1 箇所にまとめる。
+inline nlohmann::json buildGameMemoryJson(
+	const mitiru::module::ModuleReflection& refl,
+	const void*                             memory,
+	std::uint32_t                           memorySize)
 {
-	cef::json fieldOrder = cef::json::array();
-	cef::json fieldMeta  = cef::json::object();
-	for (std::uint32_t fi = 0; fi < static_cast<std::uint32_t>(api.reflectFieldCount); ++fi)
+	nlohmann::json fieldOrder = nlohmann::json::array();
+	nlohmann::json fieldMeta  = nlohmann::json::object();
+	for (const auto& f : refl.fields)
 	{
-		const auto& f = api.reflectFields[fi];
 		fieldOrder.push_back(f.name);
-		fieldMeta[f.name] = cef::json{{"typeTag", f.typeTag}, {"elemType", f.elemType}};
+		fieldMeta[f.name] = nlohmann::json{{"typeTag", f.typeTag}, {"elemType", f.elemType}};
 	}
-	return cef::json{
+	return nlohmann::json{
 		{"title", "Game memory"},
 		{"order", std::move(fieldOrder)},
 		{"meta", std::move(fieldMeta)},
 		{"state", mitiru::observe::reflectToJson(
 			static_cast<const std::uint8_t*>(memory), memorySize,
-			api.reflectFields, api.reflectFieldCount,
-			api.reflectSchemas, api.reflectSchemaCount)}};
+			refl.fieldsData(), refl.fieldCount(),
+			refl.schemasData(), refl.schemaCount())}};
 }
 
 /// @brief scrub-hold 中の inspector 更新 (9-2)。on_update を呼ばず、rewind 済み GameMemory を
@@ -124,16 +104,16 @@ inline cef::json buildGameMemoryJson(
 ///        perf/audio/rewind 等の他キーは直近の out (lastInspectorOut) をそのまま残す。
 inline void pushScrubHoldGameMemory(
 	mitiru::observe::SharedSnapshot*       snapshot,
-	cef::json&                             lastInspectorOut,
-	const mitiru::module::ModuleApi&       api,
+	nlohmann::json&                             lastInspectorOut,
+	const mitiru::module::ModuleReflection& refl,
 	const void*                            memory,
 	std::uint32_t                          memorySize)
 {
-	if (snapshot == nullptr || api.reflectFieldCount <= 0 || memory == nullptr || memorySize == 0)
+	if (snapshot == nullptr || refl.fieldCount() <= 0 || memory == nullptr || memorySize == 0)
 	{ return; }
 
-	cef::json out = lastInspectorOut.is_object() ? lastInspectorOut : cef::json::object();
-	out["gameMemory"] = buildGameMemoryJson(api, memory, memorySize);
+	nlohmann::json out = lastInspectorOut.is_object() ? lastInspectorOut : nlohmann::json::object();
+	out["gameMemory"] = buildGameMemoryJson(refl, memory, memorySize);
 	lastInspectorOut = out;
 	snapshot->write(out);
 }
@@ -153,7 +133,7 @@ struct DebugDrawTracker
 	Slot slots[256];
 
 	/// このフレームの intents を取り込む。既存 slot を dt 分だけ減衰させ、
-	/// 期限切れを外してから新規分を空き slot へ入れる (満杯なら黙って捨てる)。
+	/// 期限切れを外してから新規分を空き slot へ入れる (満杯なら何も知らせずに捨てる)。
 	void ingest(const mitiru::module::FrameIntents& intents, float dt) noexcept
 	{
 		for (auto& s : slots)
@@ -170,7 +150,7 @@ struct DebugDrawTracker
 			{
 				if (s.active) { continue; }
 				s.draw   = intents.debugDraws[i];
-				// durationSec=0 は「このフレームのみ」= 次の ingest で必ず期限切れにする。
+				// durationSec=0 は「このフレームのみ」の意味で、次の ingest で必ず期限切れにする。
 				s.remain = (s.draw.durationSec > 0.0f) ? s.draw.durationSec : dt;
 				s.active = true;
 				break;
@@ -181,10 +161,10 @@ struct DebugDrawTracker
 
 /// @brief アクティブな DebugDrawTracker の内容を Screen へ重ねて描く。
 /// @details 3D カメラは game の on_draw (camera3D 呼び出し) が設定済みという前提で
-///          `Screen::projectToScreen` を使い、screen-space の線 / 円 / テキストへ落とす
+///          `Screen::projectToScreen` を使い、screen-space の線 / 円 / テキストへ変換する
 ///          (専用の 3D 線描画パスが無いための実用的な近似。球は半径方向に 1 点だけ
 ///          投影しておおよその画面半径を出す簡易法)。カメラ未設定 (projectToScreen が
-///          false) の draw は黙ってスキップする。
+///          false) の draw は何も知らせずにスキップする。
 inline void drawDebugDraws(mitiru::Screen& screen, const DebugDrawTracker& tracker) noexcept
 {
 	for (const auto& s : tracker.slots)
@@ -250,7 +230,7 @@ inline void drawDebugDraws(mitiru::Screen& screen, const DebugDrawTracker& track
 /// `Canvas::beginObject(name)` でタグ付けされたコマンドの screen-space bbox を merge した結果。
 struct SceneViewObject
 {
-	std::uint32_t sourceId{};  ///< `fnv1a32(name)`。host 側で reflectFields の名前と突き合わせる
+	std::uint32_t sourceId{};  ///< `fnv1a32(name)`。host 側で反射記述子の名前と突き合わせる
 	float x{}, y{}, w{}, h{};
 };
 
@@ -373,7 +353,7 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 		}
 
 		// ADR 0035 O2/O3 追記: 非描画マーカー。fieldX/fieldY 名を textPool から復元して控える
-		// (bbox マージ対象ではないので下の switch では default に落ちるだけで良い)。
+		// (bbox マージ対象ではないので、下の switch では default に入るだけでよい)。
 		if (sceneOut != nullptr && c.kind == DrawCmdKind::SceneFieldMap)
 		{
 			const std::string_view joined = textOf(c.textOffset, c.textLen);
@@ -539,9 +519,9 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 			break;
 		case DrawCmdKind::SpriteById:
 			{
-				// SpriteCache::get は string_view 版 (透過ハッシュ、C1) を直接叩き、
-				// Screen::sprite(const char*) 経由の resolver 呼び出しと毎フレーム std::string
-				// 生成を回避する (SpriteRectById と同じ経路に統一)。
+				// SpriteCache::get は string_view 版 (透過ハッシュ、C1) を直接呼び、
+				// Screen::sprite(const char*) 経由の resolver 呼び出しと毎フレームの std::string
+				// 生成を避ける (SpriteRectById と同じ経路に統一)。
 				const std::string_view id = textOf(c.textOffset, c.textLen);
 				if (const auto* tex = spriteCache.get(id); tex != nullptr)
 				{
@@ -581,12 +561,14 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 MITIRU_INLINE bool mitiru::Engine::runModule(
 	const std::filesystem::path& modulePath, const EngineConfig& configIn)
 {
-	// pack の mount (mountModulePackIfConfigured) は loadModule の中で m_config.packPath を読むが、
-	// configIn 全体が m_config に写るのは後の run()→initialize()。packPath だけ先に写す。
-	m_config.packPath = configIn.packPath;  // 空も写す (同じ Engine の再実行で別の pack を引きずらない)
+	// loadModule は m_config.packPath (pack の mount) と m_config.collisionPath (物理問い合わせの地形) を
+	// 読むが、configIn 全体が m_config に写るのは後の run()→initialize()。この 2 つだけ先に写す。
+	// 空も写す (同じ Engine の再実行で前の値を引きずらない)。
+	m_config.packPath      = configIn.packPath;
+	m_config.collisionPath = configIn.collisionPath;
 	if (!loadModule(modulePath))
 	{
-		// 黙って return すると「窓が出ず exit 0」で原因不明になる (#hello-game)。
+		// 何も出さずに return すると「窓が出ず exit 0」で原因不明になる (#hello-game)。
 		// 理由を明示し false を返す → host は非ゼロ終了 → ランチャー .bat が pause する。
 		std::fprintf(stderr,
 			"mitiru: ゲームモジュールの読み込みに失敗しました: %s\n"
@@ -610,7 +592,10 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 		void update(float dt) override
 		{
 			MITIRU_ZONE_NAMED("Engine::ModuleAdapter::update");
-			m_engine->ensureModuleCefBindings();
+			m_engine->ensureModuleBindings();
+			// 落ちた game は新しい DLL が来るまで呼ばない (停止の通知は Engine_Frame が描く)。
+			if (m_engine->moduleFaulted()) { return; }
+			debug::crashContext().frame.store(m_engine->frameNumber(), std::memory_order_relaxed);
 			// 過去フレームで静止 (scrub-hold): 別窓のバーで過去を選んでいる間は、その
 			// フレームを毎フレーム復元して止める。ゲームを前進させず記録もしない。
 			if (m_engine->applyScrubHold())
@@ -620,7 +605,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				// gameUpdate を呼ばずに reflect 記述子だけで巻き戻し後の state を push する。
 				module::detail::pushScrubHoldGameMemory(
 					m_engine->m_moduleInspectorSnapshot.get(), m_engine->m_lastInspectorOut,
-					m_engine->m_moduleApi, m_engine->m_moduleMemory, m_engine->m_moduleMemorySize);
+					m_engine->m_moduleReflection, m_engine->m_moduleMemory, m_engine->m_moduleMemorySize);
 				return;
 			}
 			// 実効 dt (pause/hitStop gating) も snapshot 構築時に書き込む (v21、H-3)。
@@ -636,8 +621,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				// replay / resim は override が再投入した記録値。dt gating も記録系の
 				// 内側になり、GUI 録画 (F8 pause / hitStop 込み) → headless 再生が
 				// bit-exact に成立する。
-				api.on_update(m_engine->moduleMemory(), snap->effectiveDt, snap,
-				              m_engine->m_moduleFrameIntents.get());
+				if (!m_engine->callModuleUpdate(snap, m_engine->m_moduleFrameIntents.get())) { return; }
 			}
 
 			// restart (§8-4) は ring 記録より前に適用する。ring のフレーム N = 次フレームの
@@ -676,11 +660,21 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			// Shake (kind=4): game 描画全体を frame index ベースの決定的オフセットで
 			// 平行移動する (乱数なし。リプレイ bit-exact)。
 			const bool shaking = fx.shakeActive();
+			float shakeFracX = 0.0f;
+			float shakeFracY = 0.0f;
 			if (shaking)
 			{
 				const auto off = fx.shakeOffset(m_engine->frameNumber());
 				screen.pushTransform(off.dx, off.dy);
+				// 3D はカメラから描くので 2D の変換が掛からない。同じ量を画面に対する割合で渡す
+				const auto* snap = m_engine->m_moduleInputSnapshot.get();
+				if (snap != nullptr && snap->logicalW > 0 && snap->logicalH > 0)
+				{
+					shakeFracX = off.dx / static_cast<float>(snap->logicalW);
+					shakeFracY = off.dy / static_cast<float>(snap->logicalH);
+				}
 			}
+			if (m_engine->m_renderer3D) { m_engine->m_renderer3D->setCameraShake(shakeFracX, shakeFracY); }
 
 			const auto& api = m_engine->moduleApi();
 			if (api.on_draw_commands != nullptr)
@@ -702,7 +696,8 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				// 19 フレーム目前後から drop が発生することを確認した)。
 				buf.textPoolUsed  = 0;
 				buf.pointPoolUsed = 0;
-				api.on_draw_commands(m_engine->moduleMemory(), &ctx, &buf);
+				// 落ちて戻した版の途中までのコマンドは描かない (shake の pop まで続けるので return しない)。
+				if (!m_engine->callModuleDrawCommands(&ctx, &buf)) { buf.count = 0; }
 				auto& sceneObjs = module::detail::lastSceneViewObjects();
 				sceneObjs.clear();
 				module::detail::lastSceneFieldMappings().clear();
@@ -710,7 +705,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			}
 			else if (api.on_draw != nullptr)
 			{
-				api.on_draw(m_engine->moduleMemory(), &screen);
+				(void)m_engine->callModuleDraw(&screen);
 			}
 
 			if (shaking) { screen.popTransform(); }
@@ -725,8 +720,8 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			// 1 つも active でなければ内部の空ループのみで実質 no-op。
 			m_engine->drawCandidateBranches(screen);
 
-			// Letterbox (kind=6): 上下黒帯。transform 外なので shake 非影響。
-			// fade 覆いより先に描く = 帯の上に fade が乗る。
+			// Letterbox (kind=6): 上下黒帯。transform の外なので shake の影響を受けない。
+			// fade の覆いより先に描くので、帯の上に fade が乗る。
 			const float lb = fx.letterboxAmount();
 			if (lb > 0.0f)
 			{
@@ -783,15 +778,26 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 
 	m_moduleApi = module::ModuleApi{};
 	m_moduleApi.version = module::kWireApiVersion;
-	loadFn(&m_moduleApi, &m_moduleMemory);
+	// 前に同じプロセスで登録された game の反射を引き継がない (MITIRU_GAME を使わない game は登録しない)
+	module::linkedReflectionExports() = {};
+	if (!guardModuleCode("mitiru_module_load", nullptr, "start refused",
+	                     [&] { loadFn(&m_moduleApi, &m_moduleMemory); }))
+	{
+		m_moduleApi    = module::ModuleApi{};
+		m_moduleMemory = nullptr;
+		return false;
+	}
 	m_moduleMemorySize = m_moduleApi.memorySize;
+	// GetProcAddress で引く export が無いので、MITIRU_GAME の登録が置いた 3 関数から組む。
+	// 組まないと inspector / AI state / セーブ照合が「反射なし」として動く
+	m_moduleReflection = module::ModuleReflection::fromExports(module::linkedReflectionExports());
 	// 静的リンクには GetProcAddress で引く DLL export が無いので、MITIRU_PAUSE_ALWAYS_LAYERS
 	// 宣言は届かない (2-1)。mask=0 = pause は全 layer 共通のまま。
 	m_pauseAlwaysLayersMask = 0;
 
 	// 静的リンクでは game と engine が同じビルドなので、version の不一致は
 	// ModuleApi.hpp の取り違え (include パスの混線) 以外では起きない。
-	// 起きたら黙って進まず止める。混線したまま動くと ABI ずれで壊れる。
+	// 起きたらそのまま進めずに止める。混線したまま動くと ABI がずれておかしくなる。
 	if (m_moduleApi.version != module::kWireApiVersion)
 	{
 		std::fprintf(stderr,
@@ -803,7 +809,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 	}
 
 	// 毎フレームの signal バッファ。DLL 経路では loadModule が確保する。ここで
-	// 確保しないと buildModuleInputSnapshot が黙って何もせず、on_update が一度も
+	// 確保しないと buildModuleInputSnapshot が何も知らせずに何もせず、on_update が一度も
 	// 呼ばれない (絵は初回の draw のまま止まる。web で実際に起きた)。
 	if (!m_moduleInputSnapshot) { m_moduleInputSnapshot = std::make_unique<module::InputSnapshot>(); }
 	if (!m_moduleFrameIntents)  { m_moduleFrameIntents  = std::make_unique<module::FrameIntents>(); }
@@ -817,7 +823,12 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 	}
 #endif
 
-	if (m_moduleApi.on_init != nullptr) { m_moduleApi.on_init(m_moduleMemory); }
+	clearModuleFault();
+	module::setFaultDumpDirectory(debug::crashDirectory());
+	if (m_moduleApi.on_init != nullptr)
+	{
+		guardModuleCallback("on_init", [&] { m_moduleApi.on_init(m_moduleMemory); });
+	}
 
 	// runModule と同一の adapter (このファイル上部で定義しているものはローカル型
 	// なので、同じ形をここにも置く。挙動は runModule 側と一字一句同じにすること)。
@@ -829,13 +840,15 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 		void update(float dt) override
 		{
 			MITIRU_ZONE_NAMED("Engine::StaticAdapter::update");
-			m_engine->ensureModuleCefBindings();
+			m_engine->ensureModuleBindings();
+			if (m_engine->moduleFaulted()) { return; }  // ModuleAdapter と同じ
+			debug::crashContext().frame.store(m_engine->frameNumber(), std::memory_order_relaxed);
 			if (m_engine->applyScrubHold())
 			{
 				// runModule 側 (ModuleAdapter) と一字一句同じ挙動にすること (9-2)。
 				module::detail::pushScrubHoldGameMemory(
 					m_engine->m_moduleInspectorSnapshot.get(), m_engine->m_lastInspectorOut,
-					m_engine->m_moduleApi, m_engine->m_moduleMemory, m_engine->m_moduleMemorySize);
+					m_engine->m_moduleReflection, m_engine->m_moduleMemory, m_engine->m_moduleMemorySize);
 				return;
 			}
 			m_engine->buildModuleInputSnapshot(dt);
@@ -845,8 +858,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 			const auto* snap = m_engine->m_moduleInputSnapshot.get();
 			if (api.on_update != nullptr && snap != nullptr)
 			{
-				api.on_update(m_engine->moduleMemory(), snap->effectiveDt, snap,
-				              m_engine->m_moduleFrameIntents.get());
+				if (!m_engine->callModuleUpdate(snap, m_engine->m_moduleFrameIntents.get())) { return; }
 			}
 			m_engine->applyModuleRestartIntent();
 			m_engine->recordModuleMemoryFrame();
@@ -877,7 +889,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 				// 19 フレーム目前後から drop が発生することを確認した)。
 				buf.textPoolUsed  = 0;
 				buf.pointPoolUsed = 0;
-				api.on_draw_commands(m_engine->moduleMemory(), &ctx, &buf);
+				if (!m_engine->callModuleDrawCommands(&ctx, &buf)) { return; }
 				auto& sceneObjs = module::detail::lastSceneViewObjects();
 				sceneObjs.clear();
 				module::detail::lastSceneFieldMappings().clear();
@@ -885,7 +897,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 			}
 			else if (api.on_draw != nullptr)
 			{
-				api.on_draw(m_engine->moduleMemory(), &screen);
+				if (!m_engine->callModuleDraw(&screen)) { return; }
 			}
 			module::detail::drawDebugDraws(screen, m_debugDraws);
 			m_engine->drawCandidateBranches(screen);  // ADR 0035 O4 (runModuleStatic 経路も同様に配線)
@@ -906,7 +918,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 
 	if (m_moduleApi.on_shutdown != nullptr && m_moduleMemory != nullptr)
 	{
-		m_moduleApi.on_shutdown(m_moduleMemory);
+		guardModuleCallback("on_shutdown", [&] { m_moduleApi.on_shutdown(m_moduleMemory); });
 	}
 	m_moduleApi = module::ModuleApi{};
 	m_moduleMemory = nullptr;
@@ -941,100 +953,18 @@ namespace mitiru::module::detail
 
 // ── Engine member helper の定義 (ModuleAdapter から呼ばれる) ──────────────
 
-MITIRU_INLINE void mitiru::Engine::ensureModuleCefBindings()
+MITIRU_INLINE void mitiru::Engine::ensureModuleBindings()
 {
-	// Inspector / perf / mixer のツール窓が読む SharedSnapshot の producer は、
-	// CEF の有無に関係なく必ず起動する。これより下は CEF が準備でき次第 early-return
-	// するので、ここで先に作っておかないと --no-cef のとき producer が永久に立たず、
-	// 独立ウィンドウが「waiting for producer」のままになる。
+	// Inspector / perf / mixer のツール窓が読む SharedSnapshot と、hud.set の値の写し。
+	// 観測と replay-as-test の比較がどちらも最初のフレームから読めるよう、module の最初の tick で作る。
 	if (!m_moduleInspectorSnapshot)
 	{
 		m_moduleInspectorSnapshot = std::make_unique<observe::SharedSnapshot>();
 	}
-
-	if (m_moduleStateStore)
+	if (!m_moduleStateStore)
 	{
-		return;  // 接続済み
+		m_moduleStateStore = std::make_unique<bridge::StateStore>();
 	}
-	if (!m_cefContext.isInitialized())
-	{
-#ifdef __EMSCRIPTEN__
-		// ブラウザ版: ページ自体が HUD なので CEF は存在しない。state push は
-		// CEF と同じ JS 契約 (window.mitiru._state) を emscripten_run_script で
-		// 直接叩く。action (JS → C++) は mitiru_web_action (下の extern C) が
-		// m_moduleActionEvents へ積む。snapshot への drain は共通経路。
-		m_moduleActionEvents = std::make_unique<ModuleActionEventBuffer>();
-		m_moduleStateStore = std::make_shared<cef::StateStore>(
-			[](const std::string& code) { emscripten_run_script(code.c_str()); },
-			[](const std::string&, cef::StateStore::HandlerFn) {});
-		detail::g_webActionSink = m_moduleActionEvents.get();
-		return;
-#endif
-		// Headless / CEF 無効時 (例: `mitiru replay --test`): それでも no-op sink で
-		// StateStore を生成し、game が push する view.* state を観察/assertion 用に
-		// map へ取り込む。CEF 有効時は準備完了まで待つ。
-		if (!m_config.enableCef && !m_moduleStateStore)
-		{
-			m_moduleStateStore = std::make_shared<cef::StateStore>(
-				[](const std::string&) {},
-				[](const std::string&, cef::StateStore::HandlerFn) {});
-		}
-		return;  // CEF はまだ準備未完 — 次フレームで再試行 (または上で store 生成済み)
-	}
-
-	auto* cef = &m_cefContext;
-	m_moduleStateStore = std::make_shared<cef::StateStore>(
-		[cef](const std::string& code) { cef->executeJavaScript(code); },
-		[cef](const std::string& name, cef::StateStore::HandlerFn fn) {
-			cef->registerHandler(name, std::move(fn));
-		});
-
-	// ページが (再)読み込みされたら保持済み state を全て再送する。これで
-	// ページ読込前に push された値の取りこぼしが無くなり、game 側の heartbeat
-	// 再 push が不要になる (hot reload 後も即座に最新状態が出る)。
-	// weak 捕捉。store 破棄後 (CEF shutdown ポンプ中等) にロード完了が
-	// 来ても no-op (H-19: 生ポインタ捕捉による UAF を構造で排除)。
-	{
-		std::weak_ptr<cef::StateStore> weak = m_moduleStateStore;
-		cef->setLoadEndCallback([weak](std::string_view)
-		{
-			if (auto s = weak.lock()) { s->replayRetainedState(); }
-		});
-	}
-
-	// engine 所有の action handler。capture が reload 時に dangle する (
-	// F3) ため DLL 側には置けない。
-	m_moduleStateStore->onAction("inspector.open",
-		[](const cef::json& payload) -> cef::json
-		{
-			const std::string name = payload.value("name", "");
-			if (name.empty())
-			{
-				return cef::json{{"ok", false}, {"reason", "missing name"}};
-			}
-			const bool ok = mitiru::debug::openInspectable(name);
-			return cef::json{{"ok", ok}};
-		});
-
-	// その他の action 全てを受ける catch-all forwarder。DLL が次フレームで
-	// 処理できるよう ActionEvent として queue する。
-	auto* buffer = m_moduleActionEvents.get();
-	m_moduleStateStore->onActionFallback(
-		[buffer](std::string_view action, const cef::json& payload) -> cef::json
-		{
-			if (buffer == nullptr)
-			{
-				return cef::json{{"ok", false}, {"reason", "no event buffer"}};
-			}
-			std::lock_guard lock(buffer->mu);
-			if (buffer->events.size() < 64)  // queue を bound する
-			{
-				buffer->events.emplace_back(std::string(action), payload.dump());
-			}
-			return cef::json{{"ok", true}, {"queued", true}};
-		});
-
-	// (Inspector SharedSnapshot の producer は関数先頭で CEF 非依存に作成済み)
 }
 
 MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
@@ -1091,7 +1021,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		// もう一度掛けると二重適用になる。layerTimeScale は素の dt にだけ掛ける。
 		// pause の gating は既定で全 layer 共通だが、game が `MITIRU_PAUSE_ALWAYS_LAYERS`
 		// で宣言した layer は pause 中でも dt を受け取る (Godot PROCESS_MODE_WHEN_PAUSED
-		// 相当、ポーズメニュー演出用)。hitStop は layerFrozenByHitStop で層別に効かせる
+		// 相当、ポーズメニュー演出用)。hitStop は layerFrozenByHitStop で層別に適用する
 		// (mask の影響を受けない別軸)。実配列は Engine を持ち込まず単体テストできるよう
 		// module::detail::computeLayerDt に切り出してある。
 		const bool pausedGate = m_config.paused && effectiveDt == 0.0f;
@@ -1141,23 +1071,9 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		snap->keysJustReleased[vk] = m_inputState.isKeyJustReleased(key) ? 1u : 0u;
 	}
 
-	// Mouse。3 button (L/R/M)。
-	auto [mx, my] = m_inputState.mousePosition();
-	snap->mouseX = mx;
-	snap->mouseY = my;
-	// v23: 移動量。カーソルロック中は platform 蓄積の生デルタが返る
-	auto [mdx, mdy] = m_inputState.mouseDelta();
-	snap->mouseDeltaX = mdx;
-	snap->mouseDeltaY = mdy;
-	for (int i = 0; i < 3; ++i)
-	{
-		const auto btn = static_cast<MouseButton>(i);
-		snap->mouseButtonsDown[i]            = m_inputState.isMouseButtonDown(btn)         ? 1u : 0u;
-		snap->mouseButtonsJustPressed[i]     = m_inputState.isMouseButtonJustPressed(btn)  ? 1u : 0u;
-		snap->mouseButtonsJustReleased[i]    = m_inputState.isMouseButtonJustReleased(btn) ? 1u : 0u;
-	}
+	detail::fillSnapshotMouse(m_inputState, *snap);
 
-	// テキスト入力 (ABI v34、J5)。本命は CEF <input> なので Win32 以外は常に空。
+	// テキスト入力 (ABI v34、J5)。本命は UI の入力欄なので Win32 以外は常に空。
 	// snapshot は永続バッファなので毎フレーム全 byte 上書き (前フレームの残りを残さない)。
 	{
 		// 物理問い合わせ job (v37): 前フレームの要求に答える。replay 中は末尾の snapshot 置換で
@@ -1169,6 +1085,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 
 		snap->textInputLen = 0;
 		snap->textInput[0] = '\0';
+		detail::fillSnapshotIme(platform::ImeCompositionUtf8{}, *snap);
 #ifdef _WIN32
 		if (auto* win32 = dynamic_cast<mitiru::Win32Window*>(m_window.get()))
 		{
@@ -1178,69 +1095,24 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 			std::memcpy(snap->textInput, text.data(), n);
 			snap->textInput[n]  = '\0';
 			snap->textInputLen  = static_cast<std::uint8_t>(n);
+			detail::fillSnapshotIme(win32->imeComposition(), *snap);
 		}
 #endif
 	}
 
-	// Gamepad。ABI v5 (#12) + #32: XInput と SDL_GameController を並走、ボタン OR、
-	// axes は XInput 接続時優先 / 切断時 SDL を採用。snapshot 永続バッファなので毎フレーム全 field 必書。
+	// Gamepad (#12 / #32 / #14): XInput と SDL_GameController を並走。台ごとに枠へ置き、1 人用の合成も書く。
+	// snapshot は永続バッファなので毎フレーム全 field を書く。
 	{
-		std::uint32_t down = 0, pressed = 0, released = 0;
-		bool xinputConn = false;
-		for (int i = 0; i < 6; ++i) { snap->gamepadAxes[i] = 0.0f; }
+		module::GamepadState xinput[input::kGamepadSlots] = {};
 #ifdef _WIN32
-		{
-			constexpr int P = 0;
-			xinputConn = m_gamepad.isConnected(P);
-			const GamepadButton kBtns[] = {
-				GamepadButton::DPadUp, GamepadButton::DPadDown, GamepadButton::DPadLeft,
-				GamepadButton::DPadRight, GamepadButton::Start, GamepadButton::Back,
-				GamepadButton::LS, GamepadButton::RS, GamepadButton::LB, GamepadButton::RB,
-				GamepadButton::A, GamepadButton::B, GamepadButton::X, GamepadButton::Y };
-			for (auto b : kBtns)
-			{
-				const auto bit = static_cast<std::uint32_t>(b);
-				if (m_gamepad.isButtonDown(P, b))     down     |= bit;
-				if (m_gamepad.isButtonPressed(P, b))  pressed  |= bit;
-				if (m_gamepad.isButtonReleased(P, b)) released |= bit;
-			}
-			if (xinputConn)
-			{
-				snap->gamepadAxes[0] = m_gamepad.getAxis(P, GamepadAxis::LeftStickX);
-				snap->gamepadAxes[1] = m_gamepad.getAxis(P, GamepadAxis::LeftStickY);
-				snap->gamepadAxes[2] = m_gamepad.getAxis(P, GamepadAxis::RightStickX);
-				snap->gamepadAxes[3] = m_gamepad.getAxis(P, GamepadAxis::RightStickY);
-				snap->gamepadAxes[4] = m_gamepad.getAxis(P, GamepadAxis::LeftTrigger);
-				snap->gamepadAxes[5] = m_gamepad.getAxis(P, GamepadAxis::RightTrigger);
-			}
-		}
+		for (int i = 0; i < input::kGamepadSlots; ++i) { xinput[i] = detail::readXInputPad(m_gamepad, i); }
 #endif
-		// SDL_GameController を OR で重ねる (DS4/DS5 等)。同一デバイス重複でもビット OR は冪等。
-		const bool sdlConn = m_sdlGamepad.connected();
-		if (sdlConn)
-		{
-			down     |= m_sdlGamepad.buttonsDown();
-			pressed  |= m_sdlGamepad.buttonsJustPressed();
-			released |= m_sdlGamepad.buttonsJustReleased();
-			if (!xinputConn)  // XInput が axes を埋めてなければ SDL axes を採用
-			{
-				snap->gamepadAxes[0] = m_sdlGamepad.axis(mitiru::module::gamepad::LeftStickX);
-				snap->gamepadAxes[1] = m_sdlGamepad.axis(mitiru::module::gamepad::LeftStickY);
-				snap->gamepadAxes[2] = m_sdlGamepad.axis(mitiru::module::gamepad::RightStickX);
-				snap->gamepadAxes[3] = m_sdlGamepad.axis(mitiru::module::gamepad::RightStickY);
-				snap->gamepadAxes[4] = m_sdlGamepad.axis(mitiru::module::gamepad::LeftTrigger);
-				snap->gamepadAxes[5] = m_sdlGamepad.axis(mitiru::module::gamepad::RightTrigger);
-			}
-		}
-		snap->gamepadConnected           = (xinputConn || sdlConn) ? 1 : 0;
-		snap->gamepadButtonsDown         = down;
-		snap->gamepadButtonsJustPressed  = pressed;
-		snap->gamepadButtonsJustReleased = released;
+		detail::fillSnapshotGamepads(xinput, m_sdlGamepad, *snap);
 	}
 
-	// queue 済み action event (CEF UI thread 由来) を POD buffer へ drain する。
+	// queue 済み action event (UI の操作と host の出来事) を POD buffer へ drain する。
 	// wire 上限 (name 64B / payload 256B) を超える event は **切り詰めず破棄** する。
-	// 半端に切れた JSON を game に渡すと parse 失敗が game 側の謎バグに化けるため
+	// 半端に切れた JSON を game に渡すと、parse 失敗が game 側の原因不明のバグに見えるため
 	// (warnOnce で通知、R-01)。
 	snap->actionEventCount = 0;
 	if (m_moduleActionEvents)
@@ -1258,7 +1130,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 			    || payloadJson.size() >= sizeof(snap->actionEvents[0].payloadJson))
 			{
 				mitiru::debug::warnOnce("action.event.oversize",
-					"CEF action '" + name.substr(0, 32) + "' の name/payload が wire 上限 "
+					"action '" + name.substr(0, 32) + "' の name/payload が wire 上限 "
 					"(64/256B) を超過 — event を破棄 (payload を小さくするか分割する)");
 				continue;
 			}
@@ -1298,6 +1170,9 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 	// 再実行できるようにする (DLL は input に関して stateless なので、これで
 	// run を bit-exact に再現する)。
 	if (m_config.moduleInputOverride) { m_config.moduleInputOverride(*snap); }
+
+	// UI (RmlUi) も game と同じ snapshot のマウスで動かす。台本と replay の操作が UI にも届く。
+	feedUiInput(*snap);
 }
 
 MITIRU_INLINE void mitiru::Engine::zeroModuleFrameIntents()
@@ -1326,7 +1201,7 @@ MITIRU_INLINE void mitiru::Engine::applyModuleRestartIntent()
 		return;
 	}
 	std::memset(m_moduleMemory, 0, m_moduleMemorySize);
-	m_moduleApi.on_init(m_moduleMemory);
+	if (!guardModuleCallback("on_init", [&] { m_moduleApi.on_init(m_moduleMemory); })) { return; }
 
 	// MITIRU_REACHABLE の s_elapsed/s_reached は GameMemory とは別の DLL プロセス static
 	// state のため、上の memset+on_init では戻らない。restart のたびに host からまとめて
@@ -1335,7 +1210,7 @@ MITIRU_INLINE void mitiru::Engine::applyModuleRestartIntent()
 	{
 		if (auto resetFn = m_moduleHost->invariantsResetFn())
 		{
-			resetFn();
+			guardModuleCallback("invariants reset", [&] { resetFn(); });
 		}
 	}
 }
@@ -1345,7 +1220,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	auto* intents = m_moduleFrameIntents.get();
 	if (intents == nullptr) { return; }
 
-	// 上限到達の検知 (R-01 級・初回のみ)。DLL 側 helper は満杯時に黙って drop するため、
+	// 上限到達の検知 (R-01 級・初回のみ)。DLL 側 helper は満杯時に何も知らせずに drop するため、
 	// count == 容量 を「超過分が落ちた可能性あり」として一度だけ知らせる。
 	// int 比較 3 つだけなので hot path への影響は無視できる (warnOnce は到達時のみ呼ぶ)。
 	{
@@ -1426,9 +1301,9 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			const auto path = std::filesystem::path("save") / (slot + ".msav");
 			saveOk = module::save::saveGameMemory(path, m_moduleMemory, m_moduleMemorySize,
 			                                      module::kWireApiVersion,
-			                                      module::moduleLayoutHash(m_moduleApi),
-			                                      m_moduleApi.reflectFields,
-			                                      m_moduleApi.reflectFieldCount);
+			                                      m_moduleReflection.identity(),
+			                                      m_moduleReflection.fieldsData(),
+			                                      m_moduleReflection.fieldCount());
 			if (!saveOk)
 			{
 				mitiru::debug::warnOnce("save.write." + slot,
@@ -1441,8 +1316,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				// FFF #158)。累積差分に埋もれないよう検出のたびに stderr へ 1 行出す (warnOnce しない)。
 				const auto divergedField = module::save::checkSaveRoundtrip(
 					path, m_moduleMemorySize, module::kWireApiVersion,
-					module::moduleLayoutHash(m_moduleApi),
-					m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount);
+					m_moduleReflection.identity(),
+					m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount());
 				if (divergedField.has_value())
 				{
 					std::fprintf(stderr,
@@ -1468,14 +1343,14 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		{
 			// replay 代用フック: override が true を返したら記録済み
 			// state blob を適用済みなのでファイルは読まない。セーブファイルが録画後に
-			// 上書きされていても bit-exact が構造保証される。
+			// 上書きされていても bit-exact が構造上保証される。
 			const bool substituted = m_saveLoadOverride && m_saveLoadOverride(slot.c_str());
 			bool       applied     = substituted;
 			if (!substituted)
 			{
 				const auto path  = std::filesystem::path("save") / (slot + ".msav");
 				const auto bytes = module::save::loadGameMemory(
-					path, m_moduleMemorySize, module::moduleLayoutHash(m_moduleApi));
+					path, m_moduleMemorySize, m_moduleReflection.identity());
 				if (bytes.has_value()
 				    && rewindModuleMemory(bytes->data(),
 				                          static_cast<std::uint32_t>(bytes->size())))
@@ -1489,7 +1364,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 					std::int32_t moved = 0;
 					const auto migrated = module::save::migrateGameMemory(
 						path, m_moduleMemory, m_moduleMemorySize,
-						m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount, &moved);
+						m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(), &moved);
 					if (migrated.has_value()
 					    && rewindModuleMemory(migrated->data(),
 					                          static_cast<std::uint32_t>(migrated->size())))
@@ -1508,7 +1383,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				}
 			}
 			// 適用成功時は rewind ring を破棄する。load 前の履歴は別時間軸の bytes で、
-			// そこへの rewind は復元を壊す (reloadModule の ring clear と同じ理由)。
+			// そこへ rewind すると復元がおかしくなる (reloadModule の ring clear と同じ理由)。
 			if (applied) { m_moduleMemoryRing.clear(); }
 			loadOk = applied;
 		}
@@ -1517,7 +1392,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	}
 
 	// Tool window spawn 要求。DLL → host → 別 exe を spawn する。
-	// game は Engine* を持てない ので「このツール窓を開いて」と intent で頼み、
+	// game は Engine* を持てないので「このツール窓を開いて」と intent で頼み、
 	// host が mitiru_<tool>.exe を別窓で起動する (必要なときだけ・pulled UI)。exe が
 	// 見つからなければ無害に no-op。inspector へは host 自身の pid を渡し、game が
 	// exportedInspectables に出した state をそのまま観測させる (SharedSnapshot 経由)。
@@ -1549,22 +1424,29 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// 遷移を検出して OS へ適用する。自動実行では m_allowCursorCapture=false で無効。
 	m_inputState.setCursorCaptured(m_allowCursorCapture && intents->wantMouseLock != 0);
 
-	// Palette の表示状態。engine 所有の flag を CEF へ push する。
-	if (intents->paletteToggle && m_moduleStateStore)
+	// テキスト入力 (v45、ADR 0048 段階 1)。毎フレーム宣言。立てないフレームは IME を切る。
+	// UI (RmlUi) の入力欄が選ばれている間も IME を戻し、変換窓をその欄へ置く。
+#ifdef _WIN32
+	if (auto* win32 = dynamic_cast<mitiru::Win32Window*>(m_window.get()); win32 != nullptr && m_screen)
 	{
-		const auto cur = m_moduleStateStore->get<bool>("view.palette.visible");
-		const bool next = !cur.value_or(false);
-		m_moduleStateStore->set("view.palette.visible", next);
+		float field[4] = {};
+		const bool uiWantsText = m_rmlUi.focusedTextField(field);
+		if (!uiWantsText) { std::copy_n(intents->textInputRect, 4, field); }
+		const detail::ClientRect r = detail::textInputRectToClient(field,
+			static_cast<float>(m_screen->width()), static_cast<float>(m_screen->height()),
+			static_cast<float>(m_window->width()), static_cast<float>(m_window->height()));
+		win32->setTextInputArea(uiWantsText || intents->textInputActive != 0, RECT{r.left, r.top, r.right, r.bottom});
 	}
+#endif
 
-	// State push。DLL → host → StateStore → CEF JS。
+	// State push。DLL → host → UI (RmlUi) の data model と、観測用の状態の写し。
+	if (m_rmlUi.active()) { detail::pushStateToRmlUi(m_rmlUi, *intents); }
 	if (m_moduleStateStore && intents->statePushCount > 0)
 	{
 		const std::int32_t n = std::min<std::int32_t>(
 			intents->statePushCount,
 			static_cast<std::int32_t>(sizeof(intents->statePushes) /
 			                          sizeof(intents->statePushes[0])));
-		// この frame の全 push を溜めて 1 回の executeJavaScript に畳む (per-key IPC 削減)。
 		// key / strVal は bounded 読み。DLL からの wire buffer は null 終端を信頼しない
 		// (exportedInspectables の boundedLen と同基準の境界防御)。
 		for (std::int32_t i = 0; i < n; ++i)
@@ -1573,20 +1455,18 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			const std::string_view key{item.key, module::detail::boundedLen(item.key)};
 			switch (item.kind)
 			{
-			case 1: m_moduleStateStore->setBatched(key, item.intVal); break;
-			case 2: m_moduleStateStore->setBatched(key, item.floatVal); break;
-			case 3: m_moduleStateStore->setBatched(key, static_cast<bool>(item.intVal)); break;
-			case 4: m_moduleStateStore->setBatched(key,
+			case 1: m_moduleStateStore->set(key, item.intVal); break;
+			case 2: m_moduleStateStore->set(key, item.floatVal); break;
+			case 3: m_moduleStateStore->set(key, static_cast<bool>(item.intVal)); break;
+			case 4: m_moduleStateStore->set(key,
 				std::string{item.strVal, module::detail::boundedLen(item.strVal)}); break;
 			default: break;  // kind=0 (null) は今は意図的に no-op
 			}
 		}
-		m_moduleStateStore->flushBatch();
 	}
 
-	// Exported inspectable。DLL が毎フレーム埋める。engine が SharedSnapshot +
-	// view.palette.items へ sync し、F12 palette + inspector sub-window が
-	// DLL 側 state を拾えるようにする。
+	// Exported inspectable。DLL が毎フレーム埋める。engine が SharedSnapshot へ書き、
+	// inspector sub-window が DLL 側 state を拾えるようにする。
 	if (intents->exportedInspectableCount > 0 && m_moduleInspectorSnapshot)
 	{
 		const std::int32_t n = std::min<std::int32_t>(
@@ -1594,7 +1474,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			static_cast<std::int32_t>(sizeof(intents->exportedInspectables) /
 			                          sizeof(intents->exportedInspectables[0])));
 
-		// 変化検知: export 内容 (name + json) を FNV-1a で畳み、前回と同一なら
+		// 変化検知: export 内容 (name + json) を FNV-1a でハッシュ化し、前回と同一なら
 		// parse+rebuild+disk-write を丸ごと省く。inspector は同じ内容を読み続けるので
 		// skip しても観測結果は変わらず、毎フレームの temp-file 書き込みを避けられる。
 		std::uint64_t digest = 14695981039346656037ull;
@@ -1623,39 +1503,33 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		if (digest != m_lastInspectorDigest)
 		{
 			m_lastInspectorDigest = digest;
-			// mitiru_inspector.exe が期待する JSON map を構築する:
-			//   { name: { title, state }, ... }
-			cef::json out = cef::json::object();
-			cef::json palette = cef::json::array();
+			// mitiru_inspector.exe が期待する次の形の JSON map を構築する。
+			//   { name: { title, state },... }
+			nlohmann::json out = nlohmann::json::object();
 			for (std::int32_t i = 0; i < n; ++i)
 			{
 				const auto& exp = intents->exportedInspectables[i];
 				const std::string name{exp.name, module::detail::boundedLen(exp.name)};
 				const std::string title{exp.title, module::detail::boundedLen(exp.title)};
 				const std::int32_t jl = clampedJsonLen(exp);
-				cef::json state;
+				nlohmann::json state;
 				try
 				{
 					state = jl > 0
-						? cef::json::parse(std::string{exp.json,
+						? nlohmann::json::parse(std::string{exp.json,
 						                               static_cast<std::size_t>(jl)})
-						: cef::json::object();
+						: nlohmann::json::object();
 				}
 				catch (...)
 				{
-					state = cef::json{{"error", "invalid inspectable JSON"}};
+					state = nlohmann::json{{"error", "invalid inspectable JSON"}};
 				}
-				out[name] = cef::json{{"title", title}, {"state", state}};
-				palette.push_back({{"name", name}, {"title", title}});
+				out[name] = nlohmann::json{{"title", title}, {"state", state}};
 			}
 			// 即時 write せずキャッシュ。perf/audio 併記と throttle write は下の
 			// host-owned 観察ブロックが担う (game export 無しでも perf が動くように)。
 			m_lastInspectorOut = std::move(out);
 			m_inspectorDirty   = true;
-			if (m_moduleStateStore)
-			{
-				m_moduleStateStore->set("view.palette.items", palette);
-			}
 		}
 	}
 
@@ -1684,16 +1558,16 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			m_inspectorDirty = false;
 			m_toolWriteAccum = 0;
 
-			cef::json out = m_lastInspectorOut.is_object()
-				? m_lastInspectorOut : cef::json::object();
-			out["perf"] = cef::json{
+			nlohmann::json out = m_lastInspectorOut.is_object()
+				? m_lastInspectorOut : nlohmann::json::object();
+			out["perf"] = nlohmann::json{
 				{"title", "Performance"},
-				{"state", cef::json{{"fps", static_cast<int>(m_emaFps + 0.5f)},
+				{"state", nlohmann::json{{"fps", static_cast<int>(m_emaFps + 0.5f)},
 				                    {"frameMs", m_lastFrameMs},
 				                    {"droppedSteps", m_droppedFixedSteps},
 				                    {"slowMotion", m_droppedFixedSteps > 0}}}};
 			// 再生中チャンネルのメーター (任意)。列挙非対応の audio engine は空配列。
-			cef::json channels = cef::json::array();
+			nlohmann::json channels = nlohmann::json::array();
 			int voiceCount = 0;
 			if (m_audioEngine)
 			{
@@ -1702,16 +1576,16 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 					if (std::strcmp(m.kind, "voice") == 0) { ++voiceCount; }
 					// id / asset / pan / remainingSec は mixer.html の「voice 一覧」用 (K1)。
 					// 空 id / 負の残り秒は「不明」なので、行に出さない (JS 側は欠損として扱う)。
-					cef::json ch{{"kind", m.kind}, {"level", m.level}, {"pan", m.pan}};
+					nlohmann::json ch{{"kind", m.kind}, {"level", m.level}, {"pan", m.pan}};
 					if (m.id[0] != '\0')      { ch["id"] = m.id; }
 					if (m.asset[0] != '\0')   { ch["asset"] = m.asset; }
 					if (m.remainingSec >= 0.0f) { ch["remainingSec"] = m.remainingSec; }
 					channels.push_back(std::move(ch));
 				}
 			}
-			out["audio"] = cef::json{
+			out["audio"] = nlohmann::json{
 				{"title", "Audio"},
-				{"state", cef::json{{"masterVolume", masterVolume()},
+				{"state", nlohmann::json{{"masterVolume", masterVolume()},
 				                    {"engine", m_audioEngine ? "active" : "none"},
 				                    {"voiceCount", voiceCount},
 				                    {"channels", std::move(channels)}}}};
@@ -1726,9 +1600,9 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 					sizeof(m_moduleApi.seriesProbes) / sizeof(m_moduleApi.seriesProbes[0]));
 				const std::int32_t pc = std::min(m_moduleApi.seriesProbeCount, probeCap);
 
-				cef::json ttState;
+				nlohmann::json ttState;
 				ttState["capacity"] = static_cast<int>(frames);
-				cef::json markersJson = cef::json::array();
+				nlohmann::json markersJson = nlohmann::json::array();
 				bool markersDone = false;
 
 				for (std::int32_t p = 0; p < pc; ++p)
@@ -1745,7 +1619,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 						if (bytes != nullptr) { series.push_back(probe.accessor(bytes)); }
 					}
 
-					cef::json arr = cef::json::array();
+					nlohmann::json arr = nlohmann::json::array();
 					for (const double v : series) { arr.push_back(v); }
 					// html は /History$/ のキーを channel として検出する (例 "hpHistory")。
 					ttState[std::string{probe.name} + "History"] = std::move(arr);
@@ -1760,7 +1634,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 						// 系列名が MITIRU_ENUM の field と同名なら状態遷移の系列。enum の差 (3→4) には
 						// 意味が無いので、間引きは変化量ではなく新しい順にし、節目に名前を付ける。
 						const bool enumSeries = !series.empty() && !observe::enumSeriesName(
-							m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount, probe.name, series.back()).empty();
+							m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(), probe.name, series.back()).empty();
 						opts.preferNewest = enumSeries;
 						if (probe.hasThreshold)
 						{
@@ -1769,15 +1643,15 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 						}
 						for (const auto& m : observe::extractMarkers(series, opts))
 						{
-							cef::json mj{
+							nlohmann::json mj{
 								{"o", m.offsetFromNewest},
 								{"v", m.value},
 								{"k", static_cast<int>(m.kind)}};
 							if (enumSeries && m.offsetFromNewest + 1 < series.size())
 							{
 								const double prev = series[series.size() - 2 - m.offsetFromNewest];
-								mj["label"] = observe::enumSeriesName(m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount, probe.name, prev)
-									+ "\xE2\x86\x92" + observe::enumSeriesName(m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount, probe.name, m.value);
+								mj["label"] = observe::enumSeriesName(m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(), probe.name, prev)
+									+ "\xE2\x86\x92" + observe::enumSeriesName(m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(), probe.name, m.value);
 							}
 							markersJson.push_back(std::move(mj));
 						}
@@ -1785,12 +1659,12 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 					}
 				}
 				ttState["markers"] = std::move(markersJson);
-				out["rewind"] = cef::json{{"title", "巻き戻し"}, {"state", std::move(ttState)}};
+				out["rewind"] = nlohmann::json{{"title", "巻き戻し"}, {"state", std::move(ttState)}};
 			}
 
 			// AI Lens: GameMemory 全フィールドを reflection で構造化。
 			// game が MITIRU_REFLECT を宣言してれば、AI が窓を開かず全状態を構造的に読める。
-			if (m_moduleApi.reflectFieldCount > 0 && m_moduleMemory != nullptr && m_moduleMemorySize > 0)
+			if (m_moduleReflection.fieldCount() > 0 && m_moduleMemory != nullptr && m_moduleMemorySize > 0)
 			{
 				// フィールド名を宣言順 (MITIRU_REFLECT の並び) で列挙して渡す。JSON object は key を
 				// ソートしてしまうので、観測窓が「コード順」で表示できるよう順序を配列で別に添える。
@@ -1799,7 +1673,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				// select / slider へ描き直す (今まで meta が届かず何もしていなかった)。
 				// 組み立て本体は buildGameMemoryJson (C15、pushScrubHoldGameMemory と共有)。
 				out["gameMemory"] = module::detail::buildGameMemoryJson(
-					m_moduleApi, m_moduleMemory, m_moduleMemorySize);
+					m_moduleReflection, m_moduleMemory, m_moduleMemorySize);
 			}
 
 			// 分岐エディタのシーンビュー (ADR 0035 O2)。draw() 側で溜めた bbox 列に、
@@ -1809,10 +1683,10 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			const auto& sceneObjsOut = module::detail::lastSceneViewObjects();
 			if (!sceneObjsOut.empty())
 			{
-				cef::json objs = cef::json::array();
+				nlohmann::json objs = nlohmann::json::array();
 				for (const auto& o : sceneObjsOut)
 				{
-					cef::json entry{{"id", o.sourceId}, {"x", o.x}, {"y", o.y}, {"w", o.w}, {"h", o.h}};
+					nlohmann::json entry{{"id", o.sourceId}, {"x", o.x}, {"y", o.y}, {"w", o.w}, {"h", o.h}};
 					// `beginObject(name, fieldX, fieldY)` の明示指定があれば最優先 (name+".x"/".y"
 					// 規約を満たせない beko_run の px/py のような分離 scalar 用、ADR 0035 O2/O3 追記)。
 					bool mapped = false;
@@ -1826,46 +1700,32 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 					}
 					if (!mapped)
 					{
-						for (std::int32_t fi = 0; fi < m_moduleApi.reflectFieldCount; ++fi)
+						for (std::int32_t fi = 0; fi < m_moduleReflection.fieldCount(); ++fi)
 						{
-							if (module::fnv1a32(m_moduleApi.reflectFields[fi].name) == o.sourceId)
+							if (module::fnv1a32(m_moduleReflection.fieldsData()[fi].name) == o.sourceId)
 							{
-								entry["field"] = m_moduleApi.reflectFields[fi].name;
+								entry["field"] = m_moduleReflection.fieldsData()[fi].name;
 								break;
 							}
 						}
 					}
 					objs.push_back(std::move(entry));
 				}
-				out["sceneView"] = cef::json{{"title", "シーンビュー"}, {"state", cef::json{{"objects", std::move(objs)}}}};
+				out["sceneView"] = nlohmann::json{{"title", "シーンビュー"}, {"state", nlohmann::json{{"objects", std::move(objs)}}}};
 			}
 
 			// O5: 直近 commit の決定論ゲート結果 (無ければキー自体を出さない、既定 waiting 表示のため)。
 			if (const auto& gate = module::detail::lastReplayGateResults(); !gate.empty())
 			{
-				cef::json runs = cef::json::array();
+				nlohmann::json runs = nlohmann::json::array();
 				for (const auto& g : gate)
 				{
-					runs.push_back(cef::json{{"file", g.file}, {"pass", g.pass}, {"reason", g.reason}});
+					runs.push_back(nlohmann::json{{"file", g.file}, {"pass", g.pass}, {"reason", g.reason}});
 				}
-				out["replayGate"] = cef::json{{"title", "決定論ゲート"}, {"state", cef::json{{"runs", std::move(runs)}}}};
+				out["replayGate"] = nlohmann::json{{"title", "決定論ゲート"}, {"state", nlohmann::json{{"runs", std::move(runs)}}}};
 			}
 
 			m_moduleInspectorSnapshot->write(out);
-		}
-	}
-
-	// 生の JS 実行 (例: hot reload toast の trigger)。
-	if (intents->jsToExecuteLen > 0 && m_cefContext.isInitialized())
-	{
-		const std::int32_t cap = static_cast<std::int32_t>(
-			sizeof(intents->jsToExecute) / sizeof(intents->jsToExecute[0]));
-		const std::int32_t n = std::min(intents->jsToExecuteLen, cap - 1);
-		if (n > 0)
-		{
-			m_cefContext.executeJavaScript(
-				std::string{intents->jsToExecute,
-				            static_cast<std::size_t>(n)});
 		}
 	}
 
@@ -1873,6 +1733,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// pointer を持たず、sound 名を指定するだけ。audio engine 未設定時
 	// (graceful degradation) や v3 module では無音 no-op となる
 	// (soundIntentCount は 0 のまま。on_update 前に毎フレーム zero される)。
+	// 聞き手とバス音量 (v45) はそのフレームの音より先に取り込む (同じフレームに鳴らす音にも反映する)。
+	if (m_audioEngine) { m_soundIntentRouter.applyMix(*m_audioEngine, *intents); }
 	if (intents->soundIntentCount > 0 && m_audioEngine)
 	{
 		const std::int32_t n = std::min<std::int32_t>(
@@ -1886,7 +1748,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			const auto& si = intents->soundIntents[i];
 			// F2: hud.playAt() は backend がサンプル精度予約に対応しない場合、
 			// SoundIntentRouter (v19、scheduleSec>0 分岐) が即時再生へフォールバックする。
-			// 無言のズレは判定タイミングのバグに見えるため一度だけ知らせる。
+			// 知らせないままのズレは判定タイミングのバグに見えるため一度だけ知らせる。
 			if (si.scheduleSec > 0.0 && !m_audioEngine->supportsScheduledPlayback())
 			{
 				mitiru::debug::warnOnce("hud.playAt.unsupported",

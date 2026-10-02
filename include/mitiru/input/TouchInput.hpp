@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file TouchInput.hpp
-/// @brief タッチ・ジェスチャー入力管理
+/// @brief タッチ・ジェスチャー入力の管理
 /// @details モバイルプラットフォーム向けのタッチ入力処理とジェスチャー認識。
 ///          タップ・スワイプ・ピンチ・回転などのジェスチャーを検出する。
-///          タッチイベントをマウスイベントに変換するUI互換レイヤーも提供する。
+///          タッチイベントをマウスイベントに変換する UI 互換レイヤーも提供する。
 
 #include <algorithm>
 #include <cmath>
@@ -36,7 +36,7 @@ enum class SwipeDirection : std::uint8_t
 };
 
 /// @brief タッチポイント
-/// @details 1つのタッチ接点の状態を保持する。
+/// @details 1 つのタッチ接点の状態を保持する。
 struct TouchPoint
 {
 	int id = 0;               ///< タッチポインタID（マルチタッチ識別用）
@@ -47,7 +47,7 @@ struct TouchPoint
 };
 
 /// @brief ジェスチャー設定
-/// @details ジェスチャー認識のしきい値パラメータ。
+/// @details ジェスチャー認識のしきい値。
 struct GestureConfig
 {
 	float tapMaxDuration = 0.3f;        ///< タップ判定の最大時間（秒）
@@ -192,7 +192,7 @@ public:
 
 	/// @brief 長押しコールバックを登録する
 	/// @param callback コールバック関数 (x, y)
-	/// @param duration 長押し判定時間（秒、0で設定値を使用）
+	/// @param duration 長押し判定時間（秒、0 なら設定値を使う）
 	void onLongPress(std::function<void(float, float)> callback,
 		float duration = 0.0f)
 	{
@@ -227,12 +227,12 @@ public:
 		m_rotateCallback = std::move(callback);
 	}
 
-	// ── マウスイベント変換（UI互換） ──────────────────────────
+	// ── マウスイベント変換（UI 互換） ──────────────────────────
 
-	/// @brief タッチイベントをマウスイベントに変換してInputStateに反映する
-	/// @param state 更新するInputState
+	/// @brief タッチイベントをマウスイベントに変換して InputState に反映する
+	/// @param state 更新する InputState
 	/// @details 最初のタッチポイントを左クリック＋マウス座標に変換する。
-	///          デスクトップUI用のコードをモバイルでも動作させるために使用する。
+	///          デスクトップ UI 用のコードをモバイルでも動かすために使う。
 	void applyToMouseState(InputState& state) const
 	{
 		if (m_activeTouches.empty())
@@ -286,7 +286,7 @@ private:
 			m_longPressTriggered = false;
 		}
 
-		/// 2本指ジェスチャーの初期距離・角度を記録
+		/// 2 本指ジェスチャーの初期距離・角度を記録する
 		if (m_activeTouches.size() == 2)
 		{
 			m_prevTwoFingerDistance = twoFingerDistance();
@@ -309,7 +309,7 @@ private:
 			}
 		}
 
-		/// ピンチ・回転の検出（2本指）
+		/// ピンチ・回転の検出（2 本指）
 		if (m_activeTouches.size() == 2)
 		{
 			detectPinch();
@@ -330,7 +330,7 @@ private:
 		{
 			detectSwipe(dx, dy, m_touchStartX, m_touchStartY);
 		}
-		/// タップ判定（短時間・移動少ない）
+		/// タップ判定（短時間で、移動が少ない）
 		else if (holdTime <= m_config.tapMaxDuration &&
 			dist < m_config.swipeMinDistance * 0.5f &&
 			!m_longPressTriggered)
@@ -347,7 +347,7 @@ private:
 		removeTouchById(point.id);
 	}
 
-	/// @brief IDでタッチポイントを削除する
+	/// @brief ID でタッチポイントを削除する
 	void removeTouchById(int id)
 	{
 		m_activeTouches.erase(
@@ -450,7 +450,7 @@ private:
 		}
 	}
 
-	/// @brief 2本指の距離を計算する
+	/// @brief 2 本指の距離を計算する
 	[[nodiscard]] float twoFingerDistance() const
 	{
 		if (m_activeTouches.size() < 2) return 0.0f;
@@ -459,7 +459,7 @@ private:
 		return std::sqrt(dx * dx + dy * dy);
 	}
 
-	/// @brief 2本指の角度を計算する（ラジアン）
+	/// @brief 2 本指の角度を計算する（ラジアン）
 	[[nodiscard]] float twoFingerAngle() const
 	{
 		if (m_activeTouches.size() < 2) return 0.0f;
@@ -485,7 +485,7 @@ private:
 	/// 長押し判定用
 	bool m_longPressTriggered = false;  ///< 長押し発火済みフラグ
 
-	/// 2本指ジェスチャー用
+	/// 2 本指ジェスチャー用
 	float m_prevTwoFingerDistance = 0.0f;  ///< 前回の2本指距離
 	float m_prevTwoFingerAngle = 0.0f;     ///< 前回の2本指角度
 

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file ECSBenchmark.hpp
-/// @brief ECSパフォーマンスベンチマークハーネス
-/// @details エンティティイテレーション速度、コンポーネントアクセスパターン、
-///          システムスケジューリングのパフォーマンスを計測するベンチマークフレームワーク。
+/// @brief ECS パフォーマンスベンチマークハーネス
+/// @details エンティティのイテレーション速度、コンポーネントのアクセスパターン、
+///          システムスケジューリングの性能を計測するベンチマークフレームワーク。
 
 #include <chrono>
 #include <cstdint>
@@ -14,7 +14,7 @@
 namespace mitiru::ecs
 {
 
-/// @brief ベンチマーク結果の1エントリ
+/// @brief ベンチマーク結果の 1 エントリ
 struct BenchmarkResult
 {
 	std::string name;                  ///< ベンチマーク名
@@ -39,9 +39,9 @@ struct BenchmarkConfig
 /// @brief ベンチマーク関数型
 using BenchmarkFunc = std::function<void()>;
 
-/// @brief ECSパフォーマンスベンチマークハーネス
-/// @details 各種ECS操作のパフォーマンスを計測し、結果をレポートする。
-///          ウォームアップ→計測→統計集計のパイプラインを自動実行する。
+/// @brief ECS パフォーマンスベンチマークハーネス
+/// @details 各種 ECS 操作の性能を計測し、結果をレポートする。
+///          ウォームアップ→計測→統計集計の流れを自動で実行する。
 class ECSBenchmark
 {
 public:
@@ -92,9 +92,9 @@ public:
 		return results;
 	}
 
-	/// @brief 結果をフォーマットされた文字列として取得する
+	/// @brief 結果を整形した文字列として取得する
 	/// @param results ベンチマーク結果一覧
-	/// @return フォーマットされたレポート文字列
+	/// @return 整形したレポート文字列
 	[[nodiscard]] static std::string formatReport(
 		const std::vector<BenchmarkResult>& results)
 	{
@@ -120,7 +120,7 @@ private:
 		BenchmarkFunc func;
 	};
 
-	/// @brief 単一のベンチマークを実行する
+	/// @brief ベンチマークを 1 つ実行する
 	/// @param entry ベンチマーク情報
 	/// @return ベンチマーク結果
 	[[nodiscard]] BenchmarkResult runSingle(const BenchmarkEntry& entry) const

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file Tween.hpp
-/// @brief 汎用Tween/Easingシステム。UI遷移、ポップアップ、プロパティアニメーション用
-/// @details 独立したヘッダ。Screen.hppに依存しない。
-///          UIアニメ (通知ポップアップ、コンボ表示、遷移効果等) で使用。
+/// @brief 汎用 Tween/Easing システム。UI 遷移、ポップアップ、プロパティアニメーション用
+/// @details 独立したヘッダ。Screen.hpp に依存しない。
+///          UI アニメ (通知ポップアップ、コンボ表示、遷移効果等) で使用。
 /// @note EaseFunc (関数ポインタ) を持つため GameMemory には置けない。POD 版は core/PodTiming.hpp。
 
 #include <algorithm>
@@ -77,7 +77,7 @@ inline float inBounce(float t) noexcept { return 1.0f - outBounce(1.0f - t); }
 // Tween
 // ============================================================================
 
-/// 1つのTweenインスタンス
+/// 1 つの Tween インスタンス
 struct Tween
 {
 	float from = 0.0f;
@@ -125,11 +125,11 @@ struct Tween
 // TweenManager
 // ============================================================================
 
-/// 複数のTweenを管理する
+/// 複数の Tween を管理する
 class TweenManager
 {
 public:
-	/// Tweenを追加して参照を返す
+	/// Tween を追加して参照を返す
 	Tween& add(float from, float to, float duration,
 	           EaseFunc easing = ease::linear,
 	           std::function<void(float)> onUpdate = nullptr)
@@ -139,7 +139,7 @@ public:
 		return m_tweens.back();
 	}
 
-	/// 遅延付きTweenを追加
+	/// 遅延付き Tween を追加
 	Tween& addDelayed(float from, float to, float duration, float delay,
 	                  EaseFunc easing = ease::linear,
 	                  std::function<void(float)> onUpdate = nullptr)
@@ -149,25 +149,25 @@ public:
 		return tw;
 	}
 
-	/// 全Tweenを更新
+	/// すべての Tween を更新
 	void update(float dt)
 	{
 		for (auto& tw : m_tweens) tw.update(dt);
 
-		// 完了+autoRemoveのものを削除
+		// 完了+autoRemove のものを削除
 		m_tweens.erase(
 			std::remove_if(m_tweens.begin(), m_tweens.end(),
 				[](const Tween& tw) { return tw.finished && tw.autoRemove; }),
 			m_tweens.end());
 	}
 
-	/// 全クリア
+	/// すべてクリア
 	void clear() { m_tweens.clear(); }
 
-	/// アクティブなTween数
+	/// アクティブな Tween 数
 	[[nodiscard]] std::size_t count() const noexcept { return m_tweens.size(); }
 
-	/// 全て完了しているか
+	/// すべて完了しているか
 	[[nodiscard]] bool allDone() const noexcept { return m_tweens.empty(); }
 
 private:

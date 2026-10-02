@@ -1,0 +1,73 @@
+<rml>
+<head>
+	<title>mixer</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		/* メーター (完全グレースケール。レベルは濃淡で出す) */
+		.cols { display: flex; align-items: flex-start; margin-top: 14dp; }
+		.col { margin-right: 40dp; }
+		.label.first { margin-top: 0; }
+		.master { display: flex; align-items: flex-end; margin-top: 14dp; }
+		.fader { position: relative; width: 46dp; height: 200dp; margin-right: 16dp; background-color: #ffffff; border: 1dp #e6e7ea; overflow: hidden; }
+		.fader .fill { position: absolute; left: 2dp; right: 2dp; bottom: 2dp; background-color: #1a1c1f; }
+		.pct { font-family: "IBM Plex Mono"; font-size: 28dp; color: #1a1c1f; }
+		.engine { margin-top: 14dp; }
+		.vu { display: flex; margin-top: 8dp; }
+		.ch { display: flex; flex-direction: column; align-items: center; margin-right: 12dp; }
+		.ch .bar { position: relative; width: 24dp; height: 200dp; background-color: #f4f4f2; border: 1dp #e6e7ea; overflow: hidden; }
+		.ch .bar .fill { position: absolute; left: 2dp; right: 2dp; bottom: 2dp; background-color: #6e7077; }
+		.ch .bar .fill.music { background-color: #1a1c1f; }
+		.ch .tag { margin-top: 6dp; font-family: "IBM Plex Mono"; font-size: 13dp; color: #999da4; }
+		.silent { margin-top: 10dp; }
+		.voices { margin-top: 14dp; }
+		.voices .row { display: flex; flex-wrap: wrap; align-items: baseline; padding: 4dp 0dp;
+		               font-family: "IBM Plex Mono"; font-size: 13dp; border-bottom: 1dp #f4f4f2; }
+		.voices .row span { margin-right: 12dp; }
+		.voices .row .id { color: #1a1c1f; font-weight: bold; }
+		.voices .row .gain { min-width: 40dp; text-align: right; color: #1a1c1f; }
+		.voices .row .pan, .voices .row .left { color: #1a1c1f; }
+		.voices .row .asset, .voices .row .dim { color: #999da4; }
+		.novoice { margin-top: 6dp; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ready">
+	<header><div class="dot"/><h1>mixer</h1></header>
+	<div class="body">
+		<div class="cols">
+			<div class="col">
+				<div class="label first"><span class="dash">— </span>master</div>
+				<div class="master">
+					<div class="fader"><div class="fill" data-style-height="master_h"/></div>
+					<div class="pct"><span>{{ master_pct }}</span><span>%</span></div>
+				</div>
+				<div class="muted engine">engine: <span data-if="engine != ''">{{ engine }}</span><span data-if="engine == ''">none</span></div>
+			</div>
+			<div class="col">
+				<div class="label first"><span class="dash">— </span>channels · VU</div>
+				<div class="vu">
+					<div class="ch" data-for="c : channels">
+						<div class="bar"><div class="fill" data-class-music="c.music" data-style-height="c.h"/></div>
+						<div class="tag">{{ c.tag }}</div>
+					</div>
+				</div>
+				<div class="muted silent" data-if="silent">(silent)</div>
+			</div>
+		</div>
+		<!-- hud.voice() で鳴らした台詞の枠。id は game が付けた名前、asset は実ファイル名、残り秒は backend が
+		     length - cursor で出す (ループ / 不明なら欄ごと出ない)。 -->
+		<div class="voices">
+			<div class="label"><span class="dash">— </span>voice 一覧</div>
+			<div class="row" data-for="v : voices">
+				<span class="id" data-if="v.has_id">{{ v.id }}</span>
+				<span class="dim" data-if="!v.has_id">(no id)</span>
+				<span class="asset" data-if="v.has_asset">{{ v.asset }}</span>
+				<span class="gain">{{ v.gain }}</span>
+				<span class="pan">{{ v.pan }}</span>
+				<span class="left" data-if="v.has_left">{{ v.left }}</span>
+			</div>
+			<div class="muted novoice" data-if="no_voice">(no voice)</div>
+		</div>
+	</div>
+	<div class="wait">waiting for the game…</div>
+</body>
+</rml>

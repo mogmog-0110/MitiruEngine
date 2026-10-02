@@ -48,7 +48,7 @@ struct FixedVec
 	constexpr void                      truncate(std::size_t n) noexcept { if (n < count) { count = n; } }
 
 	/// @brief 末尾追加。容量超過時は捨てて false を返す (例外なし)。
-	/// @return 追加できたら true、満杯で捨てたら false。黙った取りこぼしを防ぐため
+	/// @return 追加できたら true、満杯で捨てたら false。気づかないうちに取りこぼすのを防ぐため
 	///         [[nodiscard]]。戻り値を見て分岐するか、full() を先に確認すること。
 	[[nodiscard]] constexpr bool push_back(const T& v) noexcept
 	{

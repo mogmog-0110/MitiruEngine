@@ -1,13 +1,15 @@
 ﻿#pragma once
 
 /// @file CommandSchema.hpp
-/// @brief コマンドJSONスキーマ定義
-/// @details AIエージェントが送信できるコマンドの形式を定義する。
+/// @brief コマンド JSON スキーマ定義
+/// @details AI エージェントが送信できるコマンドの形式を定義する。
 ///          コマンド文字列のパース・シリアライズ・スキーマ出力を提供する。
 
 #include <optional>
 #include <string>
 #include <string_view>
+
+#include <nlohmann/json.hpp>
 
 #include "mitiru/control/CommandQueue.hpp"
 
@@ -15,7 +17,7 @@ namespace mitiru::control
 {
 
 /// @brief サポートされるコマンドタイプ文字列
-/// @details AIエージェントはこれらの文字列をCommand.typeに指定する。
+/// @details AI エージェントはこれらの文字列を Command.type に指定する。
 namespace CommandType
 {
 	inline constexpr std::string_view KeyDown     = "key_down";      ///< キー押下
@@ -29,72 +31,35 @@ namespace CommandType
 	inline constexpr std::string_view Step        = "step";          ///< 1フレーム進行
 } // namespace CommandType
 
-/// @brief JSON文字列からコマンドを簡易パースする
-/// @param jsonStr JSON文字列（例: {"type":"key_down","payload":"{\"keyCode\":65}"}）
-/// @return パース成功時はCommand、失敗時はnullopt
-/// @note 簡易パーサーのため、正しいJSON形式を前提とする
+/// @brief JSON 文字列からコマンドを読む
+/// @param jsonStr {"type":"key_down","payload":"{\"keyCode\":65}"}。payload はオブジェクトそのままでもよい (文字列に戻して入れる)
+/// @return "type" が文字列で無い・JSON として読めないときは nullopt
 [[nodiscard]] inline std::optional<Command> parseCommand(const std::string& jsonStr)
 {
+	const auto doc = nlohmann::json::parse(jsonStr, nullptr, false);
+	if (!doc.is_object()) return std::nullopt;
+	const auto type = doc.find("type");
+	if (type == doc.end() || !type->is_string()) return std::nullopt;
+
 	Command cmd;
-
-	/// type の抽出
-	const auto typePos = jsonStr.find("\"type\":");
-	if (typePos == std::string::npos)
+	cmd.type = type->get<std::string>();
+	if (const auto payload = doc.find("payload"); payload != doc.end())
 	{
-		return std::nullopt;
+		cmd.payload = payload->is_string() ? payload->get<std::string>() : payload->dump();
 	}
-
-	/// type値の開始引用符を探す
-	const auto typeQuoteStart = jsonStr.find('"', typePos + 7);
-	if (typeQuoteStart == std::string::npos)
-	{
-		return std::nullopt;
-	}
-	const auto typeQuoteEnd = jsonStr.find('"', typeQuoteStart + 1);
-	if (typeQuoteEnd == std::string::npos)
-	{
-		return std::nullopt;
-	}
-	cmd.type = jsonStr.substr(typeQuoteStart + 1, typeQuoteEnd - typeQuoteStart - 1);
-
-	/// payload の抽出（オプション）
-	const auto payloadPos = jsonStr.find("\"payload\":");
-	if (payloadPos != std::string::npos)
-	{
-		const auto payloadQuoteStart = jsonStr.find('"', payloadPos + 10);
-		if (payloadQuoteStart != std::string::npos)
-		{
-			const auto payloadQuoteEnd = jsonStr.find('"', payloadQuoteStart + 1);
-			if (payloadQuoteEnd != std::string::npos)
-			{
-				cmd.payload = jsonStr.substr(
-					payloadQuoteStart + 1,
-					payloadQuoteEnd - payloadQuoteStart - 1
-				);
-			}
-		}
-	}
-
 	return cmd;
 }
 
-/// @brief コマンドをJSON文字列に変換する
-/// @param command 変換対象のコマンド
-/// @return JSON形式の文字列
+/// @brief コマンドを JSON 文字列に変換する。payload は文字列として入れ、空なら書かない。
 [[nodiscard]] inline std::string commandToJson(const Command& command)
 {
-	std::string json;
-	json += "{\"type\":\"" + command.type + "\"";
-	if (!command.payload.empty())
-	{
-		json += ",\"payload\":\"" + command.payload + "\"";
-	}
-	json += "}";
-	return json;
+	nlohmann::ordered_json doc{{"type", command.type}};
+	if (!command.payload.empty()) { doc["payload"] = command.payload; }
+	return doc.dump();
 }
 
-/// @brief コマンドスキーマのJSON定義を返す
-/// @return JSON Schema形式の文字列
+/// @brief コマンドスキーマの JSON 定義を返す
+/// @return JSON Schema 形式の文字列
 [[nodiscard]] inline std::string schemaJson()
 {
 	return R"({

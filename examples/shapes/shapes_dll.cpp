@@ -1,6 +1,6 @@
-// shapes。図形描画のカタログ。基本の図形を 4 列 x 2 段のマスに並べて見せる
-// 実行すると: 紙白の画面に rect / circle / line / gradient / 破線 / 三角形 / 多角形 (五角形・六角形) が並ぶ
-// 関連 API: drawRect / fillCircle / line / drawGradientRect / dashedLine / drawTriangle / drawPolygon
+// shapes。図形描画のカタログで、基本の図形を 4 列 x 2 段のマスに並べて見せる
+// 実行すると、紙白の画面に rect / circle / line / gradient / 破線 / 三角形 / 多角形 (五角形・六角形) が並ぶ
+// 関連 API は drawRect / fillCircle / line / drawGradientRect / dashedLine / drawTriangle / drawPolygon
 
 #include <cmath>       // std::cos / std::sin (多角形の頂点を円周上に置くのに使う)
 #include <cstddef>     // std::size_t
@@ -13,7 +13,7 @@
 
 using namespace mitiru;
 
-// 見本を 4 列 x 2 段のマスに並べる。マスの左上 = (kCol[列], kRow[段])。
+// 見本を 4 列 x 2 段のマスに並べる。マスの左上は (kCol[列], kRow[段])。
 constexpr float kCol[4] = {20.0f, 335.0f, 650.0f, 965.0f};
 constexpr float kRow[2] = {70.0f, 390.0f};
 constexpr float kCellW  = 295.0f;   // マスの幅
@@ -21,8 +21,8 @@ constexpr float kCellH  = 280.0f;   // マスの高さ
 
 struct Shapes02
 {
-	// 見本 1 マスぶんの枠と見出しを描く。見出しは大きめ (22px) + 濃い色ではっきり読ませる。
-	// Screen/Canvas 両対応 (ADR 0025) にするため Surface でテンプレート化する。
+	// 見本 1 マスぶんの枠と見出しを描く。見出しは大きめ (22px) の濃い色で、はっきり読みやすくする。
+	// Screen/Canvas の両方に対応するため (ADR 0025)、Surface でテンプレート化する。
 	template <class Surface>
 	void cell(Surface& s, float x, float y, const char* name) const
 	{
@@ -30,8 +30,8 @@ struct Shapes02
 		s.text(name, x + 14.0f, y + 10.0f, theme::kInk, 22.0f);
 	}
 
-	// 中心 (cx,cy)・半径 r・頂点数 n の正多角形の頂点を、真上を頂点にして順に作る。
-	// deg() は度をラジアンに直す。画面の y は下向きなので -90 度から始めると頂点が上を向く。
+	// 中心 (cx,cy)・半径 r・頂点数 n の正多角形の頂点を、真上を頂点として順に作る。
+	// deg() は度をラジアンに直す。画面では y が下向きなので、-90 度から始めると頂点が上を向く。
 	std::vector<Vec2> regularPolygon(float cx, float cy, float r, int n) const
 	{
 		std::vector<Vec2> pts;
@@ -44,7 +44,7 @@ struct Shapes02
 		return pts;
 	}
 
-	// 頂点をぐるりと線で結んで、多角形の枠 (ふち) を描く。
+	// 頂点を順に線で結び、多角形の枠 (ふち) を描く。
 	template <class Surface>
 	void outline(Surface& s, const std::vector<Vec2>& pts, const Color& c, float w) const
 	{
@@ -92,7 +92,7 @@ struct Shapes02
 		s.dashedLine(x + 30.0f, y + 155.0f, x + 265.0f, y + 155.0f, theme::kBlue, 3.0f,  6.0f, 6.0f);
 		s.dashedLine(x + 30.0f, y + 235.0f, x + 265.0f, y + 200.0f, theme::kPink, 2.0f,  9.0f, 6.0f);
 
-		// 三角形は drawTriangle (頂点 3 つ) で塗る。仕上げにふちを線でなぞる。
+		// 三角形は drawTriangle (頂点 3 つ) で塗る。仕上げにふちを線で描く。
 		x = kCol[1];
 		const auto tri = regularPolygon(x + 147.0f, y + 175.0f, 92.0f, 3);
 		cell(s, x, y, "triangle");
@@ -121,4 +121,5 @@ struct Shapes02
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(Shapes02);
 
+MITIRU_ASSERT_NO_PADDING(Shapes02);
 MITIRU_GAME(Shapes02);

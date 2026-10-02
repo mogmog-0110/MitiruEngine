@@ -8,7 +8,7 @@
 /// 一切影響しない (ModuleHost::invariantsFn() が nullptr を返すだけ)。
 ///
 /// MITIRU_INVARIANT(GameType, 名前, 式) をグローバル scope・MITIRU_GAME と同じ .cpp に
-/// 並べ、ファイル末尾で MITIRU_INVARIANTS_EXPORT() を1回だけ呼ぶ形で使う。式の中では
+/// 並べ、ファイル末尾で MITIRU_INVARIANTS_EXPORT() を 1 回だけ呼ぶ形で使う。式の中では
 /// g (const GameType&) で GameMemory を参照でき、戻り値は「不変条件が成立しているか」
 /// (true=成立、false=違反) を表す真偽値にする。host は Engine_Frame.hpp の update 後
 /// フックで毎フレーム全件評価し、違反を mitiru::observe::OracleEvent として記録する。
@@ -62,7 +62,7 @@ inline void registerInvariant(const char* name, bool (*fn)(const void*))
 #define MITIRU_INVARIANT_CONCAT_IMPL(a, b) a##b
 #define MITIRU_INVARIANT_CONCAT(a, b) MITIRU_INVARIANT_CONCAT_IMPL(a, b)
 
-/// @brief GameType の GameMemory に対する不変条件を1件宣言する (optional、MITIRU_GAME と併記)。
+/// @brief GameType の GameMemory に対する不変条件を 1 件宣言する (optional、MITIRU_GAME と併記)。
 /// グローバル scope・完全修飾名で書くこと。行番号で一意な static 登録オブジェクトを作る。
 #define MITIRU_INVARIANT(GameType, name, expr)                                       \
 	namespace                                                                          \
@@ -142,7 +142,7 @@ inline void registerInvariantReset(void (*fn)())
 	}
 
 /// @brief 登録済みの全 MITIRU_INVARIANT を host が GetProcAddress で読める形に export する。
-/// MITIRU_GAME と同じ .cpp の末尾に1回だけ書く (複数回書くと export の再定義エラーになる)。
+/// MITIRU_GAME と同じ .cpp の末尾に 1 回だけ書く (複数回書くと export の再定義エラーになる)。
 /// 呼ばれるのは host の load 完了後 (GetProcAddress 経由) なので、静的初期化順には依存しない。
 /// @brief MITIRU_REACHABLE の到達状態を全件 0 に戻す (optional export)。restart intent
 /// (`hud.requestRestart()`) 適用時に host が GameMemory の再構築と併せて呼ぶ。

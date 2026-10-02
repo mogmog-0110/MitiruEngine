@@ -1,4 +1,4 @@
-// SceneDocument の detail header - 直接 include しないこと。core/SceneDocument.hpp 経由で include される
+// SceneDocument の detail header。直接 include しないこと。core/SceneDocument.hpp 経由で include される
 #pragma once
 
 /// @file SceneDocument_Traits.hpp
@@ -61,18 +61,18 @@ inline TraitJson floatArray(const float* in, int count)
 // Traits。合成可能な機能単位
 // =============================================================================
 
-/// @brief Trait基底インターフェース
+/// @brief Trait 基底インターフェース
 struct ITrait
 {
 	virtual ~ITrait() = default;
 
-	/// @brief Trait種別を返す
+	/// @brief Trait 種別を返す
 	[[nodiscard]] virtual std::string traitType() const = 0;
 
-	/// @brief TraitをJSON文字列にシリアライズする
+	/// @brief Trait を JSON 文字列にシリアライズする
 	[[nodiscard]] virtual std::string toJson() const = 0;
 
-	/// @brief JSON文字列からTraitを復元する
+	/// @brief JSON 文字列から Trait を復元する
 	virtual void fromJson(const std::string& json) = 0;
 };
 

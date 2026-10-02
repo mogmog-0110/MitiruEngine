@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Vertex2D.hpp
-/// @brief 2D頂点構造体
-/// @details 2Dスプライト・シェイプ描画に使用する頂点データ型を定義する。
+/// @brief 2D 頂点構造体
+/// @details 2D スプライト・シェイプ描画に使用する頂点データ型を定義する。
 
 #include <sgc/math/Vec2.hpp>
 #include <sgc/types/Color.hpp>
@@ -10,7 +10,7 @@
 namespace mitiru::render
 {
 
-/// @brief 2D描画用の頂点データ
+/// @brief 2D 描画用の頂点データ
 /// @details 位置・テクスチャ座標・色を持つ頂点。
 ///          SpriteBatch や ShapeRenderer が内部で生成する。
 ///

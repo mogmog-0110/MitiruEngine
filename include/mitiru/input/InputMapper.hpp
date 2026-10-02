@@ -7,8 +7,8 @@
 /// @file InputMapper.hpp
 /// @brief アクションマッピングレイヤー
 /// @details 生の入力（キーコード、マウスボタン、ゲームパッドボタン）を
-///          文字列ベースのゲームアクションにマッピングする。
-///          プラットフォーム非依存。実行時にリバインド可能。
+///          文字列で表すゲームアクションにマッピングする。
+///          プラットフォームに依存しない。実行時にリバインドできる。
 
 #include <cstdint>
 #include <functional>
@@ -23,8 +23,8 @@
 namespace mitiru
 {
 
-/// @brief ゲームパッドボタンID（プラットフォーム非依存）
-/// @details XInputのビットフラグ値に準拠するが、ヘッダ自体はWin32非依存。
+/// @brief ゲームパッドボタン ID（プラットフォーム非依存）
+/// @details 値は XInput のビットフラグに合わせているが、ヘッダ自体は Win32 に依存しない。
 enum class GamepadButtonId : std::uint16_t
 {
 	DPadUp    = 0x0001,   ///< 十字キー上
@@ -53,7 +53,7 @@ enum class BindingType : std::uint8_t
 };
 
 /// @brief 入力バインディング
-/// @details 1つのアクションに対する1つの入力ソースを表す。
+/// @details 1 つのアクションに対する 1 つの入力ソースを表す。
 struct InputBinding
 {
 	BindingType type = BindingType::Key;       ///< バインディングの種類
@@ -76,7 +76,7 @@ struct InputBinding
 	}
 
 	/// @brief ゲームパッドボタンバインディングを生成する
-	/// @param button ゲームパッドボタンID
+	/// @param button ゲームパッドボタン ID
 	/// @return InputBinding
 	[[nodiscard]] static constexpr InputBinding fromGamepadButton(GamepadButtonId button) noexcept
 	{
@@ -84,7 +84,7 @@ struct InputBinding
 	}
 
 	/// @brief ゲームパッド軸バインディングを生成する
-	/// @param axisId 軸ID
+	/// @param axisId 軸 ID
 	/// @return InputBinding
 	[[nodiscard]] static constexpr InputBinding fromGamepadAxis(int axisId) noexcept
 	{
@@ -93,8 +93,8 @@ struct InputBinding
 };
 
 /// @brief 入力状態プロバイダ
-/// @details InputMapperが入力状態を問い合わせるためのコールバック群。
-///          プラットフォーム固有の入力システムとの橋渡しを担う。
+/// @details InputMapper が入力状態を問い合わせるためのコールバック群。
+///          プラットフォーム固有の入力システムとの橋渡しをする。
 struct InputStateProvider
 {
 	/// @brief キーが押されているか問い合わせる関数
@@ -121,7 +121,7 @@ struct InputStateProvider
 
 /// @brief アクションマッピングレイヤー
 /// @details 生の入力を文字列ベースのゲームアクションにマッピングする。
-///          1つのアクションに複数のバインディングを設定可能。
+///          1 つのアクションに複数のバインディングを設定可能。
 ///          実行時にリバインド可能。
 ///
 /// @code
@@ -168,7 +168,7 @@ public:
 
 	/// @brief ゲームパッドボタンバインディングを追加する
 	/// @param actionName アクション名
-	/// @param button ゲームパッドボタンID
+	/// @param button ゲームパッドボタン ID
 	void bindGamepadButton(std::string_view actionName, GamepadButtonId button)
 	{
 		m_bindings[std::string(actionName)].push_back(
@@ -177,7 +177,7 @@ public:
 
 	/// @brief ゲームパッド軸バインディングを追加する
 	/// @param actionName アクション名
-	/// @param axisId 軸ID
+	/// @param axisId 軸 ID
 	void bindGamepadAxis(std::string_view actionName, int axisId)
 	{
 		m_bindings[std::string(actionName)].push_back(
@@ -201,9 +201,9 @@ public:
 		m_bridgeTriggered.emplace(actionName);
 	}
 
-	/// @brief フレーム末で bridge-triggered flag をすべてクリア
-	/// @details ゲームループの末尾で必ず呼ぶこと。呼ばない場合、一度トリガされた
-	///          action が永続的に「pressed」状態になる。
+	/// @brief フレーム末で bridge-triggered flag をすべてクリアする
+	/// @details ゲームループの末尾で必ず呼ぶこと。呼ばないと、一度トリガされた
+	///          action がずっと「pressed」のままになる。
 	void endFrame() noexcept
 	{
 		m_bridgeTriggered.clear();

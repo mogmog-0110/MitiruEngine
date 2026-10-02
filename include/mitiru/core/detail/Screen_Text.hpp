@@ -1,6 +1,8 @@
 #pragma once
 // mitiru::Screen 用の detail header。直接インクルードしない。core/Screen.hpp 経由で取り込む
 
+#include <mitiru/i18n/LineBreak.hpp>
+
 // drawText はゲーム作者向けに [[deprecated]] だが、本ファイルはその実装本体と
 // drawTextClipped / drawTextInRect 等の委譲元なので、ここでの内部呼び出しに限り
 // deprecation 警告を抑制する (ファイル末尾で pop)。
@@ -127,7 +129,7 @@ inline void mitiru::Screen::drawTextClipped(const sgc::Rectf& rect, std::string_
 	// text 自体は表示用の切り詰め目的なので scratch を超える分はそのまま捨てる
 	// (画面に入り切らない文字数なので実害はない)。
 	static thread_local char scratch[512];
-	const std::size_t n = std::min(lo, sizeof(scratch) - 4);
+	const std::size_t n = i18n::floorToCharBoundary(text, std::min(lo, sizeof(scratch) - 4));
 	std::memcpy(scratch, text.data(), n);
 	scratch[n] = '.'; scratch[n + 1] = '.'; scratch[n + 2] = '.'; scratch[n + 3] = '\0';
 	drawText({rect.x() + padX, rect.y() + padY}, std::string_view(scratch, n + 3), color, fontSize);
@@ -173,7 +175,7 @@ inline void mitiru::Screen::drawTextInRect(const sgc::Rectf& rect, std::string_v
 				else
 					hi = mid - 1;
 			}
-			const std::size_t n = std::min(lo, sizeof(scratch) - 4);
+			const std::size_t n = i18n::floorToCharBoundary(text, std::min(lo, sizeof(scratch) - 4));
 			std::memcpy(scratch, text.data(), n);
 			scratch[n] = '.'; scratch[n + 1] = '.'; scratch[n + 2] = '.'; scratch[n + 3] = '\0';
 			drawable = std::string_view(scratch, n + 3);
@@ -210,51 +212,27 @@ inline void mitiru::Screen::drawTextWrapped(const sgc::Rectf& rect, std::string_
 	const float innerH = rect.height() - padY * 2.0f;
 	if (innerW <= 0.0f || innerH <= 0.0f) return;
 
-	const auto spaceSize = measureText(" ", fontSize);
-	const float charW = spaceSize.x;
-	const float lineH = spaceSize.y * lineSpacing;
+	const float lineH = measureText(" ", fontSize).y * lineSpacing;
 	float curY = rect.y() + padY;
+	// 折り返し位置を探す作業領域。毎回の確保を避けるため使い回す。
+	static thread_local std::vector<std::uint32_t> scratchCps;
+	static thread_local std::vector<std::size_t> scratchOffsets;
+	const auto measureWidth = [&](std::string_view s) { return measureText(s, fontSize).x; };
 
 	std::size_t pos = 0;
 	while (pos < text.size() && curY + lineH <= rect.y() + rect.height())
 	{
-		std::size_t lineEnd = pos;
-		std::size_t lastSpace = pos;
-		float lineWidth = 0.0f;
-
-		while (lineEnd < text.size() && text[lineEnd] != '\n')
-		{
-			if (text[lineEnd] == ' ') lastSpace = lineEnd;
-			const float glyphW =
-				(m_sdfFont && m_sdfMeasureFunc) || (m_ttFont && m_ttMeasureFunc)
-					? measureText(text.substr(lineEnd, 1), fontSize).x
-					: charW;
-			lineWidth += glyphW;
-			if (lineWidth > innerW)
-			{
-				if (lastSpace > pos)
-				{
-					lineEnd = lastSpace;
-				}
-				break;
-			}
-			++lineEnd;
-		}
-
-		if (lineEnd == pos && lineEnd < text.size())
-		{
-			++lineEnd;
-		}
+		const std::size_t newline = std::min(text.find('\n', pos), text.size());
+		const std::size_t lineEnd = pos + i18n::fitLine(text.substr(pos, newline - pos), innerW,
+		                                                measureWidth, scratchCps, scratchOffsets);
 
 		const auto lineText = text.substr(pos, lineEnd - pos);
 		drawText({rect.x() + padX, curY}, lineText, color, fontSize);
 		curY += lineH;
 
 		pos = lineEnd;
-		if (pos < text.size() && (text[pos] == ' ' || text[pos] == '\n'))
-		{
-			++pos;
-		}
+		if (pos == newline && pos < text.size()) { ++pos; }
+		else { while (pos < newline && text[pos] == ' ') { ++pos; } }
 	}
 }
 

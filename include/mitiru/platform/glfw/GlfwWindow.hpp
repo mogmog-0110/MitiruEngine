@@ -1,10 +1,11 @@
 ﻿#pragma once
 
 /// @file GlfwWindow.hpp
-/// @brief GLFWウィンドウ実装（OpenGL/Vulkan対応）
-/// @details GLFWライブラリを使用したクロスプラットフォームウィンドウ管理。
-///          OpenGL 3.3 Core Profile または Vulkanバックエンドに対応。
-///          MITIRU_HAS_GLFWが定義されている場合のみコンパイルされる。
+/// @brief GLFW ウィンドウ実装（OpenGL/Vulkan 対応）
+/// @details GLFW ライブラリを使用したクロスプラットフォームウィンドウ管理。
+///          OpenGL 3.3 Core Profile または Vulkan バックエンドに対応。
+///          MITIRU_HAS_GLFW が定義されている場合のみコンパイルされる。
+///          凍結中 (ADR 0047): 新機能は足さない。Vulkan / OpenGL backend と一緒に消す。
 
 #ifdef MITIRU_HAS_GLFW
 
@@ -12,7 +13,7 @@
 #include <string>
 #include <string_view>
 
-// Vulkanヘッダが先にincludeされていれば、GLFWがVulkan連携関数を宣言する
+// Vulkan ヘッダが先に include されていれば、GLFW が Vulkan 連携関数を宣言する
 #ifdef MITIRU_HAS_VULKAN
 #include <vulkan/vulkan.h>
 #endif
@@ -23,21 +24,21 @@
 namespace mitiru
 {
 
-/// @brief GLFWウィンドウ グラフィクスモード
+/// @brief GLFW ウィンドウ グラフィクスモード
 enum class GlfwGraphicsMode : std::uint8_t
 {
 	Vulkan,    ///< Vulkan用 (GLFW_NO_API)
 	OpenGL,    ///< OpenGL 3.3 Core Profile
 };
 
-/// @brief GLFWウィンドウ実装
-/// @details GLFWwindowをラップし、IWindowインターフェースを提供する。
-///          OpenGL 3.3またはVulkanのどちらかのモードで動作する。
+/// @brief GLFW ウィンドウ実装
+/// @details GLFWwindow をラップし、IWindow インターフェースを提供する。
+///          OpenGL 3.3 または Vulkan のどちらかのモードで動作する。
 ///
 /// @code
-/// // OpenGLモード
+/// // OpenGL モード
 /// auto window = std::make_unique<GlfwWindow>("My Game", 1280, 720, GlfwGraphicsMode::OpenGL);
-/// // Vulkanモード（デフォルト）
+/// // Vulkan モード（デフォルト）
 /// auto window = std::make_unique<GlfwWindow>("My Game", 1280, 720);
 /// @endcode
 class GlfwWindow final : public IWindow
@@ -56,7 +57,7 @@ public:
 	{
 		++s_instanceCount;
 
-		/// GLFWの初期化
+		/// GLFW の初期化
 		if (!glfwInit())
 		{
 			throw std::runtime_error("glfwInit failed");
@@ -74,7 +75,7 @@ public:
 		}
 		else
 		{
-			/// Vulkan用。OpenGLコンテキストを無効化
+			/// Vulkan 用。OpenGL コンテキストを無効化
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		}
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -89,7 +90,7 @@ public:
 			throw std::runtime_error("glfwCreateWindow failed");
 		}
 
-		/// OpenGLモードの場合、コンテキストをカレントに設定
+		/// OpenGL モードの場合、コンテキストをカレントに設定
 		if (mode == GlfwGraphicsMode::OpenGL)
 		{
 			glfwMakeContextCurrent(m_window);
@@ -129,7 +130,7 @@ public:
 		return glfwWindowShouldClose(m_window) != 0;
 	}
 
-	/// @brief GLFWイベントキューをポーリングする
+	/// @brief GLFW イベントキューをポーリングする
 	void pollEvents() override
 	{
 		glfwPollEvents();
@@ -165,7 +166,7 @@ public:
 		}
 	}
 
-	/// @brief OpenGLモードでバッファをスワップする
+	/// @brief OpenGL モードでバッファをスワップする
 	void swapBuffers()
 	{
 		if (m_graphicsMode == GlfwGraphicsMode::OpenGL && m_window)
@@ -180,8 +181,8 @@ public:
 		return m_graphicsMode;
 	}
 
-	/// @brief エンジンのInputStateを接続する
-	/// @details GLFWコールバックからInputStateにマウス/キー入力を転送する
+	/// @brief エンジンの InputState を接続する
+	/// @details GLFW コールバックから InputState にマウス/キー入力を転送する
 	void setInputState(InputState* state) override
 	{
 		m_inputState = state;
@@ -193,11 +194,11 @@ public:
 		}
 	}
 
-	/// @brief ネイティブGLFWwindowを取得する
-	/// @return GLFWwindowポインタ（Vulkanサーフェス生成に使用）
-	/// @note GlfwInput、GlfwVulkanSurfaceと組み合わせて使用する。
-	///       GlfwInputはこのウィンドウにコールバックを登録する。
-	///       GlfwVulkanSurfaceはこのウィンドウからVkSurfaceKHRを生成する。
+	/// @brief ネイティブ GLFWwindow を取得する
+	/// @return GLFWwindow ポインタ（Vulkan サーフェス生成に使用）
+	/// @note GlfwInput、GlfwVulkanSurface と組み合わせて使用する。
+	///       GlfwInput はこのウィンドウにコールバックを登録する。
+	///       GlfwVulkanSurface はこのウィンドウから VkSurfaceKHR を生成する。
 	[[nodiscard]] GLFWwindow* nativeWindow() const noexcept
 	{
 		return m_window;
@@ -217,7 +218,7 @@ public:
 	}
 
 	/// @brief フルスクリーンモードを切り替える
-	/// @param fullscreen フルスクリーンにする場合true
+	/// @param fullscreen フルスクリーンにする場合 true
 	void setFullscreen(bool fullscreen)
 	{
 		if (!m_window)
@@ -251,7 +252,7 @@ public:
 	}
 
 	/// @brief フルスクリーン状態を取得する
-	/// @return フルスクリーンならtrue
+	/// @return フルスクリーンなら true
 	[[nodiscard]] bool isFullscreen() const noexcept
 	{
 		return m_fullscreen;
@@ -259,7 +260,7 @@ public:
 
 private:
 	/// @brief フレームバッファリサイズコールバック
-	/// @param window GLFWウィンドウ
+	/// @param window GLFW ウィンドウ
 	/// @param width 新しい幅
 	/// @param height 新しい高さ
 	static void framebufferSizeCallback(
@@ -274,7 +275,7 @@ private:
 		}
 	}
 
-	/// @brief マウス移動コールバック（InputState連携用）
+	/// @brief マウス移動コールバック（InputState 連携用）
 	static void cursorPosInputCallback(GLFWwindow* window, double xpos, double ypos)
 	{
 		auto* self = static_cast<GlfwWindow*>(glfwGetWindowUserPointer(window));
@@ -285,7 +286,7 @@ private:
 		}
 	}
 
-	/// @brief マウスボタンコールバック（InputState連携用）
+	/// @brief マウスボタンコールバック（InputState 連携用）
 	static void mouseButtonInputCallback(GLFWwindow* window, int button, int action, int /*mods*/)
 	{
 		auto* self = static_cast<GlfwWindow*>(glfwGetWindowUserPointer(window));
@@ -298,7 +299,7 @@ private:
 		}
 	}
 
-	/// @brief キーコールバック（InputState連携用）
+	/// @brief キーコールバック（InputState 連携用）
 	static void keyInputCallback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/)
 	{
 		auto* self = static_cast<GlfwWindow*>(glfwGetWindowUserPointer(window));

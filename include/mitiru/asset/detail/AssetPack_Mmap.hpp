@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file AssetPack_Mmap.hpp
-/// @brief pack ファイル全体を読み取り専用でメモリへ写像する薄いラッパー。
+/// @brief pack ファイル全体を読み取り専用でメモリに写像する薄いラッパー。
 ///
-/// Win32 は CreateFileMapping/MapViewOfFile、POSIX は mmap を使う。どちらも
-/// 使えない環境ではファイル全体を std::vector へコピーして同じインタフェースを保つ
-/// (機能的には動くが常駐コピーが増える fallback)。AssetPack::view() が
-/// scramble されていない v1 pack への直接スパンに使う。
+/// Win32 では CreateFileMapping/MapViewOfFile、POSIX では mmap を使う。どちらも
+/// 使えない環境では、ファイル全体を std::vector へコピーして同じインタフェースを保つ
+/// (機能上は動作するが、常駐コピーが増える fallback)。AssetPack::view() で、
+/// scramble されていない v1 pack を直接参照するスパンとして使う。
 
 #include <cstdint>
 #include <cstddef>
@@ -63,7 +63,7 @@ public:
 		return *this;
 	}
 
-	/// 成功で true。空ファイルも map せず size()==0 の成功として扱う。
+	/// 成功時は true。空ファイルも map せず、size()==0 の成功として扱う。
 	[[nodiscard]] bool open(const std::filesystem::path& file);
 	void               close();
 

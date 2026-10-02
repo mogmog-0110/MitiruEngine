@@ -29,9 +29,9 @@ struct InlineTag
 
 /// @brief 対話行のテキスト内インラインコマンドを解析する
 /// @details "[wait=500]" や "[shake]" などのインラインタグを分離する。
-///          `ScenarioExecutor` が各 dialogue 行で自動実行し、
+///          `ScenarioExecutor` が各 dialogue 行で自動で呼び、
 ///          `onDialogueParsed(speaker, plainText, tags)` として
-///          コールバックに届ける。
+///          コールバックに渡す。
 /// @param text 対話テキスト
 /// @return {タグ除去後テキスト, タグリスト} のペア
 [[nodiscard]] inline std::pair<std::string, std::vector<InlineTag>> parseInlineTags(std::string_view text);
@@ -42,7 +42,7 @@ struct InlineTag
 
 /// @brief スクリプト文字列をパースしてコマンドリストを返す
 /// @param source スクリプト文字列
-/// @return ScenarioNodeのベクタ
+/// @return ScenarioNode のベクタ
 [[nodiscard]] inline std::vector<ScenarioNode> parseScenario(std::string_view source)
 {
 	auto tokens = ScenarioLexer::tokenize(source);

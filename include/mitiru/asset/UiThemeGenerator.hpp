@@ -1,11 +1,14 @@
 ﻿#pragma once
 
 /// @file UiThemeGenerator.hpp
-/// @brief JSON駆動UIテーマからSVGアトラス生成
-/// @details UiThemeConfigに基づいて各UIウィジェットのSVGを生成し、
-///          アトラスとして1つのSVGにまとめる機能を提供する。
+/// @brief JSON 駆動 UI テーマから SVG アトラス生成
+/// @details UiThemeConfig に基づいて各 UI ウィジェットの SVG を生成し、
+///          アトラスとして 1 つの SVG にまとめる機能を提供する。
 
 #include <mitiru/asset/SvgBuilder.hpp>
+#include <mitiru/observe/JsonEscape.hpp>
+
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -17,7 +20,7 @@
 namespace mitiru::asset
 {
 
-/// @brief UIテーマの設定
+/// @brief UI テーマの設定
 /// @details カラースキーム、角丸、ボーダー幅、パディング、スタイルを保持する。
 struct UiThemeConfig
 {
@@ -31,7 +34,7 @@ struct UiThemeConfig
 	float borderWidth = 2.0f;					///< ボーダー幅
 	float padding = 8.0f;						///< パディング
 
-	/// @brief UIスタイルの種類
+	/// @brief UI スタイルの種類
 	enum class Style
 	{
 		Flat,			///< フラットスタイル
@@ -43,9 +46,9 @@ struct UiThemeConfig
 	Style style = Style::Rounded;				///< UIスタイル
 };
 
-/// @brief UIテーマからSVGウィジェットを生成するクラス
-/// @details UiThemeConfigに基づいて、ボタン、スライダー、チェックボックス等の
-///          SVGを生成する。SvgBuilderを内部的に使用する。
+/// @brief UI テーマから SVG ウィジェットを生成するクラス
+/// @details UiThemeConfig に基づいて、ボタン、スライダー、チェックボックス等の
+///          SVG を生成する。SvgBuilder を内部的に使用する。
 ///
 /// @code
 /// UiThemeConfig config;
@@ -58,26 +61,29 @@ struct UiThemeConfig
 class UiThemeGenerator
 {
 public:
-	// ========== JSON入出力 ==========
+	// ========== JSON 入出力 ==========
 
-	/// @brief JSON文字列からテーマ設定を読み込む
-	/// @param json JSON文字列
+	/// @brief JSON 文字列からテーマ設定を読み込む
+	/// @param json JSON 文字列
 	/// @return パースしたテーマ設定
+	/// @details 読めない JSON、存在しないキー、型の異なる値は既定値のまま
 	[[nodiscard]] static UiThemeConfig fromJson(const std::string& json)
 	{
 		UiThemeConfig config;
+		auto doc = nlohmann::json::parse(json, nullptr, false);
+		if (doc.is_discarded() || !doc.is_object()) { doc = nlohmann::json::object(); }
 
-		config.primaryColor = extractJsonString(json, "primaryColor", config.primaryColor);
-		config.secondaryColor = extractJsonString(json, "secondaryColor", config.secondaryColor);
-		config.accentColor = extractJsonString(json, "accentColor", config.accentColor);
-		config.textColor = extractJsonString(json, "textColor", config.textColor);
-		config.backgroundColor = extractJsonString(json, "backgroundColor", config.backgroundColor);
+		config.primaryColor = stringField(doc, "primaryColor", config.primaryColor);
+		config.secondaryColor = stringField(doc, "secondaryColor", config.secondaryColor);
+		config.accentColor = stringField(doc, "accentColor", config.accentColor);
+		config.textColor = stringField(doc, "textColor", config.textColor);
+		config.backgroundColor = stringField(doc, "backgroundColor", config.backgroundColor);
 
-		config.cornerRadius = extractJsonFloat(json, "cornerRadius", config.cornerRadius);
-		config.borderWidth = extractJsonFloat(json, "borderWidth", config.borderWidth);
-		config.padding = extractJsonFloat(json, "padding", config.padding);
+		config.cornerRadius = floatField(doc, "cornerRadius", config.cornerRadius);
+		config.borderWidth = floatField(doc, "borderWidth", config.borderWidth);
+		config.padding = floatField(doc, "padding", config.padding);
 
-		auto styleStr = extractJsonString(json, "style", "Rounded");
+		const auto styleStr = stringField(doc, "style", "Rounded");
 		if (styleStr == "Flat") config.style = UiThemeConfig::Style::Flat;
 		else if (styleStr == "Pixel") config.style = UiThemeConfig::Style::Pixel;
 		else if (styleStr == "Neumorphic") config.style = UiThemeConfig::Style::Neumorphic;
@@ -86,18 +92,18 @@ public:
 		return config;
 	}
 
-	/// @brief テーマ設定をJSON文字列に変換する
+	/// @brief テーマ設定を JSON 文字列に変換する
 	/// @param config テーマ設定
-	/// @return JSON文字列
+	/// @return JSON 文字列
 	[[nodiscard]] static std::string toJson(const UiThemeConfig& config)
 	{
 		std::ostringstream ss;
 		ss << "{\n"
-		   << "  \"primaryColor\": \"" << config.primaryColor << "\",\n"
-		   << "  \"secondaryColor\": \"" << config.secondaryColor << "\",\n"
-		   << "  \"accentColor\": \"" << config.accentColor << "\",\n"
-		   << "  \"textColor\": \"" << config.textColor << "\",\n"
-		   << "  \"backgroundColor\": \"" << config.backgroundColor << "\",\n"
+		   << "  \"primaryColor\": " << observe::jsonQuoted(config.primaryColor) << ",\n"
+		   << "  \"secondaryColor\": " << observe::jsonQuoted(config.secondaryColor) << ",\n"
+		   << "  \"accentColor\": " << observe::jsonQuoted(config.accentColor) << ",\n"
+		   << "  \"textColor\": " << observe::jsonQuoted(config.textColor) << ",\n"
+		   << "  \"backgroundColor\": " << observe::jsonQuoted(config.backgroundColor) << ",\n"
 		   << "  \"cornerRadius\": " << config.cornerRadius << ",\n"
 		   << "  \"borderWidth\": " << config.borderWidth << ",\n"
 		   << "  \"padding\": " << config.padding << ",\n"
@@ -106,14 +112,14 @@ public:
 		return ss.str();
 	}
 
-	// ========== 個別ウィジェットSVG生成 ==========
+	// ========== 個別ウィジェット SVG 生成 ==========
 
-	/// @brief ボタンSVGを生成する
+	/// @brief ボタン SVG を生成する
 	/// @param config テーマ設定
 	/// @param w 幅
 	/// @param h 高さ
 	/// @param label ボタンラベル
-	/// @return SVG文字列
+	/// @return SVG 文字列
 	[[nodiscard]] static std::string generateButton(const UiThemeConfig& config,
 		float w, float h, const std::string& label)
 	{
@@ -152,12 +158,12 @@ public:
 		return builder.build();
 	}
 
-	/// @brief スライダーSVGを生成する
+	/// @brief スライダー SVG を生成する
 	/// @param config テーマ設定
 	/// @param w 幅
 	/// @param h 高さ
 	/// @param value 現在値（0.0〜1.0）
-	/// @return SVG文字列
+	/// @return SVG 文字列
 	[[nodiscard]] static std::string generateSlider(const UiThemeConfig& config,
 		float w, float h, float value)
 	{
@@ -189,11 +195,11 @@ public:
 		return builder.build();
 	}
 
-	/// @brief チェックボックスSVGを生成する
+	/// @brief チェックボックス SVG を生成する
 	/// @param config テーマ設定
 	/// @param size サイズ（幅=高さ）
 	/// @param checked チェック状態
-	/// @return SVG文字列
+	/// @return SVG 文字列
 	[[nodiscard]] static std::string generateCheckbox(const UiThemeConfig& config,
 		float size, bool checked)
 	{
@@ -222,11 +228,11 @@ public:
 		return builder.build();
 	}
 
-	/// @brief パネルSVGを生成する
+	/// @brief パネル SVG を生成する
 	/// @param config テーマ設定
 	/// @param w 幅
 	/// @param h 高さ
-	/// @return SVG文字列
+	/// @return SVG 文字列
 	[[nodiscard]] static std::string generatePanel(const UiThemeConfig& config,
 		float w, float h)
 	{
@@ -253,12 +259,12 @@ public:
 		return builder.build();
 	}
 
-	/// @brief プログレスバーSVGを生成する
+	/// @brief プログレスバー SVG を生成する
 	/// @param config テーマ設定
 	/// @param w 幅
 	/// @param h 高さ
 	/// @param progress 進捗値（0.0〜1.0）
-	/// @return SVG文字列
+	/// @return SVG 文字列
 	[[nodiscard]] static std::string generateProgressBar(const UiThemeConfig& config,
 		float w, float h, float progress)
 	{
@@ -278,19 +284,19 @@ public:
 			builder.rect(0, 0, fillW, h, "url(#prog-grad)", rx);
 		}
 
-		// パーセンテージテキスト
+		// パーセンテージのテキスト
 		int pct = static_cast<int>(p * 100);
 		builder.text(w / 2, h / 2, std::to_string(pct) + "%", h * 0.5f, config.textColor);
 
 		return builder.build();
 	}
 
-	/// @brief トグルスイッチSVGを生成する
+	/// @brief トグルスイッチ SVG を生成する
 	/// @param config テーマ設定
 	/// @param w 幅
 	/// @param h 高さ
-	/// @param on ON状態かどうか
-	/// @return SVG文字列
+	/// @param on ON 状態かどうか
+	/// @return SVG 文字列
 	[[nodiscard]] static std::string generateToggle(const UiThemeConfig& config,
 		float w, float h, bool on)
 	{
@@ -310,12 +316,12 @@ public:
 		return builder.build();
 	}
 
-	/// @brief テキスト入力フィールドSVGを生成する
+	/// @brief テキスト入力フィールド SVG を生成する
 	/// @param config テーマ設定
 	/// @param w 幅
 	/// @param h 高さ
 	/// @param placeholder プレースホルダーテキスト
-	/// @return SVG文字列
+	/// @return SVG 文字列
 	[[nodiscard]] static std::string generateTextInput(const UiThemeConfig& config,
 		float w, float h, const std::string& placeholder)
 	{
@@ -339,16 +345,16 @@ public:
 
 	// ========== アトラス生成 ==========
 
-	/// @brief 全ウィジェットを1つのSVGアトラスに配置する
+	/// @brief 全ウィジェットを 1 つの SVG アトラスに配置する
 	/// @param config テーマ設定
 	/// @param atlasSize アトラスサイズ（デフォルト: 1024）
-	/// @return SVG文字列
+	/// @return SVG 文字列
 	[[nodiscard]] static std::string generateAtlas(const UiThemeConfig& config,
 		int atlasSize = 1024)
 	{
 		SvgBuilder builder(atlasSize, atlasSize);
 
-		// 共通defs
+		// 共通の defs
 		addCommonDefs(builder, config, "atlas");
 		builder.shadow("atlasShadow", 2, 2, 3);
 
@@ -364,7 +370,7 @@ public:
 
 		float y = margin;
 
-		// ボタン（通常・ホバー・押下の3状態）
+		// ボタン（通常・ホバー・押下の 3 状態）
 		embedWidget(builder, config, margin, y, btnW, btnH,
 			[&](){ return generateButton(config, btnW, btnH, "Button"); });
 		embedWidget(builder, config, margin + btnW + margin, y, btnW, btnH,
@@ -373,7 +379,7 @@ public:
 			[&](){ return generateButton(config, btnW, btnH, "Active"); });
 		y += btnH + margin;
 
-		// スライダー（3つの値）
+		// スライダー（3 つの値）
 		for (float val : {0.0f, 0.5f, 1.0f})
 		{
 			/// 列位置は val からそのまま出る (0.0/0.5/1.0 → 0/1/2)。
@@ -431,10 +437,10 @@ private:
 		}
 	}
 
-	/// @brief テーマの共通グラデーションdefsを追加する
-	/// @param builder SVGビルダー
+	/// @brief テーマ共通のグラデーション defs を追加する
+	/// @param builder SVG ビルダー
 	/// @param config テーマ設定
-	/// @param prefix defsのIDプレフィックス
+	/// @param prefix defs の ID プレフィックス
 	static void addCommonDefs(SvgBuilder& builder, const UiThemeConfig& config,
 		const std::string& prefix)
 	{
@@ -442,14 +448,14 @@ private:
 			config.primaryColor, config.secondaryColor, true);
 	}
 
-	/// @brief ウィジェットをアトラス内に埋め込む（グループtranslateで配置）
+	/// @brief ウィジェットをアトラス内に埋め込む（グループの translate で配置）
 	/// @param builder アトラスビルダー
 	/// @param config テーマ設定
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @param w 幅
 	/// @param h 高さ
-	/// @param generator ウィジェットSVG生成ラムダ
+	/// @param generator ウィジェット SVG 生成ラムダ
 	template<typename Func>
 	static void embedWidget(SvgBuilder& builder, const UiThemeConfig& config,
 		float x, float y, float w, float h, Func generator)
@@ -457,8 +463,8 @@ private:
 		(void)config;
 		(void)w;
 		(void)h;
-		// SVGの<g transform="translate(x,y)">でウィジェットの位置を設定
-		// 個別SVGを生成する代わりに、直接ビルダーに図形を追加
+		// SVG の <g transform="translate(x,y)"> でウィジェットの位置を設定
+		// 個別 SVG を生成する代わりに、ビルダーへ直接図形を追加
 		std::ostringstream transform;
 		transform << "translate(" << x << "," << y << ")";
 		builder.beginGroup(transform.str());
@@ -468,7 +474,7 @@ private:
 		builder.endGroup();
 	}
 
-	/// @brief 色を明るくする（簡易実装：#RRGGBB形式のみ対応）
+	/// @brief 色を明るくする（簡易実装：#RRGGBB 形式のみ対応）
 	/// @param color 入力色
 	/// @return 明るくした色
 	[[nodiscard]] static std::string lightenColor(const std::string& color)
@@ -490,7 +496,7 @@ private:
 		return std::string(buf);
 	}
 
-	/// @brief 色を暗くする（簡易実装：#RRGGBB形式のみ対応）
+	/// @brief 色を暗くする（簡易実装：#RRGGBB 形式のみ対応）
 	/// @param color 入力色
 	/// @return 暗くした色
 	[[nodiscard]] static std::string darkenColor(const std::string& color)
@@ -512,63 +518,19 @@ private:
 		return std::string(buf);
 	}
 
-	// ========== 簡易JSONパーサー ==========
+	// ========== JSON フィールド読み出し ==========
 
-	/// @brief JSON文字列から文字列値を抽出する
-	/// @param json JSON文字列
-	/// @param key キー名
-	/// @param defaultVal デフォルト値
-	/// @return 抽出した値
-	[[nodiscard]] static std::string extractJsonString(const std::string& json,
-		const std::string& key, const std::string& defaultVal)
+	[[nodiscard]] static std::string stringField(const nlohmann::json& doc,
+		const char* key, const std::string& defaultVal)
 	{
-		std::string searchKey = "\"" + key + "\"";
-		auto pos = json.find(searchKey);
-		if (pos == std::string::npos) return defaultVal;
-
-		pos = json.find(':', pos + searchKey.size());
-		if (pos == std::string::npos) return defaultVal;
-
-		pos = json.find('"', pos + 1);
-		if (pos == std::string::npos) return defaultVal;
-
-		auto end = json.find('"', pos + 1);
-		if (end == std::string::npos) return defaultVal;
-
-		return json.substr(pos + 1, end - pos - 1);
+		const auto it = doc.find(key);
+		return (it != doc.end() && it->is_string()) ? it->get<std::string>() : defaultVal;
 	}
 
-	/// @brief JSON文字列から数値を抽出する
-	/// @param json JSON文字列
-	/// @param key キー名
-	/// @param defaultVal デフォルト値
-	/// @return 抽出した値
-	[[nodiscard]] static float extractJsonFloat(const std::string& json,
-		const std::string& key, float defaultVal)
+	[[nodiscard]] static float floatField(const nlohmann::json& doc, const char* key, float defaultVal)
 	{
-		std::string searchKey = "\"" + key + "\"";
-		auto pos = json.find(searchKey);
-		if (pos == std::string::npos) return defaultVal;
-
-		pos = json.find(':', pos + searchKey.size());
-		if (pos == std::string::npos) return defaultVal;
-
-		// 空白スキップ
-		++pos;
-		while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\t' || json[pos] == '\n'))
-		{
-			++pos;
-		}
-		if (pos >= json.size()) return defaultVal;
-
-		try
-		{
-			return std::stof(json.substr(pos));
-		}
-		catch (...)
-		{
-			return defaultVal;
-		}
+		const auto it = doc.find(key);
+		return (it != doc.end() && it->is_number()) ? it->get<float>() : defaultVal;
 	}
 
 	/// @brief スタイル列挙を文字列に変換する

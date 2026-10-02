@@ -4,7 +4,7 @@
 /// @brief 実 OS ウィンドウ 1 枚をゲーム entity として扱う。
 /// @details `Win32Window` + `gfx::Dx12Device` + `render::RenderPipeline2D` を 1 組にまとめ、
 ///          位置/速度/重なり/z-order/最小化/close を追跡しつつ自分の描画面へ 2D 矩形を描ける。
-///          複数インスタンスの同時存在は `tests/mitiru/TestDx12MultiWindow.cpp` が押さえる。
+///          複数インスタンスが同時にある場合は `tests/mitiru/TestDx12MultiWindow.cpp` で確かめている。
 
 #ifdef _WIN32
 
@@ -73,7 +73,7 @@ public:
 		, m_pipeline(render::RenderPipeline2D::createFromDx12(
 		      &m_device, static_cast<float>(m_window.width()), static_cast<float>(m_window.height())))
 	{
-		// 複数の窓を開いては閉じる使い方が前提なので、閉じた窓の WM_QUIT が次の窓に効かないようにする
+		// 複数の窓を開いては閉じる使い方が前提なので、閉じた窓の WM_QUIT が次の窓に影響しないようにする
 		m_window.setQuitOnDestroy(false);
 		m_curRect = queryRect();
 		m_prevRect = m_curRect;
@@ -116,7 +116,7 @@ public:
 
 	/// @brief **クライアント領域**の左上を画面座標 (x, y) に合わせる
 	/// @details 生成時の posX/posY は枠の位置なので、描画面は枠幅とタイトルバーの分だけずれる。
-	///          描画面の座標が世界の座標である使い方 では、そのずれが初期状態の
+	///          描画面の座標を世界の座標として使う場合は、そのずれが初期状態の
 	///          ずれとしてそのまま出る。差分で動かすので枠幅を知る必要はない。
 	void moveClientTo(int x, int y)
 	{
@@ -197,7 +197,9 @@ public:
 
 	void restore() noexcept
 	{
-		ShowWindow(reinterpret_cast<HWND>(m_window.nativeHandle()), SW_RESTORE);
+		// SW_RESTORE は復帰と同時にアクティブ化も行うので、noActivate では使えない。
+		ShowWindow(reinterpret_cast<HWND>(m_window.nativeHandle()),
+		           Win32Window::processNoActivate() ? SW_SHOWNOACTIVATE : SW_RESTORE);
 	}
 
 	[[nodiscard]] bool shouldClose() const noexcept { return m_window.shouldClose(); }

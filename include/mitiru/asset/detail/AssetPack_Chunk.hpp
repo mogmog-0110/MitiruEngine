@@ -3,9 +3,9 @@
 /// @file AssetPack_Chunk.hpp
 /// @brief 復号済み (XOR 解除 + 必要なら zstd 展開) chunk ページの LRU キャッシュ。
 ///
-/// pack を mmap しても scramble/圧縮された chunk はそのままでは読めない。
-/// 同じ chunk を毎回複号し直すコストを避けるため、chunk index をキーに
-/// 最大 capacity 個まで復号済みバイト列を保持する。AssetPack インスタンス 1 個につき 1 個。
+/// pack を mmap しても、scramble/圧縮された chunk はそのままでは読めない。
+/// 同じ chunk を毎回復号し直すコストを避けるため、chunk index をキーに
+/// 最大 capacity 個まで復号済みのバイト列を保持する。AssetPack インスタンス 1 個につき 1 個。
 
 #include <cstdint>
 #include <list>
@@ -20,7 +20,7 @@ class ChunkCache
 public:
 	explicit ChunkCache(std::size_t capacity = 64) : m_capacity(capacity) {}
 
-	/// 見つかれば most-recently-used へ動かして返す。無ければ nullptr (miss はここでは数えない、
+	/// 見つかれば most-recently-used へ移動して返す。無ければ nullptr (miss はここでは数えず、
 	/// 実際に disk から読み直す側が insert() で数える)。
 	[[nodiscard]] const std::vector<uint8_t>* find(uint32_t chunkIndex)
 	{

@@ -4,7 +4,7 @@
 /// @brief テンポラルアンチエイリアシング（TAA）ポストプロセス
 /// @details 現在フレームと前フレームの色をブレンドし、
 ///          近傍クランピングでゴーストを抑制する。
-///          8サンプルのHaltonシーケンスでジッターパターンを生成。
+///          8 サンプルの Halton シーケンスでジッターパターンを生成。
 
 #ifdef _WIN32
 
@@ -34,12 +34,12 @@ namespace mitiru::render
 {
 
 // ============================================================================
-// HLSL --- TAAリゾルブピクセルシェーダー
+// HLSL --- TAA リゾルブピクセルシェーダー
 // ============================================================================
 
-/// @brief TAAリゾルブシェーダー
+/// @brief TAA リゾルブシェーダー
 /// @details 現在フレーム色を近傍色でクランプしたヒストリーとブレンドする。
-///          3x3近傍のmin/maxでAABBクランプを行い、ゴーストを抑制する。
+///          3x3 近傍の min/max で AABB クランプを行い、ゴーストを抑制する。
 ///          モーションベクターが無い場合は前フレーム深度からリプロジェクトする。
 constexpr std::string_view TAA_RESOLVE_PS = R"hlsl(
 Texture2D currentTexture : register(t0);
@@ -167,10 +167,10 @@ float4 PSMain(PSInput input) : SV_TARGET
 )hlsl";
 
 // ============================================================================
-// TAAConfig --- TAA設定
+// TAAConfig --- TAA 設定
 // ============================================================================
 
-/// @brief TAAパラメータ設定
+/// @brief TAA パラメータ設定
 struct TAAConfig
 {
 	float blendFactor = 0.1f;     ///< ブレンド係数（0=全ヒストリー, 1=全現在）
@@ -182,8 +182,8 @@ struct TAAConfig
 // ============================================================================
 
 /// @brief テンポラルアンチエイリアシング
-/// @details Haltonシーケンスによるサブピクセルジッターと
-///          近傍クランピング付きヒストリーブレンドでAAを実現する。
+/// @details Halton シーケンスによるサブピクセルジッターと
+///          近傍クランピング付きヒストリーブレンドで AA を実現する。
 ///
 /// @code
 /// TAAEffect taa;
@@ -194,7 +194,7 @@ struct TAAConfig
 /// projMatrix[2][0] += jx * 2.0f / screenW;
 /// projMatrix[2][1] += jy * 2.0f / screenH;
 ///
-/// // シーン描画後にTAAを適用する
+/// // シーン描画後に TAA を適用する
 /// taa.setDepthSRV(depthSRV);
 /// taa.apply(context, sceneSRV, outputRTV, 1280, 720);
 /// taa.advanceFrame();
@@ -206,7 +206,7 @@ public:
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief 初期化
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param screenW 初期スクリーン幅
 	/// @param screenH 初期スクリーン高さ
 	void init(ID3D11Device* device,
@@ -240,18 +240,18 @@ public:
 			DXGI_FORMAT_R16G16B16A16_FLOAT);
 		m_historyValid = false;
 
-		/// Haltonシーケンスを事前計算する
+		/// Halton シーケンスを事前計算する
 		generateHaltonSequence();
 	}
 
-	/// @brief 深度SRVを設定する
+	/// @brief 深度 SRV を設定する
 	void setDepthSRV(
 		ID3D11ShaderResourceView* depthSRV) noexcept
 	{
 		m_depthSRV = depthSRV;
 	}
 
-	/// @brief 速度(モーションベクタ)SRVを設定する
+	/// @brief 速度(モーションベクタ)SRV を設定する
 	/// @details 画面内移動量を UV 単位で格納したテクスチャ。設定すると history を
 	///          `uv - velocity` で reproject し、動く物体のゴースト/にじみを抑える。
 	///          未設定(null)なら velocity=0 扱いで従来挙動に縮退する（後方互換）。
@@ -289,9 +289,9 @@ public:
 			(m_frameIndex + 1) % kJitterSamples;
 	}
 
-	/// @brief TAAを適用する
-	/// @param context D3D11デバイスコンテキスト
-	/// @param inputSRV 現在フレームのシーン色SRV
+	/// @brief TAA を適用する
+	/// @param context D3D11 デバイスコンテキスト
+	/// @param inputSRV 現在フレームのシーン色 SRV
 	/// @param outputRTV 出力先レンダーターゲット
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
@@ -330,15 +330,15 @@ public:
 			return;
 		}
 
-		/// TAAリゾルブ: 現在色 + ヒストリー → 出力
+		/// TAA リゾルブ: 現在色 + ヒストリー → 出力
 		applyResolvePass(context, inputSRV, outputRTV,
 			screenW, screenH);
 
 		/// ヒストリー更新: リゾルブ結果を保存する
-		/// （outputRTVは直接読めないので入力を再ブレンドした結果をコピー）
+		/// （outputRTV は直接読めないので入力を再ブレンドした結果をコピー）
 		/// 簡易実装: 出力先がテクスチャなら再利用、ここでは入力をコピー
-		/// 実運用では出力テクスチャのSRVからコピーするが、
-		/// ここではリゾルブ結果をヒストリーにも出力する2パス方式を使う
+		/// 実運用では出力テクスチャの SRV からコピーするが、
+		/// ここではリゾルブ結果をヒストリーにも出力する 2 パス方式を使う
 		applyResolveToHistory(context, inputSRV,
 			screenW, screenH);
 	}
@@ -348,7 +348,7 @@ private:
 
 	// ── 定数バッファレイアウト ─────────────────────────
 
-	/// @brief TAA定数バッファ（16バイトアライン）
+	/// @brief TAA 定数バッファ（16 バイトアライン）
 	struct ResolveCB
 	{
 		float texelSize[2];
@@ -358,9 +358,9 @@ private:
 		float pad0[2];
 	};
 
-	// ── Haltonシーケンス ──────────────────────────────
+	// ── Halton シーケンス ──────────────────────────────
 
-	/// @brief 基数bのHalton数列の第i項を返す
+	/// @brief 基数 b の Halton 数列の第 i 項を返す
 	[[nodiscard]] static float halton(
 		int i, int b) noexcept
 	{
@@ -376,12 +376,12 @@ private:
 		return r;
 	}
 
-	/// @brief 8サンプルのHalton(2,3)シーケンスを生成する
+	/// @brief 8 サンプルの Halton(2,3)シーケンスを生成する
 	void generateHaltonSequence()
 	{
 		for (int i = 0; i < kJitterSamples; ++i)
 		{
-			/// Halton(2,3)を-0.5 ~ +0.5の範囲にマッピングする
+			/// Halton(2,3)を-0.5 ~ +0.5 の範囲にマッピングする
 			m_haltonSequence[i] = {
 				halton(i + 1, 2) - 0.5f,
 				halton(i + 1, 3) - 0.5f
@@ -391,7 +391,7 @@ private:
 
 	// ── パス実行 ────────────────────────────────────
 
-	/// @brief TAAリゾルブパスを実行する
+	/// @brief TAA リゾルブパスを実行する
 	void applyResolvePass(
 		ID3D11DeviceContext* context,
 		ID3D11ShaderResourceView* currentSRV,
@@ -456,7 +456,7 @@ private:
 		/// 描画
 		context->Draw(3, 0);
 
-		/// SRVクリア
+		/// SRV クリア
 		ID3D11ShaderResourceView* nullSRVs[4] = {
 			nullptr, nullptr, nullptr, nullptr
 		};
@@ -803,11 +803,11 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 	RTData m_historyRT;
 	bool m_historyValid = false;
 
-	/// 深度SRV（外部から設定、所有権なし）
+	/// 深度 SRV（外部から設定、所有権なし）
 	ID3D11ShaderResourceView* m_depthSRV = nullptr;
 	ID3D11ShaderResourceView* m_velocitySRV = nullptr;
 
-	/// Haltonジッターシーケンス
+	/// Halton ジッターシーケンス
 	std::array<std::array<float, 2>, kJitterSamples>
 		m_haltonSequence = {};
 	int m_frameIndex = 0;

@@ -1,6 +1,6 @@
 # Subsystems: 全system単独起動
 
-MitiruEngineはengineを構成する各subsystemを 単独のexeとして起動できる。rendererだけ・audioだけ・inputだけを、game logic / CEF / inspectorを一切loadせずに動かせる。
+MitiruEngineはengineを構成する各subsystemを 単独のexeとして起動できる。rendererだけ・audioだけ・inputだけを、game logic / UI / inspectorを一切loadせずに動かせる。
 
 これは [SCOPE.md](SCOPE.md)の **「全system単独起動」** のdeliverableであり、アトミックツール哲学(必要なものしか画面に出さない)のengine内verにあたる。Unix philosophyの「1プログラム = 1仕事」をengine内部にも適用したもの。
 
@@ -8,9 +8,9 @@ MitiruEngineはengineを構成する各subsystemを 単独のexeとして起動�
 
 - **学習**。engineが「機能別に小さく分解されている」ことが学習者から見える。renderer subsystemを起動すれば、gameもsceneも無い状態で描画パイプラインだけが動いていることが目で確認できる。
 - **debugの二分**。「rendererが壊れているのかgameplayが壊れているのか」を切り分けられる。subsystem単独で再現すれば原因の層が確定する。
-- **iteration**。shader / pipeline編集中にgameを起動せずrenderer subsystemだけをcold-start (CEF init無しで1s未満)で回せる。
+- **iteration**。shader / pipeline編集中にgameを起動せずrenderer subsystemだけをcold-start (UI の初期化無しで1s未満)で回せる。
 
-各subsystemは同じ`mitiru::Engine`を使うが、`EngineConfig::enableCef = false`でCEFを切り、gameplay層を一切持たない。host-game境界が本物で、game codeにload-bearingでないことの証明にもなっている(hostとgameはCの関数と生データだけで会話する設計)。
+各subsystemは同じ`mitiru::Engine`を使うが、UI 文書 (`EngineConfig::uiDocument`) を持たず、gameplay層を一切持たない。host-game境界が本物で、game codeにload-bearingでないことの証明にもなっている(hostとgameはCの関数と生データだけで会話する設計)。
 
 ## 一覧
 
@@ -51,4 +51,4 @@ bit-exactに一致するかを検証する。`InputSnapshot`がgame logic
 
 ## 哲学との関係
 
-各subsystem exeはCEFもgame logicもloadせず、**該当subsystemだけ**を画面に出す。これは「必要なものしか画面に出さない」の最も直接的な実装で、文脈外の機能(使わないrenderer、使わないaudio)を視界に存在させない。1関心事 = 1 exe = 1 window。mega editorが50 panelを同時に見せる状態の対極にある。
+各subsystem exeはUIもgame logicもloadせず、**該当subsystemだけ**を画面に出す。これは「必要なものしか画面に出さない」の最も直接的な実装で、文脈外の機能(使わないrenderer、使わないaudio)を視界に存在させない。1関心事 = 1 exe = 1 window。mega editorが50 panelを同時に見せる状態の対極にある。

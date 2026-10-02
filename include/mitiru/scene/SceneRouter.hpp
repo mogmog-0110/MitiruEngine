@@ -10,23 +10,23 @@
 /// @code
 /// SceneRouter router;
 ///
-/// // Push title scene。fires TitleScene::onEnter
+/// // title scene を push する。TitleScene::onEnter が発火する
 /// router.push(std::make_unique<TitleScene>());
 /// router.update(dt);
 ///
-/// // Push gameplay on top。fires TitleScene::onPause, GameScene::onEnter
+/// // gameplay を上に push する。TitleScene::onPause, GameScene::onEnter が発火する
 /// router.push(std::make_unique<GameScene>());
-/// router.update(dt);   // only GameScene receives update
+/// router.update(dt); // update を受け取るのは GameScene だけ
 ///
-/// // Pop gameplay。fires GameScene::onExit, TitleScene::onResume
+/// // gameplay を pop する。GameScene::onExit, TitleScene::onResume が発火する
 /// router.pop();
-/// router.update(dt);   // TitleScene is top again
+/// router.update(dt); // TitleScene が再び top になる
 /// @endcode
 ///
 /// @par Replace の挙動
 /// @code
-/// // Replace current top。fires old::onExit, new::onEnter
-/// // onPause / onResume are NOT fired on the scene below.
+/// // 現在の top を置き換える。old::onExit, new::onEnter が発火する
+/// // 下の scene には onPause / onResume は発火しない。
 /// router.replace(std::make_unique<CreditsScene>());
 /// @endcode
 

@@ -71,12 +71,8 @@ void ensurePBREnvironmentTexturesDx12()
 
 	if (sizeChanged)
 	{
-		D3D12_HEAP_PROPERTIES texHp = {};
-		texHp.Type = D3D12_HEAP_TYPE_DEFAULT;
-		D3D12_HEAP_PROPERTIES upHp = {};
-		upHp.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-		const auto makeCube = [&](int size, UINT mips, ComPtr<ID3D12Resource>& out) -> bool {
+		const auto makeCube = [&](int size, UINT mips, gfx::GpuResource& out) -> bool {
 			D3D12_RESOURCE_DESC d = {};
 			d.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 			d.Width            = static_cast<UINT64>(size);
@@ -86,25 +82,12 @@ void ensurePBREnvironmentTexturesDx12()
 			d.Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 			d.SampleDesc.Count = 1;
 			d.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-			out.Reset();
-			return SUCCEEDED(m_d3dDevice->CreateCommittedResource(
-				&texHp, D3D12_HEAP_FLAG_NONE, &d, D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-				IID_PPV_ARGS(out.GetAddressOf())));
+			return SUCCEEDED(gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, d,
+				D3D12_RESOURCE_STATE_COPY_DEST, nullptr, out));
 		};
-		const auto makeUpload = [&](UINT bytes, ComPtr<ID3D12Resource>& out) -> bool {
-			D3D12_RESOURCE_DESC d = {};
-			d.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
-			d.Width            = bytes;
-			d.Height           = 1;
-			d.DepthOrArraySize = 1;
-			d.MipLevels        = 1;
-			d.Format           = DXGI_FORMAT_UNKNOWN;
-			d.SampleDesc.Count = 1;
-			d.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			out.Reset();
-			return SUCCEEDED(m_d3dDevice->CreateCommittedResource(
-				&upHp, D3D12_HEAP_FLAG_NONE, &d, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-				IID_PPV_ARGS(out.GetAddressOf())));
+		const auto makeUpload = [&](UINT bytes, gfx::GpuResource& out) -> bool {
+			return SUCCEEDED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_UPLOAD, bytes,
+				D3D12_RESOURCE_STATE_GENERIC_READ, out));
 		};
 
 		if (!makeCube(outSize, 1, m_pbrIrradianceTexture)) { return; }
@@ -124,9 +107,8 @@ void ensurePBREnvironmentTexturesDx12()
 			d.Format           = DXGI_FORMAT_R32G32_FLOAT;
 			d.SampleDesc.Count = 1;
 			d.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-			if (FAILED(m_d3dDevice->CreateCommittedResource(
-					&texHp, D3D12_HEAP_FLAG_NONE, &d, D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-					IID_PPV_ARGS(m_pbrBrdfLutTexture.GetAddressOf()))))
+			if (FAILED(gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, d,
+				D3D12_RESOURCE_STATE_COPY_DEST, nullptr, m_pbrBrdfLutTexture)))
 			{
 				return;
 			}
@@ -150,6 +132,8 @@ void ensurePBREnvironmentTexturesDx12()
 		srvHd.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		srvHd.NumDescriptors = 3;  // t0=irradiance, t1=prefiltered (mip 連鎖), t2=BRDF LUT
 		srvHd.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		// 前の環境マップで描いているフレームがまだ読んでいるので、ヒープは GPU 完了まで預ける
+		if (m_device) { m_device->deferRelease(m_pbrEnvironmentSrvHeap); }
 		m_pbrEnvironmentSrvHeap.Reset();
 		if (FAILED(m_d3dDevice->CreateDescriptorHeap(
 				&srvHd, IID_PPV_ARGS(m_pbrEnvironmentSrvHeap.GetAddressOf()))))
@@ -375,17 +359,13 @@ void ensurePBRPipelineDx12()
 	}
 
 	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob, psBlob, compileErr;
-	if (FAILED(D3DCompile(
-			PBR_VS_3D, std::strlen(PBR_VS_3D),
-			nullptr, nullptr, nullptr, "VSMain", "vs_5_0",
-			0, 0, vsBlob.GetAddressOf(), compileErr.GetAddressOf())))
+	if (FAILED(gfx::compileDx12Shader(PBR_VS_3D, "VSMain", "vs_5_0", 0,
+		vsBlob.GetAddressOf(), compileErr.GetAddressOf())))
 	{
 		return;
 	}
-	if (FAILED(D3DCompile(
-			PBR_IBL_PS_3D, std::strlen(PBR_IBL_PS_3D),
-			nullptr, nullptr, nullptr, "PSMain", "ps_5_0",
-			0, 0, psBlob.GetAddressOf(), compileErr.GetAddressOf())))
+	if (FAILED(gfx::compileDx12Shader(PBR_IBL_PS_3D, "PSMain", "ps_5_0", 0,
+		psBlob.GetAddressOf(), compileErr.GetAddressOf())))
 	{
 		return;
 	}

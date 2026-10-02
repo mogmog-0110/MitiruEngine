@@ -213,27 +213,12 @@ inline bool ClodRenderer::createCommandSignatures()
 	return SUCCEEDED(m_device->CreateCommandSignature(&cd, nullptr, IID_PPV_ARGS(&m_dispatchSig)));
 }
 
-inline ClodRenderer::ComPtr<ID3D12Resource>
+inline gfx::GpuResource
 ClodRenderer::makeBuffer(uint64_t bytes, D3D12_HEAP_TYPE heap, D3D12_RESOURCE_STATES state,
                          D3D12_RESOURCE_FLAGS flags) const
 {
-	D3D12_HEAP_PROPERTIES hp = {};
-	hp.Type = heap;
-	D3D12_RESOURCE_DESC rd = {};
-	rd.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	rd.Width = bytes;
-	rd.Height = 1;
-	rd.DepthOrArraySize = 1;
-	rd.MipLevels = 1;
-	rd.SampleDesc.Count = 1;
-	rd.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	rd.Flags = flags;
-	ComPtr<ID3D12Resource> r;
-	if (FAILED(m_device->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &rd, state, nullptr,
-	                                             IID_PPV_ARGS(&r))))
-	{
-		return nullptr;
-	}
+	gfx::GpuResource r;
+	(void)gfx::createGpuBuffer(m_device, heap, bytes, state, r, flags);
 	return r;
 }
 
@@ -280,8 +265,6 @@ inline void ClodRenderer::ensureScreenResources(uint32_t width, uint32_t height)
 	m_overdraw = makeBuffer(static_cast<uint64_t>(width) * height * 4, D3D12_HEAP_TYPE_DEFAULT,
 	                        kUavState, kUav);
 
-	D3D12_HEAP_PROPERTIES hp = {};
-	hp.Type = D3D12_HEAP_TYPE_DEFAULT;
 	D3D12_RESOURCE_DESC td = {};
 	td.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	td.Width = width;
@@ -292,16 +275,16 @@ inline void ClodRenderer::ensureScreenResources(uint32_t width, uint32_t height)
 	td.SampleDesc.Count = 1;
 	td.Flags = kUav;
 	m_colorTex.Reset();
-	m_device->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &td, kUavState, nullptr,
-	                                  IID_PPV_ARGS(&m_colorTex));
+	(void)gfx::createGpuResource(m_device, D3D12_HEAP_TYPE_DEFAULT, td,
+		kUavState, nullptr, m_colorTex);
 
 	td.Width = m_hzbW;
 	td.Height = m_hzbH;
 	td.MipLevels = static_cast<UINT16>(m_hzbMips);
 	td.Format = DXGI_FORMAT_R32_FLOAT;
 	m_hzb.Reset();
-	m_device->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &td, kUavState, nullptr,
-	                                  IID_PPV_ARGS(&m_hzb));
+	(void)gfx::createGpuResource(m_device, D3D12_HEAP_TYPE_DEFAULT, td,
+		kUavState, nullptr, m_hzb);
 	m_prevViewValid = false;
 	rebuildDescriptorHeap();
 }
@@ -336,8 +319,7 @@ inline void ClodRenderer::rebuildDescriptorHeap()
 	{
 		cpu.ptr += inc;
 		D3D12_SHADER_RESOURCE_VIEW_DESC sv = {};
-		sv.Format = m_scene.textures()[ti].srgb ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
-		                                        : DXGI_FORMAT_R8G8B8A8_UNORM;
+		sv.Format = static_cast<DXGI_FORMAT>(m_scene.textures()[ti].format);
 		sv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		sv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		sv.Texture2D.MipLevels = static_cast<UINT>(-1);

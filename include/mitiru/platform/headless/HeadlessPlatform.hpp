@@ -3,7 +3,7 @@
 /// @file HeadlessPlatform.hpp
 /// @brief ヘッドレスプラットフォーム実装
 /// @details ウィンドウを持たないヘッドレス環境用の実装。
-///          テストやAI訓練などGUI不要の場面で使用する。
+///          テストや AI 訓練など GUI 不要の場面で使用する。
 
 #include <memory>
 #include <string>

@@ -1,8 +1,8 @@
-// restart_save。描いた絵を「状態の塊」として もどす/やりなおす と セーブ/ロード する。
-// 実行すると: マウスで線を描き、上のボタンで もどす / やりなおす / セーブ / ロード / さいしょから。
+// restart_save。描いた絵を「状態全体」として、もどす / やりなおすとセーブ / ロードを行う。
+// 実行すると、マウスで線を描き、上のボタンでもどす / やりなおす / セーブ / ロード / さいしょからを操作できる。
 // 関連 API: Hud::save / load / requestRestart / マウス (in.mouseX / mouseY / mouseDown)
-//   undo/redo と セーブ/ロードは同じ仕組み。「状態を丸ごと控えて戻す」。undo/redo は 1 手ごとに
-//   控えて戻す版、セーブ/ロードはその状態をまるごとファイル (save/slot0.msav) に写す版。
+//   undo / redo とセーブ / ロードは同じ仕組みで、「状態を丸ごと控えて戻す」。undo / redo は 1 手ごとに
+//   控えて戻すもので、セーブ / ロードはその状態を丸ごとファイル (save/slot0.msav) に写すもの。
 
 #include <cstddef>   // std::size_t
 #include <cstdint>   // std::uint8_t
@@ -19,10 +19,10 @@ constexpr float kScreenW = 1280.0f, kScreenH = 720.0f;
 constexpr int   kMaxPts     = 2500;   // 描ける点の上限
 constexpr int   kMaxStrokes = 200;    // 描ける線 (ひと筆) の上限 = もどせる手数
 
-// 線の 1 点。newStroke=1 なら「新しいひと筆の描き始め」(前の点とはつながない)。
-struct Pt { float x = 0.0f, y = 0.0f; std::uint8_t newStroke = 0; };
+// 線を構成する 1 点。newStroke=1 なら「新しいひと筆の描き始め」を表し、前の点とはつながない。
+struct Pt { float x = 0.0f, y = 0.0f; std::uint8_t newStroke = 0; std::uint8_t _pad[3] = {}; }; // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 
-// 画面上のボタン。5 個を右詰めで一列に置く。
+// 画面上のボタン。5 個を右詰めで横一列に置く。
 struct Btn { float x, y, w, h; const char* label; };
 constexpr float kBtnY = 18.0f, kBtnH = 44.0f, kBtnW = 138.0f, kStep = 150.0f;
 constexpr float kBar0 = kScreenW - 20.0f - 5.0f * kBtnW - 4.0f * 12.0f;
@@ -33,9 +33,9 @@ constexpr Btn kLoad  = { kBar0 + 3.0f * kStep, kBtnY, kBtnW, kBtnH, "ロード" 
 constexpr Btn kReset = { kBar0 + 4.0f * kStep, kBtnY, kBtnW, kBtnH, "さいしょから" };
 constexpr float kCanvasTop = 82.0f, kCanvasBot = kScreenH - 58.0f;   // 描ける範囲 (ボタンと操作帯を避ける)
 
-// 「セーブした / ロードした」表示だけの一時値。ゲームの状態 (下の struct) には入れない。状態に
-// 入れるとセーブで一緒にファイルへ書かれ、ロードで復元されて「ロードしたのにセーブしたと出る」バグ
-// になる。保存したいのは絵だけ。見せるだけの値は状態と分ける、が save/load の勘どころ。
+// 「セーブした / ロードした」という表示だけに使う一時的な値。ゲームの状態 (下の struct) には入れない。状態に
+// 入れるとセーブ時に一緒にファイルへ書かれ、ロード時に復元されて「ロードしたのにセーブしたと出る」バグ
+// になる。保存したいのは絵だけ。表示するだけの値は状態と分けることが、save / load の勘どころ。
 static float       sFlash    = 0.0f;         // 表示の残り時間
 static const char* sFlashMsg = "";           // 何をしたか (セーブした / ロードした)
 static Color       sFlashCol = theme::kInk;  // その色
@@ -48,11 +48,13 @@ struct Paint15
 	int   liveStrokes = 0;             // いま見えているひと筆の数 (もどすで減らし、やりなおすで増やす)
 	bool  drawing     = false;         // いまマウスで描いている最中か
 	bool  prevDown    = false;
+	std::uint8_t _pad[2] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 	float lastX = 0.0f, lastY = 0.0f;
-	// D1: save/load の結果は host が次フレームまで確定させないので、要求を出した
-	// フレームでは flash せず「次フレーム判定待ち」を立てるだけにする (Input::saveSucceeded 参照)。
+	// D1: save / load の結果は host が次のフレームまで確定させないため、要求を出した
+	// フレームでは flash を表示せず、「次フレーム判定待ち」を立てるだけにする (Input::saveSucceeded 参照)。
 	bool  pendingSave = false;
 	bool  pendingLoad = false;
+	std::uint8_t _pad2[2] = {};
 
 	static bool  hit(const Btn& b, float mx, float my) { return mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h; }
 	static bool  inCanvas(float my) { return my >= kCanvasTop && my <= kCanvasBot; }
@@ -64,8 +66,8 @@ struct Paint15
 		const float mx = in.mouseX(), my = in.mouseY();
 		const bool  down = in.mouseDown(0);
 
-		// save/load の成否は host 側処理を経て次フレームの in.saveSucceeded()/loadSucceeded()
-		// で分かる。ここで確定した結果を flash する (クリックした瞬間には分からない)。
+		// save / load の成否は host 側の処理を経て、次のフレームの in.saveSucceeded()/loadSucceeded()
+		// で分かる。ここで確定した結果を flash で表示する (クリックした瞬間には分からない)。
 		if (pendingSave) { pendingSave = false; flash(in.saveSucceeded() ? "セーブした" : "セーブ失敗", in.saveSucceeded() ? theme::kGreen : theme::kRed); }
 		if (pendingLoad) { pendingLoad = false; flash(in.loadSucceeded() ? "ロードした" : "ロード失敗", in.loadSucceeded() ? theme::kBlue  : theme::kRed); }
 
@@ -78,7 +80,7 @@ struct Paint15
 			else if (hit(kReset, mx, my)) { hud.requestRestart(); sFlash = 0.0f; }     // 状態をまっさらに作り直してもらう
 			else if (inCanvas(my))
 			{
-				// 新しいひと筆。もどして戻っていたなら、その先 (やりなおす分) を捨ててから描き足す。
+				// 新しいひと筆。もどしていた場合は、その先のやりなおす分を削除してから描き足す。
 				ends.truncate(static_cast<std::size_t>(liveStrokes));
 				pts.truncate(livePts());
 				(void)pts.push_back({mx, my, 1});
@@ -108,7 +110,7 @@ struct Paint15
 	{
 		s.fillScreen(theme::kPaper);
 
-		// 見えているひと筆までの点を描く (描いてる最中は今の筆も出す)。同じひと筆の連続する点を
+		// 表示対象のひと筆までの点を描く (描いている最中は現在の筆も表示する)。同じひと筆の連続する点を
 		// 線でつなぎ、各点に小さな丸を置いて継ぎ目を滑らかにする。
 		const std::size_t n = drawing ? pts.size() : livePts();
 		for (std::size_t i = 0; i < n; ++i)
@@ -147,4 +149,5 @@ struct Paint15
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(Paint15);
 
+MITIRU_ASSERT_NO_PADDING(Paint15);
 MITIRU_GAME(Paint15);

@@ -1,16 +1,16 @@
 /// @file Live2DModel.cpp
 /// @brief Cubism Framework を用いた Live2D モデルの完全ロード + 毎フレーム更新の実装。
-/// @details 公式 Cubism Native サンプル (LAppModel) と同等の挙動を Framework で実現する:
+/// @details 公式 Cubism Native サンプル (LAppModel) と同等の挙動を Framework で実現する。
 ///            model3.json 一括ロード → moc / テクスチャ / モーション(Idle/TapBody) / physics /
 ///            目パチ / 呼吸 / ドラッグ追従。毎フレーム LoadParameters → motion → SaveParameters →
-///            eyeblink(!motionUpdated) → drag(look) → breath → physics → csmUpdateModel の順で更新。
+///            eyeblink(!motionUpdated) → drag(look) → breath → physics → csmUpdateModel の順で更新する。
 ///          描画はしない (描画は dx12/DX12Live2D.hpp が coreModel() の csmModel を読んで D3D12 で行う)。
 ///
 ///          Cubism Core は Framework 内で `Live2D::Cubism::Core` 名前空間にラップされる一方、
 ///          レンダラ側はグローバルな <Live2DCubismCore.h> を include する。両者を同一 TU に混ぜると
 ///          pragma once により一方の宣言が失われるため、本ファイル (Framework 側) を独立 TU とし、
 ///          公開ヘッダ Live2DModel.hpp には Cubism 型を一切出さない (pimpl)。
-///          非GL Framework スタティックライブラリにコンパイルされる。
+///          非 GL Framework スタティックライブラリにコンパイルされる。
 
 #ifdef MITIRU_HAS_CUBISM_FRAMEWORK
 

@@ -48,13 +48,15 @@ MITIRU_GAME(MyGame)
 
 ## 3. リバインドUI
 
-### HTML側(JavaScriptを1行も書かない: `mitiru_bind.js`のdata-m-* だけ)
+### RML 側 (`assets/ui/main.rml`。スクリプトは書かない)
 
 ```html
-<div class="row">
-  <span>ジャンプ: <b data-m-text="view.bind.jump">SPACE</b></span>
-  <button data-m-action="rebind.jump">変更</button>
-</div>
+<body data-model="view">
+  <div class="row">
+    <span>ジャンプ: <b>{{ bind_jump }}</b></span>
+    <button data-event-click="dispatch('rebind.jump')">変更</button>
+  </div>
+</body>
 ```
 
 ボタンclickは翌フレーム、1フレーム分の入力をまとめたPOD struct (`InputSnapshot`)の
@@ -79,11 +81,11 @@ void update(mitiru::Input in, mitiru::Hud hud, float dt) {
             rebindTarget = -1;
             break;
         }
-        hud.set("view.bind.jump", "???");                  // 入力待ち表示
+        hud.set("view.bind_jump", "???");                  // 入力待ち表示
         return;                                            // 待機中はゲーム入力を食わない
     }
 
-    hud.set("view.bind.jump", keyName(bindings[0].keys[0]));
+    hud.set("view.bind_jump", keyName(bindings[0].keys[0]));
     if (in.pressed(bindings, Act::Jump)) { /* jump() */ }
 }
 ```
@@ -123,4 +125,4 @@ static const char* keyName(mitiru::Key k) {
 コードはこのレシピには存在しない。表をゲームの全状態に置いた時点で、記録・巻き戻し・
 リプレイ・セーブの4つが同じ1機構(bytesのmemcpy)で片付いている。
 
-関連: `docs/FLAT_POD.md` / `docs/REWIND.md` / `docs/BINDING.md`
+関連: `docs/FLAT_POD.md` / `docs/REWIND.md` / `docs/UI_RMLUI.md`

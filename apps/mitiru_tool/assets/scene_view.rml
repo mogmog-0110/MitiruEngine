@@ -1,0 +1,104 @@
+<rml>
+<head>
+	<title>scene view</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		/* ゲーム画面の絵に枠を重ねるので、絵の面だけ濃い色にする (白い紙の上だと縁が見えにくい) */
+		.stage { position: relative; margin-top: 8dp; min-height: 120dp; background-color: #111214; border: 1dp #e6e7ea; overflow: hidden; }
+		/* 絵が来たら高さは絵に合わせる (枠の割合を絵の高さで測るため) */
+		.stage.shown { min-height: 0dp; }
+		.stage liveimage { display: block; width: 100%; }
+		.overlay { position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; }
+		.box { position: absolute; border: 1dp #4da3ff; }
+		.box.sel { border: 2dp #e8b23d; }
+		.box .name { position: absolute; left: 0dp; bottom: 100%; font-family: "IBM Plex Mono"; font-size: 10dp; line-height: 1.2; color: #4da3ff; white-space: nowrap; }
+		.box.sel .name { color: #e8b23d; }
+		.box .name.inside { bottom: auto; top: 0dp; }
+		.marquee { position: absolute; border: 1dp #e8b23d; background-color: #e8b23d22; }
+		.toolbar { display: flex; align-items: center; margin-top: 8dp; }
+		.toolbar button { margin-right: 8dp; }
+		.toolbar button.commit { border-color: #2a6b3f; color: #2a6b3f; }
+		.toolbar button.discard { border-color: #8a2a2a; color: #8a2a2a; }
+		.toolbar button.off { border-color: #c9cbd0; color: #999da4; }
+		.status { margin-left: auto; font-family: "IBM Plex Mono"; font-size: 11.2dp; color: #6e7077; }
+		.port-row { display: flex; align-items: center; }
+		.port-row label { font-family: "IBM Plex Mono"; font-size: 10.9dp; color: #999da4; margin-right: 6dp; }
+		.port-row input.text { width: 72dp; font-size: 11.2dp; padding: 3dp 5dp; margin-right: 8dp; }
+		.port-row .status { margin-left: 0dp; }
+		.mini-inspector { margin-top: 9.6dp; }
+		.mini-inspector .row { display: flex; align-items: center; padding: 4.8dp 8dp; border-bottom: 1dp #e6e7ea; }
+		.mini-inspector .row.dirty { border-left: 3dp #d98a1f; padding-left: 6.4dp; }
+		.mini-inspector .k { flex: 0 0 40%; font-family: "IBM Plex Mono"; font-size: 11.5dp; color: #6e7077; }
+		.mini-inspector .v { flex: 1 1 auto; font-family: "IBM Plex Mono"; font-size: 11.5dp; color: #1a1c1f; }
+		.mini-inspector button { font-size: 10.4dp; padding: 2.4dp 8dp; margin-left: 6.4dp; color: #6e7077; }
+		.candidates { display: flex; flex-wrap: wrap; margin-top: 6.4dp; }
+		.candidates button { font-size: 10.9dp; padding: 4.8dp 9.6dp; margin: 0dp 6.4dp 6.4dp 0dp; color: #1a1c1f; }
+		/* slot 0..3 = 赤 / 緑 / 青 / 黄。host がゲーム画面に重ねる候補のゴースト (Engine::drawCandidateBranches) と同じ並び */
+		.candidates .slot0 { border-color: #c24d4d; }
+		.candidates .slot1 { border-color: #4dae5a; }
+		.candidates .slot2 { border-color: #4d7fc2; }
+		.candidates .slot3 { border-color: #b8a53a; }
+		.replay-gate { margin-top: 9.6dp; font-family: "IBM Plex Mono"; font-size: 11.2dp; }
+		.replay-gate .row { display: flex; align-items: center; padding: 2.4dp 3.2dp; }
+		.replay-gate .gdot { width: 9.6dp; height: 9.6dp; border-radius: 4.8dp; margin-right: 6.4dp; background-color: #8a2a2a; }
+		.replay-gate .gdot.pass { background-color: #2a6b3f; }
+		.replay-gate .reason { color: #6e7077; margin-left: 6.4dp; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ready">
+	<header><div class="dot"/><h1>scene view</h1></header>
+	<div class="body">
+		<div class="port-row">
+			<label>/api port</label>
+			<input type="text" class="text" id="port" data-attr-value="port" data-event-change="dispatch('sv.port', 'v', ev.value)"/>
+			<span class="status">ドラッグ or 候補ボタン → 分岐 → 残す/捨てる (Shift+ドラッグで矩形選択、Ctrl+クリックで追加、Esc で解除)</span>
+		</div>
+		<!-- /api/ai/state の branch を見て、まだ残す / 捨てるを選んでいない field があることを上で常に見せる -->
+		<div class="branch-banner" data-if="banner != ''"><span>{{ banner }}</span></div>
+
+		<div class="stage" id="stage" data-class-shown="has_image">
+			<liveimage id="shot"/>
+			<div class="overlay" data-if="has_image">
+				<div class="box" data-for="b : boxes" data-class-sel="b.sel"
+				     data-style-left="b.left + '%'" data-style-top="b.top + '%'" data-style-width="b.width + '%'" data-style-height="b.height + '%'">
+					<span class="name" data-if="b.has_label" data-class-inside="b.label_inside">{{ b.label }}</span>
+				</div>
+				<div class="marquee" data-if="marquee.show"
+				     data-style-left="marquee.left + '%'" data-style-top="marquee.top + '%'" data-style-width="marquee.width + '%'" data-style-height="marquee.height + '%'"/>
+			</div>
+		</div>
+
+		<div class="toolbar">
+			<button class="commit" data-class-off="!can_commit" data-event-click="dispatch('sv.commit')">残す</button>
+			<button class="discard" data-class-off="!can_commit" data-event-click="dispatch('sv.discard')">捨てる</button>
+			<button data-class-off="!can_undo" data-event-click="dispatch('sv.undo')">戻す</button>
+			<button data-class-off="!can_redo" data-event-click="dispatch('sv.redo')">やり直す</button>
+			<span class="status">{{ status }}</span>
+		</div>
+
+		<div class="mini-inspector">
+			<div class="row" data-if="multi != ''"><span>{{ multi }}</span></div>
+			<div class="row" data-for="r : rows" data-class-dirty="r.dirty">
+				<div class="k">{{ r.k }}</div>
+				<div class="v">{{ r.v }}</div>
+				<button data-if="r.numeric" data-event-click="dispatch('sv.cand', 'k', r.k)">候補</button>
+			</div>
+		</div>
+		<!-- 選んだ数値 field の ±10% / ±25% を 4 案並走 (POST /api/ai/candidates)。ゴーストは host がゲーム画面へ
+		     直接重ねるので、この窓は貼った絵にそれが映るだけ。ここは案の一覧と「選ぶ」ボタンを持つ -->
+		<div class="candidates">
+			<button data-for="c : candidates" data-attr-class="'slot' + c.slot" data-event-click="dispatch('sv.pick', 'slot', c.slot)">{{ c.label }}</button>
+		</div>
+		<!-- 「残す」の直後に host が裏で tests/replay_golden/*.mtrr を回した結果 (緑 = 一致、赤 = 壊れた録画) -->
+		<div class="replay-gate" data-if="gate_runs.size &gt; 0">
+			<div>{{ gate_title }}</div>
+			<div class="row" data-for="g : gate_runs">
+				<div class="gdot" data-class-pass="g.pass"/>
+				<span>{{ g.file }}</span>
+				<span class="reason" data-if="g.has_reason">{{ g.reason }}</span>
+			</div>
+		</div>
+	</div>
+	<div class="wait">waiting for the game…</div>
+</body>
+</rml>

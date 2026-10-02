@@ -12,7 +12,7 @@ namespace mitiru::render
 
 // ─── シェーダーコンパイル ───────────────────────────────
 
-/// @brief HLSL文字列をコンパイルする
+/// @brief HLSL 文字列をコンパイルする
 inline GpuSpriteBatch::ComPtr<ID3DBlob> GpuSpriteBatch::compileHLSL(
 	std::string_view source,
 	const char* entryPoint,
@@ -82,7 +82,7 @@ inline void GpuSpriteBatch::compileShaders()
 
 // ─── リソース生成 ─────────────────────────────────────
 
-/// @brief GpuSpriteBatchVertex用の入力レイアウトを生成する
+/// @brief GpuSpriteBatchVertex 用の入力レイアウトを生成する
 inline void GpuSpriteBatch::createInputLayout()
 {
 	const D3D11_INPUT_ELEMENT_DESC layout[] =
@@ -181,7 +181,7 @@ inline void GpuSpriteBatch::createIndexBuffer()
 inline void GpuSpriteBatch::createConstantBuffer()
 {
 	D3D11_BUFFER_DESC desc = {};
-	/// float4x4 = 64バイト、16バイトアラインメント
+	/// float4x4 = 64 バイト、16 バイトアラインメント
 	desc.ByteWidth = 64;
 	desc.Usage = D3D11_USAGE_DYNAMIC;
 	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -319,7 +319,7 @@ inline void GpuSpriteBatch::createSamplerStates()
 	}
 }
 
-/// @brief 2D描画用ラスタライザステートを生成する
+/// @brief 2D 描画用ラスタライザステートを生成する
 inline void GpuSpriteBatch::createRasterizerState()
 {
 	D3D11_RASTERIZER_DESC desc = {};
@@ -344,7 +344,7 @@ inline void GpuSpriteBatch::updateProjection(float width, float height)
 	}
 
 	/// left=0, right=w, top=0, bottom=h, near=0, far=1
-	/// 行優先float4x4
+	/// 行優先 float4x4
 	float projection[4][4] = {};
 	projection[0][0] = 2.0f / width;
 	projection[1][1] = -2.0f / height;
@@ -365,7 +365,7 @@ inline void GpuSpriteBatch::updateProjection(float width, float height)
 	}
 }
 
-/// @brief 軸整列クワッドの4頂点を蓄積する
+/// @brief 軸整列クワッドの 4 頂点を蓄積する
 inline void GpuSpriteBatch::pushQuad(
 	float dstX, float dstY, float dstW, float dstH,
 	float u0, float v0, float u1, float v1,
@@ -382,7 +382,7 @@ inline void GpuSpriteBatch::pushQuad(
 	m_vertices.push_back({x0, y1, u0, v1, r, g, b, a});
 }
 
-/// @brief 回転済みクワッドの4頂点を蓄積する
+/// @brief 回転済みクワッドの 4 頂点を蓄積する
 inline void GpuSpriteBatch::pushQuadRotated(
 	float dstX, float dstY,
 	float dstW, float dstH,
@@ -417,7 +417,7 @@ inline void GpuSpriteBatch::pushQuadRotated(
 	m_vertices.push_back({x3, y3, u0, v1, r, g, b, a});
 }
 
-/// @brief 蓄積された頂点をGPUに送信して描画する
+/// @brief 蓄積された頂点を GPU に送信して描画する
 inline void GpuSpriteBatch::flush()
 {
 	if (m_vertices.empty() || !m_context)

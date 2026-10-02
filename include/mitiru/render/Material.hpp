@@ -2,7 +2,7 @@
 
 /// @file Material.hpp
 /// @brief マテリアル定義
-/// @details 3Dオブジェクトの表面属性（環境光・拡散反射・鏡面反射・光沢度）を定義する。
+/// @details 3D オブジェクトの表面属性（環境光・拡散反射・鏡面反射・光沢度）を定義する。
 
 #include <sstream>
 #include <string>
@@ -17,7 +17,7 @@ class Texture;
 
 
 /// @brief マテリアル定義
-/// @details Phongシェーディングモデルに対応するマテリアルパラメータ。
+/// @details Phong シェーディングモデルに対応するマテリアルパラメータ。
 ///
 /// @code
 /// auto mat = mitiru::render::Material::defaultMaterial();
@@ -31,7 +31,7 @@ struct Material
 	sgc::Colorf specular{1.0f, 1.0f, 1.0f, 1.0f};  ///< 鏡面反射色
 	float shininess = 32.0f;                          ///< 光沢度（Phong指数）
 
-	/// PBR拡張フィールド（glTFインポート等で使用）
+	/// PBR 拡張フィールド（glTF インポート等で使用）
 	std::string diffuseTexturePath;                   ///< ディフューズテクスチャパス（空=なし）
 	std::string normalTexturePath;                    ///< 法線マップパス（空=なし）
 	float metallic = 0.0f;                            ///< PBR メタリック [0,1]
@@ -47,7 +47,7 @@ struct Material
 	AlphaMode alphaMode = AlphaMode::Opaque;          ///< 不透明度の扱い
 	float alphaCutoff = 0.5f;                         ///< Mask のしきい値
 	bool doubleSided = false;                         ///< 真なら背面カリングを切る
-	/// アルベドを最近傍で拾うか。ドット絵の資産で線形補間に溶かされるのを防ぐ。
+	/// アルベドを最近傍で拾うか。ドット絵の資産が線形補間でぼやけるのを防ぐ。
 	bool nearestFilter = false;
 
 	/// @brief アルベド（ディフューズ）テクスチャ。非所有ポインタ
@@ -64,8 +64,8 @@ struct Material
 		return Material{};
 	}
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::ostringstream oss;

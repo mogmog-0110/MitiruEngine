@@ -4,9 +4,9 @@
 /// @brief SaveSchema<T>::migrations() 向けの合成可能な migration op 群。
 ///
 /// **目的。** `MigrationChain<T>::addStep` は旧 save blob を upgrade するための
-/// `std::function<Json(Json)>` を受け取る。consumer は同じ形を何度も書きがち:
-/// 「欠落 field を backfill」「field を rename」「field を drop」。本ヘッダは
-/// これら定番ケースを宣言的に保つための出来合い lambda factory を提供する。
+/// `std::function<Json(Json)>` を受け取る。consumer は「欠落 field を backfill」
+/// 「field を rename」「field を drop」という同じ形を何度も書きがちだ。本ヘッダは
+/// これら定番ケースを宣言的に書けるよう、出来合いの lambda factory を提供する。
 /// `compose(...)` を使えば 1 step で複数の処理を順に行える。
 ///
 /// **典型的な使い方**
@@ -25,10 +25,10 @@
 /// @endcode
 ///
 /// 全ヘルパーは引数を **値キャプチャ** する `std::function<Json(Json)>` を返す
-/// ため、返された op は factory 呼び出しより安全に長生きする。
+/// ため、返された op は factory 呼び出しが終わった後も安全に使える。
 ///
 /// @note `MigrationChain<T>::addStep` は `*this` を返すので、上記の fluent chain
-///       がそのまま動く。fluent style が可読性を損なう場合は `addStep` を
+///       がそのまま動く。fluent style だと読みにくい場合は `addStep` を
 ///       (戻り値を無視して) 1 行ずつ呼んでも構わない。
 
 #include <functional>

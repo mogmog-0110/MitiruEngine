@@ -1,5 +1,5 @@
 #pragma once
-// This header is included by RenderPipeline2D.hpp。do not include directly.
+// このヘッダーは RenderPipeline2D.hpp が include する。直接 include しない。
 
 #ifdef _WIN32
 
@@ -45,7 +45,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx11(
 		true,
 		ortho.m);
 
-	/// 動的頂点バッファを生成する（初期サイズ64KB）
+	/// 動的頂点バッファを生成する（初期サイズ 64KB）
 	constexpr std::uint32_t INITIAL_VB_SIZE = 65536;
 	pipeline.m_vertexBuffer = std::make_unique<gfx::Dx11Buffer>(
 		device,
@@ -54,7 +54,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx11(
 		true);
 	pipeline.m_vbCapacity = INITIAL_VB_SIZE;
 
-	/// 動的インデックスバッファを生成する（初期サイズ32KB）
+	/// 動的インデックスバッファを生成する（初期サイズ 32KB）
 	constexpr std::uint32_t INITIAL_IB_SIZE = 32768;
 	pipeline.m_indexBuffer = std::make_unique<gfx::Dx11Buffer>(
 		device,
@@ -67,7 +67,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx11(
 	pipeline.m_commandList = std::make_unique<gfx::Dx11CommandList>(
 		context);
 
-	/// PS定数バッファ（uUseTexture）を生成する
+	/// PS 定数バッファ（uUseTexture）を生成する
 	const float psConst[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 	pipeline.m_psConstantBuffer = std::make_unique<gfx::Dx11Buffer>(
 		device,
@@ -272,13 +272,13 @@ inline void RenderPipeline2D::submitStyledBatchDx11(
 			m_dx11Context, &style, sizeof(StyleConstants));
 	}
 
-	/// SDF頂点/インデックスバッファのサイズを計算する
+	/// SDF 頂点/インデックスバッファのサイズを計算する
 	const auto vbSize = static_cast<std::uint32_t>(
 		vertices.size() * sizeof(StyledVertex2D));
 	const auto ibSize = static_cast<std::uint32_t>(
 		indices.size() * sizeof(std::uint32_t));
 
-	/// SDF頂点バッファを確保/再確保する
+	/// SDF 頂点バッファを確保/再確保する
 	if (vbSize > m_sdfVbCapacity)
 	{
 		const auto newCapacity = std::max(vbSize, m_sdfVbCapacity * 2);
@@ -337,7 +337,7 @@ inline void RenderPipeline2D::submitStyledBatchDx11(
 	ID3D11Buffer* psCBs[] = {m_sdfStyleBuffer->getD3DBuffer()};
 	m_dx11Context->PSSetConstantBuffers(1, 1, psCBs);
 
-	/// 頂点・インデックスバッファを設定する（StyledVertex2Dストライド）
+	/// 頂点・インデックスバッファを設定する（StyledVertex2D ストライド）
 	ID3D11Buffer* vb = m_sdfVertexBuffer->getD3DBuffer();
 	constexpr UINT stride = sizeof(StyledVertex2D);
 	constexpr UINT offset = 0;
@@ -350,7 +350,7 @@ inline void RenderPipeline2D::submitStyledBatchDx11(
 	m_dx11Context->DrawIndexed(
 		static_cast<UINT>(indices.size()), 0, 0);
 
-	/// デフォルトパイプラインを復元する（後続のsubmitBatchに影響しないよう）
+	/// デフォルトパイプラインを復元する（後続の submitBatch に影響しないよう）
 	if (m_pipeline)
 	{
 		m_pipeline->bind(m_dx11Context);

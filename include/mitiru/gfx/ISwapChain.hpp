@@ -30,14 +30,14 @@ public:
 	[[nodiscard]] virtual IRenderTarget* backBuffer() noexcept = 0;
 
 	/// @brief 現在のバックバッファインデックスを取得する
-	/// @return バックバッファインデックス（デフォルトは0）
-	/// @details D3D12のIDXGISwapChain3::GetCurrentBackBufferIndexに対応する。
-	///          DX11/Null等のバックエンドでは常に0を返す。
+	/// @return バックバッファインデックス（デフォルトは 0）
+	/// @details D3D12 の IDXGISwapChain3::GetCurrentBackBufferIndex に対応する。
+	///          DX11/Null 等のバックエンドでは常に 0 を返す。
 	[[nodiscard]] virtual uint32_t currentBackBufferIndex() const { return 0; }
 
 	/// @brief バックバッファ数を取得する
-	/// @return バッファ数（デフォルトは2：ダブルバッファリング）
-	/// @details D3D12のトリプルバッファリングでは3を返す。
+	/// @return バッファ数（デフォルトは 2：ダブルバッファリング）
+	/// @details D3D12 のトリプルバッファリングでは 3 を返す。
 	[[nodiscard]] virtual uint32_t bufferCount() const { return 2; }
 };
 

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file IKGroundSystem.hpp
-/// @brief アニメーション適用後に足を地面高さへ合わせる IK システム
+/// @brief アニメーション適用後に足を地面の高さへ合わせる IK システム
 /// @details `UpdatePhase::PostAnim`（Anim と Camera の間）を専用フェーズとして使う。
 
 #include <functional>
@@ -14,15 +14,15 @@
 namespace mitiru::animation
 {
 
-/// @brief 地面高さの問い合わせ関数
-/// @details 物理エンジンへ直接依存しないための間接化。呼び出し元が
+/// @brief 地面の高さを問い合わせる関数
+/// @details 物理エンジンへ直接依存しないようにする。呼び出し元が
 ///          レイキャストでもハイトマップ参照でも自由に実装できる。
 using GroundHeightFn = std::function<float(float worldX, float worldZ)>;
 
 /// @brief PostAnim フェーズで足を地面に接地させる IK システム
 /// @details 各脚は `FABRIKSolver` 上のジョイントチェーンとして登録する。
 ///          エンドエフェクタ（チェーン末尾）の現在位置の x/z を保ったまま、
-///          y だけ `GroundHeightFn` の返す高さへ向けて解決する。
+///          y だけを `GroundHeightFn` が返す高さへ向けて解決する。
 class IKGroundSystem final : public mitiru::scene::ISystem
 {
 public:
@@ -38,12 +38,12 @@ public:
 		return mitiru::scene::UpdatePhase::PostAnim;
 	}
 
-	/// @brief 内部 FABRIKSolver への参照
+	/// @brief 内部の FABRIKSolver への参照
 	/// @details 呼び出し側がジョイントの初期姿勢（アニメーション適用後の骨）を書き込む
 	[[nodiscard]] FABRIKSolver& solver() noexcept { return m_solver; }
 
 	/// @brief 接地させる脚を登録する
-	/// @param chain エンドエフェクタが足先ジョイントになるよう組んだ IK チェーン
+	/// @param chain エンドエフェクタが足先ジョイントになるように組んだ IK チェーン
 	void addFoot(IKChain chain) { m_feet.push_back(std::move(chain)); }
 
 	/// @brief 登録済みの脚の数
@@ -58,7 +58,7 @@ public:
 	}
 
 private:
-	/// @brief 1本の脚のターゲットを現在位置+地面高さから組み立てて解決する
+	/// @brief 1 本の脚のターゲットを現在位置と地面の高さから組み立てて解決する
 	void solveOneFoot(IKChain& chain)
 	{
 		auto& joints = m_solver.joints();

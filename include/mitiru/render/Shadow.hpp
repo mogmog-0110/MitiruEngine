@@ -150,7 +150,7 @@ public:
     ///   target = sceneFocus
     ///   worldUp = (0, 1, 0)。ライト方向が Y 軸と平行なときは Z 軸にフォールバック。
     ///
-    ///   左手系 (glm::lookAtLH と同規約) で組む。理由は lightProjectionMatrix 側にある:
+    ///   左手系 (glm::lookAtLH と同規約) で組む。理由は lightProjectionMatrix 側にある。
     ///   あれは Z[0,1] かつ「view z が正」前提 (z'=(z-near)/(far-near)) なので、
     ///   view も左手系でなければ符号が合わない。
     ///   sgc::Mat4f::lookAt は右手系で visible geometry の view z が負になり、
@@ -298,7 +298,7 @@ public:
             m_config.cascadeMidHalfExtent  = midSphere.radius;
         }
         // 包含球が既定の視点距離 50 より大きいと、ライト側の caster が near で切れる。視点を球の外へ
-        // 出し、far も球の反対側まで届かせる (R32 深度なので範囲を広げても精度は困らない)
+        // 出し、far も球の反対側まで届かせる (R32 深度なので範囲を広げても精度の問題は無い)
         const float eyeDist = farSphere.radius + 1.0f;
         if (eyeDist > m_lightEyeDistance) { m_lightEyeDistance = eyeDist; }
         if (m_config.farClip < 2.0f * m_lightEyeDistance) { m_config.farClip = 2.0f * m_lightEyeDistance; }

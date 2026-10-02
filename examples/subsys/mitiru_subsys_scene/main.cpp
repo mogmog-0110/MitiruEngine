@@ -1,13 +1,13 @@
-// mitiru_subsys_scene。エンジン全体なしで scene loop だけを起動する最小 exe。
+// mitiru_subsys_scene。エンジン全体を使わず、scene loop だけを起動する最小限の exe。
 //
 // ゲームロジック依存・CEF・audio なしで scene loop を起動する。
-// 12 entity の最小 "scene" を毎フレーム更新:
+// 12 entity の最小 "scene" を毎フレーム更新する。
 //   - 各 entity は独立した (vel, angularSpeed) を持つ
-//   - 位置を積分し、playfield rect の縁で反射
-//   - 角度を積分し、内側の ink dot のオフセットで表現
+//   - 位置を積分し、playfield rect の縁で反射する
+//   - 角度を積分し、内側の ink dot のオフセットで表す
 //
 // 狙いは完全な ECS ではなく、エンジンの Game/update/draw 契約だけで、
-// 残りの stack が無くても per-frame の scene loop が回ること。
+// 残りの stack が無くても毎フレーム scene loop が回ること。
 //
 // 操作: ESC で終了。
 
@@ -16,7 +16,7 @@
 #include <cstdio>
 #include <vector>
 
-// アンブレラ header は使わない。使うものだけ明示 include
+// アンブレラ header は使わず、使うものだけを明示的に include する
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
@@ -48,7 +48,7 @@ struct SceneEntity
     float rotSpeed{0.0f};
 };
 
-// 決定的 LCG。実行間でレイアウトを安定させる (<random> 依存なし)。
+// 決定的な LCG。実行ごとのレイアウトを安定させる (<random> 依存なし)。
 struct Rng
 {
     std::uint32_t state{0x12345u};
@@ -135,14 +135,14 @@ private:
         screen.drawRect(sgc::Rectf{e.x + 2, e.y + 2,
                                    kEntitySize - 4, kEntitySize - 4},
                         kPaperHi);
-        // 上/左に白 1px、下/右に灰 1px の凹凸 (クロームの bevel)
+        // 上/左に白の 1 px、下/右に灰色の 1 px を置いて凹凸を表す (クロームの bevel)
         screen.drawRect(sgc::Rectf{e.x + 2, e.y + 2, kEntitySize - 4, 1}, kBevelHi);
         screen.drawRect(sgc::Rectf{e.x + 2, e.y + 2, 1, kEntitySize - 4}, kBevelHi);
         screen.drawRect(sgc::Rectf{e.x + 2, e.y + kEntitySize - 3,
                                    kEntitySize - 4, 1}, kBevelLo);
         screen.drawRect(sgc::Rectf{e.x + kEntitySize - 3, e.y + 2,
                                    1, kEntitySize - 4}, kBevelLo);
-        // 向きの指標: angle の (cos,sin) だけずらした ink dot。
+        // 向きの指標: angle の (cos,sin) の分だけずらした ink dot。
         const float cx = e.x + kEntitySize * 0.5f;
         const float cy = e.y + kEntitySize * 0.5f;
         const float dotR = 3.0f;
@@ -200,8 +200,6 @@ int main(int /*argc*/, char* /*argv*/[])
     cfg.windowWidth          = 900;
     cfg.windowHeight         = 600;
     cfg.vsync                = true;
-    cfg.enableCef            = false;
-    cfg.fontAtlasRanges      = mitiru::EngineConfig::FontAtlas::Latin;
     cfg.useLogicalWindowSize = true;
     cfg.backgroundColor      = kPaperBg;
 

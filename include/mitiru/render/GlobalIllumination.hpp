@@ -2,9 +2,9 @@
 
 /// @file GlobalIllumination.hpp
 /// @brief グローバルイルミネーション（GI）システムインターフェース
-/// @details VoxelベースGIとライトマップベイク機能の抽象インターフェースを提供する。
-///          間接照明の計算手法として、リアルタイムVoxel Cone Tracing と
-///          オフラインライトマップベイクの2方式をサポートする。
+/// @details Voxel ベース GI とライトマップベイク機能の抽象インターフェースを提供する。
+///          間接照明の計算手法として、リアルタイム Voxel Cone Tracing と
+///          オフラインライトマップベイクの 2 方式をサポートする。
 
 #include <array>
 #include <cstdint>
@@ -15,7 +15,7 @@
 namespace mitiru::render
 {
 
-/// @brief Voxel GI設定構造体
+/// @brief Voxel GI 設定構造体
 struct VoxelGIConfig
 {
 	int resolution = 128;          ///< ボクセルグリッド解像度（片軸）
@@ -52,8 +52,8 @@ struct IrradianceSample
 };
 
 /// @brief グローバルイルミネーションシステムインターフェース
-/// @details VoxelGIとライトマップベイクの両方を統合管理する。
-///          リアルタイムGIとオフラインベイクを切り替え可能。
+/// @details VoxelGI とライトマップベイクの両方を統合管理する。
+///          リアルタイム GI とオフラインベイクを切り替え可能。
 class GISystem
 {
 public:
@@ -66,9 +66,9 @@ public:
 
 	// ── VoxelGI ────────────────────────────────────────────────
 
-	/// @brief VoxelGIを初期化する
-	/// @param config Voxel GI設定
-	/// @return 初期化成功でtrue
+	/// @brief VoxelGI を初期化する
+	/// @param config Voxel GI 設定
+	/// @return 初期化成功で true
 	virtual bool initVoxelGI(const VoxelGIConfig& config) = 0;
 
 	/// @brief ボクセルグリッドを更新する（毎フレーム呼び出し）
@@ -83,34 +83,34 @@ public:
 	/// @brief ライトマップベイクを開始する
 	/// @param config ライトマップ設定
 	/// @param callback 進捗コールバック（省略可）
-	/// @return ベイク開始成功でtrue
+	/// @return ベイク開始成功で true
 	virtual bool bake(const LightmapConfig& config,
 	                  BakeProgressCallback callback = nullptr) = 0;
 
 	/// @brief ベイク結果をファイルに保存する
 	/// @param outputPath 出力ファイルパス
-	/// @return 保存成功でtrue
+	/// @return 保存成功で true
 	virtual bool saveLightmap(const std::string& outputPath) const = 0;
 
 	/// @brief ベイク済みライトマップを読み込む
 	/// @param inputPath 入力ファイルパス
-	/// @return 読み込み成功でtrue
+	/// @return 読み込み成功で true
 	virtual bool loadLightmap(const std::string& inputPath) = 0;
 
 	// ── クエリ ─────────────────────────────────────────────────
 
 	/// @brief ワールド座標から放射照度を取得する
-	/// @param worldX ワールドX座標
-	/// @param worldY ワールドY座標
-	/// @param worldZ ワールドZ座標
+	/// @param worldX ワールド X 座標
+	/// @param worldY ワールド Y 座標
+	/// @param worldZ ワールド Z 座標
 	/// @return 放射照度サンプル結果
 	[[nodiscard]] virtual IrradianceSample getIrradiance(
 		float worldX, float worldY, float worldZ) const = 0;
 
-	/// @brief GIが有効か判定する
+	/// @brief GI が有効か判定する
 	[[nodiscard]] virtual bool isEnabled() const noexcept = 0;
 
-	/// @brief GIの有効・無効を切り替える
+	/// @brief GI の有効・無効を切り替える
 	/// @param enabled 有効フラグ
 	virtual void setEnabled(bool enabled) = 0;
 

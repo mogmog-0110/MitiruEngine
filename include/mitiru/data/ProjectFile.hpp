@@ -3,7 +3,7 @@
 /// @file ProjectFile.hpp
 /// @brief プロジェクトファイル管理
 ///
-/// プロジェクト設定をJSON形式で保存・読み込みする。
+/// プロジェクト設定を JSON 形式で保存・読み込みする。
 ///
 /// @code
 /// mitiru::data::ProjectConfig config;
@@ -20,7 +20,9 @@
 #include <string>
 #include <vector>
 
-#include "mitiru/data/JsonBuilder.hpp"
+#include <nlohmann/json.hpp>
+
+#include "mitiru/data/JsonFields.hpp"
 
 namespace mitiru::data
 {
@@ -38,64 +40,40 @@ struct ProjectConfig
 class ProjectFile
 {
 public:
-	/// @brief プロジェクト設定をJSON文字列に保存する
+	/// @brief プロジェクト設定を JSON 文字列に保存する
 	/// @param config プロジェクト設定
-	/// @return JSON文字列
+	/// @return JSON 文字列
 	[[nodiscard]] static std::string saveToString(const ProjectConfig& config)
 	{
-		JsonBuilder builder;
-		builder.beginObject();
-		builder.key("project").value(config.projectName);
-		builder.key("version").value(config.version);
-		builder.key("startScene").value(config.startScene);
-		builder.key("assets");
-		builder.beginArray();
-		for (const auto& path : config.assetPaths)
-		{
-			builder.value(path);
-		}
-		builder.endArray();
-		builder.endObject();
-		return builder.build();
+		return nlohmann::ordered_json{
+			{"project", config.projectName},
+			{"version", config.version},
+			{"startScene", config.startScene},
+			{"assets", config.assetPaths},
+		}.dump();
 	}
 
-	/// @brief JSON文字列からプロジェクト設定を読み込む
-	/// @param json JSON文字列
-	/// @return プロジェクト設定（失敗時nullopt）
+	/// @brief JSON 文字列からプロジェクト設定を読み込む
+	/// @param json JSON 文字列
+	/// @return プロジェクト設定（"project" が無い・JSON として読めないときは nullopt）
 	[[nodiscard]] static std::optional<ProjectConfig> loadFromString(const std::string& json)
 	{
-		JsonReader reader;
-		if (!reader.parse(json))
-		{
-			return std::nullopt;
-		}
+		const auto doc = nlohmann::json::parse(json, nullptr, false);
+		if (!doc.is_object()) return std::nullopt;
+		const auto project = doc.find("project");
+		if (project == doc.end() || !project->is_string()) return std::nullopt;
 
 		ProjectConfig config;
-
-		if (auto v = reader.getString("project"))
+		config.projectName = project->get<std::string>();
+		config.version = fieldOr(doc, "version", config.version);
+		config.startScene = fieldOr(doc, "startScene", config.startScene);
+		if (const auto assets = doc.find("assets"); assets != doc.end() && assets->is_array())
 		{
-			config.projectName = *v;
+			for (const auto& path : *assets)
+			{
+				if (path.is_string()) { config.assetPaths.push_back(path.get<std::string>()); }
+			}
 		}
-		else
-		{
-			return std::nullopt;
-		}
-
-		if (auto v = reader.getString("version"))
-		{
-			config.version = *v;
-		}
-
-		if (auto v = reader.getString("startScene"))
-		{
-			config.startScene = *v;
-		}
-
-		if (auto arr = reader.getArray("assets"))
-		{
-			config.assetPaths = *arr;
-		}
-
 		return config;
 	}
 };

@@ -2,7 +2,7 @@
 
 /// @file ShadowMap.hpp
 /// @brief ディレクショナルライト用シャドウマップ
-/// @details CPUソフトウェア実装による深度バッファを使ったシャドウマップ。
+/// @details CPU ソフトウェア実装による深度バッファを使ったシャドウマップ。
 ///          ライト空間のビュー射影行列を計算し、メッシュの深度を記録して
 ///          ワールド空間の点が影の中にあるかどうかを判定する。
 
@@ -56,7 +56,7 @@ public:
 
 	/// @brief シャドウマップを初期化する
 	/// @param cfg 設定
-	/// @throws std::invalid_argument 解像度が1未満の場合
+	/// @throws std::invalid_argument 解像度が 1 未満の場合
 	void initialize(const ShadowMapConfig& cfg)
 	{
 		if (cfg.resolution < 1)
@@ -112,7 +112,7 @@ public:
 
 		if (!indices.empty())
 		{
-			/// インデックスを3つずつ取り出して三角形を処理する
+			/// インデックスを 3 つずつ取り出して三角形を処理する
 			for (std::size_t i = 0; i + 2 < indices.size(); i += 3)
 			{
 				rasterizeTriangle(
@@ -124,7 +124,7 @@ public:
 		}
 		else
 		{
-			/// 頂点を3つずつ取り出して三角形を処理する
+			/// 頂点を 3 つずつ取り出して三角形を処理する
 			for (std::size_t i = 0; i + 2 < verts.size(); i += 3)
 			{
 				rasterizeTriangle(
@@ -137,10 +137,10 @@ public:
 	}
 
 	/// @brief シャドウパスを終了する
-	/// @details 現在は何もしない（GPUパス移植時のフック用）。
+	/// @details 現在は何もしない（GPU パス移植時のフック用）。
 	void endShadowPass() noexcept
 	{
-		/// 将来のGPUパス移植のために予約
+		/// 将来の GPU パス移植のために予約
 	}
 
 	/// @brief ライト空間ビュー射影行列を取得する
@@ -149,10 +149,10 @@ public:
 		return m_lightViewProjection;
 	}
 
-	/// @brief 深度バッファからUV座標でサンプリングする
-	/// @param u 水平UV [0, 1]
-	/// @param v 垂直UV [0, 1]
-	/// @return 深度値 [0, 1]（範囲外は1.0）
+	/// @brief 深度バッファから UV 座標でサンプリングする
+	/// @param u 水平 UV [0, 1]
+	/// @param v 垂直 UV [0, 1]
+	/// @return 深度値 [0, 1]（範囲外は 1.0）
 	[[nodiscard]] float sampleDepth(float u, float v) const noexcept
 	{
 		if (!m_initialized) return 1.0f;
@@ -174,14 +174,14 @@ public:
 	/// @brief ワールド空間の点が影の中にあるかを判定する
 	/// @param worldPos ワールド空間の位置
 	/// @param bias 深度バイアス（シャドウアクネ防止）
-	/// @return 影の中にあればtrue
+	/// @return 影の中にあれば true
 	[[nodiscard]] bool isInShadow(
 		const sgc::Vec3f& worldPos,
 		float bias = 0.005f) const noexcept
 	{
 		if (!m_initialized) return false;
 
-		/// ワールド座標をライト空間NDCに変換する
+		/// ワールド座標をライト空間 NDC に変換する
 		const sgc::Vec4f clip = m_lightViewProjection * sgc::Vec4f{
 			worldPos.x, worldPos.y, worldPos.z, 1.0f
 		};
@@ -192,18 +192,18 @@ public:
 		const float ndcY = clip.y / clip.w;
 		const float ndcZ = clip.z / clip.w;
 
-		/// NDC範囲外はシャドウなし
+		/// NDC 範囲外はシャドウなし
 		if (ndcX < -1.0f || ndcX > 1.0f ||
 		    ndcY < -1.0f || ndcY > 1.0f)
 		{
 			return false;
 		}
 
-		/// NDC→UV変換 [-1,1] → [0,1]
+		/// NDC→UV 変換 [-1,1] → [0,1]
 		const float u = (ndcX + 1.0f) * 0.5f;
 		const float v = (1.0f - ndcY) * 0.5f;
 
-		/// NDCのZを深度 [0,1] に変換する（[-1,1]→[0,1]）
+		/// NDC の Z を深度 [0,1] に変換する（[-1,1]→[0,1]）
 		const float depth = (ndcZ + 1.0f) * 0.5f;
 
 		const float shadowDepth = sampleDepth(u, v);
@@ -218,7 +218,7 @@ public:
 	}
 
 private:
-	/// @brief 深度バッファをリセットする（最大深度1.0で初期化）
+	/// @brief 深度バッファをリセットする（最大深度 1.0 で初期化）
 	void clearDepthBuffer()
 	{
 		std::fill(m_depthBuffer.begin(), m_depthBuffer.end(), 1.0f);
@@ -234,7 +234,7 @@ private:
 		/// ライト位置をシーン中心から逆方向に配置する
 		const sgc::Vec3f lightPos = dir * (-m_config.orthoSize);
 
-		/// 上方向ベクトルを選択する（dirとほぼ平行な場合は別軸を使用）
+		/// 上方向ベクトルを選択する（dir とほぼ平行な場合は別軸を使用）
 		sgc::Vec3f up{0.0f, 1.0f, 0.0f};
 		if (std::abs(dir.y) > 0.99f)
 		{
@@ -256,9 +256,9 @@ private:
 	}
 
 	/// @brief 三角形をライト空間深度バッファにラスタライズする
-	/// @param a 頂点A（ローカル空間）
-	/// @param b 頂点B（ローカル空間）
-	/// @param c 頂点C（ローカル空間）
+	/// @param a 頂点 A（ローカル空間）
+	/// @param b 頂点 B（ローカル空間）
+	/// @param c 頂点 C（ローカル空間）
 	/// @param world ワールド変換行列
 	void rasterizeTriangle(
 		const sgc::Vec3f& a,
@@ -276,7 +276,7 @@ private:
 			return;
 		}
 
-		/// NDC座標に変換する
+		/// NDC 座標に変換する
 		const float ax = ca.x / ca.w, ay = ca.y / ca.w, az = (ca.z / ca.w + 1.0f) * 0.5f;
 		const float bx = cb.x / cb.w, by = cb.y / cb.w, bz = (cb.z / cb.w + 1.0f) * 0.5f;
 		const float cx = cc.x / cc.w, cy = cc.y / cc.w, cz = (cc.z / cc.w + 1.0f) * 0.5f;
@@ -338,7 +338,7 @@ private:
 	ShadowMapConfig m_config;
 	/// @brief ライト空間ビュー射影行列
 	sgc::Mat4f m_lightViewProjection;
-	/// @brief 深度バッファ（解像度×解像度のfloat配列）
+	/// @brief 深度バッファ（解像度×解像度の float 配列）
 	std::vector<float> m_depthBuffer;
 	/// @brief 初期化済みフラグ
 	bool m_initialized = false;

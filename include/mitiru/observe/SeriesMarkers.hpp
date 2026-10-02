@@ -8,14 +8,14 @@
 /// `GameMemoryRing` の各フレームに probe を適用して作った系列を、そのまま渡せる。
 ///
 /// 300 フレームを 1 枚ずつ scrub して「どこで HP が落ちたか」を探すのは哲学が戒める
-/// 非可読な操作 (全部見える = 何も見えない)。本ヘッダはその ANALYSIS 層を提供する:
+/// 非可読な操作 (全部見える = 何も見えない)。本ヘッダはその ANALYSIS 層を提供する。
 ///
 /// - extractMarkers: 系列を走査し Edge / Threshold / 極値の Marker 列を返す。
 /// - buildSparkline: 系列を間引き、min/max 正規化した [0,1] 列を返す。
 /// - nearestMarker: scrub cursor 位置から最寄り Marker を返す (snap 用)。
 /// - toJson: exportedInspectables[] payload 用の compact JSON を組み立てる。
 ///
-/// 設計判断:
+/// 設計判断
 /// - 入力は double 系列のみ。GameMemoryRing / ProbeFn への依存を持たない (host が系列を
 ///   組んで渡す)。観測層を engine の他部分から疎に保つ。
 /// - offsetFromNewest は GameMemoryRing.at() と同一規約 (0 = newest)。cursor snap が直結。

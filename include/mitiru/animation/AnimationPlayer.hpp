@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file AnimationPlayer.hpp
-/// @brief Godot風プロパティアニメーションプレイヤー
-/// @details 任意のfloatプロパティをキーフレームでアニメーションする。
-///          複数トラック（位置X、位置Y、透明度等）を1つのアニメーションに束ねて再生可能。
+/// @brief Godot 風プロパティアニメーションプレイヤー
+/// @details 任意の float プロパティをキーフレームでアニメーションする。
+///          複数トラック（位置 X、位置 Y、透明度等）を 1 つのアニメーションにまとめて再生できる。
 ///
 /// @code
 /// mitiru::animation::AnimationPlayer player;
@@ -35,7 +35,7 @@ struct Keyframe
 	float value; ///< 値
 };
 
-/// @brief アニメーショントラック（1つのプロパティ用）
+/// @brief アニメーショントラック（1 つのプロパティ用）
 /// @details キーフレーム列と値セッターを持ち、指定時刻の補間値を計算する。
 struct AnimTrack
 {
@@ -75,7 +75,7 @@ struct Animation
 	std::vector<AnimTrack> tracks;   ///< トラック列
 };
 
-/// @brief アニメーションプレイヤー（Godot AnimationPlayer風）
+/// @brief アニメーションプレイヤー（Godot AnimationPlayer 風）
 /// @details 複数のアニメーションを登録し、名前で再生する。
 ///          update()を毎フレーム呼ぶと、現在のアニメーションの
 ///          各トラックが自動的に値を更新する。
@@ -142,7 +142,7 @@ public:
 	[[nodiscard]] float currentTime() const noexcept { return m_time; }
 
 	/// @brief 再生速度を設定する
-	/// @param s 速度倍率（1.0が通常速度）
+	/// @param s 速度倍率（1.0 が通常速度）
 	void setSpeed(float s) noexcept { m_speed = s; }
 
 	/// @brief 再生速度を取得する
@@ -155,17 +155,17 @@ public:
 		return m_current ? m_current->name : std::string{};
 	}
 
-	/// @brief 登録済みアニメーション数を取得する
+	/// @brief 登録済みのアニメーション数を取得する
 	[[nodiscard]] int animationCount() const noexcept
 	{
 		return static_cast<int>(m_animations.size());
 	}
 
-	/// @brief 2つのアニメーションをトラック単位で線形ブレンドして適用する
+	/// @brief 2 つのアニメーションをトラック単位で線形ブレンドして適用する
 	/// @details Ozz-Animation が無い環境向けの CPU 実装（AnimGraph::AnimSample の
 	///          clipA/clipB/tA/tB/weight を骨レベルではなくプロパティレベルで受ける）。
 	///          両方に存在するプロパティのみ重み付き合成し、片方にしか無いものは無視する。
-	///          weight はブレンド重み（0=nameA側、1=nameB側）。
+	///          weight はブレンド重み（0=nameA 側、1=nameB 側）。
 	void blend(const std::string& nameA, float timeA, const std::string& nameB, float timeB, float weight)
 	{
 		const Animation* animA = findAnimation(nameA);
@@ -197,7 +197,7 @@ public:
 	}
 
 private:
-	/// @brief 名前でアニメーションを探す（無ければ nullptr）
+	/// @brief 名前でアニメーションを探す（なければ nullptr）
 	[[nodiscard]] const Animation* findAnimation(const std::string& name) const
 	{
 		const auto it = m_animations.find(name);

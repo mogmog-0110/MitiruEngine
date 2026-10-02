@@ -1,0 +1,390 @@
+/* エンジン同梱の UI 部品 (web/mitiru_runtime/mitiru_components.css の RCSS 版)。色や大きさは tokens.rcss の
+   変数から取るので、tokens.rcss の後に読む:
+     <link type="text/rcss" href="mitiru:base.rcss"/>
+     <link type="text/rcss" href="mitiru:tokens.rcss"/>
+     <link type="text/rcss" href="mitiru:components.rcss"/>
+
+   入っている部品: m-btn / m-bar / m-list / m-overlay + m-dialog / m-menu / m-toast / m-tabs / m-nav (パッドで
+   選べる並び) / mitiru-modal (確認と文字入力のダイアログ) / mitiru-preloader / m-compact。
+   color-mix() の色は tokens.rcss の --mitiru-accent-tint などに、grid と疑似要素は要素の組み方に書き直した
+   (対応表は docs/UI_RMLUI.md)。 */
+
+/* ── m-btn (押すボタン) ───────────────────────────────────────────
+   flex の直下に裸の文字を置くと RmlUi は描かないので、CSS 版の inline-flex ではなく inline-block にしてある。 */
+.m-btn
+{
+	--m-btn-bg:     var(--mitiru-surface);
+	--m-btn-fg:     var(--mitiru-text);
+	--m-btn-border: var(--mitiru-border);
+	--m-btn-radius: var(--mitiru-radius-md);
+
+	display: inline-block;
+	text-align: center;
+	padding: 8px 18px;
+	border: 1px var(--m-btn-border);
+	border-radius: var(--m-btn-radius);
+	background-color: var(--m-btn-bg);
+	color: var(--m-btn-fg);
+	font-size: var(--mitiru-text-sm);
+	font-weight: bold;
+	line-height: 1.4;
+	cursor: pointer;
+	white-space: nowrap;
+	box-sizing: border-box;
+	transition: background-color border-color transform 0.08s cubic-out;
+}
+.m-btn:hover  { filter: brightness(1.08); }
+.m-btn:active { transform: translateY(1px); }
+.m-btn:focus-visible { box-shadow: var(--mitiru-focus-ring); }
+
+.m-btn--primary { --m-btn-bg: var(--mitiru-accent); --m-btn-fg: #ffffff; --m-btn-border: var(--mitiru-accent); }
+.m-btn--ghost   { --m-btn-bg: transparent;          --m-btn-fg: var(--mitiru-accent); --m-btn-border: var(--mitiru-accent); }
+.m-btn--danger  { --m-btn-bg: #d32f2f;              --m-btn-fg: #ffffff; --m-btn-border: #d32f2f; }
+.m-btn--sm { padding: 4px 12px; font-size: 18px; }
+.m-btn--lg { padding: 12px 28px; font-size: var(--mitiru-text-lg); }
+
+/* ── m-bar (進み具合・HP) ─────────────────────────────────────────
+   <div class="m-bar"><div class="m-bar-fill" data-style-width="hp + '%'"></div></div>
+   角丸の親の overflow: hidden はグラデーションの子を切らないので、塗りにも同じ角丸を付ける。 */
+.m-bar
+{
+	--m-bar-track:  var(--mitiru-border-soft);
+	--m-bar-fill:   var(--mitiru-accent);
+	--m-bar-h:      12px;
+	--m-bar-radius: var(--mitiru-radius-sm);
+
+	display: block;
+	width: 100%;
+	height: var(--m-bar-h);
+	background-color: var(--m-bar-track);
+	border-radius: var(--m-bar-radius);
+	overflow: hidden;
+	box-sizing: border-box;
+}
+.m-bar-fill
+{
+	display: block;
+	height: 100%;
+	width: 0%;
+	background-color: var(--m-bar-fill);
+	border-radius: var(--m-bar-radius);
+	transition: width 0.1s linear-in-out;
+}
+.m-bar--success { --m-bar-fill: var(--mitiru-success); }
+.m-bar--warning { --m-bar-fill: var(--mitiru-warning); }
+.m-bar--danger  { --m-bar-fill: var(--mitiru-danger); }
+
+/* ── m-list (並べた項目。data-for で複製する) ─────────────────────
+   m-list-item は flex なので、中の文字は <span> で包む (裸の文字は描かれない)。 */
+.m-list
+{
+	--m-list-gap:         4px;
+	--m-list-item-bg:     var(--mitiru-surface);
+	--m-list-item-border: var(--mitiru-border);
+
+	display: flex;
+	flex-direction: column;
+	gap: var(--m-list-gap);
+	margin: 0px;
+	padding: 0px;
+	width: 100%;
+	box-sizing: border-box;
+}
+.m-list-item
+{
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	background-color: var(--m-list-item-bg);
+	border: 1px var(--m-list-item-border);
+	border-radius: var(--mitiru-radius-sm);
+	font-size: var(--mitiru-text-sm);
+	color: var(--mitiru-text);
+	box-sizing: border-box;
+	animation: 0.15s cubic-out m-list-enter;
+}
+.m-list-item:hover { filter: brightness(0.97); }
+@keyframes m-list-enter
+{
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: translateY(0px); }
+}
+
+/* ── m-overlay + m-dialog (自分で開け閉めするダイアログ。data-if で出す) ── */
+.m-overlay
+{
+	--m-overlay-bg:   #00000073;
+	--m-dialog-bg:    var(--mitiru-surface);
+	--m-dialog-max-w: 480px;
+
+	position: fixed;
+	top: 0px; right: 0px; bottom: 0px; left: 0px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--m-overlay-bg);
+	z-index: var(--mitiru-z-modal);
+	padding: 16px;
+	box-sizing: border-box;
+	pointer-events: auto;
+}
+.m-dialog
+{
+	display: block;
+	background-color: var(--m-dialog-bg);
+	color: var(--mitiru-text);
+	font-family: var(--mitiru-font-body);
+	border-radius: var(--mitiru-radius-md);
+	box-shadow: var(--mitiru-shadow-2);
+	width: 100%;
+	max-width: var(--m-dialog-max-w);
+	padding: 24px;
+	box-sizing: border-box;
+	animation: 0.14s cubic-out m-dialog-in;
+}
+.m-dialog__title   { display: block; margin: 0px 0px 10px 0px; font-size: var(--mitiru-text-lg); font-weight: bold; line-height: 1.3; }
+.m-dialog__body    { display: block; margin-bottom: 16px; font-size: var(--mitiru-text-sm); line-height: 1.55; }
+.m-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+@keyframes m-dialog-in
+{
+	from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+	to   { opacity: 1; transform: scale(1) translateY(0px); }
+}
+
+/* ── m-menu (開いて選ぶ一覧) ─────────────────────────────────────── */
+.m-menu
+{
+	--m-menu-bg:     var(--mitiru-surface);
+	--m-menu-w:      200px;
+	--m-menu-shadow: var(--mitiru-shadow-2);
+
+	position: absolute;
+	display: block;
+	background-color: var(--m-menu-bg);
+	border: 1px var(--mitiru-border);
+	border-radius: var(--mitiru-radius-md);
+	box-shadow: var(--m-menu-shadow);
+	min-width: var(--m-menu-w);
+	max-width: 90vw;
+	z-index: var(--mitiru-z-overlay);
+	padding: 4px 0px;
+	box-sizing: border-box;
+	animation: 0.1s cubic-out m-menu-in;
+}
+.m-menu__item
+{
+	display: block;
+	padding: 10px 16px;
+	cursor: pointer;
+	border-width: 0px;
+	border-radius: 0px;
+	background-color: transparent;
+	width: 100%;
+	text-align: left;
+	font-size: var(--mitiru-text-sm);
+	color: var(--mitiru-text);
+}
+.m-menu__item:hover, .m-menu__item:focus-visible { background-color: var(--mitiru-accent-tint); }
+@keyframes m-menu-in
+{
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: translateY(0px); }
+}
+
+/* ── m-toast (しばらく出て消える知らせ) ─────────────────────────────
+   <toast class="m-toast" data-attr-value="toast" ms="4000"/>。C++ が {kind, message} を送ると
+   kind-<kind> と is-visible が付き、ms 後に is-visible が外れる。 */
+.m-toast
+{
+	--m-toast-bg:    var(--mitiru-text);
+	--m-toast-fg:    #ffffff;
+	--m-toast-max-w: 360px;
+
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	display: block;
+	transform: translateX(-50%) translateY(8px);
+	z-index: var(--mitiru-z-toast);
+	background-color: var(--m-toast-bg);
+	color: var(--m-toast-fg);
+	font-size: var(--mitiru-text-sm);
+	padding: 10px 20px;
+	border-radius: var(--mitiru-radius-md);
+	box-shadow: var(--mitiru-shadow-2);
+	max-width: var(--m-toast-max-w);
+	text-align: center;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity transform 0.16s cubic-out;
+}
+.m-toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0px); }
+.m-toast--success, .m-toast.kind-success { --m-toast-bg: var(--mitiru-success); }
+.m-toast--danger,  .m-toast.kind-danger  { --m-toast-bg: var(--mitiru-danger); }
+.m-toast--info,    .m-toast.kind-info    { --m-toast-bg: var(--mitiru-accent); }
+
+/* <flash> で包んだ要素は、値が変わった瞬間に m-flash が付く */
+.m-flash.m-pop { animation: 0.3s cubic-out m-pop; }
+@keyframes m-pop
+{
+	0%   { transform: scale(1); }
+	40%  { transform: scale(1.18); }
+	100% { transform: scale(1); }
+}
+
+/* ── m-tabs (切り替えの見出し) ───────────────────────────────────── */
+.m-tabs
+{
+	--m-tab-active-color: var(--mitiru-accent);
+	--m-tab-border:       var(--mitiru-border);
+
+	display: flex;
+	flex-wrap: wrap;
+	border-bottom: 2px var(--m-tab-border);
+	box-sizing: border-box;
+}
+.m-tab
+{
+	flex: 0 0 auto;
+	padding: 8px 20px;
+	border-width: 0px 0px 2px 0px;
+	border-color: transparent;
+	margin-bottom: -2px;
+	background-color: transparent;
+	color: var(--mitiru-text-mute);
+	font-size: var(--mitiru-text-sm);
+	cursor: pointer;
+	white-space: nowrap;
+	transition: color border-color 0.08s cubic-out;
+}
+.m-tab:hover { color: var(--mitiru-text); }
+.m-tab--active { color: var(--m-tab-active-color); border-color: var(--m-tab-active-color); font-weight: bold; }
+.m-tab:focus-visible { box-shadow: var(--mitiru-focus-ring); }
+
+/* ── m-nav (パッドの十字キー・スティックと Enter で選べる並び) ───────
+   この中のボタンと入力欄は Tab と方向キーで選べ、A / Enter で押せる。マウスで押したボタンにも
+   選択が残るので、Space で遊ぶゲームの HUD には付けない。 */
+.m-nav button, .m-nav input, .m-nav select, .m-nav .m-nav-item { tab-index: auto; nav: auto; }
+.m-nav button:focus-visible, .m-nav .m-nav-item:focus-visible { box-shadow: var(--mitiru-focus-ring); }
+
+/* ── mitiru-modal (confirm() と prompt() のダイアログ) ─────────────
+   <div class="mitiru-modal-root" data-if="ui_confirm_open">
+     <div class="mitiru-modal-backdrop" data-event-click="confirm_cancel()"></div>
+     <div class="mitiru-modal">
+       <button class="mitiru-modal__close" data-event-click="confirm_cancel()">×</button>
+       <div class="mitiru-modal__title">{{ ui_confirm_title }}</div>
+       <div class="mitiru-modal__body">{{ ui_confirm_text }}</div>
+       <div class="mitiru-modal__actions">
+         <button class="mitiru-modal__btn mitiru-modal__btn--cancel" data-event-click="confirm_cancel()">やめる</button>
+         <button class="mitiru-modal__btn mitiru-modal__btn--primary" data-event-click="confirm_ok()">OK</button>
+       </div></div></div>
+   prompt は mitiru-modal__body の後に
+     <input class="mitiru-modal__input" type="text" autofocus="" data-attr-value="ui_prompt_value"
+            data-event-change="prompt_input()"/> を置き、OK を prompt_ok() にする。 */
+.mitiru-modal-root
+{
+	position: fixed;
+	top: 0px; right: 0px; bottom: 0px; left: 0px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	pointer-events: auto;
+}
+.mitiru-modal-backdrop
+{
+	position: absolute;
+	top: 0px; right: 0px; bottom: 0px; left: 0px;
+	display: block;
+	background-color: #00000066;
+	backdrop-filter: blur(2px);
+}
+.mitiru-modal
+{
+	position: relative;
+	display: block;
+	z-index: 1;
+	background-color: var(--mitiru-surface);
+	color: var(--mitiru-text);
+	font-family: var(--mitiru-font-body);
+	border-radius: var(--mitiru-radius-md);
+	box-shadow: var(--mitiru-shadow-2);
+	width: 100%;
+	max-width: 480px;
+	padding: 24px;
+	box-sizing: border-box;
+	animation: 0.15s cubic-out mitiru-modal-in;
+}
+.mitiru-modal__close
+{
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	width: 28px;
+	height: 28px;
+	border-width: 0px;
+	background-color: transparent;
+	cursor: pointer;
+	font-size: 20px;
+	line-height: 1;
+	color: var(--mitiru-text-mute);
+	border-radius: 4px;
+	padding: 0px;
+	transition: background-color color 0.12s cubic-out;
+}
+.mitiru-modal__close:hover { background-color: var(--mitiru-hover-tint); color: var(--mitiru-text); }
+.mitiru-modal__title { display: block; margin: 0px 0px 12px 0px; padding-right: 24px; font-size: 1.1rem; font-weight: bold; line-height: 1.3; }
+.mitiru-modal__body  { display: block; margin-bottom: 16px; font-size: var(--mitiru-text-sm); line-height: 1.55; }
+.mitiru-modal__input
+{
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	margin-bottom: 16px;
+	padding: 8px 10px;
+	border: 1px var(--mitiru-border);
+	border-radius: var(--mitiru-radius-md);
+	font-size: var(--mitiru-text-sm);
+	color: var(--mitiru-text);
+	background-color: var(--mitiru-surface);
+	transition: border-color box-shadow 0.12s cubic-out;
+}
+.mitiru-modal__input:focus { border-color: var(--mitiru-accent); box-shadow: var(--mitiru-accent-tint) 0px 0px 0px 3px; }
+.mitiru-modal__actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.mitiru-modal__btn
+{
+	padding: 8px 20px;
+	border-radius: var(--mitiru-radius-md);
+	border: 1px transparent;
+	cursor: pointer;
+	font-size: var(--mitiru-text-sm);
+	font-weight: bold;
+	line-height: 1.4;
+	transition: background-color border-color transform 0.12s cubic-out;
+}
+.mitiru-modal__btn:active { transform: translateY(1px); }
+.mitiru-modal__btn--cancel { background-color: transparent; border-color: var(--mitiru-border); color: var(--mitiru-text-mute); }
+.mitiru-modal__btn--cancel:hover { background-color: var(--mitiru-hover-tint); border-color: var(--mitiru-text-mute); }
+.mitiru-modal__btn--primary { background-color: var(--mitiru-accent); color: #ffffff; border-color: var(--mitiru-accent); }
+.mitiru-modal__btn--primary:hover { background-color: var(--mitiru-accent-hi); border-color: var(--mitiru-accent-hi); }
+.mitiru-modal__btn--primary:focus-visible { box-shadow: var(--mitiru-accent-tint) 0px 0px 0px 3px; }
+.mitiru-modal__btn--danger { background-color: #d32f2f; color: #ffffff; border-color: #d32f2f; }
+.mitiru-modal__btn--danger:hover { background-color: #b71c1c; border-color: #b71c1c; }
+.mitiru-modal__btn--ghost { background-color: transparent; color: var(--mitiru-accent); border-color: var(--mitiru-accent); }
+.mitiru-modal__btn--ghost:hover { background-color: var(--mitiru-accent-tint); }
+@keyframes mitiru-modal-in
+{
+	from { opacity: 0; transform: scale(0.94) translateY(-8px); }
+	to   { opacity: 1; transform: scale(1) translateY(0px); }
+}
+
+/* ── mitiru-preloader (読み込みの進み具合) ─────────────────────────── */
+.mitiru-preloader        { display: block; box-sizing: border-box; width: 100%; padding: 8px 16px; }
+.mitiru-preloader__track { display: block; width: 100%; height: 8px; background-color: var(--mitiru-surface); border-radius: var(--mitiru-radius-sm); overflow: hidden; }
+.mitiru-preloader__fill  { display: block; height: 100%; width: 0%; background-color: var(--mitiru-accent); border-radius: var(--mitiru-radius-sm); transition: width 0.08s cubic-out; }
+.mitiru-preloader__label { display: block; margin-top: 6px; font-size: 18px; color: var(--mitiru-text-mute); line-height: 1.4; }
+
+/* ── m-compact (18px 未満の文字を許す密度。親に付ける) ──────────────── */
+.m-compact .mitiru-preloader__label { font-size: 12px; }
+.m-compact .m-btn--sm               { font-size: var(--mitiru-text-xs); }

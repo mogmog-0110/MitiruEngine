@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file Localization.hpp
-/// @brief ローカライゼーション/i18nフレームワーク
-/// @details JSON形式の翻訳テーブルを読み込み、言語切り替え・キー検索・
+/// @brief ローカライゼーション/i18n フレームワーク
+/// @details JSON 形式の翻訳テーブルを読み込み、言語切り替え・キー検索・
 ///          フォーマット文字列・複数形選択・フォント自動選択をサポートする。
 
 #include <algorithm>
@@ -31,7 +31,7 @@ struct Language
 using TranslationTable = std::map<std::string, std::map<std::string, std::string>>;
 
 /// @brief ローカライゼーション管理クラス
-/// @details JSON翻訳ファイルの読み込み、言語切り替え、テキスト取得、
+/// @details JSON 翻訳ファイルの読み込み、言語切り替え、テキスト取得、
 ///          フォーマット置換、複数形処理を提供する。
 ///
 /// @code
@@ -55,8 +55,8 @@ using TranslationTable = std::map<std::string, std::map<std::string, std::string
 class LocalizationManager
 {
 public:
-	/// @brief JSON文字列から翻訳データを読み込む
-	/// @param jsonString JSON文字列
+	/// @brief JSON 文字列から翻訳データを読み込む
+	/// @param jsonString JSON 文字列
 	/// @return 読み込みに成功した場合 true
 	bool loadTranslationsFromString(std::string_view jsonString)
 	{
@@ -71,7 +71,7 @@ public:
 		}
 	}
 
-	/// @brief JSONファイルから翻訳データを読み込む
+	/// @brief JSON ファイルから翻訳データを読み込む
 	/// @param jsonPath ファイルパス
 	/// @return 読み込みに成功した場合 true
 	bool loadTranslations(std::string_view jsonPath)
@@ -196,10 +196,10 @@ public:
 		return text;
 	}
 
-	/// @brief 複数形選択: countが1なら key_one、それ以外は key を使用する
+	/// @brief 複数形選択: count が 1 なら key_one、それ以外は key を使用する
 	/// @param key ベース翻訳キー
 	/// @param count 個数
-	/// @return 複数形が適用された翻訳テキスト（{0}にcountが入る）
+	/// @return 複数形が適用された翻訳テキスト（{0} に count が入る）
 	[[nodiscard]] std::string tp(std::string_view key, int count) const
 	{
 		const std::string baseKey{key};
@@ -247,8 +247,8 @@ public:
 	}
 
 private:
-	/// @brief JSONオブジェクトを解析して翻訳データを格納する
-	/// @param j JSONオブジェクト
+	/// @brief JSON オブジェクトを解析して翻訳データを格納する
+	/// @param j JSON オブジェクト
 	/// @return 解析に成功した場合 true
 	bool parseJson(const nlohmann::json& j)
 	{

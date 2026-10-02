@@ -1,34 +1,29 @@
-# mitiru_launcher — GUI launcher dogfooded as a Game-as-DLL (v0.2.0 / BAA)
-#
-# The launcher itself is a mitiru module: mitiru_host.exe loads its DLL just
-# like any user game. Its "gameplay" is project management — listing
-# registered game DLLs and spawning child mitiru_host processes to run them.
-#
-# The launcher DLL never calls into the engine's C++ API. All
-# host services it needs come from intent fields (state pushes, JS exec) or
-# from Win32 directly (CreateProcess, ShellExecute, GetOpenFileName,
-# SHGetKnownFolderPath) — those are not engine API.
+# Game-as-DLL として実運用されている GUI ランチャー mitiru_launcher (v0.2.0 / BAA)
+# ランチャー自体が mitiru モジュールであり、mitiru_host.exe はほかの
+# ユーザーゲームと同様に、その DLL を読み込む。その「ゲームプレイ」は、
+# 登録済みのゲーム DLL の一覧表示と、それらを実行する子 mitiru_host
+# プロセスの起動を行うプロジェクト管理である。
+# ランチャー DLL は、エンジンの C++ API を一切呼び出さない。必要な
+# ホストサービスはすべて、インテントのフィールド (状態のプッシュ、action の受け取り)、
+# または Win32 (CreateProcess, ShellExecute, GetOpenFileName,
+# SHGetKnownFolderPath) から直接利用する。これらはエンジン API ではない。
 
 add_library(mitiru_launcher SHARED mitiru_launcher_dll.cpp)
 target_link_libraries(mitiru_launcher PRIVATE mitiru)
 
 if(MSVC)
 	target_compile_options(mitiru_launcher PRIVATE /bigobj)
-	# Win32 file dialog + Shell APIs
+	# Win32 のファイルダイアログと Shell API
 	target_link_libraries(mitiru_launcher PRIVATE comdlg32 shell32 ole32)
 endif()
 
-# Layout next to mitiru_host so a single tree contains both the launcher and
-# the example games it can launch:
-#
-#   <host_dir>/
-#     mitiru_host.exe + CEF runtime
-#     mitiru_launcher/
-#       mitiru_launcher.dll
-#       assets/scene.html + mitiru_runtime/
-#     hello_game/
-#       hello_game.dll
-#       assets/
+# ランチャーと起動可能なサンプルゲームの両方が 1 つのツリーに収まるように、
+# mitiru_host の隣に配置する。
+# <host_dir>/
+# mitiru_host.exe
+# mitiru_launcher/
+# mitiru_launcher.dll
+# assets/ui/main.rml
 
 if(TARGET mitiru_host)
 	set(_launcher_runtime_dir "$<TARGET_FILE_DIR:mitiru_host>/mitiru_launcher")
@@ -37,14 +32,13 @@ if(TARGET mitiru_host)
 		RUNTIME_OUTPUT_DIRECTORY "${_launcher_runtime_dir}"
 		LIBRARY_OUTPUT_DIRECTORY "${_launcher_runtime_dir}")
 
-	# === asset auto-deploy (re-deploy when any file under assets/ changes) ===
-	# POST_BUILD は DLL が dirty な時しか fire しない。assets/scene.html を
-	# 編集しただけだと旧 copy が残る bug を防ぐため、source-tracked な
-	# custom_command(OUTPUT) + custom_target(ALL) で stamp 経由依存させる。
-	# Stamp は build/ 配下 (generator-expression-free path) に置き、
-	# 実 deploy 先 (_launcher_runtime_dir) は COMMAND 内で generator
-	# expression として評価させる — OUTPUT に generator expression は
-	# 使えないため。
+	# === アセットの自動配置 (assets/ 以下のいずれかのファイルが変更されたときに再配置) ===
+	# POST_BUILD は DLL が変更されたときにしか実行されない。assets/ui/main.rml を
+	# 編集しただけでは古いコピーが残る不具合を防ぐため、ソースの変更を追跡する
+	# custom_command(OUTPUT) + custom_target(ALL) により、スタンプを介して依存させる。
+	# スタンプは build/ 配下 (ジェネレーター式を含まないパス) に置き、
+	# 実際の配置先 (_launcher_runtime_dir) は COMMAND 内でジェネレーター式
+	# として評価させる。OUTPUT ではジェネレーター式を使えないためである。
 	file(GLOB_RECURSE _mitiru_launcher_assets CONFIGURE_DEPENDS
 		"${CMAKE_CURRENT_SOURCE_DIR}/assets/*")
 	set(_mitiru_launcher_stamp "${CMAKE_CURRENT_BINARY_DIR}/mitiru_launcher_assets.stamp")
@@ -60,30 +54,6 @@ if(TARGET mitiru_host)
 	add_custom_target(mitiru_launcher_assets ALL
 		DEPENDS "${_mitiru_launcher_stamp}")
 	add_dependencies(mitiru_launcher mitiru_launcher_assets)
-
-	# Engine runtime JS copy — source-tracked so edits to the shared bridge /
-	# binder / modal JS propagate without a DLL rebuild. Page is zero-JS
-	# (data-m-* only); these modules carry all logic.
-	set(_mitiru_launcher_cefjs_src
-		"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_cef_state.js"
-		"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_bind.js"
-		"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_modal.js")
-	set(_mitiru_launcher_cefjs_stamp
-		"${CMAKE_CURRENT_BINARY_DIR}/mitiru_launcher_cefjs.stamp")
-	add_custom_command(
-		OUTPUT  "${_mitiru_launcher_cefjs_stamp}"
-		COMMAND ${CMAKE_COMMAND} -E make_directory
-			"${_launcher_runtime_dir}/assets/mitiru_runtime"
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different
-			${_mitiru_launcher_cefjs_src}
-			"${_launcher_runtime_dir}/assets/mitiru_runtime"
-		COMMAND ${CMAKE_COMMAND} -E touch "${_mitiru_launcher_cefjs_stamp}"
-		DEPENDS ${_mitiru_launcher_cefjs_src}
-		VERBATIM
-		COMMENT "mitiru_launcher: deploying mitiru_runtime JS (source-tracked)")
-	add_custom_target(mitiru_launcher_cefjs ALL
-		DEPENDS "${_mitiru_launcher_cefjs_stamp}")
-	add_dependencies(mitiru_launcher mitiru_launcher_cefjs)
 
 	add_dependencies(mitiru_launcher mitiru_host)
 endif()

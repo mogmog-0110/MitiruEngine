@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file MitiruWorld.hpp
-/// @brief Mitiru拡張ECSワールド
-/// @details sgc::ecs::Worldをラップし、文字列タグ・セマンティックラベル・
-///          JSONスナップショット等のメタデータ管理機能を追加する。
+/// @brief Mitiru 拡張 ECS ワールド
+/// @details sgc::ecs::World をラップし、文字列タグ・セマンティックラベル・
+///          JSON スナップショット等のメタデータを管理する機能を足す。
 
 #include <bitset>
 #include <cstdint>
@@ -12,13 +12,14 @@
 #include <vector>
 
 #include <sgc/ecs/World.hpp>
+#include <mitiru/observe/JsonEscape.hpp>
 #include <mitiru/observe/SemanticLabel.hpp>
 
 namespace mitiru::ecs
 {
 
-/// @brief 頻出タグの型付き列挙
-/// @details 文字列タグよりもビット比較で高速に判定できる。
+/// @brief よく使うタグの型付き列挙
+/// @details 文字列タグよりも、ビット比較で速く判定できる。
 ///          新しいタグを追加する場合は Count の前に挿入すること。
 enum class CommonTag : std::uint8_t
 {
@@ -32,7 +33,7 @@ enum class CommonTag : std::uint8_t
 	Count  ///< 番兵（タグ数を表す）
 };
 
-/// @brief CommonTag用ビットセット型
+/// @brief CommonTag 用ビットセット型
 using CommonTagSet = std::bitset<static_cast<std::size_t>(CommonTag::Count)>;
 
 /// @brief Mitiru拡張ECSワールド
@@ -49,14 +50,14 @@ using CommonTagSet = std::bitset<static_cast<std::size_t>(CommonTag::Count)>;
 class MitiruWorld
 {
 public:
-	/// @brief 内部のsgcワールドへの参照を取得する
+	/// @brief 内部の sgc ワールドへの参照を取得する
 	/// @return sgc::ecs::World への参照
 	[[nodiscard]] sgc::ecs::World& world() noexcept
 	{
 		return m_world;
 	}
 
-	/// @brief 内部のsgcワールドへのconst参照を取得する
+	/// @brief 内部の sgc ワールドへの const 参照を取得する
 	/// @return sgc::ecs::World への const 参照
 	[[nodiscard]] const sgc::ecs::World& world() const noexcept
 	{
@@ -67,7 +68,7 @@ public:
 
 	/// @brief エンティティに型付きタグを追加する
 	/// @param entity 対象エンティティ
-	/// @param tag 追加するCommonTag
+	/// @param tag 追加する CommonTag
 	void addCommonTag(sgc::ecs::Entity entity, CommonTag tag)
 	{
 		if (!m_world.isAlive(entity))
@@ -79,7 +80,7 @@ public:
 
 	/// @brief エンティティから型付きタグを削除する
 	/// @param entity 対象エンティティ
-	/// @param tag 削除するCommonTag
+	/// @param tag 削除する CommonTag
 	void removeCommonTag(sgc::ecs::Entity entity, CommonTag tag)
 	{
 		if (!m_world.isAlive(entity))
@@ -95,7 +96,7 @@ public:
 
 	/// @brief エンティティが型付きタグを持つか判定する
 	/// @param entity 対象エンティティ
-	/// @param tag 検索するCommonTag
+	/// @param tag 検索する CommonTag
 	/// @return 持っていれば true
 	[[nodiscard]] bool hasCommonTag(sgc::ecs::Entity entity, CommonTag tag) const
 	{
@@ -129,7 +130,7 @@ public:
 	/// @brief エンティティに文字列タグを設定する
 	/// @param entity 対象エンティティ
 	/// @param tag タグ文字列
-	/// @deprecated 新規コードでは addCommonTag() を推奨。文字列比較はビット比較より低速。
+	/// @deprecated 新規コードでは addCommonTag() を推奨。文字列比較はビット比較より遅い。
 	void setTag(sgc::ecs::Entity entity, std::string tag)
 	{
 		if (!m_world.isAlive(entity))
@@ -206,8 +207,8 @@ public:
 		return m_world.entityCount();
 	}
 
-	/// @brief 全エンティティ+メタデータのJSONスナップショットを取得する
-	/// @return JSON形式の文字列
+	/// @brief 全エンティティとメタデータの JSON スナップショットを取得する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string snapshot() const
 	{
 		std::string json;
@@ -223,7 +224,7 @@ public:
 			{
 				json += ",";
 			}
-			json += "\"" + std::to_string(id) + "\":\"" + escapeJsonString(tag) + "\"";
+			json += "\"" + std::to_string(id) + "\":\"" + observe::jsonEscape(tag) + "\"";
 			firstTag = false;
 		}
 		json += "},";
@@ -260,7 +261,7 @@ public:
 		return json;
 	}
 
-	/// @brief エンティティ破棄時にメタデータもクリーンアップする
+	/// @brief エンティティを破棄し、そのメタデータも片付ける
 	/// @param entity 破棄するエンティティ
 	void destroyEntity(sgc::ecs::Entity entity)
 	{
@@ -273,53 +274,16 @@ public:
 private:
 	sgc::ecs::World m_world;  ///< 内部のsgcワールド
 
-	/// @brief エンティティID → 文字列タグ (legacy)
+	/// @brief エンティティ ID → 文字列タグ (legacy)
 	std::unordered_map<sgc::ecs::EntityId, std::string> m_tags;
 
-	/// @brief エンティティID → セマンティックラベル
+	/// @brief エンティティ ID → セマンティックラベル
 	std::unordered_map<sgc::ecs::EntityId, observe::SemanticLabel> m_labels;
 
-	/// @brief エンティティID → 型付きタグビットセット
+	/// @brief エンティティ ID → 型付きタグビットセット
 	std::unordered_map<sgc::ecs::EntityId, CommonTagSet> m_commonTags;
 
-	/// @brief JSON文字列エスケープ
-	/// @param s 入力文字列
-	/// @return エスケープ済み文字列
-	[[nodiscard]] static std::string escapeJsonString(const std::string& s)
-	{
-		std::string result;
-		result.reserve(s.size() + 8);
-		for (const char c : s)
-		{
-			switch (c)
-			{
-			case '"':  result += "\\\""; break;
-			case '\\': result += "\\\\"; break;
-			case '\b': result += "\\b";  break;
-			case '\f': result += "\\f";  break;
-			case '\n': result += "\\n";  break;
-			case '\r': result += "\\r";  break;
-			case '\t': result += "\\t";  break;
-			default:
-				if (static_cast<unsigned char>(c) < 0x20)
-				{
-					// 制御文字は \u00XX 形式で出力
-					char buf[8];
-					std::snprintf(buf, sizeof(buf), "\\u%04x",
-					              static_cast<unsigned int>(static_cast<unsigned char>(c)));
-					result += buf;
-				}
-				else
-				{
-					result += c;
-				}
-				break;
-			}
-		}
-		return result;
-	}
-
-	/// @brief CommonTag列挙値の文字列名を返す
+	/// @brief CommonTag 列挙値の文字列名を返す
 	[[nodiscard]] static const char* commonTagName(CommonTag tag) noexcept
 	{
 		switch (tag)
@@ -335,7 +299,7 @@ private:
 		}
 	}
 
-	/// @brief CommonTagSetをJSON配列文字列に変換する
+	/// @brief CommonTagSet を JSON 配列文字列に変換する
 	[[nodiscard]] static std::string commonTagSetToJson(const CommonTagSet& tagSet)
 	{
 		std::string json = "[";

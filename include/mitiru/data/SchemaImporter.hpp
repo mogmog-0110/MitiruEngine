@@ -355,7 +355,7 @@ private:
         if (spec.contains("maximum") && spec["maximum"].is_number()) {
             field.maxValue = spec["maximum"].get<float>();
         }
-        // minLength/maxLength は今は意図的に読んで破棄する:
+        // minLength/maxLength は今は意図的に読んで破棄する。
         // SchemaField に文字列長 field が無いため。header docs 参照。
 
         return field;

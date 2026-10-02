@@ -1,24 +1,24 @@
 ﻿#pragma once
 
 /// @file IGpuFence.hpp
-/// @brief GPUフェンス抽象インターフェース
-/// @details CPU-GPU間の同期を管理するフェンスの基底インターフェース。
-///          D3D12のID3D12Fenceに対応する抽象レイヤー。
+/// @brief GPU フェンス抽象インターフェース
+/// @details CPU-GPU 間の同期を管理するフェンスの基底インターフェース。
+///          D3D12 の ID3D12Fence に対応する抽象レイヤー。
 
 #include <mitiru/gfx/GfxTypes.hpp>
 
 namespace mitiru::gfx
 {
 
-/// @brief GPUフェンスの抽象インターフェース
-/// @details GPU側の処理完了をCPUから追跡・待機するためのインターフェース。
+/// @brief GPU フェンスの抽象インターフェース
+/// @details GPU 側の処理完了を CPU から追跡・待機するためのインターフェース。
 ///          トリプルバッファリングのフレーム同期に使用する。
 ///
 /// @code
 /// auto fence = device->createFence();
-/// // GPUにシグナルを発行
+/// // GPU にシグナルを発行
 /// fence->signal(frameIndex);
-/// // CPU側で完了を待機
+/// // CPU 側で完了を待機
 /// fence->waitForValue(frameIndex);
 /// @endcode
 class IGpuFence
@@ -28,7 +28,7 @@ public:
 	virtual ~IGpuFence() = default;
 
 	/// @brief 現在のフェンス値を取得する
-	/// @return GPU側が完了した最新のフェンス値
+	/// @return GPU 側が完了した最新のフェンス値
 	[[nodiscard]] virtual FenceValue currentValue() const = 0;
 
 	/// @brief フェンスにシグナルを発行する
@@ -41,7 +41,7 @@ public:
 
 	/// @brief 指定したフェンス値が完了済みかどうかを判定する
 	/// @param value 判定するフェンス値
-	/// @return 完了していればtrue
+	/// @return 完了していれば true
 	[[nodiscard]] virtual bool isComplete(FenceValue value) const = 0;
 };
 

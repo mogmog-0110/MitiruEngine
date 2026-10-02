@@ -62,19 +62,21 @@ struct GameMemory {
 draw側でも同じ計算を繰り返す書き方は不要になる。帯はエンジンへの依頼1行、ズームは
 `Tween01` 1個 + `applyCamera`でupdate/drawの二重実装が消える。
 
-## レシピB: 会話シーン(JSゼロ)
+## レシピB: 会話シーン(スクリプト無し)
 
-会話ボックスの見た目はHTML/CSSの領分。C++は「表示するか」「何行目か」だけ持つ。
-JSは1行も書かない。`data-m-show` / `data-m-text`を書いておくと、C++が送った値を
-HTMLに自動で流し込む仕組み(binder)がDOMを更新する。
+会話ボックスの見た目は RML / RCSS の領分。C++は「表示するか」「何行目か」だけ持つ。
+UI 側にスクリプトは書かない。`data-if` と `{{ }}` を書いておくと、C++ が送った値で
+RmlUi が表示を更新する。
 
-HTML側:
+RML 側 (`assets/ui/main.rml`):
 
 ```html
-<div class="m-overlay" data-m-show="ev.talking">
-  <p data-m-text="ev.line"></p>
-  <small>Z で送り</small>
-</div>
+<body data-model="view">
+  <div class="m-overlay" data-if="talking">
+    <p>{{ line }}</p>
+    <small>Z で送り</small>
+  </div>
+</body>
 ```
 
 C++側:
@@ -96,15 +98,15 @@ struct GameMemory {
             ++lineIdx;
             if (lineIdx >= kCount) { talking = false; lineIdx = 0; }
         }
-        hud.set("ev.talking", talking);
-        hud.set("ev.line", kLines[lineIdx < kCount ? lineIdx : kCount - 1]);
+        hud.set("view.talking", talking);
+        hud.set("view.line", kLines[lineIdx < kCount ? lineIdx : kCount - 1]);
     }
 };
 ```
 
 手書き比較: 会話ボックスの表示フラグを毎フレーム描画コード側で分岐する
-(evShowBoxのような)変数は`hud.set("ev.talking", ...)` + `data-m-show`に畳まれる。
-表示のON/OFFアニメーションを付けたければCSS transitionで足す。C++は触らない。
+(evShowBoxのような)変数は`hud.set("view.talking", ...)` + `data-if`に畳まれる。
+表示の ON/OFF に動きを付けるのも RCSS の側で、C++ は触らない。
 
 ## レシピC: 場面転換
 

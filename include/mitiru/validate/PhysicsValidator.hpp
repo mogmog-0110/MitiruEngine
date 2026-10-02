@@ -2,7 +2,7 @@
 
 /// @file PhysicsValidator.hpp
 /// @brief 物理状態の健全性チェッカー
-/// @details GameWorld内のエンティティの物理状態（位置、速度等）を検証し、
+/// @details GameWorld 内のエンティティの物理状態（位置、速度等）を検証し、
 ///          NaN、範囲外、テレポート等の異常を検出する。
 ///
 /// @code
@@ -46,8 +46,8 @@ struct PhysicsAnomaly
 	float threshold = 0.0f;         ///< 閾値
 	std::string description;        ///< 説明
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -79,7 +79,7 @@ struct PhysicsValidatorConfig
 };
 
 /// @brief 物理状態バリデータ
-/// @details GameWorld内の全TransformComponentを検証し、物理的に異常な状態を検出する。
+/// @details GameWorld 内の全 TransformComponent を検証し、物理的に異常な状態を検出する。
 class PhysicsValidator
 {
 public:
@@ -97,7 +97,7 @@ public:
 		m_config = config;
 	}
 
-	/// @brief TransformComponentを持つ全エンティティを検証する
+	/// @brief TransformComponent を持つ全エンティティを検証する
 	/// @param world 検証対象のゲームワールド
 	/// @return 検出された異常のリスト
 	std::vector<PhysicsAnomaly> validate(scene::GameWorld& world)
@@ -110,7 +110,7 @@ public:
 				const auto& pos = tc.position;
 				const std::string name = world.entityName(id);
 
-				// NaN検出
+				// NaN 検出
 				if (std::isnan(pos.x) || std::isnan(pos.y) || std::isnan(pos.z))
 				{
 					PhysicsAnomaly a;
@@ -179,9 +179,9 @@ public:
 		m_previousPositions.clear();
 	}
 
-	/// @brief 異常リストをJSON配列に変換する
+	/// @brief 異常リストを JSON 配列に変換する
 	/// @param anomalies 異常リスト
-	/// @return JSON配列形式の文字列
+	/// @return JSON 配列形式の文字列
 	[[nodiscard]] std::string toJson(const std::vector<PhysicsAnomaly>& anomalies) const
 	{
 		std::string json;

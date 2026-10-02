@@ -19,7 +19,7 @@ class FileLogger final : public ILogger
 public:
 	/// @brief コンストラクタ
 	/// @param filePath 出力ファイルパス
-	/// @param append trueなら追記モード
+	/// @param append true なら追記モード
 	explicit FileLogger(const std::string& filePath, bool append = false)
 		: m_stream(filePath, append ? (std::ios::out | std::ios::app) : std::ios::out)
 	{

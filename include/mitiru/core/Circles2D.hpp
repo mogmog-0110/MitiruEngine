@@ -5,10 +5,10 @@
 /// @details 落ちもの・玉転がしのような「円を箱に入れるだけ」の遊びを、GameMemory に
 ///          置ける形で書くための型。回転・任意形状・関節・連続衝突判定は持たない。
 ///
-/// physics/PhysicsEngine2D.hpp の `PhysicsWorld2D` は `unordered_map` と `std::function` を
-/// 持つため GameMemory に入らない。物理を使ったとたん、その game だけ巻き戻しと
+/// 2D の剛体は Box2D (physics/Box2DBridge.hpp の `Box2DWorld`) が解くが、そのワールドはヒープの
+/// 中にあって GameMemory に入らない。物理を使ったとたん、その game だけ巻き戻しと
 /// replay-as-test (軸 2 / 軸 4) から外れる。この型はその穴を塞ぐためにある。
-/// 回転や関節が要るなら `PhysicsWorld2D` を GameMemory の外に置く。
+/// 回転や関節が要るなら `Box2DWorld` を GameMemory の外 (host 側) に置く。
 ///
 /// - 座標系は y 下向き正 (screen 系)。`floor` が下端、`ceiling` が上端。
 /// - 反発は速さで切り替える。`restSpeed` を下回る接触は弾ませない。位置の補正と速度を

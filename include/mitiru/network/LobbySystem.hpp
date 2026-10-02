@@ -2,9 +2,9 @@
 
 /// @file LobbySystem.hpp
 /// @brief 高レベルロビーシステム
-/// @details 既存のLobby(プレイヤー管理)をベースに、ルーム作成・検索・
-///          LAN内ブロードキャスト検出・ゲーム開始調整を提供する。
-///          NetworkSessionおよびINetworkTransportと連携して動作する。
+/// @details 既存の Lobby(プレイヤー管理)をベースに、ルーム作成・検索・
+///          LAN 内ブロードキャスト検出・ゲーム開始調整を提供する。
+///          NetworkSession および INetworkTransport と連携して動作する。
 ///
 /// @code
 /// using namespace mitiru::network;
@@ -13,7 +13,7 @@
 /// LobbySystem lobby;
 /// auto room = lobby.createRoom("MyGame", 4);
 /// room->setReady(myId, true);
-/// lobby.update(dt); // LANブロードキャスト送信
+/// lobby.update(dt); // LAN ブロードキャスト送信
 ///
 /// // クライアント側
 /// LobbySystem lobby;
@@ -141,7 +141,7 @@ struct LobbyConfig
 };
 
 /// @brief 高レベルロビーシステム
-/// @details ルーム管理・LAN検出・準備状態管理・ゲーム開始調整を統合する。
+/// @details ルーム管理・LAN 検出・準備状態管理・ゲーム開始調整を統合する。
 class LobbySystem
 {
 public:
@@ -157,7 +157,7 @@ public:
 	/// @param name ルーム名
 	/// @param maxPlayers 最大プレイヤー数
 	/// @param gameMode ゲームモード名
-	/// @return 作成されたルームのID
+	/// @return 作成されたルームの ID
 	std::uint32_t createRoom(std::string_view name,
 	                         std::uint32_t maxPlayers = 4,
 	                         std::string_view gameMode = "")
@@ -182,7 +182,7 @@ public:
 	}
 
 	/// @brief ルームを破棄する
-	/// @param roomId ルームID
+	/// @param roomId ルーム ID
 	void destroyRoom(std::uint32_t roomId)
 	{
 		m_hostedRooms.erase(roomId);
@@ -191,8 +191,8 @@ public:
 	}
 
 	/// @brief プレイヤーをルームに追加する
-	/// @param roomId ルームID
-	/// @param playerId 接続ID
+	/// @param roomId ルーム ID
+	/// @param playerId 接続 ID
 	/// @param playerName プレイヤー名
 	/// @return 成功なら true
 	bool joinRoom(std::uint32_t roomId, ConnectionId playerId,
@@ -216,8 +216,8 @@ public:
 	}
 
 	/// @brief プレイヤーをルームから除去する
-	/// @param roomId ルームID
-	/// @param playerId 接続ID
+	/// @param roomId ルーム ID
+	/// @param playerId 接続 ID
 	void leaveRoom(std::uint32_t roomId, ConnectionId playerId)
 	{
 		auto lobbyIt = m_lobbies.find(roomId);
@@ -236,8 +236,8 @@ public:
 	}
 
 	/// @brief プレイヤーの準備状態を設定する
-	/// @param roomId ルームID
-	/// @param playerId 接続ID
+	/// @param roomId ルーム ID
+	/// @param playerId 接続 ID
 	/// @param ready 準備完了か
 	void setReady(std::uint32_t roomId, ConnectionId playerId, bool ready)
 	{
@@ -258,7 +258,7 @@ public:
 	}
 
 	/// @brief ゲーム開始を試みる
-	/// @param roomId ルームID
+	/// @param roomId ルーム ID
 	/// @return 全員準備完了でゲーム開始できたら true
 	bool tryStartGame(std::uint32_t roomId)
 	{
@@ -281,9 +281,9 @@ public:
 		return true;
 	}
 
-	// ── LAN検出 ──
+	// ── LAN 検出 ──
 
-	/// @brief LAN検出用ソケットを開始する（受信側）
+	/// @brief LAN 検出用ソケットを開始する（受信側）
 	/// @return 成功なら true
 	bool startDiscovery()
 	{
@@ -325,7 +325,7 @@ public:
 		return true;
 	}
 
-	/// @brief LAN検出を停止する
+	/// @brief LAN 検出を停止する
 	void stopDiscovery()
 	{
 		if (m_discoverySocket != INVALID_SOCK)
@@ -371,7 +371,7 @@ public:
 	// ── ホストされたルーム ──
 
 	/// @brief ホスト中のルーム情報を取得する
-	/// @param roomId ルームID
+	/// @param roomId ルーム ID
 	/// @return ルーム情報（存在しない場合は nullptr）
 	[[nodiscard]] const RoomInfo* getRoom(std::uint32_t roomId) const
 	{
@@ -381,7 +381,7 @@ public:
 	}
 
 	/// @brief ルームのロビーを取得する
-	/// @param roomId ルームID
+	/// @param roomId ルーム ID
 	/// @return ロビー（存在しない場合は nullptr）
 	[[nodiscard]] const Lobby* getLobby(std::uint32_t roomId) const
 	{
@@ -451,7 +451,7 @@ private:
 			(void)setNonBlocking(m_broadcastSocket);
 		}
 
-		// ルーム情報をJSONにまとめてブロードキャスト
+		// ルーム情報を JSON にまとめてブロードキャスト
 		nlohmann::json packet;
 		packet["magic"] = m_config.discoveryMagic;
 		nlohmann::json roomsArray = nlohmann::json::array();
@@ -582,7 +582,7 @@ private:
 	EventCallback m_eventCallback;
 	GameStartCallback m_gameStartCallback;
 
-	// LAN検出用ソケット
+	// LAN 検出用ソケット
 	WsaGuard m_wsaGuard;
 	SocketHandle m_discoverySocket = INVALID_SOCK;
 	SocketHandle m_broadcastSocket = INVALID_SOCK;

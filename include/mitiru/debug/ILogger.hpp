@@ -3,7 +3,7 @@
 /// @file ILogger.hpp
 /// @brief ロガーインターフェース
 /// @details エンジン全体で統一されたログ出力を提供する。
-///          ServiceRegistryに登録してDI的に使用する。
+///          ServiceRegistry に登録して DI 的に使用する。
 
 #include <cstdint>
 #include <string>

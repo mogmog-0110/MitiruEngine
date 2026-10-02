@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file EmscriptenWindow.hpp
-/// @brief Emscripten/WASM用ウィンドウ実装
-/// @details HTMLキャンバスをウィンドウとして扱うIWindow実装。
-///          Emscripten環境でのみコンパイルされる。
+/// @brief Emscripten/WASM 用ウィンドウ実装
+/// @details HTML キャンバスをウィンドウとして扱う IWindow 実装。
+///          Emscripten 環境でのみコンパイルされる。
 ///          キーボード・マウス・ホイールのコールバックを登録し、
-///          InputStateへ入力イベントを反映する。
+///          InputState へ入力イベントを反映する。
 
 #ifdef __EMSCRIPTEN__
 
@@ -21,10 +21,10 @@
 namespace mitiru
 {
 
-/// @brief Emscripten環境用のウィンドウ実装
-/// @details HTMLキャンバス要素をウィンドウとして抽象化する。
+/// @brief Emscripten 環境用のウィンドウ実装
+/// @details HTML キャンバス要素をウィンドウとして抽象化する。
 ///          emscripten_set_canvas_element_size でサイズを管理し、
-///          Emscriptenのコールバック機構でキーボード・マウス入力を処理する。
+///          Emscripten のコールバック機構でキーボード・マウス入力を処理する。
 ///
 /// @code
 /// EmscriptenWindow window("#canvas", 1280, 720);
@@ -41,7 +41,7 @@ class EmscriptenWindow final : public IWindow
 {
 public:
 	/// @brief コンストラクタ
-	/// @param canvasSelector キャンバス要素のCSSセレクタ（例: "#canvas"）
+	/// @param canvasSelector キャンバス要素の CSS セレクタ（例: "#canvas"）
 	/// @param width 初期幅（ピクセル）
 	/// @param height 初期高さ（ピクセル）
 	explicit EmscriptenWindow(
@@ -55,18 +55,18 @@ public:
 	}
 
 	/// @brief ウィンドウが閉じるべきかどうか
-	/// @return requestClose()が呼ばれていればtrue
+	/// @return requestClose()が呼ばれていれば true
 	[[nodiscard]] bool shouldClose() const override
 	{
 		return m_shouldClose;
 	}
 
-	/// @brief イベントをポーリングする（Emscriptenではノーオペレーション）
-	/// @details Emscriptenはコールバック駆動のイベントモデルを使用するため、
+	/// @brief イベントをポーリングする（Emscripten ではノーオペレーション）
+	/// @details Emscripten はコールバック駆動のイベントモデルを使用するため、
 	///          明示的なポーリングは不要。
 	void pollEvents() override
 	{
-		// Emscriptenのイベントループがコールバック経由でイベントを配信する
+		// Emscripten のイベントループがコールバック経由でイベントを配信する
 	}
 
 	/// @brief ウィンドウ幅を取得する
@@ -85,7 +85,7 @@ public:
 
 	/// @brief ウィンドウタイトルを設定する
 	/// @param title 新しいタイトル文字列
-	/// @note ブラウザ環境ではdocument.titleに反映される
+	/// @note ブラウザ環境では document.title に反映される
 	void setTitle(std::string_view title) override
 	{
 		m_title = title;
@@ -101,14 +101,14 @@ public:
 	}
 
 	/// @brief キャンバスセレクタを取得する
-	/// @return CSSセレクタ文字列
+	/// @return CSS セレクタ文字列
 	[[nodiscard]] const std::string& canvasSelector() const noexcept
 	{
 		return m_canvasSelector;
 	}
 
-	/// @brief InputStateを設定し、入力コールバックを登録する
-	/// @param input InputStateへのポインタ（nullptrで解除）
+	/// @brief InputState を設定し、入力コールバックを登録する
+	/// @param input InputState へのポインタ（nullptr で解除）
 	void setInputState(InputState* input) noexcept override
 	{
 		m_inputState = input;
@@ -129,13 +129,13 @@ public:
 	}
 
 private:
-	/// @brief DOMキーコードをエンジン内部キーコードに変換する
-	/// @param emKey EmscriptenKeyboardEventのkeyCode
+	/// @brief DOM キーコードをエンジン内部キーコードに変換する
+	/// @param emKey EmscriptenKeyboardEvent の keyCode
 	/// @return エンジン内部キーコード（0-255）、変換不能なら-1
 	[[nodiscard]] static int mapKeyCode(unsigned long emKey) noexcept
 	{
-		// ASCII文字キー（A-Z, 0-9）はそのまま使える
-		// DOM keyCodeは大文字ASCIIと一致する
+		// ASCII 文字キー（A-Z, 0-9）はそのまま使える
+		// DOM keyCode は大文字 ASCII と一致する
 		if (emKey >= 'A' && emKey <= 'Z')
 		{
 			return static_cast<int>(emKey);
@@ -190,10 +190,10 @@ private:
 		return -1;
 	}
 
-	/// @brief DOMマウスボタン番号をMouseButtonに変換する
-	/// @param domButton DOMのbutton値（0=左, 1=中, 2=右）
-	/// @return MouseButton列挙値
-	/// @note DOMでは中=1,右=2 だがエンジンではRight=1,Middle=2
+	/// @brief DOM マウスボタン番号を MouseButton に変換する
+	/// @param domButton DOM の button 値（0=左, 1=中, 2=右）
+	/// @return MouseButton 列挙値
+	/// @note DOM では中=1,右=2 だがエンジンでは Right=1,Middle=2
 	[[nodiscard]] static MouseButton mapMouseButton(unsigned short domButton) noexcept
 	{
 		switch (domButton)
@@ -295,9 +295,9 @@ private:
 			return EM_FALSE;
 		}
 
-		// CSS座標 → canvas論理座標に変換
-		// targetX/Yはcanvas要素のCSS座標（引き伸ばし後）
-		// canvas描画解像度(m_width x m_height)に正規化する
+		// CSS 座標 → canvas 論理座標に変換
+		// targetX/Y は canvas 要素の CSS 座標（引き伸ばし後）
+		// canvas 描画解像度(m_width x m_height)に正規化する
 		int cssW = 0, cssH = 0;
 		emscripten_get_canvas_element_size(self->m_canvasSelector.c_str(), &cssW, &cssH);
 		double cssPixelW = 0, cssPixelH = 0;
@@ -324,7 +324,7 @@ private:
 		static_cast<void>(eventType);
 		auto* self = static_cast<EmscriptenWindow*>(userData);
 
-		// deltaYを蓄積（DOM_DELTA_PIXELモードで正規化）
+		// deltaY を蓄積（DOM_DELTA_PIXEL モードで正規化）
 		double delta = event->deltaY;
 		if (event->deltaMode == DOM_DELTA_LINE)
 		{
@@ -414,14 +414,14 @@ private:
 		return EM_TRUE;
 	}
 
-	/// @brief Emscriptenコールバックを登録する
+	/// @brief Emscripten コールバックを登録する
 	/// @details setInputState()から呼ばれる。キャンバスセレクタに対して
 	///          キーボード・マウス・ホイールイベントのコールバックを設定する。
 	void initCallbacks() noexcept
 	{
 		const char* target = m_canvasSelector.c_str();
 
-		// キーボードはdocument全体で受け取る（キャンバスにフォーカスがなくても動作）
+		// キーボードは document 全体で受け取る（キャンバスにフォーカスがなくても動作）
 		emscripten_set_keydown_callback(
 			EMSCRIPTEN_EVENT_TARGET_DOCUMENT, this, EM_TRUE, onKeyDown);
 

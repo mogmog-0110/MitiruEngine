@@ -1,9 +1,9 @@
-﻿#pragma once
+#pragma once
 
 /// @file InputState.hpp
-/// @brief 不変入力状態スナップショット
-/// @details あるフレームにおける入力デバイスの状態を保持する。
-///          イミュータブルな値型として設計。
+/// @brief 不変の入力状態スナップショット
+/// @details あるフレームでの入力デバイスの状態を保持する。
+///          イミュータブルな値型として設計している。
 
 #include <array>
 #include <cstdint>
@@ -18,7 +18,9 @@ enum class MouseButton : std::uint8_t
 {
 	Left = 0,    ///< 左ボタン
 	Right = 1,   ///< 右ボタン
-	Middle = 2   ///< 中ボタン
+	Middle = 2,  ///< 中ボタン
+	X1 = 3,      ///< 拡張ボタン 1 (戻る)
+	X2 = 4       ///< 拡張ボタン 2 (進む)
 };
 
 /// @brief 不変の入力状態スナップショット
@@ -31,7 +33,7 @@ public:
 	static constexpr int MAX_KEYS = 256;
 
 	/// @brief マウスボタンの最大数
-	static constexpr int MAX_MOUSE_BUTTONS = 3;
+	static constexpr int MAX_MOUSE_BUTTONS = 5;
 
 	/// @brief デフォルトコンストラクタ（全入力なし状態）
 	InputState() noexcept
@@ -82,20 +84,22 @@ public:
 	/// @brief マウスホイールの回転を積む (Win32 の WM_MOUSEWHEEL などから呼ぶ)
 	void addMouseWheelDelta(float delta) noexcept { m_mouseWheel += delta; }
 
+	/// @brief 横ホイール (チルト) の回転量 (+ = 右、120 = 1 ノッチ)。縦と同じくフレーム頭で 0 に戻る。
+	[[nodiscard]] float mouseWheelHDelta() const noexcept { return m_mouseWheelH; }
+	void addMouseWheelHDelta(float delta) noexcept { m_mouseWheelH += delta; }
+
 	/// @brief 明示的に prev を curr に揃える (テスト / バッチ実行用)
 	/// @details ランタイムでは `endTick()` が tick 末で prev を進めるため、
-	///          render-loop の頭で本メソッドを呼ぶ必要はない。実際 144Hz vsync +
-	///          60Hz update のように「pollEvents は走るが update は走らない」
-	///          レンダーフレームで本メソッドを呼ぶと、KEYDOWN が curr に入った
-	///          直後の次フレーム頭で prev=curr されてエッジが食い潰され、
-	///          just-pressed が永久に false になる (ENG-102)。
-	///
-	///          そのため `Engine::tickOneFrame()` は本メソッドを呼ばず、prev 維持を
-	///          完全に `endTick()` に委ねる。本メソッドは `stepFrames()` のように
-	///          「1 render frame = 1 tick」の固定ループや、テストでの明示的な
-	///          初期化用に残してある。
-	///
-	///          m_mouseCaptured フラグはフレームをまたいで保持されるので変更しない。
+	/// render-loop の頭で本メソッドを呼ぶ必要はない。実際、144Hz vsync +
+	/// 60Hz update のように「pollEvents は走るが update は走らない」
+	/// レンダーフレームで本メソッドを呼ぶと、KEYDOWN が curr に入った
+	/// 直後の次フレーム頭で prev=curr となってエッジが消え、
+	/// just-pressed が永久に false になる (ENG-102)。
+	/// そのため `Engine::tickOneFrame()` は本メソッドを呼ばず、prev の更新は
+	/// すべて `endTick()` に任せる。本メソッドは `stepFrames()` のように
+	/// 「1 render frame = 1 tick」の固定ループや、テストでの明示的な
+	/// 初期化のために残してある。
+	/// m_mouseCaptured フラグはフレームをまたいで保持するので変更しない。
 	void beginFrame() noexcept
 	{
 		m_prevKeys = m_keys;
@@ -105,6 +109,7 @@ public:
 		m_rawDeltaX = 0.0f;
 		m_rawDeltaY = 0.0f;
 		m_mouseWheel = 0.0f;
+		m_mouseWheelH = 0.0f;
 	}
 
 	/// @brief 全ての held key / mouse button を「離された」状態にする
@@ -116,8 +121,8 @@ public:
 	void clearHeldKeys() noexcept
 	{
 		// 注入キー (AI / replay が injector 経由で押したもの) は消さない。
-		// このクリアは「実キーボードの離し損ね」対策であり、バックグラウンドの
-		// ゲームを外部から操作するケース (MITIRU_AI) を壊してはいけない。
+		// このクリアは「実キーボードの離し損ね」への対策であり、バックグラウンドの
+		// ゲームを外部から操作するケース (MITIRU_AI) を動かなくしてはいけない。
 		for (std::size_t i = 0; i < m_keys.size(); ++i)
 		{
 			if (!m_injectedKeys[i]) { m_keys[i] = false; }
@@ -129,6 +134,7 @@ public:
 		m_rawDeltaX = 0.0f;
 		m_rawDeltaY = 0.0f;
 		m_mouseWheel = 0.0f;
+		m_mouseWheelH = 0.0f;
 	}
 
 	/// @brief 注入入力としてキー状態を設定する (clearHeldKeys の対象外になる)
@@ -158,21 +164,22 @@ public:
 	/// @details Accumulator-based 固定ステップループでは 1 レンダーフレーム内に
 	///          `game.update()` が複数回走ることがある。`beginFrame()` は
 	///          レンダーフレーム頭で 1 回だけ呼ばれるため、そのままでは複数回の
-	///          tick がすべて同じ "just-pressed" を観測し、ランチャーの選択が
-	///          1 入力で N 段ジャンプする等のバグになる。
-	///          tick ごとに本メソッドを呼べば次の tick 以降は just-pressed が
-	///          false に落ちる。pollEvents は呼ばないので、tick 内で OS から
-	///          新しいイベントを拾うわけではなく、純粋に edge を consume する。
+	///          tick がすべて同じ "just-pressed" を観測し、1 回の入力でランチャーの選択が
+	///          N 段飛ぶ等のバグになる。
+	///          tick ごとに本メソッドを呼べば、次の tick 以降は just-pressed が
+	///          false になる。pollEvents は呼ばないので、tick 内で OS から
+	///          新しいイベントを拾うわけではなく、edge を consume するだけである。
 	void endTick() noexcept
 	{
 		m_prevKeys = m_keys;
 		m_prevMouseButtons = m_mouseButtons;
-		/// マウスデルタも同様に「物理 1 入力 = 1 観測」を保つ。
-		/// 1 レンダーフレームに複数回 game.update() が走るケースで、
-		/// 2 回目以降が同じ delta を観測するとカメラ等が過剰回転する。
+		/// マウスデルタも同じように「物理 1 入力 = 1 観測」を保つ。
+		/// 1 レンダーフレームに複数回 game.update() が走るとき、
+		/// 2 回目以降が同じ delta を観測するとカメラ等が回りすぎる。
 		m_rawDeltaX = 0.0f;
 		m_rawDeltaY = 0.0f;
 		m_mouseWheel = 0.0f;
+		m_mouseWheelH = 0.0f;
 		m_prevMouseX = m_mouseX;
 		m_prevMouseY = m_mouseY;
 	}
@@ -238,7 +245,7 @@ public:
 
 	/// @brief 指定キーがこのフレームで押されたか（エッジ検出）
 	/// @param keyCode キーコード（0 ~ MAX_KEYS-1）
-	/// @return 今フレーム押下かつ前フレーム非押下なら true
+	/// @return 今フレームで押されていて、前フレームで押されていなければ true
 	[[nodiscard]] bool isKeyJustPressed(int keyCode) const noexcept
 	{
 		if (keyCode < 0 || keyCode >= MAX_KEYS)
@@ -251,7 +258,7 @@ public:
 
 	/// @brief 指定キーがこのフレームで押されたか（KeyCode 版）
 	/// @param keyCode 型付きキーコード
-	/// @return 今フレーム押下かつ前フレーム非押下なら true
+	/// @return 今フレームで押されていて、前フレームで押されていなければ true
 	[[nodiscard]] bool isKeyJustPressed(KeyCode keyCode) const noexcept
 	{
 		return isKeyJustPressed(static_cast<int>(keyCode));
@@ -259,7 +266,7 @@ public:
 
 	/// @brief 指定キーがこのフレームで離されたか（エッジ検出）
 	/// @param keyCode キーコード（0 ~ MAX_KEYS-1）
-	/// @return 今フレーム非押下かつ前フレーム押下なら true
+	/// @return 今フレームで押されておらず、前フレームで押されていれば true
 	[[nodiscard]] bool isKeyJustReleased(int keyCode) const noexcept
 	{
 		if (keyCode < 0 || keyCode >= MAX_KEYS)
@@ -272,7 +279,7 @@ public:
 
 	/// @brief 指定キーがこのフレームで離されたか（KeyCode 版）
 	/// @param keyCode 型付きキーコード
-	/// @return 今フレーム非押下かつ前フレーム押下なら true
+	/// @return 今フレームで押されておらず、前フレームで押されていれば true
 	[[nodiscard]] bool isKeyJustReleased(KeyCode keyCode) const noexcept
 	{
 		return isKeyJustReleased(static_cast<int>(keyCode));
@@ -280,7 +287,7 @@ public:
 
 	/// @brief マウスボタンがこのフレームで押されたか（エッジ検出）
 	/// @param button マウスボタン
-	/// @return 今フレーム押下かつ前フレーム非押下なら true
+	/// @return 今フレームで押されていて、前フレームで押されていなければ true
 	[[nodiscard]] bool isMouseButtonJustPressed(MouseButton button) const noexcept
 	{
 		const auto index = static_cast<std::size_t>(button);
@@ -293,7 +300,7 @@ public:
 
 	/// @brief マウスボタンがこのフレームで離されたか（エッジ検出）
 	/// @param button マウスボタン
-	/// @return 今フレーム非押下かつ前フレーム押下なら true
+	/// @return 今フレームで押されておらず、前フレームで押されていれば true
 	[[nodiscard]] bool isMouseButtonJustReleased(MouseButton button) const noexcept
 	{
 		const auto index = static_cast<std::size_t>(button);
@@ -339,8 +346,8 @@ public:
 	}
 
 	/// @brief マウス座標を設定する
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	void setMousePosition(float x, float y) noexcept
 	{
 		m_mouseX = x;
@@ -350,7 +357,7 @@ public:
 		++s_dbgSetCount;
 	}
 
-	// DEBUG: setMousePositionで最後に設定された値（static）
+	// DEBUG: setMousePosition で最後に設定された値（static）
 	static inline float s_dbgLastSetX = 0;
 	static inline float s_dbgLastSetY = 0;
 	static inline int s_dbgSetCount = 0;
@@ -382,6 +389,7 @@ private:
 	float m_rawDeltaX;     ///< キャプチャ中の蓄積生デルタX（beginFrame でリセット）
 	float m_rawDeltaY;     ///< キャプチャ中の蓄積生デルタY（beginFrame でリセット）
 	float m_mouseWheel = 0.0f;  ///< このフレームの累積ホイール量（beginFrame / endTick でリセット）
+	float m_mouseWheelH = 0.0f; ///< 同、横ホイール
 	std::array<bool, MAX_KEYS> m_injectedKeys{};            ///< injector 由来の押下 (focus 喪失クリア対象外)
 	std::array<bool, MAX_MOUSE_BUTTONS> m_injectedMouse{};  ///< injector 由来のボタン (同上)
 };

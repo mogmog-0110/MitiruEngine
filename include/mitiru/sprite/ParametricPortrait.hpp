@@ -66,9 +66,9 @@ class ParametricPortrait
 {
 public:
 	/// @brief Loader callback の型。
-	/// @details texture が初めて必要になった時、解決済みの絶対 path で呼ばれる。
-	///          失敗を伝えるには空 (default 構築) の `Texture` を返す。portrait は
-	///          stderr に log を出し空の ref を返す。
+	/// @details texture が初めて必要になったとき、解決済みの絶対 path で呼ばれる。
+	///          失敗を伝えるには空 (default 構築) の `Texture` を返す。そのとき portrait は
+	///          stderr に log を出し、空の ref を返す。
 	using LoaderFn = std::function<mitiru::render::Texture(const std::filesystem::path&)>;
 
 	/// @brief 1 つの量子化軸。
@@ -103,10 +103,10 @@ public:
 
 	// ── override flag ────────────────────────────────────────────────
 
-	/// @brief override を登録する: `flag` が有効な時、`select()` は通常計算される
+	/// @brief override を登録する。`flag` が有効なとき、`select()` は通常の計算で決まる
 	///        portrait の代わりに `overridePath` (baseDir からの相対) の texture
 	///        を返す。
-	/// @details 複数の override は挿入順に検査され、最初に有効な flag が勝つ。
+	/// @details 複数の override は挿入順に調べ、最初に有効だった flag のものを使う。
 	void addOverride(std::string_view flag, std::string_view overridePath)
 	{
 		std::lock_guard lock(m_mutex);
@@ -182,7 +182,7 @@ private:
 		return "0";
 	}
 
-	/// @brief 全ての軸 placeholder を置換して相対 path 文字列を組み立てる。
+	/// @brief 全ての軸の placeholder を置換して、相対 path の文字列を組み立てる。
 	std::string buildPath(const std::array<float, N_AXES>& values) const
 	{
 		std::string result = m_pathTemplate;
@@ -195,7 +195,7 @@ private:
 		return result;
 	}
 
-	/// @brief `str` 中の `placeholder` の全出現を `value` に置換する。
+	/// @brief `str` 中に出てくる `placeholder` をすべて `value` に置換する。
 	static void replacePlaceholder(std::string& str,
 	                               const std::string& placeholder,
 	                               const std::string& value)

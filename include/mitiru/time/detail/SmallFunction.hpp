@@ -195,7 +195,7 @@ private:
         move_    = [](void* dst, void* src) {
             // src と dst は m_buf 配列。pointer の byte をコピーする
             std::memcpy(dst, src, sizeof(void*));
-            // moved-from の SmallFunction が double-free しないよう src pointer を 0 化
+            // moved-from の SmallFunction が double-free しないよう src pointer を 0 にする
             void* null_ptr = nullptr;
             std::memcpy(src, &null_ptr, sizeof(void*));
         };

@@ -1,22 +1,22 @@
-// mitiru_dev_companion。watch-mode の game と並んで起動する小型「dev console」バー。
-// 以前 launcher の project 行にあった [Build] / [Inspector] / [Stop] を担う。
+// mitiru_dev_companion。watch-mode の game と並んで起動する小型の「dev console」バー。
+// 以前 launcher の project 行にあった [Build] / [Inspector] / [Stop] の役割を担う。
 //
-// アトミックツール的根拠: launcher = picker、companion = アクティブセッション操作。
-// 混在させると「Run と Watch と Build の違いは?」の混乱を生んだ (user feedback 2026-05-21)。
+// アトミックツールとしての根拠。launcher = picker、companion = アクティブセッション操作。
+// 混在させると「Run と Watch と Build の違いは?」という混乱を招いた (user feedback 2026-05-21)。
 //
-// Session handshake (launcher → companion):
+// セッションの受け渡し (launcher → companion)。
 //   launcher の [Open] が game + companion を起動する際、まず以下を含む
-//   %TEMP%/mitiru_dev_session_<pid>.json を書く:
+//   %TEMP%/mitiru_dev_session_<pid>.json を書く。
 //     { gamePid, projectName, projectDll, buildDir, buildTarget }
-//   launcher はこのファイルパスを mitiru_host の第3 CLI 引数として渡す
+//   launcher はこのファイルパスを mitiru_host の第 3 CLI 引数として渡す
 //   (DLL パスと --flags の後)。companion は MITIRU_COMPANION_SESSION env var
 //   から読む (launcher が設定)。
 //
-// Lifecycle:
-//   - on_init: session ファイル読込、game プロセスの HANDLE 解決、companion 窓を topmost に
+// ライフサイクル。
+//   - on_init: session ファイルの読み込み、game プロセスの HANDLE の取得、companion 窓を topmost に設定
 //   - on_update: game HANDLE を poll。game 終了時は intents->requestStop で自分も閉じる
 //   - actions: companion.build (async cmake)、companion.stop (game に TerminateProcess)、
-//     companion.inspector (mitiru_inspector.exe 起動)
+//     companion.inspector (mitiru_inspector.exe を起動)
 
 #include <algorithm>
 #include <chrono>
@@ -79,8 +79,8 @@ struct CompanionMemory
 	bool                    gameStillAlive {true};   // 毎フレーム更新
 	bool                    topmostApplied {false};  // 初回フレームで EnumWindows 1 回
 
-	// docking 用 HWND キャッシュ。どちらの窓も再生成され得る (companion の CEF 再起動、
-	// game の hot-reload 等) ため毎フレーム更新。
+	// docking 用の HWND キャッシュ。どちらの窓も再生成され得る (companion の再起動、
+	// game の hot-reload など) ため、毎フレーム更新する。
 	HWND                    selfHwnd {nullptr};
 	HWND                    gameHwnd {nullptr};
 	int                     dockTick {0};            // SetWindowPos 呼び出しを throttle
@@ -91,15 +91,13 @@ struct CompanionMemory
 	std::vector<BuildJob>   activeBuilds;            // single-slot in practice
 	BuildResult             lastBuild;
 
-	// Inspector 子プロセス。toggle 用に保持 (同時に 1 つだけ。再度 [Inspector] を
+	// Inspector 子プロセス。toggle 用に保持する (同時に 1 つだけ。再度 [Inspector] を
 	// 押すと新規起動せず閉じる)。
 	HANDLE                  inspectorProc {nullptr};
 	HANDLE                  inspectorThread {nullptr};
 	DWORD                   inspectorPid {0};
 
-	// Push throttle (C++ 側で dedup しない。JS が担う。以前ここでも dedup していたが、
-	// scene.html が onStateChange ハンドラ登録前に初回 push が届くと state が黙って捨てられ、
-	// UI が初期値のまま固まり続けた)。
+	// Push throttle (C++ 側では dedup しない。同じ値の push は UI の data model が無視する)。
 	int    pushTick      {0};
 	bool   firstPush     {true};
 
@@ -197,12 +195,12 @@ void loadSession(CompanionMemory& mem)
 
 // ── 自分を topmost に ─────────────────────────────────────────────────
 //
-// game 窓に埋もれないよう companion は always-on-top にしたい。きれいな
-// engine API が (まだ) ないので Win32 を直接叩く: このプロセス所有の
-// top-level 窓を列挙し各々に SetWindowPos する。
+// game 窓に隠れないよう、companion は always-on-top にしたい。適切な
+// engine API が (まだ) ないので Win32 を直接使う。このプロセスが所有する
+// top-level 窓を列挙し、それぞれに SetWindowPos を実行する。
 
-/// `pid` 所有の最初の可視 top-level 窓を探す。無ければ nullptr。
-/// 対象プロセスがまだ窓を作っていない可能性があるので caller は次フレームで再試行する。
+/// `pid` が所有する最初の可視 top-level 窓を探す。無ければ nullptr。
+/// 対象プロセスがまだ窓を作っていない可能性があるので、caller は次のフレームで再試行する。
 HWND findFirstVisibleWindow(DWORD pid)
 {
 	struct Ctx { DWORD pid; HWND result; };
@@ -237,7 +235,7 @@ void applyTopmostOnce(CompanionMemory& mem)
 }
 
 /// companion を game 窓の上 (空きが無ければ下) に配置する。
-/// 幅は固定 (game に合わせない)。合わせると標準 game でバーが 1280×80 = 16:1 になる。
+/// 幅は固定する (game に合わせない)。合わせると標準 game ではバーが 1280×80 = 16:1 になる。
 /// ~6Hz に throttle し、更新の合間にユーザーが手動で動かせる余地を残す。
 void dockToGameWindow(CompanionMemory& mem)
 {
@@ -262,8 +260,8 @@ void dockToGameWindow(CompanionMemory& mem)
 	constexpr int kCompanionFixedWidth = 700;
 	const int myWidth = (gameWidth < kCompanionFixedWidth) ? gameWidth : kCompanionFixedWidth;
 
-	// バーは game 窓のすぐ上を優先。空きが足りない場合 (game が画面上端や
-	// マルチモニタ端に貼り付いている) は game 下端のすぐ下に配置する。
+	// バーは game 窓のすぐ上への配置を優先する。空きが足りない場合 (game が画面上端や
+	// マルチモニタ端に接している) は game 下端のすぐ下に配置する。
 	int newTop = gameRect.top - myHeight;
 	if (newTop < 0) { newTop = gameRect.bottom; }
 
@@ -273,8 +271,8 @@ void dockToGameWindow(CompanionMemory& mem)
 		SWP_NOACTIVATE);
 }
 
-/// inspector 窓の初回配置。探さずに見えるよう game 窓のすぐ右に置く。
-/// Inspector の生存期間中 1 回だけ発火。以後のユーザーのドラッグは尊重する。
+/// inspector 窓の初回配置。探さなくても見えるよう、game 窓のすぐ右に置く。
+/// Inspector の生存期間中に 1 回だけ実行する。以後はユーザーによるドラッグを尊重する。
 void positionInspectorIfNew(CompanionMemory& mem)
 {
 	if (mem.inspectorPid == 0 || mem.inspectorPositioned) { return; }
@@ -312,7 +310,7 @@ void pollGameAlive(CompanionMemory& mem, mitiru::module::FrameIntents* intents)
 	const DWORD wait = WaitForSingleObject(mem.hGame, 0);
 	if (wait == WAIT_OBJECT_0)
 	{
-		// game 終了。orphan として残らないよう自分も閉じる。
+		// game 終了。孤立したプロセスとして残らないよう自分も閉じる。
 		mem.gameStillAlive = false;
 		intents->requestStop = 1;
 	}
@@ -391,14 +389,14 @@ bool isBuildActive(const CompanionMemory& mem)
 
 // ── Inspector / Stop アクション ────────────────────────────────────────
 
-// spawnInspector / stopGame が status メッセージを flash できるよう前方宣言。
+// spawnInspector / stopGame が status メッセージを flash できるよう前方宣言する。
 void pushFlash(CompanionMemory& mem,
                mitiru::module::FrameIntents* intents,
                const std::string& kind, const std::string& message);
 
 std::optional<std::filesystem::path> findInspectorExe(const std::filesystem::path& hostDir)
 {
-	// mitiru_inspector.exe はレイアウト次第で 2 箇所に存在し得る:
+	// mitiru_inspector.exe はレイアウトによって 2 箇所に存在し得る。
 	//   1. mitiru_host.exe の隣 (release zip / clean install)。
 	//   2. examples/mitiru_inspector/ サブディレクトリ (dev build tree。
 	//      各ターゲットが独自の RUNTIME_OUTPUT_DIRECTORY を持つ)。
@@ -414,9 +412,9 @@ std::optional<std::filesystem::path> findInspectorExe(const std::filesystem::pat
 	return std::nullopt;
 }
 
-/// 指定 PID 所有の全 top-level 窓に WM_CLOSE を送る。
-/// ユーザーが toggle で off にしたとき inspector 子プロセスを綺麗に畳むのに使う
-/// (乱暴な TerminateProcess ではなく WM_CLOSE で engine の cleanup を走らせる)。
+/// 指定 PID が所有するすべての top-level 窓に WM_CLOSE を送る。
+/// ユーザーが toggle で off にしたとき、inspector 子プロセスを正常に閉じるために使う
+/// (強制的な TerminateProcess ではなく、WM_CLOSE で engine の cleanup を実行する)。
 void closeProcessWindows(DWORD pid)
 {
 	struct Ctx { DWORD pid; };
@@ -442,8 +440,8 @@ bool isInspectorAlive(const CompanionMemory& mem)
 
 void reapInspector(CompanionMemory& mem)
 {
-	// ユーザー操作での close (inspector 窓の X を押した) を検出。死んだプロセスに
-	// 話しかけるのを避け、次の [Inspector] クリックで再起動するよう handle を捨てる。
+	// ユーザー操作による close (inspector 窓の X を押した) を検出する。終了したプロセスに
+	// 操作しようとするのを避け、次の [Inspector] クリックで再起動するよう handle を破棄する。
 	if (mem.inspectorProc != nullptr && !isInspectorAlive(mem))
 	{
 		CloseHandle(mem.inspectorProc);
@@ -458,13 +456,13 @@ void reapInspector(CompanionMemory& mem)
 void toggleInspector(CompanionMemory& mem,
                      mitiru::module::FrameIntents* intents)
 {
-	// toggle 挙動: Inspector が起動中なら閉じる。そうでなければ新規起動。
-	// [Inspector] 連打でデスクトップが散らからないようにする。
+	// toggle の挙動。Inspector が起動中なら閉じる。そうでなければ新規起動する。
+	// [Inspector] を連打しても複数の窓が開かないようにする。
 	if (isInspectorAlive(mem))
 	{
 		closeProcessWindows(mem.inspectorPid);
-		// block しない。次フレームの reapInspector() がプロセス終了を検出し handle を片付ける。
-		// flash 無し: [Inspector]/[Hide Inspector] のボタンラベルが既に状態変化を表すので
+		// block しない。次のフレームの reapInspector() がプロセスの終了を検出し、handle を解放する。
+		// flash 無し。[Inspector]/[Hide Inspector] のボタンラベルがすでに状態変化を表すので、
 		// 「closed」の toast は冗長。
 		return;
 	}
@@ -508,9 +506,9 @@ void toggleInspector(CompanionMemory& mem,
 	mem.inspectorProc   = pi.hProcess;
 	mem.inspectorThread = pi.hThread;
 	mem.inspectorPid    = pi.dwProcessId;
-	// 成功時は flash 無し。ボタンラベルが "Hide Inspector" に変わり inspector 窓も
-	// 出るので「opened」toast は無意味。
-	// 上のエラー経路は flash する (失敗はボタンから見えないため)。
+	// 成功時は flash 無し。ボタンラベルが "Hide Inspector" に変わり、inspector 窓も
+	// 表示されるので「opened」toast は不要。
+	// 上のエラー経路では flash する (失敗はボタンから分からないため)。
 }
 
 void stopGame(CompanionMemory& mem)
@@ -536,7 +534,7 @@ void pushEnvState(CompanionMemory& mem,
 		{"inspectorOpen", isInspectorAlive(mem)},
 	};
 	mem.scratchJson = env.dump();
-	pushStateString(intents, "view.companion.env", mem.scratchJson);
+	pushStateString(intents, "view.env", mem.scratchJson);
 }
 
 void pushBuildState(CompanionMemory& mem,
@@ -553,7 +551,7 @@ void pushBuildState(CompanionMemory& mem,
 		j["durationMs"] = mem.lastBuild.durationMs;
 	}
 	mem.scratchJson = j.dump();
-	pushStateString(intents, "view.companion.build", mem.scratchJson);
+	pushStateString(intents, "view.build", mem.scratchJson);
 }
 
 void pushFlash(CompanionMemory& mem,
@@ -566,7 +564,7 @@ void pushFlash(CompanionMemory& mem,
 		{"at", static_cast<long long>(std::time(nullptr))},
 	};
 	mem.scratchJson = j.dump();
-	pushStateString(intents, "view.companion.flash", mem.scratchJson);
+	pushStateString(intents, "view.flash", mem.scratchJson);
 }
 
 // ── アクション dispatch ─────────────────────────────────────────────────
@@ -607,10 +605,10 @@ void processActionEvents(CompanionMemory& mem,
 		}
 	}
 
-	// companion アクション後はキーボードフォーカスを game に戻す。companion ボタン
-	// クリックで矢印キーが効かなくなる事態を防ぐ。Inspector toggle は例外: 新規
-	// inspector 窓を起動した直後はフォーカスをそこに残す (どのみち inspector を確実に
-	// ForegroundWindow できないが、caller が開いた以上 OS が前面に出す)。それ以外は
+	// companion のアクション後はキーボードフォーカスを game に戻す。companion ボタンを
+	// クリックすると矢印キーが効かなくなる事態を防ぐ。Inspector toggle は例外。新規
+	// inspector 窓を起動した直後はフォーカスをそこに残す (いずれにしても inspector を確実に
+	// ForegroundWindow にはできないが、caller が開いたため OS が前面に出す)。それ以外は
 	// フォーカスを game に戻す。
 	if (mem.gameHwnd == nullptr && mem.session.gamePid != 0)
 	{
@@ -618,9 +616,9 @@ void processActionEvents(CompanionMemory& mem,
 	}
 	if (mem.gameHwnd != nullptr)
 	{
-		// AllowSetForegroundWindow + SetForegroundWindow が sibling プロセスへ
-		// フォーカスを移す定石。AllowSetForegroundWindow 無しだと Win32 が黙って
-		// フォーカス奪取を拒否することがある。
+		// AllowSetForegroundWindow + SetForegroundWindow は sibling プロセスへ
+		// フォーカスを移す定石。AllowSetForegroundWindow が無いと、Win32 が通知せずに
+		// フォーカスの移動を拒否することがある。
 		AllowSetForegroundWindow(mem.session.gamePid);
 		SetForegroundWindow(mem.gameHwnd);
 	}
@@ -681,7 +679,7 @@ void on_shutdown(void* memory)
 		if (b.hThread)  { CloseHandle(b.hThread); }
 	}
 	mem.activeBuilds.clear();
-	// 開いている inspector も道連れに閉じる。game session が終わるため。
+	// 開いている inspector も一緒に閉じる。game session が終わるため。
 	if (mem.inspectorPid != 0) { closeProcessWindows(mem.inspectorPid); }
 	if (mem.inspectorProc)   { CloseHandle(mem.inspectorProc);   mem.inspectorProc   = nullptr; }
 	if (mem.inspectorThread) { CloseHandle(mem.inspectorThread); mem.inspectorThread = nullptr; }

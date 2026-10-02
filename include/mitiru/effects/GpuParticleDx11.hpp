@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file GpuParticleDx11.hpp
-/// @brief DirectX 11 GPUパーティクルシステム実装
-/// @details 構造化バッファ + コンピュートシェーダー(CS 5.0)によるGPUシミュレーションと、
+/// @brief DirectX 11 GPU パーティクルシステム実装
+/// @details 構造化バッファ + コンピュートシェーダー (CS 5.0) による GPU シミュレーションと、
 ///          インスタンス描画によるビルボードレンダリングを行う。
 ///          ピンポン方式のダブルバッファリングでパーティクルデータを管理する。
 ///
@@ -204,19 +204,19 @@ float4 PSMain(PSInput input) : SV_Target
 }
 )";
 
-/// @brief DirectX 11 GPUパーティクルシステム実装
-/// @details 構造化バッファのピンポンとCS 5.0コンピュートシェーダーによるシミュレーション、
-///          SV_InstanceIDベースのインスタンス描画を行う。
+/// @brief DirectX 11 GPU パーティクルシステム実装
+/// @details 構造化バッファのピンポンと CS 5.0 コンピュートシェーダーによるシミュレーション、
+///          SV_InstanceID ベースのインスタンス描画を行う。
 class GpuParticleDx11 final : public GpuParticleBase
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D11デバイス
-	/// @param context D3D11デバイスコンテキスト
+	/// @param device D3D11 デバイス
+	/// @param context D3D11 デバイスコンテキスト
 	/// @param maxParticles 最大パーティクル数
 	explicit GpuParticleDx11(ID3D11Device* device,
 	                         ID3D11DeviceContext* context,
@@ -238,7 +238,7 @@ public:
 		m_valid = true;
 	}
 
-	/// @brief GPUシミュレーションを実行する
+	/// @brief GPU シミュレーションを実行する
 	void update(float dt) override
 	{
 		if (!m_valid)
@@ -246,7 +246,7 @@ public:
 			return;
 		}
 
-		/// ステージングパーティクルをGPUバッファにアップロードする
+		/// ステージングパーティクルを GPU バッファにアップロードする
 		uploadStagingParticles();
 
 		if (m_activeCount == 0)
@@ -329,13 +329,13 @@ public:
 		ID3D11Buffer* vsCBs[] = {m_renderConstantBuffer.Get()};
 		m_context->VSSetConstantBuffers(0, 1, vsCBs);
 
-		/// パーティクルバッファをSRVとして頂点シェーダーにバインドする
+		/// パーティクルバッファを SRV として頂点シェーダーにバインドする
 		ID3D11ShaderResourceView* vsSRVs[] = {
 			m_particleSRV[m_currentBuffer].Get()
 		};
 		m_context->VSSetShaderResources(0, 1, vsSRVs);
 
-		/// 入力アセンブラ（頂点バッファなし、SV_VertexIDで駆動）
+		/// 入力アセンブラ（頂点バッファなし、SV_VertexID で駆動）
 		m_context->IASetInputLayout(nullptr);
 		m_context->IASetPrimitiveTopology(
 			D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -352,7 +352,7 @@ public:
 		/// ラスタライザステートを設定する
 		m_context->RSSetState(m_rasterizerState.Get());
 
-		/// インスタンス描画（6頂点/クアッド × m_activeCountインスタンス）
+		/// インスタンス描画（6 頂点/クアッド × m_activeCount インスタンス）
 		m_context->DrawInstanced(6, m_activeCount, 0, 0);
 
 		/// バインドを解除する
@@ -387,7 +387,7 @@ private:
 					"GpuParticleDx11: CreateBuffer (structured) failed");
 			}
 
-			/// SRVの生成
+			/// SRV の生成
 			D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
@@ -403,7 +403,7 @@ private:
 					"GpuParticleDx11: CreateShaderResourceView failed");
 			}
 
-			/// UAVの生成
+			/// UAV の生成
 			D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 			uavDesc.Format = DXGI_FORMAT_UNKNOWN;
 			uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
@@ -420,7 +420,7 @@ private:
 			}
 		}
 
-		/// ステージングバッファ（CPU→GPU転送用）
+		/// ステージングバッファ（CPU→GPU 転送用）
 		D3D11_BUFFER_DESC stagingDesc = {};
 		stagingDesc.ByteWidth = bufferSize;
 		stagingDesc.Usage = D3D11_USAGE_STAGING;
@@ -590,7 +590,7 @@ private:
 		}
 	}
 
-	/// @brief ステージングパーティクルをGPUバッファにアップロードする
+	/// @brief ステージングパーティクルを GPU バッファにアップロードする
 	void uploadStagingParticles()
 	{
 		const std::uint32_t uploadCount = prepareStagingUpload();
@@ -619,8 +619,8 @@ private:
 	}
 
 	/// @brief 死亡パーティクルを除去するコンパクション処理
-	/// @details GPUバッファをステージングにコピーし、生存パーティクルのみを
-	///          再パックしてアップロードする。
+	/// @details GPU バッファをステージングにコピーし、生存パーティクルだけを
+	///          詰め直してアップロードする。
 	void compactDeadParticles()
 	{
 		if (m_activeCount == 0)
@@ -628,7 +628,7 @@ private:
 			return;
 		}
 
-		/// GPUバッファをステージングバッファにコピーする
+		/// GPU バッファをステージングバッファにコピーする
 		m_context->CopyResource(
 			m_stagingBuffer.Get(),
 			m_particleBuffer[m_currentBuffer].Get());
@@ -688,11 +688,11 @@ private:
 		}
 	}
 
-	/// @brief HLSL文字列をコンパイルする
-	/// @param source HLSL文字列
+	/// @brief HLSL 文字列をコンパイルする
+	/// @param source HLSL 文字列
 	/// @param entryPoint エントリーポイント名
 	/// @param target コンパイルターゲット
-	/// @return コンパイル済みBlob
+	/// @return コンパイル済み Blob
 	[[nodiscard]] static ComPtr<ID3DBlob> compileHLSL(
 		std::string_view source,
 		const char* entryPoint,
@@ -735,7 +735,7 @@ private:
 		return shaderBlob;
 	}
 
-	// ── DX11固有メンバ変数 ──────────────────────────────
+	// ── DX11 固有メンバ変数 ──────────────────────────────
 	ID3D11Device* m_device = nullptr;                             ///< D3D11デバイス（非所有）
 	ID3D11DeviceContext* m_context = nullptr;                     ///< D3D11コンテキスト（非所有）
 

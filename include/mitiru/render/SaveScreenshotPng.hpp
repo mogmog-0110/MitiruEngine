@@ -5,13 +5,11 @@
 /// @details
 /// `Engine::capture()` が返す RGBA8 バッファをそのまま PNG に流すための
 /// 薄いヘルパー。consumer 側 (hello_game の F3 など) で
-///   - ./screenshots/ ディレクトリ作成
+///   -./screenshots/ ディレクトリ作成
 ///   - YYYYMMDD_HHMMSS のタイムスタンプ生成
-///   - stb_image_write 呼び出し
-/// の boilerplate が毎回 50 行ぐらい発生していたのを引き取る。
-///
-/// `stb_impl` (engine 同梱の static lib) を経由して `stbi_write_png` を
-/// 解決するので、consumer 側で stb の implementation を実装する必要はない。
+///   - PNG 符号化
+/// の boilerplate を毎回 50 行ぐらい書いていたのを、ここで引き受ける。
+/// 符号化は util::savePng (fpng、engine 同梱の static lib) に任せる。
 
 #include <cstdint>
 #include <cstdio>
@@ -21,7 +19,7 @@
 #include <string>
 #include <system_error>
 
-#include <stb_image_write.h>
+#include <mitiru/util/ImageWriter.hpp>
 
 namespace mitiru::render
 {
@@ -38,12 +36,7 @@ namespace mitiru::render
 	int height,
 	const std::string& path)
 {
-	if (!rgba || width <= 0 || height <= 0)
-	{
-		return false;
-	}
-	const int strideBytes = width * 4;
-	return stbi_write_png(path.c_str(), width, height, 4, rgba, strideBytes) != 0;
+	return util::savePng(path, rgba, width, height);
 }
 
 /// @brief 「<dir>/<prefix>_YYYYMMDD_HHMMSS.png」のパスを組み立てて保存する

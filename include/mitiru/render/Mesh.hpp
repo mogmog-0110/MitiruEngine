@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file Mesh.hpp
-/// @brief 3Dメッシュデータ
-/// @details 頂点データとインデックスデータを保持する3Dメッシュクラス。
+/// @brief 3D メッシュデータ
+/// @details 頂点データとインデックスデータを保持する 3D メッシュクラス。
 ///          プリミティブ生成用のファクトリメソッドも提供する。
 
 #include <atomic>
@@ -17,7 +17,7 @@
 namespace mitiru::render
 {
 
-/// @brief 3Dメッシュデータ
+/// @brief 3D メッシュデータ
 /// @details 頂点配列とインデックス配列を保持し、基本プリミティブの
 ///          生成ヘルパーを提供する。
 ///
@@ -76,21 +76,21 @@ public:
 		sgc::Vec3f min{FLT_MAX, FLT_MAX, FLT_MAX};
 		sgc::Vec3f max{-FLT_MAX, -FLT_MAX, -FLT_MAX};
 
-		/// @brief AABBの中心を計算する
+		/// @brief AABB の中心を計算する
 		[[nodiscard]] sgc::Vec3f center() const noexcept
 		{
 			return (min + max) * 0.5f;
 		}
 
-		/// @brief AABBの半径（各軸の半分のサイズ）を計算する
+		/// @brief AABB の半径（各軸の半分のサイズ）を計算する
 		[[nodiscard]] sgc::Vec3f extent() const noexcept
 		{
 			return (max - min) * 0.5f;
 		}
 	};
 
-	/// @brief メッシュ頂点からAABBを計算する
-	/// @return 全頂点を包含するAABB
+	/// @brief メッシュ頂点から AABB を計算する
+	/// @return 全頂点を包含する AABB
 	[[nodiscard]] AABB computeAABB() const noexcept
 	{
 		AABB aabb;
@@ -116,6 +116,14 @@ public:
 		return m_localAABB;
 	}
 
+	/// @brief カリング用の箱だけを差し替える (頂点と revision はそのまま)
+	/// @details GPU が頂点を書き換えるメッシュ (compute スキニング) は CPU 側の頂点が
+	///          バインドポーズのままなので、動いた後の箱を外から与える。次の setVertices で戻る。
+	void setLocalAABB(const AABB& box) noexcept
+	{
+		m_localAABB = box;
+	}
+
 	/// @brief 頂点データの参照を取得する
 	/// @return 頂点配列の定数参照
 	[[nodiscard]] const std::vector<Vertex3D>& vertices() const noexcept
@@ -132,7 +140,7 @@ public:
 
 	/// @brief 立方体メッシュを生成する
 	/// @param size 一辺の長さ
-	/// @return 立方体メッシュ（24頂点・36インデックス）
+	/// @return 立方体メッシュ（24 頂点・36 インデックス）
 	[[nodiscard]] static Mesh createCube(float size = 1.0f)
 	{
 		const float h = size * 0.5f;
@@ -180,7 +188,7 @@ public:
 		std::vector<uint32_t> idx;
 		idx.reserve(36);
 
-		/// 6面×2三角形×3頂点 = 36インデックス
+		/// 6 面×2 三角形×3 頂点 = 36 インデックス
 		for (uint32_t face = 0; face < 6; ++face)
 		{
 			const uint32_t base = face * 4;
@@ -197,7 +205,7 @@ public:
 		return mesh;
 	}
 
-	/// @brief UV球メッシュを生成する
+	/// @brief UV 球メッシュを生成する
 	/// @param radius 半径
 	/// @param segments セグメント数（経度・緯度方向）
 	/// @return 球メッシュ
@@ -249,11 +257,11 @@ public:
 				const auto d = b + 1;
 
 				idx.push_back(a);
-				idx.push_back(b);
 				idx.push_back(c);
+				idx.push_back(b);
 
-				idx.push_back(c);
 				idx.push_back(b);
+				idx.push_back(c);
 				idx.push_back(d);
 			}
 		}
@@ -266,7 +274,7 @@ public:
 	/// @brief 平面メッシュを生成する
 	/// @param width 幅
 	/// @param height 高さ
-	/// @return 平面メッシュ（XZ平面、Y=0、4頂点・6インデックス）
+	/// @return 平面メッシュ（XZ 平面、Y=0、4 頂点・6 インデックス）
 	[[nodiscard]] static Mesh createPlane(float width = 1.0f, float height = 1.0f)
 	{
 		const float hw = width * 0.5f;
@@ -284,7 +292,7 @@ public:
 
 		// 0,1,2 / 0,2,3 だと幾何学的な表が -Y を向き、宣言した法線 (0,+1,0) と食い違う。
 		// メッシュ用パイプラインの既定は背面カリングなので、法線の側 (上) から見ると
-		// この面ごと消える -- 「plane だけ描画されない」の正体。表裏は法線に合わせる。
+		// この面ごと消える。「plane だけ描画されない」の原因はこれ。表裏は法線に合わせる。
 		std::vector<uint32_t> idx = {0, 2, 1, 0, 3, 2};
 
 		mesh.setVertices(std::move(verts));

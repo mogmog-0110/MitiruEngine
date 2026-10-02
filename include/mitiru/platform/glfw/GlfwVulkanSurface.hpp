@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file GlfwVulkanSurface.hpp
-/// @brief GLFW+Vulkanサーフェス生成
-/// @details GLFWウィンドウからVkSurfaceKHRを生成するユーティリティ。
-///          MITIRU_HAS_GLFWとMITIRU_HAS_VULKANの両方が定義されている場合に使用可能。
+/// @brief GLFW+Vulkan サーフェス生成
+/// @details GLFW ウィンドウから VkSurfaceKHR を生成するユーティリティ。
+///          MITIRU_HAS_GLFW と MITIRU_HAS_VULKAN の両方が定義されている場合に使用可能。
 
 #include <cstdint>
 #include <string>
@@ -12,16 +12,16 @@
 namespace mitiru
 {
 
-/// @brief GLFW+Vulkanサーフェス生成パラメータ
-/// @details GLFWウィンドウからVkSurfaceKHRを生成する際のパラメータ。
-///          実際のGLFW/Vulkan APIに依存せず、テストで使用可能。
+/// @brief GLFW+Vulkan サーフェス生成パラメータ
+/// @details GLFW ウィンドウから VkSurfaceKHR を生成する際のパラメータ。
+///          実際の GLFW/Vulkan API に依存せず、テストで使用可能。
 struct GlfwVulkanSurfaceDesc
 {
 	bool requirePresentation = true;  ///< プレゼンテーション機能を要求するか
 
-	/// @brief GLFWが必要とするVulkanインスタンス拡張名リストを取得する
+	/// @brief GLFW が必要とする Vulkan インスタンス拡張名リストを取得する
 	/// @return 拡張名のリスト
-	/// @note 実行時にはglfwGetRequiredInstanceExtensionsを使用すること。
+	/// @note 実行時には glfwGetRequiredInstanceExtensions を使用すること。
 	///       この関数はコンパイル時のデフォルト値を返す。
 	[[nodiscard]] static std::vector<std::string> defaultRequiredExtensions()
 	{
@@ -48,7 +48,7 @@ struct SurfaceCreateResult
 	std::string errorMessage;         ///< エラーメッセージ（失敗時のみ）
 
 	/// @brief 成功結果を生成する
-	/// @return 成功を示すSurfaceCreateResult
+	/// @return 成功を示す SurfaceCreateResult
 	[[nodiscard]] static SurfaceCreateResult ok() noexcept
 	{
 		SurfaceCreateResult result;
@@ -58,7 +58,7 @@ struct SurfaceCreateResult
 
 	/// @brief 失敗結果を生成する
 	/// @param message エラーメッセージ
-	/// @return 失敗を示すSurfaceCreateResult
+	/// @return 失敗を示す SurfaceCreateResult
 	[[nodiscard]] static SurfaceCreateResult fail(const std::string& message)
 	{
 		SurfaceCreateResult result;
@@ -78,13 +78,13 @@ struct SurfaceCreateResult
 namespace mitiru
 {
 
-/// @brief GLFWウィンドウからVulkanサーフェスを生成するユーティリティ
-/// @details glfwCreateWindowSurfaceのラッパー。
+/// @brief GLFW ウィンドウから Vulkan サーフェスを生成するユーティリティ
+/// @details glfwCreateWindowSurface のラッパー。
 ///
 /// @code
 /// GlfwVulkanSurface surfaceUtil;
 /// auto extensions = surfaceUtil.getRequiredExtensions();
-/// // VulkanInstance生成時にextensionsを指定 ...
+/// // VulkanInstance 生成時に extensions を指定 ...
 /// VkSurfaceKHR surface;
 /// auto result = surfaceUtil.createSurface(instance, window, &surface);
 /// if (!result.success)
@@ -95,7 +95,7 @@ namespace mitiru
 class GlfwVulkanSurface
 {
 public:
-	/// @brief GLFWが必要とするVulkanインスタンス拡張を取得する
+	/// @brief GLFW が必要とする Vulkan インスタンス拡張を取得する
 	/// @return 拡張名のリスト
 	[[nodiscard]] static std::vector<std::string> getRequiredExtensions()
 	{
@@ -112,9 +112,9 @@ public:
 		return result;
 	}
 
-	/// @brief GLFWウィンドウからVulkanサーフェスを生成する
-	/// @param instance VkInstanceハンドル
-	/// @param window GLFWウィンドウハンドル
+	/// @brief GLFW ウィンドウから Vulkan サーフェスを生成する
+	/// @param instance VkInstance ハンドル
+	/// @param window GLFW ウィンドウハンドル
 	/// @param outSurface 生成されたサーフェスの出力先
 	/// @return サーフェス生成結果
 	[[nodiscard]] static SurfaceCreateResult createSurface(

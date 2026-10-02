@@ -20,14 +20,14 @@
 namespace mitiru::data
 {
 
-/// @brief INIファイルパーサー
-/// @details セクション付きKey=Value形式のテキストを解析する。
+/// @brief INI ファイルパーサー
+/// @details セクション付き Key=Value 形式のテキストを解析する。
 ///          セクションなしのキーは空文字列セクションに格納される。
 class IniParser
 {
 public:
-	/// @brief INI文字列を解析する
-	/// @param text INI形式のテキスト
+	/// @brief INI 文字列を解析する
+	/// @param text INI 形式のテキスト
 	void parse(const std::string& text)
 	{
 		m_data.clear();
@@ -159,7 +159,7 @@ private:
 		return s.substr(start, end - start + 1);
 	}
 
-	/// @brief セクション→(キー→値)の2重マップ
+	/// @brief セクション→(キー→値) の 2 重マップ
 	std::unordered_map<std::string,
 		std::unordered_map<std::string, std::string>> m_data;
 };

@@ -3,7 +3,7 @@
 /// @file SceneGraph.hpp
 /// @brief 階層的トランスフォームグラフ
 /// @details エンティティの親子関係を管理し、ワールド変換行列を
-///          親チェーンから計算する。世代付きNodeIdで安全なハンドルを提供。
+///          親チェーンから計算する。世代付き NodeId で安全なハンドルを提供。
 
 #include <cstdint>
 #include <functional>
@@ -28,20 +28,20 @@ struct NodeId
 	/// @brief 世代を取得する
 	[[nodiscard]] uint16_t generation() const noexcept { return static_cast<uint16_t>(value >> 16); }
 
-	/// @brief 有効なIDか
+	/// @brief 有効な ID か
 	[[nodiscard]] bool isValid() const noexcept { return value != 0xFFFFFFFF; }
 
 	/// @brief 等値比較
 	bool operator==(const NodeId& other) const noexcept { return value == other.value; }
 	bool operator!=(const NodeId& other) const noexcept { return value != other.value; }
 
-	/// @brief インデックスと世代からNodeIdを作成する
+	/// @brief インデックスと世代から NodeId を作成する
 	[[nodiscard]] static NodeId make(uint16_t idx, uint16_t gen) noexcept
 	{
 		return NodeId{static_cast<uint32_t>(gen) << 16 | idx};
 	}
 
-	/// @brief 無効なNodeId
+	/// @brief 無効な NodeId
 	[[nodiscard]] static NodeId invalid() noexcept { return NodeId{0xFFFFFFFF}; }
 };
 
@@ -67,7 +67,7 @@ class SceneGraph
 public:
 	/// @brief ノードを作成する
 	/// @param name ノード名
-	/// @return 新規ノードID
+	/// @return 新規ノード ID
 	[[nodiscard]] NodeId createNode(const std::string& name = "")
 	{
 		uint16_t idx;
@@ -93,7 +93,7 @@ public:
 	}
 
 	/// @brief ノードを破棄する（子ノードも再帰的に破棄）
-	/// @param id 破棄するノードID
+	/// @param id 破棄するノード ID
 	void destroyNode(NodeId id)
 	{
 		if (!isValid(id)) return;
@@ -141,7 +141,7 @@ public:
 	}
 
 	/// @brief ノードを取得する
-	/// @param id ノードID
+	/// @param id ノード ID
 	/// @return ノードへのポインタ（無効なら nullptr）
 	[[nodiscard]] SceneNode* getNode(NodeId id) noexcept
 	{
@@ -149,7 +149,7 @@ public:
 		return &m_nodes[id.index()];
 	}
 
-	/// @brief ノードを取得する（const版）
+	/// @brief ノードを取得する（const 版）
 	[[nodiscard]] const SceneNode* getNode(NodeId id) const noexcept
 	{
 		if (!isValid(id)) return nullptr;
@@ -233,7 +233,7 @@ public:
 	}
 
 private:
-	/// @brief nodeAがnodeBの祖先かどうか
+	/// @brief nodeA が nodeB の祖先かどうか
 	[[nodiscard]] bool isAncestor(NodeId ancestor, NodeId descendant) const
 	{
 		auto current = descendant;

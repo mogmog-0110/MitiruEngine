@@ -1,6 +1,6 @@
 #pragma once
-// EngineHttpServer の AI Lens / Inspector 観測 / AI フレーム・音観測系ハンドラ実装。
-// server/EngineHttpServer.hpp から末尾 include される (単体 include も親経由で自己完結)。
+// EngineHttpServer のハンドラ実装 (AI Lens / Inspector 観測 / AI のフレームと音の観測)。
+// server/EngineHttpServer.hpp の末尾から include される (単体で include しても親経由で自己完結する)。
 
 #include <mitiru/server/EngineHttpServer.hpp>
 
@@ -15,7 +15,8 @@
 #include <mitiru/observe/QueryParser.hpp>
 #include <mitiru/observe/SnapshotSchema.hpp>
 #include <mitiru/server/JsonHelper.hpp>
-#include <mitiru/server/PngEncoder.hpp>
+#include <mitiru/server/detail/ResizePixels.hpp>
+#include <mitiru/util/ImageWriter.hpp>
 #include <mitiru/util/Base64.hpp>
 
 // ── AI Lens ────────────────────────────────────────
@@ -64,7 +65,7 @@ inline void mitiru::server::EngineHttpServer::handleAiBranch(const HttpRequest& 
 	{ resp.status = 503; resp.setBody(R"({"error":"branch not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
 	const auto keys = detail::extractJsonString(req.body, "keys", "");
 	// frames は数値 ({"frames":300}) でも文字列 ({"frames":"300"}) でも受ける。
-	// 数値を先に試し、拾えなければ ("frames" が文字列 or 欠落) 文字列として読む。
+	// 数値として先に読み、読めなければ ("frames" が文字列か欠落) 文字列として読む。
 	int frames = detail::extractJsonInt(req.body, "frames", -1);
 	if (frames < 0)
 	{
@@ -76,9 +77,9 @@ inline void mitiru::server::EngineHttpServer::handleAiBranch(const HttpRequest& 
 	resp.status = 200; resp.setBody(m_callbacks.aiBranch(keys, frames));
 }
 
-/// @brief PUT /api/ai/state。body {"field": value, ...} を書き戻す (3-3)。
-/// @details 実装 (branch と同じ経路) は callback 側 (Engine_Http.hpp) にある。ここは
-///          未配線 503 と、callback が決めた status をそのまま転送するだけ。
+/// @brief PUT /api/ai/state。body {"field": value,...} を書き戻す (3-3)。
+/// @details 実装 (branch と同じ経路) は callback 側 (Engine_Http.hpp) にある。ここでは、
+///          未配線なら 503 を返し、それ以外は callback が決めた status をそのまま転送するだけ。
 inline void mitiru::server::EngineHttpServer::handleAiStatePut(const HttpRequest& req, HttpResponse& resp)
 {
 	if (!m_callbacks.aiStatePut)
@@ -101,8 +102,8 @@ inline void mitiru::server::EngineHttpServer::handleAiCommit(const HttpRequest& 
 	resp.setBody(body);
 }
 
-/// @brief POST /api/ai/discard。何もしない (ADR 0035「捨てる」)。live は元々未変更なので
-/// 現在の reflected state をそのまま返すだけの応答。
+/// @brief POST /api/ai/discard。何もしない (ADR 0035「捨てる」)。live は元から変更していないので、
+/// 現在の reflected state をそのまま返すだけ。
 inline void mitiru::server::EngineHttpServer::handleAiDiscard(const HttpRequest&, HttpResponse& resp)
 {
 	if (!m_callbacks.aiDiscard)
@@ -129,14 +130,14 @@ inline void mitiru::server::EngineHttpServer::handleAiWhy(const HttpRequest& req
 	if (!field.has_value() || field->empty())
 	{ resp.status = 400; resp.setBody(R"({"error":"missing required query param 'field'"})"); return; }
 	const std::string body = m_callbacks.aiWhy(*field);
-	// callback は「未知 field」も 200 の error body で返す (aiStatePut と同じ形の呼び分け不要さ
-	// を保つため)。ここでは "error" キーの有無だけ見て 400 に昇格させる。
+	// callback は「未知 field」も 200 の error body で返す (aiStatePut と同じく、呼び分けが要らない
+	// 形を保つため)。ここでは "error" キーの有無だけを見て 400 にする。
 	resp.status = (body.find(R"("error")") != std::string::npos) ? 400 : 200;
 	resp.setBody(body);
 }
 
 /// @brief POST /api/ai/candidates。O4 分岐候補: {"variants":[...], "keys":"...", "frames":N} を
-/// そのまま callback (Engine_Http.hpp) へ渡す。整形・上限適用は callback 側の責務。
+/// そのまま callback (Engine_Http.hpp) へ渡す。整形と上限の適用は callback 側が受け持つ。
 inline void mitiru::server::EngineHttpServer::handleAiCandidates(const HttpRequest& req, HttpResponse& resp)
 {
 	if (!m_callbacks.aiCandidates)
@@ -147,7 +148,7 @@ inline void mitiru::server::EngineHttpServer::handleAiCandidates(const HttpReque
 }
 
 /// @brief GET /api/frame/anatomy[?frame=N]。P10「1 フレームの解剖図」: 入力→書かれた
-/// フィールド(blame付き)→描画コマンド→音を 1 レスポンスで返す。N 省略/0 = 直近フレーム。
+/// フィールド (blame 付き)→描画コマンド→音を 1 レスポンスで返す。N を省略するか 0 なら直近フレーム。
 /// N は ring の「何フレーム前か」(aiStateAt の frame パラメータと同じ意味)。
 inline void mitiru::server::EngineHttpServer::handleFrameAnatomy(const HttpRequest& req, HttpResponse& resp)
 {
@@ -188,7 +189,7 @@ inline void mitiru::server::EngineHttpServer::handleObserveSchema(const HttpRequ
 }
 
 /// @brief GET /api/observe/inspect[?prefix=<p>]。Inspector key-value クエリ
-/// @details prefix パラメータがあればプレフィックスフィルタ、なければ全件返す。
+/// @details prefix パラメータがあればその接頭辞で絞り込み、なければ全件返す。
 inline void mitiru::server::EngineHttpServer::handleObserveInspect(const HttpRequest& req, HttpResponse& resp)
 {
 	if (!m_callbacks.inspectorQuery)
@@ -246,7 +247,7 @@ inline std::pair<int, int> mitiru::server::EngineHttpServer::captureSourceDims()
 }
 
 /// @brief screenshot JSON 断片を組み立てる。失敗時は空文字。
-/// @details reqW/reqH の片方指定はアスペクト維持で補完する。
+/// @details reqW/reqH の片方だけを指定したときは、アスペクト比を保つようにもう片方を補う。
 inline std::string mitiru::server::EngineHttpServer::buildScreenshotJson(int srcW, int srcH, int reqW, int reqH)
 {
 	const auto pixels = m_callbacks.capture();
@@ -260,16 +261,16 @@ inline std::string mitiru::server::EngineHttpServer::buildScreenshotJson(int src
 		src = detail::resizePixels(pixels, srcW, srcH, reqW, reqH);
 		outW = reqW; outH = reqH;
 	}
-	const auto png = detail::encodePng(src.data(), outW, outH);
+	const auto png = util::encodePng(src.data(), outW, outH);
 	if (png.empty()) { return {}; }
 	return "\"screenshot\":{\"width\":" + std::to_string(outW) +
 	       ",\"height\":" + std::to_string(outH) +
 	       ",\"pngBase64\":\"" + util::Base64::encode(png) + "\"}";
 }
 
-/// @brief GET /api/ai/frame。draw list + 縮小 screenshot を 1 レスポンスで返す
-/// @details 初回呼び出しで draw log 記録を有効化する (エントリは次フレームから)。
-///          ?screenshot=0 で PNG 省略、width/height で縮小指定 (既定 width=640)。
+/// @brief GET /api/ai/frame。draw list と縮小 screenshot を 1 レスポンスで返す
+/// @details 初回の呼び出しで draw log の記録を有効にする (エントリは次のフレームから)。
+///          ?screenshot=0 で PNG を省き、width/height で縮小の寸法を指定する (既定 width=640)。
 inline void mitiru::server::EngineHttpServer::handleAiFrame(const HttpRequest& req, HttpResponse& resp)
 {
 	if (!m_callbacks.drawLogEnable || !m_callbacks.drawLogJson)

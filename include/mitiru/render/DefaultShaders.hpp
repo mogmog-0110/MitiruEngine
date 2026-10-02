@@ -1,16 +1,16 @@
 ﻿#pragma once
 
 /// @file DefaultShaders.hpp
-/// @brief デフォルト2Dシェーダー定義
-/// @details 2D描画パイプラインで使用するHLSLシェーダーソースを
-///          constexpr文字列として提供する。
+/// @brief デフォルト 2D シェーダー定義
+/// @details 2D 描画パイプラインで使用する HLSL シェーダーソースを
+///          constexpr 文字列として提供する。
 
 #include <string_view>
 
 namespace mitiru::render
 {
 
-/// @brief デフォルト2D頂点シェーダーのHLSLソース
+/// @brief デフォルト 2D 頂点シェーダーの HLSL ソース
 /// @details 入力: float2 position, float2 texCoord, float4 color
 ///          定数バッファ: float4x4 projection（正射影行列）
 ///          出力: 変換後の位置とテクスチャ座標・色をパススルー
@@ -44,9 +44,12 @@ VSOutput VSMain(VSInput input)
 }
 )hlsl";
 
-/// @brief デフォルト2DピクセルシェーダーのHLSLソース
+/// @brief デフォルト 2D ピクセルシェーダーの HLSL ソース
 /// @details uUseTexture=0: 頂点色をそのまま出力
 ///          uUseTexture=1: テクスチャ×頂点色を出力
+///          uUseTexture=2: テクスチャを MTSDF として読み、輪郭の内側を頂点色で塗る。
+///                         uDistanceRange は距離場の幅 (テクスチャ上の画素)。画面上で何画素に
+///                         当たるかを微分から求めるので、拡大・縮小・回転しても縁の幅が 1 画素に揃う
 constexpr std::string_view DEFAULT_PS_2D = R"hlsl(
 Texture2D    tex0      : register(t0);
 SamplerState sampler0  : register(s0);
@@ -54,7 +57,8 @@ SamplerState sampler0  : register(s0);
 cbuffer PSConstants : register(b0)
 {
 	float uUseTexture;
-	float3 _pad;
+	float uDistanceRange;
+	float2 _pad;
 };
 
 struct PSInput
@@ -66,6 +70,18 @@ struct PSInput
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
+	if (uUseTexture > 1.5f)
+	{
+		float4 s = tex0.Sample(sampler0, input.texCoord);
+		float distance = max(min(s.r, s.g), min(max(s.r, s.g), s.b));
+		float texW, texH;
+		tex0.GetDimensions(texW, texH);
+		float2 unitRange = uDistanceRange / float2(texW, texH);
+		float2 screenTexSize = 1.0f / fwidth(input.texCoord);
+		float screenRange = max(0.5f * dot(unitRange, screenTexSize), 1.0f);
+		float opacity = saturate(screenRange * (distance - 0.5f) + 0.5f);
+		return float4(input.color.rgb, input.color.a * opacity);
+	}
 	if (uUseTexture > 0.5f)
 	{
 		float4 texColor = tex0.Sample(sampler0, input.texCoord);
@@ -77,7 +93,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 
 // ── SDF Styled Rectangle Shaders ───────────────────────
 
-/// @brief SDF角丸矩形用の頂点シェーダーHLSLソース
+/// @brief SDF 角丸矩形用の頂点シェーダー HLSL ソース
 /// @details 入力: float2 position, float2 localUV, float4 color, float4 shapeRect
 ///          定数バッファ b0: float4x4 projection（正射影行列）
 ///          出力: 変換後の位置と localUV, color, shapeRect をパススルー
@@ -114,8 +130,8 @@ VSOutput VSMain(VSInput input)
 }
 )hlsl";
 
-/// @brief SDF角丸矩形用のピクセルシェーダーHLSLソース
-/// @details 角丸SDF、最大8ストップグラデーション、ストローク、シャドウ、AA対応。
+/// @brief SDF 角丸矩形用のピクセルシェーダー HLSL ソース
+/// @details 角丸 SDF、最大 8 ストップグラデーション、ストローク、シャドウ、AA 対応。
 ///          定数バッファ b1 にスタイル定数を受け取る。
 constexpr std::string_view SDF_RECT_PS = R"hlsl(
 cbuffer StyleConstants : register(b1)
@@ -282,7 +298,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 
 // ── SDF Styled Circle/Ellipse Shaders ──────────────────
 
-/// @brief SDF円/楕円用の頂点シェーダーHLSLソース
+/// @brief SDF 円/楕円用の頂点シェーダー HLSL ソース
 /// @details SDF_RECT_VS と同じ入力レイアウトを使用する。
 ///          shapeRect には (centerX, centerY, rx, ry) を格納する。
 constexpr std::string_view SDF_CIRCLE_VS = R"hlsl(
@@ -318,8 +334,8 @@ VSOutput VSMain(VSInput input)
 }
 )hlsl";
 
-/// @brief SDF円/楕円用のピクセルシェーダーHLSLソース
-/// @details 楕円SDF、グラデーション、ストローク、シャドウ、アンチエイリアシング対応。
+/// @brief SDF 円/楕円用のピクセルシェーダー HLSL ソース
+/// @details 楕円 SDF、グラデーション、ストローク、シャドウ、アンチエイリアシング対応。
 ///          shapeRect = (centerX, centerY, rx, ry)
 ///          定数バッファ b1 にスタイル定数を受け取る（StyleConstants と同一レイアウト）。
 ///          cornerRadii は無視される（円/楕円に角丸は無い）。

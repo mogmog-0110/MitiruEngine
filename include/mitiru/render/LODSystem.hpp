@@ -2,8 +2,8 @@
 
 /// @file LODSystem.hpp
 /// @brief Level-of-Detail メッシュシステム
-/// @details カメラ距離に応じてメッシュの詳細度を自動切り替えする。
-///          ヒステリシス付きのLODレベル選択と、クロスフェード用ブレンド係数の
+/// @details カメラ距離に応じてメッシュの詳細度を自動で切り替える。
+///          ヒステリシス付きの LOD レベル選択と、クロスフェード用ブレンド係数の
 ///          算出をサポートする。
 
 #include <algorithm>
@@ -33,9 +33,9 @@
 namespace mitiru::render
 {
 
-/// @brief LODレベルに紐づくメッシュ情報
+/// @brief LOD レベルに紐づくメッシュ情報
 /// @details 頂点バッファ・インデックスバッファ・インデックス数と
-///          このLODが適用される最大距離を保持する。
+///          この LOD が適用される最大距離を保持する。
 struct LODLevel
 {
 #ifdef _WIN32
@@ -47,23 +47,23 @@ struct LODLevel
 	float transitionRange = 5.0f;     ///< クロスフェード遷移範囲（メートル）
 };
 
-/// @brief LODグループ（同一オブジェクトタイプのLODレベル集合）
-/// @details 距離順にソートされたLODレベルのリストと現在のアクティブレベルを保持する。
+/// @brief LOD グループ（同一オブジェクトタイプの LOD レベル集合）
+/// @details 距離順にソートされた LOD レベルのリストと現在のアクティブレベルを保持する。
 struct LODGroup
 {
 	std::vector<LODLevel> levels;     ///< LODレベル（距離の昇順でソート済み）
 	std::uint32_t currentLevel = 0;   ///< 現在のアクティブレベルインデックス
 };
 
-/// @brief スムースLOD選択結果
-/// @details 選択されたLODレベルとクロスフェード用ブレンド係数を返す。
+/// @brief スムース LOD 選択結果
+/// @details 選択された LOD レベルとクロスフェード用ブレンド係数を返す。
 struct LODSelection
 {
 	std::uint32_t level = 0;          ///< 選択されたLODレベルインデックス
 	float blendFactor = 0.0f;         ///< ブレンド係数（0.0 = 現在レベル、1.0 = 次レベル）
 };
 
-/// @brief LODシステム設定
+/// @brief LOD システム設定
 struct LODConfig
 {
 	float bias = 0.0f;               ///< 距離バイアス（正: LODを遠くにシフト）
@@ -72,7 +72,7 @@ struct LODConfig
 	float hysteresis = 2.0f;         ///< ヒステリシス距離（チャタリング防止）
 };
 
-/// @brief オブジェクトのLOD状態（バッチ更新用）
+/// @brief オブジェクトの LOD 状態（バッチ更新用）
 struct LODObject
 {
 	std::string groupId;             ///< LODグループID
@@ -81,7 +81,7 @@ struct LODObject
 	/// @brief 対応する描画オブジェクトの nodeId（`Scene3D::RenderObject::nodeId` と一致させる）。
 	/// @details これで LOD 判定結果を描画ループへ橋渡しできる。-1 = 未対応（橋渡し対象外）。
 	int nodeId = -1;
-	/// @brief カリング出力。`update()` が最低LODより遠いと判定したら true。
+	/// @brief カリング出力。`update()` が最低 LOD より遠いと判定したら true。
 	/// @details レンダラはこれを読んで描画をスキップする（true なら描かない）。
 	///          毎フレーム `update()` が再計算するので呼び出し側でのリセット不要。
 	bool culled = false;
@@ -140,10 +140,10 @@ public:
 		m_config = cfg;
 	}
 
-	/// @brief LODグループを登録する
-	/// @param id グループID
-	/// @param levels LODレベルの配列（距離の昇順でソートされる）
-	/// @throws std::invalid_argument levelsが空の場合
+	/// @brief LOD グループを登録する
+	/// @param id グループ ID
+	/// @param levels LOD レベルの配列（距離の昇順でソートされる）
+	/// @throws std::invalid_argument levels が空の場合
 	void registerGroup(const std::string& id,
 	                   std::vector<LODLevel> levels)
 	{
@@ -168,16 +168,16 @@ public:
 	}
 
 	/// @brief グループが登録されているかを確認する
-	/// @param id グループID
-	/// @return 登録済みならtrue
+	/// @param id グループ ID
+	/// @return 登録済みなら true
 	[[nodiscard]] bool hasGroup(const std::string& id) const
 	{
 		return m_groups.find(id) != m_groups.end();
 	}
 
 	/// @brief 登録済みグループを取得する
-	/// @param id グループID
-	/// @return LODグループの定数参照
+	/// @param id グループ ID
+	/// @return LOD グループの定数参照
 	/// @throws std::out_of_range グループが存在しない場合
 	[[nodiscard]] const LODGroup& getGroup(const std::string& id) const
 	{
@@ -190,11 +190,11 @@ public:
 		return it->second;
 	}
 
-	/// @brief カメラ距離に応じてLODレベルを選択する（グループ状態を変更しない）
-	/// @param groupId グループID
+	/// @brief カメラ距離に応じて LOD レベルを選択する（グループ状態を変更しない）
+	/// @param groupId グループ ID
 	/// @param cameraPos カメラ位置（float[3]）
 	/// @param objectPos オブジェクト位置（float[3]）
-	/// @return 選択されたLODレベルの定数参照
+	/// @return 選択された LOD レベルの定数参照
 	/// @throws std::out_of_range グループが存在しない場合
 	[[nodiscard]] const LODLevel& selectLOD(
 		const std::string& groupId,
@@ -215,7 +215,7 @@ public:
 		auto level = selectLevelWithHysteresis(
 			group, dist, group.currentLevel);
 
-		/// maxLevelで制限する
+		/// maxLevel で制限する
 		if (m_config.maxLevel > 0
 		    && level >= m_config.maxLevel)
 		{
@@ -225,11 +225,11 @@ public:
 		return group.levels[level];
 	}
 
-	/// @brief スムースLOD選択（クロスフェード用ブレンド係数付き）
-	/// @param groupId グループID
+	/// @brief スムース LOD 選択（クロスフェード用ブレンド係数付き）
+	/// @param groupId グループ ID
 	/// @param cameraPos カメラ位置（float[3]）
 	/// @param objectPos オブジェクト位置（float[3]）
-	/// @return LODレベルとブレンド係数
+	/// @return LOD レベルとブレンド係数
 	/// @throws std::out_of_range グループが存在しない場合
 	[[nodiscard]] LODSelection selectLODSmooth(
 		const std::string& groupId,
@@ -284,9 +284,9 @@ public:
 		return result;
 	}
 
-	/// @brief 全オブジェクトのLODを一括更新する
+	/// @brief 全オブジェクトの LOD を一括更新する
 	/// @param cameraPos カメラ位置（float[3]）
-	/// @param objects LODオブジェクトの配列（currentLevelが更新される）
+	/// @param objects LOD オブジェクトの配列（currentLevel が更新される）
 	void update(const float cameraPos[3],
 	            std::vector<LODObject>& objects)
 	{
@@ -320,7 +320,7 @@ public:
 				m_transitionCount++;
 			}
 
-			/// 最低LODより遠い場合はカリング対象とし、出力フラグに反映する。
+			/// 最低 LOD より遠い場合はカリング対象とし、出力フラグに反映する。
 			/// レンダラはこの obj.culled を読んで描画をスキップできる。
 			const auto& lastLevel = group.levels.back();
 			obj.culled = (dist > lastLevel.maxDistance);
@@ -331,7 +331,7 @@ public:
 		}
 	}
 
-	/// @brief LOD遷移回数を取得する
+	/// @brief LOD 遷移回数を取得する
 	[[nodiscard]] int lodTransitionCount() const noexcept
 	{
 		return m_transitionCount;
@@ -351,9 +351,9 @@ public:
 	}
 
 private:
-	/// @brief 2点間の距離を計算する
-	/// @param a 点A（float[3]）
-	/// @param b 点B（float[3]）
+	/// @brief 2 点間の距離を計算する
+	/// @param a 点 A（float[3]）
+	/// @param b 点 B（float[3]）
 	/// @return ユークリッド距離
 	[[nodiscard]] static float computeDistance(
 		const float a[3], const float b[3]) noexcept
@@ -364,11 +364,11 @@ private:
 		return std::sqrt(dx * dx + dy * dy + dz * dz);
 	}
 
-	/// @brief ヒステリシス付きLODレベル選択
-	/// @param group LODグループ
+	/// @brief ヒステリシス付き LOD レベル選択
+	/// @param group LOD グループ
 	/// @param distance カメラ-オブジェクト間距離
-	/// @param currentLevel 現在のLODレベル
-	/// @return 選択されたLODレベルインデックス
+	/// @param currentLevel 現在の LOD レベル
+	/// @return 選択された LOD レベルインデックス
 	[[nodiscard]] std::uint32_t selectLevelWithHysteresis(
 		const LODGroup& group,
 		float distance,
@@ -400,8 +400,8 @@ private:
 		}
 
 		/// ヒステリシスを適用する
-		/// より詳細なLOD（低いインデックス）への遷移にはヒステリシス分近づく必要がある
-		/// より粗いLOD（高いインデックス）への遷移にはヒステリシス分離れる必要がある
+		/// より詳細な LOD（低いインデックス）への遷移にはヒステリシス分近づく必要がある
+		/// より粗い LOD（高いインデックス）への遷移にはヒステリシス分離れる必要がある
 		if (targetLevel < currentLevel)
 		{
 			/// 詳細化：境界距離 - ヒステリシス 以下になるまで遷移しない

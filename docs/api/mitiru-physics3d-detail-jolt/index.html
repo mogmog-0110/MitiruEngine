@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::physics3d::detail::jolt — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (7 types, 32 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::physics3d::detail::jolt | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (7 types, 32 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::physics3d::detail::jolt | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (7 types, 32 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/" class="active"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::physics3d::detail::jolt</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (7 types, 32 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (7 types, 32 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#class-broadphaselayers"><code>BroadPhaseLayers</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#class-objectvsbroadphase"><code>ObjectVsBroadPhase</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-objectpairs"><code>ObjectPairs</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-layermaskgroupfilter"><code>LayerMaskGroupFilter</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-querymaskfilter"><code>QueryMaskFilter</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#class-contactrecorder"><code>ContactRecorder</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-runtime"><code>Runtime</code></a></td><td>class</td><td>4</td></tr>
+</tbody></table>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>inline constexpr JPH::ObjectLayer kNonMoving = 0</code></div>
+<div class="api-method"><code>inline constexpr JPH::ObjectLayer kMoving = 1</code></div>
+<div class="api-method"><code>inline constexpr JPH::uint kCount = 2</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::Vec3 toJolt(const sgc::Vec3f&amp; v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::RVec3 toJoltR(const sgc::Vec3f&amp; v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f fromJolt(JPH::Vec3Arg v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f fromJolt(JPH::RVec3Arg v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::Quat toJolt(const sgc::Quaternionf&amp; q) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Quaternionf fromJolt(JPH::QuatArg q) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline BodyId toBodyId(const JPH::BodyID&amp; id) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::BodyID toJoltId(BodyId id) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint32_t layerOf(const JPH::Body&amp; body) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::RefConst&lt;JPH::Shape&gt; finishShape(const JPH::ShapeSettings::ShapeResult&amp; result)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::RefConst&lt;JPH::Shape&gt; makeMeshShape(const BodyDesc&amp; desc)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::RefConst&lt;JPH::Shape&gt; makeBoxShape(const sgc::Vec3f&amp; halfExtents)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::RefConst&lt;JPH::Shape&gt; makeShape(const BodyDesc&amp; desc)</code></div>
+</div>
+<details class="api-class" id="class-broadphaselayers" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BroadPhaseLayers</code> <span class="api-class__extra">: public JPH::BroadPhaseLayerInterface</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>JPH::uint GetNumBroadPhaseLayers() const override</code></div>
+<div class="api-method"><code>JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override</code></div>
+<div class="api-method"><code>const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-objectvsbroadphase" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ObjectVsBroadPhase</code> <span class="api-class__extra">: public JPH::ObjectVsBroadPhaseLayerFilter</span> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool ShouldCollide(JPH::ObjectLayer layer, JPH::BroadPhaseLayer bp) const override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-objectpairs" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ObjectPairs</code> <span class="api-class__extra">: public JPH::ObjectLayerPairFilter</span> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool ShouldCollide(JPH::ObjectLayer a, JPH::ObjectLayer b) const override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-layermaskgroupfilter" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">LayerMaskGroupFilter</code> <span class="api-class__extra">: public JPH::GroupFilter</span> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool CanCollide(const JPH::CollisionGroup&amp; a, const JPH::CollisionGroup&amp; b) const override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-querymaskfilter" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">QueryMaskFilter</code> <span class="api-class__extra">: public JPH::BodyFilter</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit QueryMaskFilter(std::uint32_t mask) noexcept</code></div>
+<div class="api-method"><code>bool ShouldCollideLocked(const JPH::Body&amp; body) const override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-contactrecorder" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ContactRecorder</code> <span class="api-class__extra">: public JPH::ContactListener</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void OnContactAdded(const JPH::Body&amp; b1, const JPH::Body&amp; b2, const JPH::ContactManifold&amp; m, JPH::ContactSettings&amp;) override</code></div>
+<div class="api-method"><code>void OnContactPersisted(const JPH::Body&amp; b1, const JPH::Body&amp; b2, const JPH::ContactManifold&amp; m, JPH::ContactSettings&amp;) override</code></div>
+<div class="api-method"><code>void OnContactRemoved(const JPH::SubShapeIDPair&amp; pair) override</code></div>
+<div class="api-method"><code>void finishStep(const JPH::BodyLockInterface&amp; locks, std::vector&lt;BodyContact3D&gt;&amp; out)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-runtime">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Runtime</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Runtime()</code></div>
+<div class="api-method"><code>~Runtime()</code></div>
+<div class="api-method"><code>Runtime(const Runtime&amp;) = delete</code></div>
+<div class="api-method"><code>Runtime&amp; operator=(const Runtime&amp;) = delete</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

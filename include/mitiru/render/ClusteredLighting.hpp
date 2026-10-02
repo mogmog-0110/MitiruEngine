@@ -2,7 +2,7 @@
 
 /// @file ClusteredLighting.hpp
 /// @brief クラスター型ライティング
-/// @details フラスタムを3Dグリッドに分割し、各クラスターに影響するライトを割り当てる。
+/// @details フラスタムを 3D グリッドに分割し、各クラスターに影響するライトを割り当てる。
 ///          大量ライト（100+）でも高速なライト-フラグメント対応付けを実現する。
 
 #include <algorithm>
@@ -34,7 +34,7 @@ struct ClusterConfig
 	int maxLightsPerCluster = 32;
 };
 
-/// @brief 1つのクラスターのライトインデックスリスト
+/// @brief 1 つのクラスターのライトインデックスリスト
 struct Cluster
 {
 	int lightCount = 0;

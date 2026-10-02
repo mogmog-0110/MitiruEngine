@@ -2,7 +2,7 @@
 
 /// @file ConsoleLogger.hpp
 /// @brief コンソール出力ロガー
-/// @details ログをstd::cerrに出力する。開発・デバッグ用。
+/// @details ログを std::cerr に出力する。開発・デバッグ用。
 
 #include <iostream>
 #include <string_view>

@@ -2,7 +2,7 @@
 
 /// @file FrustumCulling.hpp
 /// @brief 視錐台カリング
-/// @details ViewProjection行列から6平面を抽出し、
+/// @details ViewProjection 行列から 6 平面を抽出し、
 ///          AABB/球体のビジビリティテストを行う。
 
 #include <algorithm>
@@ -21,7 +21,7 @@
 namespace mitiru::render
 {
 
-/// @brief 3D軸整列バウンディングボックス
+/// @brief 3D 軸整列バウンディングボックス
 struct AABB
 {
 	float minX = 0.0f, minY = 0.0f, minZ = 0.0f;
@@ -57,12 +57,12 @@ struct Plane
 	}
 };
 
-/// @brief 視錐台（6平面）
-/// @details ViewProjection行列の行成分から左右上下前後の
-///          6つのクリッピング平面を抽出する。
+/// @brief 視錐台（6 平面）
+/// @details ViewProjection 行列の行成分から左右上下前後の
+///          6 つのクリッピング平面を抽出する。
 ///
 /// @code
-/// float viewProj[16]; // column-major ViewProjection行列
+/// float viewProj[16]; // column-major ViewProjection 行列
 /// mitiru::render::Frustum frustum;
 /// frustum.extractFromViewProj(viewProj);
 /// if (frustum.isBoxVisible(aabb)) { /* 描画 */ }
@@ -70,8 +70,8 @@ struct Plane
 class Frustum
 {
 public:
-	/// @brief ViewProjection行列（column-major 4x4）から6平面を抽出する
-	/// @param m column-major 4x4行列（m[col*4+row]）
+	/// @brief ViewProjection 行列（column-major 4x4）から 6 平面を抽出する
+	/// @param m column-major 4x4 行列（m[col*4+row]）
 	void extractFromViewProj(const float m[16]) noexcept
 	{
 		// Gribb-Hartmann法: row-majorでのアクセスに変換
@@ -100,14 +100,14 @@ public:
 		}
 	}
 
-	/// @brief AABBが視錐台内に（部分的にでも）含まれるか判定する
-	/// @param box テスト対象のAABB
+	/// @brief AABB が視錐台内に（部分的にでも）含まれるか判定する
+	/// @param box テスト対象の AABB
 	/// @return true: 可視（完全または部分的に内側）
 	[[nodiscard]] bool isBoxVisible(const AABB& box) const noexcept
 	{
 		for (const auto& plane : m_planes)
 		{
-			// P頂点（平面法線方向で最も遠い頂点）を選択
+			// P 頂点（平面法線方向で最も遠い頂点）を選択
 			const float px = (plane.a >= 0.0f) ? box.maxX : box.minX;
 			const float py = (plane.b >= 0.0f) ? box.maxY : box.minY;
 			const float pz = (plane.c >= 0.0f) ? box.maxZ : box.minZ;
@@ -121,9 +121,9 @@ public:
 	}
 
 	/// @brief 球体が視錐台内に（部分的にでも）含まれるか判定する
-	/// @param cx 球体中心X
-	/// @param cy 球体中心Y
-	/// @param cz 球体中心Z
+	/// @param cx 球体中心 X
+	/// @param cy 球体中心 Y
+	/// @param cz 球体中心 Z
 	/// @param radius 球体半径
 	/// @return true: 可視
 	[[nodiscard]] bool isSphereVisible(float cx, float cy, float cz,
@@ -139,7 +139,7 @@ public:
 		return true;
 	}
 
-	/// @brief 6平面への直接アクセス
+	/// @brief 6 平面への直接アクセス
 	/// @return 平面配列への定数参照
 	[[nodiscard]] const std::array<Plane, 6>& planes() const noexcept
 	{
@@ -147,7 +147,7 @@ public:
 	}
 
 	/// @brief Camera3D から直接視錐台を構築する
-	/// @details `viewProjectionMatrix()` (OpenGL規約 Z[-1,1]) を使う。DX11/DX12 の
+	/// @details `viewProjectionMatrix()` (OpenGL 規約 Z[-1,1]) を使う。DX11/DX12 の
 	///          描画用射影行列 (Z[0,1] 等、バックエンドごとに規約が違う) とは独立に
 	///          Gribb-Hartmann の前提 (row3±rowN) が成立する規約に固定するため。
 	void extractFromCamera(const Camera3D& camera) noexcept
@@ -168,8 +168,8 @@ public:
 	/// @param localAabb `Mesh::localAABB()` 相当のローカル空間 AABB
 	/// @param world ワールド変換行列
 	/// @return true: 可視（完全または部分的に視錐台内）
-	/// @details 8頂点を変換して外接する AABB を作る（非一様スケール/回転でも
-	///          安全な近似になる。厳密な OBB ではないため過剰生存はあり得るが
+	/// @details 8 頂点を変換して外接する AABB を作る（非一様スケール/回転でも
+	///          安全な近似になる。厳密な OBB ではないため余分に残ることはあり得るが
 	///          過剰カリング（見えるはずの物が消える）は起きない）。
 	[[nodiscard]] bool isMeshVisible(const Mesh::AABB& localAabb,
 	                                 const sgc::Mat4f& world) const noexcept
@@ -214,7 +214,7 @@ struct CullEntry
 	AABB bounds{};
 };
 
-/// @brief オブジェクト群をFrustumでカリングし、可視リストを返す
+/// @brief オブジェクト群を Frustum でカリングし、可視リストを返す
 /// @tparam T オブジェクト識別子の型
 /// @param entries カリング対象のオブジェクト群
 /// @param frustum テスト用の視錐台

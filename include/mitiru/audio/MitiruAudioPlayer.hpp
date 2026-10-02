@@ -16,8 +16,8 @@ namespace mitiru::audio
 {
 
 /// @brief sgc::IAudioPlayer アダプター
-/// @details MitiruのIAudioEngineをsgcのIAudioPlayerインターフェースに変換する。
-///          sgcの抽象レンダリングパイプラインからオーディオを制御する際に使用する。
+/// @details Mitiru の IAudioEngine を sgc の IAudioPlayer インターフェースに適合させる。
+///          sgc の抽象レンダリングパイプラインからオーディオを制御する際に使用する。
 ///
 /// @code
 /// auto engine = std::make_shared<NullAudioEngine>();
@@ -28,8 +28,8 @@ class MitiruAudioPlayer : public sgc::IAudioPlayer
 {
 public:
 	/// @brief コンストラクタ
-	/// @param engine Mitiruオーディオエンジンへのポインタ（所有権は移転しない）
-	/// @param mixer オーディオミキサーへのポインタ（nullptr可、ハンドル管理が有効になる）
+	/// @param engine Mitiru オーディオエンジンへのポインタ（所有権は移転しない）
+	/// @param mixer オーディオミキサーへのポインタ（nullptr 可、ハンドル管理が有効になる）
 	explicit MitiruAudioPlayer(IAudioEngine* engine,
 		AudioMixer* mixer = nullptr) noexcept
 		: m_engine(engine)
@@ -39,7 +39,7 @@ public:
 
 	// ── BGM ──────────────────────────────────────────────
 
-	/// @brief BGMを再生する
+	/// @brief BGM を再生する
 	/// @param path 音声ファイルのパス
 	/// @param volume 再生ボリューム [0.0, 1.0]
 	void playBgm(std::string_view path, float volume) override
@@ -59,8 +59,8 @@ public:
 		}
 	}
 
-	/// @brief BGMを停止する
-	/// @param fadeOutSeconds フェードアウト時間（0でも即停止）
+	/// @brief BGM を停止する
+	/// @param fadeOutSeconds フェードアウト時間（0 でも即停止）
 	void stopBgm(float fadeOutSeconds) override
 	{
 		if (m_mixer && m_bgmHandle >= 0)
@@ -83,7 +83,7 @@ public:
 		m_bgmPaused = false;
 	}
 
-	/// @brief BGMを一時停止する
+	/// @brief BGM を一時停止する
 	void pauseBgm() override
 	{
 		if (m_mixer && m_bgmHandle >= 0)
@@ -98,7 +98,7 @@ public:
 		}
 	}
 
-	/// @brief 一時停止中のBGMを再開する
+	/// @brief 一時停止中の BGM を再開する
 	void resumeBgm() override
 	{
 		if (m_bgmPaused)
@@ -115,7 +115,7 @@ public:
 		}
 	}
 
-	/// @brief BGMのボリュームを設定する
+	/// @brief BGM のボリュームを設定する
 	/// @param volume ボリューム [0.0, 1.0]
 	void setBgmVolume(float volume) override
 	{
@@ -125,7 +125,7 @@ public:
 		}
 	}
 
-	/// @brief BGMが再生中か
+	/// @brief BGM が再生中か
 	/// @return 再生中なら true
 	[[nodiscard]] bool isBgmPlaying() const override
 	{
@@ -134,10 +134,10 @@ public:
 
 	// ── SE ───────────────────────────────────────────────
 
-	/// @brief SEを再生する
+	/// @brief SE を再生する
 	/// @param path 音声ファイルのパス
 	/// @param volume 再生ボリューム [0.0, 1.0]
-	/// @return SE再生ハンドル
+	/// @return SE 再生ハンドル
 	int playSe(std::string_view path, float volume) override
 	{
 		if (m_mixer)
@@ -151,8 +151,8 @@ public:
 		return ++m_nextSeHandle;
 	}
 
-	/// @brief 指定ハンドルのSEを停止する
-	/// @param handle SE再生ハンドル
+	/// @brief 指定したハンドルの SE を停止する
+	/// @param handle SE 再生ハンドル
 	void stopSe(int handle) override
 	{
 		if (m_mixer)
@@ -161,7 +161,7 @@ public:
 		}
 	}
 
-	/// @brief 全SEを停止する
+	/// @brief すべての SE を停止する
 	void stopAllSe() override
 	{
 		if (m_mixer)
@@ -170,7 +170,7 @@ public:
 		}
 	}
 
-	/// @brief SEのカテゴリボリュームを設定する
+	/// @brief SE のカテゴリボリュームを設定する
 	/// @param volume ボリューム [0.0, 1.0]
 	void setSeVolume(float volume) override
 	{

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file DebugOverlay.hpp
-/// @brief 開発時 visual デバッグの描画ヘルパ集 (AABB / 十字 / タイルグリッド / FPS テキスト)。
-/// @details game 側が toggle フラグを持ち、ON のときだけこれらを呼ぶ。engine は描く部品だけ
-///          提供 (philosophy: 主ゲーム窓に debug UI を常駐させない、game が必要な時だけ呼ぶ)。
+/// @brief 開発時の visual デバッグ用の描画ヘルパ集 (AABB / 十字 / タイルグリッド / FPS テキスト)。
+/// @details game 側が toggle フラグを持ち、ON のときだけこれらを呼ぶ。engine は描く部品だけを
+///          提供する (philosophy: 主ゲーム窓に debug UI を常駐させない、game が必要な時だけ呼ぶ)。
 
 #include <cmath>
 #include <cstdio>
@@ -25,7 +25,7 @@ inline void drawAabbOutline(Screen& s, const sgc::Rectf& r, const sgc::Colorf& c
 	s.drawRectFrame(r, color, thickness);
 }
 
-/// @brief (x,y) を中心に十字マーク (size px の半長)。entity 位置可視化用。
+/// @brief (x,y) を中心に十字マークを描く (半長 size px)。entity の位置を見せる用。
 inline void drawCross(Screen& s, float x, float y, float size, const sgc::Colorf& color)
 {
 	s.drawRect(sgc::Rectf{x - size, y - 0.5f, size * 2.0f, 1.0f}, color);

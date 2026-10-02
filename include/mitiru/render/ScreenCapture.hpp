@@ -22,16 +22,16 @@ struct ScreenshotData
 	std::uint64_t frameNumber = 0;     ///< キャプチャ時のフレーム番号
 
 	/// @brief ピクセルデータが有効かどうかを判定する
-	/// @return 幅・高さが正でデータが存在すればtrue
+	/// @return 幅・高さが正でデータが存在すれば true
 	[[nodiscard]] bool isValid() const noexcept
 	{
 		return (width > 0) && (height > 0) && !pixels.empty();
 	}
 
 	/// @brief 指定座標のピクセル色を取得する
-	/// @param x X座標
-	/// @param y Y座標
-	/// @return RGBA8の4要素配列（範囲外は全て0）
+	/// @param x X 座標
+	/// @param y Y 座標
+	/// @return RGBA8 の 4 要素配列（範囲外は全て 0）
 	/// @note 範囲外アクセスの場合は黒透明を返す
 	[[nodiscard]] std::uint8_t pixelR(int x, int y) const noexcept
 	{
@@ -78,7 +78,7 @@ struct ScreenshotData
 };
 
 /// @brief フレームバッファをキャプチャする
-/// @param device GPUデバイス
+/// @param device GPU デバイス
 /// @param width キャプチャ幅
 /// @param height キャプチャ高さ
 /// @param frameNumber 現在のフレーム番号（オプション）

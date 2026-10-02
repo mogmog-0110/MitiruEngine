@@ -2,7 +2,7 @@
 
 /// @file DebugPanel.hpp
 /// @brief エンジン統計デバッグパネル
-/// @details IDebugOverlayを使用してエンジン統計情報（FPS、フレーム番号、
+/// @details IDebugOverlay を使ってエンジン統計情報（FPS、フレーム番号、
 ///          エンティティ数、描画コール数、入力状態、シーン情報）を表示する。
 
 #include <string>
@@ -28,7 +28,7 @@ class DebugPanel
 {
 public:
 	/// @brief コンストラクタ
-	/// @param overlay デバッグオーバーレイへのポインタ（非所有、nullptrを許容）
+	/// @param overlay デバッグオーバーレイへのポインタ（非所有、nullptr を許容）
 	explicit DebugPanel(IDebugOverlay* overlay) noexcept
 		: m_overlay(overlay)
 	{
@@ -47,14 +47,14 @@ public:
 
 		if (m_overlay->beginWindow("Engine Stats"))
 		{
-			/// FPSを計算して表示する
+			/// FPS を計算して表示する
 			const auto* clk = engine.clock();
 			if (clk)
 			{
 				const float elapsed = clk->elapsed();
 				const auto frame = clk->frameNumber();
 
-				/// FPS計算（フレーム番号 / 経過時間）
+				/// FPS 計算（フレーム番号 / 経過時間）
 				const float fps = (elapsed > 0.0f)
 					? static_cast<float>(frame) / elapsed
 					: 0.0f;

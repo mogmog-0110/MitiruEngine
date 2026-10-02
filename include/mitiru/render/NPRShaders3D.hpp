@@ -2,14 +2,14 @@
 
 /// @file NPRShaders3D.hpp
 /// @brief NPR（非写実的レンダリング）シェーダー集
-/// @details 3Dを2Dイラスト風に見せる各種ピクセルシェーダーを提供する。
-///          全て同じVS（DEFAULT_VS_3D / TOON_VS_3D）と同じCbLightingレイアウトを使用。
+/// @details 3D を 2D イラスト風に見せる各種ピクセルシェーダーを提供する。
+///          全て同じ VS（DEFAULT_VS_3D / TOON_VS_3D）と同じ CbLighting レイアウトを使う。
 
 namespace mitiru::render
 {
 
 /// @brief フラット＋アウトライン。完全にフラットな色（グラデーションなし）
-/// @details 最も2Dに近い表現。NdotLを2値化して明暗のみ。
+/// @details 最も 2D に近い表現。NdotL を 2 値化して明暗のみ。
 constexpr const char* FLAT_PS_3D = R"hlsl(
 cbuffer CbLighting : register(b1)
 {

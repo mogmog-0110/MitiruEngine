@@ -2,8 +2,8 @@
 
 /// @file VNBridge.hpp
 /// @brief sgc VN（ビジュアルノベル）統合ブリッジ
-/// @details sgcのVNScene、テキスト表示、キャラクター管理、バックログ、
-///          選択肢、テキストエフェクトをMitiruエンジンに統合する。
+/// @details sgc の VNScene、テキスト表示、キャラクター管理、バックログ、
+///          選択肢、テキストエフェクトを Mitiru エンジンに統合する。
 
 #include <cstddef>
 #include <optional>
@@ -17,13 +17,13 @@
 #include <sgc/vn/ChoicePresenter.hpp>
 #include <sgc/vn/TextEffects.hpp>
 #include <mitiru/bridge/BridgeViewPush.hpp>
-#include <mitiru/bridge/detail/JsonEscape.hpp>
+#include <mitiru/observe/JsonEscape.hpp>
 
 namespace mitiru::bridge
 {
 
-/// @brief sgc VN統合ブリッジ
-/// @details VNシーンの読み込み・進行・選択肢処理・バックログ参照を統合管理する。
+/// @brief sgc VN 統合ブリッジ
+/// @details VN シーンの読み込み・進行・選択肢処理・バックログ参照をまとめて管理する。
 ///
 /// @code
 /// mitiru::bridge::VNBridge vn;
@@ -63,7 +63,7 @@ public:
 
 	// ── シーン管理 ────────────────────────────────────────────
 
-	/// @brief VNシーンをロードする
+	/// @brief VN シーンをロードする
 	/// @param scene ロードするシーン
 	void loadScene(sgc::vn::VNScene scene)
 	{
@@ -97,7 +97,7 @@ public:
 	// ── 状態クエリ ────────────────────────────────────────────
 
 	/// @brief 現在のフェーズを取得する
-	/// @return VNフェーズ（シーン未ロード時はIdle）
+	/// @return VN フェーズ（シーン未ロード時は Idle）
 	[[nodiscard]] sgc::vn::VNPhase phase() const
 	{
 		if (m_scene.has_value())
@@ -141,7 +141,7 @@ public:
 	}
 
 	/// @brief シーンが終了したかを判定する
-	/// @return 終了済みならtrue（シーン未ロード時もtrue）
+	/// @return 終了済みなら true（シーン未ロード時も true）
 	[[nodiscard]] bool isFinished() const
 	{
 		if (m_scene.has_value())
@@ -153,16 +153,16 @@ public:
 
 	// ── キャラクター管理 ──────────────────────────────────────
 
-	/// @brief キャラクターマネージャを取得する（非const版）
+	/// @brief キャラクターマネージャを取得する（非 const 版）
 	/// @return キャラクターマネージャへの参照
-	/// @note シーン未ロード時はloadScene()を先に呼ぶこと
+	/// @note シーン未ロード時は loadScene() を先に呼ぶこと
 	sgc::vn::CharacterManager& characters()
 	{
 		return m_scene->characters();
 	}
 
 	/// @brief キャラクターマネージャを取得する
-	/// @return キャラクターマネージャへのconst参照
+	/// @return キャラクターマネージャへの const 参照
 	const sgc::vn::CharacterManager& characters() const
 	{
 		return m_scene->characters();
@@ -171,7 +171,7 @@ public:
 	// ── 選択肢処理 ────────────────────────────────────────────
 
 	/// @brief 選択肢が表示中かを判定する
-	/// @return 選択肢表示中ならtrue
+	/// @return 選択肢表示中なら true
 	[[nodiscard]] bool hasChoices() const
 	{
 		if (m_scene.has_value())
@@ -195,7 +195,7 @@ public:
 	// ── バックログ ────────────────────────────────────────────
 
 	/// @brief バックログを取得する
-	/// @return バックログへのconst参照
+	/// @return バックログへの const 参照
 	[[nodiscard]] const sgc::vn::Backlog& backlog() const
 	{
 		return m_scene->backlog();
@@ -213,8 +213,8 @@ public:
 
 	// ── シリアライズ ──────────────────────────────────────────
 
-	/// @brief VN状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief VN 状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -238,7 +238,7 @@ private:
 	BridgeViewPush*                 m_viewPush{nullptr}; ///< 非所有。nullptr なら push 無効
 
 	// ── push 用キャッシュ（per-frame alloc を避けるため） ──────────────
-	// short key 文字列は string_view を取る set() に渡しても安全な静的寿命とする。
+	// short key 文字列は string_view を受け取る set() に渡しても安全なように、静的寿命とする。
 	static constexpr const char* kKeyPhase        = "phase";
 	static constexpr const char* kKeyText         = "text";
 	static constexpr const char* kKeySpeaker      = "speaker";
@@ -246,7 +246,7 @@ private:
 	static constexpr const char* kKeyHasChoices   = "hasChoices";
 	static constexpr const char* kKeyFinished     = "finished";
 
-	// 値側でリテラル化できるもの。毎フレーム std::string 化を避ける。
+	// リテラルにできる値。毎フレームの std::string 化を避ける。
 	static constexpr const char* kPhaseIdleJson           = "\"Idle\"";
 	static constexpr const char* kPhaseDisplayingJson     = "\"Displaying\"";
 	static constexpr const char* kPhaseWaitingInputJson   = "\"WaitingInput\"";
@@ -257,7 +257,7 @@ private:
 	static constexpr const char* kEmptyStrJson  = "\"\"";
 	static constexpr const char* kZeroJson      = "0";
 
-	/// @brief 前回 push した状態のスナップショット。同一なら再 push を抑止する。
+	/// @brief 前回 push した状態のスナップショット。同じ場合は再 push を抑える。
 	struct StateSnapshot
 	{
 		bool        hasScene{false};
@@ -271,7 +271,7 @@ private:
 	StateSnapshot m_lastPushed;          ///< 直近 push 内容
 	bool          m_hasPushedOnce{false}; ///< 一度も push していない場合は強制 push
 
-	/// @brief VNフェーズを JSON-quoted 静的リテラルへ変換する（zero alloc）
+	/// @brief VN フェーズを JSON-quoted の静的リテラルに変換する（zero alloc）
 	[[nodiscard]] static const char* phaseToJsonLiteral(sgc::vn::VNPhase p) noexcept
 	{
 		switch (p)
@@ -284,7 +284,7 @@ private:
 		return kPhaseUnknownJson;
 	}
 
-	/// @brief VNフェーズを文字列に変換する (toJson() 互換のため残存)
+	/// @brief VN フェーズを文字列に変換する (toJson() との互換性のため残している)
 	[[nodiscard]] static std::string phaseToString(sgc::vn::VNPhase p)
 	{
 		switch (p)
@@ -297,13 +297,13 @@ private:
 		return "Unknown";
 	}
 
-	/// @brief 現在の VN 状態を変化キーのみ push する（short-circuit 付き）。
+	/// @brief 現在の VN 状態について、変化した key のみを push する（short-circuit 付き）。
 	/// @note m_viewPush が nullptr なら何もしない。
 	void pushCurrentState()
 	{
 		if (!m_viewPush) return;
 
-		// 「no scene」状態は固定値セットで処理する分岐
+		// 「no scene」状態を固定値の組み合わせで処理する分岐
 		if (!m_scene.has_value())
 		{
 			pushNoSceneState();
@@ -319,16 +319,16 @@ private:
 		next.visibleChars = scene.textState().visibleChars;
 		next.hasChoices   = (phase == sgc::vn::VNPhase::ShowingChoices);
 		next.finished     = scene.isFinished();
-		// 文字列値はキャッシュ比較のためここで構築する（変化時のみ push 用に再利用）。
-		next.textJson    = detail::quotedJson(scene.textState().fullText);
-		next.speakerJson = detail::quotedJson(scene.currentSpeaker());
+		// 文字列値はキャッシュとの比較のため、ここで構築する（変化時のみ push 用に再利用）。
+		next.textJson    = observe::jsonQuoted(scene.textState().fullText);
+		next.speakerJson = observe::jsonQuoted(scene.currentSpeaker());
 
 		dispatchDiff(next);
 		m_lastPushed    = std::move(next);
 		m_hasPushedOnce = true;
 	}
 
-	/// @brief 「シーン未ロード」状態を push する（必要なら）
+	/// @brief 「シーン未ロード」状態を push する（必要な場合）
 	void pushNoSceneState()
 	{
 		if (m_hasPushedOnce && !m_lastPushed.hasScene) { return; }
@@ -351,7 +351,7 @@ private:
 		m_hasPushedOnce           = true;
 	}
 
-	/// @brief 直近 push との差分だけを送る。
+	/// @brief 直近の push との差分だけを送る。
 	void dispatchDiff(const StateSnapshot& next)
 	{
 		const bool force = !m_hasPushedOnce || !m_lastPushed.hasScene;
@@ -367,7 +367,7 @@ private:
 
 		if (force || next.visibleChars != m_lastPushed.visibleChars)
 		{
-			// short-form の十進数。小さな alloc、変化時のみ。
+			// 短い形式の十進数。小さな alloc が発生するが、変化時のみ。
 			m_viewPush->set(kKeyVisibleChars, std::to_string(next.visibleChars));
 		}
 

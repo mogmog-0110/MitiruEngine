@@ -1,0 +1,17 @@
+/* エンジン同梱の既定の RCSS。RML から <link type="text/rcss" href="mitiru:base.rcss"/> で読む。
+   RmlUi にはブラウザの既定スタイル (UA stylesheet) が無く、div も inline、文字色の既定は白になる。
+   HTML の感覚で書けるよう、よく使う要素の既定をここで決める。 */
+body   { display: block; margin: 0; width: 100%; height: 100%; color: #1d1d1f;
+         font-family: "M PLUS Rounded 1c"; font-size: 16px; line-height: 1.2; }
+div, p, h1, h2, h3, ul, ol, li, section, header, footer, form { display: block; }
+span, b, strong, i, em, small, label, a { display: inline; }
+b, strong { font-weight: bold; }
+i, em  { font-style: italic; }
+h1     { font-size: 32px; font-weight: bold; margin: 21px 0; }
+h2     { font-size: 24px; font-weight: bold; margin: 20px 0; }
+h3     { font-size: 19px; font-weight: bold; margin: 18px 0; }
+p      { margin: 16px 0; }
+button { display: inline-block; text-align: center; cursor: pointer; box-sizing: border-box; padding: 1px 6px; }
+input, select, textarea { display: inline-block; box-sizing: border-box; }
+/* drag-value を持つ要素は掴める (data-event-dragdrop="drop(...)" の要素へ落とすと from に入る) */
+*[drag-value] { drag: drag-drop; }

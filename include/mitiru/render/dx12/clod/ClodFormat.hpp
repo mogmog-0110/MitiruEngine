@@ -1,16 +1,25 @@
 #pragma once
 
 /// @file ClodFormat.hpp
-/// @brief .clod v5 フォーマット定義と GPU 側 POD (clod 仮想ジオメトリパス)
-/// @details オフライン変換ツールは clod_build (PLY / OBJ+MTL → .clod)。
+/// @brief .clod v6 フォーマット定義と GPU 側 POD (clod 仮想ジオメトリパス)
+/// @details 変換は drawModel の import (ClodImport) か clod_build (PLY / OBJ+MTL → .clod v5)。
+///          v6 は v5 と同じ並びで、マテリアルのテクスチャ名が import の作った圧縮済み
+///          `<画像>.dds` を指しうる点だけが違う。v5 も読むが、import cache としては作り直す。
 
 #include <cstdint>
 
 namespace mitiru::render::clod
 {
 
-/// @brief .clod ファイル magic ('CLD5' little endian)
-inline constexpr uint32_t kClodMagic = 0x35444C43u;
+/// @brief .clod ファイル magic ('CLD6' little endian)。import が書くのはこれ
+inline constexpr uint32_t kClodMagic = 0x36444C43u;
+/// @brief 旧 magic ('CLD5')。clod_build の出力と、圧縮導入前の import cache
+inline constexpr uint32_t kClodMagicV5 = 0x35444C43u;
+
+[[nodiscard]] constexpr bool isClodMagic(uint32_t magic) noexcept
+{
+	return magic == kClodMagic || magic == kClodMagicV5;
+}
 
 /// @brief .clod ヘッダ (56B、ファイル先頭)
 struct ClodFileHeader
@@ -99,11 +108,16 @@ struct GpuMaterial
 {
 	float baseColor[4];
 	uint32_t texIndex;    ///< 0xFFFFFFFF = 無し
-	uint32_t flags;       ///< bit0 = masked (アルファテスト)
+	uint32_t flags;       ///< kClodMaterial* の OR
 	uint32_t normalTex;   ///< 0xFFFFFFFF = 無し
 	uint32_t pad;
 };
 static_assert(sizeof(GpuMaterial) == 32);
+
+/// @brief アルファテストで抜く
+inline constexpr uint32_t kClodMaterialMasked = 1u;
+/// @brief 法線マップが XY だけ (BC5)。Z はシェーダが長さ 1 から復元する
+inline constexpr uint32_t kClodMaterialNormalXY = 2u;
 
 /// @brief 描画 CB (shader の cbuffer CB と一致。100 dwords)
 struct ClodDrawCB

@@ -18,7 +18,7 @@
 #include <mitiru/resource/AssetCache.hpp>
 #include <mitiru/resource/AssetHandle.hpp>
 #include <mitiru/resource/AssetManager.hpp>
-#include <mitiru/resource/ThreadPool.hpp>
+#include <mitiru/core/JobSystem.hpp>
 
 namespace mitiru::resource
 {
@@ -76,7 +76,7 @@ public:
 	/// @param threadCount ワーカースレッド数。0 のときは hardware_concurrency より 1 少ない数
 	explicit AsyncAssetLoader(AssetManager& assetManager, std::size_t threadCount = 0)
 		: m_assetManager(assetManager)
-		, m_threadPool(threadCount)
+		, m_jobs(threadCount)
 	{
 	}
 
@@ -93,10 +93,10 @@ public:
 		AssetPriority priority = AssetPriority::Normal,
 		CancellationToken token = CancellationToken{})
 	{
-		/// ThreadPool は FIFO のため、Urgent だけはすぐに submit する
+		/// priority はまだ実行順に反映していない (投げた順に実行する)
 		const std::string pathStr(path);
 
-		return m_threadPool.submit(
+		return m_jobs.submit(
 			[this, id, pathStr, token = std::move(token)]() -> AssetHandle<T> {
 				if (token.isCancelled())
 				{
@@ -125,7 +125,7 @@ public:
 
 		for (const auto& [id, path] : entries)
 		{
-			futures.push_back(m_threadPool.submit(
+			futures.push_back(m_jobs.submit(
 				[this, id, path, token, progress, failCount, totalCount,
 				 callback, callbackMutex]() -> AssetHandle<T> {
 					if (token.isCancelled())
@@ -150,15 +150,15 @@ public:
 		return futures;
 	}
 
-	/// @return キュー内のタスク数
+	/// @return まだ終わっていないロードの数 (実行中のものも含む)
 	[[nodiscard]] std::size_t pendingCount() const
 	{
-		return m_threadPool.pendingCount();
+		return m_jobs.pendingCount();
 	}
 
 	[[nodiscard]] std::size_t workerCount() const noexcept
 	{
-		return m_threadPool.workerCount();
+		return m_jobs.workerCount();
 	}
 
 private:
@@ -184,7 +184,7 @@ private:
 	}
 
 	AssetManager& m_assetManager;   ///< アセットマネージャー参照
-	ThreadPool m_threadPool;        ///< スレッドプール
+	JobSystem m_jobs;               ///< 最後に破棄 (走っているロードが m_assetManager を触り終えてから)
 };
 
 } // namespace mitiru::resource

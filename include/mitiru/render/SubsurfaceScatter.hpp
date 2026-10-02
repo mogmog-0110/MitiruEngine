@@ -2,9 +2,9 @@
 
 /// @file SubsurfaceScatter.hpp
 /// @brief サブサーフェススキャタリング（SSS）ポストプロセスエフェクト
-/// @details 分離可能ガウシアンブラーをSSSプロファイルで重み付けし、
+/// @details 分離可能ガウシアンブラーを SSS プロファイルで重み付けし、
 ///          肌や蝋などの半透明マテリアルの表面下散乱を近似する。
-///          DX11ヘッダーオンリー実装。SSAOEffect.hppと同様のパターンに従う。
+///          DX11 ヘッダーオンリー実装。SSAOEffect.hpp と同様のパターンに従う。
 
 #ifdef _WIN32
 
@@ -33,11 +33,11 @@ namespace mitiru::render
 {
 
 // ============================================================================
-// HLSL定数。SSS分離可能ブラーピクセルシェーダー
+// HLSL 定数。SSS 分離可能ブラーピクセルシェーダー
 // ============================================================================
 
-/// @brief SSSブラーピクセルシェーダー
-/// @details SSSプロファイルカーネルによる分離可能ガウシアンブラー。
+/// @brief SSS ブラーピクセルシェーダー
+/// @details SSS プロファイルカーネルによる分離可能ガウシアンブラー。
 ///          水平パスと垂直パスを別々に実行する。
 constexpr std::string_view SSS_BLUR_PS = R"hlsl(
 Texture2D sceneTexture : register(t0);
@@ -108,10 +108,10 @@ float4 main(PSInput input) : SV_Target
 )hlsl";
 
 // ============================================================================
-// SSS設定
+// SSS 設定
 // ============================================================================
 
-/// @brief SSSエフェクト設定
+/// @brief SSS エフェクト設定
 struct SSSConfig
 {
 	float sssWidth = 0.012f;        ///< スクリーンスペース散乱幅
@@ -120,7 +120,7 @@ struct SSSConfig
 	bool enabled = true;            ///< エフェクト有効フラグ
 };
 
-/// @brief SSSプロファイル種別
+/// @brief SSS プロファイル種別
 enum class SSSProfile : int
 {
 	Skin = 0,     ///< 肌（ピンク寄りの散乱）
@@ -130,10 +130,10 @@ enum class SSSProfile : int
 };
 
 // ============================================================================
-// Skinプロファイル。Jimenez 2009 6mmスキン拡散プロファイル相当
+// Skin プロファイル。Jimenez 2009 6mm スキン拡散プロファイル相当
 // ============================================================================
 
-/// @brief Skinプロファイル 17タップカーネル（float4: RGB重み + オフセット）
+/// @brief Skin プロファイル 17 タップカーネル（float4: RGB 重み + オフセット）
 // カーネルフォーマット (Jimenez 2009 SSS, 17-tap):
 //   .rgb = チャンネルごとの重み寄与
 //   .a   = ブラー方向に沿った空間オフセット (center = 0)
@@ -158,12 +158,12 @@ static constexpr std::array<std::array<float, 4>, 17> SKIN_KERNEL_17 = {{
 }};
 
 // ============================================================================
-// SSSエフェクトクラス
+// SSS エフェクトクラス
 // ============================================================================
 
 /// @brief サブサーフェススキャタリングポストプロセスエフェクト
-/// @details DX11デバイスを使用してSSSブラーを適用する。
-///          水平→垂直の2パス分離可能ブラーを実行する。
+/// @details DX11 デバイスを使用して SSS ブラーを適用する。
+///          水平→垂直の 2 パス分離可能ブラーを実行する。
 class SubsurfaceScatterEffect
 {
 public:
@@ -184,11 +184,11 @@ public:
 	SubsurfaceScatterEffect(SubsurfaceScatterEffect&&) noexcept = default;
 	SubsurfaceScatterEffect& operator=(SubsurfaceScatterEffect&&) noexcept = default;
 
-	/// @brief SSSエフェクトを初期化する
-	/// @param device D3D11デバイス
+	/// @brief SSS エフェクトを初期化する
+	/// @param device D3D11 デバイス
 	/// @param width レンダーターゲット幅
 	/// @param height レンダーターゲット高さ
-	/// @return 初期化成功でtrue
+	/// @return 初期化成功で true
 	bool init(ID3D11Device* device, int width, int height)
 	{
 		if (!device || width <= 0 || height <= 0)
@@ -220,10 +220,10 @@ public:
 		       m_pingRT.texture && m_pingRT.srv && m_pingRT.rtv;
 	}
 
-	/// @brief SSSブラーを適用する
-	/// @param context D3D11デバイスコンテキスト
-	/// @param sceneSRV シーンカラーテクスチャSRV
-	/// @param depthSRV 深度テクスチャSRV
+	/// @brief SSS ブラーを適用する
+	/// @param context D3D11 デバイスコンテキスト
+	/// @param sceneSRV シーンカラーテクスチャ SRV
+	/// @param depthSRV 深度テクスチャ SRV
 	/// @param outputRTV 出力レンダーターゲットビュー
 	void apply(ID3D11DeviceContext* context,
 	           ID3D11ShaderResourceView* sceneSRV,
@@ -251,8 +251,8 @@ public:
 			texW, texH, kernel);
 	}
 
-	/// @brief SSSプロファイルを設定する
-	/// @param profile SSSプロファイル種別
+	/// @brief SSS プロファイルを設定する
+	/// @param profile SSS プロファイル種別
 	void setProfile(SSSProfile profile) noexcept
 	{
 		m_profile = profile;
@@ -261,10 +261,10 @@ public:
 	/// @brief 設定を取得する
 	[[nodiscard]] SSSConfig& config() noexcept { return m_config; }
 
-	/// @brief 設定を取得する（const版）
+	/// @brief 設定を取得する（const 版）
 	[[nodiscard]] const SSSConfig& config() const noexcept { return m_config; }
 
-	/// @brief 中間RTのSRVを取得する（テスト用）
+	/// @brief 中間 RT の SRV を取得する（テスト用）
 	[[nodiscard]] ID3D11ShaderResourceView* pingRTSRV() const noexcept
 	{
 		return m_pingRT.srv.Get();
@@ -273,7 +273,7 @@ public:
 private:
 	// ── 定数バッファレイアウト ─────────────────────────
 
-	/// @brief SSSシェーダー定数バッファ（16バイトアライン）
+	/// @brief SSS シェーダー定数バッファ（16 バイトアライン）
 	struct SSSCB
 	{
 		float direction[2];      ///< ブラー方向 (1,0) or (0,1)
@@ -287,7 +287,7 @@ private:
 
 	// ── シェーダーコンパイル ────────────────────────────
 
-	/// @brief SSS_BLUR_PSをコンパイルする（エントリーポイント: main）
+	/// @brief SSS_BLUR_PS をコンパイルする（エントリーポイント: main）
 	[[nodiscard]] static ComPtr<ID3D11PixelShader>
 	compileSSS_PS(ID3D11Device* device)
 	{
@@ -306,7 +306,7 @@ private:
 
 	// ── パス実行 ────────────────────────────────────────
 
-	/// @brief ブラーパスを1回実行する
+	/// @brief ブラーパスを 1 回実行する
 	void runBlurPass(
 		ID3D11DeviceContext* context,
 		ID3D11ShaderResourceView* srcSRV,
@@ -359,7 +359,7 @@ private:
 
 		context->Draw(3, 0);
 
-		// SRVバインドをクリアする
+		// SRV バインドをクリアする
 		ID3D11ShaderResourceView* nullSRVs[2] = {nullptr, nullptr};
 		context->PSSetShaderResources(0, 2, nullSRVs);
 	}

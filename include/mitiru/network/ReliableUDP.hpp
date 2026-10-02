@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file ReliableUDP.hpp
-/// @brief GameNetworkingSocketsブリッジ（信頼性付きUDPトランスポート）
+/// @brief GameNetworkingSockets ブリッジ（信頼性付き UDP トランスポート）
 /// @details GameNetworkingSockets (GNS) が利用可能な場合は実装に委譲し、
-///          利用不可の場合はNullスタブで動作する。IReliableTransportインターフェースにより
+///          利用不可の場合は Null スタブで動作する。IReliableTransport インターフェースにより
 ///          トランスポート層を差し替え可能にする。
 ///
 /// @code
@@ -48,9 +48,9 @@ struct ReceivedPacket
 	bool reliable = true;                           ///< 信頼性ありで受信したか
 };
 
-/// @brief 信頼性付きUDPトランスポートインターフェース
-/// @details GameNetworkingSockets等のリライアブルUDP層を抽象化する。
-///          listen/connectの両方をサポートし、信頼性あり・なしの送信を選択できる。
+/// @brief 信頼性付き UDP トランスポートインターフェース
+/// @details GameNetworkingSockets 等のリライアブル UDP 層を抽象化する。
+///          listen/connect の両方をサポートし、信頼性あり・なしの送信を選択できる。
 class IReliableTransport
 {
 public:
@@ -65,19 +65,19 @@ public:
 	virtual bool listen(std::uint16_t port) = 0;
 
 	/// @brief リモートホストに接続する（クライアント側）
-	/// @param address ホスト名またはIPアドレス
+	/// @param address ホスト名または IP アドレス
 	/// @param port 接続先ポート番号
-	/// @return 接続ID（失敗時はINVALID_CONNECTION）
+	/// @return 接続 ID（失敗時は INVALID_CONNECTION）
 	virtual ConnectionId connect(std::string_view address, std::uint16_t port) = 0;
 
 	/// @brief 指定接続を切断する
-	/// @param connId 切断する接続ID
+	/// @param connId 切断する接続 ID
 	virtual void disconnect(ConnectionId connId) = 0;
 
 	// ── データ送受信 ──
 
 	/// @brief データを送信する
-	/// @param connId 送信先の接続ID
+	/// @param connId 送信先の接続 ID
 	/// @param data 送信データへのポインタ
 	/// @param size 送信データサイズ（バイト）
 	/// @param reliable 信頼性あり送信（再送あり）にするか
@@ -85,7 +85,7 @@ public:
 	                  std::uint32_t size, bool reliable = true) = 0;
 
 	/// @brief 受信済みパケットを取得する
-	/// @return 受信パケットの一覧（キューが空なら空のvector）
+	/// @return 受信パケットの一覧（キューが空なら空の vector）
 	[[nodiscard]] virtual std::vector<ReceivedPacket> receive() = 0;
 
 	// ── ポーリング ──
@@ -97,7 +97,7 @@ public:
 	// ── 状態照会 ──
 
 	/// @brief 指定接続の状態を取得する
-	/// @param connId 接続ID
+	/// @param connId 接続 ID
 	/// @return 接続状態
 	[[nodiscard]] virtual ConnectionStatus getConnectionStatus(
 		ConnectionId connId) const = 0;
@@ -105,21 +105,21 @@ public:
 	// ── コールバック ──
 
 	/// @brief 接続確立時のコールバックを設定する
-	/// @param callback ConnectionIdを引数に取るコールバック
+	/// @param callback ConnectionId を引数に取るコールバック
 	void setOnConnected(std::function<void(ConnectionId)> callback)
 	{
 		m_onConnected = std::move(callback);
 	}
 
 	/// @brief 切断時のコールバックを設定する
-	/// @param callback ConnectionIdを引数に取るコールバック
+	/// @param callback ConnectionId を引数に取るコールバック
 	void setOnDisconnected(std::function<void(ConnectionId)> callback)
 	{
 		m_onDisconnected = std::move(callback);
 	}
 
 	/// @brief データ受信時のコールバックを設定する
-	/// @param callback ReceivedPacketを引数に取るコールバック
+	/// @param callback ReceivedPacket を引数に取るコールバック
 	void setOnData(std::function<void(const ReceivedPacket&)> callback)
 	{
 		m_onData = std::move(callback);
@@ -150,7 +150,7 @@ protected:
 };
 
 // ═════════════════════════════════════════════════════════════
-// GNS実装（GameNetworkingSockets利用可能時）
+// GNS 実装（GameNetworkingSockets 利用可能時）
 // ═════════════════════════════════════════════════════════════
 
 #ifdef MITIRU_HAS_GNS
@@ -158,9 +158,9 @@ protected:
 #include <steam/steamnetworkingsockets.h>
 #include <steam/isteamnetworkingutils.h>
 
-/// @brief GameNetworkingSocketsを使った信頼性付きUDPトランスポート
-/// @details Valve製のGameNetworkingSocketsライブラリをラップし、
-///          IReliableTransportインターフェースで提供する。
+/// @brief GameNetworkingSockets を使った信頼性付き UDP トランスポート
+/// @details Valve 製の GameNetworkingSockets ライブラリをラップし、
+///          IReliableTransport インターフェースで提供する。
 class GnsReliableTransport final : public IReliableTransport
 {
 public:
@@ -223,7 +223,7 @@ public:
 		HSteamNetConnection conn = m_interface->ConnectByIPAddress(addr, 0, nullptr);
 		if (conn == k_HSteamNetConnection_Invalid) return INVALID_CONNECTION;
 
-		// クライアント側でもpoll groupを作成し、接続を追加する
+		// クライアント側でも poll group を作成し、接続を追加する
 		if (m_pollGroup == k_HSteamNetPollGroup_Invalid)
 			m_pollGroup = m_interface->CreatePollGroup();
 		m_interface->SetConnectionPollGroup(conn, m_pollGroup);
@@ -262,7 +262,7 @@ public:
 			it->second, data, size, flags, nullptr);
 		if (res != k_EResultOK)
 		{
-			// 送信失敗時はログ等で対応可能（現在はサイレント）
+			// 送信失敗時はログ等で対応可能（現在は何も通知しない）
 		}
 	}
 
@@ -305,9 +305,9 @@ public:
 	}
 
 private:
-	/// @brief GNS接続状態変化コールバック（静的エントリポイント）
+	/// @brief GNS 接続状態変化コールバック（静的エントリポイント）
 	/// @details SteamNetworkingUtils()->SetGlobalCallback_SteamNetConnectionStatusChanged
-	///          に登録するC-style静的関数。m_nUserDataからthisポインタを復元して
+	///          に登録する C-style 静的関数。m_nUserData から this ポインタを復元して
 	///          handleStatusChange()に委譲する。
 	static void onConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* pInfo)
 	{
@@ -325,7 +325,7 @@ private:
 		switch (pInfo->m_info.m_eState)
 		{
 		case k_ESteamNetworkingConnectionState_Connecting:
-			// サーバー側の新規受信接続（クライアント側はconnect()でマップ済み）
+			// サーバー側の新規受信接続（クライアント側は connect()でマップ済み）
 			if (idIt == m_connToId.end())
 			{
 				if (m_interface->AcceptConnection(conn) != k_EResultOK)
@@ -397,12 +397,12 @@ private:
 #endif // MITIRU_HAS_GNS
 
 // ═════════════════════════════════════════════════════════════
-// Null実装（ライブラリ不在時のスタブ）
+// Null 実装（ライブラリ不在時のスタブ）
 // ═════════════════════════════════════════════════════════════
 
 /// @brief 操作をログ出力するだけのスタブトランスポート
-/// @details GameNetworkingSocketsが利用できない環境で使用する。
-///          すべての操作はno-opで、receive()は常に空を返す。
+/// @details GameNetworkingSockets が利用できない環境で使用する。
+///          すべての操作は no-op で、receive()は常に空を返す。
 class NullReliableTransport final : public IReliableTransport
 {
 public:
@@ -442,8 +442,8 @@ public:
 // ファクトリ関数
 // ═════════════════════════════════════════════════════════════
 
-/// @brief 環境に応じた信頼性付きUDPトランスポートを生成する
-/// @return GNS利用可能時はGnsReliableTransport、それ以外はNullReliableTransport
+/// @brief 環境に応じた信頼性付き UDP トランスポートを生成する
+/// @return GNS 利用可能時は GnsReliableTransport、それ以外は NullReliableTransport
 [[nodiscard]] inline std::unique_ptr<IReliableTransport> createReliableTransport()
 {
 #ifdef MITIRU_HAS_GNS

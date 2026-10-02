@@ -53,6 +53,8 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+
 namespace mitiru::render::dx12
 {
 
@@ -73,11 +75,9 @@ struct UploadAllocation
 };
 
 /// @brief Per-frame UPLOAD ヒープリング
-/// @details ヘッダーオンリー、依存は <d3d12.h> のみ。
+/// @details ヘッダーオンリー。確保は D3D12MA (Dx12GpuMemory.hpp)。
 class Dx12UploadRing
 {
-	template <typename T> using ComPtr = Microsoft::WRL::ComPtr<T>;
-
 public:
 	Dx12UploadRing() = default;
 	~Dx12UploadRing() { destroy(); }
@@ -103,26 +103,11 @@ public:
 		m_frames.resize(frameCount);
 		m_currentFrame = 0;
 
-		D3D12_HEAP_PROPERTIES hp = {};
-		hp.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-		D3D12_RESOURCE_DESC rd = {};
-		rd.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
-		rd.Width            = perFrameBytes;
-		rd.Height           = 1;
-		rd.DepthOrArraySize = 1;
-		rd.MipLevels        = 1;
-		rd.Format           = DXGI_FORMAT_UNKNOWN;
-		rd.SampleDesc.Count = 1;
-		rd.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
 		for (UINT i = 0; i < frameCount; ++i)
 		{
 			auto& f = m_frames[i];
-			if (FAILED(device->CreateCommittedResource(
-					&hp, D3D12_HEAP_FLAG_NONE, &rd,
-					D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-					IID_PPV_ARGS(f.buffer.GetAddressOf()))))
+			if (FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, perFrameBytes,
+					D3D12_RESOURCE_STATE_GENERIC_READ, f.buffer)))
 			{
 				m_frames.clear();
 				return false;
@@ -135,6 +120,7 @@ public:
 				m_frames.clear();
 				return false;
 			}
+			f.buffer->SetName(L"Dx12UploadRing frame");
 			f.cpuBase   = static_cast<std::byte*>(mapped);
 			f.gpuBase   = f.buffer->GetGPUVirtualAddress();
 			f.capacity  = perFrameBytes;
@@ -234,7 +220,7 @@ public:
 		return m_frames[m_currentFrame].capacity;
 	}
 
-	/// @brief 現在オーバーフロー（使い捨て確保）が走っているか
+	/// @brief 現在オーバーフロー（使い捨て確保）が起きているか
 	[[nodiscard]] bool hadOverflowThisFrame() const noexcept
 	{
 		if (m_frames.empty()) return false;
@@ -244,12 +230,12 @@ public:
 private:
 	struct PerFrame
 	{
-		ComPtr<ID3D12Resource>             buffer;
+		gfx::GpuResource                   buffer;
 		UINT64                             capacity = 0;
 		UINT64                             offset   = 0;
 		std::byte*                         cpuBase  = nullptr;
 		D3D12_GPU_VIRTUAL_ADDRESS          gpuBase  = 0;
-		std::vector<ComPtr<ID3D12Resource>> overflow; ///< 当該フレームで作った使い捨て
+		std::vector<gfx::GpuResource>      overflow; ///< 当該フレームで作った使い捨て
 	};
 
 	/// @brief リング枯渇時の使い捨て確保
@@ -260,23 +246,9 @@ private:
 		const UINT64 mask = alignment - 1u;
 		const UINT64 alignedSize = (sizeBytes + mask) & ~mask;
 
-		D3D12_HEAP_PROPERTIES hp = {};
-		hp.Type = D3D12_HEAP_TYPE_UPLOAD;
-		D3D12_RESOURCE_DESC rd = {};
-		rd.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
-		rd.Width            = alignedSize;
-		rd.Height           = 1;
-		rd.DepthOrArraySize = 1;
-		rd.MipLevels        = 1;
-		rd.Format           = DXGI_FORMAT_UNKNOWN;
-		rd.SampleDesc.Count = 1;
-		rd.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		ComPtr<ID3D12Resource> over;
-		if (FAILED(m_device->CreateCommittedResource(
-				&hp, D3D12_HEAP_FLAG_NONE, &rd,
-				D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-				IID_PPV_ARGS(over.GetAddressOf()))))
+		gfx::GpuResource over;
+		if (FAILED(gfx::createGpuBuffer(m_device, D3D12_HEAP_TYPE_UPLOAD, alignedSize,
+				D3D12_RESOURCE_STATE_GENERIC_READ, over)))
 		{
 			return {};
 		}

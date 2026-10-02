@@ -5,8 +5,8 @@
 /// @details `AnimationStateMachine`（IKSolver.hpp）は `std::function` 条件と
 ///          `std::unique_ptr<IBlendNode>` を持つため GameMemory に置けない。
 ///          こちらは固定長配列のみで構成した POD 版で、rewind リング / checksum に
-///          そのまま乗る。骨のブレンド適用自体は担わず、`update()` の結果を
-///          `AnimSample` として返すだけに留め、実際の適用は `AnimationPlayer::blend()`
+///          そのまま含められる。骨のブレンド適用自体は行わず、`update()` の結果を
+///          `AnimSample` として返すだけとし、実際の適用は `AnimationPlayer::blend()`
 ///          （ozz 不在環境の CPU 線形ブレンド）や将来の Ozz 実装に委ねる。
 
 #include <algorithm>
@@ -35,7 +35,7 @@ struct Cond
 };
 
 /// @brief bool/float パラメータの固定長ビュー
-/// @details ゲーム側の入力・状態を AnimGraph へ渡すための POD ブリッジ。
+/// @details ゲーム側の入力・状態を AnimGraph へ渡すための POD 形式の受け渡し。
 struct AnimParams
 {
 	static constexpr int kMaxBool = 8;
@@ -73,8 +73,8 @@ struct Layer
 	float blendT = 0.0f;    ///< ブレンド開始からの経過秒（0..blendSec）
 };
 
-/// @brief 1レイヤー分の評価結果
-/// @details 骨の実ブレンドは行わず、どのクリップ2本をどの重みで混ぜるべきかだけを返す。
+/// @brief 1 レイヤー分の評価結果
+/// @details 骨の実際のブレンドは行わず、どの 2 本のクリップをどの重みで混ぜるべきかだけを返す。
 struct AnimSample
 {
 	int clipA = -1;    ///< ブレンド元（非ブレンド時は現在クリップと同一）
@@ -85,7 +85,7 @@ struct AnimSample
 };
 
 /// @brief POD アニメーションステートマシン + ブレンドツリー
-/// @details states/transitions/layers は全て固定長配列。GameMemory の一部として
+/// @details states/transitions/layers はすべて固定長配列。GameMemory の一部として
 ///          値コピー・rewind・checksum の対象にできる（is_trivially_copyable 検証済み）。
 template<int NStates, int NTransitions, int NLayers>
 struct AnimGraph
@@ -97,7 +97,7 @@ struct AnimGraph
 	Transition transitions[NTransitions] = {};
 	Layer layers[NLayers] = {};
 
-	/// @brief 全レイヤーを1フレーム進める（時間更新 → ブレンド進行 → 遷移判定の順）
+	/// @brief 全レイヤーを 1 フレーム進める（時間更新 → ブレンド進行 → 遷移判定の順）
 	void update(float dt, const AnimParams& params) noexcept
 	{
 		for (int i = 0; i < NLayers; ++i)
@@ -139,7 +139,7 @@ struct AnimGraph
 	}
 
 private:
-	/// @brief 1レイヤー分の時間更新・ブレンド進行・遷移判定
+	/// @brief 1 レイヤー分の時間更新・ブレンド進行・遷移判定
 	void updateLayer(Layer& layer, float dt, const AnimParams& params) noexcept
 	{
 		if (layer.currentState < 0) layer.currentState = 0;
@@ -200,7 +200,7 @@ private:
 		}
 	}
 
-	/// @brief from→to に対応する遷移の blendSec を探す（無ければ 0）
+	/// @brief from→to に対応する遷移の blendSec を探す（なければ 0）
 	[[nodiscard]] float findBlendSec(int from, int to) const noexcept
 	{
 		for (int t = 0; t < NTransitions; ++t)

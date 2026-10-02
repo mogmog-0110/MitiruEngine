@@ -2,7 +2,7 @@
 
 /// @file WindowFactory.hpp
 /// @brief ウィンドウファクトリ
-/// @details プラットフォームに応じたIWindow実装を生成するファクトリ関数を提供する。
+/// @details プラットフォームに応じた IWindow 実装を生成するファクトリ関数を提供する。
 ///          利用可能なバックエンドに応じて適切なウィンドウ実装を自動選択する。
 
 #include <memory>

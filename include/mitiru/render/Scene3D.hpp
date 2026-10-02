@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Scene3D.hpp
-/// @brief 3Dシーンコンテナ
-/// @details メッシュ、マテリアル、ライトを管理する3Dシーン。
+/// @brief 3D シーンコンテナ
+/// @details メッシュ、マテリアル、ライトを管理する 3D シーン。
 
 #include <vector>
 
@@ -16,7 +16,7 @@
 namespace mitiru::render
 {
 
-/// @brief 3Dシーン
+/// @brief 3D シーン
 /// @details 描画オブジェクトとライトを保持するコンテナ。
 ///          レンダラーに渡してシーン全体を描画する。
 ///

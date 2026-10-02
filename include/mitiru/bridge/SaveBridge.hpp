@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file SaveBridge.hpp
-/// @brief sgcセーブシステム統合ブリッジ
-/// @details sgcのSaveSystem（MemorySaveStorage + SaveData）を
-///          Mitiruエンジンに統合する。スロットベースのセーブ/ロードを提供。
+/// @brief sgc のセーブシステムを統合するブリッジ
+/// @details sgc の SaveSystem（MemorySaveStorage + SaveData）を
+///          Mitiru エンジンに統合する。スロットベースのセーブ/ロードを提供する。
 
 #include <string>
 #include <vector>
@@ -13,9 +13,9 @@
 namespace mitiru::bridge
 {
 
-/// @brief sgcセーブシステム統合ブリッジ
+/// @brief sgc のセーブシステムを統合するブリッジ
 /// @details インメモリストレージを使用したスロットベースのセーブ/ロードを提供する。
-///          データは文字列として保存・読み込みする簡易API。
+///          データを文字列として保存・読み込みする簡易 API。
 ///
 /// @code
 /// mitiru::bridge::SaveBridge save;
@@ -56,7 +56,7 @@ public:
 
 	/// @brief 指定スロットにセーブデータが存在するか
 	/// @param slot スロット番号
-	/// @return 存在すればtrue
+	/// @return 存在すれば true
 	[[nodiscard]] bool exists(int slot) const
 	{
 		const auto slotId = slotToId(slot);
@@ -82,7 +82,7 @@ public:
 		result.reserve(slots.size());
 		for (const auto& s : slots)
 		{
-			/// "slot_N" からNを抽出する
+			/// "slot_N" から N を抽出する
 			const auto prefix = std::string("slot_");
 			if (s.id.size() > prefix.size() && s.id.substr(0, prefix.size()) == prefix)
 			{
@@ -92,7 +92,7 @@ public:
 				}
 				catch (...)
 				{
-					/// 変換失敗は無視する
+					/// 変換に失敗した場合は無視する
 				}
 			}
 		}
@@ -108,8 +108,8 @@ public:
 
 	// ── シリアライズ ────────────────────────────────────────
 
-	/// @brief セーブ状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief セーブ状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -132,9 +132,9 @@ public:
 	}
 
 private:
-	/// @brief スロット番号をスロットIDに変換する
+	/// @brief スロット番号をスロット ID に変換する
 	/// @param slot スロット番号
-	/// @return スロットID文字列
+	/// @return スロット ID 文字列
 	[[nodiscard]] static std::string slotToId(int slot)
 	{
 		return "slot_" + std::to_string(slot);

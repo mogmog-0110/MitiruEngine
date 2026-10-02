@@ -19,6 +19,12 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	{
 		return;
 	}
+	// device が lost ならフレーム頭のフェンス待ちは済んでいない。GPU が読み残している
+	// アロケータを Reset しないよう、このフレームは何も記録しない (#75)
+	if (m_device == nullptr || m_device->isDeviceLost())
+	{
+		return;
+	}
 
 	// 前フレームで D3D12 が溜めた検証メッセージをファイルへ書き出す
 	// (ENG-105 v2 MSAA debug)。Release build / debug layer 無効では no-op。
@@ -33,7 +39,8 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_skyboxDrawnThisFrame = false;
 	m_skinnedPoolCursor = 0;  // スキン描画 pool を巻き戻す
 	m_shadowCasterEnabled = true;
-	// 前フレームの shadow casters をスナップして当フレーム描画分をクリア
+	m_outlineCasterEnabled = true;
+	// 前フレームの shadow casters をスナップショットとして残し、当フレームの描画分をクリアする
 	m_shadowCommandsPrev = std::move(m_shadowCommands);
 	m_shadowCommands.clear();
 	m_shadowDrawnThisFrame = false;
@@ -49,17 +56,22 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	// 済みのため、追加の同期なしで安全に Map できる。
 	consumeOcclusionReadback(frameIndex);
 
-	// GPU は前フレームの ring を読み終えているので reset OK
+	// GPU は前フレームの ring を読み終えているので reset してよい
 	m_uploadRing.beginFrame(frameIndex);
-	// アルベド SRV cursor を自 frame partition の先頭へ
-	// (in-flight の前フレーム分 descriptor を上書きしない)
+	// アルベド SRV cursor を自 frame の partition の先頭へ置く
+	// (in-flight の前フレーム分の descriptor を上書きしない)
 	m_albedoSrvBase   = frameIndex * m_albedoSrvCapacity;
 	m_albedoSrvCursor = 0;
-	// N フレーム参照の無い mesh VB/IB を退役させる
+	if (m_mainSrvTableCacheCount > 0)
+	{
+		for (auto& e : m_mainSrvTableCache) { e = MainSrvTableEntry{}; }
+		m_mainSrvTableCacheCount = 0;
+	}
+	// N フレームのあいだ参照されていない mesh VB/IB を解放する
 	evictStaleMeshBuffers();
 
-	/// Dx12Device::beginFrame()が既にフェンス待機済み
-	/// GPU完了後に前フレームの一時リソースを解放する
+	/// Dx12Device::beginFrame() がすでにフェンス待機を済ませている。
+	/// GPU 完了後に前フレームの一時リソースを解放する
 	m_perFrameTempResources[frameIndex].clear();
 
 	/// コマンドアロケータをリセットする
@@ -69,7 +81,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 		return;
 	}
 
-	/// コマンドリストをリセットし、メインPSOをバインドする
+	/// コマンドリストをリセットし、メイン PSO をバインドする
 	hr = m_graphicsCmdList->Reset(
 		m_commandAllocators[frameIndex].Get(),
 		m_mainPSO.Get());
@@ -80,9 +92,9 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 
 	/// バックバッファを取得する (存在確認のみ)。
 	/// Present↔RenderTarget の遷移は Dx12Device::beginFrame/endFrame が一元管理する。
-	/// ここで再度 Present→RenderTarget バリアを張ると、同じ backbuffer に二重遷移が
-	/// 乗り (device がフレーム頭で既に RENDER_TARGET にしている)、debug layer が
-	/// コマンドリストを丸ごと落として clear 色しか出なくなる。3D の描画は、すでに
+	/// ここで再度 Present→RenderTarget バリアを張ると、同じ backbuffer に二重の遷移が
+	/// 記録され (device がフレーム頭で既に RENDER_TARGET にしている)、debug layer が
+	/// コマンドリストを丸ごと破棄して clear 色しか出なくなる。3D の描画は、すでに
 	/// RENDER_TARGET 状態のバックバッファへ resolve/tonemap/overlay するだけでよい。
 	auto* backBuffer = m_device->currentBackBuffer();
 	if (!backBuffer)
@@ -90,11 +102,13 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 		return;
 	}
 
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Begin);
+
 	/// shadow map を毎フレーム depth=1.0 にクリアする (ENG-103)。
 	/// shadow が無効でも clear だけは走らせる必要がある。clear しないと
 	/// texture が 0 のまま残って PS の SampleCmp が「フラスタム内 = 全部影」
 	/// を返してシーン中央が真っ黒になる。renderShadowPass() 内で
-	/// `m_shadowEnabled && casters あり` のときだけ caster を発射し、
+	/// `m_shadowEnabled && casters あり ` のときだけ caster を発射し、
 	/// それ以外はクリアのみで終わる。
 	/// shadow pass は viewport/RTV/PSO を変更するため、その後でメイン RT を
 	/// 再 bind する必要がある。
@@ -102,7 +116,8 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 
 	/// MSAA レンダーターゲットと深度バッファをバインドする (ENG-105 v2)
 	/// メインパスは 4x MSAA color + 4x MSAA normal + 4x MSAA depth に描画する。
-	/// outline / FXAA / overlay2D 前に ResolveSubresource で backbuffer に焼く。
+	/// outline / FXAA / overlay2D の前に ResolveSubresource で backbuffer へ書き込む。
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Opaque);
 	auto msaaColorRtv  = m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
 	auto normalRtvHandle = m_normalRTVHeap->GetCPUDescriptorHandleForHeapStart();
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2] = { msaaColorRtv, normalRtvHandle };
@@ -140,7 +155,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_graphicsCmdList->IASetPrimitiveTopology(
 		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	/// FresnelモードではメインPSOを差し替える
+	/// Fresnel モードではメイン PSO を差し替える
 	if (m_outlineMode == OutlineMode::Fresnel && m_fresnelMainPSO)
 	{
 		m_graphicsCmdList->SetPipelineState(m_fresnelMainPSO.Get());
@@ -148,16 +163,34 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 }
 
 /// @brief カメラを設定する
-/// @param camera 3Dカメラ
-inline void Renderer3D_DX12::setCamera(const Camera3D& camera)
+/// @param camera 3D カメラ
+inline void Renderer3D_DX12::setCamera(const Camera3D& requested)
 {
-	// sgcの行列を経由せず、glmで直接計算する（行列規約の不整合を回避）
+	// 揺れは目と注視点を画面の右・上へ平行移動して作る。射影をずらすと、射影から位置を戻す
+	// SSAO / DOF / clod の各経路で食い違うが、カメラごと動かせば全経路で同じように絵が揺れる
+	Camera3D camera = requested;
+	if (m_cameraShakeX != 0.0f || m_cameraShakeY != 0.0f)
+	{
+		const sgc::Vec3f eye = requested.position();
+		const sgc::Vec3f tgt = requested.target();
+		const sgc::Vec3f f = (tgt - eye).normalized();
+		const sgc::Vec3f r = f.cross(requested.up()).normalized();
+		const sgc::Vec3f u = r.cross(f);
+		// 注視点の距離で画面 1 枚ぶんの高さ。絵を +x へ動かすにはカメラを -x へ動かす
+		const float viewH = 2.0f * (tgt - eye).length() * std::tan(requested.fov() * 0.5f);
+		const float viewW = viewH * requested.aspectRatio();
+		const sgc::Vec3f shift = r * (-m_cameraShakeX * viewW) + u * (m_cameraShakeY * viewH);
+		camera = Camera3D(eye + shift, tgt + shift, requested.up(), requested.fov(),
+		                  requested.aspectRatio(), requested.nearClip(), requested.farClip());
+	}
+
+	// sgc の行列を経由せず、glm で直接計算する（行列規約の不整合を避けるため）
 	m_viewMatrix = lookAt(camera.position(), camera.target(), camera.up());
 	m_projMatrix = perspective(camera.fov(), camera.aspectRatio(),
 		camera.nearClip(), camera.farClip());
 	m_cameraPosition = camera.position();
 	m_clodCamera = camera;   // clod パスは自前の行列規約で再構成する
-	// カリング判定は描画用射影と切り離し、camera 自身の GL規約
+	// カリング判定は描画用の射影と切り離し、camera 自身の GL 規約の
 	// viewProjectionMatrix() から視錐台を作る（Frustum::extractFromCamera 参照）。
 	m_frustum.extractFromCamera(camera);
 }
@@ -288,7 +321,7 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 	}
 
 	/// SRV table { t0=albedo, t1=shadow }: 毎 draw で shader-visible heap に
-	/// 2 連続 SRV を append、descriptor table 4 にバインドする
+	/// 連続する 2 つの SRV を append し、descriptor table 4 にバインドする
 	ID3D12DescriptorHeap* heaps[] = { m_albedoSrvHeap.Get() };
 	m_graphicsCmdList->SetDescriptorHeaps(1, heaps);
 	const auto srvGpu = writeMainSrvTable(material.albedoTexture);
@@ -324,7 +357,7 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
 
 	++m_drawCallCount;
 
-	/// シャドウキャスター記録（次フレームの shadow pass で使われる）
+	/// シャドウキャスターを記録する（次フレームの shadow pass で使う）
 	if (m_shadowEnabled && m_shadowCasterEnabled)
 	{
 		m_shadowCommands.push_back({&mesh, worldTransform});
@@ -386,7 +419,7 @@ inline void Renderer3D_DX12::recordTransparentMesh(const Mesh& mesh,
 inline void Renderer3D_DX12::renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE msaaColorRtv,
                                                    D3D12_CPU_DESCRIPTOR_HANDLE dsv)
 {
-	// accum=0 / reveal=1 にクリアし、accum+reveal+(読み取り専用 depth) を bind。
+	// accum=0 / reveal=1 にクリアし、accum+reveal+(読み取り専用 depth) を bind する。
 	m_oit.beginAccumulate(m_graphicsCmdList.Get(), &dsv);
 
 	D3D12_VIEWPORT vp = {};
@@ -415,13 +448,14 @@ inline void Renderer3D_DX12::renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE m
 inline void Renderer3D_DX12::endFrame()
 {
 	MITIRU_ZONE_NAMED("Render::Dx12::EndFrame");
-	if (!m_initialized || !m_graphicsCmdList)
+	if (!m_initialized || !m_graphicsCmdList || m_device == nullptr || m_device->isDeviceLost())
 	{
 		return;
 	}
 
 	// clod 世界ジオメトリ: offscreen に描いて depth-tested inject で
-	// MSAA HDR + depth へ合成する (以降の OIT / resolve が上に乗る)。
+	// MSAA HDR + depth へ合成する (以降の OIT / resolve はこの上に重なる)。
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Clod);
 	renderClodPass();
 
 #ifdef MITIRU_HAS_MAKINA
@@ -431,6 +465,7 @@ inline void Renderer3D_DX12::endFrame()
 #endif
 
 	// 半透明 OIT: 不透明 (MSAA color + depth) の後、resolve/tonemap の前に HDR で合成する。
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Transparent);
 	if (!m_transparentCommands.empty() && m_oitTransparentPSO &&
 	    m_msaaColorRtvHeap && m_dsvHeap)
 	{
@@ -438,17 +473,31 @@ inline void Renderer3D_DX12::endFrame()
 			m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart(),
 			m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 	}
+#if defined(MITIRU_HAS_EFFEKSEER)
+	// Effekseer: 半透明の後・resolve の前。深度で隠れ、HDR のまま tonemap される
+	renderEffekseerPass();
+#endif
 
 	/// MSAA color RT (FP16) を HDR intermediate に Resolve し、
-	/// tonemap PS で backbuffer (LDR R8G8B8A8) に焼く (ENG-105 v2 + ENG-106)。
+	/// tonemap PS で backbuffer (LDR R8G8B8A8) に書き出す (ENG-105 v2 + ENG-106)。
 	/// 以降の outline post-process / FXAA / overlay2D は LDR backbuffer
-	/// 前提で動く。tonemap 失敗時 (PSO 未生成) はフォールバックで
+	/// を前提に動く。tonemap 失敗時 (PSO 未生成) はフォールバックで
 	/// HDR intermediate を backbuffer に CopyResource したいところだが
 	/// フォーマット不一致のため不可 → tonemap PSO 生成失敗時は黒画面。
+	/// SSAO (v40): 深度と法線 RT から遮蔽率を作り、tonemap が HDR 色に掛ける。
+	/// 深度が DEPTH_WRITE・法線が RENDER_TARGET の位置 (outline パスと同じ前提) で呼ぶ
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Ssao);
+	drawSsaoPasses();
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::MsaaResolve);
 	resolveMSAAColorToHDR();
+	/// bloom (v41): resolve 済み HDR から明部を落として戻し、tonemap が t2 で読んで露出の前に足す
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Bloom);
+	drawBloomPasses();
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Tonemap);
 	applyTonemap();
 
-	/// ポストプロセス アウトラインパス（深度エッジ検出）
+	/// ポストプロセスのアウトラインパス（深度エッジ検出）
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Outline);
 	if (m_config.enableOutline && m_outlinePostPSO && m_depthSRVHeap)
 	{
 		drawPostProcessOutline();
@@ -457,6 +506,7 @@ inline void Renderer3D_DX12::endFrame()
 	/// オクルージョン深度 resolve（`kOcclusionUpdateInterval` フレームに 1 回だけ）。
 	/// アウトラインパスと同じく深度を DEPTH_WRITE→PIXEL_SHADER_RESOURCE→DEPTH_WRITE
 	/// で往復するため、深度が DEPTH_WRITE に戻っているこの位置で呼ぶ。
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::OcclusionReadback);
 	if (m_occlusionCullingEnabled)
 	{
 		++m_occlusionFrameCounter;
@@ -466,14 +516,20 @@ inline void Renderer3D_DX12::endFrame()
 		}
 	}
 
+	/// 被写界深度 (v44)。深度を読むので、outline とオクルージョンが深度を DEPTH_WRITE に戻した後に置く
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::DepthOfField);
+	drawDofPass();
+
 	/// FXAA ポストプロセス AA (ENG-104)
 	/// outline までの 3D シーン色に対して fast approximate AA を適用する。
-	/// renderOverlay2D() より「前」に走らせて HUD/UI text に FXAA ブラーを
-	/// かけないようにする (2D 文字は pixel-perfect なまま残す)。
+	/// renderOverlay2D() より「前」に実行し、HUD/UI text に FXAA のブラーが
+	/// かからないようにする (2D 文字は pixel-perfect なまま残す)。
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Fxaa);
 	drawFXAAPass();
 
-	/// ニューラル現像 (M3): 現像済み 2D 画像をバックバッファへ全画面 α合成する
+	/// ニューラル現像 (M3): 現像済み 2D 画像をバックバッファへ全画面 α 合成する
 	/// (FXAA 後・overlay2D 前 = HUD は 2D 絵の上に残る)。strength=0 のとき no-op。
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::StyleLive2DNeural);
 	blitStyleDx12();
 
 	/// Live2D (自前 D3D12 レンダラ): tonemap 後の backbuffer へ 2D オーバーレイ描画。
@@ -489,11 +545,8 @@ inline void Renderer3D_DX12::endFrame()
 
 	// HUD/2D は Engine が finalizeFrame 後に Screen::present3DOverlay() で描く。
 
-	// ここではコマンドリストを閉じない。
-	// Engineが ImGui 描画をコマンドリストに追記した後、
-	// finalizeFrame() で閉じる。
-	// ただし、Engine経由で使われない場合（単体テスト等）に備えて
-	// m_needsFinalize フラグで制御する。
+	// ここではコマンドリストを閉じず、finalizeFrame() で閉じる。
+	// Engine 経由で使われない場合（単体テスト等）に備えて m_needsFinalize フラグで制御する。
 	m_needsFinalize = true;
 }
 
@@ -512,7 +565,7 @@ inline void Renderer3D_DX12::renderCsgPass()
 		return;
 	}
 
-	// パスは自分の PSO とシザーを持つが、ターゲットの束縛は呼び手の仕事
+	// パスは自分の PSO とシザーを持つが、ターゲットの束縛は呼び出し側が行う
 	// (CsgRenderPass::draw の契約)。OIT と同じ MSAA HDR + depth に書く。
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtv =
 		m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
@@ -536,7 +589,7 @@ inline void Renderer3D_DX12::renderCsgPass()
 		}
 		if (!entry.pass.ready())
 		{
-			// 初回だけ読む。マニフェストがシーン名を知っているので、シーンは隣から。
+			// 初回だけ読む。マニフェストにシーン名が書いてあるので、シーンは隣から読む。
 			const std::size_t slash = q.manifest.find_last_of("/\\");
 			const std::string dir =
 				slash == std::string::npos ? std::string(".") : q.manifest.substr(0, slash);
@@ -557,8 +610,8 @@ inline void Renderer3D_DX12::renderCsgPass()
 		desc.position = q.position;
 		desc.rotationYDeg = q.rotYDeg;
 		desc.scale = q.scale;
-		// live に焼いた立体 (D-15) だけが今フレームの姿を要る。焼き込みの bake には
-		// 渡さない。渡しても読まれないが、毎フレームの平坦化を払う理由が無い。
+		// live に焼いた立体 (D-15) だけが今フレームの姿を必要とする。焼き込みの bake には
+		// 渡さない。渡しても読まれないが、毎フレーム平坦化の手間をかける理由が無い。
 		const makina::EvalProgram* program =
 			entry.bake.live() ? &entry.solid.programAt(q.timeSec) : nullptr;
 		if (!entry.pass.draw(cmd, m_clodCamera, lightDir, desc,
@@ -634,16 +687,23 @@ inline void Renderer3D_DX12::renderClodPass()
 	m_clod.endFrame();
 }
 
-/// @brief コマンドリストを閉じてGPU実行する（Engine::endFrame前に呼ぶ）
-/// @details endFrame()で3D描画完了後、ImGui描画を追記してからこれを呼ぶ。
+/// @brief コマンドリストを閉じて GPU で実行する（Engine::endFrame 前に呼ぶ）
 inline void Renderer3D_DX12::finalizeFrame()
 {
 	MITIRU_ZONE_NAMED("Render::Dx12::FinalizeFrame");
+	// 揺れはそのフレームの setCamera にだけ反映する。残すと、次のフレームで揺れの量が渡される前に
+	// カメラを置く経路 (host 側の別描画など) が前フレームの揺れで描かれる
+	m_cameraShakeX = 0.0f;
+	m_cameraShakeY = 0.0f;
 	if (!m_needsFinalize || !m_graphicsCmdList)
 	{
 		return;
 	}
 	m_needsFinalize = false;
+	if (m_device == nullptr || m_device->isDeviceLost())
+	{
+		return;
+	}
 
 	/// RenderTarget→Present の遷移は直後に呼ばれる Dx12Device::endFrame が行う。
 	/// ここで張ると二重バリアになるので、描画コマンドを閉じて実行するだけにする。
@@ -656,7 +716,7 @@ inline void Renderer3D_DX12::finalizeFrame()
 	m_perFrameTempResources[frameIndex] = std::move(m_frameTempResources);
 }
 
-/// @brief メインPSOとルートシグネチャに戻す
+/// @brief メイン PSO とルートシグネチャに戻す
 inline void Renderer3D_DX12::restoreMainState()
 {
 	if (m_graphicsCmdList && m_mainPSO && m_rootSignature)
@@ -680,7 +740,7 @@ inline void Renderer3D_DX12::setLights(std::span<const Light> lights)
 	{
 		m_lights.push_back(lights[i]);
 	}
-	// 互換: 先頭ライトを既存の単一光源パスにも反映する
+	// 互換のため、先頭ライトを既存の単一光源パスにも反映する
 	if (!m_lights.empty())
 	{
 		m_light = m_lights.front();
@@ -690,7 +750,7 @@ inline void Renderer3D_DX12::setLights(std::span<const Light> lights)
 /// @brief 現在の (shaderMode, useMultiLight, outlineMode) に対する PSO を選ぶ
 inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO(bool doubleSided) const noexcept
 {
-	// 両面は同じ PS のカリング無し双子を使う。双子が無い場合だけ片面へ落とす。
+	// 両面は同じ PS のカリング無しの双子を使う。双子が無い場合だけ片面を使う。
 	const auto pick = [doubleSided](const ComPtr<ID3D12PipelineState>& one,
 	                                const ComPtr<ID3D12PipelineState>& both)
 		-> ID3D12PipelineState*

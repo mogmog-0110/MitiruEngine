@@ -97,7 +97,7 @@ struct DeltaManifest
 /// @brief ゲームパッケージングツール
 /// @details ゲームのビルド成果物とアセットをスキャンし、
 ///          プラットフォーム別のパッケージを生成する。
-///          NSISインストーラースクリプトやWeb配布用HTMLも生成可能。
+///          NSIS インストーラースクリプトや Web 配布用 HTML も生成可能。
 ///
 /// @code
 /// mitiru::resource::PackagingTool tool;
@@ -163,9 +163,9 @@ public:
 		return result;
 	}
 
-	/// @brief Windowsインストーラー用NSISスクリプトを生成する
+	/// @brief Windows インストーラー用 NSIS スクリプトを生成する
 	/// @param config パッケージ設定
-	/// @return NSISスクリプト文字列
+	/// @return NSIS スクリプト文字列
 	[[nodiscard]] std::string createInstaller(const PackageConfig& config) const
 	{
 		std::ostringstream nsis;
@@ -198,7 +198,7 @@ public:
 		return nsis.str();
 	}
 
-	/// @brief Web配布用HTML + wasmファイル構成を生成する
+	/// @brief Web 配布用 HTML + wasm ファイル構成を生成する
 	/// @param config パッケージ設定
 	/// @return index.html の内容
 	[[nodiscard]] std::string createWebDeploy(const PackageConfig& config) const
@@ -330,7 +330,7 @@ private:
 		binary.sourcePath = config.outputDir + "/" + binary.relativePath;
 		files.push_back(std::move(binary));
 
-		// Web向け追加ファイル
+		// Web 向け追加ファイル
 		if (config.platform == TargetPlatform::Web)
 		{
 			PackageFileEntry jsLoader;
@@ -382,7 +382,7 @@ private:
 			break;
 		}
 
-		// gitハッシュは外部から注入するか、ビルド時マクロで設定
+		// git ハッシュは外部から注入するか、ビルド時マクロで設定
 #ifdef MITIRU_GIT_HASH
 		meta.gitHash = MITIRU_GIT_HASH;
 #else
@@ -392,7 +392,7 @@ private:
 		return meta;
 	}
 
-	/// @brief unordered_mapヘルパー（ファイルリスト用）
+	/// @brief unordered_map ヘルパー（ファイルリスト用）
 	struct StringHash
 	{
 		using is_transparent = void;
@@ -402,7 +402,7 @@ private:
 		}
 	};
 
-	/// @brief unordered_mapの文字列透過比較
+	/// @brief unordered_map の文字列透過比較
 	using unordered_map = std::unordered_map<std::string, const PackageFileEntry*>;
 };
 

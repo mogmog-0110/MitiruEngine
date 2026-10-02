@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GameAssetUI.hpp
-/// @brief UI系ゲームアセットSVGテンプレート（収集アイテム・ボタン）
+/// @brief UI 系ゲームアセットの SVG テンプレート（収集アイテム・ボタン）
 
 #include "SvgGenerator.hpp"
 #include "GameAssetUtil.hpp"
@@ -11,7 +11,7 @@
 namespace mitiru::asset
 {
 
-/// @brief UI系SVGテンプレート
+/// @brief UI 系 SVG テンプレート
 class GameAssetUI
 {
 public:
@@ -32,7 +32,7 @@ public:
 		const float cy = doc.viewBoxH * 0.5f;
 		const float half = size * 0.5f;
 
-		// ダイヤモンド形状（回転した正方形）
+		// ダイヤモンド型（回転した正方形）
 		SvgElement gem;
 		gem.shape = SvgShape::Polygon;
 		gem.points = {
@@ -64,8 +64,8 @@ public:
 		return doc;
 	}
 
-	/// @brief 数式ボタン（電卓スタイルボタン）
-	/// @param label ボタンラベル（"sin", "cos", "+", "-" 等）
+	/// @brief 数式ボタン（電卓スタイルのボタン）
+	/// @param label ボタンラベル（"sin", "cos", "+", "-" など）
 	/// @param size ボタンサイズ
 	/// @param color ネオン色
 	/// @return SvgDocument

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file Pathfinder.hpp
-/// @brief Grid2D上のA*経路探索（4方向）
+/// @brief Grid2D 上の A*経路探索（4 方向）
 /// @details static findPath()で最短経路を計算する。
 
 #include <algorithm>
@@ -16,7 +16,7 @@
 namespace mitiru::util
 {
 
-/// @brief Grid2D上のA*経路探索
+/// @brief Grid2D 上の A*経路探索
 struct Pathfinder
 {
 	/// @brief 座標ペア型
@@ -25,32 +25,32 @@ struct Pathfinder
 	/// @brief 歩行可能判定関数型（セル値→通行可能か）
 	using WalkableFunc = std::function<bool(int cellValue)>;
 
-	/// @brief Grid2D上でA*探索を行い最短経路を返す（4方向移動）
+	/// @brief Grid2D 上で A*探索を行い最短経路を返す（4 方向移動）
 	/// @param grid 探索対象のグリッド
 	/// @param start 開始座標
 	/// @param goal 目標座標
 	/// @param isWalkable セル値が通行可能かを判定する関数
-	/// @return 経路（start含む、goal含む）。経路が見つからない場合は空ベクタ
+	/// @return 経路（start 含む、goal 含む）。経路が見つからない場合は空ベクタ
 	[[nodiscard]] static std::vector<Pos> findPath(
 		const Grid2D<int>& grid,
 		Pos start,
 		Pos goal,
 		const WalkableFunc& isWalkable)
 	{
-		/// start==goalの特殊ケース
+		/// start==goal の特殊ケース
 		if (start == goal)
 		{
 			return {start};
 		}
 
-		/// startまたはgoalが範囲外の場合
+		/// start または goal が範囲外の場合
 		if (!grid.inBounds(start.first, start.second) ||
 		    !grid.inBounds(goal.first, goal.second))
 		{
 			return {};
 		}
 
-		/// goalが通行不可の場合
+		/// goal が通行不可の場合
 		if (!isWalkable(grid.at(goal.first, goal.second)))
 		{
 			return {};
@@ -84,7 +84,7 @@ struct Pathfinder
 		gScore[startKey] = 0.0f;
 		openSet.push({start, heuristic(start, goal)});
 
-		/// 4方向の隣接オフセット
+		/// 4 方向の隣接オフセット
 		static constexpr int DX[] = {0, 0, -1, 1};
 		static constexpr int DY[] = {-1, 1, 0, 0};
 

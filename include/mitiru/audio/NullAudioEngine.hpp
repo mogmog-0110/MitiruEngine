@@ -10,7 +10,7 @@ namespace mitiru::audio
 {
 
 /// @brief ヌルオーディオエンジン
-/// @details 全操作がノーオペレーションの IAudioEngine 実装。
+/// @details すべての操作で何も処理しない IAudioEngine 実装。
 ///          ヘッドレスモードやユニットテストで使用する。
 ///
 /// @code
@@ -20,31 +20,31 @@ namespace mitiru::audio
 class NullAudioEngine : public IAudioEngine
 {
 public:
-	/// @brief サウンドを再生する（ノーオペレーション）
-	/// @param id サウンドID（無視される）
+	/// @brief サウンドを再生する（何も処理しない）
+	/// @param id サウンド ID（無視される）
 	void playSound(std::string_view id) override
 	{
 		static_cast<void>(id);
 	}
 
-	/// @brief サウンドを停止する（ノーオペレーション）
-	/// @param id サウンドID（無視される）
+	/// @brief サウンドを停止する（何も処理しない）
+	/// @param id サウンド ID（無視される）
 	void stopSound(std::string_view id) override
 	{
 		static_cast<void>(id);
 	}
 
-	/// @brief BGMを再生する（ノーオペレーション）
+	/// @brief BGM を再生する（何も処理しない）
 	/// @param id BGM ID（無視される）
 	void playMusic(std::string_view id) override
 	{
 		static_cast<void>(id);
 	}
 
-	/// @brief BGMを停止する（ノーオペレーション）
+	/// @brief BGM を停止する（何も処理しない）
 	void stopMusic() override {}
 
-	/// @brief マスターボリュームを設定する（ノーオペレーション）
+	/// @brief マスターボリュームを設定する（何も処理しない）
 	/// @param volume ボリューム（無視される）
 	void setVolume(float volume) override
 	{
@@ -52,7 +52,7 @@ public:
 	}
 
 	/// @brief 常に false を返す
-	/// @param id サウンドID（無視される）
+	/// @param id サウンド ID（無視される）
 	/// @return 常に false
 	[[nodiscard]] bool isPlaying(std::string_view id) const override
 	{

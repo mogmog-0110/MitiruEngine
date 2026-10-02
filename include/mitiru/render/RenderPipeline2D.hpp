@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 /// @file RenderPipeline2D.hpp
-/// @brief 2Dレンダリングパイプラインオーケストレーター
-/// @details Screen/SpriteBatch/ShapeRenderer → GPU描画を接続する。
-///          DX11環境ではシェーダー・バッファ・パイプラインを構築し、
-///          Null環境では何もしない。
+/// @brief 2D レンダリングパイプラインオーケストレーター
+/// @details Screen/SpriteBatch/ShapeRenderer → GPU 描画を接続する。
+///          DX11 環境ではシェーダー・バッファ・パイプラインを構築し、
+///          Null 環境では何もしない。
 
 #include <algorithm>
 #include <cstdint>
@@ -41,6 +41,8 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 #include <mitiru/gfx/dx12/Dx12Device.hpp>
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
 #include <mitiru/gfx/dx12/Dx12MsaaTarget.hpp>
 #pragma comment(lib, "d3dcompiler.lib")
@@ -58,7 +60,7 @@ enum class PixelArtFilter
 	Point   ///< D3D12_FILTER_MIN_MAG_MIP_POINT  (シャープな pixel art)
 };
 
-/// @brief 正射影行列（列優先 column-major、float4x4。OpenGL標準配置）
+/// @brief 正射影行列（列優先 column-major、float4x4。OpenGL 標準配置）
 /// @details left=0, right=w, top=0, bottom=h, near=0, far=1
 struct OrthoMatrix
 {
@@ -85,9 +87,9 @@ struct OrthoMatrix
 	}
 };
 
-/// @brief 2Dレンダリングパイプラインオーケストレーター
-/// @details GPU描画に必要なリソース（シェーダー・バッファ・パイプライン）を保持し、
-///          SpriteBatch/ShapeRendererの頂点データをGPUに送信する。
+/// @brief 2D レンダリングパイプラインオーケストレーター
+/// @details GPU 描画に必要なリソース（シェーダー・バッファ・パイプライン）を保持し、
+///          SpriteBatch/ShapeRenderer の頂点データを GPU に送信する。
 ///          ヘッドレス（NullDevice）時は何もしない。
 ///
 /// @code
@@ -102,20 +104,20 @@ public:
 	RenderPipeline2D() noexcept = default;
 
 	/// @brief パイプラインが有効かどうかを判定する
-	/// @return GPU描画が可能ならtrue
+	/// @return GPU 描画が可能なら true
 	[[nodiscard]] bool isValid() const noexcept
 	{
 		return m_valid;
 	}
 
-	/// @brief 頂点・インデックスデータをGPUに送信して描画する
+	/// @brief 頂点・インデックスデータを GPU に送信して描画する
 	/// @param vertices 頂点配列
 	/// @param indices インデックス配列
 	void submitBatch(const std::vector<Vertex2D>& vertices,
 	                 const std::vector<std::uint32_t>& indices);
 
-	/// @brief SDF矩形バッチをGPUに送信して描画する
-	/// @param vertices StyledVertex2D頂点配列
+	/// @brief SDF 矩形バッチを GPU に送信して描画する
+	/// @param vertices StyledVertex2D 頂点配列
 	/// @param indices インデックス配列
 	/// @param style スタイル定数（cbuffer b1）
 	void submitStyledRectBatch(
@@ -123,8 +125,8 @@ public:
 		const std::vector<std::uint32_t>& indices,
 		const StyleConstants& style);
 
-	/// @brief SDF円/楕円バッチをGPUに送信して描画する
-	/// @param vertices StyledVertex2D頂点配列
+	/// @brief SDF 円/楕円バッチを GPU に送信して描画する
+	/// @param vertices StyledVertex2D 頂点配列
 	/// @param indices インデックス配列
 	/// @param style スタイル定数（cbuffer b1）
 	void submitStyledCircleBatch(
@@ -165,14 +167,26 @@ public:
 	                         const std::vector<std::uint32_t>& indices,
 	                         std::uint32_t texHandle);
 
+	/// @brief key のテクスチャを多チャンネル距離場 (MTSDF) として描くよう登録する。
+	/// @details 登録したテクスチャは線形補間で読み、RGB の中央値を距離として濃さに直す。
+	///          拡大・回転しても輪郭が滲まない (文字アトラス用)。
+	/// @param pixelRange 距離場の幅 (テクスチャ上の画素)
+	void setDistanceFieldTexture(const void* key, float pixelRange);
+
+	/// @brief ensureSpriteTexture 済みのテクスチャのうち、指定した行だけを GPU へ送り直す。
+	/// @details 全体を送り直さずに済むので、字形を少しずつ足すアトラスの更新に使う。
+	/// @param rgba テクスチャ全体の先頭 (幅 * 高さ * 4 バイト)
+	void updateSpriteTextureRows(const void* key, int firstRow, int rowCount,
+	                             const std::uint8_t* rgba);
+
 	/// @brief スクリーンサイズ変更時に正射影行列を更新する
 	/// @param width 新しい幅
 	/// @param height 新しい高さ
 	void resize(float width, float height);
 
-	/// @brief 抽象IDeviceから2Dパイプラインを構築する
-	/// @details D3D12やVulkan等、DX11以外のバックエンドで使用する。
-	/// @param device GPUデバイス
+	/// @brief 抽象 IDevice から 2D パイプラインを構築する
+	/// @details D3D12 や Vulkan 等、DX11 以外のバックエンドで使用する。
+	/// @param device GPU デバイス
 	/// @param screenWidth スクリーン幅
 	/// @param screenHeight スクリーン高さ
 	/// @return 構築されたパイプライン
@@ -182,8 +196,8 @@ public:
 		float screenHeight);
 
 #ifdef _WIN32
-	/// @brief DX11デバイスから2Dパイプラインを構築する
-	/// @param dx11Device DX11デバイス
+	/// @brief DX11 デバイスから 2D パイプラインを構築する
+	/// @param dx11Device DX11 デバイス
 	/// @param screenWidth スクリーン幅
 	/// @param screenHeight スクリーン高さ
 	/// @return 構築されたパイプライン
@@ -192,12 +206,12 @@ public:
 		float screenWidth,
 		float screenHeight);
 
-	/// @brief DX12デバイスから2Dパイプラインを構築する
-	/// @details MitiruCefTexture と同等のスタイルで PSO / root signature /
+	/// @brief DX12 デバイスから 2D パイプラインを構築する
+	/// @details 専用の PSO / root signature /
 	///          persistent command allocator + command list + fence を自前で持つ。
 	///          generic createFromDevice / Dx12CommandList 抽象は PSO/root sig が
-	///          bind されないため DX12 で silent no-op になる。本パスで解消する。
-	/// @param dx12Device DX12デバイス
+	///          bind されないため DX12 では気づかないうちに no-op になる。本パスで解消する。
+	/// @param dx12Device DX12 デバイス
 	/// @param screenWidth スクリーン幅
 	/// @param screenHeight スクリーン高さ
 	/// @return 構築されたパイプライン
@@ -237,24 +251,24 @@ private:
 #endif
 
 #ifdef _WIN32
-	/// @brief DX11でバッチ描画を実行する
+	/// @brief DX11 でバッチ描画を実行する
 	void submitBatchDx11(
 		const std::vector<Vertex2D>& vertices,
 		const std::vector<std::uint32_t>& indices);
 
-	/// @brief SDF StyledVertex2D用の入力レイアウトを持つパイプラインを生成する
+	/// @brief SDF StyledVertex2D 用の入力レイアウトを持つパイプラインを生成する
 	[[nodiscard]] static Microsoft::WRL::ComPtr<ID3D11InputLayout>
 	createSdfInputLayout(ID3D11Device* device, const gfx::Dx11Shader& vs);
 
-	/// @brief SDF Alpha用ブレンドステートを生成する
+	/// @brief SDF Alpha 用ブレンドステートを生成する
 	[[nodiscard]] static Microsoft::WRL::ComPtr<ID3D11BlendState>
 	createSdfBlendState(ID3D11Device* device);
 
-	/// @brief SDF用ラスタライザステートを生成する
+	/// @brief SDF 用ラスタライザステートを生成する
 	[[nodiscard]] static Microsoft::WRL::ComPtr<ID3D11RasterizerState>
 	createSdfRasterizerState(ID3D11Device* device);
 
-	/// @brief SDFパイプラインを遅延初期化してバッチ描画する（Rect/Circle共通）
+	/// @brief SDF パイプラインを遅延初期化してバッチ描画する（Rect/Circle 共通）
 	void submitStyledBatchDx11(
 		const std::vector<StyledVertex2D>& vertices,
 		const std::vector<std::uint32_t>& indices,
@@ -285,8 +299,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> m_pgSampler; ///< ポイントフィルタサンプラー
 
 	/// ── PixelGrid キャッシュテクスチャ用メンバ (DX12) ────────
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12PgTexture;  ///< default heap texture
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12PgUpload;   ///< upload heap intermediate
+	gfx::GpuResource                             m_dx12PgTexture;  ///< default heap texture
+	gfx::GpuResource                             m_dx12PgUpload;   ///< upload heap intermediate
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dx12PgSrvHeap;  ///< shader-visible SRV heap
 	int  m_dx12PgTexW     = 0;     ///< キャッシュテクスチャ幅
 	int  m_dx12PgTexH     = 0;     ///< キャッシュテクスチャ高さ
@@ -297,14 +311,15 @@ private:
 	/// SRV heap を持つ。key+(w,h) でキャッシュし、初回のみ同期アップロードする。
 	struct Dx12SpriteTexture
 	{
-		Microsoft::WRL::ComPtr<ID3D12Resource>       tex;     ///< default heap (PSR)
-		Microsoft::WRL::ComPtr<ID3D12Resource>       upload;  ///< upload heap 中間
+		gfx::GpuResource                             tex;     ///< default heap (PSR)
+		gfx::GpuResource                             upload;  ///< upload heap 中間
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvHeap; ///< 1-slot SRV heap
 		int           w   = 0;
 		int           h   = 0;
 		const void*   key = nullptr;
 		const void*   srcPtr = nullptr; ///< アップロード元 pixel データの先頭。差し替え(sprite hot-reload)検出用
 		std::uint64_t contentHash = 0;  ///< pixel 内容の FNV-1a。内容変化で再アップロード判定 (#19b)
+		float         distanceRange = 0.0f; ///< 0 以外なら MTSDF として描く (setDistanceFieldTexture)
 	};
 	std::vector<Dx12SpriteTexture> m_dx12SpriteTextures;              ///< index+1 = handle
 	std::unordered_map<const void*, std::uint32_t> m_dx12SpriteTexLookup; ///< key → index
@@ -315,14 +330,19 @@ private:
 	int                 m_lastSpriteTexH      = 0;
 	const std::uint8_t* m_lastSpriteTexSrc    = nullptr;
 	std::uint32_t       m_lastSpriteTexHandle = 0;   ///< 0 = empty
+	gfx::GpuResource    m_dx12RowUpload; ///< updateSpriteTextureRows の中継 (使い回す)
+	std::uint32_t       m_dx12RowUploadSize = 0;
+
+	/// @brief 中継バッファの rowCount 行を tex の firstRow 行目以降へ写す (PSR へ戻して終える)。
+	void submitRowCopyDx12(ID3D12Resource* tex, int width, int firstRow, int rowCount, UINT rowPitch);
 
 public:
-	/// @brief RGBA8ピクセルバッファをGPUにアップロードし、クワッドとして描画する
+	/// @brief RGBA8 ピクセルバッファを GPU にアップロードし、クワッドとして描画する
 	/// @details (pw, ph) が前回と異なる場合のみテクスチャを再確保する。
 	///          サンプラーは初回使用時に遅延生成する。
 	///          Screen::drawPixelGrid から呼ばれるため public。
 	/// @param dest 描画先矩形（論理スクリーン座標）
-	/// @param pixels RGBA8ピクセルバッファ（pw * ph 要素）
+	/// @param pixels RGBA8 ピクセルバッファ（pw * ph 要素）
 	/// @param pw バッファ幅
 	/// @param ph バッファ高さ
 	/// @param screenW 論理スクリーン幅（正射影行列用）
@@ -368,11 +388,11 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12PipelineMsaa; ///< 4x MSAA 変種 (中間 RT が 4x のとき使用)
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12VsBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12PsBlob;
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12VertexBuffer[kDx12Ring]; ///< upload heap (slot 別)
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12IndexBuffer[kDx12Ring];  ///< upload heap (slot 別)
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12ConstantBuffer; ///< エイリアス用 (未使用)
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12VsCb;         ///< projection CB (共有。書換は resize のみ、waitDx12Fence で全 in-flight drain 後に限る)
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12PsCb[kDx12Ring]; ///< uUseTexture CB (slot 別)
+	gfx::GpuResource                             m_dx12VertexBuffer[kDx12Ring]; ///< upload heap (slot 別)
+	gfx::GpuResource                             m_dx12IndexBuffer[kDx12Ring];  ///< upload heap (slot 別)
+	gfx::GpuResource                             m_dx12ConstantBuffer; ///< エイリアス用 (未使用)
+	gfx::GpuResource                             m_dx12VsCb;         ///< projection CB (共有。書換は resize のみ、waitDx12Fence で全 in-flight drain 後に限る)
+	gfx::GpuResource                             m_dx12PsCb[kDx12Ring]; ///< uUseTexture CB (slot 別)
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dx12SrvHeap;      ///< null SRV 用
 	std::uint32_t m_dx12VbCapacity[kDx12Ring] = {};
 	std::uint32_t m_dx12IbCapacity[kDx12Ring] = {};
@@ -411,9 +431,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12SdfCirclePsBlob;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12SdfCirclePso;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState>  m_dx12SdfCirclePsoMsaa; ///< SDF 円 4x MSAA 変種
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfVertexBuffer[kDx12Ring];
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfIndexBuffer[kDx12Ring];
-	Microsoft::WRL::ComPtr<ID3D12Resource>       m_dx12SdfStyleCb[kDx12Ring];
+	gfx::GpuResource                             m_dx12SdfVertexBuffer[kDx12Ring];
+	gfx::GpuResource                             m_dx12SdfIndexBuffer[kDx12Ring];
+	gfx::GpuResource                             m_dx12SdfStyleCb[kDx12Ring];
 	std::uint32_t m_dx12SdfVbCapacity[kDx12Ring] = {};
 	std::uint32_t m_dx12SdfIbCapacity[kDx12Ring] = {};
 
@@ -431,7 +451,7 @@ private:
 	HANDLE                                            m_dx12FenceEvent = nullptr;
 
 	/// @brief upload heap の ID3D12Resource を作成する
-	[[nodiscard]] static Microsoft::WRL::ComPtr<ID3D12Resource>
+	[[nodiscard]] static gfx::GpuResource
 	createUploadBufferDx12(ID3D12Device* device, std::uint32_t sizeBytes);
 
 	/// @brief 定数バッファを upload heap 経由で更新する
@@ -439,12 +459,12 @@ private:
 
 	/// @brief 動的バッファの容量を確保し、データを書き込む
 	void updateDx12Buffer(
-		Microsoft::WRL::ComPtr<ID3D12Resource>& buf,
+		gfx::GpuResource& buf,
 		std::uint32_t& capacity,
 		const void* data, std::uint32_t bytes);
 
 	/// @brief 2D 用 PSO を生成する (alpha blend, no depth, triangle list)
-	/// @param sampleCount RT の MSAA サンプル数 (1=非MS, 4=4x MSAA)。RTV の
+	/// @param sampleCount RT の MSAA サンプル数 (1=非 MS, 4=4x MSAA)。RTV の
 	///        SampleDesc.Count と一致させないと draw で失敗するため、submit 側は
 	///        描画先 RT の sampleCount() に合わせて 1x/4x PSO を選ぶ。
 	[[nodiscard]] static Microsoft::WRL::ComPtr<ID3D12PipelineState>
@@ -515,6 +535,7 @@ private:
 		PixelArtFilter filter);
 #endif
 
+	std::unordered_map<const void*, float> m_distanceFieldRanges; ///< setDistanceFieldTexture の登録
 	float m_screenWidth = 0.0f;    ///< スクリーン論理幅（投影行列用）
 	float m_screenHeight = 0.0f;   ///< スクリーン論理高さ（投影行列用）
 	float m_viewportWidth = 0.0f;  ///< バックバッファ実幅（ビューポート用）
@@ -541,7 +562,7 @@ public:
 	/// @details バックバッファ実幅（setViewportSize）が設定されていればそれを、
 	///          未設定なら論理スクリーン幅を返す。
 	///          投影行列は常に論理サイズ（m_screenWidth/Height）で構築されるため、
-	///          論理座標はバックバッファの実サイズに対して1:1で正しくマッピングされる。
+	///          論理座標はバックバッファの実サイズに対して 1:1 で正しくマッピングされる。
 	[[nodiscard]] float viewportWidth() const noexcept
 	{
 		return m_viewportWidth > 0.0f ? m_viewportWidth : m_screenWidth;

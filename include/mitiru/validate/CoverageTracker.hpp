@@ -3,7 +3,7 @@
 /// @file CoverageTracker.hpp
 /// @brief コードパスカバレッジ追跡
 /// @details ゲームロジック内の特定パスが実行されたかを記録し、
-///          AIエージェントがカバレッジ情報を取得するために使用する。
+///          AI エージェントがカバレッジ情報を取得するために使用する。
 
 #include <string>
 #include <unordered_set>
@@ -13,7 +13,7 @@ namespace mitiru::validate
 {
 
 /// @brief コードパスカバレッジトラッカー
-/// @details 事前に登録されたパスIDに対して、実行済みかどうかを追跡する。
+/// @details 事前に登録されたパス ID に対して、実行済みかどうかを追跡する。
 ///
 /// @code
 /// mitiru::validate::CoverageTracker tracker;
@@ -50,7 +50,7 @@ public:
 	}
 
 	/// @brief カバレッジ率を取得する
-	/// @return 0.0〜1.0 のカバレッジ率（登録パスが0の場合は1.0）
+	/// @return 0.0〜1.0 のカバレッジ率（登録パスが 0 の場合は 1.0）
 	[[nodiscard]] float coverage() const noexcept
 	{
 		if (m_allPaths.empty())
@@ -62,21 +62,21 @@ public:
 	}
 
 	/// @brief 全登録パスを取得する
-	/// @return 全パスIDのベクタ
+	/// @return 全パス ID のベクタ
 	[[nodiscard]] std::vector<std::string> allPaths() const
 	{
 		return {m_allPaths.begin(), m_allPaths.end()};
 	}
 
 	/// @brief 訪問済みパスを取得する
-	/// @return 訪問済みパスIDのベクタ
+	/// @return 訪問済みパス ID のベクタ
 	[[nodiscard]] std::vector<std::string> visitedPaths() const
 	{
 		return {m_visitedPaths.begin(), m_visitedPaths.end()};
 	}
 
 	/// @brief 未訪問パスを取得する
-	/// @return 未訪問パスIDのベクタ
+	/// @return 未訪問パス ID のベクタ
 	[[nodiscard]] std::vector<std::string> unvisitedPaths() const
 	{
 		std::vector<std::string> result;
@@ -90,8 +90,8 @@ public:
 		return result;
 	}
 
-	/// @brief カバレッジ情報をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief カバレッジ情報を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;

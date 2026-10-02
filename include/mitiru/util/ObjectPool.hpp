@@ -2,7 +2,7 @@
 
 /// @file ObjectPool.hpp
 /// @brief 軽量オブジェクトプール
-/// @details acquire/releaseでオブジェクトを管理し、forEachActiveでアクティブ要素を走査する。
+/// @details acquire/release でオブジェクトを管理し、forEachActive でアクティブ要素を走査する。
 
 #include <functional>
 #include <stdexcept>
@@ -74,7 +74,7 @@ public:
 		}
 	}
 
-	/// @brief アクティブな全オブジェクトに関数を適用する（const版）
+	/// @brief アクティブな全オブジェクトに関数を適用する（const 版）
 	template <typename Func>
 	void forEachActive(Func&& func) const
 	{
@@ -112,7 +112,7 @@ public:
 		return m_objects[idx];
 	}
 
-	/// @brief 指定インデックスのオブジェクトへのconst参照を返す
+	/// @brief 指定インデックスのオブジェクトへの const 参照を返す
 	const T& at(int index) const
 	{
 		const auto idx = static_cast<std::size_t>(index);

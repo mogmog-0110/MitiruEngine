@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file TilemapRenderer_impl.hpp
-/// @brief TilemapRenderer のオートタイル・CPU描画パス実装本体（TilemapRenderer.hpp から機械的分割）
+/// @brief TilemapRenderer のオートタイル・CPU 描画パス実装本体（TilemapRenderer.hpp から機械的分割）
 
 #include <mitiru/render/TilemapRenderer.hpp>
 
@@ -34,7 +34,7 @@ inline void TilemapRenderer::applyAutoTile(TilemapLayer& layer, int terrainTileI
 	}
 }
 
-/// @brief 単一レイヤーをCPU描画する（ビューポートカリング付き）
+/// @brief 単一レイヤーを CPU 描画する（ビューポートカリング付き）
 inline void TilemapRenderer::drawLayer(Screen& screen,
                                        const TilemapLayer& layer,
                                        const TilesetConfig& tileset,
@@ -79,7 +79,7 @@ inline void TilemapRenderer::drawLayer(Screen& screen,
 			/// アニメーション置換
 			tileId = resolveAnimatedTile(tileId);
 
-			/// タイルセットのfirstGidを引いてローカルIDにする
+			/// タイルセットの firstGid を引いてローカル ID にする
 			const int localId = tileId - tileset.firstGid;
 			if (localId < 0)
 			{
@@ -95,14 +95,14 @@ inline void TilemapRenderer::drawLayer(Screen& screen,
 			/// 反転フラグの取得
 			const TileFlip flip = layer.getFlip(tx, ty);
 
-			/// CPU描画: SpriteBatch経由でクワッドを描画する
+			/// CPU 描画: SpriteBatch 経由でクワッドを描画する
 			drawTileCpu(screen, tileset, localId,
 			            screenX, screenY, flip, tint);
 		}
 	}
 }
 
-/// @brief タイルマップ全体をCPU描画する
+/// @brief タイルマップ全体を CPU 描画する
 inline void TilemapRenderer::drawTilemap(Screen& screen,
                                          const Tilemap& tilemap,
                                          float cameraX, float cameraY) const
@@ -118,9 +118,9 @@ inline void TilemapRenderer::drawTilemap(Screen& screen,
 			continue;
 		}
 
-		/// レイヤー内のタイルIDに対応するタイルセットを決定する
+		/// レイヤー内のタイル ID に対応するタイルセットを決定する
 		/// 簡略化: 全タイルに最初のタイルセットを使用する
-		/// （複数タイルセット対応はタイルIDのGID範囲でルーティングする）
+		/// （複数タイルセット対応はタイル ID の GID 範囲でルーティングする）
 		const TilesetConfig* ts = nullptr;
 		if (!tilemap.tilesets.empty())
 		{
@@ -134,7 +134,7 @@ inline void TilemapRenderer::drawTilemap(Screen& screen,
 	}
 }
 
-/// @brief タイルマップ全体をビューポート指定でCPU描画する
+/// @brief タイルマップ全体をビューポート指定で CPU 描画する
 inline void TilemapRenderer::drawTilemap(Screen& screen,
                                          const Tilemap& tilemap,
                                          float cameraX, float cameraY,
@@ -159,7 +159,7 @@ inline void TilemapRenderer::drawTilemap(Screen& screen,
 	}
 }
 
-/// @brief CPUパスで1タイルを描画する
+/// @brief CPU パスで 1 タイルを描画する
 inline void TilemapRenderer::drawTileCpu(Screen& screen,
                                          const TilesetConfig& tileset,
                                          int localTileId,
@@ -178,12 +178,12 @@ inline void TilemapRenderer::drawTileCpu(Screen& screen,
 
 	if (tileset.texture.valid())
 	{
-		/// タイルのピクセルカラーをサンプリングして矩形描画（CPU路線）
+		/// タイルのピクセルカラーをサンプリングして矩形描画（CPU 路線）
 		drawTileFromTexture(screen, tileset.texture, srcRect, dstRect, flip, tint);
 	}
 	else
 	{
-		/// テクスチャなし: タイルIDに基づく色で塗りつぶす
+		/// テクスチャなし: タイル ID に基づく色で塗りつぶす
 		const float hue = static_cast<float>(localTileId % 12) / 12.0f;
 		const sgc::Colorf color{hue, 0.6f, 0.8f, tint.a};
 		drawRectOnScreen(screen, dstRect, color);
@@ -192,7 +192,7 @@ inline void TilemapRenderer::drawTileCpu(Screen& screen,
 	++m_lastDrawnTileCount;
 }
 
-/// @brief テクスチャからタイルをCPU描画する
+/// @brief テクスチャからタイルを CPU 描画する
 inline void TilemapRenderer::drawTileFromTexture(Screen& screen,
                                                  const Texture& texture,
                                                  const sgc::Rectf& srcRect,
@@ -200,8 +200,8 @@ inline void TilemapRenderer::drawTileFromTexture(Screen& screen,
                                                  TileFlip flip,
                                                  const sgc::Colorf& tint) const
 {
-	/// CPU簡易描画: ソース矩形の平均色を計算して矩形描画する
-	/// 本格的なテクスチャマッピングはGPUパスで行う
+	/// CPU 簡易描画: ソース矩形の平均色を計算して矩形描画する
+	/// 本格的なテクスチャマッピングは GPU パスで行う
 	const auto& pixels = texture.pixels();
 	const int texW = texture.width();
 	const int texH = texture.height();
@@ -272,7 +272,7 @@ inline std::uint8_t TilemapRenderer::computeNeighborMask(
 	return mask;
 }
 
-/// @brief タイルIDをアニメーション置換する
+/// @brief タイル ID をアニメーション置換する
 inline int TilemapRenderer::resolveAnimatedTile(int tileId) const noexcept
 {
 	const auto it = m_animatedTiles.find(tileId);

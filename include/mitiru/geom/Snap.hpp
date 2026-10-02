@@ -2,8 +2,8 @@
 
 /// @file Snap.hpp
 /// @brief ピクセル/タイル変換と snap の純関数群。
-/// @details 全タイル系ゲームが game 側で手書きする `snap()` / `cellRange()` / `cellRect()` を
-///          共通化。world ↔ tile 変換の取り違えバグを構造で潰す。
+/// @details タイル系のゲームがどれも game 側で手書きしている `snap()` / `cellRange()` / `cellRect()` を
+///          共通化する。world ↔ tile 変換の取り違えバグを構造的に防ぐ。
 
 #include <algorithm>
 #include <cmath>

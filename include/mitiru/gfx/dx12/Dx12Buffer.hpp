@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Dx12Buffer.hpp
-/// @brief DirectX 12 GPUバッファ実装
-/// @details ID3D12Resourceをラップし、頂点・インデックス・定数バッファを統一的に管理する。
+/// @brief DirectX 12 GPU バッファ実装
+/// @details ID3D12Resource をラップし、頂点・インデックス・定数バッファを統一的に管理する。
 ///          動的バッファはアップロードヒープ、静的バッファはデフォルトヒープを使用する。
 
 #ifdef _WIN32
@@ -23,13 +23,14 @@
 #include <wrl/client.h>
 
 #include <mitiru/gfx/IBuffer.hpp>
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 12 GPUバッファ実装
+/// @brief DirectX 12 GPU バッファ実装
 /// @details アップロードヒープ（動的）またはデフォルトヒープ（静的）の
-///          ID3D12Resourceをラップする。
+///          ID3D12Resource をラップする。
 ///
 /// @code
 /// auto vb = device->createBuffer(BufferType::Vertex, sizeof(vertices), true, vertices);
@@ -38,16 +39,16 @@ namespace mitiru::gfx
 class Dx12Buffer final : public IBuffer
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param bufferType バッファ種別
 	/// @param sizeBytes バッファサイズ（バイト）
 	/// @param dynamic 動的更新が必要か
-	/// @param initialData 初期データ（nullptrで初期化なし）
+	/// @param initialData 初期データ（nullptr で初期化なし）
 	Dx12Buffer(ID3D12Device* device,
 	           BufferType bufferType,
 	           std::uint32_t sizeBytes,
@@ -63,7 +64,7 @@ public:
 				"Dx12Buffer: device is null");
 		}
 
-		/// 定数バッファは256バイトアライメントが必要
+		/// 定数バッファは 256 バイトアライメントが必要
 		uint32_t alignedSize = sizeBytes;
 		if (bufferType == BufferType::Constant)
 		{
@@ -93,8 +94,8 @@ public:
 		return m_type;
 	}
 
-	/// @brief GPU仮想アドレスを取得する
-	/// @return バッファのGPU仮想アドレス
+	/// @brief GPU 仮想アドレスを取得する
+	/// @return バッファの GPU 仮想アドレス
 	[[nodiscard]] uint64_t gpuVirtualAddress() const override
 	{
 		if (m_resource)
@@ -141,7 +142,7 @@ public:
 		m_resource->Unmap(0, &writeRange);
 	}
 
-	/// @brief 内部のID3D12Resourceを取得する
+	/// @brief 内部の ID3D12Resource を取得する
 	/// @return リソースへのポインタ
 	[[nodiscard]] ID3D12Resource* nativeResource() const noexcept
 	{
@@ -150,41 +151,19 @@ public:
 
 private:
 	/// @brief アップロードヒープ上にバッファを生成する（動的バッファ用）
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param alignedSize アライメント済みサイズ
 	/// @param initialData 初期データ
 	void createUploadBuffer(ID3D12Device* device,
 	                        uint32_t alignedSize,
 	                        const void* initialData)
 	{
-		const D3D12_HEAP_PROPERTIES heapProps = {
-			D3D12_HEAP_TYPE_UPLOAD,
-			D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-			D3D12_MEMORY_POOL_UNKNOWN, 0, 0
-		};
-
-		const D3D12_RESOURCE_DESC resourceDesc = {
-			D3D12_RESOURCE_DIMENSION_BUFFER,
-			0,
-			alignedSize,
-			1, 1, 1,
-			DXGI_FORMAT_UNKNOWN,
-			{1, 0},
-			D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
-			D3D12_RESOURCE_FLAG_NONE
-		};
-
-		HRESULT hr = device->CreateCommittedResource(
-			&heapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_resource.GetAddressOf()));
+		HRESULT hr = createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, alignedSize,
+			D3D12_RESOURCE_STATE_GENERIC_READ, m_resource);
 		if (FAILED(hr))
 		{
 			throw std::runtime_error(
-				"Dx12Buffer: CreateCommittedResource (upload) failed");
+				"Dx12Buffer: upload buffer allocation failed");
 		}
 
 		/// 初期データがあればコピーする
@@ -195,7 +174,7 @@ private:
 	}
 
 	/// @brief デフォルトヒープ上にバッファを生成する（静的バッファ用）
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param alignedSize アライメント済みサイズ
 	/// @param initialData 初期データ
 	/// @note 初期データがある場合、アップロードヒープ経由でコピーする必要があるが、
@@ -211,7 +190,7 @@ private:
 		createUploadBuffer(device, alignedSize, initialData);
 	}
 
-	ComPtr<ID3D12Resource> m_resource;  ///< D3D12リソース
+	GpuResource m_resource;             ///< D3D12リソース
 	BufferType m_type;                  ///< バッファ種別
 	std::uint32_t m_sizeBytes;          ///< 要求サイズ（バイト）
 	std::uint32_t m_alignedSize = 0;    ///< アライメント済みサイズ

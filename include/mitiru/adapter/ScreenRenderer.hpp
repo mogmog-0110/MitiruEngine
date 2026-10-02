@@ -2,8 +2,8 @@
 
 /// @file ScreenRenderer.hpp
 /// @brief mitiru::Screen → sgc::IRenderer アダプター
-/// @details Screenの描画APIをsgc::IRendererインターフェースに適合させる。
-///          これによりsgcのUI、Transition、Scene等の全機能がScreenで描画可能になる。
+/// @details Screen の描画 API を sgc::IRenderer インターフェースに適合させる。
+///          これにより sgc の UI、Transition、Scene 等の全機能が Screen で描画可能になる。
 
 #include <sgc/graphics/IRenderer.hpp>
 #include <sgc/math/Geometry.hpp>
@@ -15,19 +15,19 @@
 namespace mitiru::adapter
 {
 
-/// @brief mitiru::ScreenをsgcのIRendererとして使用するアダプター
+/// @brief mitiru::Screen を sgc の IRenderer として使用するアダプター
 class ScreenRenderer : public sgc::IRenderer
 {
 public:
 	/// @brief コンストラクタ
-	/// @param screen 描画先のScreen（非所有）
+	/// @param screen 描画先の Screen（非所有）
 	explicit ScreenRenderer(Screen& screen) noexcept
 		: m_screen(screen)
 	{
 	}
 
 	/// @brief 塗りつぶし矩形を描画する
-	/// @param rect AABB2f矩形（min/max座標）
+	/// @param rect AABB2f 矩形（min/max 座標）
 	/// @param color 塗りつぶし色
 	void drawRect(const sgc::AABB2f& rect, const sgc::Colorf& color) override
 	{
@@ -35,7 +35,7 @@ public:
 	}
 
 	/// @brief 矩形の枠線を描画する
-	/// @param rect AABB2f矩形（min/max座標）
+	/// @param rect AABB2f 矩形（min/max 座標）
 	/// @param thickness 線の太さ（ピクセル）
 	/// @param color 線の色
 	void drawRectFrame(const sgc::AABB2f& rect, float thickness, const sgc::Colorf& color) override
@@ -56,7 +56,7 @@ public:
 	/// @brief 円の枠線を描画する
 	/// @param center 中心座標
 	/// @param radius 半径
-	/// @param thickness 線の太さ（未使用：Screenに枠線円APIが無いため塗りつぶしで近似）
+	/// @param thickness 線の太さ（未使用：Screen に枠線円 API が無いため塗りつぶしで近似）
 	/// @param color 線の色
 	void drawCircleFrame(const sgc::Vec2f& center, float radius, float /*thickness*/, const sgc::Colorf& color) override
 	{
@@ -74,9 +74,9 @@ public:
 	}
 
 	/// @brief 三角形を描画する
-	/// @param p0 頂点0
-	/// @param p1 頂点1
-	/// @param p2 頂点2
+	/// @param p0 頂点 0
+	/// @param p1 頂点 1
+	/// @param p2 頂点 2
 	/// @param color 塗りつぶし色
 	void drawTriangle(const sgc::Vec2f& p0, const sgc::Vec2f& p1, const sgc::Vec2f& p2, const sgc::Colorf& color) override
 	{
@@ -105,9 +105,9 @@ public:
 	}
 
 private:
-	/// @brief AABB2f → Rectf変換
-	/// @param aabb AABB2f（min/max座標形式）
-	/// @return Rectf（x,y,width,height形式）
+	/// @brief AABB2f → Rectf 変換
+	/// @param aabb AABB2f（min/max 座標形式）
+	/// @return Rectf（x,y,width,height 形式）
 	[[nodiscard]] static sgc::Rectf aabbToRectf(const sgc::AABB2f& aabb) noexcept
 	{
 		return {aabb.min.x, aabb.min.y,

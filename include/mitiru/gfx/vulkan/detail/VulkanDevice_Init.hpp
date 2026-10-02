@@ -30,7 +30,7 @@ inline void mitiru::gfx::VulkanDevice::createInstance()
 	}
 #endif
 
-	/// macOS MoltenVK対応
+	/// macOS MoltenVK 対応
 #ifdef __APPLE__
 	extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 	extensions.push_back("VK_KHR_get_physical_device_properties2");
@@ -204,7 +204,7 @@ inline void mitiru::gfx::VulkanDevice::createLogicalDevice()
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 	};
 
-	/// macOS MoltenVK対応
+	/// macOS MoltenVK 対応
 #ifdef __APPLE__
 	deviceExtensions.push_back("VK_KHR_portability_subset");
 #endif

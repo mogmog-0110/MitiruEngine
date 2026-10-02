@@ -49,12 +49,12 @@ namespace mitiru::gfx
 class Dx12ComputePipeline final : public IPipeline
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param desc コンピュートパイプライン記述子
 	/// @throws std::runtime_error device/シェーダーが null、または生成に失敗した場合
 	Dx12ComputePipeline(ID3D12Device* device, const ComputePipelineDesc& desc)
@@ -87,7 +87,7 @@ public:
 		return m_rootSignature.Get();
 	}
 
-	/// @brief ID3D12PipelineStateを取得する
+	/// @brief ID3D12PipelineState を取得する
 	[[nodiscard]] ID3D12PipelineState* nativePSO() const noexcept
 	{
 		return m_pso.Get();

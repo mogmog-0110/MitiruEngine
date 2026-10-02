@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file EventBus.hpp
-/// @brief エンジン全体のPub/Subイベントシステム
+/// @brief エンジン全体の Pub/Sub イベントシステム
 /// @details 型安全なイベント発行・購読機構を提供する。
 ///          同期発行（publish）と遅延発行（publishDeferred）に対応。
 ///          スレッドセーフオプション付き。
@@ -88,14 +88,14 @@ struct GameStateEvent
 	std::string data;                                     ///< 任意データ（JSON等）
 };
 
-// ── サブスクリプションID ───────────────────────────
+// ── サブスクリプション ID ───────────────────────────
 
 /// @brief サブスクリプション識別子
 using SubscriptionId = uint64_t;
 
 // ── EventBus ──────────────────────────────────────
 
-/// @brief エンジン全体のPub/Subイベントバス
+/// @brief エンジン全体の Pub/Sub イベントバス
 /// @details 型安全にイベントを発行・購読する。
 ///          ハンドラは具体的なイベント型を直接受け取る。
 ///
@@ -119,14 +119,14 @@ public:
 	EventBus(const EventBus&) = delete;
 	EventBus& operator=(const EventBus&) = delete;
 
-	/// ムーブ禁止（mutex保持のため）
+	/// ムーブ禁止（mutex を保持するため）
 	EventBus(EventBus&&) = delete;
 	EventBus& operator=(EventBus&&) = delete;
 
 	/// @brief イベントを購読する
 	/// @tparam EventType イベントの型
 	/// @param handler イベントハンドラ
-	/// @return サブスクリプションID（解除に使用）
+	/// @return サブスクリプション ID（解除に使う）
 	template <typename EventType>
 	SubscriptionId subscribe(std::function<void(const EventType&)> handler)
 	{
@@ -141,7 +141,7 @@ public:
 	}
 
 	/// @brief サブスクリプションを解除する
-	/// @param subscriptionId 解除するサブスクリプションID
+	/// @param subscriptionId 解除するサブスクリプション ID
 	void unsubscribe(SubscriptionId subscriptionId)
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
@@ -192,7 +192,7 @@ public:
 	/// @brief イベントを遅延キューに追加する
 	/// @tparam EventType イベントの型
 	/// @param event キューに入れるイベント
-	/// @details 次のprocessDeferred()呼び出し時に発行される
+	/// @details 次の processDeferred() 呼び出し時に発行される
 	template <typename EventType>
 	void publishDeferred(const EventType& event)
 	{

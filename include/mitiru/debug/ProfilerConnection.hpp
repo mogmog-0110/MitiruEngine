@@ -2,9 +2,9 @@
 
 /// @file ProfilerConnection.hpp
 /// @brief エンジンシステム計測接続
-/// @details ProfilerOverlayをEngine内部のサブシステム（描画・物理・オーディオ・入力・UI）
+/// @details ProfilerOverlay を Engine 内部のサブシステム（描画・物理・オーディオ・入力・UI）
 ///          に接続し、フレーム毎のタイミング内訳とメモリ推定値を自動収集する。
-///          HTTP APIエンドポイントとTracy連携もサポートする。
+///          HTTP API エンドポイントと Tracy 連携もサポートする。
 
 #include <chrono>
 #include <cstdint>
@@ -40,10 +40,10 @@ struct FrameBreakdown
 	float uiMs = 0.0f;        ///< UI/ImGui処理
 	float otherMs = 0.0f;     ///< その他（合計 - 各サブシステム）
 
-	/// @brief JSON文字列に変換する
+	/// @brief JSON 文字列に変換する
 	[[nodiscard]] std::string toJson() const
 	{
-		/// snprintfで固定小数点フォーマット
+		/// snprintf で固定小数点フォーマット
 		char buf[512];
 		std::snprintf(buf, sizeof(buf),
 			R"({"totalMs":%.3f,"renderMs":%.3f,"physicsMs":%.3f,)"
@@ -65,7 +65,7 @@ struct MemoryBreakdown
 	float audioMB = 0.0f;      ///< オーディオバッファ推定メモリ
 	float uiMB = 0.0f;         ///< UIツリー推定メモリ
 
-	/// @brief JSON文字列に変換する
+	/// @brief JSON 文字列に変換する
 	[[nodiscard]] std::string toJson() const
 	{
 		char buf[256];
@@ -79,9 +79,9 @@ struct MemoryBreakdown
 
 // ── スコープタイマー ───────────────────────────────────────
 
-/// @brief RAII計測スコープ
+/// @brief RAII 計測スコープ
 /// @details コンストラクタで開始、デストラクタで終了して結果をターゲットに書き込む。
-///          Tracy有効時は同時にTracyゾーンも発行する。
+///          Tracy 有効時は同時に Tracy ゾーンも発行する。
 class ScopeTimer
 {
 public:
@@ -118,9 +118,9 @@ private:
 
 // ── プロファイラ計測マクロ ──────────────────────────────────
 
-/// @brief プロファイラスコープ（内部タイマー + Tracy両方に送信）
+/// @brief プロファイラスコープ（内部タイマー + Tracy 両方に送信）
 /// @details MITIRU_PROFILE_SCOPE と ScopeTimer を同時に発行する。
-///          Tracy無効時は ScopeTimer のみ動作する。
+///          Tracy 無効時は ScopeTimer のみ動作する。
 #define MITIRU_PROFILER_SCOPE(name, targetMs) \
 	MITIRU_PROFILE_SCOPE(name); \
 	::mitiru::debug::ScopeTimer _profilerTimer_##__LINE__(targetMs)
@@ -128,8 +128,8 @@ private:
 // ── プロファイラ接続クラス ─────────────────────────────────
 
 /// @brief エンジンシステムへのプロファイラ接続
-/// @details Engine内部のメインループにフックし、サブシステム毎の処理時間を計測する。
-///          計測結果はFrameBreakdownとして毎フレーム更新される。
+/// @details Engine 内部のメインループにフックし、サブシステム毎の処理時間を計測する。
+///          計測結果は FrameBreakdown として毎フレーム更新される。
 ///
 /// @par 接続方法
 /// @code
@@ -163,26 +163,26 @@ public:
 	{
 	}
 
-	/// @brief Engineに接続する
+	/// @brief Engine に接続する
 	/// @param engine エンジンインスタンス（ライフタイムは呼び出し元が保証する）
-	/// @details HTTP APIサーバーが有効な場合、/api/profiler エンドポイントを登録する。
+	/// @details HTTP API サーバーが有効な場合、/api/profiler エンドポイントを登録する。
 	void connect(Engine& engine)
 	{
 		m_engine = &engine;
 	}
 
-	/// @brief HTTP APIサーバーにプロファイラエンドポイントを登録する
-	/// @param httpServer HTTPサーバーインスタンス
+	/// @brief HTTP API サーバーにプロファイラエンドポイントを登録する
+	/// @param httpServer HTTP サーバーインスタンス
 	/// @details GET /api/profiler → FrameBreakdown JSON を返す。
 	void registerHttpEndpoint(server::EngineHttpServer* httpServer)
 	{
 		m_httpServer = httpServer;
-		// EngineHttpServerのカスタムハンドラ機構に登録する
-		// （EngineHttpServerの実装に依存するため、コールバック経由で接続）
+		// EngineHttpServer のカスタムハンドラ機構に登録する
+		// （EngineHttpServer の実装に依存するため、コールバック経由で接続）
 	}
 
-	/// @brief 計測対象のAudioMixerを設定する
-	/// @param mixer オーディオミキサー（nullptrで解除）
+	/// @brief 計測対象の AudioMixer を設定する
+	/// @param mixer オーディオミキサー（nullptr で解除）
 	void setAudioMixer(audio::AudioMixer* mixer) noexcept
 	{
 		m_audioMixer = mixer;
@@ -197,7 +197,7 @@ public:
 	}
 
 	/// @brief フレーム計測を確定する
-	/// @details メインループの末尾で呼ぶ。otherMs を自動計算し、ProfilerOverlayに転送する。
+	/// @details メインループの末尾で呼ぶ。otherMs を自動計算し、ProfilerOverlay に転送する。
 	void endFrame()
 	{
 		const auto frameEnd = HiResClock::now();
@@ -214,7 +214,7 @@ public:
 		m_currentFrame.otherMs = std::max(0.0f,
 			m_currentFrame.totalMs - knownMs);
 
-		/// ProfilerOverlayにフレームデータを転送する
+		/// ProfilerOverlay にフレームデータを転送する
 		FrameProfile profile;
 		profile.totalFrameMs = m_currentFrame.totalMs;
 		profile.samples = buildSamples();
@@ -224,7 +224,7 @@ public:
 		m_lastFrame = m_currentFrame;
 		++m_frameCount;
 
-		/// Tracy連携: フレーム境界とカスタムプロット
+		/// Tracy 連携: フレーム境界とカスタムプロット
 		MITIRU_PROFILE_FRAME();
 		TracyHelper::plotValue("Frame (ms)",
 			static_cast<double>(m_lastFrame.totalMs));
@@ -233,7 +233,7 @@ public:
 	}
 
 	/// @brief 現在計測中のフレームデータへの参照を取得する
-	/// @return 計測中のFrameBreakdown（各サブシステムがここに書き込む）
+	/// @return 計測中の FrameBreakdown（各サブシステムがここに書き込む）
 	[[nodiscard]] FrameBreakdown& currentFrame() noexcept
 	{
 		return m_currentFrame;
@@ -264,7 +264,7 @@ public:
 		mem.audioMB = static_cast<float>(m_estimatedAudioChannels)
 			* (44100.0f * 2.0f * 2.0f * 0.5f) / (1024.0f * 1024.0f);
 
-		/// UI推定: ノード数 * 平均ノードサイズ
+		/// UI 推定: ノード数 * 平均ノードサイズ
 		mem.uiMB = static_cast<float>(m_estimatedUINodeCount)
 			* 256.0f / (1024.0f * 1024.0f);
 
@@ -283,7 +283,7 @@ public:
 		m_estimatedUINodeCount = uiNodeCount;
 	}
 
-	/// @brief 内部ProfilerOverlayを取得する
+	/// @brief 内部 ProfilerOverlay を取得する
 	[[nodiscard]] const ProfilerOverlay& overlay() const noexcept
 	{
 		return m_overlay;
@@ -295,8 +295,8 @@ public:
 		return m_frameCount;
 	}
 
-	/// @brief プロファイラデータのJSON応答を生成する
-	/// @return HTTP API用のJSON文字列
+	/// @brief プロファイラデータの JSON 応答を生成する
+	/// @return HTTP API 用の JSON 文字列
 	/// @details GET /api/profiler のレスポンスボディとして使用する。
 	[[nodiscard]] std::string toApiJson() const
 	{
@@ -313,7 +313,7 @@ public:
 		return std::string(buf);
 	}
 
-	/// @brief カスタムHTTPハンドラを取得する（EngineHttpServerに登録用）
+	/// @brief カスタム HTTP ハンドラを取得する（EngineHttpServer に登録用）
 	/// @return パスとハンドラのペア
 	using HttpHandler = std::function<std::string()>;
 
@@ -325,7 +325,7 @@ public:
 private:
 	using HiResClock = std::chrono::high_resolution_clock;
 
-	/// @brief ProfilerOverlay用のサンプルリストを構築する
+	/// @brief ProfilerOverlay 用のサンプルリストを構築する
 	[[nodiscard]] std::vector<ProfileSample> buildSamples() const
 	{
 		std::vector<ProfileSample> samples;

@@ -2,7 +2,7 @@
 
 /// @file Bloom.hpp
 /// @brief ソフトウェアブルームポストプロセス
-/// @details 輝度閾値を超えるピクセルを抽出・ブラーして合成する。
+/// @details 輝度の閾値を超えるピクセルを抜き出してブラーをかけ、合成する。
 
 #include <algorithm>
 #include <cstdint>
@@ -20,7 +20,7 @@ public:
 	int blurPasses = 3;       ///< ブラー反復回数
 
 	/// @brief RGBA8 ピクセルデータにブルームを適用する
-	/// @param pixels RGBA8ピクセルデータ（in-place変更）
+	/// @param pixels RGBA8 ピクセルデータ（in-place で変更する）
 	/// @param width 画像幅
 	/// @param height 画像高さ
 	void apply(std::vector<uint8_t>& pixels, int width, int height) const
@@ -32,7 +32,7 @@ public:
 
 		const int size = width * height;
 
-		/// 輝度閾値で明るいピクセルを抽出する
+		/// 輝度の閾値で明るいピクセルを抜き出す
 		std::vector<float> bright(size * 3, 0.0f);
 		for (int i = 0; i < size; ++i)
 		{

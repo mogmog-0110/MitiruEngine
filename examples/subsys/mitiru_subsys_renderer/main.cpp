@@ -1,28 +1,28 @@
-// mitiru_subsys_renderer。エンジン全体なしで renderer subsystem だけを起動する最小 exe。
+// mitiru_subsys_renderer。エンジン全体を使わずに renderer subsystem だけを起動する最小 exe。
 //
-// ゲームロジック・CEF・audio・巻き戻し記録・inspector なしで renderer
+// ゲームロジック・CEF・audio・巻き戻し記録・inspector を使わずに renderer
 // subsystem を起動する。Engine + Screen + 60Hz の update/draw loop のみ。
-// 画面のテストパターンは意図的に最小で、shader / pipeline 編集時の renderer
-// backend の視覚 smoke を兼ねる。
+// 画面のテストパターンは意図的に最小限にし、shader / pipeline 編集時の renderer
+// backend の視覚的な smoke test を兼ねる。
 //
 // 見えるもの:
-//   - 銀灰の Saturn 背景 (launcher / hello_game と揃える)
+//   - 銀灰色の Saturn 背景 (launcher / hello_game と揃える)
 //   - 64px のヘアライン grid が surface 全体を覆う
-//   - 中央の 60x60 rect が水平に往復 (Saturn red のアクセント)
+//   - 中央の 60x60 rect が水平に往復する (Saturn red のアクセント)
 //   - 左上に "frame: N" カウンタ、左下にヒント行
 //
 // 操作: ESC で終了。
 //
-// 存在理由 (全 system 単独起動の保証):
+// 存在理由 (全 system を単独で起動できることの保証):
 //   - 同じ Engine class が gameplay 層なしで動く。host-game 境界が実在し、
 //     ゲームコードに依存していないことを示す。
-//   - cold-start 予算 < 1s (CEF init なし、実描画する Latin 範囲を超える font
+//   - cold-start 予算 < 1s (CEF init なし、実際に描画する Latin 範囲を超える font
 //     atlas の暖機なし)。
 
 #include <cmath>
 #include <cstdio>
 
-// アンブレラ header は使わない。使うものだけ明示 include
+// アンブレラ header は使わず、使うものだけを明示的に include する
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
@@ -86,8 +86,8 @@ private:
 
     void drawCenterRect(mitiru::Screen& screen)
     {
-        // 画面中心を水平に往復する 60x60 rect。真の回転は避け (Screen に今は
-        // transform API なし)、smoke 用に renderer が時間駆動だと見せる。
+        // 画面中央を水平に往復する 60x60 rect。実際の回転は避け (Screen に今は
+        // transform API がない)、smoke 用に renderer が時間駆動であることを示す。
         constexpr float kSize     = 60.0f;
         const float     amplitude = std::min(m_screenW * 0.30f, 200.0f);
         const float     cx        = m_screenW * 0.5f
@@ -141,11 +141,9 @@ int main(int /*argc*/, char* /*argv*/[])
     cfg.windowWidth        = 800;
     cfg.windowHeight       = 500;
     cfg.vsync              = true;
-    cfg.enableCef          = false;
-    cfg.fontAtlasRanges    = mitiru::EngineConfig::FontAtlas::Latin;
     cfg.useLogicalWindowSize = true;
-    // 銀灰の Saturn surface。host 側 clear は draw 内の screen.clear() と
-    // 一致させる。最初のフレーム (draw 実行前) を黒にしないため。
+    // 銀灰色の Saturn surface。host 側の clear は draw 内の screen.clear() と
+    // 一致させる。最初のフレーム (draw 実行前) が黒くならないようにするため。
     cfg.backgroundColor    = kPaperBg;
 
     engine.run(game, cfg);

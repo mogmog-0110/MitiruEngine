@@ -2,7 +2,7 @@
 
 /// @file IDebugOverlay.hpp
 /// @brief デバッグオーバーレイの抽象インターフェース
-/// @details ImGuiや他のUI実装を差し替え可能にするための抽象層。
+/// @details ImGui や他の UI 実装を差し替え可能にするための抽象層。
 
 #include <string_view>
 
@@ -10,8 +10,8 @@ namespace mitiru::debug
 {
 
 /// @brief デバッグオーバーレイの抽象インターフェース
-/// @details エンジン統計やデバッグ用ウィジェットを描画するための共通API。
-///          ImGui実装やヌル実装を差し替え可能にする。
+/// @details エンジン統計やデバッグ用ウィジェットを描画するための共通 API。
+///          ImGui 実装やヌル実装を差し替え可能にする。
 ///
 /// @code
 /// mitiru::debug::NullDebugOverlay overlay;

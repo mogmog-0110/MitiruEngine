@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Dx11Buffer.hpp
-/// @brief DirectX 11 GPUバッファ実装
-/// @details ID3D11Bufferをラップし、頂点・インデックス・定数バッファを統一的に管理する。
-///          動的バッファはMAP_WRITE_DISCARDで毎フレーム更新可能。
+/// @brief DirectX 11 GPU バッファ実装
+/// @details ID3D11Buffer をラップし、頂点・インデックス・定数バッファを統一的に管理する。
+///          動的バッファは MAP_WRITE_DISCARD で毎フレーム更新可能。
 
 #ifdef _WIN32
 
@@ -27,22 +27,22 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 11 GPUバッファ実装
+/// @brief DirectX 11 GPU バッファ実装
 /// @details 頂点バッファ・インデックスバッファ・定数バッファをラップする。
-///          動的バッファではMAP_WRITE_DISCARDによる高速更新が可能。
+///          動的バッファでは MAP_WRITE_DISCARD による高速更新が可能。
 class Dx11Buffer final : public IBuffer
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param bufferType バッファ種別
 	/// @param sizeBytes バッファサイズ（バイト）
 	/// @param dynamic 動的更新が必要か
-	/// @param initialData 初期データ（nullptrで初期化なし）
+	/// @param initialData 初期データ（nullptr で初期化なし）
 	Dx11Buffer(ID3D11Device* device,
 	           BufferType bufferType,
 	           std::uint32_t sizeBytes,
@@ -94,10 +94,10 @@ public:
 	}
 
 	/// @brief バッファ内容を更新する（動的バッファ専用）
-	/// @param context D3D11デバイスコンテキスト
+	/// @param context D3D11 デバイスコンテキスト
 	/// @param data 書き込むデータ
 	/// @param dataSize データサイズ（バイト）
-	/// @return 成功したらtrue
+	/// @return 成功したら true
 	bool update(ID3D11DeviceContext* context,
 	            const void* data,
 	            std::uint32_t dataSize)
@@ -139,7 +139,7 @@ public:
 		return m_dynamic;
 	}
 
-	/// @brief 内部のID3D11Bufferを取得する
+	/// @brief 内部の ID3D11Buffer を取得する
 	/// @return バッファへのポインタ
 	[[nodiscard]] ID3D11Buffer* getD3DBuffer() const noexcept
 	{

@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file MmlEditorModel.hpp
-/// @brief MML作曲エディタのデータモデル
+/// @brief MML 作曲エディタのデータモデル
 /// @details MML (Music Macro Language) のノート・トラック・コンポジションを
-///          管理し、エディタGUI用のUndoRedo・選択・クリップボード・再生カーソル
-///          追跡機能を提供する。MML文字列へのエクスポート/インポートもサポート。
+///          管理し、エディタ GUI 用の UndoRedo・選択・クリップボード・再生カーソル
+///          追跡機能を提供する。MML 文字列へのエクスポート/インポートもサポートする。
 
 #include <algorithm>
 #include <cstdint>
@@ -51,7 +51,7 @@ enum class Accidental : uint8_t
 	Flat,         ///< フラット
 };
 
-/// @brief MMLノート
+/// @brief MML ノート
 struct MmlNote
 {
 	Pitch pitch = Pitch::C;                  ///< 音名
@@ -61,7 +61,7 @@ struct MmlNote
 	bool dotted = false;                     ///< 付点音符か
 	bool rest = false;                       ///< 休符か
 
-	/// @brief 拍数を取得する（4分音符 = 1.0拍）
+	/// @brief 拍数を取得する（4 分音符 = 1.0 拍）
 	/// @return 拍数
 	[[nodiscard]] float beats() const noexcept
 	{
@@ -70,7 +70,7 @@ struct MmlNote
 	}
 };
 
-/// @brief MMLトラック
+/// @brief MML トラック
 struct MmlTrack
 {
 	std::string name;                 ///< トラック名
@@ -100,7 +100,7 @@ struct TimeSignature
 	int denominator = 4;  ///< 分母（1拍の音符の種類）
 };
 
-/// @brief MMLコンポジション
+/// @brief MML コンポジション
 struct MmlComposition
 {
 	std::vector<MmlTrack> tracks;  ///< トラック一覧
@@ -130,7 +130,7 @@ struct NoteSelection
 	}
 };
 
-/// @brief Undo/Redoコマンドの種別
+/// @brief Undo/Redo コマンドの種別
 enum class EditorCommandType : uint8_t
 {
 	AddNote,
@@ -141,7 +141,7 @@ enum class EditorCommandType : uint8_t
 	PasteNotes,
 };
 
-/// @brief Undo/Redoコマンド
+/// @brief Undo/Redo コマンド
 struct EditorCommand
 {
 	EditorCommandType type = EditorCommandType::AddNote;
@@ -156,9 +156,9 @@ struct EditorCommand
 	std::string newInstrument;      ///< 変更後の楽器
 };
 
-/// @brief MML作曲エディタモデル
-/// @details MMLコンポジションの編集操作・Undo/Redo・選択・クリップボード・
-///          MML文字列変換・再生カーソル追跡を一元管理する。
+/// @brief MML 作曲エディタモデル
+/// @details MML コンポジションの編集操作・Undo/Redo・選択・クリップボード・
+///          MML 文字列変換・再生カーソル追跡を一元管理する。
 ///
 /// @code
 /// mitiru::audio::MmlEditorModel editor;
@@ -167,8 +167,8 @@ struct EditorCommand
 /// editor.addNote(0, MmlNote{Pitch::E, Octave::O4, Duration::Quarter});
 /// editor.addNote(0, MmlNote{Pitch::G, Octave::O4, Duration::Half});
 /// std::string mml = editor.toMmlString();
-/// editor.undo(); // G音を取り消し
-/// editor.redo(); // G音を再適用
+/// editor.undo(); // G 音を取り消し
+/// editor.redo(); // G 音を再適用
 /// @endcode
 class MmlEditorModel
 {
@@ -180,7 +180,7 @@ public:
 
 	/// @brief トラックを追加する
 	/// @param name トラック名
-	/// @param channel MIDIチャンネル
+	/// @param channel MIDI チャンネル
 	/// @param instrument 楽器名
 	void addTrack(std::string_view name, int channel,
 	              std::string_view instrument = "Piano");
@@ -197,7 +197,7 @@ public:
 
 	/// @brief トラックを取得する
 	/// @param trackIndex トラックインデックス
-	/// @return トラックへのconst参照
+	/// @return トラックへの const 参照
 	[[nodiscard]] const MmlTrack& track(int trackIndex) const
 	{
 		return m_composition.tracks.at(static_cast<size_t>(trackIndex));
@@ -255,26 +255,26 @@ public:
 		m_composition.author = std::string(author);
 	}
 
-	// ─── MML文字列変換 ───
+	// ─── MML 文字列変換 ───
 
-	/// @brief コンポジションをMML文字列にエクスポートする
-	/// @return MML形式の文字列
+	/// @brief コンポジションを MML 文字列にエクスポートする
+	/// @return MML 形式の文字列
 	[[nodiscard]] std::string toMmlString() const;
 
-	/// @brief MML文字列からコンポジションを読み込む
-	/// @param mml MML文字列
-	/// @note 簡易パーサーで主要なMMLコマンドを解析する
+	/// @brief MML 文字列からコンポジションを読み込む
+	/// @param mml MML 文字列
+	/// @note 簡易パーサーで主要な MML コマンドを解析する
 	void fromMmlString(std::string_view mml);
 
 	// ─── JSON シリアライズ ───
 
-	/// @brief エディタ状態をJSON文字列にエクスポートする
-	/// @return JSON文字列
+	/// @brief エディタ状態を JSON 文字列にエクスポートする
+	/// @return JSON 文字列
 	[[nodiscard]] std::string toJson() const;
 
-	/// @brief JSON文字列からエディタ状態を読み込む
-	/// @param json JSON文字列
-	/// @note 簡易JSONパーサーにより主要なフィールドを解析する
+	/// @brief JSON 文字列からエディタ状態を読み込む
+	/// @param json JSON 文字列
+	/// @note 簡易 JSON パーサーにより主要なフィールドを解析する
 	void fromJson(std::string_view json);
 
 	// ─── 再生時間計算 ───
@@ -293,13 +293,13 @@ public:
 	/// @return やり直しが成功したか
 	bool redo();
 
-	/// @brief Undoスタックが空でないか
+	/// @brief Undo スタックが空でないか
 	[[nodiscard]] bool canUndo() const noexcept
 	{
 		return !m_undoStack.empty();
 	}
 
-	/// @brief Redoスタックが空でないか
+	/// @brief Redo スタックが空でないか
 	[[nodiscard]] bool canRedo() const noexcept
 	{
 		return !m_redoStack.empty();
@@ -331,7 +331,7 @@ public:
 	/// @brief 選択範囲をクリップボードにコピーする
 	void copy();
 
-	/// @brief 選択範囲をカットする（コピー+削除）
+	/// @brief 選択範囲をカットする（コピー + 削除）
 	void cut();
 
 	/// @brief クリップボードの内容を指定位置にペーストする
@@ -389,13 +389,13 @@ public:
 	}
 
 private:
-	/// @brief コマンドを実行しUndoスタックに積む
+	/// @brief コマンドを実行し Undo スタックに積む
 	void executeCommand(const EditorCommand& cmd);
 
-	/// @brief コマンドを適用する（状態変更）
+	/// @brief コマンドを適用する（状態を変更する）
 	void applyCommand(const EditorCommand& cmd);
 
-	/// @brief コマンドを取り消す（逆操作）
+	/// @brief コマンドを取り消す（逆の操作を行う）
 	void undoCommand(const EditorCommand& cmd);
 
 	// ─── ユーティリティ ───
@@ -419,18 +419,18 @@ private:
 	/// @brief 文字を音名に変換する
 	[[nodiscard]] static Pitch charToPitch(char ch) noexcept;
 
-	/// @brief 文字列から数値をパースする
+	/// @brief 文字列から数値を解析する
 	[[nodiscard]] static int parseNumber(const std::string& str, size_t& pos);
 
-	/// @brief MML文字列から音価をパースする
+	/// @brief MML 文字列から音価を解析する
 	static void parseDuration(const std::string& str, size_t& pos,
 	                          MmlNote& note);
 
-	/// @brief 簡易JSON文字列値抽出
+	/// @brief 簡易 JSON 文字列値抽出
 	[[nodiscard]] static std::string extractString(
 		const std::string& json, const std::string& key);
 
-	/// @brief 簡易JSON整数値抽出
+	/// @brief 簡易 JSON 整数値抽出
 	[[nodiscard]] static int extractInt(
 		const std::string& json, const std::string& key);
 
@@ -444,5 +444,5 @@ private:
 
 } // namespace mitiru::audio
 
-// 実装本体（末尾 detail include 流儀）
+// @brief 実装本体（末尾 detail include 流儀）
 #include <mitiru/audio/detail/MmlEditorModel_impl.hpp>

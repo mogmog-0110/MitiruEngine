@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file AsyncPngWriter.hpp
-/// @brief `--capture-dir` の PNG 書き出しをバックグラウンドスレッドへ逃がす (G7)。
+/// @brief `--capture-dir` の PNG 書き出しをバックグラウンドスレッドへ移す (G7)。
 /// @details `savePixelsToPng` は zlib 圧縮を伴うため軽くない。host の capture ループが
 ///          これを同期で待つと host frame 自体が重くなる。書き込みをキュー+専用スレッドへ
-///          逃がし、呼び出し側は `std::vector<uint8_t>` の所有権を渡すだけにする。
+///          移し、呼び出し側は `std::vector<uint8_t>` の所有権を渡すだけにする。
 
 #include <mitiru/render/SaveScreenshotPng.hpp>
 

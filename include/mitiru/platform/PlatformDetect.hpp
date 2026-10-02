@@ -2,7 +2,7 @@
 
 /// @file PlatformDetect.hpp
 /// @brief constexpr プラットフォーム検出ユーティリティ
-/// @details コンパイル時にOS・アーキテクチャ・プラットフォームカテゴリを判定する。
+/// @details コンパイル時に OS・アーキテクチャ・プラットフォームカテゴリを判定する。
 ///          PlatformInfo.hpp のランタイム検出に対し、こちらは完全に constexpr。
 ///
 /// @code
@@ -20,7 +20,7 @@
 namespace mitiru::platform
 {
 
-/// @brief OS種別
+/// @brief OS 種別
 enum class OS : std::uint8_t
 {
 	Windows,  ///< Windows
@@ -32,7 +32,7 @@ enum class OS : std::uint8_t
 	Unknown   ///< 未検出
 };
 
-/// @brief CPUアーキテクチャ種別
+/// @brief CPU アーキテクチャ種別
 enum class Arch : std::uint8_t
 {
 	x86,      ///< x86 (32-bit)
@@ -45,8 +45,8 @@ enum class Arch : std::uint8_t
 
 // ── OS 検出 ────────────────────────────────────────────
 
-/// @brief コンパイル時のOS種別を返す
-/// @return 現在のOS
+/// @brief コンパイル時の OS 種別を返す
+/// @return 現在の OS
 [[nodiscard]] constexpr OS currentOS() noexcept
 {
 #if defined(__EMSCRIPTEN__)
@@ -70,7 +70,7 @@ enum class Arch : std::uint8_t
 
 // ── アーキテクチャ検出 ──────────────────────────────────
 
-/// @brief コンパイル時のCPUアーキテクチャを返す
+/// @brief コンパイル時の CPU アーキテクチャを返す
 /// @return 現在のアーキテクチャ
 [[nodiscard]] constexpr Arch currentArch() noexcept
 {
@@ -108,7 +108,7 @@ enum class Arch : std::uint8_t
 		|| currentOS() == OS::Android;
 }
 
-/// @brief Webプラットフォームか判定する
+/// @brief Web プラットフォームか判定する
 /// @return Emscripten/WASM なら true
 [[nodiscard]] constexpr bool isWeb() noexcept
 {
@@ -117,8 +117,8 @@ enum class Arch : std::uint8_t
 
 // ── 名前文字列 ────────────────────────────────────────────
 
-/// @brief OS名を文字列リテラルで返す
-/// @return OS名（null終端文字列）
+/// @brief OS 名を文字列リテラルで返す
+/// @return OS 名（null 終端文字列）
 [[nodiscard]] constexpr const char* osName() noexcept
 {
 	switch (currentOS())
@@ -135,7 +135,7 @@ enum class Arch : std::uint8_t
 }
 
 /// @brief アーキテクチャ名を文字列リテラルで返す
-/// @return アーキテクチャ名（null終端文字列）
+/// @return アーキテクチャ名（null 終端文字列）
 [[nodiscard]] constexpr const char* archName() noexcept
 {
 	switch (currentArch())

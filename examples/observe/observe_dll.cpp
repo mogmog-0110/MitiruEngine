@@ -1,9 +1,9 @@
-// observe。画面に見えるのは「結果」だけ、という例。
-//   ここでは赤べこ (会津の張り子牛) が、腹が減れば餌へ歩き、疲れれば休む。画面に映るのは
-//   その動き。首を振る / 跳ねる / 表情が変わる / 餌へ寄る。だけ。
+// observe。画面に見えるのは「結果」だけだ、という例。
+//   ここでは赤べこ (会津の張り子牛) が、腹が減れば餌へ歩き、疲れれば休む。画面に映るのは、
+//   首を振る / 跳ねる / 表情が変わる / 餌へ寄る、といった動きだけ。
 //   一方で、なぜ今それをしているか (腹・体力・機嫌・今の行動) という内部の値は画面に出さない。
 //   その内部の値は、ゲームを止めずに別の窓 (inspector) から live で読める。これが「観測」。
-//   画面を見て動きを楽しみ、値を見て理由を知る、という二面を分けて見せるのがこの章の主旨。
+//   画面を見て動きを楽しみ、値を見て理由を知る、という二面を分けて見せるのがこの章の趣旨。
 // 使う機能: 状態を登録する MITIRU_REFLECT (ファイル末尾) / 観察ウィンドウつきで起動する mitiru_host --inspect
 
 #include <algorithm>   // std::min / std::max
@@ -23,10 +23,10 @@ constexpr float kScreenW = 1280.0f, kScreenH = 720.0f;
 constexpr float kMinX = 120.0f, kMaxX = kScreenW - 120.0f;   // 赤べこと餌が動ける範囲
 constexpr float kMinY = 240.0f, kMaxY = kScreenH - 130.0f;   // (タイトルと操作帯を避ける)
 
-// 赤べこは「胴」と「頭 (表情ちがい 4 枚)」の 2 枚を重ねて 1 匹になる。頭を首のところで
-// 回すと、赤べこ名物の「こっくり」首振りになる。画像は可変長データを持つのでゲームの状態
-// struct には入れられない (状態はポインタを持たない単純なデータの塊に保つ決まり)。そこで
-// 画像はこのファイル直下の変数へ一度だけ読み込む。読み込み失敗時は value_or で空画像にする。
+// 赤べこは「胴」と「頭 (表情違い 4 枚)」の 2 枚を重ねて 1 匹になる。頭を首のところで
+// 回すと、赤べこ名物の「こっくり」首振りになる。画像は可変長データを持つため、ゲームの状態を表す
+// struct には入れられない (状態はポインタを持たない単純なデータの塊に保つ決まり)。そこで、
+// 画像はこのファイル直下の変数へ一度だけ読み込む。読み込みに失敗した場合は value_or で空画像にする。
 static const render::Texture kBody = render::Texture::fromFile(
 	"observe/assets/sprites/akabeko_body.png").value_or(render::Texture{});
 static const render::Texture kHeadNeutral = render::Texture::fromFile(
@@ -37,27 +37,28 @@ static const render::Texture kHeadHungry = render::Texture::fromFile(
 	"observe/assets/sprites/akabeko_head_hungry.png").value_or(render::Texture{});
 static const render::Texture kHeadSleepy = render::Texture::fromFile(
 	"observe/assets/sprites/akabeko_head_sleepy.png").value_or(render::Texture{});
-// 餌も画像 (スプライト) で描く。赤べこと同じ描き方にそろえておくと、餌を先に・赤べこを後に
-// 描いたときに、赤べこがちゃんと餌の前面に出る。
+// 餌も画像 (スプライト) で描く。赤べこと同じ描き方にそろえておくと、餌を先に、赤べこを後に
+// 描いたとき、赤べこが餌より前面に表示される。
 static const render::Texture kFood = render::Texture::fromFile(
 	"observe/assets/sprites/akabeko_food.png").value_or(render::Texture{});
 
 constexpr float kScale = 0.5f;    // 画像の何倍で描くか (絵が高解像度なので縮小して使う)
-// 首の支点 (頭が回る中心)。画像の中心 (152,116) から (+32,+8) の位置 = 首のつけ根。
+// 首の支点 (頭が回る中心)。画像の中心 (152,116) から (+32,+8) の位置が首のつけ根。
 constexpr float kPivotOffX = 32.0f, kPivotOffY = 8.0f;
 
 struct Food { float x = 0.0f, y = 0.0f; };
 
-// 行動 id と優先度 (★1-6 PodHsm)。休む (3) > 餌を探す/食べる (2) > うろうろ (1)。
-// 同じフレーム内で SEEK_FOOD → EAT と 2 回要求されるのは同順位「後勝ち」で意図どおり EAT が勝つ。
+// 行動 id と優先度 (★1-6 PodHsm)。休む (3) > 餌を探す / 食べる (2) > うろうろ (1)。
+// 同じフレーム内で SEEK_FOOD → EAT と 2 回要求される場合は、同順位の「後勝ち」により、意図どおり EAT が勝つ。
 enum : std::uint16_t { kActionWander = 1, kActionSeekFood = 2, kActionEat = 3, kActionRest = 4 };
 
 struct Critter
 {
 	float x = kScreenW * 0.5f, y = kScreenH * 0.5f;
 	bool  faceLeft = false;   // 進む向き (左を向いているか)
+	std::uint8_t _pad[3] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 
-	// 内部の欲求。行動を決める値。画面には出さず、観察ウィンドウ (inspector) だけで見える。
+	// 内部の欲求であり、行動を決める値。画面には出さず、観察ウィンドウ (inspector) だけで見える。
 	float hunger = 25.0f;   // 0..100  時間で上がる。高くなると餌を探す
 	float energy = 100.0f;  // 0..100  動くと減り、休むと回復する
 	float mood   = 70.0f;   // 0..100  腹が満ちて元気なほど高い
@@ -73,6 +74,7 @@ struct Critter
 	unsigned int rng = 2463534242u;   // 決定論的な乱数 (毎回同じ動き = 巻き戻し / リプレイと相性が良い)
 	bool started = false;
 	bool resting = false;   // 休憩中か (いちど休むと十分回復するまで続く)
+	std::uint8_t _pad2[2] = {};
 
 	float rnd()   // 0..1 の乱数
 	{
@@ -89,7 +91,7 @@ struct Critter
 			for (int i = 0; i < 3; ++i) { (void)foods.push_back(spawnFood()); }
 		}
 
-		// 時々あたらしい餌がわく (最大 8 個)。食べると減るので、画面の餌の数はいつも変わる。
+		// ときどき新しい餌が現れる (最大 8 個)。食べると減るため、画面の餌の数は常に変わる。
 		spawnT -= dt;
 		if (spawnT <= 0.0f)
 		{
@@ -108,12 +110,12 @@ struct Critter
 			if (d < nd) { nd = d; nearest = static_cast<int>(i); }
 		}
 
-		// 疲れたら休む。いちど休み始めたら十分回復するまで続く (だから寝姿がしばらく見られる)。
+		// 疲れたら休む。一度休み始めたら、十分に回復するまで続く (そのため、寝姿がしばらく見られる)。
 		if (resting) { if (energy >= 75.0f) { resting = false; } }
 		else         { if (energy < 28.0f)  { resting = true;  } }
 
-		// 行動を決める。優先度: 休む (kActionRest) > 腹が減った (kActionSeekFood/kActionEat) >
-		// それ以外はうろうろ (kActionWander)。PodHsm::changeState の優先度引数がそのまま
+		// 行動を決める。優先度は、休む (kActionRest) > 腹が減った (kActionSeekFood / kActionEat) >
+		// それ以外はうろうろ (kActionWander)。PodHsm::changeState の優先度引数が、そのまま
 		// この階層を表す (HE2 の ChangeState(id, priority) 相当、★1-6)。
 		float speed = 0.0f;
 		if (resting)
@@ -129,7 +131,7 @@ struct Critter
 			if (nd < 40.0f * 40.0f)   // 餌に届いた → 食べる
 			{
 				hunger = std::max(0.0f, hunger - 55.0f);
-				// SEEK_FOOD と同順位 (2)。同フレーム内の「後勝ち」で EAT が確定する。
+				// SEEK_FOOD と同順位 (2)。同じフレーム内の「後勝ち」により、EAT が確定する。
 				mitiru::module::changeState(actionHsm, kActionEat, 2);
 				foods.removeAt(static_cast<std::size_t>(nearest));   // その餌は消える
 				++meals;
@@ -158,14 +160,14 @@ struct Critter
 
 		mood = clampf(100.0f - hunger * 0.5f - (100.0f - energy) * 0.3f, 0.0f, 100.0f);
 
-		// 見た目の位相を進める。機嫌が良いほど首振りは速く、元気なほど跳ねが速い。
+		// 見た目の位相を進める。機嫌が良いほど首振りが速く、元気なほど跳ねる速さが増す。
 		nodPhase += (2.0f + (mood / 100.0f) * 3.0f) * dt;
 		hopPhase += (5.0f + (energy / 100.0f) * 3.0f) * dt;
 
 		foodCount = static_cast<int>(foods.size());   // 観察ウィンドウに出す用に、今の餌の数を控える
 	}
 
-	// 今の気分に合う頭 (表情) を選ぶ。休む→眠い / 腹ぺこ→ひもじい / 上機嫌→にっこり / それ以外→ふつう。
+	// 今の気分に合う頭 (表情) を選ぶ。休む → 眠い / 腹ぺこ → ひもじい / 上機嫌 → にっこり / それ以外 → ふつう。
 	const render::Texture& pickHead() const
 	{
 		if (actionHsm.state == kActionRest) { return kHeadSleepy; }
@@ -174,7 +176,7 @@ struct Critter
 		return kHeadNeutral;
 	}
 
-	// 赤べこ 1 匹を中心 (cx, cy)・大きさ kScale で描く。胴を描いてから、頭を首の支点まわりに
+	// 赤べこ 1 匹を、中心 (cx, cy)・大きさ kScale で描く。胴を描いてから、頭を首の支点まわりに
 	// nodDeg 度ぶん回して重ねる。faceLeft なら胴・頭ともに左右反転し、支点も鏡像にする。
 	template <class Surface>
 	void drawBeko(Surface& s, float cx, float cy, float nodDeg) const
@@ -197,8 +199,8 @@ struct Critter
 	template <class Surface>
 	void drawImpl(Surface& s) const
 	{
-		// Canvas は境界を跨ぐため、Texture のアドレスではなく id で描かせる必要がある
-		// (未登録だと drawSprite が DLL 内アドレスをそのまま積んでしまう)。
+		// Canvas は境界をまたぐため、Texture のアドレスではなく id で描く必要がある
+		// (未登録の場合、drawSprite では DLL 内アドレスがそのまま積まれてしまう)。
 		if constexpr (std::is_same_v<Surface, mitiru::Canvas>)
 		{
 			s.registerTexture(kBody, "akabeko_body");
@@ -210,7 +212,7 @@ struct Critter
 		}
 		s.fillScreen(theme::kPaper);
 
-		// 餌 (スプライト。赤べこより先に描くので、あとで描く赤べこが前面になる)
+		// 餌 (スプライト。赤べこより先に描くため、あとで描く赤べこが前面になる)
 		for (std::size_t i = 0; i < foods.size(); ++i)
 		{
 			const float fs = 26.0f;   // 画面での大きさ (直径)
@@ -219,15 +221,15 @@ struct Critter
 			s.drawSprite(kFood, dst, src, color::White, false);
 		}
 
-		// 首振り: サイン波でこっくり。機嫌が良いと大きく、疲れていると小さくなる。
+		// 首振りは、サイン波でこっくりと動かす。機嫌が良いと大きく、疲れていると小さくなる。
 		const float nodAmp = (3.5f + (mood / 100.0f) * 5.0f) * (0.45f + 0.55f * energy / 100.0f);
 		const float nodDeg = std::sin(nodPhase) * nodAmp;
 
-		// 跳ね: 元気で休んでいないときだけ、周期的に軽くホップする。
+		// 跳ねは、元気で休んでいないときだけ、周期的に軽くホップする。
 		const bool  lively = (energy > 60.0f) && (actionHsm.state != kActionRest);
 		const float hop    = lively ? 12.0f * std::fabs(std::sin(hopPhase)) : 0.0f;
 
-		// 赤べこは餌より前面 (餌を先に描いてある) に、跳ねぶんだけ上へずらして描く。
+		// 赤べこは餌より前面 (餌を先に描いてある) に、跳ねたぶんだけ上へずらして描く。
 		drawBeko(s, x, y - hop, nodDeg);
 
 		chapterTitle(s, "Observe");
@@ -240,9 +242,10 @@ struct Critter
 	static float clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 };
 
-// 状態の構造をエンジンに登録する。読ませたいフィールド名を並べるだけでよい。これだけで、外の
+// 状態の構造をエンジンに登録する。読み取らせたいフィールド名を並べるだけでよい。これだけで、外部の
 // 観測ツールが hunger / energy / mood / action を名前付きのデータとして読めるようになる。
 MITIRU_REFLECT(Critter, energy, hunger, mood, actionHsm.state, foodCount, meals);
 
 // 実行:  mitiru_host.exe observe/observe.dll --inspect
+MITIRU_ASSERT_NO_PADDING(Critter);
 MITIRU_GAME(Critter);

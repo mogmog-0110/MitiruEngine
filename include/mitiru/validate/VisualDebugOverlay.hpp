@@ -50,8 +50,8 @@ public:
 		return m_enabled;
 	}
 
-	/// @brief FPS値を設定する（外部から更新）
-	/// @param fps 現在のFPS
+	/// @brief FPS 値を設定する（外部から更新）
+	/// @param fps 現在の FPS
 	void setFps(float fps) noexcept
 	{
 		m_fps = fps;
@@ -104,7 +104,7 @@ public:
 			const auto& outlineColor = isText ? yellowOutline : blueOutline;
 			const float t = 1.0f; // 枠線の太さ
 
-			// 枠線を4本の細い矩形で描画
+			// 枠線を 4 本の細い矩形で描画
 			screen.drawRect(sgc::Rectf{rect.x(), rect.y(), rect.width(), t}, outlineColor);
 			screen.drawRect(sgc::Rectf{rect.x(), rect.y() + rect.height() - t, rect.width(), t}, outlineColor);
 			screen.drawRect(sgc::Rectf{rect.x(), rect.y(), t, rect.height()}, outlineColor);

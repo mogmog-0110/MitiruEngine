@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Dx11Pipeline.hpp
-/// @brief DirectX 11パイプラインステート実装
+/// @brief DirectX 11 パイプラインステート実装
 /// @details 入力レイアウト・ブレンドステート・ラスタライザステートを
-///          統合管理するPSOラッパー。
+///          統合管理する PSO ラッパー。
 
 #ifdef _WIN32
 
@@ -38,17 +38,17 @@ struct Dx11PipelineDesc
 	bool scissorEnable = false;          ///< シザー矩形有効化
 };
 
-/// @brief DirectX 11パイプラインステート実装
+/// @brief DirectX 11 パイプラインステート実装
 /// @details InputLayout + BlendState + RasterizerState + シェーダーを束ねる。
 class Dx11Pipeline final : public IPipeline
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param desc パイプライン記述子
 	explicit Dx11Pipeline(ID3D11Device* device, const Dx11PipelineDesc& desc)
 		: m_vs(desc.vertexShader)
@@ -73,7 +73,7 @@ public:
 	}
 
 	/// @brief パイプラインをデバイスコンテキストにバインドする
-	/// @param context D3D11デバイスコンテキスト
+	/// @param context D3D11 デバイスコンテキスト
 	void bind(ID3D11DeviceContext* context) const
 	{
 		if (!context || !m_valid)
@@ -108,8 +108,8 @@ public:
 	}
 
 private:
-	/// @brief Vertex2Dに対応する入力レイアウトを生成する
-	/// @param device D3D11デバイス
+	/// @brief Vertex2D に対応する入力レイアウトを生成する
+	/// @param device D3D11 デバイス
 	/// @param vs 頂点シェーダー（バイトコード取得用）
 	void createInputLayout(ID3D11Device* device, const Dx11Shader& vs)
 	{
@@ -145,7 +145,7 @@ private:
 	}
 
 	/// @brief ブレンドステートを生成する
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param mode ブレンドモード
 	void createBlendState(ID3D11Device* device, BlendMode mode)
 	{
@@ -232,7 +232,7 @@ private:
 	}
 
 	/// @brief ラスタライザステートを生成する
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param wireframe ワイヤーフレーム表示フラグ
 	/// @param scissorEnable シザー矩形有効フラグ
 	void createRasterizerState(ID3D11Device* device,
@@ -247,11 +247,11 @@ private:
 		desc.FrontCounterClockwise = FALSE;
 		desc.DepthClipEnable = TRUE;
 		desc.ScissorEnable = scissorEnable ? TRUE : FALSE;
-		// MSAA enabled on the swap chain → マルチサンプルラスタライズを有効化し
+		// スワップチェーンで MSAA を有効にしているので、マルチサンプルラスタライズを有効化し
 		// 三角形のエッジをカバレッジサンプル平均で処理する。
 		desc.MultisampleEnable = TRUE;
 		// ピクセルエッジのライン平滑化（MultisampleEnable が TRUE のときは効果なし、
-		// 非MSAA フォールバック経路のために残している）。
+		// 非 MSAA フォールバック経路のために残している）。
 		desc.AntialiasedLineEnable = TRUE;
 
 		HRESULT hr = device->CreateRasterizerState(

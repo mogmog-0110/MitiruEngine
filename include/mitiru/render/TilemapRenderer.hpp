@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file TilemapRenderer.hpp
-/// @brief GPU加速タイルマップレンダラー
+/// @brief GPU 加速タイルマップレンダラー
 /// @details インスタンス描画によるタイルマップ描画パイプライン。
 ///          ビューポートカリング・パララックススクロール・
 ///          アニメーションタイル・タイル反転・オートタイルに対応する。
-///          CPU描画パス（ソフトウェア/ヘッドレスモード用）も提供する。
+///          CPU 描画パス（ソフトウェア/ヘッドレスモード用）も提供する。
 
 #include <algorithm>
 #include <cmath>
@@ -27,7 +27,7 @@ namespace mitiru::render
 
 // ─── Tile Flip Flags ────────────────────────────────────────
 
-/// @brief タイル反転フラグ（Tiledフォーマット互換）
+/// @brief タイル反転フラグ（Tiled フォーマット互換）
 enum class TileFlip : std::uint8_t
 {
 	None       = 0,
@@ -70,8 +70,8 @@ struct TilesetConfig
 	int margin = 0;      ///< テクスチャ端のマージン（ピクセル）
 	int firstGid = 1;    ///< タイルIDオフセット（Tiled互換）
 
-	/// @brief タイルIDからテクスチャ内のソース矩形を計算する
-	/// @param tileId タイルID（firstGid起算）
+	/// @brief タイル ID からテクスチャ内のソース矩形を計算する
+	/// @param tileId タイル ID（firstGid 起算）
 	/// @return ソース矩形（ピクセル座標）
 	[[nodiscard]] sgc::Rectf getTileRect(int tileId) const noexcept
 	{
@@ -89,9 +89,9 @@ struct TilesetConfig
 		        static_cast<float>(tileHeight)};
 	}
 
-	/// @brief タイルIDからUV矩形を計算する（テクスチャ正規化座標）
-	/// @param tileId タイルID（firstGid起算）
-	/// @return UV矩形 [0,1]
+	/// @brief タイル ID から UV 矩形を計算する（テクスチャ正規化座標）
+	/// @param tileId タイル ID（firstGid 起算）
+	/// @return UV 矩形 [0,1]
 	[[nodiscard]] sgc::Rectf getTileUV(int tileId) const noexcept
 	{
 		const auto rect = getTileRect(tileId);
@@ -115,9 +115,9 @@ struct AnimatedTile
 	std::vector<int> tileIds;     ///< フレームごとのタイルID列
 	float frameDuration = 0.2f;   ///< 1フレームの表示時間（秒）
 
-	/// @brief 現在の経過時間に対応するタイルIDを取得する
+	/// @brief 現在の経過時間に対応するタイル ID を取得する
 	/// @param elapsedTime 経過時間（秒）
-	/// @return 現在表示すべきタイルID
+	/// @return 現在表示すべきタイル ID
 	[[nodiscard]] int currentTileId(float elapsedTime) const noexcept
 	{
 		if (tileIds.empty())
@@ -142,7 +142,7 @@ struct AnimatedTile
 // ─── AutoTileRules ──────────────────────────────────────────
 
 /// @brief オートタイルの隣接ビットマスク
-/// @details 8方向の隣接タイルの有無をビットで表現する。
+/// @details 8 方向の隣接タイルの有無をビットで表現する。
 enum class AutoTileNeighbor : std::uint8_t
 {
 	None       = 0,
@@ -169,26 +169,26 @@ enum class AutoTileNeighbor : std::uint8_t
 }
 
 /// @brief オートタイルルール
-/// @details 隣接ビットマスクからタイルIDへのマッピングテーブル。
+/// @details 隣接ビットマスクからタイル ID へのマッピングテーブル。
 struct AutoTileRules
 {
-	/// @brief ビットマスク→タイルIDマッピング
+	/// @brief ビットマスク→タイル ID マッピング
 	std::unordered_map<std::uint8_t, int> maskToTileId;
 
-	/// @brief デフォルトタイルID（マッチしない場合）
+	/// @brief デフォルトタイル ID（マッチしない場合）
 	int defaultTileId = 0;
 
 	/// @brief ルールを追加する
 	/// @param mask 隣接ビットマスク
-	/// @param tileId 対応するタイルID
+	/// @param tileId 対応するタイル ID
 	void addRule(std::uint8_t mask, int tileId)
 	{
 		maskToTileId[mask] = tileId;
 	}
 
-	/// @brief 隣接マスクに対応するタイルIDを取得する
+	/// @brief 隣接マスクに対応するタイル ID を取得する
 	/// @param mask 隣接ビットマスク
-	/// @return タイルID
+	/// @return タイル ID
 	[[nodiscard]] int resolve(std::uint8_t mask) const
 	{
 		const auto it = maskToTileId.find(mask);
@@ -203,7 +203,7 @@ struct AutoTileRules
 // ─── TilemapLayer ───────────────────────────────────────────
 
 /// @brief タイルマップレイヤー
-/// @details 1レイヤー分のタイルデータ（1次元配列）を保持する。
+/// @details 1 レイヤー分のタイルデータ（1 次元配列）を保持する。
 ///          パララックススクロール・透明度・表示切替をサポートする。
 struct TilemapLayer
 {
@@ -218,10 +218,10 @@ struct TilemapLayer
 	float parallaxX = 1.0f;        ///< X方向パララックス係数（1.0=カメラ追従）
 	float parallaxY = 1.0f;        ///< Y方向パララックス係数（1.0=カメラ追従）
 
-	/// @brief タイルIDを取得する
-	/// @param tileX X座標（タイル単位）
-	/// @param tileY Y座標（タイル単位）
-	/// @return タイルID（範囲外は0）
+	/// @brief タイル ID を取得する
+	/// @param tileX X 座標（タイル単位）
+	/// @param tileY Y 座標（タイル単位）
+	/// @return タイル ID（範囲外は 0）
 	[[nodiscard]] int getTile(int tileX, int tileY) const noexcept
 	{
 		if (tileX < 0 || tileX >= width || tileY < 0 || tileY >= height)
@@ -236,10 +236,10 @@ struct TilemapLayer
 		return data[index];
 	}
 
-	/// @brief タイルIDを設定する
-	/// @param tileX X座標（タイル単位）
-	/// @param tileY Y座標（タイル単位）
-	/// @param tileId タイルID
+	/// @brief タイル ID を設定する
+	/// @param tileX X 座標（タイル単位）
+	/// @param tileY Y 座標（タイル単位）
+	/// @param tileId タイル ID
 	void setTile(int tileX, int tileY, int tileId) noexcept
 	{
 		if (tileX < 0 || tileX >= width || tileY < 0 || tileY >= height)
@@ -254,8 +254,8 @@ struct TilemapLayer
 	}
 
 	/// @brief 指定座標のタイル反転フラグを取得する
-	/// @param tileX X座標
-	/// @param tileY Y座標
+	/// @param tileX X 座標
+	/// @param tileY Y 座標
 	/// @return 反転フラグ
 	[[nodiscard]] TileFlip getFlip(int tileX, int tileY) const noexcept
 	{
@@ -272,8 +272,8 @@ struct TilemapLayer
 	}
 
 	/// @brief 指定座標のタイル反転フラグを設定する
-	/// @param tileX X座標
-	/// @param tileY Y座標
+	/// @param tileX X 座標
+	/// @param tileY Y 座標
 	/// @param flip 反転フラグ
 	void setFlip(int tileX, int tileY, TileFlip flip) noexcept
 	{
@@ -324,9 +324,9 @@ struct Tilemap
 	int mapWidth = 0;                       ///< マップ幅（タイル数）
 	int mapHeight = 0;                      ///< マップ高さ（タイル数）
 
-	/// @brief タイルIDに対応するタイルセットを取得する
-	/// @param gid グローバルタイルID
-	/// @return タイルセットへのポインタ（見つからなければnullptr）
+	/// @brief タイル ID に対応するタイルセットを取得する
+	/// @param gid グローバルタイル ID
+	/// @return タイルセットへのポインタ（見つからなければ nullptr）
 	[[nodiscard]] const TilesetConfig* findTileset(int gid) const noexcept
 	{
 		const TilesetConfig* best = nullptr;
@@ -356,7 +356,7 @@ public:
 	/// @param collisionLayer 衝突判定に使用するレイヤー
 	/// @param tileWidth タイル幅（ピクセル）
 	/// @param tileHeight タイル高さ（ピクセル）
-	/// @param solidTileIds ソリッドとみなすタイルIDの集合
+	/// @param solidTileIds ソリッドとみなすタイル ID の集合
 	TilemapCollision(const TilemapLayer& collisionLayer,
 	                 int tileWidth, int tileHeight,
 	                 std::vector<int> solidTileIds = {})
@@ -368,9 +368,9 @@ public:
 	}
 
 	/// @brief 指定タイル座標がソリッドか判定する
-	/// @param tileX タイルX座標
-	/// @param tileY タイルY座標
-	/// @return ソリッドならtrue
+	/// @param tileX タイル X 座標
+	/// @param tileY タイル Y 座標
+	/// @return ソリッドなら true
 	[[nodiscard]] bool isSolid(int tileX, int tileY) const noexcept
 	{
 		const int tileId = m_layer.getTile(tileX, tileY);
@@ -379,7 +379,7 @@ public:
 			return false;
 		}
 
-		/// ソリッドIDリストが空の場合、非ゼロタイルは全てソリッド
+		/// ソリッド ID リストが空の場合、非ゼロタイルは全てソリッド
 		if (m_solidTileIds.empty())
 		{
 			return true;
@@ -389,10 +389,10 @@ public:
 		       != m_solidTileIds.end();
 	}
 
-	/// @brief ワールド座標からタイルIDを取得する
-	/// @param worldX ワールドX座標（ピクセル）
-	/// @param worldY ワールドY座標（ピクセル）
-	/// @return タイルID（範囲外は0）
+	/// @brief ワールド座標からタイル ID を取得する
+	/// @param worldX ワールド X 座標（ピクセル）
+	/// @param worldY ワールド Y 座標（ピクセル）
+	/// @return タイル ID（範囲外は 0）
 	[[nodiscard]] int getTileAt(float worldX, float worldY) const noexcept
 	{
 		const int tileX = static_cast<int>(std::floor(worldX / m_tileWidth));
@@ -401,8 +401,8 @@ public:
 	}
 
 	/// @brief 指定タイル座標のコリジョン矩形を取得する
-	/// @param tileX タイルX座標
-	/// @param tileY タイルY座標
+	/// @param tileX タイル X 座標
+	/// @param tileY タイル Y 座標
 	/// @return ワールド座標の矩形
 	[[nodiscard]] sgc::Rectf getCollisionRect(int tileX, int tileY) const noexcept
 	{
@@ -416,7 +416,7 @@ public:
 
 	/// @brief ワールド座標の矩形がソリッドタイルと重なるか判定する
 	/// @param rect ワールド座標の矩形
-	/// @return ソリッドタイルと重なるならtrue
+	/// @return ソリッドタイルと重なるなら true
 	[[nodiscard]] bool overlapsAnySolid(const sgc::Rectf& rect) const noexcept
 	{
 		const int startX = static_cast<int>(std::floor(rect.x() / m_tileWidth));
@@ -455,9 +455,9 @@ private:
 
 // ─── TilemapRenderer ────────────────────────────────────────
 
-/// @brief GPU加速タイルマップレンダラー
+/// @brief GPU 加速タイルマップレンダラー
 /// @details ビューポートカリング・パララックス・アニメーション対応の
-///          タイルマップ描画エンジン。CPU描画パスとGPU描画パスの
+///          タイルマップ描画エンジン。CPU 描画パスと GPU 描画パスの
 ///          両方を提供する。
 ///
 /// @code
@@ -474,7 +474,7 @@ public:
 	// ── アニメーション管理 ─────────────────────────────────────
 
 	/// @brief アニメーションタイルを登録する
-	/// @param baseTileId ベースタイルID
+	/// @param baseTileId ベースタイル ID
 	/// @param anim アニメーション定義
 	void setAnimatedTile(int baseTileId, AnimatedTile anim)
 	{
@@ -482,7 +482,7 @@ public:
 	}
 
 	/// @brief アニメーションタイルを削除する
-	/// @param baseTileId ベースタイルID
+	/// @param baseTileId ベースタイル ID
 	void removeAnimatedTile(int baseTileId)
 	{
 		m_animatedTiles.erase(baseTileId);
@@ -504,7 +504,7 @@ public:
 	// ── オートタイル ───────────────────────────────────────────
 
 	/// @brief オートタイルルールを設定する
-	/// @param terrainTileId 対象タイルID
+	/// @param terrainTileId 対象タイル ID
 	/// @param rules オートタイルルール
 	void setAutoTileRules(int terrainTileId, AutoTileRules rules)
 	{
@@ -513,17 +513,17 @@ public:
 
 	/// @brief レイヤーにオートタイルを適用する
 	/// @param layer 対象レイヤー
-	/// @param terrainTileId 地形タイルID
+	/// @param terrainTileId 地形タイル ID
 	void applyAutoTile(TilemapLayer& layer, int terrainTileId) const;
 
-	// ── CPU描画パス ────────────────────────────────────────────
+	// ── CPU 描画パス ────────────────────────────────────────────
 
-	/// @brief 単一レイヤーをCPU描画する（ビューポートカリング付き）
+	/// @brief 単一レイヤーを CPU 描画する（ビューポートカリング付き）
 	/// @param screen 描画先サーフェス
 	/// @param layer 描画対象レイヤー
 	/// @param tileset タイルセット設定
-	/// @param cameraX カメラX座標（ピクセル）
-	/// @param cameraY カメラY座標（ピクセル）
+	/// @param cameraX カメラ X 座標（ピクセル）
+	/// @param cameraY カメラ Y 座標（ピクセル）
 	/// @param viewportW ビューポート幅（ピクセル）
 	/// @param viewportH ビューポート高さ（ピクセル）
 	void drawLayer(Screen& screen,
@@ -532,20 +532,20 @@ public:
 	               float cameraX, float cameraY,
 	               float viewportW, float viewportH) const;
 
-	/// @brief タイルマップ全体をCPU描画する
+	/// @brief タイルマップ全体を CPU 描画する
 	/// @param screen 描画先サーフェス
 	/// @param tilemap タイルマップ
-	/// @param cameraX カメラX座標（ピクセル）
-	/// @param cameraY カメラY座標（ピクセル）
+	/// @param cameraX カメラ X 座標（ピクセル）
+	/// @param cameraY カメラ Y 座標（ピクセル）
 	void drawTilemap(Screen& screen,
 	                 const Tilemap& tilemap,
 	                 float cameraX, float cameraY) const;
 
-	/// @brief タイルマップ全体をビューポート指定でCPU描画する
+	/// @brief タイルマップ全体をビューポート指定で CPU 描画する
 	/// @param screen 描画先サーフェス
 	/// @param tilemap タイルマップ
-	/// @param cameraX カメラX座標（ピクセル）
-	/// @param cameraY カメラY座標（ピクセル）
+	/// @param cameraX カメラ X 座標（ピクセル）
+	/// @param cameraY カメラ Y 座標（ピクセル）
 	/// @param viewportW ビューポート幅
 	/// @param viewportH ビューポート高さ
 	void drawTilemap(Screen& screen,
@@ -570,7 +570,7 @@ public:
 private:
 	// ── 内部描画ヘルパー ───────────────────────────────────────
 
-	/// @brief CPUパスで1タイルを描画する
+	/// @brief CPU パスで 1 タイルを描画する
 	void drawTileCpu(Screen& screen,
 	                 const TilesetConfig& tileset,
 	                 int localTileId,
@@ -578,9 +578,9 @@ private:
 	                 TileFlip flip,
 	                 const sgc::Colorf& tint) const;
 
-	/// @brief テクスチャからタイルをCPU描画する
+	/// @brief テクスチャからタイルを CPU 描画する
 	/// @details テクスチャのピクセルデータを平均サンプリングして
-	///          代表色で矩形描画する（CPUフォールバック）。
+	///          代表色で矩形描画する（CPU フォールバック）。
 	void drawTileFromTexture(Screen& screen,
 	                         const Texture& texture,
 	                         const sgc::Rectf& srcRect,
@@ -588,7 +588,7 @@ private:
 	                         TileFlip flip,
 	                         const sgc::Colorf& tint) const;
 
-	/// @brief Screen上に矩形を描画する
+	/// @brief Screen 上に矩形を描画する
 	static void drawRectOnScreen(Screen& screen,
 	                              const sgc::Rectf& rect,
 	                              const sgc::Colorf& color)
@@ -596,13 +596,13 @@ private:
 		screen.drawRect(rect, color);
 	}
 
-	/// @brief Screenの幅を取得する
+	/// @brief Screen の幅を取得する
 	static int getScreenWidth(const Screen& screen) noexcept
 	{
 		return screen.width();
 	}
 
-	/// @brief Screenの高さを取得する
+	/// @brief Screen の高さを取得する
 	static int getScreenHeight(const Screen& screen) noexcept
 	{
 		return screen.height();
@@ -612,18 +612,18 @@ private:
 
 	/// @brief 隣接マスクを計算する
 	/// @param layer 対象レイヤー
-	/// @param x タイルX座標
-	/// @param y タイルY座標
-	/// @param terrainId 地形タイルID
-	/// @return 8方向隣接ビットマスク
+	/// @param x タイル X 座標
+	/// @param y タイル Y 座標
+	/// @param terrainId 地形タイル ID
+	/// @return 8 方向隣接ビットマスク
 	[[nodiscard]] static std::uint8_t computeNeighborMask(
 		const TilemapLayer& layer, int x, int y, int terrainId) noexcept;
 
 	// ── アニメーションヘルパー ─────────────────────────────────
 
-	/// @brief タイルIDをアニメーション置換する
-	/// @param tileId 元のタイルID
-	/// @return 置換後のタイルID
+	/// @brief タイル ID をアニメーション置換する
+	/// @param tileId 元のタイル ID
+	/// @return 置換後のタイル ID
 	[[nodiscard]] int resolveAnimatedTile(int tileId) const noexcept;
 
 	// ── メンバ変数 ─────────────────────────────────────────────
@@ -636,5 +636,5 @@ private:
 
 } // namespace mitiru::render
 
-// 実装本体（core/Screen.hpp と同じ末尾 detail include 流儀）
+// 実装本体（core/Screen.hpp と同じく、末尾で detail を include する流儀）
 #include <mitiru/render/detail/TilemapRenderer_impl.hpp>

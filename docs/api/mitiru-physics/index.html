@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Shared physics primitives. See `mitiru::physics2d` and `mitiru::physics3d` for backend-specific implementations.">
+<meta name="description" content="2D physics on Box2D v3 (`Box2DWorld`) and the AABB tile-map sweep. 3D lives in `mitiru::physics3d`.">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::physics | MitiruEngine">
-<meta property="og:description" content="Shared physics primitives. See `mitiru::physics2d` and `mitiru::physics3d` for backend-specific implementations.">
+<meta property="og:description" content="2D physics on Box2D v3 (`Box2DWorld`) and the AABB tile-map sweep. 3D lives in `mitiru::physics3d`.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::physics | MitiruEngine">
-<meta name="twitter:description" content="Shared physics primitives. See `mitiru::physics2d` and `mitiru::physics3d` for backend-specific implementations.">
+<meta name="twitter:description" content="2D physics on Box2D v3 (`Box2DWorld`) and the AABB tile-map sweep. 3D lives in `mitiru::physics3d`.">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -77,27 +77,21 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"><code>mitiru::assets</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"><code>mitiru::bridge::detail</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"><code>mitiru::cef</code></a>
-  
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"><code>mitiru::cef::bridges</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
-  
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"><code>mitiru::core</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
   
@@ -107,13 +101,13 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"><code>mitiru::game</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"><code>mitiru::gfx::dx12</code></a>
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
   
@@ -131,23 +125,41 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/" class="active"><code>mitiru::physics</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"><code>mitiru::physics2d</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
   
@@ -171,19 +183,25 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"><code>mitiru::ui::LayoutPresets</code></a>
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
@@ -197,11 +215,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::physics</code></h1>
-  <p class="lede">Shared physics primitives. See `mitiru::physics2d` and `mitiru::physics3d` for backend-specific implementations.</p>
+  <p class="lede">2D physics on Box2D v3 (`Box2DWorld`) and the AABB tile-map sweep. 3D lives in `mitiru::physics3d`.</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Shared physics primitives. See `mitiru::physics2d` and `mitiru::physics3d` for backend-specific implementations.</p>
+  <p class="api-namespace__lede">2D physics on Box2D v3 (`Box2DWorld`) and the AABB tile-map sweep. 3D lives in `mitiru::physics3d`.</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -210,19 +228,7 @@
 <tr><td><a href="#struct-box2dcontactbegin"><code>Box2DContactBegin</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-box2dbodymove"><code>Box2DBodyMove</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-box2dworld"><code>Box2DWorld</code></a></td><td>class</td><td>20</td></tr>
-<tr><td><a href="#class-box2dworld"><code>Box2DWorld</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#class-collisionbridge"><code>CollisionBridge</code></a></td><td>class</td><td>12</td></tr>
-<tr><td><a href="#class-objectlayerpairfilterimpl"><code>ObjectLayerPairFilterImpl</code></a></td><td>class</td><td>1</td></tr>
-<tr><td><a href="#class-bplayerinterfaceimpl"><code>BPLayerInterfaceImpl</code></a></td><td>class</td><td>3</td></tr>
-<tr><td><a href="#class-objectvsbroadphaselayerfilterimpl"><code>ObjectVsBroadPhaseLayerFilterImpl</code></a></td><td>class</td><td>1</td></tr>
-<tr><td><a href="#class-contactlistenerimpl"><code>ContactListenerImpl</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#class-joltphysicsworld"><code>JoltPhysicsWorld</code></a></td><td>class</td><td>37</td></tr>
-<tr><td><a href="#class-joltphysicsworld"><code>JoltPhysicsWorld</code></a></td><td>class</td><td>35</td></tr>
-<tr><td><a href="#enum-broadphasetype"><code>BroadphaseType</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#enum-collidershapetype"><code>ColliderShapeType</code></a></td><td>enum</td><td>5</td></tr>
-<tr><td><a href="#struct-meshdata"><code>MeshData</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#class-physicsbridge"><code>PhysicsBridge</code></a></td><td>class</td><td>11</td></tr>
-<tr><td><a href="#class-physicssystem"><code>PhysicsSystem</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#class-box2dworld"><code>Box2DWorld</code></a></td><td>class</td><td>4</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
@@ -291,190 +297,12 @@
 </div>
 </details>
 <details class="api-class" id="class-box2dworld" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Box2DWorld</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Box2DWorld</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Box2DWorld(float = 0, float = -9.81f)</code></div>
 <div class="api-method"><code>void step(float, int = 4)</code></div>
 <div class="api-method"><code>std::vector&lt;Box2DBodyMove&gt; drainMoveEvents() const</code></div>
 <div class="api-method"><code>std::vector&lt;Box2DContactBegin&gt; drainBeginContacts() const</code></div>
-<div class="api-method"><code>using CollisionCallback = std::function&lt;void(const CollisionPair&amp;)&gt;;</code></div>
-</div>
-</details>
-<details class="api-class" id="class-collisionbridge">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CollisionBridge</code> <span class="api-class__count">12</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>void registerCallback(CollisionCallback callback)</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t callbackCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::vector&lt;CollisionPair&gt; detectCollisions(scene::GameWorld&amp; world)</code></div>
-<div class="api-method"><code>using JoltBodyId = uint32_t;</code></div>
-<div class="api-method"><code>using JoltContactCallback = std::function&lt;void(const JoltContactEvent&amp;)&gt;;</code></div>
-<div class="api-method"><code>using JoltShapeId = uint32_t;</code></div>
-<div class="api-method"><code>inline constexpr JoltBodyId INVALID_JOLT_BODY_ID = 0xFFFFFFFF</code></div>
-<div class="api-method"><code>inline constexpr JoltShapeId INVALID_JOLT_SHAPE_ID = 0xFFFFFFFF</code></div>
-<div class="api-method"><code>[[nodiscard]] inline JPH::Vec3 toJolt(const sgc::Vec3f&amp; v) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f fromJolt(const JPH::Vec3&amp; v) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline JPH::Quat toJoltQuat(const sgc::Quaternionf&amp; q) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline sgc::Quaternionf fromJoltQuat(const JPH::Quat&amp; q) noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="class-objectlayerpairfilterimpl">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ObjectLayerPairFilterImpl</code> <span class="api-class__extra">: public JPH::ObjectLayerPairFilter</span> <span class="api-class__count">1</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override</code></div>
-</div>
-</details>
-<details class="api-class" id="class-bplayerinterfaceimpl">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BPLayerInterfaceImpl</code> <span class="api-class__extra">: public JPH::BroadPhaseLayerInterface</span> <span class="api-class__count">3</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>BPLayerInterfaceImpl()</code></div>
-<div class="api-method"><code>JPH::uint GetNumBroadPhaseLayers() const override</code></div>
-<div class="api-method"><code>JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const override</code></div>
-</div>
-</details>
-<details class="api-class" id="class-objectvsbroadphaselayerfilterimpl">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ObjectVsBroadPhaseLayerFilterImpl</code> <span class="api-class__extra">: public JPH::ObjectVsBroadPhaseLayerFilter</span> <span class="api-class__count">1</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override</code></div>
-</div>
-</details>
-<details class="api-class" id="class-contactlistenerimpl">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ContactListenerImpl</code> <span class="api-class__extra">: public JPH::ContactListener</span> <span class="api-class__count">5</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>void SetOnContactAdded(JoltContactCallback callback)</code></div>
-<div class="api-method"><code>void SetOnContactRemoved(JoltContactCallback callback)</code></div>
-<div class="api-method"><code>JPH::ValidateResult OnContactValidate( const JPH::Body&amp; , const JPH::Body&amp; , JPH::RVec3Arg , const JPH::CollideShapeResult&amp; ) override</code></div>
-<div class="api-method"><code>void OnContactAdded( const JPH::Body&amp; inBody1, const JPH::Body&amp; inBody2, const JPH::ContactManifold&amp; inManifold, JPH::ContactSettings&amp; ) override</code></div>
-<div class="api-method"><code>void OnContactRemoved(const JPH::SubShapeIDPair&amp; inSubShapePair) override</code></div>
-</div>
-</details>
-<details class="api-class" id="class-joltphysicsworld">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JoltPhysicsWorld</code> <span class="api-class__count">37</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>JoltPhysicsWorld() = default</code></div>
-<div class="api-method"><code>~JoltPhysicsWorld()</code></div>
-<div class="api-method"><code>JoltPhysicsWorld(const JoltPhysicsWorld&amp;) = delete</code></div>
-<div class="api-method"><code>JoltPhysicsWorld&amp; operator=(const JoltPhysicsWorld&amp;) = delete</code></div>
-<div class="api-method"><code>JoltPhysicsWorld(JoltPhysicsWorld&amp;&amp;) = delete</code></div>
-<div class="api-method"><code>JoltPhysicsWorld&amp; operator=(JoltPhysicsWorld&amp;&amp;) = delete</code></div>
-<div class="api-method"><code>void init(const JoltPhysicsConfig&amp; config = {})</code></div>
-<div class="api-method"><code>void shutdown()</code></div>
-<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const JoltPhysicsConfig&amp; config() const noexcept</code></div>
-<div class="api-method"><code>void update(float dt)</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createBoxShape(const sgc::Vec3f&amp; halfExtents)</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createSphereShape(float radius)</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createCapsuleShape(float halfHeight, float radius)</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createMeshShape( const std::vector&lt;sgc::Vec3f&gt;&amp; vertices, const std::vector&lt;uint32_t&gt;&amp; indices)</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createCompoundShape(const std::vector&lt;JoltShapeId&gt;&amp; shapeIds)</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltBodyId createStaticBody( JoltShapeId shapeId, const sgc::Vec3f&amp; position, const sgc::Quaternionf&amp; rotation = {})</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltBodyId createDynamicBody( JoltShapeId shapeId, const sgc::Vec3f&amp; position, const sgc::Quaternionf&amp; rotation = {}, float mass = 1.0f)</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltBodyId createKinematicBody( JoltShapeId shapeId, const sgc::Vec3f&amp; position, const sgc::Quaternionf&amp; rotation = {})</code></div>
-<div class="api-method"><code>void removeBody(JoltBodyId bodyId)</code></div>
-<div class="api-method"><code>void setPosition(JoltBodyId bodyId, const sgc::Vec3f&amp; position)</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Vec3f getPosition(JoltBodyId bodyId) const</code></div>
-<div class="api-method"><code>void setRotation(JoltBodyId bodyId, const sgc::Quaternionf&amp; rotation)</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Quaternionf getRotation(JoltBodyId bodyId) const</code></div>
-<div class="api-method"><code>void setVelocity(JoltBodyId bodyId, const sgc::Vec3f&amp; velocity)</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Vec3f getVelocity(JoltBodyId bodyId) const</code></div>
-<div class="api-method"><code>void applyForce(JoltBodyId bodyId, const sgc::Vec3f&amp; force)</code></div>
-<div class="api-method"><code>void applyImpulse(JoltBodyId bodyId, const sgc::Vec3f&amp; impulse)</code></div>
-<div class="api-method"><code>[[nodiscard]] std::optional&lt;JoltRaycastResult&gt; raycast( const sgc::Vec3f&amp; origin, const sgc::Vec3f&amp; direction, float maxDist = 1000.0f) const</code></div>
-<div class="api-method"><code>[[nodiscard]] std::vector&lt;JoltBodyId&gt; overlapSphere( const sgc::Vec3f&amp; center, float radius) const</code></div>
-<div class="api-method"><code>void onContactAdded(JoltContactCallback callback)</code></div>
-<div class="api-method"><code>void onContactRemoved(JoltContactCallback callback)</code></div>
-<div class="api-method"><code>[[nodiscard]] uint32_t getBodyCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] uint32_t getActiveBodyCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::vector&lt;JoltDebugLine&gt; gatherDebugLines() const</code></div>
-<div class="api-method"><code>[[nodiscard]] JPH::PhysicsSystem* rawPhysicsSystem() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const JPH::PhysicsSystem* rawPhysicsSystem() const noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="class-joltphysicsworld">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JoltPhysicsWorld</code> <span class="api-class__count">35</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>JoltPhysicsWorld() = default</code></div>
-<div class="api-method"><code>~JoltPhysicsWorld() = default</code></div>
-<div class="api-method"><code>JoltPhysicsWorld(const JoltPhysicsWorld&amp;) = delete</code></div>
-<div class="api-method"><code>JoltPhysicsWorld&amp; operator=(const JoltPhysicsWorld&amp;) = delete</code></div>
-<div class="api-method"><code>JoltPhysicsWorld(JoltPhysicsWorld&amp;&amp;) = delete</code></div>
-<div class="api-method"><code>JoltPhysicsWorld&amp; operator=(JoltPhysicsWorld&amp;&amp;) = delete</code></div>
-<div class="api-method"><code>void init(const JoltPhysicsConfig&amp; = {})</code></div>
-<div class="api-method"><code>void shutdown()</code></div>
-<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const JoltPhysicsConfig&amp; config() const noexcept</code></div>
-<div class="api-method"><code>void update(float )</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createBoxShape(const sgc::Vec3f&amp; )</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createSphereShape(float )</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createCapsuleShape(float , float )</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createMeshShape( const std::vector&lt;sgc::Vec3f&gt;&amp; , const std::vector&lt;uint32_t&gt;&amp; )</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltShapeId createCompoundShape(const std::vector&lt;JoltShapeId&gt;&amp; )</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltBodyId createStaticBody( JoltShapeId , const sgc::Vec3f&amp; , const sgc::Quaternionf&amp; = {})</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltBodyId createDynamicBody( JoltShapeId , const sgc::Vec3f&amp; , const sgc::Quaternionf&amp; = {}, float = 1.0f)</code></div>
-<div class="api-method"><code>[[nodiscard]] JoltBodyId createKinematicBody( JoltShapeId , const sgc::Vec3f&amp; , const sgc::Quaternionf&amp; = {})</code></div>
-<div class="api-method"><code>void removeBody(JoltBodyId )</code></div>
-<div class="api-method"><code>void setPosition(JoltBodyId , const sgc::Vec3f&amp; )</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Vec3f getPosition(JoltBodyId ) const</code></div>
-<div class="api-method"><code>void setRotation(JoltBodyId , const sgc::Quaternionf&amp; )</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Quaternionf getRotation(JoltBodyId ) const</code></div>
-<div class="api-method"><code>void setVelocity(JoltBodyId , const sgc::Vec3f&amp; )</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Vec3f getVelocity(JoltBodyId ) const</code></div>
-<div class="api-method"><code>void applyForce(JoltBodyId , const sgc::Vec3f&amp; )</code></div>
-<div class="api-method"><code>void applyImpulse(JoltBodyId , const sgc::Vec3f&amp; )</code></div>
-<div class="api-method"><code>[[nodiscard]] std::optional&lt;JoltRaycastResult&gt; raycast( const sgc::Vec3f&amp; , const sgc::Vec3f&amp; , float = 1000.0f) const</code></div>
-<div class="api-method"><code>[[nodiscard]] std::vector&lt;JoltBodyId&gt; overlapSphere( const sgc::Vec3f&amp; , float ) const</code></div>
-<div class="api-method"><code>void onContactAdded(JoltContactCallback )</code></div>
-<div class="api-method"><code>void onContactRemoved(JoltContactCallback )</code></div>
-<div class="api-method"><code>[[nodiscard]] uint32_t getBodyCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] uint32_t getActiveBodyCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::vector&lt;JoltDebugLine&gt; gatherDebugLines() const</code></div>
-</div>
-</details>
-<details class="api-class" id="enum-broadphasetype">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">BroadphaseType</code> <span class="api-class__count">3</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>BruteForce</code></div>
-<div class="api-method"><code>SpatialHash</code></div>
-<div class="api-method"><code>BVH</code></div>
-</div>
-</details>
-<details class="api-class" id="enum-collidershapetype">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ColliderShapeType</code> <span class="api-class__count">5</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>Sphere</code></div>
-<div class="api-method"><code>Box</code></div>
-<div class="api-method"><code>Capsule</code></div>
-<div class="api-method"><code>Mesh</code></div>
-<div class="api-method"><code>using ShapeData = std::variant&lt;SphereData, BoxData, CapsuleData, MeshData&gt;;</code></div>
-</div>
-</details>
-<details class="api-class" id="struct-meshdata">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MeshData</code> <span class="api-class__count">1</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>std::string meshId</code></div>
-</div>
-</details>
-<details class="api-class" id="class-physicsbridge">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PhysicsBridge</code> <span class="api-class__count">11</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>void init(const PhysicsConfig&amp; config)</code></div>
-<div class="api-method"><code>void shutdown()</code></div>
-<div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const PhysicsConfig&amp; config() const noexcept</code></div>
-<div class="api-method"><code>void syncToPhysics(scene::GameWorld&amp; world)</code></div>
-<div class="api-method"><code>void stepSimulation(float dt)</code></div>
-<div class="api-method"><code>void syncFromPhysics(scene::GameWorld&amp; world)</code></div>
-<div class="api-method"><code>[[nodiscard]] std::optional&lt;RaycastHit&gt; raycast( const sgc::Vec3f&amp; origin, const sgc::Vec3f&amp; direction, float maxDist = 1000.0f) const</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t bodyCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Vec3f getVelocity(scene::EntityId entityId) const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Vec3f getPosition(scene::EntityId entityId) const noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="class-physicssystem">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PhysicsSystem</code> <span class="api-class__extra">: public scene::ISystem</span> <span class="api-class__count">3</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>PhysicsSystem(PhysicsBridge&amp; physicsBridge, CollisionBridge&amp; collisionBridge)</code></div>
-<div class="api-method"><code>[[nodiscard]] std::string name() const override</code></div>
-<div class="api-method"><code>void update(scene::GameWorld&amp; world, float dt) override</code></div>
 </div>
 </details>
 <hr>

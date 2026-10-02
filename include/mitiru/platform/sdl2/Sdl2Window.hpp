@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 /// @file Sdl2Window.hpp
-/// @brief SDL2ウィンドウ実装（スタブ）
-/// @details SDL2ライブラリを使用したクロスプラットフォームウィンドウ管理。
-///          Windows/macOS/Linuxの全プラットフォームで共通のウィンドウAPIを提供する。
-///          MITIRU_HAS_SDL2が定義されている場合のみコンパイルされる。
+/// @brief SDL2 ウィンドウ実装（スタブ）
+/// @details SDL2 ライブラリを使用したクロスプラットフォームウィンドウ管理。
+///          Windows/macOS/Linux の全プラットフォームで共通のウィンドウ API を提供する。
+///          MITIRU_HAS_SDL2 が定義されている場合のみコンパイルされる。
 
 #ifdef MITIRU_HAS_SDL2
 
@@ -20,9 +20,9 @@
 namespace mitiru
 {
 
-/// @brief SDL2ウィンドウ実装
-/// @details SDL_Windowをラップし、IWindowインターフェースを提供する。
-///          Vulkan/OpenGLスワップチェーン生成用にネイティブハンドルを公開する。
+/// @brief SDL2 ウィンドウ実装
+/// @details SDL_Window をラップし、IWindow インターフェースを提供する。
+///          Vulkan/OpenGL スワップチェーン生成用にネイティブハンドルを公開する。
 ///
 /// @code
 /// auto window = std::make_unique<Sdl2Window>("My Game", 1280, 720);
@@ -45,7 +45,7 @@ public:
 		: m_width(width)
 		, m_height(height)
 	{
-		/// SDL2の初期化（複数回呼び出しても安全）
+		/// SDL2 の初期化（複数回呼び出しても安全）
 		if (SDL_WasInit(SDL_INIT_VIDEO) == 0)
 		{
 			if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -99,7 +99,7 @@ public:
 		m_inputState = inputState;
 	}
 
-	/// @brief SDL2イベントキューをポーリングする
+	/// @brief SDL2 イベントキューをポーリングする
 	void pollEvents() override
 	{
 		SDL_Event event;
@@ -205,8 +205,8 @@ public:
 	}
 
 	/// @brief フルスクリーンモードを切り替える
-	/// @param fullscreen フルスクリーンにする場合true
-	/// @param borderless ボーダーレスフルスクリーンを使用する場合true
+	/// @param fullscreen フルスクリーンにする場合 true
+	/// @param borderless ボーダーレスフルスクリーンを使用する場合 true
 	void setFullscreen(bool fullscreen, bool borderless = true)
 	{
 		if (!m_window)
@@ -232,22 +232,22 @@ public:
 	}
 
 	/// @brief フルスクリーン状態を取得する
-	/// @return フルスクリーンならtrue
+	/// @return フルスクリーンなら true
 	[[nodiscard]] bool isFullscreen() const noexcept
 	{
 		return m_fullscreen;
 	}
 
-	/// @brief ネイティブSDL_Windowを取得する
-	/// @return SDL_Windowポインタ（Vulkanサーフェス生成に使用）
+	/// @brief ネイティブ SDL_Window を取得する
+	/// @return SDL_Window ポインタ（Vulkan サーフェス生成に使用）
 	[[nodiscard]] SDL_Window* nativeWindow() const noexcept
 	{
 		return m_window;
 	}
 
 #ifdef _WIN32
-	/// @brief Win32ウィンドウハンドルを取得する（DX11/DX12用）
-	/// @return HWND（SDL_SysWMinfo経由で取得）
+	/// @brief Win32 ウィンドウハンドルを取得する（DX11/DX12 用）
+	/// @return HWND（SDL_SysWMinfo 経由で取得）
 	[[nodiscard]] void* platformHandle() const
 	{
 		SDL_SysWMinfo info;
@@ -261,7 +261,7 @@ public:
 #endif
 
 private:
-	/// @brief SDLキーコードをエンジン内部キーコードに変換する
+	/// @brief SDL キーコードをエンジン内部キーコードに変換する
 	[[nodiscard]] static int sdlKeyToEngine(SDL_Keycode key) noexcept
 	{
 		// 文字キー (A-Z): SDL は小文字、engine は大文字 (65-90) を使う
@@ -313,7 +313,7 @@ private:
 		}
 	}
 
-	/// @brief SDLマウスボタンをエンジン内部MouseButtonに変換する
+	/// @brief SDL マウスボタンをエンジン内部 MouseButton に変換する
 	[[nodiscard]] static MouseButton sdlMouseButtonToEngine(Uint8 button) noexcept
 	{
 		switch (button)

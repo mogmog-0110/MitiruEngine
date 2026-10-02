@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file ObjLoader.hpp
-/// @brief Wavefront OBJメッシュローダー
-/// @details OBJ形式の3Dモデルファイルをパースし、Meshオブジェクトに変換する。
+/// @brief Wavefront OBJ メッシュローダー
+/// @details OBJ 形式の 3D モデルファイルをパースし、Mesh オブジェクトに変換する。
 ///          三角形化されたメッシュのみサポートする。
 ///          対応フォーマット: v, vn, vt, f（v, v/vt, v/vt/vn, v//vn）
 
@@ -43,12 +43,12 @@ struct ObjVertexKey
 	}
 };
 
-/// @brief ObjVertexKeyのハッシュ関数
+/// @brief ObjVertexKey のハッシュ関数
 struct ObjVertexKeyHash
 {
 	std::size_t operator()(const ObjVertexKey& key) const noexcept
 	{
-		/// FNV-1aベースのハッシュ結合
+		/// FNV-1a ベースのハッシュ結合
 		auto h = static_cast<std::size_t>(key.posIdx);
 		h ^= static_cast<std::size_t>(key.texIdx + 1) * 2654435761u;
 		h ^= static_cast<std::size_t>(key.normIdx + 1) * 40499u;
@@ -96,9 +96,9 @@ struct ObjVertexKeyHash
 
 } // namespace detail
 
-/// @brief OBJ文字列からメッシュを読み込む
-/// @param objData OBJ形式の文字列データ
-/// @return パース成功時はMesh、失敗時はnullopt
+/// @brief OBJ 文字列からメッシュを読み込む
+/// @param objData OBJ 形式の文字列データ
+/// @return パース成功時は Mesh、失敗時は nullopt
 ///
 /// @code
 /// const char* objStr = "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n";
@@ -173,7 +173,7 @@ struct ObjVertexKeyHash
 				continue;
 			}
 
-			/// 三角形ファン分割（4頂点以上のポリゴンも処理可能）
+			/// 三角形ファン分割（4 頂点以上のポリゴンも処理できる）
 			for (std::size_t i = 1; i + 1 < faceTokens.size(); ++i)
 			{
 				const std::string triTokens[3] = {
@@ -238,9 +238,9 @@ struct ObjVertexKeyHash
 	return mesh;
 }
 
-/// @brief OBJファイルからメッシュを読み込む
-/// @param filePath OBJファイルのパス
-/// @return パース成功時はMesh、失敗時はnullopt
+/// @brief OBJ ファイルからメッシュを読み込む
+/// @param filePath OBJ ファイルのパス
+/// @return パース成功時は Mesh、失敗時は nullopt
 ///
 /// @code
 /// auto mesh = mitiru::render::loadObjFromFile("assets/model.obj");

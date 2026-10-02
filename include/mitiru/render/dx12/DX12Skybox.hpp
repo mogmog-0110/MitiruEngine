@@ -39,7 +39,7 @@ void ensureSkyboxTextureDx12()
 		& ~(D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1u);
 	const UINT uploadSize = faceStride * static_cast<UINT>(kCubemapFaceCount);
 
-	// faceSize 変化（または初回）のみ GPU リソースを作り直す
+	// faceSize が変わったとき（または初回）だけ GPU リソースを作り直す
 	const bool sizeChanged =
 		!m_skyboxTexture
 		|| !m_skyboxUpload
@@ -49,9 +49,6 @@ void ensureSkyboxTextureDx12()
 	if (sizeChanged)
 	{
 		// ── 1. TextureCube リソース ────────────────────────────
-		D3D12_HEAP_PROPERTIES texHp = {};
-		texHp.Type = D3D12_HEAP_TYPE_DEFAULT;
-
 		D3D12_RESOURCE_DESC texDesc = {};
 		texDesc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		texDesc.Width            = static_cast<UINT64>(faceSize);
@@ -64,12 +61,8 @@ void ensureSkyboxTextureDx12()
 		texDesc.SampleDesc.Count = 1;
 		texDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
-		m_skyboxTexture.Reset();
-		if (FAILED(m_d3dDevice->CreateCommittedResource(
-				&texHp, D3D12_HEAP_FLAG_NONE, &texDesc,
-				D3D12_RESOURCE_STATE_COPY_DEST,
-				nullptr,
-				IID_PPV_ARGS(m_skyboxTexture.GetAddressOf()))))
+		if (FAILED(gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, texDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST, nullptr, m_skyboxTexture)))
 		{
 			return;
 		}
@@ -77,25 +70,8 @@ void ensureSkyboxTextureDx12()
 		m_skyboxTextureInPSR = false;
 
 		// ── 2. Upload buffer（6 面分）──────────────────────────
-		D3D12_HEAP_PROPERTIES upHp = {};
-		upHp.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-		D3D12_RESOURCE_DESC upDesc = {};
-		upDesc.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
-		upDesc.Width            = uploadSize;
-		upDesc.Height           = 1;
-		upDesc.DepthOrArraySize = 1;
-		upDesc.MipLevels        = 1;
-		upDesc.Format           = DXGI_FORMAT_UNKNOWN;
-		upDesc.SampleDesc.Count = 1;
-		upDesc.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		m_skyboxUpload.Reset();
-		if (FAILED(m_d3dDevice->CreateCommittedResource(
-				&upHp, D3D12_HEAP_FLAG_NONE, &upDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(m_skyboxUpload.GetAddressOf()))))
+		if (FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_UPLOAD, uploadSize,
+			D3D12_RESOURCE_STATE_GENERIC_READ, m_skyboxUpload)))
 		{
 			return;
 		}
@@ -105,6 +81,9 @@ void ensureSkyboxTextureDx12()
 		srvHd.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		srvHd.NumDescriptors = 1;
 		srvHd.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		// 作り直す前のヒープは投入済みのフレームが読んでいるかもしれないので、GPU が読み終えてから手放す
+		// (テクスチャとアップロードバッファは GpuResource が同じ待ちを自前で行う)
+		if (m_device) { m_device->deferRelease(m_skyboxSrvHeap); }
 		m_skyboxSrvHeap.Reset();
 		if (FAILED(m_d3dDevice->CreateDescriptorHeap(
 				&srvHd, IID_PPV_ARGS(m_skyboxSrvHeap.GetAddressOf()))))
@@ -157,8 +136,8 @@ void ensureSkyboxTextureDx12()
 }
 
 /// @brief skybox 用 root sig / PSO / VS / PS / cube VB / IB を構築する
-/// @details cubemap の内容には依存しない。renderer 寿命中に一度だけ作って
-///          流用する。
+/// @details cubemap の内容には依存しない。renderer が生きている間に一度だけ作って
+///          使い回す。
 void ensureSkyboxPipelineDx12()
 {
 	if (!m_d3dDevice) return;
@@ -212,17 +191,13 @@ void ensureSkyboxPipelineDx12()
 
 	// ── 5. VS / PS をコンパイル ──────────────────────────────
 	ComPtr<ID3DBlob> vsBlob, psBlob, compileErr;
-	if (FAILED(D3DCompile(
-			SKYBOX_VS_HLSL, std::strlen(SKYBOX_VS_HLSL),
-			nullptr, nullptr, nullptr, "VSMain", "vs_5_0",
-			0, 0, vsBlob.GetAddressOf(), compileErr.GetAddressOf())))
+	if (FAILED(gfx::compileDx12Shader(SKYBOX_VS_HLSL, "VSMain", "vs_5_0", 0,
+		vsBlob.GetAddressOf(), compileErr.GetAddressOf())))
 	{
 		return;
 	}
-	if (FAILED(D3DCompile(
-			SKYBOX_PS_HLSL, std::strlen(SKYBOX_PS_HLSL),
-			nullptr, nullptr, nullptr, "PSMain", "ps_5_0",
-			0, 0, psBlob.GetAddressOf(), compileErr.GetAddressOf())))
+	if (FAILED(gfx::compileDx12Shader(SKYBOX_PS_HLSL, "PSMain", "ps_5_0", 0,
+		psBlob.GetAddressOf(), compileErr.GetAddressOf())))
 	{
 		return;
 	}
@@ -290,17 +265,10 @@ void ensureSkyboxPipelineDx12()
 	};
 
 	auto makeUploadBuffer = [&](UINT64 sz, const void* data,
-	                            ComPtr<ID3D12Resource>& out) -> bool
+	                            gfx::GpuResource& out) -> bool
 	{
-		D3D12_HEAP_PROPERTIES uph = {}; uph.Type = D3D12_HEAP_TYPE_UPLOAD;
-		D3D12_RESOURCE_DESC d = {};
-		d.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		d.Width = sz; d.Height = 1; d.DepthOrArraySize = 1; d.MipLevels = 1;
-		d.SampleDesc.Count = 1; d.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		if (FAILED(m_d3dDevice->CreateCommittedResource(
-				&uph, D3D12_HEAP_FLAG_NONE, &d,
-				D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-				IID_PPV_ARGS(out.GetAddressOf()))))
+		if (FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_UPLOAD, sz,
+			D3D12_RESOURCE_STATE_GENERIC_READ, out)))
 			return false;
 		void* p = nullptr;
 		D3D12_RANGE r = {0, 0};
@@ -404,7 +372,7 @@ void drawSkyboxIfNeededDx12()
 	toHLSL(cb.viewNoTrans, view);
 	toHLSL(cb.projection,  proj);
 
-	// CB は uploadRing から per-frame 切り出す (in-flight 前フレームの読取と競合しない)
+	// CB は uploadRing からフレームごとに切り出す (in-flight の前フレームの読み取りと競合しない)
 	const auto skyCbAlloc = m_uploadRing.upload(&cb, sizeof(cb), 256);
 	if (!skyCbAlloc.valid()) return;
 

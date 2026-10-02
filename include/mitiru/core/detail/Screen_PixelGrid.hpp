@@ -80,7 +80,7 @@ inline void Screen::drawPixelGrid(
 
 	// fallback: textured batch 非対応 backend は従来 path。
 	// submitPixelGrid は Win32 専用宣言 (DX11/DX12 の焼き込み PSO)。web では
-	// textured batch が使えなかった時点で描くものが無いので、静かに抜ける
+	// textured batch が使えなかった時点で描くものが無いので、何も知らせずに抜ける
 	// (「無い機能は絵から抜ける」の規約どおり)。
 	// DX11 の submitPixelGrid は immediate context で即描くため、それより前に積まれた
 	// batched geometry (present() で drain) が後から上に乗って隠す。先に drain して
@@ -152,7 +152,7 @@ inline void Screen::blitAlphaBlended(
 	// GPU pipeline 接続時は drawPixelGrid (screen-space、実 alpha ブレンド) に委譲する。
 	// isValid() も見る (flushCurrentBatch と同じ条件、Screen_Frame.hpp): pipeline オブジェクトは
 	// 存在するが内部が無効 (NullDevice 由来 / device-lost 中) なケースで、GPU 側へ投げて
-	// 無言で捨てるのではなく SW framebuffer が張ってあればそちらへフォールバックする。
+	// 知らせずに捨てるのではなく SW framebuffer が張ってあればそちらへフォールバックする。
 	if (m_pipeline != nullptr && m_pipeline->isValid())
 	{
 		drawPixelGrid(dest, reinterpret_cast<const std::uint32_t*>(pixels), pixelWidth, pixelHeight);

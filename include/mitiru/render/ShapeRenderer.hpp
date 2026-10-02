@@ -19,7 +19,7 @@ namespace mitiru::render
 
 /// @brief プリミティブシェイプレンダラー
 /// @details 基本図形を頂点データとして生成する。
-///          Phase 1 ではGPU送信はスタブ。
+///          Phase 1 では GPU 送信はスタブ。
 ///
 /// @code
 /// mitiru::render::ShapeRenderer shapes;
@@ -98,7 +98,7 @@ public:
 
 		const auto baseIdx = static_cast<std::uint32_t>(m_vertices.size());
 
-		/// 太さを持つ矩形として4頂点を生成する
+		/// 太さを持つ矩形として 4 頂点を生成する
 		m_vertices.emplace_back(sgc::Vec2f{from.x + perp.x, from.y + perp.y}, color);
 		m_vertices.emplace_back(sgc::Vec2f{from.x - perp.x, from.y - perp.y}, color);
 		m_vertices.emplace_back(sgc::Vec2f{to.x - perp.x, to.y - perp.y}, color);
@@ -115,9 +115,9 @@ public:
 	}
 
 	/// @brief 三角形を描画する
-	/// @param p0 頂点0
-	/// @param p1 頂点1
-	/// @param p2 頂点2
+	/// @param p0 頂点 0
+	/// @param p1 頂点 1
+	/// @param p2 頂点 2
 	/// @param color 描画色
 	void drawTriangle(const sgc::Vec2f& p0,
 	                  const sgc::Vec2f& p1,
@@ -168,8 +168,8 @@ public:
 
 	/// @brief 楕円を描画する
 	/// @param center 中心座標
-	/// @param radiusX X方向の半径
-	/// @param radiusY Y方向の半径
+	/// @param radiusX X 方向の半径
+	/// @param radiusY Y 方向の半径
 	/// @param color 描画色
 	/// @param segments 分割数
 	void drawEllipse(const sgc::Vec2f& center,
@@ -242,7 +242,7 @@ public:
 	}
 
 	/// @brief 蓄積データをフラッシュする
-	/// @details GPU描画はRenderPipeline2DがsubmitBatch()で行う。
+	/// @details GPU 描画は RenderPipeline2D が submitBatch()で行う。
 	///          flush()はデータをクリアするのみ。
 	void flush() noexcept
 	{

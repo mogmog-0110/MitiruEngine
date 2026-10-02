@@ -2,9 +2,9 @@
 
 /// @file SineSynth.hpp
 /// @brief ポリフォニック正弦波シンセサイザー
-/// @details CPU上でリアルタイム正弦波合成を行うソフトウェアシンセサイザー。
-///          最大MAX_VOICES個のボイスを同時発音し、ADSR エンベロープで音量を制御する。
-///          ホットパスでのアロケーション・ゼロを保証する（ボイスは事前確保済みプールから取得）。
+/// @details CPU 上でリアルタイムに正弦波を合成するソフトウェアシンセサイザー。
+///          最大 MAX_VOICES 個のボイスを同時に発音し、ADSR エンベロープで音量を制御する。
+///          ホットパスではアロケーションを行わないことを保証する（ボイスは事前に確保したプールから取得する）。
 ///
 /// @code
 /// mitiru::audio::SineSynth synth;
@@ -44,13 +44,13 @@ struct AdsrParams
 };
 
 /// @brief SineSynth が返すボイスハンドル
-/// @details 0 は無効値。noteOn() の戻り値として取得し noteOff() に渡す。
+/// @details 0 は無効値。noteOn() の戻り値として取得し、noteOff() に渡す。
 using VoiceHandle = int;
 
 /// @brief ポリフォニック正弦波シンセサイザー
-/// @details スレッドセーフ。noteOn()/noteOff() と render() は別スレッドから呼べる。
-///          内部ボイスプールは静的サイズ MAX_VOICES。
-///          ボイスが満杯のときは envLevel * velocity が最も小さいボイスを奪う（voice stealing）。
+/// @details スレッドセーフ。noteOn()/noteOff() と render() は別のスレッドから呼び出せる。
+///          内部ボイスプールの静的サイズは MAX_VOICES。
+///          ボイスが満杯のときは、envLevel * velocity が最も小さいボイスを割り当て直す（voice stealing）。
 class SineSynth : public IAudioStream
 {
 public:
@@ -58,8 +58,8 @@ public:
     static constexpr int MAX_VOICES = 16;
 
     /// @brief サンプルレート / チャンネル数を指定して構築する
-    /// @details StreamingAudioEngine (IAudioStream 経由) で駆動するときに使う。
-    ///          read() が内部的に render(m_sampleRate) を呼び出す。
+    /// @details StreamingAudioEngine (IAudioStream 経由) で動作させるときに使う。
+    ///          read() が内部で render(m_sampleRate) を呼び出す。
     explicit SineSynth(std::size_t voiceCount,
                        std::uint32_t sampleRate,
                        std::uint16_t channels = 1) noexcept
@@ -89,7 +89,7 @@ public:
 
     // ─── パラメータ設定 ───────────────────────────────────────────
 
-    /// @brief 最大同時発音数を設定する（MAX_VOICES 以下にクランプ）
+    /// @brief 最大同時発音数を設定する（MAX_VOICES 以下に収める）
     /// @param voices 希望する最大ボイス数
     void setMaxVoices(int voices) noexcept
     {
@@ -140,7 +140,7 @@ public:
     /// @param midiNote MIDI ノート番号（0-127）。440 Hz = ノート 69
     /// @param velocity ベロシティ [0.0, 1.0]
     /// @return ボイスハンドル（0 = 失敗）
-    /// @details ボイスプールが満杯の場合、envLevel * velocity が最小のボイスを奪う。
+    /// @details ボイスプールが満杯の場合、envLevel * velocity が最小のボイスを割り当て直す。
     VoiceHandle noteOn(int midiNote, float velocity) noexcept
     {
         const std::lock_guard<std::mutex> lock(m_mutex);
@@ -179,7 +179,7 @@ public:
 
     /// @brief ノートオフを発行する（リリースフェーズを開始する）
     /// @param handle noteOn() が返したハンドル
-    /// @details ハンドルが無効の場合はノーオペレーション。
+    /// @details ハンドルが無効の場合は何もしない。
     void noteOff(VoiceHandle handle) noexcept
     {
         const std::lock_guard<std::mutex> lock(m_mutex);
@@ -222,8 +222,8 @@ public:
         return count;
     }
 
-    /// @brief 指定ハンドルがまだ発音中かを返す
-    /// @param handle チェックするボイスハンドル
+    /// @brief 指定したハンドルがまだ発音中かどうかを返す
+    /// @param handle 確認するボイスハンドル
     [[nodiscard]] bool isActive(VoiceHandle handle) const noexcept
     {
         const std::lock_guard<std::mutex> lock(m_mutex);
@@ -234,11 +234,11 @@ public:
     // ─── レンダリング ─────────────────────────────────────────────
 
     /// @brief モノラル float PCM バッファにレンダリングする
-    /// @param buffer 出力バッファ（framesサイズ以上であること）
+    /// @param buffer 出力バッファ（frames サイズ以上であること）
     /// @param frames 生成するフレーム数
     /// @param sampleRate サンプルレート（Hz）
-    /// @details 既存バッファに加算するのではなく上書きする。
-    ///          ゼロアロケーション保証。ホットパスで new/malloc を呼ばない。
+    /// @details 既存のバッファに加算せず、上書きする。
+    ///          アロケーションを行わないことを保証する。ホットパスでは new/malloc を呼び出さない。
     void render(float* buffer, std::size_t frames, int sampleRate) noexcept
     {
         const std::lock_guard<std::mutex> lock(m_mutex);
@@ -267,14 +267,14 @@ public:
 
             if (!v.active)
             {
-                // エンベロープ完了でクリーンアップ済み
+                // エンベロープの完了時にクリーンアップ済み
             }
         }
     }
 
     // ─── IAudioStream 実装 ────────────────────────────────────────
     // StreamingAudioEngine (別スレッドの pull 型 audio callback) から使う。
-    // 既存の render()/noteOn()/noteOff() と共存する (どちらから呼んでも安全)。
+    // 既存の render()/noteOn()/noteOff() と共存する (どちらから呼び出しても安全)。
 
     /// @brief ストリームを開く
     bool open() override { m_isOpen = true; return true; }
@@ -283,9 +283,9 @@ public:
     void close() override { allNotesOff(); m_isOpen = false; }
 
     /// @brief IAudioStream::read。mono/stereo の float PCM を生成する
-    /// @details StreamingAudioEngine の fillThreadFunc から呼ばれる。
-    ///          1ch の場合は render() を直接バッファへ書き込み、
-    ///          2ch の場合は 1ch をレンダリング後に左右へ複製する。
+    /// @details StreamingAudioEngine の fillThreadFunc から呼び出される。
+    ///          1ch の場合は render() でバッファへ直接書き込み、
+    ///          2ch の場合は 1ch をレンダリングした後、左右へ複製する。
     std::size_t read(float* buffer, std::size_t frames) override
     {
         if (!buffer || frames == 0) return 0;
@@ -296,9 +296,9 @@ public:
             return frames;
         }
 
-        // stereo: 一時モノバッファに合成して左右チャネルへ複製する
-        // 2048 フレーム以内の小チャンクに切って再帰的に処理することで
-        // ホットパスのアロケーションを避ける。
+        // stereo: 一時モノバッファに合成し、左右のチャネルへ複製する
+        // 2048 フレーム以内の小さなチャンクに分けて再帰的に処理することで、
+        // ホットパスでのアロケーションを避ける。
         constexpr std::size_t kChunk = 2048;
         std::array<float, kChunk> tmp{};
         std::size_t written = 0;
@@ -402,7 +402,7 @@ private:
         return -1;
     }
 
-    /// @brief ボイスを奪うスロットを返す（envLevel * velocity が最小）
+    /// @brief 割り当て直すボイスのスロットを返す（envLevel * velocity が最小）
     [[nodiscard]] int stealSlot() const noexcept
     {
         int   best     = -1;
@@ -421,7 +421,7 @@ private:
         return best;
     }
 
-    /// @brief ハンドルからボイスを検索する
+    /// @brief ハンドルに対応するボイスを検索する
     [[nodiscard]] Voice* findVoice(VoiceHandle handle) noexcept
     {
         for (auto& v : m_voices)
@@ -434,7 +434,7 @@ private:
         return nullptr;
     }
 
-    /// @brief ハンドルからボイスを検索する（const 版）
+    /// @brief ハンドルに対応するボイスを検索する（const 版）
     [[nodiscard]] const Voice* findVoiceConst(VoiceHandle handle) const noexcept
     {
         for (const auto& v : m_voices)
@@ -496,7 +496,7 @@ private:
                 {
                     v.envLevel = 0.0f;
                     v.active   = false;
-                    // 残りフレームはゼロ加算のまま終了
+                    // 残りのフレームにはゼロを加算したまま終了する
                     return;
                 }
                 break;

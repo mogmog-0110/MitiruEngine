@@ -4,7 +4,7 @@
 /// @brief 2D 横スクロール用の多層パララックス背景。
 /// @details `addLayer(tex, scrollMulX, tileX, tileY, offsetY)` で奥行レイヤを積み、
 ///          `draw(screen, camX, camY, viewW, viewH)` で一括描画。tile=true なら
-///          viewport 幅で wrap。手書きの border バグを構造で潰す。
+///          viewport 幅で wrap。手書きで起きる border のバグを構造で防ぐ。
 
 #include <cmath>
 #include <vector>
@@ -37,7 +37,7 @@ public:
 	[[nodiscard]] int size() const noexcept { return static_cast<int>(m_layers.size()); }
 
 	/// @brief 全レイヤを camera 座標に応じて描画する。
-	/// @param camX,camY camera world position
+	/// @param camX,camY camera のワールド座標
 	/// @param viewW,viewH 描画範囲 (screen-space)
 	void draw(Screen& screen, float camX, float camY, float viewW, float viewH) const
 	{
@@ -51,8 +51,8 @@ public:
 			const float sx = camX * L.scrollMulX;
 			const float sy = camY * L.scrollMulY;
 
-			// 描画開始位置: 1 タイル前から repeat。offsetY は tile / 非 tile の
-			// 両方で効かせる (tile 時に無視されると地平線の微調整が不能になる)。
+			// 描画開始位置は 1 タイル前から repeat。offsetY は tile / 非 tile の
+			// 両方で適用する (tile 時に無視されると地平線の微調整ができなくなる)。
 			float startX = -std::fmod(sx, tw);
 			if (startX > 0.0f) { startX -= tw; }
 			float startY;

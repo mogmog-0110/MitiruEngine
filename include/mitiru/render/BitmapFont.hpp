@@ -2,8 +2,8 @@
 
 /// @file BitmapFont.hpp
 /// @brief 組み込みビットマップフォント
-/// @details 8x8 ASCIIビットマップフォント。外部ファイル不要。
-///          各グリフは8バイト（8行×8ビット）で表現される。
+/// @details 8x8 ASCII ビットマップフォント。外部ファイル不要。
+///          各グリフは 8 バイト（8 行×8 ビット）で表現される。
 
 #include <array>
 #include <cstdint>
@@ -12,10 +12,10 @@
 namespace mitiru::render
 {
 
-/// @brief 8x8ビットマップフォントデータ
-/// @details ASCII 32-126の95文字分のグリフデータを内蔵する。
-///          各グリフは8バイト（8行×8ビット）で表現され、
-///          MSBが左端ピクセルに対応する。
+/// @brief 8x8 ビットマップフォントデータ
+/// @details ASCII 32-126 の 95 文字分のグリフデータを内蔵する。
+///          各グリフは 8 バイト（8 行×8 ビット）で表現され、
+///          MSB が左端ピクセルに対応する。
 ///
 /// @code
 /// const auto g = BitmapFont::glyph('A');
@@ -23,7 +23,7 @@ namespace mitiru::render
 /// {
 ///     for (int col = 0; col < 8; ++col)
 ///     {
-///         if (g[row] & (0x80 >> col)) { /* ピクセルON */ }
+///         if (g[row] & (0x80 >> col)) { /* ピクセル ON */ }
 ///     }
 /// }
 /// @endcode
@@ -37,8 +37,8 @@ public:
 	static constexpr int GLYPH_COUNT = LAST_CHAR - FIRST_CHAR + 1;  ///< グリフ総数
 
 	/// @brief 指定文字のグリフデータを取得する
-	/// @param ch ASCII文字
-	/// @return 8バイトのグリフデータ（各バイトが1行、MSBが左端）
+	/// @param ch ASCII 文字
+	/// @return 8 バイトのグリフデータ（各バイトが 1 行、MSB が左端）
 	[[nodiscard]] static constexpr std::array<std::uint8_t, 8> glyph(char ch) noexcept
 	{
 		const int index = static_cast<int>(ch) - FIRST_CHAR;
@@ -56,7 +56,7 @@ public:
 
 	/// @brief テキストの描画幅を計算する（ピクセル単位）
 	/// @param text 計測対象テキスト
-	/// @param scale 拡大率（デフォルト1）
+	/// @param scale 拡大率（デフォルト 1）
 	/// @return 描画幅（ピクセル）
 	[[nodiscard]] static constexpr int textWidth(std::string_view text, int scale = 1) noexcept
 	{
@@ -64,7 +64,7 @@ public:
 	}
 
 	/// @brief テキストの描画高さを計算する（ピクセル単位）
-	/// @param scale 拡大率（デフォルト1）
+	/// @param scale 拡大率（デフォルト 1）
 	/// @return 描画高さ（ピクセル）
 	[[nodiscard]] static constexpr int textHeight(int scale = 1) noexcept
 	{
@@ -72,9 +72,9 @@ public:
 	}
 
 private:
-	/// @brief フォントデータ（95文字 × 8バイト = 760バイト）
-	/// @details CP437互換の8x8ビットマップフォント。
-	///          ASCII 32（スペース）〜 126（チルダ）の95文字分。
+	/// @brief フォントデータ（95 文字 × 8 バイト = 760 バイト）
+	/// @details CP437 互換の 8x8 ビットマップフォント。
+	///          ASCII 32（スペース）〜 126（チルダ）の 95 文字分。
 	static constexpr std::uint8_t FONT_DATA[] = {
 		// Space (32)
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

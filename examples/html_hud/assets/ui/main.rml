@@ -1,0 +1,90 @@
+<rml>
+<head>
+<title>html_hud</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<style>
+  /* C++ が描くゲーム画面 (紙白の背景 + スライダー) の上に重ねる UI。
+     この文書は値を一切覚えない。C++ が hud.set で送る view.level という 1 つの数値を、
+     6 つの表示 (ゲージ・数字・バー・pips・色・折れ線) へ同時に映すだけ。
+     マウス操作は下の C++ が読むので、この重ね面はクリックを受け取らない (pointer-events: none)。
+     半透明色は #rrggbbaa で書く (RCSS の rgba() のアルファは 0〜255 で数える)。 */
+  body { pointer-events: none; }
+
+  /* 画面の上 58px (章の名札) と下 34px (操作の説明帯) は C++ が描くので、そこには重ねない。 */
+  .hud { position: absolute; top: 58px; right: 0px; bottom: 34px; left: 0px;
+         display: flex; flex-direction: column; align-items: center; }
+
+  /* 中央上: 円形ゲージ + 中央の大きな数字。弧と数字が同じ値を映す */
+  .hero  { margin-top: 18px; }
+  .gauge { position: relative; width: 236px; height: 236px; border-radius: 118px;
+           display: flex; align-items: center; justify-content: center;
+           box-shadow: #141e321a 0px 14px 40px; }
+  .gauge-hole { position: absolute; top: 26px; right: 26px; bottom: 26px; left: 26px;
+                border-radius: 92px; background-color: #fbfcfe;
+                box-shadow: #141e320f 0px 2px 8px inset; }
+  .value { position: relative; z-index: 1; font-size: 96px; font-weight: bold;
+           letter-spacing: -4px; color: #0a84ff; transition: color 0.25s cubic-out; }
+  .value.low  { color: #e8338a; }
+  .value.high { color: #1fa654; }
+
+  /* 下段: 同じ値の別表現 4 つ (横バー / pips / 色面 / 折れ線) */
+  .row  { display: flex; gap: 44px; margin-top: 34px; align-items: center; }
+  .tile { width: 176px; height: 120px; display: flex; align-items: center; justify-content: center; }
+
+  .bar { width: 100%; height: 26px; border-radius: 13px; background-color: #e6ebf3;
+         box-shadow: #141e3214 0px 1px 3px inset; overflow: hidden; }
+  .bar-fill { display: block; height: 100%; width: 0%; border-radius: 13px; background-color: #0a84ff; }
+  .bar-fill.low  { background-color: #e8338a; }
+  .bar-fill.high { background-color: #1fa654; }
+
+  .pips { display: flex; gap: 7px; }
+  .pip  { display: block; width: 13px; height: 34px; border-radius: 5px; background-color: #e6ebf3;
+          transition: background-color 0.12s cubic-out; }
+  .pip.lit { background-color: #0a84ff; }
+
+  .swatch { width: 96px; height: 96px; border-radius: 22px; background-color: #0a84ff;
+            box-shadow: #0a84ff47 0px 8px 22px; transition: background-color 0.25s cubic-out; }
+  .swatch.low  { background-color: #e8338a; box-shadow: #e8338a47 0px 8px 22px; }
+  .swatch.high { background-color: #1fa654; box-shadow: #1fa65447 0px 8px 22px; }
+
+  .spark { display: block; width: 176px; height: 96px; border-radius: 12px;
+           background-color: #ffffff99; border: 1px #e6ebf3; }
+</style>
+</head>
+<!-- data-model="view" で、C++ の hud.set("view.xxx", ...) が xxx という名前で引ける。
+     {{ level }} … 文字にする / data-class-low="式" … 式が真の間だけ class を付ける /
+     data-style-width="式" … CSS の値を式で作る / data-for="p : pips" … C++ が送った配列の数だけ複製する -->
+<body data-model="view">
+  <div class="hud">
+    <div class="hero">
+      <!-- 弧の角度 = level%。低い (33 未満) は桃、高い (66 以上) は緑 -->
+      <div class="gauge"
+           data-style-decorator="'conic-gradient(' + (level &lt; 33 ? '#e8338a' : level &gt;= 66 ? '#1fa654' : '#0a84ff') + ' 0%, ' + (level &lt; 33 ? '#e8338a' : level &gt;= 66 ? '#1fa654' : '#0a84ff') + ' ' + level + '%, #e6ebf3 ' + level + '%, #e6ebf3 100%)'">
+        <div class="gauge-hole"></div>
+        <div class="value" data-class-low="level &lt; 33" data-class-high="level &gt;= 66">{{ level }}</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="tile">
+        <div class="bar">
+          <div class="bar-fill" data-style-width="level + '%'"
+               data-class-low="level &lt; 33" data-class-high="level &gt;= 66"></div>
+        </div>
+      </div>
+      <div class="tile">
+        <div class="pips">
+          <div class="pip" data-for="p : pips" data-class-lit="p.on"></div>
+        </div>
+      </div>
+      <div class="tile">
+        <div class="swatch" data-class-low="level &lt; 33" data-class-high="level &gt;= 66"></div>
+      </div>
+      <div class="tile">
+        <!-- 値が変わるたびに 1 点足す折れ線 (エンジンの部品)。cap は残す点の数 -->
+        <spark class="spark" cap="90" data-attr-value="level"></spark>
+      </div>
+    </div>
+  </div>
+</body>
+</rml>

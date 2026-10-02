@@ -48,7 +48,9 @@
 #include <mitiru/debug/ToolRegistry.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/DrawCommands.hpp>
+#include <mitiru/module/LayoutFingerprint.hpp>
 #include <mitiru/module/ModuleApi.hpp>
+#include <mitiru/module/ModuleReflection.hpp>
 
 namespace mitiru
 {
@@ -80,7 +82,7 @@ enum class Key : int
 	Num5 = '5', Num6 = '6', Num7 = '7', Num8 = '8', Num9 = '9',
 };
 
-/// ゲームパッド (XInput 主コントローラ) のボタン。値は ModuleApi の gamepad:: ビット。
+/// ゲームパッドのボタン。値は ModuleApi の gamepad:: ビット。
 enum class Pad : std::uint32_t
 {
 	Up = 0x0001, Down = 0x0002, Left = 0x0004, Right = 0x0008,
@@ -88,8 +90,36 @@ enum class Pad : std::uint32_t
 	LB = 0x0100, RB = 0x0200, A = 0x1000, B = 0x2000, X = 0x4000, Y = 0x8000,
 };
 
+/// マウスのボタン。`in.mouseDown(Mouse::X1)` のように渡す (int で 0..4 を渡しても同じ)。
+enum class Mouse : int { Left = 0, Right = 1, Middle = 2, X1 = 3, X2 = 4 };
+
 /// スティックの傾き (各成分 -1..1)。
 struct Stick { float x, y; };
+
+/// パッド 1 台の読み取り (`in.pad(n)` が返す)。コピーは安全 (ポインタ 1 個)。
+class PadInput
+{
+public:
+	explicit PadInput(const module::GamepadState* s) noexcept : s_(s) {}
+
+	bool connected() const noexcept { return s_ != nullptr && s_->connected != 0; }
+	bool down(Pad b)     const noexcept { return has(&module::GamepadState::buttonsDown, b); }
+	bool pressed(Pad b)  const noexcept { return has(&module::GamepadState::buttonsJustPressed, b); }
+	bool released(Pad b) const noexcept { return has(&module::GamepadState::buttonsJustReleased, b); }
+	Stick leftStick()  const noexcept { return { axis(0), axis(1) }; }
+	Stick rightStick() const noexcept { return { axis(2), axis(3) }; }
+	float leftTrigger()  const noexcept { return axis(4); }
+	float rightTrigger() const noexcept { return axis(5); }
+
+private:
+	bool has(std::uint32_t module::GamepadState::* field, Pad b) const noexcept
+	{
+		return s_ != nullptr && ((s_->*field) & static_cast<std::uint32_t>(b)) != 0;
+	}
+	float axis(int a) const noexcept { return (s_ != nullptr) ? s_->axes[a] : 0.0f; }
+
+	const module::GamepadState* s_;
+};
 
 /// 度 → ラジアン変換。Screen の drawArc / drawPie / pushRotation はラジアン指定なので、
 /// 度で書きたいときは `deg(90)` のように包んで渡す (drawRectRotated / drawGroup は度のまま)。
@@ -156,20 +186,28 @@ public:
 	float mouseY() const noexcept { return s_->mouseY; }
 	float mouseDeltaX() const noexcept { return s_->mouseDeltaX; }  ///< このフレームの移動量 (px、右が正)
 	float mouseDeltaY() const noexcept { return s_->mouseDeltaY; }  ///< 同 (下が正)。ロック中も動く (FPS 視線)
-	bool  mouseDown(int button = 0) const noexcept   ///< 押されている間 (0=左 1=右 2=中)
+	/// 押されている間 (0=左 1=右 2=中 3=X1 (戻る) 4=X2 (進む))
+	bool  mouseDown(int button = 0) const noexcept
 	{
-		return button >= 0 && button < 3 && s_->mouseButtonsDown[button] != 0;
+		return mouseFlag(button, s_->mouseButtonsDown, s_->mouseXButtonsDown);
 	}
 	bool  mousePressed(int button = 0) const noexcept   ///< 押した瞬間だけ
 	{
-		return button >= 0 && button < 3 && s_->mouseButtonsJustPressed[button] != 0;
+		return mouseFlag(button, s_->mouseButtonsJustPressed, s_->mouseXButtonsJustPressed);
 	}
 	bool  mouseReleased(int button = 0) const noexcept  ///< 離した瞬間だけ
 	{
-		return button >= 0 && button < 3 && s_->mouseButtonsJustReleased[button] != 0;
+		return mouseFlag(button, s_->mouseButtonsJustReleased, s_->mouseXButtonsJustReleased);
 	}
+	bool  mouseDown(Mouse b)     const noexcept { return mouseDown(static_cast<int>(b)); }
+	bool  mousePressed(Mouse b)  const noexcept { return mousePressed(static_cast<int>(b)); }
+	bool  mouseReleased(Mouse b) const noexcept { return mouseReleased(static_cast<int>(b)); }
+	/// このフレームに回したホイール (ノッチ数、+ = 奥)。`zoom += in.wheel() * 0.1f` のように使う。
+	float wheel()  const noexcept { return s_->mouseWheel; }
+	/// 横ホイール (チルト、+ = 右)。
+	float wheelH() const noexcept { return s_->mouseWheelH; }
 
-	/// HTML のボタン等から届いたアクションが来たフレームだけ true (例: "game.restart")。
+	/// UI (RML) のボタン等から届いたアクションが来たフレームだけ true (例: "game.restart")。
 	bool action(const char* name) const noexcept
 	{
 		if (name == nullptr) { return false; }
@@ -184,7 +222,7 @@ public:
 	}
 
 	/// action に付いてきた payload (JSON 文字列) を返す。無ければ nullptr。
-	/// HTML ボタンが値 (難易度・スロット番号など) を伴うとき使う。
+	/// UI のボタンが値 (難易度・スロット番号など) を伴うとき使う。
 	const char* actionPayload(const char* name) const noexcept
 	{
 		if (name == nullptr) { return nullptr; }
@@ -199,8 +237,7 @@ public:
 	}
 
 	// ── payload JSON の値ヘルパ (D5) ────────────────────────────────────
-	// html_hud / html_menu 等が自前で strstr していた「フラットな "key": value を 1 つ拾う」
-	// を集約する。ネストした JSON は非対応 (それが要るなら actionPayload() を自分で読む)。
+	// フラットな "key": value を 1 つ拾う。ネストした JSON は非対応 (それが要るなら actionPayload() を自分で読む)。
 
 	/// payload の JSON から key の int 値を読む (無ければ defaultValue)。
 	int actionPayloadInt(const char* name, const char* key, int defaultValue = 0) const noexcept
@@ -235,7 +272,7 @@ public:
 		return *v == '"';  // ループを抜けた理由が outCap 不足なら (*v はまだ終端引用符でない) 切り詰め
 	}
 
-	// ── ゲームパッド (XInput 主コントローラ) ──────────────────────
+	// ── ゲームパッド (繋がっている全台の合成。1 人用はこれで足りる。台ごとは pad(n)) ──────
 	bool padConnected() const noexcept { return s_->gamepadConnected != 0; }
 	bool padDown(Pad b)     const noexcept { return (s_->gamepadButtonsDown        & static_cast<std::uint32_t>(b)) != 0; }
 	bool padPressed(Pad b)  const noexcept { return (s_->gamepadButtonsJustPressed  & static_cast<std::uint32_t>(b)) != 0; }
@@ -244,6 +281,13 @@ public:
 	Stick rightStick() const noexcept { return { s_->gamepadAxes[2], s_->gamepadAxes[3] }; }
 	float leftTrigger()  const noexcept { return s_->gamepadAxes[4]; }
 	float rightTrigger() const noexcept { return s_->gamepadAxes[5]; }
+	/// n 台目のパッド (0..3、ローカル対戦用)。番号は XInput の player 番号どおりで、誰かが抜いても
+	/// 他の人の番号は動かない。範囲外は未接続として読める。例: `in.pad(1).pressed(Pad::A)`
+	PadInput pad(int n) const noexcept
+	{
+		const int count = static_cast<int>(sizeof(s_->gamepads) / sizeof(s_->gamepads[0]));
+		return PadInput{(n >= 0 && n < count) ? &s_->gamepads[n] : nullptr};
+	}
 
 	// ── アクションマップ (キーもパッドも 1 つの名前で。表 = 操作仕様書) ──────
 	/// 表の中で act に束ねたキー/パッドのどれかが「押されている間」true。
@@ -308,7 +352,7 @@ public:
 	/// 音声クロック (秒、ABI v13)。host の audio backend の再生サンプル位置。
 	/// **契約**: 0 = 未準備/非対応 (起動直後の数フレームや Null/headless) → game は
 	/// フレーム dt 積算へフォールバックすること。**非ゼロになった後は単調非減少を
-	/// engine が保証する** (backend の供給の谷でも巻き戻らない)。録画再生でも再現する。
+	/// engine が保証する** (backend の供給が一時的に落ち込んでも巻き戻らない)。録画再生でも再現する。
 	/// リズムゲームの同期は「audioTime()<=0 の間は dt クロック、以降は緩く lerp」が定石。
 	double audioTime() const noexcept { return s_->audioTimeSec; }
 
@@ -317,7 +361,7 @@ public:
 	double audioLatency() const noexcept { return s_->audioLatencySec; }
 
 	/// 実際に耳へ届いている音声クロック位置 (秒、ABI v19)。= audioTime() - audioLatency()。
-	/// **リズムゲームの判定はこの earTime() を基準にすると出力レイテンシ分のズレが構造的に消える**
+	/// **リズムゲームの判定はこの earTime() を基準にすれば、出力レイテンシ分のズレは仕組みのうえで生じない**
 	/// (audioTime() はデバイスへ送った位置 = 耳より先行)。audioTime() が未準備 (<=0) の間は 0。
 	double earTime() const noexcept
 	{
@@ -336,14 +380,22 @@ public:
 	/// 1.0 到達、fadeIn の完了は 0.0 到達で判定する (シーン切り替えのタイミング合わせに使う)。
 	float fadeProgress01() const noexcept { return s_->fadeProgress01; }
 
-	/// このフレームに確定した UTF-8 テキスト入力 (ABI v34、J5)。IME 確定文字を含む。
-	/// **本命は CEF の `<input>` (HTML UI)**。ここはプレイヤー名入力のような、ゲーム内の
-	/// 簡易テキスト入力用の最小手段 (32B 上限、収まらない分は切り捨て)。現状 Win32 のみ供給、
-	/// 他 platform は常に空。
+	/// このフレームに確定した UTF-8 テキスト入力 (ABI v34、J5)。IME 確定文字を含む。プレイヤー名入力の
+	/// ような、ゲーム内の簡易テキスト入力用 (32B 上限、収まらない分は切り捨て)。日本語を打たせたい間は
+	/// `hud.wantTextInput(入力欄)` を毎フレーム呼ぶ (呼ばないフレームは IME が切れている)。
+	/// 現状 Win32 のみ供給、他 platform は常に空。
 	std::string_view textInput() const noexcept
 	{
 		return std::string_view(s_->textInput, s_->textInputLen);
 	}
+	/// IME で変換中の、まだ確定していない文字列 (UTF-8、ABI v45)。入力欄に下線付きで出したいときに読む。
+	/// 確定すると消えて textInput() に来る。録画に乗るので、再生でも同じ表示になる。
+	std::string_view imeComposition() const noexcept
+	{
+		return std::string_view(s_->imeComposition, s_->imeCompositionLen);
+	}
+	/// imeComposition() の中のキャレット位置 (先頭からの byte 数)。
+	int imeCursor() const noexcept { return s_->imeCursor; }
 
 	/// 前フレームに `hud.raycast()` / `hud.overlapSphere()` で頼んだ物理問い合わせの結果 (v37)。
 	/// `tag` で照合する。無ければ nullptr。hit == kPhysicsHitUnsupported は「host に物理 world が無い」。
@@ -359,18 +411,17 @@ public:
 	const module::InputSnapshot* raw() const noexcept { return s_; }
 
 private:
+	// 'a'..'z' (0x61..0x7A) は弾かない。VK ではテンキーと Key::F1..F11 の値で、小文字の誤用と区別できない
 	static bool held(int vk, const std::uint8_t* table) noexcept
 	{
-		if (vk >= 'a' && vk <= 'z')
-		{
-			// Key{'a'} の罠 (D6): 英字 VK は大文字のみ有効なので小文字コードは常に無言不一致になる。
-			// この enum に小文字コードの正規メンバは存在しないため、範囲一致 = ほぼ確実に誤用。
-			mitiru::debug::warnOnce("input.key.lowercase",
-				"Key に英小文字コードが渡されました (Key{'a'} 等)。VK は大文字のみ有効です。"
-				"key('a') ヘルパ (自動大文字化) を使ってください");
-			return false;
-		}
 		return vk >= 0 && vk < 256 && table[vk] != 0;
+	}
+	/// X1 / X2 は別の配列にある (InputSnapshot は末尾にしか足せないため)。
+	static bool mouseFlag(int button, const std::uint8_t (&main)[3], const std::uint8_t (&ext)[2]) noexcept
+	{
+		if (button >= 0 && button < 3) { return main[button] != 0; }
+		if (button >= 3 && button < 5) { return ext[button - 3] != 0; }
+		return false;
 	}
 	/// エスケープされていない次の '"' を探す (`\"` を文字列終端と誤認しない)。
 	/// 値の中に `\"key\":` のような文字列が入っていると、素の strchr は
@@ -431,6 +482,49 @@ private:
 	const module::InputSnapshot* s_;
 };
 
+/// 音のバス。`hud.busVolume(SoundBus::Sfx, 0.5f)` でまとめて音量を変える (Master は全部に掛かる)。
+/// 鳴らす音には `.bus(SoundBus::Ui)` で付ける。付けなければ効果音は Sfx、BGM は Music、ボイスは Voice。
+enum class SoundBus : std::uint8_t { Master = 0, Music = 1, Sfx = 2, Voice = 3, Ui = 4, Ambient = 5 };
+
+/// `hud.play` / `hud.playLoop` が返す、いま積んだ 1 本の音への設定口。続けて書く。
+/// `hud.play("hit").at(enemy.pos)`、`hud.playLoop("engine").handle(car.id).at(car.pos)`。
+/// 1 フレームに積める音 (8 本) を超えて積めなかった時は、何を呼んでも何もしない。
+class SoundCall
+{
+public:
+	explicit SoundCall(module::SoundIntent* s) noexcept : s_(s) {}
+
+	/// この位置で鳴らす (world 座標、1 = 1m)。`hud.listener()` から見て遠いほど小さく、左右に振れる。
+	SoundCall at(Vec3 pos) noexcept
+	{
+		if (s_ != nullptr) { s_->spatial = 1; s_->position[0] = pos.x; s_->position[1] = pos.y; s_->position[2] = pos.z; }
+		return *this;
+	}
+	/// 左右の振り (-1 = 左、0 = 中央、1 = 右)。at() と一緒に使うと at() が優先される。
+	SoundCall pan(float p) noexcept
+	{
+		if (s_ != nullptr) { s_->pan = p; }
+		return *this;
+	}
+	/// バス。`hud.busVolume()` でバスごとに音量を変えられる。
+	SoundCall bus(SoundBus b) noexcept
+	{
+		if (s_ != nullptr) { s_->bus = static_cast<std::uint8_t>(b); }
+		return *this;
+	}
+	/// 再生の番号 (ゲームが決める 1 以上の数。敵の番号など)。同じ音を何本も鳴らして 1 本ずつ止めたい時に付け、
+	/// `hud.stopSound(番号)` で止める。同じ番号の音が鳴っている間にもう一度鳴らすと、頭から鳴らし直さず
+	/// 音量・ピッチ・位置だけが変わる (動く物のループ音は毎フレーム同じ番号で鳴らせばよい)。
+	SoundCall handle(std::uint32_t h) noexcept
+	{
+		if (s_ != nullptr) { s_->handle = h; }
+		return *this;
+	}
+
+private:
+	module::SoundIntent* s_;
+};
+
 // `Tool` enum + 開ける窓の registry (kToolTable) は <mitiru/debug/ToolRegistry.hpp>
 // に置き、host 側 (openTool) と共有している。
 
@@ -440,7 +534,7 @@ class Hud
 public:
 	explicit Hud(module::FrameIntents* s) noexcept : s_(s) {}
 
-	void set(const char* key, int v)         noexcept { s_->pushInt(key, v); }      ///< HTML の data-m-text へ
+	void set(const char* key, int v)         noexcept { s_->pushInt(key, v); }      ///< RML の {{ }} へ (view. より後ろの名前で読む)
 	void set(const char* key, float v)       noexcept { s_->pushFloat(key, v); }
 	void set(const char* key, bool v)        noexcept { s_->pushBool(key, v); }
 	void set(const char* key, const char* v) noexcept { s_->pushString(key, v); }
@@ -448,8 +542,8 @@ public:
 	/// 数値配列を 1 件の statePush で送る (D4)。`set()` は 1 フレーム 64 件の statePush
 	/// 上限があり、敵・弾多数の座標を毎フレーム 1 体 1 件で送る shooter 系がすぐ当たる。
 	/// 代わりに JSON 配列文字列 1 本 (`[1,2,3]`) にまとめ、statePush の消費を 1 件にする。
-	/// html 側は `window.mitiru.onStateChange(key, json)` で own parse する (data-m-text の
-	/// 自動反映は非対応)。count が strVal (3968B) に収まらない場合は収まる分だけで配列を
+	/// RML 側は JSON の配列として読むので `data-for="v : key"` で並べられる。
+	/// count が strVal (3968B) に収まらない場合は収まる分だけで配列を
 	/// 閉じ、初回のみ warnOnce する。対処法: 配列を分割 key にするか送る件数を間引く。
 	void setArray(const char* key, const float* values, std::size_t count) noexcept
 	{
@@ -483,30 +577,51 @@ public:
 
 	/// 効果音を鳴らす。volume は 0..1 (1=原音量)。**volume 0 = 無音** (鳴らしたくない時は
 	/// 呼ばないのが普通だが、変数で 0 が来ても最大音量にはならない)。
-	void play(const char* soundId, float volume = 1.0f) noexcept
+	SoundCall play(const char* soundId, float volume = 1.0f) noexcept
 	{
-		s_->playSound(soundId, clampVolume(volume));
+		return SoundCall{s_->playSound(soundId, clampVolume(volume))};
 	}
 	/// 音をピッチ付きで鳴らす (pitch 0.5..2.0、1.0=原音)。1 つの SE を音階で鳴らすリズムゲーム等。
 	/// **volume 0 = 無音**。pitch 0 は無意味なので、明示した pitch <= 0 は 1.0 (原音) に丸められる。
-	void play(const char* soundId, float volume, float pitch) noexcept
+	SoundCall play(const char* soundId, float volume, float pitch) noexcept
 	{
-		s_->playSound(soundId, clampVolume(volume), pitch);
+		return SoundCall{s_->playSound(soundId, clampVolume(volume), pitch)};
 	}
 	/// 効果音をループ再生する。stopLoop で止めるまで鳴り続ける。
 	/// 長押しのように「押している間ずっと」鳴らしたい音に使う。短い音を継ぎ足して
 	/// 伸ばすと継ぎ目が聴こえ、離した瞬間に切れる。同じ id が鳴っている間の再呼び出しは
 	/// 鳴らし直さず音量とピッチだけを寄せる (音量スライダーの試聴のように、鳴らしたまま
 	/// 音量を動かせる)。
-	void playLoop(const char* soundId, float volume = 1.0f, float pitch = 1.0f,
-	              float fadeInSec = 0.0f) noexcept
+	SoundCall playLoop(const char* soundId, float volume = 1.0f, float pitch = 1.0f,
+	                   float fadeInSec = 0.0f) noexcept
 	{
-		s_->loopSound(soundId, clampVolume(volume), pitch, fadeInSec);
+		return SoundCall{s_->loopSound(soundId, clampVolume(volume), pitch, fadeInSec)};
 	}
 	/// playLoop で鳴らしている音を止める。releaseSec > 0 で減衰させてから止める。
+	/// `.handle(n)` を付けて鳴らした音は stopSound(n) で止める。
 	void stopLoop(const char* soundId, float releaseSec = 0.0f) noexcept
 	{
 		s_->stopSoundId(soundId, releaseSec);
+	}
+	/// `.handle(n)` を付けて鳴らした音を 1 本だけ止める。releaseSec > 0 で減衰させてから止める。
+	void stopSound(std::uint32_t handle, float releaseSec = 0.0f) noexcept
+	{
+		s_->stopSoundHandle(handle, releaseSec);
+	}
+	/// 3D の音を聞く位置と向き (ふつうはカメラ)。`.at(pos)` で鳴らした音はここから見て遠いほど小さく、
+	/// 左右に振れる。host が覚えているので、動いたフレームだけ呼べばよい。
+	void listener(Vec3 position, Vec3 forward, Vec3 up = Vec3{0.0f, 1.0f, 0.0f}) noexcept
+	{
+		const float p[3]{position.x, position.y, position.z};
+		const float f[3]{forward.x, forward.y, forward.z};
+		const float u[3]{up.x, up.y, up.z};
+		s_->setListener(p, f, u);
+	}
+	/// バスの音量 (0..1)。オプション画面の「効果音」「BGM」の音量に使う。host が覚えていて、
+	/// 鳴っているループ音と BGM にもすぐ反映される。
+	void busVolume(SoundBus bus, float volume) noexcept
+	{
+		s_->setBusVolume(static_cast<std::uint8_t>(bus), volume);
 	}
 	/// BGM を再生する (連続トラック、既定ループ)。同じ id なら毎フレーム呼んでも安全。
 	/// host が直前と同じ id / loop / volume の BGM を重複再生しない (冪等)。**volume 0 = 無音**。
@@ -520,8 +635,7 @@ public:
 	/// 再生中の BGM を停止する (fadeOutSec > 0 でフェードアウト)。
 	void stopMusic(float fadeOutSec = 0.0f) noexcept { s_->stopMusic(fadeOutSec); }
 	/// ボイス (台詞) を鳴らす。BGM / SE とは別の 1 本のスロットで鳴り、前の台詞が
-	/// まだ鳴っていれば重ねず差し替える。**volume 0 は「未指定」で既定の 1.0 になる** (SoundIntentRouter の契約。
-	/// 無音で鳴らす手段は無いので、鳴らしたくなければ呼ばない)。mixer 窓の「voice 一覧」に
+	/// まだ鳴っていれば重ねず差し替える。**volume 0 = 無音** (play() と同じ)。mixer 窓の「voice 一覧」に
 	/// id / 残り秒が出るのはこの経路で鳴らした音だけ (play() は SE 扱い)。
 	void voice(const char* soundId, float volume = 1.0f, float fadeInSec = 0.0f) noexcept
 	{
@@ -590,7 +704,7 @@ public:
 	void save(const char* slot = "slot0") noexcept { s_->requestSave(slot); }
 	/// スロットから GameMemory を復元する。GameMemory の struct を変更した後の
 	/// 旧セーブは安全のため拒否される (初回 1 回警告)。リプレイ中は記録済み state で
-	/// 代用されるため、セーブファイルが変わっていても再現は壊れない。
+	/// 代用されるため、セーブファイルが変わっていても再現はずれない。
 	void load(const char* slot = "slot0") noexcept { s_->requestLoad(slot); }
 	/// ゲームを最初からやり直す (GameMemory を unload なしで fresh 再構築、§8-4)。
 	/// update 内の `*this = MyGame{}` 手運びの代わり。host が memset 0 → init() を適用する。
@@ -603,6 +717,13 @@ public:
 	/// カーソルをロックする (FPS 視線)。毎フレーム呼ぶ。呼ばないフレームで解除される
 	/// (`setMouseLock(true)` の別名。unlock したいときは単に呼ぶのをやめる)。
 	void lockMouse() noexcept { setMouseLock(true); }
+	/// このフレームはテキストを受けたい、入力欄は field (画面座標) だと伝える。毎フレーム呼ぶ。
+	/// 呼んでいる間だけ IME が働き、変換窓と候補窓が入力欄に出る。呼ばないフレームは IME が切れていて、
+	/// 遊んでいる最中に日本語入力の窓が出ない (lockMouse と同じ「毎フレーム宣言」)。
+	void wantTextInput(Rect field) noexcept
+	{
+		s_->requestTextInput(field.position.x, field.position.y, field.size.x, field.size.y);
+	}
 	/// このフレームのスクリーンショットを保存する。
 	void screenshot() noexcept { s_->requestScreenshotNow(); }
 	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。
@@ -684,8 +805,6 @@ public:
 	}
 	/// 任意のツール窓を名前で開く (host が mitiru_<tool>.exe を探す)。上級者向け。
 	void open(const char* tool, const char* args = "") noexcept { s_->requestToolWindow(tool, args); }
-	/// 生 JS を実行 (escape hatch、data-m-* で足りるなら使わない)。
-	void runJs(const char* code) noexcept { s_->runJs(code); }
 
 private:
 	/// 明示 volume <= 0 を実質無音 (0.0001) に丸める。intent の wire 上では 0 が
@@ -722,7 +841,7 @@ void gameUpdate(void* mem, float dt, const InputSnapshot* in, FrameIntents* out)
 	mitiru::Input input{in};
 	mitiru::Hud   hud{out};
 	// update は欲しい引数だけ受け取ればよい (使わないものは省略可)。初心者は
-	// update(Input in, float dt) だけ書けば動く。Hud (HTML UI / 音) は要るときだけ。
+	// update(Input in, float dt) だけ書けば動く。Hud (UI / 音) は要るときだけ。
 	if      constexpr (requires { g.update(input, hud, dt); }) { g.update(input, hud, dt); }
 	else if constexpr (requires { g.update(input, dt); })      { g.update(input, dt); }
 	else if constexpr (requires { g.update(hud, dt); })        { g.update(hud, dt); }
@@ -765,7 +884,7 @@ void gameShutdown(void* mem)
 
 // T が update / draw のどれかを「正しい署名で」持っているかを判定する。
 // これが false の時に MITIRU_GAME すると、署名ミス (引数型 / dt 落とし / 大文字小文字) で
-// update が無言で呼ばれない footgun になるため、compile error にして気付かせる。
+// 気づかないうちに update が呼ばれない footgun になるため、compile error にして気付かせる。
 template<class T>
 inline constexpr bool kHasGameEntry =
 	requires(T& g, mitiru::Input in, mitiru::Hud hud, float dt) { g.update(in, hud, dt); } ||
@@ -774,9 +893,57 @@ inline constexpr bool kHasGameEntry =
 	requires(T& g, float dt) { g.update(dt); } ||
 	requires(T& g, mitiru::Screen& s) { g.draw(s); };
 
-/// @brief GameMemory リフレクション記述子。`MITIRU_REFLECT` が特殊化する。
-///        既定は no-op (reflection 非宣言 game は reflectFieldCount=0 のまま)。
-template<class T> struct ReflectionOf { static void fillApi(ModuleApi*) noexcept {} };
+/// @brief GameMemory リフレクション記述子。`MITIRU_REFLECT` / `MITIRU_REFLECT_AUTO` が特殊化する。
+///        既定は no-op (反射を宣言しない game は記述子 0 件)。
+template<class T> struct ReflectionOf { static void fill() noexcept {} };
+
+/// @brief 反射の全フィールド。`mitiru_module_reflect_fields` が host へ渡す。
+inline std::vector<FieldDescriptor>& fullReflectFields()
+{
+	static std::vector<FieldDescriptor> fields;
+	return fields;
+}
+
+/// @brief 全件を out へ最大 cap 個写し、全件数を返す (out == nullptr なら数えるだけ)。
+template<class E>
+std::int32_t copyAllOut(const std::vector<E>& all, E* out, std::int32_t cap) noexcept
+{
+	const std::int32_t total = static_cast<std::int32_t>(all.size());
+	if (out == nullptr || cap <= 0) { return total; }
+	const std::int32_t n = (total < cap) ? total : cap;
+	for (std::int32_t i = 0; i < n; ++i) { out[i] = all[static_cast<std::size_t>(i)]; }
+	return total;
+}
+
+inline std::int32_t reflectFieldsOut(FieldDescriptor* out, std::int32_t cap) noexcept
+{
+	return copyAllOut(fullReflectFields(), out, cap);
+}
+
+inline std::int32_t reflectSchemasOut(ReflectSchema* out, std::int32_t cap) noexcept
+{
+	return copyAllOut(::mitiru::module::reflectSchemaRegistry(), out, cap);
+}
+
+template<class T>
+std::uint64_t layoutHashOf() noexcept { return layoutFingerprint<T>(); }
+
+/// @brief MITIRU_REFLECT / MITIRU_REFLECT_AUTO の記述子を全件控える。
+inline void registerReflection(const FieldDescriptor* fields, std::int32_t n)
+{
+	if (fields == nullptr) { return; }
+	fullReflectFields().assign(fields, fields + (n > 0 ? n : 0));
+}
+
+/// @brief GameMemory 型 T の反射を控え、静的リンクの host にも同じ 3 関数を渡す
+///        (静的リンクには GetProcAddress で引く export が無いため)。
+template<class T>
+void registerStateReflection()
+{
+	fullReflectFields().clear();
+	ReflectionOf<T>::fill();
+	linkedReflectionExports() = ReflectionExports{&layoutHashOf<T>, &reflectFieldsOut, &reflectSchemasOut};
+}
 
 /// `mitiru_module_load` の中身。状態を確保し callback table を埋める。
 template<class T>
@@ -813,9 +980,7 @@ void registerGame(ModuleApi* api, void** memory)
 	// 単一 state 源として byte 数を無条件に申告する。
 	api->memorySize        = static_cast<std::uint32_t>(sizeof(T));
 	api->seriesProbeCount  = 0;  // MITIRU_GAME_SERIES が観測 probe を上書きする
-	api->reflectFieldCount = 0;  // MITIRU_REFLECT が reflection 記述子を上書きする
-	api->reflectSchemaCount = 0;
-	ReflectionOf<T>::fillApi(api);  // MITIRU_REFLECT 済みなら GameMemory 構造を申告
+	registerStateReflection<T>();
 }
 
 /// @brief 観測 probe テーブルを ModuleApi に詰める (MITIRU_GAME_SERIES が使う)。
@@ -828,43 +993,12 @@ inline void registerSeriesProbes(ModuleApi* api, const SeriesProbe* probes, std:
 	api->seriesProbeCount = static_cast<std::int32_t>(count);
 }
 
-/// @brief reflection 記述子表 + 登録簿の要素 schema を ModuleApi に詰める (MITIRU_REFLECT が使う)。
-inline void registerReflection(ModuleApi* api, const FieldDescriptor* fields, std::int32_t n)
-{
-	if (api == nullptr || fields == nullptr) { return; }
-	const std::int32_t fcap =
-		static_cast<std::int32_t>(sizeof(api->reflectFields) / sizeof(api->reflectFields[0]));
-	if (n > fcap)
-	{
-		mitiru::debug::warnOnce("reflect.fields.overflow",
-			"reflection のフィールド申告が ModuleApi の上限を超えています。超過分は無視されます");
-	}
-	const std::int32_t fc = (n < fcap) ? n : fcap;
-	for (std::int32_t i = 0; i < fc; ++i) { api->reflectFields[i] = fields[i]; }
-	api->reflectFieldCount = fc;
-
-	const auto&        reg  = ::mitiru::module::reflectSchemaRegistry();
-	const std::int32_t scap =
-		static_cast<std::int32_t>(sizeof(api->reflectSchemas) / sizeof(api->reflectSchemas[0]));
-	std::int32_t sc = static_cast<std::int32_t>(reg.size());
-	if (sc > scap)
-	{
-		// 黙って切り捨てない: 9 個目以降の要素 struct は inspector / AI に出ない。
-		mitiru::debug::warnOnce("reflect.schemas.overflow",
-			"MITIRU_REFLECT_STRUCT の登録が上限 8 個を超えています。"
-			"9 個目以降の要素 struct は inspector / AI へ出ません");
-		sc = scap;
-	}
-	for (std::int32_t i = 0; i < sc; ++i) { api->reflectSchemas[i] = reg[static_cast<std::size_t>(i)]; }
-	api->reflectSchemaCount = sc;
-}
-
 template<class T>
 void unregisterGame(void* memory) { delete static_cast<T*>(memory); }
 
 // ── 非 POD の game (MITIRU_GAME_OBJECTS、ADR 0040) ─────────────────────────────
 // GameMemory は進行データ P (flat POD) だけ。場面の中身 G はこの DLL の中に 1 個だけ生きる普通の
-// C++ オブジェクトで、仮想関数もヒープも使ってよい。G は「P から組み立て直せる派生物」として扱う:
+// C++ オブジェクトで、仮想関数もヒープも使ってよい。G は「P から組み立て直せる派生物」として扱う。
 // 無ければ作る (ホットリロード直後・初回)、host が P を書き換えたら捨てて作り直す (ロード)。
 template<class G>
 std::unique_ptr<G>& objectsInstance() noexcept
@@ -995,9 +1129,7 @@ void registerObjectsGame(ModuleApi* api, void** memory)
 	api->memorySize         = static_cast<std::uint32_t>(sizeof(P));
 	api->stateFlags         = kModuleStatePartial;
 	api->seriesProbeCount   = 0;
-	api->reflectFieldCount  = 0;
-	api->reflectSchemaCount = 0;
-	ReflectionOf<P>::fillApi(api);
+	registerStateReflection<P>();
 }
 
 template<class G, class P>
@@ -1045,6 +1177,26 @@ template <class T, auto MemberPtr>
 #  define MITIRU_GAME_EXPORT __attribute__((visibility("default")))
 #endif
 
+/// GameMemory の形の hash と反射の全件を別 export で出す。host が反射を受け取る経路はこれだけ。
+#define MITIRU_GAME_STATE_EXPORTS(StateType)                                  \
+	extern "C" MITIRU_GAME_EXPORT                                                \
+	std::uint64_t mitiru_module_layout_hash()                                    \
+	{                                                                            \
+		return ::mitiru::module::detail::layoutHashOf<StateType>();                 \
+	}                                                                            \
+	extern "C" MITIRU_GAME_EXPORT                                                \
+	std::int32_t mitiru_module_reflect_fields(                                   \
+		::mitiru::module::FieldDescriptor* out, std::int32_t cap)                   \
+	{                                                                            \
+		return ::mitiru::module::detail::reflectFieldsOut(out, cap);                \
+	}                                                                            \
+	extern "C" MITIRU_GAME_EXPORT                                                \
+	std::int32_t mitiru_module_reflect_schemas(                                  \
+		::mitiru::module::ReflectSchema* out, std::int32_t cap)                     \
+	{                                                                            \
+		return ::mitiru::module::detail::reflectSchemasOut(out, cap);               \
+	}
+
 /// ゲームの構造体を DLL の入口に結びつける。これ 1 行で mitiru_module_load / unload が出来る。
 /// ファイルスコープ (関数の外) に 1 回だけ書く。
 #define MITIRU_GAME(GameType)                                                  \
@@ -1057,7 +1209,8 @@ template <class T, auto MemberPtr>
 	void mitiru_module_unload(void* memory)                                   \
 	{                                                                         \
 		mitiru::module::detail::unregisterGame<GameType>(memory);             \
-	}
+	}                                                                            \
+	MITIRU_GAME_STATE_EXPORTS(GameType)
 
 /// クラスの木・仮想関数・ヒープで書く game の入口 (ADR 0040)。`Progress` は flat POD の進行データ
 /// (セーブ・ロード・録画の対象 = GameMemory)、`Game` は場面の中身で、`build(const Progress&)` で
@@ -1073,9 +1226,10 @@ template <class T, auto MemberPtr>
 	void mitiru_module_unload(void* memory)                                               \
 	{                                                                                     \
 		mitiru::module::detail::unregisterObjectsGame<GameType, ProgressType>(memory);     \
-	}
+	}                                                                            \
+	MITIRU_GAME_STATE_EXPORTS(ProgressType)
 
-/// 旧名の後方互換エイリアス。flat POD 必須は MITIRU_GAME 自体に統合された ので
+/// 旧名の後方互換エイリアス。flat POD 必須は MITIRU_GAME 自体に統合されたので
 /// 中身は同じ。新規コードは MITIRU_GAME を使ってよい。
 #define MITIRU_GAME_RECORDABLE(GameType) MITIRU_GAME(GameType)
 
@@ -1150,7 +1304,8 @@ template <class T, auto MemberPtr>
 	void mitiru_module_unload(void* memory)                                   \
 	{                                                                         \
 		mitiru::module::detail::unregisterGame<GameType>(memory);             \
-	}
+	}                                                                            \
+	MITIRU_GAME_STATE_EXPORTS(GameType)
 
 /// probe 関数の手書き (cast 定型文) を消す糖衣 (§8-1)。field 名だけで系列化する。
 /// offset / 型は member pointer から自動導出。MITIRU_GAME_SERIES の要素として使う。
@@ -1225,8 +1380,8 @@ template <class T, auto MemberPtr>
 
 // MITIRU_REFLECT / MITIRU_REFLECT_STRUCT は最大 32 フィールド。33 個以上 (40 個まで) は
 // MITIRU_FE_ERR が選ばれ、削除済み関数
-// `mitiruReflect_Max32Fields_SplitOrUseReflectStruct` (Reflection.hpp) の使用エラーになる
-//。関数名がそのまま対処法: フィールドを分割するか、ネスト部分を MITIRU_REFLECT_STRUCT
+// `mitiruReflect_Max32Fields_SplitOrUseReflectStruct` (Reflection.hpp) の使用エラーになる。
+// 関数名がそのまま対処法になっている。フィールドを分割するか、ネスト部分を MITIRU_REFLECT_STRUCT
 // へ切り出す。41 個以上はプリプロセッサ構造上ここで拾えず、別の compile error になる。
 #define MITIRU_FE_ERR(M, T, ...)                                               \
 	::mitiru::module::detail::mitiruReflect_Max32Fields_SplitOrUseReflectStruct()
@@ -1261,10 +1416,10 @@ template <class T, auto MemberPtr>
 #define MITIRU_REFLECT(Type, ...)                                              \
 	namespace mitiru { namespace module { namespace detail {                   \
 		template<> struct ReflectionOf<Type> {                                 \
-			static void fillApi(::mitiru::module::ModuleApi* api) {            \
+			static void fill() {                                               \
 				const ::mitiru::module::FieldDescriptor _mitiruFields[] = {    \
 					MITIRU_FOR_EACH(MITIRU_RFL_MK, Type, __VA_ARGS__) };       \
-				::mitiru::module::detail::registerReflection(api, _mitiruFields,\
+				::mitiru::module::detail::registerReflection(_mitiruFields,    \
 					static_cast<std::int32_t>(                                \
 						sizeof(_mitiruFields) / sizeof(_mitiruFields[0])));   \
 			}                                                                  \

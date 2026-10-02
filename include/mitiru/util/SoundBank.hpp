@@ -3,8 +3,8 @@
 /// @file SoundBank.hpp
 /// @brief 簡易効果音バンク
 /// @details 名前付きトーン定義を登録し、play()で実際に音を鳴らす。
-///          Windows環境ではPlaySound(SND_MEMORY|SND_ASYNC)で非同期再生する。
-///          非Windows/ヘッドレスではイベント記録のみ。
+///          Windows 環境では PlaySound(SND_MEMORY|SND_ASYNC)で非同期再生する。
+///          非 Windows/ヘッドレスではイベント記録のみ。
 
 #include <algorithm>
 #include <cmath>
@@ -68,7 +68,7 @@ public:
 	}
 
 	/// @brief 音声出力を有効/無効にする
-	/// @param enabled trueで実際に音を出す
+	/// @param enabled true で実際に音を出す
 	void setEnabled(bool enabled) noexcept { m_enabled = enabled; }
 
 	/// @brief 音声出力が有効か
@@ -136,7 +136,7 @@ private:
 	void outputTone(const ToneDef& tone)
 	{
 #ifdef _WIN32
-		/// メモリ上にWAVデータを生成してPlaySoundで非同期再生する
+		/// メモリ上に WAV データを生成して PlaySound で非同期再生する
 		constexpr std::uint32_t SAMPLE_RATE = 22050;
 		constexpr std::uint16_t BITS = 16;
 		constexpr std::uint16_t CHANNELS = 1;
@@ -148,17 +148,17 @@ private:
 		const std::uint32_t dataSize = numSamples * (BITS / 8) * CHANNELS;
 		const std::uint32_t fileSize = 44 + dataSize;
 
-		/// WAVバッファを生成する（staticで保持してPlaySoundの再生中に解放されないようにする）
+		/// WAV バッファを生成する（static で保持して PlaySound の再生中に解放されないようにする）
 		static std::vector<std::uint8_t> wavBuf;
 		wavBuf.resize(fileSize);
 		auto* p = wavBuf.data();
 
-		/// RIFFヘッダー
+		/// RIFF ヘッダー
 		std::memcpy(p, "RIFF", 4); p += 4;
 		writeU32(p, fileSize - 8); p += 4;
 		std::memcpy(p, "WAVE", 4); p += 4;
 
-		/// fmtチャンク
+		/// fmt チャンク
 		std::memcpy(p, "fmt ", 4); p += 4;
 		writeU32(p, 16); p += 4;                          // チャンクサイズ
 		writeU16(p, 1); p += 2;                            // PCM形式
@@ -168,18 +168,18 @@ private:
 		writeU16(p, CHANNELS * (BITS / 8)); p += 2;
 		writeU16(p, BITS); p += 2;
 
-		/// dataチャンク
+		/// data チャンク
 		std::memcpy(p, "data", 4); p += 4;
 		writeU32(p, dataSize); p += 4;
 
-		/// 正弦波PCMデータを生成する
+		/// 正弦波 PCM データを生成する
 		constexpr float PI2 = 6.28318530717958647692f;
 		const float amplitude = std::clamp(tone.volume, 0.0f, 1.0f) * 20000.0f;
 
 		for (std::uint32_t i = 0; i < numSamples; ++i)
 		{
 			const float t = static_cast<float>(i) / static_cast<float>(SAMPLE_RATE);
-			/// フェードアウト（最後の20%）でプチノイズを防止する
+			/// フェードアウト（最後の 20%）でプチノイズを防止する
 			const float progress = static_cast<float>(i) / static_cast<float>(numSamples);
 			const float envelope = (progress > 0.8f)
 				? (1.0f - progress) / 0.2f
@@ -191,7 +191,7 @@ private:
 			p += 2;
 		}
 
-		/// 非同期再生する（SND_ASYNCで即座に戻る）
+		/// 非同期再生する（SND_ASYNC で即座に戻る）
 		::PlaySoundA(
 			reinterpret_cast<LPCSTR>(wavBuf.data()),
 			NULL,
@@ -201,7 +201,7 @@ private:
 #endif
 	}
 
-	/// @brief リトルエンディアンで32bit値を書き込む
+	/// @brief リトルエンディアンで 32bit 値を書き込む
 	static void writeU32(std::uint8_t* dst, std::uint32_t val) noexcept
 	{
 		dst[0] = static_cast<std::uint8_t>(val & 0xFF);
@@ -210,14 +210,14 @@ private:
 		dst[3] = static_cast<std::uint8_t>((val >> 24) & 0xFF);
 	}
 
-	/// @brief リトルエンディアンで16bit値を書き込む
+	/// @brief リトルエンディアンで 16bit 値を書き込む
 	static void writeU16(std::uint8_t* dst, std::uint16_t val) noexcept
 	{
 		dst[0] = static_cast<std::uint8_t>(val & 0xFF);
 		dst[1] = static_cast<std::uint8_t>((val >> 8) & 0xFF);
 	}
 
-	/// @brief リトルエンディアンで符号付き16bit値を書き込む
+	/// @brief リトルエンディアンで符号付き 16bit 値を書き込む
 	static void writeS16(std::uint8_t* dst, std::int16_t val) noexcept
 	{
 		writeU16(dst, static_cast<std::uint16_t>(val));

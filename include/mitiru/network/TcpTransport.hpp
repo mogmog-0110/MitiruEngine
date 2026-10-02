@@ -2,10 +2,10 @@
 
 /// @file TcpTransport.hpp
 /// @brief TCP ソケットベースのネットワークトランスポート実装（クロスプラットフォーム）
-/// @details SocketCompatを通じて Windows (Winsock2) および POSIX (Linux/macOS) で動作する
-///          非ブロッキングTCPトランスポート。
+/// @details SocketCompat を通じて Windows (Winsock2) および POSIX (Linux/macOS) で動作する
+///          非ブロッキング TCP トランスポート。
 ///          サーバーモード（listen/accept）とクライアントモード（connect）の両方をサポート。
-///          INetworkTransportインターフェースに準拠する。
+///          INetworkTransport インターフェースに準拠する。
 ///
 /// @code
 /// // サーバー側
@@ -40,13 +40,13 @@ namespace mitiru::network
 
 /// @brief TCP ソケットベースのトランスポート実装（クロスプラットフォーム）
 ///
-/// SocketCompatの非ブロッキングソケットを使用してTCP通信を行う。
+/// SocketCompat の非ブロッキングソケットを使用して TCP 通信を行う。
 /// listen()でサーバーモード、connect()でクライアントモードとして動作する。
 /// poll()で受信メッセージとイベントを取得する。
 class TcpTransport final : public INetworkTransport
 {
 public:
-	/// @brief コンストラクタ（WSA初期化を行う / POSIX ではno-op）
+	/// @brief コンストラクタ（WSA 初期化を行う / POSIX では no-op）
 	TcpTransport() = default;
 
 	/// @brief デストラクタ（リソースを解放する）
@@ -62,7 +62,7 @@ public:
 	TcpTransport& operator=(TcpTransport&&) = delete;
 
 	/// @brief ソケットシステムが正常に初期化されたかを返す
-	/// @return 初期化成功ならtrue（POSIX では常にtrue）
+	/// @return 初期化成功なら true（POSIX では常に true）
 	[[nodiscard]]
 	bool isWsaInitialized() const noexcept
 	{
@@ -71,8 +71,8 @@ public:
 
 	/// @brief リッスン中の実際のポート番号を取得する
 	///
-	/// listen(0)でOS自動割り当てされたポートを取得する場合に使用。
-	/// @return ポート番号（リッスンしていない場合は0）
+	/// listen(0) で OS が自動で割り当てたポートを知りたいときに使う。
+	/// @return ポート番号（リッスンしていない場合は 0）
 	[[nodiscard]]
 	uint16_t getLocalPort() const noexcept
 	{
@@ -92,8 +92,8 @@ public:
 	}
 
 	/// @brief 指定ポートでリッスンを開始する
-	/// @param port リッスンポート番号（0でOS自動割り当て）
-	/// @return 成功すればtrue
+	/// @param port リッスンポート番号（0 で OS 自動割り当て）
+	/// @return 成功すれば true
 	bool listen(std::uint16_t port) override
 	{
 		if (!m_wsaGuard.isInitialized()) return false;
@@ -102,7 +102,7 @@ public:
 		m_listenSocket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (m_listenSocket == INVALID_SOCK) return false;
 
-		/// SO_REUSEADDRを設定（テスト時のポート再利用のため）
+		/// SO_REUSEADDR を設定（テスト時のポート再利用のため）
 		int optVal = 1;
 		::setsockopt(m_listenSocket, SOL_SOCKET, SO_REUSEADDR,
 			reinterpret_cast<const char*>(&optVal), sizeof(optVal));
@@ -141,9 +141,9 @@ public:
 	}
 
 	/// @brief 指定ホスト・ポートに接続する
-	/// @param host ホスト名またはIPアドレス
+	/// @param host ホスト名または IP アドレス
 	/// @param port ポート番号
-	/// @return 成功すればtrue
+	/// @return 成功すれば true
 	bool connect(std::string_view host, std::uint16_t port) override
 	{
 		if (!m_wsaGuard.isInitialized()) return false;
@@ -194,7 +194,7 @@ public:
 	}
 
 	/// @brief 指定接続を切断する
-	/// @param id 切断する接続ID
+	/// @param id 切断する接続 ID
 	void disconnect(ConnectionId id) override
 	{
 		std::scoped_lock lock(m_mutex);
@@ -217,7 +217,7 @@ public:
 	}
 
 	/// @brief データを送信する（サイズプレフィクス付き）
-	/// @param id 送信先接続ID
+	/// @param id 送信先接続 ID
 	/// @param data 送信データ
 	void send(ConnectionId id,
 		const std::vector<std::uint8_t>& data) override
@@ -266,7 +266,7 @@ public:
 	[[nodiscard]]
 	std::vector<NetworkMessage> poll() override
 	{
-		/// 新しい接続をacceptする
+		/// 新しい接続を accept する
 		acceptNewConnections();
 
 		/// 既存接続からデータを受信する
@@ -283,8 +283,8 @@ public:
 	}
 
 	/// @brief 指定接続がアクティブか判定する
-	/// @param id 接続ID
-	/// @return 接続中ならtrue
+	/// @param id 接続 ID
+	/// @return 接続中なら true
 	[[nodiscard]]
 	bool isConnected(ConnectionId id) const override
 	{
@@ -309,7 +309,7 @@ public:
 	}
 
 	/// @brief リッスン中かどうかを返す
-	/// @return リッスン中ならtrue
+	/// @return リッスン中なら true
 	[[nodiscard]]
 	bool isListening() const noexcept
 	{

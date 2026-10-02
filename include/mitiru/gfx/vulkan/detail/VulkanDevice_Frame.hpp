@@ -78,7 +78,7 @@ inline std::vector<std::uint8_t> mitiru::gfx::VulkanDevice::readPixels(
 	VkBuffer stagingBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
 
-	/// RAII スコープガード。関数脱出時にステージングリソースを確実に解放する
+	/// RAII スコープガード。関数を抜けるときにステージングリソースを確実に解放する
 	struct StagingGuard
 	{
 		VkDevice dev;

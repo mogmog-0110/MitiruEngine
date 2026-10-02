@@ -1,19 +1,9 @@
 #pragma once
 
 /// @file Dx12TextureUpload.hpp
-/// @brief DX12 用 2D テクスチャアップロードユーティリティ
-/// @details `mitiru::render::Texture` (RGBA8) を ID3D12Resource (DEFAULT heap) に
-///          アップロードして SRV を作るヘルパー。skybox 用の TextureCube とは別経路
-///          で、シェーダーで `Texture2D : register(t0)` として読み取れる単一画像を扱う。
-///
-///          典型的な使い方:
-///          ```cpp
-///          Dx12Texture2D tex;
-///          tex.uploadFrom(device, cmdList, srcTexture);
-///          // 後で SRV を descriptor heap にコピーして root descriptor table に bind
-///          device->CopyDescriptorsSimple(1, dstHandle, tex.srvCpuHandle(),
-///                                         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-///          ```
+/// @brief mip 連鎖つき画像 (RGBA8 / BC4 / BC5 / BC7) を DX12 の DEFAULT heap へ上げる
+/// @details `uploadMipImage` が唯一の転送経路で、clod のテクスチャも forward のアルベド
+///          (Dx12Texture2D) もここを通る。skybox 用の TextureCube とは別経路。
 
 #ifdef _WIN32
 
@@ -31,18 +21,118 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/render/DdsFile.hpp>
 #include <mitiru/render/Texture.hpp>
+#include <mitiru/render/TextureMips.hpp>
 
 namespace mitiru::render::dx12
 {
 
-/// @brief DX12 上の 2D テクスチャリソース（DEFAULT heap）
+namespace detail
+{
+
+[[nodiscard]] inline D3D12_RESOURCE_DESC textureDesc(const MipImage& image) noexcept
+{
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	desc.Width = image.width;
+	desc.Height = image.height;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = static_cast<UINT16>(image.mips.size());
+	desc.Format = static_cast<DXGI_FORMAT>(image.format);
+	desc.SampleDesc.Count = 1;
+	return desc;
+}
+
+/// staging の各段を tex へコピーし、tex を afterState へ遷移させる
+inline void recordMipCopies(ID3D12GraphicsCommandList* cmd, ID3D12Resource* tex, ID3D12Resource* staging,
+                            const std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>& layouts,
+                            D3D12_RESOURCE_STATES afterState)
+{
+	for (UINT lv = 0; lv < static_cast<UINT>(layouts.size()); ++lv)
+	{
+		D3D12_TEXTURE_COPY_LOCATION dst = {};
+		dst.pResource = tex;
+		dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dst.SubresourceIndex = lv;
+		D3D12_TEXTURE_COPY_LOCATION src = {};
+		src.pResource = staging;
+		src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		src.PlacedFootprint = layouts[lv];
+		cmd->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+	}
+	D3D12_RESOURCE_BARRIER b = {};
+	b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	b.Transition.pResource = tex;
+	b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	b.Transition.StateAfter = afterState;
+	b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	cmd->ResourceBarrier(1, &b);
+}
+
+} // namespace detail
+
+/// @brief image の全 mip を DEFAULT heap のテクスチャへコピーする命令を cmd に積む
+/// @param uploadOwner  使い捨ての UPLOAD heap を GPU が読み終わるまで持っておく入れ物
+/// @param afterState   コピー後に遷移させる状態
+/// @return 失敗 (寸法 0・mip 不足・確保失敗) は false で out は空
+[[nodiscard]] inline bool uploadMipImage(ID3D12Device* device, ID3D12GraphicsCommandList* cmd,
+                                         const MipImage& image,
+                                         std::vector<gfx::GpuResource>& uploadOwner,
+                                         gfx::GpuResource& out, D3D12_RESOURCE_STATES afterState)
+{
+	out.Reset();
+	if (!device || !cmd || image.width == 0 || image.height == 0 || image.mips.empty()) { return false; }
+
+	const D3D12_RESOURCE_DESC desc = detail::textureDesc(image);
+	// BC は行が 4x4 ブロック単位で数え方が変わるので、配置はドライバに出させる
+	const UINT levels = desc.MipLevels;
+	std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(levels);
+	std::vector<UINT> rows(levels);
+	std::vector<UINT64> rowBytes(levels);
+	UINT64 total = 0;
+	device->GetCopyableFootprints(&desc, 0, levels, 0, layouts.data(), rows.data(), rowBytes.data(), &total);
+	for (UINT lv = 0; lv < levels; ++lv)
+	{
+		if (image.mips[lv].size() < static_cast<std::size_t>(rowBytes[lv]) * rows[lv]) { return false; }
+	}
+
+	gfx::GpuResource tex;
+	gfx::GpuResource staging;
+	if (FAILED(gfx::createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, desc, D3D12_RESOURCE_STATE_COPY_DEST,
+	                                  nullptr, tex)) ||
+	    FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, total, D3D12_RESOURCE_STATE_GENERIC_READ,
+	                                staging)))
+	{
+		return false;
+	}
+	std::uint8_t* mapped = nullptr;
+	const D3D12_RANGE noRead = {0, 0};
+	if (FAILED(staging->Map(0, &noRead, reinterpret_cast<void**>(&mapped)))) { return false; }
+	for (UINT lv = 0; lv < levels; ++lv)
+	{
+		for (UINT r = 0; r < rows[lv]; ++r)
+		{
+			std::memcpy(mapped + layouts[lv].Offset + static_cast<UINT64>(r) * layouts[lv].Footprint.RowPitch,
+			            image.mips[lv].data() + static_cast<std::size_t>(r) * rowBytes[lv],
+			            static_cast<std::size_t>(rowBytes[lv]));
+		}
+	}
+	const D3D12_RANGE wrote = {0, static_cast<SIZE_T>(total)};
+	staging->Unmap(0, &wrote);
+	detail::recordMipCopies(cmd, tex.Get(), staging.Get(), layouts, afterState);
+
+	uploadOwner.push_back(std::move(staging));
+	out = std::move(tex);
+	return true;
+}
+
+/// @brief forward パスのアルベド (sRGB の RGBA8 + mip 連鎖) を持つ DX12 テクスチャ
 /// @details `uploadFrom(...)` で 1 回 GPU に転送したら、SRV を CPU ハンドル経由で
 ///          外部の shader-visible heap にコピーして使う。
 class Dx12Texture2D
 {
-	template <typename T> using ComPtr = Microsoft::WRL::ComPtr<T>;
-
 public:
 	Dx12Texture2D() = default;
 	~Dx12Texture2D() = default;
@@ -52,121 +142,31 @@ public:
 	Dx12Texture2D(Dx12Texture2D&&) noexcept = default;
 	Dx12Texture2D& operator=(Dx12Texture2D&&) noexcept = default;
 
-	/// @brief Texture (RGBA8) を GPU にアップロードして SRV を作る
-	/// @param device       DX12 デバイス
-	/// @param cmdList      recording 中の graphics command list
-	/// @param src          RGBA8 ソース
-	/// @param uploadOwner  upload heap の寿命管理用コンテナ
-	///                     (frame 完了まで保持してね)
+	/// @brief Texture (RGBA8) を mip 連鎖ごと GPU へ上げる
+	/// @param uploadOwner upload heap の寿命管理用 (frame 完了まで保持してね)
 	/// @return true で成功
 	bool uploadFrom(ID3D12Device* device,
 	                ID3D12GraphicsCommandList* cmdList,
 	                const Texture& src,
-	                std::vector<ComPtr<ID3D12Resource>>& uploadOwner)
+	                std::vector<gfx::GpuResource>& uploadOwner)
 	{
-		if (!device || !cmdList) return false;
 		if (src.width() <= 0 || src.height() <= 0) return false;
 		const auto& px = src.pixels();
-		if (px.empty()) return false;
+		if (px.size() < static_cast<std::size_t>(src.width()) * src.height() * 4) return false;
 
-		m_width  = src.width();
+		MipImage image;
+		image.format = TextureFormat::Rgba8Srgb;
+		image.width = static_cast<std::uint32_t>(src.width());
+		image.height = static_cast<std::uint32_t>(src.height());
+		image.mips = buildMipChain(px.data(), src.width(), src.height(), MipFilter::Srgb);
+		if (!uploadMipImage(device, cmdList, image, uploadOwner, m_texture,
+		                    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
+		{
+			return false;
+		}
+		m_width = src.width();
 		m_height = src.height();
-
-		// ── 1. DEFAULT heap に 2D テクスチャを作る ───────────────────
-		D3D12_HEAP_PROPERTIES texHp = {};
-		texHp.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-		D3D12_RESOURCE_DESC texDesc = {};
-		texDesc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		texDesc.Width            = static_cast<UINT64>(m_width);
-		texDesc.Height           = static_cast<UINT>(m_height);
-		texDesc.DepthOrArraySize = 1;
-		texDesc.MipLevels        = 1;
-		// sRGB は resource / CopyTextureRegion の footprint / SRV の 3 箇所で一致必須
-		texDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		texDesc.SampleDesc.Count = 1;
-		texDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-
-		if (FAILED(device->CreateCommittedResource(
-				&texHp, D3D12_HEAP_FLAG_NONE, &texDesc,
-				D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-				IID_PPV_ARGS(m_texture.GetAddressOf()))))
-		{
-			return false;
-		}
-
-		// ── 2. UPLOAD heap (使い捨て) ───────────────────────────────
-		const UINT rawRow = static_cast<UINT>(m_width) * 4u;
-		const UINT alignedRow =
-			(rawRow + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u)
-			& ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
-		const UINT64 uploadSize =
-			static_cast<UINT64>(alignedRow) * static_cast<UINT64>(m_height);
-
-		D3D12_HEAP_PROPERTIES upHp = {};
-		upHp.Type = D3D12_HEAP_TYPE_UPLOAD;
-		D3D12_RESOURCE_DESC upDesc = {};
-		upDesc.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
-		upDesc.Width            = uploadSize;
-		upDesc.Height           = 1;
-		upDesc.DepthOrArraySize = 1;
-		upDesc.MipLevels        = 1;
-		upDesc.Format           = DXGI_FORMAT_UNKNOWN;
-		upDesc.SampleDesc.Count = 1;
-		upDesc.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		ComPtr<ID3D12Resource> upload;
-		if (FAILED(device->CreateCommittedResource(
-				&upHp, D3D12_HEAP_FLAG_NONE, &upDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-				IID_PPV_ARGS(upload.GetAddressOf()))))
-		{
-			return false;
-		}
-
-		void* mapped = nullptr;
-		D3D12_RANGE noRead{0, 0};
-		if (FAILED(upload->Map(0, &noRead, &mapped))) return false;
-		auto* dst = static_cast<std::uint8_t*>(mapped);
-		const auto* srcBytes = px.data();
-		for (int row = 0; row < m_height; ++row)
-		{
-			std::memcpy(dst + row * alignedRow,
-			            srcBytes + row * rawRow, rawRow);
-		}
-		const D3D12_RANGE wroteAll{0, uploadSize};
-		upload->Unmap(0, &wroteAll);
-
-		// ── 3. CopyTextureRegion ────────────────────────────────────
-		D3D12_TEXTURE_COPY_LOCATION cdst = {};
-		cdst.pResource        = m_texture.Get();
-		cdst.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		cdst.SubresourceIndex = 0;
-
-		D3D12_TEXTURE_COPY_LOCATION csrc = {};
-		csrc.pResource                          = upload.Get();
-		csrc.Type                               = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-		csrc.PlacedFootprint.Offset             = 0;
-		csrc.PlacedFootprint.Footprint.Format   = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		csrc.PlacedFootprint.Footprint.Width    = static_cast<UINT>(m_width);
-		csrc.PlacedFootprint.Footprint.Height   = static_cast<UINT>(m_height);
-		csrc.PlacedFootprint.Footprint.Depth    = 1;
-		csrc.PlacedFootprint.Footprint.RowPitch = alignedRow;
-
-		cmdList->CopyTextureRegion(&cdst, 0, 0, 0, &csrc, nullptr);
-
-		// ── 4. barrier: COPY_DEST → PIXEL_SHADER_RESOURCE ────────────
-		D3D12_RESOURCE_BARRIER b = {};
-		b.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		b.Transition.pResource   = m_texture.Get();
-		b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		b.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-		b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		cmdList->ResourceBarrier(1, &b);
-
-		// ── 5. upload heap を呼び出し側に保管してもらう ──────────────
-		uploadOwner.push_back(std::move(upload));
-
+		m_mipLevels = static_cast<UINT>(image.mips.size());
 		m_ready = true;
 		return true;
 	}
@@ -180,20 +180,22 @@ public:
 		srv.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		srv.ViewDimension           = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srv.Texture2D.MipLevels     = 1;
+		srv.Texture2D.MipLevels     = m_mipLevels;
 		device->CreateShaderResourceView(m_texture.Get(), &srv, dst);
 	}
 
 	[[nodiscard]] ID3D12Resource* nativeResource() const noexcept { return m_texture.Get(); }
 	[[nodiscard]] int width() const noexcept  { return m_width; }
 	[[nodiscard]] int height() const noexcept { return m_height; }
+	[[nodiscard]] UINT mipLevels() const noexcept { return m_mipLevels; }
 	[[nodiscard]] bool isReady() const noexcept { return m_ready; }
 
 private:
-	ComPtr<ID3D12Resource> m_texture;
-	int  m_width  = 0;
-	int  m_height = 0;
-	bool m_ready  = false;
+	gfx::GpuResource m_texture;
+	int  m_width     = 0;
+	int  m_height    = 0;
+	UINT m_mipLevels = 1;
+	bool m_ready     = false;
 };
 
 } // namespace mitiru::render::dx12

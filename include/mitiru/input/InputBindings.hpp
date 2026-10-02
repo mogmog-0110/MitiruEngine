@@ -6,9 +6,9 @@
 
 /// @file InputBindings.hpp
 /// @brief 「action 名 → 入力ソース」のリバインド辞書。
-/// @details game の設定画面が動的にキー/ボタン割り当てを編集できるよう、engine は raw 入力を
+/// @details game の設定画面がキー/ボタン割り当てを動的に編集できるよう、engine は raw 入力を
 ///          提供し、本ヘルパが action 名で問い合わせる layer を提供する。analog (gamepadAxes)
-///          は v5 で既に float で取れるので、本ヘルパは button / key の binding に焦点。
+///          は v5 で既に float で取れるので、本ヘルパは button / key の binding を主に扱う。
 
 #include <cstdint>
 #include <string>
@@ -40,7 +40,7 @@ struct Bind
 class InputBindings
 {
 public:
-	/// @brief action に bind を追加 (既存に追加する。リセットは clear)。
+	/// @brief action に bind を追加する (既存の bind に足す。リセットは clear)。
 	void add(std::string action, Bind b) { m_map[std::move(action)].push_back(b); }
 	void clear(std::string_view action)
 	{
@@ -68,7 +68,7 @@ public:
 		return false;
 	}
 
-	/// @brief action が「このフレーム押下開始されたか」。複数 bind は OR。
+	/// @brief action が「このフレームで押され始めたか」。複数 bind は OR。
 	[[nodiscard]] bool isJustPressed(const mitiru::module::InputSnapshot& s,
 	                                 std::string_view action) const
 	{
@@ -96,8 +96,8 @@ private:
 				? (s.gamepadAxes[b.value] >=  kAxisThresh)
 				: (s.gamepadAxes[b.value] <= -kAxisThresh);
 		case Bind::Key:
-			// engine 側 keyboard state は本 InputSnapshot に含まれないため、game が key
-			// state を別途持って本ヘルパに渡すケースを想定 (現状は no-op で false)。
+			// engine 側の keyboard state はこの InputSnapshot に含まれないため、game が key
+			// state を別に持って本ヘルパに渡す使い方を想定している (現状は no-op で false)。
 			return false;
 		default:
 			return false;

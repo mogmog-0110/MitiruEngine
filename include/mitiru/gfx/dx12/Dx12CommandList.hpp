@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 /// @file Dx12CommandList.hpp
-/// @brief DirectX 12コマンドリスト実装
-/// @details ID3D12GraphicsCommandListをラップし、遅延コマンド記録を行う
-///          ICommandList実装。D3D12のコマンドリストセマンティクスに従い、
-///          reset/begin/end/closeのライフサイクルを管理する。
+/// @brief DirectX 12 コマンドリスト実装
+/// @details ID3D12GraphicsCommandList をラップし、遅延コマンド記録を行う
+///          ICommandList 実装。D3D12 のコマンドリストセマンティクスに従い、
+///          reset/begin/end/close のライフサイクルを管理する。
 
 #ifdef _WIN32
 
@@ -41,9 +41,9 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 12コマンドリスト実装
-/// @details ID3D12GraphicsCommandListを使い、描画コマンドを遅延記録する。
-///          記録完了後、デバイスのexecuteCommandListsで実行する。
+/// @brief DirectX 12 コマンドリスト実装
+/// @details ID3D12GraphicsCommandList を使い、描画コマンドを遅延記録する。
+///          記録完了後、デバイスの executeCommandLists で実行する。
 ///
 /// @code
 /// commandList->reset();
@@ -57,12 +57,12 @@ namespace mitiru::gfx
 class Dx12CommandList final : public ICommandList
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	Dx12CommandList(ID3D12Device* device)
 	{
 		if (!device)
@@ -93,6 +93,7 @@ public:
 			throw std::runtime_error(
 				"Dx12CommandList: CreateCommandList failed");
 		}
+		m_commandList->SetName(L"Dx12CommandList (2D)");
 
 		/// 初期状態はクローズにする
 		m_commandList->Close();
@@ -122,7 +123,7 @@ public:
 	}
 
 	/// @brief コマンド記録を開始する
-	/// @details reset()の後に呼ぶ。reset()がまだ呼ばれていない場合はreset()も行う。
+	/// @details reset() の後に呼ぶ。reset() がまだ呼ばれていない場合は reset() も行う。
 	void begin() override
 	{
 		if (m_closed)
@@ -217,7 +218,7 @@ public:
 		auto* dx12Pipeline = dynamic_cast<Dx12Pipeline*>(pipeline);
 		if (!dx12Pipeline)
 		{
-			/// 黙って戻ると、直前の PSO のまま描画が続いて「なぜか前のシェーダーで
+			/// 警告を出さずに戻ると、直前の PSO のまま描画が続いて「なぜか前のシェーダーで
 			/// 描かれる」という追いにくい症状になる。
 			::mitiru::debug::warnOnce(
 				"dx12.setPipeline.foreign",
@@ -349,7 +350,7 @@ public:
 			return;
 		}
 
-		/// Dx12Textureからリソースを取得する
+		/// Dx12Texture からリソースを取得する
 		auto* dx12Tex = dynamic_cast<Dx12Texture*>(resource);
 		ID3D12Resource* d3dResource = nullptr;
 		if (dx12Tex)
@@ -373,8 +374,8 @@ public:
 		m_commandList->ResourceBarrier(1, &barrier);
 	}
 
-	/// @brief ID3D12Resourceに対してバリアを発行する（DX12固有）
-	/// @param resource D3D12リソース
+	/// @brief ID3D12Resource に対してバリアを発行する（DX12 固有）
+	/// @param resource D3D12 リソース
 	/// @param before 遷移前の状態
 	/// @param after 遷移後の状態
 	void resourceBarrierDirect(
@@ -441,7 +442,7 @@ public:
 
 	/// @brief ルートデスクリプタテーブルを設定する
 	/// @param paramIndex ルートパラメータインデックス
-	/// @param handle GPUデスクリプタハンドル
+	/// @param handle GPU デスクリプタハンドル
 	void setGraphicsRootDescriptorTable(
 		uint32_t paramIndex, GpuDescriptorHandle handle) override
 	{
@@ -458,7 +459,7 @@ public:
 
 	/// @brief ルート定数バッファビューを設定する
 	/// @param paramIndex ルートパラメータインデックス
-	/// @param gpuVirtualAddress GPUバッファの仮想アドレス
+	/// @param gpuVirtualAddress GPU バッファの仮想アドレス
 	void setGraphicsRootCBV(
 		uint32_t paramIndex, uint64_t gpuVirtualAddress) override
 	{
@@ -569,7 +570,7 @@ public:
 		m_commandList->ResourceBarrier(1, &barrier);
 	}
 
-	/// @brief 内部のID3D12GraphicsCommandListを取得する
+	/// @brief 内部の ID3D12GraphicsCommandList を取得する
 	/// @return コマンドリストへのポインタ
 	[[nodiscard]] ID3D12GraphicsCommandList* nativeCommandList() const noexcept
 	{
@@ -577,9 +578,9 @@ public:
 	}
 
 private:
-	/// @brief ResourceStateをD3D12_RESOURCE_STATESに変換する
+	/// @brief ResourceState を D3D12_RESOURCE_STATES に変換する
 	/// @param state 変換元のリソース状態
-	/// @return D3D12のリソース状態
+	/// @return D3D12 のリソース状態
 	[[nodiscard]] static D3D12_RESOURCE_STATES toD3D12State(
 		ResourceState state) noexcept
 	{

@@ -31,20 +31,20 @@ public:
 	[[nodiscard]] virtual int height() const noexcept = 0;
 
 	/// @brief 関連付けられたテクスチャを取得する
-	/// @return テクスチャへのポインタ（バックバッファの場合はnullptr）
+	/// @return テクスチャへのポインタ（バックバッファの場合は nullptr）
 	[[nodiscard]] virtual ITexture* texture() noexcept = 0;
 
 	/// @brief バックエンド固有のレンダーターゲットビューを取得する
-	/// @return DX11なら`ID3D11RenderTargetView*`等（未対応バックエンド/RTはnullptr）。
+	/// @return DX11 なら `ID3D11RenderTargetView*` 等（未対応バックエンド/RT は nullptr）。
 	///         RenderTargetPool 経由で確保した RT を既存の raw API 呼び出しへ橋渡しするためのアクセサ。
 	[[nodiscard]] virtual void* nativeRtv() noexcept { return nullptr; }
 
 	/// @brief バックエンド固有のシェーダーリソースビューを取得する
-	/// @return DX11なら`ID3D11ShaderResourceView*`等（未対応バックエンド/RTはnullptr）
+	/// @return DX11 なら `ID3D11ShaderResourceView*` 等（未対応バックエンド/RT は nullptr）
 	[[nodiscard]] virtual void* nativeSrv() noexcept { return nullptr; }
 
 	/// @brief バックエンド固有の深度ステンシルビューを取得する
-	/// @return DX11なら`ID3D11DepthStencilView*`等。depth-only RT 以外は nullptr
+	/// @return DX11 なら `ID3D11DepthStencilView*` 等。depth-only RT 以外は nullptr
 	[[nodiscard]] virtual void* nativeDsv() noexcept { return nullptr; }
 };
 

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file OffscreenRenderer3D.hpp
-/// @brief 3Dシーンをオフスクリーンテクスチャにレンダリングする
+/// @brief 3D シーンをオフスクリーンテクスチャにレンダリングする
 
 #include <mitiru/render/DeferredPipeline.hpp>
 #include <mitiru/render/RenderTexture.hpp>
@@ -14,9 +14,9 @@
 
 namespace mitiru::render {
 
-/// @brief オフスクリーン3Dレンダラー
-/// @details 3Dシーンをオフスクリーンのピクセルバッファにレンダリングし、
-///          結果をTextureとして2D描画に合成できるようにする。
+/// @brief オフスクリーン 3D レンダラー
+/// @details 3D シーンをオフスクリーンのピクセルバッファにレンダリングし、
+///          結果を Texture として 2D 描画に合成できるようにする。
 ///
 /// @code
 /// mitiru::render::OffscreenRenderer3D offscreen(256, 256);
@@ -25,7 +25,7 @@ namespace mitiru::render {
 /// offscreen.addLight(Light::directional({0, -1, 0.5f}));
 /// offscreen.render(camera);
 ///
-/// // 2Dに合成
+/// // 2D に合成
 /// screen.drawSprite(offscreen.texture(), {100, 100, 256, 256});
 /// @endcode
 class OffscreenRenderer3D {
@@ -72,12 +72,12 @@ public:
 		m_pipeline.render(m_scene, camera, m_output);
 	}
 
-	/// @brief レンダリング結果をTextureとして取得する
+	/// @brief レンダリング結果を Texture として取得する
 	[[nodiscard]] Texture texture() const {
 		return m_output.texture();
 	}
 
-	/// @brief レンダリング結果のRenderTextureを取得する
+	/// @brief レンダリング結果の RenderTexture を取得する
 	[[nodiscard]] const RenderTexture& renderTexture() const noexcept {
 		return m_output;
 	}

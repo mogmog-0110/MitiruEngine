@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Dx12Fence.hpp
-/// @brief DirectX 12 GPUフェンス実装
-/// @details ID3D12Fenceをラップし、CPU-GPU間同期を提供するIGpuFence実装。
+/// @brief DirectX 12 GPU フェンス実装
+/// @details ID3D12Fence をラップし、CPU-GPU 間同期を提供する IGpuFence 実装。
 ///          トリプルバッファリングのフレーム同期に使用する。
 
 #ifdef _WIN32
@@ -17,17 +17,19 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 
 #include <d3d12.h>
 #include <wrl/client.h>
 
 #include <mitiru/gfx/IGpuFence.hpp>
+#include <mitiru/gfx/dx12/Dx12FenceWait.hpp>
 
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 12 GPUフェンス実装
-/// @details ID3D12Fenceをラップし、フェンス値によるCPU-GPU同期を実現する。
+/// @brief DirectX 12 GPU フェンス実装
+/// @details ID3D12Fence をラップし、フェンス値による CPU-GPU 同期を実現する。
 ///
 /// @code
 /// auto fence = device->createFence();
@@ -37,12 +39,12 @@ namespace mitiru::gfx
 class Dx12Fence final : public IGpuFence
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param commandQueue コマンドキュー（シグナル発行用）
 	/// @param initialValue フェンスの初期値
 	Dx12Fence(ID3D12Device* device,
@@ -116,7 +118,7 @@ public:
 	}
 
 	/// @brief 現在のフェンス値を取得する
-	/// @return GPU側が完了した最新のフェンス値
+	/// @return GPU 側が完了した最新のフェンス値
 	[[nodiscard]] FenceValue currentValue() const override
 	{
 		return m_fence->GetCompletedValue();
@@ -138,27 +140,27 @@ public:
 	/// @param value 待機するフェンス値
 	void waitForValue(FenceValue value) override
 	{
-		if (m_fence->GetCompletedValue() < value)
+		Microsoft::WRL::ComPtr<ID3D12Device> device;
+		(void)m_fence->GetDevice(IID_PPV_ARGS(device.GetAddressOf()));
+		const FenceWaitResult waited =
+			waitForFenceBounded(m_fence.Get(), value, m_fenceEvent, device.Get());
+		if (waited != FenceWaitResult::Completed)
 		{
-			HRESULT hr = m_fence->SetEventOnCompletion(value, m_fenceEvent);
-			if (FAILED(hr))
-			{
-				throw std::runtime_error(
-					"Dx12Fence: SetEventOnCompletion failed");
-			}
-			WaitForSingleObject(m_fenceEvent, INFINITE);
+			// IGpuFence は失敗を返せないので、例外を投げずに戻ると呼び出し側が未完了の資源に触る
+			throw std::runtime_error(
+				std::string("Dx12Fence: GPU の完了を待てなかった (") + fenceWaitResultName(waited) + ")");
 		}
 	}
 
 	/// @brief 指定したフェンス値が完了済みかどうかを判定する
 	/// @param value 判定するフェンス値
-	/// @return 完了していればtrue
+	/// @return 完了していれば true
 	[[nodiscard]] bool isComplete(FenceValue value) const override
 	{
 		return m_fence->GetCompletedValue() >= value;
 	}
 
-	/// @brief 内部のID3D12Fenceを取得する
+	/// @brief 内部の ID3D12Fence を取得する
 	/// @return フェンスへのポインタ
 	[[nodiscard]] ID3D12Fence* nativeFence() const noexcept
 	{

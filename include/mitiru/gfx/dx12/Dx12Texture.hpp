@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Dx12Texture.hpp
-/// @brief DirectX 12テクスチャ実装
-/// @details ID3D12Resourceをラップし、テクスチャリソースの管理を行う。
-///          SRVデスクリプタとの関連付けもサポートする。
+/// @brief DirectX 12 テクスチャ実装
+/// @details ID3D12Resource をラップし、テクスチャリソースを管理する。
+///          SRV デスクリプタとの関連付けもサポートする。
 
 #ifdef _WIN32
 
@@ -24,46 +24,33 @@
 
 #include <mitiru/gfx/GfxTypes.hpp>
 #include <mitiru/gfx/ITexture.hpp>
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 12テクスチャ実装
-/// @details ID3D12Resourceとしてテクスチャリソースを管理する。
+/// @brief DirectX 12 テクスチャ実装
+/// @details ID3D12Resource としてテクスチャリソースを管理する。
 ///          レンダーターゲットやシェーダーリソースとして使用可能。
 class Dx12Texture final : public ITexture
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief デフォルトコンストラクタ
 	Dx12Texture() = default;
 
-	/// @brief 既存リソースからテクスチャを構築する
-	/// @param resource 既存のID3D12Resource
-	/// @param width テクスチャ幅
-	/// @param height テクスチャ高さ
-	/// @param format ピクセルフォーマット
-	Dx12Texture(ComPtr<ID3D12Resource> resource,
-	            int width, int height,
-	            PixelFormat format = PixelFormat::RGBA8)
-		: m_resource(std::move(resource))
-		, m_width(width)
-		, m_height(height)
-		, m_format(format)
-	{
-	}
 
 	/// @brief ピクセルデータから新規テクスチャを生成する
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param width テクスチャ幅
 	/// @param height テクスチャ高さ
-	/// @param data RGBA8形式のピクセルデータ
+	/// @param data RGBA8 形式のピクセルデータ
 	/// @return 生成されたテクスチャ
-	/// @note アップロードヒープ経由のデータ転送にはコマンドリストが必要。
-	///       ここではリソースのみ生成し、データ転送は呼び出し側が行う。
+	/// @note アップロードヒープ経由でデータを転送するにはコマンドリストが必要。
+	///       ここではリソースだけを生成し、データの転送は呼び出し側が行う。
 	[[nodiscard]] static Dx12Texture createEmpty(
 		ID3D12Device* device,
 		int width, int height,
@@ -86,35 +73,25 @@ public:
 		desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-		const D3D12_HEAP_PROPERTIES heapProps = {
-			D3D12_HEAP_TYPE_DEFAULT,
-			D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-			D3D12_MEMORY_POOL_UNKNOWN, 0, 0
-		};
 
 		Dx12Texture texture;
 		texture.m_width = width;
 		texture.m_height = height;
 		texture.m_format = format;
 
-		HRESULT hr = device->CreateCommittedResource(
-			&heapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&desc,
-			D3D12_RESOURCE_STATE_COMMON,
-			nullptr,
-			IID_PPV_ARGS(texture.m_resource.GetAddressOf()));
+		HRESULT hr = createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, desc,
+			D3D12_RESOURCE_STATE_COMMON, nullptr, texture.m_resource);
 		if (FAILED(hr))
 		{
 			throw std::runtime_error(
-				"Dx12Texture: CreateCommittedResource failed");
+				"Dx12Texture: texture allocation failed");
 		}
 
 		return texture;
 	}
 
 	/// @brief レンダーターゲット用テクスチャを生成する
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param width テクスチャ幅
 	/// @param height テクスチャ高さ
 	/// @param format ピクセルフォーマット
@@ -141,11 +118,6 @@ public:
 		desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
-		const D3D12_HEAP_PROPERTIES heapProps = {
-			D3D12_HEAP_TYPE_DEFAULT,
-			D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-			D3D12_MEMORY_POOL_UNKNOWN, 0, 0
-		};
 
 		const float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 		D3D12_CLEAR_VALUE clearValue = {};
@@ -160,17 +132,12 @@ public:
 		texture.m_height = height;
 		texture.m_format = format;
 
-		HRESULT hr = device->CreateCommittedResource(
-			&heapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&desc,
-			D3D12_RESOURCE_STATE_RENDER_TARGET,
-			&clearValue,
-			IID_PPV_ARGS(texture.m_resource.GetAddressOf()));
+		HRESULT hr = createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, desc,
+			D3D12_RESOURCE_STATE_RENDER_TARGET, &clearValue, texture.m_resource);
 		if (FAILED(hr))
 		{
 			throw std::runtime_error(
-				"Dx12Texture: CreateCommittedResource (RT) failed");
+				"Dx12Texture: render target allocation failed");
 		}
 
 		return texture;
@@ -194,31 +161,31 @@ public:
 		return m_format;
 	}
 
-	/// @brief 内部のID3D12Resourceを取得する
+	/// @brief 内部の ID3D12Resource を取得する
 	/// @return リソースへのポインタ
 	[[nodiscard]] ID3D12Resource* nativeResource() const noexcept
 	{
 		return m_resource.Get();
 	}
 
-	/// @brief SRVデスクリプタハンドルを設定する
-	/// @param handle CPUデスクリプタハンドル
+	/// @brief SRV デスクリプタハンドルを設定する
+	/// @param handle CPU デスクリプタハンドル
 	void setSrvHandle(CpuDescriptorHandle handle) noexcept
 	{
 		m_srvHandle = handle;
 	}
 
-	/// @brief SRVデスクリプタハンドルを取得する
-	/// @return CPUデスクリプタハンドル
+	/// @brief SRV デスクリプタハンドルを取得する
+	/// @return CPU デスクリプタハンドル
 	[[nodiscard]] CpuDescriptorHandle srvHandle() const noexcept
 	{
 		return m_srvHandle;
 	}
 
 private:
-	/// @brief PixelFormatをDXGI_FORMATに変換する
+	/// @brief PixelFormat を DXGI_FORMAT に変換する
 	/// @param format 変換元のピクセルフォーマット
-	/// @return DXGIフォーマット
+	/// @return DXGI フォーマット
 	[[nodiscard]] static DXGI_FORMAT toDxgiFormat(PixelFormat format) noexcept
 	{
 		switch (format)
@@ -238,7 +205,7 @@ private:
 		}
 	}
 
-	ComPtr<ID3D12Resource> m_resource;           ///< テクスチャリソース
+	GpuResource m_resource;                      ///< テクスチャリソース
 	int m_width = 0;                              ///< テクスチャ幅
 	int m_height = 0;                             ///< テクスチャ高さ
 	PixelFormat m_format = PixelFormat::RGBA8;    ///< ピクセルフォーマット

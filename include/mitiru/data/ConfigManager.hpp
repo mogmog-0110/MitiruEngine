@@ -4,7 +4,7 @@
 /// @brief ランタイム設定管理
 ///
 /// キー・バリュー形式の設定管理を提供する。
-/// JSONによる読み書き、変更通知コールバックに対応。
+/// JSON による読み書き、変更通知コールバックに対応。
 ///
 /// @code
 /// mitiru::data::ConfigManager config;
@@ -21,10 +21,13 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
-#include "mitiru/data/JsonBuilder.hpp"
+#include <nlohmann/json.hpp>
+
+#include "mitiru/data/JsonFields.hpp"
 
 namespace mitiru::data
 {
@@ -38,7 +41,7 @@ using ConfigChangeCallback = std::function<void(const ConfigValue&)>;
 /// @brief ランタイム設定マネージャー
 ///
 /// キー・バリュー形式で設定を管理し、
-/// JSON読み書きや変更通知コールバックを提供する。
+/// JSON 読み書きや変更通知コールバックを提供する。
 class ConfigManager
 {
 public:
@@ -54,7 +57,7 @@ public:
 	/// @brief 設定値を型指定で取得する
 	/// @tparam T 取得する型
 	/// @param key キー名
-	/// @return 値（型不一致またはキー不在時nullopt）
+	/// @return 値（型不一致またはキー不在時 nullopt）
 	template <typename T>
 	[[nodiscard]] std::optional<T> get(const std::string& key) const
 	{
@@ -69,7 +72,7 @@ public:
 
 	/// @brief 文字列値を取得する
 	/// @param key キー名
-	/// @return 値（存在しない場合nullopt）
+	/// @return 値（存在しない場合 nullopt）
 	[[nodiscard]] std::optional<std::string> getString(const std::string& key) const
 	{
 		return get<std::string>(key);
@@ -77,7 +80,7 @@ public:
 
 	/// @brief 整数値を取得する
 	/// @param key キー名
-	/// @return 値（存在しない場合nullopt）
+	/// @return 値（存在しない場合 nullopt）
 	[[nodiscard]] std::optional<int> getInt(const std::string& key) const
 	{
 		return get<int>(key);
@@ -85,7 +88,7 @@ public:
 
 	/// @brief 浮動小数点値を取得する
 	/// @param key キー名
-	/// @return 値（存在しない場合nullopt）
+	/// @return 値（存在しない場合 nullopt）
 	[[nodiscard]] std::optional<float> getFloat(const std::string& key) const
 	{
 		return get<float>(key);
@@ -93,71 +96,52 @@ public:
 
 	/// @brief 真偽値を取得する
 	/// @param key キー名
-	/// @return 値（存在しない場合nullopt）
+	/// @return 値（存在しない場合 nullopt）
 	[[nodiscard]] std::optional<bool> getBool(const std::string& key) const
 	{
 		return get<bool>(key);
 	}
 
-	/// @brief JSONから設定を読み込む
-	/// @param json JSON文字列
-	/// @return 成功時true
+	/// @brief JSON から設定を読み込む
+	/// @param json 最上位のオブジェクト、または {"config":{...}} の中身を読む。配列や入れ子の値は読まない。
+	/// @return 成功時 true
 	bool loadFromJson(const std::string& json)
 	{
-		JsonReader reader;
-		if (!reader.parse(json)) return false;
+		const auto doc = nlohmann::json::parse(json, nullptr, false);
+		if (!doc.is_object()) return false;
 
-		/// 既知のキーパターンに基づいて値を読み取る
-		/// JsonReaderのparse結果をフラットに走査する
-		/// ここでは簡易的にconfigオブジェクト内のフィールドを読む
-		auto configObj = reader.getObject("config");
-		if (!configObj.has_value())
+		const auto config = doc.find("config");
+		const auto& source = (config != doc.end() && config->is_object()) ? *config : doc;
+		for (const auto& [key, v] : source.items())
 		{
-			/// トップレベルを直接読む
-			return loadFromReader(reader);
+			if (v.is_string())              m_values[key] = v.get<std::string>();
+			else if (v.is_boolean())        m_values[key] = v.get<bool>();
+			else if (v.is_number_integer()) m_values[key] = v.get<int>();
+			else if (v.is_number_float())   m_values[key] = v.get<float>();
 		}
-		return loadFromReader(*configObj);
+		return true;
 	}
 
-	/// @brief 設定をJSON文字列にエクスポートする
-	/// @return JSON文字列
+	/// @brief 設定を JSON 文字列にエクスポートする
+	/// @return JSON 文字列
 	[[nodiscard]] std::string saveToJson() const
 	{
-		JsonBuilder builder;
-		builder.beginObject();
-
+		nlohmann::json doc = nlohmann::json::object();
 		for (const auto& [key, value] : m_values)
 		{
-			builder.key(key);
-			std::visit([&builder](const auto& v)
+			std::visit([&doc, &key](const auto& v)
 			{
 				using T = std::decay_t<decltype(v)>;
-				if constexpr (std::is_same_v<T, std::string>)
-				{
-					builder.value(v);
-				}
-				else if constexpr (std::is_same_v<T, int>)
-				{
-					builder.value(v);
-				}
-				else if constexpr (std::is_same_v<T, float>)
-				{
-					builder.value(v);
-				}
-				else if constexpr (std::is_same_v<T, bool>)
-				{
-					builder.value(v);
-				}
+				if constexpr (std::is_same_v<T, float>) { doc[key] = jsonFloat(v); }
+				else                                    { doc[key] = v; }
 			}, value);
 		}
-
-		builder.endObject();
-		return builder.build();
+		return doc.dump();
 	}
 
 	/// @brief キーが存在するか確認する
 	/// @param key キー名
-	/// @return 存在する場合true
+	/// @return 存在する場合 true
 	[[nodiscard]] bool hasKey(const std::string& key) const
 	{
 		return m_values.count(key) > 0;
@@ -210,126 +194,6 @@ private:
 		{
 			callback(value);
 		}
-	}
-
-	/// @brief JsonReaderから設定を読み込む
-	/// @param reader JsonReader
-	/// @return 成功時true
-	bool loadFromReader(const JsonReader& reader)
-	{
-		/// JsonReaderのsource()からキーを再解析する簡易実装
-		/// トップレベルのフラットな値を読み取る
-		const auto& src = reader.source();
-		if (src.empty()) return false;
-
-		/// 再度パースしてキー・値ペアを取得
-		JsonReader flatReader;
-		if (!flatReader.parse(src)) return false;
-
-		/// よく使われるキーパターンを試行
-		/// フラットなキー・値ペアを走査する独自ロジック
-		parseAndSetValues(src);
-		return true;
-	}
-
-	/// @brief JSON文字列からキー・値ペアを解析して設定する
-	/// @param json JSON文字列
-	void parseAndSetValues(const std::string& json)
-	{
-		size_t pos = 0;
-
-		/// '{' をスキップ
-		pos = skipWs(json, pos);
-		if (pos >= json.size() || json[pos] != '{') return;
-		++pos;
-
-		while (pos < json.size())
-		{
-			pos = skipWs(json, pos);
-			if (pos >= json.size() || json[pos] == '}') break;
-
-			/// キーを読む
-			if (json[pos] != '"') break;
-			++pos;
-			size_t keyEnd = json.find('"', pos);
-			if (keyEnd == std::string::npos) break;
-			std::string key = json.substr(pos, keyEnd - pos);
-			pos = keyEnd + 1;
-
-			pos = skipWs(json, pos);
-			if (pos >= json.size() || json[pos] != ':') break;
-			++pos;
-			pos = skipWs(json, pos);
-
-			/// 値を読む
-			if (pos >= json.size()) break;
-
-			if (json[pos] == '"')
-			{
-				/// 文字列値
-				++pos;
-				size_t valEnd = json.find('"', pos);
-				if (valEnd == std::string::npos) break;
-				m_values[key] = json.substr(pos, valEnd - pos);
-				pos = valEnd + 1;
-			}
-			else if (json[pos] == 't' || json[pos] == 'f')
-			{
-				/// 真偽値
-				if (json.substr(pos, 4) == "true")
-				{
-					m_values[key] = true;
-					pos += 4;
-				}
-				else if (json.substr(pos, 5) == "false")
-				{
-					m_values[key] = false;
-					pos += 5;
-				}
-			}
-			else if (json[pos] == '-' || (json[pos] >= '0' && json[pos] <= '9'))
-			{
-				/// 数値
-				size_t start = pos;
-				bool isFloat = false;
-				while (pos < json.size() && json[pos] != ',' && json[pos] != '}' &&
-					json[pos] != ' ' && json[pos] != '\n' && json[pos] != '\r' && json[pos] != '\t')
-				{
-					if (json[pos] == '.') isFloat = true;
-					++pos;
-				}
-				std::string numStr = json.substr(start, pos - start);
-				if (isFloat)
-				{
-					try { m_values[key] = std::stof(numStr); } catch (...) {}
-				}
-				else
-				{
-					try { m_values[key] = std::stoi(numStr); } catch (...) {}
-				}
-			}
-			else
-			{
-				/// 不明な値はスキップ
-				while (pos < json.size() && json[pos] != ',' && json[pos] != '}')
-				{
-					++pos;
-				}
-			}
-
-			pos = skipWs(json, pos);
-			if (pos < json.size() && json[pos] == ',') ++pos;
-		}
-	}
-
-	/// @brief 空白をスキップする
-	[[nodiscard]] static size_t skipWs(const std::string& s, size_t pos)
-	{
-		while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r'))
-		{
-			++pos;
-		}
-		return pos;
 	}
 };
 

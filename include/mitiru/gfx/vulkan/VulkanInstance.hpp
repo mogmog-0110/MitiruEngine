@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file VulkanInstance.hpp
-/// @brief VkInstanceラッパー
-/// @details Vulkanインスタンスの生成・バリデーションレイヤー管理を提供する。
-///          MITIRU_HAS_VULKANが定義されている場合のみコンパイルされる。
+/// @brief VkInstance ラッパー
+/// @details Vulkan インスタンスの生成・バリデーションレイヤー管理を提供する。
+///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。
 
 #include <algorithm>
 #include <cstdint>
@@ -13,7 +13,7 @@
 namespace mitiru::gfx
 {
 
-/// @brief Vulkanインスタンス生成に必要なアプリケーション情報
+/// @brief Vulkan インスタンス生成に必要なアプリケーション情報
 struct VulkanAppInfo
 {
 	std::string appName = "MitiruApp";      ///< アプリケーション名
@@ -49,7 +49,7 @@ struct VulkanValidationConfig
 	}
 };
 
-/// @brief Vulkanインスタンス生成パラメータ
+/// @brief Vulkan インスタンス生成パラメータ
 struct VulkanInstanceDesc
 {
 	VulkanAppInfo appInfo;                               ///< アプリケーション情報
@@ -58,7 +58,7 @@ struct VulkanInstanceDesc
 
 	/// @brief 拡張が要求リストに含まれているか確認する
 	/// @param extensionName 拡張名
-	/// @return 含まれていればtrue
+	/// @return 含まれていれば true
 	[[nodiscard]] bool hasExtension(const std::string& extensionName) const noexcept
 	{
 		return std::find(
@@ -78,8 +78,8 @@ struct VulkanInstanceDesc
 	}
 
 	/// @brief サーフェス関連の標準拡張を追加する
-	/// @details VK_KHR_surfaceを追加する。
-	///          プラットフォーム固有の拡張（VK_KHR_win32_surface等）は別途追加が必要。
+	/// @details VK_KHR_surface を追加する。
+	///          プラットフォーム固有の拡張（VK_KHR_win32_surface 等）は別途追加が必要。
 	void addSurfaceExtensions()
 	{
 		addExtension("VK_KHR_surface");
@@ -91,18 +91,16 @@ struct VulkanInstanceDesc
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
-/// @brief VkInstanceのRAIIラッパー
-/// @details Vulkanインスタンスの生成・破棄をRAIIで管理する。
-///          バリデーションレイヤーとデバッグメッセンジャーの設定も担当する。
-///          macOS MoltenVK環境ではVK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAMEを
-///          自動的に有効化する。
-///
+/// @brief VkInstance の RAII ラッパー
+/// @details Vulkan インスタンスの生成・破棄を RAII で管理する。
+/// バリデーションレイヤーとデバッグメッセンジャーの設定も行う。
+/// macOS MoltenVK 環境では VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME を
+/// 自動的に有効化する。
 /// @code
 /// VulkanInstanceDesc desc;
 /// desc.appInfo.appName = "MyGame";
 /// desc.validation = VulkanValidationConfig::debug();
 /// desc.addSurfaceExtensions();
-///
 /// VulkanInstance instance(desc);
 /// VkInstance vkInst = instance.handle();
 /// @endcode
@@ -111,7 +109,7 @@ class VulkanInstance
 public:
 	/// @brief コンストラクタ
 	/// @param desc インスタンス生成パラメータ
-	/// @throws std::runtime_error vkCreateInstanceが失敗した場合
+	/// @throws std::runtime_error vkCreateInstance が失敗した場合
 	explicit VulkanInstance(const VulkanInstanceDesc& desc)
 		: m_desc(desc)
 	{
@@ -125,7 +123,7 @@ public:
 		appInfo.engineVersion      = ai.engineVersion;
 		appInfo.apiVersion         = (ai.apiVersion != 0) ? ai.apiVersion : VK_API_VERSION_1_0;
 
-		/// descで要求された拡張をコピーし、macOS用拡張を追加する
+		/// desc で要求された拡張をコピーし、macOS 用拡張を追加する
 		std::vector<const char*> extensions;
 		extensions.reserve(desc.requiredExtensions.size() + 2);
 		for (const auto& ext : desc.requiredExtensions)
@@ -138,7 +136,7 @@ public:
 		extensions.push_back("VK_KHR_get_physical_device_properties2");
 #endif
 
-		/// バリデーションレイヤー名をchar*に変換する
+		/// バリデーションレイヤー名を char* に変換する
 		std::vector<const char*> layers;
 		if (desc.validation.enableValidation)
 		{
@@ -214,22 +212,22 @@ public:
 	VulkanInstance(VulkanInstance&&) = delete;
 	VulkanInstance& operator=(VulkanInstance&&) = delete;
 
-	/// @brief 内部のVkInstanceハンドルを取得する
-	/// @return VkInstanceハンドル
+	/// @brief 内部の VkInstance ハンドルを取得する
+	/// @return VkInstance ハンドル
 	[[nodiscard]] VkInstance handle() const noexcept
 	{
 		return m_instance;
 	}
 
 	/// @brief 生成時のパラメータを取得する
-	/// @return インスタンス生成パラメータへのconst参照
+	/// @return インスタンス生成パラメータへの const 参照
 	[[nodiscard]] const VulkanInstanceDesc& desc() const noexcept
 	{
 		return m_desc;
 	}
 
 	/// @brief バリデーションレイヤーが有効かどうかを判定する
-	/// @return 有効ならtrue
+	/// @return 有効なら true
 	[[nodiscard]] bool isValidationEnabled() const noexcept
 	{
 		return m_desc.validation.enableValidation;

@@ -66,14 +66,14 @@
 namespace mitiru::sprite
 {
 
-/// @brief 1 つの animation frame: texture とその表示時間。
+/// @brief 1 つの animation frame。texture とその表示時間。
 struct FrameData
 {
 	mitiru::render::Texture tex;
 	int                     delay_ms = 100; ///< 表示時間 (ミリ秒・> 0)。
 };
 
-/// @brief GIF file を FrameData 列に decode する callback。
+/// @brief GIF file を FrameData の列に decode する callback。
 using GifDecoder = std::function<std::vector<FrameData>(const std::filesystem::path&)>;
 
 /// @brief Aseprite の JSON+sheet export を FrameData に decode する callback。
@@ -95,7 +95,7 @@ public:
 
 	AnimatedSprite(const AnimatedSprite&)            = delete;
 	AnimatedSprite& operator=(const AnimatedSprite&) = delete;
-	// move も非対応: std::mutex member が non-movable のため。
+	// move もできない。std::mutex member が move できないため。
 	AnimatedSprite(AnimatedSprite&&)            = delete;
 	AnimatedSprite& operator=(AnimatedSprite&&) = delete;
 
@@ -211,7 +211,7 @@ public:
 	}
 
 	/// @brief loop を有効 / 無効にする。
-	/// @details loop=false で最終 frame を消費しきると state -> Stopped。
+	/// @details loop=false のときは、最終 frame を表示し終えると state が Stopped になる。
 	void setLoop(bool loop)
 	{
 		std::lock_guard lock(m_mutex);
@@ -229,9 +229,9 @@ public:
 
 	// ── Callback ─────────────────────────────────────────────────────
 
-	/// @brief animation が frame 0 に loop back するたびに発火する callback を登録する。
-	/// @details loop=true で sequence が wrap した時のみ発火。最初の play() 時や
-	///          animation 停止時には呼ばれない。
+	/// @brief animation が frame 0 に戻るたびに呼ばれる callback を登録する。
+	/// @details loop=true で sequence が先頭に戻ったときだけ呼ばれる。最初の play() のときや
+	///          animation が止まったときには呼ばれない。
 	void setOnLoop(std::function<void()> cb)
 	{
 		std::lock_guard lock(m_mutex);

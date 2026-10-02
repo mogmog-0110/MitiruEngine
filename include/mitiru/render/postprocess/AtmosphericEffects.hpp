@@ -102,7 +102,7 @@ struct ChromaticAberrationConfig
 };
 
 /// @brief 色収差パス
-/// @details R/Bチャンネルを中心から放射状にオフセットする。
+/// @details R/B チャンネルを中心から放射状にオフセットする。
 class ChromaticAberrationPass final : public PostProcessPass
 {
 public:

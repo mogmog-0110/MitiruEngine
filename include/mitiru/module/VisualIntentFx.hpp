@@ -32,7 +32,7 @@ struct ShakeOffset
 /// @details 非整数周波数の sin/cos 合成。周期が割り切れないため見た目はランダム風に揺れる。
 inline ShakeOffset deterministicShakeOffset(std::uint64_t frameIndex, float amplitudePx) noexcept
 {
-	// float の整数精度内に畳む (2^24 超で sin の引数精度が崩れるのを防ぐ)
+	// float の整数精度内に収める (2^24 を超えると sin の引数精度が落ちるのを防ぐ)
 	const float t = static_cast<float>(frameIndex % 100000ull);
 	const float dx =
 		amplitudePx * (0.6f * std::sin(t * 1.3f) + 0.4f * std::sin(t * 2.7f + 1.7f));

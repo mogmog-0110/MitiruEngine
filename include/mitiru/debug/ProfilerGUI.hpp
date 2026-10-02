@@ -3,7 +3,7 @@
 /// @file ProfilerGUI.hpp
 /// @brief ビジュアルプロファイラー（フレームグラフ付き）
 /// @details フレーム毎のセクション計測を行い、オーバーレイとして
-///          FPSカウンター・フレーム時間グラフ・セクションバーチャートを描画する。
+///          FPS カウンター・フレーム時間グラフ・セクションバーチャートを描画する。
 ///
 /// @code
 /// mitiru::debug::ProfilerGUI profiler;
@@ -71,7 +71,7 @@ public:
 	};
 
 	/// @brief コンストラクタ
-	/// @param historySize フレーム時間の履歴サイズ（デフォルト300フレーム）
+	/// @param historySize フレーム時間の履歴サイズ（デフォルト 300 フレーム）
 	explicit ProfilerGUI(std::size_t historySize = 300)
 		: m_historySize(historySize)
 	{
@@ -157,7 +157,7 @@ public:
 
 	// ── 描画 ──
 
-	/// @brief オーバーレイ描画（FPSカウンター・フレーム時間グラフ・上位Nセクション）
+	/// @brief オーバーレイ描画（FPS カウンター・フレーム時間グラフ・上位 N セクション）
 	/// @param screen 描画先スクリーン
 	void drawOverlay(Screen& screen) const
 	{
@@ -170,7 +170,7 @@ public:
 		const sgc::Colorf bgColor{0.0f, 0.0f, 0.0f, m_transparency};
 		screen.drawRect(sgc::Rectf{ox, oy, kOverlayWidth, kOverlayHeight}, bgColor);
 
-		// FPSカウンター
+		// FPS カウンター
 		const float fps = (m_lastFrameMs > 0.001f) ? (1000.0f / m_lastFrameMs) : 0.0f;
 		const sgc::Colorf fpsColor = fpsToColor(fps);
 		const std::string fpsText = "FPS: " + formatFloat(fps, 1) + "  (" + formatFloat(m_lastFrameMs, 2) + "ms)";
@@ -183,7 +183,7 @@ public:
 		drawSectionBars(screen, ox + 4.0f, oy + 90.0f, kOverlayWidth - 8.0f, m_topNSections);
 	}
 
-	/// @brief 詳細タイムライン描画（セクションネスト・GPU/CPU分割表示）
+	/// @brief 詳細タイムライン描画（セクションネスト・GPU/CPU 分割表示）
 	/// @param screen 描画先スクリーン
 	void drawDetailed(Screen& screen) const
 	{
@@ -255,7 +255,7 @@ public:
 	/// @brief オーバーレイ透明度を設定する（0.0 = 完全透明, 1.0 = 不透明）
 	void setTransparency(float alpha) noexcept { m_transparency = std::clamp(alpha, 0.0f, 1.0f); }
 
-	/// @brief 表示するトップNセクション数を設定する
+	/// @brief 表示するトップ N セクション数を設定する
 	void setTopNSections(int n) noexcept { m_topNSections = std::max(1, n); }
 
 	/// @brief 統計をリセットする
@@ -295,14 +295,14 @@ private:
 	float m_transparency = 0.75f;
 	int m_topNSections = 5;
 
-	/// @brief 2つのTimePoint間のミリ秒を計算する
+	/// @brief 2 つの TimePoint 間のミリ秒を計算する
 	[[nodiscard]] static float toMs(TimePoint start, TimePoint end) noexcept
 	{
 		const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 		return static_cast<float>(ns) / 1'000'000.0f;
 	}
 
-	/// @brief float値を指定桁数で文字列化する
+	/// @brief float 値を指定桁数で文字列化する
 	[[nodiscard]] static std::string formatFloat(float value, int decimals)
 	{
 		// 単純な固定小数点フォーマット
@@ -321,7 +321,7 @@ private:
 		return result;
 	}
 
-	/// @brief FPS値に応じた色を返す
+	/// @brief FPS 値に応じた色を返す
 	[[nodiscard]] static sgc::Colorf fpsToColor(float fps) noexcept
 	{
 		if (fps >= 55.0f) return {0.0f, 1.0f, 0.3f, 1.0f};  // 緑
@@ -360,7 +360,7 @@ private:
 		return {0.4f, 0.8f, 0.8f, 0.85f};
 	}
 
-	/// @brief オーバーレイX座標を計算する
+	/// @brief オーバーレイ X 座標を計算する
 	[[nodiscard]] float overlayX(const Screen& screen) const noexcept
 	{
 		switch (m_position)
@@ -375,7 +375,7 @@ private:
 		return 8.0f;
 	}
 
-	/// @brief オーバーレイY座標を計算する
+	/// @brief オーバーレイ Y 座標を計算する
 	[[nodiscard]] float overlayY(const Screen& screen) const noexcept
 	{
 		switch (m_position)
@@ -398,7 +398,7 @@ private:
 		// 背景
 		screen.drawRect(sgc::Rectf{x, y, w, h}, {0.1f, 0.1f, 0.1f, 0.5f});
 
-		// 16.6msライン（60FPS基準）
+		// 16.6ms ライン（60FPS 基準）
 		const float maxDisplayMs = 33.3f;
 		const float line60 = y + h * (1.0f - 16.67f / maxDisplayMs);
 		screen.drawLine({x, line60}, {x + w, line60}, {0.3f, 0.3f, 0.3f, 0.6f}, 1.0f);
@@ -421,7 +421,7 @@ private:
 		}
 	}
 
-	/// @brief トップNセクションのバーチャートを描画する
+	/// @brief トップ N セクションのバーチャートを描画する
 	void drawSectionBars(Screen& screen, float x, float y, float w, int topN) const
 	{
 		// セクションを所要時間降順でソートする

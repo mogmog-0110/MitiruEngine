@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="3D physics: rigid bodies, colliders, raycasts, constraint solver.">
+<meta name="description" content="3D physics on Jolt: the ECS system, the world adapter, queries and the GameMemory-friendly capsule.">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::physics3d | MitiruEngine">
-<meta property="og:description" content="3D physics: rigid bodies, colliders, raycasts, constraint solver.">
+<meta property="og:description" content="3D physics on Jolt: the ECS system, the world adapter, queries and the GameMemory-friendly capsule.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::physics3d | MitiruEngine">
-<meta name="twitter:description" content="3D physics: rigid bodies, colliders, raycasts, constraint solver.">
+<meta name="twitter:description" content="3D physics on Jolt: the ECS system, the world adapter, queries and the GameMemory-friendly capsule.">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -77,27 +77,21 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"><code>mitiru::assets</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"><code>mitiru::bridge::detail</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"><code>mitiru::cef</code></a>
-  
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"><code>mitiru::cef::bridges</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
-  
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"><code>mitiru::core</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
   
@@ -107,13 +101,13 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"><code>mitiru::game</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"><code>mitiru::gfx::dx12</code></a>
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
   
@@ -131,23 +125,41 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"><code>mitiru::physics2d</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/" class="active"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
   
@@ -171,19 +183,25 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"><code>mitiru::ui::LayoutPresets</code></a>
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
@@ -197,321 +215,212 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::physics3d</code></h1>
-  <p class="lede">3D physics: rigid bodies, colliders, raycasts, constraint solver.</p>
+  <p class="lede">3D physics on Jolt: the ECS system, the world adapter, queries and the GameMemory-friendly capsule.</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">3D physics: rigid bodies, colliders, raycasts, constraint solver.</p>
+  <p class="api-namespace__lede">3D physics on Jolt: the ECS system, the world adapter, queries and the GameMemory-friendly capsule.</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-broadphaseproxy3d"><code>BroadPhaseProxy3D</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#class-broadphase3d"><code>BroadPhase3D</code></a></td><td>class</td><td>13</td></tr>
-<tr><td><a href="#struct-aabbcollider3d"><code>AABBCollider3D</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-obbcollider3d"><code>OBBCollider3D</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-capsulecollider"><code>CapsuleCollider</code></a></td><td>struct</td><td>16</td></tr>
-<tr><td><a href="#struct-convexshape"><code>ConvexShape</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#class-distanceconstraint"><code>DistanceConstraint</code></a></td><td>class</td><td>7</td></tr>
-<tr><td><a href="#class-hingeconstraint"><code>HingeConstraint</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#class-contactsolver3d"><code>ContactSolver3D</code></a></td><td>class</td><td>9</td></tr>
-<tr><td><a href="#struct-epaface"><code>EpaFace</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#class-narrowphase3d"><code>NarrowPhase3D</code></a></td><td>class</td><td>11</td></tr>
-<tr><td><a href="#enum-debugdrawflags"><code>DebugDrawFlags</code></a></td><td>enum</td><td>11</td></tr>
-<tr><td><a href="#struct-debugcolor3d"><code>DebugColor3D</code></a></td><td>struct</td><td>8</td></tr>
-<tr><td><a href="#class-physicsdebugrenderer3d"><code>PhysicsDebugRenderer3D</code></a></td><td>class</td><td>17</td></tr>
-<tr><td><a href="#class-physicssystem3d"><code>PhysicsSystem3D</code></a></td><td>class</td><td>20</td></tr>
+<tr><td><a href="#struct-aabbcollider3d"><code>AABBCollider3D</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-bodydesc"><code>BodyDesc</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-iphysicsworld3d"><code>IPhysicsWorld3D</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-joltphysicsworld3d"><code>JoltPhysicsWorld3D</code></a></td><td>class</td><td>27</td></tr>
+<tr><td><a href="#enum-surfacetype"><code>SurfaceType</code></a></td><td>enum</td><td>12</td></tr>
+<tr><td><a href="#struct-staticboxarray"><code>StaticBoxArray</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-kinematiccapsule"><code>KinematicCapsule</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-meshcolliderlibrary"><code>MeshColliderLibrary</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#class-nativephysicsworld3d"><code>NativePhysicsWorld3D</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#enum-contactphase3d"><code>ContactPhase3D</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#class-physicssystem3d"><code>PhysicsSystem3D</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#enum-collidertype3d"><code>ColliderType3D</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#struct-broadphaseproxy"><code>BroadphaseProxy</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#class-physicsworld3d"><code>PhysicsWorld3D</code></a></td><td>class</td><td>27</td></tr>
-<tr><td><a href="#class-rigidbody3d"><code>RigidBody3D</code></a></td><td>class</td><td>36</td></tr>
+<tr><td><a href="#struct-trianglemesh3d"><code>TriangleMesh3D</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-rigidbodycomponent3d"><code>RigidBodyComponent3D</code></a></td><td>struct</td><td>1</td></tr>
 </tbody></table>
-<details class="api-class" id="struct-broadphaseproxy3d" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BroadPhaseProxy3D</code> <span class="api-class__count">2</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>[[nodiscard]] constexpr float minX() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float maxX() const noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="class-broadphase3d" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BroadPhase3D</code> <span class="api-class__count">13</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>BroadPhase3D() = default</code></div>
-<div class="api-method"><code>explicit BroadPhase3D(float margin) noexcept</code></div>
-<div class="api-method"><code>void setMargin(float margin) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float margin() const noexcept</code></div>
-<div class="api-method"><code>void clear() noexcept</code></div>
-<div class="api-method"><code>void addProxy(BodyId bodyId, std::size_t colliderIndex, const AABBCollider3D&amp; aabb) noexcept</code></div>
-<div class="api-method"><code>void sweep() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const std::vector&lt;BroadPhasePair3D&gt;&amp; candidatePairs() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t pairCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t proxyCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static AABBCollider3D computeAABB( const SphereCollider&amp; sphere) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static constexpr AABBCollider3D computeAABB( const AABBCollider3D&amp; aabb) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static AABBCollider3D computeAABB( const CapsuleCollider&amp; capsule) noexcept</code></div>
-</div>
-</details>
 <details class="api-class" id="struct-aabbcollider3d" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AABBCollider3D</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AABBCollider3D</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>[[nodiscard]] constexpr sgc::Vec3f center() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr sgc::Vec3f halfExtents() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] static constexpr AABBCollider3D fromCenterExtents( const sgc::Vec3f&amp; center, const sgc::Vec3f&amp; halfExtents) noexcept</code></div>
+<div class="api-method"><code>using BodyId = std::uint32_t;</code></div>
+<div class="api-method"><code>inline constexpr BodyId kInvalidBodyId = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool layersCollide( std::uint32_t layerA, std::uint32_t maskA, std::uint32_t layerB, std::uint32_t maskB) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool layerMatchesQuery(std::uint32_t colliderLayer, std::uint32_t queryMask) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-obbcollider3d" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OBBCollider3D</code> <span class="api-class__count">1</span></summary>
+<details class="api-class" id="struct-bodydesc" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BodyDesc</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>[[nodiscard]] sgc::Vec3f axis(int axisIndex) const noexcept</code></div>
+<div class="api-method"><code>enum `Type` { Dynamic, Static, Kinematic }</code></div>
+<div class="api-method"><code>enum `Shape` { Sphere, Box, Capsule, Mesh }</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-capsulecollider" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CapsuleCollider</code> <span class="api-class__count">16</span></summary>
+<details class="api-class" id="class-iphysicsworld3d" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IPhysicsWorld3D</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>[[nodiscard]] constexpr sgc::Vec3f center() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Vec3f axisDirection() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] float axisLength() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline ContactInfo3D testSphereSphere( const SphereCollider&amp; a, const SphereCollider&amp; b) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline constexpr sgc::Vec3f closestPointOnAABB( const sgc::Vec3f&amp; point, const AABBCollider3D&amp; aabb) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline ContactInfo3D testSphereAABB( const SphereCollider&amp; sphere, const AABBCollider3D&amp; aabb) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline ContactInfo3D testAABBAABB( const AABBCollider3D&amp; a, const AABBCollider3D&amp; b) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;RayHit3D&gt; raycastSphere( const Ray3D&amp; ray, const SphereCollider&amp; sphere, float maxDist = 1e6f) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;RayHit3D&gt; raycastAABB( const Ray3D&amp; ray, const AABBCollider3D&amp; aabb, float maxDist = 1e6f) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f gjkSupport( const ConvexShape&amp; a, const ConvexShape&amp; b, const sgc::Vec3f&amp; direction) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline constexpr sgc::Vec3f tripleProduct( const sgc::Vec3f&amp; a, const sgc::Vec3f&amp; b, const sgc::Vec3f&amp; c) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline bool gjkIntersect(const ConvexShape&amp; a, const ConvexShape&amp; b) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f closestPointOnSegment( const sgc::Vec3f&amp; point, const sgc::Vec3f&amp; segA, const sgc::Vec3f&amp; segB) noexcept</code></div>
-<div class="api-method"><code>inline void closestPointsSegmentSegment( const sgc::Vec3f&amp; a0, const sgc::Vec3f&amp; a1, const sgc::Vec3f&amp; b0, const sgc::Vec3f&amp; b1, sgc::Vec3f&amp; outA, sgc::Vec3f&amp; outB) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline ContactInfo3D testSphereCapsule( const SphereCollider&amp; sphere, const CapsuleCollider&amp; capsule) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline ContactInfo3D testCapsuleCapsule( const CapsuleCollider&amp; a, const CapsuleCollider&amp; b) noexcept</code></div>
+<div class="api-method"><code>virtual ~IPhysicsWorld3D() = default</code></div>
+<div class="api-method"><code>virtual void step(float dt) noexcept = 0</code></div>
+<div class="api-method"><code>virtual void setGravity(const sgc::Vec3f&amp; gravity) noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual const sgc::Vec3f&amp; gravity() const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::optional&lt;RayHit3D&gt; raycast( const Ray3D&amp; ray, float maxDist, std::uint32_t mask) const noexcept = 0</code></div>
+<div class="api-method"><code>virtual void raycastAll(const Ray3D&amp; ray, float maxDist, std::uint32_t mask, std::vector&lt;RayHit3D&gt;&amp; outHits) const noexcept = 0</code></div>
+<div class="api-method"><code>virtual void overlapSphere(const sgc::Vec3f&amp; center, float radius, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept = 0</code></div>
+<div class="api-method"><code>virtual void overlapBox(const AABBCollider3D&amp; aabb, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual BodyId addBody(const BodyDesc&amp; desc) noexcept = 0</code></div>
+<div class="api-method"><code>virtual void removeBody(BodyId id) noexcept = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::optional&lt;BodyTransform&gt; bodyTransform(BodyId id) const noexcept = 0</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-convexshape" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ConvexShape</code> <span class="api-class__count">2</span></summary>
+<details class="api-class" id="class-joltphysicsworld3d" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JoltPhysicsWorld3D</code> <span class="api-class__extra">: public IPhysicsWorld3D</span> <span class="api-class__count">27</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>std::vector&lt;sgc::Vec3f&gt; vertices</code></div>
-<div class="api-method"><code>[[nodiscard]] sgc::Vec3f support(const sgc::Vec3f&amp; direction) const noexcept</code></div>
+<div class="api-method"><code>explicit JoltPhysicsWorld3D(const JoltWorldConfig&amp; config = {})</code></div>
+<div class="api-method"><code>~JoltPhysicsWorld3D() override = default</code></div>
+<div class="api-method"><code>JoltPhysicsWorld3D(const JoltPhysicsWorld3D&amp;) = delete</code></div>
+<div class="api-method"><code>JoltPhysicsWorld3D&amp; operator=(const JoltPhysicsWorld3D&amp;) = delete</code></div>
+<div class="api-method"><code>JoltPhysicsWorld3D(JoltPhysicsWorld3D&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>JoltPhysicsWorld3D&amp; operator=(JoltPhysicsWorld3D&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>void step(float dt) noexcept override</code></div>
+<div class="api-method"><code>void setGravity(const sgc::Vec3f&amp; gravity) noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] const sgc::Vec3f&amp; gravity() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;RayHit3D&gt; raycast( const Ray3D&amp; ray, float maxDist, std::uint32_t mask) const noexcept override</code></div>
+<div class="api-method"><code>void raycastAll(const Ray3D&amp; ray, float maxDist, std::uint32_t mask, std::vector&lt;RayHit3D&gt;&amp; outHits) const noexcept override</code></div>
+<div class="api-method"><code>void overlapSphere(const sgc::Vec3f&amp; center, float radius, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept override</code></div>
+<div class="api-method"><code>void overlapBox(const AABBCollider3D&amp; aabb, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] BodyId addBody(const BodyDesc&amp; desc) noexcept override</code></div>
+<div class="api-method"><code>void removeBody(BodyId id) noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;BodyTransform&gt; bodyTransform(BodyId id) const noexcept override</code></div>
+<div class="api-method"><code>void setTransform(BodyId id, const sgc::Vec3f&amp; position, const sgc::Quaternionf&amp; rotation) noexcept</code></div>
+<div class="api-method"><code>void moveKinematic(BodyId id, const sgc::Vec3f&amp; position, const sgc::Quaternionf&amp; rotation, float dt) noexcept</code></div>
+<div class="api-method"><code>void setVelocity(BodyId id, const sgc::Vec3f&amp; linear, const sgc::Vec3f&amp; angular) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] sgc::Vec3f linearVelocity(BodyId id) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] sgc::Vec3f angularVelocity(BodyId id) const noexcept</code></div>
+<div class="api-method"><code>void setMaterial(BodyId id, float friction, float restitution) noexcept</code></div>
+<div class="api-method"><code>void setDamping(BodyId id, float linear, float angular) noexcept</code></div>
+<div class="api-method"><code>void setFilter(BodyId id, std::uint32_t layer, std::uint32_t mask, bool isSensor) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;BodyContact3D&gt;&amp; contacts() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t bodyCount() const noexcept</code></div>
+<div class="api-method"><code>void optimizeBroadPhase() noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-distanceconstraint">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DistanceConstraint</code> <span class="api-class__count">7</span></summary>
+<details class="api-class" id="enum-surfacetype" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">SurfaceType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>DistanceConstraint( RigidBody3D* bodyA, RigidBody3D* bodyB, float restLength, float stiffness = 1.0f) noexcept</code></div>
-<div class="api-method"><code>void setAnchors(const sgc::Vec3f&amp; anchorA, const sgc::Vec3f&amp; anchorB) noexcept</code></div>
-<div class="api-method"><code>void solve([[maybe_unused]] float dt) noexcept</code></div>
-<div class="api-method"><code>void solveVelocity([[maybe_unused]] float dt) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float restLength() const noexcept</code></div>
-<div class="api-method"><code>void setRestLength(float len) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float stiffness() const noexcept</code></div>
+<div class="api-method"><code>None</code></div>
+<div class="api-method"><code>Floor</code></div>
+<div class="api-method"><code>Wall</code></div>
+<div class="api-method"><code>Ceiling</code></div>
+<div class="api-method"><code>template &lt;class T&gt; concept StaticBoxWorld = requires(const T&amp; world, std::size_t index)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline SurfaceType classifySurface(const sgc::Vec3f&amp; normal, float maxSlopeDeg, const sgc::Vec3f&amp; up) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline SurfaceType classifySurface(const sgc::Vec3f&amp; normal, float maxSlopeDeg) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f closestPointOnSegment( const sgc::Vec3f&amp; point, const sgc::Vec3f&amp; a, const sgc::Vec3f&amp; b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f insideExitNormal(const sgc::Vec3f&amp; center, const AABBCollider3D&amp; aabb) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ContactInfo3D sphereVsAabb(const sgc::Vec3f&amp; center, float radius, const AABBCollider3D&amp; aabb) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ContactInfo3D testCapsuleAABBLocal( const CapsuleCollider&amp; capsule, const AABBCollider3D&amp; aabb) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;RayBoxHit&gt; rayVsAabb( const sgc::Vec3f&amp; origin, const sgc::Vec3f&amp; dir, const AABBCollider3D&amp; aabb, float maxDist) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-hingeconstraint">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">HingeConstraint</code> <span class="api-class__count">5</span></summary>
+<details class="api-class" id="struct-staticboxarray" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StaticBoxArray</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>HingeConstraint( RigidBody3D* bodyA, RigidBody3D* bodyB, const sgc::Vec3f&amp; worldPivot, const sgc::Vec3f&amp; worldAxis) noexcept</code></div>
-<div class="api-method"><code>void setLimits(float minAngle, float maxAngle) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr bool hasLimits() const noexcept</code></div>
-<div class="api-method"><code>void solve([[maybe_unused]] float dt) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const sgc::Vec3f&amp; axis() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t boxCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const AABBCollider3D&amp; box(std::size_t index) const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-contactsolver3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ContactSolver3D</code> <span class="api-class__count">9</span></summary>
+<details class="api-class" id="class-kinematiccapsule">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">KinematicCapsule</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>ContactSolver3D() = default</code></div>
-<div class="api-method"><code>explicit ContactSolver3D(const ContactSolverConfig3D&amp; config) noexcept</code></div>
-<div class="api-method"><code>void configure(const ContactSolverConfig3D&amp; config) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr const ContactSolverConfig3D&amp; config() const noexcept</code></div>
-<div class="api-method"><code>void prepare( std::vector&lt;ContactManifold3D&gt;&amp; manifolds, const std::unordered_map&lt;BodyId, std::unique_ptr&lt;RigidBody3D&gt;&gt;&amp; bodies) noexcept</code></div>
-<div class="api-method"><code>void warmStart( const std::vector&lt;ContactManifold3D&gt;&amp; manifolds, std::unordered_map&lt;BodyId, std::unique_ptr&lt;RigidBody3D&gt;&gt;&amp; bodies) noexcept</code></div>
-<div class="api-method"><code>void solve( std::vector&lt;ContactManifold3D&gt;&amp; manifolds, std::unordered_map&lt;BodyId, std::unique_ptr&lt;RigidBody3D&gt;&gt;&amp; bodies) noexcept</code></div>
-<div class="api-method"><code>void solvePositions( const std::vector&lt;ContactManifold3D&gt;&amp; manifolds, std::unordered_map&lt;BodyId, std::unique_ptr&lt;RigidBody3D&gt;&gt;&amp; bodies) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static std::size_t manifoldCount( const std::vector&lt;ContactManifold3D&gt;&amp; manifolds) noexcept</code></div>
+<div class="api-method"><code>KinematicCapsule() = default</code></div>
+<div class="api-method"><code>explicit KinematicCapsule(const KinematicCapsuleConfig&amp; config, const sgc::Vec3f&amp; position = {}) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const sgc::Vec3f&amp; position() const noexcept</code></div>
+<div class="api-method"><code>void setPosition(const sgc::Vec3f&amp; position) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isGrounded() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const sgc::Vec3f&amp; groundNormal() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const KinematicCapsuleConfig&amp; config() const noexcept</code></div>
+<div class="api-method"><code>template &lt;StaticBoxWorld World&gt; KinematicHit move(const sgc::Vec3f&amp; desiredDelta, const World&amp; world) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::shared_ptr&lt;const TriangleMesh3D&gt; triangleMeshFrom(const render::Mesh&amp; mesh)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f toSceneSpace(const render::GltfSceneData&amp; scene, int node, sgc::Vec3f p)</code></div>
+<div class="api-method"><code>inline void appendPrimitives(const render::GltfSceneData&amp; scene, const render::GltfMeshData&amp; mesh, int node, TriangleMesh3D&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::shared_ptr&lt;const TriangleMesh3D&gt; triangleMeshFrom(const render::GltfSceneData&amp; scene)</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-epaface">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EpaFace</code> <span class="api-class__count">1</span></summary>
+<details class="api-class" id="class-meshcolliderlibrary">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MeshColliderLibrary</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>std::array&lt;sgc::Vec3f, 3&gt; vertices</code></div>
+<div class="api-method"><code>explicit MeshColliderLibrary(std::filesystem::path baseDir = {})</code></div>
+<div class="api-method"><code>[[nodiscard]] std::shared_ptr&lt;const TriangleMesh3D&gt; load(const std::string&amp; meshPath)</code></div>
 </div>
 </details>
-<details class="api-class" id="class-narrowphase3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NarrowPhase3D</code> <span class="api-class__count">11</span></summary>
+<details class="api-class" id="class-nativephysicsworld3d">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NativePhysicsWorld3D</code> <span class="api-class__extra">: public IPhysicsWorld3D</span> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>NarrowPhase3D() = default</code></div>
-<div class="api-method"><code>void setMaxIterations(int iterations) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr int maxIterations() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static NarrowPhaseResult3D testSphereSphere( const SphereCollider&amp; a, const SphereCollider&amp; b) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static NarrowPhaseResult3D testSphereBox( const SphereCollider&amp; sphere, const AABBCollider3D&amp; aabb) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static NarrowPhaseResult3D testBoxBox( const AABBCollider3D&amp; a, const AABBCollider3D&amp; b) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static NarrowPhaseResult3D testSphereCapsule( const SphereCollider&amp; sphere, const CapsuleCollider&amp; capsule) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static NarrowPhaseResult3D testCapsuleCapsule( const CapsuleCollider&amp; a, const CapsuleCollider&amp; b) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] NarrowPhaseResult3D testConvexConvex( const ConvexShape&amp; a, const ConvexShape&amp; b) const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static ConvexShape sphereToConvex( const SphereCollider&amp; sphere, int subdivisions = 2) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static ConvexShape aabbToConvex(const AABBCollider3D&amp; aabb) noexcept</code></div>
+<div class="api-method"><code>explicit NativePhysicsWorld3D(bool periodic = false, float periodicHalf = 25.0f)</code></div>
+<div class="api-method"><code>void step(float dt) noexcept override</code></div>
+<div class="api-method"><code>void setGravity(const sgc::Vec3f&amp; gravity) noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] const sgc::Vec3f&amp; gravity() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;RayHit3D&gt; raycast( const Ray3D&amp; ray, float maxDist, std::uint32_t mask) const noexcept override</code></div>
+<div class="api-method"><code>void raycastAll(const Ray3D&amp; ray, float maxDist, std::uint32_t mask, std::vector&lt;RayHit3D&gt;&amp; outHits) const noexcept override</code></div>
+<div class="api-method"><code>void overlapSphere(const sgc::Vec3f&amp; center, float radius, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept override</code></div>
+<div class="api-method"><code>void overlapBox(const AABBCollider3D&amp; aabb, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] BodyId addBody(const BodyDesc&amp; desc) noexcept override</code></div>
+<div class="api-method"><code>void removeBody(BodyId id) noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;BodyTransform&gt; bodyTransform(BodyId id) const noexcept override</code></div>
 </div>
 </details>
-<details class="api-class" id="enum-debugdrawflags">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">DebugDrawFlags</code> <span class="api-class__extra">: uint32_t</span> <span class="api-class__count">11</span></summary>
+<details class="api-class" id="enum-contactphase3d">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ContactPhase3D</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>None         = 0</code></div>
-<div class="api-method"><code>Colliders    = 1 &lt;&lt; 0</code></div>
-<div class="api-method"><code>Contacts     = 1 &lt;&lt; 1</code></div>
-<div class="api-method"><code>Velocities   = 1 &lt;&lt; 2</code></div>
-<div class="api-method"><code>Constraints  = 1 &lt;&lt; 3</code></div>
-<div class="api-method"><code>AABBs        = 1 &lt;&lt; 4</code></div>
-<div class="api-method"><code>CenterOfMass = 1 &lt;&lt; 5</code></div>
-<div class="api-method"><code>All          = 0xFFFFFFFF</code></div>
-<div class="api-method"><code>[[nodiscard]] inline constexpr DebugDrawFlags operator|( DebugDrawFlags a, DebugDrawFlags b) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline constexpr DebugDrawFlags operator&amp;( DebugDrawFlags a, DebugDrawFlags b) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline constexpr bool hasFlag( DebugDrawFlags flags, DebugDrawFlags flag) noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="struct-debugcolor3d">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DebugColor3D</code> <span class="api-class__count">8</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>[[nodiscard]] static constexpr DebugColor3D green() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static constexpr DebugColor3D red() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static constexpr DebugColor3D blue() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static constexpr DebugColor3D yellow() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static constexpr DebugColor3D cyan() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static constexpr DebugColor3D magenta() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static constexpr DebugColor3D white() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static constexpr DebugColor3D gray() noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="class-physicsdebugrenderer3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PhysicsDebugRenderer3D</code> <span class="api-class__count">17</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>PhysicsDebugRenderer3D() = default</code></div>
-<div class="api-method"><code>void setFlags(DebugDrawFlags flags) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr DebugDrawFlags flags() const noexcept</code></div>
-<div class="api-method"><code>void setVelocityScale(float scale) noexcept</code></div>
-<div class="api-method"><code>void setNormalLength(float length) noexcept</code></div>
-<div class="api-method"><code>void setSphereSegments(int segments) noexcept</code></div>
-<div class="api-method"><code>void clear() noexcept</code></div>
-<div class="api-method"><code>void gather( const PhysicsWorld3D&amp; world, const std::vector&lt;ContactManifold3D&gt;&amp; manifolds = {}) noexcept</code></div>
-<div class="api-method"><code>void addCollider(const BodyCollider&amp; collider) noexcept</code></div>
-<div class="api-method"><code>void addContact(const sgc::Vec3f&amp; point, const sgc::Vec3f&amp; normal, float depth) noexcept</code></div>
-<div class="api-method"><code>void addVelocity(const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; velocity) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const std::vector&lt;DebugLine3D&gt;&amp; lines() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const std::vector&lt;DebugPoint3D&gt;&amp; points() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t lineCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t pointCount() const noexcept</code></div>
-<div class="api-method"><code>void gatherBody(const RigidBody3D&amp; body, const BodyCollider&amp; collider) noexcept</code></div>
+<div class="api-method"><code>Enter</code></div>
+<div class="api-method"><code>Stay</code></div>
+<div class="api-method"><code>Exit</code></div>
 <div class="api-method"><code>using CollisionCallback3DEcs = std::function&lt;void(const CollisionEvent3D&amp;)&gt;;</code></div>
+<div class="api-method"><code>using ContactEventCallback3D = std::function&lt;void(const ContactEvent3D&amp;)&gt;;</code></div>
 </div>
 </details>
 <details class="api-class" id="class-physicssystem3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PhysicsSystem3D</code> <span class="api-class__extra">: public scene::ISystem</span> <span class="api-class__count">20</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PhysicsSystem3D</code> <span class="api-class__extra">: public scene::ISystem</span> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit PhysicsSystem3D(const PhysicsSystem3DConfig&amp; config = {})</code></div>
 <div class="api-method"><code>[[nodiscard]] std::string name() const override</code></div>
-<div class="api-method"><code>void update(scene::GameWorld&amp; gameWorld, float dt) override</code></div>
+<div class="api-method"><code>void update(scene::GameWorld&amp; world, float dt) override</code></div>
+<div class="api-method"><code>[[nodiscard]] scene::UpdatePhase defaultPhase() const noexcept override</code></div>
 <div class="api-method"><code>void setGravity(const sgc::Vec3f&amp; gravity) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const sgc::Vec3f&amp; gravity() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const PhysicsSystem3DConfig&amp; config() const noexcept</code></div>
 <div class="api-method"><code>void registerCollisionCallback(CollisionCallback3DEcs callback)</code></div>
-<div class="api-method"><code>void addDistanceConstraint(DistanceConstraint constraint) noexcept</code></div>
-<div class="api-method"><code>void addHingeConstraint(HingeConstraint constraint) noexcept</code></div>
-<div class="api-method"><code>void setDebugDrawEnabled(bool enabled) noexcept</code></div>
-<div class="api-method"><code>void setDebugDrawFlags(DebugDrawFlags flags) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const PhysicsDebugRenderer3D&amp; debugRenderer() const noexcept</code></div>
+<div class="api-method"><code>void registerContactEventCallback(ContactEventCallback3D callback)</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t bodyCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t colliderCount() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t lastContactCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t lastBroadPhasePairCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::optional&lt;RayHit3D&gt; raycast( const Ray3D&amp; ray, float maxDist = 1e6f) const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] PhysicsWorld3D&amp; physicsWorld() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const PhysicsWorld3D&amp; physicsWorld() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const std::vector&lt;ContactManifold3D&gt;&amp; lastManifolds() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] scene::EntityId entityOf(BodyId body) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;RayHit3D&gt; raycast( const Ray3D&amp; ray, float maxDist = 1e6f, std::uint32_t mask = 0xFFFFFFFFu) const noexcept</code></div>
+<div class="api-method"><code>void raycastAll(const Ray3D&amp; ray, float maxDist, std::uint32_t mask, std::vector&lt;RayHit3D&gt;&amp; outHits) const noexcept</code></div>
+<div class="api-method"><code>void overlapSphere(const sgc::Vec3f&amp; center, float radius, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept</code></div>
+<div class="api-method"><code>void overlapBox(const AABBCollider3D&amp; aabb, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] JoltPhysicsWorld3D&amp; backend() noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-collidertype3d">
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ColliderType3D</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Sphere</code></div>
-<div class="api-method"><code>AABB</code></div>
+<div class="api-method"><code>Box</code></div>
 <div class="api-method"><code>Capsule</code></div>
-<div class="api-method"><code>using CollisionCallback3D = std::function&lt;void(const WorldContact3D&amp;)&gt;;</code></div>
+<div class="api-method"><code>Mesh</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-broadphaseproxy">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BroadphaseProxy</code> <span class="api-class__count">1</span></summary>
+<details class="api-class" id="struct-trianglemesh3d">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TriangleMesh3D</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>[[nodiscard]] constexpr float minX() const noexcept</code></div>
+<div class="api-method"><code>std::vector&lt;sgc::Vec3f&gt; vertices</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint32_t&gt; indices</code></div>
 </div>
 </details>
-<details class="api-class" id="class-physicsworld3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PhysicsWorld3D</code> <span class="api-class__count">27</span></summary>
+<details class="api-class" id="struct-rigidbodycomponent3d">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RigidBodyComponent3D</code> <span class="api-class__count">1</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>PhysicsWorld3D() = default</code></div>
-<div class="api-method"><code>void setGravity(const sgc::Vec3f&amp; gravity) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr const sgc::Vec3f&amp; gravity() const noexcept</code></div>
-<div class="api-method"><code>RigidBody3D&amp; addBody() noexcept</code></div>
-<div class="api-method"><code>void removeBody(BodyId id) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] RigidBody3D* getBody(BodyId id) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const RigidBody3D* getBody(BodyId id) const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t bodyCount() const noexcept</code></div>
-<div class="api-method"><code>void addSphereCollider(BodyId bodyId, const SphereCollider&amp; sphere) noexcept</code></div>
-<div class="api-method"><code>void addAABBCollider(BodyId bodyId, const AABBCollider3D&amp; aabb) noexcept</code></div>
-<div class="api-method"><code>void addCapsuleCollider(BodyId bodyId, const CapsuleCollider&amp; capsule) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t colliderCount() const noexcept</code></div>
-<div class="api-method"><code>void addDistanceConstraint(DistanceConstraint constraint) noexcept</code></div>
-<div class="api-method"><code>void addHingeConstraint(HingeConstraint constraint) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t constraintCount() const noexcept</code></div>
-<div class="api-method"><code>void registerCollisionCallback(CollisionCallback3D callback) noexcept</code></div>
-<div class="api-method"><code>void setSolverIterations(int iterations) noexcept</code></div>
-<div class="api-method"><code>void step(float dt) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t lastContactCount() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::unordered_map&lt;BodyId, std::unique_ptr&lt;RigidBody3D&gt;&gt;&amp; bodies() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const std::unordered_map&lt;BodyId, std::unique_ptr&lt;RigidBody3D&gt;&gt;&amp; bodies() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::vector&lt;BodyCollider&gt;&amp; colliders() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const std::vector&lt;BodyCollider&gt;&amp; colliders() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] static AABBCollider3D computeAABB(const BodyCollider&amp; collider) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::optional&lt;RayHit3D&gt; raycast( const Ray3D&amp; ray, float maxDist = 1e6f) const noexcept</code></div>
-<div class="api-method"><code>using BodyId = uint32_t;</code></div>
-<div class="api-method"><code>inline constexpr BodyId INVALID_BODY_ID = 0</code></div>
-</div>
-</details>
-<details class="api-class" id="class-rigidbody3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RigidBody3D</code> <span class="api-class__count">36</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>RigidBody3D() noexcept</code></div>
-<div class="api-method"><code>explicit RigidBody3D(float mass) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr const sgc::Vec3f&amp; position() const noexcept</code></div>
-<div class="api-method"><code>void setPosition(const sgc::Vec3f&amp; pos) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr const sgc::Quaternionf&amp; rotation() const noexcept</code></div>
-<div class="api-method"><code>void setRotation(const sgc::Quaternionf&amp; rot) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float mass() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float inverseMass() const noexcept</code></div>
-<div class="api-method"><code>void setMass(float mass) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr const sgc::Mat3f&amp; inertiaTensor() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr const sgc::Mat3f&amp; inverseInertiaTensor() const noexcept</code></div>
-<div class="api-method"><code>void setInertiaTensor(const sgc::Mat3f&amp; tensor) noexcept</code></div>
-<div class="api-method"><code>void setBoxInertiaTensor(const sgc::Vec3f&amp; halfExtents) noexcept</code></div>
-<div class="api-method"><code>void setSphereInertiaTensor(float radius) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr bool isStatic() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr const sgc::Vec3f&amp; linearVelocity() const noexcept</code></div>
-<div class="api-method"><code>void setLinearVelocity(const sgc::Vec3f&amp; vel) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr const sgc::Vec3f&amp; angularVelocity() const noexcept</code></div>
-<div class="api-method"><code>void setAngularVelocity(const sgc::Vec3f&amp; vel) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float linearDamping() const noexcept</code></div>
-<div class="api-method"><code>void setLinearDamping(float damping) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float angularDamping() const noexcept</code></div>
-<div class="api-method"><code>void setAngularDamping(float damping) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float restitution() const noexcept</code></div>
-<div class="api-method"><code>void setRestitution(float e) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr float friction() const noexcept</code></div>
-<div class="api-method"><code>void setFriction(float f) noexcept</code></div>
-<div class="api-method"><code>void applyForce(const sgc::Vec3f&amp; force) noexcept</code></div>
-<div class="api-method"><code>void applyTorque(const sgc::Vec3f&amp; torque) noexcept</code></div>
-<div class="api-method"><code>void applyForceAtPoint(const sgc::Vec3f&amp; force, const sgc::Vec3f&amp; worldPoint) noexcept</code></div>
-<div class="api-method"><code>void applyImpulse(const sgc::Vec3f&amp; impulse) noexcept</code></div>
-<div class="api-method"><code>void applyImpulseAtPoint(const sgc::Vec3f&amp; impulse, const sgc::Vec3f&amp; worldPoint) noexcept</code></div>
-<div class="api-method"><code>void clearForces() noexcept</code></div>
-<div class="api-method"><code>void integrate(float dt) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr BodyId id() const noexcept</code></div>
-<div class="api-method"><code>void setId(BodyId id) noexcept</code></div>
+<div class="api-method"><code>std::shared_ptr&lt;const TriangleMesh3D&gt; colliderMesh</code></div>
 </div>
 </details>
 <hr>

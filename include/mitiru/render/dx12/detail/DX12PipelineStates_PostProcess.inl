@@ -1,4 +1,4 @@
-// Class-body chunk for Renderer3D_DX12 - included via DX12PipelineStates.hpp
+// Renderer3D_DX12 のクラス本体の一部。DX12PipelineStates.hpp から include される
 
 
 // ─────────────────────────────────────────────────────────────
@@ -42,15 +42,15 @@ void resolveMSAAColorToHDR()
 }
 
 /// @brief Tonemap PSO (root sig + PSO) を生成する (ENG-106)
-/// @details createFXAAPipelines と同じ root sig 構造: [0] SRV table, [1] CBV b0,
-///          static sampler s0 (linear/clamp). Backbuffer (LDR R8G8B8A8) に書く。
+/// @details createFXAAPipelines と同じ root sig 構造: [0] SRV table (t0 = HDR、t1 = SSAO、t2 = bloom)、[1] CBV b0,
+///          static sampler s0 (linear/clamp)。Backbuffer (LDR R8G8B8A8) に書く。bloom の 3 パスも同じ root sig を使う
 void createTonemapPipeline()
 {
 	if (!m_tonemapVS || !m_tonemapPS) return;
 
 	D3D12_DESCRIPTOR_RANGE srvRange = {};
 	srvRange.RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	srvRange.NumDescriptors     = 1;
+	srvRange.NumDescriptors     = 3;
 	srvRange.BaseShaderRegister = 0;
 
 	D3D12_ROOT_PARAMETER params[2] = {};
@@ -198,13 +198,22 @@ void applyTonemap()
 	{
 		float exposure;
 		float gamma;
-		float _pad0;
+		float aoOn;    // 1 なら t1 の SSAO を HDR 色に掛ける (TonemapCB と同じ並び)
+		float bloomOn; // 1 なら t2 の bloom を HDR 色に足す
+		float bloomStrength;
+		float saturation;
+		float contrast;
 		float _pad1;
-		float _trailing[60]{}; // 256 B 境界
+		float _trailing[56]{}; // 256 B 境界
 	};
 	CbTonemap256 cb{};
-	cb.exposure = m_tonemapExposure;
-	cb.gamma    = m_tonemapGamma;
+	cb.exposure      = m_tonemapExposure;
+	cb.gamma         = m_tonemapGamma;
+	cb.aoOn          = m_aoAppliedThisFrame ? 1.0f : 0.0f;
+	cb.bloomOn       = m_bloomAppliedThisFrame ? 1.0f : 0.0f;
+	cb.bloomStrength = m_bloomStrength;
+	cb.saturation    = m_gradeSaturation;
+	cb.contrast      = m_gradeContrast;
 	auto a = m_uploadRing.upload(&cb, sizeof(CbTonemap256), 256);
 	return a.valid() ? a.gpuAddr : 0;
 }
@@ -316,9 +325,6 @@ void createFXAAIntermediate()
 	m_fxaaIntermediate.Reset();
 	m_fxaaSrvHeap.Reset();
 
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
 	D3D12_RESOURCE_DESC desc = {};
 	desc.Dimension          = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	desc.Width              = static_cast<UINT64>(m_config.viewportWidth);
@@ -330,11 +336,10 @@ void createFXAAIntermediate()
 	desc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	desc.Flags              = D3D12_RESOURCE_FLAG_NONE;
 
-	HRESULT hr = m_d3dDevice->CreateCommittedResource(
-		&heapProps, D3D12_HEAP_FLAG_NONE, &desc,
-		D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-		IID_PPV_ARGS(m_fxaaIntermediate.GetAddressOf()));
+	HRESULT hr = gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, desc,
+		D3D12_RESOURCE_STATE_COPY_DEST, nullptr, m_fxaaIntermediate);
 	if (FAILED(hr) || !m_fxaaIntermediate) return;
+	m_fxaaIntermediate->SetName(L"Renderer3D FXAA intermediate");
 
 	// shader-visible SRV heap (1 slot)
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
@@ -361,7 +366,7 @@ void createFXAAIntermediate()
 ///   1. backbuffer → intermediate に CopyResource
 ///   2. intermediate を PIXEL_SHADER_RESOURCE 状態に遷移、backbuffer を RENDER_TARGET に戻す
 ///   3. FXAA PSO + root sig をバインドし、CBV (rcpFrame / quality) をアップロード
-///   4. フルスクリーン三角形 (3 vertices, no VB) を draw → backbuffer に FXAA 適用
+///   4. フルスクリーン三角形 (3 頂点、VB なし) を draw → backbuffer に FXAA 適用
 ///   5. intermediate を COPY_DEST 状態に戻して次フレームに備える
 void drawFXAAPass()
 {
@@ -373,7 +378,7 @@ void drawFXAAPass()
 	if (!bbPost) return;
 
 	// 出力先が実バックバッファでない (lo-fi の低解像 RT 等) 間は適用しない。
-	// intermediate とのサイズ不一致で CopyResource が壊れるし、低解像の絵に AA は不要
+	// intermediate とのサイズ不一致で CopyResource がおかしくなるし、低解像の絵に AA は不要
 	{
 		const auto d = bbPost->nativeResource()->GetDesc();
 		if (static_cast<float>(d.Width)  != m_config.viewportWidth ||
@@ -555,8 +560,53 @@ void drawFXAAPass()
 	cb.materialParams[1] = material.nearestFilter ? 1.0f : 0.0f;
 	cb.materialParams[2] =
 		(material.alphaMode == Material::AlphaMode::Mask) ? 1.0f : 0.0f;
-	cb.materialParams[3] = 0.0f;
+	cb.materialParams[3] = m_outlineCasterEnabled ? 0.0f : 1.0f;
 
+	/// トゥーンの段と段付きハイライト (v40)
+	cb.toonParams[0] = static_cast<float>(m_toonBands);
+	cb.toonParams[1] = m_toonSoftness;
+	cb.toonParams[2] = m_toonSpecular;
+	cb.toonParams[3] = m_toonSpecularPower;
+	cb.toonMidTint[0] = m_toonMidTint.r;
+	cb.toonMidTint[1] = m_toonMidTint.g;
+	cb.toonMidTint[2] = m_toonMidTint.b;
+	cb.toonMidTint[3] = 1.0f;
+
+	/// 半球アンビエント (v43)。両方が真っ黒 = 半球を使わない指定なので、上下に同じ平坦な色を入れる。
+	/// シェーダー側の lerp が恒等になり、分岐なしで従来と同じ絵になる
+	const bool hemi = (m_ambientSky.r + m_ambientSky.g + m_ambientSky.b +
+	                   m_ambientGround.r + m_ambientGround.g + m_ambientGround.b) > 0.0f;
+	const sgc::Colorf sky    = hemi ? m_ambientSky : m_sceneAmbient;
+	const sgc::Colorf ground = hemi ? m_ambientGround : m_sceneAmbient;
+	cb.ambientSky[0] = sky.r; cb.ambientSky[1] = sky.g; cb.ambientSky[2] = sky.b;
+	cb.ambientGround[0] = ground.r; cb.ambientGround[1] = ground.g; cb.ambientGround[2] = ground.b;
+
+	/// 縁光 (v43)。強さを色へ畳んでおくと PS が 1 本の mad で済み、無効時 (強さ 0) は黒を足すだけになる
+	cb.rimParams[0] = m_rimColor.r * m_rimStrength;
+	cb.rimParams[1] = m_rimColor.g * m_rimStrength;
+	cb.rimParams[2] = m_rimColor.b * m_rimStrength;
+	cb.rimParams[3] = m_rimPower;
+
+	/// 段付きハイライトの材質依存 (v43)。glTF の metallic/roughness をトゥーンのハイライトへ写す。
+	/// 誘電体の specular は glTF では F0 = 0.04 固定で、そのまま掛けるとハイライトが消えてしまうので
+	/// 0.04 を 1.0 とみなす正規化を通す (手書き Material の既定 1.0 も、黒 = ハイライト無しも変わらない)。
+	/// 金属は Material::specular が baseColor になっているので、自分の色のハイライトが出る。
+	/// roughness 1 / metallic 0 = 手書き Material の既定では色も指数も 1 倍 = 従来と同じ絵
+	const float metal = (material.metallic < 0.0f) ? 0.0f : ((material.metallic > 1.0f) ? 1.0f : material.metallic);
+	const float rough = (material.roughness < 0.0f) ? 0.0f : ((material.roughness > 1.0f) ? 1.0f : material.roughness);
+	const float gloss = 1.0f - rough;
+	const float gain  = (1.0f + 1.2f * gloss) * (1.0f + 0.4f * metal);
+	const float spec[3] = {material.specular.r, material.specular.g, material.specular.b};
+	for (int i = 0; i < 3; ++i)
+	{
+		const float dielectric = (spec[i] > 0.04f) ? 1.0f : (spec[i] / 0.04f);
+		cb.toonMaterial[i] = (dielectric + (spec[i] - dielectric) * metal) * gain;
+	}
+	cb.toonMaterial[3] = 1.0f + 3.0f * gloss;
+
+	m_lastLightingCB = cb;
 	auto a = m_uploadRing.upload(&cb, sizeof(DX12CbLighting), 256);
 	return a.valid() ? a.gpuAddr : 0;
 }
+
+DX12CbLighting m_lastLightingCB{};

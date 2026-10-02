@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file GpuParticleSystem.hpp
-/// @brief GPU加速パーティクルシステム（バックエンド非依存インターフェース）
-/// @details コンピュートシェーダーによるGPUシミュレーションとインスタンス描画を行う
-///          パーティクルシステムの抽象インターフェース。最大100Kパーティクルをサポート。
+/// @brief GPU 加速パーティクルシステム（バックエンド非依存インターフェース）
+/// @details コンピュートシェーダーによる GPU シミュレーションとインスタンス描画を行う
+///          パーティクルシステムの抽象インターフェース。最大 100K パーティクルをサポートする。
 ///
 /// @code
 /// auto particles = mitiru::effects::createGpuParticleSystem(device);
@@ -36,9 +36,9 @@ class IDevice;
 namespace mitiru::effects
 {
 
-/// @brief GPUパーティクル属性
-/// @details GPUバッファに格納される各パーティクルのデータ。
-///          コンピュートシェーダーとの互換性のため16バイトアラインされた構造体。
+/// @brief GPU パーティクル属性
+/// @details GPU バッファに格納する各パーティクルのデータ。
+///          コンピュートシェーダーとの互換性のため 16 バイトにアラインした構造体。
 struct GpuParticle
 {
 	float posX = 0;      ///< 位置X
@@ -87,7 +87,7 @@ struct ParticleRenderConstants
 /// @brief 最大パーティクル数
 static constexpr std::uint32_t MAX_GPU_PARTICLES = 100'000;
 
-/// @brief GPUパーティクルシステムインターフェース
+/// @brief GPU パーティクルシステムインターフェース
 /// @details バックエンド（DX11/DX12）に依存しない抽象インターフェース。
 ///          コンピュートシェーダーによるシミュレーションとインスタンス描画を提供する。
 class IGpuParticleSystem
@@ -124,7 +124,7 @@ public:
 	/// @param count 放出数
 	virtual void burst(std::uint32_t count) = 0;
 
-	/// @brief GPUシミュレーションを実行する（重力・抵抗・寿命減衰）
+	/// @brief GPU シミュレーションを実行する（重力・抵抗・寿命減衰）
 	/// @param dt デルタタイム（秒）
 	virtual void update(float dt) = 0;
 

@@ -122,16 +122,13 @@ public:
 	/// @details 対応時は `draw()` 中の 2D を蓄積し、`Screen::present3DOverlay()` で 3D の上に描く。
 	[[nodiscard]] virtual bool hasOverlaySupport() const noexcept { return false; }
 
-	/// @brief DX12 で ImGui の描画を追加するため、開いているコマンドリストを返す
-	[[nodiscard]] virtual void* nativeCommandList() const noexcept { return nullptr; }
-
 	/// @brief DX12 では `Dx12Device*`、それ以外では nullptr を返す
 	[[nodiscard]] virtual void* nativeDevice() const noexcept { return nullptr; }
 
 	/// @brief DX12 では `Dx12SwapChain*`、それ以外では nullptr を返す
 	[[nodiscard]] virtual void* nativeSwapChain() const noexcept { return nullptr; }
 
-	/// @brief ImGui の描画後にコマンドリストを閉じて実行する
+	/// @brief コマンドリストを閉じて実行する
 	/// @details DX12 では `endFrame()` の後に呼ぶ。
 	virtual void finalizeFrame() {}
 
@@ -323,6 +320,74 @@ public:
 	{
 		if (auto* fx = sceneFx()) { fx->setShadowCascadeCount(count); }
 	}
+
+	// v39 末尾追記: ISceneFx::setOutlineCaster への転送
+	virtual void setOutlineCaster(bool enabled)
+	{
+		if (auto* fx = sceneFx()) { fx->setOutlineCaster(enabled); }
+	}
+
+	// v40 末尾追記: ISceneFx の SSAO / トゥーン段数 / 段付きハイライトへの転送
+	virtual void setAmbientOcclusion(bool enabled, float radius, float strength)
+	{
+		if (auto* fx = sceneFx()) { fx->setAmbientOcclusion(enabled, radius, strength); }
+	}
+	virtual void setToonRamp(int bands, float softness, const sgc::Colorf& midTint)
+	{
+		if (auto* fx = sceneFx()) { fx->setToonRamp(bands, softness, midTint); }
+	}
+	virtual void setToonSpecular(float strength, float power)
+	{
+		if (auto* fx = sceneFx()) { fx->setToonSpecular(strength, power); }
+	}
+
+	// v41 末尾追記: ISceneFx の bloom / 影の柔らかさ / 色調補正への転送
+	virtual void setBloom(bool enabled, float threshold, float strength)
+	{
+		if (auto* fx = sceneFx()) { fx->setBloom(enabled, threshold, strength); }
+	}
+	virtual void setShadowSoftness(float texels)
+	{
+		if (auto* fx = sceneFx()) { fx->setShadowSoftness(texels); }
+	}
+	virtual void setColorGrade(float saturation, float contrast)
+	{
+		if (auto* fx = sceneFx()) { fx->setColorGrade(saturation, contrast); }
+	}
+
+	// v42 末尾追記: ISceneFx::setOutlineFade への転送
+	virtual void setOutlineFade(float nearDist, float farDist, float minStrength)
+	{
+		if (auto* fx = sceneFx()) { fx->setOutlineFade(nearDist, farDist, minStrength); }
+	}
+
+	// v43 末尾追記: ISceneFx の半球アンビエント / 縁光 / 輪郭線の色への転送
+	virtual void setHemisphereAmbient(const sgc::Colorf& sky, const sgc::Colorf& ground)
+	{
+		if (auto* fx = sceneFx()) { fx->setHemisphereAmbient(sky, ground); }
+	}
+	virtual void setRimLight(float strength, float power, const sgc::Colorf& color)
+	{
+		if (auto* fx = sceneFx()) { fx->setRimLight(strength, power, color); }
+	}
+	virtual void setOutlineDarken(float darken)
+	{
+		if (auto* fx = sceneFx()) { fx->setOutlineDarken(darken); }
+	}
+	virtual void setDepthOfField(float start, float end, float strength)
+	{
+		if (auto* fx = sceneFx()) { fx->setDepthOfField(start, end, strength); }
+	}
+	virtual void setShadowBias(float worldUnits)
+	{
+		if (auto* fx = sceneFx()) { fx->setShadowBias(worldUnits); }
+	}
+
+	/// @brief このフレームの setCamera を揺らす。注視点の深さにある物が画面幅・高さの (fracX, fracY) だけ動く (+y は下)。
+	/// @details カメラごと平行移動するので、注視点より手前の物は大きく、奥の物は小さく動く (視差が付く)。
+	///          finalizeFrame で 0 に戻る。hud.shake を 3D にも反映するために host の ModuleAdapter が毎フレーム呼ぶ。
+	///          ゲーム DLL は呼ばない (古い DLL は今ある枠しか使わない) ので、末尾に足しても kCurrentApiVersion は上げない。
+	virtual void setCameraShake(float /*fracX*/, float /*fracY*/) {}
 };
 
 } // namespace mitiru::render

@@ -2,8 +2,8 @@
 
 /// @file MidiConverter.hpp
 /// @brief MIDI ↔ MML 変換器
-/// @details Standard MIDI File (SMF) の読み込みとMML文字列への変換。
-///          MMLからMIDIイベント列への逆変換も対応。
+/// @details Standard MIDI File (SMF) の読み込みと MML 文字列への変換。
+///          MML から MIDI イベント列への逆変換にも対応。
 
 #include <algorithm>
 #include <cmath>
@@ -15,7 +15,7 @@
 namespace mitiru::audio
 {
 
-/// @brief MIDIノートイベント
+/// @brief MIDI ノートイベント
 struct MidiNote
 {
 	uint32_t tick = 0;        ///< 開始ティック
@@ -25,7 +25,7 @@ struct MidiNote
 	uint8_t velocity = 100;  ///< ベロシティ (0-127)
 };
 
-/// @brief MIDIトラック
+/// @brief MIDI トラック
 struct MidiTrack
 {
 	std::string name;
@@ -33,7 +33,7 @@ struct MidiTrack
 	uint8_t program = 0;  ///< 楽器番号 (GM)
 };
 
-/// @brief MIDIファイルデータ
+/// @brief MIDI ファイルデータ
 struct MidiFile
 {
 	uint16_t format = 1;      ///< 0=単一トラック, 1=複数同期, 2=複数非同期
@@ -46,7 +46,7 @@ struct MidiFile
 class MidiToMml
 {
 public:
-	/// @brief MIDIファイルを読み込む（簡易SMFパーサー）
+	/// @brief MIDI ファイルを読み込む（簡易 SMF パーサー）
 	[[nodiscard]] bool loadSmf(const std::string& path)
 	{
 		std::ifstream ifs(path, std::ios::binary);
@@ -64,7 +64,7 @@ public:
 		const uint16_t numTracks = readBE16(ifs);
 		m_midi.ticksPerBeat = readBE16(ifs);
 
-		// 残りのヘッダをスキップ
+		// 残りのヘッダーをスキップ
 		if (headerLen > 6) { ifs.seekg(headerLen - 6, std::ios::cur); }
 
 		// トラック読み込み
@@ -86,7 +86,7 @@ public:
 		return !m_midi.tracks.empty();
 	}
 
-	/// @brief MMLに変換する
+	/// @brief MML に変換する
 	[[nodiscard]] std::string toMml(int trackIndex = 0) const
 	{
 		if (trackIndex < 0 || trackIndex >= static_cast<int>(m_midi.tracks.size()))
@@ -126,7 +126,7 @@ public:
 		return mml;
 	}
 
-	/// @brief MIDIデータへの参照
+	/// @brief MIDI データへの参照
 	[[nodiscard]] const MidiFile& midi() const noexcept { return m_midi; }
 
 private:
@@ -165,7 +165,7 @@ private:
 		uint32_t tick = 0;
 		uint8_t runningStatus = 0;
 
-		// ノートオン追跡（キー→開始ティック）
+		// ノートオンの追跡（キー→開始ティック）
 		uint32_t noteOnTick[128] = {};
 		uint8_t noteOnVel[128] = {};
 

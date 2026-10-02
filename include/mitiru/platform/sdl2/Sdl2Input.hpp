@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Sdl2Input.hpp
-/// @brief SDL2入力ハンドリング
-/// @details SDL2のイベントシステムを使用したキーボード・マウス・ゲームパッド入力管理。
-///          MITIRU_HAS_SDL2が定義されている場合のみコンパイルされる。
+/// @brief SDL2 入力ハンドリング
+/// @details SDL2 のイベントシステムを使用したキーボード・マウス・ゲームパッド入力管理。
+///          MITIRU_HAS_SDL2 が定義されている場合のみコンパイルされる。
 ///
 ///          カーソルキャプチャ: InputState::setCursorCaptured() の値を毎フレーム
 ///          applyCursorCapture() が読み取り、エッジ検出で SDL_SetRelativeMouseMode を
@@ -19,9 +19,9 @@
 namespace mitiru
 {
 
-/// @brief SDL2入力設定
-/// @details SDL2入力処理のオプションパラメータを保持する。
-///          実際のSDL2ライブラリに依存せず、テストで使用可能。
+/// @brief SDL2 入力設定
+/// @details SDL2 入力処理のオプションパラメータを保持する。
+///          実際の SDL2 ライブラリに依存せず、テストで使用可能。
 struct Sdl2InputConfig
 {
 	bool enableKeyboard = true;          ///< キーボード入力の有効化
@@ -40,7 +40,7 @@ struct Sdl2InputConfig
 };
 
 /// @brief ゲームパッド状態
-/// @details 1つのゲームパッドの軸・ボタン状態を保持する。
+/// @details 1 つのゲームパッドの軸・ボタン状態を保持する。
 struct GamepadState
 {
 	/// @brief 最大軸数
@@ -62,7 +62,7 @@ struct GamepadState
 
 	/// @brief 指定ボタンが今フレームで押されたか（エッジ検出）
 	/// @param index ボタンインデックス
-	/// @return 今フレーム押下かつ前フレーム非押下ならtrue
+	/// @return 今フレーム押下かつ前フレーム非押下なら true
 	[[nodiscard]] bool isButtonJustPressed(int index) const noexcept
 	{
 		if (index < 0 || index >= MAX_BUTTONS)
@@ -75,7 +75,7 @@ struct GamepadState
 
 	/// @brief 指定ボタンが今フレームで離されたか（エッジ検出）
 	/// @param index ボタンインデックス
-	/// @return 今フレーム非押下かつ前フレーム押下ならtrue
+	/// @return 今フレーム非押下かつ前フレーム押下なら true
 	[[nodiscard]] bool isButtonJustReleased(int index) const noexcept
 	{
 		if (index < 0 || index >= MAX_BUTTONS)
@@ -110,9 +110,9 @@ struct MouseWheelState
 namespace mitiru
 {
 
-/// @brief SDL2入力ハンドラー
-/// @details SDL_Eventからキーボード・マウス・ゲームパッドの状態を更新する。
-///          InputStateと統合して使用する。
+/// @brief SDL2 入力ハンドラー
+/// @details SDL_Event からキーボード・マウス・ゲームパッドの状態を更新する。
+///          InputState と統合して使用する。
 ///
 /// @code
 /// Sdl2Input input(Sdl2InputConfig::defaults());
@@ -173,8 +173,8 @@ public:
 		applyCursorCapture();
 	}
 
-	/// @brief SDL_Eventを処理する
-	/// @param event SDL2イベント
+	/// @brief SDL_Event を処理する
+	/// @param event SDL2 イベント
 	void processEvent(const SDL_Event& event)
 	{
 		switch (event.type)
@@ -289,28 +289,28 @@ public:
 	}
 
 	/// @brief 入力状態を取得する
-	/// @return InputStateへのconst参照
+	/// @return InputState への const 参照
 	[[nodiscard]] const InputState& state() const noexcept
 	{
 		return m_state;
 	}
 
 	/// @brief ゲームパッド状態を取得する
-	/// @return GamepadStateへのconst参照
+	/// @return GamepadState への const 参照
 	[[nodiscard]] const GamepadState& gamepad() const noexcept
 	{
 		return m_gamepad;
 	}
 
 	/// @brief マウスホイール状態を取得する
-	/// @return MouseWheelStateへのconst参照
+	/// @return MouseWheelState への const 参照
 	[[nodiscard]] const MouseWheelState& wheel() const noexcept
 	{
 		return m_wheel;
 	}
 
 	/// @brief 設定を取得する
-	/// @return Sdl2InputConfigへのconst参照
+	/// @return Sdl2InputConfig への const 参照
 	[[nodiscard]] const Sdl2InputConfig& config() const noexcept
 	{
 		return m_config;
@@ -338,8 +338,8 @@ private:
 		}
 	}
 
-	/// @brief SDL_MouseButtonEventをMouseButtonに変換して状態を設定する
-	/// @param sdlButton SDL2マウスボタンID
+	/// @brief SDL_MouseButtonEvent を MouseButton に変換して状態を設定する
+	/// @param sdlButton SDL2 マウスボタン ID
 	/// @param down 押下状態
 	void handleMouseButton(std::uint8_t sdlButton, bool down) noexcept
 	{

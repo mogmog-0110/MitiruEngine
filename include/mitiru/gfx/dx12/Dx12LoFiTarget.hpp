@@ -1,10 +1,10 @@
 #pragma once
 /// @file Dx12LoFiTarget.hpp
-/// @brief ローファイ・ポストFX 用の低解像オフスクリーン RT + 量子化/ディザ・フルスクリーンパス。
+/// @brief ローファイ・ポスト FX 用の低解像オフスクリーン RT + 量子化/ディザ・フルスクリーンパス。
 /// @details ゲームを低い内部解像度のオフスクリーン RT に描画させ（swapchain の backBuffer を
 ///          一時的に override）、提示時に point サンプル + パレット量子化 + 4×4 Bayer ディザの
 ///          フルスクリーンパスで実バックバッファへニアレスト拡大する。DX12 のみ。既定 OFF。
-///          失敗モード回避: 既定無効・例外時は黙って従来描画にフォールバック（override は外す）。
+///          失敗モード回避: 既定無効・例外時は何も知らせずに従来描画にフォールバック（override は外す）。
 
 #ifdef _WIN32
 
@@ -23,6 +23,9 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 
+#include <mitiru/gfx/dx12/Dx12FenceWait.hpp>
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 #include <mitiru/gfx/dx12/Dx12RenderTarget.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
 #include <mitiru/render/lofi/LoFiShader.hpp>
@@ -167,13 +170,8 @@ private:
 		sh.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		if (FAILED(m_device->CreateDescriptorHeap(&sh, IID_PPV_ARGS(&m_srvHeap)))) return false;
 
-		D3D12_HEAP_PROPERTIES up = {}; up.Type = D3D12_HEAP_TYPE_UPLOAD;
-		D3D12_RESOURCE_DESC cbd = {};
-		cbd.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; cbd.Width = 256; cbd.Height = 1;
-		cbd.DepthOrArraySize = 1; cbd.MipLevels = 1; cbd.SampleDesc.Count = 1;
-		cbd.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		if (FAILED(m_device->CreateCommittedResource(&up, D3D12_HEAP_FLAG_NONE, &cbd,
-			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_cb)))) return false;
+		if (FAILED(createGpuBuffer(m_device, D3D12_HEAP_TYPE_UPLOAD, 256,
+			D3D12_RESOURCE_STATE_GENERIC_READ, m_cb))) return false;
 		D3D12_RANGE rr = { 0, 0 };
 		m_cb->Map(0, &rr, reinterpret_cast<void**>(&m_cbMapped));
 		return true;
@@ -183,7 +181,6 @@ private:
 	{
 		waitGpu();
 		m_tex.Reset();
-		D3D12_HEAP_PROPERTIES hp = {}; hp.Type = D3D12_HEAP_TYPE_DEFAULT;
 		D3D12_RESOURCE_DESC td = {};
 		td.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		td.Width = static_cast<UINT64>(w); td.Height = static_cast<UINT>(h);
@@ -191,8 +188,8 @@ private:
 		td.Format = DXGI_FORMAT_R8G8B8A8_UNORM; td.SampleDesc.Count = 1;
 		td.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 		D3D12_CLEAR_VALUE cv = {}; cv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		if (FAILED(m_device->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &td,
-			D3D12_RESOURCE_STATE_COMMON, &cv, IID_PPV_ARGS(&m_tex)))) return false;
+		if (FAILED(createGpuResource(m_device, D3D12_HEAP_TYPE_DEFAULT, td,
+			D3D12_RESOURCE_STATE_COMMON, &cv, m_tex))) return false;
 		m_texState = D3D12_RESOURCE_STATE_COMMON;
 
 		// RTV
@@ -216,8 +213,7 @@ private:
 	ComPtr<ID3DBlob> compile(std::string_view src, const char* entry, const char* target)
 	{
 		ComPtr<ID3DBlob> blob, err;
-		if (FAILED(D3DCompile(src.data(), src.size(), nullptr, nullptr, nullptr,
-			entry, target, 0, 0, &blob, &err))) return nullptr;
+		if (FAILED(compileDx12Shader(src, entry, target, 0, &blob, &err))) return nullptr;
 		return blob;
 	}
 
@@ -243,20 +239,16 @@ private:
 	void waitGpu()
 	{
 		if (!m_fence) return;
-		if (m_fence->GetCompletedValue() < m_fenceVal)
-		{
-			m_fence->SetEventOnCompletion(m_fenceVal, m_fenceEvent);
-			WaitForSingleObject(m_fenceEvent, INFINITE);
-		}
+		(void)waitForFenceOrReport(m_fence.Get(), m_fenceVal, m_fenceEvent, "Dx12LoFiTarget");
 	}
 
 	ID3D12Device* m_device = nullptr;
 	ID3D12CommandQueue* m_queue = nullptr;
 	ComPtr<ID3D12RootSignature> m_rootSig;
 	ComPtr<ID3D12PipelineState> m_pso;
-	ComPtr<ID3D12Resource> m_tex;
+	GpuResource m_tex;
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap, m_srvHeap;
-	ComPtr<ID3D12Resource> m_cb;
+	GpuResource m_cb;
 	std::uint8_t* m_cbMapped = nullptr;
 	Dx12RenderTarget m_rtv;
 	ComPtr<ID3D12CommandAllocator> m_alloc;

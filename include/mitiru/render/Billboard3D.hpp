@@ -1,6 +1,6 @@
 #pragma once
 /// @file Billboard3D.hpp
-/// @brief 3D空間内のビルボード（常にカメラを向くクワッド）
+/// @brief 3D 空間内のビルボード（常にカメラを向くクワッド）
 
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/Material.hpp>
@@ -22,7 +22,7 @@ struct BillboardInstance {
 };
 
 /// @brief ビルボードレンダラー
-/// @details 3D空間に常にカメラを向くクワッドを配置する。
+/// @details 3D 空間に常にカメラを向くクワッドを配置する。
 ///          湯気、値段タグ、エフェクト等に使用。
 class Billboard3D {
 public:

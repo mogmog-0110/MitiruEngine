@@ -7,6 +7,7 @@
 /// t >= 0 であれば交差点は ray.pointAt(t) で取得できる。
 
 #include <cmath>
+#include <limits>
 #include <optional>
 
 #include "sgc/math/Geometry.hpp"
@@ -19,6 +20,40 @@ namespace sgc
 /// @brief 交差判定関数をまとめた名前空間
 namespace intersection
 {
+
+namespace detail
+{
+
+/// @brief a t^2 + 2 halfB t + c = 0 の非負の最小根 (discriminant = halfB^2 - ac >= 0 を渡す)
+/// @note 2 根を q/a と c/q で求め、-halfB ± sqrt の引き算による桁落ちを避ける
+template <FloatingPoint T>
+[[nodiscard]] std::optional<T> nearestNonNegativeRoot(T a, T halfB, T c, T discriminant) noexcept
+{
+	const T q = -halfB - std::copysign(std::sqrt(discriminant), halfB);
+	if (q == T{0}) return T{0};
+	T t1 = c / q;
+	T t2 = q / a;
+	if (t1 > t2) { const T tmp = t1; t1 = t2; t2 = tmp; }
+	if (t1 >= T{0}) return t1;
+	if (t2 >= T{0}) return t2;
+	return std::nullopt;
+}
+
+/// @brief いずれかの成分が NaN か
+/// @note スラブ法の比較は NaN で全て false になり「外れ」の早期 return を素通りするため、入口で弾く
+template <FloatingPoint T>
+[[nodiscard]] constexpr bool hasNaN(const Vec3<T>& v) noexcept
+{
+	return v.x != v.x || v.y != v.y || v.z != v.z;
+}
+
+template <FloatingPoint T>
+[[nodiscard]] constexpr bool hasNaN(const Vec2<T>& v) noexcept
+{
+	return v.x != v.x || v.y != v.y;
+}
+
+} // namespace detail
 
 /// @brief Ray3 と Plane の交差判定
 /// @param ray 3Dレイ
@@ -54,20 +89,13 @@ template <FloatingPoint T>
 {
 	const Vec3<T> oc = ray.origin - sphere.center;
 	const T a = ray.direction.dot(ray.direction);
-	const T b = T{2} * oc.dot(ray.direction);
-	const T c = oc.dot(oc) - sphere.radius * sphere.radius;
-	const T discriminant = b * b - T{4} * a * c;
-
+	const T halfB = oc.dot(ray.direction);
+	const T r2 = sphere.radius * sphere.radius;
+	// b^2 - 4ac は |oc| が半径より大きいほど桁落ちするので、最接近点までの垂直成分から判別式を作る
+	const Vec3<T> perp = oc - ray.direction * (halfB / a);
+	const T discriminant = a * (r2 - perp.dot(perp));
 	if (discriminant < T{0}) return std::nullopt;
-
-	const T sqrtD = std::sqrt(discriminant);
-	const T inv2a = T{1} / (T{2} * a);
-	const T t1 = (-b - sqrtD) * inv2a;
-	const T t2 = (-b + sqrtD) * inv2a;
-
-	if (t1 >= T{0}) return t1;
-	if (t2 >= T{0}) return t2;
-	return std::nullopt;
+	return detail::nearestNonNegativeRoot(a, halfB, oc.dot(oc) - r2, discriminant);
 }
 
 /// @brief Ray3 と AABB3 の交差判定（Slab法）
@@ -78,6 +106,10 @@ template <FloatingPoint T>
 [[nodiscard]] std::optional<T> ray3VsAABB3(
 	const Ray3<T>& ray, const AABB3<T>& aabb) noexcept
 {
+	if (detail::hasNaN(ray.origin) || detail::hasNaN(ray.direction)
+		|| detail::hasNaN(aabb.min) || detail::hasNaN(aabb.max))
+		return std::nullopt;
+
 	T tmin = T{0};
 	T tmax = std::numeric_limits<T>::max();
 
@@ -146,28 +178,30 @@ template <FloatingPoint T>
 	const Ray3<T>& ray,
 	const Vec3<T>& v0, const Vec3<T>& v1, const Vec3<T>& v2) noexcept
 {
-	constexpr T epsilon = T{1e-8};
-
 	const Vec3<T> e1 = v1 - v0;
 	const Vec3<T> e2 = v2 - v0;
 	const Vec3<T> h = ray.direction.cross(e2);
 	const T a = e1.dot(h);
 
-	if (a > -epsilon && a < epsilon) return std::nullopt;
+	// a は辺長の 2 乗とレイ方向の長さに比例するので、平行判定は |e1||h| に対する比で行う
+	// (絶対値の閾値だと小さな三角形を正面から撃っても「平行」になる)
+	constexpr T relEpsilon = std::numeric_limits<T>::epsilon() * T{4};
+	if (a * a <= relEpsilon * relEpsilon * e1.lengthSquared() * h.lengthSquared()) return std::nullopt;
 
 	const T f = T{1} / a;
 	const Vec3<T> s = ray.origin - v0;
 	const T u = f * s.dot(h);
 
-	if (u < T{0} || u > T{1}) return std::nullopt;
+	// 「範囲内でなければ外れ」の形で比べ、NaN (比較が全て false) も外れにする
+	if (!(u >= T{0} && u <= T{1})) return std::nullopt;
 
 	const Vec3<T> q = s.cross(e1);
 	const T v = f * ray.direction.dot(q);
 
-	if (v < T{0} || u + v > T{1}) return std::nullopt;
+	if (!(v >= T{0} && u + v <= T{1})) return std::nullopt;
 
 	const T t = f * e2.dot(q);
-	if (t < T{0}) return std::nullopt;
+	if (!(t >= T{0})) return std::nullopt;
 
 	return t;
 }
@@ -180,6 +214,10 @@ template <FloatingPoint T>
 [[nodiscard]] std::optional<T> ray2VsAABB2(
 	const Ray2<T>& ray, const AABB2<T>& aabb) noexcept
 {
+	if (detail::hasNaN(ray.origin) || detail::hasNaN(ray.direction)
+		|| detail::hasNaN(aabb.min) || detail::hasNaN(aabb.max))
+		return std::nullopt;
+
 	T tmin = T{0};
 	T tmax = std::numeric_limits<T>::max();
 
@@ -230,20 +268,12 @@ template <FloatingPoint T>
 {
 	const Vec2<T> oc = ray.origin - circle.center;
 	const T a = ray.direction.dot(ray.direction);
-	const T b = T{2} * oc.dot(ray.direction);
-	const T c = oc.dot(oc) - circle.radius * circle.radius;
-	const T discriminant = b * b - T{4} * a * c;
-
+	const T halfB = oc.dot(ray.direction);
+	const T r2 = circle.radius * circle.radius;
+	const Vec2<T> perp = oc - ray.direction * (halfB / a);
+	const T discriminant = a * (r2 - perp.dot(perp));
 	if (discriminant < T{0}) return std::nullopt;
-
-	const T sqrtD = std::sqrt(discriminant);
-	const T inv2a = T{1} / (T{2} * a);
-	const T t1 = (-b - sqrtD) * inv2a;
-	const T t2 = (-b + sqrtD) * inv2a;
-
-	if (t1 >= T{0}) return t1;
-	if (t2 >= T{0}) return t2;
-	return std::nullopt;
+	return detail::nearestNonNegativeRoot(a, halfB, oc.dot(oc) - r2, discriminant);
 }
 
 /// @brief Sphere と AABB3 の交差判定

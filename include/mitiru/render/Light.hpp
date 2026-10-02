@@ -2,7 +2,7 @@
 
 /// @file Light.hpp
 /// @brief ライト定義
-/// @details 3Dシーン照明用のライトデータ。ディレクショナル・ポイント・スポットに対応。
+/// @details 3D シーン照明用のライトデータ。ディレクショナル・ポイント・スポットに対応。
 
 #include <sgc/math/Vec3.hpp>
 #include <sgc/types/Color.hpp>
@@ -19,7 +19,7 @@ enum class LightType
 };
 
 /// @brief ライト定義
-/// @details 3Dシーンで使用するライトの全パラメータを保持する。
+/// @details 3D シーンで使うライトの全パラメータを保持する。
 ///          ファクトリメソッドで主要なライト種別を簡単に生成できる。
 ///
 /// @code

@@ -109,7 +109,7 @@ struct FrostGlassConfig
 };
 
 /// @brief フロストグラスパス
-/// @details ランダムオフセットブラー＋カラーティントでUI背景向けの曇りガラス効果を実現する。
+/// @details ランダムオフセットブラー＋カラーティントで UI 背景向けの曇りガラス効果を実現する。
 class FrostGlassPass final : public PostProcessPass
 {
 public:

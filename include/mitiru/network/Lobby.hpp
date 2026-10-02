@@ -30,7 +30,7 @@ public:
 	};
 
 	/// @brief プレイヤーをロビーに追加する
-	/// @param id 接続ID
+	/// @param id 接続 ID
 	/// @param name プレイヤー名
 	void addPlayer(ConnectionId id, std::string name)
 	{
@@ -42,7 +42,7 @@ public:
 	}
 
 	/// @brief プレイヤーをロビーから削除する
-	/// @param id 接続ID
+	/// @param id 接続 ID
 	void removePlayer(ConnectionId id)
 	{
 		m_players.erase(
@@ -52,7 +52,7 @@ public:
 	}
 
 	/// @brief プレイヤーの準備状態を設定する
-	/// @param id 接続ID
+	/// @param id 接続 ID
 	/// @param ready 準備完了なら true
 	void setReady(ConnectionId id, bool ready)
 	{
@@ -65,7 +65,7 @@ public:
 	}
 
 	/// @brief 全プレイヤーが準備完了か判定する
-	/// @return 全員準備完了なら true（プレイヤー0人の場合は false）
+	/// @return 全員準備完了なら true（プレイヤー 0 人の場合は false）
 	[[nodiscard]] bool allReady() const
 	{
 		if (m_players.empty())
@@ -84,14 +84,14 @@ public:
 	}
 
 	/// @brief プレイヤー一覧を取得する
-	/// @return プレイヤーのconst参照
+	/// @return プレイヤーの const 参照
 	[[nodiscard]] const std::vector<Player>& players() const noexcept
 	{
 		return m_players;
 	}
 
-	/// @brief ロビー状態をJSON文字列に変換する
-	/// @return JSON文字列
+	/// @brief ロビー状態を JSON 文字列に変換する
+	/// @return JSON 文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json = R"({"players":[)";

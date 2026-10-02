@@ -2,8 +2,8 @@
 
 /// @file SpriteSheetPacker.hpp
 /// @brief テクスチャアトラスパッキングツール
-/// @details 複数のテクスチャをShelfパッキングアルゴリズムで1枚のアトラスに結合する。
-///          Aseprite互換のJSONメタデータ出力にも対応。
+/// @details 複数のテクスチャを Shelf パッキングアルゴリズムで 1 枚のアトラスに結合する。
+///          Aseprite 互換の JSON メタデータ出力にも対応。
 ///
 /// @code
 /// mitiru::render::SpriteSheetPacker packer;
@@ -46,9 +46,9 @@ struct PackResult
 	bool success = false;                   ///< パッキング成功フラグ
 };
 
-/// @brief テクスチャアトラスパッカー（Shelfパッキングアルゴリズム）
-/// @details addImage()で画像を追加し、pack()で1枚のアトラスに結合する。
-///          Power-of-2サイズのアトラスを生成する。
+/// @brief テクスチャアトラスパッカー（Shelf パッキングアルゴリズム）
+/// @details addImage()で画像を追加し、pack()で 1 枚のアトラスに結合する。
+///          Power-of-2 サイズのアトラスを生成する。
 class SpriteSheetPacker
 {
 public:
@@ -64,18 +64,18 @@ public:
 	}
 
 	/// @brief ディレクトリ内の全画像を追加する（プレースホルダ）
-	/// @details 実際のファイルI/OはPlatformレイヤーが担当するため、
+	/// @details 実際のファイル I/O は Platform レイヤーが担当するため、
 	///          このメソッドは名前とサイズのみ登録する。
 	/// @param path ディレクトリパス
 	/// @param extension ファイル拡張子（例: ".png"）
 	void addDirectory(std::string_view path, std::string_view extension)
 	{
-		// ファイルI/Oは外部で行い、addImage()で個別に追加する
+		// ファイル I/O は外部で行い、addImage()で個別に追加する
 		static_cast<void>(path);
 		static_cast<void>(extension);
 	}
 
-	/// @brief Shelfパッキングを実行する
+	/// @brief Shelf パッキングを実行する
 	/// @param maxWidth 最大アトラス幅
 	/// @param maxHeight 最大アトラス高さ
 	/// @param padding スプライト間のパディング（ピクセル）
@@ -87,7 +87,7 @@ public:
 			return PackResult{};
 		}
 
-		// 高さ降順でソートする（Shelfパッキングの効率化）
+		// 高さ降順でソートする（Shelf パッキングの効率化）
 		std::vector<std::size_t> order(m_sources.size());
 		for (std::size_t i = 0; i < order.size(); ++i) order[i] = i;
 
@@ -96,7 +96,7 @@ public:
 				return m_sources[a].texture.height() > m_sources[b].texture.height();
 			});
 
-		// Shelfパッキング
+		// Shelf パッキング
 		std::vector<Shelf> shelves;
 		std::vector<Placement> placements(m_sources.size());
 
@@ -108,7 +108,7 @@ public:
 
 			bool placed = false;
 
-			// 既存のShelfに収まるか試す
+			// 既存の Shelf に収まるか試す
 			for (auto& shelf : shelves)
 			{
 				if (shelf.cursorX + imgW <= maxWidth && imgH <= shelf.height)
@@ -120,7 +120,7 @@ public:
 				}
 			}
 
-			// 新しいShelfを作る
+			// 新しい Shelf を作る
 			if (!placed)
 			{
 				const int newY = shelves.empty()
@@ -138,7 +138,7 @@ public:
 			}
 		}
 
-		// アトラスサイズを計算する（Power-of-2に切り上げ）
+		// アトラスサイズを計算する（Power-of-2 に切り上げ）
 		int usedW = 0;
 		int usedH = 0;
 		for (const auto& shelf : shelves)
@@ -195,8 +195,8 @@ public:
 		return result;
 	}
 
-	/// @brief Aseprite互換のJSONメタデータを出力する
-	/// @return JSON文字列
+	/// @brief Aseprite 互換の JSON メタデータを出力する
+	/// @return JSON 文字列
 	[[nodiscard]] std::string exportJson() const
 	{
 		std::ostringstream oss;
@@ -270,7 +270,7 @@ private:
 		Texture texture;
 	};
 
-	/// @brief パッキングShelf
+	/// @brief パッキング Shelf
 	struct Shelf
 	{
 		int y = 0;           ///< Shelf上端Y座標
@@ -288,7 +288,7 @@ private:
 	std::vector<SourceImage> m_sources;
 	PackResult m_lastResult;
 
-	/// @brief 次のPower-of-2値を計算する
+	/// @brief 次の Power-of-2 値を計算する
 	[[nodiscard]] static int nextPow2(int v) noexcept
 	{
 		if (v <= 0) return 1;

@@ -1,4 +1,4 @@
-// Class-body chunk for Renderer3D_DX12 - included via DX12PipelineStates.hpp
+// Renderer3D_DX12 のクラス本体の一部。DX12PipelineStates.hpp から include される
 
 // ─────────────────────────────────────────────────────────────
 //  オクルージョンカリング: min-depth resolve + readback
@@ -6,7 +6,7 @@
 
 /// @brief オクルージョン resolve 用の PSO・resolve RT・readback バッファを生成する
 /// @details PS は新規、VS は `m_outlinePostVS`（フルスクリーン三角形）を流用する。
-///          深度 SRV は `m_depthSRVHeap` のスロット0（既存の t0=深度）をそのまま使う
+///          深度 SRV は `m_depthSRVHeap` のスロット 0（既存の t0=深度）をそのまま使う
 ///          ため、専用の SRV ヒープは作らない。`createOutlinePostProcess` の後で
 ///          呼ぶ必要がある（両方の前提を満たすため）。
 void createOcclusionResolveResources()
@@ -17,7 +17,7 @@ void createOcclusionResolveResources()
 		DX12_OCCLUSION_MIN_DEPTH_RESOLVE_PS, "PSMain");
 	if (!m_occlusionResolvePS) { return; }
 
-	/// ルートシグネチャ: SRV(t0) のみ（深度SRVヒープのスロット0を指す）
+	/// ルートシグネチャ: SRV(t0) のみ（深度 SRV ヒープのスロット 0 を指す）
 	D3D12_DESCRIPTOR_RANGE srvRange = {};
 	srvRange.RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	srvRange.NumDescriptors     = 1;
@@ -74,9 +74,6 @@ void createOcclusionResolveResources()
 	}
 
 	/// resolve RT（単一サンプル R32_FLOAT、深度と同サイズ）
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
 	D3D12_RESOURCE_DESC rtDesc = {};
 	rtDesc.Dimension       = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	rtDesc.Width           = static_cast<UINT64>(m_config.viewportWidth);
@@ -93,10 +90,8 @@ void createOcclusionResolveResources()
 	clearValue.Color[0] = 1.0f;
 
 	m_occlusionResolveTex.Reset();
-	if (FAILED(m_d3dDevice->CreateCommittedResource(
-			&heapProps, D3D12_HEAP_FLAG_NONE, &rtDesc,
-			D3D12_RESOURCE_STATE_RENDER_TARGET, &clearValue,
-			IID_PPV_ARGS(m_occlusionResolveTex.GetAddressOf()))))
+	if (FAILED(gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, rtDesc,
+		D3D12_RESOURCE_STATE_RENDER_TARGET, &clearValue, m_occlusionResolveTex)))
 	{
 		return;
 	}
@@ -121,26 +116,10 @@ void createOcclusionResolveResources()
 	m_occlusionReadbackRowPitch = (width * 4 + (kPitchAlign - 1)) & ~(kPitchAlign - 1);
 	const UINT64 bufferSize = static_cast<UINT64>(m_occlusionReadbackRowPitch) * height;
 
-	D3D12_HEAP_PROPERTIES readbackHeapProps = {};
-	readbackHeapProps.Type = D3D12_HEAP_TYPE_READBACK;
-
-	D3D12_RESOURCE_DESC bufDesc = {};
-	bufDesc.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
-	bufDesc.Width            = bufferSize;
-	bufDesc.Height           = 1;
-	bufDesc.DepthOrArraySize = 1;
-	bufDesc.MipLevels        = 1;
-	bufDesc.Format           = DXGI_FORMAT_UNKNOWN;
-	bufDesc.SampleDesc.Count = 1;
-	bufDesc.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
 	for (uint32_t i = 0; i < FRAME_COUNT; ++i)
 	{
-		m_occlusionReadback[i].Reset();
-		m_d3dDevice->CreateCommittedResource(
-			&readbackHeapProps, D3D12_HEAP_FLAG_NONE, &bufDesc,
-			D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-			IID_PPV_ARGS(m_occlusionReadback[i].GetAddressOf()));
+		(void)gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_READBACK, bufferSize,
+			D3D12_RESOURCE_STATE_COPY_DEST, m_occlusionReadback[i]);
 		m_occlusionReadbackPending[i] = false;
 	}
 }

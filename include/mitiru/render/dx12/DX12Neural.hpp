@@ -6,7 +6,7 @@
 ///          安全境界 (engine フレーム頭、backbuffer = PRESENT) で tickDevelop が
 ///          直前フレームを readPixels → NeuralStyle (ORT + DirectML, GPU 推論) で
 ///          2D 絵画へ変換 → 保持する。ゲームは Screen 経由で styleReady/styleImage を
-///          取り、drawPixelGrid で表示する。3D⇄2D の「現像」ギミックの心臓部。
+///          取り、drawPixelGrid で表示する。3D⇄2D の「現像」ギミックの中核。
 
 #include <string>
 #include <vector>
@@ -21,7 +21,7 @@ void requestDevelopDx12(const char* modelPath)
 /// @brief 安全境界で呼ぶ: 要求があれば直前フレームを読み出して style 変換する。
 /// @details m_device->readPixels は backbuffer が PRESENT 状態であることを前提とするので、
 ///          engine フレーム頭 (device->beginFrame 後・game.draw 前) から呼ぶこと。
-///          推論は GPU (DirectML EP) で走る。1 回の現像で完結するので毎フレーム負荷はない。
+///          推論は GPU (DirectML EP) で実行する。1 回の現像で完結するので毎フレーム負荷はない。
 void tickDevelopDx12()
 {
 	// 焼き込み / リセット要求は安全境界で splat buffer を書き換える (GPU idle 後)。
@@ -169,7 +169,7 @@ void setStyleStrengthDx12(float s)
 	m_styleStrength = (s < 0.0f) ? 0.0f : (s > 1.0f ? 1.0f : s);
 }
 
-/// @brief 現像 blit 用 root sig / PSO を一度だけ構築する (全画面三角形 + テクスチャ + α合成)。
+/// @brief 現像 blit 用 root sig / PSO を一度だけ構築する (全画面三角形 + テクスチャ + α 合成)。
 void ensureStyleBlitPipelineDx12()
 {
 	if (m_styleBlitReady || !m_d3dDevice) { return; }
@@ -225,8 +225,8 @@ float4 PSMain(VSOut i) : SV_Target {
     return float4(c, gStrength);
 })";
 	ComPtr<ID3DBlob> vs, ps, ce;
-	if (FAILED(D3DCompile(kVS, std::strlen(kVS), nullptr, nullptr, nullptr, "VSMain", "vs_5_0", 0, 0, vs.GetAddressOf(), ce.GetAddressOf()))) { return; }
-	if (FAILED(D3DCompile(kPS, std::strlen(kPS), nullptr, nullptr, nullptr, "PSMain", "ps_5_0", 0, 0, ps.GetAddressOf(), ce.GetAddressOf()))) { return; }
+	if (FAILED(gfx::compileDx12Shader(kVS, "VSMain", "vs_5_0", 0, vs.GetAddressOf(), ce.GetAddressOf()))) { return; }
+	if (FAILED(gfx::compileDx12Shader(kPS, "PSMain", "ps_5_0", 0, ps.GetAddressOf(), ce.GetAddressOf()))) { return; }
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC pso = {};
 	pso.pRootSignature = m_styleBlitRootSig.Get();
@@ -250,7 +250,30 @@ float4 PSMain(VSOut i) : SV_Target {
 	pso.SampleDesc.Count = 1;
 	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(m_styleBlitPSO.GetAddressOf())))) { return; }
 
+	D3D12_DESCRIPTOR_HEAP_DESC hd = {};
+	hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; hd.NumDescriptors = FRAME_COUNT;
+	hd.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	if (FAILED(m_d3dDevice->CreateDescriptorHeap(&hd, IID_PPV_ARGS(m_styleSrvHeap.GetAddressOf())))) { return; }
+
 	m_styleBlitReady = true;
+}
+
+/// @brief 現像テクスチャの SRV をこのフレームの slot に書き、その GPU handle を返す。
+/// @details slot k を最後に読んだのは FRAME_COUNT 前のフレームで、beginFrame のフェンス待ちで完了済み。
+///          テクスチャを作り直しても、走行中のフレームが読む descriptor は書き換わらない。
+D3D12_GPU_DESCRIPTOR_HANDLE writeStyleSrvDx12()
+{
+	const UINT inc  = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	const UINT slot = m_frameCursor % FRAME_COUNT;
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu = m_styleSrvHeap->GetCPUDescriptorHandleForHeapStart();
+	cpu.ptr += static_cast<SIZE_T>(slot) * inc;
+	D3D12_SHADER_RESOURCE_VIEW_DESC sv = {};
+	sv.Format = DXGI_FORMAT_R8G8B8A8_UNORM; sv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	sv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; sv.Texture2D.MipLevels = 1;
+	m_d3dDevice->CreateShaderResourceView(m_styleTex.Get(), &sv, cpu);
+	D3D12_GPU_DESCRIPTOR_HANDLE gpu = m_styleSrvHeap->GetGPUDescriptorHandleForHeapStart();
+	gpu.ptr += static_cast<UINT64>(slot) * inc;
+	return gpu;
 }
 
 /// @brief 現像画像 (CPU RGBA) を GPU テクスチャへアップロードする (dirty 時のみ)。
@@ -263,55 +286,32 @@ void uploadStyleTexDx12()
 
 	if (!m_styleTex || m_styleTexW != m_styleW || m_styleTexH != m_styleH)
 	{
-		D3D12_HEAP_PROPERTIES dh = {}; dh.Type = D3D12_HEAP_TYPE_DEFAULT;
 		D3D12_RESOURCE_DESC td = {};
 		td.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		td.Width = tw; td.Height = th; td.DepthOrArraySize = 1; td.MipLevels = 1;
 		td.Format = DXGI_FORMAT_R8G8B8A8_UNORM; td.SampleDesc.Count = 1;
 		td.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		m_styleTex.Reset();
-		if (FAILED(m_d3dDevice->CreateCommittedResource(&dh, D3D12_HEAP_FLAG_NONE, &td,
-		        D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(m_styleTex.GetAddressOf())))) { return; }
-
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT fp = {}; UINT64 total = 0;
-		m_d3dDevice->GetCopyableFootprints(&td, 0, 1, 0, &fp, nullptr, nullptr, &total);
-		D3D12_HEAP_PROPERTIES uh = {}; uh.Type = D3D12_HEAP_TYPE_UPLOAD;
-		D3D12_RESOURCE_DESC bd = {};
-		bd.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; bd.Width = total; bd.Height = 1;
-		bd.DepthOrArraySize = 1; bd.MipLevels = 1; bd.SampleDesc.Count = 1;
-		bd.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		m_styleUpload.Reset();
-		if (FAILED(m_d3dDevice->CreateCommittedResource(&uh, D3D12_HEAP_FLAG_NONE, &bd,
-		        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_styleUpload.GetAddressOf())))) { return; }
-
-		if (!m_styleSrvHeap)
-		{
-			D3D12_DESCRIPTOR_HEAP_DESC hd = {};
-			hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; hd.NumDescriptors = 1;
-			hd.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-			if (FAILED(m_d3dDevice->CreateDescriptorHeap(&hd, IID_PPV_ARGS(m_styleSrvHeap.GetAddressOf())))) { return; }
-		}
-		D3D12_SHADER_RESOURCE_VIEW_DESC sv = {};
-		sv.Format = DXGI_FORMAT_R8G8B8A8_UNORM; sv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		sv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; sv.Texture2D.MipLevels = 1;
-		m_d3dDevice->CreateShaderResourceView(m_styleTex.Get(), &sv,
-		        m_styleSrvHeap->GetCPUDescriptorHandleForHeapStart());
+		if (FAILED(gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, td,
+			D3D12_RESOURCE_STATE_COPY_DEST, nullptr, m_styleTex))) { return; }
+		m_styleTexUploaded = false;   // 新しいテクスチャは COPY_DEST 状態で始まる
 		m_styleTexW = m_styleW; m_styleTexH = m_styleH;
 	}
 
-	// upload バッファへ行ごとにコピー (row pitch を 256 整列)
+	// 転送元はこのフレームの upload ring 区画なので、走行中フレームのコピー元とは重ならない
 	D3D12_RESOURCE_DESC td = m_styleTex->GetDesc();
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT fp = {}; UINT64 total = 0;
 	m_d3dDevice->GetCopyableFootprints(&td, 0, 1, 0, &fp, nullptr, nullptr, &total);
-	std::uint8_t* map = nullptr; D3D12_RANGE rr = {0, 0};
-	if (FAILED(m_styleUpload->Map(0, &rr, reinterpret_cast<void**>(&map)))) { return; }
+	const auto staging = m_uploadRing.allocate(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+	if (!staging.valid()) { return; }
+	auto* map = static_cast<std::uint8_t*>(staging.cpuPtr);
 	const UINT srcPitch = tw * 4;
 	for (UINT y = 0; y < th; ++y)
 	{
 		std::memcpy(map + fp.Offset + static_cast<UINT64>(y) * fp.Footprint.RowPitch,
 		            img.data() + static_cast<std::size_t>(y) * srcPitch, srcPitch);
 	}
-	m_styleUpload->Unmap(0, nullptr);
+	fp.Offset += staging.offset;
 
 	// upload → texture, COPY_DEST→PIXEL_SHADER_RESOURCE
 	D3D12_RESOURCE_BARRIER toCopy = {};
@@ -324,7 +324,7 @@ void uploadStyleTexDx12()
 
 	D3D12_TEXTURE_COPY_LOCATION dst = {}; dst.pResource = m_styleTex.Get();
 	dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX; dst.SubresourceIndex = 0;
-	D3D12_TEXTURE_COPY_LOCATION src = {}; src.pResource = m_styleUpload.Get();
+	D3D12_TEXTURE_COPY_LOCATION src = {}; src.pResource = staging.resource;
 	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT; src.PlacedFootprint = fp;
 	m_graphicsCmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
@@ -337,7 +337,7 @@ void uploadStyleTexDx12()
 	m_styleTexDirty = false;
 }
 
-/// @brief 現像 2D 画像をバックバッファへ全画面 α合成する (post-process、overlay2D の前)。
+/// @brief 現像 2D 画像をバックバッファへ全画面 α 合成する (post-process、overlay2D の前)。
 void blitStyleDx12()
 {
 	const bool ready = m_showTarget ? m_targetReady : m_styleReady;
@@ -364,7 +364,7 @@ void blitStyleDx12()
 	m_graphicsCmdList->SetPipelineState(m_styleBlitPSO.Get());
 	ID3D12DescriptorHeap* heaps[] = { m_styleSrvHeap.Get() };
 	m_graphicsCmdList->SetDescriptorHeaps(1, heaps);
-	m_graphicsCmdList->SetGraphicsRootDescriptorTable(0, m_styleSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	m_graphicsCmdList->SetGraphicsRootDescriptorTable(0, writeStyleSrvDx12());
 	m_graphicsCmdList->SetGraphicsRoot32BitConstant(1, *reinterpret_cast<const UINT*>(&m_styleStrength), 0);
 	m_graphicsCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	m_graphicsCmdList->DrawInstanced(3, 1, 0, 0);

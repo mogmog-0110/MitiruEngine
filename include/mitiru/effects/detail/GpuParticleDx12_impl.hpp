@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GpuParticleDx12_impl.hpp
-/// @brief GpuParticleDx12 の GPU リソース・パイプライン構築の実装本体（GpuParticleDx12.hpp から機械的分割）
+/// @brief GpuParticleDx12 の GPU リソース・パイプライン構築の実装本体（GpuParticleDx12.hpp から機械的に分割）
 
 #include <mitiru/effects/GpuParticleDx12.hpp>
 
@@ -40,172 +40,51 @@ inline void GpuParticleDx12::createBuffers()
 {
 	const auto particleBufferSize = static_cast<UINT64>(
 		m_maxParticles * sizeof(GpuParticle));
-
-	/// パーティクル構造化バッファ（ピンポン、UAV対応）
-	for (int i = 0; i < 2; ++i)
+	const auto make = [this](D3D12_HEAP_TYPE heap, UINT64 bytes, D3D12_RESOURCE_STATES state,
+	                         gfx::GpuResource& out, const char* what,
+	                         D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE)
 	{
-		D3D12_HEAP_PROPERTIES heapProps = {};
-		heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-		D3D12_RESOURCE_DESC resDesc = {};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = particleBufferSize;
-		resDesc.Height = 1;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resDesc.SampleDesc.Count = 1;
-		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-		HRESULT hr = m_device->CreateCommittedResource(
-			&heapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&resDesc,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-			nullptr,
-			IID_PPV_ARGS(m_particleBuffer[i].GetAddressOf()));
-		if (FAILED(hr))
+		if (FAILED(gfx::createGpuBuffer(m_device, heap, bytes, state, out, flags)))
 		{
 			throw std::runtime_error(
-				"GpuParticleDx12: CreateCommittedResource (particle) failed");
+				std::string("GpuParticleDx12: GPU allocation (") + what + ") failed");
 		}
-	}
+	};
+	constexpr auto kUav = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	constexpr UINT64 kCbSize = 256; ///< 256バイトアライメント
 
-	/// アップロードバッファ（CPU→GPU転送用）
+	/// パーティクル構造化バッファ（ピンポン、UAV 対応）
+	for (auto& buffer : m_particleBuffer)
 	{
-		D3D12_HEAP_PROPERTIES heapProps = {};
-		heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-		D3D12_RESOURCE_DESC resDesc = {};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = particleBufferSize;
-		resDesc.Height = 1;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resDesc.SampleDesc.Count = 1;
-		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		HRESULT hr = m_device->CreateCommittedResource(
-			&heapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&resDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_uploadBuffer.GetAddressOf()));
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(
-				"GpuParticleDx12: CreateCommittedResource (upload) failed");
-		}
+		make(D3D12_HEAP_TYPE_DEFAULT, particleBufferSize,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, buffer, "particle", kUav);
 	}
-
-	/// Indirect Argsバッファ（DrawInstanced引数）
-	{
-		D3D12_HEAP_PROPERTIES heapProps = {};
-		heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-		D3D12_RESOURCE_DESC resDesc = {};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = sizeof(D3D12_DRAW_ARGUMENTS);
-		resDesc.Height = 1;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resDesc.SampleDesc.Count = 1;
-		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-		HRESULT hr = m_device->CreateCommittedResource(
-			&heapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&resDesc,
-			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-			nullptr,
-			IID_PPV_ARGS(m_indirectArgsBuffer.GetAddressOf()));
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(
-				"GpuParticleDx12: CreateCommittedResource (indirect) failed");
-		}
-	}
-
+	/// アップロードバッファ（CPU→GPU 転送用）
+	make(D3D12_HEAP_TYPE_UPLOAD, particleBufferSize,
+		D3D12_RESOURCE_STATE_GENERIC_READ, m_uploadBuffer, "upload");
+	/// Indirect Args バッファ（DrawInstanced 引数）
+	make(D3D12_HEAP_TYPE_DEFAULT, sizeof(D3D12_DRAW_ARGUMENTS),
+		D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, m_indirectArgsBuffer, "indirect", kUav);
 	/// 定数バッファ（アップロードヒープ）
-	{
-		const UINT64 cbSize = 256; ///< 256バイトアライメント
-
-		D3D12_HEAP_PROPERTIES heapProps = {};
-		heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-		D3D12_RESOURCE_DESC resDesc = {};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = cbSize;
-		resDesc.Height = 1;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resDesc.SampleDesc.Count = 1;
-		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		HRESULT hr = m_device->CreateCommittedResource(
-			&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-			IID_PPV_ARGS(m_simConstantUpload.GetAddressOf()));
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(
-				"GpuParticleDx12: CreateCommittedResource (sim CB) failed");
-		}
-
-		hr = m_device->CreateCommittedResource(
-			&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-			IID_PPV_ARGS(m_renderConstantUpload.GetAddressOf()));
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(
-				"GpuParticleDx12: CreateCommittedResource (render CB) failed");
-		}
-	}
-
+	make(D3D12_HEAP_TYPE_UPLOAD, kCbSize,
+		D3D12_RESOURCE_STATE_GENERIC_READ, m_simConstantUpload, "sim CB");
+	make(D3D12_HEAP_TYPE_UPLOAD, kCbSize,
+		D3D12_RESOURCE_STATE_GENERIC_READ, m_renderConstantUpload, "render CB");
 	/// リードバックバッファ（コンパクション用）
-	{
-		D3D12_HEAP_PROPERTIES heapProps = {};
-		heapProps.Type = D3D12_HEAP_TYPE_READBACK;
+	make(D3D12_HEAP_TYPE_READBACK, particleBufferSize,
+		D3D12_RESOURCE_STATE_COPY_DEST, m_readbackBuffer, "readback");
 
-		D3D12_RESOURCE_DESC resDesc = {};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = particleBufferSize;
-		resDesc.Height = 1;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resDesc.SampleDesc.Count = 1;
-		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		HRESULT hr = m_device->CreateCommittedResource(
-			&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
-			D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-			IID_PPV_ARGS(m_readbackBuffer.GetAddressOf()));
-		if (FAILED(hr))
-		{
-			throw std::runtime_error(
-				"GpuParticleDx12: CreateCommittedResource (readback) failed");
-		}
-	}
-
-	/// SRV/UAVデスクリプタヒープを生成する
+	/// SRV/UAV デスクリプタヒープを生成する
 	createDescriptorHeap();
 }
 
-/// @brief SRV/UAVデスクリプタヒープを生成する
+/// @brief SRV/UAV デスクリプタヒープを生成する
 /// @details レイアウト:
 ///   0: SRV パーティクルバッファ[0]
 ///   1: SRV パーティクルバッファ[1]
 ///   2: UAV パーティクルバッファ[0]
 ///   3: UAV パーティクルバッファ[1]
-///   4: UAV IndirectArgsバッファ
+///   4: UAV IndirectArgs バッファ
 inline void GpuParticleDx12::createDescriptorHeap()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
@@ -291,13 +170,13 @@ inline void GpuParticleDx12::createComputePipeline()
 	/// ルートシグネチャ: b0(CBV) + t0(SRV table) + u0(UAV table) + u1(UAV table)
 	D3D12_ROOT_PARAMETER rootParams[4] = {};
 
-	/// パラメータ0: CBV (b0)
+	/// パラメータ 0: CBV (b0)
 	rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParams[0].Descriptor.ShaderRegister = 0;
 	rootParams[0].Descriptor.RegisterSpace = 0;
 	rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	/// パラメータ1: SRV テーブル (t0)
+	/// パラメータ 1: SRV テーブル (t0)
 	D3D12_DESCRIPTOR_RANGE srvRange = {};
 	srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	srvRange.NumDescriptors = 1;
@@ -307,7 +186,7 @@ inline void GpuParticleDx12::createComputePipeline()
 	rootParams[1].DescriptorTable.pDescriptorRanges = &srvRange;
 	rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	/// パラメータ2: UAV テーブル (u0)
+	/// パラメータ 2: UAV テーブル (u0)
 	D3D12_DESCRIPTOR_RANGE uavRange0 = {};
 	uavRange0.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 	uavRange0.NumDescriptors = 1;
@@ -317,7 +196,7 @@ inline void GpuParticleDx12::createComputePipeline()
 	rootParams[2].DescriptorTable.pDescriptorRanges = &uavRange0;
 	rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	/// パラメータ3: UAV テーブル (u1)
+	/// パラメータ 3: UAV テーブル (u1)
 	D3D12_DESCRIPTOR_RANGE uavRange1 = {};
 	uavRange1.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 	uavRange1.NumDescriptors = 1;
@@ -420,7 +299,7 @@ inline void GpuParticleDx12::createRenderPipeline()
 	auto psBlob = compileHLSL(
 		DX12_PARTICLE_PS_HLSL, "PSMain", "ps_5_0");
 
-	/// グラフィックスPSOを生成する
+	/// グラフィックス PSO を生成する
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = {nullptr, 0};
 	psoDesc.pRootSignature = m_renderRootSignature.Get();
@@ -468,7 +347,7 @@ inline void GpuParticleDx12::createRenderPipeline()
 	}
 }
 
-/// @brief ExecuteIndirect用のコマンドシグネチャを生成する
+/// @brief ExecuteIndirect 用のコマンドシグネチャを生成する
 inline void GpuParticleDx12::createCommandSignature()
 {
 	D3D12_INDIRECT_ARGUMENT_DESC argDesc = {};

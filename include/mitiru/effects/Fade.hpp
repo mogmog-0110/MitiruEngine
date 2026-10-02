@@ -2,7 +2,7 @@
 
 /// @file Fade.hpp
 /// @brief フェードイン/アウトトランジション
-/// @details シーン遷移時などに使用するフェード効果。
+/// @details シーン遷移時などに使うフェード効果。
 
 #include <algorithm>
 
@@ -94,7 +94,7 @@ private:
 
 } // namespace mitiru::effects
 
-// ── Screen依存の実装 ──
+// ── Screen 依存の実装 ──
 #include <mitiru/core/Screen.hpp>
 
 inline void mitiru::effects::Fade::draw(Screen& screen) const

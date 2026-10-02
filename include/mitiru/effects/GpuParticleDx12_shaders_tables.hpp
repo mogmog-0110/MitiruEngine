@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GpuParticleDx12_shaders_tables.hpp
-/// @brief GpuParticleDx12 用 HLSL シェーダーソース表（GpuParticleDx12.hpp から機械的分割）
+/// @brief GpuParticleDx12 用の HLSL シェーダーソース表（GpuParticleDx12.hpp から機械的に分割）
 
 #ifdef _WIN32
 
@@ -10,7 +10,7 @@
 namespace mitiru::effects
 {
 
-// ── HLSL シェーダーソース（DX12版） ────────────────────────
+// ── HLSL シェーダーソース（DX12 版） ────────────────────────
 
 /// @brief パーティクルシミュレーション用コンピュートシェーダー (CS 5.0)
 static constexpr std::string_view DX12_PARTICLE_COMPUTE_HLSL = R"(
@@ -102,7 +102,7 @@ void CSMain(uint3 dtid : SV_DispatchThreadID)
 }
 )";
 
-/// @brief パーティクル描画用頂点シェーダー（DX12版）
+/// @brief パーティクル描画用頂点シェーダー（DX12 版）
 static constexpr std::string_view DX12_PARTICLE_VS_HLSL = R"(
 struct Particle
 {
@@ -159,7 +159,7 @@ VSOutput VSMain(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
 }
 )";
 
-/// @brief パーティクル描画用ピクセルシェーダー（DX12版）
+/// @brief パーティクル描画用ピクセルシェーダー（DX12 版）
 static constexpr std::string_view DX12_PARTICLE_PS_HLSL = R"(
 struct PSInput
 {

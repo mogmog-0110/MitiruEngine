@@ -29,18 +29,18 @@ struct GaussianBlurConfig
 };
 
 /// @brief 分離型ガウシアンブラーパス
-/// @details 水平→垂直の2パスでブラーを適用する。
+/// @details 水平→垂直の 2 パスでブラーを適用する。
 ///          ブルーム・フロストグラス・被写界深度等で再利用可能。
 class GaussianBlurPass final : public PostProcessPass
 {
 public:
 	/// @brief コンストラクタ
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param fullscreenVS フルスクリーン頂点シェーダー（共有）
 	/// @param sampler リニアサンプラー（共有）
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
-	/// @param pool 中間RTの貸し出し元（nullptrなら従来どおり自前でRTを生成する）
+	/// @param pool 中間 RT の貸し出し元（nullptr なら従来どおり自前で RT を生成する）
 	GaussianBlurPass(
 		ID3D11Device* device,
 		const ComPtr<ID3D11VertexShader>& fullscreenVS,
@@ -60,7 +60,7 @@ public:
 		acquireIntermediate(screenW, screenH);
 	}
 
-	/// @brief デストラクタ。プール由来の中間RTを返却する
+	/// @brief デストラクタ。プール由来の中間 RT を返却する
 	~GaussianBlurPass() override
 	{
 		releaseIntermediate();
@@ -92,9 +92,9 @@ public:
 		auto* midRtv = intermediateRtv();
 		if (!midRtv)
 		{
-			// pool から借りたはずの中間RTが resolve できない
+			// pool から借りたはずの中間 RT が resolve できない
 			// (プールが handle を握ったまま entry を失った等)。
-			// 黙って null RTV へ描くとブラーだけ消えて気づきにくいので明示する。
+			// 知らせずに null RTV へ描くとブラーだけ消えて気づきにくいので明示する。
 			debug::warnOnce("render.postprocess.gaussianblur.rt_missing",
 				"GaussianBlurPass::applyBlur: intermediate RT が取得できず"
 				"ブラーをスキップしました");
@@ -144,7 +144,7 @@ public:
 		return "GaussianBlur";
 	}
 
-	/// @brief 中間バッファのSRVを取得する（外部パスからの参照用）
+	/// @brief 中間バッファの SRV を取得する（外部パスからの参照用）
 	[[nodiscard]] ID3D11ShaderResourceView* intermediateSRV() const noexcept
 	{
 		if (m_pool && m_pooledHandle != gfx::RtHandle::Invalid)
@@ -164,7 +164,7 @@ private:
 		float sigma;          ///< シグマ
 	};
 
-	/// @brief 中間バッファのRTVを取得する（pool経由/自前どちらでも同じ形で返す）
+	/// @brief 中間バッファの RTV を取得する（pool 経由/自前どちらでも同じ形で返す）
 	[[nodiscard]] ID3D11RenderTargetView* intermediateRtv() const noexcept
 	{
 		if (m_pool && m_pooledHandle != gfx::RtHandle::Invalid)

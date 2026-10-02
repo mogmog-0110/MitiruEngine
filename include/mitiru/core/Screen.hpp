@@ -1,17 +1,17 @@
 ﻿#pragma once
 
 // 注意 (800 行ルールの記録、リファクタ P4): 本ファイルは 200+ の draw API 宣言 +
-// 1-3 行の薄い inline ラッパのみで、実装本体は末尾 include の detail/Screen_*.hpp
-// 8 ファイルに分割済み。単一クラスの公開 API 表面は宣言を分割できないため、
-// 行数超過は構造的限界として許容 (in-class に 12 行超の実装体は存在しない)。
+// 1-3 行の薄い inline ラッパだけで、実装本体は末尾で include する detail/Screen_*.hpp
+// 8 ファイルに分割済み。単一クラスの公開 API は宣言を分割できないので、
+// 行数超過は構造上の限界として許容する (in-class に 12 行を超える実装は無い)。
 // 注意 (ABI): Screen* は gameDraw() で DLL 境界を渡る。メンバ追加は必ず class 末尾 +
 // ModuleApi の kCurrentApiVersion を上げること (v14 事故の教訓)。
 
 /// @file Screen.hpp
 /// @brief 描画サーフェス
 /// @details レンダラーへの描画コマンドを抽象化するサーフェスクラス。
-///          RenderPipeline2Dが接続されている場合はGPU描画に委譲し、
-///          未接続の場合はカウンターのみ増加する（ヘッドレス対応）。
+///          RenderPipeline2D が接続されている場合は GPU 描画に委譲し、
+///          未接続の場合はカウンターだけを増やす（ヘッドレス対応）。
 
 #include <algorithm>
 #include <cmath>
@@ -69,8 +69,8 @@ struct DrawLogEntry
 
 /// @brief 描画サーフェス
 /// @details ゲームの draw() に渡される描画インターフェース。
-///          内部でSpriteBatch/ShapeRendererに委譲し、
-///          RenderPipeline2D経由でGPUに送信する。
+///          内部で SpriteBatch/ShapeRenderer に委譲し、
+///          RenderPipeline2D 経由で GPU に送る。
 class Screen
 {
 public:
@@ -83,70 +83,54 @@ public:
 	{
 	}
 
-	/// @brief RenderPipeline2Dを接続する
-	/// @param pipeline パイプライン（nullptrで解除）
+	/// @brief RenderPipeline2D を接続する
+	/// @param pipeline パイプライン（nullptr で解除）
 	void setPipeline(render::RenderPipeline2D* pipeline) noexcept;
 
-	/// @brief RenderPipeline2Dを取得する
-	/// @return パイプラインへのポインタ（未接続時はnullptr）
+	/// @brief RenderPipeline2D を取得する
+	/// @return パイプラインへのポインタ（未接続時は nullptr）
 	[[nodiscard]] render::RenderPipeline2D* pipeline() const noexcept
 	{
 		return m_pipeline;
 	}
 
-	/// @brief TrueTypeFont描画/計測コールバック型
+	/// @brief 書体の描画/計測コールバック型
 	using TtDrawFunc = void(*)(void* font, Screen& scr, float x, float y,
 	                           std::string_view text, float fontSize, const sgc::Colorf& color);
 	using TtMeasureFunc = sgc::Vec2f(*)(void* font, std::string_view text, float fontSize);
 
-	/// @brief TrueTypeFontを接続する（設定時はBitmapFontより優先）
-	/// @details forward declaration のみで利用可能。呼び出し元で型を解決する。
+	/// @brief 書体の描画・計測を接続する（設定時はBitmapFontより優先）
+	/// @details 型消去の関数ポインタで受ける。既定の書体は text::ScreenFont::attachTo が繋ぐ。
 	/// @code
-	///   screen.setTrueTypeFont(&myFont,
-	///       [](void* f, Screen& s, float x, float y, auto t, float fs, auto& c) {
-	///           static_cast<vn::TrueTypeFont*>(f)->renderText(s, x, y, t, fs, c);
-	///       },
-	///       [](void* f, auto t, float fs) -> sgc::Vec2f {
-	///           auto* font = static_cast<vn::TrueTypeFont*>(f);
-	///           return { font->textWidth(t, fs), font->lineHeight(fs) };
-	///       });
+	///   std::string error;
+	///   mitiru::text::ScreenFont font(mitiru::text::FontFace::loadFile("my.ttf", error));
+	///   font.attachTo(screen);   // = screen.setTrueTypeFont(&font, draw, measure)
 	/// @endcode
 	void setTrueTypeFont(void* font, TtDrawFunc drawFn, TtMeasureFunc measureFn) noexcept;
 
-	/// @brief TrueTypeFontを取得する（型消去）
+	/// @brief setTrueTypeFont で繋いだ書体を取得する（型消去）
 	[[nodiscard]] void* trueTypeFont() const noexcept
 	{
 		return m_ttFont;
 	}
 
-	/// @brief SDFフォント描画/計測コールバック型
+	/// @brief SDF フォント描画/計測コールバック型
 	/// @details TtDrawFunc/TtMeasureFunc と同じシグネチャ（型消去）。
-	///          SDF フォントを設定するとSDFが TTF より優先される。
+	///          SDF フォントを設定すると SDF が TTF より優先される。
 	using SdfDrawFunc = TtDrawFunc;
 	using SdfMeasureFunc = TtMeasureFunc;
 
-	/// @brief SDFフォントを接続する（設定時は TTF/BitmapFont より優先）
-	/// @details 高品質な任意サイズレンダリング用。内部でGPU SDFシェーダまたは
-	///          CPUソフトウェアラスタライズを使う（呼び出し側の実装に依存）。
-	/// @code
-	///   screen.setSdfFont(&sdfRenderer,
-	///       [](void* r, Screen& s, float x, float y, auto t, float fs, auto& c) {
-	///           static_cast<render::SdfTextRenderer*>(r)->drawTextSoftware(s, t, x, y, fs, c);
-	///       },
-	///       [](void* r, auto t, float fs) -> sgc::Vec2f {
-	///           const auto sz = static_cast<render::SdfTextRenderer*>(r)->measureText(t, fs);
-	///           return {sz.width, sz.height};
-	///       });
-	/// @endcode
+	/// @brief 別の描画・計測を接続する（設定時は setTrueTypeFont / BitmapFont より優先）
+	/// @details setTrueTypeFont の既定書体を残したまま、一時的に差し替えるときに使う。
 	void setSdfFont(void* font, SdfDrawFunc drawFn, SdfMeasureFunc measureFn) noexcept;
 
-	/// @brief SDFフォントを取得する（型消去）
+	/// @brief SDF フォントを取得する（型消去）
 	[[nodiscard]] void* sdfFont() const noexcept
 	{
 		return m_sdfFont;
 	}
 
-	/// @brief SDFフォントを解除する
+	/// @brief SDF フォントを解除する
 	void clearSdfFont() noexcept;
 
 	/// @brief フォントレジストリエントリ
@@ -169,12 +153,12 @@ public:
 	/// @param name 登録済みフォント名（空文字列でデフォルトに戻す）
 	void setFont(const std::string& name);
 
-	/// @brief DrawCallValidatorを接続する
-	/// @param validator バリデーター（nullptrで解除）
+	/// @brief DrawCallValidator を接続する
+	/// @param validator バリデーター（nullptr で解除）
 	void setValidator(validate::DrawCallValidator* validator) noexcept;
 
-	/// @brief DrawCallValidatorを取得する
-	/// @return バリデーターへのポインタ（未接続時はnullptr）
+	/// @brief DrawCallValidator を取得する
+	/// @return バリデーターへのポインタ（未接続時は nullptr）
 	[[nodiscard]] validate::DrawCallValidator* validator() const noexcept
 	{
 		return m_validator;
@@ -184,11 +168,11 @@ public:
 	/// @param color クリア色
 	void clear(const sgc::Colorf& color = sgc::Colorf{0.0f, 0.0f, 0.0f, 1.0f});
 
-	/// @brief 全画面フルスクリーン tint を dur 秒間オーバーレイする (alpha は線形 fade out)。
-	/// @details 被弾点滅・ボス登場フラッシュ・タイム停止のグレー化等の一発エフェクト。
-	///          color.a が初期 alpha、時間と共に 0 に減衰。pushTint を呼び直すと最新で上書き。
-	///          engine が毎フレーム update 末尾に `advanceTint(dt)` を、render 末尾に `renderTint()`
-	///          を呼んで合成する。game コードは pushTint だけ気にすれば良い。
+	/// @brief 全画面 tint を dur 秒間オーバーレイする (alpha は線形に fade out)。
+	/// @details 被弾点滅・ボス登場フラッシュ・タイム停止のグレー化などの一発エフェクト。
+	///          color.a が初期 alpha で、時間とともに 0 へ減る。pushTint を呼び直すと最新の値で上書きする。
+	///          engine が毎フレーム update 末尾で `advanceTint(dt)` を、render 末尾で `renderTint()`
+	///          を呼んで合成する。game コードは pushTint だけ気にすればよい。
 	void pushTint(const sgc::Colorf& color, float durSec) noexcept
 	{
 		m_tintColor    = color;
@@ -196,7 +180,7 @@ public:
 		m_tintRemainSec = m_tintDurSec;
 	}
 
-	/// @brief tint 残量を dt 進める (engine が update 末尾で呼ぶ内部 API)。
+	/// @brief tint の残量を dt だけ進める (engine が update 末尾で呼ぶ内部 API)。
 	void advanceTint(float dt) noexcept
 	{
 		if (m_tintRemainSec > 0.0f)
@@ -206,7 +190,7 @@ public:
 		}
 	}
 
-	/// @brief tint が残ってれば全画面 rect を描く (engine が render 末尾で呼ぶ内部 API)。
+	/// @brief tint が残っていれば全画面 rect を描く (engine が render 末尾で呼ぶ内部 API)。
 	void renderTint()
 	{
 		if (m_tintRemainSec <= 0.0f || m_tintDurSec <= 0.0f) { return; }
@@ -219,16 +203,16 @@ public:
 		         c);
 	}
 
-	// ── Styled Drawing API (CSS互換) ────────────────────
+	// ── Styled Drawing API (CSS 互換) ────────────────────
 
 	/// @brief スタイル付き矩形を描画する (SDF GPU path)
-	/// @details 各矩形は独立したスタイル定数を持つため、即座にGPU送信する。
-	///          実装はRenderPipeline2D.hppインクルード後に配置。
+	/// @details 各矩形は独立したスタイル定数を持つので、すぐに GPU へ送る。
+	///          実装は RenderPipeline2D.hpp のインクルード後に置く。
 	void drawStyledRect(const sgc::Rectf& rect, const render::Style& style);
 
 	/// @brief スタイル付き円を描画する (SDF GPU path)
-	/// @details 各円は独立したスタイル定数を持つため、即座にGPU送信する。
-	///          実装はRenderPipeline2D.hppインクルード後に配置。
+	/// @details 各円は独立したスタイル定数を持つので、すぐに GPU へ送る。
+	///          実装は RenderPipeline2D.hpp のインクルード後に置く。
 	void drawStyledCircle(const sgc::Vec2f& center, float radius, const render::Style& style);
 
 	/// @brief スタイル付きシェイプを描画する（汎用）
@@ -240,7 +224,7 @@ public:
 	/// @brief ギザギザエッジを描画する（レシート風）
 	void drawZigzagEdge(const sgc::Rectf& rect, const render::ZigzagStyle& zs);
 
-	/// @brief スキャンラインを描画する（CRT風テレビ画面）
+	/// @brief スキャンラインを描画する（CRT 風テレビ画面）
 	void drawScanlines(const sgc::Rectf& rect, float lineHeight, const sgc::Colorf& color);
 
 	/// @brief 破線を描画する
@@ -289,8 +273,8 @@ public:
 		               TextAlignH::Left, TextAlignV::Top, 0.0f, 0.0f);
 	}
 	/// @brief 画面全体を 1 色で塗る (背景用)。draw() の最初に呼ぶ。
-	/// @note `clear()` の色は host 設定 (EngineConfig::backgroundColor) に上書きされ
-	///       game 窓に届かないことがある。背景は確実なこの fillScreen で塗る (全画面 rect)。
+	/// @note `clear()` の色は host 設定 (EngineConfig::backgroundColor) に上書きされ、
+	///       game 窓に届かないことがある。背景はこの fillScreen で確実に塗る (全画面 rect)。
 	///       画面端の隙間 (shake 等) も覆うよう少し大きめに描く。
 	void fillScreen(const sgc::Colorf& color)
 	{
@@ -365,9 +349,9 @@ public:
 	             const sgc::Colorf& color, float thickness = 2.0f);
 
 	/// @brief 塗りつぶし三角形を描画する
-	/// @param p0 頂点0
-	/// @param p1 頂点1
-	/// @param p2 頂点2
+	/// @param p0 頂点 0
+	/// @param p1 頂点 1
+	/// @param p2 頂点 2
 	/// @param color 塗りつぶし色
 	void drawTriangle(const sgc::Vec2f& p0, const sgc::Vec2f& p1,
 	                  const sgc::Vec2f& p2, const sgc::Colorf& color);
@@ -395,12 +379,12 @@ public:
 	              const sgc::Colorf& color, float thickness = 1.0f);
 
 	/// @brief テキストを描画する
-	/// @deprecated レイアウト境界を無視してはみ出すため使用禁止。クリップ付きの
+	/// @deprecated レイアウト境界を無視してはみ出すので使用禁止。クリップ付きの
 	///             drawTextInRect / drawTextClipped (または糖衣 text()) を使うこと。
 	/// @param position 描画位置（左上）
 	/// @param text テキスト内容
 	/// @param color 描画色
-	/// @param fontSize フォントサイズ（8の倍数でスケーリング）
+	/// @param fontSize フォントサイズ（8 の倍数でスケーリング）
 	[[deprecated("drawTextInRect / drawTextClipped を使うこと (レイアウト境界を無視するため)")]]
 	void drawText(const sgc::Vec2f& position, std::string_view text,
 	              const sgc::Colorf& color, float fontSize = 16.0f);
@@ -425,7 +409,7 @@ public:
 		{
 			return m_ttMeasureFunc(m_ttFont, text, fontSize);
 		}
-		// BitmapFont。floatスケール対応
+		// BitmapFont。float スケール対応
 		const float scale = fontSize / static_cast<float>(render::BitmapFont::GLYPH_HEIGHT);
 		const float w = render::TextRenderer::measureWidthFloat(text, scale);
 		const float h = render::TextRenderer::measureHeightFloat(scale);
@@ -484,33 +468,33 @@ public:
 	                     float padX = 4.0f, float padY = 2.0f);
 
 	/// @brief 矩形内にワードラップしてテキストを描画する
-	/// @details 単語境界（スペース）で折り返し、矩形高さを超える部分は描画しない。
+	/// @details 単語境界（スペース）で折り返し、矩形の高さを超える部分は描画しない。
 	/// @param rect 描画領域
 	/// @param text テキスト内容
 	/// @param color 描画色
 	/// @param fontSize フォントサイズ
 	/// @param padX 左右パディング
 	/// @param padY 上下パディング
-	/// @param lineSpacing 行間倍率（デフォルト1.4）
+	/// @param lineSpacing 行間倍率（デフォルト 1.4）
 	void drawTextWrapped(const sgc::Rectf& rect, std::string_view text,
 	                      const sgc::Colorf& color, float fontSize = 16.0f,
 	                      float padX = 4.0f, float padY = 2.0f,
 	                      float lineSpacing = 1.4f);
 
-	/// @brief 高品質テキスト描画（FontAtlasスケーリング使用）
-	/// @details BitmapFontの8x8グリフをfontSizeに基づいてスケーリングし、
-	///          各ピクセルをscale倍の矩形として描画する。
-	///          通常のdrawText()より滑らかな拡大表示が可能。
+	/// @brief 高品質テキスト描画（FontAtlas スケーリング使用）
+	/// @details BitmapFont の 8x8 グリフを fontSize に基づいてスケーリングし、
+	///          各ピクセルを scale 倍の矩形として描画する。
+	///          通常の drawText() より滑らかに拡大表示できる。
 	/// @param position 描画位置（左上）
 	/// @param text テキスト内容
 	/// @param color 描画色
-	/// @param fontSize フォントサイズ（8の倍数でスケーリング）
+	/// @param fontSize フォントサイズ（8 の倍数でスケーリング）
 	void drawTextHQ(const sgc::Vec2f& position, std::string_view text,
 		const sgc::Colorf& color, float fontSize);
 
 	/// @brief 凸多角形を描画する（三角形ファンで分割）
 	/// @details 先頭頂点を基点とする三角形ファンで凸多角形を描画する。
-	///          頂点数が3未満の場合は何も描画しない。
+	///          頂点数が 3 未満の場合は何も描画しない。
 	/// @param points 頂点座標の配列
 	/// @param color 塗りつぶし色
 	void drawPolygon(const std::vector<sgc::Vec2f>& points, const sgc::Colorf& color);
@@ -521,8 +505,8 @@ public:
 
 	/// @brief 楕円を描画する
 	/// @param center 中心座標
-	/// @param radiusX X方向の半径
-	/// @param radiusY Y方向の半径
+	/// @param radiusX X 方向の半径
+	/// @param radiusY Y 方向の半径
 	/// @param color 描画色
 	void drawEllipse(const sgc::Vec2f& center, float radiusX, float radiusY,
 	                 const sgc::Colorf& color);
@@ -542,7 +526,7 @@ public:
 	void drawGradientRectH(const sgc::Rectf& rect,
 	                       const sgc::Colorf& leftColor, const sgc::Colorf& rightColor);
 
-	/// @brief 4隅個別カラーのグラデーション矩形を描画する
+	/// @brief 4 隅個別カラーのグラデーション矩形を描画する
 	/// @param rect 描画領域
 	/// @param topLeft 左上色
 	/// @param topRight 右上色
@@ -575,8 +559,8 @@ public:
 	/// @param color テキスト色
 	/// @param fontSize フォントサイズ
 	/// @param shadowColor 影色
-	/// @param shadowOffsetX 影のXオフセット
-	/// @param shadowOffsetY 影のYオフセット
+	/// @param shadowOffsetX 影の X オフセット
+	/// @param shadowOffsetY 影の Y オフセット
 	/// @param alignH 水平アラインメント
 	/// @param alignV 垂直アラインメント
 	void drawTextWithShadow(const sgc::Rectf& rect, std::string_view text,
@@ -614,7 +598,7 @@ public:
 	                            TextAlignV alignV = TextAlignV::Middle);
 
 	/// @brief 擬似ボールド（Faux Bold）でテキストを描画する
-	/// @details 1pxオフセットで2回描画することで太字を模倣する
+	/// @details 1px オフセットで 2 回描画して太字を模倣する
 	/// @param rect 描画領域
 	/// @param text テキスト
 	/// @param color テキスト色
@@ -637,7 +621,7 @@ public:
 	                     float letterSpacing = 2.0f);
 
 	/// @brief グラデーション矩形を描画する（上→下）
-	/// @details topColorからbottomColorへ線形補間した帯を積み重ねて
+	/// @details topColor から bottomColor へ線形補間した帯を積み重ねて
 	///          疑似グラデーション矩形を描画する。
 	/// @param rect 描画領域
 	/// @param topColor 上端の色
@@ -663,8 +647,8 @@ public:
 	/// @param rect 描画領域
 	/// @param pattern パターンタイプ
 	/// @param cellSize セルサイズ（ピクセル）
-	/// @param color1 パターン色1
-	/// @param color2 パターン色2
+	/// @param color1 パターン色 1
+	/// @param color2 パターン色 2
 	void drawRectPattern(const sgc::Rectf& rect, PatternType pattern,
 	                     float cellSize, const sgc::Colorf& color1,
 	                     const sgc::Colorf& color2);
@@ -674,8 +658,8 @@ public:
 	/// @param rect 対象矩形
 	/// @param shadowColor 影の色（通常は半透明の黒）
 	/// @param blurSize 影のぼかし幅（ピクセル）
-	/// @param offsetX 影のXオフセット
-	/// @param offsetY 影のYオフセット
+	/// @param offsetX 影の X オフセット
+	/// @param offsetY 影の Y オフセット
 	void drawInnerShadow(const sgc::Rectf& rect,
 	                     const sgc::Colorf& shadowColor,
 	                     float blurSize = 8.0f,
@@ -695,7 +679,7 @@ public:
 	/// @details 矩形の上辺または下辺を狭めて奥行き感を出す
 	/// @param rect 元の矩形
 	/// @param color 描画色
-	/// @param vanishTop trueなら上辺を狭める、falseなら下辺
+	/// @param vanishTop true なら上辺を狭める、false なら下辺
 	/// @param strength 変形の強さ（0.0=変形なし、1.0=三角形）
 	void drawRectPerspective(const sgc::Rectf& rect, const sgc::Colorf& color,
 	                         bool vanishTop = true, float strength = 0.2f);
@@ -704,7 +688,7 @@ public:
 	/// @param rect 元の矩形
 	/// @param topColor 上端色
 	/// @param bottomColor 下端色
-	/// @param vanishTop trueなら上辺を狭める
+	/// @param vanishTop true なら上辺を狭める
 	/// @param strength 変形の強さ
 	void drawRectPerspectiveGradient(const sgc::Rectf& rect,
 	                                 const sgc::Colorf& topColor,
@@ -716,18 +700,18 @@ public:
 	/// @param dstRect 描画先矩形
 	void drawSprite(const render::Texture& texture, const sgc::Rectf& dstRect);
 
-	/// @brief RGBA8ピクセルバッファを1つのテクスチャクワッドとしてブリットする
-	/// @details 内部でピクセル幅・高さが前回と異なる場合のみGPUテクスチャを再確保する
-	///          (ステディステートでは無アロケーション)。サンプリングはポイントフィルタ
-	///          (バイリニアなし)。ピクセルバイト順はRGBA: byte[0]=R, byte[1]=G,
-	///          byte[2]=B, byte[3]=A。リトルエンディアンメモリ上のuint32_tとしては
-	///          0xAABBGGRR と読める。NullDevice/ヘッドレス時はno-op。
+	/// @brief RGBA8 ピクセルバッファを 1 つのテクスチャクワッドとしてブリットする
+	/// @details 内部でピクセル幅・高さが前回と異なる場合だけ GPU テクスチャを再確保する
+	///          (ステディステートではアロケーションしない)。サンプリングはポイントフィルタ
+	///          (バイリニアなし)。ピクセルのバイト順は RGBA: byte[0]=R, byte[1]=G,
+	///          byte[2]=B, byte[3]=A。リトルエンディアンのメモリ上の uint32_t としては
+	///          0xAABBGGRR と読める。NullDevice/ヘッドレス時は no-op。
 	/// @par Usage:
 	///   std::array<std::uint32_t, 32 * 32> framebuffer;
-	///   // ... fill framebuffer ...
+	///   // ... framebuffer を埋める ...
 	///   screen.drawPixelGrid({0, 0, 256, 256}, framebuffer.data(), 32, 32);
 	/// @param dest 描画先矩形（スクリーン座標）
-	/// @param pixels RGBA8ピクセルバッファ（pixelWidth * pixelHeight 要素）
+	/// @param pixels RGBA8 ピクセルバッファ（pixelWidth * pixelHeight 要素）
 	/// @param pixelWidth バッファ幅（ピクセル数）
 	/// @param pixelHeight バッファ高さ（ピクセル数）
 	void drawPixelGrid(const sgc::Rectf& dest,
@@ -735,15 +719,15 @@ public:
 	                   int pixelWidth,
 	                   int pixelHeight);
 
-	/// @brief RGBA8ピクセルバッファをサンプリングフィルタ指定でブリットする
-	/// @details 4-arg オーバーロードと同じ挙動だが、サンプリングフィルタを
-	///          明示的に指定する。`PixelArtFilter::Point` を渡すとピクセルアート向け
+	/// @brief RGBA8 ピクセルバッファをサンプリングフィルタを指定してブリットする
+	/// @details 4-arg オーバーロードと同じ挙動で、サンプリングフィルタを
+	///          明示的に指定する。`PixelArtFilter::Point` を渡すとピクセルアート向けの
 	///          point sampling（バイリニア無し）、`PixelArtFilter::Linear` は既存挙動と
-	///          同等の linear filtering。DX12 path のみ filter を尊重し、それ以外の
+	///          同等の linear filtering になる。filter に従うのは DX12 path だけで、それ以外の
 	///          backend では filter は無視される（baked-in sampler に従う）。
-	///          NullDevice/ヘッドレス時はno-op。
+	///          NullDevice/ヘッドレス時は no-op。
 	/// @param dest 描画先矩形（スクリーン座標）
-	/// @param pixels RGBA8ピクセルバッファ（pixelWidth * pixelHeight 要素）
+	/// @param pixels RGBA8 ピクセルバッファ（pixelWidth * pixelHeight 要素）
 	/// @param pixelWidth バッファ幅（ピクセル数）
 	/// @param pixelHeight バッファ高さ（ピクセル数）
 	/// @param filter サンプリングフィルタ（Linear=デフォルト互換、Point=ピクセルアート）
@@ -753,13 +737,13 @@ public:
 	                   int pixelHeight,
 	                   render::PixelArtFilter filter);
 
-	/// @brief RGBA8バッファを画素ごとの alpha でそのまま src-over 合成する（カメラ変換なし）
-	/// @details drawSprite と違い「ほぼ透明はカットオフ」(alpha<128 を捨てる) を行わない。
+	/// @brief RGBA8 バッファを画素ごとの alpha でそのまま src-over 合成する（カメラ変換なし）
+	/// @details drawSprite と違い「ほぼ透明はカットオフ」(alpha<128 を捨てる) をしない。
 	///          alpha 0.5 未満の半透明合成 (ゴーストリプレイの重ね描き等) に使う。
 	///          GPU pipeline 接続時は drawPixelGrid に委譲する。未接続時は SW
 	///          フレームバッファへ直接ブレンドする（無ければ no-op）。
-	/// @param dest 描画先矩形（スクリーン座標、カメラ変換を尊重しない）
-	/// @param pixels RGBA8ピクセルバッファ（pixelWidth * pixelHeight 要素）
+	/// @param dest 描画先矩形（スクリーン座標、カメラ変換に従わない）
+	/// @param pixels RGBA8 ピクセルバッファ（pixelWidth * pixelHeight 要素）
 	/// @param pixelWidth バッファ幅（ピクセル数）
 	/// @param pixelHeight バッファ高さ（ピクセル数）
 	void blitAlphaBlended(const sgc::Rectf& dest,
@@ -774,10 +758,10 @@ public:
 	void drawSprite(const render::Texture& texture, const sgc::Rectf& dstRect,
 	                const sgc::Colorf& tintColor);
 
-	/// @brief スプライトシートの 1 コマ (srcRect) を ティント / 左右反転付きで描く
+	/// @brief スプライトシートの 1 コマ (srcRect) をティント / 左右反転付きで描く
 	/// @details テクスチャ全体ではなく srcRect (ピクセル単位の部分矩形) を dstRect に
 	///          描画する。スプライトシートのアニメ 1 フレームを切り出す用途。バッチ＆
-	///          カメラ変換に従う (drawPixelGrid と違い transform を尊重)。
+	///          カメラ変換に従う (drawPixelGrid と違い transform を反映する)。
 	/// @param texture シート全体のテクスチャ
 	/// @param dstRect 描画先矩形 (スクリーン座標)
 	/// @param srcRect テクスチャ内のソース領域 (ピクセル単位)
@@ -799,8 +783,8 @@ public:
 	/// @brief 文字を CPU 側で描く場面か (テクスチャ描画が使えず、画面バッファへ直接書けるとき)。
 	[[nodiscard]] bool softwareTextPath() const noexcept;
 
-	/// @brief UIノードツリーを描画する
-	/// @param root UIツリーのルートノード
+	/// @brief UI ノードツリーを描画する
+	/// @param root UI ツリーのルートノード
 	/// @param theme 描画に使用するテーマ
 	void renderUI(const ui::UINode& root, const ui::UITheme& theme);
 
@@ -821,22 +805,22 @@ public:
 	using Transform2D = render::Transform2D;
 
 	/// @brief 変換をプッシュする（現在の変換に乗算）
-	/// @param tx X平行移動
-	/// @param ty Y平行移動
-	/// @param sx Xスケール
-	/// @param sy Yスケール
+	/// @param tx X 平行移動
+	/// @param ty Y 平行移動
+	/// @param sx X スケール
+	/// @param sy Y スケール
 	/// @details 後方互換の translate+scale 専用オーバーロード。
 	void pushTransform(float tx = 0.0f, float ty = 0.0f,
 	                   float sx = 1.0f, float sy = 1.0f);
 
-	/// @brief 任意の2Dアフィン変換をプッシュする（現在の変換に乗算）
+	/// @brief 任意の 2D アフィン変換をプッシュする（現在の変換に乗算）
 	void pushTransform(const Transform2D& t);
 
 	/// @brief ピボット周りの回転をプッシュする便利関数
 	/// @note 角度の単位は**ラジアン** (度ではない)。度で書きたいときは mitiru::deg(90) で変換。
 	/// @param rad 回転角度（ラジアン）
-	/// @param pivotX ピボットX（入力座標系）
-	/// @param pivotY ピボットY（入力座標系）
+	/// @param pivotX ピボット X（入力座標系）
+	/// @param pivotY ピボット Y（入力座標系）
 	void pushRotation(float rad, float pivotX = 0.0f, float pivotY = 0.0f);
 
 	/// @brief 変換をポップする
@@ -846,7 +830,7 @@ public:
 
 	/// @brief 2D カメラを適用する (注視点 camX,camY が画面中央・zoom 倍)。
 	/// draw 冒頭で呼び、HUD 等の画面固定要素を描く前に endCamera() で外す。
-	/// update / draw でのカメラ変換二重実装 (バグ源) を消すための一元化。
+	/// update / draw でのカメラ変換の二重実装 (バグ源) をなくすために一か所へまとめる。
 	/// メンバ追加なし (変換スタックのみ使用) = ABI 影響なし。
 	void applyCamera(float camX, float camY, float zoom = 1.0f)
 	{
@@ -893,8 +877,8 @@ public:
 		popTransform();
 	}
 
-	/// @brief フレーム描画を完了し、GPU送信する
-	/// @details SpriteBatch/ShapeRendererの蓄積データをRenderPipeline2Dに送る。
+	/// @brief フレーム描画を完了し、GPU に送る
+	/// @details SpriteBatch/ShapeRenderer の蓄積データを RenderPipeline2D に送る。
 	void present();
 
 	/// @brief 3D 使用フレームの 2D 蓄積分を 3D の上へ描く（Engine が 3D 確定後に呼ぶ）
@@ -952,7 +936,7 @@ public:
 	/// @brief `EngineConfig::expectedSprites` (C4) を SpriteBatch の初回確保へ繋ぐ
 	/// @details 0 以下は no-op (SpriteBatch 自身の既定値、現状 256 件のまま)。Screen 構築直後
 	///          (最初の `begin()` より前) に呼ぶこと。`begin()` 後に容量が足りず再確保が
-	///          走っても壊れはしない (`reserveSprites()` は単なる `reserve()`) が、狙いの
+	///          起きてもおかしくはならない (`reserveSprites()` は単なる `reserve()`) が、狙っていた
 	///          「初回確保だけで済ませる」効果は薄れる。
 	void applyExpectedSprites(int expectedSprites) noexcept
 	{
@@ -962,25 +946,25 @@ public:
 		}
 	}
 
-	/// @brief SpriteBatchへの参照を取得する
+	/// @brief SpriteBatch への参照を取得する
 	[[nodiscard]] render::SpriteBatch& spriteBatch() noexcept
 	{
 		return m_spriteBatch;
 	}
 
-	/// @brief SpriteBatchへのconst参照を取得する
+	/// @brief SpriteBatch への const 参照を取得する
 	[[nodiscard]] const render::SpriteBatch& spriteBatch() const noexcept
 	{
 		return m_spriteBatch;
 	}
 
-	/// @brief ShapeRendererへの参照を取得する
+	/// @brief ShapeRenderer への参照を取得する
 	[[nodiscard]] render::ShapeRenderer& shapeRenderer() noexcept
 	{
 		return m_shapeRenderer;
 	}
 
-	/// @brief ShapeRendererへのconst参照を取得する
+	/// @brief ShapeRenderer への const 参照を取得する
 	[[nodiscard]] const render::ShapeRenderer& shapeRenderer() const noexcept
 	{
 		return m_shapeRenderer;
@@ -1052,11 +1036,11 @@ private:
 	                            const sgc::Colorf& color);
 
 	// ── transform 対応の内部 emit ヘルパー ─────────────
-	// 描画メソッドはこれらを経由することで currentTransform を自動適用する。
-	// rotation を持つ変換では、SpriteBatch のAABB矩形では表現不能なため
-	// ShapeRenderer 経由で2三角形クワッドとして emit する。
+	// 描画メソッドはこれらを通すことで currentTransform を自動で適用する。
+	// rotation を持つ変換は SpriteBatch の AABB 矩形では表現できないので、
+	// ShapeRenderer 経由で 2 三角形のクワッドとして emit する。
 
-	/// @brief 現在のtransformを適用して矩形をemitする
+	/// @brief 現在の transform を適用して矩形を emit する
 	void emitRect(const sgc::Rectf& rect, const sgc::Colorf& color)
 	{
 		// 頂点カラー描画: 開いている textured run があれば閉じて順序を保つ
@@ -1079,10 +1063,10 @@ private:
 			m_spriteBatch.drawRect(sgc::Rectf{nx, ny, nw, nh}, color);
 			return;
 		}
-		// 回転を含む: 4 隅を変換する。回転した塗り矩形を 1 つの対角線で 2 三角形に割ると、
-		// MSAA 下でその対角辺に沿って被覆が僅かに足りず、角付近に縫い目 (背景が透ける) が
+		// 回転を含む: 4 隅を変換する。回転した塗り矩形を 1 つの対角線で 2 三角形に分けると、
+		// MSAA 下でその対角辺に沿って被覆がわずかに足りず、角付近に縫い目 (背景が透ける) が
 		// 出る角度がある。不透明のときは両方の対角線で分割し (4 三角形)、片方の対角の隙間を
-		// もう片方が必ず塞ぐようにする。半透明は重ね塗りで濃くなるので 1 枚のクワッドで描く。
+		// もう片方が必ず埋めるようにする。半透明は重ね塗りで濃くなるので 1 枚のクワッドで描く。
 		const auto p0 = t.apply(rect.x(), rect.y());
 		const auto p1 = t.apply(rect.x() + rect.width(), rect.y());
 		const auto p2 = t.apply(rect.x() + rect.width(), rect.y() + rect.height());
@@ -1101,7 +1085,7 @@ private:
 		}
 	}
 
-	/// @brief 現在のtransformを適用して三角形をemitする
+	/// @brief 現在の transform を適用して三角形を emit する
 	void emitTriangle(const sgc::Vec2f& a, const sgc::Vec2f& b, const sgc::Vec2f& c,
 	                  const sgc::Colorf& color)
 	{
@@ -1114,7 +1098,7 @@ private:
 		m_shapeRenderer.drawTriangle(t.apply(a), t.apply(b), t.apply(c), color);
 	}
 
-	/// @brief 現在のtransformを適用して線分をemitする
+	/// @brief 現在の transform を適用して線分を emit する
 	void emitLine(const sgc::Vec2f& from, const sgc::Vec2f& to,
 	              const sgc::Colorf& color, float thickness)
 	{
@@ -1128,7 +1112,7 @@ private:
 		m_shapeRenderer.drawLine(t.apply(from), t.apply(to), color, th);
 	}
 
-	/// @brief 現在のtransformを適用して4頂点グラデーション矩形をemitする
+	/// @brief 現在の transform を適用して 4 頂点グラデーション矩形を emit する
 	void emitGradientRect(const sgc::Rectf& rect,
 	                      const sgc::Colorf& tl, const sgc::Colorf& tr,
 	                      const sgc::Colorf& br, const sgc::Colorf& bl)
@@ -1150,13 +1134,13 @@ private:
 		m_spriteBatch.drawQuadGradient4(corners, tl, tr, br, bl);
 	}
 
-	/// @brief 現在のtransformを適用して点（座標）を返す
+	/// @brief 現在の transform を適用して点（座標）を返す
 	[[nodiscard]] sgc::Vec2f emitPoint(const sgc::Vec2f& p) const
 	{
 		return currentTransform().apply(p);
 	}
 
-	/// @brief 現在のtransform を適用して値（スカラー長）を返す
+	/// @brief 現在の transform を適用して値（スカラー長）を返す
 	[[nodiscard]] float emitScale(float v) const
 	{
 		return v * currentTransform().avgScale();
@@ -1175,8 +1159,8 @@ private:
 
 public:
 	/// @brief ソフトウェアフレームバッファを有効化する
-	/// @details headlessモードでのピクセル検証に使用する。
-	///          present()時に三角形をソフトウェアラスタライズする。
+	/// @details headless モードでのピクセル検証に使う。
+	///          present() 時に三角形をソフトウェアでラスタライズする。
 	void enableSoftwareFramebuffer() noexcept
 	{
 		m_softwareFb = true;
@@ -1192,16 +1176,16 @@ public:
 	}
 
 	/// @brief ソフトウェアフレームバッファのピクセルデータを取得する
-	/// @return RGBA8形式のピクセルデータ（左上起点）
+	/// @return RGBA8 形式のピクセルデータ（左上起点）
 	[[nodiscard]] const std::vector<std::uint8_t>& pixels() const noexcept
 	{
 		return m_pixels;
 	}
 
 	/// @brief 指定座標のピクセル色を取得する
-	/// @param x X座標
-	/// @param y Y座標
-	/// @return RGBA色（範囲外は黒）
+	/// @param x X 座標
+	/// @param y Y 座標
+	/// @return RGBA 色（範囲外は黒）
 	[[nodiscard]] sgc::Colorf pixelAt(int x, int y) const noexcept
 	{
 		if (x < 0 || x >= m_width || y < 0 || y >= m_height || !m_softwareFb)
@@ -1279,7 +1263,7 @@ private:
 		bool m_prev;
 	};
 
-	/// @brief draw log へ 1 エントリ記録する（有効時のみ。上限超過は黙って捨てる）
+	/// @brief draw log へ 1 エントリ記録する（有効時のみ。上限を超えた分は通知せずに捨てる）
 	void recordDrawLog(const sgc::Rectf& bounds, const char* callName, std::string_view text = {})
 	{
 		if (!m_drawLogEnabled || m_drawLogSuppress || m_drawLog.size() >= kDrawLogCap) { return; }
@@ -1366,7 +1350,7 @@ private:
 		const float dx20 = v0.position.x - v2.position.x;
 		const float dy20 = v0.position.y - v2.position.y;
 
-		/// 三角形面積（2倍）で退化チェック
+		/// 三角形面積（2 倍）で退化チェック
 		const float area = dx01 * (v2.position.y - v0.position.y) -
 		                   dy01 * (v2.position.x - v0.position.x);
 		if (std::abs(area) < 0.001f) return;
@@ -1388,15 +1372,15 @@ private:
 				const float e2 = (px - v0.position.x) * dy01 -
 				                 (py - v0.position.y) * dx01;
 
-				/// 三角形の内側判定（スクリーン座標系ではCW三角形の
-				/// area>0でedge値が負になるため符号を反転して判定）
+				/// 三角形の内側判定（スクリーン座標系では CW 三角形の
+				/// area>0 で edge 値が負になるため符号を反転して判定）
 				const bool inside = (area > 0.0f)
 					? (e0 <= 0.0f && e1 <= 0.0f && e2 <= 0.0f)
 					: (e0 >= 0.0f && e1 >= 0.0f && e2 >= 0.0f);
 
 				if (!inside) continue;
 
-				/// 頂点色の重心補間（edge値とareaの符号が逆なので反転）
+				/// 頂点色の重心補間（edge 値と area の符号が逆なので反転）
 				const float w0 = -e0 * invArea;
 				const float w1 = -e1 * invArea;
 				const float w2 = 1.0f - w0 - w1;
@@ -1425,7 +1409,7 @@ private:
 		}
 	}
 
-	/// @brief UIノードを再帰的に描画する
+	/// @brief UI ノードを再帰的に描画する
 	void renderUINode(const ui::UINode& node, const ui::UITheme& theme)
 	{
 		if (!node.visible()) return;
@@ -1616,7 +1600,7 @@ public:
 
 	/// @brief 距離フォグを掛ける (ABI v28)。既定は無し。
 	/// @param nearDist かかり始める距離。@param farDist 完全に color へ染まる距離。
-	/// @details 空の色に合わせると遠景が地平へ溶ける。drawMesh / drawModel より前に呼ぶ。
+	/// @details 空の色に合わせると遠景が地平の空になじむ。drawMesh / drawModel より前に呼ぶ。
 	void fog3D(bool enabled, const sgc::Colorf& color = sgc::Colorf{0.7f, 0.78f, 0.86f, 1.0f},
 	           float nearDist = 30.0f, float farDist = 90.0f) noexcept;
 
@@ -1625,9 +1609,14 @@ public:
 	///          フレーム頭で true に戻るので、戻し忘れは次フレームへ持ち越さない。
 	void shadowCaster3D(bool enabled);
 
+	/// @brief 以後の 3D 描画を輪郭線 (outline3D / SceneLook.outline) の検出から外すかを切り替える。
+	/// @details テクスチャ付きの板の立ち絵は面の外周で深度が段になり、絵の周りに長方形の枠が出る。
+	///          その描画を false で挟む。shadowCaster3D と同じくフレーム頭で true に戻る。
+	void outlineCaster3D(bool enabled);
+
 	/// @brief 「絵の設定」(露出・ガンマ・アンビエント・輪郭線・影・フォグ) を 1 個の POD で
 	///        まとめて反映する (ABI v35、§1-12)。fog3D/outline3D と同じキャッシュを共有するため、
-	///        この呼び出しの後に個別 API を呼べばそちらが最後の値として勝つ。drawMesh より前に呼ぶ。
+	///        この呼び出しの後に個別 API を呼べばそちらが最後の値として使われる。drawMesh より前に呼ぶ。
 	void sceneLook3D(const render::SceneLook& look) noexcept;
 
 	/// @brief 組み込みメッシュ ("cube" / "sphere" / "plane") を位置・スケール・回転(度)・色で描く。
@@ -1642,7 +1631,7 @@ public:
 	              const sgc::Vec3f& rotDeg, const render::Texture& texture,
 	              const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f});
 
-	/// @brief Makina の CSG ソリッド (.csgbake.json) を位置・Y回転(度)・スケールで描く。
+	/// @brief Makina の CSG ソリッド (.csgbake.json) を位置・Y 回転(度)・スケールで描く。
 	/// @details 距離場をそのままレイマーチするので、メッシュ化を経ない。DX12 +
 	///          makina-core のあるビルド以外では何も描かない (drawModel と同じ規約)。
 	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
@@ -1656,8 +1645,8 @@ public:
 	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
 	               float rotYDeg, float scale, float timeSec);
 
-	/// @brief 大規模 3D モデル (.clod) を位置・Y回転(度)・スケールで描く。自動 LOD。
-	/// @param path .clod への vfs パス。DX12 + SM6.6 が無い環境では no-op。
+	/// @brief 大規模 3D モデル (.clod) を位置・Y 回転(度)・スケールで描く。自動 LOD。
+	/// @param path.clod への vfs パス。DX12 + SM6.6 が無い環境では no-op。
 	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg = 0.0f,
 	               float scale = 1.0f);
 
@@ -1694,13 +1683,13 @@ public:
 	void drawLive2D(const char* model3jsonPath);
 
 	/// @brief DirectML 推論を backbuffer に CPU 往復なしで適用する後処理の on/off + 強度 (0..2)。
-	/// @details 描画したフレームを pack→DirectML→unpack→合成でパイプライン内推論加工する。
+	/// @details 描画したフレームを pack→DirectML→unpack→合成の順に通し、パイプライン内で推論して加工する。
 	///          strength = 輝度アンシャープの強度 (HUD スライダーで可変)。
 	void enableNeuralFx(bool enabled, float strength = 0.5f);
 
 	/// @brief ニューラル・リライティング on/off + 光源方向 (lx,ly∈[-1,1]) + 陰影/リム強度。
-	/// @details 平面 Live2D 描画から法線を推定し可動光源で再ライティング。従来 Live2D は照明が
-	///          テクスチャ固定で動かせないが、推論で「描かれていない立体形状」を補い光に反応させる。
+	/// @details 平面 Live2D 描画から法線を推定し、可動光源で再ライティングする。従来の Live2D は照明が
+	///          テクスチャに固定されていて動かせないが、推論で「描かれていない立体形状」を補って光に反応させる。
 	void enableRelight(bool enabled, float lightX = 0.4f, float lightY = 0.4f,
 	                   float strength = 0.6f, float rim = 0.5f);
 
@@ -1794,8 +1783,8 @@ private:
 	// exposure/gamma/ambient/cascaded shadow/影方向の上書きは、これまで Screen に
 	// キャッシュ場所が無く renderer 側の既定値のまま触れなかった設定。sceneLook3D() が呼ばれると
 	// m_sceneShadowDirSet / m_sceneOutlineModeSet が立ち、ensure3DFrame() はそちらを優先する。
-	// outline3D() を後から呼べば m_sceneOutlineModeSet を倒して従来の depthOnly 派生に戻す
-	// (m_outline3D 等は共有キャッシュなので、呼び出し順で「最後の値」が自然に効く)。
+	// outline3D() を後から呼べば m_sceneOutlineModeSet を下ろして従来の depthOnly 派生に戻す
+	// (m_outline3D 等は共有キャッシュなので、呼び出し順どおり「最後の値」がそのまま使われる)。
 	// m_sceneLookSet が false の間は exposure/gamma/ambient/cascaded/caster を一切呼ばない
 	// (backend 初期値が ISceneFx の文書化された既定値と一致しない場合がある。実例:
 	// BackendInit.hpp の defaultAmbient は {0.5,0.5,0.5} だが ISceneFx の既定コメントは
@@ -1815,12 +1804,48 @@ private:
 	bool         m_sceneShadowAutoFit   = false;
 	float        m_sceneShadowDistance  = 60.0f;
 	std::uint8_t m_sceneShadowCascadeCount = 0;
+	// v39: 直前の uint8 の後ろの詰め物に収まるので sizeof(Screen) と他メンバーの offset は変わらない
+	bool         m_sceneOutlineCaster   = true;
+	// v40 (ADR 0042): SSAO / トゥーンの段 / 段付きハイライト。sceneLook3D() 経由でだけ触る
+	bool         m_sceneAo              = false;
+	std::uint8_t m_sceneToonBands       = 1;
+	float        m_sceneAoRadius        = 0.25f;
+	float        m_sceneAoStrength      = 1.0f;
+	float        m_sceneToonSoftness    = 0.12f;
+	sgc::Colorf  m_sceneToonMidTint     {0.78f, 0.80f, 0.88f, 1.0f};
+	float        m_sceneToonSpecular    = 0.0f;
+	float        m_sceneToonSpecularPower = 32.0f;
+	// v41 (ADR 0043): bloom / 影の柔らかさ / 色調補正。sceneLook3D() 経由でだけ触る
+	bool         m_sceneBloom           = false;
+	float        m_sceneBloomThreshold  = 1.0f;
+	float        m_sceneBloomStrength   = 0.3f;
+	float        m_sceneShadowSoftness  = 1.0f;
+	float        m_sceneSaturation      = 1.0f;
+	float        m_sceneContrast        = 1.0f;
+	// v42 (ADR 0044): 輪郭線の距離減衰。sceneLook3D() 経由でだけ触る
+	float        m_sceneOutlineFadeNear = 0.0f;
+	float        m_sceneOutlineFadeFar  = 0.0f;
+	float        m_sceneOutlineFadeMin  = 0.0f;
+
+	// v43 (ADR 0045)
+	sgc::Colorf  m_sceneAmbientSky    {0.0f, 0.0f, 0.0f, 1.0f};
+	sgc::Colorf  m_sceneAmbientGround {0.0f, 0.0f, 0.0f, 1.0f};
+	float        m_sceneRimStrength   = 0.0f;
+	float        m_sceneRimPower      = 3.0f;
+	sgc::Colorf  m_sceneRimColor      {1.0f, 1.0f, 1.0f, 1.0f};
+	float        m_sceneOutlineDarken = 1.0f;
+
+	// v44 (ADR 0046)
+	float        m_sceneDofStart      = 0.0f;
+	float        m_sceneDofEnd        = 0.0f;
+	float        m_sceneDofStrength   = 0.0f;
+	float        m_sceneShadowBias    = 0.0f;
 };
 
 } // namespace mitiru
 
-/// @brief present()のインライン実装
-/// @details RenderPipeline2D.hppをインクルードせずに宣言だけで済むよう、
+/// @brief present() のインライン実装
+/// @details RenderPipeline2D.hpp をインクルードせずに宣言だけで済むよう、
 ///          ヘッダー下部で別途インクルードして実装する。
 #include <mitiru/render/RenderPipeline2D.hpp>
 

@@ -10,7 +10,7 @@
 /// 設計判断:
 /// - header validate は `open()` で 1 度だけ
 /// - frame ごとに `readNext()` を呼ぶ pull 型 API。host loop が自分の好きな
-///   タイミングで吸い上げる
+///   タイミングで読み出す
 /// - failure mode (checksum / IO / EOF) を区別したいときは `lastError()` を読む
 ///
 /// 関連: `include/mitiru/replay/Recorder.hpp` (書き込み側)
@@ -38,12 +38,13 @@ enum class PlayerError : std::uint8_t
 	VersionMismatch  = 4,
 	FrameSizeMismatch= 5,
 	FrameTruncated   = 6,
-	ChecksumMismatch = 7
+	ChecksumMismatch = 7,
+	CodecUnavailable = 8   ///< v6 の圧縮済みフレームを、zstd の無い構成で読もうとした
 };
 
 /// @brief `mitiru::module::InputSnapshot` 用の append-only binary player。
 /// @details 1 instance = 1 input file。`open()` で header を検証、
-///          `readNext()` で 1 frame ずつ吸い出し、`eof()` で終了確認。
+///          `readNext()` で 1 frame ずつ読み出し、`eof()` で終了確認。
 class Player
 {
 public:
@@ -55,7 +56,7 @@ public:
 
 	~Player() { close(); }
 
-	/// @brief open + validate header. false の時は `lastError()` を見ること。
+	/// @brief open して header を検証する。false の時は `lastError()` を見ること。
 	bool open(const std::string& path)
 	{
 		close();
@@ -84,14 +85,15 @@ public:
 
 		std::uint32_t ver = 0;
 		std::memcpy(&ver, header + kOffVersion, sizeof(ver));
-		if (ver != kFormatVersion && ver != kFormatVersionV4)
+		if (ver != kFormatVersion && ver != kFormatVersionV5 && ver != kFormatVersionV4)
 		{
 			// 非対応 format。再録画が必要。
 			m_lastError = PlayerError::VersionMismatch;
 			return false;
 		}
 
-		if (ver == kFormatVersion)
+		m_version = ver;
+		if (ver != kFormatVersionV4)
 		{
 			m_in.read(reinterpret_cast<char*>(header + kHeaderBytesV4), kHeaderBytes - kHeaderBytesV4);
 			if (m_in.gcount() != static_cast<std::streamsize>(kHeaderBytes - kHeaderBytesV4))
@@ -127,6 +129,9 @@ public:
 		m_lastError  = PlayerError::None;
 		m_eof        = false;
 		m_framesRead = 0;
+		m_prevSnap.assign(sizeof(module::InputSnapshot), std::uint8_t{0});
+		m_packed.assign(sizeof(module::InputSnapshot), std::uint8_t{0});
+		if (m_version == kFormatVersion) { m_zstd.open(); }
 		return true;
 	}
 
@@ -155,21 +160,14 @@ public:
 		}
 		if (m_eof) { return false; }
 
-		// レイアウト: [frameIdx u32][payload InputSnapshot][stateLen u32][state][checksum u32]
+		// レイアウト: [frameIdx u32][(v6) payloadLen u32][payload][stateLen u32][state][checksum u32]
 		constexpr std::size_t kPayloadBytes = sizeof(module::InputSnapshot);
 		std::uint8_t          head[sizeof(std::uint32_t) + kPayloadBytes];
-		m_in.read(reinterpret_cast<char*>(head), sizeof(head));
-		const auto headBytes = m_in.gcount();
-
-		if (headBytes == 0)
+		const ReadResult r = (m_version == kFormatVersion) ? readPackedHead(head) : readRawHead(head);
+		if (r == ReadResult::CleanEof) { m_eof = true; return false; }
+		if (r != ReadResult::Ok)
 		{
-			// frame 境界での clean EOF。
-			m_eof = true;
-			return false;
-		}
-		if (headBytes != static_cast<std::streamsize>(sizeof(head)))
-		{
-			m_lastError = PlayerError::FrameTruncated;
+			m_lastError = (r == ReadResult::NoCodec) ? PlayerError::CodecUnavailable : PlayerError::FrameTruncated;
 			m_eof       = true;
 			return false;
 		}
@@ -204,7 +202,7 @@ public:
 			return false;
 		}
 
-		// checksum は head + stateLen field + state バイト列 を covers する (Recorder と一致)。
+		// checksum は head + stateLen field + state バイト列を対象にする (Recorder と一致)。
 		std::uint32_t expected = fnv1a32(head, sizeof(head));
 		expected = fnv1aAppend(expected, &stateLen, sizeof(stateLen));
 		if (stateLen > 0)
@@ -252,7 +250,7 @@ public:
 	/// @brief 記録環境の自由記述 (v5+ header の envTag)。v4 録画や未設定時は空文字。
 	[[nodiscard]] const std::string& recordedEnvTag() const noexcept { return m_envTag; }
 
-	/// @brief idempotent close
+	/// @brief 冪等な close
 	void close()
 	{
 		if (m_in.is_open()) { m_in.close(); }
@@ -264,6 +262,7 @@ public:
 		m_recordedAt  = 0;
 		m_recordedAbi = 0;
 		m_frameSize   = 0;
+		m_version     = 0;
 		m_envTag.clear();
 	}
 
@@ -373,7 +372,58 @@ public:
 	}
 
 private:
+	enum class ReadResult : std::uint8_t { Ok, CleanEof, Truncated, NoCodec };
+
+	/// @brief v5 / v4: frameIdx と生の InputSnapshot をそのまま読む。
+	ReadResult readRawHead(std::uint8_t* head)
+	{
+		constexpr std::size_t kHead = sizeof(std::uint32_t) + sizeof(module::InputSnapshot);
+		m_in.read(reinterpret_cast<char*>(head), kHead);
+		const auto got = m_in.gcount();
+		if (got == 0) { return ReadResult::CleanEof; }
+		return (got == static_cast<std::streamsize>(kHead)) ? ReadResult::Ok : ReadResult::Truncated;
+	}
+
+	/// @brief v6: frameIdx と詰めた payload を読み、前フレームとの XOR を解いて head に生の形で置く。
+	ReadResult readPackedHead(std::uint8_t* head)
+	{
+		constexpr std::size_t kPayloadBytes = sizeof(module::InputSnapshot);
+		m_in.read(reinterpret_cast<char*>(head), sizeof(std::uint32_t));
+		const auto got = m_in.gcount();
+		if (got == 0) { return ReadResult::CleanEof; }
+		std::uint32_t payloadLen = 0;
+		if (got != static_cast<std::streamsize>(sizeof(std::uint32_t))) { return ReadResult::Truncated; }
+		m_in.read(reinterpret_cast<char*>(&payloadLen), sizeof(payloadLen));
+		if (m_in.gcount() != static_cast<std::streamsize>(sizeof(payloadLen)) || payloadLen > kPayloadBytes)
+		{
+			return ReadResult::Truncated;
+		}
+		std::uint8_t* snap = head + sizeof(std::uint32_t);
+		if (payloadLen == kPayloadBytes)
+		{
+			m_in.read(reinterpret_cast<char*>(snap), kPayloadBytes);
+			if (m_in.gcount() != static_cast<std::streamsize>(kPayloadBytes)) { return ReadResult::Truncated; }
+		}
+		else
+		{
+			m_in.read(reinterpret_cast<char*>(m_packed.data()), payloadLen);
+			if (m_in.gcount() != static_cast<std::streamsize>(payloadLen)) { return ReadResult::Truncated; }
+			if (!m_zstd.available()) { return ReadResult::NoCodec; }
+			if (m_zstd.decompress(m_packed.data(), payloadLen, snap, kPayloadBytes) != kPayloadBytes)
+			{
+				return ReadResult::Truncated;
+			}
+			for (std::size_t i = 0; i < kPayloadBytes; ++i) { snap[i] = static_cast<std::uint8_t>(snap[i] ^ m_prevSnap[i]); }
+		}
+		std::memcpy(m_prevSnap.data(), snap, kPayloadBytes);
+		return ReadResult::Ok;
+	}
+
 	std::ifstream m_in;
+	std::uint32_t m_version{0};
+	std::vector<std::uint8_t> m_prevSnap;  ///< v6: 直前に復元した InputSnapshot (差分の元)
+	std::vector<std::uint8_t> m_packed;
+	util::ZstdContext         m_zstd;
 	bool          m_eof{false};
 	PlayerError   m_lastError{PlayerError::None};
 	std::uint64_t m_framesRead{0};

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file TiledMapLoader.hpp
-/// @brief Tiled (.tmj) JSON形式タイルマップローダー
-/// @details nlohmann/json を使用してTiledエディタの.tmj形式を
-///          TilemapRenderer用のTilemap構造体に変換する。
+/// @brief Tiled (.tmj) JSON 形式タイルマップローダー
+/// @details nlohmann/json を使用して Tiled エディタの .tmj 形式を
+///          TilemapRenderer 用の Tilemap 構造体に変換する。
 ///          タイルレイヤー・オブジェクトレイヤー（衝突矩形）・
 ///          複数タイルセットをサポートする。
 
@@ -29,7 +29,7 @@ namespace mitiru::render
 
 // ─── Tiled Object (衝突矩形等) ─────────────────────────────
 
-/// @brief Tiledオブジェクトレイヤー内のオブジェクト
+/// @brief Tiled オブジェクトレイヤー内のオブジェクト
 /// @details 衝突矩形・トリガー領域・スポーン地点などを表現する。
 struct TiledObject
 {
@@ -49,7 +49,7 @@ struct TiledObject
 	}
 };
 
-/// @brief Tiledオブジェクトレイヤー
+/// @brief Tiled オブジェクトレイヤー
 struct TiledObjectLayer
 {
 	std::string name;                    ///< レイヤー名
@@ -59,7 +59,7 @@ struct TiledObjectLayer
 
 // ─── TiledMapResult ─────────────────────────────────────────
 
-/// @brief Tiledマップ読み込み結果
+/// @brief Tiled マップ読み込み結果
 /// @details タイルマップ本体に加え、オブジェクトレイヤーを保持する。
 struct TiledMapResult
 {
@@ -68,7 +68,7 @@ struct TiledMapResult
 
 	/// @brief 名前でオブジェクトレイヤーを検索する
 	/// @param name レイヤー名
-	/// @return レイヤーへのポインタ（見つからなければnullptr）
+	/// @return レイヤーへのポインタ（見つからなければ nullptr）
 	[[nodiscard]] const TiledObjectLayer* findObjectLayer(
 		const std::string& name) const
 	{
@@ -120,7 +120,7 @@ struct TiledMapResult
 
 // ─── Tiled Flip Constants ───────────────────────────────────
 
-/// @brief Tiled GIDフラグビット（上位3ビット）
+/// @brief Tiled GID フラグビット（上位 3 ビット）
 namespace tiled_flags
 {
 	constexpr std::uint32_t FLIPPED_HORIZONTALLY = 0x80000000u;
@@ -133,9 +133,9 @@ namespace tiled_flags
 
 // ─── TiledMapLoader ─────────────────────────────────────────
 
-/// @brief Tiled (.tmj) JSONマップローダー
-/// @details Tiled Map Editorが出力するJSON形式のタイルマップを読み込み、
-///          TilemapRenderer互換のTilemap構造体に変換する。
+/// @brief Tiled (.tmj) JSON マップローダー
+/// @details Tiled Map Editor が出力する JSON 形式のタイルマップを読み込み、
+///          TilemapRenderer 互換の Tilemap 構造体に変換する。
 ///
 /// @code
 /// auto result = mitiru::render::TiledMapLoader::loadTiledMap(jsonString);
@@ -148,9 +148,9 @@ class TiledMapLoader
 public:
 #if MITIRU_HAS_NLOHMANN_JSON
 
-	/// @brief Tiled JSON文字列からTilemapを読み込む
-	/// @param jsonString .tmj形式のJSON文字列
-	/// @return 読み込み結果（パース失敗時nullopt）
+	/// @brief Tiled JSON 文字列から Tilemap を読み込む
+	/// @param jsonString .tmj 形式の JSON 文字列
+	/// @return 読み込み結果（パース失敗時 nullopt）
 	[[nodiscard]] static std::optional<TiledMapResult> loadTiledMap(
 		const std::string& jsonString)
 	{
@@ -166,7 +166,7 @@ public:
 	}
 
 private:
-	/// @brief Tiledドキュメント全体をパースする
+	/// @brief Tiled ドキュメント全体をパースする
 	[[nodiscard]] static std::optional<TiledMapResult> parseTiledDocument(
 		const nlohmann::json& doc)
 	{
@@ -216,7 +216,7 @@ private:
 						result.objectLayers.push_back(std::move(*objLayer));
 					}
 				}
-				/// group レイヤー（入れ子）は再帰パース
+				/// group レイヤー（入れ子）は再帰的にパースする
 				else if (layerType == "group")
 				{
 					parseGroupLayer(layerJson, tilemap, result);
@@ -240,7 +240,7 @@ private:
 		ts.margin = tsJson.value("margin", 0);
 
 		/// テクスチャは外部で設定する（パス情報のみ保持）
-		/// image フィールドはTileset内に含まれるがロードは呼び出し側の責務
+		/// image フィールドは Tileset 内に含まれるがロードは呼び出し側の責務
 
 		return ts;
 	}
@@ -265,7 +265,7 @@ private:
 			return std::nullopt;
 		}
 
-		/// タイルデータをパースする（GIDフラグ付き）
+		/// タイルデータをパースする（GID フラグ付き）
 		if (layerJson.contains("data") && layerJson["data"].is_array())
 		{
 			const auto& dataArr = layerJson["data"];
@@ -280,7 +280,7 @@ private:
 				const bool flipV = (rawGid & tiled_flags::FLIPPED_VERTICALLY) != 0;
 				const bool flipD = (rawGid & tiled_flags::FLIPPED_DIAGONALLY) != 0;
 
-				/// フラグを除去した純粋なタイルIDを取得する
+				/// フラグを除いた純粋なタイル ID を取得する
 				const int tileId = static_cast<int>(rawGid & ~tiled_flags::ALL_FLAGS);
 				layer.data.push_back(tileId);
 
@@ -330,7 +330,7 @@ private:
 		return objLayer;
 	}
 
-	/// @brief グループレイヤーを再帰パースする
+	/// @brief グループレイヤーを再帰的にパースする
 	static void parseGroupLayer(
 		const nlohmann::json& groupJson,
 		Tilemap& tilemap,
@@ -371,8 +371,8 @@ private:
 #else // MITIRU_HAS_NLOHMANN_JSON == 0
 
 	/// @brief nlohmann/json が未導入の場合のフォールバック
-	/// @param jsonString JSON文字列（未使用）
-	/// @return 常にnullopt
+	/// @param jsonString JSON 文字列（未使用）
+	/// @return 常に nullopt
 	[[nodiscard]] static std::optional<TiledMapResult> loadTiledMap(
 		const std::string& jsonString)
 	{

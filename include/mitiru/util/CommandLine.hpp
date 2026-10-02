@@ -2,7 +2,7 @@
 
 /// @file CommandLine.hpp
 /// @brief 軽量コマンドライン引数パーサー
-/// @details 外部依存なしのシンプルなCLI引数パーサー。
+/// @details 外部依存なしのシンプルな CLI 引数パーサー。
 ///          フラグ、オプション（型付き）、位置引数をサポートする。
 ///
 /// @code
@@ -44,7 +44,7 @@ namespace mitiru::util
 class CommandLineParser
 {
 public:
-	/// @brief フラグ（bool型スイッチ）を追加する
+	/// @brief フラグ（bool 型スイッチ）を追加する
 	/// @param name 長い名前（--name）
 	/// @param shortName 短い名前（-s）、空文字列で省略
 	/// @param description ヘルプ表示用の説明
@@ -123,7 +123,7 @@ public:
 	/// @brief コマンドライン引数をパースする
 	/// @param argc 引数の数
 	/// @param argv 引数配列
-	/// @return パース成功時true、エラー時false
+	/// @return パース成功時 true、エラー時 false
 	bool parse(int argc, char* argv[])
 	{
 		m_programName = (argc > 0) ? argv[0] : "program";
@@ -226,7 +226,7 @@ public:
 
 	/// @brief フラグが指定されたか判定する
 	/// @param name フラグ名
-	/// @return フラグが指定されていればtrue
+	/// @return フラグが指定されていれば true
 	[[nodiscard]] bool hasFlag(const std::string& name) const
 	{
 		auto it = m_flags.find(name);
@@ -254,7 +254,7 @@ public:
 	}
 
 	/// @brief 位置引数を取得する
-	/// @param index 位置引数のインデックス（0始まり）
+	/// @param index 位置引数のインデックス（0 始まり）
 	/// @return 引数文字列
 	/// @throws std::out_of_range インデックスが範囲外の場合
 	[[nodiscard]] std::string getPositional(std::size_t index) const

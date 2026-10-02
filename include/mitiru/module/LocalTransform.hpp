@@ -4,8 +4,8 @@
 /// @brief 親子付き 2D/3D transform の flat POD (`LocalTransform` / `LocalTransform3D`) と
 /// 一括解決 `resolveWorld`。GameMemory の 1 フィールドとして持てる「親子」の書き方を提示する
 /// (`docs/IMPROVEMENTS_FROM_ENGINES_2026_09_17.md` ★1-5)。通知駆動 (callback) にはしない。
-/// DLL 境界に callback を増やすと ADR 0005 の enumerated set が太るのと、巻き戻しが
-/// memcpy 1 回で済む性質 (毎フレーム一括解決なら壊れない) を優先するため。
+/// DLL 境界に callback を増やすと ADR 0005 の enumerated set が大きくなるのと、巻き戻しが
+/// memcpy 1 回で済む性質 (毎フレーム一括解決ならおかしくならない) を優先するため。
 
 #include <cmath>
 #include <cstdint>
@@ -31,6 +31,7 @@ struct LocalTransform
 	float        sx = 1.0f, sy = 1.0f;
 	std::int16_t parent = -1;
 	std::uint8_t inheritMask = InheritPos | InheritRot | InheritScale;
+	std::uint8_t _pad[1] = {};   ///< 暗黙の詰め物を残さない (GameMemory はバイト単位で比べられる)
 };
 
 /// @brief 3D 版。形は `LocalTransform` と同じ (フィールドが増えるだけ)。
@@ -41,6 +42,7 @@ struct LocalTransform3D
 	float        sx = 1.0f, sy = 1.0f, sz = 1.0f;
 	std::int16_t parent = -1;
 	std::uint8_t inheritMask = InheritPos | InheritRot | InheritScale;
+	std::uint8_t _pad[1] = {};   ///< 暗黙の詰め物を残さない (GameMemory はバイト単位で比べられる)
 };
 
 /// @brief `resolveWorld` が書き出す解決済み世界座標。

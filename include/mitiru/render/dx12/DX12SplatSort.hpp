@@ -25,6 +25,8 @@
 #include <cstdint>
 #include <cstring>
 
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 #include <mitiru/render/dx12/DX12SplatSortShaders.hpp>
 
 namespace mitiru::render {
@@ -139,8 +141,8 @@ private:
     bool buildPso(ID3D12Device* dev, const char* entry, ComPtr<ID3D12PipelineState>& out)
     {
         ComPtr<ID3DBlob> cs, err;
-        if (FAILED(D3DCompile(SPLAT_SORT_CS_HLSL, std::strlen(SPLAT_SORT_CS_HLSL), nullptr,
-                nullptr, nullptr, entry, "cs_5_0", 0, 0, cs.GetAddressOf(), err.GetAddressOf())))
+        if (FAILED(gfx::compileDx12Shader(SPLAT_SORT_CS_HLSL, entry, "cs_5_0", 0,
+            cs.GetAddressOf(), err.GetAddressOf())))
         {
             return false;
         }
@@ -150,21 +152,10 @@ private:
         return SUCCEEDED(dev->CreateComputePipelineState(&pd, IID_PPV_ARGS(out.GetAddressOf())));
     }
 
-    bool makeUav(ID3D12Device* dev, UINT64 bytes, ComPtr<ID3D12Resource>& out)
+    bool makeUav(ID3D12Device* dev, UINT64 bytes, gfx::GpuResource& out)
     {
-        D3D12_HEAP_PROPERTIES hp = {}; hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-        D3D12_RESOURCE_DESC rd = {};
-        rd.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
-        rd.Width            = bytes;
-        rd.Height           = 1;
-        rd.DepthOrArraySize = 1;
-        rd.MipLevels        = 1;
-        rd.SampleDesc.Count = 1;
-        rd.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        rd.Flags            = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-        out.Reset();
-        return SUCCEEDED(dev->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &rd,
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr, IID_PPV_ARGS(out.GetAddressOf())));
+        return SUCCEEDED(gfx::createGpuBuffer(dev, D3D12_HEAP_TYPE_DEFAULT, bytes,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS, out, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
     }
 
     void uavBarrier(ID3D12GraphicsCommandList* cl)
@@ -195,7 +186,7 @@ private:
     D3D12_RESOURCE_STATES       m_orderState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     ComPtr<ID3D12RootSignature> m_rootSig;
     ComPtr<ID3D12PipelineState> m_psoReset, m_psoRange, m_psoHist, m_psoScan, m_psoScatter;
-    ComPtr<ID3D12Resource>      m_order, m_range, m_hist;
+    gfx::GpuResource            m_order, m_range, m_hist;
 };
 
 } // namespace mitiru::render

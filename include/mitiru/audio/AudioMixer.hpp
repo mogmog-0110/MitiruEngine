@@ -2,8 +2,8 @@
 
 /// @file AudioMixer.hpp
 /// @brief マルチチャンネルオーディオミキサー
-/// @details 複数のサウンドチャンネルを同時管理し、
-///          BGM・SE・ボイスの3カテゴリに分けてボリューム制御する。
+/// @details 複数のサウンドチャンネルを同時に管理し、
+///          BGM・SE・ボイスの 3 カテゴリに分けてボリュームを制御する。
 ///          各チャンネルは独立したボリュームとフェード状態を持つ。
 
 #include <algorithm>
@@ -29,9 +29,9 @@ enum class SoundCategory : uint8_t
 	Voice,       ///< ボイス（同時1トラック）
 };
 
-/// @brief SE同時多発時のクリッピング防止モード (G-07)
-/// @details 多数のSEが同時に鳴るとサンプル合算がフルスケールを超えて歪む。
-///          effectiveVolume()に倍率を掛けて論理レベルで summed RMS を抑える。
+/// @brief SE が同時に多発した場合のクリッピング防止モード (G-07)
+/// @details 多数の SE が同時に鳴ると、サンプルの合算値がフルスケールを超えて歪む。
+///          effectiveVolume() に倍率を掛け、論理レベルで summed RMS を抑える。
 enum class SeLimiterMode : uint8_t
 {
 	None = 0,     ///< 補正なし (デフォルト。後方互換)
@@ -64,14 +64,14 @@ struct Channel
 
 /// @brief マルチチャンネルオーディオミキサー
 /// @details 実際のオーディオ出力は行わず、再生状態のみを管理する。
-///          具体的な出力はIAudioEngineの実装に委譲する。
+///          具体的な出力は IAudioEngine の実装に委譲する。
 ///
 /// @code
 /// mitiru::audio::AudioMixer mixer;
 /// auto bgmHandle = mixer.play("battle_bgm", SoundCategory::Bgm, true);
 /// auto seHandle = mixer.play("sword_hit", SoundCategory::Se, false);
 /// mixer.update(0.016f); // 毎フレーム呼び出し
-/// mixer.fadeOut(bgmHandle, 2.0f); // 2秒フェードアウト
+/// mixer.fadeOut(bgmHandle, 2.0f); // 2 秒フェードアウト
 /// @endcode
 class AudioMixer
 {
@@ -86,7 +86,7 @@ public:
 	}
 
 	/// @brief サウンドを再生する
-	/// @param soundId サウンドID
+	/// @param soundId サウンド ID
 	/// @param category サウンドカテゴリ
 	/// @param loop ループ再生するか
 	/// @param volume 初期ボリューム [0.0, 1.0]
@@ -95,7 +95,7 @@ public:
 		bool loop = false, float volume = 1.0f)
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
-		/// BGM/Voiceカテゴリは同時1トラック制限
+		/// BGM/Voice カテゴリは同時に 1 トラックまで
 		if (category == SoundCategory::Bgm || category == SoundCategory::Voice)
 		{
 			stopByCategoryImpl(category);
@@ -122,7 +122,7 @@ public:
 		return handle;
 	}
 
-	/// @brief ハンドル指定でサウンドを停止する
+	/// @brief ハンドルを指定してサウンドを停止する
 	/// @param handle 再生ハンドル
 	void stop(int handle)
 	{
@@ -153,7 +153,7 @@ public:
 		m_handleMap.clear();
 	}
 
-	/// @brief ハンドル指定で一時停止する
+	/// @brief ハンドルを指定して一時停止する
 	/// @param handle 再生ハンドル
 	void pause(int handle)
 	{
@@ -165,7 +165,7 @@ public:
 		}
 	}
 
-	/// @brief ハンドル指定で一時停止を解除する
+	/// @brief ハンドルを指定して一時停止を解除する
 	/// @param handle 再生ハンドル
 	void resume(int handle)
 	{
@@ -203,16 +203,16 @@ public:
 		fadeOutImpl(handle, durationSeconds);
 	}
 
-	/// @brief BGMクロスフェードを行う
-	/// @param newSoundId 新しいBGM ID
+	/// @brief BGM のクロスフェードを行う
+	/// @param newSoundId 新しい BGM ID
 	/// @param durationSeconds フェード時間（秒）
-	/// @param newVolume 新BGMのボリューム
-	/// @return 新BGMの再生ハンドル
+	/// @param newVolume 新しい BGM のボリューム
+	/// @return 新しい BGM の再生ハンドル
 	int crossfadeBgm(std::string_view newSoundId, float durationSeconds,
 		float newVolume = 1.0f)
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
-		/// 現在のBGMをフェードアウト（停止はしない）
+		/// 現在の BGM をフェードアウト（停止はしない）
 		for (auto& ch : m_channels)
 		{
 			if (ch.state != ChannelState::Idle &&
@@ -222,8 +222,8 @@ public:
 			}
 		}
 
-		/// 新BGMをSEカテゴリで一旦確保し、後からBGMに変更する
-		/// （play()のBGM排他処理を回避するため）
+		/// 新しい BGM を SE カテゴリでいったん確保し、後から BGM に変更する
+		/// （play() の BGM 排他処理を回避するため）
 		const int idx = findFreeChannel();
 		if (idx < 0)
 		{
@@ -334,7 +334,7 @@ public:
 			ch->volume;
 	}
 
-	/// @brief SEリミッターモードを設定する (G-07)
+	/// @brief SE リミッターモードを設定する (G-07)
 	/// @param mode リミッターモード
 	void setSeLimiterMode(SeLimiterMode mode)
 	{
@@ -342,7 +342,7 @@ public:
 		m_seLimiterMode = mode;
 	}
 
-	/// @brief SEリミッターモードを取得する
+	/// @brief SE リミッターモードを取得する
 	/// @return 現在のリミッターモード
 	[[nodiscard]] SeLimiterMode seLimiterMode() const
 	{
@@ -352,16 +352,16 @@ public:
 
 	/// @brief カテゴリ別のアクティブチャンネル数を取得する
 	/// @param category 対象カテゴリ
-	/// @return Idle以外のチャンネル数
+	/// @return Idle 以外のチャンネル数
 	[[nodiscard]] int activeCategoryChannelCount(SoundCategory category) const
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
 		return countActiveInCategory(category);
 	}
 
-	/// @brief 指定ハンドルが再生中か判定する
+	/// @brief 指定したハンドルが再生中か判定する
 	/// @param handle 再生ハンドル
-	/// @return 再生中（Paused含む）なら true
+	/// @return 再生中（Paused を含む）なら true
 	[[nodiscard]] bool isPlaying(int handle) const
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
@@ -369,9 +369,9 @@ public:
 		return ch && ch->state != ChannelState::Idle;
 	}
 
-	/// @brief 指定ハンドルのチャンネル状態を取得する
+	/// @brief 指定したハンドルのチャンネル状態を取得する
 	/// @param handle 再生ハンドル
-	/// @return チャンネル状態（見つからない場合はIdle）
+	/// @return チャンネル状態（見つからない場合は Idle）
 	[[nodiscard]] ChannelState channelState(int handle) const
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
@@ -380,7 +380,7 @@ public:
 	}
 
 	/// @brief アクティブなチャンネル数を取得する
-	/// @return Idle以外のチャンネル数
+	/// @return Idle 以外のチャンネル数
 	[[nodiscard]] int activeChannelCount() const
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
@@ -395,7 +395,7 @@ public:
 		return count;
 	}
 
-	/// @brief コールバックを設定する（チャンネル終了時に呼ばれる）
+	/// @brief チャンネルの終了時に呼ばれるコールバックを設定する
 	/// @param callback ハンドルを引数に取るコールバック関数
 	void setOnChannelStopped(std::function<void(int)> callback)
 	{
@@ -444,7 +444,7 @@ private:
 
 	/// @brief ハンドルからチャンネルを検索する
 	/// @param handle 再生ハンドル
-	/// @return チャンネルへのポインタ（見つからない場合はnullptr）
+	/// @return チャンネルへのポインタ（見つからない場合は nullptr）
 	[[nodiscard]] Channel* findChannel(int handle)
 	{
 		const auto it = m_handleMap.find(handle);
@@ -460,9 +460,9 @@ private:
 		return &ch;
 	}
 
-	/// @brief ハンドルからチャンネルを検索する（const版）
+	/// @brief ハンドルからチャンネルを検索する（const 版）
 	/// @param handle 再生ハンドル
-	/// @return チャンネルへのconstポインタ
+	/// @return チャンネルへの const ポインタ
 	[[nodiscard]] const Channel* findChannelConst(int handle) const
 	{
 		const auto it = m_handleMap.find(handle);
@@ -505,7 +505,7 @@ private:
 		return count;
 	}
 
-	/// @brief 現在のSEリミッター倍率を計算する（ロック済み前提）
+	/// @brief 現在の SE リミッター倍率を計算する（ロック済み前提）
 	[[nodiscard]] float computeSeLimiterFactor() const
 	{
 		if (m_seLimiterMode == SeLimiterMode::None)

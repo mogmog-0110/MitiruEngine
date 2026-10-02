@@ -11,7 +11,7 @@
 namespace mitiru
 {
 
-/// @brief OS種別
+/// @brief OS 種別
 enum class OsType : std::uint8_t
 {
 	Unknown = 0,  ///< 不明
@@ -91,13 +91,13 @@ struct AvailableWindowBackends
 };
 
 /// @brief プラットフォーム情報
-/// @details コンパイル時のOS・アーキテクチャ・利用可能なバックエンドを保持する。
+/// @details コンパイル時の OS・アーキテクチャ・利用可能なバックエンドを保持する。
 ///
 /// @code
 /// auto info = PlatformInfo::detect();
 /// if (info.backends.vulkan)
 /// {
-///     // Vulkanバックエンドが利用可能
+///     // Vulkan バックエンドが利用可能
 /// }
 /// for (const auto& name : info.backends.list())
 /// {
@@ -111,8 +111,8 @@ struct PlatformInfo
 	AvailableBackends backends;             ///< グラフィックスバックエンド利用可否
 	AvailableWindowBackends windowBackends; ///< ウィンドウバックエンド利用可否
 
-	/// @brief OS名を文字列で取得する
-	/// @return OS名
+	/// @brief OS 名を文字列で取得する
+	/// @return OS 名
 	[[nodiscard]] std::string osName() const
 	{
 		switch (os)
@@ -125,7 +125,7 @@ struct PlatformInfo
 		}
 	}
 
-	/// @brief CPUアーキテクチャ名を文字列で取得する
+	/// @brief CPU アーキテクチャ名を文字列で取得する
 	/// @return アーキテクチャ名
 	[[nodiscard]] std::string archName() const
 	{
@@ -146,7 +146,7 @@ struct PlatformInfo
 	{
 		PlatformInfo info;
 
-		/// --- OS検出 ---
+		/// --- OS 検出 ---
 #if defined(_WIN32)
 		info.os = OsType::Windows;
 #elif defined(__EMSCRIPTEN__)

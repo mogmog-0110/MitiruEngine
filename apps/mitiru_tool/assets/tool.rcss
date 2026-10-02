@@ -1,0 +1,92 @@
+/* 全ツール窓の共通の見た目 (テクニカルノート)。クリーム紙 + グレースケールの濃淡 + 極細の罫 + 等幅のラベル。
+   陰影・ベベル・色は使わない。大きさは dp で書くので、窓の DPI が変わっても同じ見た目になる。 */
+
+body {
+	display: block; margin: 0; width: 100%; height: 100%; box-sizing: border-box;
+	background-color: #fcfcfb; color: #33363b; border: 1dp #c9cbd0;
+	font-family: "M PLUS Rounded 1c"; font-size: 13dp; line-height: 1.7;
+	overflow-y: auto;
+}
+div, p, header, section, h1, table, tr { display: block; }
+span, b, small, label { display: inline; }
+table { display: table; } tr { display: table-row; } td, th { display: table-cell; }
+
+scrollbarvertical { width: 8dp; }
+scrollbarvertical slidertrack { background-color: #f4f4f2; }
+scrollbarvertical sliderbar { background-color: #c9cbd0; }
+scrollbarvertical sliderarrowdec, scrollbarvertical sliderarrowinc { width: 0; height: 0; }
+
+/* タイトルの帯 (紙地 + 下罫 + 等幅ラベル) */
+header {
+	display: flex; align-items: center; background-color: #f4f4f2;
+	padding: 8.8dp 14.4dp; border-bottom: 1dp #c9cbd0;
+}
+header .dot { display: block; flex: 0 0 auto; width: 9dp; height: 9dp; margin-right: 8dp; border: 1dp #c9cbd0; background-color: #fcfcfb; }
+header h1 { font-family: "IBM Plex Mono"; font-size: 11.8dp; font-weight: bold; letter-spacing: 1.4dp; color: #1a1c1f; margin: 0; }
+
+.body { padding: 14.4dp 16dp 17.6dp; }
+.mono, .num { font-family: "IBM Plex Mono"; }
+.muted { color: #6e7077; }
+.label {
+	margin-top: 17.6dp; font-family: "IBM Plex Mono"; font-size: 10.6dp;
+	letter-spacing: 1.3dp; color: #999da4;
+}
+.label .dash { color: #c9cbd0; }
+.panel { margin-top: 8dp; background-color: #ffffff; border: 1dp #e6e7ea; padding: 11.2dp 12.8dp; }
+
+/* 待っている間 (ゲームの snapshot がまだ来ない) */
+.wait { display: none; margin-top: 38.4dp; text-align: center; color: #999da4; font-family: "IBM Plex Mono"; font-size: 12.5dp; letter-spacing: 0.8dp; }
+body.is-waiting .wait { display: block; }
+body.is-waiting .body { opacity: 0.45; }
+
+/* key / value の表 (inspector) */
+.section-title {
+	margin-top: 17.6dp; font-family: "IBM Plex Mono"; font-size: 11.5dp; font-weight: bold; letter-spacing: 1.2dp;
+	color: #1a1c1f; background-color: #f4f4f2; border: 1dp #e6e7ea; padding: 5.6dp 11.2dp;
+}
+.kv { margin-top: 8dp; background-color: #ffffff; border: 1dp #e6e7ea; padding: 1.6dp 3.2dp; }
+.kv .row { display: flex; align-items: center; padding: 5.6dp 8dp; border-bottom: 1dp #e6e7ea; }
+.kv .k { flex: 0 0 42%; font-family: "IBM Plex Mono"; font-size: 11.8dp; color: #6e7077; }
+.kv .v { flex: 1 1 auto; font-family: "IBM Plex Mono"; color: #1a1c1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kv .group { border-bottom: 1dp #e6e7ea; }
+.kv .group .row { padding-left: 16dp; }
+.kv .summary { display: block; padding: 4.8dp 8dp; font-family: "IBM Plex Mono"; font-size: 11.5dp; color: #6e7077; cursor: pointer; }
+
+/* MITIRU_ENUM / MITIRU_FIELD_RANGE の読み取り専用の部品 (触っても変わらない) */
+.enum-box { display: inline-block; padding: 0dp 6dp; border: 1dp #c9cbd0; background-color: #f4f4f2; color: #6e7077; }
+.enum-box .arrow { color: #999da4; margin-left: 6dp; }
+input.range { display: inline-block; width: 110dp; height: 12dp; margin-right: 6dp; vertical-align: middle; }
+input.range slidertrack { height: 4dp; margin-top: 4dp; background-color: #e6e7ea; }
+input.range sliderbar { width: 8dp; height: 12dp; margin-top: -4dp; background-color: #999da4; }
+input.range sliderarrowdec, input.range sliderarrowinc { width: 0; height: 0; }
+
+/* ボタンと文字の入力欄 */
+button {
+	display: inline-block; box-sizing: border-box; cursor: pointer; text-align: center;
+	font-family: "IBM Plex Mono"; font-size: 11.5dp; letter-spacing: 1dp; padding: 6.4dp 12.8dp;
+	background-color: #f4f4f2; border: 1dp #c9cbd0; color: #1a1c1f;
+}
+button:hover { background-color: #e6e7ea; }
+button.off { color: #999da4; cursor: default; }
+button.off:hover { background-color: #f4f4f2; }
+input.text {
+	display: inline-block; box-sizing: border-box; font-family: "IBM Plex Mono"; font-size: 12.5dp;
+	padding: 6.4dp 8.8dp; background-color: #ffffff; border: 1dp #e6e7ea; color: #1a1c1f;
+}
+input.text:focus { border-color: #c9cbd0; }
+input.text selection { background-color: #c9cbd0; color: #1a1c1f; }
+
+.chip {
+	display: inline-block; font-family: "IBM Plex Mono"; font-size: 11.5dp; padding: 2.4dp 8dp;
+	background-color: #f4f4f2; border: 1dp #e6e7ea; margin: 2.4dp 4dp 2.4dp 0dp;
+}
+.err { font-family: "IBM Plex Mono"; font-size: 12.2dp; color: #aa3333; margin-top: 8dp; }
+.hint { margin-top: 6.4dp; font-family: "IBM Plex Mono"; font-size: 10.9dp; color: #999da4; }
+.empty { color: #999da4; font-family: "IBM Plex Mono"; font-size: 11.8dp; }
+
+/* 分岐中 (残す / 捨てるを選ぶ前) の帯 */
+.branch-banner {
+	display: flex; align-items: center; margin-top: 6.4dp; padding: 5.6dp 9.6dp;
+	background-color: #3a2a12; border: 1dp #b8792e; color: #e8b23d;
+	font-family: "IBM Plex Mono"; font-size: 11.5dp;
+}

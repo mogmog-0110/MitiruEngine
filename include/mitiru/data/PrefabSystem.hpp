@@ -3,8 +3,8 @@
 /// @file PrefabSystem.hpp
 /// @brief プレハブ（テンプレートエンティティ）システム
 ///
-/// JSONベースのプレハブ定義からエンティティを生成する。
-/// AI生成コンテンツとの親和性を重視したデータ駆動設計。
+/// JSON ベースのプレハブ定義からエンティティを生成する。
+/// AI 生成コンテンツとの親和性を重視したデータ駆動設計。
 ///
 /// @code
 /// mitiru::data::PrefabLibrary library;
@@ -15,9 +15,12 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
-#include "mitiru/data/JsonBuilder.hpp"
+#include <nlohmann/json.hpp>
+
+#include "mitiru/data/JsonFields.hpp"
 #include "mitiru/scene/GameWorld.hpp"
 
 namespace mitiru::data
@@ -34,7 +37,7 @@ struct Prefab
 /// @brief プレハブライブラリ
 ///
 /// プレハブの登録・検索・インスタンス化を管理する。
-/// JSONによるバッチ登録・エクスポートに対応。
+/// JSON によるバッチ登録・エクスポートに対応。
 class PrefabLibrary
 {
 public:
@@ -48,7 +51,7 @@ public:
 	/// @brief プレハブからエンティティを生成する
 	/// @param prefabName プレハブ名
 	/// @param world ゲームワールド
-	/// @return 生成されたエンティティID（失敗時INVALID_ENTITY）
+	/// @return 生成されたエンティティ ID（失敗時 INVALID_ENTITY）
 	[[nodiscard]] scene::EntityId instantiate(
 		const std::string& prefabName,
 		scene::GameWorld& world) const
@@ -59,7 +62,7 @@ public:
 		const auto& prefab = it->second;
 		auto entityId = world.createEntity(prefab.name);
 
-		/// コンポーネントJSONをパースしてコンポーネントを追加
+		/// コンポーネント JSON をパースしてコンポーネントを追加
 		applyComponents(entityId, prefab.componentsJson, world);
 
 		/// 子プレハブを再帰的に生成
@@ -73,9 +76,9 @@ public:
 
 	/// @brief プレハブからオーバーライド付きでエンティティを生成する
 	/// @param prefabName プレハブ名
-	/// @param overridesJson オーバーライド用JSON文字列
+	/// @param overridesJson オーバーライド用 JSON 文字列
 	/// @param world ゲームワールド
-	/// @return 生成されたエンティティID（失敗時INVALID_ENTITY）
+	/// @return 生成されたエンティティ ID（失敗時 INVALID_ENTITY）
 	[[nodiscard]] scene::EntityId instantiateWithOverrides(
 		const std::string& prefabName,
 		const std::string& overridesJson,
@@ -98,7 +101,7 @@ public:
 
 	/// @brief プレハブを取得する
 	/// @param name プレハブ名
-	/// @return プレハブ定義（存在しない場合nullopt）
+	/// @return プレハブ定義（存在しない場合は nullopt）
 	[[nodiscard]] std::optional<Prefab> getPrefab(const std::string& name) const
 	{
 		auto it = m_prefabs.find(name);
@@ -119,82 +122,68 @@ public:
 		return names;
 	}
 
-	/// @brief JSONから複数のプレハブを一括読み込みする
-	/// @param json JSON文字列（配列形式）
-	/// @return 成功時true
+	/// @brief JSON から複数のプレハブを一括読み込みする
+	/// @param json {"prefabs":[{"name":"...","components":"...","children":["..."]},...]}。
+	///        components は JSON を文字列にしたものでも、オブジェクトそのままでもよい。
+	/// @return 成功時 true
 	bool loadFromJson(const std::string& json)
 	{
-		/// 配列形式のJSONをパースしてプレハブを登録する
-		/// 形式: {"prefabs":[{"name":"...","components":"...","children":["..."]},...]}
-		JsonReader reader;
-		if (!reader.parse(json)) return false;
+		const auto doc = nlohmann::json::parse(json, nullptr, false);
+		if (!doc.is_object()) return false;
+		const auto prefabs = doc.find("prefabs");
+		if (prefabs == doc.end() || !prefabs->is_array()) return false;
 
-		auto prefabsArr = reader.getArray("prefabs");
-		if (!prefabsArr.has_value()) return false;
-
-		for (const auto& rawPrefab : *prefabsArr)
+		for (const auto& entry : *prefabs)
 		{
-			JsonReader prefabReader;
-			if (!prefabReader.parse(rawPrefab)) continue;
-
-			Prefab prefab;
-			auto name = prefabReader.getString("name");
-			if (!name.has_value()) continue;
-			prefab.name = *name;
-
-			auto comp = prefabReader.getString("components");
-			if (comp.has_value())
-			{
-				prefab.componentsJson = *comp;
-			}
-
-			auto children = prefabReader.getArray("children");
-			if (children.has_value())
-			{
-				prefab.childPrefabs = *children;
-			}
-
-			m_prefabs[prefab.name] = prefab;
+			if (auto prefab = prefabFromJson(entry)) { m_prefabs[prefab->name] = std::move(*prefab); }
 		}
-
 		return true;
 	}
 
-	/// @brief 全プレハブをJSON文字列にエクスポートする
-	/// @return JSON文字列
+	/// @brief 全プレハブを JSON 文字列にエクスポートする
+	/// @return JSON 文字列
 	[[nodiscard]] std::string toJson() const
 	{
-		JsonBuilder builder;
-		builder.beginObject();
-		builder.key("prefabs");
-		builder.beginArray();
-
+		nlohmann::json prefabs = nlohmann::json::array();
 		for (const auto& [name, prefab] : m_prefabs)
 		{
-			builder.beginObject();
-			builder.key("name").value(prefab.name);
-			builder.key("components").value(prefab.componentsJson);
-			builder.key("children");
-			builder.beginArray();
-			for (const auto& child : prefab.childPrefabs)
-			{
-				builder.value(child);
-			}
-			builder.endArray();
-			builder.endObject();
+			prefabs.push_back({
+				{"name", prefab.name},
+				{"components", prefab.componentsJson},
+				{"children", prefab.childPrefabs},
+			});
 		}
-
-		builder.endArray();
-		builder.endObject();
-		return builder.build();
+		return nlohmann::json{{"prefabs", std::move(prefabs)}}.dump();
 	}
 
 private:
 	std::unordered_map<std::string, Prefab> m_prefabs;
 
-	/// @brief コンポーネントJSONからコンポーネントを適用する
-	/// @param entityId エンティティID
-	/// @param componentsJson コンポーネントJSON文字列
+	[[nodiscard]] static std::optional<Prefab> prefabFromJson(const nlohmann::json& entry)
+	{
+		if (!entry.is_object()) return std::nullopt;
+		const auto name = entry.find("name");
+		if (name == entry.end() || !name->is_string()) return std::nullopt;
+
+		Prefab prefab;
+		prefab.name = name->get<std::string>();
+		if (const auto comp = entry.find("components"); comp != entry.end())
+		{
+			prefab.componentsJson = comp->is_string() ? comp->get<std::string>() : comp->dump();
+		}
+		if (const auto children = entry.find("children"); children != entry.end() && children->is_array())
+		{
+			for (const auto& child : *children)
+			{
+				if (child.is_string()) { prefab.childPrefabs.push_back(child.get<std::string>()); }
+			}
+		}
+		return prefab;
+	}
+
+	/// @brief コンポーネント JSON からコンポーネントを適用する
+	/// @param entityId エンティティ ID
+	/// @param componentsJson コンポーネント JSON 文字列
 	/// @param world ゲームワールド
 	void applyComponents(
 		scene::EntityId entityId,
@@ -202,28 +191,20 @@ private:
 		scene::GameWorld& world) const
 	{
 		if (componentsJson.empty()) return;
+		const auto comps = nlohmann::json::parse(componentsJson, nullptr, false);
+		if (!comps.is_object()) return;
 
-		JsonReader reader;
-		if (!reader.parse(componentsJson)) return;
-
-		/// meshフィールドがあればMeshComponentを追加
-		auto mesh = reader.getString("mesh");
-		if (mesh.has_value())
+		if (const auto mesh = comps.find("mesh"); mesh != comps.end() && mesh->is_string())
 		{
-			world.addComponent(entityId, scene::MeshComponent{*mesh});
+			world.addComponent(entityId, scene::MeshComponent{mesh->get<std::string>()});
 		}
 
-		/// positionフィールドがあればTransformComponentを追加/更新
-		auto posObj = reader.getObject("position");
-		if (posObj.has_value())
+		if (const auto pos = comps.find("position"); pos != comps.end() && pos->is_object())
 		{
 			scene::TransformComponent tc;
-			auto x = posObj->getFloat("x");
-			auto y = posObj->getFloat("y");
-			auto z = posObj->getFloat("z");
-			if (x) tc.position.x = *x;
-			if (y) tc.position.y = *y;
-			if (z) tc.position.z = *z;
+			tc.position.x = fieldOr(*pos, "x", tc.position.x);
+			tc.position.y = fieldOr(*pos, "y", tc.position.y);
+			tc.position.z = fieldOr(*pos, "z", tc.position.z);
 			world.addComponent(entityId, tc);
 		}
 	}

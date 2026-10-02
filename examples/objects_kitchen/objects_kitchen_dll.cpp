@@ -1,11 +1,11 @@
-// objects_kitchen。クラスとコンポーネントで書く game の最小形 (MITIRU_GAME_OBJECTS、ADR 0040)。
-// 実行すると: 鉄板が day の数だけ並び、生地が焼けていく。← → で鉄板を選び、SPACE で出す (焼き加減で値段が変わる)。
-//             ↑ で次の日へ (鉄板が 1 枚増える)。S セーブ / L ロード / R さいしょから。
-// 関連 API: MITIRU_GAME_OBJECTS(Game, Progress) / Hud::save / load / requestRestart
+// objects_kitchen。クラスとコンポーネントで記述するゲームの最小構成 (MITIRU_GAME_OBJECTS、ADR 0040)。
+// 実行すると、鉄板が day の数だけ並び、生地が焼けていく。← → で鉄板を選び、SPACE で出す (焼き加減で値段が変わる)。
+//             ↑ で次の日へ進む (鉄板が 1 枚増える)。S でセーブ / L でロード / R でさいしょから。
+// 関連する API は MITIRU_GAME_OBJECTS(Game, Progress) / Hud::save / load / requestRestart。
 //   進行データ (日数・所持金・乱数) だけが flat POD で、セーブとロードと録画の対象になる。鉄板や
-//   コンポーネントは普通の C++ (仮想関数 + std::vector<std::unique_ptr>) で、進行データから組み立て直す。
-//   ロードすると所持金と日数は戻り、鉄板の焼き加減は「その日の頭」からになる (焼き加減は進行データに
-//   置いていないため)。何を進行データに置くかが、この形の設計の中心になる。
+//   コンポーネントは通常の C++ (仮想関数 + std::vector<std::unique_ptr>) で、進行データから組み立て直す。
+//   ロードすると所持金と日数は戻り、鉄板の焼き加減は「その日の頭」からになる (焼き加減を進行データに
+//   置いていないため)。何を進行データに置くかが、この構成における設計の中心になる。
 
 #include <cstdint>
 #include <memory>
@@ -42,6 +42,7 @@ struct KitchenProgress
 };
 MITIRU_REFLECT_AUTO(KitchenProgress);
 
+MITIRU_ASSERT_NO_PADDING(KitchenProgress);
 // ── コンポーネント ───────────────────────────────────────────────────────────
 struct GameObject;
 
@@ -73,7 +74,7 @@ struct GameObject
 	void draw(Screen& screen) const { for (const auto& c : components) { c->draw(*this, screen); } }
 };
 
-// 乗っている生地を焼く。焼き加減 0 (生) → 1 (ちょうど) → 2 (焦げ)。
+// 乗っている生地を焼く。焼き加減は 0 (生) → 1 (ちょうど) → 2 (焦げ)。
 struct Cooker final : Component
 {
 	float heatPerSecond;
@@ -115,7 +116,7 @@ struct Kitchen
 	std::vector<std::unique_ptr<GameObject>> pans;
 
 	// 進行データから場面を組み立てる。初回・ホットリロード後・ロード後・restart 後に呼ばれる。
-	// 読むだけ (const): 同じ進行データからは必ず同じ場面ができ、何度呼ばれても進行データは変わらない。
+	// 読み取り専用 (const)。同じ進行データからは必ず同じ場面ができ、何度呼ばれても進行データは変わらない。
 	void build(const KitchenProgress& progress)
 	{
 		pans.clear();
@@ -128,7 +129,7 @@ struct Kitchen
 			pan->x = (kScreenW - total) * 0.5f + static_cast<float>(i) * (size + gap);
 			pan->y = 300.0f;
 			pan->add<PlateRenderer>();
-			// 火力は鉄板ごとに少し違う。日数と位置から決める (組み立ては乱数を進めない)。
+			// 火力は鉄板ごとに少し違う。日数と位置をもとに決める (組み立てでは乱数を進めない)。
 			const std::uint32_t mix = static_cast<std::uint32_t>(progress.day * 31 + i * 17) * 2654435761u;
 			pan->add<Cooker>(0.18f + static_cast<float>((mix >> 16) % 100u) / 100.0f * 0.22f);
 			pans.push_back(std::move(pan));

@@ -32,6 +32,18 @@ SamplerState             g_samp    : register(s0);
 SamplerState             g_sampPoint : register(s2);
 SamplerComparisonState   g_pcf     : register(s1);
 
+// 主パスと同じ CbShadow (b3)。ここでは ShadowSoftness (PCF のタップ間隔) と ShadowBiasNdc だけ読む
+cbuffer CbShadow : register(b3)
+{
+    float4x4 LightViewProj;
+    float4x4 LightViewProjFar;
+    float    CascadeSplitDistance;
+    float    CascadeSplitDistance2;
+    float    ShadowSoftness;
+    float    ShadowBiasNdc;
+    float4x4 LightViewProjFar2;
+};
+
 struct PSInput
 {
     float4 Position      : SV_POSITION;
@@ -44,18 +56,36 @@ struct PSInput
 
 struct PSOut { float4 accum : SV_TARGET0; float reveal : SV_TARGET1; };
 
-float samplePCF(float3 ndc)
+// DX12_TOON_PS_3D の shadowBiasFor と同じ式
+float shadowBiasFor(float3 N, float3 L)
+{
+    if (ShadowBiasNdc <= 0.0) { return 0.001 * max(ShadowSoftness, 1.0); }
+    float c = max(saturate(dot(N, L)), 0.1);
+    float t = min(sqrt(1.0 - c * c) / c, 6.0);
+    return ShadowBiasNdc * (1.0 + max(ShadowSoftness, 1.0) * t);
+}
+
+// DX12_TOON_PS_3D の pcfFilter と同じ (softness 1 以下は 3x3、広いと 5x5 のテント)
+float samplePCF(float3 ndc, float bias)
 {
     float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
-    float depthRef = ndc.z - 0.001;
+    float depthRef = ndc.z - bias;
     // 光の錐台の外は影なし。奥行きも見る (遠方クリップ面の外は影マップに何も無い)
     if (any(uv < 0) || any(uv > 1) || ndc.z < 0.0 || ndc.z > 1.0) return 1.0;
     float shadow = 0.0;
-    const float texelSize = 1.0 / 1024.0;
-    [unroll] for (int y = -1; y <= 1; ++y)
-    [unroll] for (int x = -1; x <= 1; ++x)
-        shadow += g_shadow.SampleCmpLevelZero(g_pcf, uv + float2(x, y) * texelSize, depthRef);
-    return shadow / 9.0;
+    const float texelSize = ShadowSoftness / 1024.0;
+    if (ShadowSoftness <= 1.0)
+    {
+        [unroll] for (int y = -1; y <= 1; ++y)
+        [unroll] for (int x = -1; x <= 1; ++x)
+            shadow += g_shadow.SampleCmpLevelZero(g_pcf, uv + float2(x, y) * texelSize, depthRef);
+        return shadow / 9.0;
+    }
+    [unroll] for (int ty = -2; ty <= 2; ++ty)
+    [unroll] for (int tx = -2; tx <= 2; ++tx)
+        shadow += (3.0 - abs(tx)) * (3.0 - abs(ty))
+                * g_shadow.SampleCmpLevelZero(g_pcf, uv + float2(tx, ty) * (texelSize * 0.5), depthRef);
+    return shadow / 81.0;
 }
 
 PSOut PSMain(PSInput input)
@@ -69,7 +99,7 @@ PSOut PSMain(PSInput input)
         : g_albedo.Sample(g_samp, input.TexCoord);
     float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb;
     float3 lsNdc = input.LightSpacePos.xyz / max(input.LightSpacePos.w, 1e-4);
-    float shadow = samplePCF(lsNdc);
+    float shadow = samplePCF(lsNdc, shadowBiasFor(N, L));
     float3 ambient = AmbientColor * albedo;
     float NdotL = saturate(dot(N, L));
     float3 diffuse = LightColor * albedo * NdotL * shadow;

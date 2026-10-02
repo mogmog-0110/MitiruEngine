@@ -7,6 +7,8 @@
 
 #include <mitiru/asset/AssetPack.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/render/DdsFile.hpp>
+#include <mitiru/render/TextureMips.hpp>
 #include <mitiru/render/dx12/clod/ClodFormat.hpp>
 
 #include <algorithm>
@@ -15,6 +17,7 @@
 #include <cstdint>
 #include <cstring>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,16 +25,6 @@
 
 namespace mitiru::render::clod
 {
-
-/// @brief CPU デコード済みテクスチャ (mip 連鎖込み)
-struct CpuTexture
-{
-	std::vector<std::vector<uint8_t>> mips;   ///< RGBA8、[0] = フル解像度
-	uint32_t width = 0;
-	uint32_t height = 0;
-	bool srgb = true;
-	bool hasAlpha = false;
-};
 
 /// @brief 1 モデル分の連結配列内レンジ
 struct ClodModel
@@ -55,7 +48,7 @@ public:
 	{
 		if (m_models.size() >= kClodMaxMeshes) { return -1; }
 		const auto* hdr = reinterpret_cast<const ClodFileHeader*>(data);
-		if (size < sizeof(ClodFileHeader) || hdr->magic != kClodMagic) { return -1; }
+		if (size < sizeof(ClodFileHeader) || !isClodMagic(hdr->magic)) { return -1; }
 		if (!layoutValid(*hdr, size)) { return -1; }
 
 		ClodModel model{};
@@ -82,7 +75,7 @@ public:
 	[[nodiscard]] const std::vector<GpuMaterial>& materials() const noexcept { return m_materials; }
 	[[nodiscard]] const std::vector<uint32_t>& groupRanges() const noexcept { return m_groupRanges; }
 	[[nodiscard]] const std::vector<GpuBvhNode>& bvhNodes() const noexcept { return m_bvhNodes; }
-	[[nodiscard]] const std::vector<CpuTexture>& textures() const noexcept { return m_textures; }
+	[[nodiscard]] const std::vector<MipImage>& textures() const noexcept { return m_textures; }
 
 private:
 	[[nodiscard]] static bool layoutValid(const ClodFileHeader& h, size_t size) noexcept
@@ -170,88 +163,90 @@ private:
 			std::memcpy(gm.baseColor, pMats[mi].baseColor, 16);
 			gm.texIndex = 0xFFFFFFFFu;
 			gm.normalTex = 0xFFFFFFFFu;
-			if (pMats[mi].albedo[0] != '\0') { gm.texIndex = loadTexture(texDir + pMats[mi].albedo, true); }
-			if (pMats[mi].normal[0] != '\0') { gm.normalTex = loadTexture(texDir + pMats[mi].normal, false); }
+			if (pMats[mi].albedo[0] != '\0')
+			{
+				gm.texIndex = loadTexture(texDir + pMats[mi].albedo, MipFilter::Srgb);
+			}
+			if (pMats[mi].normal[0] != '\0')
+			{
+				gm.normalTex = loadTexture(texDir + pMats[mi].normal, MipFilter::NormalMap);
+			}
 			if (gm.texIndex != 0xFFFFFFFFu)
 			{
-				if (m_textures[gm.texIndex].hasAlpha) { gm.flags |= 1u; }
+				if (m_textures[gm.texIndex].hasAlpha) { gm.flags |= kClodMaterialMasked; }
 				// map_Kd の減衰係数はテクスチャと二重になるため使わない
 				gm.baseColor[0] = gm.baseColor[1] = gm.baseColor[2] = 1.0f;
+			}
+			if (gm.normalTex != 0xFFFFFFFFu && m_textures[gm.normalTex].format == TextureFormat::Bc5)
+			{
+				gm.flags |= kClodMaterialNormalXY;
 			}
 			m_materials.push_back(gm);
 		}
 	}
 
-	/// @brief vfs からテクスチャを読み RGBA8 + box mip 連鎖に decode する
+	/// @brief テクスチャを m_textures へ積む。`.dds` は圧縮済みをそのまま、それ以外
+	///        (と読めない dds の元画像) は RGBA8 へ decode して mip を作る
 	/// @return m_textures 内 index。失敗は 0xFFFFFFFF
-	uint32_t loadTexture(const std::string& path, bool srgb)
+	uint32_t loadTexture(const std::string& path, MipFilter filter)
 	{
-		const std::string key = path + (srgb ? "|s" : "|l");
+		const std::string key = path + (filter == MipFilter::Srgb ? "|s" : "|n");
 		if (const auto it = m_textureIndex.find(key); it != m_textureIndex.end()) { return it->second; }
 
-		const auto blob = vfs::readGlobal(path);
-		if (!blob || blob->empty())
+		constexpr std::string_view kDds = ".dds";
+		const bool isDds = path.size() > kDds.size() && path.ends_with(kDds);
+		auto image = isDds ? readDds(path) : std::nullopt;
+		if (!image) { image = decodeImage(isDds ? path.substr(0, path.size() - kDds.size()) : path, filter); }
+		if (!image)
 		{
-			debug::warnOnce("clod.tex." + path, ("clod: texture が読めません: " + path).c_str());
 			m_textureIndex.emplace(key, 0xFFFFFFFFu);
 			return 0xFFFFFFFFu;
 		}
-		int w = 0, h = 0, comp = 0;
-		auto* img = stbi_load_from_memory(blob->data(), static_cast<int>(blob->size()), &w, &h, &comp, 4);
-		if (img == nullptr)
-		{
-			debug::warnOnce("clod.tex." + path, ("clod: texture を decode できません: " + path).c_str());
-			m_textureIndex.emplace(key, 0xFFFFFFFFu);
-			return 0xFFFFFFFFu;
-		}
-
-		CpuTexture tex;
-		tex.width = static_cast<uint32_t>(w);
-		tex.height = static_cast<uint32_t>(h);
-		tex.srgb = srgb;
-		for (size_t px = 3; px < static_cast<size_t>(w) * h * 4; px += 4)
-		{
-			if (img[px] < 250) { tex.hasAlpha = true; break; }
-		}
-		tex.mips.emplace_back(img, img + static_cast<size_t>(w) * h * 4);
-		stbi_image_free(img);
-		buildMips(tex);
-
 		const auto idx = static_cast<uint32_t>(m_textures.size());
-		m_textures.push_back(std::move(tex));
+		m_textures.push_back(std::move(*image));
 		m_textureIndex.emplace(key, idx);
 		return idx;
 	}
 
-	static void buildMips(CpuTexture& tex)
+	[[nodiscard]] static std::optional<MipImage> readDds(const std::string& path)
 	{
-		uint32_t mw = tex.width, mh = tex.height;
-		while (mw > 1 || mh > 1)
+		const auto blob = vfs::readGlobal(path);
+		std::string err = "読めない";
+		auto image = (blob && !blob->empty()) ? decodeDds(*blob, err) : std::nullopt;
+		if (!image)
 		{
-			const uint32_t nw = mw > 1 ? mw / 2 : 1, nh = mh > 1 ? mh / 2 : 1;
-			const std::vector<uint8_t>& src = tex.mips.back();
-			std::vector<uint8_t> dst(static_cast<size_t>(nw) * nh * 4);
-			for (uint32_t y = 0; y < nh; ++y)
-			{
-				for (uint32_t x = 0; x < nw; ++x)
-				{
-					const uint32_t sx = x * 2, sy = y * 2;
-					const uint32_t sx1 = sx + 1 < mw ? sx + 1 : sx;
-					const uint32_t sy1 = sy + 1 < mh ? sy + 1 : sy;
-					for (int k = 0; k < 4; ++k)
-					{
-						const int s = src[(static_cast<size_t>(sy) * mw + sx) * 4 + k]
-							+ src[(static_cast<size_t>(sy) * mw + sx1) * 4 + k]
-							+ src[(static_cast<size_t>(sy1) * mw + sx) * 4 + k]
-							+ src[(static_cast<size_t>(sy1) * mw + sx1) * 4 + k];
-						dst[(static_cast<size_t>(y) * nw + x) * 4 + k] = static_cast<uint8_t>(s / 4);
-					}
-				}
-			}
-			tex.mips.push_back(std::move(dst));
-			mw = nw;
-			mh = nh;
+			debug::warnOnce("clod.dds." + path,
+			                ("clod: " + path + " を使えないので元画像で代用 (" + err + ")").c_str());
 		}
+		return image;
+	}
+
+	[[nodiscard]] static std::optional<MipImage> decodeImage(const std::string& path, MipFilter filter)
+	{
+		const auto blob = vfs::readGlobal(path);
+		if (!blob || blob->empty())
+		{
+			debug::warnOnce("clod.tex." + path, ("clod: texture が読めません: " + path).c_str());
+			return std::nullopt;
+		}
+		int w = 0, h = 0, comp = 0;
+		auto* px = stbi_load_from_memory(blob->data(), static_cast<int>(blob->size()), &w, &h, &comp, 4);
+		if (px == nullptr)
+		{
+			debug::warnOnce("clod.tex." + path, ("clod: texture を decode できません: " + path).c_str());
+			return std::nullopt;
+		}
+		MipImage image;
+		image.format = (filter == MipFilter::Srgb) ? TextureFormat::Rgba8Srgb : TextureFormat::Rgba8;
+		image.width = static_cast<uint32_t>(w);
+		image.height = static_cast<uint32_t>(h);
+		for (size_t i = 3; i < static_cast<size_t>(w) * h * 4; i += 4)
+		{
+			if (px[i] < 250) { image.hasAlpha = true; break; }
+		}
+		image.mips = buildMipChain(px, w, h, filter);
+		stbi_image_free(px);
+		return image;
 	}
 
 	/// @brief group → 連結クラスタ範囲。クラスタは group 単位で連続している前提を検査
@@ -378,7 +373,7 @@ private:
 	std::vector<GpuMaterial> m_materials;
 	std::vector<uint32_t> m_groupRanges;   ///< group 毎に (先頭 cluster, 数)
 	std::vector<GpuBvhNode> m_bvhNodes;
-	std::vector<CpuTexture> m_textures;
+	std::vector<MipImage> m_textures;
 	std::map<std::string, uint32_t> m_textureIndex;
 	uint32_t m_maxLodDepth = 0;
 	uint32_t m_bvhDepth = 1;

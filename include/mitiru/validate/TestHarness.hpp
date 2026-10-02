@@ -3,7 +3,7 @@
 /// @file TestHarness.hpp
 /// @brief ゲームロジック用テストランナー
 /// @details ゲーム内からゲームロジックの自動テストを実行する組み込みテストハーネス。
-///          AIエージェントがエンジン経由でテストを投入・実行するために使用する。
+///          AI エージェントがエンジン経由でテストを投入・実行するために使用する。
 
 #include <functional>
 #include <string>
@@ -24,8 +24,8 @@ struct TestResult
 	bool passed = false;     ///< テストに合格したか
 	std::string message;     ///< 結果メッセージ
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -101,9 +101,9 @@ public:
 		return results;
 	}
 
-	/// @brief 全テスト結果をJSON文字列として返す
+	/// @brief 全テスト結果を JSON 文字列として返す
 	/// @param engine テスト対象のエンジン
-	/// @return JSON配列形式の文字列
+	/// @return JSON 配列形式の文字列
 	[[nodiscard]] std::string toJson(Engine& engine) const
 	{
 		const auto results = runAll(engine);

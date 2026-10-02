@@ -1,11 +1,11 @@
-// mitiru_subsys_input。エンジン全体なしで input subsystem だけを起動する最小 exe。
+// mitiru_subsys_input。エンジン全体を使わずに input subsystem だけを起動する最小 exe。
 //
 // ゲームロジック・CEF・audio なしで input subsystem を起動する。Engine +
-// Screen + 毎フレーム引く InputState のみ。HUD が生の 256-key VK テーブルを
-// 観測可能にし、press / release をスクロールログにする。キーボード / マウス
-// 配線の手動チェックを兼ねる exe。
+// Screen + 毎フレーム取得する InputState のみ。HUD で生の 256-key VK テーブルを
+// 確認でき、press / release をスクロールログに記録する。キーボード / マウスの
+// 接続を手動で確認するための exe でもある。
 //
-// 見えるもの (Saturn パレット: 銀 bg / 黒 ink / Saturn red アクセント):
+// 表示内容 (Saturn パレット: 銀 bg / 黒 ink / Saturn red アクセント):
 //   - ヘッダ "input subsystem" + 最後に押した VK コードを大きく表示
 //   - 16×16 grid (256 セル)。keysDown[i] = true なら Saturn red で塗る
 //   - 右パネル: mouse x/y + L/M/R ボタン状態
@@ -17,7 +17,7 @@
 #include <cstdio>
 #include <string>
 
-// アンブレラ header は使わない。使うものだけ明示 include
+// アンブレラ header は使わず、使うものだけを明示的に include する
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
@@ -50,7 +50,7 @@ public:
             return;
         }
 
-        // 256-key テーブルを走査し、現在値とエッジを記録。
+        // 256-key テーブルを順に調べ、現在値とエッジを記録する。
         for (int vk = 0; vk < mitiru::InputState::MAX_KEYS; ++vk)
         {
             m_keysDown[static_cast<std::size_t>(vk)] = in.isKeyDown(vk);
@@ -92,7 +92,7 @@ public:
 private:
     void pushLog(std::string line)
     {
-        // 新しい順。kMaxLog で頭打ち (末尾の古いものを捨てる)。
+        // 新しい順。kMaxLog を上限とし、末尾の古いものを捨てる。
         m_log.insert(m_log.begin(), std::move(line));
         if (static_cast<int>(m_log.size()) > kMaxLog)
         {
@@ -132,7 +132,7 @@ private:
                 const float x  = gridX + static_cast<float>(col) * (kCell + kGap);
                 const float y  = gridY + static_cast<float>(row) * (kCell + kGap);
                 const bool  on = m_keysDown[static_cast<std::size_t>(vk)];
-                // 先に枠 (ink 1px)、次に内部塗り。
+                // 先に枠 (ink 1 px)、次に内部を塗る。
                 screen.drawRect(sgc::Rectf{x, y, kCell, kCell}, kPaperEdge);
                 screen.drawRect(sgc::Rectf{x + 1.0f, y + 1.0f, kCell - 2.0f, kCell - 2.0f},
                                 on ? kAmberAccent : kCellEmpty);
@@ -223,8 +223,6 @@ int main(int /*argc*/, char* /*argv*/[])
     cfg.minWindowWidth       = 480;   // grid + mouse panel が潰れない floor (resize 安全)
     cfg.minWindowHeight      = 360;
     cfg.vsync                = true;
-    cfg.enableCef            = false;
-    cfg.fontAtlasRanges      = mitiru::EngineConfig::FontAtlas::Latin;
     cfg.useLogicalWindowSize = true;
     cfg.backgroundColor      = kPaperBg;
 

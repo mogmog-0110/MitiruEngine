@@ -6,18 +6,18 @@
 ///          を構築し、現在バインドされた RTV/DSV に対して skybox を描画する。
 ///          v1 は DX11 専用。`#ifdef _WIN32` 外では `initialize / draw` は no-op。
 ///
-///          描画手順（推奨パターン）:
+///          描画手順（推奨パターン）
 ///          1. `Renderer3D::beginFrame()` で RTV/DSV をバインド
 ///          2. `Skybox::drawDx11(camera)` で背景を描画
 ///          3. 通常の `Renderer3D::drawMesh()` 群
 ///          4. `Renderer3D::endFrame()`
 ///
-///          ポイント:
+///          ポイント
 ///            - skybox は depth = 1（最遠）として描画されるので depth test は
 ///              LESS_EQUAL のときだけ可視。`Renderer3D` のクリアは 1.0 なので
 ///              そのまま動作する。
 ///            - 描画前後で RSState / DepthStencilState をスナップショットし、
-///              戻る前に restore する。consumer 側の renderer state を壊さない。
+///              戻る前に restore する。consumer 側の renderer state を変えたまま残さない。
 
 #include <array>
 #include <cstdint>
@@ -136,8 +136,8 @@ public:
 	/// @details RTV/DSV のバインドは consumer 側で済んでいる前提。
 	///          自前で VS/PS/InputLayout/PrimitiveTopology/rasterizer/
 	///          depth-stencil state を一時的に変更し、描画後にすべて元に戻す。
-	///          これにより呼び出し側 (Renderer3D::beginFrame で設定された
-	///          shader / IL / topology) の状態が破壊されない。
+	///          これで呼び出し側 (Renderer3D::beginFrame で設定された
+	///          shader / IL / topology) の状態は描画前のまま保たれる。
 	void drawDx11(ID3D11DeviceContext* ctx,
 	              const sgc::Mat4f& viewMatrix,
 	              const sgc::Mat4f& projMatrix) const

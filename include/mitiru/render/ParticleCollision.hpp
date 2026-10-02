@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file ParticleCollision.hpp
-/// @brief GPUパーティクルコリジョン（深度バッファベース）
-/// @details 深度バッファを利用してGPUパーティクルの衝突判定を行う。
+/// @brief GPU パーティクルコリジョン（深度バッファベース）
+/// @details 深度バッファを利用して GPU パーティクルの衝突判定を行う。
 ///          パーティクルのワールド座標を深度バッファに投影し、
 ///          深度値との比較で衝突を検出・応答する。
 
@@ -63,7 +63,7 @@ struct ParticleCollisionStats
     float resolveTimeMs = 0.0f;   ///< 衝突解決処理時間（ミリ秒）
 };
 
-/// @brief コリジョン解決用パーティクルデータ（16バイト整列）
+/// @brief コリジョン解決用パーティクルデータ（16 バイト整列）
 struct CollisionParticle
 {
     float position[3]; ///< ワールド座標
@@ -74,7 +74,7 @@ struct CollisionParticle
 
 #ifdef MITIRU_HAS_DX11
 
-/// @brief GPU 側コリジョンイベント出力バッファ（AppendStructuredBuffer用）
+/// @brief GPU 側コリジョンイベント出力バッファ（AppendStructuredBuffer 用）
 struct CollisionEvent_GPU
 {
     std::uint32_t particleIndex;
@@ -88,8 +88,8 @@ struct CollisionEvent_GPU
 // ── HLSL compute シェーダー ──────────────────────────────────────────────────────
 
 /// @brief パーティクルコリジョン解決コンピュートシェーダー（CS 5.0）
-/// @details CPU側で viewProj を transposed() してアップロードし、
-///          HLSL内で mul(viewProj, vec) を呼ぶことで sgc * vec を実現する。
+/// @details CPU 側で viewProj を transposed() してアップロードし、
+///          HLSL 内で mul(viewProj, vec) を呼ぶことで sgc * vec を実現する。
 ///          （mul(vec, mat) パターンは sgc^T * vec になるため禁止）
 static constexpr std::string_view PARTICLE_COLLISION_CS_HLSL = R"(
 struct Particle
@@ -178,9 +178,9 @@ void CSMain(uint3 dtid : SV_DispatchThreadID)
 
 #endif // MITIRU_HAS_DX11
 
-/// @brief GPUパーティクルコリジョンリゾルバ
+/// @brief GPU パーティクルコリジョンリゾルバ
 /// @details 深度バッファを利用したパーティクル衝突検出・応答システム。
-///          コンピュートシェーダーでGPU上の衝突判定を行う。
+///          コンピュートシェーダーで GPU 上の衝突判定を行う。
 class ParticleCollisionResolver
 {
 public:
@@ -206,7 +206,7 @@ public:
     /// @brief コリジョンシステムを初期化する（デバイスなし・no-op fallback）
     /// @param maxParticles 最大パーティクル数
     /// @param config コリジョン設定
-    /// @return 初期化成功でtrue
+    /// @return 初期化成功で true
     bool init(int maxParticles, const ParticleCollisionConfig& config = {})
     {
         if (maxParticles <= 0)
@@ -267,16 +267,16 @@ public:
     /// @brief 設定を取得する
     [[nodiscard]] ParticleCollisionConfig& config() noexcept { return m_config; }
 
-    /// @brief 設定を取得する（const版）
+    /// @brief 設定を取得する（const 版）
     [[nodiscard]] const ParticleCollisionConfig& config() const noexcept { return m_config; }
 
 #ifdef MITIRU_HAS_DX11
 
-    /// @brief DX11デバイスでコリジョンシステムを初期化する
-    /// @param device D3D11デバイス
+    /// @brief DX11 デバイスでコリジョンシステムを初期化する
+    /// @param device D3D11 デバイス
     /// @param maxParticles 最大パーティクル数
     /// @param cfg コリジョン設定
-    /// @return 初期化成功でtrue
+    /// @return 初期化成功で true
     bool init(ID3D11Device* device, int maxParticles,
               const ParticleCollisionConfig& cfg = {})
     {
@@ -298,7 +298,7 @@ public:
         return true;
     }
 
-    /// @brief DX11リソースを解放する
+    /// @brief DX11 リソースを解放する
     void shutdown()
     {
         m_computeShader.Reset();
@@ -317,8 +317,8 @@ public:
     }
 
     /// @brief カメラのビュープロジェクション行列を設定する
-    /// @param vpRowMajor 行優先4x4行列（sgc::Mat4f の m[0][0] 先頭アドレス）
-    /// @note CPU側で transposed() せずに渡すこと。upload時に自動転置する。
+    /// @param vpRowMajor 行優先 4x4 行列（sgc::Mat4f の m[0][0] 先頭アドレス）
+    /// @note CPU 側で transposed() せずに渡すこと。upload 時に自動転置する。
     void setCameraVP(const float* vpRowMajor)
     {
         if (vpRowMajor)
@@ -330,9 +330,9 @@ public:
         }
     }
 
-    /// @brief パーティクルデータをGPUにアップロードする
+    /// @brief パーティクルデータを GPU にアップロードする
     /// @param data パーティクル配列
-    /// @param count 有効パーティクル数（m_maxParticles以下）
+    /// @param count 有効パーティクル数（m_maxParticles 以下）
     void uploadParticles(const CollisionParticle* data, int count)
     {
         if (!m_device || !m_particleBuffer || count <= 0) { return; }
@@ -356,8 +356,8 @@ public:
         ctx->Release();
     }
 
-    /// @brief 深度バッファデータをGPUにアップロードする
-    /// @param data float深度値配列（width*height要素）
+    /// @brief 深度バッファデータを GPU にアップロードする
+    /// @param data float 深度値配列（width*height 要素）
     /// @param width テクスチャ幅
     /// @param height テクスチャ高さ
     void uploadDepth(const float* data, int width, int height)
@@ -395,7 +395,7 @@ private:
     template <typename T>
     using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-    // cbuffer レイアウト（256バイト整列不要。16バイト倍数であれば可）
+    // cbuffer レイアウト（256 バイト整列不要。16 バイト倍数であれば可）
     struct alignas(16) CollisionCB
     {
         float viewProjT[16];   // transposed VP (CPU transposed, HLSL左行列)
@@ -507,7 +507,7 @@ private:
             m_eventBuffer.Get(), &uavd, m_eventUAV.GetAddressOf());
         if (FAILED(hr)) { return false; }
 
-        // UAV カウンターを CPU に読み出す用のステージングバッファ（4バイト）
+        // UAV カウンターを CPU に読み出す用のステージングバッファ（4 バイト）
         D3D11_BUFFER_DESC cbd = {};
         cbd.ByteWidth      = sizeof(UINT);
         cbd.Usage          = D3D11_USAGE_STAGING;
@@ -603,7 +603,7 @@ private:
         ctx->UpdateSubresource(m_constantBuffer.Get(), 0, nullptr, &cb, 0, 0);
 
         // UAV をバインドする。
-        // particles UAV: カウンターなし（0xFFFFFFFF = don't reset）
+        // particles UAV: カウンターなし（0xFFFFFFFF = リセットしない）
         // events UAV: AppendStructuredBuffer カウンターを 0 にリセット
         UINT initialCounts[] = {0xFFFFFFFF, 0};
         ID3D11UnorderedAccessView* uavs[] = {

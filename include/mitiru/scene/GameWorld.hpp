@@ -7,10 +7,10 @@
 /// シンプルなゲームオブジェクト管理を提供する。
 ///
 /// @note Design Decision: GameWorld と Node は意図的に共存する。
-/// - **GameWorld** (このファイル): ECSベース。型消去コンポーネント、forEach
+/// - **GameWorld** (このファイル): ECS ベース。型消去コンポーネント、forEach
 ///   クエリ、大量エンティティのデータ指向処理に最適。
-/// - **Node**: 階層シーンツリー。親子トランスフォーム、Update/Draw伝播、
-///   UI構築、2Dシーン構成に最適。
+/// - **Node**: 階層シーンツリー。親子トランスフォーム、Update/Draw 伝播、
+///   UI 構築、2D シーン構成に最適。
 /// - **使い分け**: ゲームロジック系(物理、AI、大量敵)→GameWorld。
 ///   シーン構成系(UI、カメラ、パーティクル親子)→Node。混合も可。
 /// @see Node.hpp
@@ -42,7 +42,7 @@ namespace mitiru::scene
 /// @brief エンティティ識別子
 using EntityId = uint32_t;
 
-/// @brief 無効なエンティティID
+/// @brief 無効なエンティティ ID
 inline constexpr EntityId INVALID_ENTITY = 0;
 
 // ── 標準コンポーネント ──────────────────────────────
@@ -119,7 +119,7 @@ public:
 		return &compIt->second;
 	}
 
-	/// @brief コンポーネントを取得する（const版）
+	/// @brief コンポーネントを取得する（const 版）
 	template <typename T>
 	[[nodiscard]] const T* get(EntityId entityId) const noexcept
 	{
@@ -200,7 +200,7 @@ class GameWorld
 public:
 	/// @brief エンティティを作成する
 	/// @param name エンティティ名
-	/// @return 新規エンティティID
+	/// @return 新規エンティティ ID
 	[[nodiscard]] EntityId createEntity(const std::string& name = "")
 	{
 		const EntityId id = ++m_nextId;
@@ -256,7 +256,7 @@ public:
 		return m_components.get<T>(entityId);
 	}
 
-	/// @brief コンポーネントを取得する（const版）
+	/// @brief コンポーネントを取得する（const 版）
 	template <typename T>
 	[[nodiscard]] const T* getComponent(EntityId entityId) const noexcept
 	{

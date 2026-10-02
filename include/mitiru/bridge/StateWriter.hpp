@@ -1,26 +1,21 @@
 #pragma once
 
 /// @file StateWriter.hpp
-/// @brief CEF bridge 向け state push ヘルパー (signal-only bridge 規約準拠)
+/// @brief UI 向け state push ヘルパー (signal-only bridge 規約準拠)
 ///
-/// 2 つのペイロード形式を提供する:
-///   1. **Scalar / Object**。JSON 文字列として statePush の kind=4 で送る
-///      例: w.set("view.points", 42);
-///          w.object("view.boss").set("active", true).set("pct", 88);
+/// 値は文字列として statePush の kind=4 で送る。オブジェクトと配列は JSON にする:
+///   w.set("view.points", 42);
+///   w.object("view.boss").set("active", true).set("pct", 88);
+///   w.array("view.hand").obj().set("name", "slime");
 ///
-///   2. **Hot list**。セミコロン区切りのコンパクト文字列 (非 JSON)
-///      列名は HTML 側 data-m-fields で宣言する。
-///      例: auto L = w.list("view.scene");
-///          L.item().field(2).field(80).field(120).field(1);
-///          // L の破棄時に自動 push
-///
-/// 受け手: web/mitiru_runtime/mitiru_bind.js
+/// 受け手: UI (RmlUi) の data model。`[` か `{` で始まる文字列は JSON として読まれる (docs/UI_RMLUI.md)
 /// @see mitiru/module/ModuleApi.hpp  (FrameIntents, StatePushItem)
 
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include "mitiru/module/ModuleApi.hpp"
+#include "mitiru/observe/JsonEscape.hpp"
 
 namespace mitiru::bridge
 {
@@ -30,28 +25,7 @@ namespace mitiru::bridge
 namespace detail
 {
 
-/// @brief JSON 文字列エスケープ (\\ と " と制御文字)
-inline std::string jsonEscape(const char* s)
-{
-    std::string out;
-    out.reserve(std::strlen(s) + 4);
-    for (const char* p = s; *p; ++p)
-    {
-        unsigned char c = static_cast<unsigned char>(*p);
-        if      (c == '"')  { out += "\\\""; }
-        else if (c == '\\') { out += "\\\\"; }
-        else if (c < 0x20)
-        {
-            char buf[8];
-            std::snprintf(buf, sizeof(buf), "\\u%04x", c);
-            out += buf;
-        }
-        else { out += static_cast<char>(c); }
-    }
-    return out;
-}
-
-/// @brief double を compact な文字列に変換 (整数値は小数点なし)
+/// @brief double をコンパクトな文字列に変換 (整数値は小数点なし)
 inline std::string fmtDouble(double v)
 {
     char buf[32];
@@ -63,8 +37,8 @@ inline std::string fmtDouble(double v)
 }
 
 /// @brief FrameIntents に kind=4 の push を 1 件追記する。
-/// @return true なら key と value が両方そのまま収まった。false は push 枠満杯、
-///         または key / value が容量を超えて truncate された場合。呼び出し側で
+/// @return true なら key と value が両方そのまま収まった。false は push 枠が満杯、
+///         または key / value が容量を超えて切り詰められた場合。呼び出し側で
 ///         検知できるよう bool を返す。
 inline bool pushString(mitiru::module::FrameIntents* it,
                        const char* key, const std::string& value)
@@ -72,7 +46,7 @@ inline bool pushString(mitiru::module::FrameIntents* it,
     if (!it || it->statePushCount >= 64) return false;
 
     auto& s = it->statePushes[it->statePushCount++];
-    // key が枠 (96B) に収まるか。収まらなければ truncate されるので false を返す。
+    // key が枠 (96B) に収まるか。収まらなければ切り詰められるので false を返す。
     const bool keyFits = std::strlen(key) < sizeof(s.key);
     std::memset(&s, 0, sizeof(s));
     std::strncpy(s.key, key, sizeof(s.key) - 1);
@@ -86,9 +60,9 @@ inline bool pushString(mitiru::module::FrameIntents* it,
 
 // ── ObjectBuilder — fluent JSON オブジェクトビルダー ────────────────────
 
-/// @brief StateWriter::object() で得る fluent builder。
+/// @brief StateWriter::object() で得るメソッドチェーン用ビルダー。
 ///        スコープ終了 (デストラクタ) で自動的に push される。
-///        commit() を呼ぶと即時 push して以降の破棄を無効化する。
+///        commit() を呼ぶと即時 push し、以降の破棄を無効化する。
 ///
 /// @example
 ///   w.object("view.boss").set("active", true).set("pct", 88);
@@ -135,7 +109,7 @@ public:
     {
         appendSep();
         m_body += '"'; m_body += field; m_body += "\":\"";
-        m_body += detail::jsonEscape(v);
+        m_body += observe::jsonEscape(v);
         m_body += '"';
         return *this;
     }
@@ -145,7 +119,7 @@ public:
         return set(field, v.c_str());
     }
 
-    /// @brief 即時 push して以降の自動 push を無効にする
+    /// @brief 即時 push し、以降の自動 push を無効にする
     void commit()
     {
         if (m_committed) return;
@@ -163,148 +137,28 @@ private:
     bool        m_committed = false;
 };
 
-// ── RowBuilder — ListBuilder 内の 1 行ビルダー ──────────────────────────
-
-/// @brief ListBuilder::item() で得る fluent 行ビルダー。
-///        field() でカンマ区切りフィールドを積み、flush() 時に親バッファへ書き込む。
-///        デストラクタで自動 flush される。
-class RowBuilder
-{
-public:
-    explicit RowBuilder(std::string& target) : m_target(target) {}
-
-    ~RowBuilder() { flush(); }
-
-    RowBuilder(const RowBuilder&)            = delete;
-    RowBuilder& operator=(const RowBuilder&) = delete;
-
-    RowBuilder& field(int v)
-    {
-        if (!m_first) m_row += ',';
-        char buf[24];
-        std::snprintf(buf, sizeof(buf), "%d", v);
-        m_row += buf;
-        m_first = false;
-        return *this;
-    }
-
-    RowBuilder& field(double v)
-    {
-        if (!m_first) m_row += ',';
-        m_row += detail::fmtDouble(v);
-        m_first = false;
-        return *this;
-    }
-
-    RowBuilder& field(const char* v)
-    {
-        if (!m_first) m_row += ',';
-        m_row += v;
-        m_first = false;
-        return *this;
-    }
-
-    void flush()
-    {
-        if (m_flushed) return;
-        m_flushed = true;
-        m_target += m_row;
-        m_target += ';';
-    }
-
-private:
-    std::string& m_target;
-    std::string  m_row;
-    bool         m_first   = true;
-    bool         m_flushed = false;
-};
-
-// ── ListBuilder — ホットリストビルダー ──────────────────────────────────
-
-/// @brief StateWriter::list() で得るリストビルダー。
-///        item() で RowBuilder を返す (デストラクタで行確定)。
-///        デストラクタでリスト全体を push する。
-///
-/// @example
-///   auto L = w.list("view.scene");
-///   L.item().field(2).field(80).field(120).field(1);
-///   L.item().field(3).field(200).field(100).field(2);
-///   // L のスコープ終了時に push
-class ListBuilder
-{
-public:
-    ListBuilder(mitiru::module::FrameIntents* intents, std::string key)
-        : m_intents(intents), m_key(std::move(key)) {}
-
-    ~ListBuilder() { commit(); }
-
-    ListBuilder(const ListBuilder&)            = delete;
-    ListBuilder& operator=(const ListBuilder&) = delete;
-    ListBuilder(ListBuilder&& o) noexcept
-        : m_intents(o.m_intents), m_key(std::move(o.m_key)),
-          m_body(std::move(o.m_body)), m_committed(o.m_committed)
-    { o.m_committed = true; }
-
-    /// @brief 新しい行を開始して RowBuilder を返す。
-    ///        RowBuilder のスコープ終了で行がバッファに確定される。
-    [[nodiscard]] RowBuilder item() { return RowBuilder(m_body); }
-
-    /// @brief 整数フィールドのみの行を一括追加する便利オーバーロード
-    void row(int a, int b, int c, int d)
-    {
-        auto r = item();
-        r.field(a).field(b).field(c).field(d);
-    }
-
-    void row(int a, int b, int c)
-    {
-        auto r = item();
-        r.field(a).field(b).field(c);
-    }
-
-    void row(int a, int b)
-    {
-        auto r = item();
-        r.field(a).field(b);
-    }
-
-    /// @brief 即時 push して以降の自動 push を無効にする
-    void commit()
-    {
-        if (m_committed) return;
-        m_committed = true;
-        detail::pushString(m_intents, m_key.c_str(), m_body);
-    }
-
-private:
-    mitiru::module::FrameIntents* m_intents;
-    std::string m_key;
-    std::string m_body;
-    bool        m_committed = false;
-};
-
 // ── ArrayBuilder — JSON オブジェクト配列ビルダー ───────────────────────────
 
 /// @brief StateWriter::array() で得る、オブジェクトの JSON 配列ビルダー。
 ///        動的リスト UI (手札 / インベントリ / ショップ / 選択肢) を
-///        data-m-repeat へ渡す典型形。文字列は自動で JSON エスケープされる
-///        ので、カード名や説明に " や \ が混ざっても壊れない (手書き snprintf
-///        の最大の footgun を構造で潰す)。
+///        RML の data-for へ渡す典型的な形。文字列は自動で JSON エスケープされる
+///        ので、カード名や説明に " や \ が混ざっても不正な形式にならない (手書き snprintf
+///        における最大の危険を構造によって防ぐ)。
 ///
-///        strVal 容量を超える分は **不正な JSON を吐かずに** 切り詰め、valid な
+///        strVal の容量を超える分は **不正な JSON を生成せずに** 切り詰め、有効な
 ///        部分配列を push したうえで overflowed() を true にする。受け手
-///        (mitiru_bind.js) が黙って空表示するより、呼び出し側で検知できる方が
+///        (UI) が何も示さず空表示するより、呼び出し側で検知できる方が
 ///        安全という判断。signal-only は不変。
 ///
 /// @example
 ///   auto a = w.array("view.hand");
 ///   for (int i = 0; i < handSize; ++i)
 ///       a.obj().set("i", i).set("name", cardName).set("cost", cost);
-///   // a のスコープ終了で push。a.overflowed() で切り詰めを検知できる。
+///   // a のスコープ終了時に push。a.overflowed() で切り詰めを検知できる。
 class ArrayBuilder;
 
-/// @brief ArrayBuilder::obj() が返す 1 要素ビルダー。自前バッファに {…} を
-///        組み立て、デストラクタで親 ArrayBuilder へ受け渡す。
+/// @brief ArrayBuilder::obj() が返す 1 要素のビルダー。自前のバッファに {…} を
+///        組み立て、デストラクタで親の ArrayBuilder へ受け渡す。
 class ArrayElement
 {
 public:
@@ -336,7 +190,7 @@ public:
     ArrayElement& set(const char* field, const char* v)
     {
         sep(); m_body += '"'; m_body += field; m_body += "\":\"";
-        m_body += detail::jsonEscape(v); m_body += '"';
+        m_body += observe::jsonEscape(v); m_body += '"';
         return *this;
     }
     ArrayElement& set(const char* field, const std::string& v) { return set(field, v.c_str()); }
@@ -363,7 +217,7 @@ public:
           m_committed(o.m_committed), m_overflowed(o.m_overflowed)
     { o.m_committed = true; }
 
-    /// @brief 新しい要素を開始する。返ったビルダーのスコープ終了で配列へ確定。
+    /// @brief 新しい要素を開始する。返されたビルダーのスコープ終了時に配列へ確定される。
     [[nodiscard]] ArrayElement obj() { return ArrayElement(this); }
 
     /// @brief 即時 push して以降の自動 push を無効にする。
@@ -375,12 +229,12 @@ public:
         if (!detail::pushString(m_intents, m_key.c_str(), m_body)) m_overflowed = true;
     }
 
-    /// @brief 容量超過で要素が落ちた or push が truncate された場合 true。
+    /// @brief 容量超過で要素が追加されなかった、または push が切り詰められた場合は true。
     [[nodiscard]] bool overflowed() const { return m_overflowed; }
 
 private:
     // ArrayElement のデストラクタから呼ばれる。完成した {…} を容量チェックして
-    // 追記する。超えるなら不正 JSON を出さず、要素を落として overflowed を立てる。
+    // 追記する。超える場合は不正な JSON を生成せず、要素を追加せずに overflowed を true にする。
     void appendElement(const std::string& objBody)
     {
         if (m_committed || m_intents == nullptr) { m_overflowed = true; return; }
@@ -409,7 +263,7 @@ inline ArrayElement::~ArrayElement()
 
 // ── StateWriter — メインエントリポイント ─────────────────────────────────
 
-/// @brief FrameIntents へのスカラー / オブジェクト / リスト push を提供する
+/// @brief FrameIntents へのスカラー / オブジェクト / 配列の push を提供する
 ///        ラッパークラス。on_update() の intents 引数を渡して構築する。
 ///
 /// @example
@@ -417,17 +271,13 @@ inline ArrayElement::~ArrayElement()
 ///   w.set("view.points", mem->points);
 ///   w.set("view.title", "クリッカー");
 ///   w.object("view.boss").set("active", true).set("pct", 62);
-///   {
-///       auto L = w.list("view.scene");
-///       L.item().field(2).field(80).field(120).field(1);
-///   }
 class StateWriter
 {
 public:
     explicit StateWriter(mitiru::module::FrameIntents* intents)
         : m_intents(intents) {}
 
-    // コピー / ムーブ不要 (フレームローカルな用途を想定)
+    // コピー / ムーブは不要 (フレームローカルな用途を想定)
     StateWriter(const StateWriter&)            = delete;
     StateWriter& operator=(const StateWriter&) = delete;
 
@@ -441,14 +291,14 @@ public:
         detail::pushString(m_intents, key, buf);
     }
 
-    /// @brief double 値を compact 文字列化して push する
+    /// @brief double 値をコンパクトな文字列に変換して push する
     void set(const char* key, double v)
     {
         detail::pushString(m_intents, key, detail::fmtDouble(v));
     }
 
     /// @brief 文字列をそのまま (JSON エスケープなし) push する
-    ///        mitiru_bind.js は非 { / [ 先頭をスカラーとして扱う
+    ///        UI は先頭が { / [ ではない値をスカラーとして扱う
     void set(const char* key, const char* v)
     {
         detail::pushString(m_intents, key, v);
@@ -467,26 +317,18 @@ public:
 
     // ── オブジェクト push ─────────────────────────────────────────────────
 
-    /// @brief fluent JSON オブジェクトビルダーを返す。
-    ///        戻り値のスコープ終了時に自動 push される。
+    /// @brief メソッドチェーン用の JSON オブジェクトビルダーを返す。
+    ///        戻り値のスコープ終了時に自動で push される。
     [[nodiscard]] ObjectBuilder object(const char* key)
     {
         return ObjectBuilder(m_intents, key);
     }
 
-    // ── ホットリスト push ─────────────────────────────────────────────────
-
-    /// @brief セミコロン区切りリストビルダーを返す。
-    ///        戻り値のスコープ終了時に自動 push される。
-    [[nodiscard]] ListBuilder list(const char* key)
-    {
-        return ListBuilder(m_intents, key);
-    }
 
     // ── オブジェクト配列 push ─────────────────────────────────────────────
 
-    /// @brief JSON オブジェクト配列ビルダーを返す。data-m-repeat 用。
-    ///        文字列フィールドは自動エスケープ、容量超過は overflowed() で検知。
+    /// @brief JSON オブジェクト配列ビルダーを返す。RML の data-for 用。
+    ///        文字列フィールドは自動でエスケープされ、容量超過は overflowed() で検知できる。
     [[nodiscard]] ArrayBuilder array(const char* key)
     {
         return ArrayBuilder(m_intents, key);

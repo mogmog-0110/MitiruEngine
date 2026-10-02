@@ -45,8 +45,8 @@ cd my-game
 mitiru run
 ```
 
-`mitiru new`がフォルダを作って、`src/main.cpp` / `mitiru.toml` / `assets/scene.html`の最小セットを置きます。
-`mitiru run`がビルドして実行します。初回だけ、HTML UI用のCEFラッパとheader-onlyのエンジン本体を一度コンパイルするため5〜10分ほどかかります。2回目以降は数秒です。
+`mitiru new`がフォルダを作って、`src/main.cpp` / `mitiru.toml`の最小セットを置きます。
+`mitiru run`がビルドして実行します。初回だけ、header-only のエンジン本体と依存ライブラリ (RmlUi など) を一度コンパイルするため時間がかかります。2回目以降は数秒です。
 
 これだけで、`MitiruEngine`のウィンドウが手元で開きます。お疲れさまでした。
 
@@ -79,25 +79,20 @@ width = 1280
 height = 720
 vsync = true
 
-[cef]
-start_url = "assets/scene.html"
-skip_default_font = true
-
 [build]
 backend = "auto"
 ```
 
 - `[window]` — ウィンドウのタイトルとサイズ。C++側でハードコードしなくて済みます。
-- `[cef]` — UI / HUDをHTML/CSSで書く場合の初期HTML。CEFレイヤーを使わない純C++ runtimeなら`start_url`は無視されます。
 - `[build]` — グラフィクスbackend。`auto`でプラットフォームから自動選択。
 
 ---
 
-## C++のみで動かす場合
+## UI を RML / RCSS で書く場合
 
-UIをHTML/CSSで書かず、純C++で完結したい場合は`mitiru.toml`の`[cef]`セクションを消すか、`main.cpp`で`cfg.enableCef = false`を設定します。CEFのプロセスが起動しないので、libcef.dll依存も無くなります。
+HUD やメニューを RML / RCSS (HTML / CSS の方言) で書くときは、DLL の隣に `assets/ui/main.rml` を置きます。無ければ UI の層は動かず、C++ の描画だけで動きます。
 
-詳細は [`SCOPE.md`](SCOPE.md)。
+書き方は [`UI_RMLUI.md`](UI_RMLUI.md)。
 
 ---
 
@@ -141,8 +136,8 @@ MITIRU_GAME(MyGame)  // これ 1 行で DLL の入口が生成されます
 リロードされ、状態は生きたまま挙動が変わります(`mitiru watch`)。
 
 APIの全体像は [機能リファレンス](https://mogmog-0110.github.io/MitiruEngine/features.html)に
-コピペできる形で並んでいます。HTML/CSSでHUDを作る例は同梱の
-`examples/rewind/`を参照してください。
+コピペできる形で並んでいます。RML / RCSS で HUD を作る例は同梱の
+`examples/html_hud/` と `examples/html_menu/` を参照してください。
 
 ---
 
@@ -153,8 +148,6 @@ my-game/
 ├── mitiru.toml         # プロジェクトマニフェスト
 ├── src/
 │   └── main.cpp        # ゲーム本体
-├── assets/
-│   └── scene.html      # HTML/CSS UI 用の初期 HTML
 └── build/              # mitiru build が生成 (gitignore 推奨)
 ```
 
@@ -164,7 +157,7 @@ my-game/
 
 ## 次に何を見るか
 
-- [`examples/rewind/`](../examples/rewind/) — 状態を1個のstructに置いた巻き戻し + HTML/CSS HUDの動くshowcase
+- [`examples/rewind/`](../examples/rewind/) — 状態を1個のstructに置いた巻き戻しの動くshowcase
 - [Reading Order — 次に読むべきページ](READING_ORDER.md)
 - [Scope & Identity — engineのidentity / 特徴 / target user](SCOPE.md)
 - [Architecture — エンジン全体の設計](ARCHITECTURE.md)
@@ -210,8 +203,7 @@ cmake --build build --config Debug
 | `mitiru: command not found` | `installer.exe`の後にターミナルを開き直していない。`PATH`の反映には新しいターミナルが要ります。 |
 | `mitiru doctor`でCMakeが見つからない | CMake 3.21以上を入れる。古いとpresetが読めません。`installer.exe`を再実行すると入ります。 |
 | `mitiru build`でC++20系のエラー | コンパイラが古い。MSVC Build Tools 2022に。 |
-| 初回buildが異様に遅い | 初回だけCEFラッパとheader-onlyエンジンをコンパイルします。5〜10分は普通です。 |
-| Windowsでリンカが`libcef.dll`を見つけられない | `mitiru build`をやり直すとCEFランタイムがexeの隣にコピーされます。 |
+| 初回buildが異様に遅い | 初回だけheader-onlyエンジンと依存ライブラリをコンパイルします。2回目以降は数秒です。 |
 | `mitiru`が古いengineを引いてしまう | `mitiru.toml`の`[project] engine`を直すか、`mitiru clean`で`build/`を作り直す。 |
 
 それでも詰まったら、[GitHub Issue](https://github.com/mogmog-0110/MitiruEngine/issues)に投げてください。再現手順とOS / `mitiru version`の出力が書いてあると助かります。

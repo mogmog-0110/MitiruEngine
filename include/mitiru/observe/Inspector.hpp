@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file Inspector.hpp
-/// @brief ランタイム状態クエリAPI
-/// @details AIエージェントがゲーム状態を問い合わせるための軽量API。
-///          key-value形式の状態ストアを内部に保持し、
-///          状態の登録・検索・JSON出力を提供する。
+/// @brief ランタイム状態クエリ API
+/// @details AI エージェントがゲーム状態を問い合わせるための軽量 API。
+///          key-value 形式の状態ストアを内部に保持し、
+///          状態の登録・検索・JSON 出力を提供する。
 ///          スナップショットリングヒストリー機能付き。
 
 #include <deque>
@@ -20,8 +20,8 @@ namespace mitiru::observe
 {
 
 /// @brief ランタイム状態インスペクター
-/// @details ゲーム内の状態をkey-value形式で登録し、
-///          AIエージェントからの問い合わせに応答する。
+/// @details ゲーム内の状態を key-value 形式で登録し、
+///          AI エージェントからの問い合わせに応答する。
 ///          フルスナップショットの軽量な代替手段として機能する。
 ///          オプションでスナップショットリングヒストリーを保持できる。
 class Inspector
@@ -58,7 +58,7 @@ public:
 		return std::nullopt;
 	}
 
-	/// @brief 全状態をJSON文字列として返す
+	/// @brief 全状態を JSON 文字列として返す
 	/// @return JSON オブジェクト形式の文字列
 	[[nodiscard]] std::string queryAll() const
 	{
@@ -67,7 +67,7 @@ public:
 
 	/// @brief 指定プレフィックスに一致する状態をフィルタして返す
 	/// @param prefix キーのプレフィックス
-	/// @return フィルタ結果のJSON文字列
+	/// @return フィルタ結果の JSON 文字列
 	[[nodiscard]] std::string queryByPrefix(std::string_view prefix) const
 	{
 		std::map<std::string, std::string> filtered;
@@ -140,9 +140,9 @@ public:
 		return it->second;
 	}
 
-	/// @brief 過去スナップショットをJSON文字列として返す
+	/// @brief 過去スナップショットを JSON 文字列として返す
 	/// @param framesBack 0=最新コミット, 1=その前, ...
-	/// @return JSON文字列。範囲外なら "{}"
+	/// @return JSON 文字列。範囲外なら "{}"
 	[[nodiscard]] std::string queryAllAt(std::size_t framesBack) const
 	{
 		if (framesBack >= m_history.size())
@@ -182,8 +182,8 @@ private:
 	std::size_t m_historyCapacity = 0;
 
 	/// @brief map を JSON オブジェクト文字列に変換する
-	/// @param data 変換対象のmap
-	/// @return JSON文字列
+	/// @param data 変換対象の map
+	/// @return JSON 文字列
 	[[nodiscard]] static std::string toJson(const std::map<std::string, std::string>& data)
 	{
 		std::string json;

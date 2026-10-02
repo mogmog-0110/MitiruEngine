@@ -1,8 +1,8 @@
 # CMake / build output
-build/
-build-*/
-out/
-cmake-build-*/
+/build/
+/build-*/
+/out/
+/cmake-build-*/
 
 # IDE folders
 .vs/
@@ -15,8 +15,6 @@ cmake-build-*/
 Thumbs.db
 desktop.ini
 
-# Packaged binaries fetched on demand
-external/cef/
 
 # Test scratch
 test_output/

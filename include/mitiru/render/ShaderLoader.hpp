@@ -2,9 +2,9 @@
 
 /// @file ShaderLoader.hpp
 /// @brief constexpr fallback 付きの外部 shader ファイル loader
-/// @details 二重モードの shader 読み込み: 開発時は外部ファイル (hot-reload)、
+/// @details shader を 2 つのモードで読み込む。開発時は外部ファイル (hot-reload)、
 ///          配布時は constexpr fallback。shader ディレクトリ下に外部 shader
-///          ファイルが存在すれば runtime で読み込む。無ければヘッダに埋め込まれた
+///          ファイルがあれば runtime で読み込む。無ければヘッダに埋め込まれた
 ///          constexpr 文字列を使う。
 
 #include <string>
@@ -21,20 +21,20 @@ namespace mitiru::render
 /// @brief constexpr fallback 付きで外部ファイルから shader source を読み込む
 /// @details 使い方:
 /// @code
-///   // Set shader directory (once at startup)
+///   // shader ディレクトリを設定する (起動時に 1 回)
 ///   ShaderLoader::setShaderDirectory("assets/shaders");
 ///
-///   // Load with fallback to embedded string
+///   // 埋め込み文字列への fallback 付きで読み込む
 ///   std::string vs = ShaderLoader::load("hlsl/default_2d_vs.hlsl", DEFAULT_VS_2D);
 ///
-///   // Or try external only
+///   // または外部ファイルだけを試す
 ///   auto external = ShaderLoader::loadFromFile("hlsl/phong_ps.hlsl");
-///   if (external) { /* use hot-reloaded shader */ }
+///   if (external) { /* hot-reload した shader を使う */ }
 ///
-///   // Cached loading for repeated access in the same frame
+///   // 同一フレーム内で繰り返し読む場合はキャッシュ付きで読み込む
 ///   const auto& cached = ShaderLoader::loadCached("hlsl/toon_ps.hlsl", TOON_PS_3D);
 ///
-///   // Clear cache when hot-reloading
+///   // hot-reload 時はキャッシュをクリアする
 ///   ShaderLoader::clearCache();
 /// @endcode
 class ShaderLoader
@@ -78,7 +78,7 @@ public:
         return ss.str();
     }
 
-    /// @brief shader を読み込む: まず外部ファイル、無ければ埋め込み constexpr 文字列へ fallback
+    /// @brief shader を読み込む。まず外部ファイルを試し、無ければ埋め込み constexpr 文字列へ fallback する
     /// @param relativePath shader ディレクトリからの相対パス
     /// @param fallback ファイルが見つからない場合に使う埋め込み constexpr shader 文字列
     /// @return shader source 文字列 (ファイル由来または fallback)

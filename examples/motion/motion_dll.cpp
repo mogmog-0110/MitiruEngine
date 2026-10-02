@@ -1,34 +1,34 @@
-// motion。動きに緩急をつける「イージング」の見本。1 つの曲線が位置・大きさ・回転・透明度をどう動かすか
+// motion。動きに緩急をつける「イージング」の見本。1 つの曲線で位置・大きさ・回転・透明度がどう変化するか
 // 実行すると: 4 種のイージング (列) が、位置 / 大きさ / 回転 / 透明度 (行) を同時に動かし続ける
-// 関連 API: mitiru::vn::Easing (linear / easeInCubic / easeOutCubic / easeInOutCubic)
+// 関連 API: mitiru::math::Easing (linear / easeInCubic / easeOutCubic / easeInOutCubic)
 
 #include <algorithm>   // std::min
 #include <cmath>       // std::fmod
 
 #include <mitiru.hpp>
 #include <mitiru/module/AutoReflect.hpp>
-#include <mitiru/vn/EasingFunctions.hpp>   // イージング関数 (linear / easeInCubic / easeOutCubic ...)
+#include <mitiru/math/Easing.hpp>   // イージング関数 (linear / easeInCubic / easeOutCubic ...)
 
 #include "../common/chapter_hud.hpp"   // 章ラベル + 操作帯 + 共通の配色
 
 using namespace mitiru;
 
-// イージング関数 1 つと、その表示名。列ごとに 1 種類を受け持つ。
+// 1 つのイージング関数と、その表示名。列ごとに 1 種類を表示する。
 // イージングは 0→1 の進み具合を受け取り、緩急をつけた 0→1 を返す関数。
 using EaseFn = float (*)(float) noexcept;
 struct Column { const char* name; EaseFn ease; };
 constexpr Column kCols[4] = {
-	{"Linear",    &vn::Easing::linear},         // 等速 (緩急なし)
-	{"EaseInOut", &vn::Easing::easeInOutCubic},  // ゆっくり始まり、速くなり、またゆっくり止まる
-	{"EaseIn",    &vn::Easing::easeInCubic},      // ゆっくり始まって、だんだん速く
-	{"EaseOut",   &vn::Easing::easeOutCubic},     // 速く始まって、だんだん遅く
+	{"Linear",    &math::Easing::linear},         // 等速 (緩急なし)
+	{"EaseInOut", &math::Easing::easeInOutCubic},  // ゆっくり始まり、速くなり、またゆっくり止まる
+	{"EaseIn",    &math::Easing::easeInCubic},      // ゆっくり始まって、だんだん速く
+	{"EaseOut",   &math::Easing::easeOutCubic},     // 速く始まって、だんだん遅く
 };
 
-// 4 つの行 = 動かすプロパティ。中心 y と、左端に出す名前。
+// 4 つの行 = 動かすプロパティ。中心 y と、左端に表示する名前。
 constexpr float       kRowY[4]   = {150.0f, 292.0f, 436.0f, 584.0f};
 constexpr const char* kRowLbl[4] = {"Position", "Scale", "Rotation", "Opacity"};
 
-// 各列の配置。左の 165px は行ラベル用にあけ、そこから幅 250 の列を 272 間隔で 4 本並べる。
+// 各列の配置。左の 165px は行ラベル用にあけ、そこから幅 250 の列を 272 間隔で 4 列並べる。
 constexpr float kColX = 165.0f, kColW = 250.0f, kColGap = 272.0f;
 
 constexpr float kDur  = 1.6f;   // 0 → 1 まで動く秒数
@@ -44,7 +44,7 @@ struct Motion
 		t += dt;
 	}
 
-	// いまの進み具合 (0 → 1)。動き切ったら、次の周回が始まるまで 1 のまま止める。
+	// 現在の進み具合 (0 → 1)。動き切ったら、次の周回が始まるまで 1 のまま止める。
 	float progress() const
 	{
 		const float phase = std::fmod(t, kDur + kHold);
@@ -84,8 +84,8 @@ struct Motion
 	void draw(Screen& s) const { drawImpl(s); }
 	void draw(Canvas& c) const { drawImpl(c); }
 
-	// 位置: 横のレールの上を丸が進む。等間隔の時間で刻んだ目盛りも重ねる。
-	// 目盛りが詰まっている所ほど動きが遅く、まばらな所ほど速い (速さの変化が形で見える)。
+	// 位置: 横のレール上を丸が進む。等間隔の時間で区切った目盛りも重ねる。
+	// 目盛りが詰まっている所ほど動きが遅く、まばらな所ほど速い (速さの変化が形で分かる)。
 	template <class Surface>
 	void drawPosition(Surface& s, float left, float y, float e, int c) const
 	{
@@ -99,7 +99,7 @@ struct Motion
 		s.fillCircle(x0 + len * e, y, 9.0f, theme::kBlue);
 	}
 
-	// 大きさ: 枠の中で、四角形が小さく → 大きく育つ。
+	// 大きさ: 枠の中で、四角形が小さい状態から大きい状態へ変化する。
 	template <class Surface>
 	void drawScale(Surface& s, float cx, float cy, float e) const
 	{
@@ -108,7 +108,7 @@ struct Motion
 		s.drawRect(cx - side * 0.5f, cy - side * 0.5f, side, side, theme::kInk);
 	}
 
-	// 回転: 四角形が 0 → 135 度まわる (斜めに傾いて見えるので回転が分かりやすい)。
+	// 回転: 四角形が 0 → 135 度回転する (斜めに傾いて見えるので回転が分かりやすい)。
 	template <class Surface>
 	void drawRotation(Surface& s, float cx, float cy, float e) const
 	{
@@ -117,7 +117,7 @@ struct Motion
 		s.popTransform();
 	}
 
-	// 透明度: 四角形が透明 → 不透明へ浮かび上がる (薄い枠で位置が分かるようにしておく)。
+	// 透明度: 四角形が透明から不透明へ変化する (薄い枠で位置が分かるようにしておく)。
 	template <class Surface>
 	void drawOpacity(Surface& s, float cx, float cy, float e) const
 	{
@@ -127,7 +127,8 @@ struct Motion
 	}
 };
 
-// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+// inspector に表示する状態を自動で反映する。aggregate 型なので列挙は不要 (D12)。
 MITIRU_REFLECT_AUTO(Motion);
 
+MITIRU_ASSERT_NO_PADDING(Motion);
 MITIRU_GAME(Motion);

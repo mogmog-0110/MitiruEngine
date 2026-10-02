@@ -1,17 +1,17 @@
 ﻿#pragma once
 
 /// @file Node.hpp
-/// @brief Godot風ノードシステム。シーンツリーの基盤
+/// @brief Godot 風ノードシステム。シーンツリーの基盤
 /// @details 全ゲームオブジェクトの基底クラス。親子関係、ライフサイクル管理、
-///          Update/Draw伝播を提供する。
+///          Update/Draw 伝播を提供する。
 ///
 /// @note Design Decision: Node と GameWorld は意図的に共存する。
 /// - **Node** (このファイル): 階層シーンツリー。親子トランスフォーム伝播、
-///   updateTree/drawTree による再帰的更新。UI、2Dゲーム、シーン構成に最適。
-/// - **GameWorld**: ECSベースの型消去コンポーネント管理。データ指向設計、
+///   updateTree/drawTree による再帰的更新。UI、2D ゲーム、シーン構成に最適。
+/// - **GameWorld**: ECS ベースの型消去コンポーネント管理。データ指向設計、
 ///   大量エンティティ、forEach/システムクエリに最適。
-/// - **ブリッジ**: NodeはECSエンティティをattachEntity()で保持可能。
-///   GameWorldシステムはNodeコンポーネントをクエリ可能。
+/// - **ブリッジ**: Node は ECS エンティティを attachEntity()で保持可能。
+///   GameWorld システムは Node コンポーネントをクエリ可能。
 /// @see GameWorld.hpp
 ///
 /// @code
@@ -47,8 +47,8 @@ class Node;
 /// @brief ノードの共有ポインタ型
 using NodePtr = std::shared_ptr<Node>;
 
-/// @brief シーンツリーのノード基底クラス（Godot Node風）
-/// @details 親子関係を持つツリー構造で、updateTree/drawTreeにより
+/// @brief シーンツリーのノード基底クラス（Godot Node 風）
+/// @details 親子関係を持つツリー構造で、updateTree/drawTree により
 ///          再帰的にライフサイクルコールバックが呼ばれる。
 class Node
 {
@@ -66,7 +66,7 @@ public:
 	/// @brief デストラクタ
 	virtual ~Node() = default;
 
-	// ── ライフサイクル（Godot風） ──
+	// ── ライフサイクル（Godot 風） ──
 
 	/// @brief ツリーに追加された直後に呼ばれる
 	virtual void onReady() {}
@@ -109,7 +109,7 @@ public:
 
 	/// @brief 名前で子ノードを検索する
 	/// @param name 検索するノード名
-	/// @return 見つかったノード（見つからなければnullptr）
+	/// @return 見つかったノード（見つからなければ nullptr）
 	[[nodiscard]] NodePtr findChild(const std::string& name) const
 	{
 		for (const auto& c : m_children)
@@ -124,7 +124,7 @@ public:
 
 	/// @brief 再帰的に名前でノードを検索する
 	/// @param name 検索するノード名
-	/// @return 見つかったノード（見つからなければnullptr）
+	/// @return 見つかったノード（見つからなければ nullptr）
 	[[nodiscard]] NodePtr findDescendant(const std::string& name) const
 	{
 		for (const auto& c : m_children)
@@ -186,14 +186,14 @@ public:
 	/// @brief スケール
 	sgc::Vec2f scale{1, 1};
 
-	/// @brief アクティブフラグ（falseならupdate伝播をスキップ）
+	/// @brief アクティブフラグ（false なら update 伝播をスキップ）
 	bool m_active = true;
 
-	/// @brief 表示フラグ（falseならdraw伝播をスキップ）
+	/// @brief 表示フラグ（false なら draw 伝播をスキップ）
 	bool m_visible = true;
 
 	/// @brief 親ノードを取得する
-	/// @return 親ノードへのポインタ（ルートならnullptr）
+	/// @return 親ノードへのポインタ（ルートなら nullptr）
 	[[nodiscard]] Node* parent() const noexcept { return m_parent; }
 
 	/// @brief 子ノード一覧を取得する
@@ -249,14 +249,14 @@ public:
 };
 
 /// @brief タイマーノード（指定時間後にコールバック）
-/// @details Godot Timerノード風。開始後、duration経過でonTimeoutを呼ぶ。
+/// @details Godot Timer ノード風。開始後、duration 経過で onTimeout を呼ぶ。
 class TimerNode : public Node
 {
 public:
 	/// @brief タイマー時間（秒）
 	float duration = 1.0f;
 
-	/// @brief ワンショットモード（trueなら一度だけ発火）
+	/// @brief ワンショットモード（true なら一度だけ発火）
 	bool oneShot = true;
 
 	/// @brief タイムアウト時のコールバック
@@ -305,7 +305,7 @@ private:
 
 } // namespace mitiru::scene
 
-// ── Screen依存の実装 ──
+// ── Screen 依存の実装 ──
 #include <mitiru/core/Screen.hpp>
 
 inline void mitiru::scene::SpriteNode::onDraw(Screen& screen) const

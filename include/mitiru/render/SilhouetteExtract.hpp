@@ -121,7 +121,7 @@ struct EdgeAccum
 		}
 	}
 
-	// シルエット判定: 境界(面1枚) か、表裏が混在(面2枚で front が 0<count<faces)。
+	// シルエット判定: 境界(面 1 枚) か、表裏が混在(面 2 枚で front が 0<count<faces)。
 	for (const auto& [key, acc] : edges)
 	{
 		const bool boundary = (acc.faces == 1);

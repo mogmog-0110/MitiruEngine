@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file SnapshotSchema.hpp
-/// @brief スナップショットJSONスキーマ定義
-/// @details AIエージェントがスナップショットの構造を理解するためのスキーマ情報。
-///          エンティティ・UI要素のスキーマも含む。
+/// @brief スナップショット JSON スキーマ定義
+/// @details AI エージェントがスナップショットの構造を理解するためのスキーマ情報。
+///          エンティティ・UI 要素のスキーマも含む。
 
 #include <string>
 #include <string_view>
@@ -15,8 +15,8 @@ namespace mitiru::observe
 /// @details スナップショット内のエンティティ情報の構造を記述する。
 struct EntitySchema
 {
-	/// @brief エンティティスキーマのJSON定義を返す
-	/// @return JSON Schema形式の文字列
+	/// @brief エンティティスキーマの JSON 定義を返す
+	/// @return JSON Schema 形式の文字列
 	[[nodiscard]] static std::string schemaJson()
 	{
 		return R"({
@@ -48,12 +48,12 @@ struct EntitySchema
 	}
 };
 
-/// @brief UIスキーマ定義
-/// @details スナップショット内のUI要素情報の構造を記述する。
+/// @brief UI スキーマ定義
+/// @details スナップショット内の UI 要素情報の構造を記述する。
 struct UISchema
 {
-	/// @brief UIスキーマのJSON定義を返す
-	/// @return JSON Schema形式の文字列
+	/// @brief UI スキーマの JSON 定義を返す
+	/// @return JSON Schema 形式の文字列
 	[[nodiscard]] static std::string schemaJson()
 	{
 		return R"json({
@@ -81,15 +81,15 @@ struct UISchema
 };
 
 /// @brief スナップショットスキーマ
-/// @details スナップショット全体のJSON Schema定義を提供する。
-///          AIエージェントはこのスキーマを参照してデータ構造を理解する。
+/// @details スナップショット全体の JSON Schema 定義を提供する。
+///          AI エージェントはこのスキーマを参照してデータ構造を理解する。
 struct SnapshotSchema
 {
 	/// @brief スキーマバージョン
 	static constexpr std::string_view VERSION = "2.0.0";
 
-	/// @brief スナップショット全体のJSON Schema定義を返す
-	/// @return JSON Schema形式の文字列
+	/// @brief スナップショット全体の JSON Schema 定義を返す
+	/// @return JSON Schema 形式の文字列
 	[[nodiscard]] static std::string schemaJson()
 	{
 		std::string schema;

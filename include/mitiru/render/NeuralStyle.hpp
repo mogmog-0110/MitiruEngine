@@ -3,7 +3,7 @@
 /// @file NeuralStyle.hpp
 /// @brief 実時間ニューラル style 変換 (ONNX Runtime + DirectML EP, GPU 推論)。
 /// @details レンダリング済みフレーム (RGBA8) を fast-neural-style CNN に通して
-///          2D 絵画調へ変換する。3D⇄2D の「現像」ギミックの心臓部。
+///          2D 絵画調へ変換する。3D⇄2D の「現像」ギミックの中核。
 ///          推論は **GPU (DirectML)** で走る。入出力テンソルは ORT 管理の CPU バッファ
 ///          だが、計算自体は DML EP が GPU 実行する。モデルは fully-conv なので
 ///          動的形状 (任意 H,W) を受ける (tools/make_dynamic.py で dim を動的化済み)。

@@ -2,7 +2,7 @@
 
 /// @file GpuParticleBase.hpp
 /// @brief GPU パーティクルシステムの共通基底クラス
-/// @details DX11/DX12 実装で共有される CPU 側ロジックを集約する。
+/// @details DX11/DX12 実装で共有する CPU 側のロジックをまとめる。
 ///          エミッション制御（レートベース放出・バースト）、パーティクルステージング、
 ///          ライフタイム管理を提供する。GPU バッファ管理はサブクラスに委譲する。
 
@@ -146,7 +146,7 @@ public:
 protected:
 	/// @brief コンストラクタ
 	/// @param maxParticles 最大パーティクル数
-	/// @param seed 乱数 seed (既定固定 = 決定論。caller が replay seed を注入できる)
+	/// @param seed 乱数 seed (既定は固定値 = 決定論。caller が replay seed を注入できる)
 	explicit GpuParticleBase(std::uint32_t maxParticles, std::uint32_t seed = 42u)
 		: m_maxParticles(maxParticles)
 		, m_rng(seed)
@@ -156,7 +156,7 @@ protected:
 	/// @brief デストラクタ
 	~GpuParticleBase() override = default;
 
-	/// @brief エミッター設定から1パーティクルを放出する
+	/// @brief エミッター設定から 1 パーティクルを放出する
 	void emitOneFromEmitter()
 	{
 		const auto pos = m_emitter.samplePosition(m_rng);
@@ -167,10 +167,10 @@ protected:
 		emit(pos, vel, lt, m_emitter.startColor, sz);
 	}
 
-	/// @brief 生存パーティクルのみを抽出する（コンパクション共通ロジック）
+	/// @brief 生存パーティクルだけを抜き出す（コンパクションの共通ロジック）
 	/// @param src パーティクル配列の先頭ポインタ
 	/// @param count 配列内のパーティクル数
-	/// @return 生存パーティクルのみを含むベクタ
+	/// @return 生存パーティクルだけを含むベクタ
 	[[nodiscard]] static std::vector<GpuParticle> filterAliveParticles(
 		const GpuParticle* src,
 		std::uint32_t count)
@@ -189,7 +189,7 @@ protected:
 		return alive;
 	}
 
-	/// @brief コンパクションを実行すべきかカウンタで判定する
+	/// @brief コンパクションを実行すべきかをカウンタで判定する
 	/// @return true の場合コンパクションを実行する
 	[[nodiscard]] bool shouldCompact() noexcept
 	{

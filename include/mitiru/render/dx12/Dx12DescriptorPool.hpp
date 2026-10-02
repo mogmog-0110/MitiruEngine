@@ -102,7 +102,7 @@ public:
     {
         assert(count > 0 && offset + count <= m_capacity);
 
-        // 挿入位置を探す (ブロックは offset 順にソート維持)
+        // 挿入位置を探す (ブロックは offset 順のソートを保つ)
         auto it = m_blocks.begin();
         while (it != m_blocks.end() && it->offset < offset) ++it;
 

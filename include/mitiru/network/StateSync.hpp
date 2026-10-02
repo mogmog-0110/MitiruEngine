@@ -16,7 +16,7 @@ namespace mitiru::network
 /// @details サーバー権限モデルにおけるゲーム状態の同期を管理する。
 ///          pushState()で新しいスナップショットを追加し、
 ///          acknowledgeVersion()で確認済みバージョンを設定する。
-///          未確認のスナップショットはpendingCount()で確認できる。
+///          未確認のスナップショットは pendingCount()で確認できる。
 class StateSync
 {
 public:
@@ -28,7 +28,7 @@ public:
 	}
 
 	/// @brief 新しい状態スナップショットをプッシュする
-	/// @param stateJson 状態のJSON文字列
+	/// @param stateJson 状態の JSON 文字列
 	void pushState(std::string stateJson)
 	{
 		++m_version;
@@ -36,7 +36,7 @@ public:
 	}
 
 	/// @brief 最新の状態を取得する
-	/// @return 最新のJSON状態文字列（履歴が空なら空文字列）
+	/// @return 最新の JSON 状態文字列（履歴が空なら空文字列）
 	[[nodiscard]] std::string latestState() const
 	{
 		if (m_states.empty())

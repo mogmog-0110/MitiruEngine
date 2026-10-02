@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file MultiScene.hpp
-/// @brief マルチシーン管理。複数のSceneを同時に開いて切り替える
+/// @brief マルチシーン管理。複数の Scene を同時に開いて切り替える
 /// @details エディタで複数シーンをタブ形式で開き、アクティブシーンを切り替える。
-///          各シーンは独立したSceneインスタンスを持つ。
+///          各シーンは独立した Scene インスタンスを持つ。
 ///
 /// @code
 /// mitiru::MultiSceneManager mgr;
@@ -50,8 +50,8 @@ struct SceneEntry
 // =============================================================================
 
 /// @brief マルチシーンマネージャ
-/// @details 複数のSceneを同時に開き、アクティブシーンを切り替える。
-///          エディタのタブUI連携を前提とした設計。
+/// @details 複数の Scene を同時に開き、アクティブシーンを切り替える。
+///          エディタのタブ UI 連携を前提とした設計。
 class MultiSceneManager
 {
 public:
@@ -124,13 +124,13 @@ public:
 
 	/// @brief アクティブシーンへの参照を取得する
 	/// @return アクティブシーンの参照
-	/// @pre シーンが1つ以上開かれていること
+	/// @pre シーンが 1 つ以上開かれていること
 	[[nodiscard]] Scene& activeScene()
 	{
 		return *m_scenes[static_cast<std::size_t>(m_activeIndex)]->scene;
 	}
 
-	/// @brief アクティブシーンへの参照を取得する（const版）
+	/// @brief アクティブシーンへの参照を取得する（const 版）
 	[[nodiscard]] const Scene& activeScene() const
 	{
 		return *m_scenes[static_cast<std::size_t>(m_activeIndex)]->scene;
@@ -152,7 +152,7 @@ public:
 		return *m_scenes[static_cast<std::size_t>(index)]->scene;
 	}
 
-	/// @brief インデックスでシーンを取得する（const版）
+	/// @brief インデックスでシーンを取得する（const 版）
 	[[nodiscard]] const Scene& sceneAt(int index) const
 	{
 		return *m_scenes[static_cast<std::size_t>(index)]->scene;
@@ -205,7 +205,7 @@ public:
 
 		auto entry = std::make_unique<SceneEntry>(newName);
 
-		// シーン内容をJSON経由でコピーする
+		// シーン内容を JSON 経由でコピーする
 		const auto json = src->scene->toJson();
 		entry->scene->fromJson(json);
 

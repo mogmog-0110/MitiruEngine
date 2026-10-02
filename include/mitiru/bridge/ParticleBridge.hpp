@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file ParticleBridge.hpp
-/// @brief sgcパーティクル統合ブリッジ
-/// @details sgcのParticleSystem、EmitterConfigをMitiruエンジンに統合する。
+/// @brief sgc パーティクル統合ブリッジ
+/// @details sgc の ParticleSystem、EmitterConfig を Mitiru エンジンに統合する。
 ///          名前付きパーティクルシステムの管理と一括更新を提供。
 
 #include <cstddef>
@@ -15,7 +15,7 @@
 namespace mitiru::bridge
 {
 
-/// @brief sgcパーティクル統合ブリッジ
+/// @brief sgc パーティクル統合ブリッジ
 /// @details 複数のパーティクルシステムを名前付きで管理し、一括更新する。
 ///
 /// @code
@@ -41,7 +41,7 @@ public:
 	/// @brief view push ハンドラを登録する（非所有 raw pointer）
 	/// @details 登録後、update() の各フレームでシステムごとに
 	///          `"<systemName>.activeCount"` が push される。
-	///          nullptr を渡すと push を無効化する。
+	///          nullptr を渡すと push を無効にする。
 	///
 	/// @code
 	/// BridgeViewPush vp("particle", setSink, emitSink);
@@ -57,7 +57,7 @@ public:
 	/// @param config エミッター設定
 	/// @param maxParticles 最大パーティクル数
 	/// @note `<name>.activeCount` の view-push key は登録時に一度だけ構築し、
-	///       update() の各フレームでは std::string_view としてゼロアロケーションで再利用する。
+	///       update() の各フレームでは std::string_view として、アロケーションを行わずに再利用する。
 	void addSystem(const std::string& name, const sgc::EmitterConfig& config,
 		std::size_t maxParticles = 1000)
 	{
@@ -108,9 +108,9 @@ public:
 		m_systems.erase(name);
 	}
 
-	/// @brief 指定システムのアクティブパーティクル数を取得する
+	/// @brief 指定したシステムのアクティブパーティクル数を取得する
 	/// @param name システム名
-	/// @return パーティクル数（未登録時は0）
+	/// @return パーティクル数（未登録時は 0）
 	[[nodiscard]] std::size_t activeParticleCount(const std::string& name) const
 	{
 		const auto it = m_systems.find(name);
@@ -118,7 +118,7 @@ public:
 		return it->second.system.activeCount();
 	}
 
-	/// @brief 登録システム数を取得する
+	/// @brief 登録されているシステム数を取得する
 	/// @return システム数
 	[[nodiscard]] std::size_t systemCount() const noexcept
 	{
@@ -127,8 +127,8 @@ public:
 
 	// ── シリアライズ ────────────────────────────────────────
 
-	/// @brief パーティクル状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief パーティクル状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -153,7 +153,7 @@ public:
 	}
 
 private:
-	/// @brief 内部エントリ（system + 事前計算済み view-push key）
+	/// @brief 内部エントリ（system + 事前に計算した view-push key）
 	struct SystemEntry
 	{
 		sgc::ParticleSystem system;          ///< パーティクル本体

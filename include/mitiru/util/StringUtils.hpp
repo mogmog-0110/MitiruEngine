@@ -205,7 +205,7 @@ public:
 
 	// ── フォーマット ──
 
-	/// @brief printf形式の文字列フォーマット
+	/// @brief printf 形式の文字列フォーマット
 	/// @tparam Args フォーマット引数の型
 	/// @param fmt フォーマット文字列
 	/// @param args フォーマット引数
@@ -216,7 +216,7 @@ public:
 	[[nodiscard]] [[deprecated("Use with caution: fmt must be a compile-time constant, never user input")]]
 	static std::string format(const char* fmt, Args&&... args)
 	{
-		// サイズ計算（null終端分を含む）
+		// サイズ計算（null 終端分を含む）
 		int size = std::snprintf(nullptr, 0, fmt, std::forward<Args>(args)...);
 		if (size <= 0)
 		{
@@ -234,7 +234,7 @@ public:
 	/// @brief 文字列を数値に安全に変換する
 	/// @tparam T 変換先の数値型
 	/// @param str 入力文字列
-	/// @return 変換成功時は値を含むoptional、失敗時はnullopt
+	/// @return 変換成功時は値を含む optional、失敗時は nullopt
 	template <typename T>
 	[[nodiscard]] static std::optional<T> toNumber(std::string_view str) noexcept
 	{
@@ -255,7 +255,7 @@ public:
 		}
 		else if constexpr (std::is_floating_point_v<T>)
 		{
-			// from_charsのfloat/double対応はコンパイラ依存
+			// from_chars の float/double 対応はコンパイラ依存
 			// 安全なフォールバック
 			try
 			{

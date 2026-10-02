@@ -294,7 +294,15 @@ inline nlohmann::json frameAnatomyInputJson(const mitiru::module::InputSnapshot&
 	out["keysJustPressed"] = std::move(justPressed);
 	out["mouseX"] = s.mouseX;
 	out["mouseY"] = s.mouseY;
-	out["mouseButtonsDown"] = {s.mouseButtonsDown[0] != 0, s.mouseButtonsDown[1] != 0, s.mouseButtonsDown[2] != 0};
+	out["mouseButtonsDown"] = {s.mouseButtonsDown[0] != 0, s.mouseButtonsDown[1] != 0, s.mouseButtonsDown[2] != 0,
+	                           s.mouseXButtonsDown[0] != 0, s.mouseXButtonsDown[1] != 0};
+	out["mouseWheel"] = {s.mouseWheel, s.mouseWheelH};
+	nlohmann::json pads = nlohmann::json::array();
+	for (const auto& p : s.gamepads)
+	{
+		pads.push_back(p.connected ? nlohmann::json{{"buttonsDown", p.buttonsDown}} : nlohmann::json(nullptr));
+	}
+	out["gamepads"] = std::move(pads);
 	out["gamepadConnected"] = s.gamepadConnected != 0;
 	out["gamepadButtonsDown"] = s.gamepadButtonsDown;
 	out["gamepadAxes"] = {s.gamepadAxes[0], s.gamepadAxes[1], s.gamepadAxes[2],
@@ -356,11 +364,11 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 
 	cb.aiState = [this, aiStateCache]() -> std::string {
 		std::string body = (m_moduleMemory == nullptr || m_moduleMemorySize == 0 ||
-			m_moduleApi.reflectFieldCount <= 0)
+			m_moduleReflection.fieldCount() <= 0)
 			? "{}"
 			: aiStateCache->get(static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
-				m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-				m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+				m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+				m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 		// oracleRingFor は engineKey (Engine* を void* にした値) 単位の registry なので、this をそのまま渡す。
 		const std::string oracle = observe::oracleEventsJson(this);
 		body.insert(body.size() - 1, (body.size() == 2 ? "" : ",") + std::string("\"oracle\":") + oracle);
@@ -371,28 +379,28 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		return body;
 	};
 	cb.aiStateAt = [this, aiStateAtCache](int off) -> std::string {
-		if (m_moduleApi.reflectFieldCount <= 0 || off < 0) { return "{}"; }
+		if (m_moduleReflection.fieldCount() <= 0 || off < 0) { return "{}"; }
 		const std::uint8_t* p = m_moduleMemoryRing.at(static_cast<std::size_t>(off));
 		if (p == nullptr) { return "{}"; }
-		return aiStateAtCache->get(p, m_moduleMemorySize, m_moduleApi.reflectFields,
-			m_moduleApi.reflectFieldCount, m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+		return aiStateAtCache->get(p, m_moduleMemorySize, m_moduleReflection.fieldsData(),
+			m_moduleReflection.fieldCount(), m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 	};
 	cb.aiStateDiff = [this, aiDiffCacheA, aiDiffCacheB](int from, int to) -> std::string {
 		MITIRU_ZONE_NAMED("Engine::aiStateDiff");
-		if (m_moduleApi.reflectFieldCount <= 0) { return "[]"; }
+		if (m_moduleReflection.fieldCount() <= 0) { return "[]"; }
 		const std::uint8_t* a = m_moduleMemoryRing.at(static_cast<std::size_t>(from < 0 ? 0 : from));
 		const std::uint8_t* b = m_moduleMemoryRing.at(static_cast<std::size_t>(to < 0 ? 0 : to));
 		if (a == nullptr || b == nullptr) { return "[]"; }
-		const auto& ja = aiDiffCacheA->get(a, m_moduleMemorySize, m_moduleApi.reflectFields,
-			m_moduleApi.reflectFieldCount, m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
-		const auto& jb = aiDiffCacheB->get(b, m_moduleMemorySize, m_moduleApi.reflectFields,
-			m_moduleApi.reflectFieldCount, m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+		const auto& ja = aiDiffCacheA->get(a, m_moduleMemorySize, m_moduleReflection.fieldsData(),
+			m_moduleReflection.fieldCount(), m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
+		const auto& jb = aiDiffCacheB->get(b, m_moduleMemorySize, m_moduleReflection.fieldsData(),
+			m_moduleReflection.fieldCount(), m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 		return observe::reflectDiff(ja, jb).dump();
 	};
 	cb.aiRingSize = [this]() -> int { return static_cast<int>(m_moduleMemoryRing.size()); };
 	cb.aiBranch = [this](const std::string& keysCsv, int frames) -> std::string {
 		MITIRU_ZONE_NAMED("Engine::aiBranch");
-		if (m_moduleApi.reflectFieldCount <= 0 || frames <= 0) { return "{}"; }
+		if (m_moduleReflection.fieldCount() <= 0 || frames <= 0) { return "{}"; }
 		const auto vkOf = [](std::string_view n) -> int {
 			if (n == "Left")  { return 0x25; } if (n == "Up")    { return 0x26; }
 			if (n == "Right") { return 0x27; } if (n == "Down")  { return 0x28; }
@@ -449,11 +457,11 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 	};
 
 	// inspector からの書き戻し (3-3): live へ直接書かず、aiBranch と同じ「複製 → 書き換え →
-	// reflectToJson → live は復元」の分岐にする。決定論と rewind ring を壊さない。
+	// reflectToJson → live は復元」の分岐にする。決定論と rewind ring をおかしくしない。
 	cb.aiStatePut = [this](const std::string& fieldsJson, int& statusOut) -> std::string {
 		MITIRU_ZONE_NAMED("Engine::aiStatePut");
 		statusOut = 200;
-		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.reflectFieldCount <= 0)
+		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleReflection.fieldCount() <= 0)
 		{ statusOut = 503; return R"({"error":"reflection not wired"})"; }
 
 		nlohmann::json req;
@@ -471,8 +479,8 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		for (auto it = req.begin(); it != req.end(); ++it)
 		{
 			std::uint32_t off = 0, sz = 0;
-			if (observe::reflectFieldByteSpan(m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-				m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount, m_moduleMemorySize,
+			if (observe::reflectFieldByteSpan(m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+				m_moduleReflection.schemasData(), m_moduleReflection.schemaCount(), m_moduleMemorySize,
 				it.key(), off, sz))
 			{
 				saved.push_back(SavedSpan{off, std::vector<std::uint8_t>(bytes + off, bytes + off + sz)});
@@ -485,8 +493,8 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		for (auto it = req.begin(); it != req.end(); ++it)
 		{
 			std::string err;
-			if (!observe::reflectWriteField(bytes, m_moduleMemorySize, m_moduleApi.reflectFields,
-				m_moduleApi.reflectFieldCount, m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount,
+			if (!observe::reflectWriteField(bytes, m_moduleMemorySize, m_moduleReflection.fieldsData(),
+				m_moduleReflection.fieldCount(), m_moduleReflection.schemasData(), m_moduleReflection.schemaCount(),
 				it.key(), it.value(), err))
 			{
 				restore();  // 途中まで書いた分も戻す
@@ -496,8 +504,8 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		}
 
 		const nlohmann::json state = observe::reflectToJson(bytes, m_moduleMemorySize,
-			m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-			m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+			m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+			m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 		restore();  // 分岐操作なので live には残さない
 
 		// 4-3: この PUT で試したフィールドを「分岐中」として記録する。commit/discard で消える
@@ -523,7 +531,7 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		statusOut = 200;
 		// 候補は commit 前の状態から分岐したものなので、確定した時点で全部意味を失う
 		for (std::size_t slot = 0; slot < kMaxCandidateBranches; ++slot) { clearCandidateBranch(slot); }
-		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.reflectFieldCount <= 0)
+		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleReflection.fieldCount() <= 0)
 		{ statusOut = 503; return R"({"error":"reflection not wired"})"; }
 
 		nlohmann::json req;
@@ -535,8 +543,8 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		for (auto it = req.begin(); it != req.end(); ++it)
 		{
 			std::string err;
-			if (!observe::reflectWriteField(bytes, m_moduleMemorySize, m_moduleApi.reflectFields,
-				m_moduleApi.reflectFieldCount, m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount,
+			if (!observe::reflectWriteField(bytes, m_moduleMemorySize, m_moduleReflection.fieldsData(),
+				m_moduleReflection.fieldCount(), m_moduleReflection.schemasData(), m_moduleReflection.schemaCount(),
 				it.key(), it.value(), err))
 			{
 				// 途中まで書いた分は残す (commit は部分成功もありうる操作。aiStatePut の
@@ -547,13 +555,18 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		}
 
 		nlohmann::json state = observe::reflectToJson(bytes, m_moduleMemorySize,
-			m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-			m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+			m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+			m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 
 		// 進行データを外から書き換えたので、場面を DLL 内に持つ game (ADR 0040) は組み立て直す。
 		if (m_moduleApi.on_rebuild != nullptr)
 		{
-			try { m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore); }
+			try
+			{
+				guardModuleCallback("on_rebuild", [&] {
+					m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore);
+				});
+			}
 			catch (...) { debug::warnOnce("rebuild.threw", "on_rebuild が例外を投げました (場面の組み立て直しに失敗)"); }
 		}
 
@@ -579,7 +592,7 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		}
 
 		// ★1-9: O5 の決定論ゲートは commit listener (このファイル上部の addCommitListener) へ
-		// 逃がした。ここでは fields を渡して起こすだけで、ゲート自体の完了は待たない。
+		// 移した。ここでは fields を渡して起動するだけで、ゲート自体の完了は待たない。
 		// 応答には "pending" を返し、実際の running/pass/fail は GET /api/ai/state 側で見る。
 		std::vector<std::string> fieldNames;
 		fieldNames.reserve(req.size());
@@ -603,16 +616,16 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 			branch.active = false;
 			branch.fields.clear();
 		}
-		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.reflectFieldCount <= 0)
+		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleReflection.fieldCount() <= 0)
 		{ return "{}"; }
 		return observe::reflectToJson(static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
-			m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-			m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount).dump();
+			m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+			m_moduleReflection.schemasData(), m_moduleReflection.schemaCount()).dump();
 	};
 
 	// O6 なぜビュー (/api/ai/why?field=<dotted path>): そのフィールドを最後に書いた
 	// phase (game 側の mitiru_why_blame_at opt-in、queryModuleWriteBlame 経由) + ring から
-	// 8 フレーム分の値の推移。opt-in 未対応 game は blameSupported=false に落ちる (ブリーフの
+	// 8 フレーム分の値の推移。opt-in 未対応 game は blameSupported=false になる (ブリーフの
 	// 契約どおり、フレームと値の推移だけ返す)。
 	cb.aiTypes = [this]() -> std::string {
 		if (m_spawnerTypesJson.empty())
@@ -624,12 +637,12 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 
 	cb.aiWhy = [this](const std::string& fieldPath) -> std::string {
 		MITIRU_ZONE_NAMED("Engine::aiWhy");
-		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.reflectFieldCount <= 0)
+		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleReflection.fieldCount() <= 0)
 		{ return R"({"error":"reflection not wired"})"; }
 
 		std::uint32_t off = 0, sz = 0;
-		if (!observe::reflectFieldByteSpan(m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-			m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount, m_moduleMemorySize, fieldPath, off, sz))
+		if (!observe::reflectFieldByteSpan(m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+			m_moduleReflection.schemasData(), m_moduleReflection.schemaCount(), m_moduleMemorySize, fieldPath, off, sz))
 		{ return "{\"error\":\"unknown field: " + observe::jsonEscape(fieldPath) + "\"}"; }
 
 		// reflectToJson は field 名でネストする (dotted path "outer.inner" → state["outer"]["inner"])。
@@ -656,8 +669,8 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 			const std::uint8_t* p = m_moduleMemoryRing.at(back);
 			if (p == nullptr) { break; }
 			const nlohmann::json state = observe::reflectToJson(p, m_moduleMemorySize,
-				m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-				m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+				m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+				m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 			nlohmann::json entry;
 			entry["framesAgo"] = back;
 			entry["value"] = pick(state);
@@ -698,7 +711,7 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 	// 呼ばない (host の描画ループから毎フレーム呼ぶもの、HTTP ハンドラの責務ではない)。
 	cb.aiCandidates = [this](const std::string& bodyJson) -> std::string {
 		MITIRU_ZONE_NAMED("Engine::aiCandidates");
-		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.reflectFieldCount <= 0)
+		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleReflection.fieldCount() <= 0)
 		{ return R"({"error":"reflection not wired"})"; }
 
 		nlohmann::json req;
@@ -779,7 +792,7 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		}
 		// 前回より少ない件数で呼ばれたとき、余った slot のゴーストが前回の案のまま残らないようにする
 		for (std::size_t slot = n; slot < kMaxCandidateBranches; ++slot) { clearCandidateBranch(slot); }
-		// 4 件を超える variants は無言で切り捨てず、上限を明示する (candidates.slot.limit)。
+		// 4 件を超える variants は知らせないまま切り捨てたりせず、上限を明示する (candidates.slot.limit)。
 		if (variants.size() > kMaxCandidateBranches)
 		{
 			debug::warnOnceFix("candidates.slot.limit",
@@ -839,21 +852,21 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		// (2)(3) update の分岐 (blame) + 書かれたフィールド (diff): このフレームの 1 つ前 →
 		// このフレームの reflectDiff に、変化した field ごとの blame を添える (aiWhy と同じ経路)。
 		nlohmann::json writes = nlohmann::json::array();
-		if (m_moduleApi.reflectFieldCount > 0)
+		if (m_moduleReflection.fieldCount() > 0)
 		{
 			const std::uint8_t* prev = m_moduleMemoryRing.at(back + 1);
 			const std::uint8_t* cur  = m_moduleMemoryRing.at(back);
 			if (prev != nullptr && cur != nullptr)
 			{
-				const auto jPrev = observe::reflectToJson(prev, m_moduleMemorySize, m_moduleApi.reflectFields,
-					m_moduleApi.reflectFieldCount, m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
-				const auto jCur = observe::reflectToJson(cur, m_moduleMemorySize, m_moduleApi.reflectFields,
-					m_moduleApi.reflectFieldCount, m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+				const auto jPrev = observe::reflectToJson(prev, m_moduleMemorySize, m_moduleReflection.fieldsData(),
+					m_moduleReflection.fieldCount(), m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
+				const auto jCur = observe::reflectToJson(cur, m_moduleMemorySize, m_moduleReflection.fieldsData(),
+					m_moduleReflection.fieldCount(), m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 				for (auto d : observe::reflectDiff(jPrev, jCur))
 				{
 					std::uint32_t off = 0, sz = 0;
-					const bool resolved = observe::reflectFieldByteSpan(m_moduleApi.reflectFields,
-						m_moduleApi.reflectFieldCount, m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount,
+					const bool resolved = observe::reflectFieldByteSpan(m_moduleReflection.fieldsData(),
+						m_moduleReflection.fieldCount(), m_moduleReflection.schemasData(), m_moduleReflection.schemaCount(),
 						m_moduleMemorySize, d.value("path", std::string{}), off, sz);
 					const char* blame = resolved ? queryModuleWriteBlame(off) : nullptr;
 					d["blameSupported"] = (blame != nullptr);
@@ -925,18 +938,11 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 
 	if (!m_httpServer->init(port))
 	{
-		// 無言で握りつぶすと --console / MITIRU_AI が沈黙 polling に陥る (H-10、R-01/R-02)。
-#ifdef _WIN32
+		// 失敗を知らせずに済ませると、--console / MITIRU_AI が応答の無いまま polling を続ける (H-10、R-01/R-02)。
 		std::fprintf(stderr,
-			"[ai] HTTP API 起動失敗: 127.0.0.1:%d を listen できません (WSAGetLastError=%d)。"
+			"[ai] HTTP API 起動失敗: 127.0.0.1:%d を listen できません。"
 			"port 衝突の可能性 — /api/* は無効です。\n",
-			port, WSAGetLastError());
-#else
-		std::fprintf(stderr,
-			"[ai] HTTP API 起動失敗: 127.0.0.1:%d を listen できません (errno=%d)。"
-			"port 衝突の可能性 — /api/* は無効です。\n",
-			port, errno);
-#endif
+			port);
 		m_httpServer.reset();
 	}
 	else
@@ -946,6 +952,6 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 			"[ai] HTTP API listening on 127.0.0.1:%d "
 			"(/api/status, /api/ai/state, /api/ai/diff, /api/ai/branch, /api/ai/why, /api/ai/candidates, "
 			"/api/frame/anatomy)\n",
-			port);
+			m_httpServer->port());
 	}
 }

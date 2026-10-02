@@ -2,8 +2,8 @@
 
 /// @file ObjLoaderTiny.hpp
 /// @brief tinyobjloader ベースの OBJ+MTL ローダー
-/// @details OBJ+MTLファイルを読み込み、MTLの色を頂点カラーに焼き込む。
-///          map_Kdテクスチャがある場合はstb_imageで読み込んでUVサンプリング。
+/// @details OBJ+MTL ファイルを読み込み、MTL の色を頂点カラーに焼き込む。
+///          map_Kd テクスチャがある場合は stb_image で読み込んで UV サンプリング。
 
 #include <tiny_obj_loader.h>
 
@@ -27,9 +27,9 @@
 namespace mitiru::render
 {
 
-/// @brief tinyobjloaderでOBJ+MTLを読み込み、Meshに変換する
-/// @param filePath OBJファイルのパス
-/// @return メッシュ（読み込み失敗時はnullopt）
+/// @brief tinyobjloader で OBJ+MTL を読み込み、Mesh に変換する
+/// @param filePath OBJ ファイルのパス
+/// @return メッシュ（読み込み失敗時は nullopt）
 ///
 /// @code
 /// auto mesh = mitiru::render::loadObjWithMaterials("assets/models/strawberry.obj");
@@ -41,7 +41,7 @@ namespace mitiru::render
 	std::vector<tinyobj::material_t> materials;
 	std::string warn, err;
 
-	// OBJファイルのディレクトリをMTL検索パスとして使用
+	// OBJ ファイルのディレクトリを MTL 検索パスとして使う
 	std::string dir;
 	auto lastSlash = filePath.find_last_of("/\\");
 	if (lastSlash != std::string::npos)
@@ -53,7 +53,7 @@ namespace mitiru::render
 	if (!ok || shapes.empty())
 		return std::nullopt;
 
-	// テクスチャ読み込み（map_Kdがあれば）
+	// テクスチャ読み込み（map_Kd があれば）
 	struct TexData { unsigned char* data; int w, h; };
 	std::unordered_map<int, TexData> textures;
 
@@ -104,7 +104,7 @@ namespace mitiru::render
 
 					Vertex3D vert;
 
-					// Position
+					// 位置
 					if (idx.vertex_index >= 0)
 					{
 						vert.position = {
@@ -114,7 +114,7 @@ namespace mitiru::render
 						};
 					}
 
-					// Normal
+					// 法線
 					if (idx.normal_index >= 0)
 					{
 						vert.normal = {
@@ -133,7 +133,7 @@ namespace mitiru::render
 						};
 					}
 
-					// Color: テクスチャがあればUVサンプリング、なければMTL色
+					// 色: テクスチャがあれば UV サンプリング、なければ MTL 色
 					auto texIt = textures.find(matId);
 					if (texIt != textures.end() && idx.texcoord_index >= 0)
 					{

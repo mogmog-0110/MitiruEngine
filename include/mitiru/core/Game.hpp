@@ -10,7 +10,7 @@
 #include <string>
 
 #include <mitiru/core/SceneDocument.hpp>
-// IDevice.hpp は ABI安定のため Game基底からは除外（EditorApp側で直接管理）
+// IDevice.hpp は ABI 安定のため Game 基底からは除外（EditorApp 側で直接管理）
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
 
@@ -20,7 +20,7 @@ namespace mitiru
 /// @brief Engine 前方宣言 (Game から弱参照する)
 class Engine;
 
-/// @brief 2D整数サイズ
+/// @brief 2D 整数サイズ
 struct Size
 {
 	int width = 0;   ///< 幅（ピクセル）
@@ -34,7 +34,7 @@ struct Size
 class Screen;
 
 /// @brief ゲームの抽象インターフェース
-/// @details エンジンが毎フレーム呼び出す3つの純粋仮想関数を定義する。
+/// @details エンジンが毎フレーム呼び出す 3 つの純粋仮想関数を定義する。
 ///          - update(): ゲームロジックの更新
 ///          - draw(): 描画処理
 ///          - layout(): ウィンドウサイズ変更時の論理サイズ決定
@@ -45,12 +45,12 @@ public:
 	virtual ~Game() = default;
 
 	/// @brief ゲームループ終了直後に呼ばれる後処理フック
-	/// @details Engine が CEF を shutdown する前にここで現在シーンを exit() する。
+	/// @details Engine が UI と HTTP を止める前にここで現在シーンを exit() する。
 	///          デフォルト実装は no-op。終了時処理が必要なゲームは override して
 	///          現在シーンの exit() を呼び出すこと。
 	virtual void onExit() {}
 
-	/// @brief ゲームロジックを1フレーム分更新する
+	/// @brief ゲームロジックを 1 フレーム分更新する
 	/// @param dt 前フレームからの経過時間（秒）
 	virtual void update(float dt) = 0;
 
@@ -67,7 +67,7 @@ public:
 	/// @brief エンジンがフレーム開始前に呼び出し、入力状態ポインタを設定する
 	void setInputState(const InputState* input) noexcept { m_engineInput = input; }
 
-	/// @brief エンジンが初期化後に呼び出し、3Dレンダラーポインタを設定する
+	/// @brief エンジンが初期化後に呼び出し、3D レンダラーポインタを設定する
 	void setRenderer3D(render::IRenderer3D* renderer) noexcept { m_engineRenderer3D = renderer; }
 
 	/// @brief エンジンが初期化後に呼び出し、Engine 自身への参照を設定する
@@ -81,12 +81,12 @@ public:
 	[[nodiscard]] Scene& scene() noexcept { return m_scene; }
 	[[nodiscard]] const Scene& scene() const noexcept { return m_scene; }
 
-	/// @brief シーンをJSONファイルからロードする
+	/// @brief シーンを JSON ファイルからロードする
 	/// @param path ファイルパス
 	/// @return ロード成功時 true
 	bool loadScene(const std::string& path) { return m_scene.loadFromFile(path); }
 
-	/// @brief シーンをJSONファイルに保存する
+	/// @brief シーンを JSON ファイルに保存する
 	/// @param path ファイルパス
 	/// @return 保存成功時 true
 	bool saveScene(const std::string& path) const { return m_scene.saveToFile(path); }
@@ -101,12 +101,12 @@ protected:
 	/// @brief 入力状態が設定されているか
 	[[nodiscard]] bool hasInput() const noexcept { return m_engineInput != nullptr; }
 
-	/// @brief サブクラスから3Dレンダラーにアクセスする
-	/// @return IRenderer3Dへのポインタ（GPU非対応時はnullptr）
+	/// @brief サブクラスから 3D レンダラーにアクセスする
+	/// @return IRenderer3D へのポインタ（GPU 非対応時は nullptr）
 	[[nodiscard]] render::IRenderer3D* renderer3D() noexcept { return m_engineRenderer3D; }
 	[[nodiscard]] const render::IRenderer3D* renderer3D() const noexcept { return m_engineRenderer3D; }
 
-	/// @brief 3Dレンダラーが使用可能か
+	/// @brief 3D レンダラーが使用可能か
 	[[nodiscard]] bool hasRenderer3D() const noexcept {
 		return m_engineRenderer3D && m_engineRenderer3D->isInitialized();
 	}

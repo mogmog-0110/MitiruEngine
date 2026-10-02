@@ -2,7 +2,7 @@
 
 /// @file TextRenderer.hpp
 /// @brief ビットマップテキストレンダラー
-/// @details BitmapFontを使用してテキストをスケーラブルに描画する。
+/// @details BitmapFont を使用してテキストをスケーラブルに描画する。
 ///          各グリフのピクセルを小さな矩形として描画する。
 
 #include <algorithm>
@@ -22,8 +22,8 @@ namespace mitiru::render
 {
 
 /// @brief ビットマップテキストレンダラー
-/// @details BitmapFontのグリフデータを読み取り、各ONピクセルを
-///          (scale x scale)サイズの矩形としてScreenに描画する。
+/// @details BitmapFont のグリフデータを読み取り、各 ON ピクセルを
+///          (scale x scale)サイズの矩形として Screen に描画する。
 ///
 /// @code
 /// mitiru::Screen screen(800, 600);
@@ -33,11 +33,11 @@ class TextRenderer
 {
 public:
 	/// @brief テキストを描画する（整数スケール。後方互換）
-	/// @param screen 描画先Screen
+	/// @param screen 描画先 Screen
 	/// @param text 描画テキスト（ASCII）
-	/// @param x 左上X座標
-	/// @param y 左上Y座標
-	/// @param scale 整数スケール（デフォルト1）
+	/// @param x 左上 X 座標
+	/// @param y 左上 Y 座標
+	/// @param scale 整数スケール（デフォルト 1）
 	/// @param color 描画色
 	template <typename ScreenType>
 	static void drawText(ScreenType& screen, std::string_view text,
@@ -47,14 +47,14 @@ public:
 		drawTextFloat(screen, text, x, y, static_cast<float>(std::max(1, scale)), color);
 	}
 
-	/// @brief テキストを描画する（floatスケール。任意のfontSizeに対応）
-	/// @param screen 描画先Screen
+	/// @brief テキストを描画する（float スケール。任意の fontSize に対応）
+	/// @param screen 描画先 Screen
 	/// @param text 描画テキスト（ASCII）
-	/// @param x 左上X座標
-	/// @param y 左上Y座標
-	/// @param scale floatスケール（1.0 = 8px, 1.5 = 12px, 2.0 = 16px）
+	/// @param x 左上 X 座標
+	/// @param y 左上 Y 座標
+	/// @param scale float スケール（1.0 = 8px, 1.5 = 12px, 2.0 = 16px）
 	/// @param color 描画色
-	/// @param letterSpacing 文字間スペーシング（ピクセル、デフォルト0）
+	/// @param letterSpacing 文字間スペーシング（ピクセル、デフォルト 0）
 	template <typename ScreenType>
 	static void drawTextFloat(ScreenType& screen, std::string_view text,
 	                           float x, float y, float scale,
@@ -93,10 +93,10 @@ public:
 		}
 	}
 
-	/// @brief テキスト幅を計算する（floatスケール対応）
+	/// @brief テキスト幅を計算する（float スケール対応）
 	/// @param text 計測対象テキスト
-	/// @param scale floatスケール
-	/// @param letterSpacing 文字間スペーシング（ピクセル、デフォルト0）
+	/// @param scale float スケール
+	/// @param letterSpacing 文字間スペーシング（ピクセル、デフォルト 0）
 	/// @return 描画幅（ピクセル）
 	[[nodiscard]] static constexpr float measureWidthFloat(std::string_view text, float scale,
 	                                                       float letterSpacing = 0.0f) noexcept
@@ -107,8 +107,8 @@ public:
 		     + static_cast<float>(text.size() - 1) * letterSpacing;
 	}
 
-	/// @brief テキスト高さを計算する（floatスケール対応）
-	/// @param scale floatスケール
+	/// @brief テキスト高さを計算する（float スケール対応）
+	/// @param scale float スケール
 	/// @return 描画高さ（ピクセル）
 	[[nodiscard]] static constexpr float measureHeightFloat(float scale) noexcept
 	{
@@ -117,7 +117,7 @@ public:
 
 	/// @brief テキスト幅を計算する
 	/// @param text 計測対象テキスト
-	/// @param scale 拡大率（デフォルト1）
+	/// @param scale 拡大率（デフォルト 1）
 	/// @return 描画幅（ピクセル）
 	[[nodiscard]] static constexpr int measureWidth(std::string_view text, int scale = 1) noexcept
 	{
@@ -125,7 +125,7 @@ public:
 	}
 
 	/// @brief テキスト高さを計算する
-	/// @param scale 拡大率（デフォルト1）
+	/// @param scale 拡大率（デフォルト 1）
 	/// @return 描画高さ（ピクセル）
 	[[nodiscard]] static constexpr int measureHeight(int scale = 1) noexcept
 	{

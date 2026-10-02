@@ -16,7 +16,7 @@
 #include <mitiru/render/AlphaBlend.hpp>
 #include <mitiru/render/Texture.hpp>
 
-/// @brief 前方宣言（循環include回避）
+/// @brief 前方宣言（循環 include 回避）
 namespace mitiru { class Screen; }
 
 namespace mitiru::render
@@ -31,7 +31,7 @@ enum class FilterMode
 };
 
 /// @brief テクスチャフィルタリングユーティリティ
-/// @details テクスチャから浮動小数点UV座標でサンプリングし、
+/// @details テクスチャから浮動小数点 UV 座標でサンプリングし、
 ///          指定フィルタモードに基づいて補間した色を返す。
 ///
 /// @code
@@ -60,7 +60,7 @@ struct TextureFilter
 	}
 
 	/// @brief テクスチャからバイリニア補間でサンプリングする
-	/// @details 4つの隣接テクセルの加重平均で滑らかな色を返す。
+	/// @details 4 つの隣接テクセルの加重平均で滑らかな色を返す。
 	/// @param texture テクスチャ
 	/// @param u 水平テクスチャ座標 [0, 1]
 	/// @param v 垂直テクスチャ座標 [0, 1]
@@ -82,7 +82,7 @@ struct TextureFilter
 		const float fx = tx - static_cast<float>(x0);
 		const float fy = ty - static_cast<float>(y0);
 
-		/// 4テクセルを取得する（範囲外はクランプ）
+		/// 4 テクセルを取得する（範囲外はクランプ）
 		const auto c00 = texelAt(texture, clampTexelX(x0, texture), clampTexelY(y0, texture));
 		const auto c10 = texelAt(texture, clampTexelX(x1, texture), clampTexelY(y0, texture));
 		const auto c01 = texelAt(texture, clampTexelX(x0, texture), clampTexelY(y1, texture));
@@ -97,7 +97,7 @@ struct TextureFilter
 	}
 
 	/// @brief テクスチャからバイキュービック補間でサンプリングする
-	/// @details Catmull-Romスプラインに基づく16テクセルの加重平均。
+	/// @details Catmull-Rom スプラインに基づく 16 テクセルの加重平均。
 	///          バイリニアよりも更に滑らかな結果を返す。
 	/// @param texture テクスチャ
 	/// @param u 水平テクスチャ座標 [0, 1]
@@ -116,7 +116,7 @@ struct TextureFilter
 		const float fx = tx - static_cast<float>(ix);
 		const float fy = ty - static_cast<float>(iy);
 
-		/// 水平方向のCatmull-Rom重みを計算する
+		/// 水平方向の Catmull-Rom 重みを計算する
 		const float wx[4] = {
 			catmullRom(fx + 1.0f),
 			catmullRom(fx),
@@ -124,7 +124,7 @@ struct TextureFilter
 			catmullRom(2.0f - fx)
 		};
 
-		/// 垂直方向のCatmull-Rom重みを計算する
+		/// 垂直方向の Catmull-Rom 重みを計算する
 		const float wy[4] = {
 			catmullRom(fy + 1.0f),
 			catmullRom(fy),
@@ -206,8 +206,8 @@ struct TextureFilter
 private:
 	/// @brief テクスチャの指定テクセルの色を取得する
 	/// @param texture テクスチャ
-	/// @param x テクセルX座標（クランプ済み前提）
-	/// @param y テクセルY座標（クランプ済み前提）
+	/// @param x テクセル X 座標（クランプ済み前提）
+	/// @param y テクセル Y 座標（クランプ済み前提）
 	/// @return テクセル色
 	[[nodiscard]] static sgc::Colorf texelAt(
 		const Texture& texture, int x, int y) noexcept
@@ -228,13 +228,13 @@ private:
 		};
 	}
 
-	/// @brief テクセルX座標をクランプする
+	/// @brief テクセル X 座標をクランプする
 	[[nodiscard]] static int clampTexelX(int x, const Texture& texture) noexcept
 	{
 		return std::max(0, std::min(x, texture.width() - 1));
 	}
 
-	/// @brief テクセルY座標をクランプする
+	/// @brief テクセル Y 座標をクランプする
 	[[nodiscard]] static int clampTexelY(int y, const Texture& texture) noexcept
 	{
 		return std::max(0, std::min(y, texture.height() - 1));
@@ -300,7 +300,7 @@ inline void mitiru::render::TextureFilter::drawSpriteFiltered(
 			const float u = (static_cast<float>(px) + 0.5f - destRect.x()) * invW;
 			const float v = (static_cast<float>(py) + 0.5f - destRect.y()) * invH;
 
-			/// UV範囲外はスキップ
+			/// UV 範囲外はスキップ
 			if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f)
 			{
 				continue;

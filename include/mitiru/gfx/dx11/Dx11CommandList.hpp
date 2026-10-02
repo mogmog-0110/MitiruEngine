@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Dx11CommandList.hpp
-/// @brief DirectX 11コマンドリスト実装
-/// @details D3D11即時コンテキストをラップし、ICommandListインターフェースを実装する。
-///          描画コマンドを直接GPUに発行する。
+/// @brief DirectX 11 コマンドリスト実装
+/// @details D3D11 即時コンテキストをラップし、ICommandList インターフェースを実装する。
+///          描画コマンドを直接 GPU に発行する。
 
 #ifdef _WIN32
 
@@ -32,13 +32,13 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 11コマンドリスト実装
+/// @brief DirectX 11 コマンドリスト実装
 /// @details 即時コンテキストを使い、描画コマンドを直接発行する。
 class Dx11CommandList final : public ICommandList
 {
 public:
 	/// @brief コンストラクタ
-	/// @param context D3D11即時コンテキスト
+	/// @param context D3D11 即時コンテキスト
 	explicit Dx11CommandList(ID3D11DeviceContext* context)
 		: m_context(context)
 	{
@@ -70,7 +70,7 @@ public:
 			return;
 		}
 
-		/// Dx11RenderTargetからRTVを取得する
+		/// Dx11RenderTarget から RTV を取得する
 		auto* dx11RT = dynamic_cast<Dx11RenderTarget*>(target);
 		if (!dx11RT)
 		{
@@ -93,7 +93,7 @@ public:
 			return;
 		}
 
-		/// 現在バインドされているRTVを取得してクリアする
+		/// 現在バインドされている RTV を取得してクリアする
 		ID3D11RenderTargetView* currentRTV = nullptr;
 		m_context->OMGetRenderTargets(1, &currentRTV, nullptr);
 		if (currentRTV)
@@ -183,7 +183,7 @@ public:
 		m_context->RSSetViewports(1, &vp);
 	}
 
-	/// @brief 定数バッファをVSにバインドする
+	/// @brief 定数バッファを VS にバインドする
 	/// @param slot スロット番号
 	/// @param buffer 定数バッファ
 	void setVSConstantBuffer(UINT slot, Dx11Buffer* buffer)
@@ -228,7 +228,7 @@ public:
 		m_context->Draw(vertexCount, startVertex);
 	}
 
-	/// @brief 定数バッファをPSにバインドする
+	/// @brief 定数バッファを PS にバインドする
 	/// @param slot スロット番号
 	/// @param buffer 定数バッファ
 	void setPSConstantBuffer(UINT slot, Dx11Buffer* buffer)
@@ -240,8 +240,8 @@ public:
 	}
 
 	/// @brief シザー矩形を設定する
-	/// @param x 左上X座標
-	/// @param y 左上Y座標
+	/// @param x 左上 X 座標
+	/// @param y 左上 Y 座標
 	/// @param width 幅
 	/// @param height 高さ
 	void setScissorRect(int x, int y, int width, int height)
@@ -287,7 +287,7 @@ public:
 		m_context->Dispatch(groupCountX, groupCountY, groupCountZ);
 	}
 
-	/// @brief 内部のD3D11コンテキストを取得する
+	/// @brief 内部の D3D11 コンテキストを取得する
 	[[nodiscard]] ID3D11DeviceContext* getD3DContext() const noexcept
 	{
 		return m_context;

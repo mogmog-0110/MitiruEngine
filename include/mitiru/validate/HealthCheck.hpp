@@ -3,7 +3,7 @@
 /// @file HealthCheck.hpp
 /// @brief エンジンヘルスメトリクス計測
 /// @details FPS、更新時間、描画時間等のヘルスメトリクスを計測・公開する。
-///          AIエージェントがパフォーマンス状態を観測するために使用する。
+///          AI エージェントがパフォーマンス状態を観測するために使用する。
 
 #include <chrono>
 #include <cstdint>
@@ -22,8 +22,8 @@ struct HealthMetrics
 	float memoryUsageMB = 0.0f;   ///< メモリ使用量（MB）
 	int drawCallCount = 0;        ///< 描画コール数
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -40,7 +40,7 @@ struct HealthMetrics
 };
 
 /// @brief ヘルスチェッカー
-/// @details フレーム毎にbeginFrame/endFrameで計測し、メトリクスを公開する。
+/// @details フレーム毎に beginFrame/endFrame で計測し、メトリクスを公開する。
 ///
 /// @code
 /// mitiru::validate::HealthCheck health;
@@ -61,7 +61,7 @@ public:
 		m_frameStart = SteadyClock::now();
 	}
 
-	/// @brief フレーム終了を記録しFPS等を更新する
+	/// @brief フレーム終了を記録し FPS 等を更新する
 	void endFrame()
 	{
 		const auto now = SteadyClock::now();
@@ -70,7 +70,7 @@ public:
 
 		m_metrics.updateMs = elapsed;
 
-		/// FPS計算（フレーム間隔ベース）
+		/// FPS 計算（フレーム間隔ベース）
 		if (m_lastFrameEnd.time_since_epoch().count() > 0)
 		{
 			const auto frameDuration = std::chrono::duration<float>(
@@ -126,8 +126,8 @@ public:
 		return m_metrics;
 	}
 
-	/// @brief メトリクスをJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief メトリクスを JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		return m_metrics.toJson();

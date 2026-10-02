@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file AudioEngineFactory.hpp
-/// @brief オーディオエンジンファクトリ
+/// @brief オーディオエンジンのファクトリ
 /// @details FMOD または miniaudio バックエンドを選択して IAudioEngine を生成する。
 ///          コンパイル時に MITIRU_HAS_FMOD が定義されていれば FMOD を優先し、
 ///          そうでなければ NullAudioEngine にフォールバックする。
-///          miniaudio は MiniaudioEngine として別途利用可能（IAudioEngine非準拠）。
+///          miniaudio は MiniaudioEngine として別途利用できる (IAudioEngine 非準拠)。
 
 #include <memory>
 #include <string_view>
@@ -17,7 +17,7 @@
 namespace mitiru::audio
 {
 
-/// @brief オーディオバックエンド種別
+/// @brief オーディオバックエンドの種別
 enum class AudioBackend : uint8_t
 {
     Auto,       ///< 自動選択（FMOD優先、なければNull）
@@ -26,12 +26,12 @@ enum class AudioBackend : uint8_t
 };
 
 /// @brief IAudioEngine を生成するファクトリ関数
-/// @param backend バックエンド種別（デフォルト: Auto）
+/// @param backend バックエンドの種別 (デフォルト: Auto)
 /// @return 生成された IAudioEngine のユニークポインタ
 ///
 /// @details
-/// - Auto: FMOD利用可能なら FmodAudioEngine、なければ NullAudioEngine
-/// - Fmod: FMOD利用不可なら NullAudioEngine にフォールバック
+/// - Auto: FMOD が利用可能なら FmodAudioEngine、利用できなければ NullAudioEngine
+/// - Fmod: FMOD が利用できなければ NullAudioEngine にフォールバック
 /// - Null: 常に NullAudioEngine
 ///
 /// @code
@@ -62,7 +62,7 @@ enum class AudioBackend : uint8_t
 #ifdef MITIRU_HAS_FMOD
         return std::make_unique<FmodAudioEngine>();
 #else
-        // FMOD 利用不可: Null にフォールバック
+        // FMOD が利用できないため、Null にフォールバックする
         return std::make_unique<NullAudioEngine>();
 #endif
 
@@ -73,7 +73,7 @@ enum class AudioBackend : uint8_t
     return std::make_unique<NullAudioEngine>();
 }
 
-/// @brief 現在利用可能なオーディオバックエンド名を取得する
+/// @brief 現在利用できるオーディオバックエンド名を取得する
 /// @return バックエンド名の文字列
 [[nodiscard]] inline constexpr const char* availableAudioEngineName() noexcept
 {
@@ -84,8 +84,8 @@ enum class AudioBackend : uint8_t
 #endif
 }
 
-/// @brief FMODバックエンドが利用可能か
-/// @return コンパイル時にFMODサポートが有効なら true
+/// @brief FMOD バックエンドが利用可能か
+/// @return コンパイル時に FMOD サポートが有効なら true
 [[nodiscard]] inline constexpr bool hasFmodSupport() noexcept
 {
 #ifdef MITIRU_HAS_FMOD

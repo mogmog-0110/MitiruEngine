@@ -4,7 +4,7 @@
 /// @brief Live2D Cubism 5 モデルを **自前の Direct3D 12** で描く完全移植レンダラ (Core-only)。
 /// @details 公式 SDK に D3D12 レンダラは無い。Cubism Core C API から drawable/offscreen を読み、
 ///          公式 CubismRenderer_D3D11 を忠実移植しつつ DX12 最適化:
-///            Stage0 基本3ブレンド・非マスク / Stage1 クリッピングマスク(高精度) /
+///            Stage0 基本 3 ブレンド・非マスク / Stage1 クリッピングマスク(高精度) /
 ///            Stage2 Cubism5 オフスクリーングループ + advanced blend。
 ///          描画はモデル RT へ行い最後に backbuffer へ blit。描画木を再帰し、interesting な
 ///          オフスクリーン群は専用 RT へ描いて親へ blend-mode 合成 (advanced は dest コピー+uber PS)。
@@ -17,6 +17,8 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 #include <stb_image.h>
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 
 #include <cstdint>
 #include <cstdio>
@@ -33,7 +35,7 @@ namespace mitiru::render
 
 class Dx12Live2D
 {
-	using ComPtrRes = Microsoft::WRL::ComPtr<ID3D12Resource>;
+	using GpuRes = gfx::GpuResource;
 	template <class T> using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	struct Cb {
@@ -112,7 +114,7 @@ public:
 			dr.blend=(cf[d]&csmBlendAdditive)?1:(cf[d]&csmBlendMultiplicative)?2:0;
 			dr.blendModeFull=dbm[d];
 			// 公式 SetBlendMode: Color∈{AddCompatible(1),MultiplyCompatible(2)} は固定機能、Normal(0)+Over(0) も固定機能。
-			// それ以外 (Color≧3、または Normal+非Over alpha) は per-pixel advanced blend。
+			// それ以外 (Color≧3、または Normal+非 Over alpha) は per-pixel advanced blend。
 			{ const int col=dbm[d]&0xFF, al=(dbm[d]>>8)&0xFF; dr.advanced=(col>2)||(col==0&&al!=0); }
 			dr.maskCount=mc[d]; dr.masks=(mc[d]>0)?mks[d]:nullptr; dr.inverted=(cf[d]&csmIsInvertedMask)!=0;
 			dr.culling=!(cf[d]&csmIsDoubleSided);   // 片面なら背面カリング (公式 Cull_Ccw)
@@ -205,11 +207,11 @@ private:
 		const csmVector4* oScr=csmGetOffscreenScreenColors(m_model);
 		const int* ro=csmGetRenderOrders(m_model);
 
-		// part → owning offscreen (自身/祖先パートが所有する最内オフスクリーン)
+		// part → 所有する offscreen (自身/祖先パートが所有する最内オフスクリーン)
 		auto partOff=[&](int part)->int{ int p=part,guard=0; while(p>=0&&guard++<4096){ if(pOff[p]>=0) return pOff[p]; p=pParent[p]; } return -1; };
 		auto isAncestorPart=[&](int a,int b)->bool{ int p=b,guard=0; while(p>=0&&guard++<4096){ if(p==a) return true; p=pParent[p]; } return false; };
 
-		// drawable → owning offscreen
+		// drawable → 所有する offscreen
 		for (int d=0; d<dc; ++d) m_draws[d].ownerOff = (dPart[d]>=0)? partOff(dPart[d]) : -1;
 
 		m_offs.resize(osc);
@@ -248,7 +250,7 @@ private:
 	}
 
 	// ── 公式 CubismRenderer_D3D11::DrawObjectLoop の忠実移植 ──
-	// drawable + offscreen を csmGetRenderOrders (= total 個のスロット) で1本にソートし、
+	// drawable + offscreen を csmGetRenderOrders (= total 個のスロット) で 1 本にソートし、
 	// _currentOffscreen 連鎖でフラットに描く。私の独自再帰 + min-child 近似 (モーション中の重なり順
 	// 崩れの根因) を廃止。
 	void drawObjectLoop()
@@ -322,13 +324,13 @@ private:
 		const int n=(int)m_clips.size();
 		// マスクは常に高精度経路 (per-drawable、各マスクを 256² フルバッファへ描く)。これは公式の
 		// UseHighPrecisionMask と同等で、被クリップ境界を正しく出す。低精度パッキング (RGBA 4ch×タイル
-		// 分割) は多マスクモデル (例: Mao=16コンテキスト→128²タイル) で目などの境界が粗く崩れ、
+		// 分割) は多マスクモデル (例: Mao=16 コンテキスト→128² タイル) で目などの境界が粗く崩れ、
 		// 安定性も劣るため使用しない。setupLayoutBounds の実装は残置 (将来の最適化用)。
 		m_packMasks = false;
 		(void)n;
 		// if (m_interestingCount==0 && n>0 && n<=36) { m_packMasks=true; setupLayoutBounds(n); }
 	}
-	// 公式 SetupLayoutBounds: 256² を RGBA 4ch × (1/2/4/9 分割) に割り当て (RenderTexture 1枚前提)
+	// 公式 SetupLayoutBounds: 256² を RGBA 4ch × (1/2/4/9 分割) に割り当て (RenderTexture 1 枚前提)
 	void setupLayoutBounds(int usingClipCount)
 	{
 		const int CH=4; const int divCount=usingClipCount/CH, modCount=usingClipCount%CH; int cur=0;
@@ -387,7 +389,7 @@ private:
 		barrier(m_maskTex.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	}
 
-	// 公式 ExecuteDrawForDrawable の advanced 経路: dest をコピーして per-pixel で 18色×5alpha 合成。
+	// 公式 ExecuteDrawForDrawable の advanced 経路: dest をコピーして per-pixel で 18 色×5 alpha 合成。
 	void drawDrawableAdvanced(int d, D3D12_CPU_DESCRIPTOR_HANDLE rtv)
 	{
 		const Drawable& dr=m_draws[d];
@@ -462,7 +464,7 @@ private:
 	{
 		OffG& g=m_offs[o];
 		const int color=g.blendInt&0xFF, alpha=(g.blendInt>>8)&0xFF;
-		// 公式: 非advanced = Alpha=Over(0) かつ Color∈{Normal(0),AddCompatible(1),MultiplyCompatible(2)} のみ。
+		// 公式: 非 advanced = Alpha=Over(0) かつ Color∈{Normal(0),AddCompatible(1),MultiplyCompatible(2)} のみ。
 		//        Add(3)/Multiply(6) 等は advanced (per-pixel シェーダ) で処理する。
 		const bool advanced = !((alpha==0) && (color==0||color==1||color==2));
 		const D3D12_GPU_VIRTUAL_ADDRESS cb=m_offCb->GetGPUVirtualAddress()+(UINT64)(1+o)*kCbStride;
@@ -517,7 +519,7 @@ private:
 			cl()->DrawInstanced(3,1,0,0);
 			return;
 		}
-		// 非advanced合成: Normal/Over(0)=premult over、AddCompatible(1)=Add、MultiplyCompatible(2)=Mult
+		// 非 advanced 合成: Normal/Over(0)=premult over、AddCompatible(1)=Add、MultiplyCompatible(2)=Mult
 		// を premult シェーダ (PsComposite) + 固定機能ブレンドで。
 		cl()->SetPipelineState(m_psoComp[b].Get());
 		cl()->DrawInstanced(3,1,0,0);
@@ -526,11 +528,9 @@ private:
 	// ── リソース ──
 	bool createBuffers(ID3D12Device* device, const std::vector<uint16_t>& indices)
 	{
-		auto up=[&](UINT64 bytes, ComPtrRes& out)->bool{
-			D3D12_HEAP_PROPERTIES hp={}; hp.Type=D3D12_HEAP_TYPE_UPLOAD;
-			D3D12_RESOURCE_DESC rd={}; rd.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER; rd.Width=bytes; rd.Height=1;
-			rd.DepthOrArraySize=1; rd.MipLevels=1; rd.SampleDesc.Count=1; rd.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			return SUCCEEDED(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&rd,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(out.ReleaseAndGetAddressOf())));
+		auto up=[&](UINT64 bytes, GpuRes& out)->bool{
+			return SUCCEEDED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, bytes,
+				D3D12_RESOURCE_STATE_GENERIC_READ, out));
 		};
 		D3D12_RANGE none={0,0};
 		// インデックスは静的 (毎フレーム不変) なので 1 本のみ。
@@ -543,11 +543,11 @@ private:
 			if (FAILED(m_vbN[f]->Map(0,&none,(void**)&m_vbPtrN[f]))) return false;
 			if (!up((UINT64)m_draws.size()*2*kCbStride, m_cbN[f])) return false;
 			if (FAILED(m_cbN[f]->Map(0,&none,(void**)&m_cbPtrN[f]))) return false;
-			// offscreen composite CB: slot0=blit, slot1+o=offscreen o
+			// offscreen 合成用の CB。slot0=blit, slot1+o=offscreen o
 			// slot0=blit, slot[1+o]=offscreen 合成 CB, slot[1+osc+o]=offscreen マスク生成 CB
 			if (!up((UINT64)(1+2*m_offs.size())*kCbStride, m_offCbN[f])) return false;
 			if (FAILED(m_offCbN[f]->Map(0,&none,(void**)&m_offCbPtrN[f]))) return false;
-			// stage sprite CB: 3 slots (背景/歯車/閉じる)
+			// stage sprite 用の CB。3 slot (背景/歯車/閉じる)
 			if (m_hasStage) {
 				if (!up((UINT64)3*kCbStride, m_spriteCbN[f])) return false;
 				if (FAILED(m_spriteCbN[f]->Map(0,&none,(void**)&m_spriteCbPtrN[f]))) return false;
@@ -565,7 +565,7 @@ private:
 	bool createTextures(ID3D12Device* device, ID3D12GraphicsCommandList* cl, const char* const* texPaths, int texCount)
 	{
 		if (texCount<=0) return false;
-		// SRV heap: textures + mask + model + scratch + interesting offscreen RTs + stage sprites
+		// SRV heap の内訳。textures + mask + model + scratch + interesting な offscreen RT + stage sprite
 		m_texCount=texCount;
 		m_maskSrvIdx=texCount; m_modelSrvIdx=texCount+1; m_scratchSrvIdx=texCount+2; m_offSrvBase=texCount+3;
 		m_spriteSrvBase=texCount+3+m_interestingCount;
@@ -575,7 +575,7 @@ private:
 		hd.NumDescriptors=(UINT)total; hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		if (FAILED(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(m_srvHeap.GetAddressOf())))) return false;
 		m_srvInc=device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		// RTV heap: mask + model + scratch + interesting offscreen RTs
+		// RTV heap の内訳。mask + model + scratch + interesting な offscreen RT
 		D3D12_DESCRIPTOR_HEAP_DESC rh={}; rh.Type=D3D12_DESCRIPTOR_HEAP_TYPE_RTV; rh.NumDescriptors=(UINT)(3+m_interestingCount);
 		if (FAILED(device->CreateDescriptorHeap(&rh,IID_PPV_ARGS(m_rtvHeap.GetAddressOf())))) return false;
 		m_rtvInc=device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -584,7 +584,7 @@ private:
 		for (int t=0;t<texCount;++t){
 			int w=0,h=0,ch=0; unsigned char* px=stbi_load(texPaths[t],&w,&h,&ch,4);
 			if (!px){ std::fprintf(stderr,"[Live2D] tex load failed: %s\n",texPaths[t]); return false; }
-			ComPtrRes tex; if (!makeTexture(device,cl,w,h,px,tex)){ stbi_image_free(px); return false; } stbi_image_free(px);
+			GpuRes tex; if (!makeTexture(device,cl,w,h,px,tex)){ stbi_image_free(px); return false; } stbi_image_free(px);
 			srvAt(device,tex.Get(),cpu); cpu.ptr+=m_srvInc; m_textures.push_back(tex);
 		}
 		// mask RT (2048², 固定)
@@ -595,7 +595,7 @@ private:
 			for (int s=0;s<3;++s){
 				int w=0,h=0,c=0; unsigned char* px=stbi_load(sp[s],&w,&h,&c,4);
 				if (!px){ std::fprintf(stderr,"[Live2D] stage tex failed: %s\n",sp[s]); m_hasStage=false; break; }
-				ComPtrRes tex; if(!makeTexture(device,cl,w,h,px,tex)){ stbi_image_free(px); m_hasStage=false; break; } stbi_image_free(px);
+				GpuRes tex; if(!makeTexture(device,cl,w,h,px,tex)){ stbi_image_free(px); m_hasStage=false; break; } stbi_image_free(px);
 				D3D12_CPU_DESCRIPTOR_HANDLE sh=m_srvHeap->GetCPUDescriptorHandleForHeapStart(); sh.ptr+=(UINT64)(m_spriteSrvBase+s)*m_srvInc;
 				srvAt(device,tex.Get(),sh); m_textures.push_back(tex); m_spriteW[s]=w; m_spriteH[s]=h;
 			}
@@ -643,15 +643,15 @@ private:
 		return true;
 	}
 
-	bool makeRT(ID3D12Device* device,int w,int h,ComPtrRes& tex,int rtvSlot,
+	bool makeRT(ID3D12Device* device,int w,int h,GpuRes& tex,int rtvSlot,
 	            D3D12_CPU_DESCRIPTOR_HANDLE& rtvOut,int srvIdx,bool clearWhite)
 	{
-		D3D12_HEAP_PROPERTIES dh={}; dh.Type=D3D12_HEAP_TYPE_DEFAULT;
 		D3D12_RESOURCE_DESC td={}; td.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		td.Width=(UINT64)w; td.Height=(UINT)h; td.DepthOrArraySize=1; td.MipLevels=1;
 		td.Format=DXGI_FORMAT_R8G8B8A8_UNORM; td.SampleDesc.Count=1; td.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 		D3D12_CLEAR_VALUE cv={}; cv.Format=td.Format; float c=clearWhite?1.0f:0.0f; cv.Color[0]=cv.Color[1]=cv.Color[2]=cv.Color[3]=c;
-		if (FAILED(device->CreateCommittedResource(&dh,D3D12_HEAP_FLAG_NONE,&td,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,&cv,IID_PPV_ARGS(tex.ReleaseAndGetAddressOf())))) return false;
+		if (FAILED(gfx::createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, td,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &cv, tex))) return false;
 		rtvOut=m_rtvHeap->GetCPUDescriptorHandleForHeapStart(); rtvOut.ptr+=(UINT64)rtvSlot*m_rtvInc;
 		device->CreateRenderTargetView(tex.Get(),nullptr,rtvOut);
 		D3D12_CPU_DESCRIPTOR_HANDLE s=m_srvHeap->GetCPUDescriptorHandleForHeapStart(); s.ptr+=(UINT64)srvIdx*m_srvInc;
@@ -664,16 +664,16 @@ private:
 		device->CreateShaderResourceView(r,&sv,h);
 	}
 
-	bool makeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cl, int w, int h, const unsigned char* px, ComPtrRes& out)
+	bool makeTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cl, int w, int h, const unsigned char* px, GpuRes& out)
 	{
-		D3D12_HEAP_PROPERTIES dh={}; dh.Type=D3D12_HEAP_TYPE_DEFAULT;
 		D3D12_RESOURCE_DESC td={}; td.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D; td.Width=(UINT64)w; td.Height=(UINT)h;
 		td.DepthOrArraySize=1; td.MipLevels=1; td.Format=DXGI_FORMAT_R8G8B8A8_UNORM; td.SampleDesc.Count=1;
-		if (FAILED(device->CreateCommittedResource(&dh,D3D12_HEAP_FLAG_NONE,&td,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(out.ReleaseAndGetAddressOf())))) return false;
+		if (FAILED(gfx::createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, td,
+			D3D12_RESOURCE_STATE_COPY_DEST, nullptr, out))) return false;
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT fp={}; UINT64 total=0; device->GetCopyableFootprints(&td,0,1,0,&fp,nullptr,nullptr,&total);
-		ComPtrRes upl; D3D12_HEAP_PROPERTIES uh={}; uh.Type=D3D12_HEAP_TYPE_UPLOAD;
-		D3D12_RESOURCE_DESC bd={}; bd.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER; bd.Width=total; bd.Height=1; bd.DepthOrArraySize=1; bd.MipLevels=1; bd.SampleDesc.Count=1; bd.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		if (FAILED(device->CreateCommittedResource(&uh,D3D12_HEAP_FLAG_NONE,&bd,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(upl.GetAddressOf())))) return false;
+		GpuRes upl;
+		if (FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, total,
+			D3D12_RESOURCE_STATE_GENERIC_READ, upl))) return false;
 		uint8_t* map=nullptr; D3D12_RANGE none={0,0}; upl->Map(0,&none,(void**)&map);
 		for (int y=0;y<h;++y) std::memcpy(map+fp.Offset+(UINT64)y*fp.Footprint.RowPitch, px+(size_t)y*w*4, (size_t)w*4);
 		upl->Unmap(0,nullptr);
@@ -781,7 +781,7 @@ private:
 			c->channelFlag[0]=(float)(g.blendInt&0xFF); c->channelFlag[1]=(float)((g.blendInt>>8)&0xFF); }
 	}
 
-	// helpers
+	// ヘルパー
 	ID3D12GraphicsCommandList* cl(){ return m_cl; }
 	D3D12_GPU_DESCRIPTOR_HANDLE gpu(int idx){ D3D12_GPU_DESCRIPTOR_HANDLE h=m_srvHeap->GetGPUDescriptorHandleForHeapStart(); h.ptr+=(UINT64)idx*m_srvInc; return h; }
 	void setRT(D3D12_CPU_DESCRIPTOR_HANDLE rtv,int w,int h){ m_cl->OMSetRenderTargets(1,&rtv,FALSE,nullptr);
@@ -803,19 +803,19 @@ private:
 	std::vector<int> m_dPart, m_pParent, m_oOwner; // part 階層 (drawable親part / part親part / offscreen owner part)
 	int m_curOff=-1;                               // 現在のオフスクリーン (-1 = モデル RT)
 	int m_totalVerts=0, m_interestingCount=0, m_texCount=0;
-	ComPtrRes m_ib; UINT m_ibBytes=0;
+	GpuRes m_ib; UINT m_ibBytes=0;
 	// 動的バッファは kFrames 重化 (毎フレーム CPU 上書き ⇄ GPU 読み取りの競合=ちらつき回避)。
 	// m_vb/m_cb 等は「現フレーム」の生ポインタで、selectFrame() が配列から差し替える。
-	ComPtrRes m_vbN[kFrames],m_cbN[kFrames],m_offCbN[kFrames],m_clipCbN[kFrames],m_spriteCbN[kFrames];
+	GpuRes m_vbN[kFrames],m_cbN[kFrames],m_offCbN[kFrames],m_clipCbN[kFrames],m_spriteCbN[kFrames];
 	float* m_vbPtrN[kFrames]={}; uint8_t* m_cbPtrN[kFrames]={},*m_offCbPtrN[kFrames]={},*m_clipCbPtrN[kFrames]={},*m_spriteCbPtrN[kFrames]={};
 	ID3D12Resource *m_vb=nullptr,*m_cb=nullptr,*m_offCb=nullptr,*m_clipCb=nullptr,*m_spriteCb=nullptr;
 	float* m_vbPtr=nullptr; uint8_t* m_cbPtr=nullptr,*m_offCbPtr=nullptr,*m_clipCbPtr=nullptr,*m_spriteCbPtr=nullptr;
 	int m_frame=0;
 	std::vector<ClipCtx> m_clips; bool m_packMasks=false;   // 低精度クリップパッキング (公式 CubismClippingManager)
-	std::vector<ComPtrRes> m_textures,m_uploads;
+	std::vector<GpuRes> m_textures,m_uploads;
 	ComPtr<ID3D12DescriptorHeap> m_srvHeap,m_rtvHeap; UINT m_srvInc=0,m_rtvInc=0;
 	int m_maskSrvIdx=0,m_modelSrvIdx=0,m_scratchSrvIdx=0,m_offSrvBase=0;
-	ComPtrRes m_maskTex,m_modelRT,m_scratchRT; std::vector<ComPtrRes> m_offRT;
+	GpuRes m_maskTex,m_modelRT,m_scratchRT; std::vector<GpuRes> m_offRT;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_maskRtv{},m_modelRtv{},m_scratchRtv{}; std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_offRtv;
 	int m_rtW=0,m_rtH=0;
 	int m_ss=1;   // 公式はネイティブ解像度描画 (=1)。2 にすると 2× SSAA で縁を AA する拡張。
@@ -826,7 +826,7 @@ private:
 	// ステージスプライト (公式 LAppView 相当: 背景/歯車/閉じる)
 	std::string m_stageBg,m_stageGear,m_stageClose; bool m_hasStage=false;
 	int m_spriteSrvBase=0, m_spriteW[3]={0,0,0}, m_spriteH[3]={0,0,0};
-	// per-frame
+	// フレームごと
 	ID3D12GraphicsCommandList* m_cl=nullptr; int m_vw=0,m_vh=0;
 	const csmFlags* m_dyn=nullptr; const float* m_op=nullptr;
 };

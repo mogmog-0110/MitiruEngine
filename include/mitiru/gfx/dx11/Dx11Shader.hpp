@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Dx11Shader.hpp
-/// @brief DirectX 11シェーダー実装
-/// @details D3DCompileによるランタイムHLSLコンパイルと、
+/// @brief DirectX 11 シェーダー実装
+/// @details D3DCompile によるランタイム HLSL コンパイルと、
 ///          ID3D11VertexShader / ID3D11PixelShader の管理を行う。
 
 #ifdef _WIN32
@@ -32,21 +32,21 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 11シェーダー実装
-/// @details HLSL文字列をランタイムコンパイルし、VS/PSを保持する。
-///          コンパイル済みバイトコードも保持する（InputLayout生成用）。
+/// @brief DirectX 11 シェーダー実装
+/// @details HLSL 文字列をランタイムコンパイルし、VS/PS を保持する。
+///          コンパイル済みバイトコードも保持する（InputLayout 生成用）。
 class Dx11Shader final : public IShader
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief 頂点シェーダーを生成するファクトリ
-	/// @param device D3D11デバイス
-	/// @param hlslSource HLSL文字列
+	/// @param device D3D11 デバイス
+	/// @param hlslSource HLSL 文字列
 	/// @param entryPoint エントリーポイント名
-	/// @return 生成されたDx11Shader
+	/// @return 生成された Dx11Shader
 	[[nodiscard]] static Dx11Shader createVertexShader(
 		ID3D11Device* device,
 		std::string_view hlslSource,
@@ -55,10 +55,10 @@ public:
 		Dx11Shader shader;
 		shader.m_type = ShaderType::Vertex;
 
-		/// HLSLをコンパイルする
+		/// HLSL をコンパイルする
 		auto blob = compileHLSL(hlslSource, entryPoint, "vs_5_0");
 
-		/// バイトコードを保存（InputLayout生成用）
+		/// バイトコードを保存（InputLayout 生成用）
 		shader.m_bytecode.resize(blob->GetBufferSize());
 		std::memcpy(shader.m_bytecode.data(),
 		            blob->GetBufferPointer(),
@@ -80,10 +80,10 @@ public:
 	}
 
 	/// @brief ピクセルシェーダーを生成するファクトリ
-	/// @param device D3D11デバイス
-	/// @param hlslSource HLSL文字列
+	/// @param device D3D11 デバイス
+	/// @param hlslSource HLSL 文字列
 	/// @param entryPoint エントリーポイント名
-	/// @return 生成されたDx11Shader
+	/// @return 生成された Dx11Shader
 	[[nodiscard]] static Dx11Shader createPixelShader(
 		ID3D11Device* device,
 		std::string_view hlslSource,
@@ -92,7 +92,7 @@ public:
 		Dx11Shader shader;
 		shader.m_type = ShaderType::Pixel;
 
-		/// HLSLをコンパイルする
+		/// HLSL をコンパイルする
 		auto blob = compileHLSL(hlslSource, entryPoint, "ps_5_0");
 
 		/// ピクセルシェーダーを生成する
@@ -128,8 +128,8 @@ public:
 		return m_pixelShader.Get();
 	}
 
-	/// @brief コンパイル済みバイトコードを取得する（InputLayout生成用）
-	/// @return バイトコードへのspan
+	/// @brief コンパイル済みバイトコードを取得する（InputLayout 生成用）
+	/// @return バイトコードへの span
 	[[nodiscard]] const std::vector<std::uint8_t>& bytecode() const noexcept
 	{
 		return m_bytecode;
@@ -139,11 +139,11 @@ private:
 	/// @brief デフォルトコンストラクタ（ファクトリからのみ使用）
 	Dx11Shader() = default;
 
-	/// @brief HLSL文字列をコンパイルする
-	/// @param source HLSL文字列
+	/// @brief HLSL 文字列をコンパイルする
+	/// @param source HLSL 文字列
 	/// @param entryPoint エントリーポイント名
 	/// @param target コンパイルターゲット（例: "vs_5_0"）
-	/// @return コンパイル済みBlob
+	/// @return コンパイル済み Blob
 	[[nodiscard]] static ComPtr<ID3DBlob> compileHLSL(
 		std::string_view source,
 		std::string_view entryPoint,

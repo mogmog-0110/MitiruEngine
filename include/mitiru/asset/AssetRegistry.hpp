@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 /// @file AssetRegistry.hpp
-/// @brief エンジンレベルのアセット管理レジストリ
+/// @brief エンジンレベルでアセットを管理するレジストリ
 ///
-/// アセットのメタデータを一元管理し、マニフェストファイルによる
-/// 一括登録・書き出しを提供する。
+/// アセットのメタデータを一元的に管理し、マニフェストファイルを使った
+/// 一括登録と書き出しを提供する。
 ///
 /// @code
 /// mitiru::asset::AssetRegistry registry;
@@ -46,7 +46,7 @@ struct AssetMetadata
 	bool loaded{false};     ///< ロード済みか
 };
 
-/// @brief AssetTypeを文字列に変換する
+/// @brief AssetType を文字列に変換する
 /// @param type アセット種類
 /// @return 文字列表現
 [[nodiscard]] inline std::string assetTypeToString(AssetType type)
@@ -64,9 +64,9 @@ struct AssetMetadata
 	return "Unknown";
 }
 
-/// @brief 文字列からAssetTypeに変換する
+/// @brief 文字列から AssetType に変換する
 /// @param str 文字列
-/// @return 対応するAssetType（不明ならnullopt）
+/// @return 対応する AssetType（不明なら nullopt）
 [[nodiscard]] inline std::optional<AssetType> stringToAssetType(const std::string& str)
 {
 	if (str == "Texture")  return AssetType::Texture;
@@ -79,13 +79,13 @@ struct AssetMetadata
 	return std::nullopt;
 }
 
-/// @brief アセットメタデータのレジストリ
+/// @brief アセットのメタデータを管理するレジストリ
 class AssetRegistry
 {
 public:
 	/// @brief アセットを登録する
-	/// @param metadata アセットメタデータ
-	/// @return 登録成功ならtrue（ID重複時はfalse）
+	/// @param metadata アセットのメタデータ
+	/// @return 登録に成功した場合は true（ID が重複している場合は false）
 	bool registerAsset(AssetMetadata metadata)
 	{
 		if (m_assets.count(metadata.id) > 0) return false;
@@ -95,8 +95,8 @@ public:
 	}
 
 	/// @brief アセットのメタデータを取得する
-	/// @param id アセットID
-	/// @return メタデータへのポインタ（存在しなければnullptr）
+	/// @param id アセット ID
+	/// @return メタデータへのポインタ（存在しない場合は nullptr）
 	[[nodiscard]] const AssetMetadata* getMetadata(const std::string& id) const noexcept
 	{
 		auto it = m_assets.find(id);
@@ -113,7 +113,7 @@ public:
 	}
 
 	/// @brief 種類でアセットを検索する
-	/// @param type アセット種類
+	/// @param type アセットの種類
 	/// @return 該当するメタデータのリスト
 	[[nodiscard]] std::vector<const AssetMetadata*> findByType(AssetType type) const
 	{
@@ -130,7 +130,7 @@ public:
 
 	/// @brief パスでアセットを検索する
 	/// @param path ファイルパス
-	/// @return メタデータへのポインタ（存在しなければnullptr）
+	/// @return メタデータへのポインタ（存在しない場合は nullptr）
 	[[nodiscard]] const AssetMetadata* findByPath(const std::string& path) const noexcept
 	{
 		for (const auto& [id, meta] : m_assets)
@@ -143,9 +143,9 @@ public:
 		return nullptr;
 	}
 
-	/// @brief マニフェスト文字列を読み込んでアセットを一括登録する
-	/// @param manifestContent マニフェスト内容（"id,type,path\n"形式）
-	/// @return 登録成功数
+	/// @brief マニフェスト文字列を読み込み、アセットを一括登録する
+	/// @param manifestContent マニフェストの内容（"id,type,path\n" 形式）
+	/// @return 登録に成功した数
 	size_t loadManifest(const std::string& manifestContent)
 	{
 		size_t count = 0;
@@ -190,12 +190,12 @@ public:
 		return oss.str();
 	}
 
-	/// @brief 登録アセット数を返す
+	/// @brief 登録されているアセット数を返す
 	[[nodiscard]] size_t count() const noexcept { return m_assets.size(); }
 
 	/// @brief アセットの登録を解除する
-	/// @param id アセットID
-	/// @return 解除成功ならtrue
+	/// @param id アセット ID
+	/// @return 解除に成功した場合は true
 	bool unregister(const std::string& id)
 	{
 		return m_assets.erase(id) > 0;

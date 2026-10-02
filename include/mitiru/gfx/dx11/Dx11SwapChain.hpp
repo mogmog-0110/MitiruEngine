@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Dx11SwapChain.hpp
-/// @brief DirectX 11スワップチェーンラッパー
-/// @details IDXGISwapChainをComPtrで管理し、画面表示とリサイズを提供する。
+/// @brief DirectX 11 スワップチェーンラッパー
+/// @details IDXGISwapChain を ComPtr で管理し、画面表示とリサイズを提供する。
 
 #ifdef _WIN32
 
@@ -26,17 +26,17 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 11スワップチェーンラッパー
-/// @details IDXGISwapChainの生成・プレゼント・リサイズを管理する。
+/// @brief DirectX 11 スワップチェーンラッパー
+/// @details IDXGISwapChain の生成・プレゼント・リサイズを管理する。
 class Dx11SwapChain final : public ISwapChain
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param hwnd ターゲットウィンドウハンドル
 	/// @param width バッファ幅
 	/// @param height バッファ高さ
@@ -48,7 +48,7 @@ public:
 		, m_width(width)
 		, m_height(height)
 	{
-		/// DXGIファクトリの取得
+		/// DXGI ファクトリの取得
 		ComPtr<IDXGIDevice> dxgiDevice;
 		HRESULT hr = device->QueryInterface(
 			__uuidof(IDXGIDevice),
@@ -107,7 +107,7 @@ public:
 		desc.BufferCount = 2;
 		desc.OutputWindow = hwnd;
 		desc.Windowed = TRUE;
-		// MSAA有効のスワップチェーンは従来のDISCARDスワップエフェクトが必須
+		// MSAA 有効のスワップチェーンは従来の DISCARD スワップエフェクトが必須
 		desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
 		hr = factory->CreateSwapChain(
@@ -125,7 +125,7 @@ public:
 	/// @brief バックバッファを画面に表示する
 	void present() override
 	{
-		/// VSync有効（引数1）でプレゼント
+		/// VSync 有効（引数 1）でプレゼント
 		HRESULT hr = m_swapChain->Present(1, 0);
 		if (FAILED(hr) && hr != DXGI_ERROR_WAS_STILL_DRAWING)
 		{
@@ -180,7 +180,7 @@ public:
 		return m_renderTarget.getRTV();
 	}
 
-	/// @brief 内部のIDXGISwapChainを取得する
+	/// @brief 内部の IDXGISwapChain を取得する
 	/// @return スワップチェーンへのポインタ
 	[[nodiscard]] IDXGISwapChain* getSwapChain() const noexcept
 	{

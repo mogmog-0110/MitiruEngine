@@ -1,15 +1,15 @@
 #pragma once
 
 /// @file GlShaders.hpp
-/// @brief GLSL 330 Coreシェーダー定義
-/// @details 2D描画用の頂点シェーダーとフラグメントシェーダーをconstexpr文字列リテラルで定義する。
+/// @brief GLSL 330 Core シェーダー定義
+/// @details 2D 描画用の頂点シェーダーとフラグメントシェーダーを constexpr 文字列リテラルで定義する。
 
 #ifdef MITIRU_HAS_OPENGL
 
 namespace mitiru::gfx
 {
 
-/// @brief 2D頂点シェーダー（GLSL 330 core）
+/// @brief 2D 頂点シェーダー（GLSL 330 core）
 /// @details 正射影変換を適用し、頂点色・テクスチャ座標をフラグメントシェーダーに渡す。
 constexpr const char* GL_VERTEX_SHADER_2D = R"glsl(
 #version 330 core
@@ -30,7 +30,7 @@ void main()
 }
 )glsl";
 
-/// @brief 2Dフラグメントシェーダー（GLSL 330 core）
+/// @brief 2D フラグメントシェーダー（GLSL 330 core）
 /// @details 頂点色をそのまま出力する。
 constexpr const char* GL_FRAGMENT_SHADER_2D = R"glsl(
 #version 330 core

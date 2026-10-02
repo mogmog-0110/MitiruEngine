@@ -1,6 +1,6 @@
-// text。文字をあつかう主な機能を、余白をとった区画で 1 つずつ見せる
+// text。文字を扱う主な機能を、余白を設けた区画に 1 つずつ示す
 // 実行すると: 上段に「枠のどこに文字を置くか」(整列) の大きな見本、
-//             下段に 文字サイズ / 色 / 折り返し / はみ出しの省略 の見本が並ぶ
+//             下段に文字サイズ / 色 / 折り返し / はみ出しの省略の見本が並ぶ
 // 使う機能: drawTextInRect (整列) / drawTextWrapped (折り返し)
 //           / drawTextClipped (省略) / text (左上へ 1 行)
 
@@ -21,7 +21,7 @@ struct Text03
 
 	void update(Input, float dt) { t += dt; }
 
-	// 区画 1 つぶんの小見出し (枠の上に薄グレー) と枠線を描く共通ヘルパー。
+	// 区画 1 つ分の小見出し (枠の上に薄グレー) と枠線を描く共通ヘルパー。
 	template <class Surface>
 	void cell(Surface& s, const Rect& box, const char* caption) const
 	{
@@ -57,7 +57,7 @@ struct Text03
 		constexpr float cy = 362.0f, ch = 236.0f, cw = 280.0f;
 		constexpr float fx[4] = {40.0f, 346.0f, 653.0f, 960.0f};
 
-		// (1) 文字サイズ: 同じ語を小さい→大きいへ。fontSize の数値を変えるだけ。
+		// (1) 文字サイズ: 同じ語を小さいものから大きいものへ。fontSize の数値を変えるだけ。
 		cell(s, Rect{fx[0], cy, cw, ch}, "文字サイズ  fontSize");
 		constexpr float sizes[4] = {16.0f, 24.0f, 34.0f, 46.0f};
 		float ty = cy + 14.0f;
@@ -89,8 +89,8 @@ struct Text03
 		                  "so it automatically wraps at each word break.",
 		                  theme::kInk, 18.0f, 14.0f, 12.0f);
 
-		// (4) はみ出しの省略: 枠に収まらない行は末尾が自動で "..." になる。
-		//     ただの drawText と違い、枠の外へあふれて他と重ならない。
+		// (4) はみ出しの省略: 枠に収まらない行の末尾は自動的に "..." になる。
+		//     通常の drawText と違い、枠の外へあふれて他と重ならない。
 		const Rect clipBox{fx[3], cy, cw, ch};
 		cell(s, clipBox, "はみ出しは省略  drawTextClipped");
 		s.drawTextClipped(Rect{fx[3] + 14.0f, cy + 20.0f, cw - 28.0f, 30.0f},
@@ -121,4 +121,5 @@ struct Text03
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(Text03);
 
+MITIRU_ASSERT_NO_PADDING(Text03);
 MITIRU_GAME(Text03);

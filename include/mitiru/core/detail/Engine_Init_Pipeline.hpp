@@ -88,7 +88,7 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 	// backbuffer は window client size に追従する (物理 pixel と 1:1)。
 	// この部分は modal drag 中でも走る。DXGI swap chain は window に合わせて
 	// 必ず resize しないと Present が stretch / glitch artifact を起こす。
-	// 重い処理 (logical layout、CEF re-layout、pipeline projection) は
+	// 重い処理 (logical layout、pipeline projection) は
 	// 後段の WM_EXITSIZEMOVE まで遅延させる。
 	if (m_device && m_device->backend() != gfx::Backend::Null)
 	{
@@ -103,21 +103,18 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 	}
 
 #ifdef _WIN32
-	// マウス drag 中は重い re-layout を遅延させる。WM_SIZE ごとに CSS @media が
-	// 再走して HTML layout が snap し、logical 座標系がずれて native sprite が
-	// window に対し揺れる「ガタガタ」jitter を防ぐ。composite は texture 寸法の
-	// viewport (letterbox) を使うため、window が広がる間も engine clear color の
-	// padding 付きで安定した内容が見える。
+	// マウス drag 中は重い re-layout を遅延させる。WM_SIZE ごとに logical 座標系が
+	// 作り直されて native sprite が window に対し揺れる「ガタガタ」jitter を防ぐ。
 	if (auto* win32 = dynamic_cast<mitiru::Win32Window*>(m_window.get());
 	    win32 && win32->inModalLoop())
 	{
 		m_pendingResizeW = w;
 		m_pendingResizeH = h;
-		return; // defer logical/CEF resize to WM_EXITSIZEMOVE
+		return; // defer logical resize to WM_EXITSIZEMOVE
 	}
 #endif
 
-	// config.resizeMode に従って新しい logical size を解決する (Siv3D 相当):
+	// config.resizeMode に従って新しい logical size を解決する (Siv3D 相当)。
 	//
 	// Actual。logical = physical (1:1)。HTML @media が発火し、native draw は
 	//           物理座標を使う。既定。
@@ -175,21 +172,6 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 			static_cast<float>(newLogical.height));
 		m_renderPipeline->setViewportSize(viewportW, viewportH, viewportOffsetX, viewportOffsetY);
 	}
-
-	// CEF UI layer: browser に新サイズでの repaint を指示し、GPU texture を
-	// deferred resize 対象としてマークする。texture は寸法が一致する次の
-	// OnPaint で atomically に再生成される。その間は古い texture が描画され
-	// 続ける (一時的に bilinear-stretch) ため、UI が空白になることはない。
-	// (swap ロジックは MitiruCefTexture::applyPendingResize を参照。)
-#if defined(_WIN32) && defined(MITIRU_HAS_CEF)
-	if (m_cefContext.isInitialized() && m_device)
-	{
-		if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
-		{
-			m_cefContext.resize(*dx12, w, h);
-		}
-	}
-#endif
 }
 
 MITIRU_INLINE void mitiru::Engine::syncViewport()

@@ -3,7 +3,7 @@
 /// @file AudioLog.hpp
 /// @brief AI 観測用の音イベントログ (/api/ai/audio)
 /// @details host が SoundIntent を audio engine へ流す瞬間に 1 エントリ記録する固定リング。
-///          常時 on でもコストは struct コピー 1 本 (音 intent は毎フレーム高々数件)。
+///          常時 on でもコストは struct コピー 1 回 (音 intent は毎フレーム高々数件)。
 
 #include <array>
 #include <cstdint>

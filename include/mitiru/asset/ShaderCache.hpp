@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file ShaderCache.hpp
-/// @brief シェーダーコンパイルキャッシュ
+/// @brief シェーダーのコンパイルキャッシュ
 /// @details ソースコードのハッシュに基づいてコンパイル済みシェーダーをキャッシュし、
-///          同一ソースの再コンパイルを回避する。スレッドセーフ。
+///          同一ソースの再コンパイルを避ける。スレッドセーフ。
 ///
 /// @code
 /// mitiru::asset::ShaderCache cache;
@@ -31,10 +31,10 @@ struct ShaderHandle
 	uint64_t id{0};          ///< ユニークID (0 = 無効)
 	uint64_t sourceHash{0};  ///< ソースコードのハッシュ値
 
-	/// @brief ハンドルが有効か判定する
+	/// @brief ハンドルが有効かどうかを判定する
 	[[nodiscard]] constexpr bool valid() const noexcept { return id != 0; }
 
-	/// @brief 比較演算
+	/// @brief ハンドルを比較する
 	[[nodiscard]] constexpr bool operator==(const ShaderHandle& other) const noexcept
 	{
 		return id == other.id && sourceHash == other.sourceHash;
@@ -55,17 +55,17 @@ struct ShaderCompileResult
 	std::vector<uint8_t> bytecode; ///< コンパイル済みバイトコード
 };
 
-/// @brief シェーダーコンパイラ関数型
+/// @brief シェーダーコンパイラの関数型
 /// @details source と type を受け取り、コンパイル結果を返す
 using ShaderCompilerFn = std::function<ShaderCompileResult(
 	std::string_view source, gfx::ShaderType type)>;
 
-/// @brief シェーダーコンパイルキャッシュ（スレッドセーフ）
-/// @details ソースハッシュで重複コンパイルを防止し、変更時にキャッシュを無効化する。
+/// @brief シェーダーのコンパイルキャッシュ（スレッドセーフ）
+/// @details ソースハッシュによる重複コンパイルを防ぎ、変更時にキャッシュを無効化する。
 class ShaderCache
 {
 public:
-	/// @brief デフォルトコンストラクタ（ダミーコンパイラ使用）
+	/// @brief デフォルトコンストラクタ（ダミーコンパイラを使用）
 	ShaderCache()
 		: m_compiler([this](std::string_view source, gfx::ShaderType type)
 		  {
@@ -74,14 +74,14 @@ public:
 	{
 	}
 
-	/// @brief コンパイラ指定コンストラクタ
+	/// @brief コンパイラを指定するコンストラクタ
 	/// @param compiler シェーダーコンパイル関数
 	explicit ShaderCache(ShaderCompilerFn compiler)
 		: m_compiler(std::move(compiler))
 	{
 	}
 
-	/// @brief ソースからシェーダーを取得（キャッシュ済みなら再利用）
+	/// @brief ソースからシェーダーを取得する（キャッシュ済みなら再利用）
 	/// @param source シェーダーソースコード
 	/// @param type シェーダー種別
 	/// @return コンパイル結果
@@ -100,7 +100,7 @@ public:
 			}
 		}
 
-		// キャッシュミス。コンパイル実行（ロック外で行い並行性を確保）
+		// キャッシュミス。ロック外でコンパイルを実行し、並行性を確保する
 		auto result = m_compiler(source, type);
 
 		{
@@ -121,9 +121,9 @@ public:
 		return result;
 	}
 
-	/// @brief 特定のソースハッシュのキャッシュを無効化する
+	/// @brief 特定のソースハッシュに対応するキャッシュを無効化する
 	/// @param sourceHash 無効化するソースのハッシュ
-	/// @return 無効化成功ならtrue
+	/// @return 無効化に成功した場合は true
 	bool invalidate(uint64_t sourceHash)
 	{
 		std::scoped_lock lock(m_mutex);
@@ -132,13 +132,13 @@ public:
 
 	/// @brief ソースコードの文字列から直接無効化する
 	/// @param source 無効化するシェーダーソース
-	/// @return 無効化成功ならtrue
+	/// @return 無効化に成功した場合は true
 	bool invalidateBySource(std::string_view source)
 	{
 		return invalidate(computeHash(source));
 	}
 
-	/// @brief 全キャッシュをクリアする
+	/// @brief すべてのキャッシュをクリアする
 	void clear()
 	{
 		std::scoped_lock lock(m_mutex);
@@ -147,7 +147,7 @@ public:
 		m_cacheMisses = 0;
 	}
 
-	/// @brief キャッシュ済みエントリ数を取得する
+	/// @brief キャッシュ済みのエントリ数を取得する
 	[[nodiscard]] std::size_t size() const noexcept
 	{
 		std::scoped_lock lock(m_mutex);
@@ -168,9 +168,9 @@ public:
 		return m_cacheMisses;
 	}
 
-	/// @brief ソースハッシュがキャッシュに存在するか確認する
+	/// @brief ソースハッシュがキャッシュに存在するかどうかを確認する
 	/// @param sourceHash ハッシュ値
-	/// @return キャッシュ済みならtrue
+	/// @return キャッシュ済みの場合は true
 	[[nodiscard]] bool contains(uint64_t sourceHash) const
 	{
 		std::scoped_lock lock(m_mutex);
@@ -179,7 +179,7 @@ public:
 
 	/// @brief ソースコードのハッシュ値を計算する（FNV-1a）
 	/// @param source ソース文字列
-	/// @return 64ビットハッシュ値
+	/// @return 64 ビットハッシュ値
 	[[nodiscard]] static uint64_t computeHash(std::string_view source) noexcept
 	{
 		// FNV-1a 64-bit

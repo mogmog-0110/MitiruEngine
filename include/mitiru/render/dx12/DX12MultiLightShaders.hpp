@@ -2,7 +2,7 @@
 
 /// @file DX12MultiLightShaders.hpp
 /// @brief DX12 用マルチライト Phong PS（MRT 互換）
-/// @details DX11 の `MultiLightShaders3D.hpp` と機能等価だが、以下の差異がある:
+/// @details DX11 の `MultiLightShaders3D.hpp` と機能等価だが、以下の差異がある。
 ///          - DX12 のメインパスは MRT (color RT0 + normal RT1) のため、
 ///            `PSOutput` を返して両 RT に書き込む
 ///          - Texture2D / SamplerState を参照しない（DX12 メインパスでは
@@ -28,7 +28,10 @@ cbuffer CbLighting : register(b1)
     float4 MaterialDiffuse;
     float4 MaterialSpecular;
     float  MaterialShininess;
-    float3 _pad4;
+    float3 ShadowTint;
+    float4 FogColor;
+    float4 FogParams;
+    float4 MaterialParams;
 };
 
 struct LightEntry
@@ -138,6 +141,7 @@ PSOutput PSMain(PSInput input)
     o.Color = float4(result, alpha);
     float NdotV = max(dot(N, V), 0.0);
     o.Normal = float4(N * 0.5 + 0.5, NdotV);
+    if (MaterialParams.w > 0.5) { o.Normal = float4(1.0, 1.0, 1.0, 1.0); }
     return o;
 }
 )HLSL";

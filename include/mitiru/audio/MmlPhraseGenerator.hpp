@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MmlPhraseGenerator.hpp
-/// @brief AIフレーズ自動生成（パターンDB + ジャンル別テンプレート）
+/// @brief AI フレーズ自動生成（パターン DB + ジャンル別テンプレート）
 
 #include <algorithm>
 #include <cstdint>
@@ -29,7 +29,7 @@ struct PhraseTemplate
 	int tempo = 120;
 };
 
-/// @brief MMLフレーズ自動生成器
+/// @brief MML フレーズ自動生成器
 class MmlPhraseGenerator
 {
 public:
@@ -38,7 +38,7 @@ public:
 	/// @brief ジャンルに基づいてランダムフレーズを生成する
 	[[nodiscard]] std::string generate(MusicGenre genre, int measures = 4, uint32_t seed = 0)
 	{
-		// seed 未指定 (0) は固定既定で決定論を保つ (caller が明示 seed を渡せば任意列)。
+		// seed 未指定 (0) の場合は固定の既定値を使い、決定性を保つ (caller が明示的に seed を渡せば任意の列になる)。
 		if (seed == 0) { seed = 0x4D6C5031u; }
 		std::mt19937 rng(seed);
 
@@ -71,7 +71,7 @@ public:
 	[[nodiscard]] std::string generateMelody(
 		const std::vector<std::string>& chords, int tempo = 120, uint32_t seed = 0)
 	{
-		// seed 未指定 (0) は固定既定で決定論を保つ。
+		// seed 未指定 (0) の場合は固定の既定値を使い、決定性を保つ。
 		if (seed == 0) { seed = 0x4D656C6Fu; }
 		std::mt19937 rng(seed);
 

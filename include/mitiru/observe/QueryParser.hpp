@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file QueryParser.hpp
-/// @brief URLクエリ文字列パーサー
-/// @details HTTP URLのクエリパラメータを解析するユーティリティ。
+/// @brief URL クエリ文字列パーサー
+/// @details HTTP URL のクエリパラメータを解析するユーティリティ。
 ///          シンプルな分割処理で '?' → '&' → '=' の順に解析する。
 
 #include <map>
@@ -13,11 +13,11 @@
 namespace mitiru::observe
 {
 
-/// @brief URLクエリ文字列のパース結果型
+/// @brief URL クエリ文字列のパース結果型
 using QueryParams = std::map<std::string, std::string>;
 
-/// @brief URLからパス部分を抽出する
-/// @param url リクエストURL（例: "/inspect?entity=42"）
+/// @brief URL からパス部分を抽出する
+/// @param url リクエスト URL（例: "/inspect?entity=42"）
 /// @return パス部分（例: "/inspect"）
 [[nodiscard]] inline std::string extractPath(std::string_view url)
 {
@@ -29,8 +29,8 @@ using QueryParams = std::map<std::string, std::string>;
 	return std::string(url.substr(0, pos));
 }
 
-/// @brief URLクエリ文字列を解析する
-/// @param url リクエストURL全体（例: "/inspect?entity=42&tag=enemy"）
+/// @brief URL クエリ文字列を解析する
+/// @param url リクエスト URL 全体（例: "/inspect?entity=42&tag=enemy"）
 /// @return パラメータのキーバリューマップ
 [[nodiscard]] inline QueryParams parseQuery(std::string_view url)
 {

@@ -18,7 +18,7 @@ class Clock
 {
 public:
 	/// @brief コンストラクタ
-	/// @param targetTps 目標TPS（tick/秒）
+	/// @param targetTps 目標 TPS（tick/秒）
 	/// @param deterministic 決定論的モードで動作するか
 	/// @details `deterministic` のデフォルトは `false`（実時間 dt）。`true` は
 	///          リプレイ / ヘッドレス / 自動テスト用途で明示的に指定する。
@@ -30,7 +30,7 @@ public:
 	{
 	}
 
-	/// @brief 1フレーム進め、デルタタイムを返す
+	/// @brief 1 フレーム進め、デルタタイムを返す
 	/// @return 今フレームのデルタタイム（秒）
 	/// @details 決定論的モードでは常に 1/TPS を返す。
 	///          非決定論的モードでは前回 tick() からの実経過時間を返す。
@@ -48,7 +48,7 @@ public:
 		const auto now = SteadyClock::now();
 		if (m_frameNumber == 1)
 		{
-			/// 初回フレームは固定dtを返す
+			/// 初回フレームは固定 dt を返す
 			m_lastTime = now;
 			m_elapsed += m_fixedDt;
 			return m_fixedDt;
@@ -62,7 +62,7 @@ public:
 	}
 
 	/// @brief 現在のフレーム番号を取得する
-	/// @return フレーム番号（0始まり、tick()呼び出し回数）
+	/// @return フレーム番号（0 始まり、tick() の呼び出し回数）
 	[[nodiscard]] std::uint64_t frameNumber() const noexcept
 	{
 		return m_frameNumber;
@@ -74,7 +74,7 @@ public:
 		return m_elapsed;
 	}
 
-	/// @brief 目標TPSを取得する
+	/// @brief 目標 TPS を取得する
 	[[nodiscard]] float targetTps() const noexcept
 	{
 		return m_targetTps;

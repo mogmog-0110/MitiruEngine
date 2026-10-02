@@ -2,7 +2,7 @@
 
 /// @file PostProcessIntegration.hpp
 /// @brief ポストプロセスパイプラインとエンジン描画ループの統合レイヤー
-/// @details PostProcessChainをEngine/RenderPipeline2Dに接続し、
+/// @details PostProcessChain を Engine/RenderPipeline2D に接続し、
 ///          オフスクリーンレンダーターゲットへの描画→ポストプロセス→バックバッファ出力を行う。
 
 #ifdef _WIN32
@@ -31,7 +31,7 @@ namespace mitiru::render
 
 /// @brief ポストプロセスマネージャー
 /// @details エンジンの描画ループにポストプロセスパイプラインを統合する。
-///          beginScene()でオフスクリーンRTにリダイレクトし、
+///          beginScene()でオフスクリーン RT にリダイレクトし、
 ///          endScene()でポストプロセスチェーンを実行してバックバッファに出力する。
 ///
 /// @code
@@ -54,7 +54,7 @@ public:
 	PostProcessManager() noexcept = default;
 
 	/// @brief ポストプロセスマネージャーを初期化する
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
 	void init(ID3D11Device* device, int screenW, int screenH)
@@ -72,7 +72,7 @@ public:
 		/// オフスクリーンシーンレンダーターゲットを生成する
 		createSceneRT();
 
-		/// 深度ステンシルビューを生成する（3D描画対応）
+		/// 深度ステンシルビューを生成する（3D 描画対応）
 		createDepthStencil();
 
 		/// 共有リソースを生成する
@@ -99,7 +99,7 @@ public:
 		m_screenW = static_cast<std::uint32_t>(w);
 		m_screenH = static_cast<std::uint32_t>(h);
 
-		/// シーンRTを再生成する
+		/// シーン RT を再生成する
 		createSceneRT();
 
 		/// 深度ステンシルを再生成する
@@ -112,7 +112,7 @@ public:
 		}
 	}
 
-	/// @brief PostProcessConfigを一括適用する
+	/// @brief PostProcessConfig を一括適用する
 	/// @param config 統合設定
 	void setConfig(const PostProcessConfig& config)
 	{
@@ -123,12 +123,12 @@ public:
 
 		m_config = config;
 
-		/// チェーンを再構築する（FXAAを含む）
+		/// チェーンを再構築する（FXAA を含む）
 		rebuildChain();
 	}
 
-	/// @brief シーン描画をオフスクリーンRTにリダイレクトする
-	/// @param context D3D11デバイスコンテキスト
+	/// @brief シーン描画をオフスクリーン RT にリダイレクトする
+	/// @param context D3D11 デバイスコンテキスト
 	/// @details 無効時は何もしない（描画はバックバッファに直接向かう）
 	void beginScene(ID3D11DeviceContext* context)
 	{
@@ -137,7 +137,7 @@ public:
 			return;
 		}
 
-		/// オフスクリーンRTをクリアしてバインドする
+		/// オフスクリーン RT をクリアしてバインドする
 		constexpr float clearColor[4] = {
 			0.0f, 0.0f, 0.0f, 0.0f
 		};
@@ -167,7 +167,7 @@ public:
 	}
 
 	/// @brief ポストプロセスチェーンを実行し、バックバッファに出力する
-	/// @param context D3D11デバイスコンテキスト
+	/// @param context D3D11 デバイスコンテキスト
 	/// @param backbufferRTV バックバッファのレンダーターゲットビュー
 	void endScene(
 		ID3D11DeviceContext* context,
@@ -182,7 +182,7 @@ public:
 
 		m_sceneActive = false;
 
-		/// SRVバインドを解除する（シーンRTを読み取る前に必要）
+		/// SRV バインドを解除する（シーン RT を読み取る前に必要）
 		ID3D11ShaderResourceView* nullSRV = nullptr;
 		context->PSSetShaderResources(0, 1, &nullSRV);
 
@@ -204,7 +204,7 @@ public:
 		}
 		else
 		{
-			/// パスなし：シーンRTをバックバッファに直接コピーする
+			/// パスなし：シーン RT をバックバッファに直接コピーする
 			copySceneToBackbuffer(context, backbufferRTV);
 		}
 	}
@@ -216,7 +216,7 @@ public:
 	}
 
 	/// @brief ポストプロセスの有効/無効を切り替える
-	/// @param enabled 有効にする場合はtrue
+	/// @param enabled 有効にする場合は true
 	void setEnabled(bool enabled) noexcept
 	{
 		m_enabled = enabled;
@@ -264,7 +264,7 @@ public:
 		rebuildChain();
 	}
 
-	/// @brief フロストグラスを有効化する（UI背景ブラー用）
+	/// @brief フロストグラスを有効化する（UI 背景ブラー用）
 	/// @param blurAmount ブラー量
 	void enableFrostGlass(float blurAmount = 2.0f)
 	{
@@ -273,7 +273,7 @@ public:
 		rebuildChain();
 	}
 
-	/// @brief FXAAを有効化する（アンチエイリアシング）
+	/// @brief FXAA を有効化する（アンチエイリアシング）
 	/// @param quality 品質プリセット（デフォルト: Medium）
 	void enableFXAA(FXAAQuality quality = FXAAQuality::Medium)
 	{
@@ -285,7 +285,7 @@ public:
 		rebuildChain();
 	}
 
-	/// @brief FXAAを無効化する
+	/// @brief FXAA を無効化する
 	void disableFXAA()
 	{
 		m_config.fxaa.enabled = false;
@@ -305,7 +305,7 @@ public:
 
 	/// @brief 現在のシーンテクスチャをスナップショットとして取得する
 	/// @details サムネイル生成やフロストグラス背景に使用する。
-	///          beginScene()〜endScene()の間、またはendScene()直後に呼ぶ。
+	///          beginScene()〜endScene()の間、または endScene()直後に呼ぶ。
 	/// @return シーンテクスチャのコピー（GpuTexture2D）
 	[[nodiscard]] GpuTexture2D captureSceneTexture()
 	{
@@ -315,7 +315,7 @@ public:
 				"PostProcessManager: not initialized");
 		}
 
-		/// シーンRTテクスチャをステージング経由でCPUに読み出す
+		/// シーン RT テクスチャをステージング経由で CPU に読み出す
 		ComPtr<ID3D11DeviceContext> context;
 		m_device->GetImmediateContext(context.GetAddressOf());
 		if (!context)
@@ -329,7 +329,7 @@ public:
 		m_sceneRT.texture->GetDesc(&srcDesc);
 
 		/// ソースと同一フォーマットのステージングテクスチャを生成する
-		/// （CopyResourceはフォーマット一致が必須）
+		/// （CopyResource はフォーマット一致が必須）
 		D3D11_TEXTURE2D_DESC stagingDesc = srcDesc;
 		stagingDesc.MipLevels = 1;
 		stagingDesc.ArraySize = 1;
@@ -348,10 +348,10 @@ public:
 				"PostProcessManager: staging texture creation failed");
 		}
 
-		/// シーンRTをステージングにコピーする（同一フォーマット）
+		/// シーン RT をステージングにコピーする（同一フォーマット）
 		context->CopyResource(staging.Get(), m_sceneRT.texture.Get());
 
-		/// マップしてCPU読み出しする
+		/// マップして CPU 読み出しする
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
 		hr = context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped);
 		if (FAILED(hr))
@@ -380,14 +380,14 @@ public:
 
 			if (isFloat16)
 			{
-				/// R16G16B16A16_FLOAT → RGBA8変換
+				/// R16G16B16A16_FLOAT → RGBA8 変換
 				const auto* fp16 =
 					reinterpret_cast<const uint16_t*>(rowSrc);
 				for (int x = 0; x < w; ++x)
 				{
 					for (int c = 0; c < 4; ++c)
 					{
-						/// half→float簡易変換後、[0,1]にクランプしてu8に
+						/// half→float 簡易変換後、[0,1]にクランプして u8 に
 						const uint16_t hf = fp16[x * 4 + c];
 						const uint32_t sign = (hf >> 15) & 1;
 						const uint32_t exp = (hf >> 10) & 0x1F;
@@ -417,7 +417,7 @@ public:
 			}
 			else
 			{
-				/// R8G8B8A8_UNORMなどはそのままコピー
+				/// R8G8B8A8_UNORM などはそのままコピー
 				std::memcpy(rowDst, rowSrc,
 					static_cast<std::size_t>(w) * 4);
 			}
@@ -425,7 +425,7 @@ public:
 
 		context->Unmap(staging.Get(), 0);
 
-		/// GpuTexture2Dとして返す
+		/// GpuTexture2D として返す
 		return GpuTexture2D::createFromPixels(
 			m_device.Get(), w, h,
 			std::span<const std::uint8_t>(pixels));
@@ -441,7 +441,7 @@ public:
 		return m_initialized;
 	}
 
-	/// @brief シーンRTのSRVを取得する（外部パスからの参照用）
+	/// @brief シーン RT の SRV を取得する（外部パスからの参照用）
 	[[nodiscard]] ID3D11ShaderResourceView* sceneTextureSRV() const noexcept
 	{
 		return m_sceneRT.srv.Get();
@@ -453,7 +453,7 @@ public:
 		return m_depthStencilView.Get();
 	}
 
-	/// @brief 内部のPostProcessChainを取得する
+	/// @brief 内部の PostProcessChain を取得する
 	[[nodiscard]] PostProcessChain* chain() const noexcept
 	{
 		return m_chain.get();
@@ -511,14 +511,14 @@ private:
 		m_depthTexture = depthTexture;
 	}
 
-	/// @brief シーンRTの内容をバックバッファに直接コピーする
+	/// @brief シーン RT の内容をバックバッファに直接コピーする
 	/// @details 有効パスがない場合のフォールバック処理。
 	///          フルスクリーン三角形でシーンテクスチャをそのまま描画する。
 	void copySceneToBackbuffer(
 		ID3D11DeviceContext* context,
 		ID3D11RenderTargetView* backbufferRTV)
 	{
-		/// パススルーシェーダーでシーンRTをバックバッファに描画する
+		/// パススルーシェーダーでシーン RT をバックバッファに描画する
 		D3D11_VIEWPORT vp = {};
 		vp.Width = static_cast<float>(m_screenW);
 		vp.Height = static_cast<float>(m_screenH);
@@ -528,8 +528,8 @@ private:
 		context->OMSetRenderTargets(1, &backbufferRTV, nullptr);
 		context->VSSetShader(m_fullscreenVS.Get(), nullptr, 0);
 
-		/// パススルーPS: sceneTexture.Sample() をそのまま返す
-		/// コンパイル済みPSがなければ遅延生成する
+		/// パススルー PS: sceneTexture.Sample() をそのまま返す
+		/// コンパイル済み PS がなければ遅延生成する
 		if (!m_passthroughPS)
 		{
 			m_passthroughPS = compilePostProcessPS(
@@ -548,12 +548,12 @@ private:
 
 		context->Draw(3, 0);
 
-		/// SRVバインドを解除する
+		/// SRV バインドを解除する
 		ID3D11ShaderResourceView* nullSRV = nullptr;
 		context->PSSetShaderResources(0, 1, &nullSRV);
 	}
 
-	/// @brief 現在のconfigからチェーンを再構築する
+	/// @brief 現在の config からチェーンを再構築する
 	void rebuildChain()
 	{
 		if (!m_initialized)
@@ -565,8 +565,8 @@ private:
 			PostProcessChain::createFromConfig(
 				m_device.Get(), m_screenW, m_screenH, m_config));
 
-		/// FXAAはチェーンの最終段に追加する（ブルーム・カラーグレーディング後）
-		/// m_fullscreenVS/m_samplerを再利用し、再コンパイルを回避する
+		/// FXAA はチェーンの最終段に追加する（ブルーム・カラーグレーディング後）
+		/// m_fullscreenVS/m_sampler を再利用し、再コンパイルを回避する
 		if (m_config.fxaa.enabled)
 		{
 			auto fxaaPass = std::make_unique<FXAAPass>(

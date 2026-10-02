@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Win32Platform.hpp
-/// @brief Win32プラットフォーム実装
-/// @details Windows環境でのウィンドウ生成を担当するIPlatform実装。
+/// @brief Win32 プラットフォーム実装
+/// @details Windows 環境でのウィンドウ生成を担当する IPlatform 実装。
 
 #ifdef _WIN32
 
@@ -15,9 +15,9 @@
 namespace mitiru
 {
 
-/// @brief Win32プラットフォーム実装
-/// @details Win32Windowを生成するプラットフォーム。
-///          Windows環境でのみ使用可能。
+/// @brief Win32 プラットフォーム実装
+/// @details Win32Window を生成するプラットフォーム。
+///          Windows 環境でのみ使用可能。
 class Win32Platform final : public IPlatform
 {
 public:
@@ -25,7 +25,7 @@ public:
 	/// @param title ウィンドウタイトル（UTF-8）
 	/// @param width クライアント領域の幅
 	/// @param height クライアント領域の高さ
-	/// @return Win32Windowインスタンス
+	/// @return Win32Window インスタンス
 	[[nodiscard]] std::unique_ptr<IWindow> createWindow(
 		std::string_view title, int width, int height) override
 	{

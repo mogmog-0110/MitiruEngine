@@ -6,7 +6,7 @@
 ///          host→tool の一方向。host が自窓の外側矩形と状態を書き、ツール窓が読んで自分の
 ///          ドック位置 (辺への吸着) を計算して SetWindowPos で追従する。
 ///
-/// wire format (`%TEMP%/mitiru_wnd_<hostpid>.json`):
+/// wire format (`%TEMP%/mitiru_wnd_<hostpid>.json`)
 /// @code
 ///   { "x": 100, "y": 80, "w": 1280, "h": 720, "active": true, "min": false }
 /// @endcode
@@ -65,7 +65,7 @@ private:
 	std::filesystem::path m_path, m_tmp;
 };
 
-/// @brief ツール側。host 窓の矩形を polling 読み (reader)。mtime が変わった時だけ返す。
+/// @brief ツール側。host 窓の矩形を polling で読む (reader)。mtime が変わった時だけ返す。
 class DockReader
 {
 public:

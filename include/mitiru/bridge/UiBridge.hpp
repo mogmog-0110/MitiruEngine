@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file UiBridge.hpp
-/// @brief sgc UI統合ブリッジ
-/// @details sgcのUIウィジェットシステム（Button、Slider、Checkbox）を
-///          Mitiruの描画パイプラインと入力システムに統合する。
+/// @brief sgc UI 統合ブリッジ
+/// @details sgc の UI ウィジェットシステム（Button、Slider、Checkbox）を
+///          Mitiru の描画パイプラインと入力システムに統合する。
 
 #include <algorithm>
 #include <string>
@@ -23,8 +23,8 @@
 namespace mitiru::bridge
 {
 
-/// @brief UIウィジェット情報（後方互換）
-/// @details 旧APIからの移行用。addWidget(UiWidgetInfo)で使用する。
+/// @brief UI ウィジェット情報（後方互換）
+/// @details 旧 API からの移行用。addWidget(UiWidgetInfo) で使用する。
 struct UiWidgetInfo
 {
 	std::string name;    ///< ウィジェット名
@@ -40,8 +40,8 @@ enum class WidgetType
 	Checkbox   ///< チェックボックス
 };
 
-/// @brief UIウィジェット状態
-/// @details 各ウィジェットの位置・状態・種別固有パラメータを保持する。
+/// @brief UI ウィジェット状態
+/// @details 各ウィジェットの位置・状態・種別固有のパラメータを保持する。
 struct UiWidgetState
 {
 	std::string id;                                    ///< ウィジェットID
@@ -70,10 +70,10 @@ struct UiWidgetState
 	std::string legacyType;                            ///< 旧API互換の型文字列
 };
 
-/// @brief sgc UI統合ブリッジ
+/// @brief sgc UI 統合ブリッジ
 /// @details ウィジェットの登録・入力処理・描画を一元管理する。
-///          processInput()でsgcのevaluate関数を呼び出し、
-///          render()でScreenに矩形・テキストを描画する。
+///          processInput() で sgc の evaluate 関数を呼び出し、
+///          render() で Screen に矩形・テキストを描画する。
 ///
 /// @code
 /// mitiru::bridge::UiBridge ui;
@@ -93,7 +93,7 @@ struct UiWidgetState
 class UiBridge
 {
 public:
-	// ── 後方互換API ────────────────────────────────────────
+	// ── 後方互換 API ────────────────────────────────────────
 
 	/// @brief ウィジェットを追加する（後方互換）
 	/// @param widget ウィジェット情報
@@ -104,7 +104,7 @@ public:
 		state.label = widget.name;
 		state.visible = widget.visible;
 
-		/// 型文字列からWidgetTypeを推定する
+		/// 型文字列から WidgetType を推定する
 		if (widget.type == "Slider")
 		{
 			state.type = WidgetType::Slider;
@@ -118,7 +118,7 @@ public:
 			state.type = WidgetType::Button;
 		}
 
-		/// 型文字列を保存する（toJsonで使用）
+		/// 型文字列を保存する（toJson で使用）
 		state.legacyType = widget.type;
 
 		m_widgets[widget.name] = std::move(state);
@@ -128,7 +128,7 @@ public:
 	// ── ウィジェット追加 ────────────────────────────────────
 
 	/// @brief ボタンを追加する
-	/// @param id ウィジェットID
+	/// @param id ウィジェット ID
 	/// @param bounds 矩形領域
 	/// @param label ボタンラベル
 	void addButton(const std::string& id, const sgc::Rectf& bounds, const std::string& label)
@@ -143,7 +143,7 @@ public:
 	}
 
 	/// @brief スライダーを追加する
-	/// @param id ウィジェットID
+	/// @param id ウィジェット ID
 	/// @param bounds 矩形領域
 	/// @param minVal 最小値
 	/// @param maxVal 最大値
@@ -163,7 +163,7 @@ public:
 	}
 
 	/// @brief チェックボックスを追加する
-	/// @param id ウィジェットID
+	/// @param id ウィジェット ID
 	/// @param bounds 矩形領域
 	/// @param checked 初期チェック状態
 	void addCheckbox(const std::string& id, const sgc::Rectf& bounds, bool checked)
@@ -180,7 +180,7 @@ public:
 	// ── ウィジェット管理 ────────────────────────────────────
 
 	/// @brief ウィジェットを削除する
-	/// @param id ウィジェットID
+	/// @param id ウィジェット ID
 	void removeWidget(const std::string& id)
 	{
 		m_widgets.erase(id);
@@ -190,8 +190,8 @@ public:
 	}
 
 	/// @brief ウィジェット状態を取得する
-	/// @param id ウィジェットID
-	/// @return ウィジェット状態へのポインタ（未登録時はnullptr）
+	/// @param id ウィジェット ID
+	/// @return ウィジェット状態へのポインタ（未登録時は nullptr）
 	[[nodiscard]] const UiWidgetState* getWidget(const std::string& id) const
 	{
 		const auto it = m_widgets.find(id);
@@ -202,9 +202,9 @@ public:
 		return &it->second;
 	}
 
-	/// @brief ウィジェット状態を取得する（非const版）
-	/// @param id ウィジェットID
-	/// @return ウィジェット状態へのポインタ（未登録時はnullptr）
+	/// @brief ウィジェット状態を取得する（非 const 版）
+	/// @param id ウィジェット ID
+	/// @return ウィジェット状態へのポインタ（未登録時は nullptr）
 	[[nodiscard]] UiWidgetState* getWidget(const std::string& id)
 	{
 		const auto it = m_widgets.find(id);
@@ -233,7 +233,7 @@ public:
 
 	/// @brief 入力状態からウィジェットを評価する
 	/// @param input 現在フレームの入力状態
-	/// @details sgcのevaluateButton/evaluateSlider/evaluateCheckboxを使用し、
+	/// @details sgc の evaluateButton/evaluateSlider/evaluateCheckbox を使用し、
 	///          各ウィジェットの視覚状態・クリック・値変更を更新する。
 	void processInput(const InputState& input)
 	{
@@ -326,8 +326,8 @@ public:
 
 	// ── シリアライズ ────────────────────────────────────────
 
-	/// @brief UIツリー情報をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief UI ツリー情報を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -344,7 +344,7 @@ public:
 			if (!first) json += ",";
 
 			const auto& w = it->second;
-			/// 型文字列: legacyTypeがあればそちらを優先する（後方互換）
+			/// 型文字列: legacyType があればそちらを優先する（後方互換）
 			const auto& typeStr = w.legacyType.empty() ? widgetTypeToString(w.type) : w.legacyType;
 
 			json += "{";
@@ -459,7 +459,7 @@ private:
 	/// @brief ID → ウィジェット状態
 	std::unordered_map<std::string, UiWidgetState> m_widgets;
 
-	/// @brief 描画順序を保持するID列
+	/// @brief 描画順序を保持する ID 列
 	std::vector<std::string> m_order;
 };
 

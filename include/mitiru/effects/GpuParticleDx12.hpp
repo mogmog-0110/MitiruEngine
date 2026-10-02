@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file GpuParticleDx12.hpp
-/// @brief DirectX 12 GPUパーティクルシステム実装
-/// @details UAV付き構造化バッファ + コンピュートパイプラインによるGPUシミュレーションと、
-///          Indirect Drawによるパーティクル描画を行う。
-///          コンピュートとレンダリング間のリソースバリアを適切に管理する。
+/// @brief DirectX 12 GPU パーティクルシステム実装
+/// @details UAV 付き構造化バッファ + コンピュートパイプラインによる GPU シミュレーションと、
+///          Indirect Draw によるパーティクル描画を行う。
+///          コンピュートとレンダリングの間のリソースバリアを適切に管理する。
 ///          シェーダーソースは GpuParticleDx12_shaders_tables.hpp、
 ///          リソース・パイプライン構築の実装本体は detail/GpuParticleDx12_impl.hpp。
 ///
@@ -34,6 +34,7 @@
 #include <cstring>
 #include <random>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -47,6 +48,9 @@
 #pragma comment(lib, "d3dcompiler.lib")
 
 #include <mitiru/effects/GpuParticleBase.hpp>
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
+#include <mitiru/gfx/dx12/Dx12FenceWait.hpp>
 #include <mitiru/effects/GpuParticleDx12_shaders_tables.hpp>
 #include <mitiru/render/Camera3D.hpp>
 
@@ -55,19 +59,19 @@
 namespace mitiru::effects
 {
 
-/// @brief DirectX 12 GPUパーティクルシステム実装
-/// @details UAV付き構造化バッファとコンピュートパイプラインによるシミュレーション。
-///          Indirect Drawで生存パーティクル数のみを描画する。
+/// @brief DirectX 12 GPU パーティクルシステム実装
+/// @details UAV 付き構造化バッファとコンピュートパイプラインによるシミュレーション。
+///          Indirect Draw で生存パーティクル数だけを描画する。
 ///          コンピュート→レンダリング間のリソースバリアを管理する。
 class GpuParticleDx12 final : public GpuParticleBase
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param commandQueue コマンドキュー
 	/// @param maxParticles 最大パーティクル数
 	explicit GpuParticleDx12(ID3D12Device* device,
@@ -101,7 +105,7 @@ public:
 		}
 	}
 
-	/// @brief GPUシミュレーションを実行する
+	/// @brief GPU シミュレーションを実行する
 	void update(float dt) override
 	{
 		MITIRU_ZONE_NAMED("Particle::GpuUpdate");
@@ -142,7 +146,7 @@ public:
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-		/// IndirectArgsバッファをUAV状態にする
+		/// IndirectArgs バッファを UAV 状態にする
 		transitionResource(m_commandList.Get(),
 			m_indirectArgsBuffer.Get(),
 			D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
@@ -200,7 +204,7 @@ public:
 		}
 	}
 
-	/// @brief パーティクルをIndirect Drawで描画する
+	/// @brief パーティクルを Indirect Draw で描画する
 	void render(const mitiru::render::Camera3D& camera) override
 	{
 		MITIRU_ZONE_NAMED("Particle::GpuRender");
@@ -234,7 +238,7 @@ public:
 		m_commandList->SetGraphicsRootConstantBufferView(
 			0, m_renderConstantUpload->GetGPUVirtualAddress());
 
-		/// パーティクルSRVを設定する
+		/// パーティクル SRV を設定する
 		m_commandList->SetGraphicsRootDescriptorTable(
 			1, srvGpuHandle(m_currentBuffer));
 
@@ -242,7 +246,7 @@ public:
 		m_commandList->IASetPrimitiveTopology(
 			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		/// Indirect Drawを実行する
+		/// Indirect Draw を実行する
 		m_commandList->ExecuteIndirect(
 			m_commandSignature.Get(),
 			1,
@@ -268,10 +272,10 @@ private:
 	/// @brief 構造化バッファとアップロードバッファを生成する
 	void createBuffers();
 
-	/// @brief SRV/UAVデスクリプタヒープを生成する
+	/// @brief SRV/UAV デスクリプタヒープを生成する
 	void createDescriptorHeap();
 
-	/// @brief GPUハンドルヘルパー: SRV
+	/// @brief GPU ハンドルヘルパー: SRV
 	[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle(
 		std::uint32_t bufferIndex) const noexcept
 	{
@@ -280,7 +284,7 @@ private:
 		return handle;
 	}
 
-	/// @brief GPUハンドルヘルパー: UAV
+	/// @brief GPU ハンドルヘルパー: UAV
 	[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE uavGpuHandle(
 		std::uint32_t bufferIndex) const noexcept
 	{
@@ -289,7 +293,7 @@ private:
 		return handle;
 	}
 
-	/// @brief GPUハンドルヘルパー: IndirectArgs UAV
+	/// @brief GPU ハンドルヘルパー: IndirectArgs UAV
 	[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE indirectArgsUavGpuHandle() const noexcept
 	{
 		auto handle = m_srvUavHeap->GetGPUDescriptorHandleForHeapStart();
@@ -306,13 +310,13 @@ private:
 	/// @brief レンダリングパイプラインを生成する
 	void createRenderPipeline();
 
-	/// @brief ExecuteIndirect用のコマンドシグネチャを生成する
+	/// @brief ExecuteIndirect 用のコマンドシグネチャを生成する
 	void createCommandSignature();
 
 	/// @brief フェンスを生成する
 	void createFence();
 
-	/// @brief GPU処理の完了を待機する
+	/// @brief GPU 処理の完了を待つ
 	void waitForGpu()
 	{
 		if (!m_fence || !m_commandQueue)
@@ -323,14 +327,10 @@ private:
 		++m_fenceValue;
 		m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
 
-		if (m_fence->GetCompletedValue() < m_fenceValue)
-		{
-			m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent);
-			WaitForSingleObject(m_fenceEvent, INFINITE);
-		}
+		(void)gfx::waitForFenceOrReport(m_fence.Get(), m_fenceValue, m_fenceEvent, "GpuParticleDx12");
 	}
 
-	/// @brief ステージングパーティクルをGPUにアップロードする
+	/// @brief ステージングパーティクルを GPU にアップロードする
 	void uploadStagingParticles()
 	{
 		const std::uint32_t uploadCount = prepareStagingUpload();
@@ -351,7 +351,7 @@ private:
 		m_commandAllocator->Reset();
 		m_commandList->Reset(m_commandAllocator.Get(), nullptr);
 
-		/// パーティクルバッファをCOPY_DEST状態にする
+		/// パーティクルバッファを COPY_DEST 状態にする
 		transitionResource(m_commandList.Get(),
 			m_particleBuffer[m_currentBuffer].Get(),
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
@@ -364,7 +364,7 @@ private:
 			0,
 			uploadSize);
 
-		/// SRV状態に戻す
+		/// SRV 状態に戻す
 		transitionResource(m_commandList.Get(),
 			m_particleBuffer[m_currentBuffer].Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST,
@@ -495,7 +495,7 @@ private:
 		cmdList->ResourceBarrier(1, &barrier);
 	}
 
-	/// @brief HLSL文字列をコンパイルする
+	/// @brief HLSL 文字列をコンパイルする
 	[[nodiscard]] static ComPtr<ID3DBlob> compileHLSL(
 		std::string_view source,
 		const char* entryPoint,
@@ -510,17 +510,12 @@ private:
 		compileFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
-		HRESULT hr = D3DCompile(
-			source.data(), source.size(),
-			nullptr, nullptr, nullptr,
-			entryPoint, target,
-			compileFlags, 0,
-			shaderBlob.GetAddressOf(),
-			errorBlob.GetAddressOf());
+		HRESULT hr = gfx::compileDx12Shader(source, entryPoint, target, compileFlags,
+			shaderBlob.GetAddressOf(), errorBlob.GetAddressOf());
 
 		if (FAILED(hr))
 		{
-			std::string errorMsg = "GpuParticleDx12: D3DCompile failed";
+			std::string errorMsg = "GpuParticleDx12: shader compile failed";
 			if (errorBlob)
 			{
 				errorMsg += ": ";
@@ -533,7 +528,7 @@ private:
 		return shaderBlob;
 	}
 
-	// ── DX12固有メンバ変数 ──────────────────────────────
+	// ── DX12 固有メンバ変数 ──────────────────────────────
 	ID3D12Device* m_device = nullptr;                              ///< D3D12デバイス（非所有）
 	ID3D12CommandQueue* m_commandQueue = nullptr;                  ///< コマンドキュー（非所有）
 
@@ -542,14 +537,14 @@ private:
 	ComPtr<ID3D12GraphicsCommandList> m_commandList;
 
 	/// パーティクルバッファ（ピンポン）
-	ComPtr<ID3D12Resource> m_particleBuffer[2];
-	ComPtr<ID3D12Resource> m_uploadBuffer;                         ///< アップロードバッファ
-	ComPtr<ID3D12Resource> m_readbackBuffer;                       ///< リードバックバッファ
-	ComPtr<ID3D12Resource> m_indirectArgsBuffer;                   ///< Indirect Argsバッファ
+	gfx::GpuResource m_particleBuffer[2];
+	gfx::GpuResource m_uploadBuffer;                         ///< アップロードバッファ
+	gfx::GpuResource m_readbackBuffer;                       ///< リードバックバッファ
+	gfx::GpuResource m_indirectArgsBuffer;                   ///< Indirect Argsバッファ
 
 	/// 定数バッファ
-	ComPtr<ID3D12Resource> m_simConstantUpload;                    ///< シミュレーション定数
-	ComPtr<ID3D12Resource> m_renderConstantUpload;                 ///< 描画定数
+	gfx::GpuResource m_simConstantUpload;                    ///< シミュレーション定数
+	gfx::GpuResource m_renderConstantUpload;                 ///< 描画定数
 
 	/// デスクリプタヒープ
 	ComPtr<ID3D12DescriptorHeap> m_srvUavHeap;
@@ -570,7 +565,7 @@ private:
 
 } // namespace mitiru::effects
 
-// 実装本体（render/Renderer3D.hpp と同じ末尾 detail include 流儀）
+// 実装本体（render/Renderer3D.hpp と同じく、末尾で detail を include する流儀）
 #include <mitiru/effects/detail/GpuParticleDx12_impl.hpp>
 
 #endif // _WIN32

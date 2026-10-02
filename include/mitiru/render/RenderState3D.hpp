@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file RenderState3D.hpp
-/// @brief 3Dレンダリングステート管理
-/// @details ワイヤーフレーム、カリング、深度テスト、ブレンド等の3D描画状態を定義する。
+/// @brief 3D レンダリングステート管理
+/// @details ワイヤーフレーム、カリング、深度テスト、ブレンド等の 3D 描画状態を定義する。
 ///          プリセットファクトリで一般的な描画状態を簡単に取得できる。
 
 namespace mitiru::render
@@ -16,7 +16,7 @@ enum class CullMode
 	Front   ///< 前面カリング
 };
 
-/// @brief 3D描画状態
+/// @brief 3D 描画状態
 /// @details ラスタライザ・深度・ブレンドの各種設定をまとめた構造体。
 ///          ファクトリメソッドで一般的なプリセットを取得できる。
 ///
@@ -75,7 +75,7 @@ struct RenderState3D
 
 	/// @brief 等値比較演算子
 	/// @param other 比較対象
-	/// @return 全フィールドが一致すればtrue
+	/// @return 全フィールドが一致すれば true
 	[[nodiscard]] constexpr bool operator==(const RenderState3D& other) const noexcept
 	{
 		return wireframe == other.wireframe
@@ -87,7 +87,7 @@ struct RenderState3D
 
 	/// @brief 非等値比較演算子
 	/// @param other 比較対象
-	/// @return いずれかのフィールドが異なればtrue
+	/// @return いずれかのフィールドが異なれば true
 	[[nodiscard]] constexpr bool operator!=(const RenderState3D& other) const noexcept
 	{
 		return !(*this == other);

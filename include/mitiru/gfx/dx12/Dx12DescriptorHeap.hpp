@@ -2,8 +2,8 @@
 
 /// @file Dx12DescriptorHeap.hpp
 /// @brief DirectX 12 デスクリプタヒープ実装
-/// @details ID3D12DescriptorHeapをラップし、リニアアロケータによる
-///          デスクリプタの割り当てと管理を提供するIDescriptorHeap実装。
+/// @details ID3D12DescriptorHeap をラップし、リニアアロケータによる
+///          デスクリプタの割り当てと管理を提供する IDescriptorHeap 実装。
 
 #ifdef _WIN32
 
@@ -27,7 +27,7 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 12デスクリプタヒープ実装
+/// @brief DirectX 12 デスクリプタヒープ実装
 /// @details リニアアロケータで効率的にデスクリプタを割り当てる。
 ///          フリーリストによる再利用もサポートする。
 ///
@@ -39,12 +39,12 @@ namespace mitiru::gfx
 class Dx12DescriptorHeap final : public IDescriptorHeap
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param heapType ヒープ種別
 	/// @param capacity 最大デスクリプタ数
 	Dx12DescriptorHeap(ID3D12Device* device,
@@ -64,7 +64,7 @@ public:
 		desc.Type = toD3D12HeapType(heapType);
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
-		/// CBV/SRV/UAVとSamplerヒープはシェーダーから参照可能にする
+		/// CBV/SRV/UAV と Sampler ヒープはシェーダーから参照可能にする
 		if (heapType == DescriptorHeapType::CbvSrvUav ||
 		    heapType == DescriptorHeapType::Sampler)
 		{
@@ -82,7 +82,7 @@ public:
 		m_descriptorSize = device->GetDescriptorHandleIncrementSize(desc.Type);
 		m_cpuStart = m_heap->GetCPUDescriptorHandleForHeapStart();
 
-		/// シェーダー可視ヒープの場合はGPUハンドルも取得
+		/// シェーダー可視ヒープの場合は GPU ハンドルも取得
 		if (desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
 		{
 			m_gpuStart = m_heap->GetGPUDescriptorHandleForHeapStart();
@@ -108,8 +108,8 @@ public:
 		return m_allocatedCount;
 	}
 
-	/// @brief デスクリプタを1つ割り当てる
-	/// @return 割り当てられたCPUデスクリプタハンドル
+	/// @brief デスクリプタを 1 つ割り当てる
+	/// @return 割り当てられた CPU デスクリプタハンドル
 	[[nodiscard]] CpuDescriptorHandle allocate() override
 	{
 		/// フリーリストに空きがあれば再利用する
@@ -136,7 +136,7 @@ public:
 	}
 
 	/// @brief デスクリプタを解放する
-	/// @param handle 解放するCPUデスクリプタハンドル
+	/// @param handle 解放する CPU デスクリプタハンドル
 	void free(CpuDescriptorHandle handle) override
 	{
 		if (handle.isValid() && m_allocatedCount > 0)
@@ -146,9 +146,9 @@ public:
 		}
 	}
 
-	/// @brief CPUハンドルに対応するGPUハンドルを取得する
-	/// @param cpuHandle 変換元のCPUデスクリプタハンドル
-	/// @return 対応するGPUデスクリプタハンドル
+	/// @brief CPU ハンドルに対応する GPU ハンドルを取得する
+	/// @param cpuHandle 変換元の CPU デスクリプタハンドル
+	/// @return 対応する GPU デスクリプタハンドル
 	[[nodiscard]] GpuDescriptorHandle gpuHandle(
 		CpuDescriptorHandle cpuHandle) const override
 	{
@@ -163,7 +163,7 @@ public:
 		return handle;
 	}
 
-	/// @brief 内部のID3D12DescriptorHeapを取得する
+	/// @brief 内部の ID3D12DescriptorHeap を取得する
 	/// @return ヒープへのポインタ
 	[[nodiscard]] ID3D12DescriptorHeap* nativeHeap() const noexcept
 	{
@@ -171,16 +171,16 @@ public:
 	}
 
 	/// @brief デスクリプタサイズを取得する
-	/// @return 1デスクリプタあたりのバイト数
+	/// @return 1 デスクリプタあたりのバイト数
 	[[nodiscard]] uint32_t descriptorSize() const noexcept
 	{
 		return m_descriptorSize;
 	}
 
 private:
-	/// @brief DescriptorHeapTypeをD3D12_DESCRIPTOR_HEAP_TYPEに変換する
+	/// @brief DescriptorHeapType を D3D12_DESCRIPTOR_HEAP_TYPE に変換する
 	/// @param heapType 変換元の種別
-	/// @return D3D12のヒープ種別
+	/// @return D3D12 のヒープ種別
 	[[nodiscard]] static D3D12_DESCRIPTOR_HEAP_TYPE toD3D12HeapType(
 		DescriptorHeapType heapType) noexcept
 	{

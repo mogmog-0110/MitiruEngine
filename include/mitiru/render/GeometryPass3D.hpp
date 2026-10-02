@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GeometryPass3D.hpp
-/// @brief GPU ジオメトリパス。depth / world-normal / objectId を MRT に焼く（NPR 輪郭線の前段）
+/// @brief GPU ジオメトリパス。depth / world-normal / objectId を MRT に書き出す（NPR 輪郭線の前段）
 /// @details Scene3D の各メッシュを GPU で 1 パス描画し、(0) 深度 R32_FLOAT、(1) ワールド法線
 ///          RGBA16F、(2) objectId R32_UINT を MRT に出力する。これが GPU 版輪郭抽出
 ///          （`ContourDetect` 相当の fullscreen PS、別パス）の入力になる。CPU software deferred

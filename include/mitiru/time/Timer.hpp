@@ -5,7 +5,7 @@
 /// @file Timer.hpp
 /// @brief gameplay 用の一発 countdown timer (調理 timer、ダイアログ待ち等)
 ///
-/// 使用例:
+/// 使用例。
 /// @code
 ///   mitiru::time::Timer t{3.0f};
 ///   // in update loop:
@@ -35,7 +35,7 @@ public:
         if (m_remaining < 0.0f) { m_remaining = 0.0f; }
     }
 
-    /// 蓄積した時間が元の duration に達した、または超えた時 true を返す。
+    /// 蓄積した時間が元の duration に達した、または超えたとき true を返す。
     [[nodiscard]] bool expired() const noexcept {
         return m_remaining <= 0.0f;
     }

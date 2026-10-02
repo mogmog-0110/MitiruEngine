@@ -1,22 +1,17 @@
 #pragma once
 
 /// @file MiniaudioBridge.hpp
-/// @brief MiniaudioEngineとVN/ゲームオーディオシステムのブリッジ
-/// @details DynamicBGMControllerやAudioMixerのコールバックを
-///          MiniaudioEngineの実APIに接続するアダプタ。
-///          1行のセットアップでVNオーディオを動作させる。
+/// @brief MiniaudioEngine とゲームオーディオシステムのブリッジ
+/// @details AudioMixer のコールバックを MiniaudioEngine の実 API に接続するアダプタ。
 ///
 /// @code
 /// mitiru::audio::MiniaudioEngine engine;
-/// mitiru::vn::DynamicBGMController bgm;
 /// mitiru::audio::AudioMixer mixer;
 ///
 /// mitiru::audio::MiniaudioBridge bridge(engine);
 /// bridge.setBasePath("assets/audio/");
-/// bridge.connectToDynamicBGM(bgm);
 /// bridge.connectToAudioMixer(mixer);
 ///
-/// // VN voice/SE playback
 /// bridge.playVoice("voice/ch01_001.ogg");
 /// bridge.playSE("se/click.wav");
 /// bridge.playBGM("bgm/main_theme.mp3", true);
@@ -24,19 +19,19 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <string_view>
 
 #include "MiniaudioEngine.hpp"
 #include "AudioMixer.hpp"
-#include "../vn/DynamicBGM.hpp"
 
 namespace mitiru::audio
 {
 
-/// @brief サポートするオーディオフォーマット
-enum class AudioFormat : std::uint8_t
+/// @brief 拡張子から見た音声ファイルの形式 (PCM の並びを表す AudioStream.hpp の AudioFormat とは別物)
+enum class AudioFileFormat : std::uint8_t
 {
 	Wav,
 	Mp3,
@@ -45,15 +40,14 @@ enum class AudioFormat : std::uint8_t
 	Unknown,
 };
 
-/// @brief MiniaudioEngineとVN/ゲームオーディオシステムのブリッジ
-/// @details MiniaudioEngineへの参照を保持し、DynamicBGMControllerや
-///          AudioMixerが要求するコールバックを実装して接続する。
-///          ボイス・SE・BGMの再生ヘルパーも提供する。
+/// @brief MiniaudioEngine とゲームオーディオシステムのブリッジ
+/// @details MiniaudioEngine への参照を保持し、AudioMixer が要求する
+///          コールバックを実装して接続する。ボイス・SE・BGM の再生ヘルパーも提供する。
 class MiniaudioBridge
 {
 public:
 	/// @brief コンストラクタ
-	/// @param engine MiniaudioEngineへの参照（ライフタイムはブリッジより長いこと）
+	/// @param engine MiniaudioEngine への参照（ライフタイムはブリッジより長いこと）
 	explicit MiniaudioBridge(MiniaudioEngine& engine) noexcept
 		: m_engine(engine)
 	{
@@ -68,7 +62,7 @@ public:
 	// ── ベースパス設定 ────────────────────────────────────────
 
 	/// @brief オーディオアセットのベースディレクトリを設定する
-	/// @param path ディレクトリパス（末尾スラッシュは自動補完）
+	/// @param path ディレクトリパス（末尾のスラッシュは自動で補う）
 	void setBasePath(std::string_view path)
 	{
 		m_basePath = std::string(path);
@@ -81,39 +75,12 @@ public:
 	/// @brief ベースパスを取得する
 	[[nodiscard]] const std::string& basePath() const noexcept { return m_basePath; }
 
-	// ── DynamicBGMController接続 ─────────────────────────────
+	// ── AudioMixer 接続 ───────────────────────────────────────
 
-	/// @brief DynamicBGMControllerにコールバックを接続する
-	/// @param bgm 接続先のDynamicBGMController
-	void connectToDynamicBGM(vn::DynamicBGMController& bgm)
-	{
-		bgm.setPlayCallback(
-			[this](const std::string& audioId, float volume, float /*fadeDuration*/)
-			{
-				std::string fullPath = resolveAudioPath(audioId);
-				m_engine.setMasterVolume(volume);
-				m_engine.playFile(fullPath);
-			});
-
-		bgm.setStopCallback(
-			[this](const std::string& /*audioId*/, float /*fadeDuration*/)
-			{
-				m_engine.stopAll();
-			});
-
-		bgm.setVolumeCallback(
-			[this](const std::string& /*audioId*/, float volume)
-			{
-				m_engine.setMasterVolume(std::clamp(volume, 0.0f, 1.0f));
-			});
-	}
-
-	// ── AudioMixer接続 ───────────────────────────────────────
-
-	/// @brief AudioMixerにコールバックを接続する
+	/// @brief AudioMixer にコールバックを接続する
 	/// @details ミキサーのチャンネル停止イベントを受け取り、
-	///          ミキサーのplay呼び出し時に実際のファイル再生を行う。
-	/// @param mixer 接続先のAudioMixer
+	///          ミキサーの play 呼び出し時に実際のファイル再生を行う。
+	/// @param mixer 接続先の AudioMixer
 	void connectToAudioMixer(AudioMixer& mixer)
 	{
 		mixer.setOnChannelStopped(
@@ -128,7 +95,7 @@ public:
 	// ── 直接再生ヘルパー ─────────────────────────────────────
 
 	/// @brief ボイスを再生する（前のボイスは停止）
-	/// @param path ボイスファイルパス（ベースパスからの相対パス）
+	/// @param path ボイスファイルのパス（ベースパスからの相対パス）
 	void playVoice(std::string_view path)
 	{
 		// playVoiceEx (#F6) は BGM/SE と独立したスロットなので、BGM を止めずにボイスだけ差し替わる。
@@ -143,7 +110,7 @@ public:
 	}
 
 	/// @brief 効果音を再生する（他の再生に影響しない）
-	/// @param path SEファイルパス（ベースパスからの相対パス）
+	/// @param path SE ファイルのパス（ベースパスからの相対パス）
 	void playSE(std::string_view path)
 	{
 		std::string fullPath = resolveAudioPath(path);
@@ -155,8 +122,8 @@ public:
 		}
 	}
 
-	/// @brief BGMを再生する
-	/// @param path BGMファイルパス（ベースパスからの相対パス）
+	/// @brief BGM を再生する
+	/// @param path BGM ファイルのパス（ベースパスからの相対パス）
 	/// @param loop ループ再生するか
 	void playBGM(std::string_view path, bool loop = true)
 	{
@@ -184,33 +151,33 @@ public:
 	/// @brief ファイル拡張子からオーディオフォーマットを判定する
 	/// @param path ファイルパス
 	/// @return 判定されたフォーマット
-	[[nodiscard]] static AudioFormat detectFormat(std::string_view path) noexcept
+	[[nodiscard]] static AudioFileFormat detectFormat(std::string_view path) noexcept
 	{
 		auto dotPos = path.rfind('.');
 		if (dotPos == std::string_view::npos)
 		{
-			return AudioFormat::Unknown;
+			return AudioFileFormat::Unknown;
 		}
 		auto ext = path.substr(dotPos + 1);
 
-		if (ext == "wav" || ext == "WAV") return AudioFormat::Wav;
-		if (ext == "mp3" || ext == "MP3") return AudioFormat::Mp3;
-		if (ext == "flac" || ext == "FLAC") return AudioFormat::Flac;
-		if (ext == "ogg" || ext == "OGG") return AudioFormat::Ogg;
-		return AudioFormat::Unknown;
+		if (ext == "wav" || ext == "WAV") return AudioFileFormat::Wav;
+		if (ext == "mp3" || ext == "MP3") return AudioFileFormat::Mp3;
+		if (ext == "flac" || ext == "FLAC") return AudioFileFormat::Flac;
+		if (ext == "ogg" || ext == "OGG") return AudioFileFormat::Ogg;
+		return AudioFileFormat::Unknown;
 	}
 
-	/// @brief 指定フォーマットがminiaudioでサポートされているか
+	/// @brief 指定したフォーマットが miniaudio でサポートされているか
 	/// @param format オーディオフォーマット
-	/// @return サポートされていればtrue
-	[[nodiscard]] static bool isFormatSupported(AudioFormat format) noexcept
+	/// @return サポートされていれば true
+	[[nodiscard]] static bool isFormatSupported(AudioFileFormat format) noexcept
 	{
-		return format != AudioFormat::Unknown;
+		return format != AudioFileFormat::Unknown;
 	}
 
-	/// @brief ファイルパスがサポートされたフォーマットか判定する
+	/// @brief ファイルパスがサポートされているフォーマットか判定する
 	/// @param path ファイルパス
-	/// @return サポートされていればtrue
+	/// @return サポートされていれば true
 	[[nodiscard]] static bool isFileSupported(std::string_view path) noexcept
 	{
 		return isFormatSupported(detectFormat(path));
@@ -224,7 +191,7 @@ public:
 
 	// ── エンジンアクセス ─────────────────────────────────────
 
-	/// @brief 内部のMiniaudioEngineへの参照を取得する
+	/// @brief 内部の MiniaudioEngine への参照を取得する
 	[[nodiscard]] MiniaudioEngine& engine() noexcept { return m_engine; }
 	[[nodiscard]] const MiniaudioEngine& engine() const noexcept { return m_engine; }
 
@@ -232,8 +199,8 @@ public:
 	[[nodiscard]] bool isReady() const noexcept { return m_engine.isInitialized(); }
 
 private:
-	/// @brief audioIdをフルパスに解決する
-	/// @param audioId オーディオリソースIDまたは相対パス
+	/// @brief audioId をフルパスに解決する
+	/// @param audioId オーディオリソース ID または相対パス
 	/// @return ベースパス付きのフルパス
 	[[nodiscard]] std::string resolveAudioPath(std::string_view audioId) const
 	{

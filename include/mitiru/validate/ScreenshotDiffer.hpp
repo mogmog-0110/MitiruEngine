@@ -2,11 +2,12 @@
 
 /// @file ScreenshotDiffer.hpp
 /// @brief スクリーンショット比較ユーティリティ
-/// @details 2枚のスクリーンショットをピクセル単位で比較し、差分結果・差分画像を生成する。
+/// @details 2 枚のスクリーンショットをピクセル単位で比較し、差分結果・差分画像を生成する。
 ///          ビジュアルリグレッションテストの基盤として使用される。
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <limits>
 #include <string>
@@ -14,12 +15,13 @@
 #include <sgc/math/Rect.hpp>
 #include <mitiru/render/ScreenCapture.hpp>
 #include <mitiru/observe/JsonEscape.hpp>
+#include <mitiru/validate/FlipMetric.hpp>
 
 namespace mitiru::validate
 {
 
 /// @brief ピクセル比較の差分結果
-/// @details 比較対象の2枚の画像間の差異を数値・領域情報として保持する。
+/// @details 比較対象の 2 枚の画像間の差異を数値・領域情報として保持する。
 struct DiffResult
 {
 	bool match = true;              ///< 全ピクセルが許容範囲内であればtrue
@@ -29,8 +31,8 @@ struct DiffResult
 	int maxChannelDiff = 0;         ///< 全チャンネル中の最大差分値（0〜255）
 	sgc::Rectf boundingBox{};       ///< 差異ピクセルを囲む最小矩形
 
-	/// @brief 差分結果をJSON文字列に変換する
-	/// @return JSON文字列
+	/// @brief 差分結果を JSON 文字列に変換する
+	/// @return JSON 文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json = "{";
@@ -49,8 +51,37 @@ struct DiffResult
 	}
 };
 
+/// @brief golden 比較の合格条件。画素差と FLIP の両方を満たした時だけ合格
+/// @details FLIP の既定値は、現行の golden が DX12 の WARP でも通る値 (実測の最大は mean 0.009、
+///          上位 0.1% 0.041) に余裕を持たせつつ、場面全体が 1 px ずれる・物が 1 つ消えるといった
+///          見て分かる違いは落ちる値。根拠は tests/render/README.md。
+struct GoldenThresholds
+{
+	int   tolerance      = 2;      ///< compare() に渡すチャンネルごとの許容差
+	float maxDiffPercent = 0.5f;   ///< tolerance を超えた画素の割合 (%) の上限
+	float maxFlipMean    = 0.05f;  ///< FLIP 誤差の平均の上限
+	float maxFlipP999    = 0.15f;  ///< FLIP 誤差の上位 0.1% の位置の上限
+};
+
+/// @brief golden 比較の結果
+struct GoldenVerdict
+{
+	bool       pass = false;
+	DiffResult pixel;
+	FlipResult flip;
+
+	/// @brief 失敗の報告に出す 1 行 ("diff 0.012% (max channel 3), FLIP mean 0.0021 p99.9 0.041")
+	[[nodiscard]] std::string summary() const
+	{
+		char buf[192];
+		std::snprintf(buf, sizeof(buf), "diff %.4f%% (max channel %d), FLIP mean %.4f p99.9 %.4f max %.4f",
+		              pixel.diffPercentage, pixel.maxChannelDiff, flip.mean, flip.p999, flip.max);
+		return buf;
+	}
+};
+
 /// @brief スクリーンショットのピクセル単位比較器
-/// @details 2枚のスクリーンショットを比較し、差分情報の算出や差分画像の生成を行う。
+/// @details 2 枚のスクリーンショットを比較し、差分情報の算出や差分画像の生成を行う。
 ///
 /// @code
 /// mitiru::validate::ScreenshotDiffer differ;
@@ -63,10 +94,10 @@ struct DiffResult
 class ScreenshotDiffer
 {
 public:
-	/// @brief 2枚のスクリーンショットをピクセル単位で比較する
+	/// @brief 2 枚のスクリーンショットをピクセル単位で比較する
 	/// @param expected 期待画像（ゴールデンイメージ）
 	/// @param actual 実際の画像（テスト対象）
-	/// @param tolerance チャンネルごとの許容差分値（0=完全一致、10=±10まで許容）
+	/// @param tolerance チャンネルごとの許容差分値（0=完全一致、10=±10 まで許容）
 	/// @return 差分結果
 	/// @note 画像サイズが異なる場合は不一致として全ピクセルを差分扱いにする
 	[[nodiscard]] DiffResult compare(
@@ -156,7 +187,7 @@ public:
 	/// @param actual 実際の画像
 	/// @param maxDiffPercent 許容する差異ピクセルの最大割合（%）
 	/// @param tolerance チャンネルごとの許容差分値
-	/// @return diffPercentage <= maxDiffPercent であればtrue
+	/// @return diffPercentage <= maxDiffPercent であれば true
 	[[nodiscard]] bool matches(
 		const render::ScreenshotData& expected,
 		const render::ScreenshotData& actual,
@@ -167,12 +198,31 @@ public:
 		return result.diffPercentage <= maxDiffPercent;
 	}
 
+	/// @brief golden と画素差・FLIP の両方で比べる。大きさが違えば不合格
+	/// @details 画素差は「どれだけの画素が変わったか」、FLIP は「人が見て分かる違いか」を測る。
+	///          片方だけでは、全体がわずかに明るい (画素差は大、見た目は同じ) と、小さな物が
+	///          1 つ消えた (画素差は小、見た目は違う) を取り違える。
+	[[nodiscard]] GoldenVerdict compareGolden(
+		const render::ScreenshotData& golden,
+		const render::ScreenshotData& actual,
+		const GoldenThresholds& thresholds = {}) const
+	{
+		GoldenVerdict v;
+		v.pixel = compare(golden, actual, thresholds.tolerance);
+		v.flip  = computeFlip(golden, actual);
+		v.pass  = v.flip.valid
+			&& v.pixel.diffPercentage <= thresholds.maxDiffPercent
+			&& v.flip.mean <= thresholds.maxFlipMean
+			&& v.flip.p999 <= thresholds.maxFlipP999;
+		return v;
+	}
+
 	/// @brief 差分を可視化した画像を生成する
 	/// @param expected 期待画像
 	/// @param actual 実際の画像
 	/// @param tolerance チャンネルごとの許容差分値
 	/// @return 差分箇所を赤で強調した画像（actual をベースにコピー）
-	/// @note サイズが異なる場合は空のScreenshotDataを返す
+	/// @note サイズが異なる場合は空の ScreenshotData を返す
 	[[nodiscard]] render::ScreenshotData generateDiffImage(
 		const render::ScreenshotData& expected,
 		const render::ScreenshotData& actual,

@@ -2,7 +2,7 @@
 
 /// @file GfxTypes.hpp
 /// @brief グラフィックス型定義
-/// @details レンダリングパイプラインで使用する列挙型・記述子構造体を定義する。
+/// @details レンダリングパイプラインで使う列挙型・記述子構造体を定義する。
 ///          Phase 0 では最小限のみ。
 
 #include <cstdint>
@@ -68,7 +68,7 @@ struct BufferDesc
 	bool dynamic = false;              ///< 動的更新が必要か
 };
 
-/// @brief リソース状態（D3D12バリア用）
+/// @brief リソース状態（D3D12 バリア用）
 enum class ResourceState : uint32_t
 {
 	Common = 0,       ///< 共通状態
@@ -90,23 +90,23 @@ enum class DescriptorHeapType : uint8_t
 	Sampler,    ///< サンプラー
 };
 
-/// @brief GPUデスクリプタハンドル
+/// @brief GPU デスクリプタハンドル
 struct GpuDescriptorHandle
 {
 	uint64_t ptr = 0;  ///< GPUアドレス
 
 	/// @brief ハンドルが有効かどうかを判定する
-	/// @return ptrが0以外ならtrue
+	/// @return ptr が 0 以外なら true
 	[[nodiscard]] constexpr bool isValid() const noexcept { return ptr != 0; }
 };
 
-/// @brief CPUデスクリプタハンドル
+/// @brief CPU デスクリプタハンドル
 struct CpuDescriptorHandle
 {
 	uint64_t ptr = 0;  ///< CPUアドレス
 
 	/// @brief ハンドルが有効かどうかを判定する
-	/// @return ptrが0以外ならtrue
+	/// @return ptr が 0 以外なら true
 	[[nodiscard]] constexpr bool isValid() const noexcept { return ptr != 0; }
 };
 

@@ -1,8 +1,8 @@
-// audio。音を鳴らし、いまどの音が鳴っているかを画面でも見せる章。
+// audio。音を鳴らし、現在どの音が鳴っているかを画面にも表示する章。
 // 中央の暗い計器に、効果音 3 つの専用バー (Z=低い / X=中くらい / C=高い) と、
-// BGM を表す回るディスク (再生中=回る / 一時停止=止まったまま / フェード=薄れて消える)、
-// 台詞 (V) の吹き出しが映る。台詞は BGM / 効果音とは別の 1 本のスロットで鳴り、
-// 鳴っている途中でもう一度押すと重ならず言い直しになる (mixer 窓の「voice 一覧」に出るのはこれ)。
+// BGM を表す回転するディスク (再生中=回る / 一時停止=止まったまま / フェード=薄れて消える)、
+// 台詞 (V) の吹き出しが表示される。台詞は BGM / 効果音とは別の 1 本のスロットで鳴り、
+// 鳴っている途中でもう一度押すと重ならず、最初から再生し直す (mixer 窓の「voice 一覧」に出るのはこれ)。
 #include <algorithm>   // std::max / std::min
 #include <cmath>       // std::sin / std::cos / std::fmod
 #include <mitiru.hpp>
@@ -10,15 +10,15 @@
 #include "../common/chapter_hud.hpp"   // 章ラベル + 操作帯 + 共通の配色
 using namespace mitiru;
 
-// 効果音 (SE) は 3 つのキーに 1 対 1 で割り当てる。同じ音 (ping) を再生速度だけ変えて
-// 高さを鳴らし分ける。押したキーのバーだけが強く光り + 輪が弾け、他の 2 本は静かなまま。
+// 効果音 (SE) は 3 つのキーに 1 対 1 で割り当てる。同じ音 (ping) の再生速度だけを変えて
+// 高さを鳴らし分ける。押したキーのバーだけが強く光り、輪が広がる。他の 2 本は変化しない。
 constexpr Key   kSeKey[3]   = {Key::Z, Key::X, Key::C};                        // 低・中・高
 constexpr float kSePitch[3] = {0.75f, 1.0f, 1.5f};                            // 再生速度 = 音の高さ
 constexpr Color kSeCol[3]   = {theme::kBlue, theme::kGreen, theme::kPink};    // 音ごとの色
 constexpr const char* kSeLbl[3] = {"Z", "X", "C"};                            // バーの下に出すキー名
 
-// BGM の状態。ゲーム自身は音を鳴らす仕組みを持たず、host に「こう鳴らして」と頼むだけ。
-// いま再生中か・止めているかは、ゲームが自分で覚えておく。
+// BGM の状態。ゲーム自体は音を鳴らす仕組みを持たず、host に再生方法を指示するだけ。
+// 現在再生中か、止めているかは、ゲームが自分で覚えておく。
 enum class Bgm : int { Stopped, Playing, Paused };
 
 // 中心 c・半径 r の円周上で、角度 a の点を返す (回転する線や縁の目印に使う)。
@@ -35,15 +35,15 @@ struct Audio07
 	{
 		if (in.cancelPressed()) { hud.quit(); }   // ESC で終わる
 
-		// Z / X / C: それぞれ専用の効果音を 1 発鳴らし、そのバーの残り光を立てる。
+		// Z / X / C: それぞれ専用の効果音を 1 発鳴らし、そのバーに残る光を設定する。
 		for (int i = 0; i < 3; ++i)
 		{
 			// 効果音は BGM を邪魔しないよう、控えめな音量 (0.6) で鳴らす。
-			// こうすれば BGM を流したまま効果音を重ねても、両方きちんと聞こえる。
+			// こうすれば BGM を流したまま効果音を重ねても、両方をきちんと聞き取れる。
 			if (in.pressed(kSeKey[i])) { hud.play("ping", 0.6f, kSePitch[i]); seGlow[i] = 1.0f; }
 		}
 
-		// Space: 再生 → 一時停止 → 続きから、と切り替える (一時停止は再生位置を覚えている)。
+		// Space: 再生、一時停止、続きから再生の順に切り替える (一時停止は再生位置を覚えている)。
 		if (in.pressed(Key::Space))
 		{
 			if      (bgm == Bgm::Stopped) { hud.music("bgm", true, 0.35f); bgm = Bgm::Playing; }
@@ -51,17 +51,17 @@ struct Audio07
 			else                          { hud.resumeMusic();            bgm = Bgm::Playing; }
 		}
 
-		// B: 1.5 秒かけて薄れて停止する (再生位置は捨てるので、次の Space は最初から)。
+		// B: 1.5 秒かけて薄れて停止する (再生位置は破棄するので、次の Space では最初から再生する)。
 		if (in.pressed(Key::B) && bgm != Bgm::Stopped) { hud.stopMusic(1.5f); bgm = Bgm::Stopped; }
 
-		// V: 台詞を 1 本鳴らす。play() と違い専用スロットなので、連打しても重ならず言い直す。
+		// V: 台詞を 1 本鳴らす。play() と違って専用スロットを使うので、連打しても重ならず、最初から再生し直す。
 		if (in.pressed(Key::V)) { hud.voice("voice", 0.9f); voiceGlow = 1.0f; }
 		voiceGlow = std::max(0.0f, voiceGlow - dt / 1.8f);
 
-		// 各バーの残り光をだんだん減らす。
+		// 各バーに残る光を徐々に弱める。
 		for (int i = 0; i < 3; ++i) { seGlow[i] = std::max(0.0f, seGlow[i] - dt * 2.2f); }
 
-		// ディスクの濃さ bgmLvl を、状態に応じた目標値へ少しずつ近づける (急に変えず滑らかに = フェードの見た目)。
+		// ディスクの濃さを表す bgmLvl を、状態に応じた目標値へ少しずつ近づける (急に変えず、滑らかに変化させる = フェードの見た目)。
 		float target = 0.0f;                             // 停止中は 0
 		if      (bgm == Bgm::Playing) { target = 1.0f; }
 		else if (bgm == Bgm::Paused)  { target = 0.5f; }
@@ -74,10 +74,10 @@ struct Audio07
 	{
 		s.fillScreen(theme::kPaper);
 		chapterTitle(s, "Audio");
-		// 光や脈動は白地では見えないので、計器は暗いカードの中で見せる。
+		// 光や脈動は白い背景では見えないので、計器は暗いカードの中に表示する。
 		s.drawRoundedRect(Rect{220.0f, 140.0f, 840.0f, 420.0f}, theme::kCard, 20.0f);
 
-		// 左: 効果音の 3 本のバー。ふだんは薄く見え、鳴らした 1 本だけ強く光り + 輪が弾ける。
+		// 左: 効果音の 3 本のバー。ふだんは薄く表示し、鳴らした 1 本だけを強く光らせ、輪を広げる。
 		const float baseY = 480.0f;
 		s.drawLine(Vec2{306.0f, baseY}, Vec2{596.0f, baseY}, theme::kCardInk.withAlpha(0.35f), 2.0f);
 		for (int i = 0; i < 3; ++i)
@@ -86,7 +86,7 @@ struct Audio07
 			const float x = 324.0f + 92.0f * static_cast<float>(i);
 			const float g = seGlow[i];
 			s.drawRoundedRect(Rect{x, baseY - h, 62.0f, h}, kSeCol[i].withAlpha(0.26f + 0.74f * g), 8.0f);
-			// バーの下にキー名 (Z/X/C)。位置とキーの対応で「どれが鳴ったか」が読める。
+			// バーの下にキー名 (Z/X/C)。位置とキーの対応によって「どれが鳴ったか」が分かる。
 			s.drawTextInRect(Rect{x, baseY + 8.0f, 62.0f, 22.0f}, kSeLbl[i], theme::kCardInk.withAlpha(0.9f),
 			                 18.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 			if (g > 0.0f)   // 鳴った本の上で輪が弾ける (1→0 につれ外へ広がって薄れる)
@@ -96,7 +96,7 @@ struct Audio07
 			}
 		}
 
-		// 中央上: 台詞の吹き出し。鳴っている間だけ浮かび、残り時間に合わせて薄れる。
+		// 中央上: 台詞の吹き出し。鳴っている間だけ表示し、残り時間に合わせて薄くする。
 		const Rect bubble{628.0f, 176.0f, 96.0f, 56.0f};
 		s.drawRoundedRect(bubble, theme::kCardInk.withAlpha(0.10f + 0.85f * voiceGlow), 14.0f);
 		s.drawTextInRect(bubble, "V", theme::kCard.withAlpha(0.25f + 0.75f * voiceGlow), 26.0f,
@@ -107,7 +107,7 @@ struct Audio07
 			           theme::kGreen.withAlpha(0.8f * voiceGlow), 2.0f, 8.0f, 40);
 		}
 
-		// 右: BGM を表す回るディスク。消えているときも位置が分かるよう、薄い外枠は常に描く。
+		// 右: BGM を表す回転するディスク。消えているときも位置が分かるよう、薄い外枠は常に描く。
 		const Vec2  disc{820.0f, 348.0f};
 		const float R = 104.0f;
 		s.drawCircleFrame(disc, R + 10.0f, theme::kCardInk.withAlpha(0.22f), 2.0f);
@@ -133,8 +133,9 @@ struct Audio07
 	void draw(Canvas& c) const { drawImpl(c); }
 };
 
-// 自動テスト中は実際には音は鳴らないが、再生を頼む処理がきちんと動くことは確認できる。
-// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
+// 自動テスト中は実際には音は鳴らないが、再生を要求する処理がきちんと動くことは確認できる。
+// inspector に表示する状態を自動反射する。aggregate 型なので列挙は不要 (D12)。
 MITIRU_REFLECT_AUTO(Audio07);
 
+MITIRU_ASSERT_NO_PADDING(Audio07);
 MITIRU_GAME(Audio07);

@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file MitiruScene.hpp
-/// @brief Mitiruシーン基底クラスとシーンマネージャー
-/// @details observe/controlフック付きのシーン管理システム。
+/// @brief Mitiru シーン基底クラスとシーンマネージャー
+/// @details observe/control フック付きのシーン管理システム。
 ///          スタックベースのシーン管理を提供する。
 
 #include <memory>
@@ -16,7 +16,7 @@
 namespace mitiru::scene
 {
 
-/// @brief Mitiruシーン基底クラス
+/// @brief Mitiru シーン基底クラス
 /// @details ゲームシーンのライフサイクルメソッドを定義する抽象基底。
 ///          派生クラスで具体的なシーンロジックを実装する。
 class MitiruScene
@@ -79,8 +79,8 @@ private:
 	std::vector<std::string> m_labels;  ///< セマンティックラベル
 };
 
-/// @brief Mitiruシーンマネージャー
-/// @details スタックベースでシーンのpush/pop/replaceを管理する。
+/// @brief Mitiru シーンマネージャー
+/// @details スタックベースでシーンの push/pop/replace を管理する。
 ///
 /// @code
 /// mitiru::scene::MitiruSceneManager mgr;
@@ -144,7 +144,7 @@ public:
 		return m_stack.empty() ? nullptr : m_stack.back().get();
 	}
 
-	/// @brief 現在のシーンを取得する（const版）
+	/// @brief 現在のシーンを取得する（const 版）
 	/// @return シーンへの const ポインタ
 	[[nodiscard]] const MitiruScene* currentScene() const noexcept
 	{
@@ -178,8 +178,8 @@ public:
 		return m_stack.empty();
 	}
 
-	/// @brief 現在のシーン情報をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief 現在のシーン情報を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		nlohmann::json j;

@@ -6,14 +6,14 @@
 /// **動機。**
 /// `SceneTransitionManager` は scene loading と MitiruScene lifecycle に密結合した
 /// 重いシステム。game-level UI ではもっと単純で *standalone* な overlay が必要に
-/// なることが多い。既に描かれているもの (CEF page、2D canvas、native screen)
+/// なることが多い。既に描かれているもの (UI、2D canvas、native screen)
 /// の上に Fade/Dissolve/Slide/Zoom/Custom effect を、scene graph に一切触れず
 /// 再生する。`Transition` がその隙間を埋める。
 ///
 /// **設計判断:**
 /// - Header-only、GPU 依存ゼロ。class が持つのは timing state のみ。
 ///   描画は `DrawFn` callback に委譲し、caller が利用可能な primitive
-///   (Screen、CEF StateStore、test spy) へ bind する。
+///   (Screen、UI への state push、test spy) へ bind する。
 /// - `TransitionFrame` は単なる value type。renderer が必要とする全データを
 ///   1 struct に: kind、progress [0,1]、color、slide 方向、custom result。
 /// - `TransitionKind::Custom` は `EasingFn` lambda を受け取り、designer が
@@ -105,7 +105,7 @@ struct TransitionFrame
     /// caller は `progress` を直接使える。
     [[nodiscard]] float alpha() const noexcept
     {
-        // Triangle envelope: [0,0.5] で 0→1、[0.5,1] で 1→0
+        // 三角形の envelope。[0,0.5] で 0→1、[0.5,1] で 1→0
         return 1.0f - 2.0f * std::abs(progress - 0.5f);
     }
 
@@ -238,7 +238,7 @@ public:
 
     /// @brief callback を発火せずに frame snapshot を構築する。
     ///
-    /// unit test や CEF bridge の serialise に便利。
+    /// unit test や UI への serialise に便利。
     [[nodiscard]] TransitionFrame buildFrame() const
     {
         const float t = progress();

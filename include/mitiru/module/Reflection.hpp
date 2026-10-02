@@ -58,10 +58,10 @@ static_assert(std::is_trivially_copyable_v<ReflectSchema>,   "ReflectSchema は 
 
 /// @brief reflect 記述子から GameMemory layout hash (FNV-1a 64) を作る。
 /// @details field の名前・型 tag・offset・要素情報と、FixedVec<struct,N> の要素 schema を
-///          畳む。サイズ照合では素通りする「同サイズの field 並べ替え / float↔int」を
+///          畳み込む。サイズの照合では見逃す「同サイズの field 並べ替え / float↔int」を、
 ///          .msav ロードと reload の状態温存判定で検出する。
 ///          戻り値 0 = reflection 未宣言 (照合 skip の番兵)。宣言済みで偶然 0 になった場合は
-///          1 に丸める (0 の意味を汚さない)。
+///          1 に丸める (0 の意味を変えないため)。
 [[nodiscard]] inline std::uint64_t layoutHash(
 	const FieldDescriptor* fields, std::int32_t fieldCount,
 	const ReflectSchema* schemas, std::int32_t schemaCount) noexcept
@@ -149,7 +149,7 @@ template <std::size_t N> struct IsFixedString<mitiru::FixedString<N>> : std::tru
 
 /// @brief MITIRU_REFLECT / MITIRU_REFLECT_STRUCT のフィールド数超過 (>32) を compile error
 ///        にする番兵。33 個以上を書くと MITIRU_FOR_EACH がこの削除済み関数を選び、
-///        「use of deleted function ...Max32Fields...」が出る。関数名がそのまま対処法:
+///        「use of deleted function...Max32Fields...」が出る。関数名がそのまま対処法を表していて、
 ///        フィールドを 32 個以下に分割するか、ネスト部分を MITIRU_REFLECT_STRUCT へ切り出す。
 inline FieldDescriptor mitiruReflect_Max32Fields_SplitOrUseReflectStruct() = delete;
 
@@ -219,7 +219,7 @@ inline FieldDescriptor makeFieldDescriptor(const char* name, std::uint32_t offse
 }
 
 /// @brief DLL-local な要素スキーマ登録簿。`MITIRU_REFLECT_STRUCT` が起動時に push し、
-///        `MITIRU_REFLECT` の fillApi が ModuleApi へコピーする (FixedVec<struct,N> 用)。
+///        `mitiru_module_reflect_schemas` が host へ渡す (FixedVec<struct,N> 用)。
 inline std::vector<ReflectSchema>& reflectSchemaRegistry()
 {
 	static std::vector<ReflectSchema> registry;
@@ -234,7 +234,7 @@ inline bool registerSchema(const char* typeName, std::initializer_list<FieldDesc
 	const std::int32_t cap = static_cast<std::int32_t>(sizeof(s.fields) / sizeof(s.fields[0]));
 	if (static_cast<std::int32_t>(fields.size()) > cap)
 	{
-		// 黙って切り捨てない: 17 個目以降は inspector / AI に出ない。
+		// 知らせずに切り捨てることはしない。17 個目以降は inspector / AI に出ない。
 		const char* name = (typeName != nullptr) ? typeName : "";
 		mitiru::debug::warnOnceFix(std::string("reflect.schema.fields.") + name,
 			std::string("MITIRU_REFLECT_STRUCT ") + name + ": フィールドが上限 16 個を超えている",

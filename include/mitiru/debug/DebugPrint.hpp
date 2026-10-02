@@ -15,12 +15,12 @@
 /// - 出力先 logger とは独立 (ILogger は category 付きで別 concern)
 ///
 /// @code
-/// // game code, anywhere:
+/// // game コードの任意の場所で
 /// mitiru::debug::println("checkpoint reached");
 /// mitiru::debug::printf("hp=%d remaining=%.1f", hp, remaining);
 ///
-/// // engine internal: read & format for the inspector snapshot
-/// for (const auto& line : mitiru::debug::DebugPrintBuffer::snapshot()) { ... }
+/// // engine 内部で inspector の snapshot 用に読み出して整形する
+/// for (const auto& line : mitiru::debug::DebugPrintBuffer::snapshot()) {... }
 /// @endcode
 
 #include <array>

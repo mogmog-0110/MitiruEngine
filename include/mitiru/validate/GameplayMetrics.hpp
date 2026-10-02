@@ -47,8 +47,8 @@ struct GameplayAnomaly
 	float threshold = 0.0f;         ///< 閾値
 	std::string description;        ///< 説明
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -208,7 +208,7 @@ public:
 			}
 			case GameplayAnomaly::InvalidState:
 			{
-				// InvalidStateはアプリケーション固有の検証で使用する
+				// InvalidState はアプリケーション固有の検証で使用する
 				break;
 			}
 			}
@@ -233,9 +233,9 @@ public:
 		m_hasInput = false;
 	}
 
-	/// @brief 異常リストをJSON配列に変換する
+	/// @brief 異常リストを JSON 配列に変換する
 	/// @param anomalies 異常リスト
-	/// @return JSON配列形式の文字列
+	/// @return JSON 配列形式の文字列
 	[[nodiscard]] std::string toJson(const std::vector<GameplayAnomaly>& anomalies) const
 	{
 		std::string json;

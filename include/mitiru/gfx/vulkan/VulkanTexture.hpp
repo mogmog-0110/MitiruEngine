@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file VulkanTexture.hpp
-/// @brief Vulkanテクスチャ RAII管理
-/// @details VkImage・VkImageView・VkDeviceMemory・VkSamplerをRAIIで管理する汎用テクスチャ実装。
+/// @brief Vulkan テクスチャ RAII 管理
+/// @details VkImage・VkImageView・VkDeviceMemory・VkSampler を RAII で管理する汎用テクスチャ実装。
 ///          カラーフォーマットと深度フォーマットの両方をサポートする。
-///          MITIRU_HAS_VULKANが定義されている場合のみコンパイルされる。
+///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。
 
 #ifdef MITIRU_HAS_VULKAN
 
@@ -17,7 +17,7 @@ namespace mitiru::gfx
 {
 
 /// @brief テクスチャ設定
-/// @details テクスチャ生成パラメータを保持する。GPU不要でテスト可能。
+/// @details テクスチャ生成パラメータを保持する。GPU 不要でテスト可能。
 struct TextureConfig
 {
 	uint32_t width = 0;                                        ///< テクスチャ幅
@@ -27,7 +27,7 @@ struct TextureConfig
 	VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; ///< アスペクトマスク
 
 	/// @brief 設定が有効か確認する
-	/// @return 幅と高さが0より大きければtrue
+	/// @return 幅と高さが 0 より大きければ true
 	[[nodiscard]] bool isValid() const noexcept
 	{
 		return width > 0 && height > 0;
@@ -68,14 +68,13 @@ struct TextureConfig
 	}
 };
 
-/// @brief Vulkanテクスチャ RAIIラッパー
-/// @details VkImage・VkImageView・VkDeviceMemory・VkSamplerを一括管理する。
-///          カラーテクスチャと深度テクスチャ両方に対応する。
-///
+/// @brief Vulkan テクスチャ RAII ラッパー
+/// @details VkImage・VkImageView・VkDeviceMemory・VkSampler をまとめて管理する。
+/// カラーテクスチャと深度テクスチャ両方に対応する。
 /// @code
 /// VulkanTexture texture;
 /// texture.initialize(device, physDevice, 512, 512,
-///     VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+/// VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 /// // 使用: texture.imageView(), texture.sampler()
 /// @endcode
 class VulkanTexture
@@ -292,7 +291,7 @@ public:
 	[[nodiscard]] VkImageView imageView() const noexcept { return m_imageView; }
 
 	/// @brief サンプラーを取得する
-	/// @return VkSampler（深度テクスチャの場合VK_NULL_HANDLE）
+	/// @return VkSampler（深度テクスチャの場合 VK_NULL_HANDLE）
 	[[nodiscard]] VkSampler sampler() const noexcept { return m_sampler; }
 
 	/// @brief フォーマットを取得する
@@ -300,7 +299,7 @@ public:
 	[[nodiscard]] VkFormat format() const noexcept { return m_format; }
 
 	/// @brief 初期化済みか確認する
-	/// @return イメージビューが有効ならtrue
+	/// @return イメージビューが有効なら true
 	[[nodiscard]] bool isInitialized() const noexcept { return m_imageView != VK_NULL_HANDLE; }
 
 private:

@@ -2,7 +2,7 @@
 
 /// @file IShader.hpp
 /// @brief シェーダー抽象インターフェース
-/// @details GPU上で実行されるシェーダープログラムの基底インターフェース。
+/// @details GPU 上で実行されるシェーダープログラムの基底インターフェース。
 
 namespace mitiru::gfx
 {

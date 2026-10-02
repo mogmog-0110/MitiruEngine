@@ -28,6 +28,8 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+
 using Microsoft::WRL::ComPtr;
 
 namespace mitiru::render::dx12
@@ -70,9 +72,6 @@ public:
 
         // ── 深度テクスチャ ─────────────────────────────────────
         {
-            D3D12_HEAP_PROPERTIES hp{};
-            hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-
             D3D12_RESOURCE_DESC desc{};
             desc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
             desc.Width            = sz * static_cast<UINT>(columns);
@@ -90,14 +89,12 @@ public:
             clear.DepthStencil.Stencil = 0;
 
             m_depthTex.Reset();
-            if (FAILED(device->CreateCommittedResource(
-                    &hp, D3D12_HEAP_FLAG_NONE, &desc,
-                    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-                    &clear,
-                    IID_PPV_ARGS(m_depthTex.GetAddressOf()))))
+            if (FAILED(gfx::createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, desc,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clear, m_depthTex)))
             {
                 return false;
             }
+            m_depthTex->SetName(L"Renderer3D shadow map");
         }
 
         // ── DSV ヒープ & DSV ──────────────────────────────────
@@ -233,7 +230,7 @@ public:
     [[nodiscard]] bool isInitialized() const noexcept { return m_initialized; }
 
 private:
-    ComPtr<ID3D12Resource>       m_depthTex;
+    gfx::GpuResource             m_depthTex;
     ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
     ComPtr<ID3D12DescriptorHeap> m_srvHeap;
     int                          m_mapSize    = 0;

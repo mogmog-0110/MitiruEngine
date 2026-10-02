@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file SpriteBatch.hpp
-/// @brief バッチ型2Dスプライトレンダラー
+/// @brief バッチ型 2D スプライトレンダラー
 /// @details 複数のスプライト・矩形描画を頂点バッファに蓄積し、
-///          一括でGPUに送信することでドローコール数を削減する。
+///          一括で GPU に送信することでドローコール数を削減する。
 
 #include <cmath>
 #include <cstdint>
@@ -18,7 +18,7 @@
 namespace mitiru::render
 {
 
-/// @brief バッチ型2Dスプライトレンダラー
+/// @brief バッチ型 2D スプライトレンダラー
 /// @details begin() で蓄積開始、描画コマンドで頂点を蓄積し、
 ///          end() でバッチをフラッシュする。
 ///
@@ -78,7 +78,7 @@ public:
 		}
 		else
 		{
-			/// 中心を基準に回転した4頂点を計算する
+			/// 中心を基準に回転した 4 頂点を計算する
 			const auto cx = destRect.x() + destRect.width() * 0.5f;
 			const auto cy = destRect.y() + destRect.height() * 0.5f;
 			const auto hw = destRect.width() * 0.5f;
@@ -124,7 +124,7 @@ public:
 		++m_drawCallCount;
 	}
 
-	/// @brief 矩形+4頂点個別カラー（グラデーション矩形用）
+	/// @brief 矩形+4 頂点個別カラー（グラデーション矩形用）
 	/// @param rect 矩形
 	/// @param tl 左上色
 	/// @param tr 右上色
@@ -146,7 +146,7 @@ public:
 		++m_drawCallCount;
 	}
 
-	/// @brief 4頂点個別カラーのクアッド描画（変換済み座標）
+	/// @brief 4 頂点個別カラーのクアッド描画（変換済み座標）
 	void drawQuadGradient4(const sgc::Vec2f corners[4],
 	                       const sgc::Colorf& tl, const sgc::Colorf& tr,
 	                       const sgc::Colorf& br, const sgc::Colorf& bl)
@@ -157,12 +157,12 @@ public:
 		++m_drawCallCount;
 	}
 
-	/// @brief 変換済み4頂点 + UV のテクスチャ付きクワッドを蓄積する
+	/// @brief 変換済み 4 頂点 + UV のテクスチャ付きクワッドを蓄積する
 	/// @details corners は変換適用済みのスクリーン座標、uvs は [0,1] テクスチャ座標。
 	///          実テクスチャのバインドは RenderPipeline2D::submitTexturedBatch が行う
 	///          （このバッチは単一テクスチャ run として submit される前提）。
-	/// @param corners 4頂点の位置（TL, TR, BR, BL 順）
-	/// @param uvs 4頂点のテクスチャ座標（corners と同順）
+	/// @param corners 4 頂点の位置（TL, TR, BR, BL 順）
+	/// @param uvs 4 頂点のテクスチャ座標（corners と同順）
 	/// @param color 乗算色（ティント）
 	void drawSpriteQuad(const sgc::Vec2f corners[4],
 	                    const sgc::Vec2f uvs[4],
@@ -205,7 +205,7 @@ public:
 	}
 
 	/// @brief バッチをフラッシュし蓄積を終了する
-	/// @details GPU描画はRenderPipeline2DがsubmitBatch()で行う。
+	/// @details GPU 描画は RenderPipeline2D が submitBatch()で行う。
 	///          end()は蓄積を停止するのみで、データは保持される。
 	void end() noexcept
 	{
@@ -248,7 +248,7 @@ public:
 	}
 
 private:
-	/// @brief 矩形をクワッド（4頂点+6インデックス）として蓄積する
+	/// @brief 矩形をクワッド（4 頂点+6 インデックス）として蓄積する
 	/// @param rect 描画先矩形
 	/// @param uvRect テクスチャ座標矩形
 	/// @param color 頂点色
@@ -281,9 +281,9 @@ private:
 		m_indices.push_back(baseIndex + 3);
 	}
 
-	/// @brief 任意の4頂点をクワッドとして蓄積する（回転済み）
-	/// @param corners 4頂点の位置配列
-	/// @param uvs 4頂点のテクスチャ座標配列
+	/// @brief 任意の 4 頂点をクワッドとして蓄積する（回転済み）
+	/// @param corners 4 頂点の位置配列
+	/// @param uvs 4 頂点のテクスチャ座標配列
 	/// @param color 頂点色
 	void pushQuadRaw(const sgc::Vec2f corners[4],
 	                 const sgc::Vec2f uvs[4],
@@ -304,7 +304,7 @@ private:
 		m_indices.push_back(baseIndex + 3);
 	}
 
-	/// @brief 4頂点個別カラーのクワッドを蓄積する（グラデーション用）
+	/// @brief 4 頂点個別カラーのクワッドを蓄積する（グラデーション用）
 	void pushQuadColored(const sgc::Vec2f corners[4],
 	                     const sgc::Colorf colors[4])
 	{

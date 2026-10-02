@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file Renderer3D.hpp
-/// @brief DX11 3Dレンダラー
-/// @details Phongシェーディングによる3Dメッシュ描画を行うレンダラー。
+/// @brief DX11 3D レンダラー
+/// @details Phong シェーディングによる 3D メッシュ描画を行うレンダラー。
 ///          シェーダーコンパイル・定数バッファ管理・深度バッファ・ラスタライザ状態を
-///          統合的に管理し、drawMesh()一発でメッシュを描画できる。
+///          統合的に管理し、drawMesh() を 1 回呼ぶだけでメッシュを描画できる。
 ///          実装本体は detail/Renderer3D_Setup_impl.hpp / detail/Renderer3D_Draw_impl.hpp。
 
 #include <algorithm>
@@ -78,7 +78,7 @@ namespace mitiru::render
 // ShaderMode3D は IRenderer3D.hpp で定義済み
 
 /// @brief トランスフォーム用定数バッファ（CbTransform: register(b0)）
-/// @details ワールド・ビュー・射影行列をGPUに転送する。
+/// @details ワールド・ビュー・射影行列を GPU に転送する。
 struct alignas(16) CbTransform
 {
 	float world[4][4]{};       ///< ワールド行列
@@ -87,7 +87,7 @@ struct alignas(16) CbTransform
 };
 
 /// @brief ライティング用定数バッファ（CbLighting: register(b1)）
-/// @details ライト・マテリアル・カメラ位置の情報をGPUに転送する。
+/// @details ライト・マテリアル・カメラ位置の情報を GPU に転送する。
 struct alignas(16) CbLighting
 {
 	float lightDir[4]{};          ///< ライト方向 (xyz) + パディング
@@ -100,7 +100,7 @@ struct alignas(16) CbLighting
 	float _pad[3]{};              ///< パディング
 };
 
-/// @brief Renderer3D設定
+/// @brief Renderer3D 設定
 /// @details 初期化時に渡す設定パラメータ。
 struct Renderer3DConfig
 {
@@ -110,8 +110,8 @@ struct Renderer3DConfig
 	sgc::Colorf defaultAmbient{0.15f, 0.15f, 0.15f, 1.0f};  ///< デフォルトアンビエント色
 };
 
-/// @brief DX11 3Dレンダラー
-/// @details Camera3Dとリアルタイムライトを使い、メッシュをPhong照明で描画する。
+/// @brief DX11 3D レンダラー
+/// @details Camera3D とリアルタイムライトを使い、メッシュを Phong 照明で描画する。
 ///          内部でシェーダーコンパイル・入力レイアウト・定数バッファ・深度バッファ・
 ///          ラスタライザステートを管理する。
 ///
@@ -150,6 +150,16 @@ public:
 	using ISceneFx::tonemapGamma;
 	using ISceneFx::setCascadedShadowAutoFit;
 	using ISceneFx::setShadowCascadeCount;
+	using ISceneFx::setOutlineCaster;
+	using ISceneFx::setAmbientOcclusion;
+	using ISceneFx::setToonRamp;
+	using ISceneFx::setToonSpecular;
+	using ISceneFx::setBloom;
+	using ISceneFx::setShadowSoftness;
+	using ISceneFx::setColorGrade;
+	using ISceneFx::setOutlineFade;
+	using ISceneFx::setDepthOfField;
+	using ISceneFx::setShadowBias;
 	using IExperimentalRenderer3D::loadSplatScene;
 	using IExperimentalRenderer3D::drawSplats;
 	using IExperimentalRenderer3D::splatBounds;
@@ -218,8 +228,8 @@ public:
 
 	/// @brief オクルージョンカリングの有効/無効を切り替える（既定 OFF）
 	/// @details ON 自体は常に要求どおり反映する。深度バッファが MSAA のときの
-	///          読み戻し不可は endFrame 側 (updateOcclusionDepth) が warnOnce 付きで
-	///          黙って無視する（isOcclusionCullingEnabled() の意味を変えないため）。
+	///          読み戻し不可は endFrame 側 (updateOcclusionDepth) が warnOnce で 1 回だけ警告して
+	///          無視する（isOcclusionCullingEnabled() の意味を変えないため）。
 	void setOcclusionCullingEnabled(bool enabled) noexcept override
 	{
 		m_occlusionCullingEnabled = enabled;
@@ -230,7 +240,7 @@ public:
 	///          `Texture2DMS<float>` を Load）が MSAA 深度も読み戻すため false。
 	///          resolve 用シェーダーのコンパイルに失敗した環境でのみ true になる
 	///          （`setOcclusionCullingEnabled(true)` 自体は受理されるが
-	///          `isOccluded` 判定は常に不発＝何も隠されない）。
+	///          `isOccluded` 判定は常に成立しない＝何も隠されない）。
 	[[nodiscard]] bool isOcclusionDepthReadbackUnsupported() const noexcept
 	{
 		return m_depthIsMultisampled && m_occlusionResolvePipelineFailed;
@@ -249,7 +259,7 @@ public:
 	}
 
 	/// @brief 初期化済みかどうかを取得する
-	/// @return GPUリソースが構築済みならtrue
+	/// @return GPU リソースが構築済みなら true
 	[[nodiscard]] bool isInitialized() const noexcept override
 	{
 		return m_initialized;
@@ -304,14 +314,14 @@ public:
 
 #ifdef _WIN32
 
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief レンダラーを初期化する
-	/// @param device DX11デバイスへのポインタ
+	/// @param device DX11 デバイスへのポインタ
 	/// @param cfg 設定パラメータ
-	/// @param mode シェーダーモード（初期化時に直接設定。setShaderModeの再コンパイルを回避）
+	/// @param mode シェーダーモード（初期化時に直接設定。setShaderMode の再コンパイルを回避）
 	void initialize(gfx::Dx11Device* device,
 		const Renderer3DConfig& cfg = {},
 		ShaderMode3D mode = ShaderMode3D::Phong);
@@ -319,7 +329,7 @@ public:
 	/// @brief フレームアクティブフラグをリセットする（Engine::run()から毎フレーム呼ばれる）
 	void resetFrameActive() noexcept override { m_frameActive = false; }
 
-	/// @brief 今フレームで3D描画が行われたか
+	/// @brief 今フレームで 3D 描画が行われたか
 	[[nodiscard]] bool isFrameActive() const noexcept override { return m_frameActive; }
 
 	/// @brief フレーム描画を開始する
@@ -327,11 +337,11 @@ public:
 	void beginFrame(const sgc::Colorf& clearColor) override;
 
 	/// @brief カメラを設定する
-	/// @param camera 3Dカメラ
+	/// @param camera 3D カメラ
 	/// @details DX11 でも projection を **DX 規約 Z[0,1]** にする。
 	///          sgc::Mat4f::perspective は OpenGL 規約 (Z[-1,1]) のため、
 	///          DX で使うと near 側半分の depth が clip され precision が半減する。
-	///          camera の fov / aspect / near / far を使い直して DX 友好的な
+	///          camera の fov / aspect / near / far を使い直して DX 向けの
 	///          RH perspective を組む。view は sgc RH のまま。
 	void setCamera(const Camera3D& camera) override
 	{
@@ -341,12 +351,12 @@ public:
 			camera.nearClip(), camera.farClip());
 		m_cameraPosition = camera.position();
 		// カリング判定は描画用射影 (Z[0,1] DX 規約) と切り離し、camera 自身の
-		// GL規約 viewProjectionMatrix() から視錐台を作る (Frustum::extractFromCamera 参照)。
+		// GL 規約 viewProjectionMatrix() から視錐台を作る (Frustum::extractFromCamera 参照)。
 		m_frustum.extractFromCamera(camera);
 	}
 
 	/// @brief DX 用 RH perspective (Z[0,1])
-	/// @details column-major で GPU に流すと前提で sgc 行レイアウトに合わせて作る。
+	/// @details column-major で GPU に流す前提で、sgc の行レイアウトに合わせて作る。
 	[[nodiscard]] static sgc::Mat4f makePerspectiveRH_ZO_DX(
 		float fovY, float aspect, float nearZ, float farZ) noexcept
 	{
@@ -443,7 +453,7 @@ public:
 	/// @details ID3D11DeviceContext を直接触る必要があるとき（例: Skybox の
 	///          drawDx11 にコンテキストを渡す）に使う。`beginFrame()` で
 	///          RTV/DSV を設定済みの context を返すため、追加の draw を
-	///          そのままインジェクトできる。
+	///          そのまま差し込める。
 	[[nodiscard]] ID3D11DeviceContext* getD3DContext() const noexcept { return m_d3dContext; }
 
 	/// @brief シーンのアンビエント色を設定する
@@ -510,19 +520,19 @@ public:
 private:
 	// ===== 実装本体は detail/Renderer3D_Setup_impl.hpp / detail/Renderer3D_Draw_impl.hpp =====
 
-	/// @brief HLSLシェーダーをコンパイルする
+	/// @brief HLSL シェーダーをコンパイルする
 	void compileShaders();
 
 	/// @brief シェーダーを再コンパイルする（シェーダーモード変更時に呼び出される）
 	void recompileShaders();
 
-	/// @brief HLSL文字列をコンパイルする
+	/// @brief HLSL 文字列をコンパイルする
 	[[nodiscard]] ComPtr<ID3DBlob> compileHLSL(
 		const char* source,
 		const char* entryPoint,
 		const char* target);
 
-	/// @brief Vertex3D用の入力レイアウトを作成する
+	/// @brief Vertex3D 用の入力レイアウトを作成する
 	void createInputLayout();
 
 	/// @brief 定数バッファを作成する
@@ -557,25 +567,25 @@ private:
 	/// @brief drawMesh 用 VB/IB を取得する（`getOrUploadAlbedoSrv` と同じ dirty 方式で CreateBuffer を回避）
 	[[nodiscard]] std::pair<ID3D11Buffer*, ID3D11Buffer*> getOrUploadMeshBuffers(const Mesh& mesh);
 
-	/// @brief テクスチャデータをGPUにアップロードする
+	/// @brief テクスチャデータを GPU にアップロードする
 	void uploadTexture(const Texture& tex);
 
 	/// @brief Material.albedoTexture 用の SRV を取得（必要なら upload + cache）
 	[[nodiscard]] ID3D11ShaderResourceView* getOrUploadAlbedoSrv(const Texture* tex);
 
-	/// @brief デフォルトの1x1白テクスチャを作成する
+	/// @brief デフォルトの 1x1 白テクスチャを作成する
 	void createDefaultWhiteTexture();
 
 	/// @brief テクスチャサンプラーステートを作成する
 	void createSamplerState();
 
-	/// @brief アウトラインパス（drawMesh内から呼ばれる、メイン描画の前に実行）
+	/// @brief アウトラインパス（drawMesh 内から呼ばれる、メイン描画の前に実行）
 	void drawOutlinePass(const Mesh& mesh, const sgc::Mat4f& worldTransform);
 
 	// ── オクルージョンカリング（CPU Hi-Z、前フレームの深度を使う近似）─────
 
 	/// @brief ローカル AABB をワールド変換し、外接する `CullAABB` を作る
-	/// @details 8頂点変換 + min/max。`Frustum::isMeshVisible` と同じ近似
+	/// @details 8 頂点変換 + min/max。`Frustum::isMeshVisible` と同じ近似
 	///          （非一様スケール/回転でも安全、厳密な OBB ではない）。
 	[[nodiscard]] static CullAABB worldOcclusionAABB(const Mesh::AABB& local,
 	                                                 const sgc::Mat4f& world) noexcept
@@ -636,7 +646,7 @@ private:
 
 	// ── GPU instancing (drawMeshInstanced 用) ──────────────────
 
-	/// @brief 1インスタンス分のワールド行列（HLSL 側で `float4x4(row0..row3)` として
+	/// @brief 1 インスタンス分のワールド行列（HLSL 側で `float4x4(row0..row3)` として
 	///        再構成する 4× float4）
 	struct InstanceData
 	{
@@ -646,7 +656,7 @@ private:
 		float row3[4];
 	};
 
-	/// @brief 1バッチあたりの最大インスタンス数
+	/// @brief 1 バッチあたりの最大インスタンス数
 	static constexpr std::size_t kInstanceBatchMax = 1024;
 
 	/// @brief sgc::Mat4f を instance vertex 属性用の行データへ変換する
@@ -666,10 +676,10 @@ private:
 	/// @brief インスタンス描画用のテクスチャ・サンプラーを束縛する（drawMesh と同じ規則）
 	void bindMaterialTexture(const Material& material);
 
-	/// @brief PS スロット0 の SRV/サンプラーを、直前にバインドした値と異なる場合だけ設定する
+	/// @brief PS スロット 0 の SRV/サンプラーを、直前にバインドした値と異なる場合だけ設定する
 	void bindAlbedoSrvIfChanged(ID3D11ShaderResourceView* srv);
 
-	/// @brief `m_instanceScratch` の内容を instance VB へ Map し 1 バッチ分draw する
+	/// @brief `m_instanceScratch` の内容を instance VB へ Map し 1 バッチ分 draw する
 	void drawInstanceBatch(ID3D11Buffer* vb, ID3D11Buffer* ib,
 	                       UINT vertexCount, UINT indexCount);
 
@@ -686,21 +696,21 @@ private:
 	/// @brief インスタンシング用シェーダーのコンパイルに失敗したか（以後はループ描画にフォールバック）
 	bool m_instancedPipelineFailed = false;
 
-	/// @brief アウトライン描画（旧API、互換用）
+	/// @brief アウトライン描画（旧 API、互換用）
 	void drawMeshOutline(const Mesh& mesh, const sgc::Mat4f& worldTransform);
 
-	/// @brief DX11デバイス（非所有）
+	/// @brief DX11 デバイス（非所有）
 	gfx::Dx11Device* m_device = nullptr;
-	/// @brief D3D11デバイス（非所有）
+	/// @brief D3D11 デバイス（非所有）
 	ID3D11Device* m_d3dDevice = nullptr;
-	/// @brief D3D11即時コンテキスト（非所有）
+	/// @brief D3D11 即時コンテキスト（非所有）
 	ID3D11DeviceContext* m_d3dContext = nullptr;
 
 	/// @brief 頂点シェーダー
 	ComPtr<ID3D11VertexShader> m_vertexShader;
 	/// @brief ピクセルシェーダー
 	ComPtr<ID3D11PixelShader> m_pixelShader;
-	/// @brief VSバイトコード（InputLayout用）
+	/// @brief VS バイトコード（InputLayout 用）
 	std::vector<uint8_t> m_vsBytecode;
 	/// @brief 入力レイアウト
 	ComPtr<ID3D11InputLayout> m_inputLayout;
@@ -735,7 +745,7 @@ private:
 	/// @brief アウトライン用フロントフェースカリングラスタライザ
 	ComPtr<ID3D11RasterizerState> m_outlineFrontCull;
 
-	/// @brief デフォルト1x1白テクスチャSRV
+	/// @brief デフォルト 1x1 白テクスチャ SRV
 	ComPtr<ID3D11ShaderResourceView> m_defaultWhiteSRV;
 
 	/// Material.albedoTexture からの per-Texture* SRV キャッシュ（DX11）
@@ -752,14 +762,14 @@ private:
 	///        revision が process 全体で単調増加するため誤ヒットしない。
 	std::unordered_map<const Mesh*, MeshGpuBuffers> m_meshBufferCache;
 
-	/// @brief 現在バインドされているテクスチャSRV
+	/// @brief 現在バインドされているテクスチャ SRV
 	ComPtr<ID3D11ShaderResourceView> m_currentSRV;
 	/// @brief テクスチャサンプラーステート
 	ComPtr<ID3D11SamplerState> m_samplerState;
 
-	/// @brief PS スロット0 に現在バインド済みの SRV（`bindAlbedoSrvIfChanged` の state cache）
+	/// @brief PS スロット 0 に現在バインド済みの SRV（`bindAlbedoSrvIfChanged` の state cache）
 	ID3D11ShaderResourceView* m_boundPSSrv0 = nullptr;
-	/// @brief PS スロット0 に現在バインド済みのサンプラー（同上）
+	/// @brief PS スロット 0 に現在バインド済みのサンプラー（同上）
 	ID3D11SamplerState* m_boundPSSampler0 = nullptr;
 
 	/// @brief ビュー行列
@@ -825,7 +835,7 @@ private:
 	/// @brief シェーダーモード
 	ShaderMode3D m_shaderMode = ShaderMode3D::Phong;
 
-	/// @brief アウトライン描画キュー（endFrameで一括描画）
+	/// @brief アウトライン描画キュー（endFrame で一括描画）
 	struct OutlineDrawCommand
 	{
 		const Mesh* mesh;
@@ -853,7 +863,7 @@ private:
 	/// @brief endFrame が呼ばれた回数（kOcclusionUpdateInterval ごとに深度読み戻し）
 	unsigned m_occlusionFrameCounter = 0;
 	/// @brief 深度読み戻しの間引き間隔（フレーム）。staging map は GPU 完了待ちを
-	///        伴い毎フレームは高コストなため、隠蔽判定を 1 フレーム以上遅延させて薄める。
+	///        伴い毎フレームは高コストなため、隠蔽判定を 1 フレーム以上遅らせてコストを分散する。
 	static constexpr unsigned kOcclusionUpdateInterval = 4;
 	/// @brief 深度の間引きストライド（px）。Hi-Z 構築コストと隠蔽判定の粒度のトレードオフ。
 	static constexpr int kOcclusionDownsampleStride = 8;

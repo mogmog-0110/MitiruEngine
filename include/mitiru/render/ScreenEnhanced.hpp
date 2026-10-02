@@ -369,7 +369,7 @@ private:
 
 	// ── 内部ヘルパー ────────────────────────────────
 
-	/// @brief 2色を線形補間する
+	/// @brief 2 色を線形補間する
 	[[nodiscard]] static sgc::Colorf lerpColor(const sgc::Colorf& a,
 	                                           const sgc::Colorf& b,
 	                                           float t) noexcept;
@@ -379,7 +379,7 @@ private:
 	                                              float opacity) noexcept;
 
 	/// @brief 角丸矩形の塗りつぶしを描画する
-	/// @details 中央十字＋4隅の扇形を三角形ファンで分割して描画する。
+	/// @details 中央十字＋4 隅の扇形を三角形ファンで分割して描画する。
 	void drawRoundedRectFill(const sgc::Rectf& rect, float r,
 	                         const sgc::Colorf& color);
 

@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 /// @file SchemaValidator.hpp
-/// @brief JSONスキーマ検証。AI生成コンテンツの検証用
+/// @brief JSON スキーマ検証。AI 生成コンテンツの検証用
 ///
-/// スキーマ定義に基づいてJSON文字列を検証し、
-/// テンプレートJSONの自動生成も行う。
+/// スキーマ定義に基づいて JSON 文字列を検証し、
+/// テンプレート JSON の自動生成も行う。
 ///
 /// @code
 /// mitiru::data::Schema schema;
@@ -24,7 +24,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "mitiru/data/JsonBuilder.hpp"
+#include <nlohmann/json.hpp>
+
+#include "mitiru/data/JsonFields.hpp"
 
 namespace mitiru::data
 {
@@ -67,10 +69,7 @@ struct ValidationResult
 	std::vector<std::string> errors;     ///< エラーメッセージ一覧
 };
 
-/// @brief JSONスキーマ検証器
-///
-/// スキーマを登録し、JSON文字列の検証やテンプレート生成を行う。
-/// ビルトインスキーマとして entity, scene, prefab, tilemap を提供する。
+/// @brief JSON スキーマ検証器
 class SchemaValidator
 {
 public:
@@ -87,9 +86,9 @@ public:
 		m_schemas[schema.name] = schema;
 	}
 
-	/// @brief JSON文字列をスキーマに基づいて検証する
+	/// @brief JSON 文字列をスキーマに基づいて検証する
 	/// @param schemaName スキーマ名
-	/// @param jsonString 検証対象のJSON文字列
+	/// @param jsonString 検証対象の JSON 文字列
 	/// @return 検証結果
 	[[nodiscard]] ValidationResult validate(
 		const std::string& schemaName,
@@ -105,51 +104,40 @@ public:
 			return result;
 		}
 
-		const auto& schema = it->second;
-
-		/// JSONをパース
-		JsonReader reader;
-		if (!reader.parse(jsonString))
+		const auto doc = nlohmann::json::parse(jsonString, nullptr, false);
+		if (!doc.is_object())
 		{
 			result.valid = false;
 			result.errors.push_back("Invalid JSON format");
 			return result;
 		}
 
-		/// 各フィールドを検証
-		for (const auto& field : schema.fields)
+		for (const auto& field : it->second.fields)
 		{
-			validateField(reader, field, result);
+			validateField(doc, field, result);
 		}
-
 		return result;
 	}
 
-	/// @brief スキーマからテンプレートJSON文字列を生成する
+	/// @brief スキーマからテンプレート JSON 文字列を生成する
 	/// @param schemaName スキーマ名
-	/// @return テンプレートJSON文字列（スキーマ不在時は空文字列）
+	/// @return テンプレート JSON 文字列（スキーマ不在時は空文字列）
 	[[nodiscard]] std::string generateTemplate(const std::string& schemaName) const
 	{
 		auto it = m_schemas.find(schemaName);
 		if (it == m_schemas.end()) return "";
 
-		const auto& schema = it->second;
-		JsonBuilder builder;
-		builder.beginObject();
-
-		for (const auto& field : schema.fields)
+		nlohmann::ordered_json doc = nlohmann::ordered_json::object();
+		for (const auto& field : it->second.fields)
 		{
-			builder.key(field.name);
-			appendDefaultValue(builder, field);
+			doc[field.name] = defaultValueOf(field);
 		}
-
-		builder.endObject();
-		return builder.build();
+		return doc.dump();
 	}
 
 	/// @brief 登録済みスキーマを取得する
 	/// @param name スキーマ名
-	/// @return スキーマ（存在しない場合nullopt）
+	/// @return スキーマ（存在しない場合は nullopt）
 	[[nodiscard]] std::optional<Schema> getSchema(const std::string& name) const
 	{
 		auto it = m_schemas.find(name);
@@ -160,35 +148,28 @@ public:
 private:
 	std::unordered_map<std::string, Schema> m_schemas;
 
-	/// @brief フィールドを検証する
-	void validateField(
-		const JsonReader& reader,
-		const SchemaField& field,
-		ValidationResult& result) const
+	[[nodiscard]] static bool hasType(const nlohmann::json& v, FieldType type) noexcept
 	{
-		/// 必須フィールドの存在チェック
-		bool hasValue = false;
-		switch (field.type)
+		switch (type)
 		{
-		case FieldType::String:
-			hasValue = reader.getString(field.name).has_value();
-			break;
-		case FieldType::Int:
-			hasValue = reader.getInt(field.name).has_value();
-			break;
-		case FieldType::Float:
-			hasValue = reader.getFloat(field.name).has_value();
-			break;
-		case FieldType::Bool:
-			hasValue = reader.getBool(field.name).has_value();
-			break;
-		case FieldType::Array:
-			hasValue = reader.getArray(field.name).has_value();
-			break;
-		case FieldType::Object:
-			hasValue = reader.getObject(field.name).has_value();
-			break;
+		case FieldType::String: return v.is_string();
+		case FieldType::Int:    return v.is_number_integer();
+		case FieldType::Float:  return v.is_number();
+		case FieldType::Bool:   return v.is_boolean();
+		case FieldType::Array:  return v.is_array();
+		case FieldType::Object: return v.is_object();
 		}
+		return false;
+	}
+
+	/// @brief フィールドを検証する。型が違う値は「無い」扱いにする。
+	static void validateField(
+		const nlohmann::json& doc,
+		const SchemaField& field,
+		ValidationResult& result)
+	{
+		const auto it = doc.find(field.name);
+		const bool hasValue = it != doc.end() && hasType(*it, field.type);
 
 		if (field.required && !hasValue)
 		{
@@ -196,91 +177,40 @@ private:
 			result.errors.push_back("Missing required field: " + field.name);
 			return;
 		}
-
 		if (!hasValue) return;
+		if (field.type != FieldType::Int && field.type != FieldType::Float) return;
 
-		/// 数値型の範囲チェック
-		if (field.type == FieldType::Int && field.minValue.has_value())
+		const float val = it->get<float>();
+		if (field.minValue.has_value() && val < *field.minValue)
 		{
-			auto val = reader.getInt(field.name);
-			if (val.has_value() && static_cast<float>(*val) < *field.minValue)
-			{
-				result.valid = false;
-				result.errors.push_back(
-					field.name + " is below minimum value");
-			}
+			result.valid = false;
+			result.errors.push_back(field.name + " is below minimum value");
 		}
-		if (field.type == FieldType::Int && field.maxValue.has_value())
+		if (field.maxValue.has_value() && val > *field.maxValue)
 		{
-			auto val = reader.getInt(field.name);
-			if (val.has_value() && static_cast<float>(*val) > *field.maxValue)
-			{
-				result.valid = false;
-				result.errors.push_back(
-					field.name + " exceeds maximum value");
-			}
-		}
-		if (field.type == FieldType::Float && field.minValue.has_value())
-		{
-			auto val = reader.getFloat(field.name);
-			if (val.has_value() && *val < *field.minValue)
-			{
-				result.valid = false;
-				result.errors.push_back(
-					field.name + " is below minimum value");
-			}
-		}
-		if (field.type == FieldType::Float && field.maxValue.has_value())
-		{
-			auto val = reader.getFloat(field.name);
-			if (val.has_value() && *val > *field.maxValue)
-			{
-				result.valid = false;
-				result.errors.push_back(
-					field.name + " exceeds maximum value");
-			}
+			result.valid = false;
+			result.errors.push_back(field.name + " exceeds maximum value");
 		}
 	}
 
-	/// @brief デフォルト値をビルダーに追加する
-	static void appendDefaultValue(JsonBuilder& builder, const SchemaField& field)
+	/// @brief テンプレートに入れる値。defaultValue が空なら型ごとの初期値。
+	[[nodiscard]] static nlohmann::ordered_json defaultValueOf(const SchemaField& field)
 	{
-		if (!field.defaultValue.empty())
-		{
-			switch (field.type)
-			{
-			case FieldType::String:
-				builder.value(field.defaultValue);
-				break;
-			case FieldType::Int:
-				builder.value(std::stoi(field.defaultValue));
-				break;
-			case FieldType::Float:
-				builder.value(std::stof(field.defaultValue));
-				break;
-			case FieldType::Bool:
-				builder.value(field.defaultValue == "true");
-				break;
-			case FieldType::Array:
-				builder.rawValue(field.defaultValue);
-				break;
-			case FieldType::Object:
-				builder.rawValue(field.defaultValue);
-				break;
-			}
-			return;
-		}
-
-		/// デフォルト値が未指定の場合の初期値
+		const std::string& d = field.defaultValue;
 		switch (field.type)
 		{
-		case FieldType::String:  builder.value("");    break;
-		case FieldType::Int:     builder.value(0);     break;
-		case FieldType::Float:   builder.value(0.0f);  break;
-		case FieldType::Bool:    builder.value(false);  break;
-		case FieldType::Array:   builder.rawValue("[]"); break;
-		case FieldType::Object:  builder.rawValue("{}"); break;
+		case FieldType::String: return d;
+		case FieldType::Int:    return d.empty() ? 0 : std::stoi(d);
+		case FieldType::Float:  return jsonFloat(d.empty() ? 0.0f : std::stof(d));
+		case FieldType::Bool:   return d == "true";
+		case FieldType::Array:
+		case FieldType::Object:
+			break;
 		}
+		auto parsed = nlohmann::ordered_json::parse(d, nullptr, false);
+		const bool ok = field.type == FieldType::Array ? parsed.is_array() : parsed.is_object();
+		if (ok) { return parsed; }
+		return field.type == FieldType::Array ? nlohmann::ordered_json::array() : nlohmann::ordered_json::object();
 	}
 
 	/// @brief ビルトインスキーマを登録する

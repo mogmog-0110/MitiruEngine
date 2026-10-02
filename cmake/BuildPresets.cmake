@@ -148,16 +148,16 @@ function(preset_wasm_release)
 	)
 endfunction()
 
-# ── Auto-detection ───────────────────────────────────────────
-# Call mitiru_apply_preset() without arguments to auto-detect,
-# or pass one of: windows_debug, windows_release, linux_debug,
-# linux_release, wasm_release.
+# ── 自動検出 ───────────────────────────────────────────
+# 引数を指定せずに mitiru_apply_preset() を呼び出すと自動検出し、
+# または windows_debug, windows_release, linux_debug,
+# linux_release, wasm_release のいずれかを渡す。
 function(mitiru_apply_preset)
-	# Explicit preset
+	# 明示的なプリセット
 	if(ARGC GREATER 0)
 		set(PRESET_NAME ${ARGV0})
 	else()
-		# Auto-detect from platform + build type
+		# プラットフォームとビルドの種類から自動検出
 		if(EMSCRIPTEN)
 			set(PRESET_NAME "wasm_release")
 		elseif(WIN32)

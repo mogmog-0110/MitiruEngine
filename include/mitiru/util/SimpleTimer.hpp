@@ -10,7 +10,7 @@ namespace mitiru::util
 {
 
 /// @brief 一定間隔で繰り返しティックするインターバルタイマー
-/// @note 1フレーム内に複数回ティックが発生する場合にも対応する
+/// @note 1 フレーム内に複数回ティックが発生する場合にも対応する
 class IntervalTimer
 {
 public:
@@ -98,14 +98,14 @@ public:
 	}
 
 	/// @brief タイマーが完了したかを返す
-	/// @return 経過時間がduration以上ならtrue
+	/// @return 経過時間が duration 以上なら true
 	bool isFinished() const noexcept
 	{
 		return m_elapsed >= m_duration;
 	}
 
 	/// @brief 残り時間を返す
-	/// @return 残り時間（秒）。0未満にはならない
+	/// @return 残り時間（秒）。0 未満にはならない
 	float remaining() const noexcept
 	{
 		return m_duration - m_elapsed;
@@ -118,7 +118,7 @@ public:
 		return m_elapsed / m_duration;
 	}
 
-	/// @brief 新しいdurationでタイマーをリセットする
+	/// @brief 新しい duration でタイマーをリセットする
 	/// @param duration 新しいカウントダウン時間（秒）
 	/// @throws std::invalid_argument duration <= 0 の場合
 	void reset(float duration)
@@ -131,7 +131,7 @@ public:
 		m_elapsed = 0.0f;
 	}
 
-	/// @brief 同じdurationでタイマーをリセットする
+	/// @brief 同じ duration でタイマーをリセットする
 	void reset() noexcept
 	{
 		m_elapsed = 0.0f;

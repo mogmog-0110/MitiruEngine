@@ -1,7 +1,7 @@
 #pragma once
 /// @file EnttBridge.hpp
 /// @brief entt ECS ブリッジ
-/// @details entt::registry をラップして MitiruEngine のゲームコードで使用可能にする。
+/// @details entt::registry をラップして、MitiruEngine のゲームコードから使えるようにする。
 
 #include <entt/entt.hpp>
 #include <string>
@@ -11,7 +11,7 @@ namespace mitiru::ecs {
 
 /// @brief entt ベースのワールド
 /// @details entt::registry のシンプルなラッパー。
-///          既存のMitiruWorldと並行して使用可能。
+///          既存の MitiruWorld と並行して使える。
 class EnttWorld {
 public:
     using Entity = entt::entity;

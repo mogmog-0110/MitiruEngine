@@ -16,7 +16,7 @@ namespace mitiru::observe
 {
 
 /// @brief 非有限浮動小数点を表す JSON 文字列リテラル名 ("NaN"/"Inf"/"-Inf"、引用符なし)。
-///        JSON の数値には NaN/Inf を表す構文が無いため (RFC 8259)、null に潰さず区別を
+///        JSON の数値には NaN/Inf を表す構文が無いため (RFC 8259)、null にまとめず区別を
 ///        残すのに使う。`GET /api/ai/state` や `replay --diff` が「NaN なのか Inf なのか」を
 ///        読めるようにするための表現で、C++ の `std::isnan` / 符号判定と 1:1 対応する。
 template <class T>
@@ -36,7 +36,7 @@ template <class T>
 }
 
 /// @brief 数値 v を out の末尾へ追記する。非有限浮動小数点は `nonFiniteJsonName` を
-///        引用符付きの JSON 文字列として書く (null に潰さない)。
+///        引用符付きの JSON 文字列として書く (null にまとめない)。
 template <class T>
 inline void appendNumber(std::string& out, T v)
 {

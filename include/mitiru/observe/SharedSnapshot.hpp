@@ -8,8 +8,7 @@
 /// 別 process (`mitiru_inspector` 等) が polling で読んで自分のウィンドウに描画する。
 ///
 /// 設計判断:
-/// - CEF multi-process を使わない: V8 proxy resolver の single-process 制約に
-///   引っかからない、独立 Win32 window が自然に取れる、multi-monitor が無料で効く
+/// - 別 process にする: 独立 Win32 window が自然に取れる、multi-monitor が無料で効く
 /// - shared memory ではなく temp file: 構造化簡単、開発時に `cat` で生 JSON を
 ///   覗ける、process が殺されても残骸は OS が temp 掃除する時に消える
 /// - lock-free write: 完全 atomic rename pattern (`*.tmp` に書いて rename)
@@ -57,7 +56,7 @@ inline std::filesystem::path sharedSnapshotPathForPid(int pid)
 	return std::filesystem::temp_directory_path() / name;
 }
 
-/// @brief 走ってる process 側 (writer)
+/// @brief 実行中の process 側 (writer)
 /// @details コンストラクタが自プロセスの pid を取って temp file パスを決める。
 class SharedSnapshot
 {
@@ -90,7 +89,7 @@ public:
 	SharedSnapshot& operator=(const SharedSnapshot&) = delete;
 
 	/// @brief 現フレームの snapshot を書き出す (atomic rename pattern)
-	/// @return 書き込み成功で true。エラーは silent (poll-loop を壊さないため)
+	/// @return 書き込み成功で true。エラーは silent (poll-loop を妨げないため)
 	/// @details 直前に書いた内容と一致するフレームは ofstream open + rename を丸ごと
 	///          省略する (C11)。GameMemory が変化しないフレームは珍しくなく、
 	///          disk I/O の方が dump() より支配的なコストだったため。
@@ -132,7 +131,7 @@ public:
 	/// @brief snapshot ファイルの絶対パス
 	[[nodiscard]] const std::filesystem::path& path() const noexcept { return m_path; }
 
-	/// @brief inspector 側。任意 pid の snapshot ファイルを polling 読み
+	/// @brief inspector 側。任意 pid の snapshot ファイルを polling で読む
 	class Reader
 	{
 	public:

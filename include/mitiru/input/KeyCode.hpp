@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file KeyCode.hpp
-/// @brief プラットフォーム非依存キーコード
-/// @details ゲームエンジン内部で使用する統一キーコード定義。
+/// @brief プラットフォーム非依存のキーコード
+/// @details ゲームエンジン内部で使う統一キーコードの定義。
 ///          文字列との相互変換も提供する。
 
 #include <cstdint>
@@ -12,8 +12,8 @@
 namespace mitiru
 {
 
-/// @brief プラットフォーム非依存キーコード
-/// @details Windows仮想キーコードに準拠した値を使用する。
+/// @brief プラットフォーム非依存のキーコード
+/// @details 値は Windows の仮想キーコードに合わせている。
 enum class KeyCode : int
 {
 	Unknown = 0,         ///< 不明なキー
@@ -111,7 +111,7 @@ enum class KeyCode : int
 	PageDown = 34,       ///< Page Down
 	CapsLock = 20,       ///< Caps Lock
 
-	/// --- 句読点 / 記号キー（OEM, US配列基準） ---
+	/// --- 句読点 / 記号キー（OEM, US 配列基準） ---
 	Semicolon = 186,     ///< ; :  （VK_OEM_1）
 	Equal = 187,         ///< = +  （VK_OEM_PLUS）
 	Comma = 188,         ///< , <  （VK_OEM_COMMA）
@@ -141,10 +141,10 @@ enum class KeyCode : int
 	NumpadDecimal = 110, ///< テンキー.（VK_DECIMAL）
 	NumpadDivide = 111,  ///< テンキー/（VK_DIVIDE）
 
-	/// @brief テンキーEnter
-	/// @details Win32 仮想キーコード上は通常 Enter (VK_RETURN = 0x0D) と区別されない。
+	/// @brief テンキーの Enter
+	/// @details Win32 の仮想キーコードでは通常 Enter (VK_RETURN = 0x0D) と区別されない。
 	///          物理位置は extended-key bit (lParam bit 24) で判別するが、
-	///          VK レベルでは同一値となる。
+	///          VK レベルでは同じ値になる。
 	NumpadEnter = Enter,
 };
 
@@ -254,7 +254,7 @@ static_assert(static_cast<int>(KeyCode::NumpadEnter) == static_cast<int>(KeyCode
 /// @return 対応するキーコード（見つからなければ Unknown）
 [[nodiscard]] inline KeyCode stringToKeyCode(std::string_view name) noexcept
 {
-	/// 文字キー（1文字）
+	/// 文字キー（1 文字）
 	if (name.size() == 1)
 	{
 		const char ch = name[0];

@@ -211,7 +211,7 @@ inline void ClodRenderer::ensureSceneResources(ID3D12GraphicsCommandList* cmd)
 
 	constexpr auto kSrvState = D3D12_RESOURCE_STATES(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
 	                                                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	const auto upload = [&](ComPtr<ID3D12Resource>& dst, const void* src, uint64_t bytes)
+	const auto upload = [&](gfx::GpuResource& dst, const void* src, uint64_t bytes)
 	{
 		const uint64_t padded = (bytes + 7) & ~7ull;   // 4B 読みの端を 8B 境界まで確保
 		dst = makeBuffer(padded, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COPY_DEST,
@@ -253,74 +253,16 @@ inline void ClodRenderer::ensureSceneResources(ID3D12GraphicsCommandList* cmd)
 inline void ClodRenderer::uploadTextures(ID3D12GraphicsCommandList* cmd)
 {
 	m_textures.clear();
-	for (const CpuTexture& t : m_scene.textures())
+	constexpr auto kSrvState = D3D12_RESOURCE_STATES(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+	                                                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	for (const MipImage& t : m_scene.textures())
 	{
-		D3D12_HEAP_PROPERTIES hp = {};
-		hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-		D3D12_RESOURCE_DESC td = {};
-		td.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		td.Width = t.width;
-		td.Height = t.height;
-		td.DepthOrArraySize = 1;
-		td.MipLevels = static_cast<UINT16>(t.mips.size());
-		td.Format = DXGI_FORMAT_R8G8B8A8_TYPELESS;
-		td.SampleDesc.Count = 1;
-		ComPtr<ID3D12Resource> tex;
-		m_device->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &td,
-		                                  D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-		                                  IID_PPV_ARGS(&tex));
-		uint64_t total = 0;
-		uint32_t mw = t.width, mh = t.height;
-		for (size_t m = 0; m < t.mips.size(); ++m)
+		// 失敗しても index をずらさないよう空のリソースを積む (heap の slot は texture index 順)
+		gfx::GpuResource tex;
+		if (!dx12::uploadMipImage(m_device, cmd, t, m_pendingUploads, tex, kSrvState))
 		{
-			total = (total + static_cast<uint64_t>((mw * 4 + 255u) & ~255u) * mh + 511) & ~511ull;
-			mw = mw > 1 ? mw / 2 : 1;
-			mh = mh > 1 ? mh / 2 : 1;
+			debug::warnOnce("clod.tex.upload", "clod: テクスチャを GPU へ上げられない (以降は無地で描く)");
 		}
-		auto staging = makeBuffer(total, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ,
-		                          D3D12_RESOURCE_FLAG_NONE);
-		uint8_t* p = nullptr;
-		const D3D12_RANGE rr = { 0, 0 };
-		staging->Map(0, &rr, reinterpret_cast<void**>(&p));
-		uint64_t ofs = 0;
-		mw = t.width;
-		mh = t.height;
-		for (size_t m = 0; m < t.mips.size(); ++m)
-		{
-			const uint32_t pitch = (mw * 4 + 255u) & ~255u;
-			for (uint32_t y = 0; y < mh; ++y)
-			{
-				std::memcpy(p + ofs + static_cast<uint64_t>(y) * pitch,
-				            t.mips[m].data() + static_cast<size_t>(y) * mw * 4, mw * 4);
-			}
-			D3D12_TEXTURE_COPY_LOCATION src = {}, dst = {};
-			src.pResource = staging.Get();
-			src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-			src.PlacedFootprint.Offset = ofs;
-			src.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			src.PlacedFootprint.Footprint.Width = mw;
-			src.PlacedFootprint.Footprint.Height = mh;
-			src.PlacedFootprint.Footprint.Depth = 1;
-			src.PlacedFootprint.Footprint.RowPitch = pitch;
-			dst.pResource = tex.Get();
-			dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-			dst.SubresourceIndex = static_cast<UINT>(m);
-			cmd->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
-			ofs = (ofs + static_cast<uint64_t>(pitch) * mh + 511) & ~511ull;
-			mw = mw > 1 ? mw / 2 : 1;
-			mh = mh > 1 ? mh / 2 : 1;
-		}
-		staging->Unmap(0, nullptr);
-		D3D12_RESOURCE_BARRIER b = {};
-		b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		b.Transition.pResource = tex.Get();
-		b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		b.Transition.StateAfter = D3D12_RESOURCE_STATES(
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		cmd->ResourceBarrier(1, &b);
-		m_pendingUploads.push_back(staging);
 		m_textures.push_back(tex);
 	}
 }

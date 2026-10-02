@@ -9,7 +9,7 @@
 #include <mitiru/render/TextRenderer.hpp>
 
 // 全章共通の白系 (Apple-light) パレット。背景は紙白、文字は濃色、アクセントは彩度高め。
-// glow / 星空のような発光表現だけは kCard のダークカード内で見せる (白地では光らない)。
+// glow / 星空のような発光表現だけは kCard のダークカード内に表示する (白地では発光して見えない)。
 namespace theme
 {
 	constexpr mitiru::Color kPaper  = mitiru::hex(0xF5F7FA);   // ページ背景 (紙白)
@@ -26,9 +26,9 @@ namespace theme
 	constexpr mitiru::Color kCardInk = mitiru::hex(0x9AA4B8);  // ダークカード内のラベル
 }
 
-// 左上の章ラベル (日本語名のみ)。薄グレー半透明の下地バーで絵から浮かせる。
+// 左上の章ラベル (日本語名のみ)。薄グレー半透明の下地バーで絵と区別しやすくする。
 // Screen/Canvas 両対応 (ADR 0025)。幅は Screen::measureText の既定フォント経路と同じ式
-// (render::TextRenderer::measureWidthFloat) を直接呼ぶことで揃える。Canvas は同期 query
+// (render::TextRenderer::measureWidthFloat) を直接呼んでそろえる。Canvas は同期 query
 // を提供しない (ADR 0025 「measureText 問題」) ので、この直接計算がその代替になる。
 template <class Surface>
 inline void chapterTitle(Surface& s, const char* nameJp)

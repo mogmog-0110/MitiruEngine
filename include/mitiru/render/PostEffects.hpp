@@ -15,7 +15,7 @@ public:
     // ── ブルーム（明るい部分のにじみ）──
 
     /// @brief ブルームエフェクトを適用する
-    /// @param rt 対象RenderTexture
+    /// @param rt 対象 RenderTexture
     /// @param threshold 明るさの閾値 (0.0-1.0)
     /// @param intensity にじみの強さ
     /// @param radius ぼかし半径（ピクセル）
@@ -25,7 +25,7 @@ public:
         const int w = rt.width(), h = rt.height();
         if (w <= 0 || h <= 0) return;
 
-        // Extract bright pixels
+        // 明るいピクセルを抽出する
         std::vector<float> bright(static_cast<size_t>(w * h * 3), 0.0f);
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
@@ -40,7 +40,7 @@ public:
             }
         }
 
-        // Simple box blur
+        // 単純なボックスブラー
         std::vector<float> blurred(bright.size(), 0.0f);
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
@@ -65,7 +65,7 @@ public:
             }
         }
 
-        // Additive blend
+        // 加算合成
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
                 auto c = rt.pixelAt(x, y);

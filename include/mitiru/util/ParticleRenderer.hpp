@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file ParticleRenderer.hpp
-/// @brief sgc::ParticleSystemの描画ヘルパー
+/// @brief sgc::ParticleSystem の描画ヘルパー
 
 #include <sgc/effects/ParticleSystem.hpp>
 #include <sgc/math/Vec2.hpp>
@@ -10,8 +10,8 @@
 
 namespace mitiru::util
 {
-	/// @brief Screenに丸パーティクルを描画する
-	/// @param screen 描画先のScreen
+	/// @brief Screen に丸パーティクルを描画する
+	/// @param screen 描画先の Screen
 	/// @param system 描画するパーティクルシステム
 	inline void drawParticles(Screen& screen, const sgc::ParticleSystem& system)
 	{
@@ -23,8 +23,8 @@ namespace mitiru::util
 		}
 	}
 
-	/// @brief Screenに矩形パーティクルを描画する
-	/// @param screen 描画先のScreen
+	/// @brief Screen に矩形パーティクルを描画する
+	/// @param screen 描画先の Screen
 	/// @param system 描画するパーティクルシステム
 	inline void drawParticlesAsRects(Screen& screen, const sgc::ParticleSystem& system)
 	{

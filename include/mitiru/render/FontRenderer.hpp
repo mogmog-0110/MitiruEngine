@@ -2,7 +2,7 @@
 
 /// @file FontRenderer.hpp
 /// @brief 拡張フォントレンダラー
-/// @details BitmapFontをラップし、テキスト計測・ワードラップ・中央揃えなどの
+/// @details BitmapFont をラップし、テキスト計測・ワードラップ・中央揃えなどの
 ///          高レベルテキスト描画機能を提供する。
 
 #include <algorithm>
@@ -26,7 +26,7 @@ namespace mitiru::render
 {
 
 /// @brief 拡張フォントレンダラー
-/// @details BitmapFontを内部で使用し、テキスト計測・ワードラップ・
+/// @details BitmapFont を内部で使用し、テキスト計測・ワードラップ・
 ///          中央揃え描画などの高レベル機能を提供する。
 ///
 /// @code
@@ -56,11 +56,11 @@ public:
 	}
 
 	/// @brief テキストをワードラップして描画する
-	/// @tparam ScreenType Screen型（テンプレートで前方宣言対応）
-	/// @param screen 描画先Screen
+	/// @tparam ScreenType Screen 型（テンプレートで前方宣言対応）
+	/// @param screen 描画先 Screen
 	/// @param text 描画テキスト（ASCII、スペースで区切り）
-	/// @param x 左上X座標
-	/// @param y 左上Y座標
+	/// @param x 左上 X 座標
+	/// @param y 左上 Y 座標
 	/// @param maxWidth 最大行幅（ピクセル）
 	/// @param scale 拡大率
 	/// @param color 描画色
@@ -112,11 +112,11 @@ public:
 	}
 
 	/// @brief テキストを中央揃えで描画する
-	/// @tparam ScreenType Screen型（テンプレートで前方宣言対応）
-	/// @param screen 描画先Screen
+	/// @tparam ScreenType Screen 型（テンプレートで前方宣言対応）
+	/// @param screen 描画先 Screen
 	/// @param text 描画テキスト（ASCII）
-	/// @param cx 中心X座標
-	/// @param cy 中心Y座標
+	/// @param cx 中心 X 座標
+	/// @param cy 中心 Y 座標
 	/// @param scale 拡大率
 	/// @param color 描画色
 	template <typename ScreenType>
@@ -135,12 +135,12 @@ public:
 		                       intScale, color);
 	}
 
-	/// @brief テキストを通常描画する（TextRendererの薄いラッパー）
-	/// @tparam ScreenType Screen型
-	/// @param screen 描画先Screen
+	/// @brief テキストを通常描画する（TextRenderer の薄いラッパー）
+	/// @tparam ScreenType Screen 型
+	/// @param screen 描画先 Screen
 	/// @param text 描画テキスト（ASCII）
-	/// @param x 左上X座標
-	/// @param y 左上Y座標
+	/// @param x 左上 X 座標
+	/// @param y 左上 Y 座標
 	/// @param scale 拡大率
 	/// @param color 描画色
 	template <typename ScreenType>
@@ -232,7 +232,7 @@ private:
 				break;
 			}
 
-			/// 次のスペースまでが1単語
+			/// 次のスペースまでが 1 単語
 			std::size_t end = start;
 			while (end < text.size() && text[end] != ' ')
 			{

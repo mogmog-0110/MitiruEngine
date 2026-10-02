@@ -30,7 +30,7 @@
 namespace mitiru::render
 {
 
-/// @brief ComPtrエイリアス
+/// @brief ComPtr エイリアス
 template <typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
 
@@ -46,7 +46,7 @@ struct PostProcessRT
 };
 
 /// @brief ポストプロセス用レンダーターゲットを生成する
-/// @param device D3D11デバイス
+/// @param device D3D11 デバイス
 /// @param w 幅（ピクセル）
 /// @param h 高さ（ピクセル）
 /// @param format テクスチャフォーマット
@@ -111,9 +111,9 @@ struct PostProcessRT
 // ヘルパー。シェーダーコンパイル
 // ============================================================================
 
-/// @brief HLSLピクセルシェーダーをコンパイルする
-/// @param device D3D11デバイス
-/// @param source HLSL文字列
+/// @brief HLSL ピクセルシェーダーをコンパイルする
+/// @param device D3D11 デバイス
+/// @param source HLSL 文字列
 /// @param entryPoint エントリーポイント名
 /// @return コンパイル済みピクセルシェーダー
 [[nodiscard]] inline ComPtr<ID3D11PixelShader> compilePostProcessPS(
@@ -165,7 +165,7 @@ struct PostProcessRT
 }
 
 /// @brief フルスクリーン頂点シェーダーをコンパイルする
-/// @param device D3D11デバイス
+/// @param device D3D11 デバイス
 /// @return コンパイル済み頂点シェーダー
 [[nodiscard]] inline ComPtr<ID3D11VertexShader> compileFullscreenVS(
 	ID3D11Device* device)
@@ -214,14 +214,14 @@ struct PostProcessRT
 }
 
 /// @brief 定数バッファを生成する
-/// @param device D3D11デバイス
-/// @param sizeBytes バッファサイズ（16バイトアライン済み）
+/// @param device D3D11 デバイス
+/// @param sizeBytes バッファサイズ（16 バイトアライン済み）
 /// @return 生成された定数バッファ
 [[nodiscard]] inline ComPtr<ID3D11Buffer> createConstantBuffer(
 	ID3D11Device* device,
 	std::uint32_t sizeBytes)
 {
-	/// 16バイトアラインメントを保証する
+	/// 16 バイトアラインメントを保証する
 	const auto aligned =
 		(sizeBytes + 15u) & ~15u;
 
@@ -244,7 +244,7 @@ struct PostProcessRT
 }
 
 /// @brief 定数バッファを更新する
-/// @param context D3D11コンテキスト
+/// @param context D3D11 コンテキスト
 /// @param buffer 更新対象バッファ
 /// @param data データポインタ
 /// @param sizeBytes データサイズ
@@ -271,7 +271,7 @@ inline void updateConstantBuffer(
 }
 
 /// @brief リニアサンプラーを生成する
-/// @param device D3D11デバイス
+/// @param device D3D11 デバイス
 /// @return 生成されたサンプラーステート
 [[nodiscard]] inline ComPtr<ID3D11SamplerState> createLinearClampSampler(
 	ID3D11Device* device)

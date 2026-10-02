@@ -1,0 +1,80 @@
+<rml>
+<head>
+	<title>scene tree</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		.tree { margin-top: 8dp; padding: 8dp 10dp; background-color: #ffffff; border: 1dp #e6e7ea;
+		        font-family: "IBM Plex Mono"; font-size: 14dp; line-height: 1; }
+		.tree .row { display: flex; align-items: center; height: 24dp; white-space: nowrap; }
+		/* インデント + 罫線のつなぎ (極細のグレーの罫) */
+		.indent { display: block; flex: 0 0 9dp; width: 9dp; height: 24dp; margin-left: 9dp; border-left: 1dp #c9cbd0; }
+		/* [+] / [-] の開閉の箱 */
+		.tog { display: flex; flex: 0 0 15dp; width: 15dp; height: 15dp; margin-right: 5dp; align-items: center; justify-content: center;
+		       background-color: #ffffff; border: 1dp #c9cbd0; font-size: 11dp; line-height: 1; color: #1a1c1f; cursor: pointer; }
+		.tog.leaf { border-width: 0; background-color: transparent; cursor: default; }
+		.key { color: #1a1c1f; font-weight: bold; }
+		.colon { color: #999da4; margin: 0dp 5dp; }
+		.val { color: #1a1c1f; }
+		.obj-hint { color: #999da4; margin-left: 7dp; }
+		/* 木 (exportedInspectables) と game memory (reflect) は別系統のデータ源。tab は表示の切り替えだけで、
+		   どちらも読み取り専用のまま (docs/INSPECTOR_DATA_SOURCES.md)。 */
+		.tabs { display: flex; margin-top: 8dp; }
+		.tab-btn { font-size: 12dp; padding: 2dp 10dp; margin-right: 2dp; background-color: #ffffff; border: 1dp #e6e7ea; color: #999da4; letter-spacing: 0; white-space: nowrap; }
+		.tab-btn:hover { background-color: #ffffff; }
+		.tab-btn.active { color: #1a1c1f; border-bottom-color: #ffffff; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ready">
+	<header><div class="dot"/><h1>scene tree</h1></header>
+	<div class="tabs">
+		<button class="tab-btn" data-class-active="tab == 'tree'" data-event-click="dispatch('tab', 'name', 'tree')">tree (exportedInspectables)</button>
+		<button class="tab-btn" data-class-active="tab == 'memory'" data-event-click="dispatch('tab', 'name', 'memory')">game memory (reflect)</button>
+	</div>
+	<div class="body">
+		<div data-if="tab == 'tree'">
+			<div class="tree">
+				<div class="row" data-for="r : rows">
+					<span class="indent" data-for="i : r.indent"><span/></span>
+					<span class="tog leaf" data-if="r.leaf"/>
+					<span class="tog" data-if="!r.leaf" data-event-click="dispatch('tree.toggle', 'path', r.path)"><span>{{ r.open ? '-' : '+' }}</span></span>
+					<span class="key">{{ r.key }}</span>
+					<span class="colon" data-if="r.leaf">:</span>
+					<span class="val" data-if="r.leaf">{{ r.val }}</span>
+					<span class="obj-hint" data-if="!r.leaf &amp;&amp; r.hint != ''">{{ r.hint }}</span>
+				</div>
+			</div>
+		</div>
+		<div data-if="tab == 'memory'">
+			<div data-for="sec : sections">
+				<div class="section-title">{{ sec.title }}</div>
+				<div class="kv">
+					<div data-for="it : sec.items">
+						<div class="row" data-if="!it.group">
+							<span class="k" data-if="it.has_k">{{ it.k }}</span>
+							<span class="v">
+								<span data-if="it.w == 'text'">{{ it.v }}</span>
+								<span class="enum-box" data-if="it.w == 'enum'">{{ it.v }}<span class="arrow">▼</span></span>
+								<span data-if="it.w == 'range'"><input type="range" class="range" disabled="" data-attr-min="it.min" data-attr-max="it.max" data-attr-value="it.val"/>{{ it.v }}</span>
+							</span>
+						</div>
+						<div class="group" data-if="it.group">
+							<div class="summary" data-event-click="dispatch('kv.group', 'name', it.name)">{{ it.open ? '- ' : '+ ' }}{{ it.name }}</div>
+							<div data-if="it.open">
+								<div class="row" data-for="r : it.rows">
+									<span class="k" data-if="r.has_k">{{ r.k }}</span>
+									<span class="v">
+										<span data-if="r.w == 'text'">{{ r.v }}</span>
+										<span class="enum-box" data-if="r.w == 'enum'">{{ r.v }}<span class="arrow">▼</span></span>
+										<span data-if="r.w == 'range'"><input type="range" class="range" disabled="" data-attr-min="r.min" data-attr-max="r.max" data-attr-value="r.val"/>{{ r.v }}</span>
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="wait">waiting for the game…</div>
+</body>
+</rml>

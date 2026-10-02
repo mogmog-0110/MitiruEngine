@@ -2,7 +2,7 @@
 
 /// @file Dissolve.hpp
 /// @brief ノイズベースのディゾルブ遷移エフェクト
-/// @details ピクセル位置に基づくハッシュノイズの閾値でディゾルブする。
+/// @details ピクセル位置から求めたハッシュノイズを閾値と比べてディゾルブする。
 
 #include <algorithm>
 #include <cstdint>
@@ -50,8 +50,8 @@ public:
 	}
 
 	/// @brief 指定ピクセル位置のノイズ値を取得する [0,1]
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @return ノイズ値 [0,1]
 	[[nodiscard]] static float pixelNoise(int x, int y) noexcept
 	{
@@ -64,8 +64,8 @@ public:
 	}
 
 	/// @brief 指定ピクセルが可視かどうか判定する
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @return 可視なら true
 	[[nodiscard]] bool isPixelVisible(int x, int y) const noexcept
 	{

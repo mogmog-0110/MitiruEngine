@@ -68,7 +68,7 @@ public:
 		}
 	}
 
-	/// @brief 1Dパーリンノイズ [-1, 1]
+	/// @brief 1Dパーリンノイズ [-0.5, 0.5]（勾配が ±1 のため）
 	/// @param x X座標
 	template <FloatingPoint T>
 	[[nodiscard]] T noise1D(T x) const noexcept

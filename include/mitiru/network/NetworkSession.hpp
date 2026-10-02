@@ -2,8 +2,8 @@
 
 /// @file NetworkSession.hpp
 /// @brief ネットワークセッション管理
-/// @details Client/Server/P2Pモードに対応したセッション管理。
-///          INetworkTransport上に構築し、ピア管理・メッセージルーティング・
+/// @details Client/Server/P2P モードに対応したセッション管理。
+///          INetworkTransport 上に構築し、ピア管理・メッセージルーティング・
 ///          ハートビート・再接続を提供する。
 ///
 /// @code
@@ -95,7 +95,7 @@ struct SessionEventInfo
 
 /// @brief ネットワークセッション管理クラス
 /// @details トランスポート層を抽象化し、ゲームロジックに対して
-///          統一的なマルチプレイヤーセッションAPIを提供する。
+///          統一的なマルチプレイヤーセッション API を提供する。
 class NetworkSession
 {
 public:
@@ -144,7 +144,7 @@ public:
 		return true;
 	}
 
-	/// @brief P2Pモードで初期化する
+	/// @brief P2P モードで初期化する
 	/// @param port ローカルポート
 	/// @param transport トランスポート層（所有権を移動）
 	/// @return 成功なら true
@@ -209,7 +209,7 @@ public:
 	// ── メッセージ送受信 ──
 
 	/// @brief 特定ピアにメッセージを送信する
-	/// @param peerId 送信先ピアID
+	/// @param peerId 送信先ピア ID
 	/// @param msg メッセージ
 	void sendTo(ConnectionId peerId, GameMessage msg)
 	{
@@ -263,7 +263,7 @@ public:
 		}
 		else
 		{
-			// サーバー/P2Pモードではブロードキャスト
+			// サーバー/P2P モードではブロードキャスト
 			broadcast(MessageFactory::input(m_localId, inputJson));
 		}
 	}
@@ -280,7 +280,7 @@ public:
 	// ── ピア管理 ──
 
 	/// @brief ピア情報を取得する
-	/// @param peerId ピアID
+	/// @param peerId ピア ID
 	/// @return ピア情報（存在しない場合は nullopt）
 	[[nodiscard]] const PeerInfo* getPeer(ConnectionId peerId) const
 	{
@@ -290,7 +290,7 @@ public:
 	}
 
 	/// @brief 全ピアのリストを取得する
-	/// @return ピアID→PeerInfoマップの参照
+	/// @return ピア ID→PeerInfo マップの参照
 	[[nodiscard]] const std::unordered_map<ConnectionId, PeerInfo>& peers() const noexcept
 	{
 		return m_peers;
@@ -333,10 +333,10 @@ public:
 	/// @brief セッションモードを取得する
 	[[nodiscard]] SessionMode mode() const noexcept { return m_mode; }
 
-	/// @brief ローカルIDを設定する
+	/// @brief ローカル ID を設定する
 	void setLocalId(ConnectionId id) noexcept { m_localId = id; }
 
-	/// @brief ローカルIDを取得する
+	/// @brief ローカル ID を取得する
 	[[nodiscard]] ConnectionId localId() const noexcept { return m_localId; }
 
 	/// @brief イベントコールバックを設定する

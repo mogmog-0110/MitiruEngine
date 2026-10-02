@@ -4,7 +4,7 @@
 inline void mitiru::Screen::pushTransform(float tx, float ty, float sx, float sy)
 {
 	const auto cur = currentTransform();
-	// Compose: new = cur * translate(tx,ty) * scale(sx,sy)
+	// 合成: new = cur * translate(tx,ty) * scale(sx,sy)
 	auto next = cur
 	          * Transform2D::translate(tx, ty)
 	          * Transform2D::scale(sx, sy);

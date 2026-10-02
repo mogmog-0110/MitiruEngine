@@ -30,6 +30,7 @@ struct TagSet
 {
 	TagPath      tags[kTagMaxCount]{};
 	std::uint8_t count = 0;
+	std::uint8_t _pad[1] = {};   ///< 暗黙の詰め物を残さない (GameMemory はバイト単位で比べられる)
 };
 
 /// @brief 文字列セグメントを 16bit id へ変換する (fnv1a64 を xor-fold して縮める)。

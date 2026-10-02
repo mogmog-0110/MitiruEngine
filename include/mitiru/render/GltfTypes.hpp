@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file GltfTypes.hpp
-/// @brief glTF中間データ型
-/// @details cgltf内部型とエンジン型の間の橋渡しデータ構造。
+/// @brief glTF 中間データ型
+/// @details cgltf 内部型とエンジン型の間をつなぐデータ構造。
 
 #include <array>
 #include <cstdint>
@@ -22,7 +22,7 @@ namespace mitiru::render
 
 /// @brief 頂点ごとのスキン束縛 (JOINTS_0 / WEIGHTS_0)。最大 4 ボーン影響 (glTF 標準)。
 /// @details joints はスキンの joints 配列内インデックス (= palette / inverseBind の添字)。
-///          weights は対応する重み。CPU スキニング (`Skinning.hpp::skinVertices`) の入力 (#23a)。
+///          weights は対応する重み。スキニング (`Skinning.hpp::skinVertices` / DX12 の compute) の入力 (#23a)。
 struct SkinVertexBinding
 {
 	std::uint32_t joints[4] = {0, 0, 0, 0};

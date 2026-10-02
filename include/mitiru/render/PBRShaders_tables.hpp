@@ -39,8 +39,8 @@ namespace mitiru::render
 
 // ─── PBR Vertex Shader ─────────────────────────────────────
 
-/// @brief PBR頂点シェーダー
-/// @details Position, Normal, TexCoord, Tangent入力からTBN行列を生成し
+/// @brief PBR 頂点シェーダー
+/// @details Position, Normal, TexCoord, Tangent 入力から TBN 行列を生成し
 ///          ワールド空間の位置・法線・接線・従接線をピクセルシェーダーに渡す。
 constexpr std::string_view kPBR_VS = R"hlsl(
 cbuffer CbPBR : register(b0)
@@ -107,9 +107,9 @@ VSOutput VSMain(VSInput input)
 
 // ─── PBR BRDF Helpers (shared HLSL) ────────────────────────
 
-/// @brief BRDF関数群の共通HLSL定義
-/// @details Cook-Torrance BRDFのコアとなるGGX NDF、Schlick Fresnel、
-///          Smith GGX Geometry関数を定義する。各ピクセルシェーダーから参照される。
+/// @brief BRDF 関数群の共通 HLSL 定義
+/// @details Cook-Torrance BRDF のコアとなる GGX NDF、Schlick Fresnel、
+///          Smith GGX Geometry 関数を定義する。各ピクセルシェーダーから参照される。
 constexpr std::string_view kPBR_BRDF_COMMON = R"hlsl(
 // ── Constants ──────────────────────────────────────────────
 static const float PI      = 3.14159265359;
@@ -198,8 +198,8 @@ float3 ApplyNormalMap(float3 sampledNormal, float3 T, float3 B, float3 N)
 
 // ─── PBR Shared Constant Buffer (CbPBR) ────────────────────
 
-/// @brief CbPBR定数バッファの共通HLSL定義
-/// @details 各PBRピクセルシェーダーで共通のCbPBR宣言とPSInput構造体。
+/// @brief CbPBR 定数バッファの共通 HLSL 定義
+/// @details 各 PBR ピクセルシェーダーで共通の CbPBR 宣言と PSInput 構造体。
 constexpr std::string_view kPBR_CBUFFER_COMMON = R"hlsl(
 // ── Constant Buffers ─────────────────────────────────────
 cbuffer CbPBR : register(b0)
@@ -236,12 +236,12 @@ struct PSInput
 
 // ─── PBR Pixel Shader (Cook-Torrance + Multi-Light) ────────
 
-/// @brief PBRピクセルシェーダー（多光源対応）
+/// @brief PBR ピクセルシェーダー（多光源対応）
 /// @details Cook-Torrance BRDF（GGX NDF + Schlick Fresnel + Smith GGX Geometry）
-///          による物理ベースライティング。最大4ディレクショナル+4ポイントライト対応。
+///          による物理ベースライティング。最大 4 ディレクショナル+4 ポイントライト対応。
 ///          アルベド・法線・メタリック-ラフネス・AO・エミッシブマップをサポートする。
-///          ACESフィルミックトーンマッピング + sRGBガンマ補正。
-///          ランタイムでkPBR_BRDF_COMMON + kPBR_CBUFFER_COMMONと結合して使用する。
+///          ACES フィルミックトーンマッピング + sRGB ガンマ補正。
+///          ランタイムで kPBR_BRDF_COMMON + kPBR_CBUFFER_COMMON と結合して使う。
 constexpr std::string_view kPBR_PS_BODY = R"hlsl(
 // Extended multi-light buffer (optional, register b1)
 cbuffer CbLights : register(b1)
@@ -420,12 +420,12 @@ float4 PSMain(PSInput input) : SV_TARGET
 
 // ─── IBL Pixel Shader (Split-Sum Approximation) ───────────
 
-/// @brief IBL付きPBRピクセルシェーダー
-/// @details Image-Based Lightingによるアンビエント照明を追加する。
+/// @brief IBL 付き PBR ピクセルシェーダー
+/// @details Image-Based Lighting によるアンビエント照明を追加する。
 ///          イラディアンスキューブマップ（拡散）、プリフィルター環境マップ+BRDF LUT
-///          （スペキュラー）を使用するSplit-sum近似。
+///          （スペキュラー）を使う Split-sum 近似。
 ///          環境マップが未設定の場合は定数アンビエントにフォールバックする。
-///          ランタイムでkPBR_BRDF_COMMON + kPBR_CBUFFER_COMMONと結合して使用する。
+///          ランタイムで kPBR_BRDF_COMMON + kPBR_CBUFFER_COMMON と結合して使う。
 constexpr std::string_view kPBR_IBL_PS_BODY = R"hlsl(
 cbuffer CbIBL : register(b2)
 {
@@ -547,10 +547,10 @@ float4 PSMain(PSInput input) : SV_TARGET
 
 // ─── Shadow-Integrated PBR Pixel Shader ───────────────────
 
-/// @brief シャドウ付きPBRピクセルシェーダー
-/// @details PCF 3x3ソフトシャドウ + カスケードシャドウマップ選択を統合した
-///          Cook-Torrance PBRピクセルシェーダー。
-///          ランタイムでkPBR_BRDF_COMMON + kPBR_CBUFFER_COMMONと結合して使用する。
+/// @brief シャドウ付き PBR ピクセルシェーダー
+/// @details PCF 3x3 ソフトシャドウ + カスケードシャドウマップ選択を統合した
+///          Cook-Torrance PBR ピクセルシェーダー。
+///          ランタイムで kPBR_BRDF_COMMON + kPBR_CBUFFER_COMMON と結合して使う。
 constexpr std::string_view kPBR_SHADOW_PS_BODY = R"hlsl(
 cbuffer CbShadow : register(b3)
 {
@@ -765,7 +765,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 // ─── IBL Precomputation: Pre-filtered Environment Map ─────
 
 /// @brief プリフィルター環境マップピクセルシェーダー
-/// @details ラフネスレベルに応じてGGX重要度サンプリングで環境マップをぼかす。
+/// @details ラフネスレベルに応じて GGX 重要度サンプリングで環境マップをぼかす。
 ///          各ミップレベルが異なるラフネス値に対応する。
 constexpr std::string_view kIBL_PREFILTER_PS = R"hlsl(
 TextureCube tEnvironment : register(t0);
@@ -880,10 +880,10 @@ float4 PSMain(PSInput input) : SV_TARGET
 
 // ─── IBL Precomputation: BRDF Integration LUT ──────────────
 
-/// @brief BRDF積分LUT生成ピクセルシェーダー
-/// @details NdotV（横軸）とroughness（縦軸）のグリッドに対して
-///          Split-sum近似のスケール(R)とバイアス(G)を計算する。
-///          出力はRG16Fの2Dテクスチャ。
+/// @brief BRDF 積分 LUT 生成ピクセルシェーダー
+/// @details NdotV（横軸）と roughness（縦軸）のグリッドに対して
+///          Split-sum 近似のスケール(R)とバイアス(G)を計算する。
+///          出力は RG16F の 2D テクスチャ。
 constexpr std::string_view kIBL_BRDF_LUT_PS = R"hlsl(
 struct PSInput
 {
@@ -992,7 +992,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 // ─── Fullscreen Quad Vertex Shader (for IBL precomputation) ─
 
 /// @brief フルスクリーンクワッド頂点シェーダー
-/// @details IBLプリコンピュテーション用。頂点ID→クリップ空間+UV変換。
+/// @details IBL プリコンピュテーション用。頂点 ID→クリップ空間+UV 変換。
 constexpr std::string_view kFULLSCREEN_QUAD_VS = R"hlsl(
 struct VSOutput
 {
@@ -1014,8 +1014,8 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 )hlsl";
 
 /// @brief キューブマップ面描画用頂点シェーダー
-/// @details IBLプリコンピュテーションでキューブマップ各面にレンダリングする際に使用する。
-///          頂点IDからクリップ空間座標とワールド方向を生成する。
+/// @details IBL プリコンピュテーションでキューブマップ各面にレンダリングする際に使う。
+///          頂点 ID からクリップ空間座標とワールド方向を生成する。
 constexpr std::string_view kCUBEMAP_FACE_VS = R"hlsl(
 cbuffer CbCubeFace : register(b0)
 {
@@ -1047,7 +1047,7 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 
 // ─── Shader Compilation Helper ──────────────────────────────
 
-/// @brief PBRシェーダーコンパイル結果を保持する構造体
+/// @brief PBR シェーダーコンパイル結果を保持する構造体
 struct PBRShaderSet
 {
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> pbrVS;
@@ -1063,12 +1063,12 @@ struct PBRShaderSet
 	bool valid = false;
 };
 
-/// @brief HLSLソースをコンパイルしてBlobを返す内部ヘルパー
-/// @param source HLSLソース文字列
+/// @brief HLSL ソースをコンパイルして Blob を返す内部ヘルパー
+/// @param source HLSL ソース文字列
 /// @param entryPoint エントリーポイント名
 /// @param target コンパイルターゲット（vs_5_0 / ps_5_0）
-/// @param[out] blob コンパイル済みBlobの出力先
-/// @return コンパイル成功ならtrue
+/// @param[out] blob コンパイル済み Blob の出力先
+/// @return コンパイル成功なら true
 inline bool CompilePBRShader(std::string_view source,
                              const char* entryPoint,
                              const char* target,
@@ -1101,9 +1101,9 @@ inline bool CompilePBRShader(std::string_view source,
 	return true;
 }
 
-/// @brief PBRシェーダーセットを一括コンパイルする
-/// @param device D3D11デバイス
-/// @return コンパイル済みPBRShaderSet（valid==trueで成功）
+/// @brief PBR シェーダーセットを一括コンパイルする
+/// @param device D3D11 デバイス
+/// @return コンパイル済み PBRShaderSet（valid==true で成功）
 [[nodiscard]] inline PBRShaderSet CompilePBRShaders(ID3D11Device* device)
 {
 	PBRShaderSet result;
@@ -1155,7 +1155,7 @@ inline bool CompilePBRShader(std::string_view source,
 	}
 
 	// ── Pixel Shaders ──
-	// Concatenate shared BRDF + cbuffer commons with shader-specific bodies
+	// 共通の BRDF と cbuffer の定義を、各シェーダー固有の本体と結合する
 	const std::string pbrCommon = std::string(kPBR_BRDF_COMMON)
 	                            + std::string(kPBR_CBUFFER_COMMON);
 

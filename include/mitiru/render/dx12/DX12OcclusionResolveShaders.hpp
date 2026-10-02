@@ -10,7 +10,7 @@ namespace mitiru::render
 {
 
 /// @brief オクルージョン用 min-depth resolve ピクセルシェーダー (DX12、4x MSAA 固定)
-/// @details 深度 SRV (t0、`m_depthSRVHeap` スロット0を流用) の全サンプルを
+/// @details 深度 SRV (t0、`m_depthSRVHeap` スロット 0 を流用) の全サンプルを
 ///          `Load` し、最小値 (カメラに最も近い＝最も保守的な遮蔽物候補) を
 ///          単一サンプル R32_FLOAT へ書く。
 constexpr const char* DX12_OCCLUSION_MIN_DEPTH_RESOLVE_PS = R"hlsl(

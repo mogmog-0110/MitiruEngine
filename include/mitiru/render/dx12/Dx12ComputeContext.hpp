@@ -31,6 +31,7 @@
 
 #include <d3d12.h>
 #include <d3dcompiler.h>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 #include <wrl/client.h>
 
 #include <cstdint>
@@ -62,7 +63,7 @@ public:
     static constexpr UINT kCbvCount = 4u;
 
     /// @brief SRV / UAV テーブル内のディスクリプタ数
-    /// @details UAV は 8 枠（u0..u7）。GPU 駆動コンピュート（PB-MPM 等）が 4 枠で足りないため拡張 (#26)。
+    /// @details UAV は 8 枠（u0..u7）。GPU 駆動のコンピュート（PB-MPM 等）では 4 枠で足りないため拡張した (#26)。
     static constexpr UINT kSrvCount = 4u;
     static constexpr UINT kUavCount = 8u;
 
@@ -115,13 +116,8 @@ public:
 #ifdef _DEBUG
         flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
-        const HRESULT hr = D3DCompile(
-            hlsl, std::strlen(hlsl),
-            nullptr, nullptr, nullptr,
-            entryPoint, "cs_5_0",
-            flags, 0,
-            csBlob.GetAddressOf(),
-            errBlob.GetAddressOf());
+        const HRESULT hr = gfx::compileDx12Shader(hlsl, entryPoint, "cs_5_0", flags,
+            csBlob.GetAddressOf(), errBlob.GetAddressOf());
 
         if (FAILED(hr)) return false;
 

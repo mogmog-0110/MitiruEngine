@@ -50,7 +50,7 @@
 include_guard(DIRECTORY)
 
 # ── locate the exporter script ─────────────────────────────────────────
-# This file lives in <engine>/cmake/, the exporter lives in <engine>/tools/.
+# このファイルは <engine>/cmake/ にあり、エクスポーターは <engine>/tools/ にある。
 get_filename_component(_mitiru_assets_engine_root "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 set(_MITIRU_PSD_EXPORT "${_mitiru_assets_engine_root}/tools/psd_export.py"
     CACHE INTERNAL "Path to psd_export.py" FORCE)
@@ -83,7 +83,7 @@ function(mitiru_assets target_name)
         set(ARG_EXTENSION "png")
     endif()
 
-    # Python interpreter.
+    # Python インタープリター。
     if(ARG_PSD_TOOL)
         set(_python "${ARG_PSD_TOOL}")
     else()
@@ -93,14 +93,14 @@ function(mitiru_assets target_name)
         if(Python3_EXECUTABLE)
             set(_python "${Python3_EXECUTABLE}")
         else()
-            # Fall back to whatever's on PATH.  If PATH has neither 'python'
-            # nor 'python3', the custom_command will error at build time with
-            # a clear message from the shell.
+            # フォールバックとして PATH にあるものを使う。PATH に 'python' も
+            # 'python3' も無ければ、ビルド時に custom_command が
+            # シェルからの分かりやすいメッセージ付きでエラーになる。
             set(_python "python")
         endif()
     endif()
 
-    # One-shot tooling probe (configure-time, warning only).
+    # ツールを一度だけ確認する (構成時、警告のみ)。
     execute_process(
         COMMAND "${_python}" "${_MITIRU_PSD_EXPORT}" --check
         RESULT_VARIABLE _probe_rc
@@ -113,8 +113,8 @@ function(mitiru_assets target_name)
             "(${_probe_err})")
     endif()
 
-    # Glob *.psd recursively.  CONFIGURE_DEPENDS forces re-glob on every
-    # build so newly-added files register without a fresh `cmake` invocation.
+    # *.psd を再帰的に glob する。CONFIGURE_DEPENDS でビルドのたびに glob し直すので、
+    # 新しく足したファイルも `cmake` を実行し直さずに認識される。
     file(GLOB_RECURSE _psd_sources
         CONFIGURE_DEPENDS
         RELATIVE "${ARG_SOURCE_DIR}"

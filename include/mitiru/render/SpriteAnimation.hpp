@@ -3,7 +3,7 @@
 /// @file SpriteAnimation.hpp
 /// @brief スプライトシートアニメーションシステム
 /// @details フレームベースのスプライトアニメーション機能を提供する。
-///          均一グリッドのスプライトシート、Aseprite JSON形式の読み込み、
+///          均一グリッドのスプライトシート、Aseprite JSON 形式の読み込み、
 ///          再生制御、コールバック、キャッシュを含む完全なアニメーションパイプライン。
 
 #include <algorithm>
@@ -23,10 +23,10 @@ namespace mitiru::render
 {
 
 // ────────────────────────────────────────────────────────────────
-// SpriteFrame。アトラス上の1フレーム情報
+// SpriteFrame。アトラス上の 1 フレーム情報
 // ────────────────────────────────────────────────────────────────
 
-/// @brief スプライトアニメーションの1フレーム
+/// @brief スプライトアニメーションの 1 フレーム
 /// @details アトラス上のソース矩形、表示時間、描画オフセットを保持する。
 struct SpriteFrame
 {
@@ -61,7 +61,7 @@ struct SpriteAnimation
 // SpriteAnimationSet。エンティティ用アニメーション集合
 // ────────────────────────────────────────────────────────────────
 
-/// @brief 1エンティティ用のアニメーションセット
+/// @brief 1 エンティティ用のアニメーションセット
 /// @details "idle", "walk", "attack" など複数のアニメーションを名前で管理する。
 ///
 /// @code
@@ -137,7 +137,7 @@ private:
 
 /// @brief スプライトシート
 /// @details テクスチャとフレーム配列を保持する。
-///          均一グリッドまたはJSON定義からフレームを生成する。
+///          均一グリッドまたは JSON 定義からフレームを生成する。
 ///
 /// @code
 /// Texture atlas = ...;
@@ -152,8 +152,8 @@ public:
 
 	/// @brief 均一グリッドのスプライトシートを生成する
 	/// @param texture テクスチャ
-	/// @param frameWidth 1フレームの幅（ピクセル）
-	/// @param frameHeight 1フレームの高さ（ピクセル）
+	/// @param frameWidth 1 フレームの幅（ピクセル）
+	/// @param frameHeight 1 フレームの高さ（ピクセル）
 	/// @param frameCount フレーム数（0 の場合はテクスチャサイズから自動計算）
 	/// @return SpriteSheet
 	[[nodiscard]] static SpriteSheet create(const Texture& texture,
@@ -234,10 +234,10 @@ public:
 		return m_texture;
 	}
 
-	/// @brief 1フレームの幅を返す
+	/// @brief 1 フレームの幅を返す
 	[[nodiscard]] int frameWidth() const noexcept { return m_frameWidth; }
 
-	/// @brief 1フレームの高さを返す
+	/// @brief 1 フレームの高さを返す
 	[[nodiscard]] int frameHeight() const noexcept { return m_frameHeight; }
 
 	/// @brief 全フレームを返す
@@ -274,7 +274,7 @@ enum class AnimatorDirection
 };
 
 /// @brief スプライトアニメーション再生コントローラ
-/// @details SpriteAnimationSetからアニメーションを選択し、
+/// @details SpriteAnimationSet からアニメーションを選択し、
 ///          フレームベースの時間制御で再生を管理する。
 ///
 /// @code
@@ -377,7 +377,7 @@ public:
 	}
 
 	/// @brief 現在のフレームを取得する
-	/// @return 現在のSpriteFrame（アニメーション未設定の場合は空フレーム）
+	/// @return 現在の SpriteFrame（アニメーション未設定の場合は空フレーム）
 	[[nodiscard]] SpriteFrame currentFrame() const
 	{
 		if (!m_currentAnimation || m_currentAnimation->frames.empty())
@@ -461,7 +461,7 @@ public:
 	}
 
 private:
-	/// @brief フレームを1つ進める
+	/// @brief フレームを 1 つ進める
 	void advanceFrame()
 	{
 		if (!m_currentAnimation)
@@ -594,7 +594,7 @@ private:
 };
 
 // ────────────────────────────────────────────────────────────────
-// SpriteAnimationBuilder。Fluent APIによるアニメーション構築
+// SpriteAnimationBuilder。Fluent API によるアニメーション構築
 // ────────────────────────────────────────────────────────────────
 
 /// @brief SpriteAnimation を Fluent API で構築するビルダー
@@ -620,8 +620,8 @@ public:
 	/// @brief フレームを追加する
 	/// @param sourceRect ソース矩形（ピクセル座標）
 	/// @param duration 表示時間（秒）
-	/// @param offsetX 描画オフセットX
-	/// @param offsetY 描画オフセットY
+	/// @param offsetX 描画オフセット X
+	/// @param offsetY 描画オフセット Y
 	/// @return ビルダー自身への参照
 	SpriteAnimationBuilder& addFrame(const sgc::Recti& sourceRect,
 	                                 float duration,
@@ -632,7 +632,7 @@ public:
 		return *this;
 	}
 
-	/// @brief SpriteFrameを直接追加する
+	/// @brief SpriteFrame を直接追加する
 	/// @param frame フレーム
 	/// @return ビルダー自身への参照
 	SpriteAnimationBuilder& addFrame(const SpriteFrame& frame)

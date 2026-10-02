@@ -16,7 +16,7 @@
 ///
 ///          @b 呼び出し位置：`Renderer3D_DX12::beginFrame()` と `endFrame()` の間。
 ///          レンダラのコマンドリストとレンダーターゲットに乗る（既存の
-///          「外部アクセス用API」と同じ扱いで、レンダラ本体には何も足さない）。
+///          「外部アクセス用 API」と同じ扱いで、レンダラ本体には何も足さない）。
 ///
 ///          @b 置き方の制限：**剛体変換と一様スケールのみ**。
 ///          非一様スケールを掛けた距離場はもう距離ではなく、潰した軸で値が短く出るので
@@ -39,6 +39,8 @@
 
 #include <d3d12.h>
 #include <wrl/client.h>
+
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -75,7 +77,7 @@ class CsgRenderPass
 public:
 	/// @brief 描き込む先の形。レンダラが使っているものと一致していなければならない
 	/// @details 値を渡してもらう形にしてあるのは、ここで定数として持つと
-	///          レンダラ側が MSAA 数やフォーマットを変えたときに**黙って PSO 生成が失敗する**
+	///          レンダラ側が MSAA 数やフォーマットを変えたときに**気づかないうちに PSO 生成が失敗する**
 	///          だけになるからである。呼び手が実際に使っている値を渡す。
 	struct TargetFormat
 	{
@@ -240,7 +242,7 @@ public:
 		//
 		// 全面三角形のままだと、画面の 1/10 しか占めない小道具でも**全画素**が
 		// ピクセルシェーダに入る。箱の外は 1 回のスラブ判定で discard されるが、
-		// SV_Depth を書くパスは early-Z が効かないので、その 1 回は必ず走る。
+		// SV_Depth を書くパスは early-Z が使えないので、その 1 回は必ず走る。
 		D3D12_RECT scissor{};
 		if (!screenRect(camera, objectToWorld, viewportWidth, viewportHeight, scissor))
 		{
@@ -308,21 +310,8 @@ private:
 	public:
 		[[nodiscard]] bool create(ID3D12Device* device, std::size_t bytes)
 		{
-			D3D12_HEAP_PROPERTIES heap{};
-			heap.Type = D3D12_HEAP_TYPE_UPLOAD;
-			D3D12_RESOURCE_DESC desc{};
-			desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-			desc.Width = bytes * kSlots;
-			desc.Height = 1;
-			desc.DepthOrArraySize = 1;
-			desc.MipLevels = 1;
-			desc.Format = DXGI_FORMAT_UNKNOWN;
-			desc.SampleDesc.Count = 1;
-			desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-			if (FAILED(device->CreateCommittedResource(
-				    &heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ,
-				    nullptr, IID_PPV_ARGS(m_buffer.GetAddressOf()))))
+			if (FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, bytes * kSlots,
+				D3D12_RESOURCE_STATE_GENERIC_READ, m_buffer)))
 			{
 				return false;
 			}
@@ -353,7 +342,7 @@ private:
 		/// レンダラのトリプルバッファに合わせてある。
 		static constexpr std::size_t kSlots = 3;
 
-		ComPtr<ID3D12Resource> m_buffer;
+		gfx::GpuResource m_buffer;
 		void* m_mapped = nullptr;
 		std::size_t m_stride = 0;
 		std::size_t m_at = 0;
@@ -460,8 +449,8 @@ private:
 		{
 			mats.push_back(makina::defaultGpuMaterial());
 		}
-		// From the flattened program: a pattern lives in the space of the solid wearing it, so
-		// the table is one entry per (pattern, place) pair rather than a copy of the scene's.
+		// 平坦化したプログラムから取る。pattern はそれを付けた立体の空間にあるので、
+		// 表はシーンの表の写しではなく、(pattern, place) の組ごとに 1 件になる。
 		std::vector<makina::GpuPigment> pigs = makina::flatten(solid.scene()).pigments;
 		m_pigmentCount = static_cast<std::uint32_t>(pigs.size());
 		if (pigs.empty())
@@ -477,7 +466,7 @@ private:
 			return fail("could not create the pigment buffer");
 		}
 		// シーンの光源。makina の Light はそのまま GPU の MkLight (scene_lights.hlsl)。無ければ
-		// 既定の 1 件を置き、gLightCount 0 でシェーダに「レンダラの光で」と言わせる。
+		// 既定の 1 件を置き、gLightCount 0 にしてシェーダがレンダラの光を使うようにする。
 		// ビューポートと同じ扱い。
 		std::vector<makina::Light> lights;
 		for (std::uint32_t i = 0; i < solid.scene().lights.count; ++i)
@@ -498,23 +487,11 @@ private:
 
 	/// @brief 読み込み時に 1 度だけ載せる小さな表を作る
 	static bool upload(ID3D12Device* device, const void* data, std::size_t bytes,
-	                   ComPtr<ID3D12Resource>& out)
+	                   gfx::GpuResource& out)
 	{
-		D3D12_HEAP_PROPERTIES heap{};
-		heap.Type = D3D12_HEAP_TYPE_UPLOAD;
-		D3D12_RESOURCE_DESC desc{};
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Width = bytes;   // 表は小さいので、ページ境界に揃える意味がない
-		desc.Height = 1;
-		desc.DepthOrArraySize = 1;
-		desc.MipLevels = 1;
-		desc.Format = DXGI_FORMAT_UNKNOWN;
-		desc.SampleDesc.Count = 1;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		if (FAILED(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
-		                                           D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-		                                           IID_PPV_ARGS(out.GetAddressOf()))))
+		// 表は小さいので、ページ境界に揃える意味がない
+		if (FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, bytes,
+			D3D12_RESOURCE_STATE_GENERIC_READ, out)))
 		{
 			return false;
 		}
@@ -566,7 +543,7 @@ private:
 		cb.stepScale = 0.85f;
 		cb.enableAo = 1u;
 		// マーチは箱の中だけを歩くので、ここは使われない。ゼロのまま渡すと
-		// 共有のシェーディングが 0 除算に落ちるので、遠クリップを入れておく。
+		// 共有のシェーディングが 0 除算になるので、遠クリップを入れておく。
 		cb.farDist = camera.farClip();
 	}
 
@@ -677,9 +654,9 @@ private:
 
 	ComPtr<ID3D12RootSignature> m_rootSignature;
 	ComPtr<ID3D12PipelineState> m_pso;
-	ComPtr<ID3D12Resource> m_materials;
-	ComPtr<ID3D12Resource> m_pigments;
-	ComPtr<ID3D12Resource> m_lights;
+	gfx::GpuResource m_materials;
+	gfx::GpuResource m_pigments;
+	gfx::GpuResource m_lights;
 	std::uint32_t m_materialCount = 0;
 	std::uint32_t m_pigmentCount = 0;
 	std::uint32_t m_lightCount = 0;

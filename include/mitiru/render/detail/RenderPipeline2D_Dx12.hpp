@@ -85,18 +85,12 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob> psBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob> compileErr;
-	D3DCompile(
-		DEFAULT_VS_2D.data(), DEFAULT_VS_2D.size(),
-		nullptr, nullptr, nullptr, "VSMain", "vs_5_0",
-		0, 0, &vsBlob, &compileErr);
-	D3DCompile(
-		DEFAULT_PS_2D.data(), DEFAULT_PS_2D.size(),
-		nullptr, nullptr, nullptr, "PSMain", "ps_5_0",
-		0, 0, &psBlob, &compileErr);
+	(void)gfx::compileDx12Shader(DEFAULT_VS_2D, "VSMain", "vs_5_0", 0, &vsBlob, &compileErr);
+	(void)gfx::compileDx12Shader(DEFAULT_PS_2D, "PSMain", "ps_5_0", 0, &psBlob, &compileErr);
 	if (!vsBlob || !psBlob)
 	{
 		throw std::runtime_error(
-			"RenderPipeline2D: D3DCompile (default 2D) failed");
+			"RenderPipeline2D: shader compile (default 2D) failed");
 	}
 	pipeline.m_dx12VsBlob = vsBlob;
 	pipeline.m_dx12PsBlob = psBlob;
@@ -628,18 +622,12 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 	if (!cachedPso)
 	{
 		Microsoft::WRL::ComPtr<ID3DBlob> errBlob;
-		D3DCompile(
-			vsSource.data(), vsSource.size(),
-			nullptr, nullptr, nullptr, "VSMain", "vs_5_0",
-			0, 0, &cachedVs, &errBlob);
-		D3DCompile(
-			psSource.data(), psSource.size(),
-			nullptr, nullptr, nullptr, "PSMain", "ps_5_0",
-			0, 0, &cachedPs, &errBlob);
+		(void)gfx::compileDx12Shader(vsSource, "VSMain", "vs_5_0", 0, &cachedVs, &errBlob);
+		(void)gfx::compileDx12Shader(psSource, "PSMain", "ps_5_0", 0, &cachedPs, &errBlob);
 		if (!cachedVs || !cachedPs)
 		{
 			throw std::runtime_error(
-				"RenderPipeline2D: SDF D3DCompile failed");
+				"RenderPipeline2D: SDF shader compile failed");
 		}
 
 		/// StyledVertex2D は pos 2、localUV 2、color 4、shapeRect 4 の計 48 バイト。
@@ -667,30 +655,15 @@ inline void RenderPipeline2D::ensureDx12SdfResources(
 	}
 }
 
-inline Microsoft::WRL::ComPtr<ID3D12Resource>
+inline gfx::GpuResource
 RenderPipeline2D::createUploadBufferDx12(ID3D12Device* device, std::uint32_t sizeBytes)
 {
-	D3D12_HEAP_PROPERTIES hp = {};
-	hp.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-	D3D12_RESOURCE_DESC rd = {};
-	rd.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	rd.Width = sizeBytes;
-	rd.Height = 1;
-	rd.DepthOrArraySize = 1;
-	rd.MipLevels = 1;
-	rd.Format = DXGI_FORMAT_UNKNOWN;
-	rd.SampleDesc.Count = 1;
-	rd.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> buf;
-	if (FAILED(device->CreateCommittedResource(
-			&hp, D3D12_HEAP_FLAG_NONE, &rd,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr, IID_PPV_ARGS(&buf))))
+	gfx::GpuResource buf;
+	if (FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, sizeBytes,
+		D3D12_RESOURCE_STATE_GENERIC_READ, buf)))
 	{
 		throw std::runtime_error(
-			"RenderPipeline2D: CreateCommittedResource (upload) failed");
+			"RenderPipeline2D: GPU allocation (upload) failed");
 	}
 	return buf;
 }
@@ -707,7 +680,7 @@ inline void RenderPipeline2D::updateCbDx12(ID3D12Resource* cb, const void* data,
 }
 
 inline void RenderPipeline2D::updateDx12Buffer(
-	Microsoft::WRL::ComPtr<ID3D12Resource>& buf,
+	gfx::GpuResource& buf,
 	std::uint32_t& capacity,
 	const void* data, std::uint32_t bytes)
 {
@@ -802,12 +775,8 @@ RenderPipeline2D::tryBuildDx12PsoMsaa(ID3D12Device* device,
 inline void RenderPipeline2D::waitDx12Fence()
 {
 	if (!m_dx12Fence || !m_dx12FenceEvent) return;
-	if (m_dx12Fence->GetCompletedValue() < m_dx12FenceValue)
-	{
-		m_dx12Fence->SetEventOnCompletion(
-			m_dx12FenceValue, m_dx12FenceEvent);
-		WaitForSingleObject(m_dx12FenceEvent, INFINITE);
-	}
+	(void)gfx::waitForFenceOrReport(
+		m_dx12Fence.Get(), m_dx12FenceValue, m_dx12FenceEvent, "RenderPipeline2D drain");
 }
 
 inline void RenderPipeline2D::waitForDx12Slot(int slot)
@@ -816,10 +785,9 @@ inline void RenderPipeline2D::waitForDx12Slot(int slot)
 	// この slot を最後に使った submit の完了だけを待つ。
 	// target が 0 の slot は未使用。
 	const UINT64 target = m_dx12SlotSignal[slot];
-	if (target != 0 && m_dx12Fence->GetCompletedValue() < target)
+	if (target != 0)
 	{
-		m_dx12Fence->SetEventOnCompletion(target, m_dx12FenceEvent);
-		WaitForSingleObject(m_dx12FenceEvent, INFINITE);
+		(void)gfx::waitForFenceOrReport(m_dx12Fence.Get(), target, m_dx12FenceEvent, "RenderPipeline2D slot");
 	}
 }
 

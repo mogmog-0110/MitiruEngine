@@ -64,7 +64,7 @@ struct Mat
 {
     float4 baseColor;
     uint texIndex;      // 0xFFFFFFFF = テクスチャ無し。descriptor heap [1+mipCount+i]
-    uint flags;         // bit0 = masked (アルファテスト)
+    uint flags;         // bit0 = masked (アルファテスト)、bit1 = 法線マップが XY のみ (BC5)
     uint normalTex;     // 接空間法線マップ (0xFFFFFFFF = 無し)
     uint pad;
 };
@@ -428,7 +428,7 @@ void PrepArgsCS()
 
 // ── VisClear (compute): visbuffer / overdraw / inst bits / stats / counters を 0 に ──
 // hzbOp.y = instance bits の word 数 (MarkedList はカーソルのみで実体クリア不要)。
-// engine 版は Stats/Counters もここで潰す (zero バッファのコピー配管を持たない)
+// engine 版は Stats/Counters もここで 0 にする (zero バッファをコピーする経路を持たない)
 [numthreads(256, 1, 1)]
 void VisClear(uint3 dt : SV_DispatchThreadID)
 {
@@ -487,7 +487,7 @@ void MSMain(uint gtid : SV_GroupThreadID, uint3 gid : SV_GroupID,
     uint end  = min(Counters[0], LIST_CAP);
     uint idx  = base + gid.y * 32768 + gid.x;
     // 端数グループは (0,0) 出力。SetMeshOutputCounts は単一呼び出しのみ許可される
-    // ため早期 return を使わず、無効時は出力数 0 で空振りさせる
+    // ため早期 return を使わず、無効時は出力数 0 にして何も出さない
     uint safeIdx = min(idx, end - 1);
     uint item = VisListHw[safeIdx] & 0x7FFFFFFFu;
     uint inst, ci; Inst I;
@@ -587,7 +587,7 @@ void SwRasterCS(uint gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     // bbox → pixel 範囲 (中心 = px*256+128)
     int minX = min(p0.x, min(p1.x, p2.x)), maxX = max(p0.x, max(p1.x, p2.x));
     int minY = min(p0.y, min(p1.y, p2.y)), maxY = max(p0.y, max(p1.y, p2.y));
-    // SCREEN_W/H は uint (CB 読み)。負になり得る左辺と混ぜる前に int へ落とす
+    // SCREEN_W/H は uint (CB 読み)。負になり得る左辺と混ぜる前に int へキャストする
     int px0 = max((minX - 128 + 255) >> 8, 0), px1 = min((maxX - 128) >> 8, (int)SCREEN_W - 1);
     int py0 = max((minY - 128 + 255) >> 8, 0), py1 = min((maxY - 128) >> 8, (int)SCREEN_H - 1);
 
@@ -754,6 +754,7 @@ void ResolveCS(uint3 dt : SV_DispatchThreadID)
                 float2 gx = guv * float2(tw, th), gy = gvv * float2(tw, th);
                 float lod = 0.5 * log2(max(max(dot(gx, gx), dot(gy, gy)), 1.0));
                 float3 tn = ntex.SampleLevel(Samp, uv, lod).rgb * 2.0 - 1.0;
+                if (mat.flags & 2u) { tn.z = sqrt(saturate(1.0 - dot(tn.xy, tn.xy))); }
                 n = normalize(T * tn.x + B * tn.y + n * max(tn.z, 0.2));
             }
         }

@@ -6,12 +6,12 @@
 #include <string>
 
 /// @file Grid2D.hpp
-/// @brief 汎用2Dグリッドコンテナ
+/// @brief 汎用 2D グリッドコンテナ
 
 namespace mitiru::util
 {
 
-/// @brief 汎用2Dグリッド
+/// @brief 汎用 2D グリッド
 /// @tparam T グリッドに格納する要素の型
 /// @note 内部的にはフラットな std::vector で保持し、index = y * width + x でアクセスする
 template <typename T>
@@ -22,7 +22,7 @@ public:
 	/// @param width グリッドの幅（列数）。正の値であること
 	/// @param height グリッドの高さ（行数）。正の値であること
 	/// @param defaultValue 全セルの初期値
-	/// @throws std::invalid_argument width または height が 0以下の場合
+	/// @throws std::invalid_argument width または height が 0 以下の場合
 	Grid2D(int width, int height, const T& defaultValue = T{})
 		: m_width(width)
 		, m_height(height)
@@ -37,8 +37,8 @@ public:
 	}
 
 	/// @brief 指定座標の要素への参照を返す
-	/// @param x 列インデックス（0始まり）
-	/// @param y 行インデックス（0始まり）
+	/// @param x 列インデックス（0 始まり）
+	/// @param y 行インデックス（0 始まり）
 	/// @return 要素への参照
 	/// @throws std::out_of_range 座標が範囲外の場合
 	T& at(int x, int y)
@@ -47,10 +47,10 @@ public:
 		return m_data[static_cast<std::size_t>(y) * static_cast<std::size_t>(m_width) + static_cast<std::size_t>(x)];
 	}
 
-	/// @brief 指定座標の要素へのconst参照を返す
-	/// @param x 列インデックス（0始まり）
-	/// @param y 行インデックス（0始まり）
-	/// @return 要素へのconst参照
+	/// @brief 指定座標の要素への const 参照を返す
+	/// @param x 列インデックス（0 始まり）
+	/// @param y 行インデックス（0 始まり）
+	/// @return 要素への const 参照
 	/// @throws std::out_of_range 座標が範囲外の場合
 	const T& at(int x, int y) const
 	{
@@ -61,7 +61,7 @@ public:
 	/// @brief 座標が範囲内かを判定する
 	/// @param x 列インデックス
 	/// @param y 行インデックス
-	/// @return 範囲内ならtrue
+	/// @return 範囲内なら true
 	bool inBounds(int x, int y) const noexcept
 	{
 		return x >= 0 && x < m_width && y >= 0 && y < m_height;
@@ -146,7 +146,7 @@ private:
 	/// @brief グリッドの高さ
 	int m_height;
 
-	/// @brief フラットな1次元データ配列（index = y * m_width + x）
+	/// @brief フラットな 1 次元データ配列（index = y * m_width + x）
 	std::vector<T> m_data;
 };
 

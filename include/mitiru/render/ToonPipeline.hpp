@@ -2,8 +2,8 @@
 
 /// @file ToonPipeline.hpp
 /// @brief 自己完結型トゥーンレンダリングパイプライン（DX11）
-/// @details N段階バンドライティング・スペキュラ・リムライト・背面膨張アウトライン・
-///          スクリーンスペースアウトラインを1ファイルで提供する。
+/// @details N 段階バンドライティング・スペキュラ・リムライト・背面膨張アウトライン・
+///          スクリーンスペースアウトラインを 1 ファイルで提供する。
 ///          全パラメータは定数バッファ経由でランタイム変更可能。
 
 #ifdef _WIN32
@@ -416,7 +416,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 )hlsl";
 
 // ============================================================================
-// HLSL。フルスクリーン三角形頂点シェーダー（SS outline用）
+// HLSL。フルスクリーン三角形頂点シェーダー（SS outline 用）
 // ============================================================================
 
 constexpr const char* kFULLSCREEN_VS = R"hlsl(
@@ -439,7 +439,7 @@ VSOutput VSMain(uint vertexId : SV_VertexID)
 )hlsl";
 
 // ============================================================================
-// GPU定数バッファ構造体（CPU側）
+// GPU 定数バッファ構造体（CPU 側）
 // ============================================================================
 
 /// @brief トゥーン描画用定数バッファ（CbToon: register(b0)）
@@ -496,7 +496,7 @@ struct alignas(16) CbScreenOutline
 // ToonPipeline
 // ============================================================================
 
-/// @brief 3D頂点のストライド: pos(3) + normal(3) + uv(2) + color(4) = 12 floats
+/// @brief 3D 頂点のストライド: pos(3) + normal(3) + uv(2) + color(4) = 12 floats
 static constexpr UINT kVertex3DStride = 48; // sizeof(float) * 12
 
 /// @brief 自己完結型トゥーンレンダリングパイプライン
@@ -509,9 +509,9 @@ public:
 
 	ToonPipeline() noexcept = default;
 
-	/// @brief 初期化（全シェーダーコンパイル＋GPUリソース生成）
-	/// @param device DX11デバイス
-	/// @return 成功時true
+	/// @brief 初期化（全シェーダーコンパイル＋GPU リソース生成）
+	/// @param device DX11 デバイス
+	/// @return 成功時 true
 	bool init(ID3D11Device* device)
 	{
 		if (!device)
@@ -529,7 +529,7 @@ public:
 			nullptr, m_toonVS.GetAddressOf());
 		if (FAILED(hr)) return false;
 
-		// 入力レイアウト（Vertex3D互換）
+		// 入力レイアウト（Vertex3D 互換）
 		const D3D11_INPUT_ELEMENT_DESC layout[] =
 		{
 			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -543,7 +543,7 @@ public:
 			m_toonInputLayout.GetAddressOf());
 		if (FAILED(hr)) return false;
 
-		// トゥーンPS
+		// トゥーン PS
 		auto toonPsBlob = compileShader(kTOON_PS, "PSMain", "ps_5_0");
 		if (!toonPsBlob) return false;
 		hr = device->CreatePixelShader(
@@ -551,7 +551,7 @@ public:
 			nullptr, m_toonPS.GetAddressOf());
 		if (FAILED(hr)) return false;
 
-		// アウトライン膨張VS
+		// アウトライン膨張 VS
 		auto outVsBlob = compileShader(kOUTLINE_HULL_VS, "VSMain", "vs_5_0");
 		if (!outVsBlob) return false;
 		hr = device->CreateVertexShader(
@@ -559,14 +559,14 @@ public:
 			nullptr, m_outlineVS.GetAddressOf());
 		if (FAILED(hr)) return false;
 
-		// アウトライン入力レイアウト（同じVertex3Dフォーマット）
+		// アウトライン入力レイアウト（同じ Vertex3D フォーマット）
 		hr = device->CreateInputLayout(
 			layout, 4,
 			outVsBlob->GetBufferPointer(), outVsBlob->GetBufferSize(),
 			m_outlineInputLayout.GetAddressOf());
 		if (FAILED(hr)) return false;
 
-		// アウトラインPS
+		// アウトライン PS
 		auto outPsBlob = compileShader(kOUTLINE_PS, "PSMain", "ps_5_0");
 		if (!outPsBlob) return false;
 		hr = device->CreatePixelShader(
@@ -574,7 +574,7 @@ public:
 			nullptr, m_outlinePS.GetAddressOf());
 		if (FAILED(hr)) return false;
 
-		// フルスクリーンVS（SS outline用）
+		// フルスクリーン VS（SS outline 用）
 		auto fsVsBlob = compileShader(kFULLSCREEN_VS, "VSMain", "vs_5_0");
 		if (!fsVsBlob) return false;
 		hr = device->CreateVertexShader(
@@ -582,7 +582,7 @@ public:
 			nullptr, m_fullscreenVS.GetAddressOf());
 		if (FAILED(hr)) return false;
 
-		// SSアウトラインPS
+		// SS アウトライン PS
 		auto ssOutPsBlob = compileShader(kOUTLINE_SCREEN_PS, "PSMain", "ps_5_0");
 		if (!ssOutPsBlob) return false;
 		hr = device->CreatePixelShader(
@@ -653,7 +653,7 @@ public:
 			if (FAILED(hr)) return false;
 		}
 
-		// ポイントサンプラー（SS outline用）
+		// ポイントサンプラー（SS outline 用）
 		{
 			D3D11_SAMPLER_DESC sd = {};
 			sd.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
@@ -666,7 +666,7 @@ public:
 			if (FAILED(hr)) return false;
 		}
 
-		// リニアサンプラー（トゥーンPS用）
+		// リニアサンプラー（トゥーン PS 用）
 		{
 			D3D11_SAMPLER_DESC sd = {};
 			sd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
@@ -732,10 +732,10 @@ public:
 	}
 
 	/// @brief メッシュをトゥーン描画する
-	/// @param ctx DX11コンテキスト
+	/// @param ctx DX11 コンテキスト
 	/// @param vb 頂点バッファ
-	/// @param ib インデックスバッファ（nullptrなら非インデックス描画）
-	/// @param indexCount インデックス数（ibがnullptrならvertexCount）
+	/// @param ib インデックスバッファ（nullptr なら非インデックス描画）
+	/// @param indexCount インデックス数（ib が nullptr なら vertexCount）
 	/// @param worldMatrix ワールド行列（float[16] row-major）
 	/// @param viewMatrix ビュー行列
 	/// @param projMatrix 射影行列
@@ -861,11 +861,11 @@ public:
 	// ─── スクリーンスペースアウトライン（ポストプロセス）────────
 
 	/// @brief スクリーンスペースアウトラインを適用する
-	/// @param ctx DX11コンテキスト
-	/// @param depthSRV 深度バッファSRV
-	/// @param normalSRV 法線バッファSRV（nullptrならdepthのみ使用）
-	/// @param outputRTV 出力先RTV
-	/// @param sceneSRV シーンカラーSRV
+	/// @param ctx DX11 コンテキスト
+	/// @param depthSRV 深度バッファ SRV
+	/// @param normalSRV 法線バッファ SRV（nullptr なら depth のみ使用）
+	/// @param outputRTV 出力先 RTV
+	/// @param sceneSRV シーンカラー SRV
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
 	void applyScreenSpaceOutline(ID3D11DeviceContext* ctx,
@@ -911,7 +911,7 @@ public:
 		ctx->IASetInputLayout(nullptr);
 		ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		// SRVバインド
+		// SRV バインド
 		ID3D11ShaderResourceView* srvs[3] = {sceneSRV, depthSRV, normalSRV};
 		ctx->PSSetShaderResources(0, 3, srvs);
 
@@ -926,7 +926,7 @@ public:
 		// フルスクリーン三角形描画
 		ctx->Draw(3, 0);
 
-		// SRVバインド解除
+		// SRV バインド解除
 		ID3D11ShaderResourceView* nullSRVs[3] = {nullptr, nullptr, nullptr};
 		ctx->PSSetShaderResources(0, 3, nullSRVs);
 	}
@@ -934,15 +934,15 @@ public:
 	// ─── デモ（自己完結型テスト用）──────────────────────────
 
 	/// @brief 回転キューブでトゥーン描画＋アウトラインの動作確認を行う
-	/// @param ctx DX11コンテキスト
-	/// @param rtv 出力先RTV
-	/// @param dsv 深度バッファDSV
+	/// @param ctx DX11 コンテキスト
+	/// @param rtv 出力先 RTV
+	/// @param dsv 深度バッファ DSV
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
 	/// @param timeSeconds 経過時間（秒）
-	/// @brief デモ用リソースを初期化する（1回だけ呼ぶ）
-	/// @param device D3D11デバイス
-	/// @return 成功した場合true
+	/// @brief デモ用リソースを初期化する（1 回だけ呼ぶ）
+	/// @param device D3D11 デバイス
+	/// @return 成功した場合 true
 	bool initDemo(ID3D11Device* device)
 	{
 		if (m_demoInitialized)
@@ -1025,9 +1025,9 @@ public:
 	}
 
 	/// @brief トゥーンシェーディングのデモを描画する
-	/// @param ctx D3D11デバイスコンテキスト
-	/// @param rtv 出力先RTV
-	/// @param dsv 深度バッファDSV
+	/// @param ctx D3D11 デバイスコンテキスト
+	/// @param rtv 出力先 RTV
+	/// @param dsv 深度バッファ DSV
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
 	/// @param timeSeconds 経過時間（秒）
@@ -1063,8 +1063,8 @@ public:
 		// ビュー行列（カメラ: (0,1,-3) → 原点を見る）
 		float viewMatrix[16] = {};
 		{
-			// 簡易lookAt: eye=(0, 1, -3), target=(0, 0, 0), up=(0, 1, 0)
-			// 手計算でrow-major lookAt
+			// 簡易 lookAt: eye=(0, 1, -3), target=(0, 0, 0), up=(0, 1, 0)
+			// 手計算で row-major lookAt
 			const float ex = 0.0f, ey = 1.0f, ez = -3.0f;
 			float fx = -ex, fy = -ey, fz = -ez; // forward = target - eye
 			float fl = std::sqrt(fx*fx + fy*fy + fz*fz);
@@ -1089,7 +1089,7 @@ public:
 			viewMatrix[15]= 1.0f;
 		}
 
-		// ワールド行列（Y軸回転）
+		// ワールド行列（Y 軸回転）
 		float worldMatrix[16] = {};
 		{
 			const float angle = timeSeconds * 0.8f;
@@ -1135,7 +1135,7 @@ public:
 	}
 
 private:
-	/// @brief HLSLをコンパイルする
+	/// @brief HLSL をコンパイルする
 	[[nodiscard]] ComPtr<ID3DBlob> compileShader(
 		const char* source,
 		const char* entryPoint,
@@ -1201,7 +1201,7 @@ private:
 		}
 	}
 
-	/// @brief ToonLightingConfigからCbToonにパラメータを転送する
+	/// @brief ToonLightingConfig から CbToon にパラメータを転送する
 	void fillToonLightingCB(CbToon& cb) const
 	{
 		const auto& l = m_config.lighting;
@@ -1231,7 +1231,7 @@ private:
 		cb.rimColor[3] = l.rimColor.a;
 	}
 
-	/// @brief 1x1白テクスチャ生成（アルベドマップ未指定時のフォールバック）
+	/// @brief 1x1 白テクスチャ生成（アルベドマップ未指定時のフォールバック）
 	void createDefaultWhiteTexture()
 	{
 		D3D11_TEXTURE2D_DESC td = {};

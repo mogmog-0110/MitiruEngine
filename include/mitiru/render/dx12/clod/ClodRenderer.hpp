@@ -8,7 +8,9 @@
 ///          SM 6.6 (mesh shader / int64 atomics / dynamic resources) 必須。
 ///          未対応環境では supported()==false となり全 API が no-op。
 
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/render/Camera3D.hpp>
+#include <mitiru/render/dx12/Dx12TextureUpload.hpp>
 #include <mitiru/render/dx12/Dx12UploadRing.hpp>
 #include <mitiru/render/dx12/clod/ClodFormat.hpp>
 #include <mitiru/render/dx12/clod/ClodScene.hpp>
@@ -111,7 +113,7 @@ private:
 	void rebuildDescriptorHeap();
 	int ensureModel(const char* path);
 
-	[[nodiscard]] ComPtr<ID3D12Resource> makeBuffer(uint64_t bytes, D3D12_HEAP_TYPE heap,
+	[[nodiscard]] gfx::GpuResource makeBuffer(uint64_t bytes, D3D12_HEAP_TYPE heap,
 	                                                D3D12_RESOURCE_STATES state,
 	                                                D3D12_RESOURCE_FLAGS flags) const;
 	[[nodiscard]] ComPtr<ID3D12PipelineState> makeComputePso(const uint8_t* dxil, size_t size) const;
@@ -156,20 +158,20 @@ private:
 	ComPtr<ID3D12CommandSignature> m_dispatchMeshSig, m_dispatchSig;
 
 	// 静的シーン GPU 資源 (revision 変化で作り直し)
-	ComPtr<ID3D12Resource> m_bGroups, m_bClusters, m_bPos, m_bNorm, m_bUv;
-	ComPtr<ID3D12Resource> m_bVerts, m_bTris, m_bMats, m_bMeshRanges, m_bBvh;
-	std::vector<ComPtr<ID3D12Resource>> m_textures;
-	std::vector<ComPtr<ID3D12Resource>> m_pendingUploads;   ///< 今フレームの copy 元 (実行完了まで保持)
+	gfx::GpuResource m_bGroups, m_bClusters, m_bPos, m_bNorm, m_bUv;
+	gfx::GpuResource m_bVerts, m_bTris, m_bMats, m_bMeshRanges, m_bBvh;
+	std::vector<gfx::GpuResource> m_textures;
+	std::vector<gfx::GpuResource> m_pendingUploads;   ///< 今フレームの copy 元 (実行完了まで保持)
 	bool m_staticCopyQueued = false;
 
 	// 画面サイズ依存 (resize で作り直し)
-	ComPtr<ID3D12Resource> m_visBuf, m_overdraw, m_colorTex, m_hzb;
+	gfx::GpuResource m_visBuf, m_overdraw, m_colorTex, m_hzb;
 	uint32_t m_width = 0, m_height = 0;
 	uint32_t m_hzbW = 0, m_hzbH = 0, m_hzbMips = 0;
 
 	// 永続 (固定サイズ)
-	ComPtr<ID3D12Resource> m_bInstVis, m_bVisListHw, m_bVisListSw, m_bMarked;
-	ComPtr<ID3D12Resource> m_bCounters, m_bIndArgs, m_bStats, m_bQueueA, m_bQueueB;
+	gfx::GpuResource m_bInstVis, m_bVisListHw, m_bVisListSw, m_bMarked;
+	gfx::GpuResource m_bCounters, m_bIndArgs, m_bStats, m_bQueueA, m_bQueueB;
 	dx12::Dx12UploadRing m_ring;
 
 	ComPtr<ID3D12DescriptorHeap> m_heap;   ///< [0]=offscreen UAV, [1..mips]=HZB, [1+mips+i]=texture SRV

@@ -11,7 +11,7 @@ namespace mitiru::render
 {
 
 /// @brief レンダラーを初期化する
-/// @param device Dx12Deviceへのポインタ（外部で管理・ライフタイム保証）
+/// @param device Dx12Device へのポインタ（外部で管理・ライフタイム保証）
 /// @param cfg レンダラー設定
 inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& cfg)
 {
@@ -50,15 +50,15 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 			std::string("DX12 createAlbedoSrvHeap: ") + e.what());
 	}
 
-	// シャドウマップを初期化（描画/サンプリングは設定 ON 時のみ実施）
+	// シャドウマップを初期化する（描画/サンプリングは設定 ON 時のみ実施）
 	if (!m_shadowMap.initialize(m_d3dDevice,
 	                            m_directionalShadow.config().mapSize))
 	{
 		throw std::runtime_error("DX12 Dx12ShadowMap initialize failed");
 	}
-	// カスケード1 (遠距離、B13)。setCascadedShadowEnabled(false) の間は未使用のままだが、
+	// カスケード 1 (遠距離、B13)。setCascadedShadowEnabled(false) の間は未使用のままだが、
 	// writeMainSrvTable が毎フレーム SRV table の t2 スロットを埋めるため常に初期化しておく。
-	// 2 列のアトラス: 左 = カスケード1、右 = カスケード2 (3 カスケード時のみ描く)。SRV は t2 の 1 枚のまま。
+	// 2 列のアトラス: 左 = カスケード 1、右 = カスケード 2 (3 カスケード時のみ描く)。SRV は t2 の 1 枚のまま。
 	if (!m_shadowMapFar.initialize(m_d3dDevice,
 	                               m_directionalShadow.config().mapSize, 2))
 	{
@@ -101,7 +101,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		throw std::runtime_error(std::string("DX12 createOutlinePostProcess: ") + e.what());
 	}
 	// オクルージョン min-depth resolve。m_outlinePostVS（フルスクリーン三角形 VS）と
-	// m_depthSRVHeap（深度 SRV スロット0）の両方に依存するため、
+	// m_depthSRVHeap（深度 SRV スロット 0）の両方に依存するため、
 	// createOutlinePostProcess の後で呼ぶ。失敗しても致命的ではない
 	// （既定 OFF の setOcclusionCullingEnabled を呼ばなければ影響しない）ので
 	// try/catch で握り潰さず、生成失敗は関数内部で早期 return するだけにする。
@@ -116,6 +116,13 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createTonemapPipeline: ") + e.what());
 	}
+	// SSAO (v40)。outline post の root sig/VS と tonemap の SRV heap の両方に依存するので最後。
+	// 既定 OFF なので失敗は関数内の早期 return に任せる (setAmbientOcclusion が no-op になるだけ)
+	createSsaoPipelines();
+	// bloom (v41)。tonemap の root sig / VS / SRV heap に依存する。既定 OFF なので失敗は早期 return に任せる
+	createBloomPipelines();
+	// 被写界深度 (v44)。tonemap の root sig / VS と FXAA の intermediate に依存する。既定 OFF
+	createDofPipeline();
 	// D3D12 InfoQueue を確保し、runtime 検証エラーを毎フレーム
 	// ファイルへダンプする (ENG-105 v2 MSAA debug)。Debug layer が
 	// 無効でも QueryInterface は通る (メッセージが来ないだけ)。
@@ -134,6 +141,9 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	{
 		createClodInjectPso();
 	}
+#if defined(MITIRU_HAS_EFFEKSEER)
+	createEffekseerRuntime();
+#endif
 
 	m_initialized = true;
 }
@@ -242,13 +252,13 @@ inline void Renderer3D_DX12::createOitResources()
 
 	// 透明ジオメトリ PSO: main VS + WBOIT PS。
 	Microsoft::WRL::ComPtr<ID3DBlob> vs, ps, err;
-	D3DCompile(DX12_DEFAULT_VS_3D, std::strlen(DX12_DEFAULT_VS_3D), nullptr, nullptr,
-	           nullptr, "VSMain", "vs_5_0", 0, 0, vs.GetAddressOf(), err.GetAddressOf());
-	D3DCompile(DX12_OIT_TRANSPARENT_PS_3D, std::strlen(DX12_OIT_TRANSPARENT_PS_3D), nullptr,
-	           nullptr, nullptr, "PSMain", "ps_5_0", 0, 0, ps.GetAddressOf(), err.GetAddressOf());
+	(void)gfx::compileDx12Shader(DX12_DEFAULT_VS_3D, "VSMain", "vs_5_0", 0,
+		vs.GetAddressOf(), err.GetAddressOf());
+	(void)gfx::compileDx12Shader(DX12_OIT_TRANSPARENT_PS_3D, "PSMain", "ps_5_0", 0,
+		ps.GetAddressOf(), err.GetAddressOf());
 	if (!vs || !ps)
 	{
-		throw std::runtime_error("createOitResources: D3DCompile (transparent) failed");
+		throw std::runtime_error("createOitResources: shader compile (transparent) failed");
 	}
 
 	const D3D12_INPUT_ELEMENT_DESC layout[] = {
@@ -323,13 +333,19 @@ inline void Renderer3D_DX12::resize(float width, float height)
 		createFXAAIntermediate();
 		/// outline post の深度/法線 SRV を再生成後のリソースへ貼り直す
 		updateOutlinePostSRVs();
+		/// SSAO のテクスチャ (viewport サイズ) と深度/法線 SRV を作り直す
+		createSsaoResources();
+		/// bloom の 1/2・1/4 解像テクスチャも viewport に従う
+		createBloomResources();
+		/// 被写界深度の SRV は作り直した FXAA intermediate と深度を指し直す
+		createDofResources();
 		/// オクルージョン resolve RT + readback もビューポートサイズ依存のため作り直す
 		m_occlusionResolveTex.Reset();
 		m_occlusionResolveRtvHeap.Reset();
 		for (auto& rb : m_occlusionReadback) { rb.Reset(); }
 		for (auto& pending : m_occlusionReadbackPending) { pending = false; }
 		createOcclusionResolveResources();
-		/// 色コピーバッファ (backbuffer サイズ) + モード3/4 SRV ヒープを再生成する
+		/// 色コピーバッファ (backbuffer サイズ) + モード 3/4 SRV ヒープを再生成する
 		m_colorCopyBuffer.Reset();
 		m_colorEdgeSRVHeap.Reset();
 		m_depthColorSRVHeap.Reset();
@@ -347,11 +363,14 @@ inline void Renderer3D_DX12::destroy()
 		return;
 	}
 
-	/// GPU処理の完了を待ってからリソースを解放する
+	/// GPU 処理の完了を待ってからリソースを解放する
 	if (m_device)
 	{
 		m_device->waitForGpu();
 	}
+#if defined(MITIRU_HAS_EFFEKSEER)
+	m_effekseer.reset();
+#endif
 
 	m_frameTempResources.clear();
 	for (auto& v : m_perFrameTempResources) v.clear();
@@ -387,13 +406,20 @@ inline void Renderer3D_DX12::destroy()
 /// @details テクスチャ部分（TextureCube + upload + SRV）のみリセットし、
 ///          PSO / root signature / VB / IB / CB は再利用する。
 ///          これにより 1/2/3 のような頻繁な variant 切替で
-///          shader compile + PSO 作成が走らない（「もっさり」防止）。
+///          shader compile + PSO 作成が行われない（「もっさり」防止）。
 inline void Renderer3D_DX12::setSkybox(const Cubemap& cubemap)
 {
 	m_skyboxCubemap = cubemap;
-	// テクスチャまわりだけリセット。pipeline は流用
+	// テクスチャまわりだけリセットする。pipeline は流用する
 	m_skyboxTextureReady = false;
 	m_skyboxNeedsUpload  = false;
+	// 投入済みのフレームは空を最初の不透明 draw で描いている。ここで消すと、場面が変わった直後に GPU が
+	// 解放済みのヒープとテクスチャを読んで止まる (#79: つづきから → 事務所の空で DEVICE_HUNG)
+	// テクスチャとアップロードバッファは GpuResource が自分で完了を待つ。ヒープだけ預ける。
+	if (m_device)
+	{
+		m_device->deferRelease(m_skyboxSrvHeap);
+	}
 	m_skyboxTexture.Reset();
 	m_skyboxUpload.Reset();
 	m_skyboxSrvHeap.Reset();

@@ -1,11 +1,11 @@
 # NativeEngine物理バックエンド(opt-in)
 
-MitiruEngineの3D物理は既定で`PhysicsSystem3D` (engine内蔵)を使う。
-NativeEngineは差し替え可能なもう1つのバックエンドで、内蔵側に無い性質を2つ持つ:
+MitiruEngineの3D物理は既定で`PhysicsSystem3D` (Jolt Physics)を使う ([PHYSICS.md](PHYSICS.md))。
+NativeEngineは差し替え可能なもう1つのバックエンドで、次の性質を持つ (周期境界はJoltに無い):
 
 - **周期境界** — 世界の端が反対側に繋がる。端をまたいだ衝突もそのまま解く。
   トーラス状のフィールド(Asteroids的な世界、分子動力学的な箱)がそのまま書ける。
-- **決定的** — 同じビルド・同じ入力なら結果はビット単位で一致する。
+- **決定的** — 同じビルド・同じ入力なら結果はビット単位で一致する (Joltも同じ。Joltはさらにビルドを跨いで一致する)。
 
 コードは別リポジトリ(https://github.com/mogmog-0110/NativeEngine)。MitiruEngine側にあるのはアダプタ
 `include/mitiru/physics/NativePhysicsBridge.hpp` (`scene::ISystem`)だけ。
@@ -50,7 +50,7 @@ runner.addSystem(std::make_unique<mitiru::physics3d::NativePhysicsSystem>(cfg), 
 (backend単体の既定は ±12mの反射壁なので、アダプタ側で明示的に開けている)。
 
 `RigidBodyComponent3D`のmass / friction / restitution / damping / isKinematicと
-コライダー(Sphere / AABB / Capsule)がそのまま反映される。mass <= 0は静的、
+コライダー(Sphere / Box / Capsule)がそのまま反映される (Mesh はNativeEngineに無いので、そのエンティティにはボディを作らず警告する)。mass <= 0は静的、
 `isKinematic`はTransformを正として押し込む(動く床は速度も接触相手に伝わる)。
 
 ジョイント・レイキャスト・キャラクタコントローラ等はアダプタの外側の機能なので、
@@ -62,13 +62,13 @@ ECSを介さず`IPhysicsWorld3D`（`step`/`raycast`/`overlapSphere`/`overlapBox`
 としてワールドを直接操作したいときは`include/mitiru/physics/NativePhysicsWorld3D.hpp`の
 `NativePhysicsWorld3D`を使う（`NativePhysicsSystem`とは別物、`MITIRU_HAS_NATIVEPHYS`定義時のみ存在）。
 Jolt側の対応物は`include/mitiru/physics/JoltPhysicsWorld3D.hpp`の`JoltPhysicsWorld3D`
-（`MITIRU_HAS_JOLT`定義時のみ存在）で、内蔵`PhysicsWorld3D`と合わせて3実装が同じI/Fを満たす。
+（`MITIRU_HAS_JOLT`定義時のみ存在）で、2実装が同じI/Fを満たす。メッシュ形状 (`BodyDesc::Shape::Mesh`) は`NativePhysicsWorld3D`では作れない (`kInvalidBodyId`)。
 
 `overlapBox`はNativeEngineのラッパー(`nativephys::NativePhysicsWorld`)に無いため、
 `native()`エスケープハッチ経由で`ne::PhysicsWorld::overlapBox`を直接呼ぶ。
 `raycastAll`はNativeEngine側が最近傍1件しか返さないため、他バックエンドと違い最大1件になる。
 
-3バックエンド共通の契約テストは`tests/mitiru/TestPhysicsBackends.cpp`
+2バックエンド共通の契約テストは`tests/mitiru/TestPhysicsBackends.cpp`
 （`mitiru_tests_core`と`mitiru_tests_nativephys`の両方に登録、`TestNativePhysicsBridge.cpp`と同じ
 `MITIRU_HAS_NATIVEPHYS`排他構成）。
 
@@ -88,6 +88,6 @@ Jolt側の対応物は`include/mitiru/physics/JoltPhysicsWorld3D.hpp`の`JoltPhy
   - `mitiru_tests_nativephys` (`MITIRU_USE_NATIVEPHYS=ON`の時だけ登録): 着地・
     決定性・周期境界の回り込み・エンティティ削除でボディが消えること
 - `tests/mitiru/TestPhysicsBackends.cpp` — 同じ2target排他構成で、`IPhysicsWorld3D`
-  としての契約（raycast/overlap/layer・mask/addBody-removeBody-bodyTransform）を
-  内蔵PhysicsWorld3D・Jolt・NativeEngineの3バックエンド共通シナリオで検証
+  としての契約（raycast/overlap/layer・mask/addBody-removeBody-bodyTransform）と、同じ入力を
+  2回流して全フレームの姿勢がビット一致することを、Jolt・NativeEngineの共通シナリオで検証
 - 実行: `ctest --test-dir build -C Debug -L nativephys`

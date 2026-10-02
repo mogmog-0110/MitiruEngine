@@ -2,7 +2,7 @@
 
 /// @file ITexture.hpp
 /// @brief テクスチャ抽象インターフェース
-/// @details GPUテクスチャリソースの基底インターフェースを定義する。
+/// @details GPU テクスチャリソースの基底インターフェースを定義する。
 
 #include <mitiru/gfx/GfxTypes.hpp>
 

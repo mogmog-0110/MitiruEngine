@@ -1,18 +1,18 @@
 #pragma once
 
 /// @file ToolRegistry.hpp
-/// @brief 開ける独立ウィンドウ (inspector 等) の単一の真実。Tool enum + spawn 表。
+/// @brief 開ける独立ウィンドウ (inspector 等) を定義する唯一の場所。Tool enum + spawn 表。
 /// @details
 /// game 側 (`Game.hpp` の `hud.open`) と host 側 (`InspectorLauncher` の `openTool`)
-/// が同じ表を共有する。プラットフォーム依存ヘッダを一切引かない (game DLL に安全)。
+/// が同じ表を共有する。プラットフォーム依存のヘッダを一切 include しない (game DLL で使っても安全)。
 ///
-/// アトミックツール哲学: ツール窓は「host を書く人が使うと決めた物」だけ開く。
-/// 独立ウィンドウを増やすとき → enum に 1 値 + kToolTable に 1 行を足すだけ。
+/// アトミックツール哲学: ツール窓は「host を書く人が使うと決めた物」だけを開く。
+/// 独立ウィンドウを増やすときは、enum に値を 1 つと kToolTable に行を 1 つ足すだけ。
 
 namespace mitiru
 {
 
-/// コードから開ける「別窓のツール」。全ツール窓は汎用 CEF ホスト mitiru_tool_cef を
+/// コードから開ける「別窓のツール」。全ツール窓は汎用ホスト mitiru_tool (RmlUi) を
 /// --page <name> で spawn して開く。ゲーム窓は汚さない。開く判断は host 側
 /// コード (main.cpp) が持つ。pulled UI。
 enum class Tool
@@ -28,26 +28,27 @@ enum class Tool
 	WhyView,        ///< なぜビュー — field を選んで blame + 値推移を見る (--page why_view、ADR 0035 O6)
 	FrameView,      ///< 1 フレームの解剖図 — 入力→書込→描画→音を 1 画面 (--page frame_view、P10)
 	// ★ 独立ウィンドウを増やすとき: ここに enum 値を 1 つ足し、下の kToolTable に
-	//   1 行 ({Tool::X, "tool_cef", "--page x"}) + assets/x.html を足すだけ。
+	//   1 行 ({Tool::X, "tool", "--page x"}) + apps/mitiru_tool/assets/x.rml を足し、
+	//   ページの振る舞い (apps/mitiru_tool/ui/pages/) を 1 つ書く。
 };
 
 namespace detail
 {
 /// Tool → spawn する exe 名 + 引数の対応表 (開ける窓の単一の真実)。
-/// 全ツール窓は mitiru_tool_cef の HTML ページに統一 (assets/<name>.html)。HTML/CSS なので
-/// 見た目が綺麗で、エンジンの UI 層 (軸①) を devtool 自身がドッグフードする。増やすときは 1 行。
+/// 全ツール窓は mitiru_tool の RML ページ (assets/<name>.rml)。エンジンの UI 層 (軸①) を
+/// devtool 自身がドッグフードする。増やすときは 1 行。
 struct ToolSpec { Tool tool; const char* exe; const char* args; };
 inline constexpr ToolSpec kToolTable[] = {
-	{ Tool::Inspector,    "tool_cef",  "--page inspect" },
-	{ Tool::InputMonitor, "tool_cef",  "--page input" },
-	{ Tool::Rewind,       "tool_cef",  "--page rewind" },
-	{ Tool::SceneTree,    "tool_cef",  "--page scene" },
-	{ Tool::Replay,       "tool_cef",  "--page replay" },
-	{ Tool::Perf,         "tool_cef",  "--page perf" },
-	{ Tool::AudioMixer,   "tool_cef",  "--page mixer" },
-	{ Tool::SceneView,    "tool_cef",  "--page scene_view" },
-	{ Tool::WhyView,      "tool_cef",  "--page why_view" },
-	{ Tool::FrameView,    "tool_cef",  "--page frame_view" },
+	{ Tool::Inspector,    "tool",  "--page inspect" },
+	{ Tool::InputMonitor, "tool",  "--page input" },
+	{ Tool::Rewind,       "tool",  "--page rewind" },
+	{ Tool::SceneTree,    "tool",  "--page scene" },
+	{ Tool::Replay,       "tool",  "--page replay" },
+	{ Tool::Perf,         "tool",  "--page perf" },
+	{ Tool::AudioMixer,   "tool",  "--page mixer" },
+	{ Tool::SceneView,    "tool",  "--page scene_view" },
+	{ Tool::WhyView,      "tool",  "--page why_view" },
+	{ Tool::FrameView,    "tool",  "--page frame_view" },
 };
 }  // namespace detail
 

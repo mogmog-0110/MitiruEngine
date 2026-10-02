@@ -15,12 +15,14 @@
 namespace mitiru::module::detail
 {
 
-inline constexpr std::size_t kAutoReflectMaxFields = 64;  // ModuleApi::reflectFields の容量と一致
+inline constexpr std::size_t kAutoReflectMaxFields = 64;  // 1 つの aggregate の直下メンバ数の上限 (探索の深さ)
 
 /// @brief 任意の型へ変換できる番兵 (body 不要、`requires{}` の中でしか使わない)。
+/// @details 参照へ変換する。値へ変換すると、コンストラクタを持つメンバ (sgc::Vec2f 等) の
+///          コピーとムーブのどちらを選ぶかが曖昧になり、そのメンバで数えるのが止まってしまう。
 struct UniversalType
 {
-	template<class U> constexpr operator U() const noexcept;
+	template<class U> constexpr operator U&() const noexcept;
 };
 
 template<class T, std::size_t... I>

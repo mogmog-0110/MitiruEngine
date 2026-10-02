@@ -1,0 +1,57 @@
+<rml>
+<head>
+	<title>replay</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		.file { margin-top: 6dp; font-family: "IBM Plex Mono"; font-size: 13dp; color: #6e7077; }
+		.counter { margin-top: 18dp; font-family: "IBM Plex Mono"; font-size: 22dp; color: #1a1c1f; }
+		.counter small { font-size: 14dp; color: #999da4; margin-left: 8dp; }
+		.scrub { position: relative; margin-top: 14dp; height: 16dp; background-color: #fcfcfb; border: 1dp #e6e7ea; cursor: pointer; }
+		.scrub .cur { position: absolute; top: 0dp; width: 3dp; height: 16dp; background-color: #1a1c1f; }
+		.strip { display: flex; align-items: flex-end; margin-top: 10dp; height: 44dp; padding: 2dp;
+		         background-color: #fcfcfb; border: 1dp #e6e7ea; overflow: hidden; }
+		.strip .tick { display: block; flex: 1 1 0dp; min-width: 0dp; background-color: #1a1c1fb3; }
+		.keys { display: flex; flex-wrap: wrap; margin-top: 18dp; min-height: 30dp; }
+		.keys .chip { background-color: #f4f4f2; border: 1dp #c9cbd0; color: #1a1c1f; padding: 3dp 10dp; font-size: 13dp; font-weight: bold; margin: 0dp 6dp 6dp 0dp; }
+		.keys .chip.empty { background-color: #fcfcfb; border-color: #e6e7ea; color: #999da4; font-weight: normal; }
+		.det { margin-top: 14dp; }
+		.hint { position: absolute; left: 20dp; right: 20dp; bottom: 16dp; font-size: 13dp; }
+		.err { margin-top: 30dp; color: #1a1c1f; font-size: 15dp; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!loaded">
+	<header><div class="dot"/><h1>replay</h1></header>
+	<div class="body">
+		<div class="file">{{ file }}</div>
+		<div class="err" data-if="error != ''">{{ error }}</div>
+		<div data-if="ok">
+			<div class="counter"><span>{{ cur }}</span><small>/ {{ total }}</small></div>
+			<div class="scrub" id="scrub"><div class="cur" data-style-left="pct + '%'"/></div>
+			<div class="strip"><div class="tick" data-for="s : strip" data-style-height="s.h + '%'"><span/></div></div>
+			<div class="label"><span class="dash">— </span>held keys</div>
+			<div class="keys">
+				<span class="chip empty" data-if="keys.size == 0">(none)</span>
+				<span class="chip" data-for="k : keys">{{ k }}</span>
+			</div>
+			<div class="det kv">
+				<div class="row"><span class="k">frame</span><span class="v">{{ frame.i }}</span></div>
+				<div class="row"><span class="k">mouse</span><span class="v">{{ frame.mouse }}<span data-if="frame.mb != ''"> · {{ frame.mb }}</span></span></div>
+				<div class="row"><span class="k">gamepad</span><span class="v"><span data-if="frame.pad">connected</span><span data-if="!frame.pad">(none)</span></span></div>
+			</div>
+			<div data-if="frame.pad">
+				<div class="keys">
+					<span class="chip empty" data-if="pad_buttons.size == 0">(no buttons)</span>
+					<span class="chip" data-for="b : pad_buttons">{{ b }}</span>
+				</div>
+				<div class="det kv">
+					<div class="row"><span class="k">stick L</span><span class="v">{{ stick_l }}</span></div>
+					<div class="row"><span class="k">stick R</span><span class="v">{{ stick_r }}</span></div>
+					<div class="row"><span class="k">trigger</span><span class="v">{{ trigger }}</span></div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="wait">waiting for a recording…</div>
+	<div class="hint">← / →  step · Home/End  jump · (read-only)</div>
+</body>
+</rml>

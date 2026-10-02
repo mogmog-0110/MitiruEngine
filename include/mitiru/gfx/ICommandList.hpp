@@ -2,7 +2,7 @@
 
 /// @file ICommandList.hpp
 /// @brief コマンドリスト抽象インターフェース
-/// @details GPU描画コマンドを記録するコマンドリストの基底インターフェース。
+/// @details GPU 描画コマンドを記録するコマンドリストの基底インターフェース。
 
 #include <cstdint>
 
@@ -21,7 +21,7 @@ class ITexture;
 class IDescriptorHeap;
 
 /// @brief コマンドリストの抽象インターフェース
-/// @details 描画コマンドを記録し、GPUに送信するためのインターフェース。
+/// @details 描画コマンドを記録し、GPU に送信するためのインターフェース。
 ///
 /// @code
 /// commandList->begin();
@@ -89,22 +89,22 @@ public:
 		static_cast<void>(height);
 	}
 
-	/// @brief コマンドリストをリセットする（D3D12用）
-	/// @details D3D12ではフレーム毎にコマンドリストのリセットが必要。
-	///          DX11/Null等のバックエンドでは何もしない。
+	/// @brief コマンドリストをリセットする（D3D12 用）
+	/// @details D3D12 ではフレーム毎にコマンドリストのリセットが必要。
+	///          DX11/Null 等のバックエンドでは何もしない。
 	virtual void reset() {}
 
-	/// @brief コマンドリストを閉じる（D3D12用）
-	/// @details D3D12ではコマンドリストを実行前にクローズする必要がある。
-	///          DX11/Null等のバックエンドでは何もしない。
+	/// @brief コマンドリストを閉じる（D3D12 用）
+	/// @details D3D12 ではコマンドリストを実行前にクローズする必要がある。
+	///          DX11/Null 等のバックエンドでは何もしない。
 	virtual void close() {}
 
 	/// @brief リソースバリアを発行する
 	/// @param resource バリア対象のテクスチャリソース
 	/// @param before 遷移前のリソース状態
 	/// @param after 遷移後のリソース状態
-	/// @details D3D12のリソースステート遷移バリアを発行する。
-	///          DX11/Null等のバックエンドでは何もしない。
+	/// @details D3D12 のリソースステート遷移バリアを発行する。
+	///          DX11/Null 等のバックエンドでは何もしない。
 	virtual void resourceBarrier(
 		ITexture* resource, ResourceState before, ResourceState after)
 	{
@@ -113,20 +113,20 @@ public:
 		static_cast<void>(after);
 	}
 
-	/// @brief ルートシグネチャを設定する（D3D12用）
+	/// @brief ルートシグネチャを設定する（D3D12 用）
 	/// @param rootSignature ルートシグネチャのネイティブポインタ
-	/// @details D3D12のID3D12RootSignatureを設定する。
-	///          DX11/Null等のバックエンドでは何もしない。
+	/// @details D3D12 の ID3D12RootSignature を設定する。
+	///          DX11/Null 等のバックエンドでは何もしない。
 	virtual void setRootSignature(void* rootSignature)
 	{
 		static_cast<void>(rootSignature);
 	}
 
-	/// @brief デスクリプタヒープを設定する（D3D12用）
+	/// @brief デスクリプタヒープを設定する（D3D12 用）
 	/// @param heaps デスクリプタヒープの配列
 	/// @param count ヒープ数
-	/// @details D3D12のSetDescriptorHeapsに対応する。
-	///          DX11/Null等のバックエンドでは何もしない。
+	/// @details D3D12 の SetDescriptorHeaps に対応する。
+	///          DX11/Null 等のバックエンドでは何もしない。
 	virtual void setDescriptorHeaps(
 		IDescriptorHeap* const* heaps, uint32_t count)
 	{
@@ -134,11 +134,11 @@ public:
 		static_cast<void>(count);
 	}
 
-	/// @brief ルートデスクリプタテーブルを設定する（D3D12用）
+	/// @brief ルートデスクリプタテーブルを設定する（D3D12 用）
 	/// @param paramIndex ルートパラメータインデックス
-	/// @param handle GPUデスクリプタハンドル
-	/// @details D3D12のSetGraphicsRootDescriptorTableに対応する。
-	///          DX11/Null等のバックエンドでは何もしない。
+	/// @param handle GPU デスクリプタハンドル
+	/// @details D3D12 の SetGraphicsRootDescriptorTable に対応する。
+	///          DX11/Null 等のバックエンドでは何もしない。
 	virtual void setGraphicsRootDescriptorTable(
 		uint32_t paramIndex, GpuDescriptorHandle handle)
 	{
@@ -146,11 +146,11 @@ public:
 		static_cast<void>(handle);
 	}
 
-	/// @brief ルート定数バッファビューを設定する（D3D12用）
+	/// @brief ルート定数バッファビューを設定する（D3D12 用）
 	/// @param paramIndex ルートパラメータインデックス
-	/// @param gpuVirtualAddress GPUバッファの仮想アドレス
-	/// @details D3D12のSetGraphicsRootConstantBufferViewに対応する。
-	///          DX11/Null等のバックエンドでは何もしない。
+	/// @param gpuVirtualAddress GPU バッファの仮想アドレス
+	/// @details D3D12 の SetGraphicsRootConstantBufferView に対応する。
+	///          DX11/Null 等のバックエンドでは何もしない。
 	virtual void setGraphicsRootCBV(
 		uint32_t paramIndex, uint64_t gpuVirtualAddress)
 	{
@@ -161,15 +161,15 @@ public:
 	// ── コンピュート ────────────────────────────────────────────
 	//
 	// graphics 側の未実装が「何もしない」で済むのは、DX11 のように概念自体が無い
-	// バックエンドで無害だから。コンピュートは違う: dispatch を黙って捨てると
+	// バックエンドで無害だから。コンピュートは違う。dispatch を警告なしに捨てると
 	// 計算が実行されず、それに依存した後段は誤った結果を正しい結果として扱う。
 	// よって未対応バックエンドでは警告を出す (一度だけ)。
 
 	/// @brief コンピュートシェーダーを起動する
-	/// @param groupCountX X方向のスレッドグループ数
-	/// @param groupCountY Y方向のスレッドグループ数
-	/// @param groupCountZ Z方向のスレッドグループ数
-	/// @details 未対応バックエンドでは警告して何もしない。黙って捨てない。
+	/// @param groupCountX X 方向のスレッドグループ数
+	/// @param groupCountY Y 方向のスレッドグループ数
+	/// @param groupCountZ Z 方向のスレッドグループ数
+	/// @details 未対応バックエンドでは警告して何もしない。警告なしに捨てることはしない。
 	virtual void dispatch(
 		uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 	{
@@ -182,16 +182,16 @@ public:
 			"dispatch は実行されません (結果は未計算のままになります)");
 	}
 
-	/// @brief コンピュート用ルートシグネチャを設定する（D3D12用）
+	/// @brief コンピュート用ルートシグネチャを設定する（D3D12 用）
 	/// @param rootSignature ルートシグネチャのネイティブポインタ
 	virtual void setComputeRootSignature(void* rootSignature)
 	{
 		static_cast<void>(rootSignature);
 	}
 
-	/// @brief コンピュート用ルートデスクリプタテーブルを設定する（D3D12用）
+	/// @brief コンピュート用ルートデスクリプタテーブルを設定する（D3D12 用）
 	/// @param paramIndex ルートパラメータインデックス
-	/// @param handle GPUデスクリプタハンドル
+	/// @param handle GPU デスクリプタハンドル
 	virtual void setComputeRootDescriptorTable(
 		uint32_t paramIndex, GpuDescriptorHandle handle)
 	{
@@ -199,7 +199,7 @@ public:
 		static_cast<void>(handle);
 	}
 
-	/// @brief コンピュート用ルート定数バッファビューを設定する（D3D12用）
+	/// @brief コンピュート用ルート定数バッファビューを設定する（D3D12 用）
 	virtual void setComputeRootCBV(
 		uint32_t paramIndex, uint64_t gpuVirtualAddress)
 	{
@@ -207,7 +207,7 @@ public:
 		static_cast<void>(gpuVirtualAddress);
 	}
 
-	/// @brief コンピュート用ルートシェーダーリソースビューを設定する（D3D12用）
+	/// @brief コンピュート用ルートシェーダーリソースビューを設定する（D3D12 用）
 	virtual void setComputeRootSRV(
 		uint32_t paramIndex, uint64_t gpuVirtualAddress)
 	{
@@ -215,7 +215,7 @@ public:
 		static_cast<void>(gpuVirtualAddress);
 	}
 
-	/// @brief コンピュート用ルートアンオーダードアクセスビューを設定する（D3D12用）
+	/// @brief コンピュート用ルートアンオーダードアクセスビューを設定する（D3D12 用）
 	virtual void setComputeRootUAV(
 		uint32_t paramIndex, uint64_t gpuVirtualAddress)
 	{

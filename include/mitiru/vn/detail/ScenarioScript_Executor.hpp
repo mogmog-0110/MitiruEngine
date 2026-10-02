@@ -1,12 +1,12 @@
 #pragma once
 
 // mitiru::vn::ScenarioScript の detail ヘッダ。vn/ScenarioScript.hpp 経由で include される
-// class ScenarioExecutor のみを定義する。
+// class ScenarioExecutor だけを定義する。
 //
 // 注意: applySetToFlagManager の out-of-line 定義は
-//       ScenarioScript_FlagManagerGlue.hpp に分離されている (FlagManager.hpp の
-//       遅延 include による循環参照回避)。umbrella では本ファイル include の
-//       後ろに _FlagManagerGlue.hpp を必ず置くこと。
+//       ScenarioScript_FlagManagerGlue.hpp に分けてある (FlagManager.hpp の
+//       include を遅らせて循環参照を避けるため)。umbrella では本ファイルの include の
+//       後ろに必ず _FlagManagerGlue.hpp を置くこと。
 
 #include <algorithm>
 #include <cstddef>
@@ -33,7 +33,7 @@ namespace mitiru::vn
 // ════════════════════════════════════════════════════════════════════
 
 /// @brief シナリオスクリプトのステップ実行器
-/// @details パース済みのScenarioNodeリストを1ステップずつ実行する。
+/// @details パース済みの ScenarioNode リストを 1 ステップずつ実行する。
 ///          コールバックを通じてエンジン側に指示を伝える。
 ///
 /// @code
@@ -58,7 +58,7 @@ class ScenarioExecutor
 {
 public:
 	/// @brief コマンドリストをロードする
-	/// @param nodes ScenarioNodeのベクタ
+	/// @param nodes ScenarioNode のベクタ
 	void load(std::vector<ScenarioNode> nodes)
 	{
 		m_nodes = std::move(nodes);
@@ -87,7 +87,7 @@ public:
 	}
 
 	/// @brief コールバックを設定する
-	/// @param callback コールバックインターフェース（nullptrで無効化）
+	/// @param callback コールバックインターフェース（nullptr で無効化）
 	void setCallback(ScenarioCallback* callback) noexcept
 	{
 		m_callback = callback;
@@ -131,8 +131,8 @@ public:
 		m_flagManager = manager;
 	}
 
-	/// @brief 1ステップ実行する
-	/// @return 実行されたコマンドの種類（終了済みの場合はnullopt）
+	/// @brief 1 ステップ実行する
+	/// @return 実行されたコマンドの種類（終了済みの場合は nullopt）
 	std::optional<ScenarioCommandType> step()
 	{
 		if (m_finished || m_pc >= m_nodes.size())
@@ -154,7 +154,7 @@ public:
 		return cmdType;
 	}
 
-	/// @brief 選択肢を選択する（onChoiceが-1を返した場合に外部から呼ぶ）
+	/// @brief 選択肢を選択する（onChoice が-1 を返した場合に外部から呼ぶ）
 	/// @param index 選択肢インデックス
 	void selectChoice(std::size_t index)
 	{
@@ -173,7 +173,7 @@ public:
 
 	/// @brief 指定ラベルまでジャンプする
 	/// @param label ラベル名
-	/// @return 成功ならtrue
+	/// @return 成功なら true
 	bool jumpToLabel(const std::string& label)
 	{
 		auto it = m_labelMap.find(label);
@@ -186,14 +186,14 @@ public:
 	}
 
 	/// @brief 実行が終了したか
-	/// @return 終了済みならtrue
+	/// @return 終了済みなら true
 	[[nodiscard]] bool isFinished() const noexcept
 	{
 		return m_finished;
 	}
 
 	/// @brief 選択肢待ち状態か
-	/// @return 選択肢待ちならtrue
+	/// @return 選択肢待ちなら true
 	[[nodiscard]] bool isWaitingForChoice() const noexcept
 	{
 		return m_waitingForChoice;
@@ -220,7 +220,7 @@ public:
 		return m_currentScene;
 	}
 
-	/// @brief 対話行数（Dialogueコマンドの数）を取得する
+	/// @brief 対話行数（Dialogue コマンドの数）を取得する
 	/// @return 対話行数
 	[[nodiscard]] std::size_t dialogueLineCount() const
 	{
@@ -301,8 +301,8 @@ private:
 			{
 				const auto& d = std::get<DialogueParams>(node.payload);
 				m_callback->onDialogue(d.speaker, d.text);
-				// インラインタグ自動解析 ("[wait=500]" 等)。games は onDialogueParsed を
-				// override して plain text + tag 列を受け取る。tags 空なら nop override が走る。
+				// インラインタグ ("[wait=500]" 等) を自動で解析する。games は onDialogueParsed を
+				// override して plain text + tag 列を受け取る。tags が空なら nop override が走る。
 				auto [plain, tags] = parseInlineTags(d.text);
 				m_callback->onDialogueParsed(d.speaker, plain, tags);
 			}
@@ -337,12 +337,12 @@ private:
 			break;
 
 		case ScenarioCommandType::Else:
-			// then-ブロックから落ちてきた場合: @endif までスキップして else-ブロックを飛ばす
+			// then-ブロックからそのまま進んできた場合は、@endif までスキップして else-ブロックを飛ばす
 			skipToEndIf();
 			break;
 
 		case ScenarioCommandType::EndIf:
-			// 実行中に素通りしてきた場合は no-op
+			// 実行中にそのまま通ってきた場合は no-op
 			break;
 
 		case ScenarioCommandType::Wait:
@@ -379,7 +379,7 @@ private:
 			}
 		}
 
-		// コールバックが-1を返した場合は選択肢待ち状態に
+		// コールバックが -1 を返した場合は選択肢待ち状態にする
 		m_waitingForChoice = true;
 	}
 
@@ -396,15 +396,15 @@ private:
 
 		if (!result)
 		{
-			// 偽の場合: @else または @endif までスキップ (@else があれば else-ブロックに入る)
+			// 偽の場合は @else または @endif までスキップする (@else があれば else-ブロックに入る)
 			skipToElseOrEndIf();
 		}
-		// 真の場合: そのまま次のコマンドに進む。then-ブロック終端の
-		// @else で skipToEndIf() が呼ばれるため else-ブロックはスキップされる。
+		// 真の場合はそのまま次のコマンドに進む。then-ブロック終端の
+		// @else で skipToEndIf() が呼ばれるので、else-ブロックはスキップされる。
 	}
 
 	/// @brief @endif までスキップする (ネストした @if を正しく数える)
-	/// @details 真ブロックの終端で @else を踏んだとき使う。
+	/// @details 真ブロックの終端で @else に当たったときに使う。
 	void skipToEndIf()
 	{
 		int depth = 1;
@@ -426,7 +426,7 @@ private:
 	}
 
 	/// @brief @else または @endif までスキップする
-	/// @details 偽ブロックのときに使う。@else で止まれば else-ブロック先頭から続行。
+	/// @details 偽ブロックのときに使う。@else で止まれば else-ブロックの先頭から続ける。
 	///          @endif で止まればブロック全体を抜ける。ネストした @if の
 	///          @else は無視する。
 	void skipToElseOrEndIf()
@@ -448,7 +448,7 @@ private:
 			}
 			else if (node.type == ScenarioCommandType::Else && depth == 1)
 			{
-				// 最外 @if の @else で停止。else-ブロック先頭から続行。
+				// 最も外側の @if の @else で止まり、else-ブロックの先頭から続ける。
 				return;
 			}
 		}

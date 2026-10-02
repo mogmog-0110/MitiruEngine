@@ -24,11 +24,11 @@ struct ITestableDemo
 {
 	virtual ~ITestableDemo() = default;
 
-	/// @brief 1フレーム分の更新処理
+	/// @brief 1 フレーム分の更新処理
 	/// @param deltaTime フレーム時間（秒）
 	virtual void update(float deltaTime) = 0;
 
-	/// @brief 1フレーム分の描画処理
+	/// @brief 1 フレーム分の描画処理
 	/// @param screen 描画先
 	virtual void draw(Screen& screen) = 0;
 };
@@ -47,7 +47,7 @@ struct DemoTestResult
 	int drawCallCount = 0;                     ///< フレーム内描画コール数
 	int framesTested = 0;                      ///< テストしたフレーム数
 
-	/// @brief 結果をJSON文字列に変換する
+	/// @brief 結果を JSON 文字列に変換する
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json = "{";
@@ -75,7 +75,7 @@ struct TestReport
 	int totalFailed = 0;                   ///< 不合格数
 	std::string outputDirectory;           ///< スクリーンショット保存先
 
-	/// @brief 結果をJSON文字列に変換する
+	/// @brief 結果を JSON 文字列に変換する
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json = "{";
@@ -125,11 +125,20 @@ public:
 	/// @param percent 許容差異割合（%）
 	void setDiffThreshold(float percent) noexcept
 	{
-		m_diffThreshold = percent;
+		m_goldenThresholds.maxDiffPercent = percent;
+	}
+
+	/// @brief FLIP 誤差の上限を設定する (既定は GoldenThresholds の値)
+	/// @param maxMean 誤差の平均の上限
+	/// @param maxP999 誤差の上位 0.1% の位置の上限
+	void setFlipThresholds(float maxMean, float maxP999) noexcept
+	{
+		m_goldenThresholds.maxFlipMean = maxMean;
+		m_goldenThresholds.maxFlipP999 = maxP999;
 	}
 
 	/// @brief テスト時のフレーム数を設定する
-	/// @param frames フレーム数（デフォルト60）
+	/// @param frames フレーム数（デフォルト 60）
 	void setFramesPerDemo(int frames) noexcept
 	{
 		m_framesPerDemo = frames;
@@ -145,7 +154,7 @@ public:
 	/// @brief 全登録デモのテストを実行する
 	/// @param screenW 画面幅
 	/// @param screenH 画面高さ
-	/// @param framesPerDemo デモごとのフレーム数（0ならデフォルト値使用）
+	/// @param framesPerDemo デモごとのフレーム数（0 ならデフォルト値使用）
 	/// @return テストレポート
 	[[nodiscard]] TestReport runAll(int screenW, int screenH,
 	                                int framesPerDemo = 0) const
@@ -185,7 +194,7 @@ private:
 
 	std::vector<DemoEntry> m_demos;
 	std::map<std::string, render::ScreenshotData> m_goldenImages;
-	float m_diffThreshold = 0.5f;
+	GoldenThresholds m_goldenThresholds;  ///< 画素差と FLIP の合格条件
 	int m_framesPerDemo = 60;
 	std::string m_outputDir = "test_screenshots";
 
@@ -327,14 +336,10 @@ private:
 			currentShot.height = screenH;
 			currentShot.pixels = pixels;
 
-			ScreenshotDiffer differ;
-			const auto diff = differ.compare(goldenIt->second, currentShot, 2);
-			if (diff.diffPercentage > m_diffThreshold)
+			const auto verdict = ScreenshotDiffer{}.compareGolden(goldenIt->second, currentShot, m_goldenThresholds);
+			if (!verdict.pass)
 			{
-				result.validationErrors.push_back(
-					"Golden image mismatch: " +
-					std::to_string(diff.diffPercentage) + "% differs (threshold: " +
-					std::to_string(m_diffThreshold) + "%)");
+				result.validationErrors.push_back("Golden image mismatch: " + verdict.summary());
 			}
 		}
 

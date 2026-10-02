@@ -34,8 +34,8 @@ struct DeadlockInfo
 	std::string lastState;              ///< 最後の状態概要
 	std::string description;            ///< 説明
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -85,7 +85,7 @@ public:
 
 	/// @brief ゲームがデッドロック状態かチェックする
 	/// @param currentFrame 現在のフレーム番号
-	/// @return デッドロック検出時はDeadlockInfo、正常時はnullopt
+	/// @return デッドロック検出時は DeadlockInfo、正常時は nullopt
 	[[nodiscard]] std::optional<DeadlockInfo> check(std::uint64_t currentFrame) const
 	{
 		if (m_currentState.empty())
@@ -133,9 +133,9 @@ public:
 		return currentFrame - m_lastChangeFrame;
 	}
 
-	/// @brief 状態変化頻度を返す（60フレームあたりの変化回数）
+	/// @brief 状態変化頻度を返す（60 フレームあたりの変化回数）
 	/// @param currentFrame 現在のフレーム番号
-	/// @return 60フレームあたりの変化回数
+	/// @return 60 フレームあたりの変化回数
 	[[nodiscard]] float changeFrequency(std::uint64_t currentFrame) const
 	{
 		if (m_stateChangeFrames.empty())
@@ -176,8 +176,8 @@ public:
 		m_stateChangeFrames.clear();
 	}
 
-	/// @brief 現在の検出器状態をJSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief 現在の検出器状態を JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;

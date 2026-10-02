@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 /// @file Win32Input.hpp
-/// @brief Win32キーボード・マウス入力ハンドラ
-/// @details Win32メッセージループから入力を受け取り、
-///          フレーム単位のキー状態追跡（押下・押し始め・離し）を行う。
-///          WndProcから processMessage() を呼び出して使用する。
+/// @brief Win32 キーボード・マウス入力ハンドラ
+/// @details Win32 メッセージループから入力を受け取り、
+///          キー状態（押下・押し始め・離し）をフレーム単位で追跡する。
+///          WndProc から processMessage() を呼び出して使う。
 
 #ifdef _WIN32
 
@@ -33,15 +33,15 @@ enum class MouseWheelAxis : std::uint8_t
 	Horizontal = 1   ///< 水平スクロール
 };
 
-/// @brief Win32キーボード・マウス入力ハンドラ
-/// @details WndProcから受信したWin32メッセージを解析し、
+/// @brief Win32 キーボード・マウス入力ハンドラ
+/// @details WndProc から受信した Win32 メッセージを解析し、
 ///          フレーム単位でキー状態を管理する。
-///          current/previousフレームの比較によりエッジ検出（pressed/released）を行う。
+///          current/previous フレームの比較によりエッジ検出（pressed/released）を行う。
 ///
 /// @code
 /// mitiru::Win32Input input;
 ///
-/// // WndProc内で呼ぶ
+/// // WndProc 内で呼ぶ
 /// case WM_KEYDOWN:
 ///     input.processMessage(msg, wParam, lParam);
 ///     break;
@@ -63,12 +63,12 @@ public:
 		m_previousMouse.fill(false);
 	}
 
-	/// @brief Win32メッセージを処理する
-	/// @param msg Win32メッセージID
-	/// @param wParam メッセージのWPARAM
-	/// @param lParam メッセージのLPARAM
+	/// @brief Win32 メッセージを処理する
+	/// @param msg Win32 メッセージ ID
+	/// @param wParam メッセージの WPARAM
+	/// @param lParam メッセージの LPARAM
 	/// @return メッセージを処理した場合 true
-	/// @details WndProcから呼び出す。キーボード・マウス関連のメッセージを処理する。
+	/// @details WndProc から呼び出す。キーボード・マウス関連のメッセージを処理する。
 	bool processMessage(UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 	{
 		switch (msg)
@@ -135,7 +135,7 @@ public:
 	}
 
 	/// @brief フレーム開始時に呼び出す
-	/// @details 現在の状態を前フレーム状態にコピーし、ホイールデルタをリセットする。
+	/// @details 現在の状態を前フレームの状態にコピーし、ホイールデルタをリセットする。
 	///          ゲームループの先頭で毎フレーム呼ぶこと。
 	void update() noexcept
 	{
@@ -159,7 +159,7 @@ public:
 
 	/// @brief 指定キーが今フレームで押されたか（エッジ検出）
 	/// @param code キーコード
-	/// @return 今フレーム押下 かつ 前フレーム非押下なら true
+	/// @return 今フレームで押されていて、前フレームで押されていなければ true
 	[[nodiscard]] bool isKeyPressed(KeyCode code) const noexcept
 	{
 		const auto idx = static_cast<int>(code);
@@ -170,7 +170,7 @@ public:
 
 	/// @brief 指定キーが今フレームで離されたか（エッジ検出）
 	/// @param code キーコード
-	/// @return 今フレーム非押下 かつ 前フレーム押下なら true
+	/// @return 今フレームで押されておらず、前フレームで押されていれば true
 	[[nodiscard]] bool isKeyReleased(KeyCode code) const noexcept
 	{
 		const auto idx = static_cast<int>(code);
@@ -180,7 +180,7 @@ public:
 	}
 
 	/// @brief 仮想キーコード（int）でキーが押されているか
-	/// @param vk Win32仮想キーコード（0 ~ MAX_KEYS-1）
+	/// @param vk Win32 仮想キーコード（0 ~ MAX_KEYS-1）
 	/// @return 押されていれば true
 	[[nodiscard]] bool isKeyDownRaw(int vk) const noexcept
 	{
@@ -197,10 +197,10 @@ public:
 		return { m_mouseX, m_mouseY };
 	}
 
-	/// @brief マウスX座標を取得する
+	/// @brief マウスの X 座標を取得する
 	[[nodiscard]] int mouseX() const noexcept { return m_mouseX; }
 
-	/// @brief マウスY座標を取得する
+	/// @brief マウスの Y 座標を取得する
 	[[nodiscard]] int mouseY() const noexcept { return m_mouseY; }
 
 	/// @brief マウスボタンが押されているか
@@ -215,7 +215,7 @@ public:
 
 	/// @brief マウスボタンが今フレームで押されたか
 	/// @param button マウスボタン
-	/// @return 今フレーム押下 かつ 前フレーム非押下なら true
+	/// @return 今フレームで押されていて、前フレームで押されていなければ true
 	[[nodiscard]] bool isMouseButtonPressed(MouseButton button) const noexcept
 	{
 		const auto idx = static_cast<std::size_t>(button);
@@ -225,7 +225,7 @@ public:
 
 	/// @brief マウスボタンが今フレームで離されたか
 	/// @param button マウスボタン
-	/// @return 今フレーム非押下 かつ 前フレーム押下なら true
+	/// @return 今フレームで押されておらず、前フレームで押されていれば true
 	[[nodiscard]] bool isMouseButtonReleased(MouseButton button) const noexcept
 	{
 		const auto idx = static_cast<std::size_t>(button);
@@ -247,11 +247,11 @@ public:
 		return m_hWheelDelta;
 	}
 
-	// ── InputState連携 ────────────────────
+	// ── InputState 連携 ────────────────────
 
-	/// @brief 現在の状態をInputStateに転写する
-	/// @param[out] state 転写先のInputState
-	/// @details 既存のInputState連携コードとの互換用。
+	/// @brief 現在の状態を InputState に転写する
+	/// @param[out] state 転写先の InputState
+	/// @details 既存の InputState 連携コードとの互換用。
 	void fillInputState(InputState& state) const noexcept
 	{
 		for (int i = 0; i < MAX_KEYS; ++i)

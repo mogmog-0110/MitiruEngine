@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file RenderTexture.hpp
-/// @brief オフスクリーンレンダーターゲット（Siv3D RenderTexture風）
+/// @brief オフスクリーンレンダーターゲット（Siv3D RenderTexture 風）
 /// @details 画面ではなく内部テクスチャに描画し、その結果を
 ///          テクスチャとして他の描画に使用できる。
 ///          ポストエフェクトやミニマップ等に活用する。
@@ -10,7 +10,7 @@
 /// mitiru::render::RenderTexture rt(256, 256);
 /// rt.clear({0, 0, 0, 1});
 /// rt.drawRect({10, 10, 50, 50}, {1, 0, 0, 1});
-/// // rt.texture() で結果をTextureとして取得可能
+/// // rt.texture() で結果を Texture として取得可能
 /// @endcode
 
 #include <mitiru/render/Texture.hpp>
@@ -28,7 +28,7 @@ namespace mitiru::render
 
 /// @brief オフスクリーンレンダーターゲット
 /// @details ソフトウェアフレームバッファへの描画を行い、
-///          結果をTextureとして取得する。
+///          結果を Texture として取得する。
 class RenderTexture
 {
 public:
@@ -94,8 +94,8 @@ public:
 	}
 
 	/// @brief ピクセルを直接設定する
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @param color ピクセル色
 	void setPixel(int x, int y, const sgc::Colorf& color)
 	{
@@ -107,7 +107,7 @@ public:
 		m_pixels[idx + 3] = toByte(color.a);
 	}
 
-	/// @brief 結果をTextureとして取得する
+	/// @brief 結果を Texture として取得する
 	/// @return テクスチャオブジェクト
 	[[nodiscard]] Texture texture() const
 	{
@@ -115,8 +115,8 @@ public:
 	}
 
 	/// @brief 指定座標のピクセル色を取得する
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @return ピクセル色（範囲外は黒）
 	[[nodiscard]] sgc::Colorf pixelAt(int x, int y) const noexcept
 	{

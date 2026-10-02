@@ -1,7 +1,8 @@
 /// @file clod_import_impl.cpp
-/// @brief drawModel の import cache 実装。OBJ / glTF / GLB → .clod (CLD5) 変換
-/// @details clusterlod.h (meshoptimizer demo, MIT) の実装 TU をここに閉じ込める。
-///          変換はソースの隣へ `<source>.clod` を書き、mtime 比較で再変換する。
+/// @brief drawModel の import cache 実装。OBJ / glTF / GLB →.clod (CLD6) 変換
+/// @details clusterlod.h (meshoptimizer demo, MIT) の実装 TU はこのファイルだけに置く。
+///          変換はソースの隣へ `<source>.clod` を書き、mtime と magic で再変換するかを決める。
+///          テクスチャは各画像の隣へ BC 圧縮した `<画像>.dds` を作り、マテリアルはそれを指す。
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -19,9 +20,12 @@
 #pragma warning(pop)
 #endif
 
+#include <mitiru/render/TextureCompress.hpp>
+#include <mitiru/util/ParallelFor.hpp>
 #include <mitiru/render/dx12/clod/ClodFormat.hpp>
 #include <mitiru/render/dx12/clod/ClodImport.hpp>
 
+#include <algorithm>
 #include <cctype>
 #include <cfloat>
 #include <cmath>
@@ -32,6 +36,7 @@
 #include <fstream>
 #include <map>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -373,7 +378,114 @@ void computeMissingNormals(ImportModel& m)
 	}
 }
 
-// ── clusterlod で LOD DAG を組み、CLD5 バイト列へ直列化する ──
+// ── テクスチャを BC 圧縮した `<画像>.dds` へ差し替える (圧縮できない画像は元の名前のまま) ──
+
+constexpr std::string_view kDdsSuffix = ".dds";
+
+struct TextureSlot
+{
+	char (*name)[120];
+	TextureKind kind;
+};
+
+std::vector<TextureSlot> textureSlots(std::vector<ClodFileMaterial>& mats)
+{
+	std::vector<TextureSlot> slots;
+	for (ClodFileMaterial& m : mats)
+	{
+		if (m.albedo[0] != '\0') { slots.push_back({ &m.albedo, TextureKind::Color }); }
+		if (m.normal[0] != '\0') { slots.push_back({ &m.normal, TextureKind::Normal }); }
+	}
+	return slots;
+}
+
+/// 同じ画像を別の役割 (色と法線) で使うと同名の dds が衝突するので、先に出た役割だけ圧縮する
+void compressMaterialTextures(std::vector<ClodFileMaterial>& mats, const std::filesystem::path& dir)
+{
+	const std::vector<TextureSlot> slots = textureSlots(mats);
+	std::map<std::string, TextureKind> kindOf;
+	for (const TextureSlot& s : slots) { kindOf.emplace(*s.name, s.kind); }
+	std::vector<std::pair<std::string, TextureKind>> jobs(kindOf.begin(), kindOf.end());
+	std::vector<char> compressed(jobs.size(), 0);
+
+	util::parallelFor(jobs.size(), [&](size_t i) {
+		const auto& job = jobs[i];
+		std::string err;
+		if (job.first.size() + kDdsSuffix.size() >= sizeof(ClodFileMaterial::albedo))
+		{
+			err = "名前が長すぎて .dds を付けられない";
+		}
+		else if (ensureCompressedTexture((dir / job.first).string(), job.second, err))
+		{
+			compressed[i] = 1;
+			return;
+		}
+		std::fprintf(stderr, "[clod] texture を圧縮せずに使う: %s (%s)\n", job.first.c_str(), err.c_str());
+	});
+
+	for (const TextureSlot& s : slots)
+	{
+		const auto it = std::lower_bound(jobs.begin(), jobs.end(), std::string(*s.name),
+		                                 [](const auto& j, const std::string& n) { return j.first < n; });
+		if (compressed[static_cast<size_t>(it - jobs.begin())] != 0 && it->second == s.kind)
+		{
+			setMaterialPath(*s.name, it->first + std::string(kDdsSuffix));
+		}
+	}
+}
+
+/// cache が今の形式 (magic) で、ソースより新しいか
+[[nodiscard]] bool isCurrentCache(const std::filesystem::path& cache, const std::filesystem::path& src)
+{
+	std::error_code ec;
+	if (!std::filesystem::exists(cache, ec) ||
+	    std::filesystem::last_write_time(cache, ec) < std::filesystem::last_write_time(src, ec))
+	{
+		return false;
+	}
+	std::ifstream f(cache, std::ios::binary);
+	uint32_t magic = 0;
+	f.read(reinterpret_cast<char*>(&magic), sizeof(magic));
+	return f.good() && magic == kClodMagic;
+}
+
+/// cache が指す dds を、元画像が更新されていれば作り直す (cache 自体は書き換えない)
+void refreshTextureSidecars(const std::filesystem::path& cache, const std::filesystem::path& dir)
+{
+	std::ifstream f(cache, std::ios::binary);
+	ClodFileHeader h = {};
+	if (!f.read(reinterpret_cast<char*>(&h), sizeof(h))) { return; }
+	const auto matOffset = sizeof(ClodFileHeader) + static_cast<size_t>(h.vertexCount) * 32
+		+ static_cast<size_t>(h.groupCount) * sizeof(ClodGroup)
+		+ static_cast<size_t>(h.clusterCount) * sizeof(ClodCluster)
+		+ static_cast<size_t>(h.vertIdxCount) * 4 + h.triIdxByteCount;
+	// magic しか確かめていないので、壊れた cache の count で巨大な確保や範囲外の seek をしないよう、
+	// 材質の表がファイルに収まるかを先に見る
+	std::error_code ec;
+	const auto fileSize = static_cast<std::uint64_t>(std::filesystem::file_size(cache, ec));
+	const std::uint64_t matBytes = static_cast<std::uint64_t>(h.materialCount) * sizeof(ClodFileMaterial);
+	if (ec || matOffset > fileSize || matBytes > fileSize - matOffset) { return; }
+	std::vector<ClodFileMaterial> mats(h.materialCount);
+	f.seekg(static_cast<std::streamoff>(matOffset));
+	if (!f.read(reinterpret_cast<char*>(mats.data()),
+	            static_cast<std::streamsize>(mats.size() * sizeof(ClodFileMaterial))))
+	{
+		return;
+	}
+	for (const TextureSlot& s : textureSlots(mats))
+	{
+		const std::string name(*s.name);
+		if (!name.ends_with(kDdsSuffix)) { continue; }
+		std::string err;
+		const auto source = dir / name.substr(0, name.size() - kDdsSuffix.size());
+		if (!ensureCompressedTexture(source.string(), s.kind, err))
+		{
+			std::fprintf(stderr, "[clod] %s を作り直せない (%s)\n", name.c_str(), err.c_str());
+		}
+	}
+}
+
+// ── clusterlod で LOD DAG を組み、CLD6 バイト列へ直列化する ──
 bool buildClodBytes(const ImportModel& m, std::vector<uint8_t>& out, std::string& error)
 {
 	const size_t vertexCount = m.positions.size() / 3;
@@ -428,7 +540,7 @@ bool buildClodBytes(const ImportModel& m, std::vector<uint8_t>& out, std::string
 			});
 	}
 
-	// 誤差単調性 + 球包含の検証 (破れた DAG は描画で穴・重複になる)
+	// 誤差単調性 + 球包含の検証 (これが破れた DAG は描画で穴・重複になる)
 	size_t violations = 0;
 	for (const ClodCluster& c : clusters)
 	{
@@ -515,9 +627,10 @@ std::optional<std::string> ensureClodCache(const std::string& sourcePath, std::s
 		error = "モデルファイルがありません: " + sourcePath;
 		return std::nullopt;
 	}
-	if (fs::exists(cache, ec) && fs::last_write_time(cache, ec) >= fs::last_write_time(src, ec))
+	if (isCurrentCache(cache, src))
 	{
-		return cache.string();   // cache が新しい → 変換不要
+		refreshTextureSidecars(cache, src.parent_path());
+		return cache.string();
 	}
 
 	std::fprintf(stderr, "[clod] importing %s -> %s (converts once)\n",
@@ -531,6 +644,7 @@ std::optional<std::string> ensureClodCache(const std::string& sourcePath, std::s
 		: loadGltfModel(srcStr, model, error);
 	if (!loaded) { return std::nullopt; }
 	computeMissingNormals(model);
+	compressMaterialTextures(model.materials, src.parent_path());
 
 	std::vector<uint8_t> bytes;
 	if (!buildClodBytes(model, bytes, error)) { return std::nullopt; }

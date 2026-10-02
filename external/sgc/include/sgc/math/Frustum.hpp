@@ -3,7 +3,7 @@
 /// @file Frustum.hpp
 /// @brief 視錐台（フラスタム）型 Frustum<T>
 ///
-/// VP行列（View * Projection）から6平面を抽出し、
+/// VP行列（Projection * View、列ベクトル規約）から6平面を抽出し、
 /// カリング（AABB/Sphere判定）に使用する。
 
 #include "sgc/math/Plane.hpp"
@@ -40,8 +40,10 @@ struct Frustum
 	/// @brief デフォルトコンストラクタ
 	constexpr Frustum() noexcept = default;
 
-	/// @brief VP行列（View * Projection）から視錐台を構築する
-	/// @param vp ビュー×投影行列（行優先）
+	/// @brief VP行列（Projection * View）から視錐台を構築する
+	/// @param vp 投影×ビュー行列（行優先）
+	/// @note near 面は深度 [-1,1] の射影 (Mat4::perspective / orthographic) を前提にする。
+	///       深度 [0,1] の射影を渡すと near 面が手前へずれ、近面より手前も内側と判定する
 	/// @return 正規化された6平面の視錐台
 	///
 	/// @note Gribb & Hartmann法で行列の行から平面を抽出する

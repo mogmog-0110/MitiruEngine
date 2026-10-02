@@ -97,7 +97,7 @@ struct PostProcessConfig
 		float tintB = 1.0f;
 	} frostGlass;
 
-	/// @brief FXAA設定
+	/// @brief FXAA 設定
 	struct
 	{
 		bool enabled = false;
@@ -112,7 +112,7 @@ struct PostProcessConfig
 // ============================================================================
 
 /// @brief ポストプロセスチェーン
-/// @details 複数のPostProcessPassを順次実行し、
+/// @details 複数の PostProcessPass を順次実行し、
 ///          ピンポンレンダーターゲットで中間結果を受け渡す。
 ///
 /// @code
@@ -127,7 +127,7 @@ class PostProcessChain
 {
 public:
 	/// @brief コンストラクタ
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
 	PostProcessChain(
@@ -138,7 +138,7 @@ public:
 		, m_screenW(screenW)
 		, m_screenH(screenH)
 	{
-		/// ピンポンバッファを2つ生成する
+		/// ピンポンバッファを 2 つ生成する
 		m_pingPong[0] = createRenderTarget(device, screenW, screenH);
 		m_pingPong[1] = createRenderTarget(device, screenW, screenH);
 	}
@@ -163,7 +163,7 @@ public:
 
 	/// @brief パスを取得する
 	/// @param index パスインデックス
-	/// @return パスへのポインタ（範囲外ならnullptr）
+	/// @return パスへのポインタ（範囲外なら nullptr）
 	[[nodiscard]] PostProcessPass* getPass(
 		std::size_t index) const noexcept
 	{
@@ -195,9 +195,9 @@ public:
 	}
 
 	/// @brief 全パスをチェーン実行する
-	/// @param context D3D11コンテキスト
-	/// @param sceneTextureSRV シーン描画結果のSRV
-	/// @param finalRTV 最終出力先（通常はバックバッファRTV）
+	/// @param context D3D11 コンテキスト
+	/// @param sceneTextureSRV シーン描画結果の SRV
+	/// @param finalRTV 最終出力先（通常はバックバッファ RTV）
 	void execute(
 		ID3D11DeviceContext* context,
 		ID3D11ShaderResourceView* sceneTextureSRV,
@@ -229,7 +229,7 @@ public:
 			const bool isLast =
 				(i == activePasses.size() - 1);
 
-			/// 最終パスはfinalRTVに直接出力する
+			/// 最終パスは finalRTV に直接出力する
 			ID3D11RenderTargetView* outputRTV = isLast
 				? finalRTV
 				: m_pingPong[pingPongIdx].rtv.Get();
@@ -262,8 +262,8 @@ public:
 			m_device.Get(), screenW, screenH);
 	}
 
-	/// @brief PostProcessConfigから一括でチェーンを構築する
-	/// @param device D3D11デバイス
+	/// @brief PostProcessConfig から一括でチェーンを構築する
+	/// @param device D3D11 デバイス
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
 	/// @param config 統合設定

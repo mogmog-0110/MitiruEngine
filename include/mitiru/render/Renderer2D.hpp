@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Renderer2D.hpp
-/// @brief 高レベル2Dレンダラー
+/// @brief 高レベル 2D レンダラー
 /// @details SpriteBatch と ShapeRenderer を統合し、
-///          フレーム単位の2D描画パイプラインを提供する。
+///          フレーム単位の 2D 描画パイプラインを提供する。
 
 #include <algorithm>
 #include <string_view>
@@ -21,7 +21,7 @@
 namespace mitiru::render
 {
 
-/// @brief 高レベル2Dレンダラー
+/// @brief 高レベル 2D レンダラー
 /// @details SpriteBatch + ShapeRenderer を内部で管理し、
 ///          beginFrame/endFrame でフレーム描画を制御する。
 ///
@@ -118,9 +118,9 @@ public:
 	}
 
 	/// @brief 三角形を描画する
-	/// @param p0 頂点0
-	/// @param p1 頂点1
-	/// @param p2 頂点2
+	/// @param p0 頂点 0
+	/// @param p1 頂点 1
+	/// @param p2 頂点 2
 	/// @param color 描画色
 	void drawTriangle(const sgc::Vec2f& p0,
 	                  const sgc::Vec2f& p1,
@@ -134,7 +134,7 @@ public:
 	/// @param position 描画位置（左上）
 	/// @param text テキスト内容
 	/// @param color 描画色
-	/// @param fontSize フォントサイズ（8の倍数でスケーリング）
+	/// @param fontSize フォントサイズ（8 の倍数でスケーリング）
 	void drawText(const sgc::Vec2f& position,
 	              std::string_view text,
 	              const sgc::Colorf& color,
@@ -148,7 +148,7 @@ public:
 	}
 
 	/// @brief カメラを設定する
-	/// @param camera 2Dカメラ
+	/// @param camera 2D カメラ
 	void setCamera(const Camera2D& camera) noexcept
 	{
 		m_camera = camera;

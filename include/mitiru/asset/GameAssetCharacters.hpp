@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GameAssetCharacters.hpp
-/// @brief キャラクター系ゲームアセットSVGテンプレート（プレイヤー・NPC・敵）
+/// @brief キャラクター系ゲームアセット SVG テンプレート（プレイヤー・NPC・敵）
 
 #include "SvgGenerator.hpp"
 #include "GameAssetUtil.hpp"
@@ -11,7 +11,7 @@
 namespace mitiru::asset
 {
 
-/// @brief キャラクター系SVGテンプレート
+/// @brief キャラクター系 SVG テンプレート
 class GameAssetCharacters
 {
 public:
@@ -123,7 +123,7 @@ public:
 		return doc;
 	}
 
-	/// @brief 巡回敵（威嚇的な形状＋目）
+	/// @brief 巡回敵（威嚇するような形状＋目）
 	/// @param size サイズ
 	/// @param color 敵の色
 	/// @return SvgDocument

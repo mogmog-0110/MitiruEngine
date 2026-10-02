@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file VulkanPipeline.hpp
-/// @brief Vulkanグラフィックスパイプライン設定
-/// @details VkGraphicsPipelineの生成パラメータを定義する構造体群を提供する。
-///          MITIRU_HAS_VULKANが定義されている場合のみ実際のVulkan APIを使用する。
+/// @brief Vulkan グラフィックスパイプライン設定
+/// @details VkGraphicsPipeline の生成パラメータを定義する構造体群を提供する。
+///          MITIRU_HAS_VULKAN が定義されている場合のみ実際の Vulkan API を使用する。
 
 #include <cstdint>
 #include <string>
@@ -140,8 +140,7 @@ struct PipelineLayoutDesc
 };
 
 /// @brief グラフィックスパイプライン生成パラメータ
-/// @details VkGraphicsPipelineCreateInfoに対応する構成情報を保持する。
-///
+/// @details VkGraphicsPipelineCreateInfo に対応する構成情報を保持する。
 /// @code
 /// GraphicsPipelineDesc desc;
 /// desc.vertexInput.bindings.push_back({0, sizeof(Vertex), false});
@@ -161,8 +160,8 @@ struct GraphicsPipelineDesc
 	BlendMode blendMode = BlendMode::None;        ///< ブレンドモード
 	PipelineLayoutDesc layout;                    ///< パイプラインレイアウト
 
-	/// @brief 2Dスプライト描画用のデフォルト設定を生成する
-	/// @return 2D描画向けパイプライン記述子
+	/// @brief 2D スプライト描画用のデフォルト設定を生成する
+	/// @return 2D 描画向けパイプライン記述子
 	[[nodiscard]] static GraphicsPipelineDesc default2D()
 	{
 		GraphicsPipelineDesc desc;
@@ -175,8 +174,8 @@ struct GraphicsPipelineDesc
 		return desc;
 	}
 
-	/// @brief 3Dメッシュ描画用のデフォルト設定を生成する
-	/// @return 3D描画向けパイプライン記述子
+	/// @brief 3D メッシュ描画用のデフォルト設定を生成する
+	/// @return 3D 描画向けパイプライン記述子
 	[[nodiscard]] static GraphicsPipelineDesc default3D()
 	{
 		GraphicsPipelineDesc desc;
@@ -195,16 +194,15 @@ struct GraphicsPipelineDesc
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
-/// @brief VkPipelineのRAIIラッパー
-/// @details グラフィックスパイプラインの生成・破棄をRAIIで管理する。
-///          GraphicsPipelineDescに含まれるSPIR-VコードからVkShaderModuleを生成し、
-///          すべてのパイプラインステートを設定してvkCreateGraphicsPipelinesを呼び出す。
-///
+/// @brief VkPipeline の RAII ラッパー
+/// @details グラフィックスパイプラインの生成・破棄を RAII で管理する。
+/// GraphicsPipelineDesc に含まれる SPIR-V コードから VkShaderModule を生成し、
+/// すべてのパイプラインステートを設定して vkCreateGraphicsPipelines を呼び出す。
 /// @code
 /// VkDevice device = /* VulkanDevice から取得 */;
 /// VkRenderPass renderPass = /* VulkanRenderPass::handle() */;
 /// GraphicsPipelineDesc desc = GraphicsPipelineDesc::default3D();
-/// // desc.shaderStages にSPIR-Vコードを設定する
+/// // desc.shaderStages に SPIR-V コードを設定する
 /// VulkanGraphicsPipeline pipeline(device, renderPass, desc);
 /// if (pipeline.isValid()) { /* 描画に使用 */ }
 /// @endcode
@@ -458,28 +456,28 @@ public:
 	VulkanGraphicsPipeline& operator=(VulkanGraphicsPipeline&&) = delete;
 
 	/// @brief パイプラインが有効かどうかを判定する
-	/// @return VkPipelineハンドルが有効ならtrue
+	/// @return VkPipeline ハンドルが有効なら true
 	[[nodiscard]] bool isValid() const noexcept override
 	{
 		return m_pipeline != VK_NULL_HANDLE;
 	}
 
-	/// @brief 内部のVkPipelineハンドルを取得する
-	/// @return VkPipelineハンドル
+	/// @brief 内部の VkPipeline ハンドルを取得する
+	/// @return VkPipeline ハンドル
 	[[nodiscard]] VkPipeline handle() const noexcept
 	{
 		return m_pipeline;
 	}
 
-	/// @brief 内部のVkPipelineLayoutハンドルを取得する
-	/// @return VkPipelineLayoutハンドル
+	/// @brief 内部の VkPipelineLayout ハンドルを取得する
+	/// @return VkPipelineLayout ハンドル
 	[[nodiscard]] VkPipelineLayout layout() const noexcept
 	{
 		return m_layout;
 	}
 
 	/// @brief 生成パラメータを取得する
-	/// @return パイプライン記述子へのconst参照
+	/// @return パイプライン記述子への const 参照
 	[[nodiscard]] const GraphicsPipelineDesc& desc() const noexcept
 	{
 		return m_desc;

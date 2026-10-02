@@ -218,7 +218,7 @@ struct WorldObjects
 	/// @brief 旧 API 互換 (3 値 enum 時代の kill)。「倒したら二度と戻らない」= shutdown + NoRestart。
 	void kill(std::uint32_t i) noexcept { shutdown(i, /*noRestart=*/true); }
 
-	/// @brief 旧 API 互換。Shutdown を最優先で Dead に潰す (NoRestart の有無は問わない)。
+	/// @brief 旧 API 互換。Shutdown を最優先で Dead として扱う (NoRestart の有無は問わない)。
 	[[nodiscard]] WorldObjectStatus statusOf(std::uint32_t i) const noexcept
 	{
 		if (i >= count) { return WorldObjectStatus::Dead; }

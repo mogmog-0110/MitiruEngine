@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GltfMaterialConverter.hpp
-/// @brief glTF PBRマテリアルからPhongマテリアルへの変換
+/// @brief glTF PBR マテリアルから Phong マテリアルへの変換
 /// @details PBR metallic-roughness → Phong (ambient/diffuse/specular/shininess) 近似変換。
 
 #include <algorithm>
@@ -12,9 +12,9 @@
 namespace mitiru::render
 {
 
-/// @brief glTF PBRマテリアルをPhongマテリアルに変換する
-/// @param gltfMat glTFマテリアルデータ
-/// @return Phongマテリアル
+/// @brief glTF PBR マテリアルを Phong マテリアルに変換する
+/// @param gltfMat glTF マテリアルデータ
+/// @return Phong マテリアル
 [[nodiscard]] inline Material convertGltfMaterial(const GltfMaterialData& gltfMat)
 {
 	Material mat;
@@ -23,7 +23,7 @@ namespace mitiru::render
 	const float m = gltfMat.metallic;
 	const float r = gltfMat.roughness;
 
-	/// Phong近似: ambient = baseColor * 0.1
+	/// Phong 近似: ambient = baseColor * 0.1
 	mat.ambient = {bc.r * 0.1f, bc.g * 0.1f, bc.b * 0.1f, bc.a};
 
 	/// diffuse = baseColor * (1 - metallic)
@@ -42,13 +42,13 @@ namespace mitiru::render
 	/// shininess = (1 - roughness) * 128
 	mat.shininess = std::max(1.0f, (1.0f - r) * 128.0f);
 
-	/// PBRフィールド
+	/// PBR フィールド
 	mat.metallic = m;
 	mat.roughness = r;
 	mat.diffuseTexturePath = gltfMat.baseColorTexturePath;
 	mat.normalTexturePath = gltfMat.normalTexturePath;
 
-	/// 描画状態に効く指定はそのまま持ち越す (抜き・両面・最近傍)
+	/// 描画状態に関わる指定はそのまま持ち越す (抜き・両面・最近傍)
 	switch (gltfMat.alphaMode)
 	{
 	case GltfAlphaMode::Mask:  mat.alphaMode = Material::AlphaMode::Mask;  break;

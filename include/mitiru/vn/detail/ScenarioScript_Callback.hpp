@@ -17,7 +17,7 @@ namespace mitiru::vn
 //  コールバックインターフェース
 // ════════════════════════════════════════════════════════════════════
 
-// 循環参照回避: FlagManager の前方宣言 (FlagManager.hpp は VN.hpp 経由で後から include される)
+// 循環参照を避けるため FlagManager を前方宣言する (FlagManager.hpp は VN.hpp 経由で後から include される)
 class FlagManager;
 
 /// @brief シナリオ実行時のコールバックインターフェース
@@ -57,7 +57,7 @@ struct ScenarioCallback
 
 	/// @brief 選択肢表示
 	/// @param choices 選択肢リスト
-	/// @return 選択されたインデックス（-1で待機要求）
+	/// @return 選択されたインデックス（-1 で待機要求）
 	virtual int onChoice(const std::vector<ScenarioChoiceEntry>& /*choices*/) { return -1; }
 
 	/// @brief オーディオ再生

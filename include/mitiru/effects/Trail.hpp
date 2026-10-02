@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Trail.hpp
-/// @brief トレイルエフェクト（Siv3D Trail風）
-/// @details 移動するオブジェクトの軌跡を残留する尾として描画する。
+/// @brief トレイルエフェクト（Siv3D Trail 風）
+/// @details 移動するオブジェクトの軌跡を、後に残る尾として描画する。
 ///          時間経過で各ポイントがフェードアウトする。
 ///
 /// @code
@@ -101,7 +101,7 @@ private:
 
 } // namespace mitiru::effects
 
-// ── Screen依存の実装 ──
+// ── Screen 依存の実装 ──
 #include <mitiru/core/Screen.hpp>
 
 inline void mitiru::effects::Trail::draw(

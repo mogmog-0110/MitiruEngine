@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file NullDevice.hpp
-/// @brief ヌルGPUデバイス実装
-/// @details 全操作がノーオペレーションのGPUデバイス。
+/// @brief ヌル GPU デバイス実装
+/// @details 全操作が何もしない GPU デバイス。
 ///          ヘッドレスモードやテスト時に使用する。
 
 #include <cstdint>
@@ -20,7 +20,7 @@
 namespace mitiru::gfx
 {
 
-/// @brief ヌルGPUバッファ
+/// @brief ヌル GPU バッファ
 /// @details 全操作が何もしないバッファ実装。
 class NullBuffer final : public IBuffer
 {
@@ -52,7 +52,7 @@ private:
 };
 
 /// @brief ヌルレンダーターゲット
-/// @details GPUリソースを持たず、幅・高さだけ保持する。RenderTargetPool のテストダブル用。
+/// @details GPU リソースを持たず、幅・高さだけ保持する。RenderTargetPool のテストダブル用。
 class NullRenderTarget final : public IRenderTarget
 {
 public:
@@ -71,7 +71,7 @@ public:
 	/// @brief レンダーターゲット高さを取得する
 	[[nodiscard]] int height() const noexcept override { return m_height; }
 
-	/// @brief 関連付けられたテクスチャを取得する（常にnullptr）
+	/// @brief 関連付けられたテクスチャを取得する（常に nullptr）
 	[[nodiscard]] ITexture* texture() noexcept override { return nullptr; }
 
 private:
@@ -112,7 +112,7 @@ public:
 	void draw(std::uint32_t, std::uint32_t) override {}
 };
 
-/// @brief ヌルGPUデバイス
+/// @brief ヌル GPU デバイス
 /// @details 全操作が何もしない実装。readPixels は黒ピクセルを返す。
 class NullDevice final : public IDevice
 {
@@ -120,7 +120,7 @@ public:
 	/// @brief フレームバッファからピクセルを読み取る
 	/// @param width 読み取り幅
 	/// @param height 読み取り高さ
-	/// @return 全て0（黒）のRGBA8ピクセルデータ
+	/// @return 全て 0（黒）の RGBA8 ピクセルデータ
 	[[nodiscard]] std::vector<std::uint8_t> readPixels(
 		int width, int height) const override
 	{
@@ -128,7 +128,7 @@ public:
 		const auto pixelCount = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
 		std::vector<std::uint8_t> data(pixelCount * 4, 0);
 
-		/// アルファチャンネルを255に設定
+		/// アルファチャンネルを 255 に設定
 		for (std::size_t i = 0; i < pixelCount; ++i)
 		{
 			data[i * 4 + 3] = 255;
@@ -153,7 +153,7 @@ public:
 	{
 	}
 
-	/// @brief GPUバッファを生成する（ヌル実装）
+	/// @brief GPU バッファを生成する（ヌル実装）
 	[[nodiscard]] std::unique_ptr<IBuffer> createBuffer(
 		BufferType bufferType,
 		std::uint32_t sizeBytes,

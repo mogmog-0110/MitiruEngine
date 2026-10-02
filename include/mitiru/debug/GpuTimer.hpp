@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file GpuTimer.hpp
-/// @brief GPUタイマークエリ計測
-/// @details GPUレンダリングパスごとの処理時間を計測する。
-///          DX11ではタイムスタンプクエリ、OpenGLではGL_TIME_ELAPSEDを使用する。
-///          FrameBudgetと統合してGPU時間をレポートする。
+/// @brief GPU タイマークエリ計測
+/// @details GPU レンダリングパスごとの処理時間を計測する。
+///          DX11 ではタイムスタンプクエリ、OpenGL では GL_TIME_ELAPSED を使用する。
+///          FrameBudget と統合して GPU 時間をレポートする。
 
 #include <algorithm>
 #include <array>
@@ -23,8 +23,8 @@
 namespace mitiru::debug
 {
 
-/// @brief GPUレンダリングパスの計測
-/// @details 各パスのGPU処理時間をタイムスタンプクエリで計測する。
+/// @brief GPU レンダリングパスの計測
+/// @details 各パスの GPU 処理時間をタイムスタンプクエリで計測する。
 ///
 /// @code
 /// GpuTimer timer;
@@ -39,7 +39,7 @@ namespace mitiru::debug
 class GpuTimer
 {
 public:
-    /// @brief GPUレンダリングパス
+    /// @brief GPU レンダリングパス
     enum class Pass : std::uint8_t
     {
         Shadow,
@@ -78,8 +78,8 @@ public:
 
 #ifdef MITIRU_HAS_DX11
 
-    /// @brief DX11デバイスで初期化する
-    /// @param device DX11デバイス
+    /// @brief DX11 デバイスで初期化する
+    /// @param device DX11 デバイス
     /// @param context デバイスコンテキスト
     /// @return 初期化成功時 true
     bool init(ID3D11Device* device, ID3D11DeviceContext* context)
@@ -119,7 +119,7 @@ public:
 
 #ifdef MITIRU_HAS_OPENGL
 
-    /// @brief OpenGLで初期化する
+    /// @brief OpenGL で初期化する
     /// @return 初期化成功時 true
     bool initGL()
     {
@@ -141,7 +141,7 @@ public:
 
 #endif // MITIRU_HAS_OPENGL
 
-    /// @brief Nullバックエンド初期化（テスト用）
+    /// @brief Null バックエンド初期化（テスト用）
     /// @return 常に true
     bool initNull() noexcept
     {
@@ -192,7 +192,7 @@ public:
 
     // ── パス計測 ─────────────────────────────────────────────
 
-    /// @brief フレーム開始時にdisjointクエリを開始する
+    /// @brief フレーム開始時に disjoint クエリを開始する
     void beginFrame()
     {
         if (!m_initialized)
@@ -271,7 +271,7 @@ public:
     }
 
     /// @brief フレーム終了後に計測結果を収集する
-    /// @details disjointクエリ終了後、各パスのタイムスタンプ差分からミリ秒を計算する。
+    /// @details disjoint クエリ終了後、各パスのタイムスタンプ差分からミリ秒を計算する。
     void resolve()
     {
         if (!m_initialized || m_useNull)
@@ -290,7 +290,7 @@ public:
                                           &disjointData,
                                           sizeof(disjointData), 0) == S_FALSE)
             {
-                // GPUの結果を待つ
+                // GPU の結果を待つ
             }
 
             if (!disjointData.Disjoint)
@@ -354,7 +354,7 @@ public:
 
     // ── 結果取得 ─────────────────────────────────────────────
 
-    /// @brief パスごとのGPU処理時間を取得する
+    /// @brief パスごとの GPU 処理時間を取得する
     /// @param p パス
     /// @return ミリ秒
     [[nodiscard]] float passMs(Pass p) const noexcept
@@ -367,7 +367,7 @@ public:
         return m_passMs[idx];
     }
 
-    /// @brief GPU全体の処理時間を取得する
+    /// @brief GPU 全体の処理時間を取得する
     /// @return ミリ秒（全パスの合計）
     [[nodiscard]] float totalGpuMs() const noexcept
     {
@@ -421,19 +421,19 @@ private:
 #endif
 };
 
-/// @brief RAIIスコープでGPUパスを計測する
+/// @brief RAII スコープで GPU パスを計測する
 ///
 /// @code
 /// {
 ///     GpuTimerScope scope(timer, GpuTimer::Pass::Main3D);
-///     // ... GPU描画 ...
+///     // ... GPU 描画 ...
 /// }
 /// @endcode
 class GpuTimerScope
 {
 public:
     /// @brief コンストラクタ（パス計測開始）
-    /// @param timer GpuTimerインスタンス（非所有）
+    /// @param timer GpuTimer インスタンス（非所有）
     /// @param pass 計測パス
     GpuTimerScope(GpuTimer& timer, GpuTimer::Pass pass) noexcept
         : m_timer(timer)

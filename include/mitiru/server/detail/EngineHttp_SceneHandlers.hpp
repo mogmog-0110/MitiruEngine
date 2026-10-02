@@ -1,6 +1,6 @@
 #pragma once
-// EngineHttpServer のスクリーンショット / シーン操作 / エディタ系ハンドラ実装。
-// server/EngineHttpServer.hpp から末尾 include される (単体 include も親経由で自己完結)。
+// EngineHttpServer のハンドラ実装 (スクリーンショット / シーン操作 / エディタ)。
+// server/EngineHttpServer.hpp の末尾から include される (単体で include しても親経由で自己完結する)。
 
 #include <mitiru/server/EngineHttpServer.hpp>
 
@@ -11,7 +11,8 @@
 
 #include <mitiru/observe/QueryParser.hpp>
 #include <mitiru/server/JsonHelper.hpp>
-#include <mitiru/server/PngEncoder.hpp>
+#include <mitiru/server/detail/ResizePixels.hpp>
+#include <mitiru/util/ImageWriter.hpp>
 
 // ── スクリーンショットエンドポイント ──────────────────────────────
 
@@ -22,8 +23,8 @@ inline void mitiru::server::EngineHttpServer::handleScreenshot(const HttpRequest
 	const auto pixels = m_callbacks.capture();
 	if (pixels.empty()) { resp.status = 404; resp.setBody(R"({"error":"no screenshot available"})"); return; }
 
-	// 寸法は capture() の実寸 (window) を使う。論理 Screen サイズで解釈すると
-	// 縮小描画ゲーム (論理≠実寸) で stride がズレて画像が崩れる。
+	// 寸法は capture() の実寸 (window) を使う。論理 Screen のサイズで解釈すると、
+	// 縮小して描くゲーム (論理≠実寸) では stride がずれて画像が崩れる。
 	const auto [w, h] = captureSourceDims();
 	if (w <= 0 || h <= 0) { resp.status = 500; resp.setBody(R"({"error":"invalid screen dimensions"})"); return; }
 
@@ -57,7 +58,7 @@ inline void mitiru::server::EngineHttpServer::handleScreenshot(const HttpRequest
 		}
 	}
 
-	const auto png = detail::encodePng(srcPixels.data(), outW, outH);
+	const auto png = util::encodePng(srcPixels.data(), outW, outH);
 	if (png.empty()) { resp.status = 500; resp.setBody(R"({"error":"PNG encoding failed"})"); return; }
 
 	resp.status = 200;

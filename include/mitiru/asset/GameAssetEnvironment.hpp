@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GameAssetEnvironment.hpp
-/// @brief 環境系ゲームアセットSVGテンプレート（プラットフォーム・チェックポイント・ゲート・ゴール）
+/// @brief 環境系ゲームアセット SVG テンプレート（プラットフォーム・チェックポイント・ゲート・ゴール）
 
 #include "SvgGenerator.hpp"
 #include "GameAssetUtil.hpp"
@@ -13,7 +13,7 @@
 namespace mitiru::asset
 {
 
-/// @brief 環境系SVGテンプレート
+/// @brief 環境系 SVG テンプレート
 class GameAssetEnvironment
 {
 public:
@@ -273,7 +273,7 @@ public:
 	/// @brief ゲート（バリア＋ロックアイコン）
 	/// @param w 幅
 	/// @param h 高さ
-	/// @param locked ロック状態か
+	/// @param locked ロック状態かどうか
 	/// @return SvgDocument
 	[[nodiscard]] static SvgDocument gate(float w = 20.0f, float h = 80.0f, bool locked = true)
 	{

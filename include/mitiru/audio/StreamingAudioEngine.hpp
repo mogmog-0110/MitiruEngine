@@ -2,11 +2,11 @@
 
 /// @file StreamingAudioEngine.hpp
 /// @brief ストリーミングオーディオエンジン
-/// @details WAVファイルをチャンク単位で読み込み、バックグラウンドスレッドで
+/// @details 音声ストリーム (FileAudioStream / SineSynth 等) をチャンク単位で読み込み、バックグラウンドスレッドで
 ///          リングバッファに充填するストリーミング再生エンジン。
-///          play/pause/stop/seek操作をサポートし、IAudioOutputに
-///          PCMデータを供給する。大容量ファイルをメモリに全読み込みせず、
-///          一定サイズのリングバッファ経由で逐次再生する。
+///          play/pause/stop/seek 操作をサポートし、IAudioOutput に
+///          PCM データを供給する。大容量ファイルをメモリにすべて読み込まず、
+///          一定サイズのリングバッファを介して逐次再生する。
 
 #include <algorithm>
 #include <atomic>
@@ -38,41 +38,24 @@ enum class StreamState : uint8_t
 };
 
 /// @brief ストリーミングオーディオエンジン
-/// @details バックグラウンドスレッドがIAudioStreamからPCMデータを読み出し、
+/// @details バックグラウンドスレッドが IAudioStream から PCM データを読み出し、
 ///          ロックフリーリングバッファに充填する。メインスレッドまたは
 ///          オーディオコールバックスレッドがリングバッファからデータを取り出し、
-///          IAudioOutputに書き込む。
-///
-/// @code
-/// auto output = createPlatformAudioOutput();
-/// mitiru::audio::StreamingAudioEngine engine(std::move(output));
-///
-/// auto stream = std::make_unique<mitiru::audio::WavAudioStream>("bgm.wav");
-/// stream->open();
-/// engine.play(std::move(stream));
-///
-/// // ゲームループ内で毎フレーム呼び出し
-/// engine.update();
-///
-/// engine.pause();
-/// engine.resume();
-/// engine.seek(44100 * 30); // 30秒位置にシーク
-/// engine.stop();
-/// @endcode
+///          IAudioOutput に書き込む。update() はゲームループから毎フレーム呼ぶ。
 class StreamingAudioEngine
 {
 public:
 	/// @brief デフォルトのリングバッファサイズ（フレーム数）
 	static constexpr std::size_t DEFAULT_RING_BUFFER_FRAMES = 16384;
 
-	/// @brief バックグラウンドスレッドの1回あたり読み込みフレーム数
+	/// @brief バックグラウンドスレッドの 1 回あたりの読み込みフレーム数
 	static constexpr std::size_t FILL_CHUNK_FRAMES = 2048;
 
 	/// @brief バックグラウンドスレッドのスリープ間隔
 	static constexpr std::chrono::milliseconds FILL_SLEEP_INTERVAL{5};
 
 	/// @brief コンストラクタ
-	/// @param output オーディオ出力バックエンド（所有権を移動）
+	/// @param output オーディオ出力バックエンド（所有権を移す）
 	/// @param ringBufferFrames リングバッファのフレーム数
 	explicit StreamingAudioEngine(
 		std::unique_ptr<IAudioOutput> output = nullptr,
@@ -82,7 +65,7 @@ public:
 	{
 	}
 
-	/// @brief デストラクタ（再生停止・スレッド終了を保証）
+	/// @brief デストラクタ（再生の停止とスレッドの終了を保証）
 	~StreamingAudioEngine()
 	{
 		stop();
@@ -98,7 +81,7 @@ public:
 	StreamingAudioEngine& operator=(StreamingAudioEngine&&) = delete;
 
 	/// @brief ストリーミング再生を開始する
-	/// @param stream 再生するオーディオストリーム（所有権を移動、open済みであること）
+	/// @param stream 再生するオーディオストリーム（所有権を移す、open 済みであること）
 	/// @param loop ループ再生するか
 	/// @return 成功した場合 true
 	bool play(std::unique_ptr<IAudioStream> stream, bool loop = false)
@@ -131,7 +114,8 @@ public:
 		/// オーディオ出力の初期化
 		if (m_output && !m_output->isInitialized())
 		{
-			m_output->initialize(fmt.sampleRate, fmt.channels, fmt.sampleRate / 10);
+			// bufferSize は全チャンネルの合計サンプル数。チャンネル数を掛けないとステレオでは 50 ms しか貯まらない
+			m_output->initialize(fmt.sampleRate, fmt.channels, fmt.sampleRate / 10 * fmt.channels);
 		}
 
 		/// バックグラウンド充填スレッドを起動
@@ -186,7 +170,7 @@ public:
 
 	/// @brief 毎フレーム更新（リングバッファからオーディオ出力にデータを転送）
 	/// @details ゲームループ内で毎フレーム呼び出す。リングバッファからデータを読み出し、
-	///          IAudioOutputに書き込む。出力がない場合はデータを消費するだけ。
+	///          IAudioOutput に書き込む。出力がない場合はデータを消費するだけ。
 	void update()
 	{
 		MITIRU_ZONE_NAMED("Audio::Streaming::Update");
@@ -201,9 +185,15 @@ public:
 		}
 
 		const std::size_t channels = static_cast<std::size_t>(m_format.channels);
-		const std::size_t samplesToRead = FILL_CHUNK_FRAMES * channels;
+		std::size_t samplesToRead = FILL_CHUNK_FRAMES * channels;
+		// 出力側が受け切れない分はリングに残す。引いてから捨てると音が飛ぶ。
+		if (m_output && m_output->isInitialized())
+		{
+			const std::size_t writable = m_output->writableSamples();
+			samplesToRead = std::min(samplesToRead, writable - writable % channels);
+		}
 
-		m_outputBuffer.resize(samplesToRead);
+		m_outputBuffer.resize(FILL_CHUNK_FRAMES * channels);
 		const std::size_t samplesRead = m_ringBuffer->read(
 			m_outputBuffer.data(), samplesToRead);
 
@@ -212,7 +202,7 @@ public:
 			m_output->write(m_outputBuffer.data(), samplesRead);
 		}
 
-		/// ストリーム終了かつバッファ空なら停止
+		/// ストリームが終了し、バッファが空なら停止
 		if (m_streamFinished.load(std::memory_order_acquire) && m_ringBuffer->empty())
 		{
 			m_state.store(StreamState::Stopped, std::memory_order_release);
@@ -287,7 +277,7 @@ public:
 	}
 
 	/// @brief オーディオ出力バックエンドを設定する
-	/// @param output オーディオ出力バックエンド（所有権を移動）
+	/// @param output オーディオ出力バックエンド（所有権を移す）
 	void setOutput(std::unique_ptr<IAudioOutput> output)
 	{
 		m_output = std::move(output);
@@ -296,7 +286,7 @@ public:
 private:
 	/// @brief バックグラウンド充填スレッドのメイン関数
 	/// @details ストリームからデータを読み出し、リングバッファに書き込む。
-	///          シーク要求の処理、ループ再生の巻き戻し、停止要求の監視を行う。
+	///          シーク要求の処理、ループ再生時の巻き戻し、停止要求の監視を行う。
 	void fillThreadFunc()
 	{
 		const std::size_t channels = static_cast<std::size_t>(m_format.channels);

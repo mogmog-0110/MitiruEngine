@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Dx12RenderTarget.hpp
-/// @brief DirectX 12レンダーターゲット実装
-/// @details ID3D12Resourceをレンダーターゲットとして管理し、
-///          RTVデスクリプタとの関連付けを行うIRenderTarget実装。
+/// @brief DirectX 12 レンダーターゲット実装
+/// @details ID3D12Resource をレンダーターゲットとして管理し、
+///          RTV デスクリプタとの関連付けを行う IRenderTarget 実装。
 
 #ifdef _WIN32
 
@@ -29,23 +29,23 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 12レンダーターゲット実装
-/// @details スワップチェーンバックバッファまたはテクスチャベースのレンダーターゲット。
-///          RTVデスクリプタハンドルを保持し、コマンドリストからの参照を提供する。
+/// @brief DirectX 12 レンダーターゲット実装
+/// @details スワップチェーンのバックバッファ、またはテクスチャをもとにしたレンダーターゲット。
+///          RTV デスクリプタハンドルを保持し、コマンドリストから参照できるようにする。
 class Dx12RenderTarget final : public IRenderTarget
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief デフォルトコンストラクタ
 	Dx12RenderTarget() = default;
 
-	/// @brief スワップチェーンバックバッファからレンダーターゲットを生成する
-	/// @param device D3D12デバイス
+	/// @brief スワップチェーンのバックバッファからレンダーターゲットを生成する
+	/// @param device D3D12 デバイス
 	/// @param resource バックバッファリソース
-	/// @param rtvHandle RTVデスクリプタハンドル
+	/// @param rtvHandle RTV デスクリプタハンドル
 	/// @param width バッファ幅
 	/// @param height バッファ高さ
 	/// @param sampleCount MSAA サンプル数 (1=非マルチサンプル、4=4x MSAA)。
@@ -73,7 +73,7 @@ public:
 		rt.m_height = height;
 		rt.m_sampleCount = sampleCount;
 
-		/// RTVを生成する
+		/// RTV を生成する
 		device->CreateRenderTargetView(resource, nullptr, rtvHandle);
 
 		return rt;
@@ -92,20 +92,20 @@ public:
 	}
 
 	/// @brief 関連付けられたテクスチャを取得する
-	/// @return テクスチャへのポインタ（バックバッファの場合はnullptr）
+	/// @return テクスチャへのポインタ（バックバッファの場合は nullptr）
 	[[nodiscard]] ITexture* texture() noexcept override
 	{
 		return m_texture;
 	}
 
-	/// @brief RTVデスクリプタハンドルを取得する
-	/// @return D3D12 CPUデスクリプタハンドル
+	/// @brief RTV デスクリプタハンドルを取得する
+	/// @return D3D12 CPU デスクリプタハンドル
 	[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle() const noexcept
 	{
 		return m_rtvHandle;
 	}
 
-	/// @brief 内部のID3D12Resourceを取得する
+	/// @brief 内部の ID3D12Resource を取得する
 	/// @return リソースへのポインタ（非所有）
 	[[nodiscard]] ID3D12Resource* nativeResource() const noexcept
 	{

@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file GameMemorySave.hpp
-/// @brief .msav (GameMemory snapshot) の読み書き純関数
+/// @brief.msav (GameMemory snapshot) の読み書き純関数
 /// @details セーブ = GameMemory bytes の memcpy。形式はヘッダ
 ///          {magic "MSAV", formatVersion, memorySize, abiVersion, layoutHash} + bytes。
-///          memorySize 不一致のロードは拒否する。GameMemory struct 変更後の
-///          旧セーブを黙って化けさせない (replay A3 と同じ思想)。v2 からは
+///          memorySize 不一致のロードは拒否する。GameMemory struct 変更後に
+///          旧セーブが気づかないうちに化けるのを防ぐ (replay A3 と同じ思想)。v2 からは
 ///          MITIRU_REFLECT 由来の layoutHash も照合し、サイズ照合を素通りする
 ///          「同サイズの field 並べ替え / 型変更」も拒否する。
 ///          書き込みは tmp → rename の atomic 置換で、中断しても既存 .msav を壊さない。
@@ -27,7 +27,7 @@ namespace mitiru::module::save
 /// .msav 形式バージョン (ヘッダ構造を変えたら上げる)。
 /// v1 → v2: layoutHash 追加 (16 → 24 byte)。
 /// v2 → v3: フィールド表を同梱 (28 byte + 表)。layout が変わっても名前で拾える
-///          フィールドだけ移せる。v1/v2 ファイルは formatVersion 不一致で graceful reject。
+///          フィールドだけ移せる。v1/v2 ファイルは formatVersion 不一致として、落とさずに拒否する。
 constexpr std::uint32_t kMsavFormatVersion = 3;
 
 /// 先頭 4 byte の magic
@@ -46,7 +46,7 @@ struct MsavHeader
 };
 static_assert(sizeof(MsavHeader) == 32, "MsavHeader はファイル形式 — 32 byte 固定 (v3)");
 
-/// @brief slot 名を [a-zA-Z0-9_-] のみに削る。パス区切り等は除去、全滅なら "" を返す。
+/// @brief slot 名を [a-zA-Z0-9_-] のみに削る。パス区切り等は除去し、全部消えたら "" を返す。
 [[nodiscard]] inline std::string sanitizeSlot(std::string_view name)
 {
 	std::string out;
@@ -61,8 +61,8 @@ static_assert(sizeof(MsavHeader) == 32, "MsavHeader はファイル形式 — 32
 }
 
 /// @brief GameMemory bytes を path へ atomic に書く (tmp 書き → rename)。
-/// @param layoutHash MITIRU_REFLECT 由来の layout hash (module::moduleLayoutHash)。
-///        0 = reflection 未宣言 (ロード時の layout 照合を skip)。
+/// @param layoutHash 現在の module の layout hash (ModuleReflection::identity)。
+///        0 = 照合しない (形の情報が無い module)。
 /// @return 成功で true。引数不正 / 書込失敗 / rename 失敗は false (tmp は残さない)。
 [[nodiscard]] inline bool saveGameMemory(const std::filesystem::path& path,
                                          const void* mem, std::uint32_t size,
@@ -122,7 +122,7 @@ static_assert(sizeof(MsavHeader) == 32, "MsavHeader はファイル形式 — 32
 
 /// @brief .msav を読み bytes を返す。magic / 形式 / サイズ / layout が合わなければ nullopt。
 /// @param expectSize 現在の GameMemory サイズ。ヘッダの memorySize と不一致なら拒否。
-/// @param expectLayoutHash 現在の module の layout hash (module::moduleLayoutHash)。
+/// @param expectLayoutHash 現在の module の layout hash (ModuleReflection::identity)。
 ///        双方非 0 かつ不一致なら拒否。同サイズの field 並べ替え / 型変更を素通ししない。
 ///        どちらかが 0 (reflection 未宣言) なら従来のサイズ照合のみ (後方互換)。
 [[nodiscard]] inline std::optional<std::vector<std::uint8_t>>

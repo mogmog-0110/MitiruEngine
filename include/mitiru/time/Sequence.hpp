@@ -7,9 +7,9 @@
 #include "mitiru/debug/TracyZones.hpp"
 
 /// @file Sequence.hpp
-/// @brief 順序付き wait と callback をチェーンできる timeline。
+/// @brief 順序付きの wait と callback をチェーンできる timeline。
 ///
-/// step は構築時に追加する (そこでの heap allocation は許容)。
+/// step は構築時に追加する (そこでの heap allocation は許容する)。
 /// @c tick() は allocation せずに timeline を進める。cursor を動かし
 /// accumulator から減算するだけ。
 ///
@@ -17,7 +17,7 @@
 /// SBO の type-erased callable。キャプチャが 48 byte までの lambda は
 /// インラインに格納される (action step ごとの heap allocation 無し)。
 ///
-/// 使用例:
+/// 使用例。
 /// @code
 ///   mitiru::time::Sequence seq;
 ///   seq.wait(1.0f)

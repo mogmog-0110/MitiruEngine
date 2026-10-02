@@ -10,9 +10,9 @@
 /// @code
 /// class TitleScene : public mitiru::scene::IScene {
 /// public:
-///     void onEnter() override { /* load title assets */ }
-///     void onUpdate(float dt) override { /* tick title logic */ }
-///     void onExit() override { /* unload title assets */ }
+///     void onEnter() override { /* タイトルのアセットを読み込む */ }
+///     void onUpdate(float dt) override { /* タイトルのロジックを 1 フレーム進める */ }
+///     void onExit() override { /* タイトルのアセットを解放する */ }
 /// };
 ///
 /// SceneRouter router;

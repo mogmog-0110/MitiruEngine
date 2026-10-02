@@ -30,7 +30,7 @@ inline glm::mat4 toGlm(const sgc::Mat4f& m) {
 	return result;
 }
 
-/// @brief glm::mat4 -> float[4][4] (HLSL row-major constant buffer用)
+/// @brief glm::mat4 -> float[4][4] (HLSL row-major constant buffer 用)
 /// HLSL は mul(vector, matrix) 使用時に row-major を期待する
 inline void toHLSL(float dst[4][4], const glm::mat4& m) {
 	// glm は column-major: m[col][row]
@@ -40,22 +40,22 @@ inline void toHLSL(float dst[4][4], const glm::mat4& m) {
 			dst[r][c] = m[c][r];
 }
 
-/// @brief glm::mat4 をfloat[4][4]にそのままコピー（column-major）
+/// @brief glm::mat4 を float[4][4]にそのままコピー（column-major）
 inline void toColumnMajor(float dst[4][4], const glm::mat4& m) {
 	std::memcpy(dst, glm::value_ptr(m), sizeof(float) * 16);
 }
 
-/// @brief glmでLookAt行列を作成（右手座標系。北 (-z) を向くと東 (+x) が画面右）
+/// @brief glm で LookAt 行列を作成（右手座標系。北 (-z) を向くと東 (+x) が画面右）
 inline glm::mat4 lookAt(const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up) {
 	return glm::lookAtRH(toGlm(eye), toGlm(target), toGlm(up));
 }
 
-/// @brief glmで透視投影行列を作成（右手座標系、DX深度範囲[0,1]）
+/// @brief glm で透視投影行列を作成（右手座標系、DX 深度範囲[0,1]）
 inline glm::mat4 perspective(float fovRadians, float aspect, float nearZ, float farZ) {
 	return glm::perspectiveRH_ZO(fovRadians, aspect, nearZ, farZ);
 }
 
-/// @brief glmでモデル行列を作成（Translation * RotationYXZ * Scale）
+/// @brief glm でモデル行列を作成（Translation * RotationYXZ * Scale）
 inline glm::mat4 modelMatrix(const sgc::Vec3f& pos, const sgc::Vec3f& rot, const sgc::Vec3f& scale) {
 	glm::mat4 m = glm::mat4(1.0f);
 	m = glm::translate(m, toGlm(pos));
@@ -66,7 +66,7 @@ inline glm::mat4 modelMatrix(const sgc::Vec3f& pos, const sgc::Vec3f& rot, const
 	return m;
 }
 
-/// @brief glmで正射影行列を作成
+/// @brief glm で正射影行列を作成
 inline glm::mat4 orthographic(float left, float right, float bottom, float top, float nearZ, float farZ) {
 	return glm::orthoLH(left, right, bottom, top, nearZ, farZ);
 }

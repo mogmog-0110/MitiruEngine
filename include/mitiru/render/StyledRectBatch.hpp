@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file StyledRectBatch.hpp
-/// @brief SDF角丸矩形のバッチレンダラー
-/// @details Style2Dのスタイル情報をGPU定数バッファ用のStyleConstantsに変換し、
+/// @brief SDF 角丸矩形のバッチレンダラー
+/// @details Style2D のスタイル情報を GPU 定数バッファ用の StyleConstants に変換し、
 ///          SDF_RECT_VS/PS シェーダーで描画するための頂点・インデックスを蓄積する。
 
 #include <algorithm>
@@ -21,8 +21,8 @@
 namespace mitiru::render
 {
 
-/// @brief SDF矩形シェーダー用の頂点データ
-/// @details 位置・ローカルUV・色・シェイプ矩形を持つ。
+/// @brief SDF 矩形シェーダー用の頂点データ
+/// @details 位置・ローカル UV・色・シェイプ矩形を持つ。
 ///          SDF_RECT_VS の入力レイアウトと一致する。
 struct StyledVertex2D
 {
@@ -42,9 +42,9 @@ struct StyledVertex2D
     }
 };
 
-/// @brief SDF矩形ピクセルシェーダーの定数バッファ構造体
+/// @brief SDF 矩形ピクセルシェーダーの定数バッファ構造体
 /// @details HLSL cbuffer StyleConstants (register b1) と完全に一致する。
-///          16バイトアライメントを遵守する。最大8ストップのグラデーション対応。
+///          16 バイトアライメントを遵守する。最大 8 ストップのグラデーション対応。
 struct StyleConstants
 {
     float cornerRadii[4]{};        ///< 角丸半径 (tl, tr, br, bl)
@@ -61,7 +61,7 @@ struct StyleConstants
     float opacity{1.0f};          ///< 全体の不透明度
 };
 
-/// @brief SDF角丸矩形のバッチレンダラー
+/// @brief SDF 角丸矩形のバッチレンダラー
 /// @details begin() で蓄積開始、addRect() でスタイル付き矩形を蓄積し、
 ///          end() で蓄積を終了する。蓄積データは RenderPipeline が
 ///          SDF_RECT_VS/PS パイプラインで描画する。
@@ -91,8 +91,8 @@ public:
     /// @param worldXform 呼び出し側のワールド変換（オプション, 既定=恒等）
     /// @details シャドウの描画領域を確保するためクワッドを拡張する。
     ///          Style を StyleConstants に変換して保持する。
-    ///          worldXform が非恒等なら、4頂点位置に変換を適用する。
-    ///          SDF計算に使う shapeRect は元座標のまま保持される（ローカルUVで補間）。
+    ///          worldXform が非恒等なら、4 頂点位置に変換を適用する。
+    ///          SDF 計算に使う shapeRect は元座標のまま保持される（ローカル UV で補間）。
     void addRect(const sgc::Rectf& rect, const Style& style,
                  const Transform2D& worldXform = Transform2D::identity())
     {
@@ -114,16 +114,16 @@ public:
         const float x1 = rect.x() + rect.width() + expand;
         const float y1 = rect.y() + rect.height() + expand;
 
-        // 4頂点をワールド変換
+        // 4 頂点をワールド変換
         const auto v0 = worldXform.apply(x0, y0);
         const auto v1 = worldXform.apply(x1, y0);
         const auto v2 = worldXform.apply(x1, y1);
         const auto v3 = worldXform.apply(x0, y1);
 
-        // 元の矩形情報（シェーダーがSDF計算に使用）。変換前のローカル座標のまま
+        // 元の矩形情報（シェーダーが SDF 計算に使用）。変換前のローカル座標のまま
         const sgc::Vec4f shapeRect{rect.x(), rect.y(), rect.width(), rect.height()};
 
-        // 4頂点: localUV は拡張クワッド全体に [0,1] でマッピング
+        // 4 頂点: localUV は拡張クワッド全体に [0,1] でマッピング
         const auto baseIndex = static_cast<std::uint32_t>(m_vertices.size());
         const sgc::Colorf white{1.0f, 1.0f, 1.0f, 1.0f};
 
@@ -132,7 +132,7 @@ public:
         m_vertices.emplace_back(v2, sgc::Vec2f{1.0f, 1.0f}, white, shapeRect);
         m_vertices.emplace_back(v3, sgc::Vec2f{0.0f, 1.0f}, white, shapeRect);
 
-        // 2三角形 = 6インデックス
+        // 2 三角形 = 6 インデックス
         m_indices.push_back(baseIndex);
         m_indices.push_back(baseIndex + 1);
         m_indices.push_back(baseIndex + 2);
@@ -288,7 +288,7 @@ private:
     bool m_recording = false;                   ///< 蓄積中フラグ
 };
 
-/// @brief SDF円/楕円のバッチレンダラー
+/// @brief SDF 円/楕円のバッチレンダラー
 /// @details begin() で蓄積開始、addCircle()/addEllipse() でスタイル付き円/楕円を蓄積し、
 ///          end() で蓄積を終了する。蓄積データは RenderPipeline が
 ///          SDF_CIRCLE_VS/PS パイプラインで描画する。
@@ -325,13 +325,13 @@ public:
 
     /// @brief スタイル付き楕円を蓄積する
     /// @param center 楕円の中心座標（スクリーン座標）
-    /// @param rx X方向の半径
-    /// @param ry Y方向の半径
+    /// @param rx X 方向の半径
+    /// @param ry Y 方向の半径
     /// @param style 描画スタイル
     /// @param worldXform 呼び出し側のワールド変換（オプション, 既定=恒等）
     /// @details シャドウの描画領域を確保するためクワッドを拡張する。
-    ///          worldXform が非恒等なら4頂点位置に変換を適用する。
-    ///          shapeRect はローカル座標のまま保持される（SDFはローカル空間で計算される）。
+    ///          worldXform が非恒等なら 4 頂点位置に変換を適用する。
+    ///          shapeRect はローカル座標のまま保持される（SDF はローカル空間で計算される）。
     void addEllipse(const sgc::Vec2f& center, float rx, float ry, const Style& style,
                     const Transform2D& worldXform = Transform2D::identity())
     {
@@ -353,16 +353,16 @@ public:
         const float x1 = center.x + rx + expand;
         const float y1 = center.y + ry + expand;
 
-        // 4頂点をワールド変換
+        // 4 頂点をワールド変換
         const auto v0 = worldXform.apply(x0, y0);
         const auto v1 = worldXform.apply(x1, y0);
         const auto v2 = worldXform.apply(x1, y1);
         const auto v3 = worldXform.apply(x0, y1);
 
-        // シェイプ情報（シェーダーがSDF計算に使用）。ローカル座標のまま
+        // シェイプ情報（シェーダーが SDF 計算に使用）。ローカル座標のまま
         const sgc::Vec4f shapeRect{center.x, center.y, rx, ry};
 
-        // 4頂点: localUV は拡張クワッド全体に [0,1] でマッピング
+        // 4 頂点: localUV は拡張クワッド全体に [0,1] でマッピング
         const auto baseIndex = static_cast<std::uint32_t>(m_vertices.size());
         const sgc::Colorf white{1.0f, 1.0f, 1.0f, 1.0f};
 
@@ -371,7 +371,7 @@ public:
         m_vertices.emplace_back(v2, sgc::Vec2f{1.0f, 1.0f}, white, shapeRect);
         m_vertices.emplace_back(v3, sgc::Vec2f{0.0f, 1.0f}, white, shapeRect);
 
-        // 2三角形 = 6インデックス
+        // 2 三角形 = 6 インデックス
         m_indices.push_back(baseIndex);
         m_indices.push_back(baseIndex + 1);
         m_indices.push_back(baseIndex + 2);
@@ -419,7 +419,7 @@ private:
     {
         m_style = StyleConstants{};
 
-        // cornerRadii は未使用（デフォルト0のまま）
+        // cornerRadii は未使用（デフォルト 0 のまま）
 
         // 塗り色とグラデーションパラメータ
         convertFill(style.fill);

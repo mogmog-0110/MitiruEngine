@@ -1,5 +1,5 @@
 // anim3d。キャラクターを歩かせる (骨格アニメーション)
-// 実行すると: 草原にキツネが立つ。WASD で歩かせると待機と歩きが滑らかに混ざる
+// 実行すると、草原にキツネが立つ。WASD で歩かせると、待機と歩きが滑らかに混ざる
 // 関連 API: drawModelBlend / camera3D / light3D / skybox3D
 
 #include <cmath>
@@ -9,9 +9,9 @@
 
 using namespace mitiru;
 
-// キツネは Khronos サンプルの Fox (assets/fox/CREDITS.md、顔は +z 向き)。glb の中の
+// キツネは Khronos サンプルの Fox (assets/fox/CREDITS.md、顔は +z 向き)。glb 内の
 // クリップ名 ("Survey" = 待機、"Walk" = 歩き) を時間 (秒) と一緒に渡すだけで動く。
-// アニメの時間は自分の状態で持って毎フレーム足す。これが唯一の約束。
+// アニメの時間は自分の状態として持ち、毎フレーム加算する。これが唯一の約束。
 struct Anim3D
 {
 	float px = 0.0f, pz = 0.0f;      // キツネの位置 (m)
@@ -27,7 +27,7 @@ struct Anim3D
 		if (in.pressed(Key::Escape)) { hud.quit(); }   // Esc で終わる
 
 		// WASD (in.move() が WASD/矢印/スティックを合成)。カメラが斜め上から
-		// 見るので、入力の上下左右を画面の向きに合わせて世界の軸へ 45° 回す
+		// 見るため、入力の上下左右を画面の向きに合わせて世界の軸へ 45° 回す
 		const Stick m = in.move();
 		const bool moving = (m.x * m.x + m.y * m.y) > 0.01f;
 		if (moving)
@@ -39,7 +39,7 @@ struct Anim3D
 			px += vx * speed * dt;
 			pz += vz * speed * dt;
 
-			// 進む方向へ体を回す。一瞬で向きを変えず、1 秒 540 度までの旋回にする
+			// 進む方向へ体を回す。一瞬で向きを変えず、旋回は 1 秒に 540 度までにする
 			constexpr float kRad2Deg = 180.0f / 3.14159265f;
 			float d = std::atan2(vx, vz) * kRad2Deg - yawDeg;
 			while (d > 180.0f) { d -= 360.0f; }
@@ -48,17 +48,17 @@ struct Anim3D
 			yawDeg += (d > turn) ? turn : (d < -turn) ? -turn : d;
 		}
 
-		// 待機 ↔ 歩き をおよそ 0.25 秒でなめらかに切り替える
+		// 待機 ↔ 歩き をおよそ 0.25 秒で滑らかに切り替える
 		const float target = moving ? 1.0f : 0.0f;
 		const float step = dt * 4.0f;
 		const float diff = target - walkMix;
 		walkMix += (diff > step) ? step : (diff < -step) ? -step : diff;
 
-		// カメラの注視点はキツネを少し遅れて追う (歩き出しが画面で分かる)
+		// カメラの注視点はキツネを少し遅れて追う (歩き出したことが画面で分かる)
 		const float chase = (dt * 5.0f > 1.0f) ? 1.0f : dt * 5.0f;
 		camX += (px - camX) * chase;  camZ += (pz - camZ) * chase;
 
-		// アニメ時間を進める。状態はこの数字たちだけなので、巻き戻しても正しく戻る
+		// アニメ時間を進める。状態はこの数字だけで表されるため、巻き戻しても正しく戻る
 		animT += dt;
 
 		// 草原の外へ出ない
@@ -74,7 +74,7 @@ struct Anim3D
 		s.light3D({0.4f, -0.8f, 0.35f}, hex(0xFFF4E0));
 		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 
-		// 草原 (薄い箱。上面が y=0。影を受ける面) と、移動が分かる目印の岩
+		// 草原 (薄い箱で、上面が y=0。影を受ける面) と、移動が分かる目印の岩
 		s.drawMesh("cube", {0.0f, -0.15f, 0.0f}, {20.0f, 0.3f, 20.0f}, {0, 0, 0}, hex(0x9CC69B));
 		struct Rock { float x, z, r; };
 		static constexpr Rock kRocks[] = {{-5.5f, -3.0f, 0.7f}, {4.0f, -6.0f, 0.5f},
@@ -87,8 +87,8 @@ struct Anim3D
 			           {0.0f, 25.0f, 0.0f}, hex(0x8FA08F));
 		}
 
-		// 待機 (Survey) と歩き (Walk) を walkMix で混ぜて描く。クリップ名は
-		// Blender の Action 名がそのまま使える。時間はループ再生される
+		// 待機 (Survey) と歩き (Walk) を walkMix で混ぜて描く。クリップ名には
+		// Blender の Action 名をそのまま使える。時間はループ再生される
 		s.drawModelBlend("anim3d/assets/fox/fox.glb", {px, 0.0f, pz}, yawDeg, 0.01f,
 		                 "Survey", animT, "Walk", animT, walkMix);
 
@@ -101,4 +101,5 @@ struct Anim3D
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(Anim3D);
 
+MITIRU_ASSERT_NO_PADDING(Anim3D);
 MITIRU_GAME(Anim3D);

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file EasingHelper.hpp
-/// @brief イージング関数とLerp補間ヘルパー
+/// @brief イージング関数と Lerp 補間ヘルパー
 
 #include <cmath>
 #include <algorithm>
@@ -113,7 +113,7 @@ namespace mitiru::util
 	};
 
 	/// @brief 線形補間（Lerp）ヘルパー構造体
-	/// @note duration中のelapsed時間に基づいてfromからtoへ補間する
+	/// @note duration 中の elapsed 時間に基づいて from から to へ補間する
 	struct Lerp
 	{
 		/// @brief 補間開始値

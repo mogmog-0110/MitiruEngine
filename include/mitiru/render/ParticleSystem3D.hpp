@@ -1,6 +1,6 @@
 #pragma once
 /// @file ParticleSystem3D.hpp
-/// @brief 3D空間のパーティクルシステム
+/// @brief 3D 空間のパーティクルシステム
 
 #include <mitiru/render/Billboard3D.hpp>
 #include <sgc/math/Vec3.hpp>
@@ -52,7 +52,7 @@ public:
     const ParticleEmitter3D& emitter() const noexcept { return m_emitter; }
 
     void update(float dt) {
-        // Update existing particles
+        // 既存のパーティクルを更新する
         for (auto& p : m_particles) {
             if (!p.alive) continue;
             p.life -= dt;
@@ -62,7 +62,7 @@ public:
             p.position += p.velocity * dt;
         }
 
-        // Emit new particles
+        // 新しいパーティクルを放出する
         if (m_emitter.active) {
             m_emitAccum += m_emitter.emitRate * dt;
             while (m_emitAccum >= 1.0f) {
@@ -112,7 +112,7 @@ private:
             p.alive = true;
             p.position = m_emitter.position;
 
-            // Random direction within emission cone
+            // 放出コーン内のランダムな方向
             float rx = randFloat() * 2.0f - 1.0f;
             float ry = randFloat() * 2.0f - 1.0f;
             float rz = randFloat() * 2.0f - 1.0f;

@@ -2,8 +2,8 @@
 
 /// @file Texture.hpp
 /// @brief テクスチャ抽象化
-/// @details RGBA8ピクセルバッファを保持するテクスチャクラス。
-///          stb_image等の外部ライブラリなしで使用可能な
+/// @details RGBA8 ピクセルバッファを保持するテクスチャクラス。
+///          stb_image 等の外部ライブラリなしで使用可能な
 ///          プロシージャルテクスチャ生成機能を提供する。
 
 #include <cstdint>
@@ -17,7 +17,7 @@
 namespace mitiru::render
 {
 
-/// @brief テクスチャデータ（RGBA8ピクセルバッファ）
+/// @brief テクスチャデータ（RGBA8 ピクセルバッファ）
 /// @details 任意の画像ローダーからピクセルデータを受け取り保持する。
 ///          solid(), checker() 等のファクトリでプロシージャルテクスチャも生成可能。
 class Texture
@@ -29,7 +29,7 @@ public:
 	/// @brief ピクセルデータからテクスチャを構築する
 	/// @param width 幅（ピクセル）
 	/// @param height 高さ（ピクセル）
-	/// @param pixels RGBA8形式のピクセルバッファ
+	/// @param pixels RGBA8 形式のピクセルバッファ
 	Texture(int width, int height, const std::vector<std::uint8_t>& pixels)
 		: m_width(width)
 		, m_height(height)
@@ -91,12 +91,12 @@ public:
 	/// @param w 幅
 	/// @param h 高さ
 	/// @param tileSize タイルサイズ（ピクセル）
-	/// @param r1 色1の赤
-	/// @param g1 色1の緑
-	/// @param b1 色1の青
-	/// @param r2 色2の赤
-	/// @param g2 色2の緑
-	/// @param b2 色2の青
+	/// @param r1 色 1 の赤
+	/// @param g1 色 1 の緑
+	/// @param b1 色 1 の青
+	/// @param r2 色 2 の赤
+	/// @param g2 色 2 の緑
+	/// @param b2 色 2 の青
 	/// @return チェッカーパターンテクスチャ
 	[[nodiscard]] static Texture checker(int w, int h, int tileSize,
 		std::uint8_t r1, std::uint8_t g1, std::uint8_t b1,
@@ -127,6 +127,27 @@ public:
 	/// @brief ピクセルデータを取得する
 	[[nodiscard]] const std::vector<std::uint8_t>& pixels() const noexcept { return m_pixels; }
 
+	/// @brief 矩形範囲の画素を書き換える。範囲外は切り捨てる。
+	/// @details 画素配列の先頭アドレスは変わらないので、GPU 側は全体を送り直さず
+	///          書き換えた行だけを送れる (動的に字形を足していく文字アトラス用)。
+	/// @param rgba w*h*4 バイト、行優先
+	void writeRegion(int x, int y, int w, int h, const std::uint8_t* rgba) noexcept
+	{
+		for (int row = 0; row < h; ++row)
+		{
+			const int ty = y + row;
+			if (ty < 0 || ty >= m_height) { continue; }
+			for (int col = 0; col < w; ++col)
+			{
+				const int tx = x + col;
+				if (tx < 0 || tx >= m_width) { continue; }
+				const auto d = (static_cast<std::size_t>(ty) * m_width + tx) * 4;
+				const auto s = (static_cast<std::size_t>(row) * w + col) * 4;
+				for (int c = 0; c < 4; ++c) { m_pixels[d + c] = rgba[s + c]; }
+			}
+		}
+	}
+
 	/// @brief 有効なテクスチャか
 	[[nodiscard]] bool valid() const noexcept
 	{
@@ -134,9 +155,9 @@ public:
 	}
 
 	/// @brief 指定座標のピクセル色を取得する（RGBA packed）
-	/// @param x X座標
-	/// @param y Y座標
-	/// @return RGBA32値（範囲外は0）
+	/// @param x X 座標
+	/// @param y Y 座標
+	/// @return RGBA32 値（範囲外は 0）
 	[[nodiscard]] std::uint32_t pixelAt(int x, int y) const
 	{
 		if (x < 0 || x >= m_width || y < 0 || y >= m_height) return 0;

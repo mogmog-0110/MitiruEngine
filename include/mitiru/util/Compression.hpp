@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file Compression.hpp
-/// @brief Zstandard圧縮ラッパーおよびアセットバンドルシステム
+/// @brief Zstandard 圧縮ラッパーおよびアセットバンドルシステム
 ///
-/// MITIRU_HAS_ZSTDが定義されている場合はzstdライブラリを使用した実圧縮を行い、
-/// 未定義の場合はno-op（無圧縮パススルー）として動作する。
+/// MITIRU_HAS_ZSTD が定義されている場合は zstd ライブラリを使用した実圧縮を行い、
+/// 未定義の場合は no-op（無圧縮パススルー）として動作する。
 ///
 /// @code
 /// using mitiru::util::Compression;
@@ -38,8 +38,8 @@
 namespace mitiru::util
 {
 
-/// @brief Zstandard圧縮ラッパー（全static）
-/// @details MITIRU_HAS_ZSTD未定義時はパススルー（無圧縮）で動作する
+/// @brief Zstandard 圧縮ラッパー（全 static）
+/// @details MITIRU_HAS_ZSTD 未定義時はパススルー（無圧縮）で動作する
 class Compression
 {
 public:
@@ -49,7 +49,7 @@ public:
 	/// @brief 圧縮レベルの最大値
 	static constexpr int kMaxLevel = 22;
 
-	/// @brief zstdマジックバイト
+	/// @brief zstd マジックバイト
 	static constexpr uint32_t kMagic = 0xFD2FB528;
 
 	/// @brief 高速圧縮プリセット
@@ -64,7 +64,7 @@ public:
 	/// @brief データを圧縮する
 	/// @param data 入力データへのポインタ
 	/// @param size 入力データのサイズ（バイト）
-	/// @param level 圧縮レベル（1〜22、デフォルト3）
+	/// @param level 圧縮レベル（1〜22、デフォルト 3）
 	/// @return 圧縮されたデータ
 	[[nodiscard]] static std::vector<uint8_t> compress(
 		const uint8_t* data, std::size_t size, int level = balanced())
@@ -97,7 +97,7 @@ public:
 #endif
 	}
 
-	/// @brief vectorデータを圧縮する
+	/// @brief vector データを圧縮する
 	/// @param data 入力データ
 	/// @param level 圧縮レベル
 	/// @return 圧縮されたデータ
@@ -144,7 +144,7 @@ public:
 		result.resize(decompressedSize);
 		return result;
 #else
-		/// no-op: 入力データをそのまま返す（originalSizeは無圧縮時は入力サイズと同一）
+		/// no-op: 入力データをそのまま返す（originalSize は無圧縮時は入力サイズと同一）
 		return std::vector<uint8_t>(compressedData, compressedData + size);
 #endif
 	}
@@ -173,7 +173,7 @@ public:
 		}
 
 #ifdef MITIRU_HAS_ZSTD
-		/// zstdフレームから元のサイズを取得
+		/// zstd フレームから元のサイズを取得
 		const unsigned long long contentSize = ZSTD_getFrameContentSize(data, size);
 		if (contentSize == ZSTD_CONTENTSIZE_UNKNOWN || contentSize == ZSTD_CONTENTSIZE_ERROR)
 		{
@@ -202,10 +202,10 @@ public:
 #endif
 	}
 
-	/// @brief データがzstd圧縮されているかをマジックバイトで判定する
+	/// @brief データが zstd 圧縮されているかをマジックバイトで判定する
 	/// @param data データへのポインタ
 	/// @param size データのサイズ
-	/// @return zstdマジックバイトを持つ場合true
+	/// @return zstd マジックバイトを持つ場合 true
 	[[nodiscard]] static bool isCompressed(const uint8_t* data, std::size_t size) noexcept
 	{
 		if (data == nullptr || size < 4)
@@ -213,7 +213,7 @@ public:
 			return false;
 		}
 
-		/// zstdマジックバイト: 0x28 0xB5 0x2F 0xFD（リトルエンディアン）
+		/// zstd マジックバイト: 0x28 0xB5 0x2F 0xFD（リトルエンディアン）
 		uint32_t magic = 0;
 		std::memcpy(&magic, data, sizeof(uint32_t));
 		return magic == kMagic;
@@ -290,7 +290,7 @@ public:
 		writeU32(bundle, kBundleVersion);
 		writeU32(bundle, static_cast<uint32_t>(entries.size()));
 
-		/// TOCのオフセットを計算するため、TOC自体のサイズを先に計算
+		/// TOC のオフセットを計算するため、TOC 自体のサイズを先に計算
 		std::size_t tocSize = 0;
 		for (const auto& e : entries)
 		{
@@ -299,7 +299,7 @@ public:
 
 		uint64_t dataOffset = 12 + tocSize;
 
-		/// TOC書き込み
+		/// TOC 書き込み
 		for (const auto& e : entries)
 		{
 			writeU32(bundle, static_cast<uint32_t>(e.name.size()));
@@ -453,7 +453,7 @@ private:
 		return true;
 	}
 
-	/// @brief TOCエントリを読み取る
+	/// @brief TOC エントリを読み取る
 	struct TocEntry
 	{
 		std::string name;
@@ -495,7 +495,7 @@ private:
 		return TocEntry{std::move(name), offset, compressedSize, originalSize, pos};
 	}
 
-	/// @brief リトルエンディアンで32ビット整数を書き込む
+	/// @brief リトルエンディアンで 32 ビット整数を書き込む
 	static void writeU32(std::vector<uint8_t>& buf, uint32_t value)
 	{
 		buf.push_back(static_cast<uint8_t>(value & 0xFF));
@@ -504,7 +504,7 @@ private:
 		buf.push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
 	}
 
-	/// @brief リトルエンディアンで64ビット整数を書き込む
+	/// @brief リトルエンディアンで 64 ビット整数を書き込む
 	static void writeU64(std::vector<uint8_t>& buf, uint64_t value)
 	{
 		for (int i = 0; i < 8; ++i)
@@ -513,7 +513,7 @@ private:
 		}
 	}
 
-	/// @brief リトルエンディアンで32ビット整数を読み取る
+	/// @brief リトルエンディアンで 32 ビット整数を読み取る
 	[[nodiscard]] static uint32_t readU32(
 		const std::vector<uint8_t>& buf, std::size_t pos)
 	{
@@ -523,7 +523,7 @@ private:
 			| (static_cast<uint32_t>(buf[pos + 3]) << 24);
 	}
 
-	/// @brief リトルエンディアンで64ビット整数を読み取る
+	/// @brief リトルエンディアンで 64 ビット整数を読み取る
 	[[nodiscard]] static uint64_t readU64(
 		const std::vector<uint8_t>& buf, std::size_t pos)
 	{

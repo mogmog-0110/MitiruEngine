@@ -24,16 +24,16 @@
 namespace
 {
 
-/// data\launch.mtargs を 1 行読む (空白区切りの host argv)。無ければ空。
-/// "..." で囲まれた token (--title "My Game" 等) は行ごと command line に渡り、
-/// host 側 CRT の argv 分割が quote を解釈する。ここでの分割処理は不要。
+/// data\launch.mtargs を 1 行読み込む (空白区切りの host argv)。なければ空。
+/// "..." で囲まれたトークン (--title "My Game" 等) は行全体をコマンドラインに渡し、
+/// host 側の CRT による argv 分割で引用符を解釈する。ここで分割する必要はない。
 std::string readLaunchArgs(const std::filesystem::path& dataDir)
 {
 	std::ifstream f(dataDir / "launch.mtargs");
 	if (!f) { return {}; }
 	std::string line;
 	std::getline(f, line);
-	// 末尾 CR/空白を落とす。
+	// 末尾の CR/空白を取り除く。
 	while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t'))
 	{
 		line.pop_back();
@@ -41,10 +41,10 @@ std::string readLaunchArgs(const std::filesystem::path& dataDir)
 	return line;
 }
 
-/// launch.mtargs (UTF-8) を CreateProcessW へ渡せる UTF-16 にする。
+/// launch.mtargs (UTF-8) を CreateProcessW に渡せる UTF-16 に変換する。
 ///
-/// バイト単位で広げてはいけない。--title に日本語を渡す配布物があり、1 バイトを
-/// 1 文字として広げると窓の表題がそのまま化ける (実際に化けた)。
+/// バイト単位で変換してはいけない。--title に日本語を渡す配布物があり、1 バイトを
+/// 1 文字として変換すると窓の表題がそのまま文字化けする (実際に文字化けした)。
 std::wstring widen(const std::string& s)
 {
 	return mitiru::platform::utf8ToWide(s);
@@ -70,7 +70,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		return 2;
 	}
 
-	// host の command line を組む。argv[0] は host 自身、続けて launch.mtargs の中身。
+	// host のコマンドラインを組み立てる。argv[0] は host 自身で、その後に launch.mtargs の中身を続ける。
 	std::wstring cmd = L"\"" + host.wstring() + L"\"";
 	const std::string args = readLaunchArgs(dataDir);
 	if (!args.empty())
@@ -79,7 +79,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		cmd += widen(args);
 	}
 
-	// cwd を data\ に固定して起動 (host も自分で anchor するが念のため揃える)。
+	// cwd を data\ に固定して起動する (host も自分で基準位置を固定するが、念のため合わせる)。
 	std::vector<wchar_t> mutableCmd(cmd.begin(), cmd.end());
 	mutableCmd.push_back(L'\0');
 

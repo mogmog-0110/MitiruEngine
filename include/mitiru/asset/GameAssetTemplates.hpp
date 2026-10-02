@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GameAssetTemplates.hpp
-/// @brief GraphWalker用ゲームオブジェクトのSVGテンプレート集
+/// @brief GraphWalker 用ゲームオブジェクトの SVG テンプレート集
 /// @details サイバーパンク風ネオングロー付きのゲームアセットを
 ///          プログラム的に生成する静的メソッド群。
 ///          各カテゴリは個別ヘッダーに分割されている。
@@ -20,9 +20,9 @@
 namespace mitiru::asset
 {
 
-/// @brief GraphWalkerゲームオブジェクトのSVGテンプレート群
-/// @details 各メソッドはネオングロー付きのSvgDocumentを返す。
-///          カラーパレットはGraphWalkerのゾーン配色に準拠。
+/// @brief GraphWalker ゲームオブジェクトの SVG テンプレート群
+/// @details 各メソッドはネオングロー付きの SvgDocument を返す。
+///          カラーパレットは GraphWalker のゾーン配色に準拠。
 ///          カテゴリ別ヘッダーから全メソッドを継承する。
 class GameAssetTemplates
 	: public GameAssetCharacters
@@ -31,7 +31,7 @@ class GameAssetTemplates
 	, public GameAssetEffects
 {
 public:
-	// すべての静的メソッドは基底クラスから継承される:
+	// すべての静的メソッドは基底クラスから継承される。
 	//
 	// GameAssetCharacters: player(), npc(), enemy()
 	// GameAssetEnvironment: platform(), movingPlatform(), crumblingPlatform(),

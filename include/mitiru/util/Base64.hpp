@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file Base64.hpp
-/// @brief Base64エンコード・デコードユーティリティ
+/// @brief Base64 エンコード・デコードユーティリティ
 ///
-/// バイナリデータとBase64文字列の相互変換を行う。
-/// JSONへのバイナリデータ埋め込みなどに使用する。
+/// バイナリデータと Base64 文字列の相互変換を行う。
+/// JSON へのバイナリデータ埋め込みなどに使用する。
 ///
 /// @code
 /// using mitiru::util::Base64;
@@ -22,14 +22,14 @@
 namespace mitiru::util
 {
 
-/// @brief Base64エンコード・デコードユーティリティ
+/// @brief Base64 エンコード・デコードユーティリティ
 class Base64
 {
 public:
-	/// @brief バイナリデータをBase64文字列にエンコードする
+	/// @brief バイナリデータを Base64 文字列にエンコードする
 	/// @param data 入力データへのポインタ
 	/// @param size 入力データのサイズ（バイト）
-	/// @return Base64エンコードされた文字列
+	/// @return Base64 エンコードされた文字列
 	[[nodiscard]] static std::string encode(const uint8_t* data, std::size_t size)
 	{
 		if (data == nullptr || size == 0)
@@ -56,18 +56,18 @@ public:
 		return result;
 	}
 
-	/// @brief vectorからBase64文字列にエンコードする
+	/// @brief vector から Base64 文字列にエンコードする
 	/// @param data 入力データ
-	/// @return Base64エンコードされた文字列
+	/// @return Base64 エンコードされた文字列
 	[[nodiscard]] static std::string encode(const std::vector<uint8_t>& data)
 	{
 		return encode(data.data(), data.size());
 	}
 
-	/// @brief Base64文字列をバイナリデータにデコードする
-	/// @param base64str Base64エンコードされた文字列
+	/// @brief Base64 文字列をバイナリデータにデコードする
+	/// @param base64str Base64 エンコードされた文字列
 	/// @return デコードされたバイナリデータ
-	/// @throws std::invalid_argument 不正なBase64文字列の場合
+	/// @throws std::invalid_argument 不正な Base64 文字列の場合
 	[[nodiscard]] static std::vector<uint8_t> decode(const std::string& base64str)
 	{
 		if (base64str.empty())
@@ -75,7 +75,7 @@ public:
 			return {};
 		}
 
-		/// 空白文字を除去した有効な文字列を構築
+		/// 空白文字を除いた有効な文字列を組み立てる
 		std::string cleaned;
 		cleaned.reserve(base64str.size());
 		for (char c : base64str)
@@ -134,13 +134,13 @@ public:
 	}
 
 private:
-	/// @brief Base64エンコーディングテーブル
+	/// @brief Base64 エンコーディングテーブル
 	static constexpr char kTable[] =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-	/// @brief Base64文字を6ビット値にデコードする
+	/// @brief Base64 文字を 6 ビット値にデコードする
 	/// @param c デコードする文字
-	/// @return 6ビット値
+	/// @return 6 ビット値
 	/// @throws std::invalid_argument 不正な文字の場合
 	[[nodiscard]] static uint32_t decodeChar(char c)
 	{

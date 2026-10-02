@@ -2,7 +2,7 @@
 
 /// @file NetworkReplication.hpp
 /// @brief ネットワークレプリケーション基盤
-/// @details Scene Nodeの状態をクライアント-サーバー間で同期する。
+/// @details Scene Node の状態をクライアント-サーバー間で同期する。
 ///          デッドレコニング、ラグ補償の基本フレームワーク。
 
 #include <cstdint>

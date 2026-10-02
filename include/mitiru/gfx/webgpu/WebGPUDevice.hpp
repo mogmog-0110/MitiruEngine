@@ -1,10 +1,11 @@
 #pragma once
 
 /// @file WebGPUDevice.hpp
-/// @brief WebGPUバックエンド実装
-/// @details Emscripten WebGPU環境向けのIDevice実装。
-///          webgpu/webgpu.hを使用し、WGSLシェーダーによる描画をサポートする。
-///          __EMSCRIPTEN__かつMITIRU_HAS_WEBGPUが定義されている場合のみコンパイルされる。
+/// @brief WebGPU バックエンド実装
+/// @details Emscripten の WebGPU 環境向けの IDevice 実装。
+///          webgpu/webgpu.h を使い、WGSL シェーダーで描画する。
+///          __EMSCRIPTEN__ と MITIRU_HAS_WEBGPU の両方が定義されている場合だけコンパイルされる。
+///          凍結中 (ADR 0047): 新機能は足さない。Web の本線は WebGL2 (gfx/webgl/)。
 
 #if defined(__EMSCRIPTEN__) && defined(MITIRU_HAS_WEBGPU)
 
@@ -34,10 +35,10 @@
 namespace mitiru::gfx
 {
 
-// ── 2Dスプライト描画用のデフォルトWGSLシェーダー ──────────────────────
+// ── 2D スプライト描画用のデフォルト WGSL シェーダー ──────────────────────
 
-/// @brief 2D頂点シェーダー（WGSL）
-/// @details 正射影変換を適用し、頂点色・テクスチャ座標をフラグメントシェーダーに渡す。
+/// @brief 2D 頂点シェーダー（WGSL）
+/// @details 正射影変換をかけ、頂点色とテクスチャ座標をフラグメントシェーダーに渡す。
 constexpr const char* WEBGPU_VERTEX_SHADER_2D = R"wgsl(
 struct Uniforms {
     projection: mat4x4<f32>,
@@ -66,8 +67,8 @@ fn main(input: VertexInput) -> VertexOutput {
 }
 )wgsl";
 
-/// @brief 2Dフラグメントシェーダー（WGSL）
-/// @details 頂点色をそのまま出力する。テクスチャ使用時はuseTexture切り替え可能。
+/// @brief 2D フラグメントシェーダー（WGSL）
+/// @details 頂点色をそのまま出力する。テクスチャを使うときは useTexture で切り替えられる。
 constexpr const char* WEBGPU_FRAGMENT_SHADER_2D = R"wgsl(
 @group(1) @binding(0) var texSampler: sampler;
 @group(1) @binding(1) var texColor: texture_2d<f32>;
@@ -92,14 +93,14 @@ fn main(input: FragmentInput) -> @location(0) vec4<f32> {
 }
 )wgsl";
 
-/// @brief WebGPU用コマンドリスト実装
-/// @details WebGPUのコマンドエンコーダを使用してコマンドを記録する。
-///          begin()でエンコーダを作成し、end()でコマンドバッファを完成させる。
+/// @brief WebGPU 用コマンドリスト実装
+/// @details WebGPU のコマンドエンコーダでコマンドを記録する。
+///          begin() でエンコーダを作り、end() でコマンドバッファを完成させる。
 class WebGPUCommandList final : public ICommandList
 {
 public:
     /// @brief コンストラクタ
-    /// @param device WebGPUデバイスハンドル
+    /// @param device WebGPU デバイスハンドル
     explicit WebGPUCommandList(WGPUDevice device)
         : m_device(device)
     {
@@ -140,7 +141,7 @@ public:
 
     void setRenderTarget(IRenderTarget*) override
     {
-        // WebGPUのレンダーターゲットはrender pass descriptor経由で扱う
+        // WebGPU のレンダーターゲットは render pass descriptor 経由で扱う
     }
 
     void clearRenderTarget(const sgc::Colorf& color) override
@@ -154,7 +155,7 @@ public:
 
     void setPipeline(IPipeline*) override
     {
-        // パイプラインのバインドはWebGPUのrender pipelineオブジェクトが扱う
+        // パイプラインのバインドは WebGPU の render pipeline オブジェクトが扱う
     }
 
     void setVertexBuffer(IBuffer* buffer) override
@@ -224,7 +225,7 @@ public:
     }
 
     /// @brief コマンドバッファを完成させてキューに投入する
-    /// @param queue WebGPUキュー
+    /// @param queue WebGPU キュー
     void submit(WGPUQueue queue)
     {
         WGPUCommandBufferDescriptor cmdBufDesc{};
@@ -244,26 +245,25 @@ private:
     WGPUColor m_clearColor = {0.0, 0.0, 0.0, 1.0};        ///< クリアカラー
 };
 
-/// @brief WebGPU GPUデバイス実装
-/// @details Emscripten WebGPU APIを使用してGPUデバイスとスワップチェーンを管理する。
-///          canvasIdで対象キャンバスを指定可能（デフォルト: "#canvas"）。
-///          バッファ・コマンドリストの生成機能を提供する。
-///          シェーダーフォーマット: WGSL (WebGPU Shading Language)。
-///
+/// @brief WebGPU の GPU デバイス実装
+/// @details Emscripten の WebGPU API で GPU デバイスとスワップチェーンを管理する。
+/// canvasId で対象のキャンバスを指定できる（デフォルト: "#canvas"）。
+/// バッファとコマンドリストを生成できる。
+/// シェーダーフォーマット: WGSL (WebGPU Shading Language)。
 /// @code
 /// auto device = std::make_unique<WebGPUDevice>();
 /// device->init([](bool success) {
-///     // WebGPU初期化完了コールバック
+/// // WebGPU 初期化完了コールバック
 /// });
 /// device->beginFrame();
-/// // WebGPU描画コマンド...
+/// // WebGPU 描画コマンド...
 /// device->endFrame();
 /// @endcode
 class WebGPUDevice final : public IDevice
 {
 public:
     /// @brief コンストラクタ
-    /// @param canvasId HTMLキャンバスのセレクタ（デフォルト: "#canvas"）
+    /// @param canvasId HTML キャンバスのセレクタ（デフォルト: "#canvas"）
     explicit WebGPUDevice(const char* canvasId = "#canvas")
         : m_canvasId(canvasId)
     {
@@ -302,10 +302,10 @@ public:
     WebGPUDevice(WebGPUDevice&&) = delete;
     WebGPUDevice& operator=(WebGPUDevice&&) = delete;
 
-    /// @brief WebGPUデバイスの非同期初期化
-    /// @param callback 初期化完了時のコールバック（true: 成功, false: 失敗）
-    /// @details WebGPU初期化はアダプタ・デバイス要求が非同期のため、
-    ///          コールバックで完了を通知する。
+    /// @brief WebGPU デバイスを非同期で初期化する
+    /// @param callback 初期化が終わったときのコールバック（true: 成功, false: 失敗）
+    /// @details WebGPU の初期化ではアダプタとデバイスの要求が非同期なので、
+    ///          完了はコールバックで知らせる。
     void init(std::function<void(bool)> callback)
     {
         m_initCallback = std::move(callback);
@@ -339,8 +339,8 @@ public:
     /// @brief フレームバッファからピクセルを読み取る（スクリーンショット用）
     /// @param width 読み取り幅
     /// @param height 読み取り高さ
-    /// @return RGBA8形式のピクセルデータ。撮れなかった場合は 0 埋め (呼び出し側は
-    ///         「本物の黒画面」と区別できないが、フレーム外呼び出しは呼び出し側の
+    /// @return RGBA8 形式のピクセルデータ。撮れなかった場合は 0 埋め (呼び出し側は
+    ///         「本物の黒画面」と区別できないが、フレーム外での呼び出しは呼び出し側の
     ///         誤用なので許容する)
     /// @note beginFrame() 〜 endFrame() の間 (m_currentTexture が生きている間) しか
     ///       撮れない。endFrame() は current texture を release するため、その外側で
@@ -411,9 +411,9 @@ public:
             },
             &ctx);
 
-        // ブラウザの WebGPU コールバックは JS イベントループ経由でしか発火しない。
-        // ASYNCIFY ビルド前提で emscripten_sleep により yield し完了を待つ
-        // (待たない場合 map 完了前に関数を抜け、常に 0 埋めを返すことになる)。
+        // ブラウザの WebGPU コールバックは JS のイベントループ経由でしか呼ばれない。
+        // ASYNCIFY ビルドを前提に、emscripten_sleep で yield して完了を待つ
+        // (待たないと map の完了前に関数を抜け、常に 0 埋めを返すことになる)。
         constexpr int kMaxWaitIters = 1000;
         for (int i = 0; i < kMaxWaitIters && !ctx.done; ++i)
         {
@@ -447,7 +447,7 @@ public:
         return Backend::WebGPU;
     }
 
-    /// @brief フレーム開始処理
+    /// @brief フレームを開始する
     /// @details スワップチェーンから現在のテクスチャビューを取得し、
     ///          コマンドエンコーダを準備する。
     void beginFrame() override
@@ -457,8 +457,8 @@ public:
             return;
         }
 
-        // readPixels() がテクスチャ→バッファコピーに使えるよう、view だけでなく
-        // 元テクスチャも保持する (WGPUTextureView からは逆引きできない)。
+        // readPixels() がテクスチャからバッファへのコピーに使えるよう、view だけでなく
+        // 元のテクスチャも保持する (WGPUTextureView からは逆引きできない)。
         m_currentTexture = wgpuSwapChainGetCurrentTexture(m_swapChain);
         m_currentTextureView = wgpuSwapChainGetCurrentTextureView(m_swapChain);
         if (!m_currentTextureView)
@@ -467,7 +467,7 @@ public:
         }
     }
 
-    /// @brief フレーム終了・プレゼント処理
+    /// @brief フレームを終了してプレゼントする
     /// @details 現在のテクスチャビューを解放してスワップチェーンをプレゼントする。
     void endFrame() override
     {
@@ -483,7 +483,7 @@ public:
         }
     }
 
-    /// @brief GPUバッファを生成する
+    /// @brief GPU バッファを生成する
     [[nodiscard]] std::unique_ptr<IBuffer> createBuffer(
         BufferType bufferType,
         std::uint32_t sizeBytes,
@@ -500,20 +500,20 @@ public:
         return std::make_unique<WebGPUCommandList>(m_device);
     }
 
-    /// @brief GPU処理の完了を待機する
-    /// @details Emscripten WebGPUではデバイスポーリングで待機する。
+    /// @brief GPU 処理の完了を待つ
+    /// @details Emscripten の WebGPU ではデバイスをポーリングして待つ。
     void waitForGpu() override
     {
-        // Emscripten WebGPUではイベントループベースのため、
-        // 明示的なwaitは限定的。デバイスティックで保留コールバックを処理する。
+        // Emscripten の WebGPU はイベントループで動くため、
+        // 明示的な wait でできることは限られる。デバイスの tick で保留中のコールバックを処理する。
 #if defined(__EMSCRIPTEN__)
         // emscripten_sleep() を使うか、次のフレームまで待つのが一般的
 #endif
     }
 
-    /// @brief WGSLシェーダーモジュールを作成する
-    /// @param wgslSource WGSLシェーダーソースコード
-    /// @return シェーダーモジュールハンドル（呼び出し元が解放責任を持つ）
+    /// @brief WGSL シェーダーモジュールを作成する
+    /// @param wgslSource WGSL シェーダーのソースコード
+    /// @return シェーダーモジュールハンドル（解放は呼び出し元が行う）
     [[nodiscard]] WGPUShaderModule createShaderModule(
         std::string_view wgslSource) const
     {
@@ -527,15 +527,15 @@ public:
         return wgpuDeviceCreateShaderModule(m_device, &shaderDesc);
     }
 
-    /// @brief デフォルトの2Dシェーダーモジュールを作成する
-    /// @return 2D描画用のWGSL頂点シェーダーモジュール
+    /// @brief デフォルトの 2D シェーダーモジュールを作成する
+    /// @return 2D 描画用の WGSL 頂点シェーダーモジュール
     [[nodiscard]] WGPUShaderModule createDefaultVertexShader2D() const
     {
         return createShaderModule(WEBGPU_VERTEX_SHADER_2D);
     }
 
-    /// @brief デフォルトの2Dフラグメントシェーダーモジュールを作成する
-    /// @return 2D描画用のWGSLフラグメントシェーダーモジュール
+    /// @brief デフォルトの 2D フラグメントシェーダーモジュールを作成する
+    /// @return 2D 描画用の WGSL フラグメントシェーダーモジュール
     [[nodiscard]] WGPUShaderModule createDefaultFragmentShader2D() const
     {
         return createShaderModule(WEBGPU_FRAGMENT_SHADER_2D);
@@ -544,13 +544,13 @@ public:
     /// @brief 初期化済みかどうか
     [[nodiscard]] bool isInitialized() const noexcept { return m_initialized; }
 
-    /// @brief WebGPUデバイスハンドルを取得する
+    /// @brief WebGPU デバイスハンドルを取得する
     [[nodiscard]] WGPUDevice deviceHandle() const noexcept { return m_device; }
 
-    /// @brief WebGPUキューを取得する
+    /// @brief WebGPU キューを取得する
     [[nodiscard]] WGPUQueue queue() const noexcept { return m_queue; }
 
-    /// @brief 現在のテクスチャビューを取得する（フレーム中のみ有効）
+    /// @brief 現在のテクスチャビューを取得する（フレーム中だけ有効）
     [[nodiscard]] WGPUTextureView currentTextureView() const noexcept
     {
         return m_currentTextureView;

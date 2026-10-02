@@ -1,11 +1,11 @@
-// mitiru_selfpack: 配布フォルダを mitiru_selfrun へ連結して 1 ファイルにする梱包ツール。
+// mitiru_selfpack: 配布フォルダを mitiru_selfrun に連結し、1 ファイルにする梱包ツール。
 //
-//   mitiru_selfpack <出力.exe> <selfrun.exe> <配布フォルダ> <name> <exe相対> [args] [cwd相対]
+//   mitiru_selfpack <出力 .exe> <selfrun.exe> <配布フォルダ> <name> <exe 相対> [args] [cwd 相対]
 //
 // 使い方は「mitiru dist の出力フォルダを 1 ファイル化する」だけ (引数の実例は
-// docs 側に置く)。フォルダの中身を再帰で全部パックへ入れ、mitiru_boot.txt を足し、
-// selfrun の複製へ連結する。scramble は掛けない。この器は秘匿ではなく同梱のための
-// もので、中の assets.mtpak が秘匿を担う。
+// docs 側に置く)。フォルダの中身をすべて再帰的にパックへ入れ、mitiru_boot.txt を追加し、
+// selfrun の複製に連結する。scramble はかけない。このツールは秘匿ではなく同梱のための
+// もので、中の assets.mtpak が秘匿の役割を担う。
 
 #include <cstdio>
 #include <filesystem>
@@ -27,9 +27,9 @@ int main(int argc, char** argv)
 		             "usage: mitiru_selfpack <out.exe> <selfrun.exe> <distDir> <name> <exeRel> [args] [cwdRel]\n");
 		return 2;
 	}
-	// CRT の argv は ANSI (日本語環境では CP932) へ変換済み。ここで受ける [args] は
-	// そのまま mitiru_boot.txt へ書かれ、起動時に host の --title になるので、
-	// UTF-8 の原本から取り直さないと窓の表題が化ける (実際に化けた)。
+	// CRT の argv は ANSI (日本語環境では CP932) に変換済み。ここで受け取る [args] は
+	// そのまま mitiru_boot.txt に書かれ、起動時に host の --title になるため、
+	// UTF-8 の元データから取り直さないとウィンドウのタイトルが文字化けする (実際に文字化けした)。
 	const std::vector<std::string> u8 = mitiru::platform::commandLineUtf8Args();
 	const auto arg = [&](int i) -> std::string {
 		if (static_cast<std::size_t>(i) < u8.size()) { return u8[static_cast<std::size_t>(i)]; }

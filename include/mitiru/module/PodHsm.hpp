@@ -3,7 +3,7 @@
 /// @file PodHsm.hpp
 /// @brief 状態遷移に優先度を持たせる flat POD ヘルパ (HE2 の GOCPlayerHsm::ChangeState(id, priority) 相当、
 /// ★1-6)。`fsm::StateMachine<StateT>` は scene 系専用で DLL 境界を渡らないため、module 系の
-/// GameMemory にそのまま埋め込める別物として用意する (既存を太らせない)。
+/// GameMemory にそのまま埋め込める別物として用意する (既存を大きくしない)。
 
 #include <cstdint>
 
@@ -20,11 +20,12 @@ struct PodHsm
 	std::uint16_t pending         = 0;  ///< このフレーム中に要求された遷移先 (commit まで反映しない)
 	std::uint8_t  pendingPriority = 0;  ///< pending を要求した優先度。0 = 今フレームまだ未要求 (commit でリセット)
 	std::uint8_t  depth           = 0;  ///< 現在の state に留まり続けているフレーム数 (255 で飽和、commit が加算)
+	std::uint8_t  _pad[2]         = {}; ///< 暗黙の詰め物を残さない (GameMemory はバイト単位で比べられる)
 	std::uint32_t plugins         = 0;  ///< 状態と独立に効くフラグ集合 (HE2 の StatePluginBoost 相当)。ビットの意味はゲーム側で決める
 };
 
 /// HE2 の `ChangeState(id, priority)` 相当。今フレームの pending より低い優先度の要求は
-/// 黙って弾く (false を返す)。同じ優先度は「後勝ち」であり、呼んだ順で上書きする。
+/// そのまま弾く (false を返す)。同じ優先度は「後勝ち」であり、呼んだ順で上書きする。
 /// state 自体は commit() まで変わらないので、この関数を呼んだだけでは onEnter/onExit は起きない。
 inline bool changeState(PodHsm& hsm, std::uint16_t id, std::uint8_t priority) noexcept
 {
@@ -37,7 +38,7 @@ inline bool changeState(PodHsm& hsm, std::uint16_t id, std::uint8_t priority) no
 
 /// フレーム末に pending を state へ確定する。onEnter/onExit はゲーム側が
 /// 「commit 前後の state を比較して switch (id) で分岐する」形で書く (engine に
-/// callback registry を作らない、ADR 0005 の enumerated set を太らせない)。
+/// callback registry を作らない、ADR 0005 の enumerated set を大きくしない)。
 inline void commit(PodHsm& hsm) noexcept
 {
 	if (hsm.pendingPriority == 0) { return; }

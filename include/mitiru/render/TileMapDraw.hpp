@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file TileMapDraw.hpp
-/// @brief タイルマップ 1 関数描画ヘルパ。
+/// @brief タイルマップを 1 関数で描くヘルパ。
 /// @details game が row-major な int[w*h] (-1 = 空) を渡すと、tileset の各セルを
-///          atlas index で切り出して連続 `Screen::drawSprite` する。同一 texture
-///          連続なのでテクスチャバッチに合流し 1 ドローコールに集約。
+///          atlas index で切り出して `Screen::drawSprite` を続けて呼ぶ。同じ texture が
+///          続くのでテクスチャバッチにまとまり、1 ドローコールで済む。
 
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/render/Texture.hpp>
@@ -22,7 +22,7 @@ struct TileAtlas
 	int cols;
 };
 
-/// @brief atlas index → tileset 内 src rect の純関数 (テスト容易性)。
+/// @brief atlas index から tileset 内の src rect を求める純関数 (テスト容易性のため)。
 [[nodiscard]] inline sgc::Rectf tileSrcRect(const TileAtlas& a, int idx) noexcept
 {
 	const int x = (idx % a.cols) * a.tileW;
@@ -31,9 +31,9 @@ struct TileAtlas
 	                  static_cast<float>(a.tileW), static_cast<float>(a.tileH)};
 }
 
-/// @brief 各非空タイルに対し callback fn(idx, dstRect, srcRect) を呼ぶ純関数 iteration。
-/// @details テスト容易性と、ゲーム側が drawSprite 以外 (debug overlay 等) に流用するため分離。
-/// @return 呼び出された (visible) タイル数。
+/// @brief 空でない各タイルについて callback fn(idx, dstRect, srcRect) を呼ぶ、純関数の反復。
+/// @details テストしやすくするためと、ゲーム側が drawSprite 以外 (debug overlay 等) に流用できるようにするために分けてある。
+/// @return 呼び出した (visible) タイルの数。
 template <typename Fn>
 inline int forEachVisibleTile(const TileAtlas& a, const int* indices, int mapW, int mapH,
                               float worldX, float worldY, float dstW, float dstH, Fn&& fn)
@@ -55,8 +55,8 @@ inline int forEachVisibleTile(const TileAtlas& a, const int* indices, int mapW, 
 	return count;
 }
 
-/// @brief タイルマップを一括描画する (各非空タイル = 1 drawSprite、同一 texture なので
-///        テクスチャバッチで 1 ドローコールに合流)。
+/// @brief タイルマップを一括描画する (空でない各タイルが 1 drawSprite。同じ texture なので
+///        テクスチャバッチで 1 ドローコールにまとまる)。
 inline void drawTiles(Screen& screen, const Texture& tileset, const TileAtlas& atlas,
                      const int* indices, int mapW, int mapH,
                      float worldX, float worldY,
@@ -70,7 +70,7 @@ inline void drawTiles(Screen& screen, const Texture& tileset, const TileAtlas& a
 		});
 }
 
-/// @brief 描画先ピクセル = タイルセットの 1 タイルピクセルと等寸の convenience overload。
+/// @brief 描画先の 1 タイルを、タイルセットの 1 タイルと同じピクセル寸法で描く convenience overload。
 inline void drawTiles(Screen& screen, const Texture& tileset, const TileAtlas& atlas,
                      const int* indices, int mapW, int mapH,
                      float worldX, float worldY,

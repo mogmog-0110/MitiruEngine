@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file GlCommandList.hpp
-/// @brief OpenGLコマンドリスト実装
-/// @details OpenGLは即時モードのため、コマンドは直接実行される。
+/// @brief OpenGL コマンドリスト実装
+/// @details OpenGL は即時モードのため、コマンドは直接実行される。
 
 #ifdef MITIRU_HAS_OPENGL
 
@@ -26,14 +26,14 @@
 namespace mitiru::gfx
 {
 
-/// @brief OpenGLコマンドリスト実装
+/// @brief OpenGL コマンドリスト実装
 /// @details 即時モードで描画コマンドを実行する。
-///          begin()でシェーダーとプロジェクション行列をバインドする。
+///          begin() でシェーダーとプロジェクション行列をバインドする。
 class GlCommandList final : public ICommandList
 {
 public:
 	/// @brief コンストラクタ
-	/// @param gl GL関数ポインタ群
+	/// @param gl GL 関数ポインタ群
 	/// @param program シェーダープログラムハンドル
 	/// @param projectionLoc プロジェクションユニフォームのロケーション
 	/// @param vao 頂点配列オブジェクトハンドル
@@ -86,10 +86,10 @@ public:
 		m_gl->useProgram(0);
 	}
 
-	/// @brief レンダーターゲットを設定する（OpenGLではデフォルトFBOを使用）
+	/// @brief レンダーターゲットを設定する（OpenGL ではデフォルト FBO を使用）
 	void setRenderTarget(IRenderTarget*) override
 	{
-		/// OpenGLではデフォルトフレームバッファを使用する
+		/// OpenGL ではデフォルトフレームバッファを使用する
 	}
 
 	/// @brief レンダーターゲットをクリアする
@@ -100,10 +100,10 @@ public:
 		glClear(GL_COLOR_BUFFER_BIT);
 	}
 
-	/// @brief パイプライン状態を設定する（OpenGLでは何もしない）
+	/// @brief パイプライン状態を設定する（OpenGL では何もしない）
 	void setPipeline(IPipeline*) override
 	{
-		/// OpenGLではbegin()でシェーダーをバインド済み
+		/// OpenGL では begin() でシェーダーをバインド済み
 	}
 
 	/// @brief 頂点バッファを設定する
@@ -115,11 +115,11 @@ public:
 		auto* glBuf = dynamic_cast<GlBuffer*>(buffer);
 		if (!glBuf) return;
 
-		/// VAOをバインドし、VBOをアタッチして頂点アトリビュートを設定する
+		/// VAO をバインドし、VBO をアタッチして頂点アトリビュートを設定する
 		m_gl->bindVertexArray(m_vao);
 		m_gl->bindBuffer(GL_ARRAY_BUFFER, glBuf->glBuffer());
 
-		/// Vertex2Dレイアウト: position(vec2) + texCoord(vec2) + color(vec4) = 32 bytes
+		/// Vertex2D レイアウト: position(vec2) + texCoord(vec2) + color(vec4) = 32 bytes
 		constexpr GLsizei stride = sizeof(render::Vertex2D);
 
 		/// location 0: aPos (vec2, offset 0)

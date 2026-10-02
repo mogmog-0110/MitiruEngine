@@ -1,9 +1,9 @@
-// rewind。「時間を巻き戻す」を体験する章 (ブロック積み)
-//   ゲームの状態をぜんぶ 1 つの構造体にまとめておくと、エンジンが毎フレームその中身を
-//   自動で覚えてくれる。だから、あとから好きな過去のフレームへ丸ごと戻せる。ここでは
+// rewind。「時間を巻き戻す」体験をする章 (ブロック積み)
+//   ゲームの状態を全部 1 つの構造体にまとめておくと、エンジンが毎フレームその中身を
+//   自動で記録する。だから、あとから好きな過去のフレームへ丸ごと戻せる。ここでは
 //   物理 (位置・速度・回転) もその構造体に入っているので、崩れたブロックも巻き戻せる。
-// あそびかた: 床に置かれたブロックをマウスでつまんで積み上げる。つまんだ点がカーソルに
-//             引かれ、重力でぶらんぶらん揺れる。崩れたら下の別窓のバーを左へ動かして戻す。
+// 遊び方: 床に置かれたブロックをマウスでつまんで積み上げる。つまんだ点がカーソルに
+//             引かれ、重力でぶらぶら揺れる。崩れたら下の別窓のバーを左へ動かして戻す。
 // 使う機能: 状態を 1 つの構造体にまとめる MITIRU_GAME / ポインタを持たない配列 FixedVec
 
 #include <algorithm>   // std::min / std::max / std::clamp
@@ -46,10 +46,11 @@ struct Block
 	float        w = 0.0f;               // 角速度 (回る速さ)
 	float        hw = 20.0f, hh = 20.0f; // 半分の幅・高さ
 	std::uint8_t color = 0;
+	std::uint8_t _pad[3] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 };
 
-// 接触点 1 つぶんの情報 (その場かぎりで使う。状態には入れない)。
-// a はブロック番号、b は相手のブロック番号 (かべ・床は -1)。
+// 接触点 1 つ分の情報 (その場だけで使う。状態には入れない)。
+// a はブロック番号、b は相手のブロック番号 (壁・床は -1)。
 struct Contact
 {
 	int   a = 0, b = -1;
@@ -69,7 +70,7 @@ inline float blockInvInertia(const Block& b)   // 回りにくさの逆数 (長�
 	return 1.0f / (m * (w * w + h * h) / 12.0f);
 }
 
-// ブロックの 4 すみの世界座標を求める。
+// ブロックの 4 隅の世界座標を求める。
 inline void blockCorners(const Block& b, float outX[4], float outY[4])
 {
 	const float c = std::cos(b.angle), s = std::sin(b.angle);
@@ -82,7 +83,7 @@ inline void blockCorners(const Block& b, float outX[4], float outY[4])
 	}
 }
 
-// 点 (px, py) がブロックの中に入っているか。
+// 点 (px, py) がブロックの中にあるか。
 inline bool pointInBlock(const Block& b, float px, float py)
 {
 	const float c = std::cos(b.angle), s = std::sin(b.angle);
@@ -92,7 +93,7 @@ inline bool pointInBlock(const Block& b, float px, float py)
 	return std::fabs(lx) <= b.hw && std::fabs(ly) <= b.hh;
 }
 
-// 1 本の向きに 4 すみを射影して、いちばん手前と奥を返す。
+// 1 本の軸に 4 隅を射影して、最小値と最大値を返す。
 inline void projectCorners(const float cx[4], const float cy[4], float nx, float ny,
                            float& mn, float& mx)
 {
@@ -105,8 +106,8 @@ inline void projectCorners(const float cx[4], const float cy[4], float nx, float
 	}
 }
 
-// 2 つのブロックが重なっているか調べる (分離軸法)。
-// 重なっていれば、いちばん浅い向き (押し戻す向き) とその深さを返す。
+// 2 つのブロックが重なっているかを調べる (分離軸法)。
+// 重なっていれば、重なりが最も浅い方向 (押し戻す方向) とその深さを返す。
 struct Sat { bool hit; float nx, ny, depth; };
 inline Sat satBoxes(const Block& A, const Block& B)
 {
@@ -132,7 +133,7 @@ inline Sat satBoxes(const Block& A, const Block& B)
 	return {true, bnx, bny, best};
 }
 
-// つまむブロックが最初から床に置いてある状態を作る。5 個を並べ、1 個だけ上に乗せる。
+// つまむブロックが最初から床に置かれている状態を作る。5 個を並べ、1 個だけ上に乗せる。
 constexpr FixedVec<Block, kMaxBlocks> makeInitialBlocks()
 {
 	FixedVec<Block, kMaxBlocks> v;
@@ -162,7 +163,7 @@ constexpr FixedVec<Block, kMaxBlocks> makeInitialBlocks()
 	return v;
 }
 
-// ゲームの状態をぜんぶこの 1 つの構造体に入れる。
+// ゲームの状態を全部この 1 つの構造体に入れる。
 // エンジンはこの中身を毎フレーム自動で記録するので、あとで別窓のバーを動かすと、
 // 物理の途中経過ごと過去へ戻せる (崩れる前に戻せばブロックが元どおり積み上がる)。
 struct Blocks
@@ -172,8 +173,9 @@ struct Blocks
 	float grabLocalX = 0.0f, grabLocalY = 0.0f;   // つまんだ点 (ブロックのローカル座標)
 	float cursorX    = 0.0f, cursorY = 0.0f;      // いまのカーソル位置
 	bool  prevDown   = false;            // 前フレームでマウス左が押されていたか
+	std::uint8_t _pad[3] = {};
 
-	// 押した瞬間、カーソルの下にあるブロックをつまむ。上に描かれているものを優先。
+	// 押した瞬間に、カーソルの下にあるブロックをつまむ。上に描かれているものを優先する。
 	void grabAt(float mx, float my)
 	{
 		for (int i = static_cast<int>(blocks.size()) - 1; i >= 0; --i)
@@ -189,7 +191,7 @@ struct Blocks
 		}
 	}
 
-	// つまんだ点をカーソルへ引くバネ。重力で下がろうとするので振り子のように揺れる。
+	// つまんだ点をカーソルへ引くバネ。重力で下がろうとするので、振り子のように揺れる。
 	void applyGrabSpring(float h)
 	{
 		Block& b = blocks[grabIndex];
@@ -207,14 +209,14 @@ struct Blocks
 		b.w += iI * (rx * fy - ry * fx) * h;   // 中心からずれた点を引くので回る = 振り子
 	}
 
-	// 重力とつまみのバネを速度に足す。
+	// 重力とつまみのバネによる力を速度に加える。
 	void applyForces(float h)
 	{
 		for (Block& b : blocks) { b.vy += kGravity * h; }
 		if (grabIndex >= 0) { applyGrabSpring(h); }
 	}
 
-	// 速度ぶんだけ動かし、速度が大きくなりすぎないよう上限をつける。
+	// 速度の分だけ動かし、速度が大きくなりすぎないように上限を設ける。
 	void integrate(float h)
 	{
 		for (Block& b : blocks)
@@ -231,7 +233,7 @@ struct Blocks
 		}
 	}
 
-	// 接触点を 1 つ足す (相手がブロックのとき)。
+	// 接触点を 1 つ加える (相手がブロックのとき)。
 	void pushPair(Contacts& out, int i, int j, float px, float py, const Sat& sat)
 	{
 		Contact c;
@@ -258,7 +260,7 @@ struct Blocks
 		if (added == 0) { pushPair(out, i, j, (A.x + B.x) * 0.5f, (A.y + B.y) * 0.5f, sat); }
 	}
 
-	// ブロックが床・かべにめり込んでいたら接触点を足す。
+	// ブロックが床・壁にめり込んでいたら接触点を加える。
 	void addBoundaryContacts(int i, Contacts& out)
 	{
 		float cx[4], cy[4];
@@ -274,7 +276,7 @@ struct Blocks
 		}
 	}
 
-	// このフレームの接触点をぜんぶ集める。
+	// このフレームの接触点を全部集める。
 	void collectContacts(Contacts& out)
 	{
 		const int n = static_cast<int>(blocks.size());
@@ -283,7 +285,7 @@ struct Blocks
 			for (int j = i + 1; j < n; ++j) { addPairContacts(i, j, out); }
 	}
 
-	// 接触点で速度をぶつけ合い、めり込む向きの動きを止める (＋まさつで滑りを弱める)。
+	// 接触点で速度を調整し、めり込む方向の動きを止める (＋摩擦で滑りを弱める)。
 	void resolveVelocity(const Contact& c)
 	{
 		Block& A = blocks[c.a];
@@ -326,7 +328,7 @@ struct Blocks
 		if (!st) { B->vx += imB * pfx; B->vy += imB * pfy; B->w += iIB * (rbx * pfy - rby * pfx); }
 	}
 
-	// めり込みを少しずつ押し戻す (重さに応じて分け合う)。
+	// めり込みを少しずつ解消する (重さに応じて分け合う)。
 	void correctPosition(const Contact& c)
 	{
 		const float corr = std::max(c.depth - kSlop, 0.0f) * kPosPercent;
@@ -347,7 +349,7 @@ struct Blocks
 		}
 	}
 
-	// ほとんど止まったブロックの微振動を消す (つまんでいるものは除く)。
+	// ほとんど止まったブロックの微振動をなくす (つまんでいるものは除く)。
 	void settleTiny()
 	{
 		for (int i = 0; i < static_cast<int>(blocks.size()); ++i)
@@ -361,7 +363,7 @@ struct Blocks
 		}
 	}
 
-	// 1 フレームを何回かに分けて解く (細かく解くほど積みが安定する)。
+	// 1 フレームを何回かに分けて解く (細かく解くほど積み上げた状態が安定する)。
 	void step(float dt)
 	{
 		const float h = dt / kSubsteps;
@@ -430,5 +432,6 @@ struct Blocks
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(Blocks);
 
+MITIRU_ASSERT_NO_PADDING(Blocks);
 MITIRU_GAME(Blocks);
 MITIRU_REWIND_BUFFER(600);   // この章は 10 秒分 (60fps) さかのぼれるようにする

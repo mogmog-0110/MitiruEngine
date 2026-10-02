@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file SystemRunner.hpp
-/// @brief ECSシステム実行管理
+/// @brief ECS システム実行管理
 ///
 /// 優先度ベースのシステム順序制御と、個別システムの有効/無効切替、
 /// プロファイリング用のタイミング計測を提供する。
@@ -94,8 +94,8 @@ public:
 
 	/// @brief システムを phase 指定 + 個別依存 (`after`) 付きで追加する (§3-1)。
 	/// @param after 「このシステムより後に実行してほしい」システム名。空/nullptr なら依存なし。
-	/// @details priority の数字だけでは「A は B の後」という関係が B の priority 変更で黙って
-	/// 壊れる。`after` は宣言であって自動でソート順を変えるものではない。実行順を自動で直すと
+	/// @details priority の数字だけでは「A は B の後」という関係が B の priority 変更で気づかないうちに
+	/// 成り立たなくなる。`after` は宣言であって自動でソート順を変えるものではない。実行順を自動で直すと
 	/// 「なぜこの順で走っているか」が priority から読めなくなり `mitiru why` の読み手 (AI) に不利
 	/// になるため、満たされていなければ `addSystem` の時点で `warnOnceFix` するだけに留める。
 	void addSystem(std::unique_ptr<ISystem> system, UpdatePhase phase, int32_t priority, const char* after)
@@ -117,7 +117,7 @@ public:
 
 	/// @brief 名前でシステムを削除する
 	/// @param name システム名
-	/// @return 削除成功ならtrue
+	/// @return 削除成功なら true
 	bool removeSystem(const std::string& name)
 	{
 		auto it = std::find_if(m_systems.begin(), m_systems.end(),
@@ -149,7 +149,7 @@ public:
 	/// @brief システムの有効/無効を切り替える
 	/// @param name システム名
 	/// @param enabled 有効にするかどうか
-	/// @return システムが見つかればtrue
+	/// @return システムが見つかれば true
 	bool setEnabled(const std::string& name, bool enabled)
 	{
 		auto it = std::find_if(m_systems.begin(), m_systems.end(),
@@ -162,7 +162,7 @@ public:
 
 	/// @brief システムが有効かどうか
 	/// @param name システム名
-	/// @return 有効ならtrue（見つからなければfalse）
+	/// @return 有効なら true（見つからなければ false）
 	[[nodiscard]] bool isEnabled(const std::string& name) const noexcept
 	{
 		auto it = std::find_if(m_systems.begin(), m_systems.end(),

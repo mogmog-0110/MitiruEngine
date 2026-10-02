@@ -1,6 +1,6 @@
 #pragma once
 /// @file LoFiShader.hpp
-/// @brief ローファイ・ポストFX 用フルスクリーン HLSL（量子化 + Bayer ディザ + ニアレスト拡大）。
+/// @brief ローファイ・ポスト FX 用フルスクリーン HLSL（量子化 + Bayer ディザ + ニアレスト拡大）。
 /// @details 低解像オフスクリーン RT を point サンプルし、LoFiQuantize.hpp と**同一式**で
 ///          パレット量子化 + 4×4 Bayer ディザを掛けてバックバッファへ書く。
 ///          ディザ位相は低解像テクセル基準（floor(uv*texSize)）にして、網点を内部解像度の

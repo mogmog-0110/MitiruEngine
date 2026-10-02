@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 /// @file Renderer2DBridge.hpp
-/// @brief sgc::graphics::IRenderer2Dのラッパー（DX11スタブ）
+/// @brief sgc::graphics::IRenderer2D のラッパー（DX11 スタブ）
 ///
-/// IRenderer2Dインターフェースをラップし、グロー効果や変換スタックなどの
-/// 付加機能を提供する高レベル2Dレンダラー。
+/// IRenderer2D インターフェースをラップし、グロー効果や変換スタックなどの
+/// 付加機能を提供する高レベル 2D レンダラー。
 ///
 /// @code
 /// auto null = std::make_unique<sgc::graphics::NullRenderer2D>();
@@ -25,7 +25,7 @@
 namespace mitiru::render
 {
 
-/// @brief 2Dレンダラー設定
+/// @brief 2D レンダラー設定
 struct Renderer2DBridgeConfig
 {
 	float screenW = 1280.0f;  ///< スクリーン幅
@@ -33,15 +33,15 @@ struct Renderer2DBridgeConfig
 	bool vsync = true;        ///< 垂直同期
 };
 
-/// @brief sgc::graphics::IRenderer2Dをラップする高レベル2Dレンダラー
+/// @brief sgc::graphics::IRenderer2D をラップする高レベル 2D レンダラー
 ///
-/// IRenderer2Dへの全描画コールのデリゲーションに加え、
+/// IRenderer2D への全描画コールのデリゲーションに加え、
 /// グロー効果付き描画、変換スタック、カメラ連携を提供する。
 class Renderer2DBridge
 {
 public:
 	/// @brief コンストラクタ
-	/// @param inner IRenderer2Dの実装（所有権を取得）
+	/// @param inner IRenderer2D の実装（所有権を取得）
 	explicit Renderer2DBridge(std::unique_ptr<sgc::graphics::IRenderer2D> inner) noexcept
 		: m_inner(std::move(inner))
 	{
@@ -222,22 +222,22 @@ public:
 
 	// ── 付加機能: カメラ連携 ────────────────────────────
 
-	/// @brief sgc::graphics::Camera2Dからビュー行列を設定する
-	/// @param camera 2Dカメラ
+	/// @brief sgc::graphics::Camera2D からビュー行列を設定する
+	/// @param camera 2D カメラ
 	void setCamera(const sgc::graphics::Camera2D& camera)
 	{
 		m_inner->setViewMatrix(camera.getViewMatrix());
 	}
 
-	/// @brief 内部IRenderer2Dへのアクセス
-	/// @return IRenderer2Dへの参照
+	/// @brief 内部 IRenderer2D へのアクセス
+	/// @return IRenderer2D への参照
 	[[nodiscard]] sgc::graphics::IRenderer2D& inner() noexcept
 	{
 		return *m_inner;
 	}
 
-	/// @brief 内部IRenderer2Dへのconstアクセス
-	/// @return IRenderer2Dへのconst参照
+	/// @brief 内部 IRenderer2D への const アクセス
+	/// @return IRenderer2D への const 参照
 	[[nodiscard]] const sgc::graphics::IRenderer2D& inner() const noexcept
 	{
 		return *m_inner;

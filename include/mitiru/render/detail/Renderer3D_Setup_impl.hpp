@@ -12,7 +12,7 @@ namespace mitiru::render
 
 /// @brief オクルージョン min-depth resolve 用のフルスクリーン三角形頂点シェーダー
 /// @details `DefaultShaders3D.hpp` の `OCCLUSION_MIN_DEPTH_RESOLVE_PS_3D` 専用。
-///          頂点バッファ不要 (`SV_VertexID` から3頂点を合成)。
+///          頂点バッファ不要 (`SV_VertexID` から 3 頂点を合成)。
 constexpr const char* kOcclusionResolveVS_3D = R"hlsl(
 struct VSOutput
 {
@@ -29,9 +29,9 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 )hlsl";
 
 /// @brief レンダラーを初期化する
-/// @param device DX11デバイスへのポインタ
+/// @param device DX11 デバイスへのポインタ
 /// @param cfg 設定パラメータ
-/// @param mode シェーダーモード（初期化時に直接設定。setShaderModeの再コンパイルを回避）
+/// @param mode シェーダーモード（初期化時に直接設定。setShaderMode の再コンパイルを回避）
 inline void Renderer3D::initialize(gfx::Dx11Device* device,
 	const Renderer3DConfig& cfg,
 	ShaderMode3D mode)
@@ -60,7 +60,7 @@ inline void Renderer3D::initialize(gfx::Dx11Device* device,
 	m_initialized = true;
 }
 
-/// @brief HLSLシェーダーをコンパイルする
+/// @brief HLSL シェーダーをコンパイルする
 inline void Renderer3D::compileShaders()
 {
 	/// シェーダーモードに応じたソースを選択する
@@ -104,7 +104,7 @@ inline void Renderer3D::compileShaders()
 			"Renderer3D: CreateVertexShader failed");
 	}
 
-	/// バイトコードを保存する（InputLayout用）
+	/// バイトコードを保存する（InputLayout 用）
 	m_vsBytecode.resize(vsBlob->GetBufferSize());
 	std::memcpy(m_vsBytecode.data(),
 	            vsBlob->GetBufferPointer(),
@@ -135,7 +135,7 @@ inline void Renderer3D::compileShaders()
 			nullptr,
 			m_outlineVS.GetAddressOf());
 
-		/// アウトライン用入力レイアウト（メインVSと同じフォーマット）
+		/// アウトライン用入力レイアウト（メイン VS と同じフォーマット）
 		std::vector<uint8_t> outlineBytecode(outVsBlob->GetBufferSize());
 		std::memcpy(outlineBytecode.data(),
 		            outVsBlob->GetBufferPointer(),
@@ -199,11 +199,11 @@ inline void Renderer3D::recompileShaders()
 	}
 }
 
-/// @brief HLSL文字列をコンパイルする
-/// @param source HLSL文字列
+/// @brief HLSL 文字列をコンパイルする
+/// @param source HLSL 文字列
 /// @param entryPoint エントリーポイント
 /// @param target コンパイルターゲット
-/// @return コンパイル済みBlob
+/// @return コンパイル済み Blob
 inline Renderer3D::ComPtr<ID3DBlob> Renderer3D::compileHLSL(
 	const char* source,
 	const char* entryPoint,
@@ -242,7 +242,7 @@ inline Renderer3D::ComPtr<ID3DBlob> Renderer3D::compileHLSL(
 	return shaderBlob;
 }
 
-/// @brief Vertex3D用の入力レイアウトを作成する
+/// @brief Vertex3D 用の入力レイアウトを作成する
 inline void Renderer3D::createInputLayout()
 {
 	/// Vertex3D: position(float3) + normal(float3) + texCoord(float2) + color(float4)
@@ -474,7 +474,7 @@ inline void Renderer3D::createDepthStencilState()
 	}
 }
 
-/// @brief デフォルトの1x1白テクスチャを作成する
+/// @brief デフォルトの 1x1 白テクスチャを作成する
 inline void Renderer3D::createDefaultWhiteTexture()
 {
 	const std::uint8_t whitePixel[4] = {255, 255, 255, 255};

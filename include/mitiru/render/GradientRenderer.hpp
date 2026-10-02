@@ -3,7 +3,7 @@
 /// @file GradientRenderer.hpp
 /// @brief 高機能グラデーションレンダラー
 /// @details 線形・放射状・円錐グラデーションを複数カラーストップで描画する。
-///          Screenの既存drawRect/drawCircleを活用したソフトウェア実装。
+///          Screen の既存 drawRect/drawCircle を使ったソフトウェア実装。
 
 #include <algorithm>
 #include <cmath>
@@ -68,10 +68,10 @@ struct ConicGradient
 
 /// @brief グラデーション描画エンジン
 /// @details 任意角度・複数カラーストップの線形・放射状・円錐グラデーションを
-///          ScreenのdrawRectに委譲して描画する。
+///          Screen の drawRect に委譲して描画する。
 ///
 ///          描画戦略: 矩形をスキャンラインに分割し、各ピクセル行のグラデーション値を
-///          計算してバンド幅のdrawRect呼び出しにマップする。
+///          計算してバンド幅の drawRect 呼び出しにマップする。
 ///
 /// @code
 /// mitiru::render::GradientRenderer grad;
@@ -129,7 +129,7 @@ private:
 	/// @brief グラデーション帯の最大幅（ピクセル）
 	static constexpr float BAND_WIDTH = 2.0f;
 
-	/// @brief カラーストップをposition順にソートする
+	/// @brief カラーストップを position 順にソートする
 	[[nodiscard]] static std::vector<GradientStop> sortStops(
 		const std::vector<GradientStop>& stops)
 	{
@@ -166,7 +166,7 @@ private:
 		return stops.back().color;
 	}
 
-	/// @brief 2色間を線形補間する
+	/// @brief 2 色間を線形補間する
 	[[nodiscard]] static constexpr sgc::Colorf lerpColor(
 		const sgc::Colorf& a, const sgc::Colorf& b, float t) noexcept
 	{
@@ -182,7 +182,7 @@ private:
 } // namespace mitiru::render
 
 // ════════════════════════════════════════════════════════════
-// Screen依存メソッドのインライン実装
+// Screen 依存メソッドのインライン実装
 // ════════════════════════════════════════════════════════════
 #include <mitiru/core/Screen.hpp>
 
@@ -200,7 +200,7 @@ inline void mitiru::render::GradientRenderer::drawLinearGradient(
 	const float dirX = std::sin(angleRad);
 	const float dirY = std::cos(angleRad);
 
-	/// 4隅の投影値を求めて最小・最大を得る
+	/// 4 隅の投影値を求めて最小・最大を得る
 	const float proj00 = 0.0f;
 	const float proj10 = rect.width() * dirX;
 	const float proj01 = rect.height() * dirY;

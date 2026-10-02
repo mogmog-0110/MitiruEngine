@@ -300,7 +300,7 @@ public:
 		m_nearZ = camera.nearClip();
 		m_farZ = camera.farClip();
 		// カメラが決まった直後に空を敷く。深度は書かないので、このあとの
-		// 幾何より前に出しても前後関係は壊れない。
+		// 幾何より前に出しても前後関係はおかしくならない。
 		if (m_frameActive && m_skyEnabled && !m_skyDrawn) { drawSky(); m_skyDrawn = true; }
 	}
 
@@ -432,8 +432,8 @@ public:
 			for (int c = 0; c < 4; ++c) { world.m[c * 4 + r] = worldTransform.m[r][c]; }
 		}
 		if (m_shadowCasterEnabled) { m_shadowCommands.push_back({gm, world}); }
-		// Material 側の alphaMode も同じ扱いにする。モデル経由だけ抜けて
-		// drawMesh が抜けないと、同じ絵柄が呼び方で変わる。
+		// Material 側の alphaMode も同じ扱いにする。モデル経由のときだけ抜けて
+		// drawMesh では抜けないと、同じ絵柄が呼び方によって変わる。
 		const float cutoff = (material.alphaMode == Material::AlphaMode::Mask)
 			? material.alphaCutoff : 0.0f;
 		submit(*gm, world, material.diffuse, albedoOf(material), material.doubleSided,
@@ -542,8 +542,8 @@ private:
 		glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
 
 		// 色は HDR (FP16) で受ける。DX12 も FP16 の中間ターゲットへ描いてから
-		// tonemap で LDR に焼く。RGBA8 で受けると 1.0 を超える光がその場で
-		// 潰れ、あとから ACES を掛けても中間調が眠くなるだけになる。
+		// tonemap で LDR へ変換する。RGBA8 で受けると 1.0 を超える光がその場で
+		// 切り捨てられ、あとから ACES を掛けても中間調が眠くなるだけになる。
 		// EXT_color_buffer_float は WebGL2 の必須ではないので、無ければ RGBA8 に戻す。
 		m_hdrColor = emscripten_webgl_enable_extension(
 			emscripten_webgl_get_current_context(), "EXT_color_buffer_float") != 0;
@@ -667,7 +667,7 @@ private:
 
 
 	/// 多灯の配列を送る。useMultiLight が false のときは 0 を送り、シェーダ側は
-	/// 単灯の経路へ落ちる。
+	/// 単灯の経路を通る。
 	void uploadLightArray()
 	{
 		const int n = m_useMultiLight
@@ -691,10 +691,10 @@ private:
 		}
 	}
 
-	/// 光の側から深度だけを焼く。DX12 の renderShadowPass と同じ構成で、
+	/// 光の側から深度だけを描く。DX12 の renderShadowPass と同じ構成で、
 	/// 焦点は前フレームの caster の重心。caster が無い、または影が無効な
 	/// フレームでも depth=1.0 のクリアだけは行う。クリアを飛ばすと前の内容が
-	/// 残り、比較サンプルが場所によって影を返して画面が黒く沈む。
+	/// 残り、比較サンプルが場所によって影を返して画面が暗くなる。
 	void renderShadowPass()
 	{
 		if (m_shadowFbo == 0) { return; }
@@ -730,7 +730,7 @@ private:
 
 		glUseProgram(m_shadowProg);
 		setMat4(m_shadowProg, "uLightViewProj", m_lightViewProj);
-		// 自分の面に自分の影が乗る (acne) のを、裏面だけ焼いて避ける。
+		// 自分の面に自分の影が乗る (acne) のを、裏面だけ描いて避ける。
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
 		for (const auto& c : m_shadowCommandsPrev)
@@ -960,7 +960,7 @@ private:
 
 	// ── glb 読み込み ──────────────────────────────────────────
 	/// パスで引く。読めなかったファイルも nullptr を記憶して、毎フレームの再試行で
-	/// ディスクを叩き続けないようにする。
+	/// ディスクを読みに行き続けないようにする。
 	const GpuModel* loadModel(const std::string& path)
 	{
 		if (const auto it = m_models.find(path); it != m_models.end())
@@ -978,7 +978,7 @@ private:
 
 		auto model = std::make_unique<GpuModel>();
 
-		// ノードのレストポーズをワールドへ畳む (親→子の順は保証されないので都度遡る)。
+		// ノードのレストポーズをワールド姿勢へ合成する (親→子の順は保証されないので都度遡る)。
 		std::vector<detail::Mat4> nodeWorld(scene->nodes.size());
 		for (std::size_t i = 0; i < scene->nodes.size(); ++i)
 		{
@@ -1069,11 +1069,11 @@ private:
 	}
 
 	/// @brief Material.albedoTexture を GL テクスチャへ解決する (無ければ 0)。
-	/// @details 同じ `Texture*` は 1 度しか上げない。DX12 側の getOrUploadAlbedoSrv と
+	/// @details 同じ `Texture*` は 1 度しかアップロードしない。DX12 側の getOrUploadAlbedoSrv と
 	///          同じ方針で、`setTexture` の global state とは独立させる。
 	///          キーはポインタなので、Texture を破棄して同じ番地に別の Texture を
-	///          置くと古い GL テクスチャを引く。engine の使い方では sprite は実行中
-	///          生き続けるので、その前提を崩す用途が出たら破棄側で clearAlbedoCache する。
+	///          置くと古い GL テクスチャを引く。engine の使い方では sprite は実行中ずっと
+	///          残るので、この前提に合わない用途が出たら破棄側で clearAlbedoCache する。
 	[[nodiscard]] GLuint albedoOf(const Material& material)
 	{
 		const Texture* tex = material.albedoTexture;
@@ -1179,7 +1179,7 @@ private:
 	}
 
 	/// @details glGetUniformLocation は WebGL では JS 境界を跨ぐ同期問い合わせで、
-	///          描画のたびに引くと数を数えられるほど効く (1 draw あたり 20 回超 ×
+	///          描画のたびに引くと目に見えて重くなる (1 draw あたり 20 回超 ×
 	///          数十 draw = 毎秒数万回)。名前はすべて文字列リテラルなので、
 	///          ポインタそのものを鍵にすれば文字列比較すら要らない。
 	[[nodiscard]] GLint loc(GLuint program, const char* name) const noexcept
@@ -1501,7 +1501,7 @@ void main()
 }
 )glsl";
 
-	/// 色 + 深度アウトラインの合成。式は DX12 の OUTLINE_POST_PS と同じ:
+	/// 色 + 深度アウトラインの合成。式は DX12 の OUTLINE_POST_PS と同じで、
 	/// 二次差分でエッジを取り、NdotV で凹面を抑え、被覆率をアルファにする。
 	static constexpr const char* kCompositeFS = R"glsl(#version 300 es
 precision highp float;
@@ -1591,7 +1591,7 @@ void main()
 	/// 超える光を保てるかどうかだけ。
 	bool m_hdrColor = false;
 	/// 多灯の uniform 名。実行時に組み立てるとポインタが毎回変わり、loc の
-	/// キャッシュが効かなくなる。リテラルで固定する。
+	/// キャッシュに当たらなくなる。リテラルで固定する。
 	struct LightUniformNames { const char *type, *pos, *dir, *col, *range, *cone; };
 	static constexpr LightUniformNames kLightUniforms[8] = {
 		{"uLightType[0]", "uLightPos[0]", "uLightDirs[0]", "uLightCols[0]", "uLightRange[0]", "uLightCos[0]"},

@@ -13,7 +13,7 @@
 ///          kSampleCount の注記を参照 (4x は特定の傾きで片側だけ段が粗くなる)。
 ///
 ///          失敗モード回避: 非対応環境では ensure() が false を返し、engine は
-///          override せず従来どおり 1x へ黙ってフォールバックする (落とさない)。
+///          override せず従来どおり 1x へ何も知らせずにフォールバックする (落とさない)。
 ///          lo-fi / 3D / postprocess 使用時は engine 側でバイパスされる。
 
 #ifdef _WIN32
@@ -31,6 +31,8 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
+#include <mitiru/gfx/dx12/Dx12FenceWait.hpp>
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/gfx/dx12/Dx12RenderTarget.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
 
@@ -46,11 +48,11 @@ public:
 	/// @brief 2D アンチエイリアスの MSAA サンプル数。
 	/// @details 8x を使う。理由: 標準 4x のサンプル配置は、辺の傾きが 0.5 (底辺幅=高さ
 	///          の二等辺三角形の斜辺など) のとき、"/" 向きの辺で被覆が {0,2,4} の 3 段に
-	///          潰れ (サンプルの水平射影が 2 値に退化する)、"\" 向きの {0,1,2,3,4} より
+	///          しかならず (サンプルの水平射影が 2 値に退化する)、"\" 向きの {0,1,2,3,4} より
 	///          明らかに粗い段になる。左右対称形なのに片側だけ階段状に見えるのはこれが原因。
 	///          8x 標準配置では同じ傾きでも射影が 8 値に分かれ ({0..8} の 9 段)、左右とも
-	///          滑らかで対称になる。8x on R8G8B8A8 は DX12 デスクトップ GPU で広く対応。
-	///          非対応環境では ensure() が false を返し 1x へ黙って落ちる (従来どおり)。
+	///          滑らかで対称になる。R8G8B8A8 での 8x は DX12 デスクトップ GPU で広く対応。
+	///          非対応環境では ensure() が false を返し 1x へ何も知らせずにフォールバックする (従来どおり)。
 	static constexpr UINT kSampleCount = 8;
 	static constexpr DXGI_FORMAT kFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
@@ -102,7 +104,7 @@ public:
 	/// @brief 描画後: override を外し、MSAA → 実バックバッファへ resolve する。
 	/// @details ResolveSubresource で全サンプルを平均し 1x バックバッファへ書く。
 	///          実バックバッファは engine の beginFrame で RENDER_TARGET 状態にあり、
-	///          resolve 後も RENDER_TARGET に戻すので後段の CEF composite / present と
+	///          resolve 後も RENDER_TARGET に戻すので後段の UI 合成 / present と
 	///          整合する (順序: 2D→resolve→CEF→present)。
 	void resolve(Dx12SwapChain* swap)
 	{
@@ -123,7 +125,7 @@ public:
 
 		m_list->ResolveSubresource(back, 0, m_tex.Get(), 0, kFormat);
 
-		// backbuffer: RESOLVE_DEST → RENDER_TARGET (CEF composite / endFrame 前提)
+		// backbuffer: RESOLVE_DEST → RENDER_TARGET (UI 合成 / endFrame 前提)
 		transitionRes(back, D3D12_RESOURCE_STATE_RESOLVE_DEST,
 		              D3D12_RESOURCE_STATE_RENDER_TARGET);
 		// MSAA: RESOLVE_SOURCE → RENDER_TARGET (次フレーム clear に備える)
@@ -172,9 +174,6 @@ private:
 		waitGpu();
 		m_tex.Reset();
 
-		D3D12_HEAP_PROPERTIES hp = {};
-		hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-
 		D3D12_RESOURCE_DESC td = {};
 		td.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		td.Width = static_cast<UINT64>(w);
@@ -189,8 +188,8 @@ private:
 		D3D12_CLEAR_VALUE cv = {};
 		cv.Format = kFormat;
 
-		if (FAILED(m_device->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &td,
-				D3D12_RESOURCE_STATE_COMMON, &cv, IID_PPV_ARGS(&m_tex)))) { return false; }
+		if (FAILED(createGpuResource(m_device, D3D12_HEAP_TYPE_DEFAULT, td,
+				D3D12_RESOURCE_STATE_COMMON, &cv, m_tex))) { return false; }
 		m_texState = D3D12_RESOURCE_STATE_COMMON;
 
 		m_device->CreateRenderTargetView(m_tex.Get(), nullptr,
@@ -233,16 +232,12 @@ private:
 	void waitGpu()
 	{
 		if (!m_fence) { return; }
-		if (m_fence->GetCompletedValue() < m_fenceVal)
-		{
-			m_fence->SetEventOnCompletion(m_fenceVal, m_fenceEvent);
-			WaitForSingleObject(m_fenceEvent, INFINITE);
-		}
+		(void)waitForFenceOrReport(m_fence.Get(), m_fenceVal, m_fenceEvent, "Dx12MsaaTarget");
 	}
 
 	ID3D12Device* m_device = nullptr;
 	ID3D12CommandQueue* m_queue = nullptr;
-	ComPtr<ID3D12Resource> m_tex;
+	GpuResource m_tex;
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	Dx12RenderTarget m_rtv;
 	ComPtr<ID3D12CommandAllocator> m_alloc;

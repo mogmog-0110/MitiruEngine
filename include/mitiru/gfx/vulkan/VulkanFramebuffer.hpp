@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file VulkanFramebuffer.hpp
-/// @brief Vulkanフレームバッファ RAII管理
-/// @details VkFramebufferをRAIIで管理する。
-///          MITIRU_HAS_VULKANが定義されている場合のみコンパイルされる。
+/// @brief Vulkan フレームバッファ RAII 管理
+/// @details VkFramebuffer を RAII で管理する。
+///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。
 
 #ifdef MITIRU_HAS_VULKAN
 
@@ -16,7 +16,7 @@ namespace mitiru::gfx
 {
 
 /// @brief フレームバッファ設定
-/// @details フレームバッファ生成パラメータを保持する。GPU不要でテスト可能。
+/// @details フレームバッファ生成パラメータを保持する。GPU 不要でテスト可能。
 struct FramebufferConfig
 {
 	uint32_t width = 0;                             ///< バッファ幅（ピクセル）
@@ -24,7 +24,7 @@ struct FramebufferConfig
 	uint32_t attachmentCount = 0;                   ///< アタッチメント数
 
 	/// @brief 設定が有効か確認する
-	/// @return 幅・高さ・アタッチメント数がすべて0より大きければtrue
+	/// @return 幅・高さ・アタッチメント数がすべて 0 より大きければ true
 	[[nodiscard]] bool isValid() const noexcept
 	{
 		return width > 0 && height > 0 && attachmentCount > 0;
@@ -57,9 +57,8 @@ struct FramebufferConfig
 	}
 };
 
-/// @brief Vulkanフレームバッファ RAIIラッパー
-/// @details VkFramebufferを単一オブジェクトとして管理する。
-///
+/// @brief Vulkan フレームバッファ RAII ラッパー
+/// @details VkFramebuffer を単一オブジェクトとして管理する。
 /// @code
 /// VulkanFramebuffer framebuffer;
 /// framebuffer.initialize(device, renderPass, { colorView, depthView }, 1280, 720);
@@ -147,7 +146,7 @@ public:
 	[[nodiscard]] VkFramebuffer handle() const noexcept { return m_framebuffer; }
 
 	/// @brief 初期化済みか確認する
-	/// @return フレームバッファが有効ならtrue
+	/// @return フレームバッファが有効なら true
 	[[nodiscard]] bool isInitialized() const noexcept { return m_framebuffer != VK_NULL_HANDLE; }
 
 private:

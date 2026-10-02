@@ -1,11 +1,11 @@
 ﻿#pragma once
 
 /// @file VulkanBuffer.hpp
-/// @brief Vulkanバッファ スタブ実装（単独ヘッダー）
-/// @details VkBufferをラップするIBuffer実装の単独ヘッダー版。
-///          VulkanDevice.hpp内のVulkanBufferと同一のスタブだが、
+/// @brief Vulkan バッファ スタブ実装（単独ヘッダー）
+/// @details VkBuffer をラップする IBuffer 実装の単独ヘッダー版。
+///          VulkanDevice.hpp 内の VulkanBuffer と同一のスタブだが、
 ///          バッファのみを使いたい場合に軽量なインクルードを提供する。
-///          MITIRU_HAS_VULKANが定義されている場合のみコンパイルされる。
+///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。
 
 #ifdef MITIRU_HAS_VULKAN
 
@@ -16,10 +16,10 @@
 namespace mitiru::gfx
 {
 
-/// @note VulkanBufferクラスはVulkanDevice.hppで定義済み。
-///       このヘッダーは、VulkanDevice.hppをインクルードせずに
-///       バッファ型のみを参照したい場合の利便性のために存在する。
-///       重複定義を避けるため、VulkanDevice.hppで定義されたクラスを使用すること。
+/// @note VulkanBuffer クラスは VulkanDevice.hpp で定義済み。
+///       このヘッダーは、VulkanDevice.hpp をインクルードせずに
+///       バッファ型のみを参照したい場合に便利なように置いてある。
+///       重複定義を避けるため、VulkanDevice.hpp で定義されたクラスを使用すること。
 
 } // namespace mitiru::gfx
 

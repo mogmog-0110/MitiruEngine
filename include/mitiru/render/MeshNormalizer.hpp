@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MeshNormalizer.hpp
-/// @brief メッシュの自動正規化。サイズ統一、底面y=0合わせ、Y-up統一
+/// @brief メッシュの自動正規化。サイズ統一、底面 y=0 合わせ、Y-up 統一
 
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/Vertex3D.hpp>
@@ -38,19 +38,19 @@ struct MeshBounds
 };
 
 /// @brief メッシュ正規化ユーティリティ
-/// @details OBJ等から読み込んだメッシュを統一的なサイズ・座標系に変換する。
+/// @details OBJ 等から読み込んだメッシュを統一的なサイズ・座標系に変換する。
 ///
 /// @code
 /// auto mesh = mitiru::render::loadObj("model.obj");
 /// mitiru::render::MeshNormalizer::normalize(mesh, 1.0f);
-/// // mesh は最大寸法1.0、底面y=0、XZ中央揃えになる
+/// // mesh は最大寸法 1.0、底面 y=0、XZ 中央揃えになる
 /// @endcode
 class MeshNormalizer
 {
 public:
 	/// @brief メッシュのバウンディングボックスを計算する
 	/// @param mesh 対象メッシュ
-	/// @return バウンディングボックス（頂点が0個の場合はゼロ初期化）
+	/// @return バウンディングボックス（頂点が 0 個の場合はゼロ初期化）
 	[[nodiscard]] static MeshBounds computeBounds(const Mesh& mesh)
 	{
 		const auto& verts = mesh.vertices();
@@ -78,11 +78,11 @@ public:
 		return bounds;
 	}
 
-	/// @brief メッシュを正規化する（サイズ統一 + 底面y=0 + 中央揃え）
+	/// @brief メッシュを正規化する（サイズ統一 + 底面 y=0 + 中央揃え）
 	/// @param mesh 対象メッシュ（変更される）
 	/// @param targetSize 正規化後の最大寸法（デフォルト: 1.0）
-	/// @param centerXZ true=XZ平面の中心を(0,0)に合わせる
-	/// @param bottomY0 true=底面のY座標を0に合わせる
+	/// @param centerXZ true=XZ 平面の中心を (0,0) に合わせる
+	/// @param bottomY0 true=底面の Y 座標を 0 に合わせる
 	static void normalize(Mesh& mesh, float targetSize = 1.0f,
 	                      bool centerXZ = true, bool bottomY0 = true)
 	{
@@ -101,14 +101,14 @@ public:
 
 		for (auto& v : verts)
 		{
-			// XZ中央揃え
+			// XZ 中央揃え
 			if (centerXZ)
 			{
 				v.position.x -= c.x;
 				v.position.z -= c.z;
 			}
 
-			// 底面y=0合わせ
+			// 底面 y=0 合わせ
 			if (bottomY0)
 			{
 				v.position.y -= bounds.min.y;
@@ -127,9 +127,9 @@ public:
 		mesh.setVertices(std::move(verts));
 	}
 
-	/// @brief Z-upモデルをY-upに変換する（Blender等からの読み込み対応）
+	/// @brief Z-up モデルを Y-up に変換する（Blender 等からの読み込み対応）
 	/// @param mesh 対象メッシュ（変更される）
-	/// @details Z-up座標系（Blender標準）からY-up座標系（エンジン標準）に変換する。
+	/// @details Z-up 座標系（Blender 標準）から Y-up 座標系（エンジン標準）に変換する。
 	///          位置と法線の両方を変換する。変換: (x, y, z) -> (x, z, -y)
 	static void convertZUpToYUp(Mesh& mesh)
 	{

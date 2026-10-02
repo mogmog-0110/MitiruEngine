@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file I18nBridge.hpp
-/// @brief sgc 多言語対応統合ブリッジ
-/// @details sgcのLanguageManagerとStringTableをMitiruエンジンに統合する。
-///          言語の登録・切り替え・翻訳テキスト取得を管理する。
+/// @brief sgc の多言語対応を統合するブリッジ
+/// @details sgc の LanguageManager と StringTable を Mitiru エンジンに統合する。
+///          言語の登録・切り替え・翻訳テキストの取得を管理する。
 
 #include <string>
 #include <vector>
@@ -51,7 +51,7 @@ public:
 
 	/// @brief キーに対応する翻訳テキストを取得する
 	/// @param key キー文字列
-	/// @return 翻訳テキスト（言語未設定またはキー不在なら"[MISSING]"）
+	/// @return 翻訳テキスト（言語が未設定、またはキーが存在しない場合は "[MISSING]"）
 	[[nodiscard]] std::string translate(const std::string& key) const
 	{
 		return m_manager.get(key);
@@ -64,7 +64,7 @@ public:
 		return m_manager.currentLanguage();
 	}
 
-	/// @brief 登録済み言語コード一覧を取得する
+	/// @brief 登録済みの言語コード一覧を取得する
 	/// @return 言語コードのベクター
 	[[nodiscard]] std::vector<std::string> availableLanguages() const
 	{
@@ -73,8 +73,8 @@ public:
 
 	// ── シリアライズ ──────────────────────────────────────────
 
-	/// @brief 多言語状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief 多言語の状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		const auto langs = m_manager.availableLanguages();

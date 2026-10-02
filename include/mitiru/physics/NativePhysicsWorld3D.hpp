@@ -6,8 +6,8 @@
 /// `mitiru::nativephys::NativePhysicsWorld`（`scene::ISystem` 統合を前提にした
 /// `NativePhysicsBridge.hpp` とは別に、ワールドを直接 step/raycast したい用途向け）
 /// を包む。`overlapBox` は wrapper 側に無いため `native()` エスケープハッチ経由で
-/// `ne::PhysicsWorld::overlapBox` を直接呼ぶ。周期境界を跨ぐ raycast/overlapは
-/// NativeEngine側が既に処理するので、呼ぶだけでよい（`native_physics_world.hpp`
+/// `ne::PhysicsWorld::overlapBox` を直接呼ぶ。周期境界を跨ぐ raycast/overlap は
+/// NativeEngine 側が既に処理するので、呼ぶだけでよい（`native_physics_world.hpp`
 /// の「scene queries (PBC-aware, layer-filtered)」を参照）。
 ///
 /// `MITIRU_HAS_NATIVEPHYS` が未定義のビルドではこのクラス自体が存在しない
@@ -32,8 +32,8 @@ public:
 	explicit NativePhysicsWorld3D(bool periodic = false, float periodicHalf = 25.0f)
 	{
 		m_world.setGravity(m_gravity);
-		// 既定は開いた世界。言わないとbackend既定の反射壁が見えない障害物として残る
-		// (NativePhysicsBridge.hppのNativePhysicsSystemコンストラクタと同じ理由)
+		// 既定は開いた世界。指定しないと backend 既定の反射壁が見えない障害物として残る
+		// (NativePhysicsBridge.hpp の NativePhysicsSystem コンストラクタと同じ理由)
 		if (periodic) m_world.setPeriodicBox(periodicHalf, true);
 		else m_world.setOpenBoundary(true);
 	}
@@ -105,6 +105,8 @@ public:
 			d.radius = desc.radius;
 			d.halfHeight = desc.halfHeight;
 			break;
+		case BodyDesc::Shape::Mesh:
+			return kInvalidBodyId;  // NativeEngine は凸形状だけを持つ
 		}
 		d.position = desc.position;
 		d.rotation = desc.rotation;
@@ -132,13 +134,13 @@ public:
 	}
 
 private:
-	// native()がconstでない（NativeEngine側のAPI形）ため、overlapBox()をconstのまま
-	// 呼べるようにmutableにする。他メソッドは全てNativePhysicsWorld側のconst APIで足りる
+	// native()が const でない（NativeEngine 側の API 形）ため、overlapBox()を const のまま
+	// 呼べるように mutable にする。他メソッドは全て NativePhysicsWorld 側の const API で足りる
 	mutable nativephys::NativePhysicsWorld m_world;
 	sgc::Vec3f m_gravity{0.0f, -9.81f, 0.0f};
 
-	/// @brief 生成済みボディの集合（`bodyTransform()`の存在確認用。
-	/// NativeEngineに「このIDは有効か」を問うAPIが無いための自前台帳）
+	/// @brief 生成済みボディの集合（`bodyTransform()` の存在確認用。
+	/// NativeEngine に「この ID は有効か」を問う API が無いための自前台帳）
 	std::unordered_set<nativephys::BodyId> m_liveBodies;
 };
 

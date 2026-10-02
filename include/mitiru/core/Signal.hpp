@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Signal.hpp
-/// @brief Godot風Signal/Slotイベントシステム
-/// @details 型安全なイベント通信。connect/emit/disconnectパターン。
+/// @brief Godot 風 Signal/Slot イベントシステム
+/// @details 型安全なイベント通信。connect/emit/disconnect パターン。
 ///          任意の引数型をサポートし、複数のスロットに同時配信する。
 ///
 /// @code
@@ -30,12 +30,12 @@ public:
 	/// @brief スロット関数型
 	using Slot = std::function<void(Args...)>;
 
-	/// @brief スロットID型
+	/// @brief スロット ID 型
 	using SlotId = uint32_t;
 
 	/// @brief スロットを接続する
 	/// @param slot コールバック関数
-	/// @return 接続ID（disconnect用）
+	/// @return 接続 ID（disconnect 用）
 	SlotId connect(Slot slot)
 	{
 		const SlotId id = m_nextId++;
@@ -44,7 +44,7 @@ public:
 	}
 
 	/// @brief スロットを切断する
-	/// @param id connect()が返したID
+	/// @param id connect() が返した ID
 	void disconnect(SlotId id)
 	{
 		m_slots.erase(id);
@@ -61,7 +61,7 @@ public:
 	/// @note スロット内からの connect/disconnect に対して安全
 	void emit(Args... args) const
 	{
-		/// コールバック中のconnect/disconnectによるiterator invalidation対策
+		/// コールバック中の connect/disconnect による iterator invalidation 対策
 		const auto snapshot = m_slots;
 		for (const auto& [id, slot] : snapshot)
 		{

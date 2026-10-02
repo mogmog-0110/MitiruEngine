@@ -2,19 +2,22 @@
 
 /// @file Prefab.hpp
 /// @brief エンティティテンプレート（プレハブ）
-/// @details JSONデータからエンティティを生成するためのテンプレートシステム。
-///          コンポーネントのデータをJSON文字列として保持する。
+/// @details JSON データからエンティティを生成するためのテンプレートシステム。
+///          コンポーネントのデータを JSON 文字列として保持する。
 
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+
+#include <nlohmann/json.hpp>
 
 namespace mitiru::ecs
 {
 
 /// @brief プレハブコンポーネント定義
-/// @details コンポーネント名とそのJSON形式のデータを保持する。
+/// @details コンポーネント名と、その JSON 形式のデータを保持する。
 struct PrefabComponent
 {
 	std::string name;       ///< コンポーネント名（例: "Position", "Velocity"）
@@ -50,7 +53,7 @@ public:
 
 	/// @brief 名前でプレハブを取得する
 	/// @param name プレハブ名
-	/// @return プレハブ（存在しない場合はnullopt）
+	/// @return プレハブ（存在しない場合は nullopt）
 	[[nodiscard]] std::optional<Prefab> get(const std::string& name) const
 	{
 		const auto it = m_prefabs.find(name);
@@ -89,49 +92,39 @@ public:
 		return names;
 	}
 
-	/// @brief プレハブをJSON文字列に変換する
-	/// @param prefab 対象プレハブ
-	/// @return JSON形式の文字列
+	/// @brief プレハブを JSON 文字列に変換する
+	/// @details jsonData は JSON として埋め込む。JSON として読めないデータは null になる。
 	[[nodiscard]] static std::string toJson(const Prefab& prefab)
 	{
-		std::string json;
-		json += "{";
-		json += "\"name\":\"" + prefab.name + "\",";
-		json += "\"components\":[";
-		for (std::size_t i = 0; i < prefab.components.size(); ++i)
+		nlohmann::ordered_json components = nlohmann::ordered_json::array();
+		for (const auto& comp : prefab.components)
 		{
-			if (i > 0)
-			{
-				json += ",";
-			}
-			const auto& comp = prefab.components[i];
-			json += "{\"name\":\"" + comp.name + "\",\"data\":" + comp.jsonData + "}";
+			auto data = nlohmann::ordered_json::parse(comp.jsonData, nullptr, false);
+			if (data.is_discarded()) { data = nullptr; }
+			components.push_back({{"name", comp.name}, {"data", std::move(data)}});
 		}
-		json += "]";
-		json += "}";
-		return json;
+		return nlohmann::ordered_json{{"name", prefab.name}, {"components", std::move(components)}}.dump();
 	}
 
-	/// @brief JSON文字列からプレハブを構築する（簡易パーサー）
-	/// @param jsonStr JSON形式の文字列
-	/// @return 構築されたプレハブ
-	/// @note 簡易実装のため、正規のJSONパーサーではない
+	/// @brief JSON 文字列からプレハブを構築する。読めない JSON からは空のプレハブを返す。
 	[[nodiscard]] static Prefab fromJson(const std::string& jsonStr)
 	{
 		Prefab prefab;
-
-		/// "name":"..." の抽出
-		const auto nameKey = jsonStr.find("\"name\":\"");
-		if (nameKey != std::string::npos)
+		const auto doc = nlohmann::ordered_json::parse(jsonStr, nullptr, false);
+		if (!doc.is_object()) return prefab;
+		if (const auto name = doc.find("name"); name != doc.end() && name->is_string())
 		{
-			const auto nameStart = nameKey + 8;
-			const auto nameEnd = jsonStr.find('"', nameStart);
-			if (nameEnd != std::string::npos)
-			{
-				prefab.name = jsonStr.substr(nameStart, nameEnd - nameStart);
-			}
+			prefab.name = name->get<std::string>();
 		}
-
+		const auto components = doc.find("components");
+		if (components == doc.end() || !components->is_array()) return prefab;
+		for (const auto& comp : *components)
+		{
+			const auto name = comp.is_object() ? comp.find("name") : comp.end();
+			if (!comp.is_object() || name == comp.end() || !name->is_string()) continue;
+			const auto data = comp.find("data");
+			prefab.components.push_back({name->get<std::string>(), data == comp.end() ? "null" : data->dump()});
+		}
 		return prefab;
 	}
 

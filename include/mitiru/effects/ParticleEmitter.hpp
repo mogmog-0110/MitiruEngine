@@ -44,7 +44,7 @@ struct EmissionBurst
 };
 
 /// @brief ライフタイムカーブ上のキーフレーム
-/// @details 0.0〜1.0の正規化ライフタイムに対する値を定義する。
+/// @details 0.0〜1.0 の正規化ライフタイムに対する値を定義する。
 struct CurveKey
 {
 	float t = 0.0f;     ///< 正規化時刻（0.0〜1.0）
@@ -52,8 +52,8 @@ struct CurveKey
 };
 
 /// @brief パラメトリックカーブ（線形補間）
-/// @details ライフタイム全体にわたる値変化を定義する。
-///          キーが空の場合はデフォルト値1.0を返す。
+/// @details ライフタイム全体にわたる値の変化を定義する。
+///          キーが空の場合はデフォルト値 1.0 を返す。
 struct ParameterCurve
 {
 	static constexpr std::size_t MAX_KEYS = 8; ///< 最大キー数
@@ -86,7 +86,7 @@ struct ParameterCurve
 			return keys[0].value;
 		}
 
-		/// t以下の最大キーと、tより大きい最小キーを探す
+		/// t 以下の最大キーと、t より大きい最小キーを探す
 		if (t <= keys[0].t)
 		{
 			return keys[0].value;
@@ -116,25 +116,25 @@ struct ParameterCurve
 
 /// @brief パーティクルエミッター設定
 /// @details パーティクルの放出形状・レート・初期パラメータ・
-///          ライフタイムカーブを統合管理する。
+///          ライフタイムカーブをまとめて管理する。
 struct ParticleEmitter
 {
 	// ── 放出形状 ──────────────────────────────────
 	EmissionShape shape = EmissionShape::Point;  ///< 放出形状
 
-	/// @name Sphere設定
+	/// @name Sphere 設定
 	/// @{
 	float sphereRadius = 1.0f;  ///< 球の半径
 	/// @}
 
-	/// @name Cone設定
+	/// @name Cone 設定
 	/// @{
 	float coneAngle = 0.523599f;  ///< コーン半角（ラジアン、デフォルト30度）
 	float coneRadius = 0.0f;      ///< コーン底面半径（0でポイント放出）
 	sgc::Vec3f coneDirection{0, 1, 0};  ///< コーン方向
 	/// @}
 
-	/// @name Box設定
+	/// @name Box 設定
 	/// @{
 	sgc::Vec3f boxHalfExtents{1, 1, 1};  ///< ボックス半径
 	/// @}

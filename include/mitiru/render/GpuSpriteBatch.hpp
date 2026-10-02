@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file GpuSpriteBatch.hpp
-/// @brief DX11 GPU加速2Dスプライトバッチ
-/// @details テクスチャ付きクワッドをバッチ描画するGPUパイプライン。
+/// @brief DX11 GPU 加速 2D スプライトバッチ
+/// @details テクスチャ付きクワッドをバッチ描画する GPU パイプライン。
 ///          動的頂点バッファ・テクスチャ切り替え時フラッシュ・
 ///          アルファブレンド・バイリニアフィルタリングをサポートする。
 ///          実装本体は detail/GpuSpriteBatch_impl.hpp。
@@ -40,7 +40,7 @@ namespace mitiru::render
 
 // ─── HLSL Shaders ──────────────────────────────────────────
 
-/// @brief テクスチャ対応2D頂点シェーダーのHLSLソース
+/// @brief テクスチャ対応 2D 頂点シェーダーの HLSL ソース
 constexpr std::string_view GPU_SPRITE_VS = R"hlsl(
 cbuffer Constants : register(b0)
 {
@@ -71,7 +71,7 @@ VSOutput VSMain(VSInput input)
 }
 )hlsl";
 
-/// @brief テクスチャサンプリング対応2DピクセルシェーダーのHLSLソース
+/// @brief テクスチャサンプリング対応 2D ピクセルシェーダーの HLSL ソース
 constexpr std::string_view GPU_SPRITE_PS = R"hlsl(
 Texture2D    tex  : register(t0);
 SamplerState samp : register(s0);
@@ -110,9 +110,9 @@ enum class SamplerMode : std::uint8_t
 
 // ─── GpuTexture2D ──────────────────────────────────────────
 
-/// @brief GPU側2Dテクスチャ
-/// @details RGBA8ピクセルデータからID3D11Texture2D+SRVを生成する。
-///          1x1白ピクセルのデフォルトテクスチャ生成もサポートする。
+/// @brief GPU 側 2D テクスチャ
+/// @details RGBA8 ピクセルデータから ID3D11Texture2D+SRV を生成する。
+///          1x1 白ピクセルのデフォルトテクスチャ生成もサポートする。
 class GpuTexture2D
 {
 public:
@@ -122,11 +122,11 @@ public:
 	/// @brief デフォルトコンストラクタ（空テクスチャ）
 	GpuTexture2D() noexcept = default;
 
-	/// @brief RGBAピクセルデータからテクスチャを生成する
-	/// @param device D3D11デバイス
+	/// @brief RGBA ピクセルデータからテクスチャを生成する
+	/// @param device D3D11 デバイス
 	/// @param width テクスチャ幅
 	/// @param height テクスチャ高さ
-	/// @param pixels RGBA8形式のピクセルデータ
+	/// @param pixels RGBA8 形式のピクセルデータ
 	/// @return 生成されたテクスチャ
 	[[nodiscard]] static GpuTexture2D createFromPixels(
 		ID3D11Device* device,
@@ -190,9 +190,9 @@ public:
 		return tex;
 	}
 
-	/// @brief render::Textureからテクスチャを生成する
-	/// @param device D3D11デバイス
-	/// @param texture ソーステクスチャ（RGBA8ピクセルバッファ）
+	/// @brief render::Texture からテクスチャを生成する
+	/// @param device D3D11 デバイス
+	/// @param texture ソーステクスチャ（RGBA8 ピクセルバッファ）
 	/// @return 生成されたテクスチャ
 	template <typename TextureT>
 	[[nodiscard]] static GpuTexture2D createFromTexture(
@@ -208,9 +208,9 @@ public:
 				texture.pixels().size()));
 	}
 
-	/// @brief 1x1白ピクセルのデフォルトテクスチャを生成する
-	/// @param device D3D11デバイス
-	/// @return 1x1白テクスチャ
+	/// @brief 1x1 白ピクセルのデフォルトテクスチャを生成する
+	/// @param device D3D11 デバイス
+	/// @return 1x1 白テクスチャ
 	[[nodiscard]] static GpuTexture2D createWhitePixel(
 		ID3D11Device* device)
 	{
@@ -248,9 +248,9 @@ private:
 
 // ─── GpuSpriteBatchVertex ──────────────────────────────────
 
-/// @brief GPUスプライトバッチ用パック頂点
-/// @details pos(float2) + uv(float2) + color(uint32 ABGR) の20バイト頂点。
-///          ただしHLSLシェーダーとの互換性のためfloat4色を使用する。
+/// @brief GPU スプライトバッチ用パック頂点
+/// @details pos(float2) + uv(float2) + color(uint32 ABGR) の 20 バイト頂点。
+///          ただし HLSL シェーダーとの互換性のため float4 色を使う。
 struct GpuSpriteBatchVertex
 {
 	float x = 0.0f;      ///< スクリーン座標X
@@ -265,9 +265,9 @@ struct GpuSpriteBatchVertex
 
 // ─── GpuSpriteBatch ────────────────────────────────────────
 
-/// @brief DX11 GPU加速2Dスプライトバッチ
-/// @details テクスチャ付きクワッドをバッチ蓄積し、テクスチャ切り替え時または
-///          end()呼び出し時にフラッシュしてGPU描画を行う。
+/// @brief DX11 GPU 加速 2D スプライトバッチ
+/// @details テクスチャ付きクワッドをバッチに溜め、テクスチャ切り替え時または
+///          end() 呼び出し時にフラッシュして GPU 描画を行う。
 ///
 /// @code
 /// GpuSpriteBatch batch;
@@ -287,9 +287,9 @@ public:
 	/// @brief デフォルトコンストラクタ
 	GpuSpriteBatch() noexcept = default;
 
-	/// @brief GPUリソースを初期化する
-	/// @param device D3D11デバイス
-	/// @param maxSprites 最大スプライト数（デフォルト4096）
+	/// @brief GPU リソースを初期化する
+	/// @param device D3D11 デバイス
+	/// @param maxSprites 最大スプライト数（デフォルト 4096）
 	void init(ID3D11Device* device, int maxSprites = 4096)
 	{
 		if (!device || maxSprites <= 0)
@@ -310,18 +310,18 @@ public:
 		createSamplerStates();
 		createRasterizerState();
 
-		/// 1x1白ピクセルのデフォルトテクスチャを生成する
+		/// 1x1 白ピクセルのデフォルトテクスチャを生成する
 		m_whiteTexture = GpuTexture2D::createWhitePixel(device);
 
 		m_initialized = true;
 	}
 
-	/// @brief バッチ蓄積を開始する
-	/// @param context D3D11デバイスコンテキスト
+	/// @brief バッチへの蓄積を開始する
+	/// @param context D3D11 デバイスコンテキスト
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
-	/// @param blendMode ブレンドモード（デフォルトAlphaBlend）
-	/// @param samplerMode サンプリングモード（デフォルトBilinear）
+	/// @param blendMode ブレンドモード（デフォルト AlphaBlend）
+	/// @param samplerMode サンプリングモード（デフォルト Bilinear）
 	void begin(ID3D11DeviceContext* context,
 	           float screenW, float screenH,
 	           SpriteBlendMode blendMode = SpriteBlendMode::AlphaBlend,
@@ -348,13 +348,13 @@ public:
 	}
 
 	/// @brief テクスチャ付きスプライトを描画する
-	/// @param textureSrv テクスチャのSRV（nullptrでデフォルト白テクスチャ）
-	/// @param srcX ソース矩形X（テクスチャピクセル座標）
-	/// @param srcY ソース矩形Y
+	/// @param textureSrv テクスチャの SRV（nullptr でデフォルト白テクスチャ）
+	/// @param srcX ソース矩形 X（テクスチャピクセル座標）
+	/// @param srcY ソース矩形 Y
 	/// @param srcW ソース矩形幅
 	/// @param srcH ソース矩形高さ
-	/// @param dstX 描画先矩形X（スクリーン座標）
-	/// @param dstY 描画先矩形Y
+	/// @param dstX 描画先矩形 X（スクリーン座標）
+	/// @param dstY 描画先矩形 Y
 	/// @param dstW 描画先矩形幅
 	/// @param dstH 描画先矩形高さ
 	/// @param r 乗算色 赤 [0,1]
@@ -389,8 +389,8 @@ public:
 			flush();
 		}
 
-		/// テクスチャサイズを取得してUV正規化する
-		/// SRVからリソースを取得する
+		/// テクスチャサイズを取得して UV を正規化する
+		/// SRV からリソースを取得する
 		float u0 = srcX;
 		float v0 = srcY;
 		float u1 = srcX + srcW;
@@ -432,11 +432,11 @@ public:
 		++m_spriteCount;
 	}
 
-	/// @brief 正規化UV座標でスプライトを描画する
-	/// @param textureSrv テクスチャのSRV
-	/// @param srcUV ソースUV矩形 {u0, v0, u1, v1} [0,1]
-	/// @param dstX 描画先矩形X
-	/// @param dstY 描画先矩形Y
+	/// @brief 正規化 UV 座標でスプライトを描画する
+	/// @param textureSrv テクスチャの SRV
+	/// @param srcUV ソース UV 矩形 {u0, v0, u1, v1} [0,1]
+	/// @param dstX 描画先矩形 X
+	/// @param dstY 描画先矩形 Y
 	/// @param dstW 描画先矩形幅
 	/// @param dstH 描画先矩形高さ
 	/// @param r 乗算色 赤
@@ -486,8 +486,8 @@ public:
 	}
 
 	/// @brief 塗りつぶし矩形を描画する（デフォルト白テクスチャ使用）
-	/// @param dstX 矩形X
-	/// @param dstY 矩形Y
+	/// @param dstX 矩形 X
+	/// @param dstY 矩形 Y
 	/// @param dstW 矩形幅
 	/// @param dstH 矩形高さ
 	/// @param r 色 赤
@@ -541,7 +541,7 @@ public:
 		return m_initialized;
 	}
 
-	/// @brief 最後のbegin/end間のフラッシュ回数を取得する
+	/// @brief 最後の begin/end 間のフラッシュ回数を取得する
 	[[nodiscard]] int flushCount() const noexcept
 	{
 		return m_flushCount;
@@ -558,7 +558,7 @@ private:
 
 	// ─── シェーダーコンパイル ───────────────────────────────
 
-	/// @brief HLSL文字列をコンパイルする
+	/// @brief HLSL 文字列をコンパイルする
 	[[nodiscard]] ComPtr<ID3DBlob> compileHLSL(
 		std::string_view source,
 		const char* entryPoint,
@@ -569,7 +569,7 @@ private:
 
 	// ─── リソース生成 ─────────────────────────────────────
 
-	/// @brief GpuSpriteBatchVertex用の入力レイアウトを生成する
+	/// @brief GpuSpriteBatchVertex 用の入力レイアウトを生成する
 	void createInputLayout();
 
 	/// @brief 動的頂点バッファを生成する
@@ -587,7 +587,7 @@ private:
 	/// @brief 各サンプリングモード用のサンプラーステートを生成する
 	void createSamplerStates();
 
-	/// @brief 2D描画用ラスタライザステートを生成する
+	/// @brief 2D 描画用ラスタライザステートを生成する
 	void createRasterizerState();
 
 	// ─── 描画ヘルパー ─────────────────────────────────────
@@ -595,12 +595,12 @@ private:
 	/// @brief 正射影行列を定数バッファに書き込む
 	void updateProjection(float width, float height);
 
-	/// @brief 軸整列クワッドの4頂点を蓄積する
+	/// @brief 軸整列クワッドの 4 頂点を蓄積する
 	void pushQuad(float dstX, float dstY, float dstW, float dstH,
 	              float u0, float v0, float u1, float v1,
 	              float r, float g, float b, float a);
 
-	/// @brief 回転済みクワッドの4頂点を蓄積する
+	/// @brief 回転済みクワッドの 4 頂点を蓄積する
 	void pushQuadRotated(float dstX, float dstY,
 	                     float dstW, float dstH,
 	                     float u0, float v0,
@@ -608,7 +608,7 @@ private:
 	                     float r, float g, float b, float a,
 	                     float rotation);
 
-	/// @brief 蓄積された頂点をGPUに送信して描画する
+	/// @brief 蓄積された頂点を GPU に送信して描画する
 	void flush();
 
 	// ─── メンバ ───────────────────────────────────────────

@@ -28,7 +28,7 @@ enum class ShaderMode3D : uint8_t
 
 /// @brief ポストプロセスアウトラインのモード
 /// @details ISceneFx::setOutlineMode() で切り替える。
-///          DX12では全モードが実装され、DX11ではno-opとなる。
+///          DX12 では全モードが実装され、DX11 では no-op となる。
 enum class OutlineMode : int
 {
 	DepthSobel     = 0,  ///< 深度Sobel（線形化）— デフォルト

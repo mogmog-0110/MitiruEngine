@@ -19,6 +19,7 @@
 
 #include <mitiru/module/FieldAttr.hpp>
 #include <mitiru/module/Game.hpp>  // ReflectionOf / ModuleApi / FieldDescriptor / detail::registerReflection
+#include <mitiru/module/PodLayout.hpp>  // FieldTypeAt / paddingBytes
 #include <mitiru/module/detail/AutoReflectBind.hpp>
 #include <mitiru/module/detail/AutoReflectCount.hpp>
 
@@ -77,9 +78,6 @@ template<class T, std::size_t I>
 	const auto* mem  = reinterpret_cast<const unsigned char*>(&ref);
 	return static_cast<std::uint32_t>(mem - base);
 }
-
-template<class T, std::size_t I>
-using FieldTypeAt = std::remove_cv_t<std::remove_reference_t<decltype(std::get<I>(tieFields(fakeObject<T>)))>>;
 
 template<class M>
 inline constexpr bool isDirectlyReflectable =
@@ -216,7 +214,7 @@ void collectOneField(
 			if constexpr (ScalarTag<E>::tag == nullptr && isNestedAggregateReflectable<E>)
 			{
 				// 要素 struct をフィールド固有の合成型名で schema に登録する。親型名も含めないと、別の型が
-				// 同名の FixedVec<struct> フィールドを持つ時に同じ名前で登録され、後の型が前の schema を掴む。
+				// 同名の FixedVec<struct> フィールドを持つ時に同じ名前で登録され、後の型が前の schema を参照してしまう。
 				const std::string synthetic = registerElementSchema<E>(
 					std::string("Auto$") + (rangeTypeName != nullptr ? std::string(rangeTypeName) + "." : std::string{}) + fullName);
 				copyTag(d.elemType, sizeof(d.elemType), synthetic.c_str());
@@ -262,7 +260,7 @@ void collectOneField(
 	}
 	else if constexpr (std::is_array_v<M> && std::rank_v<M> == 1)
 	{
-		// `_pad` で始まる配列は schema から除き、`reflectFields[128]` の消費を防ぐ。
+		// `_pad` で始まる配列は記述子に展開しない (中身の無い field で inspector と差分が埋まるため)。
 		// padding の計算には `sizeof(M)` を使うため、検出結果には影響しない。
 		if (name.size() >= 4 && name.compare(0, 4, "_pad") == 0) { return; }
 
@@ -332,89 +330,46 @@ std::string registerElementSchema(const std::string& syntheticName)
 }
 
 // ── GameMemory の padding 検出 ──
-// padding の不定値による録画再生の不一致を検出する。
-// `sizeof(T)` と全リーフフィールドの byte 数の差を padding とみなす。
-// ネストした aggregate とその配列だけ再帰し、それ以外は `sizeof(M)` で数える。
+// 数え方は PodLayout.hpp (paddingBytes) と同じ。ここでは警告文に載せるフィールドの経路を名前で引く。
 
 template<class T>
-constexpr std::size_t reflectedLeafBytesOf() noexcept;
+bool findPaddingPath(const std::string& prefix, std::string& out);
 
 template<class M>
-constexpr std::size_t reflectedLeafBytesOfField() noexcept
+bool findPaddingPathInField(const std::string& path, std::string& out)
 {
-	if constexpr (std::is_array_v<M> && std::rank_v<M> == 1)
+	using Leaf = std::remove_all_extents_t<M>;
+	// 隙間を含まないフィールドの中は実体化しない (PodArena のような大きい型の名前引きを避ける)。
+	if constexpr (isLayoutAggregate<Leaf> && sizeof(Leaf) != valueBytesOf<Leaf>())
 	{
-		using Elem = std::remove_extent_t<M>;
-		if constexpr (isNestedAggregateReflectable<Elem>)
-		{
-			return std::extent_v<M> * reflectedLeafBytesOf<Elem>();
-		}
-		else { return sizeof(M); }  // C 配列は要素間に padding が無い
+		// 配列は先頭要素の中を見れば足りる (要素はすべて同じ型で、詰め物の位置も同じ)。
+		const std::string inner = std::is_array_v<M> ? path + "[]." : path + ".";
+		return findPaddingPath<Leaf>(inner, out);
 	}
-	else if constexpr (isNestedAggregateReflectable<M>) { return reflectedLeafBytesOf<M>(); }
-	else { return sizeof(M); }
+	else { (void)path; (void)out; return false; }
 }
 
 template<class T, std::size_t... I>
-constexpr std::size_t reflectedLeafBytesOfImpl(std::index_sequence<I...>) noexcept
+bool findPaddingPathImpl(const std::string& prefix, std::string& out, std::index_sequence<I...>)
 {
-	return (reflectedLeafBytesOfField<FieldTypeAt<T, I>>() + ... + std::size_t{0});
-}
-
-template<class T>
-constexpr std::size_t reflectedLeafBytesOf() noexcept
-{
-	return reflectedLeafBytesOfImpl<T>(std::make_index_sequence<fieldCount<T>>{});
-}
-
-/// padding の探索に使うリーフ。名前は `outer.inner` 形式、範囲は絶対 offset の `[begin,end)`。
-struct PaddingProbeEntry { std::string name; std::uint32_t begin; std::uint32_t end; };
-
-template<class T>
-void collectPaddingProbe(std::uint32_t baseOffset, const std::string& prefix, std::vector<PaddingProbeEntry>& out);
-
-template<class T, std::size_t I>
-void collectOnePaddingProbe(std::vector<PaddingProbeEntry>& out, std::uint32_t baseOffset, const std::string& prefix)
-{
-	using M = FieldTypeAt<T, I>;
-	constexpr std::string_view extracted = fieldNameOf<T, I>();
-	std::string name;
-	if (!extracted.empty()) { name.assign(extracted); }
-	else { char fallback[16]; std::snprintf(fallback, sizeof(fallback), "field%zu", I); name = fallback; }
-
-	const std::uint32_t offset   = baseOffset + fieldOffsetOf<T, I>();
-	const std::string   fullName = prefix + name;
-
-	if constexpr (std::is_array_v<M> && std::rank_v<M> == 1 && isNestedAggregateReflectable<std::remove_extent_t<M>>)
+	constexpr LocalGap gap = firstLocalGap<T>();
+	if constexpr (gap.bytes > 0)
 	{
-		using Elem = std::remove_extent_t<M>;
-		for (std::size_t k = 0; k < std::extent_v<M>; ++k)
-		{
-			collectPaddingProbe<Elem>(offset + static_cast<std::uint32_t>(k * sizeof(Elem)),
-				fullName + "." + std::to_string(k) + ".", out);
-		}
-	}
-	else if constexpr (isNestedAggregateReflectable<M>)
-	{
-		collectPaddingProbe<M>(offset, fullName + ".", out);
+		constexpr std::string_view name = fieldNameOf<T, gap.fieldIndex>();
+		out = prefix + std::string(name.empty() ? std::string_view{"?"} : name);
+		return true;
 	}
 	else
 	{
-		out.push_back(PaddingProbeEntry{ fullName, offset, offset + static_cast<std::uint32_t>(sizeof(M)) });
+		return (findPaddingPathInField<FieldTypeAt<T, I>>(prefix + std::string(fieldNameOf<T, I>()), out) || ...);
 	}
 }
 
-template<class T, std::size_t... I>
-void collectPaddingProbeImpl(std::uint32_t baseOffset, const std::string& prefix,
-	std::vector<PaddingProbeEntry>& out, std::index_sequence<I...>)
-{
-	(collectOnePaddingProbe<T, I>(out, baseOffset, prefix), ...);
-}
-
+/// 最初に見つかった隙間の直前のフィールドを `outer.inner` 形式で返す。
 template<class T>
-void collectPaddingProbe(std::uint32_t baseOffset, const std::string& prefix, std::vector<PaddingProbeEntry>& out)
+bool findPaddingPath(const std::string& prefix, std::string& out)
 {
-	collectPaddingProbeImpl<T>(baseOffset, prefix, out, std::make_index_sequence<fieldCount<T>>{});
+	return findPaddingPathImpl<T>(prefix, out, std::make_index_sequence<fieldCount<T>>{});
 }
 
 /// padding があれば `warnOnce` で起動時に 1 件だけ警告する。
@@ -422,32 +377,18 @@ void collectPaddingProbe(std::uint32_t baseOffset, const std::string& prefix, st
 template<class T>
 void warnIfGameMemoryPadding(const char* typeName)
 {
-	constexpr std::size_t leafBytes  = reflectedLeafBytesOf<T>();
-	constexpr std::size_t totalBytes = sizeof(T);
-	if constexpr (totalBytes > leafBytes)
+	constexpr std::size_t padding = paddingBytes<T>();
+	if constexpr (padding > 0)
 	{
-		std::vector<PaddingProbeEntry> entries;
-		collectPaddingProbe<T>(0, "", entries);
-		std::sort(entries.begin(), entries.end(),
-			[](const PaddingProbeEntry& a, const PaddingProbeEntry& b) { return a.begin < b.begin; });
-
-		// 先頭からフィールドをたどり、最初のギャップの直前にあるフィールドを特定する。
-		std::string   afterField = "先頭";
-		std::uint32_t expected   = 0;
-		for (const auto& e : entries)
-		{
-			if (e.begin > expected) { break; }
-			expected   = e.end;
-			afterField = e.name;
-		}
-
+		std::string afterField = "?";
+		(void)findPaddingPath<T>("", afterField);
 		char what[192];
 		std::snprintf(what, sizeof(what), "%s に GameMemory padding が %u byte ある (%s の後ろ)",
-			typeName, static_cast<unsigned>(totalBytes - leafBytes), afterField.c_str());
+			typeName, static_cast<unsigned>(padding), afterField.c_str());
 		mitiru::debug::warnOnceFix("module.gamememory.padding", what,
 			"field の並び順とアライメントの都合で隙間ができている",
 			"field を並べ替えるか、明示の pad を足す (一時オブジェクト代入で隙間に不定値が混ざり"
-			"録画再生が一致しなくなることがある)");
+			"録画再生が一致しなくなることがある)。MITIRU_ASSERT_NO_PADDING(型) でコンパイル時に止められる");
 	}
 }
 
@@ -458,7 +399,7 @@ void warnIfGameMemoryPadding(const char* typeName)
 #define MITIRU_REFLECT_AUTO(Type)                                                           \
 	namespace mitiru { namespace module { namespace detail {                                \
 		template<> struct ReflectionOf<Type> {                                              \
-			static void fillApi(::mitiru::module::ModuleApi* api) {                         \
+			static void fill() {                                                            \
 				static_assert(std::is_aggregate_v<Type>,                                    \
 					"MITIRU_REFLECT_AUTO(" #Type "): aggregate 型のみ対応。"                 \
 					"ユーザー定義コンストラクタがあるとフィールドを自動列挙できない。");      \
@@ -468,7 +409,7 @@ void warnIfGameMemoryPadding(const char* typeName)
 				const auto _mitiruAutoFields =                                              \
 					::mitiru::module::detail::collectFields<Type>(0, "", #Type);            \
 				::mitiru::module::detail::registerReflection(                               \
-					api, _mitiruAutoFields.data(),                                          \
+					_mitiruAutoFields.data(),                                               \
 					static_cast<std::int32_t>(_mitiruAutoFields.size()));                   \
 				::mitiru::module::detail::warnIfGameMemoryPadding<Type>(#Type);            \
 			}                                                                               \

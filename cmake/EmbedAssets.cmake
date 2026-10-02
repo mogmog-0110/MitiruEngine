@@ -29,7 +29,7 @@ function(embed_assets)
         set(EA_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
     endif()
 
-    # Find the Python interpreter
+    # Python インタープリターを検索する
     find_package(Python3 COMPONENTS Interpreter QUIET)
     if(NOT Python3_FOUND)
         find_program(PYTHON_EXE python)
@@ -46,7 +46,7 @@ function(embed_assets)
 
     set(GENERATOR_SCRIPT "${CMAKE_SOURCE_DIR}/tools/gen_embedded_assets.py")
 
-    # Convert FILES list to semicolon string for passing to Python
+    # Python に渡すため、FILES リストをセミコロン区切りの文字列に変換する
     string(JOIN ";" FILES_ARG ${EA_FILES})
 
     get_filename_component(OUTPUT_DIR "${EA_OUTPUT}" DIRECTORY)
@@ -64,13 +64,13 @@ function(embed_assets)
         VERBATIM
     )
 
-    # Create a custom target that triggers the generation
+    # 生成を実行するカスタムターゲットを作成する
     set(EMBED_TARGET "_embed_${EA_TARGET}")
     add_custom_target("${EMBED_TARGET}" DEPENDS "${EA_OUTPUT}")
 
-    # Make the main target depend on asset generation
+    # メインターゲットがアセットの生成に依存するようにする
     add_dependencies("${EA_TARGET}" "${EMBED_TARGET}")
 
-    # Expose the output dir as an include path to the target
+    # 出力ディレクトリをターゲットのインクルードパスとして公開する
     target_include_directories("${EA_TARGET}" PRIVATE "${OUTPUT_DIR}")
 endfunction()

@@ -9,7 +9,7 @@
 ///          Framework は Cubism Core を `Live2D::Cubism::Core` 名前空間にラップし、レンダラ側は
 ///          グローバルな <Live2DCubismCore.h> を include する。両者を同一 TU に混ぜると pragma once
 ///          で一方の宣言が消えるため、本クラスは pimpl とし Cubism 型をヘッダに一切露出しない。
-///          実装は src/live2d/Live2DModel.cpp (非GL Framework ライブラリ)。
+///          実装は src/live2d/Live2DModel.cpp (非 GL Framework ライブラリ)。
 
 #ifdef MITIRU_HAS_CUBISM_FRAMEWORK
 

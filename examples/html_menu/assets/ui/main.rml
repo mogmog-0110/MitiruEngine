@@ -1,0 +1,148 @@
+<rml>
+<head>
+<title>html_menu</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<style>
+  /* C++ が描くゲーム画面 (紙白の背景 + 右側の図形) の上に重ねる UI。
+     図形は C++ が描くので、この重ね面では左の操作パネルだけがクリックを受け取る
+     (パネルだけ pointer-events を戻す)。この文書は値を一切覚えない。パネルを触ると
+     dispatch(...) が C++ へ操作を伝え、状態は C++ が持って図形へ反映する。
+     半透明色は #rrggbbaa で書く (RCSS の rgba() のアルファは 0〜255 で数える)。 */
+  body { pointer-events: none; line-height: 1.5; }
+
+  .panel { position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+           width: 320px; pointer-events: auto; background-color: #fffffff5;
+           border: 1px #d8dee9; border-radius: 14px; padding: 22px 24px;
+           box-shadow: #1d1d1f1f 0px 12px 36px; }
+  .group { margin-bottom: 18px; }
+  .group.last { margin-bottom: 0px; }
+  .label { font-size: 15px; color: #6b7280; margin-bottom: 8px; letter-spacing: 1.2px; }
+  .label b { color: #0a84ff; }
+
+  /* いろ: 色見本のボタン列。背景色は C++ が送った hex、選択中は濃い縁 (sel) が付く */
+  .swatches { display: flex; gap: 10px; }
+  .swatch { width: 44px; height: 44px; border-radius: 11px; border: 2px transparent;
+            cursor: pointer; padding: 0px; box-shadow: #1d1d1f1f 0px 2px 8px;
+            transition: transform border-color 0.12s cubic-out; }
+  .swatch.sel { border-color: #1d1d1f; transform: scale(1.08); }
+
+  /* かたち: 形の選択ボタン。選択中は青 (sel) */
+  .shapes { display: flex; gap: 10px; }
+  .shape-btn { flex: 1; font-size: 16px; padding: 10px 0px; cursor: pointer;
+               color: #1d1d1f; background-color: #f1f4f9; border: 2px transparent;
+               border-radius: 9px; transition: color background-color border-color 0.12s cubic-out; }
+  .shape-btn.sel { border-color: #0a84ff; color: #0a84ff; background-color: #eaf3ff; font-weight: bold; }
+
+  /* スライダー: 細い溝・塗り・丸いつまみ。溝 (slidertrack) は押せる高さのまま細い線だけを描き、
+     つまみの左側は sliderprogress で塗る */
+  input.range-input { display: block; width: 100%; height: 24px; margin: 2px 0px; cursor: pointer; }
+  input.range-input slidertrack { height: 24px;
+                                  decorator: linear-gradient(to bottom, #e0e0e000 41.6%, #e0e0e0 41.6%, #e0e0e0 58.4%, #e0e0e000 58.4%); }
+  input.range-input sliderprogress { height: 4px; margin-top: 10px; border-radius: 2px; background-color: #0a84ff; }
+  input.range-input sliderbar { width: 16px; height: 16px; margin-top: 4px; margin-left: -8px; margin-right: -8px;
+                                border-radius: 8px; background-color: #0a84ff; }
+  input.range-input sliderarrowdec, input.range-input sliderarrowinc { width: 0px; height: 0px; }
+
+  /* ふちどり / おおきく / かげ の切り替え。オンのときは青地 (on) */
+  .toggles { display: flex; gap: 10px; }
+  .toggle { flex: 1; font-size: 16px; padding: 10px 0px; cursor: pointer;
+            color: #4b5563; background-color: #f1f4f9; border: 1px #d8dee9;
+            border-radius: 9px; transition: color background-color border-color 0.12s cubic-out; }
+  .toggle.on { color: #ffffff; background-color: #0a84ff; border-color: #0a84ff; font-weight: bold; }
+
+  .reset { width: 100%; font-size: 16px; padding: 11px 0px; cursor: pointer;
+           color: #b4232a; background-color: #ffffff; border: 1px #f0c9cb; border-radius: 9px; }
+  .reset:hover { background-color: #fdf2f2; }
+
+  /* パッドの十字キー・左スティックで選び、A で押せる (Tab と方向キー、Enter でも同じ)。
+     選んでいる部品は青い縁で示す */
+  .panel button, .panel input, .modal button { tab-index: auto; nav: auto; }
+  .panel button:focus-visible, .modal button:focus-visible { box-shadow: #0a84ff 0px 0px 0px 3px; }
+  input.range-input:focus-visible sliderbar { box-shadow: #0a84ff59 0px 0px 0px 4px; }
+
+  /* 確認ダイアログ。開いているかどうかは UI の中だけの小さな状態 (ui_confirm_open) で、
+     OK を押した時だけ action が C++ へ届く */
+  .modal-root { position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px;
+                display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+  .modal-backdrop { position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px; background-color: #1d1d1f59; }
+  .modal { position: relative; background-color: #ffffff; border: 1px #d8dee9;
+           border-radius: 12px; padding: 20px 24px; width: 420px; box-shadow: #1d1d1f2e 0px 12px 36px; }
+  .modal-title { margin: 0px 0px 8px 0px; font-size: 20px; font-weight: bold; }
+  .modal-body  { font-size: 17px; color: #4b5563; margin-bottom: 18px; }
+  .modal-close { position: absolute; top: 8px; right: 12px; border: 0px;
+                 background-color: transparent; color: #6b7280; font-size: 18px; cursor: pointer; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .modal-btn { font-size: 16px; padding: 7px 20px; cursor: pointer;
+               border: 1px #c9d1de; border-radius: 8px; background-color: #f5f7fa; color: #1d1d1f; }
+</style>
+</head>
+<!-- dispatch('名前', 'キー', 値, ...) が C++ の in.action("名前") / in.actionPayload("名前") に届く
+     (payload は {"キー": 値})。data-for で C++ が送った一覧 (colors / shapes) の数だけボタンを並べ、
+     どれを選んでいるか (sel) も C++ が決めて送ってくる -->
+<body data-model="view">
+  <div class="panel">
+
+    <div class="group">
+      <div class="label">いろ</div>
+      <div class="swatches">
+        <button class="swatch" data-for="c : colors"
+                data-event-click="dispatch('pick.color', 'id', c.id)"
+                data-style-background-color="'#' + c.hex"
+                data-attr-title="c.name"
+                data-class-sel="c.sel"></button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">かたち</div>
+      <div class="shapes">
+        <button class="shape-btn" data-for="s : shapes"
+                data-event-click="dispatch('pick.shape', 'id', s.id)"
+                data-class-sel="s.sel">{{ s.name }}</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">かず <b>{{ count }}</b></div>
+      <input class="range-input" type="range" min="1" max="5" step="1"
+             data-attr-value="count" data-event-change="dispatch('set.count', 'v', ev.value)"/>
+    </div>
+
+    <div class="group">
+      <div class="label">かたむき <b>{{ tilt }}</b>°</div>
+      <input class="range-input" type="range" min="0" max="45" step="1"
+             data-attr-value="tilt" data-event-change="dispatch('set.tilt', 'v', ev.value)"/>
+    </div>
+
+    <div class="group">
+      <div class="label">すきま <b>{{ gap }}</b></div>
+      <input class="range-input" type="range" min="90" max="180" step="1"
+             data-attr-value="gap" data-event-change="dispatch('set.gap', 'v', ev.value)"/>
+    </div>
+
+    <div class="group toggles">
+      <button class="toggle" data-event-click="dispatch('toggle.outline')" data-class-on="outline">ふちどり</button>
+      <button class="toggle" data-event-click="dispatch('toggle.big')" data-class-on="big">おおきく</button>
+      <button class="toggle" data-event-click="dispatch('toggle.shadow')" data-class-on="shadow">かげ</button>
+    </div>
+
+    <div class="group last">
+      <button class="reset"
+              data-event-click="confirm('さいしょの じょうたいに もどしますか?', 'かくにん', 'reset')">リセット</button>
+    </div>
+  </div>
+
+  <div class="modal-root" data-if="ui_confirm_open">
+    <div class="modal-backdrop" data-event-click="confirm_cancel()"></div>
+    <div class="modal">
+      <button class="modal-close" data-event-click="confirm_cancel()">×</button>
+      <div class="modal-title">{{ ui_confirm_title }}</div>
+      <div class="modal-body">{{ ui_confirm_text }}</div>
+      <div class="modal-actions">
+        <button class="modal-btn" data-event-click="confirm_cancel()">やめる</button>
+        <button class="modal-btn" data-event-click="confirm_ok()">OK</button>
+      </div>
+    </div>
+  </div>
+</body>
+</rml>

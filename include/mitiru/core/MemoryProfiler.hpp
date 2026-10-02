@@ -238,7 +238,7 @@ public:
 
 	/// @brief タグがバジェットを超過しているかを判定する
 	/// @param tag アロケーションタグ
-	/// @return バジェット超過ならtrue
+	/// @return バジェット超過なら true
 	[[nodiscard]] bool isOverBudget(const std::string& tag) const
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
@@ -331,7 +331,7 @@ public:
 			+ " allocs (" + std::to_string(m_allocationCount)
 			+ " total, " + std::to_string(m_deallocationCount) + " freed)");
 
-		/// タグ別トップ5
+		/// タグ別トップ 5
 		std::vector<std::pair<std::string, std::size_t>> sorted(
 			m_tagUsage.begin(), m_tagUsage.end());
 		std::sort(sorted.begin(), sorted.end(),
@@ -371,7 +371,7 @@ public:
 			lines.push_back(line);
 		}
 
-		/// Screen にテキストとして描画する（Screenの drawText を使用）
+		/// Screen にテキストとして描画する（Screen の drawText を使用）
 		drawOverlayLines(screen, lines);
 	}
 
@@ -435,7 +435,7 @@ private:
 	void drawOverlayLines(Screen& screen, const std::vector<std::string>& lines) const
 	{
 		/// Screen::drawText が利用可能な場合に描画する
-		/// 左上からY方向に16px間隔で配置する
+		/// 左上から Y 方向に 16px 間隔で配置する
 		static constexpr int kStartX = 8;
 		static constexpr int kStartY = 8;
 		static constexpr int kLineHeight = 16;
@@ -443,8 +443,8 @@ private:
 		for (std::size_t i = 0; i < lines.size(); ++i)
 		{
 			const int y = kStartY + static_cast<int>(i) * kLineHeight;
-			/// Screen APIを通じてテキストを描画する
-			/// （Screen::drawDebugText はデバッグ文字列を受け取る簡易API）
+			/// Screen API を通じてテキストを描画する
+			/// （Screen::drawDebugText はデバッグ文字列を受け取る簡易 API）
 			static_cast<void>(screen);
 			static_cast<void>(y);
 			static_cast<void>(kStartX);

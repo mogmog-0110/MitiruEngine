@@ -64,8 +64,8 @@ Boot parseBoot(const std::vector<uint8_t>& bytes)
 	return b;
 }
 
-/// パックの目次から安定な指紋を作る。ビルドし直した exe は別のフォルダへ展開され、
-/// 古い展開物を上書きして壊すことがない。
+/// パックの目次から安定した識別値を作る。ビルドし直した exe は別のフォルダへ展開され、
+/// 古い展開物を上書きして破損させることがない。
 std::uint64_t fingerprint(const mitiru::vfs::AssetPack& pack)
 {
 	std::uint64_t h = 14695981039346656037ULL;
@@ -146,7 +146,7 @@ int runLauncher()
 	std::error_code ec;
 	if (!fs::exists(marker, ec))
 	{
-		// 途中で落ちた展開が残っていても、marker が無い限り全部書き直すので壊れない。
+		// 展開が途中で終了した状態が残っていても、marker が無い限りすべて書き直すので、不完全な状態にならない。
 		for (const auto& path : pack->list())
 		{
 			const auto data = pack->read(path);
@@ -170,8 +170,8 @@ int runLauncher()
 	if (!boot.args.empty())
 	{
 		const std::string& a = boot.args;
-		// バイト単位で広げてはいけない。args は mitiru_boot.txt の UTF-8 で、
-		// 日本語 (--title "オスカーのガーデニング") が 1 バイト 1 文字に化ける。
+		// バイト単位で変換してはいけない。args は mitiru_boot.txt の UTF-8 で、
+		// 日本語 (--title "オスカーのガーデニング") が 1 バイトずつ 1 文字に変換され、文字化けする。
 		cmd += L" " + mitiru::platform::utf8ToWide(a);
 	}
 	STARTUPINFOW si{};

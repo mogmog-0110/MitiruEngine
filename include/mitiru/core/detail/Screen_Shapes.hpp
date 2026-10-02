@@ -132,13 +132,13 @@ inline void mitiru::Screen::drawRoundedRectFrame(const sgc::Rectf& rect, const s
 	const float r = std::min(radius, std::min(rect.width(), rect.height()) * 0.5f);
 	const float x = rect.x(), y = rect.y(), w = rect.width(), h = rect.height();
 
-	// 4 straight edges
+	// 直線の 4 辺
 	emitLine({x + r, y}, {x + w - r, y}, color, thickness);
 	emitLine({x + w, y + r}, {x + w, y + h - r}, color, thickness);
 	emitLine({x + w - r, y + h}, {x + r, y + h}, color, thickness);
 	emitLine({x, y + h - r}, {x, y + r}, color, thickness);
 
-	// 4 corner arcs
+	// 四隅の弧 4 つ
 	constexpr int kSegments = 8;
 	constexpr float kHalfPi = 1.5707963f;
 	const sgc::Vec2f corners[] = {
@@ -294,7 +294,7 @@ inline void mitiru::Screen::drawRoundedRect4(const sgc::Rectf& rect, const sgc::
 		std::min(br, maxR), std::min(bl, maxR)
 	};
 
-	// Center rectangles (fill non-corner areas)
+	// 中央の矩形 (角以外の領域を埋める)
 	const float topBarLeft = x + r[0], topBarRight = x + w - r[1];
 	emitRect({topBarLeft, y, topBarRight - topBarLeft, h}, color);
 	emitRect({x, y + r[0], r[0], h - r[0] - r[3]}, color);

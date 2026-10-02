@@ -2,8 +2,8 @@
 
 /// @file ProceduralBridge.hpp
 /// @brief sgc プロシージャル生成統合ブリッジ
-/// @details sgcのダンジョン生成・地形生成・WFC・Lシステムを
-///          Mitiruエンジンに統合する。
+/// @details sgc のダンジョン生成・地形生成・WFC・L システムを
+///          Mitiru エンジンに統合する。
 
 #include <cstdint>
 #include <string>
@@ -17,7 +17,7 @@ namespace mitiru::bridge
 {
 
 /// @brief sgc プロシージャル生成統合ブリッジ
-/// @details ダンジョン・地形・WFC・Lシステムの生成機能を提供する。
+/// @details ダンジョン・地形・WFC・L システムの生成機能を提供する。
 ///          ステートレスな生成関数のラッパーとして機能する。
 ///
 /// @code
@@ -36,7 +36,7 @@ class ProceduralBridge
 public:
 	// ── ダンジョン生成 ────────────────────────────────────────
 
-	/// @brief BSPアルゴリズムでダンジョンを生成する
+	/// @brief BSP アルゴリズムでダンジョンを生成する
 	/// @param config 生成設定
 	/// @param seed 乱数シード
 	/// @return 生成結果（部屋、通路、タイルグリッド）
@@ -50,7 +50,7 @@ public:
 
 	/// @brief ノイズベースの地形を生成する
 	/// @param config 地形設定
-	/// @param seed 乱数シード（configのseedを上書きする）
+	/// @param seed 乱数シード（config の seed を上書きする）
 	/// @return 地形生成結果
 	[[nodiscard]] sgc::procedural::TerrainResult generateTerrain(
 		const sgc::procedural::TerrainConfig& config, uint32_t seed = 0)
@@ -62,26 +62,26 @@ public:
 
 	// ── 波動関数崩壊 ─────────────────────────────────────────
 
-	/// @brief WFCアルゴリズムでタイルグリッドを生成する
-	/// @param config WFC設定
+	/// @brief WFC アルゴリズムでタイルグリッドを生成する
+	/// @param config WFC 設定
 	/// @return 生成結果
 	[[nodiscard]] sgc::procedural::WFCResult solveWFC(const sgc::procedural::WFCConfig& config)
 	{
 		return sgc::procedural::solveWFC(config);
 	}
 
-	// ── Lシステム ─────────────────────────────────────────────
+	// ── L システム ─────────────────────────────────────────────
 
-	/// @brief Lシステム文字列を生成する
-	/// @param config Lシステム設定
+	/// @brief L システム文字列を生成する
+	/// @param config L システム設定
 	/// @return 生成された文字列
 	[[nodiscard]] std::string generateLSystem(const sgc::procedural::LSystemConfig& config)
 	{
 		return sgc::procedural::generateLSystem(config);
 	}
 
-	/// @brief Lシステム文字列をタートルグラフィクスとして解釈する
-	/// @param lString Lシステム文字列
+	/// @brief L システム文字列をタートルグラフィクスとして解釈する
+	/// @param lString L システム文字列
 	/// @param config タートル設定
 	/// @return 生成された線分データ
 	[[nodiscard]] sgc::procedural::TurtleResult interpretTurtle(
@@ -92,8 +92,8 @@ public:
 
 	// ── シリアライズ ──────────────────────────────────────────
 
-	/// @brief プロシージャル生成ブリッジの情報をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief プロシージャル生成ブリッジの情報を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		return R"({"type":"ProceduralBridge","capabilities":["dungeon","terrain","wfc","lsystem"]})";

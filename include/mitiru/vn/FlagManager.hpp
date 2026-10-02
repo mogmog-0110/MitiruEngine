@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file FlagManager.hpp
-/// @brief VN用フラグ・変数マネージャ
+/// @brief VN 用フラグ・変数マネージャ
 /// @details ゲーム状態のフラグと変数をキーバリューストアで管理する。
-///          bool/int/float/string型をサポートし、条件評価、スコープ管理、
-///          変更通知、JSON直列化を提供する。
+///          bool/int/float/string 型をサポートし、条件評価、スコープ管理、
+///          変更通知、JSON 直列化を提供する。
 
 #include <algorithm>
 #include <cstddef>
@@ -36,9 +36,9 @@ enum class FlagScope
 	Chapter,	///< チャプター単位（チャプター変更時にクリア可能）
 };
 
-/// @brief VN用フラグ・変数マネージャ
+/// @brief VN 用フラグ・変数マネージャ
 /// @details ゲーム状態を管理するキーバリューストア。
-///          条件式の評価やJSON直列化でセーブ/ロードと統合する。
+///          条件式の評価や JSON 直列化でセーブ/ロードと統合する。
 ///
 /// @code
 /// mitiru::vn::FlagManager flags;
@@ -79,7 +79,7 @@ public:
 
 	/// @brief フラグを取得する
 	/// @param key キー名
-	/// @return 値（存在しない場合はnullopt）
+	/// @return 値（存在しない場合は nullopt）
 	[[nodiscard]] std::optional<FlagValue> get(const std::string& key) const
 	{
 		// チャプタースコープを先に検索
@@ -97,10 +97,10 @@ public:
 		return std::nullopt;
 	}
 
-	/// @brief bool値として取得する
+	/// @brief bool 値として取得する
 	/// @param key キー名
 	/// @param defaultValue デフォルト値
-	/// @return bool値
+	/// @return bool 値
 	[[nodiscard]] bool getBool(const std::string& key, bool defaultValue = false) const
 	{
 		auto val = get(key);
@@ -111,10 +111,10 @@ public:
 		return defaultValue;
 	}
 
-	/// @brief int値として取得する
+	/// @brief int 値として取得する
 	/// @param key キー名
 	/// @param defaultValue デフォルト値
-	/// @return int値
+	/// @return int 値
 	[[nodiscard]] int getInt(const std::string& key, int defaultValue = 0) const
 	{
 		auto val = get(key);
@@ -125,10 +125,10 @@ public:
 		return defaultValue;
 	}
 
-	/// @brief float値として取得する
+	/// @brief float 値として取得する
 	/// @param key キー名
 	/// @param defaultValue デフォルト値
-	/// @return float値
+	/// @return float 値
 	[[nodiscard]] float getFloat(const std::string& key, float defaultValue = 0.0f) const
 	{
 		auto val = get(key);
@@ -139,10 +139,10 @@ public:
 		return defaultValue;
 	}
 
-	/// @brief string値として取得する
+	/// @brief string 値として取得する
 	/// @param key キー名
 	/// @param defaultValue デフォルト値
-	/// @return string値
+	/// @return string 値
 	[[nodiscard]] std::string getString(const std::string& key, const std::string& defaultValue = "") const
 	{
 		auto val = get(key);
@@ -153,7 +153,7 @@ public:
 
 	/// @brief フラグが存在するか確認する
 	/// @param key キー名
-	/// @return 存在すればtrue
+	/// @return 存在すれば true
 	[[nodiscard]] bool has(const std::string& key) const noexcept
 	{
 		return m_chapterFlags.count(key) > 0 || m_globalFlags.count(key) > 0;
@@ -237,7 +237,7 @@ public:
 
 	/// @brief フラグ変更コールバックを登録する
 	/// @param callback コールバック関数
-	/// @return コールバックID（解除用）
+	/// @return コールバック ID（解除用）
 	std::size_t onChange(FlagChangeCallback callback)
 	{
 		std::size_t id = m_nextCallbackId++;
@@ -246,7 +246,7 @@ public:
 	}
 
 	/// @brief コールバックを解除する
-	/// @param id コールバックID
+	/// @param id コールバック ID
 	void removeCallback(std::size_t id)
 	{
 		m_callbacks.erase(
@@ -257,8 +257,8 @@ public:
 
 	// ── 直列化 ─────────────────────────────────────────────
 
-	/// @brief JSON文字列として出力する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列として出力する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		mitiru::data::Json j;
@@ -267,9 +267,9 @@ public:
 		return j.dump();
 	}
 
-	/// @brief JSON文字列から復元する
-	/// @param json JSON形式の文字列
-	/// @return 成功ならtrue
+	/// @brief JSON 文字列から復元する
+	/// @param json JSON 形式の文字列
+	/// @return 成功なら true
 	bool fromJson(std::string_view json)
 	{
 		m_globalFlags.clear();
@@ -363,7 +363,7 @@ private:
 				continue;
 			}
 
-			// 2文字演算子
+			// 2 文字演算子
 			if (i + 1 < src.size())
 			{
 				auto two = src.substr(i, 2);
@@ -375,7 +375,7 @@ private:
 				if (two == "||") { tokens.push_back({ExprTokenType::Or, "||"}); i += 2; continue; }
 			}
 
-			// 1文字演算子
+			// 1 文字演算子
 			if (src[i] == '<') { tokens.push_back({ExprTokenType::Less, "<"}); ++i; continue; }
 			if (src[i] == '>') { tokens.push_back({ExprTokenType::Greater, ">"}); ++i; continue; }
 			if (src[i] == '!') { tokens.push_back({ExprTokenType::Not, "!"}); ++i; continue; }
@@ -419,7 +419,7 @@ private:
 				continue;
 			}
 
-			// 不明な文字はスキップ
+			// 不明な文字は飛ばす
 			++i;
 		}
 
@@ -429,7 +429,7 @@ private:
 
 	// ── 条件式の再帰下降パーサー ───────────────────────────
 
-	/// @brief OR式: and_expr (|| and_expr)*
+	/// @brief OR 式: and_expr (|| and_expr)*
 	[[nodiscard]] bool parseOrExpr(const std::vector<ExprToken>& tokens, std::size_t& pos) const
 	{
 		bool result = parseAndExpr(tokens, pos);
@@ -442,7 +442,7 @@ private:
 		return result;
 	}
 
-	/// @brief AND式: comparison (&& comparison)*
+	/// @brief AND 式: comparison (&& comparison)*
 	[[nodiscard]] bool parseAndExpr(const std::vector<ExprToken>& tokens, std::size_t& pos) const
 	{
 		bool result = parseComparison(tokens, pos);
@@ -458,7 +458,7 @@ private:
 	/// @brief 比較式: primary (op primary)?
 	[[nodiscard]] bool parseComparison(const std::vector<ExprToken>& tokens, std::size_t& pos) const
 	{
-		// NOT演算子
+		// NOT 演算子
 		if (pos < tokens.size() && tokens[pos].type == ExprTokenType::Not)
 		{
 			++pos;
@@ -483,7 +483,7 @@ private:
 			tokens[pos].type == ExprTokenType::And || tokens[pos].type == ExprTokenType::Or ||
 			tokens[pos].type == ExprTokenType::RParen)
 		{
-			// 単独の値をboolとして評価
+			// 単独の値を bool として評価
 			return valueToBool(lhs);
 		}
 
@@ -526,7 +526,7 @@ private:
 		}
 	}
 
-	/// @brief FlagValueをboolに変換する
+	/// @brief FlagValue を bool に変換する
 	[[nodiscard]] static bool valueToBool(const FlagValue& val)
 	{
 		if (auto* b = std::get_if<bool>(&val)) return *b;
@@ -536,7 +536,7 @@ private:
 		return false;
 	}
 
-	/// @brief 2つのFlagValueを比較する
+	/// @brief 2 つの FlagValue を比較する
 	[[nodiscard]] static bool compareValues(const FlagValue& lhs, ExprTokenType op, const FlagValue& rhs)
 	{
 		// 文字列同士
@@ -556,7 +556,7 @@ private:
 			}
 		}
 
-		// bool同士
+		// bool 同士
 		if (std::holds_alternative<bool>(lhs) && std::holds_alternative<bool>(rhs))
 		{
 			bool l = std::get<bool>(lhs);
@@ -569,7 +569,7 @@ private:
 			}
 		}
 
-		// 数値比較（int/float混在対応）
+		// 数値として比較する（int と float が混ざっていてもよい）
 		float l = toFloat(lhs);
 		float r = toFloat(rhs);
 		switch (op)
@@ -584,7 +584,7 @@ private:
 		}
 	}
 
-	/// @brief FlagValueをfloatに変換する
+	/// @brief FlagValue を float に変換する
 	[[nodiscard]] static float toFloat(const FlagValue& val)
 	{
 		if (auto* f = std::get_if<float>(&val)) return *f;
@@ -609,7 +609,7 @@ private:
 		return "";
 	}
 
-	/// @brief フラグストアをnlohmann::jsonオブジェクトに変換する
+	/// @brief フラグストアを nlohmann::json オブジェクトに変換する
 	[[nodiscard]] static mitiru::data::Json serializeStoreToJson(
 		const std::unordered_map<std::string, FlagValue>& store)
 	{
@@ -624,7 +624,7 @@ private:
 		return j;
 	}
 
-	/// @brief nlohmann::jsonオブジェクトからフラグストアを復元する
+	/// @brief nlohmann::json オブジェクトからフラグストアを復元する
 	static void deserializeStoreFromJson(const mitiru::data::Json& j,
 		std::unordered_map<std::string, FlagValue>& store)
 	{

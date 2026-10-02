@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MmlEditorModel_impl.hpp
-/// @brief MmlEditorModel の実装本体（MmlEditorModel.hpp から機械的分割）
+/// @brief MmlEditorModel の実装本体（MmlEditorModel.hpp から機械的に分割したもの）
 
 #include <mitiru/audio/MmlEditorModel.hpp>
 
@@ -132,9 +132,9 @@ inline void MmlEditorModel::setInstrument(int trackIndex,
 	executeCommand(cmd);
 }
 
-// ─── MML文字列変換 ───
+// ─── MML 文字列変換 ───
 
-/// @brief コンポジションをMML文字列にエクスポートする
+/// @brief コンポジションを MML 文字列にエクスポートする
 inline std::string MmlEditorModel::toMmlString() const
 {
 	std::ostringstream oss;
@@ -191,7 +191,7 @@ inline std::string MmlEditorModel::toMmlString() const
 	return oss.str();
 }
 
-/// @brief MML文字列からコンポジションを読み込む
+/// @brief MML 文字列からコンポジションを読み込む
 inline void MmlEditorModel::fromMmlString(std::string_view mml)
 {
 	m_composition = MmlComposition{};
@@ -332,7 +332,7 @@ inline void MmlEditorModel::fromMmlString(std::string_view mml)
 			continue;
 		}
 
-		/// 不明文字をスキップ
+		/// 不明な文字をスキップ
 		++pos;
 	}
 
@@ -344,7 +344,7 @@ inline void MmlEditorModel::fromMmlString(std::string_view mml)
 
 // ─── JSON シリアライズ ───
 
-/// @brief エディタ状態をJSON文字列にエクスポートする
+/// @brief エディタ状態を JSON 文字列にエクスポートする
 inline std::string MmlEditorModel::toJson() const
 {
 	std::ostringstream oss;
@@ -395,11 +395,11 @@ inline std::string MmlEditorModel::toJson() const
 	return oss.str();
 }
 
-/// @brief JSON文字列からエディタ状態を読み込む
+/// @brief JSON 文字列からエディタ状態を読み込む
 inline void MmlEditorModel::fromJson(std::string_view json)
 {
-	/// 簡易パース：toJson()で出力した形式を前提とする
-	/// 完全なJSONパーサーではなく、既知フォーマットのキーバリューを抽出
+	/// 簡易解析：toJson() で出力した形式を前提とする
+	/// 完全な JSON パーサーではなく、既知のフォーマットからキーと値を抽出する
 	m_composition = MmlComposition{};
 	m_undoStack.clear();
 	m_redoStack.clear();
@@ -410,8 +410,8 @@ inline void MmlEditorModel::fromJson(std::string_view json)
 	m_composition.author = extractString(str, "author");
 	m_composition.tempo = extractInt(str, "tempo");
 
-	/// トラックの詳細パースは省略（完全なJSON解析は外部ライブラリ推奨）
-	/// toMmlString/fromMmlString をメインのシリアライズ手段として推奨する
+	/// トラックの詳細な解析は省略（完全な JSON 解析には外部ライブラリを推奨）
+	/// toMmlString/fromMmlString を主なシリアライズ手段として推奨する
 }
 
 // ─── 再生時間計算 ───
@@ -428,7 +428,7 @@ inline float MmlEditorModel::getDuration() const noexcept
 	{
 		return 0.0f;
 	}
-	/// 拍数 / BPM * 60秒
+	/// 拍数 / BPM * 60 秒
 	return maxBeats / static_cast<float>(m_composition.tempo) * 60.0f;
 }
 
@@ -497,7 +497,7 @@ inline void MmlEditorModel::copy()
 	}
 }
 
-/// @brief 選択範囲をカットする（コピー+削除）
+/// @brief 選択範囲をカットする（コピー + 削除）
 inline void MmlEditorModel::cut()
 {
 	copy();
@@ -505,7 +505,7 @@ inline void MmlEditorModel::cut()
 	{
 		return;
 	}
-	/// 後ろから削除してインデックスがずれないようにする
+	/// 後ろから削除し、インデックスがずれないようにする
 	for (int i = m_selection.endIndex - 1; i >= m_selection.startIndex; --i)
 	{
 		removeNote(m_selection.trackIndex, i);
@@ -534,7 +534,7 @@ inline void MmlEditorModel::paste(int trackIndex, int noteIndex)
 
 // ─── コマンド実行 (private) ───
 
-/// @brief コマンドを実行しUndoスタックに積む
+/// @brief コマンドを実行し、Undo スタックに積む
 inline void MmlEditorModel::executeCommand(const EditorCommand& cmd)
 {
 	applyCommand(cmd);
@@ -701,7 +701,7 @@ inline int MmlEditorModel::parseNumber(const std::string& str, size_t& pos)
 	return val;
 }
 
-/// @brief MML文字列から音価をパースする
+/// @brief MML 文字列から音価をパースする
 inline void MmlEditorModel::parseDuration(const std::string& str, size_t& pos,
                                           MmlNote& note)
 {
@@ -725,7 +725,7 @@ inline void MmlEditorModel::parseDuration(const std::string& str, size_t& pos,
 	}
 }
 
-/// @brief 簡易JSON文字列値抽出
+/// @brief JSON 文字列から値を簡易抽出する
 inline std::string MmlEditorModel::extractString(
 	const std::string& json, const std::string& key)
 {
@@ -744,7 +744,7 @@ inline std::string MmlEditorModel::extractString(
 	return json.substr(valStart, valEnd - valStart);
 }
 
-/// @brief 簡易JSON整数値抽出
+/// @brief JSON から整数値を簡易抽出する
 inline int MmlEditorModel::extractInt(
 	const std::string& json, const std::string& key)
 {

@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file CameraEffects.hpp
-/// @brief 2Dカメラエフェクト（スムース追従・ズーム・範囲制限）
-/// @details ゲームカメラの動きを滑らかにし、視覚効果を付与する。
+/// @brief 2D カメラエフェクト（スムース追従・ズーム・範囲制限）
+/// @details ゲームカメラの動きを滑らかにし、視覚効果を加える。
 ///
 /// @code
 /// mitiru::effects::CameraEffects cam;
@@ -22,7 +22,7 @@
 namespace mitiru::effects
 {
 
-/// @brief 2Dカメラエフェクト
+/// @brief 2D カメラエフェクト
 class CameraEffects
 {
 public:
@@ -52,11 +52,11 @@ public:
 		m_zooming = true;
 	}
 
-	/// @brief カメラ移動範囲を設定する
-	/// @param minX 最小X
-	/// @param minY 最小Y
-	/// @param maxX 最大X
-	/// @param maxY 最大Y
+	/// @brief カメラの移動範囲を設定する
+	/// @param minX 最小 X
+	/// @param minY 最小 Y
+	/// @param maxX 最大 X
+	/// @param maxY 最大 Y
 	void setBounds(float minX, float minY, float maxX, float maxY) noexcept
 	{
 		m_boundsMin = {minX, minY};

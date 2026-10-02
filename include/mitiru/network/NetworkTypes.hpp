@@ -2,7 +2,7 @@
 
 /// @file NetworkTypes.hpp
 /// @brief ネットワーク型定義
-/// @details 接続ID、パケットヘッダ、ネットワークイベント等の基本型を定義する。
+/// @details 接続 ID、パケットヘッダ、ネットワークイベント等の基本型を定義する。
 
 #include <cstdint>
 #include <string>
@@ -11,10 +11,10 @@
 namespace mitiru::network
 {
 
-/// @brief 接続ID型
+/// @brief 接続 ID 型
 using ConnectionId = std::uint32_t;
 
-/// @brief 無効な接続IDを表す定数
+/// @brief 無効な接続 ID を表す定数
 constexpr ConnectionId INVALID_CONNECTION = 0;
 
 /// @brief ネットワークイベント種別

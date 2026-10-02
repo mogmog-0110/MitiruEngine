@@ -1,81 +1,67 @@
 #pragma once
 
 /// @file JsonHelper.hpp
-/// @brief 簡易JSONフィールド抽出ユーティリティ
+/// @brief HTTP リクエスト本文 (JSON) の最上位フィールドを 1 つ取り出す
+/// @details 本文が JSON として読めない・キーが無い・型が違うときは既定値を返す。
+///          数値を文字列で送ってきた ("30") 場合も型違いとして既定値になる。
 
-#include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <string>
+
+#include <nlohmann/json.hpp>
 
 namespace mitiru::server::detail
 {
 
-/// @brief JSON文字列フィールドを抽出する
+/// @brief 本文を読み、最上位にあるキーの値を返す。無ければ nullptr。
+[[nodiscard]] inline const nlohmann::json* findJsonField(
+	const nlohmann::json& body, const char* field)
+{
+	if (!body.is_object()) { return nullptr; }
+	const auto it = body.find(field);
+	return it == body.end() ? nullptr : &*it;
+}
+
 [[nodiscard]] inline std::string extractJsonString(
 	const std::string& json, const char* field,
 	const std::string& defaultVal = {})
 {
-	const std::string key = std::string("\"") + field + "\"";
-	const auto pos = json.find(key);
-	if (pos == std::string::npos) { return defaultVal; }
-	const auto col = json.find(':', pos + key.size());
-	if (col == std::string::npos) { return defaultVal; }
-
-	auto start = col + 1;
-	while (start < json.size() && (json[start] == ' ' || json[start] == '\t'))
-	{
-		++start;
-	}
-	if (start >= json.size() || json[start] != '"') { return defaultVal; }
-	++start;
-	auto end = json.find('"', start);
-	if (end == std::string::npos) { return defaultVal; }
-	return json.substr(start, end - start);
+	const auto body = nlohmann::json::parse(json, nullptr, false);
+	const auto* v = findJsonField(body, field);
+	return (v && v->is_string()) ? v->get<std::string>() : defaultVal;
 }
 
-/// @brief JSONから整数フィールドを抽出する
 [[nodiscard]] inline int extractJsonInt(
 	const std::string& json, const char* field, int defaultVal = 0)
 {
-	const std::string key = std::string("\"") + field + "\"";
-	const auto pos = json.find(key);
-	if (pos == std::string::npos) { return defaultVal; }
-	const auto col = json.find(':', pos + key.size());
-	if (col == std::string::npos) { return defaultVal; }
-	auto start = col + 1;
-	while (start < json.size() && json[start] == ' ') { ++start; }
-	try { return std::stoi(json.substr(start)); }
-	catch (...) { return defaultVal; }
+	const auto body = nlohmann::json::parse(json, nullptr, false);
+	const auto* v = findJsonField(body, field);
+	if (!v || !v->is_number()) { return defaultVal; }
+	// int に収まらない値は既定値。範囲外の浮動小数点→整数変換は未定義動作になる。
+	const double d = v->get<double>();
+	if (!(d >= static_cast<double>(std::numeric_limits<int>::min())
+		&& d <= static_cast<double>(std::numeric_limits<int>::max())))
+	{
+		return defaultVal;
+	}
+	return v->is_number_float() ? static_cast<int>(d) : static_cast<int>(v->get<std::int64_t>());
 }
 
-/// @brief JSONからブール値フィールドを抽出する
 [[nodiscard]] inline bool extractJsonBool(
 	const std::string& json, const char* field, bool defaultVal = false)
 {
-	const std::string key = std::string("\"") + field + "\"";
-	const auto pos = json.find(key);
-	if (pos == std::string::npos) { return defaultVal; }
-	const auto col = json.find(':', pos + key.size());
-	if (col == std::string::npos) { return defaultVal; }
-	auto start = col + 1;
-	while (start < json.size() && json[start] == ' ') { ++start; }
-	if (start < json.size() && json[start] == 't') { return true; }
-	if (start < json.size() && json[start] == 'f') { return false; }
-	return defaultVal;
+	const auto body = nlohmann::json::parse(json, nullptr, false);
+	const auto* v = findJsonField(body, field);
+	return (v && v->is_boolean()) ? v->get<bool>() : defaultVal;
 }
 
-/// @brief JSONから浮動小数点フィールドを抽出する
 [[nodiscard]] inline float extractJsonFloat(
 	const std::string& json, const char* field, float defaultVal = 0.0f)
 {
-	const std::string key = std::string("\"") + field + "\"";
-	const auto pos = json.find(key);
-	if (pos == std::string::npos) { return defaultVal; }
-	const auto col = json.find(':', pos + key.size());
-	if (col == std::string::npos) { return defaultVal; }
-	auto start = col + 1;
-	while (start < json.size() && json[start] == ' ') { ++start; }
-	try { return std::stof(json.substr(start)); }
-	catch (...) { return defaultVal; }
+	const auto body = nlohmann::json::parse(json, nullptr, false);
+	const auto* v = findJsonField(body, field);
+	return (v && v->is_number()) ? v->get<float>() : defaultVal;
 }
 
 } // namespace mitiru::server::detail

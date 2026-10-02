@@ -1,6 +1,6 @@
 // input。入力の「今」を見せる章。キーボード / マウス / パッドの状態を、画面を 3 つに分けて光らせる。
 //
-// ゲームを動かす土台 (host) が毎フレーム、キー・マウス・パッドの状態を 1 つにまとめて渡してくれる。
+// ゲームを動かす基盤 (host) が毎フレーム、キー・マウス・パッドの状態を 1 つにまとめて渡す。
 // ゲーム側は、その渡された入力 (Input) を見るだけでよい。
 #include <cstdint>
 #include <mitiru.hpp>
@@ -34,16 +34,18 @@ constexpr PadCell kPad[] = {
 	{Pad::B, 1118, 505, theme::kRed,   "B"}, {Pad::A, 1072, 551, theme::kGreen, "A"}};
 
 // ゲームの状態は、この構造体 1 つにまとめる。ポインタを持たない単純な構造体なので、
-// host がそのままコピーして記録したり、あとで巻き戻したりできる。
+// host がそのままコピーして記録したり、あとで以前の状態に戻したりできる。
 struct Input04
 {
 	float         mx = 0.0f, my = 0.0f;  std::uint8_t mbtn = 0;   // マウス位置 / 押下ボタン (bit0=左 1=右 2=中)
+	std::uint8_t  _pad[3] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 	Vec2          trail[40] = {};  int head = 0, tn = 0;          // マウスの通った跡を貯める輪っか状のバッファ
 	std::uint32_t keyBits = 0, padBits = 0;                       // 押下中のキー / パッドボタン (1 ビット = 1 個)
-	bool          pad = false;  float lsx = 0.0f, lsy = 0.0f;     // パッド接続の有無 / 左スティックの傾き(+y=上)
+	bool          pad = false;  std::uint8_t _pad2[3] = {};
+	float         lsx = 0.0f, lsy = 0.0f;                         // パッド接続の有無 / 左スティックの傾き(+y=上)
 
 	// update だけが状態を書き換える (draw は状態を読んで描くだけ)。
-	// この章は時間経過を使わないので、前フレームからの秒数 dt は受け取るが使わない。
+	// この章は時間経過を使わないので、前フレームからの経過秒数 dt は受け取るが使わない。
 	void update(Input in, float /*dt*/)
 	{
 		mx = in.mouseX(); my = in.mouseY();
@@ -97,7 +99,7 @@ struct Input04
 		for (const Rect& b : {kKbBox, kMsBox, kPdBox})
 		{ s.drawRoundedRect(b, kPanel, 14.0f); s.drawRoundedRectFrame(b, theme::kFrame, 14.0f, 1.5f); }
 
-		// キーボード図: 押されているキーだけ青く光る (離すと消える)。
+		// キーボード図では、押されているキーだけ青く光る (離すと消える)。
 		int i = 0;
 		for (const KeyCell& c : kKeys)
 		{
@@ -110,7 +112,7 @@ struct Input04
 			else if (c.cap[0]) { s.drawTextInRect(r, c.cap, gc, 22.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle); }
 		}
 
-		// マウス区画: 動いた跡を薄い点で引き、いまの位置に丸を置く (どちらも区画内に収める)。
+		// マウス区画では、動いた跡を薄い点で描き、いまの位置に丸を置く (どちらも区画内に収める)。
 		const Vec2 m = toBox(mx, my);
 		for (int j = 0; j < tn; ++j)
 		{
@@ -128,7 +130,7 @@ struct Input04
 		else if (mbtn & 4) { mk = theme::kGreen; }    // 中
 		s.fillCircle(m.x, m.y, mbtn ? 10.0f : 6.0f, mk);
 
-		// パッド区画: 左スティックの傾きを、丸い領域の中の点で示す。
+		// パッド区画では、左スティックの傾きを、丸い領域の中の点で示す。
 		s.drawCircleFrame(kStick, kStickR, theme::kFrame, 1.5f);
 		s.line(kStick.x - kStickR, kStick.y, kStick.x + kStickR, kStick.y, kFaint, 1.0f);   // 横の目盛り
 		s.line(kStick.x, kStick.y - kStickR, kStick.x, kStick.y + kStickR, kFaint, 1.0f);   // 縦の目盛り
@@ -146,7 +148,7 @@ struct Input04
 			                 18.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
 		}
 
-		// パッドが繋がっていないときは、薄い色で一言そえる。
+		// パッドがつながっていないときは、薄い色で一言そえる。
 		if (!pad)
 			s.drawTextInRect(Rect{kPdBox.x(), kStick.y + kStickR + 16.0f, kPdBox.width(), 22.0f}, "パッド みつからない",
 			                 theme::kSubtle, 15.0f, Surface::TextAlignH::Center, Surface::TextAlignV::Middle);
@@ -158,4 +160,5 @@ struct Input04
 };
 
 // この構造体を DLL の入口に結びつける (これ 1 行でゲームとして読み込めるようになる)。
+MITIRU_ASSERT_NO_PADDING(Input04);
 MITIRU_GAME(Input04);

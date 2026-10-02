@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file AssetPipeline.hpp
-/// @brief JSON マニフェストからSVGアセットを一括生成するパイプライン
-/// @details マニフェストJSONにアセット名・テンプレート種別・パラメータを定義し、
-///          一括でSVG文字列を生成する。GraphWalkerのアセット管理に使用。
+/// @brief JSON マニフェストから SVG アセットを一括生成するパイプライン
+/// @details マニフェスト JSON にアセット名・テンプレート種別・パラメータを定義し、
+///          一括で SVG 文字列を生成する。GraphWalker のアセット管理に使用。
 ///
 /// @code
 /// std::string manifest = R"json([
@@ -13,7 +13,7 @@
 /// mitiru::asset::AssetPipeline pipeline;
 /// auto entries = pipeline.loadManifest(manifest);
 /// auto assets = pipeline.generateAll(entries);
-/// // assets["player"] → SVG文字列
+/// // assets["player"] → SVG 文字列
 /// @endcode
 
 #include "GameAssetTemplates.hpp"
@@ -27,7 +27,7 @@
 namespace mitiru::asset
 {
 
-/// @brief アセットマニフェストの1エントリ
+/// @brief アセットマニフェストの 1 エントリ
 struct AssetManifest
 {
 	std::string name;                          ///< アセット名（一意キー）
@@ -35,13 +35,13 @@ struct AssetManifest
 	std::map<std::string, std::string> params; ///< テンプレートパラメータ
 };
 
-/// @brief マニフェスト駆動のSVGアセット一括生成パイプライン
+/// @brief マニフェスト駆動の SVG アセット一括生成パイプライン
 class AssetPipeline
 {
 public:
-	/// @brief JSONマニフェスト文字列を解析してエントリ一覧を返す
-	/// @param json JSON配列文字列
-	/// @return AssetManifestのベクター
+	/// @brief JSON マニフェスト文字列を解析してエントリ一覧を返す
+	/// @param json JSON 配列文字列
+	/// @return AssetManifest のベクター
 	[[nodiscard]] std::vector<AssetManifest> loadManifest(const std::string& json) const
 	{
 		std::vector<AssetManifest> result;
@@ -51,7 +51,7 @@ public:
 			return result;
 		}
 
-		// 配列内の各オブジェクトを抽出
+		// 配列内の各オブジェクトを取り出す
 		size_t pos = 1;
 		while (pos < trimmed.size())
 		{
@@ -80,7 +80,7 @@ public:
 			entry.name = extractString(objStr, "name");
 			entry.templateType = extractString(objStr, "templateType");
 
-			// params解析
+			// params を解析する
 			auto paramsBlock = extractObject(objStr, "params");
 			if (!paramsBlock.empty())
 			{
@@ -97,9 +97,9 @@ public:
 		return result;
 	}
 
-	/// @brief 全マニフェストエントリからSVGを一括生成する
+	/// @brief すべてのマニフェストエントリから SVG を一括生成する
 	/// @param manifests マニフェストエントリ一覧
-	/// @return アセット名 → SVG文字列のマップ
+	/// @return アセット名 → SVG 文字列のマップ
 	[[nodiscard]] std::map<std::string, std::string> generateAll(
 		const std::vector<AssetManifest>& manifests) const
 	{
@@ -115,9 +115,9 @@ public:
 		return result;
 	}
 
-	/// @brief 単一マニフェストエントリからSVGを生成する
+	/// @brief 単一のマニフェストエントリから SVG を生成する
 	/// @param manifest マニフェストエントリ
-	/// @return 成功時はSVG文字列、失敗時はnullopt
+	/// @return 成功時は SVG 文字列、失敗時は nullopt
 	[[nodiscard]] std::optional<std::string> generateOne(const AssetManifest& manifest) const
 	{
 		const auto& t = manifest.templateType;
@@ -222,8 +222,8 @@ public:
 		return SvgGenerator::toSvg(doc);
 	}
 
-	/// @brief 全テンプレートを網羅するサンプルマニフェストJSONを出力する
-	/// @return JSON配列文字列
+	/// @brief すべてのテンプレートを含むサンプルマニフェスト JSON を出力する
+	/// @return JSON 配列文字列
 	[[nodiscard]] std::string exportManifestTemplate() const
 	{
 		return R"json([
@@ -245,7 +245,7 @@ public:
 	}
 
 private:
-	/// @brief パラメータマップからfloat値を取得する
+	/// @brief パラメータマップから float 値を取得する
 	[[nodiscard]] static float getFloat(const std::map<std::string, std::string>& params,
 		const std::string& key, float defaultVal)
 	{
@@ -264,7 +264,7 @@ private:
 		}
 	}
 
-	/// @brief パラメータマップからstring値を取得する
+	/// @brief パラメータマップから string 値を取得する
 	[[nodiscard]] static std::string getString(const std::map<std::string, std::string>& params,
 		const std::string& key, const std::string& defaultVal)
 	{
@@ -276,7 +276,7 @@ private:
 		return it->second;
 	}
 
-	// ========== 簡易JSONパーサーユーティリティ ==========
+	// ========== 簡易 JSON パーサーユーティリティ ==========
 
 	[[nodiscard]] static std::string trim(const std::string& s)
 	{
@@ -364,7 +364,7 @@ private:
 			}
 			const auto key = json.substr(keyStart + 1, keyEnd - keyStart - 1);
 
-			// コロンの後の値
+			// コロンの後にある値
 			auto colon = json.find(':', keyEnd + 1);
 			if (colon == std::string::npos)
 			{

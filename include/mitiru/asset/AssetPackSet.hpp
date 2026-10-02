@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file AssetPackSet.hpp
-/// @brief 複数の .mtpak を依存順に重ねて 1 つの VFS として読む PackSet。
+/// @brief 複数の .mtpak を依存順に重ね、1 つの VFS として読む PackSet。
 ///
-/// v2 pack は自分が依存する pack 名 (dependsOn) を持てる。PackSet::resolve は root pack を
+/// v2 pack は、自分が依存する pack 名 (dependsOn) を持てる。PackSet::resolve は root pack を
 /// 開き、dependsOn を rootFile と同じディレクトリで再帰的に解決して積み上げる。
-/// 検索は「後から積んだ pack が優先」= root が最優先、依存の依存ほど優先度が低い。
+/// 検索では「後から積んだ pack が優先」= root が最優先となり、依存の依存ほど優先度が低い。
 
 #include <mitiru/asset/AssetPack.hpp>
 
@@ -21,7 +21,7 @@ class PackSet
 {
 public:
 	/// rootFile を開き、dependsOn を rootFile と同じディレクトリから再帰的に解決する。
-	/// 循環依存や同名の重複解決は 1 回のみに抑える。見つからない依存は黙って無視する
+	/// 循環依存や同名の重複解決は 1 回だけに抑える。見つからない依存は通知せず無視する
 	/// (壊れた配布物でも root 自体は読めるようにするため)。root を開けなければ nullopt。
 	[[nodiscard]] static std::optional<PackSet> resolve(const std::filesystem::path& rootFile)
 	{
@@ -30,9 +30,9 @@ public:
 
 		PackSet set;
 		std::unordered_set<std::string> visited;
-		// root 自身をあらかじめ visited に入れておく。依存が root 名へ巡回する場合
-		// (直接の自己参照や A→B→A) にこれが無いと、root が「依存」として再度 open
-		// され out へ積まれた上で、末尾に本来の root がもう一度積まれ二重登録になる。
+		// root 自身をあらかじめ visited に入れておく。依存が root 名へ戻る場合
+		// (直接の自己参照や A→B→A)、これが無いと root が「依存」として再度 open
+		// されて out へ積まれた上で、末尾に本来の root がもう一度積まれ、二重登録になる。
 		visited.insert(rootFile.stem().string());
 		collectDeps(*root, rootFile.parent_path(), visited, set.m_packs);
 		set.m_packs.push_back(std::move(*root));  // root は最後に積む = 最優先

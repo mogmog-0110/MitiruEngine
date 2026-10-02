@@ -96,7 +96,7 @@ public:
 	}
 
 	/// @brief 画面端のマージンを設定する（わずかなはみ出しを許容）
-	/// @param pixels マージン量（デフォルト0）
+	/// @param pixels マージン量（デフォルト 0）
 	void setMargin(float pixels) noexcept
 	{
 		m_margin = pixels;
@@ -395,7 +395,7 @@ private:
 		return m_suppressed.find(type) != m_suppressed.end();
 	}
 
-	/// @brief 2つの矩形が重複しているか
+	/// @brief 2 つの矩形が重複しているか
 	[[nodiscard]] static bool rectsOverlap(
 		const sgc::Rectf& a, const sgc::Rectf& b) noexcept
 	{

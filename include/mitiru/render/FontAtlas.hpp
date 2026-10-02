@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file FontAtlas.hpp
-/// @brief BitmapFontからスケーリングされたフォントアトラスを生成する
-/// @details 8x8 BitmapFontデータをscale倍に拡大してテクスチャアトラスを生成する。
-///          stb_truetype等の外部依存なしで、より高解像度のフォント表示が可能になる。
+/// @brief BitmapFont からスケーリングされたフォントアトラスを生成する
+/// @details 8x8 BitmapFont データを scale 倍に拡大してテクスチャアトラスを生成する。
+///          stb_truetype 等の外部依存なしで、より高解像度のフォント表示が可能になる。
 ///
 /// @code
 /// auto atlas = mitiru::render::FontAtlas::generate(2);
@@ -19,10 +19,10 @@
 namespace mitiru::render
 {
 
-/// @brief BitmapFontベースのフォントアトラスジェネレータ
-/// @details BitmapFontの8x8グリフデータを任意のスケールに拡大し、
-///          16列×6行のアトラステクスチャとして出力する。
-///          ASCII 32-126の95文字をサポートする。
+/// @brief BitmapFont ベースのフォントアトラスジェネレータ
+/// @details BitmapFont の 8x8 グリフデータを任意のスケールに拡大し、
+///          16 列×6 行のアトラステクスチャとして出力する。
+///          ASCII 32-126 の 95 文字をサポートする。
 class FontAtlas
 {
 public:
@@ -31,7 +31,7 @@ public:
 
 	/// @brief 指定スケールでフォントアトラステクスチャを生成する
 	/// @param scale 拡大率（1 = 8x8, 2 = 16x16, 3 = 24x24 ...）
-	/// @return RGBA8形式のアトラステクスチャ
+	/// @return RGBA8 形式のアトラステクスチャ
 	[[nodiscard]] static Texture generate(int scale = 2)
 	{
 		if (scale < 1)
@@ -47,7 +47,7 @@ public:
 		std::vector<std::uint8_t> pixels(
 			static_cast<std::size_t>(atlasW) * atlasH * 4, 0);
 
-		/// ASCII 32-126の各文字を描画する
+		/// ASCII 32-126 の各文字を描画する
 		for (int ch = BitmapFont::FIRST_CHAR; ch <= BitmapFont::LAST_CHAR; ++ch)
 		{
 			const int idx = ch - BitmapFont::FIRST_CHAR;
@@ -64,7 +64,7 @@ public:
 						continue;
 					}
 
-					/// scale×scaleブロックを塗りつぶす
+					/// scale×scale ブロックを塗りつぶす
 					for (int sy = 0; sy < scale; ++sy)
 					{
 						for (int sx = 0; sx < scale; ++sx)
@@ -102,13 +102,13 @@ public:
 		return BitmapFont::GLYPH_HEIGHT * (scale < 1 ? 1 : scale);
 	}
 
-	/// @brief 指定文字のアトラス上のUV座標を取得する
-	/// @param ch ASCII文字
+	/// @brief 指定文字のアトラス上の UV 座標を取得する
+	/// @param ch ASCII 文字
 	/// @param scale 生成時と同じスケール値
-	/// @param outU0 左上U座標（出力）
-	/// @param outV0 左上V座標（出力）
-	/// @param outU1 右下U座標（出力）
-	/// @param outV1 右下V座標（出力）
+	/// @param outU0 左上 U 座標（出力）
+	/// @param outV0 左上 V 座標（出力）
+	/// @param outU1 右下 U 座標（出力）
+	/// @param outV1 右下 V 座標（出力）
 	static void glyphUV(char ch, int scale,
 		float& outU0, float& outV0, float& outU1, float& outV1)
 	{

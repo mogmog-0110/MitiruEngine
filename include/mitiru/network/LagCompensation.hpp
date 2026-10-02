@@ -43,7 +43,7 @@ struct TimestampedState
 
 /// @brief ラグ補償マネージャー
 /// @tparam State 状態型（コピー構築可能であること）
-/// @details リングバッファで過去N個の状態を保持し、
+/// @details リングバッファで過去 N 個の状態を保持し、
 ///          任意のタイムスタンプにリワインドまたは補間できる。
 template <typename State>
 class LagCompensator
@@ -53,7 +53,7 @@ public:
 	using LerpFunc = std::function<State(const State&, const State&, float)>;
 
 	/// @brief コンストラクタ
-	/// @param capacity リングバッファの最大サイズ（デフォルト: 120 = 60fps×2秒）
+	/// @param capacity リングバッファの最大サイズ（デフォルト: 120 = 60fps×2 秒）
 	explicit LagCompensator(std::size_t capacity = kDefaultCapacity)
 		: m_capacity(capacity)
 	{
@@ -128,10 +128,10 @@ public:
 		return best->state;
 	}
 
-	/// @brief 2つのタイムスタンプ間で補間した状態を取得する
+	/// @brief 2 つのタイムスタンプ間で補間した状態を取得する
 	/// @param t1 開始タイムスタンプ
 	/// @param t2 終了タイムスタンプ
-	/// @param alpha 補間係数 [0.0, 1.0]（0.0 = t1の状態, 1.0 = t2の状態）
+	/// @param alpha 補間係数 [0.0, 1.0]（0.0 = t1 の状態, 1.0 = t2 の状態）
 	/// @return 補間された状態（補間関数が未設定または履歴不足なら nullopt）
 	[[nodiscard]] std::optional<State> interpolate(
 		Timestamp t1, Timestamp t2, float alpha) const
@@ -153,11 +153,11 @@ public:
 		return m_lerpFunc(*state1, *state2, alpha);
 	}
 
-	/// @brief 指定タイムスタンプに最も近い2つの状態の間で補間する
+	/// @brief 指定タイムスタンプに最も近い 2 つの状態の間で補間する
 	/// @param time 対象タイムスタンプ
 	/// @return 補間された状態（補間関数が未設定なら nullopt）
-	/// @details time が2つの記録済み状態の間にある場合、
-	///          その2つの状態間で自動的に補間係数を計算する。
+	/// @details time が 2 つの記録済み状態の間にある場合、
+	///          その 2 つの状態間で自動的に補間係数を計算する。
 	[[nodiscard]] std::optional<State> interpolateAt(Timestamp time) const
 	{
 		if (!m_lerpFunc || m_buffer.empty())
@@ -217,7 +217,7 @@ public:
 	}
 
 	/// @brief 最古のタイムスタンプを返す
-	/// @return 最古のタイムスタンプ（バッファが空なら0）
+	/// @return 最古のタイムスタンプ（バッファが空なら 0）
 	[[nodiscard]] Timestamp oldestTimestamp() const noexcept
 	{
 		if (m_buffer.empty()) return 0;
@@ -234,7 +234,7 @@ public:
 	}
 
 	/// @brief 最新のタイムスタンプを返す
-	/// @return 最新のタイムスタンプ（バッファが空なら0）
+	/// @return 最新のタイムスタンプ（バッファが空なら 0）
 	[[nodiscard]] Timestamp newestTimestamp() const noexcept
 	{
 		if (m_buffer.empty()) return 0;
@@ -258,7 +258,7 @@ public:
 	}
 
 private:
-	/// @brief デフォルトの履歴容量（60fps × 2秒 = 120フレーム）
+	/// @brief デフォルトの履歴容量（60fps × 2 秒 = 120 フレーム）
 	static constexpr std::size_t kDefaultCapacity = 120;
 
 	std::vector<TimestampedState<State>> m_buffer; ///< リングバッファ

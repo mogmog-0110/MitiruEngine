@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file WebGlTexture.hpp
-/// @brief WebGL2テクスチャ実装
-/// @details GLuintテクスチャオブジェクトをRAIIで管理する。
-///          RGBA8形式のTexture2D生成・アップロード・サンプラー設定に対応。
+/// @brief WebGL2 テクスチャ実装
+/// @details GLuint テクスチャオブジェクトを RAII で管理する。
+///          RGBA8 形式の Texture2D の生成・アップロード・サンプラー設定に対応する。
 
 #ifdef __EMSCRIPTEN__
 
@@ -35,10 +35,9 @@ enum class TextureWrap
 	MirroredRepeat ///< ミラーリピート
 };
 
-/// @brief WebGL2用テクスチャ実装
-/// @details GLuintテクスチャオブジェクトをRAIIで管理する。
-///          デストラクタでglDeleteTexturesを呼び出す。
-///
+/// @brief WebGL2 用テクスチャ実装
+/// @details GLuint テクスチャオブジェクトを RAII で管理する。
+/// デストラクタで glDeleteTextures を呼び出す。
 /// @code
 /// auto tex = WebGLTexture::createFromData(256, 256, PixelFormat::RGBA8, pixelData);
 /// tex.bind(0);
@@ -177,10 +176,10 @@ public:
 	/// @brief ピクセルフォーマットを取得する
 	[[nodiscard]] PixelFormat format() const noexcept override { return m_format; }
 
-	/// @brief GLテクスチャハンドルを取得する
+	/// @brief GL テクスチャハンドルを取得する
 	[[nodiscard]] GLuint handle() const noexcept { return m_texture; }
 
-	/// @brief テクスチャを指定テクスチャユニットにバインドする
+	/// @brief テクスチャを指定のテクスチャユニットにバインドする
 	/// @param unit テクスチャユニット番号（0〜31）
 	void bind(GLuint unit = 0) const noexcept
 	{
@@ -197,8 +196,8 @@ public:
 	}
 
 	/// @brief テクスチャのサブ領域を更新する
-	/// @param x 更新開始X座標
-	/// @param y 更新開始Y座標
+	/// @param x 更新開始 X 座標
+	/// @param y 更新開始 Y 座標
 	/// @param w 更新幅
 	/// @param h 更新高さ
 	/// @param data ピクセルデータ
@@ -238,8 +237,8 @@ public:
 	}
 
 	/// @brief ラップモードを設定する
-	/// @param wrapS S軸ラップモード
-	/// @param wrapT T軸ラップモード
+	/// @param wrapS S 軸ラップモード
+	/// @param wrapT T 軸ラップモード
 	void setWrap(TextureWrap wrapS, TextureWrap wrapT) noexcept
 	{
 		if (m_texture == 0)
@@ -272,7 +271,7 @@ private:
 	/// @brief デフォルトコンストラクタ（ファクトリからのみ使用）
 	WebGLTexture() = default;
 
-	/// @brief GLフォーマット情報
+	/// @brief GL フォーマット情報
 	struct GlFormatInfo
 	{
 		GLint internalFormat;
@@ -280,7 +279,7 @@ private:
 		GLenum type;
 	};
 
-	/// @brief PixelFormatからGLフォーマットに変換する
+	/// @brief PixelFormat から GL フォーマットに変換する
 	[[nodiscard]] static GlFormatInfo toGlFormat(PixelFormat pf) noexcept
 	{
 		switch (pf)
@@ -288,7 +287,7 @@ private:
 		case PixelFormat::RGBA8:
 			return {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE};
 		case PixelFormat::BGRA8:
-			/// WebGL2はBGRAを直接サポートしないため、RGBAとして扱う
+			/// WebGL2 は BGRA を直接サポートしないため、RGBA として扱う
 			return {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE};
 		case PixelFormat::R8:
 			return {GL_R8, GL_RED, GL_UNSIGNED_BYTE};
@@ -300,7 +299,7 @@ private:
 		return {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE};
 	}
 
-	/// @brief TextureFilterからGLフィルタに変換する
+	/// @brief TextureFilter から GL フィルタに変換する
 	[[nodiscard]] static GLint toGlFilter(TextureFilter filter) noexcept
 	{
 		switch (filter)
@@ -311,7 +310,7 @@ private:
 		return GL_LINEAR;
 	}
 
-	/// @brief TextureWrapからGLラップモードに変換する
+	/// @brief TextureWrap から GL ラップモードに変換する
 	[[nodiscard]] static GLint toGlWrap(TextureWrap wrap) noexcept
 	{
 		switch (wrap)

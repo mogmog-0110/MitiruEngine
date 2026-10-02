@@ -14,8 +14,8 @@ class GameAssetUtil
 {
 public:
 	/// @brief ネオン色を暗くした背景色を生成する
-	/// @param hexColor #RRGGBB形式の色
-	/// @return 暗くした色（#RRGGBB形式）
+	/// @param hexColor #RRGGBB 形式の色
+	/// @return 暗くした色（#RRGGBB 形式）
 	[[nodiscard]] static std::string darkenColor(const std::string& hexColor)
 	{
 		if (hexColor.size() < 7 || hexColor[0] != '#')

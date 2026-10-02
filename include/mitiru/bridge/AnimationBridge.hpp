@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file AnimationBridge.hpp
-/// @brief sgcアニメーション統合ブリッジ
-/// @details sgcのTween、TweenTimeline、AnimationStateMachineを
-///          Mitiruエンジンに統合する。名前付きトゥイーンの管理と更新を提供。
+/// @brief sgc アニメーション統合ブリッジ
+/// @details sgc の Tween、TweenTimeline、AnimationStateMachine を
+///          Mitiru エンジンに統合する。名前付きトゥイーンの管理と更新を提供。
 
 #include <string>
 #include <unordered_map>
@@ -16,8 +16,8 @@
 namespace mitiru::bridge
 {
 
-/// @brief sgcアニメーション統合ブリッジ
-/// @details 名前付きトゥイーンの登録・更新・値取得を一元管理する。
+/// @brief sgc アニメーション統合ブリッジ
+/// @details 名前付きトゥイーンの登録・更新・値の取得を一元管理する。
 ///
 /// @code
 /// mitiru::bridge::AnimationBridge anim;
@@ -38,7 +38,7 @@ public:
 	/// @brief view push ハンドラを登録する（非所有 raw pointer）
 	/// @details 登録後、update() の各フレームでトゥイーンごとに
 	///          `"<tweenName>.value"` と `"<tweenName>.finished"` が push される。
-	///          nullptr を渡すと push を無効化する。
+	///          nullptr を渡すと push を無効にする。
 	///
 	/// @code
 	/// BridgeViewPush vp("animation", setSink, emitSink);
@@ -97,7 +97,7 @@ public:
 
 	/// @brief トゥイーンの現在値を取得する
 	/// @param name トゥイーン名
-	/// @return 現在値（未登録時は0.0f）
+	/// @return 現在値（未登録時は 0.0f）
 	[[nodiscard]] float getTweenValue(const std::string& name) const
 	{
 		const auto it = m_tweens.find(name);
@@ -110,7 +110,7 @@ public:
 
 	/// @brief トゥイーンが完了しているか
 	/// @param name トゥイーン名
-	/// @return 完了済みならtrue（未登録時もtrue）
+	/// @return 完了済みなら true（未登録時も true）
 	[[nodiscard]] bool isTweenComplete(const std::string& name) const
 	{
 		const auto it = m_tweens.find(name);
@@ -128,7 +128,7 @@ public:
 		m_tweens.erase(name);
 	}
 
-	/// @brief 登録トゥイーン数を取得する
+	/// @brief 登録されているトゥイーンの数を取得する
 	/// @return トゥイーン数
 	[[nodiscard]] std::size_t tweenCount() const noexcept
 	{
@@ -137,8 +137,8 @@ public:
 
 	// ── シリアライズ ────────────────────────────────────────
 
-	/// @brief アニメーション状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief アニメーション状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -163,7 +163,7 @@ public:
 	}
 
 private:
-	/// @brief トゥイーン内部エントリ
+	/// @brief トゥイーンの内部エントリ
 	struct TweenEntry
 	{
 		sgc::Tween<float> tween;        ///< トゥイーン本体

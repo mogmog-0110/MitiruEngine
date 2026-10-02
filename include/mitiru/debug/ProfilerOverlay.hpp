@@ -3,7 +3,7 @@
 /// @file ProfilerOverlay.hpp
 /// @brief パフォーマンスプロファイラーオーバーレイ
 /// @details フレームごとのプロファイルサンプルを収集し、フレームグラフデータ、
-///          FPS履歴、メモリ使用量、システム別タイミングを提供する。
+///          FPS 履歴、メモリ使用量、システム別タイミングを提供する。
 
 #include <algorithm>
 #include <cstddef>
@@ -16,7 +16,7 @@ namespace mitiru::debug
 {
 
 /// @brief プロファイルサンプル
-/// @details 1つの計測区間の名前、開始時刻、所要時間、深度、表示色を保持する。
+/// @details 1 つの計測区間の名前、開始時刻、所要時間、深度、表示色を保持する。
 struct ProfileSample
 {
 	std::string name;           ///< サンプル名
@@ -27,7 +27,7 @@ struct ProfileSample
 };
 
 /// @brief フレームプロファイル
-/// @details 1フレーム内の全サンプルとフレーム全体の所要時間を保持する。
+/// @details 1 フレーム内の全サンプルとフレーム全体の所要時間を保持する。
 struct FrameProfile
 {
 	std::vector<ProfileSample> samples; ///< サンプルリスト
@@ -52,7 +52,7 @@ struct SystemTiming
 };
 
 /// @brief パフォーマンスプロファイラーオーバーレイ
-/// @details フレームプロファイルの収集、FPS履歴の管理、メモリ統計の追跡を行う。
+/// @details フレームプロファイルの収集、FPS 履歴の管理、メモリ統計の追跡を行う。
 ///
 /// @code
 /// mitiru::debug::ProfilerOverlay profiler(120);
@@ -69,7 +69,7 @@ class ProfilerOverlay
 {
 public:
 	/// @brief コンストラクタ
-	/// @param historySize FPS履歴の最大フレーム数
+	/// @param historySize FPS 履歴の最大フレーム数
 	explicit ProfilerOverlay(std::size_t historySize = 120) noexcept
 		: m_maxHistory(historySize)
 	{
@@ -79,7 +79,7 @@ public:
 	/// @param frame フレームプロファイル
 	void pushFrame(FrameProfile frame)
 	{
-		/// FPS履歴を更新する
+		/// FPS 履歴を更新する
 		if (frame.totalFrameMs > 0.0f)
 		{
 			const float fps = 1000.0f / frame.totalFrameMs;
@@ -121,15 +121,15 @@ public:
 		return sorted;
 	}
 
-	/// @brief FPS履歴を取得する
-	/// @return FPS値のリスト（古い順）
+	/// @brief FPS 履歴を取得する
+	/// @return FPS 値のリスト（古い順）
 	[[nodiscard]] const std::vector<float>& fpsHistory() const noexcept
 	{
 		return m_fpsHistory;
 	}
 
-	/// @brief 平均FPSを取得する
-	/// @return 履歴内の平均FPS（履歴が空の場合は0.0f）
+	/// @brief 平均 FPS を取得する
+	/// @return 履歴内の平均 FPS（履歴が空の場合は 0.0f）
 	[[nodiscard]] float averageFps() const noexcept
 	{
 		if (m_fpsHistory.empty())
@@ -140,8 +140,8 @@ public:
 		return sum / static_cast<float>(m_fpsHistory.size());
 	}
 
-	/// @brief 最小FPSを取得する
-	/// @return 履歴内の最小FPS
+	/// @brief 最小 FPS を取得する
+	/// @return 履歴内の最小 FPS
 	[[nodiscard]] float minFps() const noexcept
 	{
 		if (m_fpsHistory.empty())
@@ -151,8 +151,8 @@ public:
 		return *std::min_element(m_fpsHistory.begin(), m_fpsHistory.end());
 	}
 
-	/// @brief 最大FPSを取得する
-	/// @return 履歴内の最大FPS
+	/// @brief 最大 FPS を取得する
+	/// @return 履歴内の最大 FPS
 	[[nodiscard]] float maxFps() const noexcept
 	{
 		if (m_fpsHistory.empty())
@@ -210,7 +210,7 @@ public:
 		return m_latestFrame;
 	}
 
-	/// @brief FPS履歴の最大サイズを取得する
+	/// @brief FPS 履歴の最大サイズを取得する
 	/// @return 最大フレーム数
 	[[nodiscard]] std::size_t maxHistory() const noexcept
 	{

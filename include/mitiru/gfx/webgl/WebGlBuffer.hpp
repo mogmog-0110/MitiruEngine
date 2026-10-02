@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file WebGlBuffer.hpp
-/// @brief WebGL2 GPUバッファ実装
-/// @details GLuintバッファオブジェクトをRAIIで管理する。
+/// @brief WebGL2 GPU バッファ実装
+/// @details GLuint バッファオブジェクトを RAII で管理する。
 ///          頂点バッファ・インデックスバッファ・ユニフォームバッファに対応。
-///          動的バッファはglBufferSubDataで毎フレーム更新可能。
+///          動的バッファは glBufferSubData で毎フレーム更新可能。
 
 #ifdef __EMSCRIPTEN__
 
@@ -19,10 +19,9 @@
 namespace mitiru::gfx
 {
 
-/// @brief WebGL2用GPUバッファ実装
-/// @details GLuintバッファオブジェクトをRAIIで管理する。
-///          デストラクタでglDeleteBuffersを呼び出す。
-///
+/// @brief WebGL2 用 GPU バッファ実装
+/// @details GLuint バッファオブジェクトを RAII で管理する。
+/// デストラクタで glDeleteBuffers を呼び出す。
 /// @code
 /// WebGLBuffer vb(BufferType::Vertex, sizeof(vertices), false, vertices);
 /// glBindBuffer(GL_ARRAY_BUFFER, vb.handle());
@@ -34,7 +33,7 @@ public:
 	/// @param bufferType バッファ種別（Vertex / Index / Constant）
 	/// @param sizeBytes バッファサイズ（バイト）
 	/// @param dynamic 動的更新が必要か
-	/// @param initialData 初期データ（nullptrで初期化なし）
+	/// @param initialData 初期データ（nullptr で初期化なし）
 	WebGLBuffer(
 		BufferType bufferType,
 		std::uint32_t sizeBytes,
@@ -97,10 +96,10 @@ public:
 	/// @brief 動的バッファかどうかを判定する
 	[[nodiscard]] bool isDynamic() const noexcept { return m_dynamic; }
 
-	/// @brief GLバッファハンドルを取得する
+	/// @brief GL バッファハンドルを取得する
 	[[nodiscard]] GLuint handle() const noexcept { return m_buffer; }
 
-	/// @brief バッファターゲット（GL_ARRAY_BUFFER等）を取得する
+	/// @brief バッファターゲット（GL_ARRAY_BUFFER 等）を取得する
 	[[nodiscard]] GLenum bufferTarget() const noexcept
 	{
 		switch (m_type)

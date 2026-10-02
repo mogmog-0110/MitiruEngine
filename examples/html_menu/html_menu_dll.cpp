@@ -1,10 +1,10 @@
-// html_menu。HTML の操作パネルを触ると、その操作が C++ に届き、C++ が描く図形が目に見えて変わる例。
+// html_menu。UI の操作パネルを触ると、その操作が C++ に届き、C++ が描く図形の変化を目で確認できる例。
 //   左のパネルで色・形・数・傾き・間隔や、ふちどり・大きさ・影を選ぶと、右側に C++ が描いた図形が
-//   その場で変わる。JavaScript は 1 行も書かない。
-//   前章 html_hud が「C++ → HTML (値を見せる)」なら、この章は逆向きの「HTML → C++ (操作を伝える)」。
-//   セットで examples/html_menu/assets/scene.html を読むと、操作を送り出す側が分かる。
-// この章で使う仕組み: HTML の操作を受け取る in.action(...) / それに付いてきたデータを読む in.actionPayload(...) /
-//                     C++ から HTML へ値を返す hud.set(...) / HTML 側の data-m-action・payload・repeat・confirm
+//   その場で変わる。UI は RML / RCSS (HTML / CSS の方言) で書き、スクリプトは書かない。
+//   前章 html_hud が「C++ → UI (値を見せる)」なら、この章は逆向きの「UI → C++ (操作を伝える)」。
+//   セットで examples/html_menu/assets/ui/main.rml を読むと、操作を送る側が分かる。
+// この章で使う仕組み: UI の操作を受け取る in.action(...) / それに付いてきたデータを読む in.actionPayload(...) /
+//                     C++ から UI へ値を返す hud.set(...) / UI 側の dispatch・data-for・confirm
 #include <cmath>     // std::sqrt / std::fabs (さんかくの縁取りの計算)
 #include <cstdint>   // std::uint32_t
 #include <cstdio>    // std::snprintf (選択肢リストの JSON 組み立て)
@@ -16,7 +16,7 @@
 using namespace mitiru;
 
 // 選べる色の一覧 (ただのデータ)。name はボタンの説明、rgb は図形の色 (パネルの色見本にも使う)。
-// 形は 0=まる / 1=しかく / 2=さんかく の 3 種類。
+// 形は 0 = まる / 1 = しかく / 2 = さんかくの 3 種類。
 struct Swatch { const char* name; std::uint32_t rgb; };
 constexpr Swatch kColors[] = {
 	{ "あお", 0x0A84FF }, { "もも", 0xE8338A }, { "みどり", 0x1FA654 },
@@ -26,8 +26,8 @@ constexpr const char* kShapes[] = { "まる", "しかく", "さんかく" };
 constexpr int kColorCount = static_cast<int>(sizeof(kColors) / sizeof(kColors[0]));
 constexpr int kShapeCount = static_cast<int>(sizeof(kShapes) / sizeof(kShapes[0]));
 
-// HTML が送ってくる付随データ (例: {"id":2}) から、key の数値を 1 つ取り出す。
-// 見つからなければ -1。届くのは自分の scene.html が送る形だけなので、簡単な探索で十分。
+// UI が送ってくる付随データ (例: {"id":2}) から、key の数値を 1 つ取り出す。
+// 見つからなければ -1。届くのは自分の main.rml が送る形式だけなので、簡単な探索で十分。
 int payloadInt(const char* json, const char* key)
 {
 	char pat[16];
@@ -41,12 +41,13 @@ struct HtmlMenu
 	int  color = 0, shape = 0, count = 3;   // 選択中の色 / 形、描く個数 (1..5)
 	int  tilt = 0, gap = 150;               // かたむき (度、0..45)、図形どうしの間隔 (90..180)
 	bool outline = false, big = false, shadow = false;   // ふちどり / 大きく / 影
+	std::uint8_t _pad[1] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 
 	void update(Input in, Hud hud, float)
 	{
 		if (in.cancelPressed()) { hud.quit(); }   // ESC で終わる
-		// HTML パネルから届いた操作で、C++ の状態を書き換える。
-		// 状態を持っているのはいつも C++ 側で、HTML は「こうしてほしい」と action で頼むだけ。
+		// UI パネルから届いた操作に応じて、C++ の状態を書き換える。
+		// 状態を持つのは常に C++ 側で、UI は「こうしてほしい」と action で要求するだけ。
 		if (in.action("pick.color")) { const int v = payloadInt(in.actionPayload("pick.color"), "id"); if (v >= 0 && v < kColorCount) { color = v; } }
 		if (in.action("pick.shape")) { const int v = payloadInt(in.actionPayload("pick.shape"), "id"); if (v >= 0 && v < kShapeCount) { shape = v; } }
 		if (in.action("set.count")) { const int v = payloadInt(in.actionPayload("set.count"), "v"); if (v >= 1 && v <= 5)   { count = v; } }
@@ -59,8 +60,8 @@ struct HtmlMenu
 		pushPanel(hud);
 	}
 
-	// パネルへ「選べる一覧」と「今の値」を送る。どれを選んでいるか (sel) の判断も C++ が行い、
-	// HTML はその結果を見た目に反映するだけ。
+	// パネルへ「選べる一覧」と「今の値」を送る。どれを選んでいるか (sel) も C++ が判断し、
+	// UI はその結果を見た目に反映するだけ。
 	void pushPanel(Hud hud) const
 	{
 		char colors[384];
@@ -129,9 +130,9 @@ struct HtmlMenu
 		else                 { s.drawTriangle(Vec2{x, y - r}, Vec2{x - r, y + r}, Vec2{x + r, y + r}, c); }
 	}
 
-	// ふちどり: 図形を辺から均一に d だけ外へ広げて濃色で描く (後ろに敷く)。まる・しかくは
-	// そのまま一回り大きくすればよい。さんかくは、内接円の中心から相似に広げると 3 辺が均一に
-	// d だけ外へ出て、角も鋭いまま保たれる (単純に大きくすると辺ごとに太さが変わってしまう)。
+	// ふちどり: 図形を各辺から均一に d だけ外側へ広げ、濃色で背面に描く。まる・しかくは
+	// そのまま一回り大きくすればよい。さんかくは、内接円の中心を基準に相似形として広げると、3 辺が均一に
+	// d だけ外側へ広がり、角も鋭いまま保たれる (単純に大きくすると辺ごとに太さが変わってしまう)。
 	template <class Surface>
 	void drawOutline(Surface& s, float x, float y, float r, float d, Color c) const
 	{
@@ -154,4 +155,5 @@ struct HtmlMenu
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(HtmlMenu);
 
+MITIRU_ASSERT_NO_PADDING(HtmlMenu);
 MITIRU_GAME(HtmlMenu);

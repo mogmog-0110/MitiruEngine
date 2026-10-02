@@ -9,7 +9,7 @@
 namespace mitiru::util
 {
 
-/// @brief 決定論的LCG乱数生成器
+/// @brief 決定論的 LCG 乱数生成器
 /// @note シード値が同じなら常に同じ乱数列を生成する。再現性が必要なゲームロジックに適する
 class Rng
 {
@@ -21,8 +21,8 @@ public:
 	{
 	}
 
-	/// @brief LCGを1ステップ進めて乱数を返す
-	/// @return 0〜32767の範囲の乱数値
+	/// @brief LCG を 1 ステップ進めて乱数を返す
+	/// @return 0〜32767 の範囲の乱数値
 	std::uint32_t next() noexcept
 	{
 		m_state = m_state * 1103515245u + 12345u;
@@ -57,9 +57,9 @@ public:
 		return min + (static_cast<float>(next()) / 32767.0f) * (max - min);
 	}
 
-	/// @brief 確率に基づいてbool値を返す
-	/// @param probability trueを返す確率（0.0〜1.0）
-	/// @return 指定確率でtrue
+	/// @brief 確率に基づいて bool 値を返す
+	/// @param probability true を返す確率（0.0〜1.0）
+	/// @return 指定確率で true
 	bool nextBool(float probability = 0.5f)
 	{
 		return nextFloat() < probability;
@@ -73,7 +73,7 @@ public:
 	}
 
 private:
-	/// @brief LCG内部状態
+	/// @brief LCG 内部状態
 	std::uint32_t m_state;
 };
 

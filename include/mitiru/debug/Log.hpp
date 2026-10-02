@@ -3,8 +3,8 @@
 /// @file Log.hpp
 /// @brief グローバルログアクセサ
 /// @details エンジン全体で使用するグローバルロガーへのアクセスを提供する。
-///          デフォルトはNullLogger（出力なし）。
-///          setLogger()でConsoleLogger/FileLoggerに切り替え可能。
+///          デフォルトは NullLogger（出力なし）。
+///          setLogger()で ConsoleLogger/FileLogger に切り替え可能。
 ///
 /// @code
 /// // 初期化時
@@ -35,7 +35,7 @@ public:
 	}
 
 	/// @brief グローバルロガーを設定する
-	/// @param logger 新しいロガー（nullptrの場合はNullLoggerに戻る）
+	/// @param logger 新しいロガー（nullptr の場合は NullLogger に戻る）
 	static void setLogger(std::shared_ptr<ILogger> logger)
 	{
 		if (logger)

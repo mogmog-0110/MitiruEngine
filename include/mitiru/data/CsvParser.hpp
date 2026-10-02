@@ -19,14 +19,14 @@
 namespace mitiru::data
 {
 
-/// @brief CSVパーサー
-/// @details RFC 4180準拠のCSV解析を行う。
+/// @brief CSV パーサー
+/// @details RFC 4180 準拠の CSV 解析を行う。
 ///          ダブルクォートで囲まれたフィールド内のカンマ・改行に対応する。
 class CsvParser
 {
 public:
-	/// @brief CSV文字列を解析する
-	/// @param text CSV形式のテキスト
+	/// @brief CSV 文字列を解析する
+	/// @param text CSV 形式のテキスト
 	void parse(const std::string& text)
 	{
 		m_rows.clear();
@@ -81,7 +81,7 @@ public:
 					m_rows.push_back(std::move(currentRow));
 					currentRow.clear();
 					++i;
-					// \r\nの\rは無視する
+					// \r\n の \r は無視する
 				}
 				else if (ch == '\r')
 				{
@@ -110,7 +110,7 @@ public:
 	}
 
 	/// @brief 指定行の列数を取得する
-	/// @param row 行番号（0始まり）
+	/// @param row 行番号（0 始まり）
 	[[nodiscard]] int columnCount(int row) const noexcept
 	{
 		if (row < 0 || row >= static_cast<int>(m_rows.size())) return 0;
@@ -118,8 +118,8 @@ public:
 	}
 
 	/// @brief セルの文字列値を取得する
-	/// @param row 行番号（0始まり）
-	/// @param col 列番号（0始まり）
+	/// @param row 行番号（0 始まり）
+	/// @param col 列番号（0 始まり）
 	/// @return セルの文字列（範囲外は空文字列）
 	[[nodiscard]] std::string get(int row, int col) const
 	{

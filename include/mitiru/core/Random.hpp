@@ -1,18 +1,18 @@
 #pragma once
 
 /// @file Random.hpp
-/// @brief DLL境界安全な乱数生成器
-/// @details std::randomを使わずLCGベースで実装。
-///          DLLプラグインとホスト間で安全に共有できる。
+/// @brief DLL 境界安全な乱数生成器
+/// @details std::random を使わず LCG ベースで実装。
+///          DLL プラグインとホスト間で安全に共有できる。
 
 #include <cstdint>
 
 namespace mitiru
 {
 
-/// @brief LCGベースの乱数生成器（DLL境界安全）
-/// @details std::random はDLL境界で安全に使えないため、
-///          シンプルなLCG（線形合同法）で実装する。
+/// @brief LCG ベースの乱数生成器（DLL 境界安全）
+/// @details std::random は DLL 境界で安全に使えないため、
+///          シンプルな LCG（線形合同法）で実装する。
 ///
 /// @code
 /// mitiru::Random rng(12345);
@@ -62,7 +62,7 @@ public:
 	}
 
 	/// @brief 確率に基づくブール値を生成する
-	/// @param probability trueを返す確率 [0, 1]
+	/// @param probability true を返す確率 [0, 1]
 	/// @return 確率に基づくブール値
 	[[nodiscard]] bool nextBool(float probability = 0.5f) noexcept
 	{

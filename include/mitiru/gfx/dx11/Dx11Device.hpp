@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Dx11Device.hpp
-/// @brief DirectX 11デバイス実装
-/// @details ID3D11DeviceとID3D11DeviceContextを管理し、
-///          フレーム制御・ピクセル読み戻しを提供するIDevice実装。
+/// @brief DirectX 11 デバイス実装
+/// @details ID3D11Device と ID3D11DeviceContext を管理し、
+///          フレーム制御・ピクセル読み戻しを提供する IDevice 実装。
 
 #ifdef _WIN32
 
@@ -40,18 +40,18 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 11デバイス実装
-/// @details D3D11デバイス・コンテキスト・スワップチェーンを統合管理する。
-///          beginFrame()でクリア、endFrame()でプレゼントを行う。
+/// @brief DirectX 11 デバイス実装
+/// @details D3D11 デバイス・コンテキスト・スワップチェーンを統合管理する。
+///          beginFrame() でクリア、endFrame() でプレゼントを行う。
 class Dx11Device final : public IDevice
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param window Win32ウィンドウ（HWNDの取得に使用）
+	/// @param window Win32 ウィンドウ（HWND の取得に使用）
 	/// @param bufferWidth バックバッファ幅（0=ウィンドウサイズに合わせる）
 	/// @param bufferHeight バックバッファ高さ（0=ウィンドウサイズに合わせる）
 	explicit Dx11Device(mitiru::Win32Window* window,
@@ -100,7 +100,7 @@ public:
 	/// @brief フレームバッファからピクセルを読み取る
 	/// @param width 読み取り幅
 	/// @param height 読み取り高さ
-	/// @return RGBA8形式のピクセルデータ
+	/// @return RGBA8 形式のピクセルデータ
 	[[nodiscard]] std::vector<std::uint8_t> readPixels(
 		int width, int height) const override
 	{
@@ -118,7 +118,7 @@ public:
 				return {};
 			}
 
-			/// MSAA バックバッファの場合はまず非MSAAに解決する
+			/// MSAA バックバッファの場合はまず非 MSAA に解決する
 			D3D11_TEXTURE2D_DESC bbDesc = {};
 			backBuffer->GetDesc(&bbDesc);
 			source = backBuffer;
@@ -171,7 +171,7 @@ public:
 		m_context->CopyResource(
 			staging.getTexture(), source.Get());
 
-		/// ステージングテクスチャをマップしてCPUから読み取る
+		/// ステージングテクスチャをマップして CPU から読み取る
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
 		const HRESULT hr = m_context->Map(
 			staging.getTexture(), 0,
@@ -222,7 +222,7 @@ public:
 			return;
 		}
 
-		// GPUタイムスタンプ: フレーム開始
+		// GPU タイムスタンプ: フレーム開始
 		if (m_gpuTimerReady && m_gpuTimestampBegin)
 		{
 			m_context->End(m_gpuTimestampBegin.Get());
@@ -235,13 +235,13 @@ public:
 	/// @brief フレーム終了・プレゼント処理
 	void endFrame() override
 	{
-		// GPUタイムスタンプ: フレーム終了 + 周波数取得
+		// GPU タイムスタンプ: フレーム終了 + 周波数取得
 		if (m_gpuTimerReady && m_gpuTimestampEnd && m_gpuTimestampDisjoint)
 		{
 			m_context->End(m_gpuTimestampEnd.Get());
 			m_context->End(m_gpuTimestampDisjoint.Get());
 
-			// 前フレームの結果を取得（1フレーム遅延）
+			// 前フレームの結果を取得（1 フレーム遅延）
 			D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData{};
 			UINT64 tsBegin = 0, tsEnd = 0;
 
@@ -261,7 +261,7 @@ public:
 				}
 			}
 
-			// 次フレーム用にDisjointクエリを再開
+			// 次フレーム用に Disjoint クエリを再開
 			m_context->Begin(m_gpuTimestampDisjoint.Get());
 		}
 
@@ -274,22 +274,22 @@ public:
 	/// @brief GPU フレーム時間（ミリ秒）を取得する
 	[[nodiscard]] float gpuFrameMs() const noexcept { return m_gpuFrameMs; }
 
-	/// @brief 内部のD3D11デバイスを取得する
-	/// @return ID3D11Deviceへのポインタ
+	/// @brief 内部の D3D11 デバイスを取得する
+	/// @return ID3D11Device へのポインタ
 	[[nodiscard]] ID3D11Device* getD3DDevice() const noexcept
 	{
 		return m_device.Get();
 	}
 
-	/// @brief 内部のD3D11デバイスコンテキストを取得する
-	/// @return ID3D11DeviceContextへのポインタ
+	/// @brief 内部の D3D11 デバイスコンテキストを取得する
+	/// @return ID3D11DeviceContext へのポインタ
 	[[nodiscard]] ID3D11DeviceContext* getD3DContext() const noexcept
 	{
 		return m_context.Get();
 	}
 
 	/// @brief スワップチェーンを取得する
-	/// @return Dx11SwapChainへのポインタ
+	/// @return Dx11SwapChain へのポインタ
 	[[nodiscard]] Dx11SwapChain* getSwapChain() const noexcept
 	{
 		return m_swapChain.get();
@@ -304,11 +304,11 @@ public:
 		return m_offscreenTarget ? m_offscreenTarget->getRTV() : nullptr;
 	}
 
-	/// @brief GPUバッファを生成する
+	/// @brief GPU バッファを生成する
 	/// @param bufferType バッファ種別
 	/// @param sizeBytes バッファサイズ（バイト）
 	/// @param dynamic 動的更新が必要か
-	/// @param initialData 初期データ（nullptrで初期化なし）
+	/// @param initialData 初期データ（nullptr で初期化なし）
 	/// @return 生成されたバッファ
 	[[nodiscard]] std::unique_ptr<IBuffer> createBuffer(
 		BufferType bufferType,
@@ -362,7 +362,7 @@ public:
 	void onResize(int w, int h) override
 	{
 		if (w <= 0 || h <= 0) return;
-		/// RTVの参照を解除してからリサイズする
+		/// RTV の参照を解除してからリサイズする
 		if (m_context)
 		{
 			ID3D11RenderTargetView* nullRTV[] = {nullptr};
@@ -374,7 +374,7 @@ public:
 		}
 	}
 
-	/// @brief 3D描画後に2D描画用にレンダーターゲットをリセットする
+	/// @brief 3D 描画後に 2D 描画用にレンダーターゲットをリセットする
 	void resetRenderTargetFor2D() override
 	{
 		if (!m_context) return;
@@ -397,7 +397,7 @@ public:
 		m_postProcessManager = static_cast<render::PostProcessManager*>(pp);
 	}
 
-	/// @brief ポストプロセスのオフスクリーンRTへの描画を開始する
+	/// @brief ポストプロセスのオフスクリーン RT への描画を開始する
 	void beginPostProcess() override
 	{
 		if (m_postProcessManager && m_postProcessManager->isEnabled()
@@ -426,10 +426,10 @@ public:
 	}
 
 private:
-	/// @brief D3D11デバイスとコンテキストを生成する
+	/// @brief D3D11 デバイスとコンテキストを生成する
 	void createDevice()
 	{
-		/// フィーチャーレベル（DX11.0を要求）
+		/// フィーチャーレベル（DX11.0 を要求）
 		constexpr D3D_FEATURE_LEVEL featureLevels[] = {
 			D3D_FEATURE_LEVEL_11_1,
 			D3D_FEATURE_LEVEL_11_0,
@@ -453,7 +453,7 @@ private:
 			&actualLevel,
 			m_context.GetAddressOf());
 
-		/// ハードウェアが失敗した場合はWARPにフォールバック
+		/// ハードウェアが失敗した場合は WARP にフォールバック
 		if (FAILED(hr))
 		{
 			hr = D3D11CreateDevice(
@@ -482,14 +482,14 @@ private:
 	std::unique_ptr<Dx11RenderTarget> m_offscreenTarget; ///< windowless (G2) の描画先 (m_swapChain が null の時だけ使う)
 	render::PostProcessManager* m_postProcessManager = nullptr; ///< ポストプロセス（非所有）
 
-	// GPUタイムスタンプクエリ
+	// GPU タイムスタンプクエリ
 	ComPtr<ID3D11Query> m_gpuTimestampBegin;
 	ComPtr<ID3D11Query> m_gpuTimestampEnd;
 	ComPtr<ID3D11Query> m_gpuTimestampDisjoint;
 	bool m_gpuTimerReady = false;
 	float m_gpuFrameMs = 0.0f;
 
-	/// @brief GPUタイムスタンプクエリを初期化する
+	/// @brief GPU タイムスタンプクエリを初期化する
 	void initGpuTimer()
 	{
 		D3D11_QUERY_DESC desc{};

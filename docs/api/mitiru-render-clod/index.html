@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::render::clod — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 150 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::render::clod | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 150 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::render::clod | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 150 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/" class="active"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::render::clod</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 150 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 150 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#struct-clodfileheader"><code>ClodFileHeader</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-clodgroup"><code>ClodGroup</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-clodcluster"><code>ClodCluster</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-clodfilematerial"><code>ClodFileMaterial</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-gpuinstance"><code>GpuInstance</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-gpumeshrec"><code>GpuMeshRec</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-gpubvhnode"><code>GpuBvhNode</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-gpumaterial"><code>GpuMaterial</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-cloddrawcb"><code>ClodDrawCB</code></a></td><td>struct</td><td>17</td></tr>
+<tr><td><a href="#struct-pendinginstance"><code>PendingInstance</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-clodrenderer"><code>ClodRenderer</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#struct-clodmodel"><code>ClodModel</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-clodscene"><code>ClodScene</code></a></td><td>class</td><td>60</td></tr>
+</tbody></table>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>inline constexpr uint32_t kClodMagic = 0x36444C43u</code></div>
+<div class="api-method"><code>inline constexpr uint32_t kClodMagicV5 = 0x35444C43u</code></div>
+<div class="api-method"><code>inline constexpr uint32_t kClodMaterialMasked = 1u</code></div>
+<div class="api-method"><code>inline constexpr uint32_t kClodMaterialNormalXY = 2u</code></div>
+<div class="api-method"><code>inline constexpr uint32_t kClodListCap = 1u &lt;&lt; 20</code></div>
+<div class="api-method"><code>inline constexpr uint32_t kClodQueueCap = 1u &lt;&lt; 22</code></div>
+<div class="api-method"><code>inline constexpr uint32_t kClodMaxMeshes = 16</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool isClodMagic(uint32_t magic) noexcept</code></div>
+</div>
+<details class="api-class" id="struct-clodfileheader" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClodFileHeader</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>uint32_t magic</code></div>
+<div class="api-method"><code>uint32_t vertexCount</code></div>
+<div class="api-method"><code>uint32_t clusterCount</code></div>
+<div class="api-method"><code>uint32_t groupCount</code></div>
+<div class="api-method"><code>uint32_t vertIdxCount</code></div>
+<div class="api-method"><code>uint32_t triIdxByteCount</code></div>
+<div class="api-method"><code>uint32_t materialCount</code></div>
+<div class="api-method"><code>uint32_t pad</code></div>
+<div class="api-method"><code>float boundsMin[3]</code></div>
+<div class="api-method"><code>float boundsMax[3]</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-clodgroup" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClodGroup</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float center[3]</code></div>
+<div class="api-method"><code>float radius</code></div>
+<div class="api-method"><code>float error</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-clodcluster" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClodCluster</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int32_t ownGroup</code></div>
+<div class="api-method"><code>int32_t refined</code></div>
+<div class="api-method"><code>float cull[4]</code></div>
+<div class="api-method"><code>uint32_t vertOffset, vertCount</code></div>
+<div class="api-method"><code>uint32_t triOffset, triCount</code></div>
+<div class="api-method"><code>uint32_t lodDepth</code></div>
+<div class="api-method"><code>uint32_t materialId</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-clodfilematerial" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClodFileMaterial</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float baseColor[4]</code></div>
+<div class="api-method"><code>char albedo[120]</code></div>
+<div class="api-method"><code>char normal[120]</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gpuinstance" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GpuInstance</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float ofs[3]</code></div>
+<div class="api-method"><code>float rotY</code></div>
+<div class="api-method"><code>float scale</code></div>
+<div class="api-method"><code>uint32_t clusterBase</code></div>
+<div class="api-method"><code>uint32_t clusterCount</code></div>
+<div class="api-method"><code>uint32_t pad</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gpumeshrec" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GpuMeshRec</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>uint32_t itemBase, instBase, clusterCount, clusterBase</code></div>
+<div class="api-method"><code>uint32_t bvhRoot</code></div>
+<div class="api-method"><code>uint32_t radiusBits</code></div>
+<div class="api-method"><code>uint32_t pad1, pad2</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gpubvhnode">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GpuBvhNode</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float sphere[4]</code></div>
+<div class="api-method"><code>float maxErr</code></div>
+<div class="api-method"><code>uint32_t firstChild</code></div>
+<div class="api-method"><code>uint32_t childCount</code></div>
+<div class="api-method"><code>uint32_t groupId</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gpumaterial">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GpuMaterial</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float baseColor[4]</code></div>
+<div class="api-method"><code>uint32_t texIndex</code></div>
+<div class="api-method"><code>uint32_t flags</code></div>
+<div class="api-method"><code>uint32_t normalTex</code></div>
+<div class="api-method"><code>uint32_t pad</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-cloddrawcb">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClodDrawCB</code> <span class="api-class__count">17</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float viewProj[16]</code></div>
+<div class="api-method"><code>float camPosTau[4]</code></div>
+<div class="api-method"><code>float misc[4]</code></div>
+<div class="api-method"><code>float counts[4]</code></div>
+<div class="api-method"><code>float modelCtr[4]</code></div>
+<div class="api-method"><code>float frustum[6][4]</code></div>
+<div class="api-method"><code>float viewRow[3][4]</code></div>
+<div class="api-method"><code>float prevViewRow[3][4]</code></div>
+<div class="api-method"><code>float projParams[4]</code></div>
+<div class="api-method"><code>float hzbParams[4]</code></div>
+<div class="api-method"><code>float swParams[4]</code></div>
+<div class="api-method"><code>float engineLightDir[4]</code></div>
+<div class="api-method"><code>float engineLightColor[4]</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isImportableModelPath(std::string_view path) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;std::string&gt; ensureClodCache(const std::string&amp; sourcePath, std::string&amp; error)</code></div>
+<div class="api-method"><code>inline constexpr uint32_t kClodMaxInstances = 4096</code></div>
+<div class="api-method"><code>[[nodiscard]] const char* clodUnsupportedReason(ID3D12Device* device)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-pendinginstance">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PendingInstance</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int model = -1</code></div>
+<div class="api-method"><code>float rotYDeg = 0.0f</code></div>
+<div class="api-method"><code>float scale = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-clodrenderer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ClodRenderer</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool initialize(ID3D12Device* device, UINT frameCount)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool supported() const noexcept</code></div>
+<div class="api-method"><code>std::function&lt;void()&gt; waitIdle</code></div>
+<div class="api-method"><code>void queueInstance(const char* path, const float pos[3], float rotYDeg, float scale)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasWork() const noexcept</code></div>
+<div class="api-method"><code>void record(ID3D12GraphicsCommandList* cmd, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], float ambient, uint32_t width, uint32_t height, UINT frameIndex)</code></div>
+<div class="api-method"><code>void transitionForInject(ID3D12GraphicsCommandList* cmd)</code></div>
+<div class="api-method"><code>void transitionAfterInject(ID3D12GraphicsCommandList* cmd)</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12Resource* colorTexture() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12Resource* visBuffer() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t width() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t height() const noexcept</code></div>
+<div class="api-method"><code>void endFrame() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-clodmodel">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClodModel</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>uint32_t clusterBase = 0</code></div>
+<div class="api-method"><code>uint32_t clusterCount = 0</code></div>
+<div class="api-method"><code>uint32_t groupBase = 0</code></div>
+<div class="api-method"><code>uint32_t groupCount = 0</code></div>
+<div class="api-method"><code>uint32_t bvhRoot = 0</code></div>
+<div class="api-method"><code>float radius = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-clodscene">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ClodScene</code> <span class="api-class__count">60</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int appendModel(const uint8_t* data, size_t size, const std::string&amp; texDir)</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t revision() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;ClodModel&gt;&amp; models() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t maxLodDepth() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;float&gt;&amp; positions() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;float&gt;&amp; normals() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;float&gt;&amp; uvs() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;ClodGroup&gt;&amp; groups() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;ClodCluster&gt;&amp; clusters() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;uint32_t&gt;&amp; clusterVerts() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;uint8_t&gt;&amp; clusterTris() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;GpuMaterial&gt;&amp; materials() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;uint32_t&gt;&amp; groupRanges() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;GpuBvhNode&gt;&amp; bvhNodes() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;MipImage&gt;&amp; textures() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] uint32_t bvhMaxDepth() const noexcept</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodMSSize = sizeof(kClodMS)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodPSSize = sizeof(kClodPS)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodCullSize = sizeof(kClodCull)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodPrepSize = sizeof(kClodPrep)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodClearSize = sizeof(kClodClear)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodResolveSize = sizeof(kClodResolve)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodSwRasterSize = sizeof(kClodSwRaster)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodInstCullSize = sizeof(kClodInstCull)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodSeedSize = sizeof(kClodSeed)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodTraverseSize = sizeof(kClodTraverse)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodPrepQueueSize = sizeof(kClodPrepQueue)</code></div>
+<div class="api-method"><code>inline constexpr size_t kClodHzbSize = sizeof(kClodHzb)</code></div>
+<div class="api-method"><code>inline void clodLookAt(float* m, const float* eye, const float* at)</code></div>
+<div class="api-method"><code>inline void clodPerspective(float* m, float fovY, float aspect, float zn, float zf)</code></div>
+<div class="api-method"><code>inline void clodMatMul(float* o, const float* a, const float* b)</code></div>
+<div class="api-method"><code>inline void clodExtractFrustum(float out[6][4], const float* m)</code></div>
+<div class="api-method"><code>inline void ClodRenderer::fillDrawCB(ClodDrawCB&amp; cb, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], float ambient) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::buildFrameTables(D3D12_GPU_VIRTUAL_ADDRESS&amp; instances, D3D12_GPU_VIRTUAL_ADDRESS&amp; meshTable)</code></div>
+<div class="api-method"><code>inline void ClodRenderer::ensureSceneResources(ID3D12GraphicsCommandList* cmd)</code></div>
+<div class="api-method"><code>inline void ClodRenderer::uploadTextures(ID3D12GraphicsCommandList* cmd)</code></div>
+<div class="api-method"><code>inline void ClodRenderer::bindCompute(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::bindGraphics(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::uavBarrierAll(ID3D12GraphicsCommandList* cmd) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::recordClears(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::recordBvhCull(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::recordDrawPass(ID3D12GraphicsCommandList* cmd, uint32_t pass, D3D12_GPU_VIRTUAL_ADDRESS cb) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::recordHzbBuild(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::recordResolve(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::record(ID3D12GraphicsCommandList* cmd, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], float ambient, uint32_t width, uint32_t height, UINT frameIndex)</code></div>
+<div class="api-method"><code>inline void ClodRenderer::transitionForInject(ID3D12GraphicsCommandList* cmd)</code></div>
+<div class="api-method"><code>inline void ClodRenderer::transitionAfterInject(ID3D12GraphicsCommandList* cmd)</code></div>
+<div class="api-method"><code>inline bool ClodRenderer::initialize(ID3D12Device* device, UINT frameCount)</code></div>
+<div class="api-method"><code>inline const char* clodUnsupportedReason(ID3D12Device* device)</code></div>
+<div class="api-method"><code>inline bool ClodRenderer::checkCaps(ID3D12Device* device) const</code></div>
+<div class="api-method"><code>inline bool ClodRenderer::createRootSignature()</code></div>
+<div class="api-method"><code>inline ClodRenderer::ComPtr&lt;ID3D12PipelineState&gt; ClodRenderer::makeComputePso(const uint8_t* dxil, size_t size) const</code></div>
+<div class="api-method"><code>template &lt;D3D12_PIPELINE_STATE_SUBOBJECT_TYPE Type, typename Inner&gt; struct alignas(void*) ClodStreamSubobject</code></div>
+<div class="api-method"><code>inline bool ClodRenderer::createPipelines()</code></div>
+<div class="api-method"><code>inline bool ClodRenderer::createCommandSignatures()</code></div>
+<div class="api-method"><code>inline gfx::GpuResource ClodRenderer::makeBuffer(uint64_t bytes, D3D12_HEAP_TYPE heap, D3D12_RESOURCE_STATES state, D3D12_RESOURCE_FLAGS flags) const</code></div>
+<div class="api-method"><code>inline bool ClodRenderer::createPersistentBuffers()</code></div>
+<div class="api-method"><code>inline void ClodRenderer::ensureScreenResources(uint32_t width, uint32_t height)</code></div>
+<div class="api-method"><code>inline void ClodRenderer::rebuildDescriptorHeap()</code></div>
+<div class="api-method"><code>inline int ClodRenderer::ensureModel(const char* path)</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

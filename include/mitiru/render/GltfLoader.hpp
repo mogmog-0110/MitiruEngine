@@ -2,8 +2,8 @@
 
 /// @file GltfLoader.hpp
 /// @brief glTF 2.0 ローダー (.gltf / .glb)
-/// @details cgltfを使用してglTFファイルをパースし、エンジンのMeshオブジェクトに変換する。
-///          ObjLoader.hppと同じパターン（optional返却）を踏襲する。
+/// @details cgltf を使って glTF ファイルをパースし、エンジンの Mesh オブジェクトに変換する。
+///          ObjLoader.hpp と同じパターン（optional 返却）に従う。
 
 #include <algorithm>
 #include <cmath>
@@ -82,7 +82,7 @@ namespace detail
 }
 
 /// @brief 外部 URI 画像（img->uri がファイルパス）を basePath 相対で解決して decode する（B7）。
-/// @details data URI (`data:`) はここでは扱わない（呼び出し側が空判定で弾く想定、`[-]`）。
+/// @details data URI (`data:`) はここでは扱わない（呼び出し側が空かどうかで判定して除外する想定、`[-]`）。
 ///          basePath が空（メモリ専用ロードで元パス不明）のときも解決できないので空を返す。
 [[nodiscard]] inline CpuTexture decodeExternalImage(const cgltf_image* img, const std::string& basePath)
 {
@@ -117,7 +117,7 @@ namespace detail
 	return tex;
 }
 
-/// @brief cgltfアクセサから浮動小数点値を安全に読み取る
+/// @brief cgltf アクセサから浮動小数点値を安全に読み取る
 [[nodiscard]] inline float readFloat(const cgltf_accessor* accessor, cgltf_size index, cgltf_size component)
 {
 	float value = 0.0f;
@@ -145,7 +145,7 @@ namespace detail
 	return value;
 }
 
-/// @brief cgltfアクセサからVec3を読み取る
+/// @brief cgltf アクセサから Vec3 を読み取る
 [[nodiscard]] inline sgc::Vec3f readVec3(const cgltf_accessor* accessor, cgltf_size index)
 {
 	float buf[3] = {0, 0, 0};
@@ -156,7 +156,7 @@ namespace detail
 	return {buf[0], buf[1], buf[2]};
 }
 
-/// @brief cgltfアクセサからVec2を読み取る
+/// @brief cgltf アクセサから Vec2 を読み取る
 [[nodiscard]] inline sgc::Vec2f readVec2(const cgltf_accessor* accessor, cgltf_size index)
 {
 	float buf[2] = {0, 0};
@@ -200,7 +200,7 @@ namespace detail
 	return out;
 }
 
-/// @brief cgltfアクセサからインデックスを読み取る
+/// @brief cgltf アクセサからインデックスを読み取る
 [[nodiscard]] inline uint32_t readIndex(const cgltf_accessor* accessor, cgltf_size index)
 {
 	if (!accessor || index >= accessor->count) { return 0; }
@@ -388,12 +388,12 @@ namespace detail
 
 } // namespace detail
 
-/// @brief glTFメモリデータからシーンを読み込む
+/// @brief glTF メモリデータからシーンを読み込む
 /// @param data データバッファ
 /// @param size データサイズ
 /// @param basePath 外部 URI テクスチャの相対パス解決に使う元ファイルのディレクトリ
 ///                 （末尾 `/` 込み）。空なら外部 URI は解決しない（B7、従来動作のまま）。
-/// @return パース成功時はGltfSceneData、失敗時はnullopt
+/// @return パース成功時は GltfSceneData、失敗時は nullopt
 [[nodiscard]] inline std::optional<GltfSceneData> loadGltfFromMemory(
 	const void* data, std::size_t size, const std::string& basePath = "")
 {
@@ -409,7 +409,7 @@ namespace detail
 		return std::nullopt;
 	}
 
-	/// バッファデータをロードする（メモリ内glbの場合はバッファが埋め込まれている）
+	/// バッファデータをロードする（メモリ内 glb の場合はバッファが埋め込まれている）
 	result = cgltf_load_buffers(&options, gltfData, nullptr);
 	if (result != cgltf_result_success)
 	{
@@ -663,9 +663,9 @@ namespace detail
 	return scene;
 }
 
-/// @brief glTFファイルからシーンを読み込む
-/// @param filePath glTF/GLBファイルパス
-/// @return パース成功時はGltfSceneData、失敗時はnullopt
+/// @brief glTF ファイルからシーンを読み込む
+/// @param filePath glTF/GLB ファイルパス
+/// @return パース成功時は GltfSceneData、失敗時は nullopt
 [[nodiscard]] inline std::optional<GltfSceneData> loadGltfSceneFromFile(const std::string& filePath)
 {
 	std::ifstream file(filePath, std::ios::binary | std::ios::ate);
@@ -683,9 +683,9 @@ namespace detail
 	return loadGltfFromMemory(buffer.data(), buffer.size(), basePath);
 }
 
-/// @brief glTFファイルから最初のメッシュを読み込む（便利関数）
-/// @param filePath glTF/GLBファイルパス
-/// @return パース成功時はMesh、失敗時はnullopt
+/// @brief glTF ファイルから最初のメッシュを読み込む（便利関数）
+/// @param filePath glTF/GLB ファイルパス
+/// @return パース成功時は Mesh、失敗時は nullopt
 [[nodiscard]] inline std::optional<Mesh> loadGltfMeshFromFile(const std::string& filePath)
 {
 	auto scene = loadGltfSceneFromFile(filePath);

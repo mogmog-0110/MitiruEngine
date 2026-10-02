@@ -50,7 +50,7 @@ namespace mitiru::data {
 
 /// @brief C++ value を JSON へ変換する
 /// @details nlohmann::adl_serializer<T> を経由するため、ユーザ型は
-///          NLOHMANN_DEFINE_TYPE_INTRUSIVE / NON_INTRUSIVE で opt-in 可能。
+///          NLOHMANN_DEFINE_TYPE_INTRUSIVE / NON_INTRUSIVE で opt-in できる。
 template <typename T>
 [[nodiscard]] inline Json toJson(const T& value)
 {
@@ -58,8 +58,8 @@ template <typename T>
 }
 
 /// @brief JSON を C++ value へ変換する (失敗時 nullopt)
-/// @details 型変換例外 (nlohmann::json::exception) は捕捉して nullopt。
-///          詳細メッセージが要る場合は `fromJsonResult<T>` を使用。
+/// @details 型変換例外 (nlohmann::json::exception) は捕捉して nullopt を返す。
+///          詳細メッセージが要るときは `fromJsonResult<T>` を使う。
 template <typename T>
 [[nodiscard]] inline std::optional<T> fromJson(const Json& json) noexcept
 {
@@ -107,7 +107,7 @@ template <typename T>
 // ---------------------------------------------------------------------------
 
 /// @brief Versioned JSON envelope: `{ "version": N, "data": <T> }`
-/// @details Save data / authored content の互換性管理のための共通レイアウト。
+/// @details Save data / authored content の互換性を管理するための共通レイアウト。
 template <typename T>
 [[nodiscard]] inline Json toJsonVersioned(const T& value, int version)
 {
@@ -118,8 +118,8 @@ template <typename T>
 }
 
 /// @brief Versioned envelope を読み込む (version 一致時のみ成功)
-/// @details version mismatch / フィールド欠落 / 型エラーいずれも error メッセージ付きで返す。
-///          version migration が要る場合は `MigrationChain<T>` を使用。
+/// @details version mismatch / フィールド欠落 / 型エラーのいずれも error メッセージ付きで返す。
+///          version migration が要るときは `MigrationChain<T>` を使う。
 template <typename T>
 [[nodiscard]] inline FromJsonResult<T> fromJsonVersioned(const Json& json,
                                                         int expectedVersion)
@@ -171,8 +171,8 @@ public:
 
     /// @brief 1 step を追加 (from → to)
     /// @return `addStep(...).addStep(...)` と chain できるよう `*this` を返す。
-    ///         戻り値は利便性のためだけのもので、side effect 目的に
-    ///         (例: `chain.addStep(1, 2, fn);`) 使い捨てても構わない。
+    ///         戻り値は利便性のためだけのもので、side effect だけを目的に呼んで
+    ///         (例: `chain.addStep(1, 2, fn);`) 戻り値を捨ててもよい。
     MigrationChain& addStep(int fromVersion, int toVersion, Migrate migrate)
     {
         m_steps.push_back(Step{ fromVersion, toVersion, std::move(migrate) });

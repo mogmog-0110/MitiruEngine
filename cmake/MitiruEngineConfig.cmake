@@ -52,7 +52,7 @@ if(DEFINED ENV{MITIRU_ENGINE_DIR} AND NOT "$ENV{MITIRU_ENGINE_DIR}" STREQUAL "")
 	list(APPEND _mitiru_candidates "$ENV{MITIRU_ENGINE_DIR}")
 endif()
 
-# 近隣のワークスペースレイアウトを探る
+# 近隣のワークスペースの配置を探す
 get_filename_component(_this_dir "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
 # このファイル自身が <engine>/cmake/ 下にあるので、engine ルートは親ディレクトリ
 get_filename_component(_from_self "${_this_dir}/.." ABSOLUTE)
@@ -117,23 +117,12 @@ if(NOT TARGET Mitiru::mitiru)
 		"did not define the Mitiru::mitiru target. Engine version mismatch?")
 endif()
 
-# ── Web runtime パスをエクスポート ──────────────────────────────
-# ゲーム側で mitiru_runtime/mitiru_base.css 等を POST_BUILD コピーしたい
-# ケースに便利。
-set(MitiruEngine_WEB_RUNTIME_DIR "${MitiruEngine_DIR}/web/mitiru_runtime"
-	CACHE PATH "Path to engine-side web runtime (CSS / JS / test harness)")
 
-# ── Asset pipeline helper (F-09) ───────────────────────────────
+# ── アセットパイプラインのヘルパー (F-09) ──────────────────────
 # mitiru_assets() を使えるようにする。
 if(EXISTS "${MitiruEngine_DIR}/cmake/MitiruAssets.cmake")
 	include("${MitiruEngine_DIR}/cmake/MitiruAssets.cmake")
 endif()
 
-# ── CEF game POST_BUILD helper ─────────────────────────────────
-# mitiru_register_cef_game() を使えるようにする (各ゲームの ~30 行 POST_BUILD
-# ブロックを 1 関数化)。
-if(EXISTS "${MitiruEngine_DIR}/cmake/MitiruCefGameHelper.cmake")
-	include("${MitiruEngine_DIR}/cmake/MitiruCefGameHelper.cmake")
-endif()
 
 set(MitiruEngine_FOUND TRUE)

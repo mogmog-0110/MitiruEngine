@@ -3,7 +3,7 @@
 /// @file ComponentRegistry.hpp
 /// @brief ランタイムコンポーネント型レジストリ
 /// @details コンポーネント型の名前とシリアライザを実行時に登録し、
-///          型消去されたコンポーネントデータをJSON等にシリアライズする。
+///          型消去されたコンポーネントデータを JSON 等にシリアライズする。
 
 #include <functional>
 #include <string>
@@ -21,7 +21,7 @@ using ComponentSerializer = std::function<std::string(const void*)>;
 
 /// @brief ランタイムコンポーネント型レジストリ
 /// @details コンポーネント型を名前とシリアライザ付きで登録し、
-///          動的なイントロスペクションを可能にする。
+///          実行時に型を調べられるようにする。
 ///
 /// @code
 /// mitiru::ecs::ComponentRegistry registry;
@@ -44,10 +44,10 @@ public:
 		m_entries[typeId] = Entry{std::move(name), std::move(serializer)};
 	}
 
-	/// @brief 指定型IDのコンポーネントデータをシリアライズする
-	/// @param typeId コンポーネントの型ID
+	/// @brief 指定した型 ID のコンポーネントデータをシリアライズする
+	/// @param typeId コンポーネントの型 ID
 	/// @param data コンポーネントデータへのポインタ
-	/// @return シリアライズされた文字列（未登録の場合は空文字列）
+	/// @return シリアライズした文字列（未登録の場合は空文字列）
 	[[nodiscard]] std::string serialize(sgc::TypeIdValue typeId, const void* data) const
 	{
 		const auto it = m_entries.find(typeId);
@@ -87,8 +87,8 @@ public:
 		return m_entries.size();
 	}
 
-	/// @brief JSON文字列に変換する
-	/// @return 登録型名の一覧をJSON配列で返す
+	/// @brief JSON 文字列に変換する
+	/// @return 登録型名の一覧を JSON 配列で返す
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -115,7 +115,7 @@ private:
 		ComponentSerializer serializer;   ///< シリアライズ関数
 	};
 
-	/// @brief 型ID → エントリ
+	/// @brief 型 ID → エントリ
 	std::unordered_map<sgc::TypeIdValue, Entry> m_entries;
 };
 

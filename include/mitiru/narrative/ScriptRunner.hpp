@@ -2,24 +2,21 @@
 
 /// @file ScriptRunner.hpp
 /// @brief JSON 駆動の ADV 形式 script runner (G-04)。
-///
-/// MitiruEngine の architecture rule に従い data-driven: engine は script を
+/// MitiruEngine の architecture rule に従い data-driven にしている。engine は script を
 /// 解釈し、game が各 effect (text render、image show、choice offer、stat change)
 /// の callback を提供する。engine 自身は描画しない。renderer 非依存。JSON schema
 /// と callback 契約の全体は `docs/NARRATIVE_SCRIPT.md` を参照。
-///
 /// **設計判断 (v1):**
-/// - `ChoiceScene` は終端: `execute()` は選ばれた `next` id を返す
-///   (choice が無ければ空文字列)。外側の loop は game が回す。script 間の
-///   内部 recursion は無い。
+/// - `ChoiceScene` は終端で、`execute()` は選ばれた `next` id を返す
+/// (choice が無ければ空文字列)。外側の loop は game が回す。script 間の
+/// 内部 recursion は無い。
 /// - `setFlag` / `statChange` は `GameContext` を in-place で変更する。callback は
-///   変更*後*に発火するので `ctx` から更新済みの値を読める。
+/// 変更*後*に発火するので `ctx` から更新済みの値を読める。
 /// - 未知の scene `"type"`、必須 field 欠落、`execute()` での未知 script id、
-///   ファイル間での script id 重複 → いずれも field-path 文脈付きで
-///   `std::runtime_error` を throw する。
-///
+/// ファイル間での script id 重複 → いずれも field-path 文脈付きで
+/// `std::runtime_error` を throw する。
 /// v1 非対応: loop、variable、text 補間 (`{name}`)、choice の `next` 以外の
-/// 条件分岐。これらは 2 つ目の consumer が天井に当たった時点で v2 に入る。
+/// 条件分岐。これらは 2 つ目の consumer で v1 の機能が足りなくなった時点で v2 に入る。
 
 #include <cctype>
 #include <filesystem>
@@ -140,7 +137,7 @@ public:
 	}
 
 	/// @brief `dir` 内の全 `*.json` を読み込む。拡張子は大小無視で match。
-	///        .json 以外は黙って skip。subdirectory も再帰する。
+	///        .json 以外は知らせずに skip。subdirectory も再帰する。
 	/// @throws parse/schema 失敗 (filename 付き) または
 	///         ファイル間の script id 重複時に std::runtime_error。
 	void loadFromDirectory(const std::filesystem::path& dir)
@@ -408,7 +405,7 @@ private:
 
 	void dispatch(const SetFlagScene& s, GameContext& ctx, ExecuteResult&) const
 	{
-		/// 先に変更し、その後 callback を発火。callback は ctx.flags を見れる。
+		/// 先に変更し、その後 callback を発火。callback は ctx.flags を見られる。
 		ctx.flags[s.name] = s.value;
 		if (m_onFlag) { m_onFlag(s.name, s.value); }
 	}

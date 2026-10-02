@@ -74,7 +74,7 @@ template <typename Vec>
 }
 
 /// @brief ベジェパス — 複数の3次ベジェセグメントをチェーンした曲線
-/// @tparam Vec ベクトル型（operator+, operator-, operator* が必要）
+/// @tparam Vec ベクトル型（operator+, operator-, operator*, dot が必要）
 ///
 /// @code
 /// sgc::BezierPath<sgc::Vec2f> path;
@@ -157,7 +157,7 @@ public:
 			const float t = static_cast<float>(i) / static_cast<float>(segments);
 			const Vec current = evaluate(t);
 			const Vec diff = current - prev;
-			length += std::sqrt(diff.x * diff.x + diff.y * diff.y);
+			length += std::sqrt(static_cast<float>(diff.dot(diff)));
 			prev = current;
 		}
 

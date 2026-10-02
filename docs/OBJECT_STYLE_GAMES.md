@@ -86,7 +86,14 @@ replay はフレーム 0 から入力を流し直す。場面が入力だけで�
   そのフレームで録画と食い違う。乱数が要るなら日数や位置から決めるか、`update` の中で引く。
 
 検証は `mitiru_host <dll> --headless --input-script <f> --record a.mtrr` → `--replay-test a.mtrr` と、
-`--capture-dir` の PNG の目視。
+`--capture-dir` の PNG の目視。台本の書き方 (マウスの絶対座標 `pos` を含む) は [INPUT_SCRIPT.md](INPUT_SCRIPT.md)。
+
+**3D を描く game は `--headless --headless-3d --backend dx12` を付けて撮る。** `--headless` だけだと描画先が
+NullDevice (2D のみ) で、3D のパスは描かれない。`fillScreen` しない場面は前のフレームの絵が残った PNG になり、
+場面が切り替わっていないように見える。
+
+host の停滞検知 (「入力は変わっているのに GameMemory が変わらない」) は、この形の game では働かない。
+進行データが長く変わらないのは正常だからで、`update` が止まっていないかは capture か自前のログで見る。
 
 ## シーン管理
 

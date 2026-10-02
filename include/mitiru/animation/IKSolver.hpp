@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file IKSolver.hpp
-/// @brief インバースキネマティクス(IK)ソルバー + アニメーションブレンドツリー
-/// @details FABRIK / CCDアルゴリズムによるIK解決。
+/// @brief インバースキネマティクス (IK) ソルバー + アニメーションブレンドツリー
+/// @details FABRIK / CCD アルゴリズムによって IK を解く。
 ///          アニメーションステートマシンとブレンドツリーの基盤。
 
 #include <algorithm>
@@ -17,7 +17,7 @@
 namespace mitiru::animation
 {
 
-/// @brief 3Dジョイント（ボーン）
+/// @brief 3D ジョイント（ボーン）
 struct Joint
 {
 	float position[3] = {0, 0, 0};
@@ -26,7 +26,7 @@ struct Joint
 	std::string name;
 };
 
-/// @brief IKチェーン
+/// @brief IK チェーン
 struct IKChain
 {
 	std::vector<int> jointIndices;  ///< ルートからエンドエフェクタへのジョイントインデックス列
@@ -35,15 +35,15 @@ struct IKChain
 	int maxIterations = 20;
 };
 
-/// @brief FABRIKソルバー
+/// @brief FABRIK ソルバー
 class FABRIKSolver
 {
 public:
 	/// @brief ジョイント配列を設定する
 	void setJoints(std::vector<Joint> joints) { m_joints = std::move(joints); }
 
-	/// @brief IKを解決する
-	/// @param chain IKチェーン定義
+	/// @brief IK を解く
+	/// @param chain IK チェーン定義
 	/// @return 収束したかどうか
 	bool solve(const IKChain& chain)
 	{
@@ -54,7 +54,7 @@ public:
 
 		for (int iter = 0; iter < chain.maxIterations; ++iter)
 		{
-			// Forward pass: エンドエフェクタからルートへ
+			// エンドエフェクタからルートへの順方向処理
 			auto& endJoint = m_joints[static_cast<size_t>(indices[static_cast<size_t>(n - 1)])];
 			endJoint.position[0] = chain.targetPos[0];
 			endJoint.position[1] = chain.targetPos[1];
@@ -67,7 +67,7 @@ public:
 				moveTowards(curr.position, next.position, next.length);
 			}
 
-			// Backward pass: ルートからエンドエフェクタへ
+			// ルートからエンドエフェクタへの逆方向処理
 			// (ルート位置は固定)
 			for (int i = 1; i < n; ++i)
 			{
@@ -123,7 +123,7 @@ public:
 	[[nodiscard]] virtual const char* typeName() const noexcept = 0;
 };
 
-/// @brief クリップノード（リーフ: 1つのアニメーションクリップ）
+/// @brief クリップノード（リーフ: 1 つのアニメーションクリップ）
 class ClipNode : public IBlendNode
 {
 public:
@@ -142,7 +142,7 @@ private:
 	float m_duration;
 };
 
-/// @brief ブレンドノード（2つの子をウェイトで混合）
+/// @brief ブレンドノード（2 つの子をウェイトで混合）
 class BlendNode : public IBlendNode
 {
 public:
@@ -186,7 +186,7 @@ public:
 	void update(float dt)
 	{
 		m_time += dt;
-		// チェック遷移条件
+		// 遷移条件をチェックする
 		for (const auto& t : m_transitions)
 		{
 			if (t.fromState == m_currentState && t.condition && t.condition())

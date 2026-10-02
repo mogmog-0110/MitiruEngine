@@ -1,17 +1,17 @@
 #pragma once
 
 /// @file AssetPack.hpp
-/// @brief アセットを単一ファイル (.mtpak) に詰める runtime VFS の中核。
+/// @brief アセットを単一ファイル (.mtpak) にまとめる runtime VFS の中核。
 ///
 /// 配布時に assets/ をまとめて秘匿するためのパック形式の read/write を提供する。
-/// 純粋な C++ (GPU/CEF 非依存) で、テストとツールの双方から使える。
+/// 純粋な C++ (GPU 非依存) で、テストとツールの両方から使える。
 ///
 /// 形式:
 ///   magic "MTPAK\0" (6) | version u16 | flags u16 | count u32
-///   [count] pathLen u16, path(UTF-8 '/'区切り), offset u64, size u64
+///   [count] pathLen u16, path(UTF-8 '/' 区切り), offset u64, size u64
 ///   blob region (flags の scramble bit が立っていれば XOR 難読化済み)
 ///
-/// XOR は「暗号」ではなく、strings / hex での平文閲覧を防ぐ難読化である。
+/// XOR は「暗号」ではなく、strings / hex で平文を閲覧されることを防ぐための難読化である。
 
 #include <algorithm>
 #include <cstdint>
@@ -41,12 +41,12 @@ inline constexpr uint16_t kFlagScrambled = 0x1;
 inline constexpr uint16_t kFlagChunked   = 0x2;  // v2: blob が chunkSize 境界の chunk に分割されている
 inline constexpr uint16_t kFlagZstdChunks = 0x4;  // v2: 各 chunk が zstd 圧縮済み (util::Compression 経由)
 inline constexpr uint32_t kChunkSize     = 64 * 1024;  // v2 の chunk サイズ (mmap ページ相当の粒度)
-// exe へ連結したときのフッタの印。パックは exe 本体の後ろに置くしかない (前に置くと
-// 実行形式が壊れる) ので、位置はファイル末尾のフッタから逆引きする。
+// exe へ連結したときのフッタの印。パックは exe 本体の後ろに置く必要がある (前に置くと
+// 実行形式が壊れる) ため、ファイル末尾のフッタから位置を逆引きする。
 inline constexpr char     kAppendMagic[8] = {'M', 'T', 'P', 'A', 'K', 'E', 'X', 'E'};
 inline constexpr uint8_t  kXorKey        = 0x5A;  // 難読化用の固定値 (暗号ではない)
 
-/// パスを '/' 区切りに正規化し、先頭 "./" を落とす。
+/// パスを '/' 区切りに正規化し、先頭の "./" を取り除く。
 [[nodiscard]] inline std::string normalizePath(std::string_view p)
 {
 	std::string s{p};
@@ -55,7 +55,7 @@ inline constexpr uint8_t  kXorKey        = 0x5A;  // 難読化用の固定値 (�
 	return s;
 }
 
-/// blob を絶対 offset 依存の XOR で可逆変換する (write/read で対称)。
+/// blob を絶対 offset に応じた XOR で可逆変換する (write/read で対称)。
 inline void xorScramble(std::vector<uint8_t>& data, uint64_t offset)
 {
 	for (std::size_t i = 0; i < data.size(); ++i)
@@ -73,22 +73,22 @@ struct PackEntry
 	uint32_t    chunkCount = 0;            // v2 のみ有効
 };
 
-/// @brief .mtpak の読み取り (open/read) と書き出し (write) を提供する。
+/// @brief.mtpak の読み取り (open/read) と書き出し (write) を提供する。
 class AssetPack
 {
 public:
-	/// (論理パス, バイト列) の列を .mtpak に書き出す。成功で true。
+	/// (論理パス, バイト列) の列を .mtpak に書き出す。成功した場合は true。
 	static bool write(const std::filesystem::path&                                       outFile,
 	                  const std::vector<std::pair<std::string, std::vector<uint8_t>>>&    entries,
 	                  bool                                                                scramble = true);
 
-	/// 既存の .mtpak を開いて index を読む。形式違いなら nullopt。
-	/// ファイル先頭の .mtpak として開き、駄目なら exe 連結のフッタを探して開く。
-	/// 呼ぶ側は「この exe に埋めたか、隣に置いたか」を気にしなくてよい。
+	/// 既存の .mtpak を開いて index を読む。形式が違う場合は nullopt。
+	/// ファイル先頭の .mtpak として開き、失敗した場合は exe 連結のフッタを探して開く。
+	/// 呼び出し側は「この exe に埋めたか、隣に置いたか」を気にしなくてよい。
 	[[nodiscard]] static std::optional<AssetPack> open(const std::filesystem::path& file);
 
-	/// exe の末尾へ .mtpak を連結する。配布物を 1 ファイルへ寄せるためのもの。
-	/// すでに連結済みの exe には足さない (二重に埋めると、どちらを読んでいるのか
+	/// exe の末尾へ .mtpak を連結する。配布物を 1 ファイルにまとめるためのもの。
+	/// すでに連結済みの exe には追加しない (二重に埋めると、どちらを読んでいるのか
 	/// 外から分からなくなる)。
 	[[nodiscard]] static bool appendTo(const std::filesystem::path& exeFile,
 	                                   const std::filesystem::path& packFile);
@@ -103,29 +103,29 @@ public:
 	/// 論理パスの中身を取り出す (scramble 済みなら復元)。無ければ nullopt。
 	[[nodiscard]] std::optional<std::vector<uint8_t>> read(std::string_view path) const;
 
-	/// read() と違い、可能ならコピー無しで中身を覗く。v1 かつ非 scramble なら mmap した
-	/// pack ファイルへ直接 span を張る。scramble 済み / v2 で複数 chunk に跨ぐエントリは
-	/// このインスタンスの寿命の間だけ 1 回だけ復号してキャッシュし、以後はそのバッファへ
-	/// span を張る (呼び出しの都度コピーはしない、という意味でのコピー削減)。
+	/// read() と違い、可能ならコピーせずに中身を参照する。v1 かつ非 scramble なら mmap した
+	/// pack ファイルを直接参照する span を作る。scramble 済み / v2 で複数の chunk にまたがるエントリは
+	/// このインスタンスの寿命の間に 1 回だけ復号してキャッシュし、以後はそのバッファを参照する
+	/// span を作る (呼び出すたびにコピーしない、という意味でコピーを減らす)。
 	[[nodiscard]] std::optional<std::span<const uint8_t>> view(std::string_view path) const;
 
 	[[nodiscard]] uint16_t version() const noexcept { return m_version; }
 
-	/// v2 pack が列挙する依存 pack 名 (拡張子無し)。PackSet がこれを見て解決する。
+	/// v2 pack が列挙する依存先の pack 名 (拡張子無し)。PackSet がこれを見て解決する。
 	[[nodiscard]] const std::vector<std::string>& dependsOn() const noexcept { return m_dependsOn; }
 
 	[[nodiscard]] std::size_t chunkCacheHits() const noexcept { return m_chunkCache ? m_chunkCache->hits() : 0; }
 	[[nodiscard]] std::size_t chunkCacheMisses() const noexcept { return m_chunkCache ? m_chunkCache->misses() : 0; }
 
-	/// v2 (chunk 分割) 形式で書き出す。dependsOn は他 pack の名前 (拡張子無し、
-	/// 同じディレクトリの <名前>.mtpak を指す) の列挙。scramble/zstdChunks は chunk 単位で効く。
+	/// v2 (chunk 分割) 形式で書き出す。dependsOn は他の pack の名前 (拡張子無し、
+	/// 同じディレクトリの <名前>.mtpak を指す) の列挙。scramble/zstdChunks は chunk 単位で適用する。
 	[[nodiscard]] static bool writeV2(const std::filesystem::path&                                    outFile,
 	                                  const std::vector<std::pair<std::string, std::vector<uint8_t>>>& entries,
 	                                  const std::vector<std::string>&                                  dependsOn = {},
 	                                  bool                                                              scramble = true,
 	                                  bool                                                              zstdChunks = false);
 
-	/// 目次にあるエントリの大きさ。無ければ 0。中身を読まずに指紋を作る用途のため。
+	/// 目次にあるエントリの大きさ。無ければ 0。中身を読まずに指紋を作るために使う。
 	[[nodiscard]] uint64_t sizeOf(std::string_view path) const
 	{
 		const std::string np = normalizePath(path);
@@ -151,7 +151,7 @@ private:
 	bool                   m_scrambled = false;
 	uint16_t                m_version   = kVersion;  ///< v1 は既定のまま、v2 は open() で上書き
 
-	// v2 (chunk 分割) 形式のみで使う。v1 は既定値のまま触らない。
+	// v2 (chunk 分割) 形式でのみ使う。v1 は既定値のまま変更しない。
 	uint32_t                 m_chunkSize = 0;
 	bool                      m_zstdChunks = false;
 	std::vector<std::string> m_dependsOn;
@@ -159,7 +159,7 @@ private:
 	std::vector<uint32_t>    m_chunkUncompressedSize;  ///< 各 chunk の展開後サイズ (zstd 判定用)
 	std::vector<uint64_t>    m_chunkOffset;            ///< 各 chunk の pack 先頭からの相対 offset
 
-	// 読み取り専用キャッシュなのでコピー間で共有しても安全。shared_ptr で持つことで
+	// 読み取り専用キャッシュなので、コピー間で共有しても安全。shared_ptr で持つことで、
 	// AssetPack 自体は従来どおり値コピー可能なままにする。
 	mutable std::shared_ptr<detail::ChunkCache>                                    m_chunkCache;
 	mutable std::shared_ptr<detail::FileMap>                                       m_fileMap;
@@ -189,7 +189,7 @@ inline bool AssetPack::write(const std::filesystem::path&                       
                              const std::vector<std::pair<std::string, std::vector<uint8_t>>>& entries,
                              bool                                                             scramble)
 {
-	// index 部のサイズ = blob 開始 offset を先に算出する。
+	// index 部のサイズ、つまり blob の開始 offset を先に算出する。
 	uint64_t blobStart = 6 + 2 + 2 + 4;  // magic + version + flags + count
 	for (const auto& [p, _] : entries) { blobStart += 2 + normalizePath(p).size() + 8 + 8; }
 
@@ -234,7 +234,7 @@ inline std::optional<AssetPack> AssetPack::open(const std::filesystem::path& fil
 	f.read(magic, 6);
 	if (f.gcount() != 6 || std::memcmp(magic, kMagic, 6) != 0)
 	{
-		// 先頭が .mtpak でなければ、exe 連結のフッタ (末尾 16 バイト) を探す。
+		// 先頭が .mtpak でなければ、exe に連結されたフッタ (末尾 16 バイト) を探す。
 		f.clear();
 		f.seekg(0, std::ios::end);
 		const auto fileSize = static_cast<uint64_t>(f.tellg());
@@ -286,7 +286,7 @@ inline std::optional<std::vector<uint8_t>> AssetPack::read(std::string_view path
 
 	std::ifstream f(m_file, std::ios::binary);
 	if (!f) { return std::nullopt; }
-	// scramble は pack 内の相対 offset で掛かっている。連結ぶんは seek にだけ足す。
+	// scramble は pack 内の相対 offset を基準に適用されている。連結分は seek にだけ加える。
 	f.seekg(static_cast<std::streamoff>(m_baseOffset + e->offset));
 	std::vector<uint8_t> data(e->size);
 	if (e->size != 0) { f.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(e->size)); }
@@ -328,17 +328,17 @@ inline bool AssetPack::appendTo(const std::filesystem::path& exeFile,
 }  // namespace mitiru::vfs
 
 // v2 (chunk 分割) の書き出し / 読み込み / view / chunk キャッシュはここで定義する
-// (AssetPack のクラス定義が確定した直後、という位置づけの分割ファイル)。
+// (AssetPack のクラス定義が確定した直後に置く分割ファイル)。
 #include <mitiru/asset/detail/AssetPack_V2.hpp>
 
 namespace mitiru::vfs
 {
 
-// ── グローバル mount (段階2) ──────────────────────────
+// ── グローバル mount (段階 2) ──────────────────────────
 //
-// host が起動時に assets.mtpak を mountGlobal する。各 loader (画像/音/フォント/CEF)
-// は readGlobal(logicalPath) を呼ぶ: pack が mount 済みなら pack を、未 mount (dev) なら
-// disk を読む。これで「配布=パック秘匿 / 開発=バラ置き編集」が同じコードで両立する。
+// host が起動時に assets.mtpak を mountGlobal する。各 loader (画像/音/フォント)
+// は readGlobal(logicalPath) を呼ぶ。pack が mount 済みなら pack を、未 mount (dev) なら
+// disk を読む。これにより「配布=パック秘匿 / 開発=バラ置き編集」を同じコードで両立する。
 
 namespace detail
 {
@@ -353,10 +353,10 @@ inline bool& globalMountTried()
 	return tried;
 }
 
-/// dev (未 mount) の相対パス解決の基準。host が MITIRU_ASSET_ROOT に game DLL の
-/// 隣を入れる (cwd は exe 位置に固定されるため、cwd 相対だけだと game assets に届かない)。
-/// pack と同じく env 経由。header-only の static は host / DLL / CEF helper で
-/// 別インスタンスになるので、env が唯一の module 跨ぎ共有点。
+/// dev (未 mount) で相対パスを解決する際の基準。host が MITIRU_ASSET_ROOT に game DLL の
+/// 隣を設定する (cwd は exe の位置に固定されるため、cwd 相対だけでは game assets に届かない)。
+/// pack と同じく env 経由。header-only の static は host / DLL で
+/// 別インスタンスになるため、env が module をまたいで共有できる唯一の場所。
 inline const std::filesystem::path& globalDiskRoot()
 {
 	static const std::filesystem::path root = [] {
@@ -367,7 +367,7 @@ inline const std::filesystem::path& globalDiskRoot()
 	return root;
 }
 
-/// disk から 1 ファイル読む (readGlobal の下請け)。開けない/読み損ねは nullopt。
+/// disk から 1 ファイルを読む (readGlobal の下請け)。開けない場合や読み取りに失敗した場合は nullopt。
 [[nodiscard]] inline std::optional<std::vector<uint8_t>>
 readDiskFile(const std::filesystem::path& p)
 {
@@ -382,7 +382,7 @@ readDiskFile(const std::filesystem::path& p)
 }
 
 /// 未 mount なら、環境変数 MITIRU_ASSET_PACK が指す .mtpak を 1 度だけ開いて mount する。
-/// header-only の static は host exe と game DLL / CEF helper で別インスタンスになるため、
+/// header-only の static は host exe と game DLL で別インスタンスになるため、
 /// host が mountGlobal しても DLL 内の loader には届かない。そこで host は env を set し、
 /// 各プロセス/モジュールがこの lazy mount で同じ pack を開く (env は境界を越えて共有される)。
 inline void ensureGlobalMount()
@@ -413,8 +413,8 @@ inline void unmountGlobal()
 	return detail::globalPack().has_value();
 }
 
-/// logicalPath を「mount 済み pack 優先 → 無ければ disk」で読む。
-/// diskPath を別に指定したいとき (logical とファイル位置が違う) は第2引数で上書き。
+/// logicalPath を「mount 済み pack 優先 → 無ければ disk」の順で読む。
+/// diskPath を別に指定したい場合 (logical とファイル位置が違う) は第 2 引数で上書きする。
 [[nodiscard]] inline std::optional<std::vector<uint8_t>>
 readGlobal(std::string_view logicalPath, const std::filesystem::path& diskPath = {})
 {
@@ -422,12 +422,12 @@ readGlobal(std::string_view logicalPath, const std::filesystem::path& diskPath =
 	if (auto& gp = detail::globalPack(); gp.has_value())
 	{
 		if (auto data = gp->read(logicalPath)) { return data; }
-		// pack mount 中はそれが正本。pack に無いものは「無い」とする (秘匿配布で
-		// disk を覗かせない)。
+		// pack mount 中はそれを正本とする。pack に無いものは「無い」とする (秘匿配布で
+		// disk を参照させない)。
 		return std::nullopt;
 	}
-	// dev (未 mount): disk から読む。相対 logical は MITIRU_ASSET_ROOT (host が game DLL の
-	// 隣を指す) を先に見て、無ければ従来どおり cwd 相対 (examples の章 prefix 流儀)。
+	// dev (未 mount) では disk から読む。相対 logical は MITIRU_ASSET_ROOT (host が game DLL の
+	// 隣を指す) を先に参照し、無ければ従来どおり cwd 相対で参照する (examples の章 prefix 流儀)。
 	if (diskPath.empty())
 	{
 		const std::filesystem::path rel{normalizePath(logicalPath)};
@@ -442,17 +442,17 @@ readGlobal(std::string_view logicalPath, const std::filesystem::path& diskPath =
 
 // ── ゲーム向け公開アセット読み込み API ───────────────
 //
-// ゲームは **生 std::ifstream で assets を読まず、これを使う**。pack 配布時はパックから、
+// ゲームは **生の std::ifstream で assets を読まず、これを使う**。pack 配布時はパックから、
 // 開発時は disk から、同じ相対パスで読める。これにより `mitiru dist --pack` で
-// JSON/レベル/マニフェスト等のデータファイルも秘匿でき、配布物にバラ置きが出ない。
-// path は cwd 相対 (engine の他経路と同じ。例 "<game>/assets/levels/1.json")。
+// JSON/レベル/マニフェスト等のデータファイルも秘匿でき、配布物に個別のファイルが残らない。
+// path は cwd 相対 (engine の他の経路と同じ。例 "<game>/assets/levels/1.json")。
 
 [[nodiscard]] inline std::optional<std::vector<uint8_t>> readAsset(std::string_view path)
 {
 	return readGlobal(path);
 }
 
-/// テキストアセット (JSON / マニフェスト等) を文字列で読む。
+/// テキストアセット (JSON / マニフェスト等) を文字列として読む。
 [[nodiscard]] inline std::optional<std::string> readAssetText(std::string_view path)
 {
 	auto bytes = readGlobal(path);
@@ -460,7 +460,7 @@ readGlobal(std::string_view logicalPath, const std::filesystem::path& diskPath =
 	return std::string(bytes->begin(), bytes->end());
 }
 
-/// テキストアセットを行単位で読む (改行は CRLF / LF 両対応、末尾 CR は除去)。
+/// テキストアセットを行単位で読む (改行は CRLF / LF の両方に対応し、末尾の CR は除去)。
 [[nodiscard]] inline std::vector<std::string> readAssetLines(std::string_view path)
 {
 	std::vector<std::string> lines;

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file GlFunctions.hpp
-/// @brief OpenGL 3.3 Core関数ポインタローダー
-/// @details SDL_GL_GetProcAddressを使用してGL 3.3 Core関数をロードする。
-///          MITIRU_HAS_OPENGLが定義されている場合のみコンパイルされる。
+/// @brief OpenGL 3.3 Core 関数ポインタローダー
+/// @details SDL_GL_GetProcAddress を使用して GL 3.3 Core 関数をロードする。
+///          MITIRU_HAS_OPENGL が定義されている場合のみコンパイルされる。
 
 #ifdef MITIRU_HAS_OPENGL
 
@@ -18,7 +18,7 @@
 #include <stdexcept>
 #include <string>
 
-/// @brief GL定数定義（OpenGL 3.3 Core）
+/// @brief GL 定数定義（OpenGL 3.3 Core）
 #ifndef GL_FRAGMENT_SHADER
 #define GL_FRAGMENT_SHADER 0x8B30
 #endif
@@ -53,8 +53,8 @@
 namespace mitiru::gfx
 {
 
-/// @brief OpenGL 3.3 Core関数ポインタ群
-/// @details SDL_GL_GetProcAddressで動的にロードする。
+/// @brief OpenGL 3.3 Core 関数ポインタ群
+/// @details SDL_GL_GetProcAddress で動的にロードする。
 struct GlFunctions
 {
 	/// シェーダー関連
@@ -71,7 +71,7 @@ struct GlFunctions
 	using PFN_glDeleteShader = void (*)(GLuint);
 	using PFN_glDeleteProgram = void (*)(GLuint);
 
-	/// VAO関連
+	/// VAO 関連
 	using PFN_glGenVertexArrays = void (*)(GLsizei, GLuint*);
 	using PFN_glDeleteVertexArrays = void (*)(GLsizei, const GLuint*);
 	using PFN_glBindVertexArray = void (*)(GLuint);
@@ -128,7 +128,7 @@ struct GlFunctions
 	PFN_glBlendFunc blendFunc = nullptr;
 	PFN_glDisable disable = nullptr;
 
-	/// @brief GL関数ポインタをロードする (SDL2またはGLFW経由)
+	/// @brief GL 関数ポインタをロードする (SDL2 または GLFW 経由)
 	/// @throw std::runtime_error 必須関数のロードに失敗した場合
 	void load()
 	{

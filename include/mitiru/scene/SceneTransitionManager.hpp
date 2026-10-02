@@ -4,7 +4,7 @@
 /// @brief 統一シーン遷移システム
 /// @details フェード・スライド・ズーム・ディゾルブ等の組み込みトランジションと
 ///          カスタムトランジション登録機能を持つシーン遷移マネージャー。
-///          MitiruSceneManagerと連携し、ローディング画面の統合も行う。
+///          MitiruSceneManager と連携し、ローディング画面の統合も行う。
 
 #include <algorithm>
 #include <cmath>
@@ -58,8 +58,8 @@ struct TransitionConfig
 using LoadingProgressCallback = std::function<void(float progress)>;
 
 /// @brief 統一シーン遷移マネージャー
-/// @details MitiruSceneManagerを拡張し、トランジション付きのシーン切り替えを提供する。
-///          FadeOut → Load → FadeIn の3フェーズで遷移を実行し、
+/// @details MitiruSceneManager を拡張し、トランジション付きのシーン切り替えを提供する。
+///          FadeOut → Load → FadeIn の 3 フェーズで遷移を実行し、
 ///          遷移中のレンダリングアルファ値を提供する。
 ///
 /// @code
@@ -68,7 +68,7 @@ using LoadingProgressCallback = std::function<void(float progress)>;
 /// // カスタムトランジションの登録
 /// transitionMgr.registerTransition("wipe", [](float t) { return t; });
 ///
-/// // シーン遷移（フェード、0.5秒）
+/// // シーン遷移（フェード、0.5 秒）
 /// auto titleScene = std::make_unique<TitleScene>();
 /// transitionMgr.transitionTo(std::move(titleScene), TransitionType::Fade, 0.5f);
 ///
@@ -296,7 +296,7 @@ public:
 		return m_sceneStack.empty() ? nullptr : m_sceneStack.back().get();
 	}
 
-	/// @brief 現在のシーンを取得する（const版）
+	/// @brief 現在のシーンを取得する（const 版）
 	[[nodiscard]] const MitiruScene* currentScene() const noexcept
 	{
 		return m_sceneStack.empty() ? nullptr : m_sceneStack.back().get();
@@ -456,7 +456,7 @@ private:
 			return t * (2.0f - t);
 
 		case TransitionType::Zoom:
-			// イーズインアウトクビック
+			// イーズインアウトキュービック
 			return (t < 0.5f)
 				? 4.0f * t * t * t
 				: 1.0f - std::pow(-2.0f * t + 2.0f, 3.0f) * 0.5f;

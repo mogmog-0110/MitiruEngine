@@ -22,8 +22,8 @@ namespace mitiru::math
 {
 
 /// @brief パーリンノイズ生成器
-/// @details シードによる再現性のあるノイズを生成する。
-///          2Dおよび3Dのノイズ関数とオクターブ合成を提供する。
+/// @details シードで再現できるノイズを生成する。
+///          2D と 3D のノイズ関数とオクターブ合成を提供する。
 class PerlinNoise
 {
 public:
@@ -33,7 +33,7 @@ public:
 	{
 		std::iota(m_p.begin(), m_p.begin() + 256, 0);
 
-		// Fisher-Yatesシャッフル（LCG使用）
+		// Fisher-Yates シャッフル（LCG 使用）
 		uint32_t rng = seed;
 		for (int i = 255; i > 0; --i)
 		{
@@ -49,9 +49,9 @@ public:
 		}
 	}
 
-	/// @brief 2Dパーリンノイズ値を取得する
-	/// @param x X座標
-	/// @param y Y座標
+	/// @brief 2D パーリンノイズ値を取得する
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @return ノイズ値 [-1, 1]
 	[[nodiscard]] float noise2D(float x, float y) const noexcept
 	{
@@ -72,19 +72,19 @@ public:
 			lerp(u, grad2D(ab, xf, yf - 1), grad2D(bb, xf - 1, yf - 1)));
 	}
 
-	/// @brief 2Dパーリンノイズ値を[0,1]で取得する
-	/// @param x X座標
-	/// @param y Y座標
+	/// @brief 2D パーリンノイズ値を [0,1] で取得する
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @return ノイズ値 [0, 1]
 	[[nodiscard]] float noise2D01(float x, float y) const noexcept
 	{
 		return (noise2D(x, y) + 1.0f) * 0.5f;
 	}
 
-	/// @brief 3Dパーリンノイズ値を取得する
-	/// @param x X座標
-	/// @param y Y座標
-	/// @param z Z座標
+	/// @brief 3D パーリンノイズ値を取得する
+	/// @param x X 座標
+	/// @param y Y 座標
+	/// @param z Z 座標
 	/// @return ノイズ値 [-1, 1]
 	[[nodiscard]] float noise3D(float x, float y, float z) const noexcept
 	{
@@ -118,12 +118,12 @@ public:
 				        grad3D(m_p[bb + 1], xf - 1, yf - 1, zf - 1))));
 	}
 
-	/// @brief オクターブ付き2Dノイズを取得する
-	/// @param x X座標
-	/// @param y Y座標
+	/// @brief オクターブ付き 2D ノイズを取得する
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @param octaves オクターブ数
-	/// @param persistence 振幅減衰率（0.5が一般的）
-	/// @return 正規化されたノイズ値 [-1, 1]
+	/// @param persistence 振幅減衰率（0.5 が一般的）
+	/// @return 正規化したノイズ値 [-1, 1]
 	[[nodiscard]] float octave2D(float x, float y, int octaves,
 		float persistence = 0.5f) const noexcept
 	{
@@ -141,13 +141,13 @@ public:
 		return total / maxVal;
 	}
 
-	/// @brief オクターブ付き3Dノイズを取得する
-	/// @param x X座標
-	/// @param y Y座標
-	/// @param z Z座標
+	/// @brief オクターブ付き 3D ノイズを取得する
+	/// @param x X 座標
+	/// @param y Y 座標
+	/// @param z Z 座標
 	/// @param octaves オクターブ数
 	/// @param persistence 振幅減衰率
-	/// @return 正規化されたノイズ値 [-1, 1]
+	/// @return 正規化したノイズ値 [-1, 1]
 	[[nodiscard]] float octave3D(float x, float y, float z, int octaves,
 		float persistence = 0.5f) const noexcept
 	{
@@ -166,7 +166,7 @@ public:
 	}
 
 private:
-	/// @brief 5次エルミート補間
+	/// @brief 5 次エルミート補間
 	static float fade(float t) noexcept
 	{
 		return t * t * t * (t * (t * 6 - 15) + 10);
@@ -178,7 +178,7 @@ private:
 		return a + t * (b - a);
 	}
 
-	/// @brief 2D勾配関数
+	/// @brief 2D 勾配関数
 	static float grad2D(int hash, float x, float y) noexcept
 	{
 		const int h = hash & 3;
@@ -187,7 +187,7 @@ private:
 		return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
 	}
 
-	/// @brief 3D勾配関数
+	/// @brief 3D 勾配関数
 	static float grad3D(int hash, float x, float y, float z) noexcept
 	{
 		const int h = hash & 15;

@@ -142,7 +142,7 @@ inline void uprightByPCA(SplatScene& out, bool flipX, bool flipY)
 		R[0][2]*(R[1][0]*R[2][1]-R[1][1]*R[2][0]);
 	if (det < 0.0f) { for (int k = 0; k < 3; ++k) R[2][k] = -R[2][k]; }
 
-	// 上下(X軸まわり180°)/つま先左右(Y軸まわり180°) の手動補正。
+	// 上下(X 軸まわり 180°)/つま先左右(Y 軸まわり 180°) の手動補正。
 	if (flipX) { for (int k=0;k<3;++k){ R[1][k]=-R[1][k]; R[2][k]=-R[2][k]; } }
 	if (flipY) { for (int k=0;k<3;++k){ R[0][k]=-R[0][k]; R[2][k]=-R[2][k]; } }
 
@@ -201,7 +201,7 @@ inline bool loadSplatFile(const std::string& path, SplatScene& out)
 	}
 
 	// ── フローター除去 ── 写実 .splat の典型ノイズを落として見栄えを上げる。
-	// パラメータレス (中央値/パーセンタイル基準) なのでシーンに自動適応:
+	// パラメータレス (中央値/パーセンタイル基準) なので、シーンに自動で合わせる。落とすのは次のもの。
 	//   (a) ほぼ透明 (opacity < 0.03) = 残差ノイズ
 	//   (b) 巨大な引き伸ばし splat (max-scale > 中央値×12) = grazing で白く尾を引く外れ値
 	//   (c) 重心から最も遠い ~2% = 孤立した遠方フローター

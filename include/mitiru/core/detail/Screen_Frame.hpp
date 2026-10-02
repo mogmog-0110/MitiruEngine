@@ -142,7 +142,7 @@ inline void mitiru::Screen::present()
 		rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
 	}
 
-	/// ShapeRendererをフラッシュする
+	/// ShapeRenderer をフラッシュする
 	m_shapeRenderer.flush();
 }
 

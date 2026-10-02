@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::ui_rml::dx12 — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::ui_rml::dx12 | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::ui_rml::dx12 | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/" class="active"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::ui_rml::dx12</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#class-rmldescriptorpool"><code>RmlDescriptorPool</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-rmlcpudescriptorheap"><code>RmlCpuDescriptorHeap</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#enum-rmlpso"><code>RmlPso</code></a></td><td>enum</td><td>20</td></tr>
+<tr><td><a href="#enum-rmlrootparam"><code>RmlRootParam</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#class-rmldx12pipelines"><code>RmlDx12Pipelines</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#struct-rmldrawconstants"><code>RmlDrawConstants</code></a></td><td>struct</td><td>20</td></tr>
+<tr><td><a href="#struct-rmltarget"><code>RmlTarget</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-rmltargetstack"><code>RmlTargetStack</code></a></td><td>class</td><td>15</td></tr>
+</tbody></table>
+<details class="api-class" id="class-rmldescriptorpool" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlDescriptorPool</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool create(ID3D12Device* device, std::uint32_t capacity)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t allocate()</code></div>
+<div class="api-method"><code>void release(std::uint32_t slot, std::uint64_t fenceValue)</code></div>
+<div class="api-method"><code>void reclaim(std::uint64_t completedFence)</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12DescriptorHeap* heap() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE cpu(std::uint32_t slot) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE gpu(std::uint32_t slot) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t freeCount() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmlcpudescriptorheap" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlCpuDescriptorHeap</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool create(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, std::uint32_t capacity)</code></div>
+<div class="api-method"><code>[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE at(std::uint32_t index) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t capacity() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-rmlpso" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RmlPso</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">20</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Color</code></div>
+<div class="api-method"><code>ColorClip</code></div>
+<div class="api-method"><code>Texture</code></div>
+<div class="api-method"><code>TextureClip</code></div>
+<div class="api-method"><code>Gradient</code></div>
+<div class="api-method"><code>GradientClip</code></div>
+<div class="api-method"><code>MaskReplace</code></div>
+<div class="api-method"><code>MaskIncrement</code></div>
+<div class="api-method"><code>LayerOver</code></div>
+<div class="api-method"><code>LayerOverClip</code></div>
+<div class="api-method"><code>LayerReplace</code></div>
+<div class="api-method"><code>LayerReplaceClip</code></div>
+<div class="api-method"><code>PostCopy</code></div>
+<div class="api-method"><code>PostCopyOver</code></div>
+<div class="api-method"><code>PostSample</code></div>
+<div class="api-method"><code>PostColorMatrix</code></div>
+<div class="api-method"><code>PostBlendMask</code></div>
+<div class="api-method"><code>PostBlur</code></div>
+<div class="api-method"><code>PostDropShadow</code></div>
+<div class="api-method"><code>Count</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-rmlrootparam" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RmlRootParam</code> <span class="api-class__extra">: UINT</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Constants = 0</code></div>
+<div class="api-method"><code>Texture = 1</code></div>
+<div class="api-method"><code>Mask = 2</code></div>
+<div class="api-method"><code>inline constexpr DXGI_FORMAT kRmlColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM</code></div>
+<div class="api-method"><code>inline constexpr DXGI_FORMAT kRmlStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmldx12pipelines" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlDx12Pipelines</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool create(ID3D12Device* device, UINT layerSamples)</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12RootSignature* rootSignature() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12PipelineState* get(RmlPso p) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
+<div class="api-method"><code>inline constexpr const char* kRmlShaderSource = R&quot;( cbuffer Draw : register(b0) { float4x4 uTransform; float4x4 uColorMatrix; float4 uStopColors[16]; float4 uStopPositions[4]; float4 uColor; float4 uWeights; float2 uTranslate; float2 uP; float2 uV; float2 uTexelOffset; float2 uTexCoordMin; float2 uTexCoordMax; float2 uUvOffset; float2 uUvScale; int uFunc; int uNumStops; float uOpacity; float uPad; }; Texture2D uTex : register(t0); Texture2D uMask : register(t1); SamplerState sWrap : register(s0); SamplerState sClamp : register(s1); struct GeoIn { float2 pos : POSITION; float4 color : COLOR; float2 uv : TEXCOORD; }; struct GeoOut { float4 pos : SV_Position; float4 color : COLOR; float2 uv : TEXCOORD0; }; struct FullOut { float4 pos : SV_Position; float2 uv : TEXCOORD0; }; struct BlurOut { float4 pos : SV_Position; float2 uv[7] : TEXCOORD0; }; GeoOut VSGeometry(GeoIn i) { GeoOut o; o.pos = mul(uTransform, float4(i.pos + uTranslate, 0.0, 1.0)); o.color = i.color; o.uv = i.uv; return o; } float4 PSColor(GeoOut i) : SV_Target { return i.color; } float4 PSTexture(GeoOut i) : SV_Target { return i.color * uTex.Sample(sWrap, i.uv); } float stopPosition(int k) { return uStopPositions[k / 4][k % 4]; } float4 mixStops(float t) { float4 c = uStopColors[0]; for (int k = 1; k &lt; uNumStops; ++k) { c = lerp(c, uStopColors[k], smoothstep(stopPosition(k - 1), stopPosition(k), t)); } return c; } float glslMod(float x, float y) { return x - y * floor(x / y); } float4 PSGradient(GeoOut i) : SV_Target { float t = 0.0; int f = uFunc % 3; float2 d = i.uv - uP; if (f == 0) { t = dot(uV, d) / dot(uV, uV); } else if (f == 1) { t = length(uV * d); } else { float2 r = float2(uV.x * d.x + uV.y * d.y, -uV.y * d.x + uV.x * d.y); t = 0.5 + atan2(-r.x, r.y) / (2.0 * 3.14159265); } if (uFunc &gt;= 3) { float t0 = stopPosition(0); float t1 = stopPosition(uNumStops - 1); t = t0 + glslMod(t - t0, t1 - t0); } return i.color * mixStops(t); } // 画面全体を覆う三角形 1 枚。頂点バッファを使わない。 FullOut VSFullscreen(uint id : SV_VertexID) { FullOut o; float2 p = float2((id == 2) ? 3.0 : -1.0, (id == 1) ? 3.0 : -1.0); o.pos = float4(p, 0.0, 1.0); o.uv = float2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5) * uUvScale + uUvOffset; return o; } // 同じ大きさの描画先へ写すときは標本化せず画素をそのまま読む (補間で値が 1 でも動かないように)。 float4 PSCopy(FullOut i) : SV_Target { return uTex.Load(int3(i.pos.xy, 0)) * uOpacity; } float4 PSSample(FullOut i) : SV_Target { return uTex.Sample(sClamp, i.uv); } float4 PSColorMatrix(FullOut i) : SV_Target { float4 c = uTex.Load(int3(i.pos.xy, 0)); return float4(mul(uColorMatrix, c).rgb, c.a); } float4 PSBlendMask(FullOut i) : SV_Target { int3 p = int3(i.pos.xy, 0); return uTex.Load(p) * uMask.Load(p).a; } float inRegion(float2 uv) { float2 s = step(uTexCoordMin, uv) * step(uv, uTexCoordMax); return s.x * s.y; } float4 PSDropShadow(FullOut i) : SV_Target { return uTex.Sample(sClamp, i.uv).a * inRegion(i.uv) * uColor; } BlurOut VSBlur(uint id : SV_VertexID) { FullOut f = VSFullscreen(id); BlurOut o; o.pos = f.pos; [unroll] for (int k = 0; k &lt; 7; ++k) { o.uv[k] = f.uv - float(k - 3) * uTexelOffset; } return o; } float4 PSBlur(BlurOut i) : SV_Target { float4 c = 0.0; [unroll] for (int k = 0; k &lt; 7; ++k) { c += uTex.Sample(sClamp, i.uv[k]) * inRegion(i.uv[k]) * uWeights[abs(k - 3)]; } return c; } )&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rmldrawconstants" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RmlDrawConstants</code> <span class="api-class__count">20</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float transform[16]</code></div>
+<div class="api-method"><code>float colorMatrix[16]</code></div>
+<div class="api-method"><code>float stopColors[16][4]</code></div>
+<div class="api-method"><code>float stopPositions[16]</code></div>
+<div class="api-method"><code>float color[4]</code></div>
+<div class="api-method"><code>float weights[4]</code></div>
+<div class="api-method"><code>float translate[2]</code></div>
+<div class="api-method"><code>float gradP[2]</code></div>
+<div class="api-method"><code>float gradV[2]</code></div>
+<div class="api-method"><code>float texelOffset[2]</code></div>
+<div class="api-method"><code>float texCoordMin[2]</code></div>
+<div class="api-method"><code>float texCoordMax[2]</code></div>
+<div class="api-method"><code>float uvOffset[2]</code></div>
+<div class="api-method"><code>float uvScale[2]</code></div>
+<div class="api-method"><code>std::int32_t func</code></div>
+<div class="api-method"><code>std::int32_t numStops</code></div>
+<div class="api-method"><code>float opacity</code></div>
+<div class="api-method"><code>float pad</code></div>
+<div class="api-method"><code>void transition(ID3D12GraphicsCommandList* cl, RmlTarget&amp; t, D3D12_RESOURCE_STATES to)</code></div>
+<div class="api-method"><code>void transition(ID3D12GraphicsCommandList* cl, ID3D12Resource* r, D3D12_RESOURCE_STATES from, D3D12_RESOURCE_STATES to)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rmltarget">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RmlTarget</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>gfx::GpuResource resource</code></div>
+<div class="api-method"><code>D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON</code></div>
+<div class="api-method"><code>std::uint32_t srv = RmlDescriptorPool::kInvalid</code></div>
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>UINT samples = 1</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmltargetstack">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlTargetStack</code> <span class="api-class__count">15</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>enum `Post : std::size_t` { Primary = 0, Secondary = 1, Tertiary = 2, BlendMask = 3, PostCount = 4 }</code></div>
+<div class="api-method"><code>bool create(ID3D12Device* device, RmlDescriptorPool* srvPool, UINT samples)</code></div>
+<div class="api-method"><code>bool ensureSize(int width, int height, std::uint64_t fenceValue)</code></div>
+<div class="api-method"><code>int push()</code></div>
+<div class="api-method"><code>void pop() noexcept</code></div>
+<div class="api-method"><code>void reset() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int topIndex() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] RmlTarget&amp; layer(int index)</code></div>
+<div class="api-method"><code>[[nodiscard]] RmlTarget&amp; post(Post p)</code></div>
+<div class="api-method"><code>void swapPrimarySecondary() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE dsv() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12Resource* stencil() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] UINT samples() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int width() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int height() const noexcept</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

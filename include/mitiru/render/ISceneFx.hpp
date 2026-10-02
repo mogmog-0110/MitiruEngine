@@ -71,7 +71,7 @@ public:
 	/// @param mode シェーダーモード
 	virtual void setShaderMode([[maybe_unused]] ShaderMode3D mode) {}
 
-	// ── 影（DX12実装、DX11はno-op） ──
+	// ── 影（DX12 実装、DX11 は no-op） ──
 
 	/// @brief 影（シャドウマップ）の有効/無効を設定する
 	virtual void setShadowEnabled(bool /*enabled*/) {}
@@ -91,7 +91,7 @@ public:
 	/// @brief カスケードシャドウが有効か
 	[[nodiscard]] virtual bool isCascadedShadowEnabled() const noexcept { return false; }
 
-	// ── アウトライン（DX12実装、DX11はno-op） ──
+	// ── アウトライン（DX12 実装、DX11 は no-op） ──
 
 	/// @brief アウトライン描画の有効/無効を設定する
 	virtual void setOutlineEnabled(bool /*enabled*/) {}
@@ -130,7 +130,7 @@ public:
 		(void)farDist;
 	}
 
-	// ── HDRトーンマップ (ENG-106) ─────────────────────────────
+	// ── HDR トーンマップ (ENG-106) ─────────────────────────────
 
 	/// @brief 露出 (exposure) を設定する
 	/// @details ACES filmic 前の線形係数。1.0 が標準。明るくしたいなら 1 超、
@@ -141,7 +141,7 @@ public:
 	/// @brief 現在の exposure 値を返す
 	[[nodiscard]] virtual float tonemapExposure() const noexcept { return 1.0f; }
 
-	/// @brief 出力ガンマを設定する (default 2.2、sRGB近似)
+	/// @brief 出力ガンマを設定する (default 2.2、sRGB 近似)
 	/// @details tonemap 後に `pow(c, 1.0/gamma)` を掛ける。
 	virtual void setTonemapGamma(float /*gamma*/) {}
 
@@ -155,6 +155,83 @@ public:
 	/// @brief カスケード数を 1〜3 で指定する (v38)。1 = 単一、2 = setCascadedShadowEnabled(true) と同じ、
 	///        3 = 近/中/遠。DX12 のみ実装
 	virtual void setShadowCascadeCount(int /*count*/) {}
+
+	/// @brief 以後の描画を輪郭線 (post-process outline) の検出から外す (v39、ADR 0041)。
+	///        テクスチャ付きの板の立ち絵のように、面の外周で深度が段になるが絵の周りに枠を
+	///        引きたくないものに false で挟む。フレーム頭で true に戻る。DX12 のみ実装
+	///        (法線 RT に印を書き、outline パスがその画素を縁として扱わない)
+	virtual void setOutlineCaster(bool /*enabled*/) {}
+
+	// ── 商業トゥーン寄せ (v40、ADR 0042) ─────────────────────────
+
+	/// @brief SSAO (画面空間の環境遮蔽)。物と床の継ぎ目・物どうしの隙間を暗くする。
+	///        radius は遮蔽を探す半径 (ワールド単位)、strength は濃さ (0 で素通し)。
+	///        DX12 のみ実装 (深度 + 法線 RT から半球サンプル 16 本 → 深度で重み付けした分離ぼかし →
+	///        tonemap 前の HDR 色に乗算)。描画単位の除外は無い
+	virtual void setAmbientOcclusion(bool /*enabled*/, float /*radius*/, float /*strength*/) {}
+
+	/// @brief トゥーンの段数と境の柔らかさ。bands=1 (と 2) は従来の 2 トーン (影 = setToonShadowTint、明 = 白)、
+	///        3 以上は影 / midTint / 白を等分の lambert しきい値で刻む (上限 4)。softness は境の幅
+	///        (lambert 単位。0.12 が従来の smoothstep(0.44, 0.56) と同じ)。
+	///        bands=0 は段を作らず、softness を巻き込み量にした wrap lambert の滑らかな陰にする (v43)。
+	///        DX12 のみ実装
+	virtual void setToonRamp(int /*bands*/, float /*softness*/, const sgc::Colorf& /*midTint*/) {}
+
+	/// @brief 段付き Blinn-Phong ハイライト。strength 0 で無し、1 で光源色 × 材質 specular がそのまま乗る。
+	///        power は指数 (大きいほど点が小さい)。境の幅は setToonRamp の softness を共有。DX12 のみ実装
+	virtual void setToonSpecular(float /*strength*/, float /*power*/) {}
+
+	// ── 商業トゥーン寄せ 残り 3 つ (v41、ADR 0043) ─────────────────
+
+	/// @brief bloom。threshold (HDR 線形) を超えた明部を 1/2 → 1/4 に落としてぼかし、tonemap 前の HDR 色に
+	///        strength 倍して足す。DX12 のみ実装 (半解像 RT 2 枚 + 1/4 解像 1 枚、tent フィルタで戻す)
+	virtual void setBloom(bool /*enabled*/, float /*threshold*/, float /*strength*/) {}
+
+	/// @brief 影の PCF の端のタップまでの距離 (影マップの texel 単位)。1.0 以下は 3x3 で従来の絵、それより広いと
+	///        5x5 のテント重みで間を埋める (3x3 のまま広げると縁が 3 段に分かれた)。2〜3 で境が柔らかくなる。
+	///        描画結果だけが変わり、InputSnapshot / リプレイには乗らない。DX12 のみ実装
+	virtual void setShadowSoftness(float /*texels*/) {}
+
+	/// @brief tonemap (ACES) の後・ガンマの前に掛ける彩度とコントラスト。両方 1.0 で無変換。
+	///        saturation 0 でグレー。contrast は中間灰 0.18 を軸に伸縮する。DX12 のみ実装
+	virtual void setColorGrade(float /*saturation*/, float /*contrast*/) {}
+
+	// ── 輪郭線の距離減衰 (v42、ADR 0044) ───────────────────────
+
+	/// @brief 輪郭線を距離で薄くする。nearDist まで全部、farDist で minStrength (0..1) まで線形に
+	///        落とし、それより遠くは minStrength のまま。薄くするのは線の不透明度だけで、太さは変えない
+	///        (幅を細らせると 1 px を割った所で線が途切れてちらつく)。farDist <= nearDist なら減衰しない
+	///        = 既定 (0, 0, 0) は従来の絵。OutlineMode::DepthSobel の DX12 実装のみ
+	virtual void setOutlineFade(float /*nearDist*/, float /*farDist*/, float /*minStrength*/) {}
+
+	// ── 半球アンビエント / 縁光 / 輪郭線の色 (v43、ADR 0045) ──────
+
+	/// @brief 環境光を上下 2 色にする。世界法線の y で `lerp(ground, sky, n.y * 0.5 + 0.5)`。
+	///        **両方が真っ黒なら setAmbientColor の平坦な色に落ちる** ので、既定は従来の絵と bit 同一。
+	///        空色を上から、地面の照り返しを下から当てると、平坦な 1 色より立体の向きが読める。
+	///        DX12 の `ShaderMode3D::Toon` のみ実装
+	virtual void setHemisphereAmbient(const sgc::Colorf& /*sky*/, const sgc::Colorf& /*ground*/) {}
+
+	/// @brief シルエット際を光らせる縁光。`pow(1 - NdotV, power)` に strength と color を掛けて足す。
+	///        strength 0 で無し (既定 = 従来の絵)。DX12 の `ShaderMode3D::Toon` のみ実装
+	virtual void setRimLight(float /*strength*/, float /*power*/, const sgc::Colorf& /*color*/) {}
+
+	/// @brief 輪郭線を下の色へどれだけ寄せるか 0..1。線の画素は `lerp(下の色, インク色, 被覆率 * darken)` になる。
+	///        1 が従来の絵、0 で線が消える。純黒の線は彩度の高い絵の中で浮くので下の色を透かす用
+	virtual void setOutlineDarken(float /*darken*/) {}
+
+	// ── 遠景のぼけ / 影の余白 (v44、ADR 0046) ─────────────────────
+
+	/// @brief 遠くだけをぼかす被写界深度。ビュー距離 start から end にかけてぼけ半径を 0 → strength
+	///        (720p の画素、画面の高さに比例) へ伸ばす。tonemap の後・FXAA の前に掛けるので HUD はぼけない。
+	///        手前の物の縁が奥のぼけへ滲まないよう、各タップは自分の深度で決まる半径が中心まで届くときだけ数える。
+	///        strength 0 で無し (既定 = 従来の絵)。DX12 のみ実装
+	virtual void setDepthOfField(float /*start*/, float /*end*/, float /*strength*/) {}
+
+	/// @brief 影の比較に足す深度の余白をワールド単位で与える。受ける面が光に対して傾くほど tan で伸ばす。
+	///        0 で従来の余白 (影マップ深度で 0.001 × max(softness, 1)。奥行き 100 の影マップでは 10 cm 以上あり、
+	///        それより低い物の落ち影が消える)。DX12 のみ実装
+	virtual void setShadowBias(float /*worldUnits*/) {}
 };
 
 } // namespace mitiru::render

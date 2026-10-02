@@ -34,6 +34,24 @@ MITIRU_GAME(MyGame)
 
 観測ログのような非gameplay状態は`GameMemory`の外(DLL内`static`)に置く。
 
+### 暗黙の詰め物 (padding) を残さない
+
+上の`Enemy`は`bool alive`の後ろに3 byteの詰め物が入る。詰め物の byte は代入で値が保たれず
+(一時オブジェクトの不定値がそのまま写る)、中身が同じ状態でもバイト列が食い違う。replay の
+bit-exact 照合や巻き戻しの差分が、何も変わっていないのに「分岐した」と報告する原因になる。
+
+```cpp
+#include <mitiru/module/PodLayout.hpp>
+
+struct Enemy { float x, y; float respawnIn; bool alive; std::uint8_t reserved[3]{}; };
+MITIRU_ASSERT_NO_PADDING(MyGame);
+```
+
+`MITIRU_ASSERT_NO_PADDING`は`FixedVec`の要素や配列・ネストした struct の中までたどり、詰め物が
+あれば`GameMemoryPaddingAfterField<Enemy, 3, bool, 3>` (持ち主の型・何番目のフィールドの後ろか・
+その型・byte 数) の形でコンパイルを止める。`MITIRU_REFLECT_AUTO`を使っている game には、
+同じ数え方で起動時に1行の警告も出る。
+
 ## なぜこれが核心なのか
 
 `GameMemory`がflat PODなら、ホストはそれを 意味を知らずに1個の連続バイト列として
@@ -79,7 +97,8 @@ curl -X POST http://127.0.0.1:8090/api/ai/branch -d '{"keys":"Right","frames":"3
 現フレームの構造的観測(`/api/ai/state`)だけなら全面flat POD化の前に導入できる:
 
 - `MITIRU_GAME`を使わず手動`mitiru_module_load`で`api->memorySize = sizeof(GameMemory)`を申告し、
-  主要なスカラーフィールドだけ`makeFieldDescriptor<T>(name, offset)`で`reflectFields`に申告する
+  主要なスカラーフィールドだけ`makeFieldDescriptor<T>(name, offset)`で並べ、`mitiru_module_reflect_fields`
+  export で申告する (`tests/mitiru/module_test_fixture/fixture_reflect_export.hpp` が 1 行で出す例)
   (`std::vector`等は申告しない → `reflectToJson`が触らないので安全)。
 - `api->memorySize`を申告しないと`/api/ai/state`は空`{}`を返す(offset読みの境界に使うため)。
   reflectionを宣言したのに`memorySize=0`だとengineが起動時に警告を出す。

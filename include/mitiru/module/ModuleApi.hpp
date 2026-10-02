@@ -43,10 +43,8 @@
 #  include <yvals.h>  // _ITERATOR_DEBUG_LEVEL を確定させる (build fingerprint 用)
 #endif
 
-#include <mitiru/module/Reflection.hpp>  // FieldDescriptor / ReflectSchema
-
-// Forward declare engine types so the header is light. Concrete definitions
-// come from the engine when the DLL links against `Mitiru::mitiru`.
+// header を軽くするため、engine の型は前方宣言だけにする。具体的な定義は、DLL が
+// `Mitiru::mitiru` にリンクしたときに engine 側から来る。
 namespace mitiru { class Screen; }
 namespace mitiru::module { struct DrawContext; struct DrawCommandBuffer; }
 
@@ -99,7 +97,7 @@ namespace mitiru::module
 ///          sizeof(SceneLook) を保つ限り以後 kCurrentApiVersion を上げる理由にならない
 ///          (vtable も Screen のメンバー構成も増えないため)。詳細: ADR 0036。
 ///   - v36: reflectFields を 64 → 128 に拡張。struct 配列 (敵 6 体 × 5 field 等) を持つ小さな
-///          example でも 64 を使い切り、MsgQueue の待ちフレーム数 1 個で末尾 field が黙って
+///          example でも 64 を使い切り、MsgQueue の待ちフレーム数 1 個で末尾 field が気づかないうちに
 ///          落ちていた。InputSnapshot/FrameIntents は無変更 (録画の frameSize も同じ)。ADR 0037。
 ///   - v37: 物理問い合わせ job (HE2 の PhysicsQueryJob / PhysicsRaycastJob 相当)。FrameIntents 末尾に
 ///          physicsQueryCount/physicsQueries[64]、InputSnapshot 末尾に physicsResultCount/physicsResults[64]。
@@ -111,12 +109,64 @@ namespace mitiru::module
 ///          分割距離と ortho の大きさをカメラ視錐台から決める (Shadow.hpp fitCascadesToCamera)。ADR 0039。
 ///          非 POD の game の入口 `MITIRU_GAME_OBJECTS(Game, Progress)` のために ModuleApi 末尾へ
 ///          `stateFlags` (kModuleStatePartial) と `on_rebuild` を追記。ADR 0040。
+///   - v39: 描画単位で輪郭線の検出から外す (GAME_REQUESTS #66)。SceneLook の reserved から outlineCaster を
+///          名前付きに (sizeof 140 不変)、ISceneFx / IRenderer3D 末尾に virtual setOutlineCaster、
+///          Screen::outlineCaster3D。Screen のメンバー 1 個は末尾 uint8 の詰め物に収まり layout 不変。
+///          InputSnapshot / FrameIntents は無変更 (録画の frameSize も同じ)。ADR 0041。
+///   - v40: 商業トゥーン寄せ (GAME_REQUESTS #67)。SceneLook の reserved から ao / aoRadius / aoStrength /
+///          toonBands / toonSoftness / toonMidTint[3] / toonSpecular / toonSpecularPower を名前付きに
+///          (sizeof 140 不変、reserved 54 → 20)、ISceneFx / IRenderer3D 末尾に virtual setAmbientOcclusion /
+///          setToonRamp / setToonSpecular、Screen 末尾メンバ 8 個。DX12 は SSAO (深度 + 法線 RT → 半球 16 本 →
+///          深度重みの分離ぼかし → tonemap 前の HDR 色に乗算)、トゥーンの段数 1..4 と中間色、段付き Blinn-Phong。
+///          InputSnapshot / FrameIntents は無変更 (録画の frameSize も同じ)。ADR 0042。
+///   - v41: 商業トゥーン寄せの残り (GAME_REQUESTS #68)。SceneLook の reserved 20 byte を bloomThreshold / bloomStrength /
+///          shadowSoftness / saturation / contrast の float 5 個で使い切り、bool bloom は shadowCascadeAutoFit の後ろの
+///          詰め物 (offset 77) に置く (sizeof 140 不変、既存 offset 不変)。ISceneFx / IRenderer3D 末尾に virtual setBloom /
+///          setShadowSoftness / setColorGrade、Screen 末尾メンバ 6 個。DX12 は bloom (1/2 → 1/4 解像の縮小 + tent で戻して
+///          tonemap 前の HDR 色に加算)、影の PCF 3x3 のタップ間隔 (CbShadow の詰め物で渡す)、ACES 後の彩度 / コントラスト。
+///          InputSnapshot / FrameIntents は無変更 (録画の frameSize も同じ)。ADR 0043。
+///   - v42: 輪郭線の距離減衰 (GAME_REQUESTS #73)。**v35 以来はじめて sizeof(SceneLook) が動く** (140 → 172)。
+///          v41 で reserved を使い切り、outlineFadeNear / outlineFadeFar / outlineFadeMin を入れる詰め物が
+///          1 byte も残っていなかったため、末尾に float 3 個 + 新しい reserved[20] を積んだ。既存
+///          フィールドの offset は全部そのまま (末尾追記のみ)。ISceneFx / IRenderer3D 末尾に virtual
+///          setOutlineFade、Screen 末尾メンバ 3 個。DX12 の DepthSobel outline PS が中心画素の線形深度で
+///          線の**不透明度**を落とす (太さは変えない)。InputSnapshot / FrameIntents は無変更
+///          (録画の frameSize も同じ)。ADR 0044。
+///   - v43: 3D ソニック寄せの絵づくり (GAME_REQUESTS #74)。`sizeof(SceneLook)` 172 → 220
+///          (reserved[20] に 48 byte は入らないので伸ばし、reserved[20] をまた積み直した)。
+///          追加は ambientSky / ambientGround / rimStrength / rimPower / rimColor / outlineDarken。
+///          既存フィールドの offset は全部そのまま (末尾追記のみ)。ISceneFx / IRenderer3D 末尾に
+///          virtual setHemisphereAmbient / setRimLight / setOutlineDarken、Screen 末尾メンバ 6 個。
+///          `toonBands` は 0 を「段なし = wrap lambert の滑らかな陰」として受けるようになった (1..4 は据え置き)。
+///          DX12 の toon PS が半球アンビエントと縁光を加え、段付きハイライトの色と指数を
+///          材質の metallic/roughness から引く。InputSnapshot / FrameIntents は無変更
+///          (録画の frameSize も同じ)。ADR 0045。
+///   - v44: 遠景のぼけと影の余白 (KaeruCrepe TODO L2 / L4)。SceneLook の reserved 20 byte のうち 16 を
+///          dofStart / dofEnd / dofStrength / shadowBias に使った (sizeof 220 不変、既存 offset 不変、reserved[4])。
+///          ISceneFx / IRenderer3D 末尾に virtual setDepthOfField / setShadowBias、Screen 末尾メンバ 4 個。
+///          DX12 は tonemap・outline の後 / FXAA の前に被写界深度のパス (深度からビュー距離でぼけ半径、
+///          黄金角 16 タップ、手前の物は自分の半径が届かないので奥へ滲まない) を足し、影の比較の余白を
+///          ワールド単位 + 受ける面の傾き (tan) で取れるようにした (CbShadow の詰め物で渡す)。既定 0 はどちらも
+///          従来の絵。InputSnapshot / FrameIntents は無変更 (録画の frameSize も同じ)。ADR 0046。
+///   - v45: reflectFields[128] / reflectSchemas[8] を ModuleApi から削除。反射は別 export
+///          (`mitiru_module_reflect_fields` / `_schemas` / `mitiru_module_layout_hash`) だけで渡し、
+///          静的リンクは `linkedReflectionExports()` で同じ 3 関数を引く (ModuleReflection.hpp)。
+///          InputSnapshot 末尾に mouseWheel / mouseWheelH / mouseXButtons* (X1・X2) / gamepads[4]
+///          (パッドを 1 台ずつ、既存の gamepad* は全台の合成)、imeComposition[64] / imeCursor (変換中の文字列)。
+///          FrameIntents 末尾に textInputActive / textInputRect (ADR 0048 段階 1: 立てないフレームは IME を切る)。
+///          sizeof(InputSnapshot) 8648 → 8896 なので .mtrr は録り直し。
+///          SoundIntent 末尾に handle (ゲームが決める再生の番号) / bus / spatial / pan / position[3]
+///          (104 → 128 byte、FrameIntents の soundIntents より後ろの offset が 192 ずれる)、FrameIntents 末尾に
+///          聞き手 (listener*) とバス音量 (busVolumeMask / busVolume[8])。ENGINE_REQUESTS #14 / #15。
+///   - v46: FrameIntents から jsToExecute[2048] / jsToExecuteLen と paletteToggle を削除 (UI に JS も
+///          HTML のコマンドパレットも無い)。soundIntents 以降の offset が 2048 前へずれる。InputSnapshot は
+///          無変更。ADR 0053。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
-///       配列要素が太ると後続 field の offset がズレ silent 破損するため、
+///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 38;
+constexpr std::uint32_t kCurrentApiVersion = 46;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -204,10 +254,10 @@ constexpr const char* kRewindBufferSymbol = "mitiru_module_rewind_buffer_frames"
 
 // ── POD wire format ──────────────────────────────────────────────────────
 
-/// @brief CEF JS から DLL に届く action event (e.g. button click)
+/// @brief UI から DLL に届く action event (例: button click)
 /// @details
-///   - JS 側: `window.mitiru.dispatch("game.restart", {})` で発火
-///   - Engine が action handler を register、queue に enqueue
+///   - UI 側: RML の `data-event-click="dispatch('game.restart')"` で発火
+///   - Engine が queue に enqueue
 ///   - 翌フレーム頭の InputSnapshot.actionEvents に詰めて DLL に渡す
 struct ActionEvent
 {
@@ -244,6 +294,17 @@ namespace gamepad
 		AxisCount = 6,
 	};
 }
+
+/// @brief パッド 1 台分 (InputSnapshot::gamepads、v45)。未接続の枠は全 0。
+struct GamepadState
+{
+	std::uint8_t  connected;            ///< 1 = 接続中
+	std::uint8_t  _pad[3];
+	std::uint32_t buttonsDown;          ///< gamepad:: ビットマスク (押下中)
+	std::uint32_t buttonsJustPressed;
+	std::uint32_t buttonsJustReleased;
+	float         axes[6];              ///< gamepad::Axis 添字。stick [-1,1] / trigger [0,1]
+};
 
 /// @brief 物理問い合わせ 1 件 (DLL → host の intent、v37)。結果は次フレームの `InputSnapshot::physicsResults`
 ///        に `tag` で対応付いて返る。host の body id は渡さない (game は `tag` だけで照合する)。
@@ -295,11 +356,12 @@ struct InputSnapshot
 	std::uint8_t mouseButtonsJustReleased[3];
 	std::uint8_t _pad[3];                 ///< 4B align
 
-	/// このフレームに溜まった CEF JS からの action event
+	/// このフレームに溜まった UI と host からの action event
 	std::int32_t actionEventCount;
 	ActionEvent  actionEvents[16];
 
-	// v5: gamepad (主コントローラ)。非対応 platform / 未接続時は全 0
+	// v5: gamepad。v45 からは繋がっている全台の合成 (ボタンは OR、軸は最初の 1 台)。1 人用の既定の読み口で、
+	// 台ごとは末尾の gamepads[4]。非対応 platform / 未接続時は全 0
 	std::int32_t  gamepadConnected;            ///< 1 = 接続中
 	std::uint32_t gamepadButtonsDown;          ///< gamepad:: ビットマスク (押下中)
 	std::uint32_t gamepadButtonsJustPressed;   ///< このフレームで押された
@@ -350,9 +412,9 @@ struct InputSnapshot
 	/// fadeIn 完了は 0.0 到達で判定する (tint/shake/hitStop/letterbox はここに乗らない)。
 	float fadeProgress01;
 
-	/// v34: このフレームに確定した UTF-8 テキスト入力 (IME 確定含む、J5)。本命は CEF
-	/// <input> 経由 (HTML UI)。ここはゲーム内の簡易テキスト入力 (プレイヤー名等) 用の
-	/// 最小手段。null 終端、収まらない分は切り捨て (warnOnce なし。長文入力は CEF 側へ)。
+	/// v34: このフレームに確定した UTF-8 テキスト入力 (IME 確定含む、J5)。本命は UI の
+	/// 入力欄 (RmlUi)。ここはゲーム内の簡易テキスト入力 (プレイヤー名等) 用の
+	/// 最小手段。null 終端、収まらない分は切り捨て (warnOnce なし。長文入力は UI の入力欄へ)。
 	char textInput[32];
 	std::uint8_t textInputLen;   ///< textInput の有効バイト数 (null 終端を含まない)
 	std::uint8_t _padText[7];    ///< 8B align
@@ -362,6 +424,26 @@ struct InputSnapshot
 	std::int32_t  physicsResultCount;
 	PhysicsResult physicsResults[64];
 	std::uint8_t  _padPhysics[4];  ///< 8B align
+
+	/// v45: このフレームのホイールの回転 (ノッチ数。+ = 奥 / 右)。高精度ホイールは端数になる。
+	float mouseWheel;
+	float mouseWheelH;
+	/// v45: 拡張ボタン。添字 0 = X1 (戻る)、1 = X2 (進む)
+	std::uint8_t mouseXButtonsDown[2];
+	std::uint8_t mouseXButtonsJustPressed[2];
+	std::uint8_t mouseXButtonsJustReleased[2];
+	std::uint8_t _padMouseX[2];
+
+	/// v45: パッドを 1 台ずつ。枠 i = XInput の player i、空いた枠に XInput 以外 (DS4 等) を繋いだ順に入れる。
+	GamepadState gamepads[4];
+
+	/// v45: IME で変換中の文字列 (UTF-8、null 終端、収まらない分は文字の切れ目で切る) と、キャレットの位置
+	/// (imeComposition の先頭からの byte 数)。確定した文字は textInput に来る。録画に乗るので、再生でも
+	/// 変換中の表示まで同じになる。FrameIntents::textInputActive を立てていないフレームは IME が切れていて空。
+	std::uint8_t imeCompositionLen;  ///< imeComposition の有効 byte 数 (null 終端を含まない)
+	std::uint8_t imeCursor;
+	char         imeComposition[64];
+	std::uint8_t _padIme[6];         ///< 8B align
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)
@@ -373,8 +455,8 @@ struct InputSnapshot
 ///     3 = bool      (intVal 使う; 0/1)
 ///     4 = string    (strVal 使う)
 ///
-/// host が `engine.moduleStateStore()->set(key, value)` を呼ぶ。
-/// scene.html 側は `window.mitiru.onStateChange(key, ...)` で受ける。
+/// host が UI (RmlUi) の data model と `engine.moduleStateStore()` に写す。
+/// RML 側は `<body data-model="view">` の中で `{{ key の view. より後ろ }}` として読む。
 struct StatePushItem
 {
 	char         key[96];       ///< state key、null 終端 (例: "view.hud.hp")
@@ -390,7 +472,7 @@ struct StatePushItem
 /// @details
 /// 既存 InspectableRegistry の lambda ベース API は DLL-unsafe なので、
 /// DLL は毎フレーム自分の inspectables を **pre-serialized JSON** で push する。
-/// Engine が SharedSnapshot (%TEMP%) に書き出し、view.palette.items を更新する。
+/// Engine が SharedSnapshot (%TEMP%) に書き出し、inspector の窓が読む。
 /// JSON が json[] buffer を超える時は **truncate** され `jsonLen` がその旨を示す。
 struct InspectableExport
 {
@@ -445,10 +527,27 @@ struct SoundIntent
 	std::uint8_t _pad3[4];    ///< 明示的 padding (次の double の 8B align。v21 で暗黙 4B を明示化)
 	double       scheduleSec; ///< > 0 で「この音声クロック時刻 (Input::audioTime と同基準) に鳴らす」
 	                          ///< サンプル精度予約 (SE 用)。0 = 即時再生。
+	// v45 で末尾に追加 (ENGINE_REQUESTS #15)。
+	std::uint32_t handle;     ///< 0 = 番号なし (id で扱う)。1 以上はゲームが決める再生の番号で、同じ id を何本も
+	                          ///< 鳴らし、1 本ずつ止められる (SE のみ)。host は番号を作らない (録画再生でも同じ番号)
+	std::uint8_t  bus;        ///< kSoundBus*。0 = category から決める (SE=Sfx / BGM=Music / Voice=Voice)
+	std::uint8_t  spatial;    ///< 1 = position を FrameIntents の聞き手から見て減衰とパンを掛ける / 0 = pan を使う
+	std::uint8_t  _pad4[2];
+	float         pan;        ///< -1 (左) .. 1 (右)。spatial=0 のとき
+	float         position[3];///< spatial=1 のときの world 座標 (1 単位 = 1m)
 };
 
+/// @brief SoundIntent::bus と FrameIntents::busVolume の番号。6, 7 はゲームが自由に使ってよい。
+constexpr std::uint8_t kSoundBusMaster  = 0;  ///< busVolume[0] は全部に掛かる。SoundIntent::bus の 0 は「category から」
+constexpr std::uint8_t kSoundBusMusic   = 1;
+constexpr std::uint8_t kSoundBusSfx     = 2;
+constexpr std::uint8_t kSoundBusVoice   = 3;
+constexpr std::uint8_t kSoundBusUi      = 4;
+constexpr std::uint8_t kSoundBusAmbient = 5;
+constexpr int          kSoundBusCount   = 8;
+
 /// @brief 「このツール窓を開いて」という DLL → host の intent (v10 追加)。
-/// @details game は Engine* を持てない ので、独立ウィンドウのツール
+/// @details game は Engine* を持てないので、独立ウィンドウのツール
 ///          (inspector / input monitor / rewind など) を自分では開けない。代わりに
 ///          tool 名を書いて「開いて」と頼み、host が別 exe (mitiru_<tool>.exe) を spawn する。
 ///          必要なときだけ呼ぶ。既定では何も開かない (pulled UI、アトミックツール哲学)。
@@ -487,10 +586,9 @@ struct FrameIntents
 {
 	std::uint8_t requestStop;       ///< 1 = engine.requestStop() を呼ぶ
 	std::uint8_t requestScreenshot; ///< 1 = engine が PNG を保存
-	std::uint8_t paletteToggle;     ///< 1 = command palette の visible を toggle
-	std::uint8_t _pad0[5];
+	std::uint8_t _pad0[6];
 
-	/// @brief CEF state push queue (HUD 更新等)
+	/// @brief UI への state push queue (HUD 更新等)
 	std::int32_t  statePushCount;
 	StatePushItem statePushes[64];
 
@@ -498,14 +596,9 @@ struct FrameIntents
 	std::int32_t      exportedInspectableCount;
 	InspectableExport exportedInspectables[8];
 
-	/// @brief 生 JS の実行 (例: hot reload の toast trigger)
-	/// @details jsToExecuteLen > 0 のとき、host が
-	///          `cefContext.executeJavaScript(jsToExecute)` を呼ぶ。
-	std::int32_t jsToExecuteLen;
-	char         jsToExecute[2048];
-
 	/// v4: sound 再生要求
 	std::int32_t soundIntentCount;
+	std::uint8_t _padSound[4];  ///< 8B align (SoundIntent は double を含む)
 	SoundIntent  soundIntents[8];
 
 	/// v7: 画面演出要求 (Tint / Fade / Shake / HitStop)
@@ -543,17 +636,37 @@ struct FrameIntents
 	PhysicsQuery physicsQueries[64];
 	std::uint8_t _padPhysicsTail[4];  ///< 8B align
 
+	/// v45: 1 = このフレームはテキストを受けたい (毎フレーム宣言する。立てないフレームは host が IME を切り、
+	/// 遊んでいる間に変換窓が出ない)。textInputRect は入力欄 (ゲームの画面座標の x, y, w, h)。host は
+	/// IME の変換窓と候補窓をそこへ置く。
+	std::uint8_t textInputActive;
+	std::uint8_t _padTextInput[3];
+	float        textInputRect[4];
+	std::uint8_t _padTextInputTail[4];  ///< 8B align
+
+	/// v45: 3D の音を聞く位置と向き (ふつうはカメラ)。listenerSet = 1 のフレームだけ host が取り込み、
+	/// 次に立つまで保持する。SoundIntent::spatial = 1 の音はここから見た距離で小さくなり、左右に振れる。
+	std::uint8_t listenerSet;
+	std::uint8_t _padListener[3];
+	float        listenerPosition[3];
+	float        listenerForward[3];
+	float        listenerUp[3];
+
+	/// v45: バスの音量 (0..1、kSoundBus* 添字、0 は全体)。busVolumeMask の bit i が立った busVolume[i] だけ host が
+	/// 取り込み、保持する (オプション画面の「効果音の音量」等)。鳴っているループ音と BGM にも掛け直す。
+	std::uint8_t busVolumeMask;
+	std::uint8_t _padBus[3];
+	float        busVolume[kSoundBusCount];
+	std::uint8_t _padSoundTail[4];  ///< 8B align
+
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
 	void reset() noexcept
 	{
 		requestStop = 0;
 		requestScreenshot = 0;
-		paletteToggle = 0;
 		statePushCount = 0;
 		exportedInspectableCount = 0;
-		jsToExecuteLen = 0;
-		jsToExecute[0] = '\0';
 		soundIntentCount = 0;
 		visualIntentCount = 0;
 		toolRequestCount = 0;
@@ -565,6 +678,9 @@ struct FrameIntents
 		wantMouseLock = 0;
 		debugDrawCount = 0;
 		physicsQueryCount = 0;
+		textInputActive = 0;
+		listenerSet = 0;
+		busVolumeMask = 0;
 	}
 
 	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
@@ -585,6 +701,12 @@ struct FrameIntents
 	void requestRestart() noexcept { restartRequest = 1; }
 	/// カーソルロックを頼む (FPS 視線)。毎フレーム呼ぶ。呼ばないフレームで解除される。
 	void requestMouseLock() noexcept { wantMouseLock = 1; }
+	/// テキストを受けたいと頼む (入力欄は画面座標の x, y, w, h)。毎フレーム呼ぶ。呼ばないフレームで IME が切れる。
+	void requestTextInput(float x, float y, float w, float h) noexcept
+	{
+		textInputActive = 1;
+		textInputRect[0] = x; textInputRect[1] = y; textInputRect[2] = w; textInputRect[3] = h;
+	}
 
 	// HUD へ値を送る / 音を鳴らす、を 1 行で書くためのヘルパ。中の固定長スロット詰め
 	// (空き探し・上限チェック・null 終端) はここに隠す。これが無いと game 側が毎回
@@ -594,10 +716,10 @@ struct FrameIntents
 	// メモリ配置 (= DLL 境界の wire format) は一切変えない (下の static_assert で保証)。
 	//
 	// 使い方:
-	//   intents->pushInt("view.hud.score", score);   // scene.html の data-m-text へ
+	//   intents->pushInt("view.score", score);       // assets/ui/main.rml の {{ score }} へ
 	//   intents->playSound("brick", 0.6f);           // assets/audio/brick.wav を再生
 
-	/// HUD に int を送る (scene.html の data-m-text="view.hud.xxx" が受け取る)。
+	/// HUD に int を送る (RML の {{ xxx }} が "view.xxx" を受け取る)。
 	void pushInt(const char* key, int value) noexcept
 	{
 		if (StatePushItem* s = nextStatePush()) { s->kind = 1; s->intVal = value; setKey(s, key); }
@@ -607,7 +729,7 @@ struct FrameIntents
 	{
 		if (StatePushItem* s = nextStatePush()) { s->kind = 2; s->floatVal = value; setKey(s, key); }
 	}
-	/// HUD に bool を送る (data-m-show / data-m-class の条件に使える)。
+	/// HUD に bool を送る (RML の data-if / data-class-* の条件に使える)。
 	void pushBool(const char* key, bool value) noexcept
 	{
 		if (StatePushItem* s = nextStatePush()) { s->kind = 3; s->intVal = value ? 1 : 0; setKey(s, key); }
@@ -618,25 +740,44 @@ struct FrameIntents
 		if (StatePushItem* s = nextStatePush()) { s->kind = 4; setKey(s, key); copyStr(s->strVal, value, sizeof(s->strVal)); }
 	}
 	/// 効果音を鳴らす。host が assets/audio/<id>.wav (.ogg/.mp3) を再生する。
-	void playSound(const char* id, float volume = 1.0f) noexcept
+	/// 返り値は積んだ intent (位置・バス・番号を続けて書ける)。8 本の上限で積めなければ nullptr。
+	SoundIntent* playSound(const char* id, float volume = 1.0f) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
-		copyStr(s.id, id, sizeof(s.id));
-		s.category = 0; s.volume = volume; s.pitchScale = 1.0f;
+		return playSound(id, volume, 1.0f);
 	}
 	/// 効果音をピッチ指定で鳴らす (pitch 0.5..2.0 程度、1.0=原音)。1 つの SE を音階で鳴らす
 	/// リズムゲーム等で使う。pitch は再生レート変更 (= 音程と長さが同時に変わる)。
-	void playSound(const char* id, float volume, float pitch) noexcept
+	SoundIntent* playSound(const char* id, float volume, float pitch) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
-		copyStr(s.id, id, sizeof(s.id));
-		s.category = 0; s.volume = volume; s.pitchScale = (pitch > 0.0f) ? pitch : 1.0f;
+		SoundIntent* s = nextSoundIntent();
+		if (s == nullptr) { return nullptr; }
+		copyStr(s->id, id, sizeof(s->id));
+		s->category = 0; s->volume = volume; s->pitchScale = (pitch > 0.0f) ? pitch : 1.0f;
+		return s;
+	}
+	/// 番号 handle で鳴らした効果音 (playSound / loopSound の handle) を 1 本だけ止める (v45)。
+	void stopSoundHandle(std::uint32_t handle, float fadeOutSec = 0.0f) noexcept
+	{
+		if (handle == 0) { return; }
+		SoundIntent* s = nextSoundIntent();
+		if (s == nullptr) { return; }
+		s->category = 0; s->stop = 1; s->handle = handle; s->fadeOutSec = fadeOutSec;
+	}
+	/// 3D の音を聞く位置と向きを決める (v45)。host は次に呼ばれるまで保持する。
+	void setListener(const float position[3], const float forward[3], const float up[3]) noexcept
+	{
+		listenerSet = 1;
+		for (int i = 0; i < 3; ++i)
+		{
+			listenerPosition[i] = position[i]; listenerForward[i] = forward[i]; listenerUp[i] = up[i];
+		}
+	}
+	/// バス bus (kSoundBus*、0 は全体) の音量を 0..1 で決める (v45)。host は次に呼ばれるまで保持する。
+	void setBusVolume(std::uint8_t bus, float volume) noexcept
+	{
+		if (bus >= kSoundBusCount) { return; }
+		busVolumeMask = static_cast<std::uint8_t>(busVolumeMask | (1u << bus));
+		busVolume[bus] = volume;
 	}
 
 	/// 画面を一瞬色フラッシュさせる (被弾演出など)。host が Screen::pushTint に渡す。
@@ -645,10 +786,9 @@ struct FrameIntents
 	void playMusic(const char* id, float volume = 1.0f, bool loop = true,
 	               float crossfadeSec = 0.0f) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
+		SoundIntent* const slot = nextSoundIntent();
+		if (slot == nullptr) { return; }
+		SoundIntent& s = *slot;
 		copyStr(s.id, id, sizeof(s.id));
 		s.category = 1; s.volume = volume; s.loop = loop ? 1 : 0; s.pitchScale = 1.0f;
 		// crossfade: 新曲側の fade-in 秒。旧曲のフェードアウトは host (SoundIntentRouter) が
@@ -658,10 +798,9 @@ struct FrameIntents
 	/// 再生中の BGM を停止する (fadeOutSec > 0 でフェードアウト)。
 	void stopMusic(float fadeOutSec = 0.0f) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
+		SoundIntent* const slot = nextSoundIntent();
+		if (slot == nullptr) { return; }
+		SoundIntent& s = *slot;
 		s.category = 1; s.stop = 1; s.fadeOutSec = fadeOutSec;
 	}
 
@@ -673,27 +812,26 @@ struct FrameIntents
 	/// 再生中の BGM を指定位置 (秒) へシークする (v19)。
 	void seekMusic(float positionSec) noexcept { pushTransport(3, positionSec); }
 
-	/// 効果音をループ再生する (v22)。stopSoundId で止めるまで鳴り続ける。
-	void loopSound(const char* id, float volume = 1.0f, float pitch = 1.0f,
-	               float fadeInSec = 0.0f) noexcept
+	/// 効果音をループ再生する (v22)。stopSoundId (番号を付けたら stopSoundHandle) で止めるまで鳴り続ける。
+	/// 返り値は積んだ intent。8 本の上限で積めなければ nullptr。
+	SoundIntent* loopSound(const char* id, float volume = 1.0f, float pitch = 1.0f,
+	                       float fadeInSec = 0.0f) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
-		copyStr(s.id, id, sizeof(s.id));
-		s.category = 0; s.loop = 1; s.volume = volume;
-		s.pitchScale = (pitch > 0.0f) ? pitch : 1.0f;
-		s.fadeInSec = fadeInSec;
+		SoundIntent* s = nextSoundIntent();
+		if (s == nullptr) { return nullptr; }
+		copyStr(s->id, id, sizeof(s->id));
+		s->category = 0; s->loop = 1; s->volume = volume;
+		s->pitchScale = (pitch > 0.0f) ? pitch : 1.0f;
+		s->fadeInSec = fadeInSec;
+		return s;
 	}
 
 	/// 鳴っている効果音を id で止める (v22)。fadeOutSec > 0 で減衰させてから止める。
 	void stopSoundId(const char* id, float fadeOutSec = 0.0f) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
+		SoundIntent* const slot = nextSoundIntent();
+		if (slot == nullptr) { return; }
+		SoundIntent& s = *slot;
 		copyStr(s.id, id, sizeof(s.id));
 		s.category = 0; s.stop = 1; s.fadeOutSec = fadeOutSec;
 	}
@@ -702,10 +840,9 @@ struct FrameIntents
 	/// 前のボイスが鳴っていれば頭出しせず差し替える (台詞は重ねない)。
 	void playVoice(const char* id, float volume = 1.0f, float fadeInSec = 0.0f) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
+		SoundIntent* const slot = nextSoundIntent();
+		if (slot == nullptr) { return; }
+		SoundIntent& s = *slot;
 		copyStr(s.id, id, sizeof(s.id));
 		s.category = 2; s.volume = volume; s.pitchScale = 1.0f; s.fadeInSec = fadeInSec;
 	}
@@ -713,10 +850,9 @@ struct FrameIntents
 	/// 鳴っているボイスを止める (category=2、id 不要)。fadeOutSec > 0 で減衰させてから止める。
 	void stopVoice(float fadeOutSec = 0.0f) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
+		SoundIntent* const slot = nextSoundIntent();
+		if (slot == nullptr) { return; }
+		SoundIntent& s = *slot;
 		s.category = 2; s.stop = 1; s.fadeOutSec = fadeOutSec;
 	}
 
@@ -726,10 +862,9 @@ struct FrameIntents
 	/// サンプル単位で発火させるので低ジッタ。リズムゲームの「次の拍でこの音」に使う。
 	void scheduleSound(const char* id, double atSec, float volume = 1.0f, float pitch = 1.0f) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
+		SoundIntent* const slot = nextSoundIntent();
+		if (slot == nullptr) { return; }
+		SoundIntent& s = *slot;
 		copyStr(s.id, id, sizeof(s.id));
 		s.category = 0; s.volume = volume; s.pitchScale = (pitch > 0.0f) ? pitch : 1.0f;
 		s.scheduleSec = (atSec > 0.0) ? atSec : 0.0;
@@ -836,17 +971,6 @@ struct FrameIntents
 		}
 	}
 
-	/// 生 JavaScript を CEF に実行させる (escape hatch)。HUD は data-m-* で足りるので、
-	/// data-m-* で表せない one-shot な DOM 操作 (例: hot-reload の location.reload) だけに使う。
-	void runJs(const char* code) noexcept
-	{
-		const int cap = static_cast<int>(sizeof(jsToExecute) / sizeof(jsToExecute[0]));
-		int i = 0;
-		if (code != nullptr) { for (; code[i] != '\0' && i + 1 < cap; ++i) { jsToExecute[i] = code[i]; } }
-		jsToExecute[i] = '\0';
-		jsToExecuteLen = i;
-	}
-
 	/// 空き物理問い合わせスロットを 1 つ確保する。満杯 (64 件) なら nullptr。結果は次フレーム。
 	PhysicsQuery* nextPhysicsQuery() noexcept
 	{
@@ -857,13 +981,21 @@ struct FrameIntents
 		return &q;
 	}
 private:
+	/// 空き sound intent スロットを 1 つ確保して 0 で初期化する。満杯 (8 件) なら nullptr。
+	SoundIntent* nextSoundIntent() noexcept
+	{
+		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		if (soundIntentCount >= cap) { return nullptr; }
+		SoundIntent& s = soundIntents[soundIntentCount++];
+		s = SoundIntent{};
+		return &s;
+	}
 	/// BGM transport intent (pause/resume/seek) を 1 件積む。id 不要 (現 BGM に作用)。
 	void pushTransport(std::uint8_t transportKind, float seekSec) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
+		SoundIntent* const slot = nextSoundIntent();
+		if (slot == nullptr) { return; }
+		SoundIntent& s = *slot;
 		s.category = 1; s.transport = transportKind; s.seekSec = seekSec;
 	}
 	/// 空き state-push スロットを 1 つ確保して key を書く。満杯なら nullptr。
@@ -906,21 +1038,22 @@ static_assert(std::is_trivially_copyable_v<InputSnapshot>,
 
 // ── wire format のピン留め (v21) ─────────────────────────────────────────
 // sizeof / offsetof を数値で固定する。game 側の /Zp・#pragma pack 等で layout が
-// 変わると version 一致のまま silent 破損するため、コンパイル時に検出する。
+// 変わると version が一致したまま、気づかないうちにデータがおかしくなるため、コンパイル時に検出する。
 // (fn pointer を含む ModuleApi / SeriesProbe は memcpy wire ではないため対象外。)
 // これらの数値を変える変更は ABI break。kCurrentApiVersion の bump と、
 // .mtrr 録画 (header frameSize = sizeof(InputSnapshot)) の録り直しが必要。
 static_assert(sizeof(ActionEvent)       == 320,  "ActionEvent wire size 固定");
 static_assert(sizeof(PhysicsQuery)      == 40,   "PhysicsQuery wire size 固定 (v37)");
 static_assert(sizeof(PhysicsResult)     == 40,   "PhysicsResult wire size 固定 (v37)");
-static_assert(sizeof(InputSnapshot)     == 8648, "InputSnapshot wire size 固定 (v37: physicsResults 追記)");
+static_assert(sizeof(GamepadState)      == 40,   "GamepadState wire size 固定 (v45)");
+static_assert(sizeof(InputSnapshot)     == 8896, "InputSnapshot wire size 固定 (v45: wheel / X ボタン / gamepads / IME 追記)");
 static_assert(sizeof(StatePushItem)     == 4076, "StatePushItem wire size 固定");
 static_assert(sizeof(InspectableExport) == 4100, "InspectableExport wire size 固定");
 static_assert(sizeof(VisualIntent)      == 28,   "VisualIntent wire size 固定");
-static_assert(sizeof(SoundIntent)       == 104,  "SoundIntent wire size 固定");
+static_assert(sizeof(SoundIntent)       == 128,  "SoundIntent wire size 固定 (v45: handle / bus / spatial / pan / position 追記)");
 static_assert(sizeof(RequestToolWindow) == 192,  "RequestToolWindow wire size 固定");
 static_assert(sizeof(DebugDrawIntent)   == 80,   "DebugDrawIntent wire size 固定");
-static_assert(sizeof(FrameIntents)      == 320696, "FrameIntents wire size 固定 (v37: physicsQueries 追記)");
+static_assert(sizeof(FrameIntents)      == 318944, "FrameIntents wire size 固定 (v46: jsToExecute を削除)");
 
 static_assert(offsetof(InputSnapshot, mouseX)           == 768,  "InputSnapshot layout");
 static_assert(offsetof(InputSnapshot, actionEventCount) == 788,  "InputSnapshot layout (明示 pad 786-788)");
@@ -937,19 +1070,30 @@ static_assert(offsetof(InputSnapshot, fadeProgress01)   == 6036, "InputSnapshot 
 static_assert(offsetof(InputSnapshot, textInput)        == 6040, "InputSnapshot layout (v34)");
 static_assert(offsetof(InputSnapshot, textInputLen)     == 6072, "InputSnapshot layout (v34)");
 static_assert(offsetof(InputSnapshot, physicsResultCount) == 6080, "InputSnapshot layout (v37)");
-static_assert(offsetof(FrameIntents, physicsQueryCount)   == 318128, "FrameIntents layout (v37)");
+static_assert(offsetof(InputSnapshot, mouseWheel)       == 8648, "InputSnapshot layout (v45)");
+static_assert(offsetof(InputSnapshot, mouseXButtonsDown) == 8656, "InputSnapshot layout (v45)");
+static_assert(offsetof(InputSnapshot, gamepads)         == 8664, "InputSnapshot layout (v45)");
+static_assert(offsetof(InputSnapshot, imeCompositionLen) == 8824, "InputSnapshot layout (v45)");
+static_assert(offsetof(InputSnapshot, imeComposition)   == 8826, "InputSnapshot layout (v45)");
+static_assert(offsetof(FrameIntents, textInputActive)   == 318840, "FrameIntents layout (v45)");
+static_assert(offsetof(FrameIntents, textInputRect)     == 318844, "FrameIntents layout (v45)");
+static_assert(offsetof(FrameIntents, listenerSet)       == 318864, "FrameIntents layout (v45)");
+static_assert(offsetof(FrameIntents, busVolumeMask)     == 318904, "FrameIntents layout (v45)");
+static_assert(offsetof(FrameIntents, physicsQueryCount)   == 316272, "FrameIntents layout (v37)");
 static_assert(offsetof(SoundIntent, seekSec)            == 88,   "SoundIntent layout");
 static_assert(offsetof(SoundIntent, scheduleSec)        == 96,   "SoundIntent layout (明示 pad 92-96)");
+static_assert(offsetof(SoundIntent, handle)             == 104,  "SoundIntent layout (v45)");
+static_assert(offsetof(SoundIntent, pan)                == 112,  "SoundIntent layout (v45)");
 static_assert(offsetof(DebugDrawIntent, a)              == 4,    "DebugDrawIntent layout");
 static_assert(offsetof(DebugDrawIntent, b)              == 16,   "DebugDrawIntent layout");
 static_assert(offsetof(DebugDrawIntent, color)          == 28,   "DebugDrawIntent layout");
 static_assert(offsetof(DebugDrawIntent, text)           == 48,   "DebugDrawIntent layout");
 static_assert(offsetof(FrameIntents, statePushes)       == 12,     "FrameIntents layout");
-static_assert(offsetof(FrameIntents, soundIntents)      == 295736, "FrameIntents layout");
-static_assert(offsetof(FrameIntents, restartRequest)    == 297628, "FrameIntents layout (v21 restart)");
-static_assert(offsetof(FrameIntents, wantMouseLock)     == 297632, "FrameIntents layout (v23)");
-static_assert(offsetof(FrameIntents, debugDrawCount)    == 297640, "FrameIntents layout (v30)");
-static_assert(offsetof(FrameIntents, debugDraws)        == 297644, "FrameIntents layout (v30)");
+static_assert(offsetof(FrameIntents, soundIntents)      == 293688, "FrameIntents layout (v46)");
+static_assert(offsetof(FrameIntents, restartRequest)    == 295772, "FrameIntents layout (v21 restart)");
+static_assert(offsetof(FrameIntents, wantMouseLock)     == 295776, "FrameIntents layout (v23)");
+static_assert(offsetof(FrameIntents, debugDrawCount)    == 295784, "FrameIntents layout (v30)");
+static_assert(offsetof(FrameIntents, debugDraws)        == 295788, "FrameIntents layout (v30)");
 
 // ── 観測 probe (ABI v11) ───────────────────────────────────────
 
@@ -1016,14 +1160,6 @@ struct ModuleApi
 	std::int32_t seriesProbeCount;
 	SeriesProbe  seriesProbes[8];
 
-	/// @brief GameMemory リフレクション記述表 (ABI v12)。末尾追記で v≤11 後方安全
-	///        (zero-init で reflectFieldCount=0 = 非対応)。`MITIRU_REFLECT` が埋める。host が
-	///        GameMemory バイト列を構造化 JSON 化して AI に全状態を開放する。
-	std::int32_t  reflectFieldCount;
-	FieldDescriptor reflectFields[128];  ///< トップ GameMemory のリーフ (v36 で 64 → 128)
-	std::int32_t  reflectSchemaCount;
-	ReflectSchema reflectSchemas[8];     ///< FixedVec<struct,N> の要素型スキーマ (1 段ネスト)
-
 	/// @brief `on_draw` の代わりに POD コマンドバッファへ積む経路 (ABI v31、ADR 0025)。
 	/// null なら未対応 (`registerGame` は game が `draw(Canvas&)` を持つ時だけ埋める)。
 	/// 両方 non-null な module では host がこちらを優先し、`on_draw` は呼ばない。
@@ -1050,22 +1186,6 @@ inline constexpr std::uint32_t kModuleStatePartial = 1u << 0;
 
 /// @brief `ModuleApi::on_rebuild` の reason。
 inline constexpr std::uint32_t kModuleRebuildRestore = 1;  ///< host が GameMemory を書き戻した (ロード等)
-
-/// @brief 申告済み reflect 記述子から GameMemory layout hash を引く。
-/// @details 0 = reflection 未宣言 (照合 skip)。.msav header / reload 状態温存判定が使う。
-[[nodiscard]] inline std::uint64_t moduleLayoutHash(const ModuleApi& api) noexcept
-{
-	std::int32_t fc = api.reflectFieldCount;
-	const std::int32_t fcap =
-		static_cast<std::int32_t>(sizeof(api.reflectFields) / sizeof(api.reflectFields[0]));
-	if (fc > fcap) { fc = fcap; }
-	std::int32_t sc = api.reflectSchemaCount;
-	const std::int32_t scap =
-		static_cast<std::int32_t>(sizeof(api.reflectSchemas) / sizeof(api.reflectSchemas[0]));
-	if (sc > scap) { sc = scap; }
-	if (sc < 0)    { sc = 0; }
-	return layoutHash(api.reflectFields, fc, api.reflectSchemas, sc);
-}
 
 /// @brief DLL が export すべき load 関数のシグネチャ
 using ModuleLoadFn = void (*)(ModuleApi* api, void** memory);

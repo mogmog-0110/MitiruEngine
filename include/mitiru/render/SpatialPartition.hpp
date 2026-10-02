@@ -2,7 +2,7 @@
 
 /// @file SpatialPartition.hpp
 /// @brief 空間分割データ構造
-/// @details 3D用Octreeと2D用固定グリッドを提供する。
+/// @details 3D 用 Octree と 2D 用固定グリッドを提供する。
 ///          ブロードフェーズ衝突検出やカリングの高速化に利用する。
 
 #include <array>
@@ -18,10 +18,10 @@ namespace mitiru::render
 {
 
 // ────────────────────────────────────────────
-// OctreeNode。3D空間分割
+// OctreeNode。3D 空間分割
 // ────────────────────────────────────────────
 
-/// @brief Octreeに格納するエントリ
+/// @brief Octree に格納するエントリ
 /// @tparam T オブジェクト識別子の型
 template <typename T>
 struct OctreeEntry
@@ -30,9 +30,9 @@ struct OctreeEntry
 	AABB bounds{};
 };
 
-/// @brief Octreeノード
+/// @brief Octree ノード
 /// @tparam T オブジェクト識別子の型
-/// @details 再帰的に8分割し、AABBの空間問い合わせを高速化する。
+/// @details 再帰的に 8 分割し、AABB の空間問い合わせを高速化する。
 ///
 /// @code
 /// mitiru::render::OctreeNode<int> tree({-100,-100,-100, 100,100,100});
@@ -58,7 +58,7 @@ public:
 
 	/// @brief オブジェクトを挿入する
 	/// @param object オブジェクト識別子
-	/// @param objBounds オブジェクトのAABB
+	/// @param objBounds オブジェクトの AABB
 	void insert(const T& object, const AABB& objBounds)
 	{
 		insertImpl(object, objBounds, 0);
@@ -209,10 +209,10 @@ private:
 };
 
 // ────────────────────────────────────────────
-// GridPartition2D。2D固定グリッド空間分割
+// GridPartition2D。2D 固定グリッド空間分割
 // ────────────────────────────────────────────
 
-/// @brief 2D固定グリッドによる空間分割
+/// @brief 2D 固定グリッドによる空間分割
 /// @tparam T オブジェクト識別子の型
 /// @details 固定サイズのセルに分割し、挿入・範囲問い合わせを O(1) に近い速度で行う。
 ///
@@ -226,8 +226,8 @@ class GridPartition2D
 {
 public:
 	/// @brief コンストラクタ
-	/// @param originX グリッド原点X
-	/// @param originY グリッド原点Y
+	/// @param originX グリッド原点 X
+	/// @param originY グリッド原点 Y
 	/// @param width グリッド全体の幅
 	/// @param height グリッド全体の高さ
 	/// @param cellSize セルの一辺の長さ
@@ -245,8 +245,8 @@ public:
 
 	/// @brief オブジェクトを座標に基づいて挿入する
 	/// @param object オブジェクト識別子
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	void insert(const T& object, float x, float y)
 	{
 		const int idx = cellIndex(x, y);
@@ -257,8 +257,8 @@ public:
 	}
 
 	/// @brief 指定座標から半径内のオブジェクトを問い合わせる
-	/// @param cx 中心X
-	/// @param cy 中心Y
+	/// @param cx 中心 X
+	/// @param cy 中心 Y
 	/// @param radius 検索半径
 	/// @return 半径内のオブジェクトのリスト
 	[[nodiscard]] std::vector<T> queryRadius(float cx, float cy, float radius) const

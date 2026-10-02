@@ -1,0 +1,109 @@
+/* エンジン同梱の配色・文字・間隔の変数 (web/mitiru_runtime/mitiru_tokens.css の RCSS 版)。
+   <link type="text/rcss" href="mitiru:tokens.rcss"/> で読み、var(--mitiru-accent) のように引く。
+   別の配色にしたいときは、この後に読む RCSS の body で同じ名前の変数を書き直す。
+
+   CSS 版から変えたところ:
+   - :root が無いので body に置く。子孫は body の変数を引ける
+   - 半透明色は #rrggbbaa (RCSS の rgba() のアルファは 0〜255 で数える)
+   - 書体は候補を並べられないので、同梱の M PLUS Rounded 1c 1 つにする。変数に入れる名前は引用符で囲まない
+     (var() で入れた値は引用符ごと書体名になる)
+   - 影は「色 x y ぼかし 広がり inset」の順で、長さに単位を付ける
+   - 緩急は steps() が無いので名前 (cubic-out など)、時間は秒
+   - body の背景色は付けない (UI はゲームの絵の上に重ねる) */
+body
+{
+	/* 基本の色 (セガサターンの BIOS 画面: 灰色の地に赤 1 色、黒の細線、2px の立体枠) */
+	--mitiru-paper:        #c8c8c8;
+	--mitiru-paper-hi:     #d8d8d8;
+	--mitiru-ink:          #101010;
+	--mitiru-ink-mute:     #4a4a4a;
+	--mitiru-red:          #c8002c;
+	--mitiru-red-hi:       #a30022;
+	--mitiru-paper-edge:   #101010;
+	--mitiru-bevel-hi:     #ffffff;
+	--mitiru-bevel-lo:     #6a6a6a;
+
+	/* 役割の名前 */
+	--mitiru-bg:          var(--mitiru-paper);
+	--mitiru-surface:     var(--mitiru-paper-hi);
+	--mitiru-text:        var(--mitiru-ink);
+	--mitiru-text-mute:   var(--mitiru-ink-mute);
+	--mitiru-accent:      var(--mitiru-red);
+	--mitiru-accent-hi:   var(--mitiru-red-hi);
+	--mitiru-success:     var(--mitiru-ink-mute);
+	--mitiru-warning:     var(--mitiru-red);
+	--mitiru-danger:      var(--mitiru-red);
+	--mitiru-focus:       var(--mitiru-red);
+	--mitiru-border:      var(--mitiru-paper-edge);
+	--mitiru-border-soft: #1010104d;
+	--mitiru-row-tint:    #10101008;
+	/* color-mix(accent 10%, transparent) と同じ色。CSS 版は部品の中で混ぜている */
+	--mitiru-accent-tint: #c8002c1a;
+	--mitiru-hover-tint:  #0000000f;
+
+	/* 文字 */
+	--mitiru-font-body:    M PLUS Rounded 1c;
+	--mitiru-font-display: M PLUS Rounded 1c;
+	--mitiru-font-mono:    M PLUS Rounded 1c;
+	--mitiru-font-prose:   M PLUS Rounded 1c;
+
+	--mitiru-text-xs:   11px;
+	--mitiru-text-sm:   12px;
+	--mitiru-text-md:   14px;
+	--mitiru-text-lg:   16px;
+	--mitiru-text-xl:   18px;
+	--mitiru-text-2xl:  22px;
+	--mitiru-text-3xl:  28px;
+
+	--mitiru-leading-tight:  1.25;
+	--mitiru-leading-normal: 1.45;
+	--mitiru-leading-loose:  1.6;
+
+	/* 間隔 (8 の倍数) */
+	--mitiru-space-0:  0px;
+	--mitiru-space-1:  4px;
+	--mitiru-space-2:  8px;
+	--mitiru-space-3:  12px;
+	--mitiru-space-4:  16px;
+	--mitiru-space-5:  24px;
+	--mitiru-space-6:  32px;
+	--mitiru-space-7:  48px;
+
+	/* 角丸 (この配色は角を丸めない) */
+	--mitiru-radius-sm:   0px;
+	--mitiru-radius-md:   0px;
+	--mitiru-radius-lg:   0px;
+	--mitiru-radius-pill: 0px;
+
+	/* 立体枠 (左上が白、右下が暗い 2px の内側の影と、黒の 1px の縁) */
+	--mitiru-shadow-1: var(--mitiru-bevel-hi) 2px 2px 0px 0px inset, var(--mitiru-bevel-lo) -2px -2px 0px 0px inset, var(--mitiru-border) 0px 0px 0px 1px;
+	--mitiru-shadow-2: var(--mitiru-bevel-hi) 2px 2px 0px 0px inset, var(--mitiru-bevel-lo) -2px -2px 0px 0px inset, var(--mitiru-border) 0px 0px 0px 1px;
+	--mitiru-shadow-3: var(--mitiru-bevel-hi) 3px 3px 0px 0px inset, var(--mitiru-bevel-lo) -3px -3px 0px 0px inset, var(--mitiru-border) 0px 0px 0px 1px;
+	--mitiru-shadow-4: var(--mitiru-bevel-hi) 3px 3px 0px 0px inset, var(--mitiru-bevel-lo) -3px -3px 0px 0px inset, var(--mitiru-border) 0px 0px 0px 1px;
+
+	--mitiru-focus-ring: var(--mitiru-red) 0px 0px 0px 2px;
+
+	--mitiru-blur-sm: blur(0px);
+	--mitiru-blur-md: blur(0px);
+	--mitiru-blur-lg: blur(0px);
+
+	/* 重なりの順 */
+	--mitiru-z-base:     0;
+	--mitiru-z-hud:      100;
+	--mitiru-z-overlay:  200;
+	--mitiru-z-modal:    300;
+	--mitiru-z-toast:    400;
+	--mitiru-z-drag:     500;
+
+	/* 動き */
+	--mitiru-ease:          cubic-out;
+	--mitiru-ease-bounce:   back-out;
+	--mitiru-duration-fast: 0.07s;
+	--mitiru-duration-mid:  0.13s;
+	--mitiru-duration-slow: 0.22s;
+
+	color: var(--mitiru-text);
+	font-family: var(--mitiru-font-body);
+	font-size: var(--mitiru-text-md);
+	line-height: var(--mitiru-leading-normal);
+}

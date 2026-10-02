@@ -2,13 +2,13 @@
 /// @brief Windows の ANSI 境界を UTF-8 で越えるための変換 (引数・コマンドライン)。
 ///
 /// エンジンは文字列を全部 UTF-8 で持つ。ところが Windows には UTF-8 でない境界が
-/// 二つある:
+/// 二つある。
 ///
 ///   1. CRT の `argv`。コマンドラインを **ANSI (日本語環境では CP932)** へ変換した
 ///      ものが渡る。UTF-8 として読むと日本語の引数が化ける。
 ///   2. `CreateProcessW` へ渡すコマンドライン。UTF-16。UTF-8 の文字列を
 ///      `std::wstring(s.begin(), s.end())` のようにバイト単位で広げると、1 バイトが
-///      1 文字になって壊れる。
+///      1 文字になって文字列がおかしくなる。
 ///
 /// この 2 か所を素通りさせたせいで、配布物の窓の表題が化けた (`--title` に日本語を
 /// 渡す経路)。同じ罠を各 app が個別に踏まないよう、変換はここに 1 つだけ置く。
@@ -25,7 +25,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #ifndef NOMINMAX
-// windows.h の min/max マクロは、後から来る std::min / std::max を壊す
+// windows.h の min/max マクロは、後から来る std::min / std::max を使えなくする
 // (sgc の Vec3 がこれで落ちた)。このヘッダが先に読まれても巻き込まないようにする。
 #define NOMINMAX
 #endif
@@ -59,7 +59,7 @@ inline std::string wideToUtf8(std::wstring_view w)
 /// @brief UTF-8 → UTF-16。
 ///
 /// `std::wstring(s.begin(), s.end())` の代わりに必ずこれを使うこと。あちらは
-/// UTF-8 のバイト列を 1 バイト 1 文字として広げるので、ASCII 以外が壊れる。
+/// UTF-8 のバイト列を 1 バイト 1 文字として広げるので、ASCII 以外がおかしくなる。
 inline std::wstring utf8ToWide(std::string_view s)
 {
 	if (s.empty()) { return {}; }
@@ -72,7 +72,7 @@ inline std::wstring utf8ToWide(std::string_view s)
 
 /// @brief プロセスのコマンドラインを UTF-8 の argv として取り直す。
 ///
-/// CRT の `argv` は ANSI 変換済みで日本語が壊れているので、UTF-16 の原本から作る。
+/// CRT の `argv` は ANSI 変換済みで日本語が化けているので、UTF-16 の原本から作る。
 /// 失敗したときは空を返す (呼び手は CRT の argv を使い続けてよい)。
 inline std::vector<std::string> commandLineUtf8Args()
 {

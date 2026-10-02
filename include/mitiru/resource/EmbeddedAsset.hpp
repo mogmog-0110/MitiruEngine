@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file EmbeddedAsset.hpp
-/// @brief 埋め込みアセットレジストリ。バイナリアセットをexeに埋め込む
+/// @brief 埋め込みアセットレジストリ。バイナリアセットを exe に埋め込む
 
 #include <cstddef>
 #include <cstdint>
@@ -23,13 +23,13 @@ struct EmbeddedAssetData
 	/// @brief データが有効かどうか
 	[[nodiscard]] bool valid() const noexcept { return data != nullptr && size > 0; }
 
-	/// @brief string_viewとして取得する（コピーなし）
+	/// @brief string_view として取得する（コピーなし）
 	[[nodiscard]] std::string_view asStringView() const noexcept
 	{
 		return {reinterpret_cast<const char*>(data), size};
 	}
 
-	/// @brief stringとして取得する（コピーあり）
+	/// @brief string として取得する（コピーあり）
 	[[nodiscard]] std::string asString() const
 	{
 		return std::string(reinterpret_cast<const char*>(data), size);
@@ -37,11 +37,11 @@ struct EmbeddedAssetData
 };
 
 /// @brief 埋め込みアセットレジストリ（グローバルシングルトン）
-/// @details アセットをconstexprバイト配列としてexeに埋め込み、
+/// @details アセットを constexpr バイト配列として exe に埋め込み、
 ///          名前でアクセスできるようにする。
 ///
 /// @code
-/// // 生成されたヘッダー（tools/embed_asset.pyで生成）
+/// // 生成されたヘッダー（tools/embed_asset.py で生成）
 /// namespace my_game::assets {
 /// inline constexpr uint8_t player_obj[] = { 0x23, 0x20, ... };
 /// inline constexpr size_t player_obj_size = sizeof(player_obj);
@@ -93,7 +93,7 @@ public:
 
 	/// @brief アセットが登録されているか確認する
 	/// @param name アセット名
-	/// @return 登録済みならtrue
+	/// @return 登録済みなら true
 	[[nodiscard]] bool has(const std::string& name) const
 	{
 		return m_assets.find(name) != m_assets.end();
@@ -129,7 +129,7 @@ private:
 };
 
 /// @brief 埋め込みアセット自動登録ヘルパーマクロ
-/// @details 翻訳単位のstatic初期化を利用してアセットを自動登録する。
+/// @details 翻訳単位の static 初期化を利用してアセットを自動登録する。
 ///
 /// @code
 /// // generated_assets.hpp

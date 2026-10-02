@@ -1,10 +1,9 @@
 ﻿#pragma once
 
 /// @file Spline3D.hpp
-/// @brief 3D Catmull-Romスプライン（等速パラメータ化・最近接点探索付き）
-///
-/// 制御点列を通過する滑らかな3D曲線。端点は複製して扱うため、開曲線でも
-/// 制御点そのものを通過できる（ガイド点を別途要求しない）。レール移動や
+/// @brief 3D Catmull-Rom スプライン（等速パラメータ化・最近接点探索付き）
+/// 制御点列を通る滑らかな 3D 曲線。端点は複製して扱うため、開曲線でも
+/// 制御点そのものを通る（ガイド点を別に要求しない）。レール移動や
 /// カメラワーク、巡回パスに使う。
 
 #include <algorithm>
@@ -17,7 +16,7 @@
 namespace mitiru::math
 {
 
-/// @brief 3D Catmull-Romスプライン
+/// @brief 3D Catmull-Rom スプライン
 class Spline3D
 {
 public:
@@ -53,7 +52,7 @@ public:
 	/// @brief 制御点数を返す
 	[[nodiscard]] std::size_t pointCount() const noexcept { return m_points.size(); }
 
-	/// @brief セグメント数を返す（開曲線は点数-1、閉曲線は点数）
+	/// @brief セグメント数を返す（開曲線は点数 - 1、閉曲線は点数）
 	[[nodiscard]] std::size_t segmentCount() const noexcept
 	{
 		if (m_points.size() < 2) return 0;
@@ -133,7 +132,7 @@ public:
 		const sgc::Vec3f p2 = pointAt(i + 1);
 		const sgc::Vec3f p3 = pointAt(i + 2);
 
-		// catmullRomのtに関する導関数（区間内ローカルt基準）
+		// catmullRom の t に関する導関数（区間内のローカル t 基準）
 		const sgc::Vec3f deriv = (p2 - p0)
 			+ (p0 * 2.0f - p1 * 5.0f + p2 * 4.0f - p3) * (2.0f * localT)
 			+ (p1 * 3.0f - p0 - p2 * 3.0f + p3) * (3.0f * localT * localT);
@@ -142,7 +141,7 @@ public:
 	}
 
 	/// @brief 弧長距離 s（[0, length()]）から等速パラメータ化した位置を返す
-	/// @note build() 未実行、または点が2未満の場合は position(0) を返す
+	/// @note build() 未実行、または点が 2 未満の場合は position(0) を返す
 	[[nodiscard]] sgc::Vec3f positionAtDistance(float s) const noexcept
 	{
 		if (!m_built || m_arcTable.size() < 2)
@@ -170,10 +169,10 @@ public:
 
 	/// @brief 曲線上で点 p に最も近いパラメータ t を求める
 	/// @param p 対象点
-	/// @param tOut 見つかった t を書き込む（nullptrなら無視）
-	/// @return p から曲線上最近接点までの距離
-	/// @note 区間ごとの粗探索（build済みなら弧長テーブルのサンプルを流用）に
-	///       三分探索を重ねて精密化する。距離関数は探索窓の内側で単峰と仮定する。
+	/// @param tOut 見つかった t を書き込む（nullptr なら無視）
+	/// @return p から曲線上の最近接点までの距離
+	/// @note 区間ごとの粗探索（build 済みなら弧長テーブルのサンプルを流用）に
+	///       三分探索を重ねて精度を上げる。距離関数は探索窓の内側で単峰と仮定する。
 	float closestPoint(const sgc::Vec3f& p, float* tOut) const noexcept
 	{
 		if (m_points.empty())
@@ -224,7 +223,7 @@ public:
 	}
 
 private:
-	/// @brief 弧長テーブルの1エントリ（t とそこまでの累積距離）
+	/// @brief 弧長テーブルの 1 エントリ（t とそこまでの累積距離）
 	struct ArcEntry
 	{
 		float t{0.0f};
@@ -270,7 +269,7 @@ private:
 		return m_points[static_cast<std::size_t>(index)];
 	}
 
-	/// @brief Catmull-Rom補間（区間内ローカル t [0,1]）
+	/// @brief Catmull-Rom 補間（区間内ローカル t [0,1]）
 	[[nodiscard]] static sgc::Vec3f catmullRom(
 		const sgc::Vec3f& p0, const sgc::Vec3f& p1, const sgc::Vec3f& p2, const sgc::Vec3f& p3, float t) noexcept
 	{

@@ -1,21 +1,27 @@
 #pragma once
 
 /// @file SceneInstantiator.hpp
-/// @brief SceneDocument (JSON編集用データモデル) と GameWorld (ECS) を繋ぐ変換層
+/// @brief SceneDocument (JSON 編集用データモデル) と GameWorld (ECS) を繋ぐ変換層
 /// @details PhysicsTrait/MeshTrait 等の Trait を対応する GameWorld Component へ写す。
 ///          対応する Component が存在しない Trait は warning に積んで無視する（落とさない）。
 
 #include <cmath>
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "mitiru/core/SceneDocument.hpp"
-#include "mitiru/physics/PhysicsSystem3D.hpp"
+#include "mitiru/physics/RigidBodyComponent3D.hpp"
 #include "mitiru/scene/GameWorld.hpp"
 
 namespace mitiru::scene
 {
+
+/// @brief colliderType "mesh" のノードの MeshTrait::meshPath を三角形にする関数 (読めなければ nullptr)。
+/// @details シーンの読み込みはファイル形式を知らない。physics/MeshCollider.hpp の MeshColliderLibrary::load を渡す。
+using MeshColliderResolver = std::function<std::shared_ptr<const physics3d::TriangleMesh3D>(const std::string& meshPath)>;
 
 /// @brief instantiate() の結果。生成したエンティティ数と未対応 Trait の警告
 struct InstantiateResult
@@ -31,23 +37,47 @@ constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
 
 /// @brief PhysicsTrait::colliderType 文字列を physics3d::ColliderType3D へ変換する
-/// @details 未知の値（"mesh"/"none" 含む）は AABB にフォールバックし warning を積む。
-///          ECS 側の RigidBodyComponent3D にメッシュコライダーや無コライダーの表現が無いため。
+/// @details 未知の値（"none" 含む）は箱 (Box) にフォールバックし warning を積む。
+///          ECS 側の RigidBodyComponent3D に無コライダーの表現が無いため。
 inline physics3d::ColliderType3D mapColliderType(
 	const std::string& colliderType, const std::string& nodeName, std::vector<std::string>& warnings)
 {
-	if (colliderType == "box") return physics3d::ColliderType3D::AABB;
+	if (colliderType == "box") return physics3d::ColliderType3D::Box;
 	if (colliderType == "sphere") return physics3d::ColliderType3D::Sphere;
 	if (colliderType == "capsule") return physics3d::ColliderType3D::Capsule;
+	if (colliderType == "mesh") return physics3d::ColliderType3D::Mesh;
 
 	warnings.push_back(
-		"node '" + nodeName + "': colliderType '" + colliderType + "' は未対応。AABB として扱う");
-	return physics3d::ColliderType3D::AABB;
+		"node '" + nodeName + "': colliderType '" + colliderType + "' は未対応。箱 (box) として扱う");
+	return physics3d::ColliderType3D::Box;
+}
+
+/// @brief 同じノードの MeshTrait が指すメッシュを三角形にする。できなければ理由を warning に積んで nullptr
+inline std::shared_ptr<const physics3d::TriangleMesh3D> resolveMeshCollider(const MeshTrait* mesh,
+	const std::string& nodeName, const MeshColliderResolver& resolver, std::vector<std::string>& warnings)
+{
+	const std::string prefix = "node '" + nodeName + "': colliderType 'mesh' ";
+	if (mesh == nullptr || mesh->meshPath.empty())
+	{
+		warnings.push_back(prefix + "だが MeshTrait の meshPath が無い。箱 (box) として扱う");
+		return nullptr;
+	}
+	if (!resolver)
+	{
+		warnings.push_back(prefix + "だが instantiate() にメッシュの読み込み (MeshColliderResolver) が渡されていない。箱 (box) として扱う");
+		return nullptr;
+	}
+	auto triangles = resolver(mesh->meshPath);
+	if (triangles == nullptr)
+	{
+		warnings.push_back(prefix + "の '" + mesh->meshPath + "' を三角形にできない。箱 (box) として扱う");
+	}
+	return triangles;
 }
 
 /// @brief PhysicsTrait から RigidBodyComponent3D を組み立てて GameWorld へ追加する
-inline void instantiatePhysics(const PhysicsTrait& trait, const std::string& nodeName,
-	EntityId entityId, GameWorld& world, std::vector<std::string>& warnings)
+inline void instantiatePhysics(const PhysicsTrait& trait, const MeshTrait* mesh, const std::string& nodeName,
+	EntityId entityId, GameWorld& world, const MeshColliderResolver& resolveMesh, std::vector<std::string>& warnings)
 {
 	physics3d::RigidBodyComponent3D rb;
 
@@ -58,18 +88,25 @@ inline void instantiatePhysics(const PhysicsTrait& trait, const std::string& nod
 	rb.isTrigger = trait.isTrigger;
 
 	rb.colliderType = mapColliderType(trait.colliderType, nodeName, warnings);
+	if (rb.colliderType == physics3d::ColliderType3D::Mesh)
+	{
+		rb.colliderMesh = resolveMeshCollider(mesh, nodeName, resolveMesh, warnings);
+		if (rb.colliderMesh == nullptr) rb.colliderType = physics3d::ColliderType3D::Box;
+	}
 	switch (rb.colliderType)
 	{
 	case physics3d::ColliderType3D::Sphere:
 		rb.colliderRadius = trait.colliderSize[0];
 		break;
-	case physics3d::ColliderType3D::AABB:
+	case physics3d::ColliderType3D::Box:
 		rb.colliderHalfExtents = sgc::Vec3f{
 			trait.colliderSize[0], trait.colliderSize[1], trait.colliderSize[2]};
 		break;
 	case physics3d::ColliderType3D::Capsule:
 		rb.colliderRadius = trait.colliderSize[0];
 		rb.capsuleHeight = trait.colliderSize[1];
+		break;
+	case physics3d::ColliderType3D::Mesh:
 		break;
 	}
 
@@ -91,7 +128,9 @@ inline void instantiatePhysics(const PhysicsTrait& trait, const std::string& nod
 /// @details Transform は全ノードへ必ず付与する。Mesh/Light/Camera/Physics/Audio は
 ///          対応する Trait があれば同名 Component へ写す。Script/Custom Trait は
 ///          GameWorld 側に対応する Component が無いため warning に積んで無視する。
-[[nodiscard]] inline InstantiateResult instantiate(const Scene& doc, GameWorld& world)
+///          colliderType "mesh" の三角形は resolveMesh で同じノードの MeshTrait::meshPath から作る。
+[[nodiscard]] inline InstantiateResult instantiate(const Scene& doc, GameWorld& world,
+	const MeshColliderResolver& resolveMesh = {})
 {
 	InstantiateResult result;
 
@@ -137,7 +176,8 @@ inline void instantiatePhysics(const PhysicsTrait& trait, const std::string& nod
 
 		if (const auto* physics = node.getTrait<PhysicsTrait>())
 		{
-			detail::instantiatePhysics(*physics, node.name, entityId, world, result.warnings);
+			detail::instantiatePhysics(*physics, node.getTrait<MeshTrait>(), node.name, entityId, world,
+				resolveMesh, result.warnings);
 		}
 
 		if (const auto* audio = node.getTrait<AudioTrait>())

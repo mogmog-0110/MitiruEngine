@@ -26,6 +26,9 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
+
 namespace mitiru::render::dx12
 {
 
@@ -41,7 +44,7 @@ public:
 
 	/// @brief 透明ジオメトリ PSO に焼く PS。VS は {SV_POSITION, COLOR0(rgba)} を渡すこと。
 	/// @details SV_TARGET0=accum へ premult-color×weight、SV_TARGET1=reveal へ alpha を書く。
-	///          weight は McGuire eq.9 系: alpha が高く・カメラに近いほど重く効く。
+	///          weight は McGuire eq.9 系: alpha が高く・カメラに近いほど重みが大きい。
 	[[nodiscard]] static std::string_view weightPsHlsl() noexcept
 	{
 		return R"hlsl(
@@ -205,13 +208,11 @@ private:
 
 	void createTargets(UINT w, UINT h)
 	{
-		D3D12_HEAP_PROPERTIES hp{};
-		hp.Type = D3D12_HEAP_TYPE_DEFAULT;
 		const bool msaa = m_sampleCount > 1;
 
 		auto makeTex = [&](DXGI_FORMAT fmt, const float clr[4], UINT samples,
 		                   D3D12_RESOURCE_FLAGS flags, D3D12_RESOURCE_STATES initState,
-		                   ComPtr<ID3D12Resource>& out)
+		                   gfx::GpuResource& out)
 		{
 			D3D12_RESOURCE_DESC rd{};
 			rd.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -226,16 +227,15 @@ private:
 			cv.Format = fmt;
 			if (clr) { cv.Color[0]=clr[0]; cv.Color[1]=clr[1]; cv.Color[2]=clr[2]; cv.Color[3]=clr[3]; }
 			const bool wantClear = (flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) != 0;
-			if (FAILED(m_device->CreateCommittedResource(
-					&hp, D3D12_HEAP_FLAG_NONE, &rd, initState,
-					wantClear ? &cv : nullptr, IID_PPV_ARGS(out.GetAddressOf()))))
+			if (FAILED(gfx::createGpuResource(m_device, D3D12_HEAP_TYPE_DEFAULT, rd,
+				initState, wantClear ? &cv : nullptr, out)))
 			{
-				throw std::runtime_error("WBOIT: CreateCommittedResource (RT) failed");
+				throw std::runtime_error("WBOIT: GPU allocation (RT) failed");
 			}
 		};
 		const float clrA[4] = {0, 0, 0, 0};
 		const float clrR[4] = {1, 1, 1, 1};
-		// MSAA は resolve source として常に RT 状態スタート、SS は直接 sample されるので PSR スタート。
+		// MSAA は resolve source として常に RT 状態から始め、SS は直接 sample されるので PSR から始める。
 		const auto rtInit = msaa ? D3D12_RESOURCE_STATE_RENDER_TARGET
 		                         : D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 		makeTex(kAccumFormat, clrA, m_sampleCount, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, rtInit, m_accum);
@@ -351,13 +351,13 @@ float4 PSMain(VOut i) : SV_TARGET
 )hlsl";
 
 		ComPtr<ID3DBlob> vs, ps, cerr;
-		D3DCompile(kCompositeHlsl.data(), kCompositeHlsl.size(), nullptr, nullptr, nullptr,
-			"VSMain", "vs_5_0", 0, 0, vs.GetAddressOf(), cerr.GetAddressOf());
-		D3DCompile(kCompositeHlsl.data(), kCompositeHlsl.size(), nullptr, nullptr, nullptr,
-			"PSMain", "ps_5_0", 0, 0, ps.GetAddressOf(), cerr.GetAddressOf());
+		(void)gfx::compileDx12Shader(kCompositeHlsl, "VSMain", "vs_5_0", 0,
+			vs.GetAddressOf(), cerr.GetAddressOf());
+		(void)gfx::compileDx12Shader(kCompositeHlsl, "PSMain", "ps_5_0", 0,
+			ps.GetAddressOf(), cerr.GetAddressOf());
 		if (!vs || !ps)
 		{
-			throw std::runtime_error("WBOIT: composite D3DCompile failed");
+			throw std::runtime_error("WBOIT: composite shader compile failed");
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC pd{};
@@ -403,8 +403,8 @@ float4 PSMain(VOut i) : SV_TARGET
 	ID3D12Device* m_device = nullptr;
 	UINT m_width = 0, m_height = 0, m_sampleCount = 1;
 	bool m_initialized = false;
-	ComPtr<ID3D12Resource>       m_accum, m_reveal;                  ///< 蓄積 RT (MSAA 可)
-	ComPtr<ID3D12Resource>       m_accumResolved, m_revealResolved;  ///< MSAA 時の resolve 先 (SS)。SRV はこちら
+	gfx::GpuResource             m_accum, m_reveal;                  ///< 蓄積 RT (MSAA 可)
+	gfx::GpuResource             m_accumResolved, m_revealResolved;  ///< MSAA 時の resolve 先 (SS)。SRV はこちら
 	D3D12_RESOURCE_STATES        m_accumState{}, m_revealState{};
 	D3D12_RESOURCE_STATES        m_accumResolvedState{}, m_revealResolvedState{};
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap, m_srvHeap;

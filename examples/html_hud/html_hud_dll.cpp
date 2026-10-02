@@ -1,11 +1,11 @@
-// html_hud。C++ が持っている 1 つの数値を、HTML の 6 つの表示へ同時に映す例。
+// html_hud は、C++ が持っている 1 つの数値を、UI の 6 つの表示へ同時に反映する例。
 //   下のスライダー (これは C++ が描いている) を動かすと level という 1 つの値が変わり、
-//   その値を HTML へ送ると、上に重なった 6 つの表示 (ゲージ・数字・バー・pips・色・折れ線) が
-//   一斉に同じ値へ動く。JavaScript は 1 行も書かない。HTML に data-m-... と書いておくだけで、
-//   エンジンが「C++ の値を HTML へ自動で反映」してくれる。
-//   セットで examples/html_hud/assets/scene.html を読むと、値を受け取って表示する側が分かる。
-// この章で使う仕組み: マウス入力 (Input) / C++ から HTML へ値を送る hud.set(...) /
-//                     HTML 側の data-m-text・style・class・repeat・spark-push
+//   その値を UI へ送ると、上に重なった 6 つの表示 (ゲージ・数字・バー・pips・色・折れ線) が
+//   一斉に同じ値へ動く。UI は RML / RCSS (HTML / CSS の方言) で書き、{{ level }} や data-class-... と
+//   書いておくだけで、エンジンが C++ の値を UI へ自動で反映してくれる。スクリプトは書かない。
+//   セットで examples/html_hud/assets/ui/main.rml を読むと、値を受け取って表示する側が分かる。
+// この章で使う仕組みは、マウス入力 (Input) / C++ から UI へ値を送る hud.set(...) /
+//                     UI 側の {{ }}・data-class・data-style・data-for・spark
 #include <algorithm>   // std::clamp
 #include <cstdio>      // std::snprintf (pips を JSON 配列に組む)
 #include <mitiru.hpp>
@@ -13,16 +13,17 @@
 #include "../common/chapter_hud.hpp"   // 章ラベル + 操作帯 + 共通パレット
 using namespace mitiru;
 
-// スライダーの寸法 (論理解像度 1280x720)。トラックは画面下、その上に HTML 表示の領域を空ける。
+// スライダーの寸法 (論理解像度 1280x720)。トラックは画面の下に置き、その上に UI 表示の領域を空ける。
 constexpr float kTrackL = 300.0f, kTrackR = 980.0f, kTrackY = 600.0f, kThumbR = 20.0f;
 
-// この章が持つ状態は、たった 2 つ。level が「画面じゅうの表示が映す唯一の数値」で、
-// dragging は「今つまみをつかんでいるか」。この level 1 つを HTML の 6 表示すべてへ
-// 送って見せるのが、この章の主題。
+// この章が持つ状態は、たった 2 つ。level は「画面じゅうの表示に反映する唯一の数値」で、
+// dragging は「今つまみをつかんでいるか」を表す。この level 1 つを UI の 6 つの表示すべてへ
+// 送って見せることが、この章の主題。
 struct HtmlHud
 {
 	float level    = 42.0f;   // 0..100。全ての表示ウィジェットが映す唯一の値
 	bool  dragging = false;   // つまみをつかんでいる間 true
+	std::uint8_t _pad[3] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 
 	void update(Input in, Hud hud, float)
 	{
@@ -33,14 +34,14 @@ struct HtmlHud
 		if (dragging) { level = std::clamp((mx - kTrackL) / (kTrackR - kTrackL) * 100.0f, 0.0f, 100.0f); }
 		pushHud(hud);
 	}
-	// トラック周辺 (つかみやすい広めの帯) にマウスがあるか。
+	// マウスがトラック周辺 (つかみやすい広めの帯) にあるか。
 	static bool onTrack(float x, float y)
 	{
 		return x >= kTrackL - 30.0f && x <= kTrackR + 30.0f && y >= kTrackY - 44.0f && y <= kTrackY + 44.0f;
 	}
-	// level を HTML へ送る。送るのは level 本体と、level から作った pips の列 (10 個のうち N 個を点灯) の 2 つだけ。
-	// pips も level だけから決まるので、実質「1 つの値」を送っているのと同じ。
-	// HTML 側はこの値を受け取って表示を更新するだけで、計算は C++ 側で終わっている。
+	// level を UI へ送る。送るのは level 本体と、level から作った pips の列 (10 個のうち N 個を点灯) の 2 つだけ。
+	// pips も level だけから決まるので、実質的には「1 つの値」を送っているのと同じ。
+	// UI 側はこの値を受け取って表示を更新するだけで、計算は C++ 側で終わっている。
 	void pushHud(Hud hud) const
 	{
 		const int v = static_cast<int>(level + 0.5f);
@@ -56,8 +57,8 @@ struct HtmlHud
 		hud.set("view.pips", json);
 	}
 	// C++ が直接描くのは、背景とスライダー (レール + 塗り + つまみ) だけ。
-	// 6 つの値表示は、上に重なった HTML/CSS が受け持つ。
-	// つまり「下のスライダー = 値を決める場所」「上の HTML = その値を見せる場所」。
+	// 6 つの値表示は、上に重なった UI (RML / RCSS) が受け持つ。
+	// つまり、「下のスライダー = 値を決める場所」「上の UI = その値を見せる場所」。
 	template <class Surface>
 	void drawImpl(Surface& s) const
 	{
@@ -78,4 +79,5 @@ struct HtmlHud
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(HtmlHud);
 
+MITIRU_ASSERT_NO_PADDING(HtmlHud);
 MITIRU_GAME(HtmlHud);

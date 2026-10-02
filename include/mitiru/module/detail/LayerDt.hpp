@@ -28,7 +28,7 @@ inline void computeLayerDt(float dt, bool pausedGate, bool hitStop,
 }
 
 /// pause の種類 (`InputSnapshot::paused` の値、0 = 動作中) から「pause 中も dt を通す layer mask」を選ぶ。
-/// 範囲外の種類は ingame (1) と同じ扱いにし、黙って全 layer を止めない。
+/// 範囲外の種類は ingame (1) と同じ扱いにし、気づかないうちに全 layer が止まることがないようにする。
 [[nodiscard]] inline std::uint8_t pauseLayersMaskFor(std::uint8_t pauseKind,
 	const std::uint8_t (&maskByKind)[4]) noexcept
 {

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file Dx12OffscreenRT.hpp
-/// @brief DX12オフスクリーンレンダーターゲット
+/// @brief DX12 オフスクリーンレンダーターゲット
 /// @details バックバッファの内容をコピーし、
-///          Viewportに表示するためのSRV付きテクスチャを管理する。
+///          Viewport に表示するための SRV 付きテクスチャを管理する。
 
 #ifdef _WIN32
 
@@ -19,22 +19,24 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+
 namespace mitiru::gfx
 {
 
-/// @brief DX12オフスクリーンレンダーターゲット
-/// @details バックバッファからCopyResourceでコピーし、
-///          SRVを通じてViewportに表示する。
+/// @brief DX12 オフスクリーンレンダーターゲット
+/// @details バックバッファから CopyResource でコピーし、
+///          SRV を通じて Viewport に表示する。
 class Dx12OffscreenRT
 {
 public:
-	/// @brief オフスクリーンRTを作成する
-	/// @param device D3D12デバイス
+	/// @brief オフスクリーン RT を作成する
+	/// @param device D3D12 デバイス
 	/// @param w テクスチャ幅
 	/// @param h テクスチャ高さ
 	/// @param format テクスチャフォーマット
-	/// @param srvCpuHandle SRV作成先のCPUハンドル
-	/// @param srvGpuHandle SRV作成先のGPUハンドル
+	/// @param srvCpuHandle SRV 作成先の CPU ハンドル
+	/// @param srvGpuHandle SRV 作成先の GPU ハンドル
 	/// @return 成功時 true
 	bool create(ID3D12Device* device, UINT w, UINT h,
 	            DXGI_FORMAT format,
@@ -57,7 +59,7 @@ public:
 		m_height = h;
 		m_srvGpuHandle = srvGpuHandle;
 
-		// テクスチャ作成（コピー先 + SRV読み取り用）
+		// テクスチャ作成（コピー先 + SRV 読み取り用）
 		D3D12_RESOURCE_DESC texDesc = {};
 		texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		texDesc.Alignment = 0;
@@ -71,22 +73,14 @@ public:
 		texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-		D3D12_HEAP_PROPERTIES heapProps = {};
-		heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-		HRESULT hr = device->CreateCommittedResource(
-			&heapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&texDesc,
-			D3D12_RESOURCE_STATE_COMMON,
-			nullptr,
-			IID_PPV_ARGS(m_texture.GetAddressOf()));
+		HRESULT hr = createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, texDesc,
+			D3D12_RESOURCE_STATE_COMMON, nullptr, m_texture);
 		if (FAILED(hr))
 		{
 			return false;
 		}
 
-		// SRVを作成する
+		// SRV を作成する
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Format = format;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -103,7 +97,7 @@ public:
 
 	/// @brief バックバッファからオフスクリーンテクスチャにコピーする
 	/// @param cmdList コマンドリスト（開いた状態であること）
-	/// @param src コピー元リソース（バックバッファ、RT状態であること）
+	/// @param src コピー元リソース（バックバッファ、RT 状態であること）
 	/// @details ソース: RT → COPY_SRC → RT
 	///          デスト: COMMON → COPY_DEST → PIXEL_SHADER_RESOURCE
 	void copyFrom(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* src)
@@ -168,7 +162,7 @@ public:
 	}
 
 private:
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_texture;
+	GpuResource m_texture;
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvGpuHandle = {};
 	UINT m_width = 0;
 	UINT m_height = 0;

@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file TransitionBridge.hpp
-/// @brief sgcシーン遷移統合ブリッジ
-/// @details sgcのTransitionManager + FadeTransitionを
-///          Mitiruエンジンに統合する。フェードイン/アウトの制御を提供。
+/// @brief sgc シーン遷移統合ブリッジ
+/// @details sgc の TransitionManager + FadeTransition を
+///          Mitiru エンジンに統合する。フェードイン/アウトの制御を提供。
 
 #include <memory>
 #include <string>
@@ -14,8 +14,8 @@
 namespace mitiru::bridge
 {
 
-/// @brief sgcシーン遷移統合ブリッジ
-/// @details TransitionManagerをラップし、フェードイン/アウトの簡易APIを提供する。
+/// @brief sgc シーン遷移統合ブリッジ
+/// @details TransitionManager をラップし、フェードイン/アウトの簡易 API を提供する。
 ///
 /// @code
 /// mitiru::bridge::TransitionBridge transition;
@@ -32,7 +32,7 @@ public:
 	/// @brief BridgeViewPush を紐付ける（非所有ポインタ）
 	/// @details 設定後、startFadeOut / startFadeIn / update / reset のたびに
 	///          alpha / phase / active の 3 キーが view push される。
-	///          nullptr を渡すと push を無効化する。
+	///          nullptr を渡すと push が無効になる。
 	///
 	/// @param viewPush 呼び出し元が所有する BridgeViewPush。
 	///                 本オブジェクトより長く生存しなければならない。
@@ -47,17 +47,17 @@ public:
 	}
 
 	/// @brief フェードアウトを開始する
-	/// @param duration フェード時間（秒）。Out+Inの合計は duration*2
+	/// @param duration フェード時間（秒）。Out+In の合計は duration*2
 	void startFadeOut(float duration)
 	{
 		m_manager.start(std::make_unique<sgc::FadeTransition>(duration));
 		pushState();
 	}
 
-	/// @brief フェードインを開始する（内部的にはOut→Inの遷移）
+	/// @brief フェードインを開始する（内部的には Out→In の遷移）
 	/// @param duration フェード時間（秒）
-	/// @details FadeTransitionはOut→Inの2フェーズで動作するため、
-	///          フェードインはTransitionManager全体のOut→Inシーケンスとなる。
+	/// @details FadeTransition は Out→In の 2 フェーズで動作するため、
+	///          フェードインは TransitionManager 全体の Out→In シーケンスとなる。
 	void startFadeIn(float duration)
 	{
 		m_manager.start(std::make_unique<sgc::FadeTransition>(duration));
@@ -80,14 +80,14 @@ public:
 	}
 
 	/// @brief 遷移がアクティブか
-	/// @return アクティブ（OutまたはIn中）ならtrue
+	/// @return アクティブ（Out または In 中）なら true
 	[[nodiscard]] bool isActive() const noexcept
 	{
 		return m_manager.isActive();
 	}
 
 	/// @brief 遷移が完了したか
-	/// @return 完了済みならtrue
+	/// @return 完了済みなら true
 	[[nodiscard]] bool isComplete() const noexcept
 	{
 		return m_manager.isComplete();
@@ -109,8 +109,8 @@ public:
 
 	// ── シリアライズ ────────────────────────────────────────
 
-	/// @brief 遷移状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief 遷移状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;

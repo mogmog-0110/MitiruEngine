@@ -1,8 +1,8 @@
 #pragma once
 /// @file PrecompiledShaders3D.hpp
-/// @brief プリコンパイル済み3Dシェーダーバイトコード
-/// @details D3DCompiler依存を除去するため、コンパイル済みHLSLバイトコードを埋め込む。
-///          配布ビルドではこちらを使用し、D3DCompiler_47.dllを不要にする。
+/// @brief プリコンパイル済み 3D シェーダーバイトコード
+/// @details D3DCompiler 依存を除去するため、コンパイル済み HLSL バイトコードを埋め込む。
+///          配布ビルドではこちらを使用し、D3DCompiler_47.dll を不要にする。
 
 #include <cstdint>
 #include <cstddef>
@@ -11,8 +11,8 @@ namespace mitiru::render
 {
 
 /// @brief プリコンパイル済みシェーダーの有無を示すフラグ
-/// @details 配布ビルドではtrueに設定し、D3DCompile呼び出しをスキップする。
-///          開発ビルドではfalseのままD3DCompileを使用する。
+/// @details 配布ビルドでは true に設定し、D3DCompile 呼び出しをスキップする。
+///          開発ビルドでは false のまま D3DCompile を使用する。
 #ifdef MITIRU_USE_PRECOMPILED_SHADERS
 inline constexpr bool kUsePrecompiledShaders = true;
 #else
@@ -53,7 +53,7 @@ struct ShaderBytecode
 #endif
 }
 
-/// @brief プリコンパイル済み2D頂点シェーダーのバイトコード
+/// @brief プリコンパイル済み 2D 頂点シェーダーのバイトコード
 [[nodiscard]] inline ShaderBytecode precompiledVS2D() noexcept
 {
 #ifdef MITIRU_VS_2D_BYTECODE
@@ -64,7 +64,7 @@ struct ShaderBytecode
 #endif
 }
 
-/// @brief プリコンパイル済み2Dピクセルシェーダーのバイトコード
+/// @brief プリコンパイル済み 2D ピクセルシェーダーのバイトコード
 [[nodiscard]] inline ShaderBytecode precompiledPS2D() noexcept
 {
 #ifdef MITIRU_PS_2D_BYTECODE

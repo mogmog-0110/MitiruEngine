@@ -1,6 +1,6 @@
 #pragma once
 /// @file WorldUI.hpp
-/// @brief 3D空間内のUI要素（進捗バー・ラベル）
+/// @brief 3D 空間内の UI 要素（進捗バー・ラベル）
 
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/core/Screen.hpp>
@@ -11,14 +11,14 @@
 
 namespace mitiru::render {
 
-/// @brief 3D空間に配置されるUI要素の種別
+/// @brief 3D 空間に配置される UI 要素の種別
 enum class WorldUIType : uint8_t {
     ProgressBar,
     Label,
     Icon
 };
 
-/// @brief 3D空間内のUI要素
+/// @brief 3D 空間内の UI 要素
 struct WorldUIElement {
     WorldUIType type = WorldUIType::Label;
     sgc::Vec3f worldPosition;        ///< 3Dワールド座標
@@ -43,7 +43,7 @@ struct WorldUIElement {
     bool visible = true;
 };
 
-/// @brief 3D空間内UIレンダラー
+/// @brief 3D 空間内 UI レンダラー
 class WorldUI {
 public:
     void add(const WorldUIElement& element) {
@@ -52,7 +52,7 @@ public:
 
     void clear() { m_elements.clear(); }
 
-    /// @brief 全要素をカメラ射影して2D Screenに描画する
+    /// @brief 全要素をカメラ射影して 2D Screen に描画する
     void render(Screen& screen, const Camera3D& camera,
                 float screenWidth, float screenHeight) const {
         for (const auto& elem : m_elements) {

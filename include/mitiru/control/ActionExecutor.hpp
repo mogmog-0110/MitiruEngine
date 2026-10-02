@@ -2,7 +2,7 @@
 
 /// @file ActionExecutor.hpp
 /// @brief コマンド→アクション変換エグゼキューター
-/// @details AIエージェントが送信したコマンドを、登録されたアクションハンドラに
+/// @details AI エージェントが送信したコマンドを、登録されたアクションハンドラに
 ///          ディスパッチする。コマンド名とハンドラ関数のマッピングを管理する。
 
 #include <functional>
@@ -27,7 +27,7 @@ class ActionExecutor
 {
 public:
 	/// @brief アクションハンドラを登録する
-	/// @param name アクション名（Command.typeに対応）
+	/// @param name アクション名（Command.type に対応）
 	/// @param handler 実行するハンドラ関数
 	void registerAction(const std::string& name, ActionHandler handler)
 	{

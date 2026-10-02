@@ -2,7 +2,7 @@
 
 /// @file Config.hpp
 /// @brief エンジン設定構造体
-/// @details Mitiruエンジンの初期化パラメータを保持する。
+/// @details Mitiru エンジンの初期化パラメータを保持する。
 
 #include <cstddef>
 #include <cstdint>
@@ -28,7 +28,7 @@ namespace module { struct InputSnapshot; struct FrameIntents; }
 namespace gfx
 {
 
-/// @brief GPUバックエンドの種別
+/// @brief GPU バックエンドの種別
 enum class Backend
 {
 	Auto,    ///< 環境に応じて自動選択
@@ -60,8 +60,8 @@ struct EngineConfig
 	int windowWidth = 1920;                ///< ウィンドウ幅（Windowed モード時）
 	int windowHeight = 1080;               ///< ウィンドウ高さ（Windowed モード時）
 	/// @brief 窓の初期スクリーン座標 (既定 = CW_USEDEFAULT = OS 任せ)。
-	/// @details 録画・自動化で「実画面に一瞬も出さず、最初から指定位置(仮想ディスプレイ等)に
-	///          出す」ために使う。値=INT_MIN(=CW_USEDEFAULT) のままなら従来どおり OS 任せ。
+	/// @details 録画・自動化で「実画面に一瞬も出さず、最初から指定位置 (仮想ディスプレイ等) に
+	///          出す」ために使う。値が INT_MIN (=CW_USEDEFAULT) のままなら従来どおり OS 任せ。
 	int windowX = (-2147483647 - 1);       ///< CW_USEDEFAULT 相当 (INT_MIN)
 	int windowY = (-2147483647 - 1);       ///< CW_USEDEFAULT 相当 (INT_MIN)
 
@@ -84,7 +84,7 @@ struct EngineConfig
 	/// @brief 音の置き場 (空 = 音を鳴らさない)。
 	/// @details mitiru_host は DLL の隣を見て自分で決めるので、これを使うのは
 	///          DLL を持たない静的リンク経路 (wasm)。id は
-	///          `<audioDir>/<id>.wav|.ogg|.mp3` で解決する。
+	///          `<audioDir>/<id>.wav|.ogg|.mp3|.flac` で解決する。
 	std::string audioDir;
 
 	DisplayMode displayMode = DisplayMode::Windowed; ///< [起動時のみ] 表示モード
@@ -99,14 +99,14 @@ struct EngineConfig
 	bool windowResizable = false;
 
 	/// @brief 動的リサイズ時の logical screen size の扱い
-	/// @details Siv3D の `Scene::SetResizeMode` に相当する3-mode 切替:
-	///   - **Actual**: logical = physical (1:1)。HTML の `@media` も発火、
+	/// @details Siv3D の `Scene::SetResizeMode` に相当する 3-mode 切替。
+	///   - **Actual**: logical = physical (1:1)。HTML の `@media` も発火し、
 	///                 native draw も physical coords。動的レイアウト推奨。
-	///   - **Virtual**: logical を初期値で固定、viewport だけ physical 追従。
-	///                  anisotropic stretch (アスペクト保たれない)。Siv3D の
+	///   - **Virtual**: logical を初期値で固定し、viewport だけ physical に追従。
+	///                  anisotropic stretch (アスペクトは保たれない)。Siv3D の
 	///                  `Virtual` と同じ。論理座標で書かれた legacy game 向け。
-	///   - **Keep**: logical を初期値で固定、viewport は letterbox/pillarbox
-	///               でアスペクト保持。固定解像度のゲームに最適。
+	///   - **Keep**: logical を初期値で固定し、viewport は letterbox/pillarbox
+	///               でアスペクトを保つ。固定解像度のゲームに最適。
 	enum class ResizeMode : std::uint32_t
 	{
 		Actual  = 0,
@@ -122,8 +122,8 @@ struct EngineConfig
 	///          ゲームが clear() を呼ばなければ、この既定色が背景として残る。default は黒。
 	sgc::Colorf backgroundColor{0.0f, 0.0f, 0.0f, 1.0f};
 
-	/// @brief ローファイ・ポストFX（低解像レンダー + パレット量子化 + Bayer ディザ）。
-	/// @details DirectX5 / 256色・16bit 期の "粗い網点質感" を再現する（DX12 のみ）。
+	/// @brief ローファイ・ポスト FX（低解像レンダー + パレット量子化 + Bayer ディザ）。
+	/// @details DirectX5 / 256 色・16bit 期の "粗い網点質感" を再現する（DX12 のみ）。
 	///          有効時、ゲームは低い内部解像度のオフスクリーンに描画され、最終提示時に
 	///          パレット量子化 + 4×4 Bayer オーダードディザを掛けてニアレストでウィンドウへ拡大する。
 	///          既定は無効（無効時は従来どおりの描画で挙動は一切変わらない）。
@@ -143,7 +143,7 @@ struct EngineConfig
 		bool viFilter = false;         ///< 映像出力段の de-dither + divot。ON なら拡大はニアレスト固定
 		float gamma = 1.0f;            ///< 出力ガンマ（1 で素通し）
 
-		/// @brief 全チャンネルを同一ビット数に設定する（例 256色相当なら 3/3/2 を個別指定）。
+		/// @brief 全チャンネルを同一ビット数に設定する（例 256 色相当なら 3/3/2 を個別指定）。
 		void setUniformBits(int bits) noexcept { colorBitsR = colorBitsG = colorBitsB = bits; }
 	};
 	LoFiConfig loFi;                   ///< ローファイ・ポストFX 設定
@@ -156,7 +156,7 @@ struct EngineConfig
 	///          lo-fi（粗い網点質感）／3D 描画フレーム／ポストプロセス使用時は自動的に
 	///          バイパスされる（それらは独自の合成経路を持つ）。4x MSAA 非対応の稀な
 	///          環境では自動的に 1x へフォールバックする（無効化されるだけで落ちない）。
-	///          メモリ増は概算 幅×高さ×4サンプル×4byte（1920×1080 で約 33MB）。
+	///          メモリ増は概算 幅×高さ×4 サンプル×4byte（1920×1080 で約 33MB）。
 	bool antialiasing2D = true;
 
 	/// @brief ゲーム側で選択可能な解像度プリセット
@@ -216,8 +216,8 @@ struct EngineConfig
 	std::uint32_t timeTravelBufferFrames = 0;
 
 	/// @brief [起動時のみ] GameMemoryRing の予算バイト数 (0 = 無制限、従来どおり frames*frameSize を無条件確保)。
-	/// @details host の `--rewind-mb N` から渡る。>0 だと ring は XOR+RLE デルタ圧縮になり、
-	///          実バイト数がこの値を超えないよう capacity を自動で切り詰める
+	/// @details host の `--rewind-mb N` から渡る。>0 で、生で持つとこの値を超えるときは ring が
+	///          XOR+RLE の差分で圧縮し、記録の実バイト数がこの値を超える分だけ古い側から捨てる
 	///          (`mitiru::observe::GameMemoryRing::configure` 参照)。
 	std::size_t timeTravelBudgetBytes = 0;
 
@@ -226,6 +226,17 @@ struct EngineConfig
 	///          `Engine_Module_Loader.hpp::recordModuleMemoryFrame` が決める。true なら
 	///          `timeTravelBudgetBytes` (0 = 無制限も含む) を無条件で使う。
 	bool timeTravelBudgetBytesExplicit = false;
+
+	/// @brief [起動時のみ] GameMemoryRing を生 (memcpy) で持つ上限バイト数。frames × GameMemory が
+	///        これを超えたら、予算内でも差分で圧縮する (host の `--rewind-raw-mb N`)。
+	/// @details 実ゲームの差分は数 % に縮むので、60 秒の窓でも数 MB で持てる。半分も縮まない状態は
+	///          ring が最初の 1 周期で見分けて生へ戻す。0 = 予算いっぱいまで生で持つ。
+	std::size_t timeTravelRawLimitBytes = 64u * 1024u * 1024u;
+
+	/// @brief [起動時のみ] ホットリロード直後、差し替え前の DLL と GameMemory を生かしておくフレーム数。
+	/// @details この間に新しい DLL の update / draw がアクセス違反などで止まったら、host は落ちずに
+	///          差し替え前へ戻る (MSVC のみ)。0 = 戻らない (差し替えた瞬間に旧 DLL を解放する)。
+	std::uint32_t reloadRollbackFrames = 180;
 
 	/// @brief Engine::frameArena() の容量バイト数 (毎フレーム先頭で reset される bump アロケータ)。
 	/// @details `include/mitiru/core/FrameArena.hpp` 参照。hot path の一時バッファ (JSON 文字列化・
@@ -278,91 +289,22 @@ struct EngineConfig
 	/// @brief [起動時のみ] loadModule 時に一度だけ参照される。実行中の切替は非対応
 	std::string packPath;
 	/// @brief [起動時のみ] 物理問い合わせ job (v37) が答える静的 collision の JSON (`--collision`)。
-	///        `[{"min":[x,y,z],"max":[x,y,z],"layer":0}, ...]` の箱の列。空なら物理 world を持たず、
-	///        結果は全部 kPhysicsHitUnsupported になる。
+	///        `[{"min":[x,y,z],"max":[x,y,z],"layer":0}, ...]` の箱の列 (`{"vertices":[..],"indices":[..]}` の
+	///        三角形メッシュも混ぜられる)。空なら物理 world を持たず、結果は全部 kPhysicsHitUnsupported になる。
 	std::string collisionPath;
 
 	bool enableUIValidation = false;       ///< UIレイアウト検証有効化
 	bool enableHttpApi = false;            ///< [起動時のみ] 組み込みHTTP APIサーバー有効化
 	int httpApiPort = 8090;                ///< [起動時のみ] HTTP APIサーバーポート（デフォルト8090）
-	bool imguiVisibleOnStart = false;      ///< ImGuiオーバーレイを起動時から表示する（Hub等向け）
 
 	// ── フォント ──
 	std::string fontPath;                  ///< TTFフォントファイルパス（空=自動検索）
-	bool skipDefaultFont = false;          ///< [起動時のみ] true なら 2D Screen のデフォルト TTF/SDF 初期化を完全スキップ
-	                                       ///< (CEF 経由ですべての文字を描画するゲーム向け、起動 ~15 秒短縮)
+	bool skipDefaultFont = false;          ///< [起動時のみ] true なら書体を読まず、2D Screen の文字は 8x8 ビットマップで描く
+	                                       ///< (字形は使われた分だけ焼くので、書体を読むこと自体は起動をほぼ遅らせない)
 
-	/// @brief SDF フォントアトラスに含める Unicode 範囲 (bitmask)
-	/// @details default の FontAtlas::Japanese は ASCII + かな + 漢字 で 3000+ glyphs を
-	///          atlas に焼き込むため初回起動が ~15 秒かかる (UI 側は黒画面に見える)。
-	///          英数のみでよければ FontAtlas::Latin で起動が 1 秒未満になる。
-	///          skipDefaultFont=true のときは参照されない。
-	enum class FontAtlas : std::uint32_t
-	{
-		None           = 0,
-		Ascii          = 1u << 0,
-		Hiragana       = 1u << 1,
-		Katakana       = 1u << 2,
-		CjkPunctuation = 1u << 3,
-		Fullwidth      = 1u << 4,
-		CommonKanji    = 1u << 5,
-
-		Latin    = Ascii,
-		Kana     = Ascii | Hiragana | Katakana,
-		Japanese = Ascii | Hiragana | Katakana
-		         | CjkPunctuation | Fullwidth | CommonKanji,
-	};
-	/// @brief [起動時のみ] atlas 焼き込みは初回起動時の 1 回だけ行われる
-	FontAtlas fontAtlasRanges = FontAtlas::Japanese;
-
-	friend constexpr FontAtlas operator|(FontAtlas a, FontAtlas b) noexcept
-	{
-		return static_cast<FontAtlas>(
-			static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b));
-	}
-	friend constexpr FontAtlas operator&(FontAtlas a, FontAtlas b) noexcept
-	{
-		return static_cast<FontAtlas>(
-			static_cast<std::uint32_t>(a) & static_cast<std::uint32_t>(b));
-	}
-	friend constexpr bool hasFontAtlasRange(FontAtlas set, FontAtlas bit) noexcept
-	{
-		return (static_cast<std::uint32_t>(set)
-		      & static_cast<std::uint32_t>(bit)) != 0;
-	}
-
-	// ── CEF (Win32 + DX12 のみ) ──
-	bool enableCef = true;                 ///< [起動時のみ] CEF 初期化を行うか (false=CEF 抜きで起動、~数秒短縮)。
-	                                       ///< CEF はマルチプロセスで別プロセスとして起動するため後から足せない
-	std::string cefLogPath;                ///< CEF ログファイルパス (空=デフォルト: "<exeDir>/cef_debug.log")
-	std::string cefStartUrl;               ///< 起動時に開く URL (空=about:blank)
-	int cefRemoteDebuggingPort = 0;        ///< [起動時のみ] 0 以外で chrome-devtools MCP が http://localhost:<port>
-	                                       ///< に attach 可能 (E-02)。開発ビルドのみで有効化推奨。CEF 起動時に
-	                                       ///< 子プロセスへ渡すコマンドラインフラグのため後から変更不可
-	bool cefAllowRemoteUrls = false;       ///< [起動時のみ] true で loadUrl / cefStartUrl に http(s) 等リモート URL を
-	                                       ///< 許可する (C-5)。既定は app:// / file:// / data: / about: のみ。
-
-	/// @brief CEF ページが fetch / XHR で読み込めるローカルディレクトリ追加分
-	/// @details 既定動作 (空ベクター) でも **Debug build** は `file:///` から
-	///          sibling ファイルを読める (`--allow-file-access-from-files` +
-	///          `--disable-web-security` は Debug のみ付与)。Release で fetch /
-	///          XHR を使うページは `app://` 経由で配信すること。
-	///
-	///          より厳格に `app://` カスタムスキーム経由で配信したい場合 (CORS 完全
-	///          対応・サンドボックス強化) に追加のルートを宣言する。指定した各
-	///          ディレクトリは `app://` 仮想パス解決時に順に検索される
-	///          (`(exeDir)/assets/` が常に最優先で先に試される)。
-	///
-	///          典型例:
-	///            cfg.cefAdditionalAssetDirs = {
-	///              "C:/path/to/shared-pack",      // theme pack 等
-	///              "C:/path/to/dev-overrides"     // 開発時のホットリロード用
-	///            };
-	///            cfg.cefStartUrl = "app://ui/title.html";
-	///
-	///          トレードオフ: file:// はパス計算がシンプルで debug が容易。
-	///          app:// は CORS が厳密で本番ビルドの埋め込みアセットと統一される。
-	std::vector<std::string> cefAdditionalAssetDirs;
+	// ── UI (RmlUi、Win32 + DX12 のみ) ──
+	std::string uiDocument;                ///< [起動時のみ] main window に重ねる RML 文書 (空=RmlUi を使わない)。
+	                                       ///< mitiru_host は DLL の隣の assets/ui/main.rml があればそれを入れる
 
 	// ── 音量 (0.0 - 1.0) ──
 	float masterVolume = 1.0f;             ///< マスター音量
@@ -420,15 +362,15 @@ struct EngineConfig
 	/// @brief tickOneFrame の先頭で呼ばれる (optional)
 	/// @details Host が「main loop に割り込みたい」用途のためのフック。
 	///          典型的な用途は **DLL hot reload の file watcher**。
-	///          `mitiru_host --watch` がここで DLL の mtime を polling し、
-	///          変化があれば `engine.reloadModule(path)` を呼ぶ。
+	///          `mitiru_host --watch` がここで DLL の書き換えを見て
+	///          (asset/FileWatcher.hpp)、変化があれば `engine.reloadModule(path)` を呼ぶ。
 	///          設定されていなければ engine 側は no-op。
 	std::function<void(mitiru::Engine&)> onFrameStart;
 
 	// ── replay record / inject フック (axis 4: deterministic + replay-as-test) ──
 	/// @brief 毎フレーム on_update 後に呼ばれ、その frame の InputSnapshot と
 	///        FrameIntents を host へ渡す。host は Recorder へ書き出す
-	///        (`mitiru run --record`)。設定が無ければ no-op。不変なのは:
+	///        (`mitiru run --record`)。設定が無ければ no-op。不変条件として、
 	///        これは host 側 config であって DLL は一切見ない。
 	std::function<void(const module::InputSnapshot&, const module::FrameIntents&)>
 		onModuleFrameRecorded;

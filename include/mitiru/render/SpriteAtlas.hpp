@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file SpriteAtlas.hpp
-/// @brief spritesheet metadata (frames json) ローダー。
+/// @brief spritesheet のメタデータ (frames json) のローダー。
 /// @details 1 ファイルに `frames: [{name, x, y, w, h, anchorX, anchorY}]` を持ち、
 ///          `loadSpriteAtlas("foo.atlas")` で全部読める。`frame(name)` で名前引き。
 ///          手書きの Sheet 構造体を毎フレーム増やさなくて済む。

@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file UILayoutValidator.hpp
-/// @brief UIレイアウト検証ユーティリティ
-/// @details UI要素の配置を検証し、画面外はみ出し・重複・最小サイズ違反を検出する。
+/// @brief UI レイアウト検証ユーティリティ
+/// @details UI 要素の配置を検証し、画面外はみ出し・重複・最小サイズ違反を検出する。
 
 #include <string>
 #include <vector>
@@ -13,7 +13,7 @@
 namespace mitiru::validate
 {
 
-/// @brief 検証対象のUI要素情報
+/// @brief 検証対象の UI 要素情報
 struct UIElement
 {
 	std::string id;        ///< 要素の識別子
@@ -38,8 +38,8 @@ struct LayoutIssue
 	std::string otherElementId; ///< 重複相手のID（Overlapの場合のみ）
 	std::string description;    ///< 問題の説明文
 
-	/// @brief 問題情報をJSON文字列に変換する
-	/// @return JSON文字列
+	/// @brief 問題情報を JSON 文字列に変換する
+	/// @return JSON 文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		auto typeStr = [](Type t) -> const char* {
@@ -66,8 +66,8 @@ struct LayoutIssue
 	}
 };
 
-/// @brief UIレイアウト検証器
-/// @details UI要素群を検証し、画面外・重複・最小サイズ違反・クリッピングを検出する。
+/// @brief UI レイアウト検証器
+/// @details UI 要素群を検証し、画面外・重複・最小サイズ違反・クリッピングを検出する。
 ///
 /// @code
 /// mitiru::validate::UILayoutValidator validator(1280.0f, 720.0f);
@@ -98,7 +98,7 @@ public:
 	}
 
 	/// @brief 全要素を検証する
-	/// @param elements 検証対象のUI要素群
+	/// @param elements 検証対象の UI 要素群
 	/// @return 検出された問題のリスト
 	/// @details 各要素の画面範囲チェック・最小サイズチェック、および全ペアの重複チェックを行う。
 	[[nodiscard]] std::vector<LayoutIssue> validate(
@@ -133,8 +133,8 @@ public:
 	}
 
 	/// @brief 単一要素の画面範囲チェックを行う
-	/// @param elem 検証対象のUI要素
-	/// @return 検出された問題のリスト（OutOfBoundsまたはClipped）
+	/// @param elem 検証対象の UI 要素
+	/// @return 検出された問題のリスト（OutOfBounds または Clipped）
 	[[nodiscard]] std::vector<LayoutIssue> checkBounds(const UIElement& elem) const
 	{
 		std::vector<LayoutIssue> issues;
@@ -175,7 +175,7 @@ public:
 	}
 
 	/// @brief 全ペアの重複チェックを行う
-	/// @param elements 検証対象のUI要素群
+	/// @param elements 検証対象の UI 要素群
 	/// @return 重複が検出されたペアの問題リスト
 	[[nodiscard]] std::vector<LayoutIssue> checkOverlaps(
 		const std::vector<UIElement>& elements) const
@@ -203,9 +203,9 @@ public:
 		return issues;
 	}
 
-	/// @brief 問題リストをJSON配列文字列に変換する
+	/// @brief 問題リストを JSON 配列文字列に変換する
 	/// @param issues 問題リスト
-	/// @return JSON配列文字列
+	/// @return JSON 配列文字列
 	[[nodiscard]] std::string toJson(const std::vector<LayoutIssue>& issues) const
 	{
 		std::string json = "[";

@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Pipeline3D.hpp
-/// @brief 3Dレンダリングパイプライン
-/// @details Scene3Dのメッシュ・ライトデータをGPUに送信する3D描画パイプライン。
-///          DX11環境では実GPU描画を行い、NullDevice環境ではドローコールのカウントのみ行う。
+/// @brief 3D レンダリングパイプライン
+/// @details Scene3D のメッシュ・ライトデータを GPU に送信する 3D 描画パイプライン。
+///          DX11 環境では実 GPU 描画を行い、NullDevice 環境ではドローコールのカウントのみ行う。
 
 #include <cstdint>
 #include <cstring>
@@ -28,15 +28,15 @@ namespace mitiru::render
 
 /// @brief レンダリングモード
 /// @details フォワードレンダリングとディファードレンダリングを切り替える。
-/// @note DeferredPipelineを使用する場合はRenderMode::Deferredを指定する。
+/// @note DeferredPipeline を使用する場合は RenderMode::Deferred を指定する。
 enum class RenderMode
 {
 	Forward,   ///< フォワードレンダリング（デフォルト）
 	Deferred   ///< ディファードレンダリング
 };
 
-/// @brief 3D描画コマンド
-/// @details メッシュ・トランスフォーム・マテリアルを1つの描画単位として保持する。
+/// @brief 3D 描画コマンド
+/// @details メッシュ・トランスフォーム・マテリアルを 1 つの描画単位として保持する。
 struct DrawCommand3D
 {
 	const Mesh* mesh = nullptr;     ///< メッシュデータ（非所有）
@@ -44,9 +44,9 @@ struct DrawCommand3D
 	Material material;              ///< マテリアル
 };
 
-/// @brief 3Dレンダリングパイプライン
-/// @details begin/submitMesh/submitLight/endの流れでフレーム描画を行う。
-///          NullDevice時はドローコール数をカウントするのみ。
+/// @brief 3D レンダリングパイプライン
+/// @details begin/submitMesh/submitLight/end の流れでフレーム描画を行う。
+///          NullDevice 時はドローコール数をカウントするのみ。
 ///
 /// @code
 /// mitiru::render::Pipeline3D pipeline;
@@ -65,8 +65,8 @@ public:
 	/// @brief デフォルトコンストラクタ
 	Pipeline3D() noexcept = default;
 
-	/// @brief GPUデバイスを設定する
-	/// @param device GPUデバイスへのポインタ（nullptrでヘッドレスモード）
+	/// @brief GPU デバイスを設定する
+	/// @param device GPU デバイスへのポインタ（nullptr でヘッドレスモード）
 	void setDevice(gfx::IDevice* device) noexcept
 	{
 		m_device = device;
@@ -85,15 +85,15 @@ public:
 		return m_renderMode;
 	}
 
-	/// @brief 接続中のGPUデバイスを取得する
-	/// @return GPUデバイスへのポインタ（未接続時はnullptr）
+	/// @brief 接続中の GPU デバイスを取得する
+	/// @return GPU デバイスへのポインタ（未接続時は nullptr）
 	[[nodiscard]] gfx::IDevice* device() const noexcept
 	{
 		return m_device;
 	}
 
 	/// @brief フレーム描画を開始する
-	/// @param camera 3Dカメラ（ビュー行列・射影行列の生成に使用）
+	/// @param camera 3D カメラ（ビュー行列・射影行列の生成に使用）
 	void begin(const Camera3D& camera)
 	{
 		m_drawCommands.clear();
@@ -127,9 +127,9 @@ public:
 		m_lights.push_back(light);
 	}
 
-	/// @brief フレーム描画を終了し、GPUにフラッシュする
-	/// @details 蓄積された描画コマンドをデバイス経由でGPU送信する。
-	///          NullDevice時はドローコールのカウントのみ行う。
+	/// @brief フレーム描画を終了し、GPU にフラッシュする
+	/// @details 蓄積された描画コマンドをデバイス経由で GPU 送信する。
+	///          NullDevice 時はドローコールのカウントのみ行う。
 	void end()
 	{
 		if (!m_device)
@@ -141,7 +141,7 @@ public:
 
 		if (m_device->backend() == gfx::Backend::Null)
 		{
-			/// NullDeviceの場合はカウントのみ
+			/// NullDevice の場合はカウントのみ
 			m_drawCallCount = static_cast<int>(m_drawCommands.size());
 			return;
 		}
@@ -149,7 +149,7 @@ public:
 #ifdef _WIN32
 		flushToGpu();
 #else
-		/// 非Windows環境でもカウントは記録する
+		/// 非 Windows 環境でもカウントは記録する
 		m_drawCallCount = static_cast<int>(m_drawCommands.size());
 #endif
 	}
@@ -198,7 +198,7 @@ public:
 
 private:
 #ifdef _WIN32
-	/// @brief 蓄積された描画コマンドをDX11経由でGPU送信する
+	/// @brief 蓄積された描画コマンドを DX11 経由で GPU 送信する
 	void flushToGpu()
 	{
 		if (m_drawCommands.empty())
@@ -279,7 +279,7 @@ private:
 	}
 #endif
 
-	/// @brief GPUデバイス（非所有）
+	/// @brief GPU デバイス（非所有）
 	gfx::IDevice* m_device = nullptr;
 
 	/// @brief 描画コマンドキュー

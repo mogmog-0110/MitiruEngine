@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Dx11RenderTarget.hpp
-/// @brief DirectX 11レンダーターゲット
-/// @details ID3D11RenderTargetViewをComPtrで管理する。
+/// @brief DirectX 11 レンダーターゲット
+/// @details ID3D11RenderTargetView を ComPtr で管理する。
 ///          スワップチェーンのバックバッファまたは独立テクスチャから生成する。
 
 #ifdef _WIN32
@@ -42,17 +42,17 @@ namespace mitiru::gfx
 	return DXGI_FORMAT_UNKNOWN;
 }
 
-/// @brief DirectX 11レンダーターゲット
+/// @brief DirectX 11 レンダーターゲット
 /// @details スワップチェーンバックバッファまたはテクスチャベースのレンダーターゲット。
 class Dx11RenderTarget final : public IRenderTarget
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief スワップチェーンバックバッファからレンダーターゲットを生成する
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param backBuffer バックバッファテクスチャ
 	/// @param width バッファ幅
 	/// @param height バッファ高さ
@@ -79,10 +79,10 @@ public:
 
 	/// @brief 独立テクスチャからレンダーターゲットを生成する（RenderTargetPool/IDevice::createRenderTarget 用）
 	/// @details バックバッファ版と違い RTV に加えて SRV も持つ（ポストプロセス等の中間 RT として読み戻せるように）。
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param width テクスチャ幅
 	/// @param height テクスチャ高さ
-	/// @param format DXGIピクセルフォーマット
+	/// @param format DXGI ピクセルフォーマット
 	/// @return 生成されたレンダーターゲット
 	[[nodiscard]] static Dx11RenderTarget createTexture(
 		ID3D11Device* device, int width, int height, DXGI_FORMAT format)
@@ -132,7 +132,7 @@ public:
 	/// @details D3D11 では DSV と RTV を同一テクスチャで兼用できないため、typeless
 	///          テクスチャ (`R24G8_TYPELESS`) から DSV (`D24_UNORM_S8_UINT`) と
 	///          深度チャンネルのみの SRV (`R24_UNORM_X8_TYPELESS`) を別ビューとして作る。
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param width テクスチャ幅
 	/// @param height テクスチャ高さ
 	/// @return 生成されたレンダーターゲット（`getRTV()` は常に nullptr、`getDSV()`/`getSRV()` が有効）
@@ -200,55 +200,55 @@ public:
 	}
 
 	/// @brief 関連付けられたテクスチャを取得する
-	/// @return バックバッファベースの場合はnullptr
+	/// @return バックバッファベースの場合は nullptr
 	[[nodiscard]] ITexture* texture() noexcept override
 	{
 		return nullptr;
 	}
 
-	/// @brief バックエンド固有のRTVを取得する（IRenderTarget 経由）
+	/// @brief バックエンド固有の RTV を取得する（IRenderTarget 経由）
 	/// @return createTexture 由来なら ID3D11RenderTargetView*、バックバッファ版も含め常に有効
 	[[nodiscard]] void* nativeRtv() noexcept override
 	{
 		return m_rtv.Get();
 	}
 
-	/// @brief バックエンド固有のSRVを取得する（IRenderTarget 経由）
+	/// @brief バックエンド固有の SRV を取得する（IRenderTarget 経由）
 	/// @return createTexture / createDepthTexture 由来のみ有効。バックバッファ版は nullptr（SRV を持たない）
 	[[nodiscard]] void* nativeSrv() noexcept override
 	{
 		return m_srv.Get();
 	}
 
-	/// @brief バックエンド固有のDSVを取得する（IRenderTarget 経由）
+	/// @brief バックエンド固有の DSV を取得する（IRenderTarget 経由）
 	/// @return createDepthTexture 由来のみ有効
 	[[nodiscard]] void* nativeDsv() noexcept override
 	{
 		return m_dsv.Get();
 	}
 
-	/// @brief 内部のID3D11RenderTargetViewを取得する
+	/// @brief 内部の ID3D11RenderTargetView を取得する
 	/// @return RTV へのポインタ
 	[[nodiscard]] ID3D11RenderTargetView* getRTV() const noexcept
 	{
 		return m_rtv.Get();
 	}
 
-	/// @brief 内部のID3D11ShaderResourceViewを取得する
+	/// @brief 内部の ID3D11ShaderResourceView を取得する
 	/// @return SRV へのポインタ（バックバッファ版は nullptr）
 	[[nodiscard]] ID3D11ShaderResourceView* getSRV() const noexcept
 	{
 		return m_srv.Get();
 	}
 
-	/// @brief 内部のID3D11DepthStencilViewを取得する
+	/// @brief 内部の ID3D11DepthStencilView を取得する
 	/// @return createDepthTexture 由来のみ有効、それ以外は nullptr
 	[[nodiscard]] ID3D11DepthStencilView* getDSV() const noexcept
 	{
 		return m_dsv.Get();
 	}
 
-	/// @brief RTV/DSVを解放する（リサイズ前に必要）
+	/// @brief RTV/DSV を解放する（リサイズ前に必要）
 	void release() noexcept
 	{
 		m_rtv.Reset();

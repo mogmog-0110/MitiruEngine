@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file VulkanDescriptorPool.hpp
-/// @brief Vulkanデスクリプタプール管理
-/// @details VkDescriptorPoolとVkDescriptorSetの割り当てをRAIIで管理する。
-///          MITIRU_HAS_VULKANが定義されている場合のみコンパイルされる。
+/// @brief Vulkan デスクリプタプール管理
+/// @details VkDescriptorPool と VkDescriptorSet の割り当てを RAII で管理する。
+///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。
 
 #ifdef MITIRU_HAS_VULKAN
 
@@ -16,14 +16,14 @@ namespace mitiru::gfx
 {
 
 /// @brief デスクリプタプール設定
-/// @details デスクリプタプール生成パラメータを保持する。GPU不要でテスト可能。
+/// @details デスクリプタプール生成パラメータを保持する。GPU 不要でテスト可能。
 struct DescriptorPoolConfig
 {
 	uint32_t maxSets = 0;                              ///< 最大デスクリプタセット数
 	std::vector<VkDescriptorPoolSize> poolSizes;       ///< プールサイズ（タイプと個数）
 
 	/// @brief 設定が有効か確認する
-	/// @return maxSetsが0より大きくpoolSizesが空でなければtrue
+	/// @return maxSets が 0 より大きく poolSizes が空でなければ true
 	[[nodiscard]] bool isValid() const noexcept
 	{
 		return maxSets > 0 && !poolSizes.empty();
@@ -54,10 +54,9 @@ struct DescriptorPoolConfig
 	}
 };
 
-/// @brief Vulkanデスクリプタプール RAIIラッパー
-/// @details VkDescriptorPoolを管理し、デスクリプタセットの割り当てと
-///          リセットを提供する。
-///
+/// @brief Vulkan デスクリプタプール RAII ラッパー
+/// @details VkDescriptorPool を管理し、デスクリプタセットの割り当てと
+/// リセットを提供する。
 /// @code
 /// VulkanDescriptorPool pool;
 /// pool.initialize(device, 100, poolSizes);
@@ -126,7 +125,7 @@ public:
 
 	/// @brief デスクリプタセットを割り当てる
 	/// @param layout デスクリプタセットレイアウト
-	/// @return 割り当てられたVkDescriptorSet
+	/// @return 割り当てられた VkDescriptorSet
 	/// @throws std::runtime_error 割り当てに失敗した場合
 	[[nodiscard]] VkDescriptorSet allocateSet(VkDescriptorSetLayout layout)
 	{
@@ -170,7 +169,7 @@ public:
 	[[nodiscard]] VkDescriptorPool handle() const noexcept { return m_pool; }
 
 	/// @brief 初期化済みか確認する
-	/// @return プールが有効ならtrue
+	/// @return プールが有効なら true
 	[[nodiscard]] bool isInitialized() const noexcept { return m_pool != VK_NULL_HANDLE; }
 
 private:

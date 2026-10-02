@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file ExpressionEvaluator.hpp
-/// @brief VNシナリオ向け拡張式評価エンジン
+/// @brief VN シナリオ向け拡張式評価エンジン
 /// @details 算術演算、文字列操作、比較、論理演算、組み込み関数をサポートする
-///          再帰下降パーサーベースの式評価器。FlagManagerと統合して変数参照を解決する。
+///          再帰下降パーサーベースの式評価器。FlagManager と統合して変数参照を解決する。
 ///
 /// 対応する式の例:
 /// @code
@@ -99,7 +99,7 @@ public:
 
 		while (i < source.size())
 		{
-			// 空白スキップ
+			// 空白を飛ばす
 			if (std::isspace(static_cast<unsigned char>(source[i])))
 			{
 				++i;
@@ -151,7 +151,7 @@ public:
 				continue;
 			}
 
-			// 2文字演算子
+			// 2 文字演算子
 			if (i + 1 < source.size())
 			{
 				auto two = source.substr(i, 2);
@@ -163,12 +163,12 @@ public:
 				if (two == "||") { tokens.push_back({ExprTokenKind::Or, "||", 0.0}); i += 2; continue; }
 			}
 
-			// 1文字演算子
+			// 1 文字演算子
 			if (source[i] == '+') { tokens.push_back({ExprTokenKind::Plus, "+", 0.0}); ++i; continue; }
 			if (source[i] == '-')
 			{
-				// 単項マイナスか二項マイナスか: 前のトークンが値でなければ単項
-				// ここではトークン化のみなので常にMinusとして出す（パーサーが判断）
+				// 前のトークンが値でなければ単項マイナス、値なら二項マイナスになる。
+				// ここではトークン化だけなので常に Minus として出す（どちらかはパーサーが判断する）
 				tokens.push_back({ExprTokenKind::Minus, "-", 0.0});
 				++i;
 				continue;
@@ -222,7 +222,7 @@ public:
 				continue;
 			}
 
-			// 不明な文字はスキップ
+			// 不明な文字は飛ばす
 			++i;
 		}
 
@@ -237,8 +237,8 @@ public:
 
 /// @brief 式評価器（再帰下降パーサー）
 /// @details 演算子優先順位:
-///   1. || (論理OR)
-///   2. && (論理AND)
+///   1. || (論理 OR)
+///   2. && (論理 AND)
 ///   3. ==, !=, <, <=, >, >= (比較)
 ///   4. +, - (加算・減算 / 文字列連結)
 ///   5. *, /, % (乗算・除算・剰余)
@@ -262,7 +262,7 @@ class ExpressionEvaluator
 public:
 	/// @brief 式を評価して結果を返す
 	/// @param expression 式文字列
-	/// @param flags 変数解決用のFlagManager
+	/// @param flags 変数解決用の FlagManager
 	/// @return 評価結果
 	[[nodiscard]] ExpressionResult evaluate(std::string_view expression, const FlagManager& flags) const
 	{
@@ -271,40 +271,40 @@ public:
 		return parseOrExpr(tokens, pos, flags);
 	}
 
-	/// @brief 式をbool値として評価する
+	/// @brief 式を bool 値として評価する
 	/// @param expression 式文字列
-	/// @param flags 変数解決用のFlagManager
-	/// @return bool評価結果
+	/// @param flags 変数解決用の FlagManager
+	/// @return bool 評価結果
 	[[nodiscard]] bool evaluateBool(std::string_view expression, const FlagManager& flags) const
 	{
 		auto result = evaluate(expression, flags);
 		return resultToBool(result);
 	}
 
-	/// @brief 式をint値として評価する
+	/// @brief 式を int 値として評価する
 	/// @param expression 式文字列
-	/// @param flags 変数解決用のFlagManager
-	/// @return int評価結果
+	/// @param flags 変数解決用の FlagManager
+	/// @return int 評価結果
 	[[nodiscard]] int evaluateInt(std::string_view expression, const FlagManager& flags) const
 	{
 		auto result = evaluate(expression, flags);
 		return resultToInt(result);
 	}
 
-	/// @brief 式をfloat値として評価する
+	/// @brief 式を float 値として評価する
 	/// @param expression 式文字列
-	/// @param flags 変数解決用のFlagManager
-	/// @return float評価結果
+	/// @param flags 変数解決用の FlagManager
+	/// @return float 評価結果
 	[[nodiscard]] float evaluateFloat(std::string_view expression, const FlagManager& flags) const
 	{
 		auto result = evaluate(expression, flags);
 		return resultToFloat(result);
 	}
 
-	/// @brief 式をstring値として評価する
+	/// @brief 式を string 値として評価する
 	/// @param expression 式文字列
-	/// @param flags 変数解決用のFlagManager
-	/// @return string評価結果
+	/// @param flags 変数解決用の FlagManager
+	/// @return string 評価結果
 	[[nodiscard]] std::string evaluateString(std::string_view expression, const FlagManager& flags) const
 	{
 		auto result = evaluate(expression, flags);
@@ -313,7 +313,7 @@ public:
 
 	// ── 型変換ユーティリティ ─────────────────────────────────
 
-	/// @brief ExpressionResultをboolに変換する
+	/// @brief ExpressionResult を bool に変換する
 	[[nodiscard]] static bool resultToBool(const ExpressionResult& val)
 	{
 		if (auto* b = std::get_if<bool>(&val)) return *b;
@@ -323,7 +323,7 @@ public:
 		return false;
 	}
 
-	/// @brief ExpressionResultをintに変換する
+	/// @brief ExpressionResult を int に変換する
 	[[nodiscard]] static int resultToInt(const ExpressionResult& val)
 	{
 		if (auto* i = std::get_if<int>(&val)) return *i;
@@ -336,7 +336,7 @@ public:
 		return 0;
 	}
 
-	/// @brief ExpressionResultをfloatに変換する
+	/// @brief ExpressionResult を float に変換する
 	[[nodiscard]] static float resultToFloat(const ExpressionResult& val)
 	{
 		if (auto* f = std::get_if<float>(&val)) return *f;
@@ -349,7 +349,7 @@ public:
 		return 0.0f;
 	}
 
-	/// @brief ExpressionResultをstringに変換する
+	/// @brief ExpressionResult を string に変換する
 	[[nodiscard]] static std::string resultToString(const ExpressionResult& val)
 	{
 		if (auto* s = std::get_if<std::string>(&val)) return *s;
@@ -364,7 +364,7 @@ public:
 		return "";
 	}
 
-	/// @brief ExpressionResultをFlagValueに変換する
+	/// @brief ExpressionResult を FlagValue に変換する
 	[[nodiscard]] static FlagValue resultToFlagValue(const ExpressionResult& val)
 	{
 		if (auto* b = std::get_if<bool>(&val)) return *b;
@@ -374,7 +374,7 @@ public:
 		return false;
 	}
 
-	/// @brief FlagValueをExpressionResultに変換する
+	/// @brief FlagValue を ExpressionResult に変換する
 	[[nodiscard]] static ExpressionResult flagValueToResult(const FlagValue& val)
 	{
 		if (auto* b = std::get_if<bool>(&val)) return *b;
@@ -385,13 +385,13 @@ public:
 	}
 
 private:
-	// random() 組み込み用の決定論 RNG。固定既定 seed (OS entropy 非依存)。
-	// callFunction は const なので mutable。
+	// 組み込み関数 random() 用の決定論的な RNG。seed は固定の既定値 (OS entropy に依存しない)。
+	// callFunction が const なので mutable にしている。
 	mutable std::mt19937 m_rng{0x9E3779B9u};
 
 	// ── 再帰下降パーサー ─────────────────────────────────────
 
-	/// @brief OR式: and_expr (|| and_expr)*
+	/// @brief OR 式: and_expr (|| and_expr)*
 	[[nodiscard]] ExpressionResult parseOrExpr(
 		const std::vector<ExprToken>& tokens, std::size_t& pos,
 		const FlagManager& flags) const
@@ -408,7 +408,7 @@ private:
 		return result;
 	}
 
-	/// @brief AND式: comparison (&& comparison)*
+	/// @brief AND 式: comparison (&& comparison)*
 	[[nodiscard]] ExpressionResult parseAndExpr(
 		const std::vector<ExprToken>& tokens, std::size_t& pos,
 		const FlagManager& flags) const
@@ -467,7 +467,7 @@ private:
 
 			if (kind == ExprTokenKind::Plus)
 			{
-				// 文字列連結: どちらかが文字列なら文字列連結
+				// どちらかが文字列なら文字列として連結する
 				if (std::holds_alternative<std::string>(result) ||
 					std::holds_alternative<std::string>(rhs))
 				{
@@ -564,8 +564,8 @@ private:
 
 		if (pos < tokens.size() && tokens[pos].kind == ExprTokenKind::Minus)
 		{
-			// 単項マイナス: 前のトークンが値でない場合
-			// （パーサーの文脈でunaryに来ている時点で単項）
+			// 前のトークンが値でない場合の単項マイナス
+			// （パーサーで unary に来た時点で単項と決まる）
 			++pos;
 			auto val = parseUnary(tokens, pos, flags);
 			if (std::holds_alternative<float>(val))
@@ -648,7 +648,7 @@ private:
 				return parseFunction(name, tokens, pos, flags);
 			}
 
-			// $なしの変数参照（フラグ名として解決）
+			// $ なしの変数参照（フラグ名として引く）
 			auto val = flags.get(name);
 			if (val.has_value())
 			{
@@ -673,7 +673,7 @@ private:
 		// '(' を消費
 		++pos;
 
-		// 引数を収集
+		// 引数を集める
 		std::vector<ExpressionResult> args;
 		while (pos < tokens.size() && tokens[pos].kind != ExprTokenKind::RParen &&
 			tokens[pos].kind != ExprTokenKind::Eof)
@@ -731,9 +731,9 @@ private:
 			int lo = resultToInt(args[0]);
 			int hi = resultToInt(args[1]);
 			if (lo > hi) std::swap(lo, hi);
-			// 決定論 RNG (replay 再現性。OS entropy を引かない)。member を進めるので
-			// 同一 evaluator 内の連続 random() は別値になる。VN が evaluator を持続
-			// させれば多様性も保てる (使い捨て構築では eval ごとに既定 seed から再開)。
+			// replay で再現できるよう決定論的な RNG を使う (OS entropy を引かない)。member を進めるので、
+			// 同じ evaluator で続けて呼んだ random() は別の値になる。VN が evaluator を持ち続ければ
+			// 値の多様性も保てる (使い捨てで構築すると eval ごとに既定 seed からやり直す)。
 			std::uniform_int_distribution<int> dist(lo, hi);
 			return ExpressionResult{dist(m_rng)};
 		}
@@ -763,13 +763,13 @@ private:
 			return ExpressionResult{s.substr(static_cast<std::size_t>(start))};
 		}
 
-		// 未知の関数は0を返す
+		// 未知の関数は 0 を返す
 		return ExpressionResult{0};
 	}
 
 	// ── 比較ヘルパー ─────────────────────────────────────────
 
-	/// @brief 2つのExpressionResultを比較する
+	/// @brief 2 つの ExpressionResult を比較する
 	[[nodiscard]] static bool compareResults(
 		const ExpressionResult& lhs, ExprTokenKind op, const ExpressionResult& rhs)
 	{
@@ -790,7 +790,7 @@ private:
 			}
 		}
 
-		// bool同士
+		// bool 同士
 		if (std::holds_alternative<bool>(lhs) && std::holds_alternative<bool>(rhs))
 		{
 			bool l = std::get<bool>(lhs);
@@ -803,7 +803,7 @@ private:
 			}
 		}
 
-		// 数値比較（float昇格）
+		// 数値として比較する（float に昇格）
 		float l = resultToFloat(lhs);
 		float r = resultToFloat(rhs);
 		switch (op)
@@ -825,7 +825,7 @@ private:
 
 /// @brief 式を評価して結果を返す（フリー関数版）
 /// @param expression 式文字列
-/// @param flags 変数解決用のFlagManager
+/// @param flags 変数解決用の FlagManager
 /// @return 評価結果
 [[nodiscard]] inline ExpressionResult evaluateExpression(
 	std::string_view expression, const FlagManager& flags)
@@ -834,10 +834,10 @@ private:
 	return evaluator.evaluate(expression, flags);
 }
 
-/// @brief 条件式をboolで評価する（フリー関数版）
+/// @brief 条件式を bool で評価する（フリー関数版）
 /// @param expression 条件式
-/// @param flags 変数解決用のFlagManager
-/// @return bool結果
+/// @param flags 変数解決用の FlagManager
+/// @return bool 結果
 [[nodiscard]] inline bool evaluateCondition(
 	std::string_view expression, const FlagManager& flags)
 {

@@ -1,11 +1,12 @@
 #pragma once
 
 /// @file VulkanDevice.hpp
-/// @brief Vulkanバックエンド実装
-/// @details Vulkan GPUデバイスのIDevice実装。
-///          VkInstance・VkDevice・VkSwapchainKHRの生成と管理を行う。
-///          MITIRU_HAS_VULKANが定義されている場合のみコンパイルされる。
+/// @brief Vulkan バックエンド実装
+/// @details Vulkan GPU デバイスの IDevice 実装。
+///          VkInstance・VkDevice・VkSwapchainKHR の生成と管理を行う。
+///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。
 ///          VulkanDevice の実装本体は末尾 include の detail/VulkanDevice_*.hpp
+///          凍結中 (ADR 0047): 新機能は足さない。第 2 backend が 2D を描けた時点で消す。
 
 #ifdef MITIRU_HAS_VULKAN
 
@@ -38,8 +39,8 @@
 namespace mitiru::gfx
 {
 
-/// @brief Vulkan用バッファ実装
-/// @details VkBufferとVkDeviceMemoryをRAIIで管理する。
+/// @brief Vulkan 用バッファ実装
+/// @details VkBuffer と VkDeviceMemory を RAII で管理する。
 class VulkanBuffer final : public IBuffer
 {
 public:
@@ -50,7 +51,7 @@ public:
 	{
 	}
 
-	/// @brief コンストラクタ（実Vulkanバッファ）
+	/// @brief コンストラクタ（実 Vulkan バッファ）
 	VulkanBuffer(
 		VkDevice device,
 		VkPhysicalDevice physDevice,
@@ -180,8 +181,8 @@ private:
 	std::uint32_t m_size;
 };
 
-/// @brief Vulkan用コマンドリスト実装
-/// @details VkCommandBufferをラップする。
+/// @brief Vulkan 用コマンドリスト実装
+/// @details VkCommandBuffer をラップする。
 class VulkanCommandList final : public ICommandList
 {
 public:
@@ -253,16 +254,15 @@ private:
 	VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 };
 
-/// @brief Vulkan GPUデバイス実装
-/// @details VkInstance・VkDevice・VkSwapchainKHRを管理するフルデバイス実装。
-///          GlfwWindowからVkSurfaceKHRを生成し、トリプルバッファリングで描画する。
-///          実装本体は detail/VulkanDevice_*.hpp（クラス外 inline 定義）。
-///
+/// @brief Vulkan GPU デバイス実装
+/// @details VkInstance・VkDevice・VkSwapchainKHR を管理するフルデバイス実装。
+/// GlfwWindow から VkSurfaceKHR を生成し、トリプルバッファリングで描画する。
+/// 実装本体は detail/VulkanDevice_*.hpp（クラス外 inline 定義）。
 /// @code
 /// auto window = std::make_unique<GlfwWindow>("Vulkan App", 1280, 720);
 /// auto device = std::make_unique<VulkanDevice>(window.get());
 /// device->beginFrame();
-/// // Vulkan描画コマンド...
+/// // Vulkan 描画コマンド...
 /// device->endFrame();
 /// @endcode
 class VulkanDevice final : public IDevice
@@ -271,8 +271,8 @@ public:
 	static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 #ifdef MITIRU_HAS_GLFW
-	/// @brief GlfwWindowからVulkanデバイスを生成する
-	/// @param window GLFWウィンドウ（nullptrの場合はruntime_error）
+	/// @brief GlfwWindow から Vulkan デバイスを生成する
+	/// @param window GLFW ウィンドウ（nullptr の場合は runtime_error）
 	explicit VulkanDevice(mitiru::GlfwWindow* window);
 #endif
 

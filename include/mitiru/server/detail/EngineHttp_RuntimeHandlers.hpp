@@ -1,6 +1,6 @@
 #pragma once
-// EngineHttpServer の runtime 制御 / コマンド / フラグ / 設定 / 入力 / デバッグ系ハンドラ実装。
-// server/EngineHttpServer.hpp から末尾 include される (単体 include も親経由で自己完結)。
+// EngineHttpServer のハンドラ実装 (runtime 制御 / コマンド / フラグ / 設定 / 入力 / デバッグ)。
+// server/EngineHttpServer.hpp の末尾から include される (単体で include しても親経由で自己完結する)。
 
 #include <mitiru/server/EngineHttpServer.hpp>
 
@@ -40,9 +40,9 @@ inline void mitiru::server::EngineHttpServer::handleStatus(const HttpRequest&, H
 }
 
 // ── コントロールパネル HTML ─────────────────
-// engine 自身が console.html を serve する。`mitiru_host --http-port N` 起動後、
-// ブラウザで http://127.0.0.1:N/ を開けば pause/step/scale/screenshot ボタンが
-// 並ぶ UI が出る。phase 3 で --console flag による自動ブラウザ起動を予定。
+// engine 自身が console.html を serve する。`mitiru_host --http-port N` で起動したあと、
+// ブラウザで http://127.0.0.1:N/ を開くと、pause/step/scale/screenshot のボタンが
+// 並んだ UI が出る。phase 3 で、--console flag でブラウザを自動で開くようにする予定。
 
 inline void mitiru::server::EngineHttpServer::handleConsoleHtml(const HttpRequest&, HttpResponse& resp)
 {
@@ -138,9 +138,9 @@ inline void mitiru::server::EngineHttpServer::handleRuntimePause(const HttpReque
 	resp.setBody(json);
 }
 
-/// @brief POST /api/runtime/step。body {"frames": N} (既定 1) 分だけ stepOneFrame を積む。
-/// @details paused でなければ 400 (9-7): step は「止まっている状態で 1 コマずつ進める」操作
-///          であり、live 進行中に積んでも意味が曖昧になる。
+/// @brief POST /api/runtime/step。body {"frames": N} (既定 1) の分だけ stepOneFrame を積む。
+/// @details paused でなければ 400 を返す (9-7)。step は「止まっている状態で 1 コマずつ進める」操作
+///          なので、live で進行している間に積むと意味が曖昧になる。
 inline void mitiru::server::EngineHttpServer::handleRuntimeStep(const HttpRequest& req, HttpResponse& resp)
 {
 	if (!m_callbacks.runtimeStep)
@@ -496,7 +496,7 @@ inline void mitiru::server::EngineHttpServer::handleProjectInfo(const HttpReques
 	std::string json = "{";
 	json += "\"engine\":\"MitiruEngine\"";
 	json += ",\"version\":\"" + std::string(SERVER_VERSION_STR) + "\"";
-	json += ",\"port\":" + std::to_string(m_port);
+	json += ",\"port\":" + std::to_string(port());
 	if (m_config)
 	{
 		json += ",\"title\":\"" + observe::jsonEscape(m_config->title) + "\"";

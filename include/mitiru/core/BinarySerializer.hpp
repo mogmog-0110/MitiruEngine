@@ -1,6 +1,6 @@
 #pragma once
 /// @file BinarySerializer.hpp
-/// @brief 高速バイナリシリアライゼーション（JSON補完用）
+/// @brief 高速バイナリシリアライゼーション（JSON 補完用）
 
 #include <cstdint>
 #include <cstring>
@@ -18,7 +18,7 @@ public:
 	explicit BinaryWriter(const std::string& path)
 		: m_ofs(path, std::ios::binary)
 	{
-		// Magic + version header
+		// magic + version のヘッダ
 		writeRaw("MBIN", 4);
 		writeU32(1); // version
 	}
@@ -83,7 +83,7 @@ public:
 		: m_ifs(path, std::ios::binary)
 	{
 		if (!m_ifs) return;
-		// Verify magic
+		// magic を検証する
 		char magic[4] = {};
 		m_ifs.read(magic, 4);
 		if (std::memcmp(magic, "MBIN", 4) != 0)

@@ -35,7 +35,7 @@ concept AssetLoader = requires(T loader, std::string_view path)
 };
 
 /// @brief 型消去されたアセットローダーインターフェース
-/// @details AssetLoaderコンセプトを満たす具象型を型消去で保持するための基底。
+/// @details AssetLoader コンセプトを満たす具象型を型消去で保持するための基底。
 class IAssetLoaderBase
 {
 public:

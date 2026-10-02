@@ -31,7 +31,7 @@ struct InputScriptEvent
 	int  b = 0;  ///< Key・MouseBtn: down=1 up=0 / MouseMove: dy
 };
 
-/// @brief キー名 (英数字1文字 / LEFT・SPACE 等の名前 / 数値) を仮想キーコードへ変換する。
+/// @brief キー名 (英数字 1 文字 / LEFT・SPACE 等の名前 / 数値) を仮想キーコードへ変換する。
 /// @return 不明な名前は -1
 [[nodiscard]] inline int keyNameToVk(const std::string& name) noexcept
 {

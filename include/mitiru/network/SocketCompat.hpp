@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file SocketCompat.hpp
-/// @brief ソケットAPI差異のクロスプラットフォーム抽象化
+/// @brief ソケット API の差異をクロスプラットフォームで抽象化する
 /// @details Windows (Winsock2) と POSIX (Berkeley sockets) の差異を吸収する。
-///          TcpTransport・UdpTransport等のネットワークバックエンドで使用する。
+///          TcpTransport・UdpTransport 等のネットワークバックエンドで使う。
 
 #ifdef _WIN32
 	#ifndef WIN32_LEAN_AND_MEAN
@@ -42,7 +42,7 @@ inline constexpr SocketHandle INVALID_SOCK = INVALID_SOCKET;
 inline constexpr SocketHandle INVALID_SOCK = -1;
 #endif
 
-/// @brief ソケット操作エラー定数（send/recv/bind等の失敗戻り値）
+/// @brief ソケット操作エラー定数（send/recv/bind 等の失敗戻り値）
 #ifdef _WIN32
 inline constexpr int SOCK_ERR = SOCKET_ERROR;
 #else
@@ -53,7 +53,7 @@ inline constexpr int SOCK_ERR = -1;
 #ifdef _WIN32
 inline constexpr int WOULD_BLOCK_ERR = WSAEWOULDBLOCK;
 #else
-/// POSIX では EWOULDBLOCK と EAGAIN は同義の場合が多いが両方チェックする
+/// POSIX では EWOULDBLOCK と EAGAIN は同義の場合が多いが、両方チェックする
 inline constexpr int WOULD_BLOCK_ERR = EWOULDBLOCK;
 #endif
 
@@ -107,21 +107,21 @@ inline void closeSocket(SocketHandle sock) noexcept
 #endif
 }
 
-/// @brief WSA初期化/後始末をRAIIで管理するガード
+/// @brief WSA の初期化と後始末を RAII で管理するガード
 /// @details Windows ではコンストラクタで WSAStartup、デストラクタで WSACleanup を呼ぶ。
-///          POSIX ではコンスト・デストとも何もしない（no-op）。
+///          POSIX ではコンストラクタもデストラクタも何もしない（no-op）。
 class WsaGuard final
 {
 public:
 #ifdef _WIN32
-	/// @brief コンストラクタ（WSAStartupを呼ぶ）
+	/// @brief コンストラクタ（WSAStartup を呼ぶ）
 	WsaGuard() noexcept
 	{
 		WSADATA wsaData{};
 		m_initialized = (::WSAStartup(MAKEWORD(2, 2), &wsaData) == 0);
 	}
 
-	/// @brief デストラクタ（WSACleanupを呼ぶ）
+	/// @brief デストラクタ（WSACleanup を呼ぶ）
 	~WsaGuard() noexcept
 	{
 		if (m_initialized)

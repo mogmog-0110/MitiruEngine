@@ -21,5 +21,5 @@
 #include <mitiru/core/detail/Engine_Init_Pipeline.hpp>
 #include <mitiru/core/detail/Engine_AutoTest.hpp>
 #include <mitiru/core/detail/Engine_Http.hpp>
-#include <mitiru/core/detail/Engine_Cef.hpp>
+#include <mitiru/core/detail/Engine_RmlUi.hpp>
 #endif

@@ -22,7 +22,7 @@
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/Invariant.hpp>
 #include <mitiru/module/ModuleApi.hpp>
-#include <mitiru/observe/Fnv1a.hpp>
+#include <mitiru/util/Hash.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/WriteBlame.hpp>
 #include <mitiru/replay/Recorder.hpp>
@@ -324,9 +324,9 @@ inline void checkStagnationOracle(const std::uint8_t* mem, std::uint32_t memSize
 {
 	if (mem == nullptr || memSize == 0 || thresholdSeconds <= 0.0f) { return; }
 
-	const std::uint64_t memHash = fnv1a64(mem, memSize);
+	const std::uint64_t memHash = ::mitiru::util::Hash::fnv1a(mem, memSize);
 	const std::uint64_t inputHash =
-		(inputBytes != nullptr && inputSize > 0) ? fnv1a64(inputBytes, inputSize) : 0;
+		(inputBytes != nullptr && inputSize > 0) ? ::mitiru::util::Hash::fnv1a(inputBytes, inputSize) : 0;
 	const bool inputChanged = (inputHash != state.lastInputHash);
 	state.lastInputHash = inputHash;
 
@@ -390,7 +390,7 @@ inline void checkScreenOracle(const std::uint8_t* pixelsRgba, std::size_t pixelB
 			"画面が全黒 (描画が空振りしているか、カメラかライトの設定が崩れた)");
 	}
 
-	const std::uint64_t hash = fnv1a64(pixelsRgba, pixelBytes);
+	const std::uint64_t hash = ::mitiru::util::Hash::fnv1a(pixelsRgba, pixelBytes);
 	if (hash != state.lastScreenHash)
 	{
 		state.lastScreenHash           = hash;

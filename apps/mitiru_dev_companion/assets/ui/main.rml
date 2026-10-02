@@ -1,0 +1,75 @@
+<rml>
+<head>
+<title>Mitiru Dev Companion</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<style>
+  /* watch 中の game の横に出る細長い操作バー。値は C++ (mitiru_dev_companion.dll) が送り、ボタンは action を返すだけ */
+  body { display: flex; align-items: center; padding: 0px 14px; box-sizing: border-box;
+         background-color: #c8c8c8; color: #101010; font-size: 12px; border: 1px #101010;
+         box-shadow: #ffffff 2px 2px 0px 0px inset, #6a6a6a -2px -2px 0px 0px inset; }
+  .sep { margin: 0px 10px; color: #101010; }
+  .indicator { color: #101010; }
+  .indicator.dead { color: #c8002c; }
+  .project { margin-left: 8px; font-family: PixelMplus12; font-size: 13px; white-space: nowrap; max-width: 240px;
+             overflow: hidden; text-overflow: ellipsis; }
+  .pid { margin-left: 6px; font-size: 11px; color: #4a4a4a; }
+  .status { flex: 1; font-size: 11px; color: #4a4a4a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status .ok { color: #101010; }
+  .status .bad { color: #c8002c; }
+  .status .busy { color: #c8002c; }
+  .actions { display: flex; gap: 4px; }
+
+  .btn { font-size: 11px; padding: 4px 12px; border: 1px #101010; background-color: #d8d8d8; color: #101010;
+         white-space: nowrap; box-shadow: #ffffff 2px 2px 0px 0px inset, #6a6a6a -2px -2px 0px 0px inset; }
+  .btn:hover { background-color: #0000000f; }
+  .btn:active { box-shadow: #6a6a6a 2px 2px 0px 0px inset, #ffffff -2px -2px 0px 0px inset; }
+  .btn.build { color: #ffffff; background-color: #c8002c; font-weight: bold;
+               box-shadow: #ffffff73 2px 2px 0px 0px inset, #00000073 -2px -2px 0px 0px inset; }
+  .btn.build:hover { background-color: #a30022; }
+  .btn.inspect.active { color: #ffffff; background-color: #c8002c; font-weight: bold; }
+  .btn.stop { color: #c8002c; }
+  .btn.stop:hover { background-color: #c8002c1a; }
+  .btn.off { color: #10101052; background-color: #d8d8d8; font-weight: normal; cursor: auto;
+             box-shadow: #ffffff 2px 2px 0px 0px inset, #6a6a6a -2px -2px 0px 0px inset; }
+  .btn.busy { color: #c8002c; border-color: #c8002c; background-color: #d8d8d8; }
+
+  /* 下に一時だけ出る知らせ。<toast> が kind-ok / kind-error / kind-info と is-visible を付け外しする */
+  toast { display: block; position: absolute; bottom: 4px; left: 120px; right: 120px; padding: 3px 10px;
+          font-size: 11px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          background-color: #d8d8d8; border: 1px #101010; opacity: 0; pointer-events: none;
+          transition: opacity 0.18s cubic-out;
+          box-shadow: #ffffff 2px 2px 0px 0px inset, #6a6a6a -2px -2px 0px 0px inset; }
+  toast.is-visible { opacity: 1; }
+  toast.kind-ok { color: #101010; border-color: #101010; }
+  toast.kind-error { color: #c8002c; border-color: #c8002c; }
+  toast.kind-info { color: #c8002c; border-color: #c8002c; }
+</style>
+</head>
+<body data-model="view">
+  <span class="indicator" data-class-dead="!env.gameAlive">●</span>
+  <div class="project">
+    <span data-if="env.projectName">{{ env.projectName }}</span><span data-if="!env.projectName">(no session)</span>
+    <span class="pid" data-if="env.gamePid">pid {{ env.gamePid }}</span>
+  </div>
+  <span class="sep">|</span>
+  <div class="status">
+    <span class="busy" data-if="build.active">building...</span>
+    <span class="ok" data-if="!build.active &amp;&amp; build.attempted &amp;&amp; build.ok">build ok, {{ build.durationMs / 1000 | f2 }}s</span>
+    <span class="bad" data-if="!build.active &amp;&amp; build.attempted &amp;&amp; !build.ok">build FAILED (exit {{ build.exitCode }})</span>
+    <span data-if="!build.active &amp;&amp; !build.attempted">ready</span>
+  </div>
+  <span class="sep">|</span>
+  <div class="actions">
+    <button class="btn build" data-if="env.buildEnabled &amp;&amp; !build.active"
+            data-event-click="dispatch('companion.build')">Build</button>
+    <span class="btn busy" data-if="build.active">Building...</span>
+    <span class="btn off" data-if="!env.buildEnabled &amp;&amp; !build.active">Build</span>
+    <button class="btn inspect" data-if="env.gamePid" data-class-active="env.inspectorOpen"
+            data-event-click="dispatch('companion.inspector')">{{ env.inspectorOpen ? 'Hide Inspector' : 'Inspector' }}</button>
+    <span class="btn off" data-if="!env.gamePid">Inspector</span>
+    <button class="btn stop" data-if="env.gameAlive" data-event-click="dispatch('companion.stop')">Stop</button>
+    <span class="btn off" data-if="!env.gameAlive">Stop</span>
+  </div>
+  <toast data-attr-value="flash" ms="4000"></toast>
+</body>
+</rml>

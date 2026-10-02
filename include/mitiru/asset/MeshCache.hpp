@@ -3,8 +3,8 @@
 /// @file MeshCache.hpp
 /// @brief メッシュアセットキャッシュ
 ///
-/// 文字列IDでメッシュデータを管理するキャッシュ。
-/// OBJ形式の文字列データからメッシュを構築し保持する。
+/// 文字列 ID でメッシュデータを管理するキャッシュ。
+/// OBJ 形式の文字列データからメッシュを構築して保持する。
 ///
 /// @code
 /// mitiru::asset::MeshCache cache;
@@ -47,9 +47,9 @@ struct MeshCacheStats
 	size_t totalIndices{0};   ///< 総インデックス数
 };
 
-/// @brief 簡易OBJパーサー（頂点と面のみ）
-/// @param objData OBJ形式の文字列
-/// @return パースされたメッシュ（失敗時はnullopt）
+/// @brief 簡易 OBJ パーサー（頂点と面のみ）
+/// @param objData OBJ 形式の文字列
+/// @return パースされたメッシュ（失敗時は nullopt）
 [[nodiscard]] inline std::optional<CacheMesh> parseSimpleObj(const std::string& objData)
 {
 	CacheMesh mesh;
@@ -86,7 +86,7 @@ struct MeshCacheStats
 			std::string token;
 			while (lineStream >> token)
 			{
-				// v//vn形式の解析
+				// v//vn 形式の解析
 				const auto slashPos = token.find('/');
 				int vIdx = 0;
 				if (slashPos != std::string::npos)
@@ -126,10 +126,10 @@ struct MeshCacheStats
 class MeshCache
 {
 public:
-	/// @brief OBJデータからメッシュをロードする
-	/// @param id メッシュID
-	/// @param objData OBJ形式の文字列データ
-	/// @return ロード成功ならtrue
+	/// @brief OBJ データからメッシュをロードする
+	/// @param id メッシュ ID
+	/// @param objData OBJ 形式の文字列データ
+	/// @return ロード成功なら true
 	bool load(const std::string& id, const std::string& objData)
 	{
 		auto mesh = parseSimpleObj(objData);
@@ -138,17 +138,17 @@ public:
 		return true;
 	}
 
-	/// @brief glTFバイナリデータからメッシュをロードする
-	/// @param id メッシュID
-	/// @param data glTFバイナリデータ
+	/// @brief glTF バイナリデータからメッシュをロードする
+	/// @param id メッシュ ID
+	/// @param data glTF バイナリデータ
 	/// @param size データサイズ
-	/// @return ロード成功ならtrue
+	/// @return ロード成功なら true
 	bool loadGltf(const std::string& id, const void* data, std::size_t size)
 	{
 		if (!data || size == 0) return false;
 
-		/// cgltf を直接使わず、頂点/インデックスだけ抽出する簡易パス
-		/// 完全なglTFローダーは mitiru::render::loadGltfFromMemory() を使用
+		/// cgltf を直接使わず、頂点/インデックスだけを抽出する簡易パス
+		/// 完全な glTF ローダーは mitiru::render::loadGltfFromMemory() を使用
 		CacheMesh mesh;
 
 		/// ヘッダーチェック（GLB マジックナンバー: 0x46546C67 = "glTF"）
@@ -158,8 +158,8 @@ public:
 			std::memcpy(&magic, data, sizeof(magic));
 			if (magic == 0x46546C67u)
 			{
-				/// GLBとして認識。render::loadGltfFromMemory に委譲可能
-				/// ここでは簡易的にCacheMeshとしてメタデータのみ格納
+				/// GLB として認識。render::loadGltfFromMemory に委譲可能
+				/// ここでは簡易的に CacheMesh としてメタデータのみを格納
 				CacheVertex v;
 				v.position = {0, 0, 0};
 				mesh.vertices.push_back(v);
@@ -172,8 +172,8 @@ public:
 	}
 
 	/// @brief メッシュを取得する
-	/// @param id メッシュID
-	/// @return メッシュへのconstポインタ（存在しなければnullptr）
+	/// @param id メッシュ ID
+	/// @return メッシュへの const ポインタ（存在しなければ nullptr）
 	[[nodiscard]] const CacheMesh* get(const std::string& id) const noexcept
 	{
 		auto it = m_meshes.find(id);
@@ -182,16 +182,16 @@ public:
 	}
 
 	/// @brief メッシュの有無を確認する
-	/// @param id メッシュID
-	/// @return 存在すればtrue
+	/// @param id メッシュ ID
+	/// @return 存在すれば true
 	[[nodiscard]] bool has(const std::string& id) const noexcept
 	{
 		return m_meshes.count(id) > 0;
 	}
 
 	/// @brief メッシュをアンロードする
-	/// @param id メッシュID
-	/// @return アンロード成功ならtrue
+	/// @param id メッシュ ID
+	/// @return アンロード成功なら true
 	bool unload(const std::string& id)
 	{
 		return m_meshes.erase(id) > 0;

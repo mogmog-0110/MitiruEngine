@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file UiShapes.hpp
-/// @brief SDF (Signed Distance Field) ベースのUI形状レンダラー
+/// @brief SDF (Signed Distance Field) ベースの UI 形状レンダラー
 /// @details 角丸矩形・ボーダー・ソフトシャドウ・グロー効果を
-///          SDF数学で実現するソフトウェアレンダラー。
-///          ScreenのdrawRect/drawCircle等に委譲してアンチエイリアス付きの
-///          滑らかなUI形状を描画する。
+///          SDF 数学で実現するソフトウェアレンダラー。
+///          Screen の drawRect/drawCircle 等に委譲してアンチエイリアス付きの
+///          滑らかな UI 形状を描画する。
 
 #include <algorithm>
 #include <cmath>
@@ -90,12 +90,12 @@ struct RoundedRectParams
 	[[nodiscard]] bool operator==(const RoundedRectParams& rhs) const noexcept = default;
 };
 
-// ── SDF数学ユーティリティ ──────────────────────────────────
+// ── SDF 数学ユーティリティ ──────────────────────────────────
 
 namespace sdf
 {
 
-/// @brief smoothstep 補間（GLSLと同等）
+/// @brief smoothstep 補間（GLSL と同等）
 /// @param edge0 下端
 /// @param edge1 上端
 /// @param x 入力値
@@ -106,9 +106,9 @@ namespace sdf
 	return t * t * (3.0f - 2.0f * t);
 }
 
-/// @brief 角丸矩形のSDF距離を計算する
-/// @param px ピクセルX座標（矩形中心基準）
-/// @param py ピクセルY座標（矩形中心基準）
+/// @brief 角丸矩形の SDF 距離を計算する
+/// @param px ピクセル X 座標（矩形中心基準）
+/// @param py ピクセル Y 座標（矩形中心基準）
 /// @param halfW 矩形の半幅
 /// @param halfH 矩形の半高さ
 /// @param radius 角丸半径
@@ -127,9 +127,9 @@ namespace sdf
 	return outsideDist + insideDist - r;
 }
 
-/// @brief 円のSDF距離を計算する
-/// @param px ピクセルX座標（中心基準）
-/// @param py ピクセルY座標（中心基準）
+/// @brief 円の SDF 距離を計算する
+/// @param px ピクセル X 座標（中心基準）
+/// @param py ピクセル Y 座標（中心基準）
 /// @param radius 半径
 /// @return 符号付き距離
 [[nodiscard]] inline float circle(float px, float py, float radius) noexcept
@@ -163,15 +163,15 @@ namespace sdf
 
 // ── UiShapeRenderer ────────────────────────────────────────
 
-/// @brief SDFベースUI形状レンダラー
-/// @details 各ピクセルのSDF距離を計算し、smoothstepでアンチエイリアスを掛けた
-///          滑らかなUI形状をScreen上に描画する。
+/// @brief SDF ベース UI 形状レンダラー
+/// @details 各ピクセルの SDF 距離を計算し、smoothstep でアンチエイリアスを掛けた
+///          滑らかな UI 形状を Screen 上に描画する。
 ///
 ///          描画フロー:
 ///          1. バウンディングボックス（シャドウ・グロー含む）を算出
-///          2. 各スキャンラインでSDF距離を評価
-///          3. smoothstepでアルファを決定
-///          4. ScreenのソフトウェアフレームバッファまたはdrawRectに出力
+///          2. 各スキャンラインで SDF 距離を評価
+///          3. smoothstep でアルファを決定
+///          4. Screen のソフトウェアフレームバッファまたは drawRect に出力
 ///
 /// @code
 /// mitiru::render::UiShapeRenderer shapes;
@@ -191,7 +191,7 @@ public:
 	/// @brief 角丸矩形を全効果付きで描画する
 	void drawRoundedRect(Screen& screen, const RoundedRectParams& params) const;
 
-	/// @brief SDF円を描画する（アンチエイリアス付き）
+	/// @brief SDF 円を描画する（アンチエイリアス付き）
 	void drawCircle(Screen& screen,
 	                float cx, float cy, float radius,
 	                const sgc::Colorf& fillColor,
@@ -222,15 +222,15 @@ public:
 private:
 	static constexpr float PI = 3.14159265358979323846f;
 
-	/// @brief ピクセルをScreenに書き込む
+	/// @brief ピクセルを Screen に書き込む
 	static void writePixel(Screen& screen, int x, int y, const sgc::Colorf& color);
 };
 
 // ── UiShapeCache ───────────────────────────────────────────
 
-/// @brief SDF描画結果のテクスチャキャッシュ
+/// @brief SDF 描画結果のテクスチャキャッシュ
 /// @details 同一パラメータの再描画を回避するため、レンダリング結果を
-///          Textureとして保持する。LRU方式で古いエントリを破棄する。
+///          Texture として保持する。LRU 方式で古いエントリを破棄する。
 ///
 /// @code
 /// mitiru::render::UiShapeCache cache(32);
@@ -316,8 +316,8 @@ private:
 } // namespace mitiru::render
 
 // ════════════════════════════════════════════════════════════
-// Screen依存メソッドのインライン実装
-// Screen.hppのインクルード完了後に定義する（循環依存回避）
+// Screen 依存メソッドのインライン実装
+// Screen.hpp のインクルード完了後に定義する（循環依存回避）
 // ════════════════════════════════════════════════════════════
 #include <mitiru/core/Screen.hpp>
 
@@ -360,7 +360,7 @@ inline void mitiru::render::UiShapeRenderer::drawRoundedRect(
 	{
 		const float fy = static_cast<float>(py) + 0.5f;
 
-		/// スキャンライン最適化: Y方向のSDF範囲を事前チェック
+		/// スキャンライン最適化: Y 方向の SDF 範囲を事前チェック
 		const float yDist = std::abs(fy - cy) - halfH;
 		if (yDist > expand + AA_WIDTH) continue;
 
@@ -368,7 +368,7 @@ inline void mitiru::render::UiShapeRenderer::drawRoundedRect(
 		{
 			const float fx = static_cast<float>(px) + 0.5f;
 
-			/// スキャンライン最適化: X方向の距離事前チェック
+			/// スキャンライン最適化: X 方向の距離事前チェック
 			const float xDist = std::abs(fx - cx) - halfW;
 			if (xDist > expand + AA_WIDTH) continue;
 
@@ -478,7 +478,7 @@ inline void mitiru::render::UiShapeRenderer::drawCircle(
 
 		if (std::abs(dy) > radius + AA_WIDTH) continue;
 
-		/// X方向の可視範囲を計算する（スキャンライン最適化）
+		/// X 方向の可視範囲を計算する（スキャンライン最適化）
 		const float xRange = std::sqrt(std::max(0.0f,
 			(radius + AA_WIDTH) * (radius + AA_WIDTH) - dy * dy));
 		const int scanMinX = std::max(minX, static_cast<int>(std::floor(cx - xRange)));
@@ -623,14 +623,14 @@ inline void mitiru::render::UiShapeRenderer::drawProgressArc(
 
 			const float dist = std::sqrt(dx * dx + dy * dy);
 
-			/// リング形状のアルファ（外縁・内縁のAA）
+			/// リング形状のアルファ（外縁・内縁の AA）
 			const float outerAlpha = 1.0f - sdf::smoothstep(-AA_WIDTH, 0.0f, dist - outerR);
 			const float innerAlpha = sdf::smoothstep(-AA_WIDTH, 0.0f, dist - innerR);
 			const float ringAlpha = outerAlpha * innerAlpha;
 
 			if (ringAlpha <= 0.0f) continue;
 
-			/// 角度を計算する（12時方向=0、時計回り）
+			/// 角度を計算する（12 時方向=0、時計回り）
 			float angle = std::atan2(dx, -dy);
 			if (angle < 0.0f)
 			{

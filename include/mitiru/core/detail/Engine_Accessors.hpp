@@ -12,40 +12,25 @@
 
 MITIRU_INLINE mitiru::Engine::~Engine()
 {
-	// MITIRU_RECORD が設定されていれば replay 記録を自動保存する。Best-effort:
-	// I/O error は握り潰し、output dir が無い / read-only path でも destructor を
-	// 巻き込まないようにする (残りの cleanup chain を失うのを防ぐ)。
-	if (m_inputRecorder.isRecording() && !m_recordOutputPath.empty())
+	// メンバの破棄順では、キュー全体を待つのは m_renderer3D の破棄が最初になる。3D を持たない
+	// ゲームの 2D パイプラインと LoFi は何も待たない (#78)。キューは 1 本なので、ここで
+	// 1 回待てば全部品の処理が終わる。lost なら待たずに戻る。
+	if (m_device)
 	{
-		try
-		{
-			auto data = m_inputRecorder.endRecording();
-			data.saveToFile(m_recordOutputPath);
-		}
-		catch (...)
-		{
-			// 意図的に握り潰す。この時点で logger の保証は無い
-		}
+		m_device->waitForGpu();
 	}
 
-	// CEF / HTTP より先に game DLL を破棄する。ModuleHost 内で on_shutdown +
+	// UI / HTTP より先に game DLL を破棄する。ModuleHost 内で on_shutdown +
 	// FreeLibrary を呼ぶ。m_moduleHost の unique_ptr もこの後に自動破棄され、
 	// runModule() を経由しなかった場合の safety net になる。
 	unloadModule();
 	unloadGhostModule();
 
-	m_cefContext.shutdown();
+	m_rmlUi.stop();
 	if (m_httpServer)
 	{
 		m_httpServer->shutdown();
 	}
-}
-
-// -- CEF -------------------------------------------------------------------
-
-MITIRU_INLINE CefContext* mitiru::Engine::cefContext() noexcept
-{
-	return &m_cefContext;
 }
 
 // -- World / Scene ---------------------------------------------------------
@@ -144,26 +129,6 @@ MITIRU_INLINE std::uint64_t mitiru::Engine::frameNumber() const noexcept
 MITIRU_INLINE mitiru::InputInjector& mitiru::Engine::inputInjector() noexcept
 {
 	return m_inputInjector;
-}
-
-MITIRU_INLINE mitiru::InputRecorder& mitiru::Engine::inputRecorder() noexcept
-{
-	return m_inputRecorder;
-}
-
-MITIRU_INLINE const mitiru::InputRecorder& mitiru::Engine::inputRecorder() const noexcept
-{
-	return m_inputRecorder;
-}
-
-MITIRU_INLINE mitiru::InputReplayer& mitiru::Engine::inputReplayer() noexcept
-{
-	return m_inputReplayer;
-}
-
-MITIRU_INLINE const mitiru::InputReplayer& mitiru::Engine::inputReplayer() const noexcept
-{
-	return m_inputReplayer;
 }
 
 MITIRU_INLINE const mitiru::InputState& mitiru::Engine::inputState() const noexcept

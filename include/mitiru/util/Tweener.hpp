@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Tweener.hpp
-/// @brief 複数同時Tween管理マネージャー
-/// @details add()でTweenを登録し、update(dt)で一括更新する。
+/// @brief 複数同時 Tween 管理マネージャー
+/// @details add()で Tween を登録し、update(dt)で一括更新する。
 ///          コールバックでアニメーション中の値を受け取る。
 
 #include <algorithm>
@@ -15,16 +15,16 @@
 namespace mitiru::util
 {
 
-/// @brief Tween ID型
+/// @brief Tween ID 型
 using TweenId = std::uint32_t;
 
-/// @brief Tweenコールバック型（現在値を受け取る）
+/// @brief Tween コールバック型（現在値を受け取る）
 using TweenCallback = std::function<void(float)>;
 
 /// @brief イージング関数型
 using EaseFunc = std::function<float(float)>;
 
-/// @brief 個別Tweenエントリ
+/// @brief 個別 Tween エントリ
 struct TweenEntry
 {
 	TweenId id = 0;          ///< 一意ID
@@ -37,17 +37,17 @@ struct TweenEntry
 	bool finished = false;   ///< 完了フラグ
 };
 
-/// @brief 複数同時Tween管理マネージャー
+/// @brief 複数同時 Tween 管理マネージャー
 class Tweener
 {
 public:
-	/// @brief Tweenを追加する
+	/// @brief Tween を追加する
 	/// @param from 開始値
 	/// @param to 終了値
 	/// @param duration 所要時間（秒）
 	/// @param callback 毎フレーム値通知コールバック
 	/// @param ease イージング関数（デフォルト: 線形）
-	/// @return 追加されたTweenのID
+	/// @return 追加された Tween の ID
 	TweenId add(float from, float to, float duration,
 	            TweenCallback callback,
 	            EaseFunc ease = Easing::linear)
@@ -64,7 +64,7 @@ public:
 		return id;
 	}
 
-	/// @brief 全Tweenを更新する
+	/// @brief 全 Tween を更新する
 	/// @param dt デルタタイム（秒）
 	void update(float dt)
 	{
@@ -88,16 +88,16 @@ public:
 			}
 		}
 
-		/// 完了したTweenを除去する
+		/// 完了した Tween を除去する
 		m_tweens.erase(
 			std::remove_if(m_tweens.begin(), m_tweens.end(),
 				[](const TweenEntry& e) { return e.finished; }),
 			m_tweens.end());
 	}
 
-	/// @brief 指定IDのTweenをキャンセルする
-	/// @param id キャンセルするTweenのID
-	/// @return キャンセルに成功したらtrue
+	/// @brief 指定 ID の Tween をキャンセルする
+	/// @param id キャンセルする Tween の ID
+	/// @return キャンセルに成功したら true
 	bool cancel(TweenId id)
 	{
 		const auto it = std::find_if(m_tweens.begin(), m_tweens.end(),
@@ -110,19 +110,19 @@ public:
 		return false;
 	}
 
-	/// @brief 全Tweenをクリアする
+	/// @brief 全 Tween をクリアする
 	void clear()
 	{
 		m_tweens.clear();
 	}
 
-	/// @brief アクティブなTween数を返す
+	/// @brief アクティブな Tween 数を返す
 	[[nodiscard]] int activeCount() const noexcept
 	{
 		return static_cast<int>(m_tweens.size());
 	}
 
-	/// @brief アクティブなTweenが存在するか
+	/// @brief アクティブな Tween が存在するか
 	[[nodiscard]] bool hasActive() const noexcept
 	{
 		return !m_tweens.empty();

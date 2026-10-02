@@ -40,13 +40,13 @@ Unity / Godotのような全機能mega editorの対極を志す。1ツール = 1
 
 inspectorは読み取り専用。authoringはcode、observationはinspector。
 
-### 3. C++ for gameplay, CEF for UI/inspector overlay
+### 3. C++ for gameplay, RmlUi for UI/inspector overlay
 
-2026-05に確定した。
+2026-05に確定。UI の層は RmlUi (ADR 0050 / 0051)。
 
 - **gameplay logic (シーン、ゲームルール、状態機械、シミュレーション、入力解釈、save/load、AI、物理)は全C++**
-- **CEFはUI / HUD / 演出 / inspector window** の表示レイヤー
-- **bridgeはsignal-only** に薄く保つ(JS → C++はinput/UIイベント通知、C++ → JSはstate pushのみ)
+- **RmlUi (RML / RCSS) はUI / HUD / 演出 / inspector window** の表示レイヤー。JS は持たない
+- **bridgeはsignal-only** に薄く保つ(UI → C++はinput/UIイベント通知、C++ → UIはstate pushのみ)
 
 同じく2026-05に確定した。
 - **Lua / NodeGraph scriptingは削除済み**
@@ -62,7 +62,7 @@ Game DLLは純関数に近い形で実装される: `(memory, input, dt) → (me
 - **Gameのside effectは`FrameIntents` (エンジンへの依頼を書く欄)経由で「お願い」** する(`requestStop`, `executeJs`, etc.)
 - 結果: hot reloadが構造的に安全、巻き戻し / リプレイがゲームの全状態(1個のstruct)のserializeで完結、ABI driftがPOD version fieldで検出可能
 
-これは「gameplayはC++、CEFは表示のみ」の`signal-only`規約をDLL境界にも一般化 したもの。「engine.foo()で何でも済む」誘惑を構造的に消し、host capabilityの追加を常に明示的にする。
+これは「gameplayはC++、UIは表示のみ」の`signal-only`規約をDLL境界にも一般化 したもの。「engine.foo()で何でも済む」誘惑を構造的に消し、host capabilityの追加を常に明示的にする。
 
 **実装のreference**: `examples/rewind/rewind_dll.cpp` (game side) + `apps/mitiru_host/main.cpp` (host side)。`mitiru_host --watch path/to/game.dll`でL3 hot reload (state preserved across code swap)が動く。
 
@@ -92,12 +92,12 @@ targetが違えばphilosophyも違うので、外すtargetには無理に対応�
 raylib / Love2D / Pyxelなど既存minimal engine群との差別化として5軸を持つ。実装は段階的に進めている。
 
 > **外向けの語り方**: 「5軸」「軸N」は内部の設計指針としての呼び名。公開文書・サイト・README
-> では軸番号ではなく機能名そのもの(「HTML/CSS UI」「巻き戻し」「単独起動」「録画リプレイ」
+> では軸番号ではなく機能名そのもの(「RML/RCSS UI」「巻き戻し」「単独起動」「録画リプレイ」
 > 「別窓ツール」)で語る。この章はその定義の場としてのみ軸番号を使う。
 
-### 軸1: HTML/CSSでUIが書けるC++ engine
+### 軸1: RML/RCSS (HTML/CSSの方言) でUIが書けるC++ engine
 
-CEF統合済み。ゲーム本体はC++、UI / HUD / メニューはHTML/CSSで書ける。
+ゲーム本体はC++、UI / HUD / メニューはRmlUiのRML/RCSSで書く。UIもエンジンの描画の中で合成するので、headless撮影と決定論replayがUIまで届く (ADR 0051)。
 
 - raylib / Love2D / Pyxelは独自UI描画でWebスキル流用不可
 - Unity / UnrealはネイティブUIでWebスキル無効
@@ -151,13 +151,16 @@ engine本体に実装済み。ツールウィンドウの一覧と開き方: [`d
 | Module group | Status | Notes |
 |---|---|---|
 | `core`, `gfx`, `platform`, `scene`, `ecs`, `audio`, `input`, `asset`, `resource`, `data`, `control`, `util`, `math`, `i18n`, `observe`, `debug`, `validate` | Stable | |
+| `gfx` — DX12 (本命) / DX11 (明示 fallback、ADR 0023) / WebGL2 | Stable | |
+| `gfx` — Vulkan / OpenGL / WebGPU (2D だけ)、`platform/glfw` (`GlfwWindow`) | Frozen | ADR 0047。新機能を足さない。ビルドとテストは保つ。第 2 backend が 2D を描けた時点で削除 |
+| シェーダの Slang 変換 | Experimental | `MITIRU_WITH_SLANG` (既定 OFF) のスパイク。結果は [`docs/SLANG_SPIKE.md`](SLANG_SPIKE.md)。既定のコンパイラは FXC のまま |
 | `render` — 2D pipeline + 3D Phong/Toon | Stable | |
 | `render` — DX12 HDR / MSAA / FXAA / Shadow | Stable | 2026-05 polished |
 | `physics` — Box2D, Jolt | Stable | |
 | `vn` (native) | Stable | |
 | `network` — TCP, lobby, state sync | Stable | |
 | `network` — `ReliableUDP`, GameNetworkingSockets | Stable | GNS submodule + CMake probe (`MITIRU_ENABLE_GNS`) and `SteamNetConnectionStatusChanged` callback shipped; see `docs/ROADMAP_BIG_ROCKS.md` 3-B |
-| `cef`, CEF-side bridges | Stable | role shifted to UI overlay + inspector |
+| `ui_rml` — RmlUi (main window の UI) | Stable | Windows / DX12。書き方は [`docs/UI_RMLUI.md`](UI_RMLUI.md) |
 | `bridge` (signal-only) | Stable | view-push pattern unified |
 | Gameplay primitives (FSM, Timer, SceneRouter, BridgeViewPush, JsonBinding, SaveSchema, ContentLoader, SchemaValidator, etc.) | Stable | 2026-05 added |
 
@@ -167,8 +170,9 @@ engine本体に実装済み。ツールウィンドウの一覧と開き方: [`d
 |---|---|
 | Lua scripting | 2026-05の方針確定で削除 |
 | NodeGraph scripting | 2026-05の方針確定で削除 |
-| JS gameplay path (旧「JS-first」路線) | 2026-05の方針転換。CEF now UI overlay only |
+| JS gameplay path (旧「JS-first」路線) | 2026-05の方針転換。2026-10 に UI 層からも JS を外した (ADR 0051) |
 | `mitiru.novel` JS VM | native vn modules used instead |
+| CEF (Chromium) の UI 層と JS の binder | RmlUi に置き換えて削除 (ADR 0050 / 0051) |
 
 ---
 
@@ -177,8 +181,8 @@ engine本体に実装済み。ツールウィンドウの一覧と開き方: [`d
 - **GUI Visual editor.** Atomic-tools哲学に反する。Unity / Godotを使うべき
 - **Block-based scripting (Scratch / Blueprint系).** GUI authoringと同じ理由
 - **Scratchレベル未経験者の取り込み.** Target違い(上記Target user参照)
-- **Console / mobile target.** Windows-first scope。CEFがdesktop-onlyな以上両立困難
-- **MoltenVK 経由の Vulkan (macOS).** Apple 上は Metal をネイティブに実装する方針で、開発中 (公開版にはまだ入っていない)。Vulkan は Linux 向けに gfx 層まで実装済みで、3D レンダラは無い
+- **Console / mobile target.** Windows-first scope
+- **MoltenVK 経由の Vulkan (macOS).** Apple 上は Metal をネイティブに実装する方針で、開発中 (公開版にはまだ入っていない)。Vulkan は Linux 向けに gfx 層まで実装済みで、3D レンダラは無い (凍結、ADR 0047)
 - **JSONでgameplay logicを宣言するDSL.** 純データ(novel script / i18n / balance / save)のみJSON、interactionはC++
 - **AIがJS gameplayを生成する元路線.** 2026-05に廃止済み
 - **Heavy-handed scope cuts to existing modules.** 削除済み(Lua/NodeGraph/JS gameplay)以外は維持
@@ -208,7 +212,7 @@ engine本体に実装済み。ツールウィンドウの一覧と開き方: [`d
 以下の節目を順に実装してきた。現行リリースで一通り揃っている。
 
 - **docs / 哲学** — docs / philosophy commit (this file is part of it)
-- **HTML/CSS UI** — CLI integration + HTML UI samples
+- **RML/RCSS UI** — CLI integration + UI samples
 - **巻き戻し** — 巻き戻しinspector
 - **単独起動** — per-system isolation
 - **録画リプレイ** — deterministic + auto-replay

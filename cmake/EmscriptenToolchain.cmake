@@ -1,11 +1,11 @@
 # EmscriptenToolchain.cmake
-# Emscripten/WASM cross-compilation toolchain for MitiruEngine.
+# MitiruEngine 用の Emscripten/WASM クロスコンパイルツールチェーン。
 #
-# Usage:
+# 使用方法
 #   cmake -B build-wasm -DCMAKE_TOOLCHAIN_FILE=cmake/EmscriptenToolchain.cmake
 #
-# Note: Prefer `emcmake cmake` which sets the toolchain automatically.
-#       This file provides explicit control and engine-specific WASM flags.
+# 注記。ツールチェーンを自動的に設定する `emcmake cmake` の使用を推奨する。
+#       このファイルでは、明示的な制御とエンジン固有の WASM フラグを指定する。
 
 cmake_minimum_required(VERSION 3.21)
 
@@ -15,7 +15,7 @@ set(CMAKE_SYSTEM_VERSION 1)
 set(CMAKE_CROSSCOMPILING TRUE)
 
 # ── Compiler ─────────────────────────────────────────────────
-# If EMSDK is set, derive compiler paths. Otherwise assume emcc is on PATH.
+# EMSDK が設定されている場合は、コンパイラのパスを導き出す。それ以外の場合は、emcc が PATH 上にあるものとする。
 if(DEFINED ENV{EMSDK})
 	set(EMSCRIPTEN_ROOT "$ENV{EMSDK}/upstream/emscripten")
 	set(CMAKE_C_COMPILER   "${EMSCRIPTEN_ROOT}/emcc")
@@ -38,7 +38,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXECUTABLE_SUFFIX ".html")
 
 # ── WASM linker flags ───────────────────────────────────────
-# Memory: 256MB initial, allow growth up to 512MB
+# メモリの初期値は 256 MB で、最大 512 MB まで拡張可能
 set(MITIRU_WASM_MEMORY_FLAGS
 	"-sINITIAL_MEMORY=268435456"
 	"-sALLOW_MEMORY_GROWTH=1"
@@ -46,7 +46,7 @@ set(MITIRU_WASM_MEMORY_FLAGS
 	"-sSTACK_SIZE=1048576"
 )
 
-# WebGL2 (OpenGL ES 3.0 emulation)
+# WebGL2 (OpenGL ES 3.0 エミュレーション)
 set(MITIRU_WASM_GL_FLAGS
 	"-sUSE_WEBGL2=1"
 	"-sFULL_ES3=1"
@@ -54,24 +54,24 @@ set(MITIRU_WASM_GL_FLAGS
 	"-sMAX_WEBGL_VERSION=2"
 )
 
-# WebAudio via SDL2 audio shim
+# SDL2 オーディオシムを介した WebAudio
 set(MITIRU_WASM_AUDIO_FLAGS
 	"-sUSE_SDL=0"
 )
 
-# Exported runtime functions for JS interop
+# JS 連携用にエクスポートするランタイム関数
 set(MITIRU_WASM_EXPORT_FLAGS
 	"-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']"
 	"-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','stringToUTF8']"
 )
 
-# Filesystem and fetch support
+# ファイルシステムとフェッチのサポート
 set(MITIRU_WASM_FS_FLAGS
 	"-sFORCE_FILESYSTEM=1"
 	"-sFETCH=1"
 )
 
-# Combine all link flags
+# すべてのリンクフラグを結合する
 string(JOIN " " MITIRU_WASM_LINK_FLAGS
 	${MITIRU_WASM_MEMORY_FLAGS}
 	${MITIRU_WASM_GL_FLAGS}

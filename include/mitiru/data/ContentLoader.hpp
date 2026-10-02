@@ -7,24 +7,24 @@
 /// その他あらゆる read-only な authored content を JSON で宣言し、起動時または
 /// scene-load 時に typed な C++ struct として load できる。
 ///
-/// **利用側の type opt-in。** nlohmann の serialization マクロで自分の struct を register する:
+/// **利用側の type opt-in。** nlohmann の serialization マクロで自分の struct を register する。
 ///
 /// @code
 /// struct BalanceRow { std::string name; int cost; float winRate; };
 /// NLOHMANN_DEFINE_TYPE_INTRUSIVE(BalanceRow, name, cost, winRate)
 /// @endcode
 ///
-/// あとは 1 行で load する:
+/// あとは 1 行で load する。
 ///
 /// @code
-/// // Single struct
+/// // 単一の struct
 /// auto r = mitiru::data::ContentLoader<BalanceRow>::loadFile("data/balance.json");
 /// if (r.ok()) { const BalanceRow& row = *r.value; }
 ///
-/// // Array of structs
+/// // struct の配列
 /// auto r2 = mitiru::data::ContentLoader<std::vector<BalanceRow>>::loadFile("data/units.json");
 ///
-/// // Nested struct
+/// // 入れ子の struct
 /// struct BalanceTable { std::vector<BalanceRow> rows; };
 /// NLOHMANN_DEFINE_TYPE_INTRUSIVE(BalanceTable, rows)
 /// auto r3 = mitiru::data::ContentLoader<BalanceTable>::loadFile("data/table.json");
@@ -54,7 +54,7 @@ namespace mitiru::data {
 ///
 /// 全 method が static。class は state を持たない。
 ///
-/// 使い方:
+/// 使い方は次のとおり。
 /// @code
 /// struct BalanceRow { std::string name; int cost; float winRate; };
 /// NLOHMANN_DEFINE_TYPE_INTRUSIVE(BalanceRow, name, cost, winRate)

@@ -57,15 +57,15 @@ public:
 
     /// @brief ステートを next へ遷移させる。
     ///
-    /// Guard が設定されており false を返した場合は遷移しない。
-    /// その際 onRejected コールバックが設定されていれば呼ばれる。
+    /// Guard が設定されていて false を返した場合は遷移しない。
+    /// そのとき onRejected コールバックが設定されていれば呼ばれる。
     /// Guard がない、または true を返した場合は遷移し、
     /// onTransition コールバックが設定されていれば呼ばれる。
     ///
-    /// この関数内でヒープ確保は行わない。
+    /// この関数内でヒープ確保はしない。
     ///
     /// @param next 遷移先ステート
-    /// @return 遷移が行われた場合 true、Guard で阻止された場合 false
+    /// @return 遷移した場合 true、Guard で阻止された場合 false
     bool transition(StateT next)
     {
         const StateT prev = m_state;

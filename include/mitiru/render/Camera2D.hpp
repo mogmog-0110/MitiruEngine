@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Camera2D.hpp
-/// @brief 2Dカメラ
-/// @details 2D描画用のカメラ。位置・ズーム・回転・スクリーンシェイクを管理する。
+/// @brief 2D カメラ
+/// @details 2D 描画用のカメラ。位置・ズーム・回転・スクリーンシェイクを管理する。
 
 #include <algorithm>
 #include <cmath>
@@ -13,7 +13,7 @@
 namespace mitiru::render
 {
 
-/// @brief 2Dカメラ
+/// @brief 2D カメラ
 /// @details ビュー変換行列を生成し、スクリーン座標とワールド座標の変換を行う。
 ///
 /// @code
@@ -49,7 +49,7 @@ public:
 	}
 
 	/// @brief ズーム倍率を設定する
-	/// @param zoom ズーム倍率（1.0で等倍）
+	/// @param zoom ズーム倍率（1.0 で等倍）
 	void setZoom(float zoom) noexcept
 	{
 		m_zoom = std::max(zoom, 0.001f);
@@ -75,7 +75,7 @@ public:
 	}
 
 	/// @brief ビュー行列を計算する
-	/// @return 2D用のビュー変換行列（4x4）
+	/// @return 2D 用のビュー変換行列（4x4）
 	[[nodiscard]] sgc::Mat4f viewMatrix() const noexcept
 	{
 		/// シェイクオフセットを加味した実効位置

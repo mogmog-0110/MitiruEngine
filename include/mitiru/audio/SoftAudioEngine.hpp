@@ -3,8 +3,8 @@
 /// @file SoftAudioEngine.hpp
 /// @brief ソフトウェアオーディオエンジン（状態追跡付き）
 /// @details 実際の音声出力はしないが、再生状態を正確に追跡する。
-///          AIテストやヘッドレスモードでの動作検証に使用する。
-///          将来的にminiaudioバックエンドを接続可能。
+///          AI テストやヘッドレスモードでの動作検証に使用する。
+///          将来的に miniaudio バックエンドを接続できる。
 
 #include <algorithm>
 #include <string>
@@ -26,8 +26,8 @@ struct SoundState
 
 /// @brief ソフトウェアオーディオエンジン
 /// @details 実際の音声出力はしないが、再生状態を正確に追跡する。
-///          NullAudioEngineと異なり、playSound/stopSoundの呼び出しを
-///          内部状態に反映し、isPlayingで正確に問い合わせ可能。
+///          NullAudioEngine と異なり、playSound/stopSound の呼び出しを
+///          内部状態に反映し、isPlaying で正確に問い合わせ可能。
 ///
 /// @code
 /// mitiru::audio::SoftAudioEngine engine;
@@ -40,20 +40,20 @@ class SoftAudioEngine : public IAudioEngine
 {
 public:
 	/// @brief サウンドを再生する
-	/// @param id サウンドID
+	/// @param id サウンド ID
 	void playSound(std::string_view id) override
 	{
 		m_playingSounds[std::string(id)] = SoundState{std::string(id), m_masterVolume, false};
 	}
 
 	/// @brief サウンドを停止する
-	/// @param id サウンドID
+	/// @param id サウンド ID
 	void stopSound(std::string_view id) override
 	{
 		m_playingSounds.erase(std::string(id));
 	}
 
-	/// @brief BGMを再生する
+	/// @brief BGM を再生する
 	/// @param id BGM ID
 	void playMusic(std::string_view id) override
 	{
@@ -61,7 +61,7 @@ public:
 		m_musicPlaying = true;
 	}
 
-	/// @brief BGMを停止する
+	/// @brief BGM を停止する
 	void stopMusic() override
 	{
 		m_currentMusic.clear();
@@ -75,8 +75,8 @@ public:
 		m_masterVolume = std::clamp(volume, 0.0f, 1.0f);
 	}
 
-	/// @brief 指定サウンドが再生中か判定する
-	/// @param id サウンドID
+	/// @brief 指定したサウンドが再生中か判定する
+	/// @param id サウンド ID
 	/// @return 再生中なら true
 	[[nodiscard]] bool isPlaying(std::string_view id) const override
 	{
@@ -85,7 +85,7 @@ public:
 		{
 			return true;
 		}
-		// BGMのIDもチェック
+		// BGM の ID もチェック
 		if (m_musicPlaying && m_currentMusic == key)
 		{
 			return true;
@@ -96,21 +96,21 @@ public:
 	// ── 追加クエリ（テスト・デバッグ用） ────────────────────
 
 	/// @brief 再生中のサウンド数を取得する
-	/// @return 再生中のサウンド数（BGMを除く）
+	/// @return 再生中のサウンド数（BGM を除く）
 	[[nodiscard]] size_t playingSoundCount() const noexcept
 	{
 		return m_playingSounds.size();
 	}
 
-	/// @brief 現在のBGM IDを取得する
+	/// @brief 現在の BGM ID を取得する
 	/// @return BGM ID（再生中でなければ空文字列）
 	[[nodiscard]] const std::string& currentMusic() const noexcept
 	{
 		return m_currentMusic;
 	}
 
-	/// @brief BGMが再生中か判定する
-	/// @return BGM再生中なら true
+	/// @brief BGM が再生中か判定する
+	/// @return BGM 再生中なら true
 	[[nodiscard]] bool isMusicPlaying() const noexcept
 	{
 		return m_musicPlaying;
@@ -123,7 +123,7 @@ public:
 		return m_masterVolume;
 	}
 
-	/// @brief 全サウンドを停止する（BGM含む）
+	/// @brief 全サウンドを停止する（BGM 含む）
 	void stopAll()
 	{
 		m_playingSounds.clear();

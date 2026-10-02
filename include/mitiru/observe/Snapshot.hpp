@@ -2,7 +2,7 @@
 
 /// @file Snapshot.hpp
 /// @brief シーンスナップショット
-/// @details フレーム状態をJSON文字列として出力するための構造体。
+/// @details フレーム状態を JSON 文字列として出力するための構造体。
 ///          Phase 0 では最小限のフレーム情報のみ。
 
 #include <cstdint>
@@ -15,7 +15,7 @@ namespace mitiru
 
 /// @brief スナップショットデータ
 /// @details 現在のフレーム状態を保持する。
-///          toJson() でJSON文字列に変換可能。
+///          toJson() で JSON 文字列に変換可能。
 ///          エンティティ/コンポーネント/シーン情報を含むリッチスナップショット。
 struct SnapshotData
 {
@@ -26,8 +26,8 @@ struct SnapshotData
 	std::string sceneInfo;          ///< 現在のシーン名/情報
 	int drawCallCount = 0;          ///< Screenの描画コール数
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		nlohmann::json j;

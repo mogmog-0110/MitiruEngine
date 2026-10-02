@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::text — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 92 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::text | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 92 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::text | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 92 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/" class="active"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::text</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 92 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 92 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#struct-coverageentry"><code>CoverageEntry</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-coverageglyphcache"><code>CoverageGlyphCache</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-dirtyrows"><code>DirtyRows</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#struct-distancefieldentry"><code>DistanceFieldEntry</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#class-distancefieldcache"><code>DistanceFieldCache</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#enum-textdirection"><code>TextDirection</code></a></td><td>enum</td><td>2</td></tr>
+<tr><td><a href="#struct-fontmetrics"><code>FontMetrics</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-shapedglyph"><code>ShapedGlyph</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-distancefieldglyph"><code>DistanceFieldGlyph</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-coverageglyph"><code>CoverageGlyph</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-fontface"><code>FontFace</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#class-glyphslotatlas"><code>GlyphSlotAtlas</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-screenfont"><code>ScreenFont</code></a></td><td>class</td><td>9</td></tr>
+</tbody></table>
+<details class="api-class" id="struct-coverageentry" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CoverageEntry</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int x = 0</code></div>
+<div class="api-method"><code>int y = 0</code></div>
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>int left = 0</code></div>
+<div class="api-method"><code>int top = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-coverageglyphcache" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CoverageGlyphCache</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>CoverageGlyphCache()</code></div>
+<div class="api-method"><code>[[nodiscard]] CoverageEntry get(FontFace&amp; font, std::uint32_t glyphId, int pixelSize, int subpixel = 0)</code></div>
+<div class="api-method"><code>[[nodiscard]] DirtyRows&amp; dirty() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const render::Texture&amp; texture() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t resets() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t size() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dirtyrows" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DirtyRows</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void mark(int firstRow, int rowCount) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool get(int&amp; firstRow, int&amp; rowCount) const noexcept</code></div>
+<div class="api-method"><code>void clear() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-distancefieldentry" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DistanceFieldEntry</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int slot = -1</code></div>
+<div class="api-method"><code>int x = 0</code></div>
+<div class="api-method"><code>int y = 0</code></div>
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>float left = 0.0f</code></div>
+<div class="api-method"><code>float top = 0.0f</code></div>
+<div class="api-method"><code>float right = 0.0f</code></div>
+<div class="api-method"><code>float bottom = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-distancefieldcache" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DistanceFieldCache</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>DistanceFieldCache()</code></div>
+<div class="api-method"><code>explicit DistanceFieldCache(int atlasSize)</code></div>
+<div class="api-method"><code>[[nodiscard]] const DistanceFieldEntry* get(FontFace&amp; font, std::uint32_t glyphId)</code></div>
+<div class="api-method"><code>void prefetch(FontFace&amp; font, std::span&lt;const ShapedGlyph&gt; glyphs)</code></div>
+<div class="api-method"><code>void tick() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] DirtyRows&amp; dirty() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const render::Texture&amp; texture() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const GlyphSlotAtlas&amp; slots() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-textdirection" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TextDirection</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>LeftToRight</code></div>
+<div class="api-method"><code>TopToBottom</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-fontmetrics">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FontMetrics</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float ascent = 0.0f</code></div>
+<div class="api-method"><code>float descent = 0.0f</code></div>
+<div class="api-method"><code>float lineGap = 0.0f</code></div>
+<div class="api-method"><code>float lineHeight = 0.0f</code></div>
+<div class="api-method"><code>float pixelSize = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-shapedglyph">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ShapedGlyph</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t glyphId = 0</code></div>
+<div class="api-method"><code>std::uint32_t cluster = 0</code></div>
+<div class="api-method"><code>float advanceX = 0.0f</code></div>
+<div class="api-method"><code>float advanceY = 0.0f</code></div>
+<div class="api-method"><code>float offsetX = 0.0f</code></div>
+<div class="api-method"><code>float offsetY = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-distancefieldglyph">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DistanceFieldGlyph</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>float left = 0.0f</code></div>
+<div class="api-method"><code>float top = 0.0f</code></div>
+<div class="api-method"><code>float right = 0.0f</code></div>
+<div class="api-method"><code>float bottom = 0.0f</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; rgba</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-coverageglyph">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CoverageGlyph</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>int left = 0</code></div>
+<div class="api-method"><code>int top = 0</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; alpha</code></div>
+</div>
+</details>
+<details class="api-class" id="class-fontface">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">FontFace</code> <span class="api-class__count">15</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static std::unique_ptr&lt;FontFace&gt; load(std::vector&lt;std::uint8_t&gt; data, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::unique_ptr&lt;FontFace&gt; loadFile(const std::string&amp; path, std::string&amp; error)</code></div>
+<div class="api-method"><code>~FontFace()</code></div>
+<div class="api-method"><code>FontFace(const FontFace&amp;) = delete</code></div>
+<div class="api-method"><code>FontFace&amp; operator=(const FontFace&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t id() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] FontMetrics metrics(float pixelSize) const noexcept</code></div>
+<div class="api-method"><code>std::span&lt;const ShapedGlyph&gt; shape(std::string_view utf8, float pixelSize, TextDirection direction = TextDirection::LeftToRight)</code></div>
+<div class="api-method"><code>[[nodiscard]] float measureText(std::string_view utf8, float pixelSize)</code></div>
+<div class="api-method"><code>[[nodiscard]] float advanceWidth(std::uint32_t codepoint, float pixelSize)</code></div>
+<div class="api-method"><code>[[nodiscard]] float kerning(std::uint32_t first, std::uint32_t second, float pixelSize)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t glyphIndex(std::uint32_t codepoint) const noexcept</code></div>
+<div class="api-method"><code>void distanceFields(std::span&lt;const std::uint32_t&gt; glyphIds, float atlasPixelSize, float pxRange, int maxCell, std::vector&lt;DistanceFieldGlyph&gt;&amp; out)</code></div>
+<div class="api-method"><code>bool distanceField(std::uint32_t glyphId, float atlasPixelSize, float pxRange, int maxCell, DistanceFieldGlyph&amp; out)</code></div>
+<div class="api-method"><code>bool coverage(std::uint32_t glyphId, float pixelSize, float subpixelX, CoverageGlyph&amp; out)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-glyphslotatlas">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GlyphSlotAtlas</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>GlyphSlotAtlas(int width, int height, int cell)</code></div>
+<div class="api-method"><code>[[nodiscard]] int find(std::uint64_t key) noexcept</code></div>
+<div class="api-method"><code>int allocate(std::uint64_t key)</code></div>
+<div class="api-method"><code>void tick() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int slotX(int slot) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int slotY(int slot) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int cell() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int capacity() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int size() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t evictions() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t evictedInUse() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-screenfont">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ScreenFont</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit ScreenFont(std::unique_ptr&lt;FontFace&gt; face)</code></div>
+<div class="api-method"><code>ScreenFont(const ScreenFont&amp;) = delete</code></div>
+<div class="api-method"><code>ScreenFont&amp; operator=(const ScreenFont&amp;) = delete</code></div>
+<div class="api-method"><code>void attachTo(Screen&amp; screen) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] FontFace&amp; face() noexcept</code></div>
+<div class="api-method"><code>void draw(Screen&amp; screen, std::string_view text, float x, float y, float pixelSize, const sgc::Colorf&amp; color)</code></div>
+<div class="api-method"><code>[[nodiscard]] sgc::Vec2f measure(std::string_view text, float pixelSize)</code></div>
+<div class="api-method"><code>[[nodiscard]] const DistanceFieldCache&amp; distanceFields() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const CoverageGlyphCache&amp; coverage() const noexcept</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -36,7 +36,7 @@ class BloomPass final : public PostProcessPass
 {
 public:
 	/// @brief コンストラクタ
-	/// @param pool 中間RTの貸し出し元（nullptrなら従来どおり自前でRTを生成する）
+	/// @param pool 中間 RT の貸し出し元（nullptr なら従来どおり自前で RT を生成する）
 	BloomPass(
 		ID3D11Device* device,
 		const ComPtr<ID3D11VertexShader>& fullscreenVS,
@@ -62,7 +62,7 @@ public:
 			device, fullscreenVS, sampler, screenW, screenH, pool);
 	}
 
-	/// @brief デストラクタ。プール由来の中間RTを返却する
+	/// @brief デストラクタ。プール由来の中間 RT を返却する
 	~BloomPass() override
 	{
 		releaseIntermediates();
@@ -88,14 +88,14 @@ public:
 		auto* brightTarget = brightRtv();
 		if (!brightTarget)
 		{
-			// pool から借りたはずの輝度抽出RTが resolve できない。
-			// 黙って null RTV へ描くとブルームだけ消えて気づきにくいので明示する。
+			// pool から借りたはずの輝度抽出 RT が resolve できない。
+			// 知らせずに null RTV へ描くとブルームだけ消えて気づきにくいので明示する。
 			debug::warnOnce("render.postprocess.bloom.rt_missing",
 				"BloomPass::apply: 輝度抽出RTが取得できずブルームをスキップしました");
 			return;
 		}
 
-		/// ステップ1: 輝度抽出（scene → brightRT）
+		/// ステップ 1: 輝度抽出（scene → brightRT）
 		BloomExtractCB extractData = {};
 		extractData.threshold = m_config.threshold;
 		extractData.intensity = m_config.intensity;
@@ -116,13 +116,13 @@ public:
 			return;
 		}
 
-		/// ステップ2: ガウスブラー（brightRT → blurredRT）
+		/// ステップ 2: ガウスブラー（brightRT → blurredRT）
 		m_blurPass->applyBlur(context,
 			brightSrv(), blurredTarget,
 			screenW, screenH);
 
-		/// ステップ3: 加算合成（scene + blurred → output）
-		/// スロット0にシーン、スロット1にブルーム
+		/// ステップ 3: 加算合成（scene + blurred → output）
+		/// スロット 0 にシーン、スロット 1 にブルーム
 		D3D11_VIEWPORT vp = {};
 		vp.Width = static_cast<float>(screenW);
 		vp.Height = static_cast<float>(screenH);
@@ -144,7 +144,7 @@ public:
 
 		context->Draw(3, 0);
 
-		/// SRVバインド解除
+		/// SRV バインド解除
 		ID3D11ShaderResourceView* nullSRVs[2] = {
 			nullptr, nullptr
 		};
@@ -165,7 +165,7 @@ private:
 		float padding[2];      ///< アライメントパディング
 	};
 
-	/// @brief pool経由/自前どちらでも同じ形でRTV/SRVを返す
+	/// @brief pool 経由/自前どちらでも同じ形で RTV/SRV を返す
 	[[nodiscard]] ID3D11RenderTargetView* brightRtv() const noexcept
 	{
 		return rtvOf(m_brightHandle, m_brightRT);
@@ -204,7 +204,7 @@ private:
 		return fallback.srv.Get();
 	}
 
-	/// @brief 輝度抽出RT・ブラー結果RTを確保する
+	/// @brief 輝度抽出 RT・ブラー結果 RT を確保する
 	/// @details pool が使えるときは RGBA16F で借り、失敗時（未対応バックエンド等）は
 	///          従来どおり自前で PostProcessRT を生成する。
 	void acquireIntermediates(std::uint32_t w, std::uint32_t h)
@@ -230,7 +230,7 @@ private:
 		m_blurredRT = createRenderTarget(m_device.Get(), w, h);
 	}
 
-	/// @brief pool 由来の中間RTを返却する（自前生成時は何もしない）
+	/// @brief pool 由来の中間 RT を返却する（自前生成時は何もしない）
 	void releaseIntermediates() noexcept
 	{
 		if (!m_pool) { return; }

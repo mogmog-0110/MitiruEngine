@@ -38,7 +38,7 @@ struct EngineBridgeContext
 	const EngineConfig* config = nullptr;
 };
 
-/// @brief HTTP APIサーバーのコールバックを配線する
+/// @brief HTTP API サーバーのコールバックを配線する
 /// @param cb 配線先のコールバック構造体
 /// @param ctx エンジン側の関数群
 /// @param game ゲームインスタンス（シーン操作用）
@@ -177,7 +177,7 @@ inline void initEngineHttpCallbacks(EngineCallbacks& cb,
 	};
 
 	// ── エディタ制御コールバック ──
-	// gameFlagsを経由して次フレームでGame側が処理する
+	// gameFlags を経由して次フレームで Game 側が処理する
 
 	auto* flags = ctx.gameFlags;
 

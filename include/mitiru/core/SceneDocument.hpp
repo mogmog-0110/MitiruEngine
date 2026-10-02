@@ -2,9 +2,9 @@
 
 /// @file SceneDocument.hpp
 /// @brief Node + Trait ベースのシーンドキュメント
-/// @details コード（C++ゲーム）とエディタGUIの両方が共有するシーンデータ形式。
-///          各ノードはTransformを持ち、Traitの合成でメッシュ・ライト・物理等の機能を付与する。
-///          JSON形式でのシリアライズ/デシリアライズ、Undo用スナップショットを提供する。
+/// @details コード（C++ ゲーム）とエディタ GUI の両方が共有するシーンデータ形式。
+///          各ノードは Transform を持ち、Trait の合成でメッシュ・ライト・物理等の機能を付与する。
+///          JSON 形式でのシリアライズ/デシリアライズ、Undo 用スナップショットを提供する。
 ///
 /// @code
 /// mitiru::Scene scene;
@@ -15,7 +15,7 @@
 /// @endcode
 ///
 /// @note JSON のパース／生成は nlohmann/json に委譲する。Trait ごとの
-///       toJson()/fromJson(string) シグネチャは外部から保たれており、
+///       toJson()/fromJson(string) シグネチャは外部から見て保たれており、
 ///       内部のみ nlohmann::json オブジェクトを経由してエスケープ・
 ///       数値変換を一元化している（手書き parser/writer の対称性バグ
 ///       回避が目的）。
@@ -45,15 +45,15 @@ namespace mitiru
 // =============================================================================
 
 /// @brief シーンノード
-/// @details Transform（全ノード共通）とTrait（合成可能な機能）を持つ。
-///          旧SceneNodeDataとの後方互換のため、type/meshPath等のアクセサを提供する。
+/// @details Transform（全ノード共通）と Trait（合成可能な機能）を持つ。
+///          旧 SceneNodeData との後方互換のため、type/meshPath 等のアクセサを提供する。
 struct Node
 {
 	int id = -1;           ///< ノード固有ID
 	std::string name;      ///< ノード名
 	int parentId = -1;     ///< 親ノードID（ルートの場合 -1）
 
-	// Transform（全Nodeが持つ）
+	// Transform（全 Node が持つ）
 	float position[3] = {0.0f, 0.0f, 0.0f}; ///< ローカル座標
 	float rotation[3] = {0.0f, 0.0f, 0.0f}; ///< オイラー角（度）
 	float scale[3] = {1.0f, 1.0f, 1.0f};    ///< スケール
@@ -65,10 +65,10 @@ struct Node
 	// Traits（合成可能な機能）
 	std::vector<std::shared_ptr<ITrait>> traits; ///< Traitリスト
 
-	// ── Traitアクセス ──
+	// ── Trait アクセス ──
 
-	/// @brief 指定型のTraitを取得する
-	/// @return Traitへのポインタ（存在しない場合 nullptr）
+	/// @brief 指定型の Trait を取得する
+	/// @return Trait へのポインタ（存在しない場合 nullptr）
 	template<typename T>
 	[[nodiscard]] T* getTrait()
 	{
@@ -82,7 +82,7 @@ struct Node
 		return nullptr;
 	}
 
-	/// @brief 指定型のTraitを取得する（const版）
+	/// @brief 指定型の Trait を取得する（const 版）
 	template<typename T>
 	[[nodiscard]] const T* getTrait() const
 	{
@@ -96,8 +96,8 @@ struct Node
 		return nullptr;
 	}
 
-	/// @brief Traitを追加する
-	/// @return 追加されたTraitへの参照
+	/// @brief Trait を追加する
+	/// @return 追加された Trait への参照
 	template<typename T, typename... Args>
 	T& addTrait(Args&&... args)
 	{
@@ -107,14 +107,14 @@ struct Node
 		return *ptr;
 	}
 
-	/// @brief 指定型のTraitを持つか
+	/// @brief 指定型の Trait を持つか
 	template<typename T>
 	[[nodiscard]] bool hasTrait() const
 	{
 		return getTrait<T>() != nullptr;
 	}
 
-	/// @brief Trait種別名で削除する
+	/// @brief Trait 種別名で削除する
 	void removeTrait(const std::string& traitTypeName)
 	{
 		traits.erase(
@@ -123,10 +123,10 @@ struct Node
 			traits.end());
 	}
 
-	// ── 後方互換アクセサ（旧SceneNodeDataとの互換性） ──
+	// ── 後方互換アクセサ（旧 SceneNodeData との互換性） ──
 
-	/// @brief ノード種別を返す（Traitから推定）
-	/// @details mesh/light/camera Traitがあればその種別、なければ "empty"
+	/// @brief ノード種別を返す（Trait から推定）
+	/// @details mesh/light/camera Trait があればその種別、なければ "empty"
 	[[nodiscard]] std::string type() const
 	{
 		if (hasTrait<MeshTrait>())   return "mesh";
@@ -157,7 +157,7 @@ struct Node
 	}
 
 	/// @brief ライト色へのアクセス（後方互換）
-	/// @note 書き込みにはgetTrait<LightTrait>()を使用すること
+	/// @note 書き込みには getTrait<LightTrait>() を使用すること
 	[[nodiscard]] const float* lightColor() const
 	{
 		if (const auto* l = getTrait<LightTrait>()) return l->color;
@@ -200,13 +200,13 @@ struct Node
 };
 
 // =============================================================================
-// Scene。Nodeの集合
+// Scene。Node の集合
 // =============================================================================
 
 /// @brief 統一シーンドキュメント
-/// @details コードとエディタが同一のAPIでシーンを操作するための中心クラス。
-///          ノードの追加・削除・検索、JSON形式でのファイル入出力、
-///          ダーティ追跡、Undo用スナップショットを提供する。
+/// @details コードとエディタが同一の API でシーンを操作するための中心クラス。
+///          ノードの追加・削除・検索、JSON 形式でのファイル入出力、
+///          ダーティ追跡、Undo 用スナップショットを提供する。
 class Scene
 {
 public:
@@ -214,8 +214,8 @@ public:
 
 	/// @brief 名前を指定してノードを追加する
 	/// @param name ノード名
-	/// @param parent 親ノードID（デフォルト: ルート）
-	/// @return 割り当てられたノードID
+	/// @param parent 親ノード ID（デフォルト: ルート）
+	/// @return 割り当てられたノード ID
 	int addNode(const std::string& name, int parent = -1)
 	{
 		Node node;
@@ -227,9 +227,9 @@ public:
 		return m_nodes.back().id;
 	}
 
-	/// @brief 既存のNodeオブジェクトを追加する
-	/// @param node ノードデータ（idは自動割り当て）
-	/// @return 割り当てられたノードID
+	/// @brief 既存の Node オブジェクトを追加する
+	/// @param node ノードデータ（id は自動割り当て）
+	/// @return 割り当てられたノード ID
 	int addNode(const Node& node)
 	{
 		Node added = node;
@@ -240,7 +240,7 @@ public:
 	}
 
 	/// @brief ノードを削除する
-	/// @param id 削除対象のノードID
+	/// @param id 削除対象のノード ID
 	void removeNode(int id)
 	{
 		auto it = std::remove_if(m_nodes.begin(), m_nodes.end(),
@@ -252,7 +252,7 @@ public:
 		}
 	}
 
-	/// @brief IDでノードを取得する
+	/// @brief ID でノードを取得する
 	[[nodiscard]] Node* getNode(int id)
 	{
 		for (auto& node : m_nodes)
@@ -262,7 +262,7 @@ public:
 		return nullptr;
 	}
 
-	/// @brief IDでノードを取得する（const版）
+	/// @brief ID でノードを取得する（const 版）
 	[[nodiscard]] const Node* getNode(int id) const
 	{
 		for (const auto& node : m_nodes)
@@ -296,7 +296,7 @@ public:
 		return -1;
 	}
 
-	/// @brief Trait種別名でノードを検索する
+	/// @brief Trait 種別名でノードを検索する
 	[[nodiscard]] std::vector<int> findByTrait(const std::string& traitTypeName) const
 	{
 		std::vector<int> result;
@@ -314,7 +314,7 @@ public:
 		return result;
 	}
 
-	/// @brief ノード種別（type()推定値）で検索する（後方互換）
+	/// @brief ノード種別（type() 推定値）で検索する（後方互換）
 	[[nodiscard]] std::vector<int> findByType(const std::string& typeName) const
 	{
 		std::vector<int> result;
@@ -328,7 +328,7 @@ public:
 		return result;
 	}
 
-	/// @brief ルートノードのIDリストを取得する
+	/// @brief ルートノードの ID リストを取得する
 	[[nodiscard]] std::vector<int> rootNodes() const
 	{
 		std::vector<int> roots;
@@ -339,7 +339,7 @@ public:
 		return roots;
 	}
 
-	/// @brief 指定親の子ノードIDリストを取得する
+	/// @brief 指定親の子ノード ID リストを取得する
 	[[nodiscard]] std::vector<int> children(int parentId) const
 	{
 		std::vector<int> result;
@@ -351,8 +351,8 @@ public:
 	}
 
 	/// @brief ノードを複製する（名前に "_copy" を付加）
-	/// @param id 複製元ノードID
-	/// @return 新しいノードID（-1で失敗）
+	/// @param id 複製元ノード ID
+	/// @return 新しいノード ID（-1 で失敗）
 	int duplicateNode(int id)
 	{
 		const auto* src = getNode(id);
@@ -364,12 +364,12 @@ public:
 		std::memcpy(dst->rotation, src->rotation, sizeof(float) * 3);
 		std::memcpy(dst->scale, src->scale, sizeof(float) * 3);
 		dst->visible = src->visible;
-		// Traitのシャローコピー（共有参照）
+		// Trait のシャローコピー（共有参照）
 		dst->traits = src->traits;
 		return newId;
 	}
 
-	// ── 便利ファクトリ（Trait付きノード作成） ──
+	// ── 便利ファクトリ（Trait 付きノード作成） ──
 
 	/// @brief 空ノードを作成する
 	int createEmpty(const std::string& name, int parent = -1)
@@ -406,19 +406,19 @@ public:
 		return id;
 	}
 
-	/// @brief 旧API互換: createMesh
+	/// @brief 旧 API 互換: createMesh
 	int createMesh(const std::string& name, const std::string& meshPath, int parent = -1)
 	{
 		return addMesh(name, meshPath, parent);
 	}
 
-	/// @brief 旧API互換: createLight
+	/// @brief 旧 API 互換: createLight
 	int createLight(const std::string& name, const std::string& lt, int parent = -1)
 	{
 		return addLight(name, lt, parent);
 	}
 
-	/// @brief 旧API互換: createCamera
+	/// @brief 旧 API 互換: createCamera
 	int createCamera(const std::string& name, int parent = -1)
 	{
 		return addCamera(name, parent);
@@ -426,7 +426,7 @@ public:
 
 	// ── シリアライゼーション ──
 
-	/// @brief シーンをJSON文字列にシリアライズする
+	/// @brief シーンを JSON 文字列にシリアライズする
 	/// @details nlohmann/json で組み立て、2 スペースインデントの pretty-print
 	///          を返す。Trait は各 `ITrait::toJson()` が返した文字列を
 	///          再パースして埋め込む（compact JSON）。
@@ -462,7 +462,7 @@ public:
 		return doc.dump(2);
 	}
 
-	/// @brief JSON文字列からシーンをデシリアライズする
+	/// @brief JSON 文字列からシーンをデシリアライズする
 	/// @details 失敗時 (パースエラー or "nodes" 配列なし) は false を返し
 	///          内部状態を空にリセットする。旧形式 (`"type": "mesh"` 等を
 	///          ノード直下に持つレイアウト) との後方互換もここで吸収する。
@@ -531,7 +531,7 @@ public:
 		return true;
 	}
 
-	/// @brief シーンをJSONファイルに保存する
+	/// @brief シーンを JSON ファイルに保存する
 	bool saveToFile(const std::string& path) const
 	{
 		std::ofstream ofs(path);
@@ -540,7 +540,7 @@ public:
 		return ofs.good();
 	}
 
-	/// @brief JSONファイルからシーンをロードする
+	/// @brief JSON ファイルからシーンをロードする
 	bool loadFromFile(const std::string& path)
 	{
 		std::ifstream ifs(path);
@@ -555,7 +555,7 @@ public:
 	[[nodiscard]] bool isDirty() const noexcept { return m_dirty; }
 	void clearDirty() noexcept { m_dirty = false; }
 
-	// ── Undoサポート ──
+	// ── Undo サポート ──
 
 	[[nodiscard]] std::string snapshot() const { return toJson(); }
 

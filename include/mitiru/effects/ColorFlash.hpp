@@ -2,7 +2,7 @@
 
 /// @file ColorFlash.hpp
 /// @brief フルスクリーンカラーフラッシュ
-/// @details ダメージや特殊効果時に画面全体を一瞬色付きオーバーレイで覆う。
+/// @details ダメージや特殊効果のときに、画面全体を一瞬だけ色付きのオーバーレイで覆う。
 
 #include <algorithm>
 
@@ -74,7 +74,7 @@ private:
 
 } // namespace mitiru::effects
 
-// ── Screen依存の実装 ──
+// ── Screen 依存の実装 ──
 #include <mitiru/core/Screen.hpp>
 
 inline void mitiru::effects::ColorFlash::draw(Screen& screen) const

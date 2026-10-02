@@ -496,7 +496,7 @@ inline BundleData AssetBundler::buildFromManifest(
 		}
 
 		/// ファイルサイズを確認してダミーデータを作成
-		/// （実際のファイルI/Oはエンジンのファイルシステムに委譲）
+		/// （実際のファイル I/O はエンジンのファイルシステムに委譲）
 		const auto fileSize = static_cast<std::size_t>(
 			std::filesystem::file_size(fullPath, ec));
 

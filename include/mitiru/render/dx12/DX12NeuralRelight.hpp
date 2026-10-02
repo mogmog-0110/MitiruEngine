@@ -6,7 +6,7 @@
 ///          (NeuralDepth, Depth-Anything-V2) でキャラの**立体形状を推定**し、可動光源で動的に
 ///          再ライティングする。**加算のみ** (元の絵は一切暗くせず光を“足す”だけ) なので、
 ///          Strength=0 で素の描画に完全一致 = 品質を下げない。深度はキャラ領域クロップで推定し
-///          (全画面だと部屋の奥行きを拾い平面に潰れる)、深度が無い間は輝度プロキシにフォールバック。
+///          (全画面だと部屋の奥行きを拾って平面になってしまう)、深度が無い間は輝度プロキシにフォールバック。
 ///            backbuffer → copy → src → [relight CS: 深度→法線→可動光源, 加算] → result → blit
 ///          MITIRU_HAS_DIRECTML 連動。
 
@@ -15,6 +15,9 @@
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
+#include <mitiru/render/dx12/Dx12UploadRing.hpp>
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -25,9 +28,12 @@ namespace mitiru::render
 class Dx12NeuralRelight
 {
 	template <class T> using ComPtr = Microsoft::WRL::ComPtr<T>;
-	using Res = ComPtr<ID3D12Resource>;
+	using Res = gfx::GpuResource;
 
 public:
+	/// 1 フレームが使う descriptor の数: [0]=src SRV [1]=depth SRV [2]=result UAV [3]=result SRV
+	static constexpr UINT kSlotsPerFrame = 4;
+
 	void setEnabled(bool e) { m_enabled = e; }
 	[[nodiscard]] bool enabled() const { return m_enabled; }
 	void setLight(float nx, float ny) { m_lx = nx; m_ly = ny; }
@@ -42,30 +48,43 @@ public:
 		m_depthDirty = true; m_hasDepth = true;
 	}
 
-	bool ensure(ID3D12Device* dev, ID3D12GraphicsCommandList* /*cl*/, int w, int h)
+	/// @param frameCount 同時に走りうるフレーム数。descriptor heap をこの数の区画に分け、フレーム k は区画 k だけを書く
+	bool ensure(ID3D12Device* dev, UINT frameCount, int w, int h)
 	{
+		// 区画数は最初の heap で決まる。途中で変えると走行中のフレームの区画を書き換えるので受けない
+		if (m_heap && frameCount != m_frameCount)
+		{
+			std::fprintf(stderr, "[Relight] frameCount changed (%u -> %u); relight stays off\n", m_frameCount, frameCount);
+			return false;
+		}
 		if (m_built && m_w == w && m_h == h) return true;
-		if (!dev || w <= 0 || h <= 0) return false;
+		if (!dev || frameCount == 0 || w <= 0 || h <= 0) return false;
 		m_dev = dev; m_w = w; m_h = h; m_built = false;
-		if (!buildResources(dev, w, h)) return false;
-		if (!buildPipelines(dev)) return false;
+		// heap と PSO は解像度に依らない。リサイズで作り直すと、走行中のフレームが参照している物を手放すことになる
+		if (!m_heap && !buildHeap(dev, frameCount)) return false;
+		if (!m_pso && !buildPipelines(dev)) return false;
+		if (!buildTextures(dev, w, h)) return false;
 		m_built = true;
 		std::fprintf(stderr, "[Relight] neural relighting ready (%dx%d): flat 2D -> DirectML depth -> dynamic light (additive)\n", w, h);
 		return true;
 	}
 
-	void apply(ID3D12GraphicsCommandList* cl, ID3D12Resource* backbuffer, D3D12_CPU_DESCRIPTOR_HANDLE backRtv, int w, int h)
+	/// @param ring フレームごとの upload ring。frameIndex のフレームを beginFrame 済みであること
+	void apply(ID3D12GraphicsCommandList* cl, dx12::Dx12UploadRing& ring, UINT frameIndex,
+	           ID3D12Resource* backbuffer, D3D12_CPU_DESCRIPTOR_HANDLE backRtv, int w, int h)
 	{
 		if (!m_enabled || !m_built || !backbuffer) return;
 
 		// 0) 深度マップが更新されていれば depth tex を(再)生成しアップロード
-		if (m_depthDirty) { uploadDepth(cl); m_depthDirty = false; }
+		if (m_depthDirty) { uploadDepth(cl, ring); m_depthDirty = false; }
+		const UINT base = (frameIndex % m_frameCount) * kSlotsPerFrame;
+		writeFrameDescriptors(base);
 
 		// 1) backbuffer → src tex
 		tr(cl, backbuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		tr(cl, m_srcTex.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+		tr(cl, m_srcTex.Get(), kComputeRead, D3D12_RESOURCE_STATE_COPY_DEST);
 		cl->CopyResource(m_srcTex.Get(), backbuffer);
-		tr(cl, m_srcTex.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		tr(cl, m_srcTex.Get(), D3D12_RESOURCE_STATE_COPY_DEST, kComputeRead);
 		tr(cl, backbuffer, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		// 2) relight compute: src(+depth) → result
@@ -73,9 +92,9 @@ public:
 		cl->SetDescriptorHeaps(1, ch);
 		cl->SetComputeRootSignature(m_rs.Get());
 		cl->SetPipelineState(m_pso.Get());
-		cl->SetComputeRootDescriptorTable(0, gpu(0));   // t0 = src SRV
-		cl->SetComputeRootDescriptorTable(1, gpu(2));   // u0 = result UAV
-		cl->SetComputeRootDescriptorTable(3, gpu(1));   // t1 = depth SRV (無ければ src を指す = 安全)
+		cl->SetComputeRootDescriptorTable(0, gpu(base + 0));   // t0 = src SRV
+		cl->SetComputeRootDescriptorTable(1, gpu(base + 2));   // u0 = result UAV
+		cl->SetComputeRootDescriptorTable(3, gpu(base + 1));   // t1 = depth SRV (無ければ src を指す = 安全)
 		struct CB { UINT W, H; float Lx, Ly, Lz, Strength, Rim, Relief;
 		            float Cx0, Cy0, Cx1, Cy1; UINT UseDepth, _p0, _p1, _p2; } cb{
 			(UINT)w, (UINT)h, m_lx, m_ly, m_lz, m_strength, m_rim, m_relief,
@@ -92,80 +111,92 @@ public:
 		cl->SetGraphicsRootSignature(m_blitRS.Get());
 		cl->SetPipelineState(m_blitPSO.Get());
 		cl->SetDescriptorHeaps(1, ch);
-		cl->SetGraphicsRootDescriptorTable(0, gpu(3));   // result SRV
+		cl->SetGraphicsRootDescriptorTable(0, gpu(base + 3));   // result SRV
 		cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		cl->DrawInstanced(3, 1, 0, 0);
 	}
 
 private:
+	// src と depth を読むのは compute だけ。PIXEL_SHADER_RESOURCE に置くと次フレームの COPY_DEST 遷移が
+	// 走行中の compute の読み出しを待たず、前のフレームが次のフレームの深度で光る
+	static constexpr D3D12_RESOURCE_STATES kComputeRead = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
 	static void tr(ID3D12GraphicsCommandList* cl, ID3D12Resource* r, D3D12_RESOURCE_STATES a, D3D12_RESOURCE_STATES b)
 	{ D3D12_RESOURCE_BARRIER x={}; x.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; x.Transition.pResource=r;
 	  x.Transition.StateBefore=a; x.Transition.StateAfter=b; x.Transition.Subresource=0; cl->ResourceBarrier(1,&x); }
 	D3D12_GPU_DESCRIPTOR_HANDLE gpu(int i){ auto h=m_heap->GetGPUDescriptorHandleForHeapStart(); h.ptr+=(UINT64)i*m_inc; return h; }
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu(int i){ auto h=m_heap->GetCPUDescriptorHandleForHeapStart(); h.ptr+=(UINT64)i*m_inc; return h; }
 
-	bool buildResources(ID3D12Device* dev, int w, int h)
+	bool buildHeap(ID3D12Device* dev, UINT frameCount)
 	{
-		auto tex=[&](Res& out, D3D12_RESOURCE_FLAGS fl, D3D12_RESOURCE_STATES st)->bool{
-			D3D12_HEAP_PROPERTIES hp={}; hp.Type=D3D12_HEAP_TYPE_DEFAULT;
-			D3D12_RESOURCE_DESC d={}; d.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D; d.Width=(UINT64)w; d.Height=(UINT)h;
-			d.DepthOrArraySize=1; d.MipLevels=1; d.Format=DXGI_FORMAT_R8G8B8A8_UNORM; d.SampleDesc.Count=1; d.Flags=fl;
-			return SUCCEEDED(dev->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,st,nullptr,IID_PPV_ARGS(out.ReleaseAndGetAddressOf()))); };
-		if (!tex(m_srcTex, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)) return false;
-		if (!tex(m_resultTex, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)) return false;
-
-		// heap: [0]=src SRV [1]=depth SRV [2]=result UAV [3]=result SRV
-		D3D12_DESCRIPTOR_HEAP_DESC hd={}; hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; hd.NumDescriptors=4;
+		D3D12_DESCRIPTOR_HEAP_DESC hd={}; hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; hd.NumDescriptors=kSlotsPerFrame*frameCount;
 		hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		if (FAILED(dev->CreateDescriptorHeap(&hd,IID_PPV_ARGS(m_heap.GetAddressOf())))) return false;
 		m_inc=dev->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		D3D12_SHADER_RESOURCE_VIEW_DESC srv={}; srv.Format=DXGI_FORMAT_R8G8B8A8_UNORM; srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;
-		srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; srv.Texture2D.MipLevels=1;
-		dev->CreateShaderResourceView(m_srcTex.Get(), &srv, cpu(0));
-		dev->CreateShaderResourceView(m_srcTex.Get(), &srv, cpu(1));   // [1] 仮: depth 未生成時は src を指す (安全な dummy)
-		D3D12_UNORDERED_ACCESS_VIEW_DESC uavd={}; uavd.Format=DXGI_FORMAT_R8G8B8A8_UNORM; uavd.ViewDimension=D3D12_UAV_DIMENSION_TEXTURE2D;
-		dev->CreateUnorderedAccessView(m_resultTex.Get(), nullptr, &uavd, cpu(2));
-		dev->CreateShaderResourceView(m_resultTex.Get(), &srv, cpu(3));
+		m_frameCount=frameCount;
 		return true;
 	}
 
+	bool buildTextures(ID3D12Device* dev, int w, int h)
+	{
+		auto tex=[&](Res& out, D3D12_RESOURCE_FLAGS fl, D3D12_RESOURCE_STATES st)->bool{
+			D3D12_RESOURCE_DESC d={}; d.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D; d.Width=(UINT64)w; d.Height=(UINT)h;
+			d.DepthOrArraySize=1; d.MipLevels=1; d.Format=DXGI_FORMAT_R8G8B8A8_UNORM; d.SampleDesc.Count=1; d.Flags=fl;
+			return SUCCEEDED(gfx::createGpuResource(dev, D3D12_HEAP_TYPE_DEFAULT, d,
+				st, nullptr, out)); };
+		if (!tex(m_srcTex, D3D12_RESOURCE_FLAG_NONE, kComputeRead)) return false;
+		return tex(m_resultTex, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	}
+
+	/// 区画 base を今のテクスチャで書き直す。この区画を最後に使ったのは frameCount 前のフレームで、
+	/// その完了はフレーム開始時のフェンス待ちで保証されているので、走行中の読み出しとは重ならない。
+	void writeFrameDescriptors(UINT base)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srv={}; srv.Format=DXGI_FORMAT_R8G8B8A8_UNORM; srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;
+		srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; srv.Texture2D.MipLevels=1;
+		m_dev->CreateShaderResourceView(m_srcTex.Get(), &srv, cpu(base + 0));
+		if (m_depthTex)
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC ds=srv; ds.Format=DXGI_FORMAT_R32_FLOAT;
+			m_dev->CreateShaderResourceView(m_depthTex.Get(), &ds, cpu(base + 1));
+		}
+		else
+		{
+			m_dev->CreateShaderResourceView(m_srcTex.Get(), &srv, cpu(base + 1));   // depth 未生成の間は src を指す (安全な dummy)
+		}
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavd={}; uavd.Format=DXGI_FORMAT_R8G8B8A8_UNORM; uavd.ViewDimension=D3D12_UAV_DIMENSION_TEXTURE2D;
+		m_dev->CreateUnorderedAccessView(m_resultTex.Get(), nullptr, &uavd, cpu(base + 2));
+		m_dev->CreateShaderResourceView(m_resultTex.Get(), &srv, cpu(base + 3));
+	}
+
 	/// 深度 CPU マップを depth tex (R32_FLOAT) へアップロード。サイズ変更時に(再)生成。
-	void uploadDepth(ID3D12GraphicsCommandList* cl)
+	/// 転送元はこのフレームの ring 区画なので、前のフレームのまだ実行されていないコピーが読む領域を上書きしない。
+	void uploadDepth(ID3D12GraphicsCommandList* cl, dx12::Dx12UploadRing& ring)
 	{
 		if (m_depthCPU.empty() || !m_dev) return;
+		D3D12_RESOURCE_DESC d={}; d.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D; d.Width=(UINT64)m_dW; d.Height=(UINT)m_dH;
+		d.DepthOrArraySize=1; d.MipLevels=1; d.Format=DXGI_FORMAT_R32_FLOAT; d.SampleDesc.Count=1;
 		if (!m_depthTex || m_depthTexW != m_dW || m_depthTexH != m_dH)
 		{
-			D3D12_HEAP_PROPERTIES hp={}; hp.Type=D3D12_HEAP_TYPE_DEFAULT;
-			D3D12_RESOURCE_DESC d={}; d.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D; d.Width=(UINT64)m_dW; d.Height=(UINT)m_dH;
-			d.DepthOrArraySize=1; d.MipLevels=1; d.Format=DXGI_FORMAT_R32_FLOAT; d.SampleDesc.Count=1;
-			if (FAILED(m_dev->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,nullptr,IID_PPV_ARGS(m_depthTex.ReleaseAndGetAddressOf())))) return;
-			// 配置フットプリント + アップロードバッファ
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT fp{}; UINT64 total=0;
-			m_dev->GetCopyableFootprints(&d,0,1,0,&fp,nullptr,nullptr,&total);
-			m_depthFp=fp; m_depthUploadBytes=total;
-			D3D12_HEAP_PROPERTIES uh={}; uh.Type=D3D12_HEAP_TYPE_UPLOAD;
-			D3D12_RESOURCE_DESC bd={}; bd.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER; bd.Width=total; bd.Height=1; bd.DepthOrArraySize=1; bd.MipLevels=1; bd.SampleDesc.Count=1; bd.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			if (FAILED(m_dev->CreateCommittedResource(&uh,D3D12_HEAP_FLAG_NONE,&bd,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(m_depthUpload.ReleaseAndGetAddressOf())))) return;
-			// depth SRV を slot[1] に張り替え
-			D3D12_SHADER_RESOURCE_VIEW_DESC ds={}; ds.Format=DXGI_FORMAT_R32_FLOAT; ds.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;
-			ds.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; ds.Texture2D.MipLevels=1;
-			m_dev->CreateShaderResourceView(m_depthTex.Get(), &ds, cpu(1));
+			if (FAILED(gfx::createGpuResource(m_dev, D3D12_HEAP_TYPE_DEFAULT, d,
+				kComputeRead, nullptr, m_depthTex))) return;
 			m_depthTexW=m_dW; m_depthTexH=m_dH;
 		}
-		// CPU 深度 → upload バッファ (行ピッチ整列)
-		void* p=nullptr; D3D12_RANGE none={0,0};
-		if (FAILED(m_depthUpload->Map(0,&none,&p))) return;
+		D3D12_PLACED_SUBRESOURCE_FOOTPRINT fp{}; UINT64 total=0;
+		m_dev->GetCopyableFootprints(&d,0,1,0,&fp,nullptr,nullptr,&total);
+		const auto staging = ring.allocate(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+		if (!staging.valid()) return;
+		// CPU 深度を行ピッチに揃えて区画へ詰める
 		const UINT rowBytes=(UINT)m_dW*sizeof(float);
 		for (int y=0;y<m_dH;++y)
-			std::memcpy((std::uint8_t*)p + m_depthFp.Offset + (size_t)y*m_depthFp.Footprint.RowPitch,
+			std::memcpy(static_cast<std::uint8_t*>(staging.cpuPtr) + fp.Offset + (size_t)y*fp.Footprint.RowPitch,
 			            m_depthCPU.data() + (size_t)y*m_dW, rowBytes);
-		m_depthUpload->Unmap(0,nullptr);
-		// upload → depth tex
-		tr(cl, m_depthTex.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+		fp.Offset += staging.offset;
+		tr(cl, m_depthTex.Get(), kComputeRead, D3D12_RESOURCE_STATE_COPY_DEST);
 		D3D12_TEXTURE_COPY_LOCATION dst{}; dst.pResource=m_depthTex.Get(); dst.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX; dst.SubresourceIndex=0;
-		D3D12_TEXTURE_COPY_LOCATION src{}; src.pResource=m_depthUpload.Get(); src.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT; src.PlacedFootprint=m_depthFp;
+		D3D12_TEXTURE_COPY_LOCATION src{}; src.pResource=staging.resource; src.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT; src.PlacedFootprint=fp;
 		cl->CopyTextureRegion(&dst,0,0,0,&src,nullptr);
-		tr(cl, m_depthTex.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		tr(cl, m_depthTex.Get(), D3D12_RESOURCE_STATE_COPY_DEST, kComputeRead);
 	}
 
 	bool buildPipelines(ID3D12Device* dev)
@@ -211,7 +242,7 @@ float lumaAt(int2 p){ p=clamp(p,int2(0,0),int2(W-1,H-1)); return luma(Src.Load(i
     Dst[p]=float4(saturate(c + added), 1.0);
 })";
 		ComPtr<ID3DBlob> cs, e;
-		if (FAILED(D3DCompile(kRelight,std::strlen(kRelight),nullptr,nullptr,nullptr,"CSRelight","cs_5_0",0,0,cs.GetAddressOf(),e.GetAddressOf())))
+		if (FAILED(gfx::compileDx12Shader(kRelight, "CSRelight", "cs_5_0", 0, cs.GetAddressOf(), e.GetAddressOf())))
 		{ if(e) std::fprintf(stderr,"[Relight] CSRelight: %s\n",(const char*)e->GetBufferPointer()); return false; }
 		// RS: param0 t0(table) + param1 u0(table) + param2 b0(16 const) + param3 t1(table) + static sampler s0
 		D3D12_DESCRIPTOR_RANGE rs0={}; rs0.RangeType=D3D12_DESCRIPTOR_RANGE_TYPE_SRV; rs0.NumDescriptors=1; rs0.BaseShaderRegister=0;
@@ -235,8 +266,8 @@ struct O{float4 p:SV_POSITION; float2 uv:TEXCOORD0;};
 O VS(uint id:SV_VertexID){ O o; float2 uv=float2((id<<1)&2,id&2); o.uv=uv; o.p=float4(uv*float2(2,-2)+float2(-1,1),0,1); return o; }
 float4 PS(O i):SV_Target{ return float4(t0.Sample(s0,i.uv).rgb,1.0); })";
 		ComPtr<ID3DBlob> vs, ps;
-		if (FAILED(D3DCompile(kBlit,std::strlen(kBlit),nullptr,nullptr,nullptr,"VS","vs_5_0",0,0,vs.GetAddressOf(),e.GetAddressOf()))) return false;
-		if (FAILED(D3DCompile(kBlit,std::strlen(kBlit),nullptr,nullptr,nullptr,"PS","ps_5_0",0,0,ps.GetAddressOf(),e.GetAddressOf()))) return false;
+		if (FAILED(gfx::compileDx12Shader(kBlit, "VS", "vs_5_0", 0, vs.GetAddressOf(), e.GetAddressOf()))) return false;
+		if (FAILED(gfx::compileDx12Shader(kBlit, "PS", "ps_5_0", 0, ps.GetAddressOf(), e.GetAddressOf()))) return false;
 		D3D12_DESCRIPTOR_RANGE rb={}; rb.RangeType=D3D12_DESCRIPTOR_RANGE_TYPE_SRV; rb.NumDescriptors=1; rb.BaseShaderRegister=0;
 		D3D12_ROOT_PARAMETER bp={}; bp.ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; bp.DescriptorTable.NumDescriptorRanges=1; bp.DescriptorTable.pDescriptorRanges=&rb; bp.ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL;
 		D3D12_STATIC_SAMPLER_DESC sm={}; sm.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR; sm.AddressU=sm.AddressV=sm.AddressW=D3D12_TEXTURE_ADDRESS_MODE_CLAMP; sm.ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL; sm.MaxLOD=D3D12_FLOAT32_MAX;
@@ -260,10 +291,9 @@ float4 PS(O i):SV_Target{ return float4(t0.Sample(s0,i.uv).rgb,1.0); })";
 	std::vector<float> m_depthCPU; bool m_depthDirty=false, m_hasDepth=false;
 	int m_dW=0, m_dH=0, m_depthTexW=0, m_depthTexH=0;
 	float m_cx0=0, m_cy0=0, m_cx1=1, m_cy1=1;
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT m_depthFp{}; UINT64 m_depthUploadBytes=0;
 	ID3D12Device* m_dev=nullptr;
-	Res m_srcTex, m_resultTex, m_depthTex, m_depthUpload;
-	ComPtr<ID3D12DescriptorHeap> m_heap; UINT m_inc=0;
+	Res m_srcTex, m_resultTex, m_depthTex;
+	ComPtr<ID3D12DescriptorHeap> m_heap; UINT m_inc=0, m_frameCount=1;
 	ComPtr<ID3D12RootSignature> m_rs, m_blitRS;
 	ComPtr<ID3D12PipelineState> m_pso, m_blitPSO;
 };

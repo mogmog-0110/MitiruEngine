@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file WebGLDevice.hpp
-/// @brief WebGL2バックエンド実装
-/// @details Emscripten/WebGL2環境向けのIDevice実装。
-///          emscripten/html5.hとGLES3/gl3.hを使用した実描画をサポートする。
-///          __EMSCRIPTEN__が定義されている場合のみコンパイルされる。
+/// @brief WebGL2 バックエンド実装
+/// @details Emscripten/WebGL2 環境向けの IDevice 実装。
+///          emscripten/html5.h と GLES3/gl3.h を使用した実描画をサポートする。
+///          __EMSCRIPTEN__ が定義されている場合のみコンパイルされる。
 
 #ifdef __EMSCRIPTEN__
 
@@ -35,9 +35,9 @@
 namespace mitiru::gfx
 {
 
-/// @brief WebGL2用コマンドリスト実装
-/// @details WebGL2はイミディエイトモードのため、コマンドは即座に実行される。
-///          パイプラインバインド時にVAO・シェーダー・ブレンド設定を適用する。
+/// @brief WebGL2 用コマンドリスト実装
+/// @details WebGL2 はイミディエイトモードのため、コマンドは即座に実行される。
+///          パイプラインのバインド時に VAO・シェーダー・ブレンド設定を適用する。
 class WebGLCommandList final : public ICommandList
 {
 public:
@@ -107,24 +107,23 @@ private:
 	WebGLPipeline* m_currentPipeline = nullptr;  ///< 現在バインド中のパイプライン（非所有）
 };
 
-/// @brief WebGL2 GPUデバイス実装
-/// @details Emscripten HTML5 APIを使用してWebGL2コンテキストを管理する。
-///          canvasIdで対象キャンバスを指定可能（デフォルト: "#canvas"）。
-///          バッファ・シェーダー・テクスチャ・パイプラインの生成機能を提供する。
-///
+/// @brief WebGL2 GPU デバイス実装
+/// @details Emscripten HTML5 API を使用して WebGL2 コンテキストを管理する。
+/// canvasId で対象キャンバスを指定可能（デフォルト: "#canvas"）。
+/// バッファ・シェーダー・テクスチャ・パイプラインの生成機能を提供する。
 /// @code
 /// auto device = std::make_unique<WebGLDevice>();
 /// auto shader = device->createShaderProgram(vsSrc, fsSrc);
 /// auto vb = device->createBuffer(BufferType::Vertex, sizeof(vertices), false, vertices);
 /// device->beginFrame();
-/// // WebGL2描画コマンド...
+/// // WebGL2 描画コマンド...
 /// device->endFrame();
 /// @endcode
 class WebGLDevice final : public IDevice
 {
 public:
 	/// @brief コンストラクタ
-	/// @param canvasId HTMLキャンバスのセレクタ（デフォルト: "#canvas"）
+	/// @param canvasId HTML キャンバスのセレクタ（デフォルト: "#canvas"）
 	explicit WebGLDevice(const char* canvasId = "#canvas")
 	{
 		EmscriptenWebGLContextAttributes attrs;
@@ -149,7 +148,7 @@ public:
 		/// キャンバスサイズを取得する
 		emscripten_get_canvas_element_size(canvasId, &m_canvasWidth, &m_canvasHeight);
 
-		/// WebGL2の初期設定
+		/// WebGL2 の初期設定
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LEQUAL);
 		glEnable(GL_BLEND);
@@ -173,7 +172,7 @@ public:
 	/// @brief フレームバッファからピクセルを読み取る（スクリーンショット用）
 	/// @param width 読み取り幅
 	/// @param height 読み取り高さ
-	/// @return RGBA8形式のピクセルデータ（Y-flip済み）
+	/// @return RGBA8 形式のピクセルデータ（Y-flip 済み）
 	[[nodiscard]] std::vector<std::uint8_t> readPixels(
 		int width, int height) const override
 	{
@@ -183,7 +182,7 @@ public:
 
 		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
 
-		/// OpenGL/WebGLはY軸が逆なのでY-flipする
+		/// OpenGL/WebGL は Y 軸が逆なので Y-flip する
 		const auto rowSize = static_cast<std::size_t>(width) * 4;
 		std::vector<std::uint8_t> rowTemp(rowSize);
 
@@ -215,15 +214,15 @@ public:
 	}
 
 	/// @brief フレーム終了・プレゼント処理
-	/// @details EmscriptenはrequestAnimationFrameで自動スワップするため、
-	///          明示的なスワップは不要。glFlushでコマンドの完了を保証する。
+	/// @details Emscripten は requestAnimationFrame で自動スワップするため、
+	///          明示的なスワップは不要。glFlush でコマンドの完了を保証する。
 	void endFrame() override
 	{
 		glFlush();
 		checkGLError("endFrame");
 	}
 
-	/// @brief GLエラーをチェックしてstderrに出力する
+	/// @brief GL エラーをチェックして stderr に出力する
 	/// @param context エラー発生箇所の識別文字列
 	void checkGLError(const char* context) const noexcept
 	{
@@ -245,7 +244,7 @@ public:
 		}
 	}
 
-	/// @brief GPUバッファを生成する
+	/// @brief GPU バッファを生成する
 	[[nodiscard]] std::unique_ptr<IBuffer> createBuffer(
 		BufferType bufferType,
 		std::uint32_t sizeBytes,
@@ -262,8 +261,8 @@ public:
 	}
 
 	/// @brief シェーダープログラムを生成する
-	/// @param vertexSource GLSL ES 3.0頂点シェーダーソース
-	/// @param fragmentSource GLSL ES 3.0フラグメントシェーダーソース
+	/// @param vertexSource GLSL ES 3.0 頂点シェーダーソース
+	/// @param fragmentSource GLSL ES 3.0 フラグメントシェーダーソース
 	/// @return 生成されたシェーダー
 	[[nodiscard]] WebGLShader createShaderProgram(
 		std::string_view vertexSource,
@@ -272,8 +271,8 @@ public:
 		return WebGLShader::createProgram(vertexSource, fragmentSource);
 	}
 
-	/// @brief デフォルトの2Dシェーダープログラムを生成する
-	/// @return 2D描画用のリンク済みシェーダー
+	/// @brief デフォルトの 2D シェーダープログラムを生成する
+	/// @return 2D 描画用のリンク済みシェーダー
 	[[nodiscard]] WebGLShader createDefaultShader2D() const
 	{
 		return WebGLShader::createProgram(
@@ -322,8 +321,8 @@ public:
 	[[nodiscard]] int canvasHeight() const noexcept { return m_canvasHeight; }
 
 	/// @brief ビューポートを設定する
-	/// @param x ビューポート左下X座標
-	/// @param y ビューポート左下Y座標
+	/// @param x ビューポート左下 X 座標
+	/// @param y ビューポート左下 Y 座標
 	/// @param width ビューポート幅
 	/// @param height ビューポート高さ
 	void setViewport(int x, int y, int width, int height) const noexcept

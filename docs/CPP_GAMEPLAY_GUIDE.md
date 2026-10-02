@@ -9,21 +9,20 @@
 ## 1. Overview
 
 MitiruEngineは2026-05-14にSiv3DをロールモデルとするC++ engine路線へピボットした。
-gameplayの決定権は すべてC++にあり、CEF (HTML/CSS/JS)はView専用に格下げされた。
+gameplay の決定権はすべて C++ にあり、UI (RmlUi の RML / RCSS) は View 専用で、スクリプトを持たない。
 
 3行で整理すると:
 
 1. **GameplayはC++**。state machine / シーン遷移 / タイマー / 判定はすべてC++に置く。
-2. **CEFはUI/HUD/演出**。描画と「ユーザ操作の検出」だけを担当。JSで条件分岐や状態保持はしない。
-3. **Bridgeはsignal-only**。JS→C++は`ui.button.start`のような「何が起きたか」だけ。
-   C++→JSは`view.<sub>.<key>`形式の「何を表示すべきか」だけ。
+2. **RmlUi は UI / HUD / 演出**。描画と「ユーザ操作の検出」だけを担当。UI 側で条件分岐や状態保持はしない。
+3. **Bridgeはsignal-only**。UI→C++は`ui.button.start`のような「何が起きたか」だけ。
+   C++→UIは`view.<key>`形式の「何を表示すべきか」だけ。
    gameplay関数のRPCは禁止。
 
 関連doc:
 
-- [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md) — レイヤー分担(C++ gameplay + CEF view)
-- [BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md) — bridge責務定義(signal-only)
-- [examples/html_menu/](../examples/html_menu/) — HTMLの操作をC++が受ける動くサンプル
+- [UI_RMLUI.md](UI_RMLUI.md) — UI 層 (RML / RCSS) の書き方と C++ との受け渡し
+- [examples/html_menu/](../examples/html_menu/) — UI の操作を C++ が受ける動くサンプル
 
 ---
 
@@ -144,8 +143,8 @@ m_intro.tick(dt);
 
 ### Pattern D: BridgeActionRouter + Sceneのディスパッチ
 
-**意図**: CEF (UI)から飛んでくるsignalをgameplayの意思決定へ変換する境界を作る。
-JSには「ボタンが押された」だけ言わせて、どのsceneに遷移するか / どんな状態変化を起こすかはC++が決める。
+**意図**: UI から飛んでくる signal を gameplay の意思決定へ変換する境界を作る。
+UI には「ボタンが押された」だけ言わせて、どのsceneに遷移するか / どんな状態変化を起こすかはC++が決める。
 
 ```cpp
 m_actions.registerHandler("ui.button.start",
@@ -166,7 +165,7 @@ void onExit() override {
 
 ### Pattern E: BridgeViewPushでstateをviewに流す
 
-**意図**: gameplay側(C++)で計算した結果を、JSは 描画するだけ に徹させる。
+**意図**: gameplay側(C++)で計算した結果を、UI は描画するだけに徹させる。
 
 ```cpp
 m_view.set("hp", "80");                            // → "view.cooking.hp" = "80"
@@ -177,9 +176,10 @@ m_view.emit("damage", "{\"amount\":12,\"crit\":true}");  // one-shot エフェ�
 - **`set`はretained**。最新値が保持され、後から接続したviewも読み取れる(HP / score等)。
 - **`emit`はone-shot**。その瞬間のイベント。聴いていないviewには届かない(ヒットエフェクト / SEトリガ等)。
 - keyは `view.<subsystem>.<key>` 形式に統一される(ctorの`subsystem`でprefixを固定)。
-  詳細命名規約は [BRIDGE_API_CONTRACT.md §3](BRIDGE_API_CONTRACT.md)を参照。
+  RML の式は `view.` の直下のキーしか引けない。RmlUi の HUD に出す値は `hud.set("view.hp", …)` のように
+  平らなキーで送る ([UI_RMLUI.md](UI_RMLUI.md))。
 - **ハマる点**。
-  - JSで「HPが50以下なら赤くする」のような判定を書きたくなったら 負け。C++側で`view.cooking.hpLow = "true"`を別途pushし、JSはclassをtoggleするだけにする。
+  - UI の式で「HPが50以下なら赤くする」のような判定を書きたくなったら負け。C++側で`hpLow = "true"`を別途pushし、UI は `data-class-*` で class を toggle するだけにする。
   - 値はあらかじめJSON文字列に整形して渡す(数値は`std::to_string`、文字列は`"\"..."\""`でquote)。
 
 ---
@@ -196,7 +196,7 @@ mitiru::input::BridgeInputAdapter     adapter(router, mapper);
 // 物理入力
 mapper.bindKey("Fire", mitiru::KeyCode::Space);
 
-// UI 入力 (CEF DOM)
+// UI 入力 (RML の dispatch)
 adapter.mapSignalToAction("ui.button.fire", "Fire");
 
 // gameplay は分岐なしで同じ Action を見る
@@ -316,35 +316,34 @@ if (result.ok()) {
 
 ## 5. アンチパターン
 
-BRIDGE_API_CONTRACT.mdと整合する5つのNGパターン。
+signal-only の bridge を守るための 5 つの NG パターン。
 
-- **JSでstate machineを持つな**
-  「料理の状態はcooking.jsが管理する」は禁止。`StateMachine<CookState>`をC++に置く。
+- **UI で state machine を持つな**
+  「料理の状態は UI 側が管理する」は禁止。`StateMachine<CookState>`をC++に置く。
 
-- **JSが条件分岐(tutorial完了判定 / 解放フラグ等)を持つな**
-  「tutorial doneならSTARTを有効化」をJSで書かない。C++が`view.title.startEnabled`をpushし、JSはclassを付け外しするだけにする。
+- **UI が条件分岐(tutorial完了判定 / 解放フラグ等)を持つな**
+  「tutorial doneならSTARTを有効化」を RML の式で書かない。C++が`view.startEnabled`をpushし、UI は class を付け外しするだけにする。
 
-- **JSが「次のシーンはどこ」を判定するな**
-  `ui.button.start`を発火するのはJSの責務だが、「次はCookingScene」と決めるのは **C++のScene/Router** の責務。
-  `signal: "scene.goto.cooking"`のような transitionをJSに書かせるsignal名 を作らないこと。
+- **UI が「次のシーンはどこ」を判定するな**
+  `ui.button.start`を発火するのは UI の責務だが、「次はCookingScene」と決めるのは **C++のScene/Router** の責務。
+  `signal: "scene.goto.cooking"`のような transition を UI に書かせる signal 名を作らないこと。
 
 - **bridgeを太らせてgameplay関数のRPCにするな**
   `signal: "game.canOpenDoor?"`のような問い合わせ / 計算依頼はNG。
   gameplayの判定はC++内で完結させ、結果だけ`view.*`にpushする。
 
-- **逆方向に: C++がJSに「次に何を考えるか」を聞くな**
-  C++ → JSは 常に決定済みの表示指示。`emit("ask.player.choice", ...)`で答えを待つような片務RPCは禁止。
+- **逆方向に: C++がUIに「次に何を考えるか」を聞くな**
+  C++ → UI は常に決定済みの表示指示。`emit("ask.player.choice", ...)`で答えを待つような片務RPCは禁止。
   選択肢の提示は`set`で出し、選択結果は`BridgeActionRouter`経由でsignalとして受け取る。
 
-**まとめ**: JSは「描画」と「何が起きたか発火」だけ。C++が「判断」と「何を表示するか決定」を持つ。
+**まとめ**: UI は「描画」と「何が起きたか発火」だけ。C++が「判断」と「何を表示するか決定」を持つ。
 
 ---
 
 ## 6. References
 
-- [docs/HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)
-- [docs/BRIDGE_API_CONTRACT.md](BRIDGE_API_CONTRACT.md)
-- [examples/html_menu/](../examples/html_menu/) — HTML操作 → C++反応の動くサンプル
+- [docs/UI_RMLUI.md](UI_RMLUI.md)
+- [examples/html_menu/](../examples/html_menu/) — UI 操作 → C++反応の動くサンプル
 
 ヘッダ:
 

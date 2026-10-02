@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file ScenePlacer.hpp
-/// @brief シーン配置ヘルパー。1行でモデルを面の上に配置
+/// @brief シーン配置ヘルパー。1 行でモデルを面の上に配置する
 
 #include <mitiru/render/Scene3D.hpp>
 #include <mitiru/render/Mesh.hpp>
@@ -25,9 +25,9 @@ class ScenePlacer
 public:
 	/// @brief メッシュを指定した面の上に配置する
 	/// @param scene シーン
-	/// @param mesh メッシュ（底面y=0に正規化済み前提）
-	/// @param surfaceY 面のY座標
-	/// @param xz XZ平面上の位置
+	/// @param mesh メッシュ（底面 y=0 に正規化済み前提）
+	/// @param surfaceY 面の Y 座標
+	/// @param xz XZ 平面上の位置
 	/// @param scale スケール
 	/// @param material マテリアル
 	static void placeOnSurface(Scene3D& scene, const Mesh& mesh,
@@ -66,7 +66,7 @@ public:
 	/// @param baseMesh 土台メッシュ
 	/// @param basePosition 土台のワールド位置
 	/// @param baseScale 土台のスケール
-	/// @param offsetXZ XZ平面のオフセット
+	/// @param offsetXZ XZ 平面のオフセット
 	/// @param itemScale アイテムのスケール
 	/// @param material マテリアル
 	static void placeOnTop(Scene3D& scene, const Mesh& itemMesh, const Mesh& baseMesh,

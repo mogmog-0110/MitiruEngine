@@ -1,5 +1,5 @@
-// camera。追従カメラ。赤べこがマウスの方へ牧場を歩き、視点が滑らかに追従してスクロールする。
-// 実行すると: マウスカーソルの方へ赤べこが歩く。画面より広い牧場を、視点が deadzone + 先読みで追う。
+// camera。追従カメラ。赤べこが牧場をマウスの方へ歩き、視点が滑らかに追従してスクロールする。
+// 実行すると: マウスカーソルの方へ赤べこが歩く。画面より広い牧場で、視点が deadzone + 先読みを使って追う。
 // 関連 API: mitiru::camera::FollowCam (setTarget / update) / Screen::applyCamera / endCamera / drawSprite
 
 #include <algorithm>   // std::clamp / std::min
@@ -17,7 +17,7 @@ using namespace mitiru;
 constexpr float kScreenW = 1280.0f, kScreenH = 720.0f;
 constexpr float kWorldW  = 4000.0f, kWorldH  = 2600.0f;   // 画面よりずっと広い牧場
 
-// 画像はすべて赤べこと同じ生成方式 (tools/ の Python で SVG 風に作った PNG)。
+// 画像はすべて赤べこと同じ方法で生成したもの (tools/ の Python で SVG 風に作った PNG)。
 static const render::Texture kBody = render::Texture::fromFile(
 	"camera/assets/sprites/akabeko_body.png").value_or(render::Texture{});
 static const render::Texture kHead = render::Texture::fromFile(
@@ -27,7 +27,7 @@ static const render::Texture kTree = render::Texture::fromFile(
 constexpr float kBekoScale = 0.4f;
 constexpr float kPivotOffX = 32.0f, kPivotOffY = 8.0f;   // 首の支点 (observe と同じ)
 
-// 牧場に立つ木。根元のワールド座標 (x, y) と大きさ scale。前後関係のため y の昇順で並べる。
+// 牧場に立つ木。根元のワールド座標 (x, y) と大きさ scale。前後関係を表すため、y の昇順で並べる。
 struct Tree { float x, y, scale; };
 constexpr Tree kTrees[] = {
 	{ 700.0f,  260.0f, 0.60f }, { 2300.0f,  320.0f, 0.72f }, { 3400.0f,  440.0f, 0.55f },
@@ -44,8 +44,10 @@ struct CameraDemo
 	float facing = 1.0f;                              // -1 = 左、+1 = 右
 	float bob = 0.0f;                                 // 歩行の位相 (揺れ / 首振り)
 	bool  moving = false;
+	std::uint8_t _pad[3] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 	camera::FollowCam cam;
 	bool  inited = false;
+	std::uint8_t _pad2[3] = {};
 
 	void update(Input in, Hud hud, float dt)
 	{
@@ -86,8 +88,8 @@ struct CameraDemo
 	template <class Surface>
 	void drawImpl(Surface& s) const
 	{
-		// Canvas は境界を跨ぐため、Texture のアドレスではなく id で描かせる必要がある
-		// (未登録だと drawSprite が DLL 内アドレスをそのまま積んでしまう)。
+		// Canvas は境界を越えて使われるため、Texture のアドレスではなく id で描画する必要がある
+		// (未登録の場合、drawSprite が DLL 内アドレスをそのまま積んでしまう)。
 		if constexpr (std::is_same_v<Surface, mitiru::Canvas>)
 		{
 			s.registerTexture(kBody, "akabeko_body");
@@ -98,7 +100,7 @@ struct CameraDemo
 
 		s.applyCamera(cam.pos.x, cam.pos.y);   // 以降ワールド座標で描く → カメラ中心がスクロールする
 		// 木と赤べこを接地 y の順に描く (奥＝上にある方を先に)。赤べこの足元 y が
-		// 手前になる木より上なら、その木より先に描く = 赤べこが木の後ろに回り込む。
+		// 手前になる木より上なら、赤べこをその木より先に描く = 赤べこが木の後ろに回り込む。
 		const float bekoFootY = py + kBody.height() * kBekoScale * 0.35f;
 		bool bekoDrawn = false;
 		for (const Tree& t : kTrees)
@@ -109,7 +111,7 @@ struct CameraDemo
 		if (!bekoDrawn) { drawBeko(s); }
 		s.endCamera();
 
-		// HUD は最後に画面座標で描く = 常に最前面
+		// HUD は最後に画面座標で描くため、常に最前面になる。
 		chapterTitle(s, "Follow Camera");
 		chapterControls(s, "マウスの方へ赤べこが歩く　視点が追従してスクロール　ESC: おわる");
 	}
@@ -144,4 +146,5 @@ struct CameraDemo
 };
 
 // 実行:  mitiru_host.exe camera/camera.dll
+MITIRU_ASSERT_NO_PADDING(CameraDemo);
 MITIRU_GAME(CameraDemo);

@@ -36,7 +36,7 @@ struct Easing {
         t = std::clamp(t, 0.0f, 1.0f);
         if (m_isLinear) { return t; }
 
-        // Newton-Raphson: find s where x(s) = t
+        // Newton-Raphson 法で x(s) = t となる s を求める
         float s = t; // initial guess
         for (int i = 0; i < 8; ++i) {
             const float xs = sampleX(s);
@@ -70,7 +70,7 @@ private:
         return 3.0f * m_y1 * s * inv * inv + 3.0f * m_y2 * s * s * inv + s * s * s;
     }
 
-    // dx/ds derivative for Newton's method
+    // Newton 法で使う導関数 dx/ds
     [[nodiscard]] float sampleDx(float s) const {
         const float inv = 1.0f - s;
         return 3.0f * m_x1 * inv * inv

@@ -1,6 +1,6 @@
 // sprites。画像 (スプライト) を描く章。赤べこ (会津の張り子牛) を、拡大・回転・反転・半透明で見せ、歩かせる。
-// 実行すると: 上段にスプライトの機能見本 (大きさ / 回転 / 左右反転 / 半透明)、下段で矢印キーで歩く赤べこ。
-// 使う機能: Texture::fromFile (画像読み込み) / drawSprite (flipX・色/透明度) / pushRotation (回転) / in.move() / Timer
+// 実行すると、上段にスプライトの機能見本 (大きさ / 回転 / 左右反転 / 半透明)、下段に矢印キーで歩く赤べこを表示する。
+// 使う機能: Texture::fromFile (画像読み込み) / drawSprite (flipX・色 / 透明度) / pushRotation (回転) / in.move() / Timer
 
 #include <type_traits>                 // Canvas 経路のみ registerTexture する if constexpr のため
 
@@ -11,11 +11,11 @@
 
 using namespace mitiru;
 
-// 赤べこの絵は 4 コマ (歩行サイクル)。順に切り替えると、短い脚が前後に動いて歩いて見える。
-// 画像 (Texture) は内部に可変長データを持つので、ゲームの状態 struct には入れられない。
+// 赤べこの絵は 4 コマ (歩行サイクル)。順に切り替えると、短い脚が前後に動いて歩いているように見える。
+// 画像 (Texture) は内部に可変長データを持つため、ゲームの状態 struct には入れられない。
 // (状態 struct はポインタを持たない単純なデータの塊に保つ決まりのため。) そこで画像は、
-// このファイル直下の変数へ開始時に一度だけ読み込む。読み込みに失敗しても value_or で
-// 「空の画像」を入れるので、何も描かないだけで落ちない。
+// このファイル直下の変数に、開始時に一度だけ読み込む。読み込みに失敗しても value_or で
+// 「空の画像」を入れるため、何も描かれないだけで落ちない。
 static const render::Texture kFrames[4] = {
 	render::Texture::fromFile("sprites/assets/sprites/akabeko_0.png").value_or(render::Texture{}),
 	render::Texture::fromFile("sprites/assets/sprites/akabeko_1.png").value_or(render::Texture{}),
@@ -27,7 +27,7 @@ constexpr float kSpeed   = 260.0f;   // 歩く速さ (1 秒あたりのピクセ
 constexpr float kWalk    = 0.575f;   // 歩く赤べこの大きさ (画像の何倍か。絵が高解像度なので 1 未満で縮小して使う)
 constexpr float kStepSec = 0.13f;    // 歩行コマを 1 つ進める間隔 (秒)
 
-// 上段の機能見本を並べる 4 つのマス (左端 x)。幅 293・高さ 196。
+// 上段の機能見本を並べる 4 つのマスの左端 x。幅 293・高さ 196。
 constexpr float       kCellY = 92.0f, kCellW = 293.0f, kCellH = 196.0f;
 constexpr float       kCellX[4]   = {24.0f, 337.0f, 650.0f, 963.0f};
 constexpr const char* kCellLbl[4] = {"scale", "rotate", "flipX", "alpha"};
@@ -36,6 +36,7 @@ struct Sprites06
 {
 	float cx = 640.0f, cy = 480.0f;   // 歩く赤べこの中心
 	bool  faceLeft = false;           // 進む向き (左を向いているか)
+	std::uint8_t _pad[3] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 	Timer walk;                       // 歩行アニメ用のタイマー (単純な値なので状態に置ける)
 	int   step = 0;                   // 今の歩行コマ (0〜3)
 	float t    = 0.0f;                // 経過秒 (回転の見本に使う)
@@ -54,18 +55,18 @@ struct Sprites06
 		if      (m.x < -0.1f) { faceLeft = true;  }   // 左へ動いたら左向き
 		else if (m.x >  0.1f) { faceLeft = false; }   // 右へ動いたら右向き
 
-		// 下段の歩ける範囲に収める (上段の見本と重ならないよう y は下側に限る)。
+		// 下段の歩ける範囲に収める (上段の見本と重ならないよう、y は下側に限る)。
 		const float halfW = texW() * kWalk * 0.5f, halfH = texH() * kWalk * 0.5f;
 		cx = clampf(cx, halfW, 1280.0f - halfW);
 		cy = clampf(cy, 380.0f, 720.0f - 34.0f - halfH);
 
-		// 動いている間だけ歩行コマを順送り。止まっているときは休みの姿 (コマ 0) に戻す。
+		// 動いている間だけ歩行コマを順に送る。止まっているときは休みの姿 (コマ 0) に戻す。
 		const bool moving = (m.x * m.x + m.y * m.y) > 0.01f;
 		if (moving) { if (walk.every(kStepSec, dt)) { step = (step + 1) % 4; } }
 		else        { step = 0; }
 	}
 
-	// 赤べこ 1 匹を中心 (x,y)・大きさ scale で描く。flip で左右反転、tint で色/透明度、rotDeg で回転。
+	// 赤べこ 1 匹を、中心 (x,y)・大きさ scale で描く。flip で左右反転、tint で色 / 透明度、rotDeg で回転する。
 	template <class Surface>
 	void beko(Surface& s, int frame, float x, float y, float scale,
 	          bool flip = false, Color tint = color::White, float rotDeg = 0.0f) const
@@ -80,7 +81,7 @@ struct Sprites06
 		if (rotDeg != 0.0f) { s.popTransform(); }                    // 回転を元に戻す
 	}
 
-	// 機能見本のマス 1 つ (枠 + 上にラベル)。中の絵は draw() 側で描く。
+	// 機能見本のマス 1 つ (枠 + 上のラベル)。中の絵は draw() 側で描く。
 	template <class Surface>
 	void cell(Surface& s, int i) const
 	{
@@ -92,8 +93,8 @@ struct Sprites06
 	template <class Surface>
 	void drawImpl(Surface& s) const
 	{
-		// Canvas は境界を跨ぐため、Texture のアドレスではなく id で描かせる必要がある
-		// (未登録だと drawSprite が DLL 内アドレスをそのまま積んでしまう)。
+		// Canvas は境界をまたぐため、Texture のアドレスではなく id で描かせる必要がある
+		// (未登録だと drawSprite が DLL 内アドレスをそのまま格納してしまう)。
 		if constexpr (std::is_same_v<Surface, mitiru::Canvas>)
 		{
 			s.registerTexture(kFrames[0], "akabeko_0");
@@ -107,18 +108,18 @@ struct Sprites06
 		for (int i = 0; i < 4; ++i) { cell(s, i); }
 		const float midY = kCellY + kCellH * 0.5f + 16.0f;   // マス内で絵を置く高さ
 
-		// scale: 同じ絵を 小 と 大 で並べる (drawSprite の拡大率のちがい)。
+		// scale: 同じ絵を小と大で並べる (drawSprite の拡大率の違い)。
 		beko(s, 0, kCellX[0] + 96.0f,  midY + 12.0f, 0.225f);
 		beko(s, 0, kCellX[0] + 205.0f, midY,         0.425f);
 
 		// rotate: 1 匹をゆっくり回す。
 		beko(s, 0, kCellX[1] + kCellW * 0.5f, midY, 0.3f, false, color::White, t * 70.0f);
 
-		// flipX: 右向きと左向きを向かい合わせに。
+		// flipX: 右向きと左向きを向かい合わせにする。
 		beko(s, 0, kCellX[2] + 92.0f,  midY, 0.3f, false);   // 右向き
 		beko(s, 0, kCellX[2] + 200.0f, midY, 0.3f, true);    // 左向き (flipX)
 
-		// alpha: 色の透明度を下げて半透明に。
+		// alpha: 色の透明度を下げて半透明にする。
 		beko(s, 0, kCellX[3] + kCellW * 0.5f, midY, 0.3f, false, color::White.withAlpha(0.35f));
 
 		// ── 主役: 矢印キーで動く赤べこ。進む向きに反転し、短い脚が交互に動いて歩く。──
@@ -134,4 +135,5 @@ struct Sprites06
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(Sprites06);
 
+MITIRU_ASSERT_NO_PADDING(Sprites06);
 MITIRU_GAME(Sprites06);

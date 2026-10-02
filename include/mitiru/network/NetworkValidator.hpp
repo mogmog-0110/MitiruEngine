@@ -4,7 +4,7 @@
 /// @brief ネットワークサブシステム検証
 /// @details ネットワーク関連コンポーネント（LocalTransport, TcpTransport,
 ///          StateSync, Lobby）の統合テストを実行し、結果を報告する。
-///          各テストは5秒のタイムアウト付きで、リソースのクリーンアップを保証する。
+///          各テストは 5 秒のタイムアウト付きで、リソースのクリーンアップを保証する。
 ///
 /// @code
 /// mitiru::network::NetworkValidator validator;
@@ -39,7 +39,7 @@ struct ValidationReport
 	bool allPassed = false;             ///< 全テスト合格フラグ
 	std::vector<TestResult> results;    ///< 個別テスト結果
 
-	/// @brief テスト結果サマリをJSON文字列で返す
+	/// @brief テスト結果サマリを JSON 文字列で返す
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json = R"({"allPassed":)";
@@ -63,7 +63,7 @@ struct ValidationReport
 class NetworkValidator
 {
 public:
-	/// @brief LocalTransportのペアリング通信をテストする
+	/// @brief LocalTransport のペアリング通信をテストする
 	/// @return 合否
 	[[nodiscard]] bool testLocalTransport() const
 	{
@@ -115,7 +115,7 @@ public:
 		return true;
 	}
 
-	/// @brief TCPループバック通信をテストする
+	/// @brief TCP ループバック通信をテストする
 	[[nodiscard]] bool testTcpLoopback() const
 	{
 		TcpTransport server;
@@ -140,7 +140,7 @@ public:
 			return false;
 		})) return false;
 
-		/// クライアント側の接続IDを取得
+		/// クライアント側の接続 ID を取得
 		ConnectionId clientConnId = INVALID_CONNECTION;
 		for (const auto& msg : client.poll())
 		{
@@ -220,7 +220,7 @@ public:
 			return false;
 		}
 
-		/// 部分的にreadyの場合は開始不可
+		/// 部分的に ready の場合は開始不可
 		lobby.setReady(1, true);
 		lobby.setReady(2, true);
 
@@ -229,7 +229,7 @@ public:
 			return false;
 		}
 
-		/// 全員readyで開始可能
+		/// 全員 ready で開始可能
 		lobby.setReady(3, true);
 
 		if (!lobby.allReady())
@@ -250,7 +250,7 @@ public:
 			return false;
 		}
 
-		/// JSON出力テスト
+		/// JSON 出力テスト
 		const std::string json = lobby.toJson();
 		if (json.empty())
 		{

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file TileRenderer.hpp
-/// @brief Grid2D<int>をScreenに描画するユーティリティ
+/// @brief Grid2D<int>を Screen に描画するユーティリティ
 /// @details カラーマッパー関数とグリッド線オプションを提供する。
 
 #include <functional>
@@ -17,14 +17,14 @@ namespace mitiru::util
 /// @brief タイルカラーマッパー型（セル値→色）
 using TileColorMapper = std::function<sgc::Colorf(int cellValue)>;
 
-/// @brief Grid2D<int>をScreenに描画するユーティリティ
+/// @brief Grid2D<int>を Screen に描画するユーティリティ
 struct TileRenderer
 {
-	/// @brief Grid2Dを画面に描画する
+	/// @brief Grid2D を画面に描画する
 	/// @param screen 描画先サーフェス
 	/// @param grid 描画するグリッド
 	/// @param origin 描画開始位置（左上、スクリーン座標）
-	/// @param tileSize 1タイルのピクセルサイズ
+	/// @param tileSize 1 タイルのピクセルサイズ
 	/// @param colorMapper セル値→色の変換関数
 	/// @param drawGridLines グリッド線を描画するか
 	/// @param gridLineColor グリッド線の色

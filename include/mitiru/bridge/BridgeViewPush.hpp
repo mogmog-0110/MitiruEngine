@@ -13,7 +13,7 @@
 ///
 /// **設計。**
 /// - `StateStore` はここで include しない。呼び出し元が 2 つの `std::function`
-///   sink を inject することで、CEF 無しのあらゆる test / host 環境でも動作する。
+///   sink を inject することで、あらゆる test / host 環境で動作する。
 /// - 完全な channel key `"view.<subsystem>.<key>"` は各 `set`/`emit` 呼び出しで
 ///   組み立てる。呼び出しごとの `std::string` 1 回の allocation は、hot path で
 ///   ない bridge traffic では許容できる。zero-alloc dispatch が必要な subsystem は
@@ -46,9 +46,9 @@
 namespace mitiru::bridge
 {
 
-/// @brief `set`/`emit` 呼び出しを正規の `view.<sub>.<key>` channel に流す。
+/// @brief `set` / `emit` 呼び出しを正規の `view.<sub>.<key>` channel に流す。
 ///
-/// Thread-safety: 複数 thread から呼ぶ場合、sink 自体が thread-safe である必要が
+/// スレッド安全性について、複数の thread から呼ぶ場合、sink 自体が thread-safe である必要が
 /// ある。`BridgeViewPush` 自身は同期を一切追加しない。
 class BridgeViewPush
 {
@@ -84,7 +84,7 @@ public:
     {}
 
     // copy 不可。sink は move には適するが、束縛した lambda を copy すると
-    // captured state を黙って複製しかねない。move なら問題ない。
+    // captured state を意図せず複製する可能性がある。move なら問題ない。
     BridgeViewPush(const BridgeViewPush&)            = delete;
     BridgeViewPush& operator=(const BridgeViewPush&) = delete;
     BridgeViewPush(BridgeViewPush&&)                 = default;
@@ -138,7 +138,7 @@ public:
     }
 
 private:
-    /// `key` の前に `m_keyPrefix` を付けて完全な channel key を返す。
+    /// `key` の前に `m_keyPrefix` を付けて、完全な channel key を返す。
     [[nodiscard]] std::string buildKey(std::string_view key) const
     {
         std::string full;

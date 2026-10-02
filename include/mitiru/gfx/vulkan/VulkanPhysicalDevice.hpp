@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file VulkanPhysicalDevice.hpp
-/// @brief Vulkan物理デバイス選択
-/// @details GPUの列挙・スコアリング・キューファミリ探索を提供する。
-///          MITIRU_HAS_VULKANが定義されている場合のみコンパイルされる。
+/// @brief Vulkan 物理デバイス選択
+/// @details GPU の列挙・スコアリング・キューファミリ探索を提供する。
+///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。
 
 #include <algorithm>
 #include <cstdint>
@@ -33,14 +33,14 @@ struct QueueFamilyIndices
 	std::optional<std::uint32_t> present;    ///< プレゼントキューファミリ
 
 	/// @brief 必須キューファミリが全て揃っているか確認する
-	/// @return グラフィックスとプレゼントが揃っていればtrue
+	/// @return グラフィックスとプレゼントが揃っていれば true
 	[[nodiscard]] bool isComplete() const noexcept
 	{
 		return graphics.has_value() && present.has_value();
 	}
 
 	/// @brief 全キューファミリが揃っているか確認する
-	/// @return 全4種が揃っていればtrue
+	/// @return 全 4 種が揃っていれば true
 	[[nodiscard]] bool hasAll() const noexcept
 	{
 		return graphics.has_value()
@@ -50,7 +50,7 @@ struct QueueFamilyIndices
 	}
 };
 
-/// @brief GPU種別
+/// @brief GPU 種別
 enum class GpuType : std::uint8_t
 {
 	Unknown = 0,       ///< 不明
@@ -61,8 +61,8 @@ enum class GpuType : std::uint8_t
 };
 
 /// @brief 物理デバイス情報
-/// @details Vulkan物理デバイスの静的な属性情報を保持する。
-///          実際のVkPhysicalDeviceに依存せず、テストで使用可能。
+/// @details Vulkan 物理デバイスの静的な属性情報を保持する。
+///          実際の VkPhysicalDevice に依存せず、テストで使用可能。
 struct PhysicalDeviceInfo
 {
 	std::string deviceName;                            ///< デバイス名
@@ -77,7 +77,7 @@ struct PhysicalDeviceInfo
 
 	/// @brief 指定の拡張をサポートしているか確認する
 	/// @param extensionName 拡張名
-	/// @return サポートしていればtrue
+	/// @return サポートしていれば true
 	[[nodiscard]] bool supportsExtension(const std::string& extensionName) const noexcept
 	{
 		return std::find(
@@ -88,14 +88,14 @@ struct PhysicalDeviceInfo
 };
 
 /// @brief 物理デバイスのスコアリング関数
-/// @details ディスクリートGPUを優先し、ビデオメモリ量でスコアを付ける。
+/// @details ディスクリート GPU を優先し、ビデオメモリ量でスコアを付ける。
 /// @param info 物理デバイス情報
 /// @return スコア（高いほど優先される）
 [[nodiscard]] inline int scorePhysicalDevice(const PhysicalDeviceInfo& info) noexcept
 {
 	int score = 0;
 
-	/// GPU種別による基本スコア
+	/// GPU 種別による基本スコア
 	switch (info.gpuType)
 	{
 	case GpuType::DiscreteGpu:
@@ -114,7 +114,7 @@ struct PhysicalDeviceInfo
 		break;
 	}
 
-	/// 専用ビデオメモリ（MB単位でスコア加算）
+	/// 専用ビデオメモリ（MB 単位でスコア加算）
 	score += static_cast<int>(info.dedicatedVideoMemory / (1024 * 1024));
 
 	/// 必須キューファミリの存在
@@ -161,15 +161,14 @@ struct PhysicalDeviceInfo
 
 #ifdef MITIRU_HAS_VULKAN
 
-/// @brief Vulkan物理デバイスラッパー
-/// @details VkPhysicalDeviceの選択とキューファミリ探索を管理する。
-///
+/// @brief Vulkan 物理デバイスラッパー
+/// @details VkPhysicalDevice の選択とキューファミリ探索を管理する。
 /// @code
 /// VulkanPhysicalDevice physDevice(instance);
 /// auto info = physDevice.info();
 /// if (info.queueFamilies.isComplete())
 /// {
-///     // 論理デバイスの生成に進む
+/// // 論理デバイスの生成に進む
 /// }
 /// @endcode
 class VulkanPhysicalDevice
@@ -183,14 +182,14 @@ public:
 	}
 
 	/// @brief 物理デバイス情報を取得する
-	/// @return PhysicalDeviceInfoへのconst参照
+	/// @return PhysicalDeviceInfo への const 参照
 	[[nodiscard]] const PhysicalDeviceInfo& info() const noexcept
 	{
 		return m_info;
 	}
 
 	/// @brief キューファミリインデックスを取得する
-	/// @return QueueFamilyIndicesへのconst参照
+	/// @return QueueFamilyIndices への const 参照
 	[[nodiscard]] const QueueFamilyIndices& queueFamilies() const noexcept
 	{
 		return m_info.queueFamilies;

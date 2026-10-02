@@ -8,7 +8,7 @@
 namespace mitiru::render
 {
 
-/// @brief 頂点・インデックスデータをGPUに送信して描画する
+/// @brief 頂点・インデックスデータを GPU に送信して描画する
 inline void RenderPipeline2D::submitBatch(const std::vector<Vertex2D>& vertices,
                                           const std::vector<std::uint32_t>& indices)
 {
@@ -36,7 +36,7 @@ inline void RenderPipeline2D::submitBatch(const std::vector<Vertex2D>& vertices,
 #endif
 }
 
-/// @brief SDF矩形バッチをGPUに送信して描画する
+/// @brief SDF 矩形バッチを GPU に送信して描画する
 inline void RenderPipeline2D::submitStyledRectBatch(
 	const std::vector<StyledVertex2D>& vertices,
 	const std::vector<std::uint32_t>& indices,
@@ -69,7 +69,7 @@ inline void RenderPipeline2D::submitStyledRectBatch(
 #endif
 }
 
-/// @brief SDF円/楕円バッチをGPUに送信して描画する
+/// @brief SDF 円/楕円バッチを GPU に送信して描画する
 inline void RenderPipeline2D::submitStyledCircleBatch(
 	const std::vector<StyledVertex2D>& vertices,
 	const std::vector<std::uint32_t>& indices,
@@ -123,21 +123,21 @@ inline void RenderPipeline2D::resize(float width, float height)
 
 	if (m_useDx12Path && m_dx12VsCb)
 	{
-		// 共有 projection CB を書く前に全 in-flight を drain する
-		// (in-flight submit が旧 CB を読んでいる最中の上書きを防ぐ)。
+		// 共有 projection CB を書く前に、in-flight の処理をすべて待ち終える
+		// (in-flight submit が旧 CB を読んでいる最中に上書きしないため)。
 		waitDx12Fence();
 		// CRITICAL: 実 runtime の VS constant buffer は m_dx12VsCb。
-		// m_dx12ConstantBuffer は "エイリアス用" コメントの dead pointer
-		// (init で populate されない)。そっちを update してた古い resize
-		// は ortho 更新が runtime に届かず、resize 後に anisotropic
-		// stretch が発生する。
+		// m_dx12ConstantBuffer は "エイリアス用" とコメントされた dead pointer
+		// (init で populate されない)。そちらを update していた古い resize
+		// では ortho の更新が runtime に届かず、resize 後に anisotropic
+		// stretch が起きる。
 		const auto ortho = OrthoMatrix::create(width, height);
 		updateCbDx12(m_dx12VsCb.Get(), ortho.m, sizeof(ortho.m));
 	}
 #endif
 }
 
-/// @brief 抽象IDeviceから2Dパイプラインを構築する
+/// @brief 抽象 IDevice から 2D パイプラインを構築する
 inline RenderPipeline2D RenderPipeline2D::createFromDevice(
 	gfx::IDevice* device,
 	float screenWidth,
@@ -162,7 +162,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDevice(
 		true,
 		ortho.m);
 
-	/// 動的頂点バッファを生成する（初期サイズ64KB）
+	/// 動的頂点バッファを生成する（初期サイズ 64KB）
 	constexpr std::uint32_t INITIAL_VB_SIZE = 65536;
 	pipeline.m_genVertexBuffer = device->createBuffer(
 		gfx::BufferType::Vertex,
@@ -170,7 +170,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDevice(
 		true);
 	pipeline.m_genVbCapacity = INITIAL_VB_SIZE;
 
-	/// 動的インデックスバッファを生成する（初期サイズ32KB）
+	/// 動的インデックスバッファを生成する（初期サイズ 32KB）
 	constexpr std::uint32_t INITIAL_IB_SIZE = 32768;
 	pipeline.m_genIndexBuffer = device->createBuffer(
 		gfx::BufferType::Index,
@@ -182,7 +182,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDevice(
 	pipeline.m_genCommandList = device->createCommandList();
 
 #ifdef __EMSCRIPTEN__
-	/// WebGL: 2Dシェーダープログラムを作成する
+	/// WebGL: 2D シェーダープログラムを作成する
 	pipeline.m_glShader = std::make_unique<gfx::WebGLShader>(
 		gfx::WebGLShader::createProgram(
 			gfx::WEBGL_VERTEX_SHADER_2D,
@@ -191,7 +191,7 @@ inline RenderPipeline2D RenderPipeline2D::createFromDevice(
 	pipeline.m_glProjLoc = glGetUniformLocation(pipeline.m_glProgram, "uProjection");
 	pipeline.m_glUseTexLoc = glGetUniformLocation(pipeline.m_glProgram, "uUseTexture");
 
-	/// VAOを作成し頂点アトリビュートを設定する
+	/// VAO を作成し頂点アトリビュートを設定する
 	glGenVertexArrays(1, &pipeline.m_glVAO);
 	glBindVertexArray(pipeline.m_glVAO);
 
@@ -262,7 +262,7 @@ inline void RenderPipeline2D::submitBatchGeneric(
 
 	/// 描画コマンドを発行する
 #ifdef __EMSCRIPTEN__
-	/// WebGL: 2D描画では深度テストを無効化し、ビューポートを設定する
+	/// WebGL: 2D 描画では深度テストを無効化し、ビューポートを設定する
 	glDisable(GL_DEPTH_TEST);
 	glViewport(0, 0,
 		static_cast<GLsizei>(m_screenWidth),
@@ -281,14 +281,14 @@ inline void RenderPipeline2D::submitBatchGeneric(
 
 	// 2D は毎回この状態で描く。生成時に一度だけ設定していると、同じフレームの
 	// 前半で走る 3D パスが glDisable(GL_BLEND) した状態を引き継ぎ、
-	// アルファが効かなくなる (足元の楕円の影が真っ黒な塊になった)。
+	// アルファが反映されなくなる (足元の楕円の影が真っ黒な塊になった)。
 	applyGlBlendMode();
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 
 	glBindVertexArray(m_glVAO);
 
-	/// VB/IBを再バインド（動的再生成されている可能性があるため）
+	/// VB/IB を再バインド（動的再生成されている可能性があるため）
 	auto* vb = dynamic_cast<gfx::WebGLBuffer*>(m_genVertexBuffer.get());
 	auto* ib = dynamic_cast<gfx::WebGLBuffer*>(m_genIndexBuffer.get());
 	if (vb) glBindBuffer(GL_ARRAY_BUFFER, vb->handle());
@@ -308,7 +308,7 @@ inline void RenderPipeline2D::submitBatchGeneric(
 
 	glBindVertexArray(0);
 	glUseProgram(0);
-	/// 深度テストを復元する（3D描画に必要）
+	/// 深度テストを復元する（3D 描画に必要）
 	glEnable(GL_DEPTH_TEST);
 #else
 	m_genCommandList->begin();
@@ -363,7 +363,7 @@ inline void RenderPipeline2D::setBlendMode([[maybe_unused]] gfx::BlendMode mode)
 {
 #ifdef __EMSCRIPTEN__
 	// WebGL は PSO を持たないので、次の描画で使う状態として覚えておくだけ。
-	// ここが no-op のままだと、ゲームが指定した合成が黙って無視される。
+	// ここが no-op のままだと、ゲームが指定した合成が知らないうちに無視される。
 	m_glBlendMode = mode;
 #endif
 #ifdef _WIN32

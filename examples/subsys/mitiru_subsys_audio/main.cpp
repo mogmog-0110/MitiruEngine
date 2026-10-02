@@ -1,29 +1,29 @@
-// mitiru_subsys_audio。エンジン全体なしで audio subsystem だけを起動する最小 exe。
+// mitiru_subsys_audio。エンジン全体を使わずに audio subsystem だけを起動する最小 exe。
 //
-// audio subsystem を単独起動する: ゲームロジック・CEF・inspector なし。
-// Engine + Screen (meter HUD 用) + audio thread で SineSynth からサンプルを
-// 引く miniaudio ma_device のみ。構成は mitiru_subsys_renderer に倣う:
+// audio subsystem を単独で起動する。ゲームロジック・CEF・inspector は使用しない。
+// Engine + Screen (meter HUD 用) + audio thread で、SineSynth からサンプルを
+// 取得する miniaudio ma_device のみを使用する。構成は mitiru_subsys_renderer に倣う。
 // 単一 .cpp、150 行未満、銀灰の Saturn surface。
 //
-// 見えるもの:
+// 表示内容は次のとおり。
 //   - 銀灰の背景
 //   - タイトル "audio subsystem - 440Hz test tone" (上)
-//   - audio thread 出力の RMS で動く Saturn red の大きなレベルメーター (中央)
+//   - audio thread 出力の RMS に応じて動く Saturn red の大きなレベルメーター (中央)
 //   - ヒント "press ESC to quit" (下)
 //
-// 聞こえるもの: デフォルト出力デバイスで鳴り続ける 440Hz の sine。
+// 音声は、デフォルト出力デバイスで鳴り続ける 440Hz の sine。
 //
-// 操作: ESC で終了。無人キャプチャ用に 5.0s で自動終了。
+// 操作は ESC で終了。無人キャプチャ用に 5.0s で自動終了。
 //
-// 存在理由 (全 system 単独起動の保証):
-//   - 同じ Engine class で audio subsystem のみ。renderer subsystem 例が示す
-//     のと同じ単独起動保証を、非グラフィック系で繰り返す。
+// 存在理由 (全 system 単独起動の保証)。
+//   - 同じ Engine class で audio subsystem のみを起動する。renderer subsystem の例が示す
+//     のと同じ単独起動保証を、非グラフィック系でも繰り返す。
 
 #include <atomic>
 #include <cmath>
 #include <miniaudio.h>
 
-// アンブレラ header は使わない。使うものだけ明示 include
+// アンブレラ header は使わない。使うものだけを明示的に include する。
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Config.hpp>
@@ -40,7 +40,7 @@ constexpr sgc::Colorf kAmberAccent {0.784f, 0.0f,   0.173f, 1.0f};  // #c8002c S
 constexpr float kAutoExitSec = 5.0f;
 constexpr int   kSampleRate  = 48000;
 
-// audio thread (writer) と main thread (reader) で共有。
+// audio thread (writer) と main thread (reader) の間で共有する。
 std::atomic<float> g_levelRms{0.0f};
 
 void audioDataCallback(ma_device* device, void* output, const void*, ma_uint32 frameCount)
@@ -49,7 +49,7 @@ void audioDataCallback(ma_device* device, void* output, const void*, ma_uint32 f
     auto* out   = static_cast<float*>(output);
     synth->render(out, frameCount, kSampleRate);
 
-    // チャンクの RMS。HUD 用の軽量レベルメーター。
+    // チャンク単位の RMS。HUD 用の軽量なレベルメーター。
     float sumSq = 0.0f;
     for (ma_uint32 i = 0; i < frameCount; ++i) { sumSq += out[i] * out[i]; }
     const float rms = std::sqrt(sumSq / static_cast<float>(frameCount));
@@ -129,9 +129,9 @@ private:
         const float y     = (m_screenH - barH) * 0.5f;
         // トラックの外枠。
         screen.drawRect(sgc::Rectf{x - 2.0f, y - 2.0f, barW + 4.0f, barH + 4.0f}, kPaperEdge);
-        // トラック内部。銀の surface に対して明灰 #d8d8d8 を凹ませる。
+        // トラック内部。銀の surface に対して、明灰 #d8d8d8 で凹んで見えるようにする。
         screen.drawRect(sgc::Rectf{x, y, barW, barH}, sgc::Colorf{0.847f, 0.847f, 0.847f, 1.0f});
-        // フィル。gain 0.30 の sine でも見えるよう RMS を増幅。
+        // フィル。gain 0.30 の sine でも見えるように RMS を増幅する。
         const float norm = std::clamp(m_level * 4.0f, 0.0f, 1.0f);
         screen.drawRect(sgc::Rectf{x, y, barW * norm, barH}, kAmberAccent);
     }
@@ -170,8 +170,6 @@ int main(int /*argc*/, char* /*argv*/[])
     cfg.windowWidth          = 800;
     cfg.windowHeight         = 500;
     cfg.vsync                = true;
-    cfg.enableCef            = false;
-    cfg.fontAtlasRanges      = mitiru::EngineConfig::FontAtlas::Latin;
     cfg.useLogicalWindowSize = true;
     cfg.backgroundColor      = kPaperBg;
 

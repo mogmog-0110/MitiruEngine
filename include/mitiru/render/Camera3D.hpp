@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Camera3D.hpp
-/// @brief 3Dカメラ
-/// @details 3D描画用の透視投影カメラ。ビュー行列・射影行列を生成する。
+/// @brief 3D カメラ
+/// @details 3D 描画用の透視投影カメラ。ビュー行列・射影行列を生成する。
 
 #include <cmath>
 
@@ -12,7 +12,7 @@
 namespace mitiru::render
 {
 
-/// @brief 3Dカメラ
+/// @brief 3D カメラ
 /// @details 位置・注視点・上方向からビュー行列を、
 ///          FOV・ニア/ファーから射影行列を生成する。
 ///
@@ -198,7 +198,7 @@ public:
 	{
 		if (m_isOrthographic)
 		{
-			// 正射影は sgc 版が [-1,1]。z 行だけ [0,1] に潰す。
+			// 正射影は sgc 版が [-1,1]。z 行だけを [0,1] へ縮める。
 			sgc::Mat4f m = sgc::Mat4f::orthographic(m_orthoLeft, m_orthoRight, m_orthoBottom,
 			                                        m_orthoTop, m_nearClip, m_farClip);
 			m.m[2][2] = 1.0f / (m_nearClip - m_farClip);
@@ -235,7 +235,7 @@ public:
 	/// @param worldPos ワールド座標
 	/// @param screenWidth スクリーン幅
 	/// @param screenHeight スクリーン高さ
-	/// @return スクリーン座標 (x, y)。左上原点。z はNDC深度値。
+	/// @return スクリーン座標 (x, y)。左上原点。z は NDC 深度値。
 	///         カメラ背面の点は (-1, -1, -1) を返す。
 	[[nodiscard]] sgc::Vec3f worldToScreen(const sgc::Vec3f& worldPos,
 	                                       float screenWidth,
@@ -243,7 +243,7 @@ public:
 	{
 		const auto vp = viewProjectionMatrix();
 
-		/// 4次元同次座標に変換する（行優先行列 * 列ベクトル）
+		/// 4 次元同次座標に変換する（行優先行列 * 列ベクトル）
 		const float x = worldPos.x, y = worldPos.y, z = worldPos.z;
 		const float cx = vp.m[0][0]*x + vp.m[0][1]*y + vp.m[0][2]*z + vp.m[0][3];
 		const float cy = vp.m[1][0]*x + vp.m[1][1]*y + vp.m[1][2]*z + vp.m[1][3];
@@ -310,8 +310,8 @@ public:
 
 	/// @brief 注視点を中心としたオービットカメラを設定する
 	/// @param orbitTarget オービット中心点
-	/// @param yawRadians ヨー角（Y軸回転、ラジアン）
-	/// @param pitchRadians ピッチ角（X軸回転、ラジアン、-PI/2〜PI/2）
+	/// @param yawRadians ヨー角（Y 軸回転、ラジアン）
+	/// @param pitchRadians ピッチ角（X 軸回転、ラジアン、-PI/2〜PI/2）
 	/// @param distance 中心点からの距離
 	/// @details 球面座標系でカメラ位置を計算し、注視点を設定する。
 	void orbitAround(const sgc::Vec3f& orbitTarget,
@@ -319,7 +319,7 @@ public:
 	                 float pitchRadians,
 	                 float distance) noexcept
 	{
-		/// ピッチを-89度〜89度にクランプ（ジンバルロック防止）
+		/// ピッチを-89 度〜89 度にクランプ（ジンバルロック防止）
 		constexpr float MAX_PITCH = 1.553343f;  ///< ~89度
 		if (pitchRadians > MAX_PITCH) pitchRadians = MAX_PITCH;
 		if (pitchRadians < -MAX_PITCH) pitchRadians = -MAX_PITCH;
@@ -340,13 +340,13 @@ public:
 		m_target = orbitTarget;
 	}
 
-	/// @brief FPSカメラのようにヨー・ピッチから注視方向を設定する
-	/// @param yawRadians ヨー角（Y軸回転、ラジアン）
-	/// @param pitchRadians ピッチ角（X軸回転、ラジアン、-PI/2〜PI/2）
+	/// @brief FPS カメラのようにヨー・ピッチから注視方向を設定する
+	/// @param yawRadians ヨー角（Y 軸回転、ラジアン）
+	/// @param pitchRadians ピッチ角（X 軸回転、ラジアン、-PI/2〜PI/2）
 	/// @details カメラ位置はそのまま、注視点のみを更新する。
 	void lookDirection(float yawRadians, float pitchRadians) noexcept
 	{
-		/// ピッチを-89度〜89度にクランプする
+		/// ピッチを-89 度〜89 度にクランプする
 		constexpr float MAX_PITCH = 1.553343f;  ///< ~89度
 		if (pitchRadians > MAX_PITCH) pitchRadians = MAX_PITCH;
 		if (pitchRadians < -MAX_PITCH) pitchRadians = -MAX_PITCH;

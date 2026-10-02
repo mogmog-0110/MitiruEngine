@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file GpuProfiler.hpp
-/// @brief GPU計測タイミング抽象化レイヤー
-/// @details GPUの処理時間を計測するための抽象インターフェースと
-///          テスト用のNullGpuTimer、RAIIスコープヘルパーを提供する。
+/// @brief GPU 計測タイミング抽象化レイヤー
+/// @details GPU の処理時間を計測するための抽象インターフェースと
+///          テスト用の NullGpuTimer、RAII スコープヘルパーを提供する。
 
 #include <map>
 #include <string>
@@ -12,9 +12,9 @@
 namespace mitiru::debug
 {
 
-/// @brief GPUタイマーの抽象インターフェース
-/// @details GPU処理時間の計測をAPI非依存で抽象化する。
-///          Vulkan、D3D12、WebGPU等のバックエンドに対応可能。
+/// @brief GPU タイマーの抽象インターフェース
+/// @details GPU 処理時間の計測を API 非依存で抽象化する。
+///          Vulkan、D3D12、WebGPU 等のバックエンドに対応可能。
 class IGpuTimer
 {
 public:
@@ -37,13 +37,13 @@ public:
 	virtual void reset() = 0;
 };
 
-/// @brief テスト用のNull GPUタイマー実装
-/// @details 全ての操作をno-opで実装する。計測結果は常に0.0msを返す。
+/// @brief テスト用の Null GPU タイマー実装
+/// @details 全ての操作を no-op で実装する。計測結果は常に 0.0ms を返す。
 ///
 /// @code
 /// mitiru::debug::NullGpuTimer timer;
 /// timer.begin("ShadowPass");
-/// // ... GPU処理 ...
+/// // ... GPU 処理 ...
 /// timer.end("ShadowPass");
 /// auto results = timer.getResults();
 /// @endcode
@@ -64,7 +64,7 @@ public:
 	}
 
 	/// @brief 計測結果を取得する
-	/// @return 記録された区間名と0.0msのマップ
+	/// @return 記録された区間名と 0.0ms のマップ
 	[[nodiscard]] std::map<std::string, float> getResults() const override
 	{
 		return m_results;
@@ -87,20 +87,20 @@ private:
 	std::map<std::string, float> m_results;  ///< 計測結果
 };
 
-/// @brief GPUプロファイルスコープ（RAII）
-/// @details コンストラクタでbegin()、デストラクタでend()を呼び出す。
+/// @brief GPU プロファイルスコープ（RAII）
+/// @details コンストラクタで begin()、デストラクタで end()を呼び出す。
 ///
 /// @code
 /// {
 ///     mitiru::debug::GpuProfileScope scope(&timer, "ForwardPass");
-///     // ... GPU処理 ...
-/// } // 自動的にend()が呼ばれる
+///     // ... GPU 処理 ...
+/// } // 自動的に end()が呼ばれる
 /// @endcode
 class GpuProfileScope
 {
 public:
 	/// @brief コンストラクタ（計測開始）
-	/// @param timer GPUタイマーへのポインタ（非所有、nullptrを許容）
+	/// @param timer GPU タイマーへのポインタ（非所有、nullptr を許容）
 	/// @param name 計測区間の名前
 	GpuProfileScope(IGpuTimer* timer, std::string_view name)
 		: m_timer(timer)

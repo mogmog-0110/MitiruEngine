@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Signal-only bridge between C&#43;&#43; gameplay and the CEF UI layer. Defines the JS-to-C&#43;&#43; and C&#43;&#43;-to-JS message types and the registry for view-push handlers.">
+<meta name="description" content="Signal-only bridge between C&#43;&#43; gameplay and the UI layer (RmlUi). Holds the view-push helpers and the last pushed state values.">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::bridge | MitiruEngine">
-<meta property="og:description" content="Signal-only bridge between C&#43;&#43; gameplay and the CEF UI layer. Defines the JS-to-C&#43;&#43; and C&#43;&#43;-to-JS message types and the registry for view-push handlers.">
+<meta property="og:description" content="Signal-only bridge between C&#43;&#43; gameplay and the UI layer (RmlUi). Holds the view-push helpers and the last pushed state values.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::bridge | MitiruEngine">
-<meta name="twitter:description" content="Signal-only bridge between C&#43;&#43; gameplay and the CEF UI layer. Defines the JS-to-C&#43;&#43; and C&#43;&#43;-to-JS message types and the registry for view-push handlers.">
+<meta name="twitter:description" content="Signal-only bridge between C&#43;&#43; gameplay and the UI layer (RmlUi). Holds the view-push helpers and the last pushed state values.">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.28</span>
+    <span class="ver">v0.31</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -77,27 +77,21 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-assets/"><code>mitiru::assets</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/" class="active"><code>mitiru::bridge</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge-detail/"><code>mitiru::bridge::detail</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef/"><code>mitiru::cef</code></a>
-  
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-cef-bridges/"><code>mitiru::cef::bridges</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
-  
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-core/"><code>mitiru::core</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
   
@@ -107,13 +101,13 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-game/"><code>mitiru::game</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dx12/"><code>mitiru::gfx::dx12</code></a>
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
   
@@ -131,23 +125,41 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics2d/"><code>mitiru::physics2d</code></a>
-  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
   
@@ -171,19 +183,25 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
   
-    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui-layoutpresets/"><code>mitiru::ui::LayoutPresets</code></a>
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
@@ -197,11 +215,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::bridge</code></h1>
-  <p class="lede">Signal-only bridge between C&#43;&#43; gameplay and the CEF UI layer. Defines the JS-to-C&#43;&#43; and C&#43;&#43;-to-JS message types and the registry for view-push handlers.</p>
+  <p class="lede">Signal-only bridge between C&#43;&#43; gameplay and the UI layer (RmlUi). Holds the view-push helpers and the last pushed state values.</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Signal-only bridge between C++ gameplay and the CEF UI layer. Defines the JS-to-C++ and C++-to-JS message types and the registry for view-push handlers.</p>
+  <p class="api-namespace__lede">Signal-only bridge between C++ gameplay and the UI layer (RmlUi). Holds the view-push helpers and the last pushed state values.</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -217,18 +235,15 @@
 <tr><td><a href="#class-eventbridge"><code>EventBridge</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#class-i18nbridge"><code>I18nBridge</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-particlebridge"><code>ParticleBridge</code></a></td><td>class</td><td>8</td></tr>
-<tr><td><a href="#struct-physicsbodyentry"><code>PhysicsBodyEntry</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-collisionevent"><code>CollisionEvent</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-physicsbridge"><code>PhysicsBridge</code></a></td><td>class</td><td>19</td></tr>
 <tr><td><a href="#class-proceduralbridge"><code>ProceduralBridge</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#struct-fullscreenvertex"><code>FullScreenVertex</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-renderer3dbridge"><code>Renderer3DBridge</code></a></td><td>class</td><td>11</td></tr>
-<tr><td><a href="#class-savebridge"><code>SaveBridge</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-savebridge"><code>SaveBridge</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#struct-transparentstringhash"><code>TransparentStringHash</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-statestore"><code>StateStore</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#class-objectbuilder"><code>ObjectBuilder</code></a></td><td>class</td><td>18</td></tr>
-<tr><td><a href="#class-rowbuilder"><code>RowBuilder</code></a></td><td>class</td><td>8</td></tr>
-<tr><td><a href="#class-listbuilder"><code>ListBuilder</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#class-arrayelement"><code>ArrayElement</code></a></td><td>class</td><td>10</td></tr>
-<tr><td><a href="#class-statewriter"><code>StateWriter</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-statewriter"><code>StateWriter</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#class-steeringbridge"><code>SteeringBridge</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-tilemapbridge"><code>TilemapBridge</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-transitionbridge"><code>TransitionBridge</code></a></td><td>class</td><td>10</td></tr>
@@ -395,44 +410,6 @@
 <div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-physicsbodyentry">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PhysicsBodyEntry</code> <span class="api-class__count">1</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>sgc::physics::RigidBody2Df* body = nullptr</code></div>
-</div>
-</details>
-<details class="api-class" id="struct-collisionevent">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CollisionEvent</code> <span class="api-class__count">3</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>std::string labelA</code></div>
-<div class="api-method"><code>std::string labelB</code></div>
-<div class="api-method"><code>sgc::physics::CollisionResult2Df result</code></div>
-</div>
-</details>
-<details class="api-class" id="class-physicsbridge">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PhysicsBridge</code> <span class="api-class__count">19</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>explicit PhysicsBridge(double stepSize = 1.0 / 60.0)</code></div>
-<div class="api-method"><code>void addBody(const std::string&amp; label, sgc::physics::RigidBody2Df* body, const sgc::Vec2f&amp; halfSize)</code></div>
-<div class="api-method"><code>void removeBody(const std::string&amp; label)</code></div>
-<div class="api-method"><code>[[nodiscard]] const PhysicsBodyEntry* getBody(const std::string&amp; label) const</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t bodyCount() const noexcept</code></div>
-<div class="api-method"><code>void setGravity(const sgc::Vec2f&amp; gravity) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const sgc::Vec2f&amp; gravity() const noexcept</code></div>
-<div class="api-method"><code>int step(double dt)</code></div>
-<div class="api-method"><code>template &lt;std::invocable&lt;double&gt; Callback&gt; int step(double dt, Callback&amp;&amp; callback)</code></div>
-<div class="api-method"><code>void setCollisionCallback(std::function&lt;void(const CollisionEvent&amp;)&gt; callback)</code></div>
-<div class="api-method"><code>[[nodiscard]] const std::vector&lt;CollisionEvent&gt;&amp; lastCollisions() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::optional&lt;std::pair&lt;std::string, sgc::physics::RayCastHit2Df&gt;&gt; rayCast( const sgc::Vec2f&amp; origin, const sgc::Vec2f&amp; direction, float maxDistance = 1e10f) const</code></div>
-<div class="api-method"><code>void resetAccumulator() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] double stepSize() const noexcept</code></div>
-<div class="api-method"><code>void setStepSize(double stepSize) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] double interpolationFactor() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] int totalSteps() const noexcept</code></div>
-<div class="api-method"><code>void setMaxSteps(int steps) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
-</div>
-</details>
 <details class="api-class" id="class-proceduralbridge">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ProceduralBridge</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
@@ -470,7 +447,7 @@
 </div>
 </details>
 <details class="api-class" id="class-savebridge">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SaveBridge</code> <span class="api-class__count">10</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SaveBridge</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void save(int slot, const std::string&amp; data)</code></div>
 <div class="api-method"><code>[[nodiscard]] std::string load(int slot) const</code></div>
@@ -479,7 +456,26 @@
 <div class="api-method"><code>[[nodiscard]] std::vector&lt;int&gt; listSlots() const</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t slotCount() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
-<div class="api-method"><code>inline std::string jsonEscape(const char* s)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-transparentstringhash">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TransparentStringHash</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using is_transparent = void;</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t operator()(std::string_view sv) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-statestore">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StateStore</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using json = ::nlohmann::json;</code></div>
+<div class="api-method"><code>using StateMap = std::unordered_map&lt;std::string, json, TransparentStringHash, std::equal_to&lt;&gt;&gt;;</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; bool set(std::string_view key, const T&amp; value)</code></div>
+<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] std::optional&lt;T&gt; get(std::string_view key) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::optional&lt;json&gt; getJson(std::string_view key) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool has(std::string_view key) const</code></div>
+<div class="api-method"><code>void clear()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string snapshotJson(int indent = -1) const</code></div>
 <div class="api-method"><code>inline std::string fmtDouble(double v)</code></div>
 <div class="api-method"><code>inline bool pushString(mitiru::module::FrameIntents* it, const char* key, const std::string&amp; value)</code></div>
 </div>
@@ -507,34 +503,6 @@
 <div class="api-method"><code>} private: void appendSep()</code></div>
 </div>
 </details>
-<details class="api-class" id="class-rowbuilder">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RowBuilder</code> <span class="api-class__count">8</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>explicit RowBuilder(std::string&amp; target)</code></div>
-<div class="api-method"><code>~RowBuilder()</code></div>
-<div class="api-method"><code>RowBuilder(const RowBuilder&amp;) = delete</code></div>
-<div class="api-method"><code>RowBuilder&amp; operator=(const RowBuilder&amp;) = delete</code></div>
-<div class="api-method"><code>RowBuilder&amp; field(int v)</code></div>
-<div class="api-method"><code>RowBuilder&amp; field(double v)</code></div>
-<div class="api-method"><code>RowBuilder&amp; field(const char* v)</code></div>
-<div class="api-method"><code>void flush()</code></div>
-</div>
-</details>
-<details class="api-class" id="class-listbuilder">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ListBuilder</code> <span class="api-class__count">10</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>ListBuilder(mitiru::module::FrameIntents* intents, std::string key)</code></div>
-<div class="api-method"><code>~ListBuilder()</code></div>
-<div class="api-method"><code>ListBuilder(const ListBuilder&amp;) = delete</code></div>
-<div class="api-method"><code>ListBuilder&amp; operator=(const ListBuilder&amp;) = delete</code></div>
-<div class="api-method"><code>ListBuilder(ListBuilder&amp;&amp; o) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] RowBuilder item()</code></div>
-<div class="api-method"><code>void row(int a, int b, int c, int d)</code></div>
-<div class="api-method"><code>void row(int a, int b, int c)</code></div>
-<div class="api-method"><code>void row(int a, int b)</code></div>
-<div class="api-method"><code>void commit()</code></div>
-</div>
-</details>
 <details class="api-class" id="class-arrayelement">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ArrayElement</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
@@ -551,7 +519,7 @@
 </div>
 </details>
 <details class="api-class" id="class-statewriter">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StateWriter</code> <span class="api-class__count">11</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StateWriter</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit StateWriter(mitiru::module::FrameIntents* intents)</code></div>
 <div class="api-method"><code>StateWriter(const StateWriter&amp;) = delete</code></div>
@@ -562,7 +530,6 @@
 <div class="api-method"><code>void set(const char* key, const std::string&amp; v)</code></div>
 <div class="api-method"><code>void set(const char* key, bool v)</code></div>
 <div class="api-method"><code>[[nodiscard]] ObjectBuilder object(const char* key)</code></div>
-<div class="api-method"><code>[[nodiscard]] ListBuilder list(const char* key)</code></div>
 <div class="api-method"><code>[[nodiscard]] ArrayBuilder array(const char* key)</code></div>
 </div>
 </details>

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file RTLLayout.hpp
-/// @brief Right-to-Left（RTL）テキストレイアウトインターフェース
-/// @details Unicode BiDiアルゴリズムに基づくテキスト方向解析と、
-///          複雑文字体系（アラビア文字・ヘブライ文字等）のテキストシェーピング
+/// @brief Right-to-Left（RTL）テキストレイアウトのインターフェース
+/// @details Unicode BiDi アルゴリズムに基づくテキスト方向の解析と、
+///          複雑な文字体系（アラビア文字・ヘブライ文字等）のテキストシェーピングの
 ///          インターフェースを提供する。
 
 #include <cstdint>
@@ -21,8 +21,8 @@ enum class TextDirection : int
 	Mixed = 2  ///< 双方向混在
 };
 
-/// @brief BiDiランの情報
-/// @details Unicode BiDiアルゴリズムで解析された1つのテキスト区間。
+/// @brief BiDi ランの情報
+/// @details Unicode BiDi アルゴリズムで解析した 1 つのテキスト区間。
 struct BiDiRun
 {
 	std::size_t startIndex = 0;   ///< テキスト内の開始位置（コードポイント単位）
@@ -51,7 +51,7 @@ struct ShapedText
 	TextDirection baseDirection = TextDirection::LTR; ///< ベーステキスト方向
 };
 
-/// @brief RTLレイアウト設定
+/// @brief RTL レイアウト設定
 struct RTLConfig
 {
 	TextDirection baseDirection = TextDirection::LTR; ///< デフォルトのベース方向
@@ -61,9 +61,9 @@ struct RTLConfig
 	bool mirrorBrackets = true;   ///< RTL時に括弧をミラーリング
 };
 
-/// @brief BiDiアルゴリズムインターフェース
-/// @details Unicode UAX#9 BiDiアルゴリズムの実装を抽象化する。
-///          テキストの方向解析とビジュアル順への並べ替えを担当する。
+/// @brief BiDi アルゴリズムのインターフェース
+/// @details Unicode UAX#9 BiDi アルゴリズムの実装を抽象化する。
+///          テキストの方向の解析と、ビジュアル順への並べ替えを受け持つ。
 class IBiDiResolver
 {
 public:
@@ -74,30 +74,30 @@ public:
 	IBiDiResolver(const IBiDiResolver&) = delete;
 	IBiDiResolver& operator=(const IBiDiResolver&) = delete;
 
-	/// @brief テキストのBiDiランを解析する
-	/// @param text UTF-8テキスト
+	/// @brief テキストの BiDi ランを解析する
+	/// @param text UTF-8 テキスト
 	/// @param baseDirection ベース方向
-	/// @return BiDiラン一覧（論理順）
+	/// @return BiDi ラン一覧（論理順）
 	[[nodiscard]] virtual std::vector<BiDiRun> analyze(
 		const std::string& text,
 		TextDirection baseDirection = TextDirection::LTR) const = 0;
 
 	/// @brief テキストのベース方向を自動検出する
-	/// @param text UTF-8テキスト
-	/// @return 検出されたベース方向
+	/// @param text UTF-8 テキスト
+	/// @return 検出したベース方向
 	[[nodiscard]] virtual TextDirection detectBaseDirection(
 		const std::string& text) const = 0;
 
-	/// @brief 論理順テキストをビジュアル順に並べ替える
-	/// @param text UTF-8テキスト
+	/// @brief 論理順のテキストをビジュアル順に並べ替える
+	/// @param text UTF-8 テキスト
 	/// @param baseDirection ベース方向
-	/// @return ビジュアル順に並べ替えられたテキスト
+	/// @return ビジュアル順に並べ替えたテキスト
 	[[nodiscard]] virtual std::string reorderVisual(
 		const std::string& text,
 		TextDirection baseDirection = TextDirection::LTR) const = 0;
 
 protected:
-	/// @brief デフォルトコンストラクタ（派生クラスのみ生成可能）
+	/// @brief デフォルトコンストラクタ（派生クラスからだけ生成できる）
 	IBiDiResolver() = default;
 
 	/// ムーブ許可（派生クラスのみ）
@@ -105,9 +105,9 @@ protected:
 	IBiDiResolver& operator=(IBiDiResolver&&) noexcept = default;
 };
 
-/// @brief テキストシェーピングインターフェース
-/// @details 複雑文字体系のテキストシェーピング（合字、文脈依存字形選択等）を
-///          抽象化する。HarfBuzz等のシェーピングエンジンをバックエンドとして使用可能。
+/// @brief テキストシェーピングのインターフェース
+/// @details 複雑な文字体系のテキストシェーピング（合字、文脈に応じた字形選択等）を
+///          抽象化する。HarfBuzz 等のシェーピングエンジンをバックエンドに使える。
 class ITextShaper
 {
 public:
@@ -119,7 +119,7 @@ public:
 	ITextShaper& operator=(const ITextShaper&) = delete;
 
 	/// @brief テキストをシェーピングする
-	/// @param text UTF-8テキスト
+	/// @param text UTF-8 テキスト
 	/// @param fontSizePx フォントサイズ（ピクセル）
 	/// @param direction テキスト方向
 	/// @return シェーピング結果
@@ -128,8 +128,8 @@ public:
 		float fontSizePx,
 		TextDirection direction = TextDirection::LTR) const = 0;
 
-	/// @brief 指定テキストのレイアウト幅を計算する
-	/// @param text UTF-8テキスト
+	/// @brief 指定したテキストのレイアウト幅を計算する
+	/// @param text UTF-8 テキスト
 	/// @param fontSizePx フォントサイズ（ピクセル）
 	/// @return テキスト幅（ピクセル）
 	[[nodiscard]] virtual float measureWidth(
@@ -140,7 +140,7 @@ public:
 	[[nodiscard]] virtual std::string engineName() const = 0;
 
 protected:
-	/// @brief デフォルトコンストラクタ（派生クラスのみ生成可能）
+	/// @brief デフォルトコンストラクタ（派生クラスからだけ生成できる）
 	ITextShaper() = default;
 
 	/// ムーブ許可（派生クラスのみ）

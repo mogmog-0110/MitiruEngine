@@ -7,24 +7,24 @@
 /// EventLog は「時間軸に沿った疎な節目イベント」を `%TEMP%/mitiru_events_<pid>.jsonl`
 /// に **append-only JSONL** (1 行 1 event) で蓄積する。
 ///
-/// 二重可読 (dual-readable) の思想:
+/// 二重可読 (dual-readable) の考え方
 /// - 人間/inspector: `mitiru_inspector --panel events` が tail-poll で読んで描画
 /// - AI agent: `tail -f` / Read で生 JSONL をそのまま機械可読として処理可能
 ///
-/// 設計判断 (SharedSnapshot の作法に倣う):
+/// 設計判断 (SharedSnapshot の作法に倣う)
 /// - temp file: shared memory より構造化が簡単、`cat` で覗ける、OS が掃除する
 /// - 1 ファイル 1 run: `open()` で truncate して fresh start (前 run の残骸を混ぜない)
-/// - flush 必須: AI が即 tail で読めるよう、emit ごとに明示 flush
-/// - file open は 1 回だけ (hot path で呼ばれても open syscall を撒かない)
+/// - flush 必須: AI がすぐ tail で読めるよう、emit ごとに明示 flush
+/// - file open は 1 回だけ (hot path で呼ばれても open syscall を何度も呼ばない)
 /// - event は疎なはず (被弾 / 死亡 / 違反 等の節目) なので throttle はしない
 ///
-/// wire format (1 行 = 1 JSON object):
+/// wire format (1 行 = 1 JSON object)
 /// @code
 ///   {"frame":120,"t":2.01,"type":"hit","data":{"dmg":10,"hp_after":90}}
 ///   {"frame":121,"t":2.03,"type":"enemy_death","data":{"x":640.0,"y":120.0}}
 /// @endcode
 ///
-/// 使い方 (gameplay 側):
+/// 使い方 (gameplay 側)
 /// @code
 ///   mitiru::observe::EventLog log;
 ///   log.open(GetCurrentProcessId());
@@ -52,7 +52,7 @@ inline std::filesystem::path eventLogPathForPid(int pid)
 	return std::filesystem::temp_directory_path() / name;
 }
 
-/// @brief 走ってる process 側 (writer)。append-only JSONL を蓄積する。
+/// @brief 実行中の process 側 (writer)。append-only JSONL を蓄積する。
 /// @details RAII: デストラクタでストリームを閉じる。ファイルは inspector / AI が
 ///          run 後も読めるよう残す (SharedSnapshot のように消さない。履歴だから)。
 class EventLog
@@ -68,13 +68,13 @@ public:
 	EventLog(const EventLog&)            = delete;
 	EventLog& operator=(const EventLog&) = delete;
 
-	/// @brief pid に紐づいた JSONL を開く (truncate, fresh per run)。1 回だけ呼ぶ。
+	/// @brief pid に紐づいた JSONL を開く (truncate し、run ごとに新しく始める)。1 回だけ呼ぶ。
 	/// @return open 成功で true。失敗は silent でも分かるよう bool で返す。
 	bool open(int pid)
 	{
 		m_pid  = pid;
 		m_path = eventLogPathForPid(pid);
-		// trunc: fresh per run。前回の残骸を混ぜない
+		// trunc: run ごとに新しく始める。前回の残骸を混ぜない
 		m_out.open(m_path, std::ios::binary | std::ios::trunc);
 		m_startTime = std::chrono::steady_clock::now();
 		return m_out.is_open();
@@ -176,7 +176,7 @@ public:
 					}
 					catch (...)
 					{
-						// torn last line (mid-write)。skip; completes next poll
+						// 最終行が書き込み途中で切れている (mid-write)。skip し、次の poll で完成する
 					}
 				}
 			}
@@ -201,7 +201,7 @@ public:
 			return true;
 		}
 
-		/// @brief 直近 poll で読み込んだ event 列 (oldest first)
+		/// @brief 直近 poll で読み込んだ event 列 (古い順)
 		[[nodiscard]] const std::vector<Event>& events() const noexcept { return m_events; }
 
 		[[nodiscard]] const std::filesystem::path& path() const noexcept { return m_path; }

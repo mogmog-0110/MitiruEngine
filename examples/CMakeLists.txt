@@ -1,22 +1,21 @@
-# MitiruEngine examples — 章立てカリキュラム (規格: docs/EXAMPLE_STANDARD.md)
-#
-# 章は 1 機能 1 DLL の教材。追加は mitiru_add_example(<name>) 1 行
-# (+ tests/CMakeLists.txt の _example_e2e_chapters に 1 行で headless E2E も付く)。
-# 学習順序は名前でなく docs/EXAMPLE_STANDARD.md の章立てと examples/README.md の表が持つ。
+# MitiruEngine examples の章立てに沿ったカリキュラム (規格: docs/EXAMPLE_STANDARD.md)
+# 各章は 1 機能を 1 DLL で扱う教材。追加は mitiru_add_example(<name>) の 1 行
+# (+ tests/CMakeLists.txt の _example_e2e_chapters に 1 行追加すると headless E2E も付く)。
+# 学習順序は名前ではなく、docs/EXAMPLE_STANDARD.md の章立てと examples/README.md の表で示す。
 
 if(NOT TARGET mitiru)
 	message(STATUS "examples/ skipped: mitiru target not defined")
 	return()
 endif()
 
-# 章 example を 1 行で追加する:
+# 章の example を 1 行で追加する方法。
 #   mitiru_add_example(welcome)
-#     - <name>/<name>_dll.cpp を SHARED (game DLL) でビルド
-#     - mitiru_host の隣 (<host dir>/<name>/) へ deploy — host は相対 path で load できる
-#     - <name>/assets/ があれば同じ dir へ source-tracked stamp 経由で配る
+#     - <name>/<name>_dll.cpp を SHARED (ゲーム DLL) としてビルド
+#     - mitiru_host の隣 (<host dir>/<name>/) に配置し、host が相対 path で load できるようにする
+#     - <name>/assets/ があれば、source-tracked stamp を介して同じ dir に配置
 function(mitiru_add_example name)
-	# 公開スナップショットは一部の example を同梱しない (教本の検証用など)。無い example を登録すると
-	# 利用者の configure が「No SOURCES given」で壊れるので、ソースが無ければ飛ばす。
+	# 公開スナップショットには、一部の example を同梱しない (教本の検証用など)。存在しない example を登録すると
+	# 利用者の configure が「No SOURCES given」で失敗するため、ソースがなければ登録しない。
 	if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${name}/${name}_dll.cpp")
 		message(STATUS "example ${name}: ソースが無いので飛ばす (${name}/${name}_dll.cpp)")
 		return()
@@ -48,26 +47,6 @@ function(mitiru_add_example name)
 		add_custom_target(${name}_assets ALL DEPENDS "${_stamp}")
 		add_dependencies(${name} ${name}_assets)
 	endif()
-	# assets/scene.html がある章はエンジン付属 binder/bridge JS も deploy する
-	# (単一源 web/mitiru_runtime/ からの build-time copy。in-repo 複製は drift 源なので禁止)
-	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${name}/assets/scene.html")
-		set(_cefjs
-			"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_cef_state.js"
-			"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_bind.js"
-			"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_bind_tools.js"
-			"${CMAKE_SOURCE_DIR}/web/mitiru_runtime/mitiru_modal.js")
-		set(_cefjs_stamp "${CMAKE_CURRENT_BINARY_DIR}/${name}_cefjs.stamp")
-		add_custom_command(
-			OUTPUT  "${_cefjs_stamp}"
-			COMMAND ${CMAKE_COMMAND} -E make_directory "${_dir}/assets/mitiru_runtime"
-			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_cefjs} "${_dir}/assets/mitiru_runtime"
-			COMMAND ${CMAKE_COMMAND} -E touch "${_cefjs_stamp}"
-			DEPENDS ${_cefjs}
-			VERBATIM
-			COMMENT "${name}: deploying mitiru_runtime JS (source-tracked)")
-		add_custom_target(${name}_cefjs ALL DEPENDS "${_cefjs_stamp}")
-		add_dependencies(${name} ${name}_cefjs)
-	endif()
 	add_dependencies(${name} mitiru_host)
 endfunction()
 
@@ -92,40 +71,63 @@ mitiru_add_example(anim3d)         # 骨格アニメ: drawModelBlend + クリッ
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
 mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane を並べて撮る
 
-# textbook_ch4..6: docs/textbook/index.html 第4〜6章の完成形 (M6)。examples/README.md の
-# カリキュラム表とは別枠 (教本の実機検証専用、beko_run/hello_preview と同じ位置づけ)。
+# navmesh は、ナビメッシュを使って経路を探索する。レベルの .obj をビルド工程で mitiru_navbake が .navmesh に変換し、
+# DLL の隣にある assets/ に配置する (Recast/Detour の submodule がある場合のみ)。
+if(TARGET mitiru_navbake)
+	mitiru_add_example(navmesh)
+	target_link_libraries(navmesh PRIVATE mitiru_nav)
+	set(_nav_level "${CMAKE_CURRENT_SOURCE_DIR}/navmesh/assets/level.obj")
+	set(_nav_stamp "${CMAKE_CURRENT_BINARY_DIR}/navmesh_bake.stamp")
+	add_custom_command(
+		OUTPUT  "${_nav_stamp}"
+		COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:mitiru_host>/navmesh/assets"
+		COMMAND mitiru_navbake "${_nav_level}" -o "$<TARGET_FILE_DIR:mitiru_host>/navmesh/assets/level.navmesh"
+		COMMAND ${CMAKE_COMMAND} -E touch "${_nav_stamp}"
+		DEPENDS mitiru_navbake "${_nav_level}"
+		VERBATIM
+		COMMENT "navmesh: baking assets/level.obj -> level.navmesh")
+	add_custom_target(navmesh_bake ALL DEPENDS "${_nav_stamp}")
+	add_dependencies(navmesh navmesh_bake)
+endif()
+if(MITIRU_WITH_EFFEKSEER)
+	mitiru_add_example(effekseer_fx)  # Effekseer のエフェクトを経過秒で描く (drawModel の時刻つき版)
+endif()
+mitiru_add_example(rollback_duel)  # 1 台で 2 人のテニス。mitiru_rollback (opt-in) でロールバック対戦の検証に使う
+
+# textbook_ch4..6 は、docs/textbook/index.html の第 4〜6 章の完成形 (M6)。examples/README.md の
+# カリキュラム表とは別枠 (教本の実機検証専用で、beko_run/hello_preview と同じ位置づけ)。
 mitiru_add_example(textbook_ch4)   # 敵 + 当たり判定 + MITIRU_INVARIANT (HP は負にならない)
 mitiru_add_example(textbook_ch5)   # --record / --replay-test / --inspect rewind
 mitiru_add_example(textbook_ch6)   # 分岐エディタ: beginObject(name, fieldX, fieldY)
 
 # ── チュートリアル頁の題材ゲーム ───────────────────────────────────────────
-# beko_run: 赤べこの横スクロールアクション。カリキュラム章 (1 機能 1 DLL) ではなく
-# site/homepage/tutorial.html の実演用。複数ソースに分けるので独立 CMakeLists を持つ。
+# beko_run は、赤べこの横スクロールアクション。カリキュラムの章 (1 機能 1 DLL) ではなく、
+# site/homepage/tutorial.html での実演用。複数のソースに分けるため、独立した CMakeLists を持つ。
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/beko_run/CMakeLists.txt")
 	add_subdirectory(beko_run)
 endif()
 
-# hello_preview: `mitiru new` (hello テンプレ) の画面キャプチャ用 (install.html の頁生成専用)。
+# hello_preview は、`mitiru new` (hello テンプレ) の画面キャプチャ用 (install.html の頁生成専用)。
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hello_preview/hello_preview_dll.cpp")
 	mitiru_add_example(hello_preview)
 endif()
 
-# welcome_start: `mitiru new` の新既定 (welcome) テンプレの実演体 = 画面キャプチャ用
-# (install.html の頁生成専用)。左は C++ 描画の絵、右は HTML/CSS の操作パネル。
+# welcome_start は、`mitiru new` の新しい既定 (welcome) テンプレの実演用 = 画面キャプチャ用
+# (install.html の頁生成専用)。左側は C++ で描画した絵、右側は HTML/CSS の操作パネル。
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/welcome_start/welcome_start_dll.cpp")
 	mitiru_add_example(welcome_start)
 endif()
 
 # ── 検証用 (従来形式のまま) ─────────────────────────────────────────────────
-# why_demo: `mitiru why`(分岐根本原因特定) の検証用 (dev 専用、snapshot 非同梱)。
+# why_demo は、`mitiru why` (分岐の根本原因を特定する機能) の検証用 (dev 専用、snapshot 非同梱)。
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/why_demo/CMakeLists.txt")
 	add_subdirectory(why_demo)
 endif()
-# neon_asteroids: NeonVector の発光ラインを持ち込んだ Asteroids (dev 専用、snapshot 非同梱)。
+# neon_asteroids は、NeonVector の発光ラインを取り入れた Asteroids (dev 専用、snapshot 非同梱)。
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/neon_asteroids/CMakeLists.txt")
 	add_subdirectory(neon_asteroids)
 endif()
-# 大型ゲームは examples に置かない (ここはエンジン demo / subsystem 起動のみ)。
+# 大型ゲームは examples に置かない (ここはエンジンの demo / subsystem の起動のみ)。
 
 # ── subsystem 単独起動 (軸③、単体 exe) ─────────────────────────────────────
 add_subdirectory(subsys)

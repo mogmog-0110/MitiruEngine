@@ -1,9 +1,10 @@
 #pragma once
 
 /// @file GlDevice.hpp
-/// @brief OpenGL 3.3 Coreデバイス実装
-/// @details SDL2またはGLFWウィンドウからOpenGLコンテキストを管理し、
-///          フレーム制御・バッファ生成・シェーダー管理を提供するIDevice実装。
+/// @brief OpenGL 3.3 Core デバイス実装
+/// @details SDL2 または GLFW ウィンドウから OpenGL コンテキストを管理し、
+///          フレーム制御・バッファ生成・シェーダー管理を提供する IDevice 実装。
+///          凍結中 (ADR 0047): 新機能は足さない。第 2 backend が 2D を描けた時点で消す。
 
 #ifdef MITIRU_HAS_OPENGL
 
@@ -37,15 +38,15 @@
 namespace mitiru::gfx
 {
 
-/// @brief OpenGL 3.3 Coreデバイス実装
-/// @details SDL2またはGLFWウィンドウからGLコンテキストを管理し、
-///          シェーダーとVAOを管理する。
+/// @brief OpenGL 3.3 Core デバイス実装
+/// @details SDL2 または GLFW ウィンドウから GL コンテキストを管理し、
+///          シェーダーと VAO を管理する。
 class GlDevice final : public IDevice
 {
 public:
 #ifdef MITIRU_HAS_SDL2
-	/// @brief SDL2ウィンドウからコンストラクト
-	/// @param window SDL2ウィンドウ
+	/// @brief SDL2 ウィンドウから構築する
+	/// @param window SDL2 ウィンドウ
 	explicit GlDevice(mitiru::Sdl2Window* window)
 		: m_screenWidth(static_cast<float>(window->width()))
 		, m_screenHeight(static_cast<float>(window->height()))
@@ -72,8 +73,8 @@ public:
 #endif
 
 #ifdef MITIRU_HAS_GLFW
-	/// @brief GLFWウィンドウからコンストラクト (OpenGLモード)
-	/// @param window GLFWウィンドウ (GlfwGraphicsMode::OpenGL で作成済み)
+	/// @brief GLFW ウィンドウから構築する (OpenGL モード)
+	/// @param window GLFW ウィンドウ (GlfwGraphicsMode::OpenGL で作成済み)
 	explicit GlDevice(mitiru::GlfwWindow* window)
 		: m_screenWidth(static_cast<float>(window->width()))
 		, m_screenHeight(static_cast<float>(window->height()))
@@ -81,7 +82,7 @@ public:
 		if (!window) throw std::runtime_error("GlDevice: GlfwWindow is null");
 		m_glfwWindow = window->nativeWindow();
 
-		// GLFWウィンドウが既にOpenGLコンテキストを持っている
+		// GLFW ウィンドウが既に OpenGL コンテキストを持っている
 		// (GlfwGraphicsMode::OpenGL で作成された場合)
 		m_swapFunc = [this]() { glfwSwapBuffers(m_glfwWindow); };
 		initGL();
@@ -123,7 +124,7 @@ public:
 	/// @brief フレームバッファからピクセルを読み取る
 	/// @param width 読み取り幅
 	/// @param height 読み取り高さ
-	/// @return RGBA8形式のピクセルデータ
+	/// @return RGBA8 形式のピクセルデータ
 	[[nodiscard]] std::vector<std::uint8_t> readPixels(
 		int width, int height) const override
 	{
@@ -134,7 +135,7 @@ public:
 		glReadPixels(0, 0, width, height,
 			GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
 
-		/// OpenGLはY軸が反転しているため上下反転する
+		/// OpenGL は Y 軸が反転しているため上下反転する
 		const auto rowBytes = static_cast<std::size_t>(width) * 4;
 		std::vector<std::uint8_t> row(rowBytes);
 		for (int y = 0; y < height / 2; ++y)
@@ -169,7 +170,7 @@ public:
 		if (m_swapFunc) m_swapFunc();
 	}
 
-	/// @brief GPUバッファを生成する
+	/// @brief GPU バッファを生成する
 	[[nodiscard]] std::unique_ptr<IBuffer> createBuffer(
 		BufferType bufferType,
 		std::uint32_t sizeBytes,
@@ -188,7 +189,7 @@ public:
 			&m_screenWidth, &m_screenHeight);
 	}
 
-	/// @brief GL関数ポインタ群を取得する
+	/// @brief GL 関数ポインタ群を取得する
 	[[nodiscard]] GlFunctions& glFunctions() noexcept
 	{
 		return m_gl;
@@ -200,7 +201,7 @@ public:
 		return m_program;
 	}
 
-	/// @brief VAOを取得する
+	/// @brief VAO を取得する
 	[[nodiscard]] GLuint vao() const noexcept
 	{
 		return m_vao;
@@ -284,14 +285,14 @@ private:
 			GLint logLen = 0;
 			m_gl.getProgramiv(program, GL_INFO_LOG_LENGTH, &logLen);
 			std::string log(static_cast<std::size_t>(logLen), '\0');
-			/// getProgramInfoLogはGlFunctionsにないので直接使用しない
+			/// getProgramInfoLog は GlFunctions にないので直接使用しない
 			/// 代わりにリンクエラーとして報告する
 			throw std::runtime_error(
 				"GlDevice: shader program link failed");
 		}
 	}
 
-	/// @brief GL関数ロード + シェーダー + VAO初期化
+	/// @brief GL 関数ロード + シェーダー + VAO 初期化
 	void initGL()
 	{
 		m_gl.load();

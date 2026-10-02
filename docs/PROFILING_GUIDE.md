@@ -8,27 +8,18 @@ shipping builds carry zero overhead.
 
 ## Enabling Tracy
 
-Tracy support is auto-detected by the root `CMakeLists.txt`. The build enables
-Tracy only when the vendored source is present:
+Tracy is vendored as a submodule (`external/tracy/`), but measuring is **off by
+default**: with it on, every game and test would start a profiler thread and a
+listening socket at launch and keep accumulating samples. Turn it on only for a
+capture session:
 
-```cmake
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/tracy/public/TracyClient.cpp")
-    option(TRACY_ENABLE "" ON)
-    add_subdirectory(external/tracy)
-    target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_TRACY=1)
-    target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} TracyClient)
-endif()
-```
-
-To enable Tracy for a local capture session:
-
-1. Place a working Tracy checkout under `external/tracy/` (the directory must
-   contain `public/TracyClient.cpp`). Most users vendor the
-   [tracy](https://github.com/wolfpld/tracy) repository directly.
-2. Re-run CMake configuration. The status output should say
-   `Tracy found - enabling profiler`.
-3. Rebuild — `MITIRU_HAS_TRACY=1` is now defined for engine targets, and the
-   zone macros expand to real `ZoneScopedN` / `ZoneScopedNC` instances.
+1. Make sure the submodule is checked out
+   (`git submodule update --init external/tracy`).
+2. Configure with `-DMITIRU_ENABLE_TRACY=ON`. This also overrides any
+   `TRACY_ENABLE` value left in an older CMake cache.
+3. Rebuild — the zone macros now expand to real `ZoneScopedN` /
+   `ZoneScopedNC` instances. Configure again with `-DMITIRU_ENABLE_TRACY=OFF`
+   when you are done.
 
 If `external/tracy/` is absent, CMake reports
 `Tracy not found - profiling macros will be no-ops` and the build proceeds
@@ -57,7 +48,7 @@ no-ops when `MITIRU_HAS_TRACY` is undefined.
 | `Engine::FixedUpdate`      | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickFixedUpdatePhase()`        | `MITIRU_ZONE_NAMED`   | 固定タイムステップアキュムレータループ。`game.update()`と現在シーンの`onUpdate()`を含む。 |
 | `Engine::Render`           | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickRenderPhase()`             | `MITIRU_ZONE_NAMED`   | `Screen::clear`から`game.draw()`、`Scene::onDraw()`までの2D/3D描画蓄積。`device->beginFrame()`も含む。 |
 | `Engine::Present`          | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickPresentPhase()`            | `MITIRU_ZONE_NAMED`   | `Screen::present()`とPostFX、3Dレンダラーの`finalizeFrame()`。GPUコマンド送信が中心。 |
-| `Engine::CefComposite`     | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickCefComposite()`            | `MITIRU_ZONE_NAMED`   | CEF UIレイヤーのメッセージループ処理、入力転送、テクスチャアップロード、バックバッファ合成。HTML UI構成(CEFあり)専用。 |
+| `Engine::UiComposite`      | `include/mitiru/core/detail/Engine_RmlUi.hpp`, `Engine::tickUiComposite()`             | `MITIRU_ZONE_NAMED`   | RmlUi の UI 層。RML / RCSS の読み直し、data model の更新、レイアウト、バックバッファへの描画。`assets/ui/main.rml` があるときだけ動く。 |
 | `Engine::AutoCapture`      | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickAutoCaptureAndEndFrame()`  | `MITIRU_ZONE_NAMED`   | 自律テストモードのスクリーンショット保存と`device->endFrame()`。通常運用では`endFrame()`のみで軽量。 |
 | `Engine::HttpPoll`         | `include/mitiru/core/detail/Engine_Frame.hpp`, `Engine::tickHttpPollAndCap()`          | `MITIRU_ZONE_NAMED`   | HTTP APIサーバーのポーリングと、vsync OFF時のフレームレートキャップ用`sleep_for`。 |
 | `SmallFunction::invoke`    | `include/mitiru/time/detail/SmallFunction.hpp`, `SmallFunction::operator()()`          | `MITIRU_ZONE_NAMED`   | Wraps every call of the type-erased callable. Hot path. |
@@ -140,10 +131,8 @@ Limitations参照)のため、ここでは「どこに重点的に時間を使�
 - **`Engine::MouseScaling`** — Win32のみで意味のある軽量フェーズ。ほぼ常に
   サブマイクロ秒オーダーで完結する。`dynamic_cast<Win32Window*>`が支配的なら
   これは設計上正常(代替手段はABI変更を伴うため温存)。
-- **`Engine::CefComposite`** — HTML UI構成専用。`m_cefContext.isInitialized()`
-  がfalseの場合は早期returnするため、native構成(CEFなし)の純ネイティブ運用ではほぼ
-  ゼロ。HTML UI構成でもCEFがdirty frameを持たない静的画面ではアップロードが
-  スキップされ軽量。
+- **`Engine::UiComposite`** — UI 文書が無ければ (`m_rmlUi.active()` が false) 早期 return するのでほぼ
+  ゼロ。UI があるときは RmlUi の更新・レイアウト・描画がこのゾーンにまとめて乗る。
 - **`Engine::AutoCapture`** — 自律テストモード以外では`device->endFrame()`
   の呼び出しだけ。通常運用では`Engine::Present`と並ぶ軽量ゾーン。
 - **`Engine::HttpPoll`** — `m_httpServer`が動いていないorアイドルなら
@@ -232,10 +221,8 @@ Win32 `PrintWindow`フォールバックよりもGPUコンポジット結果を�
   現状のDX11/DX12/Vulkan/OpenGLバックエンドにはまだ統合されていない。
   GPU時間を見たい場合は当面PIX / RenderDoc / NSightなどのベンダーツールを
   併用する。
-- **HTML UI構成(CEF)のレンダリングは外部プロセスで動く**。`Engine::CefComposite`
-  はホスト側のアップロード/コンポジットしか見えないので、CEFサブプロセス内の
-  HTMLレイアウトコストはこの計装からは可視化できない。Chrome DevToolsの
-  Performanceパネルで別途プロファイルすること。
+- **UI の内訳は分かれていない**。`Engine::UiComposite` は RmlUi の更新・レイアウト・描画を
+  1 つのゾーンで包むので、どれが重いかは見えない。
 
 ## Tracy のフレームと `.mtrr` のフレームを突き合わせる (7-1)
 

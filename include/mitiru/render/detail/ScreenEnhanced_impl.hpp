@@ -33,7 +33,7 @@ inline void ScreenEnhanced::drawSdfTextWithOutline(const sgc::Vec2f& pos, std::s
 {
 	if (m_sdfFontReady)
 	{
-		/// SDF パスではシェーダーで distance 閾値を2段階に分けて
+		/// SDF パスではシェーダーで distance 閾値を 2 段階に分けて
 		/// アウトラインを生成する。
 		drawSdfTextOutlineFallback(pos, text, fontSize,
 		                           textColor, outlineColor, outlineWidth);
@@ -71,7 +71,7 @@ inline void ScreenEnhanced::drawRoundedRect(const sgc::Rectf& rect, float corner
 		return;
 	}
 
-	/// 角丸を近似するために中央十字＋4隅の扇形を三角形ファンで描画する
+	/// 角丸を近似するために中央十字＋4 隅の扇形を三角形ファンで描画する
 	drawRoundedRectFill(rect, r, fillColor);
 }
 
@@ -406,7 +406,7 @@ inline void ScreenEnhanced::drawProgressBar(const sgc::Rectf& rect, float progre
 
 // ── 内部ヘルパー ────────────────────────────────
 
-/// @brief 2色を線形補間する
+/// @brief 2 色を線形補間する
 inline sgc::Colorf ScreenEnhanced::lerpColor(const sgc::Colorf& a,
                                              const sgc::Colorf& b,
                                              float t) noexcept
@@ -430,7 +430,7 @@ inline sgc::Colorf ScreenEnhanced::applyOpacity(const sgc::Colorf& color,
 inline void ScreenEnhanced::drawRoundedRectFill(const sgc::Rectf& rect, float r,
                                                 const sgc::Colorf& color)
 {
-	/// 中央の十字部分（3つの矩形で構成）
+	/// 中央の十字部分（3 つの矩形で構成）
 	/// 上辺・下辺を角丸分だけ内側にした水平帯
 	m_screen.drawRect(
 		sgc::Rectf{rect.x() + r, rect.y(), rect.width() - r * 2.0f, rect.height()},
@@ -444,7 +444,7 @@ inline void ScreenEnhanced::drawRoundedRectFill(const sgc::Rectf& rect, float r,
 		sgc::Rectf{rect.x() + rect.width() - r, rect.y() + r, r, rect.height() - r * 2.0f},
 		color);
 
-	/// 4つの角を扇形で描画する
+	/// 4 つの角を扇形で描画する
 	constexpr int SEGMENTS = 8;
 	drawCornerFan(rect.x() + r, rect.y() + r, r, 180.0f, 270.0f, SEGMENTS, color);
 	drawCornerFan(rect.x() + rect.width() - r, rect.y() + r, r, 270.0f, 360.0f, SEGMENTS, color);
@@ -477,7 +477,7 @@ inline void ScreenEnhanced::drawRoundedRectBorderOnly(const sgc::Rectf& rect, fl
                                                       const sgc::Colorf& borderColor,
                                                       float borderWidth)
 {
-	/// 簡易実装: 4辺を矩形で描画する（角丸部分はコーナー扇形で処理）
+	/// 簡易実装: 4 辺を矩形で描画する（角丸部分はコーナー扇形で処理）
 	const float r = std::min(cornerRadius,
 		std::min(rect.width(), rect.height()) * 0.5f);
 	const float bw = std::min(borderWidth, r);
@@ -501,7 +501,7 @@ inline void ScreenEnhanced::drawRoundedRectBorderOnly(const sgc::Rectf& rect, fl
 		           bw, rect.height() - r * 2.0f},
 		borderColor);
 
-	/// 4隅のアーク
+	/// 4 隅のアーク
 	constexpr int SEGMENTS = 8;
 	drawCornerArc(rect.x() + r, rect.y() + r, r, bw, 180.0f, 270.0f, SEGMENTS, borderColor);
 	drawCornerArc(rect.x() + rect.width() - r, rect.y() + r, r, bw, 270.0f, 360.0f, SEGMENTS, borderColor);
@@ -566,7 +566,7 @@ inline void ScreenEnhanced::drawSdfTextOutlineFallback(const sgc::Vec2f& pos, st
                                                        const sgc::Colorf& outlineColor,
                                                        float outlineWidth)
 {
-	/// アウトラインを8方向オフセットで近似する
+	/// アウトラインを 8 方向オフセットで近似する
 	const float ow = std::max(1.0f, outlineWidth);
 	const sgc::Vec2f offsets[] = {
 		{-ow, 0.0f}, {ow, 0.0f}, {0.0f, -ow}, {0.0f, ow},

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file SystemScheduler.hpp
-/// @brief 決定論的システム実行スケジューラー
+/// @brief 決定論的なシステム実行スケジューラー
 /// @details 優先度付きでシステム（更新関数）を登録し、
 ///          決定論的な順序で毎フレーム実行する。
 
@@ -19,8 +19,8 @@ namespace mitiru::ecs
 using mitiru::scene::UpdatePhase;
 
 /// @brief システムエントリ
-/// @details 名前・優先度・更新関数をまとめた構造体。phase を末尾に追加したのは
-///          既存の3引数集成体初期化 (`{"name", priority, fn}`) を壊さないため。
+/// @details 名前・優先度・更新関数をまとめた構造体。phase を末尾に追加したのは、
+///          既存の 3 引数の集成体初期化 (`{"name", priority, fn}`) を使えなくしないため。
 struct SystemEntry
 {
 	std::string name;                        ///< システム名
@@ -29,7 +29,7 @@ struct SystemEntry
 	UpdatePhase phase = UpdatePhase::Sim;    ///< 更新フェーズ（省略時は既存互換の Sim）
 };
 
-/// @brief 決定論的システムスケジューラー
+/// @brief 決定論的なシステムスケジューラー
 /// @details 優先度順にシステムを実行し、同一フレーム内の実行順序を保証する。
 ///
 /// @code
@@ -77,7 +77,7 @@ public:
 	/// @return システム名のベクタ（優先度順）
 	[[nodiscard]] std::vector<std::string> systemNames() const
 	{
-		/// ソート済みコピーを作成
+		/// ソート済みのコピーを作る
 		auto sorted = m_systems;
 		std::stable_sort(sorted.begin(), sorted.end(),
 			[](const SystemEntry& a, const SystemEntry& b)
@@ -95,8 +95,8 @@ public:
 		return names;
 	}
 
-	/// @brief 実行順をJSON文字列として返す
-	/// @return JSON配列形式の文字列
+	/// @brief 実行順を JSON 文字列として返す
+	/// @return JSON 配列形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		const auto names = systemNames();
@@ -129,7 +129,7 @@ public:
 	}
 
 private:
-	/// @brief ソート状態を保証する
+	/// @brief ソートされた状態を保証する
 	void ensureSorted()
 	{
 		if (!m_sorted)

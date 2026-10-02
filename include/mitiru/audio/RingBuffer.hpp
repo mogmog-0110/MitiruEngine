@@ -3,8 +3,8 @@
 /// @file RingBuffer.hpp
 /// @brief ロックフリーリングバッファ（オーディオストリーミング用）
 /// @details プロデューサー（ファイル読み込みスレッド）とコンシューマー（オーディオコールバック）間で
-///          PCMサンプルデータを安全に受け渡すためのSPSC（Single Producer Single Consumer）
-///          ロックフリーリングバッファ。std::atomicによるメモリオーダリングで同期する。
+///          PCM サンプルデータを安全に受け渡すための SPSC（Single Producer Single Consumer）
+///          ロックフリーリングバッファ。std::atomic によるメモリオーダリングで同期する。
 
 #include <algorithm>
 #include <atomic>
@@ -19,9 +19,9 @@ namespace mitiru::audio
 
 /// @brief SPSC ロックフリーリングバッファ
 /// @tparam T 要素型（通常 float または int16_t）
-/// @details プロデューサーとコンシューマーが別スレッドで動作する場合に
-///          ロックなしで安全にデータを受け渡す。容量は2の累乗に切り上げられ、
-///          ビットマスクによる高速なインデックス計算を行う。
+/// @details プロデューサーとコンシューマーが別々のスレッドで動作する場合に
+///          ロックなしで安全にデータを受け渡す。容量は 2 の累乗に切り上げられ、
+///          ビットマスクを使ってインデックスを高速に計算する。
 ///
 /// @code
 /// mitiru::audio::RingBuffer<float> ring(8192);
@@ -40,7 +40,7 @@ class RingBuffer
 
 public:
 	/// @brief コンストラクタ
-	/// @param capacity 最低限必要な要素数（内部で2の累乗に切り上げ）
+	/// @param capacity 最低限必要な要素数（内部で 2 の累乗に切り上げ）
 	explicit RingBuffer(std::size_t capacity)
 		: m_capacity(nextPowerOf2(capacity))
 		, m_mask(m_capacity - 1)
@@ -167,9 +167,9 @@ public:
 	}
 
 private:
-	/// @brief 2の累乗に切り上げる
+	/// @brief 2 の累乗に切り上げる
 	/// @param n 入力値
-	/// @return n以上の最小の2の累乗
+	/// @return n 以上の最小の 2 の累乗
 	[[nodiscard]] static constexpr std::size_t nextPowerOf2(std::size_t n) noexcept
 	{
 		if (n == 0)
@@ -190,7 +190,7 @@ private:
 	std::size_t m_mask;                               ///< インデックスマスク (capacity - 1、不変)
 	std::unique_ptr<T[]> m_buffer;                    ///< データバッファ（不変ポインタ）
 
-	/// 各カーソルを別キャッシュラインへ（producer/consumer の false sharing 回避）。
+	/// 各カーソルを別々のキャッシュラインに配置する（producer/consumer の false sharing を回避）。
 	alignas(64) std::atomic<std::size_t> m_readPos{0};   ///< 読み出し位置（consumer が書く）
 	alignas(64) std::atomic<std::size_t> m_writePos{0};  ///< 書き込み位置（producer が書く）
 };

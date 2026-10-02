@@ -38,7 +38,7 @@ def main() -> int:
 
     parts = [
         "#pragma once\n",
-        "// 生成物 — 編集禁止。tools/clod_shaders/generate_blobs.py が\n"
+        "// 生成物。編集禁止。tools/clod_shaders/generate_blobs.py が\n"
         "// clod_engine.hlsl (SM 6.6) から生成する DXIL blob 群。\n",
         "#include <cstdint>\n#include <cstddef>\n",
         "namespace mitiru::render::clod {\n",

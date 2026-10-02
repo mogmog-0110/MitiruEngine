@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file GlBuffer.hpp
-/// @brief OpenGL GPUバッファ実装
-/// @details GLuintバッファオブジェクトをラップし、IBufferインターフェースを実装する。
+/// @brief OpenGL GPU バッファ実装
+/// @details GLuint バッファオブジェクトをラップし、IBuffer インターフェースを実装する。
 
 #ifdef MITIRU_HAS_OPENGL
 
@@ -21,17 +21,17 @@
 namespace mitiru::gfx
 {
 
-/// @brief OpenGL GPUバッファ実装
-/// @details 頂点バッファ・インデックスバッファ・定数バッファをGL bufferでラップする。
+/// @brief OpenGL GPU バッファ実装
+/// @details 頂点バッファ・インデックスバッファ・定数バッファを GL buffer でラップする。
 class GlBuffer final : public IBuffer
 {
 public:
 	/// @brief コンストラクタ
-	/// @param gl GL関数ポインタ群
+	/// @param gl GL 関数ポインタ群
 	/// @param bufferType バッファ種別
 	/// @param sizeBytes バッファサイズ（バイト）
 	/// @param dynamic 動的更新が必要か
-	/// @param initialData 初期データ（nullptrで初期化なし）
+	/// @param initialData 初期データ（nullptr で初期化なし）
 	GlBuffer(GlFunctions* gl,
 	         BufferType bufferType,
 	         std::uint32_t sizeBytes,
@@ -130,20 +130,20 @@ public:
 		return m_type;
 	}
 
-	/// @brief GLバッファハンドルを取得する
+	/// @brief GL バッファハンドルを取得する
 	[[nodiscard]] GLuint glBuffer() const noexcept
 	{
 		return m_buffer;
 	}
 
-	/// @brief GLバッファターゲットを取得する
+	/// @brief GL バッファターゲットを取得する
 	[[nodiscard]] GLenum glTarget() const noexcept
 	{
 		return m_glTarget;
 	}
 
 private:
-	/// @brief BufferTypeからGLバッファターゲットに変換する
+	/// @brief BufferType から GL バッファターゲットに変換する
 	static GLenum toGlTarget(BufferType bt) noexcept
 	{
 		switch (bt)

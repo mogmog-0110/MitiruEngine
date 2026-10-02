@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Dx12SwapChain.hpp
-/// @brief DirectX 12スワップチェーン実装
-/// @details IDXGISwapChain3をラップし、トリプルバッファリングとフレーム同期を管理する
-///          ISwapChain実装。
+/// @brief DirectX 12 スワップチェーン実装
+/// @details IDXGISwapChain3 をラップし、トリプルバッファリングとフレーム同期を管理する
+///          ISwapChain 実装。
 
 #ifdef _WIN32
 
@@ -28,13 +28,13 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 12スワップチェーン実装
-/// @details IDXGISwapChain3によるトリプルバッファリングを管理する。
-///          present()でフェンスシグナルとフレームインデックスの更新を行う。
+/// @brief DirectX 12 スワップチェーン実装
+/// @details IDXGISwapChain3 によるトリプルバッファリングを管理する。
+///          present() でフェンスのシグナルとフレームインデックスの更新を行う。
 class Dx12SwapChain final : public ISwapChain
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
@@ -42,9 +42,9 @@ public:
 	static constexpr uint32_t FRAME_COUNT = 3;
 
 	/// @brief コンストラクタ
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param commandQueue コマンドキュー
-	/// @param factory DXGIファクトリ
+	/// @param factory DXGI ファクトリ
 	/// @param hwnd ターゲットウィンドウハンドル
 	/// @param width バッファ幅
 	/// @param height バッファ高さ
@@ -150,14 +150,14 @@ public:
 
 	/// @brief 現在のバックバッファのレンダーターゲットを取得する
 	/// @return レンダーターゲットへのポインタ（override 設定時はそちら）
-	/// @details ローファイ・ポストFX 等が、描画を一時的に低解像オフスクリーン RT へ
+	/// @details ローファイ・ポスト FX 等が、描画を一時的に低解像オフスクリーン RT へ
 	///          リダイレクトするために backBuffer を差し替える。override が無ければ実バックバッファ。
 	[[nodiscard]] IRenderTarget* backBuffer() noexcept override
 	{
 		return m_overrideRT ? m_overrideRT : &m_renderTargets[m_frameIndex];
 	}
 
-	/// @brief backBuffer() の戻り値を一時的に差し替える（ポストFX のオフスクリーン RT 用）。
+	/// @brief backBuffer() の戻り値を一時的に差し替える（ポスト FX のオフスクリーン RT 用）。
 	void setBackBufferOverride(IRenderTarget* rt) noexcept { m_overrideRT = rt; }
 
 	/// @brief backBuffer override を解除し、実バックバッファに戻す。
@@ -179,7 +179,7 @@ public:
 
 	/// @brief 指定インデックスのバックバッファリソースを取得する
 	/// @param index バッファインデックス
-	/// @return ID3D12Resourceへのポインタ
+	/// @return ID3D12Resource へのポインタ
 	[[nodiscard]] ID3D12Resource* getBackBufferResource(uint32_t index) const noexcept
 	{
 		if (index < FRAME_COUNT)
@@ -189,7 +189,7 @@ public:
 		return nullptr;
 	}
 
-	/// @brief 内部のIDXGISwapChain3を取得する
+	/// @brief 内部の IDXGISwapChain3 を取得する
 	/// @return スワップチェーンへのポインタ
 	[[nodiscard]] IDXGISwapChain3* getSwapChain() const noexcept
 	{
@@ -198,7 +198,7 @@ public:
 
 private:
 	/// @brief スワップチェーンを生成する
-	/// @param factory DXGIファクトリ
+	/// @param factory DXGI ファクトリ
 	/// @param hwnd ターゲットウィンドウ
 	/// @param width バッファ幅
 	/// @param height バッファ高さ
@@ -232,10 +232,10 @@ private:
 				"Dx12SwapChain: CreateSwapChainForHwnd failed");
 		}
 
-		/// ALT+Enterのフルスクリーン切り替えを無効化する
+		/// ALT+Enter のフルスクリーン切り替えを無効化する
 		factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
 
-		/// IDXGISwapChain3にキャストする
+		/// IDXGISwapChain3 にキャストする
 		hr = swapChain1.As(&m_swapChain);
 		if (FAILED(hr))
 		{
@@ -249,7 +249,7 @@ private:
 	/// @brief バックバッファからレンダーターゲットを生成する
 	void createRenderTargets()
 	{
-		/// RTVデスクリプタヒープの生成
+		/// RTV デスクリプタヒープの生成
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 		rtvHeapDesc.NumDescriptors = FRAME_COUNT;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;

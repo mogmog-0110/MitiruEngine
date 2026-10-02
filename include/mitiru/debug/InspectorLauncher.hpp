@@ -36,13 +36,22 @@
 namespace mitiru::debug
 {
 
+/// @brief spawn する exe の名前 (mitiru_<名前>.exe の <名前>)。
+/// @details game DLL は kToolTable を自分の中に焼き込むので、ツール窓のホストが mitiru_tool_cef だった頃の
+///          名前 ("tool_cef") で頼んでくる DLL がある。ツール窓は mitiru_tool が開くので、その名前も向け直す。
+inline std::string resolveToolExeName(const std::string& toolName)
+{
+	return toolName == "tool_cef" ? std::string("tool") : toolName;
+}
+
 /// @brief mitiru_<toolName>.exe を探して別窓 spawn する (内部用)
 /// @details 探索順: 環境変数 MITIRU_<TOOLNAME>_EXE / game exe 同階層 / 開発 build tree。
 ///          ゲームの DLL は host へ intent を出すだけで、host がこれを呼んでツール窓を開く。
 /// @return 起動成功で true (exe が見つからなければ false で無害)
-inline bool spawnTool(const std::string& toolName, int producerPid, const std::string& extraArgs)
+inline bool spawnTool(const std::string& requestedTool, int producerPid, const std::string& extraArgs)
 {
 #ifdef _WIN32
+	const std::string toolName = resolveToolExeName(requestedTool);
 	if (producerPid == 0)
 	{
 		producerPid = _getpid();
@@ -123,7 +132,7 @@ inline bool spawnTool(const std::string& toolName, int producerPid, const std::s
 	CloseHandle(pi.hThread);
 	return true;
 #else
-	(void)toolName;
+	(void)requestedTool;
 	(void)producerPid;
 	(void)extraArgs;
 	return false;

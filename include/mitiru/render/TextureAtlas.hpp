@@ -1,14 +1,14 @@
 ﻿#pragma once
 
 /// @file TextureAtlas.hpp
-/// @brief 自動テクスチャアトラス（Ebiten風）
-/// @details 小さなテクスチャを1枚の大きなアトラスに統合し、
+/// @brief 自動テクスチャアトラス（Ebiten 風）
+/// @details 小さなテクスチャを 1 枚の大きなアトラスに統合し、
 ///          描画バッチを最適化する。簡易行パッキングアルゴリズムを使用。
 ///
 /// @code
 /// mitiru::render::TextureAtlas atlas(1024);
 /// auto region = atlas.add("player", playerTex);
-/// // UV座標: region.u0(), region.v0(), region.u1(), region.v1()
+/// // UV 座標: region.u0(), region.v0(), region.u1(), region.v1()
 /// @endcode
 
 #include <mitiru/render/Texture.hpp>
@@ -22,7 +22,7 @@ namespace mitiru::render
 {
 
 /// @brief アトラス内のサブ領域
-/// @details アトラス内での位置・サイズとUV座標の計算を提供する。
+/// @details アトラス内での位置・サイズと UV 座標の計算を提供する。
 struct AtlasRegion
 {
 	int x = 0;            ///< アトラス内X位置
@@ -32,25 +32,25 @@ struct AtlasRegion
 	int atlasWidth = 0;   ///< アトラス全体の幅
 	int atlasHeight = 0;  ///< アトラス全体の高さ
 
-	/// @brief 左上のU座標
+	/// @brief 左上の U 座標
 	[[nodiscard]] float u0() const noexcept
 	{
 		return (atlasWidth > 0) ? static_cast<float>(x) / atlasWidth : 0;
 	}
 
-	/// @brief 左上のV座標
+	/// @brief 左上の V 座標
 	[[nodiscard]] float v0() const noexcept
 	{
 		return (atlasHeight > 0) ? static_cast<float>(y) / atlasHeight : 0;
 	}
 
-	/// @brief 右下のU座標
+	/// @brief 右下の U 座標
 	[[nodiscard]] float u1() const noexcept
 	{
 		return (atlasWidth > 0) ? static_cast<float>(x + width) / atlasWidth : 0;
 	}
 
-	/// @brief 右下のV座標
+	/// @brief 右下の V 座標
 	[[nodiscard]] float v1() const noexcept
 	{
 		return (atlasHeight > 0) ? static_cast<float>(y + height) / atlasHeight : 0;
@@ -64,13 +64,13 @@ struct AtlasRegion
 };
 
 /// @brief 自動テクスチャアトラス
-/// @details 簡易行パッキングで小テクスチャを大きな1枚に統合する。
-///          GPU描画時のテクスチャ切り替えを削減しバッチ効率を向上させる。
+/// @details 簡易行パッキングで小テクスチャを大きな 1 枚に統合する。
+///          GPU 描画時のテクスチャ切り替えを削減しバッチ効率を向上させる。
 class TextureAtlas
 {
 public:
 	/// @brief コンストラクタ
-	/// @param atlasSize アトラスの幅と高さ（正方形、デフォルト2048）
+	/// @param atlasSize アトラスの幅と高さ（正方形、デフォルト 2048）
 	explicit TextureAtlas(int atlasSize = 2048)
 		: m_atlasSize(atlasSize)
 		, m_cursorX(0)
@@ -86,7 +86,7 @@ public:
 	/// @brief テクスチャをアトラスに追加する（簡易行パッキング）
 	/// @param name リソース名
 	/// @param tex 追加するテクスチャ
-	/// @return アトラス内の領域情報（追加失敗時はwidth=0）
+	/// @return アトラス内の領域情報（追加失敗時は width=0）
 	AtlasRegion add(const std::string& name, const Texture& tex)
 	{
 		if (!tex.valid()) return {};
@@ -143,7 +143,7 @@ public:
 
 	/// @brief 名前でリージョンを取得する
 	/// @param name リソース名
-	/// @return 領域情報（未登録時はwidth=0）
+	/// @return 領域情報（未登録時は width=0）
 	[[nodiscard]] AtlasRegion getRegion(const std::string& name) const
 	{
 		auto it = m_regions.find(name);

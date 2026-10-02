@@ -16,14 +16,15 @@
 /// link していない target では本システムは何もしない no-op になる。
 
 #include <cstdint>
+#include <map>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "mitiru/scene/GameWorld.hpp"          // scene::GameWorld / TransformComponent / EntityId
 #include "mitiru/scene/SystemRunner.hpp"       // scene::ISystem
-#include "mitiru/physics/PhysicsSystem3D.hpp"  // physics3d::RigidBodyComponent3D
-#include "mitiru/physics/PhysicsWorld3D.hpp"   // physics3d::ColliderType3D
+#include "mitiru/debug/WarnOnce.hpp"
+#include "mitiru/physics/RigidBodyComponent3D.hpp"
+#include "sgc/math/Quaternion.hpp"
 
 #ifdef MITIRU_HAS_NATIVEPHYS
 #include <native_physics_world.hpp>            // mitiru::nativephys::NativePhysicsWorld
@@ -53,8 +54,8 @@ public:
 		m_world.setGravity(cfg.gravity);
 		m_world.setTimestep(cfg.fixedTimeStep);
 		m_world.setSleepEnabled(cfg.sleepEnabled);
-		// 既定は開いた世界。これを言わないと backend 既定の反射壁 (±12m) が
-		// 見えない壁として残る。周期境界を頼んだ時だけそちらへ切り替える。
+		// 既定は開いた世界。これを指定しないと backend 既定の反射壁 (±12m) が
+		// 見えない壁として残る。周期境界を指定した時だけそちらへ切り替える。
 		if (cfg.periodic) m_world.setPeriodicBox(cfg.periodicHalf, true);
 		else m_world.setOpenBoundary(true);
 #endif
@@ -154,11 +155,14 @@ private:
 		{
 			case ColliderType3D::Sphere:
 				d.shape = nativephys::BodyDesc::Shape::Sphere; d.radius = rb.colliderRadius; break;
-			case ColliderType3D::AABB:
+			case ColliderType3D::Box:
 				d.shape = nativephys::BodyDesc::Shape::Box; d.halfExtents = rb.colliderHalfExtents; break;
 			case ColliderType3D::Capsule:
 				d.shape = nativephys::BodyDesc::Shape::Capsule;
 				d.radius = rb.colliderRadius; d.halfHeight = rb.capsuleHeight * 0.5f; break;
+			case ColliderType3D::Mesh:
+				debug::warnOnce("physics.native.mesh", "NativeEngine はメッシュコライダーを持たないので、そのエンティティにはボディを作らない");
+				return;
 		}
 		d.position = transform.position;
 		d.rotation = toQuat(transform.rotation);
@@ -219,7 +223,7 @@ private:
 	}
 
 	nativephys::NativePhysicsWorld m_world;
-	std::unordered_map<scene::EntityId, nativephys::BodyId> m_entityToBody;
+	std::map<scene::EntityId, nativephys::BodyId> m_entityToBody;   ///< 消す順がボディ番号の再利用に効くので EntityId 順
 	std::vector<scene::EntityId> m_dead;   ///< pruneRemoved の作業用 (毎フレーム再利用)
 #endif  // MITIRU_HAS_NATIVEPHYS
 

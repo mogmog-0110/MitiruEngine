@@ -2,12 +2,12 @@
 
 /// @file CommandScript.hpp
 /// @brief .mcmd コマンドスクリプトのロード・実行
-/// @details MitiruEngineコマンドスクリプト（.mcmd）を読み込み、
-///          CommandSystem経由で逐次実行する。変数置換・条件分岐・
+/// @details MitiruEngine コマンドスクリプト（.mcmd）を読み込み、
+///          CommandSystem 経由で逐次実行する。変数置換・条件分岐・
 ///          ループ・遅延・エコー出力をサポートする。
 ///
-/// スクリプト書式:
-///   - 1行 = 1コマンド
+/// スクリプト書式
+///   - 1 行 = 1 コマンド
 ///   - '#' で始まる行はコメント
 ///   - 空行は無視
 ///   - '$name' は変数参照（set コマンドで定義）
@@ -25,7 +25,7 @@
 namespace mitiru
 {
 
-// Forward declaration
+// 前方宣言
 class CommandSystem;
 
 /// @brief コマンド実行結果
@@ -35,16 +35,16 @@ struct CommandResult
 	std::string message;      ///< 結果メッセージ
 };
 
-/// @brief .mcmd スクリプトの1行パース結果
+/// @brief.mcmd スクリプトの 1 行のパース結果
 struct ScriptLine
 {
 	std::string raw;          ///< 元テキスト
 	int lineNumber = 0;       ///< 行番号（1始まり）
 };
 
-/// @brief .mcmd コマンドスクリプトエンジン
+/// @brief.mcmd コマンドスクリプトエンジン
 /// @details ファイルまたは文字列からスクリプトを読み込み、
-///          CommandSystem経由でコマンドを逐次実行する。
+///          CommandSystem 経由でコマンドを逐次実行する。
 ///
 /// @code
 /// mitiru::CommandScript script;
@@ -52,9 +52,9 @@ struct ScriptLine
 /// auto results = script.execute(cmdSystem);
 /// @endcode
 ///
-/// スクリプト例:
+/// スクリプト例
 /// @code
-/// # Setup scene for testing
+/// # テスト用にシーンを準備する
 /// set output_dir screenshots
 /// scene.load "test_scene.json"
 /// render.shader toon
@@ -76,10 +76,10 @@ struct ScriptLine
 class CommandScript
 {
 public:
-	/// @brief echo出力コールバック型
+	/// @brief echo 出力コールバック型
 	using EchoHandler = std::function<void(const std::string&)>;
 
-	/// @brief wait実行コールバック型（秒数を受け取る）
+	/// @brief wait 実行コールバック型（秒数を受け取る）
 	using WaitHandler = std::function<void(float)>;
 
 	/// @brief ファイルからスクリプトを読み込む
@@ -134,14 +134,14 @@ public:
 		return results;
 	}
 
-	/// @brief echo出力ハンドラを設定する
+	/// @brief echo 出力ハンドラを設定する
 	/// @param handler 出力ハンドラ
 	void setEchoHandler(EchoHandler handler)
 	{
 		m_echoHandler = std::move(handler);
 	}
 
-	/// @brief wait実行ハンドラを設定する
+	/// @brief wait 実行ハンドラを設定する
 	/// @param handler 待機ハンドラ
 	/// @details デフォルトは std::this_thread::sleep_for を使用する。
 	///          テスト時にはノーオペレーションハンドラを設定できる。
@@ -436,7 +436,7 @@ private:
 	{
 		const std::string expanded = substituteVariables(trimLine(expr));
 
-		// Support: <lhs> == <rhs>
+		// <lhs> == <rhs> に対応する
 		const auto eqPos = expanded.find("==");
 		if (eqPos != std::string::npos)
 		{
@@ -445,7 +445,7 @@ private:
 			return lhs == rhs;
 		}
 
-		// Support: <lhs> != <rhs>
+		// <lhs> != <rhs> に対応する
 		const auto neqPos = expanded.find("!=");
 		if (neqPos != std::string::npos)
 		{
@@ -454,7 +454,7 @@ private:
 			return lhs != rhs;
 		}
 
-		// Truthy check: non-empty and not "false" and not "0"
+		// 真偽の判定。空でなく、"false" でも "0" でもなければ真
 		return !expanded.empty()
 			&& expanded != "false"
 			&& expanded != "0";

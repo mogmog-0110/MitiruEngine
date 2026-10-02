@@ -2,8 +2,8 @@
 /// @file PixelText.hpp
 /// @brief 美咲フォント(8x8 ドット日本語)を Screen にピクセルパーフェクトに描く。
 /// @details 点灯ピクセルを整数サイズの矩形として drawRect で描く（バッチ化されるため数十文字でも
-///          1 submit に合流）。SDF と違いアンチエイリアス
-///          されない真のドット文字。`drawText` 禁止規約の sanctioned な代替 API。
+///          1 submit にまとまる）。SDF と違いアンチエイリアス
+///          されない真のドット文字。`drawText` 禁止規約のもとで認められた代替 API。
 ///
 /// @code
 /// using namespace mitiru::render::pixel;

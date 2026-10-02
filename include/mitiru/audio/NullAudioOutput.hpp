@@ -2,20 +2,21 @@
 
 /// @file NullAudioOutput.hpp
 /// @brief ヌルオーディオ出力バックエンド
-/// @details ヘッドレスモードやテスト時に使用する、何も出力しないIAudioOutput実装。
-///          全操作がノーオペレーションで、安全にどのプラットフォームでも使用可能。
+/// @details ヘッドレスモードやテスト時に使用する、何も出力しない IAudioOutput 実装。
+///          すべての操作で何も処理せず、どのプラットフォームでも安全に使用できる。
 
 #include <mitiru/audio/IAudioOutput.hpp>
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 
 namespace mitiru::audio
 {
 
 /// @brief ヌルオーディオ出力バックエンド
 /// @details 実際のオーディオ出力は行わないが、状態を正確に追跡する。
-///          PulseAudioが利用不可な環境やユニットテストで使用する。
+///          ヘッドレス実行やユニットテストで使用する。
 ///
 /// @code
 /// mitiru::audio::NullAudioOutput output;
@@ -47,7 +48,7 @@ public:
 	/// @brief ムーブ代入演算子
 	NullAudioOutput& operator=(NullAudioOutput&&) noexcept = default;
 
-	/// @brief オーディオ出力を初期化する（状態のみ更新）
+	/// @brief オーディオ出力を初期化する（状態だけを更新）
 	/// @param sr サンプルレート (Hz)
 	/// @param ch チャンネル数
 	/// @param bs バッファサイズ（サンプル数）
@@ -64,10 +65,10 @@ public:
 		return true;
 	}
 
-	/// @brief PCMサンプルを書き込む（ノーオペレーション）
-	/// @param samples サンプル配列（無視される）
+	/// @brief PCM サンプルを書き込む（実際には何も処理しない）
+	/// @param samples サンプル配列（使用しない）
 	/// @param count サンプル数
-	/// @return 初期化済みかつ有効なパラメータなら true
+	/// @return 初期化済みで、パラメータが有効なら true
 	bool write(const float* samples, std::size_t count) override
 	{
 		if (!m_initialized) return false;
@@ -76,6 +77,12 @@ public:
 		m_totalSamplesWritten += count;
 		m_writeCallCount++;
 		return true;
+	}
+
+	/// @brief 出力先がないため、初期化済みならサンプル数にかかわらず受け付ける
+	[[nodiscard]] std::size_t writableSamples() const override
+	{
+		return m_initialized ? std::numeric_limits<std::size_t>::max() : 0;
 	}
 
 	/// @brief 再生中かどうか（常に false）
@@ -135,7 +142,7 @@ public:
 		return m_totalSamplesWritten;
 	}
 
-	/// @brief write()の呼び出し回数を取得する
+	/// @brief write() の呼び出し回数を取得する
 	/// @return 呼び出し回数
 	[[nodiscard]] std::size_t writeCallCount() const noexcept
 	{

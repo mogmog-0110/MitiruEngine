@@ -1,6 +1,6 @@
 #pragma once
 /// @file GltfMaterialIntegration.hpp
-/// @brief glTF PBRマテリアルをRenderer3D用Materialに変換する
+/// @brief glTF PBR マテリアルを Renderer3D 用 Material に変換する
 
 #include <mitiru/render/Material.hpp>
 #include <mitiru/render/GltfTypes.hpp>
@@ -11,7 +11,7 @@
 
 namespace mitiru::render {
 
-/// @brief glTFマテリアル変換ユーティリティ
+/// @brief glTF マテリアル変換ユーティリティ
 class GltfMaterialConverter {
 public:
     /// @brief glTF PBR metallic-roughness → Phong Material 近似変換
@@ -55,7 +55,7 @@ public:
         return mat;
     }
 
-    /// @brief glTFマテリアルをトゥーンシェーダー向けに調整する
+    /// @brief glTF マテリアルをトゥーンシェーダー向けに調整する
     /// @details 彩度を上げ、スペキュラーを抑え、カートゥーン調にする
     [[nodiscard]] static Material convertPBRForToon(const GltfMaterialData& gltf) {
         auto mat = convertPBR(gltf);

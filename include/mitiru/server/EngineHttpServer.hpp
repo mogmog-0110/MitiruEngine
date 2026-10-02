@@ -1,16 +1,16 @@
 #pragma once
 
 /// @file EngineHttpServer.hpp
-/// @brief エンジン組み込みHTTP APIサーバー
-/// @details 外部ツール（MCPサーバー、エディタ等）からエンジンを制御するための
-///          軽量HTTPサーバー。CommandSystemを通じてコマンド実行、スクリーンショット
+/// @brief エンジン組み込み HTTP API サーバー
+/// @details 外部ツール（MCP サーバー、エディタ等）からエンジンを制御するための
+///          軽量 HTTP サーバー。CommandSystem を通じてコマンド実行、スクリーンショット
 ///          取得、シーン情報の問い合わせなどを提供する。
-///          ゲームループの poll() でノンブロッキングに動作する。
+///          受信は HttpListener のワーカーが行い、ハンドラはゲームループの poll() の中で動く。
 ///          ハンドラ実装は server/detail/EngineHttp_*.hpp に分割 (末尾 include)。
 
 // EngineCallbacks は std::function だけの portable な束なので、定義は 1 つに
 // まとめて全 platform で共有する。WASM 用の写しを別に持つと、Engine 側で
-// フィールドが増えるたびに写しがズレて「no member named ...」で落ちる。
+// フィールドが増えるたびに写しがずれて「no member named...」のエラーになる。
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -24,7 +24,7 @@ namespace mitiru::server
 {
 
 /// @brief エンジンアクセス用コールバック群
-/// @details Engineクラスへの循環依存を避けるため、コールバック経由でアクセスする。
+/// @details Engine クラスへの循環依存を避けるため、コールバック経由でアクセスする。
 struct EngineCallbacks
 {
 	std::function<std::uint64_t()> getFrameNumber;
@@ -51,8 +51,8 @@ struct EngineCallbacks
 	std::function<bool(float yaw, float pitch, float distance, float px, float py, float pz)> setEditorCamera;
 
 	// ── runtime コントロール ─────────────────────────────
-	// `mitiru_console` GUI sub-window / 外部ツールが叩く。各 callable は
-	// 設定されてれば host が engine の対応 API へ振り分ける。
+	// `mitiru_console` GUI sub-window / 外部ツールが呼ぶ。各 callable は
+	// 設定されていれば host が engine の対応 API へ振り分ける。
 	std::function<bool()>           runtimeTogglePause; ///< 戻り値 = toggle 後の paused
 	std::function<bool()>           runtimeIsPaused;
 	std::function<void()>           runtimeStep;        ///< paused 時に 1 フレーム進める
@@ -69,8 +69,8 @@ struct EngineCallbacks
 	std::function<std::string(int, int)>               aiStateDiff; ///< reflectDiff(ring.at(from), at(to))
 	std::function<std::string(const std::string&, int)> aiBranch;   ///< (keysCsv, frames) → 反実仮想結果
 	std::function<int()>                               aiRingSize;  ///< rewind ring の保持フレーム数
-	// aiStatePut: {"field": value, ...} を書き戻す (3-3)。branch と同じ経路 (現フレームを
-	// 複製して書き換え、live には残さない) なので決定論も rewind ring も壊れない。
+	// aiStatePut: {"field": value,...} を書き戻す (3-3)。branch と同じ経路 (現フレームを
+	// 複製して書き換え、live には残さない) なので決定論も rewind ring もおかしくならない。
 	// statusOut に 200/400(unknown field・kind mismatch)/503(未配線) を書く。
 	std::function<std::string(const std::string& fieldsJson, int& statusOut)> aiStatePut;
 	// O6 なぜビュー: フィールドを最後に書いた phase (game opt-in) + ring 8 フレームの値推移。
@@ -82,7 +82,7 @@ struct EngineCallbacks
 	// そのまま渡し、各案を K フレーム進めた結果 JSON をまとめて返す (整形は callback 側)。
 	std::function<std::string(const std::string& bodyJson)> aiCandidates;
 
-	// P10「1 フレームの解剖図」(/api/frame/anatomy?frame=N): 入力→書かれたフィールド(blame付き)
+	// P10「1 フレームの解剖図」(/api/frame/anatomy?frame=N): 入力→書かれたフィールド(blame 付き)
 	// →描画コマンド→音を 1 レスポンスで返す。既存の why/diff/drawLog/audioLog を束ねるだけの
 	// callback で、新しい状態は持たない (Engine_Http.hpp 側の実装コメント参照)。
 	std::function<std::string(int framesAgo)> frameAnatomy;
@@ -122,7 +122,7 @@ struct EngineCallbacks
 }  // namespace mitiru::server
 
 #ifdef __EMSCRIPTEN__
-// WASM環境ではHTTPサーバーは不要。スタブのみ提供
+// WASM 環境では HTTP サーバーは不要。スタブのみ提供
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -149,22 +149,15 @@ public:
 } // namespace mitiru::server
 #else // !__EMSCRIPTEN__
 
-#include <algorithm>
-#include <atomic>
 #include <cstdint>
-#include <cstring>
 #include <functional>
 #include <map>
-#include <mutex>
 #include <string>
-#include <string_view>
-#include <thread>
 #include <utility>
 #include <vector>
 
 // ── 分割済みモジュール ──
-#include <mitiru/server/HttpProtocol.hpp>
-#include <mitiru/server/PngEncoder.hpp>
+#include <mitiru/server/HttpListener.hpp>
 #include <mitiru/server/JsonHelper.hpp>
 
 #include <mitiru/core/CommandSystem.hpp>
@@ -181,7 +174,7 @@ namespace mitiru::server
 {
 
 
-/// @brief エンジン組み込みHTTP APIサーバー
+/// @brief エンジン組み込み HTTP API サーバー
 class EngineHttpServer
 {
 	static constexpr const char* SERVER_VERSION_STR = "0.2.0";
@@ -196,51 +189,11 @@ public:
 	EngineHttpServer(EngineHttpServer&&) = delete;
 	EngineHttpServer& operator=(EngineHttpServer&&) = delete;
 
-	/// @brief サーバーを初期化して開始する
+	/// @brief 127.0.0.1:port で待ち受けを始める
+	/// @param port 0 なら空いているポートを使う (実際の番号は port() で読む)
 	bool init(int port = 8090)
 	{
-		if (m_running.load()) { return false; }
-
-#ifdef _WIN32
-		WSADATA wsaData;
-		if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) { return false; }
-		m_wsaInitialized = true;
-#endif
-
-		m_listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (m_listenSocket == kInvalidSocket) { return false; }
-
-		int opt = 1;
-#ifdef _WIN32
-		setsockopt(m_listenSocket, SOL_SOCKET, SO_REUSEADDR,
-		           reinterpret_cast<const char*>(&opt), sizeof(opt));
-#else
-		setsockopt(m_listenSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-#endif
-
-		setNonBlocking(m_listenSocket);
-
-		sockaddr_in addr{};
-		addr.sin_family = AF_INET;
-		addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-		addr.sin_port = htons(static_cast<std::uint16_t>(port));
-
-		if (::bind(m_listenSocket, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0)
-		{
-			closeSocket(m_listenSocket);
-			m_listenSocket = kInvalidSocket;
-			return false;
-		}
-		if (::listen(m_listenSocket, 8) < 0)
-		{
-			closeSocket(m_listenSocket);
-			m_listenSocket = kInvalidSocket;
-			return false;
-		}
-
-		m_port = port;
-		m_running.store(true);
-		return true;
+		return m_listener.start(port);
 	}
 
 	void setCallbacks(const EngineCallbacks& callbacks) { m_callbacks = callbacks; }
@@ -249,186 +202,27 @@ public:
 	void setFlags(std::map<std::string, std::string>* flags) noexcept { m_flags = flags; }
 	void setConfig(const EngineConfig* config) noexcept { m_config = config; }
 
-	/// @brief 毎フレーム呼び出してリクエストを処理する
+	/// @brief 毎フレーム呼び出し、届いているリクエストをこのスレッドで処理する
 	void poll()
 	{
-		if (!m_running.load() || m_listenSocket == kInvalidSocket) { return; }
-
-		for (int i = 0; i < kMaxRequestsPerPoll; ++i)
+		m_listener.serve(kMaxRequestsPerPoll, [this](const HttpRequest& req, HttpResponse& resp)
 		{
-			const SocketHandle client = ::accept(m_listenSocket, nullptr, nullptr);
-			if (client == kInvalidSocket) { break; }
-			handleConnection(client);
-		}
+			if (req.method == "OPTIONS")
+			{
+				resp.status = 204;
+				resp.contentType = "text/plain";
+				return;
+			}
+			handleRequest(req, resp);
+		});
 	}
 
-	void shutdown() noexcept
-	{
-		m_running.store(false);
-		if (m_listenSocket != kInvalidSocket)
-		{
-			closeSocket(m_listenSocket);
-			m_listenSocket = kInvalidSocket;
-		}
-#ifdef _WIN32
-		if (m_wsaInitialized)
-		{
-			WSACleanup();
-			m_wsaInitialized = false;
-		}
-#endif
-	}
+	void shutdown() noexcept { m_listener.stop(); }
 
-	[[nodiscard]] bool isRunning() const noexcept { return m_running.load(); }
-	[[nodiscard]] int port() const noexcept { return m_port; }
+	[[nodiscard]] bool isRunning() const noexcept { return m_listener.isRunning(); }
+	[[nodiscard]] int port() const noexcept { return m_listener.port(); }
 
 private:
-	// ── 接続処理 ────────────────────────────────
-
-	void handleConnection(SocketHandle clientSocket)
-	{
-		setBlocking(clientSocket);
-		setRecvTimeout(clientSocket, kRecvTimeoutMs);
-
-		std::string rawRequest;
-		if (!receiveRequest(clientSocket, rawRequest))
-		{
-			closeSocket(clientSocket);
-			return;
-		}
-
-		const auto request = parseRequest(rawRequest);
-		HttpResponse response;
-
-		if (request.method == "OPTIONS")
-		{
-			response.status = 204;
-			response.contentType = "text/plain";
-		}
-		else
-		{
-			handleRequest(request, response);
-		}
-
-		const auto rawResponse = buildResponse(response);
-		send(clientSocket, reinterpret_cast<const char*>(rawResponse.data()),
-		     static_cast<int>(rawResponse.size()), 0);
-		closeSocket(clientSocket);
-	}
-
-	/// @brief ヘッダ終端まで、続けて Content-Length ぶんのボディまでを読み切る。
-	/// @details TCP は境界を保たないので、ヘッダとボディが別のセグメントで届くことがある。
-	///          1 回の recv だけで済ませると、そのときボディが空のまま処理され、POST が
-	///          「body が無い」と拒否される。届く量は送り手のタイミング次第なので、必要な
-	///          長さが揃うまで読み続ける以外に確実な方法はない。
-	/// @return ヘッダ終端まで読めたら true。切断・タイムアウト・上限超過なら false。
-	[[nodiscard]] static bool receiveRequest(SocketHandle sock, std::string& out)
-	{
-		char buf[4096];
-		out.clear();
-		std::size_t headerEnd = std::string::npos;
-		while (true)
-		{
-			if (headerEnd == std::string::npos) { headerEnd = out.find("\r\n\r\n"); }
-			if (headerEnd != std::string::npos)
-			{
-				const auto len = contentLengthOf(std::string_view(out).substr(0, headerEnd));
-				if (out.size() >= headerEnd + 4 + len) { return true; }
-			}
-			if (out.size() >= static_cast<std::size_t>(kMaxRequestSize)) { return false; }
-
-			const auto n = recv(sock, buf, static_cast<int>(sizeof(buf)), 0);
-			if (n <= 0) { return headerEnd != std::string::npos; }
-			out.append(buf, static_cast<std::size_t>(n));
-		}
-	}
-
-	/// @brief ヘッダ部から Content-Length を取り出す。無ければ 0。
-	[[nodiscard]] static std::size_t contentLengthOf(std::string_view headers)
-	{
-		constexpr std::string_view kName = "content-length:";
-		for (std::size_t pos = 0; pos < headers.size();)
-		{
-			const auto end = headers.find("\r\n", pos);
-			const auto line = headers.substr(pos, (end == std::string_view::npos ? headers.size() : end) - pos);
-			if (line.size() > kName.size())
-			{
-				bool match = true;
-				for (std::size_t i = 0; i < kName.size(); ++i)
-				{
-					const char c = line[i];
-					if ((c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c) != kName[i]) { match = false; break; }
-				}
-				if (match)
-				{
-					std::size_t value = 0;
-					for (const char c : line.substr(kName.size()))
-					{
-						if (c >= '0' && c <= '9') { value = value * 10 + static_cast<std::size_t>(c - '0'); }
-						else if (c != ' ' && c != '\t') { break; }
-					}
-					return value;
-				}
-			}
-			if (end == std::string_view::npos) { break; }
-			pos = end + 2;
-		}
-		return 0;
-	}
-
-	// ── HTTPパース ──────────────────────────────
-
-	[[nodiscard]] static HttpRequest parseRequest(const std::string& raw)
-	{
-		HttpRequest req;
-		const auto lineEnd = raw.find("\r\n");
-		if (lineEnd == std::string::npos) { return req; }
-
-		const auto requestLine = std::string_view(raw).substr(0, lineEnd);
-		const auto sp1 = requestLine.find(' ');
-		if (sp1 == std::string_view::npos) { return req; }
-		req.method = std::string(requestLine.substr(0, sp1));
-		const auto sp2 = requestLine.find(' ', sp1 + 1);
-		req.rawPath = (sp2 == std::string_view::npos)
-			? std::string(requestLine.substr(sp1 + 1))
-			: std::string(requestLine.substr(sp1 + 1, sp2 - sp1 - 1));
-
-		const auto qpos = req.rawPath.find('?');
-		if (qpos != std::string::npos)
-		{
-			req.path = req.rawPath.substr(0, qpos);
-			req.params = observe::parseQuery(req.rawPath);
-		}
-		else
-		{
-			req.path = req.rawPath;
-		}
-
-		auto pos = lineEnd + 2;
-		while (pos < raw.size())
-		{
-			const auto end = raw.find("\r\n", pos);
-			if (end == std::string::npos || end == pos)
-			{
-				pos = (end == std::string::npos) ? raw.size() : end + 2;
-				break;
-			}
-			const auto line = std::string_view(raw).substr(pos, end - pos);
-			const auto col = line.find(':');
-			if (col != std::string_view::npos)
-			{
-				auto val = line.substr(col + 1);
-				if (!val.empty() && val[0] == ' ') { val = val.substr(1); }
-				req.headers[std::string(line.substr(0, col))] = std::string(val);
-			}
-			pos = end + 2;
-		}
-
-		if (pos < raw.size()) { req.body = raw.substr(pos); }
-
-		return req;
-	}
-
 	// ── ルーティング ───────────────────────────────
 
 	void handleRequest(const HttpRequest& req, HttpResponse& resp)
@@ -671,23 +465,14 @@ private:
 	// ── メンバ変数 ─────────────────────────────────
 
 	static constexpr int kMaxRequestsPerPoll = 4;
-	static constexpr int kRecvTimeoutMs = 2000;
-	static constexpr int kMaxRequestSize = 65536;
 
-	SocketHandle m_listenSocket = kInvalidSocket;
-	std::atomic<bool> m_running{false};
-	int m_port = 0;
-
+	HttpListener m_listener;
 	EngineCallbacks m_callbacks;
 	bool m_drawLogActive = false; ///< /api/ai/frame 初回呼び出しで draw log を有効化済みか
 	CommandSystem* m_commandSystem = nullptr;
 	InputInjector* m_inputInjector = nullptr;
 	std::map<std::string, std::string>* m_flags = nullptr;
 	const EngineConfig* m_config = nullptr;
-
-#ifdef _WIN32
-	bool m_wsaInitialized = false;
-#endif
 };
 
 } // namespace mitiru::server

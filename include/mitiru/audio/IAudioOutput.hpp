@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file IAudioOutput.hpp
-/// @brief PCMオーディオ出力の抽象インターフェース
+/// @brief PCM オーディオ出力の抽象インターフェース
 /// @details プラットフォーム固有のオーディオ出力バックエンドを抽象化する。
-///          IAudioEngineがゲームレベルの音声制御を提供するのに対し、
-///          IAudioOutputは低レベルのPCMサンプル書き込みを担当する。
+///          IAudioEngine がゲームレベルの音声制御を提供するのに対し、
+///          IAudioOutput は低レベルの PCM サンプル書き込みを担当する。
 
 #include <cstddef>
 #include <cstdint>
@@ -20,9 +20,9 @@ struct AudioOutputParams
 	int bufferSize = 4096;      ///< バッファサイズ（サンプル数）
 };
 
-/// @brief PCMオーディオ出力の抽象インターフェース
-/// @details PulseAudio、WASAPI、CoreAudio等のバックエンドがこのインターフェースを実装する。
-///          float PCMサンプル [-1.0, 1.0] を受け付けてオーディオデバイスに出力する。
+/// @brief PCM オーディオ出力の抽象インターフェース
+/// @details 実デバイスへの出力は MiniaudioOutput、無音出力は NullAudioOutput が実装する。
+///          float PCM サンプル [-1.0, 1.0] を受け付けて、オーディオデバイスに出力する。
 ///
 /// @code
 /// auto output = mitiru::audio::createAudioOutput();
@@ -51,11 +51,15 @@ public:
 	/// @return 成功した場合 true
 	virtual bool initialize(int sampleRate, int channels, int bufferSize) = 0;
 
-	/// @brief PCMサンプルを書き込む
-	/// @param samples float PCMサンプル配列 [-1.0, 1.0]
+	/// @brief PCM サンプルを書き込む
+	/// @param samples float PCM サンプル配列 [-1.0, 1.0]
 	/// @param count サンプル数（全チャンネル合計）
 	/// @return 成功した場合 true
 	virtual bool write(const float* samples, std::size_t count) = 0;
+
+	/// @brief 現在 write() で取りこぼさずに書き込めるサンプル数 (全チャンネル合計)
+	/// @details 書き手はこれを超えて書かない。超えた分は出力側の都合で破棄される場合がある。
+	[[nodiscard]] virtual std::size_t writableSamples() const = 0;
 
 	/// @brief 再生中かどうかを判定する
 	/// @return 再生中なら true

@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file EmscriptenPlatform.hpp
-/// @brief Emscripten/WASM用プラットフォーム実装
-/// @details EmscriptenWindowを生成するIPlatform実装。
-///          Emscripten環境でのみコンパイルされる。
+/// @brief Emscripten/WASM 用プラットフォーム実装
+/// @details EmscriptenWindow を生成する IPlatform 実装。
+///          Emscripten 環境でのみコンパイルされる。
 
 #ifdef __EMSCRIPTEN__
 
@@ -16,9 +16,9 @@
 namespace mitiru
 {
 
-/// @brief Emscripten用プラットフォーム実装
-/// @details ブラウザ上のHTMLキャンバスをターゲットとするプラットフォーム。
-///          createWindow()でEmscriptenWindowを生成する。
+/// @brief Emscripten 用プラットフォーム実装
+/// @details ブラウザ上の HTML キャンバスをターゲットとするプラットフォーム。
+///          createWindow()で EmscriptenWindow を生成する。
 ///
 /// @code
 /// EmscriptenPlatform platform;
@@ -28,10 +28,10 @@ class EmscriptenPlatform final : public IPlatform
 {
 public:
 	/// @brief ウィンドウを生成する
-	/// @param title ウィンドウタイトル（ブラウザのdocument.titleに反映）
+	/// @param title ウィンドウタイトル（ブラウザの document.title に反映）
 	/// @param width キャンバス幅（ピクセル）
 	/// @param height キャンバス高さ（ピクセル）
-	/// @return EmscriptenWindowインスタンス
+	/// @return EmscriptenWindow インスタンス
 	[[nodiscard]] std::unique_ptr<IWindow> createWindow(
 		std::string_view title, int width, int height) override
 	{

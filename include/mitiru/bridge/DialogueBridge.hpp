@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file DialogueBridge.hpp
-/// @brief sgc対話統合ブリッジ
-/// @details sgcのDialogueSystem（DialogueGraph + DialogueRunner）を
-///          Mitiruエンジンに統合する。対話グラフの走査と選択肢処理を提供。
+/// @brief sgc の対話統合ブリッジ
+/// @details sgc の DialogueSystem（DialogueGraph + DialogueRunner）を
+///          Mitiru エンジンに統合する。対話グラフの走査と選択肢の処理を提供する。
 
 #include <cstddef>
 #include <deque>
@@ -12,7 +12,9 @@
 
 #include <sgc/dialogue/DialogueSystem.hpp>
 #include <mitiru/bridge/BridgeViewPush.hpp>
-#include <mitiru/bridge/detail/JsonEscape.hpp>
+#include <mitiru/observe/JsonEscape.hpp>
+
+#include <nlohmann/json.hpp>
 
 namespace mitiru::bridge
 {
@@ -25,8 +27,8 @@ struct DialogueBacklogEntry
 	std::string choiceMade;   ///< 選択した選択肢（空なら選択肢なし）
 };
 
-/// @brief sgc対話統合ブリッジ
-/// @details 対話グラフの走査、選択肢処理、バックログを統合する。
+/// @brief sgc の対話統合ブリッジ
+/// @details 対話グラフの走査、選択肢の処理、バックログを統合する。
 ///
 /// @code
 /// mitiru::bridge::DialogueBridge dlg;
@@ -46,14 +48,14 @@ class DialogueBridge
 public:
 	// ── View Push 統合 ─────────────────────────────────────
 
-	/// @brief view push ハンドラを登録する（非所有 raw pointer）
-	/// @details 登録するとstartDialogue / advance / selectChoice 実行後に
-	///          現在の対話状態が BridgeViewPush 経由で view 側に自動 push される。
+	/// @brief view push ハンドラを登録する（非所有の raw pointer）
+	/// @details 登録すると startDialogue / advance / selectChoice の実行後に
+	///          現在の対話状態が BridgeViewPush 経由で view 側に自動的に push される。
 	///          呼び出し元が BridgeViewPush の lifetime を管理すること。
-	///          nullptr を渡すと push を無効化できる。
+	///          nullptr を渡すと push を無効にできる。
 	///
-	/// push される key（subsystem prefix は consumer 側で指定）:
-	/// - `"active"` → `"true"` or `"false"`
+	/// push される key（subsystem prefix は consumer 側で指定）は次のとおり。
+	/// - `"active"` → `"true"` または `"false"`
 	/// - `"speaker"` → JSON-quoted 文字列
 	/// - `"text"` → JSON-quoted 文字列
 	/// - `"choices"` → JSON 配列 `["A","B"]`
@@ -77,13 +79,13 @@ public:
 	}
 
 	/// @brief 対話を開始する
-	/// @param startNodeId 開始ノードID
+	/// @param startNodeId 開始ノード ID
 	void startDialogue(const std::string& startNodeId)
 	{
 		m_runner.start(m_graph, startNodeId);
 		m_active = true;
 
-		/// バックログに最初のテキストを追加する
+		/// 最初のテキストをバックログに追加する
 		const auto* node = m_runner.currentNode();
 		if (node)
 		{
@@ -93,9 +95,9 @@ public:
 		pushCurrentState();
 	}
 
-	/// @brief 次のノードに進む（選択肢がない場合）
-	/// @details 選択肢が0個の場合は対話を終了する。
-	///          選択肢が1個の場合は自動選択する。
+	/// @brief 選択肢がない場合に次のノードへ進む
+	/// @details 選択肢が 0 個の場合は対話を終了する。
+	///          選択肢が 1 個の場合は自動的に選択する。
 	void advance()
 	{
 		if (!m_active) return;
@@ -110,7 +112,7 @@ public:
 		const auto choices = m_runner.availableChoices();
 		if (choices.empty())
 		{
-			/// 選択肢なし → 対話終了
+			/// 選択肢がないため、対話を終了する
 			m_active = false;
 			pushActiveState(false);
 			return;
@@ -118,7 +120,7 @@ public:
 
 		if (choices.size() == 1)
 		{
-			/// 選択肢が1つ → 自動遷移
+			/// 選択肢が 1 つの場合は自動的に遷移する
 			m_runner.choose(0);
 		}
 
@@ -154,7 +156,7 @@ public:
 		return node ? node->speaker : "";
 	}
 
-	/// @brief 現在の選択肢テキスト一覧を取得する
+	/// @brief 現在の選択肢テキストの一覧を取得する
 	/// @return 選択肢テキストのベクタ
 	[[nodiscard]] std::vector<std::string> currentChoices() const
 	{
@@ -170,7 +172,7 @@ public:
 	}
 
 	/// @brief 選択肢を選択する
-	/// @param index 選択肢インデックス
+	/// @param index 選択肢のインデックス
 	void selectChoice(int index)
 	{
 		if (!m_active || index < 0) return;
@@ -196,13 +198,13 @@ public:
 	}
 
 	/// @brief 対話がアクティブか
-	/// @return アクティブならtrue
+	/// @return アクティブなら true
 	[[nodiscard]] bool isActive() const noexcept { return m_active; }
 
 	// ── バックログ ──────────────────────────────────────────
 
-	/// @brief バックログエントリ一覧を取得する
-	/// @return バックログエントリのdeque
+	/// @brief バックログエントリの一覧を取得する
+	/// @return バックログエントリの deque
 	[[nodiscard]] const std::deque<DialogueBacklogEntry>& backlog() const noexcept
 	{
 		return m_backlog;
@@ -217,8 +219,8 @@ public:
 
 	// ── シリアライズ ────────────────────────────────────────
 
-	/// @brief 対話状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief 対話状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -239,7 +241,7 @@ public:
 	}
 
 private:
-	/// @brief バックログにエントリを追加する（最大500件）
+	/// @brief バックログにエントリを追加する（最大 500 件）
 	/// @param speaker 話者名
 	/// @param text テキスト
 	/// @param choice 選択肢テキスト
@@ -253,7 +255,7 @@ private:
 		}
 	}
 
-	/// @brief 現在ノードの全フィールドを view push する（active=true 前提）
+	/// @brief active=true を前提として、現在のノードの全フィールドを view push する
 	void pushCurrentState()
 	{
 		if (!m_viewPush) return;
@@ -262,15 +264,16 @@ private:
 		const auto* node = m_runner.currentNode();
 		if (node)
 		{
-			m_viewPush->set("speaker", detail::quotedJson(node->speaker));
-			m_viewPush->set("text",    detail::quotedJson(node->text));
+			m_viewPush->set("speaker", observe::jsonQuoted(node->speaker));
+			m_viewPush->set("text",    observe::jsonQuoted(node->text));
 		}
 
 		const auto choicesVec = currentChoices();
-		m_viewPush->set("choices", detail::jsonStringArray(choicesVec));
+		m_viewPush->set("choices",
+			nlohmann::json(choicesVec).dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
 	}
 
-	/// @brief active フラグのみを view push する（終了通知用）
+	/// @brief 終了通知用に、active フラグのみを view push する
 	void pushActiveState(bool active)
 	{
 		if (!m_viewPush) return;

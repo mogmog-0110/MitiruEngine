@@ -32,14 +32,14 @@
 namespace mitiru::observe
 {
 
-/// @brief 因果イベントID型
+/// @brief 因果イベント ID 型
 using CausalEventId = std::uint32_t;
 
-/// @brief 無効な因果イベントID（ルートイベントまたはリンクなし）
+/// @brief 無効な因果イベント ID（ルートイベントまたはリンクなし）
 inline constexpr CausalEventId INVALID_CAUSAL_EVENT = 0;
 
 /// @brief 因果イベント
-/// @details ゲーム内の1つの出来事を表す。オプションで原因イベントへのリンクを持つ。
+/// @details ゲーム内の 1 つの出来事を表す。オプションで原因イベントへのリンクを持つ。
 struct CausalEvent
 {
 	CausalEventId id = INVALID_CAUSAL_EVENT;                ///< イベントID
@@ -49,8 +49,8 @@ struct CausalEvent
 	CausalEventId causeId = INVALID_CAUSAL_EVENT;            ///< 原因イベントのID（ルートなら0）
 	std::map<std::string, std::string> data;                 ///< 任意のkey-valueコンテキスト
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -97,9 +97,9 @@ public:
 	/// @param type イベント種類
 	/// @param description 人間可読な説明
 	/// @param frame 発生フレーム番号
-	/// @param causeId 原因イベントのID（デフォルト: INVALID_CAUSAL_EVENT = ルート）
-	/// @param data 任意のkey-valueコンテキスト
-	/// @return 新規イベントのID
+	/// @param causeId 原因イベントの ID（デフォルト: INVALID_CAUSAL_EVENT = ルート）
+	/// @param data 任意の key-value コンテキスト
+	/// @return 新規イベントの ID
 	CausalEventId record(const std::string& type,
 	                      const std::string& description,
 	                      std::uint64_t frame,
@@ -128,7 +128,7 @@ public:
 	}
 
 	/// @brief 指定イベントの因果チェーンを取得する（根本原因まで遡る）
-	/// @param eventId 起点イベントのID
+	/// @param eventId 起点イベントの ID
 	/// @return 根本原因から起点イベントまでの因果チェーン（時系列順）
 	/// @details causeId を辿って INVALID_CAUSAL_EVENT に到達するまで遡り、
 	///          結果を時系列順（根本原因が先頭）に並べて返す。
@@ -160,8 +160,8 @@ public:
 	}
 
 	/// @brief 指定イベントの直接的な結果イベントを取得する
-	/// @param eventId 原因イベントのID
-	/// @return causeId が指定IDと一致する全イベント
+	/// @param eventId 原因イベントの ID
+	/// @return causeId が指定 ID と一致する全イベント
 	[[nodiscard]] std::vector<CausalEvent> getEffects(CausalEventId eventId) const
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
@@ -212,8 +212,8 @@ public:
 		return matched;
 	}
 
-	/// @brief IDでイベントを取得する
-	/// @param id イベントID
+	/// @brief ID でイベントを取得する
+	/// @param id イベント ID
 	/// @return イベントへのポインタ（見つからない場合は nullptr）
 	[[nodiscard]] const CausalEvent* getEvent(CausalEventId id) const
 	{
@@ -237,17 +237,17 @@ public:
 		return m_events.size();
 	}
 
-	/// @brief 全イベントをJSON配列文字列に変換する
-	/// @return JSON配列形式の文字列
+	/// @brief 全イベントを JSON 配列文字列に変換する
+	/// @return JSON 配列形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
 		return toJson(m_events);
 	}
 
-	/// @brief イベント一覧をJSON配列文字列に変換する
+	/// @brief イベント一覧を JSON 配列文字列に変換する
 	/// @param events イベントの配列
-	/// @return JSON配列形式の文字列
+	/// @return JSON 配列形式の文字列
 	[[nodiscard]] static std::string toJson(const std::vector<CausalEvent>& events)
 	{
 		std::string json;
@@ -265,7 +265,7 @@ public:
 	}
 
 private:
-	/// @brief IDでイベントを取得する（ロック不要版）
+	/// @brief ID でイベントを取得する（ロック不要版）
 	[[nodiscard]] const CausalEvent* getEventImpl(CausalEventId id) const noexcept
 	{
 		for (const auto& event : m_events)

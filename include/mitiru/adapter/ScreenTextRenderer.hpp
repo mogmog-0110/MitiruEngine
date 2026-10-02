@@ -2,8 +2,8 @@
 
 /// @file ScreenTextRenderer.hpp
 /// @brief mitiru::Screen → sgc::ITextRenderer + sgc::ITextMeasure アダプター
-/// @details ScreenのdrawText APIとBitmapFontのメトリクスを使って
-///          sgcのテキスト描画・計測インターフェースを実装する。
+/// @details Screen の drawText API と BitmapFont のメトリクスを使って
+///          sgc のテキスト描画・計測インターフェースを実装する。
 
 #include <algorithm>
 #include <string_view>
@@ -18,14 +18,14 @@
 namespace mitiru::adapter
 {
 
-/// @brief mitiru::ScreenをsgcのITextRenderer + ITextMeasureとして使用するアダプター
-/// @details BitmapFontの8x8グリフサイズを基準にスケーリングし、
+/// @brief mitiru::Screen を sgc の ITextRenderer + ITextMeasure として使用するアダプター
+/// @details BitmapFont の 8x8 グリフサイズを基準にスケーリングし、
 ///          テキストの描画と計測の両方を提供する。
 class ScreenTextRenderer : public sgc::ITextRenderer, public sgc::ITextMeasure
 {
 public:
 	/// @brief コンストラクタ
-	/// @param screen 描画先のScreen（非所有）
+	/// @param screen 描画先の Screen（非所有）
 	explicit ScreenTextRenderer(Screen& screen) noexcept
 		: m_screen(screen)
 	{
@@ -74,7 +74,7 @@ public:
 		return {charW * static_cast<float>(text.size()), charH};
 	}
 
-	/// @brief 1行のテキストの高さを取得する
+	/// @brief 1 行のテキストの高さを取得する
 	/// @param fontSize フォントサイズ（ピクセル）
 	/// @return 行の高さ
 	[[nodiscard]] float lineHeight(float fontSize) const override

@@ -2,9 +2,9 @@
 
 /// @file OcclusionCuller.hpp
 /// @brief ソフトウェアオクルージョンカリング
-/// @details 深度バッファのHi-Zピラミッドを構築し、AABBのオクルージョンテストを行う。
-///          GPUベースのHi-Zよりもシンプルだが、CPU上で動作するため
-///          ドローコール送信前にカリング可能。
+/// @details 深度バッファの Hi-Z ピラミッドを構築し、AABB のオクルージョンテストを行う。
+///          GPU ベースの Hi-Z よりもシンプルだが、CPU 上で動作するため
+///          ドローコール送信前にカリングできる。
 
 #include <algorithm>
 #include <cmath>
@@ -59,13 +59,13 @@ public:
 		buildHiZ();
 	}
 
-	/// @brief AABBがオクルードされているかテストする
-	/// @param aabb テスト対象のAABB
+	/// @brief AABB がオクルードされているかテストする
+	/// @param aabb テスト対象の AABB
 	/// @param viewProj ビュー×プロジェクション行列 float[16]
 	/// @return true: オクルードされている（非表示）、false: 可視
 	[[nodiscard]] bool isOccluded(const CullAABB& aabb, const float viewProj[16]) const
 	{
-		// AABBの8頂点をスクリーン空間に射影
+		// AABB の 8 頂点をスクリーン空間に射影
 		float screenMinX = 1e30f, screenMinY = 1e30f, screenMinZ = 1e30f;
 		float screenMaxX = -1e30f, screenMaxY = -1e30f;
 
@@ -111,7 +111,7 @@ public:
 			return false;
 		}
 
-		// Hi-Zピラミッドでテスト
+		// Hi-Z ピラミッドでテスト
 		return testHiZ(screenMinX, screenMinY, screenMaxX, screenMaxY, screenMinZ);
 	}
 
@@ -120,7 +120,7 @@ public:
 	///        呼び出し側が無駄なテストをスキップする判定に使う）
 	[[nodiscard]] bool hasDepth() const noexcept { return m_width > 0 && m_height > 0; }
 
-	/// @brief 複数AABBを一括テストする
+	/// @brief 複数 AABB を一括テストする
 	[[nodiscard]] CullResult testBatch(
 		const std::vector<CullAABB>& aabbs,
 		const float viewProj[16]) const
@@ -146,7 +146,7 @@ private:
 	int m_height = 0;
 	std::vector<float> m_depthBuffer;
 
-	// Hi-Zピラミッド（ミップレベル）
+	// Hi-Z ピラミッド（ミップレベル）
 	struct MipLevel
 	{
 		int width = 0, height = 0;
@@ -174,7 +174,7 @@ private:
 	{
 		if (m_hiZ.empty()) { return; }
 
-		// Level 0: depth buffer → first mip (max filter)
+		// レベル 0: 深度バッファ → 最初の mip (max フィルタ)
 		auto& mip0 = m_hiZ[0];
 		for (int y = 0; y < mip0.height; ++y)
 		{
@@ -194,7 +194,7 @@ private:
 			}
 		}
 
-		// Subsequent levels
+		// 以降のレベル
 		for (size_t i = 1; i < m_hiZ.size(); ++i)
 		{
 			const auto& prev = m_hiZ[i - 1];
@@ -221,7 +221,7 @@ private:
 
 	[[nodiscard]] bool testHiZ(float minX, float minY, float maxX, float maxY, float testZ) const
 	{
-		// 適切なミップレベルを選択する。`m_hiZ[0]` が最も解像度の高い（1テクセル=元画像2px）
+		// 適切なミップレベルを選択する。`m_hiZ[0]` が最も解像度の高い（1 テクセル=元画像 2px）
 		// ミップで、添字が増えるほど粗くなる（`buildMipChain` 参照）。AABB のスクリーン
 		// サイズが 1 テクセルに収まる最も細かいレベルを選ぶ（それより細かいと、AABB が
 		// テクセル境界をまたいで隣接テクセルの値を見落とす恐れがある）。
@@ -252,7 +252,7 @@ private:
 
 		const float hiZDepth = mip.data[static_cast<size_t>(iy * mip.width + ix)];
 
-		// testZ > hiZDepth: オブジェクトはHi-Zの最遠値より奥 → オクルード
+		// testZ > hiZDepth: オブジェクトは Hi-Z の最遠値より奥 → オクルード
 		return testZ > hiZDepth;
 	}
 };

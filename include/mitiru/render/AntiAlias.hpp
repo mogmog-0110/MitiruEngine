@@ -3,8 +3,8 @@
 /// @file AntiAlias.hpp
 /// @brief アンチエイリアス付きソフトウェア描画プリミティブ
 /// @details SDF（Signed Distance Field）ベースのアンチエイリアス描画と
-///          Xiaolin Wuの線分アルゴリズムを用いた滑らかなプリミティブ描画を提供する。
-///          全てCPU上で動作し、Screen::drawRect()を通じてピクセルを出力する。
+///          Xiaolin Wu の線分アルゴリズムを用いた滑らかなプリミティブ描画を提供する。
+///          全て CPU 上で動作し、Screen::drawRect()を通じてピクセルを出力する。
 
 #include <algorithm>
 #include <cmath>
@@ -15,14 +15,14 @@
 
 #include <mitiru/render/AlphaBlend.hpp>
 
-/// @brief 前方宣言（循環include回避）
+/// @brief 前方宣言（循環 include 回避）
 namespace mitiru { class Screen; }
 
 namespace mitiru::render
 {
 
 /// @brief アンチエイリアス付きソフトウェアレンダラー
-/// @details 全描画メソッドは Screen::drawRect() で1ピクセル矩形を出力する。
+/// @details 全描画メソッドは Screen::drawRect() で 1 ピクセル矩形を出力する。
 ///          SDF + smoothstep でサブピクセル精度のエッジ平滑化を行う。
 ///
 /// @code
@@ -36,7 +36,7 @@ class AaRenderer
 public:
 	// ── 線分（Xiaolin Wu アルゴリズム） ─────────────────────
 
-	/// @brief アンチエイリアス付き線分を描画する（Xiaolin Wuアルゴリズム）
+	/// @brief アンチエイリアス付き線分を描画する（Xiaolin Wu アルゴリズム）
 	/// @param screen 描画先サーフェス
 	/// @param from 始点
 	/// @param to 終点
@@ -174,16 +174,16 @@ public:
 
 				if (borderWidth > 0.0f)
 				{
-					/// 枠線あり: fillとborderを個別に計算する
+					/// 枠線あり: fill と border を個別に計算する
 					const float fillAlpha = smoothstep(AA_WIDTH, -AA_WIDTH, dist + borderWidth * 0.5f);
 					const float borderAlpha = smoothstep(AA_WIDTH, -AA_WIDTH,
 						std::abs(dist) - borderWidth * 0.5f);
 
-					/// fill部分（円の内側）
+					/// fill 部分（円の内側）
 					const float innerDist = dist + borderWidth * 0.5f;
 					const float innerAlpha = smoothstep(AA_WIDTH, -AA_WIDTH, innerDist);
 
-					/// border部分（枠線リング）
+					/// border 部分（枠線リング）
 					const float ringAlpha = borderAlpha * (1.0f - innerAlpha);
 
 					const float totalAlpha = innerAlpha * fillColor.a + ringAlpha * borderColor.a;
@@ -350,10 +350,10 @@ private:
 
 	// ── ヘルパー: ピクセル出力 ──────────────────────────────
 
-	/// @brief 1ピクセルをアルファ付きで描画する
+	/// @brief 1 ピクセルをアルファ付きで描画する
 	/// @param screen 描画先
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @param color 描画色
 	/// @param alpha アルファ値 [0, 1]
 	static void plotAA(Screen& screen, int x, int y,

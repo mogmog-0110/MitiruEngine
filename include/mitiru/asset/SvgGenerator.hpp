@@ -1,12 +1,12 @@
 ﻿#pragma once
 
 /// @file SvgGenerator.hpp
-/// @brief JSON定義からSVGアセットを生成するジェネレーター
-/// @details JSON形式のアセット定義を解析し、ネオングロー・グラデーション等の
-///          SVGエフェクトを含む完全なSVG 1.1 XML文字列を出力する。
+/// @brief JSON 定義から SVG アセットを生成するジェネレーター
+/// @details JSON 形式のアセット定義を解析し、ネオングロー・グラデーション等の
+///          SVG エフェクトを含む完全な SVG 1.1 XML 文字列を出力する。
 ///
 /// @code
-/// // JSONからSVGドキュメントを構築
+/// // JSON から SVG ドキュメントを構築
 /// std::string json = R"json({"shape":"circle","x":50,"y":50,"radius":30,
 ///     "style":{"fill":"#00ffff","stroke":"#00cccc","strokeWidth":2,
 ///     "glow":{"color":"#00ffff","radius":8}}})json";
@@ -27,7 +27,7 @@
 namespace mitiru::asset
 {
 
-/// @brief SVGスタイル情報
+/// @brief SVG スタイル情報
 struct SvgStyle
 {
 	std::string fillColor{"none"};     ///< 塗りつぶし色
@@ -38,7 +38,7 @@ struct SvgStyle
 	float glowRadius{0.0f};            ///< グローの半径
 };
 
-/// @brief SVG図形の種類
+/// @brief SVG 図形の種類
 enum class SvgShape
 {
 	Circle,    ///< 円
@@ -50,7 +50,7 @@ enum class SvgShape
 	Group      ///< グループ（子要素を含む）
 };
 
-/// @brief SVG要素の定義
+/// @brief SVG 要素の定義
 struct SvgElement
 {
 	SvgShape shape{SvgShape::Rect};          ///< 図形の種類
@@ -68,7 +68,7 @@ struct SvgElement
 	std::vector<std::pair<float, float>> points; ///< ポリゴン頂点（Polygon/Triangle用）
 };
 
-/// @brief SVGドキュメント全体の定義
+/// @brief SVG ドキュメント全体の定義
 struct SvgDocument
 {
 	float viewBoxW{100.0f};                   ///< viewBoxの幅
@@ -77,15 +77,15 @@ struct SvgDocument
 	std::string title;                        ///< ドキュメントタイトル
 };
 
-/// @brief JSON定義からSVGを生成するジェネレーター
-/// @details 簡易JSONパーサーを内蔵し、アセット定義JSONを解析して
-///          ネオングロー付きSVGを出力する。
+/// @brief JSON 定義から SVG を生成するジェネレーター
+/// @details 簡易 JSON パーサーを内蔵し、アセット定義 JSON を解析して
+///          ネオングロー付き SVG を出力する。
 class SvgGenerator
 {
 public:
-	/// @brief JSON文字列からSvgDocumentを構築する
-	/// @param json JSON形式のアセット定義
-	/// @return 成功時はSvgDocument、失敗時はnullopt
+	/// @brief JSON 文字列から SvgDocument を構築する
+	/// @param json JSON 形式のアセット定義
+	/// @return 成功時は SvgDocument、失敗時は nullopt
 	[[nodiscard]] static std::optional<SvgDocument> fromJson(const std::string& json)
 	{
 		auto trimmed = trim(json);
@@ -97,12 +97,12 @@ public:
 		SvgDocument doc;
 		SvgElement elem;
 
-		// viewBox解析
+		// viewBox 解析
 		doc.viewBoxW = extractFloat(trimmed, "viewBoxW", 100.0f);
 		doc.viewBoxH = extractFloat(trimmed, "viewBoxH", 100.0f);
 		doc.title = extractString(trimmed, "title");
 
-		// 図形タイプ
+		// 図形の種類
 		const auto shapeStr = extractString(trimmed, "shape");
 		if (shapeStr == "circle")
 		{
@@ -139,7 +139,7 @@ public:
 		elem.text = extractString(trimmed, "text");
 		elem.fontSize = extractFloat(trimmed, "fontSize", 14.0f);
 
-		// スタイル解析
+		// スタイルの解析
 		auto styleBlock = extractObject(trimmed, "style");
 		if (!styleBlock.empty())
 		{
@@ -168,9 +168,9 @@ public:
 		return doc;
 	}
 
-	/// @brief SvgDocumentをSVG XML文字列に変換する
-	/// @param doc SVGドキュメント
-	/// @return 完全なSVG 1.1 XML文字列
+	/// @brief SvgDocument を SVG XML 文字列に変換する
+	/// @param doc SVG ドキュメント
+	/// @return 完全な SVG 1.1 XML 文字列
 	[[nodiscard]] static std::string toSvg(const SvgDocument& doc)
 	{
 		std::ostringstream ss;
@@ -183,7 +183,7 @@ public:
 			ss << "<title>" << escapeXml(doc.title) << "</title>\n";
 		}
 
-		// defs収集（グロー・グラデーション）
+		// defs の収集（グロー・グラデーション）
 		std::vector<std::string> defs;
 		int filterId = 0;
 		std::map<int, std::string> elementFilterMap; ///< 要素index → フィルターID
@@ -203,7 +203,7 @@ public:
 			ss << "</defs>\n";
 		}
 
-		// 要素出力
+		// 要素の出力
 		for (size_t i = 0; i < doc.elements.size(); ++i)
 		{
 			auto it = elementFilterMap.find(static_cast<int>(i));
@@ -216,10 +216,10 @@ public:
 		return ss.str();
 	}
 
-	/// @brief ネオングローのSVGフィルター定義を生成する
+	/// @brief ネオングローの SVG フィルター定義を生成する
 	/// @param color グロー色
-	/// @param radius グローの半径（stdDeviation値）
-	/// @return SVGフィルター定義文字列（<filter>タグ）
+	/// @param radius グローの半径（stdDeviation 値）
+	/// @return SVG フィルター定義文字列（<filter>タグ）
 	[[nodiscard]] static std::string generateGlow(const std::string& color, float radius)
 	{
 		std::ostringstream ss;
@@ -237,11 +237,11 @@ public:
 	}
 
 	/// @brief 線形グラデーション定義を生成する
-	/// @param id グラデーションのID
+	/// @param id グラデーションの ID
 	/// @param color1 開始色
 	/// @param color2 終了色
 	/// @param vertical true=垂直方向、false=水平方向
-	/// @return SVGグラデーション定義文字列（<linearGradient>タグ）
+	/// @return SVG グラデーション定義文字列（<linearGradient>タグ）
 	[[nodiscard]] static std::string generateGradient(const std::string& id,
 		const std::string& color1, const std::string& color2, bool vertical = false)
 	{
@@ -263,7 +263,7 @@ public:
 	}
 
 private:
-	/// @brief 要素からdefs（フィルター・グラデーション）を収集する
+	/// @brief 要素から defs（フィルター・グラデーション）を収集する
 	static void collectDefs(const SvgElement& elem, std::vector<std::string>& defs,
 		int& filterId, std::map<int, std::string>& filterMap, int elemIndex)
 	{
@@ -286,14 +286,14 @@ private:
 			++filterId;
 		}
 
-		// 子要素の再帰処理
+		// 子要素を再帰的に処理する
 		for (size_t i = 0; i < elem.children.size(); ++i)
 		{
 			collectDefs(elem.children[i], defs, filterId, filterMap, -1);
 		}
 	}
 
-	/// @brief 単一の要素をSVG XMLとして出力する
+	/// @brief 単一の要素を SVG XML として出力する
 	static void renderElement(std::ostringstream& ss, const SvgElement& elem,
 		const std::string& filterRef, const std::string& indent)
 	{
@@ -338,7 +338,7 @@ private:
 			}
 			else if (elem.shape == SvgShape::Triangle)
 			{
-				// デフォルト三角形（上向き）
+				// デフォルトの三角形（上向き）
 				const float cx = elem.x + elem.width * 0.5f;
 				ss << cx << "," << elem.y << " "
 				   << elem.x << "," << (elem.y + elem.height) << " "
@@ -422,7 +422,7 @@ private:
 		}
 	}
 
-	/// @brief XML特殊文字をエスケープする
+	/// @brief XML 特殊文字をエスケープする
 	[[nodiscard]] static std::string escapeXml(const std::string& s)
 	{
 		std::string result;
@@ -442,9 +442,9 @@ private:
 		return result;
 	}
 
-	// ========== 簡易JSONパーサーユーティリティ ==========
+	// ========== 簡易 JSON パーサーユーティリティ ==========
 
-	/// @brief 文字列の前後空白を除去する
+	/// @brief 文字列の前後の空白を除去する
 	[[nodiscard]] static std::string trim(const std::string& s)
 	{
 		const auto start = s.find_first_not_of(" \t\n\r");
@@ -456,7 +456,7 @@ private:
 		return s.substr(start, end - start + 1);
 	}
 
-	/// @brief JSONから文字列値を抽出する
+	/// @brief JSON から文字列値を抽出する
 	[[nodiscard]] static std::string extractString(const std::string& json, const std::string& key)
 	{
 		const std::string search = "\"" + key + "\"";
@@ -483,7 +483,7 @@ private:
 		return json.substr(pos + 1, end - pos - 1);
 	}
 
-	/// @brief JSONから数値を抽出する
+	/// @brief JSON から数値を抽出する
 	[[nodiscard]] static float extractFloat(const std::string& json, const std::string& key, float defaultVal)
 	{
 		const std::string search = "\"" + key + "\"";
@@ -516,7 +516,7 @@ private:
 		}
 	}
 
-	/// @brief JSONからネストされたオブジェクトを抽出する
+	/// @brief JSON からネストされたオブジェクトを抽出する
 	[[nodiscard]] static std::string extractObject(const std::string& json, const std::string& key)
 	{
 		const std::string search = "\"" + key + "\"";
@@ -547,7 +547,7 @@ private:
 		return json.substr(pos, end - pos);
 	}
 
-	/// @brief JSONからbool値を抽出する
+	/// @brief JSON から bool 値を抽出する
 	[[nodiscard]] static bool extractBool(const std::string& json, const std::string& key, bool defaultVal)
 	{
 		const std::string search = "\"" + key + "\"";

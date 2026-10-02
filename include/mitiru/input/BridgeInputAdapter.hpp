@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file BridgeInputAdapter.hpp
-/// @brief CEF bridge signal を InputMapper アクションに橋渡しするアダプタ
+/// @brief UI signal を InputMapper アクションに橋渡しするアダプタ
 /// @details BridgeActionRouter に handler を登録し、signal が dispatch されると
 ///          InputMapper::triggerActionFromBridge を呼び出す。
 ///          gameplay 側は入力ソース (native / DOM) を意識せず
@@ -15,7 +15,7 @@
 /// adapter.mapSignalToAction("ui.button.fire", "Fire");
 /// mapper.bindKey("Fire", mitiru::KeyCode::Space);
 ///
-/// // CEF bridge から signal が届いたとき:
+/// // UI から signal が届いたとき:
 /// router.dispatch("ui.button.fire");
 ///
 /// // 同フレーム内で native key または bridge どちらでも true になる:
@@ -34,7 +34,7 @@
 
 namespace mitiru::input {
 
-/// @brief CEF bridge signal を InputMapper アクションに橋渡しするアダプタ
+/// @brief UI signal を InputMapper アクションに橋渡しするアダプタ
 /// @details signal が dispatch されると対応する action 名で
 ///          InputMapper::triggerActionFromBridge を呼び出す。
 ///          Non-copyable, non-movable (内部で参照を保持するため)。
@@ -76,9 +76,8 @@ private:
     BridgeActionRouter&  m_router;
     mitiru::InputMapper& m_mapper;
     /// @brief このアダプタが router に登録した signal 名の一覧
-    /// @details destructor が全登録を取り消すために使う。これにより router が
-    ///          後で dangling pointer の `this` をキャプチャした handler を
-    ///          呼び出せないようにする。
+    /// @details destructor が全登録を取り消すために使う。これにより、dangling pointer の
+    /// `this` をキャプチャした handler を router が後から呼び出せないようにする。
     std::vector<std::string> m_registered;
 };
 
@@ -98,8 +97,8 @@ inline void BridgeInputAdapter::mapSignalToAction(std::string signalName,
                                                   std::string actionName)
 {
     // registerHandler に move する前に signal 名を記録しておき、破棄時に
-    // 解除できるようにする。同一 signal を再マップしたときに重複登録しないよう
-    // にして、destructor が unregisterHandler を二重に呼ばないようにする。
+    // 解除できるようにする。同じ signal を再マップしたときは重複して登録せず、
+    // destructor が unregisterHandler を二重に呼ばないようにする。
     const auto already = std::find(m_registered.begin(), m_registered.end(), signalName);
     if (already == m_registered.end()) {
         m_registered.push_back(signalName);

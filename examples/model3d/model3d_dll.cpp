@@ -1,5 +1,5 @@
 // model3d。大きな 3D モデル (glTF) の中を歩く
-// 実行すると: 26 万ポリゴンの宮殿 (Sponza) を一人称で歩き回れる。マウスで見回し、WASD で移動
+// 実行すると、26 万ポリゴンの宮殿 (Sponza) を一人称で歩き回れる。マウスで見回し、WASD で移動する
 // 関連 API: drawModel / camera3D / hud.lockMouse / in.mouseDeltaX / skybox3D
 
 #include <cmath>
@@ -10,7 +10,7 @@
 using namespace mitiru;
 
 // 宮殿は Crytek Sponza (CC BY 3.0、assets/sponza/CREDITS.md)。drawModel の
-// scale 0.01 でメートル単位の世界に置き、目の高さ 1.7m で歩く。
+// scale 0.01 でメートル単位の世界に配置し、目の高さ 1.7m で歩く。
 struct Model3D
 {
 	float px = -14.0f, py = 1.7f, pz = 0.0f;  // 目の位置 (m)
@@ -45,7 +45,7 @@ struct Model3D
 		px += (fx * -m.y + rx * m.x) * speed * dt;
 		pz += (fz * -m.y + rz * m.x) * speed * dt;
 
-		// 壁の外へ出ない範囲に収める (この章は当たり判定を持たない)
+		// 壁の外へ出ない範囲に収める (この章には当たり判定がない)
 		if (px < -17.5f) { px = -17.5f; }
 		if (px >  16.5f) { px =  16.5f; }
 		if (pz < -10.0f) { pz = -10.0f; }
@@ -56,7 +56,7 @@ struct Model3D
 	{
 		s.clear(hex(0xDCE9F5));   // 3D が使えない環境 (画面なしの自動テストなど) ではこの色のまま
 
-		// 視線の向きを目の位置 + 単位ベクトルで camera3D に渡す
+		// 視線の向きを、目の位置 + 単位ベクトルとして camera3D に渡す
 		constexpr float kDeg = 3.14159265f / 180.0f;
 		const float cp = std::cos(pitchDeg * kDeg);
 		const float dx = std::sin(yawDeg * kDeg) * cp;
@@ -66,8 +66,8 @@ struct Model3D
 		s.light3D({-0.4f, -0.85f, -0.3f}, hex(0xFFF4E0));
 		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 
-		// 26 万ポリゴンの宮殿 (glTF) をそのまま 1 行で。初回だけ隣に変換キャッシュを
-		// 作り、以後の起動はそれを読む。詳細度 (LOD) は距離から自動で決まる
+		// 26 万ポリゴンの宮殿 (glTF) を、そのまま 1 行で描画する。初回だけ隣に変換キャッシュを
+		// 作り、以後の起動ではそれを読む。詳細度 (LOD) は距離に応じて自動で決まる
 		s.drawModel("model3d/assets/sponza/sponza.gltf", {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
 
 		chapterTitle(s, "3D Model");
@@ -79,4 +79,5 @@ struct Model3D
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(Model3D);
 
+MITIRU_ASSERT_NO_PADDING(Model3D);
 MITIRU_GAME(Model3D);

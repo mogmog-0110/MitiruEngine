@@ -51,7 +51,7 @@ template <typename Vec>
 }
 
 /// @brief Catmull-Romスプラインパス — 通過点を滑らかに結ぶ曲線
-/// @tparam Vec ベクトル型（operator+, operator-, operator* が必要）
+/// @tparam Vec ベクトル型（operator+, operator-, operator*, dot が必要）
 ///
 /// 最低4点必要。最初と最後の点はガイド点として使用され、
 /// 実際のパスは2番目の点から最後から2番目の点までを通る。
@@ -138,7 +138,7 @@ public:
 			const float localT = static_cast<float>(i) / static_cast<float>(segments);
 			const Vec current = evaluate(localT);
 			const Vec diff = current - prev;
-			length += std::sqrt(diff.x * diff.x + diff.y * diff.y);
+			length += std::sqrt(static_cast<float>(diff.dot(diff)));
 			prev = current;
 		}
 

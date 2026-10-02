@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file InputInjector.hpp
-/// @brief AI入力インジェクター
+/// @brief AI 入力インジェクター
 /// @details 外部から入力コマンドを注入するための仕組み。
-///          AIエージェントや自動テストが仮想入力を送信する際に使用する。
+///          AI エージェントや自動テストが仮想入力を送るときに使う。
 
 #include <cstdint>
 #include <mutex>
@@ -23,7 +23,7 @@ enum class InputCommandType : std::uint8_t
 };
 
 /// @brief 入力コマンド
-/// @details 1つの入力操作を表す値型。
+/// @details 1 つの入力操作を表す値型。
 struct InputCommand
 {
 	InputCommandType type = InputCommandType::KeyDown;  ///< コマンド種別
@@ -33,8 +33,8 @@ struct InputCommand
 	float mouseY = 0.0f;    ///< マウスY座標（MouseMove時）
 };
 
-/// @brief AI入力インジェクター
-/// @details スレッドセーフにコマンドを蓄積し、エンジンが毎フレーム消費する。
+/// @brief AI 入力インジェクター
+/// @details スレッドセーフにコマンドをためておき、エンジンが毎フレーム消費する。
 class InputInjector
 {
 public:
@@ -46,8 +46,8 @@ public:
 		m_pendingCommands.push_back(command);
 	}
 
-	/// @brief 蓄積されたコマンドを全て取得しクリアする
-	/// @return 蓄積されていたコマンドのリスト
+	/// @brief ためたコマンドをすべて取得してクリアする
+	/// @return ためていたコマンドのリスト
 	[[nodiscard]] std::vector<InputCommand> consumePending()
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
@@ -56,14 +56,14 @@ public:
 		return commands;
 	}
 
-	/// @brief 蓄積されたコマンド数を取得する
+	/// @brief ためているコマンドの数を取得する
 	[[nodiscard]] std::size_t pendingCount() const
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);
 		return m_pendingCommands.size();
 	}
 
-	/// @brief 蓄積されたコマンドをクリアする
+	/// @brief ためているコマンドをクリアする
 	void clear()
 	{
 		const std::lock_guard<std::mutex> lock(m_mutex);

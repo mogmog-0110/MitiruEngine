@@ -1,8 +1,10 @@
 // mitiru::Engine の detail header。直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -41,6 +43,33 @@ MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::capture() const
 // 早期 return が必要なフェーズ (Emscripten 終了 / autoTestExitAfter) は
 // bool を返し、tickOneFrame() が return を担う。
 
+// 以前はここで m_device だけを作り直していたが、2D パイプライン・Renderer3D_DX12・
+// MSAA/LoFi・GPU パーティクルは旧デバイスのキューとコマンドリストを持ったまま残り、新しい
+// スワップチェーンの RTV を旧デバイスのリストへ渡して nvwgf2umx.dll 内で 0xC0000005 になった (#77)。
+// 全部品を作り直す経路は無いうえ、hang した NVIDIA ドライバは再起動まで同じアダプタでは戻らず、
+// 作り直すと気づかないうちに iGPU へ切り替わる。なので起動中 (exit 4) と同じく、理由を出して終える。
+// bug ring は CPU 側の記録なので、hang 直前の数秒を再生できるよう先に書き出す。
+MITIRU_INLINE void mitiru::Engine::tickDeviceLossRecoveryPhase() noexcept
+{
+#ifdef _WIN32
+	if (!gfx::Dx12Device::anyDeviceLost()) { return; }
+
+	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get());
+	const bool unresponsive = dx12 != nullptr && dx12->isGpuUnresponsive();
+	const bool savedRing = m_config.bugRingSeconds > 0.0f && observe::saveBugRing(this, "gpu_lost_");
+	std::fprintf(stderr,
+		"[mitiru] フレーム %llu で %s。描画資源をデバイスごと作り直す経路が無いので終了する (exit %d)。"
+		"ドライバの再起動 (Win+Ctrl+Shift+B) か PC の再起動のあとで起動し直す%s\n",
+		static_cast<unsigned long long>(frameNumber()),
+		unresponsive ? "GPU が応答しなくなった" : "D3D12 デバイスが失われた",
+		detail::kExitGpuLostDuringPlay,
+		savedRing ? "。直前の入力は gpu_lost_<時刻>.mtrr に保存した" : "");
+	std::fflush(stdout);
+	std::fflush(stderr);
+	std::_Exit(detail::kExitGpuLostDuringPlay);
+#endif
+}
+
 MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 {
 	MITIRU_ZONE_NAMED("Engine::Frame");
@@ -54,7 +83,7 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 	// 使う描画フェーズより前に、作り直すか諦めるかを確定させておく)。
 	tickDeviceLossRecoveryPhase();
 
-	// Host hook。通常 `mitiru_host --watch` がここで DLL の mtime を polling し、
+	// Host hook。通常 `mitiru_host --watch` がここで DLL の書き換えを見て、
 	// source 変更時に Engine::reloadModule() を起こす。per-frame state に触れる前
 	// なので安全に発火できる。
 	if (m_loopConfig && m_loopConfig->onFrameStart)
@@ -73,16 +102,45 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 	{
 		return;
 	}
+	flushResizeDeferredFromFrameBody();
+
+	// ここから present までは GPU のフレームを開いている。この間に何かが窓のメッセージを配り、
+	// 枠を掴んだ modal ループの tick が同じバックバッファ番号で入れ子のフレームを始めると、
+	// 実行中のアロケータと upload ring を Reset してしまう。tick 側はこの印を見て断る (#79)
+	struct FrameBodyScope
+	{
+		bool& active;
+		explicit FrameBodyScope(bool& flag) : active(flag) { active = true; }
+		~FrameBodyScope() { active = false; }
+		FrameBodyScope(const FrameBodyScope&) = delete;
+		FrameBodyScope& operator=(const FrameBodyScope&) = delete;
+	};
+	const FrameBodyScope body(m_frameBodyActive);
 	tickMouseScalingPhase();
 	tickFixedUpdatePhase();
 	tickRenderPhase();
 	tickPresentPhase();
-	tickCefComposite();
+	tickUiComposite();
 	if (!tickAutoCaptureAndEndFrame())
 	{
 		return;
 	}
 	tickHttpPollAndCap(frameStart);
+}
+
+/// フレームの途中に終わった modal ループのリサイズは、その場では当てずに (m_pendingResize) ここで当てる (#79)
+MITIRU_INLINE void mitiru::Engine::flushResizeDeferredFromFrameBody()
+{
+#ifdef _WIN32
+	if (m_pendingResizeW <= 0 || m_pendingResizeH <= 0) { return; }
+	auto* win32 = dynamic_cast<mitiru::Win32Window*>(m_window.get());
+	if (win32 == nullptr || win32->inModalLoop()) { return; }
+	const int w = m_pendingResizeW;
+	const int h = m_pendingResizeH;
+	m_pendingResizeW = 0;
+	m_pendingResizeH = 0;
+	onWindowResize(w, h);
+#endif
 }
 
 MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
@@ -98,14 +156,14 @@ MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
 
 	/// 重要: ここで m_inputState.beginFrame() を呼んではいけない (ENG-102)。
 	/// beginFrame() は prev=curr でエッジを消す。pollEvents が curr を更新する
-	/// 「update が走らないレンダーフレーム」(144Hz vsync + 60Hz update など)で
+	/// 「update が走らないレンダーフレーム」(144Hz vsync + 60Hz update など) で
 	/// 本メソッドを毎フレーム呼ぶと、KEYDOWN を curr に拾った直後の次フレームで
 	/// prev=curr されて just-pressed が消える。prev 維持は while ループ末の
 	/// endTick() に任せ、render rate と update rate を独立させる。
 	m_window->pollEvents();
 	applyInjectedInput();
 	// headless (自動回し/CI) では物理パッドを開かない。SdlGamepadInput の lazy init が
-	// DS4 を占有し、ユーザーが別アプリで使用中の実機入力を吸ってしまうため。
+	// DS4 を占有し、ユーザーが別アプリで使用中の実機入力を横取りしてしまうため。
 	// 入力は --input-script / injected input が正であり、実デバイス不要。
 	if (!m_config.headless)
 	{
@@ -115,7 +173,7 @@ MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
 		m_sdlGamepad.update(); // SDL_GameController (#32) — DS4/DS5 等。SDL2 無し時は no-op
 	}
 
-	// DEBUG: pollEvents直後のマウス座標を保存
+	// DEBUG: pollEvents 直後のマウス座標を保存
 	{
 		auto [px, py] = m_inputState.mousePosition();
 		m_dbgPostPollMx = px;
@@ -127,11 +185,11 @@ MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
 MITIRU_INLINE void mitiru::Engine::tickMouseScalingPhase()
 {
 	MITIRU_ZONE_NAMED("Engine::MouseScaling");
-	/// マウス座標をScreen論理座標に変換する
-	/// 重要: Win32Windowが設定したRAW座標を毎フレーム読み取り、
-	/// スケーリング済み座標で上書きする。次フレームではWM_MOUSEMOVEが
-	/// 来ればRAWに戻るが、来なければ前フレームのスケーリング済み値が
-	/// 残っている。そのため、RAW座標をWin32Windowから直接取得する。
+	/// マウス座標を Screen 論理座標に変換する
+	/// 重要: Win32Window が設定した RAW 座標を毎フレーム読み取り、
+	/// スケーリング済み座標で上書きする。次フレームでは WM_MOUSEMOVE が
+	/// 来れば RAW に戻るが、来なければ前フレームのスケーリング済み値が
+	/// 残っている。そのため、RAW 座標を Win32Window から直接取得する。
 	if (!m_screen || !m_window)
 	{
 		return;
@@ -142,7 +200,7 @@ MITIRU_INLINE void mitiru::Engine::tickMouseScalingPhase()
 	const float screenW = static_cast<float>(m_screen->width());
 	const float screenH = static_cast<float>(m_screen->height());
 
-	// Win32Windowが保持するRAW座標を直接使う (スケーリング前の値)。
+	// Win32Window が保持する RAW 座標を直接使う (スケーリング前の値)。
 	// Win32 以外 (web 等) には RAW の持ち主が居ないので InputState の値をそのまま使う。
 #ifdef _WIN32
 	auto* w32 = dynamic_cast<Win32Window*>(m_window.get());
@@ -177,14 +235,14 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 	MITIRU_ZONE_NAMED("Engine::FixedUpdate");
 	auto& game = *m_loopGame;
 
-	/// 壁時計dtを取得し、スパイラルオブデス防止でキャップ
+	/// 壁時計 dt を取得し、スパイラルオブデス防止でキャップ
 	const float rawDt = m_clock->tick();
 	const float frameTime = std::min(rawDt, kMaxDelta);
 	m_accumulator += frameTime * m_config.timeScale;   // timeScale はステップ数を増減 (dt は固定)
 
 	/// 固定タイムステップで更新 (最大スキップ制限付き)
 	///
-	/// 入力のエッジ管理は完全に `endTick()` で行う。理由:
+	/// 入力のエッジ管理は完全に `endTick()` で行う。理由は次のとおり。
 	///   - render rate と update rate が独立 (144Hz vsync + 60Hz update 等)
 	///     のとき、`beginFrame()` を render-frame 頭で呼ぶと「update が走らない
 	///     フレーム」で prev=curr されて KEYDOWN エッジが消える (ENG-102)。
@@ -242,14 +300,16 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		observe::OracleRing& ring = observe::oracleRingFor(this);
 		ring.setMachineLogEnabled(m_config.oracleMachineLog);
 
-		observe::checkFieldsOracle(m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
+		observe::checkFieldsOracle(m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
 			static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize, frameNo, ring,
-			m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+			m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 
 		observe::OracleTimeState& oracleState = observe::oracleStateFor(this);
 		observe::checkFrameTimeSpikeOracle(rawDt * 1000.0f, frameNo, oracleState, ring);
 
-		if (m_moduleInputSnapshot)
+		// 部分状態の game (MITIRU_GAME_OBJECTS) は場面の中身が GameMemory の外で動く。進行データが
+		// 何秒も変わらないのは正常なので、bytes の停滞を「update が止まっている」とは読まない。
+		if (m_moduleInputSnapshot && !modulePartialState())
 		{
 			observe::checkStagnationOracle(
 				static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
@@ -263,8 +323,11 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 			std::int32_t invCount = 0;
 			if (auto invFn = m_moduleHost->invariantsFn())
 			{
-				const module::InvariantDescriptor* invs = invFn(&invCount);
-				observe::checkInvariantsOracle(invs, invCount, m_moduleMemory, frameNo, ring);
+				// 不変条件の述語も game のコード。落ちたら live の callback と同じく止める。
+				guardModuleCallback("invariants", [&] {
+					const module::InvariantDescriptor* invs = invFn(&invCount);
+					observe::checkInvariantsOracle(invs, invCount, m_moduleMemory, frameNo, ring);
+				});
 			}
 		}
 
@@ -301,11 +364,14 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 						scratchFallback.resize(m_moduleMemorySize);
 						scratch = scratchFallback.data();
 					}
-					observe::checkDeterminismOracle(m_moduleApi,
-						static_cast<std::uint8_t*>(m_moduleMemory), m_moduleMemorySize, past,
-						pastInputs.data(), static_cast<int>(k), scratch, frameNo, ring,
-						[this](std::uint32_t off) { return queryModuleWriteBlame(off); },
-						m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount);
+					// 再シミュレーションで落ちたら、書きかけの live bytes は停止の処理が直前の記録へ戻す。
+					guardModuleCallback("on_update (determinism oracle)", [&] {
+						observe::checkDeterminismOracle(m_moduleApi,
+							static_cast<std::uint8_t*>(m_moduleMemory), m_moduleMemorySize, past,
+							pastInputs.data(), static_cast<int>(k), scratch, frameNo, ring,
+							[this](std::uint32_t off) { return queryModuleWriteBlame(off); },
+							m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount());
+					});
 				}
 			}
 		}
@@ -356,11 +422,11 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	// =====================================================================
 	// 描画パイプライン (統一パス)
 	//
-	// 2Dのみのゲーム: game.draw()はScreenに蓄積のみ
-	// 3Dゲーム: game.draw()内でRenderer3D::beginFrame()がバックバッファをクリア+描画
+	// 2D のみのゲーム: game.draw() は Screen に蓄積のみ
+	// 3D ゲーム: game.draw() 内で Renderer3D::beginFrame() がバックバッファをクリア+描画
 	//
-	// game.draw()は常にdevice->beginFrame()の後に呼ぶ。
-	// Renderer3D::beginFrame()はdevice->beginFrame()の後なら安全。
+	// game.draw() は常に device->beginFrame() の後に呼ぶ。
+	// Renderer3D::beginFrame() は device->beginFrame() の後なら安全。
 	// =====================================================================
 
 	m_screen->resetDrawCallCount();
@@ -375,18 +441,18 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 		m_device->setClearColor(cc.r, cc.g, cc.b, cc.a);
 	}
 
-	// device->beginFrame(): DX12ではフェンス待機+アロケータリセット
+	// device->beginFrame(): DX12 ではフェンス待機+アロケータリセット
 	if (m_renderer3D) m_renderer3D->resetFrameActive();
 	if (m_device)
 	{
 		m_device->beginFrame();
 
-		/// ポストプロセスが有効ならオフスクリーンRTにリダイレクトする
+		/// ポストプロセスが有効ならオフスクリーン RT にリダイレクトする
 		m_device->beginPostProcess();
 	}
 
 #ifdef _WIN32
-	// ローファイ・ポストFX: 有効時はゲーム描画を低解像オフスクリーン RT へ向ける。
+	// ローファイ・ポスト FX: 有効時はゲーム描画を低解像オフスクリーン RT へ向ける。
 	if (m_config.loFi.enabled && m_renderPipeline)
 	{
 		if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
@@ -477,15 +543,10 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 		m_errorBanner.drawTo(*m_screen);
 	}
 
-	// H-20: CEF init 失敗の可視化。無言の UI 無し画面を防ぐ (エンジン通知)。
-	if (m_cefInitFailed)
+	if (m_moduleFaulted)
 	{
-		const float W = static_cast<float>(m_screen->width());
-		m_screen->drawRect(sgc::Rectf{0.0f, 0.0f, W, 28.0f},
-		                   sgc::Colorf{0.55f, 0.10f, 0.12f, 0.92f});
-		m_screen->drawTextInRect(sgc::Rectf{8.0f, 2.0f, W - 16.0f, 24.0f},
-		                         "UI 初期化失敗 (CEF) — 詳細は stderr / cef ログ",
-		                         sgc::Colorf{1.0f, 0.92f, 0.92f, 1.0f}, 16.0f);
+		debug::drawNoticeCard(*m_screen, "ゲームが停止しました", m_moduleFaultLines,
+		                      "コードを直して DLL をビルドし直すと、読み込み直してこのフレームから再開します");
 	}
 
 #ifdef _WIN32
@@ -522,7 +583,7 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 		return;
 	}
 
-	// 3D描画が行われたフレームの処理
+	// 3D 描画が行われたフレームの処理
 	const bool renderer3DUsed = m_renderer3D
 		&& m_renderer3D->isFrameActive();
 
@@ -538,8 +599,8 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 			m_device->resetRenderTargetFor2D();
 		}
 	}
-	// 2D描画を常にGPU送信する
-	// (3D使用時でもHUD/UIオーバーレイが必要)
+	// 2D 描画を常に GPU 送信する
+	// (3D 使用時でも HUD/UI オーバーレイが必要)
 	if (!renderer3DUsed || !m_renderer3D->hasOverlaySupport())
 	{
 		if (renderer3DUsed)
@@ -551,8 +612,8 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 
 #ifdef _WIN32
 	// 2D MSAA resolve: override を外し、4x MSAA → 実バックバッファへ解決する。
-	// この後の CEF composite / present は resolve 済みバックバッファに正しく乗る
-	// (順序: 2D → resolve → CEF composite → present)。override は draw() 前 (tickRenderPhase)
+	// この後の UI 合成 / present は resolve 済みバックバッファに正しく乗る
+	// (順序: 2D → resolve → UI 合成 → present)。override は draw() 前 (tickRenderPhase)
 	// に張ってあるので、draw() 中に flush された textured/sprite バッチも MSAA RT に入り、
 	// この resolve に含まれる (実スワップチェーンでスプライトが消える回帰の根治)。
 	if (m_msaa2dActiveThisFrame && m_msaaTarget)
@@ -568,7 +629,7 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 	/// ポストプロセスチェーンを実行し、バックバッファに出力する
 	m_device->endPostProcess();
 
-	/// 3Dレンダラーのコマンドリストを閉じて実行する
+	/// 3D レンダラーのコマンドリストを閉じて実行する
 	if (m_renderer3D && m_renderer3D->isFrameActive())
 	{
 		m_renderer3D->finalizeFrame();
@@ -586,7 +647,7 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 		overlayDone = true;
 	}
 
-	// ローファイ・ポストFX: 低解像 RT を量子化+Bayerディザしながら実バックバッファへ拡大。
+	// ローファイ・ポスト FX: 低解像 RT を量子化+Bayer ディザしながら実バックバッファへ拡大。
 	// 3D コマンドが lofi RT (override 先) に落ちてから resolve する必要があるためこの位置。
 	if (m_config.loFi.enabled && m_loFiTarget && m_loFiTarget->ready() && m_window)
 	{
@@ -615,60 +676,6 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 	{
 		m_screen->present3DOverlay();
 	}
-}
-
-MITIRU_INLINE void mitiru::Engine::tickCefComposite()
-{
-	MITIRU_ZONE_NAMED("Engine::CefComposite");
-	if (!m_device || !m_cefContext.isInitialized())
-	{
-		return;
-	}
-
-	// HTML/CSS ホットリロード: scene.html (file:// URL) を監視し、保存されたら CEF を再ロードする。
-	// 作者が scene.html を書き換えて保存すると、再ビルド無しで画面 (HUD) がその場で更新される。
-	// 初回だけ起動 URL から監視パスと更新時刻を取り、以後 12 フレームごとに mtime を見る。
-	if (!m_htmlWatchInit)
-	{
-		m_htmlWatchInit = true;
-		const std::string& u = config().cefStartUrl;
-		if (u.rfind("file:///", 0) == 0)   // file:// のみ (packed app:// は対象外)
-		{
-			m_htmlWatchPath = std::filesystem::path(u.substr(8));  // "file:///" を剥がす
-			std::error_code ec;
-			m_htmlWatchMtime = std::filesystem::last_write_time(m_htmlWatchPath, ec);
-			if (ec) { m_htmlWatchPath.clear(); }
-		}
-	}
-	if (!m_htmlWatchPath.empty() && (++m_htmlWatchTick % 12 == 0))
-	{
-		std::error_code ec;
-		const auto mt = std::filesystem::last_write_time(m_htmlWatchPath, ec);
-		if (!ec && mt != m_htmlWatchMtime)
-		{
-			m_htmlWatchMtime = mt;
-			m_cefContext.loadUrl(config().cefStartUrl);   // ページを再ロード (binder も再バインド)
-		}
-	}
-
-	/// CEF UI レイヤーをバックバッファに重ねて描画する
-	/// (2D/3D/PostFX の後、present の前)
-	m_cefContext.doMessageLoopWork();
-	m_cefContext.handleInput(m_inputState);
-	if (m_cefContext.hasDirtyFrame())
-	{
-		m_cefContext.upload();
-	}
-#if defined(_WIN32) && defined(MITIRU_HAS_CEF)
-	if (auto* dx12Dev = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
-	{
-		const auto& cc = m_screen->clearColor();
-		const float clearRGBA[4] = { cc.r, cc.g, cc.b, cc.a };
-		m_cefContext.composite(
-			*dx12Dev,
-			m_window->width(), m_window->height(), clearRGBA);
-	}
-#endif
 }
 
 MITIRU_INLINE bool mitiru::Engine::tickAutoCaptureAndEndFrame()
@@ -724,7 +731,7 @@ MITIRU_INLINE void mitiru::Engine::tickHttpPollAndCap(
 	MITIRU_ZONE_NAMED("Engine::HttpPoll");
 	const auto& config = *m_loopConfig;
 
-	/// HTTP APIサーバーのポーリング (リクエスト処理)
+	/// HTTP API サーバーのポーリング (リクエスト処理)
 	if (m_httpServer && m_httpServer->isRunning())
 	{
 		m_httpServer->poll();

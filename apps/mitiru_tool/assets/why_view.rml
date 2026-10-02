@@ -1,0 +1,45 @@
+<rml>
+<head>
+	<title>why</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		.query { display: flex; margin-top: 6dp; }
+		.query input.text { flex: 1 1 auto; margin-right: 8dp; }
+		.blame { font-family: "IBM Plex Mono"; font-size: 14.4dp; margin-top: 3dp; color: #1a1c1f; }
+		.blame.unsupported { color: #999da4; }
+		.hist .row { display: flex; padding: 4.8dp 8dp; border-bottom: 1dp #e6e7ea; }
+		.hist .k { flex: 0 0 30%; font-family: "IBM Plex Mono"; font-size: 11.5dp; color: #6e7077; }
+		.hist .v { flex: 1 1 auto; font-family: "IBM Plex Mono"; color: #1a1c1f; }
+		.hist .v.newest { font-weight: bold; }
+		.hist .v.muted { color: #6e7077; }
+		.branch-banner { margin-top: 0dp; margin-bottom: 9.6dp; }
+	</style>
+</head>
+<body data-model="tool">
+	<header><div class="dot"/><h1>why</h1></header>
+	<div class="body">
+		<div class="branch-banner" data-if="banner != ''"><span>{{ banner }}</span></div>
+		<div class="query">
+			<input type="text" class="text" id="field" placeholder="field (dotted path, 例: player.hp)"
+			       data-event-change="dispatch('why.field', 'v', ev.value, 'enter', ev.linebreak)"/>
+			<button data-event-click="dispatch('why.query')">問い合わせ</button>
+		</div>
+		<div class="hint">対象ゲームが `--console` (または `--http-port`) で起動している必要がある</div>
+		<div class="err" data-if="error != ''">{{ error }}</div>
+
+		<div class="label"><span class="dash">— </span>最後に書いた phase</div>
+		<div class="panel"><div class="blame" data-class-unsupported="unsupported">{{ blame }}</div></div>
+
+		<div class="label"><span class="dash">— </span>この値を書く場所</div>
+		<div class="panel"><div class="blame">{{ ever_wrote }}</div></div>
+
+		<div class="label"><span class="dash">— </span>値の推移 (新しい順、最大 8 フレーム)</div>
+		<div class="panel"><div class="hist">
+			<div class="row" data-for="h : history">
+				<div class="k">{{ h.k }}</div>
+				<div class="v" data-class-newest="h.newest" data-class-muted="h.muted">{{ h.v }}</div>
+			</div>
+		</div></div>
+	</div>
+</body>
+</rml>

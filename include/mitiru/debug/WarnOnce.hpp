@@ -2,8 +2,8 @@
 
 /// @file WarnOnce.hpp
 /// @brief キー単位で 1 回だけ stderr に警告するヘルパ (R-01 級)
-/// @details 「黙って壊れる」失敗経路 (音声/画像の読み込み失敗、intent 上限到達等) で
-///          初回のみ 1 行出す。哲学: エラーは必要最小限。毎フレーム連呼しない。
+/// @details 「気づかないうちにおかしくなる」失敗経路 (音声/画像の読み込み失敗、intent 上限到達等) で
+///          初回だけ 1 行出す。哲学: エラーは必要最小限。毎フレーム繰り返し出さない。
 
 #include <cstdio>
 #include <mutex>
@@ -16,7 +16,7 @@ namespace mitiru::debug
 
 namespace detail
 {
-/// @brief warnOnce の発火済み key 集合 (process 単位の単一インスタンス)
+/// @brief warnOnce で発火済みの key の集合 (process 単位で 1 つだけのインスタンス)
 struct WarnOnceState
 {
 	std::mutex mu;

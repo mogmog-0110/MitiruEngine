@@ -2,7 +2,7 @@
 
 /// @file FrameTimer.hpp
 /// @brief フレームタイマー
-/// @details フレーム間のデルタタイム計測、FPS算出、
+/// @details フレーム間のデルタタイム計測、FPS 算出、
 ///          固定タイムステップのアキュムレータパターンを提供する。
 
 #include <algorithm>
@@ -15,8 +15,8 @@ namespace mitiru
 {
 
 /// @brief フレームタイミング・デルタタイム管理クラス
-/// @details std::chrono::steady_clockを使用した高精度フレーム計測。
-///          スムージング（直近Nフレームの移動平均）と固定タイムステップを提供する。
+/// @details std::chrono::steady_clock を使った高精度フレーム計測。
+///          スムージング（直近 N フレームの移動平均）と固定タイムステップを提供する。
 ///
 /// @code
 /// mitiru::FrameTimer timer;
@@ -57,10 +57,10 @@ public:
 		m_deltaSamples.fill(0.0f);
 	}
 
-	/// @brief 1フレーム進め、デルタタイムを返す
+	/// @brief 1 フレーム進め、デルタタイムを返す
 	/// @return 今フレームのスムージング済みデルタタイム（秒）
-	/// @details steady_clockで前回tick()からの経過時間を計測し、
-	///          maxDeltaでキャップした後、移動平均でスムージングする。
+	/// @details steady_clock で前回 tick() からの経過時間を計測し、
+	///          maxDelta でキャップした後、移動平均でスムージングする。
 	///          固定タイムステップのアキュムレータにも加算する。
 	[[nodiscard]] float tick() noexcept
 	{
@@ -103,8 +103,8 @@ public:
 		return m_smoothedDelta;
 	}
 
-	/// @brief 現在のFPSを取得する
-	/// @return スムージング済みデルタタイムから算出したFPS
+	/// @brief 現在の FPS を取得する
+	/// @return スムージング済みデルタタイムから算出した FPS
 	[[nodiscard]] float getFps() const noexcept
 	{
 		if (m_smoothedDelta <= 0.0f)
@@ -115,7 +115,7 @@ public:
 	}
 
 	/// @brief 累計フレーム数を取得する
-	/// @return tick()が呼ばれた回数
+	/// @return tick() が呼ばれた回数
 	[[nodiscard]] std::uint64_t getFrameCount() const noexcept
 	{
 		return m_frameCount;
@@ -149,7 +149,7 @@ public:
 		return m_accumulator;
 	}
 
-	/// @brief 固定ステップを1回消費する
+	/// @brief 固定ステップを 1 回消費する
 	/// @return 消費できた場合 true
 	/// @details アキュムレータが固定デルタタイム以上なら減算して true を返す。
 	///          物理更新ループで while(consumeFixedStep()) として使用する。

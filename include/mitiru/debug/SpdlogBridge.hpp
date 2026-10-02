@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file SpdlogBridge.hpp
-/// @brief spdlog統合ブリッジ
-/// @details spdlogが利用可能な場合はspdlogを使用し、
-///          利用不可の場合は既存のILoggerシステムにフォールバックする。
+/// @brief spdlog 統合ブリッジ
+/// @details spdlog が利用可能な場合は spdlog を使用し、
+///          利用不可の場合は既存の ILogger システムにフォールバックする。
 ///
 /// @code
 /// // 初期化
@@ -24,7 +24,7 @@
 #include <mitiru/debug/ConsoleLogger.hpp>
 #include <mitiru/debug/FileLogger.hpp>
 
-// ── spdlog統合マクロ ──
+// ── spdlog 統合マクロ ──
 
 #ifdef MITIRU_HAS_SPDLOG
 
@@ -42,9 +42,9 @@
 
 #else
 
-// spdlog未使用時: 既存ILoggerシステムへルーティング
-// NOTE: フォールバックモードではfmt形式の引数置換は行われない。
-//       msgの文字列リテラルのみがログ出力される。
+// spdlog 未使用時: 既存 ILogger システムへルーティング
+// NOTE: フォールバックモードでは fmt 形式の引数置換は行われない。
+//       msg の文字列リテラルのみがログ出力される。
 #define MITIRU_SLOG_TRACE(msg, ...)  \
 	::mitiru::debug::Log::get().debug("App", msg)
 #define MITIRU_SLOG_DEBUG(msg, ...)  \
@@ -63,7 +63,7 @@
 namespace mitiru::debug
 {
 
-/// @brief LogSystem用のログレベル
+/// @brief LogSystem 用のログレベル
 enum class LogSystemLevel : std::uint8_t
 {
 	Trace = 0,
@@ -91,12 +91,12 @@ struct SinkConfig
 	std::shared_ptr<ILogger> customLogger;       ///< Custom型の場合のロガー
 };
 
-/// @brief spdlog統合ログシステム
-/// @details spdlog利用可能時はasyncモード・パターンフォーマット・カラーコンソールを提供。
-///          利用不可時は既存のConsoleLogger/FileLoggerに委譲する。
-/// @note スレッド安全性: init()/setLevel()/addSink()/shutdown()は
-///       単一スレッドから呼び出すこと。spdlogモードではspdlog自身がスレッド安全性を保証するが、
-///       フォールバックモードのLogSystem内部状態は排他制御されていない。
+/// @brief spdlog 統合ログシステム
+/// @details spdlog 利用可能時は async モード・パターンフォーマット・カラーコンソールを提供。
+///          利用不可時は既存の ConsoleLogger/FileLogger に委譲する。
+/// @note スレッド安全性: init()/setLevel()/addSink()/shutdown() は
+///       単一スレッドから呼び出すこと。spdlog モードでは spdlog 自身がスレッド安全性を保証するが、
+///       フォールバックモードの LogSystem 内部状態は排他制御されていない。
 class LogSystem
 {
 public:
@@ -112,7 +112,7 @@ public:
 		sys.m_sinks.clear();
 
 #ifdef MITIRU_HAS_SPDLOG
-		// spdlog: asyncモードで初期化
+		// spdlog: async モードで初期化
 		spdlog::init_thread_pool(8192, 1);
 
 		std::vector<spdlog::sink_ptr> sinks;
@@ -181,7 +181,7 @@ public:
 #ifdef MITIRU_HAS_SPDLOG
 		spdlog::default_logger()->flush();
 #else
-		// ILoggerベースのロガーは毎行flushしているため追加操作不要
+		// ILogger ベースのロガーは毎行 flush しているため追加操作不要
 #endif
 	}
 
@@ -193,7 +193,7 @@ public:
 		sys.m_sinks.push_back(config);
 
 #ifdef MITIRU_HAS_SPDLOG
-		// spdlogの場合: 動的にシンクを追加
+		// spdlog の場合: 動的にシンクを追加
 		auto logger = spdlog::default_logger();
 		switch (config.type)
 		{
@@ -214,11 +214,11 @@ public:
 			break;
 		}
 		case SinkType::Custom:
-			// spdlogモードではカスタムシンクは設定として保持のみ
+			// spdlog モードではカスタムシンクは設定として保持のみ
 			break;
 		}
 #else
-		// フォールバック: カスタムロガーの場合はLogに設定
+		// フォールバック: カスタムロガーの場合は Log に設定
 		if (config.type == SinkType::Custom && config.customLogger)
 		{
 			config.customLogger->setMinLevel(toILoggerLevel(sys.m_level));
@@ -261,7 +261,7 @@ private:
 	}
 
 #ifdef MITIRU_HAS_SPDLOG
-	/// @brief LogSystemLevelをspdlog::levelに変換する
+	/// @brief LogSystemLevel を spdlog::level に変換する
 	[[nodiscard]] static spdlog::level::level_enum toSpdlogLevel(LogSystemLevel level) noexcept
 	{
 		switch (level)
@@ -278,7 +278,7 @@ private:
 	}
 #endif
 
-	/// @brief LogSystemLevelをILogger::LogLevelに変換する
+	/// @brief LogSystemLevel を ILogger::LogLevel に変換する
 	[[nodiscard]] static LogLevel toILoggerLevel(LogSystemLevel level) noexcept
 	{
 		switch (level)

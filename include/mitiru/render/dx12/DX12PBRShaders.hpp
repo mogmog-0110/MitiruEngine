@@ -200,6 +200,7 @@ PSOutput PSMain(PSInput input)
     PSOutput o;
     o.Color = float4(color, MaterialDiffuse.a * input.Color.a);
     o.Normal = float4(N * 0.5 + 0.5, NdotV);
+    if (MaterialParams.w > 0.5) { o.Normal = float4(1.0, 1.0, 1.0, 1.0); }
     return o;
 }
 )hlsl";

@@ -2,9 +2,9 @@
 
 /// @file FmodAudioEngine.hpp
 /// @brief FMOD Core ベースのオーディオエンジン
-/// @details IAudioEngine実装。FMOD Core APIをラップし、サウンド再生・
-///          ボリューム制御・3Dオーディオを提供する。
-///          MITIRU_HAS_FMOD が定義されていない場合はスタブとしてコンパイルされる。
+/// @details IAudioEngine の実装。FMOD Core API をラップし、サウンド再生・
+///          ボリューム制御・3D オーディオを提供する。
+///          MITIRU_HAS_FMOD が定義されていない場合は、スタブとしてコンパイルされる。
 
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/SpatialAudio.hpp>
@@ -27,13 +27,13 @@ namespace mitiru::audio
 
 #ifdef MITIRU_HAS_FMOD
 
-/// @brief FMOD Core APIラッパー
-/// @details FMOD_System をRAII管理し、IAudioEngineインターフェースを実装する。
-///          3Dオーディオ、ピッチ・パン制御をサポート。
+/// @brief FMOD Core API のラッパー
+/// @details FMOD_System を RAII で管理し、IAudioEngine インターフェースを実装する。
+///          3D オーディオ、ピッチ・パン制御をサポートする。
 class FmodAudioEngine : public IAudioEngine
 {
 public:
-    /// @brief FMOD設定
+    /// @brief FMOD 設定
     struct Config
     {
         int maxChannels = 512;             ///< 最大同時発音数
@@ -45,8 +45,8 @@ public:
     };
 
     /// @brief コンストラクタ
-    /// @param config FMOD設定
-    /// @throws std::runtime_error FMOD初期化失敗時
+    /// @param config FMOD 設定
+    /// @throws std::runtime_error FMOD の初期化に失敗した場合
     explicit FmodAudioEngine(const Config& config = {})
     {
         FMOD_RESULT result = FMOD_System_Create(&m_system, FMOD_VERSION);
@@ -72,7 +72,7 @@ public:
         }
     }
 
-    /// @brief デストラクタ（全サウンド解放＋システム終了）
+    /// @brief デストラクタ（全サウンドの解放＋システムの終了）
     ~FmodAudioEngine() override
     {
         for (auto& [key, sound] : m_sounds)
@@ -92,7 +92,7 @@ public:
         }
     }
 
-    // コピー禁止・ムーブ禁止 (FMOD_System の所有権を保持するため)
+    // コピー・ムーブ禁止 (FMOD_System の所有権を保持するため)
     FmodAudioEngine(const FmodAudioEngine&) = delete;
     FmodAudioEngine& operator=(const FmodAudioEngine&) = delete;
     FmodAudioEngine(FmodAudioEngine&&) = delete;
@@ -151,7 +151,7 @@ public:
     void setVolume(float volume) override
     {
         m_masterVolume = std::clamp(volume, 0.0f, 1.0f);
-        // 再生中の music channel に反映
+        // 再生中の music channel に反映する
         if (m_musicChannel)
         {
             FMOD_Channel_SetVolume(m_musicChannel, m_masterVolume);
@@ -170,7 +170,7 @@ public:
 
     // ── FMOD 拡張機能 ──
 
-    /// @brief 毎フレーム更新（FMOD内部処理を進める）
+    /// @brief 毎フレーム更新（FMOD 内部処理を進める）
     /// @details ゲームループ内で毎フレーム呼び出す必要がある。
     void update()
     {
@@ -180,17 +180,17 @@ public:
         }
     }
 
-    /// @brief サウンドファイルを事前ロードする
-    /// @param id サウンドID（ファイルパス）
+    /// @brief サウンドファイルを事前にロードする
+    /// @param id サウンド ID（ファイルパス）
     /// @param stream ストリーミングモードで読み込むか
-    /// @return ロード成功なら true
+    /// @return ロードに成功した場合は true
     bool loadSound(std::string_view id, bool stream = false)
     {
         return getOrLoadSound(id, stream) != nullptr;
     }
 
     /// @brief チャンネルのピッチを設定する
-    /// @param id サウンドID
+    /// @param id サウンド ID
     /// @param pitch ピッチ倍率（1.0 = 通常）
     void setPitch(std::string_view id, float pitch)
     {
@@ -202,8 +202,8 @@ public:
     }
 
     /// @brief チャンネルのパンを設定する
-    /// @param id サウンドID
-    /// @param pan パン値 (-1.0=左, 0.0=中央, 1.0=右)
+    /// @param id サウンド ID
+    /// @param pan パン値 (-1.0 = 左, 0.0 = 中央, 1.0 = 右)
     void setPan(std::string_view id, float pan)
     {
         const auto it = m_channels.find(std::string(id));
@@ -213,10 +213,10 @@ public:
         }
     }
 
-    /// @brief 3Dリスナー位置を設定する
-    /// @param position リスナー位置
-    /// @param forward リスナー前方ベクトル
-    /// @param up リスナー上方ベクトル
+    /// @brief 3D リスナーの位置を設定する
+    /// @param position リスナーの位置
+    /// @param forward リスナーの前方ベクトル
+    /// @param up リスナーの上方ベクトル
     void setListenerPosition(
         const AudioVec3& position,
         const AudioVec3& forward = {0, 0, -1},
@@ -231,9 +231,9 @@ public:
         FMOD_System_Set3DListenerAttributes(m_system, 0, &pos, &vel, &fwd, &upVec);
     }
 
-    /// @brief 3Dサウンドソース位置を設定する
-    /// @param id サウンドID
-    /// @param position ソース位置
+    /// @brief 3D サウンドソースの位置を設定する
+    /// @param id サウンド ID
+    /// @param position ソースの位置
     void setSoundPosition(std::string_view id, const AudioVec3& position)
     {
         const auto it = m_channels.find(std::string(id));
@@ -244,15 +244,15 @@ public:
         FMOD_Channel_Set3DAttributes(it->second, &pos, &vel);
     }
 
-    /// @brief FMOD_Systemハンドルを取得（上級者向け）
-    /// @return FMOD_Systemポインタ（所有権なし）
+    /// @brief FMOD_System ハンドルを取得（上級者向け）
+    /// @return FMOD_System ポインタ（所有権なし）
     [[nodiscard]] FMOD_SYSTEM* systemHandle() const noexcept { return m_system; }
 
 private:
     /// @brief サウンドを取得またはロードする
-    /// @param id サウンドID（ファイルパス）
+    /// @param id サウンド ID（ファイルパス）
     /// @param stream ストリーミングモードか
-    /// @return FMOD_Soundポインタ（所有権はFmodAudioEngineが保持）、失敗時nullptr
+    /// @return FMOD_Sound ポインタ（所有権は FmodAudioEngine が保持）、失敗時 nullptr
     FMOD_SOUND* getOrLoadSound(std::string_view id, bool stream = false)
     {
         const std::string key(id);
@@ -283,15 +283,15 @@ private:
 
 #else // !MITIRU_HAS_FMOD
 
-/// @brief FMODスタブ（FMOD未インストール時）
-/// @details FMOD SDKが見つからない場合に使用されるスタブクラス。
-///          コンストラクタで例外をスローし、FMODが必要な場面で
+/// @brief FMOD スタブ（FMOD 未インストール時）
+/// @details FMOD SDK が見つからない場合に使用されるスタブクラス。
+///          コンストラクタで例外をスローし、FMOD が必要な場面で
 ///          明確なエラーメッセージを提供する。
 class FmodAudioEngine : public IAudioEngine
 {
 public:
     /// @brief コンストラクタ（常に例外をスロー）
-    /// @throws std::runtime_error FMODが利用不可であることを通知
+    /// @throws std::runtime_error FMOD が利用不可であることを通知
     FmodAudioEngine()
     {
         throw std::runtime_error(

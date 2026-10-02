@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file GBuffer.hpp
-/// @brief ディファードレンダリング用Gバッファ（ソフトウェア実装）
-/// @details 位置・法線・アルベド・深度をCPU側のピクセルバッファに格納する。
-///          DeferredPipelineのジオメトリパスで書き込み、ライティングパスで読み出す。
+/// @brief ディファードレンダリング用 G バッファ（ソフトウェア実装）
+/// @details 位置・法線・アルベド・深度を CPU 側のピクセルバッファに格納する。
+///          DeferredPipeline のジオメトリパスで書き込み、ライティングパスで読み出す。
 
 #include <cstddef>
 #include <cstdint>
@@ -17,7 +17,7 @@
 namespace mitiru::render
 {
 
-/// @brief Gバッファの1ピクセル分のデータ
+/// @brief G バッファの 1 ピクセル分のデータ
 /// @details ワールド空間の位置・法線・アルベド色・深度を保持する。
 struct GBufferPixel
 {
@@ -39,7 +39,7 @@ struct GBufferPixel
 	std::uint32_t objectId{0};
 };
 
-/// @brief ディファードレンダリング用Gバッファ（ソフトウェア実装）
+/// @brief ディファードレンダリング用 G バッファ（ソフトウェア実装）
 /// @details initialize() → clear() → writePixel() → readPixel() の順で使用する。
 ///
 /// @code
@@ -62,10 +62,10 @@ public:
 	/// @brief デフォルトコンストラクタ
 	GBuffer() noexcept = default;
 
-	/// @brief Gバッファを初期化する
+	/// @brief G バッファを初期化する
 	/// @param width 幅（ピクセル）
 	/// @param height 高さ（ピクセル）
-	/// @throws std::invalid_argument 幅または高さが1未満の場合
+	/// @throws std::invalid_argument 幅または高さが 1 未満の場合
 	void initialize(int width, int height)
 	{
 		if (width < 1 || height < 1)
@@ -93,8 +93,8 @@ public:
 	}
 
 	/// @brief ピクセルを書き込む
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @param pixel 書き込むピクセルデータ
 	/// @note 範囲外の座標は無視される
 	void writePixel(int x, int y, const GBufferPixel& pixel)
@@ -108,10 +108,10 @@ public:
 	}
 
 	/// @brief ピクセルを読み出す
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @return ピクセルデータの定数参照（範囲外はデフォルトピクセル）
-	/// @note 範囲外アクセス時はm_outOfRangePixelを返す（静的ローカルは使用しない）
+	/// @note 範囲外アクセス時は m_outOfRangePixel を返す（静的ローカルは使用しない）
 	[[nodiscard]] const GBufferPixel& readPixel(int x, int y) const noexcept
 	{
 		if (x < 0 || x >= m_width || y < 0 || y >= m_height)
@@ -128,7 +128,7 @@ public:
 	/// @brief 高さを取得する
 	[[nodiscard]] int height() const noexcept { return m_height; }
 
-	/// @brief 全ピクセルデータを取得する（テスト・GPU転送用）
+	/// @brief 全ピクセルデータを取得する（テスト・GPU 転送用）
 	[[nodiscard]] const std::vector<GBufferPixel>& pixels() const noexcept
 	{
 		return m_pixels;

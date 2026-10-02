@@ -3,14 +3,14 @@
 /// @file InlineMacro.hpp
 /// @brief MITIRU_INLINE マクロ。header-only / 静的ライブラリ両モード対応
 /// @details MITIRU_HEADER_ONLY=1 のとき inline、それ以外で空定義。
-///          各 .hpp の関数定義に冠することで、将来 .cpp に分離する候補を
+///          各 .hpp の関数定義の前に付けることで、将来 .cpp に分離する候補を
 ///          機械的にマークしつつ、現状は header-only の挙動を維持する。
 ///
-/// 使用例 (Phase 2 以降):
+/// 使用例 (Phase 2 以降)
 /// @code
 /// // include/mitiru/network/ReliableUDP.hpp
 /// MITIRU_INLINE void ReliableUDP::send(std::span<const std::byte> data) {
-///     // ...
+///     //...
 /// }
 /// @endcode
 ///

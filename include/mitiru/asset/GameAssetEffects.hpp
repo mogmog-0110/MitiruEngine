@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GameAssetEffects.hpp
-/// @brief エフェクト・ハザード系ゲームアセットSVGテンプレート（スパイク・レーザー）
+/// @brief エフェクト・ハザード系のゲームアセット SVG テンプレート（スパイク・レーザー）
 
 #include "SvgGenerator.hpp"
 #include "GameAssetUtil.hpp"
@@ -11,7 +11,7 @@
 namespace mitiru::asset
 {
 
-/// @brief エフェクト・ハザード系SVGテンプレート
+/// @brief エフェクト・ハザード系の SVG テンプレート
 class GameAssetEffects
 {
 public:

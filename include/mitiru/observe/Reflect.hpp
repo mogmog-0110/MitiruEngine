@@ -5,8 +5,8 @@
 /// @details
 /// game が `MITIRU_REFLECT` で申告した FieldDescriptor 表を使い、host が GameMemory の
 /// 生バイト列 (現フレーム or rewind ring の過去フレーム) を nlohmann::json に変換する。
-/// AI が全フィールドを構造的に読めるようになる。host は layout を内蔵せず、記述子だけで動く
-///。純関数・bounds-check 付き・例外を投げない。
+/// AI が全フィールドを構造的に読めるようになる。host は layout を内蔵せず、記述子だけで動く。
+/// 純関数・bounds-check 付き・例外を投げない。
 ///
 /// 対応: スカラー(i8..u64/f32/f64/bool) / FixedString("str") / FixedVec("vec"、scalar 要素 or
 /// 1 段ネスト struct 要素) / 直 nested struct("struct")。
@@ -22,7 +22,7 @@
 
 #include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/module/Reflection.hpp>
-#include <mitiru/observe/Fnv1a.hpp>
+#include <mitiru/util/Hash.hpp>
 #include <mitiru/observe/JsonEscape.hpp>
 #include <mitiru/observe/NumberAppend.hpp>
 
@@ -55,7 +55,7 @@ inline void appendScalarJson(std::string& out, const std::uint8_t* p, const char
 inline nlohmann::json readScalar(const std::uint8_t* p, const char* tag)
 {
 	const auto eq = [&](const char* t) { return std::strcmp(tag, t) == 0; };
-	// 非有限値は JSON の null に潰さず "NaN"/"Inf"/"-Inf" 文字列にする (appendScalarJson と対応)。
+	// 非有限値は JSON の null にまとめず "NaN"/"Inf"/"-Inf" 文字列にする (appendScalarJson と対応)。
 	if (eq("f32"))  { float v;  std::memcpy(&v, p, sizeof(v)); if (!std::isfinite(v)) { return std::string(nonFiniteJsonName(v)); } return v; }
 	if (eq("f64"))  { double v; std::memcpy(&v, p, sizeof(v)); if (!std::isfinite(v)) { return std::string(nonFiniteJsonName(v)); } return v; }
 	if (eq("i32"))  { std::int32_t v;       std::memcpy(&v, p, sizeof(v)); return v; }
@@ -111,7 +111,7 @@ inline bool writeScalar(std::uint8_t* p, const char* tag, const nlohmann::json& 
 	if (eq("bool")) { if (!v.is_boolean()) { return false; } std::uint8_t x = v.get<bool>() ? 1 : 0; std::memcpy(p, &x, sizeof(x)); return true; }
 	if (!v.is_number_integer()) { return false; }
 	const long long iv = v.get<long long>();
-	// static_cast だけだと範囲外の値が黙って wrap する (例: i8 に 300 を書くと 44 になる)。
+	// static_cast だけだと範囲外の値がエラーにならずに wrap する (例: i8 に 300 を書くと 44 になる)。
 	// reflectWriteField の呼び出し元は書き込み API (branch editor の PUT /api/ai/state 等)
 	// なので、範囲外は書き込み失敗として reject し、値の破損より先にエラーを見せる。
 	const auto inRange = [&](long long lo, long long hi) { return iv >= lo && iv <= hi; };
@@ -131,9 +131,9 @@ inline bool writeScalar(std::uint8_t* p, const char* tag, const nlohmann::json& 
 /// @brief GameMemory バイト列を記述子に従い構造化 JSON へ。bounds 外フィールドは黙って skip。
 /// @param bytes      GameMemory の先頭 (現フレーム or ring.at(offset))
 /// @param size       GameMemory のバイト数 (memorySize)
-/// @param fields     FieldDescriptor 表 (ModuleApi.reflectFields)
+/// @param fields     FieldDescriptor 表 (ModuleReflection::fields)
 /// @param fieldCount fields の数
-/// @param schemas    FixedVec<struct,N> 用の要素スキーマ表 (ModuleApi.reflectSchemas)
+/// @param schemas    FixedVec<struct,N> 用の要素スキーマ表 (ModuleReflection::schemas)
 /// @param schemaCount schemas の数
 [[nodiscard]] inline nlohmann::json reflectToJson(
 	const std::uint8_t*                  bytes,
@@ -308,14 +308,14 @@ inline void reflectAppendJson(
 	const mitiru::module::FieldDescriptor* fields, std::int32_t fieldCount,
 	const mitiru::module::ReflectSchema* schemas, std::int32_t schemaCount) noexcept
 {
-	std::uint64_t h = (bytes != nullptr) ? fnv1a64(bytes, size) : 0;
+	std::uint64_t h = (bytes != nullptr) ? ::mitiru::util::Hash::fnv1a(bytes, size) : 0;
 	if (fields != nullptr && fieldCount > 0)
 	{
-		h ^= fnv1a64(reinterpret_cast<const std::uint8_t*>(fields), static_cast<std::uint32_t>(fieldCount) * sizeof(mitiru::module::FieldDescriptor)) * 0x9E3779B97F4A7C15ull;
+		h ^= ::mitiru::util::Hash::fnv1a(reinterpret_cast<const std::uint8_t*>(fields), static_cast<std::uint32_t>(fieldCount) * sizeof(mitiru::module::FieldDescriptor)) * 0x9E3779B97F4A7C15ull;
 	}
 	if (schemas != nullptr && schemaCount > 0)
 	{
-		h ^= fnv1a64(reinterpret_cast<const std::uint8_t*>(schemas), static_cast<std::uint32_t>(schemaCount) * sizeof(mitiru::module::ReflectSchema)) * 0xC2B2AE3D27D4EB4Full;
+		h ^= ::mitiru::util::Hash::fnv1a(reinterpret_cast<const std::uint8_t*>(schemas), static_cast<std::uint32_t>(schemaCount) * sizeof(mitiru::module::ReflectSchema)) * 0xC2B2AE3D27D4EB4Full;
 	}
 	return h;
 }

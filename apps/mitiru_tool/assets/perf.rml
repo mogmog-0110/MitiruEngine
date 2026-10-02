@@ -1,0 +1,29 @@
+<rml>
+<head>
+	<title>perf</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		.fps { margin-top: 22dp; font-family: "IBM Plex Mono"; font-size: 54dp; letter-spacing: -1dp; line-height: 1; color: #1a1c1f; }
+		.fps small { font-size: 20dp; color: #6e7077; margin-left: 8dp; }
+		.ms { margin-top: 8dp; font-family: "IBM Plex Mono"; font-size: 16dp; color: #6e7077; }
+		.scope { margin-top: 4dp; font-size: 12dp; color: #6e7077; line-height: 1.4; }
+		spark { display: block; position: relative; width: 100%; height: 150dp; }
+		.spark-label { position: absolute; right: 4dp; font-family: "IBM Plex Mono"; font-size: 12dp; color: #999da4; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ready">
+	<header><div class="dot"/><h1>perf</h1></header>
+	<div class="body">
+		<div class="fps"><span>{{ fps }}</span><small>fps</small></div>
+		<div class="scope">含む: 1 フレーム全体 (更新+描画+提示+UI 合成)。含まない: OS スケジューラの待ち時間</div>
+		<div class="ms"><span>{{ frame_ms }}</span> ms / frame</div>
+		<div class="scope">含む: tickOneFrame() の壁時計時間。含まない: GPU 実行時間そのもの (待ちは
+			Engine::Present 側に乗る。詳細は Tracy 接続時の各ゾーン、docs/PROFILING_GUIDE.md 参照)</div>
+		<div class="scope" data-if="slow">スローモーション中: 固定ステップを
+			<span>{{ dropped }}</span> 回落とした (1 フレームの上限に到達。docs/CONFIG.md)</div>
+		<div class="label"><span class="dash">— </span>fps history · newest right</div>
+		<div class="panel"><spark seq="0" data-attr-value="fps_value" data-attr-seq="sample" cap="180" baseline="60" min="75"><span class="spark-label">60</span></spark></div>
+	</div>
+	<div class="wait">waiting for the game…</div>
+</body>
+</rml>

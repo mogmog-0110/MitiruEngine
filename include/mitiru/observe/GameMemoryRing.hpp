@@ -11,13 +11,7 @@
 #include <vector>
 
 #include <mitiru/debug/TracyZones.hpp>
-
-// AVX2 は MSVC の x86/x64 でのみ使う。実行時に CPU の対応を確認し、未対応なら scalar 実装へ切り替える。
-#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
-#define MITIRU_GMRING_AVX2 1
-#include <immintrin.h>
-#include <intrin.h>
-#endif
+#include <mitiru/observe/detail/GameMemoryDelta.hpp>
 
 namespace mitiru::observe
 {
@@ -28,21 +22,31 @@ public:
 	/// @brief GameMemory のサイズ確定後に呼ぶ。同じ設定なら何もしない。
 	/// @param frameSize GameMemory のバイト数。ModuleApi.memorySize と一致させる
 	/// @param capacity 最大フレーム数。既定は 300 フレーム
-	/// @param budgetBytes 0 なら非圧縮。予算を超える場合だけ XOR と RLE で圧縮する
-	/// @param keyframeEvery 圧縮時の keyframe 間隔。既定は 60 フレームで、keyframe が evict される
-	///        前に必ず 1 つは残る不変条件を保つよう capacity 以下へ自動 clamp する
+	/// @param budgetBytes 記録に使ってよい上限。0 なら上限なしで常に生で持つ。圧縮時も capacity 枚を
+	///        目標に持ち、予算を超える分だけ古い側から捨てる
+	/// @param keyframeEvery 圧縮時の keyframe 間隔。既定は 60 フレームで、capacity 以下へ自動 clamp する
+	/// @param rawLimitBytes 生で持つのはここまで。capacity × frameSize がこれと予算の小さい方を超えると、
+	///        XOR と RLE の差分 (zstd を含む構成ではさらに zstd) で圧縮する。既定は予算と同じ扱い
 	void configure(std::uint32_t frameSize, std::size_t capacity = 300,
-	               std::size_t budgetBytes = 0, std::uint32_t keyframeEvery = 60)
+	               std::size_t budgetBytes = 0, std::uint32_t keyframeEvery = 60,
+	               std::size_t rawLimitBytes = SIZE_MAX)
 	{
+		m_fellBackToRaw = false;
 		if (frameSize == 0 || capacity == 0)
 		{
 			resetToEmpty();
 			return;
 		}
-		// 予算内なら memcpy ring のままにして、圧縮によるフレーム全体の走査を避ける。
+		// 小さい状態は memcpy ring のままにして、圧縮によるフレーム全体の走査を避ける。
 		const std::uint64_t rawWorstCase = static_cast<std::uint64_t>(frameSize) * capacity;
-		if (budgetBytes == 0 || rawWorstCase < budgetBytes) { configureRaw(frameSize, capacity); }
-		else { configureCompressed(frameSize, capacity, budgetBytes, keyframeEvery); }
+		const bool fitsBudget = budgetBytes == 0 || rawWorstCase < budgetBytes;
+		if (fitsBudget && (budgetBytes == 0 || rawWorstCase <= rawLimitBytes))
+		{
+			configureRaw(frameSize, capacity);
+			return;
+		}
+		configureCompressed(frameSize, capacity, budgetBytes, keyframeEvery);
+		m_rawFallbackAllowed = fitsBudget;
 	}
 
 	/// @brief 1 フレーム分の GameMemory バイト列を記録する。容量を超えたら最古のフレームを破棄する
@@ -72,11 +76,22 @@ public:
 	[[nodiscard]] bool          empty() const noexcept { return m_count == 0; }
 	[[nodiscard]] bool          isCompressed() const noexcept { return m_compressed; }
 
-	/// @brief 実際に使っているバイト数を返す。非圧縮時は常に capacity × frameSize
+	/// @brief 圧縮しても半分も縮まなかったので生へ切り替えたか
+	[[nodiscard]] bool fellBackToRaw() const noexcept { return m_fellBackToRaw; }
+
+	/// @brief 記録済みフレームが実際に占めるバイト数。非圧縮時は常に capacity × frameSize
 	[[nodiscard]] std::size_t usedBytes() const noexcept
 	{
 		return m_compressed ? m_logUsedBytes
 		                     : static_cast<std::size_t>(m_frameSize) * m_cap;
+	}
+
+	/// @brief 確保しているバイト数 (記録の置き場と作業領域の合計)
+	[[nodiscard]] std::size_t allocatedBytes() const noexcept
+	{
+		return m_buf.size() + m_log.size() + m_lastRaw.size() + m_scratchA.size()
+		     + m_scratchB.size() + m_restoreScratch.size()
+		     + m_meta.size() * sizeof(SlotMeta) + m_walkScratch.size() * sizeof(std::size_t);
 	}
 
 	/// @brief 全フレームを破棄する。rewind の確定時と reload でレイアウトが変わるときに呼ぶ
@@ -120,45 +135,34 @@ private:
 		return &m_buf[idx * m_frameSize];
 	}
 
-	// ── 圧縮 mode: XOR と zero-run RLE の差分、定期 keyframe ──
+	// ── 圧縮 mode: XOR と zero-run RLE の差分、定期 keyframe、後段の zstd ──
 	struct SlotMeta
 	{
 		std::size_t   offset{0};     ///< m_log 内の開始位置 (wrap 可)
-		std::uint32_t length{0};     ///< 格納バイト数 (keyframe なら常に frameSize)
+		std::uint32_t length{0};     ///< 格納バイト数
 		bool          keyframe{false};
+		bool          packed{false};  ///< zstd で詰めてある (縮まなかった slot は素のまま置く)
 	};
 
 	void configureCompressed(std::uint32_t frameSize, std::size_t capacity,
 	                          std::size_t budgetBytes, std::uint32_t keyframeEvery)
 	{
-		std::size_t effectiveCapacity = capacity;
-		const std::uint64_t rawWorstCase =
-			static_cast<std::uint64_t>(capacity) * static_cast<std::uint64_t>(frameSize);
-		if (rawWorstCase > static_cast<std::uint64_t>(budgetBytes))
-		{
-			effectiveCapacity = (std::max)(static_cast<std::size_t>(1),
-			                               budgetBytes / static_cast<std::size_t>(frameSize));
-			std::fprintf(stderr,
-			             "[mitiru] rewind ring: %zu frames -> %zu frames (budget %.1f MB)\n",
-			             capacity, effectiveCapacity,
-			             static_cast<double>(budgetBytes) / (1024.0 * 1024.0));
-		}
-		// keyframe を1枚も持てないと復元できないので frameSize 未満へは下げられない。
+		// keyframe を 1 枚も持てないと復元できないので frameSize 未満へは下げられない。
 		// budgetBytes がそれより小さいと実際の確保量が要求予算を超える。呼び出し元は
 		// budgetBytes だけを見て安心しがちなので、超過したことを気づけるよう警告を出す。
-		const std::size_t logBytes = (std::max)(budgetBytes, static_cast<std::size_t>(frameSize));
-		if (logBytes > budgetBytes)
+		const std::size_t logBudget = (std::max)(budgetBytes, static_cast<std::size_t>(frameSize));
+		if (logBudget > budgetBytes)
 		{
 			std::fprintf(stderr,
 			             "[mitiru] rewind ring: budget %zu bytes は 1 frame (%u bytes) 未満のため"
 			             " %zu bytes へ切り上げて確保する (予算超過)\n",
-			             budgetBytes, frameSize, logBytes);
+			             budgetBytes, frameSize, logBudget);
 		}
 		const std::uint32_t kfEvery = (std::max)(std::uint32_t{1},
-			(std::min)(keyframeEvery, static_cast<std::uint32_t>(effectiveCapacity)));
+			(std::min)(keyframeEvery, static_cast<std::uint32_t>((std::min)(capacity, std::size_t{UINT32_MAX}))));
 
-		if (m_compressed && frameSize == m_frameSize && effectiveCapacity == m_cap &&
-		    logBytes == m_logBytes && kfEvery == m_keyframeEvery)
+		if (m_compressed && frameSize == m_frameSize && capacity == m_cap &&
+		    logBudget == m_logBudget && kfEvery == m_keyframeEvery)
 		{
 			return;  // 既に同形
 		}
@@ -166,24 +170,28 @@ private:
 		m_buf.clear();  // raw buffer は不要
 		m_compressed    = true;
 		m_frameSize     = frameSize;
-		m_cap           = effectiveCapacity;
-		m_logBytes      = logBytes;
+		m_cap           = capacity;
+		m_logBudget     = logBudget;
 		m_keyframeEvery = kfEvery;
 
-		m_log.assign(m_logBytes, std::uint8_t{0});
+		// 置き場は差分が実際に要る分だけ伸ばす。予算いっぱいを先に確保すると、圧縮で縮んでも
+		// 確保量は生で持つのと変わらない。
+		m_log.assign((std::min)(logBudget, static_cast<std::size_t>(frameSize) * 2), std::uint8_t{0});
 		m_meta.assign(m_cap, SlotMeta{});
 		m_walkScratch.assign(m_cap, std::size_t{0});
 		m_lastRaw.assign(frameSize, std::uint8_t{0});
-		// zero-run RLE の最悪時に備え、frameSize の約 3 倍を確保する。収まらない差分は生の keyframe として保存する。
-		const std::size_t codecCap = static_cast<std::size_t>(frameSize) * 3 + 64;
-		m_encodeScratch.assign(codecCap, std::uint8_t{0});
-		m_readScratch.assign(codecCap, std::uint8_t{0});
+		// frameSize 以上に膨らむ差分は keyframe として持つので、作業領域も frameSize で足りる。
+		m_scratchA.assign(frameSize, std::uint8_t{0});
+		m_zstd.open();
+		if (m_zstd.available()) { m_scratchB.assign(frameSize, std::uint8_t{0}); }
 		m_restoreScratch.assign(frameSize, std::uint8_t{0});
 
 		m_count = m_head = 0;
 		m_logWritePos = m_logUsedBytes = 0;
 		m_pushSeq    = 0;
 		m_hasLastRaw = m_lastValid = false;
+		m_probeRawBytes = m_probeStoredBytes = 0;
+		m_rawFallbackAllowed = m_fellBackToRaw = false;
 	}
 
 	void freeCompressedBuffers()
@@ -192,221 +200,87 @@ private:
 		m_meta.clear();
 		m_walkScratch.clear();
 		m_lastRaw.clear();
-		m_encodeScratch.clear();
-		m_readScratch.clear();
+		m_scratchA.clear();
+		m_scratchB.clear();
+		m_zstd.close();
 		m_restoreScratch.clear();
-		m_logBytes = m_logWritePos = m_logUsedBytes = 0;
+		m_logBudget = m_logWritePos = m_logUsedBytes = 0;
 		m_pushSeq = 0;
 		m_hasLastRaw = m_lastValid = false;
 	}
 
 	void copyFromLog(std::size_t offset, std::size_t length, std::uint8_t* dst) const noexcept
 	{
-		const std::size_t first = (std::min)(length, m_logBytes - offset);
+		const std::size_t logBytes = m_log.size();
+		const std::size_t first = (std::min)(length, logBytes - offset);
 		std::memcpy(dst, &m_log[offset], first);
 		if (first < length) { std::memcpy(dst + first, &m_log[0], length - first); }
 	}
 
 	void copyIntoLog(std::size_t offset, const std::uint8_t* src, std::size_t length) noexcept
 	{
-		const std::size_t first = (std::min)(length, m_logBytes - offset);
+		const std::size_t logBytes = m_log.size();
+		const std::size_t first = (std::min)(length, logBytes - offset);
 		std::memcpy(&m_log[offset], src, first);
 		if (first < length) { std::memcpy(&m_log[0], src + first, length - first); }
 	}
 
-	/// @brief LEB128 形式の varint を 1 個書く。容量不足なら false を返す
-	static bool putVarint(std::uint32_t v, std::uint8_t* out, std::size_t cap, std::size_t& w)
+	/// @brief 置き場を広げ、古い順に先頭から詰め直す。wrap した中身も 1 本に並ぶので offset を振り直す。
+	void growLog(std::size_t needBytes)
 	{
-		for (;;)
+		const std::size_t newSize = (std::min)(m_logBudget, (std::max)(needBytes, m_log.size() * 2));
+		std::vector<std::uint8_t> grown(newSize, std::uint8_t{0});
+		std::size_t w   = 0;
+		std::size_t idx = (m_head + m_cap - m_count) % m_cap;
+		for (std::size_t i = 0; i < m_count; ++i)
 		{
-			if (w >= cap) { return false; }
-			const std::uint8_t b = static_cast<std::uint8_t>(v & 0x7Fu);
-			v >>= 7;
-			if (v != 0) { out[w++] = static_cast<std::uint8_t>(b | 0x80u); }
-			else { out[w++] = b; return true; }
+			SlotMeta& meta = m_meta[idx];
+			copyFromLog(meta.offset, meta.length, grown.data() + w);
+			meta.offset = w;
+			w += meta.length;
+			idx = (idx + 1) % m_cap;
 		}
+		m_log.swap(grown);
+		m_logWritePos = w % m_log.size();
 	}
 
-	static std::uint32_t getVarint(const std::uint8_t* in, std::size_t& r) noexcept
+	/// @brief 差分を作る。縮まなければ keyframe として生で持つ。
+	/// @return 置く中身。keyframe なら isKeyframe = true
+	const std::uint8_t* encodeFrame(const std::uint8_t* mem, std::size_t& storeLen, bool& isKeyframe)
 	{
-		std::uint32_t v = 0;
-		int shift = 0;
-		for (;;)
+		const bool wantKeyframe = !m_hasLastRaw || (m_pushSeq % m_keyframeEvery == 0);
+		if (!wantKeyframe)
 		{
-			const std::uint8_t b = in[r++];
-			v |= static_cast<std::uint32_t>(b & 0x7Fu) << shift;
-			if ((b & 0x80u) == 0) { break; }
-			shift += 7;
-		}
-		return v;
-	}
-
-#if defined(MITIRU_GMRING_AVX2)
-	/// @brief CPU の AVX2 対応を初回だけ確認する
-	static bool cpuHasAvx2() noexcept
-	{
-		static const bool has = [] {
-			int info[4] = {0, 0, 0, 0};
-			__cpuidex(info, 7, 0);
-			return (info[1] & (1 << 5)) != 0;  // EBX bit5 = AVX2
-		}();
-		return has;
-	}
-
-	static std::size_t zeroRunLenAvx2(const std::uint8_t* prev, const std::uint8_t* cur,
-	                                   std::size_t pos, std::size_t n) noexcept
-	{
-		std::size_t p = pos;
-		while (p + 32 <= n)
-		{
-			const __m256i a = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(prev + p));
-			const __m256i b = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(cur + p));
-			const unsigned mask = static_cast<unsigned>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(a, b)));
-			if (mask != 0xFFFFFFFFu)
+			const std::size_t encLen = detail::encodeXorRle(m_lastRaw.data(), mem, m_frameSize,
+			                                                m_scratchA.data(), m_scratchA.size());
+			if (encLen != 0 && encLen < m_frameSize)
 			{
-				unsigned long firstDiff;
-				_BitScanForward(&firstDiff, ~mask);
-				return (p + firstDiff) - pos;
+				storeLen = encLen; isKeyframe = false;
+				return m_scratchA.data();
 			}
-			p += 32;
 		}
-		while (p < n && prev[p] == cur[p]) { ++p; }
-		return p - pos;
-	}
-
-	static std::size_t literalRunLenAvx2(const std::uint8_t* prev, const std::uint8_t* cur,
-	                                      std::size_t pos, std::size_t n) noexcept
-	{
-		std::size_t p = pos;
-		while (p + 32 <= n)
-		{
-			const __m256i a = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(prev + p));
-			const __m256i b = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(cur + p));
-			const unsigned mask = static_cast<unsigned>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(a, b)));
-			if (mask != 0)
-			{
-				unsigned long firstSame;
-				_BitScanForward(&firstSame, mask);
-				return (p + firstSame) - pos;
-			}
-			p += 32;
-		}
-		while (p < n && prev[p] != cur[p]) { ++p; }
-		return p - pos;
-	}
-
-	static void xorCopyAvx2(std::uint8_t* out, const std::uint8_t* prev, const std::uint8_t* cur,
-	                         std::size_t pos, std::size_t len) noexcept
-	{
-		std::size_t i = 0;
-		for (; i + 32 <= len; i += 32)
-		{
-			const __m256i a = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(prev + pos + i));
-			const __m256i b = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(cur + pos + i));
-			_mm256_storeu_si256(reinterpret_cast<__m256i*>(out + i), _mm256_xor_si256(a, b));
-		}
-		for (; i < len; ++i) { out[i] = static_cast<std::uint8_t>(cur[pos + i] ^ prev[pos + i]); }
-	}
-#endif
-
-	static std::size_t zeroRunLen(const std::uint8_t* prev, const std::uint8_t* cur,
-	                               std::size_t pos, std::size_t n) noexcept
-	{
-		std::size_t p = pos;
-		while (p < n && prev[p] == cur[p]) { ++p; }
-		return p - pos;
-	}
-
-	static std::size_t literalRunLen(const std::uint8_t* prev, const std::uint8_t* cur,
-	                                  std::size_t pos, std::size_t n) noexcept
-	{
-		std::size_t p = pos;
-		while (p < n && prev[p] != cur[p]) { ++p; }
-		return p - pos;
-	}
-
-	/// @brief prev から cur への XOR 差分を、skip、litLen、lit bytes の zero-run RLE 形式で @p out に書く。容量不足なら 0 を返す
-	static std::size_t encodeXorRle(const std::uint8_t* prev, const std::uint8_t* cur,
-	                                 std::size_t n, std::uint8_t* out, std::size_t outCap)
-	{
-#if defined(MITIRU_GMRING_AVX2)
-		const bool avx2 = cpuHasAvx2();
-#endif
-		std::size_t pos = 0, w = 0;
-		while (pos < n)
-		{
-#if defined(MITIRU_GMRING_AVX2)
-			const std::size_t zeroLen = avx2 ? zeroRunLenAvx2(prev, cur, pos, n) : zeroRunLen(prev, cur, pos, n);
-#else
-			const std::size_t zeroLen = zeroRunLen(prev, cur, pos, n);
-#endif
-			pos += zeroLen;
-#if defined(MITIRU_GMRING_AVX2)
-			const std::size_t litLen = avx2 ? literalRunLenAvx2(prev, cur, pos, n) : literalRunLen(prev, cur, pos, n);
-#else
-			const std::size_t litLen = literalRunLen(prev, cur, pos, n);
-#endif
-			if (!putVarint(static_cast<std::uint32_t>(zeroLen), out, outCap, w)) { return 0; }
-			if (!putVarint(static_cast<std::uint32_t>(litLen), out, outCap, w)) { return 0; }
-			if (litLen > 0)
-			{
-				if (w + litLen > outCap) { return 0; }
-#if defined(MITIRU_GMRING_AVX2)
-				if (avx2) { xorCopyAvx2(out + w, prev, cur, pos, litLen); }
-				else { for (std::size_t i = 0; i < litLen; ++i) { out[w + i] = static_cast<std::uint8_t>(cur[pos + i] ^ prev[pos + i]); } }
-#else
-				for (std::size_t i = 0; i < litLen; ++i) { out[w + i] = static_cast<std::uint8_t>(cur[pos + i] ^ prev[pos + i]); }
-#endif
-				w += litLen;
-			}
-			pos += litLen;
-		}
-		return w;
-	}
-
-	/// @brief zero-run RLE 差分を、直前のフレームを保持する @p buf に XOR で適用する
-	static void decodeXorRleApply(const std::uint8_t* enc, std::size_t encLen,
-	                               std::uint8_t* buf, std::size_t n) noexcept
-	{
-		std::size_t pos = 0, r = 0;
-		while (pos < n && r < encLen)
-		{
-			const std::uint32_t skip = getVarint(enc, r);
-			pos += skip;
-			const std::uint32_t lit = getVarint(enc, r);
-			for (std::uint32_t i = 0; i < lit; ++i) { buf[pos + i] ^= enc[r + i]; }
-			r   += lit;
-			pos += lit;
-		}
+		storeLen = m_frameSize; isKeyframe = true;
+		return mem;
 	}
 
 	void pushCompressed(const std::uint8_t* mem)
 	{
-		const bool wantKeyframe = !m_hasLastRaw || (m_pushSeq % m_keyframeEvery == 0);
-		std::size_t          storeLen;
-		bool                 isKeyframe;
-		const std::uint8_t*  storeData;
-
-		if (wantKeyframe)
+		std::size_t storeLen   = 0;
+		bool        isKeyframe = false;
+		const std::uint8_t* storeData = encodeFrame(mem, storeLen, isKeyframe);
+		// 1 byte でも縮まなければ素のまま置く (展開の手間だけが増えるため)。
+		bool packed = false;
+		if (const std::size_t z = m_zstd.compress(storeData, storeLen, m_scratchB.data(), storeLen - 1); z != 0)
 		{
-			storeData = mem; storeLen = m_frameSize; isKeyframe = true;
-		}
-		else
-		{
-			const std::size_t encLen = encodeXorRle(m_lastRaw.data(), mem, m_frameSize,
-			                                         m_encodeScratch.data(), m_encodeScratch.size());
-			if (encLen == 0 || encLen >= m_frameSize)
-			{
-				storeData = mem; storeLen = m_frameSize; isKeyframe = true;
-			}
-			else
-			{
-				storeData = m_encodeScratch.data(); storeLen = encLen; isKeyframe = false;
-			}
+			storeData = m_scratchB.data(); storeLen = z; packed = true;
 		}
 
+		if (m_logUsedBytes + storeLen > m_log.size() && m_log.size() < m_logBudget)
+		{
+			growLog(m_logUsedBytes + storeLen);
+		}
 		// keyframe だけを捨てると後続の差分を復元できないため、予算に収まるまで世代単位で破棄する。
-		while (m_count > 0 && (m_count == m_cap || m_logUsedBytes + storeLen > m_logBytes))
+		while (m_count > 0 && (m_count == m_cap || m_logUsedBytes + storeLen > m_log.size()))
 		{
 			std::size_t idx = (m_head + m_cap - m_count) % m_cap;
 			do
@@ -418,8 +292,8 @@ private:
 		}
 
 		copyIntoLog(m_logWritePos, storeData, storeLen);
-		m_meta[m_head] = SlotMeta{m_logWritePos, static_cast<std::uint32_t>(storeLen), isKeyframe};
-		m_logWritePos   = (m_logWritePos + storeLen) % m_logBytes;
+		m_meta[m_head] = SlotMeta{m_logWritePos, static_cast<std::uint32_t>(storeLen), isKeyframe, packed};
+		m_logWritePos   = (m_logWritePos + storeLen) % m_log.size();
 		m_logUsedBytes += storeLen;
 		m_head = (m_head + 1) % m_cap;
 		++m_count;
@@ -428,20 +302,47 @@ private:
 		m_hasLastRaw = true;
 		++m_pushSeq;
 		m_lastValid = false;  // ring 内容が変わったので前回の復元キャッシュは無効
+		probeCompression(storeLen);
+	}
+
+	/// @brief 最初の keyframe 1 周期ぶんで縮み方を見る。半分も縮まない状態 (全部が毎フレーム動く大量の
+	///        粒子など) は圧縮の手間に見合わないので、予算に収まるなら生の ring へ切り替える。
+	///        切り替えで捨てるのは最初の 1 周期ぶんの記録だけ。
+	void probeCompression(std::size_t storedLen)
+	{
+		if (!m_rawFallbackAllowed) { return; }
+		m_probeRawBytes    += m_frameSize;
+		m_probeStoredBytes += storedLen;
+		if (m_pushSeq < m_keyframeEvery) { return; }
+		m_rawFallbackAllowed = false;
+		if (m_probeStoredBytes * 2 <= m_probeRawBytes) { return; }
+		std::fprintf(stderr,
+		             "[mitiru] rewind ring: 差分が %.0f%% までしか縮まないので生で持つ (%zu frames x %u bytes)\n",
+		             100.0 * static_cast<double>(m_probeStoredBytes) / static_cast<double>(m_probeRawBytes),
+		             m_cap, m_frameSize);
+		configureRaw(m_frameSize, m_cap);
+		m_fellBackToRaw = true;
 	}
 
 	/// @brief 1 slot を @p dst に適用する。keyframe なら上書きし、差分なら XOR で畳み込む
 	void applySlot(const SlotMeta& meta, std::uint8_t* dst) const noexcept
 	{
+		if (!meta.packed)
+		{
+			if (meta.keyframe) { copyFromLog(meta.offset, m_frameSize, dst); return; }
+			copyFromLog(meta.offset, meta.length, m_scratchA.data());
+			detail::decodeXorRleApply(m_scratchA.data(), meta.length, dst, m_frameSize);
+			return;
+		}
+		copyFromLog(meta.offset, meta.length, m_scratchB.data());
 		if (meta.keyframe)
 		{
-			copyFromLog(meta.offset, m_frameSize, dst);
+			(void)m_zstd.decompress(m_scratchB.data(), meta.length, dst, m_frameSize);
+			return;
 		}
-		else
-		{
-			copyFromLog(meta.offset, meta.length, m_readScratch.data());
-			decodeXorRleApply(m_readScratch.data(), meta.length, dst, m_frameSize);
-		}
+		const std::size_t rleLen = m_zstd.decompress(m_scratchB.data(), meta.length,
+		                                             m_scratchA.data(), m_scratchA.size());
+		detail::decodeXorRleApply(m_scratchA.data(), rleLen, dst, m_frameSize);
 	}
 
 	[[nodiscard]] const std::uint8_t* atCompressed(std::size_t offsetFromNewest) const noexcept
@@ -473,8 +374,7 @@ private:
 			if (m_meta[idx].keyframe || n >= m_cap) { break; }
 			idx = (idx + m_cap - 1) % m_cap;
 		}
-		copyFromLog(m_meta[m_walkScratch[n - 1]].offset, m_frameSize, m_restoreScratch.data());
-		for (std::size_t i = n - 1; i > 0; --i)
+		for (std::size_t i = n; i > 0; --i)
 		{
 			applySlot(m_meta[m_walkScratch[i - 1]], m_restoreScratch.data());
 		}
@@ -502,8 +402,8 @@ private:
 	std::vector<std::uint8_t> m_buf;  ///< capacity*frameSize の contiguous ring
 
 	// ── 圧縮 mode の状態 ──
-	std::vector<std::uint8_t> m_log;            ///< 可変長スロットを詰める circular byte log
-	std::size_t               m_logBytes{0};
+	std::vector<std::uint8_t> m_log;            ///< 可変長スロットを詰める circular byte log (予算まで伸びる)
+	std::size_t               m_logBudget{0};   ///< m_log が伸びてよい上限
 	std::size_t               m_logWritePos{0};
 	std::size_t               m_logUsedBytes{0};
 	std::vector<SlotMeta>     m_meta;            ///< frame index ring と同じ並びの offset/length 表
@@ -511,8 +411,14 @@ private:
 	bool                      m_hasLastRaw{false};
 	std::uint32_t             m_keyframeEvery{60};
 	std::uint64_t             m_pushSeq{0};
-	std::vector<std::uint8_t> m_encodeScratch;           ///< push 時の RLE encode 作業領域
-	mutable std::vector<std::uint8_t> m_readScratch;     ///< at() 時の 1 slot 展開先
+	std::uint64_t             m_probeRawBytes{0};
+	std::uint64_t             m_probeStoredBytes{0};
+	bool                      m_rawFallbackAllowed{false};
+	bool                      m_fellBackToRaw{false};
+	/// push では RLE と zstd の出力先、at() では zstd と RLE の展開先。push と at() は同時に走らないので共有する。
+	mutable std::vector<std::uint8_t> m_scratchA;
+	mutable std::vector<std::uint8_t> m_scratchB;
+	util::ZstdContext                 m_zstd;
 	mutable std::vector<std::uint8_t> m_restoreScratch;  ///< at() の復元結果 (返り値の実体)
 	mutable std::vector<std::size_t>  m_walkScratch;     ///< at() の keyframe 遡り経路
 	mutable std::size_t      m_lastIdx{0};

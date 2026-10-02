@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file SpriteSheetParser.hpp
-/// @brief Aseprite JSON形式のスプライトシートパーサー
+/// @brief Aseprite JSON 形式のスプライトシートパーサー
 /// @details Aseprite が出力する JSON（Hash / Array 両形式）を解析し、
 ///          SpriteAnimationSet および SpriteSheet を生成する。
 ///          nlohmann/json を使用する。
@@ -32,10 +32,10 @@ struct AsepriteParseResult
 /// @brief Aseprite JSON スプライトシートパーサー
 /// @details Aseprite の「JSON Data」エクスポートで出力される形式を解析する。
 ///
-/// 対応フォーマット:
-/// - Hash形式（フレーム名をキーとするオブジェクト）
-/// - Array形式（フレームの配列）
-/// - frameTagsによるアニメーション定義
+/// 対応フォーマットは次のとおり。
+/// - Hash 形式（フレーム名をキーとするオブジェクト）
+/// - Array 形式（フレームの配列）
+/// - frameTags によるアニメーション定義
 ///
 /// @code
 /// std::string jsonStr = loadFile("spritesheet.json");
@@ -48,9 +48,9 @@ class SpriteSheetParser
 {
 public:
 	/// @brief Aseprite JSON からアニメーションセットを解析する
-	/// @param jsonString JSON文字列
+	/// @param jsonString JSON 文字列
 	/// @return SpriteAnimationSet
-	/// @throw std::runtime_error JSON解析エラー時
+	/// @throw std::runtime_error JSON 解析エラー時
 	[[nodiscard]] static SpriteAnimationSet parseAsepriteJson(const std::string& jsonString)
 	{
 		const auto json = nlohmann::json::parse(jsonString);
@@ -59,10 +59,10 @@ public:
 	}
 
 	/// @brief Aseprite JSON からスプライトシートとアニメーションセットを解析する
-	/// @param jsonString JSON文字列
+	/// @param jsonString JSON 文字列
 	/// @param texture スプライトシートテクスチャ
 	/// @return AsepriteParseResult（SpriteSheet + SpriteAnimationSet）
-	/// @throw std::runtime_error JSON解析エラー時
+	/// @throw std::runtime_error JSON 解析エラー時
 	[[nodiscard]] static AsepriteParseResult parseAsepriteJsonWithTexture(
 		const std::string& jsonString,
 		const Texture& texture)
@@ -105,12 +105,12 @@ private:
 		return frames;
 	}
 
-	/// @brief Hash形式のフレームを解析する（フレーム名がキー）
+	/// @brief Hash 形式のフレームを解析する（フレーム名がキー）
 	/// @param framesJson "frames" オブジェクト
 	/// @return SpriteFrame 配列
 	[[nodiscard]] static std::vector<SpriteFrame> parseHashFrames(const nlohmann::json& framesJson)
 	{
-		/// Hash形式ではキーの順序が保証されないため、
+		/// Hash 形式ではキーの順序が保証されないため、
 		/// キー名でソートして安定した順序を得る
 		std::vector<std::pair<std::string, nlohmann::json>> entries;
 		entries.reserve(framesJson.size());
@@ -134,7 +134,7 @@ private:
 		return frames;
 	}
 
-	/// @brief Array形式のフレームを解析する
+	/// @brief Array 形式のフレームを解析する
 	/// @param framesJson "frames" 配列
 	/// @return SpriteFrame 配列
 	[[nodiscard]] static std::vector<SpriteFrame> parseArrayFrames(const nlohmann::json& framesJson)
@@ -150,7 +150,7 @@ private:
 		return frames;
 	}
 
-	/// @brief 1フレームの JSON を SpriteFrame に変換する
+	/// @brief 1 フレームの JSON を SpriteFrame に変換する
 	/// @param frameData フレームの JSON オブジェクト
 	/// @return SpriteFrame
 	[[nodiscard]] static SpriteFrame parseSingleFrame(const nlohmann::json& frameData)

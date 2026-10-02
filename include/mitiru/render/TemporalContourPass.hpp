@@ -3,7 +3,7 @@
 /// @file TemporalContourPass.hpp
 /// @brief 輪郭線時間安定化（`TemporalContourStabilizer`）の GPU シェーダ移植（#11）
 /// @details CPU 実装（`TemporalContour.hpp`）と等価な処理を fullscreen ピクセルシェーダで行う。
-///          入力 SRV: velocity(RG16F, UV単位) / rawContour(R16F) / prevStabilized(R16F, ping-pong) /
+///          入力 SRV: velocity(RG16F, UV 単位) / rawContour(R16F) / prevStabilized(R16F, ping-pong) /
 ///          curObjId(R32_UINT) / prevObjId(R32_UINT)。出力: stabilized contour RT(R16F)。
 ///          アルゴリズム = reproject(uv - velocity) + objectId gate + EMA + raw 近傍ゲート床
 ///          （CPU 版と同一。研究 §3）。`MotionVectorPass` / TAA と同じ GPU RT 群に接続して

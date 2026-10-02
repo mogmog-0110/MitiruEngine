@@ -12,7 +12,7 @@
 namespace mitiru::render
 {
 
-/// @brief 3D描画を行わない no-op レンダラー。drawMesh 呼び出し回数だけ数える。
+/// @brief 3D 描画を行わない no-op レンダラー。drawMesh 呼び出し回数だけ数える。
 class NullRenderer3D final : public IRenderer3D
 {
 public:

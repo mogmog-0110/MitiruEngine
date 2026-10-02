@@ -2,13 +2,13 @@
 
 /// @file AnimationSampler.hpp
 /// @brief glTF アニメーションクリップのポーズサンプリング。
-/// @details クリップと絶対時間 (秒) から joint のワールドポーズ行列列を組む純関数群。
-///          GPU 非依存・状態なし。同一入力は bit-exact に同一出力 (決定論、軸②④)。
-///          流れ: samplePose → (blendPoses) → computeWorldPose → gatherJointWorld →
-///          `Skinning.hpp::skinVertices` へ。gatherJointWorld は skin.joints 順への
-///          gather のみを行う。inverseBind の乗算は skinVertices 内部の責務であり、
-///          ここで乗算すると二重適用になる (してはいけない)。
-///          規約: sgc::Mat4f は行優先・列ベクトル (p' = M * p)。quaternion は xyzw。
+/// @details クリップと絶対時間 (秒) から joint のワールドポーズ行列の列を組む純関数群。
+///          GPU に依存せず、状態を持たない。同じ入力からは bit-exact に同じ出力を返す (決定論、軸②④)。
+///          流れは samplePose → (blendPoses) → computeWorldPose → gatherJointWorld →
+///          `Skinning.hpp::skinVertices` (DX12 は同じ式の compute) の順。gatherJointWorld は skin.joints 順への
+///          gather だけを行う。inverseBind の乗算は skinVertices の内部で行うので、
+///          ここで乗算すると二重にかかる (してはいけない)。
+///          規約は sgc::Mat4f が行優先・列ベクトル (p' = M * p)、quaternion が xyzw。
 
 #include <algorithm>
 #include <cmath>
@@ -81,7 +81,7 @@ struct NodeTRS
 	return sgc::Mat4f::translation(trs.t) * quatToMat4(trs.r) * sgc::Mat4f::scaling(trs.s);
 }
 
-/// @brief ループ再生の時間折返し。負値も折返し、duration<=0 は 0。
+/// @brief ループ再生の時間の折返し。負の値も折返し、duration<=0 は 0 を返す。
 [[nodiscard]] inline float wrapTime(float tSec, float durationSec)
 {
 	if (durationSec <= 0.0f) { return 0.0f; }
@@ -111,9 +111,9 @@ struct NodeTRS
 }
 
 /// @brief チャンネルを時刻 t (wrap 済み) でサンプルする。
-/// @details 端の外は端キーへクランプ。STEP は直前キーを保持。CubicSpline は glTF 仕様の
+/// @details 端より外は端のキーへクランプする。STEP は直前のキーを保持する。CubicSpline は glTF 仕様の
 ///          Hermite (回転は補間後に正規化)。それ以外の Rotation は slerp、Translation/Scale
-///          は成分 lerp。空チャンネルは identity 相当を返す。
+///          は成分ごとの lerp。空のチャンネルは identity 相当を返す。
 [[nodiscard]] inline sgc::Vec4f sampleChannel(const GltfAnimationChannel& ch, float t)
 {
 	if (ch.times.empty() || ch.values.empty())
@@ -150,8 +150,8 @@ struct NodeTRS
 }
 
 /// @brief クリップを時刻 t でサンプルし、全ノードの局所 TRS を返す。
-/// @details レストポーズ (nodes の TRS) を初期値に、チャンネルが動かす要素だけ上書き。
-///          t は wrapTime 済みを渡すこと (本関数は折返さない)。
+/// @details レストポーズ (nodes の TRS) を初期値にして、チャンネルが動かす要素だけを上書きする。
+///          t には wrapTime 済みの値を渡すこと (この関数は折返さない)。
 [[nodiscard]] inline std::vector<NodeTRS> samplePose(
 	const std::vector<GltfNode>& nodes, const GltfAnimationClip& clip, float t)
 {
@@ -199,8 +199,8 @@ struct NodeTRS
 }
 
 /// @brief 局所ポーズから全ノードのワールドポーズ行列を組む。
-/// @details parent==-1 のルートから children を辿るのでノードの並び順に依存しない。
-///          循環や範囲外 children は無視 (訪問済みは再訪しない)。
+/// @details parent==-1 のルートから children を辿るので、ノードの並び順に依存しない。
+///          循環や範囲外の children は無視する (訪問済みのノードは再訪しない)。
 [[nodiscard]] inline std::vector<sgc::Mat4f> computeWorldPose(
 	const std::vector<GltfNode>& nodes, const std::vector<NodeTRS>& localPose)
 {

@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Dx11Texture.hpp
-/// @brief DirectX 11テクスチャラッパー
-/// @details ID3D11Texture2DとID3D11ShaderResourceViewをComPtrで管理する。
+/// @brief DirectX 11 テクスチャラッパー
+/// @details ID3D11Texture2D と ID3D11ShaderResourceView を ComPtr で管理する。
 ///          ピクセルデータからの生成およびステージングテクスチャの生成をサポートする。
 
 #ifdef _WIN32
@@ -28,20 +28,20 @@
 namespace mitiru::gfx
 {
 
-/// @brief DirectX 11テクスチャラッパー
-/// @details ID3D11Texture2DおよびID3D11ShaderResourceViewをRAIIで管理する。
+/// @brief DirectX 11 テクスチャラッパー
+/// @details ID3D11Texture2D および ID3D11ShaderResourceView を RAII で管理する。
 class Dx11Texture final : public ITexture
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief ピクセルデータからテクスチャを生成する
-	/// @param device D3D11デバイス
+	/// @param device D3D11 デバイス
 	/// @param width テクスチャ幅
 	/// @param height テクスチャ高さ
-	/// @param data RGBA8形式のピクセルデータ
+	/// @param data RGBA8 形式のピクセルデータ
 	/// @return 生成されたテクスチャ
 	[[nodiscard]] static Dx11Texture createFromData(
 		ID3D11Device* device,
@@ -92,8 +92,8 @@ public:
 		return texture;
 	}
 
-	/// @brief ステージングテクスチャを生成する（readback用）
-	/// @param device D3D11デバイス
+	/// @brief ステージングテクスチャを生成する（readback 用）
+	/// @param device D3D11 デバイス
 	/// @param width テクスチャ幅
 	/// @param height テクスチャ高さ
 	/// @return ステージングテクスチャ
@@ -144,7 +144,7 @@ public:
 		return m_format;
 	}
 
-	/// @brief 内部のID3D11Texture2Dを取得する
+	/// @brief 内部の ID3D11Texture2D を取得する
 	/// @return テクスチャリソースへのポインタ
 	[[nodiscard]] ID3D11Texture2D* getTexture() const noexcept
 	{
@@ -152,7 +152,7 @@ public:
 	}
 
 	/// @brief シェーダーリソースビューを取得する
-	/// @return SRVへのポインタ（ステージングテクスチャの場合はnullptr）
+	/// @return SRV へのポインタ（ステージングテクスチャの場合は nullptr）
 	[[nodiscard]] ID3D11ShaderResourceView* getSRV() const noexcept
 	{
 		return m_srv.Get();

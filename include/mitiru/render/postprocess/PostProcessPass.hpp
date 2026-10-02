@@ -16,14 +16,14 @@ namespace mitiru::render
 {
 
 /// @brief ポストプロセスパスの抽象基底クラス
-/// @details 各パスは入力SRVを受け取り、出力RTVに描画する。
+/// @details 各パスは入力 SRV を受け取り、出力 RTV に描画する。
 class PostProcessPass
 {
 public:
 	virtual ~PostProcessPass() = default;
 
 	/// @brief パスを適用する
-	/// @param context D3D11コンテキスト
+	/// @param context D3D11 コンテキスト
 	/// @param inputSRV 前パスの出力（シェーダーリソースビュー）
 	/// @param outputRTV 出力先レンダーターゲット
 	/// @param screenW スクリーン幅
@@ -46,13 +46,13 @@ public:
 
 protected:
 	/// @brief フルスクリーン三角形を描画する共通処理
-	/// @param context D3D11コンテキスト
+	/// @param context D3D11 コンテキスト
 	/// @param vs 頂点シェーダー
 	/// @param ps ピクセルシェーダー
-	/// @param inputSRV 入力SRV（スロット0）
-	/// @param outputRTV 出力RTV
+	/// @param inputSRV 入力 SRV（スロット 0）
+	/// @param outputRTV 出力 RTV
 	/// @param sampler サンプラー
-	/// @param cb 定数バッファ（nullptrなら設定しない）
+	/// @param cb 定数バッファ（nullptr なら設定しない）
 	/// @param screenW スクリーン幅
 	/// @param screenH スクリーン高さ
 	void drawFullscreenPass(
@@ -93,10 +93,10 @@ protected:
 			context->PSSetConstantBuffers(0, 1, &cb);
 		}
 
-		/// フルスクリーン三角形描画（3頂点）
+		/// フルスクリーン三角形描画（3 頂点）
 		context->Draw(3, 0);
 
-		/// SRVバインドを解除する（次パスへの干渉を防ぐ）
+		/// SRV バインドを解除する（次パスへの干渉を防ぐ）
 		ID3D11ShaderResourceView* nullSRV = nullptr;
 		context->PSSetShaderResources(0, 1, &nullSRV);
 	}

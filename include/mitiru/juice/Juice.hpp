@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file Juice.hpp
-/// @brief 「ジュース」軽量コンポーネント。Particles / Shake / HitStop。
+/// @brief 「ジュース」の軽量コンポーネント。Particles / Shake / HitStop。
 /// @details いずれもゲーム側が毎フレーム update(dt) を呼び、必要なら draw / offset を取る形。
-///          全部 header-only / 固定プールで alloc-free。アロケーション無しの hot path 安全。
+///          全部 header-only / 固定プールで alloc-free。アロケーションしないので hot path でも安全。
 
 #include <algorithm>
 #include <cmath>
@@ -53,7 +53,7 @@ public:
 		}
 	}
 
-	/// @brief 放射状 burst (爆発用)。count 個を等角で speed で外向きに spawn。
+	/// @brief 放射状の burst (爆発用)。count 個を等角に並べ、speed で外向きに spawn する。
 	void burst(float x, float y, int count, float speed, float life, float size,
 	           const sgc::Colorf& color) noexcept
 	{
@@ -116,7 +116,7 @@ public:
 	float decayPerSec = 1.5f;  ///< trauma の減衰率 (1.0 で 1 秒間 1.0→0)
 	float magnitude   = 16.0f; ///< trauma=1 時の最大オフセット (px)
 
-	/// @brief trauma を加算 (clamp 0..1)。被弾・爆発等の game event で呼ぶ。
+	/// @brief trauma を加算する (clamp 0..1)。被弾・爆発等の game event で呼ぶ。
 	void pushTrauma(float add) noexcept
 	{
 		m_trauma = std::clamp(m_trauma + add, 0.0f, 1.0f);
@@ -125,12 +125,12 @@ public:
 	void update(float dt) noexcept
 	{
 		m_trauma = std::max(0.0f, m_trauma - decayPerSec * dt);
-		// 擬似乱数 (deterministic LCG): replay に乗せても再現される。
+		// 擬似乱数 (deterministic LCG): replay でも同じ値が再現される。
 		m_lcg = m_lcg * 1664525u + 1013904223u;
 		const float rx = static_cast<float>((m_lcg >> 16) & 0x7FFF) / 32767.0f * 2.0f - 1.0f;
 		m_lcg = m_lcg * 1664525u + 1013904223u;
 		const float ry = static_cast<float>((m_lcg >> 16) & 0x7FFF) / 32767.0f * 2.0f - 1.0f;
-		// trauma^2 で perceived 強度を線形に近づける。
+		// trauma^2 にして、体感の強度を線形に近づける。
 		const float k = m_trauma * m_trauma;
 		m_offset = sgc::Vec2f{rx * magnitude * k, ry * magnitude * k};
 	}
@@ -151,7 +151,7 @@ private:
 class HitStop
 {
 public:
-	/// @brief dur 秒の hit-stop を開始 (既存より長ければ延長、短ければ無視)。
+	/// @brief dur 秒の hit-stop を開始する (既存より長ければ延長、短ければ無視)。
 	void trigger(float durSec) noexcept
 	{
 		if (durSec > m_remaining) { m_remaining = durSec; }

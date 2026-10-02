@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file DX12NeuralFx.hpp
-/// @brief **DirectML 推論を D3D12 レンダリングパイプライン内で回す** in-pipeline ニューラル後処理。
+/// @brief **DirectML 推論を D3D12 レンダリングパイプライン内で実行する** in-pipeline ニューラル後処理。
 /// @details backbuffer を CPU 往復なしでテンソル化し、自前の DirectML グラフを同一 D3D12 device 上で
 ///          実行して結果を合成する。DX12Neural.hpp (ORT+DML EP・readPixels で CPU 往復) と違い、
 ///          こちらは raw DirectML で **readback ゼロ**。
@@ -16,6 +16,8 @@
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
+#include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -26,13 +28,17 @@ namespace mitiru::render
 class Dx12NeuralPostFx
 {
 	template <class T> using ComPtr = Microsoft::WRL::ComPtr<T>;
-	using Res = ComPtr<ID3D12Resource>;
+	using Res = gfx::GpuResource;
 
 public:
 	void setEnabled(bool e) { m_enabled = e; }
 	[[nodiscard]] bool enabled() const { return m_enabled; }
 	void setStrength(float s) { m_strength = (s < 0.0f) ? 0.0f : (s > 2.0f ? 2.0f : s); }   ///< アンシャープ強度 (0..2)
 	[[nodiscard]] float strength() const { return m_strength; }
+
+	/// @brief ensure がサイズ変更で heap・テンソル・PSO を作り直すか。作り直す前に、それらを参照している
+	///        走行中のフレームを待ち終えておくこと (テンソルの大きさが解像度で決まるので区画分けでは避けられない)。
+	[[nodiscard]] bool needsRebuild(int w, int h) const { return m_built && (m_w != w || m_h != h); }
 
 	/// @brief 1 度 (+サイズ変更時) 構築。dml は ensureDirectMLDx12 が作った IDMLDevice。
 	bool ensure(ID3D12Device* dev, IDMLDevice* dml, ID3D12GraphicsCommandList* cl, int w, int h)
@@ -56,9 +62,9 @@ public:
 
 		// 1) backbuffer → src tex
 		tr(cl, backbuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		tr(cl, m_srcTex.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+		tr(cl, m_srcTex.Get(), kComputeRead, D3D12_RESOURCE_STATE_COPY_DEST);
 		cl->CopyResource(m_srcTex.Get(), backbuffer);
-		tr(cl, m_srcTex.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		tr(cl, m_srcTex.Get(), D3D12_RESOURCE_STATE_COPY_DEST, kComputeRead);
 		tr(cl, backbuffer, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		// 2) pack: src → input tensor (NCHW fp32)
@@ -76,7 +82,6 @@ public:
 		// 3) DirectML: input → output
 		ID3D12DescriptorHeap* dh[] = {m_dmlHeap.Get()};
 		cl->SetDescriptorHeaps(1, dh);
-		bindExecute();
 		m_recorder->RecordDispatch(cl, m_compiledOp.Get(), m_execTable.Get());
 		uav(cl, m_outputBuf.Get());
 
@@ -105,6 +110,9 @@ public:
 	}
 
 private:
+	// src を読むのは pack / unpack の compute だけ。PIXEL_SHADER_RESOURCE だと次フレームのコピーが走行中の compute を待たない
+	static constexpr D3D12_RESOURCE_STATES kComputeRead = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
 	static void tr(ID3D12GraphicsCommandList* cl, ID3D12Resource* r, D3D12_RESOURCE_STATES a, D3D12_RESOURCE_STATES b)
 	{ D3D12_RESOURCE_BARRIER x={}; x.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; x.Transition.pResource=r;
 	  x.Transition.StateBefore=a; x.Transition.StateAfter=b; x.Transition.Subresource=0; cl->ResourceBarrier(1,&x); }
@@ -116,11 +124,8 @@ private:
 	{
 		const UINT64 tensorBytes = (UINT64)1 * 3 * h * w * sizeof(float);
 		auto buf=[&](UINT64 bytes, Res& out, D3D12_RESOURCE_STATES st)->bool{
-			D3D12_HEAP_PROPERTIES hp={}; hp.Type=D3D12_HEAP_TYPE_DEFAULT;
-			D3D12_RESOURCE_DESC d={}; d.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER; d.Width=bytes; d.Height=1;
-			d.DepthOrArraySize=1; d.MipLevels=1; d.SampleDesc.Count=1; d.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			d.Flags=D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-			return SUCCEEDED(dev->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,st,nullptr,IID_PPV_ARGS(out.ReleaseAndGetAddressOf()))); };
+			return SUCCEEDED(gfx::createGpuBuffer(dev, D3D12_HEAP_TYPE_DEFAULT, bytes,
+				st, out, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)); };
 		if (!buf(tensorBytes, m_inputBuf, D3D12_RESOURCE_STATE_UNORDERED_ACCESS)) return false;
 		if (!buf(tensorBytes, m_outputBuf, D3D12_RESOURCE_STATE_UNORDERED_ACCESS)) return false;
 
@@ -128,8 +133,9 @@ private:
 			D3D12_HEAP_PROPERTIES hp={}; hp.Type=D3D12_HEAP_TYPE_DEFAULT;
 			D3D12_RESOURCE_DESC d={}; d.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D; d.Width=(UINT64)w; d.Height=(UINT)h;
 			d.DepthOrArraySize=1; d.MipLevels=1; d.Format=DXGI_FORMAT_R8G8B8A8_UNORM; d.SampleDesc.Count=1; d.Flags=fl;
-			return SUCCEEDED(dev->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,st,nullptr,IID_PPV_ARGS(out.ReleaseAndGetAddressOf()))); };
-		if (!tex(m_srcTex, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)) return false;
+			return SUCCEEDED(gfx::createGpuResource(dev, hp.Type, d,
+				st, nullptr, out)); };
+		if (!tex(m_srcTex, D3D12_RESOURCE_FLAG_NONE, kComputeRead)) return false;
 		if (!tex(m_resultTex, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)) return false;
 
 		// compute heap: [0]=src SRV [1]=result UAV [2]=result SRV
@@ -176,9 +182,9 @@ cbuffer P : register(b0) { uint W; uint H; float Strength; };   // Strength = �
     Dst[id.xy] = float4(saturate(orig + Strength*hpY), 1.0);
 })";
 		ComPtr<ID3DBlob> packCS, unpackCS, e;
-		if (FAILED(D3DCompile(kPack,std::strlen(kPack),nullptr,nullptr,nullptr,"CSPack","cs_5_0",0,0,packCS.GetAddressOf(),e.GetAddressOf())))
+		if (FAILED(gfx::compileDx12Shader(kPack, "CSPack", "cs_5_0", 0, packCS.GetAddressOf(), e.GetAddressOf())))
 		{ if(e) std::fprintf(stderr,"[NeuralFx] CSPack: %s\n",(const char*)e->GetBufferPointer()); return false; }
-		if (FAILED(D3DCompile(kUnpack,std::strlen(kUnpack),nullptr,nullptr,nullptr,"CSUnpack","cs_5_0",0,0,unpackCS.GetAddressOf(),e.GetAddressOf())))
+		if (FAILED(gfx::compileDx12Shader(kUnpack, "CSUnpack", "cs_5_0", 0, unpackCS.GetAddressOf(), e.GetAddressOf())))
 		{ if(e) std::fprintf(stderr,"[NeuralFx] CSUnpack: %s\n",(const char*)e->GetBufferPointer()); return false; }
 
 		// pack RS: t0(table) + u0(root UAV) + b0(2 const)
@@ -208,8 +214,8 @@ struct O{float4 p:SV_POSITION; float2 uv:TEXCOORD0;};
 O VS(uint id:SV_VertexID){ O o; float2 uv=float2((id<<1)&2,id&2); o.uv=uv; o.p=float4(uv*float2(2,-2)+float2(-1,1),0,1); return o; }
 float4 PS(O i):SV_Target{ return float4(t0.Sample(s0,i.uv).rgb,1.0); })";
 		ComPtr<ID3DBlob> vs, ps;
-		if (FAILED(D3DCompile(kBlit,std::strlen(kBlit),nullptr,nullptr,nullptr,"VS","vs_5_0",0,0,vs.GetAddressOf(),e.GetAddressOf()))) return false;
-		if (FAILED(D3DCompile(kBlit,std::strlen(kBlit),nullptr,nullptr,nullptr,"PS","ps_5_0",0,0,ps.GetAddressOf(),e.GetAddressOf()))) return false;
+		if (FAILED(gfx::compileDx12Shader(kBlit, "VS", "vs_5_0", 0, vs.GetAddressOf(), e.GetAddressOf()))) return false;
+		if (FAILED(gfx::compileDx12Shader(kBlit, "PS", "ps_5_0", 0, ps.GetAddressOf(), e.GetAddressOf()))) return false;
 		D3D12_DESCRIPTOR_RANGE rb={}; rb.RangeType=D3D12_DESCRIPTOR_RANGE_TYPE_SRV; rb.NumDescriptors=1; rb.BaseShaderRegister=0;
 		D3D12_ROOT_PARAMETER bp={}; bp.ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; bp.DescriptorTable.NumDescriptorRanges=1; bp.DescriptorTable.pDescriptorRanges=&rb; bp.ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL;
 		D3D12_STATIC_SAMPLER_DESC sm={}; sm.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR; sm.AddressU=sm.AddressV=sm.AddressW=D3D12_TEXTURE_ADDRESS_MODE_CLAMP; sm.ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL; sm.MaxLOD=D3D12_FLOAT32_MAX;
@@ -256,9 +262,11 @@ float4 PS(O i):SV_Target{ return float4(t0.Sample(s0,i.uv).rgb,1.0); })";
 		if (FAILED(dml->CreateOperator(&od, IID_PPV_ARGS(op.GetAddressOf())))) { std::fprintf(stderr,"[NeuralFx] CreateOperator(conv) failed\n"); return false; }
 		if (FAILED(dml->CompileOperator(op.Get(), DML_EXECUTION_FLAG_NONE, IID_PPV_ARGS(m_compiledOp.GetAddressOf())))) { std::fprintf(stderr,"[NeuralFx] CompileOperator failed\n"); return false; }
 
-		ComPtr<IDMLOperatorInitializer> init;
+		// 初期化の dispatch は GPU が実行し終えるまで initializer と binding table を保持しておく必要があるので、
+		// ローカルで捨てずに次の作り直しまで持つ
 		IDMLCompiledOperator* ops[]={m_compiledOp.Get()};
-		if (FAILED(dml->CreateOperatorInitializer(1, ops, IID_PPV_ARGS(init.GetAddressOf())))) return false;
+		if (FAILED(dml->CreateOperatorInitializer(1, ops, IID_PPV_ARGS(m_init.ReleaseAndGetAddressOf())))) return false;
+		IDMLOperatorInitializer* init = m_init.Get();
 		DML_BINDING_PROPERTIES ip=init->GetBindingProperties(), ep=m_compiledOp->GetBindingProperties();
 		const UINT descCount = (ip.RequiredDescriptorCount>ep.RequiredDescriptorCount)?ip.RequiredDescriptorCount:ep.RequiredDescriptorCount;
 		const UINT64 tempSize = (ip.TemporaryResourceSize>ep.TemporaryResourceSize)?ip.TemporaryResourceSize:ep.TemporaryResourceSize;
@@ -269,33 +277,33 @@ float4 PS(O i):SV_Target{ return float4(t0.Sample(s0,i.uv).rgb,1.0); })";
 		if (FAILED(dev->CreateDescriptorHeap(&hd, IID_PPV_ARGS(m_dmlHeap.GetAddressOf())))) return false;
 		if (FAILED(dev->CreateDescriptorHeap(&hd, IID_PPV_ARGS(m_dmlInitHeap.GetAddressOf())))) return false;  // init 用 (execute と分離)
 		auto dmlBuf=[&](UINT64 bytes, Res& out)->bool{ if(!bytes){return true;}
-			D3D12_HEAP_PROPERTIES hp={}; hp.Type=D3D12_HEAP_TYPE_DEFAULT;
-			D3D12_RESOURCE_DESC d={}; d.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER; d.Width=bytes; d.Height=1; d.DepthOrArraySize=1; d.MipLevels=1; d.SampleDesc.Count=1; d.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR; d.Flags=D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-			return SUCCEEDED(dev->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,nullptr,IID_PPV_ARGS(out.ReleaseAndGetAddressOf()))); };
+			return SUCCEEDED(gfx::createGpuBuffer(dev, D3D12_HEAP_TYPE_DEFAULT, bytes,
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, out, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)); };
 		if (!dmlBuf(tempSize, m_temp)) return false;
 		if (!dmlBuf(persSize, m_pers)) return false;
 
 		if (FAILED(dml->CreateCommandRecorder(IID_PPV_ARGS(m_recorder.GetAddressOf())))) return false;
 
 		// init を 1 回実行 (init 専用 heap を使う = execute の bind で上書きされない)
-		DML_BINDING_TABLE_DESC btd={}; btd.Dispatchable=init.Get();
+		DML_BINDING_TABLE_DESC btd={}; btd.Dispatchable=init;
 		btd.CPUDescriptorHandle=m_dmlInitHeap->GetCPUDescriptorHandleForHeapStart();
 		btd.GPUDescriptorHandle=m_dmlInitHeap->GetGPUDescriptorHandleForHeapStart();
 		btd.SizeInDescriptors=descCount?descCount:1;
-		ComPtr<IDMLBindingTable> initTable;
-		if (FAILED(dml->CreateBindingTable(&btd, IID_PPV_ARGS(initTable.GetAddressOf())))) return false;
-		if (tempSize){ DML_BUFFER_BINDING bb={m_temp.Get(),0,tempSize}; DML_BINDING_DESC bd={DML_BINDING_TYPE_BUFFER,&bb}; initTable->BindTemporaryResource(&bd); }
-		if (persSize){ DML_BUFFER_BINDING bb={m_pers.Get(),0,persSize}; DML_BINDING_DESC bd={DML_BINDING_TYPE_BUFFER,&bb}; initTable->BindOutputs(1,&bd); }
+		if (FAILED(dml->CreateBindingTable(&btd, IID_PPV_ARGS(m_initTable.ReleaseAndGetAddressOf())))) return false;
+		if (tempSize){ DML_BUFFER_BINDING bb={m_temp.Get(),0,tempSize}; DML_BINDING_DESC bd={DML_BINDING_TYPE_BUFFER,&bb}; m_initTable->BindTemporaryResource(&bd); }
+		if (persSize){ DML_BUFFER_BINDING bb={m_pers.Get(),0,persSize}; DML_BINDING_DESC bd={DML_BINDING_TYPE_BUFFER,&bb}; m_initTable->BindOutputs(1,&bd); }
 		ID3D12DescriptorHeap* dh[]={m_dmlInitHeap.Get()}; cl->SetDescriptorHeaps(1,dh);
-		m_recorder->RecordDispatch(cl, init.Get(), initTable.Get());
+		m_recorder->RecordDispatch(cl, init, m_initTable.Get());
 		uav(cl, m_pers ? m_pers.Get() : m_inputBuf.Get());
 
-		// execute 用 binding table (execute 専用 heap・毎フレーム bind し直す)
+		// execute 用 binding table。束ねる buffer は作り直すまで変わらないので、ここで 1 回だけ書く。
+		// 毎フレーム bind すると、前のフレームがまだ読んでいる shader-visible heap の descriptor を書き換えることになる。
 		btd.Dispatchable=m_compiledOp.Get();
 		btd.CPUDescriptorHandle=m_dmlHeap->GetCPUDescriptorHandleForHeapStart();
 		btd.GPUDescriptorHandle=m_dmlHeap->GetGPUDescriptorHandleForHeapStart();
-		if (FAILED(dml->CreateBindingTable(&btd, IID_PPV_ARGS(m_execTable.GetAddressOf())))) return false;
+		if (FAILED(dml->CreateBindingTable(&btd, IID_PPV_ARGS(m_execTable.ReleaseAndGetAddressOf())))) return false;
 		m_tempSize=tempSize; m_persSize=persSize;
+		bindExecute();
 		return true;
 	}
 
@@ -304,11 +312,10 @@ float4 PS(O i):SV_Target{ return float4(t0.Sample(s0,i.uv).rgb,1.0); })";
 		float w[81]; std::memset(w,0,sizeof(w));
 		const float k[9]={0,-1,0, -1,4,-1, 0,-1,0};   // 3x3 Laplacian ハイパス (sum=0)。輝度成分のみ unpack で加算
 		for (int o=0;o<3;++o) for (int j=0;j<9;++j) w[o*27 + o*9 + j] = k[j];   // o==i (per-channel)
-		D3D12_HEAP_PROPERTIES hp={}; hp.Type=D3D12_HEAP_TYPE_DEFAULT;
-		D3D12_RESOURCE_DESC d={}; d.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER; d.Width=sizeof(w); d.Height=1; d.DepthOrArraySize=1; d.MipLevels=1; d.SampleDesc.Count=1; d.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR; d.Flags=D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-		if (FAILED(dev->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(m_filter.GetAddressOf())))) return false;
-		D3D12_HEAP_PROPERTIES uh={}; uh.Type=D3D12_HEAP_TYPE_UPLOAD; D3D12_RESOURCE_DESC bd=d; bd.Flags=D3D12_RESOURCE_FLAG_NONE;
-		if (FAILED(dev->CreateCommittedResource(&uh,D3D12_HEAP_FLAG_NONE,&bd,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(m_filterUp.GetAddressOf())))) return false;
+		if (FAILED(gfx::createGpuBuffer(dev, D3D12_HEAP_TYPE_DEFAULT, sizeof(w),
+			D3D12_RESOURCE_STATE_COPY_DEST, m_filter, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))) return false;
+		if (FAILED(gfx::createGpuBuffer(dev, D3D12_HEAP_TYPE_UPLOAD, sizeof(w),
+			D3D12_RESOURCE_STATE_GENERIC_READ, m_filterUp))) return false;
 		void* p=nullptr; D3D12_RANGE none={0,0}; m_filterUp->Map(0,&none,&p); std::memcpy(p,w,sizeof(w)); m_filterUp->Unmap(0,nullptr);
 		cl->CopyResource(m_filter.Get(), m_filterUp.Get());
 		tr(cl, m_filter.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -319,7 +326,7 @@ float4 PS(O i):SV_Target{ return float4(t0.Sample(s0,i.uv).rgb,1.0); })";
 		DML_BUFFER_BINDING in ={m_inputBuf.Get(), 0,(UINT64)1*3*m_h*m_w*sizeof(float)};
 		DML_BUFFER_BINDING fil={m_filter.Get(),   0, 81*sizeof(float)};
 		DML_BUFFER_BINDING out={m_outputBuf.Get(),0,(UINT64)1*3*m_h*m_w*sizeof(float)};
-		// conv は入力3スロット (Input/Filter/Bias)。Bias は null → NONE を渡す。
+		// conv は入力 3 スロット (Input/Filter/Bias)。Bias は null → NONE を渡す。
 		DML_BINDING_DESC ib[3]={{DML_BINDING_TYPE_BUFFER,&in},{DML_BINDING_TYPE_BUFFER,&fil},{DML_BINDING_TYPE_NONE,nullptr}};
 		DML_BINDING_DESC ob={DML_BINDING_TYPE_BUFFER,&out};
 		m_execTable->BindInputs(3,ib);
@@ -337,6 +344,7 @@ float4 PS(O i):SV_Target{ return float4(t0.Sample(s0,i.uv).rgb,1.0); })";
 	ComPtr<ID3D12RootSignature> m_packRS, m_unpackRS, m_blitRS;
 	ComPtr<ID3D12PipelineState> m_packPSO, m_unpackPSO, m_blitPSO;
 	ComPtr<IDMLCompiledOperator> m_compiledOp; ComPtr<IDMLCommandRecorder> m_recorder; ComPtr<IDMLBindingTable> m_execTable;
+	ComPtr<IDMLOperatorInitializer> m_init; ComPtr<IDMLBindingTable> m_initTable;
 	UINT64 m_tempSize=0, m_persSize=0;
 };
 

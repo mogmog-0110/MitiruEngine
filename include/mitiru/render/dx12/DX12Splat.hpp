@@ -3,7 +3,7 @@
 /// @file DX12Splat.hpp
 /// @brief Renderer3D_DX12 の 3D Gaussian Splatting 描画実装 (部分ヘッダ、.inl)。
 /// @details Renderer3D_DX12 のクラス内部から include される (DX12Skybox.hpp と同じ流儀)。
-///          責務: .splat シーンの GPU アップロード / 専用 root sig・PSO・カメラCB /
+///          責務: .splat シーンの GPU アップロード / 専用 root sig・PSO・カメラ CB /
 ///          フレーム内描画 (MSAA color FP16 へインスタンス化矩形、プリマルチプライ合成)。
 ///          ロードマップ: oscar-rythm/docs/splatting-dx12.md
 
@@ -17,7 +17,7 @@ void ensureSplatPipelineDx12()
 {
 	if (!m_d3dDevice || m_splatPipelineReady) { return; }
 
-	// root sig: b0 = カメラCB(CBV) / t0=splat, t1=order (SRV table 2 連続)
+	// root sig: b0 = カメラ CB(CBV) / t0=splat, t1=order (SRV table 2 連続)
 	D3D12_DESCRIPTOR_RANGE srvRange = {};
 	srvRange.RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	srvRange.NumDescriptors     = 2;
@@ -45,10 +45,10 @@ void ensureSplatPipelineDx12()
 
 	// VS / PS
 	ComPtr<ID3DBlob> vsBlob, psBlob, cErr;
-	if (FAILED(D3DCompile(SPLAT_VS_HLSL, std::strlen(SPLAT_VS_HLSL), nullptr, nullptr,
-	        nullptr, "VSMain", "vs_5_0", 0, 0, vsBlob.GetAddressOf(), cErr.GetAddressOf()))) { return; }
-	if (FAILED(D3DCompile(SPLAT_PS_HLSL, std::strlen(SPLAT_PS_HLSL), nullptr, nullptr,
-	        nullptr, "PSMain", "ps_5_0", 0, 0, psBlob.GetAddressOf(), cErr.GetAddressOf()))) { return; }
+	if (FAILED(gfx::compileDx12Shader(SPLAT_VS_HLSL, "VSMain", "vs_5_0", 0,
+		vsBlob.GetAddressOf(), cErr.GetAddressOf()))) { return; }
+	if (FAILED(gfx::compileDx12Shader(SPLAT_PS_HLSL, "PSMain", "ps_5_0", 0,
+		psBlob.GetAddressOf(), cErr.GetAddressOf()))) { return; }
 
 	// PSO: 入力レイアウトなし / 深度オフ / プリマルチプライ over / MSAA FP16
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC pso = {};
@@ -78,13 +78,8 @@ void ensureSplatPipelineDx12()
 	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(m_splatPSO.GetAddressOf())))) { return; }
 
 	// カメラ CB (256 B)
-	D3D12_HEAP_PROPERTIES uph = {}; uph.Type = D3D12_HEAP_TYPE_UPLOAD;
-	D3D12_RESOURCE_DESC d = {};
-	d.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	d.Width = 256; d.Height = 1; d.DepthOrArraySize = 1; d.MipLevels = 1;
-	d.SampleDesc.Count = 1; d.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	if (FAILED(m_d3dDevice->CreateCommittedResource(&uph, D3D12_HEAP_FLAG_NONE, &d,
-	        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_splatCb.GetAddressOf())))) { return; }
+	if (FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_UPLOAD, 256,
+		D3D12_RESOURCE_STATE_GENERIC_READ, m_splatCb))) { return; }
 
 	if (!m_splatSort.init(m_d3dDevice)) { return; }   // GPU 深度ソート compute pipeline
 	m_splatPipelineReady = true;
@@ -105,7 +100,7 @@ bool loadSplatSceneDx12(const char* path)
 	m_splatRadius = scene.radius;   // シーンを自動フレーミングするための境界球
 	const UINT64 bytes = static_cast<UINT64>(m_splatCount) * sizeof(SplatGPU);
 
-	// CPU 位置 (neural 現像 DX12Neural.hpp が使用)。深度ソートは GPU 側 (m_splatSort)。
+	// CPU 側の位置 (neural 現像の DX12Neural.hpp が使う)。深度ソートは GPU 側 (m_splatSort)。
 	m_splatPos.resize(static_cast<std::size_t>(m_splatCount) * 3);
 	m_splatOrigRgb.resize(static_cast<std::size_t>(m_splatCount) * 3);   // 焼き込みリセット用
 	m_splatBaked.assign(m_splatCount, 0);   // 達成率トラッキング
@@ -121,14 +116,9 @@ bool loadSplatSceneDx12(const char* path)
 		m_splatOrigRgb[i * 3 + 2] = scene.splats[i].rgb[2];
 	}
 
-	D3D12_HEAP_PROPERTIES uph = {}; uph.Type = D3D12_HEAP_TYPE_UPLOAD;
-	D3D12_RESOURCE_DESC d = {};
-	d.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	d.Width = bytes; d.Height = 1; d.DepthOrArraySize = 1; d.MipLevels = 1;
-	d.SampleDesc.Count = 1; d.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	m_splatBuffer.Reset();
-	if (FAILED(m_d3dDevice->CreateCommittedResource(&uph, D3D12_HEAP_FLAG_NONE, &d,
-	        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_splatBuffer.GetAddressOf())))) { return false; }
+	if (FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_UPLOAD, bytes,
+		D3D12_RESOURCE_STATE_GENERIC_READ, m_splatBuffer))) { return false; }
 
 	void* p = nullptr; D3D12_RANGE rr = {0, 0};
 	if (FAILED(m_splatBuffer->Map(0, &rr, &p))) { return false; }
@@ -144,6 +134,8 @@ bool loadSplatSceneDx12(const char* path)
 	hd.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	hd.NumDescriptors = 2;
 	hd.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	// 差し替える前のシーンを描いているフレームがまだ読んでいるので、ヒープは GPU 完了まで預ける
+	if (m_device) { m_device->deferRelease(m_splatSrvHeap); }
 	m_splatSrvHeap.Reset();
 	if (FAILED(m_d3dDevice->CreateDescriptorHeap(&hd, IID_PPV_ARGS(m_splatSrvHeap.GetAddressOf())))) { return false; }
 	const UINT inc = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -170,17 +162,17 @@ bool loadSplatSceneDx12(const char* path)
 
 /// @brief 読み込み済みスプラットを現在のカメラで MSAA color RT へ描画する。
 /// @details beginFrame 後 (MSAA color RT がバインド済み) に呼ぶ。skybox と同様に
-///          color-only RT へ切替→描画→MRT/main 復帰する。
+///          color-only RT へ切り替えて描画し、MRT/main に戻す。
 void drawSplatsDx12()
 {
 	if (!m_splatReady || !m_splatPipelineReady || !m_graphicsCmdList) { return; }
 	if (!m_splatPSO || !m_splatRootSig || m_splatCount == 0) { return; }
 
 	// 深度ソート (GPU compute、奥→手前): camPos が動いたフレームだけ再ソートする。
-	// キーは camPos からの距離² だけに依存するので、カメラ静止時は前フレームの
+	// キーは camPos からの距離² だけで決まるので、カメラが止まっている間は前フレームの
 	// order をそのまま使う (compute dispatch を丸ごと省ける)。sort は m_splatBuffer
 	// (StructuredBuffer<SplatGPU>) の pos を GPU 上で直接読み、order を生成する
-	// (CPU 走査も PCIe 転送もゼロ)。生成後に order を UAV→SRV へ遷移して VS が読む。
+	// (CPU 走査も PCIe 転送も無い)。生成後に order を UAV→SRV へ遷移して VS が読む。
 	const float cx = m_cameraPosition.x, cy = m_cameraPosition.y, cz = m_cameraPosition.z;
 	const float mdx = cx - m_splatSortCam.x, mdy = cy - m_splatSortCam.y, mdz = cz - m_splatSortCam.z;
 	if (!m_splatSorted || (mdx * mdx + mdy * mdy + mdz * mdz) > 0.0f)
@@ -229,7 +221,7 @@ void drawSplatsDx12()
 	m_graphicsCmdList->DrawInstanced(4, m_splatCount, 0, 0);
 	++m_drawCallCount;
 
-	// MRT (color + normal) + main state へ復帰
+	// MRT (color + normal) と main state に戻す
 	auto normalRtv = m_normalRTVHeap->GetCPUDescriptorHandleForHeapStart();
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2] = { msaaRtv, normalRtv };
 	m_graphicsCmdList->OMSetRenderTargets(2, rtvs, FALSE, &dsv);

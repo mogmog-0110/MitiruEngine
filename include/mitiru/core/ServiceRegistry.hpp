@@ -103,7 +103,7 @@ public:
 		return m_services.size();
 	}
 
-	/// @brief サービスが1つも登録されていないか判定する
+	/// @brief サービスが 1 つも登録されていないか判定する
 	/// @return 空なら true
 	[[nodiscard]] bool empty() const
 	{

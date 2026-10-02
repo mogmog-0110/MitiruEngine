@@ -2,9 +2,9 @@
 
 /// @file NetworkSync.hpp
 /// @brief ゲーム状態同期フレームワーク
-/// @details SyncableComponentインターフェースを通じて、
+/// @details SyncableComponent インターフェースを通じて、
 ///          エンティティの差分同期・補間・補外を提供する。
-///          ホスト権限モデルをデフォルトとし、StateSync上に構築する。
+///          ホスト権限モデルをデフォルトとし、StateSync 上に構築する。
 ///
 /// @code
 /// using namespace mitiru::network;
@@ -17,7 +17,7 @@
 ///     std::uint32_t syncId() const override { return m_id; }
 /// };
 ///
-/// // SyncManagerで管理
+/// // SyncManager で管理
 /// SyncManager mgr;
 /// mgr.registerComponent(transform);
 /// auto delta = mgr.collectDirtyStates();
@@ -56,13 +56,13 @@ class SyncableComponent
 public:
 	virtual ~SyncableComponent() = default;
 
-	/// @brief ネットワーク上の一意IDを返す
+	/// @brief ネットワーク上の一意 ID を返す
 	[[nodiscard]] virtual std::uint32_t syncId() const = 0;
 
-	/// @brief 現在の状態をJSONにシリアライズする
+	/// @brief 現在の状態を JSON にシリアライズする
 	[[nodiscard]] virtual nlohmann::json serialize() const = 0;
 
-	/// @brief JSONから状態をデシリアライズする
+	/// @brief JSON から状態をデシリアライズする
 	virtual void deserialize(const nlohmann::json& j) = 0;
 
 	/// @brief 状態が変更されたかを返す
@@ -74,10 +74,10 @@ public:
 	/// @brief ダーティフラグを設定する
 	void markDirty() { m_dirty = true; }
 
-	/// @brief オーナーのピアIDを取得する
+	/// @brief オーナーのピア ID を取得する
 	[[nodiscard]] ConnectionId ownerId() const noexcept { return m_ownerId; }
 
-	/// @brief オーナーのピアIDを設定する
+	/// @brief オーナーのピア ID を設定する
 	void setOwnerId(ConnectionId id) noexcept { m_ownerId = id; }
 
 protected:
@@ -128,13 +128,13 @@ struct SyncSnapshot
 };
 
 /// @brief 同期マネージャー
-/// @details SyncableComponent群の差分収集・リモート状態の適用・
+/// @details SyncableComponent 群の差分収集・リモート状態の適用・
 ///          補間/補外を管理する。
 class SyncManager
 {
 public:
 	/// @brief 補間関数型
-	/// @details (from状態, to状態, alpha [0..1]) -> 補間結果
+	/// @details (from 状態, to 状態, alpha [0..1]) -> 補間結果
 	using InterpolateFunc = std::function<nlohmann::json(
 		const nlohmann::json&, const nlohmann::json&, float)>;
 
@@ -147,7 +147,7 @@ public:
 	}
 
 	/// @brief コンポーネントの登録を解除する
-	/// @param syncId 同期ID
+	/// @param syncId 同期 ID
 	void unregisterComponent(std::uint32_t syncId)
 	{
 		m_components.erase(syncId);
@@ -160,14 +160,14 @@ public:
 		m_authorityMode = mode;
 	}
 
-	/// @brief ローカルピアIDを設定する
+	/// @brief ローカルピア ID を設定する
 	void setLocalPeerId(ConnectionId id) noexcept
 	{
 		m_localPeerId = id;
 	}
 
 	/// @brief 指定コンポーネントに権限があるかを判定する
-	/// @param syncId 同期ID
+	/// @param syncId 同期 ID
 	/// @return ローカルピアが権限を持つなら true
 	[[nodiscard]] bool hasAuthority(std::uint32_t syncId) const
 	{
@@ -241,7 +241,7 @@ public:
 
 	/// @brief 補間を実行する
 	/// @param renderTimeMs 描画時刻（ミリ秒、通常は現在時刻 - 補間遅延）
-	/// @details 登録済みの InterpolateFunc を使って、2つのスナップショット間を
+	/// @details 登録済みの InterpolateFunc を使って、2 つのスナップショット間を
 	///          補間し、コンポーネントに適用する。
 	void interpolate(std::uint64_t renderTimeMs)
 	{
@@ -252,7 +252,7 @@ public:
 			if (hasAuthority(syncId)) continue;
 			if (snapshots.size() < 2) continue;
 
-			// renderTimeMs を挟む2つのスナップショットを探す
+			// renderTimeMs を挟む 2 つのスナップショットを探す
 			const SyncSnapshot* before = nullptr;
 			const SyncSnapshot* after = nullptr;
 
@@ -292,7 +292,7 @@ public:
 	/// @param currentTimeMs 現在時刻（ミリ秒）
 	/// @param maxExtrapolateMs 最大補外時間（ミリ秒）
 	/// @details 最新のスナップショットから経過時間分だけ状態を外挿する。
-	///          InterpolateFuncを使い、alpha > 1.0 で補外する。
+	///          InterpolateFunc を使い、alpha > 1.0 で補外する。
 	void extrapolate(std::uint64_t currentTimeMs, std::uint64_t maxExtrapolateMs = 200)
 	{
 		if (!m_interpolateFunc) return;
@@ -340,7 +340,7 @@ public:
 	}
 
 	/// @brief 全状態をフルスナップショットとして取得する
-	/// @return 全コンポーネントの状態JSON
+	/// @return 全コンポーネントの状態 JSON
 	[[nodiscard]] nlohmann::json fullSnapshot() const
 	{
 		nlohmann::json result;
@@ -352,7 +352,7 @@ public:
 	}
 
 	/// @brief フルスナップショットから状態を復元する
-	/// @param snapshot スナップショットJSON
+	/// @param snapshot スナップショット JSON
 	void applyFullSnapshot(const nlohmann::json& snapshot)
 	{
 		for (auto& [key, stateJson] : snapshot.items())
@@ -392,7 +392,7 @@ private:
 
 /// @brief 数値プロパティの線形補間ヘルパー
 /// @details SyncManager::setInterpolateFunc() に渡す汎用的な補間関数。
-///          JSONオブジェクトの全数値フィールドを線形補間する。
+///          JSON オブジェクトの全数値フィールドを線形補間する。
 [[nodiscard]] inline nlohmann::json lerpJsonNumeric(
 	const nlohmann::json& a, const nlohmann::json& b, float alpha)
 {

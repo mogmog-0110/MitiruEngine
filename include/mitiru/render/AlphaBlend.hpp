@@ -2,7 +2,7 @@
 
 /// @file AlphaBlend.hpp
 /// @brief アルファ合成ユーティリティ
-/// @details Porter-Duff over演算に基づくアルファブレンドと、
+/// @details Porter-Duff over 演算に基づくアルファブレンドと、
 ///          複数のブレンドモード（加算・乗算・スクリーン・オーバーレイ）を提供する。
 ///          ソフトウェアレンダリング全体で使用する共通基盤。
 
@@ -75,8 +75,8 @@ struct AlphaBlend
 	}
 
 	/// @brief アルファ値を指定した色と背景色を合成する
-	/// @details drawRect用の簡易版: src色にalphaを適用してdstに合成する。
-	/// @param srcRgb ソース色（RGBのみ使用）
+	/// @details drawRect 用の簡易版: src 色に alpha を適用して dst に合成する。
+	/// @param srcRgb ソース色（RGB のみ使用）
 	/// @param alpha ソースのアルファ値 [0, 1]
 	/// @param dst デスティネーション色
 	/// @return 合成結果色
@@ -122,7 +122,7 @@ struct AlphaBlend
 		};
 	}
 
-	/// @brief 指定ブレンドモードで2色を合成する
+	/// @brief 指定ブレンドモードで 2 色を合成する
 	/// @param src ソース色
 	/// @param dst デスティネーション色
 	/// @param func ブレンドモード
@@ -153,9 +153,9 @@ struct AlphaBlend
 		return over(src, dst);
 	}
 
-	/// @brief 2色を線形補間する
-	/// @param a 色A
-	/// @param b 色B
+	/// @brief 2 色を線形補間する
+	/// @param a 色 A
+	/// @param b 色 B
 	/// @param t 補間係数 [0, 1]
 	/// @return 補間結果
 	[[nodiscard]] static constexpr sgc::Colorf lerp(

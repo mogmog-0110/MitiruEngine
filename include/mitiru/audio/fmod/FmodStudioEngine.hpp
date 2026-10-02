@@ -2,7 +2,7 @@
 
 /// @file FmodStudioEngine.hpp
 /// @brief FMOD Studio イベントベースオーディオエンジン
-/// @details FMOD Studioのバンク・イベントシステムをラップし、
+/// @details FMOD Studio のバンク・イベントシステムをラップし、
 ///          アダプティブミュージックやインタラクティブオーディオを実現する。
 
 #include <algorithm>
@@ -24,18 +24,18 @@ namespace mitiru::audio
 
 #ifdef MITIRU_HAS_FMOD
 
-/// @brief FMOD Studio APIラッパー
-/// @details FMOD Studioシステムを管理し、バンクのロード/アンロード、
+/// @brief FMOD Studio API ラッパー
+/// @details FMOD Studio システムを管理し、バンクのロード/アンロード、
 ///          イベントの再生/停止、パラメータ制御を提供する。
-///          FMOD Studioはイベントベースのオーディオデザインを可能にし、
-///          サウンドデザイナーがFMOD Studioツールで作成したアセットを
+///          FMOD Studio はイベントベースのオーディオデザインを可能にし、
+///          サウンドデザイナーが FMOD Studio ツールで作成したアセットを
 ///          そのまま再生できる。
 class FmodStudioEngine
 {
 public:
     /// @brief コンストラクタ
     /// @param maxChannels 最大同時発音数
-    /// @throws std::runtime_error FMOD Studio初期化失敗時
+    /// @throws std::runtime_error FMOD Studio の初期化に失敗した場合
     explicit FmodStudioEngine(int maxChannels = 512)
     {
         FMOD_RESULT result = FMOD_Studio_System_Create(&m_studioSystem, FMOD_VERSION);
@@ -56,7 +56,7 @@ public:
         }
     }
 
-    /// @brief デストラクタ（全バンクアンロード＋システム終了）
+    /// @brief デストラクタ（全バンクのアンロードとシステムの終了）
     ~FmodStudioEngine()
     {
         for (auto& [key, instance] : m_eventInstances)
@@ -102,8 +102,8 @@ public:
     // ── バンク管理 ──
 
     /// @brief バンクファイルをロードする
-    /// @param path バンクファイルパス (.bank)
-    /// @return ロード成功なら true
+    /// @param path バンクファイルのパス (.bank)
+    /// @return ロードに成功した場合は true
     bool loadBank(std::string_view path)
     {
         const std::string key(path);
@@ -119,7 +119,7 @@ public:
     }
 
     /// @brief バンクをアンロードする
-    /// @param path バンクファイルパス
+    /// @param path バンクファイルのパス
     void unloadBank(std::string_view path)
     {
         const std::string key(path);
@@ -137,13 +137,13 @@ public:
     // ── イベント再生 ──
 
     /// @brief イベントを再生する
-    /// @param eventPath FMOD Studioイベントパス (例: "event:/Music/BGM_01")
-    /// @return 再生成功なら true
+    /// @param eventPath FMOD Studio イベントのパス (例: "event:/Music/BGM_01")
+    /// @return 再生に成功した場合は true
     bool playEvent(std::string_view eventPath)
     {
         const std::string key(eventPath);
 
-        // 既存インスタンスがあれば停止して再利用
+        // 既存のインスタンスがあれば停止し、再利用する
         stopEvent(eventPath);
 
         FMOD_STUDIO_EVENTDESCRIPTION* desc = nullptr;
@@ -167,7 +167,7 @@ public:
     }
 
     /// @brief イベントを停止する
-    /// @param eventPath FMOD Studioイベントパス
+    /// @param eventPath FMOD Studio イベントのパス
     /// @param allowFadeout フェードアウトを許可するか
     void stopEvent(std::string_view eventPath, bool allowFadeout = true)
     {
@@ -185,10 +185,10 @@ public:
     }
 
     /// @brief イベントパラメータを設定する
-    /// @param eventPath FMOD Studioイベントパス
+    /// @param eventPath FMOD Studio イベントのパス
     /// @param paramName パラメータ名
     /// @param value パラメータ値
-    /// @return 設定成功なら true
+    /// @return 設定に成功した場合は true
     bool setParameter(std::string_view eventPath, std::string_view paramName, float value)
     {
         const auto it = m_eventInstances.find(std::string(eventPath));
@@ -203,7 +203,7 @@ public:
     /// @brief グローバルパラメータを設定する
     /// @param paramName パラメータ名
     /// @param value パラメータ値
-    /// @return 設定成功なら true
+    /// @return 設定に成功した場合は true
     bool setGlobalParameter(std::string_view paramName, float value)
     {
         const std::string name(paramName);
@@ -213,8 +213,8 @@ public:
     }
 
     /// @brief イベントインスタンスの生ポインタを取得する（上級者向け）
-    /// @param eventPath FMOD Studioイベントパス
-    /// @return FMOD_STUDIO_EVENTINSTANCEポインタ、見つからなければnullptr
+    /// @param eventPath FMOD Studio イベントパス
+    /// @return FMOD_STUDIO_EVENTINSTANCE ポインタ、見つからなければ nullptr
     [[nodiscard]] FMOD_STUDIO_EVENTINSTANCE* getEventInstance(std::string_view eventPath) const
     {
         const auto it = m_eventInstances.find(std::string(eventPath));
@@ -222,7 +222,7 @@ public:
         return nullptr;
     }
 
-    /// @brief FMOD_STUDIO_SYSTEMハンドルを取得（上級者向け）
+    /// @brief FMOD_STUDIO_SYSTEM ハンドルを取得（上級者向け）
     [[nodiscard]] FMOD_STUDIO_SYSTEM* studioSystemHandle() const noexcept
     {
         return m_studioSystem;
@@ -236,7 +236,7 @@ private:
 
 #else // !MITIRU_HAS_FMOD
 
-/// @brief FMOD Studioスタブ（FMOD未インストール時）
+/// @brief FMOD Studio スタブ（FMOD 未インストール時）
 class FmodStudioEngine
 {
 public:

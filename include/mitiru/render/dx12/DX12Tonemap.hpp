@@ -39,16 +39,27 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 )HLSL";
 
 /// @brief Tonemap 用 PS。ACES filmic + Exposure + Gamma 2.2
-/// @details exposure と gamma は CbTonemap (b0) で external から指定可。
+/// @details exposure と gamma は CbTonemap (b0) で外から指定できる。
+///          t1 は SSAO (v40)。AoOn のときだけ HDR 色に乗算してから露出に入る
+///          (LDR に掛けると ACES の肩で潰れた明部まで暗くなる)。
+///          t2 は bloom (v41、1/2 解像)。BloomOn のとき HDR 色に BloomStrength 倍して足してから露出に入る。
+///          Saturation / Contrast は ACES の後・ガンマの前 (v41)。
 constexpr const char* DX12_TONEMAP_PS = R"HLSL(
-Texture2D<float4> g_hdr  : register(t0);
-SamplerState      g_samp : register(s0);
+Texture2D<float4> g_hdr   : register(t0);
+Texture2D<float>  g_ao    : register(t1);
+Texture2D<float4> g_bloom : register(t2);
+SamplerState      g_samp  : register(s0);
 
 cbuffer CbTonemap : register(b0)
 {
     float Exposure;   // EV stops を線形係数に変換した値 (default 1.0)
     float Gamma;      // 出力ガンマ (default 2.2)
-    float2 _pad0;
+    float AoOn;       // 1 なら g_ao を掛ける
+    float BloomOn;    // 1 なら g_bloom を足す
+    float BloomStrength;
+    float Saturation; // 1 = 無変換、0 = グレー
+    float Contrast;   // 1 = 無変換。中間灰 0.18 を軸に伸縮
+    float _pad0;
 };
 
 struct PSInput
@@ -72,9 +83,16 @@ float3 acesFilmic(float3 x)
 float4 PSMain(PSInput input) : SV_TARGET
 {
     float4 hdr = g_hdr.Sample(g_samp, input.TexCoord);
+    if (AoOn > 0.5f) { hdr.rgb *= g_ao.Sample(g_samp, input.TexCoord); }
+    if (BloomOn > 0.5f) { hdr.rgb += g_bloom.Sample(g_samp, input.TexCoord).rgb * BloomStrength; }
 
     float3 exposed = hdr.rgb * Exposure;
     float3 mapped  = acesFilmic(exposed);
+
+    // 色調補正 (v41)。1.0 のときは式ごと恒等 (lerp(l, x, 1) = x、0.18 + (x - 0.18) * 1 = x)
+    float luma = dot(mapped, float3(0.2126f, 0.7152f, 0.0722f));
+    mapped = lerp(luma.xxx, mapped, Saturation);
+    mapped = saturate(0.18f + (mapped - 0.18f) * Contrast);
 
     // Gamma encode (linear → sRGB approximation)
     float invG = 1.0f / max(Gamma, 1e-4f);
@@ -87,13 +105,17 @@ float4 PSMain(PSInput input) : SV_TARGET
 /// @brief Tonemap CB (b0) レイアウト。HLSL 側と一致させる
 struct alignas(16) TonemapCB
 {
-    float exposure = 1.0f;
-    float gamma    = 2.2f;
-    float _pad0    = 0.0f;
-    float _pad1    = 0.0f;
+    float exposure      = 1.0f;
+    float gamma         = 2.2f;
+    float aoOn          = 0.0f;
+    float bloomOn       = 0.0f;
+    float bloomStrength = 0.3f;
+    float saturation    = 1.0f;
+    float contrast      = 1.0f;
+    float _pad1         = 0.0f;
 };
 
-static_assert(sizeof(TonemapCB) == 16,
+static_assert(sizeof(TonemapCB) == 32,
     "TonemapCB byte size mismatch — HLSL CB layout will break");
 
 } // namespace mitiru::render

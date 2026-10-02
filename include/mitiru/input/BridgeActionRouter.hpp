@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file BridgeActionRouter.hpp
-/// @brief CEF bridge signal → gameplay action ルータ
-/// @details CEF 側から届く文字列 signal (例: "ui.button.fire") を、
+/// @brief UI signal → gameplay action ルータ
+/// @details UI から届く文字列 signal (例: "ui.button.fire") を、
 ///          事前登録した ActionHandler に dispatch する純粋な
 ///          ルーティングテーブル。
 ///
-///          - CEF / StateStore 依存なし (`MITIRU_HAS_CEF` 不要)
+///          - UI の実装に依存しない
 ///          - dispatch() はゼロアロケーション (transparent lookup)
 ///          - InputMapper との結合なし: consumer が action 名を
 ///            InputMapper / EventBus / 任意の handler に渡す
@@ -19,7 +19,7 @@
 ///     handleFireButton(payload);
 /// });
 ///
-/// // CEF bridge コールバック内で:
+/// // UI の signal を受け取ったところで:
 /// bool handled = router.dispatch("ui.button.fire", "slot=3");
 /// @endcode
 
@@ -52,16 +52,14 @@ struct StringTransparentHash
 };
 } // namespace detail
 
-/// @brief CEF bridge signal → gameplay action ルータ
+/// @brief UI signal → gameplay action ルータ
 /// @details signal 名 (string) を ActionHandler に紐づけ、
-///          bridge から到着した signal を O(1) で dispatch する。
-///
-///          signal 名フォーマットは BRIDGE_API_CONTRACT.md に準拠
-///          (例: "ui.button.fire", "input.pointer.drag-end") するが、
-///          本クラス自体はフォーマット検証を行わない。
-///          consumer が任意の signal 名キーを使用できる。
-///
-///          同一 signal 名への二重登録は上書き (last-write-wins)。
+/// bridge から届いた signal を O(1) で dispatch する。
+/// signal 名の書式は BRIDGE_API_CONTRACT.md に従う
+/// (例: "ui.button.fire", "input.pointer.drag-end") が、
+/// このクラス自体は書式を検証しない。
+/// consumer は任意の signal 名をキーに使える。
+/// 同じ signal 名へ二重に登録すると上書きする (last-write-wins)。
 class BridgeActionRouter {
 public:
     /// @brief signal が dispatch されたときに呼ばれるコールバック型
@@ -123,7 +121,7 @@ public:
         return m_handlers.size();
     }
 
-    /// @brief 全登録を消去する
+    /// @brief 登録をすべて消去する
     void clear()
     {
         m_handlers.clear();

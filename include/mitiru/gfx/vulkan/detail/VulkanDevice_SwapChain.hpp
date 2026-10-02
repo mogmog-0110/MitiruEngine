@@ -279,7 +279,7 @@ inline void mitiru::gfx::VulkanDevice::destroySwapChain()
 
 inline void mitiru::gfx::VulkanDevice::recreateSwapChain()
 {
-	/// ウィンドウ最小化時はサイズが0になるため待機する
+	/// ウィンドウ最小化時はサイズが 0 になるため待機する
 	int width = m_glfwWindow->width();
 	int height = m_glfwWindow->height();
 	if (width == 0 || height == 0)

@@ -3,31 +3,30 @@
 #include <mitiru/core/InlineMacro.hpp>
 
 /// @file Engine.hpp
-/// @brief Mitiruエンジン本体
-/// @details プラットフォーム・ウィンドウ・GPUデバイスを統合し、
+/// @brief Mitiru エンジン本体
+/// @details プラットフォーム・ウィンドウ・GPU デバイスを統合し、
 ///          ゲームループを実行するメインクラス。
 ///
-/// @note platform 別の機能対応状況:
+/// @note platform 別の機能対応状況は次のとおり。
 ///
-///   Windows のみ (DX11/DX12 backend 必須):
+///   Windows のみ (DX11/DX12 backend 必須)
 ///     - PostProcess pipeline (PostProcessIntegration)
 ///     - DX12 Renderer3D (Renderer3D_DX12)
-///     - Live2D Cubism SDK (precompiled x64 library)
-///     - Win32 audio output (WaveAudioEngine, Win32AudioOutput)
+///     - Live2D Cubism SDK (ビルド済みの x64 ライブラリ)
 ///
-///   Cross-platform (全 desktop + Emscripten):
-///     - OpenGL backend (GlDevice) -- SDL2 または GLFW 必須
-///     - Vulkan backend (VulkanDevice) -- GLFW 必須
-///     - WebGL2 backend -- Emscripten のみ
-///     - Null backend (NullDevice) -- headless/test
-///     - GLFW window (GlfwWindow) -- Linux/macOS/Windows
-///     - SDL2 window (Sdl2Window) -- Linux/macOS/Windows
-///     - Software audio (SoftAudioEngine) -- 全 platform
-///     - miniaudio -- 全 desktop platform (Emscripten 除く)
+///   Cross-platform (全 desktop + Emscripten)
+///     - OpenGL backend (GlDevice): SDL2 または GLFW 必須
+///     - Vulkan backend (VulkanDevice): GLFW 必須
+///     - WebGL2 backend: Emscripten のみ
+///     - Null backend (NullDevice): headless/test
+///     - GLFW window (GlfwWindow): Linux/macOS/Windows
+///     - SDL2 window (Sdl2Window): Linux/macOS/Windows
+///     - Software audio (SoftAudioEngine): 全 platform
+///     - miniaudio (MiniaudioEngine / MiniaudioOutput): 全 desktop platform (Emscripten は WebAudioEngine)
 ///
-///   Cross-platform 化を予定している差し替え対象:
-///     - NanoVG UI -- editor UI
-///     - OpenGL PostProcess -- DX11 専用 pipeline を置き換える予定
+///   Cross-platform 化を予定している差し替え対象
+///     - NanoVG UI: editor UI
+///     - OpenGL PostProcess: DX11 専用 pipeline を置き換える予定
 
 #include <algorithm>
 #include <array>
@@ -49,14 +48,13 @@
 #include <mitiru/core/FrameArena.hpp>
 #include <mitiru/core/GameSettings.hpp>
 #include <mitiru/core/Config.hpp>
+
+#include <nlohmann/json.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/gfx/GfxFactory.hpp>
-#include <mitiru/render/TrueTypeScreenRenderer.hpp>
-#include <mitiru/render/GlyphAtlasRenderer.hpp>
-#include <mitiru/render/SdfFont.hpp>
-#include <mitiru/vn/TrueTypeFont.hpp>
+#include <mitiru/text/ScreenFont.hpp>
 #include <mitiru/gfx/IDevice.hpp>
 #include <mitiru/gfx/null/NullDevice.hpp>
 #include <mitiru/render/Renderer3D.hpp>
@@ -65,12 +63,11 @@
 #include <mitiru/gfx/dx12/Dx12LoFiTarget.hpp>
 #include <mitiru/gfx/dx12/Dx12MsaaTarget.hpp>
 #endif
+#include <mitiru/asset/FileWatcher.hpp>
 #include <mitiru/input/InputInjector.hpp>
-#include <mitiru/input/InputRecorder.hpp>
-#include <mitiru/input/InputReplayer.hpp>
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/input/GamepadInput.hpp>
-#include <mitiru/physics/PhysicsWorld3D.hpp>
+#include <mitiru/physics/IPhysicsWorld3D.hpp>
 #include <mitiru/input/SdlGamepadInput.hpp>
 #include <mitiru/render/SpriteCache.hpp>
 #include <mitiru/util/ImageWriter.hpp>
@@ -79,6 +76,7 @@
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/AudioLog.hpp>
 #include <mitiru/module/ModuleApi.hpp>
+#include <mitiru/module/ModuleReflection.hpp>
 #include <mitiru/platform/WindowFactory.hpp>
 #include <mitiru/ecs/MitiruWorld.hpp>
 #include <mitiru/scene/MitiruScene.hpp>
@@ -86,16 +84,16 @@
 #include <mitiru/platform/IWindow.hpp>
 #include <mitiru/platform/headless/HeadlessPlatform.hpp>
 
-// 前方宣言 -- raw/shared pointer で保持し、Engine からは method を呼ばない
+// 前方宣言。raw/shared pointer で保持し、Engine からは method を呼ばない
 namespace mitiru::validate { class TemporalInvariantChecker; }
 namespace mitiru::observe { class CausalChain; }
-// ModuleHost は pimpl 方式: 完全型は mitiru/module/ModuleHost.hpp に置く
-// (<windows.h> を引き込む)。WIN32 macro 汚染を実際の host code
-// (Engine_Module.hpp + tests) のみに限定するため Engine.hpp consumer からは隠す。
+// ModuleHost は pimpl 方式で、完全型は mitiru/module/ModuleHost.hpp に置く
+// (<windows.h> を引き込む)。WIN32 macro による汚染を実際の host code
+// (Engine_Module.hpp + tests) だけに留めるため、Engine.hpp の consumer からは隠す。
 namespace mitiru::module { class ModuleHost; }
-// StateStore は mitiru/cef/StateStore.hpp に置く (nlohmann/json を引き込む)。
-// module-mode で Engine が 1 個所有する。pimpl で Engine.hpp を軽く保つ。
-namespace mitiru::cef { class StateStore; }
+// StateStore は mitiru/bridge/StateStore.hpp に置く (nlohmann/json を引き込む)。
+// module-mode で Engine が 1 個所有する。前方宣言で Engine.hpp を軽く保つ。
+namespace mitiru::bridge { class StateStore; }
 // IAudioEngine は applyVolumes() で setVolume() を呼ぶため完全型が必要
 #include <mitiru/audio/AudioEngine.hpp>
 // SoundIntentRouter は member (m_soundIntentRouter) として保持するため完全型が必要
@@ -104,6 +102,7 @@ namespace mitiru::cef { class StateStore; }
 #include <mitiru/module/VisualIntentFx.hpp>
 // ErrorBanner は member (m_errorBanner) として保持するため完全型が必要
 #include <mitiru/debug/ErrorBanner.hpp>
+#include <mitiru/module/ModuleFaultGuard.hpp>
 namespace mitiru::render { class PostProcessManager; }
 
 #include <mitiru/server/EngineHttpServer.hpp>
@@ -115,13 +114,8 @@ namespace mitiru::render { class PostProcessManager; }
 #include <mitiru/render/PostProcessIntegration.hpp>
 #endif
 
-#if defined(_WIN32) && defined(MITIRU_HAS_CEF)
-#include <mitiru/cef/MitiruCefContext.hpp>
-using CefContext = mitiru::cef::MitiruCefContext;
-#else
-#include <mitiru/cef/NullCefContext.hpp>
-using CefContext = mitiru::cef::NullCefContext;
-#endif
+// main window の UI (RmlUi)。RmlUi の型を出さない窓口だけを読む
+#include <mitiru/ui_rml/RmlUiHost.hpp>
 
 #ifdef MITIRU_HAS_OPENGL
 #include <mitiru/platform/sdl2/Sdl2Window.hpp>
@@ -152,21 +146,18 @@ struct IFrameListener
 	virtual ~IFrameListener() = default;
 };
 
-/// @brief Mitiruエンジン本体
+/// @brief Mitiru エンジン本体
 /// @details ゲームループの実行・フレーム制御・スクリーンショット等を提供する。
-///          メソッド本体は include/mitiru/core/detail/Engine_*.hpp に分割されている
-///          (ヘッダー800行上限を遵守するため)。
+///          メソッド本体は include/mitiru/core/detail/Engine_*.hpp に分割してある
+///          (ヘッダー 800 行の上限を守るため)。
 class Engine
 {
 public:
 	/// @brief デフォルトコンストラクタ
 	Engine() = default;
 
-	/// @brief デストラクタ (CEF + HTTP サーバーシャットダウンを保証する)
+	/// @brief デストラクタ (HTTP サーバーのシャットダウンを保証する)
 	~Engine();
-
-	/// @brief CEF コンテキスト取得 (初期化前は isInitialized()==false)
-	[[nodiscard]] CefContext* cefContext() noexcept;
 
 	/// @brief エンジンを初期化しゲームループを実行する
 	/// @param game ゲームインスタンス
@@ -181,8 +172,8 @@ public:
 	                const EngineConfig& config = {});
 
 	/// @brief スクリーンショットを取得する
-	/// @return RGBA8形式のピクセルデータ
-	/// @details ソフトウェアフレームバッファが有効な場合はそちらを優先返却する。
+	/// @return RGBA8 形式のピクセルデータ
+	/// @details ソフトウェアフレームバッファが有効な場合はそちらを優先して返す。
 	[[nodiscard]] std::vector<std::uint8_t> capture() const;
 
 	/// @brief capture() が返す pixel buffer の幅 (px)
@@ -215,20 +206,20 @@ public:
 	/// @brief ウィンドウ (非所有、null もあり得る)。ドックしたツール窓が自窓を動かすのに使う。
 	[[nodiscard]] IWindow* window() noexcept { return m_window.get(); }
 
-	/// @brief GPU付きでNフレーム実行し、スクリーンショットをキャプチャする
+	/// @brief GPU 付きで N フレーム実行し、スクリーンショットをキャプチャする
 	/// @param game ゲームインスタンス
 	/// @param frameCount 実行フレーム数
-	/// @param config エンジン設定 (headless=falseでGPU使用)
+	/// @param config エンジン設定 (headless=false で GPU を使う)
 	/// @return キャプチャしたピクセルデータ (RGBA8)
 	[[nodiscard]] std::vector<std::uint8_t> runAndCapture(
 		Game& game, int frameCount, const EngineConfig& config = {});
 
-	/// @brief ECSワールドを設定する
-	/// @param world MitiruWorldへのポインタ (nullptrで解除)
+	/// @brief ECS ワールドを設定する
+	/// @param world MitiruWorld へのポインタ (nullptr で解除)
 	void setWorld(ecs::MitiruWorld* world) noexcept;
 
 	/// @brief シーンマネージャーを設定する
-	/// @param mgr MitiruSceneManagerへのポインタ (nullptrで解除)
+	/// @param mgr MitiruSceneManager へのポインタ (nullptr で解除)
 	void setSceneManager(scene::MitiruSceneManager* mgr) noexcept;
 
 	/// @brief オーディオエンジンを設定する
@@ -236,7 +227,7 @@ public:
 	void setAudioEngine(std::shared_ptr<audio::IAudioEngine> engine) noexcept;
 
 	/// @brief オーディオエンジンを取得する
-	/// @return オーディオエンジンへのポインタ (未設定ならnullptr)
+	/// @return オーディオエンジンへのポインタ (未設定なら nullptr)
 	[[nodiscard]] audio::IAudioEngine* audioEngine() noexcept;
 
 	// ── Listener フック (1-6) ────────────────────────────────────
@@ -276,7 +267,7 @@ public:
 	void addCommitListener(CommitListener fn) { m_commitListeners.push_back(std::move(fn)); }
 
 	/// @brief host 側の出来事 (asset.reload 等) を次フレームの `InputSnapshot::actionEvents` へ積む。
-	///        HUD の action と同じ道なので録画に乗り、リプレイでも同じフレームで game に届く。
+	///        HUD の action と同じ経路を通るので録画に残り、リプレイでも同じフレームで game に届く。
 	///        module 未ロード、または queue が 64 件で満杯なら false (捨てたことを呼び出し側が知れる)。
 	bool pushModuleActionEvent(const std::string& name, const std::string& payloadJson)
 	{
@@ -299,19 +290,14 @@ public:
 	}
 
 	// ── ランタイム時間制御 (debug toggle) ───────────────────────────
-	// 内部状態は EngineConfig 側に置く。host から host hotkey で叩く。
+	// 内部状態は EngineConfig 側に置く。host が host hotkey で呼ぶ。
 	void setPaused(bool p) noexcept
 	{
 		const bool changed = mutableConfig().paused != p;
 		mutableConfig().paused = p;
-		if (changed) { for (auto* l : m_frameListeners) { if (l) { l->onPauseChanged(p); } } }
+		if (changed) { notifyPauseChanged(p); }
 	}
-	void togglePaused() noexcept
-	{
-		auto& c = mutableConfig();
-		c.paused = !c.paused;
-		for (auto* l : m_frameListeners) { if (l) { l->onPauseChanged(c.paused); } }
-	}
+	void togglePaused() noexcept { setPaused(!config().paused); }
 	[[nodiscard]] bool isPaused() const noexcept { return config().paused; }
 	/// pause の種類 (EngineConfig::kPauseKind*)。paused 中の InputSnapshot::paused の値になる。
 	void setPauseKind(std::uint8_t kind) noexcept
@@ -324,17 +310,17 @@ public:
 	void setTimeScale(float s) noexcept { mutableConfig().timeScale = s; }
 	[[nodiscard]] float timeScale() const noexcept { return config().timeScale; }
 	/// ツール窓 (hud.open / RequestToolWindow) の spawn を無効化する。録画・CI・headless で
-	/// 望まないツール窓 (CEF) がメイン画面に出るのを防ぐ。state は engine 所有。
+	/// 望まないツール窓がメイン画面に出るのを防ぐ。state は engine 所有。
 	void setSuppressToolWindows(bool b) noexcept { m_suppressToolWindows = b; }
 	[[nodiscard]] bool suppressToolWindows() const noexcept { return m_suppressToolWindows; }
-	/// spawn するツール窓 (tool_cef) の初期座標を指定する。録画で観察窓を実画面に出さず
+	/// spawn するツール窓 (mitiru_tool) の初期座標を指定する。録画で観察窓を実画面に出さず
 	/// 最初から負の X 等へ出すため。既定 INT_MIN は OS 任せ (従来どおり)。
 	void setToolWindowPos(int x, int y) noexcept { m_toolWinX = x; m_toolWinY = y; }
 	/// game の wantMouseLock (FPS 視線) を OS へ適用するかどうか。自動実行
 	/// (input-script / replay / headless) では false にして実カーソルを掴まない。
 	void setAllowCursorCapture(bool b) noexcept { m_allowCursorCapture = b; }
 
-	// lo-fi post-FX (シーン毎の hi-res / lofi 切替):
+	// lo-fi post-FX (シーン毎の hi-res / lofi 切替)
 	void setLofiEnabled(bool e) noexcept { mutableConfig().loFi.enabled = e; }
 	void toggleLofi() noexcept           { auto& c = mutableConfig(); c.loFi.enabled = !c.loFi.enabled; }
 	[[nodiscard]] bool isLofiEnabled() const noexcept { return config().loFi.enabled; }
@@ -354,11 +340,11 @@ public:
 	[[nodiscard]] float seVolume()     const noexcept;
 	[[nodiscard]] float voiceVolume()  const noexcept;
 
-	/// @brief 現在の EngineConfig を参照取得 (settings UI からの読み書き用)
+	/// @brief 現在の EngineConfig を参照で取得する (settings UI からの読み書き用)
 	[[nodiscard]] const EngineConfig& config() const noexcept;
 
-	/// @brief 設定を変更可能な参照として取得 (settings UI 専用)
-	/// @details 書き込み後は saveSettings() を呼ぶか、persistSettings 有効時は
+	/// @brief 設定を変更可能な参照として取得する (settings UI 専用)
+	/// @details 書き込んだ後は saveSettings() を呼ぶか、persistSettings が有効なときに
 	///          自動保存させたいなら setMasterVolume 等の dedicated API を使うこと
 	[[nodiscard]] EngineConfig& mutableConfig() noexcept;
 
@@ -370,14 +356,14 @@ public:
 	void setCausalChain(observe::CausalChain* chain) noexcept;
 
 	/// @brief ポストプロセスマネージャーを取得する
-	/// @return PostProcessManagerへのポインタ (未初期化時・非Win32ではnullptr)
+	/// @return PostProcessManager へのポインタ (未初期化時・非 Win32 では nullptr)
 	[[nodiscard]] render::PostProcessManager* postProcess() noexcept;
 
-	/// @brief ポストプロセスマネージャーを取得する (const版)
+	/// @brief ポストプロセスマネージャーを取得する (const 版)
 	[[nodiscard]] const render::PostProcessManager* postProcess() const noexcept;
 
-	/// @brief シーン状態のJSONスナップショットを取得する
-	/// @return JSON文字列
+	/// @brief シーン状態の JSON スナップショットを取得する
+	/// @return JSON 文字列
 	[[nodiscard]] std::string snapshot() const;
 
 	/// @brief エンジン停止を要求する
@@ -399,20 +385,6 @@ public:
 	/// @return InputInjector への参照
 	[[nodiscard]] InputInjector& inputInjector() noexcept;
 
-	/// @brief 入力レコーダーへの参照を取得する (axis 4)
-	/// @details MITIRU_RECORD env var が設定されている場合、Engine::run() が
-	///          beginRecording() を自動で呼ぶ。手動 begin / end / saveToFile
-	///          したい場合はこの accessor 経由で操作する。
-	[[nodiscard]] InputRecorder& inputRecorder() noexcept;
-	[[nodiscard]] const InputRecorder& inputRecorder() const noexcept;
-
-	/// @brief 入力リプレイヤーへの参照を取得する (axis 4)
-	/// @details MITIRU_REPLAY=<path> が設定されている場合、Engine::run() が
-	///          loadFromFile + load を自動で行い、各フレームの記録済み
-	///          コマンドを injector 経由で apply する。
-	[[nodiscard]] InputReplayer& inputReplayer() noexcept;
-	[[nodiscard]] const InputReplayer& inputReplayer() const noexcept;
-
 	/// @brief 現在の入力状態を取得する
 	[[nodiscard]] const InputState& inputState() const noexcept;
 
@@ -420,15 +392,15 @@ public:
 	/// @return Screen へのポインタ (未初期化時は nullptr)
 	[[nodiscard]] const Screen* screen() const noexcept;
 
-	/// @brief HTTP APIサーバーを取得する
-	/// @return EngineHttpServerへのポインタ (未初期化時はnullptr)
+	/// @brief HTTP API サーバーを取得する
+	/// @return EngineHttpServer へのポインタ (未初期化時は nullptr)
 	[[nodiscard]] server::EngineHttpServer* httpServer() noexcept;
 
-	/// @brief HTTP APIサーバーにコマンドシステムを接続する
-	/// @param cmd CommandSystemへのポインタ
+	/// @brief HTTP API サーバーにコマンドシステムを接続する
+	/// @param cmd CommandSystem へのポインタ
 	void setCommandSystem(CommandSystem* cmd) noexcept;
 
-	/// @brief ゲームフラグを設定する (HTTP API経由で取得可能)
+	/// @brief ゲームフラグを設定する (HTTP API 経由で取得できる)
 	/// @param key フラグ名
 	/// @param value フラグ値
 	void setGameFlag(const std::string& key, const std::string& value);
@@ -438,7 +410,7 @@ public:
 	/// @return フラグ値 (存在しない場合は空文字列)
 	[[nodiscard]] std::string getGameFlag(const std::string& key) const;
 
-	/// @brief スクリーンへの非const参照を取得する (テスト・デバッグ用)
+	/// @brief スクリーンへの非 const 参照を取得する (テスト・デバッグ用)
 	/// @return Screen へのポインタ (未初期化時は nullptr)
 	[[nodiscard]] Screen* screen() noexcept;
 
@@ -488,6 +460,23 @@ public:
 	/// @brief 直近の module load / reload 失敗の理由 (人間向け 1 行)。成功時は空
 	[[nodiscard]] std::string moduleLoadError() const;
 
+	/// @brief 直前の load / reload が「DLL がまだ書き込み中 (リンク中)」で断られたか。
+	///        watch はこの間は同じ版を少し後に読み直せばよい。
+	[[nodiscard]] bool moduleLoadBusy() const;
+
+	/// @brief on_update を呼ぶ (guardModuleCallback 経由)。落ちたら false。reload 直後の猶予を 1 フレーム進める。
+	bool callModuleUpdate(const module::InputSnapshot* snap, module::FrameIntents* intents);
+
+	/// @brief on_draw_commands / on_draw を呼ぶ (guardModuleCallback 経由)。落ちたら false。
+	bool callModuleDrawCommands(const module::DrawContext* ctx, module::DrawCommandBuffer* out);
+	bool callModuleDraw(Screen* screen);
+
+	/// @brief 差し替え前へ戻す。猶予が終わっている (旧 DLL が無い) なら何もせず false。
+	bool rollbackModuleReload();
+
+	/// @brief 差し替え前の DLL をまだ持っているか (猶予中か)。
+	[[nodiscard]] bool reloadRollbackArmed() const noexcept;
+
 	/// @brief module を load してから main loop を回す統合エントリ
 	/// @param modulePath 元 DLL の path
 	/// @param configIn engine 設定
@@ -506,6 +495,48 @@ public:
 	bool runModule(const std::filesystem::path& modulePath,
 	               const EngineConfig& configIn = {});
 
+	/// @brief game の callback を 1 回呼ぶ。中で落ちたら報告を書いて false を返す。
+	/// @details 落ちた後の扱いは 2 通り。reload 直後の猶予中 (reloadRollbackArmed()) なら差し替え前の
+	///          DLL と GameMemory へ戻して続ける。それ以外は game を止め (moduleFaulted())、止まっている間は
+	///          一切呼ばずに停止の通知を出す。新しい DLL が reloadModule / loadModule に通ると解除される。
+	template <class F>
+	bool guardModuleCallback(const char* callback, F&& fn)
+	{
+		if (m_moduleFaulted) { return false; }
+		if (module::callGuarded(callback, m_moduleFault, std::forward<F>(fn))) { return true; }
+		handleModuleFault();
+		return false;
+	}
+
+	/// @brief live の callback 以外で game のコード (読み込み・解放の入口、ghost、reload の戻り先) を呼ぶ。
+	/// @details 落ちたら報告を書いて false を返すだけで、game は止めない。後始末は呼ぶ側が決める。
+	template <class F>
+	bool guardModuleCode(const char* entry, const module::ModuleHost* host, const char* action, F&& fn)
+	{
+		module::ModuleFault fault{};
+		bool ok = false;
+		try { ok = module::callGuarded(entry, fault, std::forward<F>(fn)); }
+		catch (...)
+		{
+			fault.code     = 0xE06D7363u;
+			fault.callback = entry;
+		}
+		if (!ok) { reportModuleCodeFault(fault, host, action); }
+		return ok;
+	}
+
+	/// @brief game が落ちて止まっているか
+	[[nodiscard]] bool moduleFaulted() const noexcept { return m_moduleFaulted; }
+
+	/// @brief 直近に game が落ちた時の記録 (一度も落ちていなければ code=0)
+	[[nodiscard]] const module::ModuleFault& moduleFault() const noexcept { return m_moduleFault; }
+
+	/// @brief このプロセスで game が落ちた回数。host が新しい停止を 1 回だけ扱うのに使う
+	[[nodiscard]] std::uint32_t moduleFaultCount() const noexcept { return m_moduleFaultCount; }
+
+	/// @brief 直近の停止で書いた報告ファイル (書けなかったら空)
+	[[nodiscard]] const std::filesystem::path& moduleCrashReportPath() const noexcept { return m_moduleCrashReport; }
+
 	/// @brief 現在 module が load されているか
 	[[nodiscard]] bool hasModule() const noexcept;
 
@@ -518,8 +549,8 @@ public:
 	/// @brief DLL が申告した GameMemory のバイト数 (0=未申告)
 	[[nodiscard]] std::uint32_t moduleMemorySize() const noexcept;
 
-	/// @brief rewind: ring に貯めた N フレーム前の GameMemory bytes を取得
-	/// @param offsetFromNewest 0 = 最新, 1 = 1 フレーム前, ...。範囲外は nullptr。
+	/// @brief rewind: ring に貯めた N フレーム前の GameMemory bytes を取得する
+	/// @param offsetFromNewest 0 = 最新, 1 = 1 フレーム前,...。範囲外は nullptr。
 	[[nodiscard]] const std::uint8_t* moduleMemoryRingAt(std::size_t offsetFromNewest) const noexcept;
 
 	/// @brief rewind ring が現在保持しているフレーム数
@@ -548,8 +579,8 @@ public:
 
 	/// @brief rewind: live GameMemory を過去 bytes で memcpy 上書きする
 	/// @details host が scrub command を受けて呼ぶ。size が GameMemory サイズと一致しない /
-	///          live が無い場合は false (live を壊さない)。game DLL は rewind を知らない
-	///。次フレームの on_update が復元された state を「現在」として淡々と進める。
+	///          live が無い場合は false (live を壊さない)。game DLL は rewind を知らない。
+	/// 次フレームの on_update は、復元された state を「現在」としてそのまま進める。
 	/// @return 上書きに成功したら true
 	bool rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept;
 
@@ -625,11 +656,10 @@ public:
 	/// @param frameCount 進めるフレーム数
 	[[nodiscard]] std::string branchModuleMemory(const module::InputSnapshot* inputs, int frameCount);
 
-	/// @brief module-mode で engine 所有の CEF StateStore (lazy created)
-	/// @details CEF init 後 + module load 後にのみ non-null。
-	///          DLL は直接これに触らず、`FrameIntents::statePushes` 経由で
-	///          host に push を依頼する。
-	[[nodiscard]] cef::StateStore* moduleStateStore() noexcept;
+	/// @brief module-mode で engine 所有の、hud.set の値の写し
+	/// @details module の最初のフレームから non-null。DLL は直接これに触らず、
+	///          `FrameIntents::statePushes` 経由で host に push を依頼する。
+	[[nodiscard]] bridge::StateStore* moduleStateStore() noexcept;
 
 	// ── フレームアリーナ (2-1) ────────────────────────────────────────────
 	/// @brief フレーム単位の bump アロケータ。フレーム先頭 (tickOneFrame) で reset される。
@@ -700,9 +730,19 @@ public:
 	void drawCandidateBranches(Screen& screen, float alpha = 0.35f) noexcept;
 
 private:
+	/// 一時停止中の BGM のカットオフ。止まっていることが耳で分かり、旋律はまだ聞き取れる程度。
+	static constexpr float kPausedMusicLowPassHz = 700.0f;
+
+	/// 音は GameMemory へ戻らないので、ここで BGM を変えても replay / rewind の結果は変わらない。
+	void notifyPauseChanged(bool paused) noexcept
+	{
+		for (auto* l : m_frameListeners) { if (l) { l->onPauseChanged(paused); } }
+		if (m_audioEngine) { m_audioEngine->setMusicLowPass(paused ? kPausedMusicLowPassHz : 0.0f); }
+	}
+
 	// ── Module-mode per-frame helper 群 (runModule 内の ModuleAdapter が呼ぶ) ──
 	// detail/Engine_Module.hpp で out-of-class 定義する。
-	void ensureModuleCefBindings();        ///< CEF 準備完了後に StateStore + SharedSnapshot を遅延生成
+	void ensureModuleBindings();           ///< StateStore + SharedSnapshot + action の列を遅延生成
 	void buildModuleInputSnapshot(float dt); ///< m_inputState + action queue + 実効 dt/論理解像度 から m_moduleInputSnapshot を構築 (v21)
 	void zeroModuleFrameIntents();         ///< 各 on_update 呼び出し前に m_moduleFrameIntents をクリア
 	void applyModuleRestartIntent();       ///< on_update 直後・ring 記録前に restart intent を適用 (§8-4: memset 0 → on_init)
@@ -710,50 +750,25 @@ private:
 	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を rewind ring へ push
 	void recordModuleInputFrame();         ///< on_update 後に InputSnapshot bytes を InputRing へ push
 	void applyResimInputOverride();        ///< resim 中、構築済み snapshot を記録入力で上書きする
+	void handleModuleFault();              ///< game が落ちた直後: 報告・停止表示・GameMemory を直前の記録へ戻す
+	void clearModuleFault() noexcept;      ///< 新しい DLL が入ったので停止を解く
+	void abandonGhostModule(const module::ModuleFault& fault) noexcept;  ///< ghost が落ちたら報告して ghost だけ外す
+	void dropGhostModule() noexcept;       ///< 落ちた ghost の DLL を解放処理なしで外す
+	void reportModuleCodeFault(const module::ModuleFault& fault, const module::ModuleHost* host,
+	                           const char* action) noexcept;  ///< guardModuleCode が落ちた時の報告
 
-	/// @brief 1フレーム分のゲームループを実行する
-	/// @details run()から呼ばれる。Emscriptenではemscripten_set_main_loop_argのコールバック。
+	/// @brief 1 フレーム分のゲームループを実行する
+	/// @details run() から呼ばれる。Emscripten では emscripten_set_main_loop_arg のコールバック。
 	void tickOneFrame();
+	void flushResizeDeferredFromFrameBody();
 
-	/// @brief J7: フレーム先頭で DX12 device-lost (DEVICE_HUNG/REMOVED) を確認し、
-	///        復旧試行の上限内なら device を作り直し、超えていれば恒久停止する。
-	/// @details 生存中の全 Dx12Device を横断確認する `Dx12Device::anyDeviceLost()` を使うため、
-	///          複数窓/複数デバイス構成でも「1 台だけ作り直して同じ hung を踏み直す」無限ループに
-	///          ならない。実際に持ち替えるのは `m_device` (この Engine が使う 1 台) のみで、
-	///          他インスタンスの再構築は各自の Engine が同じこの関数を呼ぶことで行われる想定。
-	///          DX12 以外のバックエンド (DX11/Vulkan/Null 等) では `m_device` が `Dx12Device` に
-	///          `dynamic_cast` できず false のまま抜けるので no-op。
-	void tickDeviceLossRecoveryPhase() noexcept
-	{
-#ifdef _WIN32
-		if (!gfx::Dx12Device::anyDeviceLost()) { return; }
-
-		auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get());
-		if (gfx::Dx12Device::recoveryAttemptsExhausted())
-		{
-			debug::warnOnce("dx12.device.recovery.halt",
-				"DX12 device-lost の復旧試行が上限 (" +
-				std::to_string(gfx::Dx12Device::kMaxDeviceLossRecoveryAttempts) +
-				" 回) に達した。以後この device は停止する");
-			if (dx12) { dx12->haltAfterRecoveryExhausted(); }
-			return;
-		}
-
-		const int attempt = gfx::Dx12Device::recordGlobalRecoveryAttempt();
-		debug::warnOnce("dx12.device.recovery.rebuild",
-			"DX12 device-lost を検知、device を作り直す (試行 " + std::to_string(attempt) + ")");
-		// 古い device を先に破棄してから作り直す (2 台同時に GPU リソースを握らせない)。
-		m_device.reset();
-		m_device = gfx::createDevice(m_config.gfxBackend, m_window.get());
-		// 注意: RenderPipeline2D/3D・SpriteCache 等の GPU 資源キャッシュは旧 device に
-		// 紐づいたままなので、この時点ではまだ有効な描画には戻らない (担当ファイル範囲外の
-		// Engine_Init_Pipeline.hpp 等が持つ再構築ロジックの呼び直しが別途要る)。
-#endif
-	}
+	/// @brief フレーム先頭で DX12 device-lost (DEVICE_HUNG/REMOVED/フェンス上限切れ) を見て、
+	///        lost なら理由を出して終了する (#77)。定義は detail/Engine_Frame.hpp。
+	void tickDeviceLossRecoveryPhase() noexcept;
 
 	/// @brief 入力ポーリングと注入入力の反映を行う
 	/// @return ループ続行可能なら true、Emscripten で main loop が cancel されたら false
-	/// @details false 戻り時は tickOneFrame() を即座に return する想定。
+	/// @details false を返したら tickOneFrame() はすぐに return する想定。
 	[[nodiscard]] bool tickInputPollPhase();
 
 	/// @brief マウス座標を Screen 論理座標にスケーリングする
@@ -772,20 +787,24 @@ private:
 	/// @details m_device 非保持時は何もしない。endFrame は本フェーズでは呼ばない。
 	void tickPresentPhase();
 
-	/// @brief CEF UI レイヤーの message loop / input 反映 / 合成を行う
-	/// @details m_cefContext.isInitialized() が false なら no-op。
-	void tickCefComposite();
+	/// @brief game に渡す InputSnapshot と同じマウスを UI (RmlUi) へ渡し、UI の操作を action 列へ積む
+	/// @details 固定ステップごとに snapshot を組んだ直後に呼ぶ。操作は次のステップの snapshot で game に届く。
+	///          --input-script や replay が上書きした snapshot を読むので、UI もその操作を受ける。
+	void feedUiInput(const module::InputSnapshot& snap);
+
+	/// @brief UI (RmlUi) の data model と時計を進め、ゲームの絵の上に重ねる。RML / RCSS の保存で読み直す
+	void tickUiComposite();
 
 	/// @brief 自律テストキャプチャと device->endFrame() を実行する
 	/// @return ループ続行可能なら true、autoTestExitAfter による早期終了なら false
-	/// @details false 戻り時は tickOneFrame() を即座に return する想定。
+	/// @details false を返したら tickOneFrame() はすぐに return する想定。
 	[[nodiscard]] bool tickAutoCaptureAndEndFrame();
 
 	/// @brief HTTP API サーバーをポーリングし、フレームレートキャップで sleep する
-	/// @param frameStart このフレーム開始時刻 (tickOneFrame 頭で取得した値)
+	/// @param frameStart このフレームの開始時刻 (tickOneFrame の先頭で取得した値)
 	void tickHttpPollAndCap(const std::chrono::steady_clock::time_point& frameStart);
 
-	/// 音量を [0,1] にクランプ
+	/// 音量を [0,1] にクランプする
 	[[nodiscard]] static float clampVol(float v) noexcept;
 
 	/// audio engine に master*bgm を流す (最も一般的な BGM 音量)
@@ -798,78 +817,60 @@ private:
 	/// @param config 設定
 	void initialize(const EngineConfig& config);
 
-	/// @brief CEF サブシステムを初期化する (DX12 バックエンド限定)
-	/// @details DX12 デバイスでなければ no-op。失敗しても UI 無しで続行する。
-	void initializeCef(const EngineConfig& config);
+	/// @brief config.uiDocument の RML 文書で main window の UI (RmlUi) を始める (DX12 のみ)
+	/// @details 失敗は stderr に 1 行出し、UI 無しで続行する。
+	void initializeRmlUi(const EngineConfig& config);
 
-	/// @brief レンダリングパイプラインを構築してScreenに接続する
+	/// @brief レンダリングパイプラインを構築して Screen に接続する
 	/// @param screenWidth スクリーン幅
 	/// @param screenHeight スクリーン高さ
-	/// @details Backend-specific dispatch is delegated to
-	///          render::createPipeline2DFor (no dynamic_cast in Engine).
+	/// @details backend ごとの振り分けは
+	///          render::createPipeline2DFor に任せる (Engine では dynamic_cast を使わない)。
 	void createRenderPipeline(int screenWidth, int screenHeight);
 
 	/// @brief ウィンドウリサイズ時のハンドラ
 	/// @param w 新しいクライアント領域幅
 	/// @param h 新しいクライアント領域高さ
-	/// @details スワップチェーンのResizeBuffers、Screenサイズ更新、
-	///          RenderPipeline再構築を行う。
+	/// @details スワップチェーンの ResizeBuffers、Screen サイズの更新、
+	///          RenderPipeline の再構築を行う。
 	void onWindowResize(int w, int h);
 
-	/// @brief TTFフォントを自動検索・読み込み・Screen接続する
+	/// @brief 書体を自動検索・読み込みし、Screen の既定の文字描画にする
 	/// @param userPath ユーザー指定パス (空の場合自動検索)
 	void initFont(const std::string& userPath);
-
-	/// @brief SDFフォントアトラスを構築する
-	void initSdfFont(std::vector<std::uint8_t> fontData);
-
-	/// @brief テキスト内の全コードポイントがSDFアトラスに含まれるか判定する
-	[[nodiscard]] bool sdfContainsAll(std::string_view text) const
-	{
-		if (!m_sdfAtlas) { return false; }
-
-		render::sdf_detail::Utf8Decoder dec(text);
-		while (dec.hasNext())
-		{
-			const std::uint32_t cp = dec.next();
-			if (cp == '\n' || cp == '\r' || cp == '\t' || cp == ' ') { continue; }
-			if (m_sdfAtlas->findGlyph(cp) == nullptr) { return false; }
-		}
-		return true;
-	}
 
 	/// @brief ビューポートをウィンドウ実サイズに同期する
 	void syncViewport();
 
-	/// @brief 3Dレンダラーを初期化する (DX11/DX12検出時)
+	/// @brief 3D レンダラーを初期化する (DX11/DX12 を検出したとき)
 	/// @param screenWidth スクリーン幅
 	/// @param screenHeight スクリーン高さ
-	/// @details Backend-specific dispatch is delegated to
-	///          render::createRenderer3DFor (no dynamic_cast in Engine).
+	/// @details backend ごとの振り分けは
+	///          render::createRenderer3DFor に任せる (Engine では dynamic_cast を使わない)。
 	void create3DRenderer(int screenWidth, int screenHeight);
 
-	/// @brief HTTP APIサーバーを初期化する
+	/// @brief HTTP API サーバーを初期化する
 	/// @param port リッスンポート番号
 	void initHttpServer(int port, Game& game);
 
-	/// @brief 自律テストモード: スクリーンショットをPNG形式でファイルに保存する
+	/// @brief 自律テストモード: スクリーンショットを PNG 形式でファイルに保存する
 	/// @param outputDir 出力先ディレクトリ
 	void saveAutoTestScreenshot(const std::string& outputDir);
 
-	/// @brief 自律テストモード: テスト結果レポートをJSONファイルに書き出す
+	/// @brief 自律テストモード: テスト結果レポートを JSON ファイルに書き出す
 	/// @param outputDir 出力先ディレクトリ
 	/// @param config エンジン設定
 	void saveAutoTestReport(const std::string& outputDir, const EngineConfig& config);
 
-	/// @brief RGBA8ピクセルデータをBMPファイルとして保存する (外部依存なし)
+	/// @brief RGBA8 ピクセルデータを BMP ファイルとして保存する (外部依存なし)
 	/// @param path ファイルパス
-	/// @param pixels RGBA8ピクセルデータ
+	/// @param pixels RGBA8 ピクセルデータ
 	/// @param w 画像幅
 	/// @param h 画像高さ
 	static void saveBmp(const std::string& path, const std::vector<std::uint8_t>& pixels,
 		int w, int h);
 
-	/// @brief RGBA8ピクセルデータをPNGファイルとして保存する (外部依存なし・非圧縮PNG)
+	/// @brief RGBA8 ピクセルデータを PNG ファイルとして保存する (外部依存なし・非圧縮 PNG)
 	static void savePng(const std::string& path, const std::vector<std::uint8_t>& pixels,
 		int w, int h);
 
@@ -897,10 +898,7 @@ private:
 	float m_dbgRawMx = 0, m_dbgRawMy = 0;
 	float m_dbgPostPollMx = 0, m_dbgPostPollMy = 0;
 	float m_dbgScaledMx = 0, m_dbgScaledMy = 0;
-	std::unique_ptr<vn::TrueTypeFont> m_ttfFont;     ///< TTFフォント (既定文字描画の供給元)
-	render::GlyphAtlasRenderer m_glyphRenderer;      ///< 既定の文字描画
-	std::unique_ptr<render::SdfFontAtlas> m_sdfAtlas; ///< SDFフォントアトラス (effect API 用)
-	render::SdfTextRenderer m_sdfRenderer;            ///< SDFテキストレンダラー (effect API 用)
+	std::unique_ptr<text::ScreenFont> m_font;        ///< 既定の文字描画 (Screen に接続済み)
 	std::unique_ptr<render::IRenderer3D> m_renderer3D;            ///< 3Dレンダラー (DX11/DX12統一)
 	std::shared_ptr<render::PostProcessManager> m_postProcess;   ///< ポストプロセスマネージャー (Win32のみ生成)
 	InputInjector m_inputInjector;                   ///< 入力インジェクター
@@ -914,10 +912,6 @@ private:
 	GamepadInput m_gamepad;                          ///< XInput ゲームパッド (module InputSnapshot へ供給, #12)
 #endif
 	input::SdlGamepadInput m_sdlGamepad;             ///< SDL_GameController (DS4/DS5 等、#32)。SDL2 無し時は no-op stub
-	InputRecorder m_inputRecorder;                   ///< 決定論的リプレイ用入力レコーダー (axis 4)
-	InputReplayer m_inputReplayer;                   ///< 決定論的リプレイ用入力再生器 (axis 4)
-	std::string m_recordOutputPath;                  ///< MITIRU_RECORD で設定: 終了時にここへ ReplayData を保存
-	bool m_replayActive = false;                     ///< MITIRU_REPLAY で設定: 入力イベントを replayer から injection
 	ecs::MitiruWorld* m_world = nullptr;             ///< ECSワールド (非所有)
 	scene::MitiruSceneManager* m_sceneManager = nullptr; ///< シーンマネージャー (非所有)
 	validate::TemporalInvariantChecker* m_temporalChecker = nullptr; ///< 時系列不変条件チェッカー (非所有)
@@ -930,23 +924,21 @@ private:
 	float m_bgmVolume    = 0.8f;
 	float m_seVolume     = 1.0f;
 	float m_voiceVolume  = 1.0f;
-	CefContext m_cefContext;                              ///< CEF 統合ファサード (Win32+DX12 のみ実体、他は no-op)
-	bool m_cefInitFailed = false;                         ///< H-20: CEF init 失敗 (stderr 通知済み、画面帯の表示条件)
+	ui_rml::RmlUiHost m_rmlUi;                            ///< main window の UI (RmlUi)。config.uiDocument がある時だけ動く
 	std::map<std::string, std::string> m_gameFlags;  ///< ゲームフラグストア (HTTP API用)
 	std::set<std::string> m_spawnedToolKeys;         ///< 既に開いたツール窓 (tool|args) — 重複 spawn 防止
 	bool                  m_suppressToolWindows = false;  ///< true = tool 窓 spawn を全無効 (録画/CI、setSuppressToolWindows)
 	bool                  m_allowCursorCapture  = true;   ///< false = wantMouseLock を無視 (自動実行)
 	int                   m_toolWinX = (-2147483647 - 1); ///< spawn する tool 窓の初期 X (INT_MIN=OS任せ)
 	int                   m_toolWinY = (-2147483647 - 1); ///< spawn する tool 窓の初期 Y
-	// HTML/CSS ホットリロード: scene.html (file:// URL) を監視し、保存で CEF を再ロード
-	std::filesystem::path           m_htmlWatchPath;          ///< 監視する scene.html (空=無効)
-	std::filesystem::file_time_type m_htmlWatchMtime{};       ///< 最終更新時刻
-	bool                            m_htmlWatchInit = false;  ///< 初回 init 済みか
-	int                             m_htmlWatchTick = 0;      ///< poll 間引き用
+	// UI のホットリロード: RmlUi の文書のフォルダの .rml / .rcss を監視する
+	std::unique_ptr<asset::FileWatcher> m_uiWatcher;       ///< 監視する UI のフォルダ (null=無効)
+	bool                                m_uiWatchInit = false;  ///< 初回 init 済みか
 	std::atomic<bool> m_shouldStop{false};            ///< 停止要求フラグ (スレッドセーフ)
 	bool m_initialized = false;                      ///< 初期化済みフラグ
 	int m_pendingResizeW = 0;                        ///< modal-loop drag 中の defer 先 (WM_EXITSIZEMOVE で flush)
 	int m_pendingResizeH = 0;
+	bool m_frameBodyActive = false;                  ///< 入力を汲んだ後から present まで。窓の tick が入れ子のフレームを始めない印 (#79)
 	int m_autoTestFrameCount = 0;                    ///< 自律テストモード用フレームカウンタ
 	bool m_autoTestCaptured = false;                 ///< 自律テスト用キャプチャ完了フラグ
 	Game* m_loopGame = nullptr;                      ///< tickOneFrame()用ゲーム参照
@@ -963,12 +955,13 @@ private:
 	// Engine.hpp の transitive include set から除外する。
 	std::unique_ptr<module::ModuleHost>   m_moduleHost;
 	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
+	module::ModuleReflection              m_moduleReflection{};     ///< GameMemory の記述 (反射の全件と形の hash)。観測・移行・セーブはこれを読む
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
 	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (0=未申告)
 	std::uint8_t                          m_pauseAlwaysLayersMask = 0; ///< game の MITIRU_PAUSE_ALWAYS_LAYERS 宣言 (2-1)。bit i = layer i は pause 中も dt を受け取る
 	std::uint8_t                          m_pauseLayersByKind[4] = {}; ///< pause の種類 (1..3) ごとの mask。MITIRU_PAUSE_LAYERS_BY_KIND が無ければ全種類 m_pauseAlwaysLayersMask
 	std::string                           m_spawnerTypesJson;       ///< game の型台帳 (MITIRU_SPAWNER_TYPES_EXPORT)。空 = 未対応。GET /api/ai/types が返す
-	std::unique_ptr<physics3d::PhysicsWorld3D> m_modulePhysics;       ///< 物理問い合わせ job (v37) が答える静的 world。EngineConfig::collisionPath から作る。無ければ nullptr
+	std::unique_ptr<physics3d::IPhysicsWorld3D> m_modulePhysics;       ///< 物理問い合わせ job (v37) が答える静的 world。EngineConfig::collisionPath から作る。無ければ nullptr
 	std::vector<module::PhysicsQuery>     m_pendingPhysicsQueries; ///< 前フレームの physicsQueries。次の InputSnapshot で答える
 	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② rewind)
 	bool                                  m_scrubHold       = false; ///< 別窓のバーで過去フレームに静止中か
@@ -990,16 +983,20 @@ private:
 	std::unique_ptr<module::InputSnapshot> m_moduleInputSnapshot;
 	std::unique_ptr<module::FrameIntents>  m_moduleFrameIntents;
 
-	// Module-mode の CEF StateStore + Inspector SharedSnapshot。DLL が host
+	// Module-mode の StateStore + Inspector SharedSnapshot。DLL が host
 	// object の pointer を一切持たないよう engine 所有とする。
-	// shared_ptr なのは CEF の load-end callback が weak 捕捉するため (H-19)。
-	std::shared_ptr<cef::StateStore>        m_moduleStateStore;
+	std::unique_ptr<bridge::StateStore>      m_moduleStateStore;
 	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
 	observe::AudioLog                        m_audioLog; ///< AI 観測用 音イベントログ (/api/ai/audio)
 	module::SoundIntentRouter                m_soundIntentRouter; ///< BGM 同 id 連打の冪等化 (直前 music を記憶)
 	module::VisualIntentFx                   m_moduleVisualFx;    ///< fade/shake/hitstop/rumble の host 側演出状態 (kind 2-7)
 	bool                                     m_rumbleSent = false; ///< 直前フレームに 0 以外の振動を送った (止めるとき 1 回だけ 0 を送るため)
 	debug::ErrorBanner                       m_errorBanner;       ///< watch のビルドエラー帯 (errorBannerFile)
+	module::ModuleFault                      m_moduleFault{};     ///< 直近に game が落ちた時の記録
+	bool                                     m_moduleFaulted = false;  ///< true の間 game を呼ばない
+	std::uint32_t                            m_moduleFaultCount = 0;
+	std::filesystem::path                    m_moduleCrashReport; ///< 直近の停止で書いた報告
+	std::vector<std::string>                 m_moduleFaultLines;  ///< 停止通知のカードに出す行
 	render::SpriteCache                      m_spriteCache;       ///< sprite(id) 用 id→Texture キャッシュ (Screen へ resolver 注入、ABI v16)
 	std::vector<sgc::Vec2f>                  m_polygonDrawScratch; ///< DrawCmd::Polygon 再生用 scratch (C2、毎フレーム vector 新規確保を回避)
 	std::uint64_t                            m_spritePollCounter = 0; ///< sprite ホットリロードの poll 間引き用フレームカウンタ
@@ -1012,6 +1009,14 @@ private:
 
 	// ── ゴーストリプレイ (10-1)。live (m_moduleHost 系) とは完全独立の 2 本目の module。
 	// hot reload / rewind ring / HTTP は付けない。
+	// ── reload 直後の戻り先 (差し替え前の DLL と GameMemory)。猶予フレームの間だけ持つ。
+	std::unique_ptr<module::ModuleHost>       m_rollbackHost;
+	module::ModuleApi                         m_rollbackApi{};
+	module::ModuleReflection                  m_rollbackReflection{};
+	std::vector<std::uint8_t>                 m_rollbackMemory;
+	std::uint32_t                             m_rollbackFramesLeft = 0;
+	void releaseReloadRollback() noexcept;
+
 	std::unique_ptr<module::ModuleHost>       m_ghostHost;
 	module::ModuleApi                         m_ghostApi{};
 	void*                                      m_ghostMemory = nullptr;
@@ -1034,7 +1039,7 @@ private:
 	// host 所有の観察 (perf / audio) を game inspectable と併記して書くためのキャッシュ。
 	// game export とは別 cadence (常時変化) なので throttle write する (ツール窓の
 	// mitiru_perf / mitiru_mixer が同じ SharedSnapshot を読む)。
-	cef::json                                m_lastInspectorOut = cef::json::object();
+	nlohmann::json                           m_lastInspectorOut = nlohmann::json::object();
 	bool                                     m_inspectorDirty = false;
 	int                                      m_toolWriteAccum = 0;
 	std::chrono::steady_clock::time_point    m_lastPerfTp{};
@@ -1043,19 +1048,13 @@ private:
 	float                                    m_lastFrameMs = 0.0f;
 	int                                      m_droppedFixedSteps = 0;   ///< 直近フレームで上限のため回せなかった固定ステップ数 (>0 = スローモーション)
 
-	// 次の on_update 向けに queue した CEF JS 由来の action event。StateStore の
-	// handler は CEF UI thread で発火するが on_update は engine main thread で
-	// 走るため mutex で保護する。
-public:
-	/// @brief HUD (CEF / ブラウザ) から届く action の受け渡しバッファ。
-	/// @details web 版は extern "C" mitiru_web_action がここへ直接積むので public。
+	// 次の on_update 向けに queue した action event (UI の操作と host の出来事)。
+	// pushModuleActionEvent は main thread 以外 (ファイル監視など) からも呼ばれるので mutex で守る。
 	struct ModuleActionEventBuffer
 	{
 		std::mutex                                  mu;
 		std::vector<std::pair<std::string, std::string>> events; // (name, payloadJson)
 	};
-
-private:
 	std::unique_ptr<ModuleActionEventBuffer> m_moduleActionEvents;
 };
 
@@ -1065,7 +1064,7 @@ private:
 // header-only mode (MITIRU_HEADER_ONLY=1) ではここで include し、Engine.hpp を
 // include する全 TU が inline 定義を得られるようにする。
 // STATIC mode (MITIRU_HEADER_ONLY 未定義) では detail header を src/core/Engine.cpp
-// 内で 1 度だけ compile する -- ここで include すると ODR 違反になる。
+// 内で 1 度だけ compile する。ここで include すると ODR 違反になる。
 #if defined(MITIRU_HEADER_ONLY)
 #include <mitiru/core/detail/Engine_Accessors.hpp>
 #include <mitiru/core/detail/Engine_Audio.hpp>
@@ -1080,12 +1079,9 @@ private:
 #include <mitiru/core/detail/Engine_Http.hpp>
 #include <mitiru/core/detail/Engine_Run.hpp>
 #include <mitiru/core/detail/Engine_Frame.hpp>
-// CEF detail は無条件に include する。method 本体が自前の
-// #if defined(_WIN32) && defined(MITIRU_HAS_CEF) guard を持つ (上の Engine.hpp
-// 既存 CefContext typedef guard と一致) ため、全 platform で安全に compile される。
-#include <mitiru/core/detail/Engine_Cef.hpp>
+#include <mitiru/core/detail/Engine_RmlUi.hpp>
 // Module loader detail (loadModule / unloadModule / reloadModule / runModule)。
 // Windows では <windows.h> を持ち込む ModuleHost.hpp を引き込むため、macro 汚染を
-// この include の transitive set に閉じ込めるべく最後に置く。
+// この include の transitive set に閉じ込めるよう最後に置く。
 #include <mitiru/core/detail/Engine_Module.hpp>
 #endif // MITIRU_HEADER_ONLY

@@ -2,8 +2,8 @@
 
 /// @file AutoScreenshot.hpp
 /// @brief 自動スクリーンショット検証。フレーム描画後にバックバッファをキャプチャして分析
-/// @details Engine.capture()を使ってDX11/DX12両対応。
-///          ピクセル分析、BMP保存、描画異常検出を提供。
+/// @details Engine.capture()を使って DX11/DX12 両対応。
+///          ピクセル分析、BMP 保存、描画異常検出を提供。
 
 #include <algorithm>
 #include <cstdint>
@@ -39,7 +39,7 @@ struct ScreenshotAnalysis
 	std::string issues;
 
 	/// @brief ピクセルデータを分析する
-	/// @param pixels RGBA8形式のピクセルデータ
+	/// @param pixels RGBA8 形式のピクセルデータ
 	/// @param w 画像幅
 	/// @param h 画像高さ
 	void analyze(const std::vector<uint8_t>& pixels, int w, int h)
@@ -105,18 +105,18 @@ struct ScreenshotAnalysis
 	}
 
 	/// @brief 描画が正常かどうかを判定する
-	/// @return 重大な問題がなければtrue
+	/// @return 重大な問題がなければ true
 	[[nodiscard]] bool isHealthy() const noexcept
 	{
 		return valid && nonBlackPercent >= 5.0f && uniqueColors >= 5;
 	}
 
-	/// @brief RGBA8ピクセルデータをBMPファイルに保存する
+	/// @brief RGBA8 ピクセルデータを BMP ファイルに保存する
 	/// @param path 出力ファイルパス
-	/// @param pixels RGBA8形式のピクセルデータ
+	/// @param pixels RGBA8 形式のピクセルデータ
 	/// @param w 画像幅
 	/// @param h 画像高さ
-	/// @return 保存に成功した場合true
+	/// @return 保存に成功した場合 true
 	static bool saveBMP(const char* path,
 		const std::vector<uint8_t>& pixels, int w, int h)
 	{
@@ -167,7 +167,7 @@ struct ScreenshotAnalysis
 	}
 };
 
-/// @brief 自動スクリーンショットキャプチャ。Engineと連携してフレームをキャプチャ・分析・保存
+/// @brief 自動スクリーンショットキャプチャ。Engine と連携してフレームをキャプチャ・分析・保存
 /// @details 使用例:
 /// @code
 /// mitiru::Engine engine;
@@ -197,7 +197,7 @@ public:
 	void setAutoSave(bool enabled) { m_autoSave = enabled; }
 
 	/// @brief ピクセルデータをキャプチャして分析する
-	/// @param pixels RGBA8形式のピクセルデータ
+	/// @param pixels RGBA8 形式のピクセルデータ
 	/// @param w 画像幅
 	/// @param h 画像高さ
 	/// @return キャプチャ結果
@@ -225,12 +225,12 @@ public:
 		return result;
 	}
 
-	/// @brief Nフレーム連続でキャプチャ・分析し、全て正常かチェックする
+	/// @brief N フレーム連続でキャプチャ・分析し、全て正常かチェックする
 	/// @param captureFunc キャプチャ関数（各フレームで呼び出される）
 	/// @param w 画像幅
 	/// @param h 画像高さ
 	/// @param frameCount チェックするフレーム数
-	/// @return 全フレーム正常ならtrue
+	/// @return 全フレーム正常なら true
 	bool validateFrames(
 		std::function<std::vector<uint8_t>()> captureFunc,
 		int w, int h, int frameCount = 3)

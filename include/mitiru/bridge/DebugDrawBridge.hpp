@@ -2,7 +2,7 @@
 
 /// @file DebugDrawBridge.hpp
 /// @brief sgc デバッグ描画統合ブリッジ
-/// @details sgcのDebugDrawシステムをMitiruエンジンに統合する。
+/// @details sgc の DebugDraw システムを Mitiru エンジンに統合する。
 ///          デバッグ用のプリミティブ描画キューをラップする。
 
 #include <cstddef>
@@ -16,7 +16,7 @@ namespace mitiru::bridge
 
 /// @brief sgc デバッグ描画統合ブリッジ
 /// @details デバッグ用の矩形・円・線・矢印・パスの描画を管理する。
-///          flush()でIRendererに一括描画する。
+///          flush() で IRenderer に一括描画する。
 ///
 /// @code
 /// mitiru::bridge::DebugDrawBridge debug;
@@ -71,7 +71,7 @@ public:
 		m_debugDraw.drawPath(points, color);
 	}
 
-	/// @brief キュー内の全コマンドをIRendererに描画し、キューをクリアする
+	/// @brief キュー内の全コマンドを IRenderer に描画し、キューをクリアする
 	/// @param renderer 描画先レンダラー
 	void flush(sgc::IRenderer& renderer)
 	{
@@ -79,14 +79,14 @@ public:
 	}
 
 	/// @brief 描画の有効/無効を切り替える
-	/// @param enabled trueで有効化
+	/// @param enabled true で有効化
 	void setEnabled(bool enabled)
 	{
 		m_debugDraw.setEnabled(enabled);
 	}
 
 	/// @brief 描画が有効かどうかを取得する
-	/// @return 有効ならtrue
+	/// @return 有効なら true
 	[[nodiscard]] bool isEnabled() const noexcept
 	{
 		return m_debugDraw.isEnabled();
@@ -101,8 +101,8 @@ public:
 
 	// ── シリアライズ ──────────────────────────────────────────
 
-	/// @brief デバッグ描画状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief デバッグ描画状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;

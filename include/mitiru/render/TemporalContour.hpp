@@ -54,7 +54,7 @@ struct TemporalContourParams
 	float floorMotionFalloff = 0.0f;
 	/// @brief raw 近傍 gate 付き床（#10、option c）。true で有効。
 	/// @details 現フレームの raw 輪郭が近傍（3x3）に全く立っていない画素には床を適用しない。
-	///          ＝完全に動き去った線の floor 維持（trailing halo）を構造的に断つ。velocity 減衰
+	///          ＝完全に動き去った線の floor 維持（trailing halo）を構造的になくす。velocity 減衰
 	///          （#9）が線幅 jitter を 2% しか緩和できなかったのに対し、消えた線の halo を直接除去する。
 	bool floorRawGate = false;
 	/// @brief raw gate のしきい値。近傍 raw の最大がこれ未満なら床を適用しない。
@@ -177,7 +177,7 @@ private:
 // （実モデル比較で「無対策が一番綺麗 / EMA はぼやける」の主因）。dropout-fill は raw を一切
 // ぼかさず、**瞬間的な欠落（フレーム間のチラつき）だけ**を履歴で補填する代替演算子。
 //
-// 棲み分け:
+// 棲み分けは次のとおり。
 //   - 色など密で平滑が欲しい信号 → EMA (`stabilize`)。
 //   - 線など疎な knife-edge 信号 → dropout-fill（こちら）。S6 で accuracy（ぼけ）が EMA 比 −70%。
 

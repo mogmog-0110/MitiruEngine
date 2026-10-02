@@ -3,13 +3,12 @@
 /// @file PodQueue.hpp
 /// @brief POD 固定長メッセージキュー `MsgQueue<Msg,N>`。
 /// `core::EventBus` (`publish` / `publishDeferred`) は型ごとの放送で宛先を持たない
-/// (`hedgehog_study/mitiru_vs_he2.md` 1-4)。GameMemory の 1 フィールドとして持てる「宛先付き
-/// メッセージ」の書き方を提示する。中身は `FixedVec` と同じ固定長配列で、巻き戻し互換
-/// (flat POD) を壊さない。push した側と drain する側でフレームがずれても壊れないよう、
-/// drain は今溜まっている分を全部消費して空にするところまでしか保証しない。
-///
+/// (`hedgehog_study/mitiru_vs_he2.md` 1-4)。ここでは GameMemory の 1 フィールドとして持てる「宛先付き
+/// メッセージ」の書き方を示す。中身は `FixedVec` と同じ固定長配列なので、巻き戻し互換
+/// (flat POD) は保たれる。push した側と drain する側でフレームがずれてもおかしくならないよう、
+/// drain が保証するのは、今溜まっている分を全部消費して空にするところまでに限る。
 /// `pushDeferred` (Godot の `CONNECT_DEFERRED` 相当) は残り待ちフレーム数 (`deferWords`) を GameMemory 側に
-/// 持たせることで「次フレームへ持ち越し中」が巻き戻し・録画にそのまま乗る。
+/// 持たせるので、「次フレームへ持ち越し中」の状態がそのまま巻き戻し・録画の対象になる。
 /// `CONNECT_ONE_SHOT` 相当は型を増やさず、drain 側が最初の 1 件で `break` する運用で書ける。
 
 #include <cstddef>
@@ -37,8 +36,8 @@ struct MsgQueue
 
 	Msg           items[N]{};
 	// 要素 i の残り待ちフレーム数 (0 = 今フレーム drain 対象 / n>0 なら n フレーム待つ、CONNECT_DEFERRED)。
-	// 1 byte ずつ並べると count の前に暗黙の padding が入り、未初期化 byte が録画の bit-exact 比較を
-	// 壊すので 4 個ずつ 32bit 語に詰める (reflection の消費も N ではなく N/4 個で済む)。
+	// 1 byte ずつ並べると count の前に暗黙の padding が入り、その未初期化 byte のせいで録画の bit-exact 比較が
+	// 合わなくなる。そのため 4 個ずつ 32bit 語に詰める (reflection の消費も N ではなく N/4 個で済む)。
 	std::uint32_t deferWords[(N + 3) / 4]{};
 	std::uint32_t count = 0;
 
@@ -46,7 +45,7 @@ struct MsgQueue
 	[[nodiscard]] constexpr bool        empty() const noexcept { return count == 0; }
 	[[nodiscard]] constexpr bool        full() const noexcept { return count >= N; }
 
-	/// @brief 末尾に積む。容量超過時は黙って捨てず false を返す (戻り値を見て分岐させるため
+	/// @brief 末尾に積む。容量を超えたときは何も知らせずに捨てることはせず、false を返す (戻り値を見て分岐させるため
 	/// 戻り値に [[nodiscard]] を付けている)。
 	[[nodiscard]] constexpr bool push(const Msg& m) noexcept
 	{
@@ -69,8 +68,8 @@ struct MsgQueue
 	}
 
 	/// @brief `deferFrames == 0` の分だけ宣言順に `fn(const Msg&)` へ渡して取り除く。
-	/// まだ待ち時間が残るメッセージは配列に残したまま待ち時間を 1 減らし、次回 drain へ回す
-	/// (宣言順は保たれる)。全件が今フレーム対象なら従来どおりキューは空になる。
+	/// まだ待ち時間が残るメッセージは配列に残したまま待ち時間を 1 減らし、次回の drain に回す
+	/// (宣言順は保たれる)。全件が今フレーム対象なら、従来どおりキューは空になる。
 	template <class Fn>
 	void drain(Fn&& fn)
 	{
@@ -91,9 +90,9 @@ struct MsgQueue
 	}
 
 	/// @brief `Msg::layer` (0..7) を持つ型だけの版。`layerMask` の bit i が立った layer 宛てだけ `fn` へ渡し、
-	/// 残りは待ちフレームを減らさずに持ち越す (HE2 の GameObjectLayer::messageMask 相当)。止めた layer
-	/// (object ポーズ、`dtByLayer[i] == 0`) 宛ての当たり判定などが、再開した瞬間に古い分まで処理されない。
-	/// 持ち越しが溜まると容量を圧迫し `push` が false を返すので、止めている間は積む側も抑える。
+	/// 残りは待ちフレームを減らさずに持ち越す (HE2 の GameObjectLayer::messageMask 相当)。こうすると、止めた layer
+	/// (object ポーズ、`dtByLayer[i] == 0`) 宛ての当たり判定などが、再開した瞬間に古い分まで処理されることがない。
+	/// 持ち越しが溜まると容量が減って `push` が false を返すので、止めている間は積む側も抑える。
 	template <class Fn>
 	void drain(Fn&& fn, std::uint8_t layerMask)
 	{

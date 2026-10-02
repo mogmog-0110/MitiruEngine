@@ -30,10 +30,10 @@
 namespace mitiru::module
 {
 
-/// @brief 配置データの出自 (★1-1)。`spawnFromJson` の時点で GameMemory 側の POD に残すことで、
+/// @brief 配置データの出自 (★1-1)。`spawnFromJson` の時点で GameMemory 側の POD に残しておくと、
 /// commit (ADR 0035「残す」) がどの配置ファイルの何番目に書き戻せばよいかを機械的に決められる
 /// (HE2 の `ObjectData::id` / `WorldObjectStatus::objectData` 相当)。flat POD なので GameMemory
-/// に直接置け、巻き戻し・録画にそのまま乗る。
+/// に直接置けて、巻き戻し・録画の対象にそのまま含まれる。
 struct SpawnOrigin
 {
 	std::uint64_t objectId    = 0;  ///< JSON の "id" (文字列なら FNV-1a、数値ならその値)。無指定は 0
@@ -295,7 +295,7 @@ inline bool writeFieldsFromJson(
 	return ok;
 }
 
-/// @brief `writeFieldsFromJson` の逆方向 (ADR 0035「残す」の書き戻し): FieldDescriptor 表に従い
+/// @brief `writeFieldsFromJson` の逆方向 (ADR 0035「残す」の書き戻し)。FieldDescriptor 表に従い
 /// bytes から現在値を読み、`out` の同じ dotted 名へ書く。JSON 側の既存の他キーは温存する
 /// (struct に無いフィールドを消さない)。vec は現在の count 分だけ配列を作り直す。
 inline void writeFieldsToJson(
@@ -367,7 +367,7 @@ inline void mergeJsonInto(nlohmann::json& target, const nlohmann::json& override
 
 /// @brief `objects[startIndex]` から `"instanceOf": "<id>"` を最大 4 段まで辿り、根 (base) から
 /// 順にマージした 1 個の JSON を返す (★1-10)。循環を検出したら `warnOnce` で 1 回だけ通知し、
-/// 継承なし (`objects[startIndex]` そのまま) として安全側に倒す。参照先の id が同じ配列に無い
+/// 安全な側を選んで継承なし (`objects[startIndex]` そのまま) として扱う。参照先の id が同じ配列に無い
 /// 場合もそこで継承を打ち切る (「壊れた prefab 参照でも配置全体を落とさない」の一貫)。
 inline nlohmann::json resolveInstanceOf(
 	const nlohmann::json& objects, const std::unordered_map<std::string, std::size_t>& idIndex,
@@ -496,7 +496,7 @@ inline void writeBackToJson(const T& obj, nlohmann::json& out)
 		static_cast<std::int32_t>(fields.size()), out);
 }
 
-/// @brief 型消去版 (host の `FieldDescriptor*` テーブル、例えば `ModuleApi::reflectFields`) から
+/// @brief 型消去版 (host の `FieldDescriptor*` テーブル、例えば `ModuleReflection::fields`) から
 /// 直接呼びたい場合の入口。`writeBackToJson<T>` と同じ処理を、既に集めた記述子配列に対して行う。
 inline void writeBackFieldsToJson(
 	const std::uint8_t* base, const FieldDescriptor* fields, std::int32_t fieldCount, nlohmann::json& out)
@@ -774,8 +774,8 @@ inline void spawnAll(const nlohmann::json& objects, Visitor&& visitor)
 		return ::mitiru::module::detail::collectSpawnerTypes(out, cap);                      \
 	}
 
-// 登録変数は型で特殊化した変数テンプレートにする。名前に Type を貼ると `ns::Type` が識別子に
-// ならず、__COUNTER__ だと TU ごとに同名の inline 変数が ODR で 1 つに畳まれて登録が落ちる。
+// 登録変数は型で特殊化した変数テンプレートにする。名前に Type を付けると `ns::Type` が識別子に
+// ならず、__COUNTER__ だと TU ごとに同名の inline 変数が ODR で 1 つにまとめられて登録が抜け落ちる。
 namespace mitiru::module::detail
 {
 template <class T> inline const bool SpawnerRegistered = false;

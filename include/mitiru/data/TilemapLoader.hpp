@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file TilemapLoader.hpp
-/// @brief タイルマップデータローダー（2Dゲーム向け）
+/// @brief タイルマップデータローダー（2D ゲーム向け）
 ///
-/// JSONベースのタイルマップ定義の読み書きを行う。
+/// JSON ベースのタイルマップ定義の読み書きを行う。
 /// レイヤー構造・タイル回転・反転に対応。
 ///
 /// @code
@@ -14,11 +14,13 @@
 /// @endcode
 
 #include <optional>
-#include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "mitiru/data/JsonBuilder.hpp"
+#include <nlohmann/json.hpp>
+
+#include "mitiru/data/JsonFields.hpp"
 
 namespace mitiru::data
 {
@@ -53,127 +55,72 @@ struct Tilemap
 };
 
 /// @brief タイルマップローダー
-///
-/// JSON形式のタイルマップデータの読み書き・編集を行う。
 class TilemapLoader
 {
 public:
-	/// @brief JSONからタイルマップを読み込む
-	/// @param json JSON文字列
-	/// @return タイルマップ（パース失敗時nullopt）
+	/// @brief JSON からタイルマップを読み込む
+	/// @param json JSON 文字列
+	/// @return タイルマップ（読めない・"name" が無いときは nullopt）
 	[[nodiscard]] std::optional<Tilemap> loadFromJson(const std::string& json) const
 	{
-		JsonReader reader;
-		if (!reader.parse(json)) return std::nullopt;
+		const auto doc = nlohmann::json::parse(json, nullptr, false);
+		const auto name = doc.is_object() ? doc.find("name") : doc.end();
+		if (!doc.is_object() || name == doc.end() || !name->is_string()) return std::nullopt;
 
 		Tilemap tilemap;
-
-		auto name = reader.getString("name");
-		if (!name.has_value()) return std::nullopt;
-		tilemap.name = *name;
-
-		auto tw = reader.getInt("tileWidth");
-		auto th = reader.getInt("tileHeight");
-		if (tw) tilemap.tileWidth = *tw;
-		if (th) tilemap.tileHeight = *th;
-
-		auto layersArr = reader.getArray("layers");
-		if (layersArr.has_value())
+		tilemap.name = name->get<std::string>();
+		tilemap.tileWidth = fieldOr(doc, "tileWidth", tilemap.tileWidth);
+		tilemap.tileHeight = fieldOr(doc, "tileHeight", tilemap.tileHeight);
+		if (const auto layers = doc.find("layers"); layers != doc.end() && layers->is_array())
 		{
-			for (const auto& rawLayer : *layersArr)
+			for (const auto& layer : *layers)
 			{
-				JsonReader layerReader;
-				if (!layerReader.parse(rawLayer)) continue;
-
-				TilemapLayer layer;
-				auto ln = layerReader.getString("name");
-				if (ln) layer.name = *ln;
-				auto lw = layerReader.getInt("width");
-				auto lh = layerReader.getInt("height");
-				if (lw) layer.width = *lw;
-				if (lh) layer.height = *lh;
-
-				auto tilesArr = layerReader.getArray("tiles");
-				if (tilesArr.has_value())
-				{
-					for (const auto& rawTile : *tilesArr)
-					{
-						JsonReader tileReader;
-						if (!tileReader.parse(rawTile)) continue;
-
-						TileData tile;
-						auto id = tileReader.getInt("tileId");
-						if (id) tile.tileId = *id;
-						auto tx = tileReader.getInt("x");
-						if (tx) tile.x = *tx;
-						auto ty = tileReader.getInt("y");
-						if (ty) tile.y = *ty;
-						auto rot = tileReader.getFloat("rotation");
-						if (rot) tile.rotation = *rot;
-						auto fx = tileReader.getBool("flipX");
-						if (fx) tile.flipX = *fx;
-						auto fy = tileReader.getBool("flipY");
-						if (fy) tile.flipY = *fy;
-
-						layer.tiles.push_back(tile);
-					}
-				}
-
-				tilemap.layers.push_back(std::move(layer));
+				if (layer.is_object()) { tilemap.layers.push_back(layerFromJson(layer)); }
 			}
 		}
-
 		return tilemap;
 	}
 
-	/// @brief タイルマップをJSON文字列に変換する
+	/// @brief タイルマップを JSON 文字列に変換する
 	/// @param tilemap タイルマップ
-	/// @return JSON文字列
+	/// @return JSON 文字列
 	[[nodiscard]] std::string saveToJson(const Tilemap& tilemap) const
 	{
-		JsonBuilder builder;
-		builder.beginObject();
-		builder.key("name").value(tilemap.name);
-		builder.key("tileWidth").value(tilemap.tileWidth);
-		builder.key("tileHeight").value(tilemap.tileHeight);
-		builder.key("layers");
-		builder.beginArray();
-
+		nlohmann::ordered_json layers = nlohmann::ordered_json::array();
 		for (const auto& layer : tilemap.layers)
 		{
-			builder.beginObject();
-			builder.key("name").value(layer.name);
-			builder.key("width").value(layer.width);
-			builder.key("height").value(layer.height);
-			builder.key("tiles");
-			builder.beginArray();
-
+			nlohmann::ordered_json tiles = nlohmann::ordered_json::array();
 			for (const auto& tile : layer.tiles)
 			{
-				builder.beginObject();
-				builder.key("tileId").value(tile.tileId);
-				builder.key("x").value(tile.x);
-				builder.key("y").value(tile.y);
-				builder.key("rotation").value(tile.rotation);
-				builder.key("flipX").value(tile.flipX);
-				builder.key("flipY").value(tile.flipY);
-				builder.endObject();
+				tiles.push_back({
+					{"tileId", tile.tileId},
+					{"x", tile.x},
+					{"y", tile.y},
+					{"rotation", jsonFloat(tile.rotation)},
+					{"flipX", tile.flipX},
+					{"flipY", tile.flipY},
+				});
 			}
-
-			builder.endArray();
-			builder.endObject();
+			layers.push_back({
+				{"name", layer.name},
+				{"width", layer.width},
+				{"height", layer.height},
+				{"tiles", std::move(tiles)},
+			});
 		}
-
-		builder.endArray();
-		builder.endObject();
-		return builder.build();
+		return nlohmann::ordered_json{
+			{"name", tilemap.name},
+			{"tileWidth", tilemap.tileWidth},
+			{"tileHeight", tilemap.tileHeight},
+			{"layers", std::move(layers)},
+		}.dump();
 	}
 
 	/// @brief レイヤー内の指定座標のタイルを取得する
 	/// @param layer タイルマップレイヤー
-	/// @param x X座標（タイル単位）
-	/// @param y Y座標（タイル単位）
-	/// @return タイルデータ（存在しない場合nullopt）
+	/// @param x X 座標（タイル単位）
+	/// @param y Y 座標（タイル単位）
+	/// @return タイルデータ（存在しない場合は nullopt）
 	[[nodiscard]] std::optional<TileData> getTile(
 		const TilemapLayer& layer, int x, int y) const
 	{
@@ -189,8 +136,8 @@ public:
 
 	/// @brief レイヤー内の指定座標にタイルを設定する
 	/// @param layer タイルマップレイヤー
-	/// @param x X座標（タイル単位）
-	/// @param y Y座標（タイル単位）
+	/// @param x X 座標（タイル単位）
+	/// @param y Y 座標（タイル単位）
 	/// @param tileData タイルデータ
 	void setTile(TilemapLayer& layer, int x, int y, const TileData& tileData)
 	{
@@ -226,7 +173,7 @@ public:
 		tilemap.tileWidth = tileW;
 		tilemap.tileHeight = tileH;
 
-		/// デフォルトレイヤーを1つ追加
+		/// デフォルトレイヤーを 1 つ追加
 		TilemapLayer defaultLayer;
 		defaultLayer.name = "default";
 		defaultLayer.width = width;
@@ -234,6 +181,31 @@ public:
 		tilemap.layers.push_back(std::move(defaultLayer));
 
 		return tilemap;
+	}
+
+private:
+	[[nodiscard]] static TilemapLayer layerFromJson(const nlohmann::json& obj)
+	{
+		TilemapLayer layer;
+		layer.name = fieldOr(obj, "name", layer.name);
+		layer.width = fieldOr(obj, "width", layer.width);
+		layer.height = fieldOr(obj, "height", layer.height);
+		if (const auto tiles = obj.find("tiles"); tiles != obj.end() && tiles->is_array())
+		{
+			for (const auto& t : *tiles)
+			{
+				if (!t.is_object()) continue;
+				TileData tile;
+				tile.tileId = fieldOr(t, "tileId", tile.tileId);
+				tile.x = fieldOr(t, "x", tile.x);
+				tile.y = fieldOr(t, "y", tile.y);
+				tile.rotation = fieldOr(t, "rotation", tile.rotation);
+				tile.flipX = fieldOr(t, "flipX", tile.flipX);
+				tile.flipY = fieldOr(t, "flipY", tile.flipY);
+				layer.tiles.push_back(tile);
+			}
+		}
+		return layer;
 	}
 };
 

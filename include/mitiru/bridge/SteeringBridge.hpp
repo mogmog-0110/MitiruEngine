@@ -2,8 +2,8 @@
 
 /// @file SteeringBridge.hpp
 /// @brief sgc ステアリング行動統合ブリッジ
-/// @details sgcのステアリング行動（seek, flee, arrive等）とフロッキングを
-///          Mitiruエンジンに統合する。名前付きエージェントの管理を行う。
+/// @details sgc のステアリング行動（seek, flee, arrive 等）とフロッキングを
+///          Mitiru エンジンに統合する。名前付きエージェントの管理を行う。
 
 #include <cstddef>
 #include <string>
@@ -17,7 +17,7 @@ namespace mitiru::bridge
 {
 
 /// @brief sgc ステアリング行動統合ブリッジ
-/// @details 名前付きステアリングエージェントを管理し、各種操舵行動を適用する。
+/// @details 名前付きのステアリングエージェントを管理し、各種操舵行動を適用する。
 ///
 /// @code
 /// mitiru::bridge::SteeringBridge steering;
@@ -144,7 +144,7 @@ public:
 
 	/// @brief エージェントの状態を取得する
 	/// @param name エージェント名
-	/// @return エージェントへのポインタ（未登録時はnullptr）
+	/// @return エージェントへのポインタ（未登録時は nullptr）
 	[[nodiscard]] const Agent* getAgent(const std::string& name) const
 	{
 		const auto it = m_agents.find(name);
@@ -164,8 +164,8 @@ public:
 
 	// ── シリアライズ ──────────────────────────────────────────
 
-	/// @brief ステアリング状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief ステアリング状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;

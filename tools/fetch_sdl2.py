@@ -2,7 +2,7 @@
 """fetch_sdl2.py - SDL2 (VC devel) を external/sdl2/ へ取得する。
 
 SDL2 は DualShock 4 等の DirectInput 系ゲームパッド対応に必須
-(XInput だけでは箱コン系しか動かない)。CEF と同じ on-demand 方式:
+(XInput だけでは箱コン系しか動かない)。fetch_dxc.py などと同じ on-demand 方式:
 リポジトリには同梱せず、このスクリプトで一度だけ取得する。
 
 エンジンの CMake は external/sdl2/SDL2-*/cmake を自動検出するので、

@@ -4,8 +4,8 @@
 /// @brief ネットワークメッセージプロトコル
 /// @details メッセージ型定義、シリアライズ/デシリアライズ、
 ///          信頼性レベルの指定をサポートする高レベルメッセージ層。
-///          NetworkTypesの低レベルNetworkMessageと区別するため、
-///          GameMessageとして定義する。
+///          NetworkTypes の低レベル NetworkMessage と区別するため、
+///          GameMessage として定義する。
 ///
 /// @code
 /// using namespace mitiru::network;
@@ -233,12 +233,12 @@ private:
 	}
 };
 
-/// @brief GameMessage用のファクトリヘルパー群
+/// @brief GameMessage 用のファクトリヘルパー群
 namespace MessageFactory
 {
 
 /// @brief ハートビートメッセージを生成する
-/// @param senderId 送信者ID
+/// @param senderId 送信者 ID
 /// @return ハートビートメッセージ
 [[nodiscard]] inline GameMessage heartbeat(ConnectionId senderId)
 {
@@ -264,7 +264,7 @@ namespace MessageFactory
 }
 
 /// @brief 切断通知メッセージを生成する
-/// @param senderId 送信者ID
+/// @param senderId 送信者 ID
 /// @param reason 切断理由
 /// @return 切断通知メッセージ
 [[nodiscard]] inline GameMessage disconnectNotice(
@@ -283,7 +283,7 @@ namespace MessageFactory
 }
 
 /// @brief ゲーム状態メッセージを生成する
-/// @param senderId 送信者ID
+/// @param senderId 送信者 ID
 /// @param stateJson 状態データ
 /// @return ゲーム状態メッセージ
 [[nodiscard]] inline GameMessage gameState(
@@ -299,7 +299,7 @@ namespace MessageFactory
 }
 
 /// @brief 入力メッセージを生成する
-/// @param senderId 送信者ID
+/// @param senderId 送信者 ID
 /// @param inputJson 入力データ
 /// @return 入力メッセージ
 [[nodiscard]] inline GameMessage input(

@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file MeshCache.hpp
-/// @brief OBJバイナリキャッシュ付きメッシュローダー
-/// @details OBJファイルを初回パース後に.mbin形式で保存し、
+/// @brief OBJ バイナリキャッシュ付きメッシュローダー
+/// @details OBJ ファイルを初回パース後に .mbin 形式で保存し、
 ///          次回以降は高速バイナリロードで読み込む。
 
 #include <cstring>
@@ -18,8 +18,8 @@
 namespace mitiru::render
 {
 
-/// @brief OBJバイナリキャッシュ付きメッシュローダー
-/// @details 初回: OBJをパースし.mbinとして保存。以降: .mbinから高速ロード。
+/// @brief OBJ バイナリキャッシュ付きメッシュローダー
+/// @details 初回: OBJ をパースし .mbin として保存。以降:.mbin から高速ロード。
 ///
 /// @code
 /// mitiru::render::MeshCache cache;
@@ -32,8 +32,8 @@ public:
 	MeshCache() = default;
 
 	/// @brief メッシュをロードする（キャッシュ優先）
-	/// @param objPath OBJファイルのパス
-	/// @return メッシュへのポインタ（失敗時nullptr、ライフタイムはMeshCacheに従う）
+	/// @param objPath OBJ ファイルのパス
+	/// @return メッシュへのポインタ（失敗時 nullptr、ライフタイムは MeshCache に従う）
 	[[nodiscard]] const Mesh* loadMesh(const std::string& objPath)
 	{
 		// メモリキャッシュヒット
@@ -80,7 +80,7 @@ public:
 private:
 	std::unordered_map<std::string, std::unique_ptr<Mesh>> m_cache;
 
-	/// @brief OBJパスから.mbinパスを導出する
+	/// @brief OBJ パスから .mbin パスを導出する
 	[[nodiscard]] static std::string deriveMbinPath(const std::string& objPath)
 	{
 		// .obj -> .mbin (拡張子置換)
@@ -93,7 +93,7 @@ private:
 	}
 
 	/// @brief バイナリキャッシュが有効か判定する
-	/// @details .mbinが存在し、かつ.objより新しい場合にtrue
+	/// @details.mbin が存在し、かつ .obj より新しい場合に true
 	[[nodiscard]] static bool isBinaryCacheValid(const std::string& objPath,
 	                                              const std::string& mbinPath)
 	{
@@ -114,7 +114,7 @@ private:
 		return mbinTime >= objTime;
 	}
 
-	/// @brief OBJファイルからメッシュをロードする
+	/// @brief OBJ ファイルからメッシュをロードする
 	[[nodiscard]] static std::unique_ptr<Mesh> loadFromObj(const std::string& objPath)
 	{
 		auto opt = loadObjWithMaterials(objPath);
@@ -170,10 +170,10 @@ private:
 		BinaryReader reader(mbinPath);
 		if (!reader.isOpen()) return nullptr;
 
-		// Chunk ID確認
+		// Chunk ID 確認
 		char chunk[4] = {};
-		// BinaryReaderはMBINヘッダを既に消費済み。次の4バイトがチャンクID。
-		// readU32を2回使ってchunkを読む（4バイト一括）
+		// BinaryReader は MBIN ヘッダを既に消費済み。次の 4 バイトがチャンク ID。
+		// readU32 を 2 回使って chunk を読む（4 バイト一括）
 		uint32_t chunkId = reader.readU32();
 		std::memcpy(chunk, &chunkId, 4);
 		if (std::memcmp(chunk, "MESH", 4) != 0)

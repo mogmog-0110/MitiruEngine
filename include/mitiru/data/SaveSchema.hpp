@@ -3,16 +3,16 @@
 /// @file SaveSchema.hpp
 /// @brief typed な save-data schema holder: versioning と migration を 1 箇所に。
 ///
-/// **目的。** `mitiru::cef::SaveStore` を通る各 save-data type は「この struct は
+/// **目的。** JSON で保存する各 save-data type は「この struct は
 /// 何 version で、古いものをどう読むか?」に一貫した答えを必要とする。
 /// `SaveSchema<T>` は current-version のスタンプと `MigrationChain<T>` を組み合わせ、
 /// コンパクトな serialize/deserialize 面を公開するので、consumer が
 /// `nlohmann::json` の構築を手書きする必要がない。
 ///
-/// **Opt-in。** 基になる struct は nlohmann に以下で register されている必要がある:
+/// **Opt-in。** 基になる struct は nlohmann に以下で register されている必要がある。
 /// @code
-/// NLOHMANN_DEFINE_TYPE_INTRUSIVE(MyStruct, field1, field2, ...)
-/// // or NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE for types you cannot modify
+/// NLOHMANN_DEFINE_TYPE_INTRUSIVE(MyStruct, field1, field2,...)
+/// // 変更できない型には NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE を使う
 /// @endcode
 ///
 /// **典型的な使い方**
@@ -20,18 +20,18 @@
 /// struct PlayerSave { int level = 1; std::string name; };
 /// NLOHMANN_DEFINE_TYPE_INTRUSIVE(PlayerSave, level, name)
 ///
-/// // Build the schema once (e.g. as a static or member variable):
+/// // schema は 1 回だけ組み立てる (static 変数やメンバ変数など)
 /// mitiru::data::SaveSchema<PlayerSave> schema(/*currentVersion=*/2);
 /// schema.migrations().addStep(1, 2, [](mitiru::data::Json data) {
-///     data["name"] = "unnamed";   // v1 blobs had no name field
+///     data["name"] = "unnamed"; // v1 の blob には name field が無かった
 ///     return data;
 /// });
 ///
-/// // Serialize for writing to SaveStore:
-/// PlayerSave save{ .level = 5, .name = "Alice" };
+/// // SaveStore へ書き込むために serialize する
+/// PlayerSave save{.level = 5,.name = "Alice" };
 /// std::string blob = schema.toJsonString(save);
 ///
-/// // Deserialize raw blob from SaveStore (handles legacy versions):
+/// // SaveStore の生の blob を deserialize する (旧 version も扱う)
 /// auto result = schema.fromJsonString(blob);
 /// if (result.ok()) {
 ///     const PlayerSave& restored = *result.value;

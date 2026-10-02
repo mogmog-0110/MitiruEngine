@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file SvgBuilder.hpp
-/// @brief プログラム的なSVG生成ビルダー
-/// @details メソッドチェーンで基本図形・グラデーション・フィルター等を
-///          組み立てて、有効なSVG 1.1 XML文字列を出力する。
+/// @brief プログラムで SVG を生成するビルダー
+/// @details メソッドチェーンで基本図形、グラデーション、フィルターなどを
+///          組み立て、有効な SVG 1.1 XML 文字列を出力する。
 
 #include <sstream>
 #include <string>
@@ -12,9 +12,9 @@
 namespace mitiru::asset
 {
 
-/// @brief SVGをプログラム的に構築するビルダークラス
+/// @brief SVG をプログラムで構築するビルダークラス
 /// @details 基本図形、テキスト、パス、グラデーション、フィルターを
-///          メソッドチェーンで追加し、build()で完全なSVG XML文字列を得る。
+///          メソッドチェーンで追加し、build() で完全な SVG XML 文字列を得る。
 ///
 /// @code
 /// auto svg = SvgBuilder(200, 100)
@@ -27,8 +27,8 @@ class SvgBuilder
 {
 public:
 	/// @brief コンストラクタ
-	/// @param width SVGの幅（ピクセル）
-	/// @param height SVGの高さ（ピクセル）
+	/// @param width SVG の幅（ピクセル）
+	/// @param height SVG の高さ（ピクセル）
 	SvgBuilder(int width, int height)
 		: m_width(width)
 		, m_height(height)
@@ -38,11 +38,11 @@ public:
 	// ========== 基本図形 ==========
 
 	/// @brief 矩形を追加する
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @param w 幅
 	/// @param h 高さ
-	/// @param fill 塗りつぶし色（CSS色値またはurl(#id)）
+	/// @param fill 塗りつぶし色（CSS 色値または url(#id)）
 	/// @param rx 角丸の半径（デフォルト: 0）
 	/// @return 自身の参照（メソッドチェーン用）
 	SvgBuilder& rect(float x, float y, float w, float h, const std::string& fill, float rx = 0)
@@ -61,8 +61,8 @@ public:
 	}
 
 	/// @brief 矩形を追加する（ストローク付き）
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @param w 幅
 	/// @param h 高さ
 	/// @param fill 塗りつぶし色
@@ -90,8 +90,8 @@ public:
 	}
 
 	/// @brief 円を追加する
-	/// @param cx 中心X座標
-	/// @param cy 中心Y座標
+	/// @param cx 中心 X 座標
+	/// @param cy 中心 Y 座標
 	/// @param r 半径
 	/// @param fill 塗りつぶし色
 	/// @return 自身の参照
@@ -105,10 +105,10 @@ public:
 	}
 
 	/// @brief 線を追加する
-	/// @param x1 始点X
-	/// @param y1 始点Y
-	/// @param x2 終点X
-	/// @param y2 終点Y
+	/// @param x1 始点 X
+	/// @param y1 始点 Y
+	/// @param x2 終点 X
+	/// @param y2 終点 Y
 	/// @param stroke ストローク色
 	/// @param strokeWidth ストローク幅（デフォルト: 1）
 	/// @return 自身の参照
@@ -125,8 +125,8 @@ public:
 	}
 
 	/// @brief テキストを追加する
-	/// @param x X座標
-	/// @param y Y座標
+	/// @param x X 座標
+	/// @param y Y 座標
 	/// @param content テキスト内容
 	/// @param fontSize フォントサイズ
 	/// @param fill 文字色（デフォルト: "white"）
@@ -147,7 +147,7 @@ public:
 		return *this;
 	}
 
-	/// @brief SVGパスを追加する
+	/// @brief SVG パスを追加する
 	/// @param d パスデータ文字列
 	/// @param fill 塗りつぶし色
 	/// @param stroke ストローク色（デフォルト: "none"）
@@ -165,7 +165,7 @@ public:
 	// ========== グループ ==========
 
 	/// @brief グループ開始タグを追加する
-	/// @param transform SVG transform属性（デフォルト: ""）
+	/// @param transform SVG の transform 属性（デフォルト: ""）
 	/// @return 自身の参照
 	SvgBuilder& beginGroup(const std::string& transform = "")
 	{
@@ -190,8 +190,8 @@ public:
 
 	// ========== フィルタータグ付き要素 ==========
 
-	/// @brief 要素にフィルター属性を適用する（次に追加する要素用にフィルターIDを記録）
-	/// @param filterId フィルターID
+	/// @brief 要素にフィルター属性を適用する（次に追加する要素用にフィルター ID を記録）
+	/// @param filterId フィルター ID
 	/// @return 自身の参照
 	SvgBuilder& applyFilter(const std::string& filterId)
 	{
@@ -199,10 +199,10 @@ public:
 		return *this;
 	}
 
-	// ========== スタイル（defs内） ==========
+	// ========== スタイル（defs 内） ==========
 
 	/// @brief 線形グラデーションを定義する
-	/// @param id グラデーションID
+	/// @param id グラデーション ID
 	/// @param color1 開始色
 	/// @param color2 終了色
 	/// @param vertical 垂直方向かどうか（デフォルト: false = 水平）
@@ -230,9 +230,9 @@ public:
 	}
 
 	/// @brief ドロップシャドウフィルターを定義する
-	/// @param filterId フィルターID
-	/// @param dx X方向のオフセット（デフォルト: 2）
-	/// @param dy Y方向のオフセット（デフォルト: 2）
+	/// @param filterId フィルター ID
+	/// @param dx X 方向のオフセット（デフォルト: 2）
+	/// @param dy Y 方向のオフセット（デフォルト: 2）
 	/// @param blur ぼかし量（デフォルト: 4）
 	/// @return 自身の参照
 	SvgBuilder& shadow(const std::string& filterId, float dx = 2, float dy = 2, float blur = 4)
@@ -249,8 +249,8 @@ public:
 
 	// ========== 出力 ==========
 
-	/// @brief 完全なSVG XML文字列を構築して返す
-	/// @return SVG 1.1準拠のXML文字列
+	/// @brief 完全な SVG XML 文字列を構築して返す
+	/// @return SVG 1.1 準拠の XML 文字列
 	[[nodiscard]] std::string build() const
 	{
 		std::ostringstream ss;
@@ -287,7 +287,7 @@ private:
 	std::vector<std::string> m_elements;		///< SVG要素群
 	std::string m_pendingFilter;				///< 次の要素に適用するフィルターID
 
-	/// @brief XML特殊文字をエスケープする
+	/// @brief XML 特殊文字をエスケープする
 	/// @param s 入力文字列
 	/// @return エスケープ済み文字列
 	[[nodiscard]] static std::string escapeXml(const std::string& s)

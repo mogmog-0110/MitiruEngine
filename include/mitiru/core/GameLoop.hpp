@@ -29,7 +29,7 @@ struct GameLoopConfig
 /// @param config ゲームループ設定
 /// @param updateFn 固定タイムステップで呼ばれる更新関数
 /// @param renderFn 毎フレーム呼ばれる描画関数
-/// @param shouldQuitFn 終了判定関数（trueを返すとループ終了）
+/// @param shouldQuitFn 終了判定関数（true を返すとループ終了）
 /// @return 実行したフレーム数
 ///
 /// @code
@@ -86,7 +86,7 @@ std::uint64_t runGameLoop(
 		renderFn();
 		++frameCount;
 
-		/// フレームレート制限（ターゲットFPSへスリープ）
+		/// フレームレート制限（ターゲット FPS へスリープ）
 		if (targetFrameTime > 0.0f)
 		{
 			const auto endTime = SteadyClock::now();

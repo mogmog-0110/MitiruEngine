@@ -2,7 +2,7 @@
 
 /// @file SemanticLabel.hpp
 /// @brief エンティティ用セマンティックラベル
-/// @details AIエージェントが読み取れるタグ情報をエンティティに付与する。
+/// @details AI エージェントが読み取れるタグ情報をエンティティに付与する。
 ///          例: "controllable", "physics", "enemy" など。
 
 #include <algorithm>
@@ -13,7 +13,7 @@ namespace mitiru::observe
 {
 
 /// @brief エンティティに付与するセマンティックラベル群
-/// @details AIエージェントがエンティティの役割を識別するために使用する。
+/// @details AI エージェントがエンティティの役割を識別するために使用する。
 ///          ラベルは重複なしで管理される。
 struct SemanticLabel
 {
@@ -63,8 +63,8 @@ struct SemanticLabel
 		return labels.empty();
 	}
 
-	/// @brief JSON配列文字列に変換する
-	/// @return JSON配列形式の文字列（例: ["controllable","physics"]）
+	/// @brief JSON 配列文字列に変換する
+	/// @return JSON 配列形式の文字列（例: ["controllable","physics"]）
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;

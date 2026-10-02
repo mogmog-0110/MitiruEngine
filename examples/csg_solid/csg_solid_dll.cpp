@@ -1,10 +1,10 @@
 // csg_solid。「Makina で作った立体を、ゲームの世界に置く」章
-//   立体は姉妹プロジェクト Makina (CSG モデラー) で作り、makina_bake が DXIL に焼いたもの。
+//   立体は姉妹プロジェクト Makina (CSG モデラー) で作り、makina_bake で DXIL に変換したもの。
 //   メッシュを経由しない。距離場をそのままレイマーチするので、モデラーで見ていた形が
-//   そのままゲームに出る。assets/ の .csgbake.json がその焼き上がりである。
-// あそびかた: 矢印キーで赤い立方体を動かす。中央のフランジと左の腕が Makina 製。
-//   腕は肘にキーを打ってあり、2 秒で曲げ伸ばしを繰り返す (D-15、live に焼いた立体)。
-// この章で使う関数: drawSolid (焼いた CSG を置く) / drawMesh / camera3D / light3D / skybox3D
+//   そのままゲームに出る。assets/ の .csgbake.json がその出力である。
+// 遊び方: 矢印キーで赤い立方体を動かす。中央のフランジと左の腕が Makina 製。
+//   腕は肘にキーを設定してあり、2 秒で曲げ伸ばしを繰り返す (D-15、live に変換した立体)。
+// この章で使う関数: drawSolid (変換した CSG を置く) / drawMesh / camera3D / light3D / skybox3D
 
 #include <algorithm>
 #include <cmath>
@@ -47,20 +47,20 @@ struct CsgSolidChapter
 
 		// 床と、プレイヤーの立方体。どちらもエンジンの組み込みメッシュである。
 		// 床は plane。かつてここで描画されず薄い立方体で代用していたが、原因は
-		// createPlane の巻き順が宣言法線と逆で背面カリングに食われていたこと
-		// (plane_probe 章が再現と修正の証拠を撮る)。
+		// createPlane の巻き順が宣言法線と逆で、背面カリングの対象になっていたこと
+		// (plane_probe 章が再現と修正の証拠を記録する)。
 		s.drawMesh("plane", {0.0f, 0.0f, 0.0f}, {14.0f, 1.0f, 14.0f}, {}, hex(0x8FA089));
 		s.drawMesh("cube", {cubeX, 0.5f, cubeZ}, {1.0f, 1.0f, 1.0f}, {}, hex(0xC04434));
 
-		// そして Makina の立体。ここだけが距離場で、それでも同じ深度に混ざる。
+		// そして Makina の立体。ここだけが距離場で、それでも同じ深度で描画される。
 		// 立方体をフランジの向こうへ動かすと、正しく隠れる。
-		// パスは章フォルダ名から。bake は DXIL を隣のファイルから読むので vfs ではなく
+		// パスは章フォルダ名から。DXIL は隣のファイルから bake に読み込まれるので、vfs ではなく
 		// 素のファイルパスであり、ホストの cwd (mitiru_host の隣) から解決される。
 		s.drawSolid("csg_solid/assets/hero_flange.csgbake.json", {0.0f, 0.0f, 0.0f}, t * 12.0f,
 		            0.5f);
 
-		// 動く立体 (Makina PLAN.md D-15)。肘に 0 -> -90 -> 0 の 3 キーを打った腕を
-		// `makina_bake --live` で焼いてある: 葉の数値を毎フレーム載せ替えるので、
+		// 動く立体 (Makina PLAN.md D-15)。肘に 0 -> -90 -> 0 の 3 キーを設定した腕を
+		// `makina_bake --live` で変換してある。葉の数値を毎フレーム更新するので、
 		// 関節が動いてもシェーダは一つのまま。時刻は drawModel のクリップと同じ流儀で
 		// 自分の t を渡し、モーションの長さ (2 秒) で折り返す。
 		s.drawSolid("csg_solid/assets/arm.csgbake.json", {-3.5f, 1.2f, 0.0f}, 0.0f, 1.0f,
@@ -76,4 +76,5 @@ struct CsgSolidChapter
 // inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。
 MITIRU_REFLECT_AUTO(CsgSolidChapter);
 
+MITIRU_ASSERT_NO_PADDING(CsgSolidChapter);
 MITIRU_GAME(CsgSolidChapter);

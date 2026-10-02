@@ -18,13 +18,13 @@ namespace mitiru::vn
 // ════════════════════════════════════════════════════════════════════
 
 /// @brief シナリオスクリプトの構文解析器
-/// @details トークン列からScenarioNodeのシーケンスを生成する。
+/// @details トークン列から ScenarioNode のシーケンスを生成する。
 class ScenarioParser
 {
 public:
 	/// @brief トークン列をパースしてコマンドリストを生成する
 	/// @param tokens トークン列
-	/// @return ScenarioNodeのベクタ
+	/// @return ScenarioNode のベクタ
 	[[nodiscard]] static std::vector<ScenarioNode> parse(const std::vector<ScenarioToken>& tokens)
 	{
 		std::vector<ScenarioNode> nodes;
@@ -124,14 +124,14 @@ private:
 		if (cmd == "transition") return parseTransition(tokens, pos, line);
 		if (cmd == "script") return parseScript(tokens, pos, line);
 		// `endscript` は @script の閉じトークンとして lexer で emit される。
-		// 単独で来た場合 (= マッチしない @endscript) は no-op として黙殺する。
+		// 単独で来た場合 (= マッチしない @endscript) は no-op として無視する。
 		if (cmd == "endscript")
 		{
 			skipToEndOfLine(tokens, pos);
 			return std::nullopt;
 		}
 
-		// 未知のコマンド: 行末までスキップ
+		// 未知のコマンドは行末までスキップする
 		skipToEndOfLine(tokens, pos);
 		return std::nullopt;
 	}
@@ -218,7 +218,7 @@ private:
 			++pos;
 		}
 
-		// 残りのパラメータを収集
+		// 残りのパラメータを集める
 		while (pos < tokens.size() &&
 			tokens[pos].type != ScenarioTokenType::Newline &&
 			tokens[pos].type != ScenarioTokenType::Eof)
@@ -244,7 +244,7 @@ private:
 			}
 			else if (tokens[pos].type == ScenarioTokenType::Identifier)
 			{
-				// その他の識別子は表情として解釈
+				// その他の識別子は表情として解釈する
 				if (ch.expression.empty())
 				{
 					ch.expression = text;
@@ -280,7 +280,7 @@ private:
 				break;
 			}
 
-			// 次の @command が来たら暗黙的に終了（@endchoice 省略対応）
+			// 次の @command が来たら暗黙に終了する（@endchoice の省略に対応）
 			if (tokens[pos].type == ScenarioTokenType::Command && tokens[pos].text != "endchoice")
 			{
 				break;
@@ -331,16 +331,16 @@ private:
 		node.sourceLine = line;
 		auto& sp = node.payload.emplace<ScriptParams>();
 
-		// `@script` Command の直後は (lexer 仕様により) 改行を経由せず
-		// すぐに `ScriptBody` トークンが続く。Newline トークンを emit しない
-		// 設計のため `skipToEndOfLine` は呼ばずに直接 ScriptBody を期待する。
+		// `@script` Command の直後には (lexer の仕様で) 改行を挟まずに
+		// `ScriptBody` トークンが続く。Newline トークンを emit しない設計なので、
+		// `skipToEndOfLine` は呼ばずに直接 ScriptBody を期待する。
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::ScriptBody)
 		{
 			sp.body = tokens[pos].text;
 			++pos;
 		}
 
-		// `@endscript` Command を消費 (matching 時のみ lexer が emit する)
+		// `@endscript` Command を消費する (lexer が emit するのは matching 時のみ)
 		if (pos < tokens.size() && tokens[pos].type == ScenarioTokenType::Command &&
 			tokens[pos].text == "endscript")
 		{
@@ -406,7 +406,7 @@ private:
 			++pos;
 		}
 
-		// 値: 残りをすべて連結
+		// 値は残りをすべて連結する
 		if (pos < tokens.size() && tokens[pos].type != ScenarioTokenType::Newline &&
 			tokens[pos].type != ScenarioTokenType::Eof)
 		{
@@ -434,29 +434,29 @@ private:
 		node.sourceLine = line;
 		auto& ip = node.payload.emplace<IfParams>();
 
-		// 条件式を行末まで取得
+		// 条件式を行末まで取り出す
 		ip.condition = collectRestOfLine(tokens, pos);
 
-		// フラットな構造で保持。@else / @endif は独立ノードとして emit され、
+		// フラットな構造で保持する。@else / @endif は独立したノードとして emit され、
 		// ScenarioExecutor::skipToEndif / skipToElseOrEndif が走査する。
 
 		return node;
 	}
 
-	/// @brief @else (inside @if block)
+	/// @brief @else (@if ブロックの中)
 	[[nodiscard]] static std::optional<ScenarioNode> parseElse(
 		const std::vector<ScenarioToken>& /*tokens*/, std::size_t& pos, std::size_t line)
 	{
 		ScenarioNode node;
 		node.type = ScenarioCommandType::Else;
 		node.sourceLine = line;
-		// @else は引数を取らない。行末までスキップは呼び出し側の parseCommand が行わないので
-		// ここで単純に何もしない（newline は次のループで吸収される）
+		// @else は引数を取らない。呼び出し側の parseCommand は行末までのスキップを行わないので、
+		// ここでは何もしない（newline は次のループで吸収される）
 		(void)pos;
 		return node;
 	}
 
-	/// @brief @endif (terminates @if block)
+	/// @brief @endif (@if ブロックを閉じる)
 	[[nodiscard]] static std::optional<ScenarioNode> parseEndIf(
 		const std::vector<ScenarioToken>& /*tokens*/, std::size_t& pos, std::size_t line)
 	{

@@ -8,11 +8,11 @@ points to a file included in this snapshot or to the public website.
 1. **`README.md`** — タグライン +特徴 + CLI quickstart
 2. **`docs/GETTING_STARTED.md`** — `mitiru` CLIを入れて最初のプロジェクトを作る
 3. **`docs/SCOPE.md`** — canonical identity statement、特徴、target user
-4. **`examples/welcome/`** — 絵・文字・図形とHTML/CSSパネルを1画面で見せる最初のサンプル
+4. **`examples/welcome/`** — 絵・文字・図形・動きを1画面で見せる最初のサンプル
 5. **`docs/ARCHITECTURE.md`** — エンジン全体の設計、deeper dive
 
 同梱サンプルは番号順(welcome → shapes → text → input → …)に読むと、描画・入力・音・
-カメラ・HTMLの画面・3Dまでひととおり触れます。一覧は [`examples/README.md`](../examples/README.md)。
+カメラ・RML / RCSS の画面・3Dまでひととおり触れます。一覧は [`examples/README.md`](../examples/README.md)。
 日常のプロジェクト作成は`mitiru new`がテンプレートを内蔵して使います。
 
 ## Newcomer: LLM (Claude Code, Codex, etc.)
@@ -31,7 +31,7 @@ points to a file included in this snapshot or to the public website.
 
 | 機能 | 入口 |
 |---|---|
-| HTML/CSSでUIが書けるC++ engine | `examples/html_hud/`、`docs/HYBRID_RUNTIME.md` |
+| RML / RCSS (HTML / CSS の方言) で UI が書ける C++ engine | `examples/html_hud/`、`docs/UI_RMLUI.md` |
 | 巻き戻し | `docs/REWIND.md`、`docs/FLAT_POD.md` |
 | 全system単独起動 | `docs/SUBSYSTEMS.md` |
 | 録画リプレイ | `docs/AI_WORKFLOW.md`、`docs/TOOL_WINDOWS.md` |
@@ -39,18 +39,17 @@ points to a file included in this snapshot or to the public website.
 
 ---
 
-## HTML/CSS UIを書く
+## RML / RCSS で UI を書く
 
-1. **`examples/html_hud/`** — C++の値をHTMLに流すcanonical pattern (JavaScriptゼロ)
-2. **`examples/html_menu/`** — HTMLの操作をC++が受ける逆向き
-3. **`docs/BRIDGE_API_CONTRACT.md`** — bridgeのsignal-only規約
-4. **`web/mitiru_runtime/`** — `data-m-*` binderとJS runtime
+1. **`docs/UI_RMLUI.md`** — 置き場所・値の見せ方・操作の送り方・CSS との違い
+2. **`examples/html_hud/`** — C++の値をUIに流すcanonical pattern (スクリプト無し)
+3. **`examples/html_menu/`** — UIの操作をC++が受ける逆向き
 
 ### bridge設計の原則(signal-only)
 
-- **JS → C++**。入力 / UIイベント通知のみ(button click、menu select等)
-- **C++ → JS**。state push + DOM更新指示のみ
-- **gameplay stateをJSに持たせない**
+- **UI → C++**。入力 / UIイベント通知のみ(button click、menu select等)
+- **C++ → UI**。state push のみ (`hud.set`)
+- **gameplay stateをUIに持たせない**
 
 ---
 

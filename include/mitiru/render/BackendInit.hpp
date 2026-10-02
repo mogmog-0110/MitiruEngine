@@ -9,10 +9,10 @@
 ///
 /// `IDevice` に render 層の型を足す (IDevice -> Renderer3D -> IDevice の循環依存に
 /// なる) のではなく、本ヘッダを render 層に置き、device が報告する `Backend` enum で
-/// dispatch する。続く static_cast は、この enum が具象 IDevice 派生クラスにとって
-/// canonical なので安全である。
+/// dispatch する。この enum は具象 IDevice 派生クラスと canonical に対応するので、
+/// 続く static_cast は安全である。
 ///
-/// 使い方:
+/// 使い方は次のとおり。
 /// @code
 /// auto pipeline = render::createPipeline2DFor(device, w, h);
 /// auto renderer = render::createRenderer3DFor(device, cfg, w, h);
@@ -50,7 +50,7 @@ namespace mitiru::render
 class PostProcessManager;
 #endif
 
-/// @brief `createPipeline2DFor` の結果 - pipeline と、呼び出し側が device に
+/// @brief `createPipeline2DFor` の結果。pipeline と、呼び出し側が device に
 ///        繋ぎ込むことが期待される optional な post-process manager。
 struct Pipeline2DResult
 {
@@ -100,8 +100,8 @@ struct Pipeline2DResult
 	if (backend == gfx::Backend::Dx12)
 	{
 		auto* dx12 = static_cast<gfx::Dx12Device*>(device);
-		/// 汎用 createFromDevice は PSO/root sig が bind されず silent no-op に
-		/// なるため、MitiruCefTexture と同等スタイルの専用パスを使う。
+		/// 汎用 createFromDevice では PSO/root sig が bind されず、何もしないまま終わる
+		/// (silent no-op) ため、専用パスを使う。
 		result.pipeline = RenderPipeline2D::createFromDx12(
 			dx12,
 			static_cast<float>(screenWidth),
@@ -110,7 +110,7 @@ struct Pipeline2DResult
 	}
 #endif
 
-	/// OpenGL/WebGL/その他のバックエンド: 汎用IDevice経由でパイプラインを構築する
+	/// OpenGL/WebGL/その他のバックエンド: 汎用 IDevice 経由でパイプラインを構築する
 	if (backend != gfx::Backend::Null)
 	{
 		result.pipeline = RenderPipeline2D::createFromDevice(
@@ -148,12 +148,12 @@ struct Pipeline2DResult
 
 	const auto backend = device->backend();
 #ifdef _WIN32
-	// DX12を優先的に使用 (アウトラインがPSOで正しく動く)
+	// DX12 を優先的に使用 (アウトラインが PSO で正しく動く)
 	if (backend == gfx::Backend::Dx12)
 	{
 		auto* dx12 = static_cast<gfx::Dx12Device*>(device);
 		Renderer3D_DX12::Config cfg;
-		// 実際のウィンドウ物理ピクセルサイズを使用する (DPIスケーリング対応)
+		// 実際のウィンドウ物理ピクセルサイズを使用する (DPI スケーリング対応)
 		cfg.viewportWidth = static_cast<float>(windowWidth);
 		cfg.viewportHeight = static_cast<float>(windowHeight);
 		cfg.defaultAmbient = {0.5f, 0.5f, 0.5f, 1.0f};
@@ -171,7 +171,7 @@ struct Pipeline2DResult
 			{
 				log << "Renderer3D_DX12::initialize threw: "
 				    << e.what() << std::endl;
-				// D3D12 info queue から具体エラーを吸い出す
+				// D3D12 info queue から具体的なエラーを取り出す
 				Microsoft::WRL::ComPtr<ID3D12InfoQueue> iq;
 				if (SUCCEEDED(dx12->nativeDevice()->QueryInterface(
 					IID_PPV_ARGS(iq.GetAddressOf()))))

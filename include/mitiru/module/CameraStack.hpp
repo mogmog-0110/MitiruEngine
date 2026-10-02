@@ -4,7 +4,7 @@
 /// @brief カメラの「積む/降ろす」スタック `CameraStack<N>` と、切替時のフレーム単位ブレンド
 /// `resolveCamera`。GameMemory の 1 フィールドとして持てる形にする
 /// (`docs/IMPROVEMENTS_FROM_ENGINES_2026_09_17.md` ★1-7)。カメラ状態を engine 側に持たせると
-/// ADR 0017 (GameMemory が唯一の state) が壊れ巻き戻しが再現しなくなるため、flat POD のまま
+/// ADR 0017 (GameMemory が唯一の state) が成り立たなくなり巻き戻しが再現しなくなるため、flat POD のまま
 /// GameMemory に置き、`FrameIntents` は増やさない (ABI 据え置き)。draw 側は `resolveCamera` の
 /// 戻り値をそのまま `s.applyCamera(...)` に渡すだけでよい。
 
@@ -18,6 +18,7 @@ struct CameraEntry
 {
 	std::uint8_t kind = 0;       ///< 呼び出し側が決める種別タグ (通常/演出/デバッグ等。エンジンは見ない)
 	std::uint8_t priority = 0;   ///< push した側の識別子。popByOwner や二重 push 判定に使う
+	std::uint8_t _pad[2] = {};   ///< 暗黙の詰め物を残さない (GameMemory はバイト単位で比べられる)
 	float        x = 0.0f, y = 0.0f;
 	float        zoom = 1.0f;
 	float        rot = 0.0f;
@@ -49,6 +50,7 @@ struct CameraStack
 {
 	CameraEntry  entries[N]{};
 	std::uint8_t count = 0;
+	std::uint8_t _pad[3] = {};
 
 	CameraFrame  current{};        ///< 直近の resolveCamera の戻り値 (次のブレンドの起点)
 	CameraFrame  blendFrom{};
@@ -56,9 +58,10 @@ struct CameraStack
 	float        blendTotal  = 0.0f;
 	std::uint8_t lastTopPriority = 0;
 	std::uint8_t hasLastTop = 0;   ///< bool の POD 表現 (0/1)
+	std::uint8_t _pad2[2] = {};
 
-	/// @brief 末尾に積む。満杯なら何もせず false (呼び出し側が Volume の pushed フラグ等で
-	/// 「二重に積まない」を担保する前提。ここでは容量超過だけを見る)。
+	/// @brief 末尾に積む。満杯なら何もせず false (「二重に積まない」は呼び出し側が Volume の pushed フラグ等で
+	/// 保証する前提。ここでは容量超過だけを見る)。
 	[[nodiscard]] bool pushCamera(const CameraEntry& e) noexcept
 	{
 		if (count >= static_cast<std::uint8_t>(N)) { return false; }
@@ -161,6 +164,7 @@ struct CameraVolume
 	float       x = 0.0f, y = 0.0f, w = 0.0f, h = 0.0f;
 	CameraEntry entry{};
 	std::uint8_t pushed = 0;
+	std::uint8_t _pad[3] = {};
 };
 
 template <int N>

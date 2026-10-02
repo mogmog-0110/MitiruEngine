@@ -23,7 +23,7 @@
 
 #include <mitiru/resource/AssetCache.hpp>
 #include <mitiru/resource/AssetManager.hpp>
-#include <mitiru/resource/ThreadPool.hpp>
+#include <mitiru/core/JobSystem.hpp>
 
 namespace mitiru::resource
 {
@@ -116,8 +116,8 @@ public:
 		std::size_t threadCount = 0)
 		: m_cache(memoryBudgetBytes)
 		, m_placeholder(std::move(placeholder))
-		, m_threadPool(threadCount > 0 ? threadCount : 2)
 		, m_memoryBudgetBytes(memoryBudgetBytes)
+		, m_jobs(threadCount > 0 ? threadCount : 2)
 	{
 	}
 
@@ -162,7 +162,7 @@ public:
 	}
 
 	/// @brief アセットのストリーミングをリクエストする
-	/// @param id アセットID
+	/// @param id アセット ID
 	/// @param path ファイルパス
 	/// @param distanceFromCamera カメラからの距離
 	/// @param mipLevel 要求ミップレベル（0 = 最高品質）
@@ -209,7 +209,7 @@ public:
 	}
 
 	/// @brief ストリーミングを更新する（毎フレーム呼び出す）
-	/// @param maxDispatches 1回の更新で発行する最大ロードリクエスト数
+	/// @param maxDispatches 1 回の更新で発行する最大ロードリクエスト数
 	void update(std::size_t maxDispatches = 4)
 	{
 		const std::lock_guard lock(m_mutex);
@@ -253,7 +253,7 @@ public:
 	}
 
 	/// @brief アセットを取得する（ロード中はプレースホルダーを返す）
-	/// @param id アセットID
+	/// @param id アセット ID
 	/// @return アセット（キャッシュ済み or プレースホルダー）
 	[[nodiscard]] std::shared_ptr<T> getAsset(const std::string& id)
 	{
@@ -268,7 +268,7 @@ public:
 	}
 
 	/// @brief アセットのロード状態を取得する
-	/// @param id アセットID
+	/// @param id アセット ID
 	/// @return ストリーミング状態（リクエストがなければ nullopt）
 	[[nodiscard]] std::optional<StreamingState> getState(const std::string& id) const
 	{
@@ -287,7 +287,7 @@ public:
 	}
 
 	/// @brief 指定アセットのリクエストをキャンセルする
-	/// @param id アセットID
+	/// @param id アセット ID
 	void cancelRequest(const std::string& id)
 	{
 		const std::lock_guard lock(m_mutex);
@@ -348,7 +348,7 @@ private:
 	};
 
 	/// @brief ロードタスクをディスパッチする
-	/// @param id リクエストID
+	/// @param id リクエスト ID
 	void dispatchLoad(const std::string& id)
 	{
 		auto& request = m_requests[id];
@@ -359,7 +359,7 @@ private:
 		const std::uint8_t mipLevel = request.desiredMipLevel;
 		auto loadFunc = m_loadFunction;
 
-		m_threadPool.submit(
+		(void)m_jobs.submit(
 			[this, id, path, mipLevel, loadFunc]() {
 				std::shared_ptr<T> result = nullptr;
 				bool success = false;
@@ -427,7 +427,6 @@ private:
 	std::mutex m_completedMutex;             ///< 完了キュー用ミューテックス
 
 	AssetCache<T> m_cache;                   ///< LRU キャッシュ
-	ThreadPool m_threadPool;                 ///< ワーカースレッドプール
 	std::shared_ptr<T> m_placeholder;        ///< プレースホルダーアセット
 	AssetManager* m_assetManager = nullptr;  ///< 連携先（未設定なら従来どおり単独動作）
 
@@ -444,6 +443,9 @@ private:
 	std::size_t m_memoryBudgetBytes = 0;     ///< メモリバジェット
 
 	StreamingStatistics m_stats;             ///< 統計情報
+
+	/// 最後に宣言して最初に破棄する。走っているロードが m_completedLoads へ書き終えるまで待つ。
+	JobSystem m_jobs;
 };
 
 } // namespace mitiru::resource

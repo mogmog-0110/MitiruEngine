@@ -89,8 +89,8 @@ enum class DrawCmdKind : std::uint16_t
 	                        ///< フィールド名 (ADR 0035 O2/O3 追記)。textPool に "fieldX\0fieldY" を積む
 };
 
-/// @brief 1 描画コマンド (POD、固定長)。ポインタを含まないため境界を memcpy 可能に跨げる
-/// (`textureHandle` のみ例外的にポインタ由来の識別子を運ぶ。下記 note 参照)。
+/// @brief 1 描画コマンド (POD、固定長)。ポインタを含まないので、memcpy で境界を跨げる
+/// (`textureHandle` だけは例外で、ポインタ由来の識別子を運ぶ。下記 note 参照)。
 /// payload の読み替えは kind ごとに固定 (drainDrawCommands 参照)。
 struct DrawCommand
 {
@@ -113,8 +113,8 @@ struct DrawCommand
 
 	/// @brief Sprite のみ: `&texture` のアドレスをそのまま識別子として運ぶ。
 	/// @note host 事前登録の u32 handle (ADR 0025 の本来案) ではなくアドレス直運びなので、
-	///       host 側 drain が Texture* へ読み戻すのは host/DLL が同一ビルド構成であることに
-	///       依存する (GameMemory の bytes 解釈と同じ前提。fingerprint が引き続き守る)。
+	///       host 側 drain が Texture* へ読み戻せるかは host/DLL が同一ビルド構成であることに
+	///       依存する (GameMemory の bytes 解釈と同じ前提。引き続き fingerprint で守る)。
 	///       文字列 id 経由の SpriteById はこの制約を持たない (textPool 参照のみ)。
 	std::uint64_t textureHandle{};
 };
@@ -151,7 +151,7 @@ inline void pushDrawCommand(DrawCommandBuffer& buf, const DrawCommand& cmd) noex
 }
 
 /// @brief 文字列を textPool へコピーし (offset, len) を返す。あふれたら false を返す
-/// (呼び出し元はコマンド自体を捨てる。文字の途中切りによる silent 破損を避けるため)。
+/// (呼び出し元はコマンド自体を捨てる。文字の途中で切れて、気づかないうちに文字列がおかしくなるのを避けるため)。
 [[nodiscard]] inline bool pushTextPool(DrawCommandBuffer& buf, std::string_view text,
                                        std::uint32_t& outOffset, std::uint32_t& outLen) noexcept
 {
@@ -228,7 +228,7 @@ public:
 	/// はドラッグが `PUT /api/ai/state` へ書く実際のキー名 (beko_run の px/py のような分離 scalar 用、
 	/// ADR 0035 O2/O3 追記)。`DrawCommand` 自体のレイアウトは変えず、textPool 経由の非描画
 	/// マーカーコマンド (`SceneFieldMap`) 1 個を積むだけ (ABI 変更なし)。textPool が尽きていれば
-	/// 静かに諦める (通常のタグ付けは効くので枠自体は出る、ドラッグの書き戻し先だけ推測できなくなる)。
+	/// 何も知らせずに諦める (通常のタグ付けは働くので枠自体は出る。ドラッグの書き戻し先だけが推測できなくなる)。
 	void beginObject(std::string_view name, std::string_view fieldX, std::string_view fieldY) noexcept
 	{
 		beginObject(name);
@@ -268,8 +268,8 @@ public:
 		push(c);
 	}
 	/// @brief `Screen::applyCamera` と同じ計算 (注視点が画面中央に来る) を PushTransform
-	/// コマンドとして積む。実際の座標変換適用は host drain 側の `Screen::pushTransform` に
-	/// 委譲するので、Canvas はスタックを持たない。
+	/// コマンドとして積む。座標変換を実際に適用するのは host drain 側の `Screen::pushTransform`
+	/// なので、Canvas はスタックを持たない。
 	void applyCamera(float camX, float camY, float zoom = 1.0f) noexcept
 	{
 		const float cx = static_cast<float>(m_ctx.logicalW) * 0.5f;
@@ -527,7 +527,7 @@ public:
 	/// @brief `texture` を過去に `registerTexture` した id で覚えていれば、その id で
 	/// `SpriteRectById` を積む (アドレスは境界を跨がない)。未登録 (動的生成テクスチャ等) は
 	/// 従来どおりアドレス直運びの `Sprite` へ後退する (host/DLL 同一 build 構成が前提。
-	/// fingerprint が守る、ADR 0025 の既存 TODO のまま)。
+	/// fingerprint で守る。ADR 0025 の既存 TODO のまま)。
 	void drawSprite(const render::Texture& texture, const sgc::Rectf& dstRect,
 	                const sgc::Rectf& srcRect,
 	                const sgc::Colorf& tintColor = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f},

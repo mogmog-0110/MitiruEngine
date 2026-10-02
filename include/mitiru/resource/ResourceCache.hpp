@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file ResourceCache.hpp
-/// @brief リソースキャッシュ（Godot ResourceLoader風）
+/// @brief リソースキャッシュ（Godot ResourceLoader 風）
 /// @details テクスチャ・フォントを名前ベースでキャッシュ管理する。
 ///          同一パスのリソースは再読み込みせずキャッシュから返す。
 ///          非同期ロードもサポートする。
@@ -9,7 +9,7 @@
 /// @code
 /// mitiru::resource::ResourceCache cache;
 /// auto tex = cache.getTexture("assets/player.png");
-/// // 2回目はキャッシュから即座に返る
+/// // 2 回目はキャッシュから即座に返る
 /// auto tex2 = cache.getTexture("assets/player.png");
 /// assert(tex.get() == tex2.get());
 /// @endcode
@@ -37,7 +37,7 @@ public:
 		auto it = m_textures.find(path);
 		if (it != m_textures.end()) return it->second;
 
-		// プロシージャルテクスチャとして白い4x4を生成する（ファイルI/O不要）
+		// プロシージャルテクスチャとして白い 4x4 を生成する（ファイル I/O 不要）
 		auto tex = std::make_shared<render::Texture>(
 			render::Texture::solid(4, 4, 255, 255, 255, 255));
 		m_textures[path] = tex;
@@ -54,7 +54,7 @@ public:
 
 	/// @brief テクスチャがキャッシュ済みか
 	/// @param path パスまたは名前
-	/// @return キャッシュ済みならtrue
+	/// @return キャッシュ済みなら true
 	[[nodiscard]] bool hasTexture(const std::string& path) const
 	{
 		return m_textures.count(path) > 0;
@@ -62,7 +62,7 @@ public:
 
 	/// @brief テクスチャの非同期ロード
 	/// @param path ファイルパス
-	/// @return テクスチャのfuture
+	/// @return テクスチャの future
 	[[nodiscard]] std::future<std::shared_ptr<render::Texture>> loadTextureAsync(
 		const std::string& path)
 	{

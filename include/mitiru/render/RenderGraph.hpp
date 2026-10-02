@@ -19,7 +19,7 @@ namespace mitiru::render
 using RtId = std::uint32_t;
 
 /// @brief レンダリングパス
-/// @details 名前と実行コールバックを持つ1単位のレンダリング処理。
+/// @details 名前と実行コールバックを持つ 1 単位のレンダリング処理。
 ///          reads/writes が両方空のパスは依存追跡の対象外で、登録順のまま実行される。
 struct RenderPass
 {
@@ -98,8 +98,8 @@ public:
 
 	/// @brief 指定パスの有効/無効を切り替える
 	/// @param name パス名
-	/// @param enabled 有効にするならtrue
-	/// @return パスが見つかればtrue
+	/// @param enabled 有効にするなら true
+	/// @return パスが見つかれば true
 	bool setPassEnabled(const std::string& name, bool enabled)
 	{
 		for (auto& pass : m_passes)

@@ -8,16 +8,20 @@
 /// `assets/audio/<id>.wav` と同じ id 規約)。ロード失敗は id 単位で初回のみ
 /// warnOnce し、以後 nullptr を返す (毎フレームのディスク再試行はしない)。
 ///
-/// pollReload() で PNG のホットリロードに対応する (Engine が ~0.5 秒周期で呼ぶ)。
-/// 音は対応不要。SE は再生ごとにファイルを読む (既にホット)、music はストリーム保持中でロック。
+/// PNG のホットリロードは baseDir を asset::FileWatcher で見張り、pollReload() (Engine が ~0.5 秒ごとに呼ぶ)
+/// で変わったファイルだけを読み直す。音は対応不要。SE は再生ごとにファイルを読む (既にホット)、
+/// music はストリーム保持中でロック。
 
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
+#include <mitiru/asset/FileWatcher.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/ImageLoader.hpp>
 #include <mitiru/render/Texture.hpp>
@@ -45,12 +49,19 @@ struct TransparentStringHash
 class SpriteCache
 {
 public:
-	SpriteCache() = default;
+	/// @param backend テストは Polling を渡すと、最初の pollReload() でその場の変更を拾える
+	explicit SpriteCache(asset::FileWatcher::Backend backend = asset::FileWatcher::Backend::Native)
+		: m_backend(backend)
+	{
+		watchBaseDir();
+	}
 
 	/// @brief 解決の基準ディレクトリを設定する (loadModule が DLL 隣接 dir で上書きする)
 	void setBaseDir(std::filesystem::path dir)
 	{
+		if (dir == m_baseDir && m_watching) { return; }
 		m_baseDir = std::move(dir);
+		watchBaseDir();
 	}
 
 	/// @brief 現在の基準ディレクトリ
@@ -61,7 +72,7 @@ public:
 
 	/// @brief id の Texture を返す (初回は <baseDir>/<id>.png を遅延ロード)
 	/// @details 透過ハッシュ (C1) により hit 時は `std::string` を作らない。miss (初回ロード)
-	///          だけ map への挿入用に 1 回 `std::string`化する。
+	///          だけ map への挿入用に 1 回 `std::string` 化する。
 	/// @return 解決できた Texture (キャッシュ所有)。失敗は warnOnce 1 回 + nullptr。
 	/// @brief const char* 版。nullptr を string_view に変換すると未定義動作なので先に弾く
 	[[nodiscard]] const Texture* get(const char* id)
@@ -83,12 +94,9 @@ public:
 		const std::filesystem::path path = m_baseDir / (key + ".png");
 		Entry entry;
 		entry.tex = ImageLoader::fromFile(path.generic_string());
-		// 書き込み途中/欠落でも次回 poll で拾えるよう mtime を記録 (stat 失敗は既定値のまま)
-		std::error_code ec;
-		entry.mtime = std::filesystem::last_write_time(path, ec);
 		if (!entry.tex.valid())
 		{
-			// 黙った非表示は原因不明になるので id 単位で初回のみ警告 (R-01 級)
+			// 警告なしで表示されないと原因が分からないので、id 単位で初回のみ警告する (R-01 級)
 			mitiru::debug::warnOnce("sprite.id:" + key,
 				"スプライト画像が見つからない/読めない: " + path.generic_string());
 		}
@@ -97,34 +105,18 @@ public:
 		return it->second.tex.valid() ? &it->second.tex : nullptr;
 	}
 
-	/// @brief 全ロード済みエントリの mtime を stat し、変更があれば同じスロットへ再読込する
-	/// @details 失敗 id (前回 nullptr) も再試行する = 後から PNG を置いたら出る。
-	///          消失/書き込み途中で読めない瞬間は旧 Texture を維持し次回 poll へ。
+	/// @brief baseDir の中で変わった PNG のうち、引いたことのある id を同じスロットへ読み直す
+	/// @details 失敗 id (前回 nullptr) も対象 = 後から PNG を置いたら出る。消えたファイルは通知されないので
+	///          旧 Texture のまま。読めなかった id (書き込み途中など) は次の呼び出しで読み直す。
 	void pollReload()
 	{
-		for (auto& [key, entry] : m_entries)
+		std::vector<std::string> ids = std::move(m_retry);
+		m_retry.clear();
+		if (m_watcher)
 		{
-			const std::filesystem::path path = m_baseDir / (key + ".png");
-			std::error_code ec;
-			const auto mtime = std::filesystem::last_write_time(path, ec);
-			if (ec)
-			{
-				continue; // 消えた/ロック中 → 旧 Texture を維持 (clobber しない)
-			}
-			// 失敗 id は mtime に関係なく再試行、成功済みは mtime 変化時のみ
-			if (entry.tex.valid() && mtime == entry.mtime)
-			{
-				continue;
-			}
-			Texture fresh = ImageLoader::fromFile(path.generic_string());
-			if (!fresh.valid())
-			{
-				continue; // 書き込み途中等 → mtime も据え置きで次回 poll に再試行
-			}
-			// 同じスロットを上書き → resolver が返した Texture* は安定。新寸法はそのまま採用。
-			entry.tex = std::move(fresh);
-			entry.mtime = mtime;
+			for (const auto& changed : m_watcher->poll()) { ids.push_back(idOf(changed)); }
 		}
+		for (const auto& id : ids) { reload(id); }
 	}
 
 	/// @brief Screen::setSpriteResolver へ渡す C 関数ポインタ (ctx = SpriteCache*)
@@ -134,14 +126,51 @@ public:
 	}
 
 private:
-	/// @brief キャッシュエントリ (Texture + 読込時の mtime)
 	struct Entry
 	{
-		Texture tex;                               ///< 失敗時は空 Texture
-		std::filesystem::file_time_type mtime{};   ///< 読込時のファイル更新時刻
+		Texture tex;   ///< 失敗時は空 Texture
 	};
 
-	std::filesystem::path m_baseDir = "assets/sprites";  ///< 既定は cwd 相対
+	/// baseDir が無いうちは見張らない (後から作られた sprites フォルダは次の setBaseDir まで拾わない)
+	void watchBaseDir()
+	{
+		m_watcher = std::make_unique<asset::FileWatcher>(m_backend);
+		m_watching = m_watcher->watchDirectory(m_baseDir, {".png"});
+		std::error_code ec;
+		const auto abs = std::filesystem::absolute(m_baseDir, ec);
+		m_watchRoot = (ec ? m_baseDir : abs).lexically_normal();
+		m_retry.clear();
+	}
+
+	/// <baseDir>/<id>.png の id。サブフォルダは / 区切りで id に含む
+	[[nodiscard]] std::string idOf(const std::filesystem::path& png) const
+	{
+		auto rel = png.lexically_normal().lexically_relative(m_watchRoot);
+		rel.replace_extension();
+		return rel.generic_string();
+	}
+
+	void reload(const std::string& id)
+	{
+		const auto it = m_entries.find(id);
+		if (it == m_entries.end()) { return; }
+		Texture fresh = ImageLoader::fromFile((m_baseDir / (id + ".png")).generic_string());
+		if (!fresh.valid())
+		{
+			std::error_code ec;
+			if (std::filesystem::exists(m_baseDir / (id + ".png"), ec)) { m_retry.push_back(id); }
+			return;
+		}
+		// 同じスロットを上書き → resolver が返した Texture* は安定。新寸法はそのまま採用。
+		it->second.tex = std::move(fresh);
+	}
+
+	asset::FileWatcher::Backend          m_backend;
+	std::filesystem::path                m_baseDir = "assets/sprites";  ///< 既定は cwd 相対
+	std::filesystem::path                m_watchRoot;                   ///< m_baseDir の絶対パス (通知のパスと突き合わせる)
+	std::unique_ptr<asset::FileWatcher>  m_watcher;
+	bool                                 m_watching = false;
+	std::vector<std::string>             m_retry;                       ///< 読めなかったので次の pollReload で読み直す id
 	/// id → Entry (失敗は空 Texture)。透過ハッシュ (C1) で string_view のまま検索できる。
 	std::unordered_map<std::string, Entry, TransparentStringHash, std::equal_to<>> m_entries;
 };

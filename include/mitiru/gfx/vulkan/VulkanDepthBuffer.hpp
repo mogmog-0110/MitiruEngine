@@ -1,25 +1,25 @@
 #pragma once
 
 /// @file VulkanDepthBuffer.hpp
-/// @brief Vulkan深度バッファ RAII管理
-/// @details VkImage・VkDeviceMemory・VkImageViewをRAIIで管理する深度バッファ実装。
-///          フォーマットはVK_FORMAT_D32_SFLOATを優先し、利用不可の場合はフォールバックする。
-///          MITIRU_HAS_VULKANが定義されている場合のみコンパイルされる。
+/// @brief Vulkan 深度バッファ RAII 管理
+/// @details VkImage・VkDeviceMemory・VkImageView を RAII で管理する深度バッファ実装。
+///          フォーマットは VK_FORMAT_D32_SFLOAT を優先し、利用不可の場合はフォールバックする。
+///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。
 
 #include <cstdint>
 
 namespace mitiru::gfx
 {
 
-/// @brief Vulkan深度バッファ設定
-/// @details 深度バッファ生成パラメータを保持する。GPU不要でテスト可能。
+/// @brief Vulkan 深度バッファ設定
+/// @details 深度バッファ生成パラメータを保持する。GPU 不要でテスト可能。
 struct DepthBufferConfig
 {
 	uint32_t width = 0;   ///< バッファ幅（ピクセル）
 	uint32_t height = 0;  ///< バッファ高さ（ピクセル）
 
 	/// @brief 幅と高さが有効か確認する
-	/// @return 両方0より大きければtrue
+	/// @return 両方 0 より大きければ true
 	[[nodiscard]] bool isValid() const noexcept
 	{
 		return width > 0 && height > 0;
@@ -47,11 +47,10 @@ inline const std::vector<VkFormat> kDepthFormatCandidates = {
 	VK_FORMAT_D24_UNORM_S8_UINT,
 };
 
-/// @brief Vulkan深度バッファ RAIIラッパー
-/// @details VkImage・VkDeviceMemory・VkImageViewをRAIIで管理する。
-///          深度フォーマットはVK_FORMAT_D32_SFLOATを優先し、
-///          デバイスが対応していない場合はフォールバックを試みる。
-///
+/// @brief Vulkan 深度バッファ RAII ラッパー
+/// @details VkImage・VkDeviceMemory・VkImageView を RAII で管理する。
+/// 深度フォーマットは VK_FORMAT_D32_SFLOAT を優先し、
+/// デバイスが対応していない場合はフォールバックを試みる。
 /// @code
 /// VulkanDepthBuffer depthBuf;
 /// depthBuf.initialize(device, physDevice, 1280, 720);
@@ -210,20 +209,20 @@ public:
 	}
 
 	/// @brief イメージビューを取得する
-	/// @return VkImageView（未初期化の場合VK_NULL_HANDLE）
+	/// @return VkImageView（未初期化の場合 VK_NULL_HANDLE）
 	[[nodiscard]] VkImageView imageView() const noexcept { return m_imageView; }
 
 	/// @brief 深度フォーマットを取得する
-	/// @return 選択されたVkFormat
+	/// @return 選択された VkFormat
 	[[nodiscard]] VkFormat format() const noexcept { return m_format; }
 
 	/// @brief 初期化済みか確認する
-	/// @return イメージビューが有効ならtrue
+	/// @return イメージビューが有効なら true
 	[[nodiscard]] bool isInitialized() const noexcept { return m_imageView != VK_NULL_HANDLE; }
 
 	/// @brief デバイスが対応する最適な深度フォーマットを選択する
 	/// @param physDevice 物理デバイス
-	/// @return 選択されたVkFormat
+	/// @return 選択された VkFormat
 	/// @throws std::runtime_error 対応フォーマットが見つからない場合
 	[[nodiscard]] static VkFormat findSupportedFormat(VkPhysicalDevice physDevice)
 	{

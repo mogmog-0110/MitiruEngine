@@ -2,7 +2,7 @@
 
 /// @file TilemapBridge.hpp
 /// @brief sgc タイルマップ統合ブリッジ
-/// @details sgcのTilemapシステムをMitiruエンジンに統合する。
+/// @details sgc の Tilemap システムを Mitiru エンジンに統合する。
 ///          名前付きタイルマップの作成・操作を管理する。
 
 #include <cstddef>
@@ -28,7 +28,7 @@ class TilemapBridge
 public:
 	/// @brief タイルマップを作成する
 	///
-	/// 指定サイズの単一レイヤーを持つタイルマップを作成する。
+	/// 指定したサイズの単一レイヤーを持つタイルマップを作成する。
 	///
 	/// @param name タイルマップ名
 	/// @param width 横方向のタイル数
@@ -46,9 +46,9 @@ public:
 
 	/// @brief タイルを設定する
 	/// @param name タイルマップ名
-	/// @param x X座標
-	/// @param y Y座標
-	/// @param tileId 設定するタイルID
+	/// @param x X 座標
+	/// @param y Y 座標
+	/// @param tileId 設定するタイル ID
 	void setTile(const std::string& name, int x, int y, int tileId)
 	{
 		const auto it = m_tilemaps.find(name);
@@ -61,9 +61,9 @@ public:
 
 	/// @brief タイルを取得する
 	/// @param name タイルマップ名
-	/// @param x X座標
-	/// @param y Y座標
-	/// @return タイルID（未登録または範囲外なら0）
+	/// @param x X 座標
+	/// @param y Y 座標
+	/// @return タイル ID（未登録または範囲外なら 0）
 	[[nodiscard]] int getTile(const std::string& name, int x, int y) const
 	{
 		const auto it = m_tilemaps.find(name);
@@ -92,8 +92,8 @@ public:
 
 	// ── シリアライズ ──────────────────────────────────────────
 
-	/// @brief タイルマップ状態をJSON文字列として返す
-	/// @return JSON形式の文字列
+	/// @brief タイルマップ状態を JSON 文字列として返す
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;

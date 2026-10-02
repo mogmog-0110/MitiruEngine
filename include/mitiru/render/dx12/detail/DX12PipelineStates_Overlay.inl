@@ -1,4 +1,4 @@
-// Class-body chunk for Renderer3D_DX12 - included via DX12PipelineStates.hpp
+// Renderer3D_DX12 のクラス本体の一部。DX12PipelineStates.hpp から include される
 
 
 // ─────────────────────────────────────────────────────────────
@@ -6,13 +6,13 @@
 // ─────────────────────────────────────────────────────────────
 
 /// @brief ポストプロセスアウトラインを描画する
-/// @details 現在のm_outlineModeに応じてPSOとSRVヒープを切り替える。
+/// @details 現在の m_outlineMode に応じて PSO と SRV ヒープを切り替える。
 void drawPostProcessOutline()
 {
-	/// Fresnelモードではポストプロセスを実行しない
+	/// Fresnel モードではポストプロセスを実行しない
 	if (m_outlineMode == OutlineMode::Fresnel) return;
 
-	/// 使用するPSOを選択する
+	/// 使用する PSO を選択する
 	const int modeIdx = static_cast<int>(m_outlineMode);
 	ID3D12PipelineState* pso = nullptr;
 	if (modeIdx == 0)
@@ -46,7 +46,7 @@ void drawPostProcessOutline()
 
 		m_graphicsCmdList->CopyResource(m_colorCopyBuffer.Get(), bbPost->nativeResource());
 
-		/// コピーバッファをSRVに、バックバッファをRTに戻す
+		/// コピーバッファを SRV に、バックバッファを RT に戻す
 		D3D12_RESOURCE_BARRIER postCopy[2] = {};
 		postCopy[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		postCopy[0].Transition.pResource = bbPost->nativeResource();
@@ -61,7 +61,7 @@ void drawPostProcessOutline()
 		m_graphicsCmdList->ResourceBarrier(2, postCopy);
 	}
 
-	/// 深度バッファと法線バッファをSRVに遷移する
+	/// 深度バッファと法線バッファを SRV に遷移する
 	D3D12_RESOURCE_BARRIER barriers[2] = {};
 	barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barriers[0].Transition.pResource = m_depthBuffer.Get();
@@ -75,15 +75,15 @@ void drawPostProcessOutline()
 	barriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 	m_graphicsCmdList->ResourceBarrier(2, barriers);
 
-	/// MRTを解除しバックバッファのみにする（法線をSRVで読むため）
+	/// MRT を解除しバックバッファのみにする（法線を SRV で読むため）
 	auto rtvOnly = bbPost->rtvHandle();
 	m_graphicsCmdList->OMSetRenderTargets(1, &rtvOnly, FALSE, nullptr);
 
-	/// PSOとルートシグネチャをバインドする
+	/// PSO とルートシグネチャをバインドする
 	m_graphicsCmdList->SetPipelineState(pso);
 	m_graphicsCmdList->SetGraphicsRootSignature(m_outlinePostRootSig.Get());
 
-	/// SRVヒープを選択する（色バッファ使用モードは拡張ヒープ）
+	/// SRV ヒープを選択する（色バッファ使用モードは拡張ヒープ）
 	ID3D12DescriptorHeap* srvHeap = nullptr;
 	if (m_outlineMode == OutlineMode::ColorEdge && m_colorEdgeSRVHeap)
 	{
@@ -103,7 +103,7 @@ void drawPostProcessOutline()
 	m_graphicsCmdList->SetGraphicsRootDescriptorTable(
 		0, srvHeap->GetGPUDescriptorHandleForHeapStart());
 
-	/// アウトラインパラメータCBをアップロードする
+	/// アウトラインパラメータ CB をアップロードする
 	struct alignas(256) CbOutline {
 		float texelSizeX, texelSizeY;
 		float outlineWidth;
@@ -111,7 +111,10 @@ void drawPostProcessOutline()
 		// シェーダの決め打ち (0.1 / 100) を廃止。setCamera の実値と食い違うと
 		// 線形化が歪み、同じ閾値でも距離によって効き方が変わってしまう。
 		float nearZ, farZ;
-		float _pad0, _pad1;
+		float fadeNear, fadeFar;
+		float fadeMin;
+		float darken;
+		float _pad1, _pad2;
 	};
 	CbOutline cb;
 	cb.texelSizeX = 1.0f / m_config.viewportWidth;
@@ -120,6 +123,10 @@ void drawPostProcessOutline()
 	cb.threshold = m_outlineThresh;
 	cb.nearZ = m_clodCamera.nearClip();
 	cb.farZ  = m_clodCamera.farClip();
+	cb.fadeNear = m_outlineFadeNear;
+	cb.fadeFar  = m_outlineFadeFar;
+	cb.fadeMin  = m_outlineFadeMin;
+	cb.darken   = m_outlineDarken;
 
 	const auto outlineCb = m_uploadRing.upload(&cb, sizeof(CbOutline), 256);
 	if (outlineCb.valid())
@@ -127,7 +134,7 @@ void drawPostProcessOutline()
 		m_graphicsCmdList->SetGraphicsRootConstantBufferView(1, outlineCb.gpuAddr);
 	}
 
-	/// フルスクリーン三角形を描画する（頂点バッファ不要、SV_VertexID使用）
+	/// フルスクリーン三角形を描画する（頂点バッファ不要、SV_VertexID 使用）
 	m_graphicsCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	m_graphicsCmdList->DrawInstanced(3, 1, 0, 0);
 

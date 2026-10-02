@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file UINode.hpp
-/// @brief セマンティックUIツリーのノード定義
-/// @details UIツリーの基本構成要素。各ノードはID・ロール・バウンズ・値・子ノードを持ち、
-///          再帰的な検索やJSON変換をサポートする。
+/// @brief セマンティック UI ツリーのノード定義
+/// @details UI ツリーの基本構成要素。各ノードは ID・ロール・バウンズ・値・子ノードを持ち、
+///          再帰的な検索や JSON 変換をサポートする。
 
 #include <cstdint>
 #include <map>
@@ -24,13 +24,13 @@
 namespace mitiru::ui
 {
 
-/// @brief UIノードの識別子型
+/// @brief UI ノードの識別子型
 using UINodeId = std::uint32_t;
 
-/// @brief 無効なUIノードIDを表す定数
+/// @brief 無効な UI ノード ID を表す定数
 inline constexpr UINodeId INVALID_UI_NODE = 0;
 
-/// @brief UI要素のセマンティックロール
+/// @brief UI 要素のセマンティックロール
 enum class UIRole : std::uint8_t
 {
 	Container,   ///< コンテナ要素
@@ -55,7 +55,7 @@ enum class UIRole : std::uint8_t
 	Custom       ///< カスタム要素
 };
 
-/// @brief UIノードのデータ
+/// @brief UI ノードのデータ
 /// @details UINode が保持する全プロパティをまとめた構造体。
 struct UINodeData
 {
@@ -71,9 +71,9 @@ struct UINodeData
 	std::map<std::string, std::string> properties; ///< カスタムキー・バリュー
 };
 
-/// @brief セマンティックUIツリーのノード
-/// @details 階層構造を持つUI要素の基本単位。子ノードの追加・削除、
-///          ID・名前・ロールによる再帰検索、JSON変換を提供する。
+/// @brief セマンティック UI ツリーのノード
+/// @details 階層構造を持つ UI 要素の基本単位。子ノードの追加・削除、
+///          ID・名前・ロールによる再帰検索、JSON 変換を提供する。
 ///
 /// @code
 /// mitiru::ui::UINodeData data;
@@ -136,7 +136,7 @@ class UINode
 	}
 
 public:
-	/// @brief UINodeDataを指定して構築する
+	/// @brief UINodeData を指定して構築する
 	/// @param data ノードデータ
 	explicit UINode(UINodeData data)
 		: m_data(std::move(data))
@@ -147,7 +147,7 @@ public:
 
 	// ── ゲッター ────────────────────────────────────────────
 
-	/// @brief ノードIDを取得する
+	/// @brief ノード ID を取得する
 	[[nodiscard]] UINodeId id() const noexcept { return m_data.id; }
 
 	/// @brief ノード名を取得する
@@ -183,7 +183,7 @@ public:
 	/// @brief ヒットテスト有効フラグを取得する
 	[[nodiscard]] bool hitTestEnabled() const noexcept { return m_hitTestEnabled; }
 
-	/// @brief Z順序を取得する
+	/// @brief Z 順序を取得する
 	[[nodiscard]] int zIndex() const noexcept { return m_zIndex; }
 
 	/// @brief インタラクション可能フラグを取得する
@@ -204,23 +204,23 @@ public:
 	void setValue(float value) { m_data.value = value; }
 
 	/// @brief 可視フラグを設定する
-	/// @param visible 可視であればtrue
+	/// @param visible 可視であれば true
 	void setVisible(bool visible) { m_data.visible = visible; }
 
 	/// @brief フォーカス可能フラグを設定する
-	/// @param focusable フォーカス可能であればtrue
+	/// @param focusable フォーカス可能であれば true
 	void setFocusable(bool focusable) noexcept { m_focusable = focusable; }
 
 	/// @brief ヒットテスト有効フラグを設定する
-	/// @param enabled 有効であればtrue
+	/// @param enabled 有効であれば true
 	void setHitTestEnabled(bool enabled) noexcept { m_hitTestEnabled = enabled; }
 
-	/// @brief Z順序を設定する
-	/// @param zIndex Z順序値（高い値が手前）
+	/// @brief Z 順序を設定する
+	/// @param zIndex Z 順序値（高い値が手前）
 	void setZIndex(int zIndex) noexcept { m_zIndex = zIndex; }
 
 	/// @brief インタラクション可能フラグを設定する
-	/// @param interactable インタラクション可能であればtrue
+	/// @param interactable インタラクション可能であれば true
 	void setInteractable(bool interactable) noexcept { m_interactable = interactable; }
 
 	/// @brief カスタムプロパティを設定する
@@ -257,8 +257,8 @@ public:
 		}
 	}
 
-	/// @brief 指定IDの子ノードを削除する
-	/// @param childId 削除する子ノードのID
+	/// @brief 指定 ID の子ノードを削除する
+	/// @param childId 削除する子ノードの ID
 	void removeChild(UINodeId childId)
 	{
 		m_children.erase(
@@ -284,14 +284,14 @@ public:
 	}
 
 	/// @brief 親ノードを取得する
-	/// @return 親ノードへのポインタ（ルートの場合はnullptr）
+	/// @return 親ノードへのポインタ（ルートの場合は nullptr）
 	[[nodiscard]] UINode* parent() const noexcept { return m_parent; }
 
 	// ── 検索 ────────────────────────────────────────────────
 
-	/// @brief サブツリーからIDで検索する
-	/// @param id 検索対象のノードID
-	/// @return 見つかったノードへのポインタ（見つからなければnullptr）
+	/// @brief サブツリーから ID で検索する
+	/// @param id 検索対象のノード ID
+	/// @return 見つかったノードへのポインタ（見つからなければ nullptr）
 	[[nodiscard]] UINode* findById(UINodeId id)
 	{
 		if (m_data.id == id)
@@ -310,7 +310,7 @@ public:
 
 	/// @brief サブツリーから名前で検索する
 	/// @param name 検索対象のノード名
-	/// @return 見つかったノードへのポインタ（見つからなければnullptr）
+	/// @return 見つかったノードへのポインタ（見つからなければ nullptr）
 	[[nodiscard]] UINode* findByName(std::string_view name)
 	{
 		if (m_data.name == name)
@@ -339,8 +339,8 @@ public:
 
 	// ── シリアライズ ────────────────────────────────────────
 
-	/// @brief ノードとその子孫をJSON文字列に変換する
-	/// @return JSON文字列
+	/// @brief ノードとその子孫を JSON 文字列に変換する
+	/// @return JSON 文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json = "{";

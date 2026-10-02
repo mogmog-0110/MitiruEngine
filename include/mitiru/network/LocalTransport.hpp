@@ -3,7 +3,7 @@
 /// @file LocalTransport.hpp
 /// @brief インプロセスローカル転送
 /// @details 実ネットワークを使用しないテスト用トランスポート。
-///          2つのLocalTransportインスタンスをペアリングして相互通信する。
+///          2 つの LocalTransport インスタンスをペアリングして相互通信する。
 
 #include <mitiru/network/INetworkTransport.hpp>
 
@@ -15,17 +15,17 @@ namespace mitiru::network
 {
 
 /// @brief ローカル（インプロセス）転送層
-/// @details AIテストやユニットテスト向けに、実際のソケット通信なしで
+/// @details AI テストやユニットテスト向けに、実際のソケット通信なしで
 ///          メッセージの送受信をエミュレートする。
-///          pair() で2つのインスタンスを接続して使用する。
+///          pair() で 2 つのインスタンスを接続して使用する。
 class LocalTransport final : public INetworkTransport
 {
 public:
-	/// @brief 2つのLocalTransportをペアリングする
+	/// @brief 2 つの LocalTransport をペアリングする
 	/// @param a 一方のトランスポート
 	/// @param b もう一方のトランスポート
-	/// @details ペアリング後、aのsend()はbのキューに、bのsend()はaのキューに
-	///          メッセージが格納される。双方の接続IDは1に設定される。
+	/// @details ペアリング後、a の send()は b のキューに、b の send()は a のキューに
+	///          メッセージが格納される。双方の接続 ID は 1 に設定される。
 	static void pair(LocalTransport& a, LocalTransport& b)
 	{
 		a.m_partner = &b;
@@ -44,7 +44,7 @@ public:
 		return true;
 	}
 
-	/// @brief 接続（ローカルではペアリングで代用するため常にfalse）
+	/// @brief 接続（ローカルではペアリングで代用するため常に false）
 	/// @param host ホスト名（無視される）
 	/// @param port ポート番号（無視される）
 	/// @return 常に false（pair()を使用すること）
@@ -54,7 +54,7 @@ public:
 	}
 
 	/// @brief 接続を切断する
-	/// @param id 接続ID
+	/// @param id 接続 ID
 	void disconnect(ConnectionId /*id*/) override
 	{
 		m_connected = false;
@@ -67,7 +67,7 @@ public:
 	}
 
 	/// @brief データを送信する（パートナーのキューに格納）
-	/// @param id 送信先の接続ID
+	/// @param id 送信先の接続 ID
 	/// @param data 送信データ
 	void send(ConnectionId id, const std::vector<std::uint8_t>& data) override
 	{
@@ -107,7 +107,7 @@ public:
 	}
 
 	/// @brief 指定接続がアクティブか判定する
-	/// @param id 接続ID
+	/// @param id 接続 ID
 	/// @return 接続中なら true
 	[[nodiscard]] bool isConnected(ConnectionId /*id*/) const override
 	{

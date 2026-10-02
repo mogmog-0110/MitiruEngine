@@ -1,10 +1,10 @@
 ﻿#pragma once
 
 /// @file SoftwareRenderer3D.hpp
-/// @brief ソフトウェア3Dレンダラー（ヘッドレス対応）
-/// @details Screen上にワイヤーフレーム3Dを描画する。GPU不要。
-///          Camera3DとMat4fを使用して3D→2D変換を行い、
-///          Screenの2D描画APIでワイヤーフレームを出力する。
+/// @brief ソフトウェア 3D レンダラー（ヘッドレス対応）
+/// @details Screen 上にワイヤーフレーム 3D を描画する。GPU 不要。
+///          Camera3D と Mat4f を使用して 3D→2D 変換を行い、
+///          Screen の 2D 描画 API でワイヤーフレームを出力する。
 ///
 /// @code
 /// mitiru::render::SoftwareRenderer3D renderer(1280.0f, 720.0f);
@@ -29,7 +29,7 @@
 namespace mitiru::render
 {
 
-/// @brief 深度ソート用3D三角形
+/// @brief 深度ソート用 3D 三角形
 /// @details ペインターズアルゴリズムで奥から手前に描画するためのデータ構造。
 struct Triangle3D
 {
@@ -38,17 +38,17 @@ struct Triangle3D
 	sgc::Vec3f c;        ///< 頂点C（ワールド座標）
 	sgc::Colorf color;   ///< 塗りつぶし色
 
-	/// @brief 平均Z値を計算する（深度ソート用）
-	/// @return 3頂点のZ座標の平均値
+	/// @brief 平均 Z 値を計算する（深度ソート用）
+	/// @return 3 頂点の Z 座標の平均値
 	[[nodiscard]] float avgZ() const noexcept
 	{
 		return (a.z + b.z + c.z) / 3.0f;
 	}
 };
 
-/// @brief ソフトウェア3Dレンダラー
+/// @brief ソフトウェア 3D レンダラー
 /// @details Mat4f::lookAt / Mat4f::perspective を使用してビュー・射影行列を構築し、
-///          transformPointで3D座標をNDCに変換後、スクリーン座標にマッピングする。
+///          transformPoint で 3D 座標を NDC に変換後、スクリーン座標にマッピングする。
 ///          ワイヤーフレーム描画専用（ラスタライズなし）。
 class SoftwareRenderer3D
 {
@@ -84,20 +84,20 @@ public:
 		m_vp = m_proj * m_view;
 	}
 
-	/// @brief 3D頂点をスクリーン座標に変換する
-	/// @param worldPos ワールド空間の3D座標
-	/// @return スクリーン空間の2D座標
+	/// @brief 3D 頂点をスクリーン座標に変換する
+	/// @param worldPos ワールド空間の 3D 座標
+	/// @return スクリーン空間の 2D 座標
 	[[nodiscard]] sgc::Vec2f project(const sgc::Vec3f& worldPos) const
 	{
-		/// VP行列でクリップ空間に変換する
+		/// VP 行列でクリップ空間に変換する
 		const sgc::Vec4f clip = m_vp * sgc::Vec4f{worldPos.x, worldPos.y, worldPos.z, 1.0f};
 
-		/// 透視除算でNDCに変換する
+		/// 透視除算で NDC に変換する
 		const float w = (std::abs(clip.w) < 0.001f) ? 0.001f : clip.w;
 		const float ndcX = clip.x / w;
 		const float ndcY = clip.y / w;
 
-		/// NDCからスクリーン座標に変換する（Y軸反転）
+		/// NDC からスクリーン座標に変換する（Y 軸反転）
 		const float sx = (ndcX + 1.0f) * 0.5f * m_screenW;
 		const float sy = (1.0f - ndcY) * 0.5f * m_screenH;
 
@@ -106,9 +106,9 @@ public:
 
 	/// @brief ワイヤーフレーム三角形を描画する
 	/// @param screen 描画先サーフェス
-	/// @param a 頂点A（ワールド座標）
-	/// @param b 頂点B（ワールド座標）
-	/// @param c 頂点C（ワールド座標）
+	/// @param a 頂点 A（ワールド座標）
+	/// @param b 頂点 B（ワールド座標）
+	/// @param c 頂点 C（ワールド座標）
 	/// @param color 描画色
 	void drawTriangle3D(Screen& screen,
 		const sgc::Vec3f& a, const sgc::Vec3f& b, const sgc::Vec3f& c,
@@ -135,7 +135,7 @@ public:
 		const float hy = size.y * 0.5f;
 		const float hz = size.z * 0.5f;
 
-		/// 8頂点を計算する
+		/// 8 頂点を計算する
 		const sgc::Vec3f v[8] = {
 			{center.x - hx, center.y - hy, center.z - hz},
 			{center.x + hx, center.y - hy, center.z - hz},
@@ -147,7 +147,7 @@ public:
 			{center.x - hx, center.y + hy, center.z + hz}
 		};
 
-		/// 12辺を描画するラムダ
+		/// 12 辺を描画するラムダ
 		auto line = [&](int i, int j)
 		{
 			const auto si = project(v[i]);
@@ -155,15 +155,15 @@ public:
 			screen.drawLine(si, sj, color, 1.0f);
 		};
 
-		/// 前面4辺
+		/// 前面 4 辺
 		line(0, 1); line(1, 2); line(2, 3); line(3, 0);
-		/// 背面4辺
+		/// 背面 4 辺
 		line(4, 5); line(5, 6); line(6, 7); line(7, 4);
-		/// 接続4辺
+		/// 接続 4 辺
 		line(0, 4); line(1, 5); line(2, 6); line(3, 7);
 	}
 
-	/// @brief 3D座標軸を描画する
+	/// @brief 3D 座標軸を描画する
 	/// @param screen 描画先サーフェス
 	/// @param length 軸の長さ
 	void drawAxes(Screen& screen, float length) const
@@ -173,19 +173,19 @@ public:
 		const auto yEnd = project({0.0f, length, 0.0f});
 		const auto zEnd = project({0.0f, 0.0f, length});
 
-		/// X軸 = 赤
+		/// X 軸 = 赤
 		screen.drawLine(o, xEnd, {1.0f, 0.0f, 0.0f, 1.0f}, 2.0f);
-		/// Y軸 = 緑
+		/// Y 軸 = 緑
 		screen.drawLine(o, yEnd, {0.0f, 1.0f, 0.0f, 1.0f}, 2.0f);
-		/// Z軸 = 青
+		/// Z 軸 = 青
 		screen.drawLine(o, zEnd, {0.0f, 0.0f, 1.0f, 1.0f}, 2.0f);
 	}
 
-	/// @brief 塗りつぶし三角形を3Dからスクリーンに投影して描画する
+	/// @brief 塗りつぶし三角形を 3D からスクリーンに投影して描画する
 	/// @param screen 描画先サーフェス
-	/// @param a 頂点A（ワールド座標）
-	/// @param b 頂点B（ワールド座標）
-	/// @param c 頂点C（ワールド座標）
+	/// @param a 頂点 A（ワールド座標）
+	/// @param b 頂点 B（ワールド座標）
+	/// @param c 頂点 C（ワールド座標）
 	/// @param color 塗りつぶし色
 	void drawFilledTriangle3D(Screen& screen,
 		const sgc::Vec3f& a, const sgc::Vec3f& b, const sgc::Vec3f& c,
@@ -197,7 +197,7 @@ public:
 		screen.drawTriangle(sa, sb, sc, color);
 	}
 
-	/// @brief 塗りつぶしボックスを描画する（6面×2三角形 = 12三角形）
+	/// @brief 塗りつぶしボックスを描画する（6 面×2 三角形 = 12 三角形）
 	/// @param screen 描画先サーフェス
 	/// @param center ボックスの中心座標
 	/// @param size ボックスのサイズ（幅, 高さ, 奥行き）
@@ -262,7 +262,7 @@ public:
 		drawFilledTriangle3D(screen, v[0], v[1], v[2], bottomColor);
 		drawFilledTriangle3D(screen, v[0], v[2], v[3], bottomColor);
 
-		/// 4つの側面
+		/// 4 つの側面
 		const float shades[] = {0.7f, 0.9f, 0.8f, 1.0f};
 		for (int i = 0; i < 4; ++i)
 		{
@@ -369,11 +369,11 @@ public:
 		for (int i = 0; i <= divisions; ++i)
 		{
 			const float t = -extent + step * static_cast<float>(i);
-			/// X方向の線
+			/// X 方向の線
 			const auto a = project({t, 0.0f, -extent});
 			const auto b = project({t, 0.0f, extent});
 			screen.drawLine(a, b, color, 1.0f);
-			/// Z方向の線
+			/// Z 方向の線
 			const auto c = project({-extent, 0.0f, t});
 			const auto d = project({extent, 0.0f, t});
 			screen.drawLine(c, d, color, 1.0f);
@@ -395,7 +395,7 @@ public:
 	/// @endcode
 	void drawScene(Screen& screen, std::vector<Triangle3D>& tris) const
 	{
-		/// 平均Zで奥（小さい値）から手前（大きい値）にソートする
+		/// 平均 Z で奥（小さい値）から手前（大きい値）にソートする
 		std::sort(tris.begin(), tris.end(),
 			[](const Triangle3D& lhs, const Triangle3D& rhs)
 			{
@@ -409,20 +409,20 @@ public:
 		}
 	}
 
-	/// @brief テクスチャ付き三角形を描画する（UV座標指定）
-	/// @details 3D頂点をスクリーンに投影し、テクスチャの中心ピクセル色で
+	/// @brief テクスチャ付き三角形を描画する（UV 座標指定）
+	/// @details 3D 頂点をスクリーンに投影し、テクスチャの中心ピクセル色で
 	///          塗りつぶし三角形を描画する。簡易テクスチャマッピングの概念実装。
 	/// @param screen 描画先サーフェス
-	/// @param a 頂点A（ワールド座標）
-	/// @param b 頂点B（ワールド座標）
-	/// @param c 頂点C（ワールド座標）
+	/// @param a 頂点 A（ワールド座標）
+	/// @param b 頂点 B（ワールド座標）
+	/// @param c 頂点 C（ワールド座標）
 	/// @param tex テクスチャ
-	/// @param u0 頂点AのU座標
-	/// @param v0 頂点AのV座標
-	/// @param u1 頂点BのU座標
-	/// @param v1 頂点BのV座標
-	/// @param u2 頂点CのU座標
-	/// @param v2 頂点CのV座標
+	/// @param u0 頂点 A の U 座標
+	/// @param v0 頂点 A の V 座標
+	/// @param u1 頂点 B の U 座標
+	/// @param v1 頂点 B の V 座標
+	/// @param u2 頂点 C の U 座標
+	/// @param v2 頂点 C の V 座標
 	void drawTexturedTriangle3D(Screen& screen,
 		const sgc::Vec3f& a, const sgc::Vec3f& b, const sgc::Vec3f& c,
 		const Texture& tex,
@@ -430,7 +430,7 @@ public:
 	{
 		if (!tex.valid()) return;
 
-		/// UV座標の平均値でテクスチャからサンプリングする
+		/// UV 座標の平均値でテクスチャからサンプリングする
 		const float avgU = (u0 + u1 + u2) / 3.0f;
 		const float avgV = (v0 + v1 + v2) / 3.0f;
 		const int tx = std::clamp(static_cast<int>(avgU * static_cast<float>(tex.width())),
@@ -451,14 +451,14 @@ public:
 		screen.drawTriangle(sa, sb, sc, color);
 	}
 
-	/// @brief テクスチャ付きクアッドを描画する（2三角形で分割）
-	/// @details 4頂点で構成されるクアッドをテクスチャ付きで描画する。
-	///          内部で2つのテクスチャ付き三角形に分割して描画する。
+	/// @brief テクスチャ付きクアッドを描画する（2 三角形で分割）
+	/// @details 4 頂点で構成されるクアッドをテクスチャ付きで描画する。
+	///          内部で 2 つのテクスチャ付き三角形に分割して描画する。
 	/// @param screen 描画先サーフェス
-	/// @param v0 頂点0（ワールド座標）
-	/// @param v1 頂点1（ワールド座標）
-	/// @param v2 頂点2（ワールド座標）
-	/// @param v3 頂点3（ワールド座標）
+	/// @param v0 頂点 0（ワールド座標）
+	/// @param v1 頂点 1（ワールド座標）
+	/// @param v2 頂点 2（ワールド座標）
+	/// @param v3 頂点 3（ワールド座標）
 	/// @param tex テクスチャ
 	void drawTexturedQuad3D(Screen& screen,
 		const sgc::Vec3f& v0, const sgc::Vec3f& v1,
@@ -471,7 +471,7 @@ public:
 			0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f);
 	}
 
-	/// @brief テクスチャ付きボックスを描画する（6面）
+	/// @brief テクスチャ付きボックスを描画する（6 面）
 	/// @param screen 描画先サーフェス
 	/// @param center ボックスの中心座標
 	/// @param size ボックスのサイズ

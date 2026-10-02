@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file VulkanRenderPass.hpp
-/// @brief Vulkanレンダーパス設定
-/// @details VkRenderPassの生成パラメータを定義する構造体群を提供する。
-///          MITIRU_HAS_VULKANが定義されている場合のみ実際のVulkan APIを使用する。
+/// @brief Vulkan レンダーパス設定
+/// @details VkRenderPass の生成パラメータを定義する構造体群を提供する。
+///          MITIRU_HAS_VULKAN が定義されている場合のみ実際の Vulkan API を使用する。
 
 #include <cstdint>
 #include <vector>
@@ -63,7 +63,7 @@ struct AttachmentReference
 };
 
 /// @brief サブパス記述子
-/// @details レンダーパス内の1つのサブパスが使用するアタッチメントを記述する。
+/// @details レンダーパス内の 1 つのサブパスが使用するアタッチメントを記述する。
 struct SubpassDesc
 {
 	std::vector<AttachmentReference> colorAttachments;    ///< カラーアタッチメント参照
@@ -73,7 +73,7 @@ struct SubpassDesc
 	ImageLayout depthStencilLayout = ImageLayout::DepthStencilAttachment; ///< 深度ステンシルレイアウト
 
 	/// @brief 深度ステンシルアタッチメントが設定されているか確認する
-	/// @return 設定されていればtrue
+	/// @return 設定されていれば true
 	[[nodiscard]] bool hasDepthStencil() const noexcept
 	{
 		return depthStencilAttachment != UINT32_MAX;
@@ -91,7 +91,7 @@ struct SubpassDependency
 	std::uint32_t srcAccessMask = 0;          ///< 依存元アクセスマスク
 	std::uint32_t dstAccessMask = 0;          ///< 依存先アクセスマスク
 
-	/// @brief 外部→最初のサブパスへの標準依存関係を生成する
+	/// @brief 外部から最初のサブパスへの標準依存関係を生成する
 	/// @return デフォルトの外部依存関係
 	[[nodiscard]] static SubpassDependency externalToFirst() noexcept
 	{
@@ -103,16 +103,14 @@ struct SubpassDependency
 };
 
 /// @brief レンダーパス生成パラメータ
-/// @details VkRenderPassCreateInfoに対応する構成情報を保持する。
-///
+/// @details VkRenderPassCreateInfo に対応する構成情報を保持する。
 /// @code
 /// RenderPassDesc desc;
 /// desc.attachments.push_back(AttachmentDesc{
-///     .format = PixelFormat::BGRA8,
-///     .loadOp = AttachmentLoadOp::Clear,
-///     .finalLayout = ImageLayout::PresentSrc
+/// .format = PixelFormat::BGRA8,
+/// .loadOp = AttachmentLoadOp::Clear,
+/// .finalLayout = ImageLayout::PresentSrc
 /// });
-///
 /// SubpassDesc subpass;
 /// subpass.colorAttachments.push_back({0, ImageLayout::ColorAttachment});
 /// desc.subpasses.push_back(subpass);
@@ -123,9 +121,9 @@ struct RenderPassDesc
 	std::vector<SubpassDesc> subpasses;            ///< サブパス記述子リスト
 	std::vector<SubpassDependency> dependencies;   ///< サブパス依存関係リスト
 
-	/// @brief シンプルなカラーのみレンダーパスを生成する
+	/// @brief カラーのみのシンプルなレンダーパスを生成する
 	/// @param format カラーアタッチメントのフォーマット
-	/// @return 1アタッチメント1サブパスのレンダーパス記述子
+	/// @return 1 アタッチメント 1 サブパスのレンダーパス記述子
 	[[nodiscard]] static RenderPassDesc simpleColor(
 		PixelFormat format = PixelFormat::BGRA8)
 	{
@@ -154,7 +152,7 @@ struct RenderPassDesc
 
 	/// @brief カラー＋深度レンダーパスを生成する
 	/// @param colorFormat カラーアタッチメントのフォーマット
-	/// @return カラー+深度の2アタッチメント1サブパスのレンダーパス記述子
+	/// @return カラー+深度の 2 アタッチメント 1 サブパスのレンダーパス記述子
 	[[nodiscard]] static RenderPassDesc colorDepth(
 		PixelFormat colorFormat = PixelFormat::BGRA8)
 	{
@@ -198,10 +196,9 @@ struct RenderPassDesc
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
-/// @brief VkRenderPassのRAIIラッパー
-/// @details レンダーパスの生成・破棄をRAIIで管理する。
-///          RenderPassDescをVkRenderPassCreateInfoに変換してvkCreateRenderPassを呼び出す。
-///
+/// @brief VkRenderPass の RAII ラッパー
+/// @details レンダーパスの生成・破棄を RAII で管理する。
+/// RenderPassDesc を VkRenderPassCreateInfo に変換して vkCreateRenderPass を呼び出す。
 /// @code
 /// VkDevice device = /* VulkanDevice から取得 */;
 /// RenderPassDesc desc = RenderPassDesc::simpleColor(PixelFormat::BGRA8);
@@ -214,7 +211,7 @@ public:
 	/// @brief コンストラクタ
 	/// @param device 論理デバイスハンドル
 	/// @param desc レンダーパス生成パラメータ
-	/// @throws std::runtime_error vkCreateRenderPassが失敗した場合
+	/// @throws std::runtime_error vkCreateRenderPass が失敗した場合
 	VulkanRenderPass(VkDevice device, const RenderPassDesc& desc)
 		: m_device(device)
 		, m_desc(desc)
@@ -236,8 +233,8 @@ public:
 			attachments.push_back(vkAttach);
 		}
 
-		/// サブパス記述子とそれが参照するアタッチメント参照を変換する
-		/// VkSubpassDescriptionはポインタを保持するため、参照配列の寿命を管理する
+		/// サブパス記述子と、それが参照するアタッチメント参照を変換する
+		/// VkSubpassDescription はポインタを保持するため、参照配列の寿命を管理する
 		std::vector<std::vector<VkAttachmentReference>> colorRefs(desc.subpasses.size());
 		std::vector<std::vector<VkAttachmentReference>> inputRefs(desc.subpasses.size());
 		std::vector<std::vector<VkAttachmentReference>> resolveRefs(desc.subpasses.size());
@@ -328,15 +325,15 @@ public:
 	VulkanRenderPass(VulkanRenderPass&&) = delete;
 	VulkanRenderPass& operator=(VulkanRenderPass&&) = delete;
 
-	/// @brief 内部のVkRenderPassハンドルを取得する
-	/// @return VkRenderPassハンドル
+	/// @brief 内部の VkRenderPass ハンドルを取得する
+	/// @return VkRenderPass ハンドル
 	[[nodiscard]] VkRenderPass handle() const noexcept
 	{
 		return m_renderPass;
 	}
 
 	/// @brief 生成パラメータを取得する
-	/// @return レンダーパス記述子へのconst参照
+	/// @return レンダーパス記述子への const 参照
 	[[nodiscard]] const RenderPassDesc& desc() const noexcept
 	{
 		return m_desc;

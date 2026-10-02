@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file ColorPalette.hpp
-/// @brief constexpr定義済みカラーパレット
-/// @details PICO8/NES/PASTEL/GAMEBOY各16色のパレット定義と安全なインデックスアクセス。
+/// @brief constexpr 定義済みカラーパレット
+/// @details PICO8/NES/PASTEL/GAMEBOY 各 16 色のパレット定義と安全なインデックスアクセス。
 
 #include <array>
 #include <sgc/types/Color.hpp>
@@ -19,12 +19,12 @@ enum class PaletteType
 	GameBoy   ///< ゲームボーイ風パレット（4色+12パディング=16色）
 };
 
-/// @brief constexprカラーパレット（16色固定）
+/// @brief constexpr カラーパレット（16 色固定）
 struct ColorPalette
 {
 	static constexpr int PALETTE_SIZE = 16;
 
-	/// @brief PICO-8パレット
+	/// @brief PICO-8 パレット
 	static constexpr std::array<sgc::Colorf, PALETTE_SIZE> PICO8 = {{
 		sgc::Colorf{0.0f/255, 0.0f/255, 0.0f/255, 1.0f},       // 0: 黒
 		sgc::Colorf{29.0f/255, 43.0f/255, 83.0f/255, 1.0f},     // 1: 濃い青
@@ -44,7 +44,7 @@ struct ColorPalette
 		sgc::Colorf{255.0f/255, 204.0f/255, 170.0f/255, 1.0f}   // 15: 薄いピーチ
 	}};
 
-	/// @brief NES風パレット（代表的な16色）
+	/// @brief NES 風パレット（代表的な 16 色）
 	static constexpr std::array<sgc::Colorf, PALETTE_SIZE> NES = {{
 		sgc::Colorf{0.0f/255, 0.0f/255, 0.0f/255, 1.0f},
 		sgc::Colorf{252.0f/255, 252.0f/255, 252.0f/255, 1.0f},
@@ -64,7 +64,7 @@ struct ColorPalette
 		sgc::Colorf{248.0f/255, 120.0f/255, 248.0f/255, 1.0f}
 	}};
 
-	/// @brief パステルパレット（16色）
+	/// @brief パステルパレット（16 色）
 	static constexpr std::array<sgc::Colorf, PALETTE_SIZE> PASTEL = {{
 		sgc::Colorf{255.0f/255, 179.0f/255, 186.0f/255, 1.0f},
 		sgc::Colorf{255.0f/255, 223.0f/255, 186.0f/255, 1.0f},
@@ -84,7 +84,7 @@ struct ColorPalette
 		sgc::Colorf{240.0f/255, 200.0f/255, 220.0f/255, 1.0f}
 	}};
 
-	/// @brief ゲームボーイ風パレット（4色、残りは最暗色で埋める）
+	/// @brief ゲームボーイ風パレット（4 色、残りは最暗色で埋める）
 	static constexpr std::array<sgc::Colorf, PALETTE_SIZE> GAMEBOY = {{
 		sgc::Colorf{15.0f/255, 56.0f/255, 15.0f/255, 1.0f},     // 0: 最暗
 		sgc::Colorf{48.0f/255, 98.0f/255, 48.0f/255, 1.0f},     // 1: 暗
@@ -122,7 +122,7 @@ struct ColorPalette
 	}
 
 	/// @brief 配列から色を安全に取得する（ラップアラウンド）
-	/// @param palette 16色配列
+	/// @param palette 16 色配列
 	/// @param index カラーインデックス
 	/// @return 色
 	[[nodiscard]] static constexpr sgc::Colorf get(

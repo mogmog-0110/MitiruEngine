@@ -1,8 +1,0 @@
-{
-  "id": "fixture_dialogue",
-  "lines": [
-    { "speaker": "サチ",   "text": "注文いいですか？" },
-    { "speaker": "マリア", "text": "はいどうぞ" },
-    {                      "text": "（厨房に向かう）" }
-  ]
-}

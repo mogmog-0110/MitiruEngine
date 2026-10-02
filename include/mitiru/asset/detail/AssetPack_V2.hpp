@@ -1,23 +1,23 @@
 #pragma once
 
 /// @file AssetPack_V2.hpp
-/// @brief AssetPack の v2 (chunk 分割) 形式: 書き出し / 読み込み / view / chunk キャッシュ。
+/// @brief AssetPack の v2 (chunk 分割) 形式。書き出し / 読み込み / view / chunk キャッシュ。
 ///
-/// AssetPack.hpp のクラス定義が終わった直後の namespace mitiru::vfs から include される
-/// 前提 (AssetPack.hpp の続きとして読む分割ファイル)。単体で include されても
-/// #include <mitiru/asset/AssetPack.hpp> が pragma once 越しに成立するので問題ない。
+/// AssetPack.hpp のクラス定義が終わった直後に、namespace mitiru::vfs から include される
+/// 前提 (AssetPack.hpp の続きとして読む分割ファイル)。単体で include されても、
+/// #include <mitiru/asset/AssetPack.hpp> が pragma once を介して成立するため問題ない。
 ///
-/// v2 レイアウトは先頭から順に: magic(6) と version=2(u16) と flags(u16) と count(u32) と
+/// v2 レイアウトは先頭から順に、magic(6) と version=2(u16) と flags(u16) と count(u32) と
 /// chunkSize(u32) と dependsCount(u16)。続けて依存 pack 名を dependsCount 個
 /// (nameLen(u16) + name)、その後にエントリを count 個
 /// (中身は pathLen(u16) + path + firstChunk(u32) + chunkCount(u32) + size(u64) の並び)、
 /// 最後に chunk 表 (totalChunks(u32) と storedSize(u32) を totalChunks 個) と
-/// blob 本体 (chunk を index 順に連結、各 chunk は圧縮してから難読化した状態)。
+/// blob 本体 (chunk を index 順に連結し、各 chunk は圧縮してから難読化した状態)。
 ///
-/// エントリは chunkSize (64KiB) 境界に揃えて分割される。view() はどのケースでも
-/// パスごとに一度だけ復号して m_viewFallback (pack の生存期間だけ残る) に載せてから
-/// span を張る。chunk キャッシュ (LRU、容量超過で evict) へ直接 span を張らないのは、
-/// 後続の無関係な view()/read() が同じ chunk を追い出すと span が dangling になるため。
+/// エントリは chunkSize (64KiB) 境界に揃えて分割される。view() はどの場合でも、
+/// パスごとに一度だけ復号して m_viewFallback (pack の生存期間だけ保持される) に格納してから
+/// span を作成する。chunk キャッシュ (LRU、容量超過時に削除) を直接参照する span を作成しないのは、
+/// 後続の無関係な view()/read() によって同じ chunk が削除されると、span の参照先が無効になるため。
 
 #include <mitiru/asset/AssetPack.hpp>
 #include <mitiru/util/Compression.hpp>
@@ -99,7 +99,7 @@ inline std::optional<std::span<const uint8_t>> AssetPack::view(std::string_view 
 
 	if (m_version == kVersion)
 	{
-		// 難読化されていなければ mmap した pack へ直接 span を張れる (コピー無し)。
+		// 難読化されていなければ、mmap した pack を直接参照する span を作成できる (コピー無し)。
 		if (!m_scrambled && ensureMmap() && m_baseOffset + e->offset + e->size <= m_fileMap->size())
 		{
 			return std::span<const uint8_t>(m_fileMap->data() + m_baseOffset + e->offset, e->size);
@@ -109,11 +109,11 @@ inline std::optional<std::span<const uint8_t>> AssetPack::view(std::string_view 
 
 	if (e->chunkCount == 1)
 	{
-		// m_chunkCache は容量 64 の LRU で、無関係な別 chunk の view() 連打により
-		// ここで返した span の裏にある vector が evictOldest() で erase されうる
-		// (unordered_map::erase は要素の破棄を伴い、既存の参照/ポインタを無効化する)。
-		// そのため単一 chunk でも zero-copy にはせず、viewViaFallback (パスごとに
-		// 永続する m_viewFallback) を経由して span の有効期間を pack の生存期間に揃える。
+		// m_chunkCache は容量 64 の LRU であり、無関係な別の chunk に対する view() の連続呼び出しにより、
+		// ここで返した span が参照する vector は evictOldest() によって erase される可能性がある
+		// (unordered_map::erase は要素を破棄し、既存の参照/ポインタを無効化する)。
+		// そのため、単一 chunk でも zero-copy にはせず、viewViaFallback (パスごとに
+		// 永続する m_viewFallback) を経由して、span の有効期間を pack の生存期間に揃える。
 		auto it = m_viewFallback->find(np);
 		if (it == m_viewFallback->end())
 		{
@@ -140,8 +140,8 @@ inline bool AssetPack::writeV2(const std::filesystem::path&                     
 	std::vector<uint32_t> firstChunkOf(entries.size());
 	std::vector<uint32_t> chunkCountOf(entries.size());
 
-	// 各エントリを chunkSize 単位に分割し、圧縮 (任意) だけ済ませた状態で並べる。
-	// 難読化は全 chunk の書き込み offset が決まってから (offset を鍵に使うため) 一括で行う。
+	// 各エントリを chunkSize 単位に分割し、圧縮 (任意) だけを済ませた状態で並べる。
+	// 難読化は、全 chunk の書き込み offset が決まってから (offset を鍵に使うため) 一括で行う。
 	for (std::size_t i = 0; i < entries.size(); ++i)
 	{
 		const auto&    data    = entries[i].second;
@@ -160,7 +160,7 @@ inline bool AssetPack::writeV2(const std::filesystem::path&                     
 		}
 	}
 
-	// ヘッダ (magic〜依存名〜エントリ表〜chunk 表) の合計サイズ = blob 開始位置。
+	// ヘッダ (magic〜依存名〜エントリ表〜chunk 表) の合計サイズが、blob の開始位置になる。
 	uint64_t headerSize = 6 + 2 + 2 + 4 + 4 + 2;
 	for (const auto& d : dependsOn) { headerSize += 2 + d.size(); }
 	for (const auto& [p, unused] : entries) { (void)unused; headerSize += 2 + normalizePath(p).size() + 4 + 4 + 8; }
@@ -259,7 +259,7 @@ inline std::optional<AssetPack> AssetPack::openV2(std::ifstream& f, const std::f
 	for (uint32_t i = 0; i < totalChunks; ++i) { pack.m_chunkStoredSize[i] = detail::ru32(f); }
 	if (!f) { return std::nullopt; }
 
-	// 各 chunk の展開後サイズは既定 chunkSize、ただし各エントリの最終 chunk だけ端数になる。
+	// 各 chunk の展開後サイズは既定の chunkSize で、各エントリの最終 chunk だけ端数になる。
 	pack.m_chunkUncompressedSize.assign(totalChunks, chunkSize);
 	for (uint32_t i = 0; i < count; ++i)
 	{

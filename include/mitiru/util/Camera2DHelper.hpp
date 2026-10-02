@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file Camera2DHelper.hpp
-/// @brief 2Dカメラヘルパー（中心座標/ズーム/ビューポート）
+/// @brief 2D カメラヘルパー（中心座標/ズーム/ビューポート）
 /// @details ワールド座標とスクリーン座標の相互変換を提供する。
 
 #include <algorithm>
@@ -11,7 +11,7 @@
 namespace mitiru::util
 {
 
-/// @brief 2Dカメラ（中心座標・ズーム・ビューポートサイズ）
+/// @brief 2D カメラ（中心座標・ズーム・ビューポートサイズ）
 class Camera2DHelper
 {
 public:
@@ -62,7 +62,7 @@ public:
 	/// @brief カメラ中心座標を取得する
 	[[nodiscard]] sgc::Vec2f center() const noexcept { return m_center; }
 
-	/// @brief ズーム倍率を設定する（0より大きい値）
+	/// @brief ズーム倍率を設定する（0 より大きい値）
 	/// @param zoom ズーム倍率
 	void setZoom(float zoom) noexcept { m_zoom = std::max(0.01f, zoom); }
 

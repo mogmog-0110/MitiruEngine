@@ -1,4 +1,4 @@
-// mitiru::Engine の detail header - 直接 include しないこと。core/Engine.hpp 経由で include される
+// mitiru::Engine の detail header。直接 include しないこと。core/Engine.hpp 経由で include される
 #pragma once
 
 /// @file Engine_Module_Loader.hpp
@@ -22,12 +22,13 @@
 #include <mitiru/core/detail/PhysicsQueryJob.hpp>
 #include <mitiru/module/Spawner.hpp>
 #include <mitiru/asset/AssetPack.hpp>
-#include <mitiru/cef/StateStore.hpp>
+#include <mitiru/bridge/StateStore.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
+#include <mitiru/debug/CrashReport.hpp>
 #include <mitiru/debug/DebugPrint.hpp>
 #include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/ModuleHost.hpp>
@@ -43,7 +44,7 @@
 namespace mitiru::module::detail
 {
 
-/// @brief wire version (数値 + build 指紋) を人間語へ (例 "v21 (VC19, CRT=dll (/MD系), IDL=2)")。
+/// @brief wire version (数値 + build 指紋) を人間語へ (例 "v21 (VC19, CRT=dll (/MD 系), IDL=2)")。
 inline std::string describeWireVersion(std::uint32_t v)
 {
 	std::string s = "v" + std::to_string(wireAbiNumber(v)) + " (";
@@ -90,7 +91,7 @@ MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured(
 		// MITIRU_ASSET_PACK (host --asset-pack の既存経路、assets 専用 pack を指す) は
 		// 後方互換のフォールバックとして読む (module.dll を同梱した pack をこちらの
 		// env 経由で渡していた既存運用を壊さないため)。両方設定されていたら
-		// MITIRU_PACK を優先し、その旨を 1 回だけ警告する (無言で片方を無視しない)。
+		// MITIRU_PACK を優先し、その旨を 1 回だけ警告する (知らせずに片方を無視しない)。
 		const char* pack      = std::getenv("MITIRU_PACK");
 		const char* assetPack = std::getenv("MITIRU_ASSET_PACK");
 		if (pack != nullptr && pack[0] != '\0')
@@ -177,31 +178,27 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 
 	// loadFn 前の pointer を控える。null から確保されたか (fresh load) を後で判定する。
 	void* const memoryBefore = m_moduleMemory;
-	loadFn(&m_moduleApi, &m_moduleMemory);
+	if (!guardModuleCode("mitiru_module_load", m_moduleHost.get(), "load refused",
+	                     [&] { loadFn(&m_moduleApi, &m_moduleMemory); }))
+	{
+		m_moduleMemory = memoryBefore;
+		m_moduleApi    = module::ModuleApi{};
+		m_moduleHost->unload();
+		m_moduleHost->setLastError("mitiru_module_load の中で落ちました (報告は crash フォルダ)");
+		return false;
+	}
 
 	// DLL が申告した GameMemory サイズを保持。v≤8 DLL は未設定 ⇒ zero-init の 0。
 	m_moduleMemorySize = m_moduleApi.memorySize;
-
-	// reflection を申告したのに memorySize=0 だと reflectToJson が bounds 外で全 skip し
-	// /api/ai/state が {} を返す。原因が分かりにくいので一度だけ警告する (R-01)。
-	// non-POD game でも api->memorySize = sizeof(GameMemory) を申告すれば現フレーム観測は可
-	// (reflectToJson は申告した offset のスカラーしか触らない)。ring/diff/branch は flat POD 必須。
-	if (m_moduleApi.reflectFieldCount > 0 && m_moduleMemorySize == 0)
-	{
-		std::fprintf(stderr,
-			"[ai] warning: MITIRU_REFLECT で %d field 申告されていますが api->memorySize が 0 です。"
-			"/api/ai/state は空 {} になります。api->memorySize = sizeof(GameMemory) を申告してください。\n",
-			static_cast<int>(m_moduleApi.reflectFieldCount));
-	}
 
 	// version check。拒否時は DLL が確保したばかりの memory を unloadFn で DLL に
 	// 返却してから unload する (リーク解消)。返却は fresh 確保時のみ。温存 memory を
 	// 渡す reload は reloadModule 側で先ロード検証されるため、ここでは触らない。
 	// ABI は「数値 + build 指紋」の完全一致を要求する (H-1/H-4)。古い DLL (version < host)
-	// も弾く: SoundIntent 等の配列要素が後の version で太ると soundIntents[] の stride =
-	// 後続 FrameIntents field の offset がズレ、旧 DLL を新 host で動かすと silent 破損/
+	// も弾く: SoundIntent 等の配列要素が後の version で大きくなると soundIntents[] の stride =
+	// 後続 FrameIntents field の offset がズレ、旧 DLL を新 host で動かすと気づかれないまま破損/
 	// クラッシュするため (D1)。数値一致でも CRT 種別 / IDL / toolset 混成は Screen* (STL
-	// 内包) と cross-DLL delete が silent 破損するため同様に拒否する。
+	// 内包) と cross-DLL delete が気づかれないまま破損するため同様に拒否する。
 	if (m_moduleApi.version != module::kWireApiVersion)
 	{
 		const std::uint32_t dllVersion = m_moduleApi.version;
@@ -209,8 +206,8 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 		{
 			if (auto unloadFn = m_moduleHost->unloadFn())
 			{
-				try { unloadFn(m_moduleMemory); }
-				catch (...) {}
+				(void)guardModuleCode("mitiru_module_unload", m_moduleHost.get(), "load refused",
+				                      [&] { unloadFn(m_moduleMemory); });
 			}
 			m_moduleMemory     = nullptr;
 			m_moduleMemorySize = 0;
@@ -220,6 +217,20 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 		m_moduleHost->setLastError(
 			module::detail::describeVersionMismatch(dllVersion, module::kWireApiVersion));
 		return false;
+	}
+
+	m_moduleReflection = m_moduleHost->captureReflection();
+
+	// reflection を申告したのに memorySize=0 だと reflectToJson が bounds 外で全 skip し
+	// /api/ai/state が {} を返す。原因が分かりにくいので一度だけ警告する (R-01)。
+	// non-POD game でも api->memorySize = sizeof(GameMemory) を申告すれば現フレーム観測は可
+	// (reflectToJson は申告した offset のスカラーしか触らない)。ring/diff/branch は flat POD 必須。
+	if (m_moduleReflection.fieldCount() > 0 && m_moduleMemorySize == 0)
+	{
+		std::fprintf(stderr,
+			"[ai] warning: MITIRU_REFLECT で %d field 申告されていますが api->memorySize が 0 です。"
+			"/api/ai/state は空 {} になります。api->memorySize = sizeof(GameMemory) を申告してください。\n",
+			static_cast<int>(m_moduleReflection.fieldCount()));
 	}
 
 	// pause 中も dt を通す layer mask (2-1)。宣言が無い DLL は resolveSymbol が nullptr を
@@ -284,11 +295,15 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	// assets/audio/<id>.wav と同じ「DLL の隣」規約、ABI v16)。
 	m_spriteCache.setBaseDir(modulePath.parent_path() / "assets" / "sprites");
 
+	clearModuleFault();
+	debug::setCrashContextText(debug::crashContext().gameDll, debug::pathToUtf8(modulePath));
+	module::setFaultDumpDirectory(debug::crashDirectory(), modulePath.stem());
+
 	// on_init は「memory が新規確保された時」のみ呼ぶ (Game.hpp registerGame の設計意図)。
 	// 温存 memory を渡された場合に呼ぶと T::init() が user 状態をリセットし得る。
 	if (m_moduleApi.on_init != nullptr && memoryBefore == nullptr)
 	{
-		m_moduleApi.on_init(m_moduleMemory);
+		guardModuleCallback("on_init", [&] { m_moduleApi.on_init(m_moduleMemory); });
 	}
 	return true;
 }
@@ -302,15 +317,18 @@ MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept
 		return;
 	}
 
+	releaseReloadRollback();
 	if (m_moduleApi.on_shutdown != nullptr)
 	{
-		try { m_moduleApi.on_shutdown(m_moduleMemory); }
+		try { guardModuleCallback("on_shutdown", [&] { m_moduleApi.on_shutdown(m_moduleMemory); }); }
 		catch (...) {}
 	}
 
-	if (auto unloadFn = m_moduleHost->unloadFn())
+	// 落ちた game の解放処理は呼ばない。壊れた heap を delete させて host まで落とすより、
+	// 終了直前の 1 割当を手放す方が安い。
+	if (auto unloadFn = m_moduleHost->unloadFn(); unloadFn != nullptr && !m_moduleFaulted)
 	{
-		try { unloadFn(m_moduleMemory); }
+		try { guardModuleCallback("mitiru_module_unload", [&] { unloadFn(m_moduleMemory); }); }
 		catch (...) {}
 	}
 
@@ -321,9 +339,10 @@ MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept
 	m_pauseAlwaysLayersMask = 0;
 
 	m_moduleApi = module::ModuleApi{};
+	m_moduleReflection = module::ModuleReflection{};
 	m_moduleHost->unload();
 
-	// (今や死んでいる) DLL が所有する state を参照していた pending event は
+	// (もう使えない) DLL が所有する state を参照していた pending event は
 	// action queue から全て破棄する必要がある。
 	if (m_moduleActionEvents)
 	{
@@ -344,14 +363,14 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	}
 
 	// ── 先ロード・後差し替え (A1) ──────────────────────────────────────────
-	// 旧 DLL を生かしたまま、新 DLL を一時 host で load + API 解決 + version 検証
+	// 旧 DLL を残したまま、新 DLL を一時 host で load + API 解決 + version 検証
 	// まで済ませる。途中で失敗したら旧 module / 旧 memory には一切触らず false を
 	// 返す → host は「old code で継続」できる。temp copy 名が一意なので同一 source
 	// でも独立 module として並走 load できる (ModuleHost の copy strategy)。
 	module::ModuleHost newHost;
 	if (!newHost.load(modulePath))
 	{
-		m_moduleHost->setLastError(newHost.lastError());
+		m_moduleHost->setLastError(newHost.lastError(), newHost.lastLoadBusy());
 		return false;
 	}
 
@@ -367,7 +386,12 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	newApi.version = module::kWireApiVersion;
 	void* memoryBefore = m_moduleMemory;  // size 変動 guard が fresh 扱いへ倒すため非 const
 	void* memory       = m_moduleMemory;
-	loadFn(&newApi, &memory);
+	if (!guardModuleCode("mitiru_module_load", &newHost, "reload refused; the running DLL continues",
+	                     [&] { loadFn(&newApi, &memory); }))
+	{
+		m_moduleHost->setLastError("新 DLL の mitiru_module_load の中で落ちました (旧コードで継続)");
+		return false;
+	}
 
 	if (newApi.version != module::kWireApiVersion)  // 数値 + 指紋の完全一致要求 (D1 / H-1/H-4)
 	{
@@ -377,8 +401,8 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 		{
 			if (auto unloadFn = newHost.unloadFn())
 			{
-				try { unloadFn(memory); }
-				catch (...) {}
+				(void)guardModuleCode("mitiru_module_unload", &newHost, "reload refused",
+				                      [&] { unloadFn(memory); });
 			}
 		}
 		m_moduleHost->setLastError(
@@ -389,53 +413,58 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	// ── GameMemory サイズ / layout 変動 guard (C-1 + layout hash) ──────────
 	// 温存 pointer の割当は旧 sizeof のまま。新 DLL の申告サイズが違うと旧割当の
 	// 末尾を越えて read/write する heap overflow になるため、状態温存を放棄する。
-	// サイズ一致でも MITIRU_REFLECT 由来の layout hash が違えば field 並べ替え /
-	// 型変更。旧 bytes を新 layout で解釈すると化けるため、同様に放棄する
-	// (reflection 未宣言 game は hash=0 = 従来のサイズ照合のみ)。
+	// サイズ一致でも反射記述子の hash か、反射が無ければ形の hash (mitiru_module_layout_hash) が
+	// 違えば field の並べ替え / 型変更。旧 bytes を新 layout で解釈すると値がおかしくなるため、同様に放棄する。
 	// 旧割当は「確保した世代の DLL」の unloadFn に返却させる (cross-CRT delete 回避)。
 	// ここは全検証通過後なので、以降の失敗で旧 module へ戻る経路は無い。
-	const std::uint64_t oldLayoutHash = module::moduleLayoutHash(m_moduleApi);
-	const std::uint64_t newLayoutHash = module::moduleLayoutHash(newApi);
-	const bool layoutChanged =
-		(oldLayoutHash != 0 && newLayoutHash != 0 && oldLayoutHash != newLayoutHash);
+	module::ModuleReflection newReflection = newHost.captureReflection();
+	// 新しい DLL が最初のフレームで落ちたときの戻り先。後段で旧 memory を解放することがあるので先に写す。
+	std::vector<std::uint8_t> preReloadMemory;
+	// 落ちて止まっている DLL は戻り先にしない (戻っても同じ所でまた落ちる)。
+	if (m_config.reloadRollbackFrames > 0 && memoryBefore != nullptr && m_moduleMemorySize > 0 && !m_moduleFaulted)
+	{
+		preReloadMemory.assign(static_cast<const std::uint8_t*>(memoryBefore),
+		                       static_cast<const std::uint8_t*>(memoryBefore) + m_moduleMemorySize);
+	}
+	const bool layoutChanged = module::layoutDiffers(m_moduleReflection, newReflection);
 	bool stateReset = false;
 	// P9: layout 変動時に丸ごと初期化する代わり、reflect の名前+型が一致する field だけ
-	// 引き継ぐための旧 GameMemory の退避先 (freeReflectFields/oldApi は unloadFn で旧 memory を
-	// 返却する前に読み取っておく必要がある)。
+	// 引き継ぐための旧 GameMemory の退避先 (unloadFn で旧 memory を返却する前に読み取る)。
 	std::vector<std::uint8_t> oldMemorySnapshot;
-	module::ModuleApi         oldApiSnapshot{};
+	module::ModuleReflection  oldReflection;
 	if (memoryBefore != nullptr
 	    && (newApi.memorySize != m_moduleMemorySize || layoutChanged))
 	{
+		const bool canMigrate = m_moduleReflection.fieldCount() > 0 && newReflection.fieldCount() > 0;
+		const char* const carry = canMigrate ? "reflect 一致 field のみ引き継ぎ"
+		                                     : "反射が無いので状態は引き継がず初期化";
 		if (newApi.memorySize != m_moduleMemorySize)
 		{
-			std::fprintf(stderr,
-				"[module] reload: GameMemory size changed %u -> %u, "
-				"reflect 一致 field のみ引き継ぎ\n",
-				m_moduleMemorySize, newApi.memorySize);
+			std::fprintf(stderr, "[module] reload: GameMemory size changed %u -> %u, %s\n",
+				m_moduleMemorySize, newApi.memorySize, carry);
 		}
 		else
 		{
 			std::fprintf(stderr,
-				"[module] reload: GameMemory layout changed (size %u unchanged, "
-				"reflect hash mismatch), reflect 一致 field のみ引き継ぎ\n",
-				m_moduleMemorySize);
+				"[module] reload: GameMemory layout changed (size %u unchanged, layout hash mismatch), %s\n",
+				m_moduleMemorySize, carry);
 		}
-		if (m_moduleApi.reflectFieldCount > 0)
+		if (canMigrate)
 		{
 			oldMemorySnapshot.assign(
 				static_cast<const std::uint8_t*>(m_moduleMemory),
 				static_cast<const std::uint8_t*>(m_moduleMemory) + m_moduleMemorySize);
-			oldApiSnapshot = m_moduleApi;  // ModuleApi は POD、fields/schemas は値配列なのでコピーで足りる
+			oldReflection = m_moduleReflection;
 		}
 		if (m_moduleApi.on_shutdown != nullptr)
 		{
-			try { m_moduleApi.on_shutdown(m_moduleMemory); }
+			try { guardModuleCallback("on_shutdown", [&] { m_moduleApi.on_shutdown(m_moduleMemory); }); }
 			catch (...) {}
 		}
-		if (auto oldUnloadFn = m_moduleHost->unloadFn())
+		// 落ちた旧 DLL には解放させない (unloadModule と同じ理由)。
+		if (auto oldUnloadFn = m_moduleHost->unloadFn(); oldUnloadFn != nullptr && !m_moduleFaulted)
 		{
-			try { oldUnloadFn(m_moduleMemory); }
+			try { guardModuleCallback("mitiru_module_unload", [&] { oldUnloadFn(m_moduleMemory); }); }
 			catch (...) {}
 		}
 		m_moduleMemory = nullptr;
@@ -445,17 +474,37 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 		newApi.version = module::kWireApiVersion;
 		memory         = nullptr;
 		memoryBefore   = nullptr;
-		loadFn(&newApi, &memory);
+		// 旧 memory は返却済みなので、ここで落ちたら戻る先が無い。module を外して host だけ動かし続ける。
+		if (!guardModuleCode("mitiru_module_load", &newHost, "reload failed; no module is loaded",
+		                     [&] { loadFn(&newApi, &memory); }))
+		{
+			m_moduleApi        = module::ModuleApi{};
+			m_moduleMemorySize = 0;
+			m_moduleHost->unload();
+			m_moduleHost->setLastError("新 DLL の mitiru_module_load の中で落ちました (module は外れています)");
+			return false;
+		}
+		newReflection = newHost.captureReflection();
 		stateReset = true;
 	}
 
 	// ── 差し替え ──────────────────────────────────────────────────────────
-	// 旧 DLL は unloadFn (DLL 側 delete) を呼ばず FreeLibrary のみ。GameMemory の
-	// 所有は host が続投する = 状態温存の正規化 (解放済み pointer の再利用ではない)。
-	// 旧 on_shutdown も呼ばない。GameMemory は flat POD 契約 で DLL 側に
-	// 解放すべきリソースを持たないし、T::shutdown() が状態を壊す余地も残さない。
-	*m_moduleHost      = std::move(newHost);  // move 代入が旧 handle を FreeLibrary する
+	// 旧 DLL は unloadFn (DLL 側 delete) を呼ばず FreeLibrary のみ。GameMemory は
+	// 引き続き host が所有する = 状態温存の正規化 (解放済み pointer の再利用ではない)。
+	// 旧 on_shutdown も呼ばない。GameMemory は flat POD 契約で DLL 側に
+	// 解放すべきリソースを持たないし、T::shutdown() が状態をおかしくする余地も残さない。
+	releaseReloadRollback();
+	if (!preReloadMemory.empty())
+	{
+		m_rollbackHost       = std::make_unique<module::ModuleHost>(std::move(*m_moduleHost));
+		m_rollbackApi        = m_moduleApi;
+		m_rollbackReflection = m_moduleReflection;
+		m_rollbackMemory     = std::move(preReloadMemory);
+		m_rollbackFramesLeft = m_config.reloadRollbackFrames;
+	}
+	*m_moduleHost      = std::move(newHost);  // move 代入が旧 handle を FreeLibrary する (戻り先に移した場合は空)
 	m_moduleApi        = newApi;
+	m_moduleReflection = std::move(newReflection);
 	m_moduleMemory     = memory;
 	m_moduleMemorySize = newApi.memorySize;
 
@@ -468,9 +517,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 
 	// GameMemory サイズ・layout が不変なら ring を温存する (rewind → 編集 →
 	// reload → resim の合流に必要)。サイズ変化 / layout hash 不一致 (state reset 済み) は
-	// 旧 layout bytes への rewind が復元を壊すため破棄する。同サイズの field 並べ替えも
-	// MITIRU_REFLECT 済みなら layout hash で検出される (未宣言 game は検出不能のまま)。
-	// InputRing は layout 非依存なので常に温存する。
+	// 旧 layout bytes へ rewind すると復元がおかしくなるため破棄する。InputRing は layout 非依存なので常に温存する。
 	if (m_moduleMemoryRing.frameSize() != m_moduleMemorySize || stateReset)
 	{
 		m_moduleMemoryRing.clear();
@@ -480,31 +527,127 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	// sprite(id) の解決基準を新 DLL の隣へ更新する (loadModule と同じ規約、ABI v16)。
 	m_spriteCache.setBaseDir(modulePath.parent_path() / "assets" / "sprites");
 
+	const bool resumeAfterFault = m_moduleFaulted && memoryBefore != nullptr;
+	clearModuleFault();
+	debug::setCrashContextText(debug::crashContext().gameDll, debug::pathToUtf8(modulePath));
+	module::setFaultDumpDirectory(debug::crashDirectory(), modulePath.stem());
+
+	// 停止時に GameMemory を戻した時、落ちた DLL には場面を組み直させていない。新しい DLL に組み直させる。
+	if (resumeAfterFault && newApi.on_rebuild != nullptr)
+	{
+		guardModuleCallback("on_rebuild", [&] { newApi.on_rebuild(memory, module::kModuleRebuildRestore); });
+	}
+
 	// memory 温存 reload では on_init を呼ばない (T::init() が user 状態をリセットし得る)。
 	// 旧 memory が無く fresh 確保された時だけ初回 load と同様に呼ぶ。
 	if (memoryBefore == nullptr && newApi.on_init != nullptr)
 	{
-		newApi.on_init(memory);
+		guardModuleCallback("on_init", [&] { newApi.on_init(memory); });
 	}
 	// P9: on_init 後の新 GameMemory (= 新 layout の初期値) へ、旧 GameMemory から
 	// 名前+型が一致した field だけ上書きする。一致しない field は on_init の初期値のまま。
-	if (!oldMemorySnapshot.empty() && oldApiSnapshot.reflectFieldCount > 0 &&
-	    newApi.reflectFieldCount > 0 && memory != nullptr)
+	if (!oldMemorySnapshot.empty() && memory != nullptr)
 	{
 		observe::migrateReflectedMemory(
 			oldMemorySnapshot.data(), static_cast<std::uint32_t>(oldMemorySnapshot.size()),
-			oldApiSnapshot.reflectFields, oldApiSnapshot.reflectFieldCount,
-			oldApiSnapshot.reflectSchemas, oldApiSnapshot.reflectSchemaCount,
+			oldReflection.fieldsData(), oldReflection.fieldCount(),
+			oldReflection.schemasData(), oldReflection.schemaCount(),
 			static_cast<std::uint8_t*>(memory), newApi.memorySize,
-			newApi.reflectFields, newApi.reflectFieldCount,
-			newApi.reflectSchemas, newApi.reflectSchemaCount);
+			m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+			m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 	}
 	return true;
 }
 
+// ── reload 直後の戻り先 ────────────────────────────────────────────────────
+
+MITIRU_INLINE void mitiru::Engine::releaseReloadRollback() noexcept
+{
+	m_rollbackHost.reset();  // 差し替え前の DLL を FreeLibrary する
+	m_rollbackApi        = module::ModuleApi{};
+	m_rollbackReflection = module::ModuleReflection{};
+	m_rollbackMemory.clear();
+	m_rollbackMemory.shrink_to_fit();
+	m_rollbackFramesLeft = 0;
+}
+
+MITIRU_INLINE bool mitiru::Engine::reloadRollbackArmed() const noexcept
+{
+	return m_rollbackHost != nullptr && m_rollbackHost->isLoaded();
+}
+
+MITIRU_INLINE bool mitiru::Engine::rollbackModuleReload()
+{
+	if (!reloadRollbackArmed() || !m_moduleHost) { return false; }
+	const auto oldSize = static_cast<std::uint32_t>(m_rollbackMemory.size());
+	void* memory = m_moduleMemory;
+	const bool sameLayout = oldSize == m_moduleMemorySize
+	                        && !module::layoutDiffers(m_rollbackReflection, m_moduleReflection);
+	if (!sameLayout)
+	{
+		// 形が変わっていた reload は旧 memory を解放済み。旧 DLL に旧い形で確保し直させる (on_init は呼ばない)。
+		module::ModuleApi api{};
+		api.version = module::kWireApiVersion;
+		void* fresh = nullptr;
+		if (auto loadFn = m_rollbackHost->loadFn())
+		{
+			(void)guardModuleCode("mitiru_module_load", m_rollbackHost.get(), "rollback abandoned",
+			                      [&] { loadFn(&api, &fresh); });
+		}
+		if (fresh == nullptr) { return false; }
+		// 落ちたばかりの新しい DLL には解放させない (壊れた heap を触らせない)。1 割当を手放す。
+		memory        = fresh;
+		m_rollbackApi = api;
+	}
+	std::memcpy(memory, m_rollbackMemory.data(), oldSize);
+
+	*m_moduleHost      = std::move(*m_rollbackHost);  // 落ちた新しい DLL を FreeLibrary する
+	m_moduleApi        = m_rollbackApi;
+	m_moduleReflection = std::move(m_rollbackReflection);
+	m_moduleMemory     = memory;
+	m_moduleMemorySize = oldSize;
+	releaseReloadRollback();
+
+	m_moduleMemoryRing.clear();
+	m_resimQueue.clear(); m_resimCursor = 0; m_resimSnapSize = 0;
+	if (m_moduleActionEvents)
+	{
+		std::lock_guard lock(m_moduleActionEvents->mu);
+		m_moduleActionEvents->events.clear();
+	}
+	// 戻り先の DLL が組み直しで落ちたら、猶予は解放済みなので通常の停止になる (報告して新しい DLL を待つ)。
+	if (m_moduleApi.on_rebuild != nullptr)
+	{
+		guardModuleCallback("on_rebuild", [&] { m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore); });
+	}
+	std::fprintf(stderr,
+		"[module] 差し替えた DLL が最初のフレームで落ちたので、差し替え前の DLL と状態へ戻しました。"
+		"直して保存すればもう一度読み直します\n");
+	return true;
+}
+
+MITIRU_INLINE bool mitiru::Engine::callModuleUpdate(const module::InputSnapshot* snap, module::FrameIntents* intents)
+{
+	const bool ok = guardModuleCallback("on_update", [&] {
+		m_moduleApi.on_update(m_moduleMemory, snap->effectiveDt, snap, intents);
+	});
+	if (ok && m_rollbackFramesLeft > 0 && --m_rollbackFramesLeft == 0) { releaseReloadRollback(); }
+	return ok;
+}
+
+MITIRU_INLINE bool mitiru::Engine::callModuleDrawCommands(const module::DrawContext* ctx, module::DrawCommandBuffer* out)
+{
+	return guardModuleCallback("on_draw_commands", [&] { m_moduleApi.on_draw_commands(m_moduleMemory, ctx, out); });
+}
+
+MITIRU_INLINE bool mitiru::Engine::callModuleDraw(Screen* screen)
+{
+	return guardModuleCallback("on_draw", [&] { m_moduleApi.on_draw(m_moduleMemory, screen); });
+}
+
 // ── moduleStateStore accessor ──────────────────────────────────────────────
 
-MITIRU_INLINE mitiru::cef::StateStore* mitiru::Engine::moduleStateStore() noexcept
+MITIRU_INLINE mitiru::bridge::StateStore* mitiru::Engine::moduleStateStore() noexcept
 {
 	return m_moduleStateStore.get();
 }
@@ -535,16 +678,16 @@ MITIRU_INLINE std::string mitiru::Engine::reflectDiffBlobs(const void* a, const 
 {
 	// 2 つの GameMemory blob を field 単位で diff (replay 回帰の divergence report)。
 	if (a == nullptr || b == nullptr || m_moduleMemorySize == 0 ||
-	    m_moduleApi.reflectFieldCount <= 0)
+	    m_moduleReflection.fieldCount() <= 0)
 	{
 		return "[]";  // MITIRU_REFLECT 未宣言 / 未 load
 	}
 	const auto ja = observe::reflectToJson(static_cast<const std::uint8_t*>(a), m_moduleMemorySize,
-		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+		m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+		m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 	const auto jb = observe::reflectToJson(static_cast<const std::uint8_t*>(b), m_moduleMemorySize,
-		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+		m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+		m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 	return observe::reflectDiff(ja, jb).dump();
 }
 
@@ -566,13 +709,13 @@ MITIRU_INLINE const char* mitiru::Engine::queryModuleEverWrote(std::uint32_t off
 
 MITIRU_INLINE std::string mitiru::Engine::reflectBlobJson(const void* blob) const
 {
-	if (blob == nullptr || m_moduleMemorySize == 0 || m_moduleApi.reflectFieldCount <= 0)
+	if (blob == nullptr || m_moduleMemorySize == 0 || m_moduleReflection.fieldCount() <= 0)
 	{
 		return "{}";
 	}
 	return observe::reflectToJson(static_cast<const std::uint8_t*>(blob), m_moduleMemorySize,
-		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount).dump();
+		m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+		m_moduleReflection.schemasData(), m_moduleReflection.schemaCount()).dump();
 }
 
 // ── rewind: GameMemory ring 記録 + rewind ──────────────────
@@ -611,7 +754,9 @@ MITIRU_INLINE void mitiru::Engine::recordModuleMemoryFrame()
 		{
 			budgetBytes = m_config.timeTravelBudgetBytes;
 		}
-		m_moduleMemoryRing.configure(m_moduleMemorySize, frames, budgetBytes);
+		const std::size_t rawLimit = (m_config.timeTravelRawLimitBytes > 0)
+			? m_config.timeTravelRawLimitBytes : SIZE_MAX;
+		m_moduleMemoryRing.configure(m_moduleMemorySize, frames, budgetBytes, 60, rawLimit);
 	}
 	m_moduleMemoryRing.push(m_moduleMemory, m_moduleMemorySize);
 }
@@ -714,7 +859,12 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 	// 場面の中身を DLL 内に持つ game (ADR 0040) は、書き戻された進行データから組み立て直す。
 	if (m_moduleApi.on_rebuild != nullptr)
 	{
-		try { m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore); }
+		try
+		{
+			guardModuleCallback("on_rebuild", [&] {
+				m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore);
+			});
+		}
 		catch (...) { debug::warnOnce("rebuild.threw", "on_rebuild が例外を投げました (場面の組み立て直しに失敗)"); }
 	}
 	return true;
@@ -730,7 +880,7 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 	}
 	if (modulePartialState())
 	{
-		// 分岐は本物の on_update を回してから bytes を戻す。場面の中身は戻らないので、試すだけで壊れる。
+		// 分岐は本物の on_update を回してから bytes を戻す。場面の中身は戻らないので、試すだけでおかしくなる。
 		debug::warnOnce("branch.partial-state",
 			"分岐 (branch) は使えません: この game は MITIRU_GAME_OBJECTS (GameMemory は進行データだけ) です");
 		return "{}";
@@ -757,14 +907,23 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 	for (int i = 0; i < frameCount; ++i)
 	{
 		std::memset(intents.get(), 0, sizeof(module::FrameIntents));
-		m_moduleApi.on_update(m_moduleMemory, inputs[i].effectiveDt, &inputs[i], intents.get());
+		// 試行中の落ちは live の障害ではない (止めたり巻き戻したりせず、退避した bytes へ戻すだけ)
+		const bool ok = guardModuleCode("on_update (branch)", m_moduleHost.get(),
+			"branch discarded; the live game keeps running", [&] {
+			m_moduleApi.on_update(m_moduleMemory, inputs[i].effectiveDt, &inputs[i], intents.get());
+		});
+		if (!ok)
+		{
+			std::memcpy(m_moduleMemory, saved, m_moduleMemorySize);
+			return "{}";
+		}
 	}
 
 	// 試行後の state を reflected JSON に。
 	nlohmann::json state = observe::reflectToJson(
 		static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
-		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+		m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+		m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 
 	// GameMemory を試行前へ復元 (live は何も変わらなかったことになる)。
 	std::memcpy(m_moduleMemory, saved, m_moduleMemorySize);
@@ -777,6 +936,11 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 MITIRU_INLINE std::string mitiru::Engine::moduleLoadError() const
 {
 	return m_moduleHost ? m_moduleHost->lastError() : std::string{};
+}
+
+MITIRU_INLINE bool mitiru::Engine::moduleLoadBusy() const
+{
+	return m_moduleHost && m_moduleHost->lastLoadBusy();
 }
 
 // ── ゴーストリプレイ (10-1) ──────────────────────────────────────────────
@@ -804,7 +968,12 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 	module::ModuleApi api{};
 	api.version = module::kWireApiVersion;
 	void* memory = nullptr;
-	loadFn(&api, &memory);
+	if (!guardModuleCode("mitiru_module_load", m_ghostHost.get(), "ghost replay not started",
+	                     [&] { loadFn(&api, &memory); }))
+	{
+		m_ghostHost->unload();
+		return false;
+	}
 
 	// ABI/ビルド指紋は live と同じ完全一致要求 (loadModule と同じ理由、D1 / H-1/H-4)。
 	if (api.version != module::kWireApiVersion)
@@ -813,8 +982,8 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 		{
 			if (auto unloadFn = m_ghostHost->unloadFn())
 			{
-				try { unloadFn(memory); }
-				catch (...) {}
+				(void)guardModuleCode("mitiru_module_unload", m_ghostHost.get(), "ghost replay not started",
+				                      [&] { unloadFn(memory); });
 			}
 		}
 		std::fprintf(stderr, "[ghost] load failed: %s\n",
@@ -827,7 +996,13 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 	m_ghostMemory     = memory;
 	m_ghostMemorySize = api.memorySize;
 	if (!m_ghostIntents) { m_ghostIntents = std::make_unique<module::FrameIntents>(); }
-	if (m_ghostApi.on_init != nullptr) { m_ghostApi.on_init(m_ghostMemory); }
+	if (m_ghostApi.on_init != nullptr
+	    && !guardModuleCode("ghost on_init", m_ghostHost.get(), "ghost replay dropped; the live game keeps running",
+	                        [&] { m_ghostApi.on_init(m_ghostMemory); }))
+	{
+		dropGhostModule();
+		return false;
+	}
 	return true;
 }
 
@@ -835,15 +1010,15 @@ MITIRU_INLINE void mitiru::Engine::unloadGhostModule() noexcept
 {
 	if (!m_ghostHost || !m_ghostHost->isLoaded()) { return; }
 
-	if (m_ghostApi.on_shutdown != nullptr)
+	const char* const action = "ghost unloaded without its own cleanup";
+	const bool shutdownOk = m_ghostApi.on_shutdown == nullptr
+		|| guardModuleCode("ghost on_shutdown", m_ghostHost.get(), action,
+		                   [&] { m_ghostApi.on_shutdown(m_ghostMemory); });
+	// on_shutdown で落ちた DLL には解放させない (unloadModule と同じ理由)。
+	if (auto unloadFn = m_ghostHost->unloadFn(); unloadFn != nullptr && shutdownOk)
 	{
-		try { m_ghostApi.on_shutdown(m_ghostMemory); }
-		catch (...) {}
-	}
-	if (auto unloadFn = m_ghostHost->unloadFn())
-	{
-		try { unloadFn(m_ghostMemory); }
-		catch (...) {}
+		(void)guardModuleCode("mitiru_module_unload", m_ghostHost.get(), action,
+		                      [&] { unloadFn(m_ghostMemory); });
 	}
 	m_ghostMemory     = nullptr;
 	m_ghostMemorySize = 0;
@@ -856,7 +1031,16 @@ MITIRU_INLINE void mitiru::Engine::stepGhost(const module::InputSnapshot& snapsh
 	if (m_ghostMemory == nullptr || m_ghostApi.on_update == nullptr || !m_ghostIntents) { return; }
 	// ghost は観察専用。intents は使い捨てで drain しない (副作用を live や host state に及ぼさない)。
 	std::memset(m_ghostIntents.get(), 0, sizeof(module::FrameIntents));
-	m_ghostApi.on_update(m_ghostMemory, snapshot.effectiveDt, &snapshot, m_ghostIntents.get());
+	module::ModuleFault fault{};
+	bool ok = false;
+	try
+	{
+		ok = module::callGuarded("ghost on_update", fault, [&] {
+			m_ghostApi.on_update(m_ghostMemory, snapshot.effectiveDt, &snapshot, m_ghostIntents.get());
+		});
+	}
+	catch (...) {}
+	if (!ok) { abandonGhostModule(fault); }
 }
 
 MITIRU_INLINE bool mitiru::Engine::hasGhostModule() const noexcept
@@ -880,8 +1064,15 @@ MITIRU_INLINE void mitiru::Engine::drawGhost(Screen& screen, float alpha) noexce
 	Screen& gs = *m_ghostRenderScreen;
 	gs.resetDrawCallCount();
 	gs.clear(sgc::Colorf{0.0f, 0.0f, 0.0f, 0.0f});
-	try { m_ghostApi.on_draw(m_ghostMemory, &gs); }
-	catch (...) { return; }
+	module::ModuleFault fault{};
+	bool ok = false;
+	try { ok = module::callGuarded("ghost on_draw", fault, [&] { m_ghostApi.on_draw(m_ghostMemory, &gs); }); }
+	catch (...) {}
+	if (!ok)
+	{
+		abandonGhostModule(fault);
+		return;
+	}
 	gs.present();
 
 	// ghost が描いた画素だけ alpha を一律減衰させ、1 枚のスプライトとして live に合成する
@@ -912,7 +1103,7 @@ MITIRU_INLINE std::string mitiru::Engine::stepCandidateBranch(std::size_t slot,
 {
 	if (slot >= kMaxCandidateBranches) { return "{}"; }
 	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.on_update == nullptr
-		|| m_moduleApi.reflectFieldCount <= 0 || inputs == nullptr || frameCount <= 0)
+		|| m_moduleReflection.fieldCount() <= 0 || inputs == nullptr || frameCount <= 0)
 	{ return "{}"; }
 	if (modulePartialState())
 	{
@@ -938,8 +1129,8 @@ MITIRU_INLINE std::string mitiru::Engine::stepCandidateBranch(std::size_t slot,
 			{
 				std::string err;
 				(void)observe::reflectWriteField(c.memory.data(), m_moduleMemorySize,
-					m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-					m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount, it.key(), it.value(), err);
+					m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+					m_moduleReflection.schemasData(), m_moduleReflection.schemaCount(), it.key(), it.value(), err);
 			}
 		}
 	}
@@ -948,13 +1139,17 @@ MITIRU_INLINE std::string mitiru::Engine::stepCandidateBranch(std::size_t slot,
 	for (int i = 0; i < frameCount; ++i)
 	{
 		std::memset(c.intents.get(), 0, sizeof(module::FrameIntents));
-		m_moduleApi.on_update(c.memory.data(), inputs[i].effectiveDt, &inputs[i], c.intents.get());
+		const bool ok = guardModuleCode("on_update (candidate branch)", m_moduleHost.get(),
+			"candidate discarded; the live game keeps running", [&] {
+			m_moduleApi.on_update(c.memory.data(), inputs[i].effectiveDt, &inputs[i], c.intents.get());
+		});
+		if (!ok) { c.active = false; return "{}"; }
 	}
 	c.active = true;
 
 	const nlohmann::json state = observe::reflectToJson(c.memory.data(), m_moduleMemorySize,
-		m_moduleApi.reflectFields, m_moduleApi.reflectFieldCount,
-		m_moduleApi.reflectSchemas, m_moduleApi.reflectSchemaCount);
+		m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
+		m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 	return state.dump();
 }
 
@@ -1002,9 +1197,9 @@ MITIRU_INLINE void mitiru::Engine::drawCandidateBranches(Screen& screen, float a
 		if (m_moduleApi.on_draw_commands != nullptr)
 		{
 			// Canvas 経路 (beko_run 等): live の ModuleAdapter::draw と同じ手順で
-			// DrawCommandBuffer を吐かせ、既存の drainDrawCommands (Engine_Module_Adapter.hpp)
+			// DrawCommandBuffer を出させ、既存の drainDrawCommands (Engine_Module_Adapter.hpp)
 			// で候補専用の Screen へ再生する。tint/alpha は下の pixel post-process (drawGhost
-			// と同型) で一括適用するので、ここでは色を弄らずそのまま焼く。
+			// と同型) で一括適用するので、ここでは色を変えずにそのまま焼く。
 			module::DrawContext ctx{};
 			if (m_moduleInputSnapshot)
 			{
@@ -1016,13 +1211,20 @@ MITIRU_INLINE void mitiru::Engine::drawCandidateBranches(Screen& screen, float a
 			buf.droppedCount = 0;
 			buf.textPoolUsed  = 0;
 			buf.pointPoolUsed = 0;
-			try { m_moduleApi.on_draw_commands(c.memory.data(), &ctx, &buf); }
+			try
+			{
+				if (!guardModuleCallback("on_draw_commands", [&] {
+					m_moduleApi.on_draw_commands(c.memory.data(), &ctx, &buf); })) { return; }
+			}
 			catch (...) { continue; }
 			module::detail::drainDrawCommands(gs, buf, m_spriteCache, nullptr);
 		}
 		else
 		{
-			try { m_moduleApi.on_draw(c.memory.data(), &gs); }
+			try
+			{
+				if (!guardModuleCallback("on_draw", [&] { m_moduleApi.on_draw(c.memory.data(), &gs); })) { return; }
+			}
 			catch (...) { continue; }
 		}
 		gs.present();

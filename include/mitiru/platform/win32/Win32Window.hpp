@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Win32Window.hpp
-/// @brief Win32ウィンドウ実装
-/// @details Windows APIを使用した実ウィンドウの作成・管理を行う。
-///          PeekMessageWによるノンブロッキングメッセージループを提供する。
+/// @brief Win32 ウィンドウ実装
+/// @details Windows API を使用した実ウィンドウの作成・管理を行う。
+///          PeekMessageW によるノンブロッキングメッセージループを提供する。
 
 #ifdef _WIN32
 
@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <vector>
 #include <functional>
 #include <memory>
@@ -32,16 +33,36 @@
 #include <mitiru/platform/IWindow.hpp>
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/input/InputInjector.hpp>
+#include <mitiru/platform/win32/ImeComposition.hpp>
+#include <mitiru/platform/win32/ImeVirtualKey.hpp>
+#include <mitiru/platform/win32/Win32KeyMessage.hpp>
 
 namespace mitiru
 {
 
-/// @brief Win32ウィンドウ実装
-/// @details HWNDをラップし、Win32メッセージキューの処理を行う。
-///          DX11スワップチェーン生成用にHWNDハンドルを公開する。
+/// @brief Win32 ウィンドウ実装
+/// @details HWND をラップし、Win32 メッセージキューの処理を行う。
+///          DX11 スワップチェーン生成用に HWND ハンドルを公開する。
 class Win32Window final : public IWindow
 {
 public:
+	/// @brief このプロセスが作る窓を「画面に出さない・フォーカスを取らない」へ切り替える
+	/// @details テスト・スクリプト実行がユーザーの操作を奪わないための唯一の入口。窓を作る
+	///          場所はテストにもツールにも散っているので、呼び出し側ごとの引数ではなく
+	///          プロセス単位の状態にしてある (新しいテストが指定を忘れても後退しない)。
+	///          立っている間は WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW で生成し、座標指定が
+	///          無ければ画面外へ置き、SW_SHOWNOACTIVATE でだけ見せる (DXGI の Present は
+	///          可視の窓を必要とするので SW_HIDE にはしない)。
+	///          環境変数 `MITIRU_NO_ACTIVATE` (0 と空以外) でも立つ。子プロセスへ継承される
+	///          ので、host が spawn するツール窓にもそのまま適用される。
+	static void setProcessNoActivate(bool on) noexcept { noActivateState() = on; }
+
+	[[nodiscard]] static bool processNoActivate() noexcept { return noActivateState(); }
+
+	/// @brief noActivate 時に座標指定が無い窓を置く場所 (どのモニタにも載らない)
+	static constexpr int kOffscreenX = -32000;
+	static constexpr int kOffscreenY = -32000;
+
 	/// @brief コンストラクタ
 	/// @param title ウィンドウタイトル
 	/// @param width クライアント領域の幅
@@ -64,6 +85,11 @@ public:
 
 		registerWindowClass();
 
+		// WS_EX_NOACTIVATE = 生成も表示もアクティブ化を伴わない。WS_EX_TOOLWINDOW =
+		// taskbar にボタンを出さない (窓が画面外でも、点滅するボタンは視界に入る)。
+		const bool noAct = processNoActivate();
+		const DWORD exStyle = noAct ? (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) : 0u;
+
 		/// タイトルをワイド文字に変換
 		const int wideLen = MultiByteToWideChar(
 			CP_UTF8, 0, title.data(), static_cast<int>(title.size()), nullptr, 0);
@@ -80,14 +106,16 @@ public:
 			MONITORINFO mi{};
 			mi.cbSize = sizeof(mi);
 			GetMonitorInfoW(monitor, &mi);
-			const int x = mi.rcMonitor.left;
-			const int y = mi.rcMonitor.top;
+			// noActivate では寸法だけモニタ全域に合わせ、場所は画面外に置く。
+			// 全面を覆う窓こそ「視界を奪う」ものなので、隠すのは位置の方。
+			const int x = noAct ? kOffscreenX : mi.rcMonitor.left;
+			const int y = noAct ? kOffscreenY : mi.rcMonitor.top;
 			const int w = mi.rcMonitor.right - mi.rcMonitor.left;
 			const int h = mi.rcMonitor.bottom - mi.rcMonitor.top;
 
 			m_hwnd = CreateWindowExW(
-				0, CLASS_NAME, wideTitle.c_str(),
-				WS_POPUP | WS_VISIBLE,
+				exStyle, CLASS_NAME, wideTitle.c_str(),
+				noAct ? WS_POPUP : (WS_POPUP | WS_VISIBLE),
 				x, y, w, h,
 				nullptr, nullptr, GetModuleHandleW(nullptr), this);
 
@@ -105,12 +133,16 @@ public:
 			const UINT dpi = systemDpi();
 			// WS_VISIBLE で生成時から可視にする（Borderless が WS_POPUP|WS_VISIBLE なのと対称。#22）。
 			// 不可視で生成すると、ShowWindow を呼ばない standalone 消費者で窓が出ない。
-			const DWORD style = (m_resizable
+			const DWORD baseStyle = m_resizable
 				? WS_OVERLAPPEDWINDOW
-				: (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX))
-				| WS_VISIBLE;
+				: (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
+			// noActivate では WS_VISIBLE を外す。生成時可視の窓はその場で前面化するので、
+			// 画面外に置いてもフォーカスだけは奪われる。表示は下の SW_SHOWNOACTIVATE で行う。
+			const DWORD style = noAct ? baseStyle : (baseStyle | WS_VISIBLE);
 			RECT rect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
-			adjustWindowRectForDpi(&rect, style, FALSE, 0, dpi);
+			// exStyle を渡さないと TOOLWINDOW の細いキャプション分だけクライアントが狭まり、
+			// 寸法で焼いた golden が合わなくなる。
+			adjustWindowRectForDpi(&rect, style, FALSE, exStyle, dpi);
 
 			int windowWidth = rect.right - rect.left;
 			int windowHeight = rect.bottom - rect.top;
@@ -133,10 +165,13 @@ public:
 			}
 
 			// posX/posY が指定されていれば最初からそこに出す (実画面に一瞬も出さない)。
+			// noActivate で指定が無い場合は OS 任せにせず画面外へ送る。
+			const int createX = (noAct && posX == CW_USEDEFAULT) ? kOffscreenX : posX;
+			const int createY = (noAct && posX == CW_USEDEFAULT) ? kOffscreenY : posY;
 			m_hwnd = CreateWindowExW(
-				0, CLASS_NAME, wideTitle.c_str(),
+				exStyle, CLASS_NAME, wideTitle.c_str(),
 				style,
-				posX, posY,
+				createX, createY,
 				windowWidth, windowHeight,
 				nullptr, nullptr, GetModuleHandleW(nullptr), this);
 
@@ -151,6 +186,14 @@ public:
 				m_width = actualClient.right - actualClient.left;
 				m_height = actualClient.bottom - actualClient.top;
 			}
+		}
+
+		// DXGI の Present は可視の窓を必要とする (不可視だと flip model が前に進まない)。
+		// SW_SHOWNOACTIVATE は「見せるがアクティブにしない」ので、画面外の座標と合わせて
+		// 誰の視界にも入らないまま swap chain だけが回る。
+		if (noAct)
+		{
+			ShowWindow(m_hwnd, SW_SHOWNOACTIVATE);
 		}
 	}
 
@@ -169,25 +212,26 @@ public:
 	Win32Window(const Win32Window&) = delete;
 	Win32Window& operator=(const Win32Window&) = delete;
 
-	/// ムーブ禁止（HWNDのユーザーデータがthisを指すため）
+	/// ムーブ禁止（HWND のユーザーデータが this を指すため）
 	Win32Window(Win32Window&&) = delete;
 	Win32Window& operator=(Win32Window&&) = delete;
 
 	/// @brief ウィンドウが閉じられるべきかどうか
-	/// @return WM_CLOSE/WM_DESTROYを受信済みなら true
+	/// @return WM_CLOSE/WM_DESTROY を受信済みなら true
 	[[nodiscard]] bool shouldClose() const override
 	{
 		return m_shouldClose;
 	}
 
-	/// @brief Win32メッセージキューをポーリングする
-	/// @details PeekMessageWを使用したノンブロッキング処理。
+	/// @brief Win32 メッセージキューをポーリングする
+	/// @details PeekMessageW を使用したノンブロッキング処理。
 	///          ゲームループをブロックしない。毎フレーム applyCursorCapture() を呼ぶ。
 	void pollEvents() override
 	{
 		/// 枠 drag / 窓移動中の tick は window procedure の中から呼ばれる。深さ 1 に制限する。
 		if (m_inPollEvents) { return; }
 		m_inPollEvents = true;
+		m_keyMessages.beginPump();
 		MSG msg = {};
 		while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
@@ -230,9 +274,9 @@ public:
 	}
 
 	/// @brief ウィンドウアイコンを .ico ファイルで設定する
-	/// @param icoPath .ico ファイルのパス (UTF-8)
+	/// @param icoPath.ico ファイルのパス (UTF-8)
 	/// @details LR_LOADFROMFILE で読み、WM_SETICON (BIG/SMALL) に反映する。
-	///          読めない場合は既定 (WNDCLASS の hIcon) のまま黙って継続する。
+	///          読めない場合は何も知らせず、既定 (WNDCLASS の hIcon) のまま継続する。
 	void setIcon(std::string_view icoPath) override
 	{
 		if (!m_hwnd || icoPath.empty()) { return; }
@@ -274,7 +318,7 @@ public:
 	}
 
 	/// @brief 閉じ要求を取り消す
-	/// @details WM_CLOSE は `m_shouldClose` を立てるだけで窓を壊さないので、閉じる前に確認を
+	/// @details WM_CLOSE は `m_shouldClose` を立てるだけで窓を破棄しないので、閉じる前に確認を
 	///          挟む host や、閉じた窓を復帰させる game がこれで無かったことにできる。
 	void cancelClose() noexcept { m_shouldClose = false; }
 
@@ -284,6 +328,9 @@ public:
 	{
 		const bool already = (m_displayMode == DisplayMode::BorderlessFullscreen);
 		if (enable == already) return;
+
+		// SetWindowPos は既定で対象をアクティブにする。noActivate ではそこだけ止める。
+		const UINT noAct = processNoActivate() ? SWP_NOACTIVATE : 0u;
 
 		if (enable)
 		{
@@ -301,7 +348,7 @@ public:
 				mi.rcMonitor.left,  mi.rcMonitor.top,
 				mi.rcMonitor.right  - mi.rcMonitor.left,
 				mi.rcMonitor.bottom - mi.rcMonitor.top,
-				SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+				SWP_NOOWNERZORDER | SWP_FRAMECHANGED | noAct);
 
 			m_width  = mi.rcMonitor.right  - mi.rcMonitor.left;
 			m_height = mi.rcMonitor.bottom - mi.rcMonitor.top;
@@ -314,8 +361,8 @@ public:
 			const RECT r = m_savedRect.right > 0 ? m_savedRect : RECT{100, 100, 1920+100, 1080+100};
 			SetWindowPos(m_hwnd, HWND_NOTOPMOST,
 				r.left, r.top, r.right - r.left, r.bottom - r.top,
-				SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
-			ShowWindow(m_hwnd, SW_NORMAL);
+				SWP_NOOWNERZORDER | SWP_FRAMECHANGED | noAct);
+			ShowWindow(m_hwnd, processNoActivate() ? SW_SHOWNOACTIVATE : SW_NORMAL);
 
 			m_width  = r.right  - r.left;
 			m_height = r.bottom - r.top;
@@ -332,7 +379,7 @@ public:
 	/// @brief ウィンドウを表示する
 	void show()
 	{
-		ShowWindow(m_hwnd, SW_SHOW);
+		ShowWindow(m_hwnd, processNoActivate() ? SW_SHOWNOACTIVATE : SW_SHOW);
 		UpdateWindow(m_hwnd);
 	}
 
@@ -343,36 +390,36 @@ public:
 	}
 
 	/// @brief ネイティブウィンドウハンドルを取得する
-	/// @return HWND（DX11スワップチェーン生成に使用）
+	/// @return HWND（DX11 スワップチェーン生成に使用）
 	[[nodiscard]] HWND getHandle() const noexcept
 	{
 		return m_hwnd;
 	}
 
 	/// @brief 入力状態の転送先を設定する
-	/// @param state InputStateへの非所有ポインタ（Engineが所有）
+	/// @param state InputState への非所有ポインタ（Engine が所有）
 	void setInputState(InputState* state) noexcept override
 	{
 		m_inputState = state;
 	}
 
 	/// @brief 入力インジェクターを設定する
-	/// @param injector InputInjectorへの非所有ポインタ（Engineが所有）
-	/// @details 設定後はキー/マウスイベントをInputState直接mutateではなく
+	/// @param injector InputInjector への非所有ポインタ（Engine が所有）
+	/// @details 設定後はキー/マウスイベントを InputState を直接書き換えるのではなく
 	///          injector::inject() 経由で発行する。nullptr でフォールバックに戻る。
 	void setInputInjector(InputInjector* injector) noexcept override
 	{
 		m_inputInjector = injector;
 	}
 
-	/// @brief DEBUG: InputStateポインタを取得する
+	/// @brief DEBUG: InputState ポインタを取得する
 	[[nodiscard]] const InputState* getInputStatePtr() const noexcept { return m_inputState; }
 
 	/// @brief リサイズコールバックの型
 	using ResizeCallback = std::function<void(int, int)>;
 
 	/// @brief ウィンドウリサイズ時のコールバックを設定する
-	/// @param cb 新しいwidth, heightを受け取るコールバック
+	/// @param cb 新しい width, height を受け取るコールバック
 	void setResizeCallback(std::function<void(int, int)> cb) noexcept override
 	{
 		m_resizeCallback = std::move(cb);
@@ -415,7 +462,7 @@ public:
 	}
 
 	/// @brief taskbar と alt-tab から外す (WS_EX_TOOLWINDOW)。会話窓のような、主窓に従属して
-	///        出入りする補助窓に使う。WS_EX_APPWINDOW と排他なので同時に落とす。
+	///        出入りする補助窓に使う。WS_EX_APPWINDOW と排他なので同時に外す。
 	void setToolWindow()
 	{
 		if (m_hwnd != nullptr)
@@ -463,7 +510,7 @@ public:
 	/// @brief Win32 modal resize loop 中も engine を tick させるための callback
 	/// @details ユーザが window 枠を drag すると Windows は `DefWindowProc` 内で
 	///          modal loop に入り、main thread を block する → engine main loop
-	///          (`tickOneFrame`) が止まり描画/計算/CEF pump も止まる。
+	///          (`tickOneFrame`) が止まり描画/計算も止まる。
 	///          WM_ENTERSIZEMOVE で SetTimer し WM_TIMER で本 callback を呼ぶ
 	///          ことで、drag 中も ~60fps で engine が回り続ける。Direct3D SDK
 	///          sample の standard pattern。
@@ -473,7 +520,7 @@ public:
 	}
 
 	/// @brief クライアント領域のどこを掴んでもタイトルバーと同じにドラッグできるようにする
-	/// @details 窓そのものを動かすことが主役の consumer 向け。マウスをクライアント入力に
+	/// @details 窓そのものを動かすことが主な用途の consumer 向け。マウスをクライアント入力に
 	///          使っている consumer では、この設定でクライアント側のマウスメッセージが
 	///          届かなくなるので有効にしないこと。既定は off。
 	void setDragByClientArea(bool enabled) noexcept { m_dragByClientArea = enabled; }
@@ -549,12 +596,42 @@ public:
 
 	/// @brief このフレームに確定した UTF-8 テキストを取り出し、内部バッファを空にする (J5)
 	/// @details WM_CHAR / WM_IME_COMPOSITION(GCS_RESULTSTR) で溜めたものを engine が
-	///          毎フレーム 1 回吸い出す (action event の drain と同じ「取ったら空」契約)。
+	///          毎フレーム 1 回取り出す (action event の drain と同じ「取ったら空」契約)。
 	[[nodiscard]] std::string consumeTextInput() noexcept
 	{
 		std::string out = std::move(m_pendingTextInput);
 		m_pendingTextInput.clear();
 		return out;
+	}
+
+	/// @brief IME で変換中の文字列 (UTF-8)。変換していなければ空。
+	[[nodiscard]] const platform::ImeCompositionUtf8& imeComposition() const noexcept { return m_imeComposition; }
+
+	/// @brief ゲームがテキストを受けたいかを伝える (毎フレーム)。false の間は IME を窓から外し、遊んでいる
+	///        間に変換窓が出ないようにする。true の間は IME を戻し、変換窓と候補窓を area (クライアント座標の
+	///        入力欄) へ置く。状態か入力欄が変わった時だけ Imm を呼ぶ。
+	void setTextInputArea(bool active, const RECT& area) noexcept
+	{
+		if (m_hwnd == nullptr) { return; }
+		if (m_textInputState != (active ? 1 : 0))
+		{
+			ImmAssociateContextEx(m_hwnd, nullptr, active ? IACE_DEFAULT : 0);
+			m_textInputState = active ? 1 : 0;
+			m_textInputArea = RECT{};
+			if (!active) { m_imeComposition = {}; }
+		}
+		if (!active || EqualRect(&area, &m_textInputArea)) { return; }
+		m_textInputArea = area;
+		placeImeWindows(area);
+	}
+
+	/// @brief このフレームに受けたキーボードのメッセージのうち、まだ受け取っていない分 (UI の入力欄向け)
+	/// @details ゲーム向けの InputState / consumeTextInput とは別に、受けた順のまま残す。
+	///          VK_PROCESSKEY も元のキーへ戻さずに残す (ブラウザは 229 を「IME が使ったキー」として扱う)。
+	///          中身は次の pollEvents まで有効。
+	[[nodiscard]] std::span<const platform::Win32KeyMessage> takeKeyMessages() noexcept
+	{
+		return m_keyMessages.take();
 	}
 
 	/// @brief タイトルバーの背景色を変える (Windows 11 以降)
@@ -580,7 +657,7 @@ public:
 
 	/// @brief 現在 modal resize loop (枠 drag) 中か
 	/// @details Engine::onWindowResize がこれを参照して、drag 中は
-	///          logical / CEF re-layout を抑止し backbuffer のみ追従させる。
+	///          logical re-layout を抑止し backbuffer のみ追従させる。
 	///          release (WM_EXITSIZEMOVE) で onModalResizeEnd が呼ばれた時に
 	///          初めて本格 resize する。
 	[[nodiscard]] bool inModalLoop() const noexcept { return m_inModalLoop; }
@@ -594,11 +671,11 @@ public:
 	}
 
 private:
-	/// @brief Win32仮想キーコードをmitiru内部キーコードに変換する
-	/// @param vk Win32仮想キーコード
-	/// @return mitiruキーコード整数値（KeyCodeのenum値と一致）
-	/// @details KeyCodeはWin32 VKコードに準拠しているため、
-	///          0〜255の範囲内ならそのまま返す。
+	/// @brief Win32 仮想キーコードを mitiru 内部キーコードに変換する
+	/// @param vk Win32 仮想キーコード
+	/// @return mitiru キーコード整数値（KeyCode の enum 値と一致）
+	/// @details KeyCode は Win32 VK コードに準拠しているため、
+	///          0〜255 の範囲内ならそのまま返す。
 	[[nodiscard]] static int mapVirtualKey(WPARAM vk) noexcept
 	{
 		const auto code = static_cast<int>(vk);
@@ -609,12 +686,61 @@ private:
 		return 0;
 	}
 
+	[[nodiscard]] static int keyCodeFromMessage(HWND hwnd, WPARAM vk) noexcept
+	{
+		const UINT swallowed = (vk == VK_PROCESSKEY) ? ImmGetVirtualKey(hwnd) : 0;
+		return mapVirtualKey(static_cast<WPARAM>(
+			platform::resolveImeVirtualKey(static_cast<unsigned>(vk), swallowed)));
+	}
+
+	static_assert(platform::kWmKeyDown == WM_KEYDOWN && platform::kWmKeyUp == WM_KEYUP
+	              && platform::kWmChar == WM_CHAR && platform::kWmSysKeyDown == WM_SYSKEYDOWN
+	              && platform::kWmSysKeyUp == WM_SYSKEYUP && platform::kWmSysChar == WM_SYSCHAR);
+
+	/// GetKeyState はこのメッセージが作られた時点の状態を返す (取り出し時の状態ではない)
+	[[nodiscard]] static std::uint32_t captureKeyState(UINT msg, WPARAM wParam) noexcept
+	{
+		using namespace platform::keystate;
+		std::uint32_t s = 0;
+		if (GetKeyState(VK_SHIFT) < 0)       { s |= kShift; }
+		if (GetKeyState(VK_CONTROL) < 0)     { s |= kControl; }
+		if (GetKeyState(VK_MENU) < 0)        { s |= kAlt; }
+		if ((GetKeyState(VK_CAPITAL) & 1) != 0) { s |= kCapsLock; }
+		if ((GetKeyState(VK_NUMLOCK) & 1) != 0) { s |= kNumLock; }
+		const bool isChar = msg == WM_CHAR || msg == WM_SYSCHAR;
+		if (isChar && GetKeyState(VK_RMENU) < 0)
+		{
+			// 配列上その文字に Ctrl+Alt が要るなら、右 Alt は AltGr として押されている
+			constexpr int kCtrlAlt = 2 | 4;
+			const SHORT scan = VkKeyScanExW(static_cast<WCHAR>(wParam), GetKeyboardLayout(0));
+			if (scan != -1 && ((scan >> 8) & kCtrlAlt) == kCtrlAlt) { s |= kAltGr; }
+		}
+		return s;
+	}
+
+	void recordKeyMessage(UINT msg, WPARAM wParam, LPARAM lParam) noexcept
+	{
+		m_keyMessages.push(platform::Win32KeyMessage{
+			static_cast<std::uint32_t>(msg), static_cast<std::uint32_t>(wParam),
+			static_cast<std::int32_t>(lParam), captureKeyState(msg, wParam)});
+	}
+
+	/// 本物の WM_KEYUP と同じ lParam (スキャンコード、拡張キー、直前は押下、離した) を組み立てる
+	void recordFocusLossKeyUp(int vk) noexcept
+	{
+		const UINT scan = MapVirtualKeyW(static_cast<UINT>(vk), MAPVK_VK_TO_VSC_EX);
+		std::uint32_t l = 1u | ((scan & 0xFFu) << 16) | (1u << 30) | (1u << 31);
+		if ((scan & 0xFF00u) == 0xE000u) { l |= 1u << 24; }
+		m_keyMessages.push(platform::Win32KeyMessage{
+			platform::kWmKeyUp, static_cast<std::uint32_t>(vk), static_cast<std::int32_t>(l), 0});
+	}
+
 	/// @brief ウィンドウクラス名
 	static constexpr const wchar_t* CLASS_NAME = L"MitiruWindowClass";
 
 	/// @brief exe に埋まっている icon 資源のうち Explorer が選ぶのと同じ 1 つの資源名
-	/// @return 資源が無ければ nullptr (呼び出し側で既定 icon へ落とす)
-	/// @details ID を 1 と決め打たない。Explorer は RT_GROUP_ICON の最若名を採るので、
+	/// @return 資源が無ければ nullptr (呼び出し側で既定 icon を使う)
+	/// @details ID を 1 と決め打たない。Explorer は RT_GROUP_ICON の最も若い名前を採るので、
 	///          `IDI_APP 101 ICON "..."` のように書かれた exe でも同じものが出る。
 	static LPWSTR executableIconName()
 	{
@@ -696,7 +822,7 @@ private:
 		registered = true;
 	}
 
-	/// @brief Win32ウィンドウプロシージャ
+	/// @brief Win32 ウィンドウプロシージャ
 	/// @param hwnd ウィンドウハンドル
 	/// @param msg メッセージ
 	/// @param wParam WPARAM
@@ -709,7 +835,7 @@ private:
 
 		if (msg == WM_NCCREATE)
 		{
-			/// ウィンドウ生成時にthisポインタを保存
+			/// ウィンドウ生成時に this ポインタを保存
 			auto* createStruct = reinterpret_cast<CREATESTRUCTW*>(lParam);
 			self = static_cast<Win32Window*>(createStruct->lpCreateParams);
 			SetWindowLongPtrW(hwnd, GWLP_USERDATA,
@@ -742,7 +868,7 @@ private:
 		case WM_NCCALCSIZE:
 			/// borderless: クライアント領域を窓の全面に広げる。スタイル (WS_CAPTION 等) は
 			/// 残したまま計算だけを変えるので、taskbar・最小化アニメーション・スナップ・
-			/// DWM の影といった「本物の窓」の挙動は全部生きる。消えるのは絵としての
+			/// DWM の影といった「本物の窓」の挙動は全部そのまま残る。消えるのは絵としての
 			/// キャプションと縁だけで、その面は consumer が描く。
 			if (m_borderless && wParam == TRUE)
 			{
@@ -767,8 +893,8 @@ private:
 			return DefWindowProcW(hwnd, msg, wParam, lParam);
 		}
 
-		/// borderless の描いたボタン。押した時ではなく**離した時の位置**で効かせるので、
-		/// 押してからボタンの外へ逃げれば取り消しになる (本物のボタンと同じ作法)。
+		/// borderless の描いたボタン。押した時ではなく**離した時の位置**で反応させるので、
+		/// 押してからボタンの外へカーソルを動かせば取り消しになる (本物のボタンと同じ作法)。
 		/// DefWindowProc 自身の追跡はカーソルの実座標を読むため、ここで肩代わりする。
 		case WM_NCLBUTTONDOWN:
 			if (m_borderless && (wParam == HTCLOSE || wParam == HTREDUCE))
@@ -854,7 +980,7 @@ private:
 		case WM_EXITSIZEMOVE:
 			KillTimer(hwnd, kModalTickTimerId);
 			m_inModalLoop = false;
-			/// modal 中に deferred されていた full resize (logical / CEF) を発火
+			/// modal 中に deferred されていた full resize (logical) を発火
 			if (m_modalResizeEndCallback) { m_modalResizeEndCallback(); }
 			/// 反映後 1 frame 引いて即座に画面更新
 			runTickCallbackOnce();
@@ -883,7 +1009,12 @@ private:
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
 		{
-			const int kc = mapVirtualKey(wParam);
+			recordKeyMessage(msg, wParam, lParam);
+			const int kc = keyCodeFromMessage(hwnd, wParam);
+			if (kc == 0)
+			{
+				return 0;
+			}
 			// hardware で押している key を覚える (focus 喪失時にまとめて release するため)。
 			if (std::find(m_heldKeys.begin(), m_heldKeys.end(), kc) == m_heldKeys.end())
 			{ m_heldKeys.push_back(kc); }
@@ -901,7 +1032,12 @@ private:
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
 		{
-			const int kc = mapVirtualKey(wParam);
+			recordKeyMessage(msg, wParam, lParam);
+			const int kc = keyCodeFromMessage(hwnd, wParam);
+			if (kc == 0)
+			{
+				return 0;
+			}
 			m_heldKeys.erase(std::remove(m_heldKeys.begin(), m_heldKeys.end(), kc), m_heldKeys.end());
 			if (m_inputInjector)
 			{
@@ -915,12 +1051,13 @@ private:
 		}
 
 		/// --- テキスト入力 (J5) ---------------------------------------------
-		/// 本命は CEF <input> (HTML UI)。ここは「プレイヤー名入力」等、ゲーム内の
+		/// 本命は UI (RmlUi) の入力欄。ここは「プレイヤー名入力」等、ゲーム内の
 		/// 簡易テキスト入力向けの最小手段。確定文字だけを拾う (composition 中の
 		/// 未確定プレビューは含めない)。IME の候補ウィンドウ自体は素通しなので
 		/// DefWindowProcW に必ず渡す (自前で描かない)。
 		case WM_CHAR:
 		{
+			recordKeyMessage(msg, wParam, lParam);
 			const wchar_t wc = static_cast<wchar_t>(wParam);
 			if (wc >= 0x20 || wc == L'\t')  // 制御文字 (Backspace/Enter 等) は既存キー入力側で扱う
 			{
@@ -943,8 +1080,8 @@ private:
 			return 0;
 		}
 
-		/// IME が確定した文字列 (GCS_RESULTSTR)。未確定の変換中プレビュー (GCS_COMPSTR) は
-		/// 対象外 (拾うのは「確定してこのフレームに入力として渡してよい」文字のみ)。
+		/// IME が確定した文字列 (GCS_RESULTSTR) は textInput へ、変換中の文字列 (GCS_COMPSTR) は
+		/// imeComposition へ (後者は確定するまで入力として扱わない)。
 		case WM_IME_COMPOSITION:
 			if ((lParam & GCS_RESULTSTR) != 0)
 			{
@@ -956,17 +1093,33 @@ private:
 						std::wstring wbuf(static_cast<std::size_t>(bytes) / sizeof(wchar_t), L'\0');
 						ImmGetCompositionStringW(himc, GCS_RESULTSTR, wbuf.data(), static_cast<DWORD>(bytes));
 						appendTextInputUtf16(wbuf.data(), static_cast<int>(wbuf.size()));
+						m_keyMessages.pushImeCommit(std::span<const char16_t>(
+							reinterpret_cast<const char16_t*>(wbuf.data()), wbuf.size()));
 					}
 					ImmReleaseContext(hwnd, himc);
 				}
 			}
+			readImeComposition(hwnd, lParam);
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
+		case WM_IME_ENDCOMPOSITION:
+			m_imeComposition = {};
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
+		/// 確定文字は上の GCS_RESULTSTR で受け取り済み。DefWindowProc に渡すと WM_CHAR になって
+		/// 同じ文字がもう一度届く。変換窓の表示のために WM_IME_COMPOSITION の方は渡している。
+		case WM_IME_CHAR:
+			return 0;
+
+		case WM_SYSCHAR:
+			recordKeyMessage(msg, wParam, lParam);
 			return DefWindowProcW(hwnd, msg, wParam, lParam);
 
 		/// --- focus 喪失 --------------------------------------------------
 		/// ユーザが alt-tab で離れた (または dev companion のような別 window を
 		/// クリックした) 時、Windows はこの hwnd へ WM_KEYUP を配送しなくなる。
-		/// その時点で押されていた key は InputState 内で永久に "down" のまま残る
-		///。典型的な "矢印キー stuck" bug。ここでクリアし、game に正しい
+		/// その時点で押されていた key は InputState 内で永久に "down" のまま残る。
+		/// 典型的な "矢印キー stuck" bug。ここでクリアし、game に正しい
 		/// release edge が届くようにする。
 		case WM_KILLFOCUS:
 			// focus が外れると Windows は WM_KEYUP を配送しなくなる。押していた key を
@@ -977,12 +1130,13 @@ private:
 				{ m_inputInjector->inject(InputCommand{InputCommandType::KeyUp, kc}); }
 			}
 			if (m_inputState) { m_inputState->clearHeldKeys(); }
+			for (const int kc : m_heldKeys) { recordFocusLossKeyUp(kc); }
 			m_heldKeys.clear();
 			return 0;
 
 		/// --- カーソル差し替え (desktop_world 要望) ---
 		/// クライアント領域上でのみ横取りする。枠 (HTLEFT 等のリサイズ矢印) は
-		/// DefWindowProc に任せないと resize 操作の見た目が壊れる。
+		/// DefWindowProc に任せないと resize 操作の見た目がおかしくなる。
 		case WM_SETCURSOR:
 			if (m_clientCursor && LOWORD(lParam) == HTCLIENT)
 			{
@@ -995,7 +1149,7 @@ private:
 		case WM_MOUSEMOVE:
 		{
 			/// カーソルスナップバック後の WM_MOUSEMOVE は無視する。
-			/// SetCursorPos がウィンドウに送る合成イベントをデルタ二重計上から守る。
+			/// SetCursorPos がウィンドウに送る合成イベントでデルタを二重に計上しないようにする。
 			if (m_ignoreNextMouseMove)
 			{
 				m_ignoreNextMouseMove = false;
@@ -1058,15 +1212,41 @@ private:
 			else if (m_inputState)
 				m_inputState->setMouseButtonDown(MouseButton::Middle, false);
 			return 0;
+		case WM_XBUTTONDOWN:
+		case WM_XBUTTONUP:
+		{
+			const MouseButton b = (GET_XBUTTON_WPARAM(wParam) == XBUTTON2) ? MouseButton::X2 : MouseButton::X1;
+			const bool down = (msg == WM_XBUTTONDOWN);
+			if (m_inputInjector)
+				m_inputInjector->inject(InputCommand{down ? InputCommandType::MouseDown : InputCommandType::MouseUp,
+				                                     0, static_cast<int>(b)});
+			else if (m_inputState)
+				m_inputState->setMouseButtonDown(b, down);
+			return TRUE;  // X ボタンだけは処理したら TRUE を返す約束 (WM_XBUTTONDOWN の文書)
+		}
 		case WM_MOUSEWHEEL:
 			// ホイールの回転量 (符号付き、120 = 1 ノッチ) を今フレームのデルタとして積む。
 			if (m_inputState)
 				m_inputState->addMouseWheelDelta(static_cast<float>(static_cast<short>(HIWORD(wParam))));
 			return 0;
+		case WM_MOUSEHWHEEL:
+			if (m_inputState)
+				m_inputState->addMouseWheelHDelta(static_cast<float>(static_cast<short>(HIWORD(wParam))));
+			return 0;
 
 		default:
 			return DefWindowProcW(hwnd, msg, wParam, lParam);
 		}
+	}
+
+	/// @brief noActivate 状態の実体 (ヘッダオンリーなので関数内 static で 1 個にまとめる)
+	static bool& noActivateState() noexcept
+	{
+		static bool state = [] {
+			const char* env = std::getenv("MITIRU_NO_ACTIVATE");
+			return env != nullptr && env[0] != '\0' && env[0] != '0';
+		}();
+		return state;
 	}
 
 	/// @brief Per-Monitor V2 DPI awareness を有効化する
@@ -1247,6 +1427,46 @@ private:
 
 	std::string m_pendingTextInput;       ///< consumeTextInput() が吸い出すまでの UTF-8 蓄積 (J5)
 	wchar_t     m_pendingHighSurrogate = 0; ///< WM_CHAR のサロゲートペア上位が来た時の一時保持
+	platform::Win32KeyMessageQueue m_keyMessages;
+	platform::ImeCompositionUtf8   m_imeComposition;     ///< 変換中の文字列 (GCS_COMPSTR)
+	int  m_textInputState = -1;   ///< setTextInputArea の最後の値 (-1 = まだ一度も呼ばれていない)
+	RECT m_textInputArea{};       ///< 変換窓を置いた入力欄 (クライアント座標)
+
+	/// @brief WM_IME_COMPOSITION の変換中の文字列とキャレットを読む。確定だけのメッセージなら空にする。
+	void readImeComposition(HWND hwnd, LPARAM lParam)
+	{
+		if ((lParam & GCS_COMPSTR) == 0)
+		{
+			if ((lParam & GCS_RESULTSTR) != 0) { m_imeComposition = {}; }
+			return;
+		}
+		HIMC himc = ImmGetContext(hwnd);
+		if (himc == nullptr) { return; }
+		const LONG bytes = ImmGetCompositionStringW(himc, GCS_COMPSTR, nullptr, 0);
+		std::u16string text((bytes > 0) ? static_cast<std::size_t>(bytes) / sizeof(char16_t) : 0u, u'\0');
+		if (!text.empty()) { ImmGetCompositionStringW(himc, GCS_COMPSTR, text.data(), static_cast<DWORD>(bytes)); }
+		const LONG cursor = ImmGetCompositionStringW(himc, GCS_CURSORPOS, nullptr, 0);
+		ImmReleaseContext(hwnd, himc);
+		m_imeComposition = platform::toUtf8Composition(text, (cursor >= 0) ? static_cast<std::size_t>(cursor) : text.size());
+	}
+
+	/// @brief 変換窓を入力欄の左上、候補窓を入力欄の下 (入力欄に重ねない) へ置く。
+	void placeImeWindows(const RECT& area) noexcept
+	{
+		HIMC himc = ImmGetContext(m_hwnd);
+		if (himc == nullptr) { return; }
+		COMPOSITIONFORM comp{};
+		comp.dwStyle = CFS_POINT;
+		comp.ptCurrentPos = POINT{area.left, area.top};
+		ImmSetCompositionWindow(himc, &comp);
+		CANDIDATEFORM cand{};
+		cand.dwIndex = 0;
+		cand.dwStyle = CFS_EXCLUDE;
+		cand.ptCurrentPos = POINT{area.left, area.bottom};
+		cand.rcArea = area;
+		ImmSetCandidateWindow(himc, &cand);
+		ImmReleaseContext(m_hwnd, himc);
+	}
 
 	/// @brief UTF-16 文字列を UTF-8 へ変換して m_pendingTextInput に追記する
 	void appendTextInputUtf16(const wchar_t* wtext, int wlen) noexcept
@@ -1322,7 +1542,7 @@ private:
 		return m_dragByClientArea ? HTCAPTION : HTCLIENT;
 	}
 	/// tick callback は内部で pollEvents() を呼ぶ。そこから WM_TIMER が再配送されると
-	/// frame が入れ子になり、DX12 の command list / fence と CEF の pump が壊れる。
+	/// frame が入れ子になり、DX12 の command list / fence がおかしくなる。
 	bool m_inTickCallback = false;
 	bool m_inPollEvents = false;
 	static constexpr UINT_PTR kModalTickTimerId = 0x4D54; // 'MT'

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file Collision2D.hpp
-/// @brief 2D衝突判定ユーティリティ関数群
+/// @brief 2D 衝突判定ユーティリティ関数群
 
 #include <optional>
 #include <cmath>
@@ -12,9 +12,9 @@
 namespace mitiru::util
 {
 	/// @brief 矩形同士の重なり判定（AABB）
-	/// @param a 矩形A
-	/// @param b 矩形B
-	/// @return 重なっていればtrue
+	/// @param a 矩形 A
+	/// @param b 矩形 B
+	/// @return 重なっていれば true
 	[[nodiscard]] inline bool overlapsRectRect(const sgc::Rectf& a, const sgc::Rectf& b) noexcept
 	{
 		return a.x() < b.x() + b.width()
@@ -24,11 +24,11 @@ namespace mitiru::util
 	}
 
 	/// @brief 円同士の重なり判定
-	/// @param c1 円1の中心座標
-	/// @param r1 円1の半径
-	/// @param c2 円2の中心座標
-	/// @param r2 円2の半径
-	/// @return 重なっていればtrue
+	/// @param c1 円 1 の中心座標
+	/// @param r1 円 1 の半径
+	/// @param c2 円 2 の中心座標
+	/// @param r2 円 2 の半径
+	/// @return 重なっていれば true
 	[[nodiscard]] inline bool overlapsCircleCircle(
 		sgc::Vec2f c1, float r1,
 		sgc::Vec2f c2, float r2) noexcept
@@ -44,12 +44,12 @@ namespace mitiru::util
 	/// @param center 円の中心座標
 	/// @param radius 円の半径
 	/// @param rect 矩形
-	/// @return 重なっていればtrue
+	/// @return 重なっていれば true
 	[[nodiscard]] inline bool overlapsCircleRect(
 		sgc::Vec2f center, float radius,
 		const sgc::Rectf& rect) noexcept
 	{
-		// 円の中心を矩形の範囲にクランプし、その点との距離で判定
+		// 円の中心を矩形の範囲にクランプし、その点との距離で判定する
 		const float clampedX = std::clamp(center.x, rect.x(), rect.x() + rect.width());
 		const float clampedY = std::clamp(center.y, rect.y(), rect.y() + rect.height());
 		const float dx = center.x - clampedX;
@@ -60,7 +60,7 @@ namespace mitiru::util
 	/// @brief 点が矩形内にあるか判定
 	/// @param p 判定する点
 	/// @param rect 矩形
-	/// @return 矩形内であればtrue
+	/// @return 矩形内であれば true
 	[[nodiscard]] inline bool pointInRect(sgc::Vec2f p, const sgc::Rectf& rect) noexcept
 	{
 		return p.x >= rect.x()
@@ -73,7 +73,7 @@ namespace mitiru::util
 	/// @param p 判定する点
 	/// @param center 円の中心座標
 	/// @param radius 円の半径
-	/// @return 円内であればtrue
+	/// @return 円内であれば true
 	[[nodiscard]] inline bool pointInCircle(
 		sgc::Vec2f p,
 		sgc::Vec2f center,
@@ -84,15 +84,15 @@ namespace mitiru::util
 		return (dx * dx + dy * dy) < (radius * radius);
 	}
 
-	/// @brief AABB同士の押し出しベクトルを計算する
+	/// @brief AABB 同士の押し出しベクトルを計算する
 	/// @param mover 移動する側の矩形
 	/// @param obstacle 障害物の矩形
-	/// @return 重なっている場合は最小の押し出しベクトル、重なっていなければnullopt
+	/// @return 重なっている場合は最小の押し出しベクトル、重なっていなければ nullopt
 	[[nodiscard]] inline std::optional<sgc::Vec2f> resolveAABB(
 		const sgc::Rectf& mover,
 		const sgc::Rectf& obstacle) noexcept
 	{
-		// 各軸の重なり量を計算
+		// 各軸の重なり量を計算する
 		const float overlapLeft   = (mover.x() + mover.width()) - obstacle.x();
 		const float overlapRight  = (obstacle.x() + obstacle.width()) - mover.x();
 		const float overlapTop    = (mover.y() + mover.height()) - obstacle.y();
@@ -105,7 +105,7 @@ namespace mitiru::util
 			return std::nullopt;
 		}
 
-		// 最小の重なり軸を選択して押し出す
+		// 重なりが最小の軸を選んで押し出す
 		float minOverlap = overlapLeft;
 		sgc::Vec2f pushOut{ -overlapLeft, 0.0f };
 

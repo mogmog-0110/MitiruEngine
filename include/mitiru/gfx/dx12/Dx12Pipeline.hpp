@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file Dx12Pipeline.hpp
-/// @brief DirectX 12パイプラインステート実装
-/// @details ID3D12PipelineStateとID3D12RootSignatureを管理するIPipeline実装。
-///          ルートシグネチャ・PSO・入力レイアウトを統合的に管理する。
+/// @brief DirectX 12 パイプラインステート実装
+/// @details ID3D12PipelineState と ID3D12RootSignature を管理する IPipeline 実装。
+///          ルートシグネチャ・PSO・入力レイアウトをまとめて管理する。
 
 #ifdef _WIN32
 
@@ -27,8 +27,8 @@
 namespace mitiru::gfx
 {
 
-/// @brief D3D12パイプライン記述子
-/// @details パイプライン生成に必要なパラメータを集約する。
+/// @brief D3D12 パイプライン記述子
+/// @details パイプライン生成に必要なパラメータをまとめる。
 struct Dx12PipelineDesc
 {
 	Dx12Shader* vertexShader = nullptr;             ///< 頂点シェーダー
@@ -39,9 +39,8 @@ struct Dx12PipelineDesc
 	uint32_t numRenderTargets = 1;                  ///< レンダーターゲット数
 };
 
-/// @brief DirectX 12パイプラインステート実装
+/// @brief DirectX 12 パイプラインステート実装
 /// @details ルートシグネチャ + PSO を束ねて管理する。
-///
 /// @code
 /// Dx12PipelineDesc desc;
 /// desc.vertexShader = &vs;
@@ -51,12 +50,12 @@ struct Dx12PipelineDesc
 class Dx12Pipeline final : public IPipeline
 {
 public:
-	/// @brief ComPtrエイリアス
+	/// @brief ComPtr エイリアス
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 	/// @brief コンストラクタ
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @param desc パイプライン記述子
 	explicit Dx12Pipeline(ID3D12Device* device, const Dx12PipelineDesc& desc)
 	{
@@ -78,20 +77,20 @@ public:
 	}
 
 	/// @brief ルートシグネチャのネイティブポインタを取得する
-	/// @return ID3D12RootSignatureへのvoidポインタ
+	/// @return ID3D12RootSignature への void ポインタ
 	[[nodiscard]] void* rootSignature() const override
 	{
 		return m_rootSignature.Get();
 	}
 
-	/// @brief ID3D12PipelineStateを取得する
-	/// @return PSOへのポインタ
+	/// @brief ID3D12PipelineState を取得する
+	/// @return PSO へのポインタ
 	[[nodiscard]] ID3D12PipelineState* nativePSO() const noexcept
 	{
 		return m_pso.Get();
 	}
 
-	/// @brief ID3D12RootSignatureを取得する
+	/// @brief ID3D12RootSignature を取得する
 	/// @return ルートシグネチャへのポインタ
 	[[nodiscard]] ID3D12RootSignature* nativeRootSignature() const noexcept
 	{
@@ -100,20 +99,20 @@ public:
 
 private:
 	/// @brief デフォルトのルートシグネチャを生成する
-	/// @param device D3D12デバイス
+	/// @param device D3D12 デバイス
 	/// @details b0: CBV（定数バッファ）、t0: SRV（テクスチャ）のルートパラメータを定義する。
 	void createRootSignature(ID3D12Device* device)
 	{
 		/// ルートパラメータ: CBV(b0) + DescriptorTable(t0)
 		D3D12_ROOT_PARAMETER rootParams[2] = {};
 
-		/// パラメータ0: ルートCBV（b0）
+		/// パラメータ 0: ルート CBV（b0）
 		rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		rootParams[0].Descriptor.ShaderRegister = 0;
 		rootParams[0].Descriptor.RegisterSpace = 0;
 		rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
-		/// パラメータ1: SRVデスクリプタテーブル（t0）
+		/// パラメータ 1: SRV デスクリプタテーブル（t0）
 		D3D12_DESCRIPTOR_RANGE srvRange = {};
 		srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		srvRange.NumDescriptors = 1;
@@ -176,8 +175,8 @@ private:
 		}
 	}
 
-	/// @brief パイプラインステートオブジェクト(PSO)を生成する
-	/// @param device D3D12デバイス
+	/// @brief パイプラインステートオブジェクト (PSO) を生成する
+	/// @param device D3D12 デバイス
 	/// @param desc パイプライン記述子
 	void createPipelineState(ID3D12Device* device,
 	                         const Dx12PipelineDesc& desc)

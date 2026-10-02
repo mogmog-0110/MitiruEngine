@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file EffectsAll.hpp
-/// @brief 全エフェクトのインクルード集約ヘッダー
+/// @brief 全エフェクトをまとめて include するヘッダー
 
 #include <mitiru/effects/Bloom.hpp>
 #include <mitiru/effects/CameraEffects.hpp>

@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file Renderer3D_DX12.hpp
-/// @brief DirectX 12ベース3Dレンダラー
-/// @details Pipeline State Object (PSO) ベースの3D描画を提供する。
-///          トゥーンシェーディング + アウトラインの2パスレンダリングを行い、
-///          PSO切り替えによる安全でアトミックなステート管理を実現する。
+/// @brief DirectX 12 ベースの 3D レンダラー
+/// @details Pipeline State Object (PSO) ベースの 3D 描画を提供する。
+///          トゥーンシェーディング + アウトラインの 2 パスレンダリングを行い、
+///          PSO の切り替えでステートを安全かつアトミックに管理する。
 
 #ifdef _WIN32
 
@@ -29,6 +29,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <d3d12.h>
@@ -42,7 +43,10 @@
 #include <sgc/math/Vec3.hpp>
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/gfx/dx12/Dx12Device.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
+#include <mitiru/render/dx12/Dx12PassMarkers.hpp>
 #include <mitiru/gfx/dx12/Dx12RenderTarget.hpp>
 #include <mitiru/gfx/dx12/Dx12Shader.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
@@ -57,6 +61,9 @@
 #include <mitiru/render/GlmBridge.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/dx12/clod/ClodRenderer.hpp>
+#if defined(MITIRU_HAS_EFFEKSEER)
+#include <mitiru/render/dx12/EffekseerRuntime.hpp>
+#endif
 #include <mitiru/render/Material.hpp>
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/ToonShaders3D.hpp>
@@ -75,7 +82,7 @@
 #include <mitiru/render/dx12/DX12PBRShaders.hpp>
 
 // 3D Gaussian Splatting (M1)。**ファイルスコープで**先に include する必要がある
-// (DX12Splat.hpp は class body 内 .inl のため、これらの namespace 宣言を class
+// (DX12Splat.hpp は class body 内の .inl なので、これらの namespace 宣言を class
 //  内へ入れないよう、ここで先に取り込んでおく = skybox と同じ作法)。
 #include <mitiru/render/SplatScene.hpp>
 #include <mitiru/render/dx12/DX12SplatShaders.hpp>
@@ -115,10 +122,14 @@
 #include <mitiru/render/dx12/DX12MultiLightShaders.hpp>
 #include <mitiru/render/dx12/DX12OcclusionResolveShaders.hpp>
 #include <mitiru/render/dx12/DX12Tonemap.hpp>
+#include <mitiru/render/dx12/DX12SsaoShaders.hpp>
+#include <mitiru/render/dx12/DX12BloomShaders.hpp>
+#include <mitiru/render/dx12/DX12DofShaders.hpp>
 #include <mitiru/render/dx12/DX12ShaderModePS.hpp>
 #include <mitiru/render/dx12/DX12ShaderModeVS.hpp>
 #include <mitiru/render/dx12/DX12Shaders.hpp>
 #include <mitiru/render/dx12/Dx12ShadowMap.hpp>
+#include <mitiru/render/dx12/Dx12SkinningCompute.hpp>
 #include <mitiru/render/dx12/Dx12TextureUpload.hpp>
 #include <mitiru/render/dx12/Dx12UploadRing.hpp>
 
@@ -131,9 +142,9 @@ namespace mitiru::render
 //  Renderer3D_DX12 本体
 // ─────────────────────────────────────────────────────────────
 
-/// @brief DirectX 12ベース3Dレンダラー
+/// @brief DirectX 12 ベースの 3D レンダラー
 /// @details PSO（Pipeline State Object）によるステート管理で、
-///          トゥーンシェーディング + アウトラインの2パスレンダリングを行う。
+///          トゥーンシェーディング + アウトラインの 2 パスレンダリングを行う。
 ///
 /// @code
 /// Renderer3D_DX12 renderer;
@@ -176,7 +187,7 @@ public:
 	Renderer3D_DX12(const Renderer3D_DX12&) = delete;
 	Renderer3D_DX12& operator=(const Renderer3D_DX12&) = delete;
 
-	/// ムーブ禁止（内部リソースがthisを参照する可能性）
+	/// ムーブ禁止（内部リソースが this を参照する可能性がある）
 	Renderer3D_DX12(Renderer3D_DX12&&) = delete;
 	Renderer3D_DX12& operator=(Renderer3D_DX12&&) = delete;
 
@@ -189,8 +200,8 @@ public:
 		bool enableOutline = true;                             ///< アウトライン描画の有効化
 		float outlineThickness = 0.03f;                        ///< アウトラインの太さ
 
-		/// @brief skinned glTF 1 体あたりの joint 数上限（B8）。超過すると剛体 fallback で
-		///        描画する（warnOnce 通知）。既定 256 は `kMaxSkinJoints` ハード上限と同じ。
+		/// @brief skinned glTF 1 体あたりの joint 数の上限（B8）。超えると剛体 fallback で
+		///        描画する（warnOnce で通知）。既定の 256 は `kMaxSkinJoints` のハード上限と同じ。
 		uint32_t maxSkinJoints = 256;
 		/// @brief 1 フレームに描けるスキン prim 数の上限（B8）。`kMaxSkinnedDrawsPerFrame`
 		///        (プールの物理サイズ) を超える値を渡してもそこでクランプされる。
@@ -198,7 +209,7 @@ public:
 	};
 
 	/// @brief レンダラーを初期化する
-	/// @param device Dx12Deviceへのポインタ（外部で管理・ライフタイム保証）
+	/// @param device Dx12Device へのポインタ（外部で管理し、寿命を保証する）
 	/// @param cfg レンダラー設定
 	void initialize(gfx::Dx12Device* device, const Config& cfg = {});
 
@@ -224,8 +235,14 @@ public:
 	void beginFrame(const sgc::Colorf& clearColor = {0.2f, 0.2f, 0.3f, 1.0f}) override;
 
 	/// @brief カメラを設定する
-	/// @param camera 3Dカメラ
+	/// @param camera 3D カメラ
 	void setCamera(const Camera3D& camera) override;
+
+	void setCameraShake(float fracX, float fracY) override
+	{
+		m_cameraShakeX = fracX;
+		m_cameraShakeY = fracY;
+	}
 
 	/// @brief ライトを設定する
 	/// @param light ライト情報
@@ -285,8 +302,8 @@ public:
 	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
 	               float scale) override
 	{
-		/// drawMesh を一度も呼ばないフレームでも skybox が出るように
-		/// drawMesh 側と同じ遅延描画をここでも行う (フラグ共有で二重描画なし)
+		/// drawMesh を一度も呼ばないフレームでも skybox が出るように、
+		/// drawMesh 側と同じ遅延描画をここでも行う (フラグを共有するので二重には描かない)
 		if (m_skyboxEnabled && !m_skyboxDrawnThisFrame && m_skyboxCubemap.valid())
 		{
 			ensureSkyboxPipelineDx12();
@@ -301,6 +318,7 @@ public:
 	                      float scale, const char* clipA, float timeA,
 	                      const char* clipB, float timeB, float blend01) override
 	{
+		if (queueEffekseer(path, position, rotYDeg, scale, clipA, timeA)) { return; }
 		drawSkinnedModelImpl(path, position, rotYDeg, scale, clipA, timeA, clipB, timeB,
 		                     blend01);
 	}
@@ -315,8 +333,7 @@ public:
 	/// @brief フレーム終了処理（アウトラインパス + バリア + コマンド実行）
 	void endFrame() override;
 
-	/// @brief コマンドリストを閉じてGPU実行する（Engine::endFrame前に呼ぶ）
-	/// @details endFrame()で3D描画完了後、ImGui描画を追記してからこれを呼ぶ。
+	/// @brief コマンドリストを閉じて GPU で実行する（Engine::endFrame の前に呼ぶ）
 	void finalizeFrame();
 
 	/// @brief 現在のフレームの描画コール数を返す
@@ -365,7 +382,7 @@ public:
 	}
 
 	/// @brief mesh VB/IB の committed resource 生成回数 (累計、デバッグ計測用)
-	/// @details 毎フレーム頂点更新でもスロット warm-up 後は増えないことを
+	/// @details 毎フレーム頂点を更新しても、スロットの warm-up 後は増えないことを
 	///          golden test が検証する。
 	[[nodiscard]] uint64_t meshBufferCreates() const noexcept
 	{
@@ -409,6 +426,97 @@ public:
 	{
 		m_toonShadowTint = tint;
 	}
+
+	/// @brief SSAO (v40)。radius は 0 以下なら既定 0.25、strength は 0..4 に丸める
+	void setAmbientOcclusion(bool enabled, float radius, float strength) noexcept override
+	{
+		m_aoEnabled  = enabled;
+		m_aoRadius   = (radius > 0.0f) ? radius : 0.25f;
+		m_aoStrength = (strength < 0.0f) ? 0.0f : ((strength > 4.0f) ? 4.0f : strength);
+	}
+
+	/// @brief トゥーンの段数 (0..4) と境の幅 (v40、v43 で 0 = 段なし)
+	void setToonRamp(int bands, float softness, const sgc::Colorf& midTint) noexcept override
+	{
+		m_toonBands    = (bands < 0) ? 0 : ((bands > 4) ? 4 : bands);
+		m_toonSoftness = (softness < 0.0f) ? 0.0f : ((softness > 1.0f) ? 1.0f : softness);
+		m_toonMidTint  = midTint;
+	}
+
+	/// @brief 段付きハイライトの強さと指数 (v40)
+	void setToonSpecular(float strength, float power) noexcept override
+	{
+		m_toonSpecular      = (strength < 0.0f) ? 0.0f : ((strength > 1.0f) ? 1.0f : strength);
+		m_toonSpecularPower = (power >= 1.0f) ? power : 1.0f;
+	}
+
+	/// @brief bloom (v41)。threshold は 0 以上、strength は 0..4 に丸める
+	void setBloom(bool enabled, float threshold, float strength) noexcept override
+	{
+		m_bloomEnabled   = enabled;
+		m_bloomThreshold = (threshold < 0.0f) ? 0.0f : threshold;
+		m_bloomStrength  = (strength < 0.0f) ? 0.0f : ((strength > 4.0f) ? 4.0f : strength);
+	}
+
+	/// @brief 影の PCF のタップ間隔 (v41)。0..8 texel
+	void setShadowSoftness(float texels) noexcept override
+	{
+		m_shadowSoftness = (texels < 0.0f) ? 0.0f : ((texels > 8.0f) ? 8.0f : texels);
+	}
+
+	/// @brief 彩度 0..4 とコントラスト 0.1..4 (v41)
+	void setColorGrade(float saturation, float contrast) noexcept override
+	{
+		m_gradeSaturation = (saturation < 0.0f) ? 0.0f : ((saturation > 4.0f) ? 4.0f : saturation);
+		m_gradeContrast   = (contrast < 0.1f) ? 0.1f : ((contrast > 4.0f) ? 4.0f : contrast);
+	}
+
+	/// @brief 輪郭線の距離減衰 (v42)。far <= near は「減衰しない」の指定なのでそのまま通す
+	void setOutlineFade(float nearDist, float farDist, float minStrength) noexcept override
+	{
+		m_outlineFadeNear = (nearDist < 0.0f) ? 0.0f : nearDist;
+		m_outlineFadeFar  = (farDist < 0.0f) ? 0.0f : farDist;
+		m_outlineFadeMin  = (minStrength < 0.0f) ? 0.0f : ((minStrength > 1.0f) ? 1.0f : minStrength);
+	}
+
+	/// @brief 半球アンビエント (v43)。sky/ground が両方真っ黒なら平坦な m_sceneAmbient にフォールバックする
+	void setHemisphereAmbient(const sgc::Colorf& sky, const sgc::Colorf& ground) noexcept override
+	{
+		m_ambientSky    = sky;
+		m_ambientGround = ground;
+	}
+
+	/// @brief 縁光 (v43)。strength 0..4、power は 0.1 以上
+	void setRimLight(float strength, float power, const sgc::Colorf& color) noexcept override
+	{
+		m_rimStrength = (strength < 0.0f) ? 0.0f : ((strength > 4.0f) ? 4.0f : strength);
+		m_rimPower    = (power >= 0.1f) ? power : 0.1f;
+		m_rimColor    = color;
+	}
+
+	/// @brief 輪郭線を下の色へ寄せる度合い (v43)。0..1
+	void setOutlineDarken(float darken) noexcept override
+	{
+		m_outlineDarken = (darken < 0.0f) ? 0.0f : ((darken > 1.0f) ? 1.0f : darken);
+	}
+
+	/// @brief 遠景のぼけ (v44)。strength は 720p の画素で 0..16 (タップは 16 本なので、それ以上は穴が見える)
+	void setDepthOfField(float start, float end, float strength) noexcept override
+	{
+		m_dofStart    = (start < 0.0f) ? 0.0f : start;
+		m_dofEnd      = (end < 0.0f) ? 0.0f : end;
+		m_dofStrength = (strength < 0.0f) ? 0.0f : ((strength > 16.0f) ? 16.0f : strength);
+	}
+
+	/// @brief 影の比較の余白 (v44)。0 以下は従来の余白
+	void setShadowBias(float worldUnits) noexcept override
+	{
+		m_shadowBiasWorld = (worldUnits > 0.0f) ? worldUnits : 0.0f;
+	}
+
+	/// @brief 直前の draw がアップロードしたライティング CB。材質の metallic/roughness が
+	///        シェーダーへ届いているかを、絵ではなく数値で確かめるために見る
+	[[nodiscard]] const DX12CbLighting& lastLightingCB() const noexcept { return m_lastLightingCB; }
 
 	/// @brief 距離フォグを設定する
 	void setFog(bool enabled, const sgc::Colorf& color, float nearDist,
@@ -473,7 +581,7 @@ public:
 	}
 
 	// ─────────────────────────────────────────────────────────
-	//  外部アクセス用API（カスタムアウトラインパス等で使用）
+	//  外部アクセス用 API（カスタムアウトラインパス等で使用）
 	// ─────────────────────────────────────────────────────────
 
 	/// @brief グラフィクスコマンドリストを取得する
@@ -482,13 +590,13 @@ public:
 		return m_graphicsCmdList.Get();
 	}
 
-	/// @brief ネイティブD3D12デバイスを取得する
+	/// @brief ネイティブの D3D12 デバイスを取得する
 	[[nodiscard]] ID3D12Device* getNativeDevice() noexcept
 	{
 		return m_d3dDevice;
 	}
 
-	/// @brief Dx12Deviceを取得する
+	/// @brief Dx12Device を取得する
 	[[nodiscard]] gfx::Dx12Device* getDx12Device() noexcept
 	{
 		return m_device;
@@ -518,29 +626,17 @@ public:
 		return m_outlinePostRootSig.Get();
 	}
 
-	/// @brief 深度SRVヒープを取得する
+	/// @brief 深度 SRV ヒープを取得する
 	[[nodiscard]] ID3D12DescriptorHeap* getDepthSRVHeap() noexcept
 	{
 		return m_depthSRVHeap.Get();
 	}
 
-	/// @brief アップロードバッファを生成する（外部パス用）
-	[[nodiscard]] ComPtr<ID3D12Resource> createUploadBufferPublic(UINT64 sizeBytes) const
-	{
-		return createUploadBuffer(sizeBytes);
-	}
-
-	/// @brief 一時リソースを現在のフレームに追加する（フレーム終了まで保持）
-	void keepTempResource(ComPtr<ID3D12Resource> resource)
-	{
-		m_frameTempResources.push_back(std::move(resource));
-	}
-
-	/// @brief メインPSOとルートシグネチャに戻す
+	/// @brief メイン PSO とルートシグネチャに戻す
 	void restoreMainState();
 
-	/// @brief Vertex3D用の入力レイアウトを取得する（外部PSO作成用）
-	/// @param desc 出力先の配列（4要素）
+	/// @brief Vertex3D 用の入力レイアウトを取得する（外部での PSO 作成用）
+	/// @param desc 出力先の配列（4 要素）
 	/// @param count 出力先の要素数
 	static void getInputLayout(D3D12_INPUT_ELEMENT_DESC* desc, UINT& count)
 	{
@@ -554,12 +650,17 @@ private:
 	/// @brief トリプルバッファリングのフレーム数
 	static constexpr uint32_t FRAME_COUNT = 3;
 
-	/// メッシュバッファキャッシュ entry（毎フレーム再生成を防止）
-	/// NOTE: .inl 内 helper (acquireMeshBuffer) の引数型のため include より前に定義する
+	/// メッシュバッファキャッシュの entry（毎フレームの再生成を防ぐ）
+	/// NOTE: .inl 内の helper (acquireMeshBuffer) の引数型に使うので、include より前に定義する
+	// shadow pass は前フレームの caster をこのキャッシュ経由で描くので、frame N に書いた slot は
+	// frame N+1 のリストからも読まれる。in-flight 数と同じ 3 だと N+3 の CPU 書き込みが実行中の N+1 と重なる。
+	static constexpr uint32_t kMeshSlotCount = FRAME_COUNT + 1;
+
 	struct CachedBuffer
 	{
-		ComPtr<ID3D12Resource> resource;             ///< 現行バッファ (bind と shadow の find() 経路が読む)
-		ComPtr<ID3D12Resource> slots[FRAME_COUNT];   ///< 同サイズ動的 mesh 用の回転 slot (遅延生成)
+		gfx::GpuResource resource;             ///< 現行バッファ (bind と shadow の find() 経路が読む)
+		gfx::GpuResource slots[kMeshSlotCount]; ///< 同サイズ動的 mesh 用の回転 slot (遅延生成)
+		uint64_t slotFrame[kMeshSlotCount] = {};      ///< 各 slot を最後に CPU が書いた m_frameCounter
 		uint32_t activeSlot    = 0;                  ///< slots の現在位置
 		UINT size = 0;
 		uint64_t revision      = 0;  ///< Mesh::revision() — 内容改変/アドレス再利用の失効検知
@@ -567,10 +668,10 @@ private:
 	};
 
 	// ─────────────────────────────────────────────────────────
-	//  PSO生成・リソース生成・描画ヘルパー（別ファイルに分離）
+	//  PSO 生成・リソース生成・描画ヘルパー（別ファイルに分離）
 	//  NOTE: これは class body 内への意図的な .inl include である。
 	//  DX12PipelineStates.inl は Renderer3D_DX12 の private member function を
-	//  宣言しており、class scope にアクセスするためここで include する必要が
+	//  宣言しており、class scope にアクセスするためにここで include する必要が
 	//  ある。この include を class 宣言の外に移動してはいけない。
 	// ─────────────────────────────────────────────────────────
 
@@ -591,7 +692,7 @@ private:
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Splat.hpp> // NOLINT(build/include)
 
-	// スキンアニメ付き glTF モデル も同じ .inl パターンで分離
+	// スキンアニメ付き glTF モデルも同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12SkinnedModel.hpp> // NOLINT(build/include)
 
@@ -606,6 +707,10 @@ private:
 	// GPU instancing (drawMeshInstanced) も同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Instancing.hpp> // NOLINT(build/include)
+
+	// Effekseer のエフェクト (drawModel の時刻つき版で .efkefc を受ける)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12Effekseer.hpp> // NOLINT(build/include)
 
 	// ─────────────────────────────────────────────────────────
 	//  メンバ変数
@@ -641,9 +746,77 @@ private:
 	/// アウトラインの線幅 (px) と検出しきい値
 	float m_outlineWidthPx = 1.0f;
 	float m_outlineThresh  = 0.30f;
+	bool  m_outlineCasterEnabled = true;  ///< 以後の描画が輪郭線の検出に入るか。フレーム頭で true
+
+	/// 輪郭線の距離減衰 (v42)。far <= near なら減衰なし = 従来の絵
+	float m_outlineFadeNear = 0.0f;
+	float m_outlineFadeFar  = 0.0f;
+	float m_outlineFadeMin  = 0.0f;
+
+	/// 輪郭線を下の色へ寄せる度合い (v43)。1 = 従来のインク色
+	float m_outlineDarken = 1.0f;
+
+	/// 半球アンビエントと縁光 (v43)。どちらも既定は無効 (半球は両方真っ黒、縁光は強さ 0)
+	sgc::Colorf m_ambientSky{0.0f, 0.0f, 0.0f, 1.0f};
+	sgc::Colorf m_ambientGround{0.0f, 0.0f, 0.0f, 1.0f};
+	float       m_rimStrength = 0.0f;
+	float       m_rimPower    = 3.0f;
+	sgc::Colorf m_rimColor{1.0f, 1.0f, 1.0f, 1.0f};
 
 	/// トゥーン時の影色 (乗算係数)
 	sgc::Colorf m_toonShadowTint{0.60f, 0.64f, 0.76f, 1.0f};
+
+	/// トゥーンの段と段付きハイライト (v40)。1 段 = 従来の 2 トーン
+	int         m_toonBands         = 1;
+	float       m_toonSoftness      = 0.12f;
+	sgc::Colorf m_toonMidTint{0.78f, 0.80f, 0.88f, 1.0f};
+	float       m_toonSpecular      = 0.0f;
+	float       m_toonSpecularPower = 32.0f;
+
+	/// SSAO (v40)。テクスチャ 2 枚は ping-pong (0 が最終、tonemap が t1 で読む)。
+	/// m_aoAppliedThisFrame は drawSsaoPasses が立て、uploadTonemapCB が読む
+	bool  m_aoEnabled  = false;
+	float m_aoRadius   = 0.25f;
+	float m_aoStrength = 1.0f;
+	bool  m_aoAppliedThisFrame = false;
+	std::optional<gfx::Dx12Shader> m_ssaoPS;
+	std::optional<gfx::Dx12Shader> m_ssaoBlurPS;
+	ComPtr<ID3D12PipelineState>    m_ssaoPSO;
+	ComPtr<ID3D12PipelineState>    m_ssaoBlurPSO;
+	gfx::GpuResource               m_ssaoTex[2];
+	ComPtr<ID3D12DescriptorHeap>   m_ssaoRtvHeap;   ///< 2 slot
+	ComPtr<ID3D12DescriptorHeap>   m_ssaoSrvHeap;   ///< shader-visible 6 slot (3 × 2 組)
+
+	/// bloom (v41)。tex[0] = 1/2 解像 (しきい値 + 縮小)、tex[1] = 1/4 解像、tex[2] = 1/2 解像 (戻し + 加算、tonemap が t2 で読む)。
+	/// m_bloomAppliedThisFrame は drawBloomPasses が立て、uploadTonemapCB が読む
+	bool  m_bloomEnabled   = false;
+	float m_bloomThreshold = 1.0f;
+	float m_bloomStrength  = 0.3f;
+	bool  m_bloomAppliedThisFrame = false;
+	std::optional<gfx::Dx12Shader> m_bloomDownPS;
+	std::optional<gfx::Dx12Shader> m_bloomUpPS;
+	ComPtr<ID3D12PipelineState>    m_bloomDownPSO;
+	ComPtr<ID3D12PipelineState>    m_bloomUpPSO;
+	gfx::GpuResource               m_bloomTex[3];
+	UINT                           m_bloomTexSize[3][2] = {};
+	ComPtr<ID3D12DescriptorHeap>   m_bloomRtvHeap;  ///< 3 slot
+	ComPtr<ID3D12DescriptorHeap>   m_bloomSrvHeap;  ///< shader-visible 9 slot (3 × 3 組)
+
+	/// 影の PCF タップ間隔 (v41、CbShadow 経由で全 PS が読む) と、tonemap 後の色調補正
+	float m_shadowSoftness  = 1.0f;
+	float m_gradeSaturation = 1.0f;
+	float m_gradeContrast   = 1.0f;
+
+	/// 影の比較の余白 (v44)。0 = 従来の 0.001 × max(softness, 1)。CbShadow へは影マップ深度に直して渡す
+	float m_shadowBiasWorld = 0.0f;
+
+	/// 遠景のぼけ (v44)。SRV heap は {FXAA intermediate, 深度, null}
+	float m_dofStart    = 0.0f;
+	float m_dofEnd      = 0.0f;
+	float m_dofStrength = 0.0f;
+	std::optional<gfx::Dx12Shader> m_dofPS;
+	ComPtr<ID3D12PipelineState>    m_dofPSO;
+	ComPtr<ID3D12DescriptorHeap>   m_dofSrvHeap;
 
 	/// 距離フォグ
 	sgc::Colorf m_fogColor{0.7f, 0.78f, 0.86f, 1.0f};
@@ -651,23 +824,23 @@ private:
 	float m_fogFar  = 90.0f;
 	bool  m_fogOn   = false;
 
-	/// 色バッファコピー用リソース（モード3,4で使用）
-	ComPtr<ID3D12Resource> m_colorCopyBuffer;
+	/// 色バッファのコピー用リソース（モード 3,4 で使用）
+	gfx::GpuResource m_colorCopyBuffer;
 	ComPtr<ID3D12DescriptorHeap> m_colorEdgeSRVHeap;   ///< モード3用: [色,法線,dummy]
 	ComPtr<ID3D12DescriptorHeap> m_depthColorSRVHeap;  ///< モード4用: [深度,法線,色]
 
 	// ─── MSAA リソース (ENG-105 v2) ────────────────────────────
 	// 4x MSAA で MRT (color + normal + depth) を multisample 描画し、
-	// outline / FXAA 前に backbuffer に Resolve する。
-	// depth/normal の resource format は TYPELESS にして DSV/RTV と SRV の
-	// 両方から異なる typed view を作れるようにする (v1 が壊れた原因の 1 つ
-	// として疑った format 強指定を回避)。
+	// outline / FXAA の前に backbuffer に Resolve する。
+	// depth/normal の resource format は TYPELESS にして、DSV/RTV と SRV の
+	// 両方から異なる typed view を作れるようにする (v1 がおかしくなった原因の 1 つ
+	// として疑った format の強指定を避ける)。
 	static constexpr UINT MSAA_SAMPLE_COUNT = 4;
 
 #ifdef MITIRU_HAS_MAKINA
 	/// 1 立体 = 1 PSO なので、シーンごとに solid + bake + pass を丸ごと持つ。
-	/// failed を覚えるのは、壊れたマニフェストを毎フレーム開き直して
-	/// 毎フレーム同じ警告を吐かないため。
+	/// failed を覚えておくのは、壊れたマニフェストを毎フレーム開き直して
+	/// 毎フレーム同じ警告を出さないため。
 	struct CsgEntry
 	{
 		csg::CsgSolid solid;
@@ -687,12 +860,12 @@ private:
 	std::vector<QueuedSolid> m_csgQueue;
 	void renderCsgPass();
 #endif
-	ComPtr<ID3D12Resource>       m_msaaColorBuffer;   ///< 4x MSAA color RT (ENG-106: FP16)
+	gfx::GpuResource             m_msaaColorBuffer;   ///< 4x MSAA color RT (ENG-106: FP16)
 	ComPtr<ID3D12DescriptorHeap> m_msaaColorRtvHeap;  ///< 上記の RTV ヒープ
 
-	/// HDR intermediate (ENG-106)。single-sample FP16. MSAA color の Resolve
-	/// 先で、tonemap PS が SRV としてサンプリングして backbuffer に焼く。
-	ComPtr<ID3D12Resource>       m_hdrIntermediateBuffer;
+	/// HDR intermediate (ENG-106)。single-sample の FP16。MSAA color の Resolve
+	/// 先で、tonemap PS が SRV としてサンプリングして backbuffer に書き込む。
+	gfx::GpuResource             m_hdrIntermediateBuffer;
 	ComPtr<ID3D12DescriptorHeap> m_hdrIntermediateRtvHeap;
 	ComPtr<ID3D12DescriptorHeap> m_hdrIntermediateSrvHeap;
 
@@ -711,12 +884,12 @@ private:
 	ComPtr<ID3D12InfoQueue>      m_infoQueue;
 	std::uint64_t                m_frameCounter = 0;  ///< validation log の frame 番号
 
-	/// FXAA ポストプロセス (ENG-104)。outline 描画後・overlay2D 描画前に走らせて
-	/// シーン色のジャギーを近似 AA する。intermediate に backbuffer を copy して
-	/// 自分自身を read/write する読み書き競合を回避。
+	/// FXAA ポストプロセス (ENG-104)。outline 描画の後、overlay2D 描画の前に実行して
+	/// シーン色のジャギーを近似的に AA する。intermediate に backbuffer を copy して、
+	/// 自分自身を read/write する読み書き競合を避ける。
 	ComPtr<ID3D12PipelineState> m_fxaaPSO;
 	ComPtr<ID3D12RootSignature> m_fxaaRootSig;
-	ComPtr<ID3D12Resource>      m_fxaaIntermediate;     ///< backbuffer サイズの色コピー
+	gfx::GpuResource            m_fxaaIntermediate;     ///< backbuffer サイズの色コピー
 	ComPtr<ID3D12DescriptorHeap> m_fxaaSrvHeap;         ///< shader-visible: t0 = intermediate
 	std::optional<gfx::Dx12Shader> m_fxaaPS;
 	bool  m_fxaaEnabled         = true;                 ///< default ON; setFXAAEnabled で切り替え可
@@ -736,29 +909,31 @@ private:
 	std::optional<gfx::Dx12Shader> m_fresnelToonPS;             ///< モード5
 
 	/// 深度バッファ
-	ComPtr<ID3D12Resource> m_depthBuffer;
+	gfx::GpuResource m_depthBuffer;
 	ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 	ComPtr<ID3D12DescriptorHeap> m_depthSRVHeap;  ///< 深度バッファSRV用ヒープ
 
 	/// 法線バッファ（MRT RT1）
-	ComPtr<ID3D12Resource> m_normalBuffer;
+	gfx::GpuResource m_normalBuffer;
 	ComPtr<ID3D12DescriptorHeap> m_normalRTVHeap;  ///< 法線RT用RTVヒープ
 
 	/// メッシュバッファキャッシュ（struct CachedBuffer は class 冒頭で定義）
 	std::unordered_map<const void*, CachedBuffer> m_meshVBCache; ///< 頂点バッファキャッシュ
 	std::unordered_map<const void*, CachedBuffer> m_meshIBCache; ///< インデックスバッファキャッシュ
 
-	/// Per-frame UPLOAD ヒープリング。drawMesh の transient CB/VB/IB を集約
+	/// Per-frame UPLOAD ヒープリング。drawMesh の transient CB/VB/IB をまとめる
 	dx12::Dx12UploadRing m_uploadRing;
 
 	/// フレーム内の一時アップロードバッファ（定数バッファ含む）
-	std::vector<ComPtr<ID3D12Resource>> m_frameTempResources;
-	std::vector<ComPtr<ID3D12Resource>> m_perFrameTempResources[FRAME_COUNT]; ///< フレーム毎の一時リソース保持
+	std::vector<gfx::GpuResource> m_frameTempResources;
+	std::vector<gfx::GpuResource> m_perFrameTempResources[FRAME_COUNT]; ///< フレーム毎の一時リソース保持
 
-	/// カメラ状態（glm形式、toHLSL変換用）
+	/// カメラ状態（glm 形式、toHLSL 変換用）
 	glm::mat4 m_viewMatrix{1.0f};
 	glm::mat4 m_projMatrix{1.0f};
 	sgc::Vec3f m_cameraPosition{};
+	float      m_cameraShakeX = 0.0f;   ///< setCameraShake の画面幅に対する割合
+	float      m_cameraShakeY = 0.0f;
 
 	/// ライト状態
 	Light m_light;
@@ -803,7 +978,7 @@ private:
 	int     m_culledCount = 0;                ///< 直前フレームでカリングされた数
 
 	/// ── オクルージョンカリング（CPU Hi-Z、DX11 Renderer3D と同じ意味論）───
-	/// 深度は常に 4x MSAA。`m_depthSRVHeap` のスロット0が既に t0=深度
+	/// 深度は常に 4x MSAA。`m_depthSRVHeap` のスロット 0 が既に t0=深度
 	/// (R32_FLOAT, TEXTURE2DMS) を指しているため、resolve パスはそれを
 	/// そのまま読む（新規 SRV ヒープは不要）。実体は隣接する PSO 生成ファイル群と
 	/// 同じ流儀の class-body chunk に分離してある。
@@ -819,20 +994,20 @@ private:
 	/// （buffer リソース、CopyTextureRegion で行ピッチ揃えして書く）。
 	/// スロット frameIndex の読み戻しは、そのスロットを次に再利用する beginFrame
 	/// （デバイス側が既にフェンス待機済み）の先頭で行う。
-	ComPtr<ID3D12Resource> m_occlusionResolveTex;
+	gfx::GpuResource m_occlusionResolveTex;
 	ComPtr<ID3D12DescriptorHeap> m_occlusionResolveRtvHeap;
-	ComPtr<ID3D12Resource> m_occlusionReadback[FRAME_COUNT];
+	gfx::GpuResource m_occlusionReadback[FRAME_COUNT];
 	bool m_occlusionReadbackPending[FRAME_COUNT]{};
 	UINT m_occlusionReadbackRowPitch = 0;
 	std::optional<gfx::Dx12Shader> m_occlusionResolvePS;
 	ComPtr<ID3D12RootSignature> m_occlusionResolveRootSig;
 	ComPtr<ID3D12PipelineState> m_occlusionResolvePSO;
 
-	/// 資源生成・resolve描画・読み戻し関数の実体は他の PSO 生成メソッドと同じ流儀で
-	/// クラス本体分割ファイルに持たせるため、ここでは宣言しない。
+	/// 資源生成・resolve 描画・読み戻し関数の実体は、他の PSO 生成メソッドと同じ流儀で
+	/// クラス本体の分割ファイルに置くので、ここでは宣言しない。
 
 	/// @brief ローカル AABB をワールド変換し、外接する `CullAABB` を作る
-	/// @details DX11 `Renderer3D::worldOcclusionAABB` と同じ近似（8頂点変換 + min/max）。
+	/// @details DX11 `Renderer3D::worldOcclusionAABB` と同じ近似（8 頂点変換 + min/max）。
 	[[nodiscard]] static CullAABB worldOcclusionAABB(const Mesh::AABB& local,
 	                                                 const sgc::Mat4f& world) noexcept
 	{
@@ -908,6 +1083,7 @@ private:
 	bool                      m_shadowCasterEnabled = true;  ///< 以後の描画が影を落とすか
 	bool                      m_shadowDrawnThisFrame = false;
 	ComPtr<ID3D12PipelineState> m_shadowPSO;  ///< depth-only PSO (PS なし)
+	ComPtr<ID3D12PipelineState> m_shadowPSOTwoSided;  ///< 同じ PSO の両面版 (setShadowBias > 0 の間だけ使う)
 	std::optional<gfx::Dx12Shader> m_shadowVS; ///< shadow パス用 VS（メインと同じ）
 
 	struct ShadowCaster {
@@ -921,12 +1097,27 @@ private:
 	/// shader-visible SRV ヒープ。frame index で partition し、GPU が in-flight の
 	/// 前フレーム分 descriptor を読んでいる間に上書きしない。beginFrame で
 	/// cursor を自 frame partition の先頭にリセット。
-	static constexpr UINT kAlbedoSrvPerFrame = 1024;  ///< 1 frame 分（B13 で 3 SRV/draw → 341 draw。群れ物は 200+ draw/frame になる）
+	static constexpr UINT kAlbedoSrvPerFrame = 1024;  ///< 1 frame 分。表 1 枚 = 3 SRV なので、別々のアルベドは 341 枚まで
 	ComPtr<ID3D12DescriptorHeap>                 m_albedoSrvHeap;
 	UINT                                         m_albedoSrvCapacity  = 0;  ///< 1 frame 分の実効 capacity
 	UINT                                         m_albedoSrvBase      = 0;  ///< 現 frame partition の先頭 slot
 	UINT                                         m_albedoSrvCursor    = 0;
 	UINT                                         m_albedoSrvIncrement = 0;
+	/// 同じフレームで同じアルベドなら同じ表を使う (影の SRV はフレーム内で不変)。
+	/// これで上限が「描画回数」ではなく「1 フレームに出る別々のテクスチャ数」になる
+	struct MainSrvTableEntry
+	{
+		const dx12::Dx12Texture2D*  albedo = nullptr;           ///< nullptr = 空き
+		const void*                 shadowNear = nullptr;   ///< 影マップが途中で作り直されたら別の表にする
+		const void*                 shadowFar = nullptr;
+		D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
+	};
+	/// 開番地法のハッシュ表。1 フレームの表は最大 kAlbedoSrvPerFrame / 3 = 341 枚なので、その 1.5 倍の
+	/// 2 冪にして埋まり切らないようにする (描画ごとの確保はしない)
+	static constexpr int                         kMainSrvTableCacheSize = 512;
+	static_assert(kMainSrvTableCacheSize >= static_cast<int>(kAlbedoSrvPerFrame / 3) * 3 / 2);
+	MainSrvTableEntry                            m_mainSrvTableCache[kMainSrvTableCacheSize]{};
+	int                                          m_mainSrvTableCacheCount = 0;
 	dx12::Dx12Texture2D                          m_defaultWhiteTexture;
 	bool                                         m_defaultWhiteReady  = false;
 	std::unordered_map<const Texture*, std::unique_ptr<dx12::Dx12Texture2D>> m_textureCache;
@@ -942,13 +1133,13 @@ private:
 	UINT                        m_skyboxFaceStride      = 0;
 	UINT                        m_skyboxAlignedRow      = 0;
 	int                         m_skyboxFaceSize        = 0;
-	ComPtr<ID3D12Resource>      m_skyboxTexture;       ///< default-heap TextureCube
-	ComPtr<ID3D12Resource>      m_skyboxUpload;        ///< upload-heap (6 face)
+	gfx::GpuResource            m_skyboxTexture;       ///< default-heap TextureCube
+	gfx::GpuResource            m_skyboxUpload;        ///< upload-heap (6 face)
 	ComPtr<ID3D12DescriptorHeap> m_skyboxSrvHeap;      ///< 1 SRV (shader-visible)
 	ComPtr<ID3D12RootSignature> m_skyboxRootSig;       ///< skybox 専用 root sig
 	ComPtr<ID3D12PipelineState> m_skyboxPSO;           ///< skybox 専用 PSO
-	ComPtr<ID3D12Resource>      m_skyboxVB;            ///< cube vertex buffer
-	ComPtr<ID3D12Resource>      m_skyboxIB;            ///< cube index buffer
+	gfx::GpuResource            m_skyboxVB;            ///< cube vertex buffer
+	gfx::GpuResource            m_skyboxIB;            ///< cube index buffer
 	// CbSkyTransform は m_uploadRing から per-frame 切り出し (専用 CB 無し)
 
 	/// ── PBR / IBL 環境キューブマップ（B17。skybox と同じ upload パターン）───
@@ -961,8 +1152,8 @@ private:
 	std::vector<UINT>           m_pbrPrefilterFaceStrides;    ///< mip ごとの face 1 枚分の byte 数 (placement alignment 済み)
 	std::vector<UINT>           m_pbrPrefilterAlignedRows;    ///< mip ごとの行 pitch
 	std::vector<int>            m_pbrPrefilterSizes;          ///< mip ごとの一辺
-	ComPtr<ID3D12Resource>      m_pbrBrdfLutTexture;          ///< 環境 BRDF 表 (t2、R32G32_FLOAT、kPbrBrdfLutSize^2)
-	ComPtr<ID3D12Resource>      m_pbrBrdfLutUpload;
+	gfx::GpuResource            m_pbrBrdfLutTexture;          ///< 環境 BRDF 表 (t2、R32G32_FLOAT、kPbrBrdfLutSize^2)
+	gfx::GpuResource            m_pbrBrdfLutUpload;
 	bool                        m_pbrBrdfLutInPSR = false;
 	bool                        m_pbrPipelineReady        = false;
 	bool                        m_pbrEnvironmentTextureReady = false;
@@ -971,19 +1162,19 @@ private:
 	int                         m_pbrEnvironmentFaceSize  = 0;
 	UINT                        m_pbrEnvironmentFaceStride = 0;
 	UINT                        m_pbrEnvironmentAlignedRow = 0;
-	ComPtr<ID3D12Resource>      m_pbrIrradianceTexture;       ///< default-heap TextureCube (t0)
-	ComPtr<ID3D12Resource>      m_pbrIrradianceUpload;
-	ComPtr<ID3D12Resource>      m_pbrPrefilteredTexture;      ///< default-heap TextureCube (t1)
-	ComPtr<ID3D12Resource>      m_pbrPrefilteredUpload;
+	gfx::GpuResource            m_pbrIrradianceTexture;       ///< default-heap TextureCube (t0)
+	gfx::GpuResource            m_pbrIrradianceUpload;
+	gfx::GpuResource            m_pbrPrefilteredTexture;      ///< default-heap TextureCube (t1)
+	gfx::GpuResource            m_pbrPrefilteredUpload;
 	ComPtr<ID3D12DescriptorHeap> m_pbrEnvironmentSrvHeap;     ///< 2 SRV 連続 (t0=irradiance, t1=prefiltered)
 	ComPtr<ID3D12RootSignature> m_pbrRootSig;                 ///< PBR 専用 root sig（メインとは独立）
 	ComPtr<ID3D12PipelineState> m_pbrPSO;                     ///< PBR 専用 PSO
 
 	/// ── 3D Gaussian Splatting (M1、DX12Splat.hpp が使う) ───────────────
-	ComPtr<ID3D12Resource>       m_splatBuffer;        ///< UPLOAD: StructuredBuffer<SplatGPU>
+	gfx::GpuResource             m_splatBuffer;        ///< UPLOAD: StructuredBuffer<SplatGPU>
 	UINT                         m_splatCount = 0;     ///< スプラット数
 	ComPtr<ID3D12DescriptorHeap> m_splatSrvHeap;       ///< shader-visible: t0=splat, t1=order
-	ComPtr<ID3D12Resource>       m_splatCb;            ///< カメラ CB (view/proj/params)
+	gfx::GpuResource             m_splatCb;            ///< カメラ CB (view/proj/params)
 	ComPtr<ID3D12RootSignature>  m_splatRootSig;
 	ComPtr<ID3D12PipelineState>  m_splatPSO;
 	std::vector<float>           m_splatPos;           ///< CPU 位置 (3*N、neural 現像で使用)
@@ -1033,9 +1224,8 @@ private:
 	bool                         m_styleBlitReady = false;   ///< blit PSO/rootsig 構築済み
 	int                          m_styleTexW = 0;
 	int                          m_styleTexH = 0;
-	ComPtr<ID3D12Resource>       m_styleTex;                 ///< DEFAULT: 現像 2D テクスチャ
-	ComPtr<ID3D12Resource>       m_styleUpload;              ///< UPLOAD: テクスチャ転送元
-	ComPtr<ID3D12DescriptorHeap> m_styleSrvHeap;             ///< shader-visible: t0=現像テクスチャ
+	gfx::GpuResource             m_styleTex;                 ///< DEFAULT: 現像 2D テクスチャ
+	ComPtr<ID3D12DescriptorHeap> m_styleSrvHeap;             ///< shader-visible: FRAME_COUNT 個。フレーム k は k 番だけを書く
 	ComPtr<ID3D12RootSignature>  m_styleBlitRootSig;
 	ComPtr<ID3D12PipelineState>  m_styleBlitPSO;
 
@@ -1099,7 +1289,7 @@ public:
 	}
 	/// @brief endFrame (tonemap 後) に backbuffer へ Live2D を 2D オーバーレイ描画する。
 	/// @details 初回はここで Framework がモデルをロード (moc/tex/motion/physics/effects) し、自前 D3D12
-	///          レンダラの GPU リソースを構築する。毎フレーム Framework が更新 → レンダラが描画。
+	///          レンダラの GPU リソースを構築する。毎フレーム Framework が更新し、レンダラが描画する。
 	void drawLive2DDx12()
 	{
 #ifdef MITIRU_HAS_CUBISM_FRAMEWORK
@@ -1160,6 +1350,7 @@ public:
 		if (!bb) { return; }
 		const auto d = bb->nativeResource()->GetDesc();
 		const int w = static_cast<int>(d.Width), h = static_cast<int>(d.Height);
+		if (m_neuralFx.needsRebuild(w, h)) { m_device->waitForGpu(); }
 		if (!m_neuralFx.ensure(m_d3dDevice, m_dmlDevice.Get(), m_graphicsCmdList.Get(), w, h)) { return; }
 		m_neuralFx.apply(m_graphicsCmdList.Get(), bb->nativeResource(), bb->rtvHandle(), w, h);
 #endif
@@ -1183,8 +1374,8 @@ public:
 		if (!bb) { return; }
 		const auto d = bb->nativeResource()->GetDesc();
 		const int w = static_cast<int>(d.Width), h = static_cast<int>(d.Height);
-		if (!m_relight.ensure(m_d3dDevice, m_graphicsCmdList.Get(), w, h)) { return; }
-		m_relight.apply(m_graphicsCmdList.Get(), bb->nativeResource(), bb->rtvHandle(), w, h);
+		if (!m_relight.ensure(m_d3dDevice, FRAME_COUNT, w, h)) { return; }
+		m_relight.apply(m_graphicsCmdList.Get(), m_uploadRing, m_frameCursor, bb->nativeResource(), bb->rtvHandle(), w, h);
 #endif
 	}
 	void setRelightDepthModel(const char* path) override
@@ -1196,14 +1387,14 @@ public:
 #endif
 	}
 	/// @brief フレーム境界 (tickDevelop) で前フレームを readPixels → キャラ領域クロップ → ORT 深度推論
-	///        → relight へ深度を渡す。間引き (数フレームに1回) で stall を抑える。深度未取得時は relight が
+	///        → relight へ深度を渡す。間引き (数フレームに 1 回) で stall を抑える。深度未取得時は relight が
 	///        輝度プロキシにフォールバックする。
 	void relightDepthTickDx12()
 	{
 #ifdef MITIRU_HAS_ONNX
 		if (!m_relight.enabled() || m_relightModel.empty() || m_device == nullptr) { return; }
 		const unsigned f = m_relightFrame++;
-		if (f < 180u) { return; }                  // 起動直後はスキップ (CEF scene ロードを優先)
+		if (f < 180u) { return; }                  // 起動直後はスキップ (資産の読み込みを優先)
 		if ((f % 30u) != 0u) { return; }           // 30 フレームに 1 回 (stall を抑える、キャラはゆっくり)
 		if (!m_depthNet.ensure(m_relightModel)) { return; }
 		const int w = static_cast<int>(m_config.viewportWidth), h = static_cast<int>(m_config.viewportHeight);
@@ -1242,9 +1433,9 @@ public:
 		return (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f);
 	}
 
-	/// @brief このフレームで3D描画が行われたかを返す
+	/// @brief このフレームで 3D 描画が行われたかを返す
 	[[nodiscard]] bool isFrameActive() const noexcept override { return m_frameActive; }
-	/// @brief フレームアクティブフラグをリセットする（Engine側で毎フレーム呼ぶ）
+	/// @brief フレームアクティブフラグをリセットする（Engine 側で毎フレーム呼ぶ）
 	void resetFrameActive() noexcept override { m_frameActive = false; }
 
 	/// @brief 複数ライトを設定する（DX12）
@@ -1284,6 +1475,9 @@ public:
 	/// @brief 以後の描画が影を落とすかを切り替える。フレーム頭で true に戻る。
 	void setShadowCaster(bool enabled) noexcept override { m_shadowCasterEnabled = enabled; }
 
+	/// @brief 以後の描画を輪郭線の検出から外す。フレーム頭で true に戻る。
+	void setOutlineCaster(bool enabled) noexcept override { m_outlineCasterEnabled = enabled; }
+
 	/// @brief 当フレームに影キャスタとして記録された描画の数
 	[[nodiscard]] std::size_t shadowCasterCount() const noexcept
 	{
@@ -1296,7 +1490,7 @@ public:
 	/// @brief カスケードシャドウ (B13) を有効/無効にする。2 カスケード
 	///        (近距離 = cascadeNearHalfExtent / 遠距離 = orthoHalfExtent) を
 	///        m_directionalShadow.config().cascadeSplitDistance で切り替える。
-	///        無効時は従来の単一シャドウマップ (カスケード0のみ) と完全に同じ経路になる。
+	///        無効時は従来の単一シャドウマップ (カスケード 0 のみ) と完全に同じ経路になる。
 	void setCascadedShadowEnabled(bool enabled) noexcept override
 	{
 		m_cascadedShadowEnabled = enabled;
@@ -1356,10 +1550,10 @@ public:
 	}
 
 	/// @brief キューブマップ skybox をセットする（DX12）
-	/// @details テクスチャ部分（TextureCube + upload + SRV）のみリセットし、
+	/// @details テクスチャ部分（TextureCube + upload + SRV）だけをリセットし、
 	///          PSO / root signature / VB / IB / CB は再利用する。
-	///          これにより 1/2/3 のような頻繁な variant 切替で
-	///          shader compile + PSO 作成が走らない（「もっさり」防止）。
+	///          これで 1/2/3 のような頻繁な variant 切替のたびに
+	///          shader compile + PSO 作成が走ることはない（「もっさり」防止）。
 	void setSkybox(const Cubemap& cubemap) override;
 
 	void setSkyboxEnabled(bool enabled) override
@@ -1381,29 +1575,23 @@ public:
 		m_pbrEnvironmentTextureReady = false;
 	}
 
-	/// @brief endFrame()内で2Dオーバーレイを自動描画する
+	/// @brief endFrame() 内で 2D オーバーレイを自動描画する
 	[[nodiscard]] bool hasOverlaySupport() const noexcept override { return true; }
 
-	/// @brief コマンドリストを取得する（ImGui描画用）
+	/// @brief コマンドリストを取得する
 	/// @details beginFrame()後〜endFrame()前に呼び出すこと。
 	[[nodiscard]] ID3D12GraphicsCommandList* getCommandList() const noexcept
 	{
 		return m_graphicsCmdList.Get();
 	}
 
-	/// @brief 現在開いているコマンドリストを返す（IRenderer3D）
-	[[nodiscard]] void* nativeCommandList() const noexcept override
-	{
-		return static_cast<void*>(m_graphicsCmdList.Get());
-	}
-
-	/// @brief Dx12Deviceを返す（IRenderer3D）
+	/// @brief Dx12Device を返す（IRenderer3D）
 	[[nodiscard]] void* nativeDevice() const noexcept override
 	{
 		return static_cast<void*>(m_device);
 	}
 
-	/// @brief Dx12SwapChainを返す（IRenderer3D）
+	/// @brief Dx12SwapChain を返す（IRenderer3D）
 	[[nodiscard]] void* nativeSwapChain() const noexcept override
 	{
 		return m_device ? static_cast<void*>(m_device->getSwapChain()) : nullptr;

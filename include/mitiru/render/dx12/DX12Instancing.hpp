@@ -1,12 +1,12 @@
 // Renderer3D_DX12 の class body 内 include チャンク (Renderer3D_DX12.hpp private セクションから include)
 //
 // GPU instancing (drawMeshInstanced 用)。DX11 の per-instance vertex buffer 方式と
-// 同じ設計: 4x float4 (ワールド行列の行) を slot1 に per-instance で流し込む。
+// 同じ設計: 4x float4 (ワールド行列の行) を slot1 に per-instance で渡す。
 // PSInput は DX12_DEFAULT_VS_3D と同一形状のため、Toon / MultiLight の既存 PS を
 // そのまま再利用できる（VS は 1 種類、PSO は Toon・MultiLight の 2 種類のみ。
 // DX11 版と同じ機能範囲で、ShaderMode / doubleSided の instanced 版は無い）。
 
-/// @brief 1インスタンス分のワールド行列（`float4x4(row0..row3)` として VS 側で再構成する）
+/// @brief 1 インスタンス分のワールド行列（`float4x4(row0..row3)` として VS 側で再構成する）
 struct InstanceDataDx12
 {
 	float row0[4];
@@ -15,7 +15,7 @@ struct InstanceDataDx12
 	float row3[4];
 };
 
-/// @brief 1回の instanced draw でまとめられるインスタンス数上限
+/// @brief 1 回の instanced draw でまとめられるインスタンス数の上限
 static constexpr std::size_t kInstanceBatchMaxDx12 = 1024;
 
 /// @brief instanced 用 VS。DX12_DEFAULT_VS_3D と PSInput 形状を揃えることで
@@ -77,7 +77,7 @@ VSOutput VSMain(VSInput input)
 }
 )hlsl";
 
-/// @brief instanced 用の入力レイアウト（slot0=頂点、slot1=インスタンス行列4行）を返す
+/// @brief instanced 用の入力レイアウト（slot0=頂点、slot1=インスタンス行列 4 行）を返す
 static void getInstancedInputLayoutDx12(std::array<D3D12_INPUT_ELEMENT_DESC, 8>& desc)
 {
 	UINT vertexCount = 0;
@@ -160,7 +160,7 @@ void ensureInstancedPipelineDx12()
 	psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
 	psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 	psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-	psoDesc.BlendState.RenderTarget[1] = psoDesc.BlendState.RenderTarget[0];
+	setNormalTargetOpaque(psoDesc.BlendState);
 
 	psoDesc.DepthStencilState.DepthEnable = TRUE;
 	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
@@ -189,7 +189,7 @@ void ensureInstancedPipelineDx12()
 	}
 }
 
-/// @brief インスタンスバッチ1個分を upload ring から切り出して描画する
+/// @brief インスタンスバッチ 1 個分を upload ring から切り出して描画する
 void drawInstanceBatchDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize,
                            UINT vertexCount, UINT indexCount)
 {

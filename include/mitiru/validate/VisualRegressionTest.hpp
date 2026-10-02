@@ -3,7 +3,7 @@
 /// @file VisualRegressionTest.hpp
 /// @brief ビジュアルリグレッションテストフレームワーク
 /// @details ゴールデンイメージと現在のスクリーンショットを比較し、
-///          視覚的な回帰を検出する。ScreenshotDifferを内部で使用する。
+///          視覚的な回帰を検出する。ScreenshotDiffer を内部で使用する。
 
 #include <map>
 #include <string>
@@ -21,16 +21,20 @@ struct RegressionResult
 	std::string testName;          ///< テスト名
 	bool passed = true;            ///< テスト合格フラグ
 	float diffPercentage = 0.0f;   ///< 差異ピクセルの割合（%）
+	float flipMean = 0.0f;         ///< FLIP 誤差の平均
+	float flipP999 = 0.0f;         ///< FLIP 誤差の上位 0.1% の位置
 	std::string message;           ///< 結果メッセージ
 
-	/// @brief 結果をJSON文字列に変換する
-	/// @return JSON文字列
+	/// @brief 結果を JSON 文字列に変換する
+	/// @return JSON 文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json = "{";
 		json += "\"testName\":\"" + observe::jsonEscape(testName) + "\"";
 		json += ",\"passed\":" + std::string(passed ? "true" : "false");
 		json += ",\"diffPercentage\":" + std::to_string(diffPercentage);
+		json += ",\"flipMean\":" + std::to_string(flipMean);
+		json += ",\"flipP999\":" + std::to_string(flipP999);
 		json += ",\"message\":\"" + observe::jsonEscape(message) + "\"";
 		json += "}";
 		return json;
@@ -51,22 +55,30 @@ class VisualRegressionTest
 {
 	ScreenshotDiffer m_differ;                              ///< 内部比較器
 	std::map<std::string, render::ScreenshotData> m_goldenImages; ///< 登録済みゴールデンイメージ
-	float m_threshold = 0.5f;                               ///< 許容差異割合（%）
-	int m_tolerance = 2;                                    ///< チャンネルごとの許容差分値
+	GoldenThresholds m_thresholds;                          ///< 画素差と FLIP の合格条件
 
 public:
 	/// @brief 許容差異割合を設定する
 	/// @param percent 許容する差異ピクセルの最大割合（%）
 	void setThreshold(float percent)
 	{
-		m_threshold = percent;
+		m_thresholds.maxDiffPercent = percent;
 	}
 
 	/// @brief チャンネルごとの許容差分値を設定する
 	/// @param tolerance 許容差分値（0〜255）
 	void setTolerance(int tolerance)
 	{
-		m_tolerance = tolerance;
+		m_thresholds.tolerance = tolerance;
+	}
+
+	/// @brief FLIP 誤差の上限を設定する (既定は GoldenThresholds の値)
+	/// @param maxMean 誤差の平均の上限
+	/// @param maxP999 誤差の上位 0.1% の位置の上限
+	void setFlipThresholds(float maxMean, float maxP999) noexcept
+	{
+		m_thresholds.maxFlipMean = maxMean;
+		m_thresholds.maxFlipP999 = maxP999;
 	}
 
 	/// @brief ゴールデンイメージを登録する
@@ -97,25 +109,13 @@ public:
 			return result;
 		}
 
-		const auto diff = m_differ.compare(it->second, current, m_tolerance);
-		result.diffPercentage = diff.diffPercentage;
-
-		if (diff.diffPercentage <= m_threshold)
-		{
-			result.passed = true;
-			result.message = "Visual match within threshold (" +
-				std::to_string(diff.diffPercentage) + "% <= " +
-				std::to_string(m_threshold) + "%)";
-		}
-		else
-		{
-			result.passed = false;
-			result.message = "Visual regression detected: " +
-				std::to_string(diff.differentPixels) + " pixels differ (" +
-				std::to_string(diff.diffPercentage) + "% > " +
-				std::to_string(m_threshold) + "%)";
-		}
-
+		const auto verdict = m_differ.compareGolden(it->second, current, m_thresholds);
+		result.diffPercentage = verdict.pixel.diffPercentage;
+		result.flipMean       = verdict.flip.mean;
+		result.flipP999       = verdict.flip.p999;
+		result.passed         = verdict.pass;
+		result.message = (verdict.pass ? "Visual match within threshold: " : "Visual regression detected: ")
+			+ verdict.summary();
 		return result;
 	}
 
@@ -148,7 +148,7 @@ public:
 
 	/// @brief ゴールデンイメージが登録されているか確認する
 	/// @param name テスト名
-	/// @return 登録済みであればtrue
+	/// @return 登録済みであれば true
 	[[nodiscard]] bool hasGoldenImage(const std::string& name) const
 	{
 		return m_goldenImages.find(name) != m_goldenImages.end();
@@ -167,9 +167,9 @@ public:
 		return names;
 	}
 
-	/// @brief 結果リストをJSON配列文字列に変換する
+	/// @brief 結果リストを JSON 配列文字列に変換する
 	/// @param results リグレッション結果リスト
-	/// @return JSON配列文字列
+	/// @return JSON 配列文字列
 	[[nodiscard]] std::string toJson(
 		const std::vector<RegressionResult>& results) const
 	{

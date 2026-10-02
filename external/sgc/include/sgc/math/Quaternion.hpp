@@ -166,31 +166,25 @@ struct Quaternion
 
 	/// @brief オイラー角（ラジアン）に変換する
 	/// @return Vec3(pitch, yaw, roll) ラジアン
-	/// @note ジンバルロック付近では精度が低下する
+	/// @note ヨーが ±90° (ジンバルロック) では pitch と roll の配分が一意でない。
+	///       配分はどうであれ fromEuler で戻した回転は元の回転と一致する
 	[[nodiscard]] Vec3<T> toEuler() const noexcept
 	{
-		Vec3<T> euler;
-
-		// ピッチ (X軸回転)
-		const T sinP = T{2} * (w * x + y * z);
-		const T cosP = T{1} - T{2} * (x * x + y * y);
-		euler.x = std::atan2(sinP, cosP);
-
-		// ヨー (Y軸回転)
-		const T sinY = T{2} * (w * y - z * x);
-		if (sinY >= T{1})
-			euler.y = std::numbers::pi_v<T> / T{2};
-		else if (sinY <= T{-1})
-			euler.y = -std::numbers::pi_v<T> / T{2};
-		else
-			euler.y = std::asin(sinY);
-
-		// ロール (Z軸回転)
-		const T sinR = T{2} * (w * z + x * y);
-		const T cosR = T{1} - T{2} * (y * y + z * z);
-		euler.z = std::atan2(sinR, cosR);
-
-		return euler;
+		// q = qz(roll) * qy(yaw) * qx(pitch) から (pitch ± roll) / 2 と yaw を別々に取り出す
+		// (Bernardes & Viollet 2022)。ヨー ±90° 付近では片方の atan2 が (≈0, ≈0) を受けるが、
+		// その和/差は回転にほとんど効かないので、ジンバルロック付近でも元の回転に戻る
+		constexpr T pi = std::numbers::pi_v<T>;
+		const auto wrapPi = [](T v) noexcept
+		{
+			if (v > pi) return v - T{2} * pi;
+			if (v < -pi) return v + T{2} * pi;
+			return v;
+		};
+		const T a = w + y, b = x - z, c = w - y, d = x + z;
+		const T yaw = T{2} * std::atan2(std::sqrt(a * a + b * b), std::sqrt(c * c + d * d)) - pi / T{2};
+		const T halfSum = std::atan2(d, c);
+		const T halfDiff = std::atan2(b, a);
+		return {wrapPi(halfSum + halfDiff), yaw, wrapPi(halfSum - halfDiff)};
 	}
 
 	// ── ファクトリ関数 ──────────────────────────────────────

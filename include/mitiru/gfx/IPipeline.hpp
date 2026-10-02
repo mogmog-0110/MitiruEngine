@@ -16,13 +16,13 @@ public:
 	virtual ~IPipeline() = default;
 
 	/// @brief パイプラインが有効かどうかを判定する
-	/// @return 正常に構築されていればtrue
+	/// @return 正常に構築されていれば true
 	[[nodiscard]] virtual bool isValid() const noexcept = 0;
 
-	/// @brief ルートシグネチャのネイティブポインタを取得する（D3D12用）
-	/// @return ID3D12RootSignatureへのvoidポインタ（未対応バックエンドではnullptr）
-	/// @details D3D12パイプラインに紐づくルートシグネチャを取得する。
-	///          DX11/Null等のバックエンドではnullptrを返す。
+	/// @brief ルートシグネチャのネイティブポインタを取得する（D3D12 用）
+	/// @return ID3D12RootSignature への void ポインタ（未対応バックエンドでは nullptr）
+	/// @details D3D12 パイプラインに紐づくルートシグネチャを取得する。
+	///          DX11/Null 等のバックエンドでは nullptr を返す。
 	[[nodiscard]] virtual void* rootSignature() const { return nullptr; }
 
 	/// @brief コンピュートパイプラインかどうかを判定する

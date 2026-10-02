@@ -27,7 +27,7 @@
 namespace mitiru::debug
 {
 
-/// @brief Tracyゾーン用のカテゴリ色
+/// @brief Tracy ゾーン用のカテゴリ色
 struct ZoneColors
 {
     static constexpr std::uint32_t Render  = 0x4444FF;
@@ -41,7 +41,7 @@ struct ZoneColors
 } // namespace mitiru::debug
 
 // ─────────────────────────────────────────────────────────────
-// マクロ定義: Tracy有効時はリアルマクロ、無効時はno-op
+// マクロ定義: Tracy 有効時はリアルマクロ、無効時は no-op
 // ─────────────────────────────────────────────────────────────
 
 #ifdef MITIRU_HAS_TRACY
@@ -60,7 +60,7 @@ struct ZoneColors
 
 /// @brief 色付き名前付きゾーン
 /// @param name const char* リテラル
-/// @param color 0xRRGGBB色値
+/// @param color 0xRRGGBB 色値
 #define MITIRU_ZONE_COLOR(name, color)      ZoneScopedNC(name, color)
 
 /// @brief フレーム境界マーカー
@@ -77,23 +77,23 @@ struct ZoneColors
 
 // ── カテゴリ別ショートカット ────────────────────────────────
 
-/// @brief Render用ゾーン（青）
+/// @brief Render 用ゾーン（青）
 #define MITIRU_ZONE_RENDER(name) \
     ZoneScopedNC(name, ::mitiru::debug::ZoneColors::Render)
 
-/// @brief Physics用ゾーン（緑）
+/// @brief Physics 用ゾーン（緑）
 #define MITIRU_ZONE_PHYSICS(name) \
     ZoneScopedNC(name, ::mitiru::debug::ZoneColors::Physics)
 
-/// @brief Audio用ゾーン（黄）
+/// @brief Audio 用ゾーン（黄）
 #define MITIRU_ZONE_AUDIO(name) \
     ZoneScopedNC(name, ::mitiru::debug::ZoneColors::Audio)
 
-/// @brief Script用ゾーン（紫）
+/// @brief Script 用ゾーン（紫）
 #define MITIRU_ZONE_SCRIPT(name) \
     ZoneScopedNC(name, ::mitiru::debug::ZoneColors::Script)
 
-/// @brief UI用ゾーン（橙）
+/// @brief UI 用ゾーン（橙）
 #define MITIRU_ZONE_UI(name) \
     ZoneScopedNC(name, ::mitiru::debug::ZoneColors::UI)
 

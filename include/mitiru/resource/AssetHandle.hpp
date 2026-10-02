@@ -3,7 +3,7 @@
 /// @file AssetHandle.hpp
 /// @brief 参照カウント付きアセットハンドル
 /// @details shared_ptr ベースのアセットハンドル。
-///          アセットの有効性確認とIDによる識別を提供する。
+///          アセットの有効性確認と ID による識別を提供する。
 ///          同一 id から発行された AssetHandle は内部スロットを共有するため、
 ///          ホットリロードでスロットの中身を差し替えると全コピーに同時に反映される。
 
@@ -56,7 +56,7 @@ struct AssetSlot
 /// @brief 参照カウント付きアセットハンドル
 /// @tparam T アセット型
 /// @details shared_ptr で管理されたアセットへのハンドル。
-///          IDで識別し、ロード状態を確認できる。
+///          ID で識別し、ロード状態を確認できる。
 template <typename T>
 class AssetHandle
 {
@@ -68,7 +68,7 @@ public:
 	AssetHandle() = default;
 
 	/// @brief コンストラクタ
-	/// @param id アセットID
+	/// @param id アセット ID
 	/// @param asset アセットの shared_ptr
 	AssetHandle(std::string id, std::shared_ptr<T> asset)
 		: m_id(std::move(id))
@@ -119,14 +119,14 @@ public:
 		return get() != nullptr;
 	}
 
-	/// @brief bool変換（isLoaded()と同義）
+	/// @brief bool 変換（isLoaded()と同義）
 	[[nodiscard]] explicit operator bool() const noexcept
 	{
 		return isLoaded();
 	}
 
-	/// @brief アセットIDを取得する
-	/// @return アセットID
+	/// @brief アセット ID を取得する
+	/// @return アセット ID
 	[[nodiscard]] const std::string& id() const noexcept
 	{
 		return m_id;

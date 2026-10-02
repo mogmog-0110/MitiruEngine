@@ -1,0 +1,61 @@
+<rml>
+<head>
+	<title>rewind</title>
+	<style>
+		/* ゲーム窓の下に付くシークバー: ▶/⏸ のボタン + 明るいトラック + 赤い塗り + 丸いつまみ */
+		body { display: block; margin: 0; width: 100%; height: 100%; overflow: hidden; background-color: #eef0f3;
+		       font-family: "M PLUS Rounded 1c"; font-size: 12dp; color: #8a8f99; }
+		div { display: block; }
+		.wrap { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: flex; align-items: center; padding: 0dp 18dp; }
+
+		/* 再生 / 一時停止 (赤い丸) */
+		.pp { position: relative; flex: 0 0 auto; width: 32dp; height: 32dp; margin-right: 14dp; border-radius: 16dp;
+		      background-color: #e0224b; cursor: pointer; }
+		.pp .pause { position: absolute; top: 9.5dp; width: 4dp; height: 13dp; border-radius: 1dp; background-color: #ffffff; }
+		.pp .pause.a { left: 11dp; }
+		.pp .pause.b { left: 17dp; }
+		.pp .play { position: absolute; left: 12dp; top: 9dp; width: 0dp; height: 0dp;
+		            border-width: 7dp 0dp 7dp 12dp; border-color: transparent transparent transparent #ffffff; }
+		body.paused .pp .pause { display: none; }
+		body.playing .pp .play { display: none; }
+
+		.bar { position: relative; flex: 1 1 auto; height: 100%; cursor: pointer; }
+		.track { position: absolute; left: 0; right: 0; top: 50%; height: 6dp; margin-top: -3dp; background-color: #c4c8cf; border-radius: 4dp; }
+		.fill { position: absolute; left: 0; top: 50%; height: 6dp; margin-top: -3dp; background-color: #e0224b; border-radius: 4dp; pointer-events: none; }
+		.knob { position: absolute; top: 50%; width: 16dp; height: 16dp; margin-left: -8dp; margin-top: -8dp; border-radius: 8dp;
+		        background-color: #e0224b; box-shadow: #00000047 0dp 1dp 3dp; pointer-events: none; }
+		/* 節目 (値が変わった / 閾値を跨いだフレーム)。名前の付いた系列 (RUN→JUMP) は重ねると上に名前が出る */
+		.marks { position: absolute; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none; }
+		.mark { position: absolute; top: 50%; width: 2dp; height: 14dp; margin-left: -1dp; margin-top: -7dp;
+		        background-color: #5c6470bf; pointer-events: auto; }
+		.mark.k1, .mark.k2 { background-color: #e0a022; }
+		.mark.labeled { background-color: #2a7de1; height: 18dp; margin-top: -9dp; }
+		.bar:hover .track, .bar:hover .fill { height: 9dp; margin-top: -4.5dp; }
+		.bar:hover .knob { width: 20dp; height: 20dp; margin-left: -10dp; margin-top: -10dp; border-radius: 10dp; }
+
+		.wait { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: #eef0f3; display: none; }
+		body.is-waiting .wait { display: block; }
+
+		/* 予算の見積もり (P11) と節目の名前。シークバーの邪魔にならない控えめな 1 行 */
+		.budget { position: absolute; top: 2dp; right: 10dp; font-size: 11dp; pointer-events: none; }
+		.hover { position: absolute; top: 2dp; left: 64dp; font-size: 11dp; color: #2a7de1; pointer-events: none; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ok" data-class-paused="paused" data-class-playing="!paused">
+	<div class="wrap">
+		<div class="pp" data-event-click="dispatch('tt.playpause')"><div class="pause a"/><div class="pause b"/><div class="play"/></div>
+		<div class="bar" id="bar">
+			<div class="track"/>
+			<div class="fill" data-style-width="pct + '%'"/>
+			<div class="knob" data-style-left="pct + '%'"/>
+			<div class="marks">
+				<div class="mark" data-for="m : marks" data-style-left="m.left + '%'" data-class-k1="m.k == 1" data-class-k2="m.k == 2"
+				     data-class-labeled="m.labeled" data-event-mouseover="dispatch('tt.hover', 'i', m.i)" data-event-mouseout="dispatch('tt.hover', 'i', -1)"><span/></div>
+			</div>
+		</div>
+	</div>
+	<div class="budget">{{ budget }}</div>
+	<div class="hover">{{ hover }}</div>
+	<div class="wait"/>
+</body>
+</rml>

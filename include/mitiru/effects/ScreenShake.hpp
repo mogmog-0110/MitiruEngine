@@ -2,7 +2,7 @@
 
 /// @file ScreenShake.hpp
 /// @brief トラウマベースのスクリーンシェイク
-/// @details Vlambeer方式のtrauma^2カーブで自然な画面揺れを実現する。
+/// @details Vlambeer 方式の trauma^2 カーブで自然な画面揺れを作る。
 ///
 /// @code
 /// mitiru::effects::ScreenShake shake;
@@ -31,7 +31,7 @@ public:
 	float maxRotation = 0.05f;  ///< 最大回転（ラジアン）
 
 	/// @brief トラウマを加算する
-	/// @param amount 加算量（0〜1にクランプされる）
+	/// @param amount 加算量（0〜1 にクランプされる）
 	void addTrauma(float amount)
 	{
 		trauma = std::clamp(trauma + amount, 0.0f, 1.0f);

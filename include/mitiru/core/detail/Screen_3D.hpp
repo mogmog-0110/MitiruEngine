@@ -14,6 +14,7 @@
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/Material.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/SceneLook.hpp>
 
 namespace mitiru
@@ -21,8 +22,19 @@ namespace mitiru
 
 namespace detail
 {
+inline bool equalsNoCase(const char* a, const char* b) noexcept
+{
+	for (; *a != '\0' && *b != '\0'; ++a, ++b)
+	{
+		const char ca = (*a >= 'A' && *a <= 'Z') ? static_cast<char>(*a - 'A' + 'a') : *a;
+		if (ca != *b) { return false; }
+	}
+	return *a == *b;
+}
+
 /// 組み込みメッシュを 1 回だけ生成して使い回す (アドレスが安定 = レンダラーの
-/// メッシュキャッシュが効く)。先頭文字で種別判定: s=sphere / p=plane / 既定=cube。
+/// メッシュキャッシュを使える)。名前は大文字小文字を問わず完全一致。知らない名前は cube で描いて
+/// 1 回だけ警告する ("capsule" 等が知らないうちに箱になると、形の違いに気づけない)。
 inline const render::Mesh& builtin3DMesh(const char* shape) noexcept
 {
 	static const render::Mesh cube   = render::Mesh::createCube(1.0f);
@@ -30,9 +42,13 @@ inline const render::Mesh& builtin3DMesh(const char* shape) noexcept
 	static const render::Mesh plane  = render::Mesh::createPlane(1.0f, 1.0f);
 	if (shape != nullptr)
 	{
-		if (shape[0] == 's' || shape[0] == 'S') { return sphere; }
-		if (shape[0] == 'p' || shape[0] == 'P') { return plane; }
+		if (equalsNoCase(shape, "sphere")) { return sphere; }
+		if (equalsNoCase(shape, "plane")) { return plane; }
+		if (equalsNoCase(shape, "cube")) { return cube; }
 	}
+	mitiru::debug::warnOnce("screen.drawMesh.unknownShape",
+		"drawMesh: 組み込みメッシュは \"cube\" / \"sphere\" / \"plane\" だけです。"
+		"それ以外の名前は cube で描きます");
 	return cube;
 }
 } // namespace detail
@@ -63,7 +79,7 @@ inline void Screen::camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target,
 	const float fl = std::sqrt(f.x * f.x + f.y * f.y + f.z * f.z);
 	if (fl < 1e-6f) { m_cam3DUp = {0.0f, 1.0f, 0.0f}; return; }
 	f = {f.x / fl, f.y / fl, f.z / fl};
-	// 真上/真下を向いた時は基準 up を +z へ逃がす (縮退回避)
+	// 真上/真下を向いた時は基準 up を +z へ切り替える (縮退回避)
 	const sgc::Vec3f base = (f.y > 0.999f || f.y < -0.999f)
 		? sgc::Vec3f{0.0f, 0.0f, 1.0f} : sgc::Vec3f{0.0f, 1.0f, 0.0f};
 	const sgc::Vec3f fxu{f.y * base.z - f.z * base.y,
@@ -117,6 +133,13 @@ inline void Screen::shadowCaster3D(bool enabled)
 	m_renderer3D->setShadowCaster(enabled);
 }
 
+inline void Screen::outlineCaster3D(bool enabled)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->setOutlineCaster(enabled);
+}
+
 inline void Screen::outline3D(bool enabled, float widthPx, float threshold,
                               bool depthOnly) noexcept
 {
@@ -145,6 +168,7 @@ inline void Screen::sceneLook3D(const render::SceneLook& look) noexcept
 	m_sceneGamma          = look.gamma;
 	m_sceneAmbient        = sgc::Colorf{look.ambient[0], look.ambient[1], look.ambient[2], 1.0f};
 	m_sceneShadowCaster   = look.shadowCaster;
+	m_sceneOutlineCaster  = look.outlineCaster;
 	m_sceneShadowCascaded = look.shadowCascaded;
 	m_sceneShadowAutoFit  = look.shadowCascadeAutoFit;
 	m_sceneShadowDistance = look.shadowDistance;
@@ -153,6 +177,38 @@ inline void Screen::sceneLook3D(const render::SceneLook& look) noexcept
 	m_sceneShadowDirSet   = look.shadow;
 	m_sceneShadowDir = sgc::Vec3f{look.shadowDirection[0], look.shadowDirection[1],
 	                              look.shadowDirection[2]};
+
+	m_sceneAo                = look.ao;
+	m_sceneAoRadius          = look.aoRadius;
+	m_sceneAoStrength        = look.aoStrength;
+	m_sceneToonBands         = look.toonBands;
+	m_sceneToonSoftness      = look.toonSoftness;
+	m_sceneToonMidTint       = sgc::Colorf{look.toonMidTint[0], look.toonMidTint[1], look.toonMidTint[2], 1.0f};
+	m_sceneToonSpecular      = look.toonSpecular;
+	m_sceneToonSpecularPower = look.toonSpecularPower;
+
+	m_sceneBloom          = look.bloom;
+	m_sceneBloomThreshold = look.bloomThreshold;
+	m_sceneBloomStrength  = look.bloomStrength;
+	m_sceneShadowSoftness = look.shadowSoftness;
+	m_sceneSaturation     = look.saturation;
+	m_sceneContrast       = look.contrast;
+
+	m_sceneOutlineFadeNear = look.outlineFadeNear;
+	m_sceneOutlineFadeFar  = look.outlineFadeFar;
+	m_sceneOutlineFadeMin  = look.outlineFadeMin;
+
+	m_sceneAmbientSky    = sgc::Colorf{look.ambientSky[0], look.ambientSky[1], look.ambientSky[2], 1.0f};
+	m_sceneAmbientGround = sgc::Colorf{look.ambientGround[0], look.ambientGround[1], look.ambientGround[2], 1.0f};
+	m_sceneRimStrength   = look.rimStrength;
+	m_sceneRimPower      = look.rimPower;
+	m_sceneRimColor      = sgc::Colorf{look.rimColor[0], look.rimColor[1], look.rimColor[2], 1.0f};
+	m_sceneOutlineDarken = look.outlineDarken;
+
+	m_sceneDofStart    = look.dofStart;
+	m_sceneDofEnd      = look.dofEnd;
+	m_sceneDofStrength = look.dofStrength;
+	m_sceneShadowBias  = look.shadowBias;
 }
 
 /// @brief 最初の 3D 描画でフレームを開く (clear 色は screen->clear() と共有)
@@ -195,6 +251,20 @@ inline void Screen::ensure3DFrame()
 		m_renderer3D->setShadowCascadeCount(
 			m_sceneShadowCascaded ? (m_sceneShadowCascadeCount >= 2 ? m_sceneShadowCascadeCount : 2) : 1);
 		m_renderer3D->setShadowCaster(m_sceneShadowCaster);
+		m_renderer3D->setOutlineCaster(m_sceneOutlineCaster);
+		m_renderer3D->setAmbientOcclusion(m_sceneAo, m_sceneAoRadius, m_sceneAoStrength);
+		m_renderer3D->setToonRamp(m_sceneToonBands, m_sceneToonSoftness, m_sceneToonMidTint);
+		m_renderer3D->setToonSpecular(m_sceneToonSpecular, m_sceneToonSpecularPower);
+		m_renderer3D->setBloom(m_sceneBloom, m_sceneBloomThreshold, m_sceneBloomStrength);
+		m_renderer3D->setShadowSoftness(m_sceneShadowSoftness);
+		m_renderer3D->setColorGrade(m_sceneSaturation, m_sceneContrast);
+		m_renderer3D->setOutlineFade(m_sceneOutlineFadeNear, m_sceneOutlineFadeFar,
+		                             m_sceneOutlineFadeMin);
+		m_renderer3D->setHemisphereAmbient(m_sceneAmbientSky, m_sceneAmbientGround);
+		m_renderer3D->setRimLight(m_sceneRimStrength, m_sceneRimPower, m_sceneRimColor);
+		m_renderer3D->setOutlineDarken(m_sceneOutlineDarken);
+		m_renderer3D->setDepthOfField(m_sceneDofStart, m_sceneDofEnd, m_sceneDofStrength);
+		m_renderer3D->setShadowBias(m_sceneShadowBias);
 	}
 	// 影を有効化 (オブジェクトが地面に接地して見える)。sceneLook3D() が明示した向きが
 	// あればそれを、無ければ従来どおり光と同じ向きで落とす。
@@ -248,6 +318,10 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 	render::Material material;
 	material.diffuse = tint;
 	material.albedoTexture = &texture;
+	// 不透明パスはアルファで混ぜるが深度は板全体に書くので、絵の周りの抜けた所が見えない板になって
+	// 後ろの物を隠し、深度を読む SSAO と被写界深度もそこを板の距離と取り違える。完全に抜けた画素だけ捨てる
+	material.alphaMode   = render::Material::AlphaMode::Mask;
+	material.alphaCutoff = 1.0f / 255.0f;
 	m_renderer3D->drawMesh(detail::builtin3DMesh(shape), world, material);
 }
 
@@ -451,7 +525,7 @@ inline bool Screen::projectToScreen(const sgc::Vec3f& world, float& sx, float& s
 
 inline void Screen::drawStyle(float strength)
 {
-	// 実際の全画面 α合成は renderer の post-process (blitStyleDx12, FXAA 後・overlay 前) が
+	// 実際の全画面 α 合成は renderer の post-process (blitStyleDx12, FXAA 後・overlay 前) が
 	// 物理解像度で行う。ここは強度を渡すだけ。毎フレーム呼ぶこと (0=3D / 1=完全 2D)。
 	if (m_renderer3D != nullptr) { m_renderer3D->setStyleStrength(strength); }
 }

@@ -87,6 +87,8 @@ public:
     void addBox(b2BodyId body, float halfW, float halfH, float density = 1.0f) {
         b2ShapeDef shapeDef = b2DefaultShapeDef();
         shapeDef.density = density;
+        // v3.1 から接触イベントは既定で無効になっている。円・線と同じく箱も衝突を通知する
+        shapeDef.enableContactEvents = true;
         b2Polygon box = b2MakeBox(halfW, halfH);
         b2CreatePolygonShape(body, &shapeDef, &box);
     }
@@ -96,8 +98,8 @@ public:
                    float restitution = 0.0f, float friction = 0.3f) {
         b2ShapeDef shapeDef = b2DefaultShapeDef();
         shapeDef.density     = density;
-        shapeDef.restitution = restitution;
-        shapeDef.friction    = friction;
+        shapeDef.material.restitution = restitution;
+        shapeDef.material.friction    = friction;
         shapeDef.enableContactEvents  = true;
         b2Circle circle = {{0, 0}, radius};
         b2CreateCircleShape(body, &shapeDef, &circle);
@@ -112,8 +114,8 @@ public:
         b2BodyId body = b2CreateBody(m_world, &bodyDef);
 
         b2ShapeDef shapeDef = b2DefaultShapeDef();
-        shapeDef.friction    = friction;
-        shapeDef.restitution = restitution;
+        shapeDef.material.friction    = friction;
+        shapeDef.material.restitution = restitution;
         shapeDef.enableContactEvents  = true;
         b2Segment seg = {{x1, y1}, {x2, y2}};
         b2CreateSegmentShape(body, &shapeDef, &seg);

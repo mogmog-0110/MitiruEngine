@@ -4,7 +4,7 @@
 /// @brief インタラクティブログビューワー
 /// @details スレッドセーフなリングバッファでログエントリを蓄積し、
 ///          レベル・カテゴリ・テキスト検索でフィルタリングしながら
-///          オーバーレイ表示する。F11キーで折りたたみ切り替え。
+///          オーバーレイ表示する。F11 キーで折りたたみ切り替え。
 ///
 /// @code
 /// mitiru::debug::LogViewer viewer;
@@ -45,7 +45,7 @@ struct LogEntry
 
 /// @brief インタラクティブログビューワー
 /// @details ログエントリのリングバッファ管理・フィルタリング・描画を行う。
-///          addEntry()はスレッドセーフ。
+///          addEntry() はスレッドセーフ。
 class LogViewer
 {
 public:
@@ -77,7 +77,7 @@ public:
 		}
 	}
 
-	/// @brief ログエントリを追加する（ILoggerからの簡易連携）
+	/// @brief ログエントリを追加する（ILogger からの簡易連携）
 	/// @param level ログレベル
 	/// @param category カテゴリ
 	/// @param message メッセージ
@@ -117,7 +117,7 @@ public:
 
 	// ── 表示制御 ──
 
-	/// @brief 表示/非表示を切り替える（F11トグル）
+	/// @brief 表示/非表示を切り替える（F11 トグル）
 	void toggleVisible() noexcept { m_collapsed = !m_collapsed; }
 
 	/// @brief 折りたたみ状態を設定する

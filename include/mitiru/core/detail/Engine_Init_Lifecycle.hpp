@@ -14,7 +14,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 {
 	m_config = config;
 	// G1: 撮影中は実時間 dt を使わない。以降 m_config.deterministic を見る箇所
-	// (Clock 構築・tickFixedUpdatePhase の stepCap 判定) すべてに一括で効かせる。
+	// (Clock 構築・tickFixedUpdatePhase の stepCap 判定) すべてに一括で反映させる。
 	if (m_config.captureActive) { m_config.deterministic = true; }
 	m_shouldStop.store(false);
 
@@ -53,7 +53,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 #elif defined(__EMSCRIPTEN__)
 		m_platform = std::make_unique<EmscriptenPlatform>();
 #else
-		/// 非Windows環境ではWindowFactoryでウィンドウ生成
+		/// 非 Windows 環境では WindowFactory でウィンドウ生成
 		m_platform = std::make_unique<HeadlessPlatform>();
 #endif
 	}
@@ -69,7 +69,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			config.title, winW, winH,
 			GlfwGraphicsMode::OpenGL);
 #else
-		// GLFW 不在時は黙って変えない。fallback は明示する
+		// GLFW 不在時は知らせないまま変えない。fallback は明示する
 		mitiru::debug::warnOnceFix("gfx.glfw.opengl.fallback",
 			"指定 backend OpenGL は GLFW 不在で使用不可、Dx11 に変更",
 			"ビルド構成に MITIRU_HAS_GLFW が定義されていない",
@@ -87,7 +87,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			config.title, winW, winH,
 			GlfwGraphicsMode::Vulkan);
 #else
-		// GLFW 不在時は黙って変えない。fallback は明示する
+		// GLFW 不在時は知らせないまま変えない。fallback は明示する
 		mitiru::debug::warnOnceFix("gfx.glfw.vulkan.fallback",
 			"指定 backend Vulkan は GLFW 不在で使用不可、Dx11 に変更",
 			"ビルド構成に MITIRU_HAS_GLFW が定義されていない",
@@ -127,7 +127,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	else
 	{
 #ifdef MITIRU_HAS_OPENGL
-		/// OpenGLバックエンド使用時はSDL_WINDOW_OPENGLフラグ付きで生成する
+		/// OpenGL バックエンド使用時は SDL_WINDOW_OPENGL フラグ付きで生成する
 		m_window = std::make_unique<Sdl2Window>(
 			config.title, winW, winH,
 			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
@@ -137,7 +137,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 #endif
 	}
 #endif
-	/// 入力状態とリサイズコールバックをウィンドウに接続する（IWindow仮想メソッド経由）
+	/// 入力状態とリサイズコールバックをウィンドウに接続する（IWindow 仮想メソッド経由）
 	m_window->setInputState(&m_inputState);
 	m_window->setResizeCallback([this](int w, int h) {
 		onWindowResize(w, h);
@@ -146,20 +146,20 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	/// 読めなくなる極端な縮小を防ぐ resize 安全保証。
 	m_window->setMinClientSize(config.minWindowWidth, config.minWindowHeight);
 #ifdef _WIN32
-	/// Win32Window がある場合、InputInjector を接続してhuman playをキャプチャ可能にする
+	/// Win32Window がある場合、InputInjector を接続して human play をキャプチャできるようにする
 	if (auto* w32 = dynamic_cast<Win32Window*>(m_window.get()))
 	{
 		w32->setInputInjector(&m_inputInjector);
 	}
 #endif
 
-	/// GPUデバイス生成。
+	/// GPU デバイス生成。
 	/// G2: `--headless` は既定で最速の `NullDevice` (2D は SW ラスタ経由で別途描く)。
 	/// 環境変数 `MITIRU_HEADLESS_GPU3D` (opt-in) が立っている時だけ、ウィンドウ無しでも
 	/// 実 GPU デバイスを windowless に作って 3D を描き `readPixels()` で読み戻せるようにする
 	/// (`--capture-dir` で 3D シーンの PNG を撮る用途)。無条件に切り替えないのは、既存の
 	/// ctest 群 (determinism/e2e/replay_golden 等) が `--headless` の NullDevice 前提で
-	/// 大量に走っており、既定動作を変えると全て道連れで壊れるため。
+	/// 大量に走っており、既定動作を変えると全て巻き添えで失敗するため。
 	const bool headlessGpu3D = config.headless
 		&& std::getenv("MITIRU_HEADLESS_GPU3D") != nullptr
 		&& config.gfxBackend != gfx::Backend::Null;

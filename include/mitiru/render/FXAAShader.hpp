@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file FXAAShader.hpp
-/// @brief FXAA 3.11ポストプロセスパス
-/// @details NVIDIA FXAA 3.11アルゴリズムに基づく高速近似アンチエイリアシング。
-///          PostProcessPassとして実装し、ポストプロセスチェーンの最終段に挿入する。
+/// @brief FXAA 3.11 ポストプロセスパス
+/// @details NVIDIA FXAA 3.11 アルゴリズムに基づく高速近似アンチエイリアシング。
+///          PostProcessPass として実装し、ポストプロセスチェーンの最終段に挿入する。
 
 #ifdef _WIN32
 
@@ -27,10 +27,10 @@ namespace mitiru::render
 {
 
 // ============================================================================
-// HLSL定数。FXAAピクセルシェーダー
+// HLSL 定数。FXAA ピクセルシェーダー
 // ============================================================================
 
-/// @brief FXAA 3.11ピクセルシェーダー
+/// @brief FXAA 3.11 ピクセルシェーダー
 /// @details エッジ検出 → エッジ方向判定 → エッジ端点探索 → サブピクセルブレンド
 constexpr std::string_view PP_FXAA_PS = R"hlsl(
 Texture2D sceneTexture : register(t0);
@@ -265,7 +265,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 // FXAAQuality。品質プリセット
 // ============================================================================
 
-/// @brief FXAA品質プリセット
+/// @brief FXAA 品質プリセット
 enum class FXAAQuality
 {
 	Low,       ///< 高速・低品質（モバイル向け）
@@ -274,19 +274,19 @@ enum class FXAAQuality
 };
 
 // ============================================================================
-// FXAAConfig。FXAA設定
+// FXAAConfig。FXAA 設定
 // ============================================================================
 
-/// @brief FXAA設定
+/// @brief FXAA 設定
 struct FXAAConfig
 {
 	float subpixQuality = 0.75f;       ///< サブピクセル品質 (0.0-1.0)
 	float edgeThreshold = 0.166f;      ///< エッジ検出閾値
 	float edgeThresholdMin = 0.0833f;  ///< 最小エッジ閾値
 
-	/// @brief 品質プリセットからFXAAConfigを生成する
+	/// @brief 品質プリセットから FXAAConfig を生成する
 	/// @param quality 品質プリセット
-	/// @return 対応するFXAAConfig
+	/// @return 対応する FXAAConfig
 	[[nodiscard]] static FXAAConfig fromQuality(
 		FXAAQuality quality) noexcept
 	{
@@ -314,13 +314,13 @@ struct FXAAConfig
 };
 
 // ============================================================================
-// FXAAPass。FXAAポストプロセスパス
+// FXAAPass。FXAA ポストプロセスパス
 // ============================================================================
 
-/// @brief FXAAポストプロセスパス
-/// @details FXAA 3.11に基づく高速近似アンチエイリアシング。
+/// @brief FXAA ポストプロセスパス
+/// @details FXAA 3.11 に基づく高速近似アンチエイリアシング。
 ///          ポストプロセスチェーンの最終段（ブルーム・カラーグレーディング後）に
-///          挿入してスクリーンスペースAAを適用する。
+///          挿入してスクリーンスペース AA を適用する。
 ///
 /// @code
 /// // プリセットから生成する
@@ -336,8 +336,8 @@ public:
 	template <typename T>
 	using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-	/// @brief コンストラクタ（デフォルトはMedium品質）
-	/// @param device D3D11デバイス
+	/// @brief コンストラクタ（デフォルトは Medium 品質）
+	/// @param device D3D11 デバイス
 	/// @param fullscreenVS フルスクリーン頂点シェーダー（共有）
 	/// @param sampler リニアサンプラー（共有）
 	FXAAPass(
@@ -351,11 +351,11 @@ public:
 		m_cb = createConstantBuffer(device, sizeof(FXAACB));
 	}
 
-	/// @brief Low品質プリセットで生成する
-	/// @param device D3D11デバイス
+	/// @brief Low 品質プリセットで生成する
+	/// @param device D3D11 デバイス
 	/// @param fullscreenVS フルスクリーン頂点シェーダー（共有）
 	/// @param sampler リニアサンプラー（共有）
-	/// @return Low品質のFXAAPass
+	/// @return Low 品質の FXAAPass
 	[[nodiscard]] static FXAAPass low(
 		ID3D11Device* device,
 		const ComPtr<ID3D11VertexShader>& fullscreenVS,
@@ -366,11 +366,11 @@ public:
 		return pass;
 	}
 
-	/// @brief Medium品質プリセットで生成する
-	/// @param device D3D11デバイス
+	/// @brief Medium 品質プリセットで生成する
+	/// @param device D3D11 デバイス
 	/// @param fullscreenVS フルスクリーン頂点シェーダー（共有）
 	/// @param sampler リニアサンプラー（共有）
-	/// @return Medium品質のFXAAPass
+	/// @return Medium 品質の FXAAPass
 	[[nodiscard]] static FXAAPass medium(
 		ID3D11Device* device,
 		const ComPtr<ID3D11VertexShader>& fullscreenVS,
@@ -381,11 +381,11 @@ public:
 		return pass;
 	}
 
-	/// @brief High品質プリセットで生成する
-	/// @param device D3D11デバイス
+	/// @brief High 品質プリセットで生成する
+	/// @param device D3D11 デバイス
 	/// @param fullscreenVS フルスクリーン頂点シェーダー（共有）
 	/// @param sampler リニアサンプラー（共有）
-	/// @return High品質のFXAAPass
+	/// @return High 品質の FXAAPass
 	[[nodiscard]] static FXAAPass high(
 		ID3D11Device* device,
 		const ComPtr<ID3D11VertexShader>& fullscreenVS,
@@ -396,8 +396,8 @@ public:
 		return pass;
 	}
 
-	/// @brief FXAA設定を変更する
-	/// @param cfg FXAA設定
+	/// @brief FXAA 設定を変更する
+	/// @param cfg FXAA 設定
 	void setConfig(const FXAAConfig& cfg) noexcept
 	{
 		m_config = cfg;
@@ -442,7 +442,7 @@ public:
 		updateConstantBuffer(context, m_cb.Get(),
 			&cbData, sizeof(cbData));
 
-		/// フルスクリーン三角形でFXAAを適用する
+		/// フルスクリーン三角形で FXAA を適用する
 		drawFullscreenPass(context,
 			m_fullscreenVS.Get(), m_ps.Get(),
 			inputSRV, outputRTV,
@@ -462,7 +462,7 @@ public:
 	}
 
 private:
-	/// @brief FXAA定数バッファレイアウト（32バイト、16バイトアライン）
+	/// @brief FXAA 定数バッファレイアウト（32 バイト、16 バイトアライン）
 	struct FXAACB
 	{
 		float rcpFrame[2];         ///< 1.0 / screenSize

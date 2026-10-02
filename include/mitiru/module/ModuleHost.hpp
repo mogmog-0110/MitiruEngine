@@ -20,6 +20,8 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -42,7 +44,9 @@
 #endif
 
 #include <mitiru/module/Invariant.hpp>
+#include <mitiru/module/detail/PdbPath.hpp>
 #include <mitiru/module/ModuleApi.hpp>
+#include <mitiru/module/ModuleReflection.hpp>
 
 namespace mitiru::module
 {
@@ -124,8 +128,10 @@ public:
 	ModuleHost(ModuleHost&& other) noexcept
 		: m_sourcePath(std::move(other.m_sourcePath))
 		, m_runtimePath(std::move(other.m_runtimePath))
+		, m_runtimePdbPath(std::move(other.m_runtimePdbPath))
 		, m_lastError(std::move(other.m_lastError))
 		, m_handle(other.m_handle)
+		, m_lastLoadBusy(other.m_lastLoadBusy)
 	{
 		other.m_handle = nullptr;
 	}
@@ -135,11 +141,13 @@ public:
 		if (this != &other)
 		{
 			unload();
-			m_sourcePath   = std::move(other.m_sourcePath);
-			m_runtimePath  = std::move(other.m_runtimePath);
-			m_lastError    = std::move(other.m_lastError);
-			m_handle       = other.m_handle;
-			other.m_handle = nullptr;
+			m_sourcePath     = std::move(other.m_sourcePath);
+			m_runtimePath    = std::move(other.m_runtimePath);
+			m_runtimePdbPath = std::move(other.m_runtimePdbPath);
+			m_lastError      = std::move(other.m_lastError);
+			m_handle         = other.m_handle;
+			m_lastLoadBusy   = other.m_lastLoadBusy;
+			other.m_handle   = nullptr;
 		}
 		return *this;
 	}
@@ -164,6 +172,7 @@ public:
 		m_lastError = "ModuleHost is not implemented on this platform";
 		return false;
 #else
+		m_lastLoadBusy = false;
 		std::error_code ec;
 		if (!std::filesystem::exists(source, ec) || ec)
 		{
@@ -171,6 +180,14 @@ public:
 			return false;
 		}
 
+		// 写している間にリンカが書き始めないよう、書き込みを締め出して開いたまま写す。
+		const WriterLock lock(source);
+		if (lock.busy())
+		{
+			m_lastLoadBusy = true;
+			m_lastError = "DLL はまだ書き込み中 (リンク中): " + source.string();
+			return false;
+		}
 		auto runtimePath = makeUniqueTempPath();
 		std::filesystem::copy_file(
 			source, runtimePath,
@@ -180,6 +197,7 @@ public:
 			m_lastError = "failed to copy DLL to temp: " + ec.message();
 			return false;
 		}
+		std::filesystem::path runtimePdb = redirectPdb(runtimePath);
 
 #if defined(_WIN32)
 		// Unicode-safe な path のため `LoadLibraryW`。temp filename は ASCII
@@ -190,6 +208,7 @@ public:
 			const DWORD err = ::GetLastError();
 			std::error_code rmEc;
 			std::filesystem::remove(runtimePath, rmEc);
+			if (!runtimePdb.empty()) { std::filesystem::remove(runtimePdb, rmEc); }
 			m_lastError = "LoadLibrary failed (GetLastError=" +
 			              std::to_string(err) + ")";
 			return false;
@@ -221,16 +240,17 @@ public:
 			return false;
 		}
 
-		m_sourcePath  = std::move(source);
-		m_runtimePath = std::move(runtimePath);
-		m_handle      = handle;
+		m_sourcePath     = std::move(source);
+		m_runtimePath    = std::move(runtimePath);
+		m_runtimePdbPath = std::move(runtimePdb);
+		m_handle         = handle;
 		m_lastError.clear();
 		return true;
 #endif
 	}
 
 	/// @brief DLL を unload する。複数回呼んでも安全。
-	/// @details FreeLibrary + temp file 削除。エラーは握り潰す (best-effort)。
+	/// @details FreeLibrary + temp file 削除。エラーは無視する (best-effort)。
 	void unload() noexcept
 	{
 		if (m_handle != nullptr)
@@ -243,6 +263,13 @@ public:
 			std::error_code ec;
 			std::filesystem::remove(m_runtimePath, ec);
 			m_runtimePath.clear();
+		}
+		if (!m_runtimePdbPath.empty())
+		{
+			// デバッガが開いたままなら消せない。%TEMP% に残るだけで次の load の邪魔はしない。
+			std::error_code ec;
+			std::filesystem::remove(m_runtimePdbPath, ec);
+			m_runtimePdbPath.clear();
 		}
 		m_sourcePath.clear();
 	}
@@ -324,6 +351,22 @@ public:
 		return reinterpret_cast<ModuleBakeAssetsFn>(resolveSymbol(m_handle, kBakeAssetsSymbol));
 	}
 
+	/// @brief load 済み DLL の反射の export を引く。宣言していない game は全部 nullptr。
+	[[nodiscard]] ReflectionExports reflectionExports() const noexcept
+	{
+		ReflectionExports e;
+		e.layoutHash = reinterpret_cast<ModuleLayoutHashFn>(resolveSymbol(m_handle, kLayoutHashSymbol));
+		e.fields     = reinterpret_cast<ModuleReflectFieldsFn>(resolveSymbol(m_handle, kReflectFieldsSymbol));
+		e.schemas    = reinterpret_cast<ModuleReflectSchemasFn>(resolveSymbol(m_handle, kReflectSchemasSymbol));
+		return e;
+	}
+
+	/// @brief load 済み DLL から GameMemory の記述を集める (mitiru_module_load の後に呼ぶ)。
+	[[nodiscard]] ModuleReflection captureReflection() const
+	{
+		return ModuleReflection::fromExports(reflectionExports());
+	}
+
 	/// @brief 元 DLL の path (load() に渡された値)。未 load なら空。
 	[[nodiscard]] const std::filesystem::path& sourcePath() const noexcept
 	{
@@ -336,6 +379,15 @@ public:
 		return m_runtimePath;
 	}
 
+	/// @brief 写した DLL が指す PDB の写し。PDB が無い / 書き換えられなかったなら空。
+	[[nodiscard]] const std::filesystem::path& runtimePdbPath() const noexcept
+	{
+		return m_runtimePdbPath;
+	}
+
+	/// @brief 最後の load() が「元の DLL がまだ書き込み中」で断ったか。watch はこの間は待てばよい。
+	[[nodiscard]] bool lastLoadBusy() const noexcept { return m_lastLoadBusy; }
+
 	/// @brief 最後の load() 失敗の原因。成功 / 未呼び出し時は空。
 	[[nodiscard]] const std::string& lastError() const noexcept
 	{
@@ -346,9 +398,10 @@ public:
 	/// @details reload の「先ロード・後差し替え」では一時 host で新 DLL を検証する。
 	///          その load 失敗 / ABI version 拒否の理由を、caller が参照する正規の
 	///          置き場 (= 現役 host の lastError) へ引き継ぐために使う。
-	void setLastError(std::string message)
+	void setLastError(std::string message, bool busy = false)
 	{
-		m_lastError = std::move(message);
+		m_lastError    = std::move(message);
+		m_lastLoadBusy = busy;
 	}
 
 private:
@@ -395,16 +448,80 @@ private:
 		auto tmp = std::filesystem::temp_directory_path(ec);
 		if (ec)
 		{
-			// %TEMP% が使えない場合は source 相対に fall back。
+			// %TEMP% が使えない場合は source 相対にフォールバックする。
 			tmp = ".";
 		}
 		return tmp / filename;
 	}
 
+	/// @brief 元の DLL を「読み取りは許し、書き込みは締め出す」形で開いておく。リンカが書き込み用に
+	///        開いていると開けない (busy)。POSIX には同じ締め出しが無いので常に通す。
+	class WriterLock
+	{
+	public:
+		explicit WriterLock(const std::filesystem::path& path)
+		{
+#if defined(_WIN32)
+			m_handle = ::CreateFileW(path.wstring().c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+			                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+			m_busy = (m_handle == INVALID_HANDLE_VALUE) && (::GetLastError() == ERROR_SHARING_VIOLATION);
+#else
+			(void)path;
+#endif
+		}
+		~WriterLock()
+		{
+#if defined(_WIN32)
+			if (m_handle != INVALID_HANDLE_VALUE) { ::CloseHandle(m_handle); }
+#endif
+		}
+		WriterLock(const WriterLock&) = delete;
+		WriterLock& operator=(const WriterLock&) = delete;
+		[[nodiscard]] bool busy() const noexcept { return m_busy; }
+
+	private:
+#if defined(_WIN32)
+		HANDLE m_handle = INVALID_HANDLE_VALUE;
+#endif
+		bool m_busy = false;
+	};
+
+	/// @brief 写した DLL の PDB パスを、PDB の写し (DLL の写しと同じ名前の .pdb) へ向け直す。
+	/// @return 写した PDB のパス。PDB が無い・パスが収まらない・PE でないなら空 (DLL はそのまま)。
+	static std::filesystem::path redirectPdb(const std::filesystem::path& runtimeDll)
+	{
+		std::vector<std::uint8_t> image;
+		{
+			std::ifstream in(runtimeDll, std::ios::binary);
+			if (!in) { return {}; }
+			image.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+		}
+		const auto span = detail::findPdbPath(image);
+		if (!span) { return {}; }
+		const std::filesystem::path original = detail::readPdbPath(image, *span);
+		std::error_code ec;
+		if (original.empty() || !std::filesystem::exists(original, ec)) { return {}; }
+
+		std::filesystem::path copy = runtimeDll;
+		copy.replace_extension(".pdb");
+		const std::string full = copy.string();
+		const std::string name = copy.filename().string();
+		// 収まらなければファイル名だけにする (デバッガは DLL と同じフォルダも探す)。
+		if (!detail::writePdbPath(image, *span, full) && !detail::writePdbPath(image, *span, name)) { return {}; }
+		std::filesystem::copy_file(original, copy, std::filesystem::copy_options::overwrite_existing, ec);
+		if (ec) { return {}; }
+		std::ofstream out(runtimeDll, std::ios::binary | std::ios::trunc);
+		out.write(reinterpret_cast<const char*>(image.data()), static_cast<std::streamsize>(image.size()));
+		if (!out) { std::filesystem::remove(copy, ec); return {}; }
+		return copy;
+	}
+
 	std::filesystem::path m_sourcePath;
 	std::filesystem::path m_runtimePath;
+	std::filesystem::path m_runtimePdbPath;
 	std::string           m_lastError;
 	void*                 m_handle{nullptr};
+	bool                  m_lastLoadBusy{false};
 };
 
 }  // namespace mitiru::module

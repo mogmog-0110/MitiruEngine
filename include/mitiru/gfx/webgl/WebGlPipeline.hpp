@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file WebGlPipeline.hpp
-/// @brief WebGL2レンダリングパイプライン状態実装
-/// @details ブレンド・深度テスト・ラスタライザ・VAO（頂点属性）を統合管理する。
-///          WebGL2ではPSOが存在しないため、bind()時にGL状態を直接設定する。
+/// @brief WebGL2 レンダリングパイプライン状態実装
+/// @details ブレンド・深度テスト・ラスタライザ・VAO（頂点属性）をまとめて管理する。
+///          WebGL2 では PSO が存在しないため、bind() 時に GL 状態を直接設定する。
 
 #ifdef __EMSCRIPTEN__
 
@@ -19,8 +19,8 @@
 namespace mitiru::gfx
 {
 
-/// @brief WebGL2パイプライン記述子
-/// @details パイプライン生成に必要なパラメータを集約する。
+/// @brief WebGL2 パイプライン記述子
+/// @details パイプライン生成に必要なパラメータをまとめる。
 struct WebGLPipelineDesc
 {
 	WebGLShader* shader = nullptr;            ///< リンク済みシェーダープログラム
@@ -32,10 +32,9 @@ struct WebGLPipelineDesc
 	bool wireframe = false;                   ///< ワイヤーフレーム表示（WebGL2未対応のためヒントのみ）
 };
 
-/// @brief WebGL2用レンダリングパイプライン状態実装
+/// @brief WebGL2 用レンダリングパイプライン状態実装
 /// @details シェーダープログラム・VAO・ブレンド設定・深度設定を束ねる。
-///          bind()でOpenGL ES状態マシンに一括適用する。
-///
+/// bind() で OpenGL ES 状態マシンに一括適用する。
 /// @code
 /// WebGLPipelineDesc desc;
 /// desc.shader = &myShader;
@@ -120,11 +119,11 @@ public:
 	/// @brief シェーダープログラムを取得する
 	[[nodiscard]] WebGLShader* shader() const noexcept { return m_shader; }
 
-	/// @brief VAOハンドルを取得する
+	/// @brief VAO ハンドルを取得する
 	[[nodiscard]] GLuint vao() const noexcept { return m_vao; }
 
-	/// @brief パイプライン状態をWebGL2コンテキストにバインドする
-	/// @details シェーダーの使用、VAOのバインド、ブレンド・深度・カリング設定を適用する。
+	/// @brief パイプライン状態を WebGL2 コンテキストにバインドする
+	/// @details シェーダーの使用、VAO のバインド、ブレンド・深度・カリング設定を適用する。
 	void bind() const noexcept
 	{
 		if (!m_valid)
@@ -135,7 +134,7 @@ public:
 		/// シェーダープログラムをアクティブにする
 		m_shader->use();
 
-		/// VAOをバインドする
+		/// VAO をバインドする
 		glBindVertexArray(m_vao);
 
 		/// ブレンド設定を適用する
@@ -156,7 +155,7 @@ public:
 	}
 
 private:
-	/// @brief 頂点フォーマットに対応するVAOを生成する
+	/// @brief 頂点フォーマットに対応する VAO を生成する
 	void createVAO()
 	{
 		glGenVertexArrays(1, &m_vao);
@@ -168,7 +167,7 @@ private:
 		glBindVertexArray(m_vao);
 
 		/// 頂点フォーマットに応じた頂点属性を設定する
-		/// 実際のバッファバインドはdraw時に行うが、属性レイアウトはVAOに記録する
+		/// 実際のバッファバインドは draw 時に行うが、属性レイアウトは VAO に記録する
 		switch (m_vertexFormat)
 		{
 		case VertexFormat::Position2D:
@@ -249,7 +248,7 @@ private:
 			break;
 
 		// 以下 3 つは Dx11Pipeline と同じ近似式にする。ここが抜けていると
-		// glBlendFunc が前の描画のまま残り、同じ絵が backend で変わる。
+		// glBlendFunc が前の描画のまま残り、同じ絵が backend によって違って描かれる。
 		case BlendMode::Screen:
 			// 1 - (1-src)*(1-dst) を src*1 + dst*(1-src) で近似する。
 			glEnable(GL_BLEND);

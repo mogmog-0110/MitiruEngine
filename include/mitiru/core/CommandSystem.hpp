@@ -234,7 +234,7 @@ public:
 
 	/// @brief 名前でコマンドを検索する
 	/// @param name コマンド名
-	/// @return コマンド定義へのポインタ（見つからなければnullptr）
+	/// @return コマンド定義へのポインタ（見つからなければ nullptr）
 	[[nodiscard]] const CommandDef* findCommand(const std::string& name) const
 	{
 		const auto it = m_commandMap.find(name);
@@ -471,7 +471,7 @@ private:
 		return tokens;
 	}
 
-	/// @brief 型名に基づいてトークンをCommandArgに変換する
+	/// @brief 型名に基づいてトークンを CommandArg に変換する
 	[[nodiscard]] static CommandArg parseArg(const std::string& token,
 	                                         const std::string& typeName)
 	{

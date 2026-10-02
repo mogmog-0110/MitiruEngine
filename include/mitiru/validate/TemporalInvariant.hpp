@@ -3,7 +3,7 @@
 /// @file TemporalInvariant.hpp
 /// @brief 時系列不変条件チェッカー
 /// @details 値を時間経過で追跡し、異常な変化を検出する。
-///          MaxDelta、RateOfChange、Monotonic、RangeBound、Timeout等の
+///          MaxDelta、RateOfChange、Monotonic、RangeBound、Timeout 等の
 ///          ルールタイプをサポートする。
 ///
 /// @code
@@ -48,8 +48,8 @@ struct TemporalViolation
 	float threshold = 0.0f;           ///< 閾値
 	std::string description;          ///< 違反の説明
 
-	/// @brief JSON文字列に変換する
-	/// @return JSON形式の文字列
+	/// @brief JSON 文字列に変換する
+	/// @return JSON 形式の文字列
 	[[nodiscard]] std::string toJson() const
 	{
 		std::string json;
@@ -327,9 +327,9 @@ public:
 		return m_rules.size();
 	}
 
-	/// @brief 違反リストをJSON配列に変換する
+	/// @brief 違反リストを JSON 配列に変換する
 	/// @param violations 違反リスト
-	/// @return JSON配列形式の文字列
+	/// @return JSON 配列形式の文字列
 	[[nodiscard]] std::string toJson(
 		const std::vector<TemporalViolation>& violations) const
 	{

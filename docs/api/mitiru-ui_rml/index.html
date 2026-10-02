@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::ui_rml — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (28 types, 194 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::ui_rml | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (28 types, 194 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::ui_rml | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (28 types, 194 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/" class="active"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::ui_rml</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (28 types, 194 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (28 types, 194 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#class-tweenelement"><code>TweenElement</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-flashelement"><code>FlashElement</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#class-toastelement"><code>ToastElement</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-dragclasslistener"><code>DragClassListener</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#enum-rmlfiltertype"><code>RmlFilterType</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#enum-rmlgradientfunc"><code>RmlGradientFunc</code></a></td><td>enum</td><td>19</td></tr>
+<tr><td><a href="#struct-rmlfilter"><code>RmlFilter</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-blurplan"><code>BlurPlan</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-rmlgradient"><code>RmlGradient</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#class-rmlimebridge"><code>RmlImeBridge</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#struct-rmlkeyevent"><code>RmlKeyEvent</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-vkrange"><code>VkRange</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-vksingle"><code>VkSingle</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-rmlkeytranslator"><code>RmlKeyTranslator</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-rmlpadnavigator"><code>RmlPadNavigator</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-rmlhandletable"><code>RmlHandleTable</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-rmlrenderinterfacedx12"><code>RmlRenderInterfaceDx12</code></a></td><td>class</td><td>33</td></tr>
+<tr><td><a href="#class-rmlruntime"><code>RmlRuntime</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-sparkelement"><code>SparkElement</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#struct-dispatchedaction"><code>DispatchedAction</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-rmlstatemodel"><code>RmlStateModel</code></a></td><td>class</td><td>25</td></tr>
+<tr><td><a href="#struct-uiaction"><code>UiAction</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-uipointer"><code>UiPointer</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-uipad"><code>UiPad</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-uiextrainput"><code>UiExtraInput</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-rmluihost"><code>RmlUiHost</code></a></td><td>class</td><td>24</td></tr>
+<tr><td><a href="#struct-rmlrenderinterfacedx12"><code>RmlRenderInterfaceDx12</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-rmlrenderinterfacedx12"><code>RmlRenderInterfaceDx12</code></a></td><td>struct</td><td>6</td></tr>
+</tbody></table>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>[[nodiscard]] inline double uiNow()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline double attributeSeconds(const Rml::Element&amp; e, int defaultMs)</code></div>
+<div class="api-method"><code>inline void setInnerText(Rml::Element&amp; e, Rml::String&amp; shown, const Rml::String&amp; text)</code></div>
+<div class="api-method"><code>inline void registerBinderElements()</code></div>
+</div>
+<details class="api-class" id="class-tweenelement" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TweenElement</code> <span class="api-class__extra">: public Rml::Element</span> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit TweenElement(const Rml::String&amp; tag)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-flashelement" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">FlashElement</code> <span class="api-class__extra">: public Rml::Element</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>static constexpr const char* kClass = &quot;m-flash&quot;</code></div>
+<div class="api-method"><code>explicit FlashElement(const Rml::String&amp; tag)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-toastelement" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ToastElement</code> <span class="api-class__extra">: public Rml::Element</span> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit ToastElement(const Rml::String&amp; tag)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dragclasslistener" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DragClassListener</code> <span class="api-class__extra">: public Rml::EventListener</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void attach(Rml::ElementDocument&amp; doc)</code></div>
+<div class="api-method"><code>void ProcessEvent(Rml::Event&amp; ev) override</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-rmlfiltertype" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RmlFilterType</code> <span class="api-class__extra">: int</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Invalid = 0</code></div>
+<div class="api-method"><code>Opacity</code></div>
+<div class="api-method"><code>Blur</code></div>
+<div class="api-method"><code>DropShadow</code></div>
+<div class="api-method"><code>ColorMatrix</code></div>
+<div class="api-method"><code>MaskImage</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-rmlgradientfunc" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RmlGradientFunc</code> <span class="api-class__extra">: int</span> <span class="api-class__count">19</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Linear = 0</code></div>
+<div class="api-method"><code>Radial</code></div>
+<div class="api-method"><code>Conic</code></div>
+<div class="api-method"><code>RepeatingLinear</code></div>
+<div class="api-method"><code>RepeatingRadial</code></div>
+<div class="api-method"><code>RepeatingConic</code></div>
+<div class="api-method"><code>inline constexpr int kBlurSize = 7</code></div>
+<div class="api-method"><code>inline constexpr int kBlurWeights = (kBlurSize + 1) / 2</code></div>
+<div class="api-method"><code>inline constexpr int kMaxGradientStops = 16</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Rml::Matrix4f saturateMatrix(float v)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Rml::Matrix4f hueRotateMatrix(float radians)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Rml::Matrix4f mixMatrix(const Rml::Vector3f&amp; r, const Rml::Vector3f&amp; g, const Rml::Vector3f&amp; b, float keep)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool colorMatrixFor(const Rml::String&amp; name, float value, Rml::Matrix4f&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline RmlFilter compileRmlFilter(const Rml::String&amp; name, const Rml::Dictionary&amp; params)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline BlurPlan planBlur(float desiredSigma)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::array&lt;float, kBlurWeights&gt; blurWeights(float sigma)</code></div>
+<div class="api-method"><code>inline void applyStops(RmlGradient&amp; g, const Rml::Dictionary&amp; params)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline RmlGradientFunc withRepeat(RmlGradientFunc f, bool repeating)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline RmlGradient compileRmlGradient(const Rml::String&amp; name, const Rml::Dictionary&amp; params)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rmlfilter">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RmlFilter</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>RmlFilterType type = RmlFilterType::Invalid</code></div>
+<div class="api-method"><code>float opacity = 1.0f</code></div>
+<div class="api-method"><code>float sigma = 0.0f</code></div>
+<div class="api-method"><code>Rml::ColourbPremultiplied color</code></div>
+<div class="api-method"><code>Rml::Matrix4f colorMatrix = Rml::Matrix4f::Identity()</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-blurplan">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BlurPlan</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int passLevel = 0</code></div>
+<div class="api-method"><code>float sigma = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rmlgradient">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RmlGradient</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool valid = false</code></div>
+<div class="api-method"><code>RmlGradientFunc func = RmlGradientFunc::Linear</code></div>
+<div class="api-method"><code>int numStops = 0</code></div>
+<div class="api-method"><code>inline double toNumber(const Rml::VariantList&amp; args)</code></div>
+<div class="api-method"><code>inline std::string withCommas(long long n)</code></div>
+<div class="api-method"><code>inline std::string kmb(double n)</code></div>
+<div class="api-method"><code>inline std::string formatNumber(double v, std::string_view spec)</code></div>
+<div class="api-method"><code>inline void registerBinderFormatters(Rml::DataModelConstructor&amp; ctor)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmlimebridge">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlImeBridge</code> <span class="api-class__extra">: public Rml::TextInputHandler</span> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void OnActivate(Rml::TextInputContext* context) override</code></div>
+<div class="api-method"><code>void OnDeactivate(Rml::TextInputContext* context) override</code></div>
+<div class="api-method"><code>void OnDestroy(Rml::TextInputContext* context) override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool focusedField(Rml::Rectanglef&amp; bounds) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool showing() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool sameAsShown(std::string_view composition) const noexcept</code></div>
+<div class="api-method"><code>void removeComposition()</code></div>
+<div class="api-method"><code>void showComposition(std::string_view composition, int cursorBytes)</code></div>
+<div class="api-method"><code>inline nlohmann::json parseStateValue(std::string_view raw)</code></div>
+<div class="api-method"><code>inline constexpr std::int32_t kExtendedKeyBit = 1 &lt;&lt; 24</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Rml::Input::KeyIdentifier toRmlKey(std::uint32_t vk, std::int32_t lParam) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr int toRmlModifiers(std::uint32_t keyState) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rmlkeyevent">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RmlKeyEvent</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>enum `Kind : std::uint8_t` { Down, Up, Text }</code></div>
+<div class="api-method"><code>Kind kind = Kind::Down</code></div>
+<div class="api-method"><code>Rml::Input::KeyIdentifier key = Rml::Input::KI_UNKNOWN</code></div>
+<div class="api-method"><code>int modifiers = 0</code></div>
+<div class="api-method"><code>Rml::Character character = Rml::Character::Null</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vkrange">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VkRange</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t first, last</code></div>
+<div class="api-method"><code>int base</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vksingle">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VkSingle</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t vk</code></div>
+<div class="api-method"><code>Rml::Input::KeyIdentifier key</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmlkeytranslator">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlKeyTranslator</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;class Emit&gt; void translate(std::span&lt;const platform::Win32KeyMessage&gt; messages, Emit&amp;&amp; emit)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmlpadnavigator">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlPadNavigator</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>template &lt;class Emit&gt; void translate(const UiPad&amp; pad, Emit&amp;&amp; emit)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmlhandletable">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlHandleTable</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uintptr_t add(std::unique_ptr&lt;T&gt; item)</code></div>
+<div class="api-method"><code>[[nodiscard]] T* get(std::uintptr_t handle) const noexcept</code></div>
+<div class="api-method"><code>std::unique_ptr&lt;T&gt; take(std::uintptr_t handle)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t liveCount() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmlrenderinterfacedx12">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlRenderInterfaceDx12</code> <span class="api-class__extra">: public Rml::RenderInterface</span> <span class="api-class__count">33</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>RmlRenderInterfaceDx12()</code></div>
+<div class="api-method"><code>~RmlRenderInterfaceDx12() override</code></div>
+<div class="api-method"><code>RmlRenderInterfaceDx12(const RmlRenderInterfaceDx12&amp;) = delete</code></div>
+<div class="api-method"><code>RmlRenderInterfaceDx12&amp; operator=(const RmlRenderInterfaceDx12&amp;) = delete</code></div>
+<div class="api-method"><code>bool initialize(ID3D12Device* device, ID3D12CommandQueue* queue)</code></div>
+<div class="api-method"><code>bool beginFrame(ID3D12Resource* target, int width, int height, Rml::Vector2i logical)</code></div>
+<div class="api-method"><code>void endFrame()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ready() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] UINT layerSamples() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t liveTextureCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t liveGeometryCount() const noexcept</code></div>
+<div class="api-method"><code>Rml::CompiledGeometryHandle CompileGeometry(Rml::Span&lt;const Rml::Vertex&gt; vertices, Rml::Span&lt;const int&gt; indices) override</code></div>
+<div class="api-method"><code>void RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture) override</code></div>
+<div class="api-method"><code>void ReleaseGeometry(Rml::CompiledGeometryHandle geometry) override</code></div>
+<div class="api-method"><code>Rml::TextureHandle LoadTexture(Rml::Vector2i&amp; dimensions, const Rml::String&amp; source) override</code></div>
+<div class="api-method"><code>Rml::TextureHandle GenerateTexture(Rml::Span&lt;const Rml::byte&gt; source, Rml::Vector2i dimensions) override</code></div>
+<div class="api-method"><code>void ReleaseTexture(Rml::TextureHandle texture) override</code></div>
+<div class="api-method"><code>void EnableScissorRegion(bool enable) override</code></div>
+<div class="api-method"><code>void SetScissorRegion(Rml::Rectanglei region) override</code></div>
+<div class="api-method"><code>void EnableClipMask(bool enable) override</code></div>
+<div class="api-method"><code>void RenderToClipMask(Rml::ClipMaskOperation operation, Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation) override</code></div>
+<div class="api-method"><code>void SetTransform(const Rml::Matrix4f* transform) override</code></div>
+<div class="api-method"><code>Rml::LayerHandle PushLayer() override</code></div>
+<div class="api-method"><code>void CompositeLayers(Rml::LayerHandle source, Rml::LayerHandle destination, Rml::BlendMode blendMode, Rml::Span&lt;const Rml::CompiledFilterHandle&gt; filters) override</code></div>
+<div class="api-method"><code>void PopLayer() override</code></div>
+<div class="api-method"><code>Rml::TextureHandle SaveLayerAsTexture() override</code></div>
+<div class="api-method"><code>Rml::CompiledFilterHandle SaveLayerAsMaskImage() override</code></div>
+<div class="api-method"><code>Rml::CompiledFilterHandle CompileFilter(const Rml::String&amp; name, const Rml::Dictionary&amp; parameters) override</code></div>
+<div class="api-method"><code>void ReleaseFilter(Rml::CompiledFilterHandle filter) override</code></div>
+<div class="api-method"><code>Rml::CompiledShaderHandle CompileShader(const Rml::String&amp; name, const Rml::Dictionary&amp; parameters) override</code></div>
+<div class="api-method"><code>void RenderShader(Rml::CompiledShaderHandle shader, Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture) override</code></div>
+<div class="api-method"><code>void ReleaseShader(Rml::CompiledShaderHandle shader) override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmlruntime">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlRuntime</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>struct BundledFace</code></div>
+<div class="api-method"><code>static RmlRuntime&amp; instance()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ready() const noexcept</code></div>
+<div class="api-method"><code>void setTime(double seconds) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] double time() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t warningCount() const noexcept</code></div>
+<div class="api-method"><code>void loadFonts(const std::filesystem::path&amp; documentDir)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string nextContextName()</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::filesystem::path&amp; engineUiDir() const noexcept</code></div>
+<div class="api-method"><code>RmlRuntime(const RmlRuntime&amp;) = delete</code></div>
+<div class="api-method"><code>RmlRuntime&amp; operator=(const RmlRuntime&amp;) = delete</code></div>
+</div>
+</details>
+<details class="api-class" id="class-sparkelement">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SparkElement</code> <span class="api-class__extra">: public Rml::Element</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit SparkElement(const Rml::String&amp; tag)</code></div>
+<div class="api-method"><code>static void registerInstancer()</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-dispatchedaction">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DispatchedAction</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string payloadJson</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmlstatemodel">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlStateModel</code> <span class="api-class__count">25</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool create(Rml::Context&amp; context, const std::string&amp; modelName)</code></div>
+<div class="api-method"><code>bool set(std::string_view key, std::string_view raw)</code></div>
+<div class="api-method"><code>bool setValue(std::string_view key, nlohmann::json value)</code></div>
+<div class="api-method"><code>void update(Rml::Context&amp; context)</code></div>
+<div class="api-method"><code>Rml::ElementDocument* loadDocument(Rml::Context&amp; context, const std::string&amp; path)</code></div>
+<div class="api-method"><code>Rml::ElementDocument* loadDocumentFromMemory(Rml::Context&amp; context, const std::string&amp; rml)</code></div>
+<div class="api-method"><code>void setComposing(bool composing) noexcept</code></div>
+<div class="api-method"><code>std::vector&lt;DispatchedAction&gt; takeActions()</code></div>
+<div class="api-method"><code>inline RmlUiHost::RmlUiHost() = default</code></div>
+<div class="api-method"><code>inline RmlUiHost::~RmlUiHost() = default</code></div>
+<div class="api-method"><code>inline bool RmlUiHost::start(ID3D12Device*, ID3D12CommandQueue*, const std::string&amp;, int, int, std::string&amp; error)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::stop()</code></div>
+<div class="api-method"><code>inline bool RmlUiHost::active() const noexcept</code></div>
+<div class="api-method"><code>inline const std::string&amp; RmlUiHost::documentPath() const noexcept</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setInt(std::string_view, int)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setFloat(std::string_view, float)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setBool(std::string_view, bool)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setText(std::string_view, std::string_view)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::processInput(const UiPointer&amp;, std::span&lt;const platform::Win32KeyMessage&gt;)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::processInput(const UiPointer&amp;, std::span&lt;const platform::Win32KeyMessage&gt;, const UiExtraInput&amp;)</code></div>
+<div class="api-method"><code>inline bool RmlUiHost::focusedTextField(float[4]) const</code></div>
+<div class="api-method"><code>inline void RmlUiHost::update(double)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::render(ID3D12Resource*, int, int)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::reloadDocument()</code></div>
+<div class="api-method"><code>inline std::vector&lt;UiAction&gt; RmlUiHost::takeActions()</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uiaction">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiAction</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string payloadJson</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uipointer">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiPointer</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x = 0.0f</code></div>
+<div class="api-method"><code>float y = 0.0f</code></div>
+<div class="api-method"><code>float wheel = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uipad">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiPad</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t buttonsDown = 0</code></div>
+<div class="api-method"><code>float stickX = 0.0f</code></div>
+<div class="api-method"><code>float stickY = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uiextrainput">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiExtraInput</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>UiPad pad</code></div>
+<div class="api-method"><code>std::string_view imeComposition</code></div>
+<div class="api-method"><code>int imeCursor = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmluihost">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlUiHost</code> <span class="api-class__count">24</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>RmlUiHost()</code></div>
+<div class="api-method"><code>~RmlUiHost()</code></div>
+<div class="api-method"><code>RmlUiHost(const RmlUiHost&amp;) = delete</code></div>
+<div class="api-method"><code>RmlUiHost&amp; operator=(const RmlUiHost&amp;) = delete</code></div>
+<div class="api-method"><code>bool start(ID3D12Device* device, ID3D12CommandQueue* queue, const std::string&amp; documentPath, int logicalWidth, int logicalHeight, std::string&amp; error)</code></div>
+<div class="api-method"><code>void stop()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool active() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; documentPath() const noexcept</code></div>
+<div class="api-method"><code>void setInt(std::string_view key, int value)</code></div>
+<div class="api-method"><code>void setFloat(std::string_view key, float value)</code></div>
+<div class="api-method"><code>void setBool(std::string_view key, bool value)</code></div>
+<div class="api-method"><code>void setText(std::string_view key, std::string_view value)</code></div>
+<div class="api-method"><code>void processInput(const UiPointer&amp; pointer, std::span&lt;const platform::Win32KeyMessage&gt; keys)</code></div>
+<div class="api-method"><code>void processInput(const UiPointer&amp; pointer, std::span&lt;const platform::Win32KeyMessage&gt; keys, const UiExtraInput&amp; extra)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool focusedTextField(float rect[4]) const</code></div>
+<div class="api-method"><code>void update(double seconds)</code></div>
+<div class="api-method"><code>void render(ID3D12Resource* target, int width, int height)</code></div>
+<div class="api-method"><code>void reloadDocument()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;UiAction&gt; takeActions()</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool drawsToLayer(RmlPso p) noexcept</code></div>
+<div class="api-method"><code>inline void copyRegion(ID3D12GraphicsCommandList* cl, ID3D12Resource* dst, ID3D12Resource* src, int x, int y, int w, int h)</code></div>
+<div class="api-method"><code>inline bool fillStaging(ID3D12Device* device, ID3D12Resource* texture, const Rml::byte* rgba, int w, int h, gfx::GpuResource&amp; staging, D3D12_PLACED_SUBRESOURCE_FOOTPRINT&amp; footprint)</code></div>
+<div class="api-method"><code>inline bool readWholeFile(const Rml::String&amp; path, std::vector&lt;Rml::byte&gt;&amp; out)</code></div>
+<div class="api-method"><code>inline void premultiply(std::vector&lt;Rml::byte&gt;&amp; rgba)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rmlrenderinterfacedx12">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RmlRenderInterfaceDx12</code> <span class="api-class__extra">: :Geometry</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Rml::Span&lt;const Rml::Vertex&gt; vertices</code></div>
+<div class="api-method"><code>Rml::Span&lt;const int&gt; indices</code></div>
+<div class="api-method"><code>std::uint64_t uploadedFrame = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rmlrenderinterfacedx12">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RmlRenderInterfaceDx12</code> <span class="api-class__extra">: :Texture</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>gfx::GpuResource resource</code></div>
+<div class="api-method"><code>gfx::GpuResource staging</code></div>
+<div class="api-method"><code>std::uint32_t srv = dx12::RmlDescriptorPool::kInvalid</code></div>
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,48 +1,30 @@
 #pragma once
 
 /// @file JsonEscape.hpp
-/// @brief JSON文字列エスケープユーティリティ
+/// @brief 手で組む JSON 文字列に値を埋め込むためのエスケープ (引用符は付けない)
+/// @details エスケープは nlohmann/json に任せる。不正な UTF-8 は U+FFFD に置き換えるので、
+///          受け手 (inspector / AI) の JSON パーサがスナップショットごと読めなくなることはない。
 
 #include <string>
 #include <string_view>
 
+#include <nlohmann/json.hpp>
+
 namespace mitiru::observe
 {
 
-/// @brief JSON文字列値に含まれる特殊文字をエスケープする
-/// @param input エスケープ対象の文字列
-/// @return エスケープ済み文字列（引用符は含まない）
 [[nodiscard]] inline std::string jsonEscape(std::string_view input)
 {
-	std::string result;
-	result.reserve(input.size() + input.size() / 8);
-	for (const char ch : input)
-	{
-		switch (ch)
-		{
-		case '"':  result += "\\\""; break;
-		case '\\': result += "\\\\"; break;
-		case '\b': result += "\\b";  break;
-		case '\f': result += "\\f";  break;
-		case '\n': result += "\\n";  break;
-		case '\r': result += "\\r";  break;
-		case '\t': result += "\\t";  break;
-		default:
-			if (static_cast<unsigned char>(ch) < 0x20)
-			{
-				constexpr char hex[] = "0123456789abcdef";
-				result += "\\u00";
-				result += hex[(static_cast<unsigned char>(ch) >> 4) & 0xF];
-				result += hex[static_cast<unsigned char>(ch) & 0xF];
-			}
-			else
-			{
-				result += ch;
-			}
-			break;
-		}
-	}
-	return result;
+	std::string quoted = nlohmann::json(input).dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+	quoted.pop_back();
+	quoted.erase(0, 1);
+	return quoted;
+}
+
+/// @brief 引用符付きの JSON 文字列リテラルにする
+[[nodiscard]] inline std::string jsonQuoted(std::string_view input)
+{
+	return nlohmann::json(input).dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
 }
 
 } // namespace mitiru::observe

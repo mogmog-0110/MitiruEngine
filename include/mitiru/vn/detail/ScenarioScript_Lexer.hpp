@@ -19,7 +19,7 @@ namespace mitiru::vn
 // ════════════════════════════════════════════════════════════════════
 
 /// @brief シナリオスクリプトの字句解析器
-/// @details テキストベースのVNスクリプトをトークン列に分解する。
+/// @details テキストベースの VN スクリプトをトークン列に分解する。
 class ScenarioLexer
 {
 public:
@@ -80,14 +80,14 @@ public:
 				const auto cmdLine = line;
 				tokens.push_back({ScenarioTokenType::Command, cmdName, 0.0, cmdLine});
 
-				// `@script` は body を verbatim 保持する block directive として
-				// 専用処理する。@choice 等の通常 block 系と異なり、body 中の
-				// "@" を識別子としてトークン化されたら困る (Lua の @ 演算子等)
-				// ので lexer 段階で @endscript までを単一 ScriptBody トークン化する。
+				// `@script` は body を verbatim のまま保持する block directive なので専用に処理する。
+				// @choice 等の通常の block 系と違い、body 中の "@" を識別子としてトークン化されると
+				// 困る (Lua の @ 演算子等)。そこで lexer の段階で @endscript までを
+				// 1 つの ScriptBody トークンにする。
 				if (cmdName == "script")
 				{
 					// `@script` トークンの後ろから次の改行までは引数なしとして消費する。
-					// 例: `@script` の後ろに余計な識別子があっても黙殺する (将来拡張余地)
+					// 例: `@script` の後ろに余計な識別子があっても無視する (将来の拡張の余地)
 					std::size_t scanPos = i;
 					while (scanPos < source.size() && source[scanPos] != '\n')
 					{
@@ -95,13 +95,13 @@ public:
 					}
 					if (scanPos < source.size())
 					{
-						// 改行を含めて body 開始位置の手前まで進める。改行自体は body から除外。
+						// 改行も含めて body の開始位置の手前まで進める。改行そのものは body に含めない。
 						++scanPos;
 						++line;
 					}
 
-					// `@endscript` を探索する。改行直後または行頭から `@endscript`
-					// が現れるまでを body として保持する。改行は verbatim で含む。
+					// `@endscript` を探す。改行の直後または行頭に `@endscript`
+					// が現れるまでを body として保持する。改行は verbatim のまま含める。
 					const std::size_t bodyStart = scanPos;
 					std::size_t bodyEnd = scanPos;
 					std::size_t cursor = scanPos;
@@ -112,7 +112,7 @@ public:
 						// 行頭判定: cursor が source 先頭か直前が改行のとき
 						const bool atLineStart = (cursor == 0 || source[cursor - 1] == '\n');
 
-						// 行頭の余白 (空白 / タブ) は許容してから @endscript をチェック
+						// 行頭の余白 (空白 / タブ) を読み飛ばしてから @endscript かどうかを調べる
 						std::size_t probe = cursor;
 						if (atLineStart)
 						{
@@ -245,7 +245,7 @@ public:
 				continue;
 			}
 
-			// 不明な文字: 比較演算子等を識別子的に扱う
+			// 不明な文字のうち比較演算子等は識別子と同じように扱う
 			if (source[i] == '=' || source[i] == '!' || source[i] == '<' || source[i] == '>' ||
 				source[i] == '&' || source[i] == '|')
 			{
@@ -263,7 +263,7 @@ public:
 				continue;
 			}
 
-			// その他の文字はスキップ
+			// その他の文字は飛ばす
 			++i;
 		}
 

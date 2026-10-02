@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file WebGlShader.hpp
-/// @brief WebGL2 GLSL ES 3.0シェーダー実装
-/// @details GLSL ES 3.0シェーダーのコンパイル・リンクをRAIIで管理する。
+/// @brief WebGL2 GLSL ES 3.0 シェーダー実装
+/// @details GLSL ES 3.0 シェーダーのコンパイル・リンクを RAII で管理する。
 ///          頂点シェーダーとフラグメントシェーダーをリンクしたプログラムを保持する。
 
 #ifdef __EMSCRIPTEN__
@@ -20,10 +20,9 @@
 namespace mitiru::gfx
 {
 
-/// @brief WebGL2用シェーダー実装
-/// @details GLSL ES 3.0ソースをコンパイルし、シェーダープログラムをRAIIで管理する。
-///          デストラクタでglDeleteProgram / glDeleteShaderを呼び出す。
-///
+/// @brief WebGL2 用シェーダー実装
+/// @details GLSL ES 3.0 ソースをコンパイルし、シェーダープログラムを RAII で管理する。
+/// デストラクタで glDeleteProgram / glDeleteShader を呼び出す。
 /// @code
 /// auto shader = WebGLShader::createProgram(vertexSrc, fragmentSrc);
 /// glUseProgram(shader.program());
@@ -32,9 +31,9 @@ class WebGLShader final : public IShader
 {
 public:
 	/// @brief 頂点＋フラグメントシェーダーからプログラムを生成するファクトリ
-	/// @param vertexSource GLSL ES 3.0頂点シェーダーソース
-	/// @param fragmentSource GLSL ES 3.0フラグメントシェーダーソース
-	/// @return 生成されたWebGLShader
+	/// @param vertexSource GLSL ES 3.0 頂点シェーダーソース
+	/// @param fragmentSource GLSL ES 3.0 フラグメントシェーダーソース
+	/// @return 生成された WebGLShader
 	[[nodiscard]] static WebGLShader createProgram(
 		std::string_view vertexSource,
 		std::string_view fragmentSource)
@@ -50,8 +49,8 @@ public:
 	}
 
 	/// @brief 頂点シェーダーのみを生成するファクトリ
-	/// @param source GLSL ES 3.0頂点シェーダーソース
-	/// @return 生成されたWebGLShader
+	/// @param source GLSL ES 3.0 頂点シェーダーソース
+	/// @return 生成された WebGLShader
 	[[nodiscard]] static WebGLShader createVertexShader(std::string_view source)
 	{
 		WebGLShader shader;
@@ -61,8 +60,8 @@ public:
 	}
 
 	/// @brief フラグメントシェーダーのみを生成するファクトリ
-	/// @param source GLSL ES 3.0フラグメントシェーダーソース
-	/// @return 生成されたWebGLShader
+	/// @param source GLSL ES 3.0 フラグメントシェーダーソース
+	/// @return 生成された WebGLShader
 	[[nodiscard]] static WebGLShader createFragmentShader(std::string_view source)
 	{
 		WebGLShader shader;
@@ -124,14 +123,14 @@ public:
 	/// @brief シェーダー種別を取得する
 	[[nodiscard]] ShaderType type() const noexcept override { return m_type; }
 
-	/// @brief リンク済みプログラムIDを取得する
-	/// @return GLプログラムID（未リンクの場合は0）
+	/// @brief リンク済みプログラム ID を取得する
+	/// @return GL プログラム ID（未リンクの場合は 0）
 	[[nodiscard]] GLuint program() const noexcept { return m_program; }
 
-	/// @brief 頂点シェーダーIDを取得する
+	/// @brief 頂点シェーダー ID を取得する
 	[[nodiscard]] GLuint vertexShader() const noexcept { return m_vertexShader; }
 
-	/// @brief フラグメントシェーダーIDを取得する
+	/// @brief フラグメントシェーダー ID を取得する
 	[[nodiscard]] GLuint fragmentShader() const noexcept { return m_fragmentShader; }
 
 	/// @brief プログラムが有効かどうかを判定する
@@ -139,7 +138,7 @@ public:
 
 	/// @brief ユニフォームのロケーションを取得する
 	/// @param name ユニフォーム名
-	/// @return ロケーション値（見つからない場合は-1）
+	/// @return ロケーション値（見つからない場合は -1）
 	[[nodiscard]] GLint getUniformLocation(const char* name) const noexcept
 	{
 		if (m_program == 0)
@@ -151,7 +150,7 @@ public:
 
 	/// @brief アトリビュートのロケーションを取得する
 	/// @param name アトリビュート名
-	/// @return ロケーション値（見つからない場合は-1）
+	/// @return ロケーション値（見つからない場合は -1）
 	[[nodiscard]] GLint getAttribLocation(const char* name) const noexcept
 	{
 		if (m_program == 0)
@@ -174,10 +173,10 @@ private:
 	/// @brief デフォルトコンストラクタ（ファクトリからのみ使用）
 	WebGLShader() = default;
 
-	/// @brief GLSLシェーダーをコンパイルする
+	/// @brief GLSL シェーダーをコンパイルする
 	/// @param shaderType GL_VERTEX_SHADER または GL_FRAGMENT_SHADER
-	/// @param source GLSL ES 3.0ソース文字列
-	/// @return コンパイル済みシェーダーID
+	/// @param source GLSL ES 3.0 ソース文字列
+	/// @return コンパイル済みシェーダー ID
 	[[nodiscard]] static GLuint compileShader(GLenum shaderType, std::string_view source)
 	{
 		const GLuint shader = glCreateShader(shaderType);
@@ -214,9 +213,9 @@ private:
 	}
 
 	/// @brief 頂点＋フラグメントシェーダーをリンクする
-	/// @param vs コンパイル済み頂点シェーダーID
-	/// @param fs コンパイル済みフラグメントシェーダーID
-	/// @return リンク済みプログラムID
+	/// @param vs コンパイル済み頂点シェーダー ID
+	/// @param fs コンパイル済みフラグメントシェーダー ID
+	/// @return リンク済みプログラム ID
 	[[nodiscard]] static GLuint linkProgram(GLuint vs, GLuint fs)
 	{
 		const GLuint program = glCreateProgram();
@@ -254,7 +253,7 @@ private:
 	ShaderType m_type = ShaderType::Vertex;  ///< シェーダー種別
 };
 
-/// @brief 2D頂点シェーダー（GLSL ES 3.0）
+/// @brief 2D 頂点シェーダー（GLSL ES 3.0）
 /// @details 正射影変換を適用し、頂点色・テクスチャ座標をフラグメントシェーダーに渡す。
 constexpr const char* WEBGL_VERTEX_SHADER_2D = R"glsl(#version 300 es
 precision highp float;
@@ -276,8 +275,8 @@ void main()
 }
 )glsl";
 
-/// @brief 2Dフラグメントシェーダー（GLSL ES 3.0）
-/// @details 頂点色をそのまま出力する。テクスチャ使用時はuUseTextureで切り替え可能。
+/// @brief 2D フラグメントシェーダー（GLSL ES 3.0）
+/// @details 頂点色をそのまま出力する。テクスチャ使用時は uUseTexture で切り替え可能。
 constexpr const char* WEBGL_FRAGMENT_SHADER_2D = R"glsl(#version 300 es
 precision highp float;
 

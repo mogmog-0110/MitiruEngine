@@ -2,8 +2,8 @@
 
 /// @file Sprite3DRenderer.hpp
 /// @brief 2.5D スプライトレンダラー（WebGL2）
-/// @details Sprite3Dインスタンスをバッチ描画する。
-///          Camera3Dのビュー射影行列と組み合わせてMVPを計算し、
+/// @details Sprite3D インスタンスをバッチ描画する。
+///          Camera3D のビュー射影行列と組み合わせて MVP を計算し、
 ///          アルファクリッピングシェーダーで描画する。
 
 #ifdef __EMSCRIPTEN__
@@ -27,15 +27,15 @@
 namespace mitiru::render
 {
 
-/// @brief 2.5Dスプライトレンダラー
-/// @details WebGL2上でSprite3Dインスタンスを描画する。
+/// @brief 2.5D スプライトレンダラー
+/// @details WebGL2 上で Sprite3D インスタンスを描画する。
 ///          init()で初期化、submit()でインスタンスを追加、
 ///          flush()で一括描画する。
 class Sprite3DRenderer
 {
 public:
 	/// @brief 初期化（シェーダーコンパイル、バッファ生成）
-	/// @return 成功時true
+	/// @return 成功時 true
 	bool init()
 	{
 		/// テクスチャ付きシェーダー
@@ -50,7 +50,7 @@ public:
 				SPRITE3D_VERTEX_SHADER,
 				SPRITE3D_FLAT_FRAGMENT_SHADER));
 
-		/// Uniform locations
+		/// uniform のロケーション
 		m_locMVP = glGetUniformLocation(m_shader->program(), "uMVP");
 		m_locTint = glGetUniformLocation(m_shader->program(), "uTint");
 		m_locAlphaClip = glGetUniformLocation(m_shader->program(), "uAlphaClip");
@@ -60,7 +60,7 @@ public:
 		m_flatLocTint = glGetUniformLocation(m_flatShader->program(), "uTint");
 		m_flatLocAlphaClip = glGetUniformLocation(m_flatShader->program(), "uAlphaClip");
 
-		/// Quad頂点バッファ（全スプライト共通、BottomCenterピボット）
+		/// Quad 頂点バッファ（全スプライト共通、BottomCenter ピボット）
 		const auto quad = QuadMesh::create(1.0f, 1.0f, SpritePivot::BottomCenter);
 
 		glGenVertexArrays(1, &m_vao);
@@ -73,12 +73,12 @@ public:
 			static_cast<GLsizeiptr>(quad.vertices.size() * sizeof(Vertex3DSprite)),
 			quad.vertices.data(), GL_STATIC_DRAW);
 
-		/// position (vec3) at location 0
+		/// position (vec3) を location 0 に割り当てる
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3DSprite),
 			reinterpret_cast<void*>(offsetof(Vertex3DSprite, position)));
 
-		/// texCoord (vec2) at location 1
+		/// texCoord (vec2) を location 1 に割り当てる
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3DSprite),
 			reinterpret_cast<void*>(offsetof(Vertex3DSprite, texCoord)));
@@ -92,7 +92,7 @@ public:
 
 		glBindVertexArray(0);
 
-		/// Centerピボット用のVAO
+		/// Center ピボット用の VAO
 		const auto quadCenter = QuadMesh::create(1.0f, 1.0f, SpritePivot::Center);
 		glGenVertexArrays(1, &m_vaoCentered);
 		glBindVertexArray(m_vaoCentered);
@@ -124,7 +124,7 @@ public:
 
 	/// @brief スプライトインスタンスを描画キューに追加する
 	/// @param instance スプライトインスタンス
-	/// @param textureId OpenGLテクスチャID（0=テクスチャなし/単色）
+	/// @param textureId OpenGL テクスチャ ID（0=テクスチャなし/単色）
 	void submit(const Sprite3DInstance& instance, GLuint textureId = 0)
 	{
 		m_queue.push_back({instance, textureId});
@@ -164,7 +164,7 @@ public:
 			camRight.z * fwd.x - camRight.x * fwd.z,
 			camRight.x * fwd.y - camRight.y * fwd.x};
 
-		/// Zバッファ有効（奥行き順を正しく処理）
+		/// Z バッファ有効（奥行き順を正しく処理）
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LESS);
 		glDepthMask(GL_TRUE);
@@ -195,7 +195,7 @@ public:
 				{inst.width, inst.height, 1.0f});
 			const auto mvp = vp * world * sizeScale;
 
-			/// MVP行列を送信する（row-major → GL_TRUE で転置送信）
+			/// MVP 行列を送信する（row-major → GL_TRUE で転置送信）
 			const GLint mvpLoc = hasTexture ? m_locMVP : m_flatLocMVP;
 			glUniformMatrix4fv(mvpLoc, 1, GL_TRUE, &mvp.m[0][0]);
 
@@ -216,7 +216,7 @@ public:
 				glUniform1i(m_locTexture, 0);
 			}
 
-			/// VAO選択（ピボットに応じて）
+			/// VAO 選択（ピボットに応じて）
 			const GLuint vao = (inst.pivot == SpritePivot::BottomCenter)
 				? m_vao : m_vaoCentered;
 			glBindVertexArray(vao);
@@ -232,9 +232,9 @@ public:
 		m_queue.clear();
 	}
 
-	/// @brief PNGファイルからWebGLテクスチャを生成する
-	/// @param path ファイルパス（Emscripten仮想FS上）
-	/// @return OpenGLテクスチャID（失敗時0）
+	/// @brief PNG ファイルから WebGL テクスチャを生成する
+	/// @param path ファイルパス（Emscripten 仮想 FS 上）
+	/// @return OpenGL テクスチャ ID（失敗時 0）
 	[[nodiscard]] GLuint loadTexture(const std::string& path)
 	{
 		int w = 0, h = 0, ch = 0;
@@ -282,13 +282,13 @@ private:
 	GLuint m_vboCentered = 0;
 	GLuint m_iboCentered = 0;
 
-	/// テクスチャ付きシェーダーのuniform locations
+	/// テクスチャ付きシェーダーの uniform ロケーション
 	GLint m_locMVP = -1;
 	GLint m_locTint = -1;
 	GLint m_locAlphaClip = -1;
 	GLint m_locTexture = -1;
 
-	/// 単色シェーダーのuniform locations
+	/// 単色シェーダーの uniform ロケーション
 	GLint m_flatLocMVP = -1;
 	GLint m_flatLocTint = -1;
 	GLint m_flatLocAlphaClip = -1;

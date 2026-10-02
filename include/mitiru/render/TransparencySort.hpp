@@ -30,7 +30,7 @@ public:
 
         for (const auto& obj : scene.objects()) {
             if (obj.material.diffuse.a < 0.99f) {
-                // Transparent
+                // 半透明
                 float dist = distanceSquared(obj.position, camera.position());
                 transparentCommands.push_back({&obj, dist});
             } else {
@@ -38,7 +38,7 @@ public:
             }
         }
 
-        // Sort transparent by distance (far first for correct blending)
+        // 半透明を距離でソートする (正しくブレンドするため遠い順)
         std::sort(transparentCommands.begin(), transparentCommands.end(),
             [](const SortedDrawCommand& a, const SortedDrawCommand& b) {
                 return a.distanceToCamera > b.distanceToCamera;

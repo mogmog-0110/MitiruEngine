@@ -1,6 +1,7 @@
 // mitiru::Engine の detail header。直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
+#include <cstdio>
 #include <cstdlib>
 
 #include <mitiru/core/InlineMacro.hpp>
@@ -10,6 +11,38 @@
 #endif
 
 // ── run ループ / batch 実行の class 外定義 ───────────────────
+
+namespace mitiru::detail
+{
+
+/// mitiru_host の終了コード 1〜3 (引数・module 読み込み) と区別する
+inline constexpr int kExitGpuLostAtStartup = 4;
+inline constexpr int kExitGpuLostDuringPlay = 5;
+
+/// 起動中にデバイスが lost になったら、理由を 1 行出して描画を始める前に終える (#75)。
+/// この時点の復旧は描画資源ごと作り直すことになるが、その経路は無い。後始末の destructor も
+/// hang 中のドライバ呼び出しで止まりうるので、unwind せずに抜ける。
+inline void exitIfDeviceLostAtStartup(gfx::IDevice* device, const char* phase)
+{
+#ifdef _WIN32
+	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(device);
+	if (dx12 == nullptr || !dx12->isDeviceLost()) { return; }
+	std::fprintf(stderr,
+		"[mitiru] 起動中 (%s) に %s。描画を始められないので終了する (exit %d)。"
+		"ドライバの再起動 (Win+Ctrl+Shift+B) か PC の再起動のあとで起動し直す\n",
+		phase,
+		dx12->isGpuUnresponsive() ? "GPU が応答しなくなった" : "D3D12 デバイスが失われた",
+		kExitGpuLostAtStartup);
+	std::fflush(stdout);
+	std::fflush(stderr);
+	std::_Exit(kExitGpuLostAtStartup);
+#else
+	(void)device;
+	(void)phase;
+#endif
+}
+
+} // namespace mitiru::detail
 
 MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 {
@@ -30,33 +63,6 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	config.applyAutoTestEnv();
 
 	initialize(config);
-
-	/// axis 4。deterministic replay の記録。
-	/// MITIRU_RECORD=<path> が設定されていれば InputRecorder を起動し、
-	/// 終了時に ~Engine() で saveToFile する。
-	if (const char* recPath = std::getenv("MITIRU_RECORD"); recPath && *recPath)
-	{
-		m_recordOutputPath = recPath;
-		m_inputRecorder.beginRecording(config.randomSeed, /*tps=*/60);
-	}
-
-	/// axis 4。deterministic replay の再生。
-	/// MITIRU_REPLAY=<path> が設定されていれば ReplayData を読み込んで
-	/// InputReplayer に load する。以後 applyInjectedInput が毎フレーム
-	/// replayer.getCommandsForFrame(clock.frameNumber()) を inject する。
-	if (const char* replayPath = std::getenv("MITIRU_REPLAY"); replayPath && *replayPath)
-	{
-		try
-		{
-			auto data = mitiru::ReplayData::loadFromFile(replayPath);
-			m_inputReplayer.load(data);
-			m_replayActive = true;
-		}
-		catch (...)
-		{
-			// file が無い / 壊れている場合: replay を無効のまま通常起動する。
-		}
-	}
 
 	/// ビルドエラー帯 (mitiru watch): CLI がビルド失敗時に書くエラーファイルを
 	/// フレームループ内で poll → 存在する間だけ最前面に帯を描く (Engine_Frame.hpp の
@@ -92,12 +98,13 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 
 	// バックバッファはウィンドウのクライアントサイズに合わせる。
 	// 論理サイズ (layout() が返す固定 1920x1080 等) は投影行列に残し、
-	// バックバッファ = 物理ピクセルで 1:1 描画することでストレッチ by DXGI を避ける。
+	// バックバッファ = 物理ピクセルで 1:1 描画することで DXGI によるストレッチを避ける。
 	// -> 縮小ディスプレイでもシャープに描画される。
 	if (m_device && m_device->backend() != gfx::Backend::Null)
 	{
 		m_device->onResize(m_window->width(), m_window->height());
 	}
+	detail::exitIfDeviceLostAtStartup(m_device.get(), "バックバッファの初期化");
 
 	createRenderPipeline(logicalSize.width, logicalSize.height);
 
@@ -110,8 +117,6 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 			static_cast<float>(m_window->height()));
 	}
 
-	// TTFフォント自動読み込み・接続
-	// (skipDefaultFont = true の場合は SDF アトラス構築をスキップ -> ~15s 短縮)
 	if (!config.skipDefaultFont)
 	{
 		initFont(config.fontPath);
@@ -132,12 +137,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		m_screen->setRenderer3D(m_renderer3D.get());
 	}
 
-	/// CEF を初期化する (DX12 バックエンド + Win32 のみ。
-	/// config.enableCef=false の場合は完全スキップで起動時間短縮可能)
-	if (config.enableCef)
-	{
-		initializeCef(config);
-	}
+	initializeRmlUi(config);
 
 #ifdef _WIN32
 	/// VSync 設定を SwapChain に反映する (DX12 のみ実装)
@@ -150,7 +150,9 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	}
 #endif
 
-	/// HTTP APIサーバーの初期化 (設定で有効な場合のみ)
+	detail::exitIfDeviceLostAtStartup(m_device.get(), "描画パイプラインの初期化");
+
+	/// HTTP API サーバーの初期化 (設定で有効な場合のみ)
 	if (config.enableHttpApi)
 	{
 		initHttpServer(config.httpApiPort, game);
@@ -169,14 +171,23 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	if (auto* win32 = dynamic_cast<mitiru::Win32Window*>(m_window.get()))
 	{
 		win32->setTickCallback([this] {
+			if (m_frameBodyActive)
+			{
+				debug::warnOnce("engine.tick.nested",
+					"フレームの途中で窓の移動/リサイズの tick が来た (フレームの中で窓のメッセージが配られた)。"
+					"入れ子のフレームは GPU が実行中のアロケータを壊すので、この tick は飛ばす (#79)");
+				return;
+			}
 			if (!m_window->shouldClose() && !m_shouldStop.load())
 			{
 				tickOneFrame();
 			}
 		});
 
-		/// drag 終了時に、modal 中 defer されていた logical/CEF resize を flush
+		/// drag 終了時に、modal 中 defer されていた logical resize を flush
 		win32->setModalResizeEndCallback([this] {
+			// フレームの途中ならバックバッファを差し替えない。次のフレームの頭で flushResizeDeferredFromFrameBody が適用する
+			if (m_frameBodyActive) { return; }
 			if (m_pendingResizeW > 0 && m_pendingResizeH > 0)
 			{
 				const int w = m_pendingResizeW;
@@ -201,11 +212,16 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	}
 #endif
 
+	// 最後に present したフレームを GPU が描き終えてから後始末に入る (#78)
+	if (m_device)
+	{
+		m_device->waitForGpu();
+	}
+
 	/// ループ終了後: ゲームに後処理の機会を与える
-	/// (CEF ハンドラーのクリーンアップはここで行う)
 	game.onExit();
 
-	/// ループ終了後にHTTPサーバーをシャットダウンする
+	/// ループ終了後に HTTP サーバーをシャットダウンする
 	if (m_httpServer)
 	{
 		m_httpServer->shutdown();
@@ -228,7 +244,7 @@ MITIRU_INLINE void mitiru::Engine::stepFrames(
 		m_screen->applyExpectedSprites(config.expectedSprites);
 		m_screen->setSpriteResolver(&render::SpriteCache::resolve, &m_spriteCache);
 
-		/// headlessモードではソフトウェアフレームバッファを自動有効化
+		/// headless モードではソフトウェアフレームバッファを自動有効化
 		m_screen->enableSoftwareFramebuffer();
 	}
 
@@ -242,8 +258,8 @@ MITIRU_INLINE void mitiru::Engine::stepFrames(
 		m_inputState.beginFrame();
 		applyInjectedInput();
 
-		/// 固定タイムステップで更新 (stepFramesはヘッドレス用なので
-		/// 各フレーム = 1固定ステップとして扱う)。Listener フック (1-6) は
+		/// 固定タイムステップで更新 (stepFrames はヘッドレス用なので
+		/// 各フレーム = 1 固定ステップとして扱う)。Listener フック (1-6) は
 		/// tickFixedUpdatePhase (Engine_Frame.hpp) と同じく 1 固定ステップごとに発火する。
 		dispatchBeforeUpdate();
 		game.update(kFixedDt);
@@ -266,7 +282,7 @@ MITIRU_INLINE void mitiru::Engine::stepFrames(
 			m_sceneManager->currentScene()->onDraw(*m_screen);
 		}
 
-		/// ソフトウェアフレームバッファ有効時はpresent()でラスタライズ
+		/// ソフトウェアフレームバッファ有効時は present() でラスタライズ
 		if (m_screen->hasSoftwareFramebuffer())
 		{
 			m_screen->present();
@@ -302,8 +318,8 @@ MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::runAndCapture(
 		m_inputState.beginFrame();
 		m_window->pollEvents();
 
-		/// 固定タイムステップで更新 (runAndCaptureはキャプチャ用なので
-		/// 各フレーム = 1固定ステップとして扱う)
+		/// 固定タイムステップで更新 (runAndCapture はキャプチャ用なので
+		/// 各フレーム = 1 固定ステップとして扱う)
 		game.update(kFixedDt);
 
 		m_screen->resetDrawCallCount();
@@ -313,8 +329,8 @@ MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::runAndCapture(
 		if (m_device) m_device->beginFrame();
 		game.draw(*m_screen);
 
-		// 最後のフレーム: Present前にキャプチャする
-		// (Present後はcurrentBackBufferIndexが進むため、描画済みバッファを読めなくなる)
+		// 最後のフレーム: Present 前にキャプチャする
+		// (Present 後は currentBackBufferIndex が進むため、描画済みバッファを読めなくなる)
 		if (f == frameCount - 1 && m_device)
 		{
 			m_device->waitForGpu();

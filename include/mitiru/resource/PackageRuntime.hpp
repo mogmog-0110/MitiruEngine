@@ -210,7 +210,7 @@ private:
 		return m;
 	}
 
-	/// @brief JSON文字列から "key": "value" を抽出する
+	/// @brief JSON 文字列から "key": "value" を抽出する
 	[[nodiscard]] static std::string strVal(const std::string& json, const std::string& key)
 	{
 		const auto pat = "\"" + key + "\"";
@@ -225,7 +225,7 @@ private:
 		return json.substr(pos + 1, end - pos - 1);
 	}
 
-	/// @brief JSON文字列から "key": ["a", "b"] を抽出する
+	/// @brief JSON 文字列から "key": ["a", "b"] を抽出する
 	[[nodiscard]] static std::vector<std::string> strArr(const std::string& json, const std::string& key)
 	{
 		std::vector<std::string> result;

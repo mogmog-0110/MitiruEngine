@@ -25,7 +25,7 @@ enum class PlatformType
 };
 
 /// @brief プラットフォームの抽象インターフェース
-/// @details ウィンドウ生成など、OS固有の機能を抽象化する。
+/// @details ウィンドウ生成など、OS 固有の機能を抽象化する。
 class IPlatform
 {
 public:

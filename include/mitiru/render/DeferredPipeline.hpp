@@ -35,8 +35,8 @@ namespace mitiru::render
 {
 
 /// @brief ディファードレンダリングパイプライン（ソフトウェア実装）
-/// @details Scene3DとCamera3Dを受け取り、シャドウマップ付きのディファードシェーディングを
-///          ソフトウェアラスタライザで実行してRenderTextureに出力する。
+/// @details Scene3D と Camera3D を受け取り、シャドウマップ付きのディファードシェーディングを
+///          ソフトウェアラスタライザで実行して RenderTexture に出力する。
 ///
 /// @code
 /// mitiru::render::DeferredPipeline pipeline;
@@ -79,13 +79,13 @@ public:
 		return m_shadowMap;
 	}
 
-	/// @brief Gバッファを取得する（テスト・デバッグ用）
+	/// @brief G バッファを取得する（テスト・デバッグ用）
 	[[nodiscard]] const GBuffer& gBuffer() const noexcept
 	{
 		return m_gBuffer;
 	}
 
-	/// @brief 前フレームの Gバッファを取得する（#6: temporal coherence 用）
+	/// @brief 前フレームの G バッファを取得する（#6: temporal coherence 用）
 	/// @details depth / normal / objectId / velocity を前フレーム分そのまま読める。
 	///          初回フレームは空（clear 済み）。輪郭線の reproject 先で
 	///          `objectId_{t-1}` 等を参照して correspondence を検証するのに使う。
@@ -121,7 +121,7 @@ public:
 		/// カメラのビュー射影行列を計算する
 		const sgc::Mat4f vp = camera.projectionMatrix() * camera.viewMatrix();
 
-		/// パス1: シャドウ深度パス
+		/// パス 1: シャドウ深度パス
 		const Light* dirLight = findFirstDirectionalLight(scene);
 		MITIRU_LOG_TRACE("DeferredPipeline",
 			std::string("dirLight=") + (dirLight ? "found" : "null"));
@@ -140,7 +140,7 @@ public:
 			m_shadowMap.endShadowPass();
 		}
 
-		/// パス2: ジオメトリパス（GBufferへの書き込み）
+		/// パス 2: ジオメトリパス（GBuffer への書き込み）
 		std::unordered_map<int, sgc::Mat4f> curWorld;   // #7: 次フレームの prev 用
 		for (const auto& obj : scene.objects())
 		{
@@ -174,7 +174,7 @@ public:
 			             obj.albedoTexture);
 		}
 
-		/// パス3: ライティングパス（GBuffer→RenderTexture）
+		/// パス 3: ライティングパス（GBuffer→RenderTexture）
 		lightingPass(scene, camera, output, dirLight);
 
 		/// #7: 今フレームの VP / world を次フレームの「前フレーム」として保存する。
@@ -187,7 +187,7 @@ public:
 private:
 	/// @brief シーン内の最初のディレクショナルライトを検索する
 	/// @param scene シーン
-	/// @return ディレクショナルライトへのポインタ（なければnullptr）
+	/// @return ディレクショナルライトへのポインタ（なければ nullptr）
 	[[nodiscard]] static const Light* findFirstDirectionalLight(
 		const Scene3D& scene) noexcept
 	{
@@ -209,7 +209,7 @@ private:
 		       culledNodeIds->count(obj.nodeId) > 0;
 	}
 
-	/// @brief Scene3D::RenderObjectからワールド行列を構築する
+	/// @brief Scene3D::RenderObject からワールド行列を構築する
 	/// @param obj 描画オブジェクト
 	/// @return ワールド変換行列
 	[[nodiscard]] static sgc::Mat4f buildWorldMatrix(
@@ -223,7 +223,7 @@ private:
 		return T * Ry * Rx * Rz * S;
 	}
 
-	/// @brief ジオメトリパス: メッシュをGBufferに書き込む
+	/// @brief ジオメトリパス: メッシュを GBuffer に書き込む
 	/// @param mesh メッシュデータ
 	/// @param world ワールド行列
 	/// @param material マテリアル
@@ -288,9 +288,9 @@ private:
 	}
 
 	/// @brief ジオメトリパス用三角形ラスタライザ
-	/// @param va 頂点A
-	/// @param vb 頂点B
-	/// @param vc 頂点C
+	/// @param va 頂点 A
+	/// @param vb 頂点 B
+	/// @param vc 頂点 C
 	/// @param world ワールド行列
 	/// @param mvp モデルビュー射影行列
 	/// @param material マテリアル
@@ -318,7 +318,7 @@ private:
 			return;
 		}
 
-		/// NDCに変換する
+		/// NDC に変換する
 		const float ax = ca.x / ca.w, ay = ca.y / ca.w, az = (ca.z / ca.w + 1.0f) * 0.5f;
 		const float bx = cb.x / cb.w, by = cb.y / cb.w, bz = (cb.z / cb.w + 1.0f) * 0.5f;
 		const float cx = cc.x / cc.w, cy = cc.y / cc.w, cz = (cc.z / cc.w + 1.0f) * 0.5f;
@@ -414,7 +414,7 @@ private:
 					                  (static_cast<float>(y) + 0.5f) - prevY};
 				}
 
-				/// 深度テストを行ってGBufferに書き込む
+				/// 深度テストを行って GBuffer に書き込む
 				const auto& existing = m_gBuffer.readPixel(x, y);
 				if (depth < existing.depth)
 				{
@@ -424,11 +424,11 @@ private:
 		}
 	}
 
-	/// @brief ライティングパス: GBuffer + ShadowMapから最終色を計算してRenderTextureに出力する
+	/// @brief ライティングパス: GBuffer + ShadowMap から最終色を計算して RenderTexture に出力する
 	/// @param scene シーン
 	/// @param camera カメラ（鏡面反射計算用）
-	/// @param output 出力先RenderTexture
-	/// @param dirLight ディレクショナルライト（nullptrならアンビエントのみ）
+	/// @param output 出力先 RenderTexture
+	/// @param dirLight ディレクショナルライト（nullptr ならアンビエントのみ）
 	void lightingPass(const Scene3D& scene,
 	                  const Camera3D& camera,
 	                  RenderTexture& output,
@@ -442,7 +442,7 @@ private:
 			{
 				const auto& pixel = m_gBuffer.readPixel(x, y);
 
-				/// 書き込みがないピクセルはスキップする（depth=1.0のまま）
+				/// 書き込みがないピクセルはスキップする（depth=1.0 のまま）
 				if (pixel.depth >= 1.0f)
 				{
 					continue;
@@ -503,9 +503,9 @@ private:
 
 	/// @brief シャドウマップ
 	ShadowMap m_shadowMap;
-	/// @brief Gバッファ
+	/// @brief G バッファ
 	GBuffer m_gBuffer;
-	/// @brief 前フレーム Gバッファ（#6: ping-pong）
+	/// @brief 前フレーム G バッファ（#6: ping-pong）
 	GBuffer m_prevGBuffer;
 	/// @brief 前フレームの VP 行列（#7: velocity 計算用）
 	sgc::Mat4f m_prevVP;

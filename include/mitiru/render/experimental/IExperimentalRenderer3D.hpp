@@ -96,7 +96,7 @@ public:
 	/// @param timeSec モーションの時刻 (秒、Makina D-15)。トラックを持つ立体を live に
 	///        焼いてあればその時刻の姿で描く。静止した立体や焼き込みの bake では無視される
 	/// @details 既定は何もしない。DX12 かつ MITIRU_HAS_MAKINA のビルドだけが実装を持つ。
-	///          他のバックエンドで黙って消えるのは drawModel と同じ扱いで、
+	///          他のバックエンドで知らないうちに消えるのは drawModel と同じ扱いで、
 	///          「無い機能は絵から抜ける」がこのインターフェースの規約である。
 	virtual void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
 	                       float rotYDeg, float scale, float timeSec)
@@ -115,7 +115,7 @@ public:
 		(void)scale;
 	}
 
-	/// @brief スキンアニメ付き glTF/glb を forward パスで描く (CPU スキニング v1)。
+	/// @brief スキンアニメ付き glTF/glb を forward パスで描く (DX12 は compute スキニング)。
 	/// @details clipA/timeA = 再生クリップ名と絶対時間 (秒、ループ)。clipB 非 null で
 	///          A→B の crossfade (blend01: 0=A, 1=B)。clip 名が空/不在はレストポーズ。
 	///          時間はゲーム側 (GameMemory) が所有し、ポーズは (clip, time) の純関数。

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file Prefab.hpp
-/// @brief Prefabシステム。再利用可能なNodeサブツリーテンプレート
+/// @brief Prefab システム。再利用可能な Node サブツリーテンプレート
 /// @details PrefabDef はノードサブツリーのスナップショットを保持し、
-///          PrefabLibrary は登録・検索・インスタンス化・JSON入出力を提供する。
+///          PrefabLibrary は登録・検索・インスタンス化・JSON 入出力を提供する。
 ///
 /// @code
 /// mitiru::PrefabLibrary lib;
@@ -28,9 +28,9 @@ namespace mitiru
 // PrefabDef。再利用可能なノードテンプレート
 // =============================================================================
 
-/// @brief Prefab定義。Nodeサブツリーのテンプレート
+/// @brief Prefab 定義。Node サブツリーのテンプレート
 /// @details nodes[0] がルートノード。子ノードは parentId で相対的に参照する。
-///          parentId は Prefab 内のローカルインデックス（0ベース）で管理される。
+///          parentId は Prefab 内のローカルインデックス（0 ベース）で管理される。
 struct PrefabDef
 {
 	std::string name;         ///< Prefab名（例: "Enemy_Slime"）
@@ -38,13 +38,13 @@ struct PrefabDef
 	std::string description;  ///< 説明文
 	std::vector<Node> nodes;  ///< ノードサブツリー（nodes[0]がルート）
 
-	/// @brief Prefab内のノード数を返す
+	/// @brief Prefab 内のノード数を返す
 	[[nodiscard]] std::size_t nodeCount() const noexcept
 	{
 		return nodes.size();
 	}
 
-	/// @brief 空のPrefabか判定する
+	/// @brief 空の Prefab か判定する
 	[[nodiscard]] bool empty() const noexcept
 	{
 		return nodes.empty();
@@ -52,27 +52,27 @@ struct PrefabDef
 };
 
 // =============================================================================
-// PrefabLibrary。Prefabの管理・インスタンス化
+// PrefabLibrary。Prefab の管理・インスタンス化
 // =============================================================================
 
-/// @brief Prefabライブラリ。Prefabの登録・検索・インスタンス化を管理する
+/// @brief Prefab ライブラリ。Prefab の登録・検索・インスタンス化を管理する
 class PrefabLibrary
 {
 public:
 	// ── 登録 ──
 
-	/// @brief PrefabDefを直接登録する
-	/// @param def 登録するPrefab定義
+	/// @brief PrefabDef を直接登録する
+	/// @param def 登録する Prefab 定義
 	void registerPrefab(PrefabDef def)
 	{
 		const auto name = def.name;
 		m_prefabs[name] = std::move(def);
 	}
 
-	/// @brief シーン内のノードからPrefabを作成して登録する
+	/// @brief シーン内のノードから Prefab を作成して登録する
 	/// @param scene 元のシーン
-	/// @param nodeId ルートにするノードID
-	/// @param name Prefab名
+	/// @param nodeId ルートにするノード ID
+	/// @param name Prefab 名
 	/// @param category カテゴリ（省略可）
 	void createFromNode(const Scene& scene, int nodeId,
 	                    const std::string& name,
@@ -89,7 +89,7 @@ public:
 		std::vector<int> collected;
 		collectSubtree(scene, nodeId, collected);
 
-		// IDマッピング: sceneID -> prefab localIndex
+		// ID マッピング: sceneID -> prefab localIndex
 		std::map<int, int> idMap;
 		for (std::size_t i = 0; i < collected.size(); ++i)
 		{
@@ -102,7 +102,7 @@ public:
 			if (!src) continue;
 
 			Node copy = deepCopyNode(*src);
-			// ルートノードの parentId は -1（Prefab内のルート）
+			// ルートノードの parentId は -1（Prefab 内のルート）
 			if (i == 0)
 			{
 				copy.parentId = -1;
@@ -121,11 +121,11 @@ public:
 
 	// ── インスタンス化 ──
 
-	/// @brief Prefabをシーンにインスタンス化する
+	/// @brief Prefab をシーンにインスタンス化する
 	/// @param scene インスタンス先のシーン
-	/// @param prefabName Prefab名
-	/// @param parentId 親ノードID（-1でルート直下）
-	/// @return 生成されたルートノードのID（失敗時 -1）
+	/// @param prefabName Prefab 名
+	/// @param parentId 親ノード ID（-1 でルート直下）
+	/// @return 生成されたルートノードの ID（失敗時 -1）
 	int instantiate(Scene& scene, const std::string& prefabName,
 	                int parentId = -1) const
 	{
@@ -137,7 +137,7 @@ public:
 
 		const auto& def = it->second;
 
-		// localIndex -> 実際に割り当てられたscene ID
+		// localIndex -> 実際に割り当てられた scene ID
 		std::map<int, int> localToScene;
 		int rootSceneId = -1;
 
@@ -146,7 +146,7 @@ public:
 			const auto& tmpl = def.nodes[i];
 			Node copy = deepCopyNode(tmpl);
 
-			// 親IDを解決する
+			// 親 ID を解決する
 			if (i == 0)
 			{
 				copy.parentId = parentId;
@@ -172,13 +172,13 @@ public:
 
 	// ── クエリ ──
 
-	/// @brief Prefabが存在するか判定する
+	/// @brief Prefab が存在するか判定する
 	[[nodiscard]] bool hasPrefab(const std::string& name) const
 	{
 		return m_prefabs.find(name) != m_prefabs.end();
 	}
 
-	/// @brief Prefab定義を取得する
+	/// @brief Prefab 定義を取得する
 	/// @return 見つからなければ nullptr
 	[[nodiscard]] const PrefabDef* getPrefab(const std::string& name) const
 	{
@@ -186,7 +186,7 @@ public:
 		return (it != m_prefabs.end()) ? &it->second : nullptr;
 	}
 
-	/// @brief 登録済みPrefab名の一覧を返す
+	/// @brief 登録済み Prefab 名の一覧を返す
 	[[nodiscard]] std::vector<std::string> prefabNames() const
 	{
 		std::vector<std::string> result;
@@ -198,7 +198,7 @@ public:
 		return result;
 	}
 
-	/// @brief 指定カテゴリのPrefab名一覧を返す
+	/// @brief 指定カテゴリの Prefab 名一覧を返す
 	[[nodiscard]] std::vector<std::string> prefabsInCategory(
 		const std::string& category) const
 	{
@@ -227,7 +227,7 @@ public:
 		return {cats.begin(), cats.end()};
 	}
 
-	/// @brief Prefab数を返す
+	/// @brief Prefab 数を返す
 	[[nodiscard]] std::size_t count() const noexcept
 	{
 		return m_prefabs.size();
@@ -235,21 +235,21 @@ public:
 
 	// ── 削除 ──
 
-	/// @brief Prefabを削除する
+	/// @brief Prefab を削除する
 	void removePrefab(const std::string& name)
 	{
 		m_prefabs.erase(name);
 	}
 
-	/// @brief 全Prefabを削除する
+	/// @brief 全 Prefab を削除する
 	void clear()
 	{
 		m_prefabs.clear();
 	}
 
-	// ── JSON入出力 ──
+	// ── JSON 入出力 ──
 
-	/// @brief 指定Prefabを簡易JSON文字列にシリアライズする
+	/// @brief 指定 Prefab を簡易 JSON 文字列にシリアライズする
 	[[nodiscard]] std::string toJson(const std::string& prefabName) const
 	{
 		auto it = m_prefabs.find(prefabName);
@@ -257,7 +257,7 @@ public:
 		return serializePrefab(it->second);
 	}
 
-	/// @brief 全PrefabをJSON文字列にシリアライズする
+	/// @brief 全 Prefab を JSON 文字列にシリアライズする
 	[[nodiscard]] std::string toJsonAll() const
 	{
 		std::ostringstream ss;
@@ -273,7 +273,7 @@ public:
 		return ss.str();
 	}
 
-	/// @brief JSONファイルに保存する
+	/// @brief JSON ファイルに保存する
 	bool saveToFile(const std::string& prefabName,
 	                const std::string& path) const
 	{
@@ -283,7 +283,7 @@ public:
 		return ofs.good();
 	}
 
-	/// @brief 全Prefabをディレクトリに保存する
+	/// @brief 全 Prefab をディレクトリに保存する
 	void saveAllToFile(const std::string& dirPath) const
 	{
 		for (const auto& [name, _] : m_prefabs)
@@ -293,8 +293,8 @@ public:
 		}
 	}
 
-	/// @brief JSON文字列からPrefabをロードする（簡易実装）
-	/// @note フル実装にはJSONパーサーが必要。ここでは名前とカテゴリのみ復元。
+	/// @brief JSON 文字列から Prefab をロードする（簡易実装）
+	/// @note フル実装には JSON パーサーが必要。ここでは名前とカテゴリのみ復元。
 	void loadFromJson(const std::string& json)
 	{
 		PrefabDef def;
@@ -307,7 +307,7 @@ public:
 		}
 	}
 
-	/// @brief JSONファイルからPrefabをロードする
+	/// @brief JSON ファイルから Prefab をロードする
 	void loadFromFile(const std::string& path)
 	{
 		std::ifstream ifs(path);
@@ -333,7 +333,7 @@ private:
 		}
 	}
 
-	/// @brief ノードのディープコピーを作成する（Traitを含む）
+	/// @brief ノードのディープコピーを作成する（Trait を含む）
 	static Node deepCopyNode(const Node& src)
 	{
 		Node copy;
@@ -346,7 +346,7 @@ private:
 			copy.rotation[i] = src.rotation[i];
 			copy.scale[i] = src.scale[i];
 		}
-		// Traitをシリアライズ→デシリアライズでコピーする
+		// Trait をシリアライズ→デシリアライズでコピーする
 		for (const auto& trait : src.traits)
 		{
 			if (!trait) continue;
@@ -356,7 +356,7 @@ private:
 		return copy;
 	}
 
-	/// @brief Trait種別名とJSONからTraitを複製する
+	/// @brief Trait 種別名と JSON から Trait を複製する
 	static std::shared_ptr<ITrait> cloneTrait(const std::string& type,
 	                                          const std::string& json)
 	{
@@ -372,7 +372,7 @@ private:
 		return t;
 	}
 
-	/// @brief Prefab定義をJSON文字列にシリアライズする
+	/// @brief Prefab 定義を JSON 文字列にシリアライズする
 	static std::string serializePrefab(const PrefabDef& def)
 	{
 		std::ostringstream ss;
@@ -384,7 +384,7 @@ private:
 		return ss.str();
 	}
 
-	/// @brief 文字列をJSONエスケープする
+	/// @brief 文字列を JSON エスケープする
 	static std::string esc(const std::string& s)
 	{
 		std::string r = "\"";
@@ -402,7 +402,7 @@ private:
 		return r;
 	}
 
-	/// @brief JSON文字列から文字列値を読み取る
+	/// @brief JSON 文字列から文字列値を読み取る
 	static std::string readStr(const std::string& json, const std::string& key)
 	{
 		const auto k = "\"" + key + "\"";

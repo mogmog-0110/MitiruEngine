@@ -18,8 +18,6 @@ INCLUDED
   - mitiru_host.exe       — the engine host that loads game DLLs
   - mitiru_launcher/      — GUI launcher (built with MitiruEngine itself!)
   - sample games          — welcome, shapes, text, input, and more
-  - CEF runtime           — Chromium Embedded Framework for HTML/CSS UI
-  - MitiruCefHelper.exe   — CEF subprocess helper (don't run directly)
 
 WORKFLOW
 --------

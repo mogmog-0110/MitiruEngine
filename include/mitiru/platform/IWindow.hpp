@@ -16,7 +16,7 @@ class InputState;
 class InputInjector;
 
 /// @brief ウィンドウの抽象インターフェース
-/// @details ヘッドレス実装やOS固有実装がこのインターフェースを実装する。
+/// @details ヘッドレス実装や OS 固有実装がこのインターフェースを実装する。
 class IWindow
 {
 public:
@@ -49,16 +49,16 @@ public:
 	virtual void requestClose() = 0;
 
 	/// @brief 入力状態の転送先を設定する
-	/// @param state InputStateへの非所有ポインタ（Engineが所有）
-	/// @details プラットフォーム固有のイベントからInputStateに入力を転送する。
-	///          デフォルトはno-op（ヘッドレス等の入力不要な実装向け）。
+	/// @param state InputState への非所有ポインタ（Engine が所有）
+	/// @details プラットフォーム固有のイベントから InputState に入力を転送する。
+	///          デフォルトは no-op（ヘッドレス等の入力不要な実装向け）。
 	virtual void setInputState(InputState* /*state*/) {}
 
 	/// @brief 入力インジェクターを設定する
-	/// @param injector InputInjectorへの非所有ポインタ（Engineが所有）
-	/// @details 設定されると、キー/マウスイベントをInputState直接mutateではなく
-	///          InputInjector::inject() 経由で発行する。RECORDモードでhuman playを
-	///          キャプチャするために使用する。デフォルトはno-op。
+	/// @param injector InputInjector への非所有ポインタ（Engine が所有）
+	/// @details 設定されると、キー/マウスイベントを InputState を直接書き換えるのではなく
+	///          InputInjector::inject() 経由で発行する。RECORD モードで人間のプレイを
+	///          キャプチャするために使用する。デフォルトは no-op。
 	///
 	/// 例:
 	/// @code
@@ -67,13 +67,13 @@ public:
 	virtual void setInputInjector(InputInjector* /*injector*/) noexcept {}
 
 	/// @brief ウィンドウリサイズ時のコールバックを設定する
-	/// @param cb 新しいwidth, heightを受け取るコールバック
-	/// @details デフォルトはno-op（リサイズイベントを内部処理するウィンドウ向け）。
+	/// @param cb 新しい width, height を受け取るコールバック
+	/// @details デフォルトは no-op（リサイズイベントを内部処理するウィンドウ向け）。
 	virtual void setResizeCallback(std::function<void(int, int)> /*cb*/) {}
 
 	/// @brief リサイズ時の最小クライアントサイズを設定する (px、0=制限なし)
 	/// @details 枠 drag でこの client サイズ未満へ縮められないようにする。
-	///          デフォルトはno-op（最小サイズを強制しない実装向け）。
+	///          デフォルトは no-op（最小サイズを強制しない実装向け）。
 	virtual void setMinClientSize(int /*w*/, int /*h*/) {}
 
 	/// @brief ウィンドウの画面上の矩形 (枠込みの外側) を取得する。

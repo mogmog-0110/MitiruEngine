@@ -53,7 +53,7 @@ namespace mitiru::observe
 {
 
 /// @brief scrub control file の場所を組み立てる (`%TEMP%/mitiru_control_<pid>.json`)
-/// @note file 名は旧 ControlChannel と互換 (既存ツール窓を壊さない)。
+/// @note file 名は旧 ControlChannel と互換 (既存ツール窓がそのまま使える)。
 inline std::filesystem::path scrubControlPathForPid(int pid)
 {
 	const std::string name = "mitiru_control_" + std::to_string(pid) + ".json";
@@ -85,7 +85,7 @@ public:
 	}
 
 	/// @brief command を書き出す (atomic rename)
-	/// @return 書き込み成功で true。エラーは silent (UI loop を壊さないため)
+	/// @return 書き込み成功で true。エラーは silent (UI loop を妨げないため)
 	bool write(const nlohmann::json& payload)
 	{
 		try
@@ -120,15 +120,15 @@ private:
 	std::filesystem::path m_tmpPath;
 };
 
-/// @brief host 側。自プロセス宛の scrub control file を polling 読み (reader)
+/// @brief host 側。自プロセス宛の scrub control file を polling で読む (reader)
 /// @details 中身が前回読みから変わった時だけ返す。filesystem だけに依存する header-only 実装。
 ///
 ///          @b mtime では判定できない：**連続した 2 つの write が同じ mtime を持つことが
 ///          ある**（NTFS の記録粒度）。
-///          そうなると 2 通目が黙って落ちる。スクラバーをドラッグしている最中はまさに
+///          そうなると 2 通目が気づかないうちに落ちる。スクラバーをドラッグしている最中はまさに
 ///          連続した write が飛ぶので、「たまに 1 コマンド効かない」として出る。
 ///
-///          実際に踏んだ：`monotonic seq lets the host skip stale commands` が
+///          実際に起きた：`monotonic seq lets the host skip stale commands` が
 ///          全 2,729 件のゲートでだけ落ちた（テスト自体は 0.03 秒で終わり、
 ///          2 つの write が同じ tick に入った）。単体で走らせると通るので取りこぼされていた。
 class ScrubControlReader

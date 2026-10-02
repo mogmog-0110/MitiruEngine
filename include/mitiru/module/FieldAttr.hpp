@@ -3,8 +3,8 @@
 /// @file FieldAttr.hpp
 /// @brief `MITIRU_FIELD_RANGE` / `MITIRU_FIELD_UI_RANGE` / `MITIRU_FIELD_GROUP` の登録簿を
 ///        1 本の属性リストへ統合する。今までは「値域 (range)」と「表示グループ (group)」が
-///        それぞれ別の静的レジストリ・別の文字列書式で `FieldDescriptor::elemType` に密輸
-///        されていた (AutoReflect.hpp の旧 `fieldRangeRegistry`)。ここでは登録の受け皿を
+///        それぞれ別の静的レジストリ・別の文字列書式で `FieldDescriptor::elemType` に詰め込まれて
+///        いた (AutoReflect.hpp の旧 `fieldRangeRegistry`)。ここでは登録の受け皿を
 ///        `FieldAttr` 1 種類にまとめ、elemType へ書き出す文字列合成も 1 箇所
 ///        (`buildElemTypeTag`) に集約する。ABI は変えない。`FieldDescriptor` の POD レイアウト
 ///        は既存のまま (offset 不変) で、この統合は host 側の反射収集コードの内部整理にとどまる。
@@ -109,7 +109,7 @@ inline void registerFieldAttr(const char* typeName, const char* fieldName, Field
 }
 
 /// @brief `buildElemTypeTag` の結果を `FieldDescriptor::elemType` へ書く。32 byte を超える
-///        組み合わせ (長い group 名 + range + ui) は既存の `copyTag` と同じく黙って切り詰まる
+///        組み合わせ (長い group 名 + range + ui) は、既存の `copyTag` と同じく気づかないうちに切り詰められる
 ///        (AutoReflect.hpp 1-8 節が指摘する既知の制約であり、ここで新たに広げてはいない)。
 inline void writeElemTypeTag(char* elemType, std::size_t cap, const std::string& key)
 {

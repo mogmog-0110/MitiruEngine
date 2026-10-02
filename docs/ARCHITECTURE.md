@@ -4,34 +4,23 @@
 C ABI (Cの関数と生データだけで会話する取り決め)越しにloadし、毎フレームPODでやり取りする。
 gameplayは常にC++で書き、JSでは書かない。`Game`を継承して自前の`main()`を持つ旧authoringは廃止した。
 
-構成は2つある。
+UI と HUD は RmlUi (`include/mitiru/ui_rml/`) が RML / RCSS で描き、ゲームを描いた同じ DX12 のフレームに重ねる。
+DLL の隣に `assets/ui/main.rml` があるときだけ動く (`EngineConfig::uiDocument`)。無ければ下の層だけで動き、
+headless 実行、console、3D action などはこの形になる。bridge は signal-only で、C++ から UI へは `hud.set` の
+state push、UI から C++ へは `dispatch` の action だけが流れる。スクリプトは無い。
 
-- **native構成** (CEFなし、旧称Mode A)。下の層をそのままnative実行する。
-  ウィンドウを出さないheadless実行、console、3D actionなどがここに入る。
-- **HTML UI構成** (CEFあり、旧称Mode B)。上にCEF host (`include/mitiru/cef/`)と
-  JS runtime (`web/mitiru_runtime/`)を載せ、UIとHUDをHTML/CSSで描く。
-  bridgeはsignal-onlyで、C++からJSへはstate push、JSからC++へはaction eventだけが流れる。
-  切り替えは`EngineConfig::enableCef`。
-
-JS / JSON / C++の境界規約は [HYBRID_RUNTIME.md](HYBRID_RUNTIME.md)、
-JS runtimeモジュールの実体は`web/mitiru_runtime/`。
+UI の書き方は [UI_RMLUI.md](UI_RMLUI.md)、ツール窓は [TOOL_WINDOWS.md](TOOL_WINDOWS.md)。
 
 ## Layer Stack
 
-The diagram below shows the full stack of the HTML UI configuration
-(with CEF). The native configuration (no CEF) is identical minus the
-two layers marked `(CEF only)`. Those sit on top of the
-native engine and are inert when `EngineConfig::enableCef = false`.
+The top layer (UI) runs only when the game ships `assets/ui/main.rml`
+(`EngineConfig::uiDocument`). Without it, the stack below is the whole engine.
 
 ```
 +----------------------------------------------------------+
-|  CEF / WEB RUNTIME  (CEF only)                           |
-|  web/mitiru_runtime/*.js  -- mitiru.audio / .save / ...  |
-|  HTML / CSS UI loaded by CefStartUrl                     |
-+----------------------------------------------------------+
-|  CEF HOST + JS BRIDGES  (CEF only)                       |
-|  mitiru::cef::*  -- MitiruCefContext, AudioBridge,       |
-|  StateStore, MitiruCefRenderHandler, ...                 |
+|  UI LAYER  (mitiru::ui_rml, only when main.rml exists)    |
+|  RmlUiHost  RmlStateModel  RmlRenderInterfaceDx12        |
+|  RML / RCSS composited over the game frame (DX12)        |
 +----------------------------------------------------------+
 |  APPLICATION LAYER                                       |
 |  User Games (MITIRU_GAME DLL)  | examples/*              |
@@ -63,17 +52,11 @@ native engine and are inert when `EngineConfig::enableCef = false`.
 +----------------------------------------------------------+
 ```
 
-> **`mitiru::bridge` vs `mitiru::cef`.** These are two unrelated bridge
-> families and are easy to confuse:
->
-> - **`include/mitiru/bridge/`** — adapters between ShiggyGameCore (`sgc`,
->   the C++ ECS / math / physics / AI library that lives under `external/sgc/`)
->   and the Mitiru type system. Used in **both configurations**. Examples:
->   `AiBridge`, `PhysicsBridge`, `Renderer3DBridge`.
-> - **`include/mitiru/cef/`** — the CEF process host plus the JS-facing
->   bridges that marshal calls between the JavaScript runtime and the
->   native engine. **CEF only.** Examples: `MitiruCefContext`,
->   `AudioBridge` (CEF-side, distinct from any sgc-side audio binding).
+> **`include/mitiru/bridge/`** holds adapters between ShiggyGameCore (`sgc`,
+> the C++ ECS / math / physics / AI library that lives under `external/sgc/`)
+> and the Mitiru type system (`AiBridge`, `PhysicsBridge`, `Renderer3DBridge`),
+> plus `StateStore`, the last value of every `hud.set` key, used for
+> observation and replay-as-test. None of them depend on the UI layer.
 
 ---
 
@@ -113,7 +96,7 @@ native engine and are inert when `EngineConfig::enableCef = false`.
 | `render/Renderer3D` | gfx/IDevice (DX12本命), render/Mesh, render/Camera3D, render/Light | 3D mesh rendering (Phong/Toon/NPR/WBOIT) |
 | `render/RenderPipeline2D` | gfx/IDevice, gfx/IBuffer | GPU submission of 2D draw commands |
 | `bridge/*` | sgc (ShiggyGameCore) | Adapted APIs for AI, physics, animation, etc. |
-| `vn/*` | core/Screen, audio, resource | Visual novel engine (40+ modules) |
+| `vn/*` | data/Json | Visual novel script core: ScenarioScript + FlagManager + ExpressionEvaluator (ADR 0049) |
 | `network/*` | platform/SocketCompat | TCP transport, lobby, state sync |
 
 ---
@@ -201,7 +184,7 @@ For DX12, `Renderer3D_DX12` manages the overlay automatically via `setOverlayScr
 Host (SoundIntentRouter)
   |
   +-- AudioEngine::playSE("click.wav")
-  |     +-- WaveAudioEngine / SoftAudioEngine / NullAudioEngine
+  |     +-- MiniaudioEngine (mitiru_host) / WebAudioEngine (wasm) / NullAudioEngine
   |
   +-- AudioMixer::play(category, sound)
   |     +-- Category: BGM | SE | Voice
@@ -211,14 +194,12 @@ Host (SoundIntentRouter)
   +-- MitiruMML (music macro language)
         +-- Parse MML string -> note/rest/tempo events
         +-- SoftSynth generates PCM samples
-        +-- Output to Win32AudioOutput / PulseAudio / Null
+        +-- Output to MiniaudioOutput / Null
 
 Audio Output Backends:
-  Win32:      Win32AudioOutput (waveOut double-buffered PCM)
-  Linux:      PulseAudio (pulse-simple)
-  SDL2:       Sdl2Audio (SDL_AudioSpec callback)
-  Headless:   NullAudioEngine (no output, state tracking only)
-  miniaudio:  MiniaudioEngine (cross-platform fallback)
+  Desktop:    miniaudio (WASAPI / DirectSound / WinMM / PulseAudio / ALSA / CoreAudio を miniaudio が選ぶ)
+  Web:        WebAudioEngine (AudioBufferSourceNode。ミックスはブラウザの音声スレッド)
+  Headless:   NullAudioEngine / NullAudioOutput (no output, state tracking only)
 ```
 
 ---
@@ -228,7 +209,7 @@ Audio Output Backends:
 > **現行:** DLLゲームは`InputState`を直接見ない。hostが毎フレーム`InputState`から
 > PODの`InputSnapshot`（256キー/マウス/パッド + action event + rngSeed + audioTime）を組んで
 > `on_update`に渡す。キー再割り当ては`Game.hpp`の`Binding<Act>`（ゲームの状態structに置く）。下図の
-> `InputMapper`は非推奨。`InputRecorder/Replayer`相当はhost側のreplay機構（記録したInputSnapshot再投入）。
+> `InputMapper`は非推奨。録画・再生はhost側のreplay機構（`replay/Recorder` / `replay/Player`、`.mtrr`に記録したInputSnapshotの再投入）。
 
 ```
 OS Events (WM_KEYDOWN, SDL_Event, etc.)
@@ -253,10 +234,10 @@ InputMapper (optional)
   +-- "jump" -> Space, "move_left" -> A/Left
   |
   v
-InputRecorder / InputReplayer (optional)
+InputSnapshot (host builds one per frame)
   |
-  +-- Record input frames to JSON
-  +-- Replay input sequences for testing
+  +-- replay/Recorder writes it to .mtrr (mitiru_host --record)
+  +-- replay/Player swaps it in on playback (mitiru_host --replay-test)
 
 External Input Injection (HTTP API / test harness):
   InputInjector -> Engine applies to InputState before game.update()
@@ -267,39 +248,19 @@ External Input Injection (HTTP API / test harness):
 ## Visual Novel System Integration
 
 ```
-mitiru::vn module (40+ headers)
+mitiru::vn (script core only, ADR 0049)
   |
-  +-- ScenarioScript           Parse .vns script DSL
-  |     +-- Tokenizer -> Parser -> AST -> Executor
-  |     +-- Commands: @bg, @char, @choice, @jump, @set, @if, @wait
+  +-- ScenarioScript           Parse the .scenario text DSL
+  |     +-- Lexer -> Parser -> ScenarioNode list -> ScenarioExecutor
+  |     +-- Commands: @scene, @bg, @char, @choice, @label, @jump, @set, @if, @wait, @script
+  |     +-- ScenarioCallback receives every command; the game decides what it means
   |
-  +-- CharacterManager         Manage character sprites/expressions
-  +-- BackgroundManager        Background images with transitions
-  +-- TransitionEngine         Dissolve, fade, slide, etc.
-  +-- MessageWindow            Dialogue display with typewriter effect
-  +-- ChoiceUI                 Branching selection interface
-  +-- FlagManager              Scenario variable store
-  +-- SaveLoadScreen           Save/load slot management
-  +-- BacklogUI                Dialogue history viewer
-  +-- RichTextEngine           Tags, ruby text, word wrap
-  +-- ScreenEffects            Shake, flash, tint, blur
-  +-- AchievementSystem        Unlock tracking
-  +-- CGGallery                CG collection viewer
-  +-- FlowChart                Route visualization
-  +-- ConfigScreen             Text speed, volume, display settings
-  |
-  +-- Integration with core:
-        +-- Uses Screen for all 2D rendering
-        +-- Uses AudioEngine for BGM/SE/Voice
-        +-- Uses InputState for click/key detection
-        +-- Uses resource::ImageLoader for texture loading
-```
+  +-- FlagManager              Scenario variable store (JSON round trip)
+  +-- ExpressionEvaluator      Conditions for @if ($var, arithmetic, built-ins)
 
-> **CEF-side parallel.** A separate JavaScript implementation lives in
-> `web/mitiru_runtime/legacy/mitiru_novel.js` (**legacy。新規使用禁止**)
-> and was used by games in the HTML UI configuration that render their VN
-> through CEF rather than the native `vn` module. The two implementations are
-> intentionally not parity-locked; new work uses the native `vn` module.
+Message window, choices, backlog and settings are UI-layer work (RmlUi, ADR 0051);
+the old C++ UI parts live on branch attic/vn-ui.
+```
 
 ---
 
@@ -323,7 +284,7 @@ The drawing surface passed to `Game::draw()`. It accumulates draw commands into 
 `MitiruSceneManager` maintains a stack of `MitiruScene` objects. `pushScene` / `popScene` / `replaceScene` trigger `onEnter` / `onExit` lifecycle callbacks. The Engine holds a non-owning pointer to the manager and calls `onUpdate` / `onDraw` on the top-of-stack scene each frame after delegating to `Game`.
 
 ### Bridge Layer (mitiru::bridge)
-Sixteen bridge classes (plus the umbrella `SgcBridge`) adapt subsystems from the `sgc` (ShiggyGameCore) library into Mitiru's type system. Each bridge owns the sgc objects it manages and exposes a clean Mitiru-flavored API. For example, `AiBridge` owns `sgc::bt::Node` trees and `sgc::ai::UtilitySelector` instances, translating `sgc::bt::Status` to `AiState` and forwarding A* calls unchanged. This isolates the rest of the engine from direct sgc type exposure. These bridges are used in **both configurations**. They are unrelated to the CEF-only JS bridges under `include/mitiru/cef/`.
+Sixteen bridge classes (plus the umbrella `SgcBridge`) adapt subsystems from the `sgc` (ShiggyGameCore) library into Mitiru's type system. Each bridge owns the sgc objects it manages and exposes a clean Mitiru-flavored API. For example, `AiBridge` owns `sgc::bt::Node` trees and `sgc::ai::UtilitySelector` instances, translating `sgc::bt::Status` to `AiState` and forwarding A* calls unchanged. This isolates the rest of the engine from direct sgc type exposure. These bridges do not depend on the UI layer.
 
 ### Graphics Abstraction (mitiru::gfx)
 `IDevice` is the sole GPU interface. All backends implement `beginFrame`, `endFrame`, `readPixels`, and factory-constructed pipeline/buffer/shader objects through their respective `I*` interfaces. `GfxFactory::createDevice()` selects the backend at runtime according to the priority chain described below. `NullDevice` fulfils the interface with no-ops, enabling headless execution without conditional compilation at call sites.
@@ -405,9 +366,9 @@ The 16 bridges cover: AI (BehaviorTree/UtilityAI/GOAP/A*), Animation, DebugDraw,
 
 | Platform      | Window        | Graphics   | Audio             |
 |---------------|---------------|------------|-------------------|
-| Windows       | Win32Window   | DX12 (明示fallback: DX11) | Win32AudioOutput / miniaudio |
+| Windows       | Win32Window   | DX12 (明示fallback: DX11) | miniaudio |
 | Linux/macOS   | GlfwWindow    | Vulkan     | SoftAudioEngine   |
-| Linux/macOS   | Sdl2Window    | OpenGL     | Sdl2Audio         |
+| Linux/macOS   | Sdl2Window    | OpenGL     | miniaudio         |
 | Web (WASM)    | EmscriptenWindow | WebGL2  | SoftAudioEngine   |
 | Headless/Test | HeadlessPlatform | NullDevice | NullAudioEngine |
 
@@ -422,9 +383,13 @@ All platform and graphics objects are accessed exclusively through abstract inte
 | Jolt Physics | `MITIRU_HAS_JOLT` | Full 3D physics simulation |
 | Tracy Profiler | `MITIRU_HAS_TRACY` | Frame-level profiling |
 | Zstandard | `MITIRU_HAS_ZSTD` | Asset compression |
+| efsw | `MITIRU_HAS_EFSW` | File watching for hot reload (falls back to mtime polling) |
+| Taskflow | `MITIRU_HAS_TASKFLOW` | Worker threads for `JobSystem` (falls back to running jobs inline) |
+| Recast/Detour | `MITIRU_HAS_RECAST` / `MITIRU_HAS_DETOUR` | Navmesh bake (`mitiru_navbake`) and path queries (`nav::NavMesh`), linked per target via `mitiru_nav_bake` / `mitiru_nav` ([NAVMESH.md](NAVMESH.md)) |
+| GekkoNet | `MITIRU_HAS_GEKKONET` (opt-in `-DMITIRU_WITH_GEKKONET=ON`) | Rollback netcode: `RollbackPeer` drives a game DLL via GameMemory memcpy save/load, `mitiru_rollback` checks two DLLs over loopback ([ROLLBACK_NETCODE.md](ROLLBACK_NETCODE.md)) |
+| Effekseer | `MITIRU_HAS_EFFEKSEER` (opt-in `-DMITIRU_WITH_EFFEKSEER=ON`, Windows) | Particle effects (`.efkefc`) drawn in the DX12 3D frame; games call `drawModel(path, pos, rotY, scale, key, ageSec)` ([EFFEKSEER.md](EFFEKSEER.md)) |
 | spdlog | `MITIRU_HAS_SPDLOG` | Structured logging |
 | Ozz-Animation | `MITIRU_HAS_OZZ` | Skeletal animation |
-| Dear ImGui | `MITIRU_HAS_IMGUI` | Debug overlay (Win32 only) |
 | SDL2 | `MITIRU_HAS_SDL2` | SDL2 window/input/audio backend |
 | GLFW | `MITIRU_HAS_GLFW` | GLFW window/input backend |
 | Vulkan SDK | `MITIRU_HAS_VULKAN` | Vulkan graphics backend |

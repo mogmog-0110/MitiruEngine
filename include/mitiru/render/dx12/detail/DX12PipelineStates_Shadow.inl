@@ -1,7 +1,7 @@
-// Class-body chunk for Renderer3D_DX12 - included via DX12PipelineStates.hpp
+// Renderer3D_DX12 のクラス本体の断片。DX12PipelineStates.hpp から include される
 
 
-/// @brief シャドウマップ用 PSO (depth-only, no PS) を作る
+/// @brief シャドウマップ用 PSO (depth-only、PS なし) を作る
 /// @details VS はメインの TOON_VS_3D を流用。CbTransform の view/projection を
 ///          light view / light projection に差し替えて drawMesh と同じ経路で
 ///          描画する。PSO が PS を持たないため、RTV を 0 にして DSV だけバインドする。
@@ -49,6 +49,15 @@ void createShadowPSO()
 	{
 		throw std::runtime_error("CreateGraphicsPipelineState (shadow) failed");
 	}
+
+	// setShadowBias (v44) 用の両面版。片面では板 (createPlane・立ち絵) や底の無い器が、表を光へ向けた
+	// ときしか影を落とさない。余白を小さくする指定と組にして、薄い物の影も落とす
+	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(
+			&psoDesc, IID_PPV_ARGS(m_shadowPSOTwoSided.GetAddressOf()))))
+	{
+		m_shadowPSOTwoSided.Reset();
+	}
 }
 
 /// @brief 1 カスケード分の深度パスを描画する（caster 一覧を指定 view/proj で焼く）
@@ -58,7 +67,8 @@ void createShadowPSO()
 void renderShadowCascade(const sgc::Mat4f& lightView, const sgc::Mat4f& lightProj)
 {
 	m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_graphicsCmdList->SetPipelineState(m_shadowPSO.Get());
+	m_graphicsCmdList->SetPipelineState((m_shadowBiasWorld > 0.0f && m_shadowPSOTwoSided) ? m_shadowPSOTwoSided.Get()
+	                                                                                    : m_shadowPSO.Get());
 	m_graphicsCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// b3 (CbShadow): VS が LightSpacePos 算出で読むため depth-only パスでも
@@ -128,14 +138,14 @@ void renderShadowCascade(const sgc::Mat4f& lightView, const sgc::Mat4f& lightPro
 ///          重要: shadow が無効 / casters 不在のフレームでも必ず depth クリア
 ///          (= 1.0) は実行する。clear しないと texture が 0 のままになり、PS の
 ///          SampleCmpLevelZero が「ライト視錐台内の全 pixel = 影」を返して
-///          シーン中央付近の geometry が ambient (~0.20) しか効かず真っ黒
+///          シーン中央付近の geometry が ambient (~0.20) の分しか明るくならず真っ黒
 ///          になる (ENG-103)。一部 GPU では R8G8B8A8 を白として bind しても
 ///          comparison sampler 経由では 1.0 を返さないため、R32_FLOAT 深度
 ///          そのものを 1.0 にクリアしておく方が確実。
 ///
-///          B13: setCascadedShadowEnabled(true) の間は m_shadowMap (カスケード0、
+///          B13: setCascadedShadowEnabled(true) の間は m_shadowMap (カスケード 0、
 ///          cascadeNearHalfExtent の狭い ortho box) に加えて m_shadowMapFar
-///          (カスケード1、orthoHalfExtent の従来 box) も同じ caster 一覧で焼く。
+///          (カスケード 1、orthoHalfExtent の従来 box) も同じ caster 一覧で焼く。
 ///          無効時は m_shadowMap だけを従来どおり orthoHalfExtent で焼く。
 /// @brief autoFitCascades のフレームだけ、カスケード境界と ortho の大きさをカメラから決め直す。
 ///        影パスと本描画の CB の両方から呼び、同じフレームでは同じ値を見る (カメラ依存のみで冪等)
@@ -149,7 +159,14 @@ void applyAutoCascadeFit() noexcept
 
 void renderShadowPass()
 {
-	if (!m_shadowMap.isInitialized() || !m_shadowPSO) return;
+	if (!m_shadowMap.isInitialized() || !m_shadowPSO)
+	{
+		// しるしの番号を固定するため、描かないカスケードのぶんも置く (Dx12PassMarkers.hpp)
+		dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade0);
+		dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade1);
+		dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade2);
+		return;
+	}
 	applyAutoCascadeFit();
 
 	const bool drawCasters
@@ -172,9 +189,10 @@ void renderShadowPass()
 	}
 	const auto lightView = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(0, focus));
 
-	// カスケード0 (単一カスケード時は唯一のマップ)。
+	// カスケード 0 (単一カスケード時は唯一のマップ)。
 	// beginShadowPass が毎回 depth=1.0 クリアを行うため、caster 不在 / shadow 無効の
 	// フレームでも必ず呼ぶ (ENG-103: PS の SampleCmpLevelZero に「影なし」を見せるため)。
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade0);
 	m_shadowMap.beginShadowPass(m_graphicsCmdList.Get());
 	if (drawCasters)
 	{
@@ -182,28 +200,33 @@ void renderShadowPass()
 	}
 	m_shadowMap.endShadowPass(m_graphicsCmdList.Get());
 
+	// カスケード 1 (遠距離)。begin/draw/end を独立して行う (カスケード 0 の DSV/viewport
+	// bind を上書きしたまま draw しないよう、必ず自分の beginShadowPass の直後に描画する)。
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade1);
 	if (cascaded)
 	{
-		// カスケード1 (遠距離)。begin/draw/end を独立して行う (カスケード0 の DSV/viewport
-		// bind を上書きしたまま draw しないよう、必ず自分の beginShadowPass の直後に描画する)。
 		m_shadowMapFar.beginShadowPass(m_graphicsCmdList.Get());
 		if (drawCasters)
 		{
 			const auto lightViewFar = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(1, focus));
 			renderShadowCascade(lightViewFar, m_directionalShadow.cascadeProjection(1, lightViewFar));
-			if (m_directionalShadow.config().cascadeCount >= 3)
-			{
-				// カスケード2 はアトラスの右列へ (renderShadowCascade は viewport を触らない)。
-				m_shadowMapFar.setColumn(m_graphicsCmdList.Get(), 1);
-				const auto lightViewFar2 = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(2, focus));
-				renderShadowCascade(lightViewFar2, m_directionalShadow.cascadeProjection(2, lightViewFar2));
-			}
+		}
+	}
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade2);
+	if (cascaded)
+	{
+		if (drawCasters && m_directionalShadow.config().cascadeCount >= 3)
+		{
+			// カスケード 2 はアトラスの右列へ (renderShadowCascade は viewport を触らない)。
+			m_shadowMapFar.setColumn(m_graphicsCmdList.Get(), 1);
+			const auto lightViewFar2 = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(2, focus));
+			renderShadowCascade(lightViewFar2, m_directionalShadow.cascadeProjection(2, lightViewFar2));
 		}
 		m_shadowMapFar.endShadowPass(m_graphicsCmdList.Get());
 	}
 
 	// メイン viewport / RTV はこの後 beginFrame 側で復元される必要があるため、
-	// 呼び出し側で適切に設定し直すこと（このメソッドは shadow pass のみ責任）。
+	// 呼び出し側で適切に設定し直すこと（このメソッドが責任を持つのは shadow pass だけ）。
 	m_shadowDrawnThisFrame = true;
 }
 
@@ -268,22 +291,13 @@ void ensureDefaultWhiteTexture()
 	return raw;
 }
 
-/// @brief 現在の draw 用に { albedo SRV, shadow SRV(カスケード0), shadow SRV(カスケード1) }
+/// @brief 現在の draw 用に { albedo SRV, shadow SRV(カスケード 0), shadow SRV(カスケード 1) }
 ///        を heap に書いて gpu handle を返す
 /// @details 3 スロット分の連続範囲を自 frame partition 内に書く (B13 で 2→3)。cursor は +3。
 ///          失敗時は gpuHandle.ptr = 0。
 [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE writeMainSrvTable(const Texture* tex)
 {
 	D3D12_GPU_DESCRIPTOR_HANDLE invalid = {0};
-	if (m_albedoSrvCursor + 2 >= m_albedoSrvCapacity)
-	{
-		// 超過 draw は table 未更新のまま = 直前 draw のテクスチャ流用になる
-		mitiru::debug::warnOnce("dx12.mainSrvTable.full",
-			"3D SRV heap 超過: 1 フレーム "
-			+ std::to_string(m_albedoSrvCapacity / 3)
-			+ " draw まで。以降の draw は直前のアルベド/シャドウ SRV を流用する");
-		return invalid;
-	}
 
 	// --- t0: albedo ---
 	const dx12::Dx12Texture2D* t = nullptr;
@@ -298,6 +312,28 @@ void ensureDefaultWhiteTexture()
 		t = &m_defaultWhiteTexture;
 	}
 
+	const void* shadowNear = m_shadowMap.nativeResource();
+	const void* shadowFar  = m_shadowMapFar.nativeResource();
+	constexpr UINT64 kMask = static_cast<UINT64>(kMainSrvTableCacheSize - 1);
+	UINT64 probe = ((reinterpret_cast<UINT64>(t) >> 4) * 0x9E3779B97F4A7C15ull) >> 40;
+	MainSrvTableEntry* freeSlot = nullptr;
+	for (int n = 0; n < kMainSrvTableCacheSize; ++n, ++probe)
+	{
+		MainSrvTableEntry& e = m_mainSrvTableCache[probe & kMask];
+		if (e.albedo == nullptr) { freeSlot = &e; break; }
+		if (e.albedo == t && e.shadowNear == shadowNear && e.shadowFar == shadowFar) { return e.gpu; }
+	}
+
+	if (m_albedoSrvCursor + 2 >= m_albedoSrvCapacity)
+	{
+		// 超過した draw は table を更新しないので、直前の draw のテクスチャをそのまま使う
+		mitiru::debug::warnOnce("dx12.mainSrvTable.full",
+			"3D SRV heap 超過: 1 フレームに別々のテクスチャ "
+			+ std::to_string(m_albedoSrvCapacity / 3)
+			+ " 枚まで。以降の draw は直前のアルベド/シャドウ SRV を流用する");
+		return invalid;
+	}
+
 	const UINT slot = m_albedoSrvBase + m_albedoSrvCursor;
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu0 =
 		m_albedoSrvHeap->GetCPUDescriptorHandleForHeapStart();
@@ -305,10 +341,10 @@ void ensureDefaultWhiteTexture()
 		* static_cast<SIZE_T>(m_albedoSrvIncrement);
 	t->createSRV(m_d3dDevice, cpu0);
 
-	// --- t1: shadow (カスケード0) ---
+	// --- t1: shadow (カスケード 0) ---
 	// renderShadowPass() が毎フレーム depth=1.0 にクリアする保証があるため
 	// (ENG-103)、shadow map が初期化済みなら必ず実テクスチャを bind する。
-	// 無効フレームでも texture には 1.0 が入ってるので SampleCmp は 1.0 を返す。
+	// 無効フレームでも texture には 1.0 が入っているので SampleCmp は 1.0 を返す。
 	auto bindShadowSrv = [&](dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu) -> bool
 	{
 		if (map.isInitialized() && map.nativeResource())
@@ -333,7 +369,7 @@ void ensureDefaultWhiteTexture()
 	cpu1.ptr += static_cast<SIZE_T>(m_albedoSrvIncrement);
 	if (!bindShadowSrv(m_shadowMap, cpu1)) return invalid;
 
-	// --- t2: shadow (カスケード1、B13) ---
+	// --- t2: shadow (カスケード 1、B13) ---
 	// cascadedShadow 無効時も PS が t2 を宣言しているため常に有効な SRV を bind しておく
 	// (未初期化 SRV の read は UB)。この場合 samplePCFTex は分割距離 1e9 のため呼ばれない。
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu2 = cpu1;
@@ -345,6 +381,11 @@ void ensureDefaultWhiteTexture()
 	gpu.ptr += static_cast<UINT64>(slot)
 		* static_cast<UINT64>(m_albedoSrvIncrement);
 	m_albedoSrvCursor += 3;
+	if (freeSlot != nullptr)
+	{
+		*freeSlot = {t, shadowNear, shadowFar, gpu};
+		++m_mainSrvTableCacheCount;
+	}
 	return gpu;
 }
 
@@ -355,11 +396,11 @@ void ensureDefaultWhiteTexture()
 }
 
 /// @brief CbShadow (b3)。light-space view * proj を ring buffer から確保
-/// @details B13: lightViewProj (カスケード0 = VS が読んで LightSpacePos を計算) に加え、
-///          lightViewProjFar (カスケード1) と cascadeSplitDistance を持つ。
+/// @details B13: lightViewProj (カスケード 0 = VS が読んで LightSpacePos を計算) に加え、
+///          lightViewProjFar (カスケード 1) と cascadeSplitDistance を持つ。
 ///          PS 側は WorldPos から lightViewProjFar を使って独自に light-space 座標を
 ///          計算する (samplePCFTex 参照)。VS は既存どおり lightViewProj だけを読むため、
-///          この2フィールド追加は VS の挙動に影響しない。
+///          この 2 フィールドの追加は VS の挙動に影響しない。
 /// @return GPU virtual address (0 で失敗)
 [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadShadowCB()
 {
@@ -368,10 +409,18 @@ void ensureDefaultWhiteTexture()
 		float lightViewProjFar[4][4]{};
 		float cascadeSplitDistance = 0.0f;
 		float cascadeSplitDistance2 = 1.0e9f;   // 3 カスケード時のみ有限 (それ以外は PS が列 1 を読まない)
-		float _padCascade[2]{};
+		float shadowSoftness = 1.0f;            // PCF 3x3 のタップ間隔 (texel、v41)。元は詰め物だったので layout 不変
+		float shadowBiasNdc = 0.0f;            // 0 = PS が従来の余白を使う (v44)。元は詰め物なので layout 不変
 		float lightViewProjFar2[4][4]{};
 	};
 	CbShadow cb;
+	cb.shadowSoftness = m_shadowSoftness;
+	if (m_shadowBiasWorld > 0.0f)
+	{
+		const auto& sc = m_directionalShadow.config();
+		const float range = sc.farClip - sc.nearClip;
+		cb.shadowBiasNdc = (range > 1e-4f) ? m_shadowBiasWorld / range : 0.0f;
+	}
 
 	if (m_shadowEnabled && !m_shadowCommandsPrev.empty())
 	{
@@ -410,7 +459,7 @@ void ensureDefaultWhiteTexture()
 		}
 		else
 		{
-			// カスケード無効: 分割距離を非常に大きくして PS が常にカスケード0を選ぶようにする
+			// カスケード無効: 分割距離を非常に大きくして PS が常にカスケード 0 を選ぶようにする
 			toColumnMajor(cb.lightViewProjFar, P0 * V);
 			cb.cascadeSplitDistance = 1.0e9f;
 		}
@@ -446,7 +495,7 @@ void ensureDefaultWhiteTexture()
 
 /// @brief mesh の VB/IB cache entry を取得する（失効時は作り直す）
 /// @details 失効 = サイズ変化 or Mesh::revision 変化（内容改変・アドレス再利用）。
-///          **同サイズの内容改変** (毎フレームの CPU スキニング等) は
+///          **同サイズの内容改変** (毎フレーム CPU が頂点を書き換える mesh) は
 ///          FRAME_COUNT 周期の slot 回転 + memcpy のみで済ませ、committed resource を
 ///          毎フレーム作らない。slot N の次の書き込みは N+FRAME_COUNT フレーム後で、
 ///          Dx12Device::beginFrame の fence がその間の GPU 読み完了を保証している
@@ -465,10 +514,17 @@ void ensureDefaultWhiteTexture()
 		return entry.resource.Get();  // 不変 (静的 mesh の通常経路)
 	}
 
-	if (entry.resource && entry.size == sizeBytes)
+	// slot に書いた frame W の内容は W+1 の shadow pass まで読まれる。デバイスのフェンスが
+	// 保証するのは「今の frame - FRAME_COUNT 以前は完了」だけなので、W+1 <= now - FRAME_COUNT を要求する。
+	const auto slotIsFree = [&](uint32_t k) {
+		return !entry.slots[k] || m_frameCounter >= entry.slotFrame[k] + kMeshSlotCount;
+	};
+
+	if (entry.resource && entry.size == sizeBytes &&
+	    slotIsFree((entry.activeSlot + 1) % kMeshSlotCount))
 	{
 		// 同サイズで内容だけ変わった動的 mesh → slot 回転 (warm-up 後は生成ゼロ)
-		entry.activeSlot = (entry.activeSlot + 1) % FRAME_COUNT;
+		entry.activeSlot = (entry.activeSlot + 1) % kMeshSlotCount;
 		auto& slot = entry.slots[entry.activeSlot];
 		if (!slot)
 		{
@@ -478,6 +534,7 @@ void ensureDefaultWhiteTexture()
 		if (slot)
 		{
 			uploadToBuffer(slot.Get(), data, sizeBytes);
+			entry.slotFrame[entry.activeSlot] = m_frameCounter;
 			entry.resource = slot;
 			entry.revision = mesh.revision();
 			return entry.resource.Get();
@@ -485,18 +542,12 @@ void ensureDefaultWhiteTexture()
 		// slot 生成失敗 → 従来 slow path へ落とす
 	}
 
-	// 初回 or サイズ変化: 全 slot を退役して作り直す
-	if (m_device)
-	{
-		if (entry.resource) { m_device->deferRelease(entry.resource); }
-		for (auto& s : entry.slots)
-		{
-			if (s) { m_device->deferRelease(s); s.Reset(); }
-		}
-	}
+	// 初回 or サイズ変化: 全 slot を退役して作り直す (メモリは投入済みフレームが終わるまで返らない)
+	for (auto& s : entry.slots) { s.Reset(); }
 	entry.resource   = createUploadBuffer(sizeBytes);
 	++m_meshBufferCreates;
 	entry.slots[0]   = entry.resource;  // 次の同サイズ改変からここを起点に回転する
+	entry.slotFrame[0] = m_frameCounter;
 	entry.activeSlot = 0;
 	entry.size       = sizeBytes;
 	entry.revision   = mesh.revision();
@@ -507,7 +558,7 @@ void ensureDefaultWhiteTexture()
 	return entry.resource.Get();
 }
 
-/// @brief 長期間参照の無い mesh VB/IB を deferRelease で退役させる
+/// @brief 長期間参照の無い mesh VB/IB を退役させる
 /// @details beginFrame で毎フレーム呼ぶ。破棄済み Mesh の entry を掃除して
 ///          GPU メモリ漏れとアドレス再利用時の stale ヒットを防ぐ。
 void evictStaleMeshBuffers()
@@ -519,14 +570,6 @@ void evictStaleMeshBuffers()
 		{
 			if (m_frameCounter - it->second.lastUsedFrame > kKeepFrames)
 			{
-				if (m_device)
-				{
-					if (it->second.resource) { m_device->deferRelease(it->second.resource); }
-					for (auto& s : it->second.slots)
-					{
-						if (s) { m_device->deferRelease(s); }
-					}
-				}
 				it = cache.erase(it);
 			}
 			else
@@ -541,42 +584,15 @@ void evictStaleMeshBuffers()
 
 /// @brief アップロードヒープにバッファリソースを生成する
 /// @param sizeBytes バッファサイズ（バイト）
-/// @return 生成されたリソース（失敗時はnullptr）
-[[nodiscard]] ComPtr<ID3D12Resource> createUploadBuffer(UINT64 sizeBytes) const
+/// @return 生成されたリソース（失敗時は空）
+[[nodiscard]] gfx::GpuResource createUploadBuffer(UINT64 sizeBytes) const
 {
-	/// 256バイトアラインメントを保証する（CBV用）
+	/// 256 バイトアラインメントを保証する（CBV 用）
 	const UINT64 alignedSize = (sizeBytes + 255) & ~255ULL;
 
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-	D3D12_RESOURCE_DESC resourceDesc = {};
-	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resourceDesc.Alignment = 0;
-	resourceDesc.Width = alignedSize;
-	resourceDesc.Height = 1;
-	resourceDesc.DepthOrArraySize = 1;
-	resourceDesc.MipLevels = 1;
-	resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-	resourceDesc.SampleDesc.Count = 1;
-	resourceDesc.SampleDesc.Quality = 0;
-	resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-	ComPtr<ID3D12Resource> resource;
-	HRESULT hr = m_d3dDevice->CreateCommittedResource(
-		&heapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(resource.GetAddressOf()));
-
-	if (FAILED(hr))
-	{
-		return nullptr;
-	}
-
+	gfx::GpuResource resource;
+	(void)gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_UPLOAD, alignedSize,
+		D3D12_RESOURCE_STATE_GENERIC_READ, resource);
 	return resource;
 }
 

@@ -2,11 +2,11 @@
 
 /// @file SimpleReliableUdp.hpp
 /// @brief GameNetworkingSockets (GNS) 無し環境向けの最小 selective-repeat reliable UDP
-/// @details `ReliableUDP.hpp` の `NullReliableTransport` は完全な no-op で信頼性配送が
+/// @details `ReliableUDP.hpp` の `NullReliableTransport` は完全な no-op で、信頼性のある配送が
 ///          全く無かった (J8)。本実装は `UdpTransport` (または任意の `INetworkTransport`)
 ///          の上に、reliable 送信ごとの ACK + 再送タイマー + selective-repeat 受信側
 ///          reorder buffer を足す最小プロトコル。GNS の輻輳制御・暗号化・NAT punchthrough
-///          等は持たない。LAN 内の小規模 P2P/専用サーバー用途の fallback として十分な範囲。
+///          等は持たない。LAN 内の小規模 P2P/専用サーバー用途の fallback としては十分な範囲。
 ///
 /// ── ワイヤ形式 (payload 先頭に付与する 5 byte header) ──────────────────
 ///   1 byte 目: WireType (Data=0 / Ack=1 / DataUnreliable=2)。
@@ -16,12 +16,12 @@
 ///
 /// ── 再送方式 ────────────────────────────────────────────────────────────
 ///   reliable send() ごとに connection 単位の連番を振り、ACK が来るまで
-///   `retransmitIntervalMs` 毎に再送する。`maxRetries` を超えたら諦めて捨てる
-///   (呼び出し側への通知は無い、現状の既知の制約)。
+///   `retransmitIntervalMs` ごとに再送する。`maxRetries` を超えたら諦めて捨てる
+///   (呼び出し側への通知は無い。現状の既知の制約)。
 ///
 /// ── 受信順序 ────────────────────────────────────────────────────────────
 ///   受信側は次に届けるべき連番 (`nextExpectedSeq`) を持つ。先着 (順序が先の) packet は
-///   reorder buffer に retain し、gap が埋まった時点でまとめて順番に receive() へ渡す
+///   reorder buffer に保持し、gap が埋まった時点でまとめて順番に receive() へ渡す
 ///   (selective repeat)。重複 (既に届け済み) は ACK だけ返して破棄する。
 
 #include <mitiru/network/INetworkTransport.hpp>
@@ -142,7 +142,7 @@ public:
 		return (it != m_conns.end()) ? it->second.status : ConnectionStatus::Disconnected;
 	}
 
-	/// @brief 再送間隔 (既定 100ms)。テストで短縮する用途。
+	/// @brief 再送間隔 (既定 100ms)。テストでは短くして使う。
 	void setRetransmitIntervalMs(std::uint64_t ms) noexcept { m_retransmitIntervalMs = ms; }
 
 	/// @brief 再送を諦めるまでの最大試行回数 (既定 10)。
@@ -244,7 +244,7 @@ private:
 		if (detail::seqBefore(seq, conn.nextExpectedSeq)) { return; }  // 既に届け済み。ACK 再送のみで破棄
 		if (seq != conn.nextExpectedSeq)
 		{
-			// gap あり。selective repeat の reorder buffer に retain する。
+			// gap あり。selective repeat の reorder buffer に保持する。
 			conn.reorderBuffer.emplace(seq, std::vector<std::uint8_t>(wire.begin() + 5, wire.end()));
 			return;
 		}
@@ -300,7 +300,7 @@ private:
 
 				if (pkt.retries >= m_maxRetries)
 				{
-					// 諦めて捨てる (呼び出し側への通知は現状無い、既知の制約)。
+					// 諦めて捨てる (呼び出し側への通知は現状無い。既知の制約)。
 					it = conn.unacked.erase(it);
 					continue;
 				}

@@ -2,13 +2,13 @@
 
 /// @file Sprite3D.hpp
 /// @brief 2.5D スプライト描画システム（ダンガンロンパスタイル）
-/// @details 3D空間内に2Dの板ポリゴン(Quad)を配置し、ビルボード・ポップアップ演出・
-///          アルファクリッピングを行う。WebGL2/GLES3.0対応。
+/// @details 3D 空間内に 2D の板ポリゴン(Quad)を配置し、ビルボード・ポップアップ演出・
+///          アルファクリッピングを行う。WebGL2/GLES3.0 対応。
 ///
-/// 3つのコア機能:
-/// 1. **円柱ビルボード**。カメラのY軸のみに追従して回転（X軸は固定）
-/// 2. **ポップアップ演出**。足元ピボットでX軸回転、イージングで「パタン」と起き上がる
-/// 3. **アルファクリッピング**。discard でZバッファを透過ピクセルが汚さない
+/// コア機能は 3 つ。
+/// 1. **円柱ビルボード**。カメラの Y 軸のみに追従して回転（X 軸は固定）
+/// 2. **ポップアップ演出**。足元ピボットで X 軸回転、イージングで「パタン」と起き上がる
+/// 3. **アルファクリッピング**。discard するので透過ピクセルが Z バッファを汚さない
 
 #include <algorithm>
 #include <array>
@@ -27,7 +27,7 @@ namespace mitiru::render
 // Quad メッシュ生成
 // ============================================================================
 
-/// @brief 板ポリゴン頂点（3D空間用）
+/// @brief 板ポリゴン頂点（3D 空間用）
 struct Vertex3DSprite
 {
 	sgc::Vec3f position;  ///< ローカル座標
@@ -68,7 +68,7 @@ struct QuadMesh
 		if (pivot == SpritePivot::BottomCenter)
 		{
 			/// 原点 = 足元（下辺中央）
-			/// ポップアップ演出: X軸回転で足元を軸に起き上がる
+			/// ポップアップ演出: X 軸回転で足元を軸に起き上がる
 			yBottom = 0.0f;
 			yTop = height;
 		}
@@ -88,7 +88,7 @@ struct QuadMesh
 		mesh.vertices[2] = {{ hw, yTop,    0.0f}, {1.0f, 0.0f}}; // 右上
 		mesh.vertices[3] = {{-hw, yTop,    0.0f}, {0.0f, 0.0f}}; // 左上
 
-		/// 三角形2枚（CCW）
+		/// 三角形 2 枚（CCW）
 		mesh.indices = {0, 1, 2, 0, 2, 3};
 
 		return mesh;
@@ -96,7 +96,7 @@ struct QuadMesh
 };
 
 // ============================================================================
-// 円柱ビルボード（Y軸のみ追従）
+// 円柱ビルボード（Y 軸のみ追従）
 // ============================================================================
 
 /// @brief 円柱ビルボード行列を計算する
@@ -110,17 +110,17 @@ struct QuadMesh
 	const sgc::Vec3f& objectPos,
 	const sgc::Vec3f& cameraPos) noexcept
 {
-	/// カメラへの方向ベクトル（Y成分を無視 → XZ平面上の角度のみ）
+	/// カメラへの方向ベクトル（Y 成分を無視 → XZ 平面上の角度のみ）
 	const float dx = cameraPos.x - objectPos.x;
 	const float dz = cameraPos.z - objectPos.z;
 
-	/// atan2 でY軸回りの回転角を求める
+	/// atan2 で Y 軸回りの回転角を求める
 	const float angle = std::atan2(dx, dz);
 
 	const float cosA = std::cos(angle);
 	const float sinA = std::sin(angle);
 
-	/// Y軸回転 × 平行移動
+	/// Y 軸回転 × 平行移動
 	/// sgc::Mat4f は row-major だが GL_TRUE で転置送信するため、
 	/// row-major のまま構築する
 	const auto rotation = sgc::Mat4f{
@@ -136,7 +136,7 @@ struct QuadMesh
 }
 
 // ============================================================================
-// ポップアップ演出（イージング + X軸回転）
+// ポップアップ演出（イージング + X 軸回転）
 // ============================================================================
 
 /// @brief イージング関数群
@@ -194,7 +194,7 @@ namespace easing
 
 	/// @brief オーバーシュート付きイーズアウト（バック）
 	/// @param t 正規化時間 [0, 1]
-	/// @param overshoot オーバーシュート量（デフォルト1.70158）
+	/// @param overshoot オーバーシュート量（デフォルト 1.70158）
 	/// @return イージング適用後の値
 	[[nodiscard]] inline float backOut(float t, float overshoot = 1.70158f) noexcept
 	{
@@ -204,8 +204,8 @@ namespace easing
 } // namespace easing
 
 /// @brief ポップアップ演出の状態
-/// @details X軸回転で足元を軸に「パタン」と起き上がるアニメーション。
-///          t=0で地面に伏せた状態（-90度）、t=1で直立（0度）。
+/// @details X 軸回転で足元を軸に「パタン」と起き上がるアニメーション。
+///          t=0 で地面に伏せた状態（-90 度）、t=1 で直立（0 度）。
 struct PopupAnimation
 {
 	float duration = 0.4f;        ///< アニメーション時間（秒）
@@ -250,21 +250,21 @@ struct PopupAnimation
 		return std::clamp(elapsed / duration, 0.0f, 1.0f);
 	}
 
-	/// @brief 現在のX軸回転角（ラジアン）
+	/// @brief 現在の X 軸回転角（ラジアン）
 	/// @details t=0 → -PI/2（地面に伏せ）、t=1 → 0（直立）
-	///          elasticOutで弾むような起き上がり
+	///          elasticOut で弾むような起き上がり
 	[[nodiscard]] float rotationX() const noexcept
 	{
 		constexpr float kHalfPi = 3.14159265358979323846f * 0.5f;
 		const float t = easing::elasticOut(progress());
-		/// -90度 → 0度 の補間
+		/// -90 度 → 0 度 の補間
 		return -kHalfPi * (1.0f - t);
 	}
 };
 
-/// @brief ポップアップ演出用のX軸回転行列を生成する
-/// @param angle X軸回転角（ラジアン）
-/// @return X軸回転行列
+/// @brief ポップアップ演出用の X 軸回転行列を生成する
+/// @param angle X 軸回転角（ラジアン）
+/// @return X 軸回転行列
 [[nodiscard]] inline sgc::Mat4f popupRotationMatrix(float angle) noexcept
 {
 	const float cosA = std::cos(angle);
@@ -278,12 +278,12 @@ struct PopupAnimation
 	};
 }
 
-/// @brief スプライト3Dのワールド行列を構築する
+/// @brief スプライト 3D のワールド行列を構築する
 /// @details ポップアップ回転 → ビルボード回転 → 平行移動 の順で合成
 /// @param position ワールド位置
 /// @param cameraPos カメラ位置
-/// @param popupAngle ポップアップX軸回転角（ラジアン、0=直立）
-/// @param scale スケール（デフォルト1.0）
+/// @param popupAngle ポップアップ X 軸回転角（ラジアン、0=直立）
+/// @param scale スケール（デフォルト 1.0）
 /// @return ワールド変換行列
 [[nodiscard]] inline sgc::Mat4f sprite3DWorldMatrix(
 	const sgc::Vec3f& position,
@@ -291,10 +291,10 @@ struct PopupAnimation
 	float popupAngle = 0.0f,
 	float scale = 1.0f) noexcept
 {
-	/// 1. ポップアップ回転（ローカル空間でX軸回転）
+	/// 1. ポップアップ回転（ローカル空間で X 軸回転）
 	const auto popup = popupRotationMatrix(popupAngle);
 
-	/// 2. 円柱ビルボード（Y軸のみカメラ追従）
+	/// 2. 円柱ビルボード（Y 軸のみカメラ追従）
 	const auto billboard = cylindricalBillboardMatrix(position, cameraPos);
 
 	/// 3. スケール
@@ -309,8 +309,8 @@ struct PopupAnimation
 // アルファクリッピングシェーダー（GLSL ES 3.0）
 // ============================================================================
 
-/// @brief 2.5Dスプライト用頂点シェーダー
-/// @details MVP変換を適用し、UV座標をフラグメントシェーダーに渡す。
+/// @brief 2.5D スプライト用頂点シェーダー
+/// @details MVP 変換を適用し、UV 座標をフラグメントシェーダーに渡す。
 constexpr const char* SPRITE3D_VERTEX_SHADER = R"glsl(#version 300 es
 precision highp float;
 
@@ -328,8 +328,8 @@ void main()
 }
 )glsl";
 
-/// @brief 2.5Dスプライト用フラグメントシェーダー
-/// @details アルファクリッピングにより透過ピクセルがZバッファを汚さない。
+/// @brief 2.5D スプライト用フラグメントシェーダー
+/// @details アルファクリッピングにより透過ピクセルが Z バッファを汚さない。
 ///          - uAlphaClip 以下のアルファ値を持つピクセルは discard
 ///          - テクスチャと uTint 色を乗算して最終色を決定
 constexpr const char* SPRITE3D_FRAGMENT_SHADER = R"glsl(#version 300 es
@@ -387,7 +387,7 @@ void main()
 // Sprite3D インスタンスデータ
 // ============================================================================
 
-/// @brief 3D空間内のスプライト1枚分のデータ
+/// @brief 3D 空間内のスプライト 1 枚分のデータ
 struct Sprite3DInstance
 {
 	sgc::Vec3f position{0.0f, 0.0f, 0.0f}; ///< ワールド位置（足元）
@@ -402,7 +402,7 @@ struct Sprite3DInstance
 
 	/// @brief ワールド行列を計算する
 	/// @param cameraPos カメラ位置
-	/// @param cameraRight カメラ右方向（完全ビルボード用、nullptrで円筒ビルボード）
+	/// @param cameraRight カメラ右方向（完全ビルボード用、nullptr で円筒ビルボード）
 	/// @param cameraUp カメラ上方向（完全ビルボード用）
 	/// @return 変換行列
 	[[nodiscard]] sgc::Mat4f worldMatrix(
@@ -440,7 +440,7 @@ struct Sprite3DInstance
 			return sprite3DWorldMatrix(position, cameraPos, popup.rotationX(), scale);
 		}
 
-		/// ビルボード無効時は単純なTRS
+		/// ビルボード無効時は単純な TRS
 		auto result = sgc::Mat4f::translation(position);
 		result = result * popupRotationMatrix(popup.rotationX());
 		result = result * sgc::Mat4f::scaling({scale, scale, scale});

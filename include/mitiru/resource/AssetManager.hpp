@@ -58,7 +58,7 @@ public:
 		{
 			const std::lock_guard lock(m_mutex);
 			// findSlot() のロック解放後ここまでの間に別スレッドが同じ id で load() を
-			// 先に通り抜けている可能性があるため、スロット作成前にもう一度 m_slots を見る。
+			// 先に通過している可能性があるため、スロット作成前にもう一度 m_slots を見る。
 			// 見ずに作ると両スレッドが別々の slot を作って m_slots を取り合い、片方の
 			// AssetHandle が二度とマップへ反映されない孤立スロットを指すことになる。
 			auto slotIt = m_slots.find(id);

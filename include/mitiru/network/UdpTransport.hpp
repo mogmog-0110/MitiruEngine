@@ -2,11 +2,11 @@
 
 /// @file UdpTransport.hpp
 /// @brief UDP ソケットベースのネットワークトランスポート実装（クロスプラットフォーム）
-/// @details SocketCompatを通じて Windows (Winsock2) および POSIX (Linux/macOS) で動作する
-///          非ブロッキングUDPトランスポート。
+/// @details SocketCompat を通じて Windows (Winsock2) および POSIX (Linux/macOS) で動作する
+///          非ブロッキング UDP トランスポート。
 ///          サーバーモード（listen/bind）とクライアントモード（connect）の両方をサポート。
 ///          UDP は信頼性保証なし（再送・順序保証なし）。
-///          INetworkTransportインターフェースに準拠する。
+///          INetworkTransport インターフェースに準拠する。
 ///
 /// @code
 /// // サーバー側（バインド）
@@ -41,14 +41,14 @@ namespace mitiru::network
 
 /// @brief UDP ソケットベースのトランスポート実装（クロスプラットフォーム）
 ///
-/// SocketCompatの非ブロッキングUDPソケットを使用して通信を行う。
+/// SocketCompat の非ブロッキング UDP ソケットを使用して通信を行う。
 /// listen()でサーバー（バインド）モード、connect()でクライアントモードとして動作する。
 /// UDP は信頼性・順序保証なし。
 /// poll()で受信メッセージとイベントを取得する。
 class UdpTransport final : public INetworkTransport
 {
 public:
-	/// @brief コンストラクタ（WSA初期化を行う / POSIX ではno-op）
+	/// @brief コンストラクタ（WSA 初期化を行う / POSIX では no-op）
 	UdpTransport() = default;
 
 	/// @brief デストラクタ（リソースを解放する）
@@ -64,7 +64,7 @@ public:
 	UdpTransport& operator=(UdpTransport&&) = delete;
 
 	/// @brief ソケットシステムが正常に初期化されたかを返す
-	/// @return 初期化成功ならtrue（POSIX では常にtrue）
+	/// @return 初期化成功なら true（POSIX では常に true）
 	[[nodiscard]]
 	bool isInitialized() const noexcept
 	{
@@ -73,8 +73,8 @@ public:
 
 	/// @brief リッスン中の実際のポート番号を取得する
 	///
-	/// listen(0)でOS自動割り当てされたポートを取得する場合に使用。
-	/// @return ポート番号（バインドしていない場合は0）
+	/// listen(0) で OS が自動で割り当てたポートを知りたいときに使う。
+	/// @return ポート番号（バインドしていない場合は 0）
 	[[nodiscard]]
 	uint16_t getLocalPort() const noexcept
 	{
@@ -94,8 +94,8 @@ public:
 	}
 
 	/// @brief 指定ポートにバインドしてサーバーモードで起動する
-	/// @param port バインドポート番号（0でOS自動割り当て）
-	/// @return 成功すればtrue
+	/// @param port バインドポート番号（0 で OS 自動割り当て）
+	/// @return 成功すれば true
 	bool listen(std::uint16_t port) override
 	{
 		if (!m_wsaGuard.isInitialized()) return false;
@@ -104,7 +104,7 @@ public:
 		m_socket = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 		if (m_socket == INVALID_SOCK) return false;
 
-		/// SO_REUSEADDRを設定（テスト時のポート再利用のため）
+		/// SO_REUSEADDR を設定（テスト時のポート再利用のため）
 		int optVal = 1;
 		::setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR,
 			reinterpret_cast<const char*>(&optVal), sizeof(optVal));
@@ -135,9 +135,9 @@ public:
 	}
 
 	/// @brief 指定ホスト・ポートへのデフォルト送信先を設定する（クライアントモード）
-	/// @param host ホスト名またはIPアドレス
+	/// @param host ホスト名または IP アドレス
 	/// @param port ポート番号
-	/// @return 成功すればtrue
+	/// @return 成功すれば true
 	bool connect(std::string_view host, std::uint16_t port) override
 	{
 		if (!m_wsaGuard.isInitialized()) return false;
@@ -166,7 +166,7 @@ public:
 			return false;
 		}
 
-		/// UDPのconnect()はデフォルト送信先を設定するだけ（実際の接続は確立しない）
+		/// UDP の connect()はデフォルト送信先を設定するだけ（実際の接続は確立しない）
 		if (::connect(m_socket,
 			reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == SOCK_ERR)
 		{
@@ -175,7 +175,7 @@ public:
 			return false;
 		}
 
-		/// クライアントモードでは固定ConnectionIdを使う
+		/// クライアントモードでは固定 ConnectionId を使う
 		const ConnectionId connId = kClientConnectionId;
 
 		{
@@ -193,7 +193,7 @@ public:
 	}
 
 	/// @brief 指定接続を切断する（サーバーモードで特定クライアントを削除）
-	/// @param id 切断する接続ID
+	/// @param id 切断する接続 ID
 	void disconnect(ConnectionId id) override
 	{
 		std::scoped_lock lock(m_mutex);
@@ -235,7 +235,7 @@ public:
 	}
 
 	/// @brief データを送信する
-	/// @param id 送信先接続ID（サーバーモードではクライアントID、クライアントモードでは無視）
+	/// @param id 送信先接続 ID（サーバーモードではクライアント ID、クライアントモードでは無視）
 	/// @param data 送信データ
 	void send(ConnectionId id,
 		const std::vector<std::uint8_t>& data) override
@@ -261,7 +261,7 @@ public:
 			return;
 		}
 
-		/// サーバーモード：接続IDに対応するリモートアドレスを検索してsendto
+		/// サーバーモード：接続 ID に対応するリモートアドレスを検索して sendto
 		for (const auto& [addrKey, connId] : m_remoteClients)
 		{
 			if (connId == id)
@@ -303,8 +303,8 @@ public:
 	}
 
 	/// @brief 指定接続がアクティブか判定する
-	/// @param id 接続ID
-	/// @return 接続中ならtrue
+	/// @param id 接続 ID
+	/// @return 接続中なら true
 	[[nodiscard]]
 	bool isConnected(ConnectionId id) const override
 	{
@@ -332,7 +332,7 @@ public:
 	}
 
 	/// @brief サーバーモードかどうかを返す
-	/// @return サーバーモードならtrue
+	/// @return サーバーモードなら true
 	[[nodiscard]]
 	bool isServerMode() const noexcept
 	{
@@ -340,10 +340,10 @@ public:
 	}
 
 private:
-	/// @brief クライアントモードで使用する固定ConnectionId
+	/// @brief クライアントモードで使用する固定 ConnectionId
 	static constexpr ConnectionId kClientConnectionId = 1;
 
-	/// @brief リモートアドレスキー（MapのKey用）
+	/// @brief リモートアドレスキー（Map の Key 用）
 	struct AddrKey
 	{
 		uint32_t addr{0};   ///< ネットワークバイトオーダーのIPアドレス
@@ -360,7 +360,7 @@ private:
 			return addr == other.addr && port == other.port;
 		}
 
-		/// @brief sockaddr_in からAddrKeyを生成する
+		/// @brief sockaddr_in から AddrKey を生成する
 		[[nodiscard]] static AddrKey fromSockaddr(const sockaddr_in& sa) noexcept
 		{
 			return AddrKey{sa.sin_addr.s_addr, sa.sin_port};
@@ -408,7 +408,7 @@ private:
 
 			if (m_serverMode)
 			{
-				/// サーバーモード：送信元アドレスから接続IDを取得（新規なら登録）
+				/// サーバーモード：送信元アドレスから接続 ID を取得（新規なら登録）
 				const AddrKey key = AddrKey::fromSockaddr(senderAddr);
 				auto it = m_remoteClients.find(key);
 
@@ -441,7 +441,7 @@ private:
 			}
 			else
 			{
-				/// クライアントモード：固定ConnectionIdで受信
+				/// クライアントモード：固定 ConnectionId で受信
 				NetworkMessage msg;
 				msg.sender = kClientConnectionId;
 				msg.header.type = static_cast<uint32_t>(NetworkEvent::DataReceived);

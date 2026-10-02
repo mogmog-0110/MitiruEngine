@@ -95,12 +95,12 @@ struct TextureAtlas
 
 /// @brief ミップマップチェインを生成する
 /// @param source 元テクスチャ
-/// @return ミップマップレベルのリスト（レベル0 = 元画像の半分）
+/// @return ミップマップレベルのリスト（レベル 0 = 元画像の半分）
 [[nodiscard]] inline std::vector<MipLevel> generateMipmaps(const TextureData& source);
 
 /// @brief テクスチャプロセッサー
 /// @details テクスチャのリサイズ・圧縮・ミップマップ生成を行う。
-///          実際のファイルI/Oは外部で行い、ここではデータ処理のみ。
+///          実際のファイル I/O は外部で行い、ここではデータ処理のみ。
 class TextureProcessor : public AssetProcessor
 {
 public:
@@ -119,7 +119,7 @@ public:
 	[[nodiscard]] bool process(const std::string& inputPath,
 							   const std::string& outputPath) override
 	{
-		/// 実際のI/Oはエンジンのイメージローダーに依存するため、
+		/// 実際の I/O はエンジンのイメージローダーに依存するため、
 		/// ここではパスの妥当性のみチェック
 		if (inputPath.empty() || outputPath.empty())
 		{
@@ -168,7 +168,7 @@ private:
 // ---------------------------------------------------------------------------
 
 /// @brief テクスチャアトラスビルダー
-/// @details 複数のテクスチャを1枚のアトラス画像にパッキングする。
+/// @details 複数のテクスチャを 1 枚のアトラス画像にパッキングする。
 ///          シンプルな行ベースのパッキングアルゴリズムを使用する。
 ///
 /// @code
@@ -354,7 +354,7 @@ struct BundleData
 };
 
 /// @brief アセットバンドラー
-/// @details マニフェストに基づいてアセットを1つのバンドルにパッキングする。
+/// @details マニフェストに基づいてアセットを 1 つのバンドルにパッキングする。
 ///          ヘッダー（ファイル数 + オフセットテーブル）+ 連結ファイルデータの形式。
 ///
 /// @code
@@ -455,7 +455,7 @@ public:
 
 	/// @brief 指定パスのファイルサイズを取得する
 	/// @param path ファイルパス
-	/// @return ファイルサイズ（見つからない場合は0）
+	/// @return ファイルサイズ（見つからない場合は 0）
 	[[nodiscard]] std::uint64_t fileSize(const std::string& path) const;
 
 private:

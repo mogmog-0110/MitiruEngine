@@ -1,8 +1,8 @@
 #pragma once
 /// @file ShadowPass3D.hpp
-/// @brief GPU シャドウマップパス（DX11実装付き）
+/// @brief GPU シャドウマップパス（DX11 実装付き）
 ///
-/// @details ライトのビュー射影行列計算と、DX11デプステクスチャ/DSV/SRVの
+/// @details ライトのビュー射影行列計算と、DX11 デプステクスチャ/DSV/SRV の
 ///          ライフサイクル管理を提供する。デプスオンリーレンダーパスは
 ///          `beginShadowRender` / `endShadowRender` で制御する。
 ///
@@ -94,7 +94,7 @@ class ShadowPass3D {
 public:
     ShadowPass3D() = default;
 
-    /// dtor。DX11リソースを解放する
+    /// dtor。DX11 リソースを解放する
     ~ShadowPass3D()
     {
 #ifdef MITIRU_HAS_DX11
@@ -102,7 +102,7 @@ public:
 #endif
     }
 
-    // コピー禁止（ComPtr所有権の明確化）
+    // コピー禁止（ComPtr 所有権の明確化）
     ShadowPass3D(const ShadowPass3D&)            = delete;
     ShadowPass3D& operator=(const ShadowPass3D&) = delete;
     ShadowPass3D(ShadowPass3D&&)                 = default;
@@ -129,7 +129,7 @@ public:
             -m_config.orthoSize, m_config.orthoSize,
             m_config.nearPlane,  m_config.farPlane);
 
-        // OpenGL [-1,1] → D3D [0,1] への Z 再マップ:
+        // OpenGL [-1,1] → D3D [0,1] への Z 再マップ。
         // z_d3d = 0.5 * z_gl + 0.5
         sgc::Mat4f remap = sgc::Mat4f::identity();
         remap.m[2][2] = 0.5f;
@@ -147,9 +147,9 @@ public:
 
     using ComPtr = Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>;
 
-    /// @brief DX11リソースを初期化する
-    /// @param device D3D11デバイス（ShadowPass3Dより長生きする必要がある）
-    /// @return 成功時true、二重初期化時はfalse
+    /// @brief DX11 リソースを初期化する
+    /// @param device D3D11 デバイス（ShadowPass3D より長生きする必要がある）
+    /// @return 成功時 true、二重初期化時は false
     [[nodiscard]] bool init(ID3D11Device* device)
     {
         if (m_initialized) { return false; }
@@ -164,7 +164,7 @@ public:
         return true;
     }
 
-    /// @brief DX11リソースをすべて解放する
+    /// @brief DX11 リソースをすべて解放する
     void shutdown()
     {
         m_depthTexture.Reset();
@@ -179,14 +179,14 @@ public:
     }
 
     /// @brief デプスオンリーレンダーパスを開始する
-    /// @details 前回のRTV/DSV/ビューポート/ラスタライザをキャッシュし、
+    /// @details 前回の RTV/DSV/ビューポート/ラスタライザをキャッシュし、
     ///          シャドウマップへ切り替える。シャドウパスは CULL_NONE を強制し、
     ///          メッシュ winding に依存せず両面ともデプスを書き込む。
     void beginShadowRender(ID3D11DeviceContext* ctx)
     {
         if (!m_initialized || !ctx) { return; }
 
-        // 現在のRTV/DSV/ビューポート/ラスタライザをキャッシュ
+        // 現在の RTV/DSV/ビューポート/ラスタライザをキャッシュ
         ctx->OMGetRenderTargets(1,
             m_savedRTV.GetAddressOf(),
             m_savedDSV.GetAddressOf());
@@ -243,7 +243,7 @@ public:
     }
 
 private:
-    /// @brief デプステクスチャ・DSV・SRVを生成する
+    /// @brief デプステクスチャ・DSV・SRV を生成する
     [[nodiscard]] bool createDepthResources()
     {
         const UINT res = static_cast<UINT>(m_config.resolution);
@@ -278,7 +278,7 @@ private:
         return SUCCEEDED(hr);
     }
 
-    /// @brief デプスオンリーVSとインプットレイアウトを生成する
+    /// @brief デプスオンリー VS とインプットレイアウトを生成する
     [[nodiscard]] bool createDepthShader()
     {
         Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
@@ -315,7 +315,7 @@ private:
         return createLightVPBuffer();
     }
 
-    /// @brief ライトVP定数バッファを生成する
+    /// @brief ライト VP 定数バッファを生成する
     [[nodiscard]] bool createLightVPBuffer()
     {
         D3D11_BUFFER_DESC desc = {};
@@ -339,20 +339,20 @@ private:
             &rd, m_shadowRS.GetAddressOf()));
     }
 
-    /// @brief ライトVP定数バッファを更新する
+    /// @brief ライト VP 定数バッファを更新する
     void updateLightVPBuffer(ID3D11DeviceContext* ctx)
     {
         D3D11_MAPPED_SUBRESOURCE mapped = {};
         HRESULT hr = ctx->Map(m_lightVPCB.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         if (FAILED(hr)) { return; }
-        // sgc::Mat4f は row-major、HLSL の mul(vec, mat) は column-major 期待。
-        // 転置してから upload。
+        // sgc::Mat4f は row-major、HLSL の mul(vec, mat) は column-major を期待する。
+        // 転置してから upload する。
         const auto vpT = m_lightVP.transposed();
         std::memcpy(mapped.pData, &vpT.m[0][0], sizeof(float) * 16);
         ctx->Unmap(m_lightVPCB.Get(), 0);
     }
 
-    // DX11リソース
+    // DX11 リソース
     ID3D11Device*                                    m_device      = nullptr;
     Microsoft::WRL::ComPtr<ID3D11Texture2D>          m_depthTexture;
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView>   m_dsv;
@@ -371,7 +371,7 @@ private:
     D3D11_VIEWPORT                                 m_savedVP = {};
 
 #else // !MITIRU_HAS_DX11
-    // DX11 なし: getShadowSRV() は nullptr を返す（型はvoid*）
+    // DX11 なし: getShadowSRV() は nullptr を返す（型は void*）
 public:
     [[nodiscard]] void* getShadowSRV() const noexcept { return nullptr; }
 private:

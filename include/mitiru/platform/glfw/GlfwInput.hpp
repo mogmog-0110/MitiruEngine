@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 /// @file GlfwInput.hpp
-/// @brief GLFW入力ハンドリング
-/// @details GLFWのコールバックシステムを使用したキーボード・マウス入力管理。
-///          MITIRU_HAS_GLFWが定義されている場合のみコンパイルされる。
+/// @brief GLFW 入力ハンドリング
+/// @details GLFW のコールバックシステムを使用したキーボード・マウス入力管理。
+///          MITIRU_HAS_GLFW が定義されている場合のみコンパイルされる。
 ///
 ///          カーソルキャプチャ: InputState::setCursorCaptured() の値を毎フレーム
 ///          applyCursorCapture() が読み取り、エッジ検出で glfwSetInputMode を
@@ -21,9 +21,9 @@
 namespace mitiru
 {
 
-/// @brief GLFW入力設定
-/// @details GLFW入力処理のオプションパラメータを保持する。
-///          実際のGLFWライブラリに依存せず、テストで使用可能。
+/// @brief GLFW 入力設定
+/// @details GLFW 入力処理のオプションパラメータを保持する。
+///          実際の GLFW ライブラリに依存せず、テストで使用可能。
 struct GlfwInputConfig
 {
 	bool enableKeyboard = true;          ///< キーボード入力の有効化
@@ -40,8 +40,8 @@ struct GlfwInputConfig
 		return GlfwInputConfig{};
 	}
 
-	/// @brief FPS向け設定を取得する（生マウスモーション有効）
-	/// @return FPS向け入力設定
+	/// @brief FPS 向け設定を取得する（生マウスモーション有効）
+	/// @return FPS 向け入力設定
 	[[nodiscard]] static GlfwInputConfig fps() noexcept
 	{
 		GlfwInputConfig config;
@@ -51,8 +51,8 @@ struct GlfwInputConfig
 	}
 };
 
-/// @brief GLFWジョイスティック状態
-/// @details GLFWで取得した1つのジョイスティックの状態を保持する。
+/// @brief GLFW ジョイスティック状態
+/// @details GLFW で取得した 1 つのジョイスティックの状態を保持する。
 struct GlfwJoystickState
 {
 	/// @brief 最大軸数
@@ -75,7 +75,7 @@ struct GlfwJoystickState
 
 	/// @brief 指定ボタンが今フレームで押されたか
 	/// @param index ボタンインデックス
-	/// @return 今フレーム押下かつ前フレーム非押下ならtrue
+	/// @return 今フレーム押下かつ前フレーム非押下なら true
 	[[nodiscard]] bool isButtonJustPressed(int index) const noexcept
 	{
 		if (index < 0 || index >= MAX_BUTTONS)
@@ -88,7 +88,7 @@ struct GlfwJoystickState
 
 	/// @brief 指定ボタンが今フレームで離されたか
 	/// @param index ボタンインデックス
-	/// @return 今フレーム非押下かつ前フレーム押下ならtrue
+	/// @return 今フレーム非押下かつ前フレーム押下なら true
 	[[nodiscard]] bool isButtonJustReleased(int index) const noexcept
 	{
 		if (index < 0 || index >= MAX_BUTTONS)
@@ -126,8 +126,8 @@ struct GlfwScrollState
 namespace mitiru
 {
 
-/// @brief GLFW入力ハンドラー
-/// @details GLFWウィンドウにコールバックを登録してキーボード・マウス入力を管理する。
+/// @brief GLFW 入力ハンドラー
+/// @details GLFW ウィンドウにコールバックを登録してキーボード・マウス入力を管理する。
 ///
 /// @code
 /// GlfwInput input(glfwWindow, GlfwInputConfig::defaults());
@@ -141,7 +141,7 @@ class GlfwInput
 {
 public:
 	/// @brief コンストラクタ
-	/// @param window GLFWウィンドウハンドル
+	/// @param window GLFW ウィンドウハンドル
 	/// @param config 入力設定
 	explicit GlfwInput(GLFWwindow* window,
 		const GlfwInputConfig& config = GlfwInputConfig::defaults())
@@ -205,7 +205,7 @@ public:
 	}
 
 	/// @brief ジョイスティック状態をポーリングする
-	/// @details GLFWのジョイスティックAPIを使用して状態を更新する。
+	/// @details GLFW のジョイスティック API を使用して状態を更新する。
 	void pollJoysticks()
 	{
 		if (!m_config.enableJoystick)
@@ -303,12 +303,12 @@ private:
 		m_captureActive = wantCapture;
 	}
 
-	/// @brief GLFWキーコードをエンジン内部のVKベースキーコードに変換する
-	/// @param glfwKey GLFWキーコード
-	/// @return VKベースキーコード（変換不可の場合は-1）
+	/// @brief GLFW キーコードをエンジン内部の VK ベースキーコードに変換する
+	/// @param glfwKey GLFW キーコード
+	/// @return VK ベースキーコード（変換不可の場合は-1）
 	[[nodiscard]] static int glfwKeyToEngine(int glfwKey) noexcept
 	{
-		/// アルファベット・数字・スペースはGLFWとVKで一致する
+		/// アルファベット・数字・スペースは GLFW と VK で一致する
 		if ((glfwKey >= 'A' && glfwKey <= 'Z') ||
 			(glfwKey >= '0' && glfwKey <= '9') ||
 			glfwKey == ' ')
@@ -359,7 +359,7 @@ private:
 		case GLFW_KEY_F11:         return 122;
 		case GLFW_KEY_F12:         return 123;
 
-		/// OEMキー（ScriptDemo等で使用）
+		/// OEM キー（ScriptDemo 等で使用）
 		case GLFW_KEY_EQUAL:       return 0xBB; // VK_OEM_PLUS (+/=)
 		case GLFW_KEY_MINUS:       return 0xBD; // VK_OEM_MINUS (-/_)
 		case GLFW_KEY_SLASH:       return 0xBF; // VK_OEM_2 (/)

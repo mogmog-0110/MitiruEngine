@@ -2,7 +2,7 @@
 
 /// @file INetworkTransport.hpp
 /// @brief ネットワーク転送層インターフェース
-/// @details TCP/UDP等のトランスポート層を抽象化する。
+/// @details TCP/UDP 等のトランスポート層を抽象化する。
 ///          具象クラスで実際のソケット通信やローカル転送を実装する。
 
 #include <mitiru/network/NetworkTypes.hpp>
@@ -29,26 +29,26 @@ public:
 	virtual bool listen(std::uint16_t port) = 0;
 
 	/// @brief リモートホストに接続する
-	/// @param host ホスト名またはIPアドレス
+	/// @param host ホスト名または IP アドレス
 	/// @param port 接続先ポート番号
 	/// @return 成功なら true
 	virtual bool connect(std::string_view host, std::uint16_t port) = 0;
 
 	/// @brief 指定接続を切断する
-	/// @param id 切断する接続ID
+	/// @param id 切断する接続 ID
 	virtual void disconnect(ConnectionId id) = 0;
 
 	/// @brief データを送信する
-	/// @param id 送信先の接続ID
+	/// @param id 送信先の接続 ID
 	/// @param data 送信データ
 	virtual void send(ConnectionId id, const std::vector<std::uint8_t>& data) = 0;
 
 	/// @brief 受信済みメッセージを取得する
-	/// @return 受信メッセージの一覧（キューが空なら空のvector）
+	/// @return 受信メッセージの一覧（キューが空なら空の vector）
 	[[nodiscard]] virtual std::vector<NetworkMessage> poll() = 0;
 
 	/// @brief 指定接続がアクティブか判定する
-	/// @param id 接続ID
+	/// @param id 接続 ID
 	/// @return 接続中なら true
 	[[nodiscard]] virtual bool isConnected(ConnectionId id) const = 0;
 

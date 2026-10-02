@@ -24,7 +24,7 @@
 namespace mitiru::audio
 {
 
-/// @brief FM音色プリセット。mitiru_mml::opna_presetsへのエイリアス
+/// @brief FM 音色プリセット。mitiru_mml::opna_presets へのエイリアス
 namespace fm_presets = mitiru_mml::opna_presets;
 
 } // namespace mitiru::audio

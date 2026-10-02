@@ -1,11 +1,11 @@
 ﻿#pragma once
 
 /// @file VulkanSwapChain.hpp
-/// @brief Vulkanスワップチェーン ユニットテスト用スタブ
-/// @details ISwapChainインターフェースのユニットテスト専用実装。
-///          実際のスワップチェーン管理（VkSwapchainKHR生成・フレームバッファ・
-///          イメージビュー・プレゼント）はすべてVulkanDeviceが担当する。
-///          MITIRU_HAS_VULKANが定義されている場合のみコンパイルされる。
+/// @brief Vulkan スワップチェーン ユニットテスト用スタブ
+/// @details ISwapChain インターフェースのユニットテスト専用実装。
+///          実際のスワップチェーン管理（VkSwapchainKHR 生成・フレームバッファ・
+///          イメージビュー・プレゼント）はすべて VulkanDevice が行う。
+///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。
 
 #ifdef MITIRU_HAS_VULKAN
 
@@ -16,7 +16,7 @@
 namespace mitiru::gfx
 {
 
-/// @brief Vulkan用ダミーレンダーターゲット
+/// @brief Vulkan 用ダミーレンダーターゲット
 /// @details スワップチェーンのバックバッファとして返されるスタブ実装。
 class VulkanRenderTarget final : public IRenderTarget
 {
@@ -92,7 +92,7 @@ public:
 	}
 
 	/// @brief バックバッファを画面に表示する（テスト用ノーオペレーション）
-	/// @note 実際のプレゼント処理はVulkanDevice::endFrame()が行う
+	/// @note 実際のプレゼント処理は VulkanDevice::endFrame() が行う
 	void present() override
 	{
 	}
@@ -100,7 +100,7 @@ public:
 	/// @brief スワップチェーンのサイズを変更し、再作成フラグを立てる
 	/// @param width 新しい幅（ピクセル）
 	/// @param height 新しい高さ（ピクセル）
-	/// @note 実際のスワップチェーン再作成はVulkanDevice::recreateSwapChain()が行う
+	/// @note 実際のスワップチェーン再作成は VulkanDevice::recreateSwapChain() が行う
 	void resize(int width, int height) override
 	{
 		m_backBuffer.updateSize(width, height);
@@ -115,7 +115,7 @@ public:
 	}
 
 	/// @brief スワップチェーンの再作成が必要か確認する
-	/// @return ウィンドウリサイズ等で再作成が必要な場合true
+	/// @return ウィンドウリサイズ等で再作成が必要な場合 true
 	[[nodiscard]] bool needsRecreation() const noexcept
 	{
 		return m_needsRecreation;
@@ -134,7 +134,7 @@ public:
 	/// @param surface サーフェス（未使用）
 	/// @param width 新しい幅（ピクセル）
 	/// @param height 新しい高さ（ピクセル）
-	/// @note 実際の再作成処理はVulkanDeviceが行う。このメソッドはフラグのクリアのみ行う。
+	/// @note 実際の再作成処理は VulkanDevice が行う。このメソッドはフラグのクリアのみ行う。
 	void recreate(
 		VkDevice /*device*/,
 		VkPhysicalDevice /*physDevice*/,

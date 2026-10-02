@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file OzzAnimationBridge.hpp
-/// @brief Ozz-Animationブリッジ
-/// @details Ozz-Animationライブラリが利用可能な場合はリアル実装に委譲し、
-///          利用不可の場合は単位行列を返すNullスタブで動作する。
-///          スケルトン読込・アニメーション再生・ブレンドを統一インターフェースで提供する。
+/// @brief Ozz-Animation ブリッジ
+/// @details Ozz-Animation ライブラリが利用可能な場合は実際の実装に処理を委ね、
+///          利用できない場合は単位行列を返す Null スタブとして動作する。
+///          スケルトンの読み込み・アニメーションの再生・ブレンドを統一したインターフェースで提供する。
 ///
 /// @code
 /// auto skeleton = std::make_shared<mitiru::animation::OzzSkeleton>();
@@ -16,7 +16,7 @@
 /// mitiru::animation::OzzAnimationSampler sampler;
 /// sampler.setSkeleton(skeleton);
 /// sampler.play(anim);
-/// // 毎フレーム:
+/// // 毎フレーム
 /// sampler.update(dt);
 /// auto transforms = sampler.getWorldTransforms();
 /// @endcode
@@ -36,6 +36,8 @@
 #include <ozz/animation/runtime/skeleton.h>
 #include <ozz/animation/runtime/blending_job.h>
 #include <ozz/animation/runtime/local_to_model_job.h>
+#include <ozz/base/containers/vector.h>
+#include <ozz/base/span.h>
 #include <ozz/base/io/archive.h>
 #include <ozz/base/io/stream.h>
 #include <ozz/base/maths/soa_transform.h>
@@ -45,7 +47,7 @@
 namespace mitiru::animation
 {
 
-/// @brief 4x4行列（列優先、スキニング行列用）
+/// @brief 4x4 行列（列優先、スキニング行列用）
 struct Mat4
 {
 	std::array<float, 16> m = {
@@ -62,9 +64,9 @@ struct Mat4
 	}
 };
 
-/// @brief 2つの行列を要素ごとに線形補間する（weight=0でa、1でb）
-/// @details Ozz実装は関節空間でBlendingJobを使うためこの関数を経由しないが、
-///          Null実装はポーズデータを持たないため取得済みの行列同士を直接混ぜる。
+/// @brief 2 つの行列を要素ごとに線形補間する（weight=0 で a、1 で b）
+/// @details Ozz 実装は関節空間で BlendingJob を使うため、この関数を経由しないが、
+///          Null 実装はポーズデータを持たないため、取得済みの行列同士を直接混ぜる。
 [[nodiscard]] inline Mat4 lerpMat4(const Mat4& a, const Mat4& b, float weight) noexcept
 {
 	Mat4 result;
@@ -79,14 +81,14 @@ struct Mat4
 // OzzSkeleton
 // ═════════════════════════════════════════════════════════════
 
-/// @brief Ozz-Animationスケルトンのラッパー
-/// @details ジョイント階層を保持し、ジョイント数・名前の照会を提供する。
+/// @brief Ozz-Animation スケルトンのラッパー
+/// @details ジョイント階層を保持し、ジョイント数と名前を照会できる。
 class OzzSkeleton
 {
 public:
 	/// @brief ファイルからスケルトンを読み込む
-	/// @param path .ozzスケルトンファイルパス
-	/// @return 成功なら true
+	/// @param path.ozz スケルトンファイルのパス
+	/// @return 成功した場合は true
 	bool loadFromFile([[maybe_unused]] std::string_view path)
 	{
 #ifdef MITIRU_HAS_OZZ
@@ -103,7 +105,7 @@ public:
 	}
 
 	/// @brief ジョイント数を取得する
-	/// @return ジョイント数（未読込時は0）
+	/// @return ジョイント数（未読み込みの場合は 0）
 	[[nodiscard]] int jointCount() const noexcept
 	{
 #ifdef MITIRU_HAS_OZZ
@@ -113,8 +115,8 @@ public:
 #endif
 	}
 
-	/// @brief 指定インデックスのジョイント名を取得する
-	/// @param index ジョイントインデックス
+	/// @brief 指定したインデックスのジョイント名を取得する
+	/// @param index ジョイントのインデックス
 	/// @return ジョイント名（範囲外の場合は空文字列）
 	[[nodiscard]] std::string jointName([[maybe_unused]] int index) const
 	{
@@ -133,7 +135,7 @@ public:
 	[[nodiscard]] bool isLoaded() const noexcept { return m_loaded; }
 
 #ifdef MITIRU_HAS_OZZ
-	/// @brief 内部Ozzスケルトンへの参照を取得する（上級者向け）
+	/// @brief 内部の Ozz スケルトンへの参照を取得する（上級者向け）
 	[[nodiscard]] const ozz::animation::Skeleton& raw() const noexcept
 	{
 		return m_skeleton;
@@ -151,14 +153,14 @@ private:
 // OzzAnimation
 // ═════════════════════════════════════════════════════════════
 
-/// @brief Ozz-Animationアニメーションクリップのラッパー
-/// @details 単一のアニメーションクリップを保持し、再生時間の照会を提供する。
+/// @brief Ozz-Animation アニメーションクリップのラッパー
+/// @details 単一のアニメーションクリップを保持し、再生時間を照会できる。
 class OzzAnimation
 {
 public:
 	/// @brief ファイルからアニメーションを読み込む
-	/// @param path .ozzアニメーションファイルパス
-	/// @return 成功なら true
+	/// @param path.ozz アニメーションファイルのパス
+	/// @return 成功した場合は true
 	bool loadFromFile([[maybe_unused]] std::string_view path)
 	{
 #ifdef MITIRU_HAS_OZZ
@@ -175,7 +177,7 @@ public:
 	}
 
 	/// @brief アニメーションの再生時間（秒）を取得する
-	/// @return 再生時間（未読込時は0）
+	/// @return 再生時間（未読み込みの場合は 0）
 	[[nodiscard]] float duration() const noexcept
 	{
 #ifdef MITIRU_HAS_OZZ
@@ -189,7 +191,7 @@ public:
 	[[nodiscard]] bool isLoaded() const noexcept { return m_loaded; }
 
 #ifdef MITIRU_HAS_OZZ
-	/// @brief 内部Ozzアニメーションへの参照を取得する（上級者向け）
+	/// @brief 内部の Ozz アニメーションへの参照を取得する（上級者向け）
 	[[nodiscard]] const ozz::animation::Animation& raw() const noexcept
 	{
 		return m_animation;
@@ -207,9 +209,9 @@ private:
 // IOzzAnimationSampler インターフェース
 // ═════════════════════════════════════════════════════════════
 
-/// @brief アニメーションサンプラーインターフェース
+/// @brief アニメーションサンプラーのインターフェース
 /// @details スケルトンに対してアニメーションを再生し、
-///          ローカル/ワールドトランスフォームを取得する。
+///          ローカル / ワールドトランスフォームを取得する。
 class IOzzAnimationSampler
 {
 public:
@@ -227,7 +229,7 @@ public:
 	virtual void stop() = 0;
 
 	/// @brief 毎フレーム更新する
-	/// @param dt 前フレームからの経過時間（秒）
+	/// @param dt 前のフレームからの経過時間（秒）
 	virtual void update(float dt) = 0;
 
 	/// @brief ローカル空間のトランスフォーム行列を取得する
@@ -240,7 +242,7 @@ public:
 
 	/// @brief 他のサンプラーとブレンドする
 	/// @param other ブレンド先のサンプラー
-	/// @param weight ブレンド重み [0.0=this, 1.0=other]
+	/// @param weight ブレンドの重み [0.0=this, 1.0=other]
 	virtual void blendWith(const IOzzAnimationSampler& other, float weight) = 0;
 
 	/// @brief 現在の再生時刻を取得する
@@ -251,12 +253,12 @@ public:
 };
 
 // ═════════════════════════════════════════════════════════════
-// Ozz実装（ライブラリ利用可能時）
+// Ozz 実装（ライブラリ利用可能時）
 // ═════════════════════════════════════════════════════════════
 
 #ifdef MITIRU_HAS_OZZ
 
-/// @brief Ozz-Animationを使ったサンプラー実装
+/// @brief Ozz-Animation を使ったサンプラーの実装
 class OzzAnimationSampler final : public IOzzAnimationSampler
 {
 public:
@@ -327,7 +329,7 @@ public:
 
 	[[nodiscard]] std::vector<Mat4> getLocalTransforms() const override
 	{
-		// SoAからAoSへの変換は複雑なため、モデル空間行列で代用
+		// SoA から AoS への変換は複雑なため、モデル空間行列で代用
 		return getWorldTransforms();
 	}
 
@@ -338,7 +340,7 @@ public:
 		for (const auto& model : m_models)
 		{
 			Mat4 mat;
-			// ozz::math::Float4x4 の列を Mat4 に変換
+			// ozz::math::Float4x4 の列を Mat4 に変換する
 			for (int col = 0; col < 4; ++col)
 			{
 				ozz::math::SimdFloat4 column = model.cols[col];
@@ -356,9 +358,9 @@ public:
 
 	void blendWith(const IOzzAnimationSampler& other, float weight) override
 	{
-		// other は同じ骨格を共有する OzzAnimationSampler でなければ関節空間の
-		// SoATransform を取り出せない（インターフェース越しには公開していない）。
-		// 型が違う／関節数が食い違う場合はブレンド未対応として無視する。
+		// other が同じ骨格を共有する OzzAnimationSampler でなければ、関節空間の
+		// SoATransform を取得できない（インターフェース越しには公開していない）。
+		// 型が違う／関節数が食い違う場合は、ブレンド未対応として無視する。
 		const auto* otherImpl = dynamic_cast<const OzzAnimationSampler*>(&other);
 		if (!otherImpl || !m_skeleton || !m_skeleton->isLoaded() ||
 		    m_locals.size() != otherImpl->m_locals.size())
@@ -378,7 +380,7 @@ public:
 		blendJob.output = ozz::make_span(m_locals);
 		if (!blendJob.Run()) return;
 
-		// ブレンド後のローカル姿勢をワールド行列へ反映しないと getWorldTransforms() が古い値のまま
+		// ブレンド後のローカル姿勢をワールド行列へ反映しないと、getWorldTransforms() が古い値のままになる
 		ozz::animation::LocalToModelJob ltmJob;
 		ltmJob.skeleton = &m_skeleton->raw();
 		ltmJob.input = ozz::make_span(m_locals);
@@ -402,12 +404,12 @@ private:
 #endif // MITIRU_HAS_OZZ
 
 // ═════════════════════════════════════════════════════════════
-// Null実装（ライブラリ不在時のスタブ）
+// Null 実装（ライブラリ不在時のスタブ）
 // ═════════════════════════════════════════════════════════════
 
 /// @brief 単位行列を返すだけのスタブサンプラー
-/// @details Ozz-Animationが利用できない環境で使用する。
-///          すべてのトランスフォームは単位行列を返す。
+/// @details Ozz-Animation が利用できない環境で使用する。
+///          すべてのトランスフォームで単位行列を返す。
 class NullOzzAnimationSampler final : public IOzzAnimationSampler
 {
 public:
@@ -452,7 +454,7 @@ public:
 
 	void blendWith(const IOzzAnimationSampler& other, float weight) override
 	{
-		// Null実装は関節ごとのポーズを持たないため、取得済みの行列同士をCPUで線形補間する
+		// Null 実装は関節ごとのポーズを持たないため、取得済みの行列同士を CPU で線形補間する
 		const auto a = getWorldTransforms();
 		const auto b = other.getWorldTransforms();
 		const std::size_t count = std::min(a.size(), b.size());
@@ -468,7 +470,7 @@ public:
 	[[nodiscard]] bool isPlaying() const noexcept override { return m_playing; }
 
 private:
-	/// @brief スケルトンのジョイント数分の単位行列を生成する
+	/// @brief スケルトンのジョイント数と同じ数の単位行列を生成する
 	[[nodiscard]] std::vector<Mat4> makeIdentityMatrices() const
 	{
 		const int count = m_skeleton ? m_skeleton->jointCount() : 0;
@@ -488,7 +490,7 @@ private:
 // ═════════════════════════════════════════════════════════════
 
 /// @brief 環境に応じたアニメーションサンプラーを生成する
-/// @return Ozz利用可能時はOzzAnimationSampler、それ以外はNullOzzAnimationSampler
+/// @return Ozz が利用可能な場合は OzzAnimationSampler、それ以外は NullOzzAnimationSampler
 [[nodiscard]] inline std::unique_ptr<IOzzAnimationSampler> createAnimationSampler()
 {
 #ifdef MITIRU_HAS_OZZ

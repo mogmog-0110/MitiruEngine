@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file WebGPUBuffer.hpp
-/// @brief WebGPU GPUバッファ実装
-/// @details wgpuDeviceCreateBufferによるバッファをRAIIで管理する。
-///          頂点バッファ・インデックスバッファ・ユニフォームバッファに対応。
+/// @brief WebGPU の GPU バッファ実装
+/// @details wgpuDeviceCreateBuffer で作ったバッファを RAII で管理する。
+///          頂点バッファ・インデックスバッファ・ユニフォームバッファに対応する。
 
 #if defined(__EMSCRIPTEN__) && defined(MITIRU_HAS_WEBGPU)
 
@@ -18,18 +18,18 @@
 namespace mitiru::gfx
 {
 
-/// @brief WebGPU用GPUバッファ実装
-/// @details WGPUBufferをRAIIで管理する。
-///          デストラクタでwgpuBufferReleaseを呼び出す。
+/// @brief WebGPU 用 GPU バッファ実装
+/// @details WGPUBuffer を RAII で管理する。
+///          デストラクタで wgpuBufferRelease を呼び出す。
 class WebGPUBuffer final : public IBuffer
 {
 public:
     /// @brief コンストラクタ
-    /// @param device WebGPUデバイスハンドル
+    /// @param device WebGPU デバイスハンドル
     /// @param bufferType バッファ種別（Vertex / Index / Constant）
     /// @param sizeBytes バッファサイズ（バイト）
     /// @param dynamic 動的更新が必要か
-    /// @param initialData 初期データ（nullptrで初期化なし）
+    /// @param initialData 初期データ（nullptr なら初期化しない）
     WebGPUBuffer(
         WGPUDevice device,
         BufferType bufferType,
@@ -122,7 +122,7 @@ public:
     [[nodiscard]] std::uint32_t size() const noexcept override { return m_sizeBytes; }
 
     /// @brief バッファデータを更新する（動的バッファ用）
-    /// @param queue WebGPUキュー
+    /// @param queue WebGPU キュー
     /// @param data 書き込むデータ
     /// @param sizeBytes データサイズ（バイト）
     /// @param offset オフセット（バイト）
@@ -132,7 +132,7 @@ public:
         wgpuQueueWriteBuffer(queue, m_buffer, offset, data, sizeBytes);
     }
 
-    /// @brief WGPUBufferハンドルを取得する
+    /// @brief WGPUBuffer ハンドルを取得する
     [[nodiscard]] WGPUBuffer handle() const noexcept { return m_buffer; }
 
     /// @brief バッファ種別を取得する

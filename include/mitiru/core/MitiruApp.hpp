@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file MitiruApp.hpp
-/// @brief Mitiruアプリケーションクラス
-/// @details ウィンドウ・GPUデバイス・フレームタイマーを統合し、
+/// @brief Mitiru アプリケーションクラス
+/// @details ウィンドウ・GPU デバイス・フレームタイマーを統合し、
 ///          IGameScene を駆動するゲームループを提供する。
 
 #include <memory>
@@ -56,12 +56,12 @@ public:
 	virtual void onShutdown() = 0;
 };
 
-/// @brief Mitiruアプリケーションクラス
-/// @details ウィンドウ、GPUデバイス、フレームタイマーを統合し、
+/// @brief Mitiru アプリケーションクラス
+/// @details ウィンドウ、GPU デバイス、フレームタイマーを統合し、
 ///          IGameScene を駆動するメインループを提供する。
 ///
 /// @code
-/// class MyScene : public mitiru::IGameScene { ... };
+/// class MyScene : public mitiru::IGameScene {... };
 ///
 /// mitiru::AppConfig config;
 /// config.windowTitle = "My Game";
@@ -96,7 +96,7 @@ public:
 	/// @brief アプリケーションを初期化する
 	/// @return 成功時 true
 	/// @details WindowFactory でウィンドウを生成し、
-	///          GfxFactory でGPUデバイスを生成する。
+	///          GfxFactory で GPU デバイスを生成する。
 	///          外部から setWindow/setDevice で注入済みの場合はスキップする。
 	[[nodiscard]] bool init()
 	{
@@ -174,7 +174,7 @@ public:
 		return m_window;
 	}
 
-	/// @brief GPUデバイスを取得する
+	/// @brief GPU デバイスを取得する
 	/// @return IDevice へのポインタ（未初期化時は nullptr）
 	[[nodiscard]] gfx::IDevice* getDevice() const noexcept
 	{
@@ -209,7 +209,7 @@ public:
 		m_window = window;
 	}
 
-	/// @brief GPUデバイスを外部から注入する（テスト用）
+	/// @brief GPU デバイスを外部から注入する（テスト用）
 	/// @param device IDevice へのポインタ（所有権は呼び出し元が保持）
 	void setDevice(gfx::IDevice* device) noexcept
 	{

@@ -7,12 +7,12 @@
 /// append-only binary file に書き出し、後で `mitiru::replay::Player` から
 /// 同じ列を再生できるようにする。
 ///
-/// **File format (v5、envTag 追記)**:
+/// **File format (v6、入力を前フレームとの差分で詰める)**:
 ///
 /// @code
-///   ヘッダー (104 byte、v5 で envTag 追加):
+///   ヘッダー (104 byte、v5 と同じ):
 ///       char[4]  magic            = "MTRR"          ; off 0
-///       uint32_t version          = 5               ; off 4 (旧 v4 も読める、後述)
+///       uint32_t version          = 6               ; off 4 (v5 / v4 も読める、後述)
 ///       uint32_t frameSize        = sizeof(InputSnapshot) ; off 8
 ///       uint32_t frameCount       = total frames    ; off 12 (seek-back at close)
 ///       uint64_t rngSeed          = recording seed   ; off 16
@@ -20,13 +20,20 @@
 ///       uint64_t abiVersion       = kWireApiVersion (数値 + build 指紋) ; off 32 (v21+ で記録。旧録画は 0 = 不明)
 ///       char[64] envTag           = 記録環境の自由記述 (例 "dx12|NVIDIA GeForce RTX 5070 Ti|x64") ; off 40 (v5+。null 終端、余りは 0 埋め)
 ///
-///   frame record (variable, repeated):
+///   frame record (v6、variable, repeated):
 ///       uint32_t frameIdx
-///       uint8_t  payload[frameSize]   ; raw InputSnapshot bytes
+///       uint32_t payloadLen           ; == frameSize なら生の InputSnapshot、それ以外は zstd
+///       uint8_t  payload[payloadLen]  ; zstd(InputSnapshot XOR 前フレームの InputSnapshot)。初回の前は 0
 ///       uint32_t stateLen             ; bytes of trailing state blob (0 = none)
 ///       uint8_t  state[stateLen]      ; caller-supplied game-state blob/hash
-///       uint32_t checksum             ; fnv1a-32 over [frameIdx | payload | stateLen | state]
+///       uint32_t checksum             ; fnv1a-32 over [frameIdx | 復元した InputSnapshot | stateLen | state]
+///
+///   frame record (v5 / v4): payloadLen が無く、payload は常に生の InputSnapshot (frameSize byte)。
 /// @endcode
+///
+/// InputSnapshot (8.6 KB) は 1 フレームでほとんど変わらないので、前フレームとの XOR はほぼ 0 になり
+/// zstd で数十 byte に縮む。checksum は復元後の中身で取るので、符号化と復号の食い違いも検出する。
+/// zstd の無い構成で書くと payload は常に生になる (読める)。zstd の無い構成で圧縮済みの v6 は読めない。
 ///
 /// v2 → v3 は後方互換なし (frame record に stateLen + state を追加した)。
 /// v2/v1 file は version mismatch で graceful reject (再録画前提)。
@@ -34,6 +41,7 @@
 /// v4 → v5 は header 末尾に envTag を足しただけで frame record layout は不変なので、
 /// `Player::open` は version 4 (40 byte header、envTag 無し) も引き続き読める
 /// (`kHeaderBytesV4` で分岐)。v4 録画の `recordedEnvTag()` は空文字を返す。
+/// v5 → v6 は header が同じで、frame record の payload の詰め方だけが違う。
 ///
 /// **ABI 不一致録画の拒否**: ABI bump で InputSnapshot のサイズが変わると header の
 /// frameSize が現 sizeof(InputSnapshot) と一致せず、Player::open が FrameSizeMismatch で
@@ -67,8 +75,11 @@
 #include <fstream>
 #include <string>
 
+#include <vector>
+
 #include <mitiru/debug/TracyIntegration.hpp>
 #include <mitiru/module/ModuleApi.hpp>
+#include <mitiru/util/ZstdContext.hpp>
 
 namespace mitiru::replay
 {
@@ -79,19 +90,22 @@ constexpr char        kMagic[4]      = {'M', 'T', 'R', 'R'};
 /// @brief recorder/player 共通の format version
 /// @details v3 → v4: InputSnapshot に rngSeed が増えて frameSize が変わった。
 ///          v4 → v5: header 末尾に envTag[64] を追記した (frame record は不変)。
-///          旧 file は version / frameSize mismatch で graceful reject (再録画前提)。
-constexpr std::uint32_t kFormatVersion   = 5;
+///          v5 → v6: InputSnapshot を前フレームとの XOR + zstd で書く (header は不変)。
+///          v3 以前は version / frameSize mismatch で graceful reject (再録画前提)。
+constexpr std::uint32_t kFormatVersion   = 6;
+/// @brief `Player::open` が引き続き読める、入力を生で書いていた format (header 104 byte)
+constexpr std::uint32_t kFormatVersionV5 = 5;
 /// @brief `Player::open` が引き続き読める旧 format (envTag 無し、header 40 byte)
 constexpr std::uint32_t kFormatVersionV4 = 4;
 
-/// @brief recorder/player 共通の header byte size (v5: 104 bytes)
+/// @brief recorder/player 共通の header byte size (v5 / v6: 104 bytes)
 constexpr std::size_t   kHeaderBytes     = 104;
 /// @brief v4 file の header byte size (envTag が無い分だけ短い)
 constexpr std::size_t   kHeaderBytesV4   = 40;
 /// @brief envTag の byte 数 (null 終端込み、余りは 0 埋め)
 constexpr std::size_t   kEnvTagBytes     = 64;
 
-/// @brief header field offsets (single source of truth, read + write 共有)
+/// @brief header field の offset (read と write で共有する唯一の定義元)
 constexpr std::size_t   kOffMagic      = 0;
 constexpr std::size_t   kOffVersion    = 4;
 constexpr std::size_t   kOffFrameSize  = 8;
@@ -101,7 +115,7 @@ constexpr std::size_t   kOffRecordedAt = 24;
 constexpr std::size_t   kOffAbiVersion = 32;  ///< 記録時の wire version (指紋入り、0 = 不明)。診断用
 constexpr std::size_t   kOffEnvTag     = 40;  ///< 記録環境の自由記述 (v5+ のみ、v4 file には存在しない)
 
-/// @brief fnv1a-32 starting seed (single source of truth)
+/// @brief fnv1a-32 の初期 seed (唯一の定義元)
 constexpr std::uint32_t kFnvSeed  = 0x811c9dc5u;
 constexpr std::uint32_t kFnvPrime = 0x01000193u;
 
@@ -156,6 +170,10 @@ public:
 		}
 
 		m_rngSeed       = rngSeed;
+		m_prevSnap.assign(sizeof(module::InputSnapshot), std::uint8_t{0});
+		m_xor.assign(sizeof(module::InputSnapshot), std::uint8_t{0});
+		m_packed.assign(sizeof(module::InputSnapshot), std::uint8_t{0});
+		m_zstd.open();
 		m_recordedAtMs  = static_cast<std::uint64_t>(
 			std::chrono::duration_cast<std::chrono::milliseconds>(
 				std::chrono::system_clock::now().time_since_epoch()).count());
@@ -216,21 +234,29 @@ public:
 		// 通らないので no-op と同義。Tracy 無効ビルドでは tagMtrrFrame 自体が no-op)。
 		debug::TracyHelper::tagMtrrFrame(frameIdx);
 
-		// レイアウト: [frameIdx u32][payload InputSnapshot][stateLen u32][state][checksum u32]
+		// レイアウト: [frameIdx u32][payloadLen u32][payload][stateLen u32][state][checksum u32]
 		constexpr std::size_t kPayloadBytes = sizeof(module::InputSnapshot);
-		std::uint8_t          head[sizeof(std::uint32_t) + kPayloadBytes];
-		std::memcpy(head, &frameIdx, sizeof(frameIdx));
-		std::memcpy(head + sizeof(frameIdx), &snap, kPayloadBytes);
+		const auto* raw = reinterpret_cast<const std::uint8_t*>(&snap);
 
-		// head → stateLen field → state バイト列 の順で rolling checksum を取る。
-		std::uint32_t checksum = fnv1a32(head, sizeof(head));
+		// checksum は v5 と同じく frameIdx → 復元後の InputSnapshot → stateLen → state で取る。
+		std::uint32_t checksum = fnv1a32(&frameIdx, sizeof(frameIdx));
+		checksum = fnv1aAppend(checksum, raw, kPayloadBytes);
 		checksum = fnv1aAppend(checksum, &stateLen, sizeof(stateLen));
 		if (stateLen > 0)
 		{
 			checksum = fnv1aAppend(checksum, stateBlob, stateLen);
 		}
 
-		m_out.write(reinterpret_cast<const char*>(head), sizeof(head));
+		for (std::size_t i = 0; i < kPayloadBytes; ++i) { m_xor[i] = static_cast<std::uint8_t>(raw[i] ^ m_prevSnap[i]); }
+		std::memcpy(m_prevSnap.data(), raw, kPayloadBytes);
+		std::uint32_t        payloadLen = static_cast<std::uint32_t>(
+			m_zstd.compress(m_xor.data(), kPayloadBytes, m_packed.data(), kPayloadBytes - 1));
+		const std::uint8_t*  payload    = m_packed.data();
+		if (payloadLen == 0) { payloadLen = static_cast<std::uint32_t>(kPayloadBytes); payload = raw; }
+
+		m_out.write(reinterpret_cast<const char*>(&frameIdx), sizeof(frameIdx));
+		m_out.write(reinterpret_cast<const char*>(&payloadLen), sizeof(payloadLen));
+		m_out.write(reinterpret_cast<const char*>(payload), payloadLen);
 		m_out.write(reinterpret_cast<const char*>(&stateLen), sizeof(stateLen));
 		if (stateLen > 0)
 		{
@@ -243,7 +269,7 @@ public:
 		return true;
 	}
 
-	/// @brief flush + close. idempotent.
+	/// @brief flush して close する。冪等。
 	/// @details close 時に header の frameCount field を seek-back して総数を
 	///          確定上書きする (録画前は frame 数が未知なので 0 で書いてある)。
 	void close()
@@ -277,7 +303,11 @@ public:
 	[[nodiscard]] bool isOpen() const noexcept { return m_out.is_open(); }
 
 private:
-	std::ofstream m_out;
+	std::ofstream             m_out;
+	std::vector<std::uint8_t> m_prevSnap;  ///< 直前に書いた InputSnapshot (差分の元。初回は 0)
+	std::vector<std::uint8_t> m_xor;
+	std::vector<std::uint8_t> m_packed;
+	util::ZstdContext         m_zstd;
 	std::uint64_t m_frameCount{0};
 	std::uint64_t m_rngSeed{0};
 	std::uint64_t m_recordedAtMs{0};

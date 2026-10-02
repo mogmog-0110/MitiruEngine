@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 /// @file Vertex3D.hpp
-/// @brief 3D頂点構造体
-/// @details 3Dメッシュ描画に使用する頂点データ型を定義する。
+/// @brief 3D 頂点構造体
+/// @details 3D メッシュ描画に使用する頂点データ型を定義する。
 
 #include <sgc/math/Vec2.hpp>
 #include <sgc/math/Vec3.hpp>
@@ -11,7 +11,7 @@
 namespace mitiru::render
 {
 
-/// @brief 3D描画用の頂点データ
+/// @brief 3D 描画用の頂点データ
 /// @details 位置・法線・テクスチャ座標・色を持つ頂点。
 ///          Mesh クラスが内部で保持する。
 ///

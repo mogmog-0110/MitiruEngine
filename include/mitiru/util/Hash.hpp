@@ -2,8 +2,8 @@
 
 /// @file Hash.hpp
 /// @brief ハッシュユーティリティ
-/// @details FNV-1a、CRC32、xxHash（簡易版）、ハッシュ結合、
-///          コンパイル時文字列ハッシュを提供する。全て header-only、外部依存なし。
+/// @details FNV-1a、CRC32、xxHash (XXH64)、ハッシュ結合、コンパイル時文字列ハッシュを提供する。
+///          xxHash の本体は external/xxhash を xxhash_impl (静的ライブラリ) でコンパイルしたもの。
 ///
 /// @code
 /// using namespace mitiru::util;
@@ -27,6 +27,11 @@
 #include <cstdint>
 #include <string_view>
 
+#ifndef XXH_NAMESPACE
+#define XXH_NAMESPACE mitiru_
+#endif
+#include <xxhash/xxhash.h>
+
 namespace mitiru::util
 {
 
@@ -38,10 +43,10 @@ public:
 
 	// ── FNV-1a ──
 
-	/// @brief FNV-1aハッシュ（バイト列）
+	/// @brief FNV-1a ハッシュ（バイト列）
 	/// @param data データポインタ
 	/// @param size データサイズ（バイト）
-	/// @return 64ビットハッシュ値
+	/// @return 64 ビットハッシュ値
 	[[nodiscard]] static constexpr std::uint64_t fnv1a(const void* data,
 	                                                   std::size_t size) noexcept
 	{
@@ -61,9 +66,9 @@ public:
 		return hash;
 	}
 
-	/// @brief FNV-1aハッシュ（文字列）
+	/// @brief FNV-1a ハッシュ（文字列）
 	/// @param str 入力文字列
-	/// @return 64ビットハッシュ値
+	/// @return 64 ビットハッシュ値
 	[[nodiscard]] static constexpr std::uint64_t fnv1a(std::string_view str) noexcept
 	{
 		constexpr std::uint64_t kOffsetBasis = 14695981039346656037ULL;
@@ -80,10 +85,10 @@ public:
 
 	// ── CRC32 ──
 
-	/// @brief CRC32ハッシュ（バイト列）
+	/// @brief CRC32 ハッシュ（バイト列）
 	/// @param data データポインタ
 	/// @param size データサイズ（バイト）
-	/// @return 32ビットCRC値
+	/// @return 32 ビット CRC 値
 	[[nodiscard]] static constexpr std::uint32_t crc32(const void* data,
 	                                                   std::size_t size) noexcept
 	{
@@ -110,7 +115,7 @@ public:
 		return ~crc;
 	}
 
-	/// @brief CRC32ハッシュ（文字列）
+	/// @brief CRC32 ハッシュ（文字列）
 	[[nodiscard]] static constexpr std::uint32_t crc32(std::string_view str) noexcept
 	{
 		std::uint32_t crc = 0xFFFFFFFFu;
@@ -132,108 +137,21 @@ public:
 		return ~crc;
 	}
 
-	// ── xxHash（簡易版） ──
+	// ── xxHash ──
 
-	/// @brief xxHash風の高速非暗号ハッシュ（簡易実装）
-	/// @param data データポインタ
-	/// @param size データサイズ（バイト）
-	/// @return 64ビットハッシュ値
-	/// @note 本実装はxxHash64のアルゴリズムを簡略化したもの。
-	///       完全な互換性は保証しない。高速な非暗号ハッシュとして使用する。
-	[[nodiscard]] static constexpr std::uint64_t xxhash(const void* data,
-	                                                    std::size_t size) noexcept
+	/// @brief XXH64 (seed 0)
+	[[nodiscard]] static std::uint64_t xxhash(const void* data, std::size_t size) noexcept
 	{
-		constexpr std::uint64_t kPrime1 = 11400714785074694791ULL;
-		constexpr std::uint64_t kPrime2 = 14029467366897019727ULL;
-		constexpr std::uint64_t kPrime3 = 1609587929392839161ULL;
-		constexpr std::uint64_t kPrime4 = 9650029242287828579ULL;
-		constexpr std::uint64_t kPrime5 = 2870177450012600261ULL;
-
-		if (data == nullptr) return 0;
-
-		auto bytes = static_cast<const std::uint8_t*>(data);
-		const std::size_t totalSize = size;
-		std::uint64_t hash = 0;
-
-		if (size >= 32)
-		{
-			std::uint64_t v1 = kPrime1 + kPrime2;
-			std::uint64_t v2 = kPrime2;
-			std::uint64_t v3 = 0;
-			std::uint64_t v4 = 0 - kPrime1;
-
-			std::size_t remaining = size;
-			while (remaining >= 32)
-			{
-				v1 = xxhashRound(v1, read64(bytes));
-				bytes += 8;
-				v2 = xxhashRound(v2, read64(bytes));
-				bytes += 8;
-				v3 = xxhashRound(v3, read64(bytes));
-				bytes += 8;
-				v4 = xxhashRound(v4, read64(bytes));
-				bytes += 8;
-				remaining -= 32;
-			}
-
-			hash = rotl64(v1, 1) + rotl64(v2, 7) + rotl64(v3, 12) + rotl64(v4, 18);
-			hash = mergeRound(hash, v1);
-			hash = mergeRound(hash, v2);
-			hash = mergeRound(hash, v3);
-			hash = mergeRound(hash, v4);
-
-			size = remaining;
-		}
-		else
-		{
-			hash = kPrime5;
-		}
-
-		hash += static_cast<std::uint64_t>(totalSize);
-
-		// 残りバイトの処理
-		while (size >= 8)
-		{
-			std::uint64_t k1 = xxhashRound(0, read64(bytes));
-			bytes += 8;
-			hash ^= k1;
-			hash = rotl64(hash, 27) * kPrime1 + kPrime4;
-			size -= 8;
-		}
-
-		while (size >= 4)
-		{
-			hash ^= static_cast<std::uint64_t>(read32(bytes)) * kPrime1;
-			bytes += 4;
-			hash = rotl64(hash, 23) * kPrime2 + kPrime3;
-			size -= 4;
-		}
-
-		while (size > 0)
-		{
-			hash ^= static_cast<std::uint64_t>(*bytes) * kPrime5;
-			++bytes;
-			hash = rotl64(hash, 11) * kPrime1;
-			--size;
-		}
-
-		// ファイナライズ
-		hash ^= hash >> 33;
-		hash *= kPrime2;
-		hash ^= hash >> 29;
-		hash *= kPrime3;
-		hash ^= hash >> 32;
-
-		return hash;
+		return XXH64(data, size, 0);
 	}
 
 	// ── ハッシュ結合 ──
 
-	/// @brief 2つのハッシュ値を結合する
+	/// @brief 2 つのハッシュ値を結合する
 	/// @param seed 結合先のハッシュ値
 	/// @param value 結合するハッシュ値
 	/// @return 結合されたハッシュ値
-	/// @note boost::hash_combineと同等のアルゴリズム
+	/// @note boost::hash_combine と同等のアルゴリズム
 	[[nodiscard]] static constexpr std::size_t hashCombine(std::size_t seed,
 	                                                       std::size_t value) noexcept
 	{
@@ -244,7 +162,7 @@ public:
 	// ── コンパイル時文字列ハッシュ ──
 
 	/// @brief コンパイル時文字列ハッシュ型
-	/// @details constexprコンテキストで文字列をハッシュIDに変換する。
+	/// @details constexpr コンテキストで文字列をハッシュ ID に変換する。
 	///
 	/// @code
 	/// constexpr auto id = StringHash::compute("player_health");
@@ -254,7 +172,7 @@ public:
 	/// @endcode
 	struct StringHash
 	{
-		/// @brief コンパイル時FNV-1aハッシュ
+		/// @brief コンパイル時 FNV-1a ハッシュ
 		[[nodiscard]] static constexpr std::uint64_t compute(const char* str) noexcept
 		{
 			constexpr std::uint64_t kOffsetBasis = 14695981039346656037ULL;
@@ -270,64 +188,13 @@ public:
 			return hash;
 		}
 
-		/// @brief std::string_view版
+		/// @brief std::string_view 版
 		[[nodiscard]] static constexpr std::uint64_t compute(std::string_view str) noexcept
 		{
 			return fnv1a(str);
 		}
 	};
 
-private:
-	// ── xxHash内部ヘルパー ──
-
-	[[nodiscard]] static constexpr std::uint64_t rotl64(std::uint64_t x, int r) noexcept
-	{
-		return (x << r) | (x >> (64 - r));
-	}
-
-	[[nodiscard]] static constexpr std::uint64_t xxhashRound(std::uint64_t acc,
-	                                                          std::uint64_t input) noexcept
-	{
-		constexpr std::uint64_t kPrime2 = 14029467366897019727ULL;
-		constexpr std::uint64_t kPrime1 = 11400714785074694791ULL;
-		acc += input * kPrime2;
-		acc = rotl64(acc, 31);
-		acc *= kPrime1;
-		return acc;
-	}
-
-	[[nodiscard]] static constexpr std::uint64_t mergeRound(std::uint64_t acc,
-	                                                         std::uint64_t val) noexcept
-	{
-		constexpr std::uint64_t kPrime1 = 11400714785074694791ULL;
-		constexpr std::uint64_t kPrime4 = 9650029242287828579ULL;
-		val = xxhashRound(0, val);
-		acc ^= val;
-		acc = acc * kPrime1 + kPrime4;
-		return acc;
-	}
-
-	/// @brief リトルエンディアンで8バイト読み取り
-	[[nodiscard]] static constexpr std::uint64_t read64(const std::uint8_t* p) noexcept
-	{
-		return static_cast<std::uint64_t>(p[0])
-		     | (static_cast<std::uint64_t>(p[1]) << 8)
-		     | (static_cast<std::uint64_t>(p[2]) << 16)
-		     | (static_cast<std::uint64_t>(p[3]) << 24)
-		     | (static_cast<std::uint64_t>(p[4]) << 32)
-		     | (static_cast<std::uint64_t>(p[5]) << 40)
-		     | (static_cast<std::uint64_t>(p[6]) << 48)
-		     | (static_cast<std::uint64_t>(p[7]) << 56);
-	}
-
-	/// @brief リトルエンディアンで4バイト読み取り
-	[[nodiscard]] static constexpr std::uint32_t read32(const std::uint8_t* p) noexcept
-	{
-		return static_cast<std::uint32_t>(p[0])
-		     | (static_cast<std::uint32_t>(p[1]) << 8)
-		     | (static_cast<std::uint32_t>(p[2]) << 16)
-		     | (static_cast<std::uint32_t>(p[3]) << 24);
-	}
 };
 
 /// @brief ユーザー定義リテラル: コンパイル時文字列ハッシュ

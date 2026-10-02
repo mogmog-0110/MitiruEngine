@@ -2,8 +2,8 @@
 
 /// @file FrameBudget.hpp
 /// @brief フレームバジェットトラッキングシステム
-/// @details カテゴリ別のフレーム時間を計測し、16.67msバジェットに対する
-///          使用率を計算する。F11キーでオーバーレイ表示を切り替え可能。
+/// @details カテゴリ別のフレーム時間を計測し、16.67ms バジェットに対する
+///          使用率を計算する。F11 キーでオーバーレイ表示を切り替えられる。
 
 #include <algorithm>
 #include <array>
@@ -55,7 +55,7 @@ public:
         Count
     };
 
-    /// @brief 60FPSのフレームバジェット（ミリ秒）
+    /// @brief 60FPS のフレームバジェット（ミリ秒）
     static constexpr float kBudgetMs = 16.667f;
 
     /// @brief カテゴリ数
@@ -154,7 +154,7 @@ public:
         return m_categoryMs[idx];
     }
 
-    /// @brief 16.67msバジェットに対する使用率を取得する
+    /// @brief 16.67ms バジェットに対する使用率を取得する
     /// @return パーセント（100.0 = バジェット丁度）
     [[nodiscard]] float budgetUsagePercent() const noexcept
     {
@@ -193,8 +193,8 @@ public:
 
     /// @brief フレームバジェットオーバーレイを描画する
     /// @param screen 描画先スクリーン
-    /// @param x 左上X座標
-    /// @param y 左上Y座標
+    /// @param x 左上 X 座標
+    /// @param y 左上 Y 座標
     /// @param w 幅
     /// @param h 高さ
     void drawOverlay(Screen& screen, float x, float y, float w, float h) const
@@ -237,7 +237,7 @@ public:
 
     /// @brief カテゴリの表示色を取得する
     /// @param cat カテゴリ
-    /// @return RGBA色
+    /// @return RGBA 色
     [[nodiscard]] static constexpr sgc::Colorf categoryColor(Category cat) noexcept
     {
         switch (cat)
@@ -367,20 +367,20 @@ private:
     std::size_t m_arenaCapacityBytes = 0;           ///< FrameArena/SceneArena 総容量（バイト）
 };
 
-/// @brief RAIIカテゴリ計測スコープ
-/// @details コンストラクタでbeginCategory、デストラクタでendCategoryを呼ぶ。
+/// @brief RAII カテゴリ計測スコープ
+/// @details コンストラクタで beginCategory、デストラクタで endCategory を呼ぶ。
 ///
 /// @code
 /// {
 ///     FrameBudgetScope scope(budget, FrameBudget::Category::Render);
 ///     // ... 描画処理 ...
-/// } // 自動的にendCategory
+/// } // 自動的に endCategory
 /// @endcode
 class FrameBudgetScope
 {
 public:
     /// @brief コンストラクタ（カテゴリ計測開始）
-    /// @param budget FrameBudgetインスタンス（非所有）
+    /// @param budget FrameBudget インスタンス（非所有）
     /// @param cat 計測カテゴリ
     FrameBudgetScope(FrameBudget& budget, FrameBudget::Category cat) noexcept
         : m_budget(budget)

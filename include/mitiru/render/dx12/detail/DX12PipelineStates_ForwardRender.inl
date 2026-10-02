@@ -1,11 +1,20 @@
-// Class-body chunk for Renderer3D_DX12 - included via DX12PipelineStates.hpp
+// Renderer3D_DX12 のクラス本体の一部。DX12PipelineStates.hpp から include される
 
+
+/// @brief RT1 (法線) を混ぜずに上書きにする。RT0 と同じアルファブレンドだと、法線の A に入れた
+///        NdotV で clear 色 (0.5 の灰) へ縮み、平らな面が法線差のエッジや AO の凹みとして拾われる
+static void setNormalTargetOpaque(D3D12_BLEND_DESC& bd) noexcept
+{
+	bd.IndependentBlendEnable = TRUE;
+	bd.RenderTarget[1] = bd.RenderTarget[0];
+	bd.RenderTarget[1].BlendEnable = FALSE;
+}
 
 // ─────────────────────────────────────────────────────────────
-//  メインPSO（トゥーンシェーディング）
+//  メイン PSO（トゥーンシェーディング）
 // ─────────────────────────────────────────────────────────────
 
-/// @brief メインPSO（トゥーンシェーディング）を生成する
+/// @brief メイン PSO（トゥーンシェーディング）を生成する
 /// @details 背面カリング、深度テスト有効、アルファブレンド有効
 void createMainPSO()
 {
@@ -42,7 +51,6 @@ void createMainPSO()
 
 	/// ブレンド: アルファブレンド（SrcAlpha, InvSrcAlpha）
 	psoDesc.BlendState.AlphaToCoverageEnable = FALSE;
-	psoDesc.BlendState.IndependentBlendEnable = FALSE;
 	psoDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
 	psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
 	psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
@@ -67,7 +75,7 @@ void createMainPSO()
 	// RT1 (normal) は表示には載らず post-process でのみ使うので R8 のまま。
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	psoDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psoDesc.BlendState.RenderTarget[1] = psoDesc.BlendState.RenderTarget[0];
+	setNormalTargetOpaque(psoDesc.BlendState);
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	// 4x MSAA。MRT 全 RT + depth と sample count を揃える (ENG-105 v2)
 	psoDesc.SampleDesc.Count = MSAA_SAMPLE_COUNT;
@@ -125,10 +133,10 @@ void createMainPSO()
 //  深度バッファ・法線バッファ
 // ─────────────────────────────────────────────────────────────
 
-/// @brief 深度バッファとDSVデスクリプタヒープを生成する
+/// @brief 深度バッファと DSV デスクリプタヒープを生成する
 void createDepthBuffer()
 {
-	/// DSVデスクリプタヒープの生成
+	/// DSV デスクリプタヒープの生成
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
 	dsvHeapDesc.NumDescriptors = 1;
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
@@ -145,10 +153,7 @@ void createDepthBuffer()
 	/// 深度バッファリソースの生成。4x MSAA + TYPELESS
 	/// TYPELESS にすることで DSV (D32_FLOAT) と SRV (R32_FLOAT) を両方
 	/// 作れる (ENG-105 v2)。MSAA 化に伴って format compatibility が厳しく
-	/// なる可能性があるため、TYPELESS で safe path に倒す。
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
+	/// なる可能性があるため、TYPELESS で safe path を選ぶ。
 	D3D12_RESOURCE_DESC depthDesc = {};
 	depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthDesc.Alignment = 0;
@@ -167,17 +172,13 @@ void createDepthBuffer()
 	clearValue.DepthStencil.Depth = 1.0f;
 	clearValue.DepthStencil.Stencil = 0;
 
-	hr = m_d3dDevice->CreateCommittedResource(
-		&heapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&depthDesc,
-		D3D12_RESOURCE_STATE_DEPTH_WRITE,
-		&clearValue,
-		IID_PPV_ARGS(m_depthBuffer.GetAddressOf()));
+	hr = gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, depthDesc,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, m_depthBuffer);
+	if (m_depthBuffer) { m_depthBuffer->SetName(L"Renderer3D depth (MSAA)"); }
 	if (FAILED(hr))
 	{
 		throw std::runtime_error(
-			"Renderer3D_DX12: CreateCommittedResource (depth) failed");
+			"Renderer3D_DX12: GPU allocation (depth) failed");
 	}
 
 	/// DSV (MSAA TEXTURE2DMS、format = D32_FLOAT を明示)
@@ -206,10 +207,9 @@ void createDepthBuffer()
 	D3D12_CLEAR_VALUE normalClear = {};
 	normalClear.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-	hr = m_d3dDevice->CreateCommittedResource(
-		&heapProps, D3D12_HEAP_FLAG_NONE, &normalDesc,
-		D3D12_RESOURCE_STATE_RENDER_TARGET, &normalClear,
-		IID_PPV_ARGS(m_normalBuffer.GetAddressOf()));
+	hr = gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, normalDesc,
+		D3D12_RESOURCE_STATE_RENDER_TARGET, &normalClear, m_normalBuffer);
+	if (m_normalBuffer) { m_normalBuffer->SetName(L"Renderer3D normal (MSAA)"); }
 	if (FAILED(hr))
 	{
 		throw std::runtime_error("Renderer3D_DX12: normal buffer failed");
@@ -244,10 +244,9 @@ void createDepthBuffer()
 	msaaClear.Color[2] = 0.0f;
 	msaaClear.Color[3] = 1.0f;
 
-	hr = m_d3dDevice->CreateCommittedResource(
-		&heapProps, D3D12_HEAP_FLAG_NONE, &msaaColorDesc,
-		D3D12_RESOURCE_STATE_RENDER_TARGET, &msaaClear,
-		IID_PPV_ARGS(m_msaaColorBuffer.GetAddressOf()));
+	hr = gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, msaaColorDesc,
+		D3D12_RESOURCE_STATE_RENDER_TARGET, &msaaClear, m_msaaColorBuffer);
+	if (m_msaaColorBuffer) { m_msaaColorBuffer->SetName(L"Renderer3D color (MSAA)"); }
 	if (FAILED(hr))
 	{
 		throw std::runtime_error("Renderer3D_DX12: MSAA color buffer failed");
@@ -268,7 +267,7 @@ void createDepthBuffer()
 
 	// ── HDR intermediate (ENG-106) — single-sample FP16 ─────────
 	// MSAA color の Resolve 先。tonemap PS が SRV としてサンプリングして
-	// backbuffer に焼く。Outline モード3/4 の color-copy も "tonemap 後の
+	// backbuffer に焼く。Outline モード 3/4 の color-copy も "tonemap 後の
 	// backbuffer" を読むので、HDR intermediate に直接アクセスする必要は無い。
 	createHDRIntermediate();
 }
@@ -282,9 +281,6 @@ void createHDRIntermediate()
 	m_hdrIntermediateBuffer.Reset();
 	m_hdrIntermediateRtvHeap.Reset();
 	m_hdrIntermediateSrvHeap.Reset();
-
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
 	D3D12_RESOURCE_DESC desc = {};
 	desc.Dimension          = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -302,11 +298,10 @@ void createHDRIntermediate()
 	clear.Color[0] = clear.Color[1] = clear.Color[2] = 0.0f;
 	clear.Color[3] = 1.0f;
 
-	HRESULT hr = m_d3dDevice->CreateCommittedResource(
-		&heapProps, D3D12_HEAP_FLAG_NONE, &desc,
-		D3D12_RESOURCE_STATE_RESOLVE_DEST, &clear,
-		IID_PPV_ARGS(m_hdrIntermediateBuffer.GetAddressOf()));
+	HRESULT hr = gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, desc,
+		D3D12_RESOURCE_STATE_RESOLVE_DEST, &clear, m_hdrIntermediateBuffer);
 	if (FAILED(hr) || !m_hdrIntermediateBuffer) return;
+	m_hdrIntermediateBuffer->SetName(L"Renderer3D HDR intermediate");
 
 	// RTV heap (1 slot)
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
@@ -324,9 +319,10 @@ void createHDRIntermediate()
 			m_hdrIntermediateRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 
-	// SRV heap (shader-visible, 1 slot)。tonemap PS が t0 で読む
+	// SRV heap (shader-visible, 3 slot)。tonemap PS が t0 = HDR、t1 = SSAO (v40)、t2 = bloom (v41) で読む。
+	// t1 / t2 はテクスチャができるまで null SRV で埋める (createSsaoResources / createBloomResources が貼り直す)
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = 1;
+	srvHeapDesc.NumDescriptors = 3;
 	srvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	m_d3dDevice->CreateDescriptorHeap(
@@ -342,6 +338,15 @@ void createHDRIntermediate()
 		m_d3dDevice->CreateShaderResourceView(
 			m_hdrIntermediateBuffer.Get(), &srv,
 			m_hdrIntermediateSrvHeap->GetCPUDescriptorHandleForHeapStart());
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC aoNull = srv;
+		aoNull.Format = DXGI_FORMAT_R8_UNORM;
+		D3D12_CPU_DESCRIPTOR_HANDLE aoSlot = m_hdrIntermediateSrvHeap->GetCPUDescriptorHandleForHeapStart();
+		aoSlot.ptr += m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_d3dDevice->CreateShaderResourceView(nullptr, &aoNull, aoSlot);
+		D3D12_CPU_DESCRIPTOR_HANDLE bloomSlot = aoSlot;
+		bloomSlot.ptr += m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_d3dDevice->CreateShaderResourceView(nullptr, &srv, bloomSlot);
 	}
 }
 
@@ -354,8 +359,8 @@ void createOutlinePostProcess()
 {
 	if (!m_outlinePostVS || !m_outlinePostPS) return;
 
-	/// SRVヒープ（深度 + 法線 + ダミーの3スロット）を生成する
-	/// ルートシグネチャが3スロット要求するため、未使用でも3つ確保する
+	/// SRV ヒープ（深度 + 法線 + ダミーの 3 スロット）を生成する
+	/// ルートシグネチャが 3 スロット要求するため、未使用でも 3 つ確保する
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
 	srvHeapDesc.NumDescriptors = 3;
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -368,7 +373,7 @@ void createOutlinePostProcess()
 	auto srvStart = m_depthSRVHeap->GetCPUDescriptorHandleForHeapStart();
 
 	// MSAA 4x (ENG-105 v2): depth/normal は MSAA テクスチャ → SRV も TEXTURE2DMS
-	/// スロット0: 深度SRV (MSAA)
+	/// スロット 0: 深度 SRV (MSAA)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
@@ -376,7 +381,7 @@ void createOutlinePostProcess()
 	m_d3dDevice->CreateShaderResourceView(
 		m_depthBuffer.Get(), &srvDesc, srvStart);
 
-	/// スロット1: 法線SRV (MSAA)
+	/// スロット 1: 法線 SRV (MSAA)
 	D3D12_SHADER_RESOURCE_VIEW_DESC normalSrvDesc = {};
 	normalSrvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	normalSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
@@ -386,7 +391,7 @@ void createOutlinePostProcess()
 	m_d3dDevice->CreateShaderResourceView(
 		m_normalBuffer.Get(), &normalSrvDesc, normalSrvHandle);
 
-	/// スロット2: nullダミー（モード0-2では使用しない）
+	/// スロット 2: null ダミー（モード 0-2 では使用しない）
 	D3D12_CPU_DESCRIPTOR_HANDLE dummySlot = srvStart;
 	dummySlot.ptr += srvIncrementSize * 2;
 	D3D12_SHADER_RESOURCE_VIEW_DESC dummySrv = {};
@@ -398,7 +403,7 @@ void createOutlinePostProcess()
 		nullptr, &dummySrv, dummySlot);
 
 	/// ルートシグネチャ: SRV(t0,t1,t2) + CBV(b0)
-	/// 3スロットにすることで色バッファ付きモードにも対応する
+	/// 3 スロットにすることで色バッファ付きモードにも対応する
 	D3D12_DESCRIPTOR_RANGE srvRange = {};
 	srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	srvRange.NumDescriptors = 3;
@@ -431,10 +436,10 @@ void createOutlinePostProcess()
 		IID_PPV_ARGS(m_outlinePostRootSig.GetAddressOf()));
 	if (FAILED(hr)) return;
 
-	/// 色バッファコピー用リソースを生成する（モード3,4で使用）
+	/// 色バッファコピー用リソースを生成する（モード 3,4 で使用）
 	createColorCopyBuffer();
 
-	/// ポストプロセスPSO共通設定
+	/// ポストプロセス PSO 共通設定
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.pRootSignature = m_outlinePostRootSig.Get();
 	psoDesc.VS = m_outlinePostVS->shaderBytecode();
@@ -465,12 +470,12 @@ void createOutlinePostProcess()
 	psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
 	psoDesc.SampleDesc.Count = 1;
 
-	/// モード0: 深度Sobel（既存シェーダー）
+	/// モード 0: 深度 Sobel（既存シェーダー）
 	psoDesc.PS = m_outlinePostPS->shaderBytecode();
 	m_d3dDevice->CreateGraphicsPipelineState(
 		&psoDesc, IID_PPV_ARGS(m_outlinePostPSO.GetAddressOf()));
 
-	/// モード1: 深度Laplacian
+	/// モード 1: 深度 Laplacian
 	if (m_outlinePostPS_Laplacian)
 	{
 		psoDesc.PS = m_outlinePostPS_Laplacian->shaderBytecode();
@@ -478,7 +483,7 @@ void createOutlinePostProcess()
 			&psoDesc, IID_PPV_ARGS(m_outlinePostPSOs[1].GetAddressOf()));
 	}
 
-	/// モード2: 深度Sobel + NdotV
+	/// モード 2: 深度 Sobel + NdotV
 	if (m_outlinePostPS_DepthNdotV)
 	{
 		psoDesc.PS = m_outlinePostPS_DepthNdotV->shaderBytecode();
@@ -486,7 +491,7 @@ void createOutlinePostProcess()
 			&psoDesc, IID_PPV_ARGS(m_outlinePostPSOs[2].GetAddressOf()));
 	}
 
-	/// モード3: 色エッジ
+	/// モード 3: 色エッジ
 	if (m_outlinePostPS_ColorEdge)
 	{
 		psoDesc.PS = m_outlinePostPS_ColorEdge->shaderBytecode();
@@ -494,7 +499,7 @@ void createOutlinePostProcess()
 			&psoDesc, IID_PPV_ARGS(m_outlinePostPSOs[3].GetAddressOf()));
 	}
 
-	/// モード4: 深度+色 複合
+	/// モード 4: 深度+色 複合
 	if (m_outlinePostPS_DepthColor)
 	{
 		psoDesc.PS = m_outlinePostPS_DepthColor->shaderBytecode();
@@ -502,7 +507,7 @@ void createOutlinePostProcess()
 			&psoDesc, IID_PPV_ARGS(m_outlinePostPSOs[4].GetAddressOf()));
 	}
 
-	/// モード5: Fresnel PSO（メインパスのPS差し替え）
+	/// モード 5: Fresnel PSO（メインパスの PS 差し替え）
 	createFresnelMainPSO();
 }
 
@@ -516,7 +521,7 @@ void updateOutlinePostSRVs()
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	auto srvStart = m_depthSRVHeap->GetCPUDescriptorHandleForHeapStart();
 
-	/// スロット0: 深度SRV (MSAA)
+	/// スロット 0: 深度 SRV (MSAA)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
@@ -524,7 +529,7 @@ void updateOutlinePostSRVs()
 	m_d3dDevice->CreateShaderResourceView(
 		m_depthBuffer.Get(), &srvDesc, srvStart);
 
-	/// スロット1: 法線SRV (MSAA)
+	/// スロット 1: 法線 SRV (MSAA)
 	D3D12_SHADER_RESOURCE_VIEW_DESC normalSrvDesc = {};
 	normalSrvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	normalSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
@@ -539,13 +544,10 @@ void updateOutlinePostSRVs()
 //  色バッファコピーリソース
 // ─────────────────────────────────────────────────────────────
 
-/// @brief 色バッファコピー用リソースとSRVヒープを生成する
+/// @brief 色バッファコピー用リソースと SRV ヒープを生成する
 void createColorCopyBuffer()
 {
 	/// 色コピーバッファ（バックバッファと同サイズ）
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
 	D3D12_RESOURCE_DESC colorDesc = {};
 	colorDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	colorDesc.Width = static_cast<UINT64>(m_config.viewportWidth);
@@ -557,16 +559,15 @@ void createColorCopyBuffer()
 	colorDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	colorDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-	m_d3dDevice->CreateCommittedResource(
-		&heapProps, D3D12_HEAP_FLAG_NONE, &colorDesc,
-		D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-		IID_PPV_ARGS(m_colorCopyBuffer.GetAddressOf()));
+	(void)gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, colorDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST, nullptr, m_colorCopyBuffer);
 	if (!m_colorCopyBuffer) return;
+	m_colorCopyBuffer->SetName(L"Renderer3D outline color copy");
 
 	auto srvIncrSize = m_d3dDevice->GetDescriptorHandleIncrementSize(
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	/// モード3用SRVヒープ: [0]=色コピー, [1]=法線, [2]=ダミー
+	/// モード 3 用 SRV ヒープ: [0]=色コピー, [1]=法線, [2]=ダミー
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.NumDescriptors = 3;
@@ -598,7 +599,7 @@ void createColorCopyBuffer()
 			m_d3dDevice->CreateShaderResourceView(
 				m_normalBuffer.Get(), &normalSrv, slot1);
 
-			// t2: nullスロット
+			// t2: null スロット
 			D3D12_CPU_DESCRIPTOR_HANDLE slot2 = start;
 			slot2.ptr += srvIncrSize * 2;
 			m_d3dDevice->CreateShaderResourceView(
@@ -606,7 +607,7 @@ void createColorCopyBuffer()
 		}
 	}
 
-	/// モード4用SRVヒープ: [0]=深度, [1]=法線, [2]=色コピー
+	/// モード 4 用 SRV ヒープ: [0]=深度, [1]=法線, [2]=色コピー
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.NumDescriptors = 3;
@@ -652,10 +653,10 @@ void createColorCopyBuffer()
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Fresnel付きメインPSO
+//  Fresnel 付きメイン PSO
 // ─────────────────────────────────────────────────────────────
 
-/// @brief Fresnel付きメインPSOを生成する（モード5用）
+/// @brief Fresnel 付きメイン PSO を生成する（モード 5 用）
 void createFresnelMainPSO()
 {
 	if (!m_toonVS || !m_fresnelToonPS) return;
@@ -687,7 +688,7 @@ void createFresnelMainPSO()
 	psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
 	psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 	psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-	psoDesc.BlendState.RenderTarget[1] = psoDesc.BlendState.RenderTarget[0];
+	setNormalTargetOpaque(psoDesc.BlendState);
 
 	psoDesc.DepthStencilState.DepthEnable = TRUE;
 	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
@@ -697,14 +698,14 @@ void createFresnelMainPSO()
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 2;
-	// ENG-106 HDR: RT0 = MSAA color FP16, RT1 = normal R8
+	// ENG-106 HDR: RT0 は MSAA color の FP16、RT1 は normal の R8
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	psoDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	// 4x MSAA。共有 depth/normal の sample count に揃える (ENG-105 v2)
 	psoDesc.SampleDesc.Count = MSAA_SAMPLE_COUNT;
 
-	// 失敗を無言 fallback にしない。黒画面より起動失敗 (main PSO と同じ流儀)
+	// 失敗したら知らせずに fallback しない。黒画面より起動失敗 (main PSO と同じ流儀)
 	HRESULT hr = m_d3dDevice->CreateGraphicsPipelineState(
 		&psoDesc, IID_PPV_ARGS(m_fresnelMainPSO.GetAddressOf()));
 	if (FAILED(hr))

@@ -2,7 +2,7 @@
 
 /// @file CommandQueue.hpp
 /// @brief スレッドセーフコマンドキュー
-/// @details AIエージェントからのコマンドをスレッドセーフに蓄積し、
+/// @details AI エージェントからのコマンドをスレッドセーフに蓄積し、
 ///          エンジンが毎フレーム消費するためのキュー。
 
 #include <mutex>
@@ -13,7 +13,7 @@ namespace mitiru::control
 {
 
 /// @brief コマンド
-/// @details AIエージェントまたはスクリプトから発行される1つの命令。
+/// @details AI エージェントまたはスクリプトから発行される 1 つの命令。
 struct Command
 {
 	std::string type;      ///< コマンド種別（例: "key_down", "snapshot"）

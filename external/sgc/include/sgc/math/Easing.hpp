@@ -103,6 +103,8 @@ template <FloatingPoint T>
 template <FloatingPoint T>
 [[nodiscard]] T inSine(T t) noexcept
 {
+	// cos(π/2) は丸めで 0 にならず、double では 1 - cos が 1 に届かない
+	if (t == T{1}) return T{1};
 	return T{1} - std::cos(t * std::numbers::pi_v<T> / T{2});
 }
 
@@ -180,7 +182,8 @@ template <FloatingPoint T>
 [[nodiscard]] constexpr T inBack(T t) noexcept
 {
 	constexpr T c = T{1.70158};
-	return (c + T{1}) * t * t * t - c * t * t;
+	// (c+1)t^3 - ct^2 を t^2 (c(t-1) + t) と括ると、t=1 で (c+1) - c の丸めを通らず 1 ちょうどになる
+	return t * t * (c * (t - T{1}) + t);
 }
 
 /// @brief 引き戻し（減速）
@@ -189,7 +192,8 @@ template <FloatingPoint T>
 {
 	constexpr T c = T{1.70158};
 	const T u = t - T{1};
-	return T{1} + (c + T{1}) * u * u * u + c * u * u;
+	// inBack と同じ括り方で、t=0 (u=-1) が 0 ちょうどになる
+	return T{1} + u * u * (c * (u + T{1}) + u);
 }
 
 // ── Bounce ──────────────────────────────────────────────────────

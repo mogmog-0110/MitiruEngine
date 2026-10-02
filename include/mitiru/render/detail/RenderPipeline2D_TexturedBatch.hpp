@@ -69,9 +69,6 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	m_lastSpriteTexHandle = 0;   // upload で slot が変わるので inline cache を無効化
 
 	// ── Phase: default heap に COPY_DEST テクスチャを作成 ──
-	D3D12_HEAP_PROPERTIES texHp = {};
-	texHp.Type = D3D12_HEAP_TYPE_DEFAULT;
-
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	texDesc.Width            = static_cast<UINT64>(w);
@@ -82,10 +79,9 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	texDesc.SampleDesc.Count = 1;
 	texDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> newTex;
-	if (FAILED(device->CreateCommittedResource(
-			&texHp, D3D12_HEAP_FLAG_NONE, &texDesc,
-			D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&newTex))))
+	gfx::GpuResource newTex;
+	if (FAILED(gfx::createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, texDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST, nullptr, newTex)))
 	{
 		return 0;
 	}
@@ -96,7 +92,7 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 		& ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
 	const UINT uploadSize = rowPitch * static_cast<UINT>(h);
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> newUpload =
+	gfx::GpuResource newUpload =
 		createUploadBufferDx12(device, uploadSize);
 	if (!newUpload) { return 0; }
 
@@ -185,6 +181,10 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 	entry.key     = key;
 	entry.srcPtr  = rgba;
 	entry.contentHash = contentHash;
+	if (const auto df = m_distanceFieldRanges.find(key); df != m_distanceFieldRanges.end())
+	{
+		entry.distanceRange = df->second;
+	}
 
 	std::uint32_t index;
 	auto storeIt = m_dx12SpriteTexLookup.find(key);
@@ -214,9 +214,11 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	if (!entry.srvHeap) { return; }
 
 	// pixel-art の輪郭を保つため point filter を優先し、使えないときは linear filter を使う。
+	// 距離場は補間した距離から輪郭を求めるので、常に linear filter で読む。
+	const bool distanceField = entry.distanceRange > 0.0f;
 	ID3D12RootSignature* rootSig = m_dx12RootSig.Get();
 	ID3D12PipelineState* pso     = m_dx12Pipeline.Get();
-	if (m_dx12PointRootSig && m_dx12PointPipeline)
+	if (!distanceField && m_dx12PointRootSig && m_dx12PointPipeline)
 	{
 		rootSig = m_dx12PointRootSig.Get();
 		pso     = m_dx12PointPipeline.Get();
@@ -227,7 +229,7 @@ inline void RenderPipeline2D::submitTexturedBatch(
 
 	// slot ごとの CB を使うため、前回の GPU 読み取りと競合しない。
 	{
-		const float psOn[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+		const float psOn[4] = {distanceField ? 2.0f : 1.0f, entry.distanceRange, 0.0f, 0.0f};
 		updateCbDx12(m_dx12PsCb[s].Get(), psOn, sizeof(psOn));
 	}
 
@@ -306,6 +308,87 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	// uUseTexture は次の submitBatchDx12 の最初で 0 に戻す。
 }
 
+inline void RenderPipeline2D::setDistanceFieldTexture(const void* key, float pixelRange)
+{
+	m_distanceFieldRanges[key] = pixelRange;
+	if (const auto it = m_dx12SpriteTexLookup.find(key); it != m_dx12SpriteTexLookup.end())
+	{
+		m_dx12SpriteTextures[it->second].distanceRange = pixelRange;
+	}
+}
+
+inline void RenderPipeline2D::updateSpriteTextureRows(
+	const void* key, int firstRow, int rowCount, const std::uint8_t* rgba)
+{
+	const auto it = m_dx12SpriteTexLookup.find(key);
+	if (it == m_dx12SpriteTexLookup.end() || rgba == nullptr || rowCount <= 0) { return; }
+	const Dx12SpriteTexture& entry = m_dx12SpriteTextures[it->second];
+	if (!entry.tex || firstRow < 0 || firstRow + rowCount > entry.h) { return; }
+
+	const UINT rowPitch =
+		(static_cast<UINT>(entry.w) * 4u + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u)
+		& ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
+	const UINT uploadSize = rowPitch * static_cast<UINT>(rowCount);
+	// 中継バッファは前回の転送が終わるまで GPU が読むので、書く前に全完了を待つ。
+	waitDx12Fence();
+	if (m_dx12RowUploadSize < uploadSize)
+	{
+		m_dx12RowUpload = createUploadBufferDx12(m_dx12NativeDevice.Get(), uploadSize);
+		m_dx12RowUploadSize = m_dx12RowUpload ? uploadSize : 0;
+	}
+	if (!m_dx12RowUpload) { return; }
+
+	void* mapped = nullptr;
+	const D3D12_RANGE readRange = {0, 0};
+	if (FAILED(m_dx12RowUpload->Map(0, &readRange, &mapped))) { return; }
+	const std::size_t srcRowBytes = static_cast<std::size_t>(entry.w) * 4u;
+	for (int row = 0; row < rowCount; ++row)
+	{
+		std::memcpy(static_cast<std::uint8_t*>(mapped) + static_cast<std::size_t>(row) * rowPitch,
+		            rgba + static_cast<std::size_t>(firstRow + row) * srcRowBytes, srcRowBytes);
+	}
+	const D3D12_RANGE writeRange = {0, uploadSize};
+	m_dx12RowUpload->Unmap(0, &writeRange);
+	submitRowCopyDx12(entry.tex.Get(), entry.w, firstRow, rowCount, rowPitch);
+}
+
+inline void RenderPipeline2D::submitRowCopyDx12(
+	ID3D12Resource* tex, int width, int firstRow, int rowCount, UINT rowPitch)
+{
+	m_dx12Alloc[0]->Reset();
+	m_dx12Cl->Reset(m_dx12Alloc[0].Get(), nullptr);
+	D3D12_RESOURCE_BARRIER barrier = {};
+	barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Transition.pResource   = tex;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	m_dx12Cl->ResourceBarrier(1, &barrier);
+
+	D3D12_TEXTURE_COPY_LOCATION copyDst = {};
+	copyDst.pResource        = tex;
+	copyDst.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	copyDst.SubresourceIndex = 0;
+	D3D12_TEXTURE_COPY_LOCATION copySrc = {};
+	copySrc.pResource                          = m_dx12RowUpload.Get();
+	copySrc.Type                               = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	copySrc.PlacedFootprint.Footprint.Format   = DXGI_FORMAT_R8G8B8A8_UNORM;
+	copySrc.PlacedFootprint.Footprint.Width    = static_cast<UINT>(width);
+	copySrc.PlacedFootprint.Footprint.Height   = static_cast<UINT>(rowCount);
+	copySrc.PlacedFootprint.Footprint.Depth    = 1;
+	copySrc.PlacedFootprint.Footprint.RowPitch = rowPitch;
+	m_dx12Cl->CopyTextureRegion(&copyDst, 0, static_cast<UINT>(firstRow), 0, &copySrc, nullptr);
+
+	std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
+	m_dx12Cl->ResourceBarrier(1, &barrier);
+	m_dx12Cl->Close();
+	ID3D12CommandList* lists[] = { m_dx12Cl.Get() };
+	m_dx12Queue->ExecuteCommandLists(1, lists);
+	++m_dx12FenceValue;
+	m_dx12Queue->Signal(m_dx12Fence.Get(), m_dx12FenceValue);
+	m_dx12SlotSignal[0] = m_dx12FenceValue;
+}
+
 } // namespace mitiru::render
 
 #else // !_WIN32
@@ -322,6 +405,15 @@ inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
 
 inline void RenderPipeline2D::submitTexturedBatch(
 	const std::vector<Vertex2D>&, const std::vector<std::uint32_t>&, std::uint32_t)
+{
+}
+
+inline void RenderPipeline2D::setDistanceFieldTexture(const void* key, float pixelRange)
+{
+	m_distanceFieldRanges[key] = pixelRange;
+}
+
+inline void RenderPipeline2D::updateSpriteTextureRows(const void*, int, int, const std::uint8_t*)
 {
 }
 } // namespace mitiru::render
