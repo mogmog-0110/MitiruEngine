@@ -30,6 +30,8 @@
 
 #include <mitiru/gfx/GfxTypes.hpp>
 #include <mitiru/render/DrawParams3D.hpp>
+#include <mitiru/render/OutdoorDrawPod.hpp>
+#include <mitiru/render/View3DPod.hpp>
 #include <mitiru/render/SceneLookAtmosphere.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/SpriteBatch.hpp>
@@ -56,6 +58,10 @@ struct Vertex3D;            ///< v48 (registerMesh3D)。定義は Vertex3D.hpp
 class Mesh;
 struct TrailPointPod;       ///< v48。定義は TrailRibbon.hpp
 struct TrailStylePod;
+struct DecalDesc;           ///< v49。定義は Decals.hpp
+struct ParticleEmitterDesc; ///< v49。定義は GpuParticles.hpp
+struct HitFeel;             ///< v49。定義は HitFeel.hpp
+enum class VfxTextureKind : std::uint8_t;   ///< v49。定義は VfxTextures.hpp
 } // namespace mitiru::render
 
 namespace mitiru::animation
@@ -84,6 +90,12 @@ struct DrawLogEntry
 /// @details ゲームの draw() に渡される描画インターフェース。
 ///          内部で SpriteBatch/ShapeRenderer に委譲し、
 ///          RenderPipeline2D 経由で GPU に送る。
+///
+///          色の約束 (ADR 0061): 2D も 3D も、引数で渡す色 (Colorf、hex、SceneLook の色、局所光・デカール・粒・
+///          剣筋・頂点とインスタンスの色) はすべて 16 進や CSS と同じ sRGB で書いた値として受ける。3D はそれを GPU へ
+///          上げる所で線形にして光と足し、最後に sRGB へ戻すので、照明なしと中立な光 (白、強さ 1、正面) では書いた色が
+///          そのまま出る。成分が 1 を超える色は明るさごと書いた色として、1 に収めた色を線形にしてから同じ倍率を掛ける。
+///          SceneLook::gamma は sRGB に対する表示の補正で、既定の 2.2 で sRGB そのものになる (上げると明るく、下げると暗い)。
 class Screen
 {
 public:
@@ -1799,6 +1811,44 @@ public:
 	/// @brief false の間の描画は画面上で止まって見える物 (カメラに付いた武器) として動きを書く。フレーム頭で true
 	void setMotionVectorCaster(bool enabled);
 
+	// ── ABI v49 (ADR 0062)。実装は detail/Screen_3DFx.hpp ──────────────────────
+	// どれも描画だけの依頼。デカールと粒は「いつ・どこで出したか」を GameMemory に持ち、毎フレーム経過秒つきで渡す
+	// (レンダラは前のフレームを覚えないので、巻き戻すと戻した時刻の跡と粒が出る。docs/VFX.md)
+
+	/// @brief このフレームのデカール (血・焦げ跡・足跡) を積む。1 フレームに 1024 枚、見える近い順に 256 枚
+	void decals3D(const render::DecalDesc* decals, int count);
+	/// @brief このフレームの粒のエミッターを積む。渡すのをやめたエミッターの粒は消える
+	void particles3D(const render::ParticleEmitterDesc* emitters, int count);
+	/// @brief 画像ファイル (PNG / JPEG) を VFX テクスチャの層に登録し、層の番号を返す (読めなければ -1)。
+	/// @details 同じ path と種類は同じ番号を返す (host が覚える) ので、draw で毎フレーム呼んでも読み直さない。
+	///          番号は登録した順に決まる
+	int vfxTexture3D(const char* path, render::VfxTextureKind kind);
+	int vfxTexture3D(const char* path);   ///< 色の層 (VfxTextureKind::Color)
+	/// @brief 当たった瞬間の白飛び・色ずれ・放射状のぼけ。そのフレームだけ効く
+	void hitFeel3D(const render::HitFeel& feel);
+
+	/// @brief 屋外の 1 枚 (world.json の地形・草・撒いた物・水面) を描く。置き場所はファイルで決まり、
+	///        DLL が同じファイルで作る当たり判定と同じ座標になる。pod は時刻・風・水位・草を押し倒す球
+	void drawOutdoor(const char* worldPath, const render::OutdoorDrawPod& pod = {});
+
+	/// @brief 副ビュー slot (0..7) を作る。同じ作りなら何もしないので毎フレーム呼んでよい。作れなければ false
+	/// @details 副ビューの後処理は tonemap だけ。局所光・デカール・粒・屋外・clod は主ビューにだけ出る (ADR 0061)。
+	///          UI (RML) からは <img src="view3d:N"/> で slot N の出力を貼れる
+	bool view3D(int slot, const render::View3DPod& pod);
+	/// @brief 以後の drawMesh / drawModel 系を slot へ向ける。主ビューの camera3D は変えない。false なら主ビューへ入る
+	bool beginView3D(int slot, const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, float fovDeg,
+	                 float nearDist = 0.1f, float farDist = 500.0f);
+	void endView3D();
+	/// @brief このフレームの最後 (後処理の後、HUD の前) に slot の出力を画面の矩形 (論理座標) へ貼る
+	void compositeView3D(int slot, float x, float y, float w, float h);
+	/// @brief slot の出力を基本色のテクスチャにして組み込みメッシュを描く (画面の中のモニター)
+	void drawMeshWithView3D(const char* shape, const sgc::Vec3f& position, const sgc::Vec3f& scale,
+	                        const sgc::Vec3f& rotDeg, const sgc::Colorf& color, int slot);
+	void releaseView3D(int slot);
+
+	/// @brief glTF / FBX のモデルを手放す。次に同じ path を描くと読み直す。GPU が読み終えてから消える
+	bool releaseModel(const char* path);
+
 	/// @brief ワールド座標を現在の camera3D で画面ピクセル座標へ射影する (drawSplats/drawMesh の後)。
 	/// @param[out] sx,sy 画面ピクセル座標 (左上原点)。@return 画面内なら true。
 	bool projectToScreen(const sgc::Vec3f& world, float& sx, float& sy);
@@ -1941,6 +1991,7 @@ private:
 #include <mitiru/core/detail/Screen_PixelGrid.hpp>
 #include <mitiru/core/detail/Screen_3D.hpp>
 #include <mitiru/core/detail/Screen_3DScene.hpp>
+#include <mitiru/core/detail/Screen_3DFx.hpp>
 
 // ── DrawCallValidator のメソッド実装（Screen 完全型が必要） ──────────
 

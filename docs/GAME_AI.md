@@ -116,6 +116,13 @@ DetourCrowd は経路探索を待ち行列に積み、何フレームかに分�
 
 飛び降りや梯子 (off-mesh connection) を渡る途中の状態は dtCrowd の外から戻せないので、焼かない。
 
+## 見る
+
+敵の木の状態・知覚・トークンを `mitiru/module/ReflectEngineTypes.hpp` を通して `MITIRU_REFLECT` に載せると、
+`mitiru_host enemy_ai.dll --inspect ai` の窓で敵ごとに見られる。木の JSON と焼いたナビメッシュは `MITIRU_INSPECT_ASSETS` で
+host に渡すと、ai の窓にノードの種類と葉の名前、nav の窓に床の形が出る (ABI v49、[TOOL_WINDOWS.md](TOOL_WINDOWS.md))。群衆は agent を
+`FixedVec<nav::CrowdAgentView, N>` で GameMemory へ写せば `--inspect nav` の地図に出る ([TOOL_WINDOWS.md](TOOL_WINDOWS.md))。
+
 ## 境界 (ABI) への要望
 
 無い。木、知覚、経路、回避、群衆はすべて DLL の中で解き、地形とナビメッシュは DLL が読み込み時に作る。群衆の状態は

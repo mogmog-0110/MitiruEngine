@@ -83,18 +83,12 @@ struct Anim3D
 	{
 		// 待機を全身に置き、その上に歩きを walkMix の重さで重ねる (レイヤは並び順に重なる)
 		anim::AnimPoseParams pose;
-		anim::pushLayer(pose, {static_cast<std::int16_t>(kSurvey), -1, anim::kAnimLayerLoop, 0, 0, animT, 1.0f});
-		anim::pushLayer(pose, {static_cast<std::int16_t>(kWalk), -1, anim::kAnimLayerLoop, 0, 0, animT, walkMix});
+		anim::pushLayer(pose, anim::AnimLayer::clipAt(kSurvey, animT));
+		anim::pushLayer(pose, anim::AnimLayer::clipAt(kWalk, animT, walkMix));
 
-		// 頭を玉へ向ける。目標はワールドの座標のまま渡せる (kAnimIkWorldSpace)
-		anim::AnimIkRequest look;
-		look.kind = anim::kAnimIkAim;
-		look.flags = anim::kAnimIkWorldSpace;
-		look.node[0] = static_cast<std::int16_t>(kHead);
+		// 頭を玉へ向ける。目標はワールドの座標のまま渡し、首はいまの向きから 70 度 (cos で渡す) まで回す
 		const Vec3 b = ball();
-		look.target[0] = b.x; look.target[1] = b.y; look.target[2] = b.z;
-		look.aux[0] = kHeadForward.x; look.aux[1] = kHeadForward.y; look.aux[2] = kHeadForward.z;
-		look.param = std::cos(deg(70.0f));   // 首はいまの向きから 70 度まで
+		const anim::AnimIkRequest look = anim::AnimIkRequest::aim(kHead, b, kHeadForward, std::cos(deg(70.0f)));
 
 		const sgc::Mat4f world = sgc::Mat4f::translation({px, 0.0f, pz}) *
 		                         sgc::Mat4f::rotationY(deg(yawDeg)) * sgc::Mat4f::scaling({0.01f, 0.01f, 0.01f});

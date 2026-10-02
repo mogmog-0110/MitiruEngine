@@ -506,16 +506,17 @@ void drawFXAAPass()
 	cb.lightDir[2] = m_light.direction.z;
 	cb.lightDir[3] = 0.0f;
 
-	/// ライト色（強度を乗算）
+	/// ライト色（強度を乗算）。m_light.color は applySkyToLight が線形にしてある
 	cb.lightColor[0] = m_light.color.r * m_light.intensity;
 	cb.lightColor[1] = m_light.color.g * m_light.intensity;
 	cb.lightColor[2] = m_light.color.b * m_light.intensity;
 	cb.lightColor[3] = 1.0f;
 
-	/// アンビエント色
-	cb.ambientColor[0] = m_sceneAmbient.r;
-	cb.ambientColor[1] = m_sceneAmbient.g;
-	cb.ambientColor[2] = m_sceneAmbient.b;
+	/// アンビエント色。ここから下の色はどれも書いた sRGB なので線形にして渡す (ColorSpace.hpp)
+	const sgc::Colorf ambient = linearColor(m_sceneAmbient);
+	cb.ambientColor[0] = ambient.r;
+	cb.ambientColor[1] = ambient.g;
+	cb.ambientColor[2] = ambient.b;
 	cb.ambientColor[3] = 1.0f;
 
 	/// カメラ位置
@@ -525,30 +526,33 @@ void drawFXAAPass()
 	cb.cameraPos[3] = 1.0f;
 
 	/// マテリアル拡散色
-	const sgc::Colorf diffuse = tinted(material.diffuse, tint.mul);
+	const sgc::Colorf diffuse = linearTinted(linearColor(material.diffuse), tint);
 	cb.materialDiffuse[0] = diffuse.r;
 	cb.materialDiffuse[1] = diffuse.g;
 	cb.materialDiffuse[2] = diffuse.b;
 	cb.materialDiffuse[3] = diffuse.a;
 
 	/// マテリアル鏡面反射色
-	cb.materialSpecular[0] = material.specular.r;
-	cb.materialSpecular[1] = material.specular.g;
-	cb.materialSpecular[2] = material.specular.b;
-	cb.materialSpecular[3] = material.specular.a;
+	const sgc::Colorf specular = linearColor(material.specular);
+	cb.materialSpecular[0] = specular.r;
+	cb.materialSpecular[1] = specular.g;
+	cb.materialSpecular[2] = specular.b;
+	cb.materialSpecular[3] = specular.a;
 
 	/// マテリアル光沢度
 	cb.materialShininess = material.shininess;
 
 	/// 影部の色 (トゥーン時のみ意味を持つ)
-	cb.shadowTint[0] = m_toonShadowTint.r;
-	cb.shadowTint[1] = m_toonShadowTint.g;
-	cb.shadowTint[2] = m_toonShadowTint.b;
+	const sgc::Colorf shadowTint = linearColor(m_toonShadowTint);
+	cb.shadowTint[0] = shadowTint.r;
+	cb.shadowTint[1] = shadowTint.g;
+	cb.shadowTint[2] = shadowTint.b;
 
 	/// 距離フォグ
-	cb.fogColor[0] = m_fogColor.r;
-	cb.fogColor[1] = m_fogColor.g;
-	cb.fogColor[2] = m_fogColor.b;
+	const sgc::Colorf fog = linearColor(m_fogColor);
+	cb.fogColor[0] = fog.r;
+	cb.fogColor[1] = fog.g;
+	cb.fogColor[2] = fog.b;
 	cb.fogColor[3] = 1.0f;
 	cb.fogParams[0] = m_fogNear;
 	cb.fogParams[1] = m_fogFar;
@@ -567,9 +571,10 @@ void drawFXAAPass()
 	cb.toonParams[1] = m_toonSoftness;
 	cb.toonParams[2] = m_toonSpecular;
 	cb.toonParams[3] = m_toonSpecularPower;
-	cb.toonMidTint[0] = m_toonMidTint.r;
-	cb.toonMidTint[1] = m_toonMidTint.g;
-	cb.toonMidTint[2] = m_toonMidTint.b;
+	const sgc::Colorf midTint = linearColor(m_toonMidTint);
+	cb.toonMidTint[0] = midTint.r;
+	cb.toonMidTint[1] = midTint.g;
+	cb.toonMidTint[2] = midTint.b;
 	cb.toonMidTint[3] = 1.0f;
 
 	/// 半球アンビエント (v43)。半球を使わない指定では上下に同じ平坦な色が入り、シェーダー側の lerp が恒等になる
@@ -579,9 +584,10 @@ void drawFXAAPass()
 	cb.ambientGround[0] = ground.r; cb.ambientGround[1] = ground.g; cb.ambientGround[2] = ground.b;
 
 	/// 縁光 (v43)。強さを色へ畳んでおくと PS が 1 本の mad で済み、無効時 (強さ 0) は黒を足すだけになる
-	cb.rimParams[0] = m_rimColor.r * m_rimStrength;
-	cb.rimParams[1] = m_rimColor.g * m_rimStrength;
-	cb.rimParams[2] = m_rimColor.b * m_rimStrength;
+	const sgc::Colorf rim = linearColor(m_rimColor);
+	cb.rimParams[0] = rim.r * m_rimStrength;
+	cb.rimParams[1] = rim.g * m_rimStrength;
+	cb.rimParams[2] = rim.b * m_rimStrength;
 	cb.rimParams[3] = m_rimPower;
 
 	/// 段付きハイライトの材質依存 (v43)。glTF の metallic/roughness をトゥーンのハイライトへ写す。
@@ -593,7 +599,7 @@ void drawFXAAPass()
 	const float rough = (material.roughness < 0.0f) ? 0.0f : ((material.roughness > 1.0f) ? 1.0f : material.roughness);
 	const float gloss = 1.0f - rough;
 	const float gain  = (1.0f + 1.2f * gloss) * (1.0f + 0.4f * metal);
-	const float spec[3] = {material.specular.r, material.specular.g, material.specular.b};
+	const float spec[3] = {specular.r, specular.g, specular.b};
 	for (int i = 0; i < 3; ++i)
 	{
 		const float dielectric = (spec[i] > 0.04f) ? 1.0f : (spec[i] / 0.04f);

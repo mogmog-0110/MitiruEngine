@@ -106,16 +106,21 @@ struct VSOut
     float4 col   : TEXCOORD2;
 };
 
-// engine の ACES filmic + gamma2.2 トーンマップを打ち消す逆補正。splat 色は写真から
-// 焼き込み済みの完成 sRGB なので、本来トーンマップ不要。逆を掛けて忠実な色で出す。
-// 出力 = pow(ACES(Cin), 1/2.2) なので Cin = ACES^-1(col^2.2) を渡せば最終的に col に戻る。
-float3 acesInv(float3 y)
+// splat 色は写真から焼き込み済みの完成した sRGB なので、主パスのトーンマップ (DX12Tonemap.hpp の
+// 中立の肩 + sRGB) の逆を渡し、最終的に元の色へ戻す
+float3 srgbToLinear(float3 c)
 {
-    y = clamp(y, 0.0, 0.98);                 // ACES 最大付近で発散するのでクランプ
-    float3 a = 2.43*y - 2.51;
-    float3 b = 0.59*y - 0.03;
-    float3 c = 0.14*y;
-    return (-b - sqrt(max(0.0, b*b - 4.0*a*c))) / (2.0*a);
+    return (c <= 0.04045) ? c / 12.92 : pow((max(c, 0.04045) + 0.055) / 1.055, 2.4);
+}
+
+float3 neutralShoulderInv(float3 y)
+{
+    const float knee = 0.9;
+    const float d = 1.0 - knee;
+    float peak = max(y.r, max(y.g, y.b));
+    if (peak <= knee) { return y; }
+    float p = min(peak, 0.999);
+    return y * ((knee - d + d * d / (1.0 - p)) / peak);
 }
 
 float4 PSMain(VSOut i) : SV_Target
@@ -123,7 +128,7 @@ float4 PSMain(VSOut i) : SV_Target
     float power = -0.5*(i.conic.x*i.d.x*i.d.x + i.conic.z*i.d.y*i.d.y) + i.conic.y*i.d.x*i.d.y;
     float alpha = min(0.99, i.col.a * exp(power));
     if (alpha < (1.0 / 255.0)) { discard; }
-    float3 rgb = acesInv(pow(max(i.col.rgb, 0.0), 2.2));   // トーンマップ逆補正
+    float3 rgb = neutralShoulderInv(srgbToLinear(saturate(i.col.rgb)));
     return float4(rgb * alpha, alpha);   // premultiplied over
 }
 )HLSL";

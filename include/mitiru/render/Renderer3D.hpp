@@ -503,7 +503,6 @@ public:
 	                       const Material* material) override;
 
 	/// @brief フレーム描画を終了する
-	/// @note アウトライン描画には ToonPipeline を使う。
 	void endFrame() override
 	{
 		m_outlineQueue.clear();

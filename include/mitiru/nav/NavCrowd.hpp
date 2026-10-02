@@ -68,6 +68,7 @@ struct CrowdAgentView
 	sgc::Vec3f target{};
 	CrowdMove move = CrowdMove::Inactive;
 	bool partial = false;   ///< 目的地へは届かず、届く所で一番近い所へ向かっている
+	std::uint8_t pad[2]{};  ///< 詰め物を名前付きにして、GameMemory (MITIRU_ASSERT_NO_PADDING) に置けるようにする
 };
 
 class NavCrowd

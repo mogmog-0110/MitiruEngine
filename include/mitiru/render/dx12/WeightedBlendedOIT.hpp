@@ -202,6 +202,11 @@ PSOut PSMain(PSIn i)
 
 	[[nodiscard]] ID3D12Resource* accumResource()  const noexcept { return m_accum.Get(); }
 	[[nodiscard]] ID3D12Resource* revealResource() const noexcept { return m_reveal.Get(); }
+	/// @brief composite が読む 1 標本の reveal (MSAA なら resolve 先)。composite の後は PIXEL_SHADER_RESOURCE にある
+	[[nodiscard]] ID3D12Resource* revealSampledResource() const noexcept
+	{
+		return m_sampleCount > 1 ? m_revealResolved.Get() : m_reveal.Get();
+	}
 
 private:
 	template <class T> using ComPtr = Microsoft::WRL::ComPtr<T>;

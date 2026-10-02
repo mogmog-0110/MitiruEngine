@@ -1,8 +1,9 @@
 // clod_engine.hlsl。MitiruEngine 組み込み版 clod (cluster-LOD) シェーダ。
 // 原本: cluster-lod-renderer/shaders/clod.hlsl。engine 差分:
 //   - CB 末尾に engineLightDir / engineLightColor (s.light3D と共有)
-//   - ResolveCS は linear のまま出力 (ガンマ無し。後段 ACES tonemap 前提)、
+//   - ResolveCS は linear のまま出力 (ガンマ無し。後段の tonemap が sRGB へ戻す)、
 //     背景 pixel には書かない (inject パスが visbuffer==0 を discard する)
+//   - ResolveCS はエンジンの局所光 (froxel の割り当て) も足す (t12 / t13 / b2)
 // 再生成: python tools/clod_shaders/generate_blobs.py (DXC SM6.6 必須)
 //
 // GPU 駆動 visibility buffer パイプライン:
@@ -104,6 +105,25 @@ StructuredBuffer<BvhNode> BvhNodes     : register(t8);
 StructuredBuffer<float3>  Normals      : register(t9);   // 頂点法線 (object 空間、LOD0 由来)
 StructuredBuffer<float2>  Uvs          : register(t10);
 StructuredBuffer<Mat>     Materials    : register(t11);
+
+// エンジンの局所光。Renderer3D_DX12 が forward と同じ光の一覧と froxel のビット集合を渡す
+// (DX12LitShaders.hpp の LocalLightGpu / CbCluster と同じ並び。CbCluster は先頭の 4 本だけ読む)
+struct LocalLightGpu
+{
+    float3 positionWS;    float range;
+    float3 color;         float spotScale;
+    float3 directionWS;   float spotOffset;
+    float3 boundCenterVS; float boundRadius;
+};
+StructuredBuffer<LocalLightGpu> LocalLights  : register(t12);
+StructuredBuffer<uint>          ClusterMasks : register(t13);
+cbuffer CbCluster : register(b2)
+{
+    uint4  ClusterGrid;     // xyz = froxel の数 w = このフレームの局所光の数 (0 なら読まない)
+    float4 ClusterDepth;    // x = near z / w = log(depth) から段への係数
+    float4 ClusterScreen;   // xy = タイル数 / 画面の画素数
+    float4 CameraForward;   // xyz = 視線
+}
 SamplerState              Samp         : register(s0);   // trilinear wrap (static)
 RWStructuredBuffer<uint>  Stats        : register(u0);   // [0]=可視クラスタ [1]=可視三角形 [2]=occluded
                                                          // [3..6]=pass1 復活理由 (near/clip/背景/深度)
@@ -662,6 +682,40 @@ float3 clusterColor(uint id)
     return float3((h & 255), ((h >> 8) & 255), ((h >> 16) & 255)) / 255.0 * 0.75 + 0.25;
 }
 
+// エンジンの局所光を Lambert で足す。距離の減衰と範囲の窓とスポットの円錐は forward の Phong と同じ式。
+// スポットの影のアトラスは読まない (clod は静的な世界で、影を落とすスポットは forward の物だけを照らす)
+float3 clodLocalLights(float2 pix, float3 wp, float3 n)
+{
+    uint count = ClusterGrid.w;
+    if (count == 0) { return 0.0; }
+    float depth = max(dot(wp - camPosTau.xyz, CameraForward.xyz), ClusterDepth.x);
+    int z = clamp((int)floor(log(depth) * ClusterDepth.z + ClusterDepth.w), 0, (int)ClusterGrid.z - 1);
+    uint x = min((uint)(pix.x * ClusterScreen.x), ClusterGrid.x - 1);
+    uint y = min((uint)(pix.y * ClusterScreen.y), ClusterGrid.y - 1);
+    uint base = (((uint)z * ClusterGrid.y + y) * ClusterGrid.x + x) * 8;
+    float3 sum = 0.0;
+    uint words = (count + 31) / 32;
+    for (uint w = 0; w < words; ++w)
+    {
+        uint bits = ClusterMasks[base + w];
+        while (bits != 0)
+        {
+            uint b = firstbitlow(bits);
+            bits &= bits - 1;
+            LocalLightGpu l = LocalLights[w * 32 + b];
+            float3 d = l.positionWS - wp;
+            float dist2 = dot(d, d);
+            float r2 = l.range * l.range;
+            if (dist2 >= r2) { continue; }
+            float3 L = d * rsqrt(max(dist2, 1e-8));
+            float win = saturate(1.0 - (dist2 * dist2) / (r2 * r2));
+            float spot = saturate(dot(-L, l.directionWS) * l.spotScale + l.spotOffset);
+            sum += l.color * (saturate(dot(n, L)) * win * win * spot * spot / (dist2 + 1.0));
+        }
+    }
+    return sum;
+}
+
 [numthreads(8, 8, 1)]
 void ResolveCS(uint3 dt : SV_DispatchThreadID)
 {
@@ -780,15 +834,17 @@ void ResolveCS(uint3 dt : SV_DispatchThreadID)
         float h = swParams.y > 0.0 ? saturate((float)c.lodDepth / swParams.y) : 0.0;
         base = lerp(float3(0.2, 0.35, 0.9), float3(0.95, 0.25, 0.15), h);
     }
-    // engine の平行光 (s.light3D) で lambert + 半球 ambient。linear のまま出す
-    // (後段の forward と同じ MSAA HDR に合成され、ACES tonemap が均す)
+    // engine の平行光 (s.light3D) で lambert + 半球 ambient と、局所光。linear の HDR のまま出す
+    // (後段の forward と同じ MSAA HDR に合成され、1 を超えた明るさは bloom と tonemap が受ける)
     float3 l = -normalize(engineLightDir.xyz);
     float  ndl = saturate(dot(n, l));
     float  hemi = 0.5 + 0.5 * n.y;
     float  amb = engineLightColor.w;
     float3 col = base * engineLightColor.rgb * (amb + (1.0 - amb) * ndl)
                + base * 0.06 * hemi;
-    outTex[dt.xy] = float4(saturate(col), 1.0);
+    float3 wp = (abs(wsum) > 1e-12) ? (p0 * w0 + p1 * w1 + p2 * w2) / wsum : p0;
+    col += base * clodLocalLights(float2(dt.xy) + 0.5, wp, n);
+    outTex[dt.xy] = float4(max(col, 0.0), 1.0);
 }
 
 // ── HZB build (compute): max 縮小 (標準 Z、far=1 が「遠い」) ────────────────

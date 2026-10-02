@@ -32,6 +32,7 @@
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/core/detail/ModuleInputDevices.hpp>
+#include <mitiru/core/detail/GpuPassTimes.hpp>
 #include <mitiru/core/detail/ModuleTextInput.hpp>
 #include <mitiru/debug/CrashReport.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
@@ -47,6 +48,7 @@
 #include <mitiru/observe/Reflect.hpp>
 #include <mitiru/observe/SeriesMarkers.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
+#include <mitiru/observe/SideStateInspect.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
 
 // ── Free helper 群 (file-local、Engine の method ではない) ──────────────────
@@ -1470,6 +1472,11 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				                    {"frameMs", m_lastFrameMs},
 				                    {"droppedSteps", m_droppedFixedSteps},
 				                    {"slowMotion", m_droppedFixedSteps > 0}}}};
+			if (auto gpu = detail::gpuPassTimesJson(m_renderer3D.get()); !gpu.is_null())
+			{
+				out["perf"]["state"]["gpu"] = std::move(gpu);
+			}
+			out["sideState"] = observe::sideStateSection(m_sideState, m_sideStateRing, observe::sideStateReplayMarks());
 			// 再生中チャンネルのメーター (任意)。列挙非対応の audio engine は空配列。
 			nlohmann::json channels = nlohmann::json::array();
 			int voiceCount = 0;
@@ -1629,6 +1636,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				out["replayGate"] = nlohmann::json{{"title", "決定論ゲート"}, {"state", nlohmann::json{{"runs", std::move(runs)}}}};
 			}
 
+			publishModuleInspectAssets(out);
 			m_moduleInspectorSnapshot->write(out);
 		}
 	}

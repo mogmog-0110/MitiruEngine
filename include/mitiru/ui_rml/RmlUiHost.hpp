@@ -53,6 +53,22 @@ struct UiExtraInput
 	int imeCursor = 0;                 ///< キャレットの位置 (imeComposition の先頭からの byte 数)
 };
 
+/// UI の <img src="view3d:N"/> が貼る、host の 3D 副ビューの出力。resource が nullptr なら描かない。
+/// format は DXGI_FORMAT の値 (この header に DXGI を読ませないため整数で持つ)。
+struct UiExternalImage
+{
+	ID3D12Resource* resource = nullptr;
+	std::uint32_t format = 0;
+	int width = 0;
+	int height = 0;
+};
+
+/// RML の画像の src でこの頭の付いたものは、ファイルでなく 3D の副ビュー (view3d:0 〜 view3d:7) を指す。
+inline constexpr std::string_view kView3DImageScheme = "view3d:";
+
+/// slot N の今の出力を返す。副ビューは作り直すと資源が替わるので、描くたびに引き直す。
+using UiExternalImageFn = UiExternalImage (*)(void* ctx, int slot);
+
 class RmlUiHost
 {
 public:
@@ -99,6 +115,9 @@ public:
 
 	[[nodiscard]] std::vector<UiAction> takeActions();
 
+	/// <img src="view3d:N"/> の出どころ (Engine が 3D レンダラの副ビューを繋ぐ)。fn が nullptr なら貼らない。
+	void setExternalImageSource(UiExternalImageFn fn, void* ctx);
+
 private:
 	struct Impl;
 	std::unique_ptr<Impl> m_impl;
@@ -132,6 +151,7 @@ inline void RmlUiHost::render(ID3D12Resource*, int, int) {}
 inline void RmlUiHost::reloadDocument() {}
 inline void RmlUiHost::setUiScale(float) {}
 inline std::vector<UiAction> RmlUiHost::takeActions() { return {}; }
+inline void RmlUiHost::setExternalImageSource(UiExternalImageFn, void*) {}
 
 #endif
 

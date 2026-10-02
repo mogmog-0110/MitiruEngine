@@ -106,7 +106,8 @@ void compileShaders()
 ///   - 0 b0 CbTransform (VS)、1 b1 CbLighting (全段)、2 b2 CbDrawEx (PS)、3 b3 CbShadow (全段)
 ///   - 4 材質の表 { t0 基本色, t3 法線, t4 金属・粗さ, t5 自発光 } (PS、描画ごと)
 ///   - 5 場面の表 { t1 影 (カスケード 0), t2 影 (カスケード 1/2 のアトラス), t8 irradiance, t9 prefiltered, t10 BRDF 表,
-///     t11 スポットの影のアトラス } (PS、フレームに 1 枚)
+///     t11 スポットの影のアトラス, t35 デカール, t36 デカールの froxel のビット集合, t37/t38 VFX テクスチャ (色/データ) }
+///     (PS、フレームに 1 枚)
 ///   - 6 b4 CbCluster、7 t6 局所光、8 t7 froxel のビット集合 (PS、root descriptor)
 ///   静的サンプラ s0 異方性 + repeat / s1 影の比較 / s2 最近傍 + repeat / s3 線形 + clamp (IBL)
 void createRootSignature()
@@ -123,18 +124,19 @@ void createRootSignature()
 	cbv(3, 3, D3D12_SHADER_VISIBILITY_ALL);
 	cbv(6, 4, D3D12_SHADER_VISIBILITY_PIXEL);
 
-	// 材質の表 { t0, t3..t5 } と場面の表 { t1..t2, t8..t11 }
+	// 材質の表 { t0, t3..t5 } と場面の表 { t1..t2, t8..t11, t35..t38 }
 	static D3D12_DESCRIPTOR_RANGE materialRanges[2] = {};
 	materialRanges[0] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, 0};
 	materialRanges[1] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 3, 0, 1};
-	static D3D12_DESCRIPTOR_RANGE sceneRanges[2] = {};
+	static D3D12_DESCRIPTOR_RANGE sceneRanges[3] = {};
 	sceneRanges[0] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, 0};
 	sceneRanges[1] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 8, 0, 2};
+	sceneRanges[2] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 35, 0, 6};
 	rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	rootParams[4].DescriptorTable = {2, materialRanges};
 	rootParams[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParams[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	rootParams[5].DescriptorTable = {2, sceneRanges};
+	rootParams[5].DescriptorTable = {3, sceneRanges};
 	rootParams[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	for (int i = 7; i <= 8; ++i)
 	{

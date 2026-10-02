@@ -68,7 +68,8 @@ static const float3 kKernel[16] =
 
 // 面の向きは法線 RT ではなく深度から組み直す。法線 RT は頂点法線の補間なので、角を丸めた大きな面
 // (台の天板) では三角形ごとに数度ずつ傾き、平らな面が自分の隣を「上にある」と数えてまだらに暗くなる。
-// 左右・上下は深度の差が小さい側を取る (物の縁の向こうの画素で向きが折れないように)
+// 左右・上下は深度の差が小さい側を取る (物の縁の向こうの画素で向きが折れないように)。
+// 画面の端では外側の隣が無いので内側だけを使う (端で自分自身を隣にすると差が 0 になり、向きが NaN になる)
 float3 faceNormal(int2 pix, float3 P)
 {
     int2 hi = int2(ScreenSize) - 1;
@@ -80,8 +81,10 @@ float3 faceNormal(int2 pix, float3 P)
     float3 Pr = viewPosAt(r, g_depth.Load(r, 0));
     float3 Pu = viewPosAt(u, g_depth.Load(u, 0));
     float3 Pb = viewPosAt(b, g_depth.Load(b, 0));
-    float3 dx = (abs(Pr.z - P.z) < abs(P.z - Pl.z)) ? Pr - P : P - Pl;
-    float3 dy = (abs(Pb.z - P.z) < abs(P.z - Pu.z)) ? Pb - P : P - Pu;
+    bool useR = (pix.x == 0) || (pix.x < hi.x && abs(Pr.z - P.z) < abs(P.z - Pl.z));
+    bool useB = (pix.y == 0) || (pix.y < hi.y && abs(Pb.z - P.z) < abs(P.z - Pu.z));
+    float3 dx = useR ? Pr - P : P - Pl;
+    float3 dy = useB ? Pb - P : P - Pu;
     float3 N = normalize(cross(dx, dy));
     return dot(N, P) > 0.0 ? -N : N;
 }

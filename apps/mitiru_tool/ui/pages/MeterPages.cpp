@@ -1,4 +1,5 @@
-// perf と mixer。snapshot の perf / audio 節を、RML がそのまま出せる文字と割合に直す。
+// perf と mixer。snapshot の perf / audio 節を、RML がそのまま出せる文字と割合に直す。perf は 3D の描画があれば
+// パスごとの GPU 時間 (Dx12GpuTimer、2〜3 フレーム遅れ) も出す。
 // 書式は HTML 版の data-m-format (f2 / x100 / pct01) と同じ。
 
 #include "Pages.hpp"
@@ -35,6 +36,22 @@ std::string f2(const Snapshot* v)
 	return toFixed(numberOr(v, 0.0), 2);
 }
 
+/// パスごとの GPU 時間の行。帯の長さは 1 フレームの GPU 時間全体に対する割合。part は main の内訳。
+nlohmann::json gpuRows(const Snapshot* gpu)
+{
+	nlohmann::json rows = nlohmann::json::array();
+	const Snapshot* passes = gpu != nullptr ? findAt(*gpu, { "passes" }) : nullptr;
+	const double total = numberOr(gpu != nullptr ? findAt(*gpu, { "totalMs" }) : nullptr, 0.0);
+	if (passes == nullptr || !passes->is_array() || !(total > 0.0)) { return rows; }
+	for (const Snapshot& p : *passes)
+	{
+		const double ms = numberOr(findAt(p, { "ms" }), 0.0);
+		rows.push_back({ { "name", stringOr(findAt(p, { "name" }), "?") }, { "ms", toFixed(ms, 2) },
+		                 { "w", toFixed(clamp01(ms / total) * 100.0, 1) + "%" }, { "part", truthy(findAt(p, { "part" })) } });
+	}
+	return rows;
+}
+
 class PerfPage final : public ToolPage
 {
 public:
@@ -64,6 +81,10 @@ private:
 		m_view->set("frame_ms", ms != nullptr ? f2(ms) : std::string("--"));
 		m_view->set("slow", truthy(findAt(m_snap, { "perf", "state", "slowMotion" })));
 		m_view->set("dropped", dropped != nullptr ? jsString(*dropped) : std::string("0"));
+		const Snapshot* gpu = findAt(m_snap, { "perf", "state", "gpu" });
+		m_view->set("has_gpu", gpu != nullptr);
+		m_view->set("gpu_total", gpu != nullptr ? f2(findAt(*gpu, { "totalMs" })) : std::string("--"));
+		m_view->set("gpu_rows", gpuRows(gpu));
 	}
 
 	ToolView* m_view;

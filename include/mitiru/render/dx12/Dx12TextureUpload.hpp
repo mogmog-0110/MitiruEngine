@@ -179,6 +179,17 @@ public:
 		return true;
 	}
 
+	/// @brief 描画先 (副ビューの出力など) をそのまま色のテクスチャとして使う。資源は描画先と共有し、mip は 1 段
+	void adopt(const gfx::GpuResource& texture, DXGI_FORMAT srvFormat, int width, int height)
+	{
+		m_texture = texture;
+		m_width = width;
+		m_height = height;
+		m_mipLevels = 1;
+		m_format = srvFormat;
+		m_ready = static_cast<bool>(m_texture);
+	}
+
 	/// @brief 既存の descriptor heap に SRV を生成する
 	void createSRV(ID3D12Device* device,
 	               D3D12_CPU_DESCRIPTOR_HANDLE dst) const

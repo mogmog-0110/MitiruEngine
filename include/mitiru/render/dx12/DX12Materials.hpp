@@ -1,7 +1,8 @@
 // Renderer3D_DX12 のクラス本体の断片 (Renderer3D_DX12.hpp から include)。描画ごとの材質の SRV 表と定数
 //
 // SRV は 2 つの表に分ける。材質の表 (root 4: t0 基本色 / t3 法線 / t4 金属・粗さ / t5 自発光) は
-// 同じフレームで同じテクスチャの組なら同じ表を使い、場面の表 (root 5: t1/t2 影 / t8-t10 IBL / t11 スポットの影) は
+// 同じフレームで同じテクスチャの組なら同じ表を使い、場面の表 (root 5: t1/t2 影 / t8-t10 IBL / t11 スポットの影 /
+// t35-t38 デカールと VFX テクスチャ) は
 // フレームに 1 枚。
 // どちらも m_albedoSrvHeap のこのフレームの区画に書く。
 
@@ -30,8 +31,8 @@ struct MaterialTableEntry
 };
 
 static constexpr UINT kMaterialTableSize = 4;
-static constexpr UINT kSceneTableSize = 6;
-/// 1 フレームの区画。材質の表は (区画 - 場面の表) / 4 = 510 枚まで
+static constexpr UINT kSceneTableSize = 10;
+/// 1 フレームの区画。材質の表は (区画 - 場面の表) / 4 = 509 枚まで
 static constexpr UINT kAlbedoSrvPerFrame = 2048;
 /// 開番地法のハッシュ表。表の最大数の 1.5 倍以上の 2 冪にして埋まり切らないようにする
 static constexpr int kMaterialTableCacheSize = 1024;
@@ -162,7 +163,7 @@ void writeShadowSrv(dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 	writeTextureOrNull(m_defaultWhiteReady ? &m_defaultWhiteTexture : nullptr, cpu);
 }
 
-/// @brief 場面の表 { t1, t2, t8, t9, t10, t11 } をフレームに 1 回書く。環境マップがあれば IBL を載せる
+/// @brief 場面の表 { t1, t2, t8..t11, t35..t38 } をフレームに 1 回書く。環境マップがあれば IBL を載せる
 /// @details 陰影の種類に関わらず載せる (フレームの途中で PBR へ切り替えても、表は最初の描画で決まるため)
 [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE ensureSceneTable()
 {
@@ -181,6 +182,7 @@ void writeShadowSrv(dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 	writeShadowSrv(m_shadowMapFar, nextDescriptor(cpu, 1));
 	writeEnvironmentSrvs(nextDescriptor(cpu, 2));
 	writeSpotShadowSrv(nextDescriptor(cpu, 5));
+	writeDecalSrvs(nextDescriptor(cpu, 6));
 	m_sceneTableGpu = gpu;
 	return gpu;
 }
@@ -238,17 +240,19 @@ void ensureDefaultWhiteTexture()
                                                        const DrawTint& tint)
 {
 	DX12CbDrawEx cb;
+	// glTF の baseColorFactor は線形のまま、Material::diffuse は書いた sRGB なので線形にする
 	const sgc::Colorf base = (maps != nullptr && maps->hasBaseColor)
 		? sgc::Colorf{maps->baseColor[0], maps->baseColor[1], maps->baseColor[2], maps->baseColor[3]}
-		: material.diffuse;
-	const sgc::Colorf b = tinted(base, tint.mul);
+		: linearColor(material.diffuse);
+	const sgc::Colorf b = linearTinted(base, tint);
 	cb.baseColor[0] = b.r;
 	cb.baseColor[1] = b.g;
 	cb.baseColor[2] = b.b;
 	cb.baseColor[3] = b.a;
 	cb.pbr[0] = std::clamp(material.metallic, 0.0f, 1.0f);
 	cb.pbr[1] = std::clamp(material.roughness, 0.0f, 1.0f);
-	for (int i = 0; i < 3; ++i) { cb.tintAdd[i] = tint.add[i]; }
+	const auto add = linearRgb(tint.add[0], tint.add[1], tint.add[2]);
+	for (int i = 0; i < 3; ++i) { cb.tintAdd[i] = add[i]; }
 	if (maps != nullptr)
 	{
 		for (int i = 0; i < 3; ++i) { cb.emissive[i] = maps->emissiveFactor[i]; }

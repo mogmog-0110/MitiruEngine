@@ -11,7 +11,7 @@ namespace
 
 using Maker = std::unique_ptr<ToolPage> (*)(const PageContext&);
 
-constexpr std::array<std::pair<std::string_view, Maker>, 10> kPages = { {
+constexpr std::array<std::pair<std::string_view, Maker>, 14> kPages = { {
 	{ "inspect", makeInspectPage },
 	{ "input", makeInputPage },
 	{ "scene", makeScenePage },
@@ -22,6 +22,10 @@ constexpr std::array<std::pair<std::string_view, Maker>, 10> kPages = { {
 	{ "scene_view", makeSceneViewPage },
 	{ "why_view", makeWhyViewPage },
 	{ "frame_view", makeFrameViewPage },
+	{ "side_state", makeSideStatePage },
+	{ "ai", makeAiPage },
+	{ "nav", makeNavPage },
+	{ "anim", makeAnimPage },
 } };
 
 } // namespace

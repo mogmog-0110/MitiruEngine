@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::audio::music — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::audio::music | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::audio::music | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/"><code>mitiru::action</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-character_detail/"><code>mitiru::action::character_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-geom/"><code>mitiru::action::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/" class="active"><code>mitiru::audio::music</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/"><code>mitiru::audio::sfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai/"><code>mitiru::gameai</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-bt_detail/"><code>mitiru::gameai::bt_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-orca_detail/"><code>mitiru::gameai::orca_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-level/"><code>mitiru::level</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav-detail/"><code>mitiru::nav::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/"><code>mitiru::settings</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-steam/"><code>mitiru::steam</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/"><code>mitiru::terrain</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/"><code>mitiru::terrain::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::audio::music</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#class-decoderstemreader"><code>DecoderStemReader</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#class-miniaudiomusicplayer"><code>MiniaudioMusicPlayer</code></a></td><td>class</td><td>14</td></tr>
+<tr><td><a href="#enum-musiccommandkind"><code>MusicCommandKind</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#class-istemreader"><code>IStemReader</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#struct-musicstemvoice"><code>MusicStemVoice</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-musiccommand"><code>MusicCommand</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-musiccommandbuffer"><code>MusicCommandBuffer</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-musicposition"><code>MusicPosition</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-musicdirector"><code>MusicDirector</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#struct-musicgrid"><code>MusicGrid</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#enum-musicsync"><code>MusicSync</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#struct-musicstem"><code>MusicStem</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-musicsegment"><code>MusicSegment</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-musiclayer"><code>MusicLayer</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-musictransition"><code>MusicTransition</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-musicstinger"><code>MusicStinger</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-musicmanifest"><code>MusicManifest</code></a></td><td>struct</td><td>21</td></tr>
+<tr><td><a href="#struct-musicmanifestparse"><code>MusicManifestParse</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-parseerror"><code>ParseError</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#class-musicrenderer"><code>MusicRenderer</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#class-pcmstemreader"><code>PcmStemReader</code></a></td><td>class</td><td>4</td></tr>
+</tbody></table>
+<details class="api-class" id="class-decoderstemreader" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DecoderStemReader</code> <span class="api-class__extra">: public IStemReader</span> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>DecoderStemReader() = default</code></div>
+<div class="api-method"><code>~DecoderStemReader() override</code></div>
+<div class="api-method"><code>DecoderStemReader(const DecoderStemReader&amp;) = delete</code></div>
+<div class="api-method"><code>DecoderStemReader&amp; operator=(const DecoderStemReader&amp;) = delete</code></div>
+<div class="api-method"><code>bool open(const std::vector&lt;std::uint8_t&gt;&amp; bytes, ma_uint32 channels, ma_uint32 sampleRate)</code></div>
+<div class="api-method"><code>void close()</code></div>
+<div class="api-method"><code>std::uint64_t read(float* out, std::uint64_t frames) override</code></div>
+</div>
+</details>
+<details class="api-class" id="class-miniaudiomusicplayer" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioMusicPlayer</code> <span class="api-class__count">14</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using LoadFile = std::function&lt;std::vector&lt;std::uint8_t&gt;(std::string_view file)&gt;;</code></div>
+<div class="api-method"><code>MiniaudioMusicPlayer() = default</code></div>
+<div class="api-method"><code>~MiniaudioMusicPlayer()</code></div>
+<div class="api-method"><code>MiniaudioMusicPlayer(const MiniaudioMusicPlayer&amp;) = delete</code></div>
+<div class="api-method"><code>MiniaudioMusicPlayer&amp; operator=(const MiniaudioMusicPlayer&amp;) = delete</code></div>
+<div class="api-method"><code>std::string load(ma_engine&amp; engine, std::shared_ptr&lt;const MusicManifest&gt; manifest, const LoadFile&amp; loadFile, std::int64_t lookaheadFrames)</code></div>
+<div class="api-method"><code>void unload()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool loaded() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ma_sound* sound() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] MusicDirector&amp; director() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const MusicRenderer&amp; renderer() const noexcept</code></div>
+<div class="api-method"><code>void setCommandLog(std::function&lt;void(const MusicCommand&amp;)&gt; log)</code></div>
+<div class="api-method"><code>void step()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline MusicClockInfo musicClockOf(const MusicSegment&amp; s, int segment, std::int64_t rel, std::uint32_t rate) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-musiccommandkind" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">MusicCommandKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>StartInstance</code></div>
+<div class="api-method"><code>StopInstance</code></div>
+<div class="api-method"><code>LayerGain</code></div>
+<div class="api-method"><code>MasterGain</code></div>
+<div class="api-method"><code>constexpr std::size_t kMaxStemsPerInstance = 8</code></div>
+</div>
+</details>
+<details class="api-class" id="class-istemreader" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IStemReader</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IStemReader() = default</code></div>
+<div class="api-method"><code>virtual std::uint64_t read(float* out, std::uint64_t frames) = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musicstemvoice" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicStemVoice</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>IStemReader* reader = nullptr</code></div>
+<div class="api-method"><code>std::int16_t layer = -1</code></div>
+<div class="api-method"><code>float gain = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musiccommand" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicCommand</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::int64_t at = 0</code></div>
+<div class="api-method"><code>std::int64_t length = 0</code></div>
+<div class="api-method"><code>std::uint32_t instance = 0</code></div>
+<div class="api-method"><code>std::int16_t segment = -1</code></div>
+<div class="api-method"><code>std::int16_t stinger = -1</code></div>
+<div class="api-method"><code>std::int16_t layer = -1</code></div>
+<div class="api-method"><code>MusicCommandKind kind = MusicCommandKind::StartInstance</code></div>
+<div class="api-method"><code>float gain = 1.0f</code></div>
+<div class="api-method"><code>std::uint8_t stemCount = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musiccommandbuffer">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicCommandBuffer</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::size_t count = 0</code></div>
+<div class="api-method"><code>bool overflowed = false</code></div>
+<div class="api-method"><code>void clear() noexcept</code></div>
+<div class="api-method"><code>void push(const MusicCommand&amp; c) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const MusicCommand* begin() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const MusicCommand* end() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musicposition">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicPosition</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool playing = false</code></div>
+<div class="api-method"><code>int segment = -1</code></div>
+<div class="api-method"><code>std::int64_t sampleInSegment = 0</code></div>
+<div class="api-method"><code>std::int64_t bar = 0</code></div>
+<div class="api-method"><code>int beatInBar = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-musicdirector">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MusicDirector</code> <span class="api-class__count">15</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>MusicDirector(std::shared_ptr&lt;const MusicManifest&gt; manifest, std::uint32_t sampleRate)</code></div>
+<div class="api-method"><code>void request(int segment)</code></div>
+<div class="api-method"><code>void stop(float fadeSec)</code></div>
+<div class="api-method"><code>void setIntensity(float intensity)</code></div>
+<div class="api-method"><code>void playStinger(int stinger)</code></div>
+<div class="api-method"><code>void setMasterGain(float gain, float rampSec)</code></div>
+<div class="api-method"><code>void advance(std::uint64_t frames, MusicCommandBuffer&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] MusicPosition position() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::int64_t now() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int currentSegment() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int pendingSegment() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float intensity() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const MusicManifest&amp; manifest() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::int64_t segmentLength(const MusicSegment&amp; s, std::uint32_t rate) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::int64_t syncPoint(const MusicSegment&amp; s, std::uint32_t rate, MusicSync sync, std::int64_t rel) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musicgrid">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicGrid</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>double bpm = 120.0</code></div>
+<div class="api-method"><code>int beatsPerBar = 4</code></div>
+<div class="api-method"><code>std::uint32_t sampleRate = 48000</code></div>
+<div class="api-method"><code>[[nodiscard]] static MusicGrid of(const MusicSegment&amp; s, std::uint32_t rate) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::int64_t beatSample(std::int64_t beat) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::int64_t beatAtOrAfter(std::int64_t rel) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::int64_t beatAt(std::int64_t rel) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::int64_t barAtOrAfter(std::int64_t rel) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-musicsync">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">MusicSync</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Immediate</code></div>
+<div class="api-method"><code>Beat</code></div>
+<div class="api-method"><code>Bar</code></div>
+<div class="api-method"><code>Marker</code></div>
+<div class="api-method"><code>Exit</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musicstem">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicStem</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string file</code></div>
+<div class="api-method"><code>int layer = -1</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musicsegment">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicSegment</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string id</code></div>
+<div class="api-method"><code>double bpm = 120.0</code></div>
+<div class="api-method"><code>int beatsPerBar = 4</code></div>
+<div class="api-method"><code>int bars = 4</code></div>
+<div class="api-method"><code>bool loop = true</code></div>
+<div class="api-method"><code>int next = -1</code></div>
+<div class="api-method"><code>std::vector&lt;int&gt; markerBeats</code></div>
+<div class="api-method"><code>std::vector&lt;MusicStem&gt; stems</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musiclayer">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicLayer</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string id</code></div>
+<div class="api-method"><code>std::vector&lt;std::array&lt;float, 2&gt;&gt; curve</code></div>
+<div class="api-method"><code>float fadeSec = 1.0f</code></div>
+<div class="api-method"><code>MusicSync sync = MusicSync::Immediate</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musictransition">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicTransition</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int from = -1</code></div>
+<div class="api-method"><code>int to = -1</code></div>
+<div class="api-method"><code>MusicSync sync = MusicSync::Bar</code></div>
+<div class="api-method"><code>float fadeOutSec = 0.0f</code></div>
+<div class="api-method"><code>float fadeInSec = 0.0f</code></div>
+<div class="api-method"><code>int via = -1</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musicstinger">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicStinger</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string id</code></div>
+<div class="api-method"><code>std::string file</code></div>
+<div class="api-method"><code>MusicSync sync = MusicSync::Beat</code></div>
+<div class="api-method"><code>float gain = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musicmanifest">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicManifest</code> <span class="api-class__count">21</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;MusicLayer&gt; layers</code></div>
+<div class="api-method"><code>std::vector&lt;MusicSegment&gt; segments</code></div>
+<div class="api-method"><code>std::vector&lt;MusicTransition&gt; transitions</code></div>
+<div class="api-method"><code>std::vector&lt;MusicStinger&gt; stingers</code></div>
+<div class="api-method"><code>[[nodiscard]] int segmentIndex(std::string_view id) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int stingerIndex(std::string_view id) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int layerIndex(std::string_view id) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] MusicTransition rule(int from, int to) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float layerGain(int layer, float intensity) const noexcept</code></div>
+<div class="api-method"><code>using Json = nlohmann::json;</code></div>
+<div class="api-method"><code>[[noreturn]] inline void fail(std::string message)</code></div>
+<div class="api-method"><code>inline MusicSync parseSync(const Json&amp; j, std::string_view where, MusicSync fallback)</code></div>
+<div class="api-method"><code>inline float nonNegative(const Json&amp; j, const char* key, float fallback, std::string_view where)</code></div>
+<div class="api-method"><code>inline int segmentRef(const MusicManifest&amp; m, const Json&amp; j, const char* key, std::string_view where, bool anyAllowed)</code></div>
+<div class="api-method"><code>inline void parseLayers(MusicManifest&amp; m, const Json&amp; root)</code></div>
+<div class="api-method"><code>inline MusicSegment parseSegmentShape(const Json&amp; j, double bpm, int beatsPerBar)</code></div>
+<div class="api-method"><code>inline void parseStems(MusicManifest&amp; m, MusicSegment&amp; s, const Json&amp; j)</code></div>
+<div class="api-method"><code>inline void parseSegments(MusicManifest&amp; m, const Json&amp; root)</code></div>
+<div class="api-method"><code>inline void parseTransitions(MusicManifest&amp; m, const Json&amp; root)</code></div>
+<div class="api-method"><code>inline void parseStingers(MusicManifest&amp; m, const Json&amp; root)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline MusicManifestParse parseMusicManifest(std::string_view text)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-musicmanifestparse">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicManifestParse</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>MusicManifest manifest</code></div>
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ok() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-parseerror">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ParseError</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string message</code></div>
+</div>
+</details>
+<details class="api-class" id="class-musicrenderer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MusicRenderer</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit MusicRenderer(std::uint32_t channels, std::int64_t lookahead = 0)</code></div>
+<div class="api-method"><code>bool push(const MusicCommand&amp; c) noexcept</code></div>
+<div class="api-method"><code>std::size_t popFinished(std::uint32_t* ids, std::size_t max) noexcept</code></div>
+<div class="api-method"><code>void render(float* out, std::uint64_t frames) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::int64_t position() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t lateCommands() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t droppedInstances() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-pcmstemreader">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PcmStemReader</code> <span class="api-class__extra">: public IStemReader</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>PcmStemReader() = default</code></div>
+<div class="api-method"><code>PcmStemReader(const float* data, std::uint64_t frames, std::uint32_t channels) noexcept</code></div>
+<div class="api-method"><code>void rewind(std::uint64_t startFrame = 0) noexcept</code></div>
+<div class="api-method"><code>std::uint64_t read(float* out, std::uint64_t frames) override</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

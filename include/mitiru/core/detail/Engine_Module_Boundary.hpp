@@ -13,6 +13,7 @@
 
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/module/BoundaryTypes.hpp>
+#include <mitiru/module/InspectAssetsHost.hpp>
 
 namespace mitiru::module::detail
 {
@@ -94,6 +95,25 @@ MITIRU_INLINE const char* mitiru::Engine::moduleActionManifestJson() const
 	if (!m_moduleHost) { return nullptr; }
 	const auto fn = m_moduleHost->actionManifestFn();
 	return (fn != nullptr) ? fn() : nullptr;
+}
+
+MITIRU_INLINE void mitiru::Engine::publishModuleInspectAssets(nlohmann::json& snapshotOut)
+{
+	const auto fn = m_moduleHost ? m_moduleHost->inspectAssetsFn() : nullptr;
+	if (fn != m_inspectAssetsFn && m_moduleInspectorSnapshot)
+	{
+		m_inspectAssetsFn = fn;
+		m_inspectAssets.reset();
+		std::vector<module::CopiedInspectAsset> copied;
+		if (fn != nullptr &&
+		    guardModuleCode("mitiru_module_inspect_assets", m_moduleHost.get(), "assets are not shown in the tool windows",
+		                    [&] { copied = module::copyInspectAssets(fn); }))
+		{
+			m_inspectAssets = std::make_unique<module::PublishedInspectAssets>(
+				copied, module::inspectAssetDirFor(m_moduleInspectorSnapshot->path()));
+		}
+	}
+	if (m_inspectAssets && !m_inspectAssets->list().empty()) { snapshotOut["assets"] = m_inspectAssets->list(); }
 }
 
 MITIRU_INLINE mitiru::save::MemoryMigrator mitiru::Engine::effectiveSaveMigrator() const

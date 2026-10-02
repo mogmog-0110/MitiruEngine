@@ -136,8 +136,8 @@ private:
 
 std::unique_ptr<ToolPage> makeInspectPage(const PageContext& ctx)
 {
-	// perf / audio は専用窓 (perf / mixer)、rewind は巻き戻し窓があるので inspector では出さない
-	return std::make_unique<KvPage>(ctx, KvFilter{ {}, { "perf", "audio", "rewind" } });
+	// perf / audio は専用窓 (perf / mixer)、rewind は巻き戻し窓、sideState は side_state 窓があるので inspector では出さない
+	return std::make_unique<KvPage>(ctx, KvFilter{ {}, { "perf", "audio", "rewind", "sideState" } });
 }
 
 std::unique_ptr<ToolPage> makeInputPage(const PageContext& ctx)

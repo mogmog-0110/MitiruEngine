@@ -40,13 +40,7 @@ struct NavTriangles
 	const auto loaded = level::loadLevelFile(std::string(u8.begin(), u8.end()));
 	if (!loaded.level || loaded.level->navSource().triangleCount() == 0) return std::nullopt;
 	const auto& soup = loaded.level->navSource();
-	NavTriangles out;
-	for (std::size_t i = 0; i + 2 < soup.positions.size(); i += 3)
-	{
-		out.vertices.push_back({soup.positions[i], soup.positions[i + 1], soup.positions[i + 2]});
-	}
-	out.indices = soup.indices;
-	return out;
+	return NavTriangles{soup.vertices, soup.indices};
 }
 
 /// @brief レベルのファイルから、焼く三角形を scale 倍して読む。読めなければ nullopt と理由

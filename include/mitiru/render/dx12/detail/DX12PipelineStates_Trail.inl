@@ -9,7 +9,7 @@ public:
 ///          帯は endFrame の時点のカメラへ向ける。beginFrame より前に積んだ筋は捨てる。
 void drawTrail(std::span<const TrailPoint> points, const TrailStyle& style = {})
 {
-	if (!m_frameActive || points.size() < 2) { return; }
+	if (!m_frameActive || points.size() < 2 || rejectInView("drawTrail")) { return; }
 	if (m_trailPoints.size() + points.size() > kMaxTrailPointsPerFrame)
 	{
 		debug::warnOnce("dx12.trail.budget", "剣筋の点が 1 フレームの上限 (" +
@@ -23,7 +23,7 @@ void drawTrail(std::span<const TrailPoint> points, const TrailStyle& style = {})
 /// @brief ゲーム DLL の Screen::drawTrail から来る形 (ABI v48)。上と同じ上限で、写しへ直に変換して積む
 void drawTrail(const TrailPointPod* points, int count, const TrailStylePod& style) override
 {
-	if (!m_frameActive || points == nullptr || count < 2) { return; }
+	if (!m_frameActive || points == nullptr || count < 2 || rejectInView("drawTrail")) { return; }
 	const auto n = static_cast<std::size_t>(count);
 	if (m_trailPoints.size() + n > kMaxTrailPointsPerFrame)
 	{
@@ -55,6 +55,7 @@ void createTrailPipelines()
 {
 	m_trailPoints.reserve(1024);
 	m_trailBatches.reserve(64);
+	m_trailDrawn.reserve(64);
 	D3D12_ROOT_PARAMETER prm = {};
 	prm.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	prm.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -108,7 +109,8 @@ void createTrailPipelines()
 	}
 }
 
-/// @brief 積んだ筋を MSAA の HDR 色へ描く。不透明と半透明の後、resolve の前 (深度が DEPTH_WRITE) で呼ぶ
+/// @brief 積んだ筋を MSAA の HDR 色へ描く。不透明と半透明の後、resolve の前 (深度が DEPTH_WRITE) で呼ぶ。
+///        FSR の間は同じ帯を反応マスクへも描く
 void drawTrailPass()
 {
 	if (m_trailBatches.empty() || !m_trailRootSig || !m_msaaColorRtvHeap || !m_dsvHeap)
@@ -125,6 +127,7 @@ void drawTrailPass()
 	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	for (const TrailBatch& batch : m_trailBatches) { drawTrailBatch(batch); }
 	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	drawTrailReactive();
 	cl->SetGraphicsRootSignature(m_rootSignature.Get());
 	clearTrails();
 }
@@ -147,12 +150,14 @@ void drawTrailBatch(const TrailBatch& batch)
 		float viewProj[4][4];
 		float edgeSoftness;
 		float additive;
-		float pad[2];
+		float maxReactive;
+		float pad;
 	};
 	CbTrail cb{};
 	toColumnMajor(cb.viewProj, m_projMatrix * m_viewMatrix);
 	cb.edgeSoftness = batch.style.edgeSoftness;
 	cb.additive = (batch.style.blend == TrailBlend::Additive) ? 1.0f : 0.0f;
+	cb.maxReactive = kFsrMaxReactive;
 	const auto c = m_uploadRing.upload(&cb, sizeof(cb), 256);
 	if (!c.valid()) { return; }
 
@@ -164,10 +169,12 @@ void drawTrailBatch(const TrailBatch& batch)
 	cl->IASetVertexBuffers(0, 1, &vbv);
 	cl->DrawInstanced(static_cast<UINT>(written), 1, 0, 0);
 	++m_drawCallCount;
+	if (fsrActive()) { m_trailDrawn.push_back({vbv, c.gpuAddr}); }
 }
 
 void clearTrails() noexcept
 {
 	m_trailPoints.clear();
 	m_trailBatches.clear();
+	m_trailDrawn.clear();
 }

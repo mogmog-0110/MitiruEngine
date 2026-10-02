@@ -71,6 +71,7 @@ assets/audio/music/explore_pad.ogg   (拡張子なしの名前で書く。wav / 
 層の `sync` の区切りから `fadeSec` かけて寄せる。層に属さない stem (`layer` を書かない) は強さにかかわらず鳴る。
 
 ゲームは `hud.musicIntensity(0.8f)` で強さを変える (ABI v48、ADR 0056)。host が覚えているので、変わった時だけ呼べばよい。
+敵との距離で強さを決め、層・スティンガー・`sounds.json` の効果音を一緒に鳴らす見本は `examples/music_layers`。
 host の C++ からは `FileAudioEngine::music().director().setIntensity(0.8f)`。
 
 鳴っている区間の拍は `in.music()` で読める (再生中か・区間・小節・拍・拍の中の位置 0..1・区間の頭からの秒)。命令は先読みのぶん

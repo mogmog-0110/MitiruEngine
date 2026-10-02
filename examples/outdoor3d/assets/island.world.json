@@ -1,0 +1,36 @@
+{
+  "terrain": {
+    "heightmap": "island_height.png",
+    "size": [128, 128],
+    "height": 24,
+    "center": [0, 0, 0],
+    "lod": {"patchCells": 32, "lodCount": 4}
+  },
+  "layers": [
+    {"albedo": "grass.png", "normal": "grass_n.png", "tile": 6, "roughness": 0.95},
+    {"albedo": "sand.png", "normal": "sand_n.png", "tile": 4, "roughness": 0.85,
+     "rule": {"height": [-20, 4.2], "slope": [-90, 90], "blend": 0.5}},
+    {"albedo": "rock.png", "normal": "rock_n.png", "tile": 5, "roughness": 0.8,
+     "rule": {"height": [-20, 100], "slope": [30, 120], "blend": 4}}
+  ],
+  "grass": {
+    "density": "island_grass.png",
+    "bladesPerM2": 36, "patchSize": 6, "lodStart": 10, "lodStep": 10, "maxLod": 3,
+    "fadeStart": 28, "fadeEnd": 42,
+    "height": 0.45, "width": 0.045,
+    "baseColor": [0.04, 0.11, 0.02], "tipColor": [0.20, 0.38, 0.06],
+    "wind": {"dir": [1.0, 0.35], "strength": 0.16, "speed": 1.4},
+    "maxSlope": 32
+  },
+  "scatter": [
+    {"model": "rock.glb", "perM2": 0.012, "seed": 7, "scale": [0.6, 1.8], "maxSlope": 45, "height": [2.0, 30],
+     "sink": 0.12, "align": 0.6, "collideRadius": 0.4, "collideHeight": 0.7},
+    {"model": "pine.glb", "density": "island_trees.png", "perM2": 0.05, "seed": 11, "scale": [0.8, 1.4],
+     "maxSlope": 30, "height": [5.0, 18], "sink": 0.05, "collideRadius": 0.18, "collideHeight": 3.0}
+  ],
+  "water": [
+    {"height": 3.0, "min": [-1500, -1500], "max": [1500, 1500],
+     "shallowColor": [0.10, 0.45, 0.48], "deepColor": [0.01, 0.07, 0.14], "absorption": [0.45, 0.12, 0.08],
+     "foamDepth": 0.4, "refraction": 0.025, "waveAmplitude": 0.3, "waveScale": 0.3, "waveSpeed": 0.7, "reflectivity": 0.6}
+  ]
+}

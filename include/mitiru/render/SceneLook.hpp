@@ -86,8 +86,8 @@ struct SceneLook
 	float bloomThreshold = 1.0f;  ///< bloom が拾い始める明るさ (HDR 線形。1.0 = 白より明るい所だけ)
 	float bloomStrength  = 0.3f;  ///< ぼかした明部を足す係数。0 で無効と同じ絵
 	float shadowSoftness = 1.0f;  ///< 影の PCF の端のタップまでの距離 (影マップの texel 単位。setShadowSoftness)。1.0 = 従来
-	float saturation     = 1.0f;  ///< ACES 後の彩度 (setColorGrade)。0 でグレー、1 で無変換
-	float contrast       = 1.0f;  ///< ACES 後のコントラスト。中間灰 0.18 を軸に伸ばす。1 で無変換
+	float saturation     = 1.0f;  ///< トーンマップ後の彩度 (setColorGrade)。0 でグレー、1 で無変換
+	float contrast       = 1.0f;  ///< トーンマップ後のコントラスト。中間灰 0.18 を軸に伸ばす。1 で無変換
 
 	// v42 (ADR 0044): 詰め物が無かったので sizeof を 140 → 172 に伸ばした。新しい reserved は
 	// また 20 byte 積んである (float 5 個ぶん)

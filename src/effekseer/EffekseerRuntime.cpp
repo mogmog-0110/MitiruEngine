@@ -15,6 +15,7 @@
 
 #include "EffekseerRendererDX12/EffekseerRenderer/EffekseerRendererDX12.Renderer.h"
 #include "EffekseerRendererLLGI/Common.h"
+#include "EffekseerRendererCommon/TextureLoader.h"
 #include "EffekseerRendererLLGI/EffekseerRendererLLGI.RendererImplemented.h"
 #include "3rdParty/LLGI/src/DX12/LLGI.BaseDX12.h"
 
@@ -102,7 +103,10 @@ public:
 		m_manager->SetRingRenderer(m_renderer->CreateRingRenderer());
 		m_manager->SetTrackRenderer(m_renderer->CreateTrackRenderer());
 		m_manager->SetModelRenderer(m_renderer->CreateModelRenderer());
-		m_manager->SetTextureLoader(m_renderer->CreateTextureLoader());
+		// 主パスの色は線形の HDR なので、テクスチャは sRGB として読み、エフェクトに書いた色も線形にして足す
+		m_renderer->SetMaintainGammaColorInLinearColorSpace(true);
+		m_manager->SetTextureLoader(EffekseerRenderer::CreateTextureLoader(
+			m_renderer->GetGraphicsDevice(), nullptr, Effekseer::ColorSpaceType::Linear));
 		m_manager->SetModelLoader(m_renderer->CreateModelLoader());
 		m_manager->SetMaterialLoader(m_renderer->CreateMaterialLoader());
 		m_manager->SetCurveLoader(Effekseer::MakeRefPtr<Effekseer::CurveLoader>());

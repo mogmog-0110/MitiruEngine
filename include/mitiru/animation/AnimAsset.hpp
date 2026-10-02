@@ -25,6 +25,12 @@ inline constexpr int kAnimMaxClips = 32767;
 inline constexpr int kAnimMaxMasks = 32767;
 inline constexpr std::size_t kAnimMaxEventNames = 65535;
 
+/// @brief findClip / findNode / findMask の int を POD の int16 の欄へ入れる。収まらない値は「無し」の -1 にする
+[[nodiscard]] constexpr std::int16_t animIndex16(int index) noexcept
+{
+	return (index >= 0 && index <= 32767) ? static_cast<std::int16_t>(index) : std::int16_t{-1};
+}
+
 /// @brief クリップ上の名前付きの時刻 (足音、攻撃判定の開始など)。nameId は AnimAsset::eventNames の添字。
 struct AnimEventKey
 {

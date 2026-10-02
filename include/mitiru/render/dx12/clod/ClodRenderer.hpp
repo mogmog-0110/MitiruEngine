@@ -123,6 +123,16 @@ public:
 		m_jitterNdc[1] = ndcY;
 	}
 
+	/// @brief このフレームの局所光 (Renderer3D_DX12 の光の一覧・froxel のビット集合・CbCluster)。次の record の
+	///        resolve が足す。どれかが 0 なら局所光なしで描く
+	void setLocalLights(D3D12_GPU_VIRTUAL_ADDRESS lights, D3D12_GPU_VIRTUAL_ADDRESS masks,
+	                    D3D12_GPU_VIRTUAL_ADDRESS cluster) noexcept
+	{
+		m_localLightsVA = lights;
+		m_clusterMasksVA = masks;
+		m_clusterCbVA = cluster;
+	}
+
 	/// @brief フレーム終端で intent を破棄する
 	void endFrame() noexcept { m_pending.clear(); }
 
@@ -150,6 +160,7 @@ private:
 	void buildFrameTables(D3D12_GPU_VIRTUAL_ADDRESS& instances, D3D12_GPU_VIRTUAL_ADDRESS& meshTable);
 	void bindCompute(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb) const;
 	void bindGraphics(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb) const;
+	void bindLocalLights(ID3D12GraphicsCommandList* cmd, bool compute) const;
 	void uavBarrierAll(ID3D12GraphicsCommandList* cmd) const;
 	void recordClears(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const;
 	void recordBvhCull(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const;
@@ -201,6 +212,12 @@ private:
 	dx12::Dx12UploadRing m_ring;
 
 	ComPtr<ID3D12DescriptorHeap> m_heap;   ///< [0]=offscreen UAV, [1..mips]=HZB, [1+mips+i]=texture SRV
+
+	// 局所光 (root 25 = t12 光、26 = t13 ビット集合、27 = b2 CbCluster)。無いフレームは光 0 個の CB を指す
+	D3D12_GPU_VIRTUAL_ADDRESS m_localLightsVA = 0;
+	D3D12_GPU_VIRTUAL_ADDRESS m_clusterMasksVA = 0;
+	D3D12_GPU_VIRTUAL_ADDRESS m_clusterCbVA = 0;
+	D3D12_GPU_VIRTUAL_ADDRESS m_noLightsCbVA = 0;
 
 	float m_prevView[12] = {};
 	float m_jitterNdc[2] = {};

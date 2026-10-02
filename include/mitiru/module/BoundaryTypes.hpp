@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file BoundaryTypes.hpp
-/// @brief ABI v48 で境界に足した POD (パッドの拡張、セーブスロットの一覧、曲の拍、実績)。ModuleApi.hpp が include する。
+/// @brief ABI v48 / v49 で境界に足した POD (パッドの拡張、セーブスロットの一覧、曲の拍、実績、ツール窓に見せる資産)。ModuleApi.hpp が include する。
 /// @details 配置は ModuleApi.hpp の InputSnapshot / FrameIntents と同じ規約 (固定長、明示の詰め物、sizeof を固定)。
 ///          意味と配置の一覧は docs/adr/0056-abi-v48-boundary.md。
 
@@ -152,6 +152,26 @@ constexpr const char* kMigrateSymbol = "mitiru_module_migrate";
 /// @brief 古い bytes (oldLayoutHash の形) から newMemory (newSize、今の GameMemory の写しが入っている) を作る。1 = 移せた / 0 = 移せない。
 using ModuleMigrateFn = std::int32_t (*)(const void* oldBytes, std::uint64_t oldSize, std::uint64_t oldLayoutHash,
                                          void* newMemory, std::uint64_t newSize);
+
+/// @brief ツール窓に見せる DLL の資産 1 件 (v49)。GameMemory に無い形のデータ (ビヘイビアツリー、ナビメッシュ) を渡す
+/// @details kind は "bt_tree" (BehaviorTreeJson と同じ JSON の文字列) か "navmesh" (NavMesh / DynamicNavMesh の焼いた
+///          bytes)。data は DLL の static か読み込んだデータで、DLL を手放すまで変えない。host は読み込みの時に 1 度だけ写す。
+struct InspectAsset
+{
+	char          kind[16];
+	char          name[32];
+	const void*   data;
+	std::uint64_t size;
+};
+
+inline constexpr int kMaxInspectAssets = 16;
+
+/// @brief 資産の一覧を out[0..cap) に書き、書いた数を返す export 名 (optional、v49)。`MITIRU_INSPECT_ASSETS(fn)` が出す。
+constexpr const char* kInspectAssetsSymbol = "mitiru_module_inspect_assets";
+using ModuleInspectAssetsFn = std::int32_t (*)(InspectAsset* out, std::int32_t cap);
+
+static_assert(sizeof(InspectAsset) == 64 && offsetof(InspectAsset, data) == 48, "InspectAsset wire size 固定 (v49)");
+static_assert(std::is_trivially_copyable_v<InspectAsset> && std::is_standard_layout_v<InspectAsset>);
 
 static_assert(sizeof(PadTouch) == 16, "PadTouch wire size 固定 (v48)");
 static_assert(sizeof(GamepadExt) == 64, "GamepadExt wire size 固定 (v48)");

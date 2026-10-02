@@ -9,6 +9,13 @@
 		.scope { margin-top: 4dp; font-size: 12dp; color: #6e7077; line-height: 1.4; }
 		spark { display: block; position: relative; width: 100%; height: 150dp; }
 		.spark-label { position: absolute; right: 4dp; font-family: "IBM Plex Mono"; font-size: 12dp; color: #999da4; }
+		.pass { display: flex; align-items: center; padding: 2.4dp 0dp; font-family: "IBM Plex Mono"; font-size: 12dp; }
+		.pass .name { flex: 0 0 104dp; color: #1a1c1f; }
+		.pass.part .name { padding-left: 14dp; color: #6e7077; }
+		.pass .bar { position: relative; flex: 1 1 auto; height: 8dp; margin: 0dp 8dp; background-color: #f4f4f2; border: 1dp #e6e7ea; }
+		.pass .bar .fill { position: absolute; left: 0dp; top: 0dp; bottom: 0dp; background-color: #1a1c1f; }
+		.pass.part .bar .fill { background-color: #999da4; }
+		.pass .ms { flex: 0 0 52dp; text-align: right; color: #1a1c1f; }
 	</style>
 </head>
 <body data-model="tool" data-class-is-waiting="!ready">
@@ -23,6 +30,16 @@
 			<span>{{ dropped }}</span> 回落とした (1 フレームの上限に到達。docs/CONFIG.md)</div>
 		<div class="label"><span class="dash">— </span>fps history · newest right</div>
 		<div class="panel"><spark seq="0" data-attr-value="fps_value" data-attr-seq="sample" cap="180" baseline="60" min="75"><span class="spark-label">60</span></spark></div>
+		<div data-if="has_gpu">
+			<div class="label"><span class="dash">— </span>GPU · <span>{{ gpu_total }}</span> ms / frame</div>
+			<div class="panel">
+				<div class="pass" data-for="g : gpu_rows" data-class-part="g.part">
+					<span class="name">{{ g.name }}</span><div class="bar"><div class="fill" data-style-width="g.w"/></div><span class="ms">{{ g.ms }}</span>
+				</div>
+			</div>
+			<div class="scope">GPU のタイムスタンプで測ったパスごとの時間。2〜3 フレーム遅れて出る。字下げした行は main の内訳 (sky / fog /
+				atmosphere / upscale / 後処理)、lights は main より前に流す局所光の割り当て</div>
+		</div>
 	</div>
 	<div class="wait">waiting for the game…</div>
 </body>

@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.35.0
+	VERSION 0.36.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -995,22 +995,44 @@ if(WIN32)
 		message(STATUS "Slang enabled - DX12 shaders compile through Slang to DXIL (${MITIRU_SLANG_ROOT})")
 	endif()
 
-	# ── Effekseer (opt-in): パーティクル演出を DX12 の 3D フレームに描く (render/dx12/EffekseerRuntime.hpp) ──
+	# ── Effekseer (既定 ON、ADR 0059): パーティクル演出を DX12 の 3D フレームに描く (render/dx12/EffekseerRuntime.hpp) ──
 	# ゲームからは drawModel(path.efkefc, 位置, 回転, 倍率, key, 経過秒) で渡される。エフェクトを作成する
-	# Effekseer のエディタは別のツールであり、エンジンには含めない。
-	option(MITIRU_WITH_EFFEKSEER "Effekseer のエフェクトを DX12 で描く (要 external/Effekseer と LLGI)" OFF)
+	# Effekseer のエディタは別のツールであり、エンジンには含めない。submodule は update = none なので、
+	# 取っていない clone では入れずに続ける (.efkefc は 1 度だけ警告して描かない)。
+	option(MITIRU_WITH_EFFEKSEER "Effekseer のエフェクトを DX12 で描く (external/Effekseer と LLGI があれば)" ON)
+	set(MITIRU_EFFEKSEER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/external/Effekseer")
+	if(MITIRU_WITH_EFFEKSEER AND NOT EXISTS "${MITIRU_EFFEKSEER_ROOT}/Dev/Cpp/3rdParty/LLGI/src/LLGI.Graphics.h")
+		message(STATUS "Effekseer disabled - external/Effekseer (と中の LLGI) が無い。入れるには:\n"
+			"  git submodule update --init --checkout --depth 1 external/Effekseer\n"
+			"  git -C external/Effekseer submodule update --init --depth 1 Dev/Cpp/3rdParty/LLGI")
+		set(MITIRU_WITH_EFFEKSEER OFF)
+	endif()
 	if(MITIRU_WITH_EFFEKSEER)
-		set(MITIRU_EFFEKSEER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/external/Effekseer")
-		if(NOT EXISTS "${MITIRU_EFFEKSEER_ROOT}/Dev/Cpp/3rdParty/LLGI/src/LLGI.Graphics.h")
-			message(FATAL_ERROR "MITIRU_WITH_EFFEKSEER=ON ですが external/Effekseer (と中の LLGI) がありません。\n"
-				"  git submodule update --init --checkout --depth 1 external/Effekseer\n"
-				"  git -C external/Effekseer submodule update --init --depth 1 Dev/Cpp/3rdParty/LLGI\n"
-				"  を実行してから configure し直してください。")
-		endif()
 		add_subdirectory(cmake/effekseer)
 		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_effekseer)
 		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_EFFEKSEER=1)
 		message(STATUS "Effekseer enabled - .efkefc draws through drawModel (${MITIRU_EFFEKSEER_ROOT})")
+	endif()
+
+	# ── FSR 3.1 (opt-in、ADR 0058): 内部解像度の 3D を AMD FidelityFX FSR 3.1 の upscaler で出力へ戻す ──
+	# 無いときや作れないときは TAAU で戻す。シェーダーの permutation はビルド時に DXC で作るので fetch_dxc.py も要る。
+	option(MITIRU_WITH_FSR3 "3D の upscale に FSR 3.1 を使えるようにする (要 python tools/fetch_fsr3.py と fetch_dxc.py)" OFF)
+	if(MITIRU_WITH_FSR3)
+		set(MITIRU_FSR3_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/external/fsr3")
+		set(MITIRU_DXC_BIN "${CMAKE_CURRENT_SOURCE_DIR}/external/dxc/bin/x64")
+		set(MITIRU_DXC_INC "${CMAKE_CURRENT_SOURCE_DIR}/external/dxc/inc")
+		if(NOT EXISTS "${MITIRU_FSR3_ROOT}/sdk/include/FidelityFX/host/ffx_fsr3upscaler.h")
+			message(FATAL_ERROR "MITIRU_WITH_FSR3=ON ですが external/fsr3 に FidelityFX SDK がありません。\n"
+				"  python tools/fetch_fsr3.py を実行してから configure し直してください。")
+		endif()
+		if(NOT EXISTS "${MITIRU_DXC_BIN}/dxcompiler.dll" OR NOT EXISTS "${MITIRU_DXC_BIN}/dxil.dll" OR NOT EXISTS "${MITIRU_DXC_INC}/dxcapi.h")
+			message(FATAL_ERROR "MITIRU_WITH_FSR3=ON ですが external/dxc に DXC がありません (FSR のシェーダーを作るのに要る)。\n"
+				"  python tools/fetch_dxc.py を実行してから configure し直してください。")
+		endif()
+		add_subdirectory(cmake/fsr3)
+		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_fsr3)
+		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_FSR3=1)
+		message(STATUS "FSR 3.1 enabled - Renderer3D_DX12 can upscale with FidelityFX FSR3 (${MITIRU_FSR3_ROOT})")
 	endif()
 
 	# ── ONNX Runtime + DirectML EP (GPU ニューラル post-process, NeuralStyle.hpp) ──

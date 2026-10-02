@@ -3,9 +3,11 @@
 //   ステージの箱は、描画と当たり判定で同じ表 kBlocks を使う。
 // あそびかた: 箱と階段の小さな庭を、橙の箱のキャラが歩く。階段を上り、上下する桃色の足場に乗れる。
 //   カメラは奥の壁や柱の手前へ寄り、壁が無くなると少し待ってから戻る。跳ぶと光の筋が残り、足場は灯りを持つ。
+//   着地すると土ぼこりが舞い、床に跡が残る。高い所から落ちると画面が一瞬ぶれる。
 // この章で使う関数: CollisionLevelBuilder / CollisionWorld / stepCharacter / updateCameraRig / InputBuffer /
-//   camera3D (上向き・近い面・遠い面) / pointLight3D / drawTrail
+//   camera3D (上向き・近い面・遠い面) / pointLight3D / drawTrail / decals3D / particles3D / hitFeel3D
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <mitiru.hpp>
@@ -54,6 +56,9 @@ struct Action3D
 	std::uint32_t       frame = 0;
 	act::Vec3           trail[kTrailMax]{};   // 跳んでいる間の通り道 (新しい順)。着地すると古い方から消える
 	std::uint32_t       trailLen = 0;
+	act::Vec3           landAt{};             // 最後に着地した所と時刻、落ちてきた速さ。跡と土ぼこりはここから毎フレーム描く
+	std::uint32_t       landFrame = 0;
+	float               landSpeed = 0.0f;
 
 	void init()
 	{
@@ -78,7 +83,9 @@ struct Action3D
 		if (act::lengthSq(run) > 0.01f) { facing = act::normalizeOr(run, facing); }
 		if (in.pressed(Key::Space)) { buffer.press(0, frame); }
 		const bool jump = hero.grounded != 0 && buffer.consume(0, frame, kWindows);
+		const float fall = -hero.velocity.y;
 		act::stepCharacter(hero, kHero, world, {run, jump ? kJumpSpeed : 0.0f}, dt);
+		if ((hero.events & act::charevent::kLanded) != 0 && fall > 2.0f) { landAt = hero.position; landFrame = frame; landSpeed = fall; }
 		updateTrail();
 
 		act::CameraRigInput ci;
@@ -109,6 +116,31 @@ struct Action3D
 		s.drawTrail(pts, trailLen, style);   // 2 点より少なければ何も描かない
 	}
 
+	// 跡・土ぼこり・ぶれは描くだけのもの。着地の時刻からの経過秒で毎フレーム渡すので、巻き戻すとその時刻の姿に戻る
+	void drawLanding(Screen& s) const
+	{
+		if (landFrame == 0) { return; }
+		const float age = static_cast<float>(frame - landFrame) / 60.0f;
+		render::DecalDesc mark = render::decalOnSurface(landAt, {0, 1, 0}, 1.2f);
+		mark.color[0] = mark.color[1] = mark.color[2] = 0.35f; mark.color[3] = 0.8f;
+		mark.age = age; mark.lifetime = 6.0f; mark.fadeOut = 2.0f;
+		s.decals3D(&mark, 1);
+		if (age > 1.0f) { return; }
+		render::ParticleEmitterDesc dust;
+		dust.key = 1; dust.seed = landFrame; dust.age = age;
+		dust.position[0] = landAt.x; dust.position[1] = landAt.y + 0.1f; dust.position[2] = landAt.z;
+		dust.burst = 64; dust.spreadDeg = 85.0f; dust.speedMin = 1.5f; dust.speedMax = 3.5f;
+		dust.lifeMin = 0.4f; dust.lifeMax = 0.9f; dust.gravity[1] = -3.0f; dust.drag = 2.5f;
+		dust.size[0] = 0.2f; dust.size[1] = 0.5f; dust.size[2] = 0.7f;
+		for (auto& c : dust.color) { c[0] = 0.96f; c[1] = 0.93f; c[2] = 0.86f; c[3] = 0.9f; }
+		dust.color[2][3] = 0.0f;
+		dust.blend = render::ParticleBlend::Alpha;
+		s.particles3D(&dust, 1);
+		render::HitFeel feel;   // 跳んだ高さより高い所から落ちた時だけ。速いほど強く、0.1 秒で消える
+		feel.radialBlur = std::fmax(0.0f, 1.0f - age / 0.1f) * std::clamp((landSpeed - kJumpSpeed - 0.5f) / 8.0f, 0.0f, 0.4f);
+		s.hitFeel3D(feel);
+	}
+
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0xEAF1F8));
@@ -122,6 +154,7 @@ struct Action3D
 		s.drawMesh("cube", p + act::Vec3{0, 0.8f, 0}, {0.6f, 1.6f, 0.6f}, {0, 0, 0}, hex(0xFF9500));
 		s.drawMesh("cube", p + act::Vec3{0, 1.25f, 0} + facing * 0.32f, {0.2f, 0.2f, 0.2f}, {0, 0, 0}, hex(0x1D1D1F));
 		drawTrail(s);
+		drawLanding(s);
 		chapterTitle(s, "3D アクション");
 		chapterControls(s, "矢印: あるく　Space: 跳ぶ　Q / E: カメラを回す");
 	}

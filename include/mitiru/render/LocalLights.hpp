@@ -18,6 +18,7 @@
 #include <sgc/types/Color.hpp>
 
 #include <mitiru/render/Camera3D.hpp>
+#include <mitiru/render/ColorSpace.hpp>
 
 namespace mitiru::render
 {
@@ -74,7 +75,7 @@ static_assert(sizeof(LocalLight) == 64, "LocalLight は 64 byte の POD");
 static_assert(std::is_standard_layout_v<LocalLight> && std::is_trivially_copyable_v<LocalLight>);
 
 /// @brief シェーダーが読む 1 灯 (StructuredBuffer の要素、64 byte)
-/// @details color は intensity を掛け込み済み。スポットの減衰は saturate(dot(-L, dir) * spotScale + spotOffset)
+/// @details color は線形にして intensity を掛け込み済み。スポットの減衰は saturate(dot(-L, dir) * spotScale + spotOffset)
 ///          で、点光源は scale 0 / offset 1 で常に 1 になる。bound* はビュー空間で光が届く範囲を包む球。
 struct LocalLightGpu
 {
@@ -209,10 +210,11 @@ inline void localLightBounds(const LocalLight& l, sgc::Vec3f& center, float& rad
 [[nodiscard]] inline LocalLightGpu packLocalLight(const LocalLight& l, const ClusterView& v) noexcept
 {
 	LocalLightGpu g{};
+	const auto color = linearRgb(l.color[0], l.color[1], l.color[2]);
 	for (int i = 0; i < 3; ++i)
 	{
 		g.positionWS[i] = l.position[i];
-		g.color[i] = l.color[i] * l.intensity;
+		g.color[i] = color[i] * l.intensity;
 	}
 	g.range = std::max(l.range, 1e-3f);
 	const sgc::Vec3f dir = sgc::Vec3f{l.direction[0], l.direction[1], l.direction[2]}.normalized();

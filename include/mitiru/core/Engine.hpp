@@ -78,6 +78,7 @@
 #include <mitiru/module/SideStateHost.hpp>
 #include <mitiru/observe/AudioLog.hpp>
 #include <mitiru/module/ModuleApi.hpp>
+#include <mitiru/module/InspectAssetsHost.hpp>
 #include <mitiru/module/ModuleReflection.hpp>
 #include <mitiru/save/GameMemorySlots.hpp>
 #include <mitiru/save/SlotThumbnail.hpp>
@@ -412,6 +413,8 @@ public:
 	[[nodiscard]] const module::FrameIntents* lastModuleIntents() const noexcept { return m_moduleFrameIntents.get(); }
 	/// @brief ゲーム DLL が export したアクションの表 (JSON、ABI v48)。export が無ければ nullptr
 	[[nodiscard]] const char* moduleActionManifestJson() const;
+	/// @brief ゲーム DLL が export した資産 (ABI v49) をツール窓の snapshot の "assets" に載せる。DLL が替わった時だけ写し直す
+	void publishModuleInspectAssets(nlohmann::json& snapshotOut);
 
 	/// @brief 現在のフレーム番号を取得する
 	[[nodiscard]] std::uint64_t frameNumber() const noexcept;
@@ -1083,6 +1086,8 @@ private:
 	// object の pointer を一切持たないよう engine 所有とする。
 	std::unique_ptr<bridge::StateStore>      m_moduleStateStore;
 	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
+	std::unique_ptr<module::PublishedInspectAssets> m_inspectAssets;   ///< DLL の資産の写し (ABI v49)
+	module::ModuleInspectAssetsFn            m_inspectAssetsFn = nullptr;  ///< m_inspectAssets を作った export (替わったら写し直す)
 	observe::AudioLog                        m_audioLog; ///< AI 観測用 音イベントログ (/api/ai/audio)
 	module::SoundIntentRouter                m_soundIntentRouter; ///< BGM 同 id 連打の冪等化 (直前 music を記憶)
 	module::VisualIntentFx                   m_moduleVisualFx;    ///< fade/shake/hitstop/rumble の host 側演出状態 (kind 2-7)

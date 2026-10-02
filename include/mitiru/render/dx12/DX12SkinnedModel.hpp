@@ -81,7 +81,7 @@ animation::AnimPose m_skinnedPose;                          ///< 姿勢の評価
 		m_skinnedRegistry.emplace(path, -1);
 		return -1;
 	};
-	if (m_skinnedModels.size() >= static_cast<std::size_t>(kMaxSkinnedModels))
+	if (loadedModelCount() >= kMaxSkinnedModels)
 	{
 		return fail("モデル数上限");
 	}
@@ -115,14 +115,12 @@ animation::AnimPose m_skinnedPose;                          ///< 姿勢の評価
 	animation::evaluatePose(model.anim, animation::AnimPoseParams{}, m_skinnedPose);
 	model.restModel = m_skinnedPose.model;
 
-	m_skinnedModels.push_back(std::move(model));
-	const int idx = static_cast<int>(m_skinnedModels.size()) - 1;
+	const int idx = placeSkinnedModel(std::move(model));
 	m_skinnedRegistry.emplace(path, idx);
 	return idx;
 }
 
-/// @brief 変更されたファイルから読んだモデルを忘れ、次の描画で読み直させる (ホットリロード)
-/// @details 古いモデルは deque に残す。直前のフレームの GPU がまだその頂点と束縛を読んでいるため。
+/// @brief 変更されたファイルから読んだモデルを手放し、次の描画で読み直させる (ホットリロード)
 /// @return 忘れた登録の数
 int forgetSkinnedModel(const std::filesystem::path& changed)
 {
@@ -130,6 +128,7 @@ int forgetSkinnedModel(const std::filesystem::path& changed)
 	for (auto it = m_skinnedRegistry.begin(); it != m_skinnedRegistry.end();)
 	{
 		const bool hit = asset::sameAssetFile(it->first, changed);
+		if (hit && it->second >= 0) { retireSkinnedSlot(it->second); }
 		it = hit ? m_skinnedRegistry.erase(it) : std::next(it);
 		forgotten += hit ? 1 : 0;
 	}

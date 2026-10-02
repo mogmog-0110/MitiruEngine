@@ -1,9 +1,13 @@
 // enemy_ai。「敵の AI の部品」(mitiru/gameai/) の見本。ビヘイビアツリー、攻撃トークン、視界と物音、ナビメッシュの経路、ぶつからない歩き方
 // 実行すると: 箱の庭で、見つけた敵が橙のプレイヤーを囲む。同時に攻めるのは 2 体までで、赤く光ってから突く。壁の向こうの敵にはプレイヤーが見えず、手を叩くと物音を聞いて最後に知った位置を探しに来る (紫)
-// 関連 API: loadBehaviorTreeJsonFile / tickBehaviorTree / AttackTokenPool / checkSight / listen / requestPath / followPath / computeAvoidVelocity
+// 関連 API: loadBehaviorTreeJsonFile / tickBehaviorTree / AttackTokenPool / checkSight / listen / requestPath / followPath / computeAvoidVelocity /
+//   MITIRU_INSPECT_ASSETS
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 #include <mitiru.hpp>
@@ -15,6 +19,7 @@
 #include <mitiru/gameai/CombatSteering.hpp>
 #include <mitiru/gameai/NavPath.hpp>
 #include <mitiru/gameai/Perception.hpp>
+#include <mitiru/module/ReflectEngineTypes.hpp>
 #include <mitiru/nav/NavMeshBake.hpp>
 #include "../common/chapter_hud.hpp"
 
@@ -43,7 +48,7 @@ constexpr ai::SightConfig      kSight{12.0f, 55.0f, 1.5f, act::kAllLayers};
 
 // 地形とナビメッシュは kBlocks、行動ツリーは assets の JSON から作る
 // 作成後は変わらないためゲーム状態には入れず、ホットリロードを含む DLL の読み込みごとに同じ表から作り直す
-struct Level { act::CollisionLevel collision; nav::NavMesh nav; ai::BtTree tree{}; std::string error; };
+struct Level { act::CollisionLevel collision; nav::NavMesh nav; std::vector<std::uint8_t> navBlob; ai::BtTree tree{}; std::string error; };
 Level& level()
 {
 	static Level L;
@@ -59,6 +64,7 @@ Level& level()
 		L.collision = b.build();
 		const nav::NavBakeResult baked = nav::bakeNavMesh(v, idx);
 		std::string navError, treeError;
+		L.navBlob = baked.blob;
 		if (baked.blob.empty() || !L.nav.load(baked.blob, &navError)) { L.error = "ナビメッシュを作れない: " + baked.error + navError; }
 		L.tree = ai::loadBehaviorTreeJsonFile("enemy_ai/assets/enemy.json", kLeafNames, &treeError);
 		if (!treeError.empty()) { L.error += treeError; }
@@ -237,5 +243,23 @@ BtStatus Leaves::operator()(const ai::BtLeafCall& c)
 }
 
 MITIRU_ASSERT_NO_PADDING(EnemyAi);
-MITIRU_REFLECT(EnemyAi, attackers, seeing, remembering, minGap, hero.position.x, hero.position.z);
+// 木の形 (JSON) と焼いたナビメッシュを host に渡す。--inspect ai と --inspect nav の窓が、木のノードの名前と床の形を出す
+std::int32_t inspectAssets(module::InspectAsset* out, std::int32_t cap)
+{
+	static const std::string tree = [] {
+		std::ifstream f("enemy_ai/assets/enemy.json", std::ios::binary);
+		return std::string(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
+	}();
+	const std::vector<std::uint8_t>& nav = level().navBlob;
+	const module::InspectAsset all[2] = {{"bt_tree", "enemy", tree.data(), tree.size()}, {"navmesh", "garden", nav.data(), nav.size()}};
+	const std::int32_t n = std::min<std::int32_t>(cap, 2);
+	std::copy(all, all + n, out);
+	return n;
+}
+MITIRU_INSPECT_ASSETS(inspectAssets);
+
+// 木の状態・知覚・トークンはエンジンの型のまま載せる。--inspect ai の窓が敵ごとに読む
+MITIRU_REFLECT(EnemyAi, attackers, seeing, remembering, minGap, hero.position.x, hero.position.z, tokens,
+               e[0].bt, e[0].mind, e[1].bt, e[1].mind, e[2].bt, e[2].mind, e[3].bt, e[3].mind,
+               e[4].bt, e[4].mind, e[5].bt, e[5].mind, e[6].bt, e[6].mind, e[7].bt, e[7].mind);
 MITIRU_GAME(EnemyAi);

@@ -27,6 +27,7 @@ build/apps/mitiru_host/mitiru_host.exe build/apps/mitiru_host/welcome/welcome.dl
 | [`sprites`](sprites/sprites_dll.cpp) | スプライト(画像)を描く：赤べこ(会津の郷土玩具)の 大きさ / 回転 / 左右反転 / 半透明 の見本と、矢印キーで歩く赤べこ(進む向きで反転・脚が交互に動く歩行アニメ) |
 | [`camera`](camera/camera_dll.cpp) | 追従カメラ(FollowCam)：赤べこがマウスの方へ画面より広い牧場を歩き、視点がdeadzone +先読み + world clampで滑らかに追ってスクロールする。木と赤べこは接地yで前後が入れ替わる |
 | [`audio`](audio/audio_dll.cpp) | 音を視覚化：鳴らすと弾ける（SEの音程を色つきリング / BGMは回るディスクで再生・一時停止・フェードを表現 / 台詞は吹き出し）。状態テキストなし、`hud.play()` / `hud.music()` / `hud.voice()`でエンジンに再生を依頼 |
+| [`music_layers`](music_layers/music_layers_dll.cpp) | 危なさに合わせて曲が厚くなる：赤い影が青い灯りへ寄るほど`hud.musicIntensity`の強さが上がり、`assets/audio/music.json`の層(太鼓・低音)が拍の区切りで加わる。Spaceで追い払うと`sounds.json`の風の音(2つの候補から選び、高さも揺れる)がすぐ鳴り、スティンガーの鐘は曲の次の拍で鳴る。拍は`in.music()`で読んで点を光らせる([解説](../docs/ADAPTIVE_MUSIC.md)) |
 
 ## 章(看板)
 
@@ -37,17 +38,20 @@ build/apps/mitiru_host/mitiru_host.exe build/apps/mitiru_host/welcome/welcome.dl
 | [`observe`](observe/observe_dll.cpp) | MITIRU_REFLECT + watch：状態を外から観測 |
 | [`rewind`](rewind/rewind_dll.cpp) | 巻き戻し：状態を1つのstructに置き、見たい値を申告するだけで過去へ戻せる。`--inspect rewind`付きで起動 |
 | [`restart_save`](restart_save/restart_save_dll.cpp) | `hud.requestRestart()` +セーブ / ロード(`.mslot`ファイル) |
+| [`save_slots`](save_slots/save_slots_dll.cpp) | セーブを3つのスロットに分ける：花畑に花を植え、左の一覧(`assets/ui/main.rml`)からスロットごとにセーブ・読み込み・消去する。一覧は`hud.listSlots()`で頼むと次のフレームの`in.slot(i)`に新しい順で届き、C++がそれを行に組んでUIへ送る。セーブには`hud.saveSlot(名前, 章)`で「花 3 本」のような章の名前を付ける([解説](../docs/SAVE_AND_SETTINGS.md)) |
 | [`objects_kitchen`](objects_kitchen/objects_kitchen_dll.cpp) | クラスとコンポーネントで書く:`MITIRU_GAME_OBJECTS`(進行データだけ POD、場面は普通の C++。[解説](../docs/OBJECT_STYLE_GAMES.md)) |
 | [`physics_rewind`](physics_rewind/physics_rewind_dll.cpp) | 物理エンジンの世界ごと巻き戻す：積んだ箱に人形(ragdoll)が落ちて崩れる。Jolt の世界は状態の struct の外に置き、`MITIRU_SIDE_STATE`で保存と復元の窓口として預けるので、`--inspect rewind`で崩れる前へ戻すと箱も人形も戻る。Spaceで人形を蹴る([解説](../docs/SIDE_STATE.md)) |
 | [`scene3d`](scene3d/scene3d_dll.cpp) | GPU 3Dシーン：平行光の影 + WBOIT半透明 + skybox |
 | [`model3d`](model3d/model3d_dll.cpp) | 大きな3Dモデル：26万ポリゴンの宮殿(Crytek Sponza、glTF)を`drawModel` 1行でそのまま置き、一人称で歩き回る。.gltf/.glb/.obj/.fbxは初回だけ隣に変換キャッシュを作って読む。マウス視線(`hud.lockMouse`)とWASD移動、詳細度(LOD)は距離から自動 |
 | [`anim3d`](anim3d/anim3d_dll.cpp) | キャラクターを歩かせる：リグ付きglTF (Khronos Fox)の姿勢を「どのクリップを何秒で、どれだけ混ぜるか」の数字 (`AnimPoseParams`) で`drawModelPose`に渡すと骨格アニメが動く。WASDで歩かせると待機と歩きがなめらかに混ざり、頭はまわりを飛ぶ光の玉を目で追う (`AnimIkRequest`)。姿勢も IK も DLL が当たり判定に使うのと同じ計算で描かれ、時間は自分の状態で`t += dt`するだけなので巻き戻しにもそのまま乗る |
+| [`anim_events`](anim_events/anim_events_dll.cpp) | アニメに合わせてゲームが動く：枝をくわえたキツネが歩く。進む距離は歩きのクリップに焼き込んだ動き(`rootMotionDelta`)が決め、前足が着く時刻のイベント(`collectAnimEvents`)で足音を鳴らして足跡を残す。枝は口のソケット(`socketWorld`)に付く。時刻・ソケット・進む骨はモデルの隣の`fox.anim.json`に書き、DLLが描画と同じ姿勢をその場で出して使う([解説](../docs/ANIMATION_RUNTIME.md)) |
+| [`level3d`](level3d/level3d_dll.cpp) | Blenderで作ったステージを歩く：`tools/make_stage.py`がBlenderで組んだ`.glb`を、見た目は`drawModel`が描き、当たり判定の面は`buildLevelCollision` 1行で地形になる。出発点・ゴールの箱・灯りはBlenderで置いた印(`find` / `forEachOfType`)から読み、ゴールに入ると桃色の灯りが強くなる。`--watch-assets`で起動すると、書き出し直すたびに読み直す([解説](../docs/LEVEL_FROM_BLENDER.md)) |
 | [`lights3d`](lights3d/lights3d_dll.cpp) | 夜の広場に灯りを置く：100本の柱を`drawMeshInstanced` 1回で描き、色の違う6つの`pointLight3D`が柱の間を回る。上からの`spotLight3D`は首を振りながら柱の影を落とす。Spaceで灯りを止める |
 | [`navmesh`](navmesh/navmesh_dll.cpp) | 壁を回り込んで歩く(経路探索)：レベルの`.obj`をビルドの一段で`mitiru_navbake`がナビメッシュに焼き、DLLが`nav::NavMesh`で読んで`findPath`する。床をクリックするとそこへ、放っておくと4隅を巡回。描画と焼きが同じ`.obj`を読むので、見える壁と避ける壁はずれない([解説](../docs/NAVMESH.md)) |
 | [`enemy_ai`](enemy_ai/enemy_ai_dll.cpp) | 敵の AI：見つけた敵がプレイヤーを囲み、同時に攻めるのは 2 体まで(攻撃トークン)。赤く光って構えてから突く。壁の向こうの敵にはプレイヤーが見えず、手を叩く(Space)と物音を聞いて、最後に知った位置を探しに来る。行動はJSONのビヘイビアツリー(`assets/enemy.json`)、経路は箱の表からDLLの中で焼いたナビメッシュ、敵どうしはぶつからない速度(ORCA)で歩く。敵の状態もすべて数値でゲームの全状態に入るので、巻き戻しと録画リプレイにそのまま乗る([解説](../docs/GAME_AI.md)) |
 | [`crowd`](crowd/crowd_dll.cpp) | 大勢の敵を群衆で歩かせる：120 体が 3 本の筋に分かれて広場を回り続け、互いに避けて歩く(DetourCrowd)。真ん中の扉は 6 秒ごとに開け閉めし、閉まるとナビメッシュのその周りだけを作り直して、右へ向かう流れが手前の脇道へ回る。Spaceで扉を手で開け閉めする。群衆と扉は`MITIRU_SIDE_STATE`の窓口で預けるので、`--inspect rewind`で扉が閉まる前へ戻せる([解説](../docs/GAME_AI.md#群衆-navcrowd)) |
 | [`rollback_duel`](rollback_duel/rollback_duel_dll.cpp) | 1台のキーボードを2人で分けるテニス(1P = W/S、2P = ↑/↓)。状態を全部GameMemoryに置き入力だけで決まるので、回線を知らないままロールバックのオンライン対戦に載る。`mitiru_rollback`(opt-in)が2つ読んで遅延つきloopbackで対戦させ、一致を確かめる([解説](../docs/ROLLBACK_NETCODE.md)) |
-| [`effekseer_fx`](effekseer_fx/effekseer_fx_dll.cpp) | Effekseerのエフェクト(`.efkefc`)を、出してからの経過秒を`drawModel`に渡して描く。いつ・どこで出したかはGameMemoryにあるので、巻き戻すと過去の時刻の姿が出る。Spaceで撃つ、放っておくと1秒ごとに撃つ(opt-in `-DMITIRU_WITH_EFFEKSEER=ON`、[解説](../docs/EFFEKSEER.md)) |
+| [`effekseer_fx`](effekseer_fx/effekseer_fx_dll.cpp) | Effekseerのエフェクト(`.efkefc`)を、出してからの経過秒を`drawModel`に渡して描く。いつ・どこで出したかはGameMemoryにあるので、巻き戻すと過去の時刻の姿が出る。Spaceで撃つ、放っておくと1秒ごとに撃つ(Effekseerのsubmoduleを取ったビルドで入る、[解説](../docs/EFFEKSEER.md)) |
 
 ## Subsystem単独起動デモ：[`subsys/`](subsys/)
 

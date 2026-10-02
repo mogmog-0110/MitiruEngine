@@ -37,6 +37,7 @@
         <a class="active" href="features.html">機能</a>
         <a href="ui.html">画面 (HTML / CSS)</a>
         <a href="3d.html">3D</a>
+        <a href="action.html">3D アクションを作る</a>
         <a href="ai.html">AI 連携</a>
         <a href="cli.html">CLI</a>
         <div class="grp">配布・API</div>
@@ -46,7 +47,7 @@
     </aside>
 
     <div class="content">
-      <main id="main">
+      <main id="main" data-pagefind-body>
         <section class="page-head">
           <div class="wrap">
             <p class="kicker">FEATURES</p>
@@ -97,10 +98,10 @@
               <h2 id="shapes">2. 2D 図形</h2>
               <p><code>Screen</code> に座標、寸法、色を渡して図形を描画します。</p>
               <div class="gallery">
-                <figure class="figbox"><img src="assets/feat_shapes.png" alt="四角・角丸四角・円・リング・三角・線を並べた描画結果" loading="lazy" width="540" height="200"><figcaption class="figcap">四角、角丸、円、リング、三角、線</figcaption></figure>
-                <figure class="figbox"><img src="assets/feat_gradient.png" alt="縦・横・4隅のグラデーション矩形" loading="lazy" width="540" height="200"><figcaption class="figcap">縦、横、4 隅のグラデーション</figcaption></figure>
-                <figure class="figbox"><img src="assets/feat_pattern.png" alt="市松・横ストライプ・ドットのパターン塗り" loading="lazy" width="540" height="200"><figcaption class="figcap">市松、縞、ドット</figcaption></figure>
-                <figure class="figbox"><img src="assets/feat_arc.png" alt="扇形と円弧" loading="lazy" width="540" height="200"><figcaption class="figcap">扇形と円弧</figcaption></figure>
+                <figure class="figbox"><img src="assets/feat_shapes.webp" alt="四角・角丸四角・円・リング・三角・線を並べた描画結果" loading="lazy" width="540" height="200"><figcaption class="figcap">四角、角丸、円、リング、三角、線</figcaption></figure>
+                <figure class="figbox"><img src="assets/feat_gradient.webp" alt="縦・横・4隅のグラデーション矩形" loading="lazy" width="540" height="200"><figcaption class="figcap">縦、横、4 隅のグラデーション</figcaption></figure>
+                <figure class="figbox"><img src="assets/feat_pattern.webp" alt="市松・横ストライプ・ドットのパターン塗り" loading="lazy" width="540" height="200"><figcaption class="figcap">市松、縞、ドット</figcaption></figure>
+                <figure class="figbox"><img src="assets/feat_arc.webp" alt="扇形と円弧" loading="lazy" width="540" height="200"><figcaption class="figcap">扇形と円弧</figcaption></figure>
               </div>
 <pre><span class="k">void</span> draw(<span class="term">Screen</span>&amp; s) {
     s.fillScreen(hex(0x14182A));
@@ -136,7 +137,7 @@ color::Cyan   color::Clear</pre>
               <p><code>Color c = color::Red; c.a = 0.3f;</code> のように、<code>.a</code> を 0.0〜1.0 で指定すると透明度を変更できます。</p>
 
               <h2 id="text">4. 文字描画とフォント</h2>
-              <figure class="figbox"><img src="assets/feat_text.png" alt="通常テキスト・アウトライン付き・影付きの描画結果" loading="lazy" width="540" height="200"><figcaption class="figcap"><code>text</code>、縁取り、影付きの描画</figcaption></figure>
+              <figure class="figbox"><img src="assets/feat_text.webp" alt="通常テキスト・アウトライン付き・影付きの描画結果" loading="lazy" width="540" height="200"><figcaption class="figcap"><code>text</code>、縁取り、影付きの描画</figcaption></figure>
 <pre>s.text(<span class="s">"SCORE "</span> + std::to_string(score),
        24, 20, color::White, 24);
 
@@ -167,7 +168,7 @@ atlas = <span class="s">"japanese"</span>  <span class="c"># latin / kana / japa
               <div class="note">ゲーム内のダメージ数値などは C++ で描画でき、スコアやメニューは <a href="ui.html">RML / RCSS の HUD</a> として構成できます。</div>
 
               <h2 id="transform">5. 移動・回転・拡大</h2>
-              <figure class="figbox"><img src="assets/feat_rotation.png" alt="同じ四角を角度を変えて重ねた回転の描画結果" loading="lazy" width="540" height="200"><figcaption class="figcap">同じ矩形を異なる角度で描画</figcaption></figure>
+              <figure class="figbox"><img src="assets/feat_rotation.webp" alt="同じ四角を角度を変えて重ねた回転の描画結果" loading="lazy" width="540" height="200"><figcaption class="figcap">同じ矩形を異なる角度で描画</figcaption></figure>
 <pre>s.pushTransform(camX, camY);
 drawScene(s);
 s.popTransform();
@@ -186,7 +187,7 @@ s.drawGroup({px, py}, spinDeg, [&amp;](<span class="term">Screen</span>&amp; g) 
 <pre>s.sprite(<span class="s">"hero"</span>, x, y);
 s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);</pre>
               <p>画像の読込結果はキャッシュされます。ファイルがない場合は初回だけ警告し、PNG を上書きすると実行中の画面へ約 0.5 秒で反映します。回転、切り出し、色の乗算には <code>Texture</code> を使い、読み込みは <code>init()</code> で 1 回だけ行います。</p>
-              <figure class="figbox wide"><img src="assets/feat_sprite.png" alt="スプライト・ティント・スプライトシート切り出し・drawPixelGrid の実行画面" loading="lazy" width="1060" height="272"><figcaption class="figcap"><code>drawSprite</code>、色の乗算、スプライトシートの切り出し、<code>drawPixelGrid</code></figcaption></figure>
+              <figure class="figbox wide"><img src="assets/feat_sprite.webp" alt="スプライト・ティント・スプライトシート切り出し・drawPixelGrid の実行画面" loading="lazy" width="1060" height="272"><figcaption class="figcap"><code>drawSprite</code>、色の乗算、スプライトシートの切り出し、<code>drawPixelGrid</code></figcaption></figure>
 <pre><span class="k">#include</span> &lt;mitiru/render/Texture.hpp&gt;
 
 <span class="k">struct</span> <span class="term">MyGame</span> {
@@ -227,7 +228,7 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);</pre>
 
     s.text(<span class="s">"3D + 2D HUD"</span>, 28, 22, color::White, 28);
 }</pre>
-              <p><code>loadGltfMeshFromFile("model.gltf")</code> で読み込んだメッシュも配置できます。大量のポリゴンや複雑なシェーダーを前提とする用途は対象外です。動作例と完全なコードは <a href="3d.html">3D のページ</a> に掲載しています。</p>
+              <p><code>loadGltfMeshFromFile("model.gltf")</code> で読み込んだメッシュも配置できます。動作例と完全なコードは <a href="3d.html">3D のページ</a> に掲載しています。キャラクターを歩かせ、敵を置くところまでは <a href="action.html">3D アクションを作る</a> で説明しています。</p>
 
               <h2 id="input">8. キーボードとマウス</h2>
               <p><code>down</code> は押している間、<code>pressed</code> は押した瞬間、<code>released</code> は離した瞬間に真になります。</p>
@@ -347,7 +348,7 @@ x += m.x * 320 * dt;</pre>
               <p>構造体の配列では、要素の構造体を先に宣言します。ネストは 1 段、登録は 8 個まで、各マクロは最大 16 フィールドです。</p>
 <pre><span class="term">MITIRU_REFLECT_STRUCT</span>(Enemy, x, y, alive);
 <span class="term">MITIRU_REFLECT</span>(MyGame, player, enemies, hp);</pre>
-              <p>詳細は <a href="ai.html#why">AI ページの設計説明</a> に掲載しています。</p>
+              <p>詳細は <a href="ai.html#design">AI ページの設計説明</a> に掲載しています。</p>
 
               <h3 id="resim">巻き戻した地点へ修正を再適用する</h3>
               <p>直近 5 秒の状態と入力を常時保持します。問題が起きた時点へ戻り、C++ を修正して保存すると、ホットリロード後のコードへ同じ入力を再適用できます。操作手順をもう一度行わず、修正前後を同じ入力で確認できます。</p>

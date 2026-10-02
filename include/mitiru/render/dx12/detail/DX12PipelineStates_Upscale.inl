@@ -1,8 +1,8 @@
 // Renderer3D_DX12 のクラス本体の断片。DX12PipelineStates.hpp から include される
 //
-// 3D の内部解像度と出力解像度の分離 (TAAU)。m_config.viewportWidth/Height は内部解像度で、3D の資源は全部
-// その大きさで作る。倍率が 1 未満の間は tonemap から動きのぼけまでを内部解像度の LDR (m_sceneLdr) に描き、
-// TAAU が出力解像度の履歴へ戻し、鮮鋭化してバックバッファへ書く。倍率 1 では m_sceneLdr を作らず、今までと同じ経路を通る。
+// 3D の内部解像度と出力解像度の分離 (TAAU / FSR 3.1)。m_config.viewportWidth/Height は内部解像度で、3D の資源は全部
+// その大きさで作る。倍率が 1 未満の間 (と NativeAA の間) は tonemap から動きのぼけまでを内部解像度の LDR (m_sceneLdr) に描き、
+// TAAU か FSR が出力解像度へ戻し、鮮鋭化してバックバッファへ書く。倍率 1 では m_sceneLdr を作らず、今までと同じ経路を通る。
 
 public:
 
@@ -11,10 +11,42 @@ public:
 void setRenderScale(float scale)
 {
 	const float q = quantizeRenderScale(scale);
-	if (q == m_renderScale) { return; }
+	if (q == m_renderScale && !m_upscaleNativeAA) { return; }
 	m_renderScale = q;
+	m_upscaleNativeAA = false;
 	resetTemporalHistory();
 	applyRenderSize();
+}
+
+/// @brief FSR と同じ画質の段で内部解像度を決める (Quality 1.5 倍、Balanced 1.7 倍、Performance 2 倍)。
+///        NativeAA は倍率 1 のまま upscaler を AA として通し、Off は倍率 1 で通さない
+void setUpscaleQuality(UpscaleQuality quality)
+{
+	const bool native = (quality == UpscaleQuality::NativeAA);
+	const float q = quantizeRenderScale(renderScaleFor(quality));
+	if (q == m_renderScale && native == m_upscaleNativeAA) { return; }
+	m_renderScale = q;
+	m_upscaleNativeAA = native;
+	resetTemporalHistory();
+	applyRenderSize();
+}
+
+/// @brief 内部解像度を戻す方法。Fsr3 がビルドに無いか作れない時は TAAU で戻す (activeUpscaler で分かる)
+void setUpscaler(Upscaler3D upscaler)
+{
+	if (upscaler == m_upscaler) { return; }
+	m_upscaler = upscaler;
+	resetTemporalHistory();
+	applyRenderSize();
+}
+
+[[nodiscard]] Upscaler3D upscaler() const noexcept { return m_upscaler; }
+
+/// @brief 今戻すのに使っている方法 (upscale していなければ選んだ方法をそのまま返す)
+[[nodiscard]] Upscaler3D activeUpscaler() const noexcept
+{
+	if (!upscaleActive()) { return m_upscaler; }
+	return fsrActive() ? Upscaler3D::Fsr3 : Upscaler3D::Taau;
 }
 
 [[nodiscard]] float renderScale() const noexcept { return m_renderScale; }
@@ -26,24 +58,26 @@ void setUpscaleSharpness(float sharpness) noexcept { m_upscaleSharpness = std::c
 [[nodiscard]] int internalWidth() const noexcept { return static_cast<int>(m_config.viewportWidth); }
 [[nodiscard]] int internalHeight() const noexcept { return static_cast<int>(m_config.viewportHeight); }
 
-/// @brief TAAU で出力へ戻しているか (倍率が 1 未満で、資源とパイプラインが揃っている)
+/// @brief 内部解像度の絵を TAAU か FSR で出力へ戻しているか (倍率が 1 未満か NativeAA で、資源とパイプラインが揃っている)
 [[nodiscard]] bool upscaleActive() const noexcept
 {
-	return m_renderScale < 1.0f && m_sceneLdr && m_taauPSO && m_upscaleSrvHeap;
+	return upscaleWanted() && m_sceneLdr && m_taauPSO && m_upscaleSrvHeap;
 }
 
 private:
 
 float m_renderScale = 1.0f;
+bool  m_upscaleNativeAA = false;
+Upscaler3D m_upscaler = Upscaler3D::Taau;
 float m_outputWidth = 0.0f;    ///< バックバッファの大きさ (resize の値)
 float m_outputHeight = 0.0f;
 float m_upscaleSharpness = 0.5f;
 gfx::GpuResource             m_sceneLdr;            ///< 内部解像度の LDR (RGBA8)。倍率 1 未満の間だけある
 gfx::Dx12RenderTarget        m_sceneLdrTarget;
 ComPtr<ID3D12DescriptorHeap> m_sceneLdrRtvHeap;
-gfx::GpuResource             m_upscaleHistory[2];   ///< 出力解像度の RGBA16F
+gfx::GpuResource             m_upscaleHistory[2];   ///< 出力解像度の RGBA16F (TAAU の間だけある)
 ComPtr<ID3D12DescriptorHeap> m_upscaleRtvHeap;
-ComPtr<ID3D12DescriptorHeap> m_upscaleSrvHeap;      ///< 表 4 枚 × 4: TAAU (書く履歴 0/1)、鮮鋭化 (読む履歴 0/1)
+ComPtr<ID3D12DescriptorHeap> m_upscaleSrvHeap;      ///< 表 4 枚 × kUpscaleTableCount (番号は kUpscaleTable*)
 ComPtr<ID3D12PipelineState>  m_taauPSO;
 ComPtr<ID3D12PipelineState>  m_sharpenPSO;
 ComPtr<ID3D12PipelineState>  m_upscaleBlitPSO;
@@ -53,6 +87,11 @@ bool m_upscaleTried = false;
 
 static constexpr UINT kUpscaleTableTaau = 0;      ///< 0, 1
 static constexpr UINT kUpscaleTableSharpen = 2;   ///< 2, 3
+static constexpr UINT kUpscaleTableFsr = 4;          ///< FSR の出力を鮮鋭化の PSO で写す
+static constexpr UINT kUpscaleTableFsrInputs = 5;    ///< FSR に渡す深度と反応マスクを作る
+static constexpr UINT kUpscaleTableCount = 6;
+
+[[nodiscard]] bool upscaleWanted() const noexcept { return m_renderScale < 1.0f || m_upscaleNativeAA; }
 
 /// @brief 3D の後処理 (tonemap〜動きのぼけ) の描き先。TAAU の間は内部解像度の LDR、それ以外はバックバッファ
 [[nodiscard]] gfx::Dx12RenderTarget* sceneColorTarget() noexcept
@@ -108,21 +147,25 @@ void releaseUpscaleResources()
 	m_upscaleHistory[0].Reset();
 	m_upscaleHistory[1].Reset();
 	m_upscaleHistoryValid = false;
+	releaseFsrResources();
 }
 
-/// @brief 倍率 1 未満なら内部解像度の LDR と出力解像度の履歴を作る。1 なら捨てる (GPU は待った後で呼ぶ)
+/// @brief upscale するなら内部解像度の LDR と、FSR の文脈か TAAU の履歴を作る。しないなら捨てる (GPU は待った後で呼ぶ)
 void createUpscaleResources()
 {
 	releaseUpscaleResources();
-	if (m_renderScale >= 1.0f || !ensureUpscalePipelines()) { return; }
+	if (!upscaleWanted() || !ensureUpscalePipelines()) { return; }
 	const UINT iw = static_cast<UINT>(m_config.viewportWidth);
 	const UINT ih = static_cast<UINT>(m_config.viewportHeight);
 	const UINT ow = static_cast<UINT>(m_outputWidth);
 	const UINT oh = static_cast<UINT>(m_outputHeight);
 	constexpr auto kRt = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+	const bool fsr = createFsrResources(iw, ih, ow, oh);
 	const bool ok = createUpscaleHeaps() && createSceneLdr(iw, ih) &&
-		createTemporalTexture(ow, oh, DXGI_FORMAT_R16G16B16A16_FLOAT, kRt, L"Renderer3D TAAU history 0", m_upscaleHistory[0]) &&
-		createTemporalTexture(ow, oh, DXGI_FORMAT_R16G16B16A16_FLOAT, kRt, L"Renderer3D TAAU history 1", m_upscaleHistory[1]);
+		(fsr || (createTemporalTexture(ow, oh, DXGI_FORMAT_R16G16B16A16_FLOAT, kRt, L"Renderer3D TAAU history 0",
+		                               m_upscaleHistory[0]) &&
+		         createTemporalTexture(ow, oh, DXGI_FORMAT_R16G16B16A16_FLOAT, kRt, L"Renderer3D TAAU history 1",
+		                               m_upscaleHistory[1])));
 	if (!ok)
 	{
 		releaseUpscaleResources();
@@ -140,7 +183,7 @@ void createUpscaleResources()
 	hist.NumDescriptors = 2;
 	D3D12_DESCRIPTOR_HEAP_DESC srv = {};
 	srv.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	srv.NumDescriptors = 4 * kTemporalTableSize;
+	srv.NumDescriptors = kUpscaleTableCount * kTemporalTableSize;
 	srv.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	return SUCCEEDED(m_d3dDevice->CreateDescriptorHeap(&rtv, IID_PPV_ARGS(m_sceneLdrRtvHeap.ReleaseAndGetAddressOf()))) &&
 	       SUCCEEDED(m_d3dDevice->CreateDescriptorHeap(&hist, IID_PPV_ARGS(m_upscaleRtvHeap.ReleaseAndGetAddressOf()))) &&
@@ -217,6 +260,7 @@ void writeUpscaleViews()
 		writeUpscaleSrv(sharpen, 1, m_sceneLdr.Get(), DXGI_FORMAT_R8G8B8A8_UNORM);
 		for (UINT slot = 2; slot < kTemporalTableSize; ++slot) { writeUpscaleSrv(sharpen, slot, nullptr, kRgba16); }
 	}
+	writeFsrTables();
 }
 
 void drawUpscaleFullscreen(ID3D12PipelineState* pso, UINT table, const void* cb, std::size_t cbBytes, float w, float h)
@@ -279,7 +323,8 @@ void recordTaau()
 	temporalBarrier(m_upscaleHistory[write].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
-/// @brief 動きのぼけの後に呼ぶ。TAAU → 鮮鋭化でバックバッファへ。出力の大きさが合わない間 (lo-fi) は引き伸ばすだけ
+/// @brief 動きのぼけの後に呼ぶ。TAAU か FSR → 鮮鋭化でバックバッファへ。出力の大きさが合わない間 (lo-fi) は引き伸ばすだけ。
+///        FSR は自分で RCAS を掛けるので、鮮鋭化の PSO は強さ 0 の写しとして使う
 void drawUpscalePass()
 {
 	if (!upscaleActive() || m_device == nullptr) { return; }
@@ -289,16 +334,19 @@ void drawUpscalePass()
 	const bool matches = static_cast<float>(d.Width) == m_outputWidth && static_cast<float>(d.Height) == m_outputHeight;
 	temporalBarrier(m_sceneLdr.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	const int write = m_upscaleWrite;
-	const bool taau = matches && velocityReady();
+	const bool temporal = matches && velocityReady();
+	const bool fsr = temporal && fsrActive() && recordFsr();
+	const bool taau = temporal && !fsrActive();
 	if (taau) { recordTaau(); }
 	const auto rtv = bb->rtvHandle();
 	m_graphicsCmdList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
-	const float sharpenCb[4] = {m_outputWidth, m_outputHeight, m_upscaleSharpness, 0.0f};
-	drawUpscaleFullscreen(taau ? m_sharpenPSO.Get() : m_upscaleBlitPSO.Get(), kUpscaleTableSharpen + static_cast<UINT>(write),
-	                      sharpenCb, sizeof(sharpenCb), static_cast<float>(d.Width), static_cast<float>(d.Height));
+	const float sharpenCb[4] = {m_outputWidth, m_outputHeight, fsr ? 0.0f : m_upscaleSharpness, 0.0f};
+	const UINT table = fsr ? kUpscaleTableFsr : kUpscaleTableSharpen + static_cast<UINT>(write);
+	drawUpscaleFullscreen((fsr || taau) ? m_sharpenPSO.Get() : m_upscaleBlitPSO.Get(), table, sharpenCb, sizeof(sharpenCb),
+	                      static_cast<float>(d.Width), static_cast<float>(d.Height));
 	temporalBarrier(m_sceneLdr.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_upscaleHistoryValid = taau;
+	m_upscaleHistoryValid = fsr || taau;
 	if (taau) { m_upscaleWrite = 1 - write; }
 	++m_taaFrameIndex;
 }

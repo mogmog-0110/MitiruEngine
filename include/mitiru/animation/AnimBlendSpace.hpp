@@ -80,8 +80,8 @@ inline int blendSpace2D(const sgc::Vec2f* points, int n, sgc::Vec2f p, BlendWeig
 
 /// @brief 重みの組を Override レイヤの列として params へ足す。clips[k] / times[k] は weights[k].index で引く。
 /// @return 全部入れば true。
-inline bool pushBlend(AnimPoseParams& params, const BlendWeight* weights, int n, const std::int16_t* clips,
-                      const float* times, std::int16_t mask = -1, std::uint8_t flags = kAnimLayerLoop) noexcept
+inline bool pushBlend(AnimPoseParams& params, const BlendWeight* weights, int n, const int* clips,
+                      const float* times, int mask = -1, std::uint8_t flags = kAnimLayerLoop) noexcept
 {
 	float sum = 0.0f;
 	bool ok = true;
@@ -90,13 +90,8 @@ inline bool pushBlend(AnimPoseParams& params, const BlendWeight* weights, int n,
 		const float w = weights[k].weight;
 		if (!(w > 0.0f)) { continue; }
 		sum += w;
-		AnimLayer layer;
-		layer.clip = clips[weights[k].index];
-		layer.mask = mask;
-		layer.flags = flags;
-		layer.timeSec = times[weights[k].index];
-		layer.weight = w / sum;
-		ok = pushLayer(params, layer) && ok;
+		const int i = weights[k].index;
+		ok = pushLayer(params, AnimLayer::clipAt(clips[i], times[i], w / sum, flags, mask)) && ok;
 	}
 	return ok;
 }

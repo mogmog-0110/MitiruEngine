@@ -22,6 +22,14 @@ namespace mitiru
 
 namespace detail
 {
+/// drawMesh の配置。rotDeg は {pitch, yaw, roll} 度で、Y → X → Z の順に回す
+[[nodiscard]] inline sgc::Mat4f meshWorld(const sgc::Vec3f& position, const sgc::Vec3f& scale, const sgc::Vec3f& rotDeg) noexcept
+{
+	constexpr float kDeg = 3.14159265358979f / 180.0f;
+	return sgc::Mat4f::translation(position) * sgc::Mat4f::rotationY(rotDeg.y * kDeg) *
+	       sgc::Mat4f::rotationX(rotDeg.x * kDeg) * sgc::Mat4f::rotationZ(rotDeg.z * kDeg) * sgc::Mat4f::scaling(scale);
+}
+
 inline bool equalsNoCase(const char* a, const char* b) noexcept
 {
 	for (; *a != '\0' && *b != '\0'; ++a, ++b)
@@ -300,18 +308,9 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 {
 	if (!has3D()) { return; }
 	ensure3DFrame();
-
-	constexpr float kDeg = 3.14159265358979f / 180.0f;
-	const sgc::Mat4f world =
-		sgc::Mat4f::translation(position) *
-		sgc::Mat4f::rotationY(rotDeg.y * kDeg) *
-		sgc::Mat4f::rotationX(rotDeg.x * kDeg) *
-		sgc::Mat4f::rotationZ(rotDeg.z * kDeg) *
-		sgc::Mat4f::scaling(scale);
-
 	render::Material material;
 	material.diffuse = color;
-	m_renderer3D->drawMesh(resolveMesh3D(shape), world, material);
+	m_renderer3D->drawMesh(resolveMesh3D(shape), detail::meshWorld(position, scale, rotDeg), material);
 }
 
 inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
@@ -320,14 +319,7 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 {
 	if (!has3D()) { return; }
 	ensure3DFrame();
-
-	constexpr float kDeg = 3.14159265358979f / 180.0f;
-	const sgc::Mat4f world =
-		sgc::Mat4f::translation(position) *
-		sgc::Mat4f::rotationY(rotDeg.y * kDeg) *
-		sgc::Mat4f::rotationX(rotDeg.x * kDeg) *
-		sgc::Mat4f::rotationZ(rotDeg.z * kDeg) *
-		sgc::Mat4f::scaling(scale);
+	const sgc::Mat4f world = detail::meshWorld(position, scale, rotDeg);
 
 	render::Material material;
 	material.diffuse = tint;

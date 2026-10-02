@@ -15,6 +15,8 @@
 #include <string_view>
 #include <vector>
 
+#include <sgc/math/Vec3.hpp>
+
 namespace mitiru::level
 {
 
@@ -71,10 +73,12 @@ struct Entity
 	std::uint32_t propertyCount = 0;
 };
 
-/// @brief 世界座標の三角形の列 (positions は xyz の並び、indices は 3 つで 1 枚)
+/// @brief 世界座標の三角形の列 (indices は vertices の添字で、3 つで 1 枚)
+/// @details 頂点を点の型で持つので、当たり判定 (action::CollisionLevelBuilder::addTriangles) にも
+///          ナビメッシュの焼き込みにも、並べ替えずにそのまま渡せる。
 struct TriangleSoup
 {
-	std::vector<float> positions;
+	std::vector<sgc::Vec3f> vertices;
 	std::vector<std::uint32_t> indices;
 
 	[[nodiscard]] std::size_t triangleCount() const noexcept { return indices.size() / 3; }

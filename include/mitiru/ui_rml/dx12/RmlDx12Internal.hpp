@@ -32,6 +32,8 @@ struct RmlRenderInterfaceDx12::Texture
 	int width = 0;
 	int height = 0;
 	D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+	int externalSlot = -1;   ///< "view3d:N" の N。外の資源は持ち主 (3D レンダラ) の状態のまま読む
+	Microsoft::WRL::ComPtr<ID3D12Resource> external;
 };
 
 namespace dx12

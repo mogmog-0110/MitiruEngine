@@ -54,7 +54,7 @@ The top layer (UI) runs only when the game ships `assets/ui/main.rml`
 
 > **`include/mitiru/bridge/`** holds adapters between ShiggyGameCore (`sgc`,
 > the C++ ECS / math / physics / AI library that lives under `external/sgc/`)
-> and the Mitiru type system (`AiBridge`, `PhysicsBridge`, `Renderer3DBridge`),
+> and the Mitiru type system (`AiBridge`, `PhysicsBridge`),
 > plus `StateStore`, the last value of every `hud.set` key, used for
 > observation and replay-as-test. None of them depend on the UI layer.
 
@@ -387,7 +387,7 @@ All platform and graphics objects are accessed exclusively through abstract inte
 | Taskflow | `MITIRU_HAS_TASKFLOW` | Worker threads for `JobSystem` (falls back to running jobs inline) |
 | Recast/Detour | `MITIRU_HAS_RECAST` / `MITIRU_HAS_DETOUR` | Navmesh bake (`mitiru_navbake`) and path queries (`nav::NavMesh`), linked per target via `mitiru_nav_bake` / `mitiru_nav` ([NAVMESH.md](NAVMESH.md)) |
 | GekkoNet | `MITIRU_HAS_GEKKONET` (opt-in `-DMITIRU_WITH_GEKKONET=ON`) | Rollback netcode: `RollbackPeer` drives a game DLL via GameMemory memcpy save/load, `mitiru_rollback` checks two DLLs over loopback ([ROLLBACK_NETCODE.md](ROLLBACK_NETCODE.md)) |
-| Effekseer | `MITIRU_HAS_EFFEKSEER` (opt-in `-DMITIRU_WITH_EFFEKSEER=ON`, Windows) | Particle effects (`.efkefc`) drawn in the DX12 3D frame; games call `drawModel(path, pos, rotY, scale, key, ageSec)` ([EFFEKSEER.md](EFFEKSEER.md)) |
+| Effekseer | `MITIRU_HAS_EFFEKSEER` (`MITIRU_WITH_EFFEKSEER`, default ON on Windows when the submodule is present) | Particle effects (`.efkefc`) drawn in the DX12 3D frame; games call `drawModel(path, pos, rotY, scale, key, ageSec)` ([EFFEKSEER.md](EFFEKSEER.md)) |
 | spdlog | `MITIRU_HAS_SPDLOG` | Structured logging |
 | SDL3 | `MITIRU_HAS_SDL3` | Gamepads on every OS (`SdlGamepadInput`, ADR 0048). Windows configure fetches the pinned VC package into `external/sdl3/` (`cmake/MitiruSdl3.cmake`, `tools/fetch_sdl3.py`) |
 | SDL2 | `MITIRU_HAS_SDL2` | Frozen Linux/macOS window for OpenGL (`Sdl2Window`, ADR 0047). Searched only on non-Windows when SDL3 is absent |

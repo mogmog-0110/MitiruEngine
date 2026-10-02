@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 #include <mitiru/render/Material.hpp>
 
@@ -23,21 +24,12 @@ namespace mitiru::render
 	const float m = gltfMat.metallic;
 	const float r = gltfMat.roughness;
 
-	/// Phong 近似: ambient = baseColor * 0.1
-	mat.ambient = {bc.r * 0.1f, bc.g * 0.1f, bc.b * 0.1f, bc.a};
-
-	/// diffuse = baseColor * (1 - metallic)
+	// glTF の係数は線形、Material の色は書いた sRGB (ColorSpace.hpp)。線形で組んでから sRGB へ寄せる
+	mat.ambient = srgbColor(sgc::Colorf{bc.r * 0.1f, bc.g * 0.1f, bc.b * 0.1f, bc.a});
 	const float diffFactor = 1.0f - m;
-	mat.diffuse = {bc.r * diffFactor, bc.g * diffFactor, bc.b * diffFactor, bc.a};
-
-	/// specular = lerp(0.04, baseColor, metallic)
+	mat.diffuse = srgbColor(sgc::Colorf{bc.r * diffFactor, bc.g * diffFactor, bc.b * diffFactor, bc.a});
 	const float f0 = 0.04f;
-	mat.specular = {
-		f0 + (bc.r - f0) * m,
-		f0 + (bc.g - f0) * m,
-		f0 + (bc.b - f0) * m,
-		1.0f
-	};
+	mat.specular = srgbColor(sgc::Colorf{f0 + (bc.r - f0) * m, f0 + (bc.g - f0) * m, f0 + (bc.b - f0) * m, 1.0f});
 
 	/// shininess = (1 - roughness) * 128
 	mat.shininess = std::max(1.0f, (1.0f - r) * 128.0f);

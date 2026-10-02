@@ -40,6 +40,7 @@
         <a href="features.html">機能</a>
         <a href="ui.html">画面（HTML / CSS）</a>
         <a href="3d.html">3D</a>
+        <a href="action.html">3D アクションを作る</a>
         <a href="ai.html">AI 連携</a>
         <a href="cli.html">CLI</a>
 
@@ -50,14 +51,14 @@
     </aside>
 
     <div class="content">
-      <main id="main">
+      <main id="main" data-pagefind-body>
         <section class="hero">
           <div class="wrap hero-grid">
             <div>
               <p class="kicker">個人開発プロジェクト</p>
-              <img class="hero-logo" src="assets/logo.png" alt="MitiruEngine" width="2400" height="447">
+              <img class="hero-logo" src="assets/logo.webp" alt="MitiruEngine" width="2400" height="447">
               <h1>C++ でゲームを動かし、RML / RCSS で画面を作る。</h1>
-              <p class="lede">MitiruEngine は、音、画像、AI を使ったゲームやアプリを制作できる軽量な C++ ゲームエンジンです。2D を中心に、最小限の 3D にも対応しています。</p>
+              <p class="lede">MitiruEngine は、音、画像、AI を使ったゲームやアプリを制作できる軽量な C++ ゲームエンジンです。2D に加えて、3D アクションを作るための部品 (キャラクター、カメラ、骨格アニメ、敵の AI) もそろえています。</p>
               <div class="cta">
                 <a class="btn btn--primary" href="install.html">はじめる</a>
                 <a class="btn btn--ghost" href="tutorial.html">初心者ガイド</a>
@@ -208,7 +209,7 @@ mitiru run</code></pre>
               </a>
 
               <a class="gcard" href="samples.html#shapes">
-                <img src="assets/examples/shapes.png" alt="shapes サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <img src="assets/examples/shapes.webp" alt="shapes サンプルの実行画面" loading="lazy" width="1280" height="720">
                 <div class="gc-body">
                   <div class="gc-name"><b>図形</b><span>shapes</span></div>
                   <p class="gc-desc">四角、円、線、グラデーション、多角形を表示します。</p>
@@ -216,7 +217,7 @@ mitiru run</code></pre>
               </a>
 
               <a class="gcard" href="samples.html#text">
-                <img src="assets/examples/text.png" alt="text サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <img src="assets/examples/text.webp" alt="text サンプルの実行画面" loading="lazy" width="1280" height="720">
                 <div class="gc-body">
                   <div class="gc-name"><b>文字表示</b><span>text</span></div>
                   <p class="gc-desc">枠内の整列、折り返し、はみ出した部分の省略を確認できます。</p>
@@ -224,7 +225,7 @@ mitiru run</code></pre>
               </a>
 
               <a class="gcard" href="samples.html#input">
-                <img src="assets/examples/input.png" alt="input サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <img src="assets/examples/input.webp" alt="input サンプルの実行画面" loading="lazy" width="1280" height="720">
                 <div class="gc-body">
                   <div class="gc-name"><b>入力</b><span>input</span></div>
                   <p class="gc-desc">キーボード、マウス、ゲームパッドの入力を表示します。</p>
@@ -232,7 +233,7 @@ mitiru run</code></pre>
               </a>
 
               <a class="gcard" href="samples.html#motion">
-                <img src="assets/examples/motion.png" alt="motion サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <img src="assets/examples/motion.webp" alt="motion サンプルの実行画面" loading="lazy" width="1280" height="720">
                 <div class="gc-body">
                   <div class="gc-name"><b>動き</b><span>motion</span></div>
                   <p class="gc-desc">位置、大きさ、回転、透明度の変化とイージングを確認できます。</p>
@@ -240,7 +241,7 @@ mitiru run</code></pre>
               </a>
 
               <a class="gcard" href="samples.html#sprites">
-                <img src="assets/examples/sprites.png" alt="sprites サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <img src="assets/examples/sprites.webp" alt="sprites サンプルの実行画面" loading="lazy" width="1280" height="720">
                 <div class="gc-body">
                   <div class="gc-name"><b>スプライト</b><span>sprites</span></div>
                   <p class="gc-desc">拡大、回転、反転、半透明、アニメーションを扱います。</p>
@@ -248,7 +249,7 @@ mitiru run</code></pre>
               </a>
 
               <a class="gcard" href="samples.html#camera">
-                <img src="assets/examples/camera.png" alt="camera サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <img src="assets/examples/camera.webp" alt="camera サンプルの実行画面" loading="lazy" width="1280" height="720">
                 <div class="gc-body">
                   <div class="gc-name"><b>カメラ</b><span>camera</span></div>
                   <p class="gc-desc">画面より広い場面を追ってスクロールします。</p>
@@ -256,7 +257,7 @@ mitiru run</code></pre>
               </a>
 
               <a class="gcard" href="samples.html#audio">
-                <img src="assets/examples/audio.png" alt="audio サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <img src="assets/examples/audio.webp" alt="audio サンプルの実行画面" loading="lazy" width="1280" height="720">
                 <div class="gc-body">
                   <div class="gc-name"><b>音</b><span>audio</span></div>
                   <p class="gc-desc">効果音と BGM の再生を視覚表示とともに確認できます。</p>
@@ -296,7 +297,7 @@ mitiru run</code></pre>
               </a>
 
               <a class="gcard" href="samples.html#restart_save">
-                <img src="assets/examples/restart_save.png" alt="restart_save サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <img src="assets/examples/restart_save.webp" alt="restart_save サンプルの実行画面" loading="lazy" width="1280" height="720">
                 <div class="gc-body">
                   <div class="gc-name"><b>セーブ</b><span>restart_save</span></div>
                   <p class="gc-desc">セーブ、ロード、取り消し、やり直し、初期化を扱います。</p>
@@ -318,6 +319,54 @@ mitiru run</code></pre>
                   <p class="gc-desc">26 万ポリゴンの宮殿を、マウス視点と WASD 操作で歩きます。</p>
                 </div>
               </a>
+
+              <a class="gcard" href="samples.html#action3d">
+                <img src="assets/examples/action3d.webp" alt="action3d サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <div class="gc-body">
+                  <div class="gc-name"><b>3D アクション</b><span>action3d</span></div>
+                  <p class="gc-desc">地形を歩いて跳ぶキャラクターと、壁の手前に寄るカメラ。</p>
+                </div>
+              </a>
+
+              <a class="gcard" href="samples.html#anim3d">
+                <img src="assets/examples/anim3d.webp" alt="anim3d サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <div class="gc-body">
+                  <div class="gc-name"><b>3D キャラクター</b><span>anim3d</span></div>
+                  <p class="gc-desc">待機と歩きを混ぜ、頭で光の玉を目で追うキツネ。</p>
+                </div>
+              </a>
+
+              <a class="gcard" href="samples.html#enemy_ai">
+                <img src="assets/examples/enemy_ai.webp" alt="enemy_ai サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <div class="gc-body">
+                  <div class="gc-name"><b>敵の AI</b><span>enemy_ai</span></div>
+                  <p class="gc-desc">見つけた敵が囲み、同時に攻めるのは 2 体まで。</p>
+                </div>
+              </a>
+
+              <a class="gcard" href="samples.html#crowd">
+                <img src="assets/examples/crowd.webp" alt="crowd サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <div class="gc-body">
+                  <div class="gc-name"><b>群衆</b><span>crowd</span></div>
+                  <p class="gc-desc">120 体が避け合い、閉じた扉を回り込みます。</p>
+                </div>
+              </a>
+
+              <a class="gcard" href="samples.html#lights3d">
+                <img src="assets/examples/lights3d.webp" alt="lights3d サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <div class="gc-body">
+                  <div class="gc-name"><b>3D の灯り</b><span>lights3d</span></div>
+                  <p class="gc-desc">夜の広場に点光源 6 つと、影を落とすスポットライト。</p>
+                </div>
+              </a>
+
+              <a class="gcard" href="samples.html#physics_rewind">
+                <img src="assets/examples/physics_rewind.webp" alt="physics_rewind サンプルの実行画面" loading="lazy" width="1280" height="720">
+                <div class="gc-body">
+                  <div class="gc-name"><b>物理の巻き戻し</b><span>physics_rewind</span></div>
+                  <p class="gc-desc">崩れた箱と人形を、物理の世界ごと過去へ戻します。</p>
+                </div>
+              </a>
             </div>
           </div>
         </section>
@@ -333,6 +382,7 @@ mitiru run</code></pre>
               <li><b>C++ と RML / RCSS を併用できます。</b>ゲームの処理を C++ で記述し、メニューや HUD を HTML / CSS とほぼ同じ書き方で作成できます。<a href="ui.html">画面の作り方を見る</a></li>
               <li><b>保存した変更を実行中に反映できます。</b>ゲームを動かしたまま、調整を続けられます。</li>
               <li><b>実行状態を数秒前まで巻き戻せます。</b>巻き戻した後に修正し、同じ箇所をもう一度実行できます。<a href="ai.html">詳細を見る</a></li>
+              <li><b>3D アクションの部品をそろえています。</b>当たり判定、キャラクター、カメラ、骨格アニメ、敵の AI を、ゲームの中で同じフレームのうちに使えます。<a href="action.html">作り方を見る</a></li>
               <li><b>必要な機能を個別のウィンドウで開きます。</b>大きな専用エディタは使用しません。<a href="features.html#tools">機能一覧を見る</a></li>
               <li><b>ゲーム本体は約 0.2 MB の DLL ひとつです。</b>ソースを公開しており、制作したゲームは商用でも使用できます。</li>
             </ul>

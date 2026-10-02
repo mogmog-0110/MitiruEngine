@@ -284,4 +284,9 @@ std::vector<UiAction> RmlUiHost::takeActions()
 	return std::exchange(m_impl->actions, {});
 }
 
+void RmlUiHost::setExternalImageSource(UiExternalImageFn fn, void* ctx)
+{
+	if (m_impl) { m_impl->render.setExternalImageSource(fn, ctx); }
+}
+
 } // namespace mitiru::ui_rml

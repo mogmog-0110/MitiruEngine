@@ -131,6 +131,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	createTemporalPipelines();
 	createMotionBlurPipelines();
 	createTrailPipelines();
+	createHitFeelPipeline();
 	// D3D12 InfoQueue を確保し、runtime 検証エラーを毎フレーム
 	// ファイルへダンプする (ENG-105 v2 MSAA debug)。Debug layer が
 	// 無効でも QueryInterface は通る (メッセージが来ないだけ)。
@@ -156,6 +157,9 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	(void)m_frameTimer.init(m_d3dDevice, device->commandQueue(), FRAME_COUNT);
 	// 局所光の割り当て。作れなくても主光源だけで描ける
 	createClusteredLightResources();
+	// デカールと GPU パーティクル。作れなければそれぞれ描かないだけで、3D は続ける
+	createDecalResources();
+	createParticlePipelines();
 
 	m_initialized = true;
 }

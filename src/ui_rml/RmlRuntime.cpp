@@ -2,6 +2,7 @@
 
 #include <mitiru/ui_rml/RmlBinderElements.hpp>
 #include <mitiru/ui_rml/RmlSparkElement.hpp>
+#include <mitiru/ui_rml/RmlUiHost.hpp>
 
 #include <RmlUi/Core.h>
 #include <RmlUi/Core/FileInterface.h>
@@ -134,6 +135,11 @@ public:
 
 	void JoinPath(Rml::String& out, const Rml::String& documentPath, const Rml::String& path) override
 	{
+		if (path.rfind(kView3DImageScheme, 0) == 0)
+		{
+			out = path;   // 文書のフォルダを前に付けない (RenderInterface が副ビューの番号として読む)
+			return;
+		}
 		if (path.rfind(kEngineScheme, 0) == 0)
 		{
 			out = toUtf8(engineUiDir / fromUtf8(path.substr(kEngineScheme.size())));

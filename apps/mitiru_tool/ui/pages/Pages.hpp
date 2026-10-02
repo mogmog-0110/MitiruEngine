@@ -19,5 +19,9 @@ std::unique_ptr<ToolPage> makeReplayPage(const PageContext& ctx);
 std::unique_ptr<ToolPage> makeSceneViewPage(const PageContext& ctx);
 std::unique_ptr<ToolPage> makeWhyViewPage(const PageContext& ctx);
 std::unique_ptr<ToolPage> makeFrameViewPage(const PageContext& ctx);
+std::unique_ptr<ToolPage> makeSideStatePage(const PageContext& ctx);
+std::unique_ptr<ToolPage> makeAiPage(const PageContext& ctx);
+std::unique_ptr<ToolPage> makeNavPage(const PageContext& ctx);
+std::unique_ptr<ToolPage> makeAnimPage(const PageContext& ctx);
 
 } // namespace mitiru::tool

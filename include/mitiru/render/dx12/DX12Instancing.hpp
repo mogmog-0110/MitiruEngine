@@ -54,6 +54,15 @@ struct VSOutput
     float4 Color         : COLOR0;
 };
 
+// 頂点色は書いた sRGB (ColorSpace.hpp の linearRgb と同じ: 1 を超える色は 1 に収めて線形にし、倍率を戻す)
+float3 srgbToLinear(float3 c)
+{
+    float m = max(max(c.r, c.g), max(c.b, 1.0));
+    c /= m;
+    return ((c <= 0.04045) ? c / 12.92 : pow((max(c, 0.04045) + 0.055) / 1.055, 2.4)) * m;
+}
+float4 srgbToLinear(float4 c) { return float4(srgbToLinear(c.rgb), c.a); }
+
 // DX12_DEFAULT_VS_3D と同じ: 非一様スケールでも面に垂直なまま運ぶ余因子行列
 float3 transformNormal(float3x3 m, float3 n)
 {
@@ -72,7 +81,7 @@ VSOutput VSMain(VSInput input)
     output.Position = mul(Projection, mul(View, worldPos));
     output.LightSpacePos = mul(LightViewProj, worldPos);
     output.TexCoord = input.TexCoord;
-    output.Color = input.Color * input.InstTint;
+    output.Color = srgbToLinear(input.Color) * srgbToLinear(input.InstTint);
     return output;
 }
 )hlsl";
@@ -293,7 +302,11 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 		for (std::size_t i = 0; i < batchCount; ++i)
 		{
 			const MeshInstance& inst = instances[offset + i];
-			if (!cullMesh(mesh, instanceWorld(inst))) { m_instanceScratchDx12.push_back(toInstanceDataDx12(inst)); }
+			const sgc::Mat4f world = instanceWorld(inst);
+			const bool culled = cullMesh(mesh, world);
+			// TAA・FSR・動きのぼけが動く物として扱えるよう、インスタンスも 1 個ずつ前フレームと対にする
+			recordMotionDraw(mesh, world, !culled);
+			if (!culled) { m_instanceScratchDx12.push_back(toInstanceDataDx12(inst)); }
 		}
 		if (m_instanceScratchDx12.empty()) { continue; }
 		drawInstanceBatchDx12(vb, ib, vbSize, static_cast<UINT>(verts.size()), static_cast<UINT>(indices.size()));

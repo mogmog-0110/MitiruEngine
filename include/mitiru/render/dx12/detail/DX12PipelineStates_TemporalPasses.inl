@@ -98,17 +98,23 @@ void setTemporalCamera(const glm::mat4& proj)
 	return &mesh >= first && &mesh < first + m_skinnedPool.size();
 }
 
-/// @brief 不透明の描画を記録する (drawMesh から)。スキン prim は drawSkinnedPrim が prim を鍵に記録する
-void recordMotionDraw(const Mesh& mesh, const sgc::Mat4f& world)
+/// @brief 描画を記録する (drawMesh とインスタンスの 1 個ずつから)。スキン prim は drawSkinnedPrim が prim を鍵に記録する。
+/// @details 前フレームとの対は「同じ鍵の中でゲームが描いた順」で取るので、視錐台やオクルージョンで落とした描画と
+///          半透明の描画も順番には数える (drawn = false)。数えないと、落ちた物の後ろの物が隣の物の姿勢と対になり、
+///          並んだ箱の間の距離ぶんの偽の動きが TAA と動きのぼけに筋を引く
+void recordMotionDraw(const Mesh& mesh, const sgc::Mat4f& world, bool drawn)
 {
-	if (!motionVectorsActive() || isSkinnedPoolMesh(mesh)) { return; }
-	m_motionHistory.add(motionHistoryKey(&mesh), MotionDraw{&mesh, world, nullptr, 0, m_frameCounter, !m_motionCaster});
+	// 副ビューの描画は主ビューの TAA と動きのぼけの対に入れない
+	if (!motionVectorsActive() || isSkinnedPoolMesh(mesh) || m_activeView != nullptr) { return; }
+	MotionDraw d{&mesh, world, nullptr, 0, m_frameCounter, !m_motionCaster};
+	d.drawn = drawn;
+	m_motionHistory.add(motionHistoryKey(&mesh), d);
 }
 
 void recordSkinnedMotionDraw(const void* prim, uint32_t slot, const gfx::GpuResource& vertices,
                              const sgc::Mat4f& instanceWorld)
 {
-	if (!motionVectorsActive()) { return; }
+	if (!motionVectorsActive() || m_activeView != nullptr) { return; }
 	m_motionHistory.add(motionHistoryKey(prim),
 	                    MotionDraw{&m_skinnedPool[slot], instanceWorld, vertices.Get(), slot, m_frameCounter, !m_motionCaster});
 }
@@ -125,6 +131,7 @@ void recordSkinnedMotionDraw(const void* prim, uint32_t slot, const gfx::GpuReso
 /// @brief 1 個の物を前フレームの姿勢と今の姿勢で描き、動きを書く。動いていなければ何もしない
 void drawVelocityObject(const MotionDraw& cur, const MotionDraw& prev)
 {
+	if (!cur.drawn) { return; }
 	ID3D12Resource* prevSkin = previousSkinnedVertices(prev);
 	const bool moved = std::memcmp(&cur.world, &prev.world, sizeof(sgc::Mat4f)) != 0;
 	if (!moved && cur.skinnedVertices == nullptr && !cur.cameraLocked) { return; }

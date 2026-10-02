@@ -137,6 +137,8 @@
 #include <mitiru/render/dx12/DX12AtmosphereShaders.hpp>
 #include <mitiru/render/dx12/DX12FogShaders.hpp>
 #include <mitiru/render/dx12/DX12UpscaleShaders.hpp>
+#include <mitiru/render/dx12/DX12Fsr3Shaders.hpp>
+#include <mitiru/render/dx12/Fsr3Upscaler.hpp>
 #include <mitiru/render/Atmosphere.hpp>
 #include <mitiru/render/RenderScale.hpp>
 #include <mitiru/render/VolumetricFog.hpp>
@@ -146,6 +148,12 @@
 #include <mitiru/render/TemporalJitter.hpp>
 #include <mitiru/render/PostEffectSettings.hpp>
 #include <mitiru/render/TrailRibbon.hpp>
+#include <mitiru/render/Decals.hpp>
+#include <mitiru/render/GpuParticles.hpp>
+#include <mitiru/render/HitFeel.hpp>
+#include <mitiru/render/VfxTextures.hpp>
+#include <mitiru/render/dx12/DX12HitFeelShaders.hpp>
+#include <mitiru/render/dx12/DX12ParticleShaders.hpp>
 
 // XeGTAO の定数の作り方 (GTAOUpdateConstants) と、HLSL と共有する GTAOConstants の並び。上流のまま読む
 #pragma warning(push, 0)
@@ -164,6 +172,9 @@
 #include <mitiru/render/dx12/Dx12SkinningCompute.hpp>
 #include <mitiru/render/dx12/Dx12TextureUpload.hpp>
 #include <mitiru/render/dx12/Dx12UploadRing.hpp>
+// 屋外の 1 枚 (world.json)。DX12World.hpp (class body 内 .inl) が使う宣言を先に取り込む
+#include <mitiru/render/dx12/DX12WorldShaders.hpp>
+#include <mitiru/terrain/OutdoorWorldLoad.hpp>
 
 namespace mitiru::render
 {
@@ -321,7 +332,7 @@ public:
 	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position, float rotYDeg,
 	               float scale, float timeSec) override
 	{
-		if (bakeManifestPath == nullptr || !(scale > 0.0f))
+		if (bakeManifestPath == nullptr || !(scale > 0.0f) || rejectInView("drawSolid"))
 		{
 			return;
 		}
@@ -336,6 +347,7 @@ public:
 	{
 		/// drawMesh を一度も呼ばないフレームでも skybox が出るように、
 		/// drawMesh 側と同じ遅延描画をここでも行う (フラグを共有するので二重には描かない)
+		if (rejectInView("drawModel (clod)") || rejectOutdoorPath(path)) { return; }
 		drawSkyboxBeforeFirstDraw();
 		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
 	}
@@ -346,6 +358,7 @@ public:
 	                      const char* clipB, float timeB, float blend01) override
 	{
 		if (queueEffekseer(path, position, rotYDeg, scale, clipA, timeA)) { return; }
+		if (rejectOutdoorPath(path)) { return; }
 		drawSkinnedModelImpl(path, position, rotYDeg, scale, clipA, timeA, clipB, timeB,
 		                     blend01);
 	}
@@ -551,12 +564,16 @@ public:
 	///        (sceneLook3D を使うゲームは毎フレーム頼み直すので、次のフレームから)
 	void setQualityCaps(const QualityCaps& caps) noexcept
 	{
+		const QualityCaps previous = m_qualityCaps;
 		m_qualityCaps = caps;
 		if (!caps.ambientOcclusion) { m_aoEnabled = false; }
 		if (!caps.bloom) { m_bloomEnabled = false; }
 		if (!caps.depthOfField) { m_dofStrength = 0.0f; }
 		const int count = m_directionalShadow.config().cascadeCount;
 		if (count > caps.maxShadowCascades) { setShadowCascadeCount(count); }
+		// 設定が変わった時だけ当てる。毎回当てると、エンジンの中で setRenderScale した倍率を上書きする
+		if (caps.upscaler != previous.upscaler) { setUpscaler(caps.upscaler); }
+		if (caps.upscale != previous.upscale) { setUpscaleQuality(caps.upscale); }
 	}
 
 	/// @brief SSAO (v40)。radius は 0 以下なら既定 0.25、strength は 0..4 に丸める
@@ -834,6 +851,8 @@ private:
 	// スキンアニメ付き glTF モデルも同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12SkinnedModel.hpp> // NOLINT(build/include)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12ModelRelease.hpp> // NOLINT(build/include)
 
 	// ニューラル現像 (ORT+DirectML で 3D フレームを 2D 絵画へ) も .inl で分離
 	// NOLINTNEXTLINE(google-build-namespaces)
@@ -846,6 +865,17 @@ private:
 	// GPU instancing (drawMeshInstanced) も同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Instancing.hpp> // NOLINT(build/include)
+
+	// 副ビュー (分割画面・小窓・描いた絵を材質に使う)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12Views.hpp> // NOLINT(build/include)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12ViewsSetup.hpp> // NOLINT(build/include)
+	#include <mitiru/render/dx12/DX12ViewSlots.hpp> // NOLINT(build/include)
+
+	// 屋外の 1 枚 (地形・草・撒いた物・水面) も同じ .inl パターンで分離
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12World.hpp> // NOLINT(build/include)
 
 	// Effekseer のエフェクト (drawModel の時刻つき版で .efkefc を受ける)
 	// NOLINTNEXTLINE(google-build-namespaces)
@@ -1010,7 +1040,7 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_hdrIntermediateSrvHeap;
 
 	/// Tonemap pass (ENG-106)。HDR FP16 → backbuffer LDR R8G8B8A8。
-	/// ACES filmic curve + exposure + gamma 2.2。
+	/// 露出 → 中立の肩 → sRGB (DX12Tonemap.hpp)。
 	std::optional<gfx::Dx12Shader> m_tonemapVS;
 	std::optional<gfx::Dx12Shader> m_tonemapPS;
 	ComPtr<ID3D12RootSignature>    m_tonemapRootSig;
@@ -1087,14 +1117,7 @@ private:
 		std::erase_if(m_gameMeshGraveyard, [this](RetiredGameMesh& r)
 		{
 			if (m_frameCounter < r.frame + 3) { return false; }
-			for (auto* cache : {&m_meshVBCache, &m_meshIBCache})
-			{
-				const auto it = cache->find(static_cast<const void*>(r.mesh.get()));
-				if (it == cache->end()) { continue; }
-				m_frameTempResources.push_back(std::move(it->second.resource));
-				for (auto& slot : it->second.slots) { if (slot) { m_frameTempResources.push_back(std::move(slot)); } }
-				cache->erase(it);
-			}
+			evictMeshBuffers(r.mesh.get());
 			return true;
 		});
 	}
@@ -1395,7 +1418,10 @@ public:
 	/// @brief .splat シーンを読み込んで GPU にアップロードする (IRenderer3D)
 	bool loadSplatScene(const char* path) override { return loadSplatSceneDx12(path); }
 	/// @brief 読み込み済みスプラットを現在のカメラで描画する (IRenderer3D)
-	void drawSplats() override { drawSplatsDx12(); }
+	void drawSplats() override
+	{
+		if (!rejectInView("drawSplats")) { drawSplatsDx12(); }
+	}
 	void splatBounds(float& cx, float& cy, float& cz, float& r) const override
 	{ cx = m_splatCenter[0]; cy = m_splatCenter[1]; cz = m_splatCenter[2]; r = m_splatRadius; }
 

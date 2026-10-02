@@ -9,7 +9,8 @@
 /// 純関数・bounds-check 付き・例外を投げない。
 ///
 /// 対応: スカラー(i8..u64/f32/f64/bool) / FixedString("str") / FixedVec("vec"、scalar 要素 or
-/// 1 段ネスト struct 要素) / 直 nested struct("struct")。
+/// 1 段ネスト struct 要素) / 直 nested struct("struct")。スキーマの無い struct / vec の要素でも、
+/// elemType が "mitiru.<型名>" のエンジンの型なら ReflectEngineTypes.hpp で解く。
 
 #include <algorithm>
 #include <cmath>
@@ -25,6 +26,7 @@
 #include <mitiru/util/Hash.hpp>
 #include <mitiru/observe/JsonEscape.hpp>
 #include <mitiru/observe/NumberAppend.hpp>
+#include <mitiru/observe/ReflectEngineTypes.hpp>
 
 namespace mitiru::observe
 {
@@ -176,6 +178,10 @@ inline bool writeScalar(std::uint8_t* p, const char* tag, const nlohmann::json& 
 					arr.push_back(reflectToJson(ep, f.elemSize, sch->fields, sch->fieldCount,
 					                            schemas, schemaCount));
 				}
+				else if (isEngineReflectType(f.elemType, f.elemSize))
+				{
+					arr.push_back(engineReflectTypeToJson(f.elemType, ep, f.elemSize));
+				}
 				else
 				{
 					arr.push_back(detail::readScalar(ep, f.elemType));  // elemType = scalar tag
@@ -199,6 +205,11 @@ inline bool writeScalar(std::uint8_t* p, const char* tag, const nlohmann::json& 
 			{
 				obj[f.name] = reflectToJson(bytes + f.offset, f.elemSize, sch->fields,
 				                            sch->fieldCount, schemas, schemaCount);
+			}
+			else if (isEngineReflectType(f.elemType, f.elemSize) &&
+			         static_cast<std::uint64_t>(f.offset) + f.elemSize <= size)
+			{
+				obj[f.name] = engineReflectTypeToJson(f.elemType, bytes + f.offset, f.elemSize);
 			}
 		}
 		else  // スカラー
@@ -266,6 +277,10 @@ inline void reflectAppendJson(
 				{
 					reflectAppendJson(out, ep, f.elemSize, sch->fields, sch->fieldCount, schemas, schemaCount);
 				}
+				else if (isEngineReflectType(f.elemType, f.elemSize))
+				{
+					out += engineReflectTypeToJson(f.elemType, ep, f.elemSize).dump();
+				}
 				else
 				{
 					detail::appendScalarJson(out, ep, f.elemType);
@@ -287,9 +302,17 @@ inline void reflectAppendJson(
 		else if (std::strcmp(tag, "struct") == 0)
 		{
 			const auto* sch = detail::findSchema(schemas, schemaCount, f.elemType);
-			if (sch == nullptr || static_cast<std::uint64_t>(f.offset) + f.elemSize > size) { continue; }
-			beginField(f.name);
-			reflectAppendJson(out, bytes + f.offset, f.elemSize, sch->fields, sch->fieldCount, schemas, schemaCount);
+			if (static_cast<std::uint64_t>(f.offset) + f.elemSize > size) { continue; }
+			if (sch != nullptr)
+			{
+				beginField(f.name);
+				reflectAppendJson(out, bytes + f.offset, f.elemSize, sch->fields, sch->fieldCount, schemas, schemaCount);
+			}
+			else if (isEngineReflectType(f.elemType, f.elemSize))
+			{
+				beginField(f.name);
+				out += engineReflectTypeToJson(f.elemType, bytes + f.offset, f.elemSize).dump();
+			}
 		}
 		else  // スカラー
 		{
@@ -537,6 +560,12 @@ inline void migrateReflectedMemory(
 			if (std::strcmp(of->elemType, nf.elemType) != 0) { continue; }
 			const auto* nsch = detail::findSchema(newSchemas, newSchemaCount, nf.elemType);
 			const auto* osch = detail::findSchema(oldSchemas, oldSchemaCount, of->elemType);
+			if (nsch == nullptr && osch == nullptr && of->elemSize == nf.elemSize &&
+			    isEngineReflectType(nf.elemType, nf.elemSize))
+			{
+				std::memcpy(newBytes + nf.offset, oldBytes + of->offset, nf.elemSize);
+				continue;
+			}
 			if (nsch == nullptr || osch == nullptr) { continue; }
 			migrateReflectedMemory(oldBytes + of->offset, of->elemSize, osch->fields, osch->fieldCount, oldSchemas, oldSchemaCount,
 				newBytes + nf.offset, nf.elemSize, nsch->fields, nsch->fieldCount, newSchemas, newSchemaCount);

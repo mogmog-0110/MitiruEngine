@@ -16,11 +16,13 @@
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/LocalLights.hpp>
 #include <mitiru/render/Mesh.hpp>
+#include <mitiru/render/OutdoorDrawPod.hpp>
 #include <mitiru/render/PostEffectSettings.hpp>
 #include <mitiru/render/TrailRibbon.hpp>
 #include <mitiru/render/VolumetricFog.hpp>
 #include <mitiru/render/Material.hpp>
 #include <mitiru/render/RendererEnums3D.hpp>
+#include <mitiru/render/View3DPod.hpp>
 #include <mitiru/render/ISceneFx.hpp>
 #include <mitiru/render/experimental/IExperimentalRenderer3D.hpp>
 
@@ -37,6 +39,11 @@ struct AnimIkRequest;
 
 namespace mitiru::render
 {
+
+struct DecalDesc;
+struct ParticleEmitterDesc;
+struct HitFeel;
+enum class VfxTextureKind : std::uint8_t;
 
 // ShaderMode3D、OutlineMode、OUTLINE_MODE_COUNT は RendererEnums3D.hpp で定義する
 
@@ -493,6 +500,36 @@ public:
 	virtual void setSky(const SkySettings& /*sky*/) {}
 	/// @brief 体積フォグ (ADR 0057)。対応しないバックエンドは何もしない
 	virtual void setVolumetricFog(const VolumetricFogSettings& /*fog*/) {}
+
+	// ── ここから下は ABI v49 (ADR 0062) でゲーム DLL へ開いた。Screen の inline が呼ぶので並びを変えない ──
+	// どれも描画だけの依頼で、DX12 以外は何もしない (VFX テクスチャと副ビューは -1 / false を返す)
+
+	/// @brief このフレームのデカールを積む (VFX.md)。beginFrame で空に戻る
+	virtual void submitDecals(const DecalDesc* /*decals*/, int /*count*/) {}
+	/// @brief このフレームの粒のエミッターを積む。渡さなかった key のエミッターは消える
+	virtual void submitParticles(const ParticleEmitterDesc* /*emitters*/, int /*count*/) {}
+	/// @brief 画像ファイルを VFX テクスチャの層に登録する。同じ path と種類は同じ番号。読めなければ -1
+	virtual int registerVfxTextureFile(const char* /*path*/, VfxTextureKind /*kind*/) { return -1; }
+	/// @brief このフレームだけ効く当たりの演出
+	virtual void setHitFeel(const HitFeel& /*feel*/) {}
+
+	/// @brief 屋外の 1 枚 (world.json) を描く。置き場所はファイルで決まる (ADR 0060)
+	virtual void drawOutdoor(const char* /*worldPath*/, const OutdoorDrawPod& /*pod*/) {}
+
+	/// @brief 副ビューの slot (0..kMaxView3DSlots-1) を作る。中身が前と同じなら何もしない。作れなければ false
+	virtual bool setViewSlot(int /*slot*/, const View3DPod& /*pod*/) { return false; }
+	/// @brief 以後の描画を slot の副ビューへ向ける。描けなければ false (描画は主ビューへ入る)
+	virtual bool beginViewSlot(int /*slot*/, const Camera3D& /*camera*/) { return false; }
+	virtual void endViewSlot() {}
+	/// @brief このフレームの最後に slot の出力を画面の矩形へ貼る。矩形は出力の幅と高さに対する割合 (0..1)
+	virtual void compositeViewSlot(int /*slot*/, float /*u*/, float /*v*/, float /*w*/, float /*h*/) {}
+	/// @brief slot の出力を基本色のテクスチャにしてメッシュを描く
+	virtual void drawMeshWithViewSlot(const Mesh& /*mesh*/, const sgc::Mat4f& /*world*/, const Material& /*material*/,
+	                                  int /*slot*/) {}
+	virtual void releaseViewSlot(int /*slot*/) {}
+
+	/// @brief glTF / FBX のモデルを手放す (ADR 0061)。次に同じ path を描くと読み直す
+	virtual bool releaseModel(const char* /*path*/) { return false; }
 };
 
 } // namespace mitiru::render

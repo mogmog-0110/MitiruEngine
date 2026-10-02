@@ -1426,6 +1426,16 @@ template <class T, auto MemberPtr>
 		return (fn)(oldBytes, oldSize, oldLayoutHash, newMemory, newSize);    \
 	}
 
+/// ツール窓 (ai / nav) に見せる資産を host へ渡す (v49)。fn は int32 fn(InspectAsset* out, int32 cap) で、書いた数を返す。
+/// ビヘイビアツリーの JSON (kind "bt_tree") と焼いたナビメッシュ (kind "navmesh") は GameMemory に無いので、ここから渡すと
+/// ツール窓が木の形と床の形を出せる。data は DLL を手放すまで変えない。host は読み込みの時に 1 度だけ写す。ファイルスコープに 1 回。
+#define MITIRU_INSPECT_ASSETS(fn)                                              \
+	extern "C" MITIRU_GAME_EXPORT                                              \
+	std::int32_t mitiru_module_inspect_assets(mitiru::module::InspectAsset* out, std::int32_t cap) \
+	{                                                                         \
+		return (fn)(out, cap);                                                \
+	}
+
 /// 旧名の後方互換エイリアス。flat POD 必須は MITIRU_GAME 自体に統合されたので
 /// 中身は同じ。新規コードは MITIRU_GAME を使ってよい。
 #define MITIRU_GAME_RECORDABLE(GameType) MITIRU_GAME(GameType)

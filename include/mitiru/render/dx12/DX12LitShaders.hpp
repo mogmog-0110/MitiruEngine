@@ -2,11 +2,13 @@
 
 /// @file DX12LitShaders.hpp
 /// @brief DX12 メインパスの陰影 PS (Toon / Phong / PBR と半透明の OIT)。材質のマップと局所光を共有する
-/// @details PS は「共通部 + 局所光 1 灯の陰影 + 局所光の走査 + 本体」を連結して作る (`dx12LitPixelShader`)。
+/// @details PS は「共通部 + デカール + 局所光 1 灯の陰影 + 局所光の走査 + 本体」を連結して作る (`dx12LitPixelShader`)。
 ///          入力は DX12_DEFAULT_VS_3D の出力で、レジスタの割り当てはメインのルートシグネチャ
 ///          (DX12PipelineStates_Setup.inl の createRootSignature) の説明にある。
 
 #include <string>
+
+#include <mitiru/render/dx12/DX12DecalShaders.hpp>
 
 namespace mitiru::render
 {
@@ -59,7 +61,7 @@ cbuffer CbCluster : register(b4)
     float4 ClusterDepth;   // x=near y=far z=Z/log(far/near) w=-Z*log(near)/log(far/near)
     float4 ClusterScreen;  // x=タイル数 X/画面幅 y=タイル数 Y/画面高さ
     float4 CameraForward;  // xyz=視線
-    float4 IblParams;      // x=環境マップ有無 y=環境光の強さ z=prefiltered の最大 mip
+    float4 IblParams;      // x=環境マップ有無 y=環境光の強さ z=prefiltered の最大 mip w=1 なら副ビュー
     uint4  SpotShadowLight;    // 枠 k の影を使う局所光の番号 (0xFFFFFFFF = 空き)
     float4 SpotShadowParams;   // x=アトラスの texel の幅 (u) y=高さ (v)
     float4x4 SpotShadowViewProj[4];
@@ -441,10 +443,12 @@ float3 shadeLocal(Surface s, LocalHit h)
 )hlsl";
 
 /// @brief PBR の局所光 1 灯 (主光源と同じ Cook-Torrance)
+/// @details 光の強さは Phong・トゥーンと同じ約束 (強さ 1 の白い光が正面から当たった白い面が白) に揃えるため、
+///          拡散の 1/π を光の側の π で打ち消す (光の色 × π を放射照度とみなす)
 inline constexpr const char* DX12_LIT_PBR_SHADE_HLSL = R"hlsl(
 float3 shadeLocal(Surface s, LocalHit h)
 {
-    return cookTorrance(s, h.L) * h.color * (h.shape * h.falloff);
+    return cookTorrance(s, h.L) * (h.color * PI) * (h.shape * h.falloff);
 }
 )hlsl";
 
@@ -489,6 +493,7 @@ PSOutput PSMain(PSInput input)
     float4 texSample = sampleAlbedo(input.TexCoord);
     float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb;
     float3 mr = sampleMetalRough(input.TexCoord);
+    applyDecals(input.Position, input.WorldPos, Ng, albedo, N, mr.y);
 
     float distToCamera = length(CameraPos - input.WorldPos);
     float castShadow = sampleCascadedShadow(input.WorldPos, input.LightSpacePos, distToCamera, shadowBiasFor(N, L));
@@ -527,6 +532,7 @@ float3 shadePhong(PSInput input, float3 N, float3 V, float4 texSample)
     float3 L = normalize(-LightDir);
     float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb;
     float3 mr = sampleMetalRough(input.TexCoord);
+    applyDecals(input.Position, input.WorldPos, normalize(input.WorldNorm), albedo, N, mr.y);
     float distToCamera = length(CameraPos - input.WorldPos);
     float shadow = sampleCascadedShadow(input.WorldPos, input.LightSpacePos, distToCamera, shadowBiasFor(N, L));
 
@@ -613,13 +619,15 @@ PSOutput PSMain(PSInput input)
     s.V = V;
     s.metallic = saturate(mr.x);
     s.roughness = clamp(mr.y, 0.04, 1.0);
+    applyDecals(input.Position, input.WorldPos, Ng, s.albedo, s.N, s.roughness);
     s.F0 = lerp(float3(0.04, 0.04, 0.04), s.albedo, s.metallic);
 
     float distToCamera = length(CameraPos - input.WorldPos);
     float shadow = sampleCascadedShadow(input.WorldPos, input.LightSpacePos, distToCamera, shadowBiasFor(N, L));
 
     // トーンマップ・ガンマは共有の resolve/tonemap パスに任せ、線形 HDR のまま書く
-    float3 color = cookTorrance(s, L) * LightColor * shadow + ambientPbr(s, mr.z);
+    // 光の色 × π を放射照度とみなす (DX12_LIT_PBR_SHADE_HLSL と同じ約束)
+    float3 color = cookTorrance(s, L) * (LightColor * PI) * shadow + ambientPbr(s, mr.z);
     color += accumulateLocalLights(input, s);
     color += sampleEmissive(input.TexCoord);
     color = applyFog(color, input.WorldPos);
@@ -641,6 +649,7 @@ enum class LitShade
 [[nodiscard]] inline std::string dx12LitPixelShader(LitShade shade)
 {
 	std::string src = DX12_LIT_COMMON_HLSL;
+	src += DX12_DECAL_APPLY_HLSL;
 	switch (shade)
 	{
 	case LitShade::Toon:

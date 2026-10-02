@@ -20,6 +20,7 @@
 #include <sgc/types/Color.hpp>
 
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/GltfAnimationLoader.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 #include <mitiru/render/Mesh.hpp>
@@ -170,7 +171,7 @@ namespace detail
 
 /// @brief cgltf アクセサから頂点カラーを読み取る (COLOR_0)。
 /// @details VEC3 / VEC4 のどちらでも受ける。正規化 ubyte / ushort は cgltf が 0-1 へ直す。
-///          成分が 3 つのときの alpha は 1。
+///          成分が 3 つのときの alpha は 1。glTF の COLOR_0 は線形なので、Vertex3D の約束 (書いた sRGB) へ寄せる。
 [[nodiscard]] inline sgc::Colorf readColor(const cgltf_accessor* accessor, cgltf_size index)
 {
 	float buf[4] = {1, 1, 1, 1};
@@ -178,7 +179,7 @@ namespace detail
 	{
 		cgltf_accessor_read_float(accessor, index, buf, 4);
 	}
-	return {buf[0], buf[1], buf[2], buf[3]};
+	return srgbColor(sgc::Colorf{buf[0], buf[1], buf[2], buf[3]});
 }
 
 /// @brief cgltf アクセサからインデックスを読み取る

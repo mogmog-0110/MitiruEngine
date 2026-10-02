@@ -59,7 +59,17 @@ MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 	                   m_logicalWidth, m_logicalHeight, error))
 	{
 		std::fprintf(stderr, "[mitiru] UI (RmlUi) を始められなかった: %s (UI 無しで続ける)\n", error.c_str());
+		return;
 	}
+	// <img src="view3d:N"/> はゲームの副ビュー slot N の出力を貼る。レンダラは作り直されることがあるので毎回引く
+	m_rmlUi.setExternalImageSource([](void* ctx, int slot) {
+		const auto* self = static_cast<const Engine*>(ctx);
+		const auto* r = dynamic_cast<const render::Renderer3D_DX12*>(self->m_renderer3D.get());
+		if (r == nullptr) { return ui_rml::UiExternalImage{}; }
+		const auto img = r->viewSlotImage(slot);
+		return ui_rml::UiExternalImage{img.resource, static_cast<std::uint32_t>(DXGI_FORMAT_R8G8B8A8_UNORM), img.width,
+		                               img.height};
+	}, this);
 #else
 	std::fprintf(stderr, "[mitiru] UI (RmlUi) はこのプラットフォームでは動かない: %s\n", config.uiDocument.c_str());
 #endif

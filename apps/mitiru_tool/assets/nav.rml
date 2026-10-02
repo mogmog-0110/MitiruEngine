@@ -1,0 +1,38 @@
+<rml>
+<head>
+	<title>nav</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		.counts { display: flex; flex-wrap: wrap; margin-top: 4dp; font-family: "IBM Plex Mono"; font-size: 12dp; color: #33363b; }
+		.counts span { margin-right: 14dp; }
+		.counts b { color: #1a1c1f; }
+		.axes { display: flex; margin-top: 8dp; font-family: "IBM Plex Mono"; font-size: 10.9dp; color: #999da4; }
+		.axes .grow { flex: 1 1 auto; }
+		.map { margin-top: 4dp; border: 1dp #e6e7ea; background-color: #fcfcfb; }
+		.map liveimage { display: block; width: 100%; }
+		.legend { margin-top: 6dp; font-family: "IBM Plex Mono"; font-size: 10.9dp; color: #999da4; }
+		.legend .sw { display: inline-block; width: 10dp; height: 10dp; margin: 0dp 4dp 0dp 10dp; border: 1dp #c9cbd0; }
+		.legend .mesh { background-color: #e0e2e6; border-color: #999da4; }
+		.legend .closed { background-color: #6e7077; border-color: #1a1c1f; }
+		.legend .agent { background-color: #1a1c1f; border-color: #1a1c1f; border-radius: 5dp; }
+		.legend .stuck { border-color: #1a1c1f; border-radius: 5dp; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ready">
+	<header><div class="dot"/><h1>nav</h1></header>
+	<div class="body">
+		<div class="counts">
+			<span>agent <b>{{ agents }}</b></span><span>moving <b>{{ moving }}</b></span><span>経路なし <b>{{ stuck }}</b></span>
+			<span>閉じた障害物 <b>{{ closed }}</b> / {{ obstacles }}</span>
+		</div>
+		<div class="hint" data-if="mesh_file == ''">DLL が MITIRU_INSPECT_ASSETS でナビメッシュを渡す (か --page nav?mesh=&lt;.navmesh か .navcache&gt; を付ける) と床の形が出る</div>
+		<div class="hint" data-if="mesh_file != '' &amp;&amp; mesh_error == ''">{{ mesh_file }} · 三角形 {{ mesh_tris }}</div>
+		<div class="err" data-if="mesh_error != ''">{{ mesh_error }}</div>
+		<div class="empty" data-if="nothing">gameMemory に CrowdAgentView も NavObstacle も無い (MITIRU_REFLECT に載せる。docs/TOOL_WINDOWS.md)</div>
+		<div class="axes"><span class="grow">真上から · 右が +x、下が +z</span><span>格子 {{ grid }}</span></div>
+		<div class="map"><liveimage id="map"/></div>
+		<div class="legend"><span class="sw mesh"/>床<span class="sw closed"/>閉じた障害物<span class="sw"/>開いた障害物<span class="sw agent"/>agent (線は 0.5 秒の移動)<span class="sw stuck"/>経路なし</div>
+	</div>
+	<div class="wait">waiting for the game…</div>
+</body>
+</rml>

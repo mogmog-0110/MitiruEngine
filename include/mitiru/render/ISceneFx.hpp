@@ -133,7 +133,7 @@ public:
 	// ── HDR トーンマップ (ENG-106) ─────────────────────────────
 
 	/// @brief 露出 (exposure) を設定する
-	/// @details ACES filmic 前の線形係数。1.0 が標準。明るくしたいなら 1 超、
+	/// @details トーンマップ前の線形係数。1.0 が標準。明るくしたいなら 1 超、
 	///          暗くしたいなら 1 未満。屋外シーンは 0.5〜1.0、暗所は 1.5〜3.0 が目安。
 	///          DX12 のみ実装。DX11 では no-op。
 	virtual void setTonemapExposure(float /*exposure*/) {}
@@ -141,8 +141,8 @@ public:
 	/// @brief 現在の exposure 値を返す
 	[[nodiscard]] virtual float tonemapExposure() const noexcept { return 1.0f; }
 
-	/// @brief 出力ガンマを設定する (default 2.2、sRGB 近似)
-	/// @details tonemap 後に `pow(c, 1.0/gamma)` を掛ける。
+	/// @brief 表示ガンマを設定する (default 2.2 = sRGB そのもの)
+	/// @details tonemap 後の線形の色に `pow(c, 2.2 / gamma)` を掛けてから sRGB へ戻す。2.2 より大きいと中間調が明るくなる。
 	virtual void setTonemapGamma(float /*gamma*/) {}
 
 	/// @brief 現在の gamma 値を返す
@@ -192,7 +192,7 @@ public:
 	///        描画結果だけが変わり、InputSnapshot / リプレイには乗らない。DX12 のみ実装
 	virtual void setShadowSoftness(float /*texels*/) {}
 
-	/// @brief tonemap (ACES) の後・ガンマの前に掛ける彩度とコントラスト。両方 1.0 で無変換。
+	/// @brief tonemap の後・sRGB へ戻す前に掛ける彩度とコントラスト。両方 1.0 で無変換。
 	///        saturation 0 でグレー。contrast は中間灰 0.18 を軸に伸縮する。DX12 のみ実装
 	virtual void setColorGrade(float /*saturation*/, float /*contrast*/) {}
 

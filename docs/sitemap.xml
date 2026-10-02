@@ -6,6 +6,12 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-character_detail/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-geom/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/</loc>
@@ -15,6 +21,12 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/</loc>
   </url><url>
@@ -36,6 +48,12 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-bt_detail/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-orca_detail/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/</loc>
@@ -52,6 +70,8 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-level/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/</loc>
@@ -65,6 +85,8 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/</loc>
   </url><url>
@@ -116,7 +138,15 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-steam/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/</loc>
   </url><url>

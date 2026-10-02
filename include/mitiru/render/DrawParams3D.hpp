@@ -10,6 +10,8 @@
 #include <sgc/math/Mat4.hpp>
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/render/ColorSpace.hpp>
+
 namespace mitiru::render
 {
 
@@ -67,6 +69,13 @@ static_assert(std::is_trivially_copyable_v<ModelPose>);
 [[nodiscard]] inline sgc::Colorf tinted(const sgc::Colorf& c, const float mul[4]) noexcept
 {
 	return {c.r * mul[0], c.g * mul[1], c.b * mul[2], c.a * mul[3]};
+}
+
+/// @brief 線形にした色へ、書いた色として受けた mul を線形にして掛ける。アルファはそのまま掛ける
+[[nodiscard]] inline sgc::Colorf linearTinted(const sgc::Colorf& linear, const DrawTint& tint) noexcept
+{
+	const auto m = linearRgb(tint.mul[0], tint.mul[1], tint.mul[2]);
+	return {linear.r * m[0], linear.g * m[1], linear.b * m[2], linear.a * tint.mul[3]};
 }
 
 } // namespace mitiru::render

@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <string_view>
 
+#include <mitiru/render/RenderScale.hpp>
+
 namespace mitiru::render
 {
 
@@ -19,6 +21,8 @@ struct QualityCaps
 	bool bloom = true;
 	bool depthOfField = true;
 	int  maxShadowCascades = 3;   ///< 1..3
+	UpscaleQuality upscale = UpscaleQuality::Off;   ///< 内部解像度の段 (プリセットには含めず、利用者が別に選ぶ)
+	Upscaler3D     upscaler = Upscaler3D::Taau;     ///< FSR を選んでもビルドに無ければ TAAU で戻す
 
 	[[nodiscard]] bool operator==(const QualityCaps&) const noexcept = default;
 };

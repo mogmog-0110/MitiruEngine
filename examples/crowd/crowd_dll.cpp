@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <vector>
 #include <mitiru.hpp>
+#include <mitiru/module/ReflectEngineTypes.hpp>
 #include <mitiru/module/SideState.hpp>
 #include <mitiru/nav/NavCacheBake.hpp>
 #include <mitiru/nav/NavCrowd.hpp>
@@ -86,7 +87,9 @@ struct CrowdDoor
 	std::int32_t  doorPassesWhileClosed = 0;   // 閉まって 5 フレーム後からも扉を抜けた数。0 のまま
 	float         minGap = 0.0f, worstGap = 1e9f;   // 一番近い 2 体の体の隙間 (負なら重なり) と、その最小
 	float         agent0x = 0.0f, agent0z = 0.0f;   // 0 番の位置 (動きの記録用)
-	float         pos[kAgents][2]{};
+	// 描く物は群衆から写す。エンジンの型のまま置くと、--inspect nav の窓が地図に描く
+	FixedVec<nav::CrowdAgentView, kAgents> agents{};
+	nav::NavObstacle door{};
 
 	void init() { g_crowd.reset(); *this = CrowdDoor{}; }
 
@@ -113,6 +116,7 @@ struct CrowdDoor
 		}
 		g_crowd.navMesh().setObstacleEnabled(0, doorClosed != 0);
 		g_crowd.update(dt);
+		door = g_crowd.navMesh().obstacle(0);
 		replans += g_crowd.replansLastUpdate();
 		measure();
 		++frame;
@@ -122,10 +126,12 @@ struct CrowdDoor
 	void measure()
 	{
 		minGap = 1e9f;
+		agents.count = kAgents;
 		for (int i = 0; i < kAgents; ++i)
 		{
-			const Vec3f p = g_crowd.position(i);
-			if ((pos[i][0] < 0.0f) != (p.x < 0.0f) && frame > 0)
+			const nav::CrowdAgentView now = g_crowd.view(i);
+			const Vec3f p = now.position;
+			if ((agents[i].position.x < 0.0f) != (p.x < 0.0f) && frame > 0)
 			{
 				const bool door = std::fabs(p.z) < 1.5f;
 				doorPasses += door ? 1 : 0;
@@ -133,13 +139,12 @@ struct CrowdDoor
 				farPasses += p.z < -5.5f ? 1 : 0;
 				doorPassesWhileClosed += (door && doorClosed != 0 && frame > doorChanged + 5) ? 1 : 0;   // 閉まった瞬間に戸口にいた体は脇へ押し出される
 			}
-			pos[i][0] = p.x;
-			pos[i][1] = p.z;
-			for (int j = 0; j < i; ++j) { minGap = std::fmin(minGap, std::hypot(p.x - pos[j][0], p.z - pos[j][1]) - 0.8f); }
+			agents[i] = now;
+			for (int j = 0; j < i; ++j) { minGap = std::fmin(minGap, std::hypot(p.x - agents[j].position.x, p.z - agents[j].position.z) - 0.8f); }
 		}
 		worstGap = std::fmin(worstGap, minGap);
-		agent0x = pos[0][0];
-		agent0z = pos[0][1];
+		agent0x = agents[0].position.x;
+		agent0z = agents[0].position.z;
 	}
 
 	void draw(Screen& s) const
@@ -151,7 +156,7 @@ struct CrowdDoor
 		const Vec3f doorSize = doorClosed != 0 ? kDoor.hi - kDoor.lo : Vec3f{1.0f, 0.06f, 3.0f};   // 開いた扉は床の線だけ
 		s.drawMesh("cube", {0, doorSize.y * 0.5f, 0}, doorSize, {0, 0, 0}, theme::kRed);
 		const Color lane[kLanes] = {theme::kBlue, theme::kGreen, theme::kOrange};
-		for (int i = 0; i < kAgents; ++i) { s.drawMesh("cube", {pos[i][0], 0.6f, pos[i][1]}, {0.6f, 1.2f, 0.6f}, {0, 0, 0}, lane[i % kLanes]); }
+		for (int i = 0; i < kAgents; ++i) { s.drawMesh("cube", {agents[i].position.x, 0.6f, agents[i].position.z}, {0.6f, 1.2f, 0.6f}, {0, 0, 0}, lane[i % kLanes]); }
 		char line[96];
 		std::snprintf(line, sizeof line, "扉: %s　扉を抜けた %d　手前の脇道 %d　奥の脇道 %d", doorClosed != 0 ? "閉" : "開", doorPasses, nearPasses, farPasses);
 		s.text(line, 16.0f, 64.0f, theme::kInk, 18);
@@ -165,5 +170,5 @@ struct CrowdDoor
 
 MITIRU_ASSERT_NO_PADDING(CrowdDoor);
 MITIRU_REFLECT(CrowdDoor, doorClosed, minGap, worstGap, doorPasses, nearPasses, farPasses, doorPassesWhileClosed, replans,
-               agent0x, agent0z);
+               agent0x, agent0z, agents, door);
 MITIRU_GAME(CrowdDoor);

@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::action — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (36 types, 288 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::action | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (36 types, 288 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::action | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (36 types, 288 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/" class="active"><code>mitiru::action</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-character_detail/"><code>mitiru::action::character_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-geom/"><code>mitiru::action::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/"><code>mitiru::audio::sfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai/"><code>mitiru::gameai</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-bt_detail/"><code>mitiru::gameai::bt_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-orca_detail/"><code>mitiru::gameai::orca_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-level/"><code>mitiru::level</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav-detail/"><code>mitiru::nav::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/"><code>mitiru::settings</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-steam/"><code>mitiru::steam</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/"><code>mitiru::terrain</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/"><code>mitiru::terrain::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::action</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (36 types, 288 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (36 types, 288 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#struct-aabb"><code>Aabb</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-pose"><code>Pose</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-springv3"><code>SpringV3</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-springf"><code>SpringF</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-camerarigconfig"><code>CameraRigConfig</code></a></td><td>struct</td><td>23</td></tr>
+<tr><td><a href="#struct-camerariginput"><code>CameraRigInput</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-camerarigstate"><code>CameraRigState</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-cameraview"><code>CameraView</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-characterconfig"><code>CharacterConfig</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-characterstate"><code>CharacterState</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-characterinput"><code>CharacterInput</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-collisionlevel"><code>CollisionLevel</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#class-collisionlevelbuilder"><code>CollisionLevelBuilder</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#enum-movingshape"><code>MovingShape</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-movingbody"><code>MovingBody</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-capsule"><code>Capsule</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-rayhit"><code>RayHit</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-sweephit"><code>SweepHit</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-contact"><code>Contact</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-frame"><code>Frame</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-source"><code>Source</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-best"><code>Best</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-collisionworld"><code>CollisionWorld</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#struct-hitbox"><code>Hitbox</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-hurtbox"><code>Hurtbox</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-hitevent"><code>HitEvent</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-hitexclusion"><code>HitExclusion</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-hitstop"><code>HitStop</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-invulnerability"><code>Invulnerability</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#enum-volumekind"><code>VolumeKind</code></a></td><td>enum</td><td>13</td></tr>
+<tr><td><a href="#struct-hitvolume"><code>HitVolume</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-inputbuffer"><code>InputBuffer</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-cancelwindow"><code>CancelWindow</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-bvhtriangle"><code>BvhTriangle</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-bvhnode"><code>BvhNode</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-trianglebvh"><code>TriangleBvh</code></a></td><td>class</td><td>39</td></tr>
+</tbody></table>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>using Vec3 = sgc::Vec3f;</code></div>
+<div class="api-method"><code>using Quat = sgc::Quaternionf;</code></div>
+<div class="api-method"><code>inline constexpr float kPi       = 3.14159265358979323846f</code></div>
+<div class="api-method"><code>inline constexpr float kDegToRad = kPi / 180.0f</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kAllLayers = 0xFFFFFFFFu</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float minf(float a, float b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float maxf(float a, float b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float absf(float a) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float clampf(float v, float lo, float hi) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float saturate(float v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float lerpf(float a, float b, float t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float dot(const Vec3&amp; a, const Vec3&amp; b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 cross(const Vec3&amp; a, const Vec3&amp; b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float lengthSq(const Vec3&amp; v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float length(const Vec3&amp; v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 vmin(const Vec3&amp; a, const Vec3&amp; b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 vmax(const Vec3&amp; a, const Vec3&amp; b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 lerp(const Vec3&amp; a, const Vec3&amp; b, float t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 projectOnPlane(const Vec3&amp; v, const Vec3&amp; n) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 normalizeOr(const Vec3&amp; v, const Vec3&amp; fallback) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 clampLength(const Vec3&amp; v, float maxLen) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isFinite(const Vec3&amp; v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 anyPerpendicular(const Vec3&amp; n) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float expDecay(float rate, float dt) noexcept</code></div>
+</div>
+<details class="api-class" id="struct-aabb" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Aabb</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>constexpr void expand(const Vec3&amp; p) noexcept</code></div>
+<div class="api-method"><code>constexpr void expand(const Aabb&amp; b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Aabb inflated(const Vec3&amp; r) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 center() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 extent() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool overlaps(const Aabb&amp; o) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float surfaceArea() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-pose" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Pose</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 apply(const Vec3&amp; p) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 applyDir(const Vec3&amp; d) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 inverseApply(const Vec3&amp; p) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 inverseApplyDir(const Vec3&amp; d) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Pose operator*(const Pose&amp; child) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-springv3" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringV3</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>constexpr void reset(const Vec3&amp; v) noexcept</code></div>
+<div class="api-method"><code>Vec3 update(const Vec3&amp; target, float smoothTime, float dt) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-springf" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringF</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float value = 0.0f</code></div>
+<div class="api-method"><code>float velocity = 0.0f</code></div>
+<div class="api-method"><code>constexpr void reset(float v) noexcept</code></div>
+<div class="api-method"><code>float update(float target, float smoothTime, float dt) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 cameraRigForward(float yaw, float pitch) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 cameraRigRight(const Vec3&amp; forward, const Vec3&amp; up = Vec3{0.0f, 1.0f, 0.0f}) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 cameraRigToWorld(const CameraRigState&amp; s, const Vec3&amp; local) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 cameraRigToLocal(const CameraRigState&amp; s, const Vec3&amp; v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 cameraRigForward(const CameraRigState&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float cameraRollDeg(const Vec3&amp; eye, const Vec3&amp; target, const Vec3&amp; up) noexcept</code></div>
+<div class="api-method"><code>inline CameraView updateCameraRig(CameraRigState&amp; s, const CameraRigConfig&amp; c, const CameraRigInput&amp; in, const CollisionWorld&amp; world, float dt)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-camerarigconfig" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraRigConfig</code> <span class="api-class__count">23</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float distance = 4.5f</code></div>
+<div class="api-method"><code>float minDistance = 0.8f</code></div>
+<div class="api-method"><code>float pivotHeight = 1.5f</code></div>
+<div class="api-method"><code>float defaultPitchDeg = 15.0f</code></div>
+<div class="api-method"><code>float minPitchDeg = -30.0f</code></div>
+<div class="api-method"><code>float maxPitchDeg = 70.0f</code></div>
+<div class="api-method"><code>float yawSpeedDeg = 180.0f</code></div>
+<div class="api-method"><code>float pitchSpeedDeg = 120.0f</code></div>
+<div class="api-method"><code>float followTime = 0.08f</code></div>
+<div class="api-method"><code>float fovDeg = 55.0f</code></div>
+<div class="api-method"><code>float probeRadius = 0.25f</code></div>
+<div class="api-method"><code>float collisionMargin = 0.05f</code></div>
+<div class="api-method"><code>float recoverDelay = 0.25f</code></div>
+<div class="api-method"><code>float recoverRate = 4.0f</code></div>
+<div class="api-method"><code>float recoverMaxSpeed = 6.0f</code></div>
+<div class="api-method"><code>std::uint32_t collisionMask = kAllLayers</code></div>
+<div class="api-method"><code>float lockWeight = 0.35f</code></div>
+<div class="api-method"><code>float lockScreenRatio = 0.6f</code></div>
+<div class="api-method"><code>float lockMaxDistance = 10.0f</code></div>
+<div class="api-method"><code>float lockBlendTime = 0.25f</code></div>
+<div class="api-method"><code>float lockYawRate = 6.0f</code></div>
+<div class="api-method"><code>float lockPitchDeg = 10.0f</code></div>
+<div class="api-method"><code>float upFollowRate = 6.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-camerariginput" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraRigInput</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float orbitX = 0.0f</code></div>
+<div class="api-method"><code>float orbitY = 0.0f</code></div>
+<div class="api-method"><code>std::uint8_t lockOn = 0</code></div>
+<div class="api-method"><code>float rollDeg = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-camerarigstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraRigState</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float yaw = 0.0f</code></div>
+<div class="api-method"><code>float pitch = 0.0f</code></div>
+<div class="api-method"><code>float lock = 0.0f</code></div>
+<div class="api-method"><code>float arm = 0.0f</code></div>
+<div class="api-method"><code>float clearTime = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t initialized = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-cameraview">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraView</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float fovDeg = 55.0f</code></div>
+<div class="api-method"><code>float rollDeg = 0.0f</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kLanded       = 1u &lt;&lt; 0</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kJumped       = 1u &lt;&lt; 1</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kLeftGround   = 1u &lt;&lt; 2</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kHitWall      = 1u &lt;&lt; 3</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kHitCeiling   = 1u &lt;&lt; 4</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kSteppedUp    = 1u &lt;&lt; 5</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kDepenetrated = 1u &lt;&lt; 6</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Capsule characterCapsule(const CharacterConfig&amp; c, const Vec3&amp; feet, const Vec3&amp; up) noexcept</code></div>
+<div class="api-method"><code>inline void stepCharacter(CharacterState&amp; s, const CharacterConfig&amp; c, const CollisionWorld&amp; world, const CharacterInput&amp; in, float dt)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-characterconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CharacterConfig</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float radius = 0.35f</code></div>
+<div class="api-method"><code>float height = 1.8f</code></div>
+<div class="api-method"><code>float skinWidth = 0.02f</code></div>
+<div class="api-method"><code>float maxSlopeDeg = 45.0f</code></div>
+<div class="api-method"><code>float stepHeight = 0.35f</code></div>
+<div class="api-method"><code>float snapDistance = 0.3f</code></div>
+<div class="api-method"><code>float maxFallSpeed = 50.0f</code></div>
+<div class="api-method"><code>float maxStepFraction = 0.5f</code></div>
+<div class="api-method"><code>std::int32_t maxSubsteps = 8</code></div>
+<div class="api-method"><code>std::int32_t maxSlideIterations = 4</code></div>
+<div class="api-method"><code>std::uint32_t solidMask = kAllLayers</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-characterstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CharacterState</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t groundBody = kLevelBody</code></div>
+<div class="api-method"><code>std::uint32_t groundTriangle = 0</code></div>
+<div class="api-method"><code>std::uint32_t events = 0</code></div>
+<div class="api-method"><code>std::uint8_t grounded = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-characterinput">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CharacterInput</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float jumpSpeed = 0.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 boxCorner(const Vec3&amp; lo, const Vec3&amp; hi, int i) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-collisionlevel">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CollisionLevel</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>CollisionLevel() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] const TriangleBvh&amp; statics() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t movableMeshCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const TriangleBvh&amp; movableMesh(std::size_t index) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t staticTriangleIdCount() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-collisionlevelbuilder">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CollisionLevelBuilder</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void addTriangles(std::span&lt;const Vec3&gt; vertices, std::span&lt;const std::uint32_t&gt; indices, std::uint32_t layer, const Pose&amp; placement = {})</code></div>
+<div class="api-method"><code>void addBox(const Vec3&amp; lo, const Vec3&amp; hi, std::uint32_t layer)</code></div>
+<div class="api-method"><code>std::uint16_t addMovableMesh(std::span&lt;const Vec3&gt; vertices, std::span&lt;const std::uint32_t&gt; indices, std::uint32_t layer)</code></div>
+<div class="api-method"><code>[[nodiscard]] CollisionLevel build()</code></div>
+<div class="api-method"><code>inline void addTriangleMesh(CollisionLevelBuilder&amp; builder, const physics3d::TriangleMesh3D&amp; mesh, std::uint32_t layer, const Pose&amp; placement = {})</code></div>
+<div class="api-method"><code>inline void addLevelCollision(CollisionLevelBuilder&amp; builder, const level::LevelData&amp; level, std::uint32_t layer = 0)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CollisionLevel buildLevelCollision(const level::LevelData&amp; level, std::uint32_t layer = 0)</code></div>
+<div class="api-method"><code>inline void addCollisionShapes(CollisionLevelBuilder&amp; builder, const std::vector&lt;physics3d::CollisionJsonShape&gt;&amp; shapes)</code></div>
+<div class="api-method"><code>inline bool addCollisionJsonFile(CollisionLevelBuilder&amp; builder, const std::string&amp; path)</code></div>
+<div class="api-method"><code>inline bool addMeshFile(CollisionLevelBuilder&amp; builder, physics3d::MeshColliderLibrary&amp; library, const std::string&amp; path, std::uint32_t layer, const Pose&amp; placement = {})</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-movingshape">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">MovingShape</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Box</code></div>
+<div class="api-method"><code>Mesh</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kLevelBody = 0</code></div>
+<div class="api-method"><code>inline constexpr float kContactSlop = 1e-5f</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool layerMatch(std::uint32_t layer, std::uint32_t mask) noexcept</code></div>
+<div class="api-method"><code>template &lt;class F&gt; void forEachBoxTriangle(const Source&amp; s, F&amp;&amp; f)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-movingbody">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MovingBody</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t id = 1</code></div>
+<div class="api-method"><code>std::uint32_t layer = 0</code></div>
+<div class="api-method"><code>std::uint16_t mesh = 0</code></div>
+<div class="api-method"><code>MovingShape shape = MovingShape::Box</code></div>
+<div class="api-method"><code>std::uint8_t enabled = 1</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-capsule">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Capsule</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float radius = 0.5f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rayhit">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RayHit</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float distance = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t body = kLevelBody</code></div>
+<div class="api-method"><code>std::uint32_t triangle = 0</code></div>
+<div class="api-method"><code>std::uint32_t layer = 0</code></div>
+<div class="api-method"><code>bool hit = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sweephit">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SweepHit</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float fraction = 1.0f</code></div>
+<div class="api-method"><code>float penetration = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t body = kLevelBody</code></div>
+<div class="api-method"><code>std::uint32_t triangle = 0</code></div>
+<div class="api-method"><code>std::uint32_t layer = 0</code></div>
+<div class="api-method"><code>bool hit = false</code></div>
+<div class="api-method"><code>bool startPenetrating = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-contact">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Contact</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float depth = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t body = kLevelBody</code></div>
+<div class="api-method"><code>std::uint32_t triangle = 0</code></div>
+<div class="api-method"><code>std::uint32_t layer = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-frame">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Frame</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool identity = true</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 toLocal(const Vec3&amp; p) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 toLocalDir(const Vec3&amp; d) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 toWorld(const Vec3&amp; p) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 toWorldDir(const Vec3&amp; d) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-source">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Source</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const TriangleBvh* bvh = nullptr</code></div>
+<div class="api-method"><code>std::uint32_t boxLayer = 0</code></div>
+<div class="api-method"><code>std::uint32_t body = kLevelBody</code></div>
+<div class="api-method"><code>std::uint32_t order = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-best">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Best</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float value</code></div>
+<div class="api-method"><code>bool found = false</code></div>
+<div class="api-method"><code>std::uint32_t order = 0</code></div>
+<div class="api-method"><code>std::uint32_t id = 0</code></div>
+<div class="api-method"><code>explicit Best(float limit) noexcept</code></div>
+<div class="api-method"><code>bool accept(float v, std::uint32_t o, std::uint32_t triId) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-collisionworld">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CollisionWorld</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool bruteForce = false</code></div>
+<div class="api-method"><code>CollisionWorld() = default</code></div>
+<div class="api-method"><code>explicit CollisionWorld(const CollisionLevel* level, std::span&lt;const MovingBody&gt; bodies = {}) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const CollisionLevel* level() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::span&lt;const MovingBody&gt; bodies() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] RayHit raycast(const Vec3&amp; origin, const Vec3&amp; dir, float maxDist, std::uint32_t mask = kAllLayers, bool cullBackface = false) const</code></div>
+<div class="api-method"><code>[[nodiscard]] SweepHit sphereCast(const Vec3&amp; center, float radius, const Vec3&amp; delta, std::uint32_t mask = kAllLayers) const</code></div>
+<div class="api-method"><code>[[nodiscard]] SweepHit capsuleCast(const Capsule&amp; capsule, const Vec3&amp; delta, std::uint32_t mask = kAllLayers) const</code></div>
+<div class="api-method"><code>int overlapSphere(const Vec3&amp; center, float radius, Contact* out, int capacity, std::uint32_t mask = kAllLayers) const</code></div>
+<div class="api-method"><code>int overlapCapsule(const Capsule&amp; capsule, Contact* out, int capacity, std::uint32_t mask = kAllLayers) const</code></div>
+<div class="api-method"><code>[[nodiscard]] RayHit closestPoint(const Vec3&amp; point, float maxDist, std::uint32_t mask = kAllLayers) const</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 carryDelta(std::uint32_t bodyId, const Vec3&amp; point) const noexcept</code></div>
+<div class="api-method"><code>template &lt;std::size_t N&gt; int resolveHits(std::span&lt;const Hitbox&gt; hitboxes, std::span&lt;const Hurtbox&gt; hurtboxes, std::span&lt;HitExclusion&lt;N&gt;&gt; exclusions, std::uint32_t now, HitEvent* out, int capacity) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hitbox">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Hitbox</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t owner = 0</code></div>
+<div class="api-method"><code>std::uint32_t attack = 0</code></div>
+<div class="api-method"><code>std::uint32_t hitsTeams = 0xFFFFFFFFu</code></div>
+<div class="api-method"><code>std::uint32_t tag = 0</code></div>
+<div class="api-method"><code>std::uint16_t rehitFrames = 0</code></div>
+<div class="api-method"><code>std::uint16_t pad = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hurtbox">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Hurtbox</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t owner = 0</code></div>
+<div class="api-method"><code>std::uint32_t team = 1</code></div>
+<div class="api-method"><code>std::uint32_t part = 0</code></div>
+<div class="api-method"><code>std::uint8_t invulnerable = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hitevent">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HitEvent</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t attacker = 0</code></div>
+<div class="api-method"><code>std::uint32_t victim = 0</code></div>
+<div class="api-method"><code>std::uint32_t attack = 0</code></div>
+<div class="api-method"><code>std::uint32_t tag = 0</code></div>
+<div class="api-method"><code>std::uint32_t part = 0</code></div>
+<div class="api-method"><code>std::uint16_t hitbox = 0</code></div>
+<div class="api-method"><code>std::uint16_t hurtbox = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hitexclusion">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HitExclusion</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t count = 0</code></div>
+<div class="api-method"><code>constexpr void begin() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool canHit(std::uint32_t victim, std::uint32_t now, std::uint16_t rehitFrames) const noexcept</code></div>
+<div class="api-method"><code>constexpr bool record(std::uint32_t victim, std::uint32_t now) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hitstop">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HitStop</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint16_t frames = 0</code></div>
+<div class="api-method"><code>std::uint16_t elapsed = 0</code></div>
+<div class="api-method"><code>constexpr void trigger(std::uint16_t f) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool active() const noexcept</code></div>
+<div class="api-method"><code>constexpr bool consume() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float shakeSign() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-invulnerability">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Invulnerability</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint16_t frames = 0</code></div>
+<div class="api-method"><code>std::uint16_t pad = 0</code></div>
+<div class="api-method"><code>constexpr void grant(std::uint16_t f) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool active() const noexcept</code></div>
+<div class="api-method"><code>constexpr void tick() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-volumekind">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">VolumeKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Sphere</code></div>
+<div class="api-method"><code>Capsule</code></div>
+<div class="api-method"><code>Box</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HitVolume placeVolume(const HitVolume&amp; local, const Pose&amp; bone) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 corner(const Vec3&amp; h, int i) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 clampToBox(const Vec3&amp; p, const Vec3&amp; h) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool segmentHitsBox(const Vec3&amp; p, const Vec3&amp; q, const Vec3&amp; h) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float segmentBoxDistSq(const Vec3&amp; p, const Vec3&amp; q, const Vec3&amp; h, Vec3&amp; onSeg, Vec3&amp; onBox) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool boxesOverlap(const HitVolume&amp; x, const HitVolume&amp; y) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 closestOnBox(const HitVolume&amp; box, const Vec3&amp; p) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool roundBoxOverlap(const HitVolume&amp; r, const HitVolume&amp; box, Vec3* contact) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool overlap(const HitVolume&amp; x, const HitVolume&amp; y, Vec3* contact = nullptr) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool sweptOverlap(const HitVolume&amp; local, const Pose&amp; previousBone, const Pose&amp; bone, const HitVolume&amp; target, Vec3* contact = nullptr) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hitvolume">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HitVolume</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float radius = 0.0f</code></div>
+<div class="api-method"><code>VolumeKind kind = VolumeKind::Sphere</code></div>
+<div class="api-method"><code>[[nodiscard]] static constexpr HitVolume sphere(const Vec3&amp; c, float r) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static constexpr HitVolume capsule(const Vec3&amp; p, const Vec3&amp; q, float r) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static constexpr HitVolume box(const Vec3&amp; center, const Vec3&amp; half, const Quat&amp; rot = {}) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 center() const noexcept</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNoAction = 0xFFu</code></div>
+<div class="api-method"><code>template &lt;std::size_t N&gt; std::uint8_t tryCancel(InputBuffer&lt;N&gt;&amp; buffer, const ActionWindows&amp; windows, std::uint32_t now, std::uint16_t moveFrame, std::span&lt;const CancelWindow&gt; cancels, std::span&lt;const std::uint8_t&gt; priority) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-inputbuffer">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InputBuffer</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t head = 0</code></div>
+<div class="api-method"><code>std::uint32_t count = 0</code></div>
+<div class="api-method"><code>constexpr void press(std::uint8_t action, std::uint32_t frame) noexcept</code></div>
+<div class="api-method"><code>constexpr void pressMask(std::uint32_t mask, std::uint32_t frame) noexcept</code></div>
+<div class="api-method"><code>constexpr bool consume(std::uint8_t action, std::uint32_t now, std::uint32_t window) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool peek(std::uint8_t action, std::uint32_t now, std::uint32_t window) const noexcept</code></div>
+<div class="api-method"><code>constexpr bool consume(std::uint8_t action, std::uint32_t now, const ActionWindows&amp; windows) noexcept</code></div>
+<div class="api-method"><code>constexpr void clear() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-cancelwindow">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CancelWindow</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint16_t begin = 0</code></div>
+<div class="api-method"><code>std::uint16_t end = 0</code></div>
+<div class="api-method"><code>std::uint32_t actions = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bvhtriangle">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BvhTriangle</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t id = 0</code></div>
+<div class="api-method"><code>std::uint32_t layer = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bvhnode">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BvhNode</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t index = 0</code></div>
+<div class="api-method"><code>std::uint32_t count = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-trianglebvh">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TriangleBvh</code> <span class="api-class__count">39</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>TriangleBvh() = default</code></div>
+<div class="api-method"><code>explicit TriangleBvh(std::vector&lt;BvhTriangle&gt; tris)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool empty() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;BvhTriangle&gt;&amp; triangles() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;BvhNode&gt;&amp; nodes() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Aabb bounds() const noexcept</code></div>
+<div class="api-method"><code>template &lt;class F&gt; void traverseRay(const Vec3&amp; o, const Vec3&amp; d, float tMax, const Vec3&amp; inflate, F&amp;&amp; f) const</code></div>
+<div class="api-method"><code>template &lt;class F&gt; void traverseBox(const Aabb&amp; box, F&amp;&amp; f) const</code></div>
+<div class="api-method"><code>template &lt;class F&gt; void traverseClosest(const Vec3&amp; p, float maxDistSq, F&amp;&amp; f) const</code></div>
+<div class="api-method"><code>[[nodiscard]] static float boxDistSq(const Aabb&amp; b, const Vec3&amp; p) noexcept</code></div>
+<div class="api-method"><code>inline void resetCameraRig(CameraRigState&amp; s, const CameraRigConfig&amp; c, const CameraRigInput&amp; in, float yaw) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float wrapAngle(float a) noexcept</code></div>
+<div class="api-method"><code>inline void snap(CameraRigState&amp; s, const CameraRigConfig&amp; c, const CameraRigInput&amp; in) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 rotateAbout(const Vec3&amp; v, const Vec3&amp; axis, float angle) noexcept</code></div>
+<div class="api-method"><code>inline void followUp(CameraRigState&amp; s, const CameraRigConfig&amp; c, const CameraRigInput&amp; in, float dt) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CameraView makeView(const CameraRigState&amp; s, const CameraRigInput&amp; in, const Vec3&amp; eye, const Vec3&amp; look, float fovDeg) noexcept</code></div>
+<div class="api-method"><code>inline void orbit(CameraRigState&amp; s, const CameraRigConfig&amp; c, const CameraRigInput&amp; in, float dt) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float lockDistance(const CameraRigConfig&amp; c, const Vec3&amp; pivot, const Vec3&amp; target, const Vec3&amp; mid) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 depenetrate(const CollisionWorld&amp; world, Vec3 p, float r, std::uint32_t mask) noexcept</code></div>
+<div class="api-method"><code>inline void updateArm(CameraRigState&amp; s, const CameraRigConfig&amp; c, float allowed, float dt) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 placeEye(CameraRigState&amp; s, const CameraRigConfig&amp; c, const CollisionWorld&amp; world, const Vec3&amp; follow, const Vec3&amp; focus, const Vec3&amp; desiredEye, float dt) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Source movingSource(const MovingBody&amp; b, std::uint32_t order, const CollisionLevel* level)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool contactBefore(const Contact&amp; x, const Contact&amp; y) noexcept</code></div>
+<div class="api-method"><code>inline int insertContact(Contact* out, int count, int capacity, const Contact&amp; c) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline SweepHit rayAsSweep(const RayHit&amp; rh, float length) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 faceNormalToward(const BvhTriangle&amp; t, const Vec3&amp; contactNormal) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline SweepHit penetrating(const Contact&amp; c) noexcept</code></div>
+<div class="api-method"><code>template &lt;class F&gt; void CollisionWorld::forEachSource(F&amp;&amp; f) const</code></div>
+<div class="api-method"><code>template &lt;class F&gt; void CollisionWorld::visitRay(const detail::Source&amp; s, const Vec3&amp; o, const Vec3&amp; d, float tMax, const Vec3&amp; inflate, F&amp;&amp; f) const</code></div>
+<div class="api-method"><code>template &lt;class F&gt; void CollisionWorld::visitBox(const detail::Source&amp; s, const Aabb&amp; box, F&amp;&amp; f) const</code></div>
+<div class="api-method"><code>inline RayHit CollisionWorld::raycast(const Vec3&amp; origin, const Vec3&amp; dir, float maxDist, std::uint32_t mask, bool cullBackface) const</code></div>
+<div class="api-method"><code>inline SweepHit CollisionWorld::finishSweep(const detail::Best&amp; best, const geom::SweepContact&amp; sc, const detail::Source&amp; src, const BvhTriangle&amp; tri) const</code></div>
+<div class="api-method"><code>inline SweepHit CollisionWorld::sphereCast(const Vec3&amp; center, float radius, const Vec3&amp; delta, std::uint32_t mask) const</code></div>
+<div class="api-method"><code>inline SweepHit CollisionWorld::capsuleCast(const Capsule&amp; capsule, const Vec3&amp; delta, std::uint32_t mask) const</code></div>
+<div class="api-method"><code>template &lt;class Sink&gt; void CollisionWorld::forEachOverlap(const Vec3&amp; p, const Vec3&amp; q, float r, std::uint32_t mask, Sink&amp;&amp; sink) const</code></div>
+<div class="api-method"><code>inline bool CollisionWorld::deepestOverlap(const Vec3&amp; p, const Vec3&amp; q, float r, std::uint32_t mask, Contact&amp; out) const</code></div>
+<div class="api-method"><code>inline int CollisionWorld::overlapSphere(const Vec3&amp; center, float radius, Contact* out, int capacity, std::uint32_t mask) const</code></div>
+<div class="api-method"><code>inline int CollisionWorld::overlapCapsule(const Capsule&amp; capsule, Contact* out, int capacity, std::uint32_t mask) const</code></div>
+<div class="api-method"><code>inline RayHit CollisionWorld::closestPoint(const Vec3&amp; point, float maxDist, std::uint32_t mask) const</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

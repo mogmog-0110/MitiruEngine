@@ -1,0 +1,56 @@
+<rml>
+<head>
+	<title>side_state</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		.ch { padding: 6dp 0dp; border-bottom: 1dp #f4f4f2; font-family: "IBM Plex Mono"; font-size: 12dp; }
+		.ch .top { display: flex; }
+		.ch .name { flex: 1 1 auto; color: #1a1c1f; font-weight: bold; }
+		.ch .ver { flex: 0 0 40dp; color: #6e7077; }
+		.ch .bytes { flex: 0 0 80dp; text-align: right; color: #1a1c1f; }
+		.ch .hash { margin-top: 2dp; color: #999da4; font-size: 11dp; }
+		.ch .scene { margin-left: 8dp; color: #6e7077; font-weight: normal; }
+		.kv2 { display: flex; font-family: "IBM Plex Mono"; font-size: 12dp; padding: 2dp 0dp; }
+		.kv2 .k { flex: 0 0 46%; color: #6e7077; }
+		.kv2 .v { flex: 1 1 auto; color: #1a1c1f; }
+		.strip { margin-top: 8dp; font-family: "IBM Plex Mono"; font-size: 11.5dp; }
+		.strip .head { display: flex; color: #33363b; }
+		.strip .head .grow { flex: 1 1 auto; }
+		.strip .head .first { color: #6e7077; }
+		.strip .band { position: relative; height: 14dp; margin-top: 3dp; background-color: #ffffff; border: 1dp #e6e7ea; }
+		.strip .mark { position: absolute; top: 0dp; bottom: 0dp; width: 2dp; margin-left: -1dp; background-color: #1a1c1f; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ready">
+	<header><div class="dot"/><h1>side_state</h1></header>
+	<div class="body">
+		<div class="label"><span class="dash">— </span>窓口 (MITIRU_SIDE_STATE)</div>
+		<div class="panel" data-if="!no_channels">
+			<div class="ch" data-for="c : channels">
+				<div class="top"><span class="name">{{ c.name }}<span class="scene" data-if="c.covers">場面ごと</span></span>
+					<span class="ver">{{ c.version }}</span><span class="bytes">{{ c.bytes }}</span></div>
+				<div class="hash">hash {{ c.hash }}</div>
+			</div>
+		</div>
+		<div class="empty" data-if="no_channels">この game は窓口を持たない (状態は全部 GameMemory にある)</div>
+
+		<div class="label"><span class="dash">— </span>記録のリング</div>
+		<div class="panel">
+			<div class="kv2"><span class="k">フレーム</span><span class="v">{{ ring_frames }}</span></div>
+			<div class="kv2"><span class="k">使用 (差分 + zstd)</span><span class="v">{{ ring_used }}</span></div>
+			<div class="kv2"><span class="k">1 フレームあたり</span><span class="v">{{ ring_per_frame }}</span></div>
+			<div class="kv2"><span class="k">確保</span><span class="v">{{ ring_alloc }}</span></div>
+		</div>
+
+		<div data-if="has_replay">
+			<div class="label"><span class="dash">— </span>replay の照合 · {{ replay_compared }} フレーム ({{ replay_range }})</div>
+			<div class="strip" data-for="s : strips">
+				<div class="head"><span class="grow">{{ s.name }}</span><span class="first" data-if="s.count > 0">食い違い {{ s.count }} · 最初 {{ s.first }}</span><span class="first" data-if="s.count == 0">一致</span></div>
+				<div class="band"><div class="mark" data-for="m : s.marks" data-style-left="m.left"><span/></div></div>
+			</div>
+			<div class="hint" data-if="replay_dropped">印は最初の 256 フレーム分まで</div>
+		</div>
+	</div>
+	<div class="wait">waiting for the game…</div>
+</body>
+</rml>

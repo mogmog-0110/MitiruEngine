@@ -184,6 +184,8 @@ WindowSpec windowSpecFor(const std::string& page)
 	if (page == "rewind")     { return { 1280, 56, 480, 48, 1, "rewind" }; }
 	if (page == "scene_view") { return { 900, 700, 480, 360, 0, "MitiruEngine \xE2\x80\x94 scene_view" }; }
 	if (page == "frame_view") { return { 640, 820, 480, 480, 0, "MitiruEngine \xE2\x80\x94 frame_view" }; }
+	if (page == "nav")        { return { 560, 760, 400, 420, 2, "MitiruEngine \xE2\x80\x94 nav" }; }
+	if (page == "ai")         { return { 440, 760, 340, 420, 2, "MitiruEngine \xE2\x80\x94 ai" }; }
 	WindowSpec spec;
 	spec.dockMode = page == "why_view" ? 0 : 2;
 	spec.title = "MitiruEngine \xE2\x80\x94 " + page;

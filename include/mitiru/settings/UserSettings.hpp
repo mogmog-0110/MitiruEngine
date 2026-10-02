@@ -30,10 +30,15 @@ struct GraphicsSettings
 	int fpsLimit = 0;                          ///< 0 = 上限なし (vsync が先に効く)
 	render::QualityPreset quality = render::QualityPreset::High;
 	render::QualityCaps custom{};             ///< quality = Custom の時の上限
+	render::UpscaleQuality upscale = render::UpscaleQuality::Off;
+	render::Upscaler3D upscaler = render::Upscaler3D::Taau;
 
 	[[nodiscard]] render::QualityCaps caps() const noexcept
 	{
-		return quality == render::QualityPreset::Custom ? custom : render::qualityCapsFor(quality);
+		render::QualityCaps c = quality == render::QualityPreset::Custom ? custom : render::qualityCapsFor(quality);
+		c.upscale = upscale;
+		c.upscaler = upscaler;
+		return c;
 	}
 	[[nodiscard]] bool operator==(const GraphicsSettings&) const noexcept = default;
 };

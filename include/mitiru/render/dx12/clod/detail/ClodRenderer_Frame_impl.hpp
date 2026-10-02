@@ -299,6 +299,28 @@ inline void ClodRenderer::bindCompute(ID3D12GraphicsCommandList* cmd,
 	cmd->SetComputeRootShaderResourceView(22, m_bNorm->GetGPUVirtualAddress());
 	cmd->SetComputeRootShaderResourceView(23, m_bUv->GetGPUVirtualAddress());
 	cmd->SetComputeRootShaderResourceView(24, m_bMats->GetGPUVirtualAddress());
+	bindLocalLights(cmd, true);
+}
+
+/// @brief root 25〜27 (局所光)。使わない pass も root 引数は埋めておく。無いフレームは光 0 個の CB と、読まれない
+///        SRV の代わりに統計のバッファを指す
+inline void ClodRenderer::bindLocalLights(ID3D12GraphicsCommandList* cmd, bool compute) const
+{
+	const bool on = m_localLightsVA != 0 && m_clusterMasksVA != 0 && m_clusterCbVA != 0;
+	const D3D12_GPU_VIRTUAL_ADDRESS spare = m_bStats->GetGPUVirtualAddress();
+	const D3D12_GPU_VIRTUAL_ADDRESS lights = on ? m_localLightsVA : spare;
+	const D3D12_GPU_VIRTUAL_ADDRESS masks = on ? m_clusterMasksVA : spare;
+	const D3D12_GPU_VIRTUAL_ADDRESS cluster = on ? m_clusterCbVA : m_noLightsCbVA;
+	if (compute)
+	{
+		cmd->SetComputeRootShaderResourceView(25, lights);
+		cmd->SetComputeRootShaderResourceView(26, masks);
+		cmd->SetComputeRootConstantBufferView(27, cluster);
+		return;
+	}
+	cmd->SetGraphicsRootShaderResourceView(25, lights);
+	cmd->SetGraphicsRootShaderResourceView(26, masks);
+	cmd->SetGraphicsRootConstantBufferView(27, cluster);
 }
 
 inline void ClodRenderer::bindGraphics(ID3D12GraphicsCommandList* cmd,
@@ -330,6 +352,7 @@ inline void ClodRenderer::bindGraphics(ID3D12GraphicsCommandList* cmd,
 	cmd->SetGraphicsRootShaderResourceView(22, m_bNorm->GetGPUVirtualAddress());
 	cmd->SetGraphicsRootShaderResourceView(23, m_bUv->GetGPUVirtualAddress());
 	cmd->SetGraphicsRootShaderResourceView(24, m_bMats->GetGPUVirtualAddress());
+	bindLocalLights(cmd, false);
 
 	const D3D12_VIEWPORT vp = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height),
 	                            0, 1 };
@@ -475,6 +498,11 @@ inline void ClodRenderer::record(ID3D12GraphicsCommandList* cmd, const Camera3D&
 	m_ring.beginFrame(frameIndex);
 	buildFrameTables(m_frameInstancesVA, m_frameMeshTableVA);
 	if (m_frameInstanceCount == 0) { return; }
+
+	const auto noLights = m_ring.allocate(256, 256);
+	if (!noLights.valid()) { return; }
+	std::memset(noLights.cpuPtr, 0, 256);
+	m_noLightsCbVA = noLights.gpuAddr;
 
 	ClodDrawCB cb;
 	fillDrawCB(cb, camera, lightDir, lightColor, ambient);

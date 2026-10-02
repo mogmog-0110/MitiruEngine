@@ -30,6 +30,15 @@ const mitiru::action::CollisionLevel kLevel = [] {
 }();
 ```
 
+Blender から書き出したレベル ([LEVEL_FROM_BLENDER.md](LEVEL_FROM_BLENDER.md)) の当たり判定の面は 1 行で地形になる。
+
+```cpp
+static mitiru::level::LevelFile g_stage("mygame/assets/stage.glb");
+const mitiru::action::CollisionLevel kLevel = mitiru::action::buildLevelCollision(g_stage.get());
+```
+
+箱などと混ぜるときは builder に `addLevelCollision(b, g_stage.get(), layer)` で足す。
+
 - 三角形の id は足した順の通し番号。当たりの結果にそのまま返るので、面の種類 (氷、溶岩) の表を引ける。
 - layer は 0-31。問い合わせの mask の `1 << layer` と照らす。
 - エレベーターのように形が決まっていて姿勢だけ動く部品は `addMovableMesh` で足し、`MovingBody{shape = Mesh}` で置く。
@@ -79,7 +88,9 @@ const mitiru::action::CollisionLevel kLevel = [] {
 
 ## カメラ (updateCameraRig)
 
-返す `CameraView` を `Screen::camera3D(eye, target, fovDeg, rollDeg)` に渡す。yaw 0 の視線は北 (既定は +Z)、
+返す `CameraView` を `Screen::camera3D(view.eye, view.target, view.up, view.fovDeg, nearDist, farDist)` に渡す。
+傾きは `up` に入っているので rollDeg は渡さなくてよい。近い面と遠い面はステージの大きさに合わせてゲームが決める
+(既定は 0.1 と 500。遠い面を詰めるほど深度の精度が上がる)。yaw 0 の視線は北 (既定は +Z)、
 右スティックを右へ倒すと画面の右 (`cross(視線, 上)`) へ回る。
 
 - `CameraRigInput::up` にキャラの上を渡すと、リグの上 (`CameraRigState::up`) が `upFollowRate` でそちらへ寄る。
@@ -93,24 +104,11 @@ const mitiru::action::CollisionLevel kLevel = [] {
   目は地形の中に入らない。
 - ロックオンでは注視点を自分と相手の重み付きの中点へ寄せ、2 人が画面の `lockScreenRatio` に収まる長さまで腕を伸ばす。
 
-## Jolt を DLL の中で使うには (まだしない)
+## 骨の姿勢と本物の剛体
 
-キャラ、カメラ、攻撃判定は上の部品で足りる。ラグドールや押せる物のように本物の剛体が要るときは、Jolt を
-game DLL にリンクして DLL の中に world を持つことになる。そのときに要るもの:
+判定に使う骨の姿勢、武器のソケット、ルートモーション、アニメのイベントは、アニメのランタイム
+([ANIMATION_RUNTIME.md](ANIMATION_RUNTIME.md)) を DLL の中で回して同じフレームに得る。描画 (`drawModelPose`) と同じ関数なので、
+画面の骨と判定の骨は一致する。
 
-1. world は DLL のヒープにあり GameMemory に入らない。巻き戻しのために、毎 tick `PhysicsSystem::SaveState` の
-   バイト列を GameMemory の外の ring (side-state) に積み、巻き戻しと分岐で `RestoreState` する。
-   動かない地形は読み込み時に作り直せるので、記録は動くボディだけに絞る (`StateRecorderFilter`)。
-2. 決定論は同じバイナリ、同じ追加順、同じスレッド構成が前提。DLL の中では `JobSystemSingleThreaded`
-   か固定のスレッド数で回し、`CROSS_PLATFORM_DETERMINISTIC` で build する。
-3. ホットリロードで DLL を外すと world も消える。読み込み直したら `RegisterTypes` からやり直し、
-   side-state の最新の記録を `RestoreState` で戻す。
-4. host の Jolt とは別のコピーになる (静的リンクの大域状態はモジュールごと)。ボディや形を境界越しに渡さない。
-
-## 境界 (ABI) への要望
-
-このライブラリは ABI を変えずに動く。境界の版を上げるときに一緒に入れるとよいもの:
-
-- `camera3D` に near / far を渡せる版。入れば `CameraRigConfig` に near / far を足す。
-- 判定に使うボーンの姿勢は、アニメのクリップを DLL の中で CPU で評価するライブラリ (anim) から受ける。
-  host から姿勢を受け取る ABI は要らない。
+キャラ、カメラ、攻撃判定は上の部品で足りる。ラグドールや押せる物のように本物の剛体が要るときは、Jolt の world を
+DLL の中に持ち、GameMemory の外の窓口 (ADR 0054、[SIDE_STATE.md](SIDE_STATE.md)) に預けて巻き戻す。見本は `examples/physics_rewind/`。

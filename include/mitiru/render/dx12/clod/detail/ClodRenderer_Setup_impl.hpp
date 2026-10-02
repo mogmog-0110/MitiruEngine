@@ -62,10 +62,10 @@ inline bool ClodRenderer::checkCaps(ID3D12Device* device) const
 
 inline bool ClodRenderer::createRootSignature()
 {
-	// b0 CBV / t0-t11 SRV / u0-u10 UAV / b1 constants / s0 static sampler。
+	// b0 CBV / t0-t11 SRV / u0-u10 UAV / b1 constants / s0 static sampler / 局所光の t12・t13・b2。
 	// SM6.6 dynamic resources (ResourceDescriptorHeap) を使うため
 	// CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED を立てる
-	D3D12_ROOT_PARAMETER prm[25] = {};
+	D3D12_ROOT_PARAMETER prm[28] = {};
 	prm[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	prm[0].Descriptor.ShaderRegister = 0;
 	for (UINT i = 0; i < 6; ++i)
@@ -100,6 +100,12 @@ inline bool ClodRenderer::createRootSignature()
 	prm[23].Descriptor.ShaderRegister = 10;
 	prm[24].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 	prm[24].Descriptor.ShaderRegister = 11;
+	prm[25].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	prm[25].Descriptor.ShaderRegister = 12;
+	prm[26].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	prm[26].Descriptor.ShaderRegister = 13;
+	prm[27].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	prm[27].Descriptor.ShaderRegister = 2;
 
 	D3D12_STATIC_SAMPLER_DESC smp = {};
 	smp.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -110,7 +116,7 @@ inline bool ClodRenderer::createRootSignature()
 	smp.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	D3D12_ROOT_SIGNATURE_DESC rsd = {};
-	rsd.NumParameters = 25;
+	rsd.NumParameters = 28;
 	rsd.pParameters = prm;
 	rsd.NumStaticSamplers = 1;
 	rsd.pStaticSamplers = &smp;

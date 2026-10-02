@@ -13,6 +13,8 @@
 #include <cmath>
 #include <string_view>
 
+#include <mitiru/render/ColorSpace.hpp>
+
 namespace mitiru::render
 {
 
@@ -119,18 +121,6 @@ inline constexpr ColorMatrix3 kColorIdentity = { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
 [[nodiscard]] constexpr bool colorFilterActive(const ColorFilterSettings& s) noexcept
 {
 	return s.mode != ColorVisionMode::Off && s.strength > 0.0f;
-}
-
-[[nodiscard]] inline float srgbToLinear(float v) noexcept
-{
-	return v <= 0.04045f ? v / 12.92f : std::pow((v + 0.055f) / 1.055f, 2.4f);
-}
-
-[[nodiscard]] inline float linearToSrgb(float v) noexcept
-{
-	if (v <= 0.0f) { return 0.0f; }
-	if (v >= 1.0f) { return 1.0f; }
-	return v <= 0.0031308f ? v * 12.92f : 1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f;
 }
 
 /// @brief sRGB (0..1) の 1 色にフィルタを掛ける。GPU の pass と同じ計算 (テストと撮影の照合用)。

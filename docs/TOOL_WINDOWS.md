@@ -1,7 +1,7 @@
 # Tool Windows: 独立ウィンドウのデバッグツール
 
 MitiruEngine のデバッグ・観察ツール (inspector / 巻き戻し / scene tree / replay / perf / mixer / input /
-scene view / why / frame anatomy) は、ゲーム本体とは別の OS ウィンドウとして立ち上がる。
+scene view / why / frame anatomy / side state / ai / nav / anim) は、ゲーム本体とは別の OS ウィンドウとして立ち上がる。
 中身は全て 1 つの汎用ホスト `mitiru_tool --page <name>` が描く RML / RCSS (RmlUi、ADR 0051) で、
 `--page <name>` が `apps/mitiru_tool/assets/<name>.rml` に対応する。窓はエンジンの Dx12Device の上に
 小さく開き、動作中ゲームの SharedSnapshot を 30Hz で読んで data model へ写す。この文書はどう開くかと、
@@ -58,8 +58,10 @@ mitiru::debug::openTool(mitiru::Tool::Replay, "--mtrr run.mtrr");
 mitiru_host game.dll --inspect inspector --inspect perf
 ```
 
-`name` = `inspector` / `input` / `rewind` / `scene` / `perf` / `mixer` / `scene_view` / `why_view` / `frame_view`。
-`scene?tab=memory` のように `?` の後ろを付けると、ページへそのまま渡す (scene は game memory の tab で開く)。
+`name` = `inspector` / `input` / `rewind` / `scene` / `perf` / `mixer` / `scene_view` / `why_view` / `frame_view` /
+`side_state` / `ai` / `nav` / `anim`。
+`scene?tab=memory` のように `?` の後ろを付けると、ページへそのまま渡す (scene は game memory の tab で開く。
+ai は `ai?tree=<木の JSON>`、nav は `nav?mesh=<.navmesh か .navcache>` を渡すと、DLL が渡した資産より優先する)。
 
 ### CLI から
 
@@ -83,7 +85,7 @@ mitiru_tool --page why_view <pid> --http-port 8090 --capture why.png --capture-i
 
 | Tool | page | 見るもの |
 |---|---|---|
-| `Perf` | `--page perf` | fps / frameMs + 折れ線グラフ (60fps の基準線つき) |
+| `Perf` | `--page perf` | fps / frameMs + 折れ線グラフ (60fps の基準線つき)。3D を描く game はパスごとの GPU 時間 (main / sky / fog / atmosphere / 後処理 / upscale / lights) も |
 | `Inspector` | `--page inspect` | ゲームが `hud.watch()` で出した観察データ全部 (HP / score 等)。MITIRU_ENUM / MITIRU_FIELD_RANGE は動かせない select / スライダー、MITIRU_FIELD_GROUP は畳める組 |
 | `SceneTree` | `--page scene` | 観察データの階層構造を tree 表示 (開閉) と game memory の tab |
 | `Rewind` | `--page rewind` | ゲーム窓の下に付くシークバー。掴むと止まってそのフレームへ戻る。節目に重ねると名前が出る |
@@ -93,6 +95,52 @@ mitiru_tool --page why_view <pid> --http-port 8090 --capture why.png --capture-i
 | `SceneView` | `--page scene_view` | ゲーム画面 + オブジェクト枠。ドラッグや候補で分岐を試し、残す / 捨てる (ADR 0035、`docs/BRANCH_EDITOR.md`) |
 | `WhyView` | `--page why_view` | field を打って、最後に書いた phase と値の推移を見る (ADR 0035 O6) |
 | `FrameView` | `--page frame_view` | 1 フレームの解剖図 (入力 → 書かれた field → 描画 → 音、`docs/FRAME_ANATOMY.md`) |
+| `SideState` | `--page side_state` | GameMemory の外に持つ状態の窓口 (ADR 0054) ごとの形の番号・bytes・hash、記録のリング。`--replay` / `--replay-test` の照合中は、窓口ごとに食い違ったフレームを帯に印で出す |
+| `Ai` | `--page ai` | 敵を選び、ビヘイビアツリーのノードの結果 (running / success / failure)、知覚の記憶、攻撃トークンの持ち主を見る |
+| `Nav` | `--page nav` | 真上から見た地図 (右が +x、下が +z) に、ナビメッシュの床、群衆の agent と速度、障害物の開け閉め |
+| `Anim` | `--page anim` | モデルを選び、姿勢のレイヤ (クリップ、時刻、重み)、このフレームに通ったイベント、ルートモーションの差分を見る |
+
+## ゲームが見せる型 (ai / anim / nav)
+
+ai / anim / nav の窓は、GameMemory に置いたエンジンの型を読む。game は `mitiru/module/ReflectEngineTypes.hpp` を
+include し、その型の field を `MITIRU_REFLECT` (または `MITIRU_REFLECT_STRUCT` の要素) にそのまま並べる。host は
+記述子の elemType (`mitiru.BtState` など) と大きさが合うときだけ値を解き、gameMemory の JSON に `"$type"` 付きで出す。
+窓は木のどこに置かれていても型で見つける。`/api/ai/state` も同じ形を返す。ABI は変わらない (古い host は解けない値を飛ばす)。
+
+| 型 | 窓 | 同じ持ち主として読むもの |
+|---|---|---|
+| `gameai::BtState` | ai (敵 1 体ごと) | `PerceptionMemory` |
+| `gameai::AttackTokenPool<H, R>` | ai | |
+| `animation::AnimPoseParams` | anim (モデル 1 つごと) | `FixedVec<AnimEventHit, N>` (このフレームのイベント)、`YawXform` (ルートモーションの差分) |
+| `nav::CrowdAgentView`、`nav::NavObstacle` | nav | |
+| `sgc::Vec3f` | (どの窓でも `[x, y, z]`) | |
+
+持ち主は field の名前の最後の `.` より前で決まる。`e[0].bt` と `e[0].mind`、`hero.pose` と `hero.events` は同じ持ち主になる。
+
+```cpp
+#include <mitiru/module/ReflectEngineTypes.hpp>
+MITIRU_REFLECT(EnemyAi, tokens, e[0].bt, e[0].mind, e[1].bt, e[1].mind);   // examples/enemy_ai
+MITIRU_REFLECT(CrowdDoor, agents, door);                                   // examples/crowd
+```
+
+木の形 (`BtTree`) とナビメッシュは GameMemory に無い (DLL の static に置く)。DLL が `MITIRU_INSPECT_ASSETS` (ABI v49) で
+木の JSON (`"bt_tree"`) と焼いたナビメッシュ (`"navmesh"`) を渡すと、host が読み込みの時に 1 度だけ snapshot の隣のフォルダへ写し、
+ai の窓が木の種類と葉の名前、nav の窓が床の形を出す。木が複数あれば、敵の結果が収まる木のうちノードの最も少ない木を使う。
+木の JSON は `BtTree` と同じ前順なので、ノード番号で結果と突き合わせる。
+
+```cpp
+std::int32_t inspectAssets(mitiru::module::InspectAsset* out, std::int32_t cap)   // examples/enemy_ai
+{
+	const mitiru::module::InspectAsset all[2] = {{"bt_tree", "enemy", treeJson.data(), treeJson.size()},
+	                                             {"navmesh", "garden", navBlob.data(), navBlob.size()}};
+	const std::int32_t n = std::min<std::int32_t>(cap, 2);
+	std::copy(all, all + n, out);
+	return n;
+}
+MITIRU_INSPECT_ASSETS(inspectAssets);
+```
+
+ファイルを窓に直接渡すこともできる (`ai?tree=<JSON>`、`nav?mesh=<焼いたファイル>`)。渡せばそちらを使う。
 
 ## 増やし方
 

@@ -57,6 +57,7 @@
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/observe/ScrubControlChannel.hpp>  // time-travel click-to-scrub
 #include <mitiru/observe/DockChannel.hpp>          // 自窓矩形の broadcast (ツール窓のドッキング追従)
+#include <mitiru/observe/SideStateInspect.hpp>     // replay 照合で窓口が食い違ったフレーム (side_state 窓)
 #include <mitiru/render/SaveScreenshotPng.hpp>
 #include <mitiru/render/AsyncPngWriter.hpp>
 #include <mitiru/replay/Player.hpp>
@@ -89,9 +90,10 @@ namespace
 {
 
 /// @brief replay の照合で、記録の GameMemory の後ろに付いた窓口の hash と今の窓口を比べる (ADR 0054)。
+///        食い違ったフレームは窓口ごとに sideStateReplayMarks へ積み、side_state のツール窓が読む。
 /// @return 最初に食い違った窓口の名前。一致すれば空
 std::string replaySideDivergence(mitiru::Engine& engine, const std::vector<std::uint8_t>& recorded,
-                                 std::uint32_t memSize, std::vector<std::uint8_t>& liveScratch)
+                                 std::uint32_t memSize, std::uint32_t frame, std::vector<std::uint8_t>& liveScratch)
 {
 	mitiru::observe::SideImageView rec;
 	mitiru::observe::SideImageView live;
@@ -104,6 +106,7 @@ std::string replaySideDivergence(mitiru::Engine& engine, const std::vector<std::
 	{
 		return "(今の状態を保存できない)";
 	}
+	mitiru::observe::sideStateReplayMarks().note(frame, rec, live);
 	return std::string(mitiru::observe::firstDivergedSideChannel(rec, live));
 }
 
@@ -620,13 +623,17 @@ CliArgs parseArgs(int argc, char* argv[])
 				else if (name == "scene_view") { t = mitiru::Tool::SceneView; }
 				else if (name == "why_view")   { t = mitiru::Tool::WhyView; }
 				else if (name == "frame_view") { t = mitiru::Tool::FrameView; }
+				else if (name == "side_state") { t = mitiru::Tool::SideState; }
+				else if (name == "ai")         { t = mitiru::Tool::Ai; }
+				else if (name == "nav")        { t = mitiru::Tool::Nav; }
+				else if (name == "anim")       { t = mitiru::Tool::Anim; }
 				else if (name != "inspector")
 				{
 					// 綴り違いを何も知らせずに既定値として扱うと、要求した窓とは別の窓が開いたまま
 					// 気づけない。開くものは変えず、その旨だけを伝える
 					std::fprintf(stderr,
 					             "[mitiru_host] --inspect %s は不明な名前です。"
-					             "inspector を開きます (input|rewind|scene|perf|mixer|scene_view|why_view|frame_view)\n",
+					             "inspector を開きます (input|rewind|scene|perf|mixer|scene_view|why_view|frame_view|side_state|ai|nav|anim)\n",
 					             name.c_str());
 				}
 			}
@@ -2624,6 +2631,7 @@ int main(int argc, char* argv[])
 			};
 		// on_update 後の live GameMemory を、退避した記録値と照合する (frame の対応は確認済み)。
 		// EOF frame には対応する記録がないため比較しない (古い recordedMem との誤検出を防ぐ)。
+		mitiru::observe::sideStateReplayMarks().reset();
 		cfg.onModuleFrameRecorded =
 			[&engine, &recordedMem, &replayFrame, &memDivergeFrame, &memDiverged, &memCompared,
 			 &frameHasRecord, &memSizeMismatch, &memSizeRecorded, &memSizeCurrent, &memDivergeDiff,
@@ -2637,10 +2645,11 @@ int main(int argc, char* argv[])
 				const bool sideGame = engine.moduleHasSideState();
 				const bool sizeOk = sideGame ? recordedMem.size() > static_cast<std::size_t>(memSize)
 				                             : recordedMem.size() == static_cast<std::size_t>(memSize);
-				if (memSize > 0 && mem != nullptr && sizeOk && sideGame && !memDiverged)
+				// 食い違った後も窓口ごとの照合は続け、どの窓口がどのフレームでずれたかを残す
+				if (memSize > 0 && mem != nullptr && sizeOk && sideGame)
 				{
-					const std::string diverged = replaySideDivergence(engine, recordedMem, memSize, liveSide);
-					if (!diverged.empty())
+					const std::string diverged = replaySideDivergence(engine, recordedMem, memSize, replayFrame, liveSide);
+					if (!diverged.empty() && !memDiverged)
 					{
 						memCompared     = true;
 						memDiverged     = true;

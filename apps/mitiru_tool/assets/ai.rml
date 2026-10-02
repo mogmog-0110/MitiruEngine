@@ -1,0 +1,82 @@
+<rml>
+<head>
+	<title>ai</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		.agents { margin-top: 8dp; background-color: #ffffff; border: 1dp #e6e7ea; }
+		.agent { display: flex; align-items: center; padding: 4dp 8dp; border-bottom: 1dp #f4f4f2; cursor: pointer;
+		         font-family: "IBM Plex Mono"; font-size: 12dp; color: #33363b; }
+		.agent:hover { background-color: #f4f4f2; }
+		.agent.sel { background-color: #e6e7ea; color: #1a1c1f; font-weight: bold; }
+		.agent .name { flex: 1 1 auto; }
+		.agent .root { flex: 0 0 76dp; color: #6e7077; }
+		.agent .run { flex: 0 0 34dp; text-align: right; color: #999da4; }
+		.node { display: flex; align-items: center; padding: 2.4dp 4dp; font-family: "IBM Plex Mono"; font-size: 11.8dp; }
+		.node .idx { flex: 0 0 24dp; color: #999da4; text-align: right; margin-right: 8dp; }
+		.node .box { flex: 0 0 auto; width: 10dp; height: 10dp; margin-right: 8dp; border: 1dp #c9cbd0; background-color: #fcfcfb; }
+		.node .box.running { background-color: #1a1c1f; border-color: #1a1c1f; }
+		.node .box.success { background-color: #999da4; border-color: #6e7077; }
+		.node .box.failure { border-color: #1a1c1f; border-width: 2dp; }
+		.node .kind { color: #6e7077; margin-right: 8dp; }
+		.node .nm { color: #1a1c1f; }
+		.node.running .nm, .node.running .kind { font-weight: bold; color: #1a1c1f; }
+		.legend { margin-top: 6dp; font-family: "IBM Plex Mono"; font-size: 10.9dp; color: #999da4; }
+		.legend .box { display: inline-block; width: 9dp; height: 9dp; margin: 0dp 4dp 0dp 10dp; border: 1dp #c9cbd0; }
+		.legend .box.running { background-color: #1a1c1f; border-color: #1a1c1f; }
+		.legend .box.success { background-color: #999da4; border-color: #6e7077; }
+		.legend .box.failure { border-color: #1a1c1f; border-width: 2dp; }
+		.meter { position: relative; height: 8dp; margin-top: 4dp; background-color: #f4f4f2; border: 1dp #e6e7ea; }
+		.meter .fill { position: absolute; left: 0dp; top: 0dp; bottom: 0dp; background-color: #6e7077; }
+		.kv2 { display: flex; font-family: "IBM Plex Mono"; font-size: 12dp; padding: 2dp 0dp; }
+		.kv2 .k { flex: 0 0 40%; color: #6e7077; }
+		.kv2 .v { flex: 1 1 auto; color: #1a1c1f; }
+		.pool { margin-top: 8dp; }
+		.holder { display: inline-block; font-family: "IBM Plex Mono"; font-size: 11.5dp; padding: 2.4dp 8dp; margin: 4dp 4dp 0dp 0dp;
+		          background-color: #1a1c1f; color: #fcfcfb; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ready">
+	<header><div class="dot"/><h1>ai</h1></header>
+	<div class="body">
+		<div class="label"><span class="dash">— </span>敵 (BtState を持つ値)</div>
+		<div class="agents" data-if="!no_agents">
+			<div class="agent" data-for="a : agents" data-class-sel="a.selected" data-event-click="dispatch('ai.select', 'label', a.label)">
+				<span class="name">{{ a.label }}</span><span class="root">{{ a.root }}</span><span class="run">{{ a.running }}</span>
+			</div>
+		</div>
+		<div class="empty" data-if="no_agents">gameMemory に BtState が無い (MITIRU_REFLECT に載せる。docs/TOOL_WINDOWS.md)</div>
+
+		<div data-if="has_sel">
+			<div class="label"><span class="dash">— </span>ビヘイビアツリー · {{ sel_label }}</div>
+			<div class="hint" data-if="tree_file == ''">DLL が MITIRU_INSPECT_ASSETS で木の JSON を渡す (か --page ai?tree=&lt;木の JSON&gt; を付ける) と種類と葉の名前が出る</div>
+			<div class="err" data-if="tree_error != ''">{{ tree_error }}</div>
+			<div class="panel">
+				<div class="node" data-for="n : nodes" data-class-running="n.running">
+					<span class="idx">{{ n.index }}</span>
+					<span class="box" data-class-running="n.st == 'running'" data-class-success="n.st == 'success'" data-class-failure="n.st == 'failure'"/>
+					<span data-style-padding-left="n.pad"><span class="kind">{{ n.kind }}</span><span class="nm">{{ n.name }}</span></span>
+				</div>
+			</div>
+			<div class="legend"><span class="box running"/>running<span class="box success"/>success<span class="box failure"/>failure<span class="box"/>idle</div>
+
+			<div class="label"><span class="dash">— </span>知覚</div>
+			<div class="panel" data-if="has_mind">
+				<div class="kv2"><span class="k">level</span><span class="v">{{ mind_level }}</span></div>
+				<div class="kv2"><span class="k">awareness</span><span class="v">{{ mind_aware }}</span></div>
+				<div class="meter"><div class="fill" data-style-width="mind_aware_w"/></div>
+				<div class="kv2"><span class="k">見えている</span><span class="v">{{ mind_seen ? 'yes' : 'no' }}</span></div>
+				<div class="kv2"><span class="k">最後に知った位置</span><span class="v">{{ mind_last }}</span></div>
+			</div>
+			<div class="empty" data-if="!has_mind">同じ持ち主の PerceptionMemory が無い</div>
+		</div>
+
+		<div class="label"><span class="dash">— </span>攻撃トークン</div>
+		<div class="panel pool" data-for="p : pools">
+			<div class="kv2"><span class="k">{{ p.label }}</span><span class="v">{{ p.used }} / {{ p.capacity }} 使用中、希望 {{ p.requests }}</span></div>
+			<span class="holder" data-for="h : p.holders">id {{ h.id }} · cost {{ h.cost }} · since {{ h.since }}</span>
+		</div>
+		<div class="empty" data-if="no_pool">AttackTokenPool が無い</div>
+	</div>
+	<div class="wait">waiting for the game…</div>
+</body>
+</rml>

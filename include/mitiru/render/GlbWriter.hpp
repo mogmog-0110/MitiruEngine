@@ -14,6 +14,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 
 namespace mitiru::render
@@ -170,7 +171,8 @@ private:
 			pos.insert(pos.end(), {v.position.x, v.position.y, v.position.z});
 			nrm.insert(nrm.end(), {v.normal.x, v.normal.y, v.normal.z});
 			uv.insert(uv.end(), {v.texCoord.x, v.texCoord.y});
-			col.insert(col.end(), {v.color.r, v.color.g, v.color.b, v.color.a});
+			const sgc::Colorf c = linearColor(v.color);   // COLOR_0 は線形 (GltfLoader::readColor の逆)
+			col.insert(col.end(), {c.r, c.g, c.b, c.a});
 			tinted = tinted || v.color.r != 1.0f || v.color.g != 1.0f || v.color.b != 1.0f || v.color.a != 1.0f;
 		}
 		json attrs = {{"POSITION", addAccessor(pos, 3, "VEC3", kArrayBuffer, true)},

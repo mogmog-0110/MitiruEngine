@@ -44,6 +44,15 @@ struct VSOutput
     float4 Color         : COLOR0;
 };
 
+// 頂点色は書いた sRGB (ColorSpace.hpp の linearRgb と同じ: 1 を超える色は 1 に収めて線形にし、倍率を戻す)
+float3 srgbToLinear(float3 c)
+{
+    float m = max(max(c.r, c.g), max(c.b, 1.0));
+    c /= m;
+    return ((c <= 0.04045) ? c / 12.92 : pow((max(c, 0.04045) + 0.055) / 1.055, 2.4)) * m;
+}
+float4 srgbToLinear(float4 c) { return float4(srgbToLinear(c.rgb), c.a); }
+
 // 非一様スケールでも面に垂直なまま運ぶため、3x3 の余因子行列 (= det × 逆転置) を掛ける。鏡映は det の符号で戻す
 float3 transformNormal(float3x3 m, float3 n)
 {
@@ -67,7 +76,7 @@ VSOutput VSMain(VSInput input)
     output.LightSpacePos = mul(LightViewProj, worldPos);
 
     output.TexCoord = input.TexCoord;
-    output.Color = input.Color;
+    output.Color = srgbToLinear(input.Color);
 
     return output;
 }

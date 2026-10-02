@@ -96,6 +96,7 @@ void update(Input in, float dt)
 | ホットリロード | 窓口を引き継ぐ。形の番号が違えば GameMemory ごと初期状態からやり直す |
 | ロールバック対戦 (`mitiru_rollback`) | 使える (GekkoNet の保存枠に窓口の image を入れ、checksum にも含める。枠は `RollbackConfig::sideStateCapacity`) |
 | bug ring の再生 | 使える (keyframe が GameMemory と窓口の image を持つ。巻き戻しやロードで状態が飛ぶと、そこから積み直す) |
+| ツール窓 `--inspect side_state` | 窓口ごとの bytes と hash、リングの埋まり具合。replay の照合中は窓口ごとに食い違ったフレームを印で出す |
 
 `MITIRU_GAME_OBJECTS` の game も、場面を `MITIRU_GAME_OBJECTS_SCENE_STATE` で預ければ巻き戻しと分岐を使える
 (`mitiru/module/ObjectsSceneState.hpp`、[OBJECT_STYLE_GAMES.md](OBJECT_STYLE_GAMES.md))。

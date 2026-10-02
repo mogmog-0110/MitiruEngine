@@ -19,6 +19,7 @@ MitiruEngine はレベルエディタを持たない。Blender をレベルエ�
 | `trigger` | 立方体表示の Empty | `Entity`。`halfExtents` が箱の半分の大きさ (拡大 × 表示サイズ) |
 | `collision` | メッシュ | 当たり判定だけの面。`collision()` に入り、描かない |
 | `navmesh` | メッシュ | ナビメッシュの元だけの面。`navSource()` に入り、描かない |
+| `terrain` `water` `scatter` | Empty (water と scatter は立方体表示) | 屋外の 1 枚の地形の置き場所、水面、撒く範囲。world.json の `"level"` から読む ([TERRAIN_AND_WATER.md](TERRAIN_AND_WATER.md)) |
 
 - `mitiru_type` を付けたオブジェクトは描かない。
 - 見た目のメッシュに `mitiru_collide` (真) を付けると、その面も `collision()` に入る。`mitiru_nav` (真) なら `navSource()` に入る。
@@ -67,7 +68,18 @@ GameMemory には Entity の添字か `nameHash` を入れ、ポインタは入�
 
 ## 当たり判定とナビメッシュ
 
-`collision()` と `navSource()` は世界座標の三角形の列 (`positions` は xyz、`indices` は 3 つで 1 枚)。
+`collision()` と `navSource()` は世界座標の三角形の列 (`vertices` は点、`indices` は vertices の添字で 3 つで 1 枚)。
+ゲームの DLL が自分で解く当たり判定 ([ACTION_LIBRARY.md](ACTION_LIBRARY.md)) には 1 行で渡せる。
+
+```cpp
+#include <mitiru/action/CollisionLevelLoad.hpp>
+
+const mitiru::action::CollisionLevel kLevel = mitiru::action::buildLevelCollision(g_level.get());
+```
+
+箱や動く部品も足すときは、`CollisionLevelBuilder` に `addLevelCollision(builder, level)` で足してから `build()` する。
+読み直しに合わせて当たり判定も入れ替えるなら、地形を const にせず、`reloadIf` が true を返したフレームで作り直す。
+
 `mitiru_navbake arena.glb -o arena.navmesh` は、ナビメッシュの元の面があればその面だけで焼く。
 
 ## キャラクターと動作 (FBX)

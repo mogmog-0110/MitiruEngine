@@ -176,12 +176,17 @@ namespace mitiru::module
 ///          Screen 末尾メンバと IRenderer3D 末尾 virtual (局所光、行列 + 色 + 姿勢のモデル描画、インスタンス、
 ///          剣筋、AA / 動きのぼけ / AO の方式)。SceneLook は詰め物と reserved に aaMode / aoMethod / shadingModel /
 ///          motionBlur を入れた (sizeof 220 不変)。別 export `mitiru_module_action_manifest` / `mitiru_module_migrate`。
+///   - v49: 描画の入口を開いた (ADR 0062)。IRenderer3D 末尾 virtual にデカール・粒・VFX テクスチャ・当たりの演出、
+///          屋外の描画 (OutdoorDrawPod 160 byte)、副ビューの slot (View3DPod 32 byte)、モデルの解放。world.json は
+///          drawModel では描かず drawOutdoor だけで描く。別 export `mitiru_module_inspect_assets` (InspectAsset 64 byte)
+///          で木の JSON とナビメッシュをツール窓へ渡す。InputSnapshot / FrameIntents / SceneLook は無変更
+///          (録画の frameSize も同じ)。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 48;
+constexpr std::uint32_t kCurrentApiVersion = 49;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、

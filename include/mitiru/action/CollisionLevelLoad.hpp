@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file CollisionLevelLoad.hpp
-/// @brief 描画と同じメッシュファイル (.obj / .gltf / .glb) と `--collision` の JSON から CollisionLevel を組む。
+/// @brief 描画と同じメッシュファイル (.obj / .gltf / .glb)、Blender のレベル、`--collision` の JSON から CollisionLevel を組む。
 /// @details 読み込みはヒープとファイルを使うので、DLL の読み込み時 (とホットリロード) に 1 度だけ呼ぶ。
 ///          遊んでいる間の問い合わせは CollisionWorld.hpp だけで済み、ここは要らない。
 ///          host の Jolt は JSON の三角形を片面で扱うが、こちらは両面で当たる (裏から入ったキャラも押し返すため)。
@@ -13,6 +13,7 @@
 
 #include <mitiru/action/CollisionLevel.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/level/LevelData.hpp>
 #include <mitiru/physics/CollisionJson.hpp>
 #include <mitiru/physics/MeshCollider.hpp>
 
@@ -24,6 +25,21 @@ inline void addTriangleMesh(CollisionLevelBuilder& builder, const physics3d::Tri
 {
 	builder.addTriangles(std::span<const Vec3>(mesh.vertices), std::span<const std::uint32_t>(mesh.indices), layer,
 	                     placement);
+}
+
+/// @brief Blender から書き出したレベルの当たり判定の面 (LevelData::collision) を動かない地形として足す
+inline void addLevelCollision(CollisionLevelBuilder& builder, const level::LevelData& level, std::uint32_t layer = 0)
+{
+	const level::TriangleSoup& soup = level.collision();
+	builder.addTriangles(std::span<const Vec3>(soup.vertices), std::span<const std::uint32_t>(soup.indices), layer);
+}
+
+/// @brief レベルの当たり判定の面だけで地形を作る。箱や動く部品も足すなら builder と addLevelCollision を使う
+[[nodiscard]] inline CollisionLevel buildLevelCollision(const level::LevelData& level, std::uint32_t layer = 0)
+{
+	CollisionLevelBuilder builder;
+	addLevelCollision(builder, level, layer);
+	return builder.build();
 }
 
 /// @brief `--collision` の要素を JSON の並び順に足す (箱は 12 枚、三角形は書かれた順)

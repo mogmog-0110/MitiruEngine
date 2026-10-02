@@ -13,6 +13,8 @@
 #include <cstdint>
 #include <vector>
 
+#include <mitiru/render/ColorSpace.hpp>
+
 namespace mitiru::render
 {
 
@@ -46,9 +48,7 @@ namespace detail
 		std::array<float, 256> t{};
 		for (int i = 0; i < 256; ++i)
 		{
-			const float c = static_cast<float>(i) / 255.0f;
-			t[static_cast<std::size_t>(i)] =
-				(c <= 0.04045f) ? (c / 12.92f) : std::pow((c + 0.055f) / 1.055f, 2.4f);
+			t[static_cast<std::size_t>(i)] = srgbToLinear(static_cast<float>(i) / 255.0f);
 		}
 		return t;
 	}();
@@ -62,8 +62,7 @@ namespace detail
 
 [[nodiscard]] inline std::uint8_t linearToSrgb8(float v) noexcept
 {
-	const float c = (v <= 0.0031308f) ? (v * 12.92f) : (1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f);
-	return toByte(c);
+	return toByte(linearToSrgb(v));
 }
 
 /// 4 画素 (tap) の RGB を filter に従って 1 画素にまとめる。A は常に単純平均

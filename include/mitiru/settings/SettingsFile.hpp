@@ -76,6 +76,22 @@ struct Reader
 	return render::QualityPreset::High;
 }
 
+inline void readUpscale(const Json& j, GraphicsSettings& g, Reader& r)
+{
+	if (j.contains("upscale"))
+	{
+		const auto q = render::parseUpscaleQuality(j["upscale"].is_string() ? j["upscale"].get<std::string>() : std::string());
+		if (q) { g.upscale = *q; }
+		else { r.warnings.push_back("graphics.upscale が分からない (off / native / quality / balanced / performance)"); }
+	}
+	if (j.contains("upscaler"))
+	{
+		const auto u = render::parseUpscaler(j["upscaler"].is_string() ? j["upscaler"].get<std::string>() : std::string());
+		if (u) { g.upscaler = *u; }
+		else { r.warnings.push_back("graphics.upscaler が分からない (taau / fsr3)"); }
+	}
+}
+
 inline void readGraphics(const Json& root, GraphicsSettings& g, Reader& r)
 {
 	const Json& j = Reader::section(root, "graphics");
@@ -97,6 +113,7 @@ inline void readGraphics(const Json& root, GraphicsSettings& g, Reader& r)
 		g.quality = qualityFromName(j["quality"].is_string() ? j["quality"].get<std::string>() : std::string(), ok);
 		if (!ok) { r.warnings.push_back("graphics.quality が分からない (low / medium / high / custom)。high にした"); }
 	}
+	readUpscale(j, g, r);
 	const Json& c = Reader::section(j, "custom");
 	r.boolean(c, "ambientOcclusion", g.custom.ambientOcclusion, "graphics.custom");
 	r.boolean(c, "bloom", g.custom.bloom, "graphics.custom");
@@ -209,6 +226,8 @@ namespace detail
 		{ "windowMode", g.windowMode == WindowMode::Borderless ? "borderless" : "windowed" },
 		{ "vsync", g.vsync }, { "fpsLimit", g.fpsLimit },
 		{ "quality", std::string(render::qualityPresetName(g.quality)) },
+		{ "upscale", std::string(render::upscaleQualityName(g.upscale)) },
+		{ "upscaler", std::string(render::upscalerName(g.upscaler)) },
 		{ "custom", Json{ { "ambientOcclusion", g.custom.ambientOcclusion }, { "bloom", g.custom.bloom },
 		                  { "depthOfField", g.custom.depthOfField }, { "shadowCascades", g.custom.maxShadowCascades } } },
 	};

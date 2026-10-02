@@ -14,19 +14,29 @@ add_library(mitiru_tool_ui STATIC
 	ui/ToolSession.cpp
 	ui/ToolUiHost.cpp
 	ui/ToolWindow.cpp
+	ui/pages/AiPage.cpp
+	ui/pages/AnimPage.cpp
 	ui/pages/FrameViewPage.cpp
 	ui/pages/KvPages.cpp
 	ui/pages/MeterPages.cpp
+	ui/pages/NavMap.cpp
+	ui/pages/NavPage.cpp
 	ui/pages/PageFactory.cpp
 	ui/pages/ReplayPage.cpp
 	ui/pages/RewindPage.cpp
 	ui/pages/SceneViewEditor.cpp
 	ui/pages/SceneViewPage.cpp
 	ui/pages/SceneViewPage_View.cpp
+	ui/pages/SideStatePage.cpp
+	ui/pages/TypedValues.cpp
 	ui/pages/WhyViewPage.cpp)
 target_include_directories(mitiru_tool_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"
 	PRIVATE "${CMAKE_SOURCE_DIR}/external")
 target_link_libraries(mitiru_tool_ui PUBLIC mitiru mitiru_ui_rml)
+# nav ページが焼いたナビメッシュを読むため。Detour が無いビルドでは床を描かず、理由をページに出す。
+if(TARGET mitiru_nav)
+	target_link_libraries(mitiru_tool_ui PRIVATE mitiru_nav)
+endif()
 target_compile_definitions(mitiru_tool_ui PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
 if(MSVC)
 	target_compile_options(mitiru_tool_ui PRIVATE /utf-8 /bigobj /W4 /wd4100)

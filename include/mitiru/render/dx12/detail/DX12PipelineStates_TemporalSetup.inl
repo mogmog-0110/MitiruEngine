@@ -76,6 +76,7 @@ struct MotionDraw
 	uint32_t        skinSlot = 0;
 	uint64_t        frame = 0;
 	bool            cameraLocked = false;   ///< setMotionVectorCaster(false) の間の描画。画面上で止まって見える
+	bool            drawn = true;           ///< false = 視錐台で落ちたか半透明。対の順番にだけ数え、動きは描かない
 };
 FrameMotionHistory<MotionDraw> m_motionHistory;
 

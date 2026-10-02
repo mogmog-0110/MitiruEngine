@@ -12,6 +12,7 @@
 #include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/render/dx12/Dx12UploadRing.hpp>
 #include <mitiru/ui_rml/RmlFilterMath.hpp>
+#include <mitiru/ui_rml/RmlUiHost.hpp>
 #include <mitiru/ui_rml/dx12/RmlDx12Descriptors.hpp>
 #include <mitiru/ui_rml/dx12/RmlDx12Pipelines.hpp>
 #include <mitiru/ui_rml/dx12/RmlDx12Shaders.hpp>
@@ -84,6 +85,13 @@ public:
 	[[nodiscard]] std::size_t liveTextureCount() const noexcept { return m_textures.liveCount(); }
 	[[nodiscard]] std::size_t liveGeometryCount() const noexcept { return m_geometries.liveCount(); }
 
+	/// "view3d:N" の画像の出どころ。描くたびに fn(ctx, N) で資源を引き直す
+	void setExternalImageSource(UiExternalImageFn fn, void* ctx) noexcept
+	{
+		m_externalFn = fn;
+		m_externalCtx = ctx;
+	}
+
 	// RmlUi から呼ばれる口
 	Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) override;
 	void RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture) override;
@@ -124,6 +132,8 @@ private:
 	void recordPendingUploads();
 	void recordUpload(Texture& t);
 	Rml::TextureHandle addTexture(gfx::GpuResource resource, int w, int h, D3D12_RESOURCE_STATES state);
+	Rml::TextureHandle addExternalTexture(int slot, Rml::Vector2i& dimensions);
+	[[nodiscard]] bool refreshExternal(Texture& t);
 
 	// 描画の下回り
 	void bindTarget(Target& t, bool withStencil);
@@ -164,6 +174,9 @@ private:
 	std::array<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>, kSlots> m_allocators;
 	std::array<std::uint64_t, kSlots> m_slotFence = {};
 	std::array<std::vector<gfx::GpuResource>, kSlots> m_slotStaging;
+	std::array<std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>, kSlots> m_slotExternal;   ///< 差し替えた外の資源を読み終えるまで持つ
+	UiExternalImageFn m_externalFn = nullptr;
+	void* m_externalCtx = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_list;
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
 	HANDLE m_fenceEvent = nullptr;

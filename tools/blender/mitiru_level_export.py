@@ -3,6 +3,7 @@
 使い方は docs/LEVEL_FROM_BLENDER.md。Blender 4.2 以降 (5.x を含む) で動く。
 
 - オブジェクトに `mitiru_type` (spawn / trigger / enemy / camera / collision / navmesh など) を付ける。
+  屋外の印 (terrain / water / scatter) は world.json の "level" から読まれる (docs/TERRAIN_AND_WATER.md)。
   それ以外のカスタムプロパティはそのまま glTF の extras に入り、エンジンの level::LevelData から読める。
 - Ctrl+Alt+E (3D ビュー) か File > Export > Mitiru Level で、シーンの書き出し先へ glb を書く。
   一時ファイルに書いてから置き換えるので、`mitiru_host --watch-assets` は書きかけを読まない。
@@ -18,7 +19,7 @@ import bpy
 bl_info = {
     "name": "Mitiru Level Export",
     "author": "MitiruEngine",
-    "version": (1, 0, 0),
+    "version": (1, 1, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > Mitiru / File > Export > Mitiru Level",
     "description": "Blender のシーンを MitiruEngine のレベル (glb + extras) として書き出す",
@@ -27,8 +28,8 @@ bl_info = {
 
 TYPE_KEY = "mitiru_type"
 SIZE_KEY = "mitiru_size"
-MARK_TYPES = ("spawn", "trigger", "enemy", "camera", "collision", "navmesh")
-VOLUME_TYPES = {"trigger", "camera"}
+MARK_TYPES = ("spawn", "trigger", "enemy", "camera", "collision", "navmesh", "terrain", "water", "scatter")
+VOLUME_TYPES = {"trigger", "camera", "water", "scatter"}
 SURFACE_TYPES = {"collision", "navmesh"}
 SETTING_KEYS = ("mitiru_level_path", "mitiru_level_export_on_save")
 
@@ -57,6 +58,8 @@ def problems(scene):
             found.append(f"{obj.name}: mitiru_type={kind} はメッシュにしか付けられない")
         if kind and not isinstance(kind, str):
             found.append(f"{obj.name}: mitiru_type は文字列にする")
+        if kind == "scatter" and not isinstance(obj.get("model"), str):
+            found.append(f"{obj.name}: mitiru_type=scatter には撒く glb を model (文字列) で付ける")
     return found
 
 

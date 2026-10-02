@@ -57,17 +57,19 @@ ComPtr<ID3D12PipelineState>  m_atmoAerialPSO;
 ComPtr<ID3D12PipelineState>  m_skyDrawPSO;
 D3D12_GPU_VIRTUAL_ADDRESS    m_atmoFrameCB = 0;
 
-/// @brief 空が有効で driveSunLight なら、主光源の色をカメラ位置で減衰した太陽の色にする。環境光も同じ時に決め直す
+/// @brief 主光源の色を GPU の線形の作業色にする (m_light.color はこの後は線形)。空が有効で driveSunLight なら、
+///        カメラ位置で減衰した太陽の色にする。環境光も同じ時に決め直す
 void applySkyToLight()
 {
-	if (!m_sky.enabled || !m_sky.driveSunLight) { m_light.color = m_lightBaseColor; }
+	const sgc::Colorf base = linearColor(m_lightBaseColor);
+	if (!m_sky.enabled || !m_sky.driveSunLight) { m_light.color = base; }
 	if (!m_sky.enabled) { return; }
 	const sgc::Vec3f sunDir = (m_light.direction * -1.0f).normalized();
 	const float alt = atmosphere::cameraAltitudeKm(m_sky, m_cameraPosition.y);
 	if (m_sky.driveSunLight)
 	{
 		const sgc::Vec3f t = atmosphere::sunTransmittance(m_sky.atmosphere, alt, sunDir);
-		m_light.color = {m_lightBaseColor.r * t.x, m_lightBaseColor.g * t.y, m_lightBaseColor.b * t.z, m_lightBaseColor.a};
+		m_light.color = {base.r * t.x, base.g * t.y, base.b * t.z, base.a};
 	}
 	if (m_sky.driveAmbient && (sunDir - m_skyAmbientSunDir).lengthSquared() > 1e-6f)
 	{
@@ -87,16 +89,17 @@ void applySkyToLight()
 	return (m_ambientSky.r + m_ambientSky.g + m_ambientSky.b + m_ambientGround.r + m_ambientGround.g + m_ambientGround.b) > 0.0f;
 }
 
+/// @brief 上からの環境光 (線形)。空が決めた値は元から線形、ゲームが書いた色は線形にする
 [[nodiscard]] sgc::Colorf hemisphereAmbientSky() const noexcept
 {
 	if (skyDrivesAmbient()) { return m_skyAmbientUp; }
-	return hemisphereAmbientSet() ? m_ambientSky : m_sceneAmbient;
+	return linearColor(hemisphereAmbientSet() ? m_ambientSky : m_sceneAmbient);
 }
 
 [[nodiscard]] sgc::Colorf hemisphereAmbientGround() const noexcept
 {
 	if (skyDrivesAmbient()) { return m_skyAmbientDown; }
-	return hemisphereAmbientSet() ? m_ambientGround : m_sceneAmbient;
+	return linearColor(hemisphereAmbientSet() ? m_ambientGround : m_sceneAmbient);
 }
 
 [[nodiscard]] bool atmosphereActive() const noexcept { return m_sky.enabled; }

@@ -36,6 +36,46 @@ struct AnimIkRequest
 	float         weight = 1.0f;
 	float         param = -1.0f;
 	float         _reserved = 0.0f;
+
+	// 骨の番号は findNode の int のまま渡せる (int16 に収まらない値は「無し」になり、依頼は何もしない)
+
+	/// @brief node を target へ向ける。localForward は restLocalAxis で求めた骨の前、cosLimit は回せる角度の cos
+	[[nodiscard]] static AnimIkRequest aim(int node, const sgc::Vec3f& target, const sgc::Vec3f& localForward,
+	                                       float cosLimit = -1.0f, std::uint8_t flags = kAnimIkWorldSpace) noexcept
+	{
+		AnimIkRequest r = make(kAnimIkAim, flags, node, -1, -1, target, localForward);
+		r.param = cosLimit;
+		return r;
+	}
+	/// @brief 根元・中間・先の 3 骨で、先を target へ届かせる。pole は肘や膝を向ける点
+	[[nodiscard]] static AnimIkRequest twoBone(int root, int mid, int tip, const sgc::Vec3f& target,
+	                                           const sgc::Vec3f& pole,
+	                                           std::uint8_t flags = kAnimIkUsePole | kAnimIkKeepTip | kAnimIkWorldSpace) noexcept
+	{
+		return make(kAnimIkTwoBone, flags, root, mid, tip, target, pole);
+	}
+	/// @brief 股・膝・足首の 3 骨で、足を高さ groundY の地面に置く
+	[[nodiscard]] static AnimIkRequest foot(int hip, int knee, int ankle, float groundY,
+	                                        const sgc::Vec3f& groundNormal = {0.0f, 1.0f, 0.0f},
+	                                        std::uint8_t flags = kAnimIkKeepTip | kAnimIkWorldSpace) noexcept
+	{
+		return make(kAnimIkFoot, flags, hip, knee, ankle, {0.0f, groundY, 0.0f}, groundNormal);
+	}
+
+private:
+	[[nodiscard]] static AnimIkRequest make(std::uint8_t kind, std::uint8_t flags, int n0, int n1, int n2,
+	                                        const sgc::Vec3f& target, const sgc::Vec3f& aux) noexcept
+	{
+		AnimIkRequest r;
+		r.kind = kind;
+		r.flags = flags;
+		r.node[0] = animIndex16(n0);
+		r.node[1] = animIndex16(n1);
+		r.node[2] = animIndex16(n2);
+		r.target[0] = target.x; r.target[1] = target.y; r.target[2] = target.z;
+		r.aux[0] = aux.x; r.aux[1] = aux.y; r.aux[2] = aux.z;
+		return r;
+	}
 };
 
 static_assert(sizeof(AnimIkRequest) == 48 && std::is_trivially_copyable_v<AnimIkRequest>, "AnimIkRequest wire size 固定 (v48)");

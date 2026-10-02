@@ -34,6 +34,7 @@
 #include <sgc/types/Color.hpp>
 
 #include <mitiru/render/Camera3D.hpp>
+#include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/Cubemap.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
 #include <mitiru/render/ISceneFx.hpp>
@@ -266,7 +267,9 @@ public:
 		const GLenum bufs[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
 		glDrawBuffers(2, bufs);
 
-		glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+		// 色の中間ターゲットは線形なので、書いた clear 色を線形にして塗る (ColorSpace.hpp)
+		const sgc::Colorf clearLinear = linearColor(clearColor);
+		glClearColor(clearLinear.r, clearLinear.g, clearLinear.b, clearLinear.a);
 		glClearDepthf(1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -355,7 +358,7 @@ public:
 		m_fogFar = farDist;
 	}
 
-	/// @details DX12 と同じ ACES filmic の入力側の倍率。0 以下は 1.0 に丸める。
+	/// @details DX12 と同じトーンマップの入力側の倍率。0 以下は 1.0 に丸める。
 	void setTonemapExposure(float exposure) override
 	{
 		m_tonemapExposure = exposure > 0.0f ? exposure : 1.0f;
@@ -543,7 +546,7 @@ private:
 
 		// 色は HDR (FP16) で受ける。DX12 も FP16 の中間ターゲットへ描いてから
 		// tonemap で LDR へ変換する。RGBA8 で受けると 1.0 を超える光がその場で
-		// 切り捨てられ、あとから ACES を掛けても中間調が眠くなるだけになる。
+		// 切り捨てられ、あとからトーンマップを掛けても明部の階調は戻らない。
 		// EXT_color_buffer_float は WebGL2 の必須ではないので、無ければ RGBA8 に戻す。
 		m_hdrColor = emscripten_webgl_enable_extension(
 			emscripten_webgl_get_current_context(), "EXT_color_buffer_float") != 0;
@@ -682,9 +685,8 @@ private:
 			            : (L.type == LightType::Point ? 1 : 2));
 			glUniform3f(loc(m_toon, u.pos), L.position.x, L.position.y, L.position.z);
 			glUniform3f(loc(m_toon, u.dir), L.direction.x, L.direction.y, L.direction.z);
-			glUniform3f(loc(m_toon, u.col),
-			            L.color.r * L.intensity, L.color.g * L.intensity,
-			            L.color.b * L.intensity);
+			const auto col = linearRgb(L.color.r, L.color.g, L.color.b);
+			glUniform3f(loc(m_toon, u.col), col[0] * L.intensity, col[1] * L.intensity, col[2] * L.intensity);
 			glUniform1f(loc(m_toon, u.range), L.range);
 			glUniform1f(loc(m_toon, u.cone),
 			            std::cos(L.spotAngle * 3.14159265f / 180.0f));
@@ -776,13 +778,12 @@ private:
 		if (m_toonFrameUniforms) { return; }
 		setMat4(m_toon, "uViewProj", m_proj.mul(m_view));
 		setVec3(m_toon, "uLightDir", detail::normalize(m_lightDir));
-		setVec3(m_toon, "uLightColor",
-		        sgc::Vec3f{m_lightColor.r, m_lightColor.g, m_lightColor.b});
-		setVec3(m_toon, "uAmbient", sgc::Vec3f{m_ambient.r, m_ambient.g, m_ambient.b});
+		// 色は書いた sRGB なので線形にして渡す (ColorSpace.hpp)
+		setLinearColor(m_toon, "uLightColor", m_lightColor);
+		setLinearColor(m_toon, "uAmbient", m_ambient);
 		setVec3(m_toon, "uCameraPos", m_cameraPos);
-		setVec3(m_toon, "uShadowTint",
-		        sgc::Vec3f{m_shadowTint.r, m_shadowTint.g, m_shadowTint.b});
-		setVec3(m_toon, "uFogColor", sgc::Vec3f{m_fogColor.r, m_fogColor.g, m_fogColor.b});
+		setLinearColor(m_toon, "uShadowTint", m_shadowTint);
+		setLinearColor(m_toon, "uFogColor", m_fogColor);
 		glUniform3f(loc(m_toon, "uFogParams"), m_fogNear, m_fogFar, m_fog ? 1.0f : 0.0f);
 		setMat4(m_toon, "uLightViewProj", m_lightViewProj);
 		uploadLightArray();
@@ -874,10 +875,11 @@ private:
 		for (std::size_t i = 0; i < count; ++i)
 		{
 			for (int k = 0; k < 16; ++k) { m_instScratch.push_back(worlds[i].m[k]); }
-			m_instScratch.push_back(colors[i].r);
-			m_instScratch.push_back(colors[i].g);
-			m_instScratch.push_back(colors[i].b);
-			m_instScratch.push_back(colors[i].a);
+			const sgc::Colorf c = linearColor(colors[i]);   // 材質とインスタンスの色は書いた sRGB
+			m_instScratch.push_back(c.r);
+			m_instScratch.push_back(c.g);
+			m_instScratch.push_back(c.b);
+			m_instScratch.push_back(c.a);
 		}
 		glBindBuffer(GL_ARRAY_BUFFER, m_instVbo);
 		glBufferData(GL_ARRAY_BUFFER,
@@ -1203,6 +1205,12 @@ private:
 		glUniform3f(loc(program, name), v.x, v.y, v.z);
 	}
 
+	void setLinearColor(GLuint program, const char* name, const sgc::Colorf& srgb) const noexcept
+	{
+		const sgc::Colorf c = linearColor(srgb);
+		glUniform3f(loc(program, name), c.r, c.g, c.b);
+	}
+
 	[[nodiscard]] static GLuint compile(GLenum type, const char* src) noexcept
 	{
 		const GLuint s = glCreateShader(type);
@@ -1270,6 +1278,14 @@ out vec4 vColor;
 out vec4 vInst;
 out vec4 vLightPos;
 
+// 書いた sRGB を線形へ (ColorSpace.hpp の linearRgb と同じ: 1 を超える色は 1 に収めてから倍率を戻す)
+vec3 srgbToLinear(vec3 c)
+{
+    float m = max(max(c.r, c.g), max(c.b, 1.0));
+    c /= m;
+    return mix(c / 12.92, pow((max(c, vec3(0.04045)) + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c)) * m;
+}
+
 void main()
 {
     mat4 m = mat4(aWorld0, aWorld1, aWorld2, aWorld3);
@@ -1278,7 +1294,7 @@ void main()
     // 一様スケールしか使わないので、法線は回転部だけで足りる。
     vNormal = mat3(m) * aNormal;
     vUv = aUv;
-    vColor = aColor;
+    vColor = vec4(srgbToLinear(aColor.rgb), aColor.a);   // 頂点色は書いた sRGB
     vInst = aInstColor;
     vLightPos = uLightViewProj * world;
     gl_Position = uViewProj * world;
@@ -1520,17 +1536,27 @@ uniform float uInvGamma;
 uniform float uTonemapOn;
 out vec4 outColor;
 
-// ACES filmic (Narkowicz 近似)。DX12 の DX12Tonemap.hpp と同じ係数。
-vec3 acesFilmic(vec3 x)
+// DX12 の DX12Tonemap.hpp と同じ: 線形 0.9 からの中立の肩を最大成分に掛け、sRGB へ戻す。uInvGamma は 1 / Gamma
+vec3 neutralShoulder(vec3 c)
 {
-    const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
-    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+    const float knee = 0.9;
+    const float d = 1.0 - knee;
+    float peak = max(c.r, max(c.g, c.b));
+    if (peak <= knee) { return c; }
+    float newPeak = 1.0 - d * d / (peak + d - knee);
+    return c * (newPeak / peak);
+}
+
+vec3 linearToSrgb(vec3 x)
+{
+    return mix(x * 12.92, 1.055 * pow(max(x, vec3(0.0031308)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), x));
 }
 
 vec3 tonemap(vec3 hdr)
 {
-    if (uTonemapOn < 0.5) { return hdr; }
-    return pow(max(acesFilmic(hdr * uExposure), vec3(0.0)), vec3(uInvGamma));
+    if (uTonemapOn < 0.5) { return linearToSrgb(clamp(hdr, 0.0, 1.0)); }
+    vec3 mapped = clamp(neutralShoulder(max(hdr * uExposure, vec3(0.0))), 0.0, 1.0);
+    return linearToSrgb(pow(mapped, vec3(2.2 * uInvGamma)));
 }
 
 // GL の深度は [-1,1] を [0,1] に写したもの。視空間の距離へ戻す。

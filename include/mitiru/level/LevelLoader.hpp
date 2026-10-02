@@ -220,14 +220,14 @@ private:
 
 	static void appendPrimitive(const cgltf_primitive& prim, const cgltf_accessor& pos, const float m[16], TriangleSoup& out)
 	{
-		const auto base = static_cast<std::uint32_t>(out.positions.size() / 3);
+		const auto base = static_cast<std::uint32_t>(out.vertices.size());
 		for (cgltf_size v = 0; v < pos.count; ++v)
 		{
 			float p[3] = {0, 0, 0};
 			cgltf_accessor_read_float(&pos, v, p, 3);
-			out.positions.push_back(m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12]);
-			out.positions.push_back(m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13]);
-			out.positions.push_back(m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]);
+			out.vertices.push_back({m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12],
+			                        m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13],
+			                        m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]});
 		}
 		const cgltf_size count = prim.indices != nullptr ? prim.indices->count : pos.count;
 		for (cgltf_size i = 0; i + 2 < count; i += 3)

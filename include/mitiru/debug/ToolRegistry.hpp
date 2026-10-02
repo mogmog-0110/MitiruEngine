@@ -27,6 +27,10 @@ enum class Tool
 	SceneView,      ///< シーンビュー — ゲーム画面 + オブジェクト枠、ドラッグで分岐 (--page scene_view、ADR 0035 O2/O3)
 	WhyView,        ///< なぜビュー — field を選んで blame + 値推移を見る (--page why_view、ADR 0035 O6)
 	FrameView,      ///< 1 フレームの解剖図 — 入力→書込→描画→音を 1 画面 (--page frame_view、P10)
+	SideState,      ///< GameMemory の外の状態 — 窓口ごとの bytes / hash / リング、replay の食い違い (--page side_state、ADR 0054)
+	Ai,             ///< 敵の AI — 選んだ敵のビヘイビアツリーの状態、知覚、攻撃トークン (--page ai)
+	Nav,            ///< 群衆とナビメッシュ — 上から見た地図に agent と障害物 (--page nav)
+	Anim,           ///< アニメの姿勢 — 選んだモデルのレイヤ、このフレームのイベント、ルートモーション (--page anim)
 	// ★ 独立ウィンドウを増やすとき: ここに enum 値を 1 つ足し、下の kToolTable に
 	//   1 行 ({Tool::X, "tool", "--page x"}) + apps/mitiru_tool/assets/x.rml を足し、
 	//   ページの振る舞い (apps/mitiru_tool/ui/pages/) を 1 つ書く。
@@ -49,6 +53,10 @@ inline constexpr ToolSpec kToolTable[] = {
 	{ Tool::SceneView,    "tool",  "--page scene_view" },
 	{ Tool::WhyView,      "tool",  "--page why_view" },
 	{ Tool::FrameView,    "tool",  "--page frame_view" },
+	{ Tool::SideState,    "tool",  "--page side_state" },
+	{ Tool::Ai,           "tool",  "--page ai" },
+	{ Tool::Nav,          "tool",  "--page nav" },
+	{ Tool::Anim,         "tool",  "--page anim" },
 };
 }  // namespace detail
 

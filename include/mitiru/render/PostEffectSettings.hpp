@@ -34,7 +34,10 @@ enum class PostGpuPass : std::uint32_t
 	Sky,                ///< 空の LUT・空気遠近の froxel・空の描画
 	VolumetricFog,      ///< 体積フォグの注入と積分
 	AerialComposite,    ///< 空気遠近とフォグを HDR に掛ける合成
-	Upscale,            ///< TAAU と鮮鋭化
+	Upscale,            ///< TAAU か FSR 3.1 と鮮鋭化
+	UpscaleInputs,      ///< FSR に渡す 1 標本の深度と反応マスク (半透明・剣筋)
+	Particles,          ///< GPU パーティクルの刻みと描画
+	HitFeel,            ///< 当たった瞬間の画面の演出
 	Count
 };
 

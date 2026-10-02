@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::terrain — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::terrain | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::terrain | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/"><code>mitiru::action</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-character_detail/"><code>mitiru::action::character_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-geom/"><code>mitiru::action::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/"><code>mitiru::audio::sfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai/"><code>mitiru::gameai</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-bt_detail/"><code>mitiru::gameai::bt_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-orca_detail/"><code>mitiru::gameai::orca_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-level/"><code>mitiru::level</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav-detail/"><code>mitiru::nav::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/"><code>mitiru::settings</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-steam/"><code>mitiru::steam</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/" class="active"><code>mitiru::terrain</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/"><code>mitiru::terrain::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::terrain</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#struct-grasssettings"><code>GrassSettings</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-grasspatch"><code>GrassPatch</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#class-grassfield"><code>GrassField</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#struct-heightfieldplacement"><code>HeightfieldPlacement</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-heightfield"><code>Heightfield</code></a></td><td>class</td><td>24</td></tr>
+<tr><td><a href="#struct-cellregion"><code>CellRegion</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-heightfieldloadresult"><code>HeightfieldLoadResult</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-terrainlayer"><code>TerrainLayer</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-splatimage"><code>SplatImage</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-grasslook"><code>GrassLook</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-scatterset"><code>ScatterSet</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-outdoorworld"><code>OutdoorWorld</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#struct-outdoorworldloadresult"><code>OutdoorWorldLoadResult</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-densitymap"><code>DensityMap</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-scatterrule"><code>ScatterRule</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-scatterinstance"><code>ScatterInstance</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-lodsettings"><code>LodSettings</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-lodpatch"><code>LodPatch</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-lodbox"><code>LodBox</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#class-lodquadtree"><code>LodQuadtree</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#struct-waterbody"><code>WaterBody</code></a></td><td>struct</td><td>12</td></tr>
+</tbody></table>
+<details class="api-class" id="struct-grasssettings" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GrassSettings</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float bladesPerM2 = 24.0f</code></div>
+<div class="api-method"><code>float patchSize = 8.0f</code></div>
+<div class="api-method"><code>float lodStart = 12.0f</code></div>
+<div class="api-method"><code>float lodStep = 12.0f</code></div>
+<div class="api-method"><code>std::uint32_t maxLod = 4</code></div>
+<div class="api-method"><code>float fadeStart = 40.0f</code></div>
+<div class="api-method"><code>float fadeEnd = 60.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-grasspatch" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GrassPatch</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x0 = 0.0f</code></div>
+<div class="api-method"><code>float z0 = 0.0f</code></div>
+<div class="api-method"><code>float minY = 0.0f</code></div>
+<div class="api-method"><code>float maxY = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t index = 0</code></div>
+<div class="api-method"><code>std::uint32_t lod = 0</code></div>
+<div class="api-method"><code>std::uint32_t bladeCount = 0</code></div>
+<div class="api-method"><code>std::uint32_t pad = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-grassfield" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GrassField</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>GrassField() = default</code></div>
+<div class="api-method"><code>GrassField(const Heightfield&amp; h, const DensityMap* density, const GrassSettings&amp; s)</code></div>
+<div class="api-method"><code>[[nodiscard]] const GrassSettings&amp; settings() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t baseCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t lodAt(float d) const noexcept</code></div>
+<div class="api-method"><code>template &lt;class Visible&gt; void select(const Vec3&amp; eye, Visible&amp;&amp; visible, std::vector&lt;GrassPatch&gt;&amp; out) const</code></div>
+<div class="api-method"><code>using Vec3 = sgc::Vec3f;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-heightfieldplacement" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HeightfieldPlacement</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float originX = 0.0f</code></div>
+<div class="api-method"><code>float originY = 0.0f</code></div>
+<div class="api-method"><code>float originZ = 0.0f</code></div>
+<div class="api-method"><code>float sizeX = 256.0f</code></div>
+<div class="api-method"><code>float sizeZ = 256.0f</code></div>
+<div class="api-method"><code>float height = 32.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-heightfield" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Heightfield</code> <span class="api-class__count">24</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Heightfield() = default</code></div>
+<div class="api-method"><code>[[nodiscard]] static Heightfield fromSamples(std::uint32_t width, std::uint32_t depth, std::vector&lt;std::uint16_t&gt; samples, const HeightfieldPlacement&amp; placement)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t width() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t depth() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float cellX() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float cellZ() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const HeightfieldPlacement&amp; placement() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;std::uint16_t&gt;&amp; samples() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float minX() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float minZ() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float maxX() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float maxZ() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool contains(float x, float z) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint16_t sample(std::int64_t ix, std::int64_t iz) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float sampleHeight(std::int64_t ix, std::int64_t iz) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 vertex(std::int64_t ix, std::int64_t iz) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float heightAt(float x, float z) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 normalAt(float x, float z) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 smoothNormalAt(float x, float z) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::pair&lt;float, float&gt; heightRange(std::uint32_t ix0, std::uint32_t iz0, std::uint32_t ix1, std::uint32_t iz1) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint32_t terrainTriangleId(const Heightfield&amp; h, std::uint32_t ix, std::uint32_t iz, std::uint32_t k) noexcept</code></div>
+<div class="api-method"><code>inline void heightfieldTriangles(const Heightfield&amp; h, const CellRegion&amp; region, std::vector&lt;Vec3&gt;&amp; vertices, std::vector&lt;std::uint32_t&gt;&amp; indices)</code></div>
+<div class="api-method"><code>inline void addHeightfield(action::CollisionLevelBuilder&amp; builder, const Heightfield&amp; h, std::uint32_t layer, const CellRegion&amp; region = {})</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-cellregion" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CellRegion</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t ix0 = 0</code></div>
+<div class="api-method"><code>std::uint32_t iz0 = 0</code></div>
+<div class="api-method"><code>std::uint32_t ix1 = 0xFFFFFFFFu</code></div>
+<div class="api-method"><code>std::uint32_t iz1 = 0xFFFFFFFFu</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool endsWith(std::string_view s, std::string_view tail) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HeightfieldLoadResult decodePng(const std::vector&lt;std::uint8_t&gt;&amp; bytes, const HeightfieldPlacement&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HeightfieldLoadResult decodeRaw(const std::vector&lt;std::uint8_t&gt;&amp; bytes, std::uint32_t width, const HeightfieldPlacement&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HeightfieldLoadResult decodeHeightfield(const std::vector&lt;std::uint8_t&gt;&amp; bytes, bool raw, const HeightfieldPlacement&amp; placement, std::uint32_t rawWidth = 0)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HeightfieldLoadResult loadHeightfield(std::string_view path, const HeightfieldPlacement&amp; placement, std::uint32_t rawWidth = 0)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-heightfieldloadresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HeightfieldLoadResult</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::optional&lt;Heightfield&gt; heightfield</code></div>
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>inline void addOutdoorWorld(action::CollisionLevelBuilder&amp; builder, const OutdoorWorld&amp; world, std::uint32_t terrainLayer, std::uint32_t propLayer)</code></div>
+<div class="api-method"><code>inline void readColor(const level::LevelData&amp; lv, const level::Entity&amp; e, std::string_view key, float out[3])</code></div>
+<div class="api-method"><code>[[nodiscard]] inline WaterBody waterFromEntity(const level::LevelData&amp; lv, const level::Entity&amp; e)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ScatterSet scatterFromEntity(const level::LevelData&amp; lv, const level::Entity&amp; e, const std::string&amp; baseDir)</code></div>
+<div class="api-method"><code>inline void applyLevelTerrain(const level::LevelData&amp; lv, HeightfieldPlacement&amp; p, std::vector&lt;std::string&gt;&amp; warnings)</code></div>
+<div class="api-method"><code>inline void applyLevelMarks(const level::LevelData&amp; lv, const std::string&amp; baseDir, OutdoorWorld&amp; world)</code></div>
+<div class="api-method"><code>inline constexpr std::size_t kMaxTerrainLayers = 8</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-terrainlayer">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TerrainLayer</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string albedo</code></div>
+<div class="api-method"><code>std::string normal</code></div>
+<div class="api-method"><code>float tile = 8.0f</code></div>
+<div class="api-method"><code>float roughness = 0.9f</code></div>
+<div class="api-method"><code>float metallic = 0.0f</code></div>
+<div class="api-method"><code>float normalStrength = 1.0f</code></div>
+<div class="api-method"><code>bool hasRule = false</code></div>
+<div class="api-method"><code>float minHeight = -1.0e9f</code></div>
+<div class="api-method"><code>float maxHeight = 1.0e9f</code></div>
+<div class="api-method"><code>float minSlope = 0.0f</code></div>
+<div class="api-method"><code>float maxSlope = 90.0f</code></div>
+<div class="api-method"><code>float blend = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-splatimage">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SplatImage</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t width = 0</code></div>
+<div class="api-method"><code>std::uint32_t height = 0</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; rgba</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-grasslook">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GrassLook</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float bladeHeight = 0.55f</code></div>
+<div class="api-method"><code>float bladeWidth = 0.06f</code></div>
+<div class="api-method"><code>float windStrength = 0.25f</code></div>
+<div class="api-method"><code>float windSpeed = 1.3f</code></div>
+<div class="api-method"><code>float maxSlopeDeg = 40.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-scatterset">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ScatterSet</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string model</code></div>
+<div class="api-method"><code>std::vector&lt;ScatterInstance&gt; instances</code></div>
+<div class="api-method"><code>float collideRadius = 0.0f</code></div>
+<div class="api-method"><code>float collideHeight = 2.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-outdoorworld">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OutdoorWorld</code> <span class="api-class__count">21</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string path</code></div>
+<div class="api-method"><code>Heightfield terrain</code></div>
+<div class="api-method"><code>std::vector&lt;TerrainLayer&gt; layers</code></div>
+<div class="api-method"><code>SplatImage splat[2]</code></div>
+<div class="api-method"><code>bool hasGrass = false</code></div>
+<div class="api-method"><code>DensityMap grassDensity</code></div>
+<div class="api-method"><code>std::vector&lt;ScatterSet&gt; scatter</code></div>
+<div class="api-method"><code>std::vector&lt;WaterBody&gt; water</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; warnings</code></div>
+<div class="api-method"><code>LodQuadtree lodTree</code></div>
+<div class="api-method"><code>GrassField grassField</code></div>
+<div class="api-method"><code>OutdoorWorld() = default</code></div>
+<div class="api-method"><code>OutdoorWorld(const OutdoorWorld&amp;) = delete</code></div>
+<div class="api-method"><code>OutdoorWorld&amp; operator=(const OutdoorWorld&amp;) = delete</code></div>
+<div class="api-method"><code>OutdoorWorld(OutdoorWorld&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>OutdoorWorld&amp; operator=(OutdoorWorld&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t splatCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int dominantLayerAt(float x, float z) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline OutdoorWorldLoadResult loadOutdoorWorldFromText(std::string_view text, std::string_view baseDir, std::string_view sourcePath = {})</code></div>
+<div class="api-method"><code>[[nodiscard]] inline OutdoorWorldLoadResult loadOutdoorWorld(std::string_view path)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isOutdoorWorldPath(std::string_view path) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-outdoorworldloadresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutdoorWorldLoadResult</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::unique_ptr&lt;OutdoorWorld&gt; world</code></div>
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::uint32_t hash32(std::uint32_t x) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float hash01(std::uint32_t x) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ScatterInstance placeOne(const Heightfield&amp; h, const ScatterRule&amp; r, float x, float z, std::uint32_t key)</code></div>
+<div class="api-method"><code>inline void scatter(const Heightfield&amp; h, const DensityMap* density, const ScatterRule&amp; r, std::vector&lt;ScatterInstance&gt;&amp; out)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-densitymap">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DensityMap</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t width = 0</code></div>
+<div class="api-method"><code>std::uint32_t height = 0</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; values</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float sample(float u, float v) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-scatterrule">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ScatterRule</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float perM2 = 0.02f</code></div>
+<div class="api-method"><code>std::uint32_t seed = 1</code></div>
+<div class="api-method"><code>float scaleMin = 0.8f</code></div>
+<div class="api-method"><code>float scaleMax = 1.2f</code></div>
+<div class="api-method"><code>float maxSlopeDeg = 35.0f</code></div>
+<div class="api-method"><code>float minHeight = -1.0e9f</code></div>
+<div class="api-method"><code>float maxHeight = 1.0e9f</code></div>
+<div class="api-method"><code>float sink = 0.0f</code></div>
+<div class="api-method"><code>float alignToNormal = 0.0f</code></div>
+<div class="api-method"><code>float regionMinX = -1.0e9f</code></div>
+<div class="api-method"><code>float regionMinZ = -1.0e9f</code></div>
+<div class="api-method"><code>float regionMaxX = 1.0e9f</code></div>
+<div class="api-method"><code>float regionMaxZ = 1.0e9f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-scatterinstance">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ScatterInstance</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float yawRad = 0.0f</code></div>
+<div class="api-method"><code>float scale = 1.0f</code></div>
+<div class="api-method"><code>std::uint32_t cellIndex = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lodsettings">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LodSettings</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t patchCells = 32</code></div>
+<div class="api-method"><code>std::uint32_t lodCount = 6</code></div>
+<div class="api-method"><code>float lod0Distance = 0.0f</code></div>
+<div class="api-method"><code>float morphStart = 0.65f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lodpatch">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LodPatch</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x0 = 0.0f</code></div>
+<div class="api-method"><code>float z0 = 0.0f</code></div>
+<div class="api-method"><code>float size = 0.0f</code></div>
+<div class="api-method"><code>float sizeZ = 0.0f</code></div>
+<div class="api-method"><code>float minY = 0.0f</code></div>
+<div class="api-method"><code>float maxY = 0.0f</code></div>
+<div class="api-method"><code>float morphStart = 0.0f</code></div>
+<div class="api-method"><code>float morphEnd = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t lod = 0</code></div>
+<div class="api-method"><code>std::uint32_t preSnap = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lodbox">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LodBox</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float minX, minY, minZ, maxX, maxY, maxZ</code></div>
+</div>
+</details>
+<details class="api-class" id="class-lodquadtree">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">LodQuadtree</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>LodQuadtree() = default</code></div>
+<div class="api-method"><code>LodQuadtree(const Heightfield&amp; h, const LodSettings&amp; s)</code></div>
+<div class="api-method"><code>[[nodiscard]] const LodSettings&amp; settings() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float nodeSize(std::uint32_t lod) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float range(std::uint32_t lod) const noexcept</code></div>
+<div class="api-method"><code>template &lt;class Visible&gt; void select(const Vec3&amp; eye, Visible&amp;&amp; visible, std::vector&lt;LodPatch&gt;&amp; out) const</code></div>
+<div class="api-method"><code>[[nodiscard]] LodBox box(std::uint32_t lod, std::uint32_t nx, std::uint32_t nz) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool insideWater(const WaterBody&amp; w, float x, float z) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float waterDepthAt(const WaterBody&amp; w, const Heightfield&amp; h, float x, float z) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int submergedIn(std::span&lt;const WaterBody&gt; bodies, const Vec3&amp; p) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-waterbody">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WaterBody</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float minX = -64.0f</code></div>
+<div class="api-method"><code>float minZ = -64.0f</code></div>
+<div class="api-method"><code>float maxX = 64.0f</code></div>
+<div class="api-method"><code>float maxZ = 64.0f</code></div>
+<div class="api-method"><code>float height = 0.0f</code></div>
+<div class="api-method"><code>float foamDepth = 0.35f</code></div>
+<div class="api-method"><code>float refraction = 0.03f</code></div>
+<div class="api-method"><code>float waveAmplitude = 0.35f</code></div>
+<div class="api-method"><code>float waveScale = 0.35f</code></div>
+<div class="api-method"><code>float waveSpeed = 0.6f</code></div>
+<div class="api-method"><code>float reflectivity = 0.6f</code></div>
+<div class="api-method"><code>std::int32_t toonBands = 0</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

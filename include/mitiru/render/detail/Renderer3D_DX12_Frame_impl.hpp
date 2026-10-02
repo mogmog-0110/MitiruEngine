@@ -39,6 +39,8 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_skyboxDrawnThisFrame = false;
 	m_skinnedPoolCursor = 0;  // スキン描画 pool を巻き戻す
 	collectRetiredGameMeshes();
+	collectRetiredModels();
+	collectRetiredViews();
 	m_shadowCasterEnabled = true;
 	m_outlineCasterEnabled = true;
 	// 前フレームの shadow casters をスナップショットとして残し、当フレームの描画分をクリアする
@@ -87,6 +89,8 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	{
 		return;
 	}
+	// デカールのビット集合を写す命令と VFX テクスチャの転送を、最初の描画より前に置く
+	beginFrameDecals();
 
 	/// バックバッファを取得する (存在確認のみ)。
 	/// Present↔RenderTarget の遷移は Dx12Device::beginFrame/endFrame が一元管理する。
@@ -125,8 +129,9 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 	m_graphicsCmdList->OMSetRenderTargets(2, rtvHandles, FALSE, &dsvHandle);
 
-	/// MSAA color、法線、深度をクリアする
-	const float cc[4] = {clearColor.r, clearColor.g, clearColor.b, clearColor.a};
+	/// MSAA color、法線、深度をクリアする。HDR は線形なので、書いた clear 色を線形にして塗る
+	const sgc::Colorf clearLinear = linearColor(clearColor);
+	const float cc[4] = {clearLinear.r, clearLinear.g, clearLinear.b, clearLinear.a};
 	m_graphicsCmdList->ClearRenderTargetView(msaaColorRtv, cc, 0, nullptr);
 	m_graphicsCmdList->ClearDepthStencilView(
 		dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -212,7 +217,8 @@ inline bool Renderer3D_DX12::cullMesh(const Mesh& mesh, const sgc::Mat4f& world)
 		++m_culledCount;
 		return true;
 	}
-	if (m_occlusionCullingEnabled && m_occlusionCuller.hasDepth() &&
+	// オクルージョンの深度は主ビューのカメラのもの。副ビューでは視錐台だけで落とす
+	if (m_activeView == nullptr && m_occlusionCullingEnabled && m_occlusionCuller.hasDepth() &&
 	    m_occlusionCuller.isOccluded(worldOcclusionAABB(mesh.localAABB(), world), occlusionViewProj().data()))
 	{
 		++m_occludedCount;
@@ -268,17 +274,20 @@ inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worl
                                         const MaterialMaps* maps, const DrawTint& tint)
 {
 	if (!m_initialized || !m_graphicsCmdList || mesh.vertexCount() == 0) { return; }
-	if (cullMesh(mesh, worldTransform)) { return; }
-	drawSkyboxBeforeFirstDraw();
-
 	/// 半透明は即時描画せず、不透明の後に OIT パスへ回す (順序非依存)。
 	/// glTF が Blend を宣言していれば拡散色が不透明でも半透明として扱う。
 	/// Mask は抜き (PS の clip) なので不透明パスのまま。
 	const float alpha = material.diffuse.a * tint.mul[3];
 	const bool wantsBlend = (material.alphaMode == Material::AlphaMode::Blend) ||
 	                        (material.alphaMode != Material::AlphaMode::Mask && alpha < 1.0f);
+	const bool culled = cullMesh(mesh, worldTransform);
+	recordMotionDraw(mesh, worldTransform, !culled && !(wantsBlend && m_oitTransparentPSO));
+	if (culled) { return; }
+	drawSkyboxBeforeFirstDraw();
+
 	if (wantsBlend && m_oitTransparentPSO)
 	{
+		if (rejectInView("半透明の描画 (OIT)")) { return; }
 		m_transparentCommands.push_back({&mesh, worldTransform, material, maps, tint});
 		return;
 	}
@@ -289,7 +298,6 @@ inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worl
 	}
 	if (!bindForwardDraw(worldTransform, material, maps, tint) || !drawMeshBuffers(mesh)) { return; }
 	++m_drawCallCount;
-	recordMotionDraw(mesh, worldTransform);
 
 	/// シャドウキャスターを記録する（次フレームの shadow pass で使う）
 	if (wantsShadowCasters())
@@ -345,8 +353,14 @@ inline void Renderer3D_DX12::endFrame()
 		return;
 	}
 
+	if (m_activeView != nullptr)
+	{
+		debug::warnOnce("dx12.view.unclosed", "endView を呼ばずに endFrame した — 副ビューをここで閉じる");
+		endView();
+	}
 	// このフレームの局所光が出そろったので、froxel への割り当てを補助リストに積む (finalizeFrame でメインより先に流す)
 	recordClusterBuild();
+	finalizeDecals();
 
 	// clod 世界ジオメトリ: offscreen に描いて depth-tested inject で
 	// MSAA HDR + depth へ合成する (以降の OIT / resolve はこの上に重なる)。
@@ -362,6 +376,8 @@ inline void Renderer3D_DX12::endFrame()
 	// 空 (主パスの空いた所)・空気遠近の froxel・体積フォグの compute。半透明は空の上に重なる
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Sky);
 	drawAtmospherePasses();
+	// 水面: 不透明と空を描き終えた色と深度を読むので、空の後・半透明の前 (しるしは空の区間に含める)
+	renderWaterPass();
 
 	// 半透明 OIT: 不透明 (MSAA color + depth) の後、resolve/tonemap の前に HDR で合成する。
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Transparent);
@@ -376,8 +392,12 @@ inline void Renderer3D_DX12::endFrame()
 	// Effekseer: 半透明の後・resolve の前。深度で隠れ、HDR のまま tonemap される
 	renderEffekseerPass();
 #endif
+	// FSR の間だけ: 1 標本の深度と半透明・エフェクトの反応マスク。剣筋と粒はこの後で自分の被覆を反応マスクへ足す
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::UpscaleInputs);
+	timePostPass(PostGpuPass::UpscaleInputs, [this] { drawFsrInputs(); drawEffekseerReactive(); });
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Trails);
 	timePostPass(PostGpuPass::Trails, [this] { drawTrailPass(); });
+	timePostPass(PostGpuPass::Particles, [this] { drawParticlePass(); });
 	/// 動きベクトル: TAA か動きのぼけが有効なときだけ。深度は主パスの DEPTH_WRITE のまま受け取って返す
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Velocity);
 	timePostPass(PostGpuPass::Velocity, [this] { drawVelocityPasses(); });
@@ -436,6 +456,10 @@ inline void Renderer3D_DX12::endFrame()
 	/// 内部解像度で描いている間は、動きのぼけまでを済ませた絵を TAAU で出力の大きさへ戻す
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Upscale);
 	timePostPass(PostGpuPass::Upscale, [this] { drawUpscalePass(); });
+	/// 当たった瞬間の演出。出力の大きさで、TAA・FSR の履歴の後・HUD の前
+	timePostPass(PostGpuPass::HitFeel, [this] { drawHitFeelPass(); });
+	/// 副ビューの貼り付け (分割画面・小窓)。出力の大きさで、後処理の後・HUD の前
+	drawViewComposites();
 
 	/// ニューラル現像 (M3): 現像済み 2D 画像をバックバッファへ全画面 α 合成する
 	/// (FXAA 後・overlay2D 前 = HUD は 2D 絵の上に残る)。strength=0 のとき no-op。
@@ -553,6 +577,10 @@ inline void Renderer3D_DX12::renderClodPass()
 	const float dir[3] = { m_light.direction.x, m_light.direction.y, m_light.direction.z };
 	const float col[3] = { m_light.color.r, m_light.color.g, m_light.color.b };
 	m_clod.setProjectionJitter(m_jitterNdc.x, m_jitterNdc.y);
+	// 局所光は recordClusterBuild が光の一覧と froxel の割り当てを決めた後 (endFrame の頭) なので、そのまま渡せる
+	const bool lights = m_visibleLightCount > 0 && m_clusterMasks && m_lightBufferAlloc.valid() && m_clusterFrameAlloc.valid();
+	m_clod.setLocalLights(lights ? m_lightBufferAlloc.gpuAddr : 0, lights ? m_clusterMasks->GetGPUVirtualAddress() : 0,
+	                      lights ? m_clusterFrameAlloc.gpuAddr : 0);
 	m_clod.record(cmd, m_clodCamera, dir, col, 0.30f, width, height, m_frameCursor);
 
 	// inject: clod の color + visbuffer 深度を MSAA HDR + depth へ (両方向 depth test)

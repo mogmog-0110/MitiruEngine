@@ -25,6 +25,7 @@ enum class Pass3D : int
 	Clod,
 	Sky,
 	Transparent,
+	UpscaleInputs,
 	Trails,
 	Velocity,
 	Ssao,
@@ -51,6 +52,7 @@ inline constexpr const wchar_t* kPass3DNames[static_cast<int>(Pass3D::Count)] = 
 	L"3D clod",
 	L"3D sky / volumetric fog",
 	L"3D OIT (transparent)",
+	L"3D FSR inputs (depth + reactive)",
 	L"3D trails",
 	L"3D velocity",
 	L"3D SSAO",
@@ -63,7 +65,7 @@ inline constexpr const wchar_t* kPass3DNames[static_cast<int>(Pass3D::Count)] = 
 	L"3D depth of field",
 	L"3D AA (FXAA / TAA)",
 	L"3D motion blur",
-	L"3D upscale (TAAU)",
+	L"3D upscale (TAAU / FSR 3.1)",
 	L"3D style/Live2D/neural/relight",
 };
 

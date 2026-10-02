@@ -48,6 +48,19 @@ struct AnimLayer
 	std::uint16_t reserved1 = 0;
 	float timeSec = 0.0f;
 	float weight = 1.0f;        ///< 0..1。範囲外は丸める
+
+	/// @brief clip を timeSec の位置で weight だけ重ねるレイヤ。clip と mask には findClip / findMask の値をそのまま渡す
+	[[nodiscard]] static constexpr AnimLayer clipAt(int clip, float timeSec, float weight = 1.0f,
+	                                                std::uint8_t flags = kAnimLayerLoop, int mask = -1) noexcept
+	{
+		AnimLayer layer;
+		layer.clip = animIndex16(clip);
+		layer.mask = animIndex16(mask);
+		layer.flags = flags;
+		layer.timeSec = timeSec;
+		layer.weight = weight;
+		return layer;
+	}
 };
 
 /// @brief 姿勢の入力のすべて。GameMemory に置ける。

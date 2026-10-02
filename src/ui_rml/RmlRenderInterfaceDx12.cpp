@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 
 namespace mitiru::ui_rml
@@ -128,6 +129,7 @@ bool RmlRenderInterfaceDx12::beginFrame(ID3D12Resource* target, int width, int h
 	m_slot = static_cast<std::size_t>(m_frameSerial % kSlots);
 	waitFence(m_slotFence[m_slot]);
 	m_slotStaging[m_slot].clear();
+	m_slotExternal[m_slot].clear();
 	m_srvPool.reclaim(m_fence->GetCompletedValue());
 	if (!m_targets.ensureSize(width, height, m_fenceValue)) { m_error = "layer targets allocation failed"; return false; }
 	if (!openCommandList()) { m_error = "command list reset failed"; return false; }
@@ -223,6 +225,7 @@ void RmlRenderInterfaceDx12::RenderGeometry(Rml::CompiledGeometryHandle geometry
 	Texture* t = m_textures.get(texture);
 	if (!m_frameOpen || g == nullptr || (texture != 0 && t == nullptr)) { return; }
 	bindTopLayer();
+	if (t != nullptr && t->externalSlot >= 0 && !refreshExternal(*t)) { return; }
 	if (t != nullptr)
 	{
 		setPso(clipped(RmlPso::Texture, RmlPso::TextureClip));
@@ -302,8 +305,44 @@ void RmlRenderInterfaceDx12::recordPendingUploads()
 	m_pendingUploads.clear();
 }
 
+Rml::TextureHandle RmlRenderInterfaceDx12::addExternalTexture(int slot, Rml::Vector2i& dimensions)
+{
+	const UiExternalImage img = m_externalFn != nullptr ? m_externalFn(m_externalCtx, slot) : UiExternalImage{};
+	auto t = std::make_unique<Texture>();
+	t->externalSlot = slot;
+	t->width = std::max(img.width, 1);
+	t->height = std::max(img.height, 1);
+	dimensions = { t->width, t->height };
+	return static_cast<Rml::TextureHandle>(m_textures.add(std::move(t)));
+}
+
+bool RmlRenderInterfaceDx12::refreshExternal(Texture& t)
+{
+	const UiExternalImage img = m_externalFn != nullptr ? m_externalFn(m_externalCtx, t.externalSlot) : UiExternalImage{};
+	if (img.resource == nullptr) { return false; }
+	if (img.resource == t.external.Get() && t.srv != dx12::RmlDescriptorPool::kInvalid) { return true; }
+	// 副ビューが作り直された。前の SRV と資源は、それを読んだフレームが終わってから手放す
+	m_srvPool.release(t.srv, releaseFence());
+	if (t.external) { m_slotExternal[m_slot].push_back(std::move(t.external)); }
+	t.srv = m_srvPool.allocate();
+	if (t.srv == dx12::RmlDescriptorPool::kInvalid) { return false; }
+	D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+	desc.Format = static_cast<DXGI_FORMAT>(img.format);
+	desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	desc.Texture2D.MipLevels = 1;
+	m_device->CreateShaderResourceView(img.resource, &desc, m_srvPool.cpu(t.srv));
+	t.external = img.resource;
+	return true;
+}
+
 Rml::TextureHandle RmlRenderInterfaceDx12::LoadTexture(Rml::Vector2i& dimensions, const Rml::String& source)
 {
+	if (source.rfind(kView3DImageScheme, 0) == 0)
+	{
+		const int slot = std::atoi(source.c_str() + kView3DImageScheme.size());
+		return addExternalTexture(slot, dimensions);
+	}
 	std::vector<Rml::byte> file;
 	if (!dx12::readWholeFile(source, file)) { return {}; }
 	int w = 0, h = 0, n = 0;

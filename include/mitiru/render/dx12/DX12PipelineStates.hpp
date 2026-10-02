@@ -29,5 +29,11 @@
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Gtao.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Atmosphere.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Fog.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Fsr3.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Upscale.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_VfxTextures.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Decals.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_ParticleSetup.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Particles.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_HitFeel.inl>
 // NOLINTEND(build/include)

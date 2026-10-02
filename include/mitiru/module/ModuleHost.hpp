@@ -334,6 +334,12 @@ public:
 		return reinterpret_cast<ModuleMigrateFn>(resolveSymbol(m_handle, kMigrateSymbol));
 	}
 
+	/// @brief ツール窓に見せる資産の一覧 (ABI v49、`MITIRU_INSPECT_ASSETS`)。不在なら nullptr
+	[[nodiscard]] ModuleInspectAssetsFn inspectAssetsFn() const noexcept
+	{
+		return reinterpret_cast<ModuleInspectAssetsFn>(resolveSymbol(m_handle, kInspectAssetsSymbol));
+	}
+
 	[[nodiscard]] ModulePauseAlwaysLayersFn pauseAlwaysLayersMaskFn() const noexcept
 	{
 		return reinterpret_cast<ModulePauseAlwaysLayersFn>(resolveSymbol(m_handle, kPauseAlwaysLayersSymbol));
